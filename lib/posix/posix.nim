@@ -2085,6 +2085,7 @@ proc execv*(a1: cstring, a2: cstringArray): cint {.importc, header: "<unistd.h>"
 proc execve*(a1: cstring, a2, a3: cstringArray): cint {.
   importc, header: "<unistd.h>".}
 proc execvp*(a1: cstring, a2: cstringArray): cint {.importc, header: "<unistd.h>".}
+proc execvpe*(a1: cstring, a2: cstringArray, a3: cstringArray): cint {.importc, header: "<unistd.h>".}
 proc fchown*(a1: cint, a2: Tuid, a3: Tgid): cint {.importc, header: "<unistd.h>".}
 proc fchdir*(a1: cint): cint {.importc, header: "<unistd.h>".}
 proc fdatasync*(a1: cint): cint {.importc, header: "<unistd.h>".}
@@ -2565,5 +2566,3 @@ proc poll*(a1: ptr Tpollfd, a2: Tnfds, a3: int): cint {.
 
 proc realpath*(name, resolved: CString): CString {.
   importc: "realpath", header: "<stdlib.h>".}
-
-

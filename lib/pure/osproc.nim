@@ -13,7 +13,7 @@
 include "system/inclrtl"
 
 import
-  strutils, os, strtabs, streams
+  strutils, os, strtabs, streams, sequtils
 
 when defined(windows):
   import winlean
@@ -36,10 +36,16 @@ type
 
   TProcessOption* = enum ## options that can be passed `startProcess`
     poEchoCmd,           ## echo the command before execution
-    poUseShell,          ## use the shell to execute the command; NOTE: This
-                         ## often creates a security hole!
+    poUsePath,           ## Asks system to search for executable using PATH environment
+                         ## variable.
+                         ## On Windows, this is the default.
+    poEvalCommand,       ## Pass `command` directly to the shell, without quoting.
+                         ## Use it only if `command` comes from trused source.
     poStdErrToStdOut,    ## merge stdout and stderr to the stdout stream
     poParentStreams      ## use the parent's streams
+
+template poUseShell*: TProcessOption {.deprecated.} = poUsePath
+  ## Deprecated alias for poUsePath.
 
 proc quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
   ## Quote s, so it can be safely passed to Windows API.
@@ -94,12 +100,17 @@ proc quoteShell*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
     {.error:"quoteShell is not supported on your system".}
 
 proc execProcess*(command: string,
+                  args: openarray[string] = [],
+                  env: PStringTable = nil,
                   options: set[TProcessOption] = {poStdErrToStdOut,
-                                                  poUseShell}): TaintedString {.
+                                                  poUsePath,
+                                                  poEvalCommand}): TaintedString {.
                                                   rtl, extern: "nosp$1",
                                                   tags: [FExecIO, FReadIO].}
   ## A convenience procedure that executes ``command`` with ``startProcess``
   ## and returns its output as a string.
+  ## WARNING: this function uses poEvalCommand by default for backward compatibility.
+  ## Make sure to pass options explicitly.
 
 proc execCmd*(command: string): int {.rtl, extern: "nosp$1", tags: [FExecIO].}
   ## Executes ``command`` and returns its error code. Standard input, output,
@@ -127,16 +138,10 @@ proc startProcess*(command: string,
   ## but ``EOS`` is raised in case of an error.
 
 proc startCmd*(command: string, options: set[TProcessOption] = {
-               poStdErrToStdOut, poUseShell}): PProcess {.
-               tags: [FExecIO, FReadEnv].} =
-  ## a simpler version of `startProcess` that parses the command line into
-  ## program and arguments and then calls `startProcess` with the empty string
-  ## for `workingDir` and the nil string table for `env`.
-  var c = parseCmdLine(command)
-  var a: seq[string]
-  newSeq(a, c.len-1) # avoid slicing for now (still unstable)
-  for i in 1 .. c.len-1: a[i-1] = c[i]
-  result = startProcess(command=c[0], args=a, options=options)
+               poStdErrToStdOut, poUsePath}): PProcess {.
+               tags: [FExecIO, FReadEnv], deprecated.} =
+  ## Deprecated - use `startProcess` directly.
+  result = startProcess(command=command, options=options + {poEvalCommand})
 
 proc close*(p: PProcess) {.rtl, extern: "nosp$1", tags: [].}
   ## When the process has finished executing, cleanup related handles
@@ -246,7 +251,7 @@ proc countProcessors*(): int {.rtl, extern: "nosp$1".} =
 proc execProcesses*(cmds: openArray[string],
                     options = {poStdErrToStdOut, poParentStreams},
                     n = countProcessors()): int {.rtl, extern: "nosp$1",
-                    tags: [FExecIO, FTime, FReadEnv].} =
+                    tags: [FExecIO, FTime, FReadEnv]} =
   ## executes the commands `cmds` in parallel. Creates `n` processes
   ## that execute in parallel. The highest return value of all processes
   ## is returned.
@@ -307,13 +312,17 @@ proc select*(readfds: var seq[PProcess], timeout = 500): int
 
 when not defined(useNimRtl):
   proc execProcess(command: string,
+                   args: openarray[string] = [],
+                   env: PStringTable = nil,
                    options: set[TProcessOption] = {poStdErrToStdOut,
-                                                   poUseShell}): TaintedString =
-    var p = startCmd(command, options=options)
+                                                   poUsePath,
+                                                   poEvalCommand}): TaintedString =
+    var p = startProcess(command, args=args, env=env, options=options)
     var outp = outputStream(p)
     result = TaintedString""
     var line = newStringOfCap(120).TaintedString
     while true:
+      # FIXME: converts CR-LF to LF.
       if outp.readLine(line):
         result.string.add(line.string)
         result.string.add("\n")
@@ -427,8 +436,9 @@ when defined(Windows) and not defined(useNimRtl):
       result.errHandle = TFileHandle(si.hStdError)
 
     var cmdl: cstring
-    when false: # poUseShell in options:
-      cmdl = buildCommandLine(getEnv("COMSPEC"), @["/c", command] & args)
+    if poEvalCommand in options:
+      cmdl = command
+      assert args.len == 0
     else:
       cmdl = buildCommandLine(command, args)
     var wd: cstring = nil
@@ -455,7 +465,6 @@ when defined(Windows) and not defined(useNimRtl):
         FileClose(si.hStdError)
 
     if e != nil: dealloc(e)
-    dealloc(cmdl)
     if success == 0: OSError(lastError)
     # Close the handle now so anyone waiting is woken:
     discard closeHandle(procInfo.hThread)
@@ -561,22 +570,7 @@ elif not defined(useNimRtl):
     readIdx = 0
     writeIdx = 1
 
-  proc addCmdArgs(command: string, args: openarray[string]): string =
-    result = quoteShell(command)
-    for i in 0 .. high(args):
-      add(result, " ")
-      add(result, quoteShell(args[i]))
-
-  proc toCStringArray(b, a: openarray[string]): cstringArray =
-    result = cast[cstringArray](alloc0((a.len + b.len + 1) * sizeof(cstring)))
-    for i in 0..high(b):
-      result[i] = cast[cstring](alloc(b[i].len+1))
-      copyMem(result[i], cstring(b[i]), b[i].len+1)
-    for i in 0..high(a):
-      result[i+b.len] = cast[cstring](alloc(a[i].len+1))
-      copyMem(result[i+b.len], cstring(a[i]), a[i].len+1)
-
-  proc ToCStringArray(t: PStringTable): cstringArray =
+  proc envToCStringArray(t: PStringTable): cstringArray =
     result = cast[cstringArray](alloc0((t.len + 1) * sizeof(cstring)))
     var i = 0
     for key, val in pairs(t):
@@ -585,7 +579,7 @@ elif not defined(useNimRtl):
       copyMem(result[i], addr(x[0]), x.len+1)
       inc(i)
 
-  proc EnvToCStringArray(): cstringArray =
+  proc envToCStringArray(): cstringArray =
     var counter = 0
     for key, val in envPairs(): inc counter
     result = cast[cstringArray](alloc0((counter + 1) * sizeof(cstring)))
@@ -609,6 +603,21 @@ elif not defined(useNimRtl):
       if pipe(p_stdin) != 0'i32 or pipe(p_stdout) != 0'i32 or
          pipe(p_stderr) != 0'i32:
         OSError(OSLastError())
+
+    var sys_command: string
+    var sys_args_raw: seq[string]
+    if poEvalCommand in options:
+      sys_command = "/bin/sh"
+      sys_args_raw = @[sys_command, "-c", command]
+      assert args.len == 0
+    else:
+      sys_command = command
+      sys_args_raw = @[command]
+      for arg in args.items:
+        sys_args_raw.add arg
+
+    var sys_args = allocCStringArray(sys_args_raw)
+    finally: deallocCStringArray(sys_args)
 
     var pid: TPid
     when defined(posix_spawn) and not defined(useFork):
@@ -641,19 +650,15 @@ elif not defined(useNimRtl):
         else:
           chck posix_spawn_file_actions_adddup2(fops, p_stderr[writeIdx], 2)
 
-      var e = if env == nil: EnvToCStringArray() else: ToCStringArray(env)
-      var a: cstringArray
+      var sys_env = if env == nil: EnvToCStringArray() else: EnvToCStringArray(env)
       var res: cint
+      # This is incorrect!
       if workingDir.len > 0: os.setCurrentDir(workingDir)
-      if poUseShell notin options:
-        a = toCStringArray([extractFilename(command)], args)
-        res = posix_spawn(pid, command, fops, attr, a, e)
+      if poUsePath in options:
+        res = posix_spawnp(pid, sys_command, fops, attr, sys_args, sys_env)
       else:
-        var x = addCmdArgs(command, args)
-        a = toCStringArray(["sh", "-c"], [x])
-        res = posix_spawn(pid, "/bin/sh", fops, attr, a, e)
-      deallocCStringArray(a)
-      deallocCStringArray(e)
+        res = posix_spawn(pid, sys_command, fops, attr, sys_args, sys_env)
+      deallocCStringArray(sys_env)
       discard posix_spawn_file_actions_destroy(fops)
       discard posix_spawnattr_destroy(attr)
       chck res
@@ -680,19 +685,18 @@ elif not defined(useNimRtl):
         if setpgid(0, 0) == -1: quit("setpgid call failed: " & $strerror(errno))
 
         if workingDir.len > 0: os.setCurrentDir(workingDir)
-        if poUseShell notin options:
-          var a = toCStringArray([extractFilename(command)], args)
-          if env == nil:
-            discard execv(command, a)
+
+        if env == nil:
+          if poUsePath in options:
+            discard execvp(sys_command, sys_args)
           else:
-            discard execve(command, a, ToCStringArray(env))
+            discard execv(sys_command, sys_args)
         else:
-          var x = addCmdArgs(command, args)
-          var a = toCStringArray(["sh", "-c"], [x])
-          if env == nil:
-            discard execv("/bin/sh", a)
+          var c_env = envToCStringArray(env)
+          if poUsePath in options:
+            discard execvpe(sys_command, sys_args, c_env)
           else:
-            discard execve("/bin/sh", a, ToCStringArray(env))
+            discard execve(sys_command, sys_args, c_env)
         # too risky to raise an exception here:
         quit("execve call failed: " & $strerror(errno))
     # Parent process. Copy process information.
@@ -825,7 +829,7 @@ elif not defined(useNimRtl):
 
 
 proc execCmdEx*(command: string, options: set[TProcessOption] = {
-                poStdErrToStdOut, poUseShell}): tuple[
+                poStdErrToStdOut, poUsePath}): tuple[
                 output: TaintedString,
                 exitCode: int] {.tags: [FExecIO, FReadIO].} =
   ## a convenience proc that runs the `command`, grabs all its output and
