@@ -131,3 +131,57 @@ proc sort*[T](a: var openArray[T],
       dec(m, s*2)
     s = s*2
 
+proc minElement*[T](xs: var openArray[T], cmp: proc (x, y: T): int {.closure.}): var T =
+  var n = xs.len
+  var s = 0
+  result = xs[0]
+  while s < n:
+    #we use less than here flip the
+    #compare function if you want more
+    if cmp(xs[s], result) < 0:
+      result = xs[s]
+    s += 1
+  
+
+proc count*[T, S](ts: T, item: S): int =
+  result = 0
+  for i in ts.items:
+    if i == item:
+      result += 1
+
+proc rotate*[T](ts: var T, o_first: int,  o_n_first: int,  last: int) =
+  var next: int = o_n_first
+  var first: int = o_first
+  var n_first: int= o_n_first
+  while first != next:
+    swap(ts[first], ts[next])
+    inc(first)
+    inc(next)
+    if next == last:
+      next = n_first
+    elif first == n_first:
+      n_first = next
+
+proc rotate*[T](ts: var T, n_first: int) =
+  rotate(ts, 0, n_first, len(ts))
+
+when isMainModule:
+  var testArr = [ 100, 200, 3, 4, 5, 2, 9]
+  var minElm = minElement(testArr, cmp[int])
+  if minElm != 2:
+    echo "FAILED minElm got ", minElm
+  else:
+    echo "SUCCESS minElm"
+
+  var cntTestArr = [100, 100, 100, 0]
+  if count(cntTestArr, 100) != 3:
+    echo "FAILED count"
+  else:
+    echo "SUCCESS count"
+
+  var testRot = [1, 2, 3, 4, 5, 6, 7]
+  rotate(testRot, 0, 3, len(testRot))
+  if testRot != [4, 5, 6, 7, 1, 2, 3]:
+    echo "FAILED rotate"
+  else:
+    echo "SUCCESS rotate"
