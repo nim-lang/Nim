@@ -688,7 +688,18 @@ proc formatNamedVars*(frmt: string, varnames: openarray[string],
 
 
 proc defaultConfig*(): PStringTable =
-  ## creates a default configuration for HTML generation.
+  ## Returns a default configuration for embedded HTML generation.
+  ##
+  ## The returned ``PStringTable`` contains the paramters used by the HTML
+  ## engine to build the final output. For information on what these parameters
+  ## are and their purpose, please look up the file ``config/nimdoc.cfg``
+  ## bundled with the compiler.
+  ##
+  ## The only difference between the contents of that file and the values
+  ## provided by this proc is the ``doc.file`` variable. The ``doc.file``
+  ## variable of the configuration file contains HTML to build standalone
+  ## pages, while this proc returns just the content for procs like
+  ## ``rstToHtml`` to generate the bare minimum HTML.
   result = newStringTable(modeStyleInsensitive)
   
   template setConfigVar(key, val: expr) =
