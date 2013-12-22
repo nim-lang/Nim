@@ -194,9 +194,15 @@ proc Open*(connection, user, password, database: string): TDbConn {.
   ## opens a database connection. Raises `EDb` if the connection could not
   ## be established.
   result = mysql.Init(nil)
-  if result == nil: dbError("could not open database connection") 
-  if mysql.RealConnect(result, "", user, password, database, 
-                       0'i32, nil, 0) == nil:
+  if result == nil: dbError("could not open database connection")
+  var
+        cnctn = connection.split(':')
+        host = cnctn[0]
+        port: int32 = 3306
+  if cnctn.len > 1:
+        port = int32((cnctn[1]).parseInt())
+  if mysql.RealConnect(result, host, user, password, database, 
+                       port, nil, 0) == nil:
     var errmsg = $mysql.error(result)
     db_mysql.Close(result)
     dbError(errmsg)
