@@ -632,12 +632,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
         # we pass 'tos.slots' instead of 'regs' so that the compiler can keep
         # 'regs' in a register:
         when hasFFI:
+          if c.globals.sons[prc.position-1].kind == nkEmpty:
+            globalError(c.debug[pc], errGenerated, "canot run " & prc.name.s)
           let newValue = callForeignFunction(c.globals.sons[prc.position-1],
                                              prc.typ, tos.slots,
                                              rb+1, rc-1, c.debug[pc])
           if newValue.kind != nkEmpty:
             assert instr.opcode == opcIndCallAsgn
-            regs[ra] = newValue
+            asgnRef(regs[ra], newValue)
         else:
           globalError(c.debug[pc], errGenerated, "VM not built with FFI support")
       elif prc.kind != skTemplate:
@@ -796,7 +798,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       decodeB(nkBracket)
       let newLen = regs[rb].getOrdValue.int
       setLen(regs[ra].sons, newLen)
-    of opcSwap, opcCast, opcReset:
+    of opcSwap, opcReset:
       internalError(c.debug[pc], "too implement")
     of opcIsNil:
       decodeB(nkIntLit)
@@ -938,6 +940,15 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
         stackTrace(c, tos, pc, errGenerated,
           msgKindToString(errIllegalConvFromXtoY) % [
           "unknown type" , "unknown type"])
+    of opcCast:
+      let rb = instr.regB
+      inc pc
+      let typ = c.types[c.code[pc].regBx - wordExcess]
+      when hasFFI:
+        let dest = fficast(regs[rb], typ)
+        asgnRef(regs[ra], dest)
+      else:
+        globalError(c.debug[pc], "cannot evaluate cast")
     of opcNSetIntVal:
       decodeB(nkMetaNode)
       var dest = regs[ra].uast
@@ -1074,6 +1085,8 @@ proc myOpen(module: PSym): PPassContext =
   # XXX produce a new 'globals' environment here:
   setupGlobalCtx(module)
   result = globalCtx
+  when hasFFI:
+    globalCtx.features = {allowFFI, allowCast}
 
 var oldErrorCount: int
 

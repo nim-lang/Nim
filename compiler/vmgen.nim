@@ -945,7 +945,10 @@ proc genTypeLit(c: PCtx; t: PType; dest: var TDest) =
 proc importcSym(c: PCtx; info: TLineInfo; s: PSym) =
   when hasFFI:
     if allowFFI in c.features:
-      c.globals.add(importcSymbol(s))
+      if s.kind == skVar and lfNoDecl in s.loc.flags:
+        c.globals.add(copyNode(emptyNode))
+      else:
+        c.globals.add(importcSymbol(s))
       s.position = c.globals.len
     else:
       localError(info, errGenerated, "VM is not allowed to 'importc'")
@@ -1303,6 +1306,11 @@ proc gen(c: PCtx; n: PNode; dest: var TDest) =
   of nkCurly: genSetConstr(c, n, dest)
   of nkObjConstr: genObjConstr(c, n, dest)
   of nkPar, nkClosure: genTupleConstr(c, n, dest)
+  of nkCast:
+    if allowCast in c.features:
+      genConv(c, n, n.sons[1], dest, opcCast)
+    else:
+      localError(n.info, errGenerated, "VM is not allowed to 'cast'")
   else:
     InternalError n.info, "too implement " & $n.kind
 

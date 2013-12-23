@@ -3,7 +3,6 @@ version 0.9.4
 
 - new VM:
   - implement overflow checking
-  - implement the FFI
 
 - make 'bind' default for templates and introduce 'mixin'
 - special rule for ``[]=``

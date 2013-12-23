@@ -9,7 +9,7 @@
 
 ## This file implements the FFI part of the evaluator for Nimrod code.
 
-import ast, astalgo, ropes, types, options, tables, dynlib, libffi, msgs
+import ast, astalgo, ropes, types, options, tables, dynlib, libffi, msgs, os
 
 when defined(windows):
   const libcDll = "msvcrt.dll"
@@ -20,7 +20,11 @@ type
   TDllCache = tables.TTable[string, TLibHandle]
 var
   gDllCache = initTable[string, TLibHandle]()
-  gExeHandle = LoadLib()
+
+when defined(windows):
+  var gExeHandle = loadLib(os.getAppFilename())
+else:
+  var gExeHandle = loadLib()
 
 proc getDll(cache: var TDllCache; dll: string; info: TLineInfo): pointer =
   result = cache[dll]
@@ -28,10 +32,10 @@ proc getDll(cache: var TDllCache; dll: string; info: TLineInfo): pointer =
     var libs: seq[string] = @[]
     libCandidates(dll, libs)
     for c in libs:
-      result = LoadLib(c)
+      result = loadLib(c)
       if not result.isNil: break
     if result.isNil:
-      GlobalError(info, "cannot load: " & dll)
+      globalError(info, "cannot load: " & dll)
     cache[dll] = result
 
 const
@@ -50,7 +54,7 @@ proc importcSymbol*(sym: PSym): PNode =
   else:
     let lib = sym.annex
     if lib != nil and lib.path.kind notin {nkStrLit..nkTripleStrLit}:
-      GlobalError(sym.info, "dynlib needs to be a string lit for the REPL")
+      globalError(sym.info, "dynlib needs to be a string lit for the REPL")
     var theAddr: pointer
     if lib.isNil and not gExehandle.isNil:
       # first try this exe itself:
@@ -58,10 +62,12 @@ proc importcSymbol*(sym: PSym): PNode =
       # then try libc:
       if theAddr.isNil:
         let dllhandle = gDllCache.getDll(libcDll, sym.info)
-        theAddr = dllhandle.checkedSymAddr(name)
-    else:
-      let dllhandle = gDllCache.getDll(lib.path.strVal, sym.info)
-      theAddr = dllhandle.checkedSymAddr(name)
+        theAddr = dllhandle.symAddr(name)
+    elif not lib.isNil:
+      let dllhandle = gDllCache.getDll(if lib.kind == libHeader: libcDll 
+                                       else: lib.path.strVal, sym.info)
+      theAddr = dllhandle.symAddr(name)
+    if theAddr.isNil: globalError(sym.info, "cannot import: " & sym.name.s)
     result.intVal = cast[TAddress](theAddr)
 
 proc mapType(t: ast.PType): ptr libffi.TType =
@@ -139,7 +145,7 @@ proc getField(n: PNode; position: int): PSym =
       else: internalError(n.info, "getField(record case branch)")
   of nkSym:
     if n.sym.position == position: result = n.sym
-  else: nil
+  else: discard
 
 proc packObject(x: PNode, typ: PType, res: pointer) =
   InternalAssert x.kind in {nkObjConstr, nkPar}
@@ -192,7 +198,7 @@ proc pack(v: PNode, typ: PType, res: pointer) =
   of tyPointer, tyProc,  tyCString, tyString:
     if v.kind == nkNilLit:
       # nothing to do since the memory is 0 initialized anyway
-      nil
+      discard
     elif v.kind == nkPtrLit:
       awr(pointer, cast[pointer](v.intVal))
     elif v.kind in {nkStrLit..nkTripleStrLit}:
@@ -202,7 +208,7 @@ proc pack(v: PNode, typ: PType, res: pointer) =
   of tyPtr, tyRef, tyVar:
     if v.kind == nkNilLit:
       # nothing to do since the memory is 0 initialized anyway
-      nil
+      discard
     elif v.kind == nkPtrLit:
       awr(pointer, cast[pointer](v.intVal))
     else:
@@ -220,7 +226,7 @@ proc pack(v: PNode, typ: PType, res: pointer) =
   of tyObject, tyTuple:
     packObject(v, typ, res)
   of tyNil:
-    nil
+    discard
   of tyDistinct, tyGenericInst:
     pack(v, typ.sons[0], res)
   else:
@@ -241,7 +247,7 @@ proc unpackObjectAdd(x: pointer, n, result: PNode) =
     pair.sons[1] = unpack(x +! n.sym.offset, n.sym.typ, nil)
     #echo "offset: ", n.sym.name.s, " ", n.sym.offset
     result.add pair
-  else: nil
+  else: discard
 
 proc unpackObject(x: pointer, typ: PType, n: PNode): PNode =
   # compute the field's offsets:
