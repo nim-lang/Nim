@@ -238,7 +238,7 @@ type
     sfMainModule,     # module is the main module
     sfSystemModule,   # module is the system module
     sfNoReturn,       # proc never returns (an exit proc)
-    sfAddrTaken,      # the variable's address is taken (ex- or implicitely);
+    sfAddrTaken,      # the variable's address is taken (ex- or implicitly);
                       # *OR*: a proc is indirectly called (used as first class)
     sfCompilerProc,   # proc is a compiler proc, that is a C proc that is
                       # needed for the code generator
@@ -257,7 +257,7 @@ type
                       # for interfacing with C++, JS
     sfNamedParamCall, # symbol needs named parameter call syntax in target
                       # language; for interfacing with Objective C
-    sfDiscardable,    # returned value may be discarded implicitely
+    sfDiscardable,    # returned value may be discarded implicitly
     sfDestructor,     # proc is destructor
     sfGenSym          # symbol is 'gensym'ed; do not add to symbol table
 

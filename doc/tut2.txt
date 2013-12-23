@@ -77,7 +77,7 @@ section.
 Inheritance is done with the ``object of`` syntax. Multiple inheritance is
 currently not supported. If an object type has no suitable ancestor, ``TObject``
 can be used as its ancestor, but this is only a convention. Objects that have 
-no ancestor are implicitely ``final``. You can use the ``inheritable`` pragma 
+no ancestor are implicitly ``final``. You can use the ``inheritable`` pragma 
 to introduce new object roots apart from ``system.TObject``. (This is used
 in the GTK wrapper for instance.)
 
