@@ -41,6 +41,8 @@ proc getDll(cache: var TDllCache; dll: string; info: TLineInfo): pointer =
 const
   nkPtrLit = nkIntLit # hopefully we can get rid of this hack soon
 
+var myerrno {.importc: "errno", header: "<errno.h>".}: cint ## error variable
+
 proc importcSymbol*(sym: PSym): PNode =
   let name = ropeToStr(sym.loc.r)
   
@@ -51,6 +53,7 @@ proc importcSymbol*(sym: PSym): PNode =
   of "stdin":  result.intVal = cast[TAddress](system.stdin)
   of "stdout": result.intVal = cast[TAddress](system.stdout)
   of "stderr": result.intVal = cast[TAddress](system.stderr)
+  of "vmErrnoWrapper": result.intVal = cast[TAddress](myerrno)
   else:
     let lib = sym.annex
     if lib != nil and lib.path.kind notin {nkStrLit..nkTripleStrLit}:

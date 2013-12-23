@@ -945,10 +945,7 @@ proc genTypeLit(c: PCtx; t: PType; dest: var TDest) =
 proc importcSym(c: PCtx; info: TLineInfo; s: PSym) =
   when hasFFI:
     if allowFFI in c.features:
-      if s.kind == skVar and lfNoDecl in s.loc.flags:
-        c.globals.add(copyNode(emptyNode))
-      else:
-        c.globals.add(importcSymbol(s))
+      c.globals.add(importcSymbol(s))
       s.position = c.globals.len
     else:
       localError(info, errGenerated, "VM is not allowed to 'importc'")
