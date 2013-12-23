@@ -398,6 +398,14 @@ proc existsDir*(dir: string): bool {.rtl, extern: "nos$1", tags: [FReadDir].} =
     var res: TStat
     return stat(dir, res) >= 0'i32 and S_ISDIR(res.st_mode)
 
+proc fileExists*(filename: string): bool {.inline.} =
+  ## Synonym for existsFile
+  existsFile(filename)
+
+proc dirExists*(dir: string): bool {.inline.} =
+  ## Synonym for existsDir
+  existsDir(dir)
+
 proc getLastModificationTime*(file: string): TTime {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s last modification time.
   when defined(posix):
