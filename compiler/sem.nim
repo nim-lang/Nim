@@ -43,7 +43,7 @@ proc activate(c: PContext, n: PNode)
 proc semQuoteAst(c: PContext, n: PNode): PNode
 proc finishMethod(c: PContext, s: PSym)
 
-proc IndexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode
+proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode
 
 proc typeMismatch(n: PNode, formal, actual: PType) = 
   if formal.kind != tyError and actual.kind != tyError: 
@@ -63,7 +63,7 @@ proc fitNode(c: PContext, formal: PType, arg: PNode): PNode =
     if result == nil:
       typeMismatch(arg, formal, arg.typ)
       # error correction:
-      result = copyNode(arg)
+      result = copyTree(arg)
       result.typ = formal
 
 var CommonTypeBegin = PType(kind: tyExpr)
@@ -211,7 +211,15 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
       # recompute the types as 'eval' isn't guaranteed to construct types nor
       # that the types are sound:
       result = semExprWithType(c, result)
-      result = fitNode(c, e.typ, result)
+      #result = fitNode(c, e.typ, result) inlined with special case:
+      let arg = result
+      result = indexTypesMatch(c, e.typ, arg.typ, arg)
+      if result == nil:
+        result = arg
+        # for 'tcnstseq' we support [] to become 'seq'
+        if e.typ.skipTypes(abstractInst).kind == tySequence and 
+           arg.typ.skipTypes(abstractInst).kind == tyArrayConstr:
+          arg.typ = e.typ
 
 include hlo, seminst, semcall
 

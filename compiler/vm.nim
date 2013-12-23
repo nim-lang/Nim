@@ -632,10 +632,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
         # we pass 'tos.slots' instead of 'regs' so that the compiler can keep
         # 'regs' in a register:
         when hasFFI:
-          if c.globals.sons[prc.position-1].kind == nkEmpty:
+          let prcValue = c.globals.sons[prc.position-1]
+          if prcValue.kind == nkEmpty:
             globalError(c.debug[pc], errGenerated, "canot run " & prc.name.s)
-          let newValue = callForeignFunction(c.globals.sons[prc.position-1],
-                                             prc.typ, tos.slots,
+          let newValue = callForeignFunction(prcValue, prc.typ, tos.slots,
                                              rb+1, rc-1, c.debug[pc])
           if newValue.kind != nkEmpty:
             assert instr.opcode == opcIndCallAsgn
