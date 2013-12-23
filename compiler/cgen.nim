@@ -289,6 +289,9 @@ proc genLineDir(p: BProc, t: PNode) =
     linefmt(p, cpsStmts, "nimln($1, $2);$n",
             line.toRope, t.info.quotedFilename)
 
+proc postStmtActions(p: BProc) {.inline.} =
+  app(p.s(cpsStmts), p.module.injectStmt)
+
 proc accessThreadLocalVar(p: BProc, s: PSym)
 proc emulatedThreadVars(): bool {.inline.}
 
@@ -1119,6 +1122,9 @@ proc newPostInitProc(m: BModule): BProc =
   # little hack so that unique temporaries are generated:
   result.labels = 200_000
 
+proc initProcOptions(m: BModule): TOptions = 
+  if sfSystemModule in m.module.flags: gOptions-{optStackTrace} else: gOptions
+
 proc rawNewModule(module: PSym, filename: string): BModule =
   new(result)
   InitLinkedList(result.headerFiles)
@@ -1131,7 +1137,7 @@ proc rawNewModule(module: PSym, filename: string): BModule =
   result.module = module
   result.typeInfoMarker = initIntSet()
   result.initProc = newProc(nil, result)
-  result.initProc.options = gOptions
+  result.initProc.options = initProcOptions(result)
   result.preInitProc = newPreInitProc(result)
   result.postInitProc = newPostInitProc(result)
   initNodeTable(result.dataCache)
@@ -1139,7 +1145,12 @@ proc rawNewModule(module: PSym, filename: string): BModule =
   result.forwardedProcs = @[]
   result.typeNodesName = getTempName()
   result.nimTypesName = getTempName()
-  result.PreventStackTrace = sfSystemModule in module.flags
+  # no line tracing for the init sections of the system module so that we
+  # don't generate a TFrame which can confuse the stack botton initialization:
+  if sfSystemModule in module.flags:
+    result.PreventStackTrace = true
+    excl(result.preInitProc.options, optStackTrace)
+    excl(result.postInitProc.options, optStackTrace)
 
 proc nullify[T](arr: var T) =
   for i in low(arr)..high(arr):
@@ -1152,7 +1163,7 @@ proc resetModule*(m: var BModule) =
   m.declaredProtos = initIntSet()
   initIdTable(m.forwTypeCache)
   m.initProc = newProc(nil, m)
-  m.initProc.options = gOptions
+  m.initProc.options = initProcOptions(m)
   m.preInitProc = newPreInitProc(m)
   m.postInitProc = newPostInitProc(m)
   initNodeTable(m.dataCache)
@@ -1242,7 +1253,7 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   result = n
   if b == nil or passes.skipCodegen(n): return
   var m = BModule(b)
-  m.initProc.options = gOptions
+  m.initProc.options = initProcOptions(m)
   genStmts(m.initProc, n)
 
 proc finishModule(m: BModule) = 
@@ -1329,7 +1340,7 @@ proc myClose(b: PPassContext, n: PNode): PNode =
   if b == nil or passes.skipCodegen(n): return 
   var m = BModule(b)
   if n != nil: 
-    m.initProc.options = gOptions
+    m.initProc.options = initProcOptions(m)
     genStmts(m.initProc, n)
   # cached modules need to registered too: 
   registerModuleToMain(m.module)

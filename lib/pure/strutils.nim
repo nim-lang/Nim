@@ -709,9 +709,11 @@ proc rfind*(s, sub: string, start: int = -1): int {.noSideEffect.} =
     if result != -1: return
   return -1
 
-proc quoteIfContainsWhite*(s: string): string =
+proc quoteIfContainsWhite*(s: string): string {.deprecated.} =
   ## returns ``'"' & s & '"'`` if `s` contains a space and does not
   ## start with a quote, else returns `s`
+  ## DEPRECATED as it was confused for shell quoting function.
+  ## For this application use osproc.quoteShell.
   if find(s, {' ', '\t'}) >= 0 and s[0] != '"':
     result = '"' & s & '"'
   else:

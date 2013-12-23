@@ -132,6 +132,7 @@ const
   NimExt* = "nim"
   RodExt* = "rod"
   HtmlExt* = "html"
+  JsonExt* = "json"
   TexExt* = "tex"
   IniExt* = "ini"
   DefaultConfig* = "nimrod.cfg"
