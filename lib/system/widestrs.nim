@@ -10,6 +10,9 @@
 ## Nimrod support for C/C++'s `wide strings`:idx:. This is part of the system
 ## module! Do not import it directly!
 
+when not defined(NimString):
+  {.error: "You must not import this module explicitly".}
+
 type
   TUtf16Char* = distinct int16
   WideCString* = ref array[0.. 1_000_000, TUtf16Char]
