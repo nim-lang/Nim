@@ -194,9 +194,9 @@ const
     # should not be translated.
 
 
-proc Open(f: var TFile, filename: string,
+proc open(f: var TFile, filename: string,
           mode: TFileMode = fmRead,
-          bufSize: int = -1): Bool =
+          bufSize: int = -1): bool =
   var p: pointer = fopen(filename, FormatOpen[mode])
   result = (p != nil)
   f = cast[TFile](p)

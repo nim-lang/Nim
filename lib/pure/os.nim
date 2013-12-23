@@ -341,16 +341,6 @@ when defined(windows):
     template FindNextFile(a, b: expr): expr = FindNextFileW(a, b)
     template getCommandLine(): expr = getCommandLineW()
 
-    proc skipFindData(f: TWIN32_FIND_DATA): bool {.inline.} =
-      let 
-        nul = 0
-        dot = ord('.')
-      result = (f.cFilename[0].int == dot)
-      if result:
-        result = (f.cFilename[1].int in {dot, nul})
-        if result:
-          result = (f.cFilename[2].int == nul)
-
     template getFilename(f: expr): expr =
       $cast[WideCString](addr(f.cFilename[0]))
   else:
@@ -358,17 +348,12 @@ when defined(windows):
     template FindNextFile(a, b: expr): expr = FindNextFileA(a, b)
     template getCommandLine(): expr = getCommandLineA()
 
-    proc skipFindData(f: TWIN32_FIND_DATA): bool {.inline.} =
-      let 
-        nul = '\0'
-        dot = '.'
-      result = (f.cFilename[0] == dot)
-      if result:
-        result = (f.cFilename[1] in {dot, nul})
-        if result:
-          result = (f.cFilename[2] == nul)
-
     template getFilename(f: expr): expr = $f.cFilename
+
+  proc skipFindData(f: TWIN32_FIND_DATA): bool {.inline.} =
+    const dot = ord('.')
+    result = f.cFilename[0].int == dot and(f.cFilename[1].int == 0 or
+             f.cFilename[1].int == dot and f.cFilename[2].int == 0)
 
 proc existsFile*(filename: string): bool {.rtl, extern: "nos$1",
                                           tags: [FReadDir].} =
@@ -468,20 +453,21 @@ proc setCurrentDir*(newDir: string) {.inline, tags: [].} =
   ## `newDir` cannot been set.
   when defined(Windows):
     when useWinUnicode:
-      if SetCurrentDirectoryW(newWideCString(newDir)) == 0'i32: OSError(OSLastError())
+      if SetCurrentDirectoryW(newWideCString(newDir)) == 0'i32:
+        OSError(OSLastError())
     else:
       if SetCurrentDirectoryA(newDir) == 0'i32: OSError(OSLastError())
   else:
     if chdir(newDir) != 0'i32: OSError(OSLastError())
 
-proc JoinPath*(head, tail: string): string {.
+proc joinPath*(head, tail: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Joins two directory names to one.
   ##
   ## For example on Unix:
   ##
   ## .. code-block:: nimrod
-  ##   JoinPath("usr", "lib")
+  ##   joinPath("usr", "lib")
   ##
   ## results in:
   ##
@@ -495,10 +481,10 @@ proc JoinPath*(head, tail: string): string {.
   ## examples on Unix:
   ##
   ## .. code-block:: nimrod
-  ##   assert JoinPath("usr", "") == "usr/"
-  ##   assert JoinPath("", "lib") == "lib"
-  ##   assert JoinPath("", "/lib") == "/lib"
-  ##   assert JoinPath("usr/", "/lib") == "usr/lib"
+  ##   assert joinPath("usr", "") == "usr/"
+  ##   assert joinPath("", "lib") == "lib"
+  ##   assert joinPath("", "/lib") == "/lib"
+  ##   assert joinPath("usr/", "/lib") == "usr/lib"
   if len(head) == 0:
     result = tail
   elif head[len(head)-1] in {DirSep, AltSep}:
@@ -512,14 +498,14 @@ proc JoinPath*(head, tail: string): string {.
     else:
       result = head & DirSep & tail
 
-proc JoinPath*(parts: varargs[string]): string {.noSideEffect,
+proc joinPath*(parts: varargs[string]): string {.noSideEffect,
   rtl, extern: "nos$1OpenArray".} =
-  ## The same as `JoinPath(head, tail)`, but works with any number of directory
+  ## The same as `joinPath(head, tail)`, but works with any number of directory
   ## parts. You need to pass at least one element or the proc will assert in
   ## debug builds and crash on release builds.
   result = parts[0]
   for i in 1..high(parts):
-    result = JoinPath(result, parts[i])
+    result = joinPath(result, parts[i])
 
 proc `/` * (head, tail: string): string {.noSideEffect.} =
   ## The same as ``JoinPath(head, tail)``
@@ -533,7 +519,7 @@ proc `/` * (head, tail: string): string {.noSideEffect.} =
   ##   assert "usr/" / "/lib" == "usr/lib"
   return JoinPath(head, tail)
 
-proc SplitPath*(path: string): tuple[head, tail: string] {.
+proc splitPath*(path: string): tuple[head, tail: string] {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Splits a directory into (head, tail), so that
   ## ``JoinPath(head, tail) == path``.
@@ -699,7 +685,7 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
     if r.isNil: OSError(OSLastError())
     setlen(result, c_strlen(result))
 
-proc ChangeFileExt*(filename, ext: string): string {.
+proc changeFileExt*(filename, ext: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Changes the file extension to `ext`.
   ##
