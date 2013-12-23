@@ -274,6 +274,8 @@ proc quote*(bl: stmt, op = "``"): PNimrodNode {.magic: "QuoteAst".}
   ##
   ## Example:
   ##   
+  ## .. code-block:: nimrod
+  ##
   ##   macro check(ex: expr): stmt =
   ##     # this is a simplified version of the check macro from the
   ##     # unittest module.
@@ -295,6 +297,8 @@ template emit*(e: expr[string]): stmt =
   ## accepts a single string argument and treats it as nimrod code
   ## that should be inserted verbatim in the program
   ## Example:
+  ##
+  ## .. code-block:: nimrod
   ##
   ##   emit("echo " & '"' & "hello world".toUpper & '"')
   ##
@@ -480,6 +484,34 @@ proc newDotExpr*(a, b: PNimrodNode): PNimrodNode {.compileTime.} =
 
 proc newIdentDefs*(name, kind: PNimrodNode; 
                    default = newEmptyNode()): PNimrodNode {.compileTime.} = 
+  ## Creates a new ``nnkIdentDefs`` node of a specific kind and value.
+  ##
+  ## ``nnkIdentDefs`` need to have at least three children, but they can have
+  ## more: first comes a list of identifiers followed by a type and value
+  ## nodes. This helper proc creates a three node subtree, the first subnode
+  ## being a single identifier name. Both the ``kind`` node and ``default``
+  ## (value) nodes may be empty depending on where the ``nnkIdentDefs``
+  ## appears: tuple or object definitions will have an empty ``default`` node,
+  ## ``let`` or ``var`` blocks may have an empty ``kind`` node if the
+  ## identifier is being assigned a value. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##
+  ##   var varSection = newNimNode(nnkVarSection).add(
+  ##     newIdentDefs(ident("a"), ident("string")),
+  ##     newIdentDefs(ident("b"), newEmptyNode(), newLit(3)))
+  ##   # --> var
+  ##   #       a: string
+  ##   #       b = 3
+  ##
+  ## If you need to create multiple identifiers you need to use the lower level
+  ## ``newNimNode``:
+  ##
+  ## .. code-block:: nimrod
+  ##
+  ##   result = newNimNode(nnkIdentDefs).add(
+  ##     ident("a"), ident("b"), ident("c"), ident("string"),
+  ##       newStrLitNode("Hello"))
   newNimNode(nnkIdentDefs).add(name, kind, default)
 
 proc newNilLit*(): PNimrodNode {.compileTime.} =
@@ -503,11 +535,11 @@ from strutils import cmpIgnoreStyle, format
 proc expectKind*(n: PNimrodNode; k: set[TNimrodNodeKind]) {.compileTime.} =
   assert n.kind in k, "Expected one of $1, got $2".format(k, n.kind)
 
-proc newProc*(name = newEmptyNode(); params: openarray[PNimrodNode] = [];  
+proc newProc*(name = newEmptyNode(); params: openarray[PNimrodNode] = [newEmptyNode()];  
     body: PNimrodNode = newStmtList(), procType = nnkProcDef): PNimrodNode {.compileTime.} =
   ## shortcut for creating a new proc
   ##
-  ## The ``params`` array should start with the return type of the proc, 
+  ## The ``params`` array must start with the return type of the proc, 
   ## followed by a list of IdentDefs which specify the params.
   assert procType in RoutineNodes
   result = newNimNode(procType).add(

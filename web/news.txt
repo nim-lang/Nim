@@ -28,7 +28,8 @@ Changes affecting backwards compatibility
   require an error code to be passed to them. This error code can be retrieved
   using the new ``OSLastError`` proc.
 - ``os.parentDir`` now returns "" if there is no parent dir.
-
+- In CGI scripts stacktraces are shown user only if cgi.setStackTraceStdout
+  is used.
 
 Compiler Additions
 ------------------

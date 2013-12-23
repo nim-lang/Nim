@@ -921,7 +921,12 @@ proc genPragma(p: BProc, n: PNode) =
     of wEmit: genEmit(p, it)
     of wBreakpoint: genBreakPoint(p, it)
     of wWatchpoint: genWatchpoint(p, it)
-    else: nil
+    of wInjectStmt: 
+      var p = newProc(nil, p.module)
+      p.options = p.options - {optLineTrace, optStackTrace}
+      genStmts(p, it.sons[1])
+      p.module.injectStmt = p.s(cpsStmts)
+    else: discard
 
 proc FieldDiscriminantCheckNeeded(p: BProc, asgn: PNode): bool = 
   if optFieldCheck in p.options:

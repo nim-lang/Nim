@@ -43,7 +43,8 @@ const
     wFatal, wDefine, wUndef, wCompile, wLink, wLinkSys, wPure, wPush, wPop,
     wBreakpoint, wWatchpoint, wPassL, wPassC, wDeadCodeElim, wDeprecated,
     wFloatChecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
-    wLinearScanEnd, wPatterns, wEffects, wNoForward, wComputedGoto}
+    wLinearScanEnd, wPatterns, wEffects, wNoForward, wComputedGoto,
+    wInjectStmt}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, 
     wDeprecated, wExtern, wThread, wImportcpp, wImportobjc, wNoStackFrame,
@@ -722,6 +723,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         of wOperator:
           if sym == nil: invalidPragma(it)
           else: sym.position = expectIntLit(c, it)
+        of wInjectStmt:
+          if it.kind != nkExprColonExpr:
+            localError(it.info, errExprExpected)
+          else: 
+            it.sons[1] = c.semExpr(c, it.sons[1])
         else: invalidPragma(it)
       else: invalidPragma(it)
   else: processNote(c, it)
