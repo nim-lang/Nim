@@ -165,8 +165,12 @@ else: # UNIX-like operating system
     DynlibFormat* = when defined(macosx): "lib$1.dylib" else: "lib$1.so"
 
 when defined(posix):
-  var
-    pathMax {.importc: "PATH_MAX", header: "<stdlib.h>".}: cint
+  when NoFakeVars:
+    const pathMax = 5000 # doesn't matter really. The concept of PATH_MAX
+                         # doesn't work anymore on modern OSes.
+  else:
+    var
+      pathMax {.importc: "PATH_MAX", header: "<stdlib.h>".}: cint
 
 const
   ExtSep* = '.'
@@ -517,7 +521,7 @@ proc `/` * (head, tail: string): string {.noSideEffect.} =
   ##   assert "" / "lib" == "lib"
   ##   assert "" / "/lib" == "/lib"
   ##   assert "usr/" / "/lib" == "usr/lib"
-  return JoinPath(head, tail)
+  return joinPath(head, tail)
 
 proc splitPath*(path: string): tuple[head, tail: string] {.
   noSideEffect, rtl, extern: "nos$1".} =
@@ -527,11 +531,11 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
   ## Examples:
   ##
   ## .. code-block:: nimrod
-  ##   SplitPath("usr/local/bin") -> ("usr/local", "bin")
-  ##   SplitPath("usr/local/bin/") -> ("usr/local/bin", "")
-  ##   SplitPath("bin") -> ("", "bin")
-  ##   SplitPath("/bin") -> ("", "bin")
-  ##   SplitPath("") -> ("", "")
+  ##   splitPath("usr/local/bin") -> ("usr/local", "bin")
+  ##   splitPath("usr/local/bin/") -> ("usr/local/bin", "")
+  ##   splitPath("bin") -> ("", "bin")
+  ##   splitPath("/bin") -> ("", "bin")
+  ##   splitPath("") -> ("", "")
   var sepPos = -1
   for i in countdown(len(path)-1, 0):
     if path[i] in {dirsep, altsep}:
@@ -957,7 +961,10 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
     raise newException(EOS, $strerror(errno))
 
 when not defined(ENOENT) and not defined(Windows):
-  var ENOENT {.importc, header: "<errno.h>".}: cint
+  when NoFakeVars:
+    const ENOENT = cint(2) # 2 on most systems including Solaris
+  else:
+    var ENOENT {.importc, header: "<errno.h>".}: cint
 
 when defined(Windows):
   when useWinUnicode:
@@ -1014,7 +1021,7 @@ when defined(windows):
     proc strEnd(cstr: wideCString, c = 0'i32): wideCString {.
       importc: "wcschr", header: "<string.h>".}
   else:
-    proc strEnd(cstr: CString, c = 0'i32): CString {.
+    proc strEnd(cstr: cstring, c = 0'i32): cstring {.
       importc: "strchr", header: "<string.h>".}
 
   proc getEnvVarsC() =
@@ -1319,7 +1326,7 @@ proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
       copyFile(path, dest / noSource)
     of pcDir:
       copyDir(path, dest / noSource)
-    else: nil
+    else: discard
 
 proc parseCmdLine*(c: string): seq[string] {.
   noSideEffect, rtl, extern: "nos$1".} =
