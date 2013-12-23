@@ -50,6 +50,10 @@ when NoFakeVars:
     const
       IOFBF = cint(0)
       IONBF = cint(4)
+  elif defined(macosx):
+    const
+      IOFBF = cint(0)
+      IONBF = cint(2)
   else:
     {.error: "IOFBF not ported to your platform".}
 else:

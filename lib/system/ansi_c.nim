@@ -49,6 +49,14 @@ when not defined(SIGINT):
         SIGINT = cint(2)
         SIGSEGV = cint(11)
         SIGTERM = cint(15)
+    elif defined(macosx):
+      const
+        SIGABRT = cint(6)
+        SIGFPE = cint(8)
+        SIGILL = cint(4)
+        SIGINT = cint(2)
+        SIGSEGV = cint(11)
+        SIGTERM = cint(15)
     else:
       {.error: "SIGABRT not ported to your platform".}
   else:
@@ -60,9 +68,10 @@ when not defined(SIGINT):
       SIGILL {.importc: "SIGILL", nodecl.}: cint
 
 when defined(macosx):
-  var
-    SIGBUS {.importc: "SIGBUS", nodecl.}: cint
-      # hopefully this does not lead to new bugs
+  when NoFakeVars:
+    const SIGBUS = cint(10)
+  else:
+    var SIGBUS {.importc: "SIGBUS", nodecl.}: cint
 else:
   template SIGBUS: expr = SIGSEGV
 

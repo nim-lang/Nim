@@ -131,7 +131,7 @@ type
 
   ETimeout* = object of ESynch
 
-let
+const
   InvalidSocket*: TSocket = nil ## invalid socket
 
 when defined(windows):
