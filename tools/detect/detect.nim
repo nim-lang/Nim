@@ -66,7 +66,7 @@ proc main =
     if not myExec(gen.addFileExt(ExeExt)): quit(1)
   else:
     if not myExec("./" & gen): quit(1)
-  removeFile(addFileExt(gen, "c"))
+  #removeFile(addFileExt(gen, "c"))
   echo("Success")
 
 proc v(name: string, typ: TTypeKind=cint) = 
