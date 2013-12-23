@@ -295,7 +295,7 @@ template ThreadProcWrapperBody(closure: expr) {.immediate.} =
 when defined(windows):
   proc threadProcWrapper[TArg](closure: pointer): int32 {.stdcall.} = 
     ThreadProcWrapperBody(closure)
-    # implicitely return 0
+    # implicitly return 0
 else:
   proc threadProcWrapper[TArg](closure: pointer) {.noconv.} = 
     ThreadProcWrapperBody(closure)

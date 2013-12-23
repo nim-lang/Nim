@@ -2,7 +2,7 @@
 template withOpenFile(f: expr, filename: string, mode: TFileMode,
                       actions: stmt): stmt {.immediate.} =
   block:
-    # test that 'f' is implicitely 'injecting':
+    # test that 'f' is implicitly 'injecting':
     var f: TFile
     if open(f, filename, mode):
       try:
