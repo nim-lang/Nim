@@ -838,7 +838,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   else:
     internalAssert s.typ.kind == tyGenericBody
 
-    var m = newCandidate(s, n)
+    var m = newCandidate(c, s, n)
     matches(c, n, copyTree(n), m)
     
     if m.state != csMatch:
