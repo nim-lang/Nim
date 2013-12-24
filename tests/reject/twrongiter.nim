@@ -1,5 +1,5 @@
 discard """
-line: 14
+line: 12
 errormsg: "type mismatch"
 """
 

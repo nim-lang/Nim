@@ -216,7 +216,7 @@ proc makeYamlString*(s: string): PRope =
   const MaxLineLength = 64
   result = nil
   var res = "\""
-  for i in countup(0, len(s) - 1): 
+  for i in countup(0, if s.isNil: -1 else: (len(s)-1)): 
     if (i + 1) mod MaxLineLength == 0: 
       add(res, '\"')
       add(res, "\n")

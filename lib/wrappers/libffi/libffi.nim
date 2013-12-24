@@ -26,12 +26,36 @@
 
 {.deadCodeElim: on.}
 
-when defined(windows): 
-  const libffidll* = "libffi.dll"
-elif defined(macosx): 
-  const libffidll* = "libffi.dylib"
-else: 
-  const libffidll* = "libffi.so"
+when defined(windows):
+  # on Windows we don't use a DLL but instead embed libffi directly:
+  {.pragma: mylib, header: r"ffi.h".}
+
+  #{.compile: r"common\malloc_closure.c".}
+  {.compile: r"common\raw_api.c".}
+  when defined(vcc):
+    {.compile: r"msvc\ffi.c".}
+    {.compile: r"msvc\prep_cif.c".}
+    {.compile: r"msvc\win32.c".}
+    {.compile: r"msvc\types.c".}
+    when defined(cpu64):
+      {.compile: r"msvc\win64_asm.asm".}
+    else:
+      {.compile: r"msvc\win32_asm.asm".}
+  else:
+    {.compile: r"gcc\ffi.c".}
+    {.compile: r"gcc\prep_cif.c".}
+    {.compile: r"gcc\types.c".}
+    {.compile: r"gcc\closures.c".}
+    when defined(cpu64):
+      {.compile: r"gcc\ffi64.c".}
+      {.compile: r"gcc\win64_asm.S".}
+    else:
+      {.compile: r"gcc\win32_asm.S".}
+
+elif defined(macosx):
+  {.pragma: mylib, dynlib: "libffi.dylib".}
+else:
+  {.pragma: mylib, dynlib: "libffi.so".}
 
 type
   TArg* = int
@@ -88,19 +112,19 @@ type
     elements*: ptr ptr TType
 
 var
-  type_void* {.importc: "ffi_type_void", dynlib: libffidll.}: TType
-  type_uint8* {.importc: "ffi_type_uint8", dynlib: libffidll.}: TType
-  type_sint8* {.importc: "ffi_type_sint8", dynlib: libffidll.}: TType
-  type_uint16* {.importc: "ffi_type_uint16", dynlib: libffidll.}: TType
-  type_sint16* {.importc: "ffi_type_sint16", dynlib: libffidll.}: TType
-  type_uint32* {.importc: "ffi_type_uint32", dynlib: libffidll.}: TType
-  type_sint32* {.importc: "ffi_type_sint32", dynlib: libffidll.}: TType
-  type_uint64* {.importc: "ffi_type_uint64", dynlib: libffidll.}: TType
-  type_sint64* {.importc: "ffi_type_sint64", dynlib: libffidll.}: TType
-  type_float* {.importc: "ffi_type_float", dynlib: libffidll.}: TType
-  type_double* {.importc: "ffi_type_double", dynlib: libffidll.}: TType
-  type_pointer* {.importc: "ffi_type_pointer", dynlib: libffidll.}: TType
-  type_longdouble* {.importc: "ffi_type_longdouble", dynlib: libffidll.}: TType
+  type_void* {.importc: "ffi_type_void", mylib.}: TType
+  type_uint8* {.importc: "ffi_type_uint8", mylib.}: TType
+  type_sint8* {.importc: "ffi_type_sint8", mylib.}: TType
+  type_uint16* {.importc: "ffi_type_uint16", mylib.}: TType
+  type_sint16* {.importc: "ffi_type_sint16", mylib.}: TType
+  type_uint32* {.importc: "ffi_type_uint32", mylib.}: TType
+  type_sint32* {.importc: "ffi_type_sint32", mylib.}: TType
+  type_uint64* {.importc: "ffi_type_uint64", mylib.}: TType
+  type_sint64* {.importc: "ffi_type_sint64", mylib.}: TType
+  type_float* {.importc: "ffi_type_float", mylib.}: TType
+  type_double* {.importc: "ffi_type_double", mylib.}: TType
+  type_pointer* {.importc: "ffi_type_pointer", mylib.}: TType
+  type_longdouble* {.importc: "ffi_type_longdouble", mylib.}: TType
 
 type 
   Tstatus* {.size: sizeof(cint).} = enum 
@@ -119,20 +143,18 @@ type
     sint*: TSArg
 
 proc raw_call*(cif: var Tcif; fn: proc () {.cdecl.}; rvalue: pointer; 
-               avalue: ptr TRaw) {.cdecl, importc: "ffi_raw_call", 
-                                   dynlib: libffidll.}
+               avalue: ptr TRaw) {.cdecl, importc: "ffi_raw_call", mylib.}
 proc ptrarray_to_raw*(cif: var Tcif; args: ptr pointer; raw: ptr TRaw) {.cdecl, 
-    importc: "ffi_ptrarray_to_raw", dynlib: libffidll.}
+    importc: "ffi_ptrarray_to_raw", mylib.}
 proc raw_to_ptrarray*(cif: var Tcif; raw: ptr TRaw; args: ptr pointer) {.cdecl, 
-    importc: "ffi_raw_to_ptrarray", dynlib: libffidll.}
-proc raw_size*(cif: var Tcif): int {.cdecl, importc: "ffi_raw_size", 
-                                     dynlib: libffidll.}
+    importc: "ffi_raw_to_ptrarray", mylib.}
+proc raw_size*(cif: var Tcif): int {.cdecl, importc: "ffi_raw_size", mylib.}
 
 proc prep_cif*(cif: var Tcif; abi: TABI; nargs: cuint; rtype: ptr TType; 
                atypes: ptr ptr TType): TStatus {.cdecl, importc: "ffi_prep_cif", 
-    dynlib: libffidll.}
+    mylib.}
 proc call*(cif: var Tcif; fn: proc () {.cdecl.}; rvalue: pointer; 
-           avalue: ptr pointer) {.cdecl, importc: "ffi_call", dynlib: libffidll.}
+           avalue: ptr pointer) {.cdecl, importc: "ffi_call", mylib.}
 
 # the same with an easier interface:
 type
@@ -141,9 +163,9 @@ type
 
 proc prep_cif*(cif: var Tcif; abi: TABI; nargs: cuint; rtype: ptr TType; 
                atypes: TParamList): TStatus {.cdecl, importc: "ffi_prep_cif",
-    dynlib: libffidll.}
+    mylib.}
 proc call*(cif: var Tcif; fn, rvalue: pointer;
-           avalue: TArgList) {.cdecl, importc: "ffi_call", dynlib: libffidll.}
+           avalue: TArgList) {.cdecl, importc: "ffi_call", mylib.}
 
 # Useful for eliminating compiler warnings 
 ##define FFI_FN(f) ((void (*)(void))f)

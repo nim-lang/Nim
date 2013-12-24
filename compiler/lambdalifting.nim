@@ -207,7 +207,9 @@ proc newCall(a, b: PSym): PNode =
 
 proc addHiddenParam(routine: PSym, param: PSym) =
   var params = routine.ast.sons[paramsPos]
-  param.position = params.len
+  # -1 is correct here as param.position is 0 based but we have at position 0
+  # some nkEffect node:
+  param.position = params.len-1
   addSon(params, newSymNode(param))
   incl(routine.typ.flags, tfCapturesEnv)
   #echo "produced environment: ", param.id, " for ", routine.name.s
@@ -549,6 +551,8 @@ proc transformOuterProc(o: POuterContext, n: PNode): PNode =
       if x != nil: n.sons[i] = x
 
 proc liftLambdas*(fn: PSym, body: PNode): PNode =
+  # XXX gCmd == cmdCompileToJS does not suffice! The compiletime stuff needs
+  # the transformation even when compiling to JS ...
   if body.kind == nkEmpty or gCmd == cmdCompileToJS:
     # ignore forward declaration:
     result = body

@@ -364,6 +364,7 @@ type
     nfSem       # node has been checked for semantics
     nfDelegate  # the call can use a delegator
     nfExprCall  # this is an attempt to call a regular expression
+    nfIsRef     # this node is a 'ref' node; used for the VM
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 23)
@@ -792,7 +793,7 @@ const
   ExportableSymKinds* = {skVar, skConst, skProc, skMethod, skType, skIterator, 
     skMacro, skTemplate, skConverter, skEnumField, skLet, skStub}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
-                                      nfAllConst, nfDelegate}
+                                      nfAllConst, nfDelegate, nfIsRef}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2

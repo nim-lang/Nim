@@ -425,7 +425,9 @@ proc semConst(c: PContext, n: PNode): PNode =
       def = fitRemoveHiddenConv(c, typ, def)
     else:
       typ = def.typ
-    if typ == nil: continue
+    if typ == nil:
+      LocalError(a.sons[2].info, errConstExprExpected)
+      continue
     if not typeAllowed(typ, skConst):
       LocalError(a.info, errXisNoType, typeToString(typ))
       continue
@@ -1159,20 +1161,25 @@ proc setLine(n: PNode, info: TLineInfo) =
 proc semPragmaBlock(c: PContext, n: PNode): PNode =
   let pragmaList = n.sons[0]
   pragma(c, nil, pragmaList, exprPragmas)
-  result = semStmt(c, n.sons[1])
+  result = semExpr(c, n.sons[1])
   for i in 0 .. <pragmaList.len:
     if whichPragma(pragmaList.sons[i]) == wLine:
       setLine(result, pragmaList.sons[i].info)
 
 proc semStaticStmt(c: PContext, n: PNode): PNode =
   let a = semStmt(c, n.sons[0])
-  result = evalStaticExpr(c, c.module, a, c.p.owner)
-  if result.isNil:
-    LocalError(n.info, errCannotInterpretNodeX, renderTree(n))
-    result = emptyNode
-  elif result.kind == nkEmpty:
-    result = newNodeI(nkDiscardStmt, n.info, 1)
-    result.sons[0] = emptyNode
+  n.sons[0] = a
+  evalStaticStmt(c.module, a, c.p.owner)
+  result = newNodeI(nkDiscardStmt, n.info, 1)
+  result.sons[0] = emptyNode
+  when false:
+    result = evalStaticStmt(c.module, a, c.p.owner)
+    if result.isNil:
+      LocalError(n.info, errCannotInterpretNodeX, renderTree(n))
+      result = emptyNode
+    elif result.kind == nkEmpty:
+      result = newNodeI(nkDiscardStmt, n.info, 1)
+      result.sons[0] = emptyNode
 
 proc usesResult(n: PNode): bool =
   # nkStmtList(expr) properly propagates the void context,

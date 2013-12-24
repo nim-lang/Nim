@@ -1,6 +1,6 @@
 discard """
-  file: "system.nim"
-  line: 696
+  file: "tenummix.nim"
+  line: 11
   errormsg: "type mismatch"
 """
 

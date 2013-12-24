@@ -14,7 +14,7 @@ import
   wordrecg, ropes, msgs, os, condsyms, idents, renderer, types, platform, math,
   magicsys, parser, nversion, nimsets, semfold, importer,
   procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
-  semthreads, intsets, transf, evals, idgen, aliases, cgmeth, lambdalifting,
+  semthreads, intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2
 
 # implementation
@@ -43,7 +43,7 @@ proc activate(c: PContext, n: PNode)
 proc semQuoteAst(c: PContext, n: PNode): PNode
 proc finishMethod(c: PContext, s: PSym)
 
-proc IndexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode
+proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode
 
 proc typeMismatch(n: PNode, formal, actual: PType) = 
   if formal.kind != tyError and actual.kind != tyError: 
@@ -63,7 +63,7 @@ proc fitNode(c: PContext, formal: PType, arg: PNode): PNode =
     if result == nil:
       typeMismatch(arg, formal, arg.typ)
       # error correction:
-      result = copyNode(arg)
+      result = copyTree(arg)
       result.typ = formal
 
 var CommonTypeBegin = PType(kind: tyExpr)
@@ -169,25 +169,26 @@ when false:
     result = newSymNode(symFromType(t, info), info)
     result.typ = makeTypeDesc(c, t)
 
-proc createEvalContext(c: PContext, mode: TEvalMode): PEvalContext =
-  result = newEvalContext(c.module, mode)
-  result.getType = proc (n: PNode): PNode =
-    result = tryExpr(c, n)
-    if result == nil:
-      result = newSymNode(errorSym(c, n))
-    elif result.typ == nil:
-      result = newSymNode(getSysSym"void")
-    else:
-      result.typ = makeTypeDesc(c, result.typ)
+when false:
+  proc createEvalContext(c: PContext, mode: TEvalMode): PEvalContext =
+    result = newEvalContext(c.module, mode)
+    result.getType = proc (n: PNode): PNode =
+      result = tryExpr(c, n)
+      if result == nil:
+        result = newSymNode(errorSym(c, n))
+      elif result.typ == nil:
+        result = newSymNode(getSysSym"void")
+      else:
+        result.typ = makeTypeDesc(c, result.typ)
 
-  result.handleIsOperator = proc (n: PNode): PNode =
-    result = IsOpImpl(c, n)
+    result.handleIsOperator = proc (n: PNode): PNode =
+      result = IsOpImpl(c, n)
 
-proc evalConstExpr(c: PContext, module: PSym, e: PNode): PNode = 
-  result = evalConstExprAux(c.createEvalContext(emConst), module, nil, e)
+  proc evalConstExpr(c: PContext, module: PSym, e: PNode): PNode = 
+    result = evalConstExprAux(c.createEvalContext(emConst), module, nil, e)
 
-proc evalStaticExpr(c: PContext, module: PSym, e: PNode, prc: PSym): PNode = 
-  result = evalConstExprAux(c.createEvalContext(emStatic), module, prc, e)
+  proc evalStaticExpr(c: PContext, module: PSym, e: PNode, prc: PSym): PNode = 
+    result = evalConstExprAux(c.createEvalContext(emStatic), module, prc, e)
 
 proc semConstExpr(c: PContext, n: PNode): PNode =
   var e = semExprWithType(c, n)
@@ -196,7 +197,7 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
     return n
   result = getConstExpr(c.module, e)
   if result == nil:
-    result = evalConstExpr(c, c.module, e)
+    result = evalConstExpr(c.module, e)
     if result == nil or result.kind == nkEmpty:
       if e.info != n.info:
         pushInfoContext(n.info)
@@ -206,6 +207,19 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
         LocalError(e.info, errConstExprExpected)
       # error correction:
       result = e
+    else:
+      # recompute the types as 'eval' isn't guaranteed to construct types nor
+      # that the types are sound:
+      result = semExprWithType(c, result)
+      #result = fitNode(c, e.typ, result) inlined with special case:
+      let arg = result
+      result = indexTypesMatch(c, e.typ, arg.typ, arg)
+      if result == nil:
+        result = arg
+        # for 'tcnstseq' we support [] to become 'seq'
+        if e.typ.skipTypes(abstractInst).kind == tySequence and 
+           arg.typ.skipTypes(abstractInst).kind == tyArrayConstr:
+          arg.typ = e.typ
 
 include hlo, seminst, semcall
 
@@ -243,10 +257,10 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   if sym == c.p.owner:
     GlobalError(n.info, errRecursiveDependencyX, sym.name.s)
 
-  if c.evalContext == nil:
-    c.evalContext = c.createEvalContext(emStatic)
+  #if c.evalContext == nil:
+  #  c.evalContext = c.createEvalContext(emStatic)
 
-  result = evalMacroCall(c.evalContext, n, nOrig, sym)
+  result = evalMacroCall(c.module, n, nOrig, sym)
   if semCheck: result = semAfterMacroCall(c, result, sym)
 
 proc forceBool(c: PContext, n: PNode): PNode = 

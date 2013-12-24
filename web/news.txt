@@ -28,6 +28,8 @@ Changes affecting backwards compatibility
   require an error code to be passed to them. This error code can be retrieved
   using the new ``OSLastError`` proc.
 - ``os.parentDir`` now returns "" if there is no parent dir.
+- In CGI scripts stacktraces are shown user only if cgi.setStackTraceStdout
+  is used.
 
 Compiler Additions
 ------------------
@@ -40,8 +42,10 @@ Compiler Additions
   over the generated code.
 - The compiler now supports a ``computedGoto`` pragma to support very fast
   dispatching for interpreters and the like.
-- In CGI scripts stacktraces are shown user only if cgi.setStackTraceStdout
-  is used.
+- The old evaluation engine has been replaced by a proper register based
+  virtual machine. This fixes numerous bugs for ``nimrod i`` and for macro
+  evaluation.
+
 
 Language Additions
 ------------------
@@ -55,7 +59,7 @@ Language Additions
   OOP-like syntactic sugar.
 - Added ``delegator pragma`` for handling calls to missing procs and fields at
   compile-time.
-- Support for user-defined type classes have been added.
+- Support for user-defined type classes has been added.
 
 
 Tools improvements

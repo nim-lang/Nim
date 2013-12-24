@@ -257,7 +257,7 @@ proc limitCommitMsg(m: string): string =
 proc handleWebMessage(state: PState, line: string) =
   echo("Got message from hub: " & line)
   var json = parseJson(line)
-  if json.existsKey("payload"):
+  if json.hasKey("payload"):
     for i in 0..min(4, json["payload"]["commits"].len-1):
       var commit = json["payload"]["commits"][i]
       # Create the message
@@ -273,8 +273,8 @@ proc handleWebMessage(state: PState, line: string) =
 
       # Send message to #nimrod.
       state.ircClient.privmsg(joinChans[0], message)
-  elif json.existsKey("redisinfo"):
-    assert json["redisinfo"].existsKey("port")
+  elif json.hasKey("redisinfo"):
+    assert json["redisinfo"].hasKey("port")
     #let redisPort = json["redisinfo"]["port"].num
     state.dbConnected = true
 

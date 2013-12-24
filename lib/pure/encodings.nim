@@ -14,15 +14,15 @@ import os, parseutils, strutils
 
 when not defined(windows):
   type
-    TConverter = object {.pure, final.}
+    TConverter = object
     PConverter* = ptr TConverter ## can convert between two character sets
-    
+
 else:
   type
     TCodePage = distinct int32
-    PConverter* = object {.pure.}
+    PConverter* = object
       dest, src: TCodePage
-    
+
 type
   EInvalidEncoding* = object of EInvalidValue ## exception that is raised
                                               ## for encoding errors
@@ -425,7 +425,7 @@ else:
           dst = cast[cstring](cast[int](cstring(result)) + offset)
           outLen = len(result) - offset
         else:
-          OSError()
+          OSError(lerr.TOSErrorCode)
     # iconv has a buffer that needs flushing, specially if the last char is 
     # not '\0'
     discard iconv(c, nil, nil, dst, outlen)

@@ -300,11 +300,11 @@ proc semOf(c: PContext, n: PNode): PNode =
   result = n
 
 proc isOpImpl(c: PContext, n: PNode): PNode =
-  InternalAssert n.sonsLen == 3 and
-    n[1].kind == nkSym and n[1].sym.kind == skType and
+  internalAssert n.sonsLen == 3 and
+    n[1].typ != nil and
     n[2].kind in {nkStrLit..nkTripleStrLit, nkType}
   
-  let t1 = n[1].sym.typ.skipTypes({tyTypeDesc})
+  let t1 = n[1].typ.skipTypes({tyTypeDesc})
 
   if n[2].kind in {nkStrLit..nkTripleStrLit}:
     case n[2].strVal.normalize
@@ -640,18 +640,18 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
       call.add(a)
     #echo "NOW evaluating at compile time: ", call.renderTree
     if sfCompileTime in callee.flags:
-      result = evalStaticExpr(c, c.module, call, c.p.owner)
+      result = evalStaticExpr(c.module, call, c.p.owner)
       if result.isNil: 
         LocalError(n.info, errCannotInterpretNodeX, renderTree(call))
     else:
-      result = evalConstExpr(c, c.module, call)
+      result = evalConstExpr(c.module, call)
       if result.isNil: result = n
     #if result != n:
     #  echo "SUCCESS evaluated at compile time: ", call.renderTree
 
 proc semStaticExpr(c: PContext, n: PNode): PNode =
   let a = semExpr(c, n.sons[0])
-  result = evalStaticExpr(c, c.module, a, c.p.owner)
+  result = evalStaticExpr(c.module, a, c.p.owner)
   if result.isNil:
     LocalError(n.info, errCannotInterpretNodeX, renderTree(n))
     result = emptyNode
@@ -780,6 +780,7 @@ proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   #semLazyOpAux(c, n)
   result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
   if result != nil: result = afterCallActions(c, result, nOrig, flags)
+  else: result = errorNode(c, n)
 
 proc buildStringify(c: PContext, arg: PNode): PNode = 
   if arg.typ != nil and 
@@ -1839,7 +1840,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     # don't have to check the symbol for semantics here again!
     result = semSym(c, n, n.sym, flags)
   of nkEmpty, nkNone, nkCommentStmt: 
-    nil
+    discard
   of nkNilLit: 
     result.typ = getSysType(tyNil)
   of nkIntLit:

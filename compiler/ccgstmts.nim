@@ -322,8 +322,20 @@ proc genComputedGoto(p: BProc; n: PNode) =
     gotoArray.appf("&&TMP$#, ", (id+i).toRope)
   gotoArray.appf("&&TMP$#};$n", (id+arraySize).toRope)
   line(p, cpsLocals, gotoArray)
+
+  let topBlock = p.blocks.len-1
+  let oldBody = p.blocks[topBlock].sections[cpsStmts]
+  p.blocks[topBlock].sections[cpsStmts] = nil
   
+  for j in casePos+1 .. <n.len: genStmts(p, n.sons[j])
+  let tailB = p.blocks[topBlock].sections[cpsStmts]
+
+  p.blocks[topBlock].sections[cpsStmts] = nil
   for j in 0 .. casePos-1: genStmts(p, n.sons[j])
+  let tailA = p.blocks[topBlock].sections[cpsStmts]
+
+  p.blocks[topBlock].sections[cpsStmts] = oldBody.con(tailA)
+
   let caseStmt = n.sons[casePos]
   var a: TLoc
   initLocExpr(p, caseStmt.sons[0], a)
@@ -340,8 +352,11 @@ proc genComputedGoto(p: BProc; n: PNode) =
       let val = getOrdValue(it.sons[j])
       lineF(p, cpsStmts, "TMP$#:$n", intLiteral(val+id+1))
     genStmts(p, it.lastSon)
-    for j in casePos+1 .. <n.len: genStmts(p, n.sons[j])
-    for j in 0 .. casePos-1: genStmts(p, n.sons[j])
+    #for j in casePos+1 .. <n.len: genStmts(p, n.sons[j]) # tailB
+    #for j in 0 .. casePos-1: genStmts(p, n.sons[j])  # tailA
+    app(p.s(cpsStmts), tailB)
+    app(p.s(cpsStmts), tailA)
+
     var a: TLoc
     initLocExpr(p, caseStmt.sons[0], a)
     lineF(p, cpsStmts, "goto *$#[$#];$n", tmp, a.rdLoc)

@@ -398,13 +398,13 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
     if pass in {passCmd2, passPP}: extccomp.addLinkOption(arg)
   of "cincludes":
     expectArg(switch, arg, pass, info)
-    if pass in {passCmd2, passPP}: cIncludes.add arg
+    if pass in {passCmd2, passPP}: cIncludes.add arg.processPath
   of "clibdir":
     expectArg(switch, arg, pass, info)
-    if pass in {passCmd2, passPP}: cLibs.add arg
+    if pass in {passCmd2, passPP}: cLibs.add arg.processPath
   of "clib":
     expectArg(switch, arg, pass, info)
-    if pass in {passCmd2, passPP}: cLinkedLibs.add arg
+    if pass in {passCmd2, passPP}: cLinkedLibs.add arg.processPath
   of "header":
     headerFile = arg
     incl(gGlobalOptions, optGenIndex)

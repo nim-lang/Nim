@@ -32,15 +32,29 @@ proc semInstantiationInfo(c: PContext, n: PNode): PNode =
   result.add(filename)
   result.add(line)
 
+ 
+proc evalTypeTrait(trait: PNode, operand: PType, context: PSym): PNode =
+  let typ = operand.skipTypes({tyTypeDesc})
+  case trait.sym.name.s.normalize
+  of "name":
+    result = newStrNode(nkStrLit, typ.typeToString(preferName))
+    result.typ = newType(tyString, context)
+    result.info = trait.info
+  of "arity":    
+    result = newIntNode(nkIntLit, typ.n.len-1)
+    result.typ = newType(tyInt, context)
+    result.info = trait.info
+  else:
+    internalAssert false
+
 proc semTypeTraits(c: PContext, n: PNode): PNode =
   checkMinSonsLen(n, 2)
-  internalAssert n.sons[1].kind == nkSym
-  let typArg = n.sons[1].sym
-  if typArg.kind == skType or
-    (typArg.kind == skParam and typArg.typ.sonsLen > 0):
-    # This is either a type known to sem or a typedesc
-    # param to a regular proc (again, known at instantiation)
-    result = evalTypeTrait(n[0], n[1], GetCurrOwner())
+  let t = n.sons[1].typ
+  internalAssert t != nil
+  if t.kind == tyTypeDesc and t.len == 0:
+    result = n
+  elif not containsGenericType(t):
+    result = evalTypeTrait(n[0], t, GetCurrOwner())
   else:
     # a typedesc variable, pass unmodified to evals
     result = n
