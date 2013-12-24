@@ -13,12 +13,12 @@
 
 {.push hints:off}
 
-proc c_strcmp(a, b: CString): cint {.header: "<string.h>", 
+proc c_strcmp(a, b: cstring): cint {.header: "<string.h>", 
   noSideEffect, importc: "strcmp".}
-proc c_memcmp(a, b: CString, size: int): cint {.header: "<string.h>", 
+proc c_memcmp(a, b: cstring, size: int): cint {.header: "<string.h>", 
   noSideEffect, importc: "memcmp".}
-proc c_memcpy(a, b: CString, size: int) {.header: "<string.h>", importc: "memcpy".}
-proc c_strlen(a: CString): int {.header: "<string.h>", 
+proc c_memcpy(a, b: cstring, size: int) {.header: "<string.h>", importc: "memcpy".}
+proc c_strlen(a: cstring): int {.header: "<string.h>", 
   noSideEffect, importc: "strlen".}
 proc c_memset(p: pointer, value: cint, size: int) {.
   header: "<string.h>", importc: "memset".}
@@ -49,7 +49,7 @@ when not defined(SIGINT):
         SIGINT = cint(2)
         SIGSEGV = cint(11)
         SIGTERM = cint(15)
-    elif defined(macosx):
+    elif defined(macosx) or defined(linux):
       const
         SIGABRT = cint(6)
         SIGFPE = cint(8)
@@ -92,27 +92,27 @@ proc c_fgetc(stream: C_TextFileStar): int {.importc: "fgetc",
   header: "<stdio.h>".}
 proc c_ungetc(c: int, f: C_TextFileStar) {.importc: "ungetc", 
   header: "<stdio.h>".}
-proc c_putc(c: Char, stream: C_TextFileStar) {.importc: "putc", 
+proc c_putc(c: char, stream: C_TextFileStar) {.importc: "putc", 
   header: "<stdio.h>".}
-proc c_fprintf(f: C_TextFileStar, frmt: CString) {.
+proc c_fprintf(f: C_TextFileStar, frmt: cstring) {.
   importc: "fprintf", header: "<stdio.h>", varargs.}
-proc c_printf(frmt: CString) {.
+proc c_printf(frmt: cstring) {.
   importc: "printf", header: "<stdio.h>", varargs.}
 
 proc c_fopen(filename, mode: cstring): C_TextFileStar {.
   importc: "fopen", header: "<stdio.h>".}
 proc c_fclose(f: C_TextFileStar) {.importc: "fclose", header: "<stdio.h>".}
 
-proc c_sprintf(buf, frmt: CString) {.header: "<stdio.h>", 
+proc c_sprintf(buf, frmt: cstring) {.header: "<stdio.h>", 
   importc: "sprintf", varargs, noSideEffect.}
   # we use it only in a way that cannot lead to security issues
 
-proc c_fread(buf: Pointer, size, n: int, f: C_BinaryFileStar): int {.
+proc c_fread(buf: pointer, size, n: int, f: C_BinaryFileStar): int {.
   importc: "fread", header: "<stdio.h>".}
 proc c_fseek(f: C_BinaryFileStar, offset: clong, whence: int): int {.
   importc: "fseek", header: "<stdio.h>".}
 
-proc c_fwrite(buf: Pointer, size, n: int, f: C_BinaryFileStar): int {.
+proc c_fwrite(buf: pointer, size, n: int, f: C_BinaryFileStar): int {.
   importc: "fwrite", header: "<stdio.h>".}
 
 proc c_exit(errorcode: cint) {.importc: "exit", header: "<stdlib.h>".}

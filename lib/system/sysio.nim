@@ -50,7 +50,7 @@ when NoFakeVars:
     const
       IOFBF = cint(0)
       IONBF = cint(4)
-  elif defined(macosx):
+  elif defined(macosx) or defined(linux):
     const
       IOFBF = cint(0)
       IONBF = cint(2)
