@@ -21,7 +21,8 @@ type
   TCandidateState* = enum 
     csEmpty, csMatch, csNoMatch
 
-  TCandidate* {.final.} = object 
+  TCandidate* {.final.} = object
+    c*: PContext
     exactMatches*: int       # also misused to prefer iters over procs
     genericMatches: int      # also misused to prefer constraints
     subtypeMatches: int
@@ -58,7 +59,9 @@ const
     
 proc markUsed*(n: PNode, s: PSym)
 
-proc initCandidateAux(c: var TCandidate, callee: PType) {.inline.} = 
+proc initCandidateAux(ctx: PContext,
+                      c: var TCandidate, callee: PType) {.inline.} =
+  c.c = ctx
   c.exactMatches = 0
   c.subtypeMatches = 0
   c.convMatches = 0
@@ -71,17 +74,17 @@ proc initCandidateAux(c: var TCandidate, callee: PType) {.inline.} =
   c.genericConverter = false
   c.inheritancePenalty = 0
 
-proc initCandidate*(c: var TCandidate, callee: PType) = 
-  initCandidateAux(c, callee)
+proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PType) =
+  initCandidateAux(ctx, c, callee)
   c.calleeSym = nil
   initIdTable(c.bindings)
 
 proc put(t: var TIdTable, key, val: PType) {.inline.} =
   IdTablePut(t, key, val)
 
-proc initCandidate*(c: var TCandidate, callee: PSym, binding: PNode, 
-                    calleeScope = -1) =
-  initCandidateAux(c, callee.typ)
+proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
+                    binding: PNode, calleeScope = -1) =
+  initCandidateAux(ctx, c, callee.typ)
   c.calleeSym = callee
   c.calleeScope = calleeScope
   initIdTable(c.bindings)
@@ -93,10 +96,12 @@ proc initCandidate*(c: var TCandidate, callee: PSym, binding: PNode,
       #debug(formalTypeParam)
       put(c.bindings, formalTypeParam, binding[i].typ)
 
-proc newCandidate*(callee: PSym, binding: PNode, calleeScope = -1): TCandidate =
-  initCandidate(result, callee, binding, calleeScope)
+proc newCandidate*(ctx: PContext, callee: PSym,
+                   binding: PNode, calleeScope = -1): TCandidate =
+  initCandidate(ctx, result, callee, binding, calleeScope)
 
 proc copyCandidate(a: var TCandidate, b: TCandidate) = 
+  a.c = b.c
   a.exactMatches = b.exactMatches
   a.subtypeMatches = b.subtypeMatches
   a.convMatches = b.convMatches
@@ -762,10 +767,10 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
     result = isEqual
   else: internalError("typeRel: " & $f.kind)
   
-proc cmpTypes*(f, a: PType): TTypeRelation = 
-  var c: TCandidate
-  InitCandidate(c, f)
-  result = typeRel(c, f, a)
+proc cmpTypes*(c: PContext, f, a: PType): TTypeRelation = 
+  var m: TCandidate
+  InitCandidate(c, m, f)
+  result = typeRel(m, f, a)
 
 proc getInstantiatedType(c: PContext, arg: PNode, m: TCandidate, 
                          f: PType): PType = 
@@ -887,13 +892,14 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
   result = arg
   put(m.bindings, f, a)
 
-proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, argType: PType,
+proc ParamTypesMatchAux(m: var TCandidate, f, argType: PType,
                         argSemantized, argOrig: PNode): PNode =
   var
     r: TTypeRelation
     arg = argSemantized
 
   let
+    c = m.c
     a0 = if c.InTypeClass > 0: argType.skipTypes({tyTypeDesc})
          else: argType
     a = if a0 != nil: a0.skipTypes({tyStatic}) else: a0
@@ -1007,19 +1013,20 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, argType: PType,
         else:
           result = userConvMatch(c, m, base(f), a, arg)
 
-proc ParamTypesMatch*(c: PContext, m: var TCandidate, f, a: PType, 
+proc ParamTypesMatch*(m: var TCandidate, f, a: PType,
                       arg, argOrig: PNode): PNode =
   if arg == nil or arg.kind notin nkSymChoices:
-    result = ParamTypesMatchAux(c, m, f, a, arg, argOrig)
+    result = ParamTypesMatchAux(m, f, a, arg, argOrig)
   else: 
     # CAUTION: The order depends on the used hashing scheme. Thus it is
     # incorrect to simply use the first fitting match. However, to implement
     # this correctly is inefficient. We have to copy `m` here to be able to
     # roll back the side effects of the unification algorithm.
+    let c = m.c
     var x, y, z: TCandidate
-    initCandidate(x, m.callee)
-    initCandidate(y, m.callee)
-    initCandidate(z, m.callee)
+    initCandidate(c, x, m.callee)
+    initCandidate(c, y, m.callee)
+    initCandidate(c, z, m.callee)
     x.calleeSym = m.calleeSym
     y.calleeSym = m.calleeSym
     z.calleeSym = m.calleeSym
@@ -1051,7 +1058,7 @@ proc ParamTypesMatch*(c: PContext, m: var TCandidate, f, a: PType,
     else: 
       # only one valid interpretation found:
       markUsed(arg, arg.sons[best].sym)
-      result = ParamTypesMatchAux(c, m, f, arg.sons[best].typ, arg.sons[best],
+      result = ParamTypesMatchAux(m, f, arg.sons[best].typ, arg.sons[best],
                                   argOrig)
 
 proc setSon(father: PNode, at: int, son: PNode) = 
@@ -1142,7 +1149,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
       m.baseTypeMatch = false
       n.sons[a].sons[1] = prepareOperand(c, formal.typ, n.sons[a].sons[1])
       n.sons[a].typ = n.sons[a].sons[1].typ
-      var arg = ParamTypesMatch(c, m, formal.typ, n.sons[a].typ,
+      var arg = ParamTypesMatch(m, formal.typ, n.sons[a].typ,
                                 n.sons[a].sons[1], nOrig.sons[a].sons[1])
       if arg == nil:
         m.state = csNoMatch
@@ -1172,7 +1179,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         elif formal != nil:
           m.baseTypeMatch = false
           n.sons[a] = prepareOperand(c, formal.typ, n.sons[a])
-          var arg = ParamTypesMatch(c, m, formal.typ, n.sons[a].typ,
+          var arg = ParamTypesMatch(m, formal.typ, n.sons[a].typ,
                                     n.sons[a], nOrig.sons[a])
           if (arg != nil) and m.baseTypeMatch and (container != nil):
             addSon(container, arg)
@@ -1195,7 +1202,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           return 
         m.baseTypeMatch = false
         n.sons[a] = prepareOperand(c, formal.typ, n.sons[a])
-        var arg = ParamTypesMatch(c, m, formal.typ, n.sons[a].typ,
+        var arg = ParamTypesMatch(m, formal.typ, n.sons[a].typ,
                                   n.sons[a], nOrig.sons[a])
         if arg == nil:
           m.state = csNoMatch
@@ -1249,8 +1256,8 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
 
 proc argtypeMatches*(c: PContext, f, a: PType): bool =
   var m: TCandidate
-  initCandidate(m, f)
-  let res = paramTypesMatch(c, m, f, a, ast.emptyNode, nil)
+  initCandidate(c, m, f)
+  let res = paramTypesMatch(m, f, a, ast.emptyNode, nil)
   #instantiateGenericConverters(c, res, m)
   # XXX this is used by patterns.nim too; I think it's better to not
   # instantiate generic converters for that
@@ -1312,7 +1319,7 @@ tests:
 
     setup:
       var c: TCandidate
-      InitCandidate(c, nil)
+      InitCandidate(nil, c, nil)
 
     template yes(x, y) =
       test astToStr(x) & " is " & astToStr(y):

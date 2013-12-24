@@ -142,7 +142,7 @@ proc checkConversionBetweenObjects(castDest, src: PType): TConvStatus =
 const 
   IntegralTypes = {tyBool, tyEnum, tyChar, tyInt..tyUInt64}
 
-proc checkConvertible(castDest, src: PType): TConvStatus =
+proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
   result = convOK
   if sameType(castDest, src) and castDest.sym == src.sym:
     # don't annoy conversions that may be needed on another processor:
@@ -163,7 +163,7 @@ proc checkConvertible(castDest, src: PType): TConvStatus =
     # accept conversion between integral types
   else:
     # we use d, s here to speed up that operation a bit:
-    case cmpTypes(d, s)
+    case cmpTypes(c, d, s)
     of isNone, isGeneric:
       if not compareTypes(castDest, src, dcEqIgnoreDistinct):
         result = convNotLegal
@@ -202,7 +202,7 @@ proc semConv(c: PContext, n: PNode): PNode =
   var op = result.sons[1]
   
   if not isSymChoice(op):
-    let status = checkConvertible(result.typ, op.typ)
+    let status = checkConvertible(c, result.typ, op.typ)
     case status
     of convOK: nil
     of convNotNeedeed:
@@ -213,7 +213,7 @@ proc semConv(c: PContext, n: PNode): PNode =
   else:
     for i in countup(0, sonsLen(op) - 1):
       let it = op.sons[i]
-      let status = checkConvertible(result.typ, it.typ)
+      let status = checkConvertible(c, result.typ, it.typ)
       if status == convOK:
         markUsed(n, it.sym)
         markIndirect(c, it.sym)
@@ -324,15 +324,15 @@ proc isOpImpl(c: PContext, n: PNode): PNode =
     case t2.kind
     of tyTypeClasses:
       var m: TCandidate
-      InitCandidate(m, t2)
+      InitCandidate(c, m, t2)
       match = matchUserTypeClass(c, m, emptyNode, t2, t1) != nil
     of tyOrdinal:
       var m: TCandidate
-      InitCandidate(m, t2)
+      InitCandidate(c, m, t2)
       match = isOrdinalType(t1)
     of tySequence, tyArray, tySet:
       var m: TCandidate
-      InitCandidate(m, t2)
+      InitCandidate(c, m, t2)
       match = typeRel(m, t2, t1) != isNone
     else:
       match = sameType(t1, t2)
@@ -707,7 +707,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if t != nil and t.kind == tyProc:
     # This is a proc variable, apply normal overload resolution
     var m: TCandidate
-    initCandidate(m, t)
+    initCandidate(c, m, t)
     matches(c, n, nOrig, m)
     if m.state != csMatch:
       if c.inCompilesContext > 0:
