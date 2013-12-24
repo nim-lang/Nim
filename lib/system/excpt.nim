@@ -280,7 +280,7 @@ when defined(endb):
 
 when not defined(noSignalHandler):
   proc signalHandler(sig: cint) {.exportc: "signalHandler", noconv.} =
-    template processSignal(s, action: expr) {.immediate.} =
+    template processSignal(s, action: expr) {.immediate,  dirty.} =
       if s == SIGINT: action("SIGINT: Interrupted by Ctrl-C.\n")
       elif s == SIGSEGV: 
         action("SIGSEGV: Illegal storage access. (Attempt to read from nil?)\n")
