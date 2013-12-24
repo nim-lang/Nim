@@ -4,7 +4,6 @@ version 0.9.4
 - new VM:
   - implement overflow checking
 
-- make 'bind' default for templates and introduce 'mixin'
 - special rule for ``[]=``
 - ``=`` should be overloadable; requires specialization for ``=``; general
   lift mechanism in the compiler is already implemented for 'fields'
