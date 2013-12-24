@@ -1,7 +1,6 @@
 version 0.9.4
 =============
 
-- make new templating symbol binding rules work
 - document new templating symbol binding rules
 - convert all with "nimrod pretty"
 - make '--implicitStatic:on' the default

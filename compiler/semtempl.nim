@@ -359,6 +359,8 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
           return symChoice(c.c, n, s, scClosed)
         elif Contains(c.toMixin, s.name.id):
           return symChoice(c.c, n, s, scForceOpen)
+        else:
+          return symChoice(c.c, n, s, scOpen)
     result = n
     for i in countup(0, sonsLen(n) - 1):
       result.sons[i] = semTemplBody(c, n.sons[i])
@@ -399,7 +401,7 @@ proc transformToExpr(n: PNode): PNode =
     for i in countup(0, sonsLen(n) - 1): 
       case n.sons[i].kind
       of nkCommentStmt, nkEmpty, nkNilLit: 
-        nil
+        discard
       else: 
         if realStmt == - 1: realStmt = i
         else: realStmt = - 2
@@ -409,7 +411,7 @@ proc transformToExpr(n: PNode): PNode =
     n.kind = nkBlockExpr
     #nkIfStmt: n.kind = nkIfExpr // this is not correct!
   else:
-    nil
+    discard
 
 proc semTemplateDef(c: PContext, n: PNode): PNode = 
   var s: PSym
@@ -476,8 +478,6 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     SymTabReplace(c.currentScope.symbols, proto, s)
   if n.sons[patternPos].kind != nkEmpty:
     c.patterns.add(s)
-  #if s.name.s == "move":
-  #  echo renderTree(result)
 
 proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
   template templToExpand(s: expr): expr =
@@ -522,7 +522,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
     result = handleSym(c, n, s)
   of nkBindStmt:
     result = semBindStmt(c.c, n, c.toBind)
-  of nkEmpty, nkSym..nkNilLit: nil
+  of nkEmpty, nkSym..nkNilLit: discard
   of nkCurlyExpr:
     # we support '(pattern){x}' to bind a subpattern to a parameter 'x'; 
     # '(pattern){|x}' does the same but the matches will be gathered in 'x'
@@ -543,8 +543,8 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
   of nkCallKinds:
     let s = QualifiedLookUp(c.c, n.sons[0], {})
     if s != nil:
-      if s.owner == c.owner and s.kind == skParam: nil
-      elif Contains(c.toBind, s.id): nil
+      if s.owner == c.owner and s.kind == skParam: discard
+      elif Contains(c.toBind, s.id): discard
       elif templToExpand(s):
         return semPatternBody(c, semTemplateExpr(c.c, n, s, false))
     
@@ -588,7 +588,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
           return newIdentNode(s.name, n.info)
     of nkPar:
       if n.len == 1: return semPatternBody(c, n.sons[0])
-    else: nil
+    else: discard
     for i in countup(0, sonsLen(n) - 1):
       result.sons[i] = semPatternBody(c, n.sons[i])
 
