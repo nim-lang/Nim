@@ -684,6 +684,8 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       result.sons.setLen(result.sons.len - 1)
   of tyTypeClass:
     result = addImplicitGeneric(copyType(paramType, getCurrOwner(), false))
+  of tyExpr:
+    result = addImplicitGeneric(newTypeS(tyGenericParam, c))
   else: nil
 
   # result = liftingWalk(paramType)

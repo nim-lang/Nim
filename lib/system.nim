@@ -2675,3 +2675,13 @@ proc locals*(): TObject {.magic: "Locals", noSideEffect.} =
   ## the official signature says, the return type is not ``TObject`` but a
   ## tuple of a structure that depends on the current scope.
   nil
+
+when not defined(booting):
+  type
+    semistatic*[T] = static[T] | T
+    # indicates a param of proc specialized for each static value,
+    # but also accepting run-time values
+
+  template isStatic*(x): expr = compiles(static(x))
+    # checks whether `x` is a value known at compile-time
+
