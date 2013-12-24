@@ -45,6 +45,7 @@ Possible Commands:
   tests                    run the testsuite
   update                   updates nimrod to the latest version from github
                            (compile koch with -d:withUpdate to enable)
+  temp options             creates a temporary compiler for testing
 Boot options:
   -d:release               produce a release version of the compiler
   -d:tinyc                 include the Tiny C backend (not supported on Windows)
@@ -268,6 +269,13 @@ proc tests(args: string) =
   exec(getCurrentDir() / "tests/tester".exe & " run")
   exec(getCurrentDir() / "tests/tester".exe & " merge")
 
+proc temp(args: string) =
+  var output = "compiler" / "nimrod".exe
+  var finalDest = "bin" / "nimrod_temp".exe
+  exec("nimrod c compiler" / "nimrod")
+  copyExe(output, finalDest)
+  if args.len > 0: exec(finalDest & " " & args)
+
 proc showHelp() = 
   quit(HelpText % [NimrodVersion & repeatChar(44-len(NimrodVersion)), 
                    CompileDate, CompileTime])
@@ -291,6 +299,7 @@ of cmdArgument:
       update(op.cmdLineRest)
     else:
       quit "this Koch has not been compiled with -d:withUpdate"
+  of "temp": temp(op.cmdLineRest)
   else: showHelp()
 of cmdEnd: showHelp()
 

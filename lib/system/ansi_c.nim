@@ -40,21 +40,40 @@ var
 
 # constants faked as variables:
 when not defined(SIGINT):
-  var 
-    SIGINT {.importc: "SIGINT", nodecl.}: cint
-    SIGSEGV {.importc: "SIGSEGV", nodecl.}: cint
-    SIGABRT {.importc: "SIGABRT", nodecl.}: cint
-    SIGFPE {.importc: "SIGFPE", nodecl.}: cint
-    SIGILL {.importc: "SIGILL", nodecl.}: cint
+  when NoFakeVars:
+    when defined(windows):
+      const
+        SIGABRT = cint(22)
+        SIGFPE = cint(8)
+        SIGILL = cint(4)
+        SIGINT = cint(2)
+        SIGSEGV = cint(11)
+        SIGTERM = cint(15)
+    elif defined(macosx):
+      const
+        SIGABRT = cint(6)
+        SIGFPE = cint(8)
+        SIGILL = cint(4)
+        SIGINT = cint(2)
+        SIGSEGV = cint(11)
+        SIGTERM = cint(15)
+    else:
+      {.error: "SIGABRT not ported to your platform".}
+  else:
+    var
+      SIGINT {.importc: "SIGINT", nodecl.}: cint
+      SIGSEGV {.importc: "SIGSEGV", nodecl.}: cint
+      SIGABRT {.importc: "SIGABRT", nodecl.}: cint
+      SIGFPE {.importc: "SIGFPE", nodecl.}: cint
+      SIGILL {.importc: "SIGILL", nodecl.}: cint
 
 when defined(macosx):
-  var
-    SIGBUS {.importc: "SIGBUS", nodecl.}: cint
-      # hopefully this does not lead to new bugs
+  when NoFakeVars:
+    const SIGBUS = cint(10)
+  else:
+    var SIGBUS {.importc: "SIGBUS", nodecl.}: cint
 else:
-  var
-    SIGBUS {.importc: "SIGSEGV", nodecl.}: cint
-      # only Mac OS X has this shit
+  template SIGBUS: expr = SIGSEGV
 
 proc c_longjmp(jmpb: C_JmpBuf, retval: cint) {.
   header: "<setjmp.h>", importc: "longjmp".}
@@ -111,16 +130,22 @@ proc c_realloc(p: pointer, newsize: int): pointer {.
 
 when hostOS != "standalone":
   when not defined(errno):
-    var errno {.importc, header: "<errno.h>".}: cint ## error variable
+    when defined(NimrodVM):
+      var vmErrnoWrapper {.importc.}: ptr cint
+      template errno: expr = 
+        bind vmErrnoWrapper
+        vmErrnoWrapper[]
+    else:
+      var errno {.importc, header: "<errno.h>".}: cint ## error variable
 proc strerror(errnum: cint): cstring {.importc, header: "<string.h>".}
 
-proc c_remove(filename: CString): cint {.
+proc c_remove(filename: cstring): cint {.
   importc: "remove", header: "<stdio.h>".}
-proc c_rename(oldname, newname: CString): cint {.
+proc c_rename(oldname, newname: cstring): cint {.
   importc: "rename", header: "<stdio.h>".}
 
-proc c_system(cmd: CString): cint {.importc: "system", header: "<stdlib.h>".}
-proc c_getenv(env: CString): CString {.importc: "getenv", header: "<stdlib.h>".}
-proc c_putenv(env: CString): cint {.importc: "putenv", header: "<stdlib.h>".}
+proc c_system(cmd: cstring): cint {.importc: "system", header: "<stdlib.h>".}
+proc c_getenv(env: cstring): cstring {.importc: "getenv", header: "<stdlib.h>".}
+proc c_putenv(env: cstring): cint {.importc: "putenv", header: "<stdlib.h>".}
 
 {.pop}

@@ -93,7 +93,7 @@ proc normalize*(s: string): string {.noSideEffect, procvar,
   var j = 0
   for i in 0..len(s) - 1:
     if s[i] in {'A'..'Z'}:
-      result[j] = Chr(Ord(s[i]) + (Ord('a') - Ord('A')))
+      result[j] = chr(ord(s[i]) + (ord('a') - ord('A')))
       inc j
     elif s[i] != '_':
       result[j] = s[i]
@@ -1022,8 +1022,8 @@ proc editDistance*(a, b: string): int {.noSideEffect,
 
 # floating point formating:
 
-proc c_sprintf(buf, frmt: CString) {.nodecl, importc: "sprintf", varargs,
-                                     noSideEffect.}
+proc c_sprintf(buf, frmt: CString) {.header: "<stdio.h>", importc: "sprintf",
+                                     varargs, noSideEffect.}
 
 type
   TFloatFormat* = enum ## the different modes of floating point formating

@@ -158,7 +158,13 @@ proc `intVal=`*(n: PNimrodNode, val: biggestInt) {.magic: "NSetIntVal".}
 proc `floatVal=`*(n: PNimrodNode, val: biggestFloat) {.magic: "NSetFloatVal".}
 proc `symbol=`*(n: PNimrodNode, val: PNimrodSymbol) {.magic: "NSetSymbol".}
 proc `ident=`*(n: PNimrodNode, val: TNimrodIdent) {.magic: "NSetIdent".}
-proc `typ=`*(n: PNimrodNode, typ: typedesc) {.magic: "NSetType".}
+#proc `typ=`*(n: PNimrodNode, typ: typedesc) {.magic: "NSetType".}
+# this is not sound! Unfortunately forbidding 'typ=' is not enough, as you
+# can easily do:
+#   let bracket = semCheck([1, 2])
+#   let fake = semCheck(2.0)
+#   bracket[0] = fake  # constructs a mixed array with ints and floats!
+
 proc `strVal=`*(n: PNimrodNode, val: string) {.magic: "NSetStrVal".}
 
 proc newNimNode*(kind: TNimrodNodeKind,

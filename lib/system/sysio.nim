@@ -45,9 +45,21 @@ proc setvbuf(stream: TFile, buf: pointer, typ, size: cint): cint {.
 proc write(f: TFile, c: cstring) = fputs(c, f)
 {.pop.}
 
-var
-  IOFBF {.importc: "_IOFBF", nodecl.}: cint
-  IONBF {.importc: "_IONBF", nodecl.}: cint
+when NoFakeVars:
+  when defined(windows):
+    const
+      IOFBF = cint(0)
+      IONBF = cint(4)
+  elif defined(macosx):
+    const
+      IOFBF = cint(0)
+      IONBF = cint(2)
+  else:
+    {.error: "IOFBF not ported to your platform".}
+else:
+  var
+    IOFBF {.importc: "_IOFBF", nodecl.}: cint
+    IONBF {.importc: "_IONBF", nodecl.}: cint
 
 const
   buf_size = 4000
@@ -149,7 +161,7 @@ proc writeFile(filename, content: string) =
   finally:
     close(f)
 
-proc EndOfFile(f: TFile): bool =
+proc endOfFile(f: TFile): bool =
   # do not blame me; blame the ANSI C standard this is so brain-damaged
   var c = fgetc(f)
   ungetc(c, f)
@@ -194,9 +206,9 @@ const
     # should not be translated.
 
 
-proc Open(f: var TFile, filename: string,
+proc open(f: var TFile, filename: string,
           mode: TFileMode = fmRead,
-          bufSize: int = -1): Bool =
+          bufSize: int = -1): bool =
   var p: pointer = fopen(filename, FormatOpen[mode])
   result = (p != nil)
   f = cast[TFile](p)
@@ -223,10 +235,10 @@ proc fwrite(buf: Pointer, size, n: int, f: TFile): int {.
 proc readBuffer(f: TFile, buffer: pointer, len: int): int =
   result = fread(buffer, 1, len, f)
 
-proc ReadBytes(f: TFile, a: var openarray[int8], start, len: int): int =
+proc readBytes(f: TFile, a: var openarray[int8], start, len: int): int =
   result = readBuffer(f, addr(a[start]), len)
 
-proc ReadChars(f: TFile, a: var openarray[char], start, len: int): int =
+proc readChars(f: TFile, a: var openarray[char], start, len: int): int =
   result = readBuffer(f, addr(a[start]), len)
 
 {.push stackTrace:off, profiler:off.}

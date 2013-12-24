@@ -13,7 +13,7 @@ import
   strutils, lists, intsets, options, lexer, ast, astalgo, trees, treetab,
   wordrecg, 
   ropes, msgs, platform, os, condsyms, idents, renderer, types, extccomp, math, 
-  magicsys, nversion, nimsets, parser, times, passes, rodread, evals
+  magicsys, nversion, nimsets, parser, times, passes, rodread, vmdef
 
 type 
   TOptionEntry* = object of lists.TListEntry # entries to put on a

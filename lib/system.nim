@@ -186,7 +186,10 @@ proc `..`*[T](b: T): TSlice[T] {.noSideEffect, inline.} =
 when not defined(niminheritable):
   {.pragma: inheritable.}
 
-when not defined(JS) and not defined(NimrodVM):
+const NoFakeVars* = defined(NimrodVM) ## true if the backend doesn't support \
+  ## "fake variables" like 'var EBADF {.importc.}: cint'.
+
+when not defined(JS):
   type
     TGenericSeq {.compilerproc, pure, inheritable.} = object
       len, reserved: int
@@ -195,7 +198,8 @@ when not defined(JS) and not defined(NimrodVM):
     NimStringDesc {.compilerproc, final.} = object of TGenericSeq
       data: array[0..100_000_000, char]
     NimString = ptr NimStringDesc
-    
+
+when not defined(JS) and not defined(NimrodVM):
   template space(s: PGenericSeq): int {.dirty.} =
     s.reserved and not seqShallowFlag
 

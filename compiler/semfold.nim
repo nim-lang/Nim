@@ -229,6 +229,33 @@ discard """
   mShrI, mShrI64, mAddF64, mSubF64, mMulF64, mDivF64, mMaxF64, mMinF64
 """
 
+proc evalIs(n, a: PNode): PNode =
+  internalAssert a.kind == nkSym and a.sym.kind == skType
+  internalAssert n.sonsLen == 3 and
+    n[2].kind in {nkStrLit..nkTripleStrLit, nkType}
+  
+  let t1 = a.sym.typ
+
+  if n[2].kind in {nkStrLit..nkTripleStrLit}:
+    case n[2].strVal.normalize
+    of "closure":
+      let t = skipTypes(t1, abstractRange)
+      result = newIntNode(nkIntLit, ord(t.kind == tyProc and
+                                        t.callConv == ccClosure and 
+                                        tfIterator notin t.flags))
+    of "iterator":
+      let t = skipTypes(t1, abstractRange)
+      result = newIntNode(nkIntLit, ord(t.kind == tyProc and
+                                        t.callConv == ccClosure and 
+                                        tfIterator in t.flags))
+  else:
+    # XXX semexprs.isOpImpl is slightly different and requires a context. yay.
+    let t2 = n[2].typ
+    var match = if t2.kind == tyTypeClass: matchTypeClass(t2, t1)
+                else: sameType(t1, t2)
+    result = newIntNode(nkIntLit, ord(match))
+  result.typ = n.typ
+
 proc evalOp(m: TMagic, n, a, b, c: PNode): PNode = 
   # b and c may be nil
   result = nil
@@ -372,7 +399,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
      mAppendStrStr, mAppendSeqElem, mSetLengthStr, mSetLengthSeq, 
      mParseExprToAst, mParseStmtToAst, mExpandToAst, mTypeTrait,
      mNLen..mNError, mEqRef, mSlurp, mStaticExec, mNGenSym: 
-    nil
+    discard
   of mRand:
     result = newIntNodeT(math.random(a.getInt.int), n)
   else: InternalError(a.info, "evalOp(" & $m & ')')
@@ -446,8 +473,6 @@ proc magicCall(m: PSym, n: PNode): PNode =
     if sonsLen(n) > 3: 
       c = getConstExpr(m, n.sons[3])
       if c == nil: return 
-  else: 
-    b = nil
   result = evalOp(s.magic, n, a, b, c)
   
 proc getAppType(n: PNode): PNode =
@@ -485,7 +510,7 @@ proc foldConv*(n, a: PNode; check = false): PNode =
       result = a
       result.typ = n.typ
   of tyOpenArray, tyVarargs, tyProc: 
-    nil
+    discard
   else: 
     result = a
     result.typ = n.typ
@@ -523,7 +548,7 @@ proc foldArrayAccess(m: PSym, n: PNode): PNode =
       nil
     else: 
       LocalError(n.info, errIndexOutOfBounds)
-  else: nil
+  else: discard
   
 proc foldFieldAccess(m: PSym, n: PNode): PNode =
   # a real field access; proc calls have already been transformed
@@ -592,7 +617,7 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
         result.typ = s.typ.sons[0]
       else:
         result = newSymNodeTypeDesc(s, n.info)
-    else: nil
+    else: discard
   of nkCharLit..nkNilLit: 
     result = copyNode(n)
   of nkIfExpr: 
@@ -604,7 +629,8 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
     try:
       case s.magic
       of mNone:
-        return # XXX: if it has no sideEffect, it should be evaluated
+        # If it has no sideEffect, it should be evaluated. But not here.
+        return
       of mSizeOf:
         var a = n.sons[1]
         if computeSize(a.typ) < 0: 
@@ -644,6 +670,10 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
         result = newStrNodeT(renderTree(n[1], {renderNoComments}), n)
       of mConStrStr:
         result = foldConStrStr(m, n)
+      of mIs:
+        let a = getConstExpr(m, n[1])
+        if a != nil and a.kind == nkSym and a.sym.kind == skType:
+          result = evalIs(n, a)
       else:
         result = magicCall(m, n)
     except EOverflow: 
@@ -727,4 +757,4 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
   of nkBracketExpr: result = foldArrayAccess(m, n)
   of nkDotExpr: result = foldFieldAccess(m, n)
   else:
-    nil
+    discard

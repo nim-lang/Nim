@@ -1,6 +1,7 @@
 discard """
   line: 24
   errormsg: "usage of 'disallowIf' is a user-defined error"
+  disabled: true
 """
 
 template optZero{x+x}(x: int): int = x*3
@@ -25,4 +26,4 @@ if s[0] != "hi":
   echo "do it"
   echo "more branches"
 else:
-  nil
+  discard
