@@ -1,8 +1,10 @@
 version 0.9.4
 =============
 
-- new VM:
-  - implement overflow checking
+- make new templating symbol binding rules work
+- document new templating symbol binding rules
+- convert all with "nimrod pretty"
+- make '--implicitStatic:on' the default
 
 - special rule for ``[]=``
 - ``=`` should be overloadable; requires specialization for ``=``; general
@@ -15,6 +17,8 @@ version 0.9.4
 Bugs
 ====
 
+- new VM:
+  - implement overflow checking
 - bug: 'type T = ref T' not recognized as illegal recursion
 - bug: type conversions concerning proc types are weird
 - compilation of niminst takes way too long. looks like a regression

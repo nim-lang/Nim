@@ -476,6 +476,8 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     SymTabReplace(c.currentScope.symbols, proto, s)
   if n.sons[patternPos].kind != nkEmpty:
     c.patterns.add(s)
+  #if s.name.s == "move":
+  #  echo renderTree(result)
 
 proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
   template templToExpand(s: expr): expr =
@@ -602,5 +604,5 @@ proc semPattern(c: PContext, n: PNode): PNode =
     if result.len == 1:
       result = result.sons[0]
     elif result.len == 0:
-      LocalError(n.info, errInvalidExpression)
+      localError(n.info, errInvalidExpression)
   closeScope(c)

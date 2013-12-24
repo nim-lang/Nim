@@ -233,8 +233,11 @@ proc QualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym =
         if result == nil and checkUndeclared in flags: 
           LocalError(n.sons[1].info, errUndeclaredIdentifier, ident.s)
           result = errorSym(c, n.sons[1])
-      elif checkUndeclared in flags:
-        LocalError(n.sons[1].info, errIdentifierExpected, 
+      elif n.sons[1].kind == nkSym:
+        result = n.sons[1].sym
+      elif checkUndeclared in flags and
+           n.sons[1].kind notin {nkOpenSymChoice, nkClosedSymChoice}:
+        LocalError(n.sons[1].info, errIdentifierExpected,
                    renderTree(n.sons[1]))
         result = errorSym(c, n.sons[1])
   else:
