@@ -1268,12 +1268,13 @@ exclude ``nil`` as a valid value with the `not nil`:idx: annotation:
   # compiler catches this:
   p(nil)
   
-  # but not this:
+  # and also this:
   var x: PObject
   p(x)
 
-As shown in the example this is merely an annotation for documentation purposes;
-for now the compiler can only catch the most trivial type violations.
+The compiler ensures that every code path initializes variables which contain
+not nilable pointers. The details of this analysis are still to be specified
+here.
 
 
 Procedural type
@@ -1504,8 +1505,8 @@ The ``void`` type is particularly useful for generic code:
     else:
       p(x)
 
-  proc intProc(x: int) = nil
-  proc emptyProc() = nil
+  proc intProc(x: int) = discard
+  proc emptyProc() = discard
 
   callProc[int](intProc, 12)
   callProc[void](emptyProc)
@@ -1767,6 +1768,15 @@ been declared with the `discardable`:idx: pragma:
     
   p(3, 4) # now valid
 
+An empty ``discard`` statement is often used as a null statement:
+
+.. code-block:: nimrod
+  proc classify(s: string) =
+    case s[0]
+    of SymChars, '_': echo "an identifier"
+    of '0'..'9': echo "a number"
+    else: discard
+
 
 Var statement
 -------------
@@ -1816,7 +1826,7 @@ If a proc is annotated with the ``noinit`` pragma this refers to its implicit
 ``result`` variable:
 
 .. code-block:: nimrod
-  proc returnUndefinedValue: int {.noinit.} = nil
+  proc returnUndefinedValue: int {.noinit.} = discard
 
 
 The implicit initialization can be also prevented by the `requiresInit`:idx:
@@ -3207,7 +3217,7 @@ Nimrod also allows for type classes and regular types to be specified
 as `type constraints`:idx: of the generic type parameter:
 
 .. code-block:: nimrod
-  proc onlyIntOrString[T: int|string](x, y: T) = nil
+  proc onlyIntOrString[T: int|string](x, y: T) = discard
   
   onlyIntOrString(450, 616) # valid
   onlyIntOrString(5.0, 0.0) # type mismatch
@@ -3782,7 +3792,7 @@ regular expressions:
   macro case_token(n: stmt): stmt =
     # creates a lexical analyzer from regular expressions
     # ... (implementation is an exercise for the reader :-)
-    nil
+    discard
 
   case_token: # this colon tells the parser it is a macro statement
   of r"[A-Za-z_]+[A-Za-z_0-9]*":
@@ -3811,17 +3821,17 @@ Whole routines (procs, iterators etc.) can also be passed to a template or
 a macro via the pragma notation: 
 
 .. code-block:: nimrod
-  template m(s: stmt) = nil
+  template m(s: stmt) = discard
 
-  proc p() {.m.} = nil
+  proc p() {.m.} = discard
 
 This is a simple syntactic transformation into:
 
 .. code-block:: nimrod
-  template m(s: stmt) = nil
+  template m(s: stmt) = discard
 
   m:
-    proc p() = nil
+    proc p() = discard
 
 
 Special Types
@@ -4142,9 +4152,9 @@ all the arguments, but also the matched operators in reverse polish notation:
     TMatrix = object
       dummy: int
 
-  proc `*`(a, b: TMatrix): TMatrix = nil
-  proc `+`(a, b: TMatrix): TMatrix = nil
-  proc `-`(a, b: TMatrix): TMatrix = nil
+  proc `*`(a, b: TMatrix): TMatrix = discard
+  proc `+`(a, b: TMatrix): TMatrix = discard
+  proc `-`(a, b: TMatrix): TMatrix = discard
   proc `$`(a: TMatrix): string = result = $a.dummy
   proc mat21(): TMatrix =
     result.dummy = 21

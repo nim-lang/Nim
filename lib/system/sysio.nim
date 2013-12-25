@@ -106,7 +106,7 @@ proc write(f: TFile, b: bool) =
 proc write(f: TFile, r: float32) = fprintf(f, "%g", r)
 proc write(f: TFile, r: biggestFloat) = fprintf(f, "%g", r)
 
-proc write(f: TFile, c: Char) = putc(c, f)
+proc write(f: TFile, c: char) = putc(c, f)
 proc write(f: TFile, a: varargs[string, `$`]) =
   for x in items(a): write(f, x)
 
@@ -184,7 +184,7 @@ when defined(windows) and not defined(useWinAnsi):
   proc wfreopen(filename, mode: widecstring, stream: TFile): TFile {.
     importc: "_wfreopen", nodecl.}
 
-  proc fopen(filename, mode: CString): pointer =
+  proc fopen(filename, mode: cstring): pointer =
     var f = newWideCString(filename)
     var m = newWideCString(mode)
     result = wfopen(f, m)
@@ -195,7 +195,7 @@ when defined(windows) and not defined(useWinAnsi):
     result = wfreopen(f, m, stream)
 
 else:
-  proc fopen(filename, mode: CString): pointer {.importc: "fopen", noDecl.}
+  proc fopen(filename, mode: cstring): pointer {.importc: "fopen", noDecl.}
   proc freopen(filename, mode: cstring, stream: TFile): TFile {.
     importc: "freopen", nodecl.}
 
@@ -229,7 +229,7 @@ proc open(f: var TFile, filehandle: TFileHandle, mode: TFileMode): bool =
   f = fdopen(filehandle, FormatOpen[mode])
   result = f != nil
 
-proc fwrite(buf: Pointer, size, n: int, f: TFile): int {.
+proc fwrite(buf: pointer, size, n: int, f: TFile): int {.
   importc: "fwrite", noDecl.}
 
 proc readBuffer(f: TFile, buffer: pointer, len: int): int =
