@@ -75,6 +75,7 @@ type
     semExpr*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}
     semTryExpr*: proc (c: PContext, n: PNode,flags: TExprFlags = {},
                        bufferErrors = false): PNode {.nimcall.}
+    semTryConstExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.}
     semOperand*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}
     semConstBoolExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.} # XXX bite the bullet
     semOverloadedCall*: proc (c: PContext, n, nOrig: PNode,
@@ -217,11 +218,15 @@ proc makeAndType*(c: PContext, t1, t2: PType): PType =
   result = newTypeS(tyAnd, c)
   result.sons = @[t1, t2]
   result.flags.incl tfHasMeta
+  if tfHasStatic in t1.flags or tfHasStatic in t2.flags:
+    result.flags.incl tfHasStatic
 
 proc makeOrType*(c: PContext, t1, t2: PType): PType =
   result = newTypeS(tyOr, c)
   result.sons = @[t1, t2]
   result.flags.incl tfHasMeta
+  if tfHasStatic in t1.flags or tfHasStatic in t2.flags:
+    result.flags.incl tfHasStatic
 
 proc makeNotType*(c: PContext, t1: PType): PType =
   result = newTypeS(tyNot, c)

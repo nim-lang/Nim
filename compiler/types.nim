@@ -434,10 +434,10 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     add(result, ']')
   of tyTypeDesc:
     if t.len == 0: result = "typedesc"
-    else: result = "typedesc[" & typeToString(t) & "]"
+    else: result = "typedesc[" & typeToString(t.sons[0]) & "]"
   of tyStatic:
     InternalAssert t.len > 0
-    result = "static[" & typeToString(t) & "]"
+    result = "static[" & typeToString(t.sons[0]) & "]"
   of tyTypeClass:
     InternalAssert t.sym != nil and t.sym.owner != nil
     return t.sym.owner.name.s
@@ -450,8 +450,8 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   of tyNot:
     result = "not " & typeToString(t.sons[0])
   of tyExpr:
-    if t.len == 0: result = "expr"
-    else: result = "expr[" & typeToString(t) & "]"
+    InternalAssert t.len == 0
+    result = "expr"
   of tyArray: 
     if t.sons[0].kind == tyRange: 
       result = "array[" & rangeToStr(t.sons[0].n) & ", " &

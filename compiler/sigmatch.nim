@@ -753,6 +753,14 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
       result = isGeneric
     else:
       result = typeRel(c, x, a) # check if it fits
+  
+  of tyStatic:
+    if a.kind == tyStatic:
+      result = typeRel(c, f.lastSon, a.lastSon)
+      if result != isNone: put(c.bindings, f, a)
+    else:
+      result = isNone
+
   of tyTypeDesc:
     var prev = PType(idTableGet(c.bindings, f))
     if prev == nil:
@@ -904,40 +912,28 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
 proc ParamTypesMatchAux(m: var TCandidate, f, argType: PType,
                         argSemantized, argOrig: PNode): PNode =
   var
-    r: TTypeRelation
-    arg = argSemantized
-
-  let
-    c = m.c
-    a0 = if c.InTypeClass > 0: argType.skipTypes({tyTypeDesc})
-         else: argType
-    a = if a0 != nil: a0.skipTypes({tyStatic}) else: a0
     fMaybeStatic = f.skipTypes({tyDistinct})
+    arg = argSemantized
+    c = m.c
+    argType = argType
 
+  if tfHasStatic in fMaybeStatic.flags:
+    # XXX: When implicit statics are the default
+    # this will be done earlier - we just have to
+    # make sure that static types enter here
+    var evaluated = c.semTryConstExpr(c, arg)
+    if evaluated != nil:
+      arg.typ = newTypeS(tyStatic, c)
+      arg.typ.sons = @[evaluated.typ]
+      arg.typ.n = evaluated
+      argType = arg.typ
+  
+  var
+    r: TTypeRelation
+    a = if c.InTypeClass > 0: argType.skipTypes({tyTypeDesc})
+        else: argType
+ 
   case fMaybeStatic.kind
-  of tyStatic:
-    if a.kind == tyStatic:
-      InternalAssert a.len > 0
-      r = typeRel(m, f.lastSon, a.lastSon)
-    else:
-      r = typeRel(m, fMaybeStatic, a)
-      if r != isNone:
-        # XXX: Ideally, this should happen much earlier somewhere near 
-        # semOpAux, but to do that, we need to be able to query the 
-        # overload set to determine whether compile-time value is expected
-        # for the param before entering the full-blown sigmatch algorithm.
-        # This is related to the immediate pragma since querying the
-        # overload set could help there too.
-        var evaluated = c.semConstExpr(c, arg)
-        if evaluated != nil:
-          r = isGeneric
-          arg.typ = newTypeS(tyStatic, c)
-          arg.typ.sons = @[evaluated.typ]
-          arg.typ.n = evaluated
-        
-    if r == isGeneric:
-      put(m.bindings, f, arg.typ)
-
   of tyTypeClass, tyParametricTypeClass:
     if fMaybeStatic.n != nil:
       let match = matchUserTypeClass(c, m, arg, fMaybeStatic, a)
@@ -955,7 +951,7 @@ proc ParamTypesMatchAux(m: var TCandidate, f, argType: PType,
     r = typeRel(m, f, a)
 
   case r
-  of isConvertible: 
+  of isConvertible:
     inc(m.convMatches)
     result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
   of isIntConv:

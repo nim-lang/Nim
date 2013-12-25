@@ -399,6 +399,7 @@ type
     tfHasMeta,        # type has "typedesc" or "expr" somewhere; or uses '|'
     tfHasGCedMem,     # type contains GC'ed memory
     tfGenericTypeParam
+    tfHasStatic
 
   TTypeFlags* = set[TTypeFlag]
 
