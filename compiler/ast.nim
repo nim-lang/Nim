@@ -339,6 +339,7 @@ type
     tyTypeClass
     tyParametricTypeClass # structured similarly to tyGenericInst
                           # lastSon is the body of the type class
+    tyBuiltInTypeClass
     tyAnd
     tyOr
     tyNot
@@ -349,7 +350,8 @@ const
   tyPureObject* = tyTuple
   GcTypeKinds* = {tyRef, tySequence, tyString}
   tyError* = tyProxy # as an errornous node should match everything
-  tyTypeClasses* = {tyTypeClass, tyParametricTypeClass, tyAnd, tyOr, tyNot, tyAnything}
+  tyTypeClasses* = {tyTypeClass, tyBuiltInTypeClass,
+                    tyParametricTypeClass, tyAnd, tyOr, tyNot, tyAnything}
 
 type
   TTypeKinds* = set[TTypeKind]
@@ -384,9 +386,6 @@ type
                       # proc foo(T: typedesc, list: seq[T]): var T
     tfRetType,        # marks return types in proc (used to detect type classes 
                       # used as return types for return type inference)
-    tfAll,            # type class requires all constraints to be met (default)
-    tfAny,            # type class requires any constraint to be met
-    tfNot,            # type class with a negative check
     tfCapturesEnv,    # whether proc really captures some environment
     tfByCopy,         # pass object/tuple by copy (C backend)
     tfByRef,          # pass object/tuple by reference (C backend)
@@ -399,6 +398,7 @@ type
     tfHasShared,      # type constains a "shared" constraint modifier somewhere
     tfHasMeta,        # type has "typedesc" or "expr" somewhere; or uses '|'
     tfHasGCedMem,     # type contains GC'ed memory
+    tfGenericTypeParam
 
   TTypeFlags* = set[TTypeFlag]
 
