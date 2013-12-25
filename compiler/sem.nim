@@ -146,28 +146,17 @@ proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
                         allowed: TSymFlags): PSym
 proc semStmtScope(c: PContext, n: PNode): PNode
 
-proc ParamsTypeCheck(c: PContext, typ: PType) {.inline.} =
+proc paramsTypeCheck(c: PContext, typ: PType) {.inline.} =
   if not typeAllowed(typ, skConst):
-    LocalError(typ.n.info, errXisNoType, typeToString(typ))
+    localError(typ.n.info, errXisNoType, typeToString(typ))
 
 proc expectMacroOrTemplateCall(c: PContext, n: PNode): PSym
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym, semCheck = true): PNode
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode
 proc semWhen(c: PContext, n: PNode, semCheck: bool = true): PNode
-proc IsOpImpl(c: PContext, n: PNode): PNode
+proc isOpImpl(c: PContext, n: PNode): PNode
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   semCheck: bool = true): PNode
-
-when false:
-  proc symFromType(t: PType, info: TLineInfo): PSym =
-    if t.sym != nil: return t.sym
-    result = newSym(skType, getIdent"AnonType", t.owner, info)
-    result.flags.incl sfAnon
-    result.typ = t
-
-  proc symNodeFromType(c: PContext, t: PType, info: TLineInfo): PNode =
-    result = newSymNode(symFromType(t, info), info)
-    result.typ = makeTypeDesc(c, t)
 
 when false:
   proc createEvalContext(c: PContext, mode: TEvalMode): PEvalContext =
@@ -183,12 +172,6 @@ when false:
 
     result.handleIsOperator = proc (n: PNode): PNode =
       result = IsOpImpl(c, n)
-
-  proc evalConstExpr(c: PContext, module: PSym, e: PNode): PNode = 
-    result = evalConstExprAux(c.createEvalContext(emConst), module, nil, e)
-
-  proc evalStaticExpr(c: PContext, module: PSym, e: PNode, prc: PSym): PNode = 
-    result = evalConstExprAux(c.createEvalContext(emStatic), module, prc, e)
 
 proc semConstExpr(c: PContext, n: PNode): PNode =
   var e = semExprWithType(c, n)
@@ -226,7 +209,9 @@ include hlo, seminst, semcall
 proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode = 
   inc(evalTemplateCounter)
   if evalTemplateCounter > 100:
-    GlobalError(s.info, errTemplateInstantiationTooNested)
+    globalError(s.info, errTemplateInstantiationTooNested)
+  let oldFriend = c.friendModule
+  c.friendModule = s.owner.getModule
 
   result = n
   if s.typ.sons[0] == nil:
@@ -250,6 +235,7 @@ proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode =
       result = fitNode(c, s.typ.sons[0], result)
       #GlobalError(s.info, errInvalidParamKindX, typeToString(s.typ.sons[0]))
   dec(evalTemplateCounter)
+  c.friendModule = oldFriend
 
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym, 
                   semCheck: bool = true): PNode = 
@@ -316,7 +302,7 @@ proc myOpenCached(module: PSym, rd: PRodReader): PPassContext =
   result = myOpen(module)
   for m in items(rd.methods): methodDef(m, true)
 
-proc SemStmtAndGenerateGenerics(c: PContext, n: PNode): PNode = 
+proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode = 
   result = semStmt(c, n)
   # BUGFIX: process newly generated generics here, not at the end!
   if c.lastGenericIdx < c.generics.len:
@@ -331,7 +317,7 @@ proc SemStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
     result = buildEchoStmt(c, result)
   result = transformStmt(c.module, result)
     
-proc RecoverContext(c: PContext) = 
+proc recoverContext(c: PContext) = 
   # clean up in case of a semantic error: We clean up the stacks, etc. This is
   # faster than wrapping every stack operation in a 'try finally' block and 
   # requires far less code.

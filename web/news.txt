@@ -30,6 +30,10 @@ Changes affecting backwards compatibility
 - ``os.parentDir`` now returns "" if there is no parent dir.
 - In CGI scripts stacktraces are shown user only if cgi.setStackTraceStdout
   is used.
+- The symbol binding rules for clean templates changed: ``bind`` for any
+  symbol that's not a parameter is now the default. ``mixin`` can be used
+  to require instantiation scope for a symbol.
+
 
 Compiler Additions
 ------------------
@@ -60,6 +64,7 @@ Language Additions
 - Added ``delegator pragma`` for handling calls to missing procs and fields at
   compile-time.
 - Support for user-defined type classes has been added.
+- Exported templates are allowed to access hidden fields.
 
 
 Tools improvements
