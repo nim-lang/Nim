@@ -93,8 +93,10 @@ proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
     var typeParams = callee.ast[genericParamsPos]
     for i in 1..min(sonsLen(typeParams), sonsLen(binding)-1):
       var formalTypeParam = typeParams.sons[i-1].typ
-      #debug(formalTypeParam)
-      put(c.bindings, formalTypeParam, binding[i].typ)
+      var bound = binding[i].typ
+      if formalTypeParam.kind != tyTypeDesc:
+        bound = bound.skipTypes({tyTypeDesc})
+      put(c.bindings, formalTypeParam, bound)
 
 proc newCandidate*(ctx: PContext, callee: PSym,
                    binding: PNode, calleeScope = -1): TCandidate =
