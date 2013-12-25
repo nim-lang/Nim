@@ -213,6 +213,21 @@ proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let sym = newSym(skType, idAnon, getCurrOwner(), info).linkTo(typedesc)
   return newSymNode(sym, info)
 
+proc makeAndType*(c: PContext, t1, t2: PType): PType =
+  result = newTypeS(tyAnd, c)
+  result.sons = @[t1, t2]
+  result.flags.incl tfHasMeta
+
+proc makeOrType*(c: PContext, t1, t2: PType): PType =
+  result = newTypeS(tyOr, c)
+  result.sons = @[t1, t2]
+  result.flags.incl tfHasMeta
+
+proc makeNotType*(c: PContext, t1: PType): PType =
+  result = newTypeS(tyNot, c)
+  result.sons = @[t1]
+  result.flags.incl tfHasMeta
+
 proc newTypeS(kind: TTypeKind, c: PContext): PType = 
   result = newType(kind, getCurrOwner())
 

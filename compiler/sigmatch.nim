@@ -370,10 +370,6 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   of tyNil: result = f.allowsNil
   else: nil
 
-proc matchTypeClass(c: var TCandidate, f, a: PType): TTypeRelation =
-  result = if matchTypeClass(c.bindings, f, a): isGeneric
-           else: isNone
-
 proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
   let
     a0 = firstOrd(a)
@@ -406,7 +402,7 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
   # order to give preferrence to the most specific one:
   #
   # seq[seq[any]] is a strict subset of seq[any] and hence more specific.
-  
+
   result = isNone
   assert(f != nil)
   assert(a != nil)
@@ -462,10 +458,10 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
   else: nil
 
   case f.kind
-  of tyEnum: 
+  of tyEnum:
     if a.kind == f.kind and sameEnumTypes(f, a): result = isEqual
     elif sameEnumTypes(f, skipTypes(a, {tyRange})): result = isSubtype
-  of tyBool, tyChar: 
+  of tyBool, tyChar:
     if a.kind == f.kind: result = isEqual
     elif skipTypes(a, {tyRange}).kind == f.kind: result = isSubtype
   of tyRange:
@@ -706,7 +702,20 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
       return isGeneric
     else:
       return typeRel(c, prev, a)
-    
+
+  of tyBuiltInTypeClass:
+    var prev = PType(idTableGet(c.bindings, f))
+    if prev == nil:
+      let targetKind = f.sons[0].kind
+      if targetKind == a.skipTypes({tyRange}).kind or
+         (targetKind in {tyProc, tyPointer} and a.kind == tyNil):
+        put(c.bindings, f, a)
+        return isGeneric
+      else:
+        return isNone
+    else:
+      result = typeRel(c, prev, a)
+
   of tyGenericParam, tyTypeClass:
     var x = PType(idTableGet(c.bindings, f))
     if x == nil:
@@ -727,11 +736,11 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
         else:
           result = isNone
       else:
-        if a.kind == tyTypeClass:
-          result = isGeneric
+        if f.sonsLen > 0:
+          result = typeRel(c, f.lastSon, a)
         else:
-          result = matchTypeClass(c, f, a)
-        
+          result = isGeneric
+
       if result == isGeneric:
         var concrete = concreteType(c, a)
         if concrete == nil:
@@ -751,7 +760,7 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
         if f.sonsLen == 0:
           result = isGeneric
         else:
-          result = matchTypeClass(c, f, a.sons[0])
+          result = typeRel(c, f, a.sons[0])
         if result == isGeneric:
           put(c.bindings, f, a)
       else:
@@ -911,9 +920,8 @@ proc ParamTypesMatchAux(m: var TCandidate, f, argType: PType,
       InternalAssert a.len > 0
       r = typeRel(m, f.lastSon, a.lastSon)
     else:
-      let match = matchTypeClass(m.bindings, fMaybeStatic, a)
-      if not match: r = isNone
-      else:
+      r = typeRel(m, fMaybeStatic, a)
+      if r != isNone:
         # XXX: Ideally, this should happen much earlier somewhere near 
         # semOpAux, but to do that, we need to be able to query the 
         # overload set to determine whether compile-time value is expected

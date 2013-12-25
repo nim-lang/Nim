@@ -1163,7 +1163,7 @@ proc semAsgn(c: PContext, n: PNode): PNode =
     if lhsIsResult:
       n.typ = EnforceVoidContext
       if lhs.sym.typ.kind == tyGenericParam:
-        if matchTypeClass(lhs.typ, rhs.typ):
+        if cmpTypes(c, lhs.typ, rhs.typ) == isGeneric:
           InternalAssert c.p.resultSym != nil
           lhs.typ = rhs.typ
           c.p.resultSym.typ = rhs.typ

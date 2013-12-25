@@ -409,18 +409,8 @@ const
     "uint", "uint8", "uint16", "uint32", "uint64",
     "bignum", "const ",
     "!", "varargs[$1]", "iter[$1]", "Error Type", "TypeClass",
-    "ParametricTypeClass", "and", "or", "not", "any", "static"]
-
-proc consToStr(t: PType): string =
-  if t.len > 0: result = t.typeToString
-  else: result = typeToStr[t.kind].strip
-
-proc constraintsToStr(t: PType): string =
-  let sep = if tfAny in t.flags: " or " else: " and "
-  result = ""
-  for i in countup(0, t.len - 1):
-    if i > 0: result.add(sep)
-    result.add(t.sons[i].consToStr)
+    "ParametricTypeClass", "BuiltInTypeClass",
+    "and", "or", "not", "any", "static"]
 
 proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   var t = typ
@@ -444,19 +434,24 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     add(result, ']')
   of tyTypeDesc:
     if t.len == 0: result = "typedesc"
-    else: result = "typedesc[" & constraintsToStr(t) & "]"
+    else: result = "typedesc[" & typeToString(t) & "]"
   of tyStatic:
     InternalAssert t.len > 0
-    result = "static[" & constraintsToStr(t) & "]"
+    result = "static[" & typeToString(t) & "]"
   of tyTypeClass:
-    if t.n != nil: return t.sym.owner.name.s
-    case t.len
-    of 0: result = "typeclass[]"
-    of 1: result = "typeclass[" & consToStr(t.sons[0]) & "]"
-    else: result = constraintsToStr(t)
+    InternalAssert t.sym != nil and t.sym.owner != nil
+    return t.sym.owner.name.s
+  of tyBuiltInTypeClass:
+    return "TypeClass"
+  of tyAnd:
+    result = typeToString(t.sons[0]) & " and " & typeToString(t.sons[1])
+  of tyOr:
+    result = typeToString(t.sons[0]) & " and " & typeToString(t.sons[1])
+  of tyNot:
+    result = "not " & typeToString(t.sons[0])
   of tyExpr:
     if t.len == 0: result = "expr"
-    else: result = "expr[" & constraintsToStr(t) & "]"
+    else: result = "expr[" & typeToString(t) & "]"
   of tyArray: 
     if t.sons[0].kind == tyRange: 
       result = "array[" & rangeToStr(t.sons[0].n) & ", " &
@@ -977,42 +972,6 @@ proc isGenericAlias*(t: PType): bool =
 
 proc skipGenericAlias*(t: PType): PType =
   return if t.isGenericAlias: t.lastSon else: t
-
-proc matchTypeClass*(bindings: var TIdTable, typeClass, t: PType): bool =
-  for i in countup(0, typeClass.sonsLen - 1):
-    let req = typeClass.sons[i]
-    var match = req.kind == skipTypes(t, {tyRange, tyGenericInst}).kind
-
-    if not match:
-      case req.kind
-      of tyGenericBody:
-        if t.kind == tyGenericInst and t.sons[0] == req:
-          match = true
-          IdTablePut(bindings, typeClass, t)
-      of tyTypeClass:
-        match = matchTypeClass(bindings, req, t)
-      elif t.kind == tyTypeClass:
-        match = matchTypeClass(bindings, t, req)
-          
-    elif t.kind in {tyObject} and req.len != 0:
-      # empty 'object' is fine as constraint in a type class
-      match = sameType(t, req)
-
-    if tfAny in typeClass.flags:
-      if match: return true
-    else:
-      if not match: return false
-
-  # if the loop finished without returning, either all constraints matched
-  # or none of them matched.
-  result = if tfAny in typeClass.flags: false else: true
-  if result == true:
-    IdTablePut(bindings, typeClass, t)
-
-proc matchTypeClass*(typeClass, typ: PType): bool =
-  var bindings: TIdTable
-  initIdTable(bindings)
-  result = matchTypeClass(bindings, typeClass, typ)
 
 proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind,
                     flags: TTypeAllowedFlags = {}): bool =
