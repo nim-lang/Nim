@@ -132,7 +132,9 @@ proc toUTF8*(c: TRune): string {.rtl, extern: "nuc$1".} =
     result = newString(1)
     result[0] = chr(i)
 
-proc `$`*(rune: TRune): string = rune.toUTF8
+proc `$`*(rune: TRune): string =
+  ## converts a rune to a string
+  rune.toUTF8
 
 proc `$`*(runes: seq[TRune]): string =
   ## converts a sequence of runes to a string
