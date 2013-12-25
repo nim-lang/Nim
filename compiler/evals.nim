@@ -91,7 +91,7 @@ proc evalMacroCall*(c: PEvalContext, n, nOrig: PNode, sym: PSym): PNode
 proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode
 
 proc raiseCannotEval(c: PEvalContext, info: TLineInfo): PNode =
-  if defined(debug): writeStackTrace()
+  if defined(debug) and gVerbosity >= 3: writeStackTrace()
   result = newNodeI(nkExceptBranch, info)
   # creating a nkExceptBranch without sons 
   # means that it could not be evaluated

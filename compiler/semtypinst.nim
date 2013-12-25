@@ -194,16 +194,16 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
   
 proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType = 
   result = t
-  if t == nil: return 
+  if t == nil: return
+  if t.kind == tyStatic and t.sym != nil and t.sym.kind == skGenericParam:
+    return lookupTypeVar(cl, t)
+
   case t.kind
   of tyTypeClass: nil
   of tyGenericParam:
     result = lookupTypeVar(cl, t)
     if result.kind == tyGenericInvokation:
       result = handleGenericInvokation(cl, result)
-  of tyStatic:
-    if t.sym != nil and t.sym.kind == skGenericParam:
-      result = lookupTypeVar(cl, t)
   of tyGenericInvokation: 
     result = handleGenericInvokation(cl, t)
   of tyGenericBody:

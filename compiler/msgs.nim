@@ -701,23 +701,21 @@ type
   TErrorHandling = enum doNothing, doAbort, doRaise
 
 proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
-  template maybeTrace =
-    if defined(debug) or gVerbosity >= 3:
-      writeStackTrace()
+  template quit =
+    if defined(debug) or gVerbosity >= 3: writeStackTrace()
+    quit 1
 
   if msg == errInternal:
     writeStackTrace() # we always want a stack trace here
   if msg >= fatalMin and msg <= fatalMax: 
-    maybeTrace()
-    quit(1)
+    quit()
   if msg >= errMin and msg <= errMax: 
-    maybeTrace()
     inc(gErrorCounter)
     options.gExitcode = 1'i8
     if gErrorCounter >= gErrorMax: 
-      quit(1)
+      quit()
     elif eh == doAbort and gCmd != cmdIdeTools:
-      quit(1)
+      quit()
     elif eh == doRaise:
       raiseRecoverableError(s)
 

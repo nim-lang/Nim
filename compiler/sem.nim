@@ -189,6 +189,15 @@ proc evalConstExpr(c: PContext, module: PSym, e: PNode): PNode =
 proc evalStaticExpr(c: PContext, module: PSym, e: PNode, prc: PSym): PNode = 
   result = evalConstExprAux(c.createEvalContext(emStatic), module, prc, e)
 
+proc tryConstExpr(c: PContext, n: PNode): PNode =
+  var e = semExprWithType(c, n)
+  if e == nil: return
+  result = getConstExpr(c.module, e)
+  if result == nil:
+    result = evalConstExpr(c, c.module, e)
+    if result == nil or result.kind == nkEmpty:
+      return nil
+  
 proc semConstExpr(c: PContext, n: PNode): PNode =
   var e = semExprWithType(c, n)
   if e == nil:
@@ -282,6 +291,7 @@ proc myOpen(module: PSym): PPassContext =
   c.semConstExpr = semConstExpr
   c.semExpr = semExpr
   c.semTryExpr = tryExpr
+  c.semTryConstExpr = tryConstExpr
   c.semOperand = semOperand
   c.semConstBoolExpr = semConstBoolExpr
   c.semOverloadedCall = semOverloadedCall

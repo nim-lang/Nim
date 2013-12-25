@@ -678,12 +678,9 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
         paramType.sons[i] = lifted
         result = paramType
 
-    if paramType.lastSon.kind == tyTypeClass and false:
-      result = paramType
-      result.kind = tyParametricTypeClass
-      result = addImplicitGeneric(copyType(result,
-                                           getCurrOwner(), false))
-    elif result != nil:
+    if result == nil:
+      result = liftingWalk(paramType.lastSon)
+    else:
       result.kind = tyGenericInvokation
       result.sons.setLen(result.sons.len - 1)
   of tyTypeClass, tyBuiltInTypeClass, tyAnd, tyOr, tyNot:
@@ -1014,9 +1011,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkVarTy: result = semVarType(c, n, prev)
   of nkDistinctTy: result = semDistinct(c, n, prev)
   of nkStaticTy:
-      result = newOrPrevType(tyStatic, prev, c)
-      var base = semTypeNode(c, n.sons[0], nil)
-      result.rawAddSon(base)
+    result = newOrPrevType(tyStatic, prev, c)
+    var base = semTypeNode(c, n.sons[0], nil)
+    result.rawAddSon(base)
+    result.flags.incl tfHasStatic
   of nkProcTy, nkIteratorTy:
     if n.sonsLen == 0:
       result = newConstraint(c, tyProc)
