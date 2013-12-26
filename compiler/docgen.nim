@@ -14,7 +14,7 @@
 import
   ast, strutils, strtabs, options, msgs, os, ropes, idents,
   wordrecg, syntaxes, renderer, lexer, rstast, rst, rstgen, times, highlite,
-  importer, sempass2, json
+  importer, sempass2, json, xmltree, cgi
 
 type
   TSections = array[TSymKind, PRope]
@@ -23,8 +23,9 @@ type
     id: int                  # for generating IDs
     toc, section: TSections
     indexValFilename: string
+    seenSymbols: PStringTable # avoids duplicate symbol generation for HTML.
 
-  PDoc* = ref TDocumentor
+  PDoc* = ref TDocumentor ## Alias to type less.
 
 proc compilerMsgHandler(filename: string, line, col: int,
                         msgKind: rst.TMsgKind, arg: string) {.procvar.} =
@@ -53,6 +54,7 @@ proc newDocumentor*(filename: string, config: PStringTable): PDoc =
   initRstGenerator(result[], (if gCmd != cmdRst2Tex: outHtml else: outLatex),
                    options.gConfigVars, filename, {roSupportRawDirective},
                    options.FindFile, compilerMsgHandler)
+  result.seenSymbols = newStringTable(modeCaseInsensitive)
   result.id = 100
 
 proc dispA(dest: var PRope, xml, tex: string, args: openarray[PRope]) =
@@ -199,14 +201,45 @@ proc getRstName(n: PNode): PRstNode =
     internalError(n.info, "getRstName()")
     result = nil
 
+proc newUniquePlainSymbol(d: PDoc, original: string): string =
+  ## Returns a new unique plain symbol made up from the original.
+  ##
+  ## When a collision is found in the seenSymbols table, new numerical variants
+  ## with underscore + number will be generated.
+  if not d.seenSymbols.hasKey(original):
+    result = original
+    d.seenSymbols[original] = ""
+    return
+
+  # Iterate over possible numeric variants of the original name.
+  var count = 2
+
+  while true:
+    result = original & "_" & $count
+    if not d.seenSymbols.hasKey(result):
+      d.seenSymbols[result] = ""
+      break
+    count += 1
+
+
 proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   if not isVisible(nameNode): return
   var name = toRope(getName(d, nameNode))
   var result: PRope = nil
-  var literal = ""
+  var literal, plainName = ""
   var kind = tkEof
   var comm = genRecComment(d, n)  # call this here for the side-effect!
   var r: TSrcGen
+  # Obtain the plain rendered string for hyperlink titles.
+  initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments,
+    renderNoPragmas, renderNoProcDefs})
+  while true:
+    getNextTok(r, kind, literal)
+    if kind == tkEof:
+      break
+    plainName.add(literal)
+
+  # Render the HTML hyperlink.
   initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments})
   while true:
     getNextTok(r, kind, literal)
@@ -247,12 +280,27 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
       dispA(result, "<span class=\"Other\">$1</span>", "\\spanOther{$1}",
             [toRope(esc(d.target, literal))])
   inc(d.id)
+  let
+    plainNameRope = toRope(xmltree.escape(plainName.strip))
+    cleanPlainSymbol = renderPlainSymbolName(nameNode)
+    plainSymbolRope = toRope(cleanPlainSymbol)
+    plainSymbolEncRope = toRope(URLEncode(cleanPlainSymbol))
+    itemIDRope = toRope(d.id)
+    symbolOrId = d.newUniquePlainSymbol(cleanPlainSymbol)
+    symbolOrIdRope = symbolOrId.toRope
+    symbolOrIdEncRope = URLEncode(symbolOrId).toRope
+
   app(d.section[k], ropeFormatNamedVars(getConfigVar("doc.item"),
-                                        ["name", "header", "desc", "itemID"],
-                                        [name, result, comm, toRope(d.id)]))
+    ["name", "header", "desc", "itemID", "header_plain", "itemSym",
+      "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc"],
+    [name, result, comm, itemIDRope, plainNameRope, plainSymbolRope,
+      symbolOrIdRope, plainSymbolEncRope, symbolOrIdEncRope]))
   app(d.toc[k], ropeFormatNamedVars(getConfigVar("doc.item.toc"),
-                                    ["name", "header", "desc", "itemID"], [
-      toRope(getName(d, nameNode, d.splitAfter)), result, comm, toRope(d.id)]))
+    ["name", "header", "desc", "itemID", "header_plain", "itemSym",
+      "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc"],
+    [toRope(getName(d, nameNode, d.splitAfter)), result, comm,
+      itemIDRope, plainNameRope, plainSymbolRope, symbolOrIdRope,
+      plainSymbolEncRope, symbolOrIdEncRope]))
   setIndexTerm(d[], $d.id, getName(d, nameNode))
 
 proc genJSONItem(d: PDoc, n, nameNode: PNode, k: TSymKind): PJsonNode =

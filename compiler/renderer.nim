@@ -15,7 +15,7 @@ import
 type 
   TRenderFlag* = enum 
     renderNone, renderNoBody, renderNoComments, renderDocComments, 
-    renderNoPragmas, renderIds
+    renderNoPragmas, renderIds, renderNoProcDefs
   TRenderFlags* = set[TRenderFlag]
   TRenderTok*{.final.} = object 
     kind*: TTokType
@@ -40,6 +40,7 @@ proc renderModule*(n: PNode, filename: string, renderFlags: TRenderFlags = {})
 proc renderTree*(n: PNode, renderFlags: TRenderFlags = {}): string
 proc initTokRender*(r: var TSrcGen, n: PNode, renderFlags: TRenderFlags = {})
 proc getNextTok*(r: var TSrcGen, kind: var TTokType, literal: var string)
+proc renderPlainSymbolName*(n: PNode): string
 # implementation
 # We render the source code in a two phases: The first
 # determines how long the subtree will likely be, the second
@@ -51,10 +52,17 @@ proc isKeyword*(s: string): bool =
       (i.id <= ord(tokKeywordHigh) - ord(tkSymbol)): 
     result = true
 
-proc renderDefinitionName*(s: PSym): string =
+proc renderDefinitionName*(s: PSym, noQuotes = false): string =
+  ## Returns the definition name of the symbol.
+  ##
+  ## If noQuotes is false the symbol may be returned in backticks. This will
+  ## happen if the name happens to be a keyword or the first character is not
+  ## part of the SymStartChars set.
   let x = s.name.s
-  if x[0] in SymStartChars and not renderer.isKeyword(x): result = x
-  else: result = '`' & x & '`'
+  if noQuotes or (x[0] in SymStartChars and not renderer.isKeyword(x)):
+    result = x
+  else:
+    result = '`' & x & '`'
 
 const 
   IndentWidth = 2
@@ -1085,22 +1093,22 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkStaticStmt: gstaticStmt(g, n)
   of nkAsmStmt: gasm(g, n)
   of nkProcDef: 
-    putWithSpace(g, tkProc, "proc")
+    if renderNoProcDefs notin g.flags: putWithSpace(g, tkProc, "proc")
     gproc(g, n)
   of nkConverterDef:
-    putWithSpace(g, tkConverter, "converter")
+    if renderNoProcDefs notin g.flags: putWithSpace(g, tkConverter, "converter")
     gproc(g, n)
   of nkMethodDef: 
-    putWithSpace(g, tkMethod, "method")
+    if renderNoProcDefs notin g.flags: putWithSpace(g, tkMethod, "method")
     gproc(g, n)
   of nkIteratorDef: 
-    putWithSpace(g, tkIterator, "iterator")
+    if renderNoProcDefs notin g.flags: putWithSpace(g, tkIterator, "iterator")
     gproc(g, n)
   of nkMacroDef: 
-    putWithSpace(g, tkMacro, "macro")
+    if renderNoProcDefs notin g.flags: putWithSpace(g, tkMacro, "macro")
     gproc(g, n)
   of nkTemplateDef: 
-    putWithSpace(g, tkTemplate, "template")
+    if renderNoProcDefs notin g.flags: putWithSpace(g, tkTemplate, "template")
     gproc(g, n)
   of nkTypeSection: 
     gsection(g, n, emptyContext, tkType, "type")
@@ -1291,4 +1299,28 @@ proc getNextTok(r: var TSrcGen, kind: var TTokType, literal: var string) =
     inc(r.idx)
   else: 
     kind = tkEof
-  
+
+proc renderPlainSymbolName*(n: PNode): string =
+  ## Returns the first non '*' nkIdent node from the tree.
+  ##
+  ## Use this on documentation name nodes to extract the *raw* symbol name,
+  ## without decorations, parameters, or anything. That can be used as the base
+  ## for the HTML hyperlinks.
+  result = ""
+  case n.kind
+  of nkPostfix:
+    for i in 0 .. <n.len:
+      result = renderPlainSymbolName(n[<n.len])
+      if result.len > 0:
+        return
+  of nkIdent:
+    if n.ident.s != "*":
+      result = n.ident.s
+  of nkSym:
+    result = n.sym.renderDefinitionName(noQuotes = true)
+  of nkPragmaExpr:
+    result = renderPlainSymbolName(n[0])
+  of nkAccQuoted:
+    result = renderPlainSymbolName(n[<n.len])
+  else:
+    internalError(n.info, "renderPlainSymbolName() with " & $n.kind)
