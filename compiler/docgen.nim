@@ -14,7 +14,7 @@
 import
   ast, strutils, strtabs, options, msgs, os, ropes, idents,
   wordrecg, syntaxes, renderer, lexer, rstast, rst, rstgen, times, highlite,
-  importer, sempass2, json
+  importer, sempass2, json, xmltree
 
 type
   TSections = array[TSymKind, PRope]
@@ -24,7 +24,7 @@ type
     toc, section: TSections
     indexValFilename: string
 
-  PDoc* = ref TDocumentor
+  PDoc* = ref TDocumentor ## Alias to type less.
 
 proc compilerMsgHandler(filename: string, line, col: int,
                         msgKind: rst.TMsgKind, arg: string) {.procvar.} =
@@ -204,12 +204,18 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   var name = toRope(getName(d, nameNode))
   var result: PRope = nil
   var literal = ""
+  var plainName = ""
   var kind = tkEof
   var comm = genRecComment(d, n)  # call this here for the side-effect!
   var r: TSrcGen
   initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments})
   while true:
     getNextTok(r, kind, literal)
+
+    case kind
+    of tkEof, tkComment: break
+    else: plainName.add(literal)
+
     case kind
     of tkEof:
       break
@@ -247,12 +253,14 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
       dispA(result, "<span class=\"Other\">$1</span>", "\\spanOther{$1}",
             [toRope(esc(d.target, literal))])
   inc(d.id)
+  let plainNameRope = toRope(xmltree.escape(plainName))
   app(d.section[k], ropeFormatNamedVars(getConfigVar("doc.item"),
-                                        ["name", "header", "desc", "itemID"],
-                                        [name, result, comm, toRope(d.id)]))
+    ["name", "header", "desc", "itemID", "header_plain"],
+    [name, result, comm, toRope(d.id), plainNameRope]))
   app(d.toc[k], ropeFormatNamedVars(getConfigVar("doc.item.toc"),
-                                    ["name", "header", "desc", "itemID"], [
-      toRope(getName(d, nameNode, d.splitAfter)), result, comm, toRope(d.id)]))
+    ["name", "header", "desc", "itemID", "header_plain"],
+    [toRope(getName(d, nameNode, d.splitAfter)), result, comm,
+      toRope(d.id), plainNameRope]))
   setIndexTerm(d[], $d.id, getName(d, nameNode))
 
 proc genJSONItem(d: PDoc, n, nameNode: PNode, k: TSymKind): PJsonNode =
