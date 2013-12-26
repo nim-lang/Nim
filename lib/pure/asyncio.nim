@@ -233,8 +233,11 @@ proc asyncSockHandleWrite(h: PObject) =
       let sock = PAsyncSocket(h)
       try:
         let bytesSent = sock.socket.sendAsync(sock.sendBuffer)
-        assert bytesSent > 0
-        if bytesSent != sock.sendBuffer.len:
+        if bytesSent == 0:
+          # Apparently the socket cannot be written to. Even though select
+          # just told us that it can be... This used to be an assert. Just
+          # do nothing instead.
+        elif bytesSent != sock.sendBuffer.len:
           sock.sendBuffer = sock.sendBuffer[bytesSent .. -1]
         elif bytesSent == sock.sendBuffer.len:
           sock.sendBuffer = ""
