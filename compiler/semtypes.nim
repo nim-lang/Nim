@@ -666,11 +666,14 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
           paramType.sons[i] = lifted
           result = paramType
   of tyGenericBody:
-    # type Foo[T] = object
-    # proc x(a: Foo, b: Foo) 
-    var typ = newTypeS(tyTypeClass, c)
-    typ.addSonSkipIntLit(paramType)
-    result = addImplicitGeneric(typ)
+    result = newTypeS(tyGenericInvokation, c)
+    result.rawAddSon(paramType)
+    for i in 0 .. paramType.sonsLen - 2:
+      result.rawAddSon(copyType(paramType.sons[i], getCurrOwner(), true))
+    result = instGenericContainer(c, paramType.sym.info, result,
+                                  allowMetaTypes = true)
+    result = newTypeWithSons(c, tyCompositeTypeClass, @[paramType, result])
+    result = addImplicitGeneric(result)
   of tyGenericInst:
     for i in 1 .. (paramType.sons.len - 2):
       var lifted = liftingWalk(paramType.sons[i])

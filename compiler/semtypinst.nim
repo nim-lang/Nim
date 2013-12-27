@@ -50,9 +50,10 @@ proc searchInstTypes*(key: PType): PType =
     block MatchType:
       for j in 1 .. high(key.sons):
         # XXX sameType is not really correct for nested generics?
-        if not sameType(inst.sons[j], key.sons[j]):
+        if not compareTypes(inst.sons[j], key.sons[j],
+                            flags = {ExactGenericParams}):
           break MatchType
-      
+       
       return inst
 
 proc cacheTypeInst*(inst: PType) =
@@ -67,6 +68,8 @@ type
     typeMap*: TIdTable        # map PType to PType
     symMap*: TIdTable         # map PSym to PSym
     info*: TLineInfo
+    allowMetaTypes*: bool     # allow types such as seq[Number]
+                              # i.e. the result contains unresolved generics
 
 proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType
 proc ReplaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym
@@ -132,9 +135,10 @@ proc ReplaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
 proc lookupTypeVar(cl: TReplTypeVars, t: PType): PType = 
   result = PType(idTableGet(cl.typeMap, t))
   if result == nil:
+    if cl.allowMetaTypes: return
     LocalError(t.sym.info, errCannotInstantiateX, typeToString(t))
     result = errorType(cl.c)
-  elif result.kind == tyGenericParam: 
+  elif result.kind == tyGenericParam and not cl.allowMetaTypes:
     InternalError(cl.info, "substitution with generic parameter")
   
 proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType = 
@@ -150,11 +154,11 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
     var x = t.sons[i]
     if x.kind == tyGenericParam:
       x = lookupTypeVar(cl, x)
-      if header == nil: header = copyType(t, t.owner, false)
-      header.sons[i] = x
-      propagateToOwner(header, x)
-      #idTablePut(cl.typeMap, body.sons[i-1], x)  
-
+      if x != nil:
+        if header == nil: header = copyType(t, t.owner, false)
+        header.sons[i] = x
+        propagateToOwner(header, x)
+  
   if header != nil:
     # search again after first pass:
     result = searchInstTypes(header)
@@ -202,6 +206,7 @@ proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
   of tyTypeClass: nil
   of tyGenericParam:
     result = lookupTypeVar(cl, t)
+    if result == nil: return t
     if result.kind == tyGenericInvokation:
       result = handleGenericInvokation(cl, result)
   of tyGenericInvokation: 

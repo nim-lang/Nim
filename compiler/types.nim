@@ -409,7 +409,7 @@ const
     "uint", "uint8", "uint16", "uint32", "uint64",
     "bignum", "const ",
     "!", "varargs[$1]", "iter[$1]", "Error Type", "TypeClass",
-    "ParametricTypeClass", "BuiltInTypeClass",
+    "ParametricTypeClass", "BuiltInTypeClass", "CompositeTypeClass",
     "and", "or", "not", "any", "static"]
 
 proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
@@ -604,8 +604,9 @@ type
     dcEqOrDistinctOf       ## a equals b or a is distinct of b
 
   TTypeCmpFlag* = enum
-    IgnoreTupleFields,
-    TypeDescExactMatch,
+    IgnoreTupleFields
+    ExactTypeDescValues
+    ExactGenericParams
     AllowCommonBase
 
   TTypeCmpFlags* = set[TTypeCmpFlag]
@@ -646,7 +647,7 @@ proc SameTypeOrNil*(a, b: PType, flags: TTypeCmpFlags = {}): bool =
       result = SameTypeAux(a, b, c)
 
 proc equalParam(a, b: PSym): TParamsEquality = 
-  if SameTypeOrNil(a.typ, b.typ, {TypeDescExactMatch}) and
+  if SameTypeOrNil(a.typ, b.typ, {ExactTypeDescValues}) and
       ExprStructuralEquivalent(a.constraint, b.constraint):
     if a.ast == b.ast: 
       result = paramsEqual
@@ -682,7 +683,7 @@ proc equalParams(a, b: PNode): TParamsEquality =
         return paramsNotEqual # paramsIncompatible;
       # continue traversal! If not equal, we can return immediately; else
       # it stays incompatible
-    if not SameTypeOrNil(a.sons[0].typ, b.sons[0].typ, {TypeDescExactMatch}):
+    if not SameTypeOrNil(a.sons[0].typ, b.sons[0].typ, {ExactTypeDescValues}):
       if (a.sons[0].typ == nil) or (b.sons[0].typ == nil): 
         result = paramsNotEqual # one proc has a result, the other not is OK
       else: 
@@ -749,9 +750,9 @@ template IfFastObjectTypeCheckFailed(a, b: PType, body: stmt) {.immediate.} =
 
 proc sameObjectTypes*(a, b: PType): bool =
   # specialized for efficiency (sigmatch uses it)
-  IfFastObjectTypeCheckFailed(a, b):     
+  IfFastObjectTypeCheckFailed(a, b):
     var c = initSameTypeClosure()
-    result = sameTypeAux(a, b, c)    
+    result = sameTypeAux(a, b, c)
 
 proc sameDistinctTypes*(a, b: PType): bool {.inline.} =
   result = sameObjectTypes(a, b)
@@ -852,12 +853,15 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     result = sameTypeAux(lastSon(a), lastSon(b), c)
   of tyTypeDesc:
     if c.cmp == dcEqIgnoreDistinct: result = false
-    elif TypeDescExactMatch in c.flags:
+    elif ExactTypeDescValues in c.flags:
       CycleCheck()
       result = sameChildrenAux(x, y, c) and sameFlags(a, b)
     else:
       result = sameFlags(a, b)
-  of tyGenericParam, tyGenericInvokation, tyGenericBody, tySequence,
+  of tyGenericParam:
+    result = if ExactGenericParams in c.flags: a.id == b.id
+             else: sameChildrenAux(a, b, c) and sameFlags(a, b)
+  of tyGenericInvokation, tyGenericBody, tySequence,
      tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyArrayConstr,
      tyArray, tyProc, tyConst, tyMutable, tyVarargs, tyIter,
      tyOrdinal, tyTypeClasses:

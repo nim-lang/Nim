@@ -47,7 +47,7 @@ proc sameInstantiation(a, b: TInstantiation): bool =
   if a.concreteTypes.len == b.concreteTypes.len:
     for i in 0..a.concreteTypes.high:
       if not compareTypes(a.concreteTypes[i], b.concreteTypes[i],
-                          flags = {TypeDescExactMatch}): return
+                          flags = {ExactTypeDescValues}): return
     result = true
 
 proc GenericCacheGet(genericSym: Psym, entry: TInstantiation): PSym =
@@ -165,7 +165,8 @@ proc lateInstantiateGeneric(c: PContext, invocation: PType, info: TLineInfo): PT
       result.sons.add instantiated
       cacheTypeInst result
 
-proc instGenericContainer(c: PContext, info: TLineInfo, header: PType): PType =
+proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
+                          allowMetaTypes = false): PType =
   when oUseLateInstantiation:
     lateInstantiateGeneric(c, header, info)
   else:
@@ -174,6 +175,7 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType): PType =
     InitIdTable(cl.typeMap)
     cl.info = info
     cl.c = c
+    cl.allowMetaTypes = allowMetaTypes
     result = ReplaceTypeVarsT(cl, header)
 
 proc instGenericContainer(c: PContext, n: PNode, header: PType): PType =
