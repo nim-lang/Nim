@@ -713,7 +713,7 @@ $content
 </li>
 """)
   setConfigVar("doc.item", """
-<dt id="$itemID"><pre>$header</pre></dt>
+<dt id="$itemID"><a name="$itemSym"></a><pre>$header</pre></dt>
 <dd>
 $desc
 </dd>

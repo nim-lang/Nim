@@ -199,13 +199,26 @@ proc getRstName(n: PNode): PRstNode =
     internalError(n.info, "getRstName()")
     result = nil
 
+proc trimPlainSymbol(text: string): string =
+  ## Removes common prefixes and surrounding backticks.
+  result = text.strip
+  if result.startsWith("proc "): delete(result, 0, 4)
+  elif result.startsWith("macro "): delete(result, 0, 5)
+  elif result.startsWith("method "): delete(result, 0, 6)
+  elif result.startsWith("template "): delete(result, 0, 8)
+  elif result.startsWith("iterator "): delete(result, 0, 8)
+  elif result.startsWith("converter "): delete(result, 0, 9)
+  if result.len > 2 and result[0] == '`' and result[high(result)] == '`':
+    result = result[1 .. -2]
+  result = result.replace(" ", "")
+
 proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   if not isVisible(nameNode): return
   var name = toRope(getName(d, nameNode))
   var result: PRope = nil
-  var literal, plainName = ""
+  var literal, plainName, plainSymbol = ""
   var tkParLevel, lastTkCurly = 0
-  var removeCurlies = false
+  var removeCurlies, foundOpr, inAccent = false
   var kind = tkEof
   var comm = genRecComment(d, n)  # call this here for the side-effect!
   var r: TSrcGen
@@ -219,8 +232,13 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
       case kind:
       of tkParLe:
         tkParLevel += 1
+      of tkAccent:
+        inAccent = not inAccent
       of tkParRi:
         tkParLevel -= 1
+      of tkOpr:
+        if literal == "*" and not inAccent: foundOpr = true
+        if foundOpr and plainSymbol.len == 0: plainSymbol = plainName
       of tkCurlyDotLe:
         # Keep track of when the last curly appeared, outside of parenthesis.
         # Parameters can be procs with pragmas, that's why tkPar are tracked,
@@ -274,15 +292,17 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     if lastTkCurly > 0:
       plainName = plainName[0..lastTkCurly-1]
   else: nil
-  let plainNameRope = toRope(xmltree.escape(plainName))
+  let
+    plainNameRope = toRope(xmltree.escape(plainName))
+    plainSymbolRope = toRope(trimPlainSymbol(plainSymbol))
 
   app(d.section[k], ropeFormatNamedVars(getConfigVar("doc.item"),
-    ["name", "header", "desc", "itemID", "header_plain"],
-    [name, result, comm, toRope(d.id), plainNameRope]))
+    ["name", "header", "desc", "itemID", "header_plain", "itemSym"],
+    [name, result, comm, toRope(d.id), plainNameRope, plainSymbolRope]))
   app(d.toc[k], ropeFormatNamedVars(getConfigVar("doc.item.toc"),
-    ["name", "header", "desc", "itemID", "header_plain"],
+    ["name", "header", "desc", "itemID", "header_plain", "itemSym"],
     [toRope(getName(d, nameNode, d.splitAfter)), result, comm,
-      toRope(d.id), plainNameRope]))
+      toRope(d.id), plainNameRope, plainSymbolRope]))
   setIndexTerm(d[], $d.id, getName(d, nameNode))
 
 proc genJSONItem(d: PDoc, n, nameNode: PNode, k: TSymKind): PJsonNode =
