@@ -14,7 +14,7 @@
 import
   ast, strutils, strtabs, options, msgs, os, ropes, idents,
   wordrecg, syntaxes, renderer, lexer, rstast, rst, rstgen, times, highlite,
-  importer, sempass2, json, xmltree
+  importer, sempass2, json, xmltree, cgi
 
 type
   TSections = array[TSymKind, PRope]
@@ -328,19 +328,23 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     plainNameRope = toRope(xmltree.escape(plainName))
     cleanPlainSymbol = extractPlainSymbol(plainName)
     plainSymbolRope = toRope(cleanPlainSymbol)
+    plainSymbolEncRope = toRope(URLEncode(cleanPlainSymbol))
     itemIDRope = toRope(d.id)
-    symbolOrId = d.newUniquePlainSymbol(cleanPlainSymbol).toRope
+    symbolOrId = d.newUniquePlainSymbol(cleanPlainSymbol)
+    symbolOrIdRope = symbolOrId.toRope
+    symbolOrIdEncRope = URLEncode(symbolOrId).toRope
 
   app(d.section[k], ropeFormatNamedVars(getConfigVar("doc.item"),
     ["name", "header", "desc", "itemID", "header_plain", "itemSym",
-      "itemSymOrID"],
+      "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc"],
     [name, result, comm, itemIDRope, plainNameRope, plainSymbolRope,
-      symbolOrId]))
+      symbolOrIdRope, plainSymbolEncRope, symbolOrIdEncRope]))
   app(d.toc[k], ropeFormatNamedVars(getConfigVar("doc.item.toc"),
     ["name", "header", "desc", "itemID", "header_plain", "itemSym",
-      "itemSymOrID"],
+      "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc"],
     [toRope(getName(d, nameNode, d.splitAfter)), result, comm,
-      itemIDRope, plainNameRope, plainSymbolRope, symbolOrId]))
+      itemIDRope, plainNameRope, plainSymbolRope, symbolOrIdRope,
+      plainSymbolEncRope, symbolOrIdEncRope]))
   setIndexTerm(d[], $d.id, getName(d, nameNode))
 
 proc genJSONItem(d: PDoc, n, nameNode: PNode, k: TSymKind): PJsonNode =

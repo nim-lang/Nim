@@ -713,13 +713,13 @@ $content
 </li>
 """)
   setConfigVar("doc.item", """
-<dt id="$itemID"><a name="$itemSym"></a><pre>$header</pre></dt>
+<dt id="$itemID"><a name="$itemSymOrIDEnc"></a><pre>$header</pre></dt>
 <dd>
 $desc
 </dd>
 """)
   setConfigVar("doc.item.toc", """
-  <li><a class="reference" href="#$itemSymOrID"
+  <li><a class="reference" href="#$itemSymOrIDEnc"
     title="$header_plain">$name</a></li>
 """)
   setConfigVar("doc.toc", """
