@@ -30,6 +30,8 @@ Changes affecting backwards compatibility
 - ``os.parentDir`` now returns "" if there is no parent dir.
 - ``quoteIfContainsWhite`` now escapes argument in such way that it can be safely
   passed to shell, instead of just adding double quotes.
+- ``macros.dumpTree`` and ``macros.dumpLisp`` have been made ``immediate``,
+  ``dumpTreeImm`` and ``dumpLispImm`` are now deprecated.
 
 
 Compiler Additions
@@ -50,13 +52,13 @@ Language Additions
 
 - Arrays can now be declared with a single integer literal ``N`` instead of a
   range; the range is then ``0..N-1``.
-- ``macros.dumpTree`` and ``macros.dumpLisp`` have been made ``immediate``,
-  ``dumpTreeImm`` and ``dumpLispImm`` are now deprecated.
 - Added ``requiresInit`` pragma to enforce explicit initialization.
-- Added ``using statement`` for better authoring domain-specific languages and
-  OOP-like syntactic sugar.
-- Added ``delegator pragma`` for handling calls to missing procs and fields at
-  compile-time.
+- The ``using statement`` enables you to more easily author domain-specific
+  languages and libraries providing OOP-like syntactic sugar.
+- Added a new ``delegator pragma`` for handling calls to missing procs and
+  fields at compile-time.
+- The overload resolution now supports ``static[T]`` params that must be
+  evaluatable at compile-time.
 - Support for user-defined type classes have been added.
 
 
