@@ -647,6 +647,8 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
     result = typeRel(c, lastSon(f), a)
 
   of tyGenericBody:
+    if a.kind == tyGenericInst and a.sons[0] == f:
+      return isGeneric
     let ff = lastSon(f)
     if ff != nil: result = typeRel(c, ff, a)
 
@@ -718,6 +720,17 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
     else:
       result = typeRel(c, prev, a)
 
+  of tyCompositeTypeClass:
+    var prev = PType(idTableGet(c.bindings, f))
+    if prev == nil:
+      if typeRel(c, f.sons[1], a) != isNone:
+        put(c.bindings, f, a)
+        return isGeneric
+      else:
+        return isNone
+    else:
+      result = typeRel(c, prev, a)
+
   of tyGenericParam, tyTypeClass:
     var x = PType(idTableGet(c.bindings, f))
     if x == nil:
@@ -780,10 +793,13 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
       let toMatch = if tfUnresolved in f.flags: a
                     else: a.sons[0]
       result = typeRel(c, prev.sons[0], toMatch)
+  
   of tyExpr, tyStmt:
     result = isGeneric
+  
   of tyProxy:
     result = isEqual
+  
   else: internalError("typeRel: " & $f.kind)
   
 proc cmpTypes*(c: PContext, f, a: PType): TTypeRelation = 

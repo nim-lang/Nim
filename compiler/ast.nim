@@ -340,6 +340,7 @@ type
     tyParametricTypeClass # structured similarly to tyGenericInst
                           # lastSon is the body of the type class
     tyBuiltInTypeClass
+    tyCompositeTypeClass
     tyAnd
     tyOr
     tyNot
@@ -350,7 +351,7 @@ const
   tyPureObject* = tyTuple
   GcTypeKinds* = {tyRef, tySequence, tyString}
   tyError* = tyProxy # as an errornous node should match everything
-  tyTypeClasses* = {tyTypeClass, tyBuiltInTypeClass,
+  tyTypeClasses* = {tyTypeClass, tyBuiltInTypeClass, tyCompositeTypeClass,
                     tyParametricTypeClass, tyAnd, tyOr, tyNot, tyAnything}
 
 type

@@ -25,7 +25,7 @@ proc equalGenericParams(procA, procB: PNode): bool =
     let a = procA.sons[i].sym
     let b = procB.sons[i].sym
     if a.name.id != b.name.id or
-        not sameTypeOrNil(a.typ, b.typ, {TypeDescExactMatch}): return
+        not sameTypeOrNil(a.typ, b.typ, {ExactTypeDescValues}): return
     if a.ast != nil and b.ast != nil:
       if not ExprStructuralEquivalent(a.ast, b.ast): return
   result = true
