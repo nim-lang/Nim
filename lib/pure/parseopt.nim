@@ -50,7 +50,7 @@ when defined(os.ParamCount):
       result.cmd = cmdline
     else: 
       result.cmd = ""
-      for i in countup(1, ParamCount()): 
+      for i in countup(1, paramCount()): 
         result.cmd = result.cmd & quoteIfContainsWhite(paramStr(i).string) & ' '
     result.kind = cmdEnd
     result.key = TaintedString""
@@ -94,8 +94,8 @@ proc next*(p: var TOptParser) {.
   var i = p.pos
   while p.cmd[i] in {'\x09', ' '}: inc(i)
   p.pos = i
-  setlen(p.key.string, 0)
-  setlen(p.val.string, 0)
+  setLen(p.key.string, 0)
+  setLen(p.val.string, 0)
   if p.inShortState: 
     handleShortOption(p)
     return 

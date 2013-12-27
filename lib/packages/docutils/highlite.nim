@@ -321,7 +321,7 @@ proc generalStrLit(g: var TGeneralTokenizer, position: int): int =
         inc(pos)
   result = pos
 
-proc isKeyword(x: openarray[string], y: string): int = 
+proc isKeyword(x: openArray[string], y: string): int = 
   var a = 0
   var b = len(x) - 1
   while a <= b: 
@@ -335,7 +335,7 @@ proc isKeyword(x: openarray[string], y: string): int =
       return mid
   result = - 1
 
-proc isKeywordIgnoreCase(x: openarray[string], y: string): int = 
+proc isKeywordIgnoreCase(x: openArray[string], y: string): int = 
   var a = 0
   var b = len(x) - 1
   while a <= b: 
@@ -354,7 +354,7 @@ type
     hasPreprocessor, hasNestedComments
   TTokenizerFlags = set[TTokenizerFlag]
 
-proc clikeNextToken(g: var TGeneralTokenizer, keywords: openarray[string], 
+proc clikeNextToken(g: var TGeneralTokenizer, keywords: openArray[string], 
                     flags: TTokenizerFlags) = 
   const 
     hexChars = {'0'..'9', 'A'..'F', 'a'..'f'}

@@ -78,11 +78,11 @@ proc initDefines*() =
   of osMacOSX: 
     defineSymbol("macintosh")
     defineSymbol("unix")
-    DefineSymbol("posix")
+    defineSymbol("posix")
   else: discard
-  defineSymbol("cpu" & $cpu[targetCPU].bit)
-  defineSymbol(normalize(endianToStr[cpu[targetCPU].endian]))
-  defineSymbol(cpu[targetCPU].name)
+  defineSymbol("cpu" & $CPU[targetCPU].bit)
+  defineSymbol(normalize(EndianToStr[CPU[targetCPU].endian]))
+  defineSymbol(CPU[targetCPU].name)
   defineSymbol(platform.os[targetOS].name)
   if platform.OS[targetOS].props.contains(ospLacksThreadVars):
     defineSymbol("emulatedthreadvars")

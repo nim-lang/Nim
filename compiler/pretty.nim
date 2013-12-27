@@ -46,7 +46,7 @@ proc loadFile(info: TLineInfo) =
 proc overwriteFiles*() =
   for i in 0 .. high(gSourceFiles):
     if not gSourceFiles[i].dirty: continue
-    let newFile = gSourceFiles[i].fullpath.changeFileExt(".pretty.nim")
+    let newFile = gSourceFiles[i].fullpath #.changeFileExt(".pretty.nim")
     try:
       var f = open(newFile, fmWrite)
       for line in gSourceFiles[i].lines:
@@ -167,7 +167,7 @@ proc checkUse(c: PGen; n: PNode) =
   let last = first+identLen(line, first)-1
   if differ(line, first, last, newName):
     # last-first+1 != newName.len or 
-    var x = line.subStr(0, first-1) & newName & line.substr(last+1)
+    var x = line.substr(0, first-1) & newName & line.substr(last+1)
     when removeTP:
       # the WinAPI module is full of 'TX = X' which after the substitution
       # becomes 'X = X'. We remove those lines:

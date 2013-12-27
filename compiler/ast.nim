@@ -548,9 +548,9 @@ type
     flags*: TNodeFlags
     case Kind*: TNodeKind
     of nkCharLit..nkUInt64Lit:
-      intVal*: biggestInt
+      intVal*: BiggestInt
     of nkFloatLit..nkFloat128Lit:
-      floatVal*: biggestFloat
+      floatVal*: BiggestFloat
     of nkStrLit..nkTripleStrLit:
       strVal*: string
     of nkSym: 
@@ -911,7 +911,7 @@ template fileIdx*(c: PSym): int32 =
 
 template filename*(c: PSym): string =
   # XXX: this should be used only on module symbols
-  c.position.int32.toFileName
+  c.position.int32.toFilename
 
 proc appendToModule*(m: PSym, n: PNode) =
   ## The compiler will use this internally to add nodes that will be
@@ -930,7 +930,7 @@ const                         # for all kind of hash tables:
 proc copyStrTable(dest: var TStrTable, src: TStrTable) = 
   dest.counter = src.counter
   if isNil(src.data): return 
-  setlen(dest.data, len(src.data))
+  setLen(dest.data, len(src.data))
   for i in countup(0, high(src.data)): dest.data[i] = src.data[i]
   
 proc copyIdTable(dest: var TIdTable, src: TIdTable) = 
@@ -942,13 +942,13 @@ proc copyIdTable(dest: var TIdTable, src: TIdTable) =
 proc copyTable(dest: var TTable, src: TTable) = 
   dest.counter = src.counter
   if isNil(src.data): return 
-  setlen(dest.data, len(src.data))
+  setLen(dest.data, len(src.data))
   for i in countup(0, high(src.data)): dest.data[i] = src.data[i]
   
 proc copyObjectSet(dest: var TObjectSet, src: TObjectSet) = 
   dest.counter = src.counter
   if isNil(src.data): return 
-  setlen(dest.data, len(src.data))
+  setLen(dest.data, len(src.data))
   for i in countup(0, high(src.data)): dest.data[i] = src.data[i]
   
 proc discardSons(father: PNode) = 
@@ -1204,7 +1204,7 @@ proc newSons(father: PType, length: int) =
   if isNil(father.sons): 
     newSeq(father.sons, length)
   else:
-    setlen(father.sons, length)
+    setLen(father.sons, length)
 
 proc sonsLen(n: PNode): int = 
   if isNil(n.sons): result = 0
@@ -1214,7 +1214,7 @@ proc newSons(father: PNode, length: int) =
   if isNil(father.sons): 
     newSeq(father.sons, length)
   else:
-    setlen(father.sons, length)
+    setLen(father.sons, length)
 
 proc propagateToOwner*(owner, elem: PType) =
   const HaveTheirOwnEmpty = {tySequence, tySet}
@@ -1257,7 +1257,7 @@ proc delSon(father: PNode, idx: int) =
   if isNil(father.sons): return 
   var length = sonsLen(father)
   for i in countup(idx, length - 2): father.sons[i] = father.sons[i + 1]
-  setlen(father.sons, length - 1)
+  setLen(father.sons, length - 1)
 
 proc copyNode(src: PNode): PNode = 
   # does not copy its sons!
@@ -1365,14 +1365,14 @@ proc sonsNotNil(n: PNode): bool =
       return false
   result = true
 
-proc getInt*(a: PNode): biggestInt = 
+proc getInt*(a: PNode): BiggestInt = 
   case a.kind
   of nkIntLit..nkUInt64Lit: result = a.intVal
   else: 
     internalError(a.info, "getInt")
     result = 0
 
-proc getFloat*(a: PNode): biggestFloat = 
+proc getFloat*(a: PNode): BiggestFloat = 
   case a.kind
   of nkFloatLit..nkFloat128Lit: result = a.floatVal
   else: 

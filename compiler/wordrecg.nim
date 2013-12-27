@@ -166,7 +166,7 @@ const
     "inout", "bycopy", "byref", "oneway",
     ]
 
-proc findStr*(a: openarray[string], s: string): int = 
+proc findStr*(a: openArray[string], s: string): int = 
   for i in countup(low(a), high(a)): 
     if cmpIgnoreStyle(a[i], s) == 0: 
       return i
@@ -176,7 +176,7 @@ proc whichKeyword*(id: PIdent): TSpecialWord =
   if id.id < 0: result = wInvalid
   else: result = TSpecialWord(id.id)
 
-proc whichKeyword*(id: String): TSpecialWord = 
+proc whichKeyword*(id: string): TSpecialWord = 
   result = whichKeyword(getIdent(id))
   
 proc initSpecials() = 

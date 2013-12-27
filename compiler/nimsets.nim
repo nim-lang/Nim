@@ -32,7 +32,7 @@ proc cardSet*(s: PNode): BiggestInt
 
 proc inSet(s: PNode, elem: PNode): bool = 
   if s.kind != nkCurly: 
-    InternalError(s.info, "inSet")
+    internalError(s.info, "inSet")
     return false
   for i in countup(0, sonsLen(s) - 1): 
     if s.sons[i].kind == nkRange: 
@@ -61,7 +61,7 @@ proc overlap(a, b: PNode): bool =
 proc SomeInSet(s: PNode, a, b: PNode): bool = 
   # checks if some element of a..b is in the set s
   if s.kind != nkCurly:
-    InternalError(s.info, "SomeInSet")
+    internalError(s.info, "SomeInSet")
     return false
   for i in countup(0, sonsLen(s) - 1): 
     if s.sons[i].kind == nkRange: 
@@ -82,10 +82,10 @@ proc toBitSet(s: PNode, b: var TBitSet) =
     if s.sons[i].kind == nkRange: 
       j = getOrdValue(s.sons[i].sons[0])
       while j <= getOrdValue(s.sons[i].sons[1]): 
-        BitSetIncl(b, j - first)
+        bitSetIncl(b, j - first)
         inc(j)
     else: 
-      BitSetIncl(b, getOrdValue(s.sons[i]) - first)
+      bitSetIncl(b, getOrdValue(s.sons[i]) - first)
   
 proc toTreeSet(s: TBitSet, settype: PType, info: TLineInfo): PNode = 
   var 
@@ -103,9 +103,9 @@ proc toTreeSet(s: TBitSet, settype: PType, info: TLineInfo): PNode =
       a = e
       b = e
       while true: 
-        Inc(b)
+        inc(b)
         if (b >= len(s) * elemSize) or not bitSetIn(s, b): break 
-      Dec(b)
+      dec(b)
       if a == b: 
         addSon(result, newIntTypeNode(nkIntLit, a + first, elemType))
       else: 
@@ -115,7 +115,7 @@ proc toTreeSet(s: TBitSet, settype: PType, info: TLineInfo): PNode =
         addSon(n, newIntTypeNode(nkIntLit, b + first, elemType))
         addSon(result, n)
       e = b
-    Inc(e)
+    inc(e)
 
 template nodeSetOp(a, b: PNode, op: expr) {.dirty.} = 
   var x, y: TBitSet
@@ -124,10 +124,10 @@ template nodeSetOp(a, b: PNode, op: expr) {.dirty.} =
   op(x, y)
   result = toTreeSet(x, a.typ, a.info)
 
-proc unionSets(a, b: PNode): PNode = nodeSetOp(a, b, BitSetUnion)
-proc diffSets(a, b: PNode): PNode = nodeSetOp(a, b, BitSetDiff)
-proc intersectSets(a, b: PNode): PNode = nodeSetOp(a, b, BitSetIntersect)
-proc symdiffSets(a, b: PNode): PNode = nodeSetOp(a, b, BitSetSymDiff)
+proc unionSets(a, b: PNode): PNode = nodeSetOp(a, b, bitSetUnion)
+proc diffSets(a, b: PNode): PNode = nodeSetOp(a, b, bitSetDiff)
+proc intersectSets(a, b: PNode): PNode = nodeSetOp(a, b, bitSetIntersect)
+proc symdiffSets(a, b: PNode): PNode = nodeSetOp(a, b, bitSetSymDiff)
 
 proc containsSets(a, b: PNode): bool = 
   var x, y: TBitSet
@@ -156,7 +156,7 @@ proc cardSet(s: PNode): BiggestInt =
       result = result + getOrdValue(s.sons[i].sons[1]) -
           getOrdValue(s.sons[i].sons[0]) + 1
     else: 
-      Inc(result)
+      inc(result)
   
 proc setHasRange(s: PNode): bool = 
   if s.kind != nkCurly:

@@ -91,7 +91,7 @@ proc fillBuffer(L: var TBaseLexer) =
     dec(s)                    # BUGFIX (valgrind)
     while true:
       assert(s < L.bufLen)
-      while (s >= 0) and not (L.buf[s] in NewLines): Dec(s)
+      while (s >= 0) and not (L.buf[s] in NewLines): dec(s)
       if s >= 0:
         # we found an appropriate character for a sentinel:
         L.sentinel = s
@@ -163,5 +163,5 @@ proc getCurrentLine(L: TBaseLexer, marker: bool = true): string =
     inc(i)
   add(result, "\n")
   if marker:
-    add(result, RepeatChar(getColNumber(L, L.bufpos)) & "^\n")
+    add(result, repeatChar(getColNumber(L, L.bufpos)) & "^\n")
 

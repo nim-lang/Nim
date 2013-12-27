@@ -18,16 +18,16 @@ proc genConv(n: PNode, d: PType, downcast: bool): PNode =
   var source = skipTypes(n.typ, abstractPtrs)
   if (source.kind == tyObject) and (dest.kind == tyObject): 
     var diff = inheritanceDiff(dest, source)
-    if diff == high(int): InternalError(n.info, "cgmeth.genConv")
+    if diff == high(int): internalError(n.info, "cgmeth.genConv")
     if diff < 0: 
       result = newNodeIT(nkObjUpConv, n.info, d)
       addSon(result, n)
-      if downCast: InternalError(n.info, "cgmeth.genConv: no upcast allowed")
+      if downcast: internalError(n.info, "cgmeth.genConv: no upcast allowed")
     elif diff > 0: 
       result = newNodeIT(nkObjDownConv, n.info, d)
       addSon(result, n)
-      if not downCast: 
-        InternalError(n.info, "cgmeth.genConv: no downcast allowed")
+      if not downcast: 
+        internalError(n.info, "cgmeth.genConv: no downcast allowed")
     else: 
       result = n
   else: 
@@ -112,12 +112,12 @@ proc relevantCol(methods: TSymSeq, col: int): bool =
   if t.kind == tyObject:
     for i in countup(1, high(methods)):
       let t2 = skipTypes(methods[i].typ.sons[col], skipPtrs)
-      if not SameType(t2, t):
+      if not sameType(t2, t):
         return true
   
 proc cmpSignatures(a, b: PSym, relevantCols: TIntSet): int = 
   for col in countup(1, sonsLen(a.typ) - 1): 
-    if Contains(relevantCols, col): 
+    if contains(relevantCols, col): 
       var aa = skipTypes(a.typ.sons[col], skipPtrs)
       var bb = skipTypes(b.typ.sons[col], skipPtrs)
       var d = inheritanceDiff(aa, bb)
@@ -154,7 +154,7 @@ proc genDispatcher(methods: TSymSeq, relevantCols: TIntSet): PSym =
     var curr = methods[meth]      # generate condition:
     var cond: PNode = nil
     for col in countup(1, paramLen - 1):
-      if Contains(relevantCols, col):
+      if contains(relevantCols, col):
         var isn = newNodeIT(nkCall, base.info, getSysType(tyBool))
         addSon(isn, newSymNode(iss))
         addSon(isn, newSymNode(base.typ.n.sons[col].sym))
@@ -195,7 +195,7 @@ proc generateMethodDispatchers*(): PNode =
   for bucket in countup(0, len(gMethods) - 1): 
     var relevantCols = initIntSet()
     for col in countup(1, sonsLen(gMethods[bucket][0].typ) - 1): 
-      if relevantCol(gMethods[bucket], col): Incl(relevantCols, col)
+      if relevantCol(gMethods[bucket], col): incl(relevantCols, col)
     sortBucket(gMethods[bucket], relevantCols)
     addSon(result, newSymNode(genDispatcher(gMethods[bucket], relevantCols)))
 

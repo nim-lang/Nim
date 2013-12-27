@@ -40,7 +40,7 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int) =
     var info = c.debug[pc]
     # we now use the same format as in system/except.nim
     var s = toFilename(info)
-    var line = toLineNumber(info)
+    var line = toLinenumber(info)
     if line > 0:
       add(s, '(')
       add(s, $line)
@@ -48,7 +48,7 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int) =
     if x.prc != nil:
       for k in 1..max(1, 25-s.len): add(s, ' ')
       add(s, x.prc.name.s)
-    MsgWriteln(s)
+    msgWriteln(s)
 
 proc stackTrace(c: PCtx, tos: PStackFrame, pc: int,
                 msg: TMsgKind, arg = "") =
@@ -716,7 +716,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
     of opcFinallyEnd:
       if c.currentExceptionA != nil:
         # we are in a cleanup run:
-        pc = cleanupOnException(c, tos, regs)-1
+        pc = cleanUpOnException(c, tos, regs)-1
         if pc < 0: 
           bailOut(c, tos)
           return
@@ -725,7 +725,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       c.currentExceptionA = raised
       c.exceptionInstr = pc
       # -1 because of the following 'inc'
-      pc = cleanupOnException(c, tos, regs) - 1
+      pc = cleanUpOnException(c, tos, regs) - 1
       if pc < 0:
         bailOut(c, tos)
         return
@@ -776,7 +776,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       regs[ra].strVal = renderTree(regs[rb].skipMeta, {renderNoComments})
     of opcQuit:
       if c.mode in {emRepl, emStaticExpr, emStaticStmt}:
-        Message(c.debug[pc], hintQuitCalled)
+        message(c.debug[pc], hintQuitCalled)
         quit(int(getOrdValue(regs[ra])))
       else:
         return nil
@@ -866,7 +866,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       else:
         stackTrace(c, tos, pc, errFieldXNotFound, "ident")
     of opcNGetType:
-      InternalError(c.debug[pc], "unknown opcode " & $instr.opcode)
+      internalError(c.debug[pc], "unknown opcode " & $instr.opcode)
     of opcNStrVal:
       decodeB(nkStrLit)
       let a = regs[rb].uast
@@ -882,16 +882,16 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
     of opcNError:
       stackTrace(c, tos, pc, errUser, regs[ra].strVal)
     of opcNWarning:
-      Message(c.debug[pc], warnUser, regs[ra].strVal)
+      message(c.debug[pc], warnUser, regs[ra].strVal)
     of opcNHint:
-      Message(c.debug[pc], hintUser, regs[ra].strVal)
+      message(c.debug[pc], hintUser, regs[ra].strVal)
     of opcParseExprToAst:
       decodeB(nkMetaNode)
       # c.debug[pc].line.int - countLines(regs[rb].strVal) ?
       let ast = parseString(regs[rb].strVal, c.debug[pc].toFilename,
                             c.debug[pc].line.int)
       if sonsLen(ast) != 1:
-        GlobalError(c.debug[pc], errExprExpected, "multiple statements")
+        globalError(c.debug[pc], errExprExpected, "multiple statements")
       setMeta(regs[ra], ast.sons[0])
     of opcParseStmtToAst:
       decodeB(nkMetaNode)
@@ -1137,7 +1137,7 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
   # XXX GlobalError() is ugly here, but I don't know a better solution for now
   inc(evalMacroCounter)
   if evalMacroCounter > 100:
-    GlobalError(n.info, errTemplateInstantiationTooNested)
+    globalError(n.info, errTemplateInstantiationTooNested)
   setupGlobalCtx(module)
   var c = globalCtx
 
@@ -1161,7 +1161,7 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
   # temporary storage:
   for i in L .. <maxSlots: tos.slots[i] = newNode(nkEmpty)
   result = rawExecute(c, start, tos)
-  if cyclicTree(result): GlobalError(n.info, errCyclicTree)
+  if cyclicTree(result): globalError(n.info, errCyclicTree)
   dec(evalMacroCounter)
   if result != nil:
     result = result.skipMeta

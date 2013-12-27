@@ -150,16 +150,16 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       pickBest(callOp)
 
     if overloadsState == csEmpty and result.state == csEmpty:
-      LocalError(n.info, errUndeclaredIdentifier, considerAcc(f).s)
+      localError(n.info, errUndeclaredIdentifier, considerAcc(f).s)
       return
     elif result.state != csMatch:
       if nfExprCall in n.flags:
-        LocalError(n.info, errExprXCannotBeCalled,
+        localError(n.info, errExprXCannotBeCalled,
                    renderTree(n, {renderNoComments}))
       else:
         errors = @[]
         pickBest(f)
-        NotFoundError(c, n, errors)
+        notFoundError(c, n, errors)
       return
 
   if alt.state == csMatch and cmpCandidates(result, alt) == 0 and
@@ -225,7 +225,7 @@ proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
       result = x.call
       result.sons[0] = newSymNode(finalCallee, result.sons[0].info)
       result.typ = finalCallee.typ.sons[0]
-      if ContainsGenericType(result.typ): result.typ = errorType(c)
+      if containsGenericType(result.typ): result.typ = errorType(c)
       return
   result = x.call
   instGenericConvertersSons(c, result, x)
@@ -260,7 +260,7 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
     # number of generic type parameters:
     if safeLen(s.ast.sons[genericParamsPos]) != n.len-1:
       let expected = safeLen(s.ast.sons[genericParamsPos])
-      LocalError(n.info, errGenerated, "cannot instantiate: " & renderTree(n) &
+      localError(n.info, errGenerated, "cannot instantiate: " & renderTree(n) &
          "; got " & $(n.len-1) & " type(s) but expected " & $expected)
       return n
     result = explicitGenericSym(c, n, s)

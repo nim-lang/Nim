@@ -47,19 +47,19 @@ proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode
 
 proc typeMismatch(n: PNode, formal, actual: PType) = 
   if formal.kind != tyError and actual.kind != tyError: 
-    LocalError(n.Info, errGenerated, msgKindToString(errTypeMismatch) &
+    localError(n.Info, errGenerated, msgKindToString(errTypeMismatch) &
         typeToString(actual) & ") " &
         `%`(msgKindToString(errButExpectedX), [typeToString(formal)]))
 
 proc fitNode(c: PContext, formal: PType, arg: PNode): PNode =
   if arg.typ.isNil:
-    LocalError(arg.info, errExprXHasNoType,
+    localError(arg.info, errExprXHasNoType,
                renderTree(arg, {renderNoComments}))
     # error correction:
     result = copyNode(arg)
     result.typ = formal
   else:
-    result = IndexTypesMatch(c, formal, arg.typ, arg)
+    result = indexTypesMatch(c, formal, arg.typ, arg)
     if result == nil:
       typeMismatch(arg, formal, arg.typ)
       # error correction:
@@ -176,7 +176,7 @@ when false:
 proc semConstExpr(c: PContext, n: PNode): PNode =
   var e = semExprWithType(c, n)
   if e == nil:
-    LocalError(n.info, errConstExprExpected)
+    localError(n.info, errConstExprExpected)
     return n
   result = getConstExpr(c.module, e)
   if result == nil:
@@ -184,10 +184,10 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
     if result == nil or result.kind == nkEmpty:
       if e.info != n.info:
         pushInfoContext(n.info)
-        LocalError(e.info, errConstExprExpected)
+        localError(e.info, errConstExprExpected)
         popInfoContext()
       else:
-        LocalError(e.info, errConstExprExpected)
+        localError(e.info, errConstExprExpected)
       # error correction:
       result = e
     else:
@@ -241,7 +241,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   semCheck: bool = true): PNode = 
   markUsed(n, sym)
   if sym == c.p.owner:
-    GlobalError(n.info, errRecursiveDependencyX, sym.name.s)
+    globalError(n.info, errRecursiveDependencyX, sym.name.s)
 
   #if c.evalContext == nil:
   #  c.evalContext = c.createEvalContext(emStatic)
@@ -257,11 +257,11 @@ proc semConstBoolExpr(c: PContext, n: PNode): PNode =
   let nn = semExprWithType(c, n)
   result = fitNode(c, getSysType(tyBool), nn)
   if result == nil:
-    LocalError(n.info, errConstExprExpected)
+    localError(n.info, errConstExprExpected)
     return nn
   result = getConstExpr(c.module, result)
   if result == nil: 
-    LocalError(n.info, errConstExprExpected)
+    localError(n.info, errConstExprExpected)
     result = nn
 
 include semtypes, semtempl, semgnrc, semstmts, semexprs
@@ -271,14 +271,14 @@ proc addCodeForGenerics(c: PContext, n: PNode) =
     var prc = c.generics[i].inst.sym
     if prc.kind in {skProc, skMethod, skConverter} and prc.magic == mNone:
       if prc.ast == nil or prc.ast.sons[bodyPos] == nil:
-        InternalError(prc.info, "no code for " & prc.name.s)
+        internalError(prc.info, "no code for " & prc.name.s)
       else:
         addSon(n, prc.ast)
   c.lastGenericIdx = c.generics.len
 
 proc myOpen(module: PSym): PPassContext =
   var c = newContext(module)
-  if c.p != nil: InternalError(module.info, "sem.myOpen")
+  if c.p != nil: internalError(module.info, "sem.myOpen")
   c.semConstExpr = semConstExpr
   c.semExpr = semExpr
   c.semTryExpr = tryExpr
@@ -329,14 +329,14 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
   var c = PContext(context)    
   # no need for an expensive 'try' if we stop after the first error anyway:
   if msgs.gErrorMax <= 1:
-    result = SemStmtAndGenerateGenerics(c, n)
+    result = semStmtAndGenerateGenerics(c, n)
   else:
     let oldContextLen = msgs.getInfoContextLen()
     let oldInGenericInst = c.InGenericInst
     try:
-      result = SemStmtAndGenerateGenerics(c, n)
+      result = semStmtAndGenerateGenerics(c, n)
     except ERecoverableError, ESuggestDone:
-      RecoverContext(c)
+      recoverContext(c)
       c.InGenericInst = oldInGenericInst
       msgs.setInfoContextLen(oldContextLen)
       if getCurrentException() of ESuggestDone: result = nil
@@ -354,7 +354,7 @@ proc myClose(context: PPassContext, n: PNode): PNode =
   rawCloseScope(c)      # imported symbols; don't check for unused ones!
   result = newNode(nkStmtList)
   if n != nil:
-    InternalError(n.info, "n is not nil") #result := n;
+    internalError(n.info, "n is not nil") #result := n;
   addCodeForGenerics(c, result)
   if c.module.ast != nil:
     result.add(c.module.ast)

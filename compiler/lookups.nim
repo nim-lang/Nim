@@ -135,20 +135,20 @@ proc wrongRedefinition*(info: TLineInfo, s: string) =
   
 proc addDecl*(c: PContext, sym: PSym) =
   if c.currentScope.addUniqueSym(sym) == Failure:
-    WrongRedefinition(sym.info, sym.Name.s)
+    wrongRedefinition(sym.info, sym.Name.s)
 
 proc addPrelimDecl*(c: PContext, sym: PSym) =
   discard c.currentScope.addUniqueSym(sym)
 
 proc addDeclAt*(scope: PScope, sym: PSym) =
   if scope.addUniqueSym(sym) == Failure:
-    WrongRedefinition(sym.info, sym.Name.s)
+    wrongRedefinition(sym.info, sym.Name.s)
 
 proc addInterfaceDeclAux(c: PContext, sym: PSym) = 
   if sfExported in sym.flags:
     # add to interface:
-    if c.module != nil: StrTableAdd(c.module.tab, sym)
-    else: InternalError(sym.info, "AddInterfaceDeclAux")
+    if c.module != nil: strTableAdd(c.module.tab, sym)
+    else: internalError(sym.info, "AddInterfaceDeclAux")
 
 proc addInterfaceDeclAt*(c: PContext, scope: PScope, sym: PSym) =
   addDeclAt(scope, sym)
@@ -158,7 +158,7 @@ proc addOverloadableSymAt*(scope: PScope, fn: PSym) =
   if fn.kind notin OverloadableSyms: 
     internalError(fn.info, "addOverloadableSymAt")
     return
-  var check = StrTableGet(scope.symbols, fn.name)
+  var check = strTableGet(scope.symbols, fn.name)
   if check != nil and check.Kind notin OverloadableSyms: 
     wrongRedefinition(fn.info, fn.Name.s)
   else:
@@ -275,7 +275,7 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
           result = initIdentIter(o.it, c.topLevelScope.symbols, ident)
           o.mode = oimSelfModule
         else: 
-          result = InitIdentIter(o.it, o.m.tab, ident)
+          result = initIdentIter(o.it, o.m.tab, ident)
       else: 
         localError(n.sons[1].info, errIdentifierExpected, 
                    renderTree(n.sons[1]))
@@ -317,7 +317,7 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   of oimSymChoice: 
     if o.symChoiceIndex < sonsLen(n):
       result = n.sons[o.symChoiceIndex].sym
-      Incl(o.inSymChoice, result.id)
+      incl(o.inSymChoice, result.id)
       inc o.symChoiceIndex
     elif n.kind == nkOpenSymChoice:
       # try 'local' symbols too for Koenig's lookup:

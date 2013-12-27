@@ -53,9 +53,9 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
           if skipTypes(strVal.typ, abstractInst).kind in {tyString, tyCstring}:
             x = getOrdValue(v.sons[0]) # first tuple part is the ordinal
           else:
-            LocalError(strVal.info, errStringLiteralExpected)
+            localError(strVal.info, errStringLiteralExpected)
         else:
-          LocalError(v.info, errWrongNumberOfVariables)
+          localError(v.info, errWrongNumberOfVariables)
       of tyString, tyCstring:
         strVal = v
         x = counter
@@ -64,7 +64,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       if i != 1:
         if x != counter: incl(result.flags, tfEnumHasHoles)
         if x < counter: 
-          LocalError(n.sons[i].info, errInvalidOrderInEnumX, e.name.s)
+          localError(n.sons[i].info, errInvalidOrderInEnumX, e.name.s)
           x = counter
       e.ast = strVal # might be nil
       counter = x
@@ -79,7 +79,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     if result.sym != nil and sfExported in result.sym.flags:
       incl(e.flags, sfUsed)
       incl(e.flags, sfExported)
-      if not isPure: StrTableAdd(c.module.tab, e)
+      if not isPure: strTableAdd(c.module.tab, e)
     addSon(result.n, newSymNode(e))
     if sfGenSym notin e.flags and not isPure: addDecl(c, e)
     inc(counter)
@@ -93,11 +93,11 @@ proc semSet(c: PContext, n: PNode, prev: PType): PType =
     if base.kind == tyGenericInst: base = lastSon(base)
     if base.kind != tyGenericParam: 
       if not isOrdinalType(base): 
-        LocalError(n.info, errOrdinalTypeExpected)
+        localError(n.info, errOrdinalTypeExpected)
       elif lengthOrd(base) > MaxSetElements: 
-        LocalError(n.info, errSetTooBig)
+        localError(n.info, errSetTooBig)
   else:
-    LocalError(n.info, errXExpectsOneTypeParam, "set")
+    localError(n.info, errXExpectsOneTypeParam, "set")
     addSonSkipIntLit(result, errorType(c))
   
 proc semContainer(c: PContext, n: PNode, kind: TTypeKind, kindStr: string, 
@@ -107,7 +107,7 @@ proc semContainer(c: PContext, n: PNode, kind: TTypeKind, kindStr: string,
     var base = semTypeNode(c, n.sons[1], nil)
     addSonSkipIntLit(result, base)
   else: 
-    LocalError(n.info, errXExpectsOneTypeParam, kindStr)
+    localError(n.info, errXExpectsOneTypeParam, kindStr)
     addSonSkipIntLit(result, errorType(c))
 
 proc semVarargs(c: PContext, n: PNode, prev: PType): PType =
@@ -118,7 +118,7 @@ proc semVarargs(c: PContext, n: PNode, prev: PType): PType =
     if sonsLen(n) == 3:
       result.n = newIdentNode(considerAcc(n.sons[2]), n.sons[2].info)
   else:
-    LocalError(n.info, errXExpectsOneTypeParam, "varargs")
+    localError(n.info, errXExpectsOneTypeParam, "varargs")
     addSonSkipIntLit(result, errorType(c))
   
 proc semAnyRef(c: PContext, n: PNode, kind: TTypeKind, prev: PType): PType = 
@@ -134,7 +134,7 @@ proc semVarType(c: PContext, n: PNode, prev: PType): PType =
     result = newOrPrevType(tyVar, prev, c)
     var base = semTypeNode(c, n.sons[0], nil)
     if base.kind == tyVar: 
-      LocalError(n.info, errVarVarTypeNotAllowed)
+      localError(n.info, errVarVarTypeNotAllowed)
       base = base.sons[0]
     addSonSkipIntLit(result, base)
   else:
@@ -153,17 +153,17 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
   result = newOrPrevType(tyRange, prev, c)
   result.n = newNodeI(nkRange, n.info)
   if (n[1].kind == nkEmpty) or (n[2].kind == nkEmpty): 
-    LocalError(n.Info, errRangeIsEmpty)
+    localError(n.Info, errRangeIsEmpty)
   var a = semConstExpr(c, n[1])
   var b = semConstExpr(c, n[2])
   if not sameType(a.typ, b.typ):
-    LocalError(n.info, errPureTypeMismatch)
+    localError(n.info, errPureTypeMismatch)
   elif a.typ.kind notin {tyInt..tyInt64,tyEnum,tyBool,tyChar,
                          tyFloat..tyFloat128,tyUInt8..tyUInt32}:
-    LocalError(n.info, errOrdinalTypeExpected)
+    localError(n.info, errOrdinalTypeExpected)
   elif enumHasHoles(a.typ): 
-    LocalError(n.info, errEnumXHasHoles, a.typ.sym.name.s)
-  elif not leValue(a, b): LocalError(n.Info, errRangeIsEmpty)
+    localError(n.info, errEnumXHasHoles, a.typ.sym.name.s)
+  elif not leValue(a, b): localError(n.Info, errRangeIsEmpty)
   addSon(result.n, a)
   addSon(result.n, b)
   addSonSkipIntLit(result, b.typ)
@@ -180,10 +180,10 @@ proc semRange(c: PContext, n: PNode, prev: PType): PType =
       elif n.sons[0].floatVal > 0.0 or n.sons[1].floatVal < 0.0:
         incl(result.flags, tfNeedsInit)
     else:
-      LocalError(n.sons[0].info, errRangeExpected)
+      localError(n.sons[0].info, errRangeExpected)
       result = newOrPrevType(tyError, prev, c)
   else:
-    LocalError(n.info, errXExpectsOneTypeParam, "range")
+    localError(n.info, errXExpectsOneTypeParam, "range")
     result = newOrPrevType(tyError, prev, c)
 
 proc semArray(c: PContext, n: PNode, prev: PType): PType = 
@@ -208,13 +208,13 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
     if indx.kind == tyGenericInst: indx = lastSon(indx)
     if indx.kind notin {tyGenericParam, tyExpr}:
       if not isOrdinalType(indx):
-        LocalError(n.sons[1].info, errOrdinalTypeExpected)
+        localError(n.sons[1].info, errOrdinalTypeExpected)
       elif enumHasHoles(indx): 
-        LocalError(n.sons[1].info, errEnumXHasHoles, indx.sym.name.s)
+        localError(n.sons[1].info, errEnumXHasHoles, indx.sym.name.s)
     base = semTypeNode(c, n.sons[2], nil)
     addSonSkipIntLit(result, base)
   else: 
-    LocalError(n.info, errArrayExpectsTwoTypeParams)
+    localError(n.info, errArrayExpectsTwoTypeParams)
     result = newOrPrevType(tyError, prev, c)
   
 proc semOrdinal(c: PContext, n: PNode, prev: PType): PType = 
@@ -223,17 +223,17 @@ proc semOrdinal(c: PContext, n: PNode, prev: PType): PType =
     var base = semTypeNode(c, n.sons[1], nil)
     if base.kind != tyGenericParam: 
       if not isOrdinalType(base): 
-        LocalError(n.sons[1].info, errOrdinalTypeExpected)
+        localError(n.sons[1].info, errOrdinalTypeExpected)
     addSonSkipIntLit(result, base)
   else:
-    LocalError(n.info, errXExpectsOneTypeParam, "ordinal")
+    localError(n.info, errXExpectsOneTypeParam, "ordinal")
     result = newOrPrevType(tyError, prev, c)
 
 proc semTypeIdent(c: PContext, n: PNode): PSym =
   if n.kind == nkSym: 
     result = n.sym
   else:
-    result = qualifiedLookup(c, n, {checkAmbiguity, checkUndeclared})
+    result = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared})
     if result != nil:
       markUsed(n, result)
       if result.kind == skParam and result.typ.kind == tyTypeDesc:
@@ -245,7 +245,7 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
           if bound != nil: return bound
           return result
         if result.typ.sym == nil:
-          LocalError(n.info, errTypeExpected)
+          localError(n.info, errTypeExpected)
           return errorSym(c, n)
         result = result.typ.sym.copySym
         result.typ = copyType(result.typ, result.typ.owner, true)
@@ -253,12 +253,12 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
       if result.kind != skType: 
         # this implements the wanted ``var v: V, x: V`` feature ...
         var ov: TOverloadIter
-        var amb = InitOverloadIter(ov, c, n)
+        var amb = initOverloadIter(ov, c, n)
         while amb != nil and amb.kind != skType:
           amb = nextOverloadIter(ov, c, n)
         if amb != nil: result = amb
         else:
-          if result.kind != skError: LocalError(n.info, errTypeExpected)
+          if result.kind != skError: localError(n.info, errTypeExpected)
           return errorSym(c, n)
       if result.typ.kind != tyGenericParam:
         # XXX get rid of this hack!
@@ -268,7 +268,7 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
         n.sym = result
         n.info = oldInfo
     else:
-      LocalError(n.info, errIdentifierExpected)
+      localError(n.info, errIdentifierExpected)
       result = errorSym(c, n)
   
 proc semTuple(c: PContext, n: PNode, prev: PType): PType = 
@@ -280,23 +280,23 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
   var counter = 0
   for i in countup(0, sonsLen(n) - 1): 
     var a = n.sons[i]
-    if (a.kind != nkIdentDefs): IllFormedAst(a)
+    if (a.kind != nkIdentDefs): illFormedAst(a)
     checkMinSonsLen(a, 3)
     var length = sonsLen(a)
     if a.sons[length - 2].kind != nkEmpty: 
       typ = semTypeNode(c, a.sons[length - 2], nil)
     else:
-      LocalError(a.info, errTypeExpected)
+      localError(a.info, errTypeExpected)
       typ = errorType(c)
     if a.sons[length - 1].kind != nkEmpty: 
-      LocalError(a.sons[length - 1].info, errInitHereNotAllowed)
+      localError(a.sons[length - 1].info, errInitHereNotAllowed)
     for j in countup(0, length - 3): 
       var field = newSymG(skField, a.sons[j], c)
       field.typ = typ
       field.position = counter
       inc(counter)
-      if ContainsOrIncl(check, field.name.id): 
-        LocalError(a.sons[j].info, errAttemptToRedefine, field.name.s)
+      if containsOrIncl(check, field.name.id): 
+        localError(a.sons[j].info, errAttemptToRedefine, field.name.s)
       else:
         addSon(result.n, newSymNode(field))
         addSonSkipIntLit(result, typ)
@@ -313,7 +313,7 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
       if sfExported in allowed and v.id == ord(wStar): 
         incl(result.flags, sfExported)
       else:
-        LocalError(n.sons[0].info, errInvalidVisibilityX, v.s)
+        localError(n.sons[0].info, errInvalidVisibilityX, v.s)
     else:
       illFormedAst(n)
   else:
@@ -341,9 +341,9 @@ proc checkForOverlap(c: PContext, t: PNode, currentEx, branchIndex: int) =
     for j in countup(0, sonsLen(t.sons[i]) - 2): 
       if i == branchIndex and j == currentEx: break
       if overlap(t.sons[i].sons[j].skipConv, ex):
-        LocalError(ex.info, errDuplicateCaseLabel)
+        localError(ex.info, errDuplicateCaseLabel)
   
-proc semBranchRange(c: PContext, t, a, b: PNode, covered: var biggestInt): PNode =
+proc semBranchRange(c: PContext, t, a, b: PNode, covered: var BiggestInt): PNode =
   checkMinSonsLen(t, 1)
   let ac = semConstExpr(c, a)
   let bc = semConstExpr(c, b)
@@ -353,16 +353,16 @@ proc semBranchRange(c: PContext, t, a, b: PNode, covered: var biggestInt): PNode
   result = newNodeI(nkRange, a.info)
   result.add(at)
   result.add(bt)
-  if emptyRange(ac, bc): LocalError(b.info, errRangeIsEmpty)
+  if emptyRange(ac, bc): localError(b.info, errRangeIsEmpty)
   else: covered = covered + getOrdValue(bc) - getOrdValue(ac) + 1
 
 proc semCaseBranchRange(c: PContext, t, b: PNode, 
-                        covered: var biggestInt): PNode = 
+                        covered: var BiggestInt): PNode = 
   checkSonsLen(b, 3)
   result = semBranchRange(c, t, b.sons[1], b.sons[2], covered)
 
 proc semCaseBranchSetElem(c: PContext, t, b: PNode, 
-                          covered: var biggestInt): PNode = 
+                          covered: var BiggestInt): PNode = 
   if isRange(b):
     checkSonsLen(b, 3)
     result = semBranchRange(c, t, b.sons[1], b.sons[2], covered)
@@ -374,7 +374,7 @@ proc semCaseBranchSetElem(c: PContext, t, b: PNode,
     inc(covered)
 
 proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int, 
-                   covered: var biggestInt) = 
+                   covered: var BiggestInt) = 
   for i in countup(0, sonsLen(branch) - 2): 
     var b = branch.sons[i]
     if b.kind == nkRange:
@@ -411,14 +411,14 @@ proc semRecordCase(c: PContext, n: PNode, check: var TIntSet, pos: var int,
     internalError("semRecordCase: discriminant is no symbol")
     return
   incl(a.sons[0].sym.flags, sfDiscriminant)
-  var covered: biggestInt = 0
+  var covered: BiggestInt = 0
   var typ = skipTypes(a.sons[0].Typ, abstractVar-{tyTypeDesc})
   if not isOrdinalType(typ):
-    LocalError(n.info, errSelectorMustBeOrdinal)
+    localError(n.info, errSelectorMustBeOrdinal)
   elif firstOrd(typ) < 0:
-    LocalError(n.info, errOrdXMustNotBeNegative, a.sons[0].sym.name.s)
+    localError(n.info, errOrdXMustNotBeNegative, a.sons[0].sym.name.s)
   elif lengthOrd(typ) > 0x00007FFF:
-    LocalError(n.info, errLenXinvalid, a.sons[0].sym.name.s)
+    localError(n.info, errLenXinvalid, a.sons[0].sym.name.s)
   var chckCovered = true
   for i in countup(1, sonsLen(n) - 1):
     var b = copyTree(n.sons[i])
@@ -452,7 +452,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var TIntSet, pos: var int,
         checkSonsLen(it, 2)
         if c.InGenericContext == 0:
           var e = semConstBoolExpr(c, it.sons[0])
-          if e.kind != nkIntLit: InternalError(e.info, "semRecordNodeAux")
+          if e.kind != nkIntLit: internalError(e.info, "semRecordNodeAux")
           elif e.intVal != 0 and branch == nil: branch = it.sons[1]
         else:
           it.sons[0] = forceBool(c, semExprWithType(c, it.sons[0]))
@@ -467,7 +467,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var TIntSet, pos: var int,
         assign(newCheck, check)
         var newPos = pos
         var newf = newNodeI(nkRecList, n.info)
-        semRecordNodeAux(c, it.sons[idx], newcheck, newpos, newf, rectype)
+        semRecordNodeAux(c, it.sons[idx], newCheck, newPos, newf, rectype)
         it.sons[idx] = if newf.len == 1: newf[0] else: newf
     if c.InGenericContext > 0:
       addSon(father, n)
@@ -493,7 +493,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var TIntSet, pos: var int,
       localError(n.sons[length-1].info, errInitHereNotAllowed)
     var typ: PType
     if n.sons[length-2].kind == nkEmpty: 
-      LocalError(n.info, errTypeExpected)
+      localError(n.info, errTypeExpected)
       typ = errorType(c)
     else:
       typ = semTypeNode(c, n.sons[length-2], nil)
@@ -509,7 +509,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var TIntSet, pos: var int,
         f.loc.r = toRope(f.name.s)
         f.flags = f.flags + ({sfImportc, sfExportc} * rec.flags)
       inc(pos)
-      if ContainsOrIncl(check, f.name.id):
+      if containsOrIncl(check, f.name.id):
         localError(n.sons[i].info, errAttemptToRedefine, f.name.s)
       if a.kind == nkEmpty: addSon(father, newSymNode(f))
       else: addSon(a, newSymNode(f))
@@ -521,7 +521,7 @@ proc addInheritedFieldsAux(c: PContext, check: var TIntSet, pos: var int,
                            n: PNode) =
   case n.kind
   of nkRecCase:
-    if (n.sons[0].kind != nkSym): InternalError(n.info, "addInheritedFieldsAux")
+    if (n.sons[0].kind != nkSym): internalError(n.info, "addInheritedFieldsAux")
     addInheritedFieldsAux(c, check, pos, n.sons[0])
     for i in countup(1, sonsLen(n) - 1):
       case n.sons[i].kind
@@ -532,9 +532,9 @@ proc addInheritedFieldsAux(c: PContext, check: var TIntSet, pos: var int,
     for i in countup(0, sonsLen(n) - 1):
       addInheritedFieldsAux(c, check, pos, n.sons[i])
   of nkSym:
-    Incl(check, n.sym.name.id)
+    incl(check, n.sym.name.id)
     inc(pos)
-  else: InternalError(n.info, "addInheritedFieldsAux()")
+  else: internalError(n.info, "addInheritedFieldsAux()")
   
 proc addInheritedFields(c: PContext, check: var TIntSet, pos: var int, 
                         obj: PType) = 
@@ -565,7 +565,7 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
       if concreteBase.kind != tyError:
         localError(n.sons[1].info, errInheritanceOnlyWithNonFinalObjects)
       base = nil
-  if n.kind != nkObjectTy: InternalError(n.info, "semObjectNode")
+  if n.kind != nkObjectTy: internalError(n.info, "semObjectNode")
   result = newOrPrevType(tyObject, prev, c)
   rawAddSon(result, base)
   result.n = newNodeI(nkRecList, n.info)
@@ -719,7 +719,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
   var counter = 0
   for i in countup(1, n.len - 1):
     var a = n.sons[i]
-    if a.kind != nkIdentDefs: IllFormedAst(a)
+    if a.kind != nkIdentDefs: illFormedAst(a)
     checkMinSonsLen(a, 3)
     var
       typ: PType = nil
@@ -756,8 +756,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       arg.constraint = constraint
       inc(counter)
       if def != nil and def.kind != nkEmpty: arg.ast = copyTree(def)
-      if ContainsOrIncl(check, arg.name.id): 
-        LocalError(a.sons[j].info, errAttemptToRedefine, arg.name.s)
+      if containsOrIncl(check, arg.name.id): 
+        localError(a.sons[j].info, errAttemptToRedefine, arg.name.s)
       addSon(result.n, newSymNode(arg))
       rawAddSon(result, finalType)
       addParamOrResult(c, arg, kind)
@@ -788,7 +788,7 @@ proc semStmtListType(c: PContext, n: PNode, prev: PType): PType =
     result = nil
   
 proc semBlockType(c: PContext, n: PNode, prev: PType): PType = 
-  Inc(c.p.nestedBlockCounter)
+  inc(c.p.nestedBlockCounter)
   checkSonsLen(n, 2)
   openScope(c)
   if n.sons[0].kind notin {nkEmpty, nkSym}:
@@ -797,7 +797,7 @@ proc semBlockType(c: PContext, n: PNode, prev: PType): PType =
   n.sons[1].typ = result
   n.typ = result
   closeScope(c)
-  Dec(c.p.nestedBlockCounter)
+  dec(c.p.nestedBlockCounter)
 
 proc semGenericParamInInvokation(c: PContext, n: PNode): PType =
   # XXX hack 1022 for generics ... would have been nice if the compiler had
@@ -824,12 +824,12 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   
   template addToResult(typ) =
     if typ.isNil:
-      InternalAssert false
+      internalAssert false
       rawAddSon(result, typ)
     else: addSonSkipIntLit(result, typ)
 
   if s.typ == nil:
-    LocalError(n.info, errCannotInstantiateX, s.name.s)
+    localError(n.info, errCannotInstantiateX, s.name.s)
     return newOrPrevType(tyError, prev, c)
   elif s.typ.kind == tyForward:
     for i in countup(1, sonsLen(n)-1):
@@ -845,7 +845,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
       var err = "cannot instantiate " & typeToString(s.typ) & "\n" &
                 "got: (" & describeArgs(c, n) & ")\n" &
                 "but expected: (" & describeArgs(c, s.typ.n, 0) & ")"
-      LocalError(n.info, errGenerated, err)
+      localError(n.info, errGenerated, err)
       return newOrPrevType(tyError, prev, c)
 
     var isConcrete = true
@@ -857,7 +857,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     
     if isConcrete:
       if s.ast == nil:
-        LocalError(n.info, errCannotInstantiateX, s.name.s)
+        localError(n.info, errCannotInstantiateX, s.name.s)
         result = newOrPrevType(tyError, prev, c)
       else:
         when oUseLateInstantiation:
@@ -870,7 +870,7 @@ proc semTypeExpr(c: PContext, n: PNode): PType =
   if n.kind == nkSym and n.sym.kind == skType:
     result = n.sym.typ
   else:
-    LocalError(n.info, errTypeExpected, n.renderTree)
+    localError(n.info, errTypeExpected, n.renderTree)
 
 proc freshType(res, prev: PType): PType {.inline.} =
   if prev.isNil:
@@ -905,7 +905,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     if sonsLen(n) == 1: result = semTypeNode(c, n.sons[0], prev)
     else:
       # XXX support anon tuple here
-      LocalError(n.info, errTypeExpected)
+      localError(n.info, errTypeExpected)
       result = newOrPrevType(tyError, prev, c)
   of nkCallKinds:
     if isRange(n):
@@ -918,10 +918,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
           t1 = semTypeNode(c, n.sons[1], nil)
           t2 = semTypeNode(c, n.sons[2], nil)
         if t1 == nil: 
-          LocalError(n.sons[1].info, errTypeExpected)
+          localError(n.sons[1].info, errTypeExpected)
           result = newOrPrevType(tyError, prev, c)
         elif t2 == nil: 
-          LocalError(n.sons[2].info, errTypeExpected)
+          localError(n.sons[2].info, errTypeExpected)
           result = newOrPrevType(tyError, prev, c)
         else:
           result = newTypeS(tyTypeClass, c)
@@ -936,7 +936,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
           result = freshType(result, prev)
           result.flags.incl(tfNotNil)
         else:
-          LocalError(n.info, errGenerated, "invalid type")
+          localError(n.info, errGenerated, "invalid type")
       else:
         result = semTypeExpr(c, n)
     else:
@@ -966,7 +966,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkIdent, nkDotExpr, nkAccQuoted: 
     var s = semTypeIdent(c, n)
     if s.typ == nil: 
-      if s.kind != skError: LocalError(n.info, errTypeExpected)
+      if s.kind != skError: localError(n.info, errTypeExpected)
       result = newOrPrevType(tyError, prev, c)
     elif s.kind == skParam and s.typ.kind == tyTypeDesc:
       assert s.typ.len > 0
@@ -991,7 +991,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = prev
       markUsed(n, n.sym)
     else:
-      if n.sym.kind != skError: LocalError(n.info, errTypeExpected)
+      if n.sym.kind != skError: localError(n.info, errTypeExpected)
       result = newOrPrevType(tyError, prev, c)
   of nkObjectTy: result = semObjectNode(c, n, prev)
   of nkTupleTy: result = semTuple(c, n, prev)
@@ -1016,7 +1016,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
           #Message(n.info, warnImplicitClosure, renderTree(n))
       else:
         pragma(c, s, n.sons[1], procTypePragmas)
-        when useEffectSystem: SetEffectsForProcType(result, n.sons[1])
+        when useEffectSystem: setEffectsForProcType(result, n.sons[1])
       closeScope(c)
     if n.kind == nkIteratorTy:
       result.flags.incl(tfIterator)
@@ -1031,7 +1031,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     result = freshType(result, prev)
     result.flags.incl(tfShared)
   else:
-    LocalError(n.info, errTypeExpected)
+    localError(n.info, errTypeExpected)
     result = newOrPrevType(tyError, prev, c)
   
 proc setMagicType(m: PSym, kind: TTypeKind, size: int) = 
@@ -1081,7 +1081,7 @@ proc processMagicType(c: PContext, m: PSym) =
   of mSeq: setMagicType(m, tySequence, 0)
   of mOrdinal: setMagicType(m, tyOrdinal, 0)
   of mPNimrodNode: nil
-  else: LocalError(m.info, errTypeExpected)
+  else: localError(m.info, errTypeExpected)
   
 proc semGenericConstraints(c: PContext, x: PType): PType =
   if x.kind in StructuralEquivTypes and (

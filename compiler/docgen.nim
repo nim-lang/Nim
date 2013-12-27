@@ -40,11 +40,11 @@ proc compilerMsgHandler(filename: string, line, col: int,
   of mwRedefinitionOfLabel: k = warnRedefinitionOfLabel
   of mwUnknownSubstitution: k = warnUnknownSubstitutionX
   of mwUnsupportedLanguage: k = warnLanguageXNotSupported
-  GlobalError(newLineInfo(filename, line, col), k, arg)
+  globalError(newLineInfo(filename, line, col), k, arg)
 
 proc parseRst(text, filename: string,
               line, column: int, hasToc: var bool,
-              rstOptions: TRstParseOptions): PRstNode =
+              rstOptions: TRstParseOptions): PRSTNode =
   result = rstParse(text, filename, line, column, hasToc, rstOptions,
                     options.FindFile, compilerMsgHandler)
 
@@ -55,18 +55,18 @@ proc newDocumentor*(filename: string, config: PStringTable): PDoc =
                    options.FindFile, compilerMsgHandler)
   result.id = 100
 
-proc dispA(dest: var PRope, xml, tex: string, args: openarray[PRope]) =
+proc dispA(dest: var PRope, xml, tex: string, args: openArray[PRope]) =
   if gCmd != cmdRst2Tex: appf(dest, xml, args)
   else: appf(dest, tex, args)
 
-proc getVarIdx(varnames: openarray[string], id: string): int =
+proc getVarIdx(varnames: openArray[string], id: string): int =
   for i in countup(0, high(varnames)):
     if cmpIgnoreStyle(varnames[i], id) == 0:
       return i
   result = -1
 
-proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openarray[string],
-                         varvalues: openarray[PRope]): PRope =
+proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openArray[string],
+                         varvalues: openArray[PRope]): PRope =
   var i = 0
   var L = len(frmt)
   result = nil
@@ -85,7 +85,7 @@ proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openarray[string],
       of '0'..'9':
         var j = 0
         while true:
-          j = (j * 10) + Ord(frmt[i]) - ord('0')
+          j = (j * 10) + ord(frmt[i]) - ord('0')
           inc(i)
           if (i > L + 0 - 1) or not (frmt[i] in {'0'..'9'}): break
         if j > high(varvalues) + 1: internalError("ropeFormatNamedVars")
@@ -112,7 +112,7 @@ proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openarray[string],
         var idx = getVarIdx(varnames, id)
         if idx >= 0: app(result, varvalues[idx])
         else: rawMessage(errUnkownSubstitionVar, id)
-      else: InternalError("ropeFormatNamedVars")
+      else: internalError("ropeFormatNamedVars")
     var start = i
     while i < L:
       if frmt[i] != '$': inc(i)
@@ -124,7 +124,7 @@ proc genComment(d: PDoc, n: PNode): string =
   var dummyHasToc: bool
   if n.comment != nil and startsWith(n.comment, "##"):
     renderRstToOut(d[], parseRst(n.comment, toFilename(n.info),
-                               toLineNumber(n.info), toColumn(n.info),
+                               toLinenumber(n.info), toColumn(n.info),
                                dummyHasToc, d.options + {roSkipPounds}), result)
 
 proc genRecComment(d: PDoc, n: PNode): PRope =
@@ -152,7 +152,7 @@ proc extractDocComment*(s: PSym, d: PDoc = nil): string =
     if not d.isNil:
       var dummyHasToc: bool
       renderRstToOut(d[], parseRst(n.comment, toFilename(n.info),
-                                   toLineNumber(n.info), toColumn(n.info),
+                                   toLinenumber(n.info), toColumn(n.info),
                                    dummyHasToc, d.options + {roSkipPounds}),
                      result)
     else:
@@ -186,7 +186,7 @@ proc getName(d: PDoc, n: PNode, splitAfter = -1): string =
     internalError(n.info, "getName()")
     result = ""
 
-proc getRstName(n: PNode): PRstNode =
+proc getRstName(n: PNode): PRSTNode =
   case n.kind
   of nkPostfix: result = getRstName(n.sons[1])
   of nkPragmaExpr: result = getRstName(n.sons[0])
@@ -272,7 +272,7 @@ proc genJSONItem(d: PDoc, n, nameNode: PNode, k: TSymKind): PJsonNode =
     result["code"] = %r.buf
 
 proc checkForFalse(n: PNode): bool =
-  result = n.kind == nkIdent and IdentEq(n.ident, "false")
+  result = n.kind == nkIdent and identEq(n.ident, "false")
 
 proc traceDeps(d: PDoc, n: PNode) =
   const k = skModule

@@ -256,7 +256,7 @@ proc `+`*(a: TTimeInfo, interval: TTimeInterval): TTimeInfo =
   ##
   ## **Note:** This has been only briefly tested and it may not be
   ## very accurate.
-  let t = toSeconds(TimeInfoToTime(a))
+  let t = toSeconds(timeInfoToTime(a))
   let secs = toSeconds(a, interval)
   if a.tzname == "UTC":
     result = getGMTime(fromSeconds(t + secs))
@@ -268,7 +268,7 @@ proc `-`*(a: TTimeInfo, interval: TTimeInterval): TTimeInfo =
   ##
   ## **Note:** This has been only briefly tested, it is inaccurate especially
   ## when you subtract so much that you reach the Julian calendar.
-  let t = toSeconds(TimeInfoToTime(a))
+  let t = toSeconds(timeInfoToTime(a))
   let secs = toSeconds(a, interval)
   if a.tzname == "UTC":
     result = getGMTime(fromSeconds(t - secs))
@@ -319,11 +319,11 @@ when not defined(JS):
     importc: "gmtime", header: "<time.h>", tags: [].}
   proc timec(timer: PTime): TTime {.
     importc: "time", header: "<time.h>", tags: [].}
-  proc mktime(t: structTM): TTime {.
+  proc mktime(t: StructTM): TTime {.
     importc: "mktime", header: "<time.h>", tags: [].}
-  proc asctime(tblock: structTM): CString {.
+  proc asctime(tblock: StructTM): cstring {.
     importc: "asctime", header: "<time.h>", tags: [].}
-  proc ctime(time: PTime): CString {.
+  proc ctime(time: PTime): cstring {.
     importc: "ctime", header: "<time.h>", tags: [].}
   #  strftime(s: CString, maxsize: int, fmt: CString, t: tm): int {.
   #    importc: "strftime", header: "<time.h>".}
@@ -335,7 +335,7 @@ when not defined(JS):
     clocksPerSec {.importc: "CLOCKS_PER_SEC", nodecl.}: int
     
   # our own procs on top of that:
-  proc tmToTimeInfo(tm: structTM, local: bool): TTimeInfo =
+  proc tmToTimeInfo(tm: StructTM, local: bool): TTimeInfo =
     const
       weekDays: array [0..6, TWeekDay] = [
         dSun, dMon, dTue, dWed, dThu, dFri, dSat]
@@ -358,7 +358,7 @@ when not defined(JS):
       timezone: if local: getTimezone() else: 0
     )
   
-  proc timeInfoToTM(t: TTimeInfo): structTM =
+  proc timeInfoToTM(t: TTimeInfo): StructTM =
     const
       weekDays: array [TWeekDay, int8] = [1'i8,2'i8,3'i8,4'i8,5'i8,6'i8,0'i8]
     result.second = t.second
@@ -453,7 +453,7 @@ when not defined(JS):
         result = toFloat(a.tv_sec) + toFloat(a.tv_usec)*0.00_0001
       elif defined(windows):
         var f: winlean.TFiletime
-        GetSystemTimeAsFileTime(f)
+        getSystemTimeAsFileTime(f)
         var i64 = rdFileTime(f) - epochDiff
         var secs = i64 div rateDiff
         var subsecs = i64 mod rateDiff

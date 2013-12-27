@@ -13,28 +13,28 @@
 proc instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable,
                                  entry: var TInstantiation) = 
   if n.kind != nkGenericParams: 
-    InternalError(n.info, "instantiateGenericParamList; no generic params")
+    internalError(n.info, "instantiateGenericParamList; no generic params")
   newSeq(entry.concreteTypes, n.len)
   for i in countup(0, n.len - 1):
     var a = n.sons[i]
     if a.kind != nkSym: 
-      InternalError(a.info, "instantiateGenericParamList; no symbol")
+      internalError(a.info, "instantiateGenericParamList; no symbol")
     var q = a.sym
     if q.typ.kind notin {tyTypeDesc, tyGenericParam, tyExpr}+tyTypeClasses:
       continue
     var s = newSym(skType, q.name, getCurrOwner(), q.info)
     s.flags = s.flags + {sfUsed, sfFromGeneric}
-    var t = PType(IdTableGet(pt, q.typ))
+    var t = PType(idTableGet(pt, q.typ))
     if t == nil:
       if tfRetType in q.typ.flags:
         # keep the generic type and allow the return type to be bound 
         # later by semAsgn in return type inference scenario
         t = q.typ
       else:
-        LocalError(a.info, errCannotInstantiateX, s.name.s)
+        localError(a.info, errCannotInstantiateX, s.name.s)
         t = errorType(c)
     elif t.kind == tyGenericParam: 
-      InternalError(a.info, "instantiateGenericParamList: " & q.name.s)
+      internalError(a.info, "instantiateGenericParamList: " & q.name.s)
     elif t.kind == tyGenericInvokation:
       #t = instGenericContainer(c, a, t)
       t = generateTypeInstance(c, pt, a, t)
@@ -50,7 +50,7 @@ proc sameInstantiation(a, b: TInstantiation): bool =
                           flags = {TypeDescExactMatch}): return
     result = true
 
-proc genericCacheGet(genericSym: Psym, entry: TInstantiation): PSym =
+proc genericCacheGet(genericSym: PSym, entry: TInstantiation): PSym =
   if genericSym.procInstCache != nil:
     for inst in genericSym.procInstCache:
       if sameInstantiation(entry, inst[]):
@@ -75,11 +75,11 @@ proc removeDefaultParamValues(n: PNode) =
 proc freshGenSyms(n: PNode, owner: PSym, symMap: var TIdTable) =
   # we need to create a fresh set of gensym'ed symbols:
   if n.kind == nkSym and sfGenSym in n.sym.flags:
-    var x = PSym(IdTableGet(symMap, n.sym))
+    var x = PSym(idTableGet(symMap, n.sym))
     if x == nil:
       x = copySym(n.sym, false)
       x.owner = owner
-      IdTablePut(symMap, n.sym, x)
+      idTablePut(symMap, n.sym, x)
     n.sym = x
   else:
     for i in 0 .. <safeLen(n): freshGenSyms(n.sons[i], owner, symMap)
@@ -101,7 +101,7 @@ proc instantiateBody(c: PContext, n: PNode, result: PSym) =
     maybeAddResult(c, result, n)
     var b = n.sons[bodyPos]
     var symMap: TIdTable
-    InitIdTable symMap
+    initIdTable symMap
     freshGenSyms(b, result, symMap)
     b = semProcBody(c, b)
     b = hloBody(c, b)
@@ -126,7 +126,7 @@ proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
 proc sideEffectsCheck(c: PContext, s: PSym) = 
   if {sfNoSideEffect, sfSideEffect} * s.flags ==
       {sfNoSideEffect, sfSideEffect}: 
-    LocalError(s.info, errXhasSideEffects, s.name.s)
+    localError(s.info, errXhasSideEffects, s.name.s)
   elif sfThread in s.flags and semthreads.needsGlobalAnalysis() and 
       s.ast.sons[genericParamsPos].kind == nkEmpty:
     c.threadEntries.add(s)
@@ -170,11 +170,11 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType): PType =
     lateInstantiateGeneric(c, header, info)
   else:
     var cl: TReplTypeVars
-    InitIdTable(cl.symMap)
-    InitIdTable(cl.typeMap)
+    initIdTable(cl.symMap)
+    initIdTable(cl.typeMap)
     cl.info = info
     cl.c = c
-    result = ReplaceTypeVarsT(cl, header)
+    result = replaceTypeVarsT(cl, header)
 
 proc instGenericContainer(c: PContext, n: PNode, header: PType): PType =
   result = instGenericContainer(c, n.info, header)
@@ -265,7 +265,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   if fn.kind in {skTemplate, skMacro}: return fn
   
   # generates an instantiated proc
-  if c.InstCounter > 1000: InternalError(fn.ast.info, "nesting too deep")
+  if c.InstCounter > 1000: internalError(fn.ast.info, "nesting too deep")
   inc(c.InstCounter)
   # careful! we copy the whole AST including the possibly nil body!
   var n = copyTree(fn.ast)
@@ -282,7 +282,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   pushOwner(result)
   openScope(c)
   if n.sons[genericParamsPos].kind == nkEmpty: 
-    InternalError(n.info, "generateInstance")
+    internalError(n.info, "generateInstance")
   n.sons[namePos] = newSymNode(result)
   pushInfoContext(info)
   var entry = TInstantiation.new
@@ -301,7 +301,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     if fn.kind != skTemplate:
       instantiateBody(c, n, result)
       sideEffectsCheck(c, result)
-    ParamsTypeCheck(c, result.typ)
+    paramsTypeCheck(c, result.typ)
   else:
     result = oldPrc
   popInfoContext()

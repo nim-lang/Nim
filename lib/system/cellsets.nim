@@ -115,7 +115,7 @@ proc cellSetEnlarge(t: var TCellSet) =
   var oldMax = t.max
   t.max = ((t.max+1)*2)-1
   var n = cast[PPageDescArray](alloc0((t.max + 1) * sizeof(PPageDesc)))
-  for i in 0 .. oldmax:
+  for i in 0 .. oldMax:
     if t.data[i] != nil:
       cellSetRawInsert(t, n, t.data[i])
   dealloc(t.data)
@@ -201,7 +201,7 @@ iterator elements(t: TCellSet): PCell {.inline.} =
 iterator elementsExcept(t, s: TCellSet): PCell {.inline.} =
   var r = t.head
   while r != nil:
-    let ss = CellSetGet(s, r.key)
+    let ss = cellSetGet(s, r.key)
     var i = 0
     while i <= high(r.bits):
       var w = r.bits[i]

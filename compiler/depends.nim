@@ -43,7 +43,7 @@ proc addDotDependency(c: PPassContext, n: PNode): PNode =
 
 proc generateDot(project: string) = 
   writeRope(ropef("digraph $1 {$n$2}$n", [
-      toRope(changeFileExt(extractFileName(project), "")), gDotGraph]), 
+      toRope(changeFileExt(extractFilename(project), "")), gDotGraph]), 
             changeFileExt(project, "dot"))
 
 proc myOpen(module: PSym): PPassContext =

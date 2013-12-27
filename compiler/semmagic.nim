@@ -18,7 +18,7 @@ proc expectIntLit(c: PContext, n: PNode): int =
   let x = c.semConstExpr(c, n)
   case x.kind
   of nkIntLit..nkInt64Lit: result = int(x.intVal)
-  else: LocalError(n.info, errIntLiteralExpected)
+  else: localError(n.info, errIntLiteralExpected)
 
 proc semInstantiationInfo(c: PContext, n: PNode): PNode =
   result = newNodeIT(nkPar, n.info, n.typ)
@@ -28,7 +28,7 @@ proc semInstantiationInfo(c: PContext, n: PNode): PNode =
   var filename = newNodeIT(nkStrLit, n.info, getSysType(tyString))
   filename.strVal = if useFullPaths != 0: info.toFullPath else: info.ToFilename
   var line = newNodeIT(nkIntLit, n.info, getSysType(tyInt))
-  line.intVal = ToLinenumber(info)
+  line.intVal = toLinenumber(info)
   result.add(filename)
   result.add(line)
 
@@ -54,7 +54,7 @@ proc semTypeTraits(c: PContext, n: PNode): PNode =
   if t.kind == tyTypeDesc and t.len == 0:
     result = n
   elif not containsGenericType(t):
-    result = evalTypeTrait(n[0], t, GetCurrOwner())
+    result = evalTypeTrait(n[0], t, getCurrOwner())
   else:
     # a typedesc variable, pass unmodified to evals
     result = n
@@ -70,23 +70,23 @@ proc semBindSym(c: PContext, n: PNode): PNode =
   
   let sl = semConstExpr(c, n.sons[1])
   if sl.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}: 
-    LocalError(n.sons[1].info, errStringLiteralExpected)
+    localError(n.sons[1].info, errStringLiteralExpected)
     return errorNode(c, n)
   
   let isMixin = semConstExpr(c, n.sons[2])
   if isMixin.kind != nkIntLit or isMixin.intVal < 0 or
       isMixin.intVal > high(TSymChoiceRule).int:
-    LocalError(n.sons[2].info, errConstExprExpected)
+    localError(n.sons[2].info, errConstExprExpected)
     return errorNode(c, n)
   
   let id = newIdentNode(getIdent(sl.strVal), n.info)
-  let s = QualifiedLookUp(c, id)
+  let s = qualifiedLookUp(c, id)
   if s != nil:
     # we need to mark all symbols:
     var sc = symChoice(c, id, s, TSymChoiceRule(isMixin.intVal))
     result.add(sc)
   else:
-    LocalError(n.sons[1].info, errUndeclaredIdentifier, sl.strVal)
+    localError(n.sons[1].info, errUndeclaredIdentifier, sl.strVal)
 
 proc semLocals(c: PContext, n: PNode): PNode =
   var counter = 0

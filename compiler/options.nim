@@ -142,7 +142,7 @@ const
 # additional configuration variables:
 var
   gConfigVars* = newStringTable(modeStyleInsensitive)
-  gDllOverrides = newStringtable(modeCaseInsensitive)
+  gDllOverrides = newStringTable(modeCaseInsensitive)
   libpath* = ""
   gProjectName* = "" # holds a name like 'nimrod'
   gProjectPath* = "" # holds a path like /home/alice/projects/nimrod/compiler/
@@ -184,7 +184,7 @@ proc getOutFile*(filename, ext: string): string =
   
 proc getPrefixDir*(): string = 
   ## gets the application directory
-  result = SplitPath(getAppDir()).head
+  result = splitPath(getAppDir()).head
 
 proc canonicalizePath*(path: string): string =
   result = path.expandFilename
@@ -261,8 +261,8 @@ iterator iterSearchPath*(SearchPaths: TLinkedList): string =
     it = PStrEntry(it.Next)
 
 proc rawFindFile(f: string): string =
-  for it in iterSearchPath(SearchPaths):
-    result = JoinPath(it, f)
+  for it in iterSearchPath(searchPaths):
+    result = joinPath(it, f)
     if existsFile(result):
       return result.canonicalizePath
   result = ""
@@ -270,7 +270,7 @@ proc rawFindFile(f: string): string =
 proc rawFindFile2(f: string): string =
   var it = PStrEntry(lazyPaths.head)
   while it != nil:
-    result = JoinPath(it.data, f)
+    result = joinPath(it.data, f)
     if existsFile(result):
       bringToFront(lazyPaths, it)
       return result.canonicalizePath
@@ -292,7 +292,7 @@ proc findModule*(modulename, currentModule: string): string =
   let currentPath = currentModule.splitFile.dir
   result = currentPath / m
   if not existsFile(result):
-    result = FindFile(m)
+    result = findFile(m)
 
 proc libCandidates*(s: string, dest: var seq[string]) = 
   var le = strutils.find(s, '(')
@@ -319,7 +319,7 @@ proc inclDynlibOverride*(lib: string) =
 proc isDynlibOverride*(lib: string): bool =
   result = gDllOverrides.hasKey(lib.canonDynlibName)
 
-proc binaryStrSearch*(x: openarray[string], y: string): int = 
+proc binaryStrSearch*(x: openArray[string], y: string): int = 
   var a = 0
   var b = len(x) - 1
   while a <= b: 

@@ -78,7 +78,7 @@ type
     maxFrameLen*: int         # max length of frame descriptor
     module*: BModule          # used to prevent excessive parameter passing
     withinLoop*: int          # > 0 if we are within a loop
-    gcFrameId*: natural       # for the GC stack marking
+    gcFrameId*: Natural       # for the GC stack marking
     gcFrameType*: PRope       # the struct {} we put the GC markers into
   
   TTypeSeq* = seq[PType]
@@ -108,7 +108,7 @@ type
     forwardedProcs*: TSymSeq  # keep forwarded procs here
     typeNodes*, nimTypes*: int # used for type info generation
     typeNodesName*, nimTypesName*: PRope # used for type info generation
-    labels*: natural          # for generating unique module-scope names
+    labels*: Natural          # for generating unique module-scope names
     extensionLoaders*: array['0'..'9', PRope] # special procs for the
                                               # OpenGL wrapper
     injectStmt*: PRope

@@ -22,7 +22,7 @@ type
     passPP                    # preprocessor called ProcessCommand()
 
 proc processCommand*(switch: string, pass: TCmdLinePass)
-proc processSwitch*(switch, arg: string, pass: TCmdlinePass, info: TLineInfo)
+proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo)
 
 # implementation
 
@@ -36,7 +36,7 @@ const
 
 proc getCommandLineDesc(): string = 
   result = (HelpMessage % [VersionAsString, platform.os[platform.hostOS].name, 
-                           cpu[platform.hostCPU].name]) & Usage
+                           CPU[platform.hostCPU].name]) & Usage
 
 proc helpOnError(pass: TCmdLinePass) = 
   if pass == passCmd1:
@@ -47,14 +47,14 @@ proc writeAdvancedUsage(pass: TCmdLinePass) =
   if pass == passCmd1:
     msgWriteln(`%`(HelpMessage, [VersionAsString, 
                                  platform.os[platform.hostOS].name, 
-                                 cpu[platform.hostCPU].name]) & AdvancedUsage)
+                                 CPU[platform.hostCPU].name]) & AdvancedUsage)
     quit(0)
 
 proc writeVersionInfo(pass: TCmdLinePass) = 
   if pass == passCmd1:
     msgWriteln(`%`(HelpMessage, [VersionAsString, 
                                  platform.os[platform.hostOS].name, 
-                                 cpu[platform.hostCPU].name]))
+                                 CPU[platform.hostCPU].name]))
     quit(0)
 
 var
@@ -88,14 +88,14 @@ proc splitSwitch(switch: string, cmd, arg: var string, pass: TCmdLinePass,
   elif switch[i] in {':', '=', '['}: arg = substr(switch, i + 1)
   else: invalidCmdLineOption(pass, switch, info)
   
-proc processOnOffSwitch(op: TOptions, arg: string, pass: TCmdlinePass, 
+proc processOnOffSwitch(op: TOptions, arg: string, pass: TCmdLinePass, 
                         info: TLineInfo) = 
   case whichKeyword(arg)
   of wOn: gOptions = gOptions + op
   of wOff: gOptions = gOptions - op
   else: localError(info, errOnOrOffExpectedButXFound, arg)
   
-proc processOnOffSwitchG(op: TGlobalOptions, arg: string, pass: TCmdlinePass, 
+proc processOnOffSwitchG(op: TGlobalOptions, arg: string, pass: TCmdLinePass, 
                          info: TLineInfo) = 
   case whichKeyword(arg)
   of wOn: gGlobalOptions = gGlobalOptions + op
@@ -108,7 +108,7 @@ proc expectArg(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
 proc expectNoArg(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) = 
   if arg != "": localError(info, errCmdLineNoArgExpected, addPrefix(switch))
   
-proc processSpecificNote(arg: string, state: TSpecialWord, pass: TCmdlinePass, 
+proc processSpecificNote(arg: string, state: TSpecialWord, pass: TCmdLinePass, 
                          info: TLineInfo) = 
   var id = ""  # arg = "X]:on|off"
   var i = 0
@@ -234,7 +234,7 @@ proc track(arg: string, info: TLineInfo) =
   optTrackPos = newLineInfo(a[0], line, column)
   msgs.addCheckpoint(optTrackPos)
 
-proc dynlibOverride(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
+proc dynlibOverride(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   if pass in {passCmd2, passPP}:
     expectArg(switch, arg, pass, info)
     options.inclDynlibOverride(arg)
@@ -252,7 +252,7 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
     if pass in {passCmd2, passPP}:
       expectArg(switch, arg, pass, info)
       let path = processPath(arg, notRelativeToProj=true)
-      babelpath(path, info)
+      babelPath(path, info)
   of "excludepath":
     expectArg(switch, arg, pass, info)
     let path = processPath(arg)
@@ -269,10 +269,10 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
     optMainModule = arg
   of "define", "d": 
     expectArg(switch, arg, pass, info)
-    DefineSymbol(arg)
+    defineSymbol(arg)
   of "undef", "u": 
     expectArg(switch, arg, pass, info)
-    UndefSymbol(arg)
+    undefSymbol(arg)
   of "compile": 
     expectArg(switch, arg, pass, info)
     if pass in {passCmd2, passPP}: processCompile(arg)
@@ -321,40 +321,40 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
       defineSymbol("nogc")
     else: localError(info, errNoneBoehmRefcExpectedButXFound, arg)
   of "warnings", "w": processOnOffSwitch({optWarns}, arg, pass, info)
-  of "warning": ProcessSpecificNote(arg, wWarning, pass, info)
-  of "hint": ProcessSpecificNote(arg, wHint, pass, info)
-  of "hints": ProcessOnOffSwitch({optHints}, arg, pass, info)
-  of "threadanalysis": ProcessOnOffSwitchG({optThreadAnalysis}, arg, pass, info)
-  of "stacktrace": ProcessOnOffSwitch({optStackTrace}, arg, pass, info)
-  of "linetrace": ProcessOnOffSwitch({optLineTrace}, arg, pass, info)
+  of "warning": processSpecificNote(arg, wWarning, pass, info)
+  of "hint": processSpecificNote(arg, wHint, pass, info)
+  of "hints": processOnOffSwitch({optHints}, arg, pass, info)
+  of "threadanalysis": processOnOffSwitchG({optThreadAnalysis}, arg, pass, info)
+  of "stacktrace": processOnOffSwitch({optStackTrace}, arg, pass, info)
+  of "linetrace": processOnOffSwitch({optLineTrace}, arg, pass, info)
   of "debugger": 
-    ProcessOnOffSwitch({optEndb}, arg, pass, info)
-    if optEndb in gOptions: DefineSymbol("endb")
-    else: UndefSymbol("endb")
+    processOnOffSwitch({optEndb}, arg, pass, info)
+    if optEndb in gOptions: defineSymbol("endb")
+    else: undefSymbol("endb")
   of "profiler": 
-    ProcessOnOffSwitch({optProfiler}, arg, pass, info)
-    if optProfiler in gOptions: DefineSymbol("profiler")
-    else: UndefSymbol("profiler")
-  of "checks", "x": ProcessOnOffSwitch(checksOptions, arg, pass, info)
+    processOnOffSwitch({optProfiler}, arg, pass, info)
+    if optProfiler in gOptions: defineSymbol("profiler")
+    else: undefSymbol("profiler")
+  of "checks", "x": processOnOffSwitch(checksOptions, arg, pass, info)
   of "floatchecks":
-    ProcessOnOffSwitch({optNanCheck, optInfCheck}, arg, pass, info)
-  of "infchecks": ProcessOnOffSwitch({optInfCheck}, arg, pass, info)
-  of "nanchecks": ProcessOnOffSwitch({optNanCheck}, arg, pass, info)
-  of "objchecks": ProcessOnOffSwitch({optObjCheck}, arg, pass, info)
-  of "fieldchecks": ProcessOnOffSwitch({optFieldCheck}, arg, pass, info)
-  of "rangechecks": ProcessOnOffSwitch({optRangeCheck}, arg, pass, info)
-  of "boundchecks": ProcessOnOffSwitch({optBoundsCheck}, arg, pass, info)
-  of "overflowchecks": ProcessOnOffSwitch({optOverflowCheck}, arg, pass, info)
-  of "linedir": ProcessOnOffSwitch({optLineDir}, arg, pass, info)
-  of "assertions", "a": ProcessOnOffSwitch({optAssert}, arg, pass, info)
-  of "deadcodeelim": ProcessOnOffSwitchG({optDeadCodeElim}, arg, pass, info)
-  of "threads": ProcessOnOffSwitchG({optThreads}, arg, pass, info)
-  of "tlsemulation": ProcessOnOffSwitchG({optTlsEmulation}, arg, pass, info)
-  of "taintmode": ProcessOnOffSwitchG({optTaintMode}, arg, pass, info)
+    processOnOffSwitch({optNanCheck, optInfCheck}, arg, pass, info)
+  of "infchecks": processOnOffSwitch({optInfCheck}, arg, pass, info)
+  of "nanchecks": processOnOffSwitch({optNanCheck}, arg, pass, info)
+  of "objchecks": processOnOffSwitch({optObjCheck}, arg, pass, info)
+  of "fieldchecks": processOnOffSwitch({optFieldCheck}, arg, pass, info)
+  of "rangechecks": processOnOffSwitch({optRangeCheck}, arg, pass, info)
+  of "boundchecks": processOnOffSwitch({optBoundsCheck}, arg, pass, info)
+  of "overflowchecks": processOnOffSwitch({optOverflowCheck}, arg, pass, info)
+  of "linedir": processOnOffSwitch({optLineDir}, arg, pass, info)
+  of "assertions", "a": processOnOffSwitch({optAssert}, arg, pass, info)
+  of "deadcodeelim": processOnOffSwitchG({optDeadCodeElim}, arg, pass, info)
+  of "threads": processOnOffSwitchG({optThreads}, arg, pass, info)
+  of "tlsemulation": processOnOffSwitchG({optTlsEmulation}, arg, pass, info)
+  of "taintmode": processOnOffSwitchG({optTaintMode}, arg, pass, info)
   of "implicitstatic":
-    ProcessOnOffSwitch({optImplicitStatic}, arg, pass, info)
+    processOnOffSwitch({optImplicitStatic}, arg, pass, info)
   of "patterns":
-    ProcessOnOffSwitch({optPatterns}, arg, pass, info)
+    processOnOffSwitch({optPatterns}, arg, pass, info)
   of "opt":
     expectArg(switch, arg, pass, info)
     case arg.normalize
@@ -367,7 +367,7 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
     of "none":
       excl(gOptions, optOptimizeSpeed)
       excl(gOptions, optOptimizeSize)
-    else: LocalError(info, errNoneSpeedOrSizeExpectedButXFound, arg)
+    else: localError(info, errNoneSpeedOrSizeExpectedButXFound, arg)
   of "app": 
     expectArg(switch, arg, pass, info)
     case arg.normalize
@@ -389,7 +389,7 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
       excl(gGlobalOptions, optGenGuiApp)
       defineSymbol("library")
       defineSymbol("staticlib")
-    else: LocalError(info, errGuiConsoleOrLibExpectedButXFound, arg)
+    else: localError(info, errGuiConsoleOrLibExpectedButXFound, arg)
   of "passc", "t": 
     expectArg(switch, arg, pass, info)
     if pass in {passCmd2, passPP}: extccomp.addCompileOption(arg)
@@ -409,7 +409,7 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
     headerFile = arg
     incl(gGlobalOptions, optGenIndex)
   of "index":
-    ProcessOnOffSwitchG({optGenIndex}, arg, pass, info)
+    processOnOffSwitchG({optGenIndex}, arg, pass, info)
   of "import":
     expectArg(switch, arg, pass, info)
     if pass in {passCmd2, passPP}: implicitImports.add arg
@@ -426,7 +426,7 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
     expectArg(switch, arg, pass, info)
     if pass in {passCmd1, passPP}: 
       theOS = platform.NameToOS(arg)
-      if theOS == osNone: LocalError(info, errUnknownOS, arg)
+      if theOS == osNone: localError(info, errUnknownOS, arg)
       elif theOS != platform.hostOS: 
         setTarget(theOS, targetCPU)
         condsyms.InitDefines()
@@ -434,7 +434,7 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
     expectArg(switch, arg, pass, info)
     if pass in {passCmd1, passPP}: 
       cpu = platform.NameToCPU(arg)
-      if cpu == cpuNone: LocalError(info, errUnknownCPU, arg)
+      if cpu == cpuNone: localError(info, errUnknownCPU, arg)
       elif cpu != platform.hostCPU: 
         setTarget(targetOS, cpu)
         condsyms.InitDefines()
@@ -457,7 +457,7 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
     expectNoArg(switch, arg, pass, info)
     helpOnError(pass)
   of "symbolfiles": 
-    ProcessOnOffSwitchG({optSymbolFiles}, arg, pass, info)
+    processOnOffSwitchG({optSymbolFiles}, arg, pass, info)
   of "skipcfg": 
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optSkipConfigFile)

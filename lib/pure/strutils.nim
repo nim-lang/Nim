@@ -45,7 +45,7 @@ const
   NewLines* = {'\13', '\10'}
     ## the set of characters a newline terminator can start with
 
-proc toLower*(c: Char): Char {.noSideEffect, procvar,
+proc toLower*(c: char): char {.noSideEffect, procvar,
   rtl, extern: "nsuToLowerChar".} =
   ## Converts `c` into lower case. This works only for the letters A-Z.
   ## See `unicode.toLower` for a version that works for any Unicode character.
@@ -62,12 +62,12 @@ proc toLower*(s: string): string {.noSideEffect, procvar,
   for i in 0..len(s) - 1:
     result[i] = toLower(s[i])
 
-proc toUpper*(c: Char): Char {.noSideEffect, procvar,
+proc toUpper*(c: char): char {.noSideEffect, procvar,
   rtl, extern: "nsuToUpperChar".} =
   ## Converts `c` into upper case. This works only for the letters a-z.
   ## See `unicode.toUpper` for a version that works for any Unicode character.
   if c in {'a'..'z'}:
-    result = Chr(Ord(c) - (Ord('a') - Ord('A')))
+    result = chr(ord(c) - (Ord('a') - Ord('A')))
   else:
     result = c
 
@@ -146,7 +146,7 @@ proc strip*(s: string, leading = true, trailing = true): string {.noSideEffect,
   ## If `leading` is true, leading whitespace is stripped.
   ## If `trailing` is true, trailing whitespace is stripped.
   const
-    chars: set[Char] = Whitespace
+    chars: set[char] = Whitespace
   var
     first = 0
     last = len(s)-1
@@ -162,7 +162,7 @@ proc toOctal*(c: char): string {.noSideEffect, rtl, extern: "nsuToOctal".} =
   result = newString(3)
   var val = ord(c)
   for i in countdown(2, 0):
-    result[i] = Chr(val mod 8 + ord('0'))
+    result[i] = chr(val mod 8 + ord('0'))
     val = val div 8
 
 iterator split*(s: string, seps: set[char] = Whitespace): string =
@@ -352,7 +352,7 @@ proc parseInt*(s: string): int {.noSideEffect, procvar,
   if L != s.len or L == 0:
     raise newException(EInvalidValue, "invalid integer: " & s)
 
-proc parseBiggestInt*(s: string): biggestInt {.noSideEffect, procvar,
+proc parseBiggestInt*(s: string): BiggestInt {.noSideEffect, procvar,
   rtl, extern: "nsuParseBiggestInt".} =
   ## Parses a decimal integer value contained in `s`. If `s` is not
   ## a valid integer, `EInvalidValue` is raised.
@@ -419,7 +419,7 @@ proc parseEnum*[T: enum](s: string, default: T): T =
       return e
   result = default
 
-proc repeatChar*(count: int, c: Char = ' '): string {.noSideEffect,
+proc repeatChar*(count: int, c: char = ' '): string {.noSideEffect,
   rtl, extern: "nsuRepeatChar".} =
   ## Returns a string of length `count` consisting only of
   ## the character `c`. You can use this proc to left align strings. Example:
@@ -506,9 +506,9 @@ proc wordWrap*(s: string, maxLineWidth = 80,
   for word, isSep in tokenize(s, seps):
     if len(word) > SpaceLeft:
       if splitLongWords and len(word) > maxLineWidth:
-        result.add(substr(word, 0, spaceLeft-1))
-        var w = spaceLeft+1
-        var wordLeft = len(word) - spaceLeft
+        result.add(substr(word, 0, SpaceLeft-1))
+        var w = SpaceLeft+1
+        var wordLeft = len(word) - SpaceLeft
         while wordLeft > 0:
           result.add(newLine)
           var L = min(maxLineWidth, wordLeft)
@@ -517,11 +517,11 @@ proc wordWrap*(s: string, maxLineWidth = 80,
           inc(w, L)
           dec(wordLeft, L)
       else:
-        SpaceLeft = maxLineWidth - len(Word)
+        SpaceLeft = maxLineWidth - len(word)
         result.add(newLine)
         result.add(word)
     else:
-      SpaceLeft = SpaceLeft - len(Word)
+      SpaceLeft = SpaceLeft - len(word)
       result.add(word)
 
 proc unindent*(s: string, eatAllIndent = false): string {.
@@ -608,7 +608,7 @@ proc allCharsInSet*(s: string, theSet: TCharSet): bool =
     if c notin theSet: return false
   return true
 
-proc abbrev*(s: string, possibilities: openarray[string]): int =
+proc abbrev*(s: string, possibilities: openArray[string]): int =
   ## returns the index of the first item in `possibilities` if not
   ## ambiguous; -1 if no item has been found; -2 if multiple items
   ## match.
@@ -793,7 +793,7 @@ proc delete*(s: var string, first, last: int) {.noSideEffect,
     s[i] = s[j]
     inc(i)
     inc(j)
-  setlen(s, newLen)
+  setLen(s, newLen)
 
 proc parseOctInt*(s: string): int {.noSideEffect,
   rtl, extern: "nsuParseOctInt".} =
@@ -1022,7 +1022,7 @@ proc editDistance*(a, b: string): int {.noSideEffect,
 
 # floating point formating:
 
-proc c_sprintf(buf, frmt: CString) {.header: "<stdio.h>", importc: "sprintf",
+proc c_sprintf(buf, frmt: cstring) {.header: "<stdio.h>", importc: "sprintf",
                                      varargs, noSideEffect.}
 
 type
@@ -1075,7 +1075,7 @@ proc formatFloat*(f: float, format: TFloatFormat = ffDefault,
   ## after the decimal point for Nimrod's ``float`` type.
   result = formatBiggestFloat(f, format, precision)
 
-proc formatSize*(bytes: biggestInt, decimalSep = '.'): string =
+proc formatSize*(bytes: BiggestInt, decimalSep = '.'): string =
   ## Rounds and formats `bytes`. Examples:
   ##
   ## .. code-block:: nimrod
@@ -1098,7 +1098,7 @@ proc formatSize*(bytes: biggestInt, decimalSep = '.'): string =
   else:
     result = insertSep($bytes) & "B"
 
-proc findNormalized(x: string, inArray: openarray[string]): int =
+proc findNormalized(x: string, inArray: openArray[string]): int =
   var i = 0
   while i < high(inArray):
     if cmpIgnoreStyle(x, inArray[i]) == 0: return i
@@ -1158,7 +1158,7 @@ proc addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.
       add s, formatstr[i]
       inc(i)
 
-proc `%` *(formatstr: string, a: openarray[string]): string {.noSideEffect,
+proc `%` *(formatstr: string, a: openArray[string]): string {.noSideEffect,
   rtl, extern: "nsuFormatOpenArray".} =
   ## The `substitution`:idx: operator performs string substitutions in
   ## `formatstr` and returns a modified `formatstr`. This is often called

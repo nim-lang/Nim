@@ -25,12 +25,12 @@ proc opGorge*(cmd, input: string): string =
 
 proc opSlurp*(file: string, info: TLineInfo, module: PSym): string = 
   try:
-    let filename = file.FindFile
+    let filename = file.findFile
     result = readFile(filename)
     # we produce a fake include statement for every slurped filename, so that
     # the module dependencies are accurate:
     appendToModule(module, newNode(nkIncludeStmt, info, @[
       newStrNode(nkStrLit, filename)]))
   except EIO:
-    LocalError(info, errCannotOpenFile, file)
+    localError(info, errCannotOpenFile, file)
     result = ""

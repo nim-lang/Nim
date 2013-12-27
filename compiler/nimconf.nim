@@ -60,7 +60,7 @@ var condStack: seq[bool] = @[]
 proc doEnd(L: var TLexer, tok: var TToken) = 
   if high(condStack) < 0: lexMessage(L, errTokenExpected, "@if")
   ppGetTok(L, tok)            # skip 'end'
-  setlen(condStack, high(condStack))
+  setLen(condStack, high(condStack))
 
 type 
   TJumpDest = enum 
@@ -75,7 +75,7 @@ proc doElse(L: var TLexer, tok: var TToken) =
   
 proc doElif(L: var TLexer, tok: var TToken) = 
   if high(condStack) < 0: lexMessage(L, errTokenExpected, "@if")
-  var res = EvalppIf(L, tok)
+  var res = evalppIf(L, tok)
   if condStack[high(condStack)] or not res: jumpToDirective(L, tok, jdElseEndif)
   else: condStack[high(condStack)] = true
   
@@ -86,7 +86,7 @@ proc jumpToDirective(L: var TLexer, tok: var TToken, dest: TJumpDest) =
       ppGetTok(L, tok)
       case whichKeyword(tok.ident)
       of wIf: 
-        Inc(nestedIfs)
+        inc(nestedIfs)
       of wElse: 
         if (dest == jdElseEndif) and (nestedIfs == 0): 
           doElse(L, tok)
@@ -99,7 +99,7 @@ proc jumpToDirective(L: var TLexer, tok: var TToken, dest: TJumpDest) =
         if nestedIfs == 0: 
           doEnd(L, tok)
           break 
-        if nestedIfs > 0: Dec(nestedIfs)
+        if nestedIfs > 0: dec(nestedIfs)
       else: 
         nil
       ppGetTok(L, tok)
@@ -112,8 +112,8 @@ proc parseDirective(L: var TLexer, tok: var TToken) =
   ppGetTok(L, tok)            # skip @
   case whichKeyword(tok.ident)
   of wIf:
-    setlen(condStack, len(condStack) + 1)
-    var res = EvalppIf(L, tok)
+    setLen(condStack, len(condStack) + 1)
+    var res = evalppIf(L, tok)
     condStack[high(condStack)] = res
     if not res: jumpToDirective(L, tok, jdElseEndif)
   of wElif: doElif(L, tok)
@@ -196,7 +196,7 @@ proc readConfigFile(filename: string) =
     L: TLexer
     tok: TToken
     stream: PLLStream
-  stream = LLStreamOpen(filename, fmRead)
+  stream = llStreamOpen(filename, fmRead)
   if stream != nil:
     initToken(tok)
     openLexer(L, filename, stream)

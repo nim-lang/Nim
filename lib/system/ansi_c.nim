@@ -28,8 +28,8 @@ type
                final, incompleteStruct.} = object
   C_BinaryFile {.importc: "FILE", header: "<stdio.h>", 
                  final, incompleteStruct.} = object
-  C_TextFileStar = ptr CTextFile
-  C_BinaryFileStar = ptr CBinaryFile
+  C_TextFileStar = ptr C_TextFile
+  C_BinaryFileStar = ptr C_BinaryFile
 
   C_JmpBuf {.importc: "jmp_buf", header: "<setjmp.h>".} = object
 

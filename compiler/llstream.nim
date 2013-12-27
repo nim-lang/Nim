@@ -23,7 +23,7 @@ type
     llsStdIn                  # stream encapsulates stdin
   TLLStream* = object of TObject
     kind*: TLLStreamKind # accessible for low-level access (lexbase uses this)
-    f*: tfile
+    f*: TFile
     s*: string
     rd*, wr*: int             # for string streams
     lineOffset*: int          # for fake stdin line numbers
@@ -31,7 +31,7 @@ type
   PLLStream* = ref TLLStream
 
 proc llStreamOpen*(data: string): PLLStream
-proc llStreamOpen*(f: var tfile): PLLStream
+proc llStreamOpen*(f: var TFile): PLLStream
 proc llStreamOpen*(filename: string, mode: TFileMode): PLLStream
 proc llStreamOpen*(): PLLStream
 proc llStreamOpenStdIn*(): PLLStream
@@ -40,7 +40,7 @@ proc llStreamRead*(s: PLLStream, buf: pointer, bufLen: int): int
 proc llStreamReadLine*(s: PLLStream, line: var string): bool
 proc llStreamReadAll*(s: PLLStream): string
 proc llStreamWrite*(s: PLLStream, data: string)
-proc llStreamWrite*(s: PLLStream, data: Char)
+proc llStreamWrite*(s: PLLStream, data: char)
 proc llStreamWrite*(s: PLLStream, buf: pointer, buflen: int)
 proc llStreamWriteln*(s: PLLStream, data: string)
 # implementation
@@ -99,7 +99,7 @@ proc endsWithOpr*(x: string): bool =
   result = x.endsWith(LineContinuationOprs)
 
 proc continueLine(line: string, inTripleString: bool): bool {.inline.} =
-  result = inTriplestring or
+  result = inTripleString or
       line[0] == ' ' or
       line.endsWith(LineContinuationOprs+AdditionalLineContinuationOprs)
 
@@ -116,7 +116,7 @@ proc llReadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int =
   s.rd = 0
   var line = newStringOfCap(120)
   var triples = 0
-  while ReadLineFromStdin(if s.s.len == 0: ">>> " else: "... ", line): 
+  while readLineFromStdin(if s.s.len == 0: ">>> " else: "... ", line): 
     add(s.s, line)
     add(s.s, "\n")
     inc triples, countTriples(line)
@@ -139,7 +139,7 @@ proc llStreamRead(s: PLLStream, buf: pointer, bufLen: int): int =
   of llsFile: 
     result = readBuffer(s.f, buf, bufLen)
   of llsStdIn: 
-    result = LLreadFromStdin(s, buf, bufLen)
+    result = llReadFromStdin(s, buf, bufLen)
   
 proc llStreamReadLine(s: PLLStream, line: var string): bool =
   setLen(line, 0)
@@ -196,12 +196,12 @@ proc llStreamWrite(s: PLLStream, buf: pointer, buflen: int) =
   of llsNone, llsStdIn: 
     discard
   of llsString: 
-    if bufLen > 0: 
-      setlen(s.s, len(s.s) + bufLen)
-      copyMem(addr(s.s[0 + s.wr]), buf, bufLen)
-      inc(s.wr, bufLen)
+    if buflen > 0: 
+      setLen(s.s, len(s.s) + buflen)
+      copyMem(addr(s.s[0 + s.wr]), buf, buflen)
+      inc(s.wr, buflen)
   of llsFile: 
-    discard writeBuffer(s.f, buf, bufLen)
+    discard writeBuffer(s.f, buf, buflen)
   
 proc llStreamReadAll(s: PLLStream): string = 
   const 
@@ -218,7 +218,7 @@ proc llStreamReadAll(s: PLLStream): string =
     var bytes = readBuffer(s.f, addr(result[0]), bufSize)
     var i = bytes
     while bytes == bufSize: 
-      setlen(result, i + bufSize)
+      setLen(result, i + bufSize)
       bytes = readBuffer(s.f, addr(result[i + 0]), bufSize)
       inc(i, bytes)
-    setlen(result, i)
+    setLen(result, i)

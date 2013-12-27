@@ -77,7 +77,7 @@ proc nodeTableRawInsert(data: var TNodePairSeq, k: THash, key: PNode,
 proc nodeTablePut*(t: var TNodeTable, key: PNode, val: int) = 
   var n: TNodePairSeq
   var k: THash = hashTree(key)
-  var index = NodeTableRawGet(t, k, key)
+  var index = nodeTableRawGet(t, k, key)
   if index >= 0: 
     assert(t.data[index].key != nil)
     t.data[index].val = val

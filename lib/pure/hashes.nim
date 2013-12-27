@@ -32,7 +32,7 @@ proc `!$`*(h: THash): THash {.inline.} =
   result = result xor (result shr 11)
   result = result +% result shl 15
 
-proc hashData*(Data: Pointer, Size: int): THash = 
+proc hashData*(Data: pointer, Size: int): THash = 
   ## hashes an array of bytes of size `size`
   var h: THash = 0
   when defined(js):
@@ -41,17 +41,17 @@ proc hashData*(Data: Pointer, Size: int): THash =
   else:
     var p = cast[cstring](Data)
   var i = 0
-  var s = size
+  var s = Size
   while s > 0: 
     h = h !& ord(p[i])
-    Inc(i)
-    Dec(s)
+    inc(i)
+    dec(s)
   result = !$h
 
 when defined(js):
   var objectID = 0
 
-proc hash*(x: Pointer): THash {.inline.} = 
+proc hash*(x: pointer): THash {.inline.} = 
   ## efficient hashing of pointers
   when defined(js):
     asm """
@@ -126,6 +126,6 @@ proc hash*(x: float): THash {.inline.} =
   var y = x + 1.0
   result = cast[ptr THash](addr(y))[]
 
-proc hash*[A](x: openarray[A]): THash =
+proc hash*[A](x: openArray[A]): THash =
   for it in items(x): result = result !& hash(it)
   result = !$result

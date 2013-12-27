@@ -23,7 +23,7 @@ else:
 type
   TProcess = object of TObject
     when defined(windows):
-      FProcessHandle: Thandle
+      FProcessHandle: THandle
       inHandle, outHandle, errHandle: TFileHandle
       id: THandle
     else:
@@ -108,7 +108,7 @@ proc execCmd*(command: string): int {.rtl, extern: "nosp$1", tags: [FExecIO].}
 
 proc startProcess*(command: string,
                    workingDir: string = "",
-                   args: openarray[string] = [],
+                   args: openArray[string] = [],
                    env: PStringTable = nil, 
                    options: set[TProcessOption] = {poStdErrToStdOut}): 
               PProcess {.rtl, extern: "nosp$1", tags: [FExecIO, FReadEnv].}
@@ -219,7 +219,7 @@ proc countProcessors*(): int {.rtl, extern: "nosp$1".} =
   ## returns the numer of the processors/cores the machine has.
   ## Returns 0 if it cannot be detected.
   when defined(windows):
-    var x = getenv("NUMBER_OF_PROCESSORS")
+    var x = getEnv("NUMBER_OF_PROCESSORS")
     if x.len > 0: result = parseInt(x.string)
   elif defined(macosx) or defined(bsd):
     var
@@ -358,7 +358,7 @@ when defined(Windows) and not defined(useNimRtl):
     result.readDataImpl = hsReadData
     result.writeDataImpl = hsWriteData
 
-  proc buildCommandLine(a: string, args: openarray[string]): cstring =
+  proc buildCommandLine(a: string, args: openArray[string]): cstring =
     var res = quoteShell(a)
     for i in 0..high(args):
       res.add(' ')
@@ -384,11 +384,11 @@ when defined(Windows) and not defined(useNimRtl):
   #  O_RDONLY {.importc: "_O_RDONLY", header: "<fcntl.h>".}: int
 
   proc createPipeHandles(Rdhandle, WrHandle: var THandle) =
-    var piInheritablePipe: TSecurityAttributes
-    piInheritablePipe.nlength = SizeOf(TSecurityAttributes).cint
+    var piInheritablePipe: TSECURITY_ATTRIBUTES
+    piInheritablePipe.nlength = sizeof(TSECURITY_ATTRIBUTES).cint
     piInheritablePipe.lpSecurityDescriptor = nil
     piInheritablePipe.Binherithandle = 1
-    if createPipe(Rdhandle, Wrhandle, piInheritablePipe, 1024) == 0'i32:
+    if createPipe(Rdhandle, WrHandle, piInheritablePipe, 1024) == 0'i32:
       osError(osLastError())
 
   proc fileClose(h: THandle) {.inline.} =
@@ -400,28 +400,28 @@ when defined(Windows) and not defined(useNimRtl):
                  env: PStringTable = nil,
                  options: set[TProcessOption] = {poStdErrToStdOut}): PProcess =
     var
-      si: TStartupInfo
-      procInfo: TProcessInformation
+      si: TSTARTUPINFO
+      procInfo: TPROCESS_INFORMATION
       success: int
       hi, ho, he: THandle
     new(result)
-    SI.cb = SizeOf(SI).cint
+    si.cb = sizeof(si).cint
     if poParentStreams notin options:
-      SI.dwFlags = STARTF_USESTDHANDLES # STARTF_USESHOWWINDOW or
-      CreatePipeHandles(SI.hStdInput, HI)
-      CreatePipeHandles(HO, Si.hStdOutput)
+      si.dwFlags = STARTF_USESTDHANDLES # STARTF_USESHOWWINDOW or
+      createPipeHandles(si.hStdInput, hi)
+      createPipeHandles(ho, si.hStdOutput)
       if poStdErrToStdOut in options:
-        SI.hStdError = SI.hStdOutput
-        HE = HO
+        si.hStdError = si.hStdOutput
+        he = ho
       else:
-        CreatePipeHandles(HE, Si.hStdError)
+        createPipeHandles(he, si.hStdError)
       result.inHandle = TFileHandle(hi)
       result.outHandle = TFileHandle(ho)
       result.errHandle = TFileHandle(he)
     else:
-      SI.hStdError = GetStdHandle(STD_ERROR_HANDLE)
-      SI.hStdInput = GetStdHandle(STD_INPUT_HANDLE)
-      SI.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE)
+      si.hStdError = getStdHandle(STD_ERROR_HANDLE)
+      si.hStdInput = getStdHandle(STD_INPUT_HANDLE)
+      si.hStdOutput = getStdHandle(STD_OUTPUT_HANDLE)
       result.inHandle = TFileHandle(si.hStdInput)
       result.outHandle = TFileHandle(si.hStdOutput)
       result.errHandle = TFileHandle(si.hStdError)
@@ -442,17 +442,17 @@ when defined(Windows) and not defined(useNimRtl):
       var wwd = newWideCString(wd)
       success = winlean.CreateProcessW(nil,
         tmp, nil, nil, 1, NORMAL_PRIORITY_CLASS or CREATE_UNICODE_ENVIRONMENT, 
-        ee, wwd, SI, ProcInfo)
+        ee, wwd, si, procInfo)
     else:
       success = winlean.CreateProcessA(nil,
         cmdl, nil, nil, 1, NORMAL_PRIORITY_CLASS, e, wd, SI, ProcInfo)
     let lastError = osLastError()
 
     if poParentStreams notin options:
-      FileClose(si.hStdInput)
-      FileClose(si.hStdOutput)
+      fileClose(si.hStdInput)
+      fileClose(si.hStdOutput)
       if poStdErrToStdOut notin options:
-        FileClose(si.hStdError)
+        fileClose(si.hStdError)
 
     if e != nil: dealloc(e)
     dealloc(cmdl)
@@ -471,10 +471,10 @@ when defined(Windows) and not defined(useNimRtl):
       discard CloseHandle(p.FProcessHandle)
 
   proc suspend(p: PProcess) =
-    discard SuspendThread(p.FProcessHandle)
+    discard suspendThread(p.FProcessHandle)
 
   proc resume(p: PProcess) =
-    discard ResumeThread(p.FProcessHandle)
+    discard resumeThread(p.FProcessHandle)
 
   proc running(p: PProcess): bool =
     var x = waitForSingleObject(p.FProcessHandle, 50)
@@ -482,22 +482,22 @@ when defined(Windows) and not defined(useNimRtl):
 
   proc terminate(p: PProcess) =
     if running(p):
-      discard TerminateProcess(p.FProcessHandle, 0)
+      discard terminateProcess(p.FProcessHandle, 0)
 
   proc waitForExit(p: PProcess, timeout: int = -1): int =
-    discard WaitForSingleObject(p.FProcessHandle, timeout.int32)
+    discard waitForSingleObject(p.FProcessHandle, timeout.int32)
 
     var res: int32
-    discard GetExitCodeProcess(p.FProcessHandle, res)
+    discard getExitCodeProcess(p.FProcessHandle, res)
     result = res
-    discard CloseHandle(p.FProcessHandle)
+    discard closeHandle(p.FProcessHandle)
 
   proc peekExitCode(p: PProcess): int =
     var b = waitForSingleObject(p.FProcessHandle, 50) == WAIT_TIMEOUT
     if b: result = -1
     else: 
       var res: int32
-      discard GetExitCodeProcess(p.FProcessHandle, res)
+      discard getExitCodeProcess(p.FProcessHandle, res)
       return res
 
   proc inputStream(p: PProcess): PStream =
@@ -511,32 +511,32 @@ when defined(Windows) and not defined(useNimRtl):
 
   proc execCmd(command: string): int =
     var
-      si: TStartupInfo
-      procInfo: TProcessInformation
+      si: TSTARTUPINFO
+      procInfo: TPROCESS_INFORMATION
       process: THandle
       L: int32
-    SI.cb = SizeOf(SI).cint
-    SI.hStdError = GetStdHandle(STD_ERROR_HANDLE)
-    SI.hStdInput = GetStdHandle(STD_INPUT_HANDLE)
-    SI.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE)
+    si.cb = sizeof(si).cint
+    si.hStdError = getStdHandle(STD_ERROR_HANDLE)
+    si.hStdInput = getStdHandle(STD_INPUT_HANDLE)
+    si.hStdOutput = getStdHandle(STD_OUTPUT_HANDLE)
     when useWinUnicode:
       var c = newWideCString(command)
       var res = winlean.CreateProcessW(nil, c, nil, nil, 0,
-        NORMAL_PRIORITY_CLASS, nil, nil, SI, ProcInfo)
+        NORMAL_PRIORITY_CLASS, nil, nil, si, procInfo)
     else:
       var res = winlean.CreateProcessA(nil, command, nil, nil, 0,
         NORMAL_PRIORITY_CLASS, nil, nil, SI, ProcInfo)
     if res == 0:
       osError(osLastError())
     else:
-      Process = ProcInfo.hProcess
-      discard CloseHandle(ProcInfo.hThread)
-      if WaitForSingleObject(Process, INFINITE) != -1:
-        discard GetExitCodeProcess(Process, L)
+      process = procInfo.hProcess
+      discard closeHandle(procInfo.hThread)
+      if waitForSingleObject(process, INFINITE) != -1:
+        discard getExitCodeProcess(process, L)
         result = int(L)
       else:
         result = -1
-      discard CloseHandle(Process)
+      discard closeHandle(process)
 
   proc select(readfds: var seq[PProcess], timeout = 500): int = 
     assert readfds.len <= MAXIMUM_WAIT_OBJECTS

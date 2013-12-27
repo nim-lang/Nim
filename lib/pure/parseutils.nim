@@ -189,7 +189,7 @@ proc captureBetween*(s: string, first: char, second = '\0', start = 0): string =
 
 {.push overflowChecks: on.}
 # this must be compiled with overflow checking turned on:
-proc rawParseInt(s: string, b: var biggestInt, start = 0): int =
+proc rawParseInt(s: string, b: var BiggestInt, start = 0): int =
   var
     sign: BiggestInt = -1
     i = start
@@ -207,12 +207,12 @@ proc rawParseInt(s: string, b: var biggestInt, start = 0): int =
     result = i - start
 {.pop.} # overflowChecks
 
-proc parseBiggestInt*(s: string, number: var biggestInt, start = 0): int {.
+proc parseBiggestInt*(s: string, number: var BiggestInt, start = 0): int {.
   rtl, extern: "npuParseBiggestInt", noSideEffect.} =
   ## parses an integer starting at `start` and stores the value into `number`.
   ## Result is the number of processed chars or 0 if there is no integer.
   ## `EOverflow` is raised if an overflow occurs.
-  var res: biggestInt
+  var res: BiggestInt
   # use 'res' for exception safety (don't write to 'number' in case of an
   # overflow exception:
   result = rawParseInt(s, res, start)
@@ -223,7 +223,7 @@ proc parseInt*(s: string, number: var int, start = 0): int {.
   ## parses an integer starting at `start` and stores the value into `number`.
   ## Result is the number of processed chars or 0 if there is no integer.
   ## `EOverflow` is raised if an overflow occurs.
-  var res: biggestInt
+  var res: BiggestInt
   result = parseBiggestInt(s, res, start)
   if (sizeof(int) <= 4) and
       ((res < low(int)) or (res > high(int))):
@@ -231,7 +231,7 @@ proc parseInt*(s: string, number: var int, start = 0): int {.
   else:
     number = int(res)
 
-proc tenToThePowerOf(b: int): biggestFloat =
+proc tenToThePowerOf(b: int): BiggestFloat =
   var b = b
   var a = 10.0
   result = 1.0
@@ -242,7 +242,7 @@ proc tenToThePowerOf(b: int): biggestFloat =
     if b == 0: break
     a *= a
 
-proc parseBiggestFloat*(s: string, number: var biggestFloat, start = 0): int {.
+proc parseBiggestFloat*(s: string, number: var BiggestFloat, start = 0): int {.
   rtl, extern: "npuParseBiggestFloat", noSideEffect.} =
   ## parses a float starting at `start` and stores the value into `number`.
   ## Result is the number of processed chars or 0 if there occured a parsing
@@ -319,7 +319,7 @@ proc parseFloat*(s: string, number: var float, start = 0): int {.
   ## parses a float starting at `start` and stores the value into `number`.
   ## Result is the number of processed chars or 0 if there occured a parsing
   ## error.
-  var bf: biggestFloat
+  var bf: BiggestFloat
   result = parseBiggestFloat(s, bf, start)
   number = bf
   

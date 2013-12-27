@@ -63,14 +63,14 @@ proc copyStrLast(s: NimString, start, last: int): NimString {.compilerProc.} =
 proc copyStr(s: NimString, start: int): NimString {.compilerProc.} =
   result = copyStrLast(s, start, s.len-1)
 
-proc toNimStr(str: CString, len: int): NimString {.compilerProc.} =
+proc toNimStr(str: cstring, len: int): NimString {.compilerProc.} =
   result = rawNewString(len)
   result.len = len
   c_memcpy(result.data, str, (len+1) * sizeof(Char))
   #result.data[len] = '\0' # readline relies on this!
 
-proc cstrToNimstr(str: CString): NimString {.compilerRtl.} =
-  result = toNimstr(str, c_strlen(str))
+proc cstrToNimstr(str: cstring): NimString {.compilerRtl.} =
+  result = toNimStr(str, c_strlen(str))
 
 proc copyString(src: NimString): NimString {.compilerRtl.} =
   if src != nil:
@@ -98,8 +98,8 @@ proc hashString(s: string): int {.compilerproc.} =
   # the compiler needs exactly the same hash function!
   # this used to be used for efficient generation of string case statements
   var h = 0
-  for i in 0..Len(s)-1:
-    h = h +% Ord(s[i])
+  for i in 0..len(s)-1:
+    h = h +% ord(s[i])
     h = h +% h shl 10
     h = h xor (h shr 6)
   h = h +% h shl 3
@@ -150,10 +150,10 @@ proc addChar(s: NimString, c: char): NimString =
 #   s = rawNewString(0);
 
 proc resizeString(dest: NimString, addlen: int): NimString {.compilerRtl.} =
-  if dest.len + addLen <= dest.space:
+  if dest.len + addlen <= dest.space:
     result = dest
   else: # slow path:
-    var sp = max(resize(dest.space), dest.len + addLen)
+    var sp = max(resize(dest.space), dest.len + addlen)
     result = cast[NimString](growObj(dest, sizeof(TGenericSeq) + sp + 1))
     result.reserved = sp
     #result = rawNewString(sp)
@@ -280,7 +280,7 @@ proc nimCharToStr(x: char): string {.compilerRtl.} =
   result = newString(1)
   result[0] = x
 
-proc binaryStrSearch(x: openarray[string], y: string): int {.compilerproc.} =
+proc binaryStrSearch(x: openArray[string], y: string): int {.compilerproc.} =
   var
     a = 0
     b = len(x)

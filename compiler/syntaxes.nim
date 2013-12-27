@@ -43,14 +43,14 @@ proc parseTopLevelStmt*(p: var TParsers): PNode
 proc parseFile(fileIdx: int32): PNode =
   var 
     p: TParsers
-    f: tfile
+    f: TFile
   let filename = fileIdx.toFullPath
   if not open(f, filename):
     rawMessage(errCannotOpenFile, filename)
     return 
-  OpenParsers(p, fileIdx, LLStreamOpen(f))
-  result = ParseAll(p)
-  CloseParsers(p)
+  openParsers(p, fileIdx, llStreamOpen(f))
+  result = parseAll(p)
+  closeParsers(p)
 
 proc parseAll(p: var TParsers): PNode = 
   case p.skin
@@ -59,7 +59,7 @@ proc parseAll(p: var TParsers): PNode =
   of skinBraces: 
     result = pbraces.parseAll(p.parser)
   of skinEndX: 
-    InternalError("parser to implement") 
+    internalError("parser to implement") 
     result = ast.emptyNode
     # skinEndX: result := pendx.parseAll(p.parser);
   
@@ -70,7 +70,7 @@ proc parseTopLevelStmt(p: var TParsers): PNode =
   of skinBraces: 
     result = pbraces.parseTopLevelStmt(p.parser)
   of skinEndX: 
-    InternalError("parser to implement") 
+    internalError("parser to implement") 
     result = ast.emptyNode
     #skinEndX: result := pendx.parseTopLevelStmt(p.parser);
   
@@ -88,22 +88,22 @@ proc containsShebang(s: string, i: int): bool =
 
 proc parsePipe(filename: string, inputStream: PLLStream): PNode = 
   result = ast.emptyNode
-  var s = LLStreamOpen(filename, fmRead)
+  var s = llStreamOpen(filename, fmRead)
   if s != nil: 
     var line = newStringOfCap(80)
-    discard LLStreamReadLine(s, line)
+    discard llStreamReadLine(s, line)
     var i = utf8Bom(line)
     if containsShebang(line, i):
-      discard LLStreamReadLine(s, line)
+      discard llStreamReadLine(s, line)
       i = 0
     if line[i] == '#' and line[i+1] == '!':
       inc(i, 2)
       while line[i] in WhiteSpace: inc(i)
       var q: TParser
-      openParser(q, filename, LLStreamOpen(substr(line, i)))
+      openParser(q, filename, llStreamOpen(substr(line, i)))
       result = parser.parseAll(q)
       closeParser(q)
-    LLStreamClose(s)
+    llStreamClose(s)
 
 proc getFilter(ident: PIdent): TFilterKind = 
   for i in countup(low(TFilterKind), high(TFilterKind)): 
@@ -165,9 +165,9 @@ proc openParsers(p: var TParsers, fileIdx: int32, inputstream: PLLStream) =
   var s: PLLStream
   p.skin = skinStandard
   let filename = fileIdx.toFullPath
-  var pipe = parsePipe(filename, inputStream)
-  if pipe != nil: s = evalPipe(p, pipe, filename, inputStream)
-  else: s = inputStream
+  var pipe = parsePipe(filename, inputstream)
+  if pipe != nil: s = evalPipe(p, pipe, filename, inputstream)
+  else: s = inputstream
   case p.skin
   of skinStandard, skinBraces, skinEndX:
     parser.openParser(p.parser, fileIdx, s)

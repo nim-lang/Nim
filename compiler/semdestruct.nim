@@ -22,7 +22,7 @@ new(destructorIsTrivial)
 var
   destructorName = getIdent"destroy_"
   destructorParam = getIdent"this_"
-  destructorPragma = newIdentNode(getIdent"destructor", UnknownLineInfo())
+  destructorPragma = newIdentNode(getIdent"destructor", unknownLineInfo())
   rangeDestructorProc*: PSym
 
 proc instantiateDestructor(c: PContext, typ: PType): bool
@@ -90,7 +90,7 @@ proc generateDestructor(c: PContext, t: PType): PNode =
   # Tposix_spawnattr
   if t.n == nil or t.n.sons == nil: return
   internalAssert t.n.kind == nkRecList
-  let destructedObj = newIdentNode(destructorParam, UnknownLineInfo())
+  let destructedObj = newIdentNode(destructorParam, unknownLineInfo())
   # call the destructods of all fields
   for s in countup(0, t.n.sons.len - 1):
     case t.n.sons[s].kind
@@ -114,7 +114,7 @@ proc instantiateDestructor(c: PContext, typ: PType): bool =
   if t.destructor != nil:
     # XXX: This is not entirely correct for recursive types, but we need
     # it temporarily to hide the "destroy is already defined" problem
-    return t.destructor notin [AnalyzingDestructor, DestructorIsTrivial]
+    return t.destructor notin [analyzingDestructor, destructorIsTrivial]
   
   case t.kind
   of tySequence, tyArray, tyArrayConstr, tyOpenArray, tyVarargs:
@@ -126,7 +126,7 @@ proc instantiateDestructor(c: PContext, typ: PType): bool =
     else:
       return false
   of tyTuple, tyObject:
-    t.destructor = AnalyzingDestructor
+    t.destructor = analyzingDestructor
     let generated = generateDestructor(c, t)
     if generated != nil:
       internalAssert t.sym != nil
@@ -150,7 +150,7 @@ proc instantiateDestructor(c: PContext, typ: PType): bool =
       internalAssert t.destructor != nil
       return true
     else:
-      t.destructor = DestructorIsTrivial
+      t.destructor = destructorIsTrivial
       return false
   else:
     return false

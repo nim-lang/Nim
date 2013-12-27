@@ -24,16 +24,16 @@ proc fgetc(stream: TFile): cint {.importc: "fgetc", header: "<stdio.h>",
   tags: [FReadIO].}
 proc ungetc(c: cint, f: TFile) {.importc: "ungetc", header: "<stdio.h>",
   tags: [].}
-proc putc(c: Char, stream: TFile) {.importc: "putc", header: "<stdio.h>",
+proc putc(c: char, stream: TFile) {.importc: "putc", header: "<stdio.h>",
   tags: [FWriteIO].}
-proc fprintf(f: TFile, frmt: CString) {.importc: "fprintf", 
+proc fprintf(f: TFile, frmt: cstring) {.importc: "fprintf", 
   header: "<stdio.h>", varargs, tags: [FWriteIO].}
 proc strlen(c: cstring): int {.
   importc: "strlen", header: "<string.h>", tags: [].}
 
 
 # C routine that is used here:
-proc fread(buf: Pointer, size, n: int, f: TFile): int {.
+proc fread(buf: pointer, size, n: int, f: TFile): int {.
   importc: "fread", header: "<stdio.h>", tags: [FReadIO].}
 proc fseek(f: TFile, offset: clong, whence: int): int {.
   importc: "fseek", header: "<stdio.h>", tags: [].}
@@ -179,9 +179,9 @@ proc rawEchoNL() {.inline, compilerproc.} = write(stdout, "\n")
 when defined(windows) and not defined(useWinAnsi):
   include "system/widestrs"
   
-  proc wfopen(filename, mode: widecstring): pointer {.
+  proc wfopen(filename, mode: WideCString): pointer {.
     importc: "_wfopen", nodecl.}
-  proc wfreopen(filename, mode: widecstring, stream: TFile): TFile {.
+  proc wfreopen(filename, mode: WideCString, stream: TFile): TFile {.
     importc: "_wfreopen", nodecl.}
 
   proc fopen(filename, mode: cstring): pointer =

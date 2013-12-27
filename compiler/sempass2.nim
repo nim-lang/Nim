@@ -95,12 +95,12 @@ proc useVar(a: PEffects, n: PNode) =
     if s.id notin a.init:
       if {tfNeedsInit, tfNotNil} * s.typ.flags != {}:
         when true:
-          Message(n.info, warnProveInit, s.name.s)
+          message(n.info, warnProveInit, s.name.s)
         else:
           Message(n.info, errGenerated,
             "'$1' might not have been initialized" % s.name.s)
       else:
-        Message(n.info, warnUninit, s.name.s)
+        message(n.info, warnUninit, s.name.s)
       # prevent superfluous warnings about the same variable:
       a.init.add s.id
 
@@ -162,8 +162,8 @@ proc mergeTags(a: PEffects, b, comesFrom: PNode) =
     for effect in items(b): addTag(a, effect, useLineInfo=comesFrom != nil)
 
 proc listEffects(a: PEffects) =
-  for e in items(a.exc):  Message(e.info, hintUser, typeToString(e.typ))
-  for e in items(a.tags): Message(e.info, hintUser, typeToString(e.typ))
+  for e in items(a.exc):  message(e.info, hintUser, typeToString(e.typ))
+  for e in items(a.tags): message(e.info, hintUser, typeToString(e.typ))
 
 proc catches(tracked: PEffects, e: PType) =
   let e = skipTypes(e, skipPtrs)
@@ -310,10 +310,10 @@ proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
       return
     case impliesNotNil(tracked.guards, n)
     of impUnknown:
-      Message(n.info, errGenerated, 
+      message(n.info, errGenerated, 
               "cannot prove '$1' is not nil" % n.renderTree)
     of impNo:
-      Message(n.info, errGenerated, "'$1' is provably nil" % n.renderTree)
+      message(n.info, errGenerated, "'$1' is provably nil" % n.renderTree)
     of impYes: discard
 
 proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
@@ -549,7 +549,7 @@ proc checkRaisesSpec(spec, real: PNode, msg: string, hints: bool) =
   if hints:
     for s in 0 .. <spec.len:
       if not used.contains(s):
-        Message(spec[s].info, hintXDeclaredButNotUsed, renderTree(spec[s]))
+        message(spec[s].info, hintXDeclaredButNotUsed, renderTree(spec[s]))
 
 proc checkMethodEffects*(disp, branch: PSym) =
   ## checks for consistent effects for multi methods.
@@ -603,7 +603,7 @@ proc trackProc*(s: PSym, body: PNode) =
       s.kind in {skProc, skConverter, skMethod}:
     var res = s.ast.sons[resultPos].sym # get result symbol
     if res.id notin t.init:
-      Message(body.info, warnProveInit, "result")
+      message(body.info, warnProveInit, "result")
   let p = s.ast.sons[pragmasPos]
   let raisesSpec = effectSpec(p, wRaises)
   if not isNil(raisesSpec):

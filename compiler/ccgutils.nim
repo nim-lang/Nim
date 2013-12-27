@@ -27,14 +27,14 @@ proc getPragmaStmt*(n: PNode, w: TSpecialWord): PNode =
 proc stmtsContainPragma*(n: PNode, w: TSpecialWord): bool =
   result = getPragmaStmt(n, w) != nil
 
-proc hashString*(s: string): biggestInt = 
+proc hashString*(s: string): BiggestInt = 
   # has to be the same algorithm as system.hashString!
   if CPU[targetCPU].bit == 64: 
     # we have to use the same bitwidth
     # as the target CPU
     var b = 0'i64
     for i in countup(0, len(s) - 1): 
-      b = b +% Ord(s[i])
+      b = b +% ord(s[i])
       b = b +% `shl`(b, 10)
       b = b xor `shr`(b, 6)
     b = b +% `shl`(b, 3)
@@ -44,7 +44,7 @@ proc hashString*(s: string): biggestInt =
   else: 
     var a = 0'i32
     for i in countup(0, len(s) - 1): 
-      a = a +% Ord(s[i]).int32
+      a = a +% ord(s[i]).int32
       a = a +% `shl`(a, 10'i32)
       a = a xor `shr`(a, 6'i32)
     a = a +% `shl`(a, 3'i32)
@@ -57,7 +57,7 @@ var
   gCanonicalTypes: array[TTypeKind, PType]
 
 proc initTypeTables() = 
-  for i in countup(low(TTypeKind), high(TTypeKind)): InitIdTable(gTypeTable[i])
+  for i in countup(low(TTypeKind), high(TTypeKind)): initIdTable(gTypeTable[i])
 
 proc resetCaches* =
   ## XXX: fix that more properly
@@ -169,7 +169,7 @@ proc makeLLVMString*(s: string): PRope =
   for i in countup(0, len(s) - 1): 
     if (i + 1) mod MaxLineLength == 0: 
       app(result, toRope(res))
-      setlen(res, 0)
+      setLen(res, 0)
     case s[i]
     of '\0'..'\x1F', '\x80'..'\xFF', '\"', '\\': 
       add(res, '\\')

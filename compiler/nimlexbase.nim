@@ -69,7 +69,7 @@ const
 
 proc closeBaseLexer(L: var TBaseLexer) = 
   dealloc(L.buf)
-  LLStreamClose(L.stream)
+  llStreamClose(L.stream)
 
 proc fillBuffer(L: var TBaseLexer) = 
   var 
@@ -83,9 +83,9 @@ proc fillBuffer(L: var TBaseLexer) =
   toCopy = L.BufLen - L.sentinel - 1
   assert(toCopy >= 0)
   if toCopy > 0: 
-    MoveMem(L.buf, addr(L.buf[L.sentinel + 1]), toCopy * chrSize) 
+    moveMem(L.buf, addr(L.buf[L.sentinel + 1]), toCopy * chrSize) 
     # "moveMem" handles overlapping regions
-  charsRead = LLStreamRead(L.stream, addr(L.buf[toCopy]), 
+  charsRead = llStreamRead(L.stream, addr(L.buf[toCopy]), 
                            (L.sentinel + 1) * chrSize) div chrSize
   s = toCopy + charsRead
   if charsRead < L.sentinel + 1: 
@@ -96,7 +96,7 @@ proc fillBuffer(L: var TBaseLexer) =
     dec(s)                    # BUGFIX (valgrind)
     while true: 
       assert(s < L.bufLen)
-      while (s >= 0) and not (L.buf[s] in NewLines): Dec(s)
+      while (s >= 0) and not (L.buf[s] in NewLines): dec(s)
       if s >= 0: 
         # we found an appropriate character for a sentinel:
         L.sentinel = s
@@ -108,7 +108,7 @@ proc fillBuffer(L: var TBaseLexer) =
         L.bufLen = L.BufLen * 2
         L.buf = cast[cstring](realloc(L.buf, L.bufLen * chrSize))
         assert(L.bufLen - oldBuflen == oldBufLen)
-        charsRead = LLStreamRead(L.stream, addr(L.buf[oldBufLen]), 
+        charsRead = llStreamRead(L.stream, addr(L.buf[oldBufLen]), 
                                  oldBufLen * chrSize) div chrSize
         if charsRead < oldBufLen: 
           L.buf[oldBufLen + charsRead] = EndOfFile
@@ -153,7 +153,7 @@ proc openBaseLexer(L: var TBaseLexer, inputstream: PLLStream, bufLen = 8192) =
   L.linenumber = 1            # lines start at 1
   L.stream = inputstream
   fillBuffer(L)
-  skip_UTF_8_BOM(L)
+  skipUTF8BOM(L)
 
 proc getColNumber(L: TBaseLexer, pos: int): int = 
   result = abs(pos - L.lineStart)
@@ -166,4 +166,4 @@ proc getCurrentLine(L: TBaseLexer, marker: bool = true): string =
     inc(i)
   result.add("\n")
   if marker: 
-    result.add(RepeatChar(getColNumber(L, L.bufpos)) & '^' & "\n")
+    result.add(repeatChar(getColNumber(L, L.bufpos)) & '^' & "\n")
