@@ -159,7 +159,7 @@ type
   range*{.magic: "Range".}[T] ## Generic type to construct range types.
   array*{.magic: "Array".}[I, T]  ## Generic type to construct
                                   ## fixed-length arrays.
-  openarray*{.magic: "OpenArray".}[T]  ## Generic type to construct open arrays.
+  openArray*{.magic: "OpenArray".}[T]  ## Generic type to construct open arrays.
                                        ## Open arrays are implemented as a
                                        ## pointer to the array data and a
                                        ## length field.
@@ -206,7 +206,7 @@ when not defined(JS) and not defined(NimrodVM):
   include "system/hti"
 
 type
-  Byte* = uInt8 ## this is an alias for ``uint8``, that is an unsigned
+  Byte* = uint8 ## this is an alias for ``uint8``, that is an unsigned
                 ## int 8 bits wide.
 
   Natural* = range[0..high(int)]
@@ -937,7 +937,6 @@ template sysAssert(cond: bool, msg: string) =
     if not cond:
       echo "[SYSASSERT] ", msg
       quit 1
-  nil
 
 include "system/inclrtl"
 
@@ -1376,7 +1375,7 @@ proc clamp*[T](x, a, b: T): T =
   if x > b: return b
   return x
 
-iterator items*[T](a: openarray[T]): T {.inline.} =
+iterator items*[T](a: openArray[T]): T {.inline.} =
   ## iterates over each item of `a`.
   var i = 0
   while i < len(a):
