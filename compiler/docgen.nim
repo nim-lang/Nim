@@ -23,6 +23,7 @@ type
     id: int                  # for generating IDs
     toc, section: TSections
     indexValFilename: string
+    seenSymbols: PStringTable # avoids duplicate symbol generation for HTML.
 
   PDoc* = ref TDocumentor ## Alias to type less.
 
@@ -53,6 +54,7 @@ proc newDocumentor*(filename: string, config: PStringTable): PDoc =
   initRstGenerator(result[], (if gCmd != cmdRst2Tex: outHtml else: outLatex),
                    options.gConfigVars, filename, {roSupportRawDirective},
                    options.FindFile, compilerMsgHandler)
+  result.seenSymbols = newStringTable(modeCaseInsensitive)
   result.id = 100
 
 proc dispA(dest: var PRope, xml, tex: string, args: openarray[PRope]) =
@@ -294,15 +296,23 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   else: nil
   let
     plainNameRope = toRope(xmltree.escape(plainName))
-    plainSymbolRope = toRope(trimPlainSymbol(plainSymbol))
+    cleanPlainSymbol = trimPlainSymbol(plainSymbol)
+    plainSymbolRope = toRope(cleanPlainSymbol)
+    itemIDRope = toRope(d.id)
+    symbolOrId = if d.seenSymbols.hasKey(cleanPlainSymbol): itemIDRope
+      else: plainSymbolRope
+  d.seenSymbols[cleanPlainSymbol] = ""
 
   app(d.section[k], ropeFormatNamedVars(getConfigVar("doc.item"),
-    ["name", "header", "desc", "itemID", "header_plain", "itemSym"],
-    [name, result, comm, toRope(d.id), plainNameRope, plainSymbolRope]))
+    ["name", "header", "desc", "itemID", "header_plain", "itemSym",
+      "itemSymOrID"],
+    [name, result, comm, itemIDRope, plainNameRope, plainSymbolRope,
+      symbolOrId]))
   app(d.toc[k], ropeFormatNamedVars(getConfigVar("doc.item.toc"),
-    ["name", "header", "desc", "itemID", "header_plain", "itemSym"],
+    ["name", "header", "desc", "itemID", "header_plain", "itemSym",
+      "itemSymOrID"],
     [toRope(getName(d, nameNode, d.splitAfter)), result, comm,
-      toRope(d.id), plainNameRope, plainSymbolRope]))
+      itemIDRope, plainNameRope, plainSymbolRope, symbolOrId]))
   setIndexTerm(d[], $d.id, getName(d, nameNode))
 
 proc genJSONItem(d: PDoc, n, nameNode: PNode, k: TSymKind): PJsonNode =
