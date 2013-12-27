@@ -201,26 +201,40 @@ proc getRstName(n: PNode): PRstNode =
     internalError(n.info, "getRstName()")
     result = nil
 
-proc trimPlainSymbol(text: string): string =
-  ## Removes common prefixes and surrounding backticks.
+proc extractPlainSymbol(text: string): string =
+  ## Given the equivalent of a proc forward declare, extracts the symbol.
+  ##
+  ## The proc has to work in both doc and doc2 environments, the former append
+  ## the `*` visibility character to symbols which has to be removed. In
+  ## general removes common prefixes, parameters and surrounding backticks.
   result = text.strip
-  if result.startsWith("proc "): delete(result, 0, 4)
-  elif result.startsWith("macro "): delete(result, 0, 5)
-  elif result.startsWith("method "): delete(result, 0, 6)
-  elif result.startsWith("template "): delete(result, 0, 8)
-  elif result.startsWith("iterator "): delete(result, 0, 8)
-  elif result.startsWith("converter "): delete(result, 0, 9)
-  if result.len > 2 and result[0] == '`' and result[high(result)] == '`':
-    result = result[1 .. -2]
+  const prefixes = ["proc ", "macro ", "method ", "template ",
+    "iterator ", "converter "]
+  for prefix in prefixes:
+    if result.startsWith(prefix):
+      delete(result, 0, len(prefix)-1)
+
+  if result.len > 2 and result[0] == '`':
+    # Just stay with the text between backticks.
+    let last = result.find('`', 1)
+    if last > 0:
+      result = result[1..last-1]
+    else:
+      quit("Single backtick found, unexpected!")
+  else:
+    # Without backticks we need to look for params, equals signs, etc.
+    let first = result.find({'(', '[', '{', '*', '=', ':'})
+    if first > 0:
+      result = result[0..first-1]
+
   result = result.replace(" ", "")
 
 proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   if not isVisible(nameNode): return
   var name = toRope(getName(d, nameNode))
   var result: PRope = nil
-  var literal, plainName, plainSymbol = ""
+  var literal, plainName = ""
   var tkParLevel, lastTkCurly = 0
-  var removeCurlies, foundOpr, inAccent = false
   var kind = tkEof
   var comm = genRecComment(d, n)  # call this here for the side-effect!
   var r: TSrcGen
@@ -234,13 +248,8 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
       case kind:
       of tkParLe:
         tkParLevel += 1
-      of tkAccent:
-        inAccent = not inAccent
       of tkParRi:
         tkParLevel -= 1
-      of tkOpr:
-        if literal == "*" and not inAccent: foundOpr = true
-        if foundOpr and plainSymbol.len == 0: plainSymbol = plainName
       of tkCurlyDotLe:
         # Keep track of when the last curly appeared, outside of parenthesis.
         # Parameters can be procs with pragmas, that's why tkPar are tracked,
@@ -296,7 +305,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   else: nil
   let
     plainNameRope = toRope(xmltree.escape(plainName))
-    cleanPlainSymbol = trimPlainSymbol(plainSymbol)
+    cleanPlainSymbol = extractPlainSymbol(plainName)
     plainSymbolRope = toRope(cleanPlainSymbol)
     itemIDRope = toRope(d.id)
     symbolOrId = if d.seenSymbols.hasKey(cleanPlainSymbol): itemIDRope
