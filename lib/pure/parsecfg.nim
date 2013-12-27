@@ -113,7 +113,7 @@ proc handleHexChar(c: var TCfgParser, xi: var int) =
     xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('A') + 10)
     inc(c.bufpos)
   else: 
-    nil
+    discard
 
 proc handleDecChars(c: var TCfgParser, xi: var int) = 
   while c.buf[c.bufpos] in {'0'..'9'}: 
@@ -125,54 +125,54 @@ proc getEscapedChar(c: var TCfgParser, tok: var TToken) =
   case c.buf[c.bufpos]
   of 'n', 'N': 
     add(tok.literal, "\n")
-    Inc(c.bufpos)
+    inc(c.bufpos)
   of 'r', 'R', 'c', 'C': 
     add(tok.literal, '\c')
-    Inc(c.bufpos)
+    inc(c.bufpos)
   of 'l', 'L': 
     add(tok.literal, '\L')
-    Inc(c.bufpos)
+    inc(c.bufpos)
   of 'f', 'F': 
     add(tok.literal, '\f')
     inc(c.bufpos)
   of 'e', 'E': 
     add(tok.literal, '\e')
-    Inc(c.bufpos)
+    inc(c.bufpos)
   of 'a', 'A': 
     add(tok.literal, '\a')
-    Inc(c.bufpos)
+    inc(c.bufpos)
   of 'b', 'B': 
     add(tok.literal, '\b')
-    Inc(c.bufpos)
+    inc(c.bufpos)
   of 'v', 'V': 
     add(tok.literal, '\v')
-    Inc(c.bufpos)
+    inc(c.bufpos)
   of 't', 'T': 
     add(tok.literal, '\t')
-    Inc(c.bufpos)
+    inc(c.bufpos)
   of '\'', '"': 
     add(tok.literal, c.buf[c.bufpos])
-    Inc(c.bufpos)
+    inc(c.bufpos)
   of '\\': 
     add(tok.literal, '\\')
-    Inc(c.bufpos)
+    inc(c.bufpos)
   of 'x', 'X': 
     inc(c.bufpos)
     var xi = 0
     handleHexChar(c, xi)
     handleHexChar(c, xi)
-    add(tok.literal, Chr(xi))
+    add(tok.literal, chr(xi))
   of '0'..'9': 
     var xi = 0
     handleDecChars(c, xi)
-    if (xi <= 255): add(tok.literal, Chr(xi))
+    if (xi <= 255): add(tok.literal, chr(xi))
     else: tok.kind = tkInvalid
   else: tok.kind = tkInvalid
   
-proc HandleCRLF(c: var TCfgParser, pos: int): int = 
+proc handleCRLF(c: var TCfgParser, pos: int): int = 
   case c.buf[pos]
-  of '\c': result = lexbase.HandleCR(c, pos)
-  of '\L': result = lexbase.HandleLF(c, pos)
+  of '\c': result = lexbase.handleCR(c, pos)
+  of '\L': result = lexbase.handleLF(c, pos)
   else: result = pos
   
 proc getString(c: var TCfgParser, tok: var TToken, rawMode: bool) = 
@@ -183,16 +183,16 @@ proc getString(c: var TCfgParser, tok: var TToken, rawMode: bool) =
     # long string literal:
     inc(pos, 2)               # skip ""
                               # skip leading newline:
-    pos = HandleCRLF(c, pos)
+    pos = handleCRLF(c, pos)
     buf = c.buf
     while true: 
       case buf[pos]
       of '"': 
         if (buf[pos + 1] == '"') and (buf[pos + 2] == '"'): break 
         add(tok.literal, '"')
-        Inc(pos)
+        inc(pos)
       of '\c', '\L': 
-        pos = HandleCRLF(c, pos)
+        pos = handleCRLF(c, pos)
         buf = c.buf
         add(tok.literal, "\n")
       of lexbase.EndOfFile: 
@@ -200,7 +200,7 @@ proc getString(c: var TCfgParser, tok: var TToken, rawMode: bool) =
         break 
       else: 
         add(tok.literal, buf[pos])
-        Inc(pos)
+        inc(pos)
     c.bufpos = pos + 3       # skip the three """
   else: 
     # ordinary string literal
@@ -218,7 +218,7 @@ proc getString(c: var TCfgParser, tok: var TToken, rawMode: bool) =
         pos = c.bufPos
       else: 
         add(tok.literal, ch)
-        Inc(pos)
+        inc(pos)
     c.bufpos = pos
 
 proc getSymbol(c: var TCfgParser, tok: var TToken) = 
@@ -226,7 +226,7 @@ proc getSymbol(c: var TCfgParser, tok: var TToken) =
   var buf = c.buf
   while true: 
     add(tok.literal, buf[pos])
-    Inc(pos)
+    inc(pos)
     if not (buf[pos] in SymChars): break 
   c.bufpos = pos
   tok.kind = tkSymbol
@@ -237,11 +237,11 @@ proc skip(c: var TCfgParser) =
   while true: 
     case buf[pos]
     of ' ', '\t': 
-      Inc(pos)
+      inc(pos)
     of '#', ';': 
       while not (buf[pos] in {'\c', '\L', lexbase.EndOfFile}): inc(pos)
     of '\c', '\L': 
-      pos = HandleCRLF(c, pos)
+      pos = handleCRLF(c, pos)
       buf = c.buf
     else: 
       break                   # EndOfFile also leaves the loop
@@ -249,7 +249,7 @@ proc skip(c: var TCfgParser) =
 
 proc rawGetTok(c: var TCfgParser, tok: var TToken) = 
   tok.kind = tkInvalid
-  setlen(tok.literal, 0)
+  setLen(tok.literal, 0)
   skip(c)
   case c.buf[c.bufpos]
   of '=': 
@@ -267,7 +267,7 @@ proc rawGetTok(c: var TCfgParser, tok: var TToken) =
     tok.literal = ":"
   of 'r', 'R': 
     if c.buf[c.bufPos + 1] == '\"': 
-      Inc(c.bufPos)
+      inc(c.bufPos)
       getString(c, tok, true)
     else: 
       getSymbol(c, tok)
@@ -277,7 +277,7 @@ proc rawGetTok(c: var TCfgParser, tok: var TToken) =
     tok.literal = "]"
   of ']': 
     tok.kind = tkBracketRi
-    Inc(c.bufpos)
+    inc(c.bufpos)
     tok.literal = "]"
   of '"': 
     getString(c, tok, false)

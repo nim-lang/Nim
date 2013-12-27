@@ -568,7 +568,7 @@ proc suggestWriteln*(s: string) =
         writeln(stdout, s)
         stdoutSocket.send(s & "\c\L")
     else:
-      Writeln(stdout, s)
+      writeln(stdout, s)
   
   if eInMemory in errorOutputs:
     bufferedMsgs.safeAdd(s)
