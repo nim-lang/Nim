@@ -50,7 +50,8 @@ proc overwriteFiles*() =
     try:
       var f = open(newFile, fmWrite)
       for line in gSourceFiles[i].lines:
-        f.writeln(line.strip(leading = false, trailing = true))
+        f.write line #.strip(leading = false, trailing = true)
+        f.write("\L")
       f.close
     except EIO:
       rawMessage(errCannotOpenFile, newFile)

@@ -1068,7 +1068,7 @@ proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
                   pragmas, exceptions, body]
 
 
-proc NewType(kind: TTypeKind, owner: PSym): PType = 
+proc newType(kind: TTypeKind, owner: PSym): PType = 
   new(result)
   result.kind = kind
   result.owner = owner
@@ -1161,7 +1161,7 @@ proc newSym(symKind: TSymKind, Name: PIdent, owner: PSym,
   result.offset = - 1
   result.id = getID()
   when debugIds: 
-    RegisterId(result)
+    registerId(result)
   #if result.id < 2000:
   #  MessageOut(name.s & " has id: " & toString(result.id))
   
@@ -1276,7 +1276,7 @@ proc copyNode(src: PNode): PNode =
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
-  else: nil
+  else: discard
 
 proc shallowCopy*(src: PNode): PNode = 
   # does not copy its sons, but provides space for them:
@@ -1399,7 +1399,7 @@ proc isGenericRoutine*(s: PSym): bool =
   of skProcKinds:
     result = sfFromGeneric in s.flags or
              (s.ast != nil and s.ast[genericParamsPos].kind != nkEmpty)
-  else: nil
+  else: discard
 
 proc skipGenericOwner*(s: PSym): PSym =
   InternalAssert s.kind in skProcKinds
