@@ -340,7 +340,7 @@ const
   WSAEWOULDBLOCK* = 10035
   WSAEINPROGRESS* = 10036
 
-proc WSAGetLastError*(): cint {.importc: "WSAGetLastError", dynlib: ws2dll.}
+proc wsaGetLastError*(): cint {.importc: "WSAGetLastError", dynlib: ws2dll.}
 
 type
   TSocketHandle* = distinct int

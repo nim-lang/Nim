@@ -49,7 +49,7 @@ proc parseExpr(L: var TLexer, tok: var TToken): bool =
     var b = parseAndExpr(L, tok)
     result = result or b
 
-proc EvalppIf(L: var TLexer, tok: var TToken): bool = 
+proc evalppIf(L: var TLexer, tok: var TToken): bool = 
   ppGetTok(L, tok)            # skip 'if' or 'elif'
   result = parseExpr(L, tok)
   if tok.tokType == tkColon: ppGetTok(L, tok)

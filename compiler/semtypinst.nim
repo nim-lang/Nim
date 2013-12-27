@@ -47,11 +47,11 @@ proc searchInstTypes*(key: PType): PType =
       # types such as TChannel[empty]. Why?
       # See the notes for PActor in handleGenericInvokation
       return
-    block MatchType:
+    block matchType:
       for j in 1 .. high(key.sons):
         # XXX sameType is not really correct for nested generics?
         if not sameType(inst.sons[j], key.sons[j]):
-          break MatchType
+          break matchType
       
       return inst
 
