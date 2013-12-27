@@ -29,7 +29,7 @@ var
     # the arguments to be passed to the program that
     # should be run
 
-proc ProcessCmdLine*(pass: TCmdLinePass, cmd: string) =
+proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
   var p = parseopt.initOptParser(cmd)
   var argsCount = 0
   while true: 

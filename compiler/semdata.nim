@@ -21,7 +21,7 @@ type
     options*: TOptions
     defaultCC*: TCallingConvention
     dynlib*: PLib
-    Notes*: TNoteKinds
+    notes*: TNoteKinds
     otherPragmas*: PNode      # every pragma can be pushed
 
   POptionEntry* = ref TOptionEntry
@@ -32,7 +32,7 @@ type
     resultSym*: PSym          # the result symbol (if we are in a proc)
     nestedLoopCounter*: int   # whether we are in a loop or not
     nestedBlockCounter*: int  # whether we are in a block or not
-    InTryStmt*: int           # whether we are in a try statement; works also
+    inTryStmt*: int           # whether we are in a try statement; works also
                               # in standalone ``except`` and ``finally``
     next*: PProcCon           # used for stacking procedure contexts
   
@@ -55,16 +55,16 @@ type
     friendModule*: PSym        # current friend module; may access private data;
                                # this is used so that generic instantiations
                                # can access private object fields
-    InstCounter*: int          # to prevent endless instantiations
+    instCounter*: int          # to prevent endless instantiations
    
     threadEntries*: TSymSeq    # list of thread entries to check
-    AmbiguousSymbols*: TIntSet # ids of all ambiguous symbols (cannot
+    ambiguousSymbols*: TIntSet # ids of all ambiguous symbols (cannot
                                # store this info in the syms themselves!)
-    InTypeClass*: int          # > 0 if we are in a user-defined type class
-    InGenericContext*: int     # > 0 if we are in a generic type
-    InUnrolledContext*: int    # > 0 if we are unrolling a loop
-    InCompilesContext*: int    # > 0 if we are in a ``compiles`` magic
-    InGenericInst*: int        # > 0 if we are instantiating a generic
+    inTypeClass*: int          # > 0 if we are in a user-defined type class
+    inGenericContext*: int     # > 0 if we are in a generic type
+    inUnrolledContext*: int    # > 0 if we are unrolling a loop
+    inCompilesContext*: int    # > 0 if we are in a ``compiles`` magic
+    inGenericInst*: int        # > 0 if we are instantiating a generic
     converters*: TSymSeq       # sequence of converters
     patterns*: TSymSeq         # sequence of pattern matchers
     optionStack*: TLinkedList
@@ -83,7 +83,7 @@ type
     includedFiles*: TIntSet    # used to detect recursive include files
     userPragmas*: TStrTable
     evalContext*: PEvalContext
-    UnknownIdents*: TIntSet    # ids of all unknown identifiers to prevent
+    unknownIdents*: TIntSet    # ids of all unknown identifiers to prevent
                                # naming it multiple times
     generics*: seq[TInstantiationPair] # pending list of instantiated generics to compile
     lastGenericIdx*: int      # used for the generics stack
@@ -114,8 +114,8 @@ proc scopeDepth*(c: PContext): int {.inline.} =
 
 # owner handling:
 proc getCurrOwner*(): PSym
-proc PushOwner*(owner: PSym)
-proc PopOwner*()
+proc pushOwner*(owner: PSym)
+proc popOwner*()
 # implementation
 
 var gOwners*: seq[PSym] = @[]
@@ -128,13 +128,13 @@ proc getCurrOwner(): PSym =
   # BUGFIX: global array is needed!
   result = gOwners[high(gOwners)]
 
-proc PushOwner(owner: PSym) = 
+proc pushOwner(owner: PSym) = 
   add(gOwners, owner)
 
-proc PopOwner() = 
+proc popOwner() = 
   var length = len(gOwners)
   if length > 0: setlen(gOwners, length - 1)
-  else: InternalError("popOwner")
+  else: internalError("popOwner")
 
 proc lastOptionEntry(c: PContext): POptionEntry = 
   result = POptionEntry(c.optionStack.tail)
@@ -249,7 +249,7 @@ proc markIndirect*(c: PContext, s: PSym) {.inline.} =
     # XXX add to 'c' for global analysis
 
 proc illFormedAst*(n: PNode) =
-  GlobalError(n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
+  globalError(n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
 
 proc checkSonsLen*(n: PNode, length: int) = 
   if sonsLen(n) != length: illFormedAst(n)

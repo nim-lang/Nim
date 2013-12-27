@@ -17,7 +17,7 @@ proc emulatedThreadVars(): bool =
 
 proc accessThreadLocalVar(p: BProc, s: PSym) =
   if emulatedThreadVars() and not p.ThreadVarAccessed:
-    p.ThreadVarAccessed = true
+    p.threadVarAccessed = true
     p.module.usesThreadVars = true
     appf(p.procSec(cpsLocals), "\tNimThreadVars* NimTV;$n")
     app(p.procSec(cpsInit),
@@ -55,7 +55,7 @@ proc generateThreadLocalStorage(m: BModule) =
     for t in items(nimtvDeps): discard getTypeDesc(m, t)
     appf(m.s[cfsSeqTypes], "typedef struct {$1} NimThreadVars;$n", [nimtv])
 
-proc GenerateThreadVarsSize(m: BModule) =
+proc generateThreadVarsSize(m: BModule) =
   if nimtv != nil:
     app(m.s[cfsProcs], 
       "NI NimThreadVarsSize(){return (NI)sizeof(NimThreadVars);}" & tnl)

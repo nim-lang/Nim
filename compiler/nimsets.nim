@@ -18,7 +18,7 @@ proc overlap*(a, b: PNode): bool
 proc inSet*(s: PNode, elem: PNode): bool
 proc someInSet*(s: PNode, a, b: PNode): bool
 proc emptyRange*(a, b: PNode): bool
-proc SetHasRange*(s: PNode): bool
+proc setHasRange*(s: PNode): bool
   # returns true if set contains a range (needed by the code generator)
   # these are used for constant folding:
 proc unionSets*(a, b: PNode): PNode
@@ -87,7 +87,7 @@ proc toBitSet(s: PNode, b: var TBitSet) =
     else: 
       BitSetIncl(b, getOrdValue(s.sons[i]) - first)
   
-proc ToTreeSet(s: TBitSet, settype: PType, info: TLineInfo): PNode = 
+proc toTreeSet(s: TBitSet, settype: PType, info: TLineInfo): PNode = 
   var 
     a, b, e, first: BiggestInt # a, b are interval borders
     elemType: PType
@@ -158,9 +158,9 @@ proc cardSet(s: PNode): BiggestInt =
     else: 
       Inc(result)
   
-proc SetHasRange(s: PNode): bool = 
+proc setHasRange(s: PNode): bool = 
   if s.kind != nkCurly:
-    InternalError(s.info, "SetHasRange")
+    internalError(s.info, "SetHasRange")
     return false
   for i in countup(0, sonsLen(s) - 1): 
     if s.sons[i].kind == nkRange: 

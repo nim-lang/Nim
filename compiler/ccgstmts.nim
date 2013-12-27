@@ -232,11 +232,11 @@ proc genIf(p: BProc, n: PNode, d: var TLoc) =
   #  Lend:
   var
     a: TLoc
-    Lelse: TLabel
+    lelse: TLabel
   if not isEmptyType(n.typ) and d.k == locNone:
     getTemp(p, n.typ, d)
   genLineDir(p, n)
-  let Lend = getLabel(p)
+  let lend = getLabel(p)
   for i in countup(0, sonsLen(n) - 1): 
     let it = n.sons[i]
     if it.len == 2: 
@@ -251,14 +251,14 @@ proc genIf(p: BProc, n: PNode, d: var TLoc) =
       expr(p, it.sons[1], d)
       endBlock(p)
       if sonsLen(n) > 1:
-        lineFF(p, cpsStmts, "goto $1;$n", "br label %$1$n", [Lend])
+        lineFF(p, cpsStmts, "goto $1;$n", "br label %$1$n", [lend])
       fixLabel(p, Lelse)
     elif it.len == 1:
       startBlock(p)
       expr(p, it.sons[0], d)
       endBlock(p)
     else: internalError(n.info, "genIf()")
-  if sonsLen(n) > 1: fixLabel(p, Lend)
+  if sonsLen(n) > 1: fixLabel(p, lend)
 
 proc blockLeaveActions(p: BProc, howMany: int) = 
   var L = p.nestedTryStmts.len
@@ -367,7 +367,7 @@ proc genWhileStmt(p: BProc, t: PNode) =
   # significantly worse code
   var 
     a: TLoc
-    Labl: TLabel
+    labl: TLabel
   assert(sonsLen(t) == 2)
   inc(p.withinLoop)
   genLineDir(p, t)
@@ -499,16 +499,16 @@ proc genCaseGenericBranch(p: BProc, b: PNode, e: TLoc,
 
 proc genCaseSecondPass(p: BProc, t: PNode, d: var TLoc, 
                        labId, until: int): TLabel = 
-  var Lend = getLabel(p)
+  var lend = getLabel(p)
   for i in 1..until:
     lineF(p, cpsStmts, "LA$1: ;$n", [toRope(labId + i)])
     if t.sons[i].kind == nkOfBranch:
       var length = sonsLen(t.sons[i])
       exprBlock(p, t.sons[i].sons[length - 1], d)
-      lineF(p, cpsStmts, "goto $1;$n", [Lend])
+      lineF(p, cpsStmts, "goto $1;$n", [lend])
     else:
       exprBlock(p, t.sons[i].sons[0], d)
-  result = Lend
+  result = lend
 
 proc genIfForCaseUntil(p: BProc, t: PNode, d: var TLoc,
                        rangeFormat, eqFormat: TFormatStr,
@@ -535,8 +535,8 @@ proc genCaseGeneric(p: BProc, t: PNode, d: var TLoc,
                     rangeFormat, eqFormat: TFormatStr) = 
   var a: TLoc
   initLocExpr(p, t.sons[0], a)
-  var Lend = genIfForCaseUntil(p, t, d, rangeFormat, eqFormat, sonsLen(t)-1, a)
-  fixLabel(p, Lend)
+  var lend = genIfForCaseUntil(p, t, d, rangeFormat, eqFormat, sonsLen(t)-1, a)
+  fixLabel(p, lend)
 
 proc genCaseStringBranch(p: BProc, b: PNode, e: TLoc, labl: TLabel, 
                          branches: var openArray[PRope]) = 
@@ -580,8 +580,8 @@ proc genStringCase(p: BProc, t: PNode, d: var TLoc) =
     if t.sons[sonsLen(t)-1].kind != nkOfBranch: 
       lineF(p, cpsStmts, "goto LA$1;$n", [toRope(p.labels)]) 
     # third pass: generate statements
-    var Lend = genCaseSecondPass(p, t, d, labId, sonsLen(t)-1)
-    fixLabel(p, Lend)
+    var lend = genCaseSecondPass(p, t, d, labId, sonsLen(t)-1)
+    fixLabel(p, lend)
   else:
     genCaseGeneric(p, t, d, "", "if (#eqStrings($1, $2)) goto $3;$n")
   
@@ -592,7 +592,7 @@ proc branchHasTooBigRange(b: PNode): bool =
         b.sons[i].sons[1].intVal - b.sons[i].sons[0].intVal > RangeExpandLimit: 
       return true
 
-proc IfSwitchSplitPoint(p: BProc, n: PNode): int =
+proc ifSwitchSplitPoint(p: BProc, n: PNode): int =
   for i in 1..n.len-1:
     var branch = n[i]
     var stmtBlock = lastSon(branch)
@@ -625,7 +625,7 @@ proc genOrdinalCase(p: BProc, n: PNode, d: var TLoc) =
   # generate if part (might be empty):
   var a: TLoc
   initLocExpr(p, n.sons[0], a)
-  var Lend = if splitPoint > 0: genIfForCaseUntil(p, n, d,
+  var lend = if splitPoint > 0: genIfForCaseUntil(p, n, d,
                     rangeFormat = "if ($1 >= $2 && $1 <= $3) goto $4;$n",
                     eqFormat = "if ($1 == $2) goto $3;$n", 
                     splitPoint, a) else: nil
@@ -647,7 +647,7 @@ proc genOrdinalCase(p: BProc, n: PNode, d: var TLoc) =
     if (hasAssume in CC[ccompiler].props) and not hasDefault: 
       lineF(p, cpsStmts, "default: __assume(0);$n")
     lineF(p, cpsStmts, "}$n")
-  if Lend != nil: fixLabel(p, Lend)
+  if lend != nil: fixLabel(p, lend)
   
 proc genCase(p: BProc, t: PNode, d: var TLoc) = 
   genLineDir(p, t)
@@ -928,7 +928,7 @@ proc genPragma(p: BProc, n: PNode) =
       p.module.injectStmt = p.s(cpsStmts)
     else: discard
 
-proc FieldDiscriminantCheckNeeded(p: BProc, asgn: PNode): bool = 
+proc fieldDiscriminantCheckNeeded(p: BProc, asgn: PNode): bool = 
   if optFieldCheck in p.options:
     var le = asgn.sons[0]
     if le.kind == nkCheckedFieldExpr:

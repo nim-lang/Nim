@@ -132,7 +132,7 @@ proc getLineInfo*(L: TLexer, tok: TToken): TLineInfo {.inline.} =
   newLineInfo(L.fileIdx, tok.line, tok.col)
 
 proc closeLexer*(lex: var TLexer)
-proc PrintTok*(tok: TToken)
+proc printTok*(tok: TToken)
 proc tokToStr*(tok: TToken): string
 
 proc openLexer*(lex: var TLexer, filename: string, inputstream: PLLStream) =
@@ -172,7 +172,7 @@ proc prettyTok*(tok: TToken): string =
   if IsKeyword(tok.tokType): result = "keyword " & tok.ident.s
   else: result = tokToStr(tok)
   
-proc PrintTok*(tok: TToken) = 
+proc printTok*(tok: TToken) = 
   write(stdout, TokTypeToStr[tok.tokType])
   write(stdout, " ")
   writeln(stdout, tokToStr(tok))
@@ -246,7 +246,7 @@ proc isFloatLiteral(s: string): bool =
       return true
   result = false
 
-proc GetNumber(L: var TLexer): TToken = 
+proc getNumber(L: var TLexer): TToken = 
   var 
     pos, endpos: int
     xi: biggestInt
@@ -499,7 +499,7 @@ proc newString(s: cstring, len: int): string =
   for i in 0 .. <len:
     result[i] = s[i]
 
-proc HandleCRLF(L: var TLexer, pos: int): int =
+proc handleCRLF(L: var TLexer, pos: int): int =
   template registerLine =
     let col = L.getColNumber(pos)
     

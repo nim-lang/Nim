@@ -31,7 +31,7 @@ proc prependCurDir(f: string): string =
   else:
     result = f
 
-proc HandleCmdLine() =
+proc handleCmdLine() =
   if paramCount() == 0:
     writeCommandLineUsage()
   else:
@@ -47,12 +47,12 @@ proc HandleCmdLine() =
       gProjectName = p.name
     else:
       gProjectPath = getCurrentDir()
-    LoadConfigs(DefaultConfig) # load all config files
+    loadConfigs(DefaultConfig) # load all config files
     # now process command line arguments again, because some options in the
     # command line can overwite the config file's settings
     extccomp.initVars()
-    ProcessCmdLine(passCmd2, "")
-    MainCommand()
+    processCmdLine(passCmd2, "")
+    mainCommand()
     if gVerbosity >= 2: echo(GC_getStatistics())
     #echo(GC_getStatistics())
     if msgs.gErrorCounter == 0:
@@ -84,5 +84,5 @@ when compileOption("gc", "v2") or compileOption("gc", "refc"):
 condsyms.InitDefines()
 
 when not defined(selftest):
-  HandleCmdLine()
+  handleCmdLine()
   quit(int8(msgs.gErrorCounter > 0))

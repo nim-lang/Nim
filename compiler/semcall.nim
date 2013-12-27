@@ -19,7 +19,7 @@ proc sameMethodDispatcher(a, b: PSym): bool =
       if aa.sym == bb.sym: 
         result = true
     else:
-      nil
+      discard
       # generics have no dispatcher yet, so we need to compare the method
       # names; however, the names are equal anyway because otherwise we
       # wouldn't even consider them to be overloaded. But even this does
@@ -74,13 +74,13 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
           else: nil
     sym = nextOverloadIter(o, c, headSymbol)
 
-proc NotFoundError*(c: PContext, n: PNode, errors: seq[string]) =
+proc notFoundError*(c: PContext, n: PNode, errors: seq[string]) =
   # Gives a detailed error message; this is separated from semOverloadedCall,
   # as semOverlodedCall is already pretty slow (and we need this information
   # only in case of an error).
-  if c.InCompilesContext > 0: 
+  if c.inCompilesContext > 0: 
     # fail fast:
-    GlobalError(n.info, errTypeMismatch, "")
+    globalError(n.info, errTypeMismatch, "")
   var result = msgKindToString(errTypeMismatch)
   add(result, describeArgs(c, n, 1 + ord(nfDelegate in n.flags)))
   add(result, ')')
@@ -93,7 +93,7 @@ proc NotFoundError*(c: PContext, n: PNode, errors: seq[string]) =
   if candidates != "":
     add(result, "\n" & msgKindToString(errButExpected) & "\n" & candidates)
 
-  LocalError(n.Info, errGenerated, result)
+  localError(n.Info, errGenerated, result)
 
 proc gatherUsedSyms(c: PContext, usedSyms: var seq[PNode]) =
   for scope in walkScopes(c.currentScope):
@@ -164,12 +164,12 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
   if alt.state == csMatch and cmpCandidates(result, alt) == 0 and
       not sameMethodDispatcher(result.calleeSym, alt.calleeSym):
-    InternalAssert result.state == csMatch
+    internalAssert result.state == csMatch
     #writeMatches(result)
     #writeMatches(alt)
     if c.inCompilesContext > 0: 
       # quick error message for performance of 'compiles' built-in:
-      GlobalError(n.Info, errGenerated, "ambiguous call")
+      globalError(n.Info, errGenerated, "ambiguous call")
     elif gErrorCounter == 0:
       # don't cascade errors
       var args = "("
@@ -178,7 +178,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         add(args, typeToString(n.sons[i].typ))
       add(args, ")")
 
-      LocalError(n.Info, errGenerated, msgKindToString(errAmbiguousCallXYZ) % [
+      localError(n.Info, errGenerated, msgKindToString(errAmbiguousCallXYZ) % [
         getProcHeader(result.calleeSym), getProcHeader(alt.calleeSym),
         args])
 
@@ -197,14 +197,14 @@ proc instGenericConvertersSons*(c: PContext, n: PNode, x: TCandidate) =
     for i in 1 .. <n.len:
       instGenericConvertersArg(c, n.sons[i], x)
 
-proc IndexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode = 
+proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode = 
   var m: TCandidate
   initCandidate(m, f)
   result = paramTypesMatch(c, m, f, a, arg, nil)
   if m.genericConverter and result != nil:
     instGenericConvertersArg(c, result, m)
 
-proc ConvertTo*(c: PContext, f: PType, n: PNode): PNode = 
+proc convertTo*(c: PContext, f: PType, n: PNode): PNode = 
   var m: TCandidate
   initCandidate(m, f)
   result = paramTypesMatch(c, m, f, n.typ, n, nil)
@@ -239,7 +239,7 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
   # else: result = errorNode(c, n)
     
 proc explicitGenericInstError(n: PNode): PNode =
-  LocalError(n.info, errCannotInstantiateX, renderTree(n))
+  localError(n.info, errCannotInstantiateX, renderTree(n))
   result = n
 
 proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
@@ -283,7 +283,7 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   else:
     result = explicitGenericInstError(n)
 
-proc SearchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
+proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
   # Searchs for the fn in the symbol table. If the parameter lists are suitable
   # for borrowing the sym in the symbol table is returned, else nil.
   # New approach: generate fn(x, y, z) where x, y, z have the proper types

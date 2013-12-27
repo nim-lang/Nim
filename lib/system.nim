@@ -1963,20 +1963,20 @@ when not defined(JS): #and not defined(NimrodVM):
         ## Template which expands to either stdout or stderr depending on
         ## `useStdoutAsStdmsg` compile-time switch.
 
-    proc Open*(f: var TFile, filename: string,
+    proc open*(f: var TFile, filename: string,
                mode: TFileMode = fmRead, bufSize: int = -1): Bool {.tags: [].}
       ## Opens a file named `filename` with given `mode`.
       ##
       ## Default mode is readonly. Returns true iff the file could be opened.
       ## This throws no exception if the file could not be opened.
 
-    proc Open*(f: var TFile, filehandle: TFileHandle,
+    proc open*(f: var TFile, filehandle: TFileHandle,
                mode: TFileMode = fmRead): Bool {.tags: [].}
       ## Creates a ``TFile`` from a `filehandle` with given `mode`.
       ##
       ## Default mode is readonly. Returns true iff the file could be opened.
       
-    proc Open*(filename: string,
+    proc open*(filename: string,
                mode: TFileMode = fmRead, bufSize: int = -1): TFile = 
       ## Opens a file named `filename` with given `mode`.
       ##
@@ -1993,16 +1993,16 @@ when not defined(JS): #and not defined(NimrodVM):
       ##
       ## Default mode is readonly. Returns true iff the file could be reopened.
 
-    proc Close*(f: TFile) {.importc: "fclose", header: "<stdio.h>", tags: [].}
+    proc close*(f: TFile) {.importc: "fclose", header: "<stdio.h>", tags: [].}
       ## Closes the file.
 
-    proc EndOfFile*(f: TFile): Bool {.tags: [].}
+    proc endOfFile*(f: TFile): Bool {.tags: [].}
       ## Returns true iff `f` is at the end.
       
     proc readChar*(f: TFile): char {.
       importc: "fgetc", header: "<stdio.h>", tags: [FReadIO].}
       ## Reads a single character from the stream `f`.
-    proc FlushFile*(f: TFile) {.
+    proc flushFile*(f: TFile) {.
       importc: "fflush", header: "<stdio.h>", tags: [FWriteIO].}
       ## Flushes `f`'s buffer.
 
@@ -2051,13 +2051,13 @@ when not defined(JS): #and not defined(NimrodVM):
     proc getFileSize*(f: TFile): int64 {.tags: [FReadIO].}
       ## retrieves the file size (in bytes) of `f`.
 
-    proc ReadBytes*(f: TFile, a: var openarray[int8], start, len: int): int {.
+    proc readBytes*(f: TFile, a: var openarray[int8], start, len: int): int {.
       tags: [FReadIO].}
       ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
       ## the actual number of bytes that have been read which may be less than
       ## `len` (if not as many bytes are remaining), but not greater.
 
-    proc ReadChars*(f: TFile, a: var openarray[char], start, len: int): int {.
+    proc readChars*(f: TFile, a: var openarray[char], start, len: int): int {.
       tags: [FReadIO].}
       ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
       ## the actual number of bytes that have been read which may be less than
@@ -2655,7 +2655,7 @@ proc compiles*(x: expr): bool {.magic: "Compiles", noSideEffect.} =
   ## .. code-block:: Nimrod
   ##   when not compiles(3 + 4):
   ##     echo "'+' for integers is available"
-  nil
+  discard
 
 when defined(initDebugger):
   initDebugger()
@@ -2680,4 +2680,4 @@ proc locals*(): TObject {.magic: "Locals", noSideEffect.} =
   ## on any debug or runtime information. Note that in constrast to what
   ## the official signature says, the return type is not ``TObject`` but a
   ## tuple of a structure that depends on the current scope.
-  nil
+  discard

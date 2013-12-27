@@ -62,7 +62,7 @@ const
   MaxLineLen = 80
   LineCommentColumn = 30
 
-proc InitSrcGen(g: var TSrcGen, renderFlags: TRenderFlags) = 
+proc initSrcGen(g: var TSrcGen, renderFlags: TRenderFlags) = 
   g.comStack = @[]
   g.tokens = @[]
   g.indent = 0
@@ -108,12 +108,12 @@ proc indentNL(g: var TSrcGen) =
   g.pendingNL = g.indent
   g.lineLen = g.indent
 
-proc Dedent(g: var TSrcGen) = 
+proc dedent(g: var TSrcGen) = 
   dec(g.indent, indentWidth)
   assert(g.indent >= 0)
   if g.pendingNL > indentWidth: 
-    Dec(g.pendingNL, indentWidth)
-    Dec(g.lineLen, indentWidth)
+    dec(g.pendingNL, indentWidth)
+    dec(g.lineLen, indentWidth)
 
 proc put(g: var TSrcGen, kind: TTokType, s: string) = 
   addPendingNL(g)

@@ -380,7 +380,7 @@ proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode =
   of nkBindStmt:
     result = semBindStmt(c.c, n, c.toBind)
   of nkEmpty, nkSym..nkNilLit:
-    nil
+    discard
   else:
     # dotExpr is ambiguous: note that we explicitely allow 'x.TemplateParam',
     # so we use the generic code for nkDotExpr too
@@ -503,7 +503,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
       elif templToExpand(s):
         result = semPatternBody(c, semTemplateExpr(c.c, n, s, false))
       else:
-        nil
+        discard
         # we keep the ident unbound for matching instantiated symbols and
         # more flexibility
   

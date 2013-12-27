@@ -19,7 +19,7 @@ type
   TPreferedDesc* = enum 
     preferName, preferDesc, preferExported
 
-proc TypeToString*(typ: PType, prefer: TPreferedDesc = preferName): string
+proc typeToString*(typ: PType, prefer: TPreferedDesc = preferName): string
 proc getProcHeader*(sym: PSym): string
 proc base*(t: PType): PType
   # ------------------- type iterator: ----------------------------------------
@@ -28,7 +28,7 @@ type
   TTypeMutator* = proc (t: PType, closure: PObject): PType {.nimcall.} # copy t and mutate it
   TTypePredicate* = proc (t: PType): bool {.nimcall.}
 
-proc IterOverType*(t: PType, iter: TTypeIter, closure: PObject): bool
+proc iterOverType*(t: PType, iter: TTypeIter, closure: PObject): bool
   # Returns result of `iter`.
 proc mutateType*(t: PType, iter: TTypeMutator, closure: PObject): PType
   # Returns result of `iter`.
@@ -74,7 +74,7 @@ proc getOrdValue*(n: PNode): biggestInt
 proc computeSize*(typ: PType): biggestInt
 proc getSize*(typ: PType): biggestInt
 proc isPureObject*(typ: PType): bool
-proc InvalidGenericInst*(f: PType): bool
+proc invalidGenericInst*(f: PType): bool
   # for debugging
 type 
   TTypeFieldResult* = enum 
@@ -89,8 +89,8 @@ proc analyseObjectWithTypeField*(t: PType): TTypeFieldResult
 proc typeAllowed*(t: PType, kind: TSymKind): bool
 # implementation
 
-proc InvalidGenericInst(f: PType): bool = 
-  result = (f.kind == tyGenericInst) and (lastSon(f) == nil)
+proc invalidGenericInst(f: PType): bool = 
+  result = f.kind == tyGenericInst and lastSon(f) == nil
 
 proc isPureObject(typ: PType): bool = 
   var t = typ
@@ -132,7 +132,7 @@ proc getProcHeader(sym: PSym): string =
       add(result, typeToString(p.sym.typ))
       if i != sonsLen(n)-1: add(result, ", ")
     else:
-      InternalError("getProcHeader")
+      internalError("getProcHeader")
   add(result, ')')
   if n.sons[0].typ != nil: result.add(": " & typeToString(n.sons[0].typ))
   
@@ -194,7 +194,7 @@ proc iterOverTypeAux(marker: var TIntSet, t: PType, iter: TTypeIter,
         if result: return 
       if t.n != nil: result = iterOverNode(marker, t.n, iter, closure)
   
-proc IterOverType(t: PType, iter: TTypeIter, closure: PObject): bool = 
+proc iterOverType(t: PType, iter: TTypeIter, closure: PObject): bool = 
   var marker = InitIntSet()
   result = iterOverTypeAux(marker, t, iter, closure)
 
@@ -242,7 +242,7 @@ proc searchTypeForAux(t: PType, predicate: TTypePredicate,
       result = searchTypeForAux(t.sons[i], predicate, marker)
       if result: return 
   else: 
-    nil
+    discard
 
 proc searchTypeFor(t: PType, predicate: TTypePredicate): bool = 
   var marker = InitIntSet()
@@ -284,7 +284,7 @@ proc analyseObjectWithTypeFieldAux(t: PType,
       if res != frNone: 
         return frEmbedded
   else: 
-    nil
+    discard
 
 proc analyseObjectWithTypeField(t: PType): TTypeFieldResult = 
   var marker = InitIntSet()
@@ -322,7 +322,7 @@ proc canFormAcycleNode(marker: var TIntSet, n: PNode, startId: int): bool =
     if not result: 
       case n.kind
       of nkNone..nkNilLit: 
-        nil
+        discard
       else: 
         for i in countup(0, sonsLen(n) - 1): 
           result = canFormAcycleNode(marker, n.sons[i], startId)
@@ -367,6 +367,7 @@ proc mutateNode(marker: var TIntSet, n: PNode, iter: TTypeMutator,
     case n.kind
     of nkNone..nkNilLit: 
       # a leaf
+      discard
     else: 
       for i in countup(0, sonsLen(n) - 1): 
         addSon(result, mutateNode(marker, n.sons[i], iter, closure))
@@ -422,7 +423,7 @@ proc constraintsToStr(t: PType): string =
     if i > 0: result.add(sep)
     result.add(t.sons[i].consToStr)
 
-proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
+proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   var t = typ
   result = ""
   if t == nil: return 
@@ -553,7 +554,7 @@ proc firstOrd(t: PType): biggestInt =
   of tyGenericInst, tyDistinct, tyConst, tyMutable, tyTypeDesc:
     result = firstOrd(lastSon(t))
   else: 
-    InternalError("invalid kind for first(" & $t.kind & ')')
+    internalError("invalid kind for first(" & $t.kind & ')')
     result = 0
 
 proc lastOrd(t: PType): biggestInt = 
@@ -587,7 +588,7 @@ proc lastOrd(t: PType): biggestInt =
     result = lastOrd(lastSon(t))
   of tyProxy: result = 0
   else: 
-    InternalError("invalid kind for last(" & $t.kind & ')')
+    internalError("invalid kind for last(" & $t.kind & ')')
     result = 0
 
 proc lengthOrd(t: PType): biggestInt = 
@@ -621,7 +622,7 @@ type
 
 proc initSameTypeClosure: TSameTypeClosure =
   # we do the initialization lazily for performance (avoids memory allocations)
-  nil
+  discard
   
 proc containsOrIncl(c: var TSameTypeClosure, a, b: PType): bool =
   result = not IsNil(c.s) and c.s.contains((a.id, b.id))
@@ -629,15 +630,15 @@ proc containsOrIncl(c: var TSameTypeClosure, a, b: PType): bool =
     if IsNil(c.s): c.s = @[]
     c.s.add((a.id, b.id))
 
-proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool
-proc SameTypeOrNilAux(a, b: PType, c: var TSameTypeClosure): bool =
+proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool
+proc sameTypeOrNilAux(a, b: PType, c: var TSameTypeClosure): bool =
   if a == b:
     result = true
   else:
     if a == nil or b == nil: result = false
     else: result = SameTypeAux(a, b, c)
 
-proc SameTypeOrNil*(a, b: PType, flags: TTypeCmpFlags = {}): bool =
+proc sameTypeOrNil*(a, b: PType, flags: TTypeCmpFlags = {}): bool =
   if a == b:
     result = true
   else: 
@@ -676,7 +677,7 @@ proc equalParams(a, b: PNode): TParamsEquality =
       of paramsNotEqual: 
         return paramsNotEqual
       of paramsEqual: 
-        nil
+        discard
       of paramsIncompatible: 
         result = paramsIncompatible
       if (m.name.id != n.name.id): 
@@ -730,7 +731,7 @@ proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool =
   else:
     result = false
 
-template IfFastObjectTypeCheckFailed(a, b: PType, body: stmt) {.immediate.} =
+template ifFastObjectTypeCheckFailed(a, b: PType, body: stmt) {.immediate.} =
   if tfFromGeneric notin a.flags + b.flags:
     # fast case: id comparison suffices:
     result = a.id == b.id
@@ -751,7 +752,7 @@ template IfFastObjectTypeCheckFailed(a, b: PType, body: stmt) {.immediate.} =
 
 proc sameObjectTypes*(a, b: PType): bool =
   # specialized for efficiency (sigmatch uses it)
-  IfFastObjectTypeCheckFailed(a, b):     
+  ifFastObjectTypeCheckFailed(a, b):     
     var c = initSameTypeClosure()
     result = sameTypeAux(a, b, c)    
 
@@ -761,7 +762,7 @@ proc sameDistinctTypes*(a, b: PType): bool {.inline.} =
 proc sameEnumTypes*(a, b: PType): bool {.inline.} =
   result = a.id == b.id
 
-proc SameObjectTree(a, b: PNode, c: var TSameTypeClosure): bool =
+proc sameObjectTree(a, b: PNode, c: var TSameTypeClosure): bool =
   if a == b:
     result = true
   elif (a != nil) and (b != nil) and (a.kind == b.kind):
@@ -778,26 +779,26 @@ proc SameObjectTree(a, b: PNode, c: var TSameTypeClosure): bool =
       else:
         if sonsLen(a) == sonsLen(b): 
           for i in countup(0, sonsLen(a) - 1): 
-            if not SameObjectTree(a.sons[i], b.sons[i], c): return 
+            if not sameObjectTree(a.sons[i], b.sons[i], c): return 
           result = true
 
 proc sameObjectStructures(a, b: PType, c: var TSameTypeClosure): bool =
   # check base types:
   if sonsLen(a) != sonsLen(b): return
   for i in countup(0, sonsLen(a) - 1):
-    if not SameTypeOrNilAux(a.sons[i], b.sons[i], c): return
-  if not SameObjectTree(a.n, b.n, c): return
+    if not sameTypeOrNilAux(a.sons[i], b.sons[i], c): return
+  if not sameObjectTree(a.n, b.n, c): return
   result = true
 
 proc sameChildrenAux(a, b: PType, c: var TSameTypeClosure): bool =
   if sonsLen(a) != sonsLen(b): return false
   result = true
   for i in countup(0, sonsLen(a) - 1):
-    result = SameTypeOrNilAux(a.sons[i], b.sons[i], c)
+    result = sameTypeOrNilAux(a.sons[i], b.sons[i], c)
     if not result: return 
 
-proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
-  template CycleCheck() =
+proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
+  template cycleCheck() =
     # believe it or not, the direct check for ``containsOrIncl(c, a, b)``
     # increases bootstrapping time from 2.4s to 3.3s on my laptop! So we cheat
     # again: Since the recursion check is only to not get caught in an endless
@@ -831,16 +832,16 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
      tyInt..tyBigNum, tyStmt:
     result = sameFlags(a, b)
   of tyExpr:
-    result = ExprStructuralEquivalent(a.n, b.n) and sameFlags(a, b)
+    result = exprStructuralEquivalent(a.n, b.n) and sameFlags(a, b)
   of tyObject:
-    IfFastObjectTypeCheckFailed(a, b):
+    ifFastObjectTypeCheckFailed(a, b):
       CycleCheck()
       result = sameObjectStructures(a, b, c) and sameFlags(a, b)
   of tyDistinct:
-    CycleCheck()
+    cycleCheck()
     if c.cmp == dcEq:      
       if sameFlags(a, b):
-        IfFastObjectTypeCheckFailed(a, b):
+        ifFastObjectTypeCheckFailed(a, b):
           result = sameTypeAux(a.sons[0], b.sons[0], c)     
     else: 
       result = sameTypeAux(a.sons[0], b.sons[0], c) and sameFlags(a, b)
@@ -848,14 +849,14 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     # XXX generic enums do not make much sense, but require structural checking
     result = a.id == b.id and sameFlags(a, b)
   of tyTuple:
-    CycleCheck()
+    cycleCheck()
     result = sameTuple(a, b, c) and sameFlags(a, b)
   of tyGenericInst:    
     result = sameTypeAux(lastSon(a), lastSon(b), c)
   of tyTypeDesc:
     if c.cmp == dcEqIgnoreDistinct: result = false
     elif TypeDescExactMatch in c.flags:
-      CycleCheck()
+      cycleCheck()
       result = sameChildrenAux(x, y, c) and sameFlags(a, b)
     else:
       result = sameFlags(a, b)
@@ -863,15 +864,15 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
      tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyArrayConstr,
      tyArray, tyProc, tyConst, tyMutable, tyVarargs, tyIter,
      tyOrdinal, tyTypeClasses:
-    CycleCheck()    
+    cycleCheck()    
     result = sameChildrenAux(a, b, c) and sameFlags(a, b)
-    if result and (a.kind == tyProc):
+    if result and a.kind == tyProc:
       result = a.callConv == b.callConv
   of tyRange:
-    CycleCheck()
-    result = SameTypeOrNilAux(a.sons[0], b.sons[0], c) and
-        SameValue(a.n.sons[0], b.n.sons[0]) and
-        SameValue(a.n.sons[1], b.n.sons[1])
+    cycleCheck()
+    result = sameTypeOrNilAux(a.sons[0], b.sons[0], c) and
+        sameValue(a.n.sons[0], b.n.sons[0]) and
+        sameValue(a.n.sons[1], b.n.sons[1])
   of tyNone: result = false  
 
 proc sameType*(x, y: PType): bool =
@@ -954,7 +955,7 @@ proc typeAllowedNode(marker: var TIntSet, n: PNode, kind: TSymKind,
     if result: 
       case n.kind
       of nkNone..nkNilLit: 
-        nil
+        discard
       else: 
         for i in countup(0, sonsLen(n) - 1): 
           result = typeAllowedNode(marker, n.sons[i], kind, flags)

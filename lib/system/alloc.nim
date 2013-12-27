@@ -59,15 +59,16 @@ elif defined(windows):
     MEM_DECOMMIT = 0x4000
     MEM_RELEASE = 0x8000
 
-  proc VirtualAlloc(lpAddress: pointer, dwSize: int, flAllocationType,
+  proc virtualAlloc(lpAddress: pointer, dwSize: int, flAllocationType,
                     flProtect: int32): pointer {.
-                    header: "<windows.h>", stdcall.}
+                    header: "<windows.h>", stdcall, importc: "VirtualAlloc".}
   
-  proc VirtualFree(lpAddress: pointer, dwSize: int, 
-                   dwFreeType: int32) {.header: "<windows.h>", stdcall.}
+  proc virtualFree(lpAddress: pointer, dwSize: int, 
+                   dwFreeType: int32) {.header: "<windows.h>", stdcall,
+                   importc: "VirtualFree".}
   
   proc osAllocPages(size: int): pointer {.inline.} = 
-    result = VirtualAlloc(nil, size, MEM_RESERVE or MEM_COMMIT,
+    result = virtualAlloc(nil, size, MEM_RESERVE or MEM_COMMIT,
                           PAGE_READWRITE)
     if result == nil: raiseOutOfMem()
 
@@ -78,7 +79,7 @@ elif defined(windows):
     # Windows :-(. We have to live with MEM_DECOMMIT instead.
     # Well that used to be the case but MEM_DECOMMIT fragments the address
     # space heavily, so we now treat Windows as a strange unmap target.
-    when reallyOsDealloc: VirtualFree(p, 0, MEM_RELEASE)
+    when reallyOsDealloc: virtualFree(p, 0, MEM_RELEASE)
     #VirtualFree(p, size, MEM_DECOMMIT)
 
 else: 
@@ -251,14 +252,14 @@ proc llDeallocAll(a: var TMemRegion) =
     osDeallocPages(it, PageSize)
     it = next
   
-proc IntSetGet(t: TIntSet, key: int): PTrunk = 
+proc intSetGet(t: TIntSet, key: int): PTrunk = 
   var it = t.data[key and high(t.data)]
   while it != nil: 
     if it.key == key: return it
     it = it.next
   result = nil
 
-proc IntSetPut(a: var TMemRegion, t: var TIntSet, key: int): PTrunk = 
+proc intSetPut(a: var TMemRegion, t: var TIntSet, key: int): PTrunk = 
   result = IntSetGet(t, key)
   if result == nil:
     result = cast[PTrunk](llAlloc(a, sizeof(result[])))
@@ -266,7 +267,7 @@ proc IntSetPut(a: var TMemRegion, t: var TIntSet, key: int): PTrunk =
     t.data[key and high(t.data)] = result
     result.key = key
 
-proc Contains(s: TIntSet, key: int): bool = 
+proc contains(s: TIntSet, key: int): bool = 
   var t = IntSetGet(s, key shr TrunkShift)
   if t != nil: 
     var u = key and TrunkMask
@@ -274,12 +275,12 @@ proc Contains(s: TIntSet, key: int): bool =
   else: 
     result = false
   
-proc Incl(a: var TMemRegion, s: var TIntSet, key: int) = 
+proc incl(a: var TMemRegion, s: var TIntSet, key: int) = 
   var t = IntSetPut(a, s, key shr TrunkShift)
   var u = key and TrunkMask
   t.bits[u shr IntShift] = t.bits[u shr IntShift] or (1 shl (u and IntMask))
 
-proc Excl(s: var TIntSet, key: int) = 
+proc excl(s: var TIntSet, key: int) = 
   var t = IntSetGet(s, key shr TrunkShift)
   if t != nil:
     var u = key and TrunkMask
@@ -387,7 +388,7 @@ proc freeOsChunks(a: var TMemRegion, p: pointer, size: int) =
   #c_fprintf(c_stdout, "[Alloc] back to OS: %ld\n", size)
 
 proc isAccessible(a: TMemRegion, p: pointer): bool {.inline.} = 
-  result = Contains(a.chunkStarts, pageIndex(p))
+  result = contains(a.chunkStarts, pageIndex(p))
 
 proc contains[T](list, x: T): bool = 
   var it = list
@@ -403,7 +404,7 @@ proc writeFreeList(a: TMemRegion) =
               it, it.next, it.prev)
     it = it.next
 
-proc ListAdd[T](head: var T, c: T) {.inline.} = 
+proc listAdd[T](head: var T, c: T) {.inline.} = 
   sysAssert(c notin head, "listAdd 1")
   sysAssert c.prev == nil, "listAdd 2"
   sysAssert c.next == nil, "listAdd 3"
@@ -413,7 +414,7 @@ proc ListAdd[T](head: var T, c: T) {.inline.} =
     head.prev = c
   head = c
 
-proc ListRemove[T](head: var T, c: T) {.inline.} =
+proc listRemove[T](head: var T, c: T) {.inline.} =
   sysAssert(c in head, "listRemove")
   if c == head: 
     head = c.next
@@ -759,7 +760,7 @@ proc getOccupiedMem(a: TMemRegion): int {.inline.} =
 
 # ---------------------- thread memory region -------------------------------
 
-template InstantiateForRegion(allocator: expr) =
+template instantiateForRegion(allocator: expr) =
   when defined(fulldebug):
     proc interiorAllocatedPtr*(p: pointer): pointer =
       result = interiorAllocatedPtr(allocator, p)
@@ -801,13 +802,13 @@ template InstantiateForRegion(allocator: expr) =
   when hasThreadSupport:
     var sharedHeap: TMemRegion
     var heapLock: TSysLock
-    InitSysLock(HeapLock)
+    initSysLock(HeapLock)
 
   proc allocShared(size: int): pointer =
     when hasThreadSupport:
-      AcquireSys(HeapLock)
+      acquireSys(HeapLock)
       result = alloc(sharedHeap, size)
-      ReleaseSys(HeapLock)
+      releaseSys(HeapLock)
     else:
       result = alloc(size)
 
@@ -817,17 +818,17 @@ template InstantiateForRegion(allocator: expr) =
 
   proc deallocShared(p: pointer) =
     when hasThreadSupport: 
-      AcquireSys(HeapLock)
+      acquireSys(HeapLock)
       dealloc(sharedHeap, p)
-      ReleaseSys(HeapLock)
+      releaseSys(HeapLock)
     else:
       dealloc(p)
 
   proc reallocShared(p: pointer, newsize: int): pointer =
     when hasThreadSupport: 
-      AcquireSys(HeapLock)
+      acquireSys(HeapLock)
       result = realloc(sharedHeap, p, newsize)
-      ReleaseSys(HeapLock)
+      releaseSys(HeapLock)
     else:
       result = realloc(p, newsize)
 

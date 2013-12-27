@@ -36,7 +36,7 @@ proc cyclicTree*(n: PNode): bool =
   var s = newNodeI(nkEmpty, n.info)
   result = cyclicTreeAux(n, s)
 
-proc ExprStructuralEquivalent*(a, b: PNode): bool = 
+proc exprStructuralEquivalent*(a, b: PNode): bool = 
   result = false
   if a == b: 
     result = true
@@ -53,17 +53,17 @@ proc ExprStructuralEquivalent*(a, b: PNode): bool =
     else: 
       if sonsLen(a) == sonsLen(b): 
         for i in countup(0, sonsLen(a) - 1): 
-          if not ExprStructuralEquivalent(a.sons[i], b.sons[i]): return 
+          if not exprStructuralEquivalent(a.sons[i], b.sons[i]): return 
         result = true
   
-proc sameTree*(a, b: PNode): bool = 
+proc sameTree*(a, b: PNode): bool =
   result = false
-  if a == b: 
+  if a == b:
     result = true
-  elif (a != nil) and (b != nil) and (a.kind == b.kind): 
-    if a.flags != b.flags: return 
-    if a.info.line != b.info.line: return 
-    if a.info.col != b.info.col: 
+  elif a != nil and b != nil and a.kind == b.kind:
+    if a.flags != b.flags: return
+    if a.info.line != b.info.line: return
+    if a.info.col != b.info.col:
       return                  #if a.info.fileIndex <> b.info.fileIndex then exit;
     case a.kind
     of nkSym: 
@@ -74,7 +74,7 @@ proc sameTree*(a, b: PNode): bool =
     of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
     of nkEmpty, nkNilLit, nkType: result = true
-    else: 
+    else:
       if sonsLen(a) == sonsLen(b): 
         for i in countup(0, sonsLen(a) - 1): 
           if not sameTree(a.sons[i], b.sons[i]): return 
@@ -84,13 +84,13 @@ proc getProcSym*(call: PNode): PSym =
   result = call.sons[0].sym
 
 proc getOpSym*(op: PNode): PSym = 
-  if not (op.kind in {nkCall, nkHiddenCallConv, nkCommand, nkCallStrLit}): 
+  if op.kind notin {nkCall, nkHiddenCallConv, nkCommand, nkCallStrLit}:
     result = nil
-  else: 
-    if (sonsLen(op) <= 0): InternalError(op.info, "getOpSym")
+  else:
+    if sonsLen(op) <= 0: internalError(op.info, "getOpSym")
     elif op.sons[0].Kind == nkSym: result = op.sons[0].sym
     else: result = nil
-  
+
 proc getMagic*(op: PNode): TMagic = 
   case op.kind
   of nkCallKinds:
@@ -99,7 +99,7 @@ proc getMagic*(op: PNode): TMagic =
     else: result = mNone
   else: result = mNone
   
-proc TreeToSym*(t: PNode): PSym = 
+proc treeToSym*(t: PNode): PSym = 
   result = t.sym
 
 proc isConstExpr*(n: PNode): bool = 
@@ -118,7 +118,7 @@ proc isDeepConstExpr*(n: PNode): bool =
     for i in 0 .. <n.len:
       if not isDeepConstExpr(n.sons[i]): return false
     result = true
-  else: nil
+  else: discard
 
 proc flattenTreeAux(d, a: PNode, op: TMagic) = 
   if (getMagic(a) == op):     # a is a "leaf", so add it:
@@ -129,17 +129,17 @@ proc flattenTreeAux(d, a: PNode, op: TMagic) =
   
 proc flattenTree*(root: PNode, op: TMagic): PNode = 
   result = copyNode(root)
-  if (getMagic(root) == op): 
+  if getMagic(root) == op:
     # BUGFIX: forget to copy prc
     addSon(result, copyNode(root.sons[0]))
     flattenTreeAux(result, root, op)
 
-proc SwapOperands*(op: PNode) = 
+proc swapOperands*(op: PNode) = 
   var tmp = op.sons[1]
   op.sons[1] = op.sons[2]
   op.sons[2] = tmp
 
-proc IsRange*(n: PNode): bool {.inline.} = 
+proc isRange*(n: PNode): bool {.inline.} = 
   if n.kind == nkInfix:
     if n[0].kind == nkIdent and n[0].ident.id == ord(wDotDot) or
         n[0].kind in {nkClosedSymChoice, nkOpenSymChoice} and 

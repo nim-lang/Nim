@@ -51,7 +51,7 @@ proc parseHex*(s: string, number: var int, start = 0): int {.
   elif s[i] == '#': inc(i)
   while true: 
     case s[i]
-    of '_': nil
+    of '_': discard
     of '0'..'9':
       number = number shl 4 or (ord(s[i]) - ord('0'))
       foundDigit = true
@@ -74,7 +74,7 @@ proc parseOct*(s: string, number: var int, start = 0): int  {.
   if s[i] == '0' and (s[i+1] == 'o' or s[i+1] == 'O'): inc(i, 2)
   while true: 
     case s[i]
-    of '_': nil
+    of '_': discard
     of '0'..'7':
       number = number shl 3 or (ord(s[i]) - ord('0'))
       foundDigit = true

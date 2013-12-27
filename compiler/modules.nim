@@ -184,7 +184,7 @@ proc compileSystemModule* =
     SystemFileIdx = fileInfoIdx(options.libpath/"system.nim")
     discard CompileModule(SystemFileIdx, {sfSystemModule})
 
-proc CompileProject*(projectFile = gProjectMainIdx) =
+proc compileProject*(projectFile = gProjectMainIdx) =
   let systemFileIdx = fileInfoIdx(options.libpath / "system.nim")
   if projectFile == SystemFileIdx:
     discard CompileModule(projectFile, {sfMainModule, sfSystemModule})

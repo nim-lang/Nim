@@ -17,20 +17,20 @@ proc equalGenericParams(procA, procB: PNode): bool =
   if sonsLen(procA) != sonsLen(procB): return
   for i in countup(0, sonsLen(procA) - 1):
     if procA.sons[i].kind != nkSym:
-      InternalError(procA.info, "equalGenericParams")
+      internalError(procA.info, "equalGenericParams")
       return
     if procB.sons[i].kind != nkSym:
-      InternalError(procB.info, "equalGenericParams")
+      internalError(procB.info, "equalGenericParams")
       return
     let a = procA.sons[i].sym
     let b = procB.sons[i].sym
     if a.name.id != b.name.id or
         not sameTypeOrNil(a.typ, b.typ, {TypeDescExactMatch}): return
     if a.ast != nil and b.ast != nil:
-      if not ExprStructuralEquivalent(a.ast, b.ast): return
+      if not exprStructuralEquivalent(a.ast, b.ast): return
   result = true
 
-proc SearchForProc*(c: PContext, scope: PScope, fn: PSym): PSym =
+proc searchForProc*(c: PContext, scope: PScope, fn: PSym): PSym =
   # Searchs for a forward declaration or a "twin" symbol of fn
   # in the symbol table. If the parameter lists are exactly
   # the same the sym in the symbol table is returned, else nil.
@@ -77,7 +77,7 @@ when false:
                           dcEqOrDistinctOf): return
       result = true
 
-  proc SearchForBorrowProc*(c: PContext, startScope: PScope, fn: PSym): PSym =
+  proc searchForBorrowProc*(c: PContext, startScope: PScope, fn: PSym): PSym =
     # Searchs for the fn in the symbol table. If the parameter lists are suitable
     # for borrowing the sym in the symbol table is returned, else nil.
     var it: TIdentIter

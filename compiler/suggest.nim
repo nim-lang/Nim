@@ -28,7 +28,7 @@ proc origModuleName(m: PSym): string =
            else:
              m.name.s
 
-proc SymToStr(s: PSym, isLocal: bool, section: string, li: TLineInfo): string = 
+proc symToStr(s: PSym, isLocal: bool, section: string, li: TLineInfo): string = 
   result = section
   result.add(sep)
   result.add($s.kind)
@@ -55,7 +55,7 @@ proc SymToStr(s: PSym, isLocal: bool, section: string, li: TLineInfo): string =
   when not defined(noDocgen):
     result.add(s.extractDocComment.escape)
 
-proc SymToStr(s: PSym, isLocal: bool, section: string): string = 
+proc symToStr(s: PSym, isLocal: bool, section: string): string = 
   result = SymToStr(s, isLocal, section, s.info)
 
 proc filterSym(s: PSym): bool {.inline.} =

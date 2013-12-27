@@ -73,7 +73,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym): PNode =
       result = n
   else: result = newSymNode(s, n.info)
 
-proc Lookup(c: PContext, n: PNode, flags: TSemGenericFlags, 
+proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags, 
             ctx: var TIntSet): PNode =
   result = n
   let ident = considerAcc(n)

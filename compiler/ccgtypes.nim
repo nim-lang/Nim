@@ -229,11 +229,11 @@ const
     "stdcall $1", "ccc $1", "safecall $1", "syscall $1", "$1 alwaysinline", 
     "$1 noinline", "fastcc $1", "ccc $1", "$1"]
 
-proc CacheGetType(tab: TIdTable, key: PType): PRope = 
+proc cacheGetType(tab: TIdTable, key: PType): PRope = 
   # returns nil if we need to declare this type
   # since types are now unique via the ``GetUniqueType`` mechanism, this slow
   # linear search is not necessary anymore:
-  result = PRope(IdTableGet(tab, key))
+  result = PRope(idTableGet(tab, key))
 
 proc getTempName(): PRope = 
   result = rfmt(nil, "TMP$1", toRope(backendId()))
@@ -952,4 +952,4 @@ proc genTypeInfo(m: BModule, t: PType): PRope =
   result = con("(&".toRope, result, ")".toRope)
 
 proc genTypeSection(m: BModule, n: PNode) = 
-  nil
+  discard

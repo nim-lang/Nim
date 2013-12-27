@@ -4,6 +4,8 @@ version 0.9.4
 - document new templating symbol binding rules
 - convert all with "nimrod pretty"
 - make '--implicitStatic:on' the default
+- test&finish first class iterators:
+  * nested iterators
 
 - special rule for ``[]=``
 - ``=`` should be overloadable; requires specialization for ``=``; general
@@ -11,6 +13,7 @@ version 0.9.4
 - built-in 'getImpl'
 - optimize 'genericReset'; 'newException' leads to code bloat
 - stack-less GC
+- fix eval in macros.nim
 
 
 Bugs
@@ -50,8 +53,6 @@ version 0.9.x
 version 0.9.X
 =============
 
-- test&finish first class iterators:
-  * nested iterators
 - implement the missing features wrt inheritance
 - better support for macros that rewrite procs
 - macros need access to types and symbols (partially implemented)

@@ -92,12 +92,12 @@ proc setExternName(s: PSym, extname: string) =
     # note that '{.importc.}' is transformed into '{.importc: "$1".}'
     s.loc.flags.incl(lfFullExternalName)
 
-proc MakeExternImport(s: PSym, extname: string) = 
+proc makeExternImport(s: PSym, extname: string) = 
   setExternName(s, extname)
   incl(s.flags, sfImportc)
   excl(s.flags, sfForward)
 
-proc MakeExternExport(s: PSym, extname: string) = 
+proc makeExternExport(s: PSym, extname: string) = 
   setExternName(s, extname)
   incl(s.flags, sfExportc)
 
@@ -133,7 +133,7 @@ proc getStrLitNode(c: PContext, n: PNode): PNode =
     case n.sons[1].kind
     of nkStrLit, nkRStrLit, nkTripleStrLit: result = n.sons[1]
     else: 
-      LocalError(n.info, errStringLiteralExpected)
+      localError(n.info, errStringLiteralExpected)
       # error correction:
       result = newEmptyStrNode(n)
 
@@ -142,12 +142,12 @@ proc expectStrLit(c: PContext, n: PNode): string =
 
 proc expectIntLit(c: PContext, n: PNode): int = 
   if n.kind != nkExprColonExpr: 
-    LocalError(n.info, errIntLiteralExpected)
+    localError(n.info, errIntLiteralExpected)
   else: 
     n.sons[1] = c.semConstExpr(c, n.sons[1])
     case n.sons[1].kind
     of nkIntLit..nkInt64Lit: result = int(n.sons[1].intVal)
-    else: LocalError(n.info, errIntLiteralExpected)
+    else: localError(n.info, errIntLiteralExpected)
 
 proc getOptionalStr(c: PContext, n: PNode, defaultStr: string): string = 
   if n.kind == nkExprColonExpr: result = expectStrLit(c, n)
@@ -160,7 +160,7 @@ proc processMagic(c: PContext, n: PNode, s: PSym) =
   #if sfSystemModule notin c.module.flags:
   #  liMessage(n.info, errMagicOnlyInSystem)
   if n.kind != nkExprColonExpr: 
-    LocalError(n.info, errStringLiteralExpected)
+    localError(n.info, errStringLiteralExpected)
     return
   var v: string
   if n.sons[1].kind == nkIdent: v = n.sons[1].ident.s
@@ -176,15 +176,15 @@ proc wordToCallConv(sw: TSpecialWord): TCallingConvention =
   # the same
   result = TCallingConvention(ord(ccDefault) + ord(sw) - ord(wNimcall))
 
-proc IsTurnedOn(c: PContext, n: PNode): bool = 
+proc isTurnedOn(c: PContext, n: PNode): bool = 
   if n.kind == nkExprColonExpr:
     let x = c.semConstBoolExpr(c, n.sons[1])
     n.sons[1] = x
     if x.kind == nkIntLit: return x.intVal != 0
-  LocalError(n.info, errOnOrOffExpected)
+  localError(n.info, errOnOrOffExpected)
 
 proc onOff(c: PContext, n: PNode, op: TOptions) = 
-  if IsTurnedOn(c, n): gOptions = gOptions + op
+  if isTurnedOn(c, n): gOptions = gOptions + op
   else: gOptions = gOptions - op
   
 proc pragmaDeadCodeElim(c: PContext, n: PNode) = 
@@ -387,16 +387,16 @@ proc processCommonLink(c: PContext, n: PNode, feature: TLinkFeature) =
     extccomp.addFileToLink(libpath / completeCFilePath(found, false))
   else: internalError(n.info, "processCommonLink")
   
-proc PragmaBreakpoint(c: PContext, n: PNode) = 
+proc pragmaBreakpoint(c: PContext, n: PNode) = 
   discard getOptionalStr(c, n, "")
 
-proc PragmaCheckpoint(c: PContext, n: PNode) = 
+proc pragmaCheckpoint(c: PContext, n: PNode) = 
   # checkpoints can be used to debug the compiler; they are not documented
   var info = n.info
   inc(info.line)              # next line is affected!
   msgs.addCheckpoint(info)
 
-proc PragmaWatchpoint(c: PContext, n: PNode) =
+proc pragmaWatchpoint(c: PContext, n: PNode) =
   if n.kind == nkExprColonExpr:
     n.sons[1] = c.semExpr(c, n.sons[1])
   else:
@@ -431,14 +431,14 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
       a = c + 1
   else: illFormedAst(n)
   
-proc PragmaEmit(c: PContext, n: PNode) = 
+proc pragmaEmit(c: PContext, n: PNode) = 
   discard getStrLitNode(c, n)
   n.sons[1] = semAsmOrEmit(c, n, '`')
 
 proc noVal(n: PNode) = 
   if n.kind == nkExprColonExpr: invalidPragma(n)
 
-proc PragmaUnroll(c: PContext, n: PNode) = 
+proc pragmaUnroll(c: PContext, n: PNode) = 
   if c.p.nestedLoopCounter <= 0: 
     invalidPragma(n)
   elif n.kind == nkExprColonExpr:
@@ -448,7 +448,7 @@ proc PragmaUnroll(c: PContext, n: PNode) =
     else: 
       invalidPragma(n)
 
-proc PragmaLine(c: PContext, n: PNode) =
+proc pragmaLine(c: PContext, n: PNode) =
   if n.kind == nkExprColonExpr:
     n.sons[1] = c.semConstExpr(c, n.sons[1])
     let a = n.sons[1]
@@ -465,7 +465,7 @@ proc PragmaLine(c: PContext, n: PNode) =
         n.info.fileIndex = msgs.fileInfoIdx(x.strVal)
         n.info.line = int16(y.intVal)
     else:
-      LocalError(n.info, errXExpected, "tuple")
+      localError(n.info, errXExpected, "tuple")
   else:
     # sensible default:
     n.info = getInfoContext(-1)

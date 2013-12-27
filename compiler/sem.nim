@@ -66,7 +66,7 @@ proc fitNode(c: PContext, formal: PType, arg: PNode): PNode =
       result = copyTree(arg)
       result.typ = formal
 
-var CommonTypeBegin = PType(kind: tyExpr)
+var commonTypeBegin = PType(kind: tyExpr)
 
 proc commonType*(x, y: PType): PType =
   # new type relation that is used for array constructors,

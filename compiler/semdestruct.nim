@@ -15,9 +15,9 @@
 # generation (needed for recursive types)
 # 2) DestructorIsTrivial: completed the analysis before and determined
 # that the type has a trivial destructor
-var AnalyzingDestructor, DestructorIsTrivial: PSym
-new(AnalyzingDestructor)
-new(DestructorIsTrivial)
+var analyzingDestructor, destructorIsTrivial: PSym
+new(analyzingDestructor)
+new(destructorIsTrivial)
 
 var
   destructorName = getIdent"destroy_"

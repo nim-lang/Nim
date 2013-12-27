@@ -887,7 +887,7 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
   result = arg
   put(m.bindings, f, a)
 
-proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, argType: PType,
+proc paramTypesMatchAux(c: PContext, m: var TCandidate, f, argType: PType,
                         argSemantized, argOrig: PNode): PNode =
   var
     r: TTypeRelation
@@ -1003,7 +1003,7 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, argType: PType,
         else:
           result = userConvMatch(c, m, base(f), a, arg)
 
-proc ParamTypesMatch*(c: PContext, m: var TCandidate, f, a: PType, 
+proc paramTypesMatch*(c: PContext, m: var TCandidate, f, a: PType, 
                       arg, argOrig: PNode): PNode =
   if arg == nil or arg.kind notin nkSymChoices:
     result = ParamTypesMatchAux(c, m, f, a, arg, argOrig)
@@ -1184,14 +1184,14 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           InternalError(n.sons[a].info, "matches")
           return
         formal = m.callee.n.sons[f].sym
-        if ContainsOrIncl(marker, formal.position): 
+        if containsOrIncl(marker, formal.position): 
           # already in namedParams:
-          LocalError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
+          localError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
           m.state = csNoMatch
           return 
         m.baseTypeMatch = false
         n.sons[a] = prepareOperand(c, formal.typ, n.sons[a])
-        var arg = ParamTypesMatch(c, m, formal.typ, n.sons[a].typ,
+        var arg = paramTypesMatch(c, m, formal.typ, n.sons[a].typ,
                                   n.sons[a], nOrig.sons[a])
         if arg == nil:
           m.state = csNoMatch
@@ -1228,7 +1228,7 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   var f = 1
   while f < sonsLen(m.callee.n):
     var formal = m.callee.n.sons[f].sym
-    if not ContainsOrIncl(marker, formal.position):
+    if not containsOrIncl(marker, formal.position):
       if formal.ast == nil:
         if formal.typ.kind == tyVarargs:
           var container = newNodeIT(nkBracket, n.info, arrayConstr(c, n.info))

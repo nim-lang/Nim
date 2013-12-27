@@ -12,7 +12,7 @@
 
 import 
   strutils, os, options, ast, astalgo, msgs, ropes, idents, passes,
-  intsets, strtabs
+  intsets, strtabs, semdata
   
 const
   removeTP = false # when true, "nimrod pretty" converts TTyp to Typ.
@@ -50,7 +50,7 @@ proc overwriteFiles*() =
     try:
       var f = open(newFile, fmWrite)
       for line in gSourceFiles[i].lines:
-        f.writeln(line)
+        f.writeln(line.strip(leading = false, trailing = true))
       f.close
     except EIO:
       rawMessage(errCannotOpenFile, newFile)
@@ -60,18 +60,25 @@ proc `=~`(s: string, a: openArray[string]): bool =
     if s.startsWith(x): return true
 
 proc beautifyName(s: string, k: TSymKind): string =
+  # minimal set of rules here for transition:
+  # GC_ is allowed
+
+  let allUpper = allCharsInSet(s, {'A'..'Z', '0'..'9', '_'})
+  if allUpper and k in {skConst, skEnumField, skType}: return s
   result = newStringOfCap(s.len)
   var i = 0
   case k
   of skType, skGenericParam:
-    # skip leading 'T'
+    # Types should start with a capital unless builtins like 'int' etc.:
     when removeTP:
       if s[0] == 'T' and s[1] in {'A'..'Z'}:
         i = 1
     if s =~ ["int", "uint", "cint", "cuint", "clong", "cstring", "string",
              "char", "byte", "bool", "openArray", "seq", "array", "void",
              "pointer", "float", "csize", "cdouble", "cchar", "cschar",
-             "cshort", "cu"]:
+             "cshort", "cu", "nil", "expr", "stmt", "typedesc", "auto", "any",
+             "range", "openarray", "varargs", "set", "cfloat"
+             ]:
       result.add s[i]
     else:
       result.add toUpper(s[i])
@@ -81,13 +88,19 @@ proc beautifyName(s: string, k: TSymKind): string =
   else:
     # as a special rule, don't transform 'L' to 'l'
     if s.len == 1 and s[0] == 'L': result.add 'L'
+    elif '_' in s: result.add(s[i])
     else: result.add toLower(s[0])
   inc i
-  let allUpper = allCharsInSet(s, {'A'..'Z', '0'..'9', '_'})
   while i < s.len:
     if s[i] == '_':
-      inc i
-      result.add toUpper(s[i])
+      if i > 0 and s[i-1] in {'A'..'Z'}:
+        # don't skip '_' as it's essential for e.g. 'GC_disable'
+        result.add('_')
+        inc i
+        result.add s[i]
+      else:
+        inc i
+        result.add toUpper(s[i])
     elif allUpper:
       result.add toLower(s[i])
     else:
@@ -97,7 +110,7 @@ proc beautifyName(s: string, k: TSymKind): string =
 proc checkStyle*(info: TLineInfo, s: string, k: TSymKind) =
   let beau = beautifyName(s, k)
   if s != beau:
-    Message(info, errGenerated, 
+    message(info, errGenerated, 
       "name does not adhere to naming convention; should be: " & beau)
 
 const
@@ -119,11 +132,88 @@ proc differ(line: string, a, b: int, x: string): bool =
 
 var cannotRename = initIntSet()
 
-proc processSym(c: PPassContext, n: PNode): PNode = 
-  result = n
-  var g = PGen(c)
-  case n.kind
-  of nkSym:
+proc checkDef(c: PGen; n: PNode) =
+  if n.kind != nkSym: return
+  let s = n.sym
+
+  # operators stay as they are:
+  if s.kind in {skResult, skTemp} or s.name.s[0] notin Letters: return
+  if s.kind in {skType, skGenericParam} and sfAnon in s.flags: return
+
+  checkStyle(n.info, s.name.s, s.kind)
+
+proc checkUse(c: PGen; n: PNode) =
+  if n.info.fileIndex < 0: return
+  let s = n.sym
+  # we simply convert it to what it looks like in the definition
+  # for consistency
+  
+  # operators stay as they are:
+  if s.kind in {skResult, skTemp} or s.name.s[0] notin Letters: return
+  if s.kind in {skType, skGenericParam} and sfAnon in s.flags: return
+  let newName = s.name.s
+  
+  loadFile(n.info)
+  
+  let line = gSourceFiles[n.info.fileIndex].lines[n.info.line-1]
+  var first = min(n.info.col.int, line.len)
+  if first < 0: return
+  #inc first, skipIgnoreCase(line, "proc ", first)
+  while first > 0 and line[first-1] in Letters: dec first
+  if first < 0: return
+  if line[first] == '`': inc first
+  
+  let last = first+identLen(line, first)-1
+  if differ(line, first, last, newName):
+    # last-first+1 != newName.len or 
+    var x = line.subStr(0, first-1) & newName & line.substr(last+1)
+    when removeTP:
+      # the WinAPI module is full of 'TX = X' which after the substitution
+      # becomes 'X = X'. We remove those lines:
+      if x.match(peg"\s* {\ident} \s* '=' \s* y$1 ('#' .*)?"):
+        x = ""
+    
+    system.shallowCopy(gSourceFiles[n.info.fileIndex].lines[n.info.line-1], x)
+    gSourceFiles[n.info.fileIndex].dirty = true
+
+
+when false:
+  proc beautifyName(s: string, k: TSymKind): string =
+    let allUpper = allCharsInSet(s, {'A'..'Z', '0'..'9', '_'})
+    result = newStringOfCap(s.len)
+    var i = 0
+    case k
+    of skType, skGenericParam:
+      # skip leading 'T'
+      when removeTP:
+        if s[0] == 'T' and s[1] in {'A'..'Z'}:
+          i = 1
+      if s =~ ["int", "uint", "cint", "cuint", "clong", "cstring", "string",
+               "char", "byte", "bool", "openArray", "seq", "array", "void",
+               "pointer", "float", "csize", "cdouble", "cchar", "cschar",
+               "cshort", "cu"]:
+        result.add s[i]
+      else:
+        result.add toUpper(s[i])
+    of skConst, skEnumField:
+      # for 'const' we keep how it's spelt; either upper case or lower case:
+      result.add s[0]
+    else:
+      # as a special rule, don't transform 'L' to 'l'
+      if s.len == 1 and s[0] == 'L': result.add 'L'
+      else: result.add toLower(s[0])
+    inc i
+    while i < s.len:
+      if s[i] == '_':
+        inc i
+        result.add toUpper(s[i])
+      elif allUpper:
+        result.add toLower(s[i])
+      else:
+        result.add s[i]
+      inc i
+
+  proc checkUse(c: PGen; n: PNode) =
     if n.info.fileIndex < 0: return
     let s = n.sym
     # operators stay as they are:
@@ -138,10 +228,11 @@ proc processSym(c: PPassContext, n: PNode): PNode =
     loadFile(n.info)
     
     let line = gSourceFiles[n.info.fileIndex].lines[n.info.line-1]
-    var first = n.info.col.int
+    var first = min(n.info.col.int, line.len)
     if first < 0: return
     #inc first, skipIgnoreCase(line, "proc ", first)
     while first > 0 and line[first-1] in Letters: dec first
+    if first < 0: return
     if line[first] == '`': inc first
     
     if {sfImportc, sfExportc} * s.flags != {}:
@@ -149,8 +240,8 @@ proc processSym(c: PPassContext, n: PNode): PNode =
       # name:
       if newName != s.name.s and newName != s.loc.r.ropeToStr and
           lfFullExternalName notin s.loc.flags:
-        Message(n.info, errGenerated, 
-          "cannot rename $# to $# due to external name" % [s.name.s, newName])
+        #Message(n.info, errGenerated, 
+        #  "cannot rename $# to $# due to external name" % [s.name.s, newName])
         cannotRename.incl(s.id)
         return
     let last = first+identLen(line, first)-1
@@ -165,9 +256,48 @@ proc processSym(c: PPassContext, n: PNode): PNode =
       
       system.shallowCopy(gSourceFiles[n.info.fileIndex].lines[n.info.line-1], x)
       gSourceFiles[n.info.fileIndex].dirty = true
+
+proc check(c: PGen, n: PNode) =
+  case n.kind
+  of nkSym: checkUse(c, n)
+  of nkBlockStmt, nkBlockExpr, nkBlockType:
+    if n.sons[0].kind != nkEmpty: checkDef(c, n[0])
+    check(c, n.sons[1])
+  of nkForStmt, nkParForStmt:
+    let L = n.len
+    for i in countup(0, L-3):
+      checkDef(c, n[i])
+    check(c, n[L-2])
+    check(c, n[L-1])
+  of nkProcDef, nkLambdaKinds, nkMethodDef, nkIteratorDef, nkTemplateDef,
+      nkMacroDef, nkConverterDef:
+    checkDef(c, n[namePos])
+    for i in namePos+1 .. <n.len: check(c, n.sons[i])
+  of nkVarSection, nkLetSection: 
+    for i in countup(0, sonsLen(n) - 1):
+      let a = n.sons[i]
+      if a.kind == nkCommentStmt: continue
+      if a.kind != nkIdentDefs and a.kind != nkVarTuple: 
+        globalError(a.info, errGenerated, "invalid ast")
+      checkMinSonsLen(a, 3)
+      let L = len(a)
+      for j in countup(0, L-3): checkDef(c, a.sons[j])
+      check(c, a.sons[L-2])
+      check(c, a.sons[L-1])
+  of nkTypeSection, nkConstSection:
+    for i in countup(0, sonsLen(n) - 1): 
+      let a = n.sons[i]
+      if a.kind == nkCommentStmt: continue 
+      checkSonsLen(a, 3)
+      checkDef(c, a.sons[0])
+      check(c, a.sons[1])
+      check(c, a.sons[2])
   else:
-    for i in 0 .. <n.safeLen:
-      discard processSym(c, n.sons[i])
+    for i in 0 .. <n.safeLen: check(c, n.sons[i])
+
+proc processSym(c: PPassContext, n: PNode): PNode = 
+  result = n
+  check(PGen(c), n)
 
 proc myOpen(module: PSym): PPassContext =
   var g: PGen

@@ -513,7 +513,7 @@ proc assignLocalVar(p: BProc, s: PSym) =
 
 include ccgthreadvars
 
-proc VarInDynamicLib(m: BModule, sym: PSym)
+proc varInDynamicLib(m: BModule, sym: PSym)
 proc mangleDynLibProc(sym: PSym): PRope
 
 proc assignGlobalVar(p: BProc, s: PSym) = 
@@ -641,7 +641,7 @@ proc mangleDynLibProc(sym: PSym): PRope =
   else:
     result = ropef("Dl_$1", [toRope(sym.id)])
   
-proc SymInDynamicLib(m: BModule, sym: PSym) = 
+proc symInDynamicLib(m: BModule, sym: PSym) = 
   var lib = sym.annex
   let isCall = isGetProcAddr(lib)
   var extname = sym.loc.r
@@ -682,7 +682,7 @@ proc SymInDynamicLib(m: BModule, sym: PSym) =
       "$1 = linkonce global $2 zeroinitializer$n", 
       [sym.loc.r, getTypeDesc(m, sym.loc.t)])
 
-proc VarInDynamicLib(m: BModule, sym: PSym) = 
+proc varInDynamicLib(m: BModule, sym: PSym) = 
   var lib = sym.annex
   var extname = sym.loc.r
   loadDynamicLib(m, lib)
@@ -697,7 +697,7 @@ proc VarInDynamicLib(m: BModule, sym: PSym) =
   appf(m.s[cfsVars], "$2* $1;$n",
       [sym.loc.r, getTypeDesc(m, sym.loc.t)])
 
-proc SymInDynamicLibPartial(m: BModule, sym: PSym) =
+proc symInDynamicLibPartial(m: BModule, sym: PSym) =
   sym.loc.r = mangleDynLibProc(sym)
   sym.typ.sym = nil           # generate a new name
 

@@ -263,14 +263,14 @@ proc `<-`(a: var TIndexEntry, b: TIndexEntry) =
 
 proc sortIndex(a: var openArray[TIndexEntry]) =
   # we use shellsort here; fast and simple
-  let N = len(a)
+  let n = len(a)
   var h = 1
   while true:
     h = 3 * h + 1
-    if h > N: break
+    if h > n: break
   while true:
     h = h div 3
-    for i in countup(h, N - 1):
+    for i in countup(h, n - 1):
       var v: TIndexEntry
       v <- a[i]
       var j = i

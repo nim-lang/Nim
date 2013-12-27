@@ -109,7 +109,7 @@ template decodeBx(k: expr) {.immediate, dirty.} =
   let rbx = instr.regBx - wordExcess
   ensureKind(k)
 
-template move(a, b: expr) = system.shallowCopy(a, b)
+template move(a, b: expr) {.immediate, dirty.} = system.shallowCopy(a, b)
 # XXX fix minor 'shallowCopy' overloading bug in compiler
 
 proc moveConst(x, y: PNode) =

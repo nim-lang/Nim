@@ -12,14 +12,14 @@
 import 
   ast, astalgo, hashes, msgs, platform, nversion, times, idents, rodread
 
-var SystemModule*: PSym
+var systemModule*: PSym
 
 proc registerSysType*(t: PType)
   # magic symbols in the system module:
 proc getSysType*(kind: TTypeKind): PType
 proc getCompilerProc*(name: string): PSym
 proc registerCompilerProc*(s: PSym)
-proc FinishSystem*(tab: TStrTable)
+proc finishSystem*(tab: TStrTable)
 proc getSysSym*(name: string): PSym
 # implementation
 
@@ -126,7 +126,7 @@ proc skipIntLit*(t: PType): PType {.inline.} =
       return getSysType(t.kind)
   result = t
 
-proc AddSonSkipIntLit*(father, son: PType) =
+proc addSonSkipIntLit*(father, son: PType) =
   if isNil(father.sons): father.sons = @[]
   let s = son.skipIntLit
   add(father.sons, s)
@@ -158,13 +158,13 @@ proc setIntLitType*(result: PNode) =
       result.typ = getSysType(tyInt32)
     else:
       result.typ = getSysType(tyInt64)
-  else: InternalError(result.info, "invalid int size")
+  else: internalError(result.info, "invalid int size")
 
 proc getCompilerProc(name: string): PSym = 
   var ident = getIdent(name, hashIgnoreStyle(name))
-  result = StrTableGet(compilerprocs, ident)
+  result = strTableGet(compilerprocs, ident)
   if result == nil: 
-    result = StrTableGet(rodCompilerProcs, ident)
+    result = strTableGet(rodCompilerProcs, ident)
     if result != nil: 
       strTableAdd(compilerprocs, result)
       if result.kind == skStub: loadStub(result)
@@ -172,7 +172,6 @@ proc getCompilerProc(name: string): PSym =
 proc registerCompilerProc(s: PSym) = 
   strTableAdd(compilerprocs, s)
 
-proc FinishSystem(tab: TStrTable) = nil
-  
-initStrTable(compilerprocs)
+proc finishSystem(tab: TStrTable) = discard
 
+initStrTable(compilerprocs)

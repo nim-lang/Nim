@@ -219,7 +219,7 @@ proc getSystemConfigPath(filename: string): string =
     if not existsFile(result): result = joinPath([p, "etc", filename])
     if not existsFile(result): result = "/etc/" & filename
 
-proc LoadConfigs*(cfg: string) =
+proc loadConfigs*(cfg: string) =
   # set default value (can be overwritten):
   if libpath == "": 
     # choose default libpath:

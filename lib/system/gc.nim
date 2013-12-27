@@ -151,7 +151,7 @@ template gcTrace(cell, state: expr): stmt {.immediate.} =
 
 # forward declarations:
 proc collectCT(gch: var TGcHeap)
-proc IsOnStack*(p: pointer): bool {.noinline.}
+proc isOnStack*(p: pointer): bool {.noinline.}
 proc forAllChildren(cell: PCell, op: TWalkOp)
 proc doOperation(p: pointer, op: TWalkOp)
 proc forAllChildrenAux(dest: Pointer, mt: PNimType, op: TWalkOp)
@@ -669,7 +669,7 @@ proc doOperation(p: pointer, op: TWalkOp) =
 proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} =
   doOperation(d, TWalkOp(op))
 
-proc CollectZCT(gch: var TGcHeap): bool
+proc collectZCT(gch: var TGcHeap): bool
 
 when useMarkForDebug or useBackupGc:
   proc markStackAndRegistersForSweep(gch: var TGcHeap) {.noinline, cdecl.}

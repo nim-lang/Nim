@@ -277,7 +277,7 @@ proc rawFindFile2(f: string): string =
     it = PStrEntry(it.Next)
   result = ""
 
-proc FindFile*(f: string): string {.procvar.} = 
+proc findFile*(f: string): string {.procvar.} = 
   result = f.rawFindFile
   if result.len == 0:
     result = f.toLower.rawFindFile

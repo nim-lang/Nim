@@ -1669,14 +1669,14 @@ proc genTupleConstr(p: BProc, n: PNode, d: var TLoc) =
                       [rdLoc(d), mangleRecFieldName(t.n.sons[i].sym, t)])
         expr(p, it, rec)
 
-proc IsConstClosure(n: PNode): bool {.inline.} =
+proc isConstClosure(n: PNode): bool {.inline.} =
   result = n.sons[0].kind == nkSym and isRoutine(n.sons[0].sym) and
       n.sons[1].kind == nkNilLit
       
 proc genClosure(p: BProc, n: PNode, d: var TLoc) =
   assert n.kind == nkClosure
   
-  if IsConstClosure(n):
+  if isConstClosure(n):
     inc(p.labels)
     var tmp = con("LOC", toRope(p.labels))
     appf(p.module.s[cfsData], "NIM_CONST $1 $2 = $3;$n",
