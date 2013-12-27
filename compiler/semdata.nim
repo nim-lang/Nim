@@ -133,7 +133,7 @@ proc pushOwner(owner: PSym) =
 
 proc popOwner() = 
   var length = len(gOwners)
-  if length > 0: setlen(gOwners, length - 1)
+  if length > 0: setLen(gOwners, length - 1)
   else: internalError("popOwner")
 
 proc lastOptionEntry(c: PContext): POptionEntry = 
@@ -141,7 +141,7 @@ proc lastOptionEntry(c: PContext): POptionEntry =
 
 proc pushProcCon*(c: PContext, owner: PSym) {.inline.} = 
   if owner == nil: 
-    InternalError("owner is nil")
+    internalError("owner is nil")
     return
   var x: PProcCon
   new(x)
@@ -160,7 +160,7 @@ proc newOptionEntry(): POptionEntry =
 
 proc newContext(module: PSym): PContext =
   new(result)
-  result.AmbiguousSymbols = initIntset()
+  result.AmbiguousSymbols = initIntSet()
   initLinkedList(result.optionStack)
   initLinkedList(result.libs)
   append(result.optionStack, newOptionEntry())
@@ -178,7 +178,7 @@ proc inclSym(sq: var TSymSeq, s: PSym) =
   var L = len(sq)
   for i in countup(0, L - 1): 
     if sq[i].id == s.id: return 
-  setlen(sq, L + 1)
+  setLen(sq, L + 1)
   sq[L] = s
 
 proc addConverter*(c: PContext, conv: PSym) =
@@ -234,7 +234,7 @@ proc fillTypeS(dest: PType, kind: TTypeKind, c: PContext) =
   dest.owner = getCurrOwner()
   dest.size = - 1
 
-proc makeRangeType*(c: PContext; first, last: biggestInt;
+proc makeRangeType*(c: PContext; first, last: BiggestInt;
                     info: TLineInfo; intType = getSysType(tyInt)): PType =
   var n = newNodeI(nkRange, info)
   addSon(n, newIntTypeNode(nkIntLit, first, intType))

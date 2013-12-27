@@ -154,7 +154,7 @@ proc collectCT(gch: var TGcHeap)
 proc isOnStack*(p: pointer): bool {.noinline.}
 proc forAllChildren(cell: PCell, op: TWalkOp)
 proc doOperation(p: pointer, op: TWalkOp)
-proc forAllChildrenAux(dest: Pointer, mt: PNimType, op: TWalkOp)
+proc forAllChildrenAux(dest: pointer, mt: PNimType, op: TWalkOp)
 # we need the prototype here for debugging purposes
 
 when hasThreadSupport and hasSharedHeap:
@@ -162,9 +162,9 @@ when hasThreadSupport and hasSharedHeap:
   template `++`(x: expr): stmt = discard atomicInc(x, rcIncrement)
 else:
   template `--`(x: expr): expr = 
-    Dec(x, rcIncrement)
+    dec(x, rcIncrement)
     x <% rcIncrement
-  template `++`(x: expr): stmt = Inc(x, rcIncrement)
+  template `++`(x: expr): stmt = inc(x, rcIncrement)
 
 proc prepareDealloc(cell: PCell) =
   when useMarkForDebug:
@@ -203,7 +203,7 @@ proc decRef(c: PCell) {.inline.} =
   gcAssert(c.refcount >=% rcIncrement, "decRef")
   if --c.refcount:
     rtlAddZCT(c)
-  elif canBeCycleRoot(c):
+  elif canbeCycleRoot(c):
     # unfortunately this is necessary here too, because a cycle might just
     # have been broken up and we could recycle it.
     rtlAddCycleRoot(c)
@@ -214,7 +214,7 @@ proc incRef(c: PCell) {.inline.} =
   c.refcount = c.refCount +% rcIncrement
   # and not colorMask
   #writeCell("incRef", c)
-  if canBeCycleRoot(c):
+  if canbeCycleRoot(c):
     rtlAddCycleRoot(c)
 
 proc nimGCref(p: pointer) {.compilerProc, inline.} = incRef(usrToCell(p))
@@ -235,7 +235,7 @@ proc nimGCunrefNoCycle(p: pointer) {.compilerProc, inline.} =
     sysAssert(allocInv(gch.region), "end nimGCunrefNoCycle 2")
   sysAssert(allocInv(gch.region), "end nimGCunrefNoCycle 5")
 
-proc asgnRef(dest: ppointer, src: pointer) {.compilerProc, inline.} =
+proc asgnRef(dest: PPointer, src: pointer) {.compilerProc, inline.} =
   # the code generator calls this proc!
   gcAssert(not isOnStack(dest), "asgnRef")
   # BUGFIX: first incRef then decRef!
@@ -243,7 +243,7 @@ proc asgnRef(dest: ppointer, src: pointer) {.compilerProc, inline.} =
   if dest[] != nil: decRef(usrToCell(dest[]))
   dest[] = src
 
-proc asgnRefNoCycle(dest: ppointer, src: pointer) {.compilerProc, inline.} =
+proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerProc, inline.} =
   # the code generator calls this proc if it is known at compile time that no 
   # cycle is possible.
   if src != nil:
@@ -255,7 +255,7 @@ proc asgnRefNoCycle(dest: ppointer, src: pointer) {.compilerProc, inline.} =
       rtlAddZCT(c)
   dest[] = src
 
-proc unsureAsgnRef(dest: ppointer, src: pointer) {.compilerProc.} =
+proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerProc.} =
   # unsureAsgnRef updates the reference counters only if dest is not on the
   # stack. It is used by the code generator if it cannot decide wether a
   # reference is in the stack or not (this can happen for var parameters).
@@ -318,7 +318,7 @@ proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: TWalkOp) =
       # inlined for speed
       if n.sons[i].kind == nkSlot:
         if n.sons[i].typ.kind in {tyRef, tyString, tySequence}:
-          doOperation(cast[ppointer](d +% n.sons[i].offset)[], op)
+          doOperation(cast[PPointer](d +% n.sons[i].offset)[], op)
         else:
           forAllChildrenAux(cast[pointer](d +% n.sons[i].offset), 
                             n.sons[i].typ, op)
@@ -335,7 +335,7 @@ proc forAllChildrenAux(dest: Pointer, mt: PNimType, op: TWalkOp) =
   if ntfNoRefs notin mt.flags:
     case mt.Kind
     of tyRef, tyString, tySequence: # leaf:
-      doOperation(cast[ppointer](d)[], op)
+      doOperation(cast[PPointer](d)[], op)
     of tyObject, tyTuple:
       forAllSlotsAux(dest, mt.node, op)
     of tyArray, tyArrayConstr, tyOpenArray:
@@ -519,7 +519,7 @@ proc growObj(old: pointer, newsize: int, gch: var TGcHeap): pointer =
         d[j] = res
         break
       dec(j)
-  if canBeCycleRoot(ol): excl(gch.cycleRoots, ol)
+  if canbeCycleRoot(ol): excl(gch.cycleRoots, ol)
   when logGC:
     writeCell("growObj old cell", ol)
     writeCell("growObj new cell", res)
@@ -869,7 +869,7 @@ else:
         sp = sp +% sizeof(pointer)*8
       # last few entries:
       while sp <=% max:
-        gcMark(gch, cast[ppointer](sp)[])
+        gcMark(gch, cast[PPointer](sp)[])
         sp = sp +% sizeof(pointer)
     
 proc markStackAndRegisters(gch: var TGcHeap) {.noinline, cdecl.} =
@@ -913,7 +913,7 @@ proc collectZCT(gch: var TGcHeap): bool =
       # In any case, it should be removed from the ZCT. But not
       # freed. **KEEP THIS IN MIND WHEN MAKING THIS INCREMENTAL!**
       when cycleGC:
-        if canBeCycleRoot(c): excl(gch.cycleRoots, c)
+        if canbeCycleRoot(c): excl(gch.cycleRoots, c)
       when logGC: writeCell("zct dealloc cell", c)
       gcTrace(c, csZctFreed)
       # We are about to free the object, call the finalizer BEFORE its

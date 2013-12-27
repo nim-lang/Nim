@@ -162,9 +162,9 @@ proc toRope(s: string): PRope =
 proc ropeSeqInsert(rs: var TRopeSeq, r: PRope, at: Natural) = 
   var length = len(rs)
   if at > length: 
-    setlen(rs, at + 1)
+    setLen(rs, at + 1)
   else: 
-    setlen(rs, length + 1)    # move old rope elements:
+    setLen(rs, length + 1)    # move old rope elements:
   for i in countdown(length, at + 1): 
     rs[i] = rs[i - 1] # this is correct, I used pen and paper to validate it
   rs[at] = r
@@ -228,9 +228,9 @@ proc writeRope*(f: TFile, c: PRope) =
     write(f, it.data)
 
 proc writeRope*(head: PRope, filename: string, useWarning = false) =
-  var f: tfile
+  var f: TFile
   if open(f, filename, fmWrite):
-    if head != nil: WriteRope(f, head)
+    if head != nil: writeRope(f, head)
     close(f)
   else:
     errorHandler(rCannotOpenFile, filename, useWarning)
@@ -258,7 +258,7 @@ proc ropef(frmt: TFormatStr, args: varargs[PRope]): PRope =
       of '0'..'9': 
         var j = 0
         while true: 
-          j = (j * 10) + Ord(frmt[i]) - ord('0')
+          j = (j * 10) + ord(frmt[i]) - ord('0')
           inc(i)
           if (i > length + 0 - 1) or not (frmt[i] in {'0'..'9'}): break 
         num = j
@@ -296,10 +296,10 @@ proc appf(c: var PRope, frmt: TFormatStr, args: varargs[PRope]) =
 const 
   bufSize = 1024              # 1 KB is reasonable
 
-proc auxRopeEqualsFile(r: PRope, bin: var tfile, buf: Pointer): bool = 
+proc auxRopeEqualsFile(r: PRope, bin: var TFile, buf: pointer): bool = 
   if r.data != nil:
     if r.length > bufSize:
-      ErrorHandler(rTokenTooLong, r.data)
+      errorHandler(rTokenTooLong, r.data)
       return
     var readBytes = readBuffer(bin, buf, r.length)
     result = readBytes == r.length and

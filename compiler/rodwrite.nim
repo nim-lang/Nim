@@ -56,7 +56,7 @@ proc fileIdx(w: PRodWriter, filename: string): int =
     if w.files[i] == filename: 
       return i
   result = len(w.files)
-  setlen(w.files, result + 1)
+  setLen(w.files, result + 1)
   w.files[result] = filename
 
 template filename*(w: PRodWriter): string =
@@ -66,8 +66,8 @@ proc newRodWriter(crc: TCrc32, module: PSym): PRodWriter =
   new(result)
   result.sstack = @[]
   result.tstack = @[]
-  InitIITable(result.index.tab)
-  InitIITable(result.imports.tab)
+  initIiTable(result.index.tab)
+  initIiTable(result.imports.tab)
   result.index.r = ""
   result.imports.r = ""
   result.crc = crc
@@ -101,12 +101,12 @@ proc addInclDep(w: PRodWriter, dep: string) =
 
 proc pushType(w: PRodWriter, t: PType) =
   # check so that the stack does not grow too large:
-  if IiTableGet(w.index.tab, t.id) == invalidKey:
+  if iiTableGet(w.index.tab, t.id) == invalidKey:
     w.tstack.add(t)
 
 proc pushSym(w: PRodWriter, s: PSym) =
   # check so that the stack does not grow too large:
-  if IiTableGet(w.index.tab, s.id) == invalidKey:
+  if iiTableGet(w.index.tab, s.id) == invalidKey:
     w.sstack.add(s)
 
 proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode, 
@@ -120,19 +120,19 @@ proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode,
   # we do not write comments for now
   # Line information takes easily 20% or more of the filesize! Therefore we
   # omit line information if it is the same as the father's line information:
-  if finfo.fileIndex != n.info.fileIndex: 
+  if fInfo.fileIndex != n.info.fileIndex: 
     result.add('?')
     encodeVInt(n.info.col, result)
     result.add(',')
     encodeVInt(n.info.line, result)
     result.add(',')
     encodeVInt(fileIdx(w, toFilename(n.info)), result)
-  elif finfo.line != n.info.line:
+  elif fInfo.line != n.info.line:
     result.add('?')
     encodeVInt(n.info.col, result)
     result.add(',')
     encodeVInt(n.info.line, result)
-  elif finfo.col != n.info.col:
+  elif fInfo.col != n.info.col:
     result.add('?')
     encodeVInt(n.info.col, result)
   # No need to output the file index, as this is the serialization of one
@@ -190,7 +190,7 @@ proc encodeLoc(w: PRodWriter, loc: TLoc, result: var string) =
   if loc.a != 0: 
     add(result, '?')
     encodeVInt(loc.a, result)
-  if oldlen + 1 == result.len:
+  if oldLen + 1 == result.len:
     # no data was necessary, so remove the '<' again:
     setLen(result, oldLen)
   else:
@@ -202,7 +202,7 @@ proc encodeType(w: PRodWriter, t: PType, result: var string) =
     result.add("[]")
     return
   # we need no surrounding [] here because the type is in a line of its own
-  if t.kind == tyForward: InternalError("encodeType: tyForward")
+  if t.kind == tyForward: internalError("encodeType: tyForward")
   # for the new rodfile viewer we use a preceeding [ so that the data section
   # can easily be disambiguated:
   add(result, '[')
@@ -210,7 +210,7 @@ proc encodeType(w: PRodWriter, t: PType, result: var string) =
   add(result, '+')
   encodeVInt(t.id, result)
   if t.n != nil: 
-    encodeNode(w, UnknownLineInfo(), t.n, result)
+    encodeNode(w, unknownLineInfo(), t.n, result)
   if t.flags != {}: 
     add(result, '$')
     encodeVInt(cast[int32](t.flags), result)
@@ -292,7 +292,7 @@ proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
   if s.annex != nil: encodeLib(w, s.annex, s.info, result)
   if s.constraint != nil:
     add(result, '#')
-    encodeNode(w, UnknownLineInfo(), s.constraint, result)
+    encodeNode(w, unknownLineInfo(), s.constraint, result)
   # lazy loading will soon reload the ast lazily, so the ast needs to be
   # the last entry of a symbol:
   if s.ast != nil:
@@ -322,7 +322,7 @@ proc addToIndex(w: var TIndex, key, val: int) =
   add(w.r, rodNL)
   w.lastIdxKey = key
   w.lastIdxVal = val
-  IiTablePut(w.tab, key, val)
+  iiTablePut(w.tab, key, val)
 
 const debugWrittenIds = false
 
@@ -336,9 +336,9 @@ proc symStack(w: PRodWriter): int =
     if sfForward in s.flags:
       w.sstack[result] = s
       inc result
-    elif IiTableGet(w.index.tab, s.id) == invalidKey:
+    elif iiTableGet(w.index.tab, s.id) == invalidKey:
       var m = getModule(s)
-      if m == nil: InternalError("symStack: module nil: " & s.name.s)
+      if m == nil: internalError("symStack: module nil: " & s.name.s)
       if (m.id == w.module.id) or (sfFromGeneric in s.flags): 
         # put definition in here
         var L = w.data.len
@@ -364,7 +364,7 @@ proc symStack(w: PRodWriter): int =
         if s.kind == skMethod and sfDispatcher notin s.flags:
           if w.methods.len != 0: add(w.methods, ' ')
           encodeVInt(s.id, w.methods)
-      elif IiTableGet(w.imports.tab, s.id) == invalidKey: 
+      elif iiTableGet(w.imports.tab, s.id) == invalidKey: 
         addToIndex(w.imports, s.id, m.id)
         when debugWrittenIds:
           if not Contains(debugWritten, s.id):
@@ -374,7 +374,7 @@ proc symStack(w: PRodWriter): int =
             debug(m)
             InternalError("Symbol referred to but never written")
     inc(i)
-  setlen(w.sstack, result)
+  setLen(w.sstack, result)
 
 proc typeStack(w: PRodWriter): int = 
   var i = 0
@@ -383,13 +383,13 @@ proc typeStack(w: PRodWriter): int =
     if t.kind == tyForward:
       w.tstack[result] = t
       inc result
-    elif IiTableGet(w.index.tab, t.id) == invalidKey: 
+    elif iiTableGet(w.index.tab, t.id) == invalidKey: 
       var L = w.data.len
       addToIndex(w.index, t.id, L)
       encodeType(w, t, w.data)
       add(w.data, rodNL)
     inc(i)
-  setlen(w.tstack, result)
+  setLen(w.tstack, result)
 
 proc processStacks(w: PRodWriter, finalPass: bool) =
   var oldS = 0
@@ -401,7 +401,7 @@ proc processStacks(w: PRodWriter, finalPass: bool) =
     oldS = slen
     oldT = tlen
   if finalPass and (oldS != 0 or oldT != 0):
-    InternalError("could not serialize some forwarded symbols/types")
+    internalError("could not serialize some forwarded symbols/types")
 
 proc rawAddInterfaceSym(w: PRodWriter, s: PSym) = 
   pushSym(w, s)
@@ -416,7 +416,7 @@ proc addInterfaceSym(w: PRodWriter, s: PSym) =
 proc addStmt(w: PRodWriter, n: PNode) = 
   encodeVInt(w.data.len, w.init)
   add(w.init, rodNL)
-  encodeNode(w, UnknownLineInfo(), n, w.data)
+  encodeNode(w, unknownLineInfo(), n, w.data)
   add(w.data, rodNL)
   processStacks(w, false)
 
@@ -534,9 +534,9 @@ proc process(c: PPassContext, n: PNode): PNode =
   of nkProcDef, nkMethodDef, nkIteratorDef, nkConverterDef, 
       nkTemplateDef, nkMacroDef: 
     var s = n.sons[namePos].sym
-    if s == nil: InternalError(n.info, "rodwrite.process")
+    if s == nil: internalError(n.info, "rodwrite.process")
     if n.sons[bodyPos] == nil:
-      InternalError(n.info, "rodwrite.process: body is nil")
+      internalError(n.info, "rodwrite.process: body is nil")
     if n.sons[bodyPos].kind != nkEmpty or s.magic != mNone or
         sfForward notin s.flags:
       addInterfaceSym(w, s)
@@ -549,7 +549,7 @@ proc process(c: PPassContext, n: PNode): PNode =
     for i in countup(0, sonsLen(n) - 1): 
       var a = n.sons[i]
       if a.kind == nkCommentStmt: continue 
-      if a.sons[0].kind != nkSym: InternalError(a.info, "rodwrite.process")
+      if a.sons[0].kind != nkSym: internalError(a.info, "rodwrite.process")
       var s = a.sons[0].sym
       addInterfaceSym(w, s) 
       # this takes care of enum fields too
@@ -576,8 +576,8 @@ proc process(c: PPassContext, n: PNode): PNode =
     nil
 
 proc myOpen(module: PSym): PPassContext =
-  if module.id < 0: InternalError("rodwrite: module ID not set")
-  var w = newRodWriter(module.fileIdx.GetCRC, module)
+  if module.id < 0: internalError("rodwrite: module ID not set")
+  var w = newRodWriter(module.fileIdx.getCRC, module)
   rawAddInterfaceSym(w, module)
   result = w
 

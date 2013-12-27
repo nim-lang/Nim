@@ -97,7 +97,7 @@ proc `==`(a, b: TCall): bool =
 proc newProcCtx(owner: PSym): PProcCtx =
   assert owner != nil
   new(result)
-  result.mapping = tables.InitTable[int, TThreadOwner]()
+  result.mapping = tables.initTable[int, TThreadOwner]()
   result.owner = owner
 
 proc analyse(c: PProcCtx, n: PNode): TThreadOwner
@@ -119,7 +119,7 @@ proc analyseSym(c: PProcCtx, n: PNode): TThreadOwner =
   of skParam: 
     result = c.mapping[v.id]
     if result == toUndefined:
-      InternalError(n.info, "param not set: " & v.name.s)
+      internalError(n.info, "param not set: " & v.name.s)
   else:
     result = toNil
   c.mapping[v.id] = result
@@ -132,7 +132,7 @@ proc lvalueSym(n: PNode): PNode =
 
 proc writeAccess(c: PProcCtx, n: PNode, owner: TThreadOwner) =
   if owner notin {toNil, toMine, toTheirs}:
-    InternalError(n.info, "writeAccess: " & $owner)
+    internalError(n.info, "writeAccess: " & $owner)
   var a = lvalueSym(n)
   if a.kind == nkSym: 
     var v = a.sym
@@ -151,21 +151,21 @@ proc writeAccess(c: PProcCtx, n: PNode, owner: TThreadOwner) =
         newOwner = toMine
         # XXX BUG what if the tuple contains both ``tyRef`` and ``tyString``?
       c.mapping[v.id] = newOwner
-    of toVoid, toUndefined: InternalError(n.info, "writeAccess")
-    of toTheirs: Message(n.info, warnWriteToForeignHeap)
+    of toVoid, toUndefined: internalError(n.info, "writeAccess")
+    of toTheirs: message(n.info, warnWriteToForeignHeap)
     of toMine:
       if lastOwner != owner and owner != toNil:
-        Message(n.info, warnDifferentHeaps)
+        message(n.info, warnDifferentHeaps)
   else:
     # we could not backtrack to a concrete symbol, but that's fine:
     var lastOwner = analyse(c, n)
     case lastOwner
     of toNil: nil # fine, toNil can be overwritten
-    of toVoid, toUndefined: InternalError(n.info, "writeAccess")
-    of toTheirs: Message(n.info, warnWriteToForeignHeap)
+    of toVoid, toUndefined: internalError(n.info, "writeAccess")
+    of toTheirs: message(n.info, warnWriteToForeignHeap)
     of toMine:
       if lastOwner != owner and owner != toNil:
-        Message(n.info, warnDifferentHeaps)
+        message(n.info, warnDifferentHeaps)
 
 proc analyseAssign(c: PProcCtx, le, ri: PNode) =
   var y = analyse(c, ri) # read access; ok
@@ -192,7 +192,7 @@ proc analyseCall(c: PProcCtx, n: PNode): TThreadOwner =
     result = analyse(newCtx, prc.getBody)
     if prc.ast.sons[bodyPos].kind == nkEmpty and 
        {sfNoSideEffect, sfThread, sfImportc} * prc.flags == {}:
-      Message(n.info, warnAnalysisLoophole, renderTree(n))
+      message(n.info, warnAnalysisLoophole, renderTree(n))
       if result == toUndefined: result = toNil
     if prc.typ.sons[0] != nil:
       if prc.ast.len > resultPos:
@@ -215,12 +215,12 @@ proc analyseCall(c: PProcCtx, n: PNode): TThreadOwner =
       else: result = toNil
 
 proc analyseVarTuple(c: PProcCtx, n: PNode) =
-  if n.kind != nkVarTuple: InternalError(n.info, "analyseVarTuple")
+  if n.kind != nkVarTuple: internalError(n.info, "analyseVarTuple")
   var L = n.len
-  for i in countup(0, L-3): AnalyseAssign(c, n.sons[i], n.sons[L-1])
+  for i in countup(0, L-3): analyseAssign(c, n.sons[i], n.sons[L-1])
 
 proc analyseSingleVar(c: PProcCtx, a: PNode) =
-  if a.sons[2].kind != nkEmpty: AnalyseAssign(c, a.sons[0], a.sons[2])
+  if a.sons[2].kind != nkEmpty: analyseAssign(c, a.sons[0], a.sons[2])
 
 proc analyseVarSection(c: PProcCtx, n: PNode): TThreadOwner = 
   for i in countup(0, sonsLen(n) - 1): 
@@ -238,7 +238,7 @@ proc analyseConstSection(c: PProcCtx, t: PNode): TThreadOwner =
   for i in countup(0, sonsLen(t) - 1): 
     var it = t.sons[i]
     if it.kind == nkCommentStmt: continue 
-    if it.kind != nkConstDef: InternalError(t.info, "analyseConstSection")
+    if it.kind != nkConstDef: internalError(t.info, "analyseConstSection")
     if sfFakeConst in it.sons[0].sym.flags: analyseSingleVar(c, it)
   result = toVoid
 
@@ -246,7 +246,7 @@ template aggregateOwner(result, ana: expr) =
   var a = ana # eval once
   if result != a:
     if result == toNil: result = a
-    elif a != toNil: Message(n.info, warnDifferentHeaps)
+    elif a != toNil: message(n.info, warnDifferentHeaps)
 
 proc analyseArgs(c: PProcCtx, n: PNode, start = 1) =
   for i in start..n.len-1: discard analyse(c, n[i])
@@ -254,7 +254,7 @@ proc analyseArgs(c: PProcCtx, n: PNode, start = 1) =
 proc analyseOp(c: PProcCtx, n: PNode): TThreadOwner =
   if n[0].kind != nkSym or n[0].sym.kind != skProc:
     if {tfNoSideEffect, tfThread} * n[0].typ.flags == {}:
-      Message(n.info, warnAnalysisLoophole, renderTree(n))
+      message(n.info, warnAnalysisLoophole, renderTree(n))
     result = toNil
   else:
     var prc = n[0].sym
@@ -352,7 +352,7 @@ proc analyse(c: PProcCtx, n: PNode): TThreadOwner =
     result = analyse(c, n.sons[0])
   of nkRaiseStmt:
     var a = analyse(c, n.sons[0])
-    if a != toMine: Message(n.info, warnDifferentHeaps)
+    if a != toMine: message(n.info, warnDifferentHeaps)
     result = toVoid
   of nkVarSection, nkLetSection: result = analyseVarSection(c, n)
   of nkConstSection: result = analyseConstSection(c, n)
@@ -373,7 +373,7 @@ proc analyse(c: PProcCtx, n: PNode): TThreadOwner =
       result = toVoid
   of nkExprColonExpr:
     result = analyse(c, n.sons[1])
-  else: InternalError(n.info, "analysis not implemented for: " & $n.kind)
+  else: internalError(n.info, "analysis not implemented for: " & $n.kind)
 
 proc analyseThreadProc*(prc: PSym) =
   var c = newProcCtx(prc)

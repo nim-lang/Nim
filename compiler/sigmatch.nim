@@ -77,7 +77,7 @@ proc initCandidate*(c: var TCandidate, callee: PType) =
   initIdTable(c.bindings)
 
 proc put(t: var TIdTable, key, val: PType) {.inline.} =
-  IdTablePut(t, key, val)
+  idTablePut(t, key, val)
 
 proc initCandidate*(c: var TCandidate, callee: PSym, binding: PNode, 
                     calleeScope = -1) =
@@ -169,11 +169,11 @@ proc cmpCandidates*(a, b: TCandidate): int =
   result = complexDisambiguation(a.callee, b.callee)
 
 proc writeMatches*(c: TCandidate) = 
-  Writeln(stdout, "exact matches: " & $c.exactMatches)
-  Writeln(stdout, "subtype matches: " & $c.subtypeMatches)
-  Writeln(stdout, "conv matches: " & $c.convMatches)
-  Writeln(stdout, "intconv matches: " & $c.intConvMatches)
-  Writeln(stdout, "generic matches: " & $c.genericMatches)
+  writeln(stdout, "exact matches: " & $c.exactMatches)
+  writeln(stdout, "subtype matches: " & $c.subtypeMatches)
+  writeln(stdout, "conv matches: " & $c.convMatches)
+  writeln(stdout, "intconv matches: " & $c.intConvMatches)
+  writeln(stdout, "generic matches: " & $c.genericMatches)
 
 proc argTypeToString(arg: PNode): string =
   if arg.kind in nkSymChoices:
@@ -223,7 +223,7 @@ proc concreteType(c: TCandidate, t: PType): PType =
         # proc sort[T](cmp: proc(a, b: T): int = cmp)
       if result.kind != tyGenericParam: break
   of tyGenericInvokation:
-    InternalError("cannot resolve type: " & typeToString(t))
+    internalError("cannot resolve type: " & typeToString(t))
     result = t
   else:
     result = t                # Note: empty is valid here
@@ -309,8 +309,8 @@ proc tupleRel(c: var TCandidate, f, a: PType): TTypeRelation =
     if f.n != nil and a.n != nil:
       for i in countup(0, sonsLen(f.n) - 1):
         # check field names:
-        if f.n.sons[i].kind != nkSym: InternalError(f.n.info, "tupleRel")
-        elif a.n.sons[i].kind != nkSym: InternalError(a.n.info, "tupleRel")
+        if f.n.sons[i].kind != nkSym: internalError(f.n.info, "tupleRel")
+        elif a.n.sons[i].kind != nkSym: internalError(a.n.info, "tupleRel")
         else:
           var x = f.n.sons[i].sym
           var y = a.n.sons[i].sym
@@ -552,7 +552,7 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
         if result < isGeneric: result = isNone
     elif a.kind == tyGenericParam:
       result = isGeneric
-  of tyForward: InternalError("forward type in typeRel()")
+  of tyForward: internalError("forward type in typeRel()")
   of tyNil:
     if a.kind == f.kind: result = isEqual
   of tyTuple: 
@@ -658,7 +658,7 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
           (sonsLen(x) - 1 == sonsLen(f)):
       for i in countup(1, sonsLen(f) - 1):
         if x.sons[i].kind == tyGenericParam:
-          InternalError("wrong instantiated type!")
+          internalError("wrong instantiated type!")
         elif typeRel(c, f.sons[i], x.sons[i]) <= isSubtype: return 
       result = isGeneric
     else:
@@ -668,7 +668,7 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
         for i in countup(1, sonsLen(f) - 1):
           var x = PType(idTableGet(c.bindings, f.sons[0].sons[i - 1]))
           if x == nil or x.kind in {tyGenericInvokation, tyGenericParam}:
-            InternalError("wrong instantiated type!")
+            internalError("wrong instantiated type!")
           put(c.bindings, f.sons[i], x)
   
   of tyAnd:
@@ -764,7 +764,7 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
   
 proc cmpTypes*(f, a: PType): TTypeRelation = 
   var c: TCandidate
-  InitCandidate(c, f)
+  initCandidate(c, f)
   result = typeRel(c, f, a)
 
 proc getInstantiatedType(c: PContext, arg: PNode, m: TCandidate, 
@@ -773,7 +773,7 @@ proc getInstantiatedType(c: PContext, arg: PNode, m: TCandidate,
   if result == nil: 
     result = generateTypeInstance(c, m.bindings, arg, f)
   if result == nil:
-    InternalError(arg.info, "getInstantiatedType")
+    internalError(arg.info, "getInstantiatedType")
     result = errorType(c)
   
 proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate, 
@@ -786,7 +786,7 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
       result.typ = errorType(c)
   else:
     result.typ = f
-  if result.typ == nil: InternalError(arg.info, "implicitConv")
+  if result.typ == nil: internalError(arg.info, "implicitConv")
   addSon(result, ast.emptyNode)
   addSon(result, arg)
 
@@ -1006,7 +1006,7 @@ proc paramTypesMatchAux(c: PContext, m: var TCandidate, f, argType: PType,
 proc paramTypesMatch*(c: PContext, m: var TCandidate, f, a: PType, 
                       arg, argOrig: PNode): PNode =
   if arg == nil or arg.kind notin nkSymChoices:
-    result = ParamTypesMatchAux(c, m, f, a, arg, argOrig)
+    result = paramTypesMatchAux(c, m, f, a, arg, argOrig)
   else: 
     # CAUTION: The order depends on the used hashing scheme. Thus it is
     # incorrect to simply use the first fitting match. However, to implement
@@ -1041,17 +1041,17 @@ proc paramTypesMatch*(c: PContext, m: var TCandidate, f, a: PType,
       result = nil
     elif (y.state == csMatch) and (cmpCandidates(x, y) == 0): 
       if x.state != csMatch: 
-        InternalError(arg.info, "x.state is not csMatch") 
+        internalError(arg.info, "x.state is not csMatch") 
       # ambiguous: more than one symbol fits
       result = nil
     else: 
       # only one valid interpretation found:
       markUsed(arg, arg.sons[best].sym)
-      result = ParamTypesMatchAux(c, m, f, arg.sons[best].typ, arg.sons[best],
+      result = paramTypesMatchAux(c, m, f, arg.sons[best].typ, arg.sons[best],
                                   argOrig)
 
 proc setSon(father: PNode, at: int, son: PNode) = 
-  if sonsLen(father) <= at: setlen(father.sons, at + 1)
+  if sonsLen(father) <= at: setLen(father.sons, at + 1)
   father.sons[at] = son
 
 # we are allowed to modify the calling node in the 'prepare*' procs:
@@ -1122,7 +1122,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
       # check if m.callee has such a param:
       prepareNamedParam(n.sons[a])
       if n.sons[a].sons[0].kind != nkIdent: 
-        LocalError(n.sons[a].info, errNamedParamHasToBeIdent)
+        localError(n.sons[a].info, errNamedParamHasToBeIdent)
         m.state = csNoMatch
         return 
       formal = getSymFromList(m.callee.n, n.sons[a].sons[0].ident, 1)
@@ -1130,15 +1130,15 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         # no error message!
         m.state = csNoMatch
         return 
-      if ContainsOrIncl(marker, formal.position): 
+      if containsOrIncl(marker, formal.position): 
         # already in namedParams:
-        LocalError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
+        localError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
         m.state = csNoMatch
         return 
       m.baseTypeMatch = false
       n.sons[a].sons[1] = prepareOperand(c, formal.typ, n.sons[a].sons[1])
       n.sons[a].typ = n.sons[a].sons[1].typ
-      var arg = ParamTypesMatch(c, m, formal.typ, n.sons[a].typ,
+      var arg = paramTypesMatch(c, m, formal.typ, n.sons[a].typ,
                                 n.sons[a].sons[1], nOrig.sons[a].sons[1])
       if arg == nil:
         m.state = csNoMatch
@@ -1168,7 +1168,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         elif formal != nil:
           m.baseTypeMatch = false
           n.sons[a] = prepareOperand(c, formal.typ, n.sons[a])
-          var arg = ParamTypesMatch(c, m, formal.typ, n.sons[a].typ,
+          var arg = paramTypesMatch(c, m, formal.typ, n.sons[a].typ,
                                     n.sons[a], nOrig.sons[a])
           if (arg != nil) and m.baseTypeMatch and (container != nil):
             addSon(container, arg)
@@ -1181,7 +1181,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           return
       else:
         if m.callee.n.sons[f].kind != nkSym: 
-          InternalError(n.sons[a].info, "matches")
+          internalError(n.sons[a].info, "matches")
           return
         formal = m.callee.n.sons[f].sym
         if containsOrIncl(marker, formal.position): 

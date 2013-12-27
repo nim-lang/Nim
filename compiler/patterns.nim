@@ -87,22 +87,22 @@ proc matchChoice(c: PPatternContext, p, n: PNode): bool =
     if matches(c, p.sons[i], n): return true
 
 proc bindOrCheck(c: PPatternContext, param: PSym, n: PNode): bool =
-  var pp = GetLazy(c, param)
+  var pp = getLazy(c, param)
   if pp != nil:
     # check if we got the same pattern (already unified):
     result = sameTrees(pp, n) #matches(c, pp, n)
   elif n.kind == nkArgList or checkTypes(c, param, n):
-    PutLazy(c, param, n)
+    putLazy(c, param, n)
     result = true
 
 proc gather(c: PPatternContext, param: PSym, n: PNode) =
-  var pp = GetLazy(c, param)
+  var pp = getLazy(c, param)
   if pp != nil and pp.kind == nkArgList:
     pp.add(n)
   else:
     pp = newNodeI(nkArgList, n.info, 1)
     pp.sons[0] = n
-    PutLazy(c, param, pp)
+    putLazy(c, param, pp)
 
 proc matchNested(c: PPatternContext, p, n: PNode, rpn: bool): bool =
   # match ``op * param`` or ``op *| param``
@@ -148,7 +148,7 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
     of "*": result = matchNested(c, p, n, rpn=false)
     of "**": result = matchNested(c, p, n, rpn=true)
     of "~": result = not matches(c, p.sons[1], n)
-    else: InternalError(p.info, "invalid pattern")
+    else: internalError(p.info, "invalid pattern")
     # template {add(a, `&` * b)}(a: string{noalias}, b: varargs[string]) = 
     #   add(a, b)
   elif p.kind == nkCurlyExpr:
@@ -256,7 +256,7 @@ proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
     args = newNodeI(nkArgList, n.info)
   for i in 1 .. < params.len:
     let param = params.sons[i].sym
-    let x = GetLazy(ctx, param)
+    let x = getLazy(ctx, param)
     # couldn't bind parameter:
     if isNil(x): return nil
     result.add(x)

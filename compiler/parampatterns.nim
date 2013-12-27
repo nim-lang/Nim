@@ -42,7 +42,7 @@ const
   MaxStackSize* = 64 ## max required stack size by the VM
 
 proc patternError(n: PNode) = 
-  LocalError(n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
+  localError(n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
 
 proc add(code: var TPatternCode, op: TOpcode) {.inline.} =
   add(code, chr(ord(op)))
@@ -125,7 +125,7 @@ proc semNodeKindConstraints*(p: PNode): PNode =
     for i in 1.. <p.len:
       compileConstraints(p.sons[i], result.strVal)
     if result.strVal.len > maxStackSize-1:
-      InternalError(p.info, "parameter pattern too complex")
+      internalError(p.info, "parameter pattern too complex")
   else:
     patternError(p)
   result.strVal.add(ppEof)

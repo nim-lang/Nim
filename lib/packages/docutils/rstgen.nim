@@ -32,7 +32,7 @@ type
     outLatex            # output is Latex
   
   TTocEntry{.final.} = object 
-    n*: PRstNode
+    n*: PRSTNode
     refname*, header*: string
 
   TMetaEnum* = enum 
@@ -113,7 +113,7 @@ proc initRstGenerator*(g: var TRstGenerator, target: TOutputTarget,
 proc writeIndexFile*(g: var TRstGenerator, outfile: string) =
   if g.theIndex.len > 0: writeFile(outfile, g.theIndex)
   
-proc addXmlChar(dest: var string, c: Char) = 
+proc addXmlChar(dest: var string, c: char) = 
   case c
   of '&': add(dest, "&amp;")
   of '<': add(dest, "&lt;")
@@ -121,14 +121,14 @@ proc addXmlChar(dest: var string, c: Char) =
   of '\"': add(dest, "&quot;")
   else: add(dest, c)
   
-proc addRtfChar(dest: var string, c: Char) = 
+proc addRtfChar(dest: var string, c: char) = 
   case c
   of '{': add(dest, "\\{")
   of '}': add(dest, "\\}")
   of '\\': add(dest, "\\\\")
   else: add(dest, c)
   
-proc addTexChar(dest: var string, c: Char) = 
+proc addTexChar(dest: var string, c: char) = 
   case c
   of '_': add(dest, "\\_")
   of '{': add(dest, "\\symbol{123}")
@@ -148,7 +148,7 @@ proc addTexChar(dest: var string, c: Char) =
 
 var splitter*: string = "<wbr />"
 
-proc escChar*(target: TOutputTarget, dest: var string, c: Char) {.inline.} = 
+proc escChar*(target: TOutputTarget, dest: var string, c: char) {.inline.} = 
   case target
   of outHtml:  addXmlChar(dest, c)
   of outLatex: addTexChar(dest, c)
@@ -196,7 +196,7 @@ proc dispA(target: TOutputTarget, dest: var string,
   if target != outLatex: addf(dest, xml, args)
   else: addf(dest, tex, args)
   
-proc renderRstToOut*(d: var TRstGenerator, n: PRstNode, result: var string)
+proc renderRstToOut*(d: var TRstGenerator, n: PRSTNode, result: var string)
   ## Writes into ``result`` the rst ast ``n`` using the ``d`` configuration.
   ##
   ## Before using this proc you need to initialise a ``TRstGenerator`` with
@@ -210,10 +210,10 @@ proc renderRstToOut*(d: var TRstGenerator, n: PRstNode, result: var string)
   ##   renderRstToOut(gen, rst, generatedHTML)
   ##   echo generatedHTML
 
-proc renderAux(d: PDoc, n: PRstNode, result: var string) = 
+proc renderAux(d: PDoc, n: PRSTNode, result: var string) = 
   for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], result)
 
-proc renderAux(d: PDoc, n: PRstNode, frmtA, frmtB: string, result: var string) = 
+proc renderAux(d: PDoc, n: PRSTNode, frmtA, frmtB: string, result: var string) = 
   var tmp = ""
   for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], tmp)
   if d.target != outLatex:
@@ -232,7 +232,7 @@ proc setIndexTerm*(d: var TRstGenerator, id, term: string) =
   d.theIndex.add(id)
   d.theIndex.add("\n")
 
-proc hash(n: PRstNode): int =
+proc hash(n: PRSTNode): int =
   if n.kind == rnLeaf:
     result = hash(n.text)
   elif n.len > 0:
@@ -241,7 +241,7 @@ proc hash(n: PRstNode): int =
       result = result !& hash(n.sons[i])
     result = !$result
 
-proc renderIndexTerm(d: PDoc, n: PRstNode, result: var string) =
+proc renderIndexTerm(d: PDoc, n: PRSTNode, result: var string) =
   let id = rstnodeToRefname(n) & '_' & $abs(hash(n))
   var term = ""
   renderAux(d, n, term)
@@ -314,13 +314,13 @@ proc mergeIndexes*(dir: string): string =
   
 # ----------------------------------------------------------------------------      
   
-proc renderHeadline(d: PDoc, n: PRstNode, result: var string) = 
+proc renderHeadline(d: PDoc, n: PRSTNode, result: var string) = 
   var tmp = ""
   for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], tmp)
   var refname = rstnodeToRefname(n)
   if d.hasToc:
     var length = len(d.tocPart)
-    setlen(d.tocPart, length + 1)
+    setLen(d.tocPart, length + 1)
     d.tocPart[length].refname = refname
     d.tocPart[length].n = n
     d.tocPart[length].header = tmp
@@ -336,7 +336,7 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
         $n.level, refname, tmp, 
         $chr(n.level - 1 + ord('A'))])
   
-proc renderOverline(d: PDoc, n: PRstNode, result: var string) = 
+proc renderOverline(d: PDoc, n: PRSTNode, result: var string) = 
   if d.meta[metaTitle].len == 0:
     for i in countup(0, len(n)-1):
       renderRstToOut(d, n.sons[i], d.meta[metaTitle])
@@ -373,7 +373,7 @@ proc renderTocEntries*(d: var TRstGenerator, j: var int, lvl: int, result: var s
   else:
     result.add(tmp)
   
-proc renderImage(d: PDoc, n: PRstNode, result: var string) = 
+proc renderImage(d: PDoc, n: PRSTNode, result: var string) = 
   var options = ""
   var s = getFieldValue(n, "scale")
   if s != "": dispA(d.target, options, " scale=\"$1\"", " scale=$1", [strip(s)])
@@ -396,13 +396,13 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
                  [getArgument(n), options])
   if len(n) >= 3: renderRstToOut(d, n.sons[2], result)
   
-proc renderSmiley(d: PDoc, n: PRstNode, result: var string) =
+proc renderSmiley(d: PDoc, n: PRSTNode, result: var string) =
   dispA(d.target, result,
     """<img src="/images/smilies/$1.gif" width="15" 
         height="17" hspace="2" vspace="2" />""",
     "\\includegraphics{$1}", [n.text])
   
-proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
+proc renderCodeBlock(d: PDoc, n: PRSTNode, result: var string) =
   if n.sons[2] == nil: return
   var m = n.sons[2].sons[0]
   assert m.kind == rnLeaf
@@ -433,7 +433,7 @@ proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
     deinitGeneralTokenizer(g)
   dispA(d.target, result, "</pre>", "\n\\end{rstpre}\n")
   
-proc renderContainer(d: PDoc, n: PRstNode, result: var string) = 
+proc renderContainer(d: PDoc, n: PRSTNode, result: var string) = 
   var tmp = ""
   renderRstToOut(d, n.sons[2], tmp)
   var arg = strip(getArgument(n))
@@ -442,11 +442,11 @@ proc renderContainer(d: PDoc, n: PRstNode, result: var string) =
   else:
     dispA(d.target, result, "<div class=\"$1\">$2</div>", "$2", [arg, tmp])
   
-proc texColumns(n: PRstNode): string = 
+proc texColumns(n: PRSTNode): string = 
   result = ""
   for i in countup(1, len(n)): add(result, "|X")
   
-proc renderField(d: PDoc, n: PRstNode, result: var string) = 
+proc renderField(d: PDoc, n: PRSTNode, result: var string) = 
   var b = false
   if d.target == outLatex: 
     var fieldname = addNodes(n.sons[0])
@@ -456,7 +456,7 @@ proc renderField(d: PDoc, n: PRstNode, result: var string) =
       if d.meta[metaAuthor].len == 0:
         d.meta[metaAuthor] = fieldval
         b = true
-    elif cmpIgnoreStyle(fieldName, "version") == 0: 
+    elif cmpIgnoreStyle(fieldname, "version") == 0: 
       if d.meta[metaVersion].len == 0:
         d.meta[metaVersion] = fieldval
         b = true
@@ -620,14 +620,14 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
 
 # -----------------------------------------------------------------------------
 
-proc getVarIdx(varnames: openarray[string], id: string): int = 
+proc getVarIdx(varnames: openArray[string], id: string): int = 
   for i in countup(0, high(varnames)): 
     if cmpIgnoreStyle(varnames[i], id) == 0: 
       return i
   result = -1
 
-proc formatNamedVars*(frmt: string, varnames: openarray[string], 
-                      varvalues: openarray[string]): string = 
+proc formatNamedVars*(frmt: string, varnames: openArray[string], 
+                      varvalues: openArray[string]): string = 
   var i = 0
   var L = len(frmt)
   result = ""
@@ -646,7 +646,7 @@ proc formatNamedVars*(frmt: string, varnames: openarray[string],
       of '0'..'9': 
         var j = 0
         while true: 
-          j = (j * 10) + Ord(frmt[i]) - ord('0')
+          j = (j * 10) + ord(frmt[i]) - ord('0')
           inc(i)
           if i > L-1 or frmt[i] notin {'0'..'9'}: break 
         if j > high(varvalues) + 1:

@@ -44,12 +44,12 @@ proc searchForProc*(c: PContext, scope: PScope, fn: PSym): PSym =
       if result.Kind == fn.kind and isGenericRoutine(result):
         let genR = result.ast.sons[genericParamsPos]
         let genF = fn.ast.sons[genericParamsPos]
-        if ExprStructuralEquivalent(genR, genF) and
-           ExprStructuralEquivalent(result.ast.sons[paramsPos],
+        if exprStructuralEquivalent(genR, genF) and
+           exprStructuralEquivalent(result.ast.sons[paramsPos],
                                     fn.ast.sons[paramsPos]) and
            equalGenericParams(genR, genF):
             return
-      result = NextIdentIter(it, scope.symbols)
+      result = nextIdentIter(it, scope.symbols)
   else:
     while result != nil:
       if result.Kind == fn.kind and not isGenericRoutine(result):
@@ -57,11 +57,11 @@ proc searchForProc*(c: PContext, scope: PScope, fn: PSym): PSym =
         of paramsEqual:
           return
         of paramsIncompatible:
-          LocalError(fn.info, errNotOverloadable, fn.name.s)
+          localError(fn.info, errNotOverloadable, fn.name.s)
           return
         of paramsNotEqual:
           nil
-      result = NextIdentIter(it, scope.symbols)
+      result = nextIdentIter(it, scope.symbols)
 
 when false:
   proc paramsFitBorrow(child, parent: PNode): bool = 

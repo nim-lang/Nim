@@ -135,7 +135,7 @@ proc str*(my: TJsonParser): string {.inline.} =
   assert(my.kind in {jsonInt, jsonFloat, jsonString})
   return my.a
 
-proc getInt*(my: TJsonParser): biggestInt {.inline.} = 
+proc getInt*(my: TJsonParser): BiggestInt {.inline.} = 
   ## returns the number for the event: ``jsonInt``
   assert(my.kind == jsonInt)
   return parseBiggestInt(my.a)
@@ -173,7 +173,7 @@ proc errorMsgExpected*(my: TJsonParser, e: string): string =
   result = "$1($2, $3) Error: $4" % [
     my.filename, $getLine(my), $getColumn(my), e & " expected"]
 
-proc handleHexChar(c: Char, x: var int): bool = 
+proc handleHexChar(c: char, x: var int): bool = 
   result = true # Success
   case c
   of '0'..'9': x = (x shl 4) or (ord(c) - ord('0'))
@@ -286,7 +286,7 @@ proc skip(my: var TJsonParser) =
       else: 
         break
     of ' ', '\t': 
-      Inc(pos)
+      inc(pos)
     of '\c':  
       pos = lexbase.HandleCR(my, pos)
       buf = my.buf
@@ -517,7 +517,7 @@ type
     of JString:
       str*: string
     of JInt:
-      num*: biggestInt
+      num*: BiggestInt
     of JFloat:
       fnum*: float
     of JBool:
@@ -535,30 +535,30 @@ proc raiseParseErr*(p: TJsonParser, msg: string) {.noinline, noreturn.} =
   ## raises an `EJsonParsingError` exception.
   raise newException(EJsonParsingError, errorMsgExpected(p, msg))
 
-proc newJString*(s: String): PJsonNode =
+proc newJString*(s: string): PJsonNode =
   ## Creates a new `JString PJsonNode`.
   new(result)
   result.kind = JString
   result.str = s
 
-proc newJStringMove(s: String): PJsonNode =
+proc newJStringMove(s: string): PJsonNode =
   new(result)
   result.kind = JString
   shallowCopy(result.str, s)
 
-proc newJInt*(n: biggestInt): PJsonNode =
+proc newJInt*(n: BiggestInt): PJsonNode =
   ## Creates a new `JInt PJsonNode`.
   new(result)
   result.kind = JInt
   result.num  = n
 
-proc newJFloat*(n: Float): PJsonNode =
+proc newJFloat*(n: float): PJsonNode =
   ## Creates a new `JFloat PJsonNode`.
   new(result)
   result.kind = JFloat
   result.fnum  = n
 
-proc newJBool*(b: Bool): PJsonNode =
+proc newJBool*(b: bool): PJsonNode =
   ## Creates a new `JBool PJsonNode`.
   new(result)
   result.kind = JBool
@@ -587,7 +587,7 @@ proc `%`*(s: string): PJsonNode =
   result.kind = JString
   result.str = s
 
-proc `%`*(n: biggestInt): PJsonNode =
+proc `%`*(n: BiggestInt): PJsonNode =
   ## Generic constructor for JSON data. Creates a new `JInt PJsonNode`.
   new(result)
   result.kind = JInt
@@ -612,7 +612,7 @@ proc `%`*(keyVals: openArray[tuple[key: string, val: PJsonNode]]): PJsonNode =
   newSeq(result.fields, keyVals.len)
   for i, p in pairs(keyVals): result.fields[i] = p
 
-proc `%`*(elements: openArray[PJSonNode]): PJsonNode =
+proc `%`*(elements: openArray[PJsonNode]): PJsonNode =
   ## Generic constructor for JSON data. Creates a new `JArray PJsonNode`
   new(result)
   result.kind = JArray
@@ -628,7 +628,7 @@ proc len*(n: PJsonNode): int =
   of JObject: result = n.fields.len
   else: nil
 
-proc `[]`*(node: PJsonNode, name: String): PJsonNode =
+proc `[]`*(node: PJsonNode, name: string): PJsonNode =
   ## Gets a field from a `JObject`. Returns nil if the key is not found.
   assert(node.kind == JObject)
   for key, item in items(node.fields):
@@ -636,17 +636,17 @@ proc `[]`*(node: PJsonNode, name: String): PJsonNode =
       return item
   return nil
   
-proc `[]`*(node: PJsonNode, index: Int): PJsonNode =
+proc `[]`*(node: PJsonNode, index: int): PJsonNode =
   ## Gets the node at `index` in an Array.
   assert(node.kind == JArray)
   return node.elems[index]
 
-proc hasKey*(node: PJsonNode, key: String): Bool =
+proc hasKey*(node: PJsonNode, key: string): bool =
   ## Checks if `key` exists in `node`.
   assert(node.kind == JObject)
   for k, item in items(node.fields):
     if k == key: return True
-proc existsKey*(node: PJsonNode, key: String): Bool {.deprecated.} = node.hasKey(key)
+proc existsKey*(node: PJsonNode, key: string): bool {.deprecated.} = node.hasKey(key)
   ## Deprecated for `hasKey`
 
 proc add*(father, child: PJsonNode) = 
@@ -661,7 +661,7 @@ proc add*(obj: PJsonNode, key: string, val: PJsonNode) =
   assert obj.kind == JObject
   obj.fields.add((key, val))
 
-proc `[]=`*(obj: PJsonNode, key: String, val: PJsonNode) =
+proc `[]=`*(obj: PJsonNode, key: string, val: PJsonNode) =
   ## Sets a field from a `JObject`. Performs a check for duplicate keys.
   assert(obj.kind == JObject)
   for i in 0..obj.fields.len-1:
@@ -706,7 +706,7 @@ proc copy*(p: PJsonNode): PJsonNode =
 proc indent(s: var string, i: int) = 
   s.add(repeatChar(i))
 
-proc newIndent(curr, indent: int, ml: bool): Int =
+proc newIndent(curr, indent: int, ml: bool): int =
   if ml: return curr + indent
   else: return indent
 
@@ -785,18 +785,18 @@ proc toPretty(result: var string, node: PJsonNode, indent = 2, ml = True,
     if lstArr: result.indent(currIndent)
     result.add("null")
 
-proc pretty*(node: PJsonNode, indent = 2): String =
+proc pretty*(node: PJsonNode, indent = 2): string =
   ## Converts `node` to its JSON Representation, with indentation and
   ## on multiple lines.
   result = ""
   toPretty(result, node, indent)
 
-proc `$`*(node: PJsonNode): String =
+proc `$`*(node: PJsonNode): string =
   ## Converts `node` to its JSON Representation on one line.
   result = ""
   toPretty(result, node, 1, False)
 
-iterator items*(node: PJsonNode): PJSonNode =
+iterator items*(node: PJsonNode): PJsonNode =
   ## Iterator for the items of `node`. `node` has to be a JArray.
   assert node.kind == JArray
   for i in items(node.elems):

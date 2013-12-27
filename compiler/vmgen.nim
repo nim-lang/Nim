@@ -61,7 +61,7 @@ proc gABC(ctx: PCtx; n: PNode; opc: TOpcode; a, b, c: TRegister = 0) =
   ctx.code.add(ins)
   ctx.debug.add(n.info)
 
-proc gABI(c: PCtx; n: PNode; opc: TOpcode; a, b: TRegister; imm: biggestInt) =
+proc gABI(c: PCtx; n: PNode; opc: TOpcode; a, b: TRegister; imm: BiggestInt) =
   let ins = (opc.uint32 or (a.uint32 shl 8'u32) or
                            (b.uint32 shl 16'u32) or
                            (imm+byteExcess).uint32 shl 24'u32).TInstr
@@ -166,7 +166,7 @@ proc getTempRange(c: PCtx; n: int; kind: TSlotKind): TRegister =
           for k in result .. result+n-1: c.slots[k] = (inUse: true, kind: kind)
           return
   if c.maxSlots+n >= high(TRegister):
-    InternalError("cannot generate code; too many registers required")
+    internalError("cannot generate code; too many registers required")
   result = TRegister(c.maxSlots)
   inc c.maxSlots, n
   for k in result .. result+n-1: c.slots[k] = (inUse: true, kind: kind)
@@ -257,7 +257,7 @@ proc genBreak(c: PCtx; n: PNode) =
       if c.prc.blocks[i].label == n.sons[0].sym:
         c.prc.blocks[i].fixups.add L1
         return
-    InternalError(n.info, "cannot find 'break' target")
+    internalError(n.info, "cannot find 'break' target")
   else:
     c.prc.blocks[c.prc.blocks.high].fixups.add L1
 
@@ -338,7 +338,7 @@ proc genLiteral(c: PCtx; n: PNode): int =
 proc unused(n: PNode; x: TDest) {.inline.} =
   if x >= 0: 
     #debug(n)
-    InternalError(n.info, "not unused")
+    internalError(n.info, "not unused")
 
 proc genCase(c: PCtx; n: PNode; dest: var TDest) =
   #  if (!expr1) goto L1;
@@ -709,7 +709,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     c.freeTemp(tmp)
     c.freeTemp(idx)
   of mSizeOf:
-    GlobalError(n.info, errCannotInterpretNodeX, renderTree(n))
+    globalError(n.info, errCannotInterpretNodeX, renderTree(n))
   of mHigh:
     if dest < 0: dest = c.getTemp(n.typ)
     let tmp = c.genx(n.sons[1])
@@ -828,7 +828,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
       globalError(n.info, "expandToAst requires a call expression")
   else:
     # mGCref, mGCunref, 
-    InternalError(n.info, "cannot generate code for: " & $m)
+    internalError(n.info, "cannot generate code for: " & $m)
 
 const
   atomicTypes = {tyBool, tyChar,
@@ -1027,7 +1027,7 @@ proc getNullValueAux(obj: PNode, result: PNode) =
       getNullValueAux(lastSon(obj.sons[i]), result)
   of nkSym:
     addSon(result, getNullValue(obj.sym.typ, result.info))
-  else: InternalError(result.info, "getNullValueAux")
+  else: internalError(result.info, "getNullValueAux")
   
 proc getNullValue(typ: PType, info: TLineInfo): PNode = 
   var t = skipTypes(typ, abstractRange-{tyTypeDesc})
@@ -1038,7 +1038,7 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
   of tyUInt..tyUInt64:
     result = newNodeIT(nkUIntLit, info, t)
   of tyFloat..tyFloat128: 
-    result = newNodeIt(nkFloatLit, info, t)
+    result = newNodeIT(nkFloatLit, info, t)
   of tyVar, tyPointer, tyPtr, tyCString, tySequence, tyString, tyExpr, 
      tyStmt, tyTypeDesc, tyRef:
     result = newNodeIT(nkNilLit, info, t)
@@ -1067,7 +1067,7 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
       addSon(result, getNullValue(t.sons[i], info))
   of tySet:
     result = newNodeIT(nkCurly, info, t)
-  else: InternalError("getNullValue: " & $t.kind)
+  else: internalError("getNullValue: " & $t.kind)
 
 proc setSlot(c: PCtx; v: PSym) =
   # XXX generate type initialization here?
@@ -1214,13 +1214,13 @@ proc gen(c: PCtx; n: PNode; dest: var TDest) =
     of skField:
       InternalAssert dest < 0
       if s.position > high(dest):
-        InternalError(n.info, 
+        internalError(n.info, 
           "too large offset! cannot generate code for: " & s.name.s)
       dest = s.position
     of skType:
       genTypeLit(c, s.typ, dest)
     else:
-      InternalError(n.info, "cannot generate code for: " & s.name.s)
+      internalError(n.info, "cannot generate code for: " & s.name.s)
   of nkCallKinds:
     if n.sons[0].kind == nkSym and n.sons[0].sym.magic != mNone:
       genMagic(c, n, dest)
@@ -1309,7 +1309,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest) =
     else:
       localError(n.info, errGenerated, "VM is not allowed to 'cast'")
   else:
-    InternalError n.info, "too implement " & $n.kind
+    internalError n.info, "too implement " & $n.kind
 
 proc removeLastEof(c: PCtx) =
   let last = c.code.len-1

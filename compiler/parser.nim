@@ -77,12 +77,12 @@ proc getTok(p: var TParser) =
 
 proc openParser*(p: var TParser, fileIdx: int32, inputStream: PLLStream) =
   initToken(p.tok)
-  openLexer(p.lex, fileIdx, inputstream)
+  openLexer(p.lex, fileIdx, inputStream)
   getTok(p)                   # read the first token
   p.firstTok = true
 
 proc openParser*(p: var TParser, filename: string, inputStream: PLLStream) =
-  openParser(p, filename.fileInfoIdx, inputStream)
+  openParser(p, filename.fileInfoIdx, inputstream)
 
 proc closeParser(p: var TParser) = 
   closeLexer(p.lex)
@@ -141,7 +141,7 @@ proc expectIdent(p: TParser) =
   
 proc eat(p: var TParser, TokType: TTokType) =
   if p.tok.TokType == TokType: getTok(p)
-  else: lexMessage(p.lex, errTokenExpected, TokTypeToStr[tokType])
+  else: lexMessage(p.lex, errTokenExpected, TokTypeToStr[TokType])
   
 proc parLineInfo(p: TParser): TLineInfo =
   result = getLineInfo(p.lex, p.tok)
@@ -672,7 +672,7 @@ proc simpleExprAux(p: var TParser, limit: int, mode: TPrimaryMode): PNode =
   let modeB = if mode == pmTypeDef: pmTypeDesc else: mode
   # the operator itself must not start on a new line:
   while opPrec >= limit and p.tok.indent < 0:
-    var leftAssoc = ord(IsLeftAssociative(p.tok))
+    var leftAssoc = ord(isLeftAssociative(p.tok))
     var a = newNodeP(nkInfix, p)
     var opNode = newIdentNodeP(p.tok.ident, p) # skip operator:
     getTok(p)
@@ -846,7 +846,7 @@ proc parseParamList(p: var TParser, retColon = true): PNode =
     optPar(p)
     eat(p, tkParRi)
   let hasRet = if retColon: p.tok.tokType == tkColon
-               else: p.tok.tokType == tkOpr and IdentEq(p.tok.ident, "->")
+               else: p.tok.tokType == tkOpr and identEq(p.tok.ident, "->")
   if hasRet and p.tok.indent < 0:
     getTok(p)
     optInd(p, result)
@@ -941,7 +941,7 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
   #|         / 'static' primary
   #|         / 'bind' primary
   if isOperator(p.tok):
-    let isSigil = IsSigilLike(p.tok)
+    let isSigil = isSigilLike(p.tok)
     result = newNodeP(nkPrefix, p)
     var a = newIdentNodeP(p.tok.ident, p)
     addSon(result, a)
@@ -1877,7 +1877,7 @@ proc parseTopLevelStmt(p: var TParser): PNode =
       break
 
 proc parseString(s: string, filename: string = "", line: int = 0): PNode =
-  var stream = LLStreamOpen(s)
+  var stream = llStreamOpen(s)
   stream.lineOffset = line
 
   var parser: TParser

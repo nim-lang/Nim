@@ -79,7 +79,7 @@ proc semBindStmt(c: PContext, n: PNode, toBind: var TIntSet): PNode =
     # the same symbol!
     # This is however not true anymore for hygienic templates as semantic
     # processing for them changes the symbol table...
-    let s = QualifiedLookUp(c, a)
+    let s = qualifiedLookUp(c, a)
     if s != nil:
       # we need to mark all symbols:
       let sc = symChoice(c, n, s, scClosed)
@@ -115,7 +115,7 @@ proc getIdentNode(c: var TemplCtx, n: PNode): PNode =
   of nkPragmaExpr: result = getIdentNode(c, n.sons[0])
   of nkIdent:
     result = n
-    let s = QualifiedLookUp(c.c, n, {})
+    let s = qualifiedLookUp(c.c, n, {})
     if s != nil:
       if s.owner == c.owner and s.kind == skParam:
         result = newSymNode(s, n.info)
@@ -178,7 +178,7 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym): PNode =
 proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
   result = n
   if n.kind == nkIdent:
-    let s = QualifiedLookUp(c.c, n, {})
+    let s = qualifiedLookUp(c.c, n, {})
     if s != nil:
       if s.owner == c.owner and (s.kind == skParam or sfGenSym in s.flags):
         incl(s.flags, sfUsed)
@@ -211,7 +211,7 @@ proc semTemplSomeDecl(c: var TemplCtx, n: PNode, symKind: TSymKind) =
   for i in countup(0, sonsLen(n) - 1):
     var a = n.sons[i]
     if a.kind == nkCommentStmt: continue
-    if (a.kind != nkIdentDefs) and (a.kind != nkVarTuple): IllFormedAst(a)
+    if (a.kind != nkIdentDefs) and (a.kind != nkVarTuple): illFormedAst(a)
     checkMinSonsLen(a, 3)
     var L = sonsLen(a)
     a.sons[L-2] = semTemplBody(c, a.sons[L-2])
@@ -224,14 +224,14 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   result = n
   case n.kind
   of nkIdent:
-    let s = QualifiedLookUp(c.c, n, {})
+    let s = qualifiedLookUp(c.c, n, {})
     if s != nil:
       if s.owner == c.owner and s.kind == skParam:
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
-      elif Contains(c.toBind, s.id):
+      elif contains(c.toBind, s.id):
         result = symChoice(c.c, n, s, scClosed)
-      elif Contains(c.toMixin, s.name.id):
+      elif contains(c.toMixin, s.name.id):
         result = symChoice(c.c, n, s, scForceOpen)
       elif s.owner == c.owner and sfGenSym in s.flags:
         # template tmp[T](x: var seq[T]) =
@@ -309,7 +309,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     for i in countup(0, sonsLen(n) - 1): 
       var a = n.sons[i]
       if a.kind == nkCommentStmt: continue 
-      if (a.kind != nkConstDef): IllFormedAst(a)
+      if (a.kind != nkConstDef): illFormedAst(a)
       checkSonsLen(a, 3)
       addLocalDecl(c, a.sons[0], skConst)
       a.sons[1] = semTemplBody(c, a.sons[1])
@@ -318,13 +318,13 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     for i in countup(0, sonsLen(n) - 1): 
       var a = n.sons[i]
       if a.kind == nkCommentStmt: continue 
-      if (a.kind != nkTypeDef): IllFormedAst(a)
+      if (a.kind != nkTypeDef): illFormedAst(a)
       checkSonsLen(a, 3)
       addLocalDecl(c, a.sons[0], skType)
     for i in countup(0, sonsLen(n) - 1):
       var a = n.sons[i]
       if a.kind == nkCommentStmt: continue 
-      if (a.kind != nkTypeDef): IllFormedAst(a)
+      if (a.kind != nkTypeDef): illFormedAst(a)
       checkSonsLen(a, 3)
       if a.sons[1].kind != nkEmpty: 
         openScope(c)
@@ -353,11 +353,11 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     # dotExpr is ambiguous: note that we explicitely allow 'x.TemplateParam',
     # so we use the generic code for nkDotExpr too
     if n.kind == nkDotExpr or n.kind == nkAccQuoted:
-      let s = QualifiedLookUp(c.c, n, {})
+      let s = qualifiedLookUp(c.c, n, {})
       if s != nil:
-        if Contains(c.toBind, s.id):
+        if contains(c.toBind, s.id):
           return symChoice(c.c, n, s, scClosed)
-        elif Contains(c.toMixin, s.name.id):
+        elif contains(c.toMixin, s.name.id):
           return symChoice(c.c, n, s, scForceOpen)
         else:
           return symChoice(c.c, n, s, scOpen)
@@ -369,11 +369,11 @@ proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode =
   result = n
   case n.kind
   of nkIdent:
-    let s = QualifiedLookUp(c.c, n, {})
+    let s = qualifiedLookUp(c.c, n, {})
     if s != nil:
       if s.owner == c.owner and s.kind == skParam:
         result = newSymNode(s, n.info)
-      elif Contains(c.toBind, s.id):
+      elif contains(c.toBind, s.id):
         result = symChoice(c.c, n, s, scClosed)
   of nkBind:
     result = semTemplBodyDirty(c, n.sons[0])
@@ -385,8 +385,8 @@ proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode =
     # dotExpr is ambiguous: note that we explicitely allow 'x.TemplateParam',
     # so we use the generic code for nkDotExpr too
     if n.kind == nkDotExpr or n.kind == nkAccQuoted:
-      let s = QualifiedLookUp(c.c, n, {})
-      if s != nil and Contains(c.toBind, s.id):
+      let s = qualifiedLookUp(c.c, n, {})
+      if s != nil and contains(c.toBind, s.id):
         return symChoice(c.c, n, s, scClosed)
     result = n
     for i in countup(0, sonsLen(n) - 1):
@@ -470,12 +470,12 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   s.ast = n
   result = n
   if n.sons[bodyPos].kind == nkEmpty: 
-    LocalError(n.info, errImplOfXexpected, s.name.s)
-  var proto = SearchForProc(c, c.currentScope, s)
+    localError(n.info, errImplOfXexpected, s.name.s)
+  var proto = searchForProc(c, c.currentScope, s)
   if proto == nil:
     addInterfaceOverloadableSymAt(c, c.currentScope, s)
   else:
-    SymTabReplace(c.currentScope.symbols, proto, s)
+    symTabReplace(c.currentScope.symbols, proto, s)
   if n.sons[patternPos].kind != nkEmpty:
     c.patterns.add(s)
 
@@ -498,7 +498,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
     if s != nil:
       if s.owner == c.owner and s.kind == skParam:
         result = newParam(c, n, s)
-      elif Contains(c.toBind, s.id):
+      elif contains(c.toBind, s.id):
         result = symChoice(c.c, n, s, scClosed)
       elif templToExpand(s):
         result = semPatternBody(c, semTemplateExpr(c.c, n, s, false))
@@ -508,7 +508,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
         # more flexibility
   
   proc expectParam(c: var TemplCtx, n: PNode): PNode =
-    let s = QualifiedLookUp(c.c, n, {})
+    let s = qualifiedLookUp(c.c, n, {})
     if s != nil and s.owner == c.owner and s.kind == skParam:
       result = newParam(c, n, s)
     else:
@@ -518,7 +518,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
   result = n
   case n.kind
   of nkIdent:
-    let s = QualifiedLookUp(c.c, n, {})
+    let s = qualifiedLookUp(c.c, n, {})
     result = handleSym(c, n, s)
   of nkBindStmt:
     result = semBindStmt(c.c, n, c.toBind)
@@ -541,10 +541,10 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
     else:
       localError(n.info, errInvalidExpression)
   of nkCallKinds:
-    let s = QualifiedLookUp(c.c, n.sons[0], {})
+    let s = qualifiedLookUp(c.c, n.sons[0], {})
     if s != nil:
       if s.owner == c.owner and s.kind == skParam: discard
-      elif Contains(c.toBind, s.id): discard
+      elif contains(c.toBind, s.id): discard
       elif templToExpand(s):
         return semPatternBody(c, semTemplateExpr(c.c, n, s, false))
     
@@ -580,9 +580,9 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
     # so we use the generic code for nkDotExpr too
     case n.kind 
     of nkDotExpr, nkAccQuoted:
-      let s = QualifiedLookUp(c.c, n, {})
+      let s = qualifiedLookUp(c.c, n, {})
       if s != nil:
-        if Contains(c.toBind, s.id):
+        if contains(c.toBind, s.id):
           return symChoice(c.c, n, s, scClosed)
         else:
           return newIdentNode(s.name, n.info)

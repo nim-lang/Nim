@@ -17,7 +17,7 @@ var
     ## Unstable API.
 
 when not defined(windows) or not defined(guiapp):
-  proc writeToStdErr(msg: CString) = write(stdmsg, msg)
+  proc writeToStdErr(msg: cstring) = write(stdmsg, msg)
 
 else:
   proc MessageBoxA(hWnd: cint, lpText, lpCaption: cstring, uType: int): int32 {.
@@ -240,7 +240,7 @@ proc raiseExceptionAux(e: ref E_Base) =
       showErrorMessage(buf)
     quitOrDebug()
 
-proc raiseException(e: ref E_Base, ename: CString) {.compilerRtl.} =
+proc raiseException(e: ref E_Base, ename: cstring) {.compilerRtl.} =
   e.name = ename
   when hasSomeStackTrace:
     e.trace = ""

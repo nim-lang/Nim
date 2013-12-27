@@ -37,11 +37,11 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
           result.add copyTree(x)
       else:
         InternalAssert sfGenSym in s.flags
-        var x = PSym(IdTableGet(c.mapping, s))
+        var x = PSym(idTableGet(c.mapping, s))
         if x == nil:
           x = copySym(s, false)
           x.owner = c.genSymOwner
-          IdTablePut(c.mapping, s, x)
+          idTablePut(c.mapping, s, x)
         result.add newSymNode(x, if c.instLines: actual.info else: templ.info)
     else:
       result.add copyNode(c, templ, actual)
@@ -62,13 +62,13 @@ proc evalTemplateArgs(n: PNode, s: PSym): PNode =
     a = sonsLen(n)
   else: a = 0
   var f = s.typ.sonsLen
-  if a > f: GlobalError(n.info, errWrongNumberOfArguments)
+  if a > f: globalError(n.info, errWrongNumberOfArguments)
 
   result = newNodeI(nkArgList, n.info)
   for i in countup(1, f - 1):
     var arg = if i < a: n.sons[i] else: copyTree(s.typ.n.sons[i].sym.ast)
     if arg == nil or arg.kind == nkEmpty:
-      LocalError(n.info, errWrongNumberOfArguments)
+      localError(n.info, errWrongNumberOfArguments)
     addSon(result, arg)
 
 var evalTemplateCounter* = 0
@@ -77,7 +77,7 @@ var evalTemplateCounter* = 0
 proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym): PNode =
   inc(evalTemplateCounter)
   if evalTemplateCounter > 100:
-    GlobalError(n.info, errTemplateInstantiationTooNested)
+    globalError(n.info, errTemplateInstantiationTooNested)
     result = n
 
   # replace each param by the corresponding node:
@@ -93,7 +93,7 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym): PNode =
     evalTemplateAux(body, args, ctx, result)
     if result.len == 1: result = result.sons[0]
     else:
-      GlobalError(result.info, errIllFormedAstX,
+      globalError(result.info, errIllFormedAstX,
                   renderTree(result, {renderNoComments}))
   else:
     result = copyNode(body)

@@ -30,8 +30,8 @@ type
   TPass* = tuple[open: TPassOpen, openCached: TPassOpenCached,
                  process: TPassProcess, close: TPassClose]
 
-  TPassData* = tuple[input: PNode, closeOutput: Pnode]
-  TPasses* = openarray[TPass]
+  TPassData* = tuple[input: PNode, closeOutput: PNode]
+  TPasses* = openArray[TPass]
 
 # a pass is a tuple of procedure vars ``TPass.close`` may produce additional 
 # nodes. These are passed to the other close procedures. 
@@ -169,7 +169,7 @@ proc processModule(module: PSym, stream: PLLStream, rd: PRodReader) =
     openPasses(a, module)
     if stream == nil: 
       let filename = fileIdx.toFullPath
-      s = LLStreamOpen(filename, fmRead)
+      s = llStreamOpen(filename, fmRead)
       if s == nil: 
         rawMessage(errCannotOpenFile, filename)
         return
@@ -195,7 +195,7 @@ proc processModule(module: PSym, stream: PLLStream, rd: PRodReader) =
       if s.kind != llsStdIn: break 
     closePasses(a)
     # id synchronization point for more consistent code generation:
-    IDsynchronizationPoint(1000)
+    idSynchronizationPoint(1000)
   else:
     openPassesCached(a, module, rd)
     var n = loadInitSection(rd)

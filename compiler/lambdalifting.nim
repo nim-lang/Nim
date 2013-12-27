@@ -236,8 +236,8 @@ proc addClosureParam(i: PInnerContext, e: PEnv) =
 
 proc dummyClosureParam(o: POuterContext, i: PInnerContext) =
   var e = o.currentEnv
-  if IdTableGet(o.lambdasToEnv, i.fn) == nil:
-    IdTablePut(o.lambdasToEnv, i.fn, e)
+  if idTableGet(o.lambdasToEnv, i.fn) == nil:
+    idTablePut(o.lambdasToEnv, i.fn, e)
   if i.closureParam == nil: addClosureParam(i, e)
 
 proc illegalCapture(s: PSym): bool {.inline.} =
@@ -249,13 +249,13 @@ proc captureVar(o: POuterContext, i: PInnerContext, local: PSym,
                 info: TLineInfo) =
   # for inlined variables the owner is still wrong, so it can happen that it's
   # not a captured variable at all ... *sigh* 
-  var it = PEnv(IdTableGet(o.localsToEnv, local))
+  var it = PEnv(idTableGet(o.localsToEnv, local))
   if it == nil: return
   
   if illegalCapture(local) or o.fn.id != local.owner.id or 
       i.fn.typ.callConv notin {ccClosure, ccDefault}:
     # Currently captures are restricted to a single level of nesting:
-    LocalError(info, errIllegalCaptureX, local.name.s)
+    localError(info, errIllegalCaptureX, local.name.s)
   i.fn.typ.callConv = ccClosure
   #echo "captureVar ", i.fn.name.s, i.fn.id, " ", local.name.s, local.id
 
@@ -263,11 +263,11 @@ proc captureVar(o: POuterContext, i: PInnerContext, local: PSym,
 
   # we need to remember which inner most closure belongs to this lambda:
   var e = o.currentEnv
-  if IdTableGet(o.lambdasToEnv, i.fn) == nil:
-    IdTablePut(o.lambdasToEnv, i.fn, e)
+  if idTableGet(o.lambdasToEnv, i.fn) == nil:
+    idTablePut(o.lambdasToEnv, i.fn, e)
 
   # variable already captured:
-  if IdNodeTableGet(i.localsToAccess, local) != nil: return
+  if idNodeTableGet(i.localsToAccess, local) != nil: return
   if i.closureParam == nil: addClosureParam(i, e)
   
   # check which environment `local` belongs to:
@@ -281,7 +281,7 @@ proc captureVar(o: POuterContext, i: PInnerContext, local: PSym,
     access = indirectAccess(access, addDep(e, it, i.fn), info)
   access = indirectAccess(access, local, info)
   incl(o.capturedVars, local.id)
-  IdNodeTablePut(i.localsToAccess, local, access)
+  idNodeTablePut(i.localsToAccess, local, access)
 
 proc interestingVar(s: PSym): bool {.inline.} =
   result = s.kind in {skVar, skLet, skTemp, skForVar, skParam, skResult} and
@@ -309,11 +309,11 @@ proc gatherVars(o: POuterContext, i: PInnerContext, n: PNode) =
     elif isInnerProc(s, o.fn) and tfCapturesEnv in s.typ.flags and s != i.fn:
       # call to some other inner proc; we need to track the dependencies for
       # this:
-      let env = PEnv(IdTableGet(o.lambdasToEnv, i.fn))
-      if env == nil: InternalError(n.info, "no environment computed")
+      let env = PEnv(idTableGet(o.lambdasToEnv, i.fn))
+      if env == nil: internalError(n.info, "no environment computed")
       if o.currentEnv != env:
         discard addDep(o.currentEnv, env, i.fn)
-        InternalError(n.info, "too complex environment handling required")
+        internalError(n.info, "too complex environment handling required")
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: nil
   else:
     for k in countup(0, sonsLen(n) - 1): 
@@ -365,7 +365,7 @@ proc transformInnerProc(o: POuterContext, i: PInnerContext, n: PNode): PNode =
       result = makeClosure(s, i.closureParam, n.info)
     else:
       # captured symbol?
-      result = IdNodeTableGet(i.localsToAccess, n.sym)
+      result = idNodeTableGet(i.localsToAccess, n.sym)
   of nkLambdaKinds:
     result = transformInnerProc(o, i, n.sons[namePos])
   of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef, nkTemplateDef,
@@ -425,18 +425,18 @@ proc searchForInnerProcs(o: POuterContext, n: PNode) =
       if it.kind == nkCommentStmt: nil
       elif it.kind == nkIdentDefs:
         var L = sonsLen(it)
-        if it.sons[0].kind != nkSym: InternalError(it.info, "transformOuter")
+        if it.sons[0].kind != nkSym: internalError(it.info, "transformOuter")
         #echo "set: ", it.sons[0].sym.name.s, " ", o.currentBlock == nil
-        IdTablePut(o.localsToEnv, it.sons[0].sym, o.currentEnv)
+        idTablePut(o.localsToEnv, it.sons[0].sym, o.currentEnv)
         searchForInnerProcs(o, it.sons[L-1])
       elif it.kind == nkVarTuple:
         var L = sonsLen(it)
         for j in countup(0, L-3):
           #echo "set: ", it.sons[j].sym.name.s, " ", o.currentBlock == nil
-          IdTablePut(o.localsToEnv, it.sons[j].sym, o.currentEnv)
+          idTablePut(o.localsToEnv, it.sons[j].sym, o.currentEnv)
         searchForInnerProcs(o, it.sons[L-1])
       else:
-        InternalError(it.info, "transformOuter")
+        internalError(it.info, "transformOuter")
   of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef, nkTemplateDef, 
      nkIteratorDef:
     # don't recurse here:
@@ -490,7 +490,7 @@ proc generateClosureCreation(o: POuterContext, scope: PEnv): PNode =
       # maybe later: (sfByCopy in local.flags)
       # add ``env.param = param``
       result.add(newAsgnStmt(fieldAccess, newSymNode(local), env.info))
-    IdNodeTablePut(o.localsToAccess, local, fieldAccess)
+    idNodeTablePut(o.localsToAccess, local, fieldAccess)
   # add support for 'up' references:
   for e, field in items(scope.deps):
     # add ``env.up = env2``
@@ -503,7 +503,7 @@ proc transformOuterProc(o: POuterContext, n: PNode): PNode =
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: nil
   of nkSym:
     var local = n.sym
-    var closure = PEnv(IdTableGet(o.lambdasToEnv, local))
+    var closure = PEnv(idTableGet(o.lambdasToEnv, local))
     if closure != nil:
       # we need to replace the lambda with '(lambda, env)': 
       let a = closure.closure
@@ -521,7 +521,7 @@ proc transformOuterProc(o: POuterContext, n: PNode): PNode =
         return makeClosure(local, x, n.info)
     
     if not contains(o.capturedVars, local.id): return
-    var env = PEnv(IdTableGet(o.localsToEnv, local))
+    var env = PEnv(idTableGet(o.localsToEnv, local))
     if env == nil: return
     var scope = env.attachedNode
     assert scope.kind == nkStmtList
@@ -531,7 +531,7 @@ proc transformOuterProc(o: POuterContext, n: PNode): PNode =
     
     # change 'local' to 'closure.local', unless it's a 'byCopy' variable:
     # if sfByCopy notin local.flags:
-    result = IdNodeTableGet(o.localsToAccess, local)
+    result = idNodeTableGet(o.localsToAccess, local)
     assert result != nil, "cannot find: " & local.name.s
     # else it is captured by copy and this means that 'outer' should continue
     # to access the local as a local.
@@ -564,13 +564,13 @@ proc liftLambdas*(fn: PSym, body: PNode): PNode =
     let params = fn.typ.n
     for i in 1.. <params.len: 
       if params.sons[i].kind != nkSym:
-        InternalError(params.info, "liftLambdas: strange params")
+        internalError(params.info, "liftLambdas: strange params")
       let param = params.sons[i].sym
-      IdTablePut(o.localsToEnv, param, o.currentEnv)
+      idTablePut(o.localsToEnv, param, o.currentEnv)
     # put the 'result' into the environment so it can be captured:
     let ast = fn.ast
     if resultPos < sonsLen(ast) and ast.sons[resultPos].kind == nkSym:
-      IdTablePut(o.localsToEnv, ast.sons[resultPos].sym, o.currentEnv)
+      idTablePut(o.localsToEnv, ast.sons[resultPos].sym, o.currentEnv)
     searchForInnerProcs(o, body)
     discard transformOuterProc(o, body)
     result = ex
@@ -793,7 +793,7 @@ proc liftForLoop*(body: PNode): PNode =
     addSon(vpart, body[i])
 
   addSon(vpart, ast.emptyNode) # no explicit type
-  if not env.isnil:
+  if not env.isNil:
     call.sons[0] = makeClosure(call.sons[0].sym, env, body.info)
   addSon(vpart, call)
   addSon(v2, vpart)

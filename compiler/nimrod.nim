@@ -36,7 +36,7 @@ proc handleCmdLine() =
     writeCommandLineUsage()
   else:
     # Process command line arguments:
-    ProcessCmdLine(passCmd1, "")
+    processCmdLine(passCmd1, "")
     if gProjectName != "":
       try:
         gProjectFull = canonicalizePath(gProjectName)

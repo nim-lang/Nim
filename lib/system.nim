@@ -339,13 +339,13 @@ type
                      
   TResult* = enum Failure, Success
 
-proc sizeof*[T](x: T): natural {.magic: "SizeOf", noSideEffect.}
+proc sizeof*[T](x: T): Natural {.magic: "SizeOf", noSideEffect.}
   ## returns the size of ``x`` in bytes. Since this is a low-level proc,
   ## its usage is discouraged - using ``new`` for the most cases suffices
   ## that one never needs to know ``x``'s size. As a special semantic rule,
   ## ``x`` may also be a type identifier (``sizeof(int)`` is valid).
 
-proc `<`*[T](x: ordinal[T]): T {.magic: "UnaryLt", noSideEffect.}
+proc `<`*[T](x: Ordinal[T]): T {.magic: "UnaryLt", noSideEffect.}
   ## unary ``<`` that can be used for nice looking excluding ranges:
   ## 
   ## .. code-block:: nimrod
@@ -353,22 +353,22 @@ proc `<`*[T](x: ordinal[T]): T {.magic: "UnaryLt", noSideEffect.}
   ##
   ## Semantically this is the same as ``pred``. 
 
-proc succ*[T](x: ordinal[T], y = 1): T {.magic: "Succ", noSideEffect.}
+proc succ*[T](x: Ordinal[T], y = 1): T {.magic: "Succ", noSideEffect.}
   ## returns the ``y``-th successor of the value ``x``. ``T`` has to be
   ## an ordinal type. If such a value does not exist, ``EOutOfRange`` is raised
   ## or a compile time error occurs.
 
-proc pred*[T](x: ordinal[T], y = 1): T {.magic: "Pred", noSideEffect.}
+proc pred*[T](x: Ordinal[T], y = 1): T {.magic: "Pred", noSideEffect.}
   ## returns the ``y``-th predecessor of the value ``x``. ``T`` has to be
   ## an ordinal type. If such a value does not exist, ``EOutOfRange`` is raised
   ## or a compile time error occurs.
 
-proc inc*[T](x: var ordinal[T], y = 1) {.magic: "Inc", noSideEffect.}
+proc inc*[T](x: var Ordinal[T], y = 1) {.magic: "Inc", noSideEffect.}
   ## increments the ordinal ``x`` by ``y``. If such a value does not
   ## exist, ``EOutOfRange`` is raised or a compile time error occurs. This is a
   ## short notation for: ``x = succ(x, y)``.
 
-proc dec*[T](x: var ordinal[T], y = 1) {.magic: "Dec", noSideEffect.}
+proc dec*[T](x: var Ordinal[T], y = 1) {.magic: "Dec", noSideEffect.}
   ## decrements the ordinal ``x`` by ``y``. If such a value does not
   ## exist, ``EOutOfRange`` is raised or a compile time error occurs. This is a
   ## short notation for: ``x = pred(x, y)``.
@@ -591,43 +591,43 @@ type
   IntMax32 = bool|int|int8|int16|int32
 
 proc `+%` *(x, y: IntMax32): IntMax32 {.magic: "AddU", noSideEffect.}
-proc `+%` *(x, y: Int64): Int64 {.magic: "AddU", noSideEffect.}
+proc `+%` *(x, y: int64): int64 {.magic: "AddU", noSideEffect.}
   ## treats `x` and `y` as unsigned and adds them. The result is truncated to
   ## fit into the result. This implements modulo arithmetic. No overflow
   ## errors are possible.
 
 proc `-%` *(x, y: IntMax32): IntMax32 {.magic: "SubU", noSideEffect.}
-proc `-%` *(x, y: Int64): Int64 {.magic: "SubU", noSideEffect.}
+proc `-%` *(x, y: int64): int64 {.magic: "SubU", noSideEffect.}
   ## treats `x` and `y` as unsigned and subtracts them. The result is
   ## truncated to fit into the result. This implements modulo arithmetic.
   ## No overflow errors are possible.
 
 proc `*%` *(x, y: IntMax32): IntMax32 {.magic: "MulU", noSideEffect.}
-proc `*%` *(x, y: Int64): Int64 {.magic: "MulU", noSideEffect.}
+proc `*%` *(x, y: int64): int64 {.magic: "MulU", noSideEffect.}
   ## treats `x` and `y` as unsigned and multiplies them. The result is
   ## truncated to fit into the result. This implements modulo arithmetic.
   ## No overflow errors are possible.
 
 proc `/%` *(x, y: IntMax32): IntMax32 {.magic: "DivU", noSideEffect.}
-proc `/%` *(x, y: Int64): Int64 {.magic: "DivU", noSideEffect.}
+proc `/%` *(x, y: int64): int64 {.magic: "DivU", noSideEffect.}
   ## treats `x` and `y` as unsigned and divides them. The result is
   ## truncated to fit into the result. This implements modulo arithmetic.
   ## No overflow errors are possible.
 
 proc `%%` *(x, y: IntMax32): IntMax32 {.magic: "ModU", noSideEffect.}
-proc `%%` *(x, y: Int64): Int64 {.magic: "ModU", noSideEffect.}
+proc `%%` *(x, y: int64): int64 {.magic: "ModU", noSideEffect.}
   ## treats `x` and `y` as unsigned and compute the modulo of `x` and `y`.
   ## The result is truncated to fit into the result.
   ## This implements modulo arithmetic.
   ## No overflow errors are possible.
   
 proc `<=%` *(x, y: IntMax32): bool {.magic: "LeU", noSideEffect.}
-proc `<=%` *(x, y: Int64): bool {.magic: "LeU64", noSideEffect.}
+proc `<=%` *(x, y: int64): bool {.magic: "LeU64", noSideEffect.}
   ## treats `x` and `y` as unsigned and compares them.
   ## Returns true iff ``unsigned(x) <= unsigned(y)``.
 
 proc `<%` *(x, y: IntMax32): bool {.magic: "LtU", noSideEffect.}
-proc `<%` *(x, y: Int64): bool {.magic: "LtU64", noSideEffect.}
+proc `<%` *(x, y: int64): bool {.magic: "LtU64", noSideEffect.}
   ## treats `x` and `y` as unsigned and compares them.
   ## Returns true iff ``unsigned(x) < unsigned(y)``.
 
@@ -1064,7 +1064,7 @@ proc toFloat*(i: int): float {.
   ## fails, `EInvalidValue` is raised. However, on most platforms the
   ## conversion cannot fail.
 
-proc toBiggestFloat*(i: biggestint): biggestfloat {.
+proc toBiggestFloat*(i: BiggestInt): BiggestFloat {.
   magic: "ToBiggestFloat", noSideEffect, importc: "toBiggestFloat".}
   ## converts an biggestint `i` into a ``biggestfloat``. If the conversion
   ## fails, `EInvalidValue` is raised. However, on most platforms the
@@ -1076,7 +1076,7 @@ proc toInt*(f: float): int {.
   ## rounds `f` if it does not contain an integer value. If the conversion
   ## fails (because `f` is infinite for example), `EInvalidValue` is raised.
 
-proc toBiggestInt*(f: biggestfloat): biggestint {.
+proc toBiggestInt*(f: BiggestFloat): BiggestInt {.
   magic: "ToBiggestInt", noSideEffect, importc: "toBiggestInt".}
   ## converts a biggestfloat `f` into a ``biggestint``. Conversion
   ## rounds `f` if it does not contain an integer value. If the conversion
@@ -1118,19 +1118,19 @@ proc substr*(s: string, first, last: int): string {.
   ## or `limit`:idx: a string's length.
 
 when not defined(nimrodVM):
-  proc zeroMem*(p: Pointer, size: int) {.importc, noDecl.}
+  proc zeroMem*(p: pointer, size: int) {.importc, noDecl.}
     ## overwrites the contents of the memory at ``p`` with the value 0.
     ## Exactly ``size`` bytes will be overwritten. Like any procedure
     ## dealing with raw memory this is *unsafe*.
 
-  proc copyMem*(dest, source: Pointer, size: int) {.
+  proc copyMem*(dest, source: pointer, size: int) {.
     importc: "memcpy", header: "<string.h>".}
     ## copies the contents from the memory at ``source`` to the memory
     ## at ``dest``. Exactly ``size`` bytes will be copied. The memory
     ## regions may not overlap. Like any procedure dealing with raw
     ## memory this is *unsafe*.
 
-  proc moveMem*(dest, source: Pointer, size: int) {.
+  proc moveMem*(dest, source: pointer, size: int) {.
     importc: "memmove", header: "<string.h>".}
     ## copies the contents from the memory at ``source`` to the memory
     ## at ``dest``. Exactly ``size`` bytes will be copied. The memory
@@ -1138,7 +1138,7 @@ when not defined(nimrodVM):
     ## and is thus somewhat more safe than ``copyMem``. Like any procedure
     ## dealing with raw memory this is still *unsafe*, though.
 
-  proc equalMem*(a, b: Pointer, size: int): bool {.
+  proc equalMem*(a, b: pointer, size: int): bool {.
     importc: "equalMem", noDecl, noSideEffect.}
     ## compares the memory blocks ``a`` and ``b``. ``size`` bytes will
     ## be compared. If the blocks are equal, true is returned, false
@@ -1160,7 +1160,7 @@ when not defined(nimrodVM):
       ## containing zero, so it is somewhat safer than ``alloc``.
       ## The allocated memory belongs to its allocating thread!
       ## Use `allocShared0` to allocate from a shared heap.
-    proc realloc*(p: Pointer, newsize: int): pointer {.noconv, rtl, tags: [].}
+    proc realloc*(p: pointer, newsize: int): pointer {.noconv, rtl, tags: [].}
       ## grows or shrinks a given memory block. If p is **nil** then a new
       ## memory block is returned. In either way the block has at least
       ## ``newsize`` bytes. If ``newsize == 0`` and p is not **nil**
@@ -1168,7 +1168,7 @@ when not defined(nimrodVM):
       ## be freed with ``dealloc``.
       ## The allocated memory belongs to its allocating thread!
       ## Use `reallocShared` to reallocate from a shared heap.
-    proc dealloc*(p: Pointer) {.noconv, rtl, tags: [].}
+    proc dealloc*(p: pointer) {.noconv, rtl, tags: [].}
       ## frees the memory allocated with ``alloc``, ``alloc0`` or
       ## ``realloc``. This procedure is dangerous! If one forgets to
       ## free the memory a leak occurs; if one tries to access freed
@@ -1189,13 +1189,13 @@ when not defined(nimrodVM):
       ## ``reallocShared(block, 0)`` or ``deallocShared(block)``.
       ## The block is initialized with all bytes
       ## containing zero, so it is somewhat safer than ``allocShared``.
-    proc reallocShared*(p: Pointer, newsize: int): pointer {.noconv, rtl.}
+    proc reallocShared*(p: pointer, newsize: int): pointer {.noconv, rtl.}
       ## grows or shrinks a given memory block on the heap. If p is **nil**
       ## then a new memory block is returned. In either way the block has at least
       ## ``newsize`` bytes. If ``newsize == 0`` and p is not **nil**
       ## ``reallocShared`` calls ``deallocShared(p)``. In other cases the
       ## block has to be freed with ``deallocShared``.
-    proc deallocShared*(p: Pointer) {.noconv, rtl.}
+    proc deallocShared*(p: pointer) {.noconv, rtl.}
       ## frees the memory allocated with ``allocShared``, ``allocShared0`` or
       ## ``reallocShared``. This procedure is dangerous! If one forgets to
       ## free the memory a leak occurs; if one tries to access freed
@@ -1240,7 +1240,7 @@ proc `$` *(x: char): string {.magic: "CharToStr", noSideEffect.}
   ## The stingify operator for a character argument. Returns `x`
   ## converted to a string.
 
-proc `$` *(x: Cstring): string {.magic: "CStrToStr", noSideEffect.}
+proc `$` *(x: cstring): string {.magic: "CStrToStr", noSideEffect.}
   ## The stingify operator for a CString argument. Returns `x`
   ## converted to a string.
 
@@ -1428,7 +1428,7 @@ iterator items*(E: typedesc[enum]): E =
   for v in low(E)..high(E):
     yield v
 
-iterator pairs*[T](a: openarray[T]): tuple[key: int, val: T] {.inline.} =
+iterator pairs*[T](a: openArray[T]): tuple[key: int, val: T] {.inline.} =
   ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
   var i = 0
   while i < len(a):
@@ -1963,14 +1963,14 @@ when not defined(JS): #and not defined(NimrodVM):
         ## `useStdoutAsStdmsg` compile-time switch.
 
     proc open*(f: var TFile, filename: string,
-               mode: TFileMode = fmRead, bufSize: int = -1): Bool {.tags: [].}
+               mode: TFileMode = fmRead, bufSize: int = -1): bool {.tags: [].}
       ## Opens a file named `filename` with given `mode`.
       ##
       ## Default mode is readonly. Returns true iff the file could be opened.
       ## This throws no exception if the file could not be opened.
 
     proc open*(f: var TFile, filehandle: TFileHandle,
-               mode: TFileMode = fmRead): Bool {.tags: [].}
+               mode: TFileMode = fmRead): bool {.tags: [].}
       ## Creates a ``TFile`` from a `filehandle` with given `mode`.
       ##
       ## Default mode is readonly. Returns true iff the file could be opened.
@@ -1995,7 +1995,7 @@ when not defined(JS): #and not defined(NimrodVM):
     proc close*(f: TFile) {.importc: "fclose", header: "<stdio.h>", tags: [].}
       ## Closes the file.
 
-    proc endOfFile*(f: TFile): Bool {.tags: [].}
+    proc endOfFile*(f: TFile): bool {.tags: [].}
       ## Returns true iff `f` is at the end.
       
     proc readChar*(f: TFile): char {.
@@ -2021,10 +2021,10 @@ when not defined(JS): #and not defined(NimrodVM):
 
     proc write*(f: TFile, r: float32) {.tags: [FWriteIO].}
     proc write*(f: TFile, i: int) {.tags: [FWriteIO].}
-    proc write*(f: TFile, i: biggestInt) {.tags: [FWriteIO].}
-    proc write*(f: TFile, r: biggestFloat) {.tags: [FWriteIO].}
+    proc write*(f: TFile, i: BiggestInt) {.tags: [FWriteIO].}
+    proc write*(f: TFile, r: BiggestFloat) {.tags: [FWriteIO].}
     proc write*(f: TFile, s: string) {.tags: [FWriteIO].}
-    proc write*(f: TFile, b: Bool) {.tags: [FWriteIO].}
+    proc write*(f: TFile, b: bool) {.tags: [FWriteIO].}
     proc write*(f: TFile, c: char) {.tags: [FWriteIO].}
     proc write*(f: TFile, c: cstring) {.tags: [FWriteIO].}
     proc write*(f: TFile, a: varargs[string, `$`]) {.tags: [FWriteIO].}
@@ -2050,13 +2050,13 @@ when not defined(JS): #and not defined(NimrodVM):
     proc getFileSize*(f: TFile): int64 {.tags: [FReadIO].}
       ## retrieves the file size (in bytes) of `f`.
 
-    proc readBytes*(f: TFile, a: var openarray[int8], start, len: int): int {.
+    proc readBytes*(f: TFile, a: var openArray[int8], start, len: int): int {.
       tags: [FReadIO].}
       ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
       ## the actual number of bytes that have been read which may be less than
       ## `len` (if not as many bytes are remaining), but not greater.
 
-    proc readChars*(f: TFile, a: var openarray[char], start, len: int): int {.
+    proc readChars*(f: TFile, a: var openArray[char], start, len: int): int {.
       tags: [FReadIO].}
       ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
       ## the actual number of bytes that have been read which may be less than
@@ -2067,13 +2067,13 @@ when not defined(JS): #and not defined(NimrodVM):
       ## the actual number of bytes that have been read which may be less than
       ## `len` (if not as many bytes are remaining), but not greater.
 
-    proc writeBytes*(f: TFile, a: openarray[int8], start, len: int): int {.
+    proc writeBytes*(f: TFile, a: openArray[int8], start, len: int): int {.
       tags: [FWriteIO].}
       ## writes the bytes of ``a[start..start+len-1]`` to the file `f`. Returns
       ## the number of actual written bytes, which may be less than `len` in case
       ## of an error.
 
-    proc writeChars*(f: tFile, a: openarray[char], start, len: int): int {.
+    proc writeChars*(f: TFile, a: openArray[char], start, len: int): int {.
       tags: [FWriteIO].}
       ## writes the bytes of ``a[start..start+len-1]`` to the file `f`. Returns
       ## the number of actual written bytes, which may be less than `len` in case
@@ -2195,7 +2195,7 @@ when not defined(JS): #and not defined(NimrodVM):
     const
       GenericSeqSize = (2 * sizeof(int))
       
-    proc getDiscriminant(aa: Pointer, n: ptr TNimNode): int =
+    proc getDiscriminant(aa: pointer, n: ptr TNimNode): int =
       sysAssert(n.kind == nkCase, "getDiscriminant: node != nkCase")
       var d: int
       var a = cast[TAddress](aa)
@@ -2206,7 +2206,7 @@ when not defined(JS): #and not defined(NimrodVM):
       else: sysAssert(false, "getDiscriminant: invalid n.typ.size")
       return d
 
-    proc selectBranch(aa: Pointer, n: ptr TNimNode): ptr TNimNode =
+    proc selectBranch(aa: pointer, n: ptr TNimNode): ptr TNimNode =
       var discr = getDiscriminant(aa, n)
       if discr <% n.len:
         result = n.sons[discr]

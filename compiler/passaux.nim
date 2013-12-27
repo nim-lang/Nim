@@ -19,12 +19,12 @@ proc verboseOpen(s: PSym): PPassContext =
   
 proc verboseProcess(context: PPassContext, n: PNode): PNode = 
   result = n
-  if context != nil: InternalError("logpass: context is not nil")
+  if context != nil: internalError("logpass: context is not nil")
   if gVerbosity == 3: 
     # system.nim deactivates all hints, for verbosity:3 we want the processing
     # messages nonetheless, so we activate them again unconditionally:
     incl(msgs.gNotes, hintProcessing)
-    Message(n.info, hintProcessing, $idgen.gBackendId)
+    message(n.info, hintProcessing, $idgen.gBackendId)
   
 const verbosePass* = makePass(open = verboseOpen, process = verboseProcess)
 
@@ -34,7 +34,7 @@ proc cleanUp(c: PPassContext, n: PNode): PNode =
   if optDeadCodeElim in gGlobalOptions or n == nil: return 
   case n.kind
   of nkStmtList: 
-    for i in countup(0, sonsLen(n) - 1): discard cleanup(c, n.sons[i])
+    for i in countup(0, sonsLen(n) - 1): discard cleanUp(c, n.sons[i])
   of nkProcDef, nkMethodDef: 
     if n.sons[namePos].kind == nkSym: 
       var s = n.sons[namePos].sym

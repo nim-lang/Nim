@@ -22,7 +22,7 @@ type
     head*, tail*: PListEntry
     Counter*: int
 
-  TCompareProc* = proc (entry: PListEntry, closure: Pointer): bool {.nimcall.}
+  TCompareProc* = proc (entry: PListEntry, closure: pointer): bool {.nimcall.}
 
 proc initLinkedList*(list: var TLinkedList) = 
   list.Counter = 0
@@ -30,7 +30,7 @@ proc initLinkedList*(list: var TLinkedList) =
   list.tail = nil
 
 proc append*(list: var TLinkedList, entry: PListEntry) = 
-  Inc(list.counter)
+  inc(list.counter)
   entry.next = nil
   entry.prev = list.tail
   if list.tail != nil: 
@@ -54,11 +54,11 @@ proc appendStr*(list: var TLinkedList, data: string) =
   append(list, newStrEntry(data))
 
 proc includeStr*(list: var TLinkedList, data: string): bool = 
-  if Contains(list, data): return true
-  AppendStr(list, data)       # else: add to list
+  if contains(list, data): return true
+  appendStr(list, data)       # else: add to list
 
 proc prepend*(list: var TLinkedList, entry: PListEntry) = 
-  Inc(list.counter)
+  inc(list.counter)
   entry.prev = nil
   entry.next = list.head
   if list.head != nil: 
@@ -75,14 +75,14 @@ proc insertBefore*(list: var TLinkedList, pos, entry: PListEntry) =
   if pos == list.head: 
     prepend(list, entry)
   else: 
-    Inc(list.counter)
+    inc(list.counter)
     entry.next = pos
     entry.prev = pos.prev
     if pos.prev != nil: pos.prev.next = entry
     pos.prev = entry
  
 proc remove*(list: var TLinkedList, entry: PListEntry) = 
-  Dec(list.counter)
+  dec(list.counter)
   if entry == list.tail: 
     list.tail = entry.prev
   if entry == list.head: 
@@ -110,7 +110,7 @@ proc excludeStr*(list: var TLinkedList, data: string) =
     if PStrEntry(it).data == data: remove(list, it)
     it = nxt
 
-proc find*(list: TLinkedList, fn: TCompareProc, closure: Pointer): PListEntry = 
+proc find*(list: TLinkedList, fn: TCompareProc, closure: pointer): PListEntry = 
   result = list.head
   while result != nil:
     if fn(result, closure): return 

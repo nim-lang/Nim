@@ -187,7 +187,7 @@ proc readVerbatimSection(L: var TBaseLexer): PRope =
       buf = L.buf
       r.add(tnl)
     of '\0':
-      InternalError("ccgmerge: expected: " & NimMergeEndMark)
+      internalError("ccgmerge: expected: " & NimMergeEndMark)
       break
     else: 
       if atEndMark(buf, pos):
@@ -224,7 +224,7 @@ proc readTypeCache(L: var TBaseLexer, result: var TIdTable) =
     # XXX little hack: we create a "fake" type object with the correct Id
     # better would be to adapt the data structure to not even store the
     # object as key, but only the Id
-    IdTablePut(result, newFakeType(key), value.toRope)
+    idTablePut(result, newFakeType(key), value.toRope)
   inc L.bufpos
 
 proc readIntSet(L: var TBaseLexer, result: var TIntSet) =
@@ -250,13 +250,13 @@ proc processMergeInfo(L: var TBaseLexer, m: BModule) =
     of "typeInfo":  readIntSet(L, m.typeInfoMarker)
     of "labels":    m.labels = decodeVInt(L.buf, L.bufpos)
     of "hasframe":  m.FrameDeclared = decodeVInt(L.buf, L.bufpos) != 0
-    else: InternalError("ccgmerge: unkown key: " & k)
+    else: internalError("ccgmerge: unkown key: " & k)
 
 when not defined(nimhygiene):
   {.pragma: inject.}
   
 template withCFile(cfilename: string, body: stmt) {.immediate.} = 
-  var s = LLStreamOpen(cfilename, fmRead)
+  var s = llStreamOpen(cfilename, fmRead)
   if s == nil: return
   var L {.inject.}: TBaseLexer
   openBaseLexer(L, s)
@@ -300,9 +300,9 @@ proc readMergeSections(cfilename: string, m: var TMergeSections) =
         if sectionB >= 0 and sectionB <= high(TCProcSection).int:
           m.p[TCProcSection(sectionB)] = verbatim
         else:
-          InternalError("ccgmerge: unknown section: " & k)
+          internalError("ccgmerge: unknown section: " & k)
     else:
-      InternalError("ccgmerge: '*/' expected")
+      internalError("ccgmerge: '*/' expected")
 
 proc mergeRequired*(m: BModule): bool =
   for i in cfsHeaders..cfsProcs:

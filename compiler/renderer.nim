@@ -76,7 +76,7 @@ proc initSrcGen(g: var TSrcGen, renderFlags: TRenderFlags) =
 
 proc addTok(g: var TSrcGen, kind: TTokType, s: string) = 
   var length = len(g.tokens)
-  setlen(g.tokens, length + 1)
+  setLen(g.tokens, length + 1)
   g.tokens[length].kind = kind
   g.tokens[length].length = int16(len(s))
   add(g.buf, s)
@@ -127,7 +127,7 @@ proc putLong(g: var TSrcGen, kind: TTokType, s: string, lineLen: int) =
   addTok(g, kind, s)
   g.lineLen = lineLen
 
-proc toNimChar(c: Char): string = 
+proc toNimChar(c: char): string = 
   case c
   of '\0': result = "\\0"
   of '\x01'..'\x1F', '\x80'..'\xFF': result = "\\x" & strutils.toHex(ord(c), 2)
@@ -241,14 +241,14 @@ proc containsNL(s: string): bool =
 
 proc pushCom(g: var TSrcGen, n: PNode) = 
   var length = len(g.comStack)
-  setlen(g.comStack, length + 1)
+  setLen(g.comStack, length + 1)
   g.comStack[length] = n
 
 proc popAllComs(g: var TSrcGen) = 
-  setlen(g.comStack, 0)
+  setLen(g.comStack, 0)
 
 proc popCom(g: var TSrcGen) = 
-  setlen(g.comStack, len(g.comStack) - 1)
+  setLen(g.comStack, len(g.comStack) - 1)
 
 const 
   Space = " "
@@ -278,7 +278,7 @@ proc gcoms(g: var TSrcGen) =
   popAllComs(g)
 
 proc lsub(n: PNode): int
-proc litAux(n: PNode, x: biggestInt, size: int): string =
+proc litAux(n: PNode, x: BiggestInt, size: int): string =
   proc skip(t: PType): PType = 
     result = t
     while result.kind in {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
@@ -295,7 +295,7 @@ proc litAux(n: PNode, x: biggestInt, size: int): string =
   elif nfBase16 in n.flags: result = "0x" & toHex(x, size * 2)
   else: result = $x
 
-proc ulitAux(n: PNode, x: biggestInt, size: int): string = 
+proc ulitAux(n: PNode, x: BiggestInt, size: int): string = 
   if nfBase2 in n.flags: result = "0b" & toBin(x, size * 8)
   elif nfBase8 in n.flags: result = "0o" & toOct(x, size * 3)
   elif nfBase16 in n.flags: result = "0x" & toHex(x, size * 2)
@@ -341,7 +341,7 @@ proc atom(n: PNode): string =
     if (n.typ != nil) and (n.typ.sym != nil): result = n.typ.sym.name.s
     else: result = "[type node]"
   else: 
-    InternalError("rnimsyn.atom " & $n.kind)
+    internalError("rnimsyn.atom " & $n.kind)
     result = ""
   
 proc lcomma(n: PNode, start: int = 0, theEnd: int = - 1): int = 
@@ -1252,7 +1252,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkParRi, ")")
   else: 
     #nkNone, nkExplicitTypeListCall: 
-    InternalError(n.info, "rnimsyn.gsub(" & $n.kind & ')')
+    internalError(n.info, "rnimsyn.gsub(" & $n.kind & ')')
 
 proc renderTree(n: PNode, renderFlags: TRenderFlags = {}): string = 
   var g: TSrcGen
@@ -1263,7 +1263,7 @@ proc renderTree(n: PNode, renderFlags: TRenderFlags = {}): string =
 proc renderModule(n: PNode, filename: string, 
                   renderFlags: TRenderFlags = {}) =
   var
-    f: tfile
+    f: TFile
     g: TSrcGen
   initSrcGen(g, renderFlags)
   for i in countup(0, sonsLen(n) - 1):

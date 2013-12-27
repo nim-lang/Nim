@@ -88,7 +88,7 @@ proc pushTransCon(c: PTransf, t: PTransCon) =
   c.transCon = t
 
 proc popTransCon(c: PTransf) = 
-  if (c.transCon == nil): InternalError("popTransCon")
+  if (c.transCon == nil): internalError("popTransCon")
   c.transCon = c.transCon.next
 
 proc getCurrOwner(c: PTransf): PSym = 
@@ -126,7 +126,7 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
   else: 
     b = n
   while tc != nil: 
-    result = IdNodeTableGet(tc.mapping, b.sym)
+    result = idNodeTableGet(tc.mapping, b.sym)
     if result != nil: return
     tc = tc.next
   result = b
@@ -141,14 +141,14 @@ proc transformVarSection(c: PTransf, v: PNode): PTransNode =
     if it.kind == nkCommentStmt: 
       result[i] = PTransNode(it)
     elif it.kind == nkIdentDefs: 
-      if it.sons[0].kind != nkSym: InternalError(it.info, "transformVarSection")
+      if it.sons[0].kind != nkSym: internalError(it.info, "transformVarSection")
       InternalAssert(it.len == 3)
       var newVar = copySym(it.sons[0].sym)
       incl(newVar.flags, sfFromGeneric)
       # fixes a strange bug for rodgen:
       #include(it.sons[0].sym.flags, sfFromGeneric);
       newVar.owner = getCurrOwner(c)
-      IdNodeTablePut(c.transCon.mapping, it.sons[0].sym, newSymNode(newVar))
+      idNodeTablePut(c.transCon.mapping, it.sons[0].sym, newSymNode(newVar))
       var defs = newTransNode(nkIdentDefs, it.info, 3)
       if importantComments():
         # keep documentation information:
@@ -159,14 +159,14 @@ proc transformVarSection(c: PTransf, v: PNode): PTransNode =
       result[i] = defs
     else: 
       if it.kind != nkVarTuple: 
-        InternalError(it.info, "transformVarSection: not nkVarTuple")
+        internalError(it.info, "transformVarSection: not nkVarTuple")
       var L = sonsLen(it)
       var defs = newTransNode(it.kind, it.info, L)
       for j in countup(0, L-3): 
         var newVar = copySym(it.sons[j].sym)
         incl(newVar.flags, sfFromGeneric)
         newVar.owner = getCurrOwner(c)
-        IdNodeTablePut(c.transCon.mapping, it.sons[j].sym, newSymNode(newVar))
+        idNodeTablePut(c.transCon.mapping, it.sons[j].sym, newSymNode(newVar))
         defs[j] = newSymNode(newVar).PTransNode
       assert(it.sons[L-2].kind == nkEmpty)
       defs[L-1] = transform(c, it.sons[L-1])
@@ -179,9 +179,9 @@ proc transformConstSection(c: PTransf, v: PNode): PTransNode =
     if it.kind == nkCommentStmt:
       result[i] = PTransNode(it)
     else:
-      if it.kind != nkConstDef: InternalError(it.info, "transformConstSection")
+      if it.kind != nkConstDef: internalError(it.info, "transformConstSection")
       if it.sons[0].kind != nkSym:
-        InternalError(it.info, "transformConstSection")
+        internalError(it.info, "transformConstSection")
       if sfFakeConst in it[0].sym.flags:
         var b = newNodeI(nkConstDef, it.info)
         addSon(b, it[0])
@@ -429,7 +429,7 @@ proc findWrongOwners(c: PTransf, n: PNode) =
 proc transformFor(c: PTransf, n: PNode): PTransNode = 
   # generate access statements for the parameters (unless they are constant)
   # put mapping from formal parameters to actual parameters
-  if n.kind != nkForStmt: InternalError(n.info, "transformFor")
+  if n.kind != nkForStmt: internalError(n.info, "transformFor")
 
   var length = sonsLen(n)
   var call = n.sons[length - 2]
@@ -454,7 +454,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   var newC = newTransCon(getCurrOwner(c))
   newC.forStmt = n
   newC.forLoopBody = loopBody
-  if iter.kind != skIterator: InternalError(call.info, "transformFor") 
+  if iter.kind != skIterator: internalError(call.info, "transformFor") 
   # generate access statements for the parameters (unless they are constant)
   pushTransCon(c, newC)
   for i in countup(1, sonsLen(call) - 1): 
@@ -462,16 +462,16 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
     var formal = skipTypes(iter.typ, abstractInst).n.sons[i].sym 
     case putArgInto(arg, formal.typ)
     of paDirectMapping: 
-      IdNodeTablePut(newC.mapping, formal, arg)
+      idNodeTablePut(newC.mapping, formal, arg)
     of paFastAsgn: 
       # generate a temporary and produce an assignment statement:
       var temp = newTemp(c, formal.typ, formal.info)
       addVar(v, newSymNode(temp))
       add(result, newAsgnStmt(c, newSymNode(temp), arg.ptransNode))
-      IdNodeTablePut(newC.mapping, formal, newSymNode(temp))
+      idNodeTablePut(newC.mapping, formal, newSymNode(temp))
     of paVarAsgn:
       assert(skipTypes(formal.typ, abstractInst).kind == tyVar)
-      IdNodeTablePut(newC.mapping, formal, arg)
+      idNodeTablePut(newC.mapping, formal, arg)
       # XXX BUG still not correct if the arg has a side effect!
   var body = iter.getBody
   pushInfoContext(n.info)

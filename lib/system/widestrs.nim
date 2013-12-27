@@ -107,13 +107,13 @@ proc newWideCString*(s: cstring): WideCString =
     proc c_strlen(a: cstring): int {.
       header: "<string.h>", noSideEffect, importc: "strlen".}
 
-  let L = cstrlen(s)
+  let L = c_strlen(s)
   result = newWideCString(s, L)
 
 proc newWideCString*(s: string): WideCString =
   result = newWideCString(s, s.len)
 
-proc `$`*(w: wideCString, estimate: int): string =
+proc `$`*(w: WideCString, estimate: int): string =
   result = newStringOfCap(estimate + estimate shr 2)
 
   var i = 0

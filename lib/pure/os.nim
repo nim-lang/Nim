@@ -189,7 +189,7 @@ proc osErrorMsg*(): string {.rtl, extern: "nos$1", deprecated.} =
     var err = getLastError()
     if err != 0'i32:
       when useWinUnicode:
-        var msgbuf: widecstring
+        var msgbuf: WideCString
         if formatMessageW(0x00000100 or 0x00001000 or 0x00000200,
                           nil, err, 0, addr(msgbuf), 0, nil) != 0'i32:
           result = $msgbuf
@@ -237,7 +237,7 @@ proc osErrorMsg*(errorCode: TOSErrorCode): string =
   when defined(Windows):
     if errorCode != TOSErrorCode(0'i32):
       when useWinUnicode:
-        var msgbuf: widecstring
+        var msgbuf: WideCString
         if formatMessageW(0x00000100 or 0x00001000 or 0x00000200,
                         nil, errorCode.int32, 0, addr(msgbuf), 0, nil) != 0'i32:
           result = $msgbuf
@@ -282,7 +282,7 @@ proc osLastError*(): TOSErrorCode =
   ## immediately after an OS call fails. On POSIX systems this is not a problem.
 
   when defined(windows):
-    result = TOSErrorCode(GetLastError())
+    result = TOSErrorCode(getLastError())
   else:
     result = TOSErrorCode(errno)
 {.pop.}
@@ -394,11 +394,11 @@ proc getLastModificationTime*(file: string): TTime {.rtl, extern: "nos$1".} =
     if stat(file, res) < 0'i32: osError(osLastError())
     return res.st_mtime
   else:
-    var f: TWIN32_Find_Data
+    var f: TWIN32_FIND_DATA
     var h = findFirstFile(file, f)
     if h == -1'i32: osError(osLastError())
     result = winTimeToUnixTime(rdFileTime(f.ftLastWriteTime))
-    findclose(h)
+    findClose(h)
 
 proc getLastAccessTime*(file: string): TTime {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s last read or write access time.
@@ -407,11 +407,11 @@ proc getLastAccessTime*(file: string): TTime {.rtl, extern: "nos$1".} =
     if stat(file, res) < 0'i32: osError(osLastError())
     return res.st_atime
   else:
-    var f: TWIN32_Find_Data
+    var f: TWIN32_FIND_DATA
     var h = findFirstFile(file, f)
     if h == -1'i32: osError(osLastError())
     result = winTimeToUnixTime(rdFileTime(f.ftLastAccessTime))
-    findclose(h)
+    findClose(h)
 
 proc getCreationTime*(file: string): TTime {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s creation time.
@@ -420,11 +420,11 @@ proc getCreationTime*(file: string): TTime {.rtl, extern: "nos$1".} =
     if stat(file, res) < 0'i32: osError(osLastError())
     return res.st_ctime
   else:
-    var f: TWIN32_Find_Data
+    var f: TWIN32_FIND_DATA
     var h = findFirstFile(file, f)
     if h == -1'i32: osError(osLastError())
     result = winTimeToUnixTime(rdFileTime(f.ftCreationTime))
-    findclose(h)
+    findClose(h)
 
 proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1".} =
   ## Returns true if the file `a` is newer than file `b`, i.e. if `a`'s
@@ -670,7 +670,7 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
   when defined(windows):
     const bufsize = 3072'i32
     when useWinUnicode:
-      var unused: widecstring
+      var unused: WideCString
       var res = newWideCString("", bufsize div 2)
       var L = getFullPathNameW(newWideCString(filename), bufsize, res, unused)
       if L <= 0'i32 or L >= bufsize:
@@ -957,7 +957,7 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
 proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [FReadIO, FWriteIO].} =
   ## Moves a file from `source` to `dest`. If this fails, `EOS` is raised.
-  if crename(source, dest) != 0'i32:
+  if c_rename(source, dest) != 0'i32:
     raise newException(EOS, $strerror(errno))
 
 when not defined(ENOENT) and not defined(Windows):
@@ -1005,7 +1005,7 @@ proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   ## the process has finished. To execute a program without having a
   ## shell involved, use the `execProcess` proc of the `osproc`
   ## module.
-  result = csystem(command)
+  result = c_system(command)
 
 # Environment handling cannot be put into RTL, because the ``envPairs``
 # iterator depends on ``environment``.
@@ -1018,7 +1018,7 @@ when defined(windows):
   # because we support Windows GUI applications, things get really
   # messy here...
   when useWinUnicode:
-    proc strEnd(cstr: wideCString, c = 0'i32): wideCString {.
+    proc strEnd(cstr: WideCString, c = 0'i32): WideCString {.
       importc: "wcschr", header: "<string.h>".}
   else:
     proc strEnd(cstr: cstring, c = 0'i32): cstring {.
@@ -1035,9 +1035,9 @@ when defined(windows):
         while True:
           var eend = strEnd(e)
           add(environment, $e)
-          e = cast[wideCString](cast[TAddress](eend)+2)
+          e = cast[WideCString](cast[TAddress](eend)+2)
           if eend[1].int == 0: break
-        discard FreeEnvironmentStringsW(env)
+        discard freeEnvironmentStringsW(env)
       else:
         var
           env = getEnvironmentStringsA()
@@ -1099,14 +1099,14 @@ proc getEnv*(key: string): TaintedString {.tags: [FReadEnv].} =
   if i >= 0:
     return TaintedString(substr(environment[i], find(environment[i], '=')+1))
   else:
-    var env = cgetenv(key)
+    var env = c_getenv(key)
     if env == nil: return TaintedString("")
     result = TaintedString($env)
 
 proc existsEnv*(key: string): bool {.tags: [FReadEnv].} =
   ## Checks whether the environment variable named `key` exists.
   ## Returns true if it exists, false otherwise.
-  if cgetenv(key) != nil: return true
+  if c_getenv(key) != nil: return true
   else: return findEnvVar(key) >= 0
 
 proc putEnv*(key, val: string) {.tags: [FWriteEnv].} =
@@ -1152,15 +1152,15 @@ iterator walkFiles*(pattern: string): string {.tags: [FReadDir].} =
   ## notation is supported.
   when defined(windows):
     var
-      f: TWin32FindData
+      f: TWIN32_FIND_DATA
       res: int
-    res = findfirstFile(pattern, f)
+    res = findFirstFile(pattern, f)
     if res != -1:
       while true:
         if not skipFindData(f):
           yield splitFile(pattern).dir / extractFilename(getFilename(f))
         if findnextFile(res, f) == 0'i32: break
-      findclose(res)
+      findClose(res)
   else: # here we use glob
     var
       f: TGlob
@@ -1205,8 +1205,8 @@ iterator walkDir*(dir: string): tuple[kind: TPathComponent, path: string] {.
   ##   dirA/fileA1.txt
   ##   dirA/fileA2.txt
   when defined(windows):
-    var f: TWIN32_Find_Data
-    var h = findfirstFile(dir / "*", f)
+    var f: TWIN32_FIND_DATA
+    var h = findFirstFile(dir / "*", f)
     if h != -1:
       while true:
         var k = pcFile
@@ -1215,7 +1215,7 @@ iterator walkDir*(dir: string): tuple[kind: TPathComponent, path: string] {.
             k = pcDir
           yield (k, dir / extractFilename(getFilename(f)))
         if findnextFile(h, f) == 0'i32: break
-      findclose(h)
+      findClose(h)
   else:
     var d = openDir(dir)
     if d != nil:
@@ -1553,7 +1553,7 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [FReadIO].} =
   # /proc/<pid>/file
   when defined(windows):
     when useWinUnicode:
-      var buf = cast[wideCString](alloc(256*2))
+      var buf = cast[WideCString](alloc(256*2))
       var len = getModuleFileNameW(0, buf, 256)
       result = buf$len
     else:
@@ -1614,15 +1614,15 @@ proc sleep*(milsecs: int) {.rtl, extern: "nos$1", tags: [FTime].} =
     a.tv_nsec = (milsecs mod 1000) * 1000 * 1000
     discard posix.nanosleep(a, b)
 
-proc getFileSize*(file: string): biggestInt {.rtl, extern: "nos$1",
+proc getFileSize*(file: string): BiggestInt {.rtl, extern: "nos$1",
   tags: [FReadIO].} =
   ## returns the file size of `file`. Can raise ``EOS``.
   when defined(windows):
-    var a: TWin32FindData
-    var resA = findfirstFile(file, a)
+    var a: TWIN32_FIND_DATA
+    var resA = findFirstFile(file, a)
     if resA == -1: osError(osLastError())
     result = rdFileSize(a)
-    findclose(resA)
+    findClose(resA)
   else:
     var f: TFile
     if open(f, file):

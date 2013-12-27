@@ -165,7 +165,7 @@ proc lookupInRecord(n: PNode, field: PIdent): PSym =
       result = lookupInRecord(n.sons[i], field)
       if result != nil: return 
   of nkRecCase: 
-    if (n.sons[0].kind != nkSym): InternalError(n.info, "lookupInRecord")
+    if (n.sons[0].kind != nkSym): internalError(n.info, "lookupInRecord")
     result = lookupInRecord(n.sons[0], field)
     if result != nil: return 
     for i in countup(1, sonsLen(n) - 1): 
@@ -202,7 +202,7 @@ proc spaces(x: int): PRope =
   # returns x spaces
   result = toRope(repeatChar(x))
 
-proc toYamlChar(c: Char): string = 
+proc toYamlChar(c: char): string = 
   case c
   of '\0'..'\x1F', '\x80'..'\xFF': result = "\\u" & strutils.toHex(ord(c), 4)
   of '\'', '\"', '\\': result = '\\' & c
@@ -261,7 +261,7 @@ proc strTableToYaml(n: TStrTable, marker: var TIntSet, indent: int,
   app(result, "]")
   assert(mycount == n.counter)
 
-proc ropeConstr(indent: int, c: openarray[PRope]): PRope = 
+proc ropeConstr(indent: int, c: openArray[PRope]): PRope = 
   # array of (name, value) pairs
   var istr = spaces(indent + 2)
   result = toRope("{")
@@ -276,7 +276,7 @@ proc symToYamlAux(n: PSym, marker: var TIntSet, indent: int,
                   maxRecDepth: int): PRope = 
   if n == nil: 
     result = toRope("null")
-  elif ContainsOrIncl(marker, n.id): 
+  elif containsOrIncl(marker, n.id): 
     result = ropef("\"$1 @$2\"", [toRope(n.name.s), toRope(
         strutils.toHex(cast[TAddress](n), sizeof(n) * 2))])
   else: 
@@ -297,7 +297,7 @@ proc typeToYamlAux(n: PType, marker: var TIntSet, indent: int,
                    maxRecDepth: int): PRope = 
   if n == nil: 
     result = toRope("null")
-  elif ContainsOrIncl(marker, n.id): 
+  elif containsOrIncl(marker, n.id): 
     result = ropef("\"$1 @$2\"", [toRope($n.kind), toRope(
         strutils.toHex(cast[TAddress](n), sizeof(n) * 2))])
   else: 
@@ -314,7 +314,7 @@ proc typeToYamlAux(n: PType, marker: var TIntSet, indent: int,
                                  makeYamlString($n.kind), 
                                  toRope("sym"), symToYamlAux(n.sym, marker, 
         indent + 2, maxRecDepth - 1), toRope("n"), treeToYamlAux(n.n, marker, 
-        indent + 2, maxRecDepth - 1), toRope("flags"), FlagsToStr(n.flags), 
+        indent + 2, maxRecDepth - 1), toRope("flags"), flagsToStr(n.flags), 
                                  toRope("callconv"), 
                                  makeYamlString(CallingConvToStr[n.callConv]), 
                                  toRope("size"), toRope(n.size), 
@@ -335,7 +335,7 @@ proc treeToYamlAux(n: PNode, marker: var TIntSet, indent: int,
         appf(result, ",$N$1\"intVal\": $2", [istr, toRope(n.intVal)])
       of nkFloatLit, nkFloat32Lit, nkFloat64Lit: 
         appf(result, ",$N$1\"floatVal\": $2", 
-            [istr, toRope(n.floatVal.ToStrMaxPrecision)])
+            [istr, toRope(n.floatVal.toStrMaxPrecision)])
       of nkStrLit..nkTripleStrLit: 
         appf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
       of nkSym: 
@@ -359,15 +359,15 @@ proc treeToYamlAux(n: PNode, marker: var TIntSet, indent: int,
     appf(result, "$N$1}", [spaces(indent)])
 
 proc treeToYaml(n: PNode, indent: int = 0, maxRecDepth: int = - 1): PRope = 
-  var marker = InitIntSet()
+  var marker = initIntSet()
   result = treeToYamlAux(n, marker, indent, maxRecDepth)
 
 proc typeToYaml(n: PType, indent: int = 0, maxRecDepth: int = - 1): PRope = 
-  var marker = InitIntSet()
+  var marker = initIntSet()
   result = typeToYamlAux(n, marker, indent, maxRecDepth)
 
 proc symToYaml(n: PSym, indent: int = 0, maxRecDepth: int = - 1): PRope = 
-  var marker = InitIntSet()
+  var marker = initIntSet()
   result = symToYamlAux(n, marker, indent, maxRecDepth)
 
 proc debugTree(n: PNode, indent: int, maxRecDepth: int): PRope
@@ -405,7 +405,7 @@ proc debugTree(n: PNode, indent: int, maxRecDepth: int): PRope =
         appf(result, ",$N$1\"intVal\": $2", [istr, toRope(n.intVal)])
       of nkFloatLit, nkFloat32Lit, nkFloat64Lit: 
         appf(result, ",$N$1\"floatVal\": $2", 
-            [istr, toRope(n.floatVal.ToStrMaxPrecision)])
+            [istr, toRope(n.floatVal.toStrMaxPrecision)])
       of nkStrLit..nkTripleStrLit: 
         appf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
       of nkSym: 
@@ -463,7 +463,7 @@ proc objectSetContains(t: TObjectSet, obj: PObject): bool =
   result = false
 
 proc objectSetRawInsert(data: var TObjectSeq, obj: PObject) = 
-  var h: THash = HashNode(obj) and high(data)
+  var h: THash = hashNode(obj) and high(data)
   while data[h] != nil: 
     assert(data[h] != obj)
     h = nextTry(h, high(data))
@@ -484,7 +484,7 @@ proc objectSetIncl(t: var TObjectSet, obj: PObject) =
 
 proc objectSetContainsOrIncl(t: var TObjectSet, obj: PObject): bool = 
   # returns true if obj is already in the string table:
-  var h: THash = HashNode(obj) and high(t.data)
+  var h: THash = hashNode(obj) and high(t.data)
   while true: 
     var it = t.data[h]
     if it == nil: break 
@@ -541,7 +541,7 @@ proc tableEnlarge(t: var TTable) =
   swap(t.data, n)
 
 proc tablePut(t: var TTable, key, val: PObject) = 
-  var index = TableRawGet(t, key)
+  var index = tableRawGet(t, key)
   if index >= 0: 
     t.data[index].val = val
   else: 
@@ -585,12 +585,12 @@ proc strTableEnlarge(t: var TStrTable) =
   var n: TSymSeq
   newSeq(n, len(t.data) * growthFactor)
   for i in countup(0, high(t.data)): 
-    if t.data[i] != nil: StrTableRawInsert(n, t.data[i])
+    if t.data[i] != nil: strTableRawInsert(n, t.data[i])
   swap(t.data, n)
 
 proc strTableAdd(t: var TStrTable, n: PSym) = 
-  if mustRehash(len(t.data), t.counter): StrTableEnlarge(t)
-  StrTableRawInsert(t.data, n)
+  if mustRehash(len(t.data), t.counter): strTableEnlarge(t)
+  strTableRawInsert(t.data, n)
   inc(t.counter)
 
 proc strTableIncl*(t: var TStrTable, n: PSym): bool {.discardable.} =
@@ -607,8 +607,8 @@ proc strTableIncl*(t: var TStrTable, n: PSym): bool {.discardable.} =
       return true             # found it
     h = nextTry(h, high(t.data))
   if mustRehash(len(t.data), t.counter):
-    StrTableEnlarge(t)
-    StrTableRawInsert(t.data, n)
+    strTableEnlarge(t)
+    strTableRawInsert(t.data, n)
   else:
     assert(t.data[h] == nil)
     t.data[h] = n
@@ -627,7 +627,7 @@ proc initIdentIter(ti: var TIdentIter, tab: TStrTable, s: PIdent): PSym =
   ti.h = s.h
   ti.name = s
   if tab.Counter == 0: result = nil
-  else: result = NextIdentIter(ti, tab)
+  else: result = nextIdentIter(ti, tab)
   
 proc nextIdentIter(ti: var TIdentIter, tab: TStrTable): PSym = 
   var h, start: THash
@@ -649,7 +649,7 @@ proc nextIdentExcluding*(ti: var TIdentIter, tab: TStrTable,
   var start = h
   result = tab.data[h]
   while result != nil: 
-    if result.Name.id == ti.name.id and not Contains(excluding, result.id): 
+    if result.Name.id == ti.name.id and not contains(excluding, result.id): 
       break
     h = nextTry(h, high(tab.data))
     if h == start: 
@@ -657,21 +657,21 @@ proc nextIdentExcluding*(ti: var TIdentIter, tab: TStrTable,
       break 
     result = tab.data[h]
   ti.h = nextTry(h, high(tab.data))
-  if result != nil and Contains(excluding, result.id): result = nil
+  if result != nil and contains(excluding, result.id): result = nil
 
 proc firstIdentExcluding*(ti: var TIdentIter, tab: TStrTable, s: PIdent,
                           excluding: TIntSet): PSym = 
   ti.h = s.h
   ti.name = s
   if tab.Counter == 0: result = nil
-  else: result = NextIdentExcluding(ti, tab, excluding)
+  else: result = nextIdentExcluding(ti, tab, excluding)
 
 proc initTabIter(ti: var TTabIter, tab: TStrTable): PSym = 
   ti.h = 0                    # we start by zero ...
   if tab.counter == 0: 
     result = nil              # FIX 1: removed endless loop
   else: 
-    result = NextIter(ti, tab)
+    result = nextIter(ti, tab)
   
 proc nextIter(ti: var TTabIter, tab: TStrTable): PSym = 
   result = nil
@@ -736,7 +736,7 @@ proc idTablePut(t: var TIdTable, key: PIdObj, val: PObject) =
   var 
     index: int
     n: TIdPairSeq
-  index = IdTableRawGet(t, key.id)
+  index = idTableRawGet(t, key.id)
   if index >= 0: 
     assert(t.data[index].key != nil)
     t.data[index].val = val
@@ -745,10 +745,10 @@ proc idTablePut(t: var TIdTable, key: PIdObj, val: PObject) =
       newSeq(n, len(t.data) * growthFactor)
       for i in countup(0, high(t.data)): 
         if t.data[i].key != nil: 
-          IdTableRawInsert(n, t.data[i].key, t.data[i].val)
+          idTableRawInsert(n, t.data[i].key, t.data[i].val)
       assert(hasEmptySlot(n))
       swap(t.data, n)
-    IdTableRawInsert(t.data, key, val)
+    idTableRawInsert(t.data, key, val)
     inc(t.counter)
 
 iterator idTablePairs*(t: TIdTable): tuple[key: PIdObj, val: PObject] =
@@ -785,7 +785,7 @@ proc idNodeTableRawInsert(data: var TIdNodePairSeq, key: PIdObj, val: PNode) =
   data[h].val = val
 
 proc idNodeTablePut(t: var TIdNodeTable, key: PIdObj, val: PNode) = 
-  var index = IdNodeTableRawGet(t, key)
+  var index = idNodeTableRawGet(t, key)
   if index >= 0: 
     assert(t.data[index].key != nil)
     t.data[index].val = val
@@ -837,7 +837,7 @@ proc iiTableRawInsert(data: var TIIPairSeq, key, val: int) =
   data[h].val = val
 
 proc iiTablePut(t: var TIITable, key, val: int) = 
-  var index = IITableRawGet(t, key)
+  var index = iiTableRawGet(t, key)
   if index >= 0: 
     assert(t.data[index].key != InvalidKey)
     t.data[index].val = val

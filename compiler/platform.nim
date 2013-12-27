@@ -200,10 +200,10 @@ proc setTarget*(o: TSystemOS, c: TSystemCPU) =
   #echo "new Target: OS: ", o, " CPU: ", c
   targetCPU = c
   targetOS = o
-  intSize = cpu[c].intSize div 8
-  floatSize = cpu[c].floatSize div 8
-  ptrSize = cpu[c].bit div 8
-  tnl = os[o].newLine
+  intSize = CPU[c].intSize div 8
+  floatSize = CPU[c].floatSize div 8
+  ptrSize = CPU[c].bit div 8
+  tnl = OS[o].newLine
 
 proc nameToOS(name: string): TSystemOS = 
   for i in countup(succ(osNone), high(TSystemOS)): 

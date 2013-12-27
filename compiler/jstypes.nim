@@ -37,7 +37,7 @@ proc genObjectFields(p: PProc, typ: PType, n: PNode): PRope =
                    [mangleName(field), s, makeJSString(field.name.s)])
   of nkRecCase: 
     length = sonsLen(n)
-    if (n.sons[0].kind != nkSym): InternalError(n.info, "genObjectFields")
+    if (n.sons[0].kind != nkSym): internalError(n.info, "genObjectFields")
     field = n.sons[0].sym
     s = genTypeInfo(p, field.typ)
     for i in countup(1, length - 1): 
@@ -98,7 +98,7 @@ proc genEnumInfo(p: PProc, typ: PType, name: PRope) =
   let length = sonsLen(typ.n)
   var s: PRope = nil
   for i in countup(0, length - 1): 
-    if (typ.n.sons[i].kind != nkSym): InternalError(typ.n.info, "genEnumInfo")
+    if (typ.n.sons[i].kind != nkSym): internalError(typ.n.info, "genEnumInfo")
     let field = typ.n.sons[i].sym
     if i > 0: app(s, ", " & tnl)
     let extName = if field.ast == nil: field.name.s else: field.ast.strVal
@@ -119,7 +119,7 @@ proc genTypeInfo(p: PProc, typ: PType): PRope =
   var t = typ
   if t.kind == tyGenericInst: t = lastSon(t)
   result = ropef("NTI$1", [toRope(t.id)])
-  if ContainsOrIncl(p.g.TypeInfoGenerated, t.id): return 
+  if containsOrIncl(p.g.TypeInfoGenerated, t.id): return 
   case t.kind
   of tyDistinct: 
     result = genTypeInfo(p, typ.sons[0])
@@ -145,4 +145,4 @@ proc genTypeInfo(p: PProc, typ: PType): PRope =
   of tyEnum: genEnumInfo(p, t, result)
   of tyObject: genObjectInfo(p, t, result)
   of tyTuple: genTupleInfo(p, t, result)
-  else: InternalError("genTypeInfo(" & $t.kind & ')')
+  else: internalError("genTypeInfo(" & $t.kind & ')')

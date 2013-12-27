@@ -123,9 +123,9 @@ proc commandCompileToJS =
   #incl(gGlobalOptions, optSafeCode)
   setTarget(osJS, cpuJS)
   #initDefines()
-  DefineSymbol("nimrod") # 'nimrod' is always defined
-  DefineSymbol("ecmascript") # For backward compatibility
-  DefineSymbol("js")
+  defineSymbol("nimrod") # 'nimrod' is always defined
+  defineSymbol("ecmascript") # For backward compatibility
+  defineSymbol("js")
   semanticPasses()
   registerPass(jsgenPass)
   compileProject()
@@ -134,7 +134,7 @@ proc interactivePasses =
   #incl(gGlobalOptions, optSafeCode)
   #setTarget(osNimrodVM, cpuNimrodVM)
   initDefines()
-  DefineSymbol("nimrodvm")
+  defineSymbol("nimrodvm")
   when hasFFI: DefineSymbol("nimffi")
   registerPass(verbosePass)
   registerPass(semPass)
@@ -142,14 +142,14 @@ proc interactivePasses =
 
 proc commandInteractive =
   msgs.gErrorMax = high(int)  # do not stop after first error
-  InteractivePasses()
+  interactivePasses()
   compileSystemModule()
   if commandArgs.len > 0:
-    discard CompileModule(fileInfoIdx(gProjectFull), {})
+    discard compileModule(fileInfoIdx(gProjectFull), {})
   else:
     var m = makeStdinModule()
     incl(m.flags, sfMainModule)
-    processModule(m, LLStreamOpenStdIn(), nil)
+    processModule(m, llStreamOpenStdIn(), nil)
 
 const evalPasses = [verbosePass, semPass, evalPass]
 
@@ -157,8 +157,8 @@ proc evalNim(nodes: PNode, module: PSym) =
   carryPasses(nodes, module, evalPasses)
 
 proc commandEval(exp: string) =
-  if SystemModule == nil:
-    InteractivePasses()
+  if systemModule == nil:
+    interactivePasses()
     compileSystemModule()
   var echoExp = "echo \"eval\\t\", " & "repr(" & exp & ")"
   evalNim(echoExp.parseString, makeStdinModule())
@@ -178,7 +178,7 @@ proc commandPretty =
 
 proc commandScan =
   var f = addFileExt(mainCommandArg(), nimExt)
-  var stream = LLStreamOpen(f, fmRead)
+  var stream = llStreamOpen(f, fmRead)
   if stream != nil:
     var
       L: TLexer
@@ -187,9 +187,9 @@ proc commandScan =
     openLexer(L, f, stream)
     while true:
       rawGetTok(L, tok)
-      PrintTok(tok)
+      printTok(tok)
       if tok.tokType == tkEof: break
-    CloseLexer(L)
+    closeLexer(L)
   else:
     rawMessage(errCannotOpenFile, f)
 
@@ -200,7 +200,7 @@ proc commandSuggest =
     # issuing the first compile command. This will leave the compiler
     # cache in a state where "no recompilation is necessary", but the
     # cgen pass was never executed at all.
-    CommandCompileToC()
+    commandCompileToC()
     if gDirtyBufferIdx != 0:
       discard compileModule(gDirtyBufferIdx, {sfDirty})
       resetModule(gDirtyBufferIdx)
@@ -219,7 +219,7 @@ proc commandSuggest =
 proc wantMainModule =
   if gProjectFull.len == 0:
     if optMainModule.len == 0:
-      Fatal(gCmdLineInfo, errCommandExpectsFilename)
+      fatal(gCmdLineInfo, errCommandExpectsFilename)
     else:
       gProjectName = optMainModule
       gProjectFull = gProjectPath / gProjectName
@@ -228,7 +228,7 @@ proc wantMainModule =
 
 proc requireMainModuleOption =
   if optMainModule.len == 0:
-    Fatal(gCmdLineInfo, errMainModuleMustBeSpecified)
+    fatal(gCmdLineInfo, errMainModuleMustBeSpecified)
   else:
     gProjectName = optMainModule
     gProjectFull = gProjectPath / gProjectName
@@ -297,7 +297,7 @@ proc mainCommand* =
   if gProjectFull.len != 0:
     # current path is always looked first for modules
     prependStr(searchPaths, gProjectPath)
-  setID(100)
+  setId(100)
   passes.gIncludeFile = includeModule
   passes.gImportModule = importModule
   case command.normalize
@@ -305,20 +305,20 @@ proc mainCommand* =
     # compile means compileToC currently
     gCmd = cmdCompileToC
     wantMainModule()
-    CommandCompileToC()
+    commandCompileToC()
   of "cpp", "compiletocpp":
     extccomp.cExt = ".cpp"
     gCmd = cmdCompileToCpp
     if cCompiler == ccGcc: setCC("gpp")
     wantMainModule()
-    DefineSymbol("cpp")
-    CommandCompileToC()
+    defineSymbol("cpp")
+    commandCompileToC()
   of "objc", "compiletooc":
     extccomp.cExt = ".m"
     gCmd = cmdCompileToOC
     wantMainModule()
-    DefineSymbol("objc")
-    CommandCompileToC()
+    defineSymbol("objc")
+    commandCompileToC()
   of "run":
     gCmd = cmdRun
     wantMainModule()
@@ -330,7 +330,7 @@ proc mainCommand* =
   of "js", "compiletojs":
     gCmd = cmdCompileToJS
     wantMainModule()
-    CommandCompileToJS()
+    commandCompileToJS()
   of "compiletollvm":
     gCmd = cmdCompileToLLVM
     wantMainModule()
@@ -341,52 +341,52 @@ proc mainCommand* =
   of "pretty":
     gCmd = cmdPretty
     wantMainModule()
-    CommandPretty()
+    commandPretty()
   of "doc":
     gCmd = cmdDoc
-    LoadConfigs(DocConfig)
+    loadConfigs(DocConfig)
     wantMainModule()
-    CommandDoc()
+    commandDoc()
   of "doc2":
     gCmd = cmdDoc
-    LoadConfigs(DocConfig)
+    loadConfigs(DocConfig)
     wantMainModule()
-    DefineSymbol("nimdoc")
-    CommandDoc2()
+    defineSymbol("nimdoc")
+    commandDoc2()
   of "rst2html":
     gCmd = cmdRst2html
-    LoadConfigs(DocConfig)
+    loadConfigs(DocConfig)
     wantMainModule()
-    CommandRst2Html()
+    commandRst2Html()
   of "rst2tex":
     gCmd = cmdRst2tex
-    LoadConfigs(DocTexConfig)
+    loadConfigs(DocTexConfig)
     wantMainModule()
-    CommandRst2TeX()
+    commandRst2TeX()
   of "jsondoc":
     gCmd = cmdDoc
-    LoadConfigs(DocConfig)
+    loadConfigs(DocConfig)
     wantMainModule()
-    DefineSymbol("nimdoc")
-    CommandJSON()
+    defineSymbol("nimdoc")
+    commandJSON()
   of "buildindex":
     gCmd = cmdDoc
-    LoadConfigs(DocConfig)
-    CommandBuildIndex()
+    loadConfigs(DocConfig)
+    commandBuildIndex()
   of "gendepend":
     gCmd = cmdGenDepend
     wantMainModule()
-    CommandGenDepend()
+    commandGenDepend()
   of "dump":
-    gcmd = cmdDump
-    if getconfigvar("dump.format") == "json":
+    gCmd = cmdDump
+    if getConfigVar("dump.format") == "json":
       requireMainModuleOption()
 
       var definedSymbols = newJArray()
       for s in definedSymbolNames(): definedSymbols.elems.add(%s)
 
       var libpaths = newJArray()
-      for dir in itersearchpath(searchpaths): libpaths.elems.add(%dir)
+      for dir in itersearchpath(searchPaths): libpaths.elems.add(%dir)
 
       var dumpdata = % [
         (key: "version", val: %VersionAsString),
@@ -395,17 +395,17 @@ proc mainCommand* =
         (key: "lib_paths", val: libpaths)
       ]
 
-      outWriteLn($dumpdata)
+      outWriteln($dumpdata)
     else:
-      outWriteLn("-- list of currently defined symbols --")
-      for s in definedSymbolNames(): outWriteLn(s)
-      outWriteLn("-- end of list --")
+      outWriteln("-- list of currently defined symbols --")
+      for s in definedSymbolNames(): outWriteln(s)
+      outWriteln("-- end of list --")
 
-      for it in iterSearchPath(searchpaths): msgWriteLn(it)
+      for it in iterSearchPath(searchPaths): msgWriteln(it)
   of "check":
     gCmd = cmdCheck
     wantMainModule()
-    CommandCheck()
+    commandCheck()
   of "parse":
     gCmd = cmdParse
     wantMainModule()
@@ -413,11 +413,11 @@ proc mainCommand* =
   of "scan":
     gCmd = cmdScan
     wantMainModule()
-    CommandScan()
-    MsgWriteln("Beware: Indentation tokens depend on the parser\'s state!")
+    commandScan()
+    msgWriteln("Beware: Indentation tokens depend on the parser\'s state!")
   of "i":
     gCmd = cmdInteractive
-    CommandInteractive()
+    commandInteractive()
   of "e":
     # XXX: temporary command for easier testing
     commandEval(mainCommandArg())
@@ -429,12 +429,12 @@ proc mainCommand* =
       commandEval(gEvalExpr)
     else:
       wantMainModule()
-      CommandSuggest()
+      commandSuggest()
   of "serve":
     isServing = true
     gGlobalOptions.incl(optCaasEnabled)
     msgs.gErrorMax = high(int)  # do not stop after first error
-    serve(MainCommand)
+    serve(mainCommand)
   else:
     rawMessage(errInvalidCommandX, command)
 

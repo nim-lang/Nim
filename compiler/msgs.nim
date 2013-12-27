@@ -445,7 +445,7 @@ type
   TErrorOutputs* = set[TErrorOutput]
 
   ERecoverableError* = object of EInvalidValue
-  ESuggestDone* = object of EBase
+  ESuggestDone* = object of E_Base
 
 const
   InvalidFileIDX* = int32(-1)
@@ -455,7 +455,7 @@ var
   fileInfos*: seq[TFileInfo] = @[]
   systemFileIdx*: int32
 
-proc toCChar*(c: Char): string = 
+proc toCChar*(c: char): string = 
   case c
   of '\0'..'\x1F', '\x80'..'\xFF': result = '\\' & toOctal(c)
   of '\'', '\"', '\\': result = '\\' & c
@@ -474,7 +474,7 @@ proc makeCString*(s: string): PRope =
       add(res, '\"')
       add(res, tnl)
       app(result, toRope(res)) # reset:
-      setlen(res, 1)
+      setLen(res, 1)
       res[0] = '\"'
     add(res, toCChar(s[i]))
   add(res, '\"')
@@ -552,7 +552,7 @@ proc unknownLineInfo*(): TLineInfo =
 
 var 
   msgContext: seq[TLineInfo] = @[]
-  lastError = UnknownLineInfo()
+  lastError = unknownLineInfo()
   bufferedMsgs*: seq[string]
 
   errorOutputs* = {eStdOut, eStdErr}
@@ -563,9 +563,9 @@ proc clearBufferedMsgs* =
 proc suggestWriteln*(s: string) =
   if eStdOut in errorOutputs:
     when useCaas:
-      if isNil(stdoutSocket): Writeln(stdout, s)
+      if isNil(stdoutSocket): writeln(stdout, s)
       else:
-        Writeln(stdout, s)
+        writeln(stdout, s)
         stdoutSocket.send(s & "\c\L")
     else:
       Writeln(stdout, s)
@@ -601,12 +601,12 @@ proc pushInfoContext*(info: TLineInfo) =
   msgContext.add(info)
   
 proc popInfoContext*() = 
-  setlen(msgContext, len(msgContext) - 1)
+  setLen(msgContext, len(msgContext) - 1)
 
 proc getInfoContext*(index: int): TLineInfo =
   let L = msgContext.len
   let i = if index < 0: L + index else: index
-  if i >=% L: result = UnknownLineInfo()
+  if i >=% L: result = unknownLineInfo()
   else: result = msgContext[i]
 
 proc toFilename*(fileIdx: int32): string =
@@ -658,16 +658,16 @@ proc addCheckpoint*(filename: string, line: int) =
 
 proc outWriteln*(s: string) = 
   ## Writes to stdout. Always.
-  if eStdOut in errorOutputs: Writeln(stdout, s)
+  if eStdOut in errorOutputs: writeln(stdout, s)
  
 proc msgWriteln*(s: string) = 
   ## Writes to stdout. If --stdout option is given, writes to stderr instead.
   if gCmd == cmdIdeTools and optCDebug notin gGlobalOptions: return
 
   if optStdout in gGlobalOptions:
-    if eStdErr in errorOutputs: Writeln(stderr, s)
+    if eStdErr in errorOutputs: writeln(stderr, s)
   else:
-    if eStdOut in errorOutputs: Writeln(stdout, s)
+    if eStdOut in errorOutputs: writeln(stdout, s)
   
   if eInMemory in errorOutputs: bufferedMsgs.safeAdd(s)
 
@@ -677,7 +677,7 @@ proc coordToStr(coord: int): string =
   
 proc msgKindToString*(kind: TMsgKind): string = 
   # later versions may provide translated error messages
-  result = msgKindToStr[kind]
+  result = MsgKindToStr[kind]
 
 proc getMessageStr(msg: TMsgKind, arg: string): string = 
   result = msgKindToString(msg) % [arg]
@@ -721,16 +721,16 @@ proc `==`*(a, b: TLineInfo): bool =
   result = a.line == b.line and a.fileIndex == b.fileIndex
 
 proc writeContext(lastinfo: TLineInfo) = 
-  var info = lastInfo
+  var info = lastinfo
   for i in countup(0, len(msgContext) - 1): 
-    if msgContext[i] != lastInfo and msgContext[i] != info: 
+    if msgContext[i] != lastinfo and msgContext[i] != info: 
       msgWriteln(posContextFormat % [toMsgFilename(msgContext[i]), 
                                      coordToStr(msgContext[i].line), 
                                      coordToStr(msgContext[i].col), 
                                      getMessageStr(errInstantiationFrom, "")])
     info = msgContext[i]
 
-proc rawMessage*(msg: TMsgKind, args: openarray[string]) = 
+proc rawMessage*(msg: TMsgKind, args: openArray[string]) = 
   var frmt: string
   case msg
   of errMin..errMax: 
@@ -813,7 +813,7 @@ proc internalError*(info: TLineInfo, errMsg: string) =
 
 proc internalError*(errMsg: string) = 
   if gCmd == cmdIdeTools: return
-  writeContext(UnknownLineInfo())
+  writeContext(unknownLineInfo())
   rawMessage(errInternal, errMsg)
 
 template assertNotNil*(e: expr): expr =

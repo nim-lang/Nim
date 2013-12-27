@@ -45,9 +45,9 @@ proc `<.`(a, b: string): bool =
 
 proc addPackage(packages: PStringTable, p: string) =
   let x = versionSplitPos(p)
-  let name = p.subStr(0, x-1)
+  let name = p.substr(0, x-1)
   if x < p.len:
-    let version = p.subStr(x+1)
+    let version = p.substr(x+1)
     if packages[name] <. version:
       packages[name] = version
   else:
@@ -60,7 +60,7 @@ iterator chosen(packages: PStringTable): string =
 
 proc addBabelPath(p: string, info: TLineInfo) =
   if not contains(options.searchPaths, p):
-    if gVerbosity >= 1: Message(info, hintPath, p)
+    if gVerbosity >= 1: message(info, hintPath, p)
     lists.PrependStr(options.lazyPaths, p)
 
 proc addPathWithNimFiles(p: string, info: TLineInfo) =

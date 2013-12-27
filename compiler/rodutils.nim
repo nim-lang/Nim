@@ -119,7 +119,7 @@ template decodeIntImpl() =
 proc decodeVInt*(s: cstring, pos: var int): int = 
   decodeIntImpl()
 
-proc decodeVBiggestInt*(s: cstring, pos: var int): biggestInt =
+proc decodeVBiggestInt*(s: cstring, pos: var int): BiggestInt =
   decodeIntImpl()
 
 iterator decodeVIntArray*(s: cstring): int =

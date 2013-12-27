@@ -36,7 +36,7 @@ proc newSysType(kind: TTypeKind, size: int): PType =
   result.align = size
 
 proc getSysSym(name: string): PSym = 
-  result = StrTableGet(systemModule.tab, getIdent(name))
+  result = strTableGet(systemModule.tab, getIdent(name))
   if result == nil: 
     rawMessage(errSystemNeeds, name)
     result = newSym(skError, getIdent(name), systemModule, systemModule.info)
@@ -46,11 +46,11 @@ proc getSysSym(name: string): PSym =
 proc getSysMagic*(name: string, m: TMagic): PSym =
   var ti: TIdentIter
   let id = getIdent(name)
-  result = InitIdentIter(ti, systemModule.tab, id)
+  result = initIdentIter(ti, systemModule.tab, id)
   while result != nil:
     if result.kind == skStub: loadStub(result)
     if result.magic == m: return result
-    result = NextIdentIter(ti, systemModule.tab)
+    result = nextIdentIter(ti, systemModule.tab)
   rawMessage(errSystemNeeds, name)
   result = newSym(skError, id, systemModule, systemModule.info)
   result.typ = newType(tyError, systemModule)
@@ -82,11 +82,11 @@ proc getSysType(kind: TTypeKind): PType =
     of tyCstring: result = sysTypeFromName("cstring")
     of tyPointer: result = sysTypeFromName("pointer")
     of tyNil: result = newSysType(tyNil, ptrSize)
-    else: InternalError("request for typekind: " & $kind)
+    else: internalError("request for typekind: " & $kind)
     gSysTypes[kind] = result
   if result.kind != kind: 
-    InternalError("wanted: " & $kind & " got: " & $result.kind)
-  if result == nil: InternalError("type not found: " & $kind)
+    internalError("wanted: " & $kind & " got: " & $result.kind)
+  if result == nil: internalError("type not found: " & $kind)
 
 var
   intTypeCache: array[-5..64, PType]
@@ -164,7 +164,7 @@ proc getCompilerProc(name: string): PSym =
   var ident = getIdent(name, hashIgnoreStyle(name))
   result = strTableGet(compilerprocs, ident)
   if result == nil: 
-    result = strTableGet(rodCompilerProcs, ident)
+    result = strTableGet(rodCompilerprocs, ident)
     if result != nil: 
       strTableAdd(compilerprocs, result)
       if result.kind == skStub: loadStub(result)

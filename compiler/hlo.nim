@@ -28,7 +28,7 @@ proc evalPattern(c: PContext, n, orig: PNode): PNode =
   else:
     result = semDirectOp(c, n, {})
   if optHints in gOptions and hintPattern in gNotes:
-    Message(orig.info, hintPattern, rule & " --> '" & 
+    message(orig.info, hintPattern, rule & " --> '" & 
       renderTree(result, {renderNoComments}) & "'")
 
 proc applyPatterns(c: PContext, n: PNode): PNode =
@@ -45,7 +45,7 @@ proc applyPatterns(c: PContext, n: PNode): PNode =
         # better be safe than sorry, so check evalTemplateCounter too:
         inc(evalTemplateCounter)
         if evalTemplateCounter > 100:
-          GlobalError(n.info, errTemplateInstantiationTooNested)
+          globalError(n.info, errTemplateInstantiationTooNested)
         # deactivate this pattern:
         c.patterns[i] = nil
         if x.kind == nkStmtList:
