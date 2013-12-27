@@ -273,17 +273,13 @@ proc check(c: PGen, n: PNode) =
       nkMacroDef, nkConverterDef:
     checkDef(c, n[namePos])
     for i in namePos+1 .. <n.len: check(c, n.sons[i])
-  of nkVarSection, nkLetSection: 
-    for i in countup(0, sonsLen(n) - 1):
-      let a = n.sons[i]
-      if a.kind == nkCommentStmt: continue
-      if a.kind != nkIdentDefs and a.kind != nkVarTuple: 
-        globalError(a.info, errGenerated, "invalid ast")
-      checkMinSonsLen(a, 3)
-      let L = len(a)
-      for j in countup(0, L-3): checkDef(c, a.sons[j])
-      check(c, a.sons[L-2])
-      check(c, a.sons[L-1])
+  of nkIdentDefs, nkVarTuple:
+    let a = n
+    checkMinSonsLen(a, 3)
+    let L = len(a)
+    for j in countup(0, L-3): checkDef(c, a.sons[j])
+    check(c, a.sons[L-2])
+    check(c, a.sons[L-1])
   of nkTypeSection, nkConstSection:
     for i in countup(0, sonsLen(n) - 1): 
       let a = n.sons[i]

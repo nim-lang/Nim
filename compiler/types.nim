@@ -387,7 +387,7 @@ proc mutateType(t: PType, iter: TTypeMutator, closure: PObject): PType =
   var marker = InitIntSet()
   result = mutateTypeAux(marker, t, iter, closure)
 
-proc ValueToString(a: PNode): string =
+proc valueToString(a: PNode): string =
   case a.kind
   of nkCharLit..nkUInt64Lit: result = $(a.intVal)
   of nkFloatLit..nkFloat128Lit: result = $(a.floatVal)
@@ -692,7 +692,7 @@ proc equalParams(a, b: PNode): TParamsEquality =
         result = paramsIncompatible # overloading by different
                                     # result types does not work
   
-proc SameLiteral(x, y: PNode): bool = 
+proc sameLiteral(x, y: PNode): bool = 
   if x.kind == y.kind: 
     case x.kind
     of nkCharLit..nkInt64Lit: result = x.intVal == y.intVal
@@ -700,7 +700,7 @@ proc SameLiteral(x, y: PNode): bool =
     of nkNilLit: result = true
     else: assert(false)
   
-proc SameRanges(a, b: PNode): bool = 
+proc sameRanges(a, b: PNode): bool = 
   result = SameLiteral(a.sons[0], b.sons[0]) and
            SameLiteral(a.sons[1], b.sons[1])
 
