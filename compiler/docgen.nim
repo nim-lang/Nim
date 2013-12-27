@@ -203,8 +203,9 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   if not isVisible(nameNode): return
   var name = toRope(getName(d, nameNode))
   var result: PRope = nil
-  var literal = ""
-  var plainName = ""
+  var literal, plainName = ""
+  var tkParLevel, lastTkCurly = 0
+  var removeCurlies = false
   var kind = tkEof
   var comm = genRecComment(d, n)  # call this here for the side-effect!
   var r: TSrcGen
@@ -213,8 +214,22 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     getNextTok(r, kind, literal)
 
     case kind
-    of tkEof, tkComment: break
-    else: plainName.add(literal)
+    of tkComment, tkEof: break
+    else:
+      case kind:
+      of tkParLe:
+        tkParLevel += 1
+      of tkParRi:
+        tkParLevel -= 1
+      of tkCurlyDotLe:
+        # Keep track of when the last curly appeared, outside of parenthesis.
+        # Parameters can be procs with pragmas, that's why tkPar are tracked,
+        # we want to *erase* the last pragma (on right side of equals signs).
+        if tkParLevel == 0:
+          lastTkCurly = plainName.len
+      else:
+        nil
+      plainName.add(literal)
 
     case kind
     of tkEof:
@@ -253,7 +268,14 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
       dispA(result, "<span class=\"Other\">$1</span>", "\\spanOther{$1}",
             [toRope(esc(d.target, literal))])
   inc(d.id)
+  # If trailing curly brackets were found for certain types, remove them.
+  case k:
+  of skProc, skMethod, skIterator, skMacro, skTemplate, skConverter:
+    if lastTkCurly > 0:
+      plainName = plainName[0..lastTkCurly-1]
+  else: nil
   let plainNameRope = toRope(xmltree.escape(plainName))
+
   app(d.section[k], ropeFormatNamedVars(getConfigVar("doc.item"),
     ["name", "header", "desc", "itemID", "header_plain"],
     [name, result, comm, toRope(d.id), plainNameRope]))
