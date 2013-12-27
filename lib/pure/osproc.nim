@@ -383,16 +383,16 @@ when defined(Windows) and not defined(useNimRtl):
   #  O_WRONLY {.importc: "_O_WRONLY", header: "<fcntl.h>".}: int
   #  O_RDONLY {.importc: "_O_RDONLY", header: "<fcntl.h>".}: int
 
-  proc CreatePipeHandles(Rdhandle, WrHandle: var THandle) =
+  proc createPipeHandles(Rdhandle, WrHandle: var THandle) =
     var piInheritablePipe: TSecurityAttributes
-    piInheritablePipe.nlength = SizeOF(TSecurityAttributes).cint
+    piInheritablePipe.nlength = SizeOf(TSecurityAttributes).cint
     piInheritablePipe.lpSecurityDescriptor = nil
     piInheritablePipe.Binherithandle = 1
-    if CreatePipe(Rdhandle, Wrhandle, piInheritablePipe, 1024) == 0'i32:
+    if createPipe(Rdhandle, Wrhandle, piInheritablePipe, 1024) == 0'i32:
       OSError(OSLastError())
 
   proc fileClose(h: THandle) {.inline.} =
-    if h > 4: discard CloseHandle(h)
+    if h > 4: discard closeHandle(h)
 
   proc startProcess(command: string,
                  workingDir: string = "",
@@ -400,8 +400,8 @@ when defined(Windows) and not defined(useNimRtl):
                  env: PStringTable = nil,
                  options: set[TProcessOption] = {poStdErrToStdOut}): PProcess =
     var
-      SI: TStartupInfo
-      ProcInfo: TProcessInformation
+      si: TStartupInfo
+      procInfo: TProcessInformation
       success: int
       hi, ho, he: THandle
     new(result)
@@ -511,8 +511,8 @@ when defined(Windows) and not defined(useNimRtl):
 
   proc execCmd(command: string): int =
     var
-      SI: TStartupInfo
-      ProcInfo: TProcessInformation
+      si: TStartupInfo
+      procInfo: TProcessInformation
       process: THandle
       L: int32
     SI.cb = SizeOf(SI).cint

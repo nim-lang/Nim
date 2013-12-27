@@ -10,7 +10,7 @@
 ## this module does the semantic checking of statements
 #  included from sem.nim
 
-var EnforceVoidContext = PType(kind: tyStmt)
+var enforceVoidContext = PType(kind: tyStmt)
 
 proc semCommand(c: PContext, n: PNode): PNode =
   result = semExprNoType(c, n)
@@ -117,7 +117,7 @@ const
     nkElse, nkStmtListExpr, nkTryStmt, nkFinally, nkExceptBranch,
     nkElifBranch, nkElifExpr, nkElseExpr, nkBlockStmt, nkBlockExpr}
 
-proc ImplicitlyDiscardable(n: PNode): bool =
+proc implicitlyDiscardable(n: PNode): bool =
   var n = n
   while n.kind in skipForDiscardable: n = n.lastSon
   result = isCallExpr(n) and n.sons[0].kind == nkSym and 
@@ -197,7 +197,7 @@ proc semCase(c: PContext, n: PNode): PNode =
   of tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32:
     chckCovered = true
   of tyFloat..tyFloat128, tyString, tyError:
-    nil
+    discard
   else:
     LocalError(n.info, errSelectorMustBeOfCertainTypes)
     return
@@ -501,7 +501,7 @@ proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
     father.add(SemStmt(c.c, body))
     dec c.c.InUnrolledContext
     closeScope(c.c)
-  of nkNilLit: nil
+  of nkNilLit: discard
   of nkRecCase:
     let L = forLoop.len
     let call = forLoop.sons[L-2]
@@ -793,7 +793,7 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
       st.sons[0].sym = newSym(skType, getIdent(s.name.s & ":ObjectType"),
                               getCurrOwner(), s.info)
 
-proc SemTypeSection(c: PContext, n: PNode): PNode =
+proc semTypeSection(c: PContext, n: PNode): PNode =
   typeSectionLeftSidePass(c, n)
   typeSectionRightSidePass(c, n)
   typeSectionFinalPass(c, n)

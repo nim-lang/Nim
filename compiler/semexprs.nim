@@ -1176,7 +1176,7 @@ proc semAsgn(c: PContext, n: PNode): PNode =
     asgnToResultVar(c, n, n.sons[0], n.sons[1])
   result = n
 
-proc SemReturn(c: PContext, n: PNode): PNode =
+proc semReturn(c: PContext, n: PNode): PNode =
   result = n
   checkSonsLen(n, 1)
   if c.p.owner.kind in {skConverter, skMethod, skProc, skMacro} or
@@ -1223,7 +1223,7 @@ proc semProcBody(c: PContext, n: PNode): PNode =
     discardCheck(c, result)
   closeScope(c)
 
-proc SemYieldVarResult(c: PContext, n: PNode, restype: PType) =
+proc semYieldVarResult(c: PContext, n: PNode, restype: PType) =
   var t = skipTypes(restype, {tyGenericInst})
   case t.kind
   of tyVar:
@@ -1242,7 +1242,7 @@ proc SemYieldVarResult(c: PContext, n: PNode, restype: PType) =
           localError(n.sons[0].info, errXExpected, "tuple constructor")
   else: nil
   
-proc SemYield(c: PContext, n: PNode): PNode =
+proc semYield(c: PContext, n: PNode): PNode =
   result = n
   checkSonsLen(n, 1)
   if c.p.owner == nil or c.p.owner.kind != skIterator:
@@ -1267,30 +1267,30 @@ proc lookUpForDefined(c: PContext, i: PIdent, onlyCurrentScope: bool): PSym =
   else: 
     result = searchInScopes(c, i) # no need for stub loading
 
-proc LookUpForDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PSym = 
+proc lookUpForDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PSym = 
   case n.kind
   of nkIdent: 
-    result = LookupForDefined(c, n.ident, onlyCurrentScope)
+    result = lookupForDefined(c, n.ident, onlyCurrentScope)
   of nkDotExpr:
     result = nil
     if onlyCurrentScope: return 
     checkSonsLen(n, 2)
-    var m = LookupForDefined(c, n.sons[0], onlyCurrentScope)
+    var m = lookupForDefined(c, n.sons[0], onlyCurrentScope)
     if (m != nil) and (m.kind == skModule): 
       if (n.sons[1].kind == nkIdent): 
         var ident = n.sons[1].ident
         if m == c.module: 
-          result = StrTableGet(c.topLevelScope.symbols, ident)
+          result = strTableGet(c.topLevelScope.symbols, ident)
         else: 
-          result = StrTableGet(m.tab, ident)
+          result = strTableGet(m.tab, ident)
       else: 
-        LocalError(n.sons[1].info, errIdentifierExpected, "")
+        localError(n.sons[1].info, errIdentifierExpected, "")
   of nkAccQuoted:
     result = lookupForDefined(c, considerAcc(n), onlyCurrentScope)
   of nkSym:
     result = n.sym
   else: 
-    LocalError(n.info, errIdentifierExpected, renderTree(n))
+    localError(n.info, errIdentifierExpected, renderTree(n))
     result = nil
 
 proc semDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PNode = 

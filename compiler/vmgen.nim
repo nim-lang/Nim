@@ -1295,7 +1295,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest) =
     else:
       dest = tmp0
   of nkEmpty, nkCommentStmt, nkTypeSection, nkConstSection, nkPragma,
-     nkTemplateDef, nkIncludeStmt, nkImportStmt:
+     nkTemplateDef, nkIncludeStmt, nkImportStmt, nkFromStmt:
     unused(n, dest)
   of nkStringToCString, nkCStringToString:
     gen(c, n.sons[0], dest)

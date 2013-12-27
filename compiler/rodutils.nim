@@ -12,7 +12,7 @@ import strutils
 
 proc c_sprintf(buf, frmt: cstring) {.importc: "sprintf", nodecl, varargs.}
 
-proc ToStrMaxPrecision*(f: BiggestFloat): string = 
+proc toStrMaxPrecision*(f: BiggestFloat): string = 
   if f != f:
     result = "NAN"
   elif f == 0.0:
@@ -36,7 +36,7 @@ proc hexChar(c: char, xi: var int) =
   of '0'..'9': xi = (xi shl 4) or (ord(c) - ord('0'))
   of 'a'..'f': xi = (xi shl 4) or (ord(c) - ord('a') + 10)
   of 'A'..'F': xi = (xi shl 4) or (ord(c) - ord('A') + 10)
-  else: nil
+  else: discard
 
 proc decodeStr*(s: cstring, pos: var int): string =
   var i = pos

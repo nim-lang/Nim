@@ -50,7 +50,7 @@ proc mustRehash(length, counter: int): bool {.inline.} =
 proc nextTry(h, maxHash: THash): THash {.inline.} = 
   result = ((5 * h) + 1) and maxHash 
 
-proc IntSetGet(t: TIntSet, key: int): PTrunk = 
+proc intSetGet(t: TIntSet, key: int): PTrunk = 
   var h = key and t.max
   while t.data[h] != nil: 
     if t.data[h].key == key: 
@@ -58,7 +58,7 @@ proc IntSetGet(t: TIntSet, key: int): PTrunk =
     h = nextTry(h, t.max)
   result = nil
 
-proc IntSetRawInsert(t: TIntSet, data: var TTrunkSeq, desc: PTrunk) = 
+proc intSetRawInsert(t: TIntSet, data: var TTrunkSeq, desc: PTrunk) = 
   var h = desc.key and t.max
   while data[h] != nil: 
     assert(data[h] != desc)
@@ -66,7 +66,7 @@ proc IntSetRawInsert(t: TIntSet, data: var TTrunkSeq, desc: PTrunk) =
   assert(data[h] == nil)
   data[h] = desc
 
-proc IntSetEnlarge(t: var TIntSet) = 
+proc intSetEnlarge(t: var TIntSet) = 
   var n: TTrunkSeq
   var oldMax = t.max
   t.max = ((t.max + 1) * 2) - 1
@@ -75,7 +75,7 @@ proc IntSetEnlarge(t: var TIntSet) =
     if t.data[i] != nil: IntSetRawInsert(t, n, t.data[i])
   swap(t.data, n)
 
-proc IntSetPut(t: var TIntSet, key: int): PTrunk = 
+proc intSetPut(t: var TIntSet, key: int): PTrunk = 
   var h = key and t.max
   while t.data[h] != nil: 
     if t.data[h].key == key: 

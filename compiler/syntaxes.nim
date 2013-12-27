@@ -40,7 +40,7 @@ proc parseTopLevelStmt*(p: var TParsers): PNode
 
 # implementation
 
-proc ParseFile(fileIdx: int32): PNode =
+proc parseFile(fileIdx: int32): PNode =
   var 
     p: TParsers
     f: tfile
@@ -74,7 +74,7 @@ proc parseTopLevelStmt(p: var TParsers): PNode =
     result = ast.emptyNode
     #skinEndX: result := pendx.parseTopLevelStmt(p.parser);
   
-proc UTF8_BOM(s: string): int = 
+proc utf8Bom(s: string): int = 
   if (s[0] == '\xEF') and (s[1] == '\xBB') and (s[2] == '\xBF'): 
     result = 3
   else: 
@@ -92,7 +92,7 @@ proc parsePipe(filename: string, inputStream: PLLStream): PNode =
   if s != nil: 
     var line = newStringOfCap(80)
     discard LLStreamReadLine(s, line)
-    var i = UTF8_Bom(line)
+    var i = utf8Bom(line)
     if containsShebang(line, i):
       discard LLStreamReadLine(s, line)
       i = 0
@@ -100,20 +100,20 @@ proc parsePipe(filename: string, inputStream: PLLStream): PNode =
       inc(i, 2)
       while line[i] in WhiteSpace: inc(i)
       var q: TParser
-      OpenParser(q, filename, LLStreamOpen(substr(line, i)))
+      openParser(q, filename, LLStreamOpen(substr(line, i)))
       result = parser.parseAll(q)
-      CloseParser(q)
+      closeParser(q)
     LLStreamClose(s)
 
 proc getFilter(ident: PIdent): TFilterKind = 
   for i in countup(low(TFilterKind), high(TFilterKind)): 
-    if IdentEq(ident, filterNames[i]): 
+    if identEq(ident, filterNames[i]): 
       return i
   result = filtNone
 
 proc getParser(ident: PIdent): TParserKind = 
   for i in countup(low(TParserKind), high(TParserKind)): 
-    if IdentEq(ident, parserNames[i]): 
+    if identEq(ident, parserNames[i]): 
       return i
   rawMessage(errInvalidDirectiveX, ident.s)
 
@@ -142,23 +142,23 @@ proc applyFilter(p: var TParsers, n: PNode, filename: string,
   if f != filtNone: 
     if gVerbosity >= 2: 
       rawMessage(hintCodeBegin, [])
-      MsgWriteln(result.s)
+      msgWriteln(result.s)
       rawMessage(hintCodeEnd, [])
 
 proc evalPipe(p: var TParsers, n: PNode, filename: string, 
               start: PLLStream): PLLStream = 
   result = start
   if n.kind == nkEmpty: return 
-  if (n.kind == nkInfix) and (n.sons[0].kind == nkIdent) and
-      IdentEq(n.sons[0].ident, "|"): 
-    for i in countup(1, 2): 
-      if n.sons[i].kind == nkInfix: 
+  if n.kind == nkInfix and n.sons[0].kind == nkIdent and
+      identEq(n.sons[0].ident, "|"):
+    for i in countup(1, 2):
+      if n.sons[i].kind == nkInfix:
         result = evalPipe(p, n.sons[i], filename, result)
-      else: 
+      else:
         result = applyFilter(p, n.sons[i], filename, result)
-  elif n.kind == nkStmtList: 
+  elif n.kind == nkStmtList:
     result = evalPipe(p, n.sons[0], filename, result)
-  else: 
+  else:
     result = applyFilter(p, n, filename, result)
   
 proc openParsers(p: var TParsers, fileIdx: int32, inputstream: PLLStream) = 

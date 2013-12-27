@@ -120,11 +120,11 @@ proc renderRstToRst(d: var TRenderContext, n: PRstNode, result: var string) =
     
     let oldLen = result.len
     renderRstSons(d, n, result)
-    let HeadlineLen = result.len - oldLen
+    let headlineLen = result.len - oldLen
 
     result.add("\n")
     result.add(ind)
-    result.add repeatChar(HeadlineLen, lvlToChar[n.level])
+    result.add repeatChar(headlineLen, lvlToChar[n.level])
   of rnOverline:
     result.add("\n")
     result.add(ind)

@@ -91,13 +91,13 @@ proc writeRopeIfNotEqual*(r: PRope, filename: string): bool
 proc ropeToStr*(p: PRope): string
 proc ropef*(frmt: TFormatStr, args: varargs[PRope]): PRope
 proc appf*(c: var PRope, frmt: TFormatStr, args: varargs[PRope])
-proc RopeEqualsFile*(r: PRope, f: string): bool
+proc ropeEqualsFile*(r: PRope, f: string): bool
   # returns true if the rope r is the same as the contents of file f
-proc RopeInvariant*(r: PRope): bool
+proc ropeInvariant*(r: PRope): bool
   # exported for debugging
 # implementation
 
-var ErrorHandler*: proc(err: TRopesError, msg: string, useWarning = false)
+var errorHandler*: proc(err: TRopesError, msg: string, useWarning = false)
   # avoid dependency on msgs.nim
   
 proc ropeLen(a: PRope): int = 
@@ -126,7 +126,7 @@ proc resetRopeCache* =
   for i in low(cache)..high(cache):
     cache[i] = nil
 
-proc RopeInvariant(r: PRope): bool = 
+proc ropeInvariant(r: PRope): bool = 
   if r == nil: 
     result = true
   else: 
@@ -159,7 +159,7 @@ proc toRope(s: string): PRope =
     result = insertInCache(s)
   assert(RopeInvariant(result))
 
-proc RopeSeqInsert(rs: var TRopeSeq, r: PRope, at: Natural) = 
+proc ropeSeqInsert(rs: var TRopeSeq, r: PRope, at: Natural) = 
   var length = len(rs)
   if at > length: 
     setlen(rs, at + 1)
@@ -177,8 +177,8 @@ proc newRecRopeToStr(result: var string, resultLen: var int, r: PRope) =
       add(stack, it.right)
       it = it.left
     assert(it.data != nil)
-    CopyMem(addr(result[resultLen]), addr(it.data[0]), it.length)
-    Inc(resultLen, it.length)
+    copyMem(addr(result[resultLen]), addr(it.data[0]), it.length)
+    inc(resultLen, it.length)
     assert(resultLen <= len(result))
 
 proc ropeToStr(p: PRope): string = 
@@ -227,13 +227,13 @@ proc writeRope*(f: TFile, c: PRope) =
     assert(it.data != nil)
     write(f, it.data)
 
-proc WriteRope*(head: PRope, filename: string, useWarning = false) =
+proc writeRope*(head: PRope, filename: string, useWarning = false) =
   var f: tfile
   if open(f, filename, fmWrite):
     if head != nil: WriteRope(f, head)
     close(f)
   else:
-    ErrorHandler(rCannotOpenFile, filename, useWarning)
+    errorHandler(rCannotOpenFile, filename, useWarning)
 
 var
   rnl* = tnl.newRope
@@ -263,7 +263,7 @@ proc ropef(frmt: TFormatStr, args: varargs[PRope]): PRope =
           if (i > length + 0 - 1) or not (frmt[i] in {'0'..'9'}): break 
         num = j
         if j > high(args) + 1:
-          ErrorHandler(rInvalidFormatStr, $(j))
+          errorHandler(rInvalidFormatStr, $(j))
         else:
           app(result, args[j - 1])
       of 'n':
@@ -273,7 +273,7 @@ proc ropef(frmt: TFormatStr, args: varargs[PRope]): PRope =
         app(result, rnl)
         inc(i)
       else:
-        ErrorHandler(rInvalidFormatStr, $(frmt[i]))
+        errorHandler(rInvalidFormatStr, $(frmt[i]))
     var start = i
     while i < length:
       if frmt[i] != '$': inc(i)
@@ -308,8 +308,8 @@ proc auxRopeEqualsFile(r: PRope, bin: var tfile, buf: Pointer): bool =
     result = auxRopeEqualsFile(r.left, bin, buf)
     if result: result = auxRopeEqualsFile(r.right, bin, buf)
   
-proc RopeEqualsFile(r: PRope, f: string): bool = 
-  var bin: tfile
+proc ropeEqualsFile(r: PRope, f: string): bool = 
+  var bin: TFile
   result = open(bin, f)
   if not result: 
     return                    # not equal if file does not exist

@@ -208,7 +208,7 @@ proc readKey(L: var TBaseLexer, result: var string) =
   if buf[pos] != ':': internalError("ccgmerge: ':' expected")
   L.bufpos = pos + 1 # skip ':'
 
-proc NewFakeType(id: int): PType = 
+proc newFakeType(id: int): PType = 
   new(result)
   result.id = id
 
@@ -323,4 +323,3 @@ proc mergeFiles*(cfilename: string, m: BModule) =
     m.s[i] = con(old.f[i], m.s[i])
   for i in low(TCProcSection)..high(TCProcSection):
     m.initProc.s(i) = con(old.p[i], m.initProc.s(i))
-

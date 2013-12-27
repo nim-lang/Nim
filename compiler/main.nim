@@ -21,9 +21,9 @@ import
 from magicsys import SystemModule, resetSysTypes
 
 const
-  has_LLVM_Backend = false
+  hasLLVM_Backend = false
 
-when has_LLVM_Backend:
+when hasLLVM_Backend:
   import llvmgen
 
 proc rodPass =
@@ -37,7 +37,7 @@ proc semanticPasses =
   registerPass verbosePass
   registerPass semPass
 
-proc CommandGenDepend =
+proc commandGenDepend =
   semanticPasses()
   registerPass(genDependPass)
   registerPass(cleanupPass)
@@ -46,13 +46,13 @@ proc CommandGenDepend =
   execExternalProgram("dot -Tpng -o" & changeFileExt(gProjectFull, "png") &
       ' ' & changeFileExt(gProjectFull, "dot"))
 
-proc CommandCheck =
+proc commandCheck =
   msgs.gErrorMax = high(int)  # do not stop after first error
   semanticPasses()            # use an empty backend for semantic checking only
   rodPass()
   compileProject()
 
-proc CommandDoc2 =
+proc commandDoc2 =
   msgs.gErrorMax = high(int)  # do not stop after first error
   semanticPasses()
   registerPass(docgen2Pass)
@@ -60,7 +60,7 @@ proc CommandDoc2 =
   compileProject()
   finishDoc2Pass(gProjectName)
 
-proc CommandCompileToC =
+proc commandCompileToC =
   semanticPasses()
   registerPass(cgenPass)
   rodPass()
@@ -111,15 +111,15 @@ proc CommandCompileToC =
     ccgutils.resetCaches()
     GC_fullCollect()
 
-when has_LLVM_Backend:
-  proc CommandCompileToLLVM =
+when hasLLVM_Backend:
+  proc commandCompileToLLVM =
     semanticPasses()
     registerPass(llvmgen.llvmgenPass())
     rodPass()
     #registerPass(cleanupPass())
     compileProject()
 
-proc CommandCompileToJS =
+proc commandCompileToJS =
   #incl(gGlobalOptions, optSafeCode)
   setTarget(osJS, cpuJS)
   #initDefines()
@@ -130,7 +130,7 @@ proc CommandCompileToJS =
   registerPass(jsgenPass)
   compileProject()
 
-proc InteractivePasses =
+proc interactivePasses =
   #incl(gGlobalOptions, optSafeCode)
   #setTarget(osNimrodVM, cpuNimrodVM)
   initDefines()
@@ -140,7 +140,7 @@ proc InteractivePasses =
   registerPass(semPass)
   registerPass(evalPass)
 
-proc CommandInteractive =
+proc commandInteractive =
   msgs.gErrorMax = high(int)  # do not stop after first error
   InteractivePasses()
   compileSystemModule()
@@ -163,20 +163,20 @@ proc commandEval(exp: string) =
   var echoExp = "echo \"eval\\t\", " & "repr(" & exp & ")"
   evalNim(echoExp.parseString, makeStdinModule())
 
-proc CommandPrettyOld =
+proc commandPrettyOld =
   var projectFile = addFileExt(mainCommandArg(), NimExt)
   var module = parseFile(projectFile.fileInfoIdx)
   if module != nil:
     renderModule(module, getOutFile(mainCommandArg(), "pretty." & NimExt))
 
-proc CommandPretty =
+proc commandPretty =
   msgs.gErrorMax = high(int)  # do not stop after first error
   semanticPasses()
   registerPass(prettyPass)
   compileProject()
   pretty.overwriteFiles()
 
-proc CommandScan =
+proc commandScan =
   var f = addFileExt(mainCommandArg(), nimExt)
   var stream = LLStreamOpen(f, fmRead)
   if stream != nil:
@@ -193,7 +193,7 @@ proc CommandScan =
   else:
     rawMessage(errCannotOpenFile, f)
 
-proc CommandSuggest =
+proc commandSuggest =
   if isServing:
     # XXX: hacky work-around ahead
     # Currently, it's possible to issue a idetools command, before
@@ -286,7 +286,7 @@ const
   SimiluateCaasMemReset = false
   PrintRopeCacheStats = false
 
-proc MainCommand* =
+proc mainCommand* =
   when SimiluateCaasMemReset:
     gGlobalOptions.incl(optCaasEnabled)
 

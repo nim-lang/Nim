@@ -21,7 +21,7 @@ type
     passCmd2,                 # second pass over the command line
     passPP                    # preprocessor called ProcessCommand()
 
-proc ProcessCommand*(switch: string, pass: TCmdLinePass)
+proc processCommand*(switch: string, pass: TCmdLinePass)
 proc processSwitch*(switch, arg: string, pass: TCmdlinePass, info: TLineInfo)
 
 # implementation
@@ -38,21 +38,21 @@ proc getCommandLineDesc(): string =
   result = (HelpMessage % [VersionAsString, platform.os[platform.hostOS].name, 
                            cpu[platform.hostCPU].name]) & Usage
 
-proc HelpOnError(pass: TCmdLinePass) = 
+proc helpOnError(pass: TCmdLinePass) = 
   if pass == passCmd1:
-    MsgWriteln(getCommandLineDesc())
+    msgWriteln(getCommandLineDesc())
     quit(0)
 
 proc writeAdvancedUsage(pass: TCmdLinePass) = 
   if pass == passCmd1:
-    MsgWriteln(`%`(HelpMessage, [VersionAsString, 
+    msgWriteln(`%`(HelpMessage, [VersionAsString, 
                                  platform.os[platform.hostOS].name, 
                                  cpu[platform.hostCPU].name]) & AdvancedUsage)
     quit(0)
 
 proc writeVersionInfo(pass: TCmdLinePass) = 
   if pass == passCmd1:
-    MsgWriteln(`%`(HelpMessage, [VersionAsString, 
+    msgWriteln(`%`(HelpMessage, [VersionAsString, 
                                  platform.os[platform.hostOS].name, 
                                  cpu[platform.hostCPU].name]))
     quit(0)
@@ -62,16 +62,16 @@ var
 
 proc writeCommandLineUsage() = 
   if not helpWritten: 
-    MsgWriteln(getCommandLineDesc())
+    msgWriteln(getCommandLineDesc())
     helpWritten = true
 
 proc addPrefix(switch: string): string =
   if len(switch) == 1: result = "-" & switch
   else: result = "--" & switch
 
-proc InvalidCmdLineOption(pass: TCmdLinePass, switch: string, info: TLineInfo) = 
-  if switch == " ": LocalError(info, errInvalidCmdLineOption, "-")
-  else: LocalError(info, errInvalidCmdLineOption, addPrefix(switch))
+proc invalidCmdLineOption(pass: TCmdLinePass, switch: string, info: TLineInfo) = 
+  if switch == " ": localError(info, errInvalidCmdLineOption, "-")
+  else: localError(info, errInvalidCmdLineOption, addPrefix(switch))
 
 proc splitSwitch(switch: string, cmd, arg: var string, pass: TCmdLinePass, 
                  info: TLineInfo) = 
@@ -86,29 +86,29 @@ proc splitSwitch(switch: string, cmd, arg: var string, pass: TCmdLinePass,
     inc(i)
   if i >= len(switch): arg = ""
   elif switch[i] in {':', '=', '['}: arg = substr(switch, i + 1)
-  else: InvalidCmdLineOption(pass, switch, info)
+  else: invalidCmdLineOption(pass, switch, info)
   
-proc ProcessOnOffSwitch(op: TOptions, arg: string, pass: TCmdlinePass, 
+proc processOnOffSwitch(op: TOptions, arg: string, pass: TCmdlinePass, 
                         info: TLineInfo) = 
   case whichKeyword(arg)
   of wOn: gOptions = gOptions + op
   of wOff: gOptions = gOptions - op
-  else: LocalError(info, errOnOrOffExpectedButXFound, arg)
+  else: localError(info, errOnOrOffExpectedButXFound, arg)
   
-proc ProcessOnOffSwitchG(op: TGlobalOptions, arg: string, pass: TCmdlinePass, 
+proc processOnOffSwitchG(op: TGlobalOptions, arg: string, pass: TCmdlinePass, 
                          info: TLineInfo) = 
   case whichKeyword(arg)
   of wOn: gGlobalOptions = gGlobalOptions + op
   of wOff: gGlobalOptions = gGlobalOptions - op
-  else: LocalError(info, errOnOrOffExpectedButXFound, arg)
+  else: localError(info, errOnOrOffExpectedButXFound, arg)
   
-proc ExpectArg(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) = 
-  if arg == "": LocalError(info, errCmdLineArgExpected, addPrefix(switch))
+proc expectArg(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) = 
+  if arg == "": localError(info, errCmdLineArgExpected, addPrefix(switch))
   
-proc ExpectNoArg(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) = 
-  if arg != "": LocalError(info, errCmdLineNoArgExpected, addPrefix(switch))
+proc expectNoArg(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) = 
+  if arg != "": localError(info, errCmdLineNoArgExpected, addPrefix(switch))
   
-proc ProcessSpecificNote(arg: string, state: TSpecialWord, pass: TCmdlinePass, 
+proc processSpecificNote(arg: string, state: TSpecialWord, pass: TCmdlinePass, 
                          info: TLineInfo) = 
   var id = ""  # arg = "X]:on|off"
   var i = 0
@@ -117,21 +117,21 @@ proc ProcessSpecificNote(arg: string, state: TSpecialWord, pass: TCmdlinePass,
     add(id, arg[i])
     inc(i)
   if i < len(arg) and (arg[i] == ']'): inc(i)
-  else: InvalidCmdLineOption(pass, arg, info)
+  else: invalidCmdLineOption(pass, arg, info)
   if i < len(arg) and (arg[i] in {':', '='}): inc(i)
-  else: InvalidCmdLineOption(pass, arg, info)
+  else: invalidCmdLineOption(pass, arg, info)
   if state == wHint: 
     var x = findStr(msgs.HintsToStr, id)
     if x >= 0: n = TNoteKind(x + ord(hintMin))
-    else: InvalidCmdLineOption(pass, arg, info)
+    else: invalidCmdLineOption(pass, arg, info)
   else: 
     var x = findStr(msgs.WarningsToStr, id)
     if x >= 0: n = TNoteKind(x + ord(warnMin))
-    else: InvalidCmdLineOption(pass, arg, info)
+    else: invalidCmdLineOption(pass, arg, info)
   case whichKeyword(substr(arg, i))
   of wOn: incl(gNotes, n)
   of wOff: excl(gNotes, n)
-  else: LocalError(info, errOnOrOffExpectedButXFound, arg)
+  else: localError(info, errOnOrOffExpectedButXFound, arg)
 
 proc processCompile(filename: string) = 
   var found = findFile(filename)
@@ -150,14 +150,14 @@ proc testCompileOptionArg*(switch, arg: string, info: TLineInfo): bool =
     of "markandsweep": result = gSelectedGC == gcMarkAndSweep
     of "generational": result = gSelectedGC == gcGenerational
     of "none":         result = gSelectedGC == gcNone
-    else: LocalError(info, errNoneBoehmRefcExpectedButXFound, arg)
+    else: localError(info, errNoneBoehmRefcExpectedButXFound, arg)
   of "opt":
     case arg.normalize
     of "speed": result = contains(gOptions, optOptimizeSpeed)
     of "size": result = contains(gOptions, optOptimizeSize)
     of "none": result = gOptions * {optOptimizeSpeed, optOptimizeSize} == {}
-    else: LocalError(info, errNoneSpeedOrSizeExpectedButXFound, arg)
-  else: InvalidCmdLineOption(passCmd1, switch, info)
+    else: localError(info, errNoneSpeedOrSizeExpectedButXFound, arg)
+  else: invalidCmdLineOption(passCmd1, switch, info)
 
 proc testCompileOption*(switch: string, info: TLineInfo): bool = 
   case switch.normalize
@@ -194,7 +194,7 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
   of "tlsemulation": result = contains(gGlobalOptions, optTlsEmulation)
   of "implicitstatic": result = contains(gOptions, optImplicitStatic)
   of "patterns": result = contains(gOptions, optPatterns)
-  else: InvalidCmdLineOption(passCmd1, switch, info)
+  else: invalidCmdLineOption(passCmd1, switch, info)
   
 proc processPath(path: string, notRelativeToProj = false): string =
   let p = if notRelativeToProj or os.isAbsolute(path) or
@@ -202,20 +202,20 @@ proc processPath(path: string, notRelativeToProj = false): string =
             path 
           else:
             options.gProjectPath / path
-  result = UnixToNativePath(p % ["nimrod", getPrefixDir(), "lib", libpath,
+  result = unixToNativePath(p % ["nimrod", getPrefixDir(), "lib", libpath,
     "home", removeTrailingDirSep(os.getHomeDir()),
     "projectname", options.gProjectName,
     "projectpath", options.gProjectPath])
 
 proc trackDirty(arg: string, info: TLineInfo) =
   var a = arg.split(',')
-  if a.len != 4: LocalError(info, errTokenExpected,
+  if a.len != 4: localError(info, errTokenExpected,
                             "DIRTY_BUFFER,ORIGINAL_FILE,LINE,COLUMN")
   var line, column: int
   if parseUtils.parseInt(a[2], line) <= 0:
-    LocalError(info, errInvalidNumber, a[1])
+    localError(info, errInvalidNumber, a[1])
   if parseUtils.parseInt(a[3], column) <= 0:
-    LocalError(info, errInvalidNumber, a[2])
+    localError(info, errInvalidNumber, a[2])
   
   gDirtyBufferIdx = a[0].fileInfoIdx
   gDirtyOriginalIdx = a[1].fileInfoIdx
@@ -225,12 +225,12 @@ proc trackDirty(arg: string, info: TLineInfo) =
 
 proc track(arg: string, info: TLineInfo) = 
   var a = arg.split(',')
-  if a.len != 3: LocalError(info, errTokenExpected, "FILE,LINE,COLUMN")
+  if a.len != 3: localError(info, errTokenExpected, "FILE,LINE,COLUMN")
   var line, column: int
   if parseUtils.parseInt(a[1], line) <= 0:
-    LocalError(info, errInvalidNumber, a[1])
+    localError(info, errInvalidNumber, a[1])
   if parseUtils.parseInt(a[2], column) <= 0:
-    LocalError(info, errInvalidNumber, a[2])
+    localError(info, errInvalidNumber, a[2])
   optTrackPos = newLineInfo(a[0], line, column)
   msgs.addCheckpoint(optTrackPos)
 
@@ -305,7 +305,7 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
     case arg.normalize
     of "boehm": 
       gSelectedGC = gcBoehm
-      DefineSymbol("boehmgc")
+      defineSymbol("boehmgc")
     of "refc":
       gSelectedGC = gcRefc
     of "v2":
@@ -319,8 +319,8 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
     of "none":
       gSelectedGC = gcNone
       defineSymbol("nogc")
-    else: LocalError(info, errNoneBoehmRefcExpectedButXFound, arg)
-  of "warnings", "w": ProcessOnOffSwitch({optWarns}, arg, pass, info)
+    else: localError(info, errNoneBoehmRefcExpectedButXFound, arg)
+  of "warnings", "w": processOnOffSwitch({optWarns}, arg, pass, info)
   of "warning": ProcessSpecificNote(arg, wWarning, pass, info)
   of "hint": ProcessSpecificNote(arg, wHint, pass, info)
   of "hints": ProcessOnOffSwitch({optHints}, arg, pass, info)
@@ -517,13 +517,13 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
     case arg
     of "partial": idents.firstCharIsCS = true
     of "none": idents.firstCharIsCS = false
-    else: LocalError(info, errGenerated,
+    else: localError(info, errGenerated,
       "'partial' or 'none' expected, but found " & arg)
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(switch, arg)
-    else: InvalidCmdLineOption(pass, switch, info)
+    else: invalidCmdLineOption(pass, switch, info)
   
-proc ProcessCommand(switch: string, pass: TCmdLinePass) =
+proc processCommand(switch: string, pass: TCmdLinePass) =
   var cmd, arg: string
   splitSwitch(switch, cmd, arg, pass, gCmdLineInfo)
   processSwitch(cmd, arg, pass, gCmdLineInfo)

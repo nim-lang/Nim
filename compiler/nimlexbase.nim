@@ -54,11 +54,11 @@ proc openBaseLexer*(L: var TBaseLexer, inputstream: PLLStream,
 proc closeBaseLexer*(L: var TBaseLexer)
 proc getCurrentLine*(L: TBaseLexer, marker: bool = true): string
 proc getColNumber*(L: TBaseLexer, pos: int): int
-proc HandleCR*(L: var TBaseLexer, pos: int): int
+proc handleCR*(L: var TBaseLexer, pos: int): int
   # Call this if you scanned over CR in the buffer; it returns the
   # position to continue the scanning from. `pos` must be the position
   # of the CR.
-proc HandleLF*(L: var TBaseLexer, pos: int): int
+proc handleLF*(L: var TBaseLexer, pos: int): int
   # Call this if you scanned over LF in the buffer; it returns the the
   # position to continue the scanning from. `pos` must be the position
   # of the LF.
@@ -71,7 +71,7 @@ proc closeBaseLexer(L: var TBaseLexer) =
   dealloc(L.buf)
   LLStreamClose(L.stream)
 
-proc FillBuffer(L: var TBaseLexer) = 
+proc fillBuffer(L: var TBaseLexer) = 
   var 
     charsRead, toCopy, s: int # all are in characters,
                               # not bytes (in case this
@@ -126,20 +126,20 @@ proc fillBaseLexer(L: var TBaseLexer, pos: int): int =
     result = 0
   L.lineStart = result
 
-proc HandleCR(L: var TBaseLexer, pos: int): int = 
+proc handleCR(L: var TBaseLexer, pos: int): int = 
   assert(L.buf[pos] == CR)
   inc(L.linenumber)
   result = fillBaseLexer(L, pos)
   if L.buf[result] == LF: 
     result = fillBaseLexer(L, result)
 
-proc HandleLF(L: var TBaseLexer, pos: int): int = 
+proc handleLF(L: var TBaseLexer, pos: int): int = 
   assert(L.buf[pos] == LF)
   inc(L.linenumber)
   result = fillBaseLexer(L, pos) #L.lastNL := result-1; // BUGFIX: was: result;
   
-proc skip_UTF_8_BOM(L: var TBaseLexer) = 
-  if (L.buf[0] == '\xEF') and (L.buf[1] == '\xBB') and (L.buf[2] == '\xBF'): 
+proc skipUTF8BOM(L: var TBaseLexer) = 
+  if L.buf[0] == '\xEF' and L.buf[1] == '\xBB' and L.buf[2] == '\xBF':
     inc(L.bufpos, 3)
     inc(L.lineStart, 3)
 
@@ -167,4 +167,3 @@ proc getCurrentLine(L: TBaseLexer, marker: bool = true): string =
   result.add("\n")
   if marker: 
     result.add(RepeatChar(getColNumber(L, L.bufpos)) & '^' & "\n")
-  

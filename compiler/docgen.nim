@@ -313,7 +313,7 @@ proc generateDoc*(d: PDoc, n: PNode) =
   of nkImportStmt:
     for i in 0 .. sonsLen(n)-1: traceDeps(d, n.sons[i])
   of nkFromStmt, nkImportExceptStmt: traceDeps(d, n.sons[0])
-  else: nil
+  else: discard
 
 proc generateJson(d: PDoc, n: PNode, jArray: PJsonNode = nil): PJsonNode =
   case n.kind
@@ -355,7 +355,7 @@ proc generateJson(d: PDoc, n: PNode, jArray: PJsonNode = nil): PJsonNode =
     # generate documentation for the first branch only:
     if not checkForFalse(n.sons[0].sons[0]) and jArray != nil:
       discard generateJson(d, lastSon(n.sons[0]), jArray)
-  else: nil
+  else: discard
 
 proc genSection(d: PDoc, kind: TSymKind) =
   const sectionNames: array[skModule..skTemplate, string] = [
@@ -417,7 +417,7 @@ proc writeOutput*(d: PDoc, filename, outExt: string, useWarning = false) =
   else:
     writeRope(content, getOutFile(filename, outExt), useWarning)
 
-proc CommandDoc*() =
+proc commandDoc*() =
   var ast = parseFile(gProjectMainIdx)
   if ast == nil: return
   var d = newDocumentor(gProjectFull, options.gConfigVars)
@@ -426,7 +426,7 @@ proc CommandDoc*() =
   writeOutput(d, gProjectFull, HtmlExt)
   generateIndex(d)
 
-proc CommandRstAux(filename, outExt: string) =
+proc commandRstAux(filename, outExt: string) =
   var filen = addFileExt(filename, "txt")
   var d = newDocumentor(filen, options.gConfigVars)
   var rst = parseRst(readFile(filen), filen, 0, 1, d.hasToc,
@@ -439,14 +439,14 @@ proc CommandRstAux(filename, outExt: string) =
   writeOutput(d, filename, outExt)
   generateIndex(d)
 
-proc CommandRst2Html*() =
-  CommandRstAux(gProjectFull, HtmlExt)
+proc commandRst2Html*() =
+  commandRstAux(gProjectFull, HtmlExt)
 
-proc CommandRst2TeX*() =
+proc commandRst2TeX*() =
   splitter = "\\-"
-  CommandRstAux(gProjectFull, TexExt)
+  commandRstAux(gProjectFull, TexExt)
 
-proc CommandJSON*() =
+proc commandJSON*() =
   var ast = parseFile(gProjectMainIdx)
   if ast == nil: return
   var d = newDocumentor(gProjectFull, options.gConfigVars)
@@ -460,7 +460,7 @@ proc CommandJSON*() =
     echo getOutFile(gProjectFull, JsonExt)
     writeRope(content, getOutFile(gProjectFull, JsonExt), useWarning = false)
 
-proc CommandBuildIndex*() =
+proc commandBuildIndex*() =
   var content = mergeIndexes(gProjectFull).toRope
 
   let code = ropeFormatNamedVars(getConfigVar("doc.file"), ["title",

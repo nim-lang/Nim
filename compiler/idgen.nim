@@ -23,8 +23,8 @@ when debugIds:
 
 proc registerID*(id: PIdObj) = 
   when debugIDs: 
-    if id.id == -1 or ContainsOrIncl(usedIds, id.id): 
-      InternalError("ID already used: " & $id.id)
+    if id.id == -1 or containsOrIncl(usedIds, id.id): 
+      internalError("ID already used: " & $id.id)
 
 proc getID*(): int {.inline.} = 
   result = gFrontEndId
@@ -37,7 +37,7 @@ proc backendId*(): int {.inline.} =
 proc setId*(id: int) {.inline.} = 
   gFrontEndId = max(gFrontEndId, id + 1)
 
-proc IDsynchronizationPoint*(idRange: int) = 
+proc idSynchronizationPoint*(idRange: int) = 
   gFrontEndId = (gFrontEndId div IdRange + 1) * IdRange + 1
 
 proc toGid(f: string): string =

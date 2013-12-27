@@ -356,7 +356,7 @@ proc semBranchRange(c: PContext, t, a, b: PNode, covered: var biggestInt): PNode
   if emptyRange(ac, bc): LocalError(b.info, errRangeIsEmpty)
   else: covered = covered + getOrdValue(bc) - getOrdValue(ac) + 1
 
-proc SemCaseBranchRange(c: PContext, t, b: PNode, 
+proc semCaseBranchRange(c: PContext, t, b: PNode, 
                         covered: var biggestInt): PNode = 
   checkSonsLen(b, 3)
   result = semBranchRange(c, t, b.sons[1], b.sons[2], covered)

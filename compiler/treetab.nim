@@ -17,7 +17,7 @@ proc hashTree(n: PNode): THash =
   result = ord(n.kind)
   case n.kind
   of nkEmpty, nkNilLit, nkType: 
-    nil
+    discard
   of nkIdent: 
     result = result !& n.ident.h
   of nkSym:
@@ -34,7 +34,7 @@ proc hashTree(n: PNode): THash =
     for i in countup(0, sonsLen(n) - 1): 
       result = result !& hashTree(n.sons[i])
   
-proc TreesEquivalent(a, b: PNode): bool = 
+proc treesEquivalent(a, b: PNode): bool = 
   if a == b: 
     result = true
   elif (a != nil) and (b != nil) and (a.kind == b.kind): 
@@ -48,24 +48,24 @@ proc TreesEquivalent(a, b: PNode): bool =
     else: 
       if sonsLen(a) == sonsLen(b): 
         for i in countup(0, sonsLen(a) - 1): 
-          if not TreesEquivalent(a.sons[i], b.sons[i]): return 
+          if not treesEquivalent(a.sons[i], b.sons[i]): return 
         result = true
     if result: result = sameTypeOrNil(a.typ, b.typ)
   
-proc NodeTableRawGet(t: TNodeTable, k: THash, key: PNode): int = 
+proc nodeTableRawGet(t: TNodeTable, k: THash, key: PNode): int = 
   var h: THash = k and high(t.data)
   while t.data[h].key != nil: 
-    if (t.data[h].h == k) and TreesEquivalent(t.data[h].key, key): 
+    if (t.data[h].h == k) and treesEquivalent(t.data[h].key, key): 
       return h
     h = nextTry(h, high(t.data))
   result = -1
 
-proc NodeTableGet*(t: TNodeTable, key: PNode): int = 
-  var index = NodeTableRawGet(t, hashTree(key), key)
+proc nodeTableGet*(t: TNodeTable, key: PNode): int = 
+  var index = nodeTableRawGet(t, hashTree(key), key)
   if index >= 0: result = t.data[index].val
   else: result = low(int)
   
-proc NodeTableRawInsert(data: var TNodePairSeq, k: THash, key: PNode, 
+proc nodeTableRawInsert(data: var TNodePairSeq, k: THash, key: PNode, 
                         val: int) = 
   var h: THash = k and high(data)
   while data[h].key != nil: h = nextTry(h, high(data))
@@ -74,7 +74,7 @@ proc NodeTableRawInsert(data: var TNodePairSeq, k: THash, key: PNode,
   data[h].key = key
   data[h].val = val
 
-proc NodeTablePut*(t: var TNodeTable, key: PNode, val: int) = 
+proc nodeTablePut*(t: var TNodeTable, key: PNode, val: int) = 
   var n: TNodePairSeq
   var k: THash = hashTree(key)
   var index = NodeTableRawGet(t, k, key)
@@ -86,15 +86,15 @@ proc NodeTablePut*(t: var TNodeTable, key: PNode, val: int) =
       newSeq(n, len(t.data) * growthFactor)
       for i in countup(0, high(t.data)): 
         if t.data[i].key != nil: 
-          NodeTableRawInsert(n, t.data[i].h, t.data[i].key, t.data[i].val)
+          nodeTableRawInsert(n, t.data[i].h, t.data[i].key, t.data[i].val)
       swap(t.data, n)
-    NodeTableRawInsert(t.data, k, key, val)
+    nodeTableRawInsert(t.data, k, key, val)
     inc(t.counter)
 
-proc NodeTableTestOrSet*(t: var TNodeTable, key: PNode, val: int): int = 
+proc nodeTableTestOrSet*(t: var TNodeTable, key: PNode, val: int): int = 
   var n: TNodePairSeq
   var k: THash = hashTree(key)
-  var index = NodeTableRawGet(t, k, key)
+  var index = nodeTableRawGet(t, k, key)
   if index >= 0: 
     assert(t.data[index].key != nil)
     result = t.data[index].val
@@ -103,8 +103,8 @@ proc NodeTableTestOrSet*(t: var TNodeTable, key: PNode, val: int): int =
       newSeq(n, len(t.data) * growthFactor)
       for i in countup(0, high(t.data)): 
         if t.data[i].key != nil: 
-          NodeTableRawInsert(n, t.data[i].h, t.data[i].key, t.data[i].val)
+          nodeTableRawInsert(n, t.data[i].h, t.data[i].key, t.data[i].val)
       swap(t.data, n)
-    NodeTableRawInsert(t.data, k, key, val)
+    nodeTableRawInsert(t.data, k, key, val)
     result = val
     inc(t.counter)

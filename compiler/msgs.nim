@@ -453,7 +453,7 @@ const
 var
   filenameToIndexTbl = initTable[string, int32]()
   fileInfos*: seq[TFileInfo] = @[]
-  SystemFileIdx*: int32
+  systemFileIdx*: int32
 
 proc toCChar*(c: Char): string = 
   case c
@@ -545,7 +545,7 @@ var
 when useCaas:
   var stdoutSocket*: TSocket
 
-proc UnknownLineInfo*(): TLineInfo =
+proc unknownLineInfo*(): TLineInfo =
   result.line = int16(-1)
   result.col = int16(-1)
   result.fileIndex = -1
@@ -560,7 +560,7 @@ var
 proc clearBufferedMsgs* =
   bufferedMsgs = nil
 
-proc SuggestWriteln*(s: string) =
+proc suggestWriteln*(s: string) =
   if eStdOut in errorOutputs:
     when useCaas:
       if isNil(stdoutSocket): Writeln(stdout, s)
@@ -573,7 +573,7 @@ proc SuggestWriteln*(s: string) =
   if eInMemory in errorOutputs:
     bufferedMsgs.safeAdd(s)
 
-proc SuggestQuit*() =
+proc suggestQuit*() =
   if not isServing:
     quit(0)
   elif isWorkingWithDirtyBuffer:
@@ -656,11 +656,11 @@ proc addCheckpoint*(info: TLineInfo) =
 proc addCheckpoint*(filename: string, line: int) = 
   addCheckpoint(newLineInfo(filename, line, - 1))
 
-proc OutWriteln*(s: string) = 
+proc outWriteln*(s: string) = 
   ## Writes to stdout. Always.
   if eStdOut in errorOutputs: Writeln(stdout, s)
  
-proc MsgWriteln*(s: string) = 
+proc msgWriteln*(s: string) = 
   ## Writes to stdout. If --stdout option is given, writes to stderr instead.
   if gCmd == cmdIdeTools and optCDebug notin gGlobalOptions: return
 
@@ -675,7 +675,7 @@ proc coordToStr(coord: int): string =
   if coord == -1: result = "???"
   else: result = $coord
   
-proc MsgKindToString*(kind: TMsgKind): string = 
+proc msgKindToString*(kind: TMsgKind): string = 
   # later versions may provide translated error messages
   result = msgKindToStr[kind]
 
@@ -724,7 +724,7 @@ proc writeContext(lastinfo: TLineInfo) =
   var info = lastInfo
   for i in countup(0, len(msgContext) - 1): 
     if msgContext[i] != lastInfo and msgContext[i] != info: 
-      MsgWriteln(posContextFormat % [toMsgFilename(msgContext[i]), 
+      msgWriteln(posContextFormat % [toMsgFilename(msgContext[i]), 
                                      coordToStr(msgContext[i].line), 
                                      coordToStr(msgContext[i].col), 
                                      getMessageStr(errInstantiationFrom, "")])
@@ -748,7 +748,7 @@ proc rawMessage*(msg: TMsgKind, args: openarray[string]) =
     frmt = rawHintFormat
     inc(gHintCounter)
   let s = `%`(frmt, `%`(msgKindToString(msg), args))
-  MsgWriteln(s)
+  msgWriteln(s)
   handleError(msg, doAbort, s)
 
 proc rawMessage*(msg: TMsgKind, arg: string) = 
@@ -756,8 +756,8 @@ proc rawMessage*(msg: TMsgKind, arg: string) =
 
 proc writeSurroundingSrc(info: TLineInfo) =
   const indent = "  "
-  MsgWriteln(indent & info.sourceLine.ropeToStr)
-  MsgWriteln(indent & repeatChar(info.col, ' ') & '^')
+  msgWriteln(indent & info.sourceLine.ropeToStr)
+  msgWriteln(indent & repeatChar(info.col, ' ') & '^')
 
 proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string, 
                eh: TErrorHandling) =
@@ -783,45 +783,45 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
   let s = frmt % [toMsgFilename(info), coordToStr(info.line),
                   coordToStr(info.col), getMessageStr(msg, arg)]
   if not ignoreMsg:
-    MsgWriteln(s)
+    msgWriteln(s)
     if optPrintSurroundingSrc and msg in errMin..errMax:
       info.writeSurroundingSrc
   handleError(msg, eh, s)
   
-proc Fatal*(info: TLineInfo, msg: TMsgKind, arg = "") = 
+proc fatal*(info: TLineInfo, msg: TMsgKind, arg = "") = 
   liMessage(info, msg, arg, doAbort)
 
-proc GlobalError*(info: TLineInfo, msg: TMsgKind, arg = "") = 
+proc globalError*(info: TLineInfo, msg: TMsgKind, arg = "") = 
   liMessage(info, msg, arg, doRaise)
 
-proc GlobalError*(info: TLineInfo, arg: string) =
+proc globalError*(info: TLineInfo, arg: string) =
   liMessage(info, errGenerated, arg, doRaise)
 
-proc LocalError*(info: TLineInfo, msg: TMsgKind, arg = "") =
+proc localError*(info: TLineInfo, msg: TMsgKind, arg = "") =
   liMessage(info, msg, arg, doNothing)
 
-proc LocalError*(info: TLineInfo, arg: string) =
+proc localError*(info: TLineInfo, arg: string) =
   liMessage(info, errGenerated, arg, doNothing)
 
-proc Message*(info: TLineInfo, msg: TMsgKind, arg = "") =
+proc message*(info: TLineInfo, msg: TMsgKind, arg = "") =
   liMessage(info, msg, arg, doNothing)
 
-proc InternalError*(info: TLineInfo, errMsg: string) = 
+proc internalError*(info: TLineInfo, errMsg: string) = 
   if gCmd == cmdIdeTools: return
   writeContext(info)
   liMessage(info, errInternal, errMsg, doAbort)
 
-proc InternalError*(errMsg: string) = 
+proc internalError*(errMsg: string) = 
   if gCmd == cmdIdeTools: return
   writeContext(UnknownLineInfo())
   rawMessage(errInternal, errMsg)
 
-template AssertNotNil*(e: expr): expr =
-  if e == nil: InternalError($InstantiationInfo())
+template assertNotNil*(e: expr): expr =
+  if e == nil: internalError($instantiationInfo())
   e
 
-template InternalAssert*(e: bool): stmt =
-  if not e: InternalError($InstantiationInfo())
+template internalAssert*(e: bool): stmt =
+  if not e: internalError($instantiationInfo())
 
 proc addSourceLine*(fileIdx: int32, line: string) =
   fileInfos[fileIdx].lines.add line.toRope
@@ -835,14 +835,14 @@ proc sourceLine*(i: TLineInfo): PRope =
         addSourceLine i.fileIndex, line.string
     except EIO:
       discard
-  InternalAssert i.fileIndex < fileInfos.len
+  internalAssert i.fileIndex < fileInfos.len
   # can happen if the error points to EOF:
   if i.line > fileInfos[i.fileIndex].lines.len: return nil
 
   result = fileInfos[i.fileIndex].lines[i.line-1]
 
 proc quotedFilename*(i: TLineInfo): PRope =
-  InternalAssert i.fileIndex >= 0
+  internalAssert i.fileIndex >= 0
   result = fileInfos[i.fileIndex].quotedName
 
 ropes.ErrorHandler = proc (err: TRopesError, msg: string, useWarning: bool) =

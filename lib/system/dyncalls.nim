@@ -28,7 +28,7 @@ proc nimLoadLibraryError(path: string) =
   stdout.rawWrite("\n")
   quit(1)
 
-proc ProcAddrError(name: cstring) {.noinline.} =
+proc procAddrError(name: cstring) {.noinline.} =
   # carefully written to avoid memory allocation:
   stdout.rawWrite("could not import: ")
   stdout.write(name)
@@ -83,21 +83,22 @@ elif defined(windows) or defined(dos):
   type
     THINSTANCE {.importc: "HINSTANCE".} = pointer
 
-  proc FreeLibrary(lib: THINSTANCE) {.importc, header: "<windows.h>", stdcall.}
+  proc freeLibrary(lib: THINSTANCE) {.
+      importc: "FreeLibrary", header: "<windows.h>", stdcall.}
   proc winLoadLibrary(path: cstring): THINSTANCE {.
       importc: "LoadLibraryA", header: "<windows.h>", stdcall.}
-  proc GetProcAddress(lib: THINSTANCE, name: cstring): TProcAddr {.
+  proc getProcAddress(lib: THINSTANCE, name: cstring): TProcAddr {.
       importc: "GetProcAddress", header: "<windows.h>", stdcall.}
 
   proc nimUnloadLibrary(lib: TLibHandle) =
-    FreeLibrary(cast[THINSTANCE](lib))
+    freeLibrary(cast[THINSTANCE](lib))
 
   proc nimLoadLibrary(path: string): TLibHandle =
     result = cast[TLibHandle](winLoadLibrary(path))
 
   proc nimGetProcAddr(lib: TLibHandle, name: cstring): TProcAddr =
-    result = GetProcAddress(cast[THINSTANCE](lib), name)
-    if result == nil: ProcAddrError(name)
+    result = getProcAddress(cast[THINSTANCE](lib), name)
+    if result == nil: procAddrError(name)
 
 elif defined(mac):
   #

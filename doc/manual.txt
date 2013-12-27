@@ -4574,6 +4574,8 @@ the support of destructors.
 delegator pragma
 ----------------
 
+**Note**: The design of the delegator feature is subject to change.
+
 The delegator pragma can be used to intercept and rewrite proc call and field
 access attempts referring to previously undeclared symbol names. It can be used
 to provide a fluent interface to objects lying outside the static confines of

@@ -14,13 +14,13 @@
 ## wanted functionality.
 
 when defined(Windows):
-  proc ReadLineFromStdin*(prompt: string): TaintedString {.
+  proc readLineFromStdin*(prompt: string): TaintedString {.
                           tags: [FReadIO, FWriteIO].} = 
     ## Reads a line from stdin.
     stdout.write(prompt)
     result = readLine(stdin)
 
-  proc ReadLineFromStdin*(prompt: string, line: var TaintedString): bool {.
+  proc readLineFromStdin*(prompt: string, line: var TaintedString): bool {.
                           tags: [FReadIO, FWriteIO].} =
     ## Reads a `line` from stdin. `line` must not be
     ## ``nil``! May throw an IO exception.
@@ -34,7 +34,7 @@ when defined(Windows):
 else:
   import readline, history
     
-  proc ReadLineFromStdin*(prompt: string): TaintedString {.
+  proc readLineFromStdin*(prompt: string): TaintedString {.
                           tags: [FReadIO, FWriteIO].} =
     var buffer = readline.readLine(prompt)
     if isNil(buffer): quit(0)
@@ -43,7 +43,7 @@ else:
       add_history(buffer)
     readline.free(buffer)
 
-  proc ReadLineFromStdin*(prompt: string, line: var TaintedString): bool {.
+  proc readLineFromStdin*(prompt: string, line: var TaintedString): bool {.
                           tags: [FReadIO, FWriteIO].} =
     var buffer = readline.readLine(prompt)
     if isNil(buffer): quit(0)

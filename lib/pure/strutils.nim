@@ -128,7 +128,7 @@ proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
   ## | > 0 iff a > b
   var i = 0
   var j = 0
-  while True:
+  while true:
     while a[i] == '_': inc(i)
     while b[j] == '_': inc(j) # BUGFIX: typo
     var aa = toLower(a[i])
@@ -344,7 +344,7 @@ proc intToStr*(x: int, minchars: int = 1): string {.noSideEffect,
   if x < 0:
     result = '-' & result
 
-proc ParseInt*(s: string): int {.noSideEffect, procvar,
+proc parseInt*(s: string): int {.noSideEffect, procvar,
   rtl, extern: "nsuParseInt".} =
   ## Parses a decimal integer value contained in `s`. If `s` is not
   ## a valid integer, `EInvalidValue` is raised.
@@ -352,7 +352,7 @@ proc ParseInt*(s: string): int {.noSideEffect, procvar,
   if L != s.len or L == 0:
     raise newException(EInvalidValue, "invalid integer: " & s)
 
-proc ParseBiggestInt*(s: string): biggestInt {.noSideEffect, procvar,
+proc parseBiggestInt*(s: string): biggestInt {.noSideEffect, procvar,
   rtl, extern: "nsuParseBiggestInt".} =
   ## Parses a decimal integer value contained in `s`. If `s` is not
   ## a valid integer, `EInvalidValue` is raised.
@@ -360,7 +360,7 @@ proc ParseBiggestInt*(s: string): biggestInt {.noSideEffect, procvar,
   if L != s.len or L == 0:
     raise newException(EInvalidValue, "invalid integer: " & s)
 
-proc ParseFloat*(s: string): float {.noSideEffect, procvar,
+proc parseFloat*(s: string): float {.noSideEffect, procvar,
   rtl, extern: "nsuParseFloat".} =
   ## Parses a decimal floating point value contained in `s`. If `s` is not
   ## a valid floating point number, `EInvalidValue` is raised. ``NAN``,
@@ -369,7 +369,7 @@ proc ParseFloat*(s: string): float {.noSideEffect, procvar,
   if L != s.len or L == 0:
     raise newException(EInvalidValue, "invalid float: " & s)
 
-proc ParseHexInt*(s: string): int {.noSideEffect, procvar,
+proc parseHexInt*(s: string): int {.noSideEffect, procvar,
   rtl, extern: "nsuParseHexInt".} =
   ## Parses a hexadecimal integer value contained in `s`. If `s` is not
   ## a valid integer, `EInvalidValue` is raised. `s` can have one of the
@@ -455,7 +455,7 @@ proc align*(s: string, count: int, padding = ' '): string {.
   ##   assert align("1232", 6, '#') == "##1232"
   if s.len < count:
     result = newString(count)
-    var spaces = count - s.len
+    let spaces = count - s.len
     for i in 0..spaces-1: result[i] = padding
     for i in spaces..count-1: result[i] = s[i-spaces]
   else:
@@ -649,7 +649,7 @@ proc join*(a: openArray[string]): string {.
     result = ""
 
 type
-  TSkipTable = array[Char, int]
+  TSkipTable = array[char, int]
 
 proc preprocessSub(sub: string, a: var TSkipTable) =
   var m = len(sub)
@@ -795,7 +795,7 @@ proc delete*(s: var string, first, last: int) {.noSideEffect,
     inc(j)
   setlen(s, newLen)
 
-proc ParseOctInt*(s: string): int {.noSideEffect,
+proc parseOctInt*(s: string): int {.noSideEffect,
   rtl, extern: "nsuParseOctInt".} =
   ## Parses an octal integer value contained in `s`. If `s` is not
   ## a valid integer, `EInvalidValue` is raised. `s` can have one of the
@@ -896,7 +896,7 @@ proc unescape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
     raise newException(EInvalidValue,
                        "String does not start with a prefix of: " & prefix)
   i.inc()
-  while True:
+  while true:
     if i == s.len-suffix.len: break
     case s[i]
     of '\\':

@@ -184,7 +184,7 @@ proc skipNode(r: PRodReader) =
       if par == 0: break
       dec par
     of '(': inc par
-    else: nil
+    else: discard
     inc pos
   r.pos = pos+1 # skip ')'
 
@@ -248,7 +248,7 @@ proc decodeNodeLazyBody(r: PRodReader, fInfo: TLineInfo,
     if r.s[r.pos] == ')': inc(r.pos)
     else: internalError(result.info, "decodeNode: ')' missing")
   else:
-    InternalError(fInfo, "decodeNode: '(' missing " & $r.pos)
+    internalError(fInfo, "decodeNode: '(' missing " & $r.pos)
 
 proc decodeNode(r: PRodReader, fInfo: TLineInfo): PNode =
   result = decodeNodeLazyBody(r, fInfo, nil)
@@ -286,7 +286,7 @@ proc decodeLoc(r: PRodReader, loc: var TLoc, info: TLineInfo) =
     else: 
       loc.a = 0
     if r.s[r.pos] == '>': inc(r.pos)
-    else: InternalError(info, "decodeLoc " & r.s[r.pos])
+    else: internalError(info, "decodeLoc " & r.s[r.pos])
   
 proc decodeType(r: PRodReader, info: TLineInfo): PType = 
   result = nil
@@ -303,9 +303,9 @@ proc decodeType(r: PRodReader, info: TLineInfo): PType =
     setId(result.id)
     if debugIds: registerID(result)
   else: 
-    InternalError(info, "decodeType: no id")
+    internalError(info, "decodeType: no id")
   # here this also avoids endless recursion for recursive type
-  IdTablePut(gTypeTable, result, result) 
+  idTablePut(gTypeTable, result, result) 
   if r.s[r.pos] == '(': result.n = decodeNode(r, UnknownLineInfo())
   if r.s[r.pos] == '$': 
     inc(r.pos)
@@ -370,7 +370,7 @@ proc decodeSym(r: PRodReader, info: TLineInfo): PSym =
     id = decodeVInt(r.s, r.pos)
     setId(id)
   else:
-    InternalError(info, "decodeSym: no id")
+    internalError(info, "decodeSym: no id")
   if r.s[r.pos] == '&': 
     inc(r.pos)
     ident = getIdent(decodeStr(r.s, r.pos))
@@ -384,7 +384,7 @@ proc decodeSym(r: PRodReader, info: TLineInfo): PSym =
     IdTablePut(r.syms, result, result)
     if debugIds: registerID(result)
   elif result.id != id:
-    InternalError(info, "decodeSym: wrong id")
+    internalError(info, "decodeSym: wrong id")
   elif result.kind != skStub and not r.inViewMode:
     # we already loaded the symbol
     return
@@ -455,7 +455,7 @@ proc skipSection(r: PRodReader) =
         elif c > 0: 
           dec(c)
       of '\0': break          # end of file
-      else: nil
+      else: discard
       inc(r.pos)
   else: 
     InternalError("skipSection " & $r.line)
@@ -799,7 +799,7 @@ proc loadMethods(r: PRodReader) =
     r.methods.add(rrGetSym(r, d, UnknownLineInfo()))
     if r.s[r.pos] == ' ': inc(r.pos)
 
-proc GetCRC*(fileIdx: int32): TCrc32 =
+proc getCRC*(fileIdx: int32): TCrc32 =
   InternalAssert fileIdx >= 0 and fileIdx < gMods.len
 
   if gMods[fileIdx].crcDone:
@@ -818,14 +818,14 @@ proc checkDep(fileIdx: int32): TReasonForRecompile =
     # reason has already been computed for this module:
     return gMods[fileIdx].reason
   let filename = fileIdx.toFilename
-  var crc = GetCRC(fileIdx)
+  var crc = getCRC(fileIdx)
   gMods[fileIdx].reason = rrNone  # we need to set it here to avoid cycles
   result = rrNone
   var r: PRodReader = nil
   var rodfile = toGeneratedFile(filename.withPackageName, RodExt)
   r = newRodReader(rodfile, crc, fileIdx)
   if r == nil: 
-    result = (if ExistsFile(rodfile): rrRodInvalid else: rrRodDoesNotExist)
+    result = (if existsFile(rodfile): rrRodInvalid else: rrRodDoesNotExist)
   else:
     processRodFile(r, crc)
     result = r.reason
@@ -880,12 +880,12 @@ proc rawLoadStub(s: PSym) =
   if rs != s:
     #echo "rs: ", toHex(cast[int](rs.position), int.sizeof * 2),
     #     "\ns:  ", toHex(cast[int](s.position), int.sizeof * 2)
-    InternalError(rs.info, "loadStub: wrong symbol")
+    internalError(rs.info, "loadStub: wrong symbol")
   elif rs.id != theId: 
-    InternalError(rs.info, "loadStub: wrong ID") 
+    internalError(rs.info, "loadStub: wrong ID") 
   #MessageOut('loaded stub: ' + s.name.s);
   
-proc LoadStub*(s: PSym) =
+proc loadStub*(s: PSym) =
   ## loads the stub symbol `s`.
   
   # deactivate the GC here because we do a deep recursion and generate no
@@ -912,8 +912,8 @@ proc getBody*(s: PSym): PNode =
     s.ast.sons[bodyPos] = result
     s.offset = 0
   
-InitIdTable(gTypeTable)
-InitStrTable(rodCompilerProcs)
+initIdTable(gTypeTable)
+initStrTable(rodCompilerProcs)
 
 # viewer:
 proc writeNode(f: TFile; n: PNode) =
@@ -1166,7 +1166,7 @@ proc viewFile(rodfile: string) =
       if r.s[r.pos] == ')': inc r.pos
       outf.write("<not supported by viewer>)\n")
     else:
-      InternalError("invalid section: '" & section &
+      internalError("invalid section: '" & section &
                     "' at " & $r.line & " in " & r.filename)
       skipSection(r)
     if r.s[r.pos] == '\x0A':

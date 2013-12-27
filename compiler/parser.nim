@@ -35,7 +35,7 @@ type
     lex*: TLexer              # the lexer that is used for parsing
     tok*: TToken              # the current token
 
-proc ParseAll*(p: var TParser): PNode
+proc parseAll*(p: var TParser): PNode
 proc openParser*(p: var TParser, filename: string, inputstream: PLLStream)
 proc closeParser*(p: var TParser)
 proc parseTopLevelStmt*(p: var TParser): PNode
@@ -59,9 +59,9 @@ proc newFloatNodeP*(kind: TNodeKind, floatVal: BiggestFloat, p: TParser): PNode
 proc newStrNodeP*(kind: TNodeKind, strVal: string, p: TParser): PNode
 proc newIdentNodeP*(ident: PIdent, p: TParser): PNode
 proc expectIdentOrKeyw*(p: TParser)
-proc ExpectIdent*(p: TParser)
+proc expectIdent*(p: TParser)
 proc parLineInfo*(p: TParser): TLineInfo
-proc Eat*(p: var TParser, TokType: TTokType)
+proc eat*(p: var TParser, TokType: TTokType)
 proc skipInd*(p: var TParser)
 proc optPar*(p: var TParser)
 proc optInd*(p: var TParser, n: PNode)
@@ -75,17 +75,17 @@ proc parseCase(p: var TParser): PNode
 proc getTok(p: var TParser) = 
   rawGetTok(p.lex, p.tok)
 
-proc OpenParser*(p: var TParser, fileIdx: int32, inputStream: PLLStream) =
+proc openParser*(p: var TParser, fileIdx: int32, inputStream: PLLStream) =
   initToken(p.tok)
-  OpenLexer(p.lex, fileIdx, inputstream)
+  openLexer(p.lex, fileIdx, inputstream)
   getTok(p)                   # read the first token
   p.firstTok = true
 
-proc OpenParser*(p: var TParser, filename: string, inputStream: PLLStream) =
+proc openParser*(p: var TParser, filename: string, inputStream: PLLStream) =
   openParser(p, filename.fileInfoIdx, inputStream)
 
-proc CloseParser(p: var TParser) = 
-  CloseLexer(p.lex)
+proc closeParser(p: var TParser) = 
+  closeLexer(p.lex)
 
 proc parMessage(p: TParser, msg: TMsgKind, arg: string = "") = 
   lexMessage(p.lex, msg, arg)
@@ -135,11 +135,11 @@ proc expectIdentOrKeyw(p: TParser) =
   if p.tok.tokType != tkSymbol and not isKeyword(p.tok.tokType):
     lexMessage(p.lex, errIdentifierExpected, prettyTok(p.tok))
   
-proc ExpectIdent(p: TParser) =
+proc expectIdent(p: TParser) =
   if p.tok.tokType != tkSymbol:
     lexMessage(p.lex, errIdentifierExpected, prettyTok(p.tok))
   
-proc Eat(p: var TParser, TokType: TTokType) =
+proc eat(p: var TParser, TokType: TTokType) =
   if p.tok.TokType == TokType: getTok(p)
   else: lexMessage(p.lex, errTokenExpected, TokTypeToStr[tokType])
   
@@ -185,10 +185,10 @@ proc relevantOprChar(ident: PIdent): char {.inline.} =
   if result == '\\' and L > 1:
     result = ident.s[1]
 
-proc IsSigilLike(tok: TToken): bool {.inline.} =
+proc isSigilLike(tok: TToken): bool {.inline.} =
   result = tok.tokType == tkOpr and relevantOprChar(tok.ident) == '@'
 
-proc IsLeftAssociative(tok: TToken): bool {.inline.} =
+proc isLeftAssociative(tok: TToken): bool {.inline.} =
   result = tok.tokType != tkOpr or relevantOprChar(tok.ident) != '^'
 
 proc getPrecedence(tok: TToken): int = 
@@ -427,7 +427,7 @@ proc parseCast(p: var TParser): PNode =
 
 proc setBaseFlags(n: PNode, base: TNumericalBase) = 
   case base
-  of base10: nil
+  of base10: discard
   of base2: incl(n.flags, nfBase2)
   of base8: incl(n.flags, nfBase8)
   of base16: incl(n.flags, nfBase16)
@@ -1862,7 +1862,7 @@ proc parseTopLevelStmt(p: var TParser): PNode =
   result = ast.emptyNode
   while true:
     if p.tok.indent != 0: 
-      if p.firstTok and p.tok.indent < 0: nil
+      if p.firstTok and p.tok.indent < 0: discard
       else: parMessage(p, errInvalidIndentation)
     p.firstTok = false
     case p.tok.tokType
@@ -1881,7 +1881,7 @@ proc parseString(s: string, filename: string = "", line: int = 0): PNode =
   stream.lineOffset = line
 
   var parser: TParser
-  OpenParser(parser, filename, stream)
+  openParser(parser, filename, stream)
 
   result = parser.parseAll
-  CloseParser(parser)
+  closeParser(parser)

@@ -185,13 +185,13 @@ var
   targetCPU*, hostCPU*: TSystemCPU
   targetOS*, hostOS*: TSystemOS
 
-proc NameToOS*(name: string): TSystemOS
-proc NameToCPU*(name: string): TSystemCPU
+proc nameToOS*(name: string): TSystemOS
+proc nameToCPU*(name: string): TSystemCPU
 
 var 
-  IntSize*: int
+  intSize*: int
   floatSize*: int
-  PtrSize*: int
+  ptrSize*: int
   tnl*: string                # target newline
 
 proc setTarget*(o: TSystemOS, c: TSystemCPU) = 
@@ -205,13 +205,13 @@ proc setTarget*(o: TSystemOS, c: TSystemCPU) =
   ptrSize = cpu[c].bit div 8
   tnl = os[o].newLine
 
-proc NameToOS(name: string): TSystemOS = 
+proc nameToOS(name: string): TSystemOS = 
   for i in countup(succ(osNone), high(TSystemOS)): 
     if cmpIgnoreStyle(name, OS[i].name) == 0: 
       return i
   result = osNone
 
-proc NameToCPU(name: string): TSystemCPU = 
+proc nameToCPU(name: string): TSystemCPU = 
   for i in countup(succ(cpuNone), high(TSystemCPU)): 
     if cmpIgnoreStyle(name, CPU[i].name) == 0: 
       return i

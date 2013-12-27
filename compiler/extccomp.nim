@@ -324,7 +324,7 @@ var
   compileOptions: string = ""
   ccompilerpath: string = ""
 
-proc NameToCC*(name: string): TSystemCC = 
+proc nameToCC*(name: string): TSystemCC = 
   for i in countup(succ(ccNone), high(TSystemCC)): 
     if cmpIgnoreStyle(name, CC[i].name) == 0: 
       return i
@@ -405,7 +405,7 @@ proc execExternalProgram*(cmd: string) =
 
 proc generateScript(projectFile: string, script: PRope) = 
   let (dir, name, ext) = splitFile(projectFile)
-  WriteRope(script, dir / addFileExt("compile_" & name, 
+  writeRope(script, dir / addFileExt("compile_" & name, 
                                      platform.os[targetOS].scriptExt))
 
 proc getOptSpeed(c: TSystemCC): string = 
@@ -439,7 +439,7 @@ var fileCounter: int
 proc add(s: var string, many: openarray[string]) =
   s.add many.join
 
-proc CFileSpecificOptions(cfilename: string): string =
+proc cFileSpecificOptions(cfilename: string): string =
   result = compileOptions
   var trunk = splitFile(cfilename).name
   if optCDebug in gGlobalOptions: 
@@ -541,7 +541,7 @@ proc addExternalFileToCompile*(filename: string) =
   if optForceFullMake in gGlobalOptions or externalFileChanged(filename):
     appendStr(externalToCompile, filename)
 
-proc CompileCFile(list: TLinkedList, script: var PRope, cmds: var TStringSeq, 
+proc compileCFile(list: TLinkedList, script: var PRope, cmds: var TStringSeq, 
                   isExternal: bool) = 
   var it = PStrEntry(list.head)
   while it != nil: 
@@ -554,7 +554,7 @@ proc CompileCFile(list: TLinkedList, script: var PRope, cmds: var TStringSeq,
       app(script, tnl)
     it = PStrEntry(it.next)
 
-proc CallCCompiler*(projectfile: string) =
+proc callCCompiler*(projectfile: string) =
   var 
     linkCmd, buildgui, builddll: string
   if gGlobalOptions * {optCompileOnly, optGenScript} == {optCompileOnly}: 
@@ -564,8 +564,8 @@ proc CallCCompiler*(projectfile: string) =
   var c = ccompiler
   var script: PRope = nil
   var cmds: TStringSeq = @[]
-  CompileCFile(toCompile, script, cmds, false)
-  CompileCFile(externalToCompile, script, cmds, true)
+  compileCFile(toCompile, script, cmds, false)
+  compileCFile(externalToCompile, script, cmds, true)
   if optCompileOnly notin gGlobalOptions: 
     if gNumberOfProcessors == 0: gNumberOfProcessors = countProcessors()
     var res = 0
@@ -640,7 +640,7 @@ proc CallCCompiler*(projectfile: string) =
 proc genMappingFiles(list: TLinkedList): PRope = 
   var it = PStrEntry(list.head)
   while it != nil: 
-    appf(result, "--file:r\"$1\"$N", [toRope(AddFileExt(it.data, cExt))])
+    appf(result, "--file:r\"$1\"$N", [toRope(addFileExt(it.data, cExt))])
     it = PStrEntry(it.next)
 
 proc writeMapping*(gSymbolMapping: PRope) = 
@@ -658,5 +658,5 @@ proc writeMapping*(gSymbolMapping: PRope) =
   app(code, strutils.escape(libpath))
   
   appf(code, "\n[Symbols]$n$1", [gSymbolMapping])
-  WriteRope(code, joinPath(gProjectPath, "mapping.txt"))
+  writeRope(code, joinPath(gProjectPath, "mapping.txt"))
   

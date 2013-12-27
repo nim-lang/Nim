@@ -68,9 +68,9 @@ type
     symMap*: TIdTable         # map PSym to PSym
     info*: TLineInfo
 
-proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType
-proc ReplaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym
-proc ReplaceTypeVarsN(cl: var TReplTypeVars, n: PNode): PNode
+proc replaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType
+proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym
+proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode): PNode
 
 proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
   result = copyNode(n)
@@ -81,13 +81,13 @@ proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
     if i == 0: result.add(n[i])
     else: result.add(prepareNode(cl, n[i]))
 
-proc ReplaceTypeVarsN(cl: var TReplTypeVars, n: PNode): PNode =
+proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode): PNode =
   if n == nil: return
   result = copyNode(n)
   result.typ = ReplaceTypeVarsT(cl, n.typ)
   case n.kind
   of nkNone..pred(nkSym), succ(nkSym)..nkNilLit:
-    nil
+    discard
   of nkSym:
     result.sym = ReplaceTypeVarsS(cl, n.sym)
   of nkRecWhen:
@@ -118,7 +118,7 @@ proc ReplaceTypeVarsN(cl: var TReplTypeVars, n: PNode): PNode =
       for i in countup(0, length - 1):
         result.sons[i] = ReplaceTypeVarsN(cl, n.sons[i])
   
-proc ReplaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym = 
+proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym = 
   if s == nil: return nil
   result = PSym(idTableGet(cl.symMap, s))
   if result == nil: 
@@ -192,11 +192,11 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
   rawAddSon(result, newbody)
   checkPartialConstructedType(cl.info, newbody)
   
-proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType = 
+proc replaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType = 
   result = t
   if t == nil: return 
   case t.kind
-  of tyTypeClass: nil
+  of tyTypeClass: discard
   of tyGenericParam:
     result = lookupTypeVar(cl, t)
     if result.kind == tyGenericInvokation:
@@ -235,11 +235,10 @@ proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
 proc generateTypeInstance*(p: PContext, pt: TIdTable, arg: PNode, 
                            t: PType): PType = 
   var cl: TReplTypeVars
-  InitIdTable(cl.symMap)
+  initIdTable(cl.symMap)
   copyIdTable(cl.typeMap, pt)
   cl.info = arg.info
   cl.c = p
   pushInfoContext(arg.info)
-  result = ReplaceTypeVarsT(cl, t)
+  result = replaceTypeVarsT(cl, t)
   popInfoContext()
-

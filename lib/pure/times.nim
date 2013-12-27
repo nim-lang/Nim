@@ -146,7 +146,7 @@ proc getGMTime*(t: TTime): TTimeInfo {.tags: [FTime], raises: [].}
   ## converts the calendar time `t` to broken-down time representation,
   ## expressed in Coordinated Universal Time (UTC).
 
-proc TimeInfoToTime*(timeInfo: TTimeInfo): TTime {.tags: [].}
+proc timeInfoToTime*(timeInfo: TTimeInfo): TTime {.tags: [].}
   ## converts a broken-down time structure to
   ## calendar time representation. The function ignores the specified
   ## contents of the structure members `weekday` and `yearday` and recomputes
@@ -297,7 +297,7 @@ when not defined(JS):
 when not defined(JS):
   # C wrapper:
   type
-    structTM {.importc: "struct tm", final.} = object
+    StructTM {.importc: "struct tm", final.} = object
       second {.importc: "tm_sec".},
         minute {.importc: "tm_min".},
         hour {.importc: "tm_hour".},
@@ -308,7 +308,7 @@ when not defined(JS):
         yearday {.importc: "tm_yday".},
         isdst {.importc: "tm_isdst".}: cint
   
-    PTimeInfo = ptr structTM
+    PTimeInfo = ptr StructTM
     PTime = ptr TTime
   
     TClock {.importc: "clock_t".} = distinct int
@@ -401,7 +401,7 @@ when not defined(JS):
     # copying is needed anyway to provide reentrancity; thus
     # the conversion is not expensive
   
-  proc TimeInfoToTime(timeInfo: TTimeInfo): TTime =
+  proc timeInfoToTime(timeInfo: TTimeInfo): TTime =
     var cTimeInfo = timeInfo # for C++ we have to make a copy,
     # because the header of mktime is broken in my version of libc
     return mktime(timeInfoToTM(cTimeInfo))
@@ -498,7 +498,7 @@ elif defined(JS):
     result.weekday = weekDays[t.getUTCDay()]
     result.yearday = 0
   
-  proc TimeInfoToTime*(timeInfo: TTimeInfo): TTime =
+  proc timeInfoToTime*(timeInfo: TTimeInfo): TTime =
     result = internGetTime()
     result.setSeconds(timeInfo.second)
     result.setMinutes(timeInfo.minute)

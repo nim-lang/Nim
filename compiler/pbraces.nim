@@ -10,7 +10,7 @@
 import 
   llstream, lexer, parser, idents, strutils, ast, msgs
 
-proc ParseAll*(p: var TParser): PNode = 
+proc parseAll*(p: var TParser): PNode = 
   result = nil
 
 proc parseTopLevelStmt*(p: var TParser): PNode = 

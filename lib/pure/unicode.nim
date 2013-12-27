@@ -14,8 +14,8 @@
 include "system/inclrtl"
 
 type
-  irune = int # underlying type of TRune
-  TRune* = distinct irune   ## type that can hold any Unicode character
+  IRune = int # underlying type of TRune
+  TRune* = distinct IRune   ## type that can hold any Unicode character
   TRune16* = distinct int16 ## 16 bit Unicode character
   
 proc `<=%`*(a, b: TRune): bool = return int(a) <=% int(b)

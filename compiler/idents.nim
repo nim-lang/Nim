@@ -102,7 +102,7 @@ proc getIdent*(identifier: string): PIdent =
 proc getIdent*(identifier: string, h: THash): PIdent = 
   result = getIdent(cstring(identifier), len(identifier), h)
 
-proc IdentEq*(id: PIdent, name: string): bool = 
+proc identEq*(id: PIdent, name: string): bool = 
   result = id.id == getIdent(name).id
 
 var idAnon* = getIdent":anonymous"

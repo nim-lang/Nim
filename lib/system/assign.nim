@@ -168,12 +168,12 @@ proc objectInit(dest: Pointer, typ: PNimType) =
   of tyArray, tyArrayConstr:
     for i in 0..(typ.size div typ.base.size)-1:
       objectInit(cast[pointer](d +% i * typ.base.size), typ.base)
-  else: nil # nothing to do
+  else: discard # nothing to do
   
 # ---------------------- assign zero -----------------------------------------
 
 when not defined(nimmixin):
-  proc destroy(x: int) = nil
+  proc destroy(x: int) = discard
   proc nimDestroyRange*[T](r: T) =
     # internal proc used for destroying sequences and arrays
     for i in countup(0, r.len - 1): destroy(r[i])

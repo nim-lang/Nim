@@ -50,7 +50,7 @@ proc sameInstantiation(a, b: TInstantiation): bool =
                           flags = {TypeDescExactMatch}): return
     result = true
 
-proc GenericCacheGet(genericSym: Psym, entry: TInstantiation): PSym =
+proc genericCacheGet(genericSym: Psym, entry: TInstantiation): PSym =
   if genericSym.procInstCache != nil:
     for inst in genericSym.procInstCache:
       if sameInstantiation(entry, inst[]):
@@ -257,7 +257,7 @@ proc fixupProcType(c: PContext, genericType: PType,
       result.sons[i] = fixupProcType(c, result.sons[i], inst)
     result = instGenericContainer(c, getInfoContext(-1), result)
   
-  else: nil
+  else: discard
 
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
                       info: TLineInfo): PSym =
@@ -290,7 +290,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   instantiateGenericParamList(c, n.sons[genericParamsPos], pt, entry[])
   result.typ = fixupProcType(c, fn.typ, entry[])
   n.sons[genericParamsPos] = ast.emptyNode
-  var oldPrc = GenericCacheGet(fn, entry[])
+  var oldPrc = genericCacheGet(fn, entry[])
   if oldPrc == nil:
     fn.procInstCache.safeAdd(entry)
     c.generics.add(makeInstPair(fn, entry))
@@ -311,5 +311,3 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   c.friendModule = oldFriend
   dec(c.InstCounter)
   if result.kind == skMethod: finishMethod(c, result)
-
-

@@ -132,17 +132,17 @@ type
   ETimeout* = object of ESynch
 
 let
-  InvalidSocket*: TSocket = nil ## invalid socket
+  invalidSocket*: TSocket = nil ## invalid socket
 
 when defined(windows):
   let
-    OSInvalidSocket = winlean.INVALID_SOCKET
+    osInvalidSocket = winlean.INVALID_SOCKET
 else:
   let
-    OSInvalidSocket = posix.INVALID_SOCKET
+    osInvalidSocket = posix.INVALID_SOCKET
 
 proc newTSocket(fd: TSocketHandle, isBuff: bool): TSocket =
-  if fd == OSInvalidSocket:
+  if fd == osInvalidSocket:
     return nil
   new(result)
   result.fd = fd
@@ -187,14 +187,14 @@ proc htons*(x: int16): int16 =
   result = sockets.ntohs(x)
   
 when defined(Posix):
-  proc ToInt(domain: TDomain): cint =
+  proc toInt(domain: TDomain): cint =
     case domain
     of AF_UNIX:        result = posix.AF_UNIX
     of AF_INET:        result = posix.AF_INET
     of AF_INET6:       result = posix.AF_INET6
     else: nil
 
-  proc ToInt(typ: TType): cint =
+  proc toInt(typ: TType): cint =
     case typ
     of SOCK_STREAM:    result = posix.SOCK_STREAM
     of SOCK_DGRAM:     result = posix.SOCK_DGRAM
@@ -202,7 +202,7 @@ when defined(Posix):
     of SOCK_RAW:       result = posix.SOCK_RAW
     else: nil
 
-  proc ToInt(p: TProtocol): cint =
+  proc toInt(p: TProtocol): cint =
     case p
     of IPPROTO_TCP:    result = posix.IPPROTO_TCP
     of IPPROTO_UDP:    result = posix.IPPROTO_UDP
@@ -216,10 +216,10 @@ else:
   proc toInt(domain: TDomain): cint = 
     result = toU16(ord(domain))
 
-  proc ToInt(typ: TType): cint =
+  proc toInt(typ: TType): cint =
     result = cint(ord(typ))
   
-  proc ToInt(p: TProtocol): cint =
+  proc toInt(p: TProtocol): cint =
     result = cint(ord(p))
 
 proc socket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM,
@@ -333,7 +333,7 @@ when defined(ssl):
     if SSLSetFd(socket.sslHandle, socket.fd) != 1:
       SSLError()
 
-proc SocketError*(socket: TSocket, err: int = -1, async = false) =
+proc socketError*(socket: TSocket, err: int = -1, async = false) =
   ## Raises proper errors based on return values of ``recv`` functions.
   ##
   ## If ``async`` is ``True`` no error will be thrown in the case when the
@@ -471,7 +471,7 @@ template acceptAddrPlain(noClientRet, successRet: expr,
   var sock = accept(server.fd, cast[ptr TSockAddr](addr(sockAddress)),
                     addr(addrLen))
   
-  if sock == OSInvalidSocket:
+  if sock == osInvalidSocket:
     let err = OSLastError()
     when defined(windows):
       if err.int32 == WSAEINPROGRESS:
@@ -1661,7 +1661,7 @@ when defined(Windows):
 proc setBlocking(s: TSocket, blocking: bool) =
   when defined(Windows):
     var mode = clong(ord(not blocking)) # 1 for non-blocking, 0 for blocking
-    if ioctlsocket(TSocketHandle(s.fd), FIONBIO, addr(mode)) == -1:
+    if ioctlsocket(s.fd, FIONBIO, addr(mode)) == -1:
       OSError(OSLastError())
   else: # BSD sockets
     var x: int = fcntl(s.fd, F_GETFL, 0)
