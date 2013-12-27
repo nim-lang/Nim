@@ -719,7 +719,7 @@ $desc
 </dd>
 """)
   setConfigVar("doc.item.toc", """
-  <li><a class="reference" href="#$itemID"
+  <li><a class="reference" href="#$itemSymOrID"
     title="$header_plain">$name</a></li>
 """)
   setConfigVar("doc.toc", """

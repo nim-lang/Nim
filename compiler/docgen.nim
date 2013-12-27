@@ -229,6 +229,27 @@ proc extractPlainSymbol(text: string): string =
 
   result = result.replace(" ", "")
 
+proc newUniquePlainSymbol(d: PDoc, original: string): string =
+  ## Returns a new unique plain symbol made up from the original.
+  ##
+  ## When a collision is found in the seenSymbols table, new numerical variants
+  ## with underscore + number will be generated.
+  if not d.seenSymbols.hasKey(original):
+    result = original
+    d.seenSymbols[original] = ""
+    return
+
+  # Iterate over possible numeric variants of the original name.
+  var count = 2
+
+  while true:
+    result = original & "_" & $count
+    if not d.seenSymbols.hasKey(result):
+      d.seenSymbols[result] = ""
+      break
+    count += 1
+
+
 proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   if not isVisible(nameNode): return
   var name = toRope(getName(d, nameNode))
@@ -308,9 +329,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     cleanPlainSymbol = extractPlainSymbol(plainName)
     plainSymbolRope = toRope(cleanPlainSymbol)
     itemIDRope = toRope(d.id)
-    symbolOrId = if d.seenSymbols.hasKey(cleanPlainSymbol): itemIDRope
-      else: plainSymbolRope
-  d.seenSymbols[cleanPlainSymbol] = ""
+    symbolOrId = d.newUniquePlainSymbol(cleanPlainSymbol).toRope
 
   app(d.section[k], ropeFormatNamedVars(getConfigVar("doc.item"),
     ["name", "header", "desc", "itemID", "header_plain", "itemSym",
