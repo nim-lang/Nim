@@ -188,7 +188,7 @@ proc parseCmdLine(c: var TConfigData) =
 proc walkDirRecursively(s: var seq[string], root: string) =
   for k, f in walkDir(root):
     case k
-    of pcFile, pcLinkToFile: add(s, UnixToNativePath(f))
+    of pcFile, pcLinkToFile: add(s, unixToNativePath(f))
     of pcDir: walkDirRecursively(s, f)
     of pcLinkToDir: nil
 
@@ -199,7 +199,7 @@ proc addFiles(s: var seq[string], patterns: seq[string]) =
     else:
       var i = 0
       for f in walkFiles(p):
-        add(s, UnixToNativePath(f))
+        add(s, unixToNativePath(f))
         inc(i)
       if i == 0: echo("[Warning] No file found that matches: " & p)
 
@@ -286,7 +286,7 @@ proc parseIniFile(c: var TConfigData) =
             of "console": c.app = appConsole
             of "gui": c.app = appGUI
             else: quit(errorStr(p, "expected: console or gui"))
-          of "license": c.license = UnixToNativePath(k.value)
+          of "license": c.license = unixToNativePath(k.value)
           else: quit(errorStr(p, "unknown variable: " & k.key))
         of "var": nil
         of "winbin": filesOnly(p, k.key, v, c.cat[fcWinBin])

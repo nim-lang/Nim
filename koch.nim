@@ -110,16 +110,16 @@ proc findStartNimrod: string =
   # If these fail, we try to build nimrod with the "build.(sh|bat)" script.
   var nimrod = "nimrod".exe
   result = "bin" / nimrod
-  if ExistsFile(result): return
+  if existsFile(result): return
   for dir in split(getEnv("PATH"), PathSep):
-    if ExistsFile(dir / nimrod): return nimrod
+    if existsFile(dir / nimrod): return nimrod
   when defined(Posix):
     const buildScript = "build.sh"
     if ExistsFile(buildScript): 
       if tryExec("./" & buildScript): return "bin" / nimrod
   else:
     const buildScript = "build.bat"
-    if ExistsFile(buildScript): 
+    if existsFile(buildScript): 
       if tryExec(buildScript): return "bin" / nimrod
   
   echo("Found no nimrod compiler and every attempt to build one failed!")
@@ -188,14 +188,14 @@ proc removePattern(pattern: string) =
     removeFile(f)
 
 proc clean(args: string) = 
-  if ExistsFile("koch.dat"): removeFile("koch.dat")
+  if existsFile("koch.dat"): removeFile("koch.dat")
   removePattern("web/*.html")
   removePattern("doc/*.html")
   cleanAux(getCurrentDir())
   for kind, path in walkDir(getCurrentDir() / "build"):
     if kind == pcDir: 
       echo "removing dir: ", path
-      RemoveDir(path)
+      removeDir(path)
 
 # -------------- update -------------------------------------------------------
 
