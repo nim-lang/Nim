@@ -732,10 +732,10 @@ proc contains*[T](s: TSlice[T], value: T): bool {.noSideEffect, inline.} =
   result = s.a <= value and value <= s.b
 
 template `in` * (x, y: expr): expr {.immediate.} = contains(y, x)
-template `not_in` * (x, y: expr): expr {.immediate.} = not contains(y, x)
+template `notin` * (x, y: expr): expr {.immediate.} = not contains(y, x)
 
 proc `is` *[T, S](x: T, y: S): bool {.magic: "Is", noSideEffect.}
-template `is_not` *(x, y: expr): expr {.immediate.} = not (x is y)
+template `isnot` *(x, y: expr): expr {.immediate.} = not (x is y)
 
 proc `of` *[T, S](x: T, y: S): bool {.magic: "Of", noSideEffect.}
 
