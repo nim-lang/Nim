@@ -614,7 +614,7 @@ proc CallCCompiler*(projectfile: string) =
         exefile = splitFile(projectFile).name & platform.os[targetOS].exeExt
         buildDll = ""
       if options.outFile.len > 0: 
-        exefile = options.outFile
+        exefile = options.outFile.expandTilde
       if not noAbsolutePaths():
         if not exeFile.isAbsolute():
           exefile = joinPath(splitFile(projectFile).dir, exefile)
