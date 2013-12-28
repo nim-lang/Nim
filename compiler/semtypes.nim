@@ -673,6 +673,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       result.rawAddSon(copyType(paramType.sons[i], getCurrOwner(), true))
     result = instGenericContainer(c, paramType.sym.info, result,
                                   allowMetaTypes = true)
+    result.lastSon.flags.incl tfHasMeta
     result = newTypeWithSons(c, tyCompositeTypeClass, @[paramType, result])
     result = addImplicitGeneric(result)
   
