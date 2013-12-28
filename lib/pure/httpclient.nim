@@ -220,9 +220,8 @@ proc parseResponse(s: TSocket, getBody: bool, timeout: int): TResponse =
       inc(linei, le)
       if line[linei] != ':': httpError("invalid headers")
       inc(linei) # Skip :
-      linei += skipWhitespace(line, linei)
       
-      result.headers[name] = line[linei.. -1]
+      result.headers[name] = line[linei.. -1].strip()
   if not fullyRead:
     httpError("Connection was closed before full request has been made")
   if getBody:
