@@ -147,15 +147,15 @@ proc del*(father: PNimrodNode, idx = 0, n = 1) {.magic: "NDel".}
 proc kind*(n: PNimrodNode): TNimrodNodeKind {.magic: "NKind".}
   ## returns the `kind` of the node `n`.
 
-proc intVal*(n: PNimrodNode): biggestInt {.magic: "NIntVal".}
-proc floatVal*(n: PNimrodNode): biggestFloat {.magic: "NFloatVal".}
+proc intVal*(n: PNimrodNode): BiggestInt {.magic: "NIntVal".}
+proc floatVal*(n: PNimrodNode): BiggestFloat {.magic: "NFloatVal".}
 proc symbol*(n: PNimrodNode): PNimrodSymbol {.magic: "NSymbol".}
 proc ident*(n: PNimrodNode): TNimrodIdent {.magic: "NIdent".}
 proc typ*(n: PNimrodNode): typedesc {.magic: "NGetType".}
 proc strVal*(n: PNimrodNode): string  {.magic: "NStrVal".}
 
-proc `intVal=`*(n: PNimrodNode, val: biggestInt) {.magic: "NSetIntVal".}
-proc `floatVal=`*(n: PNimrodNode, val: biggestFloat) {.magic: "NSetFloatVal".}
+proc `intVal=`*(n: PNimrodNode, val: BiggestInt) {.magic: "NSetIntVal".}
+proc `floatVal=`*(n: PNimrodNode, val: BiggestFloat) {.magic: "NSetFloatVal".}
 proc `symbol=`*(n: PNimrodNode, val: PNimrodSymbol) {.magic: "NSetSymbol".}
 proc `ident=`*(n: PNimrodNode, val: TNimrodIdent) {.magic: "NSetIdent".}
 #proc `typ=`*(n: PNimrodNode, typ: typedesc) {.magic: "NSetType".}
@@ -187,12 +187,12 @@ proc newStrLitNode*(s: string): PNimrodNode {.compileTime.} =
   result = newNimNode(nnkStrLit)
   result.strVal = s
 
-proc newIntLitNode*(i: biggestInt): PNimrodNode {.compileTime.} =
+proc newIntLitNode*(i: BiggestInt): PNimrodNode {.compileTime.} =
   ## creates a int literal node from `i`
   result = newNimNode(nnkIntLit)
   result.intVal = i
 
-proc newFloatLitNode*(f: biggestFloat): PNimrodNode {.compileTime.} =
+proc newFloatLitNode*(f: BiggestFloat): PNimrodNode {.compileTime.} =
   ## creates a float literal node from `f`
   result = newNimNode(nnkFloatLit)
   result.floatVal = f
@@ -351,12 +351,12 @@ proc newLit*(c: char): PNimrodNode {.compileTime.} =
   result = newNimNode(nnkCharLit)
   result.intVal = ord(c)
 
-proc newLit*(i: biggestInt): PNimrodNode {.compileTime.} =
+proc newLit*(i: BiggestInt): PNimrodNode {.compileTime.} =
   ## produces a new integer literal node.
   result = newNimNode(nnkIntLit)
   result.intVal = i
 
-proc newLit*(f: biggestFloat): PNimrodNode {.compileTime.} =
+proc newLit*(f: BiggestFloat): PNimrodNode {.compileTime.} =
   ## produces a new float literal node.
   result = newNimNode(nnkFloatLit)
   result.floatVal = f
@@ -535,7 +535,7 @@ from strutils import cmpIgnoreStyle, format
 proc expectKind*(n: PNimrodNode; k: set[TNimrodNodeKind]) {.compileTime.} =
   assert n.kind in k, "Expected one of $1, got $2".format(k, n.kind)
 
-proc newProc*(name = newEmptyNode(); params: openarray[PNimrodNode] = [newEmptyNode()];  
+proc newProc*(name = newEmptyNode(); params: openArray[PNimrodNode] = [newEmptyNode()];  
     body: PNimrodNode = newStmtList(), procType = nnkProcDef): PNimrodNode {.compileTime.} =
   ## shortcut for creating a new proc
   ##
@@ -573,7 +573,7 @@ proc copyChildrenTo*(src, dest: PNimrodNode) {.compileTime.}=
     dest.add src[i].copyNimTree
 
 template expectRoutine(node: PNimrodNode): stmt =
-  expectKind(node, routineNodes)
+  expectKind(node, RoutineNodes)
   
 proc name*(someProc: PNimrodNode): PNimrodNode {.compileTime.} =
   someProc.expectRoutine
@@ -610,7 +610,7 @@ proc body*(someProc: PNimrodNode): PNimrodNode {.compileTime.} =
   of routineNodes:
     return someProc[6]
   of nnkBlockStmt, nnkWhileStmt:
-    return someproc[1]
+    return someProc[1]
   of nnkForStmt:
     return someProc.last
   else: 
@@ -634,7 +634,7 @@ proc `$`*(node: PNimrodNode): string {.compileTime.} =
   of nnkIdent:
     result = $node.ident
   of nnkStrLit:
-    result = node.strval
+    result = node.strVal
   else: 
     badNodeKind node.kind, "$"
 
@@ -657,7 +657,7 @@ template findChild*(n: PNimrodNode; cond: expr): PNimrodNode {.immediate, dirty.
         break
     result
 
-proc insert*(a: PNimrodNOde; pos: int; b: PNimrodNode) {.compileTime.} =
+proc insert*(a: PNimrodNode; pos: int; b: PNimrodNode) {.compileTime.} =
   ## Insert node B into A at pos
   if high(a) < pos:
     ## add some empty nodes first
@@ -678,14 +678,14 @@ proc basename*(a: PNimrodNode): PNimrodNode {.compiletime.} =
   of nnkIdent: return a
   of nnkPostfix, nnkPrefix: return a[1]
   else: 
-    quit "Do not know how to get basename of ("& treerepr(a) &")\n"& repr(a)
+    quit "Do not know how to get basename of ("& treeRepr(a) &")\n"& repr(a)
     
 proc `basename=`*(a: PNimrodNode; val: string) {.compileTime.}=
   case a.kind
   of nnkIdent: macros.`ident=`(a,  !val)
   of nnkPostfix, nnkPrefix: a[1] = ident(val)
   else:
-    quit "Do not know how to get basename of ("& treerepr(a)& ")\n"& repr(a)
+    quit "Do not know how to get basename of ("& treeRepr(a)& ")\n"& repr(a)
 
 proc postfix*(node: PNimrodNode; op: string): PNimrodNode {.compileTime.} = 
   newNimNode(nnkPostfix).add(ident(op), node)
