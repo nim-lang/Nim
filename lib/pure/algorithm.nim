@@ -149,21 +149,21 @@ proc count*[T, S](ts: T, item: S): int =
     if i == item:
       result += 1
 
-proc rotate*[T](ts: var T, o_first: int,  o_n_first: int,  last: int) =
-  var next: int = o_n_first
-  var first: int = o_first
-  var n_first: int= o_n_first
-  while first != next:
-    swap(ts[first], ts[next])
-    inc(first)
+proc rotate*[T](ts: var T, first: int,  newFirst: int,  last: int) =
+  var vfirst: int = first
+  var vnewFirst: int = newFirst
+  var next: int = newFirst
+  while vfirst != next:
+    swap(ts[vfirst], ts[next])
+    inc(vfirst)
     inc(next)
     if next == last:
-      next = n_first
-    elif first == n_first:
-      n_first = next
+      next = vnewFirst
+    elif vfirst == vnewFirst:
+      vnewFirst = next
 
-proc rotate*[T](ts: var T, n_first: int) =
-  rotate(ts, 0, n_first, len(ts))
+proc rotate*[T](ts: var T, first: int) =
+  rotate(ts, 0, first, len(ts))
 
 when isMainModule:
   var testArr = [ 100, 200, 3, 4, 5, 2, 9]
