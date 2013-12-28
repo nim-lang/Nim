@@ -2545,7 +2545,7 @@ proc raiseAssert*(msg: string) {.noinline.} =
   sysFatal(EAssertionFailed, msg)
 
 when true:
-  proc hiddenRaiseAssert(msg: string) {.raises: [], tags: [].} =
+  proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
     # trick the compiler to not list ``EAssertionFailed`` when called
     # by ``assert``.
     type THide = proc (msg: string) {.noinline, raises: [], noSideEffect,
@@ -2558,11 +2558,11 @@ template assert*(cond: bool, msg = "") =
   ## raises an ``EAssertionFailure`` exception. However, the compiler may
   ## not generate any code at all for ``assert`` if it is advised to do so.
   ## Use ``assert`` for debugging purposes only.
-  bind instantiationInfo, hiddenRaiseAssert
+  bind instantiationInfo
+  mixin failedAssertImpl
   when compileOption("assertions"):
     {.line.}:
-      if not cond:
-        hiddenRaiseAssert(astToStr(cond) & ' ' & msg)
+      if not cond: failedAssertImpl(astToStr(cond) & ' ' & msg)
 
 template doAssert*(cond: bool, msg = "") =
   ## same as `assert` but is always turned on and not affected by the
@@ -2575,9 +2575,9 @@ template doAssert*(cond: bool, msg = "") =
 when not defined(nimhygiene):
   {.pragma: inject.}
 
-template onFailedAssert*(msg: expr, code: stmt): stmt =
-  ## Sets an assertion failure handler that will intercept any assert statements
-  ## following `onFailedAssert` in the current lexical scope.
+template onFailedAssert*(msg: expr, code: stmt): stmt {.dirty, immediate.} =
+  ## Sets an assertion failure handler that will intercept any assert
+  ## statements following `onFailedAssert` in the current lexical scope.
   ## Can be defined multiple times in a single function.
   ##  
   ## .. code-block:: nimrod
@@ -2594,8 +2594,8 @@ template onFailedAssert*(msg: expr, code: stmt): stmt =
   ##
   ##     assert(...)
   ##
-  template raiseAssert(msgIMPL: string): stmt =
-    let msg {.inject.} = msgIMPL
+  template failedAssertImpl(msgIMPL: string): stmt {.dirty, immediate.} =
+    let msg = msgIMPL
     code
 
 proc shallow*[T](s: var seq[T]) {.noSideEffect, inline.} =
