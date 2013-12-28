@@ -210,7 +210,7 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1): string =
     add(result, argTypeToString(arg))
     if i != sonsLen(n) - 1: add(result, ", ")
 
-proc typeRel*(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation
+proc typeRel*(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation
 proc concreteType(c: TCandidate, t: PType): PType = 
   case t.kind
   of tyArrayConstr: 
@@ -305,8 +305,7 @@ proc minRel(a, b: TTypeRelation): TTypeRelation =
   
 proc recordRel(c: var TCandidate, f, a: PType): TTypeRelation =
   result = isNone
-  if sameType(f, a):
-    result = isEqual
+  if sameType(f, a): result = isEqual
   elif sonsLen(a) == sonsLen(f):
     result = isEqual
     let firstField = if f.kind == tyTuple: 0
@@ -323,6 +322,8 @@ proc recordRel(c: var TCandidate, f, a: PType): TTypeRelation =
         else:
           var x = f.n.sons[i].sym
           var y = a.n.sons[i].sym
+          if f.kind == tyObject and typeRel(c, x.typ, y.typ) < isSubtype:
+            return isNone
           if x.name.id != y.name.id: return isNone
 
 proc allowsNil(f: PType): TTypeRelation {.inline.} =
@@ -390,7 +391,7 @@ proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
   else:
     result = isNone
 
-proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
+proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   # typeRel can be used to establish various relationships between types:
   #
   # 1) When used with concrete types, it will check for type equivalence
@@ -409,7 +410,10 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
 
   result = isNone
   assert(f != nil)
-  assert(a != nil)
+  assert(aOrig != nil)
+
+  # var and static arguments match regular modifier-free types
+  let a = aOrig.skipTypes({tyStatic, tyVar})
   
   if a.kind == tyGenericInst and
       skipTypes(f, {tyVar}).kind notin {
@@ -417,11 +421,8 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
         tyGenericParam} + tyTypeClasses:
     return typeRel(c, f, lastSon(a))
 
-  if a.kind == tyVar and f.kind != tyVar:
-    return typeRel(c, f, a.sons[0])
-  
   template bindingRet(res) =
-    when res == isGeneric: put(c.bindings, f, a)
+    when res == isGeneric: put(c.bindings, f, aOrig)
     return res
  
   case a.kind
@@ -495,9 +496,9 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
   of tyFloat32:  result = handleFloatRange(f, a)
   of tyFloat64:  result = handleFloatRange(f, a)
   of tyFloat128: result = handleFloatRange(f, a)
-  of tyVar: 
-    if a.kind == f.kind: result = typeRel(c, base(f), base(a))
-    else: result = typeRel(c, base(f), a)
+  of tyVar:
+    if aOrig.kind == tyVar: result = typeRel(c, f.base, aOrig.base)
+    else: result = typeRel(c, f.base, aOrig)
   of tyArray, tyArrayConstr:
     # tyArrayConstr cannot happen really, but
     # we wanna be safe here
@@ -551,7 +552,6 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
   of tyOrdinal:
     if isOrdinalType(a):
       var x = if a.kind == tyOrdinal: a.sons[0] else: a
-     
       if f.sonsLen == 0:
         result = isGeneric
       else:
@@ -683,21 +683,21 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
   
   of tyAnd:
     for branch in f.sons:
-      if typeRel(c, branch, a) == isNone:
+      if typeRel(c, branch, aOrig) == isNone:
         return isNone
 
     bindingRet isGeneric
 
   of tyOr:
     for branch in f.sons:
-      if typeRel(c, branch, a) != isNone:
+      if typeRel(c, branch, aOrig) != isNone:
         bindingRet isGeneric
-
+     
     return isNone
 
   of tyNot:
     for branch in f.sons:
-      if typeRel(c, branch, a) != isNone:
+      if typeRel(c, branch, aOrig) != isNone:
         return isNone
     
     bindingRet isGeneric
@@ -716,7 +716,7 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
     var prev = PType(idTableGet(c.bindings, f))
     if prev == nil:
       let targetKind = f.sons[0].kind
-      if targetKind == a.skipTypes({tyRange}).kind or
+      if targetKind == a.skipTypes({tyRange, tyGenericInst}).kind or
          (targetKind in {tyProc, tyPointer} and a.kind == tyNil):
         put(c.bindings, f, a)
         return isGeneric
@@ -775,9 +775,9 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
       result = typeRel(c, x, a) # check if it fits
   
   of tyStatic:
-    if a.kind == tyStatic:
-      result = typeRel(c, f.lastSon, a.lastSon)
-      if result != isNone: put(c.bindings, f, a)
+    if aOrig.kind == tyStatic:
+      result = typeRel(c, f.lastSon, a)
+      if result != isNone: put(c.bindings, f, aOrig)
     else:
       result = isNone
 
@@ -788,8 +788,8 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
         if f.sonsLen == 0:
           result = isGeneric
         else:
-          result = typeRel(c, f, a.sons[0])
-        if result == isGeneric:
+          result = typeRel(c, f.sons[0], a.sons[0])
+        if result != isNone:
           put(c.bindings, f, a)
       else:
         result = isNone
@@ -939,7 +939,7 @@ proc ParamTypesMatchAux(m: var TCandidate, f, argType: PType,
     arg = argSemantized
     c = m.c
     argType = argType
-
+   
   if tfHasStatic in fMaybeStatic.flags:
     # XXX: When implicit statics are the default
     # this will be done earlier - we just have to
@@ -950,7 +950,7 @@ proc ParamTypesMatchAux(m: var TCandidate, f, argType: PType,
       arg.typ.sons = @[evaluated.typ]
       arg.typ.n = evaluated
       argType = arg.typ
-  
+ 
   var
     r: TTypeRelation
     a = if c.InTypeClass > 0: argType.skipTypes({tyTypeDesc})

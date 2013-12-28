@@ -198,14 +198,31 @@ proc fixupProcType(c: PContext, genericType: PType,
   case genericType.kind
   of tyGenericParam, tyTypeClasses:
     result = inst.concreteTypes[genericType.sym.position]
+  
   of tyTypeDesc:
     result = inst.concreteTypes[genericType.sym.position]
     if tfUnresolved in genericType.flags:
       result = result.sons[0]
+  
   of tyStatic:
     result = inst.concreteTypes[genericType.sym.position]
+  
   of tyGenericInst:
     result = fixupProcType(c, result.lastSon, inst)
+  
+  of tyObject:
+    var recList = genericType.n
+    for i in 0 .. <recList.sonsLen:
+      let field = recList[i].sym
+      let changed = fixupProcType(c, field.typ, inst)
+      if field.typ != changed:
+        if result == genericType:
+          result = copyType(genericType, genericType.owner, false)
+          result.n = copyTree(recList)
+        result.n.sons[i].sym = copySym(recList[i].sym, true)
+        result.n.sons[i].typ = changed
+        result.n.sons[i].sym.typ = changed
+ 
   of tyOpenArray, tyArray, tySet, tySequence, tyTuple, tyProc,
      tyPtr, tyVar, tyRef, tyOrdinal, tyRange, tyVarargs:
     if genericType.sons == nil: return
@@ -268,7 +285,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
                       info: TLineInfo): PSym =
   # no need to instantiate generic templates/macros:
   if fn.kind in {skTemplate, skMacro}: return fn
-  
+ 
   # generates an instantiated proc
   if c.InstCounter > 1000: InternalError(fn.ast.info, "nesting too deep")
   inc(c.InstCounter)

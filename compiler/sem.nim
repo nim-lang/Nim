@@ -158,16 +158,15 @@ proc IsOpImpl(c: PContext, n: PNode): PNode
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   semCheck: bool = true): PNode
 
-when false:
-  proc symFromType(t: PType, info: TLineInfo): PSym =
-    if t.sym != nil: return t.sym
-    result = newSym(skType, getIdent"AnonType", t.owner, info)
-    result.flags.incl sfAnon
-    result.typ = t
+proc symFromType(t: PType, info: TLineInfo): PSym =
+  if t.sym != nil: return t.sym
+  result = newSym(skType, getIdent"AnonType", t.owner, info)
+  result.flags.incl sfAnon
+  result.typ = t
 
-  proc symNodeFromType(c: PContext, t: PType, info: TLineInfo): PNode =
-    result = newSymNode(symFromType(t, info), info)
-    result.typ = makeTypeDesc(c, t)
+proc symNodeFromType(c: PContext, t: PType, info: TLineInfo): PNode =
+  result = newSymNode(symFromType(t, info), info)
+  result.typ = makeTypeDesc(c, t)
 
 proc createEvalContext(c: PContext, mode: TEvalMode): PEvalContext =
   result = newEvalContext(c.module, mode)

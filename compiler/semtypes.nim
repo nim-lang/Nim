@@ -594,12 +594,7 @@ let typedescId = getIdent"typedesc"
 proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
                    paramType: PType, paramName: string,
                    info: TLineInfo, anon = false): PType =
-  if procKind in {skMacro, skTemplate}:
-    # generic param types in macros and templates affect overload
-    # resolution, but don't work as generic params when it comes
-    # to proc instantiation. We don't need to lift such params here.  
-    return
-
+  
   proc addImplicitGenericImpl(typeClass: PType, typId: PIdent): PType =
     let finalTypId = if typId != nil: typId
                      else: getIdent(paramName & ":type")
@@ -620,7 +615,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     s.position = genericParams.len
     genericParams.addSon(newSymNode(s))
     result = typeClass
- 
+  
   # XXX: There are codegen errors if this is turned into a nested proc
   template liftingWalk(typ: PType, anonFlag = false): expr =
     liftParamType(c, procKind, genericParams, typ, paramName, info, anonFlag)
@@ -635,20 +630,25 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
   case paramType.kind:
   of tyAnything:
     result = addImplicitGeneric(newTypeS(tyGenericParam, c))
+  
   of tyStatic:
     # proc(a: expr{string}, b: expr{nkLambda})
     # overload on compile time values and AST trees
     result = addImplicitGeneric(c.newTypeWithSons(tyStatic, paramType.sons))
+    result.flags.incl tfHasStatic
+  
   of tyTypeDesc:
     if tfUnresolved notin paramType.flags:
       # naked typedescs are not bindOnce types
       if paramType.sonsLen == 0 and paramTypId != nil and
          paramTypId.id == typedescId.id: paramTypId = nil
       result = addImplicitGeneric(c.newTypeWithSons(tyTypeDesc, paramType.sons))
+  
   of tyDistinct:
     if paramType.sonsLen == 1:
       # disable the bindOnce behavior for the type class
       result = liftingWalk(paramType.sons[0], true)
+  
   of tySequence, tySet, tyArray, tyOpenArray:
     # XXX: this is a bit strange, but proc(s: seq)
     # produces tySequence(tyGenericParam, null).
@@ -657,7 +657,8 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     # Maybe there is another better place to associate
     # the seq type class with the seq identifier.
     if paramType.lastSon == nil:
-      let typ = c.newTypeWithSons(tyTypeClass, @[newTypeS(paramType.kind, c)])
+      let typ = c.newTypeWithSons(tyBuiltInTypeClass,
+                                  @[newTypeS(paramType.kind, c)])
       result = addImplicitGeneric(typ)
     else:
       for i in 0 .. <paramType.sons.len:
@@ -678,20 +679,26 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     result = addImplicitGeneric(result)
   
   of tyGenericInst:
+    # XXX: It should be possible to set tfHasMeta in semtypinst, when the
+    # instance was generated
     for i in 1 .. (paramType.sons.len - 2):
       var lifted = liftingWalk(paramType.sons[i])
       if lifted != nil:
         paramType.sons[i] = lifted
         result = paramType
+        paramType.lastSon.flags.incl tfHasMeta
 
     let liftBody = liftingWalk(paramType.lastSon)
-    if liftBody != nil: result = liftBody
-
+    if liftBody != nil:
+      result = liftBody
+      result.flags.incl tfHasMeta
+    
   of tyTypeClass, tyBuiltInTypeClass, tyAnd, tyOr, tyNot:
     result = addImplicitGeneric(copyType(paramType, getCurrOwner(), true))
   
   of tyExpr:
-    result = addImplicitGeneric(newTypeS(tyGenericParam, c))
+    if procKind notin {skMacro, skTemplate}:
+      result = addImplicitGeneric(newTypeS(tyGenericParam, c))
   
   of tyGenericParam:
     if tfGenericTypeParam in paramType.flags and false:
@@ -881,8 +888,8 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
 
 proc semTypeExpr(c: PContext, n: PNode): PType =
   var n = semExprWithType(c, n, {efDetermineType})
-  if n.kind == nkSym and n.sym.kind == skType:
-    result = n.sym.typ
+  if n.typ.kind == tyTypeDesc:
+    result = n.typ.base
   else:
     LocalError(n.info, errTypeExpected, n.renderTree)
 

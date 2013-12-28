@@ -1039,8 +1039,12 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     # for DLL generation it is annoying to check for sfImportc!
     if sfBorrow in s.flags: 
       LocalError(n.sons[bodyPos].info, errImplOfXNotAllowed, s.name.s)
-    if n.sons[genericParamsPos].kind == nkEmpty: 
-      ParamsTypeCheck(c, s.typ)
+    let usePseudoGenerics = kind in {skMacro, skTemplate}
+    # Macros and Templates can have generic parameters, but they are
+    # only used for overload resolution (there is no instantiation of
+    # the symbol, so we must process the body now)
+    if n.sons[genericParamsPos].kind == nkEmpty or usePseudoGenerics:
+      if not usePseudoGenerics: ParamsTypeCheck(c, s.typ)
       pushProcCon(c, s)
       maybeAddResult(c, s, n)
       if sfImportc notin s.flags:

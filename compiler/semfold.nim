@@ -588,8 +588,9 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
       result = newSymNodeTypeDesc(s, n.info)
     of skGenericParam:
       if s.typ.kind == tyStatic:
-        result = s.typ.n
-        result.typ = s.typ.sons[0]
+        if s.typ.n != nil:
+          result = s.typ.n
+          result.typ = s.typ.sons[0]
       else:
         result = newSymNodeTypeDesc(s, n.info)
     else: nil
