@@ -303,21 +303,23 @@ proc minRel(a, b: TTypeRelation): TTypeRelation =
   if a <= b: result = a
   else: result = b
   
-proc tupleRel(c: var TCandidate, f, a: PType): TTypeRelation =
+proc recordRel(c: var TCandidate, f, a: PType): TTypeRelation =
   result = isNone
   if sameType(f, a):
     result = isEqual
   elif sonsLen(a) == sonsLen(f):
     result = isEqual
-    for i in countup(0, sonsLen(f) - 1):
+    let firstField = if f.kind == tyTuple: 0
+                     else: 1 
+    for i in countup(firstField, sonsLen(f) - 1):
       var m = typeRel(c, f.sons[i], a.sons[i])
       if m < isSubtype: return isNone
       result = minRel(result, m)
     if f.n != nil and a.n != nil:
       for i in countup(0, sonsLen(f.n) - 1):
         # check field names:
-        if f.n.sons[i].kind != nkSym: InternalError(f.n.info, "tupleRel")
-        elif a.n.sons[i].kind != nkSym: InternalError(a.n.info, "tupleRel")
+        if f.n.sons[i].kind != nkSym: InternalError(f.n.info, "recordRel")
+        elif a.n.sons[i].kind != nkSym: InternalError(a.n.info, "recordRel")
         else:
           var x = f.n.sons[i].sym
           var y = a.n.sons[i].sym
@@ -408,11 +410,13 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
   result = isNone
   assert(f != nil)
   assert(a != nil)
+  
   if a.kind == tyGenericInst and
       skipTypes(f, {tyVar}).kind notin {
         tyGenericBody, tyGenericInvokation,
-        tyGenericParam, tyTypeClass}:
+        tyGenericParam} + tyTypeClasses:
     return typeRel(c, f, lastSon(a))
+
   if a.kind == tyVar and f.kind != tyVar:
     return typeRel(c, f, a.sons[0])
   
@@ -559,10 +563,11 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
   of tyNil:
     if a.kind == f.kind: result = isEqual
   of tyTuple: 
-    if a.kind == tyTuple: result = tupleRel(c, f, a)
+    if a.kind == tyTuple: result = recordRel(c, f, a)
   of tyObject:
     if a.kind == tyObject:
       if sameObjectTypes(f, a): result = isEqual
+      elif tfHasMeta in f.flags: result = recordRel(c, f, a)
       else:
         var depth = isObjectSubtype(a, f)
         if depth > 0:
