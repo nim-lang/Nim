@@ -301,10 +301,10 @@ proc semOf(c: PContext, n: PNode): PNode =
 
 proc isOpImpl(c: PContext, n: PNode): PNode =
   InternalAssert n.sonsLen == 3 and
-    n[1].kind == nkSym and n[1].sym.kind == skType and
+    n[1].typ != nil and n[1].typ.kind == tyTypeDesc and
     n[2].kind in {nkStrLit..nkTripleStrLit, nkType}
   
-  let t1 = n[1].sym.typ.skipTypes({tyTypeDesc})
+  let t1 = n[1].typ.skipTypes({tyTypeDesc})
 
   if n[2].kind in {nkStrLit..nkTripleStrLit}:
     case n[2].strVal.normalize
@@ -1942,7 +1942,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       # type parameters: partial generic specialization
       n.sons[0] = semSymGenericInstantiation(c, n.sons[0], s)
       result = explicitGenericInstantiation(c, n, s)
-    else: 
+    elif s != nil and s.kind in {skType}:
+      result = symNodeFromType(c, semTypeNode(c, n, nil), n.info)
+    else:
       result = semArrayAccess(c, n, flags)
   of nkCurlyExpr:
     result = semExpr(c, buildOverloadedSubscripts(n, getIdent"{}"), flags)

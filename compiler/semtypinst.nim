@@ -201,11 +201,12 @@ proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
   result = t
   if t == nil: return
   if t.kind == tyStatic and t.sym != nil and t.sym.kind == skGenericParam:
-    return lookupTypeVar(cl, t)
+    let s = lookupTypeVar(cl, t)
+    return if s != nil: s else: t
 
   case t.kind
-  of tyTypeClass: nil
-  of tyGenericParam:
+  of tyTypeClass, tyBuiltInTypeClass: nil
+  of tyGenericParam, tyCompositeTypeClass:
     result = lookupTypeVar(cl, t)
     if result == nil: return t
     if result.kind == tyGenericInvokation:

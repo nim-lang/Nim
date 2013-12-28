@@ -906,17 +906,15 @@ proc evalParseStmt(c: PEvalContext, n: PNode): PNode =
   result = parseString(code.getStrValue, code.info.toFilename,
                        code.info.line.int)
   #result.typ = newType(tyStmt, c.module)
- 
-proc evalTypeTrait*(trait, operand: PNode, context: PSym): PNode =
-  InternalAssert operand.kind == nkSym
 
-  let typ = operand.sym.typ.skipTypes({tyTypeDesc})
+proc evalTypeTrait*(trait, operand: PNode, context: PSym): PNode =
+  let typ = operand.typ.skipTypes({tyTypeDesc})
   case trait.sym.name.s.normalize
   of "name":
     result = newStrNode(nkStrLit, typ.typeToString(preferName))
     result.typ = newType(tyString, context)
     result.info = trait.info
-  of "arity":    
+  of "arity":
     result = newIntNode(nkIntLit, typ.n.len-1)
     result.typ = newType(tyInt, context)
     result.info = trait.info
@@ -1330,7 +1328,7 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   if gNestedEvals <= 0: stackTrace(c, n.info, errTooManyIterations)
   case n.kind
   of nkSym: result = evalSym(c, n, flags)
-  of nkType..nkNilLit:
+  of nkType..nkNilLit, nkTypeOfExpr:
     # nkStrLit is VERY common in the traces, so we should avoid
     # the 'copyNode' here.
     result = n #.copyNode
