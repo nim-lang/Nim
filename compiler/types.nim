@@ -1144,8 +1144,10 @@ proc computeSizeAux(typ: PType, a: var biggestInt): biggestInt =
      tyBigNum: 
     result = ptrSize
     a = result
-  of tyArray, tyArrayConstr: 
-    result = lengthOrd(typ.sons[0]) * computeSizeAux(typ.sons[1], a)
+  of tyArray, tyArrayConstr:
+    let elemSize = computeSizeAux(typ.sons[1], a)
+    if elemSize < 0: return elemSize
+    result = lengthOrd(typ.sons[0]) * elemSize
   of tyEnum: 
     if firstOrd(typ) < 0: 
       result = 4              # use signed int32
@@ -1196,8 +1198,9 @@ proc computeSizeAux(typ: PType, a: var biggestInt): biggestInt =
   of tyGenericInst, tyDistinct, tyGenericBody, tyMutable, tyConst, tyIter:
     result = computeSizeAux(lastSon(typ), a)
   of tyTypeDesc:
-    result = (if typ.len == 1: computeSizeAux(typ.sons[0], a) else: -1)
-  of tyProxy: result = 1
+    result = if typ.len == 1: computeSizeAux(typ.sons[0], a)
+             else: szUnknownSize
+  of tyForward: return szIllegalRecursion
   else:
     #internalError("computeSizeAux()")
     result = szUnknownSize
