@@ -17,9 +17,10 @@ import
 const
   removeTP = false # when true, "nimrod pretty" converts TTyp to Typ.
 
-type 
+type
   TGen = object of TPassContext
     module*: PSym
+    checkExtern: bool
   PGen = ref TGen
   
   TSourceFile = object
@@ -44,13 +45,19 @@ proc loadFile(info: TLineInfo) =
       gSourceFiles[i].lines.add(line)
 
 proc overwriteFiles*() =
+  let overWrite = options.getConfigVar("pretty.overwrite").normalize == "on"
+  let doStrip = options.getConfigVar("pretty.strip").normalize == "on"
   for i in 0 .. high(gSourceFiles):
     if not gSourceFiles[i].dirty: continue
-    let newFile = gSourceFiles[i].fullpath #.changeFileExt(".pretty.nim")
+    let newFile = if overWrite: gSourceFiles[i].fullpath
+                  else: gSourceFiles[i].fullpath.changeFileExt(".pretty.nim")
     try:
       var f = open(newFile, fmWrite)
       for line in gSourceFiles[i].lines:
-        f.write line #.strip(leading = false, trailing = true)
+        if doStrip:
+          f.write line.strip(leading = false, trailing = true)
+        else:
+          f.write line
         f.write("\L")
       f.close
     except EIO:
@@ -131,8 +138,6 @@ proc differ(line: string, a, b: int, x: string): bool =
       inc j
     return false
 
-var cannotRename = initIntSet()
-
 proc checkDef(c: PGen; n: PNode) =
   if n.kind != nkSym: return
   let s = n.sym
@@ -141,10 +146,11 @@ proc checkDef(c: PGen; n: PNode) =
   if s.kind in {skResult, skTemp} or s.name.s[0] notin Letters: return
   if s.kind in {skType, skGenericParam} and sfAnon in s.flags: return
 
-  checkStyle(n.info, s.name.s, s.kind)
+  if {sfImportc, sfExportc} * s.flags == {} or c.checkExtern:
+    checkStyle(n.info, s.name.s, s.kind)
 
-proc checkUse(c: PGen; n: PNode) =
-  if n.info.fileIndex < 0: return
+proc checkUse*(n: PNode) =
+  if n.info.fileIndex < 0 or n.kind != nkSym: return
   let s = n.sym
   # we simply convert it to what it looks like in the definition
   # for consistency
@@ -177,8 +183,9 @@ proc checkUse(c: PGen; n: PNode) =
     system.shallowCopy(gSourceFiles[n.info.fileIndex].lines[n.info.line-1], x)
     gSourceFiles[n.info.fileIndex].dirty = true
 
-
 when false:
+  var cannotRename = initIntSet()
+
   proc beautifyName(s: string, k: TSymKind): string =
     let allUpper = allCharsInSet(s, {'A'..'Z', '0'..'9', '_'})
     result = newStringOfCap(s.len)
@@ -260,9 +267,9 @@ when false:
 
 proc check(c: PGen, n: PNode) =
   case n.kind
-  of nkSym: checkUse(c, n)
+  of nkSym: checkUse(n)
   of nkBlockStmt, nkBlockExpr, nkBlockType:
-    if n.sons[0].kind != nkEmpty: checkDef(c, n[0])
+    checkDef(c, n[0])
     check(c, n.sons[1])
   of nkForStmt, nkParForStmt:
     let L = n.len
@@ -300,6 +307,7 @@ proc myOpen(module: PSym): PPassContext =
   var g: PGen
   new(g)
   g.module = module
+  g.checkExtern = options.getConfigVar("pretty.checkextern").normalize == "on"
   result = g
   if rules.isNil:
     rules = newStringTable(modeStyleInsensitive)

@@ -37,12 +37,12 @@ proc genericAssignAux(dest, src: pointer, n: ptr TNimNode, shallow: bool) =
   #  echo "ugh memory corruption! ", n.kind
   #  quit 1
 
-proc genericAssignAux(dest, src: Pointer, mt: PNimType, shallow: bool) =
+proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) =
   var
     d = cast[TAddress](dest)
     s = cast[TAddress](src)
   sysAssert(mt != nil, "genericAssignAux 2")
-  case mt.Kind
+  case mt.kind
   of tyString:
     var x = cast[PPointer](dest)
     var s2 = cast[PPointer](s)[]
@@ -67,7 +67,7 @@ proc genericAssignAux(dest, src: Pointer, mt: PNimType, shallow: bool) =
         cast[pointer](dst +% i*% mt.base.size +% GenericSeqSize),
         cast[pointer](cast[TAddress](s2) +% i *% mt.base.size +%
                      GenericSeqSize),
-        mt.Base, shallow)
+        mt.base, shallow)
   of tyObject:
     # we need to copy m_type field for tyObject, as it could be empty for
     # sequence reallocations:
@@ -152,7 +152,7 @@ proc objectInitAux(dest: pointer, n: ptr TNimNode) =
     var m = selectBranch(dest, n)
     if m != nil: objectInitAux(dest, m)
 
-proc objectInit(dest: Pointer, typ: PNimType) =
+proc objectInit(dest: pointer, typ: PNimType) =
   # the generic init proc that takes care of initialization of complex
   # objects on the stack or heap
   var d = cast[TAddress](dest)
@@ -185,7 +185,7 @@ else:
     for i in countup(0, r.len - 1): destroy(r[i])
 
 proc genericReset(dest: pointer, mt: PNimType) {.compilerProc.}
-proc genericResetAux(dest: Pointer, n: ptr TNimNode) =
+proc genericResetAux(dest: pointer, n: ptr TNimNode) =
   var d = cast[TAddress](dest)
   case n.kind
   of nkNone: sysAssert(false, "genericResetAux")
@@ -197,10 +197,10 @@ proc genericResetAux(dest: Pointer, n: ptr TNimNode) =
     if m != nil: genericResetAux(dest, m)
     zeroMem(cast[pointer](d +% n.offset), n.typ.size)
   
-proc genericReset(dest: Pointer, mt: PNimType) =
+proc genericReset(dest: pointer, mt: PNimType) =
   var d = cast[TAddress](dest)
   sysAssert(mt != nil, "genericReset 2")
-  case mt.Kind
+  case mt.kind
   of tyString, tyRef, tySequence:
     unsureAsgnRef(cast[PPointer](dest), nil)
   of tyObject, tyTuple:

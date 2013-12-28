@@ -164,7 +164,7 @@ when not defined(useNimRtl):
     for i in 0..cast[PGenericSeq](p).len-1:
       if i > 0: add result, ", "
       reprAux(result, cast[pointer](cast[TAddress](p) + GenericSeqSize + i*bs),
-              typ.Base, cl)
+              typ.base, cl)
     add result, "]"
 
   proc reprRecordAux(result: var string, p: pointer, n: ptr TNimNode,

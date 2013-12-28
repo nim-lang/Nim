@@ -11,7 +11,7 @@
 
 # included from sigmatch.nim
 
-import algorithm, sequtils
+import algorithm, sequtils, pretty
 
 const
   sep = '\t'
@@ -327,6 +327,7 @@ proc markUsed(n: PNode, s: PSym) =
     if sfDeprecated in s.flags: message(n.info, warnDeprecated, s.name.s)
     if sfError in s.flags: localError(n.info, errWrongSymbolX, s.name.s)
   suggestSym(n, s)
+  if gCmd == cmdPretty: checkUse(n)
 
 proc useSym*(sym: PSym): PNode =
   result = newSymNode(sym)

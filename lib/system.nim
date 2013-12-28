@@ -1262,13 +1262,13 @@ proc getRefcount*[T](x: seq[T]): int {.importc: "getRefcount", noSideEffect.}
   ## retrieves the reference count of an heap-allocated object. The
   ## value is implementation-dependent.
 
-# new constants:
+
 const
-  inf* {.magic: "Inf".} = 1.0 / 0.0
+  Inf* {.magic: "Inf".} = 1.0 / 0.0
     ## contains the IEEE floating point value of positive infinity.
-  neginf* {.magic: "NegInf".} = -inf
+  NegInf* {.magic: "NegInf".} = -Inf
     ## contains the IEEE floating point value of negative infinity.
-  nan* {.magic: "NaN".} = 0.0 / 0.0
+  NaN* {.magic: "NaN".} = 0.0 / 0.0
     ## contains an IEEE floating point value of *Not A Number*. Note
     ## that you cannot compare a floating point value to this value
     ## and expect a reasonable result - use the `classify` procedure

@@ -96,8 +96,8 @@ elif defined(macos):
     CurDir* = ':'
     ParDir* = "::"
     Dirsep* = ':'
-    Altsep* = dirsep
-    Pathsep* = ','
+    Altsep* = Dirsep
+    PathSep* = ','
     FileSystemCaseSensitive* = false
     ExeExt* = ""
     ScriptExt* = ""
@@ -135,7 +135,7 @@ elif doslike:
 elif defined(PalmOS) or defined(MorphOS):
   const
     Dirsep* = '/'
-    Altsep* = dirsep
+    Altsep* = Dirsep
     PathSep* = ';'
     Pardir* = ".."
     FileSystemCaseSensitive* = false
@@ -157,7 +157,7 @@ else: # UNIX-like operating system
     Curdir* = '.'
     Pardir* = ".."
     Dirsep* = '/'
-    Altsep* = dirsep
+    Altsep* = Dirsep
     PathSep* = ':'
     FileSystemCaseSensitive* = true
     ExeExt* = ""
@@ -304,11 +304,11 @@ proc unixToNativePath*(path: string): string {.
       elif defined(macos):
         result = "" # must not start with ':'
       else:
-        result = $dirSep
+        result = $DirSep
       start = 1
     elif path[0] == '.' and path[1] == '/':
       # current directory
-      result = $curdir
+      result = $Curdir
       start = 2
     else:
       result = ""
@@ -322,12 +322,12 @@ proc unixToNativePath*(path: string): string {.
           if result[high(result)] == ':':
             add result, ':'
           else:
-            add result, pardir
+            add result, ParDir
         else:
-          add result, pardir & dirSep
+          add result, ParDir & DirSep
         inc(i, 3)
       elif path[i] == '/':
-        add result, dirSep
+        add result, DirSep
         inc(i)
       else:
         add result, path[i]
@@ -538,7 +538,7 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
   ##   splitPath("") -> ("", "")
   var sepPos = -1
   for i in countdown(len(path)-1, 0):
-    if path[i] in {dirsep, altsep}:
+    if path[i] in {Dirsep, Altsep}:
       sepPos = i
       break
   if sepPos >= 0:
@@ -550,9 +550,9 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
 
 proc parentDirPos(path: string): int =
   var q = 1
-  if path[len(path)-1] in {dirsep, altsep}: q = 2
+  if path[len(path)-1] in {Dirsep, Altsep}: q = 2
   for i in countdown(len(path)-q, 0):
-    if path[i] in {dirsep, altsep}: return i
+    if path[i] in {Dirsep, Altsep}: return i
   result = -1
 
 proc parentDir*(path: string): string {.
@@ -593,8 +593,8 @@ iterator parentDirs*(path: string, fromRoot=false, inclusive=true): string =
   else:
     for i in countup(0, path.len - 2): # ignore the last /
       # deal with non-normalized paths such as /foo//bar//baz
-      if path[i] in {dirsep, altsep} and
-          (i == 0 or path[i-1] notin {dirsep, altsep}):
+      if path[i] in {Dirsep, Altsep} and
+          (i == 0 or path[i-1] notin {Dirsep, Altsep}):
         yield path.substr(0, i)
 
     if inclusive: yield path
@@ -609,17 +609,17 @@ proc `/../` * (head, tail: string): string {.noSideEffect.} =
     result = head / tail
 
 proc normExt(ext: string): string =
-  if ext == "" or ext[0] == extSep: result = ext # no copy needed here
-  else: result = extSep & ext
+  if ext == "" or ext[0] == ExtSep: result = ext # no copy needed here
+  else: result = ExtSep & ext
 
 proc searchExtPos(s: string): int =
   # BUGFIX: do not search until 0! .DS_Store is no file extension!
   result = -1
   for i in countdown(len(s)-1, 1):
-    if s[i] == extsep:
+    if s[i] == ExtSep:
       result = i
       break
-    elif s[i] in {dirsep, altsep}:
+    elif s[i] in {Dirsep, Altsep}:
       break # do not skip over path
 
 proc splitFile*(path: string): tuple[dir, name, ext: string] {.
@@ -639,7 +639,7 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
   ## If `path` has no extension, `ext` is the empty string.
   ## If `path` has no directory component, `dir` is the empty string.
   ## If `path` has no filename component, `name` and `ext` are empty strings.
-  if path.len == 0 or path[path.len-1] in {dirSep, altSep}:
+  if path.len == 0 or path[path.len-1] in {DirSep, Altsep}:
     result = (path, "", "")
   else:
     var sepPos = -1
@@ -647,8 +647,8 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
     for i in countdown(len(path)-1, 0):
       if path[i] == ExtSep:
         if dotPos == path.len and i > 0 and
-            path[i-1] notin {dirsep, altsep}: dotPos = i
-      elif path[i] in {dirsep, altsep}:
+            path[i-1] notin {Dirsep, Altsep}: dotPos = i
+      elif path[i] in {Dirsep, Altsep}:
         sepPos = i
         break
     result.dir = substr(path, 0, sepPos-1)
@@ -659,7 +659,7 @@ proc extractFilename*(path: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Extracts the filename of a given `path`. This is the same as
   ## ``name & ext`` from ``splitFile(path)``.
-  if path.len == 0 or path[path.len-1] in {dirSep, altSep}:
+  if path.len == 0 or path[path.len-1] in {DirSep, Altsep}:
     result = ""
   else:
     result = splitPath(path).tail
@@ -816,7 +816,7 @@ proc sameFileContent*(path1, path2: string): bool {.rtl, extern: "nos$1",
     return false
   var bufA = alloc(bufsize)
   var bufB = alloc(bufsize)
-  while True:
+  while true:
     var readA = readBuffer(a, bufA, bufsize)
     var readB = readBuffer(b, bufB, bufsize)
     if readA != readB:
@@ -1032,7 +1032,7 @@ when defined(windows):
           env = getEnvironmentStringsW()
           e = env
         if e == nil: return # an error occured
-        while True:
+        while true:
           var eend = strEnd(e)
           add(environment, $e)
           e = cast[WideCString](cast[TAddress](eend)+2)
@@ -1043,7 +1043,7 @@ when defined(windows):
           env = getEnvironmentStringsA()
           e = env
         if e == nil: return # an error occured
-        while True:
+        while true:
           var eend = strEnd(e)
           add(environment, $e)
           e = cast[CString](cast[TAddress](eend)+1)
@@ -1308,7 +1308,7 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1", tags: [FWriteDir].} =
   when defined(doslike):
     omitNext = isAbsolute(dir)
   for i in 1.. dir.len-1:
-    if dir[i] in {dirsep, altsep}:
+    if dir[i] in {Dirsep, Altsep}:
       if omitNext:
         omitNext = false
       else:
@@ -1635,10 +1635,10 @@ proc findExe*(exe: string): string {.tags: [FReadDir, FReadEnv].} =
   ## in directories listed in the ``PATH`` environment variable.
   ## Returns "" if the `exe` cannot be found. On DOS-like platforms, `exe`
   ## is added an ``.exe`` file extension if it has no extension.
-  result = addFileExt(exe, os.exeExt)
+  result = addFileExt(exe, os.ExeExt)
   if existsFile(result): return
   var path = string(os.getEnv("PATH"))
-  for candidate in split(path, pathSep):
+  for candidate in split(path, PathSep):
     var x = candidate / result
     if existsFile(x): return x
   result = ""

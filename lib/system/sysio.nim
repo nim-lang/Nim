@@ -62,7 +62,7 @@ else:
     IONBF {.importc: "_IONBF", nodecl.}: cint
 
 const
-  buf_size = 4000
+  BufSize = 4000
 
 proc raiseEIO(msg: string) {.noinline, noreturn.} =
   sysFatal(EIO, msg)
@@ -71,7 +71,7 @@ proc readLine(f: TFile, line: var TaintedString): bool =
   # of course this could be optimized a bit; but IO is slow anyway...
   # and it was difficult to get this CORRECT with Ansi C's methods
   setLen(line.string, 0) # reuse the buffer!
-  while True:
+  while true:
     var c = fgetc(f)
     if c < 0'i32:
       if line.len > 0: break
@@ -94,8 +94,8 @@ proc write(f: TFile, i: int) =
   else:
     fprintf(f, "%ld", i)
 
-proc write(f: TFile, i: biggestInt) = 
-  when sizeof(biggestint) == 8:
+proc write(f: TFile, i: BiggestInt) = 
+  when sizeof(Biggestint) == 8:
     fprintf(f, "%lld", i)
   else:
     fprintf(f, "%ld", i)
@@ -104,7 +104,7 @@ proc write(f: TFile, b: bool) =
   if b: write(f, "true")
   else: write(f, "false")
 proc write(f: TFile, r: float32) = fprintf(f, "%g", r)
-proc write(f: TFile, r: biggestFloat) = fprintf(f, "%g", r)
+proc write(f: TFile, r: BiggestFloat) = fprintf(f, "%g", r)
 
 proc write(f: TFile, c: char) = putc(c, f)
 proc write(f: TFile, a: varargs[string, `$`]) =
@@ -114,10 +114,10 @@ proc readAllBuffer(file: TFile): string =
   # This proc is for TFile we want to read but don't know how many
   # bytes we need to read before the buffer is empty.
   result = ""
-  var buffer = newString(buf_size)
-  var bytesRead = buf_size
-  while bytesRead == buf_size:
-    bytesRead = readBuffer(file, addr(buffer[0]), buf_size)
+  var buffer = newString(BufSize)
+  var bytesRead = BufSize
+  while bytesRead == BufSize:
+    bytesRead = readBuffer(file, addr(buffer[0]), BufSize)
     result.add(buffer)
   
 proc rawFileSize(file: TFile): int = 

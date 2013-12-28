@@ -1,8 +1,8 @@
 version 0.9.4
 =============
 
+- convert all with "nimrod pretty": macosx and linux versions
 - document new templating symbol binding rules
-- convert all with "nimrod pretty"
 - make '--implicitStatic:on' the default
 - test&finish first class iterators:
   * nested iterators
@@ -87,7 +87,6 @@ Concurrency/Effect system
 version 0.9.XX
 ==============
 
-- document nimdoc properly finally
 - make 'clamp' a magic for the range stuff
 - better type syntax for functions and tuples: tuple(int, int); (int,int)->int
 

@@ -253,7 +253,7 @@ proc reraiseException() {.compilerRtl.} =
   else:
     raiseExceptionAux(currException)
 
-proc WriteStackTrace() =
+proc writeStackTrace() =
   when hasSomeStackTrace:
     var s = ""
     rawWriteStackTrace(s)

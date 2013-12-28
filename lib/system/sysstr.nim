@@ -55,7 +55,7 @@ proc copyStrLast(s: NimString, start, last: int): NimString {.compilerProc.} =
   if len > 0:
     result = rawNewString(len)
     result.len = len
-    c_memcpy(result.data, addr(s.data[start]), len * sizeof(Char))
+    c_memcpy(result.data, addr(s.data[start]), len * sizeof(char))
     #result.data[len] = '\0'
   else:
     result = rawNewString(len)
@@ -66,7 +66,7 @@ proc copyStr(s: NimString, start: int): NimString {.compilerProc.} =
 proc toNimStr(str: cstring, len: int): NimString {.compilerProc.} =
   result = rawNewString(len)
   result.len = len
-  c_memcpy(result.data, str, (len+1) * sizeof(Char))
+  c_memcpy(result.data, str, (len+1) * sizeof(char))
   #result.data[len] = '\0' # readline relies on this!
 
 proc cstrToNimstr(str: cstring): NimString {.compilerRtl.} =
@@ -79,7 +79,7 @@ proc copyString(src: NimString): NimString {.compilerRtl.} =
     else:
       result = rawNewString(src.space)
       result.len = src.len
-      c_memcpy(result.data, src.data, (src.len + 1) * sizeof(Char))
+      c_memcpy(result.data, src.data, (src.len + 1) * sizeof(char))
 
 proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
   if src != nil:
@@ -236,7 +236,7 @@ proc nimIntToStr(x: int): string {.compilerRtl.} =
   result = newString(sizeof(x)*4)
   var i = 0
   var y = x
-  while True:
+  while true:
     var d = y div 10
     result[i] = chr(abs(int(y - d*10)) + ord('0'))
     inc(i)
@@ -259,7 +259,7 @@ proc nimInt64ToStr(x: int64): string {.compilerRtl.} =
   result = newString(sizeof(x)*4)
   var i = 0
   var y = x
-  while True:
+  while true:
     var d = y div 10
     result[i] = chr(abs(int(y - d*10)) + ord('0'))
     inc(i)
