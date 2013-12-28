@@ -628,12 +628,12 @@ proc rawDealloc(a: var TMemRegion, p: pointer) =
     # check if it is not in the freeSmallChunks[s] list:
     if c.free < s:
       # add it to the freeSmallChunks[s] array:
-      listAdd(a.freeSmallChunks[s div memAlign], c)
+      listAdd(a.freeSmallChunks[s div MemAlign], c)
       inc(c.free, s)
     else:
       inc(c.free, s)
       if c.free == SmallChunkSize-smallChunkOverhead():
-        listRemove(a.freeSmallChunks[s div memAlign], c)
+        listRemove(a.freeSmallChunks[s div MemAlign], c)
         c.size = SmallChunkSize
         freeBigChunk(a, cast[PBigChunk](c))
     sysAssert(((cast[TAddress](p) and PageMask) - smallChunkOverhead()) %%
@@ -739,7 +739,7 @@ proc realloc(allocator: var TMemRegion, p: pointer, newsize: int): pointer =
 proc deallocOsPages(a: var TMemRegion) =
   # we free every 'ordinarily' allocated page by iterating over the page bits:
   for p in elements(a.chunkStarts):
-    var page = cast[PChunk](p shl pageShift)
+    var page = cast[PChunk](p shl PageShift)
     when not weirdUnmap:
       var size = if page.size < PageSize: PageSize else: page.size
       osDeallocPages(page, size)

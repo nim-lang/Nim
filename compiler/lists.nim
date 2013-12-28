@@ -20,12 +20,12 @@ type
   PStrEntry* = ref TStrEntry
   TLinkedList* = object       # for the "find" operation:
     head*, tail*: PListEntry
-    Counter*: int
+    counter*: int
 
   TCompareProc* = proc (entry: PListEntry, closure: pointer): bool {.nimcall.}
 
 proc initLinkedList*(list: var TLinkedList) = 
-  list.Counter = 0
+  list.counter = 0
   list.head = nil
   list.tail = nil
 

@@ -593,7 +593,7 @@ proc format*(info: TTimeInfo, f: string): string =
   result = ""
   var i = 0
   var currentF = ""
-  while True:
+  while true:
     case f[i]
     of ' ', '-', '/', ':', '\'', '\0', '(', ')', '[', ']', ',':
       case currentF

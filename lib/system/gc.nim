@@ -84,7 +84,7 @@ var
   gch {.rtlThreadVar.}: TGcHeap
 
 when not defined(useNimRtl):
-  InstantiateForRegion(gch.region)
+  instantiateForRegion(gch.region)
 
 template acquire(gch: TGcHeap) = 
   when hasThreadSupport and hasSharedHeap:
@@ -329,11 +329,11 @@ proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: TWalkOp) =
     if m != nil: forAllSlotsAux(dest, m, op)
   of nkNone: sysAssert(false, "forAllSlotsAux")
 
-proc forAllChildrenAux(dest: Pointer, mt: PNimType, op: TWalkOp) =
+proc forAllChildrenAux(dest: pointer, mt: PNimType, op: TWalkOp) =
   var d = cast[TAddress](dest)
   if dest == nil: return # nothing to do
   if ntfNoRefs notin mt.flags:
-    case mt.Kind
+    case mt.kind
     of tyRef, tyString, tySequence: # leaf:
       doOperation(cast[PPointer](d)[], op)
     of tyObject, tyTuple:
@@ -341,7 +341,7 @@ proc forAllChildrenAux(dest: Pointer, mt: PNimType, op: TWalkOp) =
     of tyArray, tyArrayConstr, tyOpenArray:
       for i in 0..(mt.size div mt.base.size)-1:
         forAllChildrenAux(cast[pointer](d +% i *% mt.base.size), mt.base, op)
-    else: nil
+    else: discard
 
 proc forAllChildren(cell: PCell, op: TWalkOp) =
   gcAssert(cell != nil, "forAllChildren: 1")
@@ -352,7 +352,7 @@ proc forAllChildren(cell: PCell, op: TWalkOp) =
   if marker != nil:
     marker(cellToUsr(cell), op.int)
   else:
-    case cell.typ.Kind
+    case cell.typ.kind
     of tyRef: # common case
       forAllChildrenAux(cellToUsr(cell), cell.typ.base, op)
     of tySequence:
@@ -970,7 +970,7 @@ proc collectCTBody(gch: var TGcHeap) =
         #discard collectZCT(gch)
         inc(gch.stat.cycleCollections)
         gch.cycleThreshold = max(InitialCycleThreshold, getOccupiedMem() *
-                                 cycleIncrease)
+                                 CycleIncrease)
         gch.stat.maxThreshold = max(gch.stat.maxThreshold, gch.cycleThreshold)
   unmarkStackAndRegisters(gch)
   sysAssert(allocInv(gch.region), "collectCT: end")

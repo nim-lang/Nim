@@ -67,7 +67,7 @@ proc toUpper*(c: char): char {.noSideEffect, procvar,
   ## Converts `c` into upper case. This works only for the letters a-z.
   ## See `unicode.toUpper` for a version that works for any Unicode character.
   if c in {'a'..'z'}:
-    result = chr(ord(c) - (Ord('a') - Ord('A')))
+    result = chr(ord(c) - (ord('a') - ord('A')))
   else:
     result = c
 
@@ -497,31 +497,31 @@ iterator tokenize*(s: string, seps: set[char] = Whitespace): tuple[
 
 proc wordWrap*(s: string, maxLineWidth = 80,
                splitLongWords = true,
-               seps: set[char] = whitespace,
+               seps: set[char] = Whitespace,
                newLine = "\n"): string {.
                noSideEffect, rtl, extern: "nsuWordWrap".} =
   ## word wraps `s`.
   result = newStringOfCap(s.len + s.len shr 6)
-  var SpaceLeft = maxLineWidth
+  var spaceLeft = maxLineWidth
   for word, isSep in tokenize(s, seps):
-    if len(word) > SpaceLeft:
+    if len(word) > spaceLeft:
       if splitLongWords and len(word) > maxLineWidth:
-        result.add(substr(word, 0, SpaceLeft-1))
-        var w = SpaceLeft+1
-        var wordLeft = len(word) - SpaceLeft
+        result.add(substr(word, 0, spaceLeft-1))
+        var w = spaceLeft+1
+        var wordLeft = len(word) - spaceLeft
         while wordLeft > 0:
           result.add(newLine)
           var L = min(maxLineWidth, wordLeft)
-          SpaceLeft = maxLineWidth - L
+          spaceLeft = maxLineWidth - L
           result.add(substr(word, w, w+L-1))
           inc(w, L)
           dec(wordLeft, L)
       else:
-        SpaceLeft = maxLineWidth - len(word)
+        spaceLeft = maxLineWidth - len(word)
         result.add(newLine)
         result.add(word)
     else:
-      SpaceLeft = SpaceLeft - len(word)
+      spaceLeft = spaceLeft - len(word)
       result.add(word)
 
 proc unindent*(s: string, eatAllIndent = false): string {.
