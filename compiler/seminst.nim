@@ -204,6 +204,8 @@ proc fixupProcType(c: PContext, genericType: PType,
       result = result.sons[0]
   of tyStatic:
     result = inst.concreteTypes[genericType.sym.position]
+  of tyGenericInst:
+    result = fixupProcType(c, result.lastSon, inst)
   of tyOpenArray, tyArray, tySet, tySequence, tyTuple, tyProc,
      tyPtr, tyVar, tyRef, tyOrdinal, tyRange, tyVarargs:
     if genericType.sons == nil: return
@@ -234,7 +236,8 @@ proc fixupProcType(c: PContext, genericType: PType,
             continue
         
         result.sons[head] = changed
-        
+        result.size = 0
+
         if result.n != nil:
           if result.n.kind == nkRecList:
             for son in result.n.sons:
