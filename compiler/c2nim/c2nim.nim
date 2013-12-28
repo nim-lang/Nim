@@ -40,7 +40,7 @@ Options:
 
 proc main(infile, outfile: string, options: PParserOptions) =
   var start = getTime()
-  var stream = LLStreamOpen(infile, fmRead)
+  var stream = llStreamOpen(infile, fmRead)
   if stream == nil: rawMessage(errCannotOpenFile, infile)
   var p: TParser
   openParser(p, infile, stream, options)
