@@ -1098,18 +1098,22 @@ proc computeRecSizeAux(n: PNode, a, currOffset: var biggestInt): biggestInt =
     a = 1
     result = - 1
 
-proc computeSizeAux(typ: PType, a: var biggestInt): biggestInt = 
+const 
+  szIllegalRecursion* = -2
+  szUnknownSize* = -1
+
+proc computeSizeAux(typ: PType, a: var biggestInt): biggestInt =
   var res, maxAlign, length, currOffset: biggestInt
-  if typ.size == - 2: 
+  if typ.size == szIllegalRecursion:
     # we are already computing the size of the type
     # --> illegal recursion in type
-    return - 2
-  if typ.size >= 0: 
+    return szIllegalRecursion
+  if typ.size >= 0:
     # size already computed
     result = typ.size
     a = typ.align
     return 
-  typ.size = - 2              # mark as being computed
+  typ.size = szIllegalRecursion # mark as being computed
   case typ.kind
   of tyInt, tyUInt: 
     result = IntSize
@@ -1196,7 +1200,7 @@ proc computeSizeAux(typ: PType, a: var biggestInt): biggestInt =
   of tyProxy: result = 1
   else:
     #internalError("computeSizeAux()")
-    result = - 1
+    result = szUnknownSize
   typ.size = result
   typ.align = int(a)
 
@@ -1213,7 +1217,6 @@ proc getSize(typ: PType): biggestInt =
   result = computeSize(typ)
   if result < 0: InternalError("getSize: " & $typ.kind)
 
-  
 proc containsGenericTypeIter(t: PType, closure: PObject): bool = 
   result = t.kind in GenericTypes
 

@@ -17,14 +17,14 @@ proc checkPartialConstructedType(info: TLineInfo, t: PType) =
   elif t.kind == tyVar and t.sons[0].kind == tyVar:
     LocalError(info, errVarVarTypeNotAllowed)
 
-proc checkConstructedType*(info: TLineInfo, typ: PType) = 
+proc checkConstructedType*(info: TLineInfo, typ: PType) =
   var t = typ.skipTypes({tyDistinct})
   if t.kind in tyTypeClasses: nil
   elif tfAcyclic in t.flags and skipTypes(t, abstractInst).kind != tyObject: 
     LocalError(info, errInvalidPragmaX, "acyclic")
   elif t.kind == tyVar and t.sons[0].kind == tyVar: 
     LocalError(info, errVarVarTypeNotAllowed)
-  elif computeSize(t) < 0:
+  elif computeSize(t) == szIllegalRecursion:
     LocalError(info, errIllegalRecursionInTypeX, typeToString(t))
   when false:
     if t.kind == tyObject and t.sons[0] != nil:
@@ -140,7 +140,7 @@ proc lookupTypeVar(cl: TReplTypeVars, t: PType): PType =
     result = errorType(cl.c)
   elif result.kind == tyGenericParam and not cl.allowMetaTypes:
     InternalError(cl.info, "substitution with generic parameter")
-  
+ 
 proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType = 
   # tyGenericInvokation[A, tyGenericInvokation[A, B]]
   # is difficult to handle: 
@@ -170,7 +170,8 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
   # recursive instantions:
   result = newType(tyGenericInst, t.sons[0].owner)
   result.rawAddSon(header.sons[0])
-  cacheTypeInst(result)
+  if not cl.allowMetaTypes:
+    cacheTypeInst(result)
 
   for i in countup(1, sonsLen(t) - 1):
     var x = replaceTypeVarsT(cl, t.sons[i])

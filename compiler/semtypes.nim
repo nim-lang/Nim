@@ -620,7 +620,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     s.position = genericParams.len
     genericParams.addSon(newSymNode(s))
     result = typeClass
-
+ 
   # XXX: There are codegen errors if this is turned into a nested proc
   template liftingWalk(typ: PType, anonFlag = false): expr =
     liftParamType(c, procKind, genericParams, typ, paramName, info, anonFlag)
@@ -665,6 +665,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
         if lifted != nil:
           paramType.sons[i] = lifted
           result = paramType
+  
   of tyGenericBody:
     result = newTypeS(tyGenericInvokation, c)
     result.rawAddSon(paramType)
@@ -674,6 +675,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
                                   allowMetaTypes = true)
     result = newTypeWithSons(c, tyCompositeTypeClass, @[paramType, result])
     result = addImplicitGeneric(result)
+  
   of tyGenericInst:
     for i in 1 .. (paramType.sons.len - 2):
       var lifted = liftingWalk(paramType.sons[i])
@@ -681,21 +683,22 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
         paramType.sons[i] = lifted
         result = paramType
 
-    if result == nil:
-      result = liftingWalk(paramType.lastSon)
-    else:
-      result.kind = tyGenericInvokation
-      result.sons.setLen(result.sons.len - 1)
+    let liftBody = liftingWalk(paramType.lastSon)
+    if liftBody != nil: result = liftBody
+
   of tyTypeClass, tyBuiltInTypeClass, tyAnd, tyOr, tyNot:
-    result = addImplicitGeneric(copyType(paramType, getCurrOwner(), false))
+    result = addImplicitGeneric(copyType(paramType, getCurrOwner(), true))
+  
   of tyExpr:
     result = addImplicitGeneric(newTypeS(tyGenericParam, c))
+  
   of tyGenericParam:
     if tfGenericTypeParam in paramType.flags and false:
       if paramType.sonsLen > 0:
         result = liftingWalk(paramType.lastSon)
       else:
         result = addImplicitGeneric(newTypeS(tyGenericParam, c))
+  
   else: nil
 
   # result = liftingWalk(paramType)
