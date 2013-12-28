@@ -226,7 +226,7 @@ proc skipUntilElifElseEndif(p: var TParser): TEndifMarker =
   
 proc parseIfdef(p: var TParser): PNode = 
   getTok(p) # skip #ifdef
-  ExpectIdent(p)
+  expectIdent(p)
   case p.tok.s
   of "__cplusplus":
     skipUntilEndif(p)
@@ -245,7 +245,7 @@ proc parseIfdef(p: var TParser): PNode =
 proc parseIfndef(p: var TParser): PNode = 
   result = ast.emptyNode
   getTok(p) # skip #ifndef
-  ExpectIdent(p)
+  expectIdent(p)
   if p.tok.s == c2nimSymbol: 
     skipLine(p)
     case skipUntilElifElseEndif(p)
@@ -282,11 +282,11 @@ proc parseIfDir(p: var TParser): PNode =
 proc parsePegLit(p: var TParser): TPeg =
   var col = getColumn(p.lex) + 2
   getTok(p)
-  if p.tok.xkind != pxStrLit: ExpectIdent(p)
+  if p.tok.xkind != pxStrLit: expectIdent(p)
   try:
     result = parsePeg(
       pattern = if p.tok.xkind == pxStrLit: p.tok.s else: escapePeg(p.tok.s), 
-      filename = p.lex.fileIdx.ToFilename, 
+      filename = p.lex.fileIdx.toFilename, 
       line = p.lex.linenumber, 
       col = col)
     getTok(p)
@@ -295,7 +295,7 @@ proc parsePegLit(p: var TParser): TPeg =
 
 proc parseMangleDir(p: var TParser) = 
   var pattern = parsePegLit(p)
-  if p.tok.xkind != pxStrLit: ExpectIdent(p)
+  if p.tok.xkind != pxStrLit: expectIdent(p)
   p.options.mangleRules.add((pattern, p.tok.s))
   getTok(p)
   eatNewLine(p, nil)
@@ -326,7 +326,7 @@ proc parseDir(p: var TParser): PNode =
   of "dynlib", "header", "prefix", "suffix", "class": 
     var key = p.tok.s
     getTok(p)
-    if p.tok.xkind != pxStrLit: ExpectIdent(p)
+    if p.tok.xkind != pxStrLit: expectIdent(p)
     discard setOption(p.options, key, p.tok.s)
     getTok(p)
     eatNewLine(p, nil)
