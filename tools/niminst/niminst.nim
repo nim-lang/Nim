@@ -111,7 +111,7 @@ proc skipRoot(f: string): string =
   # "abc/def/xyz" --> "def/xyz"
   var i = 0
   result = ""
-  for component in split(f, {dirsep, altsep}):
+  for component in split(f, {DirSep, AltSep}):
     if i > 0: result = result / component
     inc i
   if result.len == 0: result = f
@@ -126,7 +126,7 @@ include "deinstall.tmpl"
 
 const
   Version = "0.9"
-  Usage = "niminst - Nimrod Installation Generator Version " & version & """
+  Usage = "niminst - Nimrod Installation Generator Version " & Version & """
 
   (c) 2013 Andreas Rumpf
 Usage:
@@ -168,7 +168,7 @@ proc parseCmdLine(c: var TConfigData) =
         c.infile = addFileExt(key.string, "ini")
         c.nimrodArgs = cmdLineRest(p).string
         break
-    of cmdLongOption, cmdShortOption:
+    of cmdLongoption, cmdShortOption:
       case normalize(key.string)
       of "help", "h": 
         stdout.write(Usage)
@@ -312,7 +312,7 @@ proc parseIniFile(c: var TConfigData) =
           of "uninstallscript": c.uninstallScript = yesno(p, v)
           else: quit(errorStr(p, "unknown variable: " & k.key))
         of "unixbin": filesOnly(p, k.key, v, c.cat[fcUnixBin])
-        of "innosetup": pathFlags(p, k.key, v, c.innoSetup)
+        of "innosetup": pathFlags(p, k.key, v, c.innosetup)
         of "ccompiler": pathFlags(p, k.key, v, c.ccompiler)
         of "linker": pathFlags(p, k.key, v, c.linker)
         of "deb":
@@ -483,11 +483,11 @@ proc setupDist(c: var TConfigData) =
   var n = "build" / "install_$#_$#.iss" % [toLower(c.name), c.version]
   writeFile(n, scrpt, "\13\10")
   when defined(windows):
-    if c.innoSetup.path.len == 0:
-      c.innoSetup.path = "iscc.exe"
+    if c.innosetup.path.len == 0:
+      c.innosetup.path = "iscc.exe"
     var outcmd = if c.outdir.len == 0: "build" else: c.outdir
-    var cmd = "$# $# /O$# $#" % [quoteShell(c.innoSetup.path),
-                                 c.innoSetup.flags, outcmd, n]
+    var cmd = "$# $# /O$# $#" % [quoteShell(c.innosetup.path),
+                                 c.innosetup.flags, outcmd, n]
     echo(cmd)
     if execShellCmd(cmd) == 0:
       removeFile(n)
@@ -582,7 +582,7 @@ if actionScripts in c.actions:
   writeInstallScripts(c)
 if actionZip in c.actions:
   when haveZipLib:
-    zipdist(c)
+    zipDist(c)
   else:
     quit("libzip is not installed")
 if actionDeb in c.actions:
