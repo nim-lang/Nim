@@ -71,7 +71,7 @@ proc addFile*(z: var TZipArchive, file: string) =
   addFile(z, file, file)
   
 proc mySourceCallback(state, data: pointer, len: int, 
-                      cmd: Tzip_source_cmd): int {.cdecl.} = 
+                      cmd: TZipSourceCmd): int {.cdecl.} = 
   var src = cast[PStream](state)
   case cmd
   of ZIP_SOURCE_OPEN: 
@@ -108,7 +108,7 @@ proc addFile*(z: var TZipArchive, dest: string, src: PStream) =
 
 type
   TZipFileStream = object of TStream
-    f: Pzip_file
+    f: PZipFile
 
   PZipFileStream* = 
     ref TZipFileStream ## a reader stream of a file within a zip archive 

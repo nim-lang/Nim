@@ -82,7 +82,7 @@ proc open*(c: var TCfgParser, input: PStream, filename: string,
   c.filename = filename
   c.tok.kind = tkInvalid
   c.tok.literal = ""
-  inc(c.linenumber, lineOffset)
+  inc(c.lineNumber, lineOffset)
   rawGetTok(c, c.tok)
   
 proc close*(c: var TCfgParser) {.rtl, extern: "npc$1".} =
@@ -91,11 +91,11 @@ proc close*(c: var TCfgParser) {.rtl, extern: "npc$1".} =
 
 proc getColumn*(c: TCfgParser): int {.rtl, extern: "npc$1".} =
   ## get the current column the parser has arrived at.
-  result = getColNumber(c, c.bufPos)
+  result = getColNumber(c, c.bufpos)
 
 proc getLine*(c: TCfgParser): int {.rtl, extern: "npc$1".} =
   ## get the current line the parser has arrived at.
-  result = c.linenumber
+  result = c.lineNumber
 
 proc getFilename*(c: TCfgParser): string {.rtl, extern: "npc$1".} =
   ## get the filename of the file that the parser processes.
@@ -176,7 +176,7 @@ proc handleCRLF(c: var TCfgParser, pos: int): int =
   else: result = pos
   
 proc getString(c: var TCfgParser, tok: var TToken, rawMode: bool) = 
-  var pos = c.bufPos + 1          # skip "
+  var pos = c.bufpos + 1          # skip "
   var buf = c.buf                 # put `buf` in a register
   tok.kind = tkSymbol
   if (buf[pos] == '"') and (buf[pos + 1] == '"'): 
@@ -213,9 +213,9 @@ proc getString(c: var TCfgParser, tok: var TToken, rawMode: bool) =
         tok.kind = tkInvalid
         break 
       if (ch == '\\') and not rawMode: 
-        c.bufPos = pos
+        c.bufpos = pos
         getEscapedChar(c, tok)
-        pos = c.bufPos
+        pos = c.bufpos
       else: 
         add(tok.literal, ch)
         inc(pos)
@@ -257,8 +257,8 @@ proc rawGetTok(c: var TCfgParser, tok: var TToken) =
     inc(c.bufpos)
     tok.literal = "="
   of '-': 
-    inc(c.bufPos)
-    if c.buf[c.bufPos] == '-': inc(c.bufPos)
+    inc(c.bufpos)
+    if c.buf[c.bufpos] == '-': inc(c.bufpos)
     tok.kind = tkDashDash
     tok.literal = "--"
   of ':': 
@@ -266,8 +266,8 @@ proc rawGetTok(c: var TCfgParser, tok: var TToken) =
     inc(c.bufpos)
     tok.literal = ":"
   of 'r', 'R': 
-    if c.buf[c.bufPos + 1] == '\"': 
-      inc(c.bufPos)
+    if c.buf[c.bufpos + 1] == '\"': 
+      inc(c.bufpos)
       getString(c, tok, true)
     else: 
       getSymbol(c, tok)
