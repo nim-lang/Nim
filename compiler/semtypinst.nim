@@ -189,14 +189,32 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
   newbody.flags = newbody.flags + t.flags + body.flags
   result.flags = result.flags + newbody.flags
   newbody.callConv = body.callConv
-  newbody.n = replaceTypeVarsN(cl, lastSon(body).n)
   # This type may be a generic alias and we want to resolve it here.
   # One step is enough, because the recursive nature of
   # handleGenericInvokation will handle the alias-to-alias-to-alias case
   if newbody.isGenericAlias: newbody = newbody.skipGenericAlias
   rawAddSon(result, newbody)
   checkPartialConstructedType(cl.info, newbody)
+
+proc normalizeProcType(t: PType) =
+  if t.sons[0] != nil and t.sons[0].kind == tyEmpty:
+    t.sons[0] = nil
   
+  for i in 1 .. <t.sonsLen:
+    if t.sons[i].kind == tyEmpty:
+      # the nested loops are here in order to avoid
+      # touching any memory and callign setLen unless
+      # it's really necessary
+      var pos = i
+      for j in i+1 .. <t.sonsLen:
+        if t.sons[j].kind != tyEmpty:
+          t.sons[pos] = t.sons[j]
+          t.n.sons[pos] = t.n.sons[j]
+          inc pos
+      setLen t.sons, pos
+      setLen t.n.sons, pos
+      return
+
 proc replaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType = 
   result = t
   if t == nil: return
@@ -244,9 +262,7 @@ proc replaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
       result.n = replaceTypeVarsN(cl, result.n)
       if result.kind in GenericTypes:
         localError(cl.info, errCannotInstantiateX, typeToString(t, preferName))
-      if result.kind == tyProc and result.sons[0] != nil:
-        if result.sons[0].kind == tyEmpty:
-          result.sons[0] = nil
+      if result.kind == tyProc: normalizeProcType(result)
 
 proc generateTypeInstance*(p: PContext, pt: TIdTable, info: TLineInfo,
                            t: PType): PType =
