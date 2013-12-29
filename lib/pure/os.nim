@@ -356,8 +356,8 @@ when defined(windows):
 
   proc skipFindData(f: TWIN32_FIND_DATA): bool {.inline.} =
     const dot = ord('.')
-    result = f.cFilename[0].int == dot and(f.cFilename[1].int == 0 or
-             f.cFilename[1].int == dot and f.cFilename[2].int == 0)
+    result = f.cFileName[0].int == dot and(f.cFileName[1].int == 0 or
+             f.cFileName[1].int == dot and f.cFileName[2].int == 0)
 
 proc existsFile*(filename: string): bool {.rtl, extern: "nos$1",
                                           tags: [FReadDir].} =

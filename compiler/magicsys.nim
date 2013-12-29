@@ -134,7 +134,7 @@ proc addSonSkipIntLit*(father, son: PType) =
 
 proc setIntLitType*(result: PNode) =
   let i = result.intVal
-  case platform.IntSize
+  case platform.intSize
   of 8: result.typ = getIntLitType(result)
   of 4:
     if i >= low(int32) and i <= high(int32):

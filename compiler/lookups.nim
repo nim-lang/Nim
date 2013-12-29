@@ -135,14 +135,14 @@ proc wrongRedefinition*(info: TLineInfo, s: string) =
   
 proc addDecl*(c: PContext, sym: PSym) =
   if c.currentScope.addUniqueSym(sym) == Failure:
-    wrongRedefinition(sym.info, sym.Name.s)
+    wrongRedefinition(sym.info, sym.name.s)
 
 proc addPrelimDecl*(c: PContext, sym: PSym) =
   discard c.currentScope.addUniqueSym(sym)
 
 proc addDeclAt*(scope: PScope, sym: PSym) =
   if scope.addUniqueSym(sym) == Failure:
-    wrongRedefinition(sym.info, sym.Name.s)
+    wrongRedefinition(sym.info, sym.name.s)
 
 proc addInterfaceDeclAux(c: PContext, sym: PSym) = 
   if sfExported in sym.flags:
@@ -159,8 +159,8 @@ proc addOverloadableSymAt*(scope: PScope, fn: PSym) =
     internalError(fn.info, "addOverloadableSymAt")
     return
   var check = strTableGet(scope.symbols, fn.name)
-  if check != nil and check.Kind notin OverloadableSyms: 
-    wrongRedefinition(fn.info, fn.Name.s)
+  if check != nil and check.kind notin OverloadableSyms: 
+    wrongRedefinition(fn.info, fn.name.s)
   else:
     scope.addSym(fn)
   
@@ -193,7 +193,7 @@ proc lookUp*(c: PContext, n: PNode): PSym =
   else:
     internalError(n.info, "lookUp")
     return
-  if contains(c.AmbiguousSymbols, result.id): 
+  if contains(c.ambiguousSymbols, result.id): 
     localError(n.info, errUseQualifier, result.name.s)
   if result.kind == skStub: loadStub(result)
   
@@ -210,11 +210,11 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym =
       localError(n.info, errUndeclaredIdentifier, ident.s)
       result = errorSym(c, n)
     elif checkAmbiguity in flags and result != nil and 
-        contains(c.AmbiguousSymbols, result.id): 
+        contains(c.ambiguousSymbols, result.id): 
       localError(n.info, errUseQualifier, ident.s)
   of nkSym:
     result = n.sym
-    if checkAmbiguity in flags and contains(c.AmbiguousSymbols, result.id): 
+    if checkAmbiguity in flags and contains(c.ambiguousSymbols, result.id): 
       localError(n.info, errUseQualifier, n.sym.name.s)
   of nkDotExpr: 
     result = nil

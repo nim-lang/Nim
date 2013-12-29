@@ -61,7 +61,7 @@ proc newIdentNodeP*(ident: PIdent, p: TParser): PNode
 proc expectIdentOrKeyw*(p: TParser)
 proc expectIdent*(p: TParser)
 proc parLineInfo*(p: TParser): TLineInfo
-proc eat*(p: var TParser, TokType: TTokType)
+proc eat*(p: var TParser, tokType: TTokType)
 proc skipInd*(p: var TParser)
 proc optPar*(p: var TParser)
 proc optInd*(p: var TParser, n: PNode)
@@ -139,9 +139,9 @@ proc expectIdent(p: TParser) =
   if p.tok.tokType != tkSymbol:
     lexMessage(p.lex, errIdentifierExpected, prettyTok(p.tok))
   
-proc eat(p: var TParser, TokType: TTokType) =
-  if p.tok.TokType == TokType: getTok(p)
-  else: lexMessage(p.lex, errTokenExpected, TokTypeToStr[TokType])
+proc eat(p: var TParser, tokType: TTokType) =
+  if p.tok.tokType == tokType: getTok(p)
+  else: lexMessage(p.lex, errTokenExpected, TokTypeToStr[tokType])
   
 proc parLineInfo(p: TParser): TLineInfo =
   result = getLineInfo(p.lex, p.tok)
@@ -1060,7 +1060,7 @@ proc parseExprStmt(p: var TParser): PNode =
       result = makeCall(result)
       getTok(p)
       skipComment(p, result)
-      if p.tok.TokType notin {tkOf, tkElif, tkElse, tkExcept}:
+      if p.tok.tokType notin {tkOf, tkElif, tkElse, tkExcept}:
         let body = parseStmt(p)
         addSon(result, newProcNode(nkDo, body.info, body))
       while sameInd(p):
@@ -1638,7 +1638,7 @@ proc parseTypeClass(p: var TParser): PNode =
   var args = newNode(nkArgList)
   addSon(result, args)
   addSon(args, p.parseTypeClassParam)
-  while p.tok.TokType == tkComma:
+  while p.tok.tokType == tkComma:
     getTok(p)
     addSon(args, p.parseTypeClassParam)
   if p.tok.tokType == tkCurlyDotLe and p.validInd:
@@ -1818,7 +1818,7 @@ proc parseStmt(p: var TParser): PNode =
           if p.tok.indent > p.currInd:
             parMessage(p, errInvalidIndentation)
           break
-        if p.tok.toktype in {tkCurlyRi, tkParRi, tkCurlyDotRi, tkBracketRi}:
+        if p.tok.tokType in {tkCurlyRi, tkParRi, tkCurlyDotRi, tkBracketRi}:
           # XXX this ensures tnamedparamanonproc still compiles;
           # deprecate this syntax later
           break

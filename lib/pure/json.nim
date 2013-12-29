@@ -151,11 +151,11 @@ proc kind*(my: TJsonParser): TJsonEventKind {.inline.} =
   
 proc getColumn*(my: TJsonParser): int {.inline.} = 
   ## get the current column the parser has arrived at.
-  result = getColNumber(my, my.bufPos)
+  result = getColNumber(my, my.bufpos)
 
 proc getLine*(my: TJsonParser): int {.inline.} = 
   ## get the current line the parser has arrived at.
-  result = my.linenumber
+  result = my.lineNumber
 
 proc getFilename*(my: TJsonParser): string {.inline.} = 
   ## get the filename of the file that the parser processes.
@@ -227,11 +227,11 @@ proc parseString(my: var TJsonParser): TTokKind =
         add(my.a, buf[pos])
         inc(pos)
     of '\c': 
-      pos = lexbase.HandleCR(my, pos)
+      pos = lexbase.handleCR(my, pos)
       buf = my.buf
       add(my.a, '\c')
     of '\L': 
-      pos = lexbase.HandleLF(my, pos)
+      pos = lexbase.handleLF(my, pos)
       buf = my.buf
       add(my.a, '\L')
     else:
@@ -253,11 +253,11 @@ proc skip(my: var TJsonParser) =
           of '\0': 
             break
           of '\c': 
-            pos = lexbase.HandleCR(my, pos)
+            pos = lexbase.handleCR(my, pos)
             buf = my.buf
             break
           of '\L': 
-            pos = lexbase.HandleLF(my, pos)
+            pos = lexbase.handleLF(my, pos)
             buf = my.buf
             break
           else:
@@ -271,10 +271,10 @@ proc skip(my: var TJsonParser) =
             my.err = errEOC_Expected
             break
           of '\c': 
-            pos = lexbase.HandleCR(my, pos)
+            pos = lexbase.handleCR(my, pos)
             buf = my.buf
           of '\L': 
-            pos = lexbase.HandleLF(my, pos)
+            pos = lexbase.handleLF(my, pos)
             buf = my.buf
           of '*':
             inc(pos)
@@ -288,10 +288,10 @@ proc skip(my: var TJsonParser) =
     of ' ', '\t': 
       inc(pos)
     of '\c':  
-      pos = lexbase.HandleCR(my, pos)
+      pos = lexbase.handleCR(my, pos)
       buf = my.buf
     of '\L': 
-      pos = lexbase.HandleLF(my, pos)
+      pos = lexbase.handleLF(my, pos)
       buf = my.buf
     else:
       break

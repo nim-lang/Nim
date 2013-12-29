@@ -626,7 +626,7 @@ proc strTableGet(t: TStrTable, name: PIdent): PSym =
 proc initIdentIter(ti: var TIdentIter, tab: TStrTable, s: PIdent): PSym = 
   ti.h = s.h
   ti.name = s
-  if tab.Counter == 0: result = nil
+  if tab.counter == 0: result = nil
   else: result = nextIdentIter(ti, tab)
   
 proc nextIdentIter(ti: var TIdentIter, tab: TStrTable): PSym = 
@@ -635,7 +635,7 @@ proc nextIdentIter(ti: var TIdentIter, tab: TStrTable): PSym =
   start = h
   result = tab.data[h]
   while result != nil: 
-    if result.Name.id == ti.name.id: break 
+    if result.name.id == ti.name.id: break 
     h = nextTry(h, high(tab.data))
     if h == start: 
       result = nil
@@ -649,7 +649,7 @@ proc nextIdentExcluding*(ti: var TIdentIter, tab: TStrTable,
   var start = h
   result = tab.data[h]
   while result != nil: 
-    if result.Name.id == ti.name.id and not contains(excluding, result.id): 
+    if result.name.id == ti.name.id and not contains(excluding, result.id): 
       break
     h = nextTry(h, high(tab.data))
     if h == start: 
@@ -663,7 +663,7 @@ proc firstIdentExcluding*(ti: var TIdentIter, tab: TStrTable, s: PIdent,
                           excluding: TIntSet): PSym = 
   ti.h = s.h
   ti.name = s
-  if tab.Counter == 0: result = nil
+  if tab.counter == 0: result = nil
   else: result = nextIdentExcluding(ti, tab, excluding)
 
 proc initTabIter(ti: var TTabIter, tab: TStrTable): PSym = 

@@ -64,7 +64,7 @@ type
     options: TOptions
     module: BModule
     g: PGlobals
-    BeforeRetNeeded: bool
+    beforeRetNeeded: bool
     target: TTarget # duplicated here for faster dispatching
     unique: int    # for temp identifier generation
     blocks: seq[TBlock]
@@ -485,14 +485,14 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
 
 proc genLineDir(p: PProc, n: PNode) =
   let line = toLinenumber(n.info)
-  if optLineDir in p.Options:
+  if optLineDir in p.options:
     appf(p.body, "// line $2 \"$1\"$n" | "-- line $2 \"$1\"$n",
          [toRope(toFilename(n.info)), toRope(line)])
-  if {optStackTrace, optEndb} * p.Options == {optStackTrace, optEndb} and
+  if {optStackTrace, optEndb} * p.options == {optStackTrace, optEndb} and
       ((p.prc == nil) or sfPure notin p.prc.flags):
     useMagic(p, "endb")
     appf(p.body, "endb($1);$n", [toRope(line)])
-  elif ({optLineTrace, optStackTrace} * p.Options ==
+  elif ({optLineTrace, optStackTrace} * p.options ==
       {optLineTrace, optStackTrace}) and
       ((p.prc == nil) or not (sfPure in p.prc.flags)): 
     appf(p.body, "F.line = $1;$n", [toRope(line)])
@@ -555,7 +555,7 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
        "var $1 = {prev: excHandler, exc: null};$nexcHandler = $1;$n" | 
        "local $1 = pcall(", 
        [safePoint])
-  if optStackTrace in p.Options: app(p.body, "framePtr = F;" & tnl)
+  if optStackTrace in p.options: app(p.body, "framePtr = F;" & tnl)
   appf(p.body, "try {$n" | "function()$n")
   var length = sonsLen(n)
   var a: TCompRes
@@ -747,7 +747,7 @@ proc genAsmStmt(p: PProc, n: PNode) =
   genLineDir(p, n)
   assert(n.kind == nkAsmStmt)
   for i in countup(0, sonsLen(n) - 1): 
-    case n.sons[i].Kind
+    case n.sons[i].kind
     of nkStrLit..nkTripleStrLit: app(p.body, n.sons[i].strVal)
     of nkSym: app(p.body, mangleName(n.sons[i].sym))
     else: internalError(n.sons[i].info, "jsgen: genAsmStmt()")
@@ -1298,15 +1298,15 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mSwap: genSwap(p, n)
   of mUnaryLt:
     # XXX: range checking?
-    if not (optOverflowCheck in p.Options): unaryExpr(p, n, r, "", "$1 - 1")
+    if not (optOverflowCheck in p.options): unaryExpr(p, n, r, "", "$1 - 1")
     else: unaryExpr(p, n, r, "subInt", "subInt($1, 1)")
   of mPred:
     # XXX: range checking?
-    if not (optOverflowCheck in p.Options): binaryExpr(p, n, r, "", "$1 - $2")
+    if not (optOverflowCheck in p.options): binaryExpr(p, n, r, "", "$1 - $2")
     else: binaryExpr(p, n, r, "subInt", "subInt($1, $2)")
   of mSucc:
     # XXX: range checking?
-    if not (optOverflowCheck in p.Options): binaryExpr(p, n, r, "", "$1 - $2")
+    if not (optOverflowCheck in p.options): binaryExpr(p, n, r, "", "$1 - $2")
     else: binaryExpr(p, n, r, "addInt", "addInt($1, $2)")
   of mAppendStrCh: binaryExpr(p, n, r, "addChar", "addChar($1, $2)")
   of mAppendStrStr:
@@ -1335,10 +1335,10 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     else:
       unaryExpr(p, n, r, "", "($1.length-1)")
   of mInc:
-    if not (optOverflowCheck in p.Options): binaryExpr(p, n, r, "", "$1 += $2")
+    if not (optOverflowCheck in p.options): binaryExpr(p, n, r, "", "$1 += $2")
     else: binaryExpr(p, n, r, "addInt", "$1 = addInt($1, $2)")
   of ast.mDec:
-    if not (optOverflowCheck in p.Options): binaryExpr(p, n, r, "", "$1 -= $2")
+    if not (optOverflowCheck in p.options): binaryExpr(p, n, r, "", "$1 -= $2")
     else: binaryExpr(p, n, r, "subInt", "$1 = subInt($1, $2)")
   of mSetLengthStr: binaryExpr(p, n, r, "", "$1.length = ($2)-1")
   of mSetLengthSeq: binaryExpr(p, n, r, "", "$1.length = $2")
@@ -1470,7 +1470,7 @@ proc convCStrToStr(p: PProc, n: PNode, r: var TCompRes) =
 
 proc genReturnStmt(p: PProc, n: PNode) = 
   if p.procDef == nil: internalError(n.info, "genReturnStmt")
-  p.BeforeRetNeeded = true
+  p.beforeRetNeeded = true
   if (n.sons[0].kind != nkEmpty): 
     genStmt(p, n.sons[0])
   else:

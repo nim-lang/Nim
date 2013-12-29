@@ -180,18 +180,18 @@ proc printTok*(tok: TToken) =
 var dummyIdent: PIdent
 
 proc initToken*(L: var TToken) = 
-  L.TokType = tkInvalid
+  L.tokType = tkInvalid
   L.iNumber = 0
-  L.Indent = 0
+  L.indent = 0
   L.literal = ""
   L.fNumber = 0.0
   L.base = base10
   L.ident = dummyIdent
 
 proc fillToken(L: var TToken) = 
-  L.TokType = tkInvalid
+  L.tokType = tkInvalid
   L.iNumber = 0
-  L.Indent = 0
+  L.indent = 0
   setLen(L.literal, 0)
   L.fNumber = 0.0
   L.base = base10
@@ -201,24 +201,24 @@ proc openLexer(lex: var TLexer, fileIdx: int32, inputstream: PLLStream) =
   openBaseLexer(lex, inputstream)
   lex.fileIdx = fileidx
   lex.indentAhead = - 1
-  inc(lex.Linenumber, inputstream.lineOffset) 
+  inc(lex.lineNumber, inputstream.lineOffset) 
 
 proc closeLexer(lex: var TLexer) = 
-  inc(gLinesCompiled, lex.LineNumber)
+  inc(gLinesCompiled, lex.lineNumber)
   closeBaseLexer(lex)
 
 proc getColumn(L: TLexer): int = 
-  result = getColNumber(L, L.bufPos)
+  result = getColNumber(L, L.bufpos)
 
 proc getLineInfo(L: TLexer): TLineInfo = 
-  result = newLineInfo(L.fileIdx, L.linenumber, getColNumber(L, L.bufpos))
+  result = newLineInfo(L.fileIdx, L.lineNumber, getColNumber(L, L.bufpos))
 
 proc lexMessage(L: TLexer, msg: TMsgKind, arg = "") = 
-  msgs.Message(getLineInfo(L), msg, arg)
+  msgs.message(getLineInfo(L), msg, arg)
 
 proc lexMessagePos(L: var TLexer, msg: TMsgKind, pos: int, arg = "") = 
-  var info = newLineInfo(L.fileIdx, L.linenumber, pos - L.lineStart)
-  msgs.Message(info, msg, arg)
+  var info = newLineInfo(L.fileIdx, L.lineNumber, pos - L.lineStart)
+  msgs.message(info, msg, arg)
 
 proc matchUnderscoreChars(L: var TLexer, tok: var TToken, chars: TCharSet) = 
   var pos = L.bufpos              # use registers for pos, buf
@@ -235,7 +235,7 @@ proc matchUnderscoreChars(L: var TLexer, tok: var TToken, chars: TCharSet) =
         break
       add(tok.literal, '_')
       inc(pos)
-  L.bufPos = pos
+  L.bufpos = pos
 
 proc matchTwoChars(L: TLexer, first: char, second: TCharSet): bool = 
   result = (L.buf[L.bufpos] == first) and (L.buf[L.bufpos + 1] in second)
@@ -408,7 +408,7 @@ proc getNumber(L: var TLexer): TToken =
       else: internalError(getLineInfo(L), "getNumber")
     elif isFloatLiteral(result.literal) or (result.tokType == tkFloat32Lit) or
         (result.tokType == tkFloat64Lit): 
-      result.fnumber = parseFloat(result.literal)
+      result.fNumber = parseFloat(result.literal)
       if result.tokType == tkIntLit: result.tokType = tkFloatLit
     else:
       result.iNumber = parseBiggestInt(result.literal)
@@ -445,7 +445,7 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
   inc(L.bufpos)               # skip '\'
   case L.buf[L.bufpos]
   of 'n', 'N': 
-    if tok.toktype == tkCharLit: lexMessage(L, errNnotAllowedInCharacter)
+    if tok.tokType == tkCharLit: lexMessage(L, errNnotAllowedInCharacter)
     add(tok.literal, tnl)
     inc(L.bufpos)
   of 'r', 'R', 'c', 'C': 
@@ -514,16 +514,16 @@ proc handleCRLF(L: var TLexer, pos: int): int =
   case L.buf[pos]
   of CR:
     registerLine()
-    result = nimlexbase.HandleCR(L, pos)
+    result = nimlexbase.handleCR(L, pos)
   of LF:
     registerLine()
-    result = nimlexbase.HandleLF(L, pos)
+    result = nimlexbase.handleLF(L, pos)
   else: result = pos
   
 proc getString(L: var TLexer, tok: var TToken, rawMode: bool) = 
-  var pos = L.bufPos + 1          # skip "
+  var pos = L.bufpos + 1          # skip "
   var buf = L.buf                 # put `buf` in a register
-  var line = L.linenumber         # save linenumber for better error message
+  var line = L.lineNumber         # save linenumber for better error message
   if buf[pos] == '\"' and buf[pos+1] == '\"': 
     tok.tokType = tkTripleStrLit # long string literal:
     inc(pos, 2)               # skip ""
@@ -544,10 +544,10 @@ proc getString(L: var TLexer, tok: var TToken, rawMode: bool) =
         buf = L.buf
         add(tok.literal, tnl)
       of nimlexbase.EndOfFile: 
-        var line2 = L.linenumber
-        L.LineNumber = line
+        var line2 = L.lineNumber
+        L.lineNumber = line
         lexMessagePos(L, errClosingTripleQuoteExpected, L.lineStart)
-        L.LineNumber = line2
+        L.lineNumber = line2
         break 
       else: 
         add(tok.literal, buf[pos])
@@ -569,9 +569,9 @@ proc getString(L: var TLexer, tok: var TToken, rawMode: bool) =
         lexMessage(L, errClosingQuoteExpected)
         break 
       elif (c == '\\') and not rawMode: 
-        L.bufPos = pos
+        L.bufpos = pos
         getEscapedChar(L, tok)
-        pos = L.bufPos
+        pos = L.bufpos
       else: 
         add(tok.literal, c)
         inc(pos)
@@ -707,7 +707,7 @@ proc rawGetTok(L: var TLexer, tok: var TToken) =
     tok.indent = -1
   skip(L, tok)
   var c = L.buf[L.bufpos]
-  tok.line = L.linenumber
+  tok.line = L.lineNumber
   tok.col = getColNumber(L, L.bufpos)
   if c in SymStartChars - {'r', 'R', 'l'}:
     getSymbol(L, tok)
@@ -724,7 +724,7 @@ proc rawGetTok(L: var TLexer, tok: var TToken) =
       else:
         getOperator(L, tok)
     of ',':
-      tok.toktype = tkComma
+      tok.tokType = tkComma
       inc(L.bufpos)
     of 'l': 
       # if we parsed exactly one character and its a small L (l), this
@@ -733,55 +733,55 @@ proc rawGetTok(L: var TLexer, tok: var TToken) =
         lexMessage(L, warnSmallLshouldNotBeUsed)
       getSymbol(L, tok)
     of 'r', 'R':
-      if L.buf[L.bufPos + 1] == '\"': 
-        inc(L.bufPos)
+      if L.buf[L.bufpos + 1] == '\"': 
+        inc(L.bufpos)
         getString(L, tok, true)
       else: 
         getSymbol(L, tok)
     of '(': 
       inc(L.bufpos)
-      if L.buf[L.bufPos] == '.' and L.buf[L.bufPos+1] != '.': 
-        tok.toktype = tkParDotLe
+      if L.buf[L.bufpos] == '.' and L.buf[L.bufpos+1] != '.': 
+        tok.tokType = tkParDotLe
         inc(L.bufpos)
       else: 
-        tok.toktype = tkParLe
+        tok.tokType = tkParLe
     of ')': 
-      tok.toktype = tkParRi
+      tok.tokType = tkParRi
       inc(L.bufpos)
     of '[': 
       inc(L.bufpos)
-      if L.buf[L.bufPos] == '.' and L.buf[L.bufPos+1] != '.':
-        tok.toktype = tkBracketDotLe
+      if L.buf[L.bufpos] == '.' and L.buf[L.bufpos+1] != '.':
+        tok.tokType = tkBracketDotLe
         inc(L.bufpos)
       else:
-        tok.toktype = tkBracketLe
+        tok.tokType = tkBracketLe
     of ']':
-      tok.toktype = tkBracketRi
+      tok.tokType = tkBracketRi
       inc(L.bufpos)
     of '.':
-      if L.buf[L.bufPos+1] == ']': 
+      if L.buf[L.bufpos+1] == ']': 
         tok.tokType = tkBracketDotRi
         inc(L.bufpos, 2)
-      elif L.buf[L.bufPos+1] == '}': 
+      elif L.buf[L.bufpos+1] == '}': 
         tok.tokType = tkCurlyDotRi
         inc(L.bufpos, 2)
-      elif L.buf[L.bufPos+1] == ')': 
+      elif L.buf[L.bufpos+1] == ')': 
         tok.tokType = tkParDotRi
         inc(L.bufpos, 2)
       else: 
         getOperator(L, tok)
     of '{': 
       inc(L.bufpos)
-      if L.buf[L.bufPos] == '.' and L.buf[L.bufPos+1] != '.':
-        tok.toktype = tkCurlyDotLe
+      if L.buf[L.bufpos] == '.' and L.buf[L.bufpos+1] != '.':
+        tok.tokType = tkCurlyDotLe
         inc(L.bufpos)
       else: 
-        tok.toktype = tkCurlyLe
+        tok.tokType = tkCurlyLe
     of '}': 
-      tok.toktype = tkCurlyRi
+      tok.tokType = tkCurlyRi
       inc(L.bufpos)
     of ';': 
-      tok.toktype = tkSemiColon
+      tok.tokType = tkSemiColon
       inc(L.bufpos)
     of '`': 
       tok.tokType = tkAccent
@@ -804,7 +804,7 @@ proc rawGetTok(L: var TLexer, tok: var TToken) =
       if c in OpChars: 
         getOperator(L, tok)
       elif c == nimlexbase.EndOfFile:
-        tok.toktype = tkEof
+        tok.tokType = tkEof
         tok.indent = 0
       else:
         tok.literal = $c

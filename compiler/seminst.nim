@@ -88,7 +88,7 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind)
 
 proc instantiateBody(c: PContext, n: PNode, result: PSym) =
   if n.sons[bodyPos].kind != nkEmpty:
-    inc c.InGenericInst
+    inc c.inGenericInst
     # add it here, so that recursive generic procs are possible:
     addDecl(c, result)
     pushProcCon(c, result)
@@ -109,7 +109,7 @@ proc instantiateBody(c: PContext, n: PNode, result: PSym) =
     #echo "code instantiated ", result.name.s
     excl(result.flags, sfForward)
     popProcCon(c)
-    dec c.InGenericInst
+    dec c.inGenericInst
 
 proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
   for i in countup(0, c.generics.len - 1):
@@ -265,8 +265,8 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   if fn.kind in {skTemplate, skMacro}: return fn
   
   # generates an instantiated proc
-  if c.InstCounter > 1000: internalError(fn.ast.info, "nesting too deep")
-  inc(c.InstCounter)
+  if c.instCounter > 1000: internalError(fn.ast.info, "nesting too deep")
+  inc(c.instCounter)
   # careful! we copy the whole AST including the possibly nil body!
   var n = copyTree(fn.ast)
   # NOTE: for access of private fields within generics from a different module
@@ -309,5 +309,5 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   popOwner()
   #c.currentScope = oldScope
   c.friendModule = oldFriend
-  dec(c.InstCounter)
+  dec(c.instCounter)
   if result.kind == skMethod: finishMethod(c, result)

@@ -31,7 +31,7 @@ type
     buf*: cstring             ## the buffer itself
     bufLen*: int              ## length of buffer in characters
     input: PStream            ## the input stream
-    LineNumber*: int          ## the current line number
+    lineNumber*: int          ## the current line number
     sentinel: int
     lineStart: int            # index of last line start in buffer
     fileOpened: bool
@@ -75,7 +75,7 @@ proc fillBuffer(L: var TBaseLexer) =
   # we know here that pos == L.sentinel, but not if this proc
   # is called the first time by initBaseLexer()
   assert(L.sentinel < L.bufLen)
-  toCopy = L.BufLen - L.sentinel - 1
+  toCopy = L.bufLen - L.sentinel - 1
   assert(toCopy >= 0)
   if toCopy > 0:
     moveMem(L.buf, addr(L.buf[L.sentinel + 1]), toCopy * chrSize) 
@@ -99,8 +99,8 @@ proc fillBuffer(L: var TBaseLexer) =
       else:
         # rather than to give up here because the line is too long,
         # double the buffer's size and try again:
-        oldBufLen = L.BufLen
-        L.bufLen = L.BufLen * 2
+        oldBufLen = L.bufLen
+        L.bufLen = L.bufLen * 2
         L.buf = cast[cstring](realloc(L.buf, L.bufLen * chrSize))
         assert(L.bufLen - oldBufLen == oldBufLen)
         charsRead = readData(L.input, addr(L.buf[oldBufLen]),
@@ -123,14 +123,14 @@ proc fillBaseLexer(L: var TBaseLexer, pos: int): int =
 
 proc handleCR(L: var TBaseLexer, pos: int): int =
   assert(L.buf[pos] == '\c')
-  inc(L.linenumber)
+  inc(L.lineNumber)
   result = fillBaseLexer(L, pos)
   if L.buf[result] == '\L':
     result = fillBaseLexer(L, result)
 
 proc handleLF(L: var TBaseLexer, pos: int): int =
   assert(L.buf[pos] == '\L')
-  inc(L.linenumber)
+  inc(L.lineNumber)
   result = fillBaseLexer(L, pos) #L.lastNL := result-1; // BUGFIX: was: result;
 
 proc skipUtf8Bom(L: var TBaseLexer) =
@@ -147,7 +147,7 @@ proc open(L: var TBaseLexer, input: PStream, bufLen: int = 8192) =
   L.buf = cast[cstring](alloc(bufLen * chrSize))
   L.sentinel = bufLen - 1
   L.lineStart = 0
-  L.linenumber = 1            # lines start at 1
+  L.lineNumber = 1            # lines start at 1
   fillBuffer(L)
   skipUtf8Bom(L)
 

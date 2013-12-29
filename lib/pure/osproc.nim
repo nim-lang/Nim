@@ -23,7 +23,7 @@ else:
 type
   TProcess = object of TObject
     when defined(windows):
-      FProcessHandle: THandle
+      fProcessHandle: THandle
       inHandle, outHandle, errHandle: TFileHandle
       id: THandle
     else:
@@ -336,7 +336,7 @@ when defined(Windows) and not defined(useNimRtl):
     var s = PFileHandleStream(s)
     if s.atTheEnd: return 0
     var br: int32
-    var a = winlean.ReadFile(s.handle, buffer, bufLen.cint, br, nil)
+    var a = winlean.readFile(s.handle, buffer, bufLen.cint, br, nil)
     # TRUE and zero bytes returned (EOF).
     # TRUE and n (>0) bytes returned (good data).
     # FALSE and bytes returned undefined (system error).
@@ -383,12 +383,12 @@ when defined(Windows) and not defined(useNimRtl):
   #  O_WRONLY {.importc: "_O_WRONLY", header: "<fcntl.h>".}: int
   #  O_RDONLY {.importc: "_O_RDONLY", header: "<fcntl.h>".}: int
 
-  proc createPipeHandles(Rdhandle, WrHandle: var THandle) =
+  proc createPipeHandles(rdHandle, wrHandle: var THandle) =
     var piInheritablePipe: TSECURITY_ATTRIBUTES
-    piInheritablePipe.nlength = sizeof(TSECURITY_ATTRIBUTES).cint
+    piInheritablePipe.nLength = sizeof(TSECURITY_ATTRIBUTES).cint
     piInheritablePipe.lpSecurityDescriptor = nil
-    piInheritablePipe.Binherithandle = 1
-    if createPipe(Rdhandle, WrHandle, piInheritablePipe, 1024) == 0'i32:
+    piInheritablePipe.bInheritHandle = 1
+    if createPipe(rdHandle, wrHandle, piInheritablePipe, 1024) == 0'i32:
       osError(osLastError())
 
   proc fileClose(h: THandle) {.inline.} =
@@ -440,11 +440,11 @@ when defined(Windows) and not defined(useNimRtl):
       var tmp = newWideCString(cmdl)
       var ee = newWideCString(e)
       var wwd = newWideCString(wd)
-      success = winlean.CreateProcessW(nil,
+      success = winlean.createProcessW(nil,
         tmp, nil, nil, 1, NORMAL_PRIORITY_CLASS or CREATE_UNICODE_ENVIRONMENT, 
         ee, wwd, si, procInfo)
     else:
-      success = winlean.CreateProcessA(nil,
+      success = winlean.createProcessA(nil,
         cmdl, nil, nil, 1, NORMAL_PRIORITY_CLASS, e, wd, SI, ProcInfo)
     let lastError = osLastError()
 
@@ -459,45 +459,45 @@ when defined(Windows) and not defined(useNimRtl):
     if success == 0: osError(lastError)
     # Close the handle now so anyone waiting is woken:
     discard closeHandle(procInfo.hThread)
-    result.FProcessHandle = procInfo.hProcess
-    result.id = procInfo.dwProcessID
+    result.fProcessHandle = procInfo.hProcess
+    result.id = procInfo.dwProcessId
 
   proc close(p: PProcess) =
     when false:
       # somehow this does not work on Windows:
-      discard CloseHandle(p.inHandle)
-      discard CloseHandle(p.outHandle)
-      discard CloseHandle(p.errHandle)
-      discard CloseHandle(p.FProcessHandle)
+      discard closeHandle(p.inHandle)
+      discard closeHandle(p.outHandle)
+      discard closeHandle(p.errHandle)
+      discard closeHandle(p.FProcessHandle)
 
   proc suspend(p: PProcess) =
-    discard suspendThread(p.FProcessHandle)
+    discard suspendThread(p.fProcessHandle)
 
   proc resume(p: PProcess) =
-    discard resumeThread(p.FProcessHandle)
+    discard resumeThread(p.fProcessHandle)
 
   proc running(p: PProcess): bool =
-    var x = waitForSingleObject(p.FProcessHandle, 50)
+    var x = waitForSingleObject(p.fProcessHandle, 50)
     return x == WAIT_TIMEOUT
 
   proc terminate(p: PProcess) =
     if running(p):
-      discard terminateProcess(p.FProcessHandle, 0)
+      discard terminateProcess(p.fProcessHandle, 0)
 
   proc waitForExit(p: PProcess, timeout: int = -1): int =
-    discard waitForSingleObject(p.FProcessHandle, timeout.int32)
+    discard waitForSingleObject(p.fProcessHandle, timeout.int32)
 
     var res: int32
-    discard getExitCodeProcess(p.FProcessHandle, res)
+    discard getExitCodeProcess(p.fProcessHandle, res)
     result = res
-    discard closeHandle(p.FProcessHandle)
+    discard closeHandle(p.fProcessHandle)
 
   proc peekExitCode(p: PProcess): int =
-    var b = waitForSingleObject(p.FProcessHandle, 50) == WAIT_TIMEOUT
+    var b = waitForSingleObject(p.fProcessHandle, 50) == WAIT_TIMEOUT
     if b: result = -1
     else: 
       var res: int32
-      discard getExitCodeProcess(p.FProcessHandle, res)
+      discard getExitCodeProcess(p.fProcessHandle, res)
       return res
 
   proc inputStream(p: PProcess): PStream =
@@ -521,10 +521,10 @@ when defined(Windows) and not defined(useNimRtl):
     si.hStdOutput = getStdHandle(STD_OUTPUT_HANDLE)
     when useWinUnicode:
       var c = newWideCString(command)
-      var res = winlean.CreateProcessW(nil, c, nil, nil, 0,
+      var res = winlean.createProcessW(nil, c, nil, nil, 0,
         NORMAL_PRIORITY_CLASS, nil, nil, si, procInfo)
     else:
-      var res = winlean.CreateProcessA(nil, command, nil, nil, 0,
+      var res = winlean.createProcessA(nil, command, nil, nil, 0,
         NORMAL_PRIORITY_CLASS, nil, nil, SI, ProcInfo)
     if res == 0:
       osError(osLastError())
@@ -542,7 +542,7 @@ when defined(Windows) and not defined(useNimRtl):
     assert readfds.len <= MAXIMUM_WAIT_OBJECTS
     var rfds: TWOHandleArray
     for i in 0..readfds.len()-1:
-      rfds[i] = readfds[i].FProcessHandle
+      rfds[i] = readfds[i].fProcessHandle
     
     var ret = waitForMultipleObjects(readfds.len.int32, 
                                      addr(rfds), 0'i32, timeout.int32)

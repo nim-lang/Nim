@@ -845,7 +845,7 @@ proc quotedFilename*(i: TLineInfo): PRope =
   internalAssert i.fileIndex >= 0
   result = fileInfos[i.fileIndex].quotedName
 
-ropes.ErrorHandler = proc (err: TRopesError, msg: string, useWarning: bool) =
+ropes.errorHandler = proc (err: TRopesError, msg: string, useWarning: bool) =
   case err
   of rInvalidFormatStr:
     internalError("ropes: invalid format string: " & msg)

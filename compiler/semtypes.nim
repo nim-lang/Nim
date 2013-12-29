@@ -153,7 +153,7 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
   result = newOrPrevType(tyRange, prev, c)
   result.n = newNodeI(nkRange, n.info)
   if (n[1].kind == nkEmpty) or (n[2].kind == nkEmpty): 
-    localError(n.Info, errRangeIsEmpty)
+    localError(n.info, errRangeIsEmpty)
   var a = semConstExpr(c, n[1])
   var b = semConstExpr(c, n[2])
   if not sameType(a.typ, b.typ):
@@ -163,7 +163,7 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
     localError(n.info, errOrdinalTypeExpected)
   elif enumHasHoles(a.typ): 
     localError(n.info, errEnumXHasHoles, a.typ.sym.name.s)
-  elif not leValue(a, b): localError(n.Info, errRangeIsEmpty)
+  elif not leValue(a, b): localError(n.info, errRangeIsEmpty)
   addSon(result.n, a)
   addSon(result.n, b)
   addSonSkipIntLit(result, b.typ)
@@ -198,7 +198,7 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
         indx = makeRangeType(c, 0, e.intVal-1, n.info, e.typ)
       elif e.kind == nkSym and e.typ.kind == tyExpr:
         if e.sym.ast != nil: return semArray(c, e.sym.ast, nil)
-        internalAssert c.InGenericContext > 0
+        internalAssert c.inGenericContext > 0
         if not isOrdinalType(e.typ.lastSon):
           localError(n[1].info, errOrdinalTypeExpected)
         indx = e.typ
@@ -240,7 +240,7 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
         # This is a typedesc param. is it already bound?
         # it's not bound when it's used multiple times in the
         # proc signature for example
-        if c.InGenericInst > 0:
+        if c.inGenericInst > 0:
           let bound = result.typ.sons[0].sym
           if bound != nil: return bound
           return result
@@ -300,6 +300,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
       else:
         addSon(result.n, newSymNode(field))
         addSonSkipIntLit(result, typ)
+      if gCmd == cmdPretty: checkDef(a.sons[j], field)
 
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode, 
                  allowed: TSymFlags): PSym = 
@@ -334,6 +335,7 @@ proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
     else: discard
   else:
     result = semIdentVis(c, kind, n, allowed)
+  if gCmd == cmdPretty: checkDef(n, result)
   
 proc checkForOverlap(c: PContext, t: PNode, currentEx, branchIndex: int) =
   let ex = t[branchIndex][currentEx].skipConv
@@ -412,7 +414,7 @@ proc semRecordCase(c: PContext, n: PNode, check: var TIntSet, pos: var int,
     return
   incl(a.sons[0].sym.flags, sfDiscriminant)
   var covered: BiggestInt = 0
-  var typ = skipTypes(a.sons[0].Typ, abstractVar-{tyTypeDesc})
+  var typ = skipTypes(a.sons[0].typ, abstractVar-{tyTypeDesc})
   if not isOrdinalType(typ):
     localError(n.info, errSelectorMustBeOrdinal)
   elif firstOrd(typ) < 0:
@@ -450,7 +452,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var TIntSet, pos: var int,
       case it.kind
       of nkElifBranch:
         checkSonsLen(it, 2)
-        if c.InGenericContext == 0:
+        if c.inGenericContext == 0:
           var e = semConstBoolExpr(c, it.sons[0])
           if e.kind != nkIntLit: internalError(e.info, "semRecordNodeAux")
           elif e.intVal != 0 and branch == nil: branch = it.sons[1]
@@ -461,7 +463,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var TIntSet, pos: var int,
         if branch == nil: branch = it.sons[0]
         idx = 0
       else: illFormedAst(n)
-      if c.InGenericContext > 0:
+      if c.inGenericContext > 0:
         # use a new check intset here for each branch:
         var newCheck: TIntSet
         assign(newCheck, check)
@@ -469,7 +471,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var TIntSet, pos: var int,
         var newf = newNodeI(nkRecList, n.info)
         semRecordNodeAux(c, it.sons[idx], newCheck, newPos, newf, rectype)
         it.sons[idx] = if newf.len == 1: newf[0] else: newf
-    if c.InGenericContext > 0:
+    if c.inGenericContext > 0:
       addSon(father, n)
     elif branch != nil:
       semRecordNodeAux(c, branch, check, pos, father, rectype)
@@ -761,6 +763,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       addSon(result.n, newSymNode(arg))
       rawAddSon(result, finalType)
       addParamOrResult(c, arg, kind)
+      if gCmd == cmdPretty: checkDef(a.sons[j], arg)
+
 
   if n.sons[0].kind != nkEmpty:
     var r = semTypeNode(c, n.sons[0], nil)

@@ -18,7 +18,7 @@ import
   tables, docgen2, service, parser, modules, ccgutils, sigmatch, ropes, lists,
   pretty
 
-from magicsys import SystemModule, resetSysTypes
+from magicsys import systemModule, resetSysTypes
 
 const
   hasLLVM_Backend = false
@@ -73,7 +73,7 @@ proc commandCompileToC =
   compileProject()
   cgenWriteModules()
   if gCmd != cmdRun:
-    extccomp.CallCCompiler(changeFileExt(gProjectFull, ""))
+    extccomp.callCCompiler(changeFileExt(gProjectFull, ""))
 
   if isServing:
     # caas will keep track only of the compilation commands

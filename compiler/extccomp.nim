@@ -335,8 +335,8 @@ proc getConfigVar(c: TSystemCC, suffix: string): string =
   # for niminst support
   if (platform.hostOS != targetOS or platform.hostCPU != targetCPU) and
       optCompileOnly notin gGlobalOptions:
-    let fullCCname = platform.cpu[targetCPU].name & '.' & 
-                     platform.os[targetOS].name & '.' & 
+    let fullCCname = platform.CPU[targetCPU].name & '.' & 
+                     platform.OS[targetOS].name & '.' & 
                      CC[c].name & suffix
     result = getConfigVar(fullCCname)
     if result.len == 0:
@@ -406,7 +406,7 @@ proc execExternalProgram*(cmd: string) =
 proc generateScript(projectFile: string, script: PRope) = 
   let (dir, name, ext) = splitFile(projectFile)
   writeRope(script, dir / addFileExt("compile_" & name, 
-                                     platform.os[targetOS].scriptExt))
+                                     platform.OS[targetOS].scriptExt))
 
 proc getOptSpeed(c: TSystemCC): string = 
   result = getConfigVar(c, ".options.speed")
@@ -517,7 +517,7 @@ proc footprint(filename: string): TCrc32 =
   result = crcFromFile(filename) ><
       platform.OS[targetOS].name ><
       platform.CPU[targetCPU].name ><
-      extccomp.CC[extccomp.ccompiler].name ><
+      extccomp.CC[extccomp.cCompiler].name ><
       getCompileCFileCmd(filename, true)
 
 proc externalFileChanged(filename: string): bool = 
@@ -608,10 +608,10 @@ proc callCCompiler*(projectfile: string) =
       else: buildgui = ""
       var exefile: string
       if optGenDynLib in gGlobalOptions:
-        exefile = platform.os[targetOS].dllFrmt % splitFile(projectfile).name
+        exefile = platform.OS[targetOS].dllFrmt % splitFile(projectfile).name
         builddll = CC[c].buildDll
       else:
-        exefile = splitFile(projectfile).name & platform.os[targetOS].exeExt
+        exefile = splitFile(projectfile).name & platform.OS[targetOS].exeExt
         builddll = ""
       if options.outFile.len > 0: 
         exefile = options.outFile

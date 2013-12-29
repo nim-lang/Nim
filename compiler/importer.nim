@@ -63,8 +63,8 @@ proc rawImportSymbol(c: PContext, s: PSym) =
   if check != nil and check.id != s.id:
     if s.kind notin OverloadableSyms:
       # s and check need to be qualified:
-      incl(c.AmbiguousSymbols, s.id)
-      incl(c.AmbiguousSymbols, check.id)
+      incl(c.ambiguousSymbols, s.id)
+      incl(c.ambiguousSymbols, check.id)
   # thanks to 'export' feature, it could be we import the same symbol from
   # multiple sources, so we need to call 'StrTableAdd' here:
   strTableAdd(c.importTable.symbols, s)
@@ -73,7 +73,7 @@ proc rawImportSymbol(c: PContext, s: PSym) =
     if etyp.kind in {tyBool, tyEnum} and sfPure notin s.flags:
       for j in countup(0, sonsLen(etyp.n) - 1):
         var e = etyp.n.sons[j].sym
-        if e.Kind != skEnumField: 
+        if e.kind != skEnumField: 
           internalError(s.info, "rawImportSymbol") 
           # BUGFIX: because of aliases for enums the symbol may already
           # have been put into the symbol table
@@ -99,16 +99,16 @@ proc importSymbol(c: PContext, n: PNode, fromMod: PSym) =
     localError(n.info, errUndeclaredIdentifier, ident.s)
   else:
     if s.kind == skStub: loadStub(s)
-    if s.Kind notin ExportableSymKinds:
+    if s.kind notin ExportableSymKinds:
       internalError(n.info, "importSymbol: 2")
     # for an enumeration we have to add all identifiers
-    case s.Kind
+    case s.kind
     of skProc, skMethod, skIterator, skMacro, skTemplate, skConverter:
       # for a overloadable syms add all overloaded routines
       var it: TIdentIter
       var e = initIdentIter(it, fromMod.tab, s.name)
       while e != nil:
-        if e.name.id != s.Name.id: internalError(n.info, "importSymbol: 3")
+        if e.name.id != s.name.id: internalError(n.info, "importSymbol: 3")
         rawImportSymbol(c, e)
         e = nextIdentIter(it, fromMod.tab)
     else: rawImportSymbol(c, s)
@@ -119,7 +119,7 @@ proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: TIntSet) =
   while s != nil:
     if s.kind != skModule:
       if s.kind != skEnumField:
-        if s.Kind notin ExportableSymKinds:
+        if s.kind notin ExportableSymKinds:
           internalError(s.info, "importAllSymbols: " & $s.kind)
         if exceptSet.empty or s.name.id notin exceptSet:
           rawImportSymbol(c, s)

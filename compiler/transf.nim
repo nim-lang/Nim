@@ -513,7 +513,7 @@ proc transformCase(c: PTransf, n: PNode): PTransNode =
     elseBranch[0] = ifs
     result.add(elseBranch)
   elif result.PNode.lastSon.kind != nkElse and not (
-      skipTypes(n.sons[0].Typ, abstractVarRange).Kind in
+      skipTypes(n.sons[0].typ, abstractVarRange).kind in
         {tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32}):
     # fix a stupid code gen bug by normalizing:
     var elseBranch = newTransNode(nkElse, n.info, 1)
@@ -533,7 +533,7 @@ proc getMergeOp(n: PNode): PSym =
   case n.kind
   of nkCall, nkHiddenCallConv, nkCommand, nkInfix, nkPrefix, nkPostfix, 
      nkCallStrLit: 
-    if (n.sons[0].Kind == nkSym) and (n.sons[0].sym.kind == skProc) and
+    if (n.sons[0].kind == nkSym) and (n.sons[0].sym.kind == skProc) and
         (sfMerge in n.sons[0].sym.flags): 
       result = n.sons[0].sym
   else: nil

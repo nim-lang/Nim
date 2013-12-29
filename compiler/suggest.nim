@@ -151,7 +151,7 @@ proc suggestEverything(c: PContext, n: PNode, outputs: var int) =
 proc suggestFieldAccess(c: PContext, n: PNode, outputs: var int) =
   # special code that deals with ``myObj.``. `n` is NOT the nkDotExpr-node, but
   # ``myObj``.
-  var typ = n.Typ
+  var typ = n.typ
   if typ == nil:
     # a module symbol has no type for example:
     if n.kind == nkSym and n.sym.kind == skModule: 
@@ -338,8 +338,8 @@ proc suggestExpr*(c: PContext, node: PNode) =
   if cp == cpNone: return
   var outputs = 0
   # This keeps semExpr() from coming here recursively:
-  if c.InCompilesContext > 0: return
-  inc(c.InCompilesContext)
+  if c.inCompilesContext > 0: return
+  inc(c.inCompilesContext)
   
   if optSuggest in gGlobalOptions:
     var n = findClosestDot(node)
@@ -369,7 +369,7 @@ proc suggestExpr*(c: PContext, node: PNode) =
         addSon(a, x)
       suggestCall(c, a, n, outputs)
   
-  dec(c.InCompilesContext)
+  dec(c.inCompilesContext)
   if outputs > 0 and optUsages notin gGlobalOptions: suggestQuit()
 
 proc suggestStmt*(c: PContext, n: PNode) = 

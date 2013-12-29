@@ -142,7 +142,7 @@ proc discardCheck(c: PContext, result: PNode) =
       while n.kind in skipForDiscardable:
         n = n.lastSon
         n.typ = nil
-    elif c.InTypeClass > 0 and result.typ.kind == tyBool:
+    elif c.inTypeClass > 0 and result.typ.kind == tyBool:
       let verdict = semConstExpr(c, result)
       if verdict.intVal == 0:
         localError(result.info, "type class predicate failed.")
@@ -193,7 +193,7 @@ proc semCase(c: PContext, n: PNode): PNode =
   var covered: BiggestInt = 0
   var typ = commonTypeBegin
   var hasElse = false
-  case skipTypes(n.sons[0].Typ, abstractVarRange-{tyTypeDesc}).Kind
+  case skipTypes(n.sons[0].typ, abstractVarRange-{tyTypeDesc}).kind
   of tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32:
     chckCovered = true
   of tyFloat..tyFloat128, tyString, tyError:
@@ -375,7 +375,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       var v = semIdentDef(c, a.sons[j], symkind)
       if sfGenSym notin v.flags: addInterfaceDecl(c, v)
       when oKeepVariableNames:
-        if c.InUnrolledContext > 0: v.flags.incl(sfShadowed)
+        if c.inUnrolledContext > 0: v.flags.incl(sfShadowed)
         else:
           let shadowed = findShadowedVar(c, v)
           if shadowed != nil:
@@ -496,10 +496,10 @@ proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
     fc.field = typ.sym
     fc.replaceByFieldName = c.m == mFieldPairs
     openScope(c.c)
-    inc c.c.InUnrolledContext
+    inc c.c.inUnrolledContext
     let body = instFieldLoopBody(fc, lastSon(forLoop), forLoop)
     father.add(semStmt(c.c, body))
-    dec c.c.InUnrolledContext
+    dec c.c.inUnrolledContext
     closeScope(c.c)
   of nkNilLit: discard
   of nkRecCase:
@@ -535,7 +535,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   # so that 'break' etc. work as expected, we produce
   # a 'while true: stmt; break' loop ...
   result = newNodeI(nkWhileStmt, n.info, 2)
-  var trueSymbol = strTableGet(magicsys.systemModule.Tab, getIdent"true")
+  var trueSymbol = strTableGet(magicsys.systemModule.tab, getIdent"true")
   if trueSymbol == nil: 
     localError(n.info, errSystemNeeds, "true")
     trueSymbol = newSym(skUnknown, getIdent"true", getCurrOwner(), n.info)
@@ -570,9 +570,9 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
       fc.tupleIndex = i
       fc.replaceByFieldName = m == mFieldPairs
       var body = instFieldLoopBody(fc, loopBody, n)
-      inc c.InUnrolledContext
+      inc c.inUnrolledContext
       stmts.add(semStmt(c, body))
-      dec c.InUnrolledContext
+      dec c.inUnrolledContext
       closeScope(c)
   else:
     var fc: TFieldsCtx
@@ -744,9 +744,9 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
         var body: PType = nil
         s.typScope = c.currentScope.parent
       else:
-        inc c.InGenericContext
+        inc c.inGenericContext
         var body = semTypeNode(c, a.sons[2], nil)
-        dec c.InGenericContext
+        dec c.inGenericContext
         if body != nil:
           body.sym = s
           body.size = -1 # could not be computed properly
@@ -1267,7 +1267,7 @@ proc semStmtList(c: PContext, n: PNode): PNode =
         #  "Last expression must be explicitly returned if it " &
         #  "is discardable or discarded")
 
-proc SemStmt(c: PContext, n: PNode): PNode = 
+proc semStmt(c: PContext, n: PNode): PNode = 
   # now: simply an alias:
   result = semExprNoType(c, n)
 

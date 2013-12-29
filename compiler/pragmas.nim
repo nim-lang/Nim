@@ -209,13 +209,13 @@ proc getLib(c: PContext, kind: TLibKind, path: PNode): PLib =
   var it = PLib(c.libs.head)
   while it != nil: 
     if it.kind == kind: 
-      if trees.ExprStructuralEquivalent(it.path, path): return it
+      if trees.exprStructuralEquivalent(it.path, path): return it
     it = PLib(it.next)
   result = newLib(kind)
   result.path = path
   append(c.libs, result)
   if path.kind in {nkStrLit..nkTripleStrLit}:
-    result.isOverriden = options.isDynLibOverride(path.strVal)
+    result.isOverriden = options.isDynlibOverride(path.strVal)
 
 proc expectDynlibNode(c: PContext, n: PNode): PNode =
   if n.kind != nkExprColonExpr:
@@ -505,11 +505,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
   if key.kind == nkIdent: 
     var userPragma = strTableGet(c.userPragmas, key.ident)
     if userPragma != nil: 
-      inc c.InstCounter
-      if c.InstCounter > 100: 
+      inc c.instCounter
+      if c.instCounter > 100: 
         globalError(it.info, errRecursiveDependencyX, userPragma.name.s)
       pragma(c, sym, userPragma.ast, validPragmas)
-      dec c.InstCounter
+      dec c.instCounter
     else:
       var k = whichKeyword(key.ident)
       if k in validPragmas: 
@@ -547,7 +547,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
             sym.typ.size = size
         of wNodecl: 
           noVal(it)
-          incl(sym.loc.Flags, lfNoDecl)
+          incl(sym.loc.flags, lfNoDecl)
         of wPure, wNoStackFrame:
           noVal(it)
           if sym != nil: incl(sym.flags, sfPure)
@@ -566,7 +566,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         of wCompileTime: 
           noVal(it)
           incl(sym.flags, sfCompileTime)
-          incl(sym.loc.Flags, lfNoDecl)
+          incl(sym.loc.flags, lfNoDecl)
         of wGlobal:
           noVal(it)
           incl(sym.flags, sfGlobal)
@@ -579,7 +579,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           addToLib(lib, sym)
           incl(sym.flags, sfImportc)
           incl(sym.loc.flags, lfHeader)
-          incl(sym.loc.Flags, lfNoDecl) 
+          incl(sym.loc.flags, lfNoDecl) 
           # implies nodecl, because otherwise header would not make sense
           if sym.loc.r == nil: sym.loc.r = toRope(sym.name.s)
         of wDestructor:
@@ -735,7 +735,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
 proc implictPragmas*(c: PContext, sym: PSym, n: PNode,
                      validPragmas: TSpecialWords) =
   if sym != nil and sym.kind != skModule:
-    var it = POptionEntry(c.optionstack.head)
+    var it = POptionEntry(c.optionStack.head)
     while it != nil:
       let o = it.otherPragmas
       if not o.isNil:
@@ -746,7 +746,7 @@ proc implictPragmas*(c: PContext, sym: PSym, n: PNode,
 
     if lfExportLib in sym.loc.flags and sfExportc notin sym.flags: 
       localError(n.info, errDynlibRequiresExportc)
-    var lib = POptionEntry(c.optionstack.tail).dynlib
+    var lib = POptionEntry(c.optionStack.tail).dynlib
     if {lfDynamicLib, lfHeader} * sym.loc.flags == {} and
         sfImportc in sym.flags and lib != nil:
       incl(sym.loc.flags, lfDynamicLib)

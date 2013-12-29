@@ -58,7 +58,7 @@ proc overlap(a, b: PNode): bool =
     else:
       result = sameValue(a, b)
 
-proc SomeInSet(s: PNode, a, b: PNode): bool = 
+proc someInSet(s: PNode, a, b: PNode): bool = 
   # checks if some element of a..b is in the set s
   if s.kind != nkCurly:
     internalError(s.info, "SomeInSet")

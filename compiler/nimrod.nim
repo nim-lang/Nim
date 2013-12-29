@@ -81,7 +81,7 @@ when defined(GC_setMaxPause):
 when compileOption("gc", "v2") or compileOption("gc", "refc"):
   # the new correct mark&sweet collector is too slow :-/
   GC_disableMarkAndSweep()
-condsyms.InitDefines()
+condsyms.initDefines()
 
 when not defined(selftest):
   handleCmdLine()

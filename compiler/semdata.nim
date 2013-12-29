@@ -160,7 +160,7 @@ proc newOptionEntry(): POptionEntry =
 
 proc newContext(module: PSym): PContext =
   new(result)
-  result.AmbiguousSymbols = initIntSet()
+  result.ambiguousSymbols = initIntSet()
   initLinkedList(result.optionStack)
   initLinkedList(result.libs)
   append(result.optionStack, newOptionEntry())
@@ -172,7 +172,7 @@ proc newContext(module: PSym): PContext =
   result.includedFiles = initIntSet()
   initStrTable(result.userPragmas)
   result.generics = @[]
-  result.UnknownIdents = initIntSet()
+  result.unknownIdents = initIntSet()
 
 proc inclSym(sq: var TSymSeq, s: PSym) =
   var L = len(sq)
