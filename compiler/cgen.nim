@@ -194,7 +194,7 @@ when compileTimeRopeFmt:
       if i - 1 >= start:
         yield (kind: ffLit, value: substr(s, start, i-1), intValue: 0)
 
-  macro rfmt(m: BModule, fmt: expr[string], args: varargs[PRope]): expr =
+  macro rfmt(m: BModule, fmt: static[string], args: varargs[PRope]): expr =
     ## Experimental optimized rope-formatting operator
     ## The run-time code it produces will be very fast, but will it speed up
     ## the compilation of nimrod itself or will the macro execution time
@@ -209,7 +209,7 @@ when compileTimeRopeFmt:
       of ffParam:
         result.add(args[frag.intValue])
 else:
-  template rfmt(m: BModule, fmt: expr[string], args: varargs[PRope]): expr =
+  template rfmt(m: BModule, fmt: string, args: varargs[PRope]): expr =
     ropecg(m, fmt, args)
 
 proc appcg(m: BModule, c: var PRope, frmt: TFormatStr, 

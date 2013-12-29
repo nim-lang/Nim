@@ -230,6 +230,7 @@ discard """
 """
 
 proc evalIs(n, a: PNode): PNode =
+  # XXX: This should use the standard isOpImpl
   internalAssert a.kind == nkSym and a.sym.kind == skType
   internalAssert n.sonsLen == 3 and
     n[2].kind in {nkStrLit..nkTripleStrLit, nkType}
@@ -251,7 +252,7 @@ proc evalIs(n, a: PNode): PNode =
   else:
     # XXX semexprs.isOpImpl is slightly different and requires a context. yay.
     let t2 = n[2].typ
-    var match = if t2.kind == tyTypeClass: matchTypeClass(t2, t1)
+    var match = if t2.kind == tyTypeClass: true
                 else: sameType(t1, t2)
     result = newIntNode(nkIntLit, ord(match))
   result.typ = n.typ
@@ -612,9 +613,10 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
     of skType:
       result = newSymNodeTypeDesc(s, n.info)
     of skGenericParam:
-      if s.typ.kind == tyExpr:
-        result = s.typ.n
-        result.typ = s.typ.sons[0]
+      if s.typ.kind == tyStatic:
+        if s.typ.n != nil:
+          result = s.typ.n
+          result.typ = s.typ.sons[0]
       else:
         result = newSymNodeTypeDesc(s, n.info)
     else: discard

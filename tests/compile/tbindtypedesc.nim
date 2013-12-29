@@ -16,10 +16,10 @@ type
   TBar = tuple
     x, y: int
 
-template good(e: expr) =
+template accept(e: expr) =
   static: assert(compiles(e))
 
-template bad(e: expr) =
+template reject(e: expr) =
   static: assert(not compiles(e))
 
 proc genericParamRepeated[T: typedesc](a: T, b: T) =
@@ -27,22 +27,22 @@ proc genericParamRepeated[T: typedesc](a: T, b: T) =
     echo a.name
     echo b.name
 
-good(genericParamRepeated(int, int))
-good(genericParamRepeated(float, float))
+accept genericParamRepeated(int, int)
+accept genericParamRepeated(float, float)
 
-bad(genericParamRepeated(string, int))
-bad(genericParamRepeated(int, float))
+reject genericParamRepeated(string, int)
+reject genericParamRepeated(int, float)
 
 proc genericParamOnce[T: typedesc](a, b: T) =
   static:
     echo a.name
     echo b.name
 
-good(genericParamOnce(int, int))
-good(genericParamOnce(TFoo, TFoo))
+accept genericParamOnce(int, int)
+accept genericParamOnce(TFoo, TFoo)
 
-bad(genericParamOnce(string, int))
-bad(genericParamOnce(TFoo, float))
+reject genericParamOnce(string, int)
+reject genericParamOnce(TFoo, float)
 
 type
   type1 = typedesc
@@ -50,42 +50,42 @@ type
 
 proc typePairs(A, B: type1; C, D: type2) = nil
 
-good(typePairs(int, int, TFoo, TFOO))
-good(typePairs(TBAR, TBar, TBAR, TBAR))
-good(typePairs(int, int, string, string))
+accept typePairs(int, int, TFoo, TFOO)
+accept typePairs(TBAR, TBar, TBAR, TBAR)
+accept typePairs(int, int, string, string)
 
-bad(typePairs(TBAR, TBar, TBar, TFoo))
-bad(typePairs(string, int, TBAR, TBAR))
+reject typePairs(TBAR, TBar, TBar, TFoo)
+reject typePairs(string, int, TBAR, TBAR)
 
 proc typePairs2[T: typedesc, U: typedesc](A, B: T; C, D: U) = nil
 
-good(typePairs2(int, int, TFoo, TFOO))
-good(typePairs2(TBAR, TBar, TBAR, TBAR))
-good(typePairs2(int, int, string, string))
+accept typePairs2(int, int, TFoo, TFOO)
+accept typePairs2(TBAR, TBar, TBAR, TBAR)
+accept typePairs2(int, int, string, string)
 
-bad(typePairs2(TBAR, TBar, TBar, TFoo))
-bad(typePairs2(string, int, TBAR, TBAR))
+reject typePairs2(TBAR, TBar, TBar, TFoo)
+reject typePairs2(string, int, TBAR, TBAR)
 
 proc dontBind(a: typedesc, b: typedesc) =
   static:
     echo a.name
     echo b.name
 
-good(dontBind(int, float))
-good(dontBind(TFoo, TFoo))
+accept dontBind(int, float)
+accept dontBind(TFoo, TFoo)
 
 proc dontBind2(a, b: typedesc) = nil
 
-good(dontBind2(int, float))
-good(dontBind2(TBar, int))
+accept dontBind2(int, float)
+accept dontBind2(TBar, int)
 
 proc bindArg(T: typedesc, U: typedesc, a, b: T, c, d: U) = nil
 
-good(bindArg(int, string, 10, 20, "test", "nest"))
-good(bindArg(int, int, 10, 20, 30, 40))
+accept bindArg(int, string, 10, 20, "test", "nest")
+accept bindArg(int, int, 10, 20, 30, 40)
 
-bad(bindArg(int, string, 10, "test", "test", "nest"))
-bad(bindArg(int, int, 10, 20, 30, "test"))
-bad(bindArg(int, string, 10.0, 20, "test", "nest"))
-bad(bindArg(int, string, "test", "nest", 10, 20))
+reject bindArg(int, string, 10, "test", "test", "nest")
+reject bindArg(int, int, 10, 20, 30, "test")
+reject bindArg(int, string, 10.0, 20, "test", "nest")
+reject bindArg(int, string, "test", "nest", 10, 20)
 

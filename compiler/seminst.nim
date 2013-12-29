@@ -20,7 +20,7 @@ proc instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable,
     if a.kind != nkSym: 
       internalError(a.info, "instantiateGenericParamList; no symbol")
     var q = a.sym
-    if q.typ.kind notin {tyTypeDesc, tyGenericParam, tyExpr}+tyTypeClasses:
+    if q.typ.kind notin {tyTypeDesc, tyGenericParam, tyStatic}+tyTypeClasses:
       continue
     var s = newSym(skType, q.name, getCurrOwner(), q.info)
     s.flags = s.flags + {sfUsed, sfFromGeneric}
@@ -47,7 +47,7 @@ proc sameInstantiation(a, b: TInstantiation): bool =
   if a.concreteTypes.len == b.concreteTypes.len:
     for i in 0..a.concreteTypes.high:
       if not compareTypes(a.concreteTypes[i], b.concreteTypes[i],
-                          flags = {TypeDescExactMatch}): return
+                          flags = {ExactTypeDescValues}): return
     result = true
 
 proc genericCacheGet(genericSym: PSym, entry: TInstantiation): PSym =
@@ -145,11 +145,11 @@ proc lateInstantiateGeneric(c: PContext, invocation: PType, info: TLineInfo): PT
     pushInfoContext(info)
     for i in 0 .. <s.typ.n.sons.len:
       let genericParam = s.typ.n[i].sym
-      let symKind = if genericParam.typ.kind == tyExpr: skConst
+      let symKind = if genericParam.typ.kind == tyStatic: skConst
                     else: skType
 
       var boundSym = newSym(symKind, s.typ.n[i].sym.name, s, info)
-      boundSym.typ = invocation.sons[i+1].skipTypes({tyExpr})
+      boundSym.typ = invocation.sons[i+1].skipTypes({tyStatic})
       boundSym.ast = invocation.sons[i+1].n
       addDecl(c, boundSym)
     # XXX: copyTree would have been unnecessary here if semTypeNode
@@ -165,7 +165,8 @@ proc lateInstantiateGeneric(c: PContext, invocation: PType, info: TLineInfo): PT
       result.sons.add instantiated
       cacheTypeInst result
 
-proc instGenericContainer(c: PContext, info: TLineInfo, header: PType): PType =
+proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
+                          allowMetaTypes = false): PType =
   when oUseLateInstantiation:
     lateInstantiateGeneric(c, header, info)
   else:
@@ -174,6 +175,7 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType): PType =
     initIdTable(cl.typeMap)
     cl.info = info
     cl.c = c
+    cl.allowMetaTypes = allowMetaTypes
     result = replaceTypeVarsT(cl, header)
 
 proc instGenericContainer(c: PContext, n: PNode, header: PType): PType =
@@ -196,12 +198,31 @@ proc fixupProcType(c: PContext, genericType: PType,
   case genericType.kind
   of tyGenericParam, tyTypeClasses:
     result = inst.concreteTypes[genericType.sym.position]
+  
   of tyTypeDesc:
     result = inst.concreteTypes[genericType.sym.position]
     if tfUnresolved in genericType.flags:
       result = result.sons[0]
-  of tyExpr:
+  
+  of tyStatic:
     result = inst.concreteTypes[genericType.sym.position]
+  
+  of tyGenericInst:
+    result = fixupProcType(c, result.lastSon, inst)
+  
+  of tyObject:
+    var recList = genericType.n
+    for i in 0 .. <recList.sonsLen:
+      let field = recList[i].sym
+      let changed = fixupProcType(c, field.typ, inst)
+      if field.typ != changed:
+        if result == genericType:
+          result = copyType(genericType, genericType.owner, false)
+          result.n = copyTree(recList)
+        result.n.sons[i].sym = copySym(recList[i].sym, true)
+        result.n.sons[i].typ = changed
+        result.n.sons[i].sym.typ = changed
+ 
   of tyOpenArray, tyArray, tySet, tySequence, tyTuple, tyProc,
      tyPtr, tyVar, tyRef, tyOrdinal, tyRange, tyVarargs:
     if genericType.sons == nil: return
@@ -232,7 +253,8 @@ proc fixupProcType(c: PContext, genericType: PType,
             continue
         
         result.sons[head] = changed
-        
+        result.size = 0
+
         if result.n != nil:
           if result.n.kind == nkRecList:
             for son in result.n.sons:
@@ -263,7 +285,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
                       info: TLineInfo): PSym =
   # no need to instantiate generic templates/macros:
   if fn.kind in {skTemplate, skMacro}: return fn
-  
+ 
   # generates an instantiated proc
   if c.instCounter > 1000: internalError(fn.ast.info, "nesting too deep")
   inc(c.instCounter)
@@ -288,7 +310,8 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   var entry = TInstantiation.new
   entry.sym = result
   instantiateGenericParamList(c, n.sons[genericParamsPos], pt, entry[])
-  result.typ = fixupProcType(c, fn.typ, entry[])
+  # let t1 = fixupProcType(c, fn.typ, entry[])
+  result.typ = generateTypeInstance(c, pt, info, fn.typ)
   n.sons[genericParamsPos] = ast.emptyNode
   var oldPrc = genericCacheGet(fn, entry[])
   if oldPrc == nil:

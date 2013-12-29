@@ -791,7 +791,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       decodeBC(nkIntLit)
       let t1 = regs[rb].typ.skipTypes({tyTypeDesc})
       let t2 = c.types[regs[rc].intVal.int]
-      let match = if t2.kind == tyTypeClass: matchTypeClass(t2, t1)
+      # XXX: This should use the standard isOpImpl
+      let match = if t2.kind == tyTypeClass: true
                   else: sameType(t1, t2)
       regs[ra].intVal = ord(match)
     of opcSetLenSeq:

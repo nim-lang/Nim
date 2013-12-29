@@ -4,15 +4,15 @@ discard """
 """
 
 type 
-  TFoo[T; Val: expr[string]] = object
+  TFoo[T; Val: static[string]] = object
     data: array[4, T]
 
-  TBar[T; I: expr[int]] = object
+  TBar[T; I: static[int]] = object
     data: array[I, T]
 
-  TA1[T; I: expr[int]] = array[I, T]
-  TA2[T; I: expr[int]] = array[0..I, T]
-  TA3[T; I: expr[int]] = array[I-1, T]
+  TA1[T; I: static[int]] = array[I, T]
+  # TA2[T; I: static[int]] = array[0..I, T]
+  # TA3[T; I: static[int]] = array[I-1, T]
 
 proc takeFoo(x: TFoo) =
   echo "abracadabra"
@@ -25,7 +25,7 @@ var y: TBar[float, 4]
 echo high(y.data)
 
 var
-  t1: TA1
-  t2: TA2
-  t3: TA3
+  t1: TA1[float, 1]
+  # t2: TA2[string, 4]
+  # t3: TA3[int, 10]
 
