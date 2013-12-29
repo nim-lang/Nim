@@ -122,7 +122,7 @@ proc open*(filename: string, mode: TFileMode = fmRead,
     template fail(errCode: TOSErrorCode, msg: expr) =
       rollback()
       if result.handle != 0: discard close(result.handle)
-      OSError(errCode)
+      osError(errCode)
   
     var flags = if readonly: O_RDONLY else: O_RDWR
 
@@ -133,22 +133,22 @@ proc open*(filename: string, mode: TFileMode = fmRead,
     if result.handle == -1:
       # XXX: errno is supposed to be set here
       # Is there an exception that wraps it?
-      fail(OSLastError(), "error opening file")
+      fail(osLastError(), "error opening file")
 
     if newFileSize != -1:
       if ftruncate(result.handle, newFileSize) == -1:
-        fail(OSLastError(), "error setting file size")
+        fail(osLastError(), "error setting file size")
 
     if mappedSize != -1:
       result.size = mappedSize
     else:
-      var stat: Tstat
+      var stat: TStat
       if fstat(result.handle, stat) != -1:
         # XXX: Hmm, this could be unsafe
         # Why is mmap taking int anyway?
         result.size = int(stat.st_size)
       else:
-        fail(OSLastError(), "error getting file size")
+        fail(osLastError(), "error getting file size")
 
     result.mem = mmap(
       nil,
@@ -159,7 +159,7 @@ proc open*(filename: string, mode: TFileMode = fmRead,
       offset)
 
     if result.mem == cast[pointer](MAP_FAILED):
-      fail(OSLastError(), "file mapping failed")
+      fail(osLastError(), "file mapping failed")
 
 proc close*(f: var TMemFile) =
   ## closes the memory mapped file `f`. All changes are written back to the
@@ -176,7 +176,7 @@ proc close*(f: var TMemFile) =
       error = (closeHandle(f.fHandle) == 0) or error
   else:
     if f.handle != 0:
-      lastErr = OSLastError()
+      lastErr = osLastError()
       error = munmap(f.mem, f.size) != 0
       error = (close(f.handle) != 0) or error
 

@@ -56,7 +56,7 @@ when defined(posix):
     RTLD_NOW {.importc: "RTLD_NOW", header: "<dlfcn.h>".}: int
 
   proc dlclose(lib: TLibHandle) {.importc, header: "<dlfcn.h>".}
-  proc dlopen(path: CString, mode: int): TLibHandle {.
+  proc dlopen(path: cstring, mode: int): TLibHandle {.
       importc, header: "<dlfcn.h>".}
   proc dlsym(lib: TLibHandle, name: cstring): TProcAddr {.
       importc, header: "<dlfcn.h>".}
@@ -72,7 +72,7 @@ when defined(posix):
 
   proc nimGetProcAddr(lib: TLibHandle, name: cstring): TProcAddr =
     result = dlsym(lib, name)
-    if result == nil: ProcAddrError(name)
+    if result == nil: procAddrError(name)
 
 elif defined(windows) or defined(dos):
   #

@@ -157,7 +157,7 @@ else: # UNIX-like operating system
     CurDir* = '.'
     ParDir* = ".."
     DirSep* = '/'
-    AltSep* = Dirsep
+    AltSep* = DirSep
     PathSep* = ':'
     FileSystemCaseSensitive* = true
     ExeExt* = ""
@@ -448,7 +448,7 @@ proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [].} =
   else:
     result = newString(bufsize)
     if getcwd(result, bufsize) != nil:
-      setlen(result, c_strlen(result))
+      setLen(result, c_strlen(result))
     else:
       osError(osLastError())
 
@@ -687,7 +687,7 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
     result = newString(pathMax)
     var r = realpath(filename, result)
     if r.isNil: osError(osLastError())
-    setlen(result, c_strlen(result))
+    setLen(result, c_strlen(result))
 
 proc changeFileExt*(filename, ext: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
@@ -939,12 +939,12 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
     if not open(d, dest, fmWrite):
       close(s)
       osError(osLastError())
-    var buf = alloc(bufsize)
+    var buf = alloc(bufSize)
     while true:
-      var bytesread = readBuffer(s, buf, bufsize)
+      var bytesread = readBuffer(s, buf, bufSize)
       if bytesread > 0:
         var byteswritten = writeBuffer(d, buf, bytesread)
-        if bytesread != bytesWritten:
+        if bytesread != byteswritten:
           dealloc(buf)
           close(s)
           close(d)
@@ -992,7 +992,7 @@ proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [FWriteDir].} =
         if deleteFile(f) == 0:
           osError(osLastError())
   else:
-    if cremove(file) != 0'i32 and errno != ENOENT:
+    if c_remove(file) != 0'i32 and errno != ENOENT:
       raise newException(EOS, $strerror(errno))
 
 proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
@@ -1124,7 +1124,7 @@ proc putEnv*(key, val: string) {.tags: [FWriteEnv].} =
     add environment, (key & '=' & val)
     indx = high(environment)
   when defined(unix):
-    if cputenv(environment[indx]) != 0'i32:
+    if c_putenv(environment[indx]) != 0'i32:
       osError(osLastError())
   else:
     when useWinUnicode:
@@ -1217,10 +1217,10 @@ iterator walkDir*(dir: string): tuple[kind: TPathComponent, path: string] {.
         if findNextFile(h, f) == 0'i32: break
       findClose(h)
   else:
-    var d = openDir(dir)
+    var d = opendir(dir)
     if d != nil:
       while true:
-        var x = readDir(d)
+        var x = readdir(d)
         if x == nil: break
         var y = $x.d_name
         if y != "." and y != "..":
@@ -1231,7 +1231,7 @@ iterator walkDir*(dir: string): tuple[kind: TPathComponent, path: string] {.
           if S_ISDIR(s.st_mode): k = pcDir
           if S_ISLNK(s.st_mode): k = succ(k)
           yield (k, y)
-      discard closeDir(d)
+      discard closedir(d)
 
 iterator walkDirRec*(dir: string, filter={pcFile, pcDir}): string {.
   tags: [FReadDir].} =
@@ -1524,7 +1524,7 @@ when defined(linux) or defined(solaris) or defined(bsd) or defined(aix):
     if len > 256:
       result = newString(len+1)
       len = readlink(procPath, result, len)
-    setlen(result, len)
+    setLen(result, len)
 
 when defined(macosx):
   type
