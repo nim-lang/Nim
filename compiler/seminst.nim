@@ -132,7 +132,7 @@ proc sideEffectsCheck(c: PContext, s: PSym) =
     c.threadEntries.add(s)
 
 proc lateInstantiateGeneric(c: PContext, invocation: PType, info: TLineInfo): PType =
-  InternalAssert invocation.kind == tyGenericInvokation
+  internalAssert invocation.kind == tyGenericInvokation
   
   let cacheHit = searchInstTypes(invocation)
   if cacheHit != nil:

@@ -44,19 +44,19 @@ proc compilerMsgHandler(filename: string, line, col: int,
 
 proc parseRst(text, filename: string,
               line, column: int, hasToc: var bool,
-              rstOptions: TRstParseOptions): PRSTNode =
+              rstOptions: TRstParseOptions): PRstNode =
   result = rstParse(text, filename, line, column, hasToc, rstOptions,
                     options.FindFile, compilerMsgHandler)
 
 proc newDocumentor*(filename: string, config: PStringTable): PDoc =
   new(result)
-  initRstGenerator(result[], (if gCmd != cmdRst2Tex: outHtml else: outLatex),
+  initRstGenerator(result[], (if gCmd != cmdRst2tex: outHtml else: outLatex),
                    options.gConfigVars, filename, {roSupportRawDirective},
                    options.FindFile, compilerMsgHandler)
   result.id = 100
 
 proc dispA(dest: var PRope, xml, tex: string, args: openArray[PRope]) =
-  if gCmd != cmdRst2Tex: appf(dest, xml, args)
+  if gCmd != cmdRst2tex: appf(dest, xml, args)
   else: appf(dest, tex, args)
 
 proc getVarIdx(varnames: openArray[string], id: string): int =
@@ -186,7 +186,7 @@ proc getName(d: PDoc, n: PNode, splitAfter = -1): string =
     internalError(n.info, "getName()")
     result = ""
 
-proc getRstName(n: PNode): PRSTNode =
+proc getRstName(n: PNode): PRstNode =
   case n.kind
   of nkPostfix: result = getRstName(n.sons[1])
   of nkPragmaExpr: result = getRstName(n.sons[0])
@@ -408,7 +408,7 @@ proc genOutFile(d: PDoc): PRope =
 proc generateIndex*(d: PDoc) =
   if optGenIndex in gGlobalOptions:
     writeIndexFile(d[], splitFile(options.outFile).dir /
-                        splitFile(d.filename).name & indexExt)
+                        splitFile(d.filename).name & IndexExt)
 
 proc writeOutput*(d: PDoc, filename, outExt: string, useWarning = false) =
   var content = genOutFile(d)

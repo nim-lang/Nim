@@ -226,7 +226,7 @@ proc isInnerProc(s, outerProc: PSym): bool {.inline.} =
   #s.typ.callConv == ccClosure
 
 proc addClosureParam(i: PInnerContext, e: PEnv) =
-  var cp = newSym(skParam, getIdent(paramname), i.fn, i.fn.info)
+  var cp = newSym(skParam, getIdent(paramName), i.fn, i.fn.info)
   incl(cp.flags, sfFromGeneric)
   cp.typ = newType(tyRef, i.fn)
   rawAddSon(cp.typ, e.tup)
@@ -679,7 +679,7 @@ proc liftIterator*(iter: PSym, body: PNode): PNode =
   c.tup = newType(tyTuple, iter)
   c.tup.n = newNodeI(nkRecList, iter.info)
 
-  var cp = newSym(skParam, getIdent(paramname), iter, iter.info)
+  var cp = newSym(skParam, getIdent(paramName), iter, iter.info)
   incl(cp.flags, sfFromGeneric)
   cp.typ = newType(tyRef, iter)
   rawAddSon(cp.typ, c.tup)
@@ -758,7 +758,7 @@ proc liftForLoop*(body: PNode): PNode =
         ...
     """
   var L = body.len
-  InternalAssert body.kind == nkForStmt and body[L-2].kind in nkCallKinds
+  internalAssert body.kind == nkForStmt and body[L-2].kind in nkCallKinds
   var call = body[L-2]
 
   result = newNodeI(nkStmtList, body.info)

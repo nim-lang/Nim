@@ -35,7 +35,7 @@ proc getArg(n: PNode, name: string, pos: int): PNode =
     elif i == pos: 
       return n.sons[i]
   
-proc charArg(n: PNode, name: string, pos: int, default: Char): Char = 
+proc charArg(n: PNode, name: string, pos: int, default: char): char = 
   var x = getArg(n, name, pos)
   if x == nil: result = default
   elif x.kind == nkCharLit: result = chr(int(x.intVal))

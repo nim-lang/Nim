@@ -104,16 +104,16 @@ proc optNL(g: var TSrcGen) =
   optNL(g, g.indent)
 
 proc indentNL(g: var TSrcGen) = 
-  inc(g.indent, indentWidth)
+  inc(g.indent, IndentWidth)
   g.pendingNL = g.indent
   g.lineLen = g.indent
 
 proc dedent(g: var TSrcGen) = 
-  dec(g.indent, indentWidth)
+  dec(g.indent, IndentWidth)
   assert(g.indent >= 0)
-  if g.pendingNL > indentWidth: 
-    dec(g.pendingNL, indentWidth)
-    dec(g.lineLen, indentWidth)
+  if g.pendingNL > IndentWidth: 
+    dec(g.pendingNL, IndentWidth)
+    dec(g.lineLen, IndentWidth)
 
 proc put(g: var TSrcGen, kind: TTokType, s: string) = 
   addPendingNL(g)
@@ -269,7 +269,7 @@ proc gcom(g: var TSrcGen, n: PNode) =
     if (g.pendingNL < 0) and (len(g.buf) > 0) and
         (g.lineLen < LineCommentColumn): 
       var ml = maxLineLength(n.comment)
-      if ml + LineCommentColumn <= maxLineLen: 
+      if ml + LineCommentColumn <= MaxLineLen: 
         put(g, tkSpaces, repeatChar(LineCommentColumn - g.lineLen))
     putComment(g, n.comment)  #assert(g.comStack[high(g.comStack)] = n);
   
@@ -361,11 +361,11 @@ proc lsons(n: PNode, start: int = 0, theEnd: int = - 1): int =
 proc lsub(n: PNode): int = 
   # computes the length of a tree
   if isNil(n): return 0
-  if n.comment != nil: return maxLineLen + 1
+  if n.comment != nil: return MaxLineLen + 1
   case n.kind
   of nkEmpty: result = 0
   of nkTripleStrLit: 
-    if containsNL(n.strVal): result = maxLineLen + 1
+    if containsNL(n.strVal): result = MaxLineLen + 1
     else: result = len(atom(n))
   of succ(nkEmpty)..pred(nkTripleStrLit), succ(nkTripleStrLit)..nkNilLit: 
     result = len(atom(n))
@@ -437,7 +437,7 @@ proc lsub(n: PNode): int =
       result = len("enum")
   of nkEnumFieldDef: result = lsons(n) + 3
   of nkVarSection, nkLetSection: 
-    if sonsLen(n) > 1: result = maxLineLen + 1
+    if sonsLen(n) > 1: result = MaxLineLen + 1
     else: result = lsons(n) + len("var_")
   of nkReturnStmt: result = lsub(n.sons[0]) + len("return_")
   of nkRaiseStmt: result = lsub(n.sons[0]) + len("raise_")
@@ -458,10 +458,10 @@ proc lsub(n: PNode): int =
     if n.sons[0].kind != nkEmpty: result = result + lsub(n.sons[0]) + 2
   of nkExceptBranch: 
     result = lcomma(n, 0, -2) + lsub(lastSon(n)) + len("except_:_")
-  else: result = maxLineLen + 1
+  else: result = MaxLineLen + 1
   
 proc fits(g: TSrcGen, x: int): bool = 
-  result = x + g.lineLen <= maxLineLen
+  result = x + g.lineLen <= MaxLineLen
 
 type 
   TSubFlag = enum 
@@ -500,7 +500,7 @@ proc gcommaAux(g: var TSrcGen, n: PNode, ind: int, start: int = 0,
   for i in countup(start, sonsLen(n) + theEnd):
     var c = i < sonsLen(n) + theEnd
     var sublen = lsub(n.sons[i]) + ord(c)
-    if not fits(g, sublen) and (ind + sublen < maxLineLen): optNL(g, ind)
+    if not fits(g, sublen) and (ind + sublen < MaxLineLen): optNL(g, ind)
     let oldLen = g.tokens.len
     gsub(g, n.sons[i])
     if c:
@@ -514,21 +514,21 @@ proc gcomma(g: var TSrcGen, n: PNode, c: TContext, start: int = 0,
             theEnd: int = - 1) = 
   var ind: int
   if rfInConstExpr in c.flags: 
-    ind = g.indent + indentWidth
+    ind = g.indent + IndentWidth
   else: 
     ind = g.lineLen
-    if ind > maxLineLen div 2: ind = g.indent + longIndentWid
+    if ind > MaxLineLen div 2: ind = g.indent + longIndentWid
   gcommaAux(g, n, ind, start, theEnd)
 
 proc gcomma(g: var TSrcGen, n: PNode, start: int = 0, theEnd: int = - 1) = 
   var ind = g.lineLen
-  if ind > maxLineLen div 2: ind = g.indent + longIndentWid
+  if ind > MaxLineLen div 2: ind = g.indent + longIndentWid
   gcommaAux(g, n, ind, start, theEnd)
 
 proc gsemicolon(g: var TSrcGen, n: PNode, start: int = 0, theEnd: int = - 1) = 
   var ind = g.lineLen
-  if ind > maxLineLen div 2: ind = g.indent + longIndentWid
-  gcommaAux(g, n, ind, start, theEnd, tkSemicolon)
+  if ind > MaxLineLen div 2: ind = g.indent + longIndentWid
+  gcommaAux(g, n, ind, start, theEnd, tkSemiColon)
 
 proc gsons(g: var TSrcGen, n: PNode, c: TContext, start: int = 0, 
            theEnd: int = - 1) = 
@@ -551,7 +551,7 @@ proc longMode(n: PNode, start: int = 0, theEnd: int = - 1): bool =
   if not result: 
     # check further
     for i in countup(start, sonsLen(n) + theEnd): 
-      if (lsub(n.sons[i]) > maxLineLen): 
+      if (lsub(n.sons[i]) > MaxLineLen): 
         result = true
         break 
 
@@ -576,7 +576,7 @@ proc gif(g: var TSrcGen, n: PNode) =
   gsub(g, n.sons[0].sons[0])
   initContext(c)
   putWithSpace(g, tkColon, ":")
-  if longMode(n) or (lsub(n.sons[0].sons[1]) + g.lineLen > maxLineLen): 
+  if longMode(n) or (lsub(n.sons[0].sons[1]) + g.lineLen > MaxLineLen): 
     incl(c.flags, rfLongMode)
   gcoms(g)                    # a good place for comments
   gstmts(g, n.sons[0].sons[1], c)
@@ -591,7 +591,7 @@ proc gwhile(g: var TSrcGen, n: PNode) =
   gsub(g, n.sons[0])
   putWithSpace(g, tkColon, ":")
   initContext(c)
-  if longMode(n) or (lsub(n.sons[1]) + g.lineLen > maxLineLen): 
+  if longMode(n) or (lsub(n.sons[1]) + g.lineLen > MaxLineLen): 
     incl(c.flags, rfLongMode)
   gcoms(g)                    # a good place for comments
   gstmts(g, n.sons[1], c)
@@ -600,7 +600,7 @@ proc gpattern(g: var TSrcGen, n: PNode) =
   var c: TContext
   put(g, tkCurlyLe, "{")
   initContext(c)
-  if longMode(n) or (lsub(n.sons[0]) + g.lineLen > maxLineLen):
+  if longMode(n) or (lsub(n.sons[0]) + g.lineLen > MaxLineLen):
     incl(c.flags, rfLongMode)
   gcoms(g)                    # a good place for comments
   gstmts(g, n.sons[0], c)
@@ -611,7 +611,7 @@ proc gpragmaBlock(g: var TSrcGen, n: PNode) =
   gsub(g, n.sons[0])
   putWithSpace(g, tkColon, ":")
   initContext(c)
-  if longMode(n) or (lsub(n.sons[1]) + g.lineLen > maxLineLen):
+  if longMode(n) or (lsub(n.sons[1]) + g.lineLen > MaxLineLen):
     incl(c.flags, rfLongMode)
   gcoms(g)                    # a good place for comments
   gstmts(g, n.sons[1], c)
@@ -621,7 +621,7 @@ proc gtry(g: var TSrcGen, n: PNode) =
   put(g, tkTry, "try")
   putWithSpace(g, tkColon, ":")
   initContext(c)
-  if longMode(n) or (lsub(n.sons[0]) + g.lineLen > maxLineLen): 
+  if longMode(n) or (lsub(n.sons[0]) + g.lineLen > MaxLineLen): 
     incl(c.flags, rfLongMode)
   gcoms(g)                    # a good place for comments
   gstmts(g, n.sons[0], c)
@@ -634,7 +634,7 @@ proc gfor(g: var TSrcGen, n: PNode) =
   initContext(c)
   if longMode(n) or
       (lsub(n.sons[length - 1]) + lsub(n.sons[length - 2]) + 6 + g.lineLen >
-      maxLineLen): 
+      MaxLineLen): 
     incl(c.flags, rfLongMode)
   gcomma(g, n, c, 0, - 3)
   put(g, tkSpaces, Space)
@@ -649,7 +649,7 @@ proc gmacro(g: var TSrcGen, n: PNode) =
   initContext(c)
   gsub(g, n.sons[0])
   putWithSpace(g, tkColon, ":")
-  if longMode(n) or (lsub(n.sons[1]) + g.lineLen > maxLineLen): 
+  if longMode(n) or (lsub(n.sons[1]) + g.lineLen > MaxLineLen): 
     incl(c.flags, rfLongMode)
   gcoms(g)
   gsons(g, n, c, 1)
@@ -709,7 +709,7 @@ proc gblock(g: var TSrcGen, n: PNode) =
   else:
     put(g, tkBlock, "block")
   putWithSpace(g, tkColon, ":")
-  if longMode(n) or (lsub(n.sons[1]) + g.lineLen > maxLineLen): 
+  if longMode(n) or (lsub(n.sons[1]) + g.lineLen > MaxLineLen): 
     incl(c.flags, rfLongMode)
   gcoms(g)
   # XXX I don't get why this is needed here! gstmts should already handle this!
@@ -722,7 +722,7 @@ proc gstaticStmt(g: var TSrcGen, n: PNode) =
   putWithSpace(g, tkStatic, "static")
   putWithSpace(g, tkColon, ":")
   initContext(c)
-  if longMode(n) or (lsub(n.sons[0]) + g.lineLen > maxLineLen): 
+  if longMode(n) or (lsub(n.sons[0]) + g.lineLen > MaxLineLen): 
     incl(c.flags, rfLongMode)
   gcoms(g)                    # a good place for comments
   gstmts(g, n.sons[0], c)
@@ -816,7 +816,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkParRi, ")")
   of nkStaticExpr:
     put(g, tkStatic, "static")
-    put(g, tkSpaces, space)
+    put(g, tkSpaces, Space)
     gsub(g, n.sons[0])
   of nkBracketExpr: 
     gsub(g, n.sons[0])
@@ -833,7 +833,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     gcomma(g, n, 1)
   of nkCommand: 
     gsub(g, n.sons[0])
-    put(g, tkSpaces, space)
+    put(g, tkSpaces, Space)
     gcomma(g, n, 1)
   of nkExprEqExpr, nkAsgn, nkFastAsgn: 
     gsub(g, n.sons[0])
@@ -940,7 +940,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkPrefix: 
     gsub(g, n.sons[0])
     if n.len > 1:
-      put(g, tkSpaces, space)
+      put(g, tkSpaces, Space)
       if n.sons[1].kind == nkInfix:
         put(g, tkParLe, "(")
         gsub(g, n.sons[1])

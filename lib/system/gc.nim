@@ -573,7 +573,7 @@ proc scan(s: PCell) =
   
 proc collectWhite(s: PCell) =
   if s.color == rcWhite and s notin gch.cycleRoots:
-    s.setcolor(rcBlack)
+    s.setColor(rcBlack)
     forAllChildren(s, waCollectWhite)
     freeCyclicCell(gch, s)
 
@@ -891,7 +891,7 @@ proc collectZCT(gch: var TGcHeap): bool =
   const workPackage = 100
   var L = addr(gch.zct.len)
   
-  when withRealtime:
+  when withRealTime:
     var steps = workPackage
     var t0: TTicks
     if gch.maxPause > 0: t0 = getticks()
@@ -904,7 +904,7 @@ proc collectZCT(gch: var TGcHeap): bool =
     c.refcount = c.refcount and not ZctFlag
     gch.zct.d[0] = gch.zct.d[L[] - 1]
     dec(L[])
-    when withRealtime: dec steps
+    when withRealTime: dec steps
     if c.refcount <% rcIncrement: 
       # It may have a RC > 0, if it is in the hardware stack or
       # it has not been removed yet from the ZCT. This is because
@@ -927,7 +927,7 @@ proc collectZCT(gch: var TGcHeap): bool =
       else:
         sysAssert(c.typ != nil, "collectZCT 2")
         zeroMem(c, sizeof(TCell))
-    when withRealtime:
+    when withRealTime:
       if steps == 0:
         steps = workPackage
         if gch.maxPause > 0:
@@ -952,7 +952,7 @@ proc unmarkStackAndRegisters(gch: var TGcHeap) =
   gch.decStack.len = 0
 
 proc collectCTBody(gch: var TGcHeap) =
-  when withRealtime:
+  when withRealTime:
     let t0 = getticks()
   sysAssert(allocInv(gch.region), "collectCT: begin")
   
@@ -975,7 +975,7 @@ proc collectCTBody(gch: var TGcHeap) =
   unmarkStackAndRegisters(gch)
   sysAssert(allocInv(gch.region), "collectCT: end")
   
-  when withRealtime:
+  when withRealTime:
     let duration = getticks() - t0
     gch.stat.maxPause = max(gch.stat.maxPause, duration)
     when defined(reportMissedDeadlines):
@@ -997,7 +997,7 @@ proc collectCT(gch: var TGcHeap) =
       markForDebug(gch)
     collectCTBody(gch)
 
-when withRealtime:
+when withRealTime:
   proc toNano(x: int): TNanos {.inline.} =
     result = x * 1000
 

@@ -10,7 +10,7 @@
 # Implementation of some runtime checks.
 
 proc raiseRangeError(val: BiggestInt) {.compilerproc, noreturn, noinline.} =
-  when hostOs == "standalone":
+  when hostOS == "standalone":
     sysFatal(EOutOfRange, "value out of range")
   else:
     sysFatal(EOutOfRange, "value out of range: ", $val)

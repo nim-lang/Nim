@@ -362,7 +362,7 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): PRope =
   of tyString: 
     discard cgsym(m, "NimStringDesc")
     result = typeNameOrLiteral(typ, "NimStringDesc*")
-  of tyCstring: result = typeNameOrLiteral(typ, "NCSTRING")
+  of tyCString: result = typeNameOrLiteral(typ, "NCSTRING")
   of tyBool: result = typeNameOrLiteral(typ, "NIM_BOOL")
   of tyChar: result = typeNameOrLiteral(typ, "NIM_CHAR")
   of tyNil: result = typeNameOrLiteral(typ, "0")
@@ -559,7 +559,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var TIntSet): PRope =
       if not isImportedType(t): 
         appf(m.s[cfsForwardTypes], getForwardStructFormat(), [result])
       idTablePut(m.forwTypeCache, t, result)
-    assert(CacheGetType(m.typeCache, t) == nil)
+    assert(cacheGetType(m.typeCache, t) == nil)
     idTablePut(m.typeCache, t, con(result, "*"))
     if not isImportedType(t): 
       if skipTypes(t.sons[0], typedescInst).kind != tyEmpty: 

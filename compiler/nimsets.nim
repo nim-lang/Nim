@@ -98,13 +98,13 @@ proc toTreeSet(s: TBitSet, settype: PType, info: TLineInfo): PNode =
   result.typ = settype
   result.info = info
   e = 0
-  while e < len(s) * elemSize: 
+  while e < len(s) * ElemSize: 
     if bitSetIn(s, e): 
       a = e
       b = e
       while true: 
         inc(b)
-        if (b >= len(s) * elemSize) or not bitSetIn(s, b): break 
+        if (b >= len(s) * ElemSize) or not bitSetIn(s, b): break 
       dec(b)
       if a == b: 
         addSon(result, newIntTypeNode(nkIntLit, a + first, elemType))

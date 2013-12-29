@@ -97,14 +97,14 @@ proc compileConstraints(p: PNode, result: var TPatternCode) =
     of "nosideeffect": result.add(ppNoSideEffect)
     else:
       # check all symkinds:
-      InternalAssert int(high(TSymKind)) < 255
+      internalAssert int(high(TSymKind)) < 255
       for i in low(TSymKind)..high(TSymKind):
         if cmpIgnoreStyle(($i).substr(2), spec) == 0:
           result.add(ppSymKind)
           result.add(chr(i.ord))
           return
       # check all nodekinds:
-      InternalAssert int(high(TNodeKind)) < 255
+      internalAssert int(high(TNodeKind)) < 255
       for i in low(TNodeKind)..high(TNodeKind):
         if cmpIgnoreStyle($i, spec) == 0:
           result.add(ppNodeKind)
@@ -124,7 +124,7 @@ proc semNodeKindConstraints*(p: PNode): PNode =
   if p.len >= 2:
     for i in 1.. <p.len:
       compileConstraints(p.sons[i], result.strVal)
-    if result.strVal.len > maxStackSize-1:
+    if result.strVal.len > MaxStackSize-1:
       internalError(p.info, "parameter pattern too complex")
   else:
     patternError(p)
@@ -221,7 +221,7 @@ proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
 proc matchNodeKinds*(p, n: PNode): bool =
   # matches the parameter constraint 'p' against the concrete AST 'n'. 
   # Efficiency matters here.
-  var stack {.noinit.}: array[0..maxStackSize, bool]
+  var stack {.noinit.}: array[0..MaxStackSize, bool]
   # empty patterns are true:
   stack[0] = true
   var sp = 1

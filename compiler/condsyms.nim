@@ -55,12 +55,12 @@ proc initDefines*() =
   of cpuAmd64: defineSymbol("x8664")
   else: discard
   case targetOS
-  of osDOS: 
+  of osDos: 
     defineSymbol("msdos")
   of osWindows: 
     defineSymbol("mswindows")
     defineSymbol("win32")
-  of osLinux, osMorphOS, osSkyOS, osIrix, osPalmOS, osQNX, osAtari, osAix, 
+  of osLinux, osMorphos, osSkyos, osIrix, osPalmos, osQnx, osAtari, osAix, 
      osHaiku:
     # these are all 'unix-like'
     defineSymbol("unix")
@@ -69,13 +69,13 @@ proc initDefines*() =
     defineSymbol("sunos")
     defineSymbol("unix")
     defineSymbol("posix")
-  of osNetBSD, osFreeBSD, osOpenBSD: 
+  of osNetbsd, osFreebsd, osOpenbsd: 
     defineSymbol("unix")
     defineSymbol("bsd")
     defineSymbol("posix")
-  of osMacOS: 
+  of osMacos: 
     defineSymbol("macintosh")
-  of osMacOSX: 
+  of osMacosx: 
     defineSymbol("macintosh")
     defineSymbol("unix")
     defineSymbol("posix")

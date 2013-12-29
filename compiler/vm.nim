@@ -579,7 +579,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
     of opcMinusSet:
       decodeBC(nkCurly)
       move(regs[ra].sons, nimsets.diffSets(regs[rb], regs[rc]).sons)
-    of opcSymDiffSet:
+    of opcSymdiffSet:
       decodeBC(nkCurly)
       move(regs[ra].sons, nimsets.symdiffSets(regs[rb], regs[rc]).sons)    
     of opcConcatStr:
@@ -982,7 +982,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
     of opcNSetType:
       decodeB(nkMetaNode)
       let b = regs[rb].skipMeta
-      InternalAssert b.kind == nkSym and b.sym.kind == skType
+      internalAssert b.kind == nkSym and b.sym.kind == skType
       regs[ra].uast.typ = b.sym.typ
     of opcNSetStrVal:
       decodeB(nkMetaNode)

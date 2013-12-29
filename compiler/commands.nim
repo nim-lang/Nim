@@ -27,7 +27,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo)
 # implementation
 
 const
-  HelpMessage = "Nimrod Compiler Version $1 (" & compileDate & ") [$2: $3]\n" &
+  HelpMessage = "Nimrod Compiler Version $1 (" & CompileDate & ") [$2: $3]\n" &
       "Copyright (c) 2004-2013 by Andreas Rumpf\n"
 
 const 
@@ -173,11 +173,11 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
   of "linetrace": result = contains(gOptions, optLineTrace)
   of "debugger": result = contains(gOptions, optEndb)
   of "profiler": result = contains(gOptions, optProfiler)
-  of "checks", "x": result = gOptions * checksOptions == checksOptions
+  of "checks", "x": result = gOptions * ChecksOptions == ChecksOptions
   of "floatchecks":
-    result = gOptions * {optNanCheck, optInfCheck} == {optNanCheck, optInfCheck}
+    result = gOptions * {optNaNCheck, optInfCheck} == {optNaNCheck, optInfCheck}
   of "infchecks": result = contains(gOptions, optInfCheck)
-  of "nanchecks": result = contains(gOptions, optNanCheck)
+  of "nanchecks": result = contains(gOptions, optNaNCheck)
   of "objchecks": result = contains(gOptions, optObjCheck)
   of "fieldchecks": result = contains(gOptions, optFieldCheck)
   of "rangechecks": result = contains(gOptions, optRangeCheck)
@@ -239,7 +239,7 @@ proc dynlibOverride(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     expectArg(switch, arg, pass, info)
     options.inclDynlibOverride(arg)
 
-proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) = 
+proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) = 
   var 
     theOS: TSystemOS
     cpu: TSystemCPU
@@ -335,11 +335,11 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
     processOnOffSwitch({optProfiler}, arg, pass, info)
     if optProfiler in gOptions: defineSymbol("profiler")
     else: undefSymbol("profiler")
-  of "checks", "x": processOnOffSwitch(checksOptions, arg, pass, info)
+  of "checks", "x": processOnOffSwitch(ChecksOptions, arg, pass, info)
   of "floatchecks":
-    processOnOffSwitch({optNanCheck, optInfCheck}, arg, pass, info)
+    processOnOffSwitch({optNaNCheck, optInfCheck}, arg, pass, info)
   of "infchecks": processOnOffSwitch({optInfCheck}, arg, pass, info)
-  of "nanchecks": processOnOffSwitch({optNanCheck}, arg, pass, info)
+  of "nanchecks": processOnOffSwitch({optNaNCheck}, arg, pass, info)
   of "objchecks": processOnOffSwitch({optObjCheck}, arg, pass, info)
   of "fieldchecks": processOnOffSwitch({optFieldCheck}, arg, pass, info)
   of "rangechecks": processOnOffSwitch({optRangeCheck}, arg, pass, info)

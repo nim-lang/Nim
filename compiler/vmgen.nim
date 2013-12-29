@@ -85,7 +85,7 @@ proc genLabel(c: PCtx): TPosition =
 
 proc jmpBack(c: PCtx, n: PNode, opc: TOpcode, p = TPosition(0)) =
   let dist = p.int - c.code.len
-  InternalAssert(-0x7fff < dist and dist < 0x7fff)
+  internalAssert(-0x7fff < dist and dist < 0x7fff)
   gABx(c, n, opc, 0, dist)
 
 proc patch(c: PCtx, p: TPosition) =
@@ -93,7 +93,7 @@ proc patch(c: PCtx, p: TPosition) =
   let p = p.int
   let diff = c.code.len - p
   #c.jumpTargets.incl(c.code.len)
-  InternalAssert(-0x7fff < diff and diff < 0x7fff)
+  internalAssert(-0x7fff < diff and diff < 0x7fff)
   let oldInstr = c.code[p]
   # opcode and regA stay the same:
   c.code[p] = ((oldInstr.uint32 and 0xffff'u32).uint32 or
@@ -194,7 +194,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest)
 proc gen(c: PCtx; n: PNode; dest: TRegister) =
   var d: TDest = dest
   gen(c, n, d)
-  InternalAssert d == dest
+  internalAssert d == dest
 
 proc gen(c: PCtx; n: PNode) =
   var tmp: TDest = -1
@@ -308,7 +308,7 @@ proc genAndOr(c: PCtx; n: PNode; opc: TOpcode; dest: var TDest) =
 proc rawGenLiteral(c: PCtx; n: PNode): int =
   result = c.constants.len
   c.constants.add n
-  InternalAssert result < 0x7fff
+  internalAssert result < 0x7fff
 
 proc sameConstant*(a, b: PNode): bool =
   result = false
@@ -678,8 +678,8 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
       tmp2 = c.genx(n.sons[2])
       tmp3 = c.getTemp(n.sons[2].typ)
     c.gABC(n, opcLenStr, tmp3, tmp1)
-    c.gABC(n, opcSubstr, dest, tmp1, tmp2)
-    c.gABC(n, opcSubstr, tmp3)
+    c.gABC(n, opcSubStr, dest, tmp1, tmp2)
+    c.gABC(n, opcSubStr, tmp3)
     c.freeTemp(tmp1)
     c.freeTemp(tmp2)
     c.freeTemp(tmp3)
@@ -689,8 +689,8 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
       tmp1 = c.genx(n.sons[1])
       tmp2 = c.genx(n.sons[2])
       tmp3 = c.genx(n.sons[3])
-    c.gABC(n, opcSubstr, dest, tmp1, tmp2)
-    c.gABC(n, opcSubstr, tmp3)
+    c.gABC(n, opcSubStr, dest, tmp1, tmp2)
+    c.gABC(n, opcSubStr, tmp3)
     c.freeTemp(tmp1)
     c.freeTemp(tmp2)
     c.freeTemp(tmp3)
@@ -922,7 +922,7 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
         gen(c, ri, tmp)
         c.gABx(le, whichAsgnOpc(le, opcWrGlobal), tmp, s.position)
     else:
-      InternalAssert s.position > 0 or (s.position == 0 and
+      internalAssert s.position > 0 or (s.position == 0 and
                                         s.kind in {skParam, skResult})
       var dest: TRegister = s.position + ord(s.kind == skParam)
       gen(c, ri, dest)
@@ -1212,7 +1212,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest) =
         var lit = genLiteral(c, newIntNode(nkIntLit, s.position))
         c.gABx(n, opcLdConst, dest, lit)
     of skField:
-      InternalAssert dest < 0
+      internalAssert dest < 0
       if s.position > high(dest):
         internalError(n.info, 
           "too large offset! cannot generate code for: " & s.name.s)
@@ -1346,7 +1346,7 @@ proc genParams(c: PCtx; params: PNode) =
   c.prc.maxSlots = max(params.len, 1)
 
 proc finalJumpTarget(c: PCtx; pc, diff: int) =
-  InternalAssert(-0x7fff < diff and diff < 0x7fff)
+  internalAssert(-0x7fff < diff and diff < 0x7fff)
   let oldInstr = c.code[pc]
   # opcode and regA stay the same:
   c.code[pc] = ((oldInstr.uint32 and 0xffff'u32).uint32 or

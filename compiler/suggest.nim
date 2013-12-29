@@ -203,7 +203,7 @@ const
   CallNodes = {nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit}
 
 proc findClosestCall(n: PNode): PNode = 
-  if n.kind in callNodes and msgs.inCheckpoint(n.info) == cpExact: 
+  if n.kind in CallNodes and msgs.inCheckpoint(n.info) == cpExact: 
     result = n
   else:
     for i in 0.. <safeLen(n):
@@ -327,7 +327,7 @@ proc markUsed(n: PNode, s: PSym) =
     if sfDeprecated in s.flags: message(n.info, warnDeprecated, s.name.s)
     if sfError in s.flags: localError(n.info, errWrongSymbolX, s.name.s)
   suggestSym(n, s)
-  if gCmd == cmdPretty: checkUse(n)
+  if gCmd == cmdPretty: checkUse(n, s)
 
 proc useSym*(sym: PSym): PNode =
   result = newSymNode(sym)

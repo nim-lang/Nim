@@ -36,7 +36,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
     parseopt.next(p)
     case p.kind
     of cmdEnd: break 
-    of cmdLongOption, cmdShortOption: 
+    of cmdLongoption, cmdShortOption: 
       # hint[X]:off is parsed as (p.key = "hint[X]", p.val = "off")
       # we fix this here
       var bracketLe = strutils.find(p.key, '[')

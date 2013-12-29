@@ -920,7 +920,7 @@ proc genPragma(p: BProc, n: PNode) =
     case whichPragma(it)
     of wEmit: genEmit(p, it)
     of wBreakpoint: genBreakPoint(p, it)
-    of wWatchpoint: genWatchpoint(p, it)
+    of wWatchPoint: genWatchpoint(p, it)
     of wInjectStmt: 
       var p = newProc(nil, p.module)
       p.options = p.options - {optLineTrace, optStackTrace}
@@ -977,4 +977,4 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
 proc genStmts(p: BProc, t: PNode) = 
   var a: TLoc
   expr(p, t, a)
-  InternalAssert a.k in {locNone, locTemp, locLocalVar}
+  internalAssert a.k in {locNone, locTemp, locLocalVar}

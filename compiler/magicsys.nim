@@ -79,7 +79,7 @@ proc getSysType(kind: TTypeKind): PType =
     of tyBool: result = sysTypeFromName("bool")
     of tyChar: result = sysTypeFromName("char")
     of tyString: result = sysTypeFromName("string")
-    of tyCstring: result = sysTypeFromName("cstring")
+    of tyCString: result = sysTypeFromName("cstring")
     of tyPointer: result = sysTypeFromName("pointer")
     of tyNil: result = newSysType(tyNil, ptrSize)
     else: internalError("request for typekind: " & $kind)

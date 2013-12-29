@@ -115,7 +115,7 @@ proc findStartNimrod: string =
     if existsFile(dir / nimrod): return nimrod
   when defined(Posix):
     const buildScript = "build.sh"
-    if ExistsFile(buildScript): 
+    if existsFile(buildScript): 
       if tryExec("./" & buildScript): return "bin" / nimrod
   else:
     const buildScript = "build.bat"
@@ -183,7 +183,7 @@ proc cleanAux(dir: string) =
     else: nil
 
 proc removePattern(pattern: string) = 
-  for f in WalkFiles(pattern): 
+  for f in walkFiles(pattern): 
     echo "removing: ", f
     removeFile(f)
 

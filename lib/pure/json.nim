@@ -645,7 +645,7 @@ proc hasKey*(node: PJsonNode, key: string): bool =
   ## Checks if `key` exists in `node`.
   assert(node.kind == JObject)
   for k, item in items(node.fields):
-    if k == key: return True
+    if k == key: return true
 proc existsKey*(node: PJsonNode, key: string): bool {.deprecated.} = node.hasKey(key)
   ## Deprecated for `hasKey`
 
@@ -730,8 +730,8 @@ proc escapeJson*(s: string): string =
       result.add(toHex(r, 4))
   result.add("\"")
 
-proc toPretty(result: var string, node: PJsonNode, indent = 2, ml = True, 
-              lstArr = False, currIndent = 0) =
+proc toPretty(result: var string, node: PJsonNode, indent = 2, ml = true, 
+              lstArr = false, currIndent = 0) =
   case node.kind
   of JObject:
     if currIndent != 0 and not lstArr: result.nl(ml)
@@ -747,7 +747,7 @@ proc toPretty(result: var string, node: PJsonNode, indent = 2, ml = True,
         result.indent(newIndent(currIndent, indent, ml)) 
         result.add(escapeJson(node.fields[i].key))
         result.add(": ")
-        toPretty(result, node.fields[i].val, indent, ml, False, 
+        toPretty(result, node.fields[i].val, indent, ml, false, 
                  newIndent(currIndent, indent, ml))
       result.nl(ml)
       result.indent(currIndent) # indent the same as {
@@ -776,7 +776,7 @@ proc toPretty(result: var string, node: PJsonNode, indent = 2, ml = True,
           result.add(", ")
           result.nl(ml) # New Line
         toPretty(result, node.elems[i], indent, ml,
-            True, newIndent(currIndent, indent, ml))
+            true, newIndent(currIndent, indent, ml))
       result.nl(ml)
       result.indent(currIndent)
       result.add("]")
@@ -794,7 +794,7 @@ proc pretty*(node: PJsonNode, indent = 2): string =
 proc `$`*(node: PJsonNode): string =
   ## Converts `node` to its JSON Representation on one line.
   result = ""
-  toPretty(result, node, 1, False)
+  toPretty(result, node, 1, false)
 
 iterator items*(node: PJsonNode): PJsonNode =
   ## Iterator for the items of `node`. `node` has to be a JArray.

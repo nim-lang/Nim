@@ -157,7 +157,7 @@ proc toRope(s: string): PRope =
     result = nil
   else:
     result = insertInCache(s)
-  assert(RopeInvariant(result))
+  assert(ropeInvariant(result))
 
 proc ropeSeqInsert(rs: var TRopeSeq, r: PRope, at: Natural) = 
   var length = len(rs)
@@ -280,7 +280,7 @@ proc ropef(frmt: TFormatStr, args: varargs[PRope]): PRope =
       else: break
     if i - 1 >= start: 
       app(result, substr(frmt, start, i - 1))
-  assert(RopeInvariant(result))
+  assert(ropeInvariant(result))
 
 {.push stack_trace: off, line_trace: off.}
 proc `~`*(r: expr[string]): PRope =
@@ -313,7 +313,7 @@ proc ropeEqualsFile(r: PRope, f: string): bool =
   result = open(bin, f)
   if not result: 
     return                    # not equal if file does not exist
-  var buf = alloc(BufSize)
+  var buf = alloc(bufSize)
   result = auxRopeEqualsFile(r, bin, buf)
   if result: 
     result = readBuffer(bin, buf, bufSize) == 0 # really at the end of file?
@@ -346,7 +346,7 @@ proc newCrcFromRopeAux(r: PRope, startVal: TCrc32): TCrc32 =
       inc(i)
 
 proc crcFromRope(r: PRope): TCrc32 = 
-  result = newCrcFromRopeAux(r, initCrc32)
+  result = newCrcFromRopeAux(r, InitCrc32)
 
 proc writeRopeIfNotEqual(r: PRope, filename: string): bool = 
   # returns true if overwritten

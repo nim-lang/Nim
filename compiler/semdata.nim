@@ -198,15 +198,15 @@ proc addToLib(lib: PLib, sym: PSym) =
 
 proc makePtrType(c: PContext, baseType: PType): PType = 
   result = newTypeS(tyPtr, c)
-  addSonSkipIntLit(result, baseType.AssertNotNil)
+  addSonSkipIntLit(result, baseType.assertNotNil)
 
 proc makeVarType(c: PContext, baseType: PType): PType = 
   result = newTypeS(tyVar, c)
-  addSonSkipIntLit(result, baseType.AssertNotNil)
+  addSonSkipIntLit(result, baseType.assertNotNil)
 
 proc makeTypeDesc*(c: PContext, typ: PType): PType =
   result = newTypeS(tyTypeDesc, c)
-  result.addSonSkipIntLit(typ.AssertNotNil)
+  result.addSonSkipIntLit(typ.assertNotNil)
 
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let typedesc = makeTypeDesc(c, typ)

@@ -92,7 +92,7 @@ const
   DETACHED_PROCESS* = 8'i32
   
   SW_SHOWNORMAL* = 1'i32
-  INVALID_HANDLE_VALUE* = THANDLE(-1)
+  INVALID_HANDLE_VALUE* = THandle(-1)
   
   CREATE_UNICODE_ENVIRONMENT* = 1024'i32
 
@@ -418,7 +418,7 @@ type
     ai_addr*: ptr TSockAddr ## Socket address of socket. 
     ai_next*: ptr TAddrInfo ## Pointer to next in list. 
 
-  Tsocklen* = cuint
+  TSockLen* = cuint
 
 var
   SOMAXCONN* {.importc, header: "Winsock2.h".}: cint
@@ -457,20 +457,20 @@ proc socket*(af, typ, protocol: cint): TSocketHandle {.
 proc closesocket*(s: TSocketHandle): cint {.
   stdcall, importc: "closesocket", dynlib: ws2dll.}
 
-proc accept*(s: TSocketHandle, a: ptr TSockAddr, addrlen: ptr Tsocklen): TSocketHandle {.
+proc accept*(s: TSocketHandle, a: ptr TSockAddr, addrlen: ptr TSockLen): TSocketHandle {.
   stdcall, importc: "accept", dynlib: ws2dll.}
-proc bindSocket*(s: TSocketHandle, name: ptr TSockAddr, namelen: Tsocklen): cint {.
+proc bindSocket*(s: TSocketHandle, name: ptr TSockAddr, namelen: TSockLen): cint {.
   stdcall, importc: "bind", dynlib: ws2dll.}
-proc connect*(s: TSocketHandle, name: ptr TSockAddr, namelen: Tsocklen): cint {.
+proc connect*(s: TSocketHandle, name: ptr TSockAddr, namelen: TSockLen): cint {.
   stdcall, importc: "connect", dynlib: ws2dll.}
 proc getsockname*(s: TSocketHandle, name: ptr TSockAddr, 
-                  namelen: ptr Tsocklen): cint {.
+                  namelen: ptr TSockLen): cint {.
   stdcall, importc: "getsockname", dynlib: ws2dll.}
 proc getsockopt*(s: TSocketHandle, level, optname: cint, optval: pointer,
-                 optlen: ptr Tsocklen): cint {.
+                 optlen: ptr TSockLen): cint {.
   stdcall, importc: "getsockopt", dynlib: ws2dll.}
 proc setsockopt*(s: TSocketHandle, level, optname: cint, optval: pointer,
-                 optlen: Tsocklen): cint {.
+                 optlen: TSockLen): cint {.
   stdcall, importc: "setsockopt", dynlib: ws2dll.}
 
 proc listen*(s: TSocketHandle, backlog: cint): cint {.
@@ -478,7 +478,7 @@ proc listen*(s: TSocketHandle, backlog: cint): cint {.
 proc recv*(s: TSocketHandle, buf: pointer, len, flags: cint): cint {.
   stdcall, importc: "recv", dynlib: ws2dll.}
 proc recvfrom*(s: TSocketHandle, buf: cstring, len, flags: cint, 
-               fromm: ptr TSockAddr, fromlen: ptr Tsocklen): cint {.
+               fromm: ptr TSockAddr, fromlen: ptr TSockLen): cint {.
   stdcall, importc: "recvfrom", dynlib: ws2dll.}
 proc select*(nfds: cint, readfds, writefds, exceptfds: ptr TFdSet,
              timeout: ptr TTimeval): cint {.
@@ -486,15 +486,15 @@ proc select*(nfds: cint, readfds, writefds, exceptfds: ptr TFdSet,
 proc send*(s: TSocketHandle, buf: pointer, len, flags: cint): cint {.
   stdcall, importc: "send", dynlib: ws2dll.}
 proc sendto*(s: TSocketHandle, buf: pointer, len, flags: cint,
-             to: ptr TSockAddr, tolen: Tsocklen): cint {.
+             to: ptr TSockAddr, tolen: TSockLen): cint {.
   stdcall, importc: "sendto", dynlib: ws2dll.}
 
 proc shutdown*(s: TSocketHandle, how: cint): cint {.
   stdcall, importc: "shutdown", dynlib: ws2dll.}
   
-proc getnameinfo*(a1: ptr TSockAddr, a2: Tsocklen,
-                  a3: cstring, a4: Tsocklen, a5: cstring,
-                  a6: Tsocklen, a7: cint): cint {.
+proc getnameinfo*(a1: ptr TSockAddr, a2: TSockLen,
+                  a3: cstring, a4: TSockLen, a5: cstring,
+                  a6: TSockLen, a7: cint): cint {.
   stdcall, importc: "getnameinfo", dynlib: ws2dll.}
   
 proc inet_addr*(cp: cstring): int32 {.
@@ -514,7 +514,7 @@ proc FD_SET*(Socket: TSocketHandle, FDSet: var TFdSet) =
 proc FD_ZERO*(FDSet: var TFdSet) =
   FDSet.fd_count = 0
 
-proc WSAStartup*(wVersionRequired: int16, WSData: ptr TWSAData): cint {.
+proc wsaStartup*(wVersionRequired: int16, WSData: ptr TWSAData): cint {.
   stdcall, importc: "WSAStartup", dynlib: ws2dll.}
 
 proc getaddrinfo*(nodename, servname: cstring, hints: ptr TAddrInfo,

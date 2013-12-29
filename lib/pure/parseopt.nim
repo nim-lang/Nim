@@ -105,7 +105,7 @@ proc next*(p: var TOptParser) {.
   of '-': 
     inc(i)
     if p.cmd[i] == '-': 
-      p.kind = cmdLongOption
+      p.kind = cmdLongoption
       inc(i)
       i = parseWord(p.cmd, i, p.key.string, {'\0', ' ', '\x09', ':', '='})
       while p.cmd[i] in {'\x09', ' '}: inc(i)

@@ -26,7 +26,7 @@
 
 {.deadCodeElim: on.}
 
-when hostos == "solaris":
+when hostOS == "solaris":
   {.passl: "-lsocket -lnsl".}
 
 import os, parseutils
@@ -467,7 +467,7 @@ template acceptAddrPlain(noClientRet, successRet: expr,
                          sslImplementation: stmt): stmt {.immediate.} =
   assert(client != nil)
   var sockAddress: Tsockaddr_in
-  var addrLen = sizeof(sockAddress).Tsocklen
+  var addrLen = sizeof(sockAddress).TSockLen
   var sock = accept(server.fd, cast[ptr TSockAddr](addr(sockAddress)),
                     addr(addrLen))
   
@@ -1258,10 +1258,10 @@ proc recvLine*(socket: TSocket, line: var TaintedString, timeout = -1): bool {.
       if n > 0 and c == '\L':
         discard recv(socket, addr(c), 1)
       elif n <= 0: return false
-      addNlIfEmpty()
+      addNLIfEmpty()
       return true
     elif c == '\L': 
-      addNlIfEmpty()
+      addNLIfEmpty()
       return true
     add(line.string, c)
 
@@ -1299,10 +1299,10 @@ proc readLine*(socket: TSocket, line: var TaintedString, timeout = -1) {.
       if n > 0 and c == '\L':
         discard recv(socket, addr(c), 1)
       elif n <= 0: osError(osLastError())
-      addNlIfEmpty()
+      addNLIfEmpty()
       return
     elif c == '\L': 
-      addNlIfEmpty()
+      addNLIfEmpty()
       return
     add(line.string, c)
 
@@ -1457,7 +1457,7 @@ proc recvAsync*(socket: TSocket, s: var TaintedString): bool {.
       let err = osLastError()
       when defined(windows):
         if err.int32 == WSAEWOULDBLOCK:
-          return False
+          return false
         else: osError(err)
       else:
         if err.int32 == EAGAIN or err.int32 == EWOULDBLOCK:
@@ -1469,7 +1469,7 @@ proc recvAsync*(socket: TSocket, s: var TaintedString): bool {.
     # increase capacity:
     setLen(s.string, s.string.len + bufSize)
     inc(pos, bytesRead)
-  result = True
+  result = true
 
 proc recvFrom*(socket: TSocket, data: var string, length: int,
                address: var string, port: var TPort, flags = 0'i32): int {.
@@ -1510,7 +1510,7 @@ proc recvFromAsync*(socket: TSocket, data: var string, length: int,
     let err = osLastError()
     when defined(windows):
       if err.int32 == WSAEWOULDBLOCK:
-        return False
+        return false
       else: osError(err)
     else:
       if err.int32 == EAGAIN or err.int32 == EWOULDBLOCK:
@@ -1710,6 +1710,6 @@ proc isBlocking*(socket: TSocket): bool = not socket.nonblocking
 
 when defined(Windows):
   var wsa: TWSAData
-  if WSAStartup(0x0101'i16, addr wsa) != 0: osError(osLastError())
+  if wsaStartup(0x0101'i16, addr wsa) != 0: osError(osLastError())
 
 

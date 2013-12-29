@@ -102,7 +102,7 @@ proc fillBuffer(L: var TBaseLexer) =
         oldBufLen = L.BufLen
         L.bufLen = L.BufLen * 2
         L.buf = cast[cstring](realloc(L.buf, L.bufLen * chrSize))
-        assert(L.bufLen - oldBuflen == oldBufLen)
+        assert(L.bufLen - oldBufLen == oldBufLen)
         charsRead = readData(L.input, addr(L.buf[oldBufLen]),
                              oldBufLen * chrSize) div chrSize
         if charsRead < oldBufLen:

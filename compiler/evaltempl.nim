@@ -36,7 +36,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
         else:
           result.add copyTree(x)
       else:
-        InternalAssert sfGenSym in s.flags
+        internalAssert sfGenSym in s.flags
         var x = PSym(idTableGet(c.mapping, s))
         if x == nil:
           x = copySym(s, false)

@@ -428,7 +428,7 @@ proc clikeNextToken(g: var TGeneralTokenizer, keywords: openArray[string],
         g.kind = gtOperator
     of 'a'..'z', 'A'..'Z', '_', '\x80'..'\xFF': 
       var id = ""
-      while g.buf[pos] in SymChars: 
+      while g.buf[pos] in symChars: 
         add(id, g.buf[pos])
         inc(pos)
       if isKeyword(keywords, id) >= 0: g.kind = gtKeyword

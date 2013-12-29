@@ -192,16 +192,16 @@ proc canonicalizePath*(path: string): string =
 
 proc shortenDir*(dir: string): string = 
   ## returns the interesting part of a dir
-  var prefix = getPrefixDir() & dirSep
+  var prefix = getPrefixDir() & DirSep
   if startsWith(dir, prefix): 
     return substr(dir, len(prefix))
-  prefix = gProjectPath & dirSep
+  prefix = gProjectPath & DirSep
   if startsWith(dir, prefix):
     return substr(dir, len(prefix))
   result = dir
 
 proc removeTrailingDirSep*(path: string): string = 
-  if (len(path) > 0) and (path[len(path) - 1] == dirSep): 
+  if (len(path) > 0) and (path[len(path) - 1] == DirSep): 
     result = substr(path, 0, len(path) - 2)
   else: 
     result = path
@@ -213,9 +213,9 @@ proc getGeneratedPath: string =
 proc getPackageName*(path: string): string =
   var q = 1
   var b = 0
-  if path[len(path)-1] in {dirsep, altsep}: q = 2
+  if path[len(path)-1] in {DirSep, AltSep}: q = 2
   for i in countdown(len(path)-q, 0):
-    if path[i] in {dirsep, altsep}:
+    if path[i] in {DirSep, AltSep}:
       if b == 0: b = i
       else:
         let x = path.substr(i+1, b-1)
@@ -288,7 +288,7 @@ proc findFile*(f: string): string {.procvar.} =
 
 proc findModule*(modulename, currentModule: string): string =
   # returns path to module
-  let m = addFileExt(modulename, nimExt)
+  let m = addFileExt(modulename, NimExt)
   let currentPath = currentModule.splitFile.dir
   result = currentPath / m
   if not existsFile(result):

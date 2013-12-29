@@ -396,7 +396,7 @@ when defined(Windows) and not defined(useNimRtl):
 
   proc startProcess(command: string,
                  workingDir: string = "",
-                 args: openarray[string] = [],
+                 args: openArray[string] = [],
                  env: PStringTable = nil,
                  options: set[TProcessOption] = {poStdErrToStdOut}): PProcess =
     var

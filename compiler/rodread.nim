@@ -696,7 +696,7 @@ proc rrGetType(r: PRodReader, id: int, info: TLineInfo): PType =
     # load the type:
     var oldPos = r.pos
     var d = iiTableGet(r.index.tab, id)
-    if d == invalidKey: internalError(info, "rrGetType")
+    if d == InvalidKey: internalError(info, "rrGetType")
     r.pos = d + r.dataIdx
     result = decodeType(r, info)
     r.pos = oldPos
@@ -726,7 +726,7 @@ proc findSomeWhere(id: int) =
     var rd = gMods[i].rd
     if rd != nil: 
       var d = iiTableGet(rd.index.tab, id)
-      if d != invalidKey:
+      if d != InvalidKey:
         echo "found id ", id, " in ", gMods[i].filename
 
 proc getReader(moduleId: int): PRodReader =
@@ -744,7 +744,7 @@ proc rrGetSym(r: PRodReader, id: int, info: TLineInfo): PSym =
   if result == nil: 
     # load the symbol:
     var d = iiTableGet(r.index.tab, id)
-    if d == invalidKey: 
+    if d == InvalidKey: 
       # import from other module:
       var moduleID = iiTableGet(r.imports.tab, id)
       if moduleID < 0:
@@ -753,7 +753,7 @@ proc rrGetSym(r: PRodReader, id: int, info: TLineInfo): PSym =
         internalError(info, "missing from both indexes: +" & x)
       var rd = getReader(moduleID)
       d = iiTableGet(rd.index.tab, id)
-      if d != invalidKey: 
+      if d != InvalidKey: 
         result = decodeSymSafePos(rd, d, info)
       else:
         var x = ""
@@ -800,7 +800,7 @@ proc loadMethods(r: PRodReader) =
     if r.s[r.pos] == ' ': inc(r.pos)
 
 proc getCRC*(fileIdx: int32): TCrc32 =
-  InternalAssert fileIdx >= 0 and fileIdx < gMods.len
+  internalAssert fileIdx >= 0 and fileIdx < gMods.len
 
   if gMods[fileIdx].crcDone:
     return gMods[fileIdx].crc
@@ -875,7 +875,7 @@ proc rawLoadStub(s: PSym) =
   var rd = gMods[s.position].rd
   var theId = s.id                # used for later check
   var d = iiTableGet(rd.index.tab, s.id)
-  if d == invalidKey: internalError("loadStub: invalid key")
+  if d == InvalidKey: internalError("loadStub: invalid key")
   var rs = decodeSymSafePos(rd, d, unknownLineInfo())
   if rs != s:
     #echo "rs: ", toHex(cast[int](rs.position), int.sizeof * 2),

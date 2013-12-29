@@ -101,12 +101,12 @@ proc addInclDep(w: PRodWriter, dep: string) =
 
 proc pushType(w: PRodWriter, t: PType) =
   # check so that the stack does not grow too large:
-  if iiTableGet(w.index.tab, t.id) == invalidKey:
+  if iiTableGet(w.index.tab, t.id) == InvalidKey:
     w.tstack.add(t)
 
 proc pushSym(w: PRodWriter, s: PSym) =
   # check so that the stack does not grow too large:
-  if iiTableGet(w.index.tab, s.id) == invalidKey:
+  if iiTableGet(w.index.tab, s.id) == InvalidKey:
     w.sstack.add(s)
 
 proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode, 
@@ -336,7 +336,7 @@ proc symStack(w: PRodWriter): int =
     if sfForward in s.flags:
       w.sstack[result] = s
       inc result
-    elif iiTableGet(w.index.tab, s.id) == invalidKey:
+    elif iiTableGet(w.index.tab, s.id) == InvalidKey:
       var m = getModule(s)
       if m == nil: internalError("symStack: module nil: " & s.name.s)
       if (m.id == w.module.id) or (sfFromGeneric in s.flags): 
@@ -364,7 +364,7 @@ proc symStack(w: PRodWriter): int =
         if s.kind == skMethod and sfDispatcher notin s.flags:
           if w.methods.len != 0: add(w.methods, ' ')
           encodeVInt(s.id, w.methods)
-      elif iiTableGet(w.imports.tab, s.id) == invalidKey: 
+      elif iiTableGet(w.imports.tab, s.id) == InvalidKey: 
         addToIndex(w.imports, s.id, m.id)
         when debugWrittenIds:
           if not Contains(debugWritten, s.id):
@@ -383,7 +383,7 @@ proc typeStack(w: PRodWriter): int =
     if t.kind == tyForward:
       w.tstack[result] = t
       inc result
-    elif iiTableGet(w.index.tab, t.id) == invalidKey: 
+    elif iiTableGet(w.index.tab, t.id) == InvalidKey: 
       var L = w.data.len
       addToIndex(w.index, t.id, L)
       encodeType(w, t, w.data)

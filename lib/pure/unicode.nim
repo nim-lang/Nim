@@ -1115,10 +1115,10 @@ proc toLower*(c: TRune): TRune {.rtl, extern: "nuc$1", procvar.} =
   ## Converts `c` into lower case. This works for any Unicode character.
   ## If possible, prefer `toLower` over `toUpper`. 
   var c = IRune(c)
-  var p = binarySearch(c, tolowerRanges, len(toLowerRanges) div 3, 3)
+  var p = binarySearch(c, tolowerRanges, len(tolowerRanges) div 3, 3)
   if p >= 0 and c >= tolowerRanges[p] and c <= tolowerRanges[p+1]:
     return TRune(c + tolowerRanges[p+2] - 500)
-  p = binarySearch(c, toLowerSinglets, len(toLowerSinglets) div 2, 2)
+  p = binarySearch(c, tolowerSinglets, len(tolowerSinglets) div 2, 2)
   if p >= 0 and c == tolowerSinglets[p]:
     return TRune(c + tolowerSinglets[p+1] - 500)
   return TRune(c)
@@ -1127,10 +1127,10 @@ proc toUpper*(c: TRune): TRune {.rtl, extern: "nuc$1", procvar.} =
   ## Converts `c` into upper case. This works for any Unicode character.
   ## If possible, prefer `toLower` over `toUpper`. 
   var c = IRune(c)
-  var p = binarySearch(c, toUpperRanges, len(toUpperRanges) div 3, 3)
+  var p = binarySearch(c, toupperRanges, len(toupperRanges) div 3, 3)
   if p >= 0 and c >= toupperRanges[p] and c <= toupperRanges[p+1]:
     return TRune(c + toupperRanges[p+2] - 500)
-  p = binarySearch(c, toUpperSinglets, len(toUpperSinglets) div 2, 2)
+  p = binarySearch(c, toupperSinglets, len(toupperSinglets) div 2, 2)
   if p >= 0 and c == toupperSinglets[p]:
     return TRune(c + toupperSinglets[p+1] - 500)
   return TRune(c)
@@ -1147,10 +1147,10 @@ proc isLower*(c: TRune): bool {.rtl, extern: "nuc$1", procvar.} =
   ## If possible, prefer `isLower` over `isUpper`. 
   var c = IRune(c)
   # Note: toUpperRanges is correct here!
-  var p = binarySearch(c, toUpperRanges, len(toUpperRanges) div 3, 3)
+  var p = binarySearch(c, toupperRanges, len(toupperRanges) div 3, 3)
   if p >= 0 and c >= toupperRanges[p] and c <= toupperRanges[p+1]:
     return true
-  p = binarySearch(c, toUpperSinglets, len(toUpperSinglets) div 2, 2)
+  p = binarySearch(c, toupperSinglets, len(toupperSinglets) div 2, 2)
   if p >= 0 and c == toupperSinglets[p]:
     return true
 
@@ -1159,10 +1159,10 @@ proc isUpper*(c: TRune): bool {.rtl, extern: "nuc$1", procvar.} =
   ## If possible, prefer `isLower` over `isUpper`. 
   var c = IRune(c)
   # Note: toLowerRanges is correct here!
-  var p = binarySearch(c, toLowerRanges, len(toLowerRanges) div 3, 3)
+  var p = binarySearch(c, tolowerRanges, len(tolowerRanges) div 3, 3)
   if p >= 0 and c >= tolowerRanges[p] and c <= tolowerRanges[p+1]:
     return true
-  p = binarySearch(c, toLowerSinglets, len(toLowerSinglets) div 2, 2)
+  p = binarySearch(c, tolowerSinglets, len(tolowerSinglets) div 2, 2)
   if p >= 0 and c == tolowerSinglets[p]:
     return true
 

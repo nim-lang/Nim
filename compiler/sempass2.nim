@@ -305,7 +305,7 @@ proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
     if n.kind == nkAddr:
       # addr(x[]) can't be proven, but addr(x) can:
       if not containsNode(n, {nkDerefExpr, nkHiddenDeref}): return
-    elif n.kind == nkSym and n.sym.kind in RoutineKinds:
+    elif n.kind == nkSym and n.sym.kind in routineKinds:
       # 'p' is not nil obviously:
       return
     case impliesNotNil(tracked.guards, n)
@@ -319,7 +319,7 @@ proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
 proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
   let op = n.typ
   if op != nil and op.kind == tyProc and n.kind != nkNilLit:
-    InternalAssert op.n.sons[0].kind == nkEffectList
+    internalAssert op.n.sons[0].kind == nkEffectList
     var effectList = op.n.sons[0]
     let s = n.skipConv
     if s.kind == nkSym and s.sym.kind in routineKinds:
@@ -568,13 +568,13 @@ proc checkMethodEffects*(disp, branch: PSym) =
 
 proc setEffectsForProcType*(t: PType, n: PNode) =
   var effects = t.n.sons[0]
-  InternalAssert t.kind == tyProc and effects.kind == nkEffectList
+  internalAssert t.kind == tyProc and effects.kind == nkEffectList
 
   let
     raisesSpec = effectSpec(n, wRaises)
     tagsSpec = effectSpec(n, wTags)
   if not isNil(raisesSpec) or not isNil(tagsSpec):
-    InternalAssert effects.len == 0
+    internalAssert effects.len == 0
     newSeq(effects.sons, effectListLen)
     if not isNil(raisesSpec):
       effects.sons[exceptionEffects] = raisesSpec
@@ -583,7 +583,7 @@ proc setEffectsForProcType*(t: PType, n: PNode) =
 
 proc trackProc*(s: PSym, body: PNode) =
   var effects = s.typ.n.sons[0]
-  InternalAssert effects.kind == nkEffectList
+  internalAssert effects.kind == nkEffectList
   # effects already computed?
   if sfForward in s.flags: return
   if effects.len == effectListLen: return

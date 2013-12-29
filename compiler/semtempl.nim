@@ -36,7 +36,7 @@ proc symBinding(n: PNode): TSymBinding =
     var key = if it.kind == nkExprColonExpr: it.sons[0] else: it
     if key.kind == nkIdent:
       case whichKeyword(key.ident)
-      of wGenSym: return spGenSym
+      of wGensym: return spGenSym
       of wInject: return spInject
       else: nil
 
@@ -435,7 +435,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     gp = newNodeI(nkGenericParams, n.info)
   # process parameters:
   if n.sons[paramsPos].kind != nkEmpty:
-    semParamList(c, n.sons[ParamsPos], gp, s)
+    semParamList(c, n.sons[paramsPos], gp, s)
     if sonsLen(gp) > 0:
       if n.sons[genericParamsPos].kind == nkEmpty:
         # we have a list of implicit type parameters:
