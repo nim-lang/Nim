@@ -561,13 +561,13 @@ elif not defined(useNimRtl):
     readIdx = 0
     writeIdx = 1
 
-  proc addCmdArgs(command: string, args: openarray[string]): string =
+  proc addCmdArgs(command: string, args: openArray[string]): string =
     result = quoteShell(command)
     for i in 0 .. high(args):
       add(result, " ")
       add(result, quoteShell(args[i]))
 
-  proc toCStringArray(b, a: openarray[string]): cstringArray =
+  proc toCStringArray(b, a: openArray[string]): cstringArray =
     result = cast[cstringArray](alloc0((a.len + b.len + 1) * sizeof(cstring)))
     for i in 0..high(b):
       result[i] = cast[cstring](alloc(b[i].len+1))
@@ -576,7 +576,7 @@ elif not defined(useNimRtl):
       result[i+b.len] = cast[cstring](alloc(a[i].len+1))
       copyMem(result[i+b.len], cstring(a[i]), a[i].len+1)
 
-  proc ToCStringArray(t: PStringTable): cstringArray =
+  proc toCStringArray(t: PStringTable): cstringArray =
     result = cast[cstringArray](alloc0((t.len + 1) * sizeof(cstring)))
     var i = 0
     for key, val in pairs(t):
@@ -585,7 +585,7 @@ elif not defined(useNimRtl):
       copyMem(result[i], addr(x[0]), x.len+1)
       inc(i)
 
-  proc EnvToCStringArray(): cstringArray =
+  proc envToCStringArray(): cstringArray =
     var counter = 0
     for key, val in envPairs(): inc counter
     result = cast[cstringArray](alloc0((counter + 1) * sizeof(cstring)))
@@ -598,16 +598,16 @@ elif not defined(useNimRtl):
     
   proc startProcess(command: string,
                  workingDir: string = "",
-                 args: openarray[string] = [],
+                 args: openArray[string] = [],
                  env: PStringTable = nil,
                  options: set[TProcessOption] = {poStdErrToStdOut}): PProcess =
     var
-      p_stdin, p_stdout, p_stderr: array [0..1, cint]
+      pStdin, pStdout, pStderr: array [0..1, cint]
     new(result)
     result.exitCode = -3 # for ``waitForExit``
     if poParentStreams notin options:
-      if pipe(p_stdin) != 0'i32 or pipe(p_stdout) != 0'i32 or
-         pipe(p_stderr) != 0'i32:
+      if pipe(pStdin) != 0'i32 or pipe(pStdout) != 0'i32 or
+         pipe(pStderr) != 0'i32:
         osError(osLastError())
     
     var pid: TPid
@@ -631,17 +631,17 @@ elif not defined(useNimRtl):
                                           POSIX_SPAWN_SETPGROUP)
 
       if poParentStreams notin options:
-        chck posix_spawn_file_actions_addclose(fops, p_stdin[writeIdx])
-        chck posix_spawn_file_actions_adddup2(fops, p_stdin[readIdx], readIdx)
-        chck posix_spawn_file_actions_addclose(fops, p_stdout[readIdx])
-        chck posix_spawn_file_actions_adddup2(fops, p_stdout[writeIdx], writeIdx)
-        chck posix_spawn_file_actions_addclose(fops, p_stderr[readIdx])
+        chck posix_spawn_file_actions_addclose(fops, pStdin[writeIdx])
+        chck posix_spawn_file_actions_adddup2(fops, pStdin[readIdx], readIdx)
+        chck posix_spawn_file_actions_addclose(fops, pStdout[readIdx])
+        chck posix_spawn_file_actions_adddup2(fops, pStdout[writeIdx], writeIdx)
+        chck posix_spawn_file_actions_addclose(fops, pStderr[readIdx])
         if poStdErrToStdOut in options:
-          chck posix_spawn_file_actions_adddup2(fops, p_stdout[writeIdx], 2)
+          chck posix_spawn_file_actions_adddup2(fops, pStdout[writeIdx], 2)
         else:
-          chck posix_spawn_file_actions_adddup2(fops, p_stderr[writeIdx], 2)
+          chck posix_spawn_file_actions_adddup2(fops, pStderr[writeIdx], 2)
       
-      var e = if env == nil: EnvToCStringArray() else: ToCStringArray(env)
+      var e = if env == nil: envToCStringArray() else: toCStringArray(env)
       var a: cstringArray
       var res: cint
       if workingDir.len > 0: os.setCurrentDir(workingDir)
@@ -709,16 +709,16 @@ elif not defined(useNimRtl):
       else:
         result.errHandle = 2
     else:
-      result.inHandle = p_stdin[writeIdx]
-      result.outHandle = p_stdout[readIdx]
+      result.inHandle = pStdin[writeIdx]
+      result.outHandle = pStdout[readIdx]
       if poStdErrToStdOut in options:
         result.errHandle = result.outHandle
-        discard close(p_stderr[readIdx])
+        discard close(pStderr[readIdx])
       else:
-        result.errHandle = p_stderr[readIdx]
-      discard close(p_stderr[writeIdx])
-      discard close(p_stdin[readIdx])
-      discard close(p_stdout[writeIdx])
+        result.errHandle = pStderr[readIdx]
+      discard close(pStderr[writeIdx])
+      discard close(pStdin[readIdx])
+      discard close(pStdout[writeIdx])
 
   proc close(p: PProcess) =
     if p.inStream != nil: close(p.inStream)
@@ -735,7 +735,7 @@ elif not defined(useNimRtl):
     if kill(-p.id, SIGCONT) != 0'i32: osError(osLastError())
 
   proc running(p: PProcess): bool =
-    var ret = waitPid(p.id, p.exitCode, WNOHANG)
+    var ret = waitpid(p.id, p.exitCode, WNOHANG)
     if ret == 0: return true # Can't establish status. Assume running.
     result = ret == int(p.id)
 
@@ -751,14 +751,14 @@ elif not defined(useNimRtl):
     # ``running`` probably set ``p.exitCode`` for us. Since ``p.exitCode`` is
     # initialized with -3, wrong success exit codes are prevented.
     if p.exitCode != -3: return p.exitCode
-    if waitPid(p.id, p.exitCode, 0) < 0:
+    if waitpid(p.id, p.exitCode, 0) < 0:
       p.exitCode = -3
       osError(osLastError())
     result = int(p.exitCode) shr 8
 
   proc peekExitCode(p: PProcess): int =
     if p.exitCode != -3: return p.exitCode
-    var ret = waitPid(p.id, p.exitCode, WNOHANG)
+    var ret = waitpid(p.id, p.exitCode, WNOHANG)
     var b = ret == int(p.id)
     if b: result = -1
     if p.exitCode == -3: result = -1
@@ -808,7 +808,7 @@ elif not defined(useNimRtl):
     setLen(s, L)
 
   proc select(readfds: var seq[PProcess], timeout = 500): int = 
-    var tv: TTimeVal
+    var tv: Ttimeval
     tv.tv_sec = 0
     tv.tv_usec = timeout * 1000
     
