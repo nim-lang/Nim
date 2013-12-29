@@ -591,6 +591,10 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
 
 let typedescId = getIdent"typedesc"
 
+template shouldHaveMeta(t) =
+  InternalAssert tfHasMeta in result.lastSon.flags
+  # result.lastSon.flags.incl tfHasMeta
+
 proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
                    paramType: PType, paramName: string,
                    info: TLineInfo, anon = false): PType =
@@ -615,7 +619,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     s.position = genericParams.len
     genericParams.addSon(newSymNode(s))
     result = typeClass
-  
+        
   # XXX: There are codegen errors if this is turned into a nested proc
   template liftingWalk(typ: PType, anonFlag = false): expr =
     liftParamType(c, procKind, genericParams, typ, paramName, info, anonFlag)
@@ -674,24 +678,22 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       result.rawAddSon(copyType(paramType.sons[i], getCurrOwner(), true))
     result = instGenericContainer(c, paramType.sym.info, result,
                                   allowMetaTypes = true)
-    result.lastSon.flags.incl tfHasMeta
+    result.lastSon.shouldHaveMeta
     result = newTypeWithSons(c, tyCompositeTypeClass, @[paramType, result])
     result = addImplicitGeneric(result)
   
   of tyGenericInst:
-    # XXX: It should be possible to set tfHasMeta in semtypinst, when the
-    # instance was generated
     for i in 1 .. (paramType.sons.len - 2):
       var lifted = liftingWalk(paramType.sons[i])
       if lifted != nil:
         paramType.sons[i] = lifted
         result = paramType
-        paramType.lastSon.flags.incl tfHasMeta
+        result.lastSon.shouldHaveMeta
 
     let liftBody = liftingWalk(paramType.lastSon)
     if liftBody != nil:
       result = liftBody
-      result.flags.incl tfHasMeta
+      result.shouldHaveMeta
     
   of tyTypeClass, tyBuiltInTypeClass, tyAnd, tyOr, tyNot:
     result = addImplicitGeneric(copyType(paramType, getCurrOwner(), true))
@@ -884,7 +886,10 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
         when oUseLateInstantiation:
           result = lateInstantiateGeneric(c, result, n.info)
         else:
-          result = instGenericContainer(c, n, result)
+          result = instGenericContainer(c, n.info, result,
+                                        allowMetaTypes = not isConcrete)
+          if not isConcrete and result.kind == tyGenericInst:
+            result.lastSon.shouldHaveMeta
 
 proc semTypeExpr(c: PContext, n: PNode): PType =
   var n = semExprWithType(c, n, {efDetermineType})

@@ -217,23 +217,21 @@ proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
 proc makeAndType*(c: PContext, t1, t2: PType): PType =
   result = newTypeS(tyAnd, c)
   result.sons = @[t1, t2]
-  result.flags.incl tfHasMeta
-  if tfHasStatic in t1.flags or tfHasStatic in t2.flags:
-    result.flags.incl tfHasStatic
+  propagateToOwner(result, t1)
+  propagateToOwner(result, t2)
 
 proc makeOrType*(c: PContext, t1, t2: PType): PType =
   result = newTypeS(tyOr, c)
   result.sons = @[t1, t2]
-  result.flags.incl tfHasMeta
-  if tfHasStatic in t1.flags or tfHasStatic in t2.flags:
-    result.flags.incl tfHasStatic
+  propagateToOwner(result, t1)
+  propagateToOwner(result, t2)
 
 proc makeNotType*(c: PContext, t1: PType): PType =
   result = newTypeS(tyNot, c)
   result.sons = @[t1]
-  result.flags.incl tfHasMeta
+  propagateToOwner(result, t1)
 
-proc newTypeS(kind: TTypeKind, c: PContext): PType = 
+proc newTypeS(kind: TTypeKind, c: PContext): PType =
   result = newType(kind, getCurrOwner())
 
 proc newTypeWithSons*(c: PContext, kind: TTypeKind,

@@ -135,7 +135,7 @@ proc ReplaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
 proc lookupTypeVar(cl: TReplTypeVars, t: PType): PType = 
   result = PType(idTableGet(cl.typeMap, t))
   if result == nil:
-    if cl.allowMetaTypes: return
+    if cl.allowMetaTypes or tfRetType in t.flags: return
     LocalError(t.sym.info, errCannotInstantiateX, typeToString(t))
     result = errorType(cl.c)
   elif result.kind == tyGenericParam and not cl.allowMetaTypes:
@@ -184,7 +184,7 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
     # if one of the params is not concrete, we cannot do anything
     # but we already raised an error!
     rawAddSon(result, header.sons[i])
-  
+ 
   var newbody = ReplaceTypeVarsT(cl, lastSon(body))
   newbody.flags = newbody.flags + t.flags + body.flags
   result.flags = result.flags + newbody.flags
@@ -205,20 +205,29 @@ proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
     return if s != nil: s else: t
 
   case t.kind
-  of tyTypeClass, tyBuiltInTypeClass: nil
-  of tyGenericParam, tyCompositeTypeClass:
-    result = lookupTypeVar(cl, t)
-    if result == nil: return t
-    if result.kind == tyGenericInvokation:
-      result = handleGenericInvokation(cl, result)
-  of tyGenericInvokation: 
+  of tyGenericParam, tyTypeClasses:
+    let lookup = lookupTypeVar(cl, t)
+    if lookup != nil:
+      result = lookup
+      if result.kind == tyGenericInvokation:
+        result = handleGenericInvokation(cl, result)
+  of tyGenericInvokation:
     result = handleGenericInvokation(cl, t)
   of tyGenericBody:
-    InternalError(cl.info, "ReplaceTypeVarsT: tyGenericBody")
+    InternalError(cl.info, "ReplaceTypeVarsT: tyGenericBody" )
     result = ReplaceTypeVarsT(cl, lastSon(t))
   of tyInt:
     result = skipIntLit(t)
     # XXX now there are also float literals
+  of tyTypeDesc:
+    let lookup = PType(idTableGet(cl.typeMap, t)) # lookupTypeVar(cl, t)
+    if lookup != nil:
+      result = lookup
+      if tfUnresolved in t.flags: result = result.base
+  of tyGenericInst:
+    result = copyType(t, t.owner, true)
+    for i in 1 .. <result.sonsLen:
+      result.sons[i] = ReplaceTypeVarsT(cl, result.sons[i])
   else:
     if t.kind == tyArray:
       let idxt = t.sons[0]
@@ -238,15 +247,18 @@ proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
       if result.kind == tyProc and result.sons[0] != nil:
         if result.sons[0].kind == tyEmpty:
           result.sons[0] = nil
-  
-proc generateTypeInstance*(p: PContext, pt: TIdTable, arg: PNode, 
-                           t: PType): PType = 
+
+proc generateTypeInstance*(p: PContext, pt: TIdTable, info: TLineInfo,
+                           t: PType): PType =
   var cl: TReplTypeVars
   InitIdTable(cl.symMap)
   copyIdTable(cl.typeMap, pt)
-  cl.info = arg.info
+  cl.info = info
   cl.c = p
-  pushInfoContext(arg.info)
+  pushInfoContext(info)
   result = ReplaceTypeVarsT(cl, t)
   popInfoContext()
 
+template generateTypeInstance*(p: PContext, pt: TIdTable, arg: PNode,
+                               t: PType): expr =
+  generateTypeInstance(p, pt, arg.info, t)

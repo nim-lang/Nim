@@ -418,7 +418,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   if a.kind == tyGenericInst and
       skipTypes(f, {tyVar}).kind notin {
         tyGenericBody, tyGenericInvokation,
-        tyGenericParam} + tyTypeClasses:
+        tyGenericInst, tyGenericParam} + tyTypeClasses:
     return typeRel(c, f, lastSon(a))
 
   template bindingRet(res) =
@@ -649,7 +649,14 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     if a.kind == tyEmpty: result = isEqual
 
   of tyGenericInst:
-    result = typeRel(c, lastSon(f), a)
+    if a.kind == tyGenericInst:
+      if a.base != f.base: return isNone
+      for i in 1 .. f.sonsLen-2:
+        result = typeRel(c, f.sons[i], a.sons[i])
+        if result == isNone: return
+      result = isGeneric
+    else:
+      result = typeRel(c, lastSon(f), a)
 
   of tyGenericBody:
     if a.kind == tyGenericInst and a.sons[0] == f:
@@ -937,9 +944,9 @@ proc ParamTypesMatchAux(m: var TCandidate, f, argType: PType,
   var
     fMaybeStatic = f.skipTypes({tyDistinct})
     arg = argSemantized
-    c = m.c
     argType = argType
-   
+    c = m.c
+
   if tfHasStatic in fMaybeStatic.flags:
     # XXX: When implicit statics are the default
     # this will be done earlier - we just have to

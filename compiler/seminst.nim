@@ -310,7 +310,8 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   var entry = TInstantiation.new
   entry.sym = result
   instantiateGenericParamList(c, n.sons[genericParamsPos], pt, entry[])
-  result.typ = fixupProcType(c, fn.typ, entry[])
+  # let t1 = fixupProcType(c, fn.typ, entry[])
+  result.typ = generateTypeInstance(c, pt, info, fn.typ)
   n.sons[genericParamsPos] = ast.emptyNode
   var oldPrc = GenericCacheGet(fn, entry[])
   if oldPrc == nil:
