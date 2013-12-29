@@ -905,6 +905,9 @@ template `{}=`*(n: PNode, i: int, s: PNode): stmt =
 var emptyNode* = newNode(nkEmpty)
 # There is a single empty node that is shared! Do not overwrite it!
 
+proc isMetaType*(t: PType): bool =
+  return t.kind in tyMetaTypes or tfHasMeta in t.flags
+
 proc linkTo*(t: PType, s: PSym): PType {.discardable.} =
   t.sym = s
   s.typ = t
