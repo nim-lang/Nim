@@ -254,11 +254,11 @@ proc completeGeneratedFilePath*(f: string, createSubDir: bool = true): string =
   result = joinPath(subdir, tail)
   #echo "completeGeneratedFilePath(", f, ") = ", result
 
-iterator iterSearchPath*(SearchPaths: TLinkedList): string = 
-  var it = PStrEntry(SearchPaths.head)
+iterator iterSearchPath*(searchPaths: TLinkedList): string = 
+  var it = PStrEntry(searchPaths.head)
   while it != nil:
     yield it.data
-    it = PStrEntry(it.Next)
+    it = PStrEntry(it.next)
 
 proc rawFindFile(f: string): string =
   for it in iterSearchPath(searchPaths):
@@ -274,7 +274,7 @@ proc rawFindFile2(f: string): string =
     if existsFile(result):
       bringToFront(lazyPaths, it)
       return result.canonicalizePath
-    it = PStrEntry(it.Next)
+    it = PStrEntry(it.next)
   result = ""
 
 proc findFile*(f: string): string {.procvar.} = 

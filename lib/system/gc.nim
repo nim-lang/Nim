@@ -132,9 +132,9 @@ when BitsPerPage mod (sizeof(int)*8) != 0:
 template color(c): expr = c.refCount and colorMask
 template setColor(c, col) =
   when col == rcBlack:
-    c.refcount = c.refCount and not colorMask
+    c.refcount = c.refcount and not colorMask
   else:
-    c.refcount = c.refCount and not colorMask or col
+    c.refcount = c.refcount and not colorMask or col
 
 proc writeCell(msg: cstring, c: PCell) =
   var kind = -1
@@ -211,7 +211,7 @@ proc decRef(c: PCell) {.inline.} =
 
 proc incRef(c: PCell) {.inline.} = 
   gcAssert(isAllocatedPtr(gch.region, c), "incRef: interiorPtr")
-  c.refcount = c.refCount +% rcIncrement
+  c.refcount = c.refcount +% rcIncrement
   # and not colorMask
   #writeCell("incRef", c)
   if canbeCycleRoot(c):
@@ -582,7 +582,7 @@ proc markRoots(gch: var TGcHeap) =
   for s in elements(gch.cycleRoots):
     #writeCell("markRoot", s)
     inc tabSize
-    if s.color == rcPurple and s.refCount >=% rcIncrement:
+    if s.color == rcPurple and s.refcount >=% rcIncrement:
       markGray(s)
     else:
       excl(gch.cycleRoots, s)

@@ -15,7 +15,7 @@ import
   magicsys, parser, nversion, nimsets, semfold, importer,
   procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
   semthreads, intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
-  evaltempl, patterns, parampatterns, sempass2
+  evaltempl, patterns, parampatterns, sempass2, pretty
 
 # implementation
 
@@ -47,7 +47,7 @@ proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode
 
 proc typeMismatch(n: PNode, formal, actual: PType) = 
   if formal.kind != tyError and actual.kind != tyError: 
-    localError(n.Info, errGenerated, msgKindToString(errTypeMismatch) &
+    localError(n.info, errGenerated, msgKindToString(errTypeMismatch) &
         typeToString(actual) & ") " &
         `%`(msgKindToString(errButExpectedX), [typeToString(formal)]))
 
@@ -291,10 +291,10 @@ proc myOpen(module: PSym): PPassContext =
   c.importTable = openScope(c)
   c.importTable.addSym(module) # a module knows itself
   if sfSystemModule in module.flags: 
-    magicsys.SystemModule = module # set global variable!
+    magicsys.systemModule = module # set global variable!
   else: 
-    c.importTable.addSym magicsys.SystemModule # import the "System" identifier
-    importAllSymbols(c, magicsys.SystemModule)
+    c.importTable.addSym magicsys.systemModule # import the "System" identifier
+    importAllSymbols(c, magicsys.systemModule)
   c.topLevelScope = openScope(c)
   result = c
 
@@ -332,12 +332,12 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
     result = semStmtAndGenerateGenerics(c, n)
   else:
     let oldContextLen = msgs.getInfoContextLen()
-    let oldInGenericInst = c.InGenericInst
+    let oldInGenericInst = c.inGenericInst
     try:
       result = semStmtAndGenerateGenerics(c, n)
     except ERecoverableError, ESuggestDone:
       recoverContext(c)
-      c.InGenericInst = oldInGenericInst
+      c.inGenericInst = oldInGenericInst
       msgs.setInfoContextLen(oldContextLen)
       if getCurrentException() of ESuggestDone: result = nil
       else: result = ast.emptyNode
@@ -346,7 +346,7 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
 proc checkThreads(c: PContext) =
   if not needsGlobalAnalysis(): return
   for i in 0 .. c.threadEntries.len-1:
-    semthreads.AnalyseThreadProc(c.threadEntries[i])
+    semthreads.analyseThreadProc(c.threadEntries[i])
   
 proc myClose(context: PPassContext, n: PNode): PNode = 
   var c = PContext(context)

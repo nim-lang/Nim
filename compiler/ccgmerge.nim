@@ -108,7 +108,7 @@ proc genMergeInfo*(m: BModule): PRope =
   s.add("labels:")
   encodeVInt(m.labels, s)
   s.add(" hasframe:")
-  encodeVInt(ord(m.FrameDeclared), s)
+  encodeVInt(ord(m.frameDeclared), s)
   s.add(tnl)
   s.add("*/")
   result = s.toRope
@@ -119,8 +119,8 @@ proc skipWhite(L: var TBaseLexer) =
   var pos = L.bufpos
   while true:
     case ^pos
-    of CR: pos = nimlexbase.HandleCR(L, pos)
-    of LF: pos = nimlexbase.HandleLF(L, pos)
+    of CR: pos = nimlexbase.handleCR(L, pos)
+    of LF: pos = nimlexbase.handleLF(L, pos)
     of ' ': inc pos
     else: break
   L.bufpos = pos
@@ -129,8 +129,8 @@ proc skipUntilCmd(L: var TBaseLexer) =
   var pos = L.bufpos
   while true:
     case ^pos
-    of CR: pos = nimlexbase.HandleCR(L, pos)
-    of LF: pos = nimlexbase.HandleLF(L, pos)
+    of CR: pos = nimlexbase.handleCR(L, pos)
+    of LF: pos = nimlexbase.handleLF(L, pos)
     of '\0': break
     of '/': 
       if ^(pos+1) == '*' and ^(pos+2) == '\t':
@@ -179,11 +179,11 @@ proc readVerbatimSection(L: var TBaseLexer): PRope =
   while true:
     case buf[pos]
     of CR:
-      pos = nimlexbase.HandleCR(L, pos)
+      pos = nimlexbase.handleCR(L, pos)
       buf = L.buf
       r.add(tnl)
     of LF:
-      pos = nimlexbase.HandleLF(L, pos)
+      pos = nimlexbase.handleLF(L, pos)
       buf = L.buf
       r.add(tnl)
     of '\0':
@@ -249,7 +249,7 @@ proc processMergeInfo(L: var TBaseLexer, m: BModule) =
     of "declared":  readIntSet(L, m.declaredThings)
     of "typeInfo":  readIntSet(L, m.typeInfoMarker)
     of "labels":    m.labels = decodeVInt(L.buf, L.bufpos)
-    of "hasframe":  m.FrameDeclared = decodeVInt(L.buf, L.bufpos) != 0
+    of "hasframe":  m.frameDeclared = decodeVInt(L.buf, L.bufpos) != 0
     else: internalError("ccgmerge: unkown key: " & k)
 
 when not defined(nimhygiene):

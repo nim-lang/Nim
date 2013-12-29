@@ -164,7 +164,7 @@ proc importModule*(s: PSym, fileIdx: int32): PSym {.procvar.} =
   result = compileModule(fileIdx, {})
   if optCaasEnabled in gGlobalOptions: addDep(s, fileIdx)
   if sfSystemModule in result.flags:
-    localError(result.info, errAttemptToRedefine, result.Name.s)
+    localError(result.info, errAttemptToRedefine, result.name.s)
 
 proc includeModule*(s: PSym, fileIdx: int32): PNode {.procvar.} =
   result = syntaxes.parseFile(fileIdx)
@@ -180,7 +180,7 @@ proc `==^`(a, b: string): bool =
     result = false
 
 proc compileSystemModule* =
-  if magicsys.SystemModule == nil:
+  if magicsys.systemModule == nil:
     systemFileIdx = fileInfoIdx(options.libpath/"system.nim")
     discard compileModule(systemFileIdx, {sfSystemModule})
 

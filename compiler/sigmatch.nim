@@ -354,9 +354,9 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
       return isNone
     elif f.flags * {tfIterator} != a.flags * {tfIterator}:
       return isNone
-    elif f.callconv != a.callconv:
+    elif f.callConv != a.callConv:
       # valid to pass a 'nimcall' thingie to 'closure':
-      if f.callconv == ccClosure and a.callconv == ccDefault:
+      if f.callConv == ccClosure and a.callConv == ccDefault:
         result = isConvertible
       else:
         return isNone
@@ -509,7 +509,7 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
       elif lengthOrd(fRange) != lengthOrd(a): result = isNone
     else: nil
   of tyOpenArray, tyVarargs:
-    case a.Kind
+    case a.kind
     of tyOpenArray, tyVarargs:
       result = typeRel(c, base(f), base(a))
       if result < isGeneric: result = isNone
@@ -530,7 +530,7 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
         result = isConvertible
     else: nil
   of tySequence:
-    case a.Kind
+    case a.kind
     of tySequence:
       if (f.sons[0].kind != tyGenericParam) and (a.sons[0].kind == tyEmpty):
         result = isSubtype
@@ -620,7 +620,7 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
     else: nil
   of tyCString:
     # conversion from string to cstring is automatic:
-    case a.Kind
+    case a.kind
     of tyCString:
       if tfNotNil in f.flags and tfNotNil notin a.flags:
         result = isNilConversion
@@ -849,10 +849,10 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
 
   # pushInfoContext(arg.info)
   openScope(c)
-  inc c.InTypeClass
+  inc c.inTypeClass
 
   finally:
-    dec c.InTypeClass
+    dec c.inTypeClass
     closeScope(c)
 
   for param in f.n[0]:
@@ -894,7 +894,7 @@ proc paramTypesMatchAux(c: PContext, m: var TCandidate, f, argType: PType,
     arg = argSemantized
 
   let
-    a = if c.InTypeClass > 0: argType.skipTypes({tyTypeDesc})
+    a = if c.inTypeClass > 0: argType.skipTypes({tyTypeDesc})
         else: argType
     fMaybeExpr = f.skipTypes({tyDistinct})
 

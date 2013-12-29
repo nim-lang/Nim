@@ -46,13 +46,13 @@ proc parseRst(text, filename: string,
               line, column: int, hasToc: var bool,
               rstOptions: TRstParseOptions): PRstNode =
   result = rstParse(text, filename, line, column, hasToc, rstOptions,
-                    options.FindFile, compilerMsgHandler)
+                    options.findFile, compilerMsgHandler)
 
 proc newDocumentor*(filename: string, config: PStringTable): PDoc =
   new(result)
   initRstGenerator(result[], (if gCmd != cmdRst2tex: outHtml else: outLatex),
                    options.gConfigVars, filename, {roSupportRawDirective},
-                   options.FindFile, compilerMsgHandler)
+                   options.findFile, compilerMsgHandler)
   result.id = 100
 
 proc dispA(dest: var PRope, xml, tex: string, args: openArray[PRope]) =

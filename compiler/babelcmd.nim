@@ -13,7 +13,7 @@ import parseutils, strutils, strtabs, os, options, msgs, lists
 
 proc addPath*(path: string, info: TLineInfo) = 
   if not contains(options.searchPaths, path): 
-    lists.PrependStr(options.searchPaths, path)
+    lists.prependStr(options.searchPaths, path)
 
 proc versionSplitPos(s: string): int =
   result = s.len-2
@@ -61,7 +61,7 @@ iterator chosen(packages: PStringTable): string =
 proc addBabelPath(p: string, info: TLineInfo) =
   if not contains(options.searchPaths, p):
     if gVerbosity >= 1: message(info, hintPath, p)
-    lists.PrependStr(options.lazyPaths, p)
+    lists.prependStr(options.lazyPaths, p)
 
 proc addPathWithNimFiles(p: string, info: TLineInfo) =
   proc hasNimFile(dir: string): bool =

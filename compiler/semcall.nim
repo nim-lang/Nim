@@ -93,7 +93,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: seq[string]) =
   if candidates != "":
     add(result, "\n" & msgKindToString(errButExpected) & "\n" & candidates)
 
-  localError(n.Info, errGenerated, result)
+  localError(n.info, errGenerated, result)
 
 proc gatherUsedSyms(c: PContext, usedSyms: var seq[PNode]) =
   for scope in walkScopes(c.currentScope):
@@ -169,7 +169,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
     #writeMatches(alt)
     if c.inCompilesContext > 0: 
       # quick error message for performance of 'compiles' built-in:
-      globalError(n.Info, errGenerated, "ambiguous call")
+      globalError(n.info, errGenerated, "ambiguous call")
     elif gErrorCounter == 0:
       # don't cascade errors
       var args = "("
@@ -178,7 +178,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         add(args, typeToString(n.sons[i].typ))
       add(args, ")")
 
-      localError(n.Info, errGenerated, msgKindToString(errAmbiguousCallXYZ) % [
+      localError(n.info, errGenerated, msgKindToString(errAmbiguousCallXYZ) % [
         getProcHeader(result.calleeSym), getProcHeader(alt.calleeSym),
         args])
 

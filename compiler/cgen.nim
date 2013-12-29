@@ -75,12 +75,12 @@ proc isSimpleConst(typ: PType): bool =
 proc useStringh(m: BModule) =
   if not m.includesStringh:
     m.includesStringh = true
-    discard lists.IncludeStr(m.headerFiles, "<string.h>")
+    discard lists.includeStr(m.headerFiles, "<string.h>")
 
 proc useHeader(m: BModule, sym: PSym) = 
-  if lfHeader in sym.loc.Flags: 
+  if lfHeader in sym.loc.flags: 
     assert(sym.annex != nil)
-    discard lists.IncludeStr(m.headerFiles, getStr(sym.annex.path))
+    discard lists.includeStr(m.headerFiles, getStr(sym.annex.path))
 
 proc cgsym(m: BModule, name: string): PRope
 
@@ -279,11 +279,11 @@ proc genLineDir(p: BProc, t: PNode) =
   if optEmbedOrigSrc in gGlobalOptions:
     app(p.s(cpsStmts), con(~"//", t.info.sourceLine, rnl))
   genCLineDir(p.s(cpsStmts), t.info.toFullPath, line)
-  if ({optStackTrace, optEndb} * p.Options == {optStackTrace, optEndb}) and
+  if ({optStackTrace, optEndb} * p.options == {optStackTrace, optEndb}) and
       (p.prc == nil or sfPure notin p.prc.flags):
     linefmt(p, cpsStmts, "#endb($1, $2);$n",
             line.toRope, makeCString(toFilename(t.info)))
-  elif ({optLineTrace, optStackTrace} * p.Options ==
+  elif ({optLineTrace, optStackTrace} * p.options ==
       {optLineTrace, optStackTrace}) and
       (p.prc == nil or sfPure notin p.prc.flags):
     linefmt(p, cpsStmts, "nimln($1, $2);$n",
@@ -724,7 +724,7 @@ proc generateHeaders(m: BModule) =
       appf(m.s[cfsHeaders], "$N#include \"$1\"$N", [toRope(it.data)])
     else: 
       appf(m.s[cfsHeaders], "$N#include $1$N", [toRope(it.data)])
-    it = PStrEntry(it.Next)
+    it = PStrEntry(it.next)
 
 proc retIsNotVoid(s: PSym): bool = 
   result = (s.typ.sons[0] != nil) and not isInvalidReturnType(s.typ.sons[0])
@@ -784,7 +784,7 @@ proc genProcAux(m: BModule, prc: PSym) =
   genStmts(p, prc.getBody) # modifies p.locals, p.init, etc.
   var generatedProc: PRope
   if sfPure in prc.flags:
-    if hasNakedDeclspec in extccomp.CC[extccomp.ccompiler].props:
+    if hasNakedDeclspec in extccomp.CC[extccomp.cCompiler].props:
       header = con("__declspec(naked) ", header)
     generatedProc = rfmt(nil, "$N$1 {$n$2$3$4}$N$N",
                          header, p.s(cpsLocals), p.s(cpsInit), p.s(cpsStmts))
@@ -811,8 +811,8 @@ proc genProcAux(m: BModule, prc: PSym) =
   
 proc genProcPrototype(m: BModule, sym: PSym) = 
   useHeader(m, sym)
-  if lfNoDecl in sym.loc.Flags: return 
-  if lfDynamicLib in sym.loc.Flags:
+  if lfNoDecl in sym.loc.flags: return 
+  if lfDynamicLib in sym.loc.flags:
     if getModule(sym).id != m.module.id and
         not containsOrIncl(m.declaredThings, sym.id): 
       app(m.s[cfsVars], rfmt(nil, "extern $1 $2;$n",
@@ -832,7 +832,7 @@ proc genProcNoForward(m: BModule, prc: PSym) =
     discard cgsym(m, prc.name.s)
     return  
   genProcPrototype(m, prc)
-  if lfNoDecl in prc.loc.Flags: nil
+  if lfNoDecl in prc.loc.flags: nil
   elif prc.typ.callConv == ccInline:
     # We add inline procs to the calling module to enable C based inlining.
     # This also means that a check with ``q.declaredThings`` is wrong, we need
@@ -854,7 +854,7 @@ proc requestConstImpl(p: BProc, sym: PSym) =
   useHeader(m, sym)
   if sym.loc.k == locNone:
     fillLoc(sym.loc, locData, sym.typ, mangleName(sym), OnUnknown)
-  if lfNoDecl in sym.loc.Flags: return
+  if lfNoDecl in sym.loc.flags: return
   # declare implementation:
   var q = findPendingModule(m, sym)
   if q != nil and not containsOrIncl(q.declaredThings, sym.id):
@@ -879,7 +879,7 @@ proc genProc(m: BModule, prc: PSym) =
   else:
     genProcNoForward(m, prc)
     if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc} and
-        generatedHeader != nil and lfNoDecl notin prc.loc.Flags:
+        generatedHeader != nil and lfNoDecl notin prc.loc.flags:
       genProcPrototype(generatedHeader, prc)
       if prc.typ.callConv == ccInline:
         if not containsOrIncl(generatedHeader.declaredThings, prc.id): 
@@ -889,7 +889,7 @@ proc genVarPrototypeAux(m: BModule, sym: PSym) =
   assert(sfGlobal in sym.flags)
   useHeader(m, sym)
   fillLoc(sym.loc, locGlobalVar, sym.typ, mangleName(sym), OnHeap)
-  if (lfNoDecl in sym.loc.Flags) or containsOrIncl(m.declaredThings, sym.id): 
+  if (lfNoDecl in sym.loc.flags) or containsOrIncl(m.declaredThings, sym.id): 
     return 
   if sym.owner.id != m.module.id: 
     # else we already have the symbol generated!
@@ -930,7 +930,7 @@ proc getCopyright(cfilenoext: string): PRope =
         "; Command for LLVM compiler:$n   $5$n", [toRope(VersionAsString), 
         toRope(platform.OS[targetOS].name), 
         toRope(platform.CPU[targetCPU].name), 
-        toRope(extccomp.CC[extccomp.ccompiler].name), 
+        toRope(extccomp.CC[extccomp.cCompiler].name), 
         toRope(getCompileCFileCmd(cfilenoext))])
 
 proc getFileHeader(cfilenoext: string): PRope = 
@@ -990,7 +990,7 @@ proc genMainProc(m: BModule) =
     else: 
       nimMain = WinNimDllMain
       otherMain = WinCDllMain
-    discard lists.IncludeStr(m.headerFiles, "<windows.h>")
+    discard lists.includeStr(m.headerFiles, "<windows.h>")
   elif optGenDynLib in gGlobalOptions:
     nimMain = PosixNimDllMain
     otherMain = PosixCDllMain
@@ -1053,11 +1053,11 @@ proc genInitCode(m: BModule) =
   app(prc, m.postInitProc.s(cpsLocals))
   app(prc, genSectionEnd(cpsLocals))
 
-  if optStackTrace in m.initProc.options and not m.FrameDeclared:
+  if optStackTrace in m.initProc.options and not m.frameDeclared:
     # BUT: the generated init code might depend on a current frame, so
     # declare it nevertheless:
-    m.FrameDeclared = true
-    if not m.PreventStackTrace:
+    m.frameDeclared = true
+    if not m.preventStackTrace:
       var procname = cstringLit(m.initProc, prc, m.module.name.s)
       app(prc, initFrame(m.initProc, procname, m.module.info.quotedFilename))
     else:
@@ -1074,7 +1074,7 @@ proc genInitCode(m: BModule) =
   app(prc, m.initProc.s(cpsStmts))
   app(prc, m.postInitProc.s(cpsStmts))
   app(prc, genSectionEnd(cpsStmts))
-  if optStackTrace in m.initProc.options and not m.PreventStackTrace:
+  if optStackTrace in m.initProc.options and not m.preventStackTrace:
     app(prc, deinitFrame(m.initProc))
   app(prc, deinitGCFrame(m.initProc))
   appf(prc, "}$N$N")
@@ -1148,7 +1148,7 @@ proc rawNewModule(module: PSym, filename: string): BModule =
   # no line tracing for the init sections of the system module so that we
   # don't generate a TFrame which can confuse the stack botton initialization:
   if sfSystemModule in module.flags:
-    result.PreventStackTrace = true
+    result.preventStackTrace = true
     excl(result.preInitProc.options, optStackTrace)
     excl(result.postInitProc.options, optStackTrace)
 
@@ -1171,7 +1171,7 @@ proc resetModule*(m: var BModule) =
   m.forwardedProcs = @[]
   m.typeNodesName = getTempName()
   m.nimTypesName = getTempName()
-  m.PreventStackTrace = sfSystemModule in m.module.flags
+  m.preventStackTrace = sfSystemModule in m.module.flags
   nullify m.s
   m.usesThreadVars = false
   m.typeNodes = 0
@@ -1275,7 +1275,7 @@ proc shouldRecompile(code: PRope, cfile, cfilenoext: string): bool =
   if optForceFullMake notin gGlobalOptions:
     var objFile = toObjFile(cfilenoext)
     if writeRopeIfNotEqual(code, cfile): return 
-    if existsFile(objFile) and os.FileNewer(objFile, cfile): result = false
+    if existsFile(objFile) and os.fileNewer(objFile, cfile): result = false
   else: 
     writeRope(code, cfile)
 

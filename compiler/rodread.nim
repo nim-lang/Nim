@@ -658,7 +658,7 @@ proc newRodReader(modfilename: string, crc: TCrc32,
                   readerIndex: int): PRodReader = 
   new(result)
   try:
-    result.memFile = memfiles.open(modfilename)
+    result.memfile = memfiles.open(modfilename)
   except EOS:
     return nil
   result.files = @[]
@@ -673,7 +673,7 @@ proc newRodReader(modfilename: string, crc: TCrc32,
   initIdTable(r.syms)
   # we terminate the file explicitely with ``\0``, so the cast to `cstring`
   # is safe:
-  r.s = cast[cstring](r.memFile.mem)
+  r.s = cast[cstring](r.memfile.mem)
   if startsWith(r.s, "NIM:"): 
     initIiTable(r.index.tab)
     initIiTable(r.imports.tab) # looks like a ROD file
@@ -736,7 +736,7 @@ proc getReader(moduleId: int): PRodReader =
   # problems:
   for i in 0 .. <gMods.len:
     result = gMods[i].rd
-    if result != nil and result.moduleId == moduleId: return result
+    if result != nil and result.moduleID == moduleId: return result
   return nil
 
 proc rrGetSym(r: PRodReader, id: int, info: TLineInfo): PSym = 
@@ -845,7 +845,7 @@ proc checkDep(fileIdx: int32): TReasonForRecompile =
     rawMessage(hintProcessing, reasonToFrmt[result] % filename)
   if result != rrNone or optForceFullMake in gGlobalOptions:
     # recompilation is necessary:
-    if r != nil: memfiles.close(r.memFile)
+    if r != nil: memfiles.close(r.memfile)
     r = nil
   gMods[fileIdx].rd = r
   gMods[fileIdx].reason = result  # now we know better

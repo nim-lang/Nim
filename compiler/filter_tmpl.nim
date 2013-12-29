@@ -27,7 +27,7 @@ type
     indent, emitPar: int
     x: string                # the current input line
     outp: PLLStream          # the ouput will be parsed by pnimsyn
-    subsChar, NimDirective: char
+    subsChar, nimDirective: char
     emit, conc, toStr: string
     curly, bracket, par: int
     pendingExprLine: bool
@@ -67,9 +67,9 @@ proc parseLine(p: var TTmplParser) =
     keyw: string
   j = 0
   while p.x[j] == ' ': inc(j)
-  if (p.x[0] == p.NimDirective) and (p.x[0 + 1] == '!'): 
+  if (p.x[0] == p.nimDirective) and (p.x[0 + 1] == '!'): 
     newLine(p)
-  elif (p.x[j] == p.NimDirective): 
+  elif (p.x[j] == p.nimDirective): 
     newLine(p)
     inc(j)
     while p.x[j] == ' ': inc(j)

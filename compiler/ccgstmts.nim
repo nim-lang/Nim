@@ -126,7 +126,7 @@ proc genGotoState(p: BProc, n: PNode) =
   var a: TLoc
   initLocExpr(p, n.sons[0], a)
   lineF(p, cpsStmts, "switch ($1) {$n", [rdLoc(a)])
-  p.BeforeRetNeeded = true
+  p.beforeRetNeeded = true
   lineF(p, cpsStmts, "case -1: goto BeforeRet;$n", [])
   for i in 0 .. lastOrd(n.sons[0].typ):
     lineF(p, cpsStmts, "case $1: goto STATE$1;$n", [toRope(i)])
@@ -588,7 +588,7 @@ proc genStringCase(p: BProc, t: PNode, d: var TLoc) =
 proc branchHasTooBigRange(b: PNode): bool = 
   for i in countup(0, sonsLen(b)-2): 
     # last son is block
-    if (b.sons[i].Kind == nkRange) and
+    if (b.sons[i].kind == nkRange) and
         b.sons[i].sons[1].intVal - b.sons[i].sons[0].intVal > RangeExpandLimit: 
       return true
 
@@ -706,7 +706,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   expr(p, t.sons[0], d)
   length = sonsLen(t)
   endBlock(p, ropecg(p.module, "} catch (NimException& $1) {$n", [exc]))
-  if optStackTrace in p.Options:
+  if optStackTrace in p.options:
     linefmt(p, cpsStmts, "#setFrame((TFrame*)&F);$n")
   inc p.inExceptBlock
   i = 1
@@ -779,7 +779,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
   #
   if not isEmptyType(t.typ) and d.k == locNone:
     getTemp(p, t.typ, d)
-  discard lists.IncludeStr(p.module.headerFiles, "<setjmp.h>")
+  discard lists.includeStr(p.module.headerFiles, "<setjmp.h>")
   genLineDir(p, t)
   var safePoint = getTempName()
   discard cgsym(p.module, "E_Base")
@@ -794,7 +794,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
   endBlock(p)
   startBlock(p, "else {$n")
   linefmt(p, cpsStmts, "#popSafePoint();$n")
-  if optStackTrace in p.Options:
+  if optStackTrace in p.options:
     linefmt(p, cpsStmts, "#setFrame((TFrame*)&F);$n")
   inc p.inExceptBlock
   var i = 1
@@ -833,7 +833,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
 proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): PRope =
   var res = ""
   for i in countup(0, sonsLen(t) - 1):
-    case t.sons[i].Kind
+    case t.sons[i].kind
     of nkStrLit..nkTripleStrLit:
       res.add(t.sons[i].strVal)
     of nkSym:
@@ -892,7 +892,7 @@ var
 
 proc genBreakPoint(p: BProc, t: PNode) = 
   var name: string
-  if optEndb in p.Options:
+  if optEndb in p.options:
     if t.kind == nkExprColonExpr: 
       assert(t.sons[1].kind in {nkStrLit..nkTripleStrLit})
       name = normalize(t.sons[1].strVal)
@@ -906,7 +906,7 @@ proc genBreakPoint(p: BProc, t: PNode) =
         makeCString(name)])
 
 proc genWatchpoint(p: BProc, n: PNode) =
-  if optEndb notin p.Options: return
+  if optEndb notin p.options: return
   var a: TLoc
   initLocExpr(p, n.sons[1], a)
   let typ = skipTypes(n.sons[1].typ, abstractVarRange)

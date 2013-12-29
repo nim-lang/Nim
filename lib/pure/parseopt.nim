@@ -37,7 +37,7 @@ type
                               ## or the argument, ``value`` is not "" if
                               ## the option was given a value
 
-when defined(os.ParamCount):
+when defined(os.paramCount):
   # we cannot provide this for NimRtl creation on Posix, because we can't 
   # access the command line arguments then!
 

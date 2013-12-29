@@ -226,7 +226,7 @@ proc replaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
       for i in countup(0, sonsLen(result) - 1):
         result.sons[i] = replaceTypeVarsT(cl, result.sons[i])
       result.n = replaceTypeVarsN(cl, result.n)
-      if result.Kind in GenericTypes:
+      if result.kind in GenericTypes:
         localError(cl.info, errCannotInstantiateX, typeToString(t, preferName))
       if result.kind == tyProc and result.sons[0] != nil:
         if result.sons[0].kind == tyEmpty:

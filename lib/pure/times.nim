@@ -345,11 +345,11 @@ when not defined(JS):
       monthday: int(tm.monthday),
       month: TMonth(tm.month),
       year: tm.year + 1900'i32,
-      weekday: weekDays[int(tm.weekDay)],
+      weekday: weekDays[int(tm.weekday)],
       yearday: int(tm.yearday),
-      isDST: tm.isDST > 0,
+      isDST: tm.isdst > 0,
       tzname: if local:
-          if tm.isDST > 0:
+          if tm.isdst > 0:
             getTzname().DST
           else:
             getTzname().nonDST
@@ -367,7 +367,7 @@ when not defined(JS):
     result.monthday = t.monthday
     result.month = ord(t.month)
     result.year = t.year - 1900
-    result.weekday = weekDays[t.weekDay]
+    result.weekday = weekDays[t.weekday]
     result.yearday = t.yearday
     result.isdst = if t.isDST: 1 else: 0
   
@@ -532,7 +532,7 @@ proc getDateStr*(): string {.rtl, extern: "nt$1", tags: [FTime].} =
   ## gets the current date as a string of the format ``YYYY-MM-DD``.
   var ti = getLocalTime(getTime())
   result = $ti.year & '-' & intToStr(ord(ti.month)+1, 2) &
-    '-' & intToStr(ti.monthDay, 2)
+    '-' & intToStr(ti.monthday, 2)
 
 proc getClockStr*(): string {.rtl, extern: "nt$1", tags: [FTime].} =
   ## gets the current clock time as a string of the format ``HH:MM:SS``.

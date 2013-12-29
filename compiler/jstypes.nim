@@ -119,7 +119,7 @@ proc genTypeInfo(p: PProc, typ: PType): PRope =
   var t = typ
   if t.kind == tyGenericInst: t = lastSon(t)
   result = ropef("NTI$1", [toRope(t.id)])
-  if containsOrIncl(p.g.TypeInfoGenerated, t.id): return 
+  if containsOrIncl(p.g.typeInfoGenerated, t.id): return 
   case t.kind
   of tyDistinct: 
     result = genTypeInfo(p, typ.sons[0])

@@ -35,13 +35,13 @@ proc searchForProc*(c: PContext, scope: PScope, fn: PSym): PSym =
   # in the symbol table. If the parameter lists are exactly
   # the same the sym in the symbol table is returned, else nil.
   var it: TIdentIter
-  result = initIdentIter(it, scope.symbols, fn.Name)
+  result = initIdentIter(it, scope.symbols, fn.name)
   if isGenericRoutine(fn):
     # we simply check the AST; this is imprecise but nearly the best what
     # can be done; this doesn't work either though as type constraints are
     # not kept in the AST ..
     while result != nil:
-      if result.Kind == fn.kind and isGenericRoutine(result):
+      if result.kind == fn.kind and isGenericRoutine(result):
         let genR = result.ast.sons[genericParamsPos]
         let genF = fn.ast.sons[genericParamsPos]
         if exprStructuralEquivalent(genR, genF) and
@@ -52,7 +52,7 @@ proc searchForProc*(c: PContext, scope: PScope, fn: PSym): PSym =
       result = nextIdentIter(it, scope.symbols)
   else:
     while result != nil:
-      if result.Kind == fn.kind and not isGenericRoutine(result):
+      if result.kind == fn.kind and not isGenericRoutine(result):
         case equalParams(result.typ.n, fn.typ.n)
         of paramsEqual:
           return

@@ -32,16 +32,16 @@ proc `!$`*(h: THash): THash {.inline.} =
   result = result xor (result shr 11)
   result = result +% result shl 15
 
-proc hashData*(Data: pointer, Size: int): THash = 
+proc hashData*(data: pointer, size: int): THash = 
   ## hashes an array of bytes of size `size`
   var h: THash = 0
   when defined(js):
     var p: cstring
     asm """`p` = `Data`;"""
   else:
-    var p = cast[cstring](Data)
+    var p = cast[cstring](data)
   var i = 0
-  var s = Size
+  var s = size
   while s > 0: 
     h = h !& ord(p[i])
     inc(i)

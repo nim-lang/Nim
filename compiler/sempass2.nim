@@ -367,7 +367,7 @@ proc trackCase(tracked: PEffects, n: PNode) =
     for i in oldState.. <tracked.init.len:
       addToIntersection(inter, tracked.init[i])
     
-  let exh = case skipTypes(n.sons[0].Typ, abstractVarRange-{tyTypeDesc}).Kind
+  let exh = case skipTypes(n.sons[0].typ, abstractVarRange-{tyTypeDesc}).kind
             of tyFloat..tyFloat128, tyString:
               lastSon(n).kind == nkElse
             else:

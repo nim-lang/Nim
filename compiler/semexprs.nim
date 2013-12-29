@@ -151,15 +151,15 @@ proc checkConvertible(castDest, src: PType): TConvStatus =
     return
   var d = skipTypes(castDest, abstractVar)
   var s = skipTypes(src, abstractVar-{tyTypeDesc})
-  while (d != nil) and (d.Kind in {tyPtr, tyRef}) and (d.Kind == s.Kind):
+  while (d != nil) and (d.kind in {tyPtr, tyRef}) and (d.kind == s.kind):
     d = base(d)
     s = base(s)
   if d == nil:
     result = convNotLegal
-  elif d.Kind == tyObject and s.Kind == tyObject:
+  elif d.kind == tyObject and s.kind == tyObject:
     result = checkConversionBetweenObjects(d, s)
-  elif (skipTypes(castDest, abstractVarRange).Kind in IntegralTypes) and
-      (skipTypes(src, abstractVarRange-{tyTypeDesc}).Kind in IntegralTypes):
+  elif (skipTypes(castDest, abstractVarRange).kind in IntegralTypes) and
+      (skipTypes(src, abstractVarRange-{tyTypeDesc}).kind in IntegralTypes):
     # accept conversion between integral types
   else:
     # we use d, s here to speed up that operation a bit:
@@ -228,9 +228,9 @@ proc semCast(c: PContext, n: PNode): PNode =
   result.typ = semTypeNode(c, n.sons[0], nil)
   addSon(result, copyTree(n.sons[0]))
   addSon(result, semExprWithType(c, n.sons[1]))
-  if not isCastable(result.typ, result.sons[1].Typ): 
+  if not isCastable(result.typ, result.sons[1].typ): 
     localError(result.info, errExprCannotBeCastedToX, 
-               typeToString(result.Typ))
+               typeToString(result.typ))
   
 proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode = 
   const 
@@ -240,7 +240,7 @@ proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
   else: 
     n.sons[1] = semExprWithType(c, n.sons[1], {efDetermineType})
     var typ = skipTypes(n.sons[1].typ, abstractVarRange)
-    case typ.Kind
+    case typ.kind
     of tySequence, tyString, tyOpenArray, tyVarargs: 
       n.typ = getSysType(tyInt)
     of tyArrayConstr, tyArray: 
@@ -711,7 +711,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if m.state != csMatch:
       if c.inCompilesContext > 0:
         # speed up error generation:
-        globalError(n.Info, errTypeMismatch, "")
+        globalError(n.info, errTypeMismatch, "")
         return emptyNode
       else:
         var hasErrorType = false
@@ -726,7 +726,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
         if not hasErrorType:
           add(msg, ")\n" & msgKindToString(errButExpected) & "\n" &
               typeToString(n.sons[0].typ))
-          localError(n.Info, errGenerated, msg)
+          localError(n.info, errGenerated, msg)
         return errorNode(c, n)
       result = nil
     else:
@@ -771,7 +771,7 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
     analyseIfAddressTakenInCall(c, result)
     if callee.magic != mNone:
       result = magicsAfterOverloadResolution(c, result, flags)
-  if c.InTypeClass == 0:
+  if c.inTypeClass == 0:
     result = evalAtCompileTime(c, result)
 
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode = 
@@ -810,7 +810,7 @@ proc semEcho(c: PContext, n: PNode): PNode =
 proc buildEchoStmt(c: PContext, n: PNode): PNode = 
   # we MUST not check 'n' for semantics again here!
   result = newNodeI(nkCall, n.info)
-  var e = strTableGet(magicsys.systemModule.Tab, getIdent"echo")
+  var e = strTableGet(magicsys.systemModule.tab, getIdent"echo")
   if e != nil:
     addSon(result, newSymNode(e))
   else:
@@ -908,6 +908,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
   var s = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared})
   if s != nil:
+    markUsed(n.sons[1], s)
     return semSym(c, n, s, flags)
 
   n.sons[0] = semExprWithType(c, n.sons[0], flags+{efDetermineType})
@@ -950,7 +951,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       return
     # XXX: This is probably not relevant any more
     # reset to prevent 'nil' bug: see "tests/reject/tenumitems.nim":
-    ty = n.sons[0].Typ
+    ty = n.sons[0].typ
     
   ty = skipTypes(ty, {tyGenericInst, tyVar, tyPtr, tyRef})
   var check: PNode = nil
@@ -1446,7 +1447,7 @@ proc tryExpr(c: PContext, n: PNode,
   # watch out, hacks ahead:
   let oldErrorCount = msgs.gErrorCounter
   let oldErrorMax = msgs.gErrorMax
-  inc c.InCompilesContext
+  inc c.inCompilesContext
   # do not halt after first error:
   msgs.gErrorMax = high(int)
   
@@ -1459,9 +1460,9 @@ proc tryExpr(c: PContext, n: PNode,
   errorOutputs = if bufferErrors: {eInMemory} else: {}
   let oldContextLen = msgs.getInfoContextLen()
   
-  let oldInGenericContext = c.InGenericContext
-  let oldInUnrolledContext = c.InUnrolledContext
-  let oldInGenericInst = c.InGenericInst
+  let oldInGenericContext = c.inGenericContext
+  let oldInUnrolledContext = c.inUnrolledContext
+  let oldInGenericInst = c.inGenericInst
   let oldProcCon = c.p
   c.generics = @[]
   try:
@@ -1471,14 +1472,14 @@ proc tryExpr(c: PContext, n: PNode,
     nil
   # undo symbol table changes (as far as it's possible):
   c.generics = oldGenerics
-  c.InGenericContext = oldInGenericContext
-  c.InUnrolledContext = oldInUnrolledContext
-  c.InGenericInst = oldInGenericInst
+  c.inGenericContext = oldInGenericContext
+  c.inUnrolledContext = oldInUnrolledContext
+  c.inGenericInst = oldInGenericInst
   c.p = oldProcCon
   msgs.setInfoContextLen(oldContextLen)
   setLen(gOwners, oldOwnerLen)
   c.currentScope = oldScope
-  dec c.InCompilesContext
+  dec c.inCompilesContext
   errorOutputs = oldErrorOutputs
   msgs.gErrorCounter = oldErrorCount
   msgs.gErrorMax = oldErrorMax
@@ -1893,6 +1894,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     let mode = if nfDelegate in n.flags: {} else: {checkUndeclared}
     var s = qualifiedLookUp(c, n.sons[0], mode)
     if s != nil: 
+      if gCmd == cmdPretty and n.sons[0].kind == nkDotExpr:
+        pretty.checkUse(n.sons[0].sons[1], s)
       case s.kind
       of skMacro:
         if sfImmediate notin s.flags:
@@ -1912,7 +1915,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
           result = semConv(c, n)
         elif n.len == 1:
           result = semObjConstr(c, n, flags)
-        elif contains(c.AmbiguousSymbols, s.id): 
+        elif contains(c.ambiguousSymbols, s.id): 
           localError(n.info, errUseQualifier, s.name.s)
         elif s.magic == mNone: result = semDirectOp(c, n, flags)
         else: result = semMagic(c, n, s, flags)

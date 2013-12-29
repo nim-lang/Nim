@@ -16,7 +16,7 @@ proc emulatedThreadVars(): bool =
   result = {optThreads, optTlsEmulation} <= gGlobalOptions
 
 proc accessThreadLocalVar(p: BProc, s: PSym) =
-  if emulatedThreadVars() and not p.ThreadVarAccessed:
+  if emulatedThreadVars() and not p.threadVarAccessed:
     p.threadVarAccessed = true
     p.module.usesThreadVars = true
     appf(p.procSec(cpsLocals), "\tNimThreadVars* NimTV;$n")

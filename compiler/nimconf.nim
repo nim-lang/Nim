@@ -121,7 +121,7 @@ proc parseDirective(L: var TLexer, tok: var TToken) =
   of wEnd: doEnd(L, tok)
   of wWrite: 
     ppGetTok(L, tok)
-    msgs.MsgWriteln(tokToStr(tok))
+    msgs.msgWriteln(tokToStr(tok))
     ppGetTok(L, tok)
   else:
     case tok.ident.s.normalize
@@ -135,13 +135,13 @@ proc parseDirective(L: var TLexer, tok: var TToken) =
       ppGetTok(L, tok)
       var key = tokToStr(tok)
       ppGetTok(L, tok)
-      os.putEnv(key, tokToStr(tok) & os.getenv(key))
+      os.putEnv(key, tokToStr(tok) & os.getEnv(key))
       ppGetTok(L, tok)
     of "appendenv":
       ppGetTok(L, tok)
       var key = tokToStr(tok)
       ppGetTok(L, tok)
-      os.putEnv(key, os.getenv(key) & tokToStr(tok))
+      os.putEnv(key, os.getEnv(key) & tokToStr(tok))
       ppGetTok(L, tok)
     else: lexMessage(L, errInvalidDirectiveX, tokToStr(tok))
   

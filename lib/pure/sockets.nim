@@ -445,7 +445,7 @@ proc bindAddr*(socket: TSocket, port = TPort(0), address = "") {.
     hints.ai_socktype = toInt(SOCK_STREAM)
     hints.ai_protocol = toInt(IPPROTO_TCP)
     gaiNim(address, port, hints, aiList)
-    if bindSocket(socket.fd, aiList.ai_addr, aiList.ai_addrLen.TSockLen) < 0'i32:
+    if bindSocket(socket.fd, aiList.ai_addr, aiList.ai_addrlen.TSockLen) < 0'i32:
       osError(osLastError())
   
 proc getSockName*(socket: TSocket): TPort = 
@@ -628,7 +628,7 @@ proc accept*(server: TSocket): TSocket {.deprecated, tags: [FReadIO].} =
 proc close*(socket: TSocket) =
   ## closes a socket.
   when defined(windows):
-    discard winlean.closeSocket(socket.fd)
+    discard winlean.closesocket(socket.fd)
   else:
     discard posix.close(socket.fd)
   # TODO: These values should not be discarded. An EOS should be raised.
@@ -687,7 +687,7 @@ proc getHostByAddr*(ip: string): Thostent {.tags: [FReadIO].} =
   result.name = $s.h_name
   result.aliases = cstringArrayToSeq(s.h_aliases)
   when defined(windows): 
-    result.addrType = TDomain(s.h_addrtype)
+    result.addrtype = TDomain(s.h_addrtype)
   else:
     if s.h_addrtype == posix.AF_INET:
       result.addrType = AF_INET
@@ -708,7 +708,7 @@ proc getHostByName*(name: string): Thostent {.tags: [FReadIO].} =
   result.name = $s.h_name
   result.aliases = cstringArrayToSeq(s.h_aliases)
   when defined(windows): 
-    result.addrType = TDomain(s.h_addrtype)
+    result.addrtype = TDomain(s.h_addrtype)
   else:
     if s.h_addrtype == posix.AF_INET:
       result.addrType = AF_INET
@@ -1058,7 +1058,7 @@ proc readIntoBuf(socket: TSocket, flags: int32): int =
   else:
     result = recv(socket.fd, addr(socket.buffer), cint(socket.buffer.high), flags)
   if result <= 0:
-    socket.buflen = 0
+    socket.bufLen = 0
     socket.currPos = 0
     return result
   socket.bufLen = result

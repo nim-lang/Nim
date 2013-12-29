@@ -35,7 +35,7 @@ const
   AdvancedUsage = slurp"doc/advopt.txt".replace("//", "")
 
 proc getCommandLineDesc(): string = 
-  result = (HelpMessage % [VersionAsString, platform.os[platform.hostOS].name, 
+  result = (HelpMessage % [VersionAsString, platform.OS[platform.hostOS].name, 
                            CPU[platform.hostCPU].name]) & Usage
 
 proc helpOnError(pass: TCmdLinePass) = 
@@ -46,14 +46,14 @@ proc helpOnError(pass: TCmdLinePass) =
 proc writeAdvancedUsage(pass: TCmdLinePass) = 
   if pass == passCmd1:
     msgWriteln(`%`(HelpMessage, [VersionAsString, 
-                                 platform.os[platform.hostOS].name, 
+                                 platform.OS[platform.hostOS].name, 
                                  CPU[platform.hostCPU].name]) & AdvancedUsage)
     quit(0)
 
 proc writeVersionInfo(pass: TCmdLinePass) = 
   if pass == passCmd1:
     msgWriteln(`%`(HelpMessage, [VersionAsString, 
-                                 platform.os[platform.hostOS].name, 
+                                 platform.OS[platform.hostOS].name, 
                                  CPU[platform.hostCPU].name]))
     quit(0)
 
@@ -256,8 +256,8 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   of "excludepath":
     expectArg(switch, arg, pass, info)
     let path = processPath(arg)
-    lists.ExcludeStr(options.searchPaths, path)
-    lists.ExcludeStr(options.lazyPaths, path)
+    lists.excludeStr(options.searchPaths, path)
+    lists.excludeStr(options.lazyPaths, path)
   of "nimcache":
     expectArg(switch, arg, pass, info)
     options.nimcacheDir = processPath(arg)
@@ -425,19 +425,19 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   of "os": 
     expectArg(switch, arg, pass, info)
     if pass in {passCmd1, passPP}: 
-      theOS = platform.NameToOS(arg)
+      theOS = platform.nameToOS(arg)
       if theOS == osNone: localError(info, errUnknownOS, arg)
       elif theOS != platform.hostOS: 
         setTarget(theOS, targetCPU)
-        condsyms.InitDefines()
+        condsyms.initDefines()
   of "cpu": 
     expectArg(switch, arg, pass, info)
     if pass in {passCmd1, passPP}: 
-      cpu = platform.NameToCPU(arg)
+      cpu = platform.nameToCPU(arg)
       if cpu == cpuNone: localError(info, errUnknownCPU, arg)
       elif cpu != platform.hostCPU: 
         setTarget(targetOS, cpu)
-        condsyms.InitDefines()
+        condsyms.initDefines()
   of "run", "r": 
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optRun)

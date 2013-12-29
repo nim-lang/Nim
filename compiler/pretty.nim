@@ -20,7 +20,6 @@ const
 type
   TGen = object of TPassContext
     module*: PSym
-    checkExtern: bool
   PGen = ref TGen
   
   TSourceFile = object
@@ -30,6 +29,7 @@ type
 
 var
   gSourceFiles: seq[TSourceFile] = @[]
+  gCheckExtern: bool
   rules: PStringTable
 
 proc loadFile(info: TLineInfo) =
@@ -118,8 +118,7 @@ proc beautifyName(s: string, k: TSymKind): string =
 proc checkStyle*(info: TLineInfo, s: string, k: TSymKind) =
   let beau = beautifyName(s, k)
   if s != beau:
-    message(info, errGenerated, 
-      "name does not adhere to naming convention; should be: " & beau)
+    message(info, errGenerated, "name should be: " & beau)
 
 const
   Letters = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF', '_'}
@@ -138,16 +137,17 @@ proc differ(line: string, a, b: int, x: string): bool =
       inc j
     return false
 
-proc checkDef(c: PGen; n: PNode) =
-  if n.kind != nkSym: return
-  let s = n.sym
-
+proc checkDef*(n: PNode; s: PSym) =
   # operators stay as they are:
   if s.kind in {skResult, skTemp} or s.name.s[0] notin Letters: return
   if s.kind in {skType, skGenericParam} and sfAnon in s.flags: return
 
-  if {sfImportc, sfExportc} * s.flags == {} or c.checkExtern:
+  if {sfImportc, sfExportc} * s.flags == {} or gCheckExtern:
     checkStyle(n.info, s.name.s, s.kind)
+
+proc checkDef(c: PGen; n: PNode) =
+  if n.kind != nkSym: return
+  checkDef(n, n.sym)
 
 proc checkUse*(n: PNode, s: PSym) =
   if n.info.fileIndex < 0: return
@@ -306,7 +306,7 @@ proc myOpen(module: PSym): PPassContext =
   var g: PGen
   new(g)
   g.module = module
-  g.checkExtern = options.getConfigVar("pretty.checkextern").normalize == "on"
+  gCheckExtern = options.getConfigVar("pretty.checkextern").normalize == "on"
   result = g
   if rules.isNil:
     rules = newStringTable(modeStyleInsensitive)

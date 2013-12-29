@@ -144,7 +144,7 @@ proc copyValue(src: PNode): PNode =
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
-  case src.Kind
+  case src.kind
   of nkCharLit..nkUInt64Lit: result.intVal = src.intVal
   of nkFloatLit..nkFloat128Lit: result.floatVal = src.floatVal
   of nkSym: result.sym = src.sym

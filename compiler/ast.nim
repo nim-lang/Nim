@@ -546,7 +546,7 @@ type
     typ*: PType
     info*: TLineInfo
     flags*: TNodeFlags
-    case Kind*: TNodeKind
+    case kind*: TNodeKind
     of nkCharLit..nkUInt64Lit:
       intVal*: BiggestInt
     of nkFloatLit..nkFloat128Lit:
@@ -822,7 +822,7 @@ const
     # imported via 'importc: "fullname"' and no format string.
 
 # creator procs:
-proc newSym*(symKind: TSymKind, Name: PIdent, owner: PSym,
+proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
              info: TLineInfo): PSym
 proc newType*(kind: TTypeKind, owner: PSym): PType
 proc newNode*(kind: TNodeKind): PNode
@@ -1108,7 +1108,7 @@ proc assignType(dest, src: PType) =
   for i in countup(0, sonsLen(src) - 1): dest.sons[i] = src.sons[i]
   
 proc copyType(t: PType, owner: PSym, keepId: bool): PType = 
-  result = newType(t.Kind, owner)
+  result = newType(t.kind, owner)
   assignType(result, t)
   if keepId: 
     result.id = t.id
@@ -1148,12 +1148,12 @@ proc createModuleAlias*(s: PSym, newIdent: PIdent, info: TLineInfo): PSym =
   # XXX once usedGenerics is used, ensure module aliases keep working!
   assert s.usedGenerics == nil
   
-proc newSym(symKind: TSymKind, Name: PIdent, owner: PSym,
+proc newSym(symKind: TSymKind, name: PIdent, owner: PSym,
             info: TLineInfo): PSym = 
   # generates a symbol and initializes the hash field too
   new(result)
-  result.Name = Name
-  result.Kind = symKind
+  result.name = name
+  result.kind = symKind
   result.flags = {}
   result.info = info
   result.options = gOptions
@@ -1270,7 +1270,7 @@ proc copyNode(src: PNode): PNode =
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
-  case src.Kind
+  case src.kind
   of nkCharLit..nkUInt64Lit: result.intVal = src.intVal
   of nkFloatLit..nkFloat128Lit: result.floatVal = src.floatVal
   of nkSym: result.sym = src.sym
@@ -1288,7 +1288,7 @@ proc shallowCopy*(src: PNode): PNode =
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
-  case src.Kind
+  case src.kind
   of nkCharLit..nkUInt64Lit: result.intVal = src.intVal
   of nkFloatLit..nkFloat128Lit: result.floatVal = src.floatVal
   of nkSym: result.sym = src.sym
@@ -1307,7 +1307,7 @@ proc copyTree(src: PNode): PNode =
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
-  case src.Kind
+  case src.kind
   of nkCharLit..nkUInt64Lit: result.intVal = src.intVal
   of nkFloatLit..nkFloat128Lit: result.floatVal = src.floatVal
   of nkSym: result.sym = src.sym

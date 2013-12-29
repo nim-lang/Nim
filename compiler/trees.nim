@@ -88,13 +88,13 @@ proc getOpSym*(op: PNode): PSym =
     result = nil
   else:
     if sonsLen(op) <= 0: internalError(op.info, "getOpSym")
-    elif op.sons[0].Kind == nkSym: result = op.sons[0].sym
+    elif op.sons[0].kind == nkSym: result = op.sons[0].sym
     else: result = nil
 
 proc getMagic*(op: PNode): TMagic = 
   case op.kind
   of nkCallKinds:
-    case op.sons[0].Kind
+    case op.sons[0].kind
     of nkSym: result = op.sons[0].sym.magic
     else: result = mNone
   else: result = mNone

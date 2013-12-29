@@ -155,14 +155,14 @@ proc skipTypes(t: PType, kinds: TTypeKinds): PType =
 proc isOrdinalType(t: PType): bool =
   assert(t != nil)
   # caution: uint, uint64 are no ordinal types!
-  result = t.Kind in {tyChar,tyInt..tyInt64,tyUInt8..tyUInt32,tyBool,tyEnum} or
-      (t.Kind in {tyRange, tyOrdinal, tyConst, tyMutable, tyGenericInst}) and
+  result = t.kind in {tyChar,tyInt..tyInt64,tyUInt8..tyUInt32,tyBool,tyEnum} or
+      (t.kind in {tyRange, tyOrdinal, tyConst, tyMutable, tyGenericInst}) and
        isOrdinalType(t.sons[0])
 
 proc enumHasHoles(t: PType): bool = 
   var b = t
   while b.kind in {tyConst, tyMutable, tyRange, tyGenericInst}: b = b.sons[0]
-  result = b.Kind == tyEnum and tfEnumHasHoles in b.flags
+  result = b.kind == tyEnum and tfEnumHasHoles in b.flags
 
 proc iterOverTypeAux(marker: var TIntSet, t: PType, iter: TTypeIter, 
                      closure: PObject): bool
@@ -429,9 +429,9 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   if t == nil: return 
   if prefer == preferName and t.sym != nil and sfAnon notin t.sym.flags:
     if t.kind == tyInt and isIntLit(t):
-      return t.sym.Name.s & " literal(" & $t.n.intVal & ")"
-    return t.sym.Name.s
-  case t.Kind
+      return t.sym.name.s & " literal(" & $t.n.intVal & ")"
+    return t.sym.name.s
+  case t.kind
   of tyInt:
     if not isIntLit(t) or prefer == preferExported:
       result = typeToStr[t.kind]
@@ -746,7 +746,7 @@ template ifFastObjectTypeCheckFailed(a, b: PType, body: stmt) {.immediate.} =
     #   TA[T] = object
     #   TB[T] = object
     # --> TA[int] != TB[int]
-    if tfFromGeneric in a.flags * b.flags and a.sym.Id == b.sym.Id:
+    if tfFromGeneric in a.flags * b.flags and a.sym.id == b.sym.id:
       # ok, we need the expensive structural check
       body
 
@@ -827,7 +827,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     of dcEqOrDistinctOf:
       while a.kind == tyDistinct: a = a.sons[0]
       if a.kind != b.kind: return false  
-  case a.Kind
+  case a.kind
   of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString,
      tyInt..tyBigNum, tyStmt:
     result = sameFlags(a, b)

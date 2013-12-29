@@ -436,7 +436,7 @@ proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   else:
     var storage: PRope
     var size = getSize(t)
-    if size < platform.IntSize:
+    if size < platform.intSize:
       storage = toRope("NI") 
     else:
       storage = getTypeDesc(p.module, t)
@@ -444,7 +444,7 @@ proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
     linefmt(p, cpsLocals, "$1 $2;$n", storage, tmp)
     lineCg(p, cpsStmts, "$1 = #$2($3, $4);$n",
                          tmp, toRope(prc[m]), rdLoc(a), rdLoc(b))
-    if size < platform.IntSize or t.kind in {tyRange, tyEnum, tySet}:
+    if size < platform.intSize or t.kind in {tyRange, tyEnum, tySet}:
       linefmt(p, cpsStmts, "if ($1 < $2 || $1 > $3) #raiseOverflow();$n",
               tmp, intLiteral(firstOrd(t)), intLiteral(lastOrd(t)))
     putIntoDest(p, d, e.typ, ropef("(NI$1)($2)", [toRope(getSize(t)*8), tmp]))
@@ -838,7 +838,7 @@ proc genAndOr(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
 proc genEcho(p: BProc, n: PNode) =
   # this unusal way of implementing it ensures that e.g. ``echo("hallo", 45)``
   # is threadsafe.
-  discard lists.IncludeStr(p.module.headerFiles, "<stdio.h>")
+  discard lists.includeStr(p.module.headerFiles, "<stdio.h>")
   var args: PRope = nil
   var a: TLoc
   for i in countup(1, n.len-1):
@@ -872,7 +872,7 @@ proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
   for i in countup(0, sonsLen(e) - 2):
     # compute the length expression:
     initLocExpr(p, e.sons[i + 1], a)
-    if skipTypes(e.sons[i + 1].Typ, abstractVarRange).kind == tyChar:
+    if skipTypes(e.sons[i + 1].typ, abstractVarRange).kind == tyChar:
       inc(L)
       app(appends, rfmt(p.module, "#appendChar($1, $2);$n", tmp.r, rdLoc(a)))
     else:
@@ -910,7 +910,7 @@ proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
   for i in countup(0, sonsLen(e) - 3):
     # compute the length expression:
     initLocExpr(p, e.sons[i + 2], a)
-    if skipTypes(e.sons[i + 2].Typ, abstractVarRange).kind == tyChar:
+    if skipTypes(e.sons[i + 2].typ, abstractVarRange).kind == tyChar:
       inc(L)
       app(appends, rfmt(p.module, "#appendChar($1, $2);$n",
                         rdLoc(dest), rdLoc(a)))
@@ -940,7 +940,7 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
   lineCg(p, cpsStmts, seqAppendPattern, [
       rdLoc(a),
       getTypeDesc(p.module, skipTypes(e.sons[1].typ, abstractVar)),
-      getTypeDesc(p.module, skipTypes(e.sons[2].Typ, abstractVar))])
+      getTypeDesc(p.module, skipTypes(e.sons[2].typ, abstractVar))])
   keepAlive(p, a)
   initLoc(dest, locExpr, b.t, OnHeap)
   dest.r = rfmt(nil, "$1->data[$1->$2-1]", rdLoc(a), lenField())
@@ -1191,7 +1191,7 @@ proc genDollar(p: BProc, n: PNode, d: var TLoc, frmt: string) =
 proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   var a = e.sons[1]
   if a.kind == nkHiddenAddr: a = a.sons[0]
-  var typ = skipTypes(a.Typ, abstractVar)
+  var typ = skipTypes(a.typ, abstractVar)
   case typ.kind
   of tyOpenArray, tyVarargs:
     if op == mHigh: unaryExpr(p, e, d, "($1Len0-1)")
@@ -1259,7 +1259,7 @@ proc fewCmps(s: PNode): bool =
   if s.kind != nkCurly: internalError(s.info, "fewCmps")
   if (getSize(s.typ) <= platform.intSize) and (nfAllConst in s.flags):
     result = false            # it is better to emit the set generation code
-  elif elemType(s.typ).Kind in {tyInt, tyInt16..tyInt64}:
+  elif elemType(s.typ).kind in {tyInt, tyInt16..tyInt64}:
     result = true             # better not emit the set if int is basetype!
   else:
     result = sonsLen(s) <= 8  # 8 seems to be a good value
@@ -1284,7 +1284,7 @@ proc binaryStmtInExcl(p: BProc, e: PNode, d: var TLoc, frmt: string) =
 
 proc genInOp(p: BProc, e: PNode, d: var TLoc) =
   var a, b, x, y: TLoc
-  if (e.sons[1].Kind == nkCurly) and fewCmps(e.sons[1]):
+  if (e.sons[1].kind == nkCurly) and fewCmps(e.sons[1]):
     # a set constructor but not a constant set:
     # do not emit the set, but generate a bunch of comparisons; and if we do
     # so, we skip the unnecessary range check: This is a semantical extension
@@ -1298,7 +1298,7 @@ proc genInOp(p: BProc, e: PNode, d: var TLoc) =
     b.r = toRope("(")
     var length = sonsLen(e.sons[1])
     for i in countup(0, length - 1):
-      if e.sons[1].sons[i].Kind == nkRange:
+      if e.sons[1].sons[i].kind == nkRange:
         initLocExpr(p, e.sons[1].sons[i].sons[0], x)
         initLocExpr(p, e.sons[1].sons[i].sons[1], y)
         appf(b.r, "$1 >= $2 && $1 <= $3",
@@ -1326,7 +1326,7 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
         "if ($3) $3 = (memcmp($4, $5, $2) != 0);$n",
       "&", "|", "& ~", "^"]
   var a, b, i: TLoc
-  var setType = skipTypes(e.sons[1].Typ, abstractVar)
+  var setType = skipTypes(e.sons[1].typ, abstractVar)
   var size = int(getSize(setType))
   case size
   of 1, 2, 4, 8:
@@ -1512,25 +1512,25 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mGetTypeInfo: genGetTypeInfo(p, e, d)
   of mSwap: genSwap(p, e, d)
   of mUnaryLt: 
-    if not (optOverflowCheck in p.Options): unaryExpr(p, e, d, "$1 - 1")
+    if not (optOverflowCheck in p.options): unaryExpr(p, e, d, "$1 - 1")
     else: unaryExpr(p, e, d, "#subInt($1, 1)")
   of mPred:
     # XXX: range checking?
-    if not (optOverflowCheck in p.Options): binaryExpr(p, e, d, "$1 - $2")
+    if not (optOverflowCheck in p.options): binaryExpr(p, e, d, "$1 - $2")
     else: binaryExpr(p, e, d, "#subInt($1, $2)")
   of mSucc:
     # XXX: range checking?
-    if not (optOverflowCheck in p.Options): binaryExpr(p, e, d, "$1 + $2")
+    if not (optOverflowCheck in p.options): binaryExpr(p, e, d, "$1 + $2")
     else: binaryExpr(p, e, d, "#addInt($1, $2)")
   of mInc:
-    if not (optOverflowCheck in p.Options):
+    if not (optOverflowCheck in p.options):
       binaryStmt(p, e, d, "$1 += $2;$n")
     elif skipTypes(e.sons[1].typ, abstractVar).kind == tyInt64:
       binaryStmt(p, e, d, "$1 = #addInt64($1, $2);$n")
     else:
       binaryStmt(p, e, d, "$1 = #addInt($1, $2);$n")
   of ast.mDec:
-    if not (optOverflowCheck in p.Options):
+    if not (optOverflowCheck in p.options):
       binaryStmt(p, e, d, "$1 -= $2;$n")
     elif skipTypes(e.sons[1].typ, abstractVar).kind == tyInt64:
       binaryStmt(p, e, d, "$1 = #subInt64($1, $2);$n")
@@ -1778,7 +1778,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   case n.kind
   of nkSym:
     var sym = n.sym
-    case sym.Kind
+    case sym.kind
     of skMethod:
       if sym.getBody.kind == nkEmpty or sfDispatcher in sym.flags:
         # we cannot produce code for the dispatcher yet:
@@ -1990,7 +1990,7 @@ proc genConstSeq(p: BProc, n: PNode, t: PType): PRope =
   result = ropef("(($1)&$2)", [getTypeDesc(p.module, t), result])
 
 proc genConstExpr(p: BProc, n: PNode): PRope =
-  case n.Kind
+  case n.kind
   of nkHiddenStdConv, nkHiddenSubConv:
     result = genConstExpr(p, n.sons[1])
   of nkCurly:
