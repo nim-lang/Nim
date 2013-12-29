@@ -70,7 +70,7 @@ proc toCover(t: PType): BiggestInt =
 
 proc performProcvarCheck(c: PContext, n: PNode, s: PSym) =
   var smoduleId = getModule(s).id
-  if sfProcVar notin s.flags and s.typ.callConv == ccDefault and
+  if sfProcvar notin s.flags and s.typ.callConv == ccDefault and
       smoduleId != c.module.id and smoduleId != c.friendModule.id: 
     localError(n.info, errXCannotBePassedToProcVar, s.name.s)
 
@@ -788,8 +788,8 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
       # give anonymous object a dummy symbol:
       var st = s.typ
       if st.kind == tyGenericBody: st = st.lastSon
-      InternalAssert st.kind in {tyPtr, tyRef}
-      InternalAssert st.sons[0].sym == nil
+      internalAssert st.kind in {tyPtr, tyRef}
+      internalAssert st.sons[0].sym == nil
       st.sons[0].sym = newSym(skType, getIdent(s.name.s & ":ObjectType"),
                               getCurrOwner(), s.info)
 
@@ -887,7 +887,7 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
     illFormedAst(n)           # process parameters:
   if n.sons[paramsPos].kind != nkEmpty:
     var gp = newNodeI(nkGenericParams, n.info)
-    semParamList(c, n.sons[ParamsPos], gp, s)
+    semParamList(c, n.sons[paramsPos], gp, s)
     paramsTypeCheck(c, s.typ)
   else:
     s.typ = newTypeS(tyProc, c)
@@ -939,7 +939,7 @@ type
     stepCompileBody
 
 proc isForwardDecl(s: PSym): bool =
-  InternalAssert s.kind == skProc
+  internalAssert s.kind == skProc
   result = s.ast[bodyPos].kind != nkEmpty
 
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
@@ -982,7 +982,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     gp = newNodeI(nkGenericParams, n.info)
   # process parameters:
   if n.sons[paramsPos].kind != nkEmpty:
-    semParamList(c, n.sons[ParamsPos], gp, s)
+    semParamList(c, n.sons[paramsPos], gp, s)
     if sonsLen(gp) > 0: 
       if n.sons[genericParamsPos].kind == nkEmpty:
         # we have a list of implicit type parameters:

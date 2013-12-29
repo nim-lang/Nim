@@ -95,7 +95,7 @@ proc write(f: TFile, i: int) =
     fprintf(f, "%ld", i)
 
 proc write(f: TFile, i: BiggestInt) = 
-  when sizeof(Biggestint) == 8:
+  when sizeof(BiggestInt) == 8:
     fprintf(f, "%lld", i)
   else:
     fprintf(f, "%ld", i)
@@ -235,17 +235,17 @@ proc fwrite(buf: pointer, size, n: int, f: TFile): int {.
 proc readBuffer(f: TFile, buffer: pointer, len: int): int =
   result = fread(buffer, 1, len, f)
 
-proc readBytes(f: TFile, a: var openarray[int8], start, len: int): int =
+proc readBytes(f: TFile, a: var openArray[int8], start, len: int): int =
   result = readBuffer(f, addr(a[start]), len)
 
-proc readChars(f: TFile, a: var openarray[char], start, len: int): int =
+proc readChars(f: TFile, a: var openArray[char], start, len: int): int =
   result = readBuffer(f, addr(a[start]), len)
 
 {.push stackTrace:off, profiler:off.}
-proc writeBytes(f: TFile, a: openarray[int8], start, len: int): int =
+proc writeBytes(f: TFile, a: openArray[int8], start, len: int): int =
   var x = cast[ptr array[0..1000_000_000, int8]](a)
   result = writeBuffer(f, addr(x[start]), len)
-proc writeChars(f: TFile, a: openarray[char], start, len: int): int =
+proc writeChars(f: TFile, a: openArray[char], start, len: int): int =
   var x = cast[ptr array[0..1000_000_000, int8]](a)
   result = writeBuffer(f, addr(x[start]), len)
 proc writeBuffer(f: TFile, buffer: pointer, len: int): int =

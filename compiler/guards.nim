@@ -254,7 +254,7 @@ proc valuesUnequal(a, b: PNode): bool =
     result = not sameValue(a, b)
 
 proc pred(n: PNode): PNode =
-  if n.kind in {nkCharLit..nkUInt64Lit} and n.intVal != low(biggestInt):
+  if n.kind in {nkCharLit..nkUInt64Lit} and n.intVal != low(BiggestInt):
     result = copyNode(n)
     dec result.intVal
   else:
@@ -366,7 +366,7 @@ proc impliesIsNil(fact, eq: PNode): TImplication =
   else: discard
 
 proc impliesGe(fact, x, c: PNode): TImplication =
-  InternalAssert isLocation(x)
+  internalAssert isLocation(x)
   case fact.sons[0].sym.magic
   of someEq:
     if sameTree(fact.sons[1], x):

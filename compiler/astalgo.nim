@@ -472,7 +472,7 @@ proc objectSetRawInsert(data: var TObjectSeq, obj: PObject) =
 
 proc objectSetEnlarge(t: var TObjectSet) = 
   var n: TObjectSeq
-  newSeq(n, len(t.data) * growthFactor)
+  newSeq(n, len(t.data) * GrowthFactor)
   for i in countup(0, high(t.data)): 
     if t.data[i] != nil: objectSetRawInsert(n, t.data[i])
   swap(t.data, n)
@@ -535,7 +535,7 @@ proc tableRawInsert(data: var TPairSeq, key, val: PObject) =
 
 proc tableEnlarge(t: var TTable) = 
   var n: TPairSeq
-  newSeq(n, len(t.data) * growthFactor)
+  newSeq(n, len(t.data) * GrowthFactor)
   for i in countup(0, high(t.data)): 
     if t.data[i].key != nil: tableRawInsert(n, t.data[i].key, t.data[i].val)
   swap(t.data, n)
@@ -583,7 +583,7 @@ proc symTabReplace*(t: var TStrTable, prevSym: PSym, newSym: PSym) =
 
 proc strTableEnlarge(t: var TStrTable) = 
   var n: TSymSeq
-  newSeq(n, len(t.data) * growthFactor)
+  newSeq(n, len(t.data) * GrowthFactor)
   for i in countup(0, high(t.data)): 
     if t.data[i] != nil: strTableRawInsert(n, t.data[i])
   swap(t.data, n)
@@ -742,7 +742,7 @@ proc idTablePut(t: var TIdTable, key: PIdObj, val: PObject) =
     t.data[index].val = val
   else: 
     if mustRehash(len(t.data), t.counter): 
-      newSeq(n, len(t.data) * growthFactor)
+      newSeq(n, len(t.data) * GrowthFactor)
       for i in countup(0, high(t.data)): 
         if t.data[i].key != nil: 
           idTableRawInsert(n, t.data[i].key, t.data[i].val)
@@ -792,7 +792,7 @@ proc idNodeTablePut(t: var TIdNodeTable, key: PIdObj, val: PNode) =
   else: 
     if mustRehash(len(t.data), t.counter): 
       var n: TIdNodePairSeq
-      newSeq(n, len(t.data) * growthFactor)
+      newSeq(n, len(t.data) * GrowthFactor)
       for i in countup(0, high(t.data)): 
         if t.data[i].key != nil: 
           idNodeTableRawInsert(n, t.data[i].key, t.data[i].val)
@@ -810,8 +810,8 @@ iterator pairs*(t: TIdNodeTable): tuple[key: PIdObj, val: PNode] =
 
 proc initIITable(x: var TIITable) = 
   x.counter = 0
-  newSeq(x.data, startSize)
-  for i in countup(0, startSize - 1): x.data[i].key = InvalidKey
+  newSeq(x.data, StartSize)
+  for i in countup(0, StartSize - 1): x.data[i].key = InvalidKey
   
 proc iiTableRawGet(t: TIITable, key: int): int = 
   var h: THash
@@ -844,7 +844,7 @@ proc iiTablePut(t: var TIITable, key, val: int) =
   else: 
     if mustRehash(len(t.data), t.counter): 
       var n: TIIPairSeq
-      newSeq(n, len(t.data) * growthFactor)
+      newSeq(n, len(t.data) * GrowthFactor)
       for i in countup(0, high(n)): n[i].key = InvalidKey
       for i in countup(0, high(t.data)): 
         if t.data[i].key != InvalidKey: 

@@ -149,9 +149,8 @@ proc checkDef(c: PGen; n: PNode) =
   if {sfImportc, sfExportc} * s.flags == {} or c.checkExtern:
     checkStyle(n.info, s.name.s, s.kind)
 
-proc checkUse*(n: PNode) =
-  if n.info.fileIndex < 0 or n.kind != nkSym: return
-  let s = n.sym
+proc checkUse*(n: PNode, s: PSym) =
+  if n.info.fileIndex < 0: return
   # we simply convert it to what it looks like in the definition
   # for consistency
   
@@ -267,7 +266,7 @@ when false:
 
 proc check(c: PGen, n: PNode) =
   case n.kind
-  of nkSym: checkUse(n)
+  of nkSym: checkUse(n, n.sym)
   of nkBlockStmt, nkBlockExpr, nkBlockType:
     checkDef(c, n[0])
     check(c, n.sons[1])

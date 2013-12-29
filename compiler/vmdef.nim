@@ -198,7 +198,7 @@ proc refresh*(c: PCtx, module: PSym) =
 const
   firstABxInstr* = opcTJmp
   largeInstrs* = { # instructions which use 2 int32s instead of 1:
-    opcSubstr, opcConv, opcCast, opcNewSeq, opcOf}
+    opcSubStr, opcConv, opcCast, opcNewSeq, opcOf}
   slotSomeTemp* = slotTempUnknown
   relativeJumps* = {opcTJmp, opcFJmp, opcJmp}
 

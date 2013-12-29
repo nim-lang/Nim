@@ -1167,30 +1167,30 @@ proc newSym(symKind: TSymKind, Name: PIdent, owner: PSym,
   
 proc initStrTable(x: var TStrTable) = 
   x.counter = 0
-  newSeq(x.data, startSize)
+  newSeq(x.data, StartSize)
 
 proc newStrTable*: TStrTable =
   initStrTable(result)
 
 proc initTable(x: var TTable) = 
   x.counter = 0
-  newSeq(x.data, startSize)
+  newSeq(x.data, StartSize)
 
 proc initIdTable(x: var TIdTable) = 
   x.counter = 0
-  newSeq(x.data, startSize)
+  newSeq(x.data, StartSize)
 
 proc initObjectSet(x: var TObjectSet) = 
   x.counter = 0
-  newSeq(x.data, startSize)
+  newSeq(x.data, StartSize)
 
 proc initIdNodeTable(x: var TIdNodeTable) = 
   x.counter = 0
-  newSeq(x.data, startSize)
+  newSeq(x.data, StartSize)
 
 proc initNodeTable(x: var TNodeTable) = 
   x.counter = 0
-  newSeq(x.data, startSize)
+  newSeq(x.data, StartSize)
 
 proc sonsLen(n: PType): int = 
   if isNil(n.sons): result = 0
@@ -1402,7 +1402,7 @@ proc isGenericRoutine*(s: PSym): bool =
   else: discard
 
 proc skipGenericOwner*(s: PSym): PSym =
-  InternalAssert s.kind in skProcKinds
+  internalAssert s.kind in skProcKinds
   ## Generic instantiations are owned by their originating generic
   ## symbol. This proc skips such owners and goes straigh to the owner
   ## of the generic itself (the module or the enclosing proc).

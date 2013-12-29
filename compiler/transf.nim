@@ -142,7 +142,7 @@ proc transformVarSection(c: PTransf, v: PNode): PTransNode =
       result[i] = PTransNode(it)
     elif it.kind == nkIdentDefs: 
       if it.sons[0].kind != nkSym: internalError(it.info, "transformVarSection")
-      InternalAssert(it.len == 3)
+      internalAssert(it.len == 3)
       var newVar = copySym(it.sons[0].sym)
       incl(newVar.flags, sfFromGeneric)
       # fixes a strange bug for rodgen:
@@ -152,7 +152,7 @@ proc transformVarSection(c: PTransf, v: PNode): PTransNode =
       var defs = newTransNode(nkIdentDefs, it.info, 3)
       if importantComments():
         # keep documentation information:
-        pnode(defs).comment = it.comment
+        PNode(defs).comment = it.comment
       defs[0] = newSymNode(newVar).PTransNode
       defs[1] = it.sons[1].PTransNode
       defs[2] = transform(c, it.sons[2])
@@ -186,7 +186,7 @@ proc transformConstSection(c: PTransf, v: PNode): PTransNode =
         var b = newNodeI(nkConstDef, it.info)
         addSon(b, it[0])
         addSon(b, ast.emptyNode)            # no type description
-        addSon(b, transform(c, it[2]).pnode)
+        addSon(b, transform(c, it[2]).PNode)
         result[i] = PTransNode(b)
       else:
         result[i] = PTransNode(it)
@@ -217,7 +217,7 @@ proc transformBlock(c: PTransf, n: PNode): PTransNode =
 
 proc transformBreak(c: PTransf, n: PNode): PTransNode =
   if c.inLoop > 0 or n.sons[0].kind != nkEmpty:
-    result = n.ptransNode
+    result = n.PTransNode
   else:
     let labl = c.breakSyms[c.breakSyms.high]
     result = transformSons(c, n)
@@ -292,11 +292,11 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
     add(result, c.transCon.forLoopBody)
   else: 
     # we need to introduce new local variables:
-    add(result, introduceNewLocalVars(c, c.transCon.forLoopBody.pnode))
+    add(result, introduceNewLocalVars(c, c.transCon.forLoopBody.PNode))
 
 proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode =
   result = transformSons(c, n)
-  var n = result.pnode
+  var n = result.PNode
   case n.sons[0].kind
   of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
     var m = n.sons[0].sons[0]
@@ -436,8 +436,8 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   if call.kind notin nkCallKinds or call.sons[0].kind != nkSym or 
       call.sons[0].typ.callConv == ccClosure or
       call.sons[0].sym.kind != skIterator:
-    n.sons[length-1] = transformLoopBody(c, n.sons[length-1]).pnode
-    return lambdalifting.liftForLoop(n).ptransNode
+    n.sons[length-1] = transformLoopBody(c, n.sons[length-1]).PNode
+    return lambdalifting.liftForLoop(n).PTransNode
     #InternalError(call.info, "transformFor")
 
   #echo "transforming: ", renderTree(n)
@@ -446,7 +446,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   var v = newNodeI(nkVarSection, n.info)
   for i in countup(0, length - 3): 
     addVar(v, copyTree(n.sons[i])) # declare new vars
-  add(result, v.ptransNode)
+  add(result, v.PTransNode)
   
   # Bugfix: inlined locals belong to the invoking routine, not to the invoked
   # iterator!
@@ -458,7 +458,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   # generate access statements for the parameters (unless they are constant)
   pushTransCon(c, newC)
   for i in countup(1, sonsLen(call) - 1): 
-    var arg = transform(c, call.sons[i]).pnode
+    var arg = transform(c, call.sons[i]).PNode
     var formal = skipTypes(iter.typ, abstractInst).n.sons[i].sym 
     case putArgInto(arg, formal.typ)
     of paDirectMapping: 
@@ -467,7 +467,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
       # generate a temporary and produce an assignment statement:
       var temp = newTemp(c, formal.typ, formal.info)
       addVar(v, newSymNode(temp))
-      add(result, newAsgnStmt(c, newSymNode(temp), arg.ptransNode))
+      add(result, newAsgnStmt(c, newSymNode(temp), arg.PTransNode))
       idNodeTablePut(newC.mapping, formal, newSymNode(temp))
     of paVarAsgn:
       assert(skipTypes(formal.typ, abstractInst).kind == tyVar)
@@ -500,19 +500,19 @@ proc transformCase(c: PTransf, n: PNode): PTransNode =
     var e = transform(c, it)
     case it.kind
     of nkElifBranch:
-      if ifs.pnode == nil:
+      if ifs.PNode == nil:
         ifs = newTransNode(nkIfStmt, it.info, 0)
       ifs.add(e)
     of nkElse:
-      if ifs.pnode == nil: result.add(e)
+      if ifs.PNode == nil: result.add(e)
       else: ifs.add(e)
     else:
       result.add(e)
-  if ifs.pnode != nil:
+  if ifs.PNode != nil:
     var elseBranch = newTransNode(nkElse, n.info, 1)
     elseBranch[0] = ifs
     result.add(elseBranch)
-  elif result.Pnode.lastSon.kind != nkElse and not (
+  elif result.PNode.lastSon.kind != nkElse and not (
       skipTypes(n.sons[0].Typ, abstractVarRange).Kind in
         {tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32}):
     # fix a stupid code gen bug by normalizing:
@@ -523,7 +523,7 @@ proc transformCase(c: PTransf, n: PNode): PTransNode =
 proc transformArrayAccess(c: PTransf, n: PNode): PTransNode = 
   # XXX this is really bad; transf should use a proper AST visitor
   if n.sons[0].kind == nkSym and n.sons[0].sym.kind == skType:
-    result = n.ptransnode
+    result = n.PTransNode
   else:
     result = newTransNode(n)
     for i in 0 .. < n.len:
@@ -563,24 +563,24 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
     add(result, transform(c, n.sons[0]))
     var j = 1
     while j < sonsLen(n): 
-      var a = transform(c, n.sons[j]).pnode
+      var a = transform(c, n.sons[j]).PNode
       inc(j)
       if isConstExpr(a): 
         while (j < sonsLen(n)):
-          let b = transform(c, n.sons[j]).pnode
+          let b = transform(c, n.sons[j]).PNode
           if not isConstExpr(b): break
           a = evalOp(op.magic, n, a, b, nil)
           inc(j)
-      add(result, a.ptransnode)
+      add(result, a.PTransNode)
     if len(result) == 2: result = result[1]
   else:
-    let s = transformSons(c, n).pnode
+    let s = transformSons(c, n).PNode
     # bugfix: check after 'transformSons' if it's still a method call:
     # use the dispatcher for the call:
     if s.sons[0].kind == nkSym and s.sons[0].sym.kind == skMethod:
-      result = methodCall(s).ptransNode
+      result = methodCall(s).PTransNode
     else:
-      result = s.ptransNode
+      result = s.PTransNode
 
 proc dontInlineConstant(orig, cnst: PNode): bool {.inline.} =
   # symbols that expand to a complex constant (array, etc.) should not be
@@ -683,7 +683,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
         # completely:
         result = PTransNode(newNode(nkCommentStmt))
   of nkCommentStmt, nkTemplateDef: 
-    return n.ptransNode
+    return n.PTransNode
   of nkConstSection:
     # do not replace ``const c = 3`` with ``const 3 = 3``
     return transformConstSection(c, n)
@@ -707,7 +707,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     result = transformSons(c, n)
     # XXX comment handling really sucks:
     if importantComments():
-      pnode(result).comment = n.comment
+      PNode(result).comment = n.comment
   else:
     result = transformSons(c, n)
   var cnst = getConstExpr(c.module, PNode(result))

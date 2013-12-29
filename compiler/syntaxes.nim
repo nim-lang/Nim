@@ -83,7 +83,7 @@ proc utf8Bom(s: string): int =
 proc containsShebang(s: string, i: int): bool = 
   if (s[i] == '#') and (s[i + 1] == '!'): 
     var j = i + 2
-    while s[j] in WhiteSpace: inc(j)
+    while s[j] in Whitespace: inc(j)
     result = s[j] == '/'
 
 proc parsePipe(filename: string, inputStream: PLLStream): PNode = 
@@ -98,7 +98,7 @@ proc parsePipe(filename: string, inputStream: PLLStream): PNode =
       i = 0
     if line[i] == '#' and line[i+1] == '!':
       inc(i, 2)
-      while line[i] in WhiteSpace: inc(i)
+      while line[i] in Whitespace: inc(i)
       var q: TParser
       openParser(q, filename, llStreamOpen(substr(line, i)))
       result = parser.parseAll(q)

@@ -211,7 +211,7 @@ proc getPrecedence(tok: TToken): int =
     of '?': result = 2
     else: considerAsgn(2)
   of tkDiv, tkMod, tkShl, tkShr: result = 9
-  of tkIn, tkNotIn, tkIs, tkIsNot, tkNot, tkOf, tkAs: result = 5
+  of tkIn, tkNotin, tkIs, tkIsnot, tkNot, tkOf, tkAs: result = 5
   of tkDotDot: result = 6
   of tkAnd: result = 4
   of tkOr, tkXor: result = 3
@@ -455,7 +455,7 @@ proc simpleExpr(p: var TParser, mode = pmNormal): PNode
 
 proc semiStmtList(p: var TParser, result: PNode) =
   result.add(complexOrSimpleStmt(p))
-  while p.tok.tokType == tkSemicolon:
+  while p.tok.tokType == tkSemiColon:
     getTok(p)
     optInd(p, result)
     result.add(complexOrSimpleStmt(p))
@@ -482,7 +482,7 @@ proc parsePar(p: var TParser): PNode =
     # XXX 'bind' used to be an expression, so we exclude it here;
     # tests/reject/tbind2 fails otherwise.
     semiStmtList(p, result)
-  elif p.tok.tokType == tkSemicolon:
+  elif p.tok.tokType == tkSemiColon:
     # '(;' enforces 'stmt' context:
     getTok(p)
     optInd(p, result)
@@ -498,7 +498,7 @@ proc parsePar(p: var TParser): PNode =
       asgn.sons[0] = a
       asgn.sons[1] = b
       result.add(asgn)
-    elif p.tok.tokType == tkSemicolon:
+    elif p.tok.tokType == tkSemiColon:
       # stmt context:
       result.add(a)
       semiStmtList(p, result)
@@ -798,7 +798,7 @@ proc parseTuple(p: var TParser, indentAllowed = false): PNode =
     while p.tok.tokType in {tkSymbol, tkAccent}:
       var a = parseIdentColonEquals(p, {})
       addSon(result, a)
-      if p.tok.tokType notin {tkComma, tkSemicolon}: break
+      if p.tok.tokType notin {tkComma, tkSemiColon}: break
       getTok(p)
       skipComment(p, a)
     optPar(p)
@@ -840,7 +840,7 @@ proc parseParamList(p: var TParser, retColon = true): PNode =
         parMessage(p, errTokenExpected, ")")
         break 
       addSon(result, a)
-      if p.tok.tokType notin {tkComma, tkSemicolon}: break 
+      if p.tok.tokType notin {tkComma, tkSemiColon}: break 
       getTok(p)
       skipComment(p, a)
     optPar(p)
@@ -1378,7 +1378,7 @@ proc parseGenericParamList(p: var TParser): PNode =
   while p.tok.tokType in {tkSymbol, tkAccent}: 
     var a = parseGenericParam(p)
     addSon(result, a)
-    if p.tok.tokType notin {tkComma, tkSemicolon}: break 
+    if p.tok.tokType notin {tkComma, tkSemiColon}: break 
     getTok(p)
     skipComment(p, a)
   optPar(p)
@@ -1810,7 +1810,7 @@ proc parseStmt(p: var TParser): PNode =
       while true:
         if p.tok.indent == p.currInd:
           nil
-        elif p.tok.tokType == tkSemicolon:
+        elif p.tok.tokType == tkSemiColon:
           getTok(p)
           if p.tok.indent < 0 or p.tok.indent == p.currInd: discard
           else: break
@@ -1842,7 +1842,7 @@ proc parseStmt(p: var TParser): PNode =
         let a = simpleStmt(p)
         if a.kind == nkEmpty: parMessage(p, errExprExpected, p.tok)
         result.add(a)
-        if p.tok.tokType != tkSemicolon: break
+        if p.tok.tokType != tkSemiColon: break
         getTok(p)
   
 proc parseAll(p: var TParser): PNode = 
@@ -1866,7 +1866,7 @@ proc parseTopLevelStmt(p: var TParser): PNode =
       else: parMessage(p, errInvalidIndentation)
     p.firstTok = false
     case p.tok.tokType
-    of tkSemicolon:
+    of tkSemiColon:
       getTok(p)
       if p.tok.indent <= 0: discard
       else: parMessage(p, errInvalidIndentation)

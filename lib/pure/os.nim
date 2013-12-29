@@ -95,8 +95,8 @@ elif defined(macos):
   const
     CurDir* = ':'
     ParDir* = "::"
-    Dirsep* = ':'
-    Altsep* = Dirsep
+    DirSep* = ':'
+    AltSep* = Dirsep
     PathSep* = ','
     FileSystemCaseSensitive* = false
     ExeExt* = ""
@@ -123,10 +123,10 @@ elif defined(macos):
   #  grandparent etc.
 elif doslike:
   const
-    Curdir* = '.'
-    Pardir* = ".."
-    Dirsep* = '\\' # seperator within paths
-    Altsep* = '/'
+    CurDir* = '.'
+    ParDir* = ".."
+    DirSep* = '\\' # seperator within paths
+    AltSep* = '/'
     PathSep* = ';' # seperator between paths
     FileSystemCaseSensitive* = false
     ExeExt* = "exe"
@@ -134,19 +134,19 @@ elif doslike:
     DynlibFormat* = "$1.dll"
 elif defined(PalmOS) or defined(MorphOS):
   const
-    Dirsep* = '/'
-    Altsep* = Dirsep
+    DirSep* = '/'
+    AltSep* = Dirsep
     PathSep* = ';'
-    Pardir* = ".."
+    ParDir* = ".."
     FileSystemCaseSensitive* = false
     ExeExt* = ""
     ScriptExt* = ""
     DynlibFormat* = "$1.prc"
 elif defined(RISCOS):
   const
-    Dirsep* = '.'
-    Altsep* = '.'
-    Pardir* = ".." # is this correct?
+    DirSep* = '.'
+    AltSep* = '.'
+    ParDir* = ".." # is this correct?
     PathSep* = ','
     FileSystemCaseSensitive* = true
     ExeExt* = ""
@@ -154,10 +154,10 @@ elif defined(RISCOS):
     DynlibFormat* = "lib$1.so"
 else: # UNIX-like operating system
   const
-    Curdir* = '.'
-    Pardir* = ".."
-    Dirsep* = '/'
-    Altsep* = Dirsep
+    CurDir* = '.'
+    ParDir* = ".."
+    DirSep* = '/'
+    AltSep* = Dirsep
     PathSep* = ':'
     FileSystemCaseSensitive* = true
     ExeExt* = ""
@@ -308,7 +308,7 @@ proc unixToNativePath*(path: string): string {.
       start = 1
     elif path[0] == '.' and path[1] == '/':
       # current directory
-      result = $Curdir
+      result = $CurDir
       start = 2
     else:
       result = ""
@@ -538,7 +538,7 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
   ##   splitPath("") -> ("", "")
   var sepPos = -1
   for i in countdown(len(path)-1, 0):
-    if path[i] in {Dirsep, Altsep}:
+    if path[i] in {DirSep, AltSep}:
       sepPos = i
       break
   if sepPos >= 0:
@@ -550,9 +550,9 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
 
 proc parentDirPos(path: string): int =
   var q = 1
-  if path[len(path)-1] in {Dirsep, Altsep}: q = 2
+  if path[len(path)-1] in {DirSep, AltSep}: q = 2
   for i in countdown(len(path)-q, 0):
-    if path[i] in {Dirsep, Altsep}: return i
+    if path[i] in {DirSep, AltSep}: return i
   result = -1
 
 proc parentDir*(path: string): string {.
@@ -593,8 +593,8 @@ iterator parentDirs*(path: string, fromRoot=false, inclusive=true): string =
   else:
     for i in countup(0, path.len - 2): # ignore the last /
       # deal with non-normalized paths such as /foo//bar//baz
-      if path[i] in {Dirsep, Altsep} and
-          (i == 0 or path[i-1] notin {Dirsep, Altsep}):
+      if path[i] in {DirSep, AltSep} and
+          (i == 0 or path[i-1] notin {DirSep, AltSep}):
         yield path.substr(0, i)
 
     if inclusive: yield path
@@ -619,7 +619,7 @@ proc searchExtPos(s: string): int =
     if s[i] == ExtSep:
       result = i
       break
-    elif s[i] in {Dirsep, Altsep}:
+    elif s[i] in {DirSep, AltSep}:
       break # do not skip over path
 
 proc splitFile*(path: string): tuple[dir, name, ext: string] {.
@@ -639,7 +639,7 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
   ## If `path` has no extension, `ext` is the empty string.
   ## If `path` has no directory component, `dir` is the empty string.
   ## If `path` has no filename component, `name` and `ext` are empty strings.
-  if path.len == 0 or path[path.len-1] in {DirSep, Altsep}:
+  if path.len == 0 or path[path.len-1] in {DirSep, AltSep}:
     result = (path, "", "")
   else:
     var sepPos = -1
@@ -647,8 +647,8 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
     for i in countdown(len(path)-1, 0):
       if path[i] == ExtSep:
         if dotPos == path.len and i > 0 and
-            path[i-1] notin {Dirsep, Altsep}: dotPos = i
-      elif path[i] in {Dirsep, Altsep}:
+            path[i-1] notin {DirSep, AltSep}: dotPos = i
+      elif path[i] in {DirSep, AltSep}:
         sepPos = i
         break
     result.dir = substr(path, 0, sepPos-1)
@@ -659,7 +659,7 @@ proc extractFilename*(path: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Extracts the filename of a given `path`. This is the same as
   ## ``name & ext`` from ``splitFile(path)``.
-  if path.len == 0 or path[path.len-1] in {DirSep, Altsep}:
+  if path.len == 0 or path[path.len-1] in {DirSep, AltSep}:
     result = ""
   else:
     result = splitPath(path).tail
@@ -814,11 +814,11 @@ proc sameFileContent*(path1, path2: string): bool {.rtl, extern: "nos$1",
   if not open(b, path2):
     close(a)
     return false
-  var bufA = alloc(bufsize)
-  var bufB = alloc(bufsize)
+  var bufA = alloc(bufSize)
+  var bufB = alloc(bufSize)
   while true:
-    var readA = readBuffer(a, bufA, bufsize)
-    var readB = readBuffer(b, bufB, bufsize)
+    var readA = readBuffer(a, bufA, bufSize)
+    var readB = readBuffer(b, bufB, bufSize)
     if readA != readB:
       result = false
       break
@@ -1159,7 +1159,7 @@ iterator walkFiles*(pattern: string): string {.tags: [FReadDir].} =
       while true:
         if not skipFindData(f):
           yield splitFile(pattern).dir / extractFilename(getFilename(f))
-        if findnextFile(res, f) == 0'i32: break
+        if findNextFile(res, f) == 0'i32: break
       findClose(res)
   else: # here we use glob
     var
@@ -1214,7 +1214,7 @@ iterator walkDir*(dir: string): tuple[kind: TPathComponent, path: string] {.
           if (f.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) != 0'i32:
             k = pcDir
           yield (k, dir / extractFilename(getFilename(f)))
-        if findnextFile(h, f) == 0'i32: break
+        if findNextFile(h, f) == 0'i32: break
       findClose(h)
   else:
     var d = openDir(dir)
@@ -1308,7 +1308,7 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1", tags: [FWriteDir].} =
   when defined(doslike):
     omitNext = isAbsolute(dir)
   for i in 1.. dir.len-1:
-    if dir[i] in {Dirsep, Altsep}:
+    if dir[i] in {DirSep, AltSep}:
       if omitNext:
         omitNext = false
       else:

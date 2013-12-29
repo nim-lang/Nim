@@ -111,7 +111,7 @@ proc mapType(typ: PType): TJSTypeKind =
   let t = skipTypes(typ, abstractInst)
   case t.kind
   of tyVar, tyRef, tyPtr: 
-    if skipTypes(t.sons[0], abstractInst).kind in mappedToObject: 
+    if skipTypes(t.sons[0], abstractInst).kind in MappedToObject: 
       result = etyObject
     else: 
       result = etyBaseIndex
@@ -240,7 +240,7 @@ proc genOr(p: PProc, a, b: PNode, r: var TCompRes) =
 
 type
   TMagicFrmt = array[0..3, string]
-  TMagicOps = array[mAddi..mStrToStr, TMagicFrmt]
+  TMagicOps = array[mAddI..mStrToStr, TMagicFrmt]
 
 const # magic checked op; magic unchecked op; checked op; unchecked op
   jsOps: TMagicOps = [
@@ -865,7 +865,7 @@ proc genFieldAddr(p: PProc, n: PNode, r: var TCompRes) =
     var f = b.sons[1].sym
     if f.loc.r == nil: f.loc.r = mangleName(f)
     r.res = makeJSString(ropeToStr(f.loc.r))
-  InternalAssert a.typ != etyBaseIndex
+  internalAssert a.typ != etyBaseIndex
   r.address = a.res
   r.kind = resExpr
 
@@ -894,7 +894,7 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
   r.typ = etyBaseIndex
   gen(p, n.sons[0], a)
   gen(p, n.sons[1], b)
-  InternalAssert a.typ != etyBaseIndex and b.typ != etyBaseIndex
+  internalAssert a.typ != etyBaseIndex and b.typ != etyBaseIndex
   r.address = a.res
   var typ = skipTypes(n.sons[0].typ, abstractPtrs)
   if typ.kind in {tyArray, tyArrayConstr}: first = firstOrd(typ.sons[0])
@@ -1293,7 +1293,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   case op
   of mOr: genOr(p, n.sons[1], n.sons[2], r)
   of mAnd: genAnd(p, n.sons[1], n.sons[2], r)
-  of mAddi..mStrToStr: arith(p, n, r, op)
+  of mAddI..mStrToStr: arith(p, n, r, op)
   of mRepr: genRepr(p, n, r)
   of mSwap: genSwap(p, n)
   of mUnaryLt:
@@ -1416,7 +1416,7 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
   for i in countup(1, sonsLen(n) - 1):
     if i > 0: app(r.res, ", ")
     var it = n.sons[i]
-    InternalAssert it.kind == nkExprColonExpr
+    internalAssert it.kind == nkExprColonExpr
     gen(p, it.sons[1], a)
     var f = it.sons[0].sym
     if f.loc.r == nil: f.loc.r = mangleName(f)
@@ -1655,7 +1655,7 @@ proc genHeader(): PRope =
                  "$nvar Globals = this;$n" &
                  "var framePtr = null;$n" & 
                  "var excHandler = null;$n", 
-                 [toRope(versionAsString)])
+                 [toRope(VersionAsString)])
 
 proc genModule(p: PProc, n: PNode) = 
   if optStackTrace in p.options:

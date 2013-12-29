@@ -22,7 +22,7 @@ when debugIds:
   var usedIds = InitIntSet()
 
 proc registerID*(id: PIdObj) = 
-  when debugIDs: 
+  when debugIds: 
     if id.id == -1 or containsOrIncl(usedIds, id.id): 
       internalError("ID already used: " & $id.id)
 

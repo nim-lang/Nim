@@ -20,49 +20,49 @@ const
 
 const
   procPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
-    wMagic, wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, 
-    wCompilerProc, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge, 
+    wMagic, wNosideeffect, wSideeffect, wNoreturn, wDynlib, wHeader, 
+    wCompilerproc, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge, 
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
     wNoStackFrame, wError, wDiscardable, wNoInit, wDestructor, wCodegenDecl,
-    wGenSym, wInject, wRaises, wTags, wOperator, wDelegator}
+    wGensym, wInject, wRaises, wTags, wOperator, wDelegator}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas
-  templatePragmas* = {wImmediate, wDeprecated, wError, wGenSym, wInject, wDirty,
+  templatePragmas* = {wImmediate, wDeprecated, wError, wGensym, wInject, wDirty,
     wDelegator}
   macroPragmas* = {FirstCallConv..LastCallConv, wImmediate, wImportc, wExportc,
-    wNodecl, wMagic, wNosideEffect, wCompilerProc, wDeprecated, wExtern,
-    wImportcpp, wImportobjc, wError, wDiscardable, wGenSym, wInject, wDelegator}
-  iteratorPragmas* = {FirstCallConv..LastCallConv, wNosideEffect, wSideEffect, 
+    wNodecl, wMagic, wNosideeffect, wCompilerproc, wDeprecated, wExtern,
+    wImportCpp, wImportObjC, wError, wDiscardable, wGensym, wInject, wDelegator}
+  iteratorPragmas* = {FirstCallConv..LastCallConv, wNosideeffect, wSideeffect, 
     wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow, wExtern,
-    wImportcpp, wImportobjc, wError, wDiscardable, wGenSym, wInject, wRaises,
+    wImportCpp, wImportObjC, wError, wDiscardable, wGensym, wInject, wRaises,
     wTags, wOperator}
   exprPragmas* = {wLine}
   stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangechecks,
     wBoundchecks, wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints,
     wLinedir, wStacktrace, wLinetrace, wOptimization, wHint, wWarning, wError,
-    wFatal, wDefine, wUndef, wCompile, wLink, wLinkSys, wPure, wPush, wPop,
-    wBreakpoint, wWatchpoint, wPassL, wPassC, wDeadCodeElim, wDeprecated,
-    wFloatChecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
+    wFatal, wDefine, wUndef, wCompile, wLink, wLinksys, wPure, wPush, wPop,
+    wBreakpoint, wWatchPoint, wPassl, wPassc, wDeadCodeElim, wDeprecated,
+    wFloatchecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
     wLinearScanEnd, wPatterns, wEffects, wNoForward, wComputedGoto,
     wInjectStmt}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
-    wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, 
-    wDeprecated, wExtern, wThread, wImportcpp, wImportobjc, wNoStackFrame,
+    wNosideeffect, wSideeffect, wNoreturn, wDynlib, wHeader, 
+    wDeprecated, wExtern, wThread, wImportCpp, wImportObjC, wNoStackFrame,
     wRaises, wTags}
   typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl, 
-    wPure, wHeader, wCompilerProc, wFinal, wSize, wExtern, wShallow, 
-    wImportcpp, wImportobjc, wError, wIncompleteStruct, wByCopy, wByRef,
-    wInheritable, wGenSym, wInject, wRequiresInit}
+    wPure, wHeader, wCompilerproc, wFinal, wSize, wExtern, wShallow, 
+    wImportCpp, wImportObjC, wError, wIncompleteStruct, wByCopy, wByRef,
+    wInheritable, wGensym, wInject, wRequiresInit}
   fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern, 
-    wImportcpp, wImportobjc, wError}
+    wImportCpp, wImportObjC, wError}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl, 
-    wMagic, wHeader, wDeprecated, wCompilerProc, wDynLib, wExtern,
-    wImportcpp, wImportobjc, wError, wNoInit, wCompileTime, wGlobal,
-    wGenSym, wInject, wCodegenDecl}
+    wMagic, wHeader, wDeprecated, wCompilerproc, wDynlib, wExtern,
+    wImportCpp, wImportObjC, wError, wNoInit, wCompileTime, wGlobal,
+    wGensym, wInject, wCodegenDecl}
   constPragmas* = {wImportc, wExportc, wHeader, wDeprecated, wMagic, wNodecl,
-    wExtern, wImportcpp, wImportobjc, wError, wGenSym, wInject}
+    wExtern, wImportCpp, wImportObjC, wError, wGensym, wInject}
   letPragmas* = varPragmas
-  procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideEffect,
+  procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideeffect,
                       wThread, wRaises, wTags}
   allRoutinePragmas* = procPragmas + iteratorPragmas + lambdaPragmas
 
@@ -199,7 +199,7 @@ proc processCallConv(c: PContext, n: PNode) =
   if (n.kind == nkExprColonExpr) and (n.sons[1].kind == nkIdent): 
     var sw = whichKeyword(n.sons[1].ident)
     case sw
-    of firstCallConv..lastCallConv: 
+    of FirstCallConv..LastCallConv: 
       POptionEntry(c.optionStack.tail).defaultCC = wordToCallConv(sw)
     else: localError(n.info, errCallConvExpected)
   else: 
@@ -247,7 +247,7 @@ proc processDynLib(c: PContext, n: PNode, sym: PSym) =
     # since we'll be loading the dynlib symbols dynamically, we must use
     # a calling convention that doesn't introduce custom name mangling
     # cdecl is the default - the user can override this explicitly
-    if sym.kind in RoutineKinds and sym.typ != nil and 
+    if sym.kind in routineKinds and sym.typ != nil and 
         sym.typ.callConv == ccDefault:
       sym.typ.callConv = ccCDecl
 
@@ -284,27 +284,27 @@ proc processOption(c: PContext, n: PNode): bool =
   else:
     var sw = whichKeyword(n.sons[0].ident)
     case sw
-    of wChecks: onOff(c, n, checksOptions)
+    of wChecks: onOff(c, n, ChecksOptions)
     of wObjChecks: onOff(c, n, {optObjCheck})
-    of wFieldchecks: onOff(c, n, {optFieldCheck})
+    of wFieldChecks: onOff(c, n, {optFieldCheck})
     of wRangechecks: onOff(c, n, {optRangeCheck})
     of wBoundchecks: onOff(c, n, {optBoundsCheck})
     of wOverflowchecks: onOff(c, n, {optOverflowCheck})
     of wNilchecks: onOff(c, n, {optNilCheck})
-    of wFloatChecks: onOff(c, n, {optNanCheck, optInfCheck})
-    of wNaNchecks: onOff(c, n, {optNanCheck})
+    of wFloatchecks: onOff(c, n, {optNaNCheck, optInfCheck})
+    of wNanChecks: onOff(c, n, {optNaNCheck})
     of wInfChecks: onOff(c, n, {optInfCheck})
     of wAssertions: onOff(c, n, {optAssert})
     of wWarnings: onOff(c, n, {optWarns})
     of wHints: onOff(c, n, {optHints})
-    of wCallConv: processCallConv(c, n)   
+    of wCallconv: processCallConv(c, n)   
     of wLinedir: onOff(c, n, {optLineDir})
     of wStacktrace: onOff(c, n, {optStackTrace})
     of wLinetrace: onOff(c, n, {optLineTrace})
     of wDebugger: onOff(c, n, {optEndb})
     of wProfiler: onOff(c, n, {optProfiler})
     of wByRef: onOff(c, n, {optByRef})
-    of wDynLib: processDynLib(c, n, nil) 
+    of wDynlib: processDynLib(c, n, nil) 
     of wOptimization: 
       if n.sons[1].kind != nkIdent: 
         invalidPragma(n)
@@ -591,23 +591,23 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           noVal(it)
           incl(sym.flags, sfNoSideEffect)
           if sym.typ != nil: incl(sym.typ.flags, tfNoSideEffect)
-        of wSideEffect: 
+        of wSideeffect: 
           noVal(it)
           incl(sym.flags, sfSideEffect)
-        of wNoReturn: 
+        of wNoreturn: 
           noVal(it)
           incl(sym.flags, sfNoReturn)
-        of wDynLib: 
+        of wDynlib: 
           processDynLib(c, it, sym)
-        of wCompilerProc: 
+        of wCompilerproc: 
           noVal(it)           # compilerproc may not get a string!
           makeExternExport(sym, "$1")
           incl(sym.flags, sfCompilerProc)
           incl(sym.flags, sfUsed) # suppress all those stupid warnings
           registerCompilerProc(sym)
-        of wProcvar: 
+        of wProcVar: 
           noVal(it)
-          incl(sym.flags, sfProcVar)
+          incl(sym.flags, sfProcvar)
         of wDeprecated: 
           noVal(it)
           if sym != nil: incl(sym.flags, sfDeprecated)
@@ -638,7 +638,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         of wThread:
           noVal(it)
           incl(sym.flags, sfThread)
-          incl(sym.flags, sfProcVar)
+          incl(sym.flags, sfProcvar)
           if sym.typ != nil: incl(sym.typ.flags, tfThread)
         of wHint: message(it.info, hintUser, expectStrLit(c, it))
         of wWarning: message(it.info, warnUser, expectStrLit(c, it))
@@ -657,11 +657,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         of wUndef: processUndef(c, it)
         of wCompile: processCompile(c, it)
         of wLink: processCommonLink(c, it, linkNormal)
-        of wLinkSys: processCommonLink(c, it, linkSys)
-        of wPassL: extccomp.addLinkOption(expectStrLit(c, it))
-        of wPassC: extccomp.addCompileOption(expectStrLit(c, it))
+        of wLinksys: processCommonLink(c, it, linkSys)
+        of wPassl: extccomp.addLinkOption(expectStrLit(c, it))
+        of wPassc: extccomp.addCompileOption(expectStrLit(c, it))
         of wBreakpoint: pragmaBreakpoint(c, it)
-        of wWatchpoint: pragmaWatchpoint(c, it)
+        of wWatchPoint: pragmaWatchpoint(c, it)
         of wPush: 
           processPush(c, n, i + 1)
           result = true 
@@ -679,13 +679,13 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         of wChecks, wObjChecks, wFieldChecks, wRangechecks, wBoundchecks, 
            wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints, 
            wLinedir, wStacktrace, wLinetrace, wOptimization,
-           wCallConv, 
-           wDebugger, wProfiler, wFloatChecks, wNanChecks, wInfChecks,
+           wCallconv, 
+           wDebugger, wProfiler, wFloatchecks, wNanChecks, wInfChecks,
            wPatterns:
           if processOption(c, it):
             # calling conventions (boring...):
             localError(it.info, errOptionExpected)
-        of firstCallConv..lastCallConv: 
+        of FirstCallConv..LastCallConv: 
           assert(sym != nil)
           if sym.typ == nil: invalidPragma(it)
           else: sym.typ.callConv = wordToCallConv(k)
@@ -713,7 +713,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           noVal(it)
           if sym.kind != skType or sym.typ == nil: invalidPragma(it)
           else: incl(sym.typ.flags, tfByCopy)
-        of wInject, wGenSym:
+        of wInject, wGensym:
           # We check for errors, but do nothing with these pragmas otherwise
           # as they are handled directly in 'evalTemplate'.
           noVal(it)

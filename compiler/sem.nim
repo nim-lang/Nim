@@ -134,8 +134,8 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
   # like newSymS, but considers gensym'ed symbols
   if n.kind == nkSym:
     result = n.sym
-    InternalAssert sfGenSym in result.flags
-    InternalAssert result.kind == kind
+    internalAssert sfGenSym in result.flags
+    internalAssert result.kind == kind
   else:
     result = newSym(kind, considerAcc(n), getCurrOwner(), n.info)
 

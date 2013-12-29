@@ -41,7 +41,7 @@ template crc(x: PSym): expr =
   gMemCacheData[x.position].crc
 
 proc crcChanged(fileIdx: int32): bool =
-  InternalAssert fileIdx >= 0 and fileIdx < gMemCacheData.len
+  internalAssert fileIdx >= 0 and fileIdx < gMemCacheData.len
   
   template updateStatus =
     gMemCacheData[fileIdx].crcStatus = if result: crcHasChanged

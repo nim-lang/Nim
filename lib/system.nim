@@ -1145,7 +1145,7 @@ when not defined(nimrodVM):
     ## otherwise. Like any procedure dealing with raw memory this is
     ## *unsafe*.
 
-  when hostOs != "standalone":
+  when hostOS != "standalone":
     proc alloc*(size: int): pointer {.noconv, rtl, tags: [].}
       ## allocates a new memory block with at least ``size`` bytes. The
       ## block has to be freed with ``realloc(block, 0)`` or

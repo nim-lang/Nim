@@ -50,13 +50,13 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       of tyTuple: 
         if sonsLen(v) == 2:
           strVal = v.sons[1] # second tuple part is the string value
-          if skipTypes(strVal.typ, abstractInst).kind in {tyString, tyCstring}:
+          if skipTypes(strVal.typ, abstractInst).kind in {tyString, tyCString}:
             x = getOrdValue(v.sons[0]) # first tuple part is the ordinal
           else:
             localError(strVal.info, errStringLiteralExpected)
         else:
           localError(v.info, errWrongNumberOfVariables)
-      of tyString, tyCstring:
+      of tyString, tyCString:
         strVal = v
         x = counter
       else:
@@ -148,7 +148,7 @@ proc semDistinct(c: PContext, n: PNode, prev: PType): PType =
     result = newConstraint(c, tyDistinct)
   
 proc semRangeAux(c: PContext, n: PNode, prev: PType): PType = 
-  assert IsRange(n)
+  assert isRange(n)
   checkSonsLen(n, 3)
   result = newOrPrevType(tyRange, prev, c)
   result.n = newNodeI(nkRange, n.info)
@@ -198,7 +198,7 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
         indx = makeRangeType(c, 0, e.intVal-1, n.info, e.typ)
       elif e.kind == nkSym and e.typ.kind == tyExpr:
         if e.sym.ast != nil: return semArray(c, e.sym.ast, nil)
-        InternalAssert c.InGenericContext > 0
+        internalAssert c.InGenericContext > 0
         if not isOrdinalType(e.typ.lastSon):
           localError(n[1].info, errOrdinalTypeExpected)
         indx = e.typ
@@ -331,7 +331,7 @@ proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
     of skVar:   pragma(c, result, n.sons[1], varPragmas)
     of skLet:   pragma(c, result, n.sons[1], letPragmas)
     of skConst: pragma(c, result, n.sons[1], constPragmas)
-    else: nil
+    else: discard
   else:
     result = semIdentVis(c, kind, n, allowed)
   
@@ -970,7 +970,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       result = newOrPrevType(tyError, prev, c)
     elif s.kind == skParam and s.typ.kind == tyTypeDesc:
       assert s.typ.len > 0
-      InternalAssert prev == nil
+      internalAssert prev == nil
       result = s.typ.sons[0]
     elif prev == nil:
       result = s.typ

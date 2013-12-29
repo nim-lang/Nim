@@ -81,7 +81,7 @@ proc doElif(L: var TLexer, tok: var TToken) =
   
 proc jumpToDirective(L: var TLexer, tok: var TToken, dest: TJumpDest) = 
   var nestedIfs = 0
-  while True: 
+  while true: 
     if (tok.ident != nil) and (tok.ident.s == "@"): 
       ppGetTok(L, tok)
       case whichKeyword(tok.ident)

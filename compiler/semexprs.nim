@@ -658,7 +658,7 @@ proc semStaticExpr(c: PContext, n: PNode): PNode =
 
 proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
                                      flags: TExprFlags): PNode =
-  if flags*{efInTypeOf, efWantIterator} != {}:
+  if flags*{efInTypeof, efWantIterator} != {}:
     # consider: 'for x in pReturningArray()' --> we don't want the restriction
     # to 'skIterator' anymore; skIterator is preferred in sigmatch already for
     # typeof support.
@@ -702,7 +702,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   semOpAux(c, n)
   var t: PType = nil
   if n.sons[0].typ != nil:
-    t = skipTypes(n.sons[0].typ, abstractInst-{tyTypedesc})
+    t = skipTypes(n.sons[0].typ, abstractInst-{tyTypeDesc})
   if t != nil and t.kind == tyProc:
     # This is a proc variable, apply normal overload resolution
     var m: TCandidate
@@ -964,10 +964,10 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if f != nil:
       if fieldVisible(c, f):
         # is the access to a public field or in the same module or in a friend?
+        markUsed(n.sons[1], f)
         n.sons[0] = makeDeref(n.sons[0])
         n.sons[1] = newSymNode(f) # we now have the correct field
         n.typ = f.typ
-        markUsed(n, f)
         if check == nil: 
           result = n
         else: 
@@ -977,11 +977,11 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   elif ty.kind == tyTuple and ty.n != nil: 
     f = getSymFromList(ty.n, i)
     if f != nil:
+      markUsed(n.sons[1], f)
       n.sons[0] = makeDeref(n.sons[0])
       n.sons[1] = newSymNode(f)
       n.typ = f.typ
       result = n
-      markUsed(n, f)
 
 proc dotTransformation(c: PContext, n: PNode): PNode =
   if isSymChoice(n.sons[1]):
@@ -1164,7 +1164,7 @@ proc semAsgn(c: PContext, n: PNode): PNode =
       n.typ = enforceVoidContext
       if lhs.sym.typ.kind == tyGenericParam:
         if matchTypeClass(lhs.typ, rhs.typ):
-          InternalAssert c.p.resultSym != nil
+          internalAssert c.p.resultSym != nil
           lhs.typ = rhs.typ
           c.p.resultSym.typ = rhs.typ
           c.p.owner.typ.sons[0] = rhs.typ
@@ -1356,7 +1356,7 @@ proc semUsing(c: PContext, n: PNode): PNode =
       of skProcKinds:
         addDeclAt(c.currentScope, usedSym.sym)
         continue
-      else: nil
+      else: discard
 
     localError(e.info, errUsingNoSymbol, e.renderTree)
 
@@ -1372,7 +1372,7 @@ proc semExpandToAst(c: PContext, n: PNode): PNode =
     macroCall.sons[i] = semExprWithType(c, macroCall[i], {})
 
   # Preserve the magic symbol in order to be handled in evals.nim
-  InternalAssert n.sons[0].sym.magic == mExpandToAst
+  internalAssert n.sons[0].sym.magic == mExpandToAst
   n.typ = getSysSym("PNimrodNode").typ # expandedSym.getReturnType
   result = n
 
@@ -1409,7 +1409,7 @@ proc processQuotations(n: var PNode, op: string,
       processQuotations(n.sons[i], op, quotes, ids)
 
 proc semQuoteAst(c: PContext, n: PNode): PNode =
-  InternalAssert n.len == 2 or n.len == 3
+  internalAssert n.len == 2 or n.len == 3
   # We transform the do block into a template with a param for
   # each interpolation. We'll pass this template to getAst.
   var

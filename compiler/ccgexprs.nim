@@ -11,7 +11,7 @@
 
 # -------------------------- constant expressions ------------------------
 
-proc intLiteral(i: biggestInt): PRope =
+proc intLiteral(i: BiggestInt): PRope =
   if (i > low(int32)) and (i <= high(int32)):
     result = toRope(i)
   elif i == low(int32):
@@ -419,10 +419,10 @@ proc unaryExprChar(p: BProc, e: PNode, d: var TLoc, frmt: string) =
 
 proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   const
-    prc: array[mAddi..mModi64, string] = ["addInt", "subInt", "mulInt",
+    prc: array[mAddI..mModI64, string] = ["addInt", "subInt", "mulInt",
       "divInt", "modInt", "addInt64", "subInt64", "mulInt64", "divInt64",
       "modInt64"]
-    opr: array[mAddi..mModi64, string] = ["+", "-", "*", "/", "%", "+", "-",
+    opr: array[mAddI..mModI64, string] = ["+", "-", "*", "/", "%", "+", "-",
       "*", "/", "%"]
   var a, b: TLoc
   assert(e.sons[1].typ != nil)
@@ -1040,7 +1040,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     app(tmp2.r, field.loc.r)
     tmp2.k = locTemp
     tmp2.t = field.loc.t
-    tmp2.s = onHeap
+    tmp2.s = OnHeap
     tmp2.heapRoot = tmp.r
     expr(p, it.sons[1], tmp2)
   if d.k == locNone:
@@ -1196,7 +1196,7 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of tyOpenArray, tyVarargs:
     if op == mHigh: unaryExpr(p, e, d, "($1Len0-1)")
     else: unaryExpr(p, e, d, "$1Len0")
-  of tyCstring:
+  of tyCString:
     if op == mHigh: unaryExpr(p, e, d, "(strlen($1)-1)")
     else: unaryExpr(p, e, d, "strlen($1)")
   of tyString, tySequence:
@@ -1481,7 +1481,7 @@ proc genStrEquals(p: BProc, e: PNode, d: var TLoc) =
     binaryExpr(p, e, d, "#eqStrings($1, $2)")
 
 proc binaryFloatArith(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
-  if {optNanCheck, optInfCheck} * p.options != {}:
+  if {optNaNCheck, optInfCheck} * p.options != {}:
     const opr: array[mAddF64..mDivF64, string] = ["+", "-", "*", "/"]
     var a, b: TLoc
     assert(e.sons[1].typ != nil)
@@ -1491,7 +1491,7 @@ proc binaryFloatArith(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
     putIntoDest(p, d, e.typ, rfmt(nil, "(($4)($2) $1 ($4)($3))",
                                   toRope(opr[m]), rdLoc(a), rdLoc(b),
                                   getSimpleTypeDesc(p.module, e[1].typ)))
-    if optNanCheck in p.options:
+    if optNaNCheck in p.options:
       linefmt(p, cpsStmts, "#nanCheck($1);$n", rdLoc(d))
     if optInfCheck in p.options:
       linefmt(p, cpsStmts, "#infCheck($1);$n", rdLoc(d))
@@ -1507,7 +1507,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mAddF64..mDivF64: binaryFloatArith(p, e, d, op)
   of mShrI..mXor: binaryArith(p, e, d, op)
   of mEqProc: genEqProc(p, e, d)
-  of mAddi..mModi64: binaryArithOverflow(p, e, d, op)
+  of mAddI..mModI64: binaryArithOverflow(p, e, d, op)
   of mRepr: genRepr(p, e, d)
   of mGetTypeInfo: genGetTypeInfo(p, e, d)
   of mSwap: genSwap(p, e, d)

@@ -214,7 +214,7 @@ iterator split*(s: string, seps: set[char] = Whitespace): string =
   while last < len(s):
     while s[last] in seps: inc(last)
     var first = last
-    while last < len(s) and s[last] not_in seps: inc(last) # BUGFIX!
+    while last < len(s) and s[last] notin seps: inc(last) # BUGFIX!
     if first <= last-1:
       yield substr(s, first, last-1)
 

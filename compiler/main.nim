@@ -39,7 +39,7 @@ proc semanticPasses =
 
 proc commandGenDepend =
   semanticPasses()
-  registerPass(genDependPass)
+  registerPass(gendependPass)
   registerPass(cleanupPass)
   compileProject()
   generateDot(gProjectFull)
@@ -127,7 +127,7 @@ proc commandCompileToJS =
   defineSymbol("ecmascript") # For backward compatibility
   defineSymbol("js")
   semanticPasses()
-  registerPass(jsgenPass)
+  registerPass(JSgenPass)
   compileProject()
 
 proc interactivePasses =
@@ -177,7 +177,7 @@ proc commandPretty =
   pretty.overwriteFiles()
 
 proc commandScan =
-  var f = addFileExt(mainCommandArg(), nimExt)
+  var f = addFileExt(mainCommandArg(), NimExt)
   var stream = llStreamOpen(f, fmRead)
   if stream != nil:
     var
@@ -224,7 +224,7 @@ proc wantMainModule =
       gProjectName = optMainModule
       gProjectFull = gProjectPath / gProjectName
 
-  gProjectMainIdx = addFileExt(gProjectFull, nimExt).fileInfoIdx
+  gProjectMainIdx = addFileExt(gProjectFull, NimExt).fileInfoIdx
 
 proc requireMainModuleOption =
   if optMainModule.len == 0:
@@ -233,7 +233,7 @@ proc requireMainModuleOption =
     gProjectName = optMainModule
     gProjectFull = gProjectPath / gProjectName
 
-  gProjectMainIdx = addFileExt(gProjectFull, nimExt).fileInfoIdx
+  gProjectMainIdx = addFileExt(gProjectFull, NimExt).fileInfoIdx
 
 proc resetMemory =
   resetCompilationLists()
@@ -334,7 +334,7 @@ proc mainCommand* =
   of "compiletollvm":
     gCmd = cmdCompileToLLVM
     wantMainModule()
-    when has_LLVM_Backend:
+    when hasLLVM_Backend:
       CommandCompileToLLVM()
     else:
       rawMessage(errInvalidCommandX, command)
@@ -386,7 +386,7 @@ proc mainCommand* =
       for s in definedSymbolNames(): definedSymbols.elems.add(%s)
 
       var libpaths = newJArray()
-      for dir in itersearchpath(searchPaths): libpaths.elems.add(%dir)
+      for dir in iterSearchPath(searchPaths): libpaths.elems.add(%dir)
 
       var dumpdata = % [
         (key: "version", val: %VersionAsString),

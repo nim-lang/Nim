@@ -111,7 +111,7 @@ proc genTraverseProc(m: BModule, typ: PType, reason: TTypeInfoReason): PRope =
   lineF(p, cpsInit, "a = ($1)p;$n", t)
   
   c.p = p
-  assert typ.kind != tyTypedesc
+  assert typ.kind != tyTypeDesc
   if typ.kind == tySequence:
     genTraverseProcSeq(c, "a".toRope, typ)
   else:

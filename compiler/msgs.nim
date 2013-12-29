@@ -724,7 +724,7 @@ proc writeContext(lastinfo: TLineInfo) =
   var info = lastinfo
   for i in countup(0, len(msgContext) - 1): 
     if msgContext[i] != lastinfo and msgContext[i] != info: 
-      msgWriteln(posContextFormat % [toMsgFilename(msgContext[i]), 
+      msgWriteln(PosContextFormat % [toMsgFilename(msgContext[i]), 
                                      coordToStr(msgContext[i].line), 
                                      coordToStr(msgContext[i].col), 
                                      getMessageStr(errInstantiationFrom, "")])
@@ -735,17 +735,17 @@ proc rawMessage*(msg: TMsgKind, args: openArray[string]) =
   case msg
   of errMin..errMax: 
     writeContext(unknownLineInfo())
-    frmt = rawErrorFormat
+    frmt = RawErrorFormat
   of warnMin..warnMax: 
     if optWarns notin gOptions: return 
     if msg notin gNotes: return 
     writeContext(unknownLineInfo())
-    frmt = rawWarningFormat
+    frmt = RawWarningFormat
     inc(gWarnCounter)
   of hintMin..hintMax: 
     if optHints notin gOptions: return 
     if msg notin gNotes: return 
-    frmt = rawHintFormat
+    frmt = RawHintFormat
     inc(gHintCounter)
   let s = `%`(frmt, `%`(msgKindToString(msg), args))
   msgWriteln(s)
@@ -766,7 +766,7 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
   case msg
   of errMin..errMax:
     writeContext(info)
-    frmt = posErrorFormat
+    frmt = PosErrorFormat
     # we try to filter error messages so that not two error message
     # in the same file and line are produced:
     #ignoreMsg = lastError == info and eh != doAbort
@@ -774,11 +774,11 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
   of warnMin..warnMax:
     ignoreMsg = optWarns notin gOptions or msg notin gNotes
     if not ignoreMsg: writeContext(info)
-    frmt = posWarningFormat
+    frmt = PosWarningFormat
     inc(gWarnCounter)
   of hintMin..hintMax: 
     ignoreMsg = optHints notin gOptions or msg notin gNotes
-    frmt = posHintFormat
+    frmt = PosHintFormat
     inc(gHintCounter)
   let s = frmt % [toMsgFilename(info), coordToStr(info.line),
                   coordToStr(info.col), getMessageStr(msg, arg)]

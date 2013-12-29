@@ -139,7 +139,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
   let overloadsState = result.state
   if overloadsState != csMatch:
     if nfDelegate in n.flags:
-      InternalAssert f.kind == nkIdent
+      internalAssert f.kind == nkIdent
       let calleeName = newStrNode(nkStrLit, f.ident.s)
       calleeName.info = n.info
 

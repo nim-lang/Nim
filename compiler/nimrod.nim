@@ -71,7 +71,7 @@ proc handleCmdLine() =
             binPath = options.outFile.prependCurDir
           else:
             # Figure out ourselves a valid binary name.
-            binPath = changeFileExt(gProjectFull, exeExt).prependCurDir
+            binPath = changeFileExt(gProjectFull, ExeExt).prependCurDir
           var ex = quoteShell(binPath)
           execExternalProgram(ex & ' ' & service.arguments)
 

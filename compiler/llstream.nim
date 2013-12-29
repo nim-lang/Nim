@@ -50,7 +50,7 @@ proc llStreamOpen(data: string): PLLStream =
   result.s = data
   result.kind = llsString
 
-proc llStreamOpen(f: var tfile): PLLStream = 
+proc llStreamOpen(f: var TFile): PLLStream = 
   new(result)
   result.f = f
   result.kind = llsFile
@@ -179,7 +179,7 @@ proc llStreamWriteln(s: PLLStream, data: string) =
   llStreamWrite(s, data)
   llStreamWrite(s, "\n")
 
-proc llStreamWrite(s: PLLStream, data: Char) = 
+proc llStreamWrite(s: PLLStream, data: char) = 
   var c: char
   case s.kind
   of llsNone, llsStdIn: 

@@ -33,7 +33,7 @@ proc checkConstructedType*(info: TLineInfo, typ: PType) =
 
 proc searchInstTypes*(key: PType): PType =
   let genericTyp = key.sons[0]
-  InternalAssert genericTyp.kind == tyGenericBody and
+  internalAssert genericTyp.kind == tyGenericBody and
                  key.sons[0] == genericTyp and
                  genericTyp.sym != nil
 

@@ -86,7 +86,7 @@ proc initCandidate*(c: var TCandidate, callee: PSym, binding: PNode,
   c.calleeScope = calleeScope
   initIdTable(c.bindings)
   c.errors = nil
-  if binding != nil and callee.kind in RoutineKinds:
+  if binding != nil and callee.kind in routineKinds:
     var typeParams = callee.ast[genericParamsPos]
     for i in 1..min(sonsLen(typeParams), sonsLen(binding)-1):
       var formalTypeParam = typeParams.sons[i-1].typ
@@ -716,7 +716,7 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
           if f.sons == nil or f.sons.len == 0:
             result = isGeneric
           else:
-            InternalAssert a.sons != nil and a.sons.len > 0
+            internalAssert a.sons != nil and a.sons.len > 0
             c.typedescMatched = true
             result = typeRel(c, f.sons[0], a.sons[0])
         else:
@@ -752,7 +752,7 @@ proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
       else:
         result = isNone
     else:
-      InternalAssert prev.sonsLen == 1
+      internalAssert prev.sonsLen == 1
       let toMatch = if tfUnresolved in f.flags: a
                     else: a.sons[0]
       result = typeRel(c, prev.sons[0], toMatch)
@@ -825,7 +825,7 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
   var call = newNodeI(nkCall, arg.info)
   call.add(f.n.copyTree)
   call.add(arg.copyTree)
-  result = c.semOverloadedCall(c, call, call, RoutineKinds)
+  result = c.semOverloadedCall(c, call, call, routineKinds)
   if result != nil:
     # resulting type must be consistent with the other arguments:
     var r = typeRel(m, f.sons[0], result.typ)
@@ -867,7 +867,7 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
       dummyName = param
       dummyType = a
 
-    InternalAssert dummyName.kind == nkIdent
+    internalAssert dummyName.kind == nkIdent
     var dummyParam = newSym(skType, dummyName.ident, f.sym, f.sym.info)
     dummyParam.typ = dummyType
     addDecl(c, dummyParam)
@@ -904,7 +904,7 @@ proc paramTypesMatchAux(c: PContext, m: var TCandidate, f, argType: PType,
       r = isGeneric
     else:
       if a.kind == tyExpr:
-        InternalAssert a.len > 0
+        internalAssert a.len > 0
         r = typeRel(m, f.lastSon, a.lastSon)
       else:
         let match = matchTypeClass(m.bindings, fMaybeExpr, a)
@@ -1156,7 +1156,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
       # unnamed param
       if f >= formalLen:
         # too many arguments?
-        if tfVarArgs in m.callee.flags:
+        if tfVarargs in m.callee.flags:
           # is ok... but don't increment any counters...
           # we have no formal here to snoop at:
           n.sons[a] = prepareOperand(c, n.sons[a])

@@ -62,34 +62,34 @@ type
                               # leaf val
 
 
-  PRSTNode* = ref TRSTNode    ## an RST node
-  TRstNodeSeq* = seq[PRSTNode]
-  TRSTNode* {.acyclic, final.} = object ## an RST node's description
+  PRstNode* = ref TRstNode    ## an RST node
+  TRstNodeSeq* = seq[PRstNode]
+  TRstNode* {.acyclic, final.} = object ## an RST node's description
     kind*: TRstNodeKind       ## the node's kind
     text*: string             ## valid for leafs in the AST; and the title of
                               ## the document or the section
     level*: int               ## valid for some node kinds
     sons*: TRstNodeSeq        ## the node's sons
 
-proc len*(n: PRSTNode): int = 
+proc len*(n: PRstNode): int = 
   result = len(n.sons)
 
-proc newRstNode*(kind: TRstNodeKind): PRSTNode = 
+proc newRstNode*(kind: TRstNodeKind): PRstNode = 
   new(result)
   result.sons = @[]
   result.kind = kind
 
-proc newRstNode*(kind: TRstNodeKind, s: string): PRSTNode = 
+proc newRstNode*(kind: TRstNodeKind, s: string): PRstNode = 
   result = newRstNode(kind)
   result.text = s
 
-proc lastSon*(n: PRSTNode): PRSTNode = 
+proc lastSon*(n: PRstNode): PRstNode = 
   result = n.sons[len(n.sons)-1]
 
-proc add*(father, son: PRSTNode) =
+proc add*(father, son: PRstNode) =
   add(father.sons, son)
 
-proc addIfNotNil*(father, son: PRSTNode) = 
+proc addIfNotNil*(father, son: PRstNode) = 
   if son != nil: add(father, son)
 
 
@@ -98,9 +98,9 @@ type
     indent: int
     verbatim: int
 
-proc renderRstToRst(d: var TRenderContext, n: PRSTNode, result: var string)
+proc renderRstToRst(d: var TRenderContext, n: PRstNode, result: var string)
 
-proc renderRstSons(d: var TRenderContext, n: PRSTNode, result: var string) = 
+proc renderRstSons(d: var TRenderContext, n: PRstNode, result: var string) = 
   for i in countup(0, len(n) - 1): 
     renderRstToRst(d, n.sons[i], result)
   
@@ -281,7 +281,7 @@ proc renderRstToRst(d: var TRenderContext, n: PRstNode, result: var string) =
   else:
     result.add("Error: cannot render: " & $n.kind)
   
-proc renderRstToRst*(n: PRSTNode, result: var string) =
+proc renderRstToRst*(n: PRstNode, result: var string) =
   ## renders `n` into its string representation and appends to `result`.
   var d: TRenderContext
   renderRstToRst(d, n, result)

@@ -97,7 +97,7 @@ proc isPureObject(typ: PType): bool =
   while t.kind == tyObject and t.sons[0] != nil: t = t.sons[0]
   result = t.sym != nil and sfPure in t.sym.flags
 
-proc getOrdValue(n: PNode): biggestInt = 
+proc getOrdValue(n: PNode): BiggestInt = 
   case n.kind
   of nkCharLit..nkInt64Lit: result = n.intVal
   of nkNilLit: result = 0
@@ -526,7 +526,7 @@ proc resultType(t: PType): PType =
 proc base(t: PType): PType = 
   result = t.sons[0]
 
-proc firstOrd(t: PType): biggestInt = 
+proc firstOrd(t: PType): BiggestInt = 
   case t.kind
   of tyBool, tyChar, tySequence, tyOpenArray, tyString, tyVarargs, tyProxy:
     result = 0
@@ -557,7 +557,7 @@ proc firstOrd(t: PType): biggestInt =
     internalError("invalid kind for first(" & $t.kind & ')')
     result = 0
 
-proc lastOrd(t: PType): biggestInt = 
+proc lastOrd(t: PType): BiggestInt = 
   case t.kind
   of tyBool: result = 1
   of tyChar: result = 255
@@ -591,7 +591,7 @@ proc lastOrd(t: PType): biggestInt =
     internalError("invalid kind for last(" & $t.kind & ')')
     result = 0
 
-proc lengthOrd(t: PType): biggestInt = 
+proc lengthOrd(t: PType): BiggestInt = 
   case t.kind
   of tyInt64, tyInt32, tyInt: result = lastOrd(t)
   of tyDistinct, tyConst, tyMutable: result = lengthOrd(t.sons[0])
@@ -732,7 +732,7 @@ proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool =
     result = false
 
 template ifFastObjectTypeCheckFailed(a, b: PType, body: stmt) {.immediate.} =
-  if tfFromGeneric not_in a.flags + b.flags:
+  if tfFromGeneric notin a.flags + b.flags:
     # fast case: id comparison suffices:
     result = a.id == b.id
   else:
@@ -835,7 +835,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     result = exprStructuralEquivalent(a.n, b.n) and sameFlags(a, b)
   of tyObject:
     ifFastObjectTypeCheckFailed(a, b):
-      CycleCheck()
+      cycleCheck()
       result = sameObjectStructures(a, b, c) and sameFlags(a, b)
   of tyDistinct:
     cycleCheck()
@@ -1133,7 +1133,7 @@ proc computeRecSizeAux(n: PNode, a, currOffset: var BiggestInt): BiggestInt =
     a = 1
     result = - 1
 
-proc computeSizeAux(typ: PType, a: var biggestInt): biggestInt = 
+proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt = 
   var res, maxAlign, length, currOffset: BiggestInt
   if typ.size == - 2: 
     # we are already computing the size of the type
@@ -1184,7 +1184,7 @@ proc computeSizeAux(typ: PType, a: var biggestInt): biggestInt =
       length = lastOrd(typ)   # BUGFIX: use lastOrd!
       if length + 1 < `shl`(1, 8): result = 1
       elif length + 1 < `shl`(1, 16): result = 2
-      elif length + 1 < `shl`(biggestInt(1), 32): result = 4
+      elif length + 1 < `shl`(BiggestInt(1), 32): result = 4
       else: result = 8
     a = result
   of tySet: 
@@ -1235,7 +1235,7 @@ proc computeSizeAux(typ: PType, a: var biggestInt): biggestInt =
   typ.size = result
   typ.align = int(a)
 
-proc computeSize(typ: PType): biggestInt = 
+proc computeSize(typ: PType): BiggestInt = 
   var a: BiggestInt = 1
   result = computeSizeAux(typ, a)
 
@@ -1244,7 +1244,7 @@ proc getReturnType*(s: PSym): PType =
   assert s.kind in {skProc, skTemplate, skMacro, skIterator}
   result = s.typ.sons[0]
 
-proc getSize(typ: PType): biggestInt = 
+proc getSize(typ: PType): BiggestInt = 
   result = computeSize(typ)
   if result < 0: internalError("getSize: " & $typ.kind)
 
@@ -1289,8 +1289,8 @@ proc compatibleEffectsAux(se, re: PNode): bool =
 proc compatibleEffects*(formal, actual: PType): bool =
   # for proc type compatibility checking:
   assert formal.kind == tyProc and actual.kind == tyProc
-  InternalAssert formal.n.sons[0].kind == nkEffectList
-  InternalAssert actual.n.sons[0].kind == nkEffectList
+  internalAssert formal.n.sons[0].kind == nkEffectList
+  internalAssert actual.n.sons[0].kind == nkEffectList
   
   var spec = formal.n.sons[0]
   if spec.len != 0:
@@ -1315,7 +1315,7 @@ proc compatibleEffects*(formal, actual: PType): bool =
   result = true
 
 proc isCompileTimeOnly*(t: PType): bool {.inline.} =
-  result = t.kind in {tyTypedesc, tyExpr}
+  result = t.kind in {tyTypeDesc, tyExpr}
 
 proc containsCompileTimeOnly*(t: PType): bool =
   if isCompileTimeOnly(t): return true
