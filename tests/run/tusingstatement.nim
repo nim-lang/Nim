@@ -8,25 +8,11 @@ import
 
 # This macro mimics the using statement from C#
 #
-# XXX: 
-#  It doen't match the C# version exactly yet.
-#  In particular, it's not recursive, which prevents it from dealing 
-#  with exceptions thrown from the variable initializers when multiple.
-#  variables are used.
+# It's kept only as a test for the macro system
+# Nimrod's destructors offer a mechanism for automatic 
+# disposal of resources.
 #
-#  Also, since nimrod relies less on exceptions in general, a more
-#  idiomatic definition could be:
-#  var x = init()
-#  if opened(x): 
-#    try:
-#      body
-#    finally:
-#      close(x)
-#
-#  `opened` here could be an overloaded proc which any type can define.
-#  A common practice can be returing an Optional[Resource] obj for which
-#  `opened` is defined to `optional.hasValue`
-macro using(e: expr): stmt {.immediate.} =
+macro autoClose(e: expr): stmt {.immediate.} =
   let e = callsite()
   if e.len != 3:
     error "Using statement: unexpected number of arguments. Got " &
@@ -97,7 +83,7 @@ proc close(r: var TResource) =
 proc use(r: var TResource) =
   write(stdout, "Using " & r.field & ".")
 
-using(r = openResource("test")):
+autoClose(r = openResource("test")):
   use r
 
 

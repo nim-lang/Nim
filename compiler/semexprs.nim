@@ -102,7 +102,7 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     # if a proc accesses a global variable, it is not side effect free:
     if sfGlobal in s.flags:
       incl(c.p.owner.flags, sfSideEffect)
-    elif s.kind == skParam and s.typ.kind == tyExpr and s.typ.n != nil:
+    elif s.kind == skParam and s.typ.kind == tyStatic and s.typ.n != nil:
       # XXX see the hack in sigmatch.nim ...
       return s.typ.n
     result = newSymNode(s, n.info)
@@ -111,7 +111,7 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     # var len = 0 # but won't be called
     # genericThatUsesLen(x) # marked as taking a closure?
   of skGenericParam:
-    if s.typ.kind == tyExpr:
+    if s.typ.kind == tyStatic:
       result = newSymNode(s, n.info)
       result.typ = s.typ
     elif s.ast != nil:
@@ -142,7 +142,7 @@ proc checkConversionBetweenObjects(castDest, src: PType): TConvStatus =
 const 
   IntegralTypes = {tyBool, tyEnum, tyChar, tyInt..tyUInt64}
 
-proc checkConvertible(castDest, src: PType): TConvStatus =
+proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
   result = convOK
   if sameType(castDest, src) and castDest.sym == src.sym:
     # don't annoy conversions that may be needed on another processor:
@@ -163,7 +163,7 @@ proc checkConvertible(castDest, src: PType): TConvStatus =
     # accept conversion between integral types
   else:
     # we use d, s here to speed up that operation a bit:
-    case cmpTypes(d, s)
+    case cmpTypes(c, d, s)
     of isNone, isGeneric:
       if not compareTypes(castDest, src, dcEqIgnoreDistinct):
         result = convNotLegal
@@ -202,7 +202,7 @@ proc semConv(c: PContext, n: PNode): PNode =
   var op = result.sons[1]
   
   if not isSymChoice(op):
-    let status = checkConvertible(result.typ, op.typ)
+    let status = checkConvertible(c, result.typ, op.typ)
     case status
     of convOK: nil
     of convNotNeedeed:
@@ -213,7 +213,7 @@ proc semConv(c: PContext, n: PNode): PNode =
   else:
     for i in countup(0, sonsLen(op) - 1):
       let it = op.sons[i]
-      let status = checkConvertible(result.typ, it.typ)
+      let status = checkConvertible(c, result.typ, it.typ)
       if status == convOK:
         markUsed(n, it.sym)
         markIndirect(c, it.sym)
@@ -301,7 +301,7 @@ proc semOf(c: PContext, n: PNode): PNode =
 
 proc isOpImpl(c: PContext, n: PNode): PNode =
   internalAssert n.sonsLen == 3 and
-    n[1].typ != nil and
+    n[1].typ != nil and n[1].typ.kind == tyTypeDesc and
     n[2].kind in {nkStrLit..nkTripleStrLit, nkType}
   
   let t1 = n[1].typ.skipTypes({tyTypeDesc})
@@ -324,15 +324,15 @@ proc isOpImpl(c: PContext, n: PNode): PNode =
     case t2.kind
     of tyTypeClasses:
       var m: TCandidate
-      initCandidate(m, t2)
+      initCandidate(c, m, t2)
       match = matchUserTypeClass(c, m, emptyNode, t2, t1) != nil
     of tyOrdinal:
       var m: TCandidate
-      initCandidate(m, t2)
+      initCandidate(c, m, t2)
       match = isOrdinalType(t1)
     of tySequence, tyArray, tySet:
       var m: TCandidate
-      initCandidate(m, t2)
+      initCandidate(c, m, t2)
       match = typeRel(m, t2, t1) != isNone
     else:
       match = sameType(t1, t2)
@@ -668,6 +668,7 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
   else:
     result = semOverloadedCall(c, n, nOrig, 
       {skProc, skMethod, skConverter, skMacro, skTemplate})
+ 
   if result != nil:
     if result.sons[0].kind != nkSym: 
       internalError("semOverloadedCallAnalyseEffects")
@@ -706,7 +707,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if t != nil and t.kind == tyProc:
     # This is a proc variable, apply normal overload resolution
     var m: TCandidate
-    initCandidate(m, t)
+    initCandidate(c, m, t)
     matches(c, n, nOrig, m)
     if m.state != csMatch:
       if c.inCompilesContext > 0:
@@ -939,7 +940,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
         let tParam = tbody.sons[s]
         if tParam.sym.name == i:
           let rawTyp = ty.sons[s + 1]
-          if rawTyp.kind == tyExpr:
+          if rawTyp.kind == tyStatic:
             return rawTyp.n
           else:
             let foundTyp = makeTypeDesc(c, rawTyp)
@@ -1164,7 +1165,7 @@ proc semAsgn(c: PContext, n: PNode): PNode =
     if lhsIsResult:
       n.typ = enforceVoidContext
       if lhs.sym.typ.kind == tyGenericParam:
-        if matchTypeClass(lhs.typ, rhs.typ):
+        if cmpTypes(c, lhs.typ, rhs.typ) == isGeneric:
           internalAssert c.p.resultSym != nil
           lhs.typ = rhs.typ
           c.p.resultSym.typ = rhs.typ
@@ -1884,7 +1885,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkBind:
     message(n.info, warnDeprecated, "bind")
     result = semExpr(c, n.sons[0], flags)
-  of nkTypeOfExpr, nkTupleTy, nkRefTy..nkEnumTy:
+  of nkTypeOfExpr, nkTupleTy, nkRefTy..nkEnumTy, nkStaticTy:
     var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})
     result.typ = makeTypeDesc(c, typ)
     #result = symNodeFromType(c, typ, n.info)
@@ -1945,7 +1946,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       # type parameters: partial generic specialization
       n.sons[0] = semSymGenericInstantiation(c, n.sons[0], s)
       result = explicitGenericInstantiation(c, n, s)
-    else: 
+    elif s != nil and s.kind in {skType}:
+      result = symNodeFromType(c, semTypeNode(c, n, nil), n.info)
+    else:
       result = semArrayAccess(c, n, flags)
   of nkCurlyExpr:
     result = semExpr(c, buildOverloadedSubscripts(n, getIdent"{}"), flags)

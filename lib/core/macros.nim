@@ -59,7 +59,8 @@ type
     nnkBindStmt, nnkMixinStmt, nnkUsingStmt,
     nnkCommentStmt, nnkStmtListExpr, nnkBlockExpr,
     nnkStmtListType, nnkBlockType, nnkTypeOfExpr, nnkObjectTy,
-    nnkTupleTy, nnkTypeClassTy, nnkRecList, nnkRecCase, nnkRecWhen,
+    nnkTupleTy, nnkTypeClassTy, nnkStaticTy,
+    nnkRecList, nnkRecCase, nnkRecWhen,
     nnkRefTy, nnkPtrTy, nnkVarTy,
     nnkConstTy, nnkMutableTy,
     nnkDistinctTy,
@@ -293,16 +294,15 @@ proc quote*(bl: stmt, op = "``"): PNimrodNode {.magic: "QuoteAst".}
   ##       if not `ex`:
   ##         echo `info` & ": Check failed: " & `expString`
   
-template emit*(e: expr[string]): stmt =
-  ## accepts a single string argument and treats it as nimrod code
-  ## that should be inserted verbatim in the program
-  ## Example:
-  ##
-  ## .. code-block:: nimrod
-  ##
-  ##   emit("echo " & '"' & "hello world".toUpper & '"')
-  ##
-  eval: result = e.parseStmt
+when not defined(booting):
+  template emit*(e: static[string]): stmt =
+    ## accepts a single string argument and treats it as nimrod code
+    ## that should be inserted verbatim in the program
+    ## Example:
+    ##
+    ##   emit("echo " & '"' & "hello world".toUpper & '"')
+    ##
+    eval: result = e.parseStmt
 
 proc expectKind*(n: PNimrodNode, k: TNimrodNodeKind) {.compileTime.} =
   ## checks that `n` is of kind `k`. If this is not the case,

@@ -75,6 +75,7 @@ type
     semExpr*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}
     semTryExpr*: proc (c: PContext, n: PNode,flags: TExprFlags = {},
                        bufferErrors = false): PNode {.nimcall.}
+    semTryConstExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.}
     semOperand*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}
     semConstBoolExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.} # XXX bite the bullet
     semOverloadedCall*: proc (c: PContext, n, nOrig: PNode,
@@ -213,7 +214,24 @@ proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let sym = newSym(skType, idAnon, getCurrOwner(), info).linkTo(typedesc)
   return newSymNode(sym, info)
 
-proc newTypeS(kind: TTypeKind, c: PContext): PType = 
+proc makeAndType*(c: PContext, t1, t2: PType): PType =
+  result = newTypeS(tyAnd, c)
+  result.sons = @[t1, t2]
+  propagateToOwner(result, t1)
+  propagateToOwner(result, t2)
+
+proc makeOrType*(c: PContext, t1, t2: PType): PType =
+  result = newTypeS(tyOr, c)
+  result.sons = @[t1, t2]
+  propagateToOwner(result, t1)
+  propagateToOwner(result, t2)
+
+proc makeNotType*(c: PContext, t1: PType): PType =
+  result = newTypeS(tyNot, c)
+  result.sons = @[t1]
+  propagateToOwner(result, t1)
+
+proc newTypeS(kind: TTypeKind, c: PContext): PType =
   result = newType(kind, getCurrOwner())
 
 proc newTypeWithSons*(c: PContext, kind: TTypeKind,

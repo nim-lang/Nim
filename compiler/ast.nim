@@ -192,6 +192,7 @@ type
     nkObjectTy,           # object body
     nkTupleTy,            # tuple body
     nkTypeClassTy,        # user-defined type class
+    nkStaticTy,           # ``static[T]``
     nkRecList,            # list of object parts
     nkRecCase,            # case section of object
     nkRecWhen,            # when section of object
@@ -336,19 +337,26 @@ type
     tyIter, # unused
     tyProxy # used as errornous type (for idetools)
     tyTypeClass
+    tyParametricTypeClass # structured similarly to tyGenericInst
+                          # lastSon is the body of the type class
+    tyBuiltInTypeClass
+    tyCompositeTypeClass
     tyAnd
     tyOr
     tyNot
     tyAnything
-    tyParametricTypeClass # structured similarly to tyGenericInst
-                          # lastSon is the body of the type class
+    tyStatic
 
 const
   tyPureObject* = tyTuple
   GcTypeKinds* = {tyRef, tySequence, tyString}
   tyError* = tyProxy # as an errornous node should match everything
-  tyTypeClasses* = {tyTypeClass, tyParametricTypeClass, tyAnd, tyOr, tyNot, tyAnything}
+  
+  tyTypeClasses* = {tyTypeClass, tyBuiltInTypeClass, tyCompositeTypeClass,
+                    tyParametricTypeClass, tyAnd, tyOr, tyNot, tyAnything}
 
+  tyMetaTypes* = {tyGenericParam, tyTypeDesc, tyStatic, tyExpr} + tyTypeClasses
+ 
 type
   TTypeKinds* = set[TTypeKind]
 
@@ -383,9 +391,6 @@ type
                       # proc foo(T: typedesc, list: seq[T]): var T
     tfRetType,        # marks return types in proc (used to detect type classes 
                       # used as return types for return type inference)
-    tfAll,            # type class requires all constraints to be met (default)
-    tfAny,            # type class requires any constraint to be met
-    tfNot,            # type class with a negative check
     tfCapturesEnv,    # whether proc really captures some environment
     tfByCopy,         # pass object/tuple by copy (C backend)
     tfByRef,          # pass object/tuple by reference (C backend)
@@ -396,8 +401,11 @@ type
     tfNeedsInit,      # type constains a "not nil" constraint somewhere or some
                       # other type so that it requires inititalization
     tfHasShared,      # type constains a "shared" constraint modifier somewhere
-    tfHasMeta,        # type has "typedesc" or "expr" somewhere; or uses '|'
+    tfHasMeta,        # type contains "wildcard" sub-types such as generic params
+                      # or other type classes
     tfHasGCedMem,     # type contains GC'ed memory
+    tfGenericTypeParam
+    tfHasStatic
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -774,9 +782,11 @@ const
 
   GenericTypes*: TTypeKinds = {tyGenericInvokation, tyGenericBody, 
     tyGenericParam}
+  
   StructuralEquivTypes*: TTypeKinds = {tyArrayConstr, tyNil, tyTuple, tyArray, 
     tySet, tyRange, tyPtr, tyRef, tyVar, tySequence, tyProc, tyOpenArray,
     tyVarargs}
+  
   ConcreteTypes*: TTypeKinds = { # types of the expr that may occur in::
                                  # var x = expr
     tyBool, tyChar, tyEnum, tyArray, tyObject, 
@@ -1219,7 +1229,7 @@ proc newSons(father: PNode, length: int) =
 proc propagateToOwner*(owner, elem: PType) =
   const HaveTheirOwnEmpty = {tySequence, tySet}
   owner.flags = owner.flags + (elem.flags * {tfHasShared, tfHasMeta,
-                                             tfHasGCedMem})
+                                             tfHasStatic, tfHasGCedMem})
   if tfNotNil in elem.flags:
     if owner.kind in {tyGenericInst, tyGenericBody, tyGenericInvokation}:
       owner.flags.incl tfNotNil
@@ -1232,10 +1242,14 @@ proc propagateToOwner*(owner, elem: PType) =
     
   if tfShared in elem.flags:
     owner.flags.incl tfHasShared
-  
-  if elem.kind in {tyExpr, tyTypeDesc}:
+ 
+  if elem.kind in tyMetaTypes:
     owner.flags.incl tfHasMeta
-  elif elem.kind in {tyString, tyRef, tySequence} or
+
+  if elem.kind == tyStatic:
+    owner.flags.incl tfHasStatic
+
+  if elem.kind in {tyString, tyRef, tySequence} or
       elem.kind == tyProc and elem.callConv == ccClosure:
     owner.flags.incl tfHasGCedMem
 
