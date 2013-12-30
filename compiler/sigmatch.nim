@@ -649,8 +649,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     if a.kind == tyEmpty: result = isEqual
 
   of tyGenericInst:
-    if a.kind == tyGenericInst:
-      if a.base != f.base: return isNone
+    if a.kind == tyGenericInst and a.base == f.base:
       for i in 1 .. f.sonsLen-2:
         result = typeRel(c, f.sons[i], a.sons[i])
         if result == isNone: return

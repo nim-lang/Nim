@@ -263,25 +263,24 @@ proc propagateFieldFlags(t: PType, n: PNode) =
   of nkSym:
     propagateToOwner(t, n.sym.typ)
   of nkRecList, nkRecCase, nkOfBranch, nkElse:
-    for son in n.sons:
-      propagateFieldFlags(t, son)
+    if n.sons != nil:
+      for son in n.sons:
+        propagateFieldFlags(t, son)
   else: discard
 
 proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   result = t
   if t == nil: return
 
-  if t.kind == tyStatic and t.sym != nil and t.sym.kind == skGenericParam:
-    let s = lookupTypeVar(cl, t)
-    return if s != nil: s else: t
+  #if t.kind == tyStatic and t.sym != nil and t.sym.kind == skGenericParam:
+  #  let s = lookupTypeVar(cl, t)
+  #  return if s != nil: s else: t
+
+  if t.kind in {tyStatic, tyGenericParam} + tyTypeClasses:
+    let lookup = PType(idTableGet(cl.typeMap, t))
+    if lookup != nil: return lookup
 
   case t.kind
-  of tyGenericParam, tyTypeClasses:
-    let lookup = lookupTypeVar(cl, t)
-    if lookup != nil:
-      result = lookup
-      if result.kind == tyGenericInvokation:
-        result = handleGenericInvokation(cl, result)
   of tyGenericInvokation:
     result = handleGenericInvokation(cl, t)
   of tyGenericBody:
