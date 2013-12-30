@@ -20,6 +20,7 @@ type
     vars: PStringTable
     nimrodArgs: string
     quotations: TTable[string, tuple[quote, author: string]]
+    nolocal: bool
   TRssItem = object
     year, month, day, title: string
 
@@ -58,6 +59,7 @@ Options:
   --var:name=value    set the value of a variable
   -h, --help          shows this help
   -v, --version       shows the version
+  --nolocal           skip processing files in `doc` subdirectory
 Compile_options:
   will be passed to the Nimrod compiler
 """
@@ -108,6 +110,8 @@ proc parseCmdLine(c: var TConfigData) =
       break
     of cmdLongOption, cmdShortOption:
       case normalize(key)
+      of "nolocal":
+        c.nolocal = true
       of "help", "h": 
         stdout.write(Usage)
         quit(0)
@@ -353,8 +357,9 @@ proc main(c: var TConfigData) =
   buildNewsRss(c, "web/upload")
   buildAddDoc(c, "web/upload")
   buildDoc(c, "web/upload")
-  buildDoc(c, "doc")
-  buildPdfDoc(c, "doc")
+  if not c.nolocal:
+    buildDoc(c, "doc")
+    buildPdfDoc(c, "doc")
 
 var c: TConfigData
 initConfigData(c)
