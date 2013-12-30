@@ -173,6 +173,7 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
     var cl: TReplTypeVars
     initIdTable(cl.symMap)
     initIdTable(cl.typeMap)
+    initIdTable(cl.localCache)
     cl.info = info
     cl.c = c
     cl.allowMetaTypes = allowMetaTypes

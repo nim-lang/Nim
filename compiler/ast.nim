@@ -404,8 +404,8 @@ type
     tfHasMeta,        # type contains "wildcard" sub-types such as generic params
                       # or other type classes
     tfHasGCedMem,     # type contains GC'ed memory
-    tfGenericTypeParam
     tfHasStatic
+    tfGenericTypeParam
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -1229,6 +1229,10 @@ proc newSons(father: PNode, length: int) =
   else:
     setLen(father.sons, length)
 
+proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
+  result = t
+  while result.kind in kinds: result = lastSon(result)
+
 proc propagateToOwner*(owner, elem: PType) =
   const HaveTheirOwnEmpty = {tySequence, tySet}
   owner.flags = owner.flags + (elem.flags * {tfHasShared, tfHasMeta,
@@ -1245,7 +1249,7 @@ proc propagateToOwner*(owner, elem: PType) =
     
   if tfShared in elem.flags:
     owner.flags.incl tfHasShared
- 
+
   if elem.kind in tyMetaTypes:
     owner.flags.incl tfHasMeta
 

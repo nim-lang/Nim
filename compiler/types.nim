@@ -64,7 +64,6 @@ const
   typedescPtrs* = abstractPtrs + {tyTypeDesc}
   typedescInst* = abstractInst + {tyTypeDesc}
 
-proc skipTypes*(t: PType, kinds: TTypeKinds): PType
 proc containsObject*(t: PType): bool
 proc containsGarbageCollectedRef*(typ: PType): bool
 proc containsHiddenPointer*(typ: PType): bool
@@ -148,10 +147,6 @@ proc skipGeneric(t: PType): PType =
   result = t
   while result.kind == tyGenericInst: result = lastSon(result)
       
-proc skipTypes(t: PType, kinds: TTypeKinds): PType = 
-  result = t
-  while result.kind in kinds: result = lastSon(result)
-  
 proc isOrdinalType(t: PType): bool =
   assert(t != nil)
   # caution: uint, uint64 are no ordinal types!
