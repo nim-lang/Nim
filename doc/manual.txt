@@ -2196,12 +2196,12 @@ Instead of:
 Using statement
 ---------------
 
-The using statement provides syntactic convenience for procs that heavily use a
-single contextual parameter. When applied to a variable or a constant, it will
-instruct Nimrod to automatically consider the used symbol as a hidden leading
-parameter for any procedure calls, following the using statement in the current
-scope. Thus, it behaves much like the hidden `this` parameter available in some
-object-oriented programming languages.
+The `using statement`:idx: provides syntactic convenience for procs that
+heavily use a single contextual parameter. When applied to a variable or a
+constant, it will instruct Nimrod to automatically consider the used symbol as
+a hidden leading parameter for any procedure calls, following the using
+statement in the current scope. Thus, it behaves much like the hidden `this`
+parameter available in some object-oriented programming languages.
 
 .. code-block:: nimrod
 
