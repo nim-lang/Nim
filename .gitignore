@@ -58,6 +58,7 @@ examples/cross_calculator/android/tags
 # Generated files.
 /compile.json
 /compiler/c2nim/c2nim
+/compiler/nimrod.dot
 /compiler/pas2nim/pas2nim
 /compiler/service
 /examples/allany
