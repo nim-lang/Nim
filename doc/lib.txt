@@ -227,7 +227,12 @@ Parsers
 -------
 
 * `parseopt <parseopt.html>`_
-  The ``parseopt`` module implements a command line option parser. This
+  The ``parseopt`` module implements a command line option parser.
+  **Deprecated since version 0.9.3:** Use the `parseopt2
+  <parseopt2.html>`_ module instead.
+
+* `parseopt2 <parseopt2.html>`_
+  The ``parseopt2`` module implements a command line option parser. This
   supports long and short command options with optional values and command line
   arguments.
 
