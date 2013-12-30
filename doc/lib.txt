@@ -386,9 +386,6 @@ Database support
 * `db_mongo <db_mongo.html>`_
   A higher level **mongodb** wrapper. 
 
-* `mongodb <mongo.html>`_
-  Lower level wrapper for the **mongodb** client C library.
-  
 
 Other
 -----
@@ -588,6 +585,8 @@ Database support
   Contains a wrapper for the mySQL API.
 * `sqlite3 <sqlite3.html>`_
   Contains a wrapper for SQLite 3 API.
+* `mongodb <mongo.html>`_
+  Lower level wrapper for the **mongodb** client C library.
 * `odbcsql <odbcsql.html>`_
   interface to the ODBC driver.
 * `sphinx <sphinx.html>`_
