@@ -827,22 +827,6 @@ proc semBlockType(c: PContext, n: PNode, prev: PType): PType =
   dec(c.p.nestedBlockCounter)
 
 proc semGenericParamInInvokation(c: PContext, n: PNode): PType =
-  # XXX hack 1022 for generics ... would have been nice if the compiler had
-  # been designed with them in mind from start ...
-  when false:
-    if n.kind == nkSym:
-      # for generics we need to lookup the type var again:
-      var s = searchInScopes(c, n.sym.name)
-      if s != nil:
-        if s.kind == skType and s.typ != nil:
-          var t = n.sym.typ
-          echo "came here"
-          return t
-        else:
-          echo "s is crap:"
-          debug(s)
-      else:
-        echo "s is nil!!!!"
   result = semTypeNode(c, n, nil)
 
 proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType = 

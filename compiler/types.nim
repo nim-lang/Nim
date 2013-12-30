@@ -606,8 +606,10 @@ type
 
   TTypeCmpFlag* = enum
     IgnoreTupleFields
+    IgnoreCC
     ExactTypeDescValues
     ExactGenericParams
+    ExactConstraints
     AllowCommonBase
 
   TTypeCmpFlags* = set[TTypeCmpFlag]
@@ -637,15 +639,17 @@ proc sameTypeOrNilAux(a, b: PType, c: var TSameTypeClosure): bool =
     if a == nil or b == nil: result = false
     else: result = sameTypeAux(a, b, c)
 
+proc sameType*(a, b: PType, flags: TTypeCmpFlags = {}): bool =
+  var c = initSameTypeClosure()
+  c.flags = flags
+  result = sameTypeAux(a, b, c)
+
 proc sameTypeOrNil*(a, b: PType, flags: TTypeCmpFlags = {}): bool =
   if a == b:
     result = true
-  else: 
+  else:
     if a == nil or b == nil: result = false
-    else:
-      var c = initSameTypeClosure()
-      c.flags = flags
-      result = sameTypeAux(a, b, c)
+    else: result = sameType(a, b, flags)
 
 proc equalParam(a, b: PSym): TParamsEquality = 
   if sameTypeOrNil(a.typ, b.typ, {ExactTypeDescValues}) and
@@ -661,7 +665,15 @@ proc equalParam(a, b: PSym): TParamsEquality =
       result = paramsIncompatible
   else:
     result = paramsNotEqual
-  
+
+proc sameConstraints(a, b: PNode): bool =
+  internalAssert a.len == b.len
+  for i in 1 .. <a.len:
+    if not exprStructuralEquivalent(a[i].sym.constraint,
+                                    b[i].sym.constraint):
+      return false
+  return true
+
 proc equalParams(a, b: PNode): TParamsEquality = 
   result = paramsEqual
   var length = sonsLen(a)
@@ -860,8 +872,9 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     else:
       result = sameFlags(a, b)
   of tyGenericParam:
-    result = if ExactGenericParams in c.flags: a.id == b.id
-             else: sameChildrenAux(a, b, c) and sameFlags(a, b)
+    result = sameChildrenAux(a, b, c) and sameFlags(a, b)
+    if result and ExactGenericParams in c.flags:
+      result = a.sym.position == b.sym.position
   of tyGenericInvokation, tyGenericBody, tySequence,
      tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyArrayConstr,
      tyArray, tyProc, tyConst, tyMutable, tyVarargs, tyIter,
@@ -869,17 +882,14 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     cycleCheck()    
     result = sameChildrenAux(a, b, c) and sameFlags(a, b)
     if result and a.kind == tyProc:
-      result = a.callConv == b.callConv
+      result = ((IgnoreCC in c.flags) or a.callConv == b.callConv) and
+               ((ExactConstraints notin c.flags) or sameConstraints(a.n, b.n))
   of tyRange:
     cycleCheck()
     result = sameTypeOrNilAux(a.sons[0], b.sons[0], c) and
         sameValue(a.n.sons[0], b.n.sons[0]) and
         sameValue(a.n.sons[1], b.n.sons[1])
   of tyNone: result = false  
-
-proc sameType*(x, y: PType): bool =
-  var c = initSameTypeClosure()
-  result = sameTypeAux(x, y, c)
 
 proc sameBackendType*(x, y: PType): bool =
   var c = initSameTypeClosure()
