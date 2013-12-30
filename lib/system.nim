@@ -422,9 +422,17 @@ proc incl*[T](x: var set[T], y: T) {.magic: "Incl", noSideEffect.}
   ## includes element ``y`` to the set ``x``. This is the same as
   ## ``x = x + {y}``, but it might be more efficient.
 
+template incl*[T](s: var set[T], flags: set[T]) =
+  ## includes the set of flags to the set ``x``.
+  s = s + flags
+
 proc excl*[T](x: var set[T], y: T) {.magic: "Excl", noSideEffect.}
   ## excludes element ``y`` to the set ``x``. This is the same as
   ## ``x = x - {y}``, but it might be more efficient.
+
+template excl*[T](s: var set[T], flags: set[T]) =
+  ## excludes the set of flags to ``x``.
+  s = s - flags
 
 proc card*[T](x: set[T]): int {.magic: "Card", noSideEffect.}
   ## returns the cardinality of the set ``x``, i.e. the number of elements
