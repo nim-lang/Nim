@@ -204,12 +204,15 @@ proc tryConstExpr(c: PContext, n: PNode): PNode =
   result = getConstExpr(c.module, e)
   if result != nil: return
 
-  result = evalConstExpr(c.module, e)
-  if result == nil or result.kind == nkEmpty:
+  try:
+    result = evalConstExpr(c.module, e)
+    if result == nil or result.kind == nkEmpty:
+      return nil
+
+    result = fixupTypeAfterEval(c, result, e)
+  except:
     return nil
 
-  result = fixupTypeAfterEval(c, result, e)
-  
 proc semConstExpr(c: PContext, n: PNode): PNode =
   var e = semExprWithType(c, n)
   if e == nil:

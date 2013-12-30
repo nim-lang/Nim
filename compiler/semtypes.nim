@@ -594,7 +594,7 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
 let typedescId = getIdent"typedesc"
 
 template shouldHaveMeta(t) =
-  InternalAssert tfHasMeta in result.lastSon.flags
+  InternalAssert tfHasMeta in t.flags
   # result.lastSon.flags.incl tfHasMeta
 
 proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
@@ -677,7 +677,8 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     result = newTypeS(tyGenericInvokation, c)
     result.rawAddSon(paramType)
     for i in 0 .. paramType.sonsLen - 2:
-      result.rawAddSon(copyType(paramType.sons[i], getCurrOwner(), true))
+      result.rawAddSon newTypeS(tyAnything, c)
+      # result.rawAddSon(copyType(paramType.sons[i], getCurrOwner(), true))
     result = instGenericContainer(c, paramType.sym.info, result,
                                   allowMetaTypes = true)
     result.lastSon.shouldHaveMeta
@@ -696,20 +697,29 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     if liftBody != nil:
       result = liftBody
       result.shouldHaveMeta
-    
+ 
+  of tyGenericInvokation:
+    for i in 1 .. <paramType.sonsLen:
+      let lifted = liftingWalk(paramType.sons[i])
+      if lifted != nil: paramType.sons[i] = lifted
+
+    let expanded = instGenericContainer(c, info, paramType,
+                                        allowMetaTypes = true)
+    result = liftingWalk(expanded)
+
   of tyTypeClass, tyBuiltInTypeClass, tyAnd, tyOr, tyNot:
     result = addImplicitGeneric(copyType(paramType, getCurrOwner(), true))
   
   of tyExpr:
     if procKind notin {skMacro, skTemplate}:
-      result = addImplicitGeneric(newTypeS(tyGenericParam, c))
+      result = addImplicitGeneric(newTypeS(tyAnything, c))
   
   of tyGenericParam:
     if tfGenericTypeParam in paramType.flags and false:
       if paramType.sonsLen > 0:
         result = liftingWalk(paramType.lastSon)
       else:
-        result = addImplicitGeneric(newTypeS(tyGenericParam, c))
+        result = addImplicitGeneric(newTypeS(tyAnything, c))
   
   else: nil
 
@@ -860,7 +870,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
       return newOrPrevType(tyError, prev, c)
 
     var isConcrete = true
-  
+ 
     for i in 1 .. <m.call.len:
       let typ = m.call[i].typ.skipTypes({tyTypeDesc})
       if containsGenericType(typ): isConcrete = false
@@ -878,6 +888,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
                                         allowMetaTypes = not isConcrete)
           if not isConcrete and result.kind == tyGenericInst:
             result.lastSon.shouldHaveMeta
+          
 
 proc semTypeExpr(c: PContext, n: PNode): PType =
   var n = semExprWithType(c, n, {efDetermineType})
