@@ -229,15 +229,13 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
   rawAddSon(result, newbody)
   checkPartialConstructedType(cl.info, newbody)
 
-proc normalizeProcType(t: PType) =
+proc eraseVoidParams(t: PType) =
   if t.sons[0] != nil and t.sons[0].kind == tyEmpty:
     t.sons[0] = nil
   
   for i in 1 .. <t.sonsLen:
+    # don't touch any memory unless necessary
     if t.sons[i].kind == tyEmpty:
-      # the nested loops are here in order to avoid
-      # touching any memory and callign setLen unless
-      # it's really necessary
       var pos = i
       for j in i+1 .. <t.sonsLen:
         if t.sons[j].kind != tyEmpty:
@@ -247,6 +245,15 @@ proc normalizeProcType(t: PType) =
       setLen t.sons, pos
       setLen t.n.sons, pos
       return
+
+proc skipIntLiteralParams(t: PType) =
+  for i in 0 .. <t.sonsLen:
+    let p = t.sons[i]
+    if p == nil: continue
+    let skipped = p.skipIntLit
+    if skipped != p:
+      t.sons[i] = skipped
+      if i > 0: t.n.sons[i].sym.typ = skipped
 
 proc propagateFieldFlags(t: PType, n: PNode) =
   # This is meant for objects and tuples
@@ -320,7 +327,8 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       of tyObject, tyTuple:
         propagateFieldFlags(result, result.n)
       of tyProc:
-        normalizeProcType(result)
+        eraseVoidParams(result)
+        skipIntLiteralParams(result)
       else: discard
 
 proc generateTypeInstance*(p: PContext, pt: TIdTable, info: TLineInfo,
