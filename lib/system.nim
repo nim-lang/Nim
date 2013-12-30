@@ -2225,8 +2225,19 @@ when not defined(JS): #and not defined(NimrodVM):
 
   when hostOS != "standalone":
     iterator lines*(filename: string): TaintedString {.tags: [FReadIO].} =
-      ## Iterate over any line in the file named `filename`.
-      ## If the file does not exist `EIO` is raised.
+      ## Iterates over any line in the file named `filename`.
+      ##
+      ## If the file does not exist `EIO` is raised. The iterated lines will be
+      ## stripped off the trailing newline character(s). Example:
+      ##
+      ## .. code-block:: nimrod
+      ##   import strutils
+      ##
+      ##   proc transformLetters(filename: string) =
+      ##     var buffer = ""
+      ##     for line in filename.lines:
+      ##       buffer.add(line.replace("a", "0") & '\x0A')
+      ##     writeFile(filename, buffer)
       var f = open(filename)
       var res = TaintedString(newStringOfCap(80))
       while f.readLine(res): yield res
@@ -2234,6 +2245,17 @@ when not defined(JS): #and not defined(NimrodVM):
 
     iterator lines*(f: TFile): TaintedString {.tags: [FReadIO].} =
       ## Iterate over any line in the file `f`.
+      ##
+      ## The iterated lines will be stripped off the trailing newline
+      ## character(s). Example:
+      ##
+      ## .. code-block:: nimrod
+      ##   proc countZeros(filename: TFile): tuple[lines, zeros: int] =
+      ##     for line in filename.lines:
+      ##       for letter in line:
+      ##         if letter == '0':
+      ##           result.zeros += 1
+      ##       result.lines += 1
       var res = TaintedString(newStringOfCap(80))
       while f.readLine(res): yield res
 
