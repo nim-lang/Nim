@@ -11,6 +11,9 @@
 
 import ast, astalgo, msgs, types, magicsys, semdata, renderer
 
+const
+  tfInstClearedFlags = {tfHasMeta}
+
 proc checkPartialConstructedType(info: TLineInfo, t: PType) =
   if tfAcyclic in t.flags and skipTypes(t, abstractInst).kind != tyObject:
     localError(info, errInvalidPragmaX, "acyclic")
@@ -67,13 +70,29 @@ type
     c*: PContext
     typeMap*: TIdTable        # map PType to PType
     symMap*: TIdTable         # map PSym to PSym
+    localCache*: TIdTable     # local cache for remembering alraedy replaced
+                              # types during instantiation of meta types
+                              # (they are not stored in the global cache)
     info*: TLineInfo
     allowMetaTypes*: bool     # allow types such as seq[Number]
                               # i.e. the result contains unresolved generics
 
-proc replaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType
+proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType
 proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym
 proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode): PNode
+
+template checkMetaInvariants(cl: TReplTypeVars, t: PType) =
+  when false:
+    if t != nil and tfHasMeta in t.flags and
+       cl.allowMetaTypes == false:
+      echo "UNEXPECTED META ", t.id, " ", instantiationInfo(-1)
+      debug t
+      writeStackTrace()
+      quit 1
+
+proc replaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
+  result = replaceTypeVarsTAux(cl, t)
+  checkMetaInvariants(cl, result)
 
 proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
   result = copyNode(n)
@@ -87,7 +106,9 @@ proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
 proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode): PNode =
   if n == nil: return
   result = copyNode(n)
-  result.typ = replaceTypeVarsT(cl, n.typ)
+  if n.typ != nil:
+    result.typ = replaceTypeVarsT(cl, n.typ)
+    checkMetaInvariants(cl, result.typ)
   case n.kind
   of nkNone..pred(nkSym), succ(nkSym)..nkNilLit:
     discard
@@ -140,7 +161,12 @@ proc lookupTypeVar(cl: TReplTypeVars, t: PType): PType =
     result = errorType(cl.c)
   elif result.kind == tyGenericParam and not cl.allowMetaTypes:
     internalError(cl.info, "substitution with generic parameter")
- 
+
+proc instCopyType(t: PType): PType =
+  result = copyType(t, t.owner, false)
+  result.flags.incl tfFromGeneric
+  result.flags.excl tfInstClearedFlags
+
 proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType = 
   # tyGenericInvokation[A, tyGenericInvokation[A, B]]
   # is difficult to handle: 
@@ -148,14 +174,17 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
   if body.kind != tyGenericBody: internalError(cl.info, "no generic body")
   var header: PType = nil
   # search for some instantiation here:
-  result = searchInstTypes(t)
+  if cl.allowMetaTypes:
+    result = PType(idTableGet(cl.localCache, t))
+  else:
+    result = searchInstTypes(t)
   if result != nil: return
   for i in countup(1, sonsLen(t) - 1):
     var x = t.sons[i]
     if x.kind == tyGenericParam:
       x = lookupTypeVar(cl, x)
       if x != nil:
-        if header == nil: header = copyType(t, t.owner, false)
+        if header == nil: header = instCopyType(t)
         header.sons[i] = x
         propagateToOwner(header, x)
   
@@ -164,14 +193,18 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
     result = searchInstTypes(header)
     if result != nil: return
   else:
-    header = copyType(t, t.owner, false)
+    header = instCopyType(t)
+  
+  result = newType(tyGenericInst, t.sons[0].owner)
+  # be careful not to propagate unnecessary flags here (don't use rawAddSon)
+  result.sons = @[header.sons[0]]
   # ugh need another pass for deeply recursive generic types (e.g. PActor)
   # we need to add the candidate here, before it's fully instantiated for
   # recursive instantions:
-  result = newType(tyGenericInst, t.sons[0].owner)
-  result.rawAddSon(header.sons[0])
   if not cl.allowMetaTypes:
     cacheTypeInst(result)
+  else:
+    idTablePut(cl.localCache, t, result)
 
   for i in countup(1, sonsLen(t) - 1):
     var x = replaceTypeVarsT(cl, t.sons[i])
@@ -180,13 +213,13 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
     propagateToOwner(header, x)
     idTablePut(cl.typeMap, body.sons[i-1], x)
   
-  for i in countup(1, sonsLen(t) - 1): 
+  for i in countup(1, sonsLen(t) - 1):
     # if one of the params is not concrete, we cannot do anything
     # but we already raised an error!
     rawAddSon(result, header.sons[i])
- 
+
   var newbody = replaceTypeVarsT(cl, lastSon(body))
-  newbody.flags = newbody.flags + t.flags + body.flags
+  newbody.flags = newbody.flags + (t.flags + body.flags - tfInstClearedFlags)
   result.flags = result.flags + newbody.flags
   newbody.callConv = body.callConv
   # This type may be a generic alias and we want to resolve it here.
@@ -215,9 +248,22 @@ proc normalizeProcType(t: PType) =
       setLen t.n.sons, pos
       return
 
-proc replaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType = 
+proc propagateFieldFlags(t: PType, n: PNode) =
+  # This is meant for objects and tuples
+  # The type must be fully instantiated!
+  internalAssert n.kind != nkRecWhen
+  case n.kind
+  of nkSym:
+    propagateToOwner(t, n.sym.typ)
+  of nkRecList, nkRecCase, nkOfBranch, nkElse:
+    for son in n.sons:
+      propagateFieldFlags(t, son)
+  else: discard
+
+proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   result = t
   if t == nil: return
+
   if t.kind == tyStatic and t.sym != nil and t.sym.kind == skGenericParam:
     let s = lookupTypeVar(cl, t)
     return if s != nil: s else: t
@@ -243,9 +289,10 @@ proc replaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
       result = lookup
       if tfUnresolved in t.flags: result = result.base
   of tyGenericInst:
-    result = copyType(t, t.owner, true)
+    result = instCopyType(t)
     for i in 1 .. <result.sonsLen:
       result.sons[i] = ReplaceTypeVarsT(cl, result.sons[i])
+    propagateToOwner(result, result.lastSon)
   else:
     if t.kind == tyArray:
       let idxt = t.sons[0]
@@ -253,22 +300,35 @@ proc replaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
          idxt.sym != nil and idxt.sym.kind == skGenericParam:
         let value = lookupTypeVar(cl, idxt).n
         t.sons[0] = makeRangeType(cl.c, 0, value.intVal - 1, value.info)
+    
     if containsGenericType(t):
-      result = copyType(t, t.owner, false)
-      incl(result.flags, tfFromGeneric)
+      result = instCopyType(t)
       result.size = -1 # needs to be recomputed
+      
       for i in countup(0, sonsLen(result) - 1):
-        result.sons[i] = replaceTypeVarsT(cl, result.sons[i])
+        if result.sons[i] != nil:
+          result.sons[i] = replaceTypeVarsT(cl, result.sons[i])
+          propagateToOwner(result, result.sons[i])
+
       result.n = replaceTypeVarsN(cl, result.n)
-      if result.kind in GenericTypes:
-        localError(cl.info, errCannotInstantiateX, typeToString(t, preferName))
-      if result.kind == tyProc: normalizeProcType(result)
+      
+      # XXX: This is not really needed?
+      # if result.kind in GenericTypes:
+      #   localError(cl.info, errCannotInstantiateX, typeToString(t, preferName))
+  
+      case result.kind
+      of tyObject, tyTuple:
+        propagateFieldFlags(result, result.n)
+      of tyProc:
+        normalizeProcType(result)
+      else: discard
 
 proc generateTypeInstance*(p: PContext, pt: TIdTable, info: TLineInfo,
                            t: PType): PType =
   var cl: TReplTypeVars
   initIdTable(cl.symMap)
   copyIdTable(cl.typeMap, pt)
+  initIdTable(cl.localCache)
   cl.info = info
   cl.c = p
   pushInfoContext(info)
