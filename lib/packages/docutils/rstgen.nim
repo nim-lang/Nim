@@ -705,6 +705,8 @@ proc defaultConfig*(): PStringTable =
   template setConfigVar(key, val: expr) =
     result[key] = val
   
+  # If you need to modify these values, it might be worth updating the template
+  # file in config/nimdoc.cfg.
   setConfigVar("split.item.toc", "20")
   setConfigVar("doc.section", """
 <div class="section" id="$sectionID">
@@ -722,13 +724,14 @@ $content
 </li>
 """)
   setConfigVar("doc.item", """
-<dt id="$itemID"><pre>$header</pre></dt>
+<dt id="$itemID"><a name="$itemSymOrIDEnc"></a><pre>$header</pre></dt>
 <dd>
 $desc
 </dd>
 """)
   setConfigVar("doc.item.toc", """
-  <li><a class="reference" href="#$itemID">$name</a></li>
+  <li><a class="reference" href="#$itemSymOrIDEnc"
+    title="$header_plain">$name</a></li>
 """)
   setConfigVar("doc.toc", """
 <div class="navigation" id="navigation">
