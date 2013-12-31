@@ -33,3 +33,13 @@ accept baz(vbaz)
 reject baz(vnotbaz)
 reject bar(vfoo)
 
+# https://github.com/Araq/Nimrod/issues/517
+type
+  TVecT*[T] = array[0..1, T]|array[0..2, T]|array[0..3, T]
+  TVec2* = array[0..1, float32]
+
+proc f[T](a: TVecT[T], b: TVecT[T]): T = discard
+
+var x: float = f([0.0'f32, 0.0'f32], [0.0'f32, 0.0'f32])
+var y = f(TVec2([0.0'f32, 0.0'f32]), TVec2([0.0'f32, 0.0'f32]))
+
