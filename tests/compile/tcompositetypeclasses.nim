@@ -43,3 +43,17 @@ proc f[T](a: TVecT[T], b: TVecT[T]): T = discard
 var x: float = f([0.0'f32, 0.0'f32], [0.0'f32, 0.0'f32])
 var y = f(TVec2([0.0'f32, 0.0'f32]), TVec2([0.0'f32, 0.0'f32]))
 
+# https://github.com/Araq/Nimrod/issues/602
+type
+  TTest = object
+  TTest2* = object
+  TUnion = TTest | TTest2
+
+proc f(src: ptr TUnion, dst: ptr TUnion) =
+  echo("asd")
+
+var tx: TTest
+var ty: TTest2
+
+accept f(addr tx, addr tx)
+reject f(addr tx, addr ty)

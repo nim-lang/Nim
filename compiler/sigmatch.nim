@@ -432,7 +432,12 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   template bindingRet(res) =
     when res == isGeneric: put(c.bindings, f, aOrig)
     return res
- 
+
+  template considerPreviousT(body: stmt) {.immediate.} =
+    var prev = PType(idTableGet(c.bindings, f))
+    if prev == nil: body
+    else: return typeRel(c, prev, a)
+
   case a.kind
   of tyOr:
     # seq[int|string] vs seq[number]
@@ -658,19 +663,22 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     if a.kind == tyEmpty: result = isEqual
 
   of tyGenericInst:
-    if a.kind == tyGenericInst and a.base == f.base:
-      for i in 1 .. f.sonsLen-2:
-        result = typeRel(c, f.sons[i], a.sons[i])
+    let roota = a.skipGenericAlias
+    let rootf = f.skipGenericAlias
+    if a.kind == tyGenericInst and roota.base == rootf.base:
+      for i in 1 .. rootf.sonsLen-2:
+        result = typeRel(c, rootf.sons[i], roota.sons[i])
         if result == isNone: return
       result = isGeneric
     else:
       result = typeRel(c, lastSon(f), a)
 
   of tyGenericBody:
-    if a.kind == tyGenericInst and a.sons[0] == f:
-      return isGeneric
-    let ff = lastSon(f)
-    if ff != nil: result = typeRel(c, ff, a)
+    considerPreviousT:
+      if a.kind == tyGenericInst and a.sons[0] == f:
+        bindingRet isGeneric
+      let ff = lastSon(f)
+      if ff != nil: result = typeRel(c, ff, a)
 
   of tyGenericInvokation:
     var x = a.skipGenericAlias
@@ -697,39 +705,38 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
           put(c.bindings, f.sons[i], x)
   
   of tyAnd:
-    for branch in f.sons:
-      if typeRel(c, branch, aOrig) == isNone:
-        return isNone
+    considerPreviousT:
+      for branch in f.sons:
+        if typeRel(c, branch, aOrig) == isNone:
+          return isNone
 
-    bindingRet isGeneric
+      bindingRet isGeneric
 
   of tyOr:
-    for branch in f.sons:
-      if typeRel(c, branch, aOrig) != isNone:
-        bindingRet isGeneric
-     
-    return isNone
+    considerPreviousT:
+      for branch in f.sons:
+        if typeRel(c, branch, aOrig) != isNone:
+          bindingRet isGeneric
+       
+      return isNone
 
   of tyNot:
-    for branch in f.sons:
-      if typeRel(c, branch, aOrig) != isNone:
-        return isNone
-    
-    bindingRet isGeneric
+    considerPreviousT:
+      for branch in f.sons:
+        if typeRel(c, branch, aOrig) != isNone:
+          return isNone
+      
+      bindingRet isGeneric
 
   of tyAnything:
-    var prev = PType(idTableGet(c.bindings, f))
-    if prev == nil:
+    considerPreviousT:
       var concrete = concreteType(c, a)
       if concrete != nil and doBind:
         put(c.bindings, f, concrete)
       return isGeneric
-    else:
-      return typeRel(c, prev, a)
 
   of tyBuiltInTypeClass:
-    var prev = PType(idTableGet(c.bindings, f))
-    if prev == nil:
+    considerPreviousT:
       let targetKind = f.sons[0].kind
       if targetKind == a.skipTypes({tyRange, tyGenericInst}).kind or
          (targetKind in {tyProc, tyPointer} and a.kind == tyNil):
@@ -737,19 +744,14 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         return isGeneric
       else:
         return isNone
-    else:
-      result = typeRel(c, prev, a)
 
   of tyCompositeTypeClass:
-    var prev = PType(idTableGet(c.bindings, f))
-    if prev == nil:
+    considerPreviousT:
       if typeRel(c, f.sons[1], a) != isNone:
         put(c.bindings, f, a)
         return isGeneric
       else:
         return isNone
-    else:
-      result = typeRel(c, prev, a)
 
   of tyGenericParam, tyTypeClass:
     var x = PType(idTableGet(c.bindings, f))

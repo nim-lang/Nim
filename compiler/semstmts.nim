@@ -740,16 +740,12 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       # like: mydata.seq
       rawAddSon(s.typ, newTypeS(tyEmpty, c))
       s.ast = a
-      when oUseLateInstantiation:
-        var body: PType = nil
-        s.typScope = c.currentScope.parent
-      else:
-        inc c.inGenericContext
-        var body = semTypeNode(c, a.sons[2], nil)
-        dec c.inGenericContext
-        if body != nil:
-          body.sym = s
-          body.size = -1 # could not be computed properly
+      inc c.inGenericContext
+      var body = semTypeNode(c, a.sons[2], nil)
+      dec c.inGenericContext
+      if body != nil:
+        body.sym = s
+        body.size = -1 # could not be computed properly
       s.typ.sons[sonsLen(s.typ) - 1] = body
       popOwner()
       closeScope(c)
