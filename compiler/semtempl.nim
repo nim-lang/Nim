@@ -421,6 +421,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   else:
     s = semIdentVis(c, skTemplate, n.sons[0], {})
   # check parameter list:
+  s.scope = c.currentScope
   pushOwner(s)
   openScope(c)
   n.sons[namePos] = newSymNode(s, n.sons[namePos].info)

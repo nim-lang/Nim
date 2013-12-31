@@ -1164,7 +1164,7 @@ proc semAsgn(c: PContext, n: PNode): PNode =
         if lhsIsResult: {efAllowDestructor} else: {})
     if lhsIsResult:
       n.typ = enforceVoidContext
-      if lhs.sym.typ.isMetaType:
+      if lhs.sym.typ.isMetaType and lhs.sym.typ.kind != tyTypeDesc:
         if cmpTypes(c, lhs.typ, rhs.typ) == isGeneric:
           internalAssert c.p.resultSym != nil
           lhs.typ = rhs.typ

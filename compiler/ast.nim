@@ -1430,6 +1430,10 @@ proc skipGenericOwner*(s: PSym): PSym =
   result = if sfFromGeneric in s.flags: s.owner.owner
            else: s.owner
 
+proc originatingModule*(s: PSym): PSym =
+  result = s.owner
+  while result.kind != skModule: result = result.owner
+
 proc isRoutine*(s: PSym): bool {.inline.} =
   result = s.kind in {skProc, skTemplate, skMacro, skIterator, skMethod,
                       skConverter}
