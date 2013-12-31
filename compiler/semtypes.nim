@@ -600,7 +600,8 @@ template shouldHaveMeta(t) =
 proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
                    paramType: PType, paramName: string,
                    info: TLineInfo, anon = false): PType =
-  
+  if paramType == nil: return # (e.g. proc return type)
+
   proc addImplicitGenericImpl(typeClass: PType, typId: PIdent): PType =
     let finalTypId = if typId != nil: typId
                      else: getIdent(paramName & ":type")
@@ -621,7 +622,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     s.position = genericParams.len
     genericParams.addSon(newSymNode(s))
     result = typeClass
-        
+ 
   # XXX: There are codegen errors if this is turned into a nested proc
   template liftingWalk(typ: PType, anonFlag = false): expr =
     liftParamType(c, procKind, genericParams, typ, paramName, info, anonFlag)
@@ -655,14 +656,15 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       # disable the bindOnce behavior for the type class
       result = liftingWalk(paramType.sons[0], true)
   
-  of tySequence, tySet, tyArray, tyOpenArray:
+  of tySequence, tySet, tyArray, tyOpenArray,
+     tyVar, tyPtr, tyRef, tyProc:
     # XXX: this is a bit strange, but proc(s: seq)
     # produces tySequence(tyGenericParam, null).
     # This also seems to be true when creating aliases
     # like: type myseq = distinct seq.
     # Maybe there is another better place to associate
     # the seq type class with the seq identifier.
-    if paramType.lastSon == nil:
+    if paramType.kind == tySequence and paramType.lastSon == nil:
       let typ = c.newTypeWithSons(tyBuiltInTypeClass,
                                   @[newTypeS(paramType.kind, c)])
       result = addImplicitGeneric(typ)
@@ -720,7 +722,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
         result = liftingWalk(paramType.lastSon)
       else:
         result = addImplicitGeneric(newTypeS(tyAnything, c))
-  
+ 
   else: nil
 
   # result = liftingWalk(paramType)
@@ -881,14 +883,8 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
         localError(n.info, errCannotInstantiateX, s.name.s)
         result = newOrPrevType(tyError, prev, c)
       else:
-        when oUseLateInstantiation:
-          result = lateInstantiateGeneric(c, result, n.info)
-        else:
-          result = instGenericContainer(c, n.info, result,
-                                        allowMetaTypes = not isConcrete)
-          if not isConcrete and result.kind == tyGenericInst:
-            result.lastSon.shouldHaveMeta
-          
+        result = instGenericContainer(c, n.info, result,
+                                      allowMetaTypes = false)
 
 proc semTypeExpr(c: PContext, n: PNode): PType =
   var n = semExprWithType(c, n, {efDetermineType})
