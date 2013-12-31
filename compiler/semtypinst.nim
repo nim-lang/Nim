@@ -162,8 +162,9 @@ proc lookupTypeVar(cl: TReplTypeVars, t: PType): PType =
   elif result.kind == tyGenericParam and not cl.allowMetaTypes:
     internalError(cl.info, "substitution with generic parameter")
 
-proc instCopyType(t: PType): PType =
-  result = copyType(t, t.owner, false)
+proc instCopyType(cl: var TReplTypeVars, t: PType): PType =
+  # XXX: relying on allowMetaTypes is a kludge
+  result = copyType(t, t.owner, cl.allowMetaTypes)
   result.flags.incl tfFromGeneric
   result.flags.excl tfInstClearedFlags
 
@@ -184,7 +185,7 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
     if x.kind == tyGenericParam:
       x = lookupTypeVar(cl, x)
       if x != nil:
-        if header == nil: header = instCopyType(t)
+        if header == nil: header = instCopyType(cl, t)
         header.sons[i] = x
         propagateToOwner(header, x)
   
@@ -193,7 +194,7 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
     result = searchInstTypes(header)
     if result != nil: return
   else:
-    header = instCopyType(t)
+    header = instCopyType(cl, t)
   
   result = newType(tyGenericInst, t.sons[0].owner)
   # be careful not to propagate unnecessary flags here (don't use rawAddSon)
@@ -279,7 +280,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   if t.kind in {tyStatic, tyGenericParam} + tyTypeClasses:
     let lookup = PType(idTableGet(cl.typeMap, t))
     if lookup != nil: return lookup
-
+ 
   case t.kind
   of tyGenericInvokation:
     result = handleGenericInvokation(cl, t)
@@ -295,7 +296,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       result = lookup
       if tfUnresolved in t.flags: result = result.base
   of tyGenericInst:
-    result = instCopyType(t)
+    result = instCopyType(cl, t)
     for i in 1 .. <result.sonsLen:
       result.sons[i] = ReplaceTypeVarsT(cl, result.sons[i])
     propagateToOwner(result, result.lastSon)
@@ -308,7 +309,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
         t.sons[0] = makeRangeType(cl.c, 0, value.intVal - 1, value.info)
     
     if containsGenericType(t):
-      result = instCopyType(t)
+      result = instCopyType(cl, t)
       result.size = -1 # needs to be recomputed
       
       for i in countup(0, sonsLen(result) - 1):

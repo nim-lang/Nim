@@ -31,7 +31,8 @@ type
     state*: TCandidateState
     callee*: PType           # may not be nil!
     calleeSym*: PSym         # may be nil
-    calleeScope: int         # may be -1 for unknown scope
+    calleeScope*: int        # scope depth:
+                             # is this a top-level symbol or a nested proc?
     call*: PNode             # modified call
     bindings*: TIdTable      # maps types to types
     baseTypeMatch: bool      # needed for conversions from T to openarray[T]
@@ -86,7 +87,15 @@ proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
                     binding: PNode, calleeScope = -1) =
   initCandidateAux(ctx, c, callee.typ)
   c.calleeSym = callee
-  c.calleeScope = calleeScope
+  if callee.kind in skProcKinds and calleeScope == -1:
+    if callee.originatingModule == ctx.module:
+      let rootSym = if sfFromGeneric notin callee.flags: callee
+                    else: callee.owner
+      c.calleeScope = rootSym.scope.depthLevel
+    else:
+      c.calleeScope = 1
+  else:
+    c.calleeScope = calleeScope
   initIdTable(c.bindings)
   c.errors = nil
   if binding != nil and callee.kind in routineKinds:
@@ -166,9 +175,8 @@ proc cmpCandidates*(a, b: TCandidate): int =
   if result != 0: return
   result = a.convMatches - b.convMatches
   if result != 0: return
-  if (a.calleeScope != -1) and (b.calleeScope != -1):
-    result = a.calleeScope - b.calleeScope
-    if result != 0: return
+  result = a.calleeScope - b.calleeScope
+  if result != 0: return
   # the other way round because of other semantics:
   result = b.inheritancePenalty - a.inheritancePenalty
   if result != 0: return
@@ -566,8 +574,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     if a.kind == tyTuple: result = recordRel(c, f, a)
   of tyObject:
     if a.kind == tyObject:
-      if sameObjectTypes(f, a): result = isEqual
-      elif tfHasMeta in f.flags: result = recordRel(c, f, a)
+      if sameObjectTypes(f, a):
+        result = isEqual
+        # elif tfHasMeta in f.flags: result = recordRel(c, f, a)
       else:
         var depth = isObjectSubtype(a, f)
         if depth > 0:

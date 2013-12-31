@@ -874,7 +874,8 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
      tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyArrayConstr,
      tyArray, tyProc, tyConst, tyMutable, tyVarargs, tyIter,
      tyOrdinal, tyTypeClasses:
-    cycleCheck()    
+    cycleCheck()
+    if a.kind == tyTypeClass and a.n != nil: return a.n == b.n
     result = sameChildrenAux(a, b, c) and sameFlags(a, b)
     if result and a.kind == tyProc:
       result = ((IgnoreCC in c.flags) or a.callConv == b.callConv) and
