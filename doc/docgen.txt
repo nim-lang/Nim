@@ -1,0 +1,182 @@
+===================================
+   Nimrod DocGen Tools Guide
+===================================
+
+:Author: Erik O'Leary
+:Version: |nimrodversion|
+
+.. contents::
+
+
+Introduction
+============
+
+This document describes the documentation generation tools built into the *Nimrod compiler*,
+which can generate HTML and JSON output from input .nim files and projects, as well as HTML
+and LaTex from input RST (reStructuredText) files. The output documentation will include
+module dependencies (``import``), any top-level documentation comments (##), and exported
+symbols (*), including procedures, types, and variables.
+
+
+Documentation Comments
+----------------------
+Any comments which are preceeded by a double-hash (##), are interpreted as documentation.
+Comments are parsed as RST
+(see `reference <http://docutils.sourceforge.net/docs/user/rst/quickref.html>`_), providing
+Nimrod module authors the ability to easily generate richly formatted documentation with only
+their well-documented code.
+
+Example:
+
+.. code-block:: nimrod
+  type TPerson* = object
+    ## This type contains a description of a person
+    name: string
+    age: int
+
+Outputs::
+  TPerson* = object
+    name: string
+    age: int
+
+This type contains a description of a person
+
+Field documentation comments can be added to fields like so:
+
+.. code-block:: nimrod
+  var numValues: int ## \
+    ## `numValues` stores the number of values
+
+Note that without the `*` following the name of the type, the documentation for this type
+would not be generated. Documentation will only be generated for *exported* types/procedures/etc.
+
+
+Nimrod file input
+-----------------
+
+The following examples will generate documentation for the below contrived
+*Nimrod* module, aptly named 'sample.nim'
+
+sample.nim:
+
+.. code-block:: nimrod
+  ## This module is a sample.
+
+  import strutils
+
+  proc helloWorld*(times: int) =
+    ## Takes an integer and outputs
+    ## as many "hello world!"s
+
+    for i in 0 .. times-1:
+      echo "hello world!"
+
+  helloWorld(5)
+
+
+Document Types
+==============
+
+
+HTML
+----
+Generation of HTML documents is done via both the ``doc`` and ``doc2`` commands. These
+command take either a single .nim file, outputting a single .html file with the same base filename,
+or multiple .nim files, outputting multiple .html files and, optionally,
+an index file.
+
+The ``doc`` command::
+  nimrod doc sample
+
+Partial Output::
+  ...
+  proc helloWorld*(times: int)
+  ...
+
+Output can be viewed in full here `sample.html <docgen_samples/sample.html>`_. The next command,
+called ``doc2``, is very similar to the ``doc`` command, but will be run after the
+compiler performs semantic checking on the input nimrod module(s), which allows it to process macros.
+
+The ``doc2`` command::
+  nimrod doc2 sample
+
+Partial Output::
+  ...
+  proc helloWorld(times: int) {.raises: [], tags: [].}
+  ...
+
+The full output can be seen here `sample2.html <docgen_samples/sample2.html>`_. As you can see, the tool has
+extracted additional information provided to it by the compiler beyond what the ``doc``
+command provides, such as pragmas attached implicitly by the compiler. This type of information
+is not available from looking at the AST (Abstract Syntax Tree) prior to semantic checking,
+as the ``doc`` command does.
+
+
+JSON
+----
+Generation of JSON documents is done via the ``jsondoc`` command. This command takes
+in a .nim file, and outputs a .json file with the same base filename. Note that this
+tool is built off of the ``doc`` command, and therefore is performed before semantic
+checking.
+
+The ``jsondoc`` command::
+  nimrod jsondoc sample
+
+Output::
+  [
+    {
+      "comment": "This module is a sample."
+    },
+    {
+      "name": "helloWorld",
+      "type": "skProc",
+      "description": "Takes an integer and outputs as many &quot;hello world!&quot;s",
+      "code": "proc helloWorld*(times: int)"
+    }
+  ]
+
+
+Related Options
+===============
+
+``--project`` switch
+::
+  nimrod doc2 --project sample
+
+This will recursively generate documentation of all nimrod modules imported into the input module,
+including system modules. Be careful with this command, as it may end up sprinkling html files all
+over your filesystem!
+
+
+``--index`` switch
+::
+  nimrod doc2 --index:on sample
+
+This will generate an index of all the exported symbols in the input Nimrod module, and put it into
+a neighboring file with the extension of `.idx`.
+
+
+Other Input Formats
+===================
+
+The *Nimrod compiler* also has support for RST (reStructuredText) files with the ``rst2html`` and ``rst2tex``
+commands. Documents like this one are initially written in a dialect of RST which adds support for nimrod
+sourcecode highlighting with the ``.. code-block:: nimrod`` prefix. ``code-block`` also supports highlighting
+of C++ and some other c-like languages.
+
+Usage::
+  nimrod rst2html docgen.txt
+
+Output::
+  You're reading it!
+
+The input can be viewed here `docgen.txt <docgen.txt>`_. The ``rst2tex`` command is invoked identically to
+``rst2html``, but outputs a .tex file instead of .html.
+
+
+Additional Resources
+=========
+
+`Nimrod Compiler User Guide <nimrodc.html#command-line-switches>`_
+
+`RST Quick Reference <http://docutils.sourceforge.net/docs/user/rst/quickref.html>`_
