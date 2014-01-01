@@ -222,6 +222,28 @@ proc newUniquePlainSymbol(d: PDoc, original: string): string =
     count += 1
 
 
+proc complexName(k: TSymKind, n: PNode, baseName: string): string =
+  ## Builds a complex unique href name for the node.
+  ##
+  ## Pass as ``baseName`` the plain symbol obtained from the nodeName. The
+  ## format of the returned symbol will be ``baseName(.callable type)?(,param
+  ## type)*``. The callable type part will be added only if the node is not a
+  ## proc, as those are the common ones. The suffix will be a dot and a single
+  ## letter representing the type of the callable. The parameter types will be
+  ## added with a preceeding dash. Return types won't be added.
+  result = baseName
+  case k:
+  of skMacro: result.add(".m")
+  of skMethod: result.add(".m")
+  of skIterator: result.add(".i")
+  of skTemplate: result.add(".t")
+  of skConverter: result.add(".c")
+  else: nil
+
+  if len(n) > paramsPos and n[paramsPos].kind == nkFormalParams:
+    result.add(renderParamTypes(n[paramsPos]))
+
+
 proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   if not isVisible(nameNode): return
   var name = toRope(getName(d, nameNode))
@@ -283,10 +305,11 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   let
     plainNameRope = toRope(xmltree.escape(plainName.strip))
     cleanPlainSymbol = renderPlainSymbolName(nameNode)
+    complexSymbol = complexName(k, n, cleanPlainSymbol)
     plainSymbolRope = toRope(cleanPlainSymbol)
     plainSymbolEncRope = toRope(URLEncode(cleanPlainSymbol))
     itemIDRope = toRope(d.id)
-    symbolOrId = d.newUniquePlainSymbol(cleanPlainSymbol)
+    symbolOrId = d.newUniquePlainSymbol(complexSymbol)
     symbolOrIdRope = symbolOrId.toRope
     symbolOrIdEncRope = URLEncode(symbolOrId).toRope
 
@@ -301,7 +324,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     [toRope(getName(d, nameNode, d.splitAfter)), result, comm,
       itemIDRope, plainNameRope, plainSymbolRope, symbolOrIdRope,
       plainSymbolEncRope, symbolOrIdEncRope]))
-  setIndexTerm(d[], $d.id, getName(d, nameNode))
+  setIndexTerm(d[], symbolOrId, getName(d, nameNode))
 
 proc genJSONItem(d: PDoc, n, nameNode: PNode, k: TSymKind): PJsonNode =
   if not isVisible(nameNode): return
