@@ -86,7 +86,7 @@ include semdestruct
 
 proc semDestructorCheck(c: PContext, n: PNode, flags: TExprFlags) {.inline.} =
   if efAllowDestructor notin flags and n.kind in nkCallKinds+{nkObjConstr}:
-    if instantiateDestructor(c, n.typ):
+    if instantiateDestructor(c, n.typ) != nil:
       localError(n.info, errGenerated,
         "usage of a type with a destructor in a non destructible context")
   # This still breaks too many things:
