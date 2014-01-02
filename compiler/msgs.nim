@@ -93,6 +93,7 @@ type
     errNewSectionExpected, errWhitespaceExpected, errXisNoValidIndexFile, 
     errCannotRenderX, errVarVarTypeNotAllowed, errInstantiateXExplicitely,
     errOnlyACallOpCanBeDelegator, errUsingNoSymbol,
+    errDestructorNotGenericEnough,
     
     errXExpectsTwoArguments, 
     errXExpectsObjectTypes, errXcanNeverBeOfThisSubtype, errTooManyIterations, 
@@ -322,6 +323,8 @@ const
     errInstantiateXExplicitely: "instantiate '$1' explicitely",
     errOnlyACallOpCanBeDelegator: "only a call operator can be a delegator",
     errUsingNoSymbol: "'$1' is not a variable, constant or a proc name",
+    errDestructorNotGenericEnough: "Destructor signarue is too specific. " &
+                                   "A destructor must be associated will all instantiations of a generic type",
     errXExpectsTwoArguments: "\'$1\' expects two arguments", 
     errXExpectsObjectTypes: "\'$1\' expects object types",
     errXcanNeverBeOfThisSubtype: "\'$1\' can never be of this subtype", 
