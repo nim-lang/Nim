@@ -387,6 +387,21 @@ proc existsDir*(dir: string): bool {.rtl, extern: "nos$1", tags: [FReadDir].} =
     var res: TStat
     return stat(dir, res) >= 0'i32 and S_ISDIR(res.st_mode)
 
+proc existsSymlink*(link: string): bool {.rtl, extern: "nos$1",
+                                          tags: [FReadDir].} =
+  ## Returns true iff the symlink `link` exists. Will return true
+  ## regardless of whether the link points to a directory or file.
+  when defined(windows):
+    when useWinUnicode:
+      wrapUnary(a, GetFileAttributesW, link)
+    else:
+      var a = GetFileAttributesA(link)
+    if a != -1'i32:
+      result = (a and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32
+  else:
+    var res: TStat
+    return lstat(link, res) >= 0'i32 and S_ISLNK(res.st_mode)
+
 proc getLastModificationTime*(file: string): TTime {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s last modification time.
   when defined(posix):
@@ -1314,6 +1329,47 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1", tags: [FWriteDir].} =
       else:
         rawCreateDir(substr(dir, 0, i-1))
   rawCreateDir(dir)
+
+proc createSymlink*(src, dest: string) =
+  ## Create a symbolic link at `dest` which points to the item specified
+  ## by `src`.
+  ##
+  ## Warning - Some OS's (such as Microsoft Windows) restrict the creation 
+  ## of symlinks to root users (administrators).
+  when defined(Windows):
+    var flag = 0x0'i32
+    if existsDir(src):
+      flag = 0x1
+    when useWinUnicode:
+      var wSrc = newWideCString(src)
+      var wDst = newWideCString(dest)
+      if CreateSymbolicLinkW(wDst, wSrc, flag) == 0 or GetLastError() != 0:
+          OSError(OSLastError())
+    else:
+      if CreateSymbolicLinkA(dest, src, flag) == 0 or GetLastError() != 0:
+          OSError(OSLastError())
+  else:
+    if symlink(src, dest) != 0:
+      OSError(OSLastError())
+
+proc createHardlink*(src, dest: string) =
+  ## Create a hard link at `dest` which points to the item specified
+  ## by `src`.
+  ##
+  ## Warning - Most OS's restrict the creation of hard links to 
+  ## root users (administrators) .
+  when defined(Windows):
+    when useWinUnicode:
+      var wSrc = newWideCString(src)
+      var wDst = newWideCString(dest)
+      if CreateHardLinkW(wDst, wSrc, nil) == 0:
+          OSError(OSLastError())
+    else:
+      if CreateHardLinkA(dest, src, nil) == 0:
+          OSError(OSLastError())
+  else:
+    if link(src, dest) != 0:
+      OSError(OSLastError())
 
 proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [FWriteIO, FReadIO].} =
