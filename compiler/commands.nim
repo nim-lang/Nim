@@ -267,6 +267,9 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of "out", "o": 
     expectArg(switch, arg, pass, info)
     options.outFile = arg
+  of "docseesrcurl":
+    expectArg(switch, arg, pass, info)
+    options.docSeeSrcUrl = arg
   of "mainmodule", "m":
     expectArg(switch, arg, pass, info)
     optMainModule = arg
