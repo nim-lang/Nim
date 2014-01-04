@@ -313,11 +313,20 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     symbolOrIdRope = symbolOrId.toRope
     symbolOrIdEncRope = URLEncode(symbolOrId).toRope
 
+  var seeSrcRope: PRope = nil
+  let docItemSeeSrc = getConfigVar("doc.item.seesrc")
+  if docItemSeeSrc.len > 0 and options.docSeeSrcUrl.len > 0:
+    let urlRope = ropeFormatNamedVars(options.docSeeSrcUrl,
+      ["path", "line"], [n.info.toFilename.toRope, toRope($n.info.line)])
+    dispA(seeSrcRope, "$1", "", [ropeFormatNamedVars(docItemSeeSrc,
+        ["path", "line", "url"], [n.info.toFilename.toRope,
+        toRope($n.info.line), urlRope])])
+
   app(d.section[k], ropeFormatNamedVars(getConfigVar("doc.item"),
     ["name", "header", "desc", "itemID", "header_plain", "itemSym",
-      "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc"],
+      "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc", "seeSrc"],
     [name, result, comm, itemIDRope, plainNameRope, plainSymbolRope,
-      symbolOrIdRope, plainSymbolEncRope, symbolOrIdEncRope]))
+      symbolOrIdRope, plainSymbolEncRope, symbolOrIdEncRope, seeSrcRope]))
   app(d.toc[k], ropeFormatNamedVars(getConfigVar("doc.item.toc"),
     ["name", "header", "desc", "itemID", "header_plain", "itemSym",
       "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc"],
