@@ -214,6 +214,10 @@ proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let sym = newSym(skType, idAnon, getCurrOwner(), info).linkTo(typedesc)
   return newSymNode(sym, info)
 
+proc makeTypeFromExpr*(c: PContext, n: PNode): PType =
+  result = newTypeS(tyFromExpr, c)
+  result.n = n
+
 proc makeAndType*(c: PContext, t1, t2: PType): PType =
   result = newTypeS(tyAnd, c)
   result.sons = @[t1, t2]
