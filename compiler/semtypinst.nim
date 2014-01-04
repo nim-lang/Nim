@@ -287,6 +287,10 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   of tyGenericBody:
     internalError(cl.info, "ReplaceTypeVarsT: tyGenericBody" )
     result = replaceTypeVarsT(cl, lastSon(t))
+  of tyFromExpr:
+    var n = prepareNode(cl, t.n)
+    n = cl.c.semExpr(cl.c, n, {})
+    result = n.typ.skipTypes({tyTypeDesc})
   of tyInt:
     result = skipIntLit(t)
     # XXX now there are also float literals

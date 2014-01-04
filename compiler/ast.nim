@@ -339,19 +339,31 @@ type
     tyTypeClass
     tyParametricTypeClass # structured similarly to tyGenericInst
                           # lastSon is the body of the type class
-    tyBuiltInTypeClass
-    tyCompositeTypeClass
-    tyAnd
-    tyOr
-    tyNot
-    tyAnything
-    tyStatic
+    
+    tyBuiltInTypeClass # Type such as the catch-all object, tuple, seq, etc
+    
+    tyCompositeTypeClass # 
+    
+    tyAnd, tyOr, tyNot # boolean type classes such as `string|int`,`not seq`,
+                       # `Sortable and Enumable`, etc
+    
+    tyAnything # a type class matching any type
+    
+    tyStatic   # a value known at compile type (the underlying type is .base)
+    
+    tyFromExpr # This is a type representing an expression that depends
+               # on generic parameters (the exprsesion is stored in t.n)
+               # It will be converted to a real type only during generic
+               # instantiation and prior to this it has the potential to
+               # be any type.
 
 const
   tyPureObject* = tyTuple
   GcTypeKinds* = {tyRef, tySequence, tyString}
   tyError* = tyProxy # as an errornous node should match everything
-  
+
+  tyUnknownTypes* = {tyError, tyFromExpr}
+
   tyTypeClasses* = {tyTypeClass, tyBuiltInTypeClass, tyCompositeTypeClass,
                     tyParametricTypeClass, tyAnd, tyOr, tyNot, tyAnything}
 

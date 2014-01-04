@@ -17,11 +17,6 @@
 
 # included from sem.nim
 
-type
-  TSemGenericFlag = enum
-    withinBind, withinTypeDesc, withinMixin
-  TSemGenericFlags = set[TSemGenericFlag]
-
 proc getIdentNode(n: PNode): PNode =
   case n.kind
   of nkPostfix: result = getIdentNode(n.sons[1])
@@ -31,8 +26,6 @@ proc getIdentNode(n: PNode): PNode =
     illFormedAst(n)
     result = n
   
-proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags,
-                    ctx: var TIntSet): PNode
 proc semGenericStmtScope(c: PContext, n: PNode, 
                          flags: TSemGenericFlags,
                          ctx: var TIntSet): PNode = 

@@ -10,7 +10,7 @@
 # this module contains routines for accessing and iterating over types
 
 import 
-  intsets, ast, astalgo, trees, msgs, strutils, platform
+  intsets, ast, astalgo, trees, msgs, strutils, platform, renderer
 
 proc firstOrd*(t: PType): BiggestInt
 proc lastOrd*(t: PType): BiggestInt
@@ -406,7 +406,7 @@ const
     "bignum", "const ",
     "!", "varargs[$1]", "iter[$1]", "Error Type", "TypeClass",
     "ParametricTypeClass", "BuiltInTypeClass", "CompositeTypeClass",
-    "and", "or", "not", "any", "static"]
+    "and", "or", "not", "any", "static", "TypeFromExpr"]
 
 proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   var t = typ
@@ -448,6 +448,8 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   of tyExpr:
     InternalAssert t.len == 0
     result = "expr"
+  of tyFromExpr:
+    result = renderTree(t.n)
   of tyArray: 
     if t.sons[0].kind == tyRange: 
       result = "array[" & rangeToStr(t.sons[0].n) & ", " &
@@ -837,7 +839,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
   of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString,
      tyInt..tyBigNum, tyStmt, tyExpr:
     result = sameFlags(a, b)
-  of tyStatic:
+  of tyStatic, tyFromExpr:
     result = exprStructuralEquivalent(a.n, b.n) and sameFlags(a, b)
   of tyObject:
     ifFastObjectTypeCheckFailed(a, b):
@@ -1018,7 +1020,8 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind,
     result = taField in flags
   of tyTypeClasses:
     result = true
-  of tyGenericBody, tyGenericParam, tyForward, tyNone, tyGenericInvokation:
+  of tyGenericBody, tyGenericParam, tyGenericInvokation,
+     tyNone, tyForward, tyFromExpr:
     result = false
   of tyNil:
     result = kind == skConst

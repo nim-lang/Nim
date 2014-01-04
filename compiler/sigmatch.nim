@@ -665,10 +665,14 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   of tyGenericInst:
     let roota = a.skipGenericAlias
     let rootf = f.skipGenericAlias
-    if a.kind == tyGenericInst and roota.base == rootf.base:
+    if a.kind == tyGenericInst and roota.base == rootf.base :
       for i in 1 .. rootf.sonsLen-2:
-        result = typeRel(c, rootf.sons[i], roota.sons[i])
-        if result == isNone: return
+        let ff = rootf.sons[i]
+        let aa = roota.sons[i]
+        result = typeRel(c, ff, aa)
+        if result == isNone: return        
+        if ff.kind == tyRange and result != isEqual: return isNone
+
       result = isGeneric
     else:
       result = typeRel(c, lastSon(f), a)

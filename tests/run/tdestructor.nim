@@ -1,7 +1,7 @@
 discard """
   output: '''----
 myobj constructed
-myobj destructed
+myobj destroyed
 ----
 mygeneric1 constructed
 mygeneric1 destroyed

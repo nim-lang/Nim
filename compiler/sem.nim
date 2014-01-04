@@ -293,6 +293,14 @@ proc semConstBoolExpr(c: PContext, n: PNode): PNode =
     localError(n.info, errConstExprExpected)
     result = nn
 
+type
+  TSemGenericFlag = enum
+    withinBind, withinTypeDesc, withinMixin
+  TSemGenericFlags = set[TSemGenericFlag]
+
+proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags,
+                    ctx: var TIntSet): PNode
+
 include semtypes, semtempl, semgnrc, semstmts, semexprs
 
 proc addCodeForGenerics(c: PContext, n: PNode) =

@@ -988,6 +988,12 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
           result.rawAddSon(semTypeNode(c, n.sons[i], nil))
     else: result = semGeneric(c, n, s, prev)
   of nkIdent, nkDotExpr, nkAccQuoted: 
+    if n.kind == nkDotExpr:
+      let head = qualifiedLookUp(c, n[0], {checkAmbiguity, checkUndeclared})
+      if head.kind in {skType}:
+        var toBind = initIntSet()
+        var preprocessed = semGenericStmt(c, n, {}, toBind)
+        return makeTypeFromExpr(c, preprocessed)
     var s = semTypeIdent(c, n)
     if s.typ == nil: 
       if s.kind != skError: localError(n.info, errTypeExpected)
