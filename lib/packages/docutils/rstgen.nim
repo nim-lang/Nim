@@ -277,7 +277,10 @@ type
     linkDesc: string ## If not nil, the title attribute of the final href
 
 proc cmp(a, b: TIndexEntry): int =
+  ## Sorts two ``TIndexEntry`` first by `keyword` field, then by `link`.
   result = cmpIgnoreStyle(a.keyword, b.keyword)
+  if result == 0:
+    result = cmpIgnoreStyle(a.link, b.link)
 
 proc `<-`(a: var TIndexEntry, b: TIndexEntry) =
   shallowCopy a.keyword, b.keyword
