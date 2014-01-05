@@ -430,7 +430,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     return typeRel(c, f, lastSon(a))
 
   template bindingRet(res) =
-    when res == isGeneric: put(c.bindings, f, aOrig)
+    when res == isGeneric:
+      let bound = aOrig.skipTypes({tyRange}).skipIntLit
+      put(c.bindings, f, bound)
     return res
 
   template considerPreviousT(body: stmt) {.immediate.} =
