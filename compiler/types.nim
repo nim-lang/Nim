@@ -1231,7 +1231,7 @@ proc getSize(typ: PType): BiggestInt =
   if result < 0: internalError("getSize: " & $typ.kind)
 
 proc containsGenericTypeIter(t: PType, closure: PObject): bool =
-  result = t.kind in GenericTypes + tyTypeClasses + {tyTypeDesc} or
+  result = t.kind in GenericTypes + tyTypeClasses + {tyTypeDesc,tyFromExpr} or
            t.kind == tyStatic and t.n == nil
 
 proc containsGenericType*(t: PType): bool = 
