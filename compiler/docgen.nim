@@ -140,6 +140,23 @@ proc genRecComment(d: PDoc, n: PNode): PRope =
   else:
     n.comment = nil
 
+proc getPlainDocstring(n: PNode): string =
+  ## Gets the plain text docstring of a node non destructively.
+  ##
+  ## You need to call this before genRecComment, whose side effects are removal
+  ## of comments from the tree. The proc will recursively scan and return all
+  ## the concatenated ``##`` comments of the node.
+  result = ""
+  if n == nil: return
+  if n.comment != nil and startsWith(n.comment, "##"):
+    result = n.comment
+  if result.len < 1:
+    if n.kind notin {nkEmpty..nkNilLit}:
+      for i in countup(0, len(n)-1):
+        result = getPlainDocstring(n.sons[i])
+        if result.len > 0: return
+
+
 proc findDocComment(n: PNode): PNode =
   if n == nil: return nil
   if not isNil(n.comment) and startsWith(n.comment, "##"): return n
@@ -253,11 +270,40 @@ proc isCallable(n: PNode): bool =
     result = false
 
 
+proc docstringSummary(rstText: string): string =
+  ## Returns just the first line or a brief chunk of text from a rst string.
+  ##
+  ## Most docstrings will contain a one liner summary, so stripping at the
+  ## first newline is usually fine. If after that the content is still too big,
+  ## it is stripped at the first comma, colon or dot, usual english sentence
+  ## separators.
+  ##
+  ## No guarantees are made on the size of the output, but it should be small.
+  ## Also, we hope to not break the rst, but maybe we do. If there is any
+  ## trimming done, an ellipsis unicode char is added.
+  const maxDocstringChars = 100
+  assert (rstText.len < 2 or (rstText[0] == '#' and rstText[1] == '#'))
+  result = rstText.substr(2).strip
+  var pos = result.find('\L')
+  if pos > 0:
+    result.delete(pos, result.len - 1)
+    result.add("…")
+  if pos < maxDocstringChars:
+    return
+  # Try to keep trimming at other natural boundaries.
+  pos = result.find({'.', ',', ':'})
+  let last = result.len - 1
+  if pos > 0 and pos < last:
+    result.delete(pos, last)
+    result.add("…")
+
+
 proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   if not isVisible(nameNode): return
   let
     name = getName(d, nameNode)
     nameRope = name.toRope
+    plainDocstring = getPlainDocstring(n) # call here before genRecComment!
   var result: PRope = nil
   var literal, plainName = ""
   var kind = tkEof
@@ -352,7 +398,8 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   if n.isCallable: linkTitle.add(xmltree.escape(plainName.strip))
   else: linkTitle.add(xmltree.escape(complexSymbol.strip))
 
-  setIndexTerm(d[], symbolOrId, name, linkTitle)
+  setIndexTerm(d[], symbolOrId, name, linkTitle,
+    xmltree.escape(plainDocstring.docstringSummary))
 
 proc genJSONItem(d: PDoc, n, nameNode: PNode, k: TSymKind): PJsonNode =
   if not isVisible(nameNode): return
