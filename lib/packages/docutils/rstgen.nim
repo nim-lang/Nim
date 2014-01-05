@@ -50,6 +50,9 @@ type
     msgHandler*: TMsgHandler
     filename*: string
     meta*: array[TMetaEnum, string]
+    currentSection: string ## \
+    ## Stores the empty string or the last headline/overline found in the rst
+    ## document, so it can be used as a prettier name for term index generation.
   
   PDoc = var TRstGenerator ## Alias to type less.
 
@@ -104,6 +107,7 @@ proc initRstGenerator*(g: var TRstGenerator, target: TOutputTarget,
   g.theIndex = ""
   g.options = options
   g.findFile = findFile
+  g.currentSection = ""
   g.msgHandler = msgHandler
   
   let s = config["split.item.toc"]
@@ -265,7 +269,7 @@ proc renderIndexTerm(d: PDoc, n: PRstNode, result: var string) =
   let id = rstnodeToRefname(n) & '_' & $abs(hash(n))
   var term = ""
   renderAux(d, n, term)
-  setIndexTerm(d, id, term)
+  setIndexTerm(d, id, term, d.currentSection)
   dispA(d.target, result, "<span id=\"$1\">$2</span>", "$2\\label{$1}", 
         [id, term])
 
@@ -363,6 +367,7 @@ proc mergeIndexes*(dir: string): string =
 proc renderHeadline(d: PDoc, n: PRstNode, result: var string) = 
   var tmp = ""
   for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], tmp)
+  d.currentSection = tmp
   var refname = rstnodeToRefname(n)
   if d.hasToc:
     var length = len(d.tocPart)
@@ -384,14 +389,17 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
   
 proc renderOverline(d: PDoc, n: PRstNode, result: var string) = 
   if d.meta[metaTitle].len == 0:
+    d.currentSection = d.meta[metaTitle]
     for i in countup(0, len(n)-1):
       renderRstToOut(d, n.sons[i], d.meta[metaTitle])
   elif d.meta[metaSubtitle].len == 0:
+    d.currentSection = d.meta[metaSubtitle]
     for i in countup(0, len(n)-1):
       renderRstToOut(d, n.sons[i], d.meta[metaSubtitle])
   else:
     var tmp = ""
     for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], tmp)
+    d.currentSection = tmp
     dispA(d.target, result, "<h$1 id=\"$2\"><center>$3</center></h$1>", 
                    "\\rstov$4{$3}\\label{$2}\n", [$n.level,
         rstnodeToRefname(n), tmp, $chr(n.level - 1 + ord('A'))])
