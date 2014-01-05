@@ -244,9 +244,20 @@ proc complexName(k: TSymKind, n: PNode, baseName: string): string =
     result.add(renderParamTypes(n[paramsPos]))
 
 
+proc isCallable(n: PNode): bool =
+  ## Returns true if `n` contains a callable node.
+  case n.kind
+  of nkProcDef, nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef,
+    nkConverterDef: result = true
+  else:
+    result = false
+
+
 proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   if not isVisible(nameNode): return
-  var name = toRope(getName(d, nameNode))
+  let
+    name = getName(d, nameNode)
+    nameRope = name.toRope
   var result: PRope = nil
   var literal, plainName = ""
   var kind = tkEof
@@ -325,7 +336,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   app(d.section[k], ropeFormatNamedVars(getConfigVar("doc.item"),
     ["name", "header", "desc", "itemID", "header_plain", "itemSym",
       "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc", "seeSrc"],
-    [name, result, comm, itemIDRope, plainNameRope, plainSymbolRope,
+    [nameRope, result, comm, itemIDRope, plainNameRope, plainSymbolRope,
       symbolOrIdRope, plainSymbolEncRope, symbolOrIdEncRope, seeSrcRope]))
   app(d.toc[k], ropeFormatNamedVars(getConfigVar("doc.item.toc"),
     ["name", "header", "desc", "itemID", "header_plain", "itemSym",
@@ -333,7 +344,15 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     [toRope(getName(d, nameNode, d.splitAfter)), result, comm,
       itemIDRope, plainNameRope, plainSymbolRope, symbolOrIdRope,
       plainSymbolEncRope, symbolOrIdEncRope]))
-  setIndexTerm(d[], symbolOrId, getName(d, nameNode))
+
+  # Ironically for types the complexSymbol is *cleaner* than the plainName
+  # because it doesn't include object fields or documentation comments. So we
+  # use the plain one for callable elements, and the complex for the rest.
+  var linkTitle = changeFileExt(extractFilename(d.filename), "") & " : "
+  if n.isCallable: linkTitle.add(xmltree.escape(plainName.strip))
+  else: linkTitle.add(xmltree.escape(complexSymbol.strip))
+
+  setIndexTerm(d[], symbolOrId, name, linkTitle)
 
 proc genJSONItem(d: PDoc, n, nameNode: PNode, k: TSymKind): PJsonNode =
   if not isVisible(nameNode): return
