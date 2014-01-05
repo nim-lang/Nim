@@ -186,6 +186,11 @@ proc semRange(c: PContext, n: PNode, prev: PType): PType =
     localError(n.info, errXExpectsOneTypeParam, "range")
     result = newOrPrevType(tyError, prev, c)
 
+proc nMinusOne(n: PNode): PNode =
+  result = newNode(nkCall, n.info, @[
+    newSymNode(getSysMagic("<", mUnaryLt)),
+    n])
+
 proc semArray(c: PContext, n: PNode, prev: PType): PType = 
   var indx, base: PType
   result = newOrPrevType(tyArray, prev, c)
@@ -194,7 +199,9 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
     if isRange(n[1]): indx = semRangeAux(c, n[1], nil)
     else:
       let e = semExprWithType(c, n.sons[1], {efDetermineType})
-      if e.kind in {nkIntLit..nkUInt64Lit}:
+      if e.typ.kind == tyFromExpr:
+        indx = e.typ
+      elif e.kind in {nkIntLit..nkUInt64Lit}:
         indx = makeRangeType(c, 0, e.intVal-1, n.info, e.typ)
       elif e.kind == nkSym and e.typ.kind == tyStatic:
         if e.sym.ast != nil: return semArray(c, e.sym.ast, nil)
@@ -202,11 +209,25 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
         if not isOrdinalType(e.typ.lastSon):
           localError(n[1].info, errOrdinalTypeExpected)
         indx = e.typ
+      elif e.kind in nkCallKinds and hasGenericArguments(e):
+        if not isOrdinalType(e.typ):
+          localError(n[1].info, errOrdinalTypeExpected)
+        # This is an int returning call, depending on an
+        # yet unknown generic param (see tgenericshardcases).
+        # We are going to construct a range type that will be
+        # properly filled-out in semtypinst (see how tyStaticExpr
+        # is handled there).
+        let intType = getSysType(tyInt)
+        indx = newTypeS(tyRange, c)
+        indx.sons = @[intType]
+        indx.n = newNode(nkRange, n.info, @[
+          newIntTypeNode(nkIntLit, 0, intType),
+          makeStaticExpr(c, e.nMinusOne)])
       else:
         indx = e.typ.skipTypes({tyTypeDesc})
     addSonSkipIntLit(result, indx)
     if indx.kind == tyGenericInst: indx = lastSon(indx)
-    if indx.kind notin {tyGenericParam, tyStatic}:
+    if indx.kind notin {tyGenericParam, tyStatic, tyFromExpr}:
       if not isOrdinalType(indx):
         localError(n.sons[1].info, errOrdinalTypeExpected)
       elif enumHasHoles(indx): 
@@ -619,6 +640,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     var s = newSym(skType, finalTypId, owner, info)
     if typId == nil: s.flags.incl(sfAnon)
     s.linkTo(typeClass)
+    typeClass.flags.incl tfImplicitTypeParam
     s.position = genericParams.len
     genericParams.addSon(newSymNode(s))
     result = typeClass
@@ -844,7 +866,7 @@ proc semGenericParamInInvokation(c: PContext, n: PNode): PType =
 proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType = 
   result = newOrPrevType(tyGenericInvokation, prev, c)
   addSonSkipIntLit(result, s.typ)
-  
+ 
   template addToResult(typ) =
     if typ.isNil:
       internalAssert false

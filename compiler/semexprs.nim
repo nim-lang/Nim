@@ -231,7 +231,7 @@ proc semCast(c: PContext, n: PNode): PNode =
   if not isCastable(result.typ, result.sons[1].typ): 
     localError(result.info, errExprCannotBeCastedToX, 
                typeToString(result.typ))
-  
+
 proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode = 
   const 
     opToStr: array[mLow..mHigh, string] = ["low", "high"]
@@ -239,7 +239,7 @@ proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
     localError(n.info, errXExpectsTypeOrValue, opToStr[m])
   else: 
     n.sons[1] = semExprWithType(c, n.sons[1], {efDetermineType})
-    var typ = skipTypes(n.sons[1].typ, abstractVarRange)
+    var typ = skipTypes(n.sons[1].typ, abstractVarRange+{tyTypeDesc})
     case typ.kind
     of tySequence, tyString, tyOpenArray, tyVarargs: 
       n.typ = getSysType(tyInt)
@@ -249,8 +249,10 @@ proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
       # do not skip the range!
       n.typ = n.sons[1].typ.skipTypes(abstractVar)
     of tyGenericParam:
-      # leave it for now, it will be resolved in semtypinst
-      n.typ = getSysType(tyInt)
+      # prepare this for resolving in semtypinst:
+      # we must use copyTree here in order to avoid creating a cycle
+      # that could easily turn into an infinite recursion in semtypinst
+      n.typ = makeTypeFromExpr(c, n.copyTree)
     else:
       localError(n.info, errInvalidArgForX, opToStr[m])
   result = n

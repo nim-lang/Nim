@@ -144,7 +144,7 @@ proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
   ## be called before any possible `object branch transition`:idx:.
 
 # for low and high the return type T may not be correct, but
-# we handle that with compiler magic in SemLowHigh()
+# we handle that with compiler magic in semLowHigh()
 proc high*[T](x: T): T {.magic: "High", noSideEffect.}
   ## returns the highest possible index of an array, a sequence, a string or
   ## the highest possible value of an ordinal value `x`. As a special

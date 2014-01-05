@@ -418,6 +418,7 @@ type
     tfHasGCedMem,     # type contains GC'ed memory
     tfHasStatic
     tfGenericTypeParam
+    tfImplicitTypeParam
 
   TTypeFlags* = set[TTypeFlag]
 

@@ -98,10 +98,49 @@ proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
   result = copyNode(n)
   result.typ = replaceTypeVarsT(cl, n.typ)
   if result.kind == nkSym: result.sym = replaceTypeVarsS(cl, n.sym)
-  for i in 0 .. safeLen(n)-1: 
-    # XXX HACK: ``f(a, b)``, avoid to instantiate `f` 
-    if i == 0: result.add(n[i])
+  let isCall = result.kind in nkCallKinds
+  for i in 0 .. <n.safeLen:
+    # XXX HACK: ``f(a, b)``, avoid to instantiate `f`
+    if isCall and i == 0: result.add(n[i])
     else: result.add(prepareNode(cl, n[i]))
+
+proc isTypeParam(n: PNode): bool =
+  # XXX: generic params should use skGenericParam instead of skType
+  return n.kind == nkSym and
+         (n.sym.kind == skGenericParam or
+           (n.sym.kind == skType and sfFromGeneric in n.sym.flags))
+
+proc hasGenericArguments*(n: PNode): bool =
+  if n.kind == nkSym:
+    return n.sym.kind == skGenericParam or
+           (n.sym.kind == skType and
+            n.sym.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} != {})
+  else:
+    for s in n.sons:
+      if hasGenericArguments(s): return true
+    return false
+
+proc reResolveCallsWithTypedescParams(cl: var TReplTypeVars, n: PNode): PNode =
+  # This is needed fo tgenericshardcases
+  # It's possible that a generic param will be used in a proc call to a
+  # typedesc accepting proc. After generic param substitution, such procs
+  # should be optionally instantiated with the correct type. In order to
+  # perform this instantiation, we need to re-run the generateInstance path
+  # in the compiler, but it's quite complicated to do so at the moment so we
+  # resort to a mild hack; the head symbol of the call is temporary reset and
+  # overload resolution is executed again (which may trigger generateInstance).
+  if n.kind in nkCallKinds and sfFromGeneric in n[0].sym.flags:
+    var needsFixing = false
+    for i in 1 .. <n.safeLen:
+      if isTypeParam(n[i]): needsFixing = true
+    if needsFixing:
+      n.sons[0] = newSymNode(n.sons[0].sym.owner)
+      return cl.c.semOverloadedCall(cl.c, n, n, {skProc})
+  
+  for i in 0 .. <n.safeLen:
+    n.sons[i] = reResolveCallsWithTypedescParams(cl, n[i])
+
+  return n
 
 proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode): PNode =
   if n == nil: return
@@ -135,6 +174,10 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode): PNode =
       result = replaceTypeVarsN(cl, branch)
     else:
       result = newNodeI(nkRecList, n.info)
+  of nkStaticExpr:
+    var n = prepareNode(cl, n)
+    n = reResolveCallsWithTypedescParams(cl, n)
+    result = cl.c.semExpr(cl.c, n)
   else:
     var length = sonsLen(n)
     if length > 0:
@@ -273,45 +316,58 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   result = t
   if t == nil: return
 
-  #if t.kind == tyStatic and t.sym != nil and t.sym.kind == skGenericParam:
-  #  let s = lookupTypeVar(cl, t)
-  #  return if s != nil: s else: t
-
   if t.kind in {tyStatic, tyGenericParam} + tyTypeClasses:
     let lookup = PType(idTableGet(cl.typeMap, t))
     if lookup != nil: return lookup
- 
+  
   case t.kind
   of tyGenericInvokation:
     result = handleGenericInvokation(cl, t)
+
   of tyGenericBody:
     internalError(cl.info, "ReplaceTypeVarsT: tyGenericBody" )
     result = replaceTypeVarsT(cl, lastSon(t))
+
   of tyFromExpr:
     var n = prepareNode(cl, t.n)
-    n = cl.c.semExpr(cl.c, n, {})
-    result = n.typ.skipTypes({tyTypeDesc})
+    n = cl.c.semConstExpr(cl.c, n)
+    if n.typ.kind == tyTypeDesc:
+      # XXX: sometimes, chained typedescs enter here.
+      # It may be worth investigating why this is happening,
+      # because it may cause other bugs elsewhere.
+      result = n.typ.skipTypes({tyTypeDesc})
+      # result = n.typ.base
+    else:
+      if n.typ.kind != tyStatic:
+        # XXX: In the future, semConstExpr should
+        # return tyStatic values to let anyone make
+        # use of this knowledge. The patching here
+        # won't be necessary then.
+        result = newTypeS(tyStatic, cl.c)
+        result.sons = @[n.typ]
+        result.n = n
+      else:
+        result = n.typ
+
   of tyInt:
     result = skipIntLit(t)
     # XXX now there are also float literals
+  
   of tyTypeDesc:
     let lookup = PType(idTableGet(cl.typeMap, t)) # lookupTypeVar(cl, t)
     if lookup != nil:
       result = lookup
       if tfUnresolved in t.flags: result = result.base
+    elif t.sonsLen > 0:
+      result = makeTypeDesc(cl.c, replaceTypeVarsT(cl, t.sons[0]))
+  
   of tyGenericInst:
     result = instCopyType(cl, t)
     for i in 1 .. <result.sonsLen:
       result.sons[i] = ReplaceTypeVarsT(cl, result.sons[i])
     propagateToOwner(result, result.lastSon)
+  
   else:
-    if t.kind == tyArray:
-      let idxt = t.sons[0]
-      if idxt.kind == tyStatic and 
-         idxt.sym != nil and idxt.sym.kind == skGenericParam:
-        let value = lookupTypeVar(cl, idxt).n
-        t.sons[0] = makeRangeType(cl.c, 0, value.intVal - 1, value.info)
-    
     if containsGenericType(t):
       result = instCopyType(cl, t)
       result.size = -1 # needs to be recomputed
@@ -326,13 +382,25 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       # XXX: This is not really needed?
       # if result.kind in GenericTypes:
       #   localError(cl.info, errCannotInstantiateX, typeToString(t, preferName))
-  
+
       case result.kind
+      of tyArray:
+        let idx = result.sons[0]
+        if idx.kind == tyStatic:
+          if idx.n == nil:
+            let lookup = lookupTypeVar(cl, idx)
+            internalAssert lookup != nil
+            idx.n = lookup.n
+
+          result.sons[0] = makeRangeType(cl.c, 0, idx.n.intVal - 1, idx.n.info)
+       
       of tyObject, tyTuple:
         propagateFieldFlags(result, result.n)
+      
       of tyProc:
         eraseVoidParams(result)
         skipIntLiteralParams(result)
+      
       else: discard
 
 proc generateTypeInstance*(p: PContext, pt: TIdTable, info: TLineInfo,

@@ -167,8 +167,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   result.ast = n
   pushOwner(result)
   openScope(c)
-  if n.sons[genericParamsPos].kind == nkEmpty: 
-    internalError(n.info, "generateInstance")
+  internalAssert n.sons[genericParamsPos].kind != nkEmpty
   n.sons[namePos] = newSymNode(result)
   pushInfoContext(info)
   var entry = TInstantiation.new
