@@ -2247,6 +2247,24 @@ from different modules having the same name.
   import windows, sdl
   using sdl.SetTimer
 
+Note that ``using`` only *adds* to the current context, it doesn't remove or
+replace, **neither** does it create a new scope. What this means is that if you
+apply this to multiple variables the compiler will find conflicts in what
+variable to use:
+
+.. code-block:: nimrod
+  var a, b = "kill it"
+  using a
+  add(" with fire")
+  using b
+  add(" with water")
+  echo a
+  echo b
+
+When the compiler reaches the second ``add`` call, both ``a`` and ``b`` could
+be used with the proc, so you get ``Error: expression '(a|b)' has no type (or
+is ambiguous)``. To solve this you would need to nest ``using`` with a
+``block`` statement so as to control the reach of the ``using`` statement.
 
 If expression
 -------------
