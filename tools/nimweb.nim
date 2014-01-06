@@ -204,6 +204,18 @@ proc Exec(cmd: string) =
   echo(cmd)
   if os.execShellCmd(cmd) != 0: quit("external program failed")
 
+proc buildDocSamples(c: var TConfigData, destPath: string) =
+  ## Special case documentation sample proc.
+  ##
+  ## The docgen sample needs to be generated twice with different commands, so
+  ## it didn't make much sense to integrate into the existing generic
+  ## documentation builders.
+  const src = "doc"/"docgen_sample.nim"
+  Exec("nimrod doc $# -o:$# $#" %
+    [c.nimrodArgs, destPath / "docgen_sample.html", src])
+  Exec("nimrod doc2 $# -o:$# $#" %
+    [c.nimrodArgs, destPath / "docgen_sample2.html", src])
+
 proc buildDoc(c: var TConfigData, destPath: string) =
   # call nim for the documentation:
   for d in items(c.doc):
@@ -352,7 +364,9 @@ proc main(c: var TConfigData) =
   copyDir("web/assets", "web/upload/assets")
   buildNewsRss(c, "web/upload")
   buildAddDoc(c, "web/upload")
+  buildDocSamples(c, "web/upload")
   buildDoc(c, "web/upload")
+  buildDocSamples(c, "doc")
   buildDoc(c, "doc")
   buildPdfDoc(c, "doc")
 
