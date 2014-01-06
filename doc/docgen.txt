@@ -11,12 +11,12 @@
 Introduction
 ============
 
-This document describes the documentation generation tools built into the
-*Nimrod compiler*, which can generate HTML and JSON output from input .nim
-files and projects, as well as HTML and LaTeX from input RST (reStructuredText)
-files. The output documentation will include module dependencies (``import``),
-any top-level documentation comments (##), and exported symbols (*), including
-procedures, types, and variables.
+This document describes the `documentation generation tools`:idx: built into
+the `Nimrod compiler <nimrodc.html>`_, which can generate HTML and JSON output
+from input .nim files and projects, as well as HTML and LaTeX from input RST
+(reStructuredText) files. The output documentation will include module
+dependencies (``import``), any top-level documentation comments (##), and
+exported symbols (*), including procedures, types, and variables.
 
 
 Documentation Comments
