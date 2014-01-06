@@ -13,14 +13,14 @@ Introduction
 
 This document describes the documentation generation tools built into the *Nimrod compiler*,
 which can generate HTML and JSON output from input .nim files and projects, as well as HTML
-and LaTex from input RST (reStructuredText) files. The output documentation will include
+and LaTeX from input RST (reStructuredText) files. The output documentation will include
 module dependencies (``import``), any top-level documentation comments (##), and exported
 symbols (*), including procedures, types, and variables.
 
 
 Documentation Comments
 ----------------------
-Any comments which are preceeded by a double-hash (##), are interpreted as documentation.
+Any comments which are preceded by a double-hash (##), are interpreted as documentation.
 Comments are parsed as RST
 (see `reference <http://docutils.sourceforge.net/docs/user/rst/quickref.html>`_), providing
 Nimrod module authors the ability to easily generate richly formatted documentation with only
