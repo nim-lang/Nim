@@ -287,12 +287,18 @@ proc osLastError*(): TOSErrorCode =
     result = TOSErrorCode(errno)
 {.pop.}
 
-proc unixToNativePath*(path: string): string {.
+proc unixToNativePath*(path: string, drive=r"\"): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Converts an UNIX-like path to a native one.
   ##
   ## On an UNIX system this does nothing. Else it converts
   ## '/', '.', '..' to the appropriate things.
+  ##
+  ## On systems with a concept of "drives", the drive parameter may be used
+  ## to specify which drive label to use when an absolute path is converted.
+  ## The default value is the drive of the current working directory.
+  ## The `drive` parameter is ignored on systems that do not have a concept
+  ## of "drives".
   when defined(unix):
     result = path
   else:
@@ -300,7 +306,7 @@ proc unixToNativePath*(path: string): string {.
     if path[0] == '/':
       # an absolute path
       when doslike:
-        result = r"C:\"
+        result = r"\"
       elif defined(macos):
         result = "" # must not start with ':'
       else:
@@ -1228,6 +1234,8 @@ iterator walkDir*(dir: string): tuple[kind: TPathComponent, path: string] {.
         if not skipFindData(f):
           if (f.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) != 0'i32:
             k = pcDir
+          if (f.dwFileAttributes and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32:
+            k = succ(k)
           yield (k, dir / extractFilename(getFilename(f)))
         if findNextFile(h, f) == 0'i32: break
       findClose(h)
@@ -1252,6 +1260,9 @@ iterator walkDirRec*(dir: string, filter={pcFile, pcDir}): string {.
   tags: [FReadDir].} =
   ## walks over the directory `dir` and yields for each file in `dir`. The
   ## full path for each file is returned.
+  ## Warning - Modifying the directory structure while the iterator 
+  ## is traversing may result in undefined behavior! 
+  ##
   ## Walking is recursive. `filter` controls the behaviour of the iterator:
   ##
   ## ---------------------   ---------------------------------------------
@@ -1332,14 +1343,14 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1", tags: [FWriteDir].} =
 
 proc createSymlink*(src, dest: string) =
   ## Create a symbolic link at `dest` which points to the item specified
-  ## by `src`.
+  ## by `src`. On most operating systems, will fail if a lonk
   ##
   ## Warning - Some OS's (such as Microsoft Windows) restrict the creation 
   ## of symlinks to root users (administrators).
   when defined(Windows):
-    var flag = 0x0'i32
+    var flag = 0'i32
     if existsDir(src):
-      flag = 0x1
+      flag = 1
     when useWinUnicode:
       var wSrc = newWideCString(src)
       var wDst = newWideCString(dest)
