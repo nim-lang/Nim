@@ -312,13 +312,36 @@ Character literals
 ------------------
 
 Character literals are enclosed in single quotes ``''`` and can contain the
-same escape sequences as strings - with one exception: ``\n`` is not allowed
-as it may be wider than one character (often it is the pair CR/LF for example).
+same escape sequences as strings - with one exception: `newline`:idx: (``\n``)
+is not allowed as it may be wider than one character (often it is the pair
+CR/LF for example).  Here are the valid `escape sequences`:idx: for character
+literals:
+
+==================         ===================================================
+  Escape sequence          Meaning
+==================         ===================================================
+  ``\r``, ``\c``           `carriage return`:idx:
+  ``\l``                   `line feed`:idx:
+  ``\f``                   `form feed`:idx:
+  ``\t``                   `tabulator`:idx:
+  ``\v``                   `vertical tabulator`:idx:
+  ``\\``                   `backslash`:idx:
+  ``\"``                   `quotation mark`:idx:
+  ``\'``                   `apostrophe`:idx:
+  ``\`` '0'..'9'+          `character with decimal value d`:idx:;
+                           all decimal digits directly
+                           following are used for the character
+  ``\a``                   `alert`:idx:
+  ``\b``                   `backspace`:idx:
+  ``\e``                   `escape`:idx: `[ESC]`:idx:
+  ``\x`` HH                `character with hex value HH`:idx:;
+                           exactly two hex digits are allowed
+==================         ===================================================
+
 A character is not an Unicode character but a single byte. The reason for this
 is efficiency: for the overwhelming majority of use-cases, the resulting
 programs will still handle UTF-8 properly as UTF-8 was specially designed for
-this.
-Another reason is that Nimrod can thus support ``array[char, int]`` or
+this. Another reason is that Nimrod can thus support ``array[char, int]`` or
 ``set[char]`` efficiently as many algorithms rely on this feature.
 
 
