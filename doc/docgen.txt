@@ -97,7 +97,7 @@ Partial Output::
   proc helloWorld*(times: int)
   ...
 
-Output can be viewed in full here `sample.html <docgen_samples/sample.html>`_.
+Output can be viewed in full here: `docgen_sample.html <docgen_sample.html>`_.
 The next command, called ``doc2``, is very similar to the ``doc`` command, but
 will be run after the compiler performs semantic checking on the input nimrod
 module(s), which allows it to process macros.
@@ -110,7 +110,7 @@ Partial Output::
   proc helloWorld(times: int) {.raises: [], tags: [].}
   ...
 
-The full output can be seen here `sample2.html <docgen_samples/sample2.html>`_.
+The full output can be seen here: `docgen_sample2.html <docgen_sample2.html>`_.
 As you can see, the tool has extracted additional information provided to it by
 the compiler beyond what the ``doc`` command provides, such as pragmas attached
 implicitly by the compiler. This type of information is not available from
