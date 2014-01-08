@@ -321,7 +321,14 @@ proc getNumber(L: var TLexer, tok: var TToken) =
   if (L.buf[L.bufpos] == '.') and (L.buf[L.bufpos + 1] in {'0'..'9'}): 
     add(tok.s, '.')
     inc(L.bufpos)
-    matchUnderscoreChars(L, tok, {'e', 'E', '+', '-', '0'..'9'})
+    matchUnderscoreChars(L, tok, {'0'..'9'})
+    if L.buf[L.bufpos] in {'e', 'E'}:
+      add(tok.s, L.buf[L.bufpos])
+      inc(L.bufpos)
+      if L.buf[L.bufpos] in {'+', '-'}:
+        add(tok.s, L.buf[L.bufpos])
+        inc(L.bufpos)
+      matchUnderscoreChars(L, tok, {'0'..'9'})
   try: 
     if isFloatLiteral(tok.s): 
       tok.fnumber = parseFloat(tok.s)
@@ -382,6 +389,26 @@ proc escape(L: var TLexer, tok: var TToken, allowEmpty=false) =
         xi = (xi shl 3) or (ord(L.buf[L.bufpos]) - ord('0'))
         inc(L.bufpos)
     add(tok.s, chr(xi))
+  of 'x':
+    inc(L.bufpos)
+    var xi = 0
+
+    while true: 
+      case L.buf[L.bufpos]
+      of '0'..'9': 
+        xi = `shl`(xi, 4) or (ord(L.buf[L.bufpos]) - ord('0'))
+        inc(L.bufpos)
+      of 'a'..'f': 
+        xi = `shl`(xi, 4) or (ord(L.buf[L.bufpos]) - ord('a') + 10)
+        inc(L.bufpos)
+      of 'A'..'F': 
+        xi = `shl`(xi, 4) or (ord(L.buf[L.bufpos]) - ord('A') + 10)
+        inc(L.bufpos)
+      else:
+        break 
+
+    add(tok.s, chr(xi))
+
   elif not allowEmpty:
     lexMessage(L, errInvalidCharacterConstant)
   
