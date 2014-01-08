@@ -251,7 +251,7 @@ proc complexName(k: TSymKind, n: PNode, baseName: string): string =
   result = baseName
   case k:
   of skMacro: result.add(".m")
-  of skMethod: result.add(".m")
+  of skMethod: result.add(".e")
   of skIterator: result.add(".i")
   of skTemplate: result.add(".t")
   of skConverter: result.add(".c")
