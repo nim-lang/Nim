@@ -420,9 +420,9 @@ proc markTypeIdent(p: var TParser, typ: PNode) =
 # avoids to build a symbol table, which can't be done reliably anyway for our
 # purposes.
 
-proc expression(p: var TParser): PNode
-proc constantExpression(p: var TParser): PNode
-proc assignmentExpression(p: var TParser): PNode
+proc expression*(p : var TParser, rbp : int = 0) : PNode
+proc constantExpression(p: var TParser): PNode = expression(p, 40)
+proc assignmentExpression(p: var TParser): PNode = expression(p, 30)
 proc compoundStatement(p: var TParser): PNode
 proc statement(p: var TParser): PNode
 
@@ -720,10 +720,23 @@ proc parseParam(p: var TParser, params: PNode) =
   var typ = typeDesc(p)
   # support for ``(void)`` parameter list: 
   if typ.kind == nkNilLit and p.tok.xkind == pxParRi: return
-  var name: PNode
+  var name: PNode = nil
   if p.tok.xkind == pxSymbol: 
     name = skipIdent(p)
-  else:
+  elif p.tok.xkind == pxParLe:
+    saveContext(p)
+    getTok(p, nil)
+    if p.tok.xkind == pxStar:
+      getTok(p, nil)
+      if p.tok.xkind == pxSymbol:
+        name = skipIdent(p)
+        eat(p, pxParRi)
+        closeContext(p)
+      else:
+        backtrackContext(p)
+    else:
+      backtrackContext(p)
+  if name == nil:
     # generate a name for the formal parameter:
     var idx = sonsLen(params)+1
     name = newIdentNodeP("a" & $idx, p)
@@ -1127,6 +1140,8 @@ proc enumSpecifier(p: var TParser): PNode =
     
 # Expressions
 
+proc buildStmtList(a: PNode): PNode
+
 proc setBaseFlags(n: PNode, base: TNumericalBase) = 
   case base
   of base10: nil
@@ -1134,377 +1149,263 @@ proc setBaseFlags(n: PNode, base: TNumericalBase) =
   of base8: incl(n.flags, nfBase8)
   of base16: incl(n.flags, nfBase16)
 
-proc unaryExpression(p: var TParser): PNode
+# expression parsing in four functions
 
-proc isDefinitelyAType(p: var TParser): bool = 
-  var starFound = false
-  var words = 0
-  while true:
-    case p.tok.xkind 
-    of pxSymbol:
-      if declKeyword(p, p.tok.s): return true
-      elif starFound: return false
-      else: inc(words)
-    of pxStar, pxAmp, pxAmpAmp:
-      starFound = true
-    of pxParRi: return words == 0 or words > 1 or starFound
-    else: return false
-    getTok(p, nil)
-
-proc castExpression(p: var TParser): PNode = 
-  if p.tok.xkind == pxParLe: 
-    saveContext(p)
-    result = newNodeP(nkCast, p)
-    getTok(p, result)
-    var t = isDefinitelyAType(p)
-    backtrackContext(p)
-    if t:
-      eat(p, pxParLe, result)
-      var a = typeDesc(p)
-      eat(p, pxParRi, result)
-      addSon(result, a)
-      addSon(result, castExpression(p))
-    else: 
-      # else it is just an expression in ():
-      result = newNodeP(nkPar, p)
-      eat(p, pxParLe, result)
-      addSon(result, expression(p))
-      if p.tok.xkind != pxParRi:  
-        # ugh, it is a cast, even though it does not look like one:
-        result.kind = nkCast
-        addSon(result, castExpression(p))
-      eat(p, pxParRi, result)
-      #result = unaryExpression(p)
-  else:
-    result = unaryExpression(p)
-  
-proc primaryExpression(p: var TParser): PNode = 
-  case p.tok.xkind
-  of pxSymbol: 
-    if p.tok.s == "NULL": 
-      result = newNodeP(nkNilLit, p)
-    else: 
-      result = mangledIdent(p.tok.s, p)
-    getTok(p, result)
-    result = optScope(p, result)
-  of pxIntLit: 
-    result = newIntNodeP(nkIntLit, p.tok.iNumber, p)
-    setBaseFlags(result, p.tok.base)
-    getTok(p, result)
-  of pxInt64Lit: 
-    result = newIntNodeP(nkInt64Lit, p.tok.iNumber, p)
-    setBaseFlags(result, p.tok.base)
-    getTok(p, result)
-  of pxFloatLit: 
-    result = newFloatNodeP(nkFloatLit, p.tok.fNumber, p)
-    setBaseFlags(result, p.tok.base)
-    getTok(p, result)
-  of pxStrLit: 
-    # Ansi C allows implicit string literal concatenations:
-    result = newStrNodeP(nkStrLit, p.tok.s, p)
-    getTok(p, result)
-    while p.tok.xkind == pxStrLit:
-      add(result.strVal, p.tok.s)
-      getTok(p, result)
-  of pxCharLit:
-    result = newIntNodeP(nkCharLit, ord(p.tok.s[0]), p)
-    getTok(p, result)
-  of pxParLe:
-    result = castExpression(p)
-  else:
-    result = ast.emptyNode
-
-proc multiplicativeExpression(p: var TParser): PNode = 
-  result = castExpression(p)
-  while true:
-    case p.tok.xkind
-    of pxStar:
-      var a = result
-      result = newNodeP(nkInfix, p)
-      addSon(result, newIdentNodeP("*", p), a)
-      getTok(p, result)
-      var b = castExpression(p)
-      addSon(result, b)
-    of pxSlash:
-      var a = result
-      result = newNodeP(nkInfix, p)
-      addSon(result, newIdentNodeP("div", p), a)
-      getTok(p, result)
-      var b = castExpression(p)
-      addSon(result, b)
-    of pxMod:
-      var a = result
-      result = newNodeP(nkInfix, p)
-      addSon(result, newIdentNodeP("mod", p), a)
-      getTok(p, result)
-      var b = castExpression(p)
-      addSon(result, b)
-    else: break 
-
-proc additiveExpression(p: var TParser): PNode = 
-  result = multiplicativeExpression(p)
-  while true:
-    case p.tok.xkind
-    of pxPlus:
-      var a = result
-      result = newNodeP(nkInfix, p)
-      addSon(result, newIdentNodeP("+", p), a)
-      getTok(p, result)
-      var b = multiplicativeExpression(p)
-      addSon(result, b)
-    of pxMinus:
-      var a = result
-      result = newNodeP(nkInfix, p)
-      addSon(result, newIdentNodeP("-", p), a)
-      getTok(p, result)
-      var b = multiplicativeExpression(p)
-      addSon(result, b)
-    else: break 
-  
-proc incdec(p: var TParser, opr: string): PNode = 
-  result = newNodeP(nkCall, p)
-  addSon(result, newIdentNodeP(opr, p))
-  gettok(p, result)
-  addSon(result, unaryExpression(p))
-
-proc unaryOp(p: var TParser, kind: TNodeKind): PNode = 
-  result = newNodeP(kind, p)
-  getTok(p, result)
-  addSon(result, castExpression(p))
-
-proc prefixCall(p: var TParser, opr: string): PNode = 
-  result = newNodeP(nkPrefix, p)
-  addSon(result, newIdentNodeP(opr, p))
-  gettok(p, result)
-  addSon(result, castExpression(p))
-
-proc postfixExpression(p: var TParser): PNode = 
-  result = primaryExpression(p)
-  while true:
-    case p.tok.xkind
-    of pxBracketLe:
-      var a = result
-      result = newNodeP(nkBracketExpr, p)
-      addSon(result, a)
-      getTok(p, result)
-      var b = expression(p)
-      addSon(result, b)
-      eat(p, pxBracketRi, result)
-    of pxParLe:
-      var a = result
-      result = newNodeP(nkCall, p)
-      addSon(result, a)
-      getTok(p, result)
-      if p.tok.xkind != pxParRi:
-        a = assignmentExpression(p)
-        addSon(result, a)
-        while p.tok.xkind == pxComma:
-          getTok(p, a)
-          a = assignmentExpression(p)
-          addSon(result, a)
-      eat(p, pxParRi, result)
-    of pxDot, pxArrow:
-      var a = result
-      result = newNodeP(nkDotExpr, p)
-      addSon(result, a)
-      getTok(p, result)
-      addSon(result, skipIdent(p))
-    of pxPlusPlus:
-      var a = result
-      result = newNodeP(nkCall, p)
-      addSon(result, newIdentNodeP("inc", p))
-      gettok(p, result)
-      addSon(result, a)
-    of pxMinusMinus:
-      var a = result
-      result = newNodeP(nkCall, p)
-      addSon(result, newIdentNodeP("dec", p))
-      gettok(p, result)
-      addSon(result, a)
-    of pxLt:
-      if isTemplateAngleBracket(p):
-        result = optAngle(p, result)
-      else: break
-    else: break
-
-proc unaryExpression(p: var TParser): PNode =
-  case p.tok.xkind
-  of pxPlusPlus: result = incdec(p, "inc")
-  of pxMinusMinus: result = incdec(p, "dec")
-  of pxAmp: result = unaryOp(p, nkAddr)
-  of pxStar: result = unaryOp(p, nkBracketExpr)
-  of pxPlus: result = prefixCall(p, "+")
-  of pxMinus: result = prefixCall(p, "-")
-  of pxTilde: result = prefixCall(p, "not")
-  of pxNot: result = prefixCall(p, "not")
+proc nud(p : var TParser, tok : TToken) : PNode =
+  case tok.xkind:
   of pxSymbol:
-    if p.tok.s == "sizeof": 
-      result = newNodeP(nkCall, p)
-      addSon(result, newIdentNodeP("sizeof", p))
-      getTok(p, result)
-      if p.tok.xkind == pxParLe:
-        getTok(p, result)
-        addSon(result, typeDesc(p))
-        eat(p, pxParRi, result)
-      else:
-        addSon(result, unaryExpression(p))
-    elif p.tok.s == "new" or p.tok.s == "delete" and pfCpp in p.options.flags:
-      var opr = p.tok.s
-      result = newNodeP(nkCall, p)
-      getTok(p, result)
-      if p.tok.xkind == pxBracketLe:
-        getTok(p)
-        eat(p, pxBracketRi)
-        opr.add("Array")
-      addSon(result, newIdentNodeP(opr, p))
-      if p.tok.xkind == pxParLe:
-        getTok(p, result)
-        addSon(result, typeDesc(p))
-        eat(p, pxParRi, result)
-      else:
-        addSon(result, unaryExpression(p))
+    if tok.s == "NULL":
+      result = newNodeP(nkNilLit, p)
     else:
-      result = postfixExpression(p)
-  else: result = postfixExpression(p)
-
-proc expression(p: var TParser): PNode = 
-  # we cannot support C's ``,`` operator
-  result = assignmentExpression(p)
-  if p.tok.xkind == pxComma:
-    getTok(p, result)
-    parMessage(p, errOperatorExpected, ",")
-    
-proc conditionalExpression(p: var TParser): PNode
-
-proc constantExpression(p: var TParser): PNode = 
-  result = conditionalExpression(p)
-
-proc lvalue(p: var TParser): PNode = 
-  result = unaryExpression(p)
-
-proc asgnExpr(p: var TParser, opr: string, a: PNode): PNode = 
-  closeContext(p)
-  getTok(p, a)
-  var b = assignmentExpression(p)
-  result = newNodeP(nkAsgn, p)
-  addSon(result, a, newBinary(opr, copyTree(a), b, p))
-  
-proc incdec(p: var TParser, opr: string, a: PNode): PNode =
-  closeContext(p)
-  getTok(p, a)
-  var b = assignmentExpression(p)
-  result = newNodeP(nkCall, p)
-  addSon(result, newIdentNodeP(getIdent(opr), p), a, b)
-  
-proc assignmentExpression(p: var TParser): PNode = 
-  saveContext(p)
-  var a = lvalue(p)
-  case p.tok.xkind 
-  of pxAsgn:
-    closeContext(p)
-    getTok(p, a)
-    var b = assignmentExpression(p)
-    result = newNodeP(nkAsgn, p)
-    addSon(result, a, b)
-  of pxPlusAsgn: result = incDec(p, "inc", a)    
-  of pxMinusAsgn: result = incDec(p, "dec", a)
-  of pxStarAsgn: result = asgnExpr(p, "*", a)
-  of pxSlashAsgn: result = asgnExpr(p, "/", a)
-  of pxModAsgn: result = asgnExpr(p, "mod", a)
-  of pxShlAsgn: result = asgnExpr(p, "shl", a)
-  of pxShrAsgn: result = asgnExpr(p, "shr", a)
-  of pxAmpAsgn: result = asgnExpr(p, "and", a)
-  of pxHatAsgn: result = asgnExpr(p, "xor", a)
-  of pxBarAsgn: result = asgnExpr(p, "or", a)
+      result = mangledIdent(tok.s, p)
+  of pxIntLit: 
+    result = newIntNodeP(nkIntLit, tok.iNumber, p)
+    setBaseFlags(result, tok.base)
+  of pxInt64Lit: 
+    result = newIntNodeP(nkInt64Lit, tok.iNumber, p)
+    setBaseFlags(result, tok.base)
+  of pxFloatLit: 
+    result = newFloatNodeP(nkFloatLit, tok.fNumber, p)
+    setBaseFlags(result, tok.base)
+  of pxStrLit: 
+    result = newStrNodeP(nkStrLit, tok.s, p)
+  of pxCharLit:
+    result = newIntNodeP(nkCharLit, ord(tok.s[0]), p)
+  of pxParLe:
+    try:
+      saveContext(p)
+      result = newNodeP(nkPar, p)
+      addSon(result, expression(p, 0))
+      eat(p, pxParRi, result)
+      closeContext(p)
+    except:
+      backtrackContext(p)
+      result = newNodeP(nkCast, p)
+      addSon(result, typeDesc(p))
+      eat(p, pxParRi, result)
+      addSon(result, expression(p, 139))
+  of pxPlusPlus:
+    result = newNodeP(nkCall, p)
+    addSon(result, newIdentNodeP("inc", p))
+    addSon(result, expression(p, 139))
+  of pxMinusMinus:
+    result = newNodeP(nkCall, p)
+    addSon(result, newIdentNodeP("dec", p))
+    addSon(result, expression(p, 139))
+  of pxAmp:
+    result = newNodeP(nkAddr, p)
+    addSon(result, expression(p, 139))
+  of pxStar:
+    result = newNodeP(nkBracketExpr, p)
+    addSon(result, expression(p, 139))
+  of pxPlus:
+    result = newNodeP(nkPrefix, p)
+    addSon(result, newIdentNodeP("+", p))
+    addSon(result, expression(p, 139))
+  of pxMinus:
+    result = newNodeP(nkPrefix, p)
+    addSon(result, newIdentNodeP("-", p))
+    addSon(result, expression(p, 139))
+  of pxTilde:
+    result = newNodeP(nkPrefix, p)
+    addSon(result, newIdentNodeP("not", p))
+    addSon(result, expression(p, 139))
+  of pxNot:
+    result = newNodeP(nkPrefix, p)
+    addSon(result, newIdentNodeP("not", p))
+    addSon(result, expression(p, 139))
   else:
-    backtrackContext(p)
-    result = conditionalExpression(p)
-  
-proc shiftExpression(p: var TParser): PNode = 
-  result = additiveExpression(p)
-  while p.tok.xkind in {pxShl, pxShr}:
-    var op = if p.tok.xkind == pxShl: "shl" else: "shr"
-    getTok(p, result)
-    var a = result 
-    var b = additiveExpression(p)
-    result = newBinary(op, a, b, p)
+    # probably from a failed sub expression attempt, try a type cast
+    raise newException(E_Base, "not " & $tok)
 
-proc relationalExpression(p: var TParser): PNode = 
-  result = shiftExpression(p)
-  # Nimrod uses ``<`` and ``<=``, etc. too:
-  while p.tok.xkind in {pxLt, pxLe, pxGt, pxGe}:
-    var op = TokKindToStr(p.tok.xkind)
-    getTok(p, result)
-    var a = result 
-    var b = shiftExpression(p)
-    result = newBinary(op, a, b, p)
+proc lbp(p : var TParser, tok : ref TToken) : int =
+  case tok.xkind:
+  of pxComma:
+    return 10
+    # throw == 20
+  of pxAsgn, pxPlusAsgn, pxMinusAsgn, pxStarAsgn, pxSlashAsgn, pxModAsgn, pxShlAsgn, pxShrAsgn, pxAmpAsgn, pxHatAsgn, pxBarAsgn:
+    return 30
+  of pxConditional:
+    return 40
+  of pxBarBar:
+    return 50
+  of pxAmpAmp:
+    return 60
+  of pxBar:
+    return 70
+  of pxHat:
+    return 80
+  of pxAmp:
+    return 90
+  of pxEquals, pxNeq:
+    return 100
+  of pxLt, pxLe, pxGt, pxGe:
+    return 110
+  of pxShl, pxShr:
+    return 120
+  of pxPlus, pxMinus:
+    return 130
+  of pxStar, pxSlash, pxMod:
+    return 140
+    # .* ->* == 150
+  of pxPlusPlus, pxMinusMinus, pxParLe, pxDot, pxArrow, pxBracketLe:
+    return 160
+    # :: == 170
+  else:
+    return 0
 
-proc equalityExpression(p: var TParser): PNode =
-  result = relationalExpression(p)
-  # Nimrod uses ``==`` and ``!=`` too:
-  while p.tok.xkind in {pxEquals, pxNeq}:
-    var op = TokKindToStr(p.tok.xkind)
-    getTok(p, result)
-    var a = result 
-    var b = relationalExpression(p)
-    result = newBinary(op, a, b, p)
-
-proc andExpression(p: var TParser): PNode =
-  result = equalityExpression(p)
-  while p.tok.xkind == pxAmp:
-    getTok(p, result)
-    var a = result 
-    var b = equalityExpression(p)
-    result = newBinary("and", a, b, p)
-
-proc exclusiveOrExpression(p: var TParser): PNode = 
-  result = andExpression(p)
-  while p.tok.xkind == pxHat:
-    getTok(p, result)
-    var a = result 
-    var b = andExpression(p)
-    result = newBinary("^", a, b, p)
-
-proc inclusiveOrExpression(p: var TParser): PNode = 
-  result = exclusiveOrExpression(p)
-  while p.tok.xkind == pxBar:
-    getTok(p, result)
-    var a = result 
-    var b = exclusiveOrExpression(p)
-    result = newBinary("or", a, b, p)
-  
-proc logicalAndExpression(p: var TParser): PNode = 
-  result = inclusiveOrExpression(p)
-  while p.tok.xkind == pxAmpAmp:
-    getTok(p, result)
-    var a = result
-    var b = inclusiveOrExpression(p)
-    result = newBinary("and", a, b, p)
-
-proc logicalOrExpression(p: var TParser): PNode = 
-  result = logicalAndExpression(p)
-  while p.tok.xkind == pxBarBar:
-    getTok(p, result)
-    var a = result
-    var b = logicalAndExpression(p)
-    result = newBinary("or", a, b, p)
-  
-proc conditionalExpression(p: var TParser): PNode =  
-  result = logicalOrExpression(p)
-  if p.tok.xkind == pxConditional: 
-    getTok(p, result) # skip '?'
-    var a = result
-    var b = expression(p)
-    eat(p, pxColon, b)
-    var c = conditionalExpression(p)
+proc led(p : var TParser, tok : TToken, left : PNode) : PNode =
+  case tok.xkind:
+  of pxComma: # 10
+    # not supported as an expression, turns into a statement list
+    result = buildStmtList(left)
+    addSon(result, expression(p, 0))
+    # throw == 20
+  of pxAsgn: # 30
+    result = newNodeP(nkAsgn, p)
+    addSon(result, left, expression(p, 29))
+  of pxPlusAsgn: # 30
+    result = newNodeP(nkCall, p)
+    addSon(result, newIdentNodeP(getIdent("inc"), p), left, expression(p, 29))
+  of pxMinusAsgn: # 30
+    result = newNodeP(nkCall, p)
+    addSon(result, newIdentNodeP(getIdent("dec"), p), left, expression(p, 29))
+  of pxStarAsgn: # 30
+    result = newNodeP(nkAsgn, p)
+    var right = expression(p, 29)
+    addSon(result, left, newBinary("*", copyTree(left), right, p))
+  of pxSlashAsgn: # 30
+    result = newNodeP(nkAsgn, p)
+    var right = expression(p, 29)
+    addSon(result, left, newBinary("/", copyTree(left), right, p))
+  of pxModAsgn: # 30
+    result = newNodeP(nkAsgn, p)
+    var right = expression(p, 29)
+    addSon(result, left, newBinary("mod", copyTree(left), right, p))
+  of pxShlAsgn: # 30
+    result = newNodeP(nkAsgn, p)
+    var right = expression(p, 29)
+    addSon(result, left, newBinary("shl", copyTree(left), right, p))
+  of pxShrAsgn: # 30
+    result = newNodeP(nkAsgn, p)
+    var right = expression(p, 29)
+    addSon(result, left, newBinary("shr", copyTree(left), right, p))
+  of pxAmpAsgn: # 30
+    result = newNodeP(nkAsgn, p)
+    var right = expression(p, 29)
+    addSon(result, left, newBinary("and", copyTree(left), right, p))
+  of pxHatAsgn: # 30
+    result = newNodeP(nkAsgn, p)
+    var right = expression(p, 29)
+    addSon(result, left, newBinary("xor", copyTree(left), right, p))
+  of pxBarAsgn: # 30
+    result = newNodeP(nkAsgn, p)
+    var right = expression(p, 29)
+    addSon(result, left, newBinary("or", copyTree(left), right, p))
+  of pxConditional: # 40
+    var a = expression(p, 0)
+    eat(p, pxColon, a)
+    var b = expression(p, 39)
     result = newNodeP(nkIfExpr, p)
     var branch = newNodeP(nkElifExpr, p)
-    addSon(branch, a, b)
+    addSon(branch, left, a)
     addSon(result, branch)
     branch = newNodeP(nkElseExpr, p)
-    addSon(branch, c)
+    addSon(branch, b)
     addSon(result, branch)
-    
+  of pxBarBar: # 50
+    result = newBinary("or", left, expression(p, 50), p)
+  of pxAmpAmp: # 60
+    result = newBinary("and", left, expression(p, 60), p)
+  of pxBar: # 70
+    result = newBinary("or", left, expression(p, 70), p)
+  of pxHat: # 80
+    result = newBinary("^", left, expression(p, 80), p)
+  of pxAmp: # 90
+    result = newBinary("and", left, expression(p, 90), p)
+  of pxEquals: # 100
+    result = newBinary("==", left, expression(p, 100), p)
+  of pxNeq: # 100
+    result = newBinary("!=", left, expression(p, 100), p)
+  of pxLt: # 110
+    result = newBinary("<", left, expression(p, 110), p)
+  of pxLe: # 110
+    result = newBinary("<=", left, expression(p, 110), p)
+  of pxGt: # 110
+    result = newBinary(">", left, expression(p, 110), p)
+  of pxGe: # 110
+    result = newBinary(">=", left, expression(p, 110), p)
+  of pxShl: # 120
+    result = newBinary("shl", left, expression(p, 120), p)
+  of pxShr: # 120
+    result = newBinary("shr", left, expression(p, 120), p)
+  of pxPlus: # 130
+    result = newNodeP(nkInfix, p)
+    addSon(result, newIdentNodeP("+", p), left)
+    addSon(result, expression(p, 130))
+  of pxMinus: # 130
+    result = newNodeP(nkInfix, p)
+    addSon(result, newIdentNodeP("+", p), left)
+    addSon(result, expression(p, 130))
+  of pxStar: # 140
+    result = newNodeP(nkInfix, p)
+    addSon(result, newIdentNodeP("*", p), left)
+    addSon(result, expression(p, 140))
+  of pxSlash: # 140
+    result = newNodeP(nkInfix, p)
+    addSon(result, newIdentNodeP("div", p), left)
+    addSon(result, expression(p, 140))
+  of pxMod: # 140
+    result = newNodeP(nkInfix, p)
+    addSon(result, newIdentNodeP("mod", p), left)
+    addSon(result, expression(p, 140))
+    # .* ->* == 150
+  of pxPlusPlus: # 160
+    result = newNodeP(nkCall, p)
+    addSon(result, newIdentNodeP("inc", p), left)
+  of pxMinusMinus: # 160
+    result = newNodeP(nkCall, p)
+    addSon(result, newIdentNodeP("dec", p), left)
+  of pxParLe: # 160
+    result = newNodeP(nkCall, p)
+    addSon(result, left)
+    while p.tok.xkind != pxParRi:
+      var a = expression(p, 29)
+      addSon(result, a)
+      while p.tok.xkind == pxComma:
+        getTok(p, a)
+        a = expression(p, 29)
+        addSon(result, a)
+    eat(p, pxParRi, result)
+  of pxDot: # 160
+    result = newNodeP(nkDotExpr, p)
+    addSon(result, left)
+    addSon(result, skipIdent(p))
+  of pxArrow: # 160
+    result = newNodeP(nkDotExpr, p)
+    addSon(result, left)
+    addSon(result, skipIdent(p))
+  of pxBracketLe: # 160
+    result = newNodeP(nkBracketExpr, p)
+    addSon(result, left, expression(p))
+    eat(p, pxBracketRi, result)
+    # :: == 170
+  else:
+    result = left
+
+proc expression*(p : var TParser, rbp : int = 0) : PNode =
+  var tok : TToken
+
+  tok = p.tok[]
+  getTok(p, result)
+
+  result = nud(p, tok)
+
+  while rbp < lbp(p, p.tok):
+    tok = p.tok[]
+    getTok(p, result)
+    result = led(p, tok, result)
+
 # Statements
 
 proc buildStmtList(a: PNode): PNode = 
@@ -1549,12 +1450,13 @@ proc parseIf(p: var TParser): PNode =
   while true: 
     getTok(p) # skip ``if``
     var branch = newNodeP(nkElifBranch, p)
-    skipCom(p, branch)
+    #skipCom(p, branch)
     eat(p, pxParLe, branch)
     addSon(branch, expression(p))
     eat(p, pxParRi, branch)
     addSon(branch, nestedStatement(p))
     addSon(result, branch)
+    skipCom(p, branch)
     if p.tok.s == "else": 
       getTok(p, result)
       if p.tok.s != "if": 
@@ -1574,18 +1476,43 @@ proc parseWhile(p: var TParser): PNode =
   eat(p, pxParRi, result)
   addSon(result, nestedStatement(p))
 
+proc embedStmts(sl, a: PNode)
+
 proc parseDoWhile(p: var TParser): PNode =  
-  # we only support ``do stmt while (0)`` as an idiom for 
-  # ``block: stmt``
-  result = newNodeP(nkBlockStmt, p)
-  getTok(p, result) # skip "do"
-  addSon(result, ast.emptyNode, nestedStatement(p))
+  # parsing
+  result = newNodeP(nkWhileStmt, p)
+  getTok(p, result)
+  var stm = nestedStatement(p)
   eat(p, "while", result)
   eat(p, pxParLe, result)
-  if p.tok.xkind == pxIntLit and p.tok.iNumber == 0: getTok(p, result)
-  else: parMessage(p, errTokenExpected, "0")
+  var exp = expression(p)
   eat(p, pxParRi, result)
   if p.tok.xkind == pxSemicolon: getTok(p)
+
+  # while true:
+  #   stmt
+  #   if not expr:
+  #     break
+  addSon(result, newIdentNodeP("true", p))
+
+  stm = buildStmtList(stm)
+
+  var notExp = newNodeP(nkPrefix, p)
+  addSon(notExp, newIdentNodeP("not", p))
+  addSon(notExp, exp)
+
+  var brkStm = newNodeP(nkBreakStmt, p)
+  addSon(brkStm, ast.emptyNode)
+
+  var ifStm = newNodeP(nkIfStmt, p)
+  var ifBranch = newNodeP(nkElifBranch, p)
+  addSon(ifBranch, notExp)
+  addSon(ifBranch, brkStm)
+  addSon(ifStm, ifBranch)
+
+  embedStmts(stm, ifStm)
+
+  addSon(result, stm)
 
 proc declarationOrStatement(p: var TParser): PNode = 
   if p.tok.xkind != pxSymbol:
@@ -1666,7 +1593,7 @@ proc parseFor(p: var TParser, result: PNode) =
   eat(p, pxParLe, result)
   var initStmt = declarationOrStatement(p)
   if initStmt.kind != nkEmpty:
-    addSon(result, initStmt)
+    embedStmts(result, initStmt)
   var w = newNodeP(nkWhileStmt, p)
   var condition = expressionStatement(p)
   if condition.kind == nkEmpty: condition = newIdentNodeP("true", p)
@@ -1676,7 +1603,7 @@ proc parseFor(p: var TParser, result: PNode) =
   var loopBody = nestedStatement(p)
   if step.kind != nkEmpty:
     loopBody = buildStmtList(loopBody)
-    addSon(loopBody, step)
+    embedStmts(loopBody, step)
   addSon(w, loopBody)
   addSon(result, w)
   
