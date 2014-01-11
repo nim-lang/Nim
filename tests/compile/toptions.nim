@@ -1,7 +1,3 @@
-# Converted by Pas2mor v1.54
-# Used command line arguments:
-# -m -q -o bootstrap\options.mor options.pas
-#
 
 type
   # please make sure we have under 32 options (improves code efficiency!)

@@ -36,7 +36,7 @@ when (defined(gcc) or defined(llvm_gcc)) and hasThreadSupport:
     ## This proc implements an atomic load operation. It returns the contents at p.
     ## ATOMIC_RELAXED, ATOMIC_SEQ_CST, ATOMIC_ACQUIRE, ATOMIC_CONSUME.
 
-  proc atomicLoad*[T: TAtomType](p: ptr T, ret: ptr T, mem: AtomMemModel) {.
+  proc atomicLoad*[T: TAtomType](p, ret: ptr T, mem: AtomMemModel) {.
     importc: "__atomic_load", nodecl.}  
     ## This is the generic version of an atomic load. It returns the contents at p in ret.
 
@@ -45,7 +45,7 @@ when (defined(gcc) or defined(llvm_gcc)) and hasThreadSupport:
     ## This proc implements an atomic store operation. It writes val at p.
     ## ATOMIC_RELAXED, ATOMIC_SEQ_CST, and ATOMIC_RELEASE.
 
-  proc atomicStore*[T: TAtomType](p: ptr T, val: ptr T, mem: AtomMemModel) {.
+  proc atomicStore*[T: TAtomType](p, val: ptr T, mem: AtomMemModel) {.
     importc: "__atomic_store", nodecl.}
     ## This is the generic version of an atomic store. It stores the value of val at p
 
@@ -55,12 +55,12 @@ when (defined(gcc) or defined(llvm_gcc)) and hasThreadSupport:
     ## and returns the previous contents at p.
     ## ATOMIC_RELAXED, ATOMIC_SEQ_CST, ATOMIC_ACQUIRE, ATOMIC_RELEASE, ATOMIC_ACQ_REL
 
-  proc atomicExchange*[T: TAtomType](p: ptr T, val: ptr T, ret: ptr T, mem: AtomMemModel) {.
+  proc atomicExchange*[T: TAtomType](p, val, ret: ptr T, mem: AtomMemModel) {.
     importc: "__atomic_exchange", nodecl.}
     ## This is the generic version of an atomic exchange. It stores the contents at val at p. 
     ## The original value at p is copied into ret.
 
-  proc atomicCompareExchangeN*[T: TAtomType](p: ptr T, expected: ptr T, desired: T,
+  proc atomicCompareExchangeN*[T: TAtomType](p, expected: ptr T, desired: T,
     weak: bool, success_memmodel: AtomMemModel, failure_memmodel: AtomMemModel): bool {.
     importc: "__atomic_compare_exchange_n ", nodecl.} 
     ## This proc implements an atomic compare and exchange operation. This compares the
@@ -76,7 +76,7 @@ when (defined(gcc) or defined(llvm_gcc)) and hasThreadSupport:
     ## cannot be __ATOMIC_RELEASE nor __ATOMIC_ACQ_REL. It also cannot be a stronger model 
     ## than that specified by success_memmodel.
 
-  proc atomicCompareExchange*[T: TAtomType](p: ptr T, expected: ptr T, desired: ptr T,
+  proc atomicCompareExchange*[T: TAtomType](p, expected, desired: ptr T,
     weak: bool, success_memmodel: AtomMemModel, failure_memmodel: AtomMemModel): bool {.
     importc: "__atomic_compare_exchange_n ", nodecl.}  
     ## This proc implements the generic version of atomic_compare_exchange. 
@@ -108,7 +108,7 @@ when (defined(gcc) or defined(llvm_gcc)) and hasThreadSupport:
     importc: "__atomic_fetch_and", nodecl.}
   proc atomicFetchXor*[T: TAtomType](p: ptr T, val: T, mem: AtomMemModel): T {.  
     importc: "__atomic_fetch_xor", nodecl.}
-  proc atomicFetchAand*[T: TAtomType](p: ptr T, val: T, mem: AtomMemModel): T {.  
+  proc atomicFetchNand*[T: TAtomType](p: ptr T, val: T, mem: AtomMemModel): T {.  
     importc: "__atomic_fetch_nand", nodecl.} 
 
   proc atomicTestAndSet*(p: pointer, mem: AtomMemModel): bool {.  
@@ -176,7 +176,7 @@ else:
     
 #elif not hasThreadSupport:
 #  proc compareAndSwap*[T](mem: ptr T, 
-#    expected: T, newValue: T): bool {.inline.} =
+#                          expected: T, newValue: T): bool {.inline.} =
 #      ## Returns true if successfully set value at mem to newValue when value
 #      ## at mem == expected
 #      var oldval = mem[]
@@ -202,4 +202,4 @@ proc atomicDec*(memLoc: var int, x: int = 1): int =
       result = atomic_add_fetch(memLoc.addr, -x, ATOMIC_RELAXED)
   else:
     dec(memLoc, x)
-    result = memLoc  
+    result = memLoc

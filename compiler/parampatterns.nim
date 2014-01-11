@@ -216,7 +216,7 @@ proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
   of nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr: 
     result = isAssignable(owner, n.sons[0])
   else:
-    nil
+    discard
 
 proc matchNodeKinds*(p, n: PNode): bool =
   # matches the parameter constraint 'p' against the concrete AST 'n'. 
