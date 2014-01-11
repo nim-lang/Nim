@@ -10,6 +10,7 @@
 ## This module contains basic operating system facilities like
 ## retrieving environment variables, reading command line arguments,
 ## working with directories, running shell commands, etc.
+
 {.deadCodeElim: on.}
 
 {.push debugger: off.}
@@ -287,12 +288,18 @@ proc osLastError*(): TOSErrorCode =
     result = TOSErrorCode(errno)
 {.pop.}
 
-proc unixToNativePath*(path: string): string {.
+proc unixToNativePath*(path: string, drive=""): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Converts an UNIX-like path to a native one.
   ##
   ## On an UNIX system this does nothing. Else it converts
   ## '/', '.', '..' to the appropriate things.
+  ##
+  ## On systems with a concept of "drives", `drive` is used to determine
+  ## which drive label to use during absolute path conversion.
+  ## The 'drive' defaults to the drive of the current working directory.
+  ## The `drive` parameter is ignored on systems that do not have a concept
+  ## of "drives"
   when defined(unix):
     result = path
   else:
@@ -300,7 +307,10 @@ proc unixToNativePath*(path: string): string {.
     if path[0] == '/':
       # an absolute path
       when doslike:
-        result = r"C:\"
+        if drive != "":
+          result = drive & ":" & DirSep
+        else:
+          result = DirSep
       elif defined(macos):
         result = "" # must not start with ':'
       else:
@@ -386,6 +396,21 @@ proc existsDir*(dir: string): bool {.rtl, extern: "nos$1", tags: [FReadDir].} =
   else:
     var res: TStat
     return stat(dir, res) >= 0'i32 and S_ISDIR(res.st_mode)
+
+proc existsSymlink*(link: string): bool {.rtl, extern: "nos$1",
+                                          tags: [FReadDir].} =
+  ## Returns true iff the symlink `link` exists. Will return true
+  ## regardless of whether the link points to a directory or file.
+  when defined(windows):
+    when useWinUnicode:
+      wrapUnary(a, GetFileAttributesW, link)
+    else:
+      var a = GetFileAttributesA(link)
+    if a != -1'i32:
+      result = (a and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32
+  else:
+    var res: TStat
+    return lstat(link, res) >= 0'i32 and S_ISLNK(res.st_mode)
 
 proc getLastModificationTime*(file: string): TTime {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s last modification time.
@@ -1213,6 +1238,8 @@ iterator walkDir*(dir: string): tuple[kind: TPathComponent, path: string] {.
         if not skipFindData(f):
           if (f.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) != 0'i32:
             k = pcDir
+          if (f.dwFileAttributes and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32:
+            k = succ(k)
           yield (k, dir / extractFilename(getFilename(f)))
         if findNextFile(h, f) == 0'i32: break
       findClose(h)
@@ -1237,6 +1264,10 @@ iterator walkDirRec*(dir: string, filter={pcFile, pcDir}): string {.
   tags: [FReadDir].} =
   ## walks over the directory `dir` and yields for each file in `dir`. The
   ## full path for each file is returned.
+  ## **Warning**:
+  ## Modifying the directory structure while the iterator 
+  ## is traversing may result in undefined behavior! 
+  ##
   ## Walking is recursive. `filter` controls the behaviour of the iterator:
   ##
   ## ---------------------   ---------------------------------------------
@@ -1314,6 +1345,48 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1", tags: [FWriteDir].} =
       else:
         rawCreateDir(substr(dir, 0, i-1))
   rawCreateDir(dir)
+
+proc createSymlink*(src, dest: string) =
+  ## Create a symbolic link at `dest` which points to the item specified
+  ## by `src`. On most operating systems, will fail if a lonk
+  ##
+  ## **Warning**:
+  ## Some OS's (such as Microsoft Windows) restrict the creation 
+  ## of symlinks to root users (administrators).
+  when defined(Windows):
+    var flag = 0'i32
+    if existsDir(src):
+      flag = 1
+    when useWinUnicode:
+      var wSrc = newWideCString(src)
+      var wDst = newWideCString(dest)
+      if CreateSymbolicLinkW(wDst, wSrc, flag) == 0 or GetLastError() != 0:
+          OSError(OSLastError())
+    else:
+      if CreateSymbolicLinkA(dest, src, flag) == 0 or GetLastError() != 0:
+          OSError(OSLastError())
+  else:
+    if symlink(src, dest) != 0:
+      OSError(OSLastError())
+
+proc createHardlink*(src, dest: string) =
+  ## Create a hard link at `dest` which points to the item specified
+  ## by `src`.
+  ##
+  ## **Warning**: Most OS's restrict the creation of hard links to 
+  ## root users (administrators) .
+  when defined(Windows):
+    when useWinUnicode:
+      var wSrc = newWideCString(src)
+      var wDst = newWideCString(dest)
+      if CreateHardLinkW(wDst, wSrc, nil) == 0:
+          OSError(OSLastError())
+    else:
+      if CreateHardLinkA(dest, src, nil) == 0:
+          OSError(OSLastError())
+  else:
+    if link(src, dest) != 0:
+      OSError(OSLastError())
 
 proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [FWriteIO, FReadIO].} =
