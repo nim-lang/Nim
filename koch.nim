@@ -178,9 +178,9 @@ proc cleanAux(dir: string) =
       of "nimcache": 
         echo "removing dir: ", path
         removeDir(path)
-      of "dist", ".git", "icons": nil
+      of "dist", ".git", "icons": discard
       else: cleanAux(path)
-    else: nil
+    else: discard
 
 proc removePattern(pattern: string) = 
   for f in walkFiles(pattern): 

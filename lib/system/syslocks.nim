@@ -66,6 +66,9 @@ when defined(Windows):
     discard waitForSingleObject(cond, -1'i32)
     acquireSys(lock)
 
+  proc waitSysCondWindows(cond: var TSysCond) =
+    discard waitForSingleObject(cond, -1'i32)
+
 else:
   type
     TSysLock {.importc: "pthread_mutex_t", pure, final,

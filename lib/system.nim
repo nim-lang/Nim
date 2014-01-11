@@ -588,7 +588,7 @@ proc `<` *(x, y: int64): bool {.magic: "LtI64", noSideEffect.}
   ## Returns true iff `x` is less than `y`.
 
 type
-  IntMax32 = bool|int|int8|int16|int32
+  IntMax32 = int|int8|int16|int32
 
 proc `+%` *(x, y: IntMax32): IntMax32 {.magic: "AddU", noSideEffect.}
 proc `+%` *(x, y: int64): int64 {.magic: "AddU", noSideEffect.}

@@ -47,12 +47,12 @@ proc dbError*(db: TDbConn, msg: string) {.noreturn.} =
     e.msg = $db.err & " " & msg
   raise e
 
-proc Close*(db: var TDbConn) {.tags: [FDB].} = 
+proc close*(db: var TDbConn) {.tags: [FDB].} = 
   ## closes the database connection.
   disconnect(db)
   destroy(db)
 
-proc Open*(host: string = defaultHost, port: int = defaultPort): TDbConn {.
+proc open*(host: string = defaultHost, port: int = defaultPort): TDbConn {.
   tags: [FDB].} =
   ## opens a database connection. Raises `EDb` if the connection could not
   ## be established.
@@ -113,7 +113,7 @@ proc getId*(obj: var TBSon): TOid =
   else:
     raise newException(EInvalidIndex, "_id not in object")
 
-proc insertID*(db: var TDbConn, namespace: string, data: PJsonNode): TOid {.
+proc insertId*(db: var TDbConn, namespace: string, data: PJsonNode): TOid {.
   tags: [FWriteDb].} =
   ## converts `data` to BSON format and inserts it in `namespace`. Returns
   ## the generated OID for the ``_id`` field.

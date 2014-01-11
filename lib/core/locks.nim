@@ -45,28 +45,28 @@ when noDeadlocks:
     locksLen {.threadvar.}: int
     locks {.threadvar.}: array [0..MaxLocksPerThread-1, pointer]
 
-  proc OrderedLocks(): bool = 
+  proc orderedLocks(): bool = 
     for i in 0 .. locksLen-2:
       if locks[i] >= locks[i+1]: return false
     result = true
 
-proc InitLock*(lock: var TLock) {.inline.} =
+proc initLock*(lock: var TLock) {.inline.} =
   ## Initializes the given lock.
-  InitSysLock(lock)
+  initSysLock(lock)
 
-proc DeinitLock*(lock: var TLock) {.inline.} =
+proc deinitLock*(lock: var TLock) {.inline.} =
   ## Frees the resources associated with the lock.
-  DeinitSys(lock)
+  deinitSys(lock)
 
-proc TryAcquire*(lock: var TLock): bool {.tags: [FAquireLock].} = 
+proc tryAcquire*(lock: var TLock): bool {.tags: [FAquireLock].} = 
   ## Tries to acquire the given lock. Returns `true` on success.
-  result = TryAcquireSys(lock)
+  result = tryAcquireSys(lock)
   when noDeadlocks:
     if not result: return
     # we have to add it to the ordered list. Oh, and we might fail if
     # there is no space in the array left ...
     if locksLen >= len(locks):
-      ReleaseSys(lock)
+      releaseSys(lock)
       raise newException(EResourceExhausted, "cannot acquire additional lock")
     # find the position to add:
     var p = addr(lock)
@@ -83,14 +83,14 @@ proc TryAcquire*(lock: var TLock): bool {.tags: [FAquireLock].} =
           dec L
         locks[i] = p
         inc(locksLen)
-        assert OrderedLocks()
+        assert orderedLocks()
         return
     # simply add to the end:
     locks[locksLen] = p
     inc(locksLen)
-    assert OrderedLocks()
+    assert orderedLocks()
 
-proc Acquire*(lock: var TLock) {.tags: [FAquireLock].} =
+proc acquire*(lock: var TLock) {.tags: [FAquireLock].} =
   ## Acquires the given lock.
   when nodeadlocks:
     var p = addr(lock)
@@ -106,36 +106,36 @@ proc Acquire*(lock: var TLock) {.tags: [FAquireLock].} =
           raise newException(EResourceExhausted, 
               "cannot acquire additional lock")
         while L >= i:
-          ReleaseSys(cast[ptr TSysLock](locks[L])[])
+          releaseSys(cast[ptr TSysLock](locks[L])[])
           locks[L+1] = locks[L]
           dec L
         # acquire the current lock:
-        AcquireSys(lock)
+        acquireSys(lock)
         locks[i] = p
         inc(locksLen)
         # acquire old locks in proper order again:
         L = locksLen-1
         inc i
         while i <= L:
-          AcquireSys(cast[ptr TSysLock](locks[i])[])
+          acquireSys(cast[ptr TSysLock](locks[i])[])
           inc(i)
         # DANGER: We can only modify this global var if we gained every lock!
         # NO! We need an atomic increment. Crap.
         discard system.atomicInc(deadlocksPrevented, 1)
-        assert OrderedLocks()
+        assert orderedLocks()
         return
         
     # simply add to the end:
     if locksLen >= len(locks):
       raise newException(EResourceExhausted, "cannot acquire additional lock")
-    AcquireSys(lock)
+    acquireSys(lock)
     locks[locksLen] = p
     inc(locksLen)
-    assert OrderedLocks()
+    assert orderedLocks()
   else:
-    AcquireSys(lock)
+    acquireSys(lock)
   
-proc Release*(lock: var TLock) {.tags: [FReleaseLock].} =
+proc release*(lock: var TLock) {.tags: [FReleaseLock].} =
   ## Releases the given lock.
   when nodeadlocks:
     var p = addr(lock)
@@ -145,20 +145,20 @@ proc Release*(lock: var TLock) {.tags: [FReleaseLock].} =
         for j in i..L-2: locks[j] = locks[j+1]
         dec locksLen
         break
-  ReleaseSys(lock)
+  releaseSys(lock)
 
 
-proc InitCond*(cond: var TCond) {.inline.} =
+proc initCond*(cond: var TCond) {.inline.} =
   ## Initializes the given condition variable.
-  InitSysCond(cond)
+  initSysCond(cond)
 
-proc DeinitCond*(cond: var TCond) {.inline.} =
+proc deinitCond*(cond: var TCond) {.inline.} =
   ## Frees the resources associated with the lock.
-  DeinitSysCond(cond)
+  deinitSysCond(cond)
 
 proc wait*(cond: var TCond, lock: var TLock) {.inline.} =
   ## waits on the condition variable `cond`. 
-  WaitSysCond(cond, lock)
+  waitSysCond(cond, lock)
   
 proc signal*(cond: var TCond) {.inline.} =
   ## sends a signal to the condition variable `cond`. 
