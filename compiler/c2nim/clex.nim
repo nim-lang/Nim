@@ -382,6 +382,23 @@ proc escape(L: var TLexer, tok: var TToken, allowEmpty=false) =
         xi = (xi shl 3) or (ord(L.buf[L.bufpos]) - ord('0'))
         inc(L.bufpos)
     add(tok.s, chr(xi))
+  of 'x':
+    var xi = 0
+    inc(L.bufpos)
+    while true: 
+      case L.buf[L.bufpos]
+      of '0'..'9': 
+        xi = `shl`(xi, 4) or (ord(L.buf[L.bufpos]) - ord('0'))
+        inc(L.bufpos)
+      of 'a'..'f': 
+        xi = `shl`(xi, 4) or (ord(L.buf[L.bufpos]) - ord('a') + 10)
+        inc(L.bufpos)
+      of 'A'..'F': 
+        xi = `shl`(xi, 4) or (ord(L.buf[L.bufpos]) - ord('A') + 10)
+        inc(L.bufpos)
+      else:
+        break 
+    add(tok.s, chr(xi))
   elif not allowEmpty:
     lexMessage(L, errInvalidCharacterConstant)
   
