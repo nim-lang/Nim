@@ -392,7 +392,7 @@ proc readCFiles(c: var TConfigData, osA, cpuA: int) =
     quit("Cannot open: " & f)
 
 proc buildDir(os, cpu: int): string =
-  return "nimcache" / ($os & "_" & $cpu)
+  return "c_code" / ($os & "_" & $cpu)
 
 proc getOutputDir(c: var TConfigData): string =
   if c.outdir.len > 0: c.outdir else: "build"
@@ -432,11 +432,11 @@ proc writeInstallScripts(c: var TConfigData) =
     writeFile(deinstallShFile, generateDeinstallScript(c), "\10")
 
 proc srcdist(c: var TConfigData) =
-  if not existsDir(getOutputDir(c) / "nimcache"):
-    createDir(getOutputDir(c) / "nimcache")
+  if not existsDir(getOutputDir(c) / "c_code"):
+    createDir(getOutputDir(c) / "c_code")
   for x in walkFiles(c.libpath / "lib/*.h"):
-    echo(getOutputDir(c) / "nimcache" / extractFilename(x))
-    copyFile(dest=getOutputDir(c) / "nimcache" / extractFilename(x), source=x)
+    echo(getOutputDir(c) / "c_code" / extractFilename(x))
+    copyFile(dest=getOutputDir(c) / "c_code" / extractFilename(x), source=x)
   var winIndex = -1
   var intel32Index = -1
   var intel64Index = -1
