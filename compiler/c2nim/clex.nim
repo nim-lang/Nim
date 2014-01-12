@@ -315,13 +315,28 @@ proc getNumber16(L: var TLexer, tok: var TToken) =
   else: tok.xkind = pxIntLit
   L.bufpos = pos
 
+proc getFloating(L: var TLexer, tok: var TToken) =
+  matchUnderscoreChars(L, tok, {'0'..'9'})
+  if L.buf[L.bufpos] in {'e', 'E'}:
+    add(tok.s, L.buf[L.bufpos])
+    inc(L.bufpos)
+    if L.buf[L.bufpos] in {'+', '-'}:
+      add(tok.s, L.buf[L.bufpos])
+      inc(L.bufpos)
+    matchUnderscoreChars(L, tok, {'0'..'9'})
+
 proc getNumber(L: var TLexer, tok: var TToken) = 
   tok.base = base10
-  matchUnderscoreChars(L, tok, {'0'..'9'})
-  if (L.buf[L.bufpos] == '.') and (L.buf[L.bufpos + 1] in {'0'..'9'}): 
-    add(tok.s, '.')
+  if L.buf[L.bufpos] == '.':
+    add(tok.s, "0.")
     inc(L.bufpos)
-    matchUnderscoreChars(L, tok, {'e', 'E', '+', '-', '0'..'9'})
+    getFloating(L, tok)
+  else:
+    matchUnderscoreChars(L, tok, {'0'..'9'})
+    if L.buf[L.bufpos] == '.':
+      add(tok.s, '.')
+      inc(L.bufpos)
+      getFloating(L, tok)
   try: 
     if isFloatLiteral(tok.s): 
       tok.fnumber = parseFloat(tok.s)
@@ -576,7 +591,7 @@ proc getTok(L: var TLexer, tok: var TToken) =
     of 'b', 'B': getNumber2(L, tok)
     of '1'..'7': getNumber8(L, tok)
     else: getNumber(L, tok)
-  elif c in {'1'..'9'}: 
+  elif c in {'1'..'9'} or (c == '.' and L.buf[L.bufpos+1] in {'0'..'9'}): 
     getNumber(L, tok)
   else: 
     case c
