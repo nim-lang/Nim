@@ -111,7 +111,7 @@ proc findStartNimrod: string =
   result = "bin" / nimrod
   if ExistsFile(result): return
   for dir in split(getEnv("PATH"), PathSep):
-    if ExistsFile(dir / nimrod): return nimrod
+    if ExistsFile(dir / nimrod): return dir / nimrod
   when defined(Posix):
     const buildScript = "build.sh"
     if ExistsFile(buildScript): 
