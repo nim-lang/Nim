@@ -427,7 +427,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       regs[ra].intVal = regs[rb].skipMeta.len - imm
     of opcLenStr:
       decodeBImm(nkIntLit)
-      assert regs[rb].kind == nkStrLit
+      assert regs[rb].kind in {nkStrLit..nkTripleStrLit}
       regs[ra].intVal = regs[rb].strVal.len - imm
     of opcIncl:
       decodeB(nkCurly)
