@@ -1,7 +1,7 @@
 #
 #
 #         Maintenance program for Nimrod  
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -26,7 +26,7 @@ const
 +-----------------------------------------------------------------+
 |         Maintenance program for Nimrod                          |
 |             Version $1|
-|             (c) 2013 Andreas Rumpf                              |
+|             (c) 2014 Andreas Rumpf                              |
 +-----------------------------------------------------------------+
 Build time: $2, $3
 
@@ -268,6 +268,11 @@ proc tests(args: string) =
   exec(getCurrentDir() / "tests/tester".exe & " compile")
   exec(getCurrentDir() / "tests/tester".exe & " run")
   exec(getCurrentDir() / "tests/tester".exe & " merge")
+  when false:
+    # activate real soon:
+    exec("nimrod cc --taintMode:on tests/testament/tester")
+    exec(getCurrentDir() / "tests/testament/tester".exe & " all")
+  
 
 proc temp(args: string) =
   var output = "compiler" / "nimrod".exe
