@@ -1583,6 +1583,8 @@ proc parseStandaloneStruct(p: var TParser, isUnion: bool): PNode =
     backtrackContext(p)
     result = declaration(p)
 
+proc embedStmts(sl, a: PNode)
+
 proc parseFor(p: var TParser, result: PNode) = 
   # 'for' '(' expression_statement expression_statement expression? ')'
   #   statement
@@ -1590,7 +1592,7 @@ proc parseFor(p: var TParser, result: PNode) =
   eat(p, pxParLe, result)
   var initStmt = declarationOrStatement(p)
   if initStmt.kind != nkEmpty:
-    addSon(result, initStmt)
+    embedStmts(result, initStmt)
   var w = newNodeP(nkWhileStmt, p)
   var condition = expressionStatement(p)
   if condition.kind == nkEmpty: condition = newIdentNodeP("true", p)
@@ -1600,7 +1602,7 @@ proc parseFor(p: var TParser, result: PNode) =
   var loopBody = nestedStatement(p)
   if step.kind != nkEmpty:
     loopBody = buildStmtList(loopBody)
-    addSon(loopBody, step)
+    embedStmts(loopBody, step)
   addSon(w, loopBody)
   addSon(result, w)
   
