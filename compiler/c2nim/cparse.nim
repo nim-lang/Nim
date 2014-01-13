@@ -1473,12 +1473,12 @@ proc parseIf(p: var TParser): PNode =
   while true: 
     getTok(p) # skip ``if``
     var branch = newNodeP(nkElifBranch, p)
-    skipCom(p, branch)
     eat(p, pxParLe, branch)
     addSon(branch, expression(p))
     eat(p, pxParRi, branch)
     addSon(branch, nestedStatement(p))
     addSon(result, branch)
+    skipCom(p, branch)
     if p.tok.s == "else": 
       getTok(p, result)
       if p.tok.s != "if": 
