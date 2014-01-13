@@ -25,12 +25,12 @@ proc equalGenericParams(procA, procB: PNode): bool =
     let a = procA.sons[i].sym
     let b = procB.sons[i].sym
     if a.name.id != b.name.id or
-        not sameTypeOrNil(a.typ, b.typ, {TypeDescExactMatch}): return
+        not sameTypeOrNil(a.typ, b.typ, {ExactTypeDescValues}): return
     if a.ast != nil and b.ast != nil:
       if not exprStructuralEquivalent(a.ast, b.ast): return
   result = true
 
-proc searchForProc*(c: PContext, scope: PScope, fn: PSym): PSym =
+proc searchForProcOld*(c: PContext, scope: PScope, fn: PSym): PSym =
   # Searchs for a forward declaration or a "twin" symbol of fn
   # in the symbol table. If the parameter lists are exactly
   # the same the sym in the symbol table is returned, else nil.
@@ -63,6 +63,30 @@ proc searchForProc*(c: PContext, scope: PScope, fn: PSym): PSym =
           nil
       result = nextIdentIter(it, scope.symbols)
 
+proc searchForProcNew(c: PContext, scope: PScope, fn: PSym): PSym =
+  const flags = {ExactGenericParams, ExactTypeDescValues,
+                 ExactConstraints, IgnoreCC}
+
+  var it: TIdentIter
+  result = initIdentIter(it, scope.symbols, fn.name)
+  while result != nil:
+    if result.kind in skProcKinds and
+       sameType(result.typ, fn.typ, flags): return
+
+    result = nextIdentIter(it, scope.symbols)
+  
+  return nil
+
+proc searchForProc*(c: PContext, scope: PScope, fn: PSym): PSym =
+  result = searchForProcNew(c, scope, fn)
+  when false:
+    let old = searchForProcOld(c, scope, fn)
+    if old != result:
+      echo "Mismatch in searchForProc: ", fn.info
+      debug fn.typ
+      debug if result != nil: result.typ else: nil
+      debug if old != nil: old.typ else: nil
+ 
 when false:
   proc paramsFitBorrow(child, parent: PNode): bool = 
     var length = sonsLen(child)

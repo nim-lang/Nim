@@ -194,7 +194,7 @@ when compileTimeRopeFmt:
       if i - 1 >= start:
         yield (kind: ffLit, value: substr(s, start, i-1), intValue: 0)
 
-  macro rfmt(m: BModule, fmt: expr[string], args: varargs[PRope]): expr =
+  macro rfmt(m: BModule, fmt: static[string], args: varargs[PRope]): expr =
     ## Experimental optimized rope-formatting operator
     ## The run-time code it produces will be very fast, but will it speed up
     ## the compilation of nimrod itself or will the macro execution time
@@ -209,7 +209,7 @@ when compileTimeRopeFmt:
       of ffParam:
         result.add(args[frag.intValue])
 else:
-  template rfmt(m: BModule, fmt: expr[string], args: varargs[PRope]): expr =
+  template rfmt(m: BModule, fmt: string, args: varargs[PRope]): expr =
     ropecg(m, fmt, args)
 
 proc appcg(m: BModule, c: var PRope, frmt: TFormatStr, 
@@ -943,44 +943,60 @@ proc genFilenames(m: BModule): PRope =
   for i in 0.. <fileInfos.len:
     result.appf("dbgRegisterFilename($1);$n", fileInfos[i].projPath.makeCString)
 
-proc genMainProc(m: BModule) = 
+proc genMainProc(m: BModule) =
   const 
-    CommonMainBody =
-        "\tsystemDatInit();$n" &
-        "\tsystemInit();$n" &
-        "$1" &
-        "$2" &
-        "$3" &
-        "$4"
-    PosixNimMain = 
-        "int cmdCount;$n" & 
-        "char** cmdLine;$n" & 
-        "char** gEnv;$n" &
-        "N_CDECL(void, NimMain)(void) {$n" &
-        CommonMainBody & "}$n"
+    PreMainBody =
+      "\tsystemDatInit();$n" &
+      "\tsystemInit();$n" &
+      "$1" &
+      "$2" &
+      "$3" &
+      "$4"
+
+    MainProcs =
+      "\tPreMain();$n" &
+      "\tNimMain();$n"
+    
+    MainProcsWithResult =
+      MainProcs & "\treturn nim_program_result;$n"
+
+    PosixNimMain =
+      "int cmdCount;$n" &
+      "char** cmdLine;$n" &
+      "char** gEnv;$n" &
+      "N_CDECL(void, NimMain)(void) {$n$1}$n"
+  
     PosixCMain = "int main(int argc, char** args, char** env) {$n" &
-        "\tcmdLine = args;$n" & "\tcmdCount = argc;$n" & "\tgEnv = env;$n" &
-        "\tNimMain();$n" & "\treturn nim_program_result;$n" & "}$n"
+      "\tcmdLine = args;$n" & "\tcmdCount = argc;$n" & "\tgEnv = env;$n" &
+      MainProcsWithResult &
+      "}$n"
+  
     StandaloneCMain = "int main(void) {$n" &
-        "\tNimMain();$n" & 
-        "\treturn 0;$n" & "}$n"
-    WinNimMain = "N_CDECL(void, NimMain)(void) {$n" &
-        CommonMainBody & "}$n"
+      MainProcs &
+      "\treturn 0;$n" & "}$n"
+    
+    WinNimMain = "N_CDECL(void, NimMain)(void) {$n$1}$n"
+    
     WinCMain = "N_STDCALL(int, WinMain)(HINSTANCE hCurInstance, $n" &
-        "                        HINSTANCE hPrevInstance, $n" &
-        "                        LPSTR lpCmdLine, int nCmdShow) {$n" &
-        "\tNimMain();$n" & "\treturn nim_program_result;$n" & "}$n"
-    WinNimDllMain = "N_LIB_EXPORT N_CDECL(void, NimMain)(void) {$n" &
-        CommonMainBody & "}$n"
-    WinCDllMain = 
-        "BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fwdreason, $n" &
-        "                    LPVOID lpvReserved) {$n" &
-          "\tif(fwdreason == DLL_PROCESS_ATTACH) NimMain();$n" &
-        "\treturn 1;$n" & "}$n"
+      "                        HINSTANCE hPrevInstance, $n" &
+      "                        LPSTR lpCmdLine, int nCmdShow) {$n" &
+      MainProcsWithResult & "}$n"
+  
+    WinNimDllMain = "N_LIB_EXPORT N_CDECL(void, NimMain)(void) {$n$1}$n"
+
+    WinCDllMain =
+      "BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fwdreason, $n" &
+      "                    LPVOID lpvReserved) {$n" &
+      "\tif(fwdreason == DLL_PROCESS_ATTACH) {" & MainProcs & "}$n" &
+      "\treturn 1;$n}$n"
+
     PosixNimDllMain = WinNimDllMain
-    PosixCDllMain = 
-        "void NIM_POSIX_INIT NimMainInit(void) {$n" &
-        "\tNimMain();$n}$n"
+    
+    PosixCDllMain =
+      "void NIM_POSIX_INIT NimMainInit(void) {$n" &
+      MainProcs &
+      "}$n"
+
   var nimMain, otherMain: TFormatStr
   if platform.targetOS == osWindows and
       gGlobalOptions * {optGenGuiApp, optGenDynLib} != {}: 
@@ -1008,8 +1024,10 @@ proc genMainProc(m: BModule) =
                               platform.targetOS == osStandalone: "".toRope
                             else: ropecg(m, "\t#initStackBottom();$n")
   inc(m.labels)
-  appcg(m, m.s[cfsProcs], nimMain, [mainDatInit, initStackBottomCall,
-        gBreakpoints, mainModInit, toRope(m.labels)])
+  appcg(m, m.s[cfsProcs], "void PreMain() {$n" & PreMainBody & "}$n", [
+    mainDatInit, initStackBottomCall, gBreakpoints, otherModsInit])
+
+  appcg(m, m.s[cfsProcs], nimMain, [mainModInit, toRope(m.labels)])
   if optNoMain notin gGlobalOptions:
     appcg(m, m.s[cfsProcs], otherMain, [])
 
@@ -1030,10 +1048,14 @@ proc registerModuleToMain(m: PSym) =
                       "declare void $1() noinline$N", [init])
   appff(mainModProcs, "N_NOINLINE(void, $1)(void);$N",
                       "declare void $1() noinline$N", [datInit])
-  if not (sfSystemModule in m.flags):
-    appff(mainModInit, "\t$1();$n", "call void ()* $1$n", [init])
+  if sfSystemModule notin m.flags:
     appff(mainDatInit, "\t$1();$n", "call void ()* $1$n", [datInit])
-  
+    let initCall = ropeff("\t$1();$n", "call void ()* $1$n", [init])
+    if sfMainModule in m.flags:
+      app(mainModInit, initCall)
+    else:
+      app(otherModsInit, initCall)
+    
 proc genInitCode(m: BModule) = 
   var initname = getInitName(m.module)
   var prc = ropeff("N_NOINLINE(void, $1)(void) {$n", 

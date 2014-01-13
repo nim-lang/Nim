@@ -3837,6 +3837,60 @@ This is a simple syntactic transformation into:
 Special Types
 =============
 
+static[T]
+---------
+
+As their name suggests, static params must be known at compile-time:
+
+.. code-block:: nimrod
+
+  proc precompiledRegex(pattern: static[string]): TRegEx =
+    var res {.global.} = re(pattern)
+    return res
+
+  precompiledRegex("/d+") # Replaces the call with a precompiled
+                          # regex, stored in a global variable
+
+  precompiledRegex(paramStr(1)) # Error, command-line options
+                                # are not known at compile-time
+
+
+For the purposes of code generation, all static params are treated as
+generic params - the proc will be compiled separately for each unique
+supplied value (or combination of values). 
+
+Furthermore, the system module defines a `semistatic[T]` type than can be
+used to declare procs accepting both static and run-time values, which can
+optimize their body according to the supplied param using the `isStatic(p)`
+predicate:
+
+.. code-block:: nimrod
+
+  # The following proc will be compiled once for each unique static
+  # value and also once for the case handling all run-time values:
+
+  proc re(pattern: semistatic[string]): TRegEx =
+    when isStatic(pattern):
+      return precompiledRegex(pattern)
+    else:
+      return compile(pattern)
+
+Static params can also appear in the signatures of generic types:
+
+.. code-block:: nimrod
+
+  type
+    Matrix[M,N: static[int]; T: Number] = array[0..(M*N - 1), T]
+      # Please, note how `Number` is just a type constraint here, while
+      # `static[int]` requires us to supply a compile-time int value
+
+    AffineTransform2D[T] = Matrix[3, 3, T]
+    AffineTransform3D[T] = Matrix[4, 4, T]
+
+  AffineTransform3D[float] # OK
+  AffineTransform2D[string] # Error, `string` is not a `Number`
+
+
 typedesc
 --------
 

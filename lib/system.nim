@@ -144,7 +144,7 @@ proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
   ## be called before any possible `object branch transition`:idx:.
 
 # for low and high the return type T may not be correct, but
-# we handle that with compiler magic in SemLowHigh()
+# we handle that with compiler magic in semLowHigh()
 proc high*[T](x: T): T {.magic: "High", noSideEffect.}
   ## returns the highest possible index of an array, a sequence, a string or
   ## the highest possible value of an ordinal value `x`. As a special
@@ -422,9 +422,17 @@ proc incl*[T](x: var set[T], y: T) {.magic: "Incl", noSideEffect.}
   ## includes element ``y`` to the set ``x``. This is the same as
   ## ``x = x + {y}``, but it might be more efficient.
 
+template incl*[T](s: var set[T], flags: set[T]) =
+  ## includes the set of flags to the set ``x``.
+  s = s + flags
+
 proc excl*[T](x: var set[T], y: T) {.magic: "Excl", noSideEffect.}
   ## excludes element ``y`` to the set ``x``. This is the same as
   ## ``x = x - {y}``, but it might be more efficient.
+
+template excl*[T](s: var set[T], flags: set[T]) =
+  ## excludes the set of flags to ``x``.
+  s = s - flags
 
 proc card*[T](x: set[T]): int {.magic: "Card", noSideEffect.}
   ## returns the cardinality of the set ``x``, i.e. the number of elements
@@ -2550,7 +2558,7 @@ proc raiseAssert*(msg: string) {.noinline.} =
   sysFatal(EAssertionFailed, msg)
 
 when true:
-  proc hiddenRaiseAssert(msg: string) {.raises: [], tags: [].} =
+  proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
     # trick the compiler to not list ``EAssertionFailed`` when called
     # by ``assert``.
     type THide = proc (msg: string) {.noinline, raises: [], noSideEffect,
@@ -2563,11 +2571,11 @@ template assert*(cond: bool, msg = "") =
   ## raises an ``EAssertionFailure`` exception. However, the compiler may
   ## not generate any code at all for ``assert`` if it is advised to do so.
   ## Use ``assert`` for debugging purposes only.
-  bind instantiationInfo, hiddenRaiseAssert
+  bind instantiationInfo
+  mixin failedAssertImpl
   when compileOption("assertions"):
     {.line.}:
-      if not cond:
-        hiddenRaiseAssert(astToStr(cond) & ' ' & msg)
+      if not cond: failedAssertImpl(astToStr(cond) & ' ' & msg)
 
 template doAssert*(cond: bool, msg = "") =
   ## same as `assert` but is always turned on and not affected by the
@@ -2580,9 +2588,9 @@ template doAssert*(cond: bool, msg = "") =
 when not defined(nimhygiene):
   {.pragma: inject.}
 
-template onFailedAssert*(msg: expr, code: stmt): stmt =
-  ## Sets an assertion failure handler that will intercept any assert statements
-  ## following `onFailedAssert` in the current lexical scope.
+template onFailedAssert*(msg: expr, code: stmt): stmt {.dirty, immediate.} =
+  ## Sets an assertion failure handler that will intercept any assert
+  ## statements following `onFailedAssert` in the current lexical scope.
   ## Can be defined multiple times in a single function.
   ##  
   ## .. code-block:: nimrod
@@ -2599,8 +2607,8 @@ template onFailedAssert*(msg: expr, code: stmt): stmt =
   ##
   ##     assert(...)
   ##
-  template raiseAssert(msgIMPL: string): stmt =
-    let msg {.inject.} = msgIMPL
+  template failedAssertImpl(msgIMPL: string): stmt {.dirty, immediate.} =
+    let msg = msgIMPL
     code
 
 proc shallow*[T](s: var seq[T]) {.noSideEffect, inline.} =
@@ -2646,7 +2654,7 @@ when hostOS != "standalone":
       x[j+i] = item[j]
       inc(j)
 
-proc compiles*(x: expr): bool {.magic: "Compiles", noSideEffect.} =
+proc compiles*(x): bool {.magic: "Compiles", noSideEffect.} =
   ## Special compile-time procedure that checks whether `x` can be compiled
   ## without any semantic error.
   ## This can be used to check whether a type supports some operation:
@@ -2680,3 +2688,13 @@ proc locals*(): TObject {.magic: "Locals", noSideEffect.} =
   ## the official signature says, the return type is not ``TObject`` but a
   ## tuple of a structure that depends on the current scope.
   discard
+
+when not defined(booting):
+  type
+    semistatic*[T] = static[T] | T
+    # indicates a param of proc specialized for each static value,
+    # but also accepting run-time values
+
+  template isStatic*(x): expr = compiles(static(x))
+    # checks whether `x` is a value known at compile-time
+

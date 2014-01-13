@@ -114,7 +114,8 @@ type
     injectStmt*: PRope
 
 var
-  mainModProcs*, mainModInit*, mainDatInit*: PRope # parts of the main module
+  mainModProcs*, mainModInit*, otherModsInit*, mainDatInit*: PRope
+    # varuious parts of the main module
   gMapping*: PRope             # the generated mapping file (if requested)
   gModules*: seq[BModule] = @[] # list of all compiled modules
   gForwardedProcsCounter*: int = 0

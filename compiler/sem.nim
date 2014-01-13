@@ -158,6 +158,16 @@ proc isOpImpl(c: PContext, n: PNode): PNode
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   semCheck: bool = true): PNode
 
+proc symFromType(t: PType, info: TLineInfo): PSym =
+  if t.sym != nil: return t.sym
+  result = newSym(skType, getIdent"AnonType", t.owner, info)
+  result.flags.incl sfAnon
+  result.typ = t
+
+proc symNodeFromType(c: PContext, t: PType, info: TLineInfo): PNode =
+  result = newSymNode(symFromType(t, info), info)
+  result.typ = makeTypeDesc(c, t)
+
 when false:
   proc createEvalContext(c: PContext, mode: TEvalMode): PEvalContext =
     result = newEvalContext(c.module, mode)
@@ -169,9 +179,39 @@ when false:
         result = newSymNode(getSysSym"void")
       else:
         result.typ = makeTypeDesc(c, result.typ)
-
+    
     result.handleIsOperator = proc (n: PNode): PNode =
-      result = IsOpImpl(c, n)
+      result = isOpImpl(c, n)
+
+proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
+  # recompute the types as 'eval' isn't guaranteed to construct types nor
+  # that the types are sound:
+  result = semExprWithType(c, evaluated)
+  #result = fitNode(c, e.typ, result) inlined with special case:
+  let arg = result
+  result = indexTypesMatch(c, eOrig.typ, arg.typ, arg)
+  if result == nil:
+    result = arg
+    # for 'tcnstseq' we support [] to become 'seq'
+    if eOrig.typ.skipTypes(abstractInst).kind == tySequence and 
+       arg.typ.skipTypes(abstractInst).kind == tyArrayConstr:
+      arg.typ = eOrig.typ
+
+proc tryConstExpr(c: PContext, n: PNode): PNode =
+  var e = semExprWithType(c, n)
+  if e == nil: return
+
+  result = getConstExpr(c.module, e)
+  if result != nil: return
+
+  try:
+    result = evalConstExpr(c.module, e)
+    if result == nil or result.kind == nkEmpty:
+      return nil
+
+    result = fixupTypeAfterEval(c, result, e)
+  except:
+    return nil
 
 proc semConstExpr(c: PContext, n: PNode): PNode =
   var e = semExprWithType(c, n)
@@ -191,18 +231,7 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
       # error correction:
       result = e
     else:
-      # recompute the types as 'eval' isn't guaranteed to construct types nor
-      # that the types are sound:
-      result = semExprWithType(c, result)
-      #result = fitNode(c, e.typ, result) inlined with special case:
-      let arg = result
-      result = indexTypesMatch(c, e.typ, arg.typ, arg)
-      if result == nil:
-        result = arg
-        # for 'tcnstseq' we support [] to become 'seq'
-        if e.typ.skipTypes(abstractInst).kind == tySequence and 
-           arg.typ.skipTypes(abstractInst).kind == tyArrayConstr:
-          arg.typ = e.typ
+      result = fixupTypeAfterEval(c, result, e)
 
 include hlo, seminst, semcall
 
@@ -264,6 +293,14 @@ proc semConstBoolExpr(c: PContext, n: PNode): PNode =
     localError(n.info, errConstExprExpected)
     result = nn
 
+type
+  TSemGenericFlag = enum
+    withinBind, withinTypeDesc, withinMixin
+  TSemGenericFlags = set[TSemGenericFlag]
+
+proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags,
+                    ctx: var TIntSet): PNode
+
 include semtypes, semtempl, semgnrc, semstmts, semexprs
 
 proc addCodeForGenerics(c: PContext, n: PNode) =
@@ -282,6 +319,7 @@ proc myOpen(module: PSym): PPassContext =
   c.semConstExpr = semConstExpr
   c.semExpr = semExpr
   c.semTryExpr = tryExpr
+  c.semTryConstExpr = tryConstExpr
   c.semOperand = semOperand
   c.semConstBoolExpr = semConstBoolExpr
   c.semOverloadedCall = semOverloadedCall

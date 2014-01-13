@@ -432,6 +432,8 @@ proc debugTree(n: PNode, indent: int, maxRecDepth: int): PRope =
 proc debug(n: PSym) =
   if n == nil:
     writeln(stdout, "null")
+  elif n.kind == skUnknown:
+    writeln(stdout, "skUnknown")
   else:
     #writeln(stdout, ropeToStr(symToYaml(n, 0, 1)))
     writeln(stdout, ropeToStr(ropef("$1_$2: $3, $4", [
