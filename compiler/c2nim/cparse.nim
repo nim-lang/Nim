@@ -1152,7 +1152,7 @@ proc startExpression(p : var TParser, tok : TToken) : PNode =
         eat(p, pxParLe)
         addSon(result, typeDesc(p))
         eat(p, pxParRi)
-    elif tok.s == "new" or tok.s == "delete" and pfCpp in p.options.flags:
+    elif (tok.s == "new" or tok.s == "delete") and pfCpp in p.options.flags:
       var opr = tok.s
       result = newNodeP(nkCall, p)
       if p.tok.xkind == pxBracketLe:
@@ -2096,9 +2096,12 @@ proc statement(p: var TParser): PNode =
   assert result != nil
 
 proc parseUnit(p: var TParser): PNode =
-  result = newNodeP(nkStmtList, p)
-  getTok(p) # read first token
-  while p.tok.xkind != pxEof:
-    var s = statement(p)
-    if s.kind != nkEmpty: embedStmts(result, s)
+  try:
+    result = newNodeP(nkStmtList, p)
+    getTok(p) # read first token
+    while p.tok.xkind != pxEof:
+      var s = statement(p)
+      if s.kind != nkEmpty: embedStmts(result, s)
+  except:
+    parMessage(p, errGenerated, "Uncaught exception raised during parsing")
 
