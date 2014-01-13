@@ -1,7 +1,6 @@
 version 0.9.4
 =============
 
-- better tester
 - ensure (ref T)(a, b) works as a type conversion and type constructor
 - Aporia doesn't compile under devel
 - document new templating symbol binding rules
