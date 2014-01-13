@@ -86,7 +86,7 @@ include semdestruct
 
 proc semDestructorCheck(c: PContext, n: PNode, flags: TExprFlags) {.inline.} =
   if efAllowDestructor notin flags and n.kind in nkCallKinds+{nkObjConstr}:
-    if instantiateDestructor(c, n.typ):
+    if instantiateDestructor(c, n.typ) != nil:
       localError(n.info, errGenerated,
         "usage of a type with a destructor in a non destructible context")
   # This still breaks too many things:
@@ -740,16 +740,12 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       # like: mydata.seq
       rawAddSon(s.typ, newTypeS(tyEmpty, c))
       s.ast = a
-      when oUseLateInstantiation:
-        var body: PType = nil
-        s.typScope = c.currentScope.parent
-      else:
-        inc c.inGenericContext
-        var body = semTypeNode(c, a.sons[2], nil)
-        dec c.inGenericContext
-        if body != nil:
-          body.sym = s
-          body.size = -1 # could not be computed properly
+      inc c.inGenericContext
+      var body = semTypeNode(c, a.sons[2], nil)
+      dec c.inGenericContext
+      if body != nil:
+        body.sym = s
+        body.size = -1 # could not be computed properly
       s.typ.sons[sonsLen(s.typ) - 1] = body
       popOwner()
       closeScope(c)
@@ -1037,12 +1033,16 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     pushOwner(s)
   s.options = gOptions
   if sfDestructor in s.flags: doDestructorStuff(c, s, n)
-  if n.sons[bodyPos].kind != nkEmpty: 
+  if n.sons[bodyPos].kind != nkEmpty:
     # for DLL generation it is annoying to check for sfImportc!
-    if sfBorrow in s.flags: 
+    if sfBorrow in s.flags:
       localError(n.sons[bodyPos].info, errImplOfXNotAllowed, s.name.s)
-    if n.sons[genericParamsPos].kind == nkEmpty: 
-      paramsTypeCheck(c, s.typ)
+    let usePseudoGenerics = kind in {skMacro, skTemplate}
+    # Macros and Templates can have generic parameters, but they are
+    # only used for overload resolution (there is no instantiation of
+    # the symbol, so we must process the body now)
+    if n.sons[genericParamsPos].kind == nkEmpty or usePseudoGenerics:
+      if not usePseudoGenerics: paramsTypeCheck(c, s.typ)
       pushProcCon(c, s)
       maybeAddResult(c, s, n)
       if sfImportc notin s.flags:
@@ -1052,13 +1052,13 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         # context as it may even be evaluated in 'system.compiles':
         n.sons[bodyPos] = transformBody(c.module, semBody, s)
       popProcCon(c)
-    else: 
+    else:
       if s.typ.sons[0] != nil and kind != skIterator:
         addDecl(c, newSym(skUnknown, getIdent"result", nil, n.info))
       var toBind = initIntSet()
       n.sons[bodyPos] = semGenericStmtScope(c, n.sons[bodyPos], {}, toBind)
       fixupInstantiatedSymbols(c, s)
-    if sfImportc in s.flags: 
+    if sfImportc in s.flags:
       # so we just ignore the body after semantic checking for importc:
       n.sons[bodyPos] = ast.emptyNode
   else:

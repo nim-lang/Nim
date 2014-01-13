@@ -93,6 +93,7 @@ type
     errNewSectionExpected, errWhitespaceExpected, errXisNoValidIndexFile, 
     errCannotRenderX, errVarVarTypeNotAllowed, errInstantiateXExplicitely,
     errOnlyACallOpCanBeDelegator, errUsingNoSymbol,
+    errDestructorNotGenericEnough,
     
     errXExpectsTwoArguments, 
     errXExpectsObjectTypes, errXcanNeverBeOfThisSubtype, errTooManyIterations, 
@@ -322,6 +323,8 @@ const
     errInstantiateXExplicitely: "instantiate '$1' explicitely",
     errOnlyACallOpCanBeDelegator: "only a call operator can be a delegator",
     errUsingNoSymbol: "'$1' is not a variable, constant or a proc name",
+    errDestructorNotGenericEnough: "Destructor signarue is too specific. " &
+                                   "A destructor must be associated will all instantiations of a generic type",
     errXExpectsTwoArguments: "\'$1\' expects two arguments", 
     errXExpectsObjectTypes: "\'$1\' expects object types",
     errXcanNeverBeOfThisSubtype: "\'$1\' can never be of this subtype", 
@@ -643,6 +646,8 @@ proc toFileLine*(info: TLineInfo): string {.inline.} =
 proc toFileLineCol*(info: TLineInfo): string {.inline.} =
   result = info.toFilename & "(" & $info.line & "," & $info.col & ")"
 
+template `$`*(info: TLineInfo): expr = toFileLineCol(info)
+
 proc `??`* (info: TLineInfo, filename: string): bool =
   # only for debugging purposes
   result = filename in info.toFilename
@@ -699,21 +704,20 @@ type
   TErrorHandling = enum doNothing, doAbort, doRaise
 
 proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
-  template maybeTrace =
+  template quit =
     if defined(debug) or gVerbosity >= 3 or msg == errInternal:
       writeStackTrace()
+    quit 1
 
   if msg >= fatalMin and msg <= fatalMax: 
-    maybeTrace()
-    quit(1)
+    quit()
   if msg >= errMin and msg <= errMax: 
-    maybeTrace()
     inc(gErrorCounter)
     options.gExitcode = 1'i8
     if gErrorCounter >= gErrorMax: 
-      quit(1)
+      quit()
     elif eh == doAbort and gCmd != cmdIdeTools:
-      quit(1)
+      quit()
     elif eh == doRaise:
       raiseRecoverableError(s)
 

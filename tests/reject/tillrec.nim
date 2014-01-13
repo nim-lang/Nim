@@ -14,4 +14,3 @@ type
     y: Int
     x: array[0..3, TIllegal]
 
-

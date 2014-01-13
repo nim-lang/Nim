@@ -832,7 +832,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
 
 const
   atomicTypes = {tyBool, tyChar,
-    tyExpr, tyStmt, tyTypeDesc,
+    tyExpr, tyStmt, tyTypeDesc, tyStatic,
     tyEnum,
     tyOrdinal,
     tyRange,
@@ -1039,8 +1039,8 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
     result = newNodeIT(nkUIntLit, info, t)
   of tyFloat..tyFloat128: 
     result = newNodeIT(nkFloatLit, info, t)
-  of tyVar, tyPointer, tyPtr, tyCString, tySequence, tyString, tyExpr, 
-     tyStmt, tyTypeDesc, tyRef:
+  of tyVar, tyPointer, tyPtr, tyCString, tySequence, tyString, tyExpr,
+     tyStmt, tyTypeDesc, tyStatic, tyRef:
     result = newNodeIT(nkNilLit, info, t)
   of tyProc:
     if t.callConv != ccClosure:

@@ -192,6 +192,7 @@ type
     nkObjectTy,           # object body
     nkTupleTy,            # tuple body
     nkTypeClassTy,        # user-defined type class
+    nkStaticTy,           # ``static[T]``
     nkRecList,            # list of object parts
     nkRecCase,            # case section of object
     nkRecWhen,            # when section of object
@@ -336,19 +337,38 @@ type
     tyIter, # unused
     tyProxy # used as errornous type (for idetools)
     tyTypeClass
-    tyAnd
-    tyOr
-    tyNot
-    tyAnything
     tyParametricTypeClass # structured similarly to tyGenericInst
                           # lastSon is the body of the type class
+    
+    tyBuiltInTypeClass # Type such as the catch-all object, tuple, seq, etc
+    
+    tyCompositeTypeClass # 
+    
+    tyAnd, tyOr, tyNot # boolean type classes such as `string|int`,`not seq`,
+                       # `Sortable and Enumable`, etc
+    
+    tyAnything # a type class matching any type
+    
+    tyStatic   # a value known at compile type (the underlying type is .base)
+    
+    tyFromExpr # This is a type representing an expression that depends
+               # on generic parameters (the exprsesion is stored in t.n)
+               # It will be converted to a real type only during generic
+               # instantiation and prior to this it has the potential to
+               # be any type.
 
 const
   tyPureObject* = tyTuple
   GcTypeKinds* = {tyRef, tySequence, tyString}
   tyError* = tyProxy # as an errornous node should match everything
-  tyTypeClasses* = {tyTypeClass, tyParametricTypeClass, tyAnd, tyOr, tyNot, tyAnything}
 
+  tyUnknownTypes* = {tyError, tyFromExpr}
+
+  tyTypeClasses* = {tyTypeClass, tyBuiltInTypeClass, tyCompositeTypeClass,
+                    tyParametricTypeClass, tyAnd, tyOr, tyNot, tyAnything}
+
+  tyMetaTypes* = {tyGenericParam, tyTypeDesc, tyStatic, tyExpr} + tyTypeClasses
+ 
 type
   TTypeKinds* = set[TTypeKind]
 
@@ -383,9 +403,6 @@ type
                       # proc foo(T: typedesc, list: seq[T]): var T
     tfRetType,        # marks return types in proc (used to detect type classes 
                       # used as return types for return type inference)
-    tfAll,            # type class requires all constraints to be met (default)
-    tfAny,            # type class requires any constraint to be met
-    tfNot,            # type class with a negative check
     tfCapturesEnv,    # whether proc really captures some environment
     tfByCopy,         # pass object/tuple by copy (C backend)
     tfByRef,          # pass object/tuple by reference (C backend)
@@ -396,8 +413,12 @@ type
     tfNeedsInit,      # type constains a "not nil" constraint somewhere or some
                       # other type so that it requires inititalization
     tfHasShared,      # type constains a "shared" constraint modifier somewhere
-    tfHasMeta,        # type has "typedesc" or "expr" somewhere; or uses '|'
+    tfHasMeta,        # type contains "wildcard" sub-types such as generic params
+                      # or other type classes
     tfHasGCedMem,     # type contains GC'ed memory
+    tfHasStatic
+    tfGenericTypeParam
+    tfImplicitTypeParam
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -774,9 +795,11 @@ const
 
   GenericTypes*: TTypeKinds = {tyGenericInvokation, tyGenericBody, 
     tyGenericParam}
+  
   StructuralEquivTypes*: TTypeKinds = {tyArrayConstr, tyNil, tyTuple, tyArray, 
     tySet, tyRange, tyPtr, tyRef, tyVar, tySequence, tyProc, tyOpenArray,
     tyVarargs}
+  
   ConcreteTypes*: TTypeKinds = { # types of the expr that may occur in::
                                  # var x = expr
     tyBool, tyChar, tyEnum, tyArray, tyObject, 
@@ -894,6 +917,9 @@ template `{}=`*(n: PNode, i: int, s: PNode): stmt =
   
 var emptyNode* = newNode(nkEmpty)
 # There is a single empty node that is shared! Do not overwrite it!
+
+proc isMetaType*(t: PType): bool =
+  return t.kind in tyMetaTypes or tfHasMeta in t.flags
 
 proc linkTo*(t: PType, s: PSym): PType {.discardable.} =
   t.sym = s
@@ -1216,10 +1242,14 @@ proc newSons(father: PNode, length: int) =
   else:
     setLen(father.sons, length)
 
+proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
+  result = t
+  while result.kind in kinds: result = lastSon(result)
+
 proc propagateToOwner*(owner, elem: PType) =
   const HaveTheirOwnEmpty = {tySequence, tySet}
   owner.flags = owner.flags + (elem.flags * {tfHasShared, tfHasMeta,
-                                             tfHasGCedMem})
+                                             tfHasStatic, tfHasGCedMem})
   if tfNotNil in elem.flags:
     if owner.kind in {tyGenericInst, tyGenericBody, tyGenericInvokation}:
       owner.flags.incl tfNotNil
@@ -1232,10 +1262,14 @@ proc propagateToOwner*(owner, elem: PType) =
     
   if tfShared in elem.flags:
     owner.flags.incl tfHasShared
-  
-  if elem.kind in {tyExpr, tyTypeDesc}:
+
+  if elem.kind in tyMetaTypes:
     owner.flags.incl tfHasMeta
-  elif elem.kind in {tyString, tyRef, tySequence} or
+
+  if elem.kind == tyStatic:
+    owner.flags.incl tfHasStatic
+
+  if elem.kind in {tyString, tyRef, tySequence} or
       elem.kind == tyProc and elem.callConv == ccClosure:
     owner.flags.incl tfHasGCedMem
 
@@ -1408,6 +1442,10 @@ proc skipGenericOwner*(s: PSym): PSym =
   ## of the generic itself (the module or the enclosing proc).
   result = if sfFromGeneric in s.flags: s.owner.owner
            else: s.owner
+
+proc originatingModule*(s: PSym): PSym =
+  result = s.owner
+  while result.kind != skModule: result = result.owner
 
 proc isRoutine*(s: PSym): bool {.inline.} =
   result = s.kind in {skProc, skTemplate, skMacro, skIterator, skMethod,

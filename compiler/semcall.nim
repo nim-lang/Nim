@@ -47,14 +47,14 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
   var z: TCandidate
   
   if sym == nil: return
-  initCandidate(best, sym, initialBinding, symScope)
-  initCandidate(alt, sym, initialBinding, symScope)
+  initCandidate(c, best, sym, initialBinding, symScope)
+  initCandidate(c, alt, sym, initialBinding, symScope)
   best.state = csNoMatch
   
   while sym != nil:
     if sym.kind in filter:
       determineType(c, sym)
-      initCandidate(z, sym, initialBinding, o.lastOverloadScope)
+      initCandidate(c, z, sym, initialBinding, o.lastOverloadScope)
       z.calleeSym = sym
       matches(c, n, orig, z)
       if errors != nil:
@@ -199,15 +199,15 @@ proc instGenericConvertersSons*(c: PContext, n: PNode, x: TCandidate) =
 
 proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode = 
   var m: TCandidate
-  initCandidate(m, f)
-  result = paramTypesMatch(c, m, f, a, arg, nil)
+  initCandidate(c, m, f)
+  result = paramTypesMatch(m, f, a, arg, nil)
   if m.genericConverter and result != nil:
     instGenericConvertersArg(c, result, m)
 
 proc convertTo*(c: PContext, f: PType, n: PNode): PNode = 
   var m: TCandidate
-  initCandidate(m, f)
-  result = paramTypesMatch(c, m, f, n.typ, n, nil)
+  initCandidate(c, m, f)
+  result = paramTypesMatch(m, f, n.typ, n, nil)
   if m.genericConverter and result != nil:
     instGenericConvertersArg(c, result, m)
 
@@ -243,9 +243,9 @@ proc explicitGenericInstError(n: PNode): PNode =
   result = n
 
 proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
-  var x: TCandidate
-  initCandidate(x, s, n)
-  var newInst = generateInstance(c, s, x.bindings, n.info)
+  var m: TCandidate
+  initCandidate(c, m, s, n)
+  var newInst = generateInstance(c, s, m.bindings, n.info)
   markUsed(n, s)
   result = newSymNode(newInst, n.info)
 
