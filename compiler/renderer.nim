@@ -421,10 +421,11 @@ proc lsub(n: PNode): int =
   of nkElifExpr: result = lsons(n) + len("_elif_:_")
   of nkElseExpr: result = lsub(n.sons[0]) + len("_else:_") # type descriptions
   of nkTypeOfExpr: result = lsub(n.sons[0]) + len("type_")
-  of nkRefTy: result = lsub(n.sons[0]) + len("ref_")
-  of nkPtrTy: result = lsub(n.sons[0]) + len("ptr_")
-  of nkVarTy: result = lsub(n.sons[0]) + len("var_")
-  of nkDistinctTy: result = lsub(n.sons[0]) + len("Distinct_")
+  of nkRefTy: result = (if n.len > 0: lsub(n.sons[0])+1 else: 0) + len("ref")
+  of nkPtrTy: result = (if n.len > 0: lsub(n.sons[0])+1 else: 0) + len("ptr")
+  of nkVarTy: result = (if n.len > 0: lsub(n.sons[0])+1 else: 0) + len("var")
+  of nkDistinctTy: result = (if n.len > 0: lsub(n.sons[0])+1 else: 0) +
+                                                               len("Distinct")
   of nkTypeDef: result = lsons(n) + 3
   of nkOfInherit: result = lsub(n.sons[0]) + len("of_")
   of nkProcTy: result = lsons(n) + len("proc_")
