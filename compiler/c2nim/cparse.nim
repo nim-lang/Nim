@@ -1498,18 +1498,50 @@ proc parseWhile(p: var TParser): PNode =
   eat(p, pxParRi, result)
   addSon(result, nestedStatement(p))
 
+proc embedStmts(sl, a: PNode)
+
 proc parseDoWhile(p: var TParser): PNode =  
-  # we only support ``do stmt while (0)`` as an idiom for 
-  # ``block: stmt``
-  result = newNodeP(nkBlockStmt, p)
-  getTok(p, result) # skip "do"
-  addSon(result, ast.emptyNode, nestedStatement(p))
+  # parsing
+  result = newNodeP(nkWhileStmt, p)
+  getTok(p, result)
+  var stm = nestedStatement(p)
   eat(p, "while", result)
   eat(p, pxParLe, result)
-  if p.tok.xkind == pxIntLit and p.tok.iNumber == 0: getTok(p, result)
-  else: parMessage(p, errTokenExpected, "0")
+  var exp = expression(p)
   eat(p, pxParRi, result)
   if p.tok.xkind == pxSemicolon: getTok(p)
+
+  # while true:
+  #   stmt
+  #   if not expr:
+  #     break
+  addSon(result, newIdentNodeP("true", p))
+
+  stm = buildStmtList(stm)
+
+  # get the last exp if it is a stmtlist
+  var cleanedExp = exp
+  if exp.kind == nkStmtList:
+    cleanedExp = exp.sons[exp.len-1]
+    exp.sons = exp.sons[0..exp.len-2]
+    embedStmts(stm, exp)
+
+  var notExp = newNodeP(nkPrefix, p)
+  addSon(notExp, newIdentNodeP("not", p))
+  addSon(notExp, cleanedExp)
+
+  var brkStm = newNodeP(nkBreakStmt, p)
+  addSon(brkStm, ast.emptyNode)
+
+  var ifStm = newNodeP(nkIfStmt, p)
+  var ifBranch = newNodeP(nkElifBranch, p)
+  addSon(ifBranch, notExp)
+  addSon(ifBranch, brkStm)
+  addSon(ifStm, ifBranch)
+
+  embedStmts(stm, ifStm)
+
+  addSon(result, stm)
 
 proc declarationOrStatement(p: var TParser): PNode = 
   if p.tok.xkind != pxSymbol:
@@ -1582,8 +1614,6 @@ proc parseStandaloneStruct(p: var TParser, isUnion: bool): PNode =
   else:
     backtrackContext(p)
     result = declaration(p)
-
-proc embedStmts(sl, a: PNode)
 
 proc parseFor(p: var TParser, result: PNode) = 
   # 'for' '(' expression_statement expression_statement expression? ')'
