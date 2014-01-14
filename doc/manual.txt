@@ -342,7 +342,9 @@ A character is not an Unicode character but a single byte. The reason for this
 is efficiency: for the overwhelming majority of use-cases, the resulting
 programs will still handle UTF-8 properly as UTF-8 was specially designed for
 this. Another reason is that Nimrod can thus support ``array[char, int]`` or
-``set[char]`` efficiently as many algorithms rely on this feature.
+``set[char]`` efficiently as many algorithms rely on this feature.  The `TRune`
+type is used for Unicode characters, it can represent any Unicode character.
+``TRune`` is declared in the `unicode module <unicode.html>`_.
 
 
 Numerical constants
@@ -773,7 +775,8 @@ designed for this.
 Another reason is that Nimrod can support ``array[char, int]`` or
 ``set[char]`` efficiently as many algorithms rely on this feature. The
 `TRune` type is used for Unicode characters, it can represent any Unicode
-character. ``TRune`` is declared in the ``unicode`` module.
+character. ``TRune`` is declared in the `unicode module <unicode.html>`_.
+
 
 
 
@@ -870,8 +873,8 @@ arrays, they can be used in case statements:
 Per convention, all strings are UTF-8 strings, but this is not enforced. For
 example, when reading strings from binary files, they are merely a sequence of
 bytes. The index operation ``s[i]`` means the i-th *char* of ``s``, not the
-i-th *unichar*. The iterator ``runes`` from the ``unicode``
-module can be used for iteration over all Unicode characters.
+i-th *unichar*. The iterator ``runes`` from the `unicode module
+<unicode.html>`_ can be used for iteration over all Unicode characters.
 
 
 CString type
