@@ -312,14 +312,39 @@ Character literals
 ------------------
 
 Character literals are enclosed in single quotes ``''`` and can contain the
-same escape sequences as strings - with one exception: ``\n`` is not allowed
-as it may be wider than one character (often it is the pair CR/LF for example).
+same escape sequences as strings - with one exception: `newline`:idx: (``\n``)
+is not allowed as it may be wider than one character (often it is the pair
+CR/LF for example).  Here are the valid `escape sequences`:idx: for character
+literals:
+
+==================         ===================================================
+  Escape sequence          Meaning
+==================         ===================================================
+  ``\r``, ``\c``           `carriage return`:idx:
+  ``\l``                   `line feed`:idx:
+  ``\f``                   `form feed`:idx:
+  ``\t``                   `tabulator`:idx:
+  ``\v``                   `vertical tabulator`:idx:
+  ``\\``                   `backslash`:idx:
+  ``\"``                   `quotation mark`:idx:
+  ``\'``                   `apostrophe`:idx:
+  ``\`` '0'..'9'+          `character with decimal value d`:idx:;
+                           all decimal digits directly
+                           following are used for the character
+  ``\a``                   `alert`:idx:
+  ``\b``                   `backspace`:idx:
+  ``\e``                   `escape`:idx: `[ESC]`:idx:
+  ``\x`` HH                `character with hex value HH`:idx:;
+                           exactly two hex digits are allowed
+==================         ===================================================
+
 A character is not an Unicode character but a single byte. The reason for this
 is efficiency: for the overwhelming majority of use-cases, the resulting
 programs will still handle UTF-8 properly as UTF-8 was specially designed for
-this.
-Another reason is that Nimrod can thus support ``array[char, int]`` or
-``set[char]`` efficiently as many algorithms rely on this feature.
+this. Another reason is that Nimrod can thus support ``array[char, int]`` or
+``set[char]`` efficiently as many algorithms rely on this feature.  The `TRune`
+type is used for Unicode characters, it can represent any Unicode character.
+``TRune`` is declared in the `unicode module <unicode.html>`_.
 
 
 Numerical constants
@@ -750,7 +775,8 @@ designed for this.
 Another reason is that Nimrod can support ``array[char, int]`` or
 ``set[char]`` efficiently as many algorithms rely on this feature. The
 `TRune` type is used for Unicode characters, it can represent any Unicode
-character. ``TRune`` is declared in the ``unicode`` module.
+character. ``TRune`` is declared in the `unicode module <unicode.html>`_.
+
 
 
 
@@ -847,8 +873,8 @@ arrays, they can be used in case statements:
 Per convention, all strings are UTF-8 strings, but this is not enforced. For
 example, when reading strings from binary files, they are merely a sequence of
 bytes. The index operation ``s[i]`` means the i-th *char* of ``s``, not the
-i-th *unichar*. The iterator ``runes`` from the ``unicode``
-module can be used for iteration over all Unicode characters.
+i-th *unichar*. The iterator ``runes`` from the `unicode module
+<unicode.html>`_ can be used for iteration over all Unicode characters.
 
 
 CString type
@@ -2196,12 +2222,12 @@ Instead of:
 Using statement
 ---------------
 
-The using statement provides syntactic convenience for procs that heavily use a
-single contextual parameter. When applied to a variable or a constant, it will
-instruct Nimrod to automatically consider the used symbol as a hidden leading
-parameter for any procedure calls, following the using statement in the current
-scope. Thus, it behaves much like the hidden `this` parameter available in some
-object-oriented programming languages.
+The `using statement`:idx: provides syntactic convenience for procs that
+heavily use a single contextual parameter. When applied to a variable or a
+constant, it will instruct Nimrod to automatically consider the used symbol as
+a hidden leading parameter for any procedure calls, following the using
+statement in the current scope. Thus, it behaves much like the hidden `this`
+parameter available in some object-oriented programming languages.
 
 .. code-block:: nimrod
 
@@ -2224,6 +2250,24 @@ from different modules having the same name.
   import windows, sdl
   using sdl.SetTimer
 
+Note that ``using`` only *adds* to the current context, it doesn't remove or
+replace, **neither** does it create a new scope. What this means is that if you
+apply this to multiple variables the compiler will find conflicts in what
+variable to use:
+
+.. code-block:: nimrod
+  var a, b = "kill it"
+  using a
+  add(" with fire")
+  using b
+  add(" with water")
+  echo a
+  echo b
+
+When the compiler reaches the second ``add`` call, both ``a`` and ``b`` could
+be used with the proc, so you get ``Error: expression '(a|b)' has no type (or
+is ambiguous)``. To solve this you would need to nest ``using`` with a
+``block`` statement so as to control the reach of the ``using`` statement.
 
 If expression
 -------------

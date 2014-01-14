@@ -14,7 +14,9 @@ Thanks to its conditional construct ``$[0|1|2|else]`` it supports
 Notation                meaning
 =====================   =====================================================
 ``$#``                  use first or next argument
-``$name``               use named argument
+``$name``               use named argument, you can wrap the named argument
+                        in curly braces (eg. ``${name}``) to separate it from
+                        the next characters.
 ``$1``                  use first argument
 ``$-1``                 use last argument
 ``${1..3}``             use arguments 1 to 3
