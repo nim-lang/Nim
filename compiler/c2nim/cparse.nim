@@ -651,6 +651,22 @@ proc parseTypeSuffix(p: var TParser, typ: PNode): PNode =
 proc typeDesc(p: var TParser): PNode = 
   result = pointer(p, typeAtom(p))
 
+proc abstractDeclarator(p: var TParser, a: PNode): PNode
+
+proc directAbstractDeclarator(p: var TParser, a: PNode): PNode =
+  if p.tok.xkind == pxParLe:
+    getTok(p, a)
+    if p.tok.xkind in {pxStar, pxAmp, pxAmpAmp}:
+      result = abstractDeclarator(p, a)
+      eat(p, pxParRi, result)
+  return parseTypeSuffix(p, a)
+
+proc abstractDeclarator(p: var TParser, a: PNode): PNode =
+  return directAbstractDeclarator(p, pointer(p, a))
+
+proc typeName(p: var TParser): PNode =
+  return abstractDeclarator(p, typeAtom(p))
+
 proc parseField(p: var TParser, kind: TNodeKind): PNode =
   if p.tok.xkind == pxParLe: 
     getTok(p, nil)
@@ -716,18 +732,36 @@ proc parseStruct(p: var TParser, isUnion: bool): PNode =
   else: 
     addSon(result, newNodeP(nkRecList, p))
 
+proc declarator(p: var TParser, a: PNode, ident: ptr PNode): PNode
+
+proc directDeclarator(p: var TParser, a: PNode, ident: ptr PNode): PNode =
+  case p.tok.xkind
+  of pxSymbol:
+    ident[] = skipIdent(p)
+  of pxParLe:
+    getTok(p, a)
+    if p.tok.xkind in {pxStar, pxAmp, pxAmpAmp, pxSymbol}:
+      result = declarator(p, a, ident)
+      eat(p, pxParRi, result)
+  else:
+    nil
+  return parseTypeSuffix(p, a)
+
+proc declarator(p: var TParser, a: PNode, ident: ptr PNode): PNode =
+  return directDeclarator(p, pointer(p, a), ident)
+
+# parameter-declaration
+#   declaration-specifiers declarator
+#   declaration-specifiers asbtract-declarator(opt)
 proc parseParam(p: var TParser, params: PNode) = 
   var typ = typeDesc(p)
   # support for ``(void)`` parameter list: 
   if typ.kind == nkNilLit and p.tok.xkind == pxParRi: return
   var name: PNode
-  if p.tok.xkind == pxSymbol: 
-    name = skipIdent(p)
-  else:
-    # generate a name for the formal parameter:
+  typ = declarator(p, typ, addr name)
+  if name == nil:
     var idx = sonsLen(params)+1
     name = newIdentNodeP("a" & $idx, p)
-  typ = parseTypeSuffix(p, typ)
   var x = newNodeP(nkIdentDefs, p)
   addSon(x, name, typ)
   if p.tok.xkind == pxAsgn: 
@@ -1150,7 +1184,7 @@ proc startExpression(p : var TParser, tok : TToken) : PNode =
       except:
         backtrackContext(p)
         eat(p, pxParLe)
-        addSon(result, typeDesc(p))
+        addSon(result, typeName(p))
         eat(p, pxParRi)
     elif (tok.s == "new" or tok.s == "delete") and pfCpp in p.options.flags:
       var opr = tok.s
@@ -1200,7 +1234,7 @@ proc startExpression(p : var TParser, tok : TToken) : PNode =
     except:
       backtrackContext(p)
       result = newNodeP(nkCast, p)
-      addSon(result, typeDesc(p))
+      addSon(result, typeName(p))
       eat(p, pxParRi, result)
       addSon(result, expression(p, 139))
   of pxPlusPlus:
