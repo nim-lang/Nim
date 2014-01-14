@@ -508,7 +508,7 @@ proc fixAbstractType(c: PContext, n: PNode) =
         changeType(it.sons[1], s, check=true)
         n.sons[i] = it.sons[1]
     of nkBracket: 
-      # an implicitely constructed array (passed to an open array):
+      # an implicitly constructed array (passed to an open array):
       n.sons[i] = semArrayConstr(c, it, {})
     else: 
       nil

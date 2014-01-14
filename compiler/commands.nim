@@ -249,10 +249,13 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
     expectArg(switch, arg, pass, info)
     addPath(processPath(arg), info)
   of "babelpath":
-    if pass in {passCmd2, passPP}:
+    if pass in {passCmd2, passPP} and not options.gNoBabelPath:
       expectArg(switch, arg, pass, info)
       let path = processPath(arg, notRelativeToProj=true)
       babelpath(path, info)
+  of "nobabelpath":
+    expectNoArg(switch, arg, pass, info)
+    options.gNoBabelPath = true
   of "excludepath":
     expectArg(switch, arg, pass, info)
     let path = processPath(arg)

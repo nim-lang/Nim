@@ -29,7 +29,6 @@ Changes affecting backwards compatibility
   using the new ``OSLastError`` proc.
 - ``os.parentDir`` now returns "" if there is no parent dir.
 
-
 Compiler Additions
 ------------------
 
@@ -41,7 +40,8 @@ Compiler Additions
   over the generated code.
 - The compiler now supports a ``computedGoto`` pragma to support very fast
   dispatching for interpreters and the like.
-
+- In CGI scripts stacktraces are shown user only if cgi.setStackTraceStdout
+  is used.
 
 Language Additions
 ------------------
@@ -309,7 +309,7 @@ Changes affecting backwards compatibility
 - The Nimrod type system now distinguishes ``openarray`` from ``varargs``.
 - Templates are now ``hygienic``. Use the ``dirty`` pragma to get the old
   behaviour.
-- Objects that have no ancestor are now implicitely ``final``. Use 
+- Objects that have no ancestor are now implicitly ``final``. Use 
   the ``inheritable`` pragma to introduce new object roots apart 
   from ``TObject``.
 - Macros now receive parameters like templates do; use the ``callsite`` builtin
@@ -439,7 +439,7 @@ Language Additions
 - The error pragma can now be used to mark symbols whose *usage* should trigger
   a compile-time error.
 - There is a new ``discardable`` pragma that can be used to mark a routine 
-  so that its result can be discarded implicitely.
+  so that its result can be discarded implicitly.
 - Added a new ``noinit`` pragma to prevent automatic initialization to zero
   of variables.
 - Constants can now have the type ``seq``.

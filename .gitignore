@@ -58,11 +58,14 @@ examples/cross_calculator/android/tags
 # Generated files.
 /compile.json
 /compiler/c2nim/c2nim
+/compiler/nimrod.dot
 /compiler/pas2nim/pas2nim
 /compiler/service
 /examples/allany
 /examples/cairoex
 /examples/cgiex
+/examples/cgi/cgi_stacktrace
+/examples/cgi/example
 /examples/curlex
 /examples/debugging
 /examples/docstrings

@@ -614,9 +614,10 @@ proc CallCCompiler*(projectfile: string) =
         exefile = splitFile(projectFile).name & platform.os[targetOS].exeExt
         buildDll = ""
       if options.outFile.len > 0: 
-        exefile = options.outFile
+        exefile = options.outFile.expandTilde
       if not noAbsolutePaths():
-        exefile = joinPath(splitFile(projectFile).dir, exefile)
+        if not exeFile.isAbsolute():
+          exefile = joinPath(splitFile(projectFile).dir, exefile)
       exefile = quoteShell(exefile)
       let linkOptions = getLinkOptions()
       linkCmd = quoteShell(linkCmd % ["builddll", builddll,
