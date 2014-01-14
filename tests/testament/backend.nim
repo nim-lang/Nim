@@ -1,7 +1,7 @@
 #
 #
 #              The Nimrod Tester
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    Look at license.txt for more info.
 #    All rights reserved.
@@ -49,10 +49,10 @@ proc createDb() =
   #  """, [])
 
 type
-  MachineId = distinct int64
+  MachineId* = distinct int64
   CommitId = distinct int64
 
-proc `$`(id: MachineId): string {.borrow.}
+proc `$`*(id: MachineId): string {.borrow.}
 proc `$`(id: CommitId): string {.borrow.}
 
 var
@@ -61,7 +61,7 @@ var
 
 proc `()`(cmd: string{lit}): string = cmd.execProcess.string.strip
 
-proc getMachine: MachineId =
+proc getMachine*: MachineId =
   var name = "hostname"()
   if name.len == 0:
     name = when defined(posix): getenv"HOSTNAME".string
@@ -73,7 +73,7 @@ proc getMachine: MachineId =
   if id.len > 0:
     result = id.parseInt.MachineId
   else:
-    result = db.insertId(sql"insert into Machine(name, os, cpu) values (?,?,?)", 
+    result = db.insertId(sql"insert into Machine(name, os, cpu) values (?,?,?)",
                          name, system.hostOS, system.hostCPU).MachineId
 
 proc getCommit: CommitId =

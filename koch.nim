@@ -263,16 +263,8 @@ when defined(withUpdate):
 proc tests(args: string) =
   # we compile the tester with taintMode:on to have a basic
   # taint mode test :-)
-  exec("nimrod cc --taintMode:on tests/tester")
-  exec(getCurrentDir() / "tests/tester".exe & " reject")
-  exec(getCurrentDir() / "tests/tester".exe & " compile")
-  exec(getCurrentDir() / "tests/tester".exe & " run")
-  exec(getCurrentDir() / "tests/tester".exe & " merge")
-  when false:
-    # activate real soon:
-    exec("nimrod cc --taintMode:on tests/testament/tester")
-    exec(getCurrentDir() / "tests/testament/tester".exe & " all")
-  
+  exec("nimrod cc --taintMode:on tests/testament/tester")
+  exec(getCurrentDir() / "tests/testament/tester".exe & " all")
 
 proc temp(args: string) =
   var output = "compiler" / "nimrod".exe

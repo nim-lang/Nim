@@ -10,8 +10,8 @@
 ## This program verifies Nimrod against the testcases.
 
 import
-  parseutils, strutils, pegs, os, osproc, streams, parsecfg, browsers, json,
-  marshal, cgi, backend, parseopt, specs #, caas
+  parseutils, strutils, pegs, os, osproc, streams, parsecfg, json,
+  marshal, backend, parseopt, specs, htmlgen, browsers
 
 const
   resultsFile = "testresults.html"
@@ -249,16 +249,18 @@ proc main() =
         processCategory(r, Category(dir), p.cmdLineRest.string)
     for a in AdditionalCategories:
       processCategory(r, Category(a), p.cmdLineRest.string)
-  of "c", "category":
+  of "c", "cat", "category":
     var cat = Category(p.key)
     p.next
     processCategory(r, cat, p.cmdLineRest.string)
   of "html":
-    quit "too implement"
+    generateHtml(resultsFile)
   else:
     quit usage
 
-  if optPrintResults: echo r, r.data
+  if optPrintResults: 
+    if action == "html": openDefaultBrowser(resultsFile)
+    else: echo r, r.data
   backend.close()
   
 if paramCount() == 0:
