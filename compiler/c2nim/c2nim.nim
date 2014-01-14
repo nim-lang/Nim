@@ -49,8 +49,8 @@ proc parse(infile: string, options: PParserOptions): PNode =
 
 proc main(infile, outfile: string, options: PParserOptions, spliceHeader: bool) =
   var start = getTime()
-  if spliceHeader and infile[infile.len-2 .. infile.len] == ".c" and existsFile(infile[0 .. infile.len-2] & "h"):
-    var header_module = parse(infile[0 .. infile.len-2] & "h", options)
+  if spliceHeader and infile.splitFile.ext == ".c" and existsFile(infile.changeFileExt(".h")):
+    var header_module = parse(infile.changeFileExt(".h"), options)
     var source_module = parse(infile, options)
     for n in source_module:
       addson(header_module, n)
