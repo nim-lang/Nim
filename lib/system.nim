@@ -2227,8 +2227,8 @@ when not defined(JS): #and not defined(NimrodVM):
     iterator lines*(filename: string): TaintedString {.tags: [FReadIO].} =
       ## Iterates over any line in the file named `filename`.
       ##
-      ## If the file does not exist `EIO` is raised. The iterated lines will be
-      ## stripped off the trailing newline character(s). Example:
+      ## If the file does not exist `EIO` is raised. The trailing newline
+      ## character(s) are removed from the iterated lines. Example:
       ##
       ## .. code-block:: nimrod
       ##   import strutils
@@ -2246,8 +2246,8 @@ when not defined(JS): #and not defined(NimrodVM):
     iterator lines*(f: TFile): TaintedString {.tags: [FReadIO].} =
       ## Iterate over any line in the file `f`.
       ##
-      ## The iterated lines will be stripped off the trailing newline
-      ## character(s). Example:
+      ## The trailing newline character(s) are removed from the iterated lines.
+      ## Example:
       ##
       ## .. code-block:: nimrod
       ##   proc countZeros(filename: TFile): tuple[lines, zeros: int] =
