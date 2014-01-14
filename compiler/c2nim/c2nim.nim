@@ -34,25 +34,36 @@ Options:
   --skipcomments         do not copy comments
   --ignoreRValueRefs     translate C++'s ``T&&`` to ``T`` instead ``of var T``
   --keepBodies           keep C++'s method bodies
+  --spliceHeader         parse and emit header before source file
   -v, --version          write c2nim's version
   -h, --help             show this help
 """
 
-proc main(infile, outfile: string, options: PParserOptions) =
-  var start = getTime()
+proc parse(infile: string, options: PParserOptions): PNode =
   var stream = llStreamOpen(infile, fmRead)
   if stream == nil: rawMessage(errCannotOpenFile, infile)
   var p: TParser
   openParser(p, infile, stream, options)
-  var module = parseUnit(p)
+  result = parseUnit(p)
   closeParser(p)
-  renderModule(module, outfile)
+
+proc main(infile, outfile: string, options: PParserOptions, spliceHeader: bool) =
+  var start = getTime()
+  if spliceHeader and infile.splitFile.ext == ".c" and existsFile(infile.changeFileExt(".h")):
+    var header_module = parse(infile.changeFileExt(".h"), options)
+    var source_module = parse(infile, options)
+    for n in source_module:
+      addson(header_module, n)
+    renderModule(header_module, outfile)
+  else:
+    renderModule(parse(infile, options), outfile)
   rawMessage(hintSuccessX, [$gLinesCompiled, $(getTime() - start), 
                             formatSize(getTotalMem())])
 
 var
   infile = ""
   outfile = ""
+  spliceHeader = false
   parserOptions = newParserOptions()
 for kind, key, val in getopt():
   case kind
@@ -66,6 +77,7 @@ for kind, key, val in getopt():
       stdout.write(Version & "\n")
       quit(0)
     of "o", "out": outfile = val
+    of "spliceheader": spliceHeader = true
     else:
       if not parserOptions.setOption(key, val):
         stdout.writeln("[Error] unknown option: " & key)
@@ -77,4 +89,4 @@ else:
   if outfile.len == 0:
     outfile = changeFileExt(infile, "nim")
   infile = addFileExt(infile, "h")
-  main(infile, outfile, parserOptions)
+  main(infile, outfile, parserOptions, spliceHeader)
