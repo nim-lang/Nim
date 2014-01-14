@@ -71,6 +71,16 @@ div.tabContent.hide { display: none; }
         i++;
       }
     }
+
+    function getFirstChildWithTagName( element, tagName ) {
+      for ( var i = 0; i < element.childNodes.length; i++ ) {
+        if ( element.childNodes[i].nodeName == tagName ) return element.childNodes[i];
+      }
+    }
+    function getHash( url ) {
+      var hashPos = url.lastIndexOf ( '#' );
+      return url.substring( hashPos + 1 );
+    }
     </script>
 
     </head>
@@ -100,7 +110,8 @@ proc generateHtml*(filename: string) =
 
   outfile.write("""<ul id="tabs">""")
   
-  for lastCommit in db.getRow(sql"select id from [Commit] order by id desc"):
+  for thisCommit in db.rows(sql"select id from [Commit] order by id desc"):
+    let lastCommit = thisCommit[0]
     let commit = db.getValue(sql"select hash from [Commit] where id = ?",
                               lastCommit)
     let branch = db.getValue(sql"select branch from [Commit] where id = ?",
@@ -110,7 +121,8 @@ proc generateHtml*(filename: string) =
       lastCommit, branch, commit]
   outfile.write("</ul>")
   
-  for lastCommit in db.getRow(sql"select id from [Commit] order by id desc"):
+  for thisCommit in db.rows(sql"select id from [Commit] order by id desc"):
+    let lastCommit = thisCommit[0]
     outfile.write("""<div class="tabContent" id="$#">""" % lastCommit)
 
     outfile.write(TableHeader)
