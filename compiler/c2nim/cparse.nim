@@ -2038,6 +2038,10 @@ proc parseStandaloneClass(p: var TParser, isStruct: bool): PNode =
     result = declaration(p)
   p.currentClass = oldClass
 
+proc unwrap(a: PNode): PNode =
+  if a.kind == nkPar:
+    return a.sons[0]
+  return a
 
 include cpp
 
@@ -2072,16 +2076,10 @@ proc statement(p: var TParser): PNode =
     of "return":
       result = newNodeP(nkReturnStmt, p)
       getTok(p)
-      # special case for ``return (expr)`` because I hate the redundant
-      # parenthesis ;-)
-      if p.tok.xkind == pxParLe:
-        getTok(p, result)
-        addSon(result, expression(p))
-        eat(p, pxParRi, result)
-      elif p.tok.xkind != pxSemicolon:
-        addSon(result, expression(p))
-      else:
+      if p.tok.xkind == pxSemicolon:
         addSon(result, ast.emptyNode)
+      else:
+        addSon(result, unwrap(expression(p)))
       eat(p, pxSemicolon)
     of "enum": result = enumSpecifier(p)
     of "typedef": result = parseTypeDef(p)

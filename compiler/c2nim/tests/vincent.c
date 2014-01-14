@@ -3,9 +3,16 @@
 
 int rand(void);
 
+int id2(void) {
+    return (int *)1;
+}
+
 int id(void (*f)(void)) {
     f();
     ((void (*)(int))f)(10);
+    return 10;
+    return (20+1);
+    return (int *)id;
 }
 
 int main() {
