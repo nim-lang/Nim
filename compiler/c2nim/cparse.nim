@@ -61,6 +61,8 @@ type
   
   TReplaceTuple* = array[0..1, string]
 
+  ERetryParsing = object of ESynch
+
 proc newParserOptions*(): PParserOptions = 
   new(result)
   result.prefixes = @[]
@@ -1181,7 +1183,7 @@ proc startExpression(p : var TParser, tok : TToken) : PNode =
       try:
         addSon(result, expression(p, 139))
         closeContext(p)
-      except:
+      except ERetryParsing:
         backtrackContext(p)
         eat(p, pxParLe)
         addSon(result, typeName(p))
@@ -1226,12 +1228,12 @@ proc startExpression(p : var TParser, tok : TToken) : PNode =
       result = newNodeP(nkPar, p)
       addSon(result, expression(p, 0))
       if p.tok.xkind != pxParRi:
-        raise
+        raise newException(ERetryParsing, "expected a ')'")
       getTok(p, result)
       if p.tok.xkind in {pxSymbol, pxIntLit, pxFloatLit, pxStrLit, pxCharLit}:
-        raise
+        raise newException(ERetryParsing, "expected a non literal token")
       closeContext(p)
-    except:
+    except ERetryParsing:
       backtrackContext(p)
       result = newNodeP(nkCast, p)
       addSon(result, typeName(p))
@@ -1269,7 +1271,7 @@ proc startExpression(p : var TParser, tok : TToken) : PNode =
     addSon(result, expression(p, 139))
   else:
     # probably from a failed sub expression attempt, try a type cast
-    raise newException(E_Base, "not " & $tok)
+    raise newException(ERetryParsing, "did not expect " & $tok)
 
 proc leftBindingPower(p : var TParser, tok : ref TToken) : int =
   #echo "lbp ", $tok[]
@@ -2134,6 +2136,6 @@ proc parseUnit(p: var TParser): PNode =
     while p.tok.xkind != pxEof:
       var s = statement(p)
       if s.kind != nkEmpty: embedStmts(result, s)
-  except:
-    parMessage(p, errGenerated, "Uncaught exception raised during parsing")
+  except ERetryParsing:
+    parMessage(p, errGenerated, "Uncaught parsing exception raised")
 
