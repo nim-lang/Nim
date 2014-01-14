@@ -3,6 +3,11 @@
 
 int rand(void);
 
+int id(void (*f)(void)) {
+    f();
+    ((void (*)(int))f)(10);
+}
+
 int main() {
     float f = .2,
           g = 2.,
