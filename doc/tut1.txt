@@ -202,6 +202,12 @@ statement and all the variables will have the same value:
   echo "x ", x  # outputs "x 42"
   echo "y ", y  # outputs "y 3"
 
+Note that declaring multiple variables with a single assignment which calls a
+procedure can have unexpected results: the compiler will *unroll* the
+assignments and end up calling the procedure several times. If the result of
+the procedure depends on side effects, your variables may end up having
+different values! For safety use only constant values.
+
 
 Constants
 =========
@@ -807,7 +813,11 @@ important differences:
 
 However, you can also use a ``closure`` iterator to get a different set of
 restrictions. See `first class iterators <manual.html#first-class-iterators>`_
-for details.
+for details. Iterators can have the same name and parameters as a proc,
+essentially they have their own namespace. Therefore it is common practice to
+wrap iterators in procs of the same name which accumulate the result of the
+iterator and return it as a sequence, like ``split`` from the `strutils module
+<strutils.html>`_.
 
 
 Basic types
