@@ -1582,6 +1582,17 @@ rules apply:
   write(stdout, x(3))   # ambiguous: which `x` is to call?
 
 
+Excluding symbols
+-----------------
+
+The normal ``import`` statement will bring in all exported symbols.
+These can be limited by naming symbols which should be excluded with
+the ``except`` qualifier.
+
+.. code-block:: nimrod
+  import mymodule except y
+
+
 From statement
 --------------
 
@@ -1591,6 +1602,30 @@ exported symbols. An alternative that only imports listed symbols is the
 
 .. code-block:: nimrod
   from mymodule import x, y, z
+
+The ``from`` statement can also force namespace qualification on
+symbols, thereby making symbols available, but needing to be qualified
+to be used.
+
+.. code-block:: nimrod
+  from mymodule import x, y, z
+
+  x()           # use x without any qualification
+
+.. code-block:: nimrod
+  from mymodule import nil
+
+  mymodule.x()  # must qualify x with the module name as prefix
+
+  x()           # using x here without qualification is a compile error
+
+Since module names are generally long to be descriptive, you can also
+define a shorter alias to use when qualifying symbols.
+
+.. code-block:: nimrod
+  from mymodule as m import nil
+
+  m.x()         # m is aliasing mymodule
 
 
 Include statement
