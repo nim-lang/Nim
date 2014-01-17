@@ -76,7 +76,7 @@ proc tryExec*(db: TDbConn, query: TSqlQuery,
 proc exec*(db: TDbConn, query: TSqlQuery, args: varargs[string, `$`])  {.
   tags: [FReadDB, FWriteDb].} =
   ## executes the query and raises EDB if not successful.
-  if not TryExec(db, query, args): dbError(db)
+  if not tryExec(db, query, args): dbError(db)
   
 proc newRow(L: int): TRow =
   newSeq(result, L)

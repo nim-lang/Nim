@@ -109,42 +109,46 @@ div.tabContent.hide { display: none; }
 proc td(s: string): string =
   result = "<td>" & s.substr(0, 200).XMLEncode & "</td>"
 
-proc generateHtml*(filename: string) =
+proc getCommit(db: TDbConn, c: int): string =
+  var commit = c
+  for thisCommit in db.rows(sql"select id from [Commit] order by id desc"):
+    if commit == 0: result = thisCommit[0]
+    inc commit
+  if result.isNil:
+    quit "cannot determine commit " & $c
+
+proc generateHtml*(filename: string, commit: int) =
   const selRow = """select name, category, target, action, 
                            expected, given, result
-                     from TestResult
-                     where [commit] = ? and machine = ?
-                     order by category"""
+                    from TestResult
+                    where [commit] = ? and machine = ?
+                    order by category"""
   var db = open(connection="testament.db", user="testament", password="",
                 database="testament")
+  # search for proper commit:
+  let lastCommit = db.getCommit(commit)
+
   var outfile = open(filename, fmWrite)
   outfile.write(HtmlBegin)
-  let thisMachine = backend.getMachine()
-  outfile.write()
 
-  let machine = db.getRow(sql"select name, os, cpu from machine where id = ?",
-                           thisMachine)
-  outfile.write("<p><b>$#</b></p>" % machine.join(" "))
+  let commit = db.getValue(sql"select hash from [Commit] where id = ?",
+                            lastCommit)
+  let branch = db.getValue(sql"select branch from [Commit] where id = ?",
+                            lastCommit)
+  outfile.write("<p><b>$# $#</b></p>" % [branch, commit])
 
+  # generate navigation:
   outfile.write("""<ul id="tabs">""")
-  
-  for thisCommit in db.rows(sql"select id from [Commit] order by id desc"):
-    let lastCommit = thisCommit[0]
-    let commit = db.getValue(sql"select hash from [Commit] where id = ?",
-                              lastCommit)
-    let branch = db.getValue(sql"select branch from [Commit] where id = ?",
-                              lastCommit)
-
-    outfile.writeln """<li><a href="#$#">$#: $#</a></li>""" % [
-      lastCommit, branch, commit]
+  for m in db.rows(sql"select id, name, os, cpu from Machine order by id"):
+    outfile.writeln """<li><a href="#$#">$#: $#, $#</a></li>""" % m
   outfile.write("</ul>")
   
-  for thisCommit in db.rows(sql"select id from [Commit] order by id desc"):
-    let lastCommit = thisCommit[0]
-    outfile.write("""<div class="tabContent" id="$#">""" % lastCommit)
+  for currentMachine in db.rows(sql"select id from Machine order by id"):
+    let m = currentMachine[0]
+    outfile.write("""<div class="tabContent" id="$#">""" % m)
 
     outfile.write(TableHeader)
-    for row in db.rows(sql(selRow), lastCommit, thisMachine):
+    for row in db.rows(sql(selRow), lastCommit, m):
       outfile.write("<tr>")
       for x in row:
         outfile.write(x.td)

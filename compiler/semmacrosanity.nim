@@ -43,12 +43,12 @@ proc annotateType*(n: PNode, t: PType) =
       n.typ = t
       for i in 0 .. <n.len:
         let field = x.n.ithField(i)
-        if field.isNil: globalError n.info, "invalid " & $i & "th field"
+        if field.isNil: globalError n.info, "invalid field at index " & $i
         else: annotateType(n.sons[i], field.typ)
     elif x.kind == tyTuple:
       n.typ = t
       for i in 0 .. <n.len:
-        if i >= x.len: globalError n.info, "invalid " & $i & "th field"
+        if i >= x.len: globalError n.info, "invalid field at index " & $i
         else: annotateType(n.sons[i], x.sons[i])
     elif x.kind == tyProc and x.callConv == ccClosure:
       n.typ = t
