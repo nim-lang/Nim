@@ -77,7 +77,8 @@ proc getMachine*: MachineId =
                          name, system.hostOS, system.hostCPU).MachineId
 
 proc getCommit: CommitId =
-  let hash = "git log -n 1"()
+  const commLen = "commit ".len
+  let hash = "git log -n 1"()[commLen..commLen+10]
   let branch = "git symbolic-ref --short HEAD"()
   if hash.len == 0 or branch.len == 0: quit "cannot determine git HEAD"
   

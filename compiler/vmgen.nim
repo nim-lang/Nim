@@ -444,21 +444,43 @@ proc genCall(c: PCtx; n: PNode; dest: var TDest) =
   c.freeTempRange(x, n.len)
   clearDest(n, dest)
 
+proc needsAsgnPatch(n: PNode): bool = 
+  n.kind in {nkBracketExpr, nkDotExpr, nkCheckedFieldExpr}
+
+proc genAsgnPatch(c: PCtx; le: PNode, value: TRegister) =
+  case le.kind
+  of nkBracketExpr:
+    let dest = c.genx(le.sons[0])
+    let idx = c.genx(le.sons[1])
+    c.gABC(le, opcWrArrRef, dest, idx, value)
+  of nkDotExpr, nkCheckedFieldExpr:
+    # XXX field checks here
+    let left = if le.kind == nkDotExpr: le else: le.sons[0]
+    let dest = c.genx(left.sons[0])
+    let idx = c.genx(left.sons[1])
+    c.gABC(left, opcWrObjRef, dest, idx, value)
+  else:
+    discard
+
 proc genNew(c: PCtx; n: PNode) =
-  let dest = c.genx(n.sons[1])
+  let dest = if needsAsgnPatch(n.sons[1]): c.getTemp(n.sons[1].typ)
+             else: c.genx(n.sons[1])
   # we use the ref's base type here as the VM conflates 'ref object' 
   # and 'object' since internally we already have a pointer.
   c.gABx(n, opcNew, dest, 
          c.genType(n.sons[1].typ.skipTypes(abstractVar).sons[0]))
+  c.genAsgnPatch(n.sons[1], dest)
   c.freeTemp(dest)
 
 proc genNewSeq(c: PCtx; n: PNode) =
-  let dest = c.genx(n.sons[1])
+  let dest = if needsAsgnPatch(n.sons[1]): c.getTemp(n.sons[1].typ)
+             else: c.genx(n.sons[1])
   c.gABx(n, opcNewSeq, dest, c.genType(n.sons[1].typ.skipTypes(abstractVar)))
   let tmp = c.genx(n.sons[2])
   c.gABx(n, opcNewSeq, tmp, 0)
-  c.freeTemp(dest)
   c.freeTemp(tmp)
+  c.genAsgnPatch(n.sons[1], dest)
+  c.freeTemp(dest)
 
 proc genUnaryABC(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
   let tmp = c.genx(n.sons[1])
@@ -1428,7 +1450,7 @@ proc genProc(c: PCtx; s: PSym): int =
     c.gABC(body, opcEof, eofInstr.regA)
     c.optimizeJumps(result)
     s.offset = c.prc.maxSlots
-    #if s.name.s == "importImpl_forward" or s.name.s == "importImpl":
+    #if s.name.s == "rawGet":
     #  c.echoCode(result)
     #  echo renderTree(body)
     c.prc = oldPrc

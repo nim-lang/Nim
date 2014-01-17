@@ -245,7 +245,7 @@ proc main() =
   case action
   of "all":
     for kind, dir in walkDir("tests"):
-      if kind == pcDir and dir != "testament":
+      if kind == pcDir and dir notin ["testament", "testdata", "nimcache"]:
         processCategory(r, Category(dir), p.cmdLineRest.string)
     for a in AdditionalCategories:
       processCategory(r, Category(a), p.cmdLineRest.string)
