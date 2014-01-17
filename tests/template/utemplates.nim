@@ -18,7 +18,7 @@ test "previous definitions can be further overloaded or hidden in local scopes":
   check t("test") == "string"
 
 test "templates can be redefined multiple times":
-  template customAssert(cond: bool, msg: string): stmt =
+  template customAssert(cond: bool, msg: string): stmt {.immediate, dirty.} =
     if not cond: fail(msg)
 
   template assertion_failed(body: stmt) {.immediate.} =

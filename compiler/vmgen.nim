@@ -204,10 +204,13 @@ proc gen(c: PCtx; n: PNode) =
 proc genx(c: PCtx; n: PNode): TRegister =
   var tmp: TDest = -1
   gen(c, n, tmp)
+  internalAssert tmp >= 0
   result = TRegister(tmp)
 
 proc clearDest(n: PNode; dest: var TDest) {.inline.} =
-  if isEmptyType(n.typ): dest = -1
+  # stmt is different from 'void' in meta programming contexts.
+  # So we only set dest to -1 if 'void':
+  if n.typ.isNil or n.typ.kind == tyEmpty: dest = -1
 
 proc isNotOpr(n: PNode): bool =
   n.kind in nkCallKinds and n.sons[0].kind == nkSym and
@@ -442,7 +445,6 @@ proc genCall(c: PCtx; n: PNode; dest: var TDest) =
   else:
     c.gABC(n, opcIndCallAsgn, dest, x, n.len)
   c.freeTempRange(x, n.len)
-  clearDest(n, dest)
 
 proc needsAsgnPatch(n: PNode): bool = 
   n.kind in {nkBracketExpr, nkDotExpr, nkCheckedFieldExpr}
@@ -590,6 +592,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     unused(n, dest)
     var d = c.genx(n.sons[1]).TDest
     c.genAddSubInt(n, d, if m == mInc: opcAddInt else: opcSubInt)
+    c.genAsgnPatch(n.sons[1], d)
     c.freeTemp(d.TRegister)
   of mOrd, mChr, mArrToSeq: c.gen(n.sons[1], dest)
   of mNew, mNewFinalize:
@@ -685,6 +688,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     var d = c.genx(n.sons[1])
     var tmp = c.genx(n.sons[2])
     c.gABC(n, if m == mSetLengthStr: opcSetLenStr else: opcSetLenSeq, d, tmp)
+    c.genAsgnPatch(n.sons[1], d)
     c.freeTemp(tmp)
   of mSwap: 
     unused(n, dest)
@@ -838,6 +842,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
   of mNGenSym: genBinaryABC(c, n, dest, opcGenSym)
   of mMinI, mMaxI, mMinI64, mMaxI64, mAbsF64, mMinF64, mMaxF64, mAbsI, mAbsI64:
     c.genCall(n, dest)
+    clearDest(n, dest)
   of mExpandToAst:
     if n.len != 2:
       globalError(n.info, errGenerated, "expandToAst requires 1 argument")
@@ -845,7 +850,10 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     if arg.kind in nkCallKinds:
       #if arg[0].kind != nkSym or arg[0].sym.kind notin {skTemplate, skMacro}:
       #      "ExpandToAst: expanded symbol is no macro or template"
+      if dest < 0: dest = c.getTemp(n.typ)
       c.genCall(arg, dest)
+      # do not call clearDest(n, dest) here as getAst has a meta-type as such
+      # produces a value
     else:
       globalError(n.info, "expandToAst requires a call expression")
   else:
@@ -1248,6 +1256,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest) =
       genMagic(c, n, dest)
     else:
       genCall(c, n, dest)
+      clearDest(n, dest)
   of nkCharLit..nkInt64Lit:
     if isInt16Lit(n):
       if dest < 0: dest = c.getTemp(n.typ)
