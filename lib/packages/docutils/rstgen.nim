@@ -44,7 +44,7 @@ type
     splitAfter*: int          # split too long entries in the TOC
     tocPart*: seq[TTocEntry]
     hasToc*: bool
-    theIndex: string
+    theIndex: string # Contents of the index file to be dumped at the end.
     options*: TRstParseOptions
     findFile*: TFindFileHandler
     msgHandler*: TMsgHandler
@@ -111,6 +111,10 @@ proc initRstGenerator*(g: var TRstGenerator, target: TOutputTarget,
   for i in low(g.meta)..high(g.meta): g.meta[i] = ""
 
 proc writeIndexFile*(g: var TRstGenerator, outfile: string) =
+  ## Writes the current index buffer to the specified output file.
+  ##
+  ## You previously need to add entries to the index with the ``setIndexTerm``
+  ## proc. If the index is empty the file won't be created.
   if g.theIndex.len > 0: writeFile(outfile, g.theIndex)
   
 proc addXmlChar(dest: var string, c: char) = 
@@ -224,6 +228,13 @@ proc renderAux(d: PDoc, n: PRstNode, frmtA, frmtB: string, result: var string) =
 # ---------------- index handling --------------------------------------------
 
 proc setIndexTerm*(d: var TRstGenerator, id, term: string) =
+  ## Adds a `term` to the index using the specified hyperlink identifier.
+  ##
+  ## The ``d.theIndex`` string will be used to append the term in the format
+  ## ``term<tab>file#id``. The anchor will be the based on the name of the file
+  ## currently being parsed plus the `id`, which will be appended after a hash.
+  ##
+  ## The index won't be written to disk unless you call ``writeIndexFile``.
   d.theIndex.add(term)
   d.theIndex.add('\t')
   let htmlFile = changeFileExt(extractFilename(d.filename), HtmlExt)
