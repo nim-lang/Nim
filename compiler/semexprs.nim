@@ -1068,7 +1068,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
     else: 
       localError(n.info, errIndexTypesDoNotMatch)
     result = n
-  else: nil
+  else: discard
   
 proc semArrayAccess(c: PContext, n: PNode, flags: TExprFlags): PNode = 
   result = semSubscript(c, n, flags)

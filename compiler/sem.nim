@@ -15,7 +15,7 @@ import
   magicsys, parser, nversion, nimsets, semfold, importer,
   procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
   semthreads, intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
-  evaltempl, patterns, parampatterns, sempass2, pretty
+  evaltempl, patterns, parampatterns, sempass2, pretty, semmacrosanity
 
 # implementation
 
@@ -186,16 +186,23 @@ when false:
 proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
   # recompute the types as 'eval' isn't guaranteed to construct types nor
   # that the types are sound:
-  result = semExprWithType(c, evaluated)
-  #result = fitNode(c, e.typ, result) inlined with special case:
-  let arg = result
-  result = indexTypesMatch(c, eOrig.typ, arg.typ, arg)
-  if result == nil:
-    result = arg
-    # for 'tcnstseq' we support [] to become 'seq'
-    if eOrig.typ.skipTypes(abstractInst).kind == tySequence and 
-       arg.typ.skipTypes(abstractInst).kind == tyArrayConstr:
-      arg.typ = eOrig.typ
+  when true:
+    if eOrig.typ.kind in {tyExpr, tyStmt, tyTypeDesc}:
+      result = semExprWithType(c, evaluated)
+    else:
+      result = evaluated
+      semmacrosanity.annotateType(result, eOrig.typ)
+  else:
+    result = semExprWithType(c, evaluated)
+    #result = fitNode(c, e.typ, result) inlined with special case:
+    let arg = result
+    result = indexTypesMatch(c, eOrig.typ, arg.typ, arg)
+    if result == nil:
+      result = arg
+      # for 'tcnstseq' we support [] to become 'seq'
+      if eOrig.typ.skipTypes(abstractInst).kind == tySequence and 
+         arg.typ.skipTypes(abstractInst).kind == tyArrayConstr:
+        arg.typ = eOrig.typ
 
 proc tryConstExpr(c: PContext, n: PNode): PNode =
   var e = semExprWithType(c, n)

@@ -221,6 +221,14 @@ proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
 
 const AdditionalCategories = ["debugger", "tools", "examples", "stdlib"]
 
+proc `&.?`(a, b: string): string =
+  # candidate for the stdlib?
+  result = if b.startswith(a): b else: a & b
+
+proc `&?.`(a, b: string): string =
+  # candidate for the stdlib?
+  result = if a.endswith(b): a else: a & b
+
 proc processCategory(r: var TResults, cat: Category, options: string) =
   case cat.string.normalize
   of "rodfiles":
@@ -252,5 +260,5 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
     compileExample(r, "examples/gtk/*.nim", options, cat)
     compileExample(r, "examples/talk/*.nim", options, cat)
   else:
-    for name in os.walkFiles(cat.string / "t*.nim"):
+    for name in os.walkFiles("tests" & DirSep &.? cat.string / "t*.nim"):
       testSpec r, makeTest(name, options, cat)

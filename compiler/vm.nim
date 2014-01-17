@@ -172,7 +172,9 @@ proc asgnComplex(x, y: PNode) =
   else:
     if x.kind notin {nkEmpty..nkNilLit}:
       let y = y.copyValue
-      for i in countup(0, sonsLen(y) - 1): addSon(x, y.sons[i])
+      for i in countup(0, sonsLen(y) - 1): 
+        if i < x.len: x.sons[i] = y.sons[i]
+        else: addSon(x, y.sons[i])
 
 template getstr(a: expr): expr =
   (if a.kind in {nkStrLit..nkTripleStrLit}: a.strVal else: $chr(int(a.intVal)))
@@ -319,8 +321,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       decodeB(nkIntLit)
       regs[ra].intVal = regs[rb].intVal
     of opcAsgnStr:
-      decodeB(nkStrLit)
-      regs[ra].strVal = regs[rb].strVal
+      if regs[instr.regB].kind == nkNilLit:
+        decodeB(nkNilLit)
+      else:
+        decodeB(nkStrLit)
+        regs[ra].strVal = regs[rb].strVal
     of opcAsgnFloat:
       decodeB(nkFloatLit)
       regs[ra].floatVal = regs[rb].floatVal
@@ -336,6 +341,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       # a = b[c]
       let rb = instr.regB
       let rc = instr.regC
+      if regs[rc].intVal > high(int):
+        stackTrace(c, tos, pc, errIndexOutOfBounds)
       let idx = regs[rc].intVal.int
       # XXX what if the array is not 0-based? -> codegen should insert a sub
       assert regs[rb].kind != nkMetaNode
@@ -373,7 +380,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       let rb = instr.regB
       let rc = instr.regC
       # XXX this creates a wrong alias
-      #Message(c.debug[pc], warnUser, $regs[rb].len & " " & $rc)
+      #Message(c.debug[pc], warnUser, $regs[rb].safeLen & " " & $rc)
       asgnComplex(regs[ra], regs[rb].sons[rc])
     of opcWrObj:
       # a.b = c
@@ -427,8 +434,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       regs[ra].intVal = regs[rb].skipMeta.len - imm
     of opcLenStr:
       decodeBImm(nkIntLit)
-      assert regs[rb].kind in {nkStrLit..nkTripleStrLit}
-      regs[ra].intVal = regs[rb].strVal.len - imm
+      if regs[rb].kind == nkNilLit:
+        stackTrace(c, tos, pc, errNilAccess)
+      else:
+        assert regs[rb].kind in {nkStrLit..nkTripleStrLit}
+        regs[ra].intVal = regs[rb].strVal.len - imm
     of opcIncl:
       decodeB(nkCurly)
       if not inSet(regs[ra], regs[rb]): addSon(regs[ra], copyTree(regs[rb]))
@@ -738,11 +748,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       inc pc
       ensureKind(nkBracket)
       let instr2 = c.code[pc]
-      let rb = instr2.regA
+      let count = regs[instr2.regA].intVal.int
       regs[ra].typ = typ
-      newSeq(regs[ra].sons, rb)
-      for i in 0 .. <rb:
-        regs[ra].sons[i] = getNullValue(typ, regs[ra].info)
+      newSeq(regs[ra].sons, count)
+      for i in 0 .. <count:
+        regs[ra].sons[i] = getNullValue(typ.sons[0], regs[ra].info)
     of opcNewStr:
       decodeB(nkStrLit)
       regs[ra].strVal = newString(regs[rb].intVal.int)
@@ -1044,7 +1054,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
     inc pc
 
 proc fixType(result, n: PNode) {.inline.} =
-  # XXX do it deeply for complex values
+  # XXX do it deeply for complex values; there seems to be no simple
+  # solution except to check it deeply here.
   #if result.typ.isNil: result.typ = n.typ
 
 proc execute(c: PCtx, start: int): PNode =

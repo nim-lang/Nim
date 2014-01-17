@@ -153,7 +153,7 @@ proc add*[A, B](t: var TTable[A, B], key: A, val: B) =
   
 proc del*[A, B](t: var TTable[A, B], key: A) =
   ## deletes `key` from hash table `t`.
-  var index = rawGet(t, key)
+  let index = rawGet(t, key)
   if index >= 0:
     t.data[index].slot = seDeleted
     dec(t.counter)
