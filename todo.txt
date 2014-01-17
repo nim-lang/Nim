@@ -1,6 +1,7 @@
 version 0.9.4
 =============
 
+- ``--gc:none`` should complain about when you use the GC
 - ensure (ref T)(a, b) works as a type conversion and type constructor
 - Aporia doesn't compile under devel
 - document new templating symbol binding rules
