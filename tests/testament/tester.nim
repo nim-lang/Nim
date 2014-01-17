@@ -22,7 +22,9 @@ const
 Command:
   all                         run all tests
   c|category <category>       run all the tests of a certain category
-  html                        generate $1 from the database
+  html [commit]               generate $1 from the database; uses the latest
+                              commit or a specific one (use -1 for the commit
+                              before latest etc)
 Arguments:
   arguments are passed to the compiler
 Options:
@@ -254,7 +256,9 @@ proc main() =
     p.next
     processCategory(r, cat, p.cmdLineRest.string)
   of "html":
-    generateHtml(resultsFile)
+    var commit = 0
+    discard parseInt(p.cmdLineRest.string, commit)
+    generateHtml(resultsFile, commit)
   else:
     quit usage
 

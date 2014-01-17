@@ -49,10 +49,10 @@ proc createDb() =
   #  """, [])
 
 type
-  MachineId* = distinct int64
+  MachineId = distinct int64
   CommitId = distinct int64
 
-proc `$`*(id: MachineId): string {.borrow.}
+proc `$`(id: MachineId): string {.borrow.}
 proc `$`(id: CommitId): string {.borrow.}
 
 var
@@ -61,7 +61,7 @@ var
 
 proc `()`(cmd: string{lit}): string = cmd.execProcess.string.strip
 
-proc getMachine*: MachineId =
+proc getMachine: MachineId =
   var name = "hostname"()
   if name.len == 0:
     name = when defined(posix): getenv"HOSTNAME".string
