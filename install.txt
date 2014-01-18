@@ -62,3 +62,9 @@ Currently, the following C compilers are supported under Windows:
   | http://www.digitalmars.com/download/freecompiler.html
 
 However, most testing is done with GCC.
+
+Bootstrapping from Github
+-------------------------
+
+Take a look at the readme file on github `here <https://github.com/Araq/Nimrod#readme>`_
+for instructions.

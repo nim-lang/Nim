@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -249,10 +249,13 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     expectArg(switch, arg, pass, info)
     addPath(processPath(arg), info)
   of "babelpath":
-    if pass in {passCmd2, passPP}:
+    if pass in {passCmd2, passPP} and not options.gNoBabelPath:
       expectArg(switch, arg, pass, info)
       let path = processPath(arg, notRelativeToProj=true)
-      babelPath(path, info)
+      babelpath(path, info)
+  of "nobabelpath":
+    expectNoArg(switch, arg, pass, info)
+    options.gNoBabelPath = true
   of "excludepath":
     expectArg(switch, arg, pass, info)
     let path = processPath(arg)
