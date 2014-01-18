@@ -2708,7 +2708,23 @@ proc locals*(): TObject {.magic: "Locals", noSideEffect.} =
   ## in the current scope. This is quite fast as it does not rely
   ## on any debug or runtime information. Note that in constrast to what
   ## the official signature says, the return type is not ``TObject`` but a
-  ## tuple of a structure that depends on the current scope.
+  ## tuple of a structure that depends on the current scope. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   proc testLocals() =
+  ##     var
+  ##       a = "something"
+  ##       b = 4
+  ##       c = locals()
+  ##       d = "super!"
+  ##
+  ##     b = 1
+  ##     for name, value in fieldPairs(c):
+  ##       echo "name ", name, " with value ", value
+  ##     echo "B is ", b
+  ##   # -> name a with value something
+  ##   # -> name b with value 4
+  ##   # -> B is 1
   discard
 
 when not defined(booting):
@@ -2719,4 +2735,3 @@ when not defined(booting):
 
   template isStatic*(x): expr = compiles(static(x))
     # checks whether `x` is a value known at compile-time
-

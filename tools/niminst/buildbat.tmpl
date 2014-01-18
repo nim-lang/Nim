@@ -17,8 +17,8 @@ REM call the compiler:
 #    var linkCmd = ""
 #    for ff in items(c.cfiles[winIndex][cpuIndex]):
 #      let f = ff.toWin
-ECHO %CC% %COMP_FLAGS% -Inimcache -c ?{f} -o ?{changeFileExt(f, "o")}
-%CC% %COMP_FLAGS% -Inimcache -c ?{f} -o ?{changeFileExt(f, "o")}
+ECHO %CC% %COMP_FLAGS% -Ic_code -c ?{f} -o ?{changeFileExt(f, "o")}
+%CC% %COMP_FLAGS% -Ic_code -c ?{f} -o ?{changeFileExt(f, "o")}
 #      linkCmd.add(" " & changeFileExt(f, "o"))
 #    end for
 
