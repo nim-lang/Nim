@@ -274,6 +274,12 @@ proc CRYPTO_malloc_init*() =
   when not defined(windows):
     CRYPTO_set_mem_functions(alloc, realloc, dealloc)
 
+proc SSL_CTX_ctrl*(ctx: PSSL_CTX, cmd: cInt, larg: int, parg: Pointer): int{.
+  cdecl, dynlib: DLLSSLName, importc.}
+
+proc SSLCTXSetMode*(ctx: PSSL_CTX, mode: int): int = 
+  Result = SSL_CTX_ctrl(ctx, SSL_CTRL_MODE, mode, nil)
+
 when True:
   nil
 else:
@@ -288,7 +294,6 @@ else:
   proc SslCTXCtrl*(ctx: PSSL_CTX, cmd: cInt, larg: int, parg: Pointer): int{.
       cdecl, dynlib: DLLSSLName, importc.}
 
-  proc SSLCTXSetMode*(ctx: PSSL_CTX, mode: int): int
   proc SSLSetMode*(s: PSSL, mode: int): int
   proc SSLCTXGetMode*(ctx: PSSL_CTX): int
   proc SSLGetMode*(s: PSSL): int
@@ -416,9 +421,6 @@ else:
   proc DESecbencrypt*(Input: des_cblock, output: des_cblock, ks: des_key_schedule, 
                       enc: cInt){.cdecl, dynlib: DLLUtilName, importc.}
   # implementation
-
-  proc SSLCTXSetMode(ctx: PSSL_CTX, mode: int): int = 
-    Result = SslCTXCtrl(ctx, SSL_CTRL_MODE, mode, nil)
 
   proc SSLSetMode(s: PSSL, mode: int): int = 
     Result = SSLctrl(s, SSL_CTRL_MODE, mode, nil)
