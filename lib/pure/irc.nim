@@ -345,8 +345,8 @@ proc poll*(irc: PIRC, ev: var TIRCEvent,
     ev.typ = EvDisconnected
   var line = TaintedString""
   var socks = @[irc.sock]
-  var ret = socks.select(timeout)
-  if socks.len() == 0 and ret != 0:
+  discard socks.select(timeout)
+  if socks.len() != 0:
     irc.sock.readLine(line)
     ev = irc.processLine(line.string)
     result = true

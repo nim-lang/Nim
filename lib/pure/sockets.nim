@@ -928,7 +928,7 @@ proc pruneSocketSet(s: var seq[TSocket], fd: var TFdSet) =
   var i = 0
   var L = s.len
   while i < L:
-    if FD_ISSET(s[i].fd, fd) != 0'i32:
+    if FD_ISSET(s[i].fd, fd) == 0'i32:
       s[i] = s[L-1]
       dec(L)
     else:
