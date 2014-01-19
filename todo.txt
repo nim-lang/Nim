@@ -1,13 +1,12 @@
 version 0.9.4
 =============
 
-- ``--gc:none`` should complain about when you use the GC
-- ensure (ref T)(a, b) works as a type conversion and type constructor
-- Aporia doesn't compile under devel
-- document new templating symbol binding rules
-- make '--implicitStatic:on' the default
 - test&finish first class iterators:
   * nested iterators
+- ``--gc:none`` should complain about when you use the GC
+- ensure (ref T)(a, b) works as a type conversion and type constructor
+- document new templating symbol binding rules
+- make '--implicitStatic:on' the default
 
 - special rule for ``[]=``
 - ``=`` should be overloadable; requires specialization for ``=``; general
@@ -34,7 +33,6 @@ Bugs
 - blocks can "export" an identifier but the CCG generates {} for them ...
 - osproc execProcesses can deadlock if all processes fail (as experienced
   in c++ mode)
-- result = result shr 8 for the "system()" wrapper
 
 
 version 0.9.x

@@ -28,7 +28,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo)
 
 const
   HelpMessage = "Nimrod Compiler Version $1 (" & CompileDate & ") [$2: $3]\n" &
-      "Copyright (c) 2004-2013 by Andreas Rumpf\n"
+      "Copyright (c) 2006-2014 by Andreas Rumpf\n"
 
 const 
   Usage = slurp"doc/basicopt.txt".replace("//", "")

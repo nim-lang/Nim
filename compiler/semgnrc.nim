@@ -103,7 +103,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     # not work. Copying the symbol does not work either because we're already
     # the owner of the symbol! What we need to do is to copy the symbol
     # in the generic instantiation process...
-    nil
+    discard
   of nkBind:
     result = semGenericStmt(c, n.sons[0], flags+{withinBind}, ctx)
   of nkMixinStmt:
@@ -271,7 +271,7 @@ proc semGenericStmt(c: PContext, n: PNode,
         else: illFormedAst(n)
         addDecl(c, newSymS(skUnknown, getIdentNode(a.sons[i]), c))
   of nkObjectTy, nkTupleTy: 
-    nil
+    discard
   of nkFormalParams: 
     checkMinSonsLen(n, 1)
     if n.sons[0].kind != nkEmpty: 
@@ -304,7 +304,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     else: body = n.sons[bodyPos]
     n.sons[bodyPos] = semGenericStmtScope(c, body, flags, ctx)
     closeScope(c)
-  of nkPragma, nkPragmaExpr: nil
+  of nkPragma, nkPragmaExpr: discard
   of nkExprColonExpr, nkExprEqExpr:
     checkMinSonsLen(n, 2)
     result.sons[1] = semGenericStmt(c, n.sons[1], flags, ctx)

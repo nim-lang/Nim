@@ -160,7 +160,7 @@ proc writeAccess(c: PProcCtx, n: PNode, owner: TThreadOwner) =
     # we could not backtrack to a concrete symbol, but that's fine:
     var lastOwner = analyse(c, n)
     case lastOwner
-    of toNil: nil # fine, toNil can be overwritten
+    of toNil: discard # fine, toNil can be overwritten
     of toVoid, toUndefined: internalError(n.info, "writeAccess")
     of toTheirs: message(n.info, warnWriteToForeignHeap)
     of toMine:
@@ -369,7 +369,7 @@ proc analyse(c: PProcCtx, n: PNode): TThreadOwner =
     result = toMine
   of nkAsmStmt, nkPragma, nkIteratorDef, nkProcDef, nkMethodDef,
      nkConverterDef, nkMacroDef, nkTemplateDef,
-     nkGotoState, nkState, nkBreakState, nkType:
+     nkGotoState, nkState, nkBreakState, nkType, nkIdent:
       result = toVoid
   of nkExprColonExpr:
     result = analyse(c, n.sons[1])
