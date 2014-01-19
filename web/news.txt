@@ -38,6 +38,8 @@ Changes affecting backwards compatibility
 - ``macros.dumpTree`` and ``macros.dumpLisp`` have been made ``immediate``,
   ``dumpTreeImm`` and ``dumpLispImm`` are now deprecated.
 - The ``nil`` statement has been deprecated, use an empty ``discard`` instead.
+- ``sockets.select`` now prunes sockets that are **not** ready from the list
+  of sockets given to it.
 
 
 Compiler Additions
@@ -54,6 +56,7 @@ Compiler Additions
 - The old evaluation engine has been replaced by a proper register based
   virtual machine. This fixes numerous bugs for ``nimrod i`` and for macro
   evaluation.
+- ``--gc:none`` produces warnings when code uses the GC.
 
 
 Language Additions

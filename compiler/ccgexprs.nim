@@ -847,6 +847,9 @@ proc genEcho(p: BProc, n: PNode) =
   linefmt(p, cpsStmts, "printf($1$2);$n",
           makeCString(repeatStr(n.len-1, "%s") & tnl), args)
 
+proc gcUsage(n: PNode) =
+  if gSelectedGC == gcNone: message(n.info, warnGcMem, n.renderTree)
+
 proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
   #   <Nimrod code>
   #   s = 'Hello ' & name & ', how do you feel?' & 'z'
@@ -888,6 +891,7 @@ proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
     keepAlive(p, tmp)
   else:
     genAssignment(p, d, tmp, {needToKeepAlive}) # no need for deep copying
+  gcUsage(e)
 
 proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
   #  <Nimrod code>
@@ -925,6 +929,7 @@ proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
           rdLoc(dest), lens, toRope(L))
   keepAlive(p, dest)
   app(p.s(cpsStmts), appends)
+  gcUsage(e)
 
 proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
   # seq &= x  -->
@@ -945,6 +950,7 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
   initLoc(dest, locExpr, b.t, OnHeap)
   dest.r = rfmt(nil, "$1->data[$1->$2-1]", rdLoc(a), lenField())
   genAssignment(p, dest, b, {needToCopy, afDestIsNil})
+  gcUsage(e)
 
 proc genReset(p: BProc, n: PNode) = 
   var a: TLoc
@@ -987,6 +993,7 @@ proc genNew(p: BProc, e: PNode) =
     rawGenNew(p, a, se.rdLoc)
   else:
     rawGenNew(p, a, nil)
+  gcUsage(e)
 
 proc genNewSeqAux(p: BProc, dest: TLoc, length: PRope) =
   let seqtype = skipTypes(dest.t, abstractVarRange)
@@ -1010,6 +1017,7 @@ proc genNewSeq(p: BProc, e: PNode) =
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], b)
   genNewSeqAux(p, a, b.rdLoc)
+  gcUsage(e)
   
 proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   var tmp: TLoc
@@ -1021,6 +1029,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     rawGenNew(p, tmp, nil)
     t = t.sons[0].skipTypes(abstractInst)
     r = ropef("(*$1)", r)
+    gcUsage(e)
   discard getTypeDesc(p.module, t)
   for i in 1 .. <e.len:
     let it = e.sons[i]
@@ -1059,6 +1068,7 @@ proc genSeqConstr(p: BProc, t: PNode, d: var TLoc) =
     arr.r = rfmt(nil, "$1->data[$2]", rdLoc(d), intLiteral(i))
     arr.s = OnHeap            # we know that sequences are on the heap
     expr(p, t.sons[i], arr)
+  gcUsage(t)
 
 proc genArrToSeq(p: BProc, t: PNode, d: var TLoc) =
   var elem, a, arr: TLoc
@@ -1099,6 +1109,7 @@ proc genNewFinalize(p: BProc, e: PNode) =
   genAssignment(p, a, b, {needToKeepAlive})  # set the object type:
   bt = skipTypes(refType.sons[0], abstractRange)
   genObjectInit(p, cpsStmts, bt, a, false)
+  gcUsage(e)
 
 proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
   var a: TLoc
@@ -1176,6 +1187,7 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
   else:
     putIntoDest(p, d, e.typ, ropecg(p.module, "#reprAny($1, $2)",
                                    [addrLoc(a), genTypeInfo(p.module, t)]))
+  gcUsage(e)
 
 proc genGetTypeInfo(p: BProc, e: PNode, d: var TLoc) =
   var t = skipTypes(e.sons[1].typ, abstractVarRange)
@@ -1187,6 +1199,7 @@ proc genDollar(p: BProc, n: PNode, d: var TLoc, frmt: string) =
   a.r = ropecg(p.module, frmt, [rdLoc(a)])
   if d.k == locNone: getTemp(p, n.typ, d)
   genAssignment(p, d, a, {needToKeepAlive})
+  gcUsage(n)
 
 proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   var a = e.sons[1]
@@ -1227,10 +1240,12 @@ proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
       rdLoc(a), rdLoc(b), getTypeDesc(p.module, t),
       getTypeDesc(p.module, t.sons[0])])
   keepAlive(p, a)
+  gcUsage(e)
 
 proc genSetLengthStr(p: BProc, e: PNode, d: var TLoc) =
   binaryStmt(p, e, d, "$1 = #setLengthStr($1, $2);$n")
   keepAlive(p, d)
+  gcUsage(e)
 
 proc genSwap(p: BProc, e: PNode, d: var TLoc) =
   # swap(a, b) -->
@@ -1462,6 +1477,7 @@ proc convCStrToStr(p: BProc, n: PNode, d: var TLoc) =
   initLocExpr(p, n.sons[0], a)
   putIntoDest(p, d, skipTypes(n.typ, abstractVar),
               ropecg(p.module, "#cstrToNimstr($1)", [rdLoc(a)]))
+  gcUsage(n)
 
 proc genStrEquals(p: BProc, e: PNode, d: var TLoc) =
   var x: TLoc
