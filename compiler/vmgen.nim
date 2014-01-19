@@ -953,7 +953,7 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
         c.gABx(le, whichAsgnOpc(le, opcWrGlobal), tmp, s.position)
     else:
       internalAssert s.position > 0 or (s.position == 0 and
-                                        s.kind in {skParam, skResult})
+                                        s.kind in {skParam,skResult,skForVar})
       var dest: TRegister = s.position + ord(s.kind == skParam)
       gen(c, ri, dest)
   else:
@@ -1014,7 +1014,8 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest) =
     else:
       c.gABx(n, opcLdGlobal, dest, s.position)
   else:
-    if s.position > 0 or (s.position == 0 and s.kind in {skParam, skResult}):
+    if s.position > 0 or (s.position == 0 and
+                          s.kind in {skParam,skResult,skForVar}):
       if dest < 0:
         dest = s.position + ord(s.kind == skParam)
       else:

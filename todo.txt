@@ -3,7 +3,6 @@ version 0.9.4
 
 - test&finish first class iterators:
   * nested iterators
-- ``--gc:none`` should complain about when you use the GC
 - ensure (ref T)(a, b) works as a type conversion and type constructor
 - document new templating symbol binding rules
 - make '--implicitStatic:on' the default
