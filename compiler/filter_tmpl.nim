@@ -55,7 +55,7 @@ proc scanPar(p: var TTmplParser, d: int) =
     of ']': dec(p.bracket)
     of '{': inc(p.curly)
     of '}': dec(p.curly)
-    else: nil
+    else: discard
     inc(i)
 
 proc withInExpr(p: TTmplParser): bool {.inline.} = 

@@ -345,7 +345,7 @@ proc canFormAcycleAux(marker: var TIntSet, typ: PType, startId: int): bool =
     #  # damn inheritance may introduce cycles:
     #  result = true
   of tyProc: result = typ.callConv == ccClosure
-  else: nil
+  else: discard
 
 proc canFormAcycle(typ: PType): bool =
   var marker = initIntSet()
@@ -432,10 +432,10 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     if t.len == 0: result = "typedesc"
     else: result = "typedesc[" & typeToString(t.sons[0]) & "]"
   of tyStatic:
-    InternalAssert t.len > 0
+    internalAssert t.len > 0
     result = "static[" & typeToString(t.sons[0]) & "]"
   of tyTypeClass:
-    InternalAssert t.sym != nil and t.sym.owner != nil
+    internalAssert t.sym != nil and t.sym.owner != nil
     return t.sym.owner.name.s
   of tyBuiltInTypeClass:
     return "TypeClass"
@@ -446,7 +446,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   of tyNot:
     result = "not " & typeToString(t.sons[0])
   of tyExpr:
-    InternalAssert t.len == 0
+    internalAssert t.len == 0
     result = "expr"
   of tyFromExpr:
     result = renderTree(t.n)

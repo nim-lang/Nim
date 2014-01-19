@@ -27,7 +27,7 @@ proc close(p: PPassContext, n: PNode): PNode =
     try:
       generateIndex(g.doc)
     except EIO:
-      nil
+      discard
 
 proc processNode(c: PPassContext, n: PNode): PNode = 
   result = n
@@ -46,4 +46,4 @@ proc myOpen(module: PSym): PPassContext =
 const docgen2Pass* = makePass(open = myOpen, process = processNode, close = close)
 
 proc finishDoc2Pass*(project: string) = 
-  nil
+  discard

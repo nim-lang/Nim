@@ -73,7 +73,7 @@ proc initGeneralTokenizer*(g: var TGeneralTokenizer, buf: string) =
   g.pos = pos
 
 proc deinitGeneralTokenizer*(g: var TGeneralTokenizer) = 
-  nil
+  discard
 
 proc nimGetKeyword(id: string): TTokenClass = 
   for k in nimrodKeywords:
@@ -102,7 +102,7 @@ proc nimNumberPostfix(g: var TGeneralTokenizer, position: int): int =
       if g.buf[pos] in {'0'..'9'}: inc(pos)
       if g.buf[pos] in {'0'..'9'}: inc(pos)
     else: 
-      nil
+      discard
   result = pos
 
 proc nimNumber(g: var TGeneralTokenizer, position: int): int = 

@@ -1029,11 +1029,7 @@ when not defined(useNimRtl):
         dec(gch.recGcLock)
 
   proc GC_setStrategy(strategy: TGC_Strategy) =
-    case strategy
-    of gcThroughput: nil
-    of gcResponsiveness: nil
-    of gcOptimizeSpace: nil
-    of gcOptimizeTime: nil
+    discard
 
   proc GC_enableMarkAndSweep() =
     gch.cycleThreshold = InitialCycleThreshold

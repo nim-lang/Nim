@@ -193,7 +193,7 @@ proc transformConstSection(c: PTransf, v: PNode): PTransNode =
 
 proc hasContinue(n: PNode): bool = 
   case n.kind
-  of nkEmpty..nkNilLit, nkForStmt, nkParForStmt, nkWhileStmt: nil
+  of nkEmpty..nkNilLit, nkForStmt, nkParForStmt, nkWhileStmt: discard
   of nkContinueStmt: result = true
   else: 
     for i in countup(0, sonsLen(n) - 1): 
@@ -536,7 +536,7 @@ proc getMergeOp(n: PNode): PSym =
     if (n.sons[0].kind == nkSym) and (n.sons[0].sym.kind == skProc) and
         (sfMerge in n.sons[0].sym.flags): 
       result = n.sons[0].sym
-  else: nil
+  else: discard
 
 proc flattenTreeAux(d, a: PNode, op: PSym) = 
   var op2 = getMergeOp(a)

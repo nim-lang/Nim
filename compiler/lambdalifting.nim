@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -275,7 +275,7 @@ proc captureVar(o: POuterContext, i: PInnerContext, local: PSym,
   addCapturedVar(it, local)
   if it == e:
     # common case: local directly in current environment:
-    nil
+    discard
   else:
     # it's in some upper environment:
     access = indirectAccess(access, addDep(e, it, i.fn), info)
@@ -314,7 +314,7 @@ proc gatherVars(o: POuterContext, i: PInnerContext, n: PNode) =
       if o.currentEnv != env:
         discard addDep(o.currentEnv, env, i.fn)
         internalError(n.info, "too complex environment handling required")
-  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: nil
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: discard
   else:
     for k in countup(0, sonsLen(n) - 1): 
       gatherVars(o, i, n.sons[k])
@@ -351,7 +351,7 @@ proc makeClosure(prc, env: PSym, info: TLineInfo): PNode =
 
 proc transformInnerProc(o: POuterContext, i: PInnerContext, n: PNode): PNode =
   case n.kind
-  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: nil
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: discard
   of nkSym:
     let s = n.sym
     if s == i.fn: 
@@ -371,7 +371,7 @@ proc transformInnerProc(o: POuterContext, i: PInnerContext, n: PNode): PNode =
   of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef, nkTemplateDef,
      nkIteratorDef:
     # don't recurse here:
-    nil
+    discard
   else:
     for j in countup(0, sonsLen(n) - 1):
       let x = transformInnerProc(o, i, n.sons[j])
@@ -386,7 +386,7 @@ proc searchForInnerProcs(o: POuterContext, n: PNode) =
   if n == nil: return
   case n.kind
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: 
-    nil
+    discard
   of nkSym:
     if isInnerProc(n.sym, o.fn) and not containsOrIncl(o.processed, n.sym.id):
       var inner = newInnerContext(n.sym)
@@ -422,7 +422,7 @@ proc searchForInnerProcs(o: POuterContext, n: PNode) =
     # counts, not the block where it is captured!
     for i in countup(0, sonsLen(n) - 1):
       var it = n.sons[i]
-      if it.kind == nkCommentStmt: nil
+      if it.kind == nkCommentStmt: discard
       elif it.kind == nkIdentDefs:
         var L = sonsLen(it)
         if it.sons[0].kind != nkSym: internalError(it.info, "transformOuter")
@@ -441,7 +441,7 @@ proc searchForInnerProcs(o: POuterContext, n: PNode) =
      nkIteratorDef:
     # don't recurse here:
     # XXX recurse here and setup 'up' pointers
-    nil
+    discard
   else:
     for i in countup(0, sonsLen(n) - 1):
       searchForInnerProcs(o, n.sons[i])
@@ -500,7 +500,7 @@ proc generateClosureCreation(o: POuterContext, scope: PEnv): PNode =
 proc transformOuterProc(o: POuterContext, n: PNode): PNode =
   if n == nil: return nil
   case n.kind
-  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: nil
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: discard
   of nkSym:
     var local = n.sym
     var closure = PEnv(idTableGet(o.lambdasToEnv, local))
@@ -540,7 +540,7 @@ proc transformOuterProc(o: POuterContext, n: PNode): PNode =
   of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef, nkTemplateDef, 
      nkIteratorDef: 
     # don't recurse here:
-    nil
+    discard
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     let x = transformOuterProc(o, n.sons[1])
     if x != nil: n.sons[1] = x
@@ -625,7 +625,7 @@ proc transfIterBody(c: var TIterContext, n: PNode): PNode =
     if interestingIterVar(s) and c.iter.id == s.owner.id:
       if not containsOrIncl(c.capturedVars, s.id): addField(c.tup, s)
       result = indirectAccess(newSymNode(c.closureParam), s, n.info)
-  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: nil
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: discard
   of nkYieldStmt:
     inc c.state.typ.n.sons[1].intVal
     let stateNo = c.state.typ.n.sons[1].intVal

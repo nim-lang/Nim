@@ -66,7 +66,7 @@ proc sameMethodBucket(a, b: PSym): bool =
     if sameType(aa, bb) or
         (aa.kind == tyObject) and (bb.kind == tyObject) and
         (inheritanceDiff(bb, aa) < 0):
-      nil
+      discard
     else:
       return
   result = true

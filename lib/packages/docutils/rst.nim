@@ -535,7 +535,7 @@ proc match(p: TRstParser, start: int, expr: string): bool =
         case p.tok[j].symbol[0]
         of 'a'..'z', 'A'..'Z': result = len(p.tok[j].symbol) == 1
         of '0'..'9': result = allCharsInSet(p.tok[j].symbol, {'0'..'9'})
-        else: nil
+        else: discard
     else: 
       var c = expr[i]
       var length = 0
@@ -640,7 +640,7 @@ proc parseUrl(p: var TRstParser, father: PRstNode) =
     var n = newRstNode(rnStandaloneHyperlink)
     while true: 
       case p.tok[p.idx].kind
-      of tkWord, tkAdornment, tkOther: nil
+      of tkWord, tkAdornment, tkOther: discard
       of tkPunct: 
         if p.tok[p.idx+1].kind notin {tkWord, tkAdornment, tkOther, tkPunct}:
           break
@@ -806,7 +806,7 @@ proc parseInline(p: var TRstParser, father: PRstNode) =
         return
     add(father, newLeaf(p))
     inc(p.idx)
-  else: nil
+  else: discard
   
 proc getDirective(p: var TRstParser): string = 
   if p.tok[p.idx].kind == tkWhite and p.tok[p.idx+1].kind == tkWord: 
@@ -1339,7 +1339,7 @@ proc parseSection(p: var TRstParser, result: PRstNode) =
     of rnDirective: a = parseDotDot(p)
     of rnEnumList: a = parseEnumList(p)
     of rnLeaf: rstMessage(p, meNewSectionExpected)
-    of rnParagraph: nil
+    of rnParagraph: discard
     of rnDefList: a = parseDefinitionList(p)
     of rnFieldList: 
       if p.idx > 0: dec(p.idx)
@@ -1351,7 +1351,7 @@ proc parseSection(p: var TRstParser, result: PRstNode) =
     of rnOptionList: a = parseOptionList(p)
     else:
       #InternalError("rst.parseSection()")
-      nil
+      discard
     if a == nil and k != rnDirective: 
       a = newRstNode(rnParagraph)
       parseParagraph(p, a)
@@ -1624,7 +1624,7 @@ proc resolveSubs(p: var TRstParser, n: PRstNode): PRstNode =
       add(result, n)
       add(result, y)
   of rnLeaf: 
-    nil
+    discard
   of rnContents: 
     p.hasToc = true
   else: 

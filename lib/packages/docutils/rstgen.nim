@@ -165,7 +165,7 @@ proc nextSplitPoint*(s: string, start: int): int =
     of 'a'..'z': 
       if result + 1 < len(s) + 0: 
         if s[result + 1] in {'A'..'Z'}: return 
-    else: nil
+    else: discard
     inc(result)
   dec(result)                 # last valid index
   

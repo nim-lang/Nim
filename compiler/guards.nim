@@ -439,7 +439,7 @@ proc impliesLe(fact, x, c: PNode): TImplication =
         if leValue(c, fact.sons[1].pred): result = impNo
 
   of mNot, mOr, mAnd: internalError(x.info, "impliesLe")
-  else: nil
+  else: discard
 
 proc impliesLt(fact, x, c: PNode): TImplication =
   # x < 3  same as x <= 2:

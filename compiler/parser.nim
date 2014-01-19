@@ -1817,7 +1817,7 @@ proc parseStmt(p: var TParser): PNode =
     withInd(p):
       while true:
         if p.tok.indent == p.currInd:
-          nil
+          discard
         elif p.tok.tokType == tkSemiColon:
           getTok(p)
           if p.tok.indent < 0 or p.tok.indent == p.currInd: discard

@@ -25,7 +25,7 @@ proc mangleField(name: string): string =
     of 'A'..'Z': 
       add(result, chr(ord(name[i]) - ord('A') + ord('a')))
     of '_': 
-      nil
+      discard
     of 'a'..'z', '0'..'9': 
       add(result, name[i])
     else: 
@@ -48,7 +48,7 @@ proc mangle(name: string): string =
     of 'A'..'Z': 
       add(result, chr(ord(name[i]) - ord('A') + ord('a')))
     of '_': 
-      nil
+      discard
     of 'a'..'z', '0'..'9': 
       add(result, name[i])
     else: 

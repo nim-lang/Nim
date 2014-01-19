@@ -1333,7 +1333,7 @@ Examples:
     # has default calling convention
     echo "x: ", mouseX, " y: ", mouseY
   
-  proc setOnMouseMove(mouseMoveEvent: TOnMouseMove) = nil
+  proc setOnMouseMove(mouseMoveEvent: TOnMouseMove) = discard
   
   # ok, 'onMouseMove' has the default calling convention, which is compatible
   # to 'closure':

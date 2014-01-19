@@ -113,7 +113,7 @@ type
     warnDifferentHeaps, warnWriteToForeignHeap, warnImplicitClosure,
     warnEachIdentIsTuple, warnShadowIdent, 
     warnProveInit, warnProveField, warnProveIndex,
-    warnUninit, warnUser,
+    warnUninit, warnGcMem, warnUser,
     hintSuccess, hintSuccessX,
     hintLineTooLong, hintXDeclaredButNotUsed, hintConvToBaseNotNeeded,
     hintConvFromXtoItselfNotNeeded, hintExprAlwaysX, hintQuitCalled,
@@ -370,6 +370,7 @@ const
     warnProveField: "cannot prove that field '$1' is accessible [ProveField]",
     warnProveIndex: "cannot prove index '$1' is valid [ProveIndex]",
     warnUninit: "'$1' might not have been initialized [Uninit]",
+    warnGcMem: "'$1' uses GC'ed memory [GcMem]",
     warnUser: "$1 [User]", 
     hintSuccess: "operation successful [Success]", 
     hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#) [SuccessX]", 
@@ -389,7 +390,7 @@ const
     hintUser: "$1 [User]"]
 
 const
-  WarningsToStr*: array[0..23, string] = ["CannotOpenFile", "OctalEscape", 
+  WarningsToStr*: array[0..24, string] = ["CannotOpenFile", "OctalEscape", 
     "XIsNeverRead", "XmightNotBeenInit",
     "Deprecated", "ConfigDeprecated",
     "SmallLshouldNotBeUsed", "UnknownMagic", 
@@ -397,7 +398,7 @@ const
     "CommentXIgnored", "NilStmt",
     "AnalysisLoophole", "DifferentHeaps", "WriteToForeignHeap",
     "ImplicitClosure", "EachIdentIsTuple", "ShadowIdent", 
-    "ProveInit", "ProveField", "ProveIndex", "Uninit", "User"]
+    "ProveInit", "ProveField", "ProveIndex", "Uninit", "GcMem", "User"]
 
   HintsToStr*: array[0..15, string] = ["Success", "SuccessX", "LineTooLong", 
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded", 
@@ -856,6 +857,5 @@ ropes.errorHandler = proc (err: TRopesError, msg: string, useWarning: bool) =
   of rTokenTooLong:
     internalError("ropes: token too long: " & msg)
   of rCannotOpenFile:
-    rawMessage(if useWarning: warnCannotOpenFile else: errCannotOpenFile,
-               msg)
- 
+    rawMessage(if useWarning: warnCannotOpenFile else: errCannotOpenFile, msg)
+

@@ -698,7 +698,7 @@ proc format*(info: TTimeInfo, f: string): string =
       of "ZZZ":
         result.add(info.tzname)
       of "":
-        nil # Do nothing.
+        discard
       else:
         raise newException(EInvalidValue, "Invalid format string: " & currentF)
       

@@ -202,7 +202,7 @@ proc asgnComplexity(n: PNode): int =
     of nkRecList:
       for t in items(n):
         result += asgnComplexity(t)
-    else: nil
+    else: discard
 
 proc optAsgnLoc(a: TLoc, t: PType, field: PRope): TLoc =
   result.k = locField
@@ -228,7 +228,7 @@ proc genOptAsgnObject(p: BProc, dest, src: TLoc, flags: TAssignmentFlags,
                      optAsgnLoc(src, field.typ, field.loc.r), flags)
   of nkRecList:
     for child in items(t): genOptAsgnObject(p, dest, src, flags, child)
-  else: nil
+  else: discard
 
 proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   # Consider: 
@@ -1901,7 +1901,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkClosure: genClosure(p, n, d)
   of nkMetaNode: expr(p, n.sons[0], d)
 
-  of nkEmpty:  nil
+  of nkEmpty: discard
   of nkWhileStmt: genWhileStmt(p, n)
   of nkVarSection, nkLetSection: genVarStmt(p, n)
   of nkConstSection: genConstStmt(p, n)
@@ -1931,7 +1931,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkCommentStmt, nkIteratorDef, nkIncludeStmt, 
      nkImportStmt, nkImportExceptStmt, nkExportStmt, nkExportExceptStmt, 
      nkFromStmt, nkTemplateDef, nkMacroDef: 
-    nil
+    discard
   of nkPragma: genPragma(p, n)
   of nkProcDef, nkMethodDef, nkConverterDef: 
     if (n.sons[genericParamsPos].kind == nkEmpty):

@@ -370,7 +370,7 @@ iterator interpolatedFragments*(s: string): tuple[kind: TInterpolatedKind,
           of '\0':
             raise newException(EInvalidValue, 
               "Expected closing '}': " & s[i..s.len])
-          else: nil
+          else: discard
           inc j
         inc i, 2 # skip ${
         kind = ikExpr

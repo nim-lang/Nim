@@ -236,7 +236,7 @@ proc containsNL(s: string): bool =
     of '\x0D', '\x0A': 
       return true
     else: 
-      nil
+      discard
   result = false
 
 proc pushCom(g: var TSrcGen, n: PNode) = 
@@ -487,7 +487,7 @@ proc hasCom(n: PNode): bool =
   result = false
   if n.comment != nil: return true
   case n.kind
-  of nkEmpty..nkNilLit: nil
+  of nkEmpty..nkNilLit: discard
   else: 
     for i in countup(0, sonsLen(n) - 1): 
       if hasCom(n.sons[i]): return true
@@ -769,7 +769,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   if n.comment != nil: pushCom(g, n)
   case n.kind                 # atoms:
   of nkTripleStrLit: putRawStr(g, tkTripleStrLit, n.strVal)
-  of nkEmpty: nil
+  of nkEmpty: discard
   of nkType: put(g, tkInvalid, atom(n))
   of nkSym, nkIdent: gident(g, n)
   of nkIntLit: put(g, tkIntLit, atom(n))
@@ -1273,7 +1273,7 @@ proc renderModule(n: PNode, filename: string,
     case n.sons[i].kind
     of nkTypeSection, nkConstSection, nkVarSection, nkLetSection,
        nkCommentStmt: putNL(g)
-    else: nil
+    else: discard
   gcoms(g)
   if optStdout in gGlobalOptions:
     write(stdout, g.buf)

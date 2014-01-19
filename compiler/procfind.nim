@@ -60,7 +60,7 @@ proc searchForProcOld*(c: PContext, scope: PScope, fn: PSym): PSym =
           localError(fn.info, errNotOverloadable, fn.name.s)
           return
         of paramsNotEqual:
-          nil
+          discard
       result = nextIdentIter(it, scope.symbols)
 
 proc searchForProcNew(c: PContext, scope: PScope, fn: PSym): PSym =

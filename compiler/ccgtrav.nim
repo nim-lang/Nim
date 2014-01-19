@@ -83,7 +83,7 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: PRope, typ: PType) =
     if typ.callConv == ccClosure:
       lineCg(p, cpsStmts, c.visitorFrmt, rfmt(nil, "$1.ClEnv", accessor))
   else:
-    nil
+    discard
 
 proc genTraverseProcSeq(c: var TTraversalClosure, accessor: PRope, typ: PType) =
   var p = c.p

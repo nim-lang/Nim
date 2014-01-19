@@ -1523,7 +1523,7 @@ proc skip*(socket: TSocket) {.tags: [FReadIO], deprecated.} =
   ## **Deprecated since version 0.9.2**: This function is not safe for use.
   const bufSize = 1000
   var buf = alloc(bufSize)
-  while recv(socket, buf, bufSize) == bufSize: nil
+  while recv(socket, buf, bufSize) == bufSize: discard
   dealloc(buf)
 
 proc skip*(socket: TSocket, size: int, timeout = -1) =

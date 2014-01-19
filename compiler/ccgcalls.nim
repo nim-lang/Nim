@@ -73,7 +73,7 @@ proc isInCurrentFrame(p: BProc, n: PNode): bool =
     result = false
   of nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
     result = isInCurrentFrame(p, n.sons[0])
-  else: nil
+  else: discard
 
 proc openArrayLoc(p: BProc, n: PNode): PRope =
   var a: TLoc

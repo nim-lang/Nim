@@ -40,7 +40,7 @@ proc canonKind(n: PNode): TNodeKind =
   of nkCallKinds: result = nkCall
   of nkStrLit..nkTripleStrLit: result = nkStrLit
   of nkFastAsgn: result = nkAsgn
-  else: nil
+  else: discard
 
 proc sameKinds(a, b: PNode): bool {.inline.} =
   result = a.kind == b.kind or a.canonKind == b.canonKind
@@ -267,7 +267,7 @@ proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
       var rs = result.sons[i]
       let param = params.sons[i].sym
       case whichAlias(param)
-      of aqNone: nil
+      of aqNone: discard
       of aqShouldAlias:
         # it suffices that it aliases for sure with *some* other param:
         var ok = false

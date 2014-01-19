@@ -329,7 +329,7 @@ when defined(Windows) and not defined(useNimRtl):
       handle: THandle
       atTheEnd: bool
 
-  proc hsClose(s: PStream) = nil # nothing to do here
+  proc hsClose(s: PStream) = discard # nothing to do here
   proc hsAtEnd(s: PStream): bool = return PFileHandleStream(s).atTheEnd
 
   proc hsReadData(s: PStream, buffer: pointer, bufLen: int): int =

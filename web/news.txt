@@ -3,7 +3,7 @@ News
 ====
 
 
-2013-XX-XX Version 0.9.4 released
+2014-XX-XX Version 0.9.4 released
 =================================
 
 
@@ -37,6 +37,7 @@ Changes affecting backwards compatibility
   passed to shell, instead of just adding double quotes.
 - ``macros.dumpTree`` and ``macros.dumpLisp`` have been made ``immediate``,
   ``dumpTreeImm`` and ``dumpLispImm`` are now deprecated.
+- The ``nil`` statement has been deprecated, use an empty ``discard`` instead.
 
 
 Compiler Additions
@@ -68,7 +69,7 @@ Language Additions
   fields at compile-time.
 - The overload resolution now supports ``static[T]`` params that must be
   evaluatable at compile-time.
-- Support for user-defined type classes have been added.
+- Support for user-defined type classes has been added.
 
 
 Tools improvements

@@ -573,7 +573,7 @@ proc process(c: PPassContext, n: PNode): PNode =
   of nkPragma: 
     addStmt(w, n)
   else: 
-    nil
+    discard
 
 proc myOpen(module: PSym): PPassContext =
   if module.id < 0: internalError("rodwrite: module ID not set")

@@ -626,7 +626,7 @@ proc len*(n: PJsonNode): int =
   case n.kind
   of JArray: result = n.elems.len
   of JObject: result = n.fields.len
-  else: nil
+  else: discard
 
 proc `[]`*(node: PJsonNode, name: string): PJsonNode =
   ## Gets a field from a `JObject`. Returns nil if the key is not found.
@@ -646,6 +646,7 @@ proc hasKey*(node: PJsonNode, key: string): bool =
   assert(node.kind == JObject)
   for k, item in items(node.fields):
     if k == key: return true
+
 proc existsKey*(node: PJsonNode, key: string): bool {.deprecated.} = node.hasKey(key)
   ## Deprecated for `hasKey`
 
