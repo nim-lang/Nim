@@ -119,7 +119,7 @@ proc next*(s: var TScgistate, timeout: int = -1): bool =
   ## request, if ``timeout`` is `-1` then this function will never time out.
   ## Returns `True` if a new request has been processed.
   var rsocks = @[s.server]
-  if select(rsocks, timeout) == 1 and rsocks.len == 0:
+  if select(rsocks, timeout) == 1 and rsocks.len == 1:
     new(s.client)
     accept(s.server, s.client)
     var L = 0

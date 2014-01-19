@@ -800,7 +800,7 @@ elif not defined(useNimRtl):
     var i = 0
     var L = s.len
     while i < L:
-      if FD_ISSET(cint(s[i].outHandle), fd) != 0'i32:
+      if FD_ISSET(cint(s[i].outHandle), fd) == 0'i32:
         s[i] = s[L-1]
         dec(L)
       else:
