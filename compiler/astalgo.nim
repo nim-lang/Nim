@@ -455,18 +455,18 @@ proc nextTry(h, maxHash: THash): THash =
   # generates each int in range(maxHash) exactly once (see any text on
   # random-number generation for proof).
   
-proc objectSetContains(t: TObjectSet, obj: PObject): bool = 
+proc objectSetContains(t: TObjectSet, obj: PObject): bool =
   # returns true whether n is in t
   var h: THash = hashNode(obj) and high(t.data) # start with real hash value
-  while t.data[h] != nil: 
-    if (t.data[h] == obj): 
+  while t.data[h] != nil:
+    if t.data[h] == obj:
       return true
     h = nextTry(h, high(t.data))
   result = false
 
-proc objectSetRawInsert(data: var TObjectSeq, obj: PObject) = 
+proc objectSetRawInsert(data: var TObjectSeq, obj: PObject) =
   var h: THash = hashNode(obj) and high(data)
-  while data[h] != nil: 
+  while data[h] != nil:
     assert(data[h] != obj)
     h = nextTry(h, high(data))
   assert(data[h] == nil)
@@ -475,7 +475,7 @@ proc objectSetRawInsert(data: var TObjectSeq, obj: PObject) =
 proc objectSetEnlarge(t: var TObjectSet) = 
   var n: TObjectSeq
   newSeq(n, len(t.data) * GrowthFactor)
-  for i in countup(0, high(t.data)): 
+  for i in countup(0, high(t.data)):
     if t.data[i] != nil: objectSetRawInsert(n, t.data[i])
   swap(t.data, n)
 
@@ -699,7 +699,7 @@ proc idTableRawGet(t: TIdTable, key: int): int =
   var h: THash
   h = key and high(t.data)    # start with real hash value
   while t.data[h].key != nil: 
-    if (t.data[h].key.id == key): 
+    if t.data[h].key.id == key:
       return h
     h = nextTry(h, high(t.data))
   result = - 1
