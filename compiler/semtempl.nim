@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -38,7 +38,7 @@ proc symBinding(n: PNode): TSymBinding =
       case whichKeyword(key.ident)
       of wGensym: return spGenSym
       of wInject: return spInject
-      else: nil
+      else: discard
 
 type
   TSymChoiceRule = enum
@@ -106,7 +106,7 @@ proc replaceIdentBySym(n: var PNode, s: PNode) =
 type
   TemplCtx {.pure, final.} = object
     c: PContext
-    toBind, toMixin: TIntSet
+    toBind, toMixin, toInject: TIntSet
     owner: PSym
 
 proc getIdentNode(c: var TemplCtx, n: PNode): PNode =
@@ -145,7 +145,18 @@ proc newGenSym(kind: TSymKind, n: PNode, c: var TemplCtx): PSym =
 
 proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
   # locals default to 'gensym':
-  if n.kind != nkPragmaExpr or symBinding(n.sons[1]) != spInject:
+  if n.kind == nkPragmaExpr and symBinding(n.sons[1]) == spInject:
+    # even if injected, don't produce a sym choice here:
+    #n = semTemplBody(c, n)
+    var x = n[0]
+    while true:
+      case x.kind
+      of nkPostfix: x = x[1]
+      of nkPragmaExpr: x = x[0]
+      of nkIdent: break
+      else: illFormedAst(x)
+    c.toInject.incl(x.ident.id)
+  else:
     let ident = getIdentNode(c, n)
     if not isTemplParam(c, ident):
       let local = newGenSym(k, ident, c)
@@ -153,8 +164,6 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
       replaceIdentBySym(n, newSymNode(local, n.info))
     else:
       replaceIdentBySym(n, ident)
-  else:
-    n = semTemplBody(c, n)
 
 proc semTemplSymbol(c: PContext, n: PNode, s: PSym): PNode = 
   incl(s.flags, sfUsed)
@@ -224,6 +233,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   result = n
   case n.kind
   of nkIdent:
+    if n.ident.id in c.toInject: return n
     let s = qualifiedLookUp(c.c, n, {})
     if s != nil:
       if s.owner == c.owner and s.kind == skParam:
@@ -247,7 +257,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   of nkMixinStmt:
     result = semMixinStmt(c.c, n, c.toMixin)
   of nkEmpty, nkSym..nkNilLit:
-    nil
+    discard
   of nkIfStmt:
     for i in countup(0, sonsLen(n)-1):
       var it = n.sons[i]
@@ -457,6 +467,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   var ctx: TemplCtx
   ctx.toBind = initIntSet()
   ctx.toMixin = initIntSet()
+  ctx.toInject = initIntSet()
   ctx.c = c
   ctx.owner = s
   if sfDirty in s.flags:
@@ -598,6 +609,7 @@ proc semPattern(c: PContext, n: PNode): PNode =
   var ctx: TemplCtx
   ctx.toBind = initIntSet()
   ctx.toMixin = initIntSet()
+  ctx.toInject = initIntSet()
   ctx.c = c
   ctx.owner = getCurrOwner()
   result = flattenStmts(semPatternBody(ctx, n))
