@@ -324,12 +324,12 @@ the compiler that for every other value nothing should be done:
   case n
   of 0..2, 4..7: echo("The number is in the set: {0, 1, 2, 4, 5, 6, 7}")
   of 3, 8: echo("The number is 3 or 8")
-  else: nil
+  else: discard
 
-The ``nil`` statement is a *do nothing* statement. The compiler knows that a
-case statement with an else part cannot fail and thus the error disappears. Note
-that it is impossible to cover all possible string values: that is why there is
-no such check for string cases.
+The empty ``discard`` statement is a *do nothing* statement. The compiler knows
+that a case statement with an else part cannot fail and thus the error 
+disappears. Note that it is impossible to cover all possible string values: 
+that is why there is no such check for string cases.
 
 In general the case statement is used for subrange types or enumerations where
 it is of great help that the compiler checks that you covered any possible

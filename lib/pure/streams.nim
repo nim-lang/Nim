@@ -281,7 +281,7 @@ proc newFileStream*(filename: string, mode: TFileMode): PFileStream =
 
 
 when true:
-  nil
+  discard
 else:
   type
     TFileHandle* = cint ## Operating system file handle

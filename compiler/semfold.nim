@@ -222,7 +222,7 @@ proc getIntervalType*(m: TMagic, n: PNode): PType =
     commutativeOp(min)
   of mMaxI, mMaxI64:
     commutativeOp(max)
-  else: nil
+  else: discard
   
 discard """
   mShlI, mShlI64,
@@ -546,7 +546,7 @@ proc foldArrayAccess(m: PSym, n: PNode): PNode =
     if (idx >= 0) and (idx < len(x.strVal)): 
       result.intVal = ord(x.strVal[int(idx)])
     elif idx == len(x.strVal): 
-      nil
+      discard
     else: 
       localError(n.info, errIndexOutOfBounds)
   else: discard

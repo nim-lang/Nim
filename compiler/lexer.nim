@@ -434,7 +434,7 @@ proc handleHexChar(L: var TLexer, xi: var int) =
   of 'A'..'F': 
     xi = (xi shl 4) or (ord(L.buf[L.bufpos]) - ord('A') + 10)
     inc(L.bufpos)
-  else: nil
+  else: discard
 
 proc handleDecChars(L: var TLexer, xi: var int) = 
   while L.buf[L.bufpos] in {'0'..'9'}: 

@@ -168,7 +168,7 @@ proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
       if not compareTypes(castDest, src, dcEqIgnoreDistinct):
         result = convNotLegal
     else:
-      nil
+      discard
 
 proc isCastable(dst, src: PType): bool = 
   #const
@@ -204,7 +204,7 @@ proc semConv(c: PContext, n: PNode): PNode =
   if not isSymChoice(op):
     let status = checkConvertible(c, result.typ, op.typ)
     case status
-    of convOK: nil
+    of convOK: discard
     of convNotNeedeed:
       message(n.info, hintConvFromXtoItselfNotNeeded, result.typ.typeToString)
     of convNotLegal:
@@ -397,7 +397,7 @@ proc changeType(n: PNode, newType: PType, check: bool) =
   of nkPar: 
     if newType.kind != tyTuple: 
       internalError(n.info, "changeType: no tuple type for constructor")
-    elif newType.n == nil: nil
+    elif newType.n == nil: discard
     elif sonsLen(n) > 0 and n.sons[0].kind == nkExprColonExpr: 
       for i in countup(0, sonsLen(n) - 1): 
         var m = n.sons[i].sons[0]
@@ -423,7 +423,7 @@ proc changeType(n: PNode, newType: PType, check: bool) =
       if value < firstOrd(newType) or value > lastOrd(newType):
         localError(n.info, errGenerated, "cannot convert " & $value &
                                          " to " & typeToString(newType))
-  else: nil
+  else: discard
   n.typ = newType
 
 proc arrayConstrType(c: PContext, n: PNode): PType = 
@@ -513,7 +513,7 @@ proc fixAbstractType(c: PContext, n: PNode) =
       # an implicitly constructed array (passed to an open array):
       n.sons[i] = semArrayConstr(c, it, {})
     else: 
-      nil
+      discard
       #if (it.typ == nil): 
       #  InternalError(it.info, "fixAbstractType: " & renderTree(it))  
   
@@ -677,7 +677,7 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
       return
     let callee = result.sons[0].sym
     case callee.kind
-    of skMacro, skTemplate: nil
+    of skMacro, skTemplate: discard
     else:
       if (callee.kind == skIterator) and (callee.id == c.p.owner.id): 
         localError(n.info, errRecursiveDependencyX, callee.name.s)
@@ -1098,7 +1098,7 @@ proc takeImplicitAddr(c: PContext, n: PNode): PNode =
   of nkHiddenDeref, nkDerefExpr: return n.sons[0]
   of nkBracketExpr:
     if len(n) == 1: return n.sons[0]
-  else: nil
+  else: discard
   var valid = isAssignable(c, n)
   if valid != arLValue:
     if valid == arLocalLValue:
@@ -1207,7 +1207,7 @@ proc semProcBody(c: PContext, n: PNode): PNode =
     # transform ``expr`` to ``result = expr``, but not if the expr is already
     # ``result``:
     if result.kind == nkSym and result.sym == c.p.resultSym:
-      nil
+      discard
     elif result.kind == nkNilLit:
       # or ImplicitlyDiscardable(result):
       # new semantic: 'result = x' triggers the void context
@@ -1244,7 +1244,7 @@ proc semYieldVarResult(c: PContext, n: PNode, restype: PType) =
           a.sons[i] = takeImplicitAddr(c, a.sons[i])
         else:
           localError(n.sons[0].info, errXExpected, "tuple constructor")
-  else: nil
+  else: discard
   
 proc semYield(c: PContext, n: PNode): PNode =
   result = n
@@ -1472,7 +1472,7 @@ proc tryExpr(c: PContext, n: PNode,
     result = semExpr(c, n, flags)
     if msgs.gErrorCounter != oldErrorCount: result = nil
   except ERecoverableError:
-    nil
+    discard
   # undo symbol table changes (as far as it's possible):
   c.generics = oldGenerics
   c.inGenericContext = oldInGenericContext
@@ -1590,9 +1590,9 @@ proc semSetConstr(c: PContext, n: PNode): PNode =
           typ = skipTypes(n.sons[i].typ, {tyGenericInst, tyVar, tyOrdinal})
     if not isOrdinalType(typ):
       localError(n.info, errOrdinalTypeExpected)
-      typ = makeRangeType(c, 0, MaxSetElements - 1, n.info)
+      typ = makeRangeType(c, 0, MaxSetElements-1, n.info)
     elif lengthOrd(typ) > MaxSetElements: 
-      typ = makeRangeType(c, 0, MaxSetElements - 1, n.info)
+      typ = makeRangeType(c, 0, MaxSetElements-1, n.info)
     addSonSkipIntLit(result.typ, typ)
     for i in countup(0, sonsLen(n) - 1): 
       var m: PNode
@@ -1629,27 +1629,27 @@ proc semTableConstr(c: PContext, n: PNode): PNode =
   if lastKey != n.len: illFormedAst(n)
   result = semExpr(c, result)
 
-type 
-  TParKind = enum 
+type
+  TParKind = enum
     paNone, paSingle, paTupleFields, paTuplePositions
 
-proc checkPar(n: PNode): TParKind = 
+proc checkPar(n: PNode): TParKind =
   var length = sonsLen(n)
   if length == 0: 
     result = paTuplePositions # ()
   elif length == 1: 
     result = paSingle         # (expr)
-  else: 
+  else:
     if n.sons[0].kind == nkExprColonExpr: result = paTupleFields
     else: result = paTuplePositions
-    for i in countup(0, length - 1): 
-      if result == paTupleFields: 
+    for i in countup(0, length - 1):
+      if result == paTupleFields:
         if (n.sons[i].kind != nkExprColonExpr) or
-            not (n.sons[i].sons[0].kind in {nkSym, nkIdent}): 
+            not (n.sons[i].sons[0].kind in {nkSym, nkIdent}):
           localError(n.sons[i].info, errNamedExprExpected)
           return paNone
-      else: 
-        if n.sons[i].kind == nkExprColonExpr: 
+      else:
+        if n.sons[i].kind == nkExprColonExpr:
           localError(n.sons[i].info, errNamedExprNotAllowed)
           return paNone
 
@@ -1659,8 +1659,7 @@ proc semTupleFieldsConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   typ.n = newNodeI(nkRecList, n.info) # nkIdentDefs
   var ids = initIntSet()
   for i in countup(0, sonsLen(n) - 1):
-    if (n.sons[i].kind != nkExprColonExpr) or
-        not (n.sons[i].sons[0].kind in {nkSym, nkIdent}):
+    if n[i].kind != nkExprColonExpr or n[i][0].kind notin {nkSym, nkIdent}:
       illFormedAst(n.sons[i])
     var id: PIdent
     if n.sons[i].sons[0].kind == nkIdent: id = n.sons[i].sons[0].ident

@@ -39,7 +39,7 @@ proc addDotDependency(c: PPassContext, n: PNode): PNode =
   of nkStmtList, nkBlockStmt, nkStmtListExpr, nkBlockExpr: 
     for i in countup(0, sonsLen(n) - 1): discard addDotDependency(c, n.sons[i])
   else: 
-    nil
+    discard
 
 proc generateDot(project: string) = 
   writeRope(ropef("digraph $1 {$n$2}$n", [

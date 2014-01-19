@@ -81,7 +81,7 @@ proc hlo(c: PContext, n: PNode): PNode =
     else:
       # perform type checking, so that the replacement still fits:
       if isEmptyType(n.typ) and isEmptyType(result.typ):
-        nil
+        discard
       else:
         result = fitNode(c, n.typ, result)
       # optimization has been applied so check again:

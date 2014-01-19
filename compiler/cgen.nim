@@ -319,7 +319,7 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
                    takeAddr: bool) =
   case analyseObjectWithTypeField(t)
   of frNone:
-    nil
+    discard
   of frHeader:
     var r = rdLoc(a)
     if not takeAddr: r = ropef("(*$1)", [r])
@@ -832,7 +832,7 @@ proc genProcNoForward(m: BModule, prc: PSym) =
     discard cgsym(m, prc.name.s)
     return  
   genProcPrototype(m, prc)
-  if lfNoDecl in prc.loc.flags: nil
+  if lfNoDecl in prc.loc.flags: discard
   elif prc.typ.callConv == ccInline:
     # We add inline procs to the calling module to enable C based inlining.
     # This also means that a check with ``q.declaredThings`` is wrong, we need

@@ -1257,7 +1257,7 @@ proc propagateToOwner*(owner, elem: PType) =
       owner.flags.incl tfNeedsInit
   
   if tfNeedsInit in elem.flags:
-    if owner.kind in HaveTheirOwnEmpty: nil
+    if owner.kind in HaveTheirOwnEmpty: discard
     else: owner.flags.incl tfNeedsInit
     
   if tfShared in elem.flags:

@@ -143,7 +143,7 @@ proc mangle(name: string): string =
     of 'A'..'Z': 
       add(result, chr(ord(name[i]) - ord('A') + ord('a')))
     of '_': 
-      nil
+      discard
     of 'a'..'z', '0'..'9': 
       add(result, name[i])
     else: add(result, 'X' & toHex(ord(name[i]), 2))
@@ -996,10 +996,10 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
     r.res = s.loc.r
     if lfNoDecl in s.loc.flags or s.magic != mNone or
        {sfImportc, sfInfixCall} * s.flags != {}:
-      nil
+      discard
     elif s.kind == skMethod and s.getBody.kind == nkEmpty:
       # we cannot produce code for the dispatcher yet:
-      nil
+      discard
     elif sfForward in s.flags:
       p.g.forwarded.add(s)
     elif not p.g.generatedSyms.containsOrIncl(s.id):
@@ -1336,10 +1336,10 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     else:
       unaryExpr(p, n, r, "", "($1.length-1)")
   of mInc:
-    if not (optOverflowCheck in p.options): binaryExpr(p, n, r, "", "$1 += $2")
+    if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 += $2")
     else: binaryExpr(p, n, r, "addInt", "$1 = addInt($1, $2)")
   of ast.mDec:
-    if not (optOverflowCheck in p.options): binaryExpr(p, n, r, "", "$1 -= $2")
+    if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 -= $2")
     else: binaryExpr(p, n, r, "subInt", "$1 = subInt($1, $2)")
   of mSetLengthStr: binaryExpr(p, n, r, "", "$1.length = ($2)-1")
   of mSetLengthSeq: binaryExpr(p, n, r, "", "$1.length = $2")
@@ -1544,7 +1544,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     r.res = toRope(n.intVal)
   of nkNilLit:
     if isEmptyType(n.typ):
-      nil
+      discard
     elif mapType(n.typ) == etyBaseIndex:
       r.typ = etyBaseIndex
       r.address = toRope"null" | toRope"nil"
@@ -1592,12 +1592,12 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkChckRange: genRangeChck(p, n, r, "chckRange")
   of nkStringToCString: convStrToCStr(p, n, r)
   of nkCStringToString: convCStrToStr(p, n, r)
-  of nkEmpty: nil
+  of nkEmpty: discard
   of nkLambdaKinds: 
     let s = n.sons[namePos].sym
     discard mangleName(s)
     r.res = s.loc.r
-    if lfNoDecl in s.loc.flags or s.magic != mNone: nil
+    if lfNoDecl in s.loc.flags or s.magic != mNone: discard
     elif not p.g.generatedSyms.containsOrIncl(s.id):
       app(p.locals, genProc(p, s))
   of nkMetaNode: gen(p, n.sons[0], r)
@@ -1614,7 +1614,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkIfStmt, nkIfExpr: genIf(p, n, r)
   of nkWhileStmt: genWhileStmt(p, n)
   of nkVarSection, nkLetSection: genVarStmt(p, n)
-  of nkConstSection: nil
+  of nkConstSection: discard
   of nkForStmt, nkParForStmt: 
     internalError(n.info, "for statement not eliminated")
   of nkCaseStmt: 
@@ -1633,7 +1633,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkRaiseStmt: genRaiseStmt(p, n)
   of nkTypeSection, nkCommentStmt, nkIteratorDef, nkIncludeStmt, 
      nkImportStmt, nkImportExceptStmt, nkExportStmt, nkExportExceptStmt, 
-     nkFromStmt, nkTemplateDef, nkMacroDef, nkPragma: nil
+     nkFromStmt, nkTemplateDef, nkMacroDef, nkPragma: discard
   of nkProcDef, nkMethodDef, nkConverterDef:
     var s = n.sons[namePos].sym
     if {sfExportc, sfCompilerProc} * s.flags == {sfExportc}:

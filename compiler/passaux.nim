@@ -41,7 +41,7 @@ proc cleanUp(c: PPassContext, n: PNode): PNode =
       if sfDeadCodeElim notin getModule(s).flags and not astNeeded(s): 
         s.ast.sons[bodyPos] = ast.emptyNode # free the memory
   else: 
-    nil
+    discard
 
 const cleanupPass* = makePass(process = cleanUp, close = cleanUp)
 

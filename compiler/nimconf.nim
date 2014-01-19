@@ -101,11 +101,11 @@ proc jumpToDirective(L: var TLexer, tok: var TToken, dest: TJumpDest) =
           break 
         if nestedIfs > 0: dec(nestedIfs)
       else: 
-        nil
+        discard
       ppGetTok(L, tok)
-    elif tok.tokType == tkEof: 
+    elif tok.tokType == tkEof:
       lexMessage(L, errTokenExpected, "@end")
-    else: 
+    else:
       ppGetTok(L, tok)
   
 proc parseDirective(L: var TLexer, tok: var TToken) = 

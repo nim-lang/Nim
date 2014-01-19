@@ -285,7 +285,7 @@ proc readMergeSections(cfilename: string, m: var TMergeSections) =
   withCFile(cfilename):
     readKey(L, k)
     if k == "NIM_merge_INFO":   
-      nil
+      discard
     elif ^L.bufpos == '*' and ^(L.bufpos+1) == '/':
       inc(L.bufpos, 2)
       # read back into section

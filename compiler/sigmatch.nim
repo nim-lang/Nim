@@ -381,7 +381,7 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     when useEffectSystem:
       if not compatibleEffects(f, a): return isNone
   of tyNil: result = f.allowsNil
-  else: nil
+  else: discard
 
 proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
   let
@@ -477,7 +477,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   of tyAnything:
     return if f.kind == tyAnything: isGeneric
            else: isNone
-  else: nil
+  else: discard
 
   case f.kind
   of tyEnum:
@@ -530,7 +530,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       result = typeRel(c, f.sons[1], a.sons[1])
       if result < isGeneric: result = isNone
       elif lengthOrd(fRange) != lengthOrd(a): result = isNone
-    else: nil
+    else: discard
   of tyOpenArray, tyVarargs:
     case a.kind
     of tyOpenArray, tyVarargs:
@@ -551,7 +551,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         result = isConvertible
       elif typeRel(c, base(f), a.sons[0]) >= isGeneric: 
         result = isConvertible
-    else: nil
+    else: discard
   of tySequence:
     case a.kind
     of tySequence:
@@ -563,7 +563,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         elif tfNotNil in f.flags and tfNotNil notin a.flags:
           result = isNilConversion
     of tyNil: result = f.allowsNil
-    else: nil
+    else: discard
   of tyOrdinal:
     if isOrdinalType(a):
       var x = if a.kind == tyOrdinal: a.sons[0] else: a
@@ -607,7 +607,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       elif tfNotNil in f.flags and tfNotNil notin a.flags:
         result = isNilConversion
     of tyNil: result = f.allowsNil
-    else: nil
+    else: discard
   of tyRef: 
     case a.kind
     of tyRef:
@@ -616,7 +616,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       elif tfNotNil in f.flags and tfNotNil notin a.flags:
         result = isNilConversion
     of tyNil: result = f.allowsNil
-    else: nil
+    else: discard
   of tyProc:
     result = procTypeRel(c, f, a)
     if result != isNone and tfNotNil in f.flags and tfNotNil notin a.flags:
@@ -632,7 +632,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     of tyProc:
       if a.callConv != ccClosure: result = isConvertible
     of tyPtr, tyCString: result = isConvertible
-    else: nil
+    else: discard
   of tyString: 
     case a.kind
     of tyString: 
@@ -641,7 +641,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       else:
         result = isEqual
     of tyNil: result = f.allowsNil
-    else: nil
+    else: discard
   of tyCString:
     # conversion from string to cstring is automatic:
     case a.kind
@@ -659,7 +659,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
           (skipTypes(a.sons[0], {tyRange}).kind in {tyInt..tyInt64}) and
           (a.sons[1].kind == tyChar): 
         result = isConvertible
-    else: nil
+    else: discard
 
   of tyEmpty:
     if a.kind == tyEmpty: result = isEqual
@@ -691,7 +691,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     if x.kind == tyGenericInvokation or f.sons[0].kind != tyGenericBody:
       #InternalError("typeRel: tyGenericInvokation -> tyGenericInvokation")
       # simply no match for now:
-      nil
+      discard
     elif x.kind == tyGenericInst and 
           (f.sons[0] == x.sons[0]) and
           (sonsLen(x) - 1 == sonsLen(f)):
@@ -947,10 +947,10 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
     if e == nil: return nil
 
     case e.kind
-    of nkReturnStmt: nil
-    of nkTypeSection: nil
-    of nkConstDef: nil
-    else: nil
+    of nkReturnStmt: discard
+    of nkTypeSection: discard
+    of nkConstDef: discard
+    else: discard
   
   result = arg
   put(m.bindings, f, a)
@@ -976,7 +976,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
  
   var
     r: TTypeRelation
-    a = if c.InTypeClass > 0: argType.skipTypes({tyTypeDesc})
+    a = if c.inTypeClass > 0: argType.skipTypes({tyTypeDesc})
         else: argType
  
   case fMaybeStatic.kind

@@ -539,7 +539,7 @@ proc cmdChangeTriggersRecompilation(old, new: TCommands): bool =
   of cmdNone, cmdDoc, cmdInterpret, cmdPretty, cmdGenDepend, cmdDump,
       cmdCheck, cmdParse, cmdScan, cmdIdeTools, cmdDef, 
       cmdRst2html, cmdRst2tex, cmdInteractive, cmdRun:
-    nil
+    discard
   # else: trigger recompilation:
   result = true
   

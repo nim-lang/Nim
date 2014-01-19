@@ -22,7 +22,7 @@ proc checkPartialConstructedType(info: TLineInfo, t: PType) =
 
 proc checkConstructedType*(info: TLineInfo, typ: PType) =
   var t = typ.skipTypes({tyDistinct})
-  if t.kind in tyTypeClasses: nil
+  if t.kind in tyTypeClasses: discard
   elif tfAcyclic in t.flags and skipTypes(t, abstractInst).kind != tyObject: 
     localError(info, errInvalidPragmaX, "acyclic")
   elif t.kind == tyVar and t.sons[0].kind == tyVar: 
@@ -364,7 +364,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   of tyGenericInst:
     result = instCopyType(cl, t)
     for i in 1 .. <result.sonsLen:
-      result.sons[i] = ReplaceTypeVarsT(cl, result.sons[i])
+      result.sons[i] = replaceTypeVarsT(cl, result.sons[i])
     propagateToOwner(result, result.lastSon)
   
   else:

@@ -304,7 +304,7 @@ proc countLines*(s: string): int {.noSideEffect,
       if s[i+1] == '\l': inc i
       inc result
     of '\l': inc result
-    else: nil
+    else: discard
     inc i
 
 proc split*(s: string, seps: set[char] = Whitespace): seq[string] {.

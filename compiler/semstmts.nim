@@ -136,6 +136,7 @@ proc discardCheck(c: PContext, result: PNode) =
   if result.typ != nil and result.typ.kind notin {tyStmt, tyEmpty}:
     if result.kind == nkNilLit:
       result.typ = nil
+      message(result.info, warnNilStatement)
     elif implicitlyDiscardable(result):
       var n = result
       result.typ = nil
@@ -145,10 +146,11 @@ proc discardCheck(c: PContext, result: PNode) =
     elif c.inTypeClass > 0 and result.typ.kind == tyBool:
       let verdict = semConstExpr(c, result)
       if verdict.intVal == 0:
-        localError(result.info, "type class predicate failed.")
+        localError(result.info, "type class predicate failed")
     elif result.typ.kind != tyError and gCmd != cmdInteractive:
       if result.typ.kind == tyNil:
         fixNilType(result)
+        message(result.info, warnNilStatement)
       else:
         var n = result
         while n.kind in skipForDiscardable: n = n.lastSon
@@ -996,7 +998,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if proto == nil: 
     s.typ.callConv = lastOptionEntry(c).defaultCC
     # add it here, so that recursive procs are possible:
-    if sfGenSym in s.flags: nil
+    if sfGenSym in s.flags: discard
     elif kind in OverloadableSyms:
       if not typeIsDetermined:
         addInterfaceOverloadableSymAt(c, s.scope, s)
@@ -1252,9 +1254,9 @@ proc semStmtList(c: PContext, n: PNode): PNode =
       of LastBlockStmts: 
         for j in countup(i + 1, length - 1): 
           case n.sons[j].kind
-          of nkPragma, nkCommentStmt, nkNilLit, nkEmpty: nil
+          of nkPragma, nkCommentStmt, nkNilLit, nkEmpty: discard
           else: localError(n.sons[j].info, errStmtInvalidAfterReturn)
-      else: nil
+      else: discard
   if result.len == 1:
     result = result.sons[0]
   when false:

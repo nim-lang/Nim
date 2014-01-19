@@ -537,7 +537,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var TIntSet, pos: var int,
       if a.kind == nkEmpty: addSon(father, newSymNode(f))
       else: addSon(a, newSymNode(f))
     if a.kind != nkEmpty: addSon(father, a)
-  of nkEmpty: nil
+  of nkEmpty: discard
   else: illFormedAst(n)
   
 proc addInheritedFieldsAux(c: PContext, check: var TIntSet, pos: var int, 
@@ -615,7 +615,7 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
 let typedescId = getIdent"typedesc"
 
 template shouldHaveMeta(t) =
-  InternalAssert tfHasMeta in t.flags
+  internalAssert tfHasMeta in t.flags
   # result.lastSon.flags.incl tfHasMeta
 
 proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
@@ -745,7 +745,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       else:
         result = addImplicitGeneric(newTypeS(tyAnything, c))
  
-  else: nil
+  else: discard
 
   # result = liftingWalk(paramType)
 
@@ -939,7 +939,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   result = nil
   if gCmd == cmdIdeTools: suggestExpr(c, n)
   case n.kind
-  of nkEmpty: nil
+  of nkEmpty: discard
   of nkTypeOfExpr:
     # for ``type(countup(1,3))``, see ``tests/ttoseq``.
     checkSonsLen(n, 1)
@@ -977,7 +977,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
             result = freshType(result, prev)
             result.flags.incl(tfNotNil)
           else:
-            LocalError(n.info, errGenerated, "invalid type")
+            localError(n.info, errGenerated, "invalid type")
         of 2:
           let negated = semTypeNode(c, n.sons[1], prev)
           result = makeNotType(c, negated)
@@ -1137,7 +1137,7 @@ proc processMagicType(c: PContext, m: PSym) =
   of mSet: setMagicType(m, tySet, 0) 
   of mSeq: setMagicType(m, tySequence, 0)
   of mOrdinal: setMagicType(m, tyOrdinal, 0)
-  of mPNimrodNode: nil
+  of mPNimrodNode: discard
   else: localError(m.info, errTypeExpected)
   
 proc semGenericConstraints(c: PContext, x: PType): PType =

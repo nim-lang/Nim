@@ -286,7 +286,7 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
     o.symChoiceIndex = 1
     o.inSymChoice = initIntSet()
     incl(o.inSymChoice, result.id)
-  else: nil
+  else: discard
   if result != nil and result.kind == skStub: loadStub(result)
 
 proc lastOverloadScope*(o: TOverloadIter): int =

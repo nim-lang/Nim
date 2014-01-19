@@ -103,7 +103,7 @@ proc suggestObject(c: PContext, n: PNode, outputs: var int) =
       suggestObject(c, n.sons[0], outputs)
       for i in countup(1, L-1): suggestObject(c, lastSon(n.sons[i]), outputs)
   of nkSym: suggestField(c, n.sym, outputs)
-  else: nil
+  else: discard
 
 proc nameFits(c: PContext, s: PSym, n: PNode): bool = 
   var op = n.sons[0]

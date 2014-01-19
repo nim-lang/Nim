@@ -71,7 +71,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
           var cmp = cmpCandidates(best, z)
           if cmp < 0: best = z   # x is better than the best so far
           elif cmp == 0: alt = z # x is as good as the best so far
-          else: nil
+          else: discard
     sym = nextOverloadIter(o, c, headSymbol)
 
 proc notFoundError*(c: PContext, n: PNode, errors: seq[string]) =
