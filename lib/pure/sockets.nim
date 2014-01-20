@@ -1300,7 +1300,7 @@ proc readLine*(socket: TSocket, line: var TaintedString, timeout = -1) {.
       n = peekChar(socket, c)
       if n > 0 and c == '\L':
         discard recv(socket, addr(c), 1)
-      elif n <= 0: OSError(OSLastError())
+      elif n <= 0: socket.SocketError()
       addNlIfEmpty()
       return
     elif c == '\L': 
