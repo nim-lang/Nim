@@ -922,7 +922,7 @@ proc activate(c: PContext, n: PNode) =
     of nkCallKinds:
       for i in 1 .. <n.len: activate(c, n[i])
     else:
-      nil
+      discard
 
 proc maybeAddResult(c: PContext, s: PSym, n: PNode) =
   if s.typ.sons[0] != nil and
@@ -951,7 +951,11 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   var typeIsDetermined = false
   if n[namePos].kind != nkSym:
     assert phase == stepRegisterSymbol
-    s = semIdentDef(c, n.sons[0], kind)
+
+    if n[namePos].kind == nkEmpty:
+      s = newSym(kind, idAnon, getCurrOwner(), n.info)
+    else:
+      s = semIdentDef(c, n.sons[0], kind)
     n.sons[namePos] = newSymNode(s)
     s.ast = n
     s.scope = c.currentScope

@@ -300,9 +300,12 @@ when not defined(booting):
     ## that should be inserted verbatim in the program
     ## Example:
     ##
+    ## .. code-block:: nimrod
     ##   emit("echo " & '"' & "hello world".toUpper & '"')
     ##
-    eval: result = e.parseStmt
+    macro payload: stmt {.gensym.} =
+      result = e.parseStmt
+    payload()
 
 proc expectKind*(n: PNimrodNode, k: TNimrodNodeKind) {.compileTime.} =
   ## checks that `n` is of kind `k`. If this is not the case,
@@ -645,10 +648,13 @@ iterator children*(n: PNimrodNode): PNimrodNode {.inline.}=
   for i in 0 .. high(n):
     yield n[i]
 
-template findChild*(n: PNimrodNode; cond: expr): PNimrodNode {.immediate, dirty.} =
-  ## Find the first child node matching condition (or nil)
-  ## var res = findChild(n, it.kind == nnkPostfix and it.basename.ident == !"foo")
-  
+template findChild*(n: PNimrodNode; cond: expr): PNimrodNode {.
+  immediate, dirty.} =
+  ## Find the first child node matching condition (or nil).
+  ## 
+  ## .. code-block:: nimrod
+  ##   var res = findChild(n, it.kind == nnkPostfix and
+  ##                          it.basename.ident == !"foo")
   block:
     var result: PNimrodNode
     for it in n.children:
@@ -736,6 +742,6 @@ proc addIdentIfAbsent*(dest: PNimrodNode, ident: string) {.compiletime.} =
       if ident.eqIdent($node): return
     of nnkExprColonExpr:
       if ident.eqIdent($node[0]): return
-    else: nil
+    else: discard
   dest.add(ident(ident))
 
