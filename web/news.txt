@@ -28,8 +28,8 @@ Changes affecting backwards compatibility
   require an error code to be passed to them. This error code can be retrieved
   using the new ``OSLastError`` proc.
 - ``os.parentDir`` now returns "" if there is no parent dir.
-- In CGI scripts stacktraces are shown user only if cgi.setStackTraceStdout
-  is used.
+- In CGI scripts stacktraces are shown to the user only 
+  if ``cgi.setStackTraceStdout`` is used.
 - The symbol binding rules for clean templates changed: ``bind`` for any
   symbol that's not a parameter is now the default. ``mixin`` can be used
   to require instantiation scope for a symbol.
@@ -71,8 +71,9 @@ Language Additions
 - Added a new ``delegator pragma`` for handling calls to missing procs and
   fields at compile-time.
 - The overload resolution now supports ``static[T]`` params that must be
-  evaluatable at compile-time.
+  evaluable at compile-time.
 - Support for user-defined type classes has been added.
+- The *command syntax* is supported in a lot more contexts.
 
 
 Tools improvements
