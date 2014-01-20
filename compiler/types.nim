@@ -10,16 +10,16 @@
 # this module contains routines for accessing and iterating over types
 
 import 
-  intsets, ast, astalgo, trees, msgs, strutils, platform
+  intsets, ast, astalgo, trees, msgs, strutils, platform, renderer
 
-proc firstOrd*(t: PType): biggestInt
-proc lastOrd*(t: PType): biggestInt
-proc lengthOrd*(t: PType): biggestInt
+proc firstOrd*(t: PType): BiggestInt
+proc lastOrd*(t: PType): BiggestInt
+proc lengthOrd*(t: PType): BiggestInt
 type 
   TPreferedDesc* = enum 
     preferName, preferDesc, preferExported
 
-proc TypeToString*(typ: PType, prefer: TPreferedDesc = preferName): string
+proc typeToString*(typ: PType, prefer: TPreferedDesc = preferName): string
 proc getProcHeader*(sym: PSym): string
 proc base*(t: PType): PType
   # ------------------- type iterator: ----------------------------------------
@@ -28,7 +28,7 @@ type
   TTypeMutator* = proc (t: PType, closure: PObject): PType {.nimcall.} # copy t and mutate it
   TTypePredicate* = proc (t: PType): bool {.nimcall.}
 
-proc IterOverType*(t: PType, iter: TTypeIter, closure: PObject): bool
+proc iterOverType*(t: PType, iter: TTypeIter, closure: PObject): bool
   # Returns result of `iter`.
 proc mutateType*(t: PType, iter: TTypeMutator, closure: PObject): PType
   # Returns result of `iter`.
@@ -64,17 +64,16 @@ const
   typedescPtrs* = abstractPtrs + {tyTypeDesc}
   typedescInst* = abstractInst + {tyTypeDesc}
 
-proc skipTypes*(t: PType, kinds: TTypeKinds): PType
 proc containsObject*(t: PType): bool
 proc containsGarbageCollectedRef*(typ: PType): bool
 proc containsHiddenPointer*(typ: PType): bool
 proc canFormAcycle*(typ: PType): bool
 proc isCompatibleToCString*(a: PType): bool
-proc getOrdValue*(n: PNode): biggestInt
-proc computeSize*(typ: PType): biggestInt
-proc getSize*(typ: PType): biggestInt
+proc getOrdValue*(n: PNode): BiggestInt
+proc computeSize*(typ: PType): BiggestInt
+proc getSize*(typ: PType): BiggestInt
 proc isPureObject*(typ: PType): bool
-proc InvalidGenericInst*(f: PType): bool
+proc invalidGenericInst*(f: PType): bool
   # for debugging
 type 
   TTypeFieldResult* = enum 
@@ -89,21 +88,21 @@ proc analyseObjectWithTypeField*(t: PType): TTypeFieldResult
 proc typeAllowed*(t: PType, kind: TSymKind): bool
 # implementation
 
-proc InvalidGenericInst(f: PType): bool = 
-  result = (f.kind == tyGenericInst) and (lastSon(f) == nil)
+proc invalidGenericInst(f: PType): bool = 
+  result = f.kind == tyGenericInst and lastSon(f) == nil
 
 proc isPureObject(typ: PType): bool = 
   var t = typ
   while t.kind == tyObject and t.sons[0] != nil: t = t.sons[0]
   result = t.sym != nil and sfPure in t.sym.flags
 
-proc getOrdValue(n: PNode): biggestInt = 
+proc getOrdValue(n: PNode): BiggestInt = 
   case n.kind
   of nkCharLit..nkInt64Lit: result = n.intVal
   of nkNilLit: result = 0
   of nkHiddenStdConv: result = getOrdValue(n.sons[1])
   else:
-    LocalError(n.info, errOrdinalTypeExpected)
+    localError(n.info, errOrdinalTypeExpected)
     result = 0
 
 proc isIntLit*(t: PType): bool {.inline.} =
@@ -132,7 +131,7 @@ proc getProcHeader(sym: PSym): string =
       add(result, typeToString(p.sym.typ))
       if i != sonsLen(n)-1: add(result, ", ")
     else:
-      InternalError("getProcHeader")
+      internalError("getProcHeader")
   add(result, ')')
   if n.sons[0].typ != nil: result.add(": " & typeToString(n.sons[0].typ))
   
@@ -148,21 +147,17 @@ proc skipGeneric(t: PType): PType =
   result = t
   while result.kind == tyGenericInst: result = lastSon(result)
       
-proc skipTypes(t: PType, kinds: TTypeKinds): PType = 
-  result = t
-  while result.kind in kinds: result = lastSon(result)
-  
 proc isOrdinalType(t: PType): bool =
   assert(t != nil)
   # caution: uint, uint64 are no ordinal types!
-  result = t.Kind in {tyChar,tyInt..tyInt64,tyUInt8..tyUInt32,tyBool,tyEnum} or
-      (t.Kind in {tyRange, tyOrdinal, tyConst, tyMutable, tyGenericInst}) and
+  result = t.kind in {tyChar,tyInt..tyInt64,tyUInt8..tyUInt32,tyBool,tyEnum} or
+      (t.kind in {tyRange, tyOrdinal, tyConst, tyMutable, tyGenericInst}) and
        isOrdinalType(t.sons[0])
 
 proc enumHasHoles(t: PType): bool = 
   var b = t
   while b.kind in {tyConst, tyMutable, tyRange, tyGenericInst}: b = b.sons[0]
-  result = b.Kind == tyEnum and tfEnumHasHoles in b.flags
+  result = b.kind == tyEnum and tfEnumHasHoles in b.flags
 
 proc iterOverTypeAux(marker: var TIntSet, t: PType, iter: TTypeIter, 
                      closure: PObject): bool
@@ -184,7 +179,7 @@ proc iterOverTypeAux(marker: var TIntSet, t: PType, iter: TTypeIter,
   if t == nil: return 
   result = iter(t, closure)
   if result: return 
-  if not ContainsOrIncl(marker, t.id): 
+  if not containsOrIncl(marker, t.id): 
     case t.kind
     of tyGenericInst, tyGenericBody: 
       result = iterOverTypeAux(marker, lastSon(t), iter, closure)
@@ -194,8 +189,8 @@ proc iterOverTypeAux(marker: var TIntSet, t: PType, iter: TTypeIter,
         if result: return 
       if t.n != nil: result = iterOverNode(marker, t.n, iter, closure)
   
-proc IterOverType(t: PType, iter: TTypeIter, closure: PObject): bool = 
-  var marker = InitIntSet()
+proc iterOverType(t: PType, iter: TTypeIter, closure: PObject): bool = 
+  var marker = initIntSet()
   result = iterOverTypeAux(marker, t, iter, closure)
 
 proc searchTypeForAux(t: PType, predicate: TTypePredicate, 
@@ -228,8 +223,8 @@ proc searchTypeForAux(t: PType, predicate: TTypePredicate,
   # iterates over VALUE types!
   result = false
   if t == nil: return 
-  if ContainsOrIncl(marker, t.id): return 
-  result = Predicate(t)
+  if containsOrIncl(marker, t.id): return 
+  result = predicate(t)
   if result: return 
   case t.kind
   of tyObject: 
@@ -242,10 +237,10 @@ proc searchTypeForAux(t: PType, predicate: TTypePredicate,
       result = searchTypeForAux(t.sons[i], predicate, marker)
       if result: return 
   else: 
-    nil
+    discard
 
 proc searchTypeFor(t: PType, predicate: TTypePredicate): bool = 
-  var marker = InitIntSet()
+  var marker = initIntSet()
   result = searchTypeForAux(t, predicate, marker)
 
 proc isObjectPredicate(t: PType): bool = 
@@ -284,10 +279,10 @@ proc analyseObjectWithTypeFieldAux(t: PType,
       if res != frNone: 
         return frEmbedded
   else: 
-    nil
+    discard
 
 proc analyseObjectWithTypeField(t: PType): TTypeFieldResult = 
-  var marker = InitIntSet()
+  var marker = initIntSet()
   result = analyseObjectWithTypeFieldAux(t, marker)
 
 proc isGCRef(t: PType): bool =
@@ -322,7 +317,7 @@ proc canFormAcycleNode(marker: var TIntSet, n: PNode, startId: int): bool =
     if not result: 
       case n.kind
       of nkNone..nkNilLit: 
-        nil
+        discard
       else: 
         for i in countup(0, sonsLen(n) - 1): 
           result = canFormAcycleNode(marker, n.sons[i], startId)
@@ -337,7 +332,7 @@ proc canFormAcycleAux(marker: var TIntSet, typ: PType, startId: int): bool =
   case t.kind
   of tyTuple, tyObject, tyRef, tySequence, tyArray, tyArrayConstr, tyOpenArray,
      tyVarargs:
-    if not ContainsOrIncl(marker, t.id): 
+    if not containsOrIncl(marker, t.id): 
       for i in countup(0, sonsLen(t) - 1): 
         result = canFormAcycleAux(marker, t.sons[i], startId)
         if result: return 
@@ -350,10 +345,10 @@ proc canFormAcycleAux(marker: var TIntSet, typ: PType, startId: int): bool =
     #  # damn inheritance may introduce cycles:
     #  result = true
   of tyProc: result = typ.callConv == ccClosure
-  else: nil
+  else: discard
 
 proc canFormAcycle(typ: PType): bool =
-  var marker = InitIntSet()
+  var marker = initIntSet()
   result = canFormAcycleAux(marker, typ, typ.id)
 
 proc mutateTypeAux(marker: var TIntSet, t: PType, iter: TTypeMutator, 
@@ -367,6 +362,7 @@ proc mutateNode(marker: var TIntSet, n: PNode, iter: TTypeMutator,
     case n.kind
     of nkNone..nkNilLit: 
       # a leaf
+      discard
     else: 
       for i in countup(0, sonsLen(n) - 1): 
         addSon(result, mutateNode(marker, n.sons[i], iter, closure))
@@ -376,17 +372,17 @@ proc mutateTypeAux(marker: var TIntSet, t: PType, iter: TTypeMutator,
   result = nil
   if t == nil: return 
   result = iter(t, closure)
-  if not ContainsOrIncl(marker, t.id): 
+  if not containsOrIncl(marker, t.id): 
     for i in countup(0, sonsLen(t) - 1): 
       result.sons[i] = mutateTypeAux(marker, result.sons[i], iter, closure)
     if t.n != nil: result.n = mutateNode(marker, t.n, iter, closure)
   assert(result != nil)
 
 proc mutateType(t: PType, iter: TTypeMutator, closure: PObject): PType =
-  var marker = InitIntSet()
+  var marker = initIntSet()
   result = mutateTypeAux(marker, t, iter, closure)
 
-proc ValueToString(a: PNode): string =
+proc valueToString(a: PNode): string =
   case a.kind
   of nkCharLit..nkUInt64Lit: result = $(a.intVal)
   of nkFloatLit..nkFloat128Lit: result = $(a.floatVal)
@@ -395,7 +391,7 @@ proc ValueToString(a: PNode): string =
 
 proc rangeToStr(n: PNode): string =
   assert(n.kind == nkRange)
-  result = ValueToString(n.sons[0]) & ".." & ValueToString(n.sons[1])
+  result = valueToString(n.sons[0]) & ".." & valueToString(n.sons[1])
 
 const 
   typeToStr: array[TTypeKind, string] = ["None", "bool", "Char", "empty",
@@ -409,28 +405,18 @@ const
     "uint", "uint8", "uint16", "uint32", "uint64",
     "bignum", "const ",
     "!", "varargs[$1]", "iter[$1]", "Error Type", "TypeClass",
-    "ParametricTypeClass", "and", "or", "not", "any"]
+    "ParametricTypeClass", "BuiltInTypeClass", "CompositeTypeClass",
+    "and", "or", "not", "any", "static", "TypeFromExpr"]
 
-proc consToStr(t: PType): string =
-  if t.len > 0: result = t.typeToString
-  else: result = typeToStr[t.kind].strip
-
-proc constraintsToStr(t: PType): string =
-  let sep = if tfAny in t.flags: " or " else: " and "
-  result = ""
-  for i in countup(0, t.len - 1):
-    if i > 0: result.add(sep)
-    result.add(t.sons[i].consToStr)
-
-proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
+proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   var t = typ
   result = ""
   if t == nil: return 
   if prefer == preferName and t.sym != nil and sfAnon notin t.sym.flags:
     if t.kind == tyInt and isIntLit(t):
-      return t.sym.Name.s & " literal(" & $t.n.intVal & ")"
-    return t.sym.Name.s
-  case t.Kind
+      return t.sym.name.s & " literal(" & $t.n.intVal & ")"
+    return t.sym.name.s
+  case t.kind
   of tyInt:
     if not isIntLit(t) or prefer == preferExported:
       result = typeToStr[t.kind]
@@ -444,16 +430,26 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     add(result, ']')
   of tyTypeDesc:
     if t.len == 0: result = "typedesc"
-    else: result = "typedesc[" & constraintsToStr(t) & "]"
+    else: result = "typedesc[" & typeToString(t.sons[0]) & "]"
+  of tyStatic:
+    internalAssert t.len > 0
+    result = "static[" & typeToString(t.sons[0]) & "]"
   of tyTypeClass:
-    if t.n != nil: return t.sym.owner.name.s
-    case t.len
-    of 0: result = "typeclass[]"
-    of 1: result = "typeclass[" & consToStr(t.sons[0]) & "]"
-    else: result = constraintsToStr(t)
+    internalAssert t.sym != nil and t.sym.owner != nil
+    return t.sym.owner.name.s
+  of tyBuiltInTypeClass:
+    return "TypeClass"
+  of tyAnd:
+    result = typeToString(t.sons[0]) & " and " & typeToString(t.sons[1])
+  of tyOr:
+    result = typeToString(t.sons[0]) & " and " & typeToString(t.sons[1])
+  of tyNot:
+    result = "not " & typeToString(t.sons[0])
   of tyExpr:
-    if t.len == 0: result = "expr"
-    else: result = "expr[" & constraintsToStr(t) & "]"
+    internalAssert t.len == 0
+    result = "expr"
+  of tyFromExpr:
+    result = renderTree(t.n)
   of tyArray: 
     if t.sons[0].kind == tyRange: 
       result = "array[" & rangeToStr(t.sons[0].n) & ", " &
@@ -500,7 +496,7 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       add(result, typeToString(t.sons[i]))
       if i < sonsLen(t) - 1: add(result, ", ")
     add(result, ')')
-    if t.sons[0] != nil: add(result, ": " & TypeToString(t.sons[0]))
+    if t.sons[0] != nil: add(result, ": " & typeToString(t.sons[0]))
     var prag: string
     if t.callConv != ccDefault: prag = CallingConvToStr[t.callConv]
     else: prag = ""
@@ -525,7 +521,7 @@ proc resultType(t: PType): PType =
 proc base(t: PType): PType = 
   result = t.sons[0]
 
-proc firstOrd(t: PType): biggestInt = 
+proc firstOrd(t: PType): BiggestInt = 
   case t.kind
   of tyBool, tyChar, tySequence, tyOpenArray, tyString, tyVarargs, tyProxy:
     result = 0
@@ -553,10 +549,10 @@ proc firstOrd(t: PType): biggestInt =
   of tyGenericInst, tyDistinct, tyConst, tyMutable, tyTypeDesc:
     result = firstOrd(lastSon(t))
   else: 
-    InternalError("invalid kind for first(" & $t.kind & ')')
+    internalError("invalid kind for first(" & $t.kind & ')')
     result = 0
 
-proc lastOrd(t: PType): biggestInt = 
+proc lastOrd(t: PType): BiggestInt = 
   case t.kind
   of tyBool: result = 1
   of tyChar: result = 255
@@ -587,10 +583,10 @@ proc lastOrd(t: PType): biggestInt =
     result = lastOrd(lastSon(t))
   of tyProxy: result = 0
   else: 
-    InternalError("invalid kind for last(" & $t.kind & ')')
+    internalError("invalid kind for last(" & $t.kind & ')')
     result = 0
 
-proc lengthOrd(t: PType): biggestInt = 
+proc lengthOrd(t: PType): BiggestInt = 
   case t.kind
   of tyInt64, tyInt32, tyInt: result = lastOrd(t)
   of tyDistinct, tyConst, tyMutable: result = lengthOrd(t.sons[0])
@@ -606,8 +602,11 @@ type
     dcEqOrDistinctOf       ## a equals b or a is distinct of b
 
   TTypeCmpFlag* = enum
-    IgnoreTupleFields,
-    TypeDescExactMatch,
+    IgnoreTupleFields
+    IgnoreCC
+    ExactTypeDescValues
+    ExactGenericParams
+    ExactConstraints
     AllowCommonBase
 
   TTypeCmpFlags* = set[TTypeCmpFlag]
@@ -621,39 +620,41 @@ type
 
 proc initSameTypeClosure: TSameTypeClosure =
   # we do the initialization lazily for performance (avoids memory allocations)
-  nil
+  discard
   
 proc containsOrIncl(c: var TSameTypeClosure, a, b: PType): bool =
-  result = not IsNil(c.s) and c.s.contains((a.id, b.id))
+  result = not isNil(c.s) and c.s.contains((a.id, b.id))
   if not result:
-    if IsNil(c.s): c.s = @[]
+    if isNil(c.s): c.s = @[]
     c.s.add((a.id, b.id))
 
-proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool
-proc SameTypeOrNilAux(a, b: PType, c: var TSameTypeClosure): bool =
+proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool
+proc sameTypeOrNilAux(a, b: PType, c: var TSameTypeClosure): bool =
   if a == b:
     result = true
   else:
     if a == nil or b == nil: result = false
-    else: result = SameTypeAux(a, b, c)
+    else: result = sameTypeAux(a, b, c)
 
-proc SameTypeOrNil*(a, b: PType, flags: TTypeCmpFlags = {}): bool =
+proc sameType*(a, b: PType, flags: TTypeCmpFlags = {}): bool =
+  var c = initSameTypeClosure()
+  c.flags = flags
+  result = sameTypeAux(a, b, c)
+
+proc sameTypeOrNil*(a, b: PType, flags: TTypeCmpFlags = {}): bool =
   if a == b:
     result = true
-  else: 
+  else:
     if a == nil or b == nil: result = false
-    else:
-      var c = initSameTypeClosure()
-      c.flags = flags
-      result = SameTypeAux(a, b, c)
+    else: result = sameType(a, b, flags)
 
 proc equalParam(a, b: PSym): TParamsEquality = 
-  if SameTypeOrNil(a.typ, b.typ, {TypeDescExactMatch}) and
-      ExprStructuralEquivalent(a.constraint, b.constraint):
+  if sameTypeOrNil(a.typ, b.typ, {ExactTypeDescValues}) and
+      exprStructuralEquivalent(a.constraint, b.constraint):
     if a.ast == b.ast: 
       result = paramsEqual
     elif a.ast != nil and b.ast != nil: 
-      if ExprStructuralEquivalent(a.ast, b.ast): result = paramsEqual
+      if exprStructuralEquivalent(a.ast, b.ast): result = paramsEqual
       else: result = paramsIncompatible
     elif a.ast != nil: 
       result = paramsEqual
@@ -661,7 +662,15 @@ proc equalParam(a, b: PSym): TParamsEquality =
       result = paramsIncompatible
   else:
     result = paramsNotEqual
-  
+
+proc sameConstraints(a, b: PNode): bool =
+  internalAssert a.len == b.len
+  for i in 1 .. <a.len:
+    if not exprStructuralEquivalent(a[i].sym.constraint,
+                                    b[i].sym.constraint):
+      return false
+  return true
+
 proc equalParams(a, b: PNode): TParamsEquality = 
   result = paramsEqual
   var length = sonsLen(a)
@@ -676,7 +685,7 @@ proc equalParams(a, b: PNode): TParamsEquality =
       of paramsNotEqual: 
         return paramsNotEqual
       of paramsEqual: 
-        nil
+        discard
       of paramsIncompatible: 
         result = paramsIncompatible
       if (m.name.id != n.name.id): 
@@ -684,14 +693,14 @@ proc equalParams(a, b: PNode): TParamsEquality =
         return paramsNotEqual # paramsIncompatible;
       # continue traversal! If not equal, we can return immediately; else
       # it stays incompatible
-    if not SameTypeOrNil(a.sons[0].typ, b.sons[0].typ, {TypeDescExactMatch}):
+    if not sameTypeOrNil(a.sons[0].typ, b.sons[0].typ, {ExactTypeDescValues}):
       if (a.sons[0].typ == nil) or (b.sons[0].typ == nil): 
         result = paramsNotEqual # one proc has a result, the other not is OK
       else: 
         result = paramsIncompatible # overloading by different
                                     # result types does not work
   
-proc SameLiteral(x, y: PNode): bool = 
+proc sameLiteral(x, y: PNode): bool = 
   if x.kind == y.kind: 
     case x.kind
     of nkCharLit..nkInt64Lit: result = x.intVal == y.intVal
@@ -699,9 +708,9 @@ proc SameLiteral(x, y: PNode): bool =
     of nkNilLit: result = true
     else: assert(false)
   
-proc SameRanges(a, b: PNode): bool = 
-  result = SameLiteral(a.sons[0], b.sons[0]) and
-           SameLiteral(a.sons[1], b.sons[1])
+proc sameRanges(a, b: PNode): bool = 
+  result = sameLiteral(a.sons[0], b.sons[0]) and
+           sameLiteral(a.sons[1], b.sons[1])
 
 proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool = 
   # two tuples are equivalent iff the names, types and positions are the same;
@@ -716,7 +725,7 @@ proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool =
         x = skipTypes(x, {tyRange})
         y = skipTypes(y, {tyRange})
       
-      result = SameTypeAux(x, y, c)
+      result = sameTypeAux(x, y, c)
       if not result: return 
     if a.n != nil and b.n != nil and IgnoreTupleFields notin c.flags:
       for i in countup(0, sonsLen(a.n) - 1): 
@@ -726,11 +735,11 @@ proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool =
           var y = b.n.sons[i].sym
           result = x.name.id == y.name.id
           if not result: break 
-        else: InternalError(a.n.info, "sameTuple")
+        else: internalError(a.n.info, "sameTuple")
   else:
     result = false
 
-template IfFastObjectTypeCheckFailed(a, b: PType, body: stmt) {.immediate.} =
+template ifFastObjectTypeCheckFailed(a, b: PType, body: stmt) {.immediate.} =
   if tfFromGeneric notin a.flags + b.flags:
     # fast case: id comparison suffices:
     result = a.id == b.id
@@ -745,15 +754,15 @@ template IfFastObjectTypeCheckFailed(a, b: PType, body: stmt) {.immediate.} =
     #   TA[T] = object
     #   TB[T] = object
     # --> TA[int] != TB[int]
-    if tfFromGeneric in a.flags * b.flags and a.sym.Id == b.sym.Id:
+    if tfFromGeneric in a.flags * b.flags and a.sym.id == b.sym.id:
       # ok, we need the expensive structural check
       body
 
 proc sameObjectTypes*(a, b: PType): bool =
   # specialized for efficiency (sigmatch uses it)
-  IfFastObjectTypeCheckFailed(a, b):     
+  ifFastObjectTypeCheckFailed(a, b):
     var c = initSameTypeClosure()
-    result = sameTypeAux(a, b, c)    
+    result = sameTypeAux(a, b, c)
 
 proc sameDistinctTypes*(a, b: PType): bool {.inline.} =
   result = sameObjectTypes(a, b)
@@ -761,7 +770,7 @@ proc sameDistinctTypes*(a, b: PType): bool {.inline.} =
 proc sameEnumTypes*(a, b: PType): bool {.inline.} =
   result = a.id == b.id
 
-proc SameObjectTree(a, b: PNode, c: var TSameTypeClosure): bool =
+proc sameObjectTree(a, b: PNode, c: var TSameTypeClosure): bool =
   if a == b:
     result = true
   elif (a != nil) and (b != nil) and (a.kind == b.kind):
@@ -778,26 +787,26 @@ proc SameObjectTree(a, b: PNode, c: var TSameTypeClosure): bool =
       else:
         if sonsLen(a) == sonsLen(b): 
           for i in countup(0, sonsLen(a) - 1): 
-            if not SameObjectTree(a.sons[i], b.sons[i], c): return 
+            if not sameObjectTree(a.sons[i], b.sons[i], c): return 
           result = true
 
 proc sameObjectStructures(a, b: PType, c: var TSameTypeClosure): bool =
   # check base types:
   if sonsLen(a) != sonsLen(b): return
   for i in countup(0, sonsLen(a) - 1):
-    if not SameTypeOrNilAux(a.sons[i], b.sons[i], c): return
-  if not SameObjectTree(a.n, b.n, c): return
+    if not sameTypeOrNilAux(a.sons[i], b.sons[i], c): return
+  if not sameObjectTree(a.n, b.n, c): return
   result = true
 
 proc sameChildrenAux(a, b: PType, c: var TSameTypeClosure): bool =
   if sonsLen(a) != sonsLen(b): return false
   result = true
   for i in countup(0, sonsLen(a) - 1):
-    result = SameTypeOrNilAux(a.sons[i], b.sons[i], c)
+    result = sameTypeOrNilAux(a.sons[i], b.sons[i], c)
     if not result: return 
 
-proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
-  template CycleCheck() =
+proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
+  template cycleCheck() =
     # believe it or not, the direct check for ``containsOrIncl(c, a, b)``
     # increases bootstrapping time from 2.4s to 3.3s on my laptop! So we cheat
     # again: Since the recursion check is only to not get caught in an endless
@@ -826,21 +835,21 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     of dcEqOrDistinctOf:
       while a.kind == tyDistinct: a = a.sons[0]
       if a.kind != b.kind: return false  
-  case a.Kind
+  case a.kind
   of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString,
-     tyInt..tyBigNum, tyStmt:
+     tyInt..tyBigNum, tyStmt, tyExpr:
     result = sameFlags(a, b)
-  of tyExpr:
-    result = ExprStructuralEquivalent(a.n, b.n) and sameFlags(a, b)
+  of tyStatic, tyFromExpr:
+    result = exprStructuralEquivalent(a.n, b.n) and sameFlags(a, b)
   of tyObject:
-    IfFastObjectTypeCheckFailed(a, b):
-      CycleCheck()
+    ifFastObjectTypeCheckFailed(a, b):
+      cycleCheck()
       result = sameObjectStructures(a, b, c) and sameFlags(a, b)
   of tyDistinct:
-    CycleCheck()
+    cycleCheck()
     if c.cmp == dcEq:      
       if sameFlags(a, b):
-        IfFastObjectTypeCheckFailed(a, b):
+        ifFastObjectTypeCheckFailed(a, b):
           result = sameTypeAux(a.sons[0], b.sons[0], c)     
     else: 
       result = sameTypeAux(a.sons[0], b.sons[0], c) and sameFlags(a, b)
@@ -848,35 +857,37 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     # XXX generic enums do not make much sense, but require structural checking
     result = a.id == b.id and sameFlags(a, b)
   of tyTuple:
-    CycleCheck()
+    cycleCheck()
     result = sameTuple(a, b, c) and sameFlags(a, b)
   of tyGenericInst:    
     result = sameTypeAux(lastSon(a), lastSon(b), c)
   of tyTypeDesc:
     if c.cmp == dcEqIgnoreDistinct: result = false
-    elif TypeDescExactMatch in c.flags:
-      CycleCheck()
+    elif ExactTypeDescValues in c.flags:
+      cycleCheck()
       result = sameChildrenAux(x, y, c) and sameFlags(a, b)
     else:
       result = sameFlags(a, b)
-  of tyGenericParam, tyGenericInvokation, tyGenericBody, tySequence,
+  of tyGenericParam:
+    result = sameChildrenAux(a, b, c) and sameFlags(a, b)
+    if result and ExactGenericParams in c.flags:
+      result = a.sym.position == b.sym.position
+  of tyGenericInvokation, tyGenericBody, tySequence,
      tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyArrayConstr,
      tyArray, tyProc, tyConst, tyMutable, tyVarargs, tyIter,
      tyOrdinal, tyTypeClasses:
-    CycleCheck()    
+    cycleCheck()
+    if a.kind == tyTypeClass and a.n != nil: return a.n == b.n
     result = sameChildrenAux(a, b, c) and sameFlags(a, b)
-    if result and (a.kind == tyProc):
-      result = a.callConv == b.callConv
+    if result and a.kind == tyProc:
+      result = ((IgnoreCC in c.flags) or a.callConv == b.callConv) and
+               ((ExactConstraints notin c.flags) or sameConstraints(a.n, b.n))
   of tyRange:
-    CycleCheck()
-    result = SameTypeOrNilAux(a.sons[0], b.sons[0], c) and
-        SameValue(a.n.sons[0], b.n.sons[0]) and
-        SameValue(a.n.sons[1], b.n.sons[1])
+    cycleCheck()
+    result = sameTypeOrNilAux(a.sons[0], b.sons[0], c) and
+        sameValue(a.n.sons[0], b.n.sons[0]) and
+        sameValue(a.n.sons[1], b.n.sons[1])
   of tyNone: result = false  
-
-proc sameType*(x, y: PType): bool =
-  var c = initSameTypeClosure()
-  result = sameTypeAux(x, y, c)
 
 proc sameBackendType*(x, y: PType): bool =
   var c = initSameTypeClosure()
@@ -954,7 +965,7 @@ proc typeAllowedNode(marker: var TIntSet, n: PNode, kind: TSymKind,
     if result: 
       case n.kind
       of nkNone..nkNilLit: 
-        nil
+        discard
       else: 
         for i in countup(0, sonsLen(n) - 1): 
           result = typeAllowedNode(marker, n.sons[i], kind, flags)
@@ -965,7 +976,7 @@ proc matchType*(a: PType, pattern: openArray[tuple[k:TTypeKind, i:int]],
   var a = a
   for k, i in pattern.items:
     if a.kind != k: return false
-    if i >= a.sonslen or a.sons[i] == nil: return false
+    if i >= a.sonsLen or a.sons[i] == nil: return false
     a = a.sons[i]
   result = a.kind == last
 
@@ -975,42 +986,6 @@ proc isGenericAlias*(t: PType): bool =
 proc skipGenericAlias*(t: PType): PType =
   return if t.isGenericAlias: t.lastSon else: t
 
-proc matchTypeClass*(bindings: var TIdTable, typeClass, t: PType): bool =
-  for i in countup(0, typeClass.sonsLen - 1):
-    let req = typeClass.sons[i]
-    var match = req.kind == skipTypes(t, {tyRange, tyGenericInst}).kind
-
-    if not match:
-      case req.kind
-      of tyGenericBody:
-        if t.kind == tyGenericInst and t.sons[0] == req:
-          match = true
-          IdTablePut(bindings, typeClass, t)
-      of tyTypeClass:
-        match = matchTypeClass(bindings, req, t)
-      elif t.kind == tyTypeClass:
-        match = matchTypeClass(bindings, t, req)
-          
-    elif t.kind in {tyObject} and req.len != 0:
-      # empty 'object' is fine as constraint in a type class
-      match = sameType(t, req)
-
-    if tfAny in typeClass.flags:
-      if match: return true
-    else:
-      if not match: return false
-
-  # if the loop finished without returning, either all constraints matched
-  # or none of them matched.
-  result = if tfAny in typeClass.flags: false else: true
-  if result == true:
-    IdTablePut(bindings, typeClass, t)
-
-proc matchTypeClass*(typeClass, typ: PType): bool =
-  var bindings: TIdTable
-  initIdTable(bindings)
-  result = matchTypeClass(bindings, typeClass, typ)
-
 proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind,
                     flags: TTypeAllowedFlags = {}): bool =
   assert(kind in {skVar, skLet, skConst, skParam, skResult})
@@ -1018,7 +993,7 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind,
   # evaluation if something is wrong:
   result = true
   if typ == nil: return
-  if ContainsOrIncl(marker, typ.id): return 
+  if containsOrIncl(marker, typ.id): return 
   var t = skipTypes(typ, abstractInst-{tyTypeDesc})
   case t.kind
   of tyVar:
@@ -1038,14 +1013,15 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind,
       if not result: break 
     if result and t.sons[0] != nil:
       result = typeAllowedAux(marker, t.sons[0], skResult, flags)
-  of tyExpr, tyStmt, tyTypeDesc:
+  of tyExpr, tyStmt, tyTypeDesc, tyStatic:
     result = true
     # XXX er ... no? these should not be allowed!
   of tyEmpty:
     result = taField in flags
   of tyTypeClasses:
     result = true
-  of tyGenericBody, tyGenericParam, tyForward, tyNone, tyGenericInvokation:
+  of tyGenericBody, tyGenericParam, tyGenericInvokation,
+     tyNone, tyForward, tyFromExpr:
     result = false
   of tyNil:
     result = kind == skConst
@@ -1088,15 +1064,15 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind,
     result = true
 
 proc typeAllowed(t: PType, kind: TSymKind): bool = 
-  var marker = InitIntSet()
+  var marker = initIntSet()
   result = typeAllowedAux(marker, t, kind, {})
 
-proc align(address, alignment: biggestInt): biggestInt = 
+proc align(address, alignment: BiggestInt): BiggestInt = 
   result = (address + (alignment - 1)) and not (alignment - 1)
 
-proc computeSizeAux(typ: PType, a: var biggestInt): biggestInt
-proc computeRecSizeAux(n: PNode, a, currOffset: var biggestInt): biggestInt = 
-  var maxAlign, maxSize, b, res: biggestInt
+proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt
+proc computeRecSizeAux(n: PNode, a, currOffset: var BiggestInt): BiggestInt = 
+  var maxAlign, maxSize, b, res: BiggestInt
   case n.kind
   of nkRecCase: 
     assert(n.sons[0].kind == nkSym)
@@ -1128,25 +1104,29 @@ proc computeRecSizeAux(n: PNode, a, currOffset: var biggestInt): biggestInt =
     result = computeSizeAux(n.sym.typ, a)
     n.sym.offset = int(currOffset)
   else: 
-    InternalError("computeRecSizeAux()")
+    internalError("computeRecSizeAux()")
     a = 1
     result = - 1
 
-proc computeSizeAux(typ: PType, a: var biggestInt): biggestInt = 
-  var res, maxAlign, length, currOffset: biggestInt
-  if typ.size == - 2: 
+const 
+  szIllegalRecursion* = -2
+  szUnknownSize* = -1
+
+proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
+  var res, maxAlign, length, currOffset: BiggestInt
+  if typ.size == szIllegalRecursion:
     # we are already computing the size of the type
     # --> illegal recursion in type
-    return - 2
-  if typ.size >= 0: 
+    return szIllegalRecursion
+  if typ.size >= 0:
     # size already computed
     result = typ.size
     a = typ.align
     return 
-  typ.size = - 2              # mark as being computed
+  typ.size = szIllegalRecursion # mark as being computed
   case typ.kind
   of tyInt, tyUInt: 
-    result = IntSize
+    result = intSize
     a = result
   of tyInt8, tyUInt8, tyBool, tyChar: 
     result = 1
@@ -1174,8 +1154,10 @@ proc computeSizeAux(typ: PType, a: var biggestInt): biggestInt =
      tyBigNum: 
     result = ptrSize
     a = result
-  of tyArray, tyArrayConstr: 
-    result = lengthOrd(typ.sons[0]) * computeSizeAux(typ.sons[1], a)
+  of tyArray, tyArrayConstr:
+    let elemSize = computeSizeAux(typ.sons[1], a)
+    if elemSize < 0: return elemSize
+    result = lengthOrd(typ.sons[0]) * elemSize
   of tyEnum: 
     if firstOrd(typ) < 0: 
       result = 4              # use signed int32
@@ -1183,7 +1165,7 @@ proc computeSizeAux(typ: PType, a: var biggestInt): biggestInt =
       length = lastOrd(typ)   # BUGFIX: use lastOrd!
       if length + 1 < `shl`(1, 8): result = 1
       elif length + 1 < `shl`(1, 16): result = 2
-      elif length + 1 < `shl`(biggestInt(1), 32): result = 4
+      elif length + 1 < `shl`(BiggestInt(1), 32): result = 4
       else: result = 8
     a = result
   of tySet: 
@@ -1226,16 +1208,17 @@ proc computeSizeAux(typ: PType, a: var biggestInt): biggestInt =
   of tyGenericInst, tyDistinct, tyGenericBody, tyMutable, tyConst, tyIter:
     result = computeSizeAux(lastSon(typ), a)
   of tyTypeDesc:
-    result = (if typ.len == 1: computeSizeAux(typ.sons[0], a) else: -1)
-  of tyProxy: result = 1
+    result = if typ.len == 1: computeSizeAux(typ.sons[0], a)
+             else: szUnknownSize
+  of tyForward: return szIllegalRecursion
   else:
     #internalError("computeSizeAux()")
-    result = - 1
+    result = szUnknownSize
   typ.size = result
   typ.align = int(a)
 
-proc computeSize(typ: PType): biggestInt = 
-  var a: biggestInt = 1
+proc computeSize(typ: PType): BiggestInt = 
+  var a: BiggestInt = 1
   result = computeSizeAux(typ, a)
 
 proc getReturnType*(s: PSym): PType =
@@ -1243,13 +1226,13 @@ proc getReturnType*(s: PSym): PType =
   assert s.kind in {skProc, skTemplate, skMacro, skIterator}
   result = s.typ.sons[0]
 
-proc getSize(typ: PType): biggestInt = 
+proc getSize(typ: PType): BiggestInt = 
   result = computeSize(typ)
-  if result < 0: InternalError("getSize: " & $typ.kind)
+  if result < 0: internalError("getSize: " & $typ.kind)
 
-  
-proc containsGenericTypeIter(t: PType, closure: PObject): bool = 
-  result = t.kind in GenericTypes
+proc containsGenericTypeIter(t: PType, closure: PObject): bool =
+  result = t.kind in GenericTypes + tyTypeClasses + {tyTypeDesc,tyFromExpr} or
+           t.kind == tyStatic and t.n == nil
 
 proc containsGenericType*(t: PType): bool = 
   result = iterOverType(t, containsGenericTypeIter, nil)
@@ -1288,8 +1271,8 @@ proc compatibleEffectsAux(se, re: PNode): bool =
 proc compatibleEffects*(formal, actual: PType): bool =
   # for proc type compatibility checking:
   assert formal.kind == tyProc and actual.kind == tyProc
-  InternalAssert formal.n.sons[0].kind == nkEffectList
-  InternalAssert actual.n.sons[0].kind == nkEffectList
+  internalAssert formal.n.sons[0].kind == nkEffectList
+  internalAssert actual.n.sons[0].kind == nkEffectList
   
   var spec = formal.n.sons[0]
   if spec.len != 0:
@@ -1299,7 +1282,7 @@ proc compatibleEffects*(formal, actual: PType): bool =
     # if 'se.kind == nkArgList' it is no formal type really, but a
     # computed effect and as such no spec:
     # 'r.msgHandler = if isNil(msgHandler): defaultMsgHandler else: msgHandler'
-    if not IsNil(se) and se.kind != nkArgList:
+    if not isNil(se) and se.kind != nkArgList:
       # spec requires some exception or tag, but we don't know anything:
       if real.len == 0: return false
       result = compatibleEffectsAux(se, real.sons[exceptionEffects])
@@ -1314,7 +1297,7 @@ proc compatibleEffects*(formal, actual: PType): bool =
   result = true
 
 proc isCompileTimeOnly*(t: PType): bool {.inline.} =
-  result = t.kind in {tyTypedesc, tyExpr}
+  result = t.kind in {tyTypeDesc, tyStatic}
 
 proc containsCompileTimeOnly*(t: PType): bool =
   if isCompileTimeOnly(t): return true

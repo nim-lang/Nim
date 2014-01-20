@@ -192,6 +192,7 @@ type
     nkObjectTy,           # object body
     nkTupleTy,            # tuple body
     nkTypeClassTy,        # user-defined type class
+    nkStaticTy,           # ``static[T]``
     nkRecList,            # list of object parts
     nkRecCase,            # case section of object
     nkRecWhen,            # when section of object
@@ -336,19 +337,38 @@ type
     tyIter, # unused
     tyProxy # used as errornous type (for idetools)
     tyTypeClass
-    tyAnd
-    tyOr
-    tyNot
-    tyAnything
     tyParametricTypeClass # structured similarly to tyGenericInst
                           # lastSon is the body of the type class
+    
+    tyBuiltInTypeClass # Type such as the catch-all object, tuple, seq, etc
+    
+    tyCompositeTypeClass # 
+    
+    tyAnd, tyOr, tyNot # boolean type classes such as `string|int`,`not seq`,
+                       # `Sortable and Enumable`, etc
+    
+    tyAnything # a type class matching any type
+    
+    tyStatic   # a value known at compile type (the underlying type is .base)
+    
+    tyFromExpr # This is a type representing an expression that depends
+               # on generic parameters (the exprsesion is stored in t.n)
+               # It will be converted to a real type only during generic
+               # instantiation and prior to this it has the potential to
+               # be any type.
 
 const
   tyPureObject* = tyTuple
   GcTypeKinds* = {tyRef, tySequence, tyString}
   tyError* = tyProxy # as an errornous node should match everything
-  tyTypeClasses* = {tyTypeClass, tyParametricTypeClass, tyAnd, tyOr, tyNot, tyAnything}
 
+  tyUnknownTypes* = {tyError, tyFromExpr}
+
+  tyTypeClasses* = {tyTypeClass, tyBuiltInTypeClass, tyCompositeTypeClass,
+                    tyParametricTypeClass, tyAnd, tyOr, tyNot, tyAnything}
+
+  tyMetaTypes* = {tyGenericParam, tyTypeDesc, tyStatic, tyExpr} + tyTypeClasses
+ 
 type
   TTypeKinds* = set[TTypeKind]
 
@@ -364,6 +384,7 @@ type
     nfSem       # node has been checked for semantics
     nfDelegate  # the call can use a delegator
     nfExprCall  # this is an attempt to call a regular expression
+    nfIsRef     # this node is a 'ref' node; used for the VM
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 23)
@@ -382,9 +403,6 @@ type
                       # proc foo(T: typedesc, list: seq[T]): var T
     tfRetType,        # marks return types in proc (used to detect type classes 
                       # used as return types for return type inference)
-    tfAll,            # type class requires all constraints to be met (default)
-    tfAny,            # type class requires any constraint to be met
-    tfNot,            # type class with a negative check
     tfCapturesEnv,    # whether proc really captures some environment
     tfByCopy,         # pass object/tuple by copy (C backend)
     tfByRef,          # pass object/tuple by reference (C backend)
@@ -395,8 +413,12 @@ type
     tfNeedsInit,      # type constains a "not nil" constraint somewhere or some
                       # other type so that it requires inititalization
     tfHasShared,      # type constains a "shared" constraint modifier somewhere
-    tfHasMeta,        # type has "typedesc" or "expr" somewhere; or uses '|'
+    tfHasMeta,        # type contains "wildcard" sub-types such as generic params
+                      # or other type classes
     tfHasGCedMem,     # type contains GC'ed memory
+    tfHasStatic
+    tfGenericTypeParam
+    tfImplicitTypeParam
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -545,11 +567,11 @@ type
     typ*: PType
     info*: TLineInfo
     flags*: TNodeFlags
-    case Kind*: TNodeKind
+    case kind*: TNodeKind
     of nkCharLit..nkUInt64Lit:
-      intVal*: biggestInt
+      intVal*: BiggestInt
     of nkFloatLit..nkFloat128Lit:
-      floatVal*: biggestFloat
+      floatVal*: BiggestFloat
     of nkStrLit..nkTripleStrLit:
       strVal*: string
     of nkSym: 
@@ -773,9 +795,11 @@ const
 
   GenericTypes*: TTypeKinds = {tyGenericInvokation, tyGenericBody, 
     tyGenericParam}
+  
   StructuralEquivTypes*: TTypeKinds = {tyArrayConstr, tyNil, tyTuple, tyArray, 
     tySet, tyRange, tyPtr, tyRef, tyVar, tySequence, tyProc, tyOpenArray,
     tyVarargs}
+  
   ConcreteTypes*: TTypeKinds = { # types of the expr that may occur in::
                                  # var x = expr
     tyBool, tyChar, tyEnum, tyArray, tyObject, 
@@ -792,7 +816,7 @@ const
   ExportableSymKinds* = {skVar, skConst, skProc, skMethod, skType, skIterator, 
     skMacro, skTemplate, skConverter, skEnumField, skLet, skStub}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
-                                      nfAllConst, nfDelegate}
+                                      nfAllConst, nfDelegate, nfIsRef}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2
@@ -821,7 +845,7 @@ const
     # imported via 'importc: "fullname"' and no format string.
 
 # creator procs:
-proc newSym*(symKind: TSymKind, Name: PIdent, owner: PSym,
+proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
              info: TLineInfo): PSym
 proc newType*(kind: TTypeKind, owner: PSym): PType
 proc newNode*(kind: TNodeKind): PNode
@@ -894,6 +918,9 @@ template `{}=`*(n: PNode, i: int, s: PNode): stmt =
 var emptyNode* = newNode(nkEmpty)
 # There is a single empty node that is shared! Do not overwrite it!
 
+proc isMetaType*(t: PType): bool =
+  return t.kind in tyMetaTypes or tfHasMeta in t.flags
+
 proc linkTo*(t: PType, s: PSym): PType {.discardable.} =
   t.sym = s
   s.typ = t
@@ -910,7 +937,7 @@ template fileIdx*(c: PSym): int32 =
 
 template filename*(c: PSym): string =
   # XXX: this should be used only on module symbols
-  c.position.int32.toFileName
+  c.position.int32.toFilename
 
 proc appendToModule*(m: PSym, n: PNode) =
   ## The compiler will use this internally to add nodes that will be
@@ -929,7 +956,7 @@ const                         # for all kind of hash tables:
 proc copyStrTable(dest: var TStrTable, src: TStrTable) = 
   dest.counter = src.counter
   if isNil(src.data): return 
-  setlen(dest.data, len(src.data))
+  setLen(dest.data, len(src.data))
   for i in countup(0, high(src.data)): dest.data[i] = src.data[i]
   
 proc copyIdTable(dest: var TIdTable, src: TIdTable) = 
@@ -941,13 +968,13 @@ proc copyIdTable(dest: var TIdTable, src: TIdTable) =
 proc copyTable(dest: var TTable, src: TTable) = 
   dest.counter = src.counter
   if isNil(src.data): return 
-  setlen(dest.data, len(src.data))
+  setLen(dest.data, len(src.data))
   for i in countup(0, high(src.data)): dest.data[i] = src.data[i]
   
 proc copyObjectSet(dest: var TObjectSet, src: TObjectSet) = 
   dest.counter = src.counter
   if isNil(src.data): return 
-  setlen(dest.data, len(src.data))
+  setLen(dest.data, len(src.data))
   for i in countup(0, high(src.data)): dest.data[i] = src.data[i]
   
 proc discardSons(father: PNode) = 
@@ -1067,7 +1094,7 @@ proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
                   pragmas, exceptions, body]
 
 
-proc NewType(kind: TTypeKind, owner: PSym): PType = 
+proc newType(kind: TTypeKind, owner: PSym): PType = 
   new(result)
   result.kind = kind
   result.owner = owner
@@ -1107,7 +1134,7 @@ proc assignType(dest, src: PType) =
   for i in countup(0, sonsLen(src) - 1): dest.sons[i] = src.sons[i]
   
 proc copyType(t: PType, owner: PSym, keepId: bool): PType = 
-  result = newType(t.Kind, owner)
+  result = newType(t.kind, owner)
   assignType(result, t)
   if keepId: 
     result.id = t.id
@@ -1147,12 +1174,12 @@ proc createModuleAlias*(s: PSym, newIdent: PIdent, info: TLineInfo): PSym =
   # XXX once usedGenerics is used, ensure module aliases keep working!
   assert s.usedGenerics == nil
   
-proc newSym(symKind: TSymKind, Name: PIdent, owner: PSym,
+proc newSym(symKind: TSymKind, name: PIdent, owner: PSym,
             info: TLineInfo): PSym = 
   # generates a symbol and initializes the hash field too
   new(result)
-  result.Name = Name
-  result.Kind = symKind
+  result.name = name
+  result.kind = symKind
   result.flags = {}
   result.info = info
   result.options = gOptions
@@ -1160,36 +1187,36 @@ proc newSym(symKind: TSymKind, Name: PIdent, owner: PSym,
   result.offset = - 1
   result.id = getID()
   when debugIds: 
-    RegisterId(result)
+    registerId(result)
   #if result.id < 2000:
   #  MessageOut(name.s & " has id: " & toString(result.id))
   
 proc initStrTable(x: var TStrTable) = 
   x.counter = 0
-  newSeq(x.data, startSize)
+  newSeq(x.data, StartSize)
 
 proc newStrTable*: TStrTable =
   initStrTable(result)
 
 proc initTable(x: var TTable) = 
   x.counter = 0
-  newSeq(x.data, startSize)
+  newSeq(x.data, StartSize)
 
 proc initIdTable(x: var TIdTable) = 
   x.counter = 0
-  newSeq(x.data, startSize)
+  newSeq(x.data, StartSize)
 
 proc initObjectSet(x: var TObjectSet) = 
   x.counter = 0
-  newSeq(x.data, startSize)
+  newSeq(x.data, StartSize)
 
 proc initIdNodeTable(x: var TIdNodeTable) = 
   x.counter = 0
-  newSeq(x.data, startSize)
+  newSeq(x.data, StartSize)
 
 proc initNodeTable(x: var TNodeTable) = 
   x.counter = 0
-  newSeq(x.data, startSize)
+  newSeq(x.data, StartSize)
 
 proc sonsLen(n: PType): int = 
   if isNil(n.sons): result = 0
@@ -1203,7 +1230,7 @@ proc newSons(father: PType, length: int) =
   if isNil(father.sons): 
     newSeq(father.sons, length)
   else:
-    setlen(father.sons, length)
+    setLen(father.sons, length)
 
 proc sonsLen(n: PNode): int = 
   if isNil(n.sons): result = 0
@@ -1213,12 +1240,16 @@ proc newSons(father: PNode, length: int) =
   if isNil(father.sons): 
     newSeq(father.sons, length)
   else:
-    setlen(father.sons, length)
+    setLen(father.sons, length)
+
+proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
+  result = t
+  while result.kind in kinds: result = lastSon(result)
 
 proc propagateToOwner*(owner, elem: PType) =
   const HaveTheirOwnEmpty = {tySequence, tySet}
   owner.flags = owner.flags + (elem.flags * {tfHasShared, tfHasMeta,
-                                             tfHasGCedMem})
+                                             tfHasStatic, tfHasGCedMem})
   if tfNotNil in elem.flags:
     if owner.kind in {tyGenericInst, tyGenericBody, tyGenericInvokation}:
       owner.flags.incl tfNotNil
@@ -1226,15 +1257,19 @@ proc propagateToOwner*(owner, elem: PType) =
       owner.flags.incl tfNeedsInit
   
   if tfNeedsInit in elem.flags:
-    if owner.kind in HaveTheirOwnEmpty: nil
+    if owner.kind in HaveTheirOwnEmpty: discard
     else: owner.flags.incl tfNeedsInit
     
   if tfShared in elem.flags:
     owner.flags.incl tfHasShared
-  
-  if elem.kind in {tyExpr, tyTypeDesc}:
+
+  if elem.kind in tyMetaTypes:
     owner.flags.incl tfHasMeta
-  elif elem.kind in {tyString, tyRef, tySequence} or
+
+  if elem.kind == tyStatic:
+    owner.flags.incl tfHasStatic
+
+  if elem.kind in {tyString, tyRef, tySequence} or
       elem.kind == tyProc and elem.callConv == ccClosure:
     owner.flags.incl tfHasGCedMem
 
@@ -1256,7 +1291,7 @@ proc delSon(father: PNode, idx: int) =
   if isNil(father.sons): return 
   var length = sonsLen(father)
   for i in countup(idx, length - 2): father.sons[i] = father.sons[i + 1]
-  setlen(father.sons, length - 1)
+  setLen(father.sons, length - 1)
 
 proc copyNode(src: PNode): PNode = 
   # does not copy its sons!
@@ -1269,13 +1304,13 @@ proc copyNode(src: PNode): PNode =
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
-  case src.Kind
+  case src.kind
   of nkCharLit..nkUInt64Lit: result.intVal = src.intVal
   of nkFloatLit..nkFloat128Lit: result.floatVal = src.floatVal
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
-  else: nil
+  else: discard
 
 proc shallowCopy*(src: PNode): PNode = 
   # does not copy its sons, but provides space for them:
@@ -1287,7 +1322,7 @@ proc shallowCopy*(src: PNode): PNode =
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
-  case src.Kind
+  case src.kind
   of nkCharLit..nkUInt64Lit: result.intVal = src.intVal
   of nkFloatLit..nkFloat128Lit: result.floatVal = src.floatVal
   of nkSym: result.sym = src.sym
@@ -1306,7 +1341,7 @@ proc copyTree(src: PNode): PNode =
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
-  case src.Kind
+  case src.kind
   of nkCharLit..nkUInt64Lit: result.intVal = src.intVal
   of nkFloatLit..nkFloat128Lit: result.floatVal = src.floatVal
   of nkSym: result.sym = src.sym
@@ -1364,14 +1399,14 @@ proc sonsNotNil(n: PNode): bool =
       return false
   result = true
 
-proc getInt*(a: PNode): biggestInt = 
+proc getInt*(a: PNode): BiggestInt = 
   case a.kind
   of nkIntLit..nkUInt64Lit: result = a.intVal
   else: 
     internalError(a.info, "getInt")
     result = 0
 
-proc getFloat*(a: PNode): biggestFloat = 
+proc getFloat*(a: PNode): BiggestFloat = 
   case a.kind
   of nkFloatLit..nkFloat128Lit: result = a.floatVal
   else: 
@@ -1398,15 +1433,19 @@ proc isGenericRoutine*(s: PSym): bool =
   of skProcKinds:
     result = sfFromGeneric in s.flags or
              (s.ast != nil and s.ast[genericParamsPos].kind != nkEmpty)
-  else: nil
+  else: discard
 
 proc skipGenericOwner*(s: PSym): PSym =
-  InternalAssert s.kind in skProcKinds
+  internalAssert s.kind in skProcKinds
   ## Generic instantiations are owned by their originating generic
   ## symbol. This proc skips such owners and goes straigh to the owner
   ## of the generic itself (the module or the enclosing proc).
   result = if sfFromGeneric in s.flags: s.owner.owner
            else: s.owner
+
+proc originatingModule*(s: PSym): PSym =
+  result = s.owner
+  while result.kind != skModule: result = result.owner
 
 proc isRoutine*(s: PSym): bool {.inline.} =
   result = s.kind in {skProc, skTemplate, skMacro, skIterator, skMethod,

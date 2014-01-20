@@ -18,7 +18,7 @@ proc expectIntLit(c: PContext, n: PNode): int =
   let x = c.semConstExpr(c, n)
   case x.kind
   of nkIntLit..nkInt64Lit: result = int(x.intVal)
-  else: LocalError(n.info, errIntLiteralExpected)
+  else: localError(n.info, errIntLiteralExpected)
 
 proc semInstantiationInfo(c: PContext, n: PNode): PNode =
   result = newNodeIT(nkPar, n.info, n.typ)
@@ -26,21 +26,34 @@ proc semInstantiationInfo(c: PContext, n: PNode): PNode =
   let useFullPaths = expectIntLit(c, n.sons[2])
   let info = getInfoContext(idx)
   var filename = newNodeIT(nkStrLit, n.info, getSysType(tyString))
-  filename.strVal = if useFullPaths != 0: info.toFullPath else: info.ToFilename
+  filename.strVal = if useFullPaths != 0: info.toFullPath else: info.toFilename
   var line = newNodeIT(nkIntLit, n.info, getSysType(tyInt))
-  line.intVal = ToLinenumber(info)
+  line.intVal = toLinenumber(info)
   result.add(filename)
   result.add(line)
+ 
+proc evalTypeTrait(trait: PNode, operand: PType, context: PSym): PNode =
+  let typ = operand.skipTypes({tyTypeDesc})
+  case trait.sym.name.s.normalize
+  of "name":
+    result = newStrNode(nkStrLit, typ.typeToString(preferName))
+    result.typ = newType(tyString, context)
+    result.info = trait.info
+  of "arity":
+    result = newIntNode(nkIntLit, typ.n.len-1)
+    result.typ = newType(tyInt, context)
+    result.info = trait.info
+  else:
+    internalAssert false
 
 proc semTypeTraits(c: PContext, n: PNode): PNode =
   checkMinSonsLen(n, 2)
-  internalAssert n.sons[1].kind == nkSym
-  let typArg = n.sons[1].sym
-  if typArg.kind == skType or
-    (typArg.kind == skParam and typArg.typ.sonsLen > 0):
+  let t = n.sons[1].typ
+  internalAssert t != nil and t.kind == tyTypeDesc
+  if t.sonsLen > 0:
     # This is either a type known to sem or a typedesc
     # param to a regular proc (again, known at instantiation)
-    result = evalTypeTrait(n[0], n[1], GetCurrOwner())
+    result = evalTypeTrait(n[0], t, getCurrOwner())
   else:
     # a typedesc variable, pass unmodified to evals
     result = n
@@ -56,23 +69,23 @@ proc semBindSym(c: PContext, n: PNode): PNode =
   
   let sl = semConstExpr(c, n.sons[1])
   if sl.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}: 
-    LocalError(n.sons[1].info, errStringLiteralExpected)
+    localError(n.sons[1].info, errStringLiteralExpected)
     return errorNode(c, n)
   
   let isMixin = semConstExpr(c, n.sons[2])
   if isMixin.kind != nkIntLit or isMixin.intVal < 0 or
       isMixin.intVal > high(TSymChoiceRule).int:
-    LocalError(n.sons[2].info, errConstExprExpected)
+    localError(n.sons[2].info, errConstExprExpected)
     return errorNode(c, n)
   
   let id = newIdentNode(getIdent(sl.strVal), n.info)
-  let s = QualifiedLookUp(c, id)
+  let s = qualifiedLookUp(c, id)
   if s != nil:
     # we need to mark all symbols:
     var sc = symChoice(c, id, s, TSymChoiceRule(isMixin.intVal))
     result.add(sc)
   else:
-    LocalError(n.sons[1].info, errUndeclaredIdentifier, sl.strVal)
+    localError(n.sons[1].info, errUndeclaredIdentifier, sl.strVal)
 
 proc semLocals(c: PContext, n: PNode): PNode =
   var counter = 0
@@ -88,7 +101,7 @@ proc semLocals(c: PContext, n: PNode): PNode =
       #if it.owner != c.p.owner: return result
       if it.kind in skLocalVars and
           it.typ.skipTypes({tyGenericInst, tyVar}).kind notin
-              {tyVarargs, tyOpenArray, tyTypeDesc, tyExpr, tyStmt, tyEmpty}:
+            {tyVarargs, tyOpenArray, tyTypeDesc, tyStatic, tyExpr, tyStmt, tyEmpty}:
 
         var field = newSym(skField, it.name, getCurrOwner(), n.info)
         field.typ = it.typ.skipTypes({tyGenericInst, tyVar})

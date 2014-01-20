@@ -44,7 +44,7 @@ type
     splitAfter*: int          # split too long entries in the TOC
     tocPart*: seq[TTocEntry]
     hasToc*: bool
-    theIndex: string
+    theIndex: string # Contents of the index file to be dumped at the end.
     options*: TRstParseOptions
     findFile*: TFindFileHandler
     msgHandler*: TMsgHandler
@@ -111,9 +111,13 @@ proc initRstGenerator*(g: var TRstGenerator, target: TOutputTarget,
   for i in low(g.meta)..high(g.meta): g.meta[i] = ""
 
 proc writeIndexFile*(g: var TRstGenerator, outfile: string) =
+  ## Writes the current index buffer to the specified output file.
+  ##
+  ## You previously need to add entries to the index with the ``setIndexTerm``
+  ## proc. If the index is empty the file won't be created.
   if g.theIndex.len > 0: writeFile(outfile, g.theIndex)
   
-proc addXmlChar(dest: var string, c: Char) = 
+proc addXmlChar(dest: var string, c: char) = 
   case c
   of '&': add(dest, "&amp;")
   of '<': add(dest, "&lt;")
@@ -121,14 +125,14 @@ proc addXmlChar(dest: var string, c: Char) =
   of '\"': add(dest, "&quot;")
   else: add(dest, c)
   
-proc addRtfChar(dest: var string, c: Char) = 
+proc addRtfChar(dest: var string, c: char) = 
   case c
   of '{': add(dest, "\\{")
   of '}': add(dest, "\\}")
   of '\\': add(dest, "\\\\")
   else: add(dest, c)
   
-proc addTexChar(dest: var string, c: Char) = 
+proc addTexChar(dest: var string, c: char) = 
   case c
   of '_': add(dest, "\\_")
   of '{': add(dest, "\\symbol{123}")
@@ -148,7 +152,7 @@ proc addTexChar(dest: var string, c: Char) =
 
 var splitter*: string = "<wbr />"
 
-proc escChar*(target: TOutputTarget, dest: var string, c: Char) {.inline.} = 
+proc escChar*(target: TOutputTarget, dest: var string, c: char) {.inline.} = 
   case target
   of outHtml:  addXmlChar(dest, c)
   of outLatex: addTexChar(dest, c)
@@ -161,7 +165,7 @@ proc nextSplitPoint*(s: string, start: int): int =
     of 'a'..'z': 
       if result + 1 < len(s) + 0: 
         if s[result + 1] in {'A'..'Z'}: return 
-    else: nil
+    else: discard
     inc(result)
   dec(result)                 # last valid index
   
@@ -224,6 +228,13 @@ proc renderAux(d: PDoc, n: PRstNode, frmtA, frmtB: string, result: var string) =
 # ---------------- index handling --------------------------------------------
 
 proc setIndexTerm*(d: var TRstGenerator, id, term: string) =
+  ## Adds a `term` to the index using the specified hyperlink identifier.
+  ##
+  ## The ``d.theIndex`` string will be used to append the term in the format
+  ## ``term<tab>file#id``. The anchor will be the based on the name of the file
+  ## currently being parsed plus the `id`, which will be appended after a hash.
+  ##
+  ## The index won't be written to disk unless you call ``writeIndexFile``.
   d.theIndex.add(term)
   d.theIndex.add('\t')
   let htmlFile = changeFileExt(extractFilename(d.filename), HtmlExt)
@@ -263,14 +274,14 @@ proc `<-`(a: var TIndexEntry, b: TIndexEntry) =
 
 proc sortIndex(a: var openArray[TIndexEntry]) =
   # we use shellsort here; fast and simple
-  let N = len(a)
+  let n = len(a)
   var h = 1
   while true:
     h = 3 * h + 1
-    if h > N: break
+    if h > n: break
   while true:
     h = h div 3
-    for i in countup(h, N - 1):
+    for i in countup(h, n - 1):
       var v: TIndexEntry
       v <- a[i]
       var j = i
@@ -320,7 +331,7 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
   var refname = rstnodeToRefname(n)
   if d.hasToc:
     var length = len(d.tocPart)
-    setlen(d.tocPart, length + 1)
+    setLen(d.tocPart, length + 1)
     d.tocPart[length].refname = refname
     d.tocPart[length].n = n
     d.tocPart[length].header = tmp
@@ -456,7 +467,7 @@ proc renderField(d: PDoc, n: PRstNode, result: var string) =
       if d.meta[metaAuthor].len == 0:
         d.meta[metaAuthor] = fieldval
         b = true
-    elif cmpIgnoreStyle(fieldName, "version") == 0: 
+    elif cmpIgnoreStyle(fieldname, "version") == 0: 
       if d.meta[metaVersion].len == 0:
         d.meta[metaVersion] = fieldval
         b = true
@@ -620,14 +631,14 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
 
 # -----------------------------------------------------------------------------
 
-proc getVarIdx(varnames: openarray[string], id: string): int = 
+proc getVarIdx(varnames: openArray[string], id: string): int = 
   for i in countup(0, high(varnames)): 
     if cmpIgnoreStyle(varnames[i], id) == 0: 
       return i
   result = -1
 
-proc formatNamedVars*(frmt: string, varnames: openarray[string], 
-                      varvalues: openarray[string]): string = 
+proc formatNamedVars*(frmt: string, varnames: openArray[string], 
+                      varvalues: openArray[string]): string = 
   var i = 0
   var L = len(frmt)
   result = ""
@@ -646,7 +657,7 @@ proc formatNamedVars*(frmt: string, varnames: openarray[string],
       of '0'..'9': 
         var j = 0
         while true: 
-          j = (j * 10) + Ord(frmt[i]) - ord('0')
+          j = (j * 10) + ord(frmt[i]) - ord('0')
           inc(i)
           if i > L-1 or frmt[i] notin {'0'..'9'}: break 
         if j > high(varvalues) + 1:

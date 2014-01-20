@@ -23,63 +23,63 @@ type
     llsStdIn                  # stream encapsulates stdin
   TLLStream* = object of TObject
     kind*: TLLStreamKind # accessible for low-level access (lexbase uses this)
-    f*: tfile
+    f*: TFile
     s*: string
     rd*, wr*: int             # for string streams
     lineOffset*: int          # for fake stdin line numbers
   
   PLLStream* = ref TLLStream
 
-proc LLStreamOpen*(data: string): PLLStream
-proc LLStreamOpen*(f: var tfile): PLLStream
-proc LLStreamOpen*(filename: string, mode: TFileMode): PLLStream
-proc LLStreamOpen*(): PLLStream
-proc LLStreamOpenStdIn*(): PLLStream
-proc LLStreamClose*(s: PLLStream)
-proc LLStreamRead*(s: PLLStream, buf: pointer, bufLen: int): int
-proc LLStreamReadLine*(s: PLLStream, line: var string): bool
-proc LLStreamReadAll*(s: PLLStream): string
-proc LLStreamWrite*(s: PLLStream, data: string)
-proc LLStreamWrite*(s: PLLStream, data: Char)
-proc LLStreamWrite*(s: PLLStream, buf: pointer, buflen: int)
-proc LLStreamWriteln*(s: PLLStream, data: string)
+proc llStreamOpen*(data: string): PLLStream
+proc llStreamOpen*(f: var TFile): PLLStream
+proc llStreamOpen*(filename: string, mode: TFileMode): PLLStream
+proc llStreamOpen*(): PLLStream
+proc llStreamOpenStdIn*(): PLLStream
+proc llStreamClose*(s: PLLStream)
+proc llStreamRead*(s: PLLStream, buf: pointer, bufLen: int): int
+proc llStreamReadLine*(s: PLLStream, line: var string): bool
+proc llStreamReadAll*(s: PLLStream): string
+proc llStreamWrite*(s: PLLStream, data: string)
+proc llStreamWrite*(s: PLLStream, data: char)
+proc llStreamWrite*(s: PLLStream, buf: pointer, buflen: int)
+proc llStreamWriteln*(s: PLLStream, data: string)
 # implementation
 
-proc LLStreamOpen(data: string): PLLStream = 
+proc llStreamOpen(data: string): PLLStream = 
   new(result)
   result.s = data
   result.kind = llsString
 
-proc LLStreamOpen(f: var tfile): PLLStream = 
+proc llStreamOpen(f: var TFile): PLLStream = 
   new(result)
   result.f = f
   result.kind = llsFile
 
-proc LLStreamOpen(filename: string, mode: TFileMode): PLLStream = 
+proc llStreamOpen(filename: string, mode: TFileMode): PLLStream = 
   new(result)
   result.kind = llsFile
   if not open(result.f, filename, mode): result = nil
   
-proc LLStreamOpen(): PLLStream = 
+proc llStreamOpen(): PLLStream = 
   new(result)
   result.kind = llsNone
 
-proc LLStreamOpenStdIn(): PLLStream = 
+proc llStreamOpenStdIn(): PLLStream = 
   new(result)
   result.kind = llsStdIn
   result.s = ""
   result.lineOffset = -1
 
-proc LLStreamClose(s: PLLStream) = 
+proc llStreamClose(s: PLLStream) = 
   case s.kind
   of llsNone, llsString, llsStdIn: 
-    nil
+    discard
   of llsFile: 
     close(s.f)
 
-when not defined(ReadLineFromStdin): 
+when not defined(readLineFromStdin): 
   # fallback implementation:
-  proc ReadLineFromStdin(prompt: string, line: var string): bool =
+  proc readLineFromStdin(prompt: string, line: var string): bool =
     stdout.write(prompt)
     result = readLine(stdin, line)
 
@@ -99,7 +99,7 @@ proc endsWithOpr*(x: string): bool =
   result = x.endsWith(LineContinuationOprs)
 
 proc continueLine(line: string, inTripleString: bool): bool {.inline.} =
-  result = inTriplestring or
+  result = inTripleString or
       line[0] == ' ' or
       line.endsWith(LineContinuationOprs+AdditionalLineContinuationOprs)
 
@@ -111,12 +111,12 @@ proc countTriples(s: string): int =
       inc i, 2
     inc i
 
-proc LLreadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int =
+proc llReadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int =
   s.s = ""
   s.rd = 0
   var line = newStringOfCap(120)
   var triples = 0
-  while ReadLineFromStdin(if s.s.len == 0: ">>> " else: "... ", line): 
+  while readLineFromStdin(if s.s.len == 0: ">>> " else: "... ", line): 
     add(s.s, line)
     add(s.s, "\n")
     inc triples, countTriples(line)
@@ -127,7 +127,7 @@ proc LLreadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int =
     copyMem(buf, addr(s.s[s.rd]), result)
     inc(s.rd, result)
 
-proc LLStreamRead(s: PLLStream, buf: pointer, bufLen: int): int = 
+proc llStreamRead(s: PLLStream, buf: pointer, bufLen: int): int = 
   case s.kind
   of llsNone: 
     result = 0
@@ -139,9 +139,9 @@ proc LLStreamRead(s: PLLStream, buf: pointer, bufLen: int): int =
   of llsFile: 
     result = readBuffer(s.f, buf, bufLen)
   of llsStdIn: 
-    result = LLreadFromStdin(s, buf, bufLen)
+    result = llReadFromStdin(s, buf, bufLen)
   
-proc LLStreamReadLine(s: PLLStream, line: var string): bool =
+proc llStreamReadLine(s: PLLStream, line: var string): bool =
   setLen(line, 0)
   case s.kind
   of llsNone:
@@ -165,25 +165,25 @@ proc LLStreamReadLine(s: PLLStream, line: var string): bool =
   of llsStdIn:
     result = readLine(stdin, line)
     
-proc LLStreamWrite(s: PLLStream, data: string) = 
+proc llStreamWrite(s: PLLStream, data: string) = 
   case s.kind
   of llsNone, llsStdIn: 
-    nil
+    discard
   of llsString: 
     add(s.s, data)
     inc(s.wr, len(data))
   of llsFile: 
     write(s.f, data)
   
-proc LLStreamWriteln(s: PLLStream, data: string) = 
-  LLStreamWrite(s, data)
-  LLStreamWrite(s, "\n")
+proc llStreamWriteln(s: PLLStream, data: string) = 
+  llStreamWrite(s, data)
+  llStreamWrite(s, "\n")
 
-proc LLStreamWrite(s: PLLStream, data: Char) = 
+proc llStreamWrite(s: PLLStream, data: char) = 
   var c: char
   case s.kind
   of llsNone, llsStdIn: 
-    nil
+    discard
   of llsString: 
     add(s.s, data)
     inc(s.wr)
@@ -191,22 +191,21 @@ proc LLStreamWrite(s: PLLStream, data: Char) =
     c = data
     discard writeBuffer(s.f, addr(c), sizeof(c))
 
-proc LLStreamWrite(s: PLLStream, buf: pointer, buflen: int) = 
+proc llStreamWrite(s: PLLStream, buf: pointer, buflen: int) = 
   case s.kind
   of llsNone, llsStdIn: 
-    nil
+    discard
   of llsString: 
-    if bufLen > 0: 
-      setlen(s.s, len(s.s) + bufLen)
-      copyMem(addr(s.s[0 + s.wr]), buf, bufLen)
-      inc(s.wr, bufLen)
+    if buflen > 0: 
+      setLen(s.s, len(s.s) + buflen)
+      copyMem(addr(s.s[0 + s.wr]), buf, buflen)
+      inc(s.wr, buflen)
   of llsFile: 
-    discard writeBuffer(s.f, buf, bufLen)
+    discard writeBuffer(s.f, buf, buflen)
   
-proc LLStreamReadAll(s: PLLStream): string = 
+proc llStreamReadAll(s: PLLStream): string = 
   const 
     bufSize = 2048
-  var bytes, i: int
   case s.kind
   of llsNone, llsStdIn: 
     result = ""
@@ -216,10 +215,10 @@ proc LLStreamReadAll(s: PLLStream): string =
     s.rd = len(s.s)
   of llsFile: 
     result = newString(bufSize)
-    bytes = readBuffer(s.f, addr(result[0]), bufSize)
-    i = bytes
+    var bytes = readBuffer(s.f, addr(result[0]), bufSize)
+    var i = bytes
     while bytes == bufSize: 
-      setlen(result, i + bufSize)
+      setLen(result, i + bufSize)
       bytes = readBuffer(s.f, addr(result[i + 0]), bufSize)
       inc(i, bytes)
-    setlen(result, i)
+    setLen(result, i)

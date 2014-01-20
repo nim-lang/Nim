@@ -143,7 +143,7 @@ const
 # additional configuration variables:
 var
   gConfigVars* = newStringTable(modeStyleInsensitive)
-  gDllOverrides = newStringtable(modeCaseInsensitive)
+  gDllOverrides = newStringTable(modeCaseInsensitive)
   libpath* = ""
   gProjectName* = "" # holds a name like 'nimrod'
   gProjectPath* = "" # holds a path like /home/alice/projects/nimrod/compiler/
@@ -158,8 +158,6 @@ var
   implicitIncludes*: seq[string] = @[] # modules that are to be implicitly included
 
 const oKeepVariableNames* = true
-
-const oUseLateInstantiation* = false
 
 proc mainCommandArg*: string =
   ## This is intended for commands like check or parse
@@ -185,7 +183,7 @@ proc getOutFile*(filename, ext: string): string =
   
 proc getPrefixDir*(): string = 
   ## gets the application directory
-  result = SplitPath(getAppDir()).head
+  result = splitPath(getAppDir()).head
 
 proc canonicalizePath*(path: string): string =
   result = path.expandFilename
@@ -193,16 +191,16 @@ proc canonicalizePath*(path: string): string =
 
 proc shortenDir*(dir: string): string = 
   ## returns the interesting part of a dir
-  var prefix = getPrefixDir() & dirSep
+  var prefix = getPrefixDir() & DirSep
   if startsWith(dir, prefix): 
     return substr(dir, len(prefix))
-  prefix = gProjectPath & dirSep
+  prefix = gProjectPath & DirSep
   if startsWith(dir, prefix):
     return substr(dir, len(prefix))
   result = dir
 
 proc removeTrailingDirSep*(path: string): string = 
-  if (len(path) > 0) and (path[len(path) - 1] == dirSep): 
+  if (len(path) > 0) and (path[len(path) - 1] == DirSep): 
     result = substr(path, 0, len(path) - 2)
   else: 
     result = path
@@ -214,9 +212,9 @@ proc getGeneratedPath: string =
 proc getPackageName*(path: string): string =
   var q = 1
   var b = 0
-  if path[len(path)-1] in {dirsep, altsep}: q = 2
+  if path[len(path)-1] in {DirSep, AltSep}: q = 2
   for i in countdown(len(path)-q, 0):
-    if path[i] in {dirsep, altsep}:
+    if path[i] in {DirSep, AltSep}:
       if b == 0: b = i
       else:
         let x = path.substr(i+1, b-1)
@@ -255,15 +253,15 @@ proc completeGeneratedFilePath*(f: string, createSubDir: bool = true): string =
   result = joinPath(subdir, tail)
   #echo "completeGeneratedFilePath(", f, ") = ", result
 
-iterator iterSearchPath*(SearchPaths: TLinkedList): string = 
-  var it = PStrEntry(SearchPaths.head)
+iterator iterSearchPath*(searchPaths: TLinkedList): string = 
+  var it = PStrEntry(searchPaths.head)
   while it != nil:
     yield it.data
-    it = PStrEntry(it.Next)
+    it = PStrEntry(it.next)
 
 proc rawFindFile(f: string): string =
-  for it in iterSearchPath(SearchPaths):
-    result = JoinPath(it, f)
+  for it in iterSearchPath(searchPaths):
+    result = joinPath(it, f)
     if existsFile(result):
       return result.canonicalizePath
   result = ""
@@ -271,14 +269,14 @@ proc rawFindFile(f: string): string =
 proc rawFindFile2(f: string): string =
   var it = PStrEntry(lazyPaths.head)
   while it != nil:
-    result = JoinPath(it.data, f)
+    result = joinPath(it.data, f)
     if existsFile(result):
       bringToFront(lazyPaths, it)
       return result.canonicalizePath
-    it = PStrEntry(it.Next)
+    it = PStrEntry(it.next)
   result = ""
 
-proc FindFile*(f: string): string {.procvar.} = 
+proc findFile*(f: string): string {.procvar.} = 
   result = f.rawFindFile
   if result.len == 0:
     result = f.toLower.rawFindFile
@@ -289,11 +287,11 @@ proc FindFile*(f: string): string {.procvar.} =
 
 proc findModule*(modulename, currentModule: string): string =
   # returns path to module
-  let m = addFileExt(modulename, nimExt)
+  let m = addFileExt(modulename, NimExt)
   let currentPath = currentModule.splitFile.dir
   result = currentPath / m
   if not existsFile(result):
-    result = FindFile(m)
+    result = findFile(m)
 
 proc libCandidates*(s: string, dest: var seq[string]) = 
   var le = strutils.find(s, '(')
@@ -320,7 +318,7 @@ proc inclDynlibOverride*(lib: string) =
 proc isDynlibOverride*(lib: string): bool =
   result = gDllOverrides.hasKey(lib.canonDynlibName)
 
-proc binaryStrSearch*(x: openarray[string], y: string): int = 
+proc binaryStrSearch*(x: openArray[string], y: string): int = 
   var a = 0
   var b = len(x) - 1
   while a <= b: 

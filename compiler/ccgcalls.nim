@@ -73,7 +73,7 @@ proc isInCurrentFrame(p: BProc, n: PNode): bool =
     result = false
   of nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
     result = isInCurrentFrame(p, n.sons[0])
-  else: nil
+  else: discard
 
 proc openArrayLoc(p: BProc, n: PNode): PRope =
   var a: TLoc
@@ -88,7 +88,7 @@ proc openArrayLoc(p: BProc, n: PNode): PRope =
       result = ropef("$1->data, $1->$2", [a.rdLoc, lenField()])
   of tyArray, tyArrayConstr:
     result = ropef("$1, $2", [rdLoc(a), toRope(lengthOrd(a.t))])
-  else: InternalError("openArrayLoc: " & typeToString(a.t))
+  else: internalError("openArrayLoc: " & typeToString(a.t))
 
 proc genArgStringToCString(p: BProc, 
                            n: PNode): PRope {.inline.} =
@@ -243,7 +243,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
   for i in countup(3, length-1):
     assert(sonsLen(typ) == sonsLen(typ.n))
     if i >= sonsLen(typ):
-      InternalError(ri.info, "varargs for objective C method?")
+      internalError(ri.info, "varargs for objective C method?")
     assert(typ.n.sons[i].kind == nkSym)
     var param = typ.n.sons[i].sym
     app(pl, ~" ")

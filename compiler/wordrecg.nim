@@ -28,9 +28,9 @@ type
     wElif, wElse, wEnd, wEnum, wExcept, wExport,
     wFinally, wFor, wFrom, wGeneric, wIf, wImport, wIn, 
     wInclude, wInterface, wIs, wIsnot, wIterator, wLambda, wLet,
-    wMacro, wMethod, wMixin, wUsing, wMod, wNil, 
+    wMacro, wMethod, wMixin, wMod, wNil, 
     wNot, wNotin, wObject, wOf, wOr, wOut, wProc, wPtr, wRaise, wRef, wReturn, 
-    wShared, wShl, wShr, wStatic, wTemplate, wTry, wTuple, wType, wVar, 
+    wShared, wShl, wShr, wStatic, wTemplate, wTry, wTuple, wType, wUsing, wVar, 
     wWhen, wWhile, wWith, wWithout, wXor, wYield,
     
     wColon, wColonColon, wEquals, wDot, wDotDot,
@@ -95,7 +95,7 @@ const
   
   cppNimSharedKeywords* = {
     wAsm, wBreak, wCase, wConst, wContinue, wDo, wElse, wEnum, wExport,
-    wFor, wIf, wReturn, wStatic, wTemplate, wTry, wWhile, wUsing }
+    wFor, wIf, wReturn, wStatic, wTemplate, wTry, wWhile, wUsing}
 
   specialWords*: array[low(TSpecialWord)..high(TSpecialWord), string] = ["", 
     
@@ -107,11 +107,11 @@ const
     "finally", "for", "from", "generic", "if", 
     "import", "in", "include", "interface", "is", "isnot", "iterator",
     "lambda", "let",
-    "macro", "method", "mixin", "using", "mod", "nil", "not", "notin",
+    "macro", "method", "mixin", "mod", "nil", "not", "notin",
     "object", "of", "or", 
     "out", "proc", "ptr", "raise", "ref", "return",
     "shared", "shl", "shr", "static",
-    "template", "try", "tuple", "type", "var", 
+    "template", "try", "tuple", "type", "using", "var", 
     "when", "while", "with", "without", "xor",
     "yield",
 
@@ -166,7 +166,7 @@ const
     "inout", "bycopy", "byref", "oneway",
     ]
 
-proc findStr*(a: openarray[string], s: string): int = 
+proc findStr*(a: openArray[string], s: string): int = 
   for i in countup(low(a), high(a)): 
     if cmpIgnoreStyle(a[i], s) == 0: 
       return i
@@ -176,7 +176,7 @@ proc whichKeyword*(id: PIdent): TSpecialWord =
   if id.id < 0: result = wInvalid
   else: result = TSpecialWord(id.id)
 
-proc whichKeyword*(id: String): TSpecialWord = 
+proc whichKeyword*(id: string): TSpecialWord = 
   result = whichKeyword(getIdent(id))
   
 proc initSpecials() = 

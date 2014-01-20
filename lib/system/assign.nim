@@ -7,10 +7,10 @@
 #    distribution, for details about the copyright.
 #
 
-proc genericResetAux(dest: Pointer, n: ptr TNimNode)
+proc genericResetAux(dest: pointer, n: ptr TNimNode)
 
-proc genericAssignAux(dest, src: Pointer, mt: PNimType, shallow: bool)
-proc genericAssignAux(dest, src: Pointer, n: ptr TNimNode, shallow: bool) =
+proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool)
+proc genericAssignAux(dest, src: pointer, n: ptr TNimNode, shallow: bool) =
   var
     d = cast[TAddress](dest)
     s = cast[TAddress](src)
@@ -37,37 +37,37 @@ proc genericAssignAux(dest, src: Pointer, n: ptr TNimNode, shallow: bool) =
   #  echo "ugh memory corruption! ", n.kind
   #  quit 1
 
-proc genericAssignAux(dest, src: Pointer, mt: PNimType, shallow: bool) =
+proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) =
   var
     d = cast[TAddress](dest)
     s = cast[TAddress](src)
   sysAssert(mt != nil, "genericAssignAux 2")
-  case mt.Kind
+  case mt.kind
   of tyString:
-    var x = cast[ppointer](dest)
-    var s2 = cast[ppointer](s)[]
+    var x = cast[PPointer](dest)
+    var s2 = cast[PPointer](s)[]
     if s2 == nil or shallow or (
         cast[PGenericSeq](s2).reserved and seqShallowFlag) != 0:
       unsureAsgnRef(x, s2)
     else:
       unsureAsgnRef(x, copyString(cast[NimString](s2)))
   of tySequence:
-    var s2 = cast[ppointer](src)[]
+    var s2 = cast[PPointer](src)[]
     var seq = cast[PGenericSeq](s2)      
-    var x = cast[ppointer](dest)
+    var x = cast[PPointer](dest)
     if s2 == nil or shallow or (seq.reserved and seqShallowFlag) != 0:
       # this can happen! nil sequences are allowed
       unsureAsgnRef(x, s2)
       return
     sysAssert(dest != nil, "genericAssignAux 3")
     unsureAsgnRef(x, newSeq(mt, seq.len))
-    var dst = cast[taddress](cast[ppointer](dest)[])
+    var dst = cast[TAddress](cast[PPointer](dest)[])
     for i in 0..seq.len-1:
       genericAssignAux(
         cast[pointer](dst +% i*% mt.base.size +% GenericSeqSize),
-        cast[pointer](cast[taddress](s2) +% i *% mt.base.size +%
+        cast[pointer](cast[TAddress](s2) +% i *% mt.base.size +%
                      GenericSeqSize),
-        mt.Base, shallow)
+        mt.base, shallow)
   of tyObject:
     # we need to copy m_type field for tyObject, as it could be empty for
     # sequence reallocations:
@@ -83,16 +83,16 @@ proc genericAssignAux(dest, src: Pointer, mt: PNimType, shallow: bool) =
       genericAssignAux(cast[pointer](d +% i*% mt.base.size),
                        cast[pointer](s +% i*% mt.base.size), mt.base, shallow)
   of tyRef:
-    unsureAsgnRef(cast[ppointer](dest), cast[ppointer](s)[])
+    unsureAsgnRef(cast[PPointer](dest), cast[PPointer](s)[])
   else:
     copyMem(dest, src, mt.size) # copy raw bits
 
-proc genericAssign(dest, src: Pointer, mt: PNimType) {.compilerProc.} =
+proc genericAssign(dest, src: pointer, mt: PNimType) {.compilerProc.} =
   GC_disable()
   genericAssignAux(dest, src, mt, false)
   GC_enable()
 
-proc genericShallowAssign(dest, src: Pointer, mt: PNimType) {.compilerProc.} =
+proc genericShallowAssign(dest, src: pointer, mt: PNimType) {.compilerProc.} =
   GC_disable()
   genericAssignAux(dest, src, mt, true)
   GC_enable()
@@ -126,7 +126,7 @@ when false:
     cprintf("%s %ld\n", k, t.size)
     debugNimType(t.base)
 
-proc genericSeqAssign(dest, src: Pointer, mt: PNimType) {.compilerProc.} =
+proc genericSeqAssign(dest, src: pointer, mt: PNimType) {.compilerProc.} =
   var src = src # ugly, but I like to stress the parser sometimes :-)
   genericAssign(dest, addr(src), mt)
 
@@ -139,12 +139,12 @@ proc genericAssignOpenArray(dest, src: pointer, len: int,
     genericAssign(cast[pointer](d +% i*% mt.base.size),
                   cast[pointer](s +% i*% mt.base.size), mt.base)
 
-proc objectInit(dest: Pointer, typ: PNimType) {.compilerProc.}
-proc objectInitAux(dest: Pointer, n: ptr TNimNode) =
+proc objectInit(dest: pointer, typ: PNimType) {.compilerProc.}
+proc objectInitAux(dest: pointer, n: ptr TNimNode) =
   var d = cast[TAddress](dest)
   case n.kind
   of nkNone: sysAssert(false, "objectInitAux")
-  of nkSLot: objectInit(cast[pointer](d +% n.offset), n.typ)
+  of nkSlot: objectInit(cast[pointer](d +% n.offset), n.typ)
   of nkList:
     for i in 0..n.len-1:
       objectInitAux(dest, n.sons[i])
@@ -152,7 +152,7 @@ proc objectInitAux(dest: Pointer, n: ptr TNimNode) =
     var m = selectBranch(dest, n)
     if m != nil: objectInitAux(dest, m)
 
-proc objectInit(dest: Pointer, typ: PNimType) =
+proc objectInit(dest: pointer, typ: PNimType) =
   # the generic init proc that takes care of initialization of complex
   # objects on the stack or heap
   var d = cast[TAddress](dest)
@@ -168,12 +168,12 @@ proc objectInit(dest: Pointer, typ: PNimType) =
   of tyArray, tyArrayConstr:
     for i in 0..(typ.size div typ.base.size)-1:
       objectInit(cast[pointer](d +% i * typ.base.size), typ.base)
-  else: nil # nothing to do
+  else: discard # nothing to do
   
 # ---------------------- assign zero -----------------------------------------
 
 when not defined(nimmixin):
-  proc destroy(x: int) = nil
+  proc destroy(x: int) = discard
   proc nimDestroyRange*[T](r: T) =
     # internal proc used for destroying sequences and arrays
     for i in countup(0, r.len - 1): destroy(r[i])
@@ -184,8 +184,8 @@ else:
     mixin destroy
     for i in countup(0, r.len - 1): destroy(r[i])
 
-proc genericReset(dest: Pointer, mt: PNimType) {.compilerProc.}
-proc genericResetAux(dest: Pointer, n: ptr TNimNode) =
+proc genericReset(dest: pointer, mt: PNimType) {.compilerProc.}
+proc genericResetAux(dest: pointer, n: ptr TNimNode) =
   var d = cast[TAddress](dest)
   case n.kind
   of nkNone: sysAssert(false, "genericResetAux")
@@ -197,12 +197,12 @@ proc genericResetAux(dest: Pointer, n: ptr TNimNode) =
     if m != nil: genericResetAux(dest, m)
     zeroMem(cast[pointer](d +% n.offset), n.typ.size)
   
-proc genericReset(dest: Pointer, mt: PNimType) =
+proc genericReset(dest: pointer, mt: PNimType) =
   var d = cast[TAddress](dest)
   sysAssert(mt != nil, "genericReset 2")
-  case mt.Kind
+  case mt.kind
   of tyString, tyRef, tySequence:
-    unsureAsgnRef(cast[ppointer](dest), nil)
+    unsureAsgnRef(cast[PPointer](dest), nil)
   of tyObject, tyTuple:
     # we don't need to reset m_type field for tyObject
     genericResetAux(dest, mt.node)

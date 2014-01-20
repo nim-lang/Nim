@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -52,7 +52,7 @@ proc emitLazily(s: PSym): bool {.inline.} =
 proc initLoc(result: var TLoc, k: TLocKind, typ: PType, s: TStorageLoc) = 
   result.k = k
   result.s = s
-  result.t = GetUniqueType(typ)
+  result.t = getUniqueType(typ)
   result.r = nil
   result.a = - 1
   result.flags = {}
@@ -75,12 +75,12 @@ proc isSimpleConst(typ: PType): bool =
 proc useStringh(m: BModule) =
   if not m.includesStringh:
     m.includesStringh = true
-    discard lists.IncludeStr(m.headerFiles, "<string.h>")
+    discard lists.includeStr(m.headerFiles, "<string.h>")
 
 proc useHeader(m: BModule, sym: PSym) = 
-  if lfHeader in sym.loc.Flags: 
+  if lfHeader in sym.loc.flags: 
     assert(sym.annex != nil)
-    discard lists.IncludeStr(m.headerFiles, getStr(sym.annex.path))
+    discard lists.includeStr(m.headerFiles, getStr(sym.annex.path))
 
 proc cgsym(m: BModule, name: string): PRope
 
@@ -103,7 +103,7 @@ proc ropecg(m: BModule, frmt: TFormatStr, args: varargs[PRope]): PRope =
       of '0'..'9': 
         var j = 0
         while true: 
-          j = (j * 10) + Ord(frmt[i]) - ord('0')
+          j = (j * 10) + ord(frmt[i]) - ord('0')
           inc(i)
           if i >= length or not (frmt[i] in {'0'..'9'}): break 
         num = j
@@ -116,7 +116,7 @@ proc ropecg(m: BModule, frmt: TFormatStr, args: varargs[PRope]): PRope =
       of 'N': 
         app(result, rnl)
         inc(i)
-      else: InternalError("ropes: invalid format string $" & frmt[i])
+      else: internalError("ropes: invalid format string $" & frmt[i])
     elif frmt[i] == '#' and frmt[i+1] in IdentStartChars:
       inc(i)
       var j = i
@@ -128,7 +128,7 @@ proc ropecg(m: BModule, frmt: TFormatStr, args: varargs[PRope]): PRope =
       inc(i, 2)
       var j = 0
       while frmt[i] in Digits: 
-        j = (j * 10) + Ord(frmt[i]) - ord('0')
+        j = (j * 10) + ord(frmt[i]) - ord('0')
         inc(i)
       app(result, cgsym(m, args[j-1].ropeToStr))
     var start = i
@@ -194,7 +194,7 @@ when compileTimeRopeFmt:
       if i - 1 >= start:
         yield (kind: ffLit, value: substr(s, start, i-1), intValue: 0)
 
-  macro rfmt(m: BModule, fmt: expr[string], args: varargs[PRope]): expr =
+  macro rfmt(m: BModule, fmt: static[string], args: varargs[PRope]): expr =
     ## Experimental optimized rope-formatting operator
     ## The run-time code it produces will be very fast, but will it speed up
     ## the compilation of nimrod itself or will the macro execution time
@@ -209,7 +209,7 @@ when compileTimeRopeFmt:
       of ffParam:
         result.add(args[frag.intValue])
 else:
-  template rfmt(m: BModule, fmt: expr[string], args: varargs[PRope]): expr =
+  template rfmt(m: BModule, fmt: string, args: varargs[PRope]): expr =
     ropecg(m, fmt, args)
 
 proc appcg(m: BModule, c: var PRope, frmt: TFormatStr, 
@@ -279,11 +279,11 @@ proc genLineDir(p: BProc, t: PNode) =
   if optEmbedOrigSrc in gGlobalOptions:
     app(p.s(cpsStmts), con(~"//", t.info.sourceLine, rnl))
   genCLineDir(p.s(cpsStmts), t.info.toFullPath, line)
-  if ({optStackTrace, optEndb} * p.Options == {optStackTrace, optEndb}) and
+  if ({optStackTrace, optEndb} * p.options == {optStackTrace, optEndb}) and
       (p.prc == nil or sfPure notin p.prc.flags):
     linefmt(p, cpsStmts, "#endb($1, $2);$n",
             line.toRope, makeCString(toFilename(t.info)))
-  elif ({optLineTrace, optStackTrace} * p.Options ==
+  elif ({optLineTrace, optStackTrace} * p.options ==
       {optLineTrace, optStackTrace}) and
       (p.prc == nil or sfPure notin p.prc.flags):
     linefmt(p, cpsStmts, "nimln($1, $2);$n",
@@ -319,7 +319,7 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
                    takeAddr: bool) =
   case analyseObjectWithTypeField(t)
   of frNone:
-    nil
+    discard
   of frHeader:
     var r = rdLoc(a)
     if not takeAddr: r = ropef("(*$1)", [r])
@@ -351,7 +351,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
   if not isComplexValueType(skipTypes(loc.t, abstractVarRange)):
     if containsGcRef:
       var nilLoc: TLoc
-      initLoc(nilLoc, locTemp, loc.t, onStack)
+      initLoc(nilLoc, locTemp, loc.t, OnStack)
       nilLoc.r = toRope("NIM_NIL")
       genRefAssign(p, loc, nilLoc, {afSrcIsNil})
     else:
@@ -513,7 +513,7 @@ proc assignLocalVar(p: BProc, s: PSym) =
 
 include ccgthreadvars
 
-proc VarInDynamicLib(m: BModule, sym: PSym)
+proc varInDynamicLib(m: BModule, sym: PSym)
 proc mangleDynLibProc(sym: PSym): PRope
 
 proc assignGlobalVar(p: BProc, s: PSym) = 
@@ -522,8 +522,8 @@ proc assignGlobalVar(p: BProc, s: PSym) =
   
   if lfDynamicLib in s.loc.flags:
     var q = findPendingModule(p.module, s)
-    if q != nil and not ContainsOrIncl(q.declaredThings, s.id): 
-      VarInDynamicLib(q, s)
+    if q != nil and not containsOrIncl(q.declaredThings, s.id): 
+      varInDynamicLib(q, s)
     else:
       s.loc.r = mangleDynLibProc(s)
     return
@@ -578,7 +578,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc)
 proc genProcPrototype(m: BModule, sym: PSym)
 proc putLocIntoDest(p: BProc, d: var TLoc, s: TLoc)
 proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags)
-proc intLiteral(i: biggestInt): PRope
+proc intLiteral(i: BiggestInt): PRope
 proc genLiteral(p: BProc, n: PNode): PRope
 
 proc initLocExpr(p: BProc, e: PNode, result: var TLoc) =
@@ -610,7 +610,7 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
       var s: TStringSeq = @[]
       libCandidates(lib.path.strVal, s)
       if gVerbosity >= 2:
-        MsgWriteln("Dependency: " & lib.path.strVal)
+        msgWriteln("Dependency: " & lib.path.strVal)
       var loadlib: PRope = nil
       for i in countup(0, high(s)): 
         inc(m.labels)
@@ -632,7 +632,7 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
            "if (!($1 = #nimLoadLibrary($2))) #nimLoadLibraryError($2);$n", 
            [tmp, rdLoc(dest)])
       
-  if lib.name == nil: InternalError("loadDynamicLib")
+  if lib.name == nil: internalError("loadDynamicLib")
   
 proc mangleDynLibProc(sym: PSym): PRope =
   if sfCompilerProc in sym.flags: 
@@ -641,7 +641,7 @@ proc mangleDynLibProc(sym: PSym): PRope =
   else:
     result = ropef("Dl_$1", [toRope(sym.id)])
   
-proc SymInDynamicLib(m: BModule, sym: PSym) = 
+proc symInDynamicLib(m: BModule, sym: PSym) = 
   var lib = sym.annex
   let isCall = isGetProcAddr(lib)
   var extname = sym.loc.r
@@ -665,14 +665,14 @@ proc SymInDynamicLib(m: BModule, sym: PSym) =
         params, cstringLit(m, m.s[cfsDynLibInit], ropeToStr(extname))])
     var last = lastSon(n)
     if last.kind == nkHiddenStdConv: last = last.sons[1]
-    InternalAssert(last.kind == nkStrLit)
+    internalAssert(last.kind == nkStrLit)
     let idx = last.strVal
     if idx.len == 0:
       app(m.initProc.s(cpsStmts), load)
     elif idx.len == 1 and idx[0] in {'0'..'9'}:
       app(m.extensionLoaders[idx[0]], load)
     else:
-      InternalError(sym.info, "wrong index: " & idx)
+      internalError(sym.info, "wrong index: " & idx)
   else:
     appcg(m, m.s[cfsDynLibInit], 
         "\t$1 = ($2) #nimGetProcAddr($3, $4);$n", 
@@ -682,7 +682,7 @@ proc SymInDynamicLib(m: BModule, sym: PSym) =
       "$1 = linkonce global $2 zeroinitializer$n", 
       [sym.loc.r, getTypeDesc(m, sym.loc.t)])
 
-proc VarInDynamicLib(m: BModule, sym: PSym) = 
+proc varInDynamicLib(m: BModule, sym: PSym) = 
   var lib = sym.annex
   var extname = sym.loc.r
   loadDynamicLib(m, lib)
@@ -697,7 +697,7 @@ proc VarInDynamicLib(m: BModule, sym: PSym) =
   appf(m.s[cfsVars], "$2* $1;$n",
       [sym.loc.r, getTypeDesc(m, sym.loc.t)])
 
-proc SymInDynamicLibPartial(m: BModule, sym: PSym) =
+proc symInDynamicLibPartial(m: BModule, sym: PSym) =
   sym.loc.r = mangleDynLibProc(sym)
   sym.typ.sym = nil           # generate a new name
 
@@ -708,7 +708,7 @@ proc cgsym(m: BModule, name: string): PRope =
     of skProc, skMethod, skConverter, skIterator: genProc(m, sym)
     of skVar, skResult, skLet: genVarPrototype(m, sym)
     of skType: discard getTypeDesc(m, sym.typ)
-    else: InternalError("cgsym: " & name)
+    else: internalError("cgsym: " & name)
   else:
     # we used to exclude the system module from this check, but for DLL
     # generation support this sloppyness leads to hard to detect bugs, so
@@ -724,7 +724,7 @@ proc generateHeaders(m: BModule) =
       appf(m.s[cfsHeaders], "$N#include \"$1\"$N", [toRope(it.data)])
     else: 
       appf(m.s[cfsHeaders], "$N#include $1$N", [toRope(it.data)])
-    it = PStrEntry(it.Next)
+    it = PStrEntry(it.next)
 
 proc retIsNotVoid(s: PSym): bool = 
   result = (s.typ.sons[0] != nil) and not isInvalidReturnType(s.typ.sons[0])
@@ -747,7 +747,7 @@ proc closureSetup(p: BProc, prc: PSym) =
   # prc.ast[paramsPos].last contains the type we're after:
   var ls = lastSon(prc.ast[paramsPos])
   if ls.kind != nkSym:
-    InternalError(prc.info, "closure generation failed")
+    internalError(prc.info, "closure generation failed")
   var env = ls.sym
   #echo "created environment: ", env.id, " for ", prc.name.s
   assignLocalVar(p, env)
@@ -784,7 +784,7 @@ proc genProcAux(m: BModule, prc: PSym) =
   genStmts(p, prc.getBody) # modifies p.locals, p.init, etc.
   var generatedProc: PRope
   if sfPure in prc.flags:
-    if hasNakedDeclspec in extccomp.CC[extccomp.ccompiler].props:
+    if hasNakedDeclspec in extccomp.CC[extccomp.cCompiler].props:
       header = con("__declspec(naked) ", header)
     generatedProc = rfmt(nil, "$N$1 {$n$2$3$4}$N$N",
                          header, p.s(cpsLocals), p.s(cpsInit), p.s(cpsStmts))
@@ -793,7 +793,7 @@ proc genProcAux(m: BModule, prc: PSym) =
     app(generatedProc, initGCFrame(p))
     if optStackTrace in prc.options: 
       app(generatedProc, p.s(cpsLocals))
-      var procname = CStringLit(p, generatedProc, prc.name.s)
+      var procname = cstringLit(p, generatedProc, prc.name.s)
       app(generatedProc, initFrame(p, procname, prc.info.quotedFilename))
     else: 
       app(generatedProc, p.s(cpsLocals))
@@ -811,16 +811,16 @@ proc genProcAux(m: BModule, prc: PSym) =
   
 proc genProcPrototype(m: BModule, sym: PSym) = 
   useHeader(m, sym)
-  if lfNoDecl in sym.loc.Flags: return 
-  if lfDynamicLib in sym.loc.Flags:
+  if lfNoDecl in sym.loc.flags: return 
+  if lfDynamicLib in sym.loc.flags:
     if getModule(sym).id != m.module.id and
-        not ContainsOrIncl(m.declaredThings, sym.id): 
+        not containsOrIncl(m.declaredThings, sym.id): 
       app(m.s[cfsVars], rfmt(nil, "extern $1 $2;$n",
                         getTypeDesc(m, sym.loc.t), mangleDynLibProc(sym)))
       if gCmd == cmdCompileToLLVM: incl(sym.loc.flags, lfIndirect)
-  elif not ContainsOrIncl(m.declaredProtos, sym.id):
+  elif not containsOrIncl(m.declaredProtos, sym.id):
     var header = genProcHeader(m, sym)
-    if sfPure in sym.flags and hasNakedAttribute in CC[ccompiler].props:
+    if sfPure in sym.flags and hasNakedAttribute in CC[cCompiler].props:
       header.app(" __attribute__((naked))")
     app(m.s[cfsProcHeaders], rfmt(nil, "$1;$n", header))
 
@@ -832,21 +832,21 @@ proc genProcNoForward(m: BModule, prc: PSym) =
     discard cgsym(m, prc.name.s)
     return  
   genProcPrototype(m, prc)
-  if lfNoDecl in prc.loc.Flags: nil
+  if lfNoDecl in prc.loc.flags: discard
   elif prc.typ.callConv == ccInline:
     # We add inline procs to the calling module to enable C based inlining.
     # This also means that a check with ``q.declaredThings`` is wrong, we need
     # a check for ``m.declaredThings``.
-    if not ContainsOrIncl(m.declaredThings, prc.id): genProcAux(m, prc)
+    if not containsOrIncl(m.declaredThings, prc.id): genProcAux(m, prc)
   elif lfDynamicLib in prc.loc.flags:
     var q = findPendingModule(m, prc)
-    if q != nil and not ContainsOrIncl(q.declaredThings, prc.id): 
-      SymInDynamicLib(q, prc)
+    if q != nil and not containsOrIncl(q.declaredThings, prc.id): 
+      symInDynamicLib(q, prc)
     else:
-      SymInDynamicLibPartial(m, prc)
+      symInDynamicLibPartial(m, prc)
   elif sfImportc notin prc.flags:
     var q = findPendingModule(m, prc)
-    if q != nil and not ContainsOrIncl(q.declaredThings, prc.id): 
+    if q != nil and not containsOrIncl(q.declaredThings, prc.id): 
       genProcAux(q, prc)
 
 proc requestConstImpl(p: BProc, sym: PSym) =
@@ -854,15 +854,15 @@ proc requestConstImpl(p: BProc, sym: PSym) =
   useHeader(m, sym)
   if sym.loc.k == locNone:
     fillLoc(sym.loc, locData, sym.typ, mangleName(sym), OnUnknown)
-  if lfNoDecl in sym.loc.Flags: return
+  if lfNoDecl in sym.loc.flags: return
   # declare implementation:
   var q = findPendingModule(m, sym)
-  if q != nil and not ContainsOrIncl(q.declaredThings, sym.id):
+  if q != nil and not containsOrIncl(q.declaredThings, sym.id):
     assert q.initProc.module == q
     appf(q.s[cfsData], "NIM_CONST $1 $2 = $3;$n",
         [getTypeDesc(q, sym.typ), sym.loc.r, genConstExpr(q.initProc, sym.ast)])
   # declare header:
-  if q != m and not ContainsOrIncl(m.declaredThings, sym.id):
+  if q != m and not containsOrIncl(m.declaredThings, sym.id):
     assert(sym.loc.r != nil)
     let headerDecl = ropef("extern NIM_CONST $1 $2;$n",
         [getTypeDesc(m, sym.loc.t), sym.loc.r])
@@ -879,17 +879,17 @@ proc genProc(m: BModule, prc: PSym) =
   else:
     genProcNoForward(m, prc)
     if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc} and
-        generatedHeader != nil and lfNoDecl notin prc.loc.Flags:
+        generatedHeader != nil and lfNoDecl notin prc.loc.flags:
       genProcPrototype(generatedHeader, prc)
       if prc.typ.callConv == ccInline:
-        if not ContainsOrIncl(generatedHeader.declaredThings, prc.id): 
+        if not containsOrIncl(generatedHeader.declaredThings, prc.id): 
           genProcAux(generatedHeader, prc)
 
 proc genVarPrototypeAux(m: BModule, sym: PSym) = 
   assert(sfGlobal in sym.flags)
   useHeader(m, sym)
   fillLoc(sym.loc, locGlobalVar, sym.typ, mangleName(sym), OnHeap)
-  if (lfNoDecl in sym.loc.Flags) or ContainsOrIncl(m.declaredThings, sym.id): 
+  if (lfNoDecl in sym.loc.flags) or containsOrIncl(m.declaredThings, sym.id): 
     return 
   if sym.owner.id != m.module.id: 
     # else we already have the symbol generated!
@@ -914,23 +914,23 @@ proc addIntTypes(result: var PRope) {.inline.} =
 proc getCopyright(cfilenoext: string): PRope = 
   if optCompileOnly in gGlobalOptions: 
     result = ropeff("/* Generated by Nimrod Compiler v$1 */$n" &
-        "/*   (c) 2012 Andreas Rumpf */$n" &
+        "/*   (c) 2014 Andreas Rumpf */$n" &
         "/* The generated code is subject to the original license. */$n",
         "; Generated by Nimrod Compiler v$1$n" &
-        ";   (c) 2012 Andreas Rumpf$n", [toRope(versionAsString)])
+        ";   (c) 2012 Andreas Rumpf$n", [toRope(VersionAsString)])
   else: 
     result = ropeff("/* Generated by Nimrod Compiler v$1 */$n" &
-        "/*   (c) 2012 Andreas Rumpf */$n" & 
+        "/*   (c) 2014 Andreas Rumpf */$n" & 
         "/* The generated code is subject to the original license. */$n" &
         "/* Compiled for: $2, $3, $4 */$n" &
         "/* Command for C compiler:$n   $5 */$n", 
         "; Generated by Nimrod Compiler v$1$n" &
-        ";   (c) 2012 Andreas Rumpf$n" & 
+        ";   (c) 2014 Andreas Rumpf$n" & 
         "; Compiled for: $2, $3, $4$n" &
-        "; Command for LLVM compiler:$n   $5$n", [toRope(versionAsString), 
+        "; Command for LLVM compiler:$n   $5$n", [toRope(VersionAsString), 
         toRope(platform.OS[targetOS].name), 
         toRope(platform.CPU[targetCPU].name), 
-        toRope(extccomp.CC[extccomp.ccompiler].name), 
+        toRope(extccomp.CC[extccomp.cCompiler].name), 
         toRope(getCompileCFileCmd(cfilenoext))])
 
 proc getFileHeader(cfilenoext: string): PRope = 
@@ -943,44 +943,60 @@ proc genFilenames(m: BModule): PRope =
   for i in 0.. <fileInfos.len:
     result.appf("dbgRegisterFilename($1);$n", fileInfos[i].projPath.makeCString)
 
-proc genMainProc(m: BModule) = 
+proc genMainProc(m: BModule) =
   const 
-    CommonMainBody =
-        "\tsystemDatInit();$n" &
-        "\tsystemInit();$n" &
-        "$1" &
-        "$2" &
-        "$3" &
-        "$4"
-    PosixNimMain = 
-        "int cmdCount;$n" & 
-        "char** cmdLine;$n" & 
-        "char** gEnv;$n" &
-        "N_CDECL(void, NimMain)(void) {$n" &
-        CommonMainBody & "}$n"
+    PreMainBody =
+      "\tsystemDatInit();$n" &
+      "\tsystemInit();$n" &
+      "$1" &
+      "$2" &
+      "$3" &
+      "$4"
+
+    MainProcs =
+      "\tPreMain();$n" &
+      "\tNimMain();$n"
+    
+    MainProcsWithResult =
+      MainProcs & "\treturn nim_program_result;$n"
+
+    PosixNimMain =
+      "int cmdCount;$n" &
+      "char** cmdLine;$n" &
+      "char** gEnv;$n" &
+      "N_CDECL(void, NimMain)(void) {$n$1}$n"
+  
     PosixCMain = "int main(int argc, char** args, char** env) {$n" &
-        "\tcmdLine = args;$n" & "\tcmdCount = argc;$n" & "\tgEnv = env;$n" &
-        "\tNimMain();$n" & "\treturn nim_program_result;$n" & "}$n"
+      "\tcmdLine = args;$n" & "\tcmdCount = argc;$n" & "\tgEnv = env;$n" &
+      MainProcsWithResult &
+      "}$n"
+  
     StandaloneCMain = "int main(void) {$n" &
-        "\tNimMain();$n" & 
-        "\treturn 0;$n" & "}$n"
-    WinNimMain = "N_CDECL(void, NimMain)(void) {$n" &
-        CommonMainBody & "}$n"
+      MainProcs &
+      "\treturn 0;$n" & "}$n"
+    
+    WinNimMain = "N_CDECL(void, NimMain)(void) {$n$1}$n"
+    
     WinCMain = "N_STDCALL(int, WinMain)(HINSTANCE hCurInstance, $n" &
-        "                        HINSTANCE hPrevInstance, $n" &
-        "                        LPSTR lpCmdLine, int nCmdShow) {$n" &
-        "\tNimMain();$n" & "\treturn nim_program_result;$n" & "}$n"
-    WinNimDllMain = "N_LIB_EXPORT N_CDECL(void, NimMain)(void) {$n" &
-        CommonMainBody & "}$n"
-    WinCDllMain = 
-        "BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fwdreason, $n" &
-        "                    LPVOID lpvReserved) {$n" &
-          "\tif(fwdreason == DLL_PROCESS_ATTACH) NimMain();$n" &
-        "\treturn 1;$n" & "}$n"
+      "                        HINSTANCE hPrevInstance, $n" &
+      "                        LPSTR lpCmdLine, int nCmdShow) {$n" &
+      MainProcsWithResult & "}$n"
+  
+    WinNimDllMain = "N_LIB_EXPORT N_CDECL(void, NimMain)(void) {$n$1}$n"
+
+    WinCDllMain =
+      "BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fwdreason, $n" &
+      "                    LPVOID lpvReserved) {$n" &
+      "\tif(fwdreason == DLL_PROCESS_ATTACH) {" & MainProcs & "}$n" &
+      "\treturn 1;$n}$n"
+
     PosixNimDllMain = WinNimDllMain
-    PosixCDllMain = 
-        "void NIM_POSIX_INIT NimMainInit(void) {$n" &
-        "\tNimMain();$n}$n"
+    
+    PosixCDllMain =
+      "void NIM_POSIX_INIT NimMainInit(void) {$n" &
+      MainProcs &
+      "}$n"
+
   var nimMain, otherMain: TFormatStr
   if platform.targetOS == osWindows and
       gGlobalOptions * {optGenGuiApp, optGenDynLib} != {}: 
@@ -990,10 +1006,10 @@ proc genMainProc(m: BModule) =
     else: 
       nimMain = WinNimDllMain
       otherMain = WinCDllMain
-    discard lists.IncludeStr(m.headerFiles, "<windows.h>")
+    discard lists.includeStr(m.headerFiles, "<windows.h>")
   elif optGenDynLib in gGlobalOptions:
-    nimMain = posixNimDllMain
-    otherMain = posixCDllMain
+    nimMain = PosixNimDllMain
+    otherMain = PosixCDllMain
   elif platform.targetOS == osStandalone:
     nimMain = PosixNimMain
     otherMain = StandaloneCMain
@@ -1008,8 +1024,10 @@ proc genMainProc(m: BModule) =
                               platform.targetOS == osStandalone: "".toRope
                             else: ropecg(m, "\t#initStackBottom();$n")
   inc(m.labels)
-  appcg(m, m.s[cfsProcs], nimMain, [mainDatInit, initStackBottomCall,
-        gBreakpoints, mainModInit, toRope(m.labels)])
+  appcg(m, m.s[cfsProcs], "void PreMain() {$n" & PreMainBody & "}$n", [
+    mainDatInit, initStackBottomCall, gBreakpoints, otherModsInit])
+
+  appcg(m, m.s[cfsProcs], nimMain, [mainModInit, toRope(m.labels)])
   if optNoMain notin gGlobalOptions:
     appcg(m, m.s[cfsProcs], otherMain, [])
 
@@ -1030,10 +1048,14 @@ proc registerModuleToMain(m: PSym) =
                       "declare void $1() noinline$N", [init])
   appff(mainModProcs, "N_NOINLINE(void, $1)(void);$N",
                       "declare void $1() noinline$N", [datInit])
-  if not (sfSystemModule in m.flags):
-    appff(mainModInit, "\t$1();$n", "call void ()* $1$n", [init])
+  if sfSystemModule notin m.flags:
     appff(mainDatInit, "\t$1();$n", "call void ()* $1$n", [datInit])
-  
+    let initCall = ropeff("\t$1();$n", "call void ()* $1$n", [init])
+    if sfMainModule in m.flags:
+      app(mainModInit, initCall)
+    else:
+      app(otherModsInit, initCall)
+    
 proc genInitCode(m: BModule) = 
   var initname = getInitName(m.module)
   var prc = ropeff("N_NOINLINE(void, $1)(void) {$n", 
@@ -1053,12 +1075,12 @@ proc genInitCode(m: BModule) =
   app(prc, m.postInitProc.s(cpsLocals))
   app(prc, genSectionEnd(cpsLocals))
 
-  if optStackTrace in m.initProc.options and not m.FrameDeclared:
+  if optStackTrace in m.initProc.options and not m.frameDeclared:
     # BUT: the generated init code might depend on a current frame, so
     # declare it nevertheless:
-    m.FrameDeclared = true
-    if not m.PreventStackTrace:
-      var procname = CStringLit(m.initProc, prc, m.module.name.s)
+    m.frameDeclared = true
+    if not m.preventStackTrace:
+      var procname = cstringLit(m.initProc, prc, m.module.name.s)
       app(prc, initFrame(m.initProc, procname, m.module.info.quotedFilename))
     else:
       app(prc, ~"\tTFrame F; F.len = 0;$N")
@@ -1074,7 +1096,7 @@ proc genInitCode(m: BModule) =
   app(prc, m.initProc.s(cpsStmts))
   app(prc, m.postInitProc.s(cpsStmts))
   app(prc, genSectionEnd(cpsStmts))
-  if optStackTrace in m.initProc.options and not m.PreventStackTrace:
+  if optStackTrace in m.initProc.options and not m.preventStackTrace:
     app(prc, deinitFrame(m.initProc))
   app(prc, deinitGCFrame(m.initProc))
   appf(prc, "}$N$N")
@@ -1127,7 +1149,7 @@ proc initProcOptions(m: BModule): TOptions =
 
 proc rawNewModule(module: PSym, filename: string): BModule =
   new(result)
-  InitLinkedList(result.headerFiles)
+  initLinkedList(result.headerFiles)
   result.declaredThings = initIntSet()
   result.declaredProtos = initIntSet()
   result.cfilename = filename
@@ -1148,7 +1170,7 @@ proc rawNewModule(module: PSym, filename: string): BModule =
   # no line tracing for the init sections of the system module so that we
   # don't generate a TFrame which can confuse the stack botton initialization:
   if sfSystemModule in module.flags:
-    result.PreventStackTrace = true
+    result.preventStackTrace = true
     excl(result.preInitProc.options, optStackTrace)
     excl(result.postInitProc.options, optStackTrace)
 
@@ -1159,7 +1181,7 @@ proc nullify[T](arr: var T) =
 proc resetModule*(m: var BModule) =
   # between two compilations in CAAS mode, we can throw
   # away all the data that was written to disk
-  InitLinkedList(m.headerFiles)
+  initLinkedList(m.headerFiles)
   m.declaredProtos = initIntSet()
   initIdTable(m.forwTypeCache)
   m.initProc = newProc(nil, m)
@@ -1171,7 +1193,7 @@ proc resetModule*(m: var BModule) =
   m.forwardedProcs = @[]
   m.typeNodesName = getTempName()
   m.nimTypesName = getTempName()
-  m.PreventStackTrace = sfSystemModule in m.module.flags
+  m.preventStackTrace = sfSystemModule in m.module.flags
   nullify m.s
   m.usesThreadVars = false
   m.typeNodes = 0
@@ -1202,7 +1224,7 @@ proc rawNewModule(module: PSym): BModule =
 
 proc newModule(module: PSym): BModule =
   # we should create only one cgen module for each module sym
-  InternalAssert getCgenModule(module) == nil
+  internalAssert getCgenModule(module) == nil
 
   result = rawNewModule(module)
   growCache gModules, module.position
@@ -1210,7 +1232,7 @@ proc newModule(module: PSym): BModule =
 
   if (optDeadCodeElim in gGlobalOptions): 
     if (sfDeadCodeElim in module.flags): 
-      InternalError("added pending module twice: " & module.filename)
+      internalError("added pending module twice: " & module.filename)
 
 proc myOpen(module: PSym): PPassContext = 
   result = newModule(module)
@@ -1263,19 +1285,19 @@ proc finishModule(m: BModule) =
     # a ``for`` loop here
     var prc = m.forwardedProcs[i]
     if sfForward in prc.flags: 
-      InternalError(prc.info, "still forwarded: " & prc.name.s)
+      internalError(prc.info, "still forwarded: " & prc.name.s)
     genProcNoForward(m, prc)
     inc(i)
   assert(gForwardedProcsCounter >= i)
   dec(gForwardedProcsCounter, i)
-  setlen(m.forwardedProcs, 0)
+  setLen(m.forwardedProcs, 0)
 
 proc shouldRecompile(code: PRope, cfile, cfilenoext: string): bool = 
   result = true
   if optForceFullMake notin gGlobalOptions:
     var objFile = toObjFile(cfilenoext)
     if writeRopeIfNotEqual(code, cfile): return 
-    if ExistsFile(objFile) and os.FileNewer(objFile, cfile): result = false
+    if existsFile(objFile) and os.fileNewer(objFile, cfile): result = false
   else: 
     writeRope(code, cfile)
 
@@ -1296,7 +1318,7 @@ proc writeModule(m: BModule, pending: bool) =
     if sfMainModule in m.module.flags: 
       # generate main file:
       app(m.s[cfsProcHeaders], mainModProcs)
-      GenerateThreadVarsSize(m)
+      generateThreadVarsSize(m)
     
     var code = genModule(m, cfilenoext)
     when hasTinyCBackend:
@@ -1313,7 +1335,7 @@ proc writeModule(m: BModule, pending: bool) =
     var code = genModule(m, cfilenoext)
     writeRope(code, cfile)
     addFileToCompile(cfilenoext)
-  elif not ExistsFile(toObjFile(cfilenoext)):
+  elif not existsFile(toObjFile(cfilenoext)):
     # Consider: first compilation compiles ``system.nim`` and produces
     # ``system.c`` but then compilation fails due to an error. This means
     # that ``system.o`` is missing, so we need to call the C compiler for it:

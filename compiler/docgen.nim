@@ -40,33 +40,33 @@ proc compilerMsgHandler(filename: string, line, col: int,
   of mwRedefinitionOfLabel: k = warnRedefinitionOfLabel
   of mwUnknownSubstitution: k = warnUnknownSubstitutionX
   of mwUnsupportedLanguage: k = warnLanguageXNotSupported
-  GlobalError(newLineInfo(filename, line, col), k, arg)
+  globalError(newLineInfo(filename, line, col), k, arg)
 
 proc parseRst(text, filename: string,
               line, column: int, hasToc: var bool,
               rstOptions: TRstParseOptions): PRstNode =
   result = rstParse(text, filename, line, column, hasToc, rstOptions,
-                    options.FindFile, compilerMsgHandler)
+                    options.findFile, compilerMsgHandler)
 
 proc newDocumentor*(filename: string, config: PStringTable): PDoc =
   new(result)
-  initRstGenerator(result[], (if gCmd != cmdRst2Tex: outHtml else: outLatex),
+  initRstGenerator(result[], (if gCmd != cmdRst2tex: outHtml else: outLatex),
                    options.gConfigVars, filename, {roSupportRawDirective},
-                   options.FindFile, compilerMsgHandler)
+                   options.findFile, compilerMsgHandler)
   result.id = 100
 
-proc dispA(dest: var PRope, xml, tex: string, args: openarray[PRope]) =
-  if gCmd != cmdRst2Tex: appf(dest, xml, args)
+proc dispA(dest: var PRope, xml, tex: string, args: openArray[PRope]) =
+  if gCmd != cmdRst2tex: appf(dest, xml, args)
   else: appf(dest, tex, args)
 
-proc getVarIdx(varnames: openarray[string], id: string): int =
+proc getVarIdx(varnames: openArray[string], id: string): int =
   for i in countup(0, high(varnames)):
     if cmpIgnoreStyle(varnames[i], id) == 0:
       return i
   result = -1
 
-proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openarray[string],
-                         varvalues: openarray[PRope]): PRope =
+proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openArray[string],
+                         varvalues: openArray[PRope]): PRope =
   var i = 0
   var L = len(frmt)
   result = nil
@@ -85,7 +85,7 @@ proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openarray[string],
       of '0'..'9':
         var j = 0
         while true:
-          j = (j * 10) + Ord(frmt[i]) - ord('0')
+          j = (j * 10) + ord(frmt[i]) - ord('0')
           inc(i)
           if (i > L + 0 - 1) or not (frmt[i] in {'0'..'9'}): break
         if j > high(varvalues) + 1: internalError("ropeFormatNamedVars")
@@ -112,7 +112,7 @@ proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openarray[string],
         var idx = getVarIdx(varnames, id)
         if idx >= 0: app(result, varvalues[idx])
         else: rawMessage(errUnkownSubstitionVar, id)
-      else: InternalError("ropeFormatNamedVars")
+      else: internalError("ropeFormatNamedVars")
     var start = i
     while i < L:
       if frmt[i] != '$': inc(i)
@@ -124,7 +124,7 @@ proc genComment(d: PDoc, n: PNode): string =
   var dummyHasToc: bool
   if n.comment != nil and startsWith(n.comment, "##"):
     renderRstToOut(d[], parseRst(n.comment, toFilename(n.info),
-                               toLineNumber(n.info), toColumn(n.info),
+                               toLinenumber(n.info), toColumn(n.info),
                                dummyHasToc, d.options + {roSkipPounds}), result)
 
 proc genRecComment(d: PDoc, n: PNode): PRope =
@@ -152,7 +152,7 @@ proc extractDocComment*(s: PSym, d: PDoc = nil): string =
     if not d.isNil:
       var dummyHasToc: bool
       renderRstToOut(d[], parseRst(n.comment, toFilename(n.info),
-                                   toLineNumber(n.info), toColumn(n.info),
+                                   toLinenumber(n.info), toColumn(n.info),
                                    dummyHasToc, d.options + {roSkipPounds}),
                      result)
     else:
@@ -272,7 +272,7 @@ proc genJSONItem(d: PDoc, n, nameNode: PNode, k: TSymKind): PJsonNode =
     result["code"] = %r.buf
 
 proc checkForFalse(n: PNode): bool =
-  result = n.kind == nkIdent and IdentEq(n.ident, "false")
+  result = n.kind == nkIdent and identEq(n.ident, "false")
 
 proc traceDeps(d: PDoc, n: PNode) =
   const k = skModule
@@ -313,7 +313,7 @@ proc generateDoc*(d: PDoc, n: PNode) =
   of nkImportStmt:
     for i in 0 .. sonsLen(n)-1: traceDeps(d, n.sons[i])
   of nkFromStmt, nkImportExceptStmt: traceDeps(d, n.sons[0])
-  else: nil
+  else: discard
 
 proc generateJson(d: PDoc, n: PNode, jArray: PJsonNode = nil): PJsonNode =
   case n.kind
@@ -355,7 +355,7 @@ proc generateJson(d: PDoc, n: PNode, jArray: PJsonNode = nil): PJsonNode =
     # generate documentation for the first branch only:
     if not checkForFalse(n.sons[0].sons[0]) and jArray != nil:
       discard generateJson(d, lastSon(n.sons[0]), jArray)
-  else: nil
+  else: discard
 
 proc genSection(d: PDoc, kind: TSymKind) =
   const sectionNames: array[skModule..skTemplate, string] = [
@@ -408,7 +408,7 @@ proc genOutFile(d: PDoc): PRope =
 proc generateIndex*(d: PDoc) =
   if optGenIndex in gGlobalOptions:
     writeIndexFile(d[], splitFile(options.outFile).dir /
-                        splitFile(d.filename).name & indexExt)
+                        splitFile(d.filename).name & IndexExt)
 
 proc writeOutput*(d: PDoc, filename, outExt: string, useWarning = false) =
   var content = genOutFile(d)
@@ -417,7 +417,7 @@ proc writeOutput*(d: PDoc, filename, outExt: string, useWarning = false) =
   else:
     writeRope(content, getOutFile(filename, outExt), useWarning)
 
-proc CommandDoc*() =
+proc commandDoc*() =
   var ast = parseFile(gProjectMainIdx)
   if ast == nil: return
   var d = newDocumentor(gProjectFull, options.gConfigVars)
@@ -426,7 +426,7 @@ proc CommandDoc*() =
   writeOutput(d, gProjectFull, HtmlExt)
   generateIndex(d)
 
-proc CommandRstAux(filename, outExt: string) =
+proc commandRstAux(filename, outExt: string) =
   var filen = addFileExt(filename, "txt")
   var d = newDocumentor(filen, options.gConfigVars)
   var rst = parseRst(readFile(filen), filen, 0, 1, d.hasToc,
@@ -439,14 +439,14 @@ proc CommandRstAux(filename, outExt: string) =
   writeOutput(d, filename, outExt)
   generateIndex(d)
 
-proc CommandRst2Html*() =
-  CommandRstAux(gProjectFull, HtmlExt)
+proc commandRst2Html*() =
+  commandRstAux(gProjectFull, HtmlExt)
 
-proc CommandRst2TeX*() =
+proc commandRst2TeX*() =
   splitter = "\\-"
-  CommandRstAux(gProjectFull, TexExt)
+  commandRstAux(gProjectFull, TexExt)
 
-proc CommandJSON*() =
+proc commandJSON*() =
   var ast = parseFile(gProjectMainIdx)
   if ast == nil: return
   var d = newDocumentor(gProjectFull, options.gConfigVars)
@@ -460,7 +460,7 @@ proc CommandJSON*() =
     echo getOutFile(gProjectFull, JsonExt)
     writeRope(content, getOutFile(gProjectFull, JsonExt), useWarning = false)
 
-proc CommandBuildIndex*() =
+proc commandBuildIndex*() =
   var content = mergeIndexes(gProjectFull).toRope
 
   let code = ropeFormatNamedVars(getConfigVar("doc.file"), ["title",

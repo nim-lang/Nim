@@ -249,7 +249,7 @@ proc fsClose(s: PStream) =
     close(PFileStream(s).f)
     PFileStream(s).f = nil
 proc fsFlush(s: PStream) = flushFile(PFileStream(s).f)
-proc fsAtEnd(s: PStream): bool = return EndOfFile(PFileStream(s).f)
+proc fsAtEnd(s: PStream): bool = return endOfFile(PFileStream(s).f)
 proc fsSetPosition(s: PStream, pos: int) = setFilePos(PFileStream(s).f, pos)
 proc fsGetPosition(s: PStream): int = return int(getFilePos(PFileStream(s).f))
 
@@ -277,11 +277,11 @@ proc newFileStream*(filename: string, mode: TFileMode): PFileStream =
   ## If the file cannot be opened, nil is returned. See the `system
   ## <system.html>`_ module for a list of available TFileMode enums.
   var f: TFile
-  if Open(f, filename, mode): result = newFileStream(f)
+  if open(f, filename, mode): result = newFileStream(f)
 
 
 when true:
-  nil
+  discard
 else:
   type
     TFileHandle* = cint ## Operating system file handle

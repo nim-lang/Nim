@@ -29,11 +29,11 @@
 ##  
 ##  proc threadFunc(interval: tuple[a,b: int]) {.thread.} =
 ##    for i in interval.a..interval.b:
-##      Acquire(L) # lock stdout
+##      acquire(L) # lock stdout
 ##      echo i
-##      Release(L)
+##      release(L)
 ##
-##  InitLock(L)
+##  initLock(L)
 ##
 ##  for i in 0..high(thr):
 ##    createThread(thr[i], threadFunc, (i*10, i*10+5))
@@ -54,9 +54,9 @@ when defined(windows):
     TSysThread = THandle
     TWinThreadProc = proc (x: pointer): int32 {.stdcall.}
 
-  proc CreateThread(lpThreadAttributes: Pointer, dwStackSize: int32,
+  proc createThread(lpThreadAttributes: pointer, dwStackSize: int32,
                      lpStartAddress: TWinThreadProc, 
-                     lpParameter: Pointer,
+                     lpParameter: pointer,
                      dwCreationFlags: int32, 
                      lpThreadId: var int32): TSysThread {.
     stdcall, dynlib: "kernel32", importc: "CreateThread".}
@@ -67,23 +67,23 @@ when defined(windows):
   proc winResumeThread(hThread: TSysThread): int32 {.
     stdcall, dynlib: "kernel32", importc: "ResumeThread".}
 
-  proc WaitForMultipleObjects(nCount: int32,
+  proc waitForMultipleObjects(nCount: int32,
                               lpHandles: ptr TSysThread,
                               bWaitAll: int32,
                               dwMilliseconds: int32): int32 {.
     stdcall, dynlib: "kernel32", importc: "WaitForMultipleObjects".}
 
-  proc TerminateThread(hThread: TSysThread, dwExitCode: int32): int32 {.
+  proc terminateThread(hThread: TSysThread, dwExitCode: int32): int32 {.
     stdcall, dynlib: "kernel32", importc: "TerminateThread".}
     
   type
     TThreadVarSlot = distinct int32
 
-  proc ThreadVarAlloc(): TThreadVarSlot {.
+  proc threadVarAlloc(): TThreadVarSlot {.
     importc: "TlsAlloc", stdcall, dynlib: "kernel32".}
-  proc ThreadVarSetValue(dwTlsIndex: TThreadVarSlot, lpTlsValue: pointer) {.
+  proc threadVarSetValue(dwTlsIndex: TThreadVarSlot, lpTlsValue: pointer) {.
     importc: "TlsSetValue", stdcall, dynlib: "kernel32".}
-  proc ThreadVarGetValue(dwTlsIndex: TThreadVarSlot): pointer {.
+  proc threadVarGetValue(dwTlsIndex: TThreadVarSlot): pointer {.
     importc: "TlsGetValue", stdcall, dynlib: "kernel32".}
   
 else:
@@ -116,14 +116,14 @@ else:
   proc pthread_cancel(a1: TSysThread): cint {.
     importc: "pthread_cancel", header: "<pthread.h>".}
 
-  proc AcquireSysTimeoutAux(L: var TSysLock, timeout: var Ttimespec): cint {.
+  proc acquireSysTimeoutAux(L: var TSysLock, timeout: var Ttimespec): cint {.
     importc: "pthread_mutex_timedlock", header: "<time.h>".}
 
-  proc AcquireSysTimeout(L: var TSysLock, msTimeout: int) {.inline.} =
+  proc acquireSysTimeout(L: var TSysLock, msTimeout: int) {.inline.} =
     var a: Ttimespec
     a.tv_sec = msTimeout div 1000
     a.tv_nsec = (msTimeout mod 1000) * 1000
-    var res = AcquireSysTimeoutAux(L, a)
+    var res = acquireSysTimeoutAux(L, a)
     if res != 0'i32: raise newException(EResourceExhausted, $strerror(res))
 
   type
@@ -141,11 +141,11 @@ else:
   proc pthread_setspecific(a1: TThreadVarSlot, a2: pointer): int32 {.
     importc: "pthread_setspecific", header: "<pthread.h>".}
   
-  proc ThreadVarAlloc(): TThreadVarSlot {.inline.} =
+  proc threadVarAlloc(): TThreadVarSlot {.inline.} =
     discard pthread_key_create(addr(result), nil)
-  proc ThreadVarSetValue(s: TThreadVarSlot, value: pointer) {.inline.} =
+  proc threadVarSetValue(s: TThreadVarSlot, value: pointer) {.inline.} =
     discard pthread_setspecific(s, value)
-  proc ThreadVarGetValue(s: TThreadVarSlot): pointer {.inline.} =
+  proc threadVarGetValue(s: TThreadVarSlot): pointer {.inline.} =
     result = pthread_getspecific(s)
 
   when useStackMaskHack:
@@ -159,7 +159,7 @@ const
 when emulatedThreadVars:
   # the compiler generates this proc for us, so that we can get the size of
   # the thread local var block; we use this only for sanity checking though
-  proc NimThreadVarsSize(): int {.noconv, importc: "NimThreadVarsSize".}
+  proc nimThreadVarsSize(): int {.noconv, importc: "NimThreadVarsSize".}
 
 # we preallocate a fixed size for thread local storage, so that no heap
 # allocations are needed. Currently less than 7K are used on a 64bit machine.
@@ -184,7 +184,7 @@ type
 # XXX it'd be more efficient to not use a global variable for the 
 # thread storage slot, but to rely on the implementation to assign slot X
 # for us... ;-)
-var globalsSlot = ThreadVarAlloc()
+var globalsSlot = threadVarAlloc()
 #const globalsSlot = TThreadVarSlot(0)
 #sysAssert checkSlot.int == globalsSlot.int
 
@@ -193,7 +193,7 @@ when emulatedThreadVars:
     result = addr(cast[PGcThread](ThreadVarGetValue(globalsSlot)).tls)
 
 when useStackMaskHack:
-  proc MaskStackPointer(offset: int): pointer {.compilerRtl, inl.} =
+  proc maskStackPointer(offset: int): pointer {.compilerRtl, inl.} =
     var x {.volatile.}: pointer
     x = addr(x)
     result = cast[pointer]((cast[int](x) and not ThreadStackMask) +% 
@@ -205,7 +205,7 @@ when not defined(useNimRtl):
   
   when not useStackMaskHack:
     var mainThread: TGcThread
-    ThreadVarSetValue(globalsSlot, addr(mainThread))
+    threadVarSetValue(globalsSlot, addr(mainThread))
     when not defined(createNimRtl): initStackBottom()
     initGC()
     
@@ -220,18 +220,18 @@ when not defined(useNimRtl):
       
     proc registerThread(t: PGcThread) = 
       # we need to use the GC global lock here!
-      AcquireSys(HeapLock)
+      acquireSys(HeapLock)
       t.prev = nil
       t.next = threadList
       if threadList != nil: 
         sysAssert(threadList.prev == nil, "threadList.prev == nil")
         threadList.prev = t
       threadList = t
-      ReleaseSys(HeapLock)
+      releaseSys(HeapLock)
     
     proc unregisterThread(t: PGcThread) =
       # we need to use the GC global lock here!
-      AcquireSys(HeapLock)
+      acquireSys(HeapLock)
       if t == threadList: threadList = t.next
       if t.next != nil: t.next.prev = t.prev
       if t.prev != nil: t.prev.next = t.next
@@ -239,7 +239,7 @@ when not defined(useNimRtl):
       # code executes `destroyThread`:
       t.next = nil
       t.prev = nil
-      ReleaseSys(HeapLock)
+      releaseSys(HeapLock)
       
     # on UNIX, the GC uses ``SIGFREEZE`` to tell every thread to stop so that
     # the GC can examine the stacks?
@@ -266,7 +266,7 @@ type
 when not defined(boehmgc) and not hasSharedHeap:
   proc deallocOsPages()
 
-template ThreadProcWrapperBody(closure: expr) {.immediate.} =
+template threadProcWrapperBody(closure: expr) {.immediate.} =
   when defined(globalsSlot): ThreadVarSetValue(globalsSlot, closure)
   var t = cast[ptr TThread[TArg]](closure)
   when useStackMaskHack:
@@ -294,11 +294,11 @@ template ThreadProcWrapperBody(closure: expr) {.immediate.} =
 {.push stack_trace:off.}
 when defined(windows):
   proc threadProcWrapper[TArg](closure: pointer): int32 {.stdcall.} = 
-    ThreadProcWrapperBody(closure)
+    threadProcWrapperBody(closure)
     # implicitly return 0
 else:
   proc threadProcWrapper[TArg](closure: pointer) {.noconv.} = 
-    ThreadProcWrapperBody(closure)
+    threadProcWrapperBody(closure)
 {.pop.}
 
 proc running*[TArg](t: TThread[TArg]): bool {.inline.} = 
@@ -308,7 +308,7 @@ proc running*[TArg](t: TThread[TArg]): bool {.inline.} =
 proc joinThread*[TArg](t: TThread[TArg]) {.inline.} = 
   ## waits for the thread `t` to finish.
   when hostOS == "windows":
-    discard WaitForSingleObject(t.sys, -1'i32)
+    discard waitForSingleObject(t.sys, -1'i32)
   else:
     discard pthread_join(t.sys, nil)
 
@@ -318,7 +318,7 @@ proc joinThreads*[TArg](t: varargs[TThread[TArg]]) =
     var a: array[0..255, TSysThread]
     sysAssert a.len >= t.len, "a.len >= t.len"
     for i in 0..t.high: a[i] = t[i].sys
-    discard WaitForMultipleObjects(t.len.int32, 
+    discard waitForMultipleObjects(t.len.int32, 
                                    cast[ptr TSysThread](addr(a)), 1, -1)
   else:
     for i in 0..t.high: joinThread(t[i])
@@ -346,7 +346,7 @@ proc createThread*[TArg](t: var TThread[TArg],
   when hasSharedHeap: t.stackSize = ThreadStackSize
   when hostOS == "windows":
     var dummyThreadId: int32
-    t.sys = CreateThread(nil, ThreadStackSize, threadProcWrapper[TArg],
+    t.sys = createThread(nil, ThreadStackSize, threadProcWrapper[TArg],
                          addr(t), 0'i32, dummyThreadId)
     if t.sys <= 0:
       raise newException(EResourceExhausted, "cannot create thread")

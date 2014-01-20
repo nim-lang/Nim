@@ -614,7 +614,7 @@ simple proc for logging:
 
 .. code-block:: nimrod
   const
-    debug = True
+    debug = true
 
   proc log(msg: string) {.inline.} =
     if debug: stdout.writeln(msg)
@@ -631,7 +631,7 @@ Turning the ``log`` proc into a template solves this problem:
 
 .. code-block:: nimrod
   const
-    debug = True
+    debug = true
 
   template log(msg: string) =
     if debug: stdout.writeln(msg)
@@ -674,16 +674,15 @@ via a special ``:`` syntax:
 
   template withFile(f: expr, filename: string, mode: TFileMode,
                     body: stmt): stmt {.immediate.} =
-    block:
-      let fn = filename
-      var f: TFile
-      if open(f, fn, mode):
-        try:
-          body
-        finally:
-          close(f)
-      else:
-        quit("cannot open: " & fn)
+    let fn = filename
+    var f: TFile
+    if open(f, fn, mode):
+      try:
+        body
+      finally:
+        close(f)
+    else:
+      quit("cannot open: " & fn)
       
   withFile(txt, "ttempl3.txt", fmWrite):
     txt.writeln("line 1")
@@ -784,7 +783,7 @@ regular expressions:
   macro case_token(n: stmt): stmt =
     # creates a lexical analyzer from regular expressions
     # ... (implementation is an exercise for the reader :-)
-    nil
+    discard
 
   case_token: # this colon tells the parser it is a macro statement
   of r"[A-Za-z_]+[A-Za-z_0-9]*":

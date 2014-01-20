@@ -27,15 +27,15 @@ when defined(windows):
     var hTemp = GetStdHandle(STD_OUTPUT_HANDLE)
     if DuplicateHandle(GetCurrentProcess(), hTemp, GetCurrentProcess(),
                        addr(conHandle), 0, 1, DUPLICATE_SAME_ACCESS) == 0:
-      OSError(OSLastError())
+      osError(osLastError())
 
   proc getCursorPos(): tuple [x,y: int] =
-    var c: TCONSOLE_SCREEN_BUFFER_INFO
-    if GetConsoleScreenBufferInfo(conHandle, addr(c)) == 0: OSError(OSLastError())
+    var c: TCONSOLESCREENBUFFERINFO
+    if GetConsoleScreenBufferInfo(conHandle, addr(c)) == 0: osError(osLastError())
     return (int(c.dwCursorPosition.x), int(c.dwCursorPosition.y))
 
   proc getAttributes(): int16 =
-    var c: TCONSOLE_SCREEN_BUFFER_INFO
+    var c: TCONSOLESCREENBUFFERINFO
     # workaround Windows bugs: try several times
     if GetConsoleScreenBufferInfo(conHandle, addr(c)) != 0:
       return c.wAttributes
@@ -48,10 +48,10 @@ proc setCursorPos*(x, y: int) =
   ## sets the terminal's cursor to the (x,y) position. (0,0) is the
   ## upper left of the screen.
   when defined(windows):
-    var c: TCoord
+    var c: TCOORD
     c.x = int16(x)
     c.y = int16(y)
-    if SetConsoleCursorPosition(conHandle, c) == 0: OSError(OSLastError())
+    if SetConsoleCursorPosition(conHandle, c) == 0: osError(osLastError())
   else:
     stdout.write("\e[" & $y & ';' & $x & 'f')
 
@@ -59,12 +59,12 @@ proc setCursorXPos*(x: int) =
   ## sets the terminal's cursor to the x position. The y position is
   ## not changed.
   when defined(windows):
-    var scrbuf: TCONSOLE_SCREEN_BUFFER_INFO
+    var scrbuf: TCONSOLESCREENBUFFERINFO
     var hStdout = conHandle
-    if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0: OSError(OSLastError())
+    if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0: osError(osLastError())
     var origin = scrbuf.dwCursorPosition
     origin.x = int16(x)
-    if SetConsoleCursorPosition(conHandle, origin) == 0: OSError(OSLastError())
+    if SetConsoleCursorPosition(conHandle, origin) == 0: osError(osLastError())
   else:
     stdout.write("\e[" & $x & 'G')
 
@@ -73,16 +73,16 @@ when defined(windows):
     ## sets the terminal's cursor to the y position. The x position is
     ## not changed. **Warning**: This is not supported on UNIX!
     when defined(windows):
-      var scrbuf: TCONSOLE_SCREEN_BUFFER_INFO
+      var scrbuf: TCONSOLESCREENBUFFERINFO
       var hStdout = conHandle
-      if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0: OSError(OSLastError())
+      if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0: osError(osLastError())
       var origin = scrbuf.dwCursorPosition
       origin.y = int16(y)
-      if SetConsoleCursorPosition(conHandle, origin) == 0: OSError(OSLastError())
+      if SetConsoleCursorPosition(conHandle, origin) == 0: osError(osLastError())
     else:
-      nil
+      discard
 
-proc CursorUp*(count=1) =
+proc cursorUp*(count=1) =
   ## Moves the cursor up by `count` rows.
   when defined(windows):
     var p = getCursorPos()
@@ -91,7 +91,7 @@ proc CursorUp*(count=1) =
   else:
     stdout.write("\e[" & $count & 'A')
 
-proc CursorDown*(count=1) =
+proc cursorDown*(count=1) =
   ## Moves the cursor down by `count` rows.
   when defined(windows):
     var p = getCursorPos()
@@ -100,7 +100,7 @@ proc CursorDown*(count=1) =
   else:
     stdout.write("\e[" & $count & 'B')
 
-proc CursorForward*(count=1) =
+proc cursorForward*(count=1) =
   ## Moves the cursor forward by `count` columns.
   when defined(windows):
     var p = getCursorPos()
@@ -109,7 +109,7 @@ proc CursorForward*(count=1) =
   else:
     stdout.write("\e[" & $count & 'C')
 
-proc CursorBackward*(count=1) =
+proc cursorBackward*(count=1) =
   ## Moves the cursor backward by `count` columns.
   when defined(windows):
     var p = getCursorPos()
@@ -119,78 +119,78 @@ proc CursorBackward*(count=1) =
     stdout.write("\e[" & $count & 'D')
 
 when true:
-  nil
+  discard
 else:
-  proc EraseLineEnd* =
+  proc eraseLineEnd* =
     ## Erases from the current cursor position to the end of the current line.
     when defined(windows):
-      nil
+      discard
     else:
       stdout.write("\e[K")
 
-  proc EraseLineStart* =
+  proc eraseLineStart* =
     ## Erases from the current cursor position to the start of the current line.
     when defined(windows):
-      nil
+      discard
     else:
       stdout.write("\e[1K")
 
-  proc EraseDown* =
+  proc eraseDown* =
     ## Erases the screen from the current line down to the bottom of the screen.
     when defined(windows):
-      nil
+      discard
     else:
       stdout.write("\e[J")
 
-  proc EraseUp* =
+  proc eraseUp* =
     ## Erases the screen from the current line up to the top of the screen.
     when defined(windows):
-      nil
+      discard
     else:
       stdout.write("\e[1J")
 
-proc EraseLine* =
+proc eraseLine* =
   ## Erases the entire current line.
   when defined(windows):
-    var scrbuf: TCONSOLE_SCREEN_BUFFER_INFO
+    var scrbuf: TCONSOLESCREENBUFFERINFO
     var numwrote: DWORD
     var hStdout = conHandle
-    if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0: OSError(OSLastError())
+    if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0: osError(osLastError())
     var origin = scrbuf.dwCursorPosition
     origin.x = 0'i16
-    if SetConsoleCursorPosition(conHandle, origin) == 0: OSError(OSLastError())
+    if SetConsoleCursorPosition(conHandle, origin) == 0: osError(osLastError())
     var ht = scrbuf.dwSize.Y - origin.Y
     var wt = scrbuf.dwSize.X - origin.X
     if FillConsoleOutputCharacter(hStdout,' ', ht*wt,
                                   origin, addr(numwrote)) == 0:
-      OSError(OSLastError())
+      osError(osLastError())
     if FillConsoleOutputAttribute(hStdout, scrbuf.wAttributes, ht * wt,
                                   scrbuf.dwCursorPosition, addr(numwrote)) == 0:
-      OSError(OSLastError())
+      osError(osLastError())
   else:
     stdout.write("\e[2K")
     setCursorXPos(0)
 
-proc EraseScreen* =
+proc eraseScreen* =
   ## Erases the screen with the background colour and moves the cursor to home.
   when defined(windows):
-    var scrbuf: TCONSOLE_SCREEN_BUFFER_INFO
+    var scrbuf: TCONSOLESCREENBUFFERINFO
     var numwrote: DWORD
-    var origin: TCoord # is inititalized to 0, 0
+    var origin: TCOORD # is inititalized to 0, 0
     var hStdout = conHandle
-    if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0: OSError(OSLastError())
+    if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0: osError(osLastError())
     if FillConsoleOutputCharacter(hStdout, ' ', scrbuf.dwSize.X*scrbuf.dwSize.Y,
                                   origin, addr(numwrote)) == 0:
-      OSError(OSLastError())
+      osError(osLastError())
     if FillConsoleOutputAttribute(hStdout, scrbuf.wAttributes,
                                   scrbuf.dwSize.X * scrbuf.dwSize.Y,
                                   origin, addr(numwrote)) == 0:
-      OSError(OSLastError())
+      osError(osLastError())
     setCursorXPos(0)
   else:
     stdout.write("\e[2J")
 
-proc ResetAttributes* {.noconv.} =
+proc resetAttributes* {.noconv.} =
   ## resets all attributes; it is advisable to register this as a quit proc
   ## with ``system.addQuitProc(resetAttributes)``.
   when defined(windows):
@@ -227,7 +227,7 @@ proc setStyle*(style: set[TStyle]) =
     for s in items(style):
       stdout.write("\e[" & $ord(s) & 'm')
 
-proc WriteStyled*(txt: string, style: set[TStyle] = {styleBright}) =
+proc writeStyled*(txt: string, style: set[TStyle] = {styleBright}) =
   ## writes the text `txt` in a given `style`.
   when defined(windows):
     var old = getAttributes()
@@ -320,8 +320,8 @@ proc isatty*(f: TFile): bool =
 proc styledEchoProcessArg(s: string)               = write stdout, s
 proc styledEchoProcessArg(style: TStyle)           = setStyle({style})
 proc styledEchoProcessArg(style: set[TStyle])      = setStyle style
-proc styledEchoProcessArg(color: TForegroundColor) = setForeGroundColor color
-proc styledEchoProcessArg(color: TBackgroundColor) = setBackGroundColor color
+proc styledEchoProcessArg(color: TForegroundColor) = setForegroundColor color
+proc styledEchoProcessArg(color: TBackgroundColor) = setBackgroundColor color
 
 macro styledEcho*(m: varargs[expr]): stmt =
   ## to be documented.

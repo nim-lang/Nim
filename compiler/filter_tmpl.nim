@@ -27,7 +27,7 @@ type
     indent, emitPar: int
     x: string                # the current input line
     outp: PLLStream          # the ouput will be parsed by pnimsyn
-    subsChar, NimDirective: Char
+    subsChar, nimDirective: char
     emit, conc, toStr: string
     curly, bracket, par: int
     pendingExprLine: bool
@@ -37,11 +37,11 @@ const
   PatternChars = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF', '.', '_'}
 
 proc newLine(p: var TTmplParser) = 
-  LLStreamWrite(p.outp, repeatChar(p.emitPar, ')'))
+  llStreamWrite(p.outp, repeatChar(p.emitPar, ')'))
   p.emitPar = 0
-  if p.info.line > int16(1): LLStreamWrite(p.outp, "\n")
+  if p.info.line > int16(1): llStreamWrite(p.outp, "\n")
   if p.pendingExprLine:
-    LLStreamWrite(p.outp, repeatChar(2))
+    llStreamWrite(p.outp, repeatChar(2))
     p.pendingExprLine = false
   
 proc scanPar(p: var TTmplParser, d: int) = 
@@ -55,7 +55,7 @@ proc scanPar(p: var TTmplParser, d: int) =
     of ']': dec(p.bracket)
     of '{': inc(p.curly)
     of '}': dec(p.curly)
-    else: nil
+    else: discard
     inc(i)
 
 proc withInExpr(p: TTmplParser): bool {.inline.} = 
@@ -67,9 +67,9 @@ proc parseLine(p: var TTmplParser) =
     keyw: string
   j = 0
   while p.x[j] == ' ': inc(j)
-  if (p.x[0] == p.NimDirective) and (p.x[0 + 1] == '!'): 
+  if (p.x[0] == p.nimDirective) and (p.x[0 + 1] == '!'): 
     newLine(p)
-  elif (p.x[j] == p.NimDirective): 
+  elif (p.x[j] == p.nimDirective): 
     newLine(p)
     inc(j)
     while p.x[j] == ' ': inc(j)
@@ -87,26 +87,26 @@ proc parseLine(p: var TTmplParser) =
         dec(p.indent, 2)
       else: 
         p.info.col = int16(j)
-        LocalError(p.info, errXNotAllowedHere, "end")
-      LLStreamWrite(p.outp, repeatChar(p.indent))
-      LLStreamWrite(p.outp, "#end")
+        localError(p.info, errXNotAllowedHere, "end")
+      llStreamWrite(p.outp, repeatChar(p.indent))
+      llStreamWrite(p.outp, "#end")
     of wIf, wWhen, wTry, wWhile, wFor, wBlock, wCase, wProc, wIterator, 
        wConverter, wMacro, wTemplate, wMethod: 
-      LLStreamWrite(p.outp, repeatChar(p.indent))
-      LLStreamWrite(p.outp, substr(p.x, d))
+      llStreamWrite(p.outp, repeatChar(p.indent))
+      llStreamWrite(p.outp, substr(p.x, d))
       inc(p.indent, 2)
     of wElif, wOf, wElse, wExcept, wFinally: 
-      LLStreamWrite(p.outp, repeatChar(p.indent - 2))
-      LLStreamWrite(p.outp, substr(p.x, d))
+      llStreamWrite(p.outp, repeatChar(p.indent - 2))
+      llStreamWrite(p.outp, substr(p.x, d))
     of wLet, wVar, wConst, wType:
-      LLStreamWrite(p.outp, repeatChar(p.indent))
-      LLStreamWrite(p.outp, substr(p.x, d))
+      llStreamWrite(p.outp, repeatChar(p.indent))
+      llStreamWrite(p.outp, substr(p.x, d))
       if not p.x.contains({':', '='}):
         # no inline element --> treat as block:
         inc(p.indent, 2)
     else:
-      LLStreamWrite(p.outp, repeatChar(p.indent))
-      LLStreamWrite(p.outp, substr(p.x, d))
+      llStreamWrite(p.outp, repeatChar(p.indent))
+      llStreamWrite(p.outp, substr(p.x, d))
     p.state = psDirective
   else: 
     # data line
@@ -118,15 +118,15 @@ proc parseLine(p: var TTmplParser) =
     case p.state
     of psTempl: 
       # next line of string literal:
-      LLStreamWrite(p.outp, p.conc)
-      LLStreamWrite(p.outp, "\n")
-      LLStreamWrite(p.outp, repeatChar(p.indent + 2))
-      LLStreamWrite(p.outp, "\"")
+      llStreamWrite(p.outp, p.conc)
+      llStreamWrite(p.outp, "\n")
+      llStreamWrite(p.outp, repeatChar(p.indent + 2))
+      llStreamWrite(p.outp, "\"")
     of psDirective: 
       newLine(p)
-      LLStreamWrite(p.outp, repeatChar(p.indent))
-      LLStreamWrite(p.outp, p.emit)
-      LLStreamWrite(p.outp, "(\"")
+      llStreamWrite(p.outp, repeatChar(p.indent))
+      llStreamWrite(p.outp, p.emit)
+      llStreamWrite(p.outp, "(\"")
       inc(p.emitPar)
     p.state = psTempl
     while true: 
@@ -134,17 +134,17 @@ proc parseLine(p: var TTmplParser) =
       of '\0': 
         break 
       of '\x01'..'\x1F', '\x80'..'\xFF': 
-        LLStreamWrite(p.outp, "\\x")
-        LLStreamWrite(p.outp, toHex(ord(p.x[j]), 2))
+        llStreamWrite(p.outp, "\\x")
+        llStreamWrite(p.outp, toHex(ord(p.x[j]), 2))
         inc(j)
       of '\\': 
-        LLStreamWrite(p.outp, "\\\\")
+        llStreamWrite(p.outp, "\\\\")
         inc(j)
       of '\'': 
-        LLStreamWrite(p.outp, "\\\'")
+        llStreamWrite(p.outp, "\\\'")
         inc(j)
       of '\"': 
-        LLStreamWrite(p.outp, "\\\"")
+        llStreamWrite(p.outp, "\\\"")
         inc(j)
       else: 
         if p.x[j] == p.subsChar: 
@@ -153,59 +153,59 @@ proc parseLine(p: var TTmplParser) =
           case p.x[j]
           of '{': 
             p.info.col = int16(j)
-            LLStreamWrite(p.outp, '\"')
-            LLStreamWrite(p.outp, p.conc)
-            LLStreamWrite(p.outp, p.toStr)
-            LLStreamWrite(p.outp, '(')
+            llStreamWrite(p.outp, '\"')
+            llStreamWrite(p.outp, p.conc)
+            llStreamWrite(p.outp, p.toStr)
+            llStreamWrite(p.outp, '(')
             inc(j)
             curly = 0
             while true: 
               case p.x[j]
               of '\0': 
-                LocalError(p.info, errXExpected, "}")
+                localError(p.info, errXExpected, "}")
                 break
               of '{': 
                 inc(j)
                 inc(curly)
-                LLStreamWrite(p.outp, '{')
+                llStreamWrite(p.outp, '{')
               of '}': 
                 inc(j)
                 if curly == 0: break 
                 if curly > 0: dec(curly)
-                LLStreamWrite(p.outp, '}')
+                llStreamWrite(p.outp, '}')
               else: 
-                LLStreamWrite(p.outp, p.x[j])
+                llStreamWrite(p.outp, p.x[j])
                 inc(j)
-            LLStreamWrite(p.outp, ')')
-            LLStreamWrite(p.outp, p.conc)
-            LLStreamWrite(p.outp, '\"')
+            llStreamWrite(p.outp, ')')
+            llStreamWrite(p.outp, p.conc)
+            llStreamWrite(p.outp, '\"')
           of 'a'..'z', 'A'..'Z', '\x80'..'\xFF': 
-            LLStreamWrite(p.outp, '\"')
-            LLStreamWrite(p.outp, p.conc)
-            LLStreamWrite(p.outp, p.toStr)
-            LLStreamWrite(p.outp, '(')
+            llStreamWrite(p.outp, '\"')
+            llStreamWrite(p.outp, p.conc)
+            llStreamWrite(p.outp, p.toStr)
+            llStreamWrite(p.outp, '(')
             while p.x[j] in PatternChars: 
-              LLStreamWrite(p.outp, p.x[j])
+              llStreamWrite(p.outp, p.x[j])
               inc(j)
-            LLStreamWrite(p.outp, ')')
-            LLStreamWrite(p.outp, p.conc)
-            LLStreamWrite(p.outp, '\"')
+            llStreamWrite(p.outp, ')')
+            llStreamWrite(p.outp, p.conc)
+            llStreamWrite(p.outp, '\"')
           else: 
             if p.x[j] == p.subsChar: 
-              LLStreamWrite(p.outp, p.subsChar)
+              llStreamWrite(p.outp, p.subsChar)
               inc(j)
             else: 
               p.info.col = int16(j)
-              LocalError(p.info, errInvalidExpression, "$")
+              localError(p.info, errInvalidExpression, "$")
         else: 
-          LLStreamWrite(p.outp, p.x[j])
+          llStreamWrite(p.outp, p.x[j])
           inc(j)
-    LLStreamWrite(p.outp, "\\n\"")
+    llStreamWrite(p.outp, "\\n\"")
 
 proc filterTmpl(stdin: PLLStream, filename: string, call: PNode): PLLStream = 
   var p: TTmplParser
   p.info = newLineInfo(filename, 0, 0)
-  p.outp = LLStreamOpen("")
+  p.outp = llStreamOpen("")
   p.inp = stdin
   p.subsChar = charArg(call, "subschar", 1, '$')
   p.nimDirective = charArg(call, "metachar", 2, '#')
@@ -213,9 +213,9 @@ proc filterTmpl(stdin: PLLStream, filename: string, call: PNode): PLLStream =
   p.conc = strArg(call, "conc", 4, " & ")
   p.toStr = strArg(call, "tostring", 5, "$")
   p.x = newStringOfCap(120)
-  while LLStreamReadLine(p.inp, p.x):
+  while llStreamReadLine(p.inp, p.x):
     p.info.line = p.info.line + int16(1)
     parseLine(p)
   newLine(p)
   result = p.outp
-  LLStreamClose(p.inp)
+  llStreamClose(p.inp)

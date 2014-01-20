@@ -23,7 +23,8 @@ elif sizeof(int) == 8: # 64bit
     TRaw = range[0..4611686018427387903]
     ## The range of uint values that can be stored directly in a value slot
     ## when on a 64 bit platform
-else: echo("unsupported platform")
+else: 
+  {.error: "unsupported platform".}
   
 type  
   TEntry = tuple

@@ -41,19 +41,19 @@ type
 
 proc initSinglyLinkedList*[T](): TSinglyLinkedList[T] =
   ## creates a new singly linked list that is empty.
-  nil
+  discard
 
 proc initDoublyLinkedList*[T](): TDoublyLinkedList[T] =
   ## creates a new doubly linked list that is empty.
-  nil
+  discard
 
 proc initSinglyLinkedRing*[T](): TSinglyLinkedRing[T] =
   ## creates a new singly linked ring that is empty.
-  nil
+  discard
 
 proc initDoublyLinkedRing*[T](): TDoublyLinkedRing[T] =
   ## creates a new doubly linked ring that is empty.
-  nil
+  discard
 
 proc newDoublyLinkedNode*[T](value: T): PDoublyLinkedNode[T] =
   ## creates a new doubly linked node with the given `value`.

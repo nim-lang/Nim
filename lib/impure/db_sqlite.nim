@@ -64,7 +64,7 @@ proc dbFormat(formatstr: TSqlQuery, args: varargs[string]): string =
     else: 
       add(result, c)
   
-proc TryExec*(db: TDbConn, query: TSqlQuery, 
+proc tryExec*(db: TDbConn, query: TSqlQuery, 
               args: varargs[string, `$`]): bool {.tags: [FReadDB, FWriteDb].} =
   ## tries to execute the query and returns true if successful, false otherwise.
   var q = dbFormat(query, args)
@@ -73,10 +73,10 @@ proc TryExec*(db: TDbConn, query: TSqlQuery,
     if step(stmt) == SQLITE_DONE:
       result = finalize(stmt) == SQLITE_OK
 
-proc Exec*(db: TDbConn, query: TSqlQuery, args: varargs[string, `$`])  {.
+proc exec*(db: TDbConn, query: TSqlQuery, args: varargs[string, `$`])  {.
   tags: [FReadDB, FWriteDb].} =
   ## executes the query and raises EDB if not successful.
-  if not TryExec(db, query, args): dbError(db)
+  if not tryExec(db, query, args): dbError(db)
   
 proc newRow(L: int): TRow =
   newSeq(result, L)
@@ -94,7 +94,7 @@ proc setRow(stmt: PStmt, r: var TRow, cols: cint) =
     let x = column_text(stmt, col)
     if not isNil(x): add(r[col], x)
   
-iterator FastRows*(db: TDbConn, query: TSqlQuery,
+iterator fastRows*(db: TDbConn, query: TSqlQuery,
                    args: varargs[string, `$`]): TRow  {.tags: [FReadDB].} =
   ## executes the query and iterates over the result dataset. This is very 
   ## fast, but potenially dangerous: If the for-loop-body executes another
@@ -118,19 +118,19 @@ proc getRow*(db: TDbConn, query: TSqlQuery,
     setRow(stmt, result, L)
   if finalize(stmt) != SQLITE_OK: dbError(db)
 
-proc GetAllRows*(db: TDbConn, query: TSqlQuery, 
+proc getAllRows*(db: TDbConn, query: TSqlQuery, 
                  args: varargs[string, `$`]): seq[TRow] {.tags: [FReadDB].} =
   ## executes the query and returns the whole result dataset.
   result = @[]
-  for r in FastRows(db, query, args):
+  for r in fastRows(db, query, args):
     result.add(r)
 
-iterator Rows*(db: TDbConn, query: TSqlQuery, 
+iterator rows*(db: TDbConn, query: TSqlQuery, 
                args: varargs[string, `$`]): TRow {.tags: [FReadDB].} =
   ## same as `FastRows`, but slower and safe.
-  for r in FastRows(db, query, args): yield r
+  for r in fastRows(db, query, args): yield r
 
-proc GetValue*(db: TDbConn, query: TSqlQuery, 
+proc getValue*(db: TDbConn, query: TSqlQuery, 
                args: varargs[string, `$`]): string {.tags: [FReadDB].} = 
   ## executes the query and returns the first column of the first row of the
   ## result dataset. Returns "" if the dataset contains no rows or the database
@@ -143,44 +143,44 @@ proc GetValue*(db: TDbConn, query: TSqlQuery,
     else:
       result = newStringOfCap(cb)
       add(result, column_text(stmt, 0))
-    if finalize(stmt) != SQLITE_OK: dbError(db)
   else:
     result = ""
+  if finalize(stmt) != SQLITE_OK: dbError(db)
   
-proc TryInsertID*(db: TDbConn, query: TSqlQuery, 
+proc tryInsertID*(db: TDbConn, query: TSqlQuery, 
                   args: varargs[string, `$`]): int64 {.tags: [FWriteDb].} =
   ## executes the query (typically "INSERT") and returns the 
   ## generated ID for the row or -1 in case of an error. 
   var q = dbFormat(query, args)
   var stmt: sqlite3.PStmt
+  result = -1
   if prepare_v2(db, q, q.len.cint, stmt, nil) == SQLITE_OK:
     if step(stmt) == SQLITE_DONE:
-      if finalize(stmt) == SQLITE_OK:
-        return last_insert_rowid(db)
-  result = -1
+      result = last_insert_rowid(db)
+  if finalize(stmt) != SQLITE_OK: dbError(db)
 
-proc InsertID*(db: TDbConn, query: TSqlQuery, 
+proc insertID*(db: TDbConn, query: TSqlQuery, 
                args: varargs[string, `$`]): int64 {.tags: [FWriteDb].} = 
   ## executes the query (typically "INSERT") and returns the 
   ## generated ID for the row. For Postgre this adds
   ## ``RETURNING id`` to the query, so it only works if your primary key is
   ## named ``id``. 
-  result = TryInsertID(db, query, args)
+  result = tryInsertID(db, query, args)
   if result < 0: dbError(db)
   
-proc ExecAffectedRows*(db: TDbConn, query: TSqlQuery, 
+proc execAffectedRows*(db: TDbConn, query: TSqlQuery, 
                        args: varargs[string, `$`]): int64 {.
                        tags: [FReadDB, FWriteDb].} = 
   ## executes the query (typically "UPDATE") and returns the
   ## number of affected rows.
-  Exec(db, query, args)
+  exec(db, query, args)
   result = changes(db)
 
-proc Close*(db: TDbConn) {.tags: [FDB].} = 
+proc close*(db: TDbConn) {.tags: [FDB].} = 
   ## closes the database connection.
   if sqlite3.close(db) != SQLITE_OK: dbError(db)
     
-proc Open*(connection, user, password, database: string): TDbConn {.
+proc open*(connection, user, password, database: string): TDbConn {.
   tags: [FDB].} =
   ## opens a database connection. Raises `EDb` if the connection could not
   ## be established. Only the ``connection`` parameter is used for ``sqlite``.
@@ -192,7 +192,7 @@ proc Open*(connection, user, password, database: string): TDbConn {.
    
 when isMainModule:
   var db = open("db.sql", "", "", "")
-  Exec(db, sql"create table tbl1(one varchar(10), two smallint)", [])
+  exec(db, sql"create table tbl1(one varchar(10), two smallint)", [])
   exec(db, sql"insert into tbl1 values('hello!',10)", [])
   exec(db, sql"insert into tbl1 values('goodbye', 20)", [])
   #db.query("create table tbl1(one varchar(10), two smallint)")

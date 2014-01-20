@@ -146,7 +146,7 @@ proc getGMTime*(t: TTime): TTimeInfo {.tags: [FTime], raises: [].}
   ## converts the calendar time `t` to broken-down time representation,
   ## expressed in Coordinated Universal Time (UTC).
 
-proc TimeInfoToTime*(timeInfo: TTimeInfo): TTime {.tags: [].}
+proc timeInfoToTime*(timeInfo: TTimeInfo): TTime {.tags: [].}
   ## converts a broken-down time structure to
   ## calendar time representation. The function ignores the specified
   ## contents of the structure members `weekday` and `yearday` and recomputes
@@ -256,7 +256,7 @@ proc `+`*(a: TTimeInfo, interval: TTimeInterval): TTimeInfo =
   ##
   ## **Note:** This has been only briefly tested and it may not be
   ## very accurate.
-  let t = toSeconds(TimeInfoToTime(a))
+  let t = toSeconds(timeInfoToTime(a))
   let secs = toSeconds(a, interval)
   if a.tzname == "UTC":
     result = getGMTime(fromSeconds(t + secs))
@@ -268,7 +268,7 @@ proc `-`*(a: TTimeInfo, interval: TTimeInterval): TTimeInfo =
   ##
   ## **Note:** This has been only briefly tested, it is inaccurate especially
   ## when you subtract so much that you reach the Julian calendar.
-  let t = toSeconds(TimeInfoToTime(a))
+  let t = toSeconds(timeInfoToTime(a))
   let secs = toSeconds(a, interval)
   if a.tzname == "UTC":
     result = getGMTime(fromSeconds(t - secs))
@@ -297,7 +297,7 @@ when not defined(JS):
 when not defined(JS):
   # C wrapper:
   type
-    structTM {.importc: "struct tm", final.} = object
+    StructTM {.importc: "struct tm", final.} = object
       second {.importc: "tm_sec".},
         minute {.importc: "tm_min".},
         hour {.importc: "tm_hour".},
@@ -308,7 +308,7 @@ when not defined(JS):
         yearday {.importc: "tm_yday".},
         isdst {.importc: "tm_isdst".}: cint
   
-    PTimeInfo = ptr structTM
+    PTimeInfo = ptr StructTM
     PTime = ptr TTime
   
     TClock {.importc: "clock_t".} = distinct int
@@ -319,11 +319,11 @@ when not defined(JS):
     importc: "gmtime", header: "<time.h>", tags: [].}
   proc timec(timer: PTime): TTime {.
     importc: "time", header: "<time.h>", tags: [].}
-  proc mktime(t: structTM): TTime {.
+  proc mktime(t: StructTM): TTime {.
     importc: "mktime", header: "<time.h>", tags: [].}
-  proc asctime(tblock: structTM): CString {.
+  proc asctime(tblock: StructTM): cstring {.
     importc: "asctime", header: "<time.h>", tags: [].}
-  proc ctime(time: PTime): CString {.
+  proc ctime(time: PTime): cstring {.
     importc: "ctime", header: "<time.h>", tags: [].}
   #  strftime(s: CString, maxsize: int, fmt: CString, t: tm): int {.
   #    importc: "strftime", header: "<time.h>".}
@@ -335,7 +335,7 @@ when not defined(JS):
     clocksPerSec {.importc: "CLOCKS_PER_SEC", nodecl.}: int
     
   # our own procs on top of that:
-  proc tmToTimeInfo(tm: structTM, local: bool): TTimeInfo =
+  proc tmToTimeInfo(tm: StructTM, local: bool): TTimeInfo =
     const
       weekDays: array [0..6, TWeekDay] = [
         dSun, dMon, dTue, dWed, dThu, dFri, dSat]
@@ -345,11 +345,11 @@ when not defined(JS):
       monthday: int(tm.monthday),
       month: TMonth(tm.month),
       year: tm.year + 1900'i32,
-      weekday: weekDays[int(tm.weekDay)],
+      weekday: weekDays[int(tm.weekday)],
       yearday: int(tm.yearday),
-      isDST: tm.isDST > 0,
+      isDST: tm.isdst > 0,
       tzname: if local:
-          if tm.isDST > 0:
+          if tm.isdst > 0:
             getTzname().DST
           else:
             getTzname().nonDST
@@ -358,7 +358,7 @@ when not defined(JS):
       timezone: if local: getTimezone() else: 0
     )
   
-  proc timeInfoToTM(t: TTimeInfo): structTM =
+  proc timeInfoToTM(t: TTimeInfo): StructTM =
     const
       weekDays: array [TWeekDay, int8] = [1'i8,2'i8,3'i8,4'i8,5'i8,6'i8,0'i8]
     result.second = t.second
@@ -367,7 +367,7 @@ when not defined(JS):
     result.monthday = t.monthday
     result.month = ord(t.month)
     result.year = t.year - 1900
-    result.weekday = weekDays[t.weekDay]
+    result.weekday = weekDays[t.weekday]
     result.yearday = t.yearday
     result.isdst = if t.isDST: 1 else: 0
   
@@ -401,7 +401,7 @@ when not defined(JS):
     # copying is needed anyway to provide reentrancity; thus
     # the conversion is not expensive
   
-  proc TimeInfoToTime(timeInfo: TTimeInfo): TTime =
+  proc timeInfoToTime(timeInfo: TTimeInfo): TTime =
     var cTimeInfo = timeInfo # for C++ we have to make a copy,
     # because the header of mktime is broken in my version of libc
     return mktime(timeInfoToTM(cTimeInfo))
@@ -453,7 +453,7 @@ when not defined(JS):
         result = toFloat(a.tv_sec) + toFloat(a.tv_usec)*0.00_0001
       elif defined(windows):
         var f: winlean.TFiletime
-        GetSystemTimeAsFileTime(f)
+        getSystemTimeAsFileTime(f)
         var i64 = rdFileTime(f) - epochDiff
         var secs = i64 div rateDiff
         var subsecs = i64 mod rateDiff
@@ -498,7 +498,7 @@ elif defined(JS):
     result.weekday = weekDays[t.getUTCDay()]
     result.yearday = 0
   
-  proc TimeInfoToTime*(timeInfo: TTimeInfo): TTime =
+  proc timeInfoToTime*(timeInfo: TTimeInfo): TTime =
     result = internGetTime()
     result.setSeconds(timeInfo.second)
     result.setMinutes(timeInfo.minute)
@@ -532,7 +532,7 @@ proc getDateStr*(): string {.rtl, extern: "nt$1", tags: [FTime].} =
   ## gets the current date as a string of the format ``YYYY-MM-DD``.
   var ti = getLocalTime(getTime())
   result = $ti.year & '-' & intToStr(ord(ti.month)+1, 2) &
-    '-' & intToStr(ti.monthDay, 2)
+    '-' & intToStr(ti.monthday, 2)
 
 proc getClockStr*(): string {.rtl, extern: "nt$1", tags: [FTime].} =
   ## gets the current clock time as a string of the format ``HH:MM:SS``.
@@ -593,7 +593,7 @@ proc format*(info: TTimeInfo, f: string): string =
   result = ""
   var i = 0
   var currentF = ""
-  while True:
+  while true:
     case f[i]
     of ' ', '-', '/', ':', '\'', '\0', '(', ')', '[', ']', ',':
       case currentF
@@ -698,7 +698,7 @@ proc format*(info: TTimeInfo, f: string): string =
       of "ZZZ":
         result.add(info.tzname)
       of "":
-        nil # Do nothing.
+        discard
       else:
         raise newException(EInvalidValue, "Invalid format string: " & currentF)
       
