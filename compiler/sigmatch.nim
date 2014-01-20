@@ -103,7 +103,7 @@ proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
     for i in 1..min(sonsLen(typeParams), sonsLen(binding)-1):
       var formalTypeParam = typeParams.sons[i-1].typ
       var bound = binding[i].typ
-      if formalTypeParam.kind != tyTypeDesc:
+      if bound != nil and formalTypeParam.kind != tyTypeDesc:
         bound = bound.skipTypes({tyTypeDesc})
       put(c.bindings, formalTypeParam, bound)
 
