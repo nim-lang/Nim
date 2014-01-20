@@ -306,7 +306,7 @@ proc backrefIgnoreStyle*(index: range[1..MaxSubPatterns]): TPeg {.
 
 proc spaceCost(n: TPeg): int =
   case n.kind
-  of pkEmpty: nil
+  of pkEmpty: discard
   of pkTerminal, pkTerminalIgnoreCase, pkTerminalIgnoreStyle, pkChar,
      pkGreedyRepChar, pkCharChoice, pkGreedyRepSet, 
      pkAny..pkWhitespace, pkGreedyAny:
@@ -1117,7 +1117,7 @@ proc handleHexChar(c: var TPegLexer, xi: var int) =
   of 'A'..'F': 
     xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('A') + 10)
     inc(c.bufpos)
-  else: nil
+  else: discard
 
 proc getEscapedChar(c: var TPegLexer, tok: var TToken) = 
   inc(c.bufpos)
@@ -1347,7 +1347,7 @@ proc getTok(c: var TPegLexer, tok: var TToken) =
       of "i": tok.modifier = modIgnoreCase
       of "y": tok.modifier = modIgnoreStyle
       of "v": tok.modifier = modVerbatim
-      else: nil
+      else: discard
       setLen(tok.literal, 0)
       if c.buf[c.bufpos] == '$':
         getDollar(c, tok)
@@ -1494,7 +1494,7 @@ proc primary(p: var TPegParser): TPeg =
   of tkCurlyAt:
     getTok(p)
     return !*\primary(p).token(p)
-  else: nil
+  else: discard
   case p.tok.kind
   of tkIdentifier:
     if p.identIsVerbatim: 

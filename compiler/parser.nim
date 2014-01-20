@@ -18,10 +18,10 @@
 # In fact the grammar is generated from this file:
 when isMainModule:
   import pegs
-  var outp = open("compiler/grammar.txt", fmWrite)
+  var outp = open("doc/grammar.txt", fmWrite)
   for line in lines("compiler/parser.nim"):
     if line =~ peg" \s* '#| ' {.*}":
-      outp.writeln matches[0]
+      outp.write matches[0], "\L"
   outp.close
 
 import
