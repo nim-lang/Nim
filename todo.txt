@@ -6,6 +6,7 @@ version 0.9.4
 - ensure (ref T)(a, b) works as a type conversion and type constructor
 - document new templating symbol binding rules
 - make '--implicitStatic:on' the default
+- change comment handling in the AST
 
 - special rule for ``[]=``
 - ``=`` should be overloadable; requires specialization for ``=``; general
@@ -27,8 +28,6 @@ Bugs
 - docgen: sometimes effects are listed twice
 - 'result' is not properly cleaned for NRVO --> use uninit checking instead
 - sneaking with qualifiedLookup() is really broken!
-- aporia.nim(968, 5) Error: ambiguous identifier: 'DELETE' -- 
-  use a qualifier
 - blocks can "export" an identifier but the CCG generates {} for them ...
 - osproc execProcesses can deadlock if all processes fail (as experienced
   in c++ mode)
@@ -54,7 +53,6 @@ version 0.9.X
 - implement the missing features wrt inheritance
 - better support for macros that rewrite procs
 - macros need access to types and symbols (partially implemented)
-- perhaps: change comment handling in the AST
 - enforce 'simpleExpr' more often --> doesn't work; tkProc is
   part of primary!
 - the typeDesc/expr unification is weird and only necessary because of

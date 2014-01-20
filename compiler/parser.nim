@@ -990,7 +990,7 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
   of tkTuple: result = parseTuple(p, mode == pmTypeDef)
   of tkProc: result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef})
   of tkIterator:
-    when true:
+    when false:
       if mode in {pmTypeDesc, pmTypeDef}:
         result = parseProcExpr(p, false)
         result.kind = nkIteratorTy
@@ -1001,7 +1001,8 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
         result = ast.emptyNode
     else:
       result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef})
-      result.kind = nkIteratorTy
+      if result.kind == nkLambda: result.kind = nkIteratorDef
+      else: result.kind = nkIteratorTy
   of tkEnum:
     if mode == pmTypeDef:
       result = parseEnum(p)
