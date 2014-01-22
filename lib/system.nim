@@ -447,38 +447,38 @@ proc chr*(u: range[0..255]): char {.magic: "Chr", noSideEffect.}
 # --------------------------------------------------------------------------
 # built-in operators
 
-proc ze*(x: int8): int {.magic: "Ze8ToI", noSideEffect.}
-  ## zero extends a smaller integer type to ``int``. This treats `x` as
-  ## unsigned.
-proc ze*(x: int16): int {.magic: "Ze16ToI", noSideEffect.}
-  ## zero extends a smaller integer type to ``int``. This treats `x` as
-  ## unsigned.
+when not defined(JS):
+  proc ze*(x: int8): int {.magic: "Ze8ToI", noSideEffect.}
+    ## zero extends a smaller integer type to ``int``. This treats `x` as
+    ## unsigned.
+  proc ze*(x: int16): int {.magic: "Ze16ToI", noSideEffect.}
+    ## zero extends a smaller integer type to ``int``. This treats `x` as
+    ## unsigned.
 
-proc ze64*(x: int8): int64 {.magic: "Ze8ToI64", noSideEffect.}
-  ## zero extends a smaller integer type to ``int64``. This treats `x` as
-  ## unsigned.
-proc ze64*(x: int16): int64 {.magic: "Ze16ToI64", noSideEffect.}
-  ## zero extends a smaller integer type to ``int64``. This treats `x` as
-  ## unsigned.
+  proc ze64*(x: int8): int64 {.magic: "Ze8ToI64", noSideEffect.}
+    ## zero extends a smaller integer type to ``int64``. This treats `x` as
+    ## unsigned.
+  proc ze64*(x: int16): int64 {.magic: "Ze16ToI64", noSideEffect.}
+    ## zero extends a smaller integer type to ``int64``. This treats `x` as
+    ## unsigned.
 
-proc ze64*(x: int32): int64 {.magic: "Ze32ToI64", noSideEffect.}
-  ## zero extends a smaller integer type to ``int64``. This treats `x` as
-  ## unsigned.
-proc ze64*(x: int): int64 {.magic: "ZeIToI64", noSideEffect.}
-  ## zero extends a smaller integer type to ``int64``. This treats `x` as
-  ## unsigned. Does nothing if the size of an ``int`` is the same as ``int64``.
-  ## (This is the case on 64 bit processors.)
+  proc ze64*(x: int32): int64 {.magic: "Ze32ToI64", noSideEffect.}
+    ## zero extends a smaller integer type to ``int64``. This treats `x` as
+    ## unsigned.
+  proc ze64*(x: int): int64 {.magic: "ZeIToI64", noSideEffect.}
+    ## zero extends a smaller integer type to ``int64``. This treats `x` as
+    ## unsigned. Does nothing if the size of an ``int`` is the same as ``int64``.
+    ## (This is the case on 64 bit processors.)
 
-proc toU8*(x: int): int8 {.magic: "ToU8", noSideEffect.}
-  ## treats `x` as unsigned and converts it to a byte by taking the last 8 bits
-  ## from `x`.
-proc toU16*(x: int): int16 {.magic: "ToU16", noSideEffect.}
-  ## treats `x` as unsigned and converts it to an ``int16`` by taking the last
-  ## 16 bits from `x`.
-proc toU32*(x: int64): int32 {.magic: "ToU32", noSideEffect.}
-  ## treats `x` as unsigned and converts it to an ``int32`` by taking the
-  ## last 32 bits from `x`.
-
+  proc toU8*(x: int): int8 {.magic: "ToU8", noSideEffect.}
+    ## treats `x` as unsigned and converts it to a byte by taking the last 8 bits
+    ## from `x`.    
+  proc toU16*(x: int): int16 {.magic: "ToU16", noSideEffect.}
+    ## treats `x` as unsigned and converts it to an ``int16`` by taking the last
+    ## 16 bits from `x`.
+  proc toU32*(x: int64): int32 {.magic: "ToU32", noSideEffect.}
+    ## treats `x` as unsigned and converts it to an ``int32`` by taking the
+    ## last 32 bits from `x`.
 
 # integer calculations:
 proc `+` *(x: int): int {.magic: "UnaryPlusI", noSideEffect.}
