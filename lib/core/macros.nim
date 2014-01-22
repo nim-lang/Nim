@@ -390,7 +390,7 @@ proc treeRepr*(n: PNimrodNode): string {.compileTime.} =
     res.add(($n.kind).substr(3))
 
     case n.kind
-    of nnkEmpty: nil # same as nil node in this representation
+    of nnkEmpty: discard # same as nil node in this representation
     of nnkNilLit: res.add(" nil")
     of nnkCharLit..nnkInt64Lit: res.add(" " & $n.intVal)
     of nnkFloatLit..nnkFloat64Lit: res.add(" " & $n.floatVal)
@@ -415,7 +415,7 @@ proc lispRepr*(n: PNimrodNode): string {.compileTime.} =
   add(result, "(")
 
   case n.kind
-  of nnkEmpty: nil # same as nil node in this representation
+  of nnkEmpty: discard # same as nil node in this representation
   of nnkNilLit: add(result, "nil")
   of nnkCharLit..nnkInt64Lit: add(result, $n.intVal)
   of nnkFloatLit..nnkFloat64Lit: add(result, $n.floatVal)

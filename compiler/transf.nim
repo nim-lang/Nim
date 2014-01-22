@@ -636,6 +636,8 @@ proc transform(c: PTransf, n: PNode): PTransNode =
           s.ast.sons[bodyPos] = n.sons[bodyPos]
         #n.sons[bodyPos] = liftLambdas(s, n)
         #if n.kind == nkMethodDef: methodDef(s, false)
+    if n.kind == nkIteratorDef and n.typ != nil:
+      return liftIterSym(n.sons[namePos]).PTransNode
     result = PTransNode(n)
   of nkMacroDef:
     # XXX no proper closure support yet:
@@ -708,6 +710,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     # XXX comment handling really sucks:
     if importantComments():
       PNode(result).comment = n.comment
+  of nkClosure: return PTransNode(n)
   else:
     result = transformSons(c, n)
   var cnst = getConstExpr(c.module, PNode(result))

@@ -287,6 +287,7 @@ const
 
   sfNoRoot* = sfBorrow # a local variable is provably no root so it doesn't
                        # require RC ops
+  sfClosureCreated* = sfDiscriminant # for transf-lambdalifting interaction
 
 const
   # getting ready for the future expr/stmt merge
