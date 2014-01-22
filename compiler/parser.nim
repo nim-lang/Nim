@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -31,7 +31,7 @@ type
   TParser*{.final.} = object  # a TParser object represents a module that
                               # is being parsed
     currInd: int              # current indentation
-    firstTok: bool
+    firstTok, strongSpaces: bool
     lex*: TLexer              # the lexer that is used for parsing
     tok*: TToken              # the current token
     inPragma: int

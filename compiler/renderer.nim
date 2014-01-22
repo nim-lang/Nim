@@ -1251,6 +1251,11 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkParLe, "(META|")
     gsub(g, n.sons[0])
     put(g, tkParRi, ")")
+  of nkGotoState, nkState:
+    var c: TContext
+    initContext c
+    putWithSpace g, tkSymbol, if n.kind == nkState: "state" else: "goto"
+    gsons(g, n, c)
   else: 
     #nkNone, nkExplicitTypeListCall: 
     internalError(n.info, "rnimsyn.gsub(" & $n.kind & ')')

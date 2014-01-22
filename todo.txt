@@ -3,6 +3,7 @@ version 0.9.4
 
 - test&finish first class iterators:
   * nested iterators
+- implement strongSpaces:on
 - ensure (ref T)(a, b) works as a type conversion and type constructor
 - document new templating symbol binding rules
 - make '--implicitStatic:on' the default
