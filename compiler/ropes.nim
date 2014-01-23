@@ -283,11 +283,10 @@ proc ropef(frmt: TFormatStr, args: varargs[PRope]): PRope =
   assert(RopeInvariant(result))
 
 {.push stack_trace: off, line_trace: off.}
-proc `~`*(r: expr[string]): PRope =
+proc `~`*(r: string): PRope =
   # this is the new optimized "to rope" operator
   # the mnemonic is that `~` looks a bit like a rope :)
-  var r {.global.} = r.ropef
-  return r
+  return r.ropef
 {.pop.}
 
 proc appf(c: var PRope, frmt: TFormatStr, args: varargs[PRope]) = 
