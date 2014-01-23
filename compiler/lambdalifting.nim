@@ -116,7 +116,7 @@ type
   TDep = tuple[e: PEnv, field: PSym]
   TEnv {.final.} = object of TObject
     attachedNode: PNode
-    closure: PSym           # if != nil it is a used environment
+    createdVar: PSym         # if != nil it is a used environment
     capturedVars: seq[PSym] # captured variables in this environment
     deps: seq[TDep]         # dependencies
     up: PEnv
@@ -544,19 +544,20 @@ proc addVar*(father, v: PNode) =
   addSon(vpart, ast.emptyNode)
   addSon(father, vpart)
 
-proc getClosureVar(o: POuterContext, e: PEnv): PSym =
-  if e.closure == nil:
-    result = newSym(skVar, getIdent(envName), o.fn, e.attachedNode.info)
-    incl(result.flags, sfShadowed)
-    result.typ = newType(tyRef, o.fn)
-    result.typ.rawAddSon(e.tup)
-    e.closure = result
+proc newClosureCreationVar(o: POuterContext; e: PEnv): PSym =
+  result = newSym(skVar, getIdent(envName), o.fn, e.attachedNode.info)
+  incl(result.flags, sfShadowed)
+  result.typ = newType(tyRef, o.fn)
+  result.typ.rawAddSon(e.tup)
+
+proc getClosureVar(o: POuterContext; e: PEnv): PSym =
+  if e.createdVar == nil:
+    result = newClosureCreationVar(o, e)
+    e.createdVar = result
   else:
-    result = e.closure
+    result = e.createdVar
 
-proc generateClosureCreation(o: POuterContext, scope: PEnv): PNode =
-  var env = getClosureVar(o, scope)
-
+proc rawClosureCreation(o: POuterContext, scope: PEnv; env: PSym): PNode =
   result = newNodeI(nkStmtList, env.info)
   var v = newNodeI(nkVarSection, env.info)
   addVar(v, newSymNode(env))
@@ -577,6 +578,21 @@ proc generateClosureCreation(o: POuterContext, scope: PEnv): PNode =
     # add ``env.up = env2``
     result.add(newAsgnStmt(indirectAccess(env, field, env.info),
                newSymNode(getClosureVar(o, e)), env.info))
+  
+proc generateClosureCreation(o: POuterContext, scope: PEnv): PNode =
+  var env = getClosureVar(o, scope)
+  result = rawClosureCreation(o, scope, env)
+
+proc generateIterClosureCreation(o: POuterContext; env: PEnv;
+                                 scope: PNode): PSym =
+  result = newClosureCreationVar(o, env)
+  let cc = rawClosureCreation(o, env, result)
+  var insertPoint = scope.sons[0]
+  if insertPoint.kind == nkEmpty: scope.sons[0] = cc
+  else:
+    assert cc.kind == nkStmtList and insertPoint.kind == nkStmtList
+    for x in cc: insertPoint.add(x)
+  if env.createdVar == nil: env.createdVar = result
 
 proc interestingIterVar(s: PSym): bool {.inline.} =
   result = s.kind in {skVar, skLet, skTemp, skForVar} and sfGlobal notin s.flags
@@ -635,8 +651,16 @@ proc transformOuterProc(o: POuterContext, n: PNode): PNode =
 
     var closure = PEnv(idTableGet(o.lambdasToEnv, local))
     if closure != nil:
-      # we need to replace the lambda with '(lambda, env)': 
-      let a = closure.closure
+      # we need to replace the lambda with '(lambda, env)':
+      if local.kind == skIterator and local.typ.callConv == ccClosure:
+        # consider: [i1, i2, i1]  Since we merged the iterator's closure
+        # with the captured owning variables, we need to generate the
+        # closure generation code again:
+        let createdVar = generateIterClosureCreation(o, closure,
+                                                     closure.attachedNode)
+        return makeClosure(local, createdVar, n.info)
+      
+      let a = closure.createdVar
       if a != nil:
         return makeClosure(local, a, n.info)
       else:
@@ -646,7 +670,7 @@ proc transformOuterProc(o: POuterContext, n: PNode): PNode =
         if scope.sons[0].kind == nkEmpty:
           # change the empty node to contain the closure construction:
           scope.sons[0] = generateClosureCreation(o, closure)
-        let x = closure.closure
+        let x = closure.createdVar
         assert x != nil
         return makeClosure(local, x, n.info)
     

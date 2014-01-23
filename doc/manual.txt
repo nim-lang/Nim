@@ -2837,8 +2837,22 @@ The builtin ``system.finished`` can be used to determine if an iterator has
 finished its operation; no exception is raised on an attempt to invoke an
 iterator that has already finished its work.
 
-One always has to 
+Closure iterators are *resumable functions* and so one has to provide the
+arguments to every call. To get around this limitation one can capture
+parameters of an outer factory proc:
 
+.. code-block:: nimrod
+  proc mycount(a, b: int): iterator (): int =
+    return iterator (): int =
+      var x = a
+      while x <= b:
+        yield x
+        inc x
+
+  let foo = mycount 1, 4
+
+  for f in foo():
+    echo f
 
 
 Type sections
