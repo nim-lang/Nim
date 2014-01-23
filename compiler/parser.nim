@@ -1048,6 +1048,7 @@ proc parseTypeDesc(p: var TParser): PNode =
 
 proc parseTypeDefAux(p: var TParser): PNode = 
   #| typeDefAux = simpleExpr
+  #|            | 'generic' typeClass
   result = simpleExpr(p, pmTypeDef)
 
 proc makeCall(n: PNode): PNode =
@@ -1672,6 +1673,9 @@ proc parseTypeClassParam(p: var TParser): PNode =
     result = p.parseSymbol
 
 proc parseTypeClass(p: var TParser): PNode =
+  #| typeClassParam = ('var')? symbol
+  #| typeClass = typeClassParam ^* ',' (pragma)? ('of' typeDesc ^* ',')?
+  #|               &IND{>} stmt
   result = newNodeP(nkTypeClassTy, p)
   getTok(p)
   var args = newNode(nkArgList)
