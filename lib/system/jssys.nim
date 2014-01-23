@@ -472,17 +472,17 @@ proc Ze(a: int): int {.compilerproc.} =
 proc Ze64(a: int64): int64 {.compilerproc.} =
   result = a
 
-proc toU8(a: int): int8 {.noStackFrame, compilerproc.} =
+proc ToU8(a: int): int8 {.noStackFrame, compilerproc.} =
   asm """
     return `a`;
   """
 
-proc toU16(a: int): int16 {.noStackFrame, compilerproc.} =
+proc ToU16(a: int): int16 {.noStackFrame, compilerproc.} =
   asm """
     return `a`;
   """
 
-proc toU32(a: int): int32 {.noStackFrame, compilerproc.} =
+proc ToU32(a: int): int32 {.noStackFrame, compilerproc.} =
   asm """
     return `a`;
   """
