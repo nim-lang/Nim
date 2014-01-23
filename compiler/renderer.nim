@@ -426,6 +426,8 @@ proc lsub(n: PNode): int =
   of nkVarTy: result = (if n.len > 0: lsub(n.sons[0])+1 else: 0) + len("var")
   of nkDistinctTy: result = (if n.len > 0: lsub(n.sons[0])+1 else: 0) +
                                                          len("Distinct")
+  of nkStaticTy: result = (if n.len > 0: lsub(n.sons[0]) else: 0) +
+                                                         len("static[]")
   of nkTypeDef: result = lsons(n) + 3
   of nkOfInherit: result = lsub(n.sons[0]) + len("of_")
   of nkProcTy: result = lsons(n) + len("proc_")
@@ -700,6 +702,19 @@ proc gproc(g: var TSrcGen, n: PNode) =
       indentNL(g)
       gcoms(g)
       dedent(g)
+
+proc gTypeClassTy(g: var TSrcGen, n: PNode) =
+  var c: TContext
+  initContext(c)
+  putWithSpace(g, tkGeneric, "generic")
+  gsons(g, n[0], c) # arglist
+  gsub(g, n[1]) # pragmas
+  gsub(g, n[2]) # of
+  gcoms(g)
+  indentNL(g)
+  gcoms(g)
+  gstmts(g, n[3], c)
+  dedent(g)
 
 proc gblock(g: var TSrcGen, n: PNode) = 
   var c: TContext
@@ -1054,6 +1069,12 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       gsub(g, n.sons[0])
     else:
       put(g, tkShared, "shared")
+  of nkStaticTy:
+    put(g, tkStatic, "static")
+    put(g, tkBracketLe, "[")
+    if n.len > 0:
+      gsub(g, n.sons[0])
+    put(g, tkBracketRi, "]")    
   of nkEnumTy:
     if sonsLen(n) > 0:
       putWithSpace(g, tkEnum, "enum")
@@ -1256,6 +1277,8 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     initContext c
     putWithSpace g, tkSymbol, if n.kind == nkState: "state" else: "goto"
     gsons(g, n, c)
+  of nkTypeClassTy:
+    gTypeClassTy(g, n)
   else: 
     #nkNone, nkExplicitTypeListCall: 
     internalError(n.info, "rnimsyn.gsub(" & $n.kind & ')')
