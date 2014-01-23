@@ -422,7 +422,6 @@ proc transformOuterConv(n: PNode): PNode =
 proc makeClosure(prc, env: PSym, info: TLineInfo): PNode =
   result = newNodeIT(nkClosure, info, prc.typ)
   result.add(newSymNode(prc))
-  if prc.kind == skIterator: incl(prc.flags, sfClosureCreated)
   if env == nil:
     result.add(newNodeIT(nkNilLit, info, getSysType(tyNil)))
   else:
@@ -776,8 +775,7 @@ proc liftIterSym*(n: PNode): PNode =
   # transforms  (iter)  to  (let env = newClosure[iter](); (iter, env)) 
   let iter = n.sym
   assert iter.kind == skIterator
-  #if sfClosureCreated in iter.flags: return n
-  
+
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   
   var env = copySym(getHiddenParam(iter))
