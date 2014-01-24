@@ -399,6 +399,69 @@ proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
   else:
     result = isNone
 
+proc matchUserTypeClass*(c: PContext, m: var TCandidate,
+                         ff, a: PType): TTypeRelation =
+  #if f.n == nil:
+  #  let r = typeRel(m, f, a)
+  #  return if r == isGeneric: arg else: nil
+
+  var body = ff.skipTypes({tyUserTypeClassInst})
+
+  # var prev = PType(idTableGet(m.bindings, f))
+  # if prev != nil:
+  #   if sameType(prev, a): return arg
+  #   else: return nil
+
+  # pushInfoContext(arg.info)
+  openScope(c)
+  inc c.inTypeClass
+
+  finally:
+    dec c.inTypeClass
+    closeScope(c)
+
+  if ff.kind == tyUserTypeClassInst:
+    for i in 1 .. <(ff.len - 1):
+      var
+        typeParamName = ff.base.sons[i-1].sym.name
+        typ = ff.sons[i]
+        param = newSym(skType, typeParamName, body.sym, body.sym.info)
+        
+      param.typ = makeTypeDesc(c, typ)
+      addDecl(c, param)
+
+  for param in body.n[0]:
+    var
+      dummyName: PNode
+      dummyType: PType
+    
+    if param.kind == nkVarTy:
+      dummyName = param[0]
+      dummyType = makeVarType(c, a)
+    else:
+      dummyName = param
+      dummyType = a
+
+    internalAssert dummyName.kind == nkIdent
+    var dummyParam = newSym(skType, dummyName.ident, body.sym, body.sym.info)
+    dummyParam.typ = dummyType
+    addDecl(c, dummyParam)
+
+  for stmt in body.n[3]:
+    var e = c.semTryExpr(c, copyTree(stmt), bufferErrors = false)
+    m.errors = bufferedMsgs
+    clearBufferedMsgs()
+    if e == nil: return isNone
+
+    case e.kind
+    of nkReturnStmt: discard
+    of nkTypeSection: discard
+    of nkConstDef: discard
+    else: discard
+  
+  return isGeneric
+  # put(m.bindings, f, a)
+
 proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   # typeRel can be used to establish various relationships between types:
   #
@@ -751,6 +814,12 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       else:
         return isNone
 
+  of tyUserTypeClassInst:
+    considerPreviousT:
+      result = matchUserTypeClass(c.c, c, f, a)
+      if result == isGeneric:
+        put(c.bindings, f, a)
+
   of tyCompositeTypeClass:
     considerPreviousT:
       if typeRel(c, f.sons[1], a) != isNone:
@@ -904,57 +973,6 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       result.typ = getInstantiatedType(c, arg, m, base(f))
     m.baseTypeMatch = true
 
-proc matchUserTypeClass*(c: PContext, m: var TCandidate,
-                         arg: PNode, f, a: PType): PNode =
-  if f.n == nil:
-    let r = typeRel(m, f, a)
-    return if r == isGeneric: arg else: nil
- 
-  var prev = PType(idTableGet(m.bindings, f))
-  if prev != nil:
-    if sameType(prev, a): return arg
-    else: return nil
-
-  # pushInfoContext(arg.info)
-  openScope(c)
-  inc c.inTypeClass
-
-  finally:
-    dec c.inTypeClass
-    closeScope(c)
-
-  for param in f.n[0]:
-    var
-      dummyName: PNode
-      dummyType: PType
-    
-    if param.kind == nkVarTy:
-      dummyName = param[0]
-      dummyType = makeVarType(c, a)
-    else:
-      dummyName = param
-      dummyType = a
-
-    internalAssert dummyName.kind == nkIdent
-    var dummyParam = newSym(skType, dummyName.ident, f.sym, f.sym.info)
-    dummyParam.typ = dummyType
-    addDecl(c, dummyParam)
-
-  for stmt in f.n[3]:
-    var e = c.semTryExpr(c, copyTree(stmt), bufferErrors = false)
-    m.errors = bufferedMsgs
-    clearBufferedMsgs()
-    if e == nil: return nil
-
-    case e.kind
-    of nkReturnStmt: discard
-    of nkTypeSection: discard
-    of nkConstDef: discard
-    else: discard
-  
-  result = arg
-  put(m.bindings, f, a)
-
 proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
                         argSemantized, argOrig: PNode): PNode =
   var
@@ -980,14 +998,9 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
         else: argType
  
   case fMaybeStatic.kind
-  of tyTypeClass, tyParametricTypeClass:
+  of tyTypeClass:
     if fMaybeStatic.n != nil:
-      let match = matchUserTypeClass(c, m, arg, fMaybeStatic, a)
-      if match != nil:
-        r = isGeneric
-        arg = match
-      else:
-        r = isNone
+      r = matchUserTypeClass(c, m, fMaybeStatic, a)
     else:
       r = typeRel(m, f, a)
   of tyExpr:

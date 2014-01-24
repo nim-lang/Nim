@@ -337,12 +337,20 @@ type
     tyIter, # unused
     tyProxy # used as errornous type (for idetools)
     tyTypeClass
-    tyParametricTypeClass # structured similarly to tyGenericInst
-                          # lastSon is the body of the type class
+    tyBuiltInTypeClass  # Type such as the catch-all object, tuple, seq, etc
+    tyUserTypeClass
+    tyUserTypeClassInst # \
+      # Instance of a parametric user-defined type class.
+      # Structured similarly to tyGenericInst.
+      # tyGenericInst represents concrete types, while
+      # this is still a "generic param" that will bind types
+      # and resolves them during sigmatch and instantiation.
     
-    tyBuiltInTypeClass # Type such as the catch-all object, tuple, seq, etc
-    
-    tyCompositeTypeClass # 
+    tyCompositeTypeClass # Type such as seq[Number]
+                         # The notes for tyUserTypeClassInst apply here as well 
+                         # sons[0]: the original expression used by the user.
+                         # sons[1]: fully expanded and instantiated meta type
+                         # (potentially following aliases)
     
     tyAnd, tyOr, tyNot # boolean type classes such as `string|int`,`not seq`,
                        # `Sortable and Enumable`, etc
@@ -365,7 +373,8 @@ const
   tyUnknownTypes* = {tyError, tyFromExpr}
 
   tyTypeClasses* = {tyTypeClass, tyBuiltInTypeClass, tyCompositeTypeClass,
-                    tyParametricTypeClass, tyAnd, tyOr, tyNot, tyAnything}
+                    tyUserTypeClass, tyUserTypeClassInst,
+                    tyAnd, tyOr, tyNot, tyAnything}
 
   tyMetaTypes* = {tyGenericParam, tyTypeDesc, tyStatic, tyExpr} + tyTypeClasses
  

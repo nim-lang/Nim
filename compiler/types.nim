@@ -404,8 +404,9 @@ const
     "float", "float32", "float64", "float128",
     "uint", "uint8", "uint16", "uint32", "uint64",
     "bignum", "const ",
-    "!", "varargs[$1]", "iter[$1]", "Error Type", "TypeClass",
-    "ParametricTypeClass", "BuiltInTypeClass", "CompositeTypeClass",
+    "!", "varargs[$1]", "iter[$1]", "Error Type",
+    "TypeClass", "BuiltInTypeClass", "UserTypeClass",
+    "UserTypeClassInst", "CompositeTypeClass",
     "and", "or", "not", "any", "static", "TypeFromExpr"]
 
 proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
