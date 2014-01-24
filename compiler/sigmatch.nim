@@ -140,7 +140,7 @@ proc sumGeneric(t: PType): int =
       result = ord(t.kind == tyGenericInvokation)
       for i in 0 .. <t.len: result += t.sons[i].sumGeneric
       break
-    of tyGenericParam, tyExpr, tyStatic, tyStmt, tyTypeDesc, tyTypeClass: break
+    of tyGenericParam, tyExpr, tyStatic, tyStmt, tyTypeDesc: break
     else: return 0
 
 proc complexDisambiguation(a, b: PType): int =
@@ -447,18 +447,19 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
     dummyParam.typ = dummyType
     addDecl(c, dummyParam)
 
-  for stmt in body.n[3]:
-    var e = c.semTryExpr(c, copyTree(stmt), bufferErrors = false)
-    m.errors = bufferedMsgs
-    clearBufferedMsgs()
-    if e == nil: return isNone
+  var checkedBody = c.semTryExpr(c, copyTree(body.n[3]), bufferErrors = false)
+  m.errors = bufferedMsgs
+  clearBufferedMsgs()
+  if checkedBody == nil: return isNone
 
-    case e.kind
-    of nkReturnStmt: discard
-    of nkTypeSection: discard
-    of nkConstDef: discard
-    else: discard
-  
+  if checkedBody.kind == nkStmtList:
+    for stmt in checkedBody:
+      case stmt.kind
+      of nkReturnStmt: discard
+      of nkTypeSection: discard
+      of nkConstDef: discard
+      else: discard
+    
   return isGeneric
   # put(m.bindings, f, a)
 
@@ -481,6 +482,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
 
   result = isNone
   assert(f != nil)
+  
+  if f.kind == tyExpr:
+    put(c.bindings, f, aOrig)
+    return isGeneric
+
   assert(aOrig != nil)
 
   # var and static arguments match regular modifier-free types
@@ -828,7 +834,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       else:
         return isNone
 
-  of tyGenericParam, tyTypeClass:
+  of tyGenericParam:
     var x = PType(idTableGet(c.bindings, f))
     if x == nil:
       if c.calleeSym != nil and c.calleeSym.kind == skType and
@@ -891,7 +897,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
                     else: a.sons[0]
       result = typeRel(c, prev.sons[0], toMatch)
   
-  of tyExpr, tyStmt:
+  of tyStmt:
     result = isGeneric
   
   of tyProxy:
@@ -993,20 +999,9 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
       argType = arg.typ
  
   var
-    r: TTypeRelation
     a = if c.inTypeClass > 0: argType.skipTypes({tyTypeDesc})
         else: argType
  
-  case fMaybeStatic.kind
-  of tyTypeClass:
-    if fMaybeStatic.n != nil:
-      r = matchUserTypeClass(c, m, fMaybeStatic, a)
-    else:
-      r = typeRel(m, f, a)
-  of tyExpr:
-    r = isGeneric
-    put(m.bindings, f, arg.typ)
-  else:
     r = typeRel(m, f, a)
 
   case r
