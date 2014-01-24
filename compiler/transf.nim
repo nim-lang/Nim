@@ -389,7 +389,7 @@ proc transformConv(c: PTransf, n: PNode): PTransNode =
       result[0] = transform(c, n.sons[1])
     else: 
       result = transform(c, n.sons[1])
-  of tyGenericParam, tyOrdinal, tyTypeClass:
+  of tyGenericParam, tyOrdinal:
     result = transform(c, n.sons[1])
     # happens sometimes for generated assignments, etc.
   else: 

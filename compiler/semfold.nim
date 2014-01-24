@@ -252,8 +252,7 @@ proc evalIs(n, a: PNode): PNode =
   else:
     # XXX semexprs.isOpImpl is slightly different and requires a context. yay.
     let t2 = n[2].typ
-    var match = if t2.kind == tyTypeClass: true
-                else: sameType(t1, t2)
+    var match = sameType(t1, t2)
     result = newIntNode(nkIntLit, ord(match))
   result.typ = n.typ
 

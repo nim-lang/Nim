@@ -736,7 +736,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
                                         allowMetaTypes = true)
     result = liftingWalk(expanded)
 
-  of tyUserTypeClass, tyTypeClass, tyBuiltInTypeClass, tyAnd, tyOr, tyNot:
+  of tyUserTypeClass, tyBuiltInTypeClass, tyAnd, tyOr, tyNot:
     result = addImplicitGeneric(copyType(paramType, getCurrOwner(), true))
   
   of tyExpr:
@@ -871,7 +871,7 @@ proc semGenericParamInInvokation(c: PContext, n: PNode): PType =
 proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType = 
   result = newOrPrevType(tyGenericInvokation, prev, c)
   addSonSkipIntLit(result, s.typ)
- 
+
   template addToResult(typ) =
     if typ.isNil:
       internalAssert false
