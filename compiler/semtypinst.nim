@@ -360,7 +360,10 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       if tfUnresolved in t.flags: result = result.base
     elif t.sonsLen > 0:
       result = makeTypeDesc(cl.c, replaceTypeVarsT(cl, t.sons[0]))
-  
+ 
+  of tyUserTypeClass:
+    result = t
+
   of tyGenericInst:
     result = instCopyType(cl, t)
     for i in 1 .. <result.sonsLen:

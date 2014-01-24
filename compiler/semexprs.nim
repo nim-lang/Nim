@@ -322,12 +322,12 @@ proc isOpImpl(c: PContext, n: PNode): PNode =
                                         tfIterator in t.flags))
   else:
     var match: bool
-    let t2 = n[2].typ
+    let t2 = n[2].typ.skipTypes({tyTypeDesc})
     case t2.kind
     of tyTypeClasses:
       var m: TCandidate
       initCandidate(c, m, t2)
-      match = matchUserTypeClass(c, m, emptyNode, t2, t1) != nil
+      match = typeRel(m, t2, t1) != isNone
     of tyOrdinal:
       var m: TCandidate
       initCandidate(c, m, t2)

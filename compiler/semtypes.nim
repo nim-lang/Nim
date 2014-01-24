@@ -710,6 +710,11 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     result = addImplicitGeneric(result)
   
   of tyGenericInst:
+    if paramType.lastSon.kind == tyUserTypeClass:
+      var cp = copyType(paramType, getCurrOwner(), false)
+      cp.kind = tyUserTypeClassInst
+      return addImplicitGeneric(cp)
+
     for i in 1 .. (paramType.sons.len - 2):
       var lifted = liftingWalk(paramType.sons[i])
       if lifted != nil:
@@ -731,7 +736,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
                                         allowMetaTypes = true)
     result = liftingWalk(expanded)
 
-  of tyTypeClass, tyBuiltInTypeClass, tyAnd, tyOr, tyNot:
+  of tyUserTypeClass, tyTypeClass, tyBuiltInTypeClass, tyAnd, tyOr, tyNot:
     result = addImplicitGeneric(copyType(paramType, getCurrOwner(), true))
   
   of tyExpr:
@@ -923,7 +928,7 @@ proc freshType(res, prev: PType): PType {.inline.} =
 
 proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
   # if n.sonsLen == 0: return newConstraint(c, tyTypeClass)
-  result = newOrPrevType(tyTypeClass, prev, c)
+  result = newOrPrevType(tyUserTypeClass, prev, c)
   result.n = n
 
   let
