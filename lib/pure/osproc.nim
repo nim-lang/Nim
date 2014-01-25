@@ -660,8 +660,8 @@ elif not defined(useNimRtl):
 
     else:
     
-      Pid = fork()
-      if Pid < 0: osError(osLastError())
+      pid = fork()
+      if pid < 0: osError(osLastError())
       if pid == 0:
         ## child process:
 
@@ -685,14 +685,14 @@ elif not defined(useNimRtl):
           if env == nil:
             discard execv(command, a)
           else:
-            discard execve(command, a, ToCStringArray(env))
+            discard execve(command, a, toCStringArray(env))
         else:
           var x = addCmdArgs(command, args)
           var a = toCStringArray(["sh", "-c"], [x])
           if env == nil:
             discard execv("/bin/sh", a)
           else:
-            discard execve("/bin/sh", a, ToCStringArray(env))
+            discard execve("/bin/sh", a, toCStringArray(env))
         # too risky to raise an exception here:
         quit("execve call failed: " & $strerror(errno))
     # Parent process. Copy process information.

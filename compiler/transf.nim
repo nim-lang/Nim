@@ -113,8 +113,8 @@ proc newAsgnStmt(c: PTransf, le: PNode, ri: PTransNode): PTransNode =
   result[1] = ri
 
 proc transformSymAux(c: PTransf, n: PNode): PNode =
-  if n.sym.kind == skIterator and n.sym.typ.callConv == ccClosure:
-    return liftIterSym(n)
+  #if n.sym.kind == skIterator and n.sym.typ.callConv == ccClosure:
+  #  return liftIterSym(n)
   var b: PNode
   var tc = c.transCon
   if sfBorrow in n.sym.flags: 
@@ -636,6 +636,8 @@ proc transform(c: PTransf, n: PNode): PTransNode =
           s.ast.sons[bodyPos] = n.sons[bodyPos]
         #n.sons[bodyPos] = liftLambdas(s, n)
         #if n.kind == nkMethodDef: methodDef(s, false)
+    #if n.kind == nkIteratorDef and n.typ != nil:
+    #  return liftIterSym(n.sons[namePos]).PTransNode
     result = PTransNode(n)
   of nkMacroDef:
     # XXX no proper closure support yet:
@@ -708,6 +710,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     # XXX comment handling really sucks:
     if importantComments():
       PNode(result).comment = n.comment
+  of nkClosure: return PTransNode(n)
   else:
     result = transformSons(c, n)
   var cnst = getConstExpr(c.module, PNode(result))
@@ -738,8 +741,8 @@ proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
     var c = openTransf(module, "")
     result = processTransf(c, n, prc)
     result = liftLambdas(prc, result)
-    if prc.kind == skIterator and prc.typ.callConv == ccClosure:
-      result = lambdalifting.liftIterator(prc, result)
+    #if prc.kind == skIterator and prc.typ.callConv == ccClosure:
+    #  result = lambdalifting.liftIterator(prc, result)
     incl(result.flags, nfTransf)
     when useEffectSystem: trackProc(prc, result)
 

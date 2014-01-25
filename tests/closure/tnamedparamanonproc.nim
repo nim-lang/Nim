@@ -4,8 +4,8 @@ type
   TButtonClicked = proc(button: PButton) {.nimcall.}
 
 proc newButton*(onClick: TButtonClicked) =
-  nil
-  
+  discard
+
 proc main() =
   newButton(onClick = proc(b: PButton) =
     var requestomat = 12
