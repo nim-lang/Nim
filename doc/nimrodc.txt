@@ -538,6 +538,13 @@ on Linux::
   nimrod c --dynlibOverride:lua --passL:liblua.lib program.nim
 
 
+Nimrod documentation tools
+==========================
+
+Nimrod provides the `doc`:idx: and `doc2`:idx: commands to generate HTML
+documentation from ``.nim`` source files. Only exported symbols will appear in
+the output. For more details `see the docgen documentation <docgen.html>`_.
+
 Nimrod idetools integration
 ===========================
 
