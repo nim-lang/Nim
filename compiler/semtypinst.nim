@@ -116,8 +116,8 @@ proc hasGenericArguments*(n: PNode): bool =
            (n.sym.kind == skType and
             n.sym.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} != {})
   else:
-    for s in n.sons:
-      if hasGenericArguments(s): return true
+    for i in 0.. <n.safeLen:
+      if hasGenericArguments(n.sons[i]): return true
     return false
 
 proc reResolveCallsWithTypedescParams(cl: var TReplTypeVars, n: PNode): PNode =
