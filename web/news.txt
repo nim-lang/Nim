@@ -74,6 +74,8 @@ Language Additions
   evaluable at compile-time.
 - Support for user-defined type classes has been added.
 - The *command syntax* is supported in a lot more contexts.
+- Anonymous iterators are now supported and iterators can capture variables
+  of an outer proc.
 
 
 Tools improvements

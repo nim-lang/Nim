@@ -11,7 +11,7 @@
 # use the heap (and nor exceptions) do not include the GC or memory allocator.
 
 var
-  errorMessageWriter*: (proc(msg: string): void {.tags: [FWriteIO].})
+  errorMessageWriter*: (proc(msg: string) {.tags: [FWriteIO].})
     ## Function that will be called
     ## instead of stdmsg.write when printing stacktrace.
     ## Unstable API.
@@ -80,9 +80,9 @@ when defined(nativeStacktrace) and nativeStackTraceSupported:
   type
     TDl_info {.importc: "Dl_info", header: "<dlfcn.h>", 
                final, pure.} = object
-      dli_fname: CString
+      dli_fname: cstring
       dli_fbase: pointer
-      dli_sname: CString
+      dli_sname: cstring
       dli_saddr: pointer
 
   proc backtrace(symbols: ptr pointer, size: int): int {.

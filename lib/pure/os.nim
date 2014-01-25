@@ -1586,7 +1586,7 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [FReadIO].} =
     # little heuristic that may work on other POSIX-like systems:
     result = string(getEnv("_"))
     if len(result) == 0:
-      result = string(ParamStr(0))
+      result = string(paramStr(0))
       # POSIX guaranties that this contains the executable
       # as it has been executed by the calling process
       if len(result) > 0 and result[0] != DirSep: # not an absolute path?

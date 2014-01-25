@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -31,7 +31,7 @@ type
   TParser*{.final.} = object  # a TParser object represents a module that
                               # is being parsed
     currInd: int              # current indentation
-    firstTok: bool
+    firstTok, strongSpaces: bool
     lex*: TLexer              # the lexer that is used for parsing
     tok*: TToken              # the current token
     inPragma: int
@@ -1048,6 +1048,7 @@ proc parseTypeDesc(p: var TParser): PNode =
 
 proc parseTypeDefAux(p: var TParser): PNode = 
   #| typeDefAux = simpleExpr
+  #|            | 'generic' typeClass
   result = simpleExpr(p, pmTypeDef)
 
 proc makeCall(n: PNode): PNode =
@@ -1208,8 +1209,7 @@ proc parseReturnOrRaise(p: var TParser, kind: TNodeKind): PNode =
   if p.tok.tokType == tkComment:
     skipComment(p, result)
     addSon(result, ast.emptyNode)
-  elif p.tok.indent >= 0 and p.tok.indent <= p.currInd or
-      p.tok.tokType == tkEof:
+  elif p.tok.indent >= 0 and p.tok.indent <= p.currInd or not isExprStart(p):
     # NL terminates:
     addSon(result, ast.emptyNode)
   else:
@@ -1672,6 +1672,9 @@ proc parseTypeClassParam(p: var TParser): PNode =
     result = p.parseSymbol
 
 proc parseTypeClass(p: var TParser): PNode =
+  #| typeClassParam = ('var')? symbol
+  #| typeClass = typeClassParam ^* ',' (pragma)? ('of' typeDesc ^* ',')?
+  #|               &IND{>} stmt
   result = newNodeP(nkTypeClassTy, p)
   getTok(p)
   var args = newNode(nkArgList)

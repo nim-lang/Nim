@@ -868,6 +868,8 @@ proc semProcAnnotation(c: PContext, prc: PNode): PNode =
     return semStmt(c, x)
 
 proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
+  # XXX semProcAux should be good enough for this now, we will eventually
+  # remove semLambda
   result = semProcAnnotation(c, n)
   if result != nil: return result
   result = n
@@ -949,11 +951,13 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   checkSonsLen(n, bodyPos + 1)
   var s: PSym
   var typeIsDetermined = false
+  var isAnon = false
   if n[namePos].kind != nkSym:
     assert phase == stepRegisterSymbol
 
     if n[namePos].kind == nkEmpty:
       s = newSym(kind, idAnon, getCurrOwner(), n.info)
+      isAnon = true
     else:
       s = semIdentDef(c, n.sons[0], kind)
     n.sons[namePos] = newSymNode(s)
@@ -996,11 +1000,13 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     rawAddSon(s.typ, nil)
   if n.sons[patternPos].kind != nkEmpty:
     n.sons[patternPos] = semPattern(c, n.sons[patternPos])
-  if s.kind == skIterator: s.typ.flags.incl(tfIterator)
+  if s.kind == skIterator: 
+    s.typ.flags.incl(tfIterator)
   
   var proto = searchForProc(c, s.scope, s)
   if proto == nil: 
-    s.typ.callConv = lastOptionEntry(c).defaultCC
+    if s.kind == skIterator and isAnon: s.typ.callConv = ccClosure
+    else: s.typ.callConv = lastOptionEntry(c).defaultCC
     # add it here, so that recursive procs are possible:
     if sfGenSym in s.flags: discard
     elif kind in OverloadableSyms:
@@ -1078,6 +1084,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   popOwner()
   if n.sons[patternPos].kind != nkEmpty:
     c.patterns.add(s)
+  if isAnon: result.typ = s.typ
 
 proc determineType(c: PContext, s: PSym) =
   if s.typ != nil: return
