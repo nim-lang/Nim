@@ -10,12 +10,12 @@
 # This module implements the renderer of the standard Nimrod representation.
 
 import 
-  lexer, options, idents, strutils, ast, msgs, lists
+  lexer, options, idents, strutils, ast, msgs, lists, types
 
 type 
   TRenderFlag* = enum 
     renderNone, renderNoBody, renderNoComments, renderDocComments, 
-    renderNoPragmas, renderIds
+    renderNoPragmas, renderIds, renderNoProcDefs
   TRenderFlags* = set[TRenderFlag]
   TRenderTok*{.final.} = object 
     kind*: TTokType
@@ -40,6 +40,8 @@ proc renderModule*(n: PNode, filename: string, renderFlags: TRenderFlags = {})
 proc renderTree*(n: PNode, renderFlags: TRenderFlags = {}): string
 proc initTokRender*(r: var TSrcGen, n: PNode, renderFlags: TRenderFlags = {})
 proc getNextTok*(r: var TSrcGen, kind: var TTokType, literal: var string)
+proc renderPlainSymbolName*(n: PNode): string
+proc renderParamTypes*(n: PNode, sep = ","): string
 # implementation
 # We render the source code in a two phases: The first
 # determines how long the subtree will likely be, the second
@@ -51,10 +53,17 @@ proc isKeyword*(s: string): bool =
       (i.id <= ord(tokKeywordHigh) - ord(tkSymbol)): 
     result = true
 
-proc renderDefinitionName*(s: PSym): string =
+proc renderDefinitionName*(s: PSym, noQuotes = false): string =
+  ## Returns the definition name of the symbol.
+  ##
+  ## If noQuotes is false the symbol may be returned in backticks. This will
+  ## happen if the name happens to be a keyword or the first character is not
+  ## part of the SymStartChars set.
   let x = s.name.s
-  if x[0] in SymStartChars and not renderer.isKeyword(x): result = x
-  else: result = '`' & x & '`'
+  if noQuotes or (x[0] in SymStartChars and not renderer.isKeyword(x)):
+    result = x
+  else:
+    result = '`' & x & '`'
 
 const 
   IndentWidth = 2
@@ -1086,22 +1095,22 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkStaticStmt: gstaticStmt(g, n)
   of nkAsmStmt: gasm(g, n)
   of nkProcDef: 
-    putWithSpace(g, tkProc, "proc")
+    if renderNoProcDefs notin g.flags: putWithSpace(g, tkProc, "proc")
     gproc(g, n)
   of nkConverterDef:
-    putWithSpace(g, tkConverter, "converter")
+    if renderNoProcDefs notin g.flags: putWithSpace(g, tkConverter, "converter")
     gproc(g, n)
   of nkMethodDef: 
-    putWithSpace(g, tkMethod, "method")
+    if renderNoProcDefs notin g.flags: putWithSpace(g, tkMethod, "method")
     gproc(g, n)
   of nkIteratorDef: 
-    putWithSpace(g, tkIterator, "iterator")
+    if renderNoProcDefs notin g.flags: putWithSpace(g, tkIterator, "iterator")
     gproc(g, n)
   of nkMacroDef: 
-    putWithSpace(g, tkMacro, "macro")
+    if renderNoProcDefs notin g.flags: putWithSpace(g, tkMacro, "macro")
     gproc(g, n)
   of nkTemplateDef: 
-    putWithSpace(g, tkTemplate, "template")
+    if renderNoProcDefs notin g.flags: putWithSpace(g, tkTemplate, "template")
     gproc(g, n)
   of nkTypeSection: 
     gsection(g, n, emptyContext, tkType, "type")
@@ -1292,4 +1301,113 @@ proc getNextTok(r: var TSrcGen, kind: var TTokType, literal: var string) =
     inc(r.idx)
   else: 
     kind = tkEof
-  
+
+proc renderPlainSymbolName*(n: PNode): string =
+  ## Returns the first non '*' nkIdent node from the tree.
+  ##
+  ## Use this on documentation name nodes to extract the *raw* symbol name,
+  ## without decorations, parameters, or anything. That can be used as the base
+  ## for the HTML hyperlinks.
+  result = ""
+  case n.kind
+  of nkPostfix:
+    for i in 0 .. <n.len:
+      result = renderPlainSymbolName(n[<n.len])
+      if result.len > 0:
+        return
+  of nkIdent:
+    if n.ident.s != "*":
+      result = n.ident.s
+  of nkSym:
+    result = n.sym.renderDefinitionName(noQuotes = true)
+  of nkPragmaExpr:
+    result = renderPlainSymbolName(n[0])
+  of nkAccQuoted:
+    result = renderPlainSymbolName(n[<n.len])
+  else:
+    internalError(n.info, "renderPlainSymbolName() with " & $n.kind)
+  assert (not result.isNil)
+
+proc renderType(n: PNode): string =
+  ## Returns a string with the node type or the empty string.
+  case n.kind:
+  of nkIdent: result = n.ident.s
+  of nkSym: result = typeToString(n.sym.typ)
+  of nkVarTy:
+    assert len(n) == 1
+    result = renderType(n[0])
+  of nkRefTy:
+    assert len(n) == 1
+    result = "ref." & renderType(n[0])
+  of nkPtrTy:
+    assert len(n) == 1
+    result = "ptr." & renderType(n[0])
+  of nkProcTy:
+    assert len(n) > 1
+    let params = n[0]
+    assert params.kind == nkFormalParams
+    assert len(params) > 0
+    result = "proc("
+    for i in 1 .. <len(params): result.add(renderType(params[i]) & ',')
+    result[<len(result)] = ')'
+  of nkIdentDefs:
+    assert len(n) >= 3
+    let typePos = len(n) - 2
+    let typeStr = renderType(n[typePos])
+    result = typeStr
+    for i in 1 .. <typePos:
+      assert n[i].kind == nkIdent
+      result.add(',' & typeStr)
+  of nkTupleTy:
+    assert len(n) > 0
+    result = "tuple["
+    for i in 0 .. <len(n): result.add(renderType(n[i]) & ',')
+    result[<len(result)] = ']'
+  of nkBracketExpr:
+    assert len(n) >= 2
+    result = renderType(n[0]) & '['
+    for i in 1 .. <len(n): result.add(renderType(n[i]) & ',')
+    result[<len(result)] = ']'
+  else: result = ""
+  assert (not result.isNil)
+
+
+proc renderParamTypes(found: var seq[string], n: PNode) =
+  ## Recursive helper, adds to `found` any types, or keeps diving the AST.
+  ##
+  ## The normal `doc` generator doesn't include .typ information, so the
+  ## function won't render types for parameters with default values. The `doc2`
+  ## generator does include the information.
+  case n.kind
+  of nkFormalParams:
+    for i in 1 .. <len(n): renderParamTypes(found, n[i])
+  of nkIdentDefs:
+    # These are parameter names + type + default value node.
+    let typePos = len(n) - 2
+    assert typePos > 0
+    var typeStr = renderType(n[typePos])
+    if typeStr.len < 1:
+      # Try with the last node, maybe its a default value.
+      assert n[typePos+1].kind != nkEmpty
+      let typ = n[typePos+1].typ
+      if not typ.isNil: typeStr = typeToString(typ, preferExported)
+      if typeStr.len < 1:
+        return
+    for i in 0 .. <typePos:
+      assert n[i].kind == nkIdent
+      found.add(typeStr)
+  else:
+    internalError(n.info, "renderParamTypes(found,n) with " & $n.kind)
+
+proc renderParamTypes*(n: PNode, sep = ","): string =
+  ## Returns the types contained in `n` joined by `sep`.
+  ##
+  ## This proc expects to be passed as `n` the parameters of any callable. The
+  ## string output is meant for the HTML renderer. If there are no parameters,
+  ## the empty string is returned. The parameters will be joined by `sep` but
+  ## other characters may appear too, like ``[]`` or ``|``.
+  result = ""
+  var found: seq[string] = @[]
+  renderParamTypes(found, n)
+  if found.len > 0:
+    result = sep & found.join(sep)

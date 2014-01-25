@@ -100,6 +100,8 @@ var
   gSelectedGC* = gcRefc       # the selected GC
   searchPaths*, lazyPaths*: TLinkedList
   outFile*: string = ""
+  docSeeSrcUrl*: string = ""  # if empty, no seeSrc will be generated. \
+  # The string uses the formatting variables `path` and `line`.
   headerFile*: string = ""
   gVerbosity* = 1             # how verbose the compiler is
   gNumberOfProcessors*: int   # number of processors
