@@ -297,9 +297,8 @@ proc unixToNativePath*(path: string, drive=""): string {.
   ##
   ## On systems with a concept of "drives", `drive` is used to determine
   ## which drive label to use during absolute path conversion.
-  ## The 'drive' defaults to the drive of the current working directory.
-  ## The `drive` parameter is ignored on systems that do not have a concept
-  ## of "drives"
+  ## `drive` defaults to the drive of the current working directory, and is
+  ## ignored on systems that do not have a concept of "drives" .
   when defined(unix):
     result = path
   else:
@@ -310,7 +309,7 @@ proc unixToNativePath*(path: string, drive=""): string {.
         if drive != "":
           result = drive & ":" & DirSep
         else:
-          result = DirSep
+          result = $DirSep
       elif defined(macos):
         result = "" # must not start with ':'
       else:
@@ -397,7 +396,7 @@ proc existsDir*(dir: string): bool {.rtl, extern: "nos$1", tags: [FReadDir].} =
     var res: TStat
     return stat(dir, res) >= 0'i32 and S_ISDIR(res.st_mode)
 
-proc existsSymlink*(link: string): bool {.rtl, extern: "nos$1",
+proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
                                           tags: [FReadDir].} =
   ## Returns true iff the symlink `link` exists. Will return true
   ## regardless of whether the link points to a directory or file.
@@ -1354,17 +1353,15 @@ proc createSymlink*(src, dest: string) =
   ## Some OS's (such as Microsoft Windows) restrict the creation 
   ## of symlinks to root users (administrators).
   when defined(Windows):
-    var flag = 0'i32
-    if existsDir(src):
-      flag = 1
+    let flag = dirExists(src).int32
     when useWinUnicode:
       var wSrc = newWideCString(src)
       var wDst = newWideCString(dest)
       if CreateSymbolicLinkW(wDst, wSrc, flag) == 0 or GetLastError() != 0:
-          OSError(OSLastError())
+          osError(osLastError())
     else:
       if CreateSymbolicLinkA(dest, src, flag) == 0 or GetLastError() != 0:
-          OSError(OSLastError())
+          osError(osLastError())
   else:
     if symlink(src, dest) != 0:
       OSError(OSLastError())
@@ -1379,10 +1376,10 @@ proc createHardlink*(src, dest: string) =
     when useWinUnicode:
       var wSrc = newWideCString(src)
       var wDst = newWideCString(dest)
-      if CreateHardLinkW(wDst, wSrc, nil) == 0:
+      if createHardLinkW(wDst, wSrc, nil) == 0:
           OSError(OSLastError())
     else:
-      if CreateHardLinkA(dest, src, nil) == 0:
+      if createHardLinkA(dest, src, nil) == 0:
           OSError(OSLastError())
   else:
     if link(src, dest) != 0:

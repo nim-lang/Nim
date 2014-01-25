@@ -206,19 +206,19 @@ else:
     importc: "GetModuleFileNameA", dynlib: "kernel32", stdcall.}
 
 when useWinUnicode:
-  proc CreateSymbolicLinkW*(lpSymlinkFileName, lpTargetFileName: wideCString,
-                         flags: DWORD): int32 {.importc, 
-    dynlib: "kernel32", stdcall.}
-  proc CreateHardLinkW*(lpFileName, lpExistingFileName: wideCString,
-                         security: Pointer=nil): int32 {.importc, 
-    dynlib: "kernel32", stdcall.}
+  proc createSymbolicLinkW*(lpSymlinkFileName, lpTargetFileName: wideCString,
+                         flags: DWORD): int32 {.
+    importc:"CreateSymbolicLinkW", dynlib: "kernel32", stdcall.}
+  proc createHardLinkW*(lpFileName, lpExistingFileName: wideCString,
+                         security: Pointer=nil): int32 {.
+    importc:"CreateHardLinkW", dynlib: "kernel32", stdcall.}
 else:
-  proc CreateSymbolicLinkA*(lpSymlinkFileName, lpTargetFileName: cstring,
-                           flags: DWORD): int32 {.importc, 
-    dynlib: "kernel32", stdcall.}
-  proc CreateHardLinkA*(lpFileName, lpExistingFileName: cstring,
-                           security: Pointer=nil): int32 {.importc, 
-    dynlib: "kernel32", stdcall.}
+  proc createSymbolicLinkA*(lpSymlinkFileName, lpTargetFileName: cstring,
+                           flags: DWORD): int32 {.
+    importc:"CreateSymbolicLinkA", dynlib: "kernel32", stdcall.}
+  proc createHardLinkA*(lpFileName, lpExistingFileName: cstring,
+                           security: Pointer=nil): int32 {.
+    importc:"CreateHardLinkA", dynlib: "kernel32", stdcall.}
 
 const
   FILE_ATTRIBUTE_ARCHIVE* = 32'i32
