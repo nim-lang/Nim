@@ -322,24 +322,13 @@ proc isOpImpl(c: PContext, n: PNode): PNode =
                                         t.callConv == ccClosure and 
                                         tfIterator in t.flags))
   else:
-    var match: bool
-    let t2 = n[2].typ.skipTypes({tyTypeDesc})
-    case t2.kind
-    of tyTypeClasses:
-      var m: TCandidate
-      initCandidate(c, m, t2)
-      match = typeRel(m, t2, t1) != isNone
-    of tyOrdinal:
-      var m: TCandidate
-      initCandidate(c, m, t2)
-      match = isOrdinalType(t1)
-    of tySequence, tyArray, tySet:
-      var m: TCandidate
-      initCandidate(c, m, t2)
-      match = typeRel(m, t2, t1) != isNone
-    else:
-      match = sameType(t1, t2)
- 
+    var t2 = n[2].typ.skipTypes({tyTypeDesc})
+    let lifted = liftParamType(c, skType, newNodeI(nkArgList, n.info),
+                               t2, ":anon", n.info)
+    if lifted != nil: t2 = lifted
+    var m: TCandidate
+    initCandidate(c, m, t2)
+    let match = typeRel(m, t2, t1) != isNone
     result = newIntNode(nkIntLit, ord(match))
 
   result.typ = n.typ
