@@ -655,6 +655,8 @@ proc transformOuterProc(o: POuterContext, n: PNode): PNode =
         # consider: [i1, i2, i1]  Since we merged the iterator's closure
         # with the captured owning variables, we need to generate the
         # closure generation code again:
+        #if local == o.fn: message(n.info, errRecursiveDependencyX, local.name.s)
+        # XXX why doesn't this work?
         let createdVar = generateIterClosureCreation(o, closure,
                                                      closure.attachedNode)
         return makeClosure(local, createdVar, n.info)

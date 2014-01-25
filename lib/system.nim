@@ -1330,7 +1330,7 @@ iterator `||`*[S, T](a: S, b: T, annotation=""): T {.
   ## such isn't aware of the parallelism in your code! Be careful! Later
   ## versions of ``||`` will get proper support by Nimrod's code generator
   ## and GC.
-  nil
+  discard
 
 {.push stackTrace:off.}
 proc min*(x, y: int): int {.magic: "MinI", noSideEffect.} =
