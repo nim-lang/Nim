@@ -820,7 +820,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       else:
         return isNone
 
-  of tyUserTypeClassInst:
+  of tyUserTypeClass, tyUserTypeClassInst:
     considerPreviousT:
       result = matchUserTypeClass(c.c, c, f, a)
       if result == isGeneric:
