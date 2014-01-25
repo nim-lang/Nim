@@ -1209,8 +1209,7 @@ proc parseReturnOrRaise(p: var TParser, kind: TNodeKind): PNode =
   if p.tok.tokType == tkComment:
     skipComment(p, result)
     addSon(result, ast.emptyNode)
-  elif p.tok.indent >= 0 and p.tok.indent <= p.currInd or
-      p.tok.tokType == tkEof:
+  elif p.tok.indent >= 0 and p.tok.indent <= p.currInd or not isExprStart(p):
     # NL terminates:
     addSon(result, ast.emptyNode)
   else:
