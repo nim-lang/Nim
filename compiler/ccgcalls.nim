@@ -146,7 +146,8 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
   proc addComma(r: PRope): PRope =
     result = if r == nil: r else: con(r, ~", ")
 
-  const CallPattern = "$1.ClEnv? $1.ClPrc($3$1.ClEnv) : (($4)($1.ClPrc))($2)"
+  const PatProc = "$1.ClEnv? $1.ClPrc($3$1.ClEnv):(($4)($1.ClPrc))($2)"
+  const PatIter = "$1.ClPrc($3$1.ClEnv)" # we know the env exists
   var op: TLoc
   initLocExpr(p, ri.sons[0], op)
   var pl: PRope
@@ -164,9 +165,10 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
     if i < length - 1: app(pl, ~", ")
   
   template genCallPattern {.dirty.} =
-    lineF(p, cpsStmts, CallPattern & ";$n", op.r, pl, pl.addComma, rawProc)
+    lineF(p, cpsStmts, callPattern & ";$n", op.r, pl, pl.addComma, rawProc)
 
   let rawProc = getRawProcType(p, typ)
+  let callPattern = if tfIterator in typ.flags: PatIter else: PatProc
   if typ.sons[0] != nil:
     if isInvalidReturnType(typ.sons[0]):
       if sonsLen(ri) > 1: app(pl, ~", ")
@@ -190,7 +192,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
       assert(d.t != nil)        # generate an assignment to d:
       var list: TLoc
       initLoc(list, locCall, d.t, OnUnknown)
-      list.r = ropef(CallPattern, op.r, pl, pl.addComma, rawProc)
+      list.r = ropef(callPattern, op.r, pl, pl.addComma, rawProc)
       genAssignment(p, d, list, {}) # no need for deep copying
   else:
     genCallPattern()

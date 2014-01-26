@@ -664,9 +664,8 @@ elif not defined(useNimRtl):
       chck res
 
     else:
-
-      Pid = fork()
-      if Pid < 0: osError(osLastError())
+      pid = fork()
+      if pid < 0: osError(osLastError())
       if pid == 0:
         ## child process:
 

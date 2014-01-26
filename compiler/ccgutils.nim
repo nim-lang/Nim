@@ -87,7 +87,7 @@ proc getUniqueType*(key: PType): PType =
       gCanonicalTypes[k] = key
       result = key
   of tyTypeDesc, tyTypeClasses, tyGenericParam,
-     tyFromExpr, tyStatic:
+     tyFromExpr, tyStatic, tyFieldAccessor:
     internalError("GetUniqueType")
   of tyGenericInst, tyDistinct, tyOrdinal, tyMutable, tyConst, tyIter:
     result = getUniqueType(lastSon(key))

@@ -116,7 +116,10 @@ proc generateDestructor(c: PContext, t: PType): PNode =
       let stmt = destroyField(c, t.n.sons[s].sym, destructedObj)
       if stmt != nil: addLine(stmt)
     else:
-      internalAssert false
+      # XXX just skip it for now so that the compiler doesn't crash, but
+      # please zahary fix it! arbitrary nesting of nkRecList/nkRecCase is
+      # possible. Any thread example seems to trigger this. 
+      discard
   # base classes' destructors will be automatically called by
   # semProcAux for both auto-generated and user-defined destructors
 
