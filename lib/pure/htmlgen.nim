@@ -88,7 +88,7 @@ proc xmlCheckedTag*(e: PNimrodNode, tag: string,
     result.add(newStrLitNode("</"))
     result.add(newStrLitNode(tag))
     result.add(newStrLitNode(">"))
-  result = NestList(!"&", result)
+  result = nestList(!"&", result)
 
 
 macro a*(e: expr): expr {.immediate.} = 

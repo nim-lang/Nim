@@ -12,14 +12,14 @@
 import 
   ast, astalgo, hashes, msgs, platform, nversion, times, idents, rodread
 
-var SystemModule*: PSym
+var systemModule*: PSym
 
 proc registerSysType*(t: PType)
   # magic symbols in the system module:
 proc getSysType*(kind: TTypeKind): PType
 proc getCompilerProc*(name: string): PSym
 proc registerCompilerProc*(s: PSym)
-proc FinishSystem*(tab: TStrTable)
+proc finishSystem*(tab: TStrTable)
 proc getSysSym*(name: string): PSym
 # implementation
 
@@ -36,7 +36,7 @@ proc newSysType(kind: TTypeKind, size: int): PType =
   result.align = size
 
 proc getSysSym(name: string): PSym = 
-  result = StrTableGet(systemModule.tab, getIdent(name))
+  result = strTableGet(systemModule.tab, getIdent(name))
   if result == nil: 
     rawMessage(errSystemNeeds, name)
     result = newSym(skError, getIdent(name), systemModule, systemModule.info)
@@ -46,11 +46,11 @@ proc getSysSym(name: string): PSym =
 proc getSysMagic*(name: string, m: TMagic): PSym =
   var ti: TIdentIter
   let id = getIdent(name)
-  result = InitIdentIter(ti, systemModule.tab, id)
+  result = initIdentIter(ti, systemModule.tab, id)
   while result != nil:
     if result.kind == skStub: loadStub(result)
     if result.magic == m: return result
-    result = NextIdentIter(ti, systemModule.tab)
+    result = nextIdentIter(ti, systemModule.tab)
   rawMessage(errSystemNeeds, name)
   result = newSym(skError, id, systemModule, systemModule.info)
   result.typ = newType(tyError, systemModule)
@@ -79,14 +79,14 @@ proc getSysType(kind: TTypeKind): PType =
     of tyBool: result = sysTypeFromName("bool")
     of tyChar: result = sysTypeFromName("char")
     of tyString: result = sysTypeFromName("string")
-    of tyCstring: result = sysTypeFromName("cstring")
+    of tyCString: result = sysTypeFromName("cstring")
     of tyPointer: result = sysTypeFromName("pointer")
     of tyNil: result = newSysType(tyNil, ptrSize)
-    else: InternalError("request for typekind: " & $kind)
+    else: internalError("request for typekind: " & $kind)
     gSysTypes[kind] = result
   if result.kind != kind: 
-    InternalError("wanted: " & $kind & " got: " & $result.kind)
-  if result == nil: InternalError("type not found: " & $kind)
+    internalError("wanted: " & $kind & " got: " & $result.kind)
+  if result == nil: internalError("type not found: " & $kind)
 
 var
   intTypeCache: array[-5..64, PType]
@@ -126,7 +126,7 @@ proc skipIntLit*(t: PType): PType {.inline.} =
       return getSysType(t.kind)
   result = t
 
-proc AddSonSkipIntLit*(father, son: PType) =
+proc addSonSkipIntLit*(father, son: PType) =
   if isNil(father.sons): father.sons = @[]
   let s = son.skipIntLit
   add(father.sons, s)
@@ -134,7 +134,7 @@ proc AddSonSkipIntLit*(father, son: PType) =
 
 proc setIntLitType*(result: PNode) =
   let i = result.intVal
-  case platform.IntSize
+  case platform.intSize
   of 8: result.typ = getIntLitType(result)
   of 4:
     if i >= low(int32) and i <= high(int32):
@@ -158,13 +158,13 @@ proc setIntLitType*(result: PNode) =
       result.typ = getSysType(tyInt32)
     else:
       result.typ = getSysType(tyInt64)
-  else: InternalError(result.info, "invalid int size")
+  else: internalError(result.info, "invalid int size")
 
 proc getCompilerProc(name: string): PSym = 
   var ident = getIdent(name, hashIgnoreStyle(name))
-  result = StrTableGet(compilerprocs, ident)
+  result = strTableGet(compilerprocs, ident)
   if result == nil: 
-    result = StrTableGet(rodCompilerProcs, ident)
+    result = strTableGet(rodCompilerprocs, ident)
     if result != nil: 
       strTableAdd(compilerprocs, result)
       if result.kind == skStub: loadStub(result)
@@ -172,7 +172,6 @@ proc getCompilerProc(name: string): PSym =
 proc registerCompilerProc(s: PSym) = 
   strTableAdd(compilerprocs, s)
 
-proc FinishSystem(tab: TStrTable) = nil
-  
-initStrTable(compilerprocs)
+proc finishSystem(tab: TStrTable) = discard
 
+initStrTable(compilerprocs)

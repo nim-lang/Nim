@@ -251,10 +251,10 @@ proc invalidateFacts*(m: var TModel, n: PNode) =
 
 proc valuesUnequal(a, b: PNode): bool =
   if a.isValue and b.isValue:
-    result = not SameValue(a, b)
+    result = not sameValue(a, b)
 
 proc pred(n: PNode): PNode =
-  if n.kind in {nkCharLit..nkUInt64Lit} and n.intVal != low(biggestInt):
+  if n.kind in {nkCharLit..nkUInt64Lit} and n.intVal != low(BiggestInt):
     result = copyNode(n)
     dec result.intVal
   else:
@@ -366,7 +366,7 @@ proc impliesIsNil(fact, eq: PNode): TImplication =
   else: discard
 
 proc impliesGe(fact, x, c: PNode): TImplication =
-  InternalAssert isLocation(x)
+  internalAssert isLocation(x)
   case fact.sons[0].sym.magic
   of someEq:
     if sameTree(fact.sons[1], x):
@@ -439,7 +439,7 @@ proc impliesLe(fact, x, c: PNode): TImplication =
         if leValue(c, fact.sons[1].pred): result = impNo
 
   of mNot, mOr, mAnd: internalError(x.info, "impliesLe")
-  else: nil
+  else: discard
 
 proc impliesLt(fact, x, c: PNode): TImplication =
   # x < 3  same as x <= 2:
@@ -484,7 +484,7 @@ proc factImplies(fact, prop: PNode): TImplication =
       if a == b: return ~a
       return impUnknown
     else:
-      InternalError(fact.info, "invalid fact")
+      internalError(fact.info, "invalid fact")
   of mAnd:
     result = factImplies(fact.sons[1], prop)
     if result != impUnknown: return result
@@ -575,4 +575,4 @@ proc checkFieldAccess*(m: TModel, n: PNode) =
   for i in 1..n.len-1:
     let check = buildProperFieldCheck(n.sons[0], n.sons[i])
     if m.doesImply(check) != impYes:
-      Message(n.info, warnProveField, renderTree(n.sons[0])); break
+      message(n.info, warnProveField, renderTree(n.sons[0])); break

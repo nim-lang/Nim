@@ -11,13 +11,13 @@
 # use the heap (and nor exceptions) do not include the GC or memory allocator.
 
 var
-  errorMessageWriter*: (proc(msg: string): void {.tags: [FWriteIO].})
+  errorMessageWriter*: (proc(msg: string) {.tags: [FWriteIO].})
     ## Function that will be called
     ## instead of stdmsg.write when printing stacktrace.
     ## Unstable API.
 
 when not defined(windows) or not defined(guiapp):
-  proc writeToStdErr(msg: CString) = write(stdmsg, msg)
+  proc writeToStdErr(msg: cstring) = write(stdmsg, msg)
 
 else:
   proc MessageBoxA(hWnd: cint, lpText, lpCaption: cstring, uType: int): int32 {.
@@ -80,9 +80,9 @@ when defined(nativeStacktrace) and nativeStackTraceSupported:
   type
     TDl_info {.importc: "Dl_info", header: "<dlfcn.h>", 
                final, pure.} = object
-      dli_fname: CString
+      dli_fname: cstring
       dli_fbase: pointer
-      dli_sname: CString
+      dli_sname: cstring
       dli_saddr: pointer
 
   proc backtrace(symbols: ptr pointer, size: int): int {.
@@ -240,7 +240,7 @@ proc raiseExceptionAux(e: ref E_Base) =
       showErrorMessage(buf)
     quitOrDebug()
 
-proc raiseException(e: ref E_Base, ename: CString) {.compilerRtl.} =
+proc raiseException(e: ref E_Base, ename: cstring) {.compilerRtl.} =
   e.name = ename
   when hasSomeStackTrace:
     e.trace = ""
@@ -253,7 +253,7 @@ proc reraiseException() {.compilerRtl.} =
   else:
     raiseExceptionAux(currException)
 
-proc WriteStackTrace() =
+proc writeStackTrace() =
   when hasSomeStackTrace:
     var s = ""
     rawWriteStackTrace(s)
@@ -280,7 +280,7 @@ when defined(endb):
 
 when not defined(noSignalHandler):
   proc signalHandler(sig: cint) {.exportc: "signalHandler", noconv.} =
-    template processSignal(s, action: expr) {.immediate.} =
+    template processSignal(s, action: expr) {.immediate,  dirty.} =
       if s == SIGINT: action("SIGINT: Interrupted by Ctrl-C.\n")
       elif s == SIGSEGV: 
         action("SIGSEGV: Illegal storage access. (Attempt to read from nil?)\n")

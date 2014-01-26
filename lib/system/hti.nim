@@ -69,7 +69,7 @@ type
     kind: TNimNodeKind
     offset: int
     typ: ptr TNimType
-    name: Cstring
+    name: cstring
     len: int
     sons: ptr array [0..0x7fff, ptr TNimNode]
 

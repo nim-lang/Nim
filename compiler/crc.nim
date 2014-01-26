@@ -18,8 +18,8 @@ const
   InitAdler32* = int32(1)
 
 proc updateCrc32*(val: int8, crc: TCrc32): TCrc32 {.inline.}
-proc updateCrc32*(val: Char, crc: TCrc32): TCrc32 {.inline.}
-proc crcFromBuf*(buf: Pointer, length: int): TCrc32
+proc updateCrc32*(val: char, crc: TCrc32): TCrc32 {.inline.}
+proc crcFromBuf*(buf: pointer, length: int): TCrc32
 proc strCrc32*(s: string): TCrc32
 proc crcFromFile*(filename: string): TCrc32
 proc updateAdler32*(adler: int32, buf: pointer, length: int): int32
@@ -75,10 +75,10 @@ const
     755167117]
 
 proc updateCrc32(val: int8, crc: TCrc32): TCrc32 = 
-  result = TCrc32(crc32Table[(int(crc) xor (int(val) and 0x000000FF)) and
+  result = TCrc32(crc32table[(int(crc) xor (int(val) and 0x000000FF)) and
       0x000000FF]) xor (crc shr TCrc32(8))
 
-proc updateCrc32(val: Char, crc: TCrc32): TCrc32 = 
+proc updateCrc32(val: char, crc: TCrc32): TCrc32 = 
   result = updateCrc32(toU8(ord(val)), crc)
 
 proc strCrc32(s: string): TCrc32 = 
@@ -93,7 +93,7 @@ type
   TByteArray = array[0..10000000, int8]
   PByteArray = ref TByteArray
 
-proc crcFromBuf(buf: Pointer, length: int): TCrc32 = 
+proc crcFromBuf(buf: pointer, length: int): TCrc32 = 
   var p = cast[PByteArray](buf)
   result = InitCrc32
   for i in countup(0, length - 1): result = updateCrc32(p[i], result)
@@ -102,11 +102,11 @@ proc crcFromFile(filename: string): TCrc32 =
   const 
     bufSize = 8000 # don't use 8K for the memory allocator!
   var 
-    bin: tfile
+    bin: TFile
   result = InitCrc32
   if not open(bin, filename): 
     return                    # not equal if file does not exist
-  var buf = alloc(BufSize)
+  var buf = alloc(bufSize)
   var p = cast[PByteArray](buf)
   while true: 
     var readBytes = readBuffer(bin, buf, bufSize)

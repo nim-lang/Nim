@@ -111,7 +111,7 @@ proc skipRoot(f: string): string =
   # "abc/def/xyz" --> "def/xyz"
   var i = 0
   result = ""
-  for component in split(f, {dirsep, altsep}):
+  for component in split(f, {DirSep, AltSep}):
     if i > 0: result = result / component
     inc i
   if result.len == 0: result = f
@@ -126,7 +126,7 @@ include "deinstall.tmpl"
 
 const
   Version = "0.9"
-  Usage = "niminst - Nimrod Installation Generator Version " & version & """
+  Usage = "niminst - Nimrod Installation Generator Version " & Version & """
 
   (c) 2013 Andreas Rumpf
 Usage:
@@ -168,7 +168,7 @@ proc parseCmdLine(c: var TConfigData) =
         c.infile = addFileExt(key.string, "ini")
         c.nimrodArgs = cmdLineRest(p).string
         break
-    of cmdLongOption, cmdShortOption:
+    of cmdLongoption, cmdShortOption:
       case normalize(key.string)
       of "help", "h": 
         stdout.write(Usage)
@@ -188,7 +188,7 @@ proc parseCmdLine(c: var TConfigData) =
 proc walkDirRecursively(s: var seq[string], root: string) =
   for k, f in walkDir(root):
     case k
-    of pcFile, pcLinkToFile: add(s, UnixToNativePath(f))
+    of pcFile, pcLinkToFile: add(s, unixToNativePath(f))
     of pcDir: walkDirRecursively(s, f)
     of pcLinkToDir: nil
 
@@ -199,7 +199,7 @@ proc addFiles(s: var seq[string], patterns: seq[string]) =
     else:
       var i = 0
       for f in walkFiles(p):
-        add(s, UnixToNativePath(f))
+        add(s, unixToNativePath(f))
         inc(i)
       if i == 0: echo("[Warning] No file found that matches: " & p)
 
@@ -286,7 +286,7 @@ proc parseIniFile(c: var TConfigData) =
             of "console": c.app = appConsole
             of "gui": c.app = appGUI
             else: quit(errorStr(p, "expected: console or gui"))
-          of "license": c.license = UnixToNativePath(k.value)
+          of "license": c.license = unixToNativePath(k.value)
           else: quit(errorStr(p, "unknown variable: " & k.key))
         of "var": nil
         of "winbin": filesOnly(p, k.key, v, c.cat[fcWinBin])
@@ -312,7 +312,7 @@ proc parseIniFile(c: var TConfigData) =
           of "uninstallscript": c.uninstallScript = yesno(p, v)
           else: quit(errorStr(p, "unknown variable: " & k.key))
         of "unixbin": filesOnly(p, k.key, v, c.cat[fcUnixBin])
-        of "innosetup": pathFlags(p, k.key, v, c.innoSetup)
+        of "innosetup": pathFlags(p, k.key, v, c.innosetup)
         of "ccompiler": pathFlags(p, k.key, v, c.ccompiler)
         of "linker": pathFlags(p, k.key, v, c.linker)
         of "deb":
@@ -392,7 +392,7 @@ proc readCFiles(c: var TConfigData, osA, cpuA: int) =
     quit("Cannot open: " & f)
 
 proc buildDir(os, cpu: int): string =
-  return "nimcache" / ($os & "_" & $cpu)
+  return "c_code" / ($os & "_" & $cpu)
 
 proc getOutputDir(c: var TConfigData): string =
   if c.outdir.len > 0: c.outdir else: "build"
@@ -432,11 +432,11 @@ proc writeInstallScripts(c: var TConfigData) =
     writeFile(deinstallShFile, generateDeinstallScript(c), "\10")
 
 proc srcdist(c: var TConfigData) =
-  if not existsDir(getOutputDir(c) / "nimcache"):
-    createDir(getOutputDir(c) / "nimcache")
+  if not existsDir(getOutputDir(c) / "c_code"):
+    createDir(getOutputDir(c) / "c_code")
   for x in walkFiles(c.libpath / "lib/*.h"):
-    echo(getOutputDir(c) / "nimcache" / extractFilename(x))
-    copyFile(dest=getOutputDir(c) / "nimcache" / extractFilename(x), source=x)
+    echo(getOutputDir(c) / "c_code" / extractFilename(x))
+    copyFile(dest=getOutputDir(c) / "c_code" / extractFilename(x), source=x)
   var winIndex = -1
   var intel32Index = -1
   var intel64Index = -1
@@ -483,11 +483,11 @@ proc setupDist(c: var TConfigData) =
   var n = "build" / "install_$#_$#.iss" % [toLower(c.name), c.version]
   writeFile(n, scrpt, "\13\10")
   when defined(windows):
-    if c.innoSetup.path.len == 0:
-      c.innoSetup.path = "iscc.exe"
+    if c.innosetup.path.len == 0:
+      c.innosetup.path = "iscc.exe"
     var outcmd = if c.outdir.len == 0: "build" else: c.outdir
-    var cmd = "$# $# /O$# $#" % [quoteShell(c.innoSetup.path),
-                                 c.innoSetup.flags, outcmd, n]
+    var cmd = "$# $# /O$# $#" % [quoteShell(c.innosetup.path),
+                                 c.innosetup.flags, outcmd, n]
     echo(cmd)
     if execShellCmd(cmd) == 0:
       removeFile(n)
@@ -582,7 +582,7 @@ if actionScripts in c.actions:
   writeInstallScripts(c)
 if actionZip in c.actions:
   when haveZipLib:
-    zipdist(c)
+    zipDist(c)
   else:
     quit("libzip is not installed")
 if actionDeb in c.actions:

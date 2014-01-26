@@ -200,32 +200,44 @@ proc parseIniFile(c: var TConfigData) =
 
 # ------------------- main ----------------------------------------------------
 
-proc Exec(cmd: string) =
+proc exec(cmd: string) =
   echo(cmd)
   if os.execShellCmd(cmd) != 0: quit("external program failed")
+
+proc buildDocSamples(c: var TConfigData, destPath: string) =
+  ## Special case documentation sample proc.
+  ##
+  ## The docgen sample needs to be generated twice with different commands, so
+  ## it didn't make much sense to integrate into the existing generic
+  ## documentation builders.
+  const src = "doc"/"docgen_sample.nim"
+  Exec("nimrod doc $# -o:$# $#" %
+    [c.nimrodArgs, destPath / "docgen_sample.html", src])
+  Exec("nimrod doc2 $# -o:$# $#" %
+    [c.nimrodArgs, destPath / "docgen_sample2.html", src])
 
 proc buildDoc(c: var TConfigData, destPath: string) =
   # call nim for the documentation:
   for d in items(c.doc):
-    Exec("nimrod rst2html $# -o:$# --index:on $#" %
+    exec("nimrod rst2html $# -o:$# --index:on $#" %
       [c.nimrodArgs, destPath / changeFileExt(splitFile(d).name, "html"), d])
   for d in items(c.srcdoc):
-    Exec("nimrod doc $# -o:$# --index:on $#" %
+    exec("nimrod doc $# -o:$# --index:on $#" %
       [c.nimrodArgs, destPath / changeFileExt(splitFile(d).name, "html"), d])
   for d in items(c.srcdoc2):
-    Exec("nimrod doc2 $# -o:$# --index:on $#" %
+    exec("nimrod doc2 $# -o:$# --index:on $#" %
       [c.nimrodArgs, destPath / changeFileExt(splitFile(d).name, "html"), d])
-  Exec("nimrod buildIndex -o:$1/theindex.html $1" % [destPath])
+  exec("nimrod buildIndex -o:$1/theindex.html $1" % [destPath])
 
 proc buildPdfDoc(c: var TConfigData, destPath: string) =
   if os.execShellCmd("pdflatex -version") != 0:
     echo "pdflatex not found; no PDF documentation generated"
   else:
     for d in items(c.pdf):
-      Exec("nimrod rst2tex $# $#" % [c.nimrodArgs, d])
+      exec("nimrod rst2tex $# $#" % [c.nimrodArgs, d])
       # call LaTeX twice to get cross references right:
-      Exec("pdflatex " & changeFileExt(d, "tex"))
-      Exec("pdflatex " & changeFileExt(d, "tex"))
+      exec("pdflatex " & changeFileExt(d, "tex"))
+      exec("pdflatex " & changeFileExt(d, "tex"))
       # delete all the crappy temporary files:
       var pdf = splitFile(d).name & ".pdf"
       moveFile(dest=destPath / pdf, source=pdf)
@@ -239,7 +251,7 @@ proc buildPdfDoc(c: var TConfigData, destPath: string) =
 proc buildAddDoc(c: var TConfigData, destPath: string) =
   # build additional documentation (without the index):
   for d in items(c.webdoc):
-    Exec("nimrod doc $# -o:$# $#" %
+    exec("nimrod doc $# -o:$# $#" %
       [c.nimrodArgs, destPath / changeFileExt(splitFile(d).name, "html"), d])
 
 proc parseNewsTitles(inputFilename: string): seq[TRssItem] =
@@ -253,7 +265,7 @@ proc parseNewsTitles(inputFilename: string): seq[TRssItem] =
   if not open(input, inputFilename):
     quit("Could not read $1 for rss generation" % [inputFilename])
   finally: input.close()
-  while input.readline(line):
+  while input.readLine(line):
     if line =~ reYearMonthDayTitle:
       result.add(TRssItem(year: matches[0], month: matches[1], day: matches[2],
         title: matches[3]))
@@ -332,7 +344,7 @@ proc main(c: var TConfigData) =
   for i in 0..c.tabs.len-1:
     var file = c.tabs[i].val
     let rss = if file in ["news", "index"]: extractFilename(rssUrl) else: ""
-    Exec(cmd % [c.nimrodArgs, file])
+    exec(cmd % [c.nimrodArgs, file])
     var temp = "web" / changeFileExt(file, "temp")
     var content: string
     try:
@@ -352,7 +364,9 @@ proc main(c: var TConfigData) =
   copyDir("web/assets", "web/upload/assets")
   buildNewsRss(c, "web/upload")
   buildAddDoc(c, "web/upload")
+  buildDocSamples(c, "web/upload")
   buildDoc(c, "web/upload")
+  buildDocSamples(c, "doc")
   buildDoc(c, "doc")
   buildPdfDoc(c, "doc")
 

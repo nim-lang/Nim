@@ -34,7 +34,7 @@ proc reverse*[T](a: var openArray[T]) =
   ## reverses the array `a`.
   reverse(a, 0, a.high)
 
-proc binarySearch*[T](a: openarray[T], key: T): int =
+proc binarySearch*[T](a: openArray[T], key: T): int =
   ## binary search for `key` in `a`. Returns -1 if not found.
   var b = len(a)
   while result < b:
@@ -79,7 +79,7 @@ proc merge[T](a, b: var openArray[T], lo, m, hi: int,
       inc(bb)
       inc(j)
   else:
-    CopyMem(addr(b[0]), addr(a[j]), sizeof(T)*(m-j+1))
+    copyMem(addr(b[0]), addr(a[j]), sizeof(T)*(m-j+1))
     j = m+1
   var i = 0
   var k = lo

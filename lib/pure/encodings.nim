@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -14,21 +14,21 @@ import os, parseutils, strutils
 
 when not defined(windows):
   type
-    TConverter = object {.pure, final.}
+    TConverter = object
     PConverter* = ptr TConverter ## can convert between two character sets
-    
+
 else:
   type
     TCodePage = distinct int32
-    PConverter* = object {.pure.}
+    PConverter* = object
       dest, src: TCodePage
-    
+
 type
   EInvalidEncoding* = object of EInvalidValue ## exception that is raised
                                               ## for encoding errors
 
 when defined(windows):
-  proc EqEncodingNames(a, b: string): bool =
+  proc eqEncodingNames(a, b: string): bool =
     var i = 0
     var j = 0
     while i < a.len and j < b.len:
@@ -208,31 +208,31 @@ when defined(windows):
   when false:
     # not needed yet:
     type
-      TCpInfo = object {.pure.}
-        MaxCharSize: int32
-        DefaultChar: array[0..1, char]
-        LeadByte: array[0..12-1, char]
+      TCpInfo = object
+        maxCharSize: int32
+        defaultChar: array[0..1, char]
+        leadByte: array[0..12-1, char]
 
-    proc GetCPInfo(CodePage: TCodePage, lpCPInfo: var TCpInfo): int32 {.
+    proc getCPInfo(codePage: TCodePage, lpCPInfo: var TCpInfo): int32 {.
       stdcall, importc: "GetCPInfo", dynlib: "kernel32".}
   
   proc nameToCodePage(name: string): TCodePage =
     var nameAsInt: int
     if parseInt(name, nameAsInt) == 0: nameAsInt = -1
     for no, na in items(winEncodings):
-      if no == nameAsInt or EqEncodingNames(na, name): return TCodePage(no)
+      if no == nameAsInt or eqEncodingNames(na, name): return TCodePage(no)
     result = TCodePage(-1)
     
   proc codePageToName(c: TCodePage): string =
     for no, na in items(winEncodings):
-      if no == int(c): 
+      if no == int(c):
         return if na.len != 0: na else: $no
     result = ""
   
-  proc GetACP(): TCodePage {.stdcall, importc: "GetACP", dynlib: "kernel32".}
+  proc getACP(): TCodePage {.stdcall, importc: "GetACP", dynlib: "kernel32".}
   
-  proc MultiByteToWideChar(
-    CodePage: TCodePage,
+  proc multiByteToWideChar(
+    codePage: TCodePage,
     dwFlags: int32,
     lpMultiByteStr: cstring,
     cbMultiByte: cint,
@@ -240,8 +240,8 @@ when defined(windows):
     cchWideChar: cint): cint {.
       stdcall, importc: "MultiByteToWideChar", dynlib: "kernel32".}
 
-  proc WideCharToMultiByte(
-    CodePage: TCodePage,
+  proc wideCharToMultiByte(
+    codePage: TCodePage,
     dwFlags: int32,
     lpWideCharStr: cstring,
     cchWideChar: cint,
@@ -321,7 +321,6 @@ proc close*(c: PConverter) =
     iconvClose(c)
 
 when defined(windows):
-
   proc convert*(c: PConverter, s: string): string =
     ## converts `s` to `destEncoding` that was given to the converter `c`. It
     ## assumed that `s` is in `srcEncoding`.
@@ -333,26 +332,26 @@ when defined(windows):
     var cap = s.len + s.len shr 2
     result = newStringOfCap(cap*2)
     # convert to utf-16 LE
-    var m = MultiByteToWideChar(CodePage = c.src, dwFlags = 0'i32, 
+    var m = multiByteToWideChar(codePage = c.src, dwFlags = 0'i32, 
                                 lpMultiByteStr = cstring(s),
                                 cbMultiByte = cint(s.len),
                                 lpWideCharStr = cstring(result),
                                 cchWideChar = cint(cap))
     if m == 0: 
       # try again; ask for capacity:
-      cap = MultiByteToWideChar(CodePage = c.src, dwFlags = 0'i32, 
+      cap = multiByteToWideChar(codePage = c.src, dwFlags = 0'i32, 
                                 lpMultiByteStr = cstring(s),
                                 cbMultiByte = cint(s.len),
                                 lpWideCharStr = nil,
                                 cchWideChar = cint(0))
       # and do the conversion properly:
       result = newStringOfCap(cap*2)
-      m = MultiByteToWideChar(CodePage = c.src, dwFlags = 0'i32, 
+      m = multiByteToWideChar(codePage = c.src, dwFlags = 0'i32, 
                               lpMultiByteStr = cstring(s),
                               cbMultiByte = cint(s.len),
                               lpWideCharStr = cstring(result),
                               cchWideChar = cint(cap))
-      if m == 0: OSError()
+      if m == 0: osError(osLastError())
       setLen(result, m*2)
     elif m <= cap:
       setLen(result, m*2)
@@ -364,8 +363,8 @@ when defined(windows):
     # otherwise the fun starts again:
     cap = s.len + s.len shr 2
     var res = newStringOfCap(cap)
-    m = WideCharToMultiByte(
-      CodePage = c.dest,
+    m = wideCharToMultiByte(
+      codePage = c.dest,
       dwFlags = 0'i32,
       lpWideCharStr = cstring(result),
       cchWideChar = cint(result.len div 2),
@@ -373,8 +372,8 @@ when defined(windows):
       cbMultiByte = cap.cint)
     if m == 0:
       # try again; ask for capacity:
-      cap = WideCharToMultiByte(
-        CodePage = c.dest,
+      cap = wideCharToMultiByte(
+        codePage = c.dest,
         dwFlags = 0'i32,
         lpWideCharStr = cstring(result),
         cchWideChar = cint(result.len div 2),
@@ -382,14 +381,14 @@ when defined(windows):
         cbMultiByte = cint(0))
       # and do the conversion properly:
       res = newStringOfCap(cap)
-      m = WideCharToMultiByte(
-        CodePage = c.dest,
+      m = wideCharToMultiByte(
+        codePage = c.dest,
         dwFlags = 0'i32,
         lpWideCharStr = cstring(result),
         cchWideChar = cint(result.len div 2),
         lpMultiByteStr = cstring(res),
         cbMultiByte = cap.cint)
-      if m == 0: OSError()
+      if m == 0: osError(osLastError())
       setLen(res, m)
       result = res
     elif m <= cap:
@@ -399,15 +398,14 @@ when defined(windows):
       assert(false) # cannot happen
 
 else:
-
   proc convert*(c: PConverter, s: string): string =
     result = newString(s.len)
-    var inLen = len(S)
+    var inLen = len(s)
     var outLen = len(result)
-    var src = cstring(S)
+    var src = cstring(s)
     var dst = cstring(result)
     var iconvres: int
-    while InLen > 0:
+    while inLen > 0:
       iconvres = iconv(c, src, inLen, dst, outLen)
       if iconvres == -1:
         var lerr = errno
@@ -425,11 +423,11 @@ else:
           dst = cast[cstring](cast[int](cstring(result)) + offset)
           outLen = len(result) - offset
         else:
-          OSError()
+          osError(lerr.TOSErrorCode)
     # iconv has a buffer that needs flushing, specially if the last char is 
     # not '\0'
     discard iconv(c, nil, nil, dst, outlen)
-    if iconvres == Cint(-1) and errno == E2BIG:
+    if iconvres == cint(-1) and errno == E2BIG:
       var offset = cast[int](dst) - cast[int](cstring(result))
       setLen(result, len(result)+inLen*2+5)
       # 5 is minimally one utf-8 char
@@ -450,7 +448,7 @@ proc convert*(s: string, destEncoding = "UTF-8",
   finally:
     close(c)
 
-when IsMainModule:
+when isMainModule:
   let
     orig = "öäüß"
     cp1252 = convert(orig, "CP1252", "UTF-8")

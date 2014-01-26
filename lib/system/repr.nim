@@ -72,7 +72,7 @@ proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
   result = $e & " (invalid data!)"
 
 type
-  pbyteArray = ptr array[0.. 0xffff, int8]
+  PByteArray = ptr array[0.. 0xffff, int8]
 
 proc addSetElem(result: var string, elem: int, typ: PNimType) =
   case typ.kind
@@ -96,7 +96,7 @@ proc reprSetAux(result: var string, p: pointer, typ: PNimType) =
   of 4: u = ze64(cast[ptr int32](p)[])
   of 8: u = cast[ptr int64](p)[]
   else:
-    var a = cast[pbyteArray](p)
+    var a = cast[PByteArray](p)
     for i in 0 .. typ.size*8-1:
       if (ze(a[i div 8]) and (1 shl (i mod 8))) != 0:
         if elemCounter > 0: add result, ", "
@@ -129,12 +129,12 @@ when not defined(useNimRtl):
     when hasThreadSupport and hasSharedHeap and defined(heapLock):
       AcquireSys(HeapLock)
     when defined(TCellSet):
-      Init(cl.marked)
+      init(cl.marked)
     cl.recdepth = -1      # default is to display everything!
     cl.indent = 0
 
   proc deinitReprClosure(cl: var TReprClosure) =
-    when defined(TCellSet): Deinit(cl.marked)
+    when defined(TCellSet): deinit(cl.marked)
     when hasThreadSupport and hasSharedHeap and defined(heapLock): 
       ReleaseSys(HeapLock)
 
@@ -164,7 +164,7 @@ when not defined(useNimRtl):
     for i in 0..cast[PGenericSeq](p).len-1:
       if i > 0: add result, ", "
       reprAux(result, cast[pointer](cast[TAddress](p) + GenericSeqSize + i*bs),
-              typ.Base, cl)
+              typ.base, cl)
     add result, "]"
 
   proc reprRecordAux(result: var string, p: pointer, n: ptr TNimNode,
@@ -224,17 +224,17 @@ when not defined(useNimRtl):
       reprRecord(result, p, t, cl)
     of tyRef, tyPtr:
       sysAssert(p != nil, "reprAux")
-      if cast[ppointer](p)[] == nil: add result, "nil"
-      else: reprRef(result, cast[ppointer](p)[], typ, cl)
+      if cast[PPointer](p)[] == nil: add result, "nil"
+      else: reprRef(result, cast[PPointer](p)[], typ, cl)
     of tySequence:
-      reprSequence(result, cast[ppointer](p)[], typ, cl)
+      reprSequence(result, cast[PPointer](p)[], typ, cl)
     of tyInt: add result, $(cast[ptr int](p)[])
-    of tyInt8: add result, $int(cast[ptr Int8](p)[])
-    of tyInt16: add result, $int(cast[ptr Int16](p)[])
-    of tyInt32: add result, $int(cast[ptr Int32](p)[])
-    of tyInt64: add result, $(cast[ptr Int64](p)[])
-    of tyUInt8: add result, $ze(cast[ptr Int8](p)[])
-    of tyUInt16: add result, $ze(cast[ptr Int16](p)[])
+    of tyInt8: add result, $int(cast[ptr int8](p)[])
+    of tyInt16: add result, $int(cast[ptr int16](p)[])
+    of tyInt32: add result, $int(cast[ptr int32](p)[])
+    of tyInt64: add result, $(cast[ptr int64](p)[])
+    of tyUInt8: add result, $ze(cast[ptr int8](p)[])
+    of tyUInt16: add result, $ze(cast[ptr int16](p)[])
     
     of tyFloat: add result, $(cast[ptr float](p)[])
     of tyFloat32: add result, $(cast[ptr float32](p)[])
@@ -246,8 +246,8 @@ when not defined(useNimRtl):
     of tyCString: reprStrAux(result, $(cast[ptr cstring](p)[]))
     of tyRange: reprAux(result, p, typ.base, cl)
     of tyProc, tyPointer:
-      if cast[ppointer](p)[] == nil: add result, "nil"
-      else: add result, reprPointer(cast[ppointer](p)[])
+      if cast[PPointer](p)[] == nil: add result, "nil"
+      else: add result, reprPointer(cast[PPointer](p)[])
     else:
       add result, "(invalid data!)"
     inc(cl.recdepth)

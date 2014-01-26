@@ -1,5 +1,5 @@
 #! stdtmpl(subsChar='?') | standard
-#proc GenerateBuildShellScript(c: TConfigData): string = 
+#proc generateBuildShellScript(c: TConfigData): string = 
 #  result = "#! /bin/sh\n# Generated from niminst\n" &
 #           "# Template is in tools/buildsh.tmpl\n" &
 #           "# To regenerate run ``niminst csource`` or ``koch csource``\n"
@@ -128,8 +128,8 @@ case $myos in
 #      var linkCmd = ""
 #      for ff in items(c.cfiles[osA][cpuA]):
 #        let f = ff.toUnix
-    echo "$CC $COMP_FLAGS -Inimcache -c ?{f} -o ?{changeFileExt(f, "o")}"
-    $CC $COMP_FLAGS -Inimcache -c ?{f} -o ?{changeFileExt(f, "o")}
+    echo "$CC $COMP_FLAGS -Ic_code -c ?{f} -o ?{changeFileExt(f, "o")}"
+    $CC $COMP_FLAGS -Ic_code -c ?{f} -o ?{changeFileExt(f, "o")}
 #        add(linkCmd, " \\\n" & changeFileExt(f, "o"))
 #      end for
     echo "$LINKER -o ?{"$binDir/" & toLower(c.name)} ?linkCmd $LINK_FLAGS"

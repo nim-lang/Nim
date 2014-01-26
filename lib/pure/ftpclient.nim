@@ -95,7 +95,7 @@ type
   EInvalidReply* = object of ESynch
   EFTP* = object of ESynch
 
-proc FTPClient*(address: string, port = TPort(21),
+proc ftpClient*(address: string, port = TPort(21),
                 user, pass = ""): PFTPClient =
   ## Create a ``PFTPClient`` object.
   new(result)
@@ -298,7 +298,7 @@ proc getLines(ftp: PFTPClient, async: bool = false): bool =
     var readSocks: seq[TSocket] = @[ftp.getCSock()]
     # This is only needed here. Asyncio gets this socket...
     blockingOperation(ftp.getCSock()):
-      if readSocks.select(1) != 0 and ftp.getCSock() notin readSocks:
+      if readSocks.select(1) != 0 and ftp.getCSock() in readSocks:
         assertReply ftp.expectReply(), "226"
         return true
 
@@ -315,7 +315,7 @@ proc listDirs*(ftp: PFTPClient, dir: string = "",
   assertReply ftp.send("NLST " & dir.normalizePathSep), ["125", "150"]
 
   if not async:
-    while not ftp.job.prc(ftp, false): nil
+    while not ftp.job.prc(ftp, false): discard
     result = splitLines(ftp.job.lines)
     ftp.deleteJob()
   else: return @[]
@@ -390,7 +390,7 @@ proc list*(ftp: PFTPClient, dir: string = "", async = false): string =
   assertReply(ftp.send("LIST" & " " & dir.normalizePathSep), ["125", "150"])
 
   if not async:
-    while not ftp.job.prc(ftp, false): nil
+    while not ftp.job.prc(ftp, false): discard
     result = ftp.job.lines
     ftp.deleteJob()
   else:
@@ -405,7 +405,7 @@ proc retrText*(ftp: PFTPClient, file: string, async = false): string =
   assertReply ftp.send("RETR " & file.normalizePathSep), ["125", "150"]
   
   if not async:
-    while not ftp.job.prc(ftp, false): nil
+    while not ftp.job.prc(ftp, false): discard
     result = ftp.job.lines
     ftp.deleteJob()
   else:
@@ -434,7 +434,7 @@ proc getFile(ftp: PFTPClient, async = false): bool =
   if not async:
     var readSocks: seq[TSocket] = @[ftp.getCSock()]
     blockingOperation(ftp.getCSock()):
-      if readSocks.select(1) != 0 and ftp.getCSock() notin readSocks:
+      if readSocks.select(1) != 0 and ftp.getCSock() in readSocks:
         assertReply ftp.expectReply(), "226"
         return true
 
@@ -460,7 +460,7 @@ proc retrFile*(ftp: PFTPClient, file, dest: string, async = false) =
   ftp.job.filename = file.normalizePathSep
 
   if not async:
-    while not ftp.job.prc(ftp, false): nil
+    while not ftp.job.prc(ftp, false): discard
     ftp.deleteJob()
 
 proc doUpload(ftp: PFTPClient, async = false): bool =
@@ -518,7 +518,7 @@ proc store*(ftp: PFTPClient, file, dest: string, async = false) =
   assertReply ftp.send("STOR " & dest.normalizePathSep), ["125", "150"]
 
   if not async:
-    while not ftp.job.prc(ftp, false): nil
+    while not ftp.job.prc(ftp, false): discard
     ftp.deleteJob()
 
 proc close*(ftp: PFTPClient) =
@@ -554,10 +554,10 @@ proc csockHandleRead(s: PAsyncSocket, ftp: PAsyncFTPClient) =
     
     ftp.handleEvent(ftp, r)
 
-proc AsyncFTPClient*(address: string, port = TPort(21),
+proc asyncFTPClient*(address: string, port = TPort(21),
                      user, pass = "",
     handleEvent: proc (ftp: PAsyncFTPClient, ev: TFTPEvent) {.closure.} = 
-      (proc (ftp: PAsyncFTPClient, ev: TFTPEvent) = nil)): PAsyncFTPClient =
+      (proc (ftp: PAsyncFTPClient, ev: TFTPEvent) = discard)): PAsyncFTPClient =
   ## Create a ``PAsyncFTPClient`` object.
   ##
   ## Use this if you want to use asyncio's dispatcher.
@@ -604,7 +604,7 @@ when isMainModule:
         ftp.close()
         echo d.len
       else: assert(false)
-  var ftp = AsyncFTPClient("picheta.me", user = "test", pass = "asf", handleEvent = hev)
+  var ftp = asyncFTPClient("picheta.me", user = "test", pass = "asf", handleEvent = hev)
   
   d.register(ftp)
   d.len.echo()
@@ -618,7 +618,7 @@ when isMainModule:
 
 
 when isMainModule and false:
-  var ftp = FTPClient("picheta.me", user = "asdasd", pass = "asfwq")
+  var ftp = ftpClient("picheta.me", user = "asdasd", pass = "asfwq")
   ftp.connect()
   echo ftp.pwd()
   echo ftp.list()
