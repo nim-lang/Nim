@@ -9,7 +9,7 @@
 
 ## This file implements the FFI part of the evaluator for Nimrod code.
 
-import ast, astalgo, ropes, types, options, tables, dynlib, libffi, msgs
+import ast, astalgo, ropes, types, options, tables, dynlib, libffi, msgs, os
 
 when defined(windows):
   const libcDll = "msvcrt.dll"
@@ -20,7 +20,11 @@ type
   TDllCache = tables.TTable[string, TLibHandle]
 var
   gDllCache = initTable[string, TLibHandle]()
-  gExeHandle = LoadLib()
+
+when defined(windows):
+  var gExeHandle = loadLib(os.getAppFilename())
+else:
+  var gExeHandle = loadLib()
 
 proc getDll(cache: var TDllCache; dll: string; info: TLineInfo): pointer =
   result = cache[dll]
@@ -28,14 +32,16 @@ proc getDll(cache: var TDllCache; dll: string; info: TLineInfo): pointer =
     var libs: seq[string] = @[]
     libCandidates(dll, libs)
     for c in libs:
-      result = LoadLib(c)
+      result = loadLib(c)
       if not result.isNil: break
     if result.isNil:
-      GlobalError(info, "cannot load: " & dll)
+      globalError(info, "cannot load: " & dll)
     cache[dll] = result
 
 const
   nkPtrLit = nkIntLit # hopefully we can get rid of this hack soon
+
+var myerrno {.importc: "errno", header: "<errno.h>".}: cint ## error variable
 
 proc importcSymbol*(sym: PSym): PNode =
   let name = ropeToStr(sym.loc.r)
@@ -47,10 +53,11 @@ proc importcSymbol*(sym: PSym): PNode =
   of "stdin":  result.intVal = cast[TAddress](system.stdin)
   of "stdout": result.intVal = cast[TAddress](system.stdout)
   of "stderr": result.intVal = cast[TAddress](system.stderr)
+  of "vmErrnoWrapper": result.intVal = cast[TAddress](myerrno)
   else:
     let lib = sym.annex
     if lib != nil and lib.path.kind notin {nkStrLit..nkTripleStrLit}:
-      GlobalError(sym.info, "dynlib needs to be a string lit for the REPL")
+      globalError(sym.info, "dynlib needs to be a string lit for the REPL")
     var theAddr: pointer
     if lib.isNil and not gExehandle.isNil:
       # first try this exe itself:
@@ -58,10 +65,12 @@ proc importcSymbol*(sym: PSym): PNode =
       # then try libc:
       if theAddr.isNil:
         let dllhandle = gDllCache.getDll(libcDll, sym.info)
-        theAddr = dllhandle.checkedSymAddr(name)
-    else:
-      let dllhandle = gDllCache.getDll(lib.path.strVal, sym.info)
-      theAddr = dllhandle.checkedSymAddr(name)
+        theAddr = dllhandle.symAddr(name)
+    elif not lib.isNil:
+      let dllhandle = gDllCache.getDll(if lib.kind == libHeader: libcDll 
+                                       else: lib.path.strVal, sym.info)
+      theAddr = dllhandle.symAddr(name)
+    if theAddr.isNil: globalError(sym.info, "cannot import: " & sym.name.s)
     result.intVal = cast[TAddress](theAddr)
 
 proc mapType(t: ast.PType): ptr libffi.TType =
@@ -78,7 +87,7 @@ proc mapType(t: ast.PType): ptr libffi.TType =
   of tyFloat, tyFloat64: result = addr libffi.type_double
   of tyFloat32: result = addr libffi.type_float
   of tyVar, tyPointer, tyPtr, tyRef, tyCString, tySequence, tyString, tyExpr,
-     tyStmt, tyTypeDesc, tyProc, tyArray, tyArrayConstr, tyNil:
+     tyStmt, tyTypeDesc, tyProc, tyArray, tyArrayConstr, tyStatic, tyNil:
     result = addr libffi.type_pointer
   of tyDistinct:
     result = mapType(t.sons[0])
@@ -139,7 +148,7 @@ proc getField(n: PNode; position: int): PSym =
       else: internalError(n.info, "getField(record case branch)")
   of nkSym:
     if n.sym.position == position: result = n.sym
-  else: nil
+  else: discard
 
 proc packObject(x: PNode, typ: PType, res: pointer) =
   InternalAssert x.kind in {nkObjConstr, nkPar}
@@ -192,7 +201,7 @@ proc pack(v: PNode, typ: PType, res: pointer) =
   of tyPointer, tyProc,  tyCString, tyString:
     if v.kind == nkNilLit:
       # nothing to do since the memory is 0 initialized anyway
-      nil
+      discard
     elif v.kind == nkPtrLit:
       awr(pointer, cast[pointer](v.intVal))
     elif v.kind in {nkStrLit..nkTripleStrLit}:
@@ -202,7 +211,7 @@ proc pack(v: PNode, typ: PType, res: pointer) =
   of tyPtr, tyRef, tyVar:
     if v.kind == nkNilLit:
       # nothing to do since the memory is 0 initialized anyway
-      nil
+      discard
     elif v.kind == nkPtrLit:
       awr(pointer, cast[pointer](v.intVal))
     else:
@@ -220,7 +229,7 @@ proc pack(v: PNode, typ: PType, res: pointer) =
   of tyObject, tyTuple:
     packObject(v, typ, res)
   of tyNil:
-    nil
+    discard
   of tyDistinct, tyGenericInst:
     pack(v, typ.sons[0], res)
   else:
@@ -241,7 +250,7 @@ proc unpackObjectAdd(x: pointer, n, result: PNode) =
     pair.sons[1] = unpack(x +! n.sym.offset, n.sym.typ, nil)
     #echo "offset: ", n.sym.name.s, " ", n.sym.offset
     result.add pair
-  else: nil
+  else: discard
 
 proc unpackObject(x: pointer, typ: PType, n: PNode): PNode =
   # compute the field's offsets:
@@ -441,3 +450,46 @@ proc callForeignFunction*(call: PNode): PNode =
   for i in 1 .. call.len-1:
     call.sons[i] = unpack(args[i-1], typ.sons[i], call[i])
     dealloc args[i-1]
+
+proc callForeignFunction*(fn: PNode, fntyp: PType,
+                          args: var TNodeSeq, start, len: int,
+                          info: TLineInfo): PNode =
+  internalAssert fn.kind == nkPtrLit
+  
+  var cif: TCif
+  var sig: TParamList
+  for i in 0..len-1:
+    var aTyp = args[i+start].typ
+    if aTyp.isNil:
+      internalAssert i+1 < fntyp.len
+      aTyp = fntyp.sons[i+1]
+      args[i+start].typ = aTyp
+    sig[i] = mapType(aTyp)
+    if sig[i].isNil: globalError(info, "cannot map FFI type")
+  
+  if prep_cif(cif, mapCallConv(fntyp.callConv, info), cuint(len),
+              mapType(fntyp.sons[0]), sig) != OK:
+    globalError(info, "error in FFI call")
+  
+  var cargs: TArgList
+  let fn = cast[pointer](fn.intVal)
+  for i in 0 .. len-1:
+    let t = args[i+start].typ
+    cargs[i] = alloc0(packSize(args[i+start], t))
+    pack(args[i+start], t, cargs[i])
+  let retVal = if isEmptyType(fntyp.sons[0]): pointer(nil)
+               else: alloc(fntyp.sons[0].getSize.int)
+
+  libffi.call(cif, fn, retVal, cargs)
+  
+  if retVal.isNil: 
+    result = emptyNode
+  else:
+    result = unpack(retVal, fntyp.sons[0], nil)
+    result.info = info
+
+  if retVal != nil: dealloc retVal
+  for i in 0 .. len-1:
+    let t = args[i+start].typ
+    args[i+start] = unpack(cargs[i], t, args[i+start])
+    dealloc cargs[i]

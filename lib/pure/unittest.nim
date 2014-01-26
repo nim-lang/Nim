@@ -37,8 +37,8 @@ var
   
   checkpoints: seq[string] = @[]
 
-template TestSetupIMPL*: stmt {.immediate, dirty.} = nil
-template TestTeardownIMPL*: stmt {.immediate, dirty.} = nil
+template TestSetupIMPL*: stmt {.immediate, dirty.} = discard
+template TestTeardownIMPL*: stmt {.immediate, dirty.} = discard
 
 proc shouldRun(testName: string): bool =
   result = true
@@ -126,7 +126,7 @@ macro check*(conditions: stmt): stmt {.immediate.} =
     for i in 1 .. <exp.len:
       if exp[i].kind notin nnkLiterals:
         inc counter
-        var arg = newIdentNode(":p" & ($counter))
+        var arg = newIdentNode(":p" & $counter)
         var argStr = exp[i].toStrLit
         if exp[i].kind in nnkCallKinds: inspectArgs(exp[i])
         argsAsgns.add getAst(asgn(arg, exp[i]))
@@ -146,7 +146,8 @@ macro check*(conditions: stmt): stmt {.immediate.} =
       
     var checkedStr = checked.toStrLit
     inspectArgs(checked)
-    result = getAst(rewrite(checked, checked.lineinfo, checkedStr, argsAsgns, argsPrintOuts))
+    result = getAst(rewrite(checked, checked.lineinfo, checkedStr,
+                            argsAsgns, argsPrintOuts))
 
   of nnkStmtList:
     result = newNimNode(nnkStmtList)
@@ -176,7 +177,7 @@ macro expect*(exceptions: varargs[expr], body: stmt): stmt {.immediate.} =
       checkpoint(lineInfoLit & ": Expect Failed, no exception was thrown.")
       fail()
     except errorTypes:
-      nil
+      discard
 
   var body = exp[exp.len - 1]
 

@@ -136,7 +136,7 @@ proc delete*[T](s: var seq[T], first=0, last=0) =
     s[i].shallowCopy(s[j])
     inc(i)
     inc(j)
-  setlen(s, newLen)
+  setLen(s, newLen)
 
 proc insert*[T](dest: var seq[T], src: openArray[T], pos=0) =
   ## Inserts items from `src` into `dest` at position `pos`. This modifies

@@ -14,8 +14,8 @@
 include "system/inclrtl"
 
 type
-  irune = int # underlying type of TRune
-  TRune* = distinct irune   ## type that can hold any Unicode character
+  IRune = int # underlying type of TRune
+  TRune* = distinct IRune   ## type that can hold any Unicode character
   TRune16* = distinct int16 ## 16 bit Unicode character
   
 proc `<=%`*(a, b: TRune): bool = return int(a) <=% int(b)
@@ -109,7 +109,7 @@ proc runeAt*(s: string, i: int): TRune =
 
 proc toUTF8*(c: TRune): string {.rtl, extern: "nuc$1".} = 
   ## converts a rune into its UTF8 representation
-  var i = irune(c)
+  var i = IRune(c)
   if i <=% 127:
     result = newString(1)
     result[0] = chr(i)
@@ -131,6 +131,10 @@ proc toUTF8*(c: TRune): string {.rtl, extern: "nuc$1".} =
   else:
     result = newString(1)
     result[0] = chr(i)
+
+proc `$`*(rune: TRune): string =
+  ## converts a rune to a string
+  rune.toUTF8
 
 proc `$`*(runes: seq[TRune]): string =
   ## converts a sequence of runes to a string
@@ -1096,7 +1100,7 @@ const
     0x01f1, 501,  #     
     0x01f3, 499]  #     
 
-proc binarySearch(c: irune, tab: openArray[iRune], len, stride: int): int = 
+proc binarySearch(c: IRune, tab: openArray[IRune], len, stride: int): int = 
   var n = len
   var t = 0
   while n > 1: 
@@ -1114,29 +1118,29 @@ proc binarySearch(c: irune, tab: openArray[iRune], len, stride: int): int =
 proc toLower*(c: TRune): TRune {.rtl, extern: "nuc$1", procvar.} = 
   ## Converts `c` into lower case. This works for any Unicode character.
   ## If possible, prefer `toLower` over `toUpper`. 
-  var c = irune(c)
-  var p = binarySearch(c, tolowerRanges, len(toLowerRanges) div 3, 3)
+  var c = IRune(c)
+  var p = binarySearch(c, tolowerRanges, len(tolowerRanges) div 3, 3)
   if p >= 0 and c >= tolowerRanges[p] and c <= tolowerRanges[p+1]:
     return TRune(c + tolowerRanges[p+2] - 500)
-  p = binarySearch(c, toLowerSinglets, len(toLowerSinglets) div 2, 2)
-  if p >= 0 and c == toLowerSinglets[p]:
-    return TRune(c + toLowerSinglets[p+1] - 500)
+  p = binarySearch(c, tolowerSinglets, len(tolowerSinglets) div 2, 2)
+  if p >= 0 and c == tolowerSinglets[p]:
+    return TRune(c + tolowerSinglets[p+1] - 500)
   return TRune(c)
 
 proc toUpper*(c: TRune): TRune {.rtl, extern: "nuc$1", procvar.} = 
   ## Converts `c` into upper case. This works for any Unicode character.
   ## If possible, prefer `toLower` over `toUpper`. 
-  var c = irune(c)
-  var p = binarySearch(c, toUpperRanges, len(toUpperRanges) div 3, 3)
-  if p >= 0 and c >= toUpperRanges[p] and c <= toUpperRanges[p+1]:
-    return TRune(c + toUpperRanges[p+2] - 500)
-  p = binarySearch(c, toUpperSinglets, len(toUpperSinglets) div 2, 2)
-  if p >= 0 and c == toUpperSinglets[p]:
-    return TRune(c + toUpperSinglets[p+1] - 500)
+  var c = IRune(c)
+  var p = binarySearch(c, toupperRanges, len(toupperRanges) div 3, 3)
+  if p >= 0 and c >= toupperRanges[p] and c <= toupperRanges[p+1]:
+    return TRune(c + toupperRanges[p+2] - 500)
+  p = binarySearch(c, toupperSinglets, len(toupperSinglets) div 2, 2)
+  if p >= 0 and c == toupperSinglets[p]:
+    return TRune(c + toupperSinglets[p+1] - 500)
   return TRune(c)
 
 proc toTitle*(c: TRune): TRune {.rtl, extern: "nuc$1", procvar.} = 
-  var c = irune(c)
+  var c = IRune(c)
   var p = binarySearch(c, toTitleSinglets, len(toTitleSinglets) div 2, 2)
   if p >= 0 and c == toTitleSinglets[p]:
     return TRune(c + toTitleSinglets[p+1] - 500)
@@ -1145,32 +1149,32 @@ proc toTitle*(c: TRune): TRune {.rtl, extern: "nuc$1", procvar.} =
 proc isLower*(c: TRune): bool {.rtl, extern: "nuc$1", procvar.} = 
   ## returns true iff `c` is a lower case Unicode character
   ## If possible, prefer `isLower` over `isUpper`. 
-  var c = irune(c)
+  var c = IRune(c)
   # Note: toUpperRanges is correct here!
-  var p = binarySearch(c, toUpperRanges, len(toUpperRanges) div 3, 3)
-  if p >= 0 and c >= toUpperRanges[p] and c <= toUpperRanges[p+1]:
+  var p = binarySearch(c, toupperRanges, len(toupperRanges) div 3, 3)
+  if p >= 0 and c >= toupperRanges[p] and c <= toupperRanges[p+1]:
     return true
-  p = binarySearch(c, toUpperSinglets, len(toUpperSinglets) div 2, 2)
-  if p >= 0 and c == toUpperSinglets[p]:
+  p = binarySearch(c, toupperSinglets, len(toupperSinglets) div 2, 2)
+  if p >= 0 and c == toupperSinglets[p]:
     return true
 
 proc isUpper*(c: TRune): bool {.rtl, extern: "nuc$1", procvar.} = 
   ## returns true iff `c` is a upper case Unicode character
   ## If possible, prefer `isLower` over `isUpper`. 
-  var c = irune(c)
+  var c = IRune(c)
   # Note: toLowerRanges is correct here!
-  var p = binarySearch(c, toLowerRanges, len(toLowerRanges) div 3, 3)
-  if p >= 0 and c >= toLowerRanges[p] and c <= toLowerRanges[p+1]:
+  var p = binarySearch(c, tolowerRanges, len(tolowerRanges) div 3, 3)
+  if p >= 0 and c >= tolowerRanges[p] and c <= tolowerRanges[p+1]:
     return true
-  p = binarySearch(c, toLowerSinglets, len(toLowerSinglets) div 2, 2)
-  if p >= 0 and c == toLowerSinglets[p]:
+  p = binarySearch(c, tolowerSinglets, len(tolowerSinglets) div 2, 2)
+  if p >= 0 and c == tolowerSinglets[p]:
     return true
 
 proc isAlpha*(c: TRune): bool {.rtl, extern: "nuc$1", procvar.} = 
   ## returns true iff `c` is an *alpha* Unicode character (i.e. a letter)
   if isUpper(c) or isLower(c): 
     return true
-  var c = irune(c)
+  var c = IRune(c)
   var p = binarySearch(c, alphaRanges, len(alphaRanges) div 2, 2)
   if p >= 0 and c >= alphaRanges[p] and c <= alphaRanges[p+1]:
     return true
@@ -1183,7 +1187,7 @@ proc isTitle*(c: TRune): bool {.rtl, extern: "nuc$1", procvar.} =
 
 proc isWhiteSpace*(c: TRune): bool {.rtl, extern: "nuc$1", procvar.} = 
   ## returns true iff `c` is a Unicode whitespace character
-  var c = irune(c)
+  var c = IRune(c)
   var p = binarySearch(c, spaceRanges, len(spaceRanges) div 2, 2)
   if p >= 0 and c >= spaceRanges[p] and c <= spaceRanges[p+1]:
     return true
@@ -1210,7 +1214,7 @@ proc cmpRunesIgnoreCase*(a, b: string): int {.rtl, extern: "nuc$1", procvar.} =
     # slow path:
     fastRuneAt(a, i, ar)
     fastRuneAt(b, j, br)
-    result = irune(toLower(ar)) - irune(toLower(br))
+    result = IRune(toLower(ar)) - IRune(toLower(br))
     if result != 0: return
   result = a.len - b.len
 

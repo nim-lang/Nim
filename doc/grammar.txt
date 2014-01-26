@@ -42,14 +42,14 @@ par = '(' optInd (&parKeyw complexOrSimpleStmt ^+ ';'
                  | simpleExpr ('=' expr (';' complexOrSimpleStmt ^+ ';' )? )?
                             | (':' expr)? (',' (exprColonEqExpr comma?)*)?  )?
         optPar ')'
+literal = | INT_LIT | INT8_LIT | INT16_LIT | INT32_LIT | INT64_LIT
+          | UINT_LIT | UINT8_LIT | UINT16_LIT | UINT32_LIT | UINT64_LIT
+          | FLOAT_LIT | FLOAT32_LIT | FLOAT64_LIT
+          | STR_LIT | RSTR_LIT | TRIPLESTR_LIT
+          | CHAR_LIT
+          | NIL
 generalizedLit = GENERALIZED_STR_LIT | GENERALIZED_TRIPLESTR_LIT
-identOrLiteral = generalizedLit | symbol 
-               | INT_LIT | INT8_LIT | INT16_LIT | INT32_LIT | INT64_LIT
-               | UINT_LIT | UINT8_LIT | UINT16_LIT | UINT32_LIT | UINT64_LIT
-               | FLOAT_LIT | FLOAT32_LIT | FLOAT64_LIT
-               | STR_LIT | RSTR_LIT | TRIPLESTR_LIT
-               | CHAR_LIT
-               | NIL
+identOrLiteral = generalizedLit | symbol | literal
                | par | arrayConstr | setOrTableConstr
                | castExpr
 tupleConstr = '(' optInd (exprColonEqExpr comma?)* optPar ')'
@@ -59,6 +59,8 @@ primarySuffix = '(' (exprColonEqExpr comma?)* ')' doBlocks?
               | '.' optInd ('type' | 'addr' | symbol) generalizedLit?
               | '[' optInd indexExprList optPar ']'
               | '{' optInd indexExprList optPar '}'
+              | &( '`'|IDENT|literal|'cast') expr ^+ ',' # command syntax
+                     (doBlock | macroColon)?
 condExpr = expr colcom expr optInd
         ('elif' expr colcom expr optInd)*
          'else' colcom expr
@@ -95,18 +97,19 @@ primary = typeKeyw typeDescK
         / 'bind' primary
 typeDesc = simpleExpr
 typeDefAux = simpleExpr
+           | 'generic' typeClass
+macroColon = ':' stmt? ( IND{=} 'of' exprList ':' stmt 
+                       | IND{=} 'elif' expr ':' stmt
+                       | IND{=} 'except' exprList ':' stmt
+                       | IND{=} 'else' ':' stmt )*
 exprStmt = simpleExpr
          (( '=' optInd expr )
          / ( expr ^+ comma
              doBlocks
-              / ':' stmt? ( IND{=} 'of' exprList ':' stmt 
-                          | IND{=} 'elif' expr ':' stmt
-                          | IND{=} 'except' exprList ':' stmt
-                          | IND{=} 'else' ':' stmt )*
+              / macroColon
            ))?
-moduleName = expr ('as' expr)?
-importStmt = 'import' optInd moduleName
-              ((comma moduleName)*
+importStmt = 'import' optInd expr
+              ((comma expr)*
               / 'except' optInd (expr ^+ comma))
 includeStmt = 'include' optInd expr ^+ comma
 fromStmt = 'from' moduleName 'import' optInd expr (comma expr)*
@@ -161,6 +164,9 @@ objectCase = 'case' identWithPragma ':' typeDesc ':'? COMMENT?
 objectPart = IND{>} objectPart^+IND{=} DED
            / objectWhen / objectCase / 'nil' / declColonEquals
 object = 'object' pragma? ('of' typeDesc)? COMMENT? objectPart
+typeClassParam = ('var')? symbol
+typeClass = typeClassParam ^* ',' (pragma)? ('of' typeDesc ^* ',')?
+              &IND{>} stmt
 distinct = 'distinct' optInd typeDesc
 typeDef = identWithPragma genericParamList? '=' optInd typeDefAux
             indAndComment?

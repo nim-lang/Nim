@@ -9,8 +9,8 @@
 
 # Implementation of some runtime checks.
 
-proc raiseRangeError(val: biggestInt) {.compilerproc, noreturn, noinline.} =
-  when hostOs == "standalone":
+proc raiseRangeError(val: BiggestInt) {.compilerproc, noreturn, noinline.} =
+  when hostOS == "standalone":
     sysFatal(EOutOfRange, "value out of range")
   else:
     sysFatal(EOutOfRange, "value out of range: ", $val)

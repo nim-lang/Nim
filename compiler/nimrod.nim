@@ -31,12 +31,12 @@ proc prependCurDir(f: string): string =
   else:
     result = f
 
-proc HandleCmdLine() =
+proc handleCmdLine() =
   if paramCount() == 0:
     writeCommandLineUsage()
   else:
     # Process command line arguments:
-    ProcessCmdLine(passCmd1, "")
+    processCmdLine(passCmd1, "")
     if gProjectName != "":
       try:
         gProjectFull = canonicalizePath(gProjectName)
@@ -47,12 +47,12 @@ proc HandleCmdLine() =
       gProjectName = p.name
     else:
       gProjectPath = getCurrentDir()
-    LoadConfigs(DefaultConfig) # load all config files
+    loadConfigs(DefaultConfig) # load all config files
     # now process command line arguments again, because some options in the
     # command line can overwite the config file's settings
     extccomp.initVars()
-    ProcessCmdLine(passCmd2, "")
-    MainCommand()
+    processCmdLine(passCmd2, "")
+    mainCommand()
     if gVerbosity >= 2: echo(GC_getStatistics())
     #echo(GC_getStatistics())
     if msgs.gErrorCounter == 0:
@@ -71,7 +71,7 @@ proc HandleCmdLine() =
             binPath = options.outFile.prependCurDir
           else:
             # Figure out ourselves a valid binary name.
-            binPath = changeFileExt(gProjectFull, exeExt).prependCurDir
+            binPath = changeFileExt(gProjectFull, ExeExt).prependCurDir
           var ex = quoteShell(binPath)
           execExternalProgram(ex & ' ' & service.arguments)
 
@@ -81,8 +81,8 @@ when defined(GC_setMaxPause):
 when compileOption("gc", "v2") or compileOption("gc", "refc"):
   # the new correct mark&sweet collector is too slow :-/
   GC_disableMarkAndSweep()
-condsyms.InitDefines()
+condsyms.initDefines()
 
 when not defined(selftest):
-  HandleCmdLine()
+  handleCmdLine()
   quit(int8(msgs.gErrorCounter > 0))

@@ -51,16 +51,16 @@ type
     opcLenSeq,
     opcLenStr,
 
-    opcIncl, opcExcl, opcCard, opcMulInt, opcDivInt, opcModInt,
+    opcIncl, opcInclRange, opcExcl, opcCard, opcMulInt, opcDivInt, opcModInt,
     opcAddFloat, opcSubFloat, opcMulFloat, opcDivFloat, opcShrInt, opcShlInt,
     opcBitandInt, opcBitorInt, opcBitxorInt, opcAddu, opcSubu, opcMulu, 
     opcDivu, opcModu, opcEqInt, opcLeInt, opcLtInt, opcEqFloat, 
-    opcLeFloat, opcLtFloat, opcLeu, opcLtu, opcEqRef, opcXor, 
+    opcLeFloat, opcLtFloat, opcLeu, opcLtu, opcEqRef, opcEqNimrodNode, opcXor, 
     opcNot, opcUnaryMinusInt, opcUnaryMinusFloat, opcBitnotInt, 
     opcEqStr, opcLeStr, opcLtStr, opcEqSet, opcLeSet, opcLtSet,
     opcMulSet, opcPlusSet, opcMinusSet, opcSymdiffSet, opcConcatStr,
     opcContainsSet, opcRepr, opcSetLenStr, opcSetLenSeq,
-    opcSwap, opcIsNil, opcOf,
+    opcSwap, opcIsNil, opcOf, opcIs,
     opcSubStr, opcConv, opcCast, opcQuit, opcReset,
     
     opcAddStrCh,
@@ -101,7 +101,6 @@ type
     opcRaise,
     opcNChild,
     opcNSetChild,
-    opcNBindSym, # opcodes for the AST manipulation following
     opcCallSite,
     opcNewStr,
   
@@ -120,14 +119,32 @@ type
     opcAsgnConst, # dest = copy(constants[Bx])
     opcLdGlobal,  # dest = globals[Bx]
     opcLdImmInt,  # dest = immediate value
+    opcNBindSym,
     opcWrGlobal,
     opcWrGlobalRef,
+    opcGlobalAlias, # load an alias to a global into a register
+    opcGlobalOnce,  # used to introduce an assignment to a global once
     opcSetType,   # dest.typ = types[Bx]
     opcTypeTrait
 
   TBlock* = object
     label*: PSym
     fixups*: seq[TPosition]
+
+  TEvalMode* = enum           ## reason for evaluation
+    emRepl,                   ## evaluate because in REPL mode
+    emConst,                  ## evaluate for 'const' according to spec
+    emOptimize,               ## evaluate for optimization purposes (same as
+                              ## emConst?)
+    emStaticExpr,             ## evaluate for enforced compile time eval
+                              ## ('static' context)
+    emStaticStmt              ## 'static' as an expression
+
+  TSandboxFlag* = enum        ## what the evaluation engine should allow
+    allowCast,                ## allow unsafe language feature: 'cast'
+    allowFFI,                 ## allow the FFI
+    allowInfiniteLoops        ## allow endless loops
+  TSandboxFlags* = set[TSandboxFlag]
 
   TSlotKind* = enum   # We try to re-use slots in a smart way to
                       # minimize allocations; however the VM supports arbitrary
@@ -146,6 +163,8 @@ type
     blocks*: seq[TBlock]    # blocks; temp data structure
     slots*: array[TRegister, tuple[inUse: bool, kind: TSlotKind]]
     maxSlots*: int
+    globals*: array[TRegister, int] # hack: to support passing globals byref
+                                    # we map a slot persistently to a global
     
   PCtx* = ref TCtx
   TCtx* = object of passes.TPassContext # code gen context
@@ -160,21 +179,26 @@ type
     prc*: PProc
     module*: PSym
     callsite*: PNode
+    mode*: TEvalMode
+    features*: TSandboxFlags
 
   TPosition* = distinct int
 
   PEvalContext* = PCtx
-
   
 proc newCtx*(module: PSym): PCtx =
   PCtx(code: @[], debug: @[],
-    globals: newNode(nkStmtList), constants: newNode(nkStmtList), types: @[],
+    globals: newNode(nkStmtListExpr), constants: newNode(nkStmtList), types: @[],
     prc: PProc(blocks: @[]), module: module)
+
+proc refresh*(c: PCtx, module: PSym) =
+  c.module = module
+  c.prc = PProc(blocks: @[])
 
 const
   firstABxInstr* = opcTJmp
   largeInstrs* = { # instructions which use 2 int32s instead of 1:
-    opcSubstr, opcConv, opcCast, opcNewSeq, opcOf}
+    opcSubStr, opcConv, opcCast, opcNewSeq, opcOf}
   slotSomeTemp* = slotTempUnknown
   relativeJumps* = {opcTJmp, opcFJmp, opcJmp}
 
@@ -183,3 +207,5 @@ template regA*(x: TInstr): TRegister {.immediate.} = TRegister(x.uint32 shr 8'u3
 template regB*(x: TInstr): TRegister {.immediate.} = TRegister(x.uint32 shr 16'u32 and 0xff'u32)
 template regC*(x: TInstr): TRegister {.immediate.} = TRegister(x.uint32 shr 24'u32)
 template regBx*(x: TInstr): int {.immediate.} = (x.uint32 shr 16'u32).int
+
+template jmpDiff*(x: TInstr): int {.immediate.} = regBx(x) - wordExcess
