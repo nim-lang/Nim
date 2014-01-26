@@ -13,7 +13,7 @@
 include "system/inclrtl"
 
 import
-  strutils, os, strtabs, streams, sequtils
+  strutils, os, strtabs, streams
 
 when defined(windows):
   import winlean
@@ -44,7 +44,7 @@ type
     poStdErrToStdOut,    ## merge stdout and stderr to the stdout stream
     poParentStreams      ## use the parent's streams
 
-template poUseShell*: TProcessOption {.deprecated.} = poUsePath
+const poUseShell* {.deprecated.} = poUsePath
   ## Deprecated alias for poUsePath.
 
 proc quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
@@ -604,20 +604,20 @@ elif not defined(useNimRtl):
          pipe(pStderr) != 0'i32:
         osError(osLastError())
 
-    var sys_command: string
-    var sys_args_raw: seq[string]
+    var sysCommand: string
+    var sysArgsRaw: seq[string]
     if poEvalCommand in options:
-      sys_command = "/bin/sh"
-      sys_args_raw = @[sys_command, "-c", command]
+      sysCommand = "/bin/sh"
+      sysArgsRaw = @[sysCommand, "-c", command]
       assert args.len == 0
     else:
-      sys_command = command
-      sys_args_raw = @[command]
+      sysCommand = command
+      sysArgsRaw = @[command]
       for arg in args.items:
-        sys_args_raw.add arg
+        sysArgsRaw.add arg
 
-    var sys_args = allocCStringArray(sys_args_raw)
-    finally: deallocCStringArray(sys_args)
+    var sysArgs = allocCStringArray(sysArgsRaw)
+    finally: deallocCStringArray(sysArgs)
 
     var pid: TPid
     when defined(posix_spawn) and not defined(useFork):
@@ -650,15 +650,15 @@ elif not defined(useNimRtl):
         else:
           chck posix_spawn_file_actions_adddup2(fops, p_stderr[writeIdx], 2)
 
-      var sys_env = if env == nil: envToCStringArray() else: envToCStringArray(env)
+      var sysEnv = if env == nil: envToCStringArray() else: envToCStringArray(env)
       var res: cint
-      # This is incorrect!
+      # FIXME: chdir is global to process
       if workingDir.len > 0: os.setCurrentDir(workingDir)
       if poUsePath in options:
-        res = posix_spawnp(pid, sys_command, fops, attr, sys_args, sys_env)
+        res = posix_spawnp(pid, sysCommand, fops, attr, sysArgs, sysEnv)
       else:
-        res = posix_spawn(pid, sys_command, fops, attr, sys_args, sys_env)
-      deallocCStringArray(sys_env)
+        res = posix_spawn(pid, sysCommand, fops, attr, sysArgs, sysEnv)
+      deallocCStringArray(sysEnv)
       discard posix_spawn_file_actions_destroy(fops)
       discard posix_spawnattr_destroy(attr)
       chck res
@@ -687,15 +687,15 @@ elif not defined(useNimRtl):
 
         if env == nil:
           if poUsePath in options:
-            discard execvp(sys_command, sys_args)
+            discard execvp(sysCommand, sysArgs)
           else:
-            discard execv(sys_command, sys_args)
+            discard execv(sysCommand, sysArgs)
         else:
-          var c_env = envToCStringArray(env)
+          var cEnv = envToCStringArray(env)
           if poUsePath in options:
-            discard execvpe(sys_command, sys_args, c_env)
+            discard execvpe(sysCommand, sysArgs, cEnv)
           else:
-            discard execve(sys_command, sys_args, c_env)
+            discard execve(sysCommand, sysArgs, cEnv)
         # too risky to raise an exception here:
         quit("execve call failed: " & $strerror(errno))
     # Parent process. Copy process information.
