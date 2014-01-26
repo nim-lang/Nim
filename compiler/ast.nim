@@ -336,26 +336,52 @@ type
     tyConst, tyMutable, tyVarargs, 
     tyIter, # unused
     tyProxy # used as errornous type (for idetools)
-    tyTypeClass
-    tyParametricTypeClass # structured similarly to tyGenericInst
-                          # lastSon is the body of the type class
     
-    tyBuiltInTypeClass # Type such as the catch-all object, tuple, seq, etc
+    tyBuiltInTypeClass #\
+      # Type such as the catch-all object, tuple, seq, etc
     
-    tyCompositeTypeClass # 
+    tyUserTypeClass #\
+      # the body of a user-defined type class
+
+    tyUserTypeClassInst #\
+      # Instance of a parametric user-defined type class.
+      # Structured similarly to tyGenericInst.
+      # tyGenericInst represents concrete types, while
+      # this is still a "generic param" that will bind types
+      # and resolves them during sigmatch and instantiation.
     
-    tyAnd, tyOr, tyNot # boolean type classes such as `string|int`,`not seq`,
-                       # `Sortable and Enumable`, etc
+    tyCompositeTypeClass #\
+      # Type such as seq[Number]
+      # The notes for tyUserTypeClassInst apply here as well 
+      # sons[0]: the original expression used by the user.
+      # sons[1]: fully expanded and instantiated meta type
+      # (potentially following aliases)
     
-    tyAnything # a type class matching any type
+    tyAnd, tyOr, tyNot #\
+      # boolean type classes such as `string|int`,`not seq`,
+      # `Sortable and Enumable`, etc
     
-    tyStatic   # a value known at compile type (the underlying type is .base)
+    tyAnything #\
+      # a type class matching any type
     
-    tyFromExpr # This is a type representing an expression that depends
-               # on generic parameters (the exprsesion is stored in t.n)
-               # It will be converted to a real type only during generic
-               # instantiation and prior to this it has the potential to
-               # be any type.
+    tyStatic #\
+      # a value known at compile type (the underlying type is .base)
+    
+    tyFromExpr #\
+      # This is a type representing an expression that depends
+      # on generic parameters (the exprsesion is stored in t.n)
+      # It will be converted to a real type only during generic
+      # instantiation and prior to this it has the potential to
+      # be any type.
+
+    tyFieldAccessor #\
+      # Expressions such as Type.field (valid in contexts such
+      # as the `is` operator and magics like `high` and `low`).
+      # Could be lifted to a single argument proc returning the
+      # field value.
+      # sons[0]: type of containing object or tuple
+      # sons[1]: field type
+      # .n: nkDotExpr storing the field name
 
 const
   tyPureObject* = tyTuple
@@ -364,8 +390,9 @@ const
 
   tyUnknownTypes* = {tyError, tyFromExpr}
 
-  tyTypeClasses* = {tyTypeClass, tyBuiltInTypeClass, tyCompositeTypeClass,
-                    tyParametricTypeClass, tyAnd, tyOr, tyNot, tyAnything}
+  tyTypeClasses* = {tyBuiltInTypeClass, tyCompositeTypeClass,
+                    tyUserTypeClass, tyUserTypeClassInst,
+                    tyAnd, tyOr, tyNot, tyAnything}
 
   tyMetaTypes* = {tyGenericParam, tyTypeDesc, tyStatic, tyExpr} + tyTypeClasses
  

@@ -404,9 +404,10 @@ const
     "float", "float32", "float64", "float128",
     "uint", "uint8", "uint16", "uint32", "uint64",
     "bignum", "const ",
-    "!", "varargs[$1]", "iter[$1]", "Error Type", "TypeClass",
-    "ParametricTypeClass", "BuiltInTypeClass", "CompositeTypeClass",
-    "and", "or", "not", "any", "static", "TypeFromExpr"]
+    "!", "varargs[$1]", "iter[$1]", "Error Type",
+    "BuiltInTypeClass", "UserTypeClass",
+    "UserTypeClassInst", "CompositeTypeClass",
+    "and", "or", "not", "any", "static", "TypeFromExpr", "FieldAccessor"]
 
 proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   var t = typ
@@ -434,11 +435,30 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   of tyStatic:
     internalAssert t.len > 0
     result = "static[" & typeToString(t.sons[0]) & "]"
-  of tyTypeClass:
+  of tyUserTypeClass:
     internalAssert t.sym != nil and t.sym.owner != nil
     return t.sym.owner.name.s
   of tyBuiltInTypeClass:
-    return "TypeClass"
+    result = case t.base.kind:
+      of tyVar: "var"
+      of tyRef: "ref"
+      of tyPtr: "ptr"
+      of tySequence: "seq"
+      of tyArray: "array"
+      of tySet: "set"
+      of tyRange: "range"
+      of tyDistinct: "distinct"
+      of tyProc: "proc"
+      of tyObject: "object"
+      of tyTuple: "tuple"
+      else: (internalAssert false; "")
+  of tyUserTypeClassInst:
+    let body = t.base
+    result = body.sym.name.s & "["
+    for i in countup(1, sonsLen(t) - 2):
+      if i > 1: add(result, ", ")
+      add(result, typeToString(t.sons[i]))
+    result.add "]"
   of tyAnd:
     result = typeToString(t.sons[0]) & " and " & typeToString(t.sons[1])
   of tyOr:
@@ -448,7 +468,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   of tyExpr:
     internalAssert t.len == 0
     result = "expr"
-  of tyFromExpr:
+  of tyFromExpr, tyFieldAccessor:
     result = renderTree(t.n)
   of tyArray: 
     if t.sons[0].kind == tyRange: 
@@ -546,7 +566,8 @@ proc firstOrd(t: PType): BiggestInt =
     else: 
       assert(t.n.sons[0].kind == nkSym)
       result = t.n.sons[0].sym.position
-  of tyGenericInst, tyDistinct, tyConst, tyMutable, tyTypeDesc:
+  of tyGenericInst, tyDistinct, tyConst, tyMutable,
+     tyTypeDesc, tyFieldAccessor:
     result = firstOrd(lastSon(t))
   else: 
     internalError("invalid kind for first(" & $t.kind & ')')
@@ -579,7 +600,8 @@ proc lastOrd(t: PType): BiggestInt =
   of tyEnum: 
     assert(t.n.sons[sonsLen(t.n) - 1].kind == nkSym)
     result = t.n.sons[sonsLen(t.n) - 1].sym.position
-  of tyGenericInst, tyDistinct, tyConst, tyMutable, tyTypeDesc: 
+  of tyGenericInst, tyDistinct, tyConst, tyMutable,
+     tyTypeDesc, tyFieldAccessor:
     result = lastOrd(lastSon(t))
   of tyProxy: result = 0
   else: 
@@ -875,9 +897,9 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
   of tyGenericInvokation, tyGenericBody, tySequence,
      tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyArrayConstr,
      tyArray, tyProc, tyConst, tyMutable, tyVarargs, tyIter,
-     tyOrdinal, tyTypeClasses:
+     tyOrdinal, tyTypeClasses, tyFieldAccessor:
     cycleCheck()
-    if a.kind == tyTypeClass and a.n != nil: return a.n == b.n
+    if a.kind == tyUserTypeClass and a.n != nil: return a.n == b.n
     result = sameChildrenAux(a, b, c) and sameFlags(a, b)
     if result and a.kind == tyProc:
       result = ((IgnoreCC in c.flags) or a.callConv == b.callConv) and
@@ -1021,7 +1043,7 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind,
   of tyTypeClasses:
     result = true
   of tyGenericBody, tyGenericParam, tyGenericInvokation,
-     tyNone, tyForward, tyFromExpr:
+     tyNone, tyForward, tyFromExpr, tyFieldAccessor:
     result = false
   of tyNil:
     result = kind == skConst
@@ -1231,8 +1253,15 @@ proc getSize(typ: PType): BiggestInt =
   if result < 0: internalError("getSize: " & $typ.kind)
 
 proc containsGenericTypeIter(t: PType, closure: PObject): bool =
-  result = t.kind in GenericTypes + tyTypeClasses + {tyTypeDesc,tyFromExpr} or
-           t.kind == tyStatic and t.n == nil
+  if t.kind in GenericTypes + tyTypeClasses + {tyFromExpr}:
+    return true
+
+  if t.kind == tyTypeDesc:
+    if t.sonsLen == 0: return true
+    if containsGenericTypeIter(t.base, closure): return true
+    return false
+  
+  return t.kind == tyStatic and t.n == nil
 
 proc containsGenericType*(t: PType): bool = 
   result = iterOverType(t, containsGenericTypeIter, nil)

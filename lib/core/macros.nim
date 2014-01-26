@@ -300,9 +300,12 @@ when not defined(booting):
     ## that should be inserted verbatim in the program
     ## Example:
     ##
+    ## .. code-block:: nimrod
     ##   emit("echo " & '"' & "hello world".toUpper & '"')
     ##
-    eval: result = e.parseStmt
+    macro payload: stmt {.gensym.} =
+      result = e.parseStmt
+    payload()
 
 proc expectKind*(n: PNimrodNode, k: TNimrodNodeKind) {.compileTime.} =
   ## checks that `n` is of kind `k`. If this is not the case,
@@ -387,7 +390,7 @@ proc treeRepr*(n: PNimrodNode): string {.compileTime.} =
     res.add(($n.kind).substr(3))
 
     case n.kind
-    of nnkEmpty: nil # same as nil node in this representation
+    of nnkEmpty: discard # same as nil node in this representation
     of nnkNilLit: res.add(" nil")
     of nnkCharLit..nnkInt64Lit: res.add(" " & $n.intVal)
     of nnkFloatLit..nnkFloat64Lit: res.add(" " & $n.floatVal)
@@ -412,7 +415,7 @@ proc lispRepr*(n: PNimrodNode): string {.compileTime.} =
   add(result, "(")
 
   case n.kind
-  of nnkEmpty: nil # same as nil node in this representation
+  of nnkEmpty: discard # same as nil node in this representation
   of nnkNilLit: add(result, "nil")
   of nnkCharLit..nnkInt64Lit: add(result, $n.intVal)
   of nnkFloatLit..nnkFloat64Lit: add(result, $n.floatVal)
@@ -645,10 +648,13 @@ iterator children*(n: PNimrodNode): PNimrodNode {.inline.}=
   for i in 0 .. high(n):
     yield n[i]
 
-template findChild*(n: PNimrodNode; cond: expr): PNimrodNode {.immediate, dirty.} =
-  ## Find the first child node matching condition (or nil)
-  ## var res = findChild(n, it.kind == nnkPostfix and it.basename.ident == !"foo")
-  
+template findChild*(n: PNimrodNode; cond: expr): PNimrodNode {.
+  immediate, dirty.} =
+  ## Find the first child node matching condition (or nil).
+  ## 
+  ## .. code-block:: nimrod
+  ##   var res = findChild(n, it.kind == nnkPostfix and
+  ##                          it.basename.ident == !"foo")
   block:
     var result: PNimrodNode
     for it in n.children:
@@ -736,6 +742,6 @@ proc addIdentIfAbsent*(dest: PNimrodNode, ident: string) {.compiletime.} =
       if ident.eqIdent($node): return
     of nnkExprColonExpr:
       if ident.eqIdent($node[0]): return
-    else: nil
+    else: discard
   dest.add(ident(ident))
 

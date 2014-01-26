@@ -139,27 +139,27 @@ type
 proc newDelegate*(): PDelegate =
   ## Creates a new delegate.
   new(result)
-  result.handleRead = (proc (h: PObject) = nil)
-  result.handleWrite = (proc (h: PObject) = nil)
-  result.handleError = (proc (h: PObject) = nil)
+  result.handleRead = (proc (h: PObject) = discard)
+  result.handleWrite = (proc (h: PObject) = discard)
+  result.handleError = (proc (h: PObject) = discard)
   result.hasDataBuffered = (proc (h: PObject): bool = return false)
-  result.task = (proc (h: PObject) = nil)
+  result.task = (proc (h: PObject) = discard)
   result.mode = fmRead
 
 proc newAsyncSocket(): PAsyncSocket =
   new(result)
   result.info = SockIdle
 
-  result.handleRead = (proc (s: PAsyncSocket) = nil)
+  result.handleRead = (proc (s: PAsyncSocket) = discard)
   result.handleWrite = nil
-  result.handleConnect = (proc (s: PAsyncSocket) = nil)
-  result.handleAccept = (proc (s: PAsyncSocket) = nil)
-  result.handleTask = (proc (s: PAsyncSocket) = nil)
+  result.handleConnect = (proc (s: PAsyncSocket) = discard)
+  result.handleAccept = (proc (s: PAsyncSocket) = discard)
+  result.handleTask = (proc (s: PAsyncSocket) = discard)
 
   result.lineBuffer = "".TaintedString
   result.sendBuffer = ""
 
-proc AsyncSocket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM, 
+proc asyncSocket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM, 
                   protocol: TProtocol = IPPROTO_TCP, 
                   buffered = true): PAsyncSocket =
   ## Initialises an AsyncSocket object. If a socket cannot be initialised

@@ -802,7 +802,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       let t1 = regs[rb].typ.skipTypes({tyTypeDesc})
       let t2 = c.types[regs[rc].intVal.int]
       # XXX: This should use the standard isOpImpl
-      let match = if t2.kind == tyTypeClass: true
+      let match = if t2.kind == tyUserTypeClass: true
                   else: sameType(t1, t2)
       regs[ra].intVal = ord(match)
     of opcSetLenSeq:
@@ -1057,6 +1057,7 @@ proc fixType(result, n: PNode) {.inline.} =
   # XXX do it deeply for complex values; there seems to be no simple
   # solution except to check it deeply here.
   #if result.typ.isNil: result.typ = n.typ
+  discard
 
 proc execute(c: PCtx, start: int): PNode =
   var tos = PStackFrame(prc: nil, comesFrom: 0, next: nil)
@@ -1118,6 +1119,7 @@ proc evalConstExprAux(module, prc: PSym, n: PNode, mode: TEvalMode): PNode =
   var c = globalCtx
   c.mode = mode
   let start = genExpr(c, n, requiresValue = mode!=emStaticStmt)
+  if c.code[start].opcode == opcEof: return emptyNode
   assert c.code[start].opcode != opcEof
   var tos = PStackFrame(prc: prc, comesFrom: 0, next: nil)
   newSeq(tos.slots, c.prc.maxSlots)

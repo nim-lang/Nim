@@ -2261,8 +2261,8 @@ from different modules having the same name.
   using sdl.SetTimer
 
 Note that ``using`` only *adds* to the current context, it doesn't remove or
-replace, **neither** does it create a new scope. What this means is that if you
-apply this to multiple variables the compiler will find conflicts in what
+replace, **neither** does it create a new scope. What this means is that if one
+applies this to multiple variables the compiler will find conflicts in what
 variable to use:
 
 .. code-block:: nimrod
@@ -2275,7 +2275,7 @@ variable to use:
   echo b
 
 When the compiler reaches the second ``add`` call, both ``a`` and ``b`` could
-be used with the proc, so you get ``Error: expression '(a|b)' has no type (or
+be used with the proc, so one gets ``Error: expression '(a|b)' has no type (or
 is ambiguous)``. To solve this you would need to nest ``using`` with a
 ``block`` statement so as to control the reach of the ``using`` statement.
 
@@ -2368,8 +2368,8 @@ The `addr`:idx: operator returns the address of an l-value. If the type of the
 location is ``T``, the `addr` operator result is of the type ``ptr T``. An
 address is always an untraced reference. Taking the address of an object that
 resides on the stack is **unsafe**, as the pointer may live longer than the
-object on the stack and can thus reference a non-existing object. You can get
-the address of variables, but you can't use it on variables declared through
+object on the stack and can thus reference a non-existing object. One can get
+the address of variables, but one can't use it on variables declared through
 ``let`` statements:
 
 .. code-block:: nimrod
@@ -2764,7 +2764,7 @@ First class iterators
 There are 2 kinds of iterators in Nimrod: *inline* and *closure* iterators.
 An `inline iterator`:idx: is an iterator that's always inlined by the compiler 
 leading to zero overhead for the abstraction, but may result in a heavy
-increasee in code size. Inline iterators are second class
+increase in code size. Inline iterators are second class
 citizens; one cannot pass them around like first class procs.
 
 In contrast to that, a `closure iterator`:idx: can be passed around:
@@ -2835,7 +2835,24 @@ a `collaborative tasking`:idx: system:
 
 The builtin ``system.finished`` can be used to determine if an iterator has
 finished its operation; no exception is raised on an attempt to invoke an
-iterator that has already finished its work. 
+iterator that has already finished its work.
+
+Closure iterators are *resumable functions* and so one has to provide the
+arguments to every call. To get around this limitation one can capture
+parameters of an outer factory proc:
+
+.. code-block:: nimrod
+  proc mycount(a, b: int): iterator (): int =
+    return iterator (): int =
+      var x = a
+      while x <= b:
+        yield x
+        inc x
+
+  let foo = mycount 1, 4
+
+  for f in foo():
+    echo f
 
 
 Type sections
@@ -2923,9 +2940,9 @@ in an implicit try block:
   finally: close(f)
   ...
 
-The ``except`` statement has a limitation in this form: you can't specify the
-type of the exception, you have to catch everything. Also, if you want to use
-both ``finally`` and ``except`` you need to reverse the usual sequence of the
+The ``except`` statement has a limitation in this form: one can't specify the
+type of the exception, one has to catch everything. Also, if one wants to use
+both ``finally`` and ``except`` one needs to reverse the usual sequence of the
 statements. Example:
 
 .. code-block:: nimrod
@@ -3353,7 +3370,7 @@ currently matched type. These instances can act both as variables of the type,
 when used in contexts, where a value is expected, and as the type itself, when
 used in a contexts, where a type is expected.
 
-Please note that the ``is`` operator allows you to easily verify the precise
+Please note that the ``is`` operator allows one to easily verify the precise
 type signatures of the required operations, but since type inference and
 default parameters are still applied in the provided block, it's also possible
 to encode usage protocols that doesn't reveal implementation details.
