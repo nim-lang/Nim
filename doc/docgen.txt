@@ -146,21 +146,43 @@ Output::
 Related Options
 ===============
 
-``--project`` switch
+Project switch
+--------------
+
 ::
-  nimrod doc2 --project sample
+  nimrod doc2 --project filename.nim
 
 This will recursively generate documentation of all nimrod modules imported
 into the input module, including system modules. Be careful with this command,
 as it may end up sprinkling html files all over your filesystem!
 
 
-``--index`` switch
+Index switch
+------------
+
 ::
-  nimrod doc2 --index:on sample
+  nimrod doc2 --index:on filename.nim
 
 This will generate an index of all the exported symbols in the input Nimrod
-module, and put it into a neighboring file with the extension of `.idx`.
+module, and put it into a neighboring file with the extension of `.idx`. The
+index file is line oriented (newlines have to be escaped). Each line represents
+a tab separated record of several columns, the first two mandatory, the rest
+optional:
+
+1. Mandatory term being indexed. Terms can include quoting according to
+   Nimrod's rules (eg. ```^```)
+2. Base filename plus anchor hyper link (eg.
+   ``algorithm.html#*,int,TSortOrder``).
+3. Optional human readable string to display as hyper link. If the value is not
+   present or is the empty string, the hyper link will be rendered using the
+   term.
+4. Optional title or description of the hyper link. Browsers usually display
+   this as a tooltip after hovering a moment over the hyper link.
+
+Once index files have been generated for one or more modules, the Nimrod
+compiler command ``buildIndex directory`` can be run to go over all the index
+files in the specified directory to generate a `theindex.html <theindex.html>`_
+file.
 
 
 Other Input Formats
