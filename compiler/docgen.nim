@@ -14,7 +14,7 @@
 import
   ast, strutils, strtabs, options, msgs, os, ropes, idents,
   wordrecg, syntaxes, renderer, lexer, rstast, rst, rstgen, times, highlite,
-  importer, sempass2, json, xmltree, cgi
+  importer, sempass2, json, xmltree, cgi, typesrenderer
 
 type
   TSections = array[TSymKind, PRope]
@@ -255,7 +255,7 @@ proc complexName(k: TSymKind, n: PNode, baseName: string): string =
   of skIterator: result.add(".i")
   of skTemplate: result.add(".t")
   of skConverter: result.add(".c")
-  else: nil
+  else: discard
 
   if len(n) > paramsPos and n[paramsPos].kind == nkFormalParams:
     result.add(renderParamTypes(n[paramsPos]))
