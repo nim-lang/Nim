@@ -282,3 +282,6 @@ Additional resources
 The output for HTML and LaTeX comes from the ``config/nimdoc.cfg`` and
 ``config/nimdoc.tex.cfg`` configuration files. You can add and modify these
 files to your project to change the look of docgen output.
+
+You can import the `packages/docutils/rstgen module <rstgen.html>`_ in your
+programs if you want to reuse the compiler's documentation generation procs.

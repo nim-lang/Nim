@@ -9,11 +9,14 @@
 
 ## This module implements a generator of HTML/Latex from
 ## `reStructuredText`:idx: (see http://docutils.sourceforge.net/rst.html for
-## information on this markup syntax). You can generate HTML output through the
-## convenience proc ``rstToHtml``, which provided an input string with rst
-## markup returns a string with the generated HTML. The final output is meant
-## to be embedded inside a full document you provide yourself, so it won't
-## contain the usual ``<header>`` or ``<body>`` parts.
+## information on this markup syntax) and is used by the compiler's `docgen
+## tools <docgen.html>`_.
+##
+## You can generate HTML output through the convenience proc ``rstToHtml``,
+## which provided an input string with rst markup returns a string with the
+## generated HTML. The final output is meant to be embedded inside a full
+## document you provide yourself, so it won't contain the usual ``<header>`` or
+## ``<body>`` parts.
 ##
 ## You can also create a ``TRstGenerator`` structure and populate it with the
 ## other lower level methods to finally build complete documents. This requires
