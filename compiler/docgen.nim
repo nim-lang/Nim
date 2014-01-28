@@ -243,18 +243,19 @@ proc complexName(k: TSymKind, n: PNode, baseName: string): string =
   ## Builds a complex unique href name for the node.
   ##
   ## Pass as ``baseName`` the plain symbol obtained from the nodeName. The
-  ## format of the returned symbol will be ``baseName(.callable type)?(,param
-  ## type)*``. The callable type part will be added only if the node is not a
-  ## proc, as those are the common ones. The suffix will be a dot and a single
-  ## letter representing the type of the callable. The parameter types will be
-  ## added with a preceeding dash. Return types won't be added.
+  ## format of the returned symbol will be ``baseName(.callable type)?,(param
+  ## type)?(,param type)*``. The callable type part will be added only if the
+  ## node is not a proc, as those are the common ones. The suffix will be a dot
+  ## and a single letter representing the type of the callable. The parameter
+  ## types will be added with a preceeding dash. Return types won't be added.
   result = baseName
   case k:
-  of skMacro: result.add(".m")
-  of skMethod: result.add(".e")
-  of skIterator: result.add(".i")
-  of skTemplate: result.add(".t")
-  of skConverter: result.add(".c")
+  of skProc: result.add(defaultParamSeparator)
+  of skMacro: result.add(".m" & defaultParamSeparator)
+  of skMethod: result.add(".e" & defaultParamSeparator)
+  of skIterator: result.add(".i" & defaultParamSeparator)
+  of skTemplate: result.add(".t" & defaultParamSeparator)
+  of skConverter: result.add(".c" & defaultParamSeparator)
   else: discard
 
   if len(n) > paramsPos and n[paramsPos].kind == nkFormalParams:

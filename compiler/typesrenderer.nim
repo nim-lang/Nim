@@ -1,5 +1,7 @@
 import renderer, strutils, ast, msgs, types
 
+const defaultParamSeparator* = ","
+
 proc renderPlainSymbolName*(n: PNode): string =
   ## Returns the first non '*' nkIdent node from the tree.
   ##
@@ -97,7 +99,7 @@ proc renderParamTypes(found: var seq[string], n: PNode) =
   else:
     internalError(n.info, "renderParamTypes(found,n) with " & $n.kind)
 
-proc renderParamTypes*(n: PNode, sep = ","): string =
+proc renderParamTypes*(n: PNode, sep = defaultParamSeparator): string =
   ## Returns the types contained in `n` joined by `sep`.
   ##
   ## This proc expects to be passed as `n` the parameters of any callable. The
@@ -108,4 +110,4 @@ proc renderParamTypes*(n: PNode, sep = ","): string =
   var found: seq[string] = @[]
   renderParamTypes(found, n)
   if found.len > 0:
-    result = sep & found.join(sep)
+    result = found.join(sep)
