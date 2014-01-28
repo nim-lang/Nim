@@ -184,6 +184,30 @@ compiler command ``buildIndex directory`` can be run to go over all the index
 files in the specified directory to generate a `theindex.html <theindex.html>`_
 file.
 
+See source switch
+-----------------
+
+::
+  nimrod doc2 --docSeeSrcUrl:txt filename.nim
+
+When you pass the ``docSeeSrcUrl`` switch to docgen, after each documented item
+in your source code the hyper link *See source* will appear pointing to the
+implementation of that item on a GitHub repository. You can click the link to
+see the implementation of the item.
+
+If you want to reuse this feature in your own documentation you will have to
+modify ``config/nimdoc.cfg`` to contain a ``doc.item.seesrc`` value with a
+hyper link to your own code repository. As you will see by the comments in that
+file, the value ``txt`` passed on the command line will be used in the HTML
+template along others like ``$path`` and ``$line``.
+
+In the case of Nimrod's own documentation, the ``txt`` value is just a commit
+hash to append to a formatted URL to https://github.com/Araq/Nimrod. The
+``tools/nimweb.nim`` helper queries the current git commit hash during doc
+generation, but since you might be working on an unpublished repository, it
+also allows specifying a ``githash`` value in ``web/nimrod.ini`` to force a
+specific commit in the output.
+
 
 Other Input Formats
 ===================
