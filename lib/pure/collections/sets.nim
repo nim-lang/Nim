@@ -39,6 +39,9 @@ iterator items*[A](s: TSet[A]): A =
   ## iterates over any key in the table `t`.
   for h in 0..high(s.data):
     if s.data[h].slot == seFilled: yield s.data[h].key
+    
+proc `==`*[A](s: TSet[A], t: TSet[A]): bool =
+  s.counter == t.counter and s.data == t.data
 
 const
   growthFactor = 2
