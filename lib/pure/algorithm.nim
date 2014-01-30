@@ -131,7 +131,7 @@ proc sort*[T](a: var openArray[T],
       dec(m, s*2)
     s = s*2
 
-proc product[T](x: openarray[seq[T]]): seq[seq[T]] =
+proc product*[T](x: openarray[seq[T]]): seq[seq[T]] =
   ## produces the Cartesian product of the array. Warning: complexity
   ## may explode.
   result = @[]
