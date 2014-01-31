@@ -148,6 +148,7 @@ proc product*[T](x: openarray[seq[T]]): seq[seq[T]] =
   var next: seq[T] = @[]
   next.setLen(x.len)
   for i in 0..(x.len-1):
+    if len(x[i]) == 0: return
     initial[i] = len(x[i])-1
   indexes = initial
   while true:

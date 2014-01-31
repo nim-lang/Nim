@@ -1,6 +1,11 @@
 import unittest
+import algorithm
 
 suite "product":
+  test "empty input":
+    check product[int](newSeq[seq[int]]()) == newSeq[seq[int]]()
+  test "bit more empty input":
+    check product[int](@[newSeq[int](), @[], @[]]) == newSeq[seq[int]]()
   test "a simple case of one element":
     check product(@[@[1,2]]) == @[@[1,2]]
   test "two elements":
