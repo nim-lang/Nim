@@ -226,11 +226,11 @@ proc `$`*[A](s: TOrderedSet[A]): string =
   dollarImpl()
 
 proc `<`*[A](s, t: TSet[A]): bool =
-  ## Is a a strict subset of b?
+  ## Is s a strict subset of t?
   s.counter != t.counter and s <= t
 
 proc `<=`*[A](s, t: TSet[A]): bool =
-  ## Is a a subset of b?
+  ## Is s a subset of t?
   result = false
   if s.counter > t.counter: return
   result = true
