@@ -266,8 +266,9 @@ proc tests(args: string) =
   # we compile the tester with taintMode:on to have a basic
   # taint mode test :-)
   exec "nimrod cc --taintMode:on tests/testament/tester"
-  exec quoteShell(getCurrentDir() / "tests/testament/tester".exe) & " " &
-      (args|"all")
+  let tester = quoteShell(getCurrentDir() / "tests/testament/tester".exe)
+  exec tester & " " & (args|"all")
+  exec tester & " html"
 
 proc temp(args: string) =
   var output = "compiler" / "nimrod".exe

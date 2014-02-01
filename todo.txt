@@ -1,14 +1,11 @@
 version 0.9.4
 =============
 
-- better debugging support for writes to locations
-- document new templating symbol binding rules
-- fix eval in macros.nim
-
 
 Bugs
 ====
 
+- fix eval in macros.nim
 - new VM:
   - implement overflow checking
 - bug: 'type T = ref T' not recognized as illegal recursion
