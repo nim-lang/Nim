@@ -193,8 +193,8 @@ const
     <head> 
       <title>Test results</title>
       <style type="text/css">
-      <!--""" & slurp("css/boilerplate.css") & "\n" &
-                slurp("css/style.css") &
+      <!--""" & slurp("testament/css/boilerplate.css") & "\n" &
+                slurp("testament/css/style.css") &
       """-->
     </style>
 
