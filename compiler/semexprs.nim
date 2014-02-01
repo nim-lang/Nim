@@ -239,7 +239,8 @@ proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
     localError(n.info, errXExpectsTypeOrValue, opToStr[m])
   else: 
     n.sons[1] = semExprWithType(c, n.sons[1], {efDetermineType})
-    var typ = skipTypes(n.sons[1].typ, abstractVarRange+{tyTypeDesc})
+    var typ = skipTypes(n.sons[1].typ, abstractVarRange +
+                                       {tyTypeDesc, tyFieldAccessor})
     case typ.kind
     of tySequence, tyString, tyOpenArray, tyVarargs: 
       n.typ = getSysType(tyInt)
@@ -247,7 +248,7 @@ proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
       n.typ = typ.sons[0] # indextype
     of tyInt..tyInt64, tyChar, tyBool, tyEnum, tyUInt8, tyUInt16, tyUInt32: 
       # do not skip the range!
-      n.typ = n.sons[1].typ.skipTypes(abstractVar)
+      n.typ = n.sons[1].typ.skipTypes(abstractVar + {tyFieldAccessor})
     of tyGenericParam:
       # prepare this for resolving in semtypinst:
       # we must use copyTree here in order to avoid creating a cycle
@@ -306,7 +307,7 @@ proc isOpImpl(c: PContext, n: PNode): PNode =
     n[1].typ != nil and n[1].typ.kind == tyTypeDesc and
     n[2].kind in {nkStrLit..nkTripleStrLit, nkType}
   
-  let t1 = n[1].typ.skipTypes({tyTypeDesc})
+  let t1 = n[1].typ.skipTypes({tyTypeDesc, tyFieldAccessor})
 
   if n[2].kind in {nkStrLit..nkTripleStrLit}:
     case n[2].strVal.normalize
@@ -321,24 +322,13 @@ proc isOpImpl(c: PContext, n: PNode): PNode =
                                         t.callConv == ccClosure and 
                                         tfIterator in t.flags))
   else:
-    var match: bool
-    let t2 = n[2].typ
-    case t2.kind
-    of tyTypeClasses:
-      var m: TCandidate
-      initCandidate(c, m, t2)
-      match = matchUserTypeClass(c, m, emptyNode, t2, t1) != nil
-    of tyOrdinal:
-      var m: TCandidate
-      initCandidate(c, m, t2)
-      match = isOrdinalType(t1)
-    of tySequence, tyArray, tySet:
-      var m: TCandidate
-      initCandidate(c, m, t2)
-      match = typeRel(m, t2, t1) != isNone
-    else:
-      match = sameType(t1, t2)
- 
+    var t2 = n[2].typ.skipTypes({tyTypeDesc})
+    let lifted = liftParamType(c, skType, newNodeI(nkArgList, n.info),
+                               t2, ":anon", n.info)
+    if lifted != nil: t2 = lifted
+    var m: TCandidate
+    initCandidate(c, m, t2)
+    let match = typeRel(m, t2, t1) != isNone
     result = newIntNode(nkIntLit, ord(match))
 
   result.typ = n.typ
@@ -948,6 +938,13 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
             let foundTyp = makeTypeDesc(c, rawTyp)
             return newSymNode(copySym(tParam.sym).linkTo(foundTyp), n.info)
       return
+    of tyObject, tyTuple:
+      if ty.n.kind == nkRecList:
+        for field in ty.n.sons:
+          if field.sym.name == i:
+            n.typ = newTypeWithSons(c, tyFieldAccessor, @[ty, field.sym.typ])
+            n.typ.n = copyTree(n)
+            return n
     else:
       # echo "TYPE FIELD ACCESS"
       # debug ty

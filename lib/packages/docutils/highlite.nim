@@ -19,7 +19,7 @@ type
     gtEof, gtNone, gtWhitespace, gtDecNumber, gtBinNumber, gtHexNumber, 
     gtOctNumber, gtFloatNumber, gtIdentifier, gtKeyword, gtStringLit, 
     gtLongStringLit, gtCharLit, gtEscapeSequence, # escape sequence like \xff
-    gtOperator, gtPunctation, gtComment, gtLongComment, gtRegularExpression, 
+    gtOperator, gtPunctuation, gtComment, gtLongComment, gtRegularExpression, 
     gtTagStart, gtTagEnd, gtKey, gtValue, gtRawData, gtAssembler, 
     gtPreprocessor, gtDirective, gtCommand, gtRule, gtHyperlink, gtLabel, 
     gtReference, gtOther
@@ -39,7 +39,7 @@ const
   tokenClassToStr*: array[TTokenClass, string] = ["Eof", "None", "Whitespace", 
     "DecNumber", "BinNumber", "HexNumber", "OctNumber", "FloatNumber", 
     "Identifier", "Keyword", "StringLit", "LongStringLit", "CharLit", 
-    "EscapeSequence", "Operator", "Punctation", "Comment", "LongComment", 
+    "EscapeSequence", "Operator", "Punctuation", "Comment", "LongComment", 
     "RegularExpression", "TagStart", "TagEnd", "Key", "Value", "RawData", 
     "Assembler", "Preprocessor", "Directive", "Command", "Rule", "Hyperlink", 
     "Label", "Reference", "Other"]
@@ -258,7 +258,7 @@ proc nimNextToken(g: var TGeneralTokenizer) =
           else: inc(pos)
     of '(', ')', '[', ']', '{', '}', '`', ':', ',', ';': 
       inc(pos)
-      g.kind = gtPunctation
+      g.kind = gtPunctuation
     of '\0': 
       g.kind = gtEof
     else: 
@@ -473,7 +473,7 @@ proc clikeNextToken(g: var TGeneralTokenizer, keywords: openArray[string],
         else: inc(pos)
     of '(', ')', '[', ']', '{', '}', ':', ',', ';', '.': 
       inc(pos)
-      g.kind = gtPunctation
+      g.kind = gtPunctuation
     of '\0': 
       g.kind = gtEof
     else: 
