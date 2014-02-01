@@ -1358,11 +1358,11 @@ proc max*[T](x: varargs[T]): T =
   for i in 1..high(x):
     if result < x[i]: result = x[i]
 
-proc abs*(x: float): float {.magic: "AbsF64", noSideEffect.} =
+proc abs*[T:float32|float](x: T): T {.magic: "AbsF64", noSideEffect.} =
   if x < 0.0: -x else: x
-proc min*(x, y: float): float {.magic: "MinF64", noSideEffect.} =
+proc min*[T:float32|float](x: T, y: T): T {.magic: "MinF64", noSideEffect.} =
   if x <= y: x else: y
-proc max*(x, y: float): float {.magic: "MaxF64", noSideEffect.} =
+proc max*[T:float32|float](x, y: T): T {.magic: "MaxF64", noSideEffect.} =
   if y <= x: x else: y
 {.pop.}
 
@@ -2484,19 +2484,19 @@ proc `*=`*[T: TOrdinal](x: var T, y: T) {.inline, noSideEffect.} =
   ## Binary `*=` operator for ordinals
   x = x * y
 
-proc `+=`*[T: float|float32|float64] (x: var T, y: T) {.inline, noSideEffect.} =
-  ## Increments in placee a floating point number
+proc `+=`*[T:float32|float](x: var T, y: type(x)) {.inline, noSideEffect.} =
+  ## Increments in place a floating point number
   x = x + y
 
-proc `-=`*[T: float|float32|float64] (x: var T, y: T) {.inline, noSideEffect.} =
+proc `-=`*[T:float32|float](x: var T, y: type(x)) {.inline, noSideEffect.} =
   ## Decrements in place a floating point number
   x = x - y
 
-proc `*=`*[T: float|float32|float64] (x: var T, y: T) {.inline, noSideEffect.} =
+proc `*=`*[T:float32|float](x: var T, y: type(x)) {.inline, noSideEffect.} =
   ## Multiplies in place a floating point number
   x = x * y
 
-proc `/=`*[T: float|float32|float64] (x: var T, y: T) {.inline, noSideEffect.} =
+proc `/=`*[T:float32|float](x: var T, y: type(x)) {.inline, noSideEffect.} =
   ## Divides in place a floating point number
   x = x / y
 
