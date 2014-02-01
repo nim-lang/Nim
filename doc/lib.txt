@@ -341,6 +341,9 @@ Miscellaneous
 * `endians <endians.html>`_
   This module contains helpers that deal with different byte orders.
 
+* `logging <logging.html>`_
+  This module implements a simple logger.
+
 
 Database support
 ----------------
