@@ -12,3 +12,15 @@ suite "product":
     check product(@[@[1,2], @[3,4]]) == @[@[2,4],@[1,4],@[2,3],@[1,3]]
   test "three elements":
     check product(@[@[1,2], @[3,4], @[5,6]]) == @[@[2,4,6],@[1,4,6],@[2,3,6],@[1,3,6], @[2,4,5],@[1,4,5],@[2,3,5],@[1,3,5]]
+    
+suite "transpose":
+  test "empty input":
+    check transpose[int](newSeq[seq[int]]()) == newSeq[seq[int]]()
+  test "bit more empty input":
+    check transpose[int](@[newSeq[int](), @[], @[]]) == newSeq[seq[int]]()
+  test "a simple case of one element":
+    check transpose(@[@[1,2]]) == @[@[1],@[2]]
+  test "two elements":
+    check transpose(@[@[1,2], @[3,4]]) == @[@[1,3],@[2,4]]
+  test "3x3 elements":
+    check transpose(@[@[1,2,3], @[4,5,6], @[7,8,9]]) == @[@[1,4,7],@[2,5,8],@[3,6,9]]
