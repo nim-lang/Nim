@@ -23,7 +23,7 @@ else:
   proc MessageBoxA(hWnd: cint, lpText, lpCaption: cstring, uType: int): int32 {.
     header: "<windows.h>", nodecl.}
 
-  proc writeToStdErr(msg: CString) =
+  proc writeToStdErr(msg: cstring) =
     discard MessageBoxA(0, msg, nil, 0)
 
 proc showErrorMessage(data: cstring) =
