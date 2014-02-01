@@ -224,3 +224,20 @@ proc toOrderedSet*[A](keys: openArray[A]): TOrderedSet[A] =
 proc `$`*[A](s: TOrderedSet[A]): string =
   ## The `$` operator for ordered hash sets.
   dollarImpl()
+
+proc `<`*[A](s, t: TSet[A]): bool =
+  ## Is a a strict subset of b?
+  s.counter != t.counter and s <= t
+
+proc `<=`*[A](s, t: TSet[A]): bool =
+  ## Is a a subset of b?
+  result = false
+  if s.counter > t.counter: return
+  result = true
+  for item in s:
+    if not(t.contains(item)):
+      result = false
+      return
+      
+proc `==`*[A](s, t: TSet[A]): bool =
+  s.counter == t.counter and s <= t
