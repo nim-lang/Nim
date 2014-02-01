@@ -672,12 +672,14 @@ proc primarySuffix(p: var TParser, r: PNode): PNode =
         let a = result
         result = newNodeP(nkCommand, p)
         addSon(result, a)
-        while p.tok.tokType != tkEof:
-          let a = parseExpr(p)
-          addSon(result, a)
-          if p.tok.tokType != tkComma: break
-          getTok(p)
-          optInd(p, a)
+        addSon result, parseExpr(p)
+        when false:
+          while p.tok.tokType != tkEof:
+            let a = parseExpr(p)
+            addSon(result, a)
+            if p.tok.tokType != tkComma: break
+            getTok(p)
+            optInd(p, a)
         if p.tok.tokType == tkDo:
           parseDoBlocks(p, result)
         else:
@@ -1103,7 +1105,9 @@ proc parseExprStmt(p: var TParser): PNode =
   #|              doBlocks
   #|               / macroColon
   #|            ))?
+  inc p.inPragma
   var a = simpleExpr(p)
+  dec p.inPragma
   if p.tok.tokType == tkEquals: 
     getTok(p)
     optInd(p, result)
