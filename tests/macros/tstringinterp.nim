@@ -9,7 +9,7 @@ proc concat(strings: varargs[string]): string =
   result = newString(0)
   for s in items(strings): result.add(s)
 
-template ProcessInterpolations(e: expr) =
+template processInterpolations(e: expr) =
   var s = e[1].strVal
   for f in interpolatedFragments(s):
     case f.kind
@@ -35,7 +35,7 @@ macro formatStyleInterpolation(e: expr): expr =
   proc addDollar() =
     formatString.add("$$")
     
-  ProcessInterpolations(e)
+  processInterpolations(e)
 
   result = parseExpr("\"x\" % [y]")
   result[1].strVal = formatString
@@ -50,7 +50,7 @@ macro concatStyleInterpolation(e: expr): expr =
   proc addExpr(e: PNimrodNode) = args.add(e)
   proc addDollar()             = args.add(newStrLitNode"$")
 
-  ProcessInterpolations(e)
+  processInterpolations(e)
 
   result = newCall("concat", args)
 
