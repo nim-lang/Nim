@@ -1480,9 +1480,9 @@ proc genProc(c: PCtx; s: PSym): int =
     c.gABC(body, opcEof, eofInstr.regA)
     c.optimizeJumps(result)
     s.offset = c.prc.maxSlots
-    if s.name.s == "concatStyleInterpolation":
-      c.echoCode(result)
-      echo renderTree(body)
+    #if s.name.s == "concatStyleInterpolation":
+    #  c.echoCode(result)
+    # echo renderTree(body)
     c.prc = oldPrc
   else:
     c.prc.maxSlots = s.offset
