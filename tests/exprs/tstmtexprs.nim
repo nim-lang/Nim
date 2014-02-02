@@ -69,3 +69,15 @@ proc semiProblem() =
   if false: echo "aye"; echo "indeed"
 
 semiProblem()
+
+
+# bug #844
+
+import json 
+proc parseResponse(): PJsonNode =
+  result = % { "key1": % { "key2": % "value" } }
+  for key, val in result["key1"]:
+    var excMsg = key & "("
+    if (var n=result["key2"]; n != nil):
+      excMsg &= n.str
+    raise newException(ESynch, excMsg)
