@@ -106,10 +106,10 @@ proc substituteLog(frmt: string): string =
       of "appname": result.add(app.splitFile.name)
 
 method log*(logger: PLogger, level: TLevel,
-            frmt: string, args: varargs[string, `$`]) =
+            frmt: string, args: varargs[string, `$`]) {.raises: [EBase], tags: [FTime, FWriteIO, FReadIO].} =
   ## Override this method in custom loggers. Default implementation does
   ## nothing.
-  nil
+  discard
   
 method log*(logger: PConsoleLogger, level: TLevel,
             frmt: string, args: varargs[string, `$`]) =
