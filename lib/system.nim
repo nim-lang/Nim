@@ -2370,18 +2370,29 @@ template spliceImpl(s, a, L, b: expr): stmt {.immediate.} =
 
 when hostOS != "standalone":
   proc `[]`*(s: string, x: TSlice[int]): string {.inline.} =
-    ## slice operation for strings. Negative indexes are supported.
-    result = s.substr(x.a-|s, x.b-|s)
-
-  proc `[]=`*(s: var string, x: TSlice[int], b: string) = 
-    ## slice assignment for strings. Negative indexes are supported. If
-    ## ``b.len`` is not exactly the number of elements that are referred to
-    ## by `x`, a `splice`:idx: is performed:
+    ## Slice operation for strings, negative indexes are supported.
+    ##
+    ## Negative indices will work as offsets from the string's length, you
+    ## could presume they are a shorthand syntax for ``len(s) - offset``.
+    ## Usage example:
     ##
     ## .. code-block:: nimrod
-    ##   var s = "abcdef"
+    ##   let name = "Samantha Fox"[-3 .. -1]
+    ##   assert name == "Fox"
+    result = s.substr(x.a-|s, x.b-|s)
+
+  proc `[]=`*(s: var string, x: TSlice[int], b: string) =
+    ## Slice assignment for strings, negative indexes are supported.
+    ##
+    ## Negative indices will work as offsets from the string's length, you
+    ## could presume they are a shorthand syntax for ``len(s) - offset``.  If
+    ## ``b.len`` is not exactly the number of elements that are referred to by
+    ## `x`, a `splice`:idx: is performed:
+    ##
+    ## .. code-block:: nimrod
+    ##   var s = "abcdefghi"
     ##   s[1 .. -2] = "xyz"
-    ##   assert s == "axyzf"
+    ##   assert s == "axyzi"
     var a = x.a-|s
     var L = x.b-|s - a + 1
     if L == b.len:
@@ -2390,15 +2401,48 @@ when hostOS != "standalone":
       spliceImpl(s, a, L, b)
 
 proc `[]`*[Idx, T](a: array[Idx, T], x: TSlice[int]): seq[T] =
-  ## slice operation for arrays. Negative indexes are **not** supported
-  ## because the array might have negative bounds.
+  ## Slice operation for arrays.
+  ##
+  ## Negative indexes are supported only if the array features matching
+  ## negative indices. This is, a negative slice bound will index to that
+  ## array's negative index entry. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   let letters: array[7, char] = ['A', 'W', 'E', 'S', 'O', 'M', 'E']
+  ##   for i in letters[1..3]: echo i
+  ##   # --> W
+  ##   # --> E
+  ##   # --> S
+  ##   let values: array[-3..3, int] = [-9, -8, -7, 0, 1, 3, 5]
+  ##   for i in values[-2..2]: echo($i)
+  ##   # --> -8
+  ##   # --> -7
+  ##   # --> 0
+  ##   # --> 1
+  ##   # --> 3
   var L = x.b - x.a + 1
   newSeq(result, L)
   for i in 0.. <L: result[i] = a[i + x.a]
 
 proc `[]=`*[Idx, T](a: var array[Idx, T], x: TSlice[int], b: openArray[T]) =
-  ## slice assignment for arrays. Negative indexes are **not** supported
-  ## because the array might have negative bounds.
+  ## Slice assignment for arrays.
+  ##
+  ## Unlike slice assignments for strings, both the replacement and the
+  ## replaced range have to be of equal length or EOutOfRange will be raised.
+  ##
+  ## Negative indexes are supported only if the array features matching
+  ## negative indices. This is, a negative slice bound will index to that
+  ## array's negative index entry. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   let heights: array[7, int] = [10, 11, 12, 13, 14, 15, 16]
+  ##   var values: array[-3..3, int] = [-9, -8, -7, 0, 1, 3, 5]
+  ##   values[-1..3] = heights[1..5]
+  ##   for i in values[-3..0]: echo($i)
+  ##   # --> -9
+  ##   # --> -8
+  ##   # --> 11
+  ##   # --> 12
   var L = x.b - x.a + 1
   if L == b.len:
     for i in 0 .. <L: a[i+x.a] = b[i]
@@ -2406,8 +2450,24 @@ proc `[]=`*[Idx, T](a: var array[Idx, T], x: TSlice[int], b: openArray[T]) =
     sysFatal(EOutOfRange, "differing lengths for slice assignment")
 
 proc `[]`*[Idx, T](a: array[Idx, T], x: TSlice[Idx]): seq[T] =
-  ## slice operation for arrays. Negative indexes are **not** supported
-  ## because the array might have negative bounds.
+  ## Slice operation for arrays.
+  ##
+  ## Negative indexes are supported only if the array features matching
+  ## negative indices. This is, a negative slice bound will index to that
+  ## array's negative index entry. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   type
+  ##     TDirection = enum north, east, south, west
+  ##     TDistance = array[TDirection, int]
+  ##
+  ##   let old_distances: TDistance = [1, 2, 3, 4]
+  ##   var new_distances: TDistance = [9, 8, 7, 3]
+  ##   new_distances[south..west] = old_distances[north..east]
+  ##   for d in new_distances[east..south]:
+  ##     echo($d)
+  ##   # --> 8
+  ##   # --> 1
   var L = ord(x.b) - ord(x.a) + 1
   newSeq(result, L)
   var j = x.a
@@ -2416,8 +2476,24 @@ proc `[]`*[Idx, T](a: array[Idx, T], x: TSlice[Idx]): seq[T] =
     inc(j)
 
 proc `[]=`*[Idx, T](a: var array[Idx, T], x: TSlice[Idx], b: openArray[T]) =
-  ## slice assignment for arrays. Negative indexes are **not** supported
-  ## because the array might have negative bounds.
+  ## Slice assignment for arrays.
+  ##
+  ## Unlike slice assignments for strings, both the replacement and the
+  ## replaced range have to be of equal length or EOutOfRange will be raised.
+  ##
+  ## Negative indexes are supported only if the array features matching
+  ## negative indices. This is, a negative slice bound will index to that
+  ## array's negative index entry. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   let heights: array[7, int] = [10, 11, 12, 13, 14, 15, 16]
+  ##   var values: array[-3..3, int] = [-9, -8, -7, 0, 1, 3, 5]
+  ##   values[-1..3] = heights[1..5]
+  ##   for i in values[-3..0]: echo($i)
+  ##   # --> -9
+  ##   # --> -8
+  ##   # --> 11
+  ##   # --> 12
   var L = ord(x.b) - ord(x.a) + 1
   if L == b.len:
     var j = x.a
@@ -2427,17 +2503,33 @@ proc `[]=`*[Idx, T](a: var array[Idx, T], x: TSlice[Idx], b: openArray[T]) =
   else:
     sysFatal(EOutOfRange, "differing lengths for slice assignment")
 
-proc `[]`*[T](s: seq[T], x: TSlice[int]): seq[T] = 
-  ## slice operation for sequences. Negative indexes are supported.
+proc `[]`*[T](s: seq[T], x: TSlice[int]): seq[T] =
+  ## Slice operation for sequences, negative indexes are supported.
+  ##
+  ## Negative indices will work as offsets from the sequence's length, you
+  ## could presume they are a shorthand syntax for ``len(s) - offset``.
+  ## Usage example:
+  ##
+  ## .. code-block:: nimrod
+  ##   let letters = @['T', 'H', 'E', 'Y', 'E', 'A', 'R', 'O', 'F', 'N']
+  ##   assert letters[4..7] == @['E', 'A', 'R', 'O']
   var a = x.a-|s
   var L = x.b-|s - a + 1
   newSeq(result, L)
   for i in 0.. <L: result[i] = s[i + a]
 
-proc `[]=`*[T](s: var seq[T], x: TSlice[int], b: openArray[T]) = 
-  ## slice assignment for sequences. Negative indexes are supported. If
-  ## ``b.len`` is not exactly the number of elements that are referred to
-  ## by `x`, a `splice`:idx: is performed. 
+proc `[]=`*[T](s: var seq[T], x: TSlice[int], b: openArray[T]) =
+  ## Slice assignment for sequences, negative indexes are supported.
+  ##
+  ## Negative indices will work as offsets from the sequence's length, you
+  ## could presume they are a shorthand syntax for ``len(s) - offset``.  If
+  ## ``b.len`` is not exactly the number of elements that are referred to by
+  ## `x`, a `splice`:idx: is performed:
+  ##
+  ## .. code-block:: nimrod
+  ##   var letters = @['T', 'H', 'E', 'Y', 'E', 'A', 'R', 'O', 'F', 'N']
+  ##   letters[1.. -2] = @['W', 'A', 'R']
+  ##   assert letters == @['T', 'W', 'A', 'R', 'N']
   var a = x.a-|s
   var L = x.b-|s - a + 1
   if L == b.len:

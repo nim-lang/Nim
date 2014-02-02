@@ -1071,6 +1071,39 @@ because the numbers cannot be negative. Nimrod's ``natural`` type helps to
 avoid this common programming error.
 
 
+Slices
+------
+
+Slices look similar to subranges types in syntax but are used in a different
+context. A slice is just an object of type TSlice which contains two bounds,
+`a` and `b`. By itself a slice is not very useful, but other collection types
+define operators which accept TSlice objects to define ranges.
+
+.. code-block:: nimrod
+  var
+    a = "Nimrod is a progamming language"
+    b = "Slices are useless."
+  echo a[10..15] # --> 'a prog'
+  b[11.. -2] = "useful"
+  echo b # --> 'Slices are useful.'
+
+In the previous example slices are used to modify a part of a string, and even
+a negative index is used. The slice's bounds can hold any value supported by
+their type, but it is the proc using the slice object which defines what values
+are accepted.
+
+Slice operation with negative indexes are supported by strings, but may not be
+supported for other collection types. For example, negative indices are not
+supported for the array type because an array might have negative bounds (see
+below). Slices `actually can use` negative integer values with arrays, but they
+will map to their respective negative positions (or raise an out of bounds
+exception if the array doesn't have negative indices) rather than be
+interpreted as a negative offset from the length like they do for strings.
+
+To see other possible interactions between types and slices search the `system
+module <system.html>`_ for the TSlice type.
+
+
 Sets
 ----
 The `set type`:idx: models the mathematical notion of a set. The set's
@@ -1205,6 +1238,26 @@ to specify a range from zero to the specified index minus one:
   y = x
   for i in low(x)..high(x):
     echo(x[i], y[i])
+
+While so far only positive indices have been used in the examples, remember
+that nothing prevents you from defining arrays using negative indices like the
+following example:
+
+.. code-block:: nimrod
+  type
+    TMirrorArray = array[-3..3, int]
+  var
+    mirror: TMirrorArray = [3, 2, 1, 0, -1, -2, -3]
+
+  for i in low(mirror)..high(mirror):
+    echo "Mirror pos " & $i & " has value " & $mirror[i]
+  # --> Mirror pos -3 has value 3
+  # --> Mirror pos -2 has value 2
+  # --> Mirror pos -1 has value 1
+  # --> Mirror pos 0 has value 0
+  # --> Mirror pos 1 has value -1
+  # --> Mirror pos 2 has value -2
+  # --> Mirror pos 3 has value -3
 
 
 Sequences
