@@ -2566,3 +2566,15 @@ proc poll*(a1: ptr TPollfd, a2: Tnfds, a3: int): cint {.
 
 proc realpath*(name, resolved: cstring): cstring {.
   importc: "realpath", header: "<stdlib.h>".}
+
+proc utimes*(path: cstring, times: ptr array [2, Ttimeval]): int {.
+  importc: "utimes", header: "<sys/time.h>".}
+  ## Sets file access and modification times.
+  ##
+  ## Pass the filename and an array of times to set the access and modification
+  ## times respectively. If you pass nil as the array both attributes will be
+  ## set to the current time.
+  ##
+  ## Returns zero on success.
+  ##
+  ## For more information read http://www.unix.com/man-page/posix/3/utimes/.
