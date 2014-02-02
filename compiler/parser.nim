@@ -642,8 +642,7 @@ proc primarySuffix(p: var TParser, r: PNode): PNode =
   #|               | '.' optInd ('type' | 'addr' | symbol) generalizedLit?
   #|               | '[' optInd indexExprList optPar ']'
   #|               | '{' optInd indexExprList optPar '}'
-  #|               | &( '`'|IDENT|literal|'cast') expr ^+ ',' # command syntax
-  #|                      (doBlock | macroColon)?
+  #|               | &( '`'|IDENT|literal|'cast') expr # command syntax
   result = r
   while p.tok.indent < 0:
     case p.tok.tokType
@@ -680,10 +679,10 @@ proc primarySuffix(p: var TParser, r: PNode): PNode =
             if p.tok.tokType != tkComma: break
             getTok(p)
             optInd(p, a)
-        if p.tok.tokType == tkDo:
-          parseDoBlocks(p, result)
-        else:
-          result = parseMacroColon(p, result)
+          if p.tok.tokType == tkDo:
+            parseDoBlocks(p, result)
+          else:
+            result = parseMacroColon(p, result)
       break
     else:
       break
