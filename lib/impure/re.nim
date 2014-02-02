@@ -354,10 +354,11 @@ proc transformFile*(infile, outfile: string,
   var x = readFile(infile).string
   writeFile(outfile, x.parallelReplace(subs))
   
-iterator split*(s: string, sep: TRegEx): string =
+iterator split*(s: string, sep: TRegEx, maxSplit=high(int)): string =
   ## Splits the string `s` into substrings.
   ##
   ## Substrings are separated by the regular expression `sep`.
+  ## MaxSplit determines the maximum number of splits this performs.
   ## Examples:
   ##
   ## .. code-block:: nimrod
@@ -375,21 +376,27 @@ iterator split*(s: string, sep: TRegEx): string =
   var
     first = 0
     last = 0
+    numSplits = 0
   while last < len(s):
     var x = matchLen(s, sep, last)
     if x > 0: inc(last, x)
+    if numSplits >= maxSplit: break
     first = last
     while last < len(s):
       inc(last)
       x = matchLen(s, sep, last)
       if x > 0: break
     if first < last:
+      inc(numSplits)
       yield substr(s, first, last-1)
 
-proc split*(s: string, sep: TRegEx): seq[string] =
+  if last < len(s):
+    yield substr(s, last, len(s)-1)
+
+proc split*(s: string, sep: TRegEx, maxSplit=high(int)): seq[string] =
   ## Splits the string `s` into substrings.
-  accumulateResult(split(s, sep))
-  
+  accumulateResult(split(s, sep, maxSplit))
+
 proc escapeRe*(s: string): string = 
   ## escapes `s` so that it is matched verbatim when used as a regular 
   ## expression.
@@ -461,3 +468,11 @@ when isMainModule:
     assert x == "d"
   for x in findAll("abcdef", re".", 3):
     echo x
+
+  assert(split("test:test:test", re":") == @["test", "test", "test"])
+  assert(split("test:test:test:", re":") == @["test", "test", "test"])
+  assert(split("test:test:test", re":", maxsplit=1) == @["test", "test:test"])
+  assert(split("test:test:test", re":", maxsplit=2) == @["test", "test", "test"])
+  assert(split("test:test:test:", re":", maxsplit=3) == @["test", "test", "test"])
+  assert(split("test:test:test", re";") == @["test:test:test"])
+

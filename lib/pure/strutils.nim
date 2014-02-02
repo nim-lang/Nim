@@ -218,10 +218,11 @@ iterator split*(s: string, seps: set[char] = Whitespace): string =
     if first <= last-1:
       yield substr(s, first, last-1)
 
-iterator split*(s: string, sep: char): string =
+iterator split*(s: string, sep: char, maxSplit=high(int)): string =
   ## Splits the string `s` into substrings using a single separator.
   ##
   ## Substrings are separated by the character `sep`.
+  ## MaxSplit determines the maximum number of splits this performs.
   ## Unlike the version of the iterator which accepts a set of separator
   ## characters, this proc will not coalesce groups of the
   ## separator, returning a string for each found character. The code:
@@ -247,12 +248,59 @@ iterator split*(s: string, sep: char): string =
   var last = 0
   assert('\0' != sep)
   if len(s) > 0:
+    var numSplits = 0
     # `<=` is correct here for the edge cases!
-    while last <= len(s):
+    while last <= len(s) and numSplits < maxSplit:
       var first = last
       while last < len(s) and s[last] != sep: inc(last)
+      inc(numSplits)
       yield substr(s, first, last-1)
       inc(last)
+
+    if last < len(s):
+      yield substr(s, last, len(s)-1)
+
+iterator split*(s: string, sep: string, maxSplit=high(int)): string =
+  ## Splits the string `s` into substrings using a single string separator.
+  ##
+  ## Substrings are separated by the string `sep`.
+  ## MaxSplit determines the maximum number of splits this performs.
+  ## Unlike the versions of the iterator which accept character(s) this
+  ## takes a string and only matches a separator if the whole `sep` string
+  ## matches it. Like the char set iterator this proc coalesces groups of
+  ## the separator.
+  ##
+  ## .. code-block:: nimrod
+  ##   for word in split(";;this;;is;an;;;example;;", ";;"):
+  ##     writeln(stdout, word)
+  ##
+  ## Results in:
+  ##
+  ## .. code-block::
+  ##   "this"
+  ##   "is;an"
+  ##   ";example"
+  ##
+  var last = 0
+  assert("" != sep)
+  if len(s) > 0:
+    var numSplits = 0
+    while last < len(s):
+      if substr(s, last, last+len(sep)-1) == sep: inc(last, len(sep))
+      if numSplits >= maxSplit: break
+
+      var first = last
+      while last < len(s):
+        inc(last)
+        if substr(s, last, last+len(sep)-1) == sep: break
+
+      if first < last:
+        inc(numSplits)
+        yield substr(s, first, last-1)
+
+    if last < len(s):
+      yield substr(s, last, len(s)-1)
+
 
 iterator splitLines*(s: string): string =
   ## Splits the string `s` into its containing lines. Every newline
@@ -313,11 +361,45 @@ proc split*(s: string, seps: set[char] = Whitespace): seq[string] {.
   ## sequence of substrings.
   accumulateResult(split(s, seps))
 
-proc split*(s: string, sep: char): seq[string] {.noSideEffect,
+proc split*(s: string, sep: char, maxSplit=high(int)): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitChar".} =
   ## The same as the `split` iterator, but is a proc that returns a sequence
   ## of substrings.
-  accumulateResult(split(s, sep))
+  accumulateResult(split(s, sep, maxSplit))
+
+proc split*(s, sep: string, maxSplit=high(int)): seq[string] {.noSideEffect,
+  rtl, extern: "nsuSplitString".} =
+  ## The same as the `split` iterator, but is a proc that return as sequence
+  ## of substrings.
+  accumulateResult(split(s, sep, maxSplit))
+
+proc partition*(s: string, sep: char): tuple[pre, sep, post: string] {.
+  noSideEffect, rtl, extern: "nsuPartition".} =
+  ## Split a string at the first occurrence of 'sep' and return a 3 element 
+  ## tuple containing the part before the separator, the separator itself (as a 
+  ## string) and the part after the separator. If the separator is not found, 
+  ## return a 3 element tuple containing the string itself, followed by two 
+  ## empty strings.
+  let parts = split(s, sep, maxSplit=1)
+
+  if len(parts) > 1:
+    result = (parts[0], $sep, parts[1])
+  else:
+    result = (s, "", "")
+
+proc partition*(s, sep: string): tuple[pre, sep, post: string] {.
+  noSideEffect, rtl, extern: "nsuPartitionString".} =
+  ## Split a string at the first occurrence of 'sep' and return a 3 element
+  ## tuple containing the part before the separator, the separator itself (as a
+  ## string) and the part after the separator. If the separator is not found,
+  ## return a 3 element tuple containing the string itself, followed by two
+  ## empty strings.
+  let parts = split(s, sep, maxSplit=1)
+
+  if len(parts) > 1:
+    result = (parts[0], sep, parts[1])
+  else:
+    result = (s, "", "")
 
 proc toHex*(x: BiggestInt, len: int): string {.noSideEffect,
   rtl, extern: "nsuToHex".} =
@@ -1240,3 +1322,16 @@ when isMainModule:
   doAssert parseEnum[TMyEnum]("enu_D") == enuD
 
   doAssert parseEnum("invalid enum value", enC) == enC
+
+  assert(split("test:test", ':') == @["test", "test"])
+  assert(split("test:test", ';') == @["test:test"])
+  assert(split("test:test:", ':') == @["test", "test", ""])
+  assert(split("test:test", ":") == @["test", "test"])
+  assert(split("test  test", "  ") == @["test", "test"])
+  assert(split("test:test:test", ':', maxsplit=1) == @["test", "test:test"])
+
+  assert(partition("test: test test", ':') == ("test", ":", " test test"))
+  assert(partition("test: test:test", ":") == ("test", ":", " test:test"))
+  assert(partition("test  test something", "  ") == ("test", "  ", "test something"))
+  assert(partition("--option", "=") == ("--option", "", ""))
+  assert(partition("", " ") == ("", "", ""))
