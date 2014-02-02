@@ -5172,9 +5172,9 @@ the same feature under the same name.
 Exportc pragma
 --------------
 The `exportc`:idx: pragma provides a means to export a type, a variable, or a
-procedure to C. The optional argument is a string containing the C identifier.
-If the argument is missing, the C name is the Nimrod
-identifier *exactly as spelled*:
+procedure to C. Enums and constants can't be exported. The optional argument
+is a string containing the C identifier.  If the argument is missing, the C
+name is the Nimrod identifier *exactly as spelled*:
 
 .. code-block:: Nimrod
   proc callme(formatstr: cstring) {.exportc: "callMe", varargs.}
