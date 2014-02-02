@@ -30,17 +30,19 @@ To build from source you will need:
 If you are on a fairly modern *nix system, the following steps should work:
 
 ```
-$ git clone git://github.com/Araq/Nimrod.git
-$ cd Nimrod
-$ git clone --depth 1 git://github.com/nimrod-code/csources
-$ cd csources && ./build.sh
+$ git clone --recursive git://github.com/Araq/Nimrod.git
+$ cd Nimrod/csources
+$ ./build.sh
 $ cd ..
 $ bin/nimrod c koch
 $ ./koch boot -d:release
 ```
 
-``koch install [dir]`` may then be used to install Nimrod, or you
-can simply add it to your PATH.
+To install the distribution, the nimrod binary needs to be in your path:
+
+$ PATH=./bin:$PATH ./koch install [dir]
+
+Alternatively, you can simply add the development bin folder to your PATH.
 
 The above steps can be performed on Windows in a similar fashion, the
 ``build.bat`` and ``build64.bat`` (for x86_64 systems) are provided to be used
