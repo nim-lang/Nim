@@ -402,9 +402,9 @@ proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
   ## regardless of whether the link points to a directory or file.
   when defined(windows):
     when useWinUnicode:
-      wrapUnary(a, GetFileAttributesW, link)
+      wrapUnary(a, getFileAttributesW, link)
     else:
-      var a = GetFileAttributesA(link)
+      var a = getFileAttributesA(link)
     if a != -1'i32:
       result = (a and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32
   else:
@@ -1378,14 +1378,14 @@ proc createSymlink*(src, dest: string) =
     when useWinUnicode:
       var wSrc = newWideCString(src)
       var wDst = newWideCString(dest)
-      if CreateSymbolicLinkW(wDst, wSrc, flag) == 0 or GetLastError() != 0:
-          osError(osLastError())
+      if createSymbolicLinkW(wDst, wSrc, flag) == 0 or getLastError() != 0:
+        osError(osLastError())
     else:
-      if CreateSymbolicLinkA(dest, src, flag) == 0 or GetLastError() != 0:
-          osError(osLastError())
+      if createSymbolicLinkA(dest, src, flag) == 0 or getLastError() != 0:
+        osError(osLastError())
   else:
     if symlink(src, dest) != 0:
-      OSError(OSLastError())
+      osError(osLastError())
 
 proc createHardlink*(src, dest: string) =
   ## Create a hard link at `dest` which points to the item specified
@@ -1398,13 +1398,13 @@ proc createHardlink*(src, dest: string) =
       var wSrc = newWideCString(src)
       var wDst = newWideCString(dest)
       if createHardLinkW(wDst, wSrc, nil) == 0:
-          OSError(OSLastError())
+        osError(osLastError())
     else:
       if createHardLinkA(dest, src, nil) == 0:
-          OSError(OSLastError())
+        osError(osLastError())
   else:
     if link(src, dest) != 0:
-      OSError(OSLastError())
+      osError(osLastError())
 
 proc parseCmdLine*(c: string): seq[string] {.
   noSideEffect, rtl, extern: "nos$1".} =
