@@ -1,3 +1,6 @@
+discard """
+  output: ''''''
+"""
 import unittest
 import sets
 
