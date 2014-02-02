@@ -1321,6 +1321,30 @@ In this example ``$`` is applied to any argument that is passed to the
 parameter ``a``. Note that ``$`` applied to strings is a nop.
 
 
+Slices
+------
+
+Slices look similar to subranges types in syntax but are used in a different
+context. A slice is just an object of type TSlice which contains two bounds,
+`a` and `b`. By itself a slice is not very useful, but other collection types
+define operators which accept TSlice objects to define ranges.
+
+.. code-block:: nimrod
+
+  var
+    a = "Nimrod is a progamming language"
+    b = "Slices are useless."
+
+  echo a[10..15] # --> 'a prog'
+  b[11.. -2] = "useful"
+  echo b # --> 'Slices are useful.'
+
+In the previous example slices are used to modify a part of a string, and even
+a negative index is used. The slice's bounds can hold any value supported by
+their type, but it is the proc using the slice object which defines what values
+are accepted.
+
+
 Tuples
 ------
 
