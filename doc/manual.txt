@@ -1315,12 +1315,9 @@ Examples:
 
 .. code-block:: nimrod
 
-  type
-    TCallback = proc (x: int) {.cdecl.}
+  proc printItem(x: int) = ...
 
-  proc printItem(x: Int) = ...
-
-  proc forEach(c: TCallback) =
+  proc forEach(c: proc (x: int) {.cdecl.}) =
     ...
 
   forEach(printItem)  # this will NOT work because calling conventions differ
@@ -2458,6 +2455,17 @@ notation. (Thus an operator can have more than two parameters):
     return a * b + c
 
   assert `*+`(3, 4, 6) == `*`(a, `+`(b, c))
+
+
+Command invocation syntax
+-------------------------
+
+Routines can be invoked without the ``()`` if the call is syntactially
+a statement. This `command invocation syntax`:idx: also works for
+expressions, but then only a single argument may follow. This restriction
+means ``echo f 1, f 2`` is parsed as ``echo(f(1), f(2))`` and not as
+``echo(f(1, f(2)))``.
+
 
 Closures
 --------
