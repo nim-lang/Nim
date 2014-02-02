@@ -164,3 +164,14 @@ proc product*[T](x: openarray[seq[T]]): seq[seq[T]] =
     result.add(res)
     index = 0
     indexes[index] -=1
+
+proc transpose*[T](groups: seq[seq[T]]): seq[seq[T]] =
+  ## Transposes the sequences.
+  result = @[]
+  if len(groups) == 0: return
+  let maxLen = groups[0].len - 1
+  for i in 0..maxLen:
+    var selection: seq[T] = @[]
+    for group in groups:
+      selection.add(group[i])
+    result.add(selection)
