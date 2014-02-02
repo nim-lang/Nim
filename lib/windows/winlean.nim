@@ -206,18 +206,18 @@ else:
     importc: "GetModuleFileNameA", dynlib: "kernel32", stdcall.}
 
 when useWinUnicode:
-  proc createSymbolicLinkW*(lpSymlinkFileName, lpTargetFileName: wideCString,
+  proc createSymbolicLinkW*(lpSymlinkFileName, lpTargetFileName: WideCString,
                          flags: DWORD): int32 {.
     importc:"CreateSymbolicLinkW", dynlib: "kernel32", stdcall.}
-  proc createHardLinkW*(lpFileName, lpExistingFileName: wideCString,
-                         security: Pointer=nil): int32 {.
+  proc createHardLinkW*(lpFileName, lpExistingFileName: WideCString,
+                         security: pointer=nil): int32 {.
     importc:"CreateHardLinkW", dynlib: "kernel32", stdcall.}
 else:
   proc createSymbolicLinkA*(lpSymlinkFileName, lpTargetFileName: cstring,
                            flags: DWORD): int32 {.
     importc:"CreateSymbolicLinkA", dynlib: "kernel32", stdcall.}
   proc createHardLinkA*(lpFileName, lpExistingFileName: cstring,
-                           security: Pointer=nil): int32 {.
+                           security: pointer=nil): int32 {.
     importc:"CreateHardLinkA", dynlib: "kernel32", stdcall.}
 
 const
