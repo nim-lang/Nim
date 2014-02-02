@@ -268,14 +268,22 @@ proc OpenSSL_add_all_algorithms*(){.cdecl, dynlib: DLLUtilName, importc: "OPENSS
 
 proc OPENSSL_config*(configName: cstring){.cdecl, dynlib: DLLSSLName, importc.}
 
-proc CRYPTO_set_mem_functions(a,b,c: pointer){.cdecl, dynlib: DLLSSLName, importc.}
+when not defined(windows):
+  proc CRYPTO_set_mem_functions(a,b,c: pointer){.cdecl, 
+    dynlib: DLLSSLName, importc.}
 
 proc CRYPTO_malloc_init*() =
   when not defined(windows):
     CRYPTO_set_mem_functions(alloc, realloc, dealloc)
 
-when True:
-  nil
+proc SSL_CTX_ctrl*(ctx: PSSL_CTX, cmd: cInt, larg: int, parg: pointer): int{.
+  cdecl, dynlib: DLLSSLName, importc.}
+
+proc SSLCTXSetMode*(ctx: PSSL_CTX, mode: int): int =
+  result = SSL_CTX_ctrl(ctx, SSL_CTRL_MODE, mode, nil)
+
+when true:
+  discard
 else:
   proc SslCtxSetCipherList*(arg0: PSSL_CTX, str: cstring): cInt{.cdecl, 
       dynlib: DLLSSLName, importc.}
@@ -288,7 +296,6 @@ else:
   proc SslCTXCtrl*(ctx: PSSL_CTX, cmd: cInt, larg: int, parg: Pointer): int{.
       cdecl, dynlib: DLLSSLName, importc.}
 
-  proc SSLCTXSetMode*(ctx: PSSL_CTX, mode: int): int
   proc SSLSetMode*(s: PSSL, mode: int): int
   proc SSLCTXGetMode*(ctx: PSSL_CTX): int
   proc SSLGetMode*(s: PSSL): int
@@ -417,15 +424,12 @@ else:
                       enc: cInt){.cdecl, dynlib: DLLUtilName, importc.}
   # implementation
 
-  proc SSLCTXSetMode(ctx: PSSL_CTX, mode: int): int = 
-    Result = SslCTXCtrl(ctx, SSL_CTRL_MODE, mode, nil)
-
   proc SSLSetMode(s: PSSL, mode: int): int = 
-    Result = SSLctrl(s, SSL_CTRL_MODE, mode, nil)
+    result = SSLctrl(s, SSL_CTRL_MODE, mode, nil)
 
   proc SSLCTXGetMode(ctx: PSSL_CTX): int = 
-    Result = SSLCTXctrl(ctx, SSL_CTRL_MODE, 0, nil)
+    result = SSLCTXctrl(ctx, SSL_CTRL_MODE, 0, nil)
 
   proc SSLGetMode(s: PSSL): int = 
-    Result = SSLctrl(s, SSL_CTRL_MODE, 0, nil)
+    result = SSLctrl(s, SSL_CTRL_MODE, 0, nil)
 
