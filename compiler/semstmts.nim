@@ -972,6 +972,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   else:
     s = n[namePos].sym
     typeIsDetermined = s.typ == nil
+    s.ast = n
+    s.scope = c.currentScope
+
     # if typeIsDetermined: assert phase == stepCompileBody
     # else: assert phase == stepDetermineType
   # before compiling the proc body, set as current the scope
