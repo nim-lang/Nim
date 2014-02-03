@@ -337,7 +337,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       asgnRef(c.globals.sons[instr.regBx-wordExcess-1], regs[ra])
     of opcWrGlobal:
       asgnComplex(c.globals.sons[instr.regBx-wordExcess-1], regs[ra])
-    of opcLdArr:
+    of opcLdArr, opcLdArrRef:
       # a = b[c]
       let rb = instr.regB
       let rc = instr.regC
@@ -348,7 +348,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       assert regs[rb].kind != nkMetaNode
       let src = regs[rb]
       if src.kind notin {nkEmpty..nkNilLit} and idx <% src.len:
-        asgnComplex(regs[ra], src.sons[idx])
+        if instr.opcode == opcLdArrRef and false:
+          # XXX activate when seqs are fixed
+          asgnRef(regs[ra], src.sons[idx])
+        else:
+          asgnComplex(regs[ra], src.sons[idx])
       else:
         stackTrace(c, tos, pc, errIndexOutOfBounds)
     of opcLdStrIdx:
@@ -379,9 +383,15 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       # a = b.c
       let rb = instr.regB
       let rc = instr.regC
-      # XXX this creates a wrong alias
       #Message(c.debug[pc], warnUser, $regs[rb].safeLen & " " & $rc)
       asgnComplex(regs[ra], regs[rb].sons[rc])
+    of opcLdObjRef:
+      # a = b.c
+      let rb = instr.regB
+      let rc = instr.regC
+      # XXX activate when seqs are fixed
+      asgnComplex(regs[ra], regs[rb].sons[rc])
+      #asgnRef(regs[ra], regs[rb].sons[rc])
     of opcWrObj:
       # a.b = c
       let rb = instr.regB
@@ -1037,7 +1047,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       # XXX only supports 'name' for now; we can use regC to encode the
       # type trait operation
       decodeB(nkStrLit)
-      let typ = regs[rb].sym.typ.skipTypes({tyTypeDesc})
+      var typ = regs[rb].typ
+      internalAssert typ != nil
+      while typ.kind == tyTypeDesc and typ.len > 0: typ = typ.sons[0]
       regs[ra].strVal = typ.typeToString(preferExported)
     of opcGlobalOnce:
       let rb = instr.regBx
@@ -1168,7 +1180,7 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
   # doesn't end up in the parameter:
   #InternalAssert tos.slots.len >= L
   # return value:
-  tos.slots[0] = newNodeIT(nkNilLit, n.info, sym.typ.sons[0])
+  tos.slots[0] = newNodeIT(nkEmpty, n.info, sym.typ.sons[0])
   # setup parameters:
   for i in 1 .. < min(tos.slots.len, L):
     tos.slots[i] = setupMacroParam(n.sons[i])

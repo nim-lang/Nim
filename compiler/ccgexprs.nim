@@ -343,7 +343,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   of tyPtr, tyPointer, tyChar, tyBool, tyEnum, tyCString,
      tyInt..tyUInt64, tyRange, tyVar:
     linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
-  else: internalError("genAssignment(" & $ty.kind & ')')
+  else: internalError("genAssignment: " & $ty.kind)
 
 proc getDestLoc(p: BProc, d: var TLoc, typ: PType) =
   if d.k == locNone: getTemp(p, typ, d)

@@ -7,7 +7,7 @@ proc dumpit(n: PNimrodNode): string {.compileTime.} =
   result = $n.kind
   add(result, "(")
   case n.kind
-  of nnkEmpty: nil # same as nil node in this representation 
+  of nnkEmpty: discard # same as nil node in this representation 
   of nnkNilLit:                  add(result, "nil")
   of nnkCharLit..nnkInt64Lit:    add(result, $n.intVal)
   of nnkFloatLit..nnkFloat64Lit: add(result, $n.floatVal)

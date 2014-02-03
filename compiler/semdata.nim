@@ -42,7 +42,7 @@ type
 
   TExprFlag* = enum 
     efLValue, efWantIterator, efInTypeof, efWantStmt, efDetermineType,
-    efAllowDestructor
+    efAllowDestructor, efWantValue
   TExprFlags* = set[TExprFlag]
 
   PContext* = ref TContext

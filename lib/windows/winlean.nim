@@ -204,7 +204,22 @@ else:
 
   proc getModuleFileNameA*(handle: THandle, buf: CString, size: int32): int32 {.
     importc: "GetModuleFileNameA", dynlib: "kernel32", stdcall.}
-  
+
+when useWinUnicode:
+  proc createSymbolicLinkW*(lpSymlinkFileName, lpTargetFileName: WideCString,
+                         flags: DWORD): int32 {.
+    importc:"CreateSymbolicLinkW", dynlib: "kernel32", stdcall.}
+  proc createHardLinkW*(lpFileName, lpExistingFileName: WideCString,
+                         security: pointer=nil): int32 {.
+    importc:"CreateHardLinkW", dynlib: "kernel32", stdcall.}
+else:
+  proc createSymbolicLinkA*(lpSymlinkFileName, lpTargetFileName: cstring,
+                           flags: DWORD): int32 {.
+    importc:"CreateSymbolicLinkA", dynlib: "kernel32", stdcall.}
+  proc createHardLinkA*(lpFileName, lpExistingFileName: cstring,
+                           security: pointer=nil): int32 {.
+    importc:"CreateHardLinkA", dynlib: "kernel32", stdcall.}
+
 const
   FILE_ATTRIBUTE_ARCHIVE* = 32'i32
   FILE_ATTRIBUTE_COMPRESSED* = 2048'i32
@@ -212,6 +227,7 @@ const
   FILE_ATTRIBUTE_DIRECTORY* = 16'i32
   FILE_ATTRIBUTE_HIDDEN* = 2'i32
   FILE_ATTRIBUTE_READONLY* = 1'i32
+  FILE_ATTRIBUTE_REPARSE_POINT* = 1024'i32
   FILE_ATTRIBUTE_SYSTEM* = 4'i32
   FILE_ATTRIBUTE_TEMPORARY* = 256'i32
 

@@ -1,9 +1,15 @@
 version 0.9.4
 =============
 
-- better debugging support for writes to locations
-- document new templating symbol binding rules
-- fix eval in macros.nim
+- fix macros\tstringinterp.nim
+- test and fix showoff; add debug example to showoff
+- test and fix stdlib
+- test and fix misc
+- fix GC issues
+- test C source code generation
+- test and fix closures
+- test and fix exception handling
+- implement 'union' and 'bits' pragmas
 
 
 Bugs

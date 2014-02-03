@@ -35,7 +35,7 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     result.typ = errorType(c)
 
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
-  result = semExpr(c, n, flags)
+  result = semExpr(c, n, flags+{efWantValue})
   if result.isNil or result.kind == nkEmpty: 
     # do not produce another redundant error message:
     #raiseRecoverableError("")
@@ -1706,8 +1706,8 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = n
   result.typ = t
   result.kind = nkObjConstr
-  t = skipTypes(t, abstractInst)
-  if t.kind == tyRef: t = skipTypes(t.sons[0], abstractInst)
+  t = skipTypes(t, {tyGenericInst})
+  if t.kind == tyRef: t = skipTypes(t.sons[0], {tyGenericInst})
   if t.kind != tyObject:
     localError(n.info, errGenerated, "object constructor needs an object type")
     return
@@ -1993,7 +1993,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     result = semStaticExpr(c, n)
   of nkAsgn: result = semAsgn(c, n)
   of nkBlockStmt, nkBlockExpr: result = semBlock(c, n)
-  of nkStmtList, nkStmtListExpr: result = semStmtList(c, n)
+  of nkStmtList, nkStmtListExpr: result = semStmtList(c, n, flags)
   of nkRaiseStmt: result = semRaise(c, n)
   of nkVarSection: result = semVarOrLet(c, n, skVar)
   of nkLetSection: result = semVarOrLet(c, n, skLet)

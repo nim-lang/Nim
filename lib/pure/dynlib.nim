@@ -14,15 +14,15 @@
 type
   TLibHandle* = pointer ## a handle to a dynamically loaded library
 
-proc LoadLib*(path: string): TLibHandle
+proc loadLib*(path: string): TLibHandle
   ## loads a library from `path`. Returns nil if the library could not 
   ## be loaded.
 
-proc LoadLib*(): TLibHandle
+proc loadLib*(): TLibHandle
   ## gets the handle from the current executable. Returns nil if the 
   ## library could not be loaded.
 
-proc UnloadLib*(lib: TLibHandle)
+proc unloadLib*(lib: TLibHandle)
   ## unloads the library `lib`
 
 proc raiseInvalidLibrary*(name: cstring) {.noinline, noreturn.} =
@@ -60,9 +60,9 @@ when defined(posix):
   proc dlsym(lib: TLibHandle, name: cstring): pointer {.
       importc, header: "<dlfcn.h>".}
 
-  proc LoadLib(path: string): TLibHandle = return dlopen(path, RTLD_NOW)
-  proc LoadLib(): TLibHandle = return dlopen(nil, RTLD_NOW)
-  proc UnloadLib(lib: TLibHandle) = dlclose(lib)
+  proc loadLib(path: string): TLibHandle = return dlopen(path, RTLD_NOW)
+  proc loadLib(): TLibHandle = return dlopen(nil, RTLD_NOW)
+  proc unloadLib(lib: TLibHandle) = dlclose(lib)
   proc symAddr(lib: TLibHandle, name: cstring): pointer = 
     return dlsym(lib, name)
 
@@ -78,14 +78,14 @@ elif defined(windows) or defined(dos):
   proc FreeLibrary(lib: THINSTANCE) {.importc, header: "<windows.h>", stdcall.}
   proc winLoadLibrary(path: cstring): THINSTANCE {.
       importc: "LoadLibraryA", header: "<windows.h>", stdcall.}
-  proc GetProcAddress(lib: THINSTANCE, name: cstring): pointer {.
+  proc getProcAddress(lib: THINSTANCE, name: cstring): pointer {.
       importc: "GetProcAddress", header: "<windows.h>", stdcall.}
 
-  proc LoadLib(path: string): TLibHandle =
+  proc loadLib(path: string): TLibHandle =
     result = cast[TLibHandle](winLoadLibrary(path))
-  proc LoadLib(): TLibHandle =
+  proc loadLib(): TLibHandle =
     result = cast[TLibHandle](winLoadLibrary(nil))
-  proc UnloadLib(lib: TLibHandle) = FreeLibrary(cast[THINSTANCE](lib))
+  proc unloadLib(lib: TLibHandle) = FreeLibrary(cast[THINSTANCE](lib))
 
   proc symAddr(lib: TLibHandle, name: cstring): pointer =
     result = GetProcAddress(cast[THINSTANCE](lib), name)

@@ -47,7 +47,8 @@ proc equalParams*(a, b: PNode): TParamsEquality
   # returns whether the parameter lists of the procs a, b are exactly the same
 proc isOrdinalType*(t: PType): bool
 proc enumHasHoles*(t: PType): bool
-const 
+# XXX it is WRONG to include tyTypeDesc here as that might not have any child!
+const
   abstractPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyDistinct, tyOrdinal,
                    tyConst, tyMutable, tyTypeDesc}
   abstractVar* = {tyVar, tyGenericInst, tyDistinct, tyOrdinal,

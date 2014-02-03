@@ -66,13 +66,15 @@ proc checkReply(smtp: var TSMTP, reply: string) =
   if not line.string.startswith(reply):
     quitExcpt(smtp, "Expected " & reply & " reply, got: " & line.string)
 
+const compiledWithSsl = defined(ssl)
+
 proc connect*(address: string, port = 25, 
               ssl = false, debug = false): TSMTP =
   ## Establishes a connection with a SMTP server.
   ## May fail with EInvalidReply or with a socket error.
   result.sock = socket()
   if ssl:
-    when defined(ssl):
+    when compiledWithSsl:
       let ctx = newContext(verifyMode = CVerifyNone)
       ctx.wrapSocket(result.sock)
     else:
