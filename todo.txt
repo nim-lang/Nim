@@ -9,6 +9,8 @@ version 0.9.4
 - test C source code generation
 - test and fix closures
 - test and fix exception handling
+- implement 'union' and 'bits' pragmas
+
 
 Bugs
 ====
