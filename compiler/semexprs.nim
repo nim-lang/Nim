@@ -730,7 +730,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if tfNoSideEffect notin t.flags: incl(c.p.owner.flags, sfSideEffect)
   elif t != nil and t.kind == tyTypeDesc:
     if n.len == 1: return semObjConstr(c, n, flags)
-    let destType = t.skipTypes({tyTypeDesc, tyGenericInst})
+    discard t.skipTypes({tyTypeDesc, tyGenericInst})
     return semConv(c, n)
   else:
     result = overloadedCallOpr(c, n)
