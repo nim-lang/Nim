@@ -3,7 +3,7 @@ discard """
 5-120-120
 359'''
 """
-import math
+#import math
 
 proc optarg(x:int, y:int = 0):int = x + 3 * y
 proc singlearg(x:int):int = 20*x
