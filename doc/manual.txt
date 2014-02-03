@@ -2457,14 +2457,80 @@ notation. (Thus an operator can have more than two parameters):
   assert `*+`(3, 4, 6) == `*`(a, `+`(b, c))
 
 
+Method call syntax
+------------------
+
+For object oriented programming, the syntax ``obj.method(args)`` can be used 
+instead of ``method(obj, args)``. The parentheses can be omitted if there are no
+remaining arguments: ``obj.len`` (instead of ``len(obj)``).
+
+This `method call syntax`:idx: is not restricted to objects, it can be used
+to supply any type of first argument for procedures:
+
+.. code-block:: nimrod
+  
+  echo("abc".len) # is the same as echo(len("abc"))
+  echo("abc".toUpper())
+  echo({'a', 'b', 'c'}.card)
+  stdout.writeln("Hallo") # the same as writeln(stdout, "Hallo")
+
+Another way to look at the method call syntax is that it provides the missing
+postfix notation.
+
+
+Properties
+----------
+Nimrod has no need for *get-properties*: Ordinary get-procedures that are called
+with the *method call syntax* achieve the same. But setting a value is 
+different; for this a special setter syntax is needed:
+
+.. code-block:: nimrod
+  
+  type
+    TSocket* = object of TObject
+      FHost: int # cannot be accessed from the outside of the module
+                 # the `F` prefix is a convention to avoid clashes since
+                 # the accessors are named `host`
+
+  proc `host=`*(s: var TSocket, value: int) {.inline.} =
+    ## setter of hostAddr
+    s.FHost = value
+  
+  proc host*(s: TSocket): int {.inline.} =
+    ## getter of hostAddr
+    return s.FHost
+
+  var
+    s: TSocket
+  s.host = 34  # same as `host=`(s, 34)
+
+
 Command invocation syntax
 -------------------------
 
-Routines can be invoked without the ``()`` if the call is syntactially
+Routines can be invoked without the ``()`` if the call is syntatically
 a statement. This `command invocation syntax`:idx: also works for
 expressions, but then only a single argument may follow. This restriction
 means ``echo f 1, f 2`` is parsed as ``echo(f(1), f(2))`` and not as
-``echo(f(1, f(2)))``.
+``echo(f(1, f(2)))``. The method call syntax may be used to provide one
+more argument in this case:
+
+.. code-block:: nimrod
+  proc optarg(x:int, y:int = 0):int = x + y
+  proc singlearg(x:int):int = 20*x
+  
+  echo optarg 1, " ", singlearg 2  # prints "1 40"
+  
+  let fail = optarg 1, optarg 8   # Wrong. Too many arguments for a command call
+  let x = optarg(1, optarg 8)  # traditional procedure call with 2 arguments
+  let y = 1.optarg optarg 8    # same thing as above, w/o the parenthesis
+  assert x == y
+
+The command invocation syntax also can't have complex expressions as arguments. 
+For example: (`anonymous procs`_), ``if``, ``case`` or ``try``. The (`do 
+notation`_) is limited, but usable for a single proc (see the example in the 
+corresponding section). Function calls with no arguments still needs () to 
+distinguish between a call and the function itself as a first class value.
 
 
 Closures
@@ -2478,6 +2544,7 @@ to the closure (its environment) and they are accessed by reference by both
 the closure and its enclosing scope (i.e. any modifications made to them are
 visible in both places). The closure environment may be allocated on the heap
 or on the stack if the compiler determines that this would be safe.
+
 
 Anonymous Procs
 ---------------
@@ -2505,6 +2572,9 @@ calls can use the ``do`` keyword:
 .. code-block:: nimrod
   sort(cities) do (x,y: string) -> int:
     cmp(x.len, y.len)
+  # Less parenthesis using the method plus command syntax:
+  cities = cities.map do (x:string) -> string:  
+    "City of " & x
 
 ``do`` is written after the parentheses enclosing the regular proc params. 
 The proc expression represented by the do block is appended to them.
