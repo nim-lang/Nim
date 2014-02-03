@@ -109,7 +109,7 @@ proc patch(c: PCtx, p: TPosition) =
                uint32(diff+wordExcess) shl 16'u32).TInstr
 
 proc getSlotKind(t: PType): TSlotKind =
-  case t.skipTypes(abstractRange).kind
+  case t.skipTypes(abstractRange-{tyTypeDesc}).kind
   of tyBool, tyChar, tyEnum, tyOrdinal, tyInt..tyInt64, tyUInt..tyUInt64:
     slotTempInt
   of tyString, tyCString:
@@ -409,7 +409,7 @@ proc genTry(c: PCtx; n: PNode; dest: var TDest) =
       let endExcept = c.xjmp(it, opcExcept, 0)
       for j in countup(0, blen - 2): 
         assert(it.sons[j].kind == nkType)
-        let typ = it.sons[j].typ.skipTypes(abstractPtrs)
+        let typ = it.sons[j].typ.skipTypes(abstractPtrs-{tyTypeDesc})
         c.gABx(it, opcExcept, 0, c.genType(typ))
       if blen == 1: 
         # general except section:
@@ -479,7 +479,7 @@ proc genNew(c: PCtx; n: PNode) =
   # we use the ref's base type here as the VM conflates 'ref object' 
   # and 'object' since internally we already have a pointer.
   c.gABx(n, opcNew, dest, 
-         c.genType(n.sons[1].typ.skipTypes(abstractVar).sons[0]))
+         c.genType(n.sons[1].typ.skipTypes(abstractVar-{tyTypeDesc}).sons[0]))
   c.genAsgnPatch(n.sons[1], dest)
   c.freeTemp(dest)
 
@@ -487,7 +487,8 @@ proc genNewSeq(c: PCtx; n: PNode) =
   let dest = if needsAsgnPatch(n.sons[1]): c.getTemp(n.sons[1].typ)
              else: c.genx(n.sons[1])
   let tmp = c.genx(n.sons[2])
-  c.gABx(n, opcNewSeq, dest, c.genType(n.sons[1].typ.skipTypes(abstractVar)))
+  c.gABx(n, opcNewSeq, dest, c.genType(n.sons[1].typ.skipTypes(
+                                                  abstractVar-{tyTypeDesc})))
   c.gABx(n, opcNewSeq, tmp, 0)
   c.freeTemp(tmp)
   c.genAsgnPatch(n.sons[1], dest)
@@ -515,7 +516,7 @@ proc genBinaryABC(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
   c.freeTemp(tmp2)
 
 proc genSetType(c: PCtx; n: PNode; dest: TRegister) =
-  let t = skipTypes(n.typ, abstractInst)
+  let t = skipTypes(n.typ, abstractInst-{tyTypeDesc})
   if t.kind == tySet:
     c.gABx(n, opcSetType, dest, c.genType(t))
 
@@ -746,7 +747,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     var tmp = c.genx(n.sons[1])
     var idx = c.getTemp(getSysType(tyInt))
     var typ = n.sons[2].typ
-    if m == mOf: typ = typ.skipTypes(abstractPtrs)
+    if m == mOf: typ = typ.skipTypes(abstractPtrs-{tyTypeDesc})
     c.gABx(n, opcLdImmInt, idx, c.genType(typ))
     c.gABC(n, if m == mOf: opcOf else: opcIs, dest, tmp, idx)
     c.freeTemp(tmp)
@@ -756,7 +757,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
   of mHigh:
     if dest < 0: dest = c.getTemp(n.typ)
     let tmp = c.genx(n.sons[1])
-    if n.sons[1].typ.skipTypes(abstractVar).kind == tyString:
+    if n.sons[1].typ.skipTypes(abstractVar-{tyTypeDesc}).kind == tyString:
       c.gABI(n, opcLenStr, dest, tmp, 1)
     else:
       c.gABI(n, opcLenSeq, dest, tmp, 1)
@@ -891,7 +892,7 @@ const
     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64}
 
 proc requiresCopy(n: PNode): bool =
-  if n.typ.skipTypes(abstractInst).kind in atomicTypes:
+  if n.typ.skipTypes(abstractInst-{tyTypeDesc}).kind in atomicTypes:
     result = false
   elif n.kind in ({nkCurly, nkBracket, nkPar, nkObjConstr}+nkCallKinds):
     result = false
@@ -899,7 +900,7 @@ proc requiresCopy(n: PNode): bool =
     result = true
 
 proc unneededIndirection(n: PNode): bool =
-  n.typ.skipTypes(abstractInst).kind == tyRef
+  n.typ.skipTypes(abstractInst-{tyTypeDesc}).kind == tyRef
 
 proc skipDeref(n: PNode): PNode =
   if n.kind in {nkDerefExpr, nkHiddenDeref} and unneededIndirection(n.sons[0]):
@@ -920,7 +921,7 @@ proc genAddrDeref(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
     c.freeTemp(tmp)
 
 proc whichAsgnOpc(n: PNode): TOpcode =
-  case n.typ.skipTypes(abstractRange).kind
+  case n.typ.skipTypes(abstractRange-{tyTypeDesc}).kind
   of tyBool, tyChar, tyEnum, tyOrdinal, tyInt..tyInt64, tyUInt..tyUInt64:
     opcAsgnInt
   of tyString, tyCString:
@@ -932,7 +933,7 @@ proc whichAsgnOpc(n: PNode): TOpcode =
   else:
     opcAsgnComplex
 
-proc isRef(t: PType): bool = t.skipTypes(abstractRange).kind == tyRef
+proc isRef(t: PType): bool = t.skipTypes(abstractRange-{tyTypeDesc}).kind == tyRef
 
 proc whichAsgnOpc(n: PNode; opc: TOpcode): TOpcode =
   if isRef(n.typ): succ(opc) else: opc
@@ -951,7 +952,8 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
     let dest = c.genx(le.sons[0])
     let idx = c.genx(le.sons[1])
     let tmp = c.genx(ri)
-    if le.sons[0].typ.skipTypes(abstractVarRange).kind in {tyString, tyCString}:
+    if le.sons[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind in {
+        tyString, tyCString}:
       c.gABC(le, opcWrStrIdx, dest, idx, tmp)
     else:
       c.gABC(le, whichAsgnOpc(le, opcWrArr), dest, idx, tmp)
@@ -1062,7 +1064,8 @@ proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   genAccess(c, n.sons[0], dest, opcLdObj, flags)
 
 proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
-  if n.sons[0].typ.skipTypes(abstractVarRange).kind in {tyString, tyCString}:
+  if n.sons[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind in {
+      tyString, tyCString}:
     genAccess(c, n, dest, opcLdStrIdx, {})
   else:
     genAccess(c, n, dest, opcLdArr, flags)
@@ -1207,7 +1210,7 @@ proc genSetConstr(c: PCtx, n: PNode, dest: var TDest) =
 
 proc genObjConstr(c: PCtx, n: PNode, dest: var TDest) =
   if dest < 0: dest = c.getTemp(n.typ)
-  let t = n.typ.skipTypes(abstractRange)
+  let t = n.typ.skipTypes(abstractRange-{tyTypeDesc})
   if t.kind == tyRef:
     c.gABx(n, opcNew, dest, c.genType(t.sons[0]))
   else:

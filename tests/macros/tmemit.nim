@@ -1,5 +1,5 @@
 discard """
-  out: '''HELLO WORLD'''
+  output: '''HELLO WORLD'''
 """
 
 import macros, strutils

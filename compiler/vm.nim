@@ -1047,7 +1047,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       # XXX only supports 'name' for now; we can use regC to encode the
       # type trait operation
       decodeB(nkStrLit)
-      let typ = regs[rb].sym.typ.skipTypes({tyTypeDesc})
+      var typ = regs[rb].typ
+      internalAssert typ != nil
+      while typ.kind == tyTypeDesc and typ.len > 0: typ = typ.sons[0]
       regs[ra].strVal = typ.typeToString(preferExported)
     of opcGlobalOnce:
       let rb = instr.regBx
@@ -1178,7 +1180,7 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
   # doesn't end up in the parameter:
   #InternalAssert tos.slots.len >= L
   # return value:
-  tos.slots[0] = newNodeIT(nkNilLit, n.info, sym.typ.sons[0])
+  tos.slots[0] = newNodeIT(nkEmpty, n.info, sym.typ.sons[0])
   # setup parameters:
   for i in 1 .. < min(tos.slots.len, L):
     tos.slots[i] = setupMacroParam(n.sons[i])
