@@ -126,7 +126,7 @@ The syntax for type conversions is ``destination_type(expression_to_convert)``
 
 .. code-block:: nimrod
   proc getID(x: TPerson): int =
-    return TStudent(x).id
+    TStudent(x).id
 
 The ``EInvalidObjectConversion`` exception is raised if ``x`` is not a
 ``TStudent``.
