@@ -339,4 +339,16 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
                                    n.sons[0].sym.name, o.inSymChoice)
   
   if result != nil and result.kind == skStub: loadStub(result)
-  
+
+when false:
+  proc qualifiedLookUpPreferImmediate*(c: PContext, n: PNode,
+                                       flags = {checkUndeclared}): PSym =
+    var o: TOverloadIter
+    result = initOverloadIter(o, c, n)
+    var a = result
+    while a != nil:
+      if sfImmediate in a.flags: return a
+      a = nextOverloadIter(o, c, n)
+    if result == nil and checkUndeclared in flags: 
+      localError(n.info, errUndeclaredIdentifier, n.considerAcc.s)
+      result = errorSym(c, n)

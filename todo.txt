@@ -22,7 +22,6 @@ Bugs
 - compilation of niminst takes way too long. looks like a regression
 - docgen: sometimes effects are listed twice
 - 'result' is not properly cleaned for NRVO --> use uninit checking instead
-- sneaking with qualifiedLookup() is really broken!
 - blocks can "export" an identifier but the CCG generates {} for them ...
 - osproc execProcesses can deadlock if all processes fail (as experienced
   in c++ mode)
