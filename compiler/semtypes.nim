@@ -885,6 +885,11 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     for i in countup(1, sonsLen(n)-1):
       var elem = semGenericParamInInvokation(c, n.sons[i])
       addToResult(elem)
+  elif s.typ.kind != tyGenericBody:
+    #we likely got code of the form TypeA[TypeB] where TypeA is
+    #not generic.
+    localError(n.info, errNoGenericParamsAllowedForX, s.name.s)
+    return newOrPrevType(tyError, prev, c)
   else:
     internalAssert s.typ.kind == tyGenericBody
 
