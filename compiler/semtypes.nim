@@ -891,7 +891,6 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     localError(n.info, errNoGenericParamsAllowedForX, s.name.s)
     return newOrPrevType(tyError, prev, c)
   else:
-    internalAssert s.typ.kind == tyGenericBody
 
     var m = newCandidate(c, s, n)
     matches(c, n, copyTree(n), m)
