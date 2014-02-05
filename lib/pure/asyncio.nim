@@ -689,5 +689,5 @@ when isMainModule:
   server.listen()
   d.register(server)
   
-  while d.poll(-1): nil
+  while d.poll(-1): discard
     

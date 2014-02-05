@@ -96,7 +96,7 @@ proc parse(x: var TXmlParser, errors: var seq[string]): PXmlNode =
     ## &entity;
     errors.add(errorMsg(x, "unknown entity: " & x.entityName))
     next(x)
-  of xmlEof: nil
+  of xmlEof: discard
 
 proc parseXml*(s: PStream, filename: string, 
                errors: var seq[string]): PXmlNode = 
@@ -110,7 +110,7 @@ proc parseXml*(s: PStream, filename: string,
     of xmlElementOpen, xmlElementStart: 
       result = parse(x, errors)
       break
-    of xmlComment, xmlWhitespace, xmlSpecial, xmlPI: nil # just skip it
+    of xmlComment, xmlWhitespace, xmlSpecial, xmlPI: discard # just skip it
     of xmlError:
       errors.add(errorMsg(x))
     else:
