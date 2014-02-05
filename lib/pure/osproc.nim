@@ -455,7 +455,7 @@ when defined(Windows) and not defined(useNimRtl):
         ee, wwd, si, procInfo)
     else:
       success = winlean.createProcessA(nil,
-        cmdl, nil, nil, 1, NORMAL_PRIORITY_CLASS, e, wd, SI, ProcInfo)
+        cmdl, nil, nil, 1, NORMAL_PRIORITY_CLASS, e, wd, si, procInfo)
     let lastError = osLastError()
 
     if poParentStreams notin options:
@@ -534,7 +534,7 @@ when defined(Windows) and not defined(useNimRtl):
         NORMAL_PRIORITY_CLASS, nil, nil, si, procInfo)
     else:
       var res = winlean.createProcessA(nil, command, nil, nil, 0,
-        NORMAL_PRIORITY_CLASS, nil, nil, SI, ProcInfo)
+        NORMAL_PRIORITY_CLASS, nil, nil, si, procInfo)
     if res == 0:
       osError(osLastError())
     else:

@@ -195,14 +195,14 @@ else:
     importc: "GetCurrentDirectoryA", dynlib: "kernel32", stdcall.}
   proc setCurrentDirectoryA*(lpPathName: cstring): int32 {.
     importc: "SetCurrentDirectoryA", dynlib: "kernel32", stdcall.}
-  proc createDirectoryA*(pathName: cstring, security: Pointer=nil): int32 {.
+  proc createDirectoryA*(pathName: cstring, security: pointer=nil): int32 {.
     importc: "CreateDirectoryA", dynlib: "kernel32", stdcall.}
   proc removeDirectoryA*(lpPathName: cstring): int32 {.
     importc: "RemoveDirectoryA", dynlib: "kernel32", stdcall.}
   proc setEnvironmentVariableA*(lpName, lpValue: cstring): int32 {.
     stdcall, dynlib: "kernel32", importc: "SetEnvironmentVariableA".}
 
-  proc getModuleFileNameA*(handle: THandle, buf: CString, size: int32): int32 {.
+  proc getModuleFileNameA*(handle: THandle, buf: cstring, size: int32): int32 {.
     importc: "GetModuleFileNameA", dynlib: "kernel32", stdcall.}
 
 when useWinUnicode:
@@ -300,7 +300,7 @@ else:
                            dwFileAttributes: int32): WINBOOL {.
       stdcall, dynlib: "kernel32", importc: "SetFileAttributesA".}
 
-  proc copyFileA*(lpExistingFileName, lpNewFileName: CString,
+  proc copyFileA*(lpExistingFileName, lpNewFileName: cstring,
                  bFailIfExists: cint): cint {.
     importc: "CopyFileA", stdcall, dynlib: "kernel32".}
 
