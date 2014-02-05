@@ -238,7 +238,7 @@ is needed:
   
   proc host*(s: TSocket): int {.inline.} =
     ## getter of hostAddr
-    return s.FHost
+    s.FHost
 
   var
     s: TSocket
