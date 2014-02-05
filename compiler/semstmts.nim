@@ -740,7 +740,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       # we fill it out later. For magic generics like 'seq', it won't be filled
       # so we use tyEmpty instead of nil to not crash for strange conversions
       # like: mydata.seq
-      rawAddSon(s.typ, newTypeS(tyEmpty, c))
+      rawAddSon(s.typ, newTypeS(tyNone, c))
       s.ast = a
       inc c.inGenericContext
       var body = semTypeNode(c, a.sons[2], nil)
@@ -748,7 +748,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       if body != nil:
         body.sym = s
         body.size = -1 # could not be computed properly
-      s.typ.sons[sonsLen(s.typ) - 1] = body
+        s.typ.sons[sonsLen(s.typ) - 1] = body
       popOwner()
       closeScope(c)
     elif a.sons[2].kind != nkEmpty: 

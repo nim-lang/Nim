@@ -1,11 +1,11 @@
 discard """
-  output: "(x: string here, a: 1, b: 3)"
+  output: "(x: string here, a: 1)"
 """
 
-proc simple[T](a, b: T) = 
+proc simple[T](a: T) = 
   var
     x = "string here"
   echo locals()
   
-simple(1, 3)
+simple(1)
 

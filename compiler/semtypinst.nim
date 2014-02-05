@@ -358,7 +358,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     if lookup != nil:
       result = lookup
       if tfUnresolved in t.flags: result = result.base
-    elif t.sonsLen > 0:
+    elif t.sons[0].kind != tyNone:
       result = makeTypeDesc(cl.c, replaceTypeVarsT(cl, t.sons[0]))
  
   of tyUserTypeClass:

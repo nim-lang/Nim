@@ -1,3 +1,7 @@
+discard """
+  disabled: true
+"""
+
 # Test wether the bindings at least compile...
 
 import
