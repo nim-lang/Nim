@@ -528,7 +528,7 @@ containers:
   proc newNode*[T](data: T): PBinaryTree[T] =
     # constructor for a node
     new(result)
-    result.dat = data
+    result.data = data
 
   proc add*[T](root: var PBinaryTree[T], n: PBinaryTree[T]) =
     # insert a node into the tree
