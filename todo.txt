@@ -2,7 +2,7 @@ version 0.9.4
 =============
 
 - fix macros\tstringinterp.nim
-- test and fix showoff; add debug example to showoff
+- test and fix showoff
 - test and fix stdlib
 - test and fix misc
 - fix GC issues
