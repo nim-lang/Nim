@@ -95,6 +95,15 @@ proc jsonToBSon*(j: PJsonNode, oid: TOid): TBSon =
     jsonToBSon(result, key, val)
   finish(result)
 
+proc jsonToBSon*(j: PJsonNode): TBSon =
+  ## converts a JSON value into the BSON format. The result must be
+  ## ``destroyed`` explicitely!
+  init(result)
+  assert j.kind == JObject
+  for key, val in items(j.fields):
+    jsonToBSon(result, key, val)
+  finish(result)
+
 proc `[]`*(obj: var TBSon, fieldname: cstring): TBSon =
   ## retrieves the value belonging to `fieldname`. Raises `EInvalidKey` if
   ## the attribute does not exist.
