@@ -1,3 +1,7 @@
+discard """
+  disabled: true
+"""
+
 {. noforward: on .}
 
 proc foo(x: int) =

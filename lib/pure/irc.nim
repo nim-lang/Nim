@@ -476,12 +476,12 @@ when isMainModule:
   var client = irc("amber.tenthbit.net", nick="TestBot1234",
                    joinChans = @["#flood"])
   client.connect()
-  while True:
+  while true:
     var event: TIRCEvent
     if client.poll(event):
       case event.typ
       of EvConnected:
-        nil
+        discard
       of EvDisconnected:
         break
       of EvMsg:

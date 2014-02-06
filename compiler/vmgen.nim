@@ -946,6 +946,14 @@ proc genAsgn(c: PCtx; dest: TDest; ri: PNode; requiresCopy: bool) =
 
 template isGlobal(s: PSym): bool = sfGlobal in s.flags and s.kind != skForVar
 
+proc setSlot(c: PCtx; v: PSym) =
+  # XXX generate type initialization here?
+  if v.position == 0:
+    v.position = c.prc.maxSlots
+    c.prc.slots[v.position] = (inUse: true,
+        kind: if v.kind == skLet: slotFixedLet else: slotFixedVar)
+    inc c.prc.maxSlots
+
 proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
   case le.kind
   of nkBracketExpr:
@@ -973,8 +981,9 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
         gen(c, ri, tmp)
         c.gABx(le, whichAsgnOpc(le, opcWrGlobal), tmp, s.position)
     else:
+      if s.kind == skForVar and c.mode == emRepl: c.setSlot s
       internalAssert s.position > 0 or (s.position == 0 and
-                                        s.kind in {skParam,skResult,skForVar})
+                                        s.kind in {skParam,skResult})
       var dest: TRegister = s.position + ord(s.kind == skParam)
       gen(c, ri, dest)
   else:
@@ -1024,7 +1033,7 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest) =
   if s.isGlobal:
     if sfCompileTime in s.flags or c.mode == emRepl:
       discard
-    else:
+    elif s.position == 0:
       cannotEval(n)
     if s.position == 0:
       if sfImportc in s.flags: c.importcSym(n.info, s)
@@ -1035,8 +1044,9 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest) =
     else:
       c.gABx(n, opcLdGlobal, dest, s.position)
   else:
+    if s.kind == skForVar and c.mode == emRepl: c.setSlot s
     if s.position > 0 or (s.position == 0 and
-                          s.kind in {skParam,skResult,skForVar}):
+                          s.kind in {skParam,skResult}):
       if dest < 0:
         dest = s.position + ord(s.kind == skParam)
       else:
@@ -1045,7 +1055,6 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest) =
     else:
       # see tests/t99bott for an example that triggers it:
       cannotEval(n)
-      #InternalError(n.info, s.name.s & " " & $s.position)
 
 proc genAccess(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
                flags: TGenFlags) =
@@ -1122,14 +1131,6 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
   of tySet:
     result = newNodeIT(nkCurly, info, t)
   else: internalError("getNullValue: " & $t.kind)
-
-proc setSlot(c: PCtx; v: PSym) =
-  # XXX generate type initialization here?
-  if v.position == 0:
-    v.position = c.prc.maxSlots
-    c.prc.slots[v.position] = (inUse: true,
-        kind: if v.kind == skLet: slotFixedLet else: slotFixedVar)
-    inc c.prc.maxSlots
 
 proc genVarSection(c: PCtx; n: PNode) =
   for a in n:

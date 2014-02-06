@@ -681,12 +681,12 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
   of tySequence, tySet, tyArray, tyOpenArray,
      tyVar, tyPtr, tyRef, tyProc:
     # XXX: this is a bit strange, but proc(s: seq)
-    # produces tySequence(tyGenericParam, null).
+    # produces tySequence(tyGenericParam, tyNone).
     # This also seems to be true when creating aliases
     # like: type myseq = distinct seq.
     # Maybe there is another better place to associate
     # the seq type class with the seq identifier.
-    if paramType.kind == tySequence and paramType.lastSon == nil:
+    if paramType.kind == tySequence and paramType.lastSon.kind == tyNone:
       let typ = c.newTypeWithSons(tyBuiltInTypeClass,
                                   @[newTypeS(paramType.kind, c)])
       result = addImplicitGeneric(typ)
@@ -1137,15 +1137,26 @@ proc processMagicType(c: PContext, m: PSym) =
   of mNil: setMagicType(m, tyNil, ptrSize)
   of mExpr: setMagicType(m, tyExpr, 0)
   of mStmt: setMagicType(m, tyStmt, 0)
-  of mTypeDesc: setMagicType(m, tyTypeDesc, 0)
+  of mTypeDesc: 
+    setMagicType(m, tyTypeDesc, 0)
+    rawAddSon(m.typ, newTypeS(tyNone, c))
   of mVoidType: setMagicType(m, tyEmpty, 0)
-  of mArray: setMagicType(m, tyArray, 0)
-  of mOpenArray: setMagicType(m, tyOpenArray, 0)
-  of mVarargs: setMagicType(m, tyVarargs, 0)
-  of mRange: setMagicType(m, tyRange, 0)
-  of mSet: setMagicType(m, tySet, 0) 
-  of mSeq: setMagicType(m, tySequence, 0)
-  of mOrdinal: setMagicType(m, tyOrdinal, 0)
+  of mArray:
+    setMagicType(m, tyArray, 0)
+  of mOpenArray:
+    setMagicType(m, tyOpenArray, 0)
+  of mVarargs:
+    setMagicType(m, tyVarargs, 0)
+  of mRange:
+    setMagicType(m, tyRange, 0)
+    rawAddSon(m.typ, newTypeS(tyNone, c))
+  of mSet:
+    setMagicType(m, tySet, 0) 
+  of mSeq: 
+    setMagicType(m, tySequence, 0)
+  of mOrdinal:
+    setMagicType(m, tyOrdinal, 0)
+    rawAddSon(m.typ, newTypeS(tyNone, c))
   of mPNimrodNode: discard
   else: localError(m.info, errTypeExpected)
   
@@ -1169,8 +1180,8 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
       typ = semTypeNode(c, constraint, nil)
       if typ.kind != tyStatic or typ.len == 0:
         if typ.kind == tyTypeDesc:
-          if typ.len == 0:
-            typ = newTypeS(tyTypeDesc, c)
+          if typ.sons[0].kind == tyNone:
+            typ = newTypeWithSons(c, tyTypeDesc, @[newTypeS(tyNone, c)])
         else:
           typ = semGenericConstraints(c, typ)
     

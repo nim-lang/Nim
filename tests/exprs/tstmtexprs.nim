@@ -1,5 +1,6 @@
 discard """
-  output: '''(bar: bar)
+  output: '''24
+(bar: bar)
 1244
 6
 abcdefghijklmnopqrstuvwxyz
@@ -7,6 +8,10 @@ abcdefghijklmnopqrstuvwxyz
 """
 
 import strutils
+
+const fac4 = (var x = 1; for i in 1..4: x *= i; x)
+
+echo fac4
 
 when true:
   proc test(foo: proc (x, y: int): bool) =

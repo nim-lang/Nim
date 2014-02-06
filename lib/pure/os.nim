@@ -1078,9 +1078,9 @@ when defined(windows):
         while true:
           var eend = strEnd(e)
           add(environment, $e)
-          e = cast[CString](cast[TAddress](eend)+1)
+          e = cast[cstring](cast[TAddress](eend)+1)
           if eend[1] == '\0': break
-        discard FreeEnvironmentStringsA(env)
+        discard freeEnvironmentStringsA(env)
       envComputed = true
 
 else:
