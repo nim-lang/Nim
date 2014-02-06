@@ -894,9 +894,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         result = isNone
     else:
       internalAssert prev.sonsLen == 1
-      let toMatch = if tfUnresolved in f.flags: a
-                    else: a.sons[0]
-      result = typeRel(c, prev.sons[0], toMatch)
+      result = typeRel(c, prev.sons[0], a)
   
   of tyStmt:
     result = isGeneric
