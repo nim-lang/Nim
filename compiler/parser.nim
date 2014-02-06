@@ -35,6 +35,7 @@ type
     lex*: TLexer              # the lexer that is used for parsing
     tok*: TToken              # the current token
     inPragma: int
+    inSemiStmtList: int
 
 proc parseAll*(p: var TParser): PNode
 proc openParser*(p: var TParser, filename: string, inputstream: PLLStream)
@@ -455,11 +456,13 @@ proc complexOrSimpleStmt(p: var TParser): PNode
 proc simpleExpr(p: var TParser, mode = pmNormal): PNode
 
 proc semiStmtList(p: var TParser, result: PNode) =
+  inc p.inSemiStmtList
   result.add(complexOrSimpleStmt(p))
   while p.tok.tokType == tkSemiColon:
     getTok(p)
     optInd(p, result)
     result.add(complexOrSimpleStmt(p))
+  dec p.inSemiStmtList
   result.kind = nkStmtListExpr
 
 proc parsePar(p: var TParser): PNode =
@@ -1881,14 +1884,18 @@ proc parseStmt(p: var TParser): PNode =
       parMessage(p, errComplexStmtRequiresInd)
       result = ast.emptyNode
     else:
-      result = newNodeP(nkStmtList, p)
-      while true:
-        if p.tok.indent >= 0: parMessage(p, errInvalidIndentation)     
-        let a = simpleStmt(p)
-        if a.kind == nkEmpty: parMessage(p, errExprExpected, p.tok)
-        result.add(a)
-        if p.tok.tokType != tkSemiColon: break
-        getTok(p)
+      if p.inSemiStmtList > 0:
+        result = simpleStmt(p)
+        if result.kind == nkEmpty: parMessage(p, errExprExpected, p.tok)
+      else:
+        result = newNodeP(nkStmtList, p)
+        while true:
+          if p.tok.indent >= 0: parMessage(p, errInvalidIndentation)     
+          let a = simpleStmt(p)
+          if a.kind == nkEmpty: parMessage(p, errExprExpected, p.tok)
+          result.add(a)
+          if p.tok.tokType != tkSemiColon: break
+          getTok(p)
   
 proc parseAll(p: var TParser): PNode = 
   result = newNodeP(nkStmtList, p)

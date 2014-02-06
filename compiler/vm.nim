@@ -14,7 +14,7 @@ import ast except getstr
 
 import
   strutils, astalgo, msgs, vmdef, vmgen, nimsets, types, passes, unsigned,
-  parser, vmdeps, idents, trees, renderer, options
+  parser, vmdeps, idents, trees, renderer, options, transf
 
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
@@ -1078,6 +1078,7 @@ proc execute(c: PCtx, start: int): PNode =
   result = rawExecute(c, start, tos)
 
 proc evalStmt*(c: PCtx, n: PNode) =
+  let n = transformExpr(c.module, n)
   let start = genStmt(c, n)
   # execute new instructions; this redundant opcEof check saves us lots
   # of allocations in 'execute':
@@ -1085,6 +1086,7 @@ proc evalStmt*(c: PCtx, n: PNode) =
     discard execute(c, start)
 
 proc evalExpr*(c: PCtx, n: PNode): PNode =
+  let n = transformExpr(c.module, n)
   let start = genExpr(c, n)
   assert c.code[start].opcode != opcEof
   result = execute(c, start)
@@ -1127,6 +1129,7 @@ proc myProcess(c: PPassContext, n: PNode): PNode =
 const evalPass* = makePass(myOpen, nil, myProcess, myProcess)
 
 proc evalConstExprAux(module, prc: PSym, n: PNode, mode: TEvalMode): PNode =
+  let n = transformExpr(module, n)
   setupGlobalCtx(module)
   var c = globalCtx
   c.mode = mode

@@ -1033,7 +1033,7 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest) =
   if s.isGlobal:
     if sfCompileTime in s.flags or c.mode == emRepl:
       discard
-    else:
+    elif s.position == 0:
       cannotEval(n)
     if s.position == 0:
       if sfImportc in s.flags: c.importcSym(n.info, s)
