@@ -5,7 +5,7 @@ version 0.9.4
 - fix macros\tstringinterp.nim
 - test and fix showoff
 - test C source code generation
-- test and fix closures
+- fix closures
 - test and fix exception handling
 - implement 'union' and 'bits' pragmas
 

@@ -1049,7 +1049,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     app(tmp2.r, field.loc.r)
     tmp2.k = locTemp
     tmp2.t = field.loc.t
-    tmp2.s = OnHeap
+    tmp2.s = if isRef: OnHeap else: OnStack
     tmp2.heapRoot = tmp.r
     expr(p, it.sons[1], tmp2)
   if d.k == locNone:
