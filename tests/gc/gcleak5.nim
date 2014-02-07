@@ -14,7 +14,7 @@ proc main =
     
     if i mod 100 == 0:
       let om = getOccupiedMem()
-      echo "memory: ", om
+      #echo "memory: ", om
       if om > 100_000: quit "leak"
      
     inc(i)

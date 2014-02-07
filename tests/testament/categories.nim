@@ -129,7 +129,7 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   test "cycleleak"
   test "closureleak"
   test "refarrayleak"
-  rest "stackrefleak"
+  test "stackrefleak"
   
 
 # ------------------------- threading tests -----------------------------------
