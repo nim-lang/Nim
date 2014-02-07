@@ -528,7 +528,7 @@ containers:
   proc newNode*[T](data: T): PBinaryTree[T] =
     # constructor for a node
     new(result)
-    result.dat = data
+    result.data = data
 
   proc add*[T](root: var PBinaryTree[T], n: PBinaryTree[T]) =
     # insert a node into the tree
@@ -569,7 +569,7 @@ containers:
       
   var
     root: PBinaryTree[string] # instantiate a PBinaryTree with ``string``
-  add(root, newNode("hallo")) # instantiates ``newNode`` and ``add``
+  add(root, newNode("hello")) # instantiates ``newNode`` and ``add``
   add(root, "world")          # instantiates the second ``add`` proc
   for str in preorder(root):
     stdout.writeln(str)
