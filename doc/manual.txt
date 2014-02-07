@@ -2231,6 +2231,8 @@ Instead of:
 Using statement
 ---------------
 
+**Warning**: The ``using`` statement is highly experimental!
+
 The `using statement`:idx: provides syntactic convenience for procs that
 heavily use a single contextual parameter. When applied to a variable or a
 constant, it will instruct Nimrod to automatically consider the used symbol as
