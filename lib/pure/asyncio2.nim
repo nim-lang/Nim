@@ -23,9 +23,12 @@ import sockets2, net
 # -- Futures
 
 type
-  PFuture*[T] = ref object
-    value: T
+  PFutureVoid* = ref object of PObject
+    cbVoid: proc () {.closure.}
     finished: bool
+
+  PFuture*[T] = ref object of PFutureVoid
+    value: T
     error: ref EBase
     cb: proc (future: PFuture[T]) {.closure.}
 
@@ -42,6 +45,8 @@ proc complete*[T](future: PFuture[T], val: T) =
   future.finished = true
   if future.cb != nil:
     future.cb(future)
+  if future.cbVoid != nil:
+    future.cbVoid()
 
 proc fail*[T](future: PFuture[T], error: ref EBase) =
   ## Completes ``future`` with ``error``.
@@ -59,6 +64,17 @@ proc `callback=`*[T](future: PFuture[T],
   future.cb = cb
   if future.finished:
     future.cb(future)
+
+proc `callbackVoid=`*(future: PFutureVoid, cb: proc () {.closure.}) =
+  ## Sets the **void** callback proc to be called when the future completes.
+  ##
+  ## If future has already completed then ``cb`` will be called immediately.
+  ##
+  ## **Note**: This is used for the ``await`` functionality, you most likely
+  ## want to use ``callback``.
+  future.cbVoid = cb
+  if future.finished:
+    future.cbVoid()
 
 proc read*[T](future: PFuture[T]): T =
   ## Retrieves the value of ``future``. Future must be finished otherwise
