@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -215,8 +215,7 @@ proc semGenericStmt(c: PContext, n: PNode,
       if (a.kind != nkIdentDefs) and (a.kind != nkVarTuple): illFormedAst(a)
       checkMinSonsLen(a, 3)
       var L = sonsLen(a)
-      a.sons[L-2] = semGenericStmt(c, a.sons[L-2], flags+{withinTypeDesc}, 
-                                   ctx)
+      a.sons[L-2] = semGenericStmt(c, a.sons[L-2], flags+{withinTypeDesc}, ctx)
       a.sons[L-1] = semGenericStmt(c, a.sons[L-1], flags, ctx)
       for j in countup(0, L-3):
         addPrelimDecl(c, newSymS(skUnknown, getIdentNode(a.sons[j]), c))
@@ -226,8 +225,7 @@ proc semGenericStmt(c: PContext, n: PNode,
       if (a.kind != nkIdentDefs): illFormedAst(a)
       checkMinSonsLen(a, 3)
       var L = sonsLen(a)
-      a.sons[L-2] = semGenericStmt(c, a.sons[L-2], flags+{withinTypeDesc}, 
-                                   ctx) 
+      a.sons[L-2] = semGenericStmt(c, a.sons[L-2], flags+{withinTypeDesc}, ctx) 
       # do not perform symbol lookup for default expressions 
       for j in countup(0, L-3): 
         addPrelimDecl(c, newSymS(skUnknown, getIdentNode(a.sons[j]), c))
@@ -281,8 +279,7 @@ proc semGenericStmt(c: PContext, n: PNode,
       if (a.kind != nkIdentDefs): illFormedAst(a)
       checkMinSonsLen(a, 3)
       var L = sonsLen(a)
-      a.sons[L-2] = semGenericStmt(c, a.sons[L-2], flags+{withinTypeDesc}, 
-                                   ctx)
+      a.sons[L-2] = semGenericStmt(c, a.sons[L-2], flags+{withinTypeDesc}, ctx)
       a.sons[L-1] = semGenericStmt(c, a.sons[L-1], flags, ctx)
       for j in countup(0, L-3): 
         addPrelimDecl(c, newSymS(skUnknown, getIdentNode(a.sons[j]), c))
