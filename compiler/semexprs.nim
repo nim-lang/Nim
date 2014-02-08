@@ -1819,6 +1819,10 @@ proc semExport(c: PContext, n: PNode): PNode =
   c.module.ast.add x
   result = n
 
+proc setGenericParams(c: PContext, n: PNode) =
+  for i in 1 .. <n.len:
+    n[i].typ = semTypeNode(c, n[i], nil)
+
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode = 
   result = n
   if gCmd == cmdIdeTools: suggestExpr(c, n)
@@ -1924,10 +1928,12 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       else:
         #liMessage(n.info, warnUser, renderTree(n));
         result = semIndirectOp(c, n, flags)
-    elif isSymChoice(n.sons[0]) or n[0].kind == nkBracketExpr and 
-        isSymChoice(n[0][0]):
+    elif n[0].kind == nkBracketExpr and isSymChoice(n[0][0]):
+      # indirectOp can deal with explicit instantiations; the fixes
+      # the 'newSeq[T](x)' bug
+      setGenericParams(c, n.sons[0])
       result = semDirectOp(c, n, flags)
-    elif nfDelegate in n.flags:
+    elif isSymChoice(n.sons[0]) or nfDelegate in n.flags:
       result = semDirectOp(c, n, flags)
     else:
       result = semIndirectOp(c, n, flags)

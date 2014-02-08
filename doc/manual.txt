@@ -2931,7 +2931,7 @@ parameters of an outer factory proc:
         yield x
         inc x
 
-  let foo = mycount 1, 4
+  let foo = mycount(1, 4)
 
   for f in foo():
     echo f
