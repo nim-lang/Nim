@@ -599,7 +599,7 @@ type
     j*: cint
     fsync*: cint
     mode*: cstring
-    cmd*: TBSon
+    cmd*: TBson
   
   TMongo*{.pure, final.} = object ## mongo
     primary*: ptr THostPort              ## Primary connection info. 
