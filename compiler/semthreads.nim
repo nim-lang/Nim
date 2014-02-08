@@ -358,7 +358,7 @@ proc analyse(c: PProcCtx, n: PNode): TThreadOwner =
   of nkConstSection: result = analyseConstSection(c, n)
   of nkTypeSection, nkCommentStmt: result = toVoid
   of nkIfStmt, nkWhileStmt, nkTryStmt, nkCaseStmt, nkStmtList, nkBlockStmt, 
-     nkElifBranch, nkElse, nkExceptBranch, nkOfBranch:
+     nkElifBranch, nkElse, nkExceptBranch, nkOfBranch, nkFinally:
     for i in 0 .. <n.len: discard analyse(c, n[i])
     result = toVoid
   of nkBreakStmt, nkContinueStmt: result = toVoid
