@@ -91,6 +91,7 @@ proc evalMacroCall*(c: PEvalContext, n, nOrig: PNode, sym: PSym): PNode
 proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode
 
 proc raiseCannotEval(c: PEvalContext, info: TLineInfo): PNode =
+  if defined(debug) and gVerbosity >= 3: writeStackTrace()
   result = newNodeI(nkExceptBranch, info)
   # creating a nkExceptBranch without sons 
   # means that it could not be evaluated
@@ -263,8 +264,8 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
     result = newNodeIT(nkUIntLit, info, t)
   of tyFloat..tyFloat128: 
     result = newNodeIt(nkFloatLit, info, t)
-  of tyVar, tyPointer, tyPtr, tyRef, tyCString, tySequence, tyString, tyExpr, 
-     tyStmt, tyTypeDesc, tyProc:
+  of tyVar, tyPointer, tyPtr, tyRef, tyCString, tySequence, tyString, tyExpr,
+     tyStmt, tyTypeDesc, tyStatic, tyProc:
     result = newNodeIT(nkNilLit, info, t)
   of tyObject: 
     result = newNodeIT(nkPar, info, t)
@@ -358,7 +359,7 @@ proc evalVar(c: PEvalContext, n: PNode): PNode =
 
 proc aliasNeeded(n: PNode, flags: TEvalFlags): bool = 
   result = efLValue in flags or n.typ == nil or 
-    n.typ.kind in {tyExpr, tyStmt, tyTypeDesc}
+    n.typ.kind in {tyExpr, tyStatic, tyStmt, tyTypeDesc}
 
 proc evalVariable(c: PStackFrame, sym: PSym, flags: TEvalFlags): PNode =
   # We need to return a node to the actual value,
@@ -550,9 +551,7 @@ proc evalSym(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   of skProc, skConverter, skMacro, skType:
     result = n
     #result = s.getBody
-  of skForVar:
-    result = evalGlobalVar(c, s, flags)
-  of skVar, skLet, skTemp, skResult:
+  of skVar, skLet, skForVar, skTemp, skResult:
     if sfGlobal notin s.flags:
       result = evalVariable(c.tos, s, flags)
     else:
@@ -907,17 +906,15 @@ proc evalParseStmt(c: PEvalContext, n: PNode): PNode =
   result = parseString(code.getStrValue, code.info.toFilename,
                        code.info.line.int)
   #result.typ = newType(tyStmt, c.module)
- 
-proc evalTypeTrait*(trait, operand: PNode, context: PSym): PNode =
-  InternalAssert operand.kind == nkSym
 
-  let typ = operand.sym.typ.skipTypes({tyTypeDesc})
+proc evalTypeTrait*(trait, operand: PNode, context: PSym): PNode =
+  let typ = operand.typ.skipTypes({tyTypeDesc})
   case trait.sym.name.s.normalize
   of "name":
     result = newStrNode(nkStrLit, typ.typeToString(preferName))
     result.typ = newType(tyString, context)
     result.info = trait.info
-  of "arity":    
+  of "arity":
     result = newIntNode(nkIntLit, typ.n.len-1)
     result.typ = newType(tyInt, context)
     result.info = trait.info
@@ -1331,7 +1328,7 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   if gNestedEvals <= 0: stackTrace(c, n.info, errTooManyIterations)
   case n.kind
   of nkSym: result = evalSym(c, n, flags)
-  of nkType..nkNilLit:
+  of nkType..nkNilLit, nkTypeOfExpr:
     # nkStrLit is VERY common in the traces, so we should avoid
     # the 'copyNode' here.
     result = n #.copyNode

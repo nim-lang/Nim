@@ -10,6 +10,9 @@
 ## Nimrod support for C/C++'s `wide strings`:idx:. This is part of the system
 ## module! Do not import it directly!
 
+when not defined(NimString):
+  {.error: "You must not import this module explicitly".}
+
 type
   TUtf16Char* = distinct int16
   WideCString* = ref array[0.. 1_000_000, TUtf16Char]
@@ -101,15 +104,16 @@ proc newWideCString*(s: cstring): WideCString =
   if s.isNil: return nil
 
   when not defined(c_strlen):
-    proc c_strlen(a: CString): int {.nodecl, noSideEffect, importc: "strlen".}
+    proc c_strlen(a: cstring): int {.
+      header: "<string.h>", noSideEffect, importc: "strlen".}
 
-  let L = cstrlen(s)
+  let L = c_strlen(s)
   result = newWideCString(s, L)
 
 proc newWideCString*(s: string): WideCString =
   result = newWideCString(s, s.len)
 
-proc `$`*(w: wideCString, estimate: int): string =
+proc `$`*(w: WideCString, estimate: int): string =
   result = newStringOfCap(estimate + estimate shr 2)
 
   var i = 0

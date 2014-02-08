@@ -215,7 +215,7 @@ Backend issues
 - Init procs must not be "forgotten" to be called.
 - Files must not be "forgotten" to be linked.
 - Anything that is contained in ``nim__dat.c`` is shared between modules
-  implicitely.
+  implicitly.
 - Method dispatchers are global.
 - DLL loading via ``dlsym`` is global.
 - Emulated thread vars are global.

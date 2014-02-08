@@ -12,7 +12,7 @@
 proc hlo(c: PContext, n: PNode): PNode
 
 proc evalPattern(c: PContext, n, orig: PNode): PNode =
-  InternalAssert n.kind == nkCall and n.sons[0].kind == nkSym
+  internalAssert n.kind == nkCall and n.sons[0].kind == nkSym
   # we need to ensure that the resulting AST is semchecked. However, it's
   # aweful to semcheck before macro invocation, so we don't and treat
   # templates and macros as immediate in this context.
@@ -28,7 +28,7 @@ proc evalPattern(c: PContext, n, orig: PNode): PNode =
   else:
     result = semDirectOp(c, n, {})
   if optHints in gOptions and hintPattern in gNotes:
-    Message(orig.info, hintPattern, rule & " --> '" & 
+    message(orig.info, hintPattern, rule & " --> '" & 
       renderTree(result, {renderNoComments}) & "'")
 
 proc applyPatterns(c: PContext, n: PNode): PNode =
@@ -45,7 +45,7 @@ proc applyPatterns(c: PContext, n: PNode): PNode =
         # better be safe than sorry, so check evalTemplateCounter too:
         inc(evalTemplateCounter)
         if evalTemplateCounter > 100:
-          GlobalError(n.info, errTemplateInstantiationTooNested)
+          globalError(n.info, errTemplateInstantiationTooNested)
         # deactivate this pattern:
         c.patterns[i] = nil
         if x.kind == nkStmtList:
@@ -81,7 +81,7 @@ proc hlo(c: PContext, n: PNode): PNode =
     else:
       # perform type checking, so that the replacement still fits:
       if isEmptyType(n.typ) and isEmptyType(result.typ):
-        nil
+        discard
       else:
         result = fitNode(c, n.typ, result)
       # optimization has been applied so check again:

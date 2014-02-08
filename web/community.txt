@@ -9,6 +9,8 @@ Bug reports: http://github.com/Araq/Nimrod/issues.
 For quickest feedback, join our IRC channel: irc://irc.freenode.net/nimrod
 (logs at `<http://build.nimrod-code.org/irclogs/>`_).
 
+Check out our Twitter account for latest news and announcements: `@nimrodlang <http://twitter.com/nimrodlang>`_.
+
 How to help
 ===========
 

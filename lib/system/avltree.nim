@@ -9,30 +9,30 @@
 
 # not really an AVL tree anymore, but still balanced ...
 
-template IsBottom(n: PAvlNode): bool = n == bottom
+template isBottom(n: PAvlNode): bool = n == bottom
 
 proc lowGauge(n: PAvlNode): int =
   var it = n
-  while not IsBottom(it):
+  while not isBottom(it):
     result = it.key
     it = it.link[0]
   
 proc highGauge(n: PAvlNode): int =
   result = -1
   var it = n
-  while not IsBottom(it):
+  while not isBottom(it):
     result = it.upperBound
     it = it.link[1]
 
 proc find(root: PAvlNode, key: int): PAvlNode = 
   var it = root
-  while not IsBottom(it):
+  while not isBottom(it):
     if it.key == key: return it
     it = it.link[ord(it.key <% key)]
 
 proc inRange(root: PAvlNode, key: int): PAvlNode =
   var it = root
-  while not IsBottom(it):
+  while not isBottom(it):
     if it.key <=% key and key <% it.upperBound: return it
     it = it.link[ord(it.key <% key)]
 

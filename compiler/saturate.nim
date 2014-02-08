@@ -9,7 +9,7 @@
 
 ## Saturated arithmetic routines. XXX Make part of the stdlib?
 
-proc `|+|`*(a, b: biggestInt): biggestInt =
+proc `|+|`*(a, b: BiggestInt): BiggestInt =
   ## saturated addition.
   result = a +% b
   if (result xor a) >= 0'i64 or (result xor b) >= 0'i64:
@@ -19,7 +19,7 @@ proc `|+|`*(a, b: biggestInt): biggestInt =
   else:
     result = high(result)
 
-proc `|-|`*(a, b: biggestInt): biggestInt =
+proc `|-|`*(a, b: BiggestInt): BiggestInt =
   result = a -% b
   if (result xor a) >= 0'i64 or (result xor not b) >= 0'i64:
     return result
@@ -28,14 +28,14 @@ proc `|-|`*(a, b: biggestInt): biggestInt =
   else:
     result = high(result)
 
-proc `|abs|`*(a: biggestInt): biggestInt =
+proc `|abs|`*(a: BiggestInt): BiggestInt =
   if a != low(a):
     if a >= 0: result = a
     else: result = -a
   else:
     result = low(a)
 
-proc `|div|`*(a, b: biggestInt): biggestInt =
+proc `|div|`*(a, b: BiggestInt): BiggestInt =
   # (0..5) div (0..4) == (0..5) div (1..4) == (0 div 4) .. (5 div 1)
   if b == 0'i64:
     # make the same as ``div 1``:
@@ -45,13 +45,13 @@ proc `|div|`*(a, b: biggestInt): biggestInt =
   else:
     result = a div b
 
-proc `|mod|`*(a, b: biggestInt): biggestInt =
+proc `|mod|`*(a, b: BiggestInt): BiggestInt =
   if b == 0'i64:
     result = a
   else:
     result = a mod b
 
-proc `|*|`*(a, b: biggestInt): biggestInt =
+proc `|*|`*(a, b: BiggestInt): BiggestInt =
   var
     resAsFloat, floatProd: float64
   result = a *% b

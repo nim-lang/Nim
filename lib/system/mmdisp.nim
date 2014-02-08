@@ -18,7 +18,8 @@ const
   logGC = false
   traceGC = false # extensive debugging
   alwaysCycleGC = false
-  alwaysGC = false # collect after every memory allocation (for debugging)
+  alwaysGC = defined(fulldebug) # collect after every memory
+                                # allocation (for debugging)
   leakDetector = false
   overwriteFree = false
   trackAllocationSource = leakDetector
@@ -28,10 +29,11 @@ const
   reallyOsDealloc = true
   coalescRight = true
   coalescLeft = true
+  logAlloc = false
 
 type
   PPointer = ptr pointer
-  TByteArray = array[0..1000_0000, byte]
+  TByteArray = array[0..1000_0000, Byte]
   PByte = ptr TByteArray
   PString = ptr string
 
@@ -112,10 +114,10 @@ when defined(boehmgc):
     proc alloc0(size: int): pointer =
       result = alloc(size)
       zeroMem(result, size)
-    proc realloc(p: Pointer, newsize: int): pointer =
+    proc realloc(p: pointer, newsize: int): pointer =
       result = boehmRealloc(p, newsize)
       if result == nil: raiseOutOfMem()
-    proc dealloc(p: Pointer) = boehmDealloc(p)
+    proc dealloc(p: pointer) = boehmDealloc(p)
     
     proc allocShared(size: int): pointer =
       result = boehmAlloc(size)
@@ -123,26 +125,26 @@ when defined(boehmgc):
     proc allocShared0(size: int): pointer =
       result = alloc(size)
       zeroMem(result, size)
-    proc reallocShared(p: Pointer, newsize: int): pointer =
+    proc reallocShared(p: pointer, newsize: int): pointer =
       result = boehmRealloc(p, newsize)
       if result == nil: raiseOutOfMem()
-    proc deallocShared(p: Pointer) = boehmDealloc(p)
+    proc deallocShared(p: pointer) = boehmDealloc(p)
 
     #boehmGCincremental()
 
     proc GC_disable() = boehmGC_disable()
     proc GC_enable() = boehmGC_enable()
     proc GC_fullCollect() = boehmGCfullCollect()
-    proc GC_setStrategy(strategy: TGC_Strategy) = nil
-    proc GC_enableMarkAndSweep() = nil
-    proc GC_disableMarkAndSweep() = nil
+    proc GC_setStrategy(strategy: TGC_Strategy) = discard
+    proc GC_enableMarkAndSweep() = discard
+    proc GC_disableMarkAndSweep() = discard
     proc GC_getStatistics(): string = return ""
     
     proc getOccupiedMem(): int = return boehmGetHeapSize()-boehmGetFreeBytes()
     proc getFreeMem(): int = return boehmGetFreeBytes()
     proc getTotalMem(): int = return boehmGetHeapSize()
 
-    proc setStackBottom(theStackBottom: pointer) = nil
+    proc setStackBottom(theStackBottom: pointer) = discard
 
   proc initGC() = 
     when defined(macosx): boehmGCinit()
@@ -158,8 +160,8 @@ when defined(boehmgc):
   proc growObj(old: pointer, newsize: int): pointer =
     result = realloc(old, newsize)
 
-  proc nimGCref(p: pointer) {.compilerproc, inline.} = nil
-  proc nimGCunref(p: pointer) {.compilerproc, inline.} = nil
+  proc nimGCref(p: pointer) {.compilerproc, inline.} = discard
+  proc nimGCunref(p: pointer) {.compilerproc, inline.} = discard
   
   proc unsureAsgnRef(dest: ppointer, src: pointer) {.compilerproc, inline.} =
     dest[] = src
@@ -171,15 +173,15 @@ when defined(boehmgc):
   type
     TMemRegion = object {.final, pure.}
   
-  proc Alloc(r: var TMemRegion, size: int): pointer =
+  proc alloc(r: var TMemRegion, size: int): pointer =
     result = boehmAlloc(size)
     if result == nil: raiseOutOfMem()
-  proc Alloc0(r: var TMemRegion, size: int): pointer =
+  proc alloc0(r: var TMemRegion, size: int): pointer =
     result = alloc(size)
     zeroMem(result, size)
-  proc Dealloc(r: var TMemRegion, p: Pointer) = boehmDealloc(p)  
-  proc deallocOsPages(r: var TMemRegion) {.inline.} = nil
-  proc deallocOsPages() {.inline.} = nil
+  proc dealloc(r: var TMemRegion, p: Pointer) = boehmDealloc(p)  
+  proc deallocOsPages(r: var TMemRegion) {.inline.} = discard
+  proc deallocOsPages() {.inline.} = discard
 
   include "system/cellsets"
 elif defined(nogc) and defined(useMalloc):
@@ -191,10 +193,10 @@ elif defined(nogc) and defined(useMalloc):
     proc alloc0(size: int): pointer =
       result = alloc(size)
       zeroMem(result, size)
-    proc realloc(p: Pointer, newsize: int): pointer =
+    proc realloc(p: pointer, newsize: int): pointer =
       result = crealloc(p, newsize)
       if result == nil: raiseOutOfMem()
-    proc dealloc(p: Pointer) = cfree(p)
+    proc dealloc(p: pointer) = cfree(p)
     
     proc allocShared(size: int): pointer =
       result = cmalloc(size)
@@ -202,26 +204,26 @@ elif defined(nogc) and defined(useMalloc):
     proc allocShared0(size: int): pointer =
       result = alloc(size)
       zeroMem(result, size)
-    proc reallocShared(p: Pointer, newsize: int): pointer =
+    proc reallocShared(p: pointer, newsize: int): pointer =
       result = crealloc(p, newsize)
       if result == nil: raiseOutOfMem()
-    proc deallocShared(p: Pointer) = cfree(p)
+    proc deallocShared(p: pointer) = cfree(p)
 
-    proc GC_disable() = nil
-    proc GC_enable() = nil
-    proc GC_fullCollect() = nil
-    proc GC_setStrategy(strategy: TGC_Strategy) = nil
-    proc GC_enableMarkAndSweep() = nil
-    proc GC_disableMarkAndSweep() = nil
+    proc GC_disable() = discard
+    proc GC_enable() = discard
+    proc GC_fullCollect() = discard
+    proc GC_setStrategy(strategy: TGC_Strategy) = discard
+    proc GC_enableMarkAndSweep() = discard
+    proc GC_disableMarkAndSweep() = discard
     proc GC_getStatistics(): string = return ""
     
-    proc getOccupiedMem(): int = nil
-    proc getFreeMem(): int = nil
-    proc getTotalMem(): int = nil
+    proc getOccupiedMem(): int = discard
+    proc getFreeMem(): int = discard
+    proc getTotalMem(): int = discard
     
-    proc setStackBottom(theStackBottom: pointer) = nil
+    proc setStackBottom(theStackBottom: pointer) = discard
 
-  proc initGC() = nil
+  proc initGC() = discard
 
   proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
     result = alloc(size)
@@ -233,8 +235,8 @@ elif defined(nogc) and defined(useMalloc):
   proc growObj(old: pointer, newsize: int): pointer =
     result = realloc(old, newsize)
 
-  proc nimGCref(p: pointer) {.compilerproc, inline.} = nil
-  proc nimGCunref(p: pointer) {.compilerproc, inline.} = nil
+  proc nimGCref(p: pointer) {.compilerproc, inline.} = discard
+  proc nimGCunref(p: pointer) {.compilerproc, inline.} = discard
   
   proc unsureAsgnRef(dest: ppointer, src: pointer) {.compilerproc, inline.} =
     dest[] = src
@@ -246,13 +248,13 @@ elif defined(nogc) and defined(useMalloc):
   type
     TMemRegion = object {.final, pure.}
   
-  proc Alloc(r: var TMemRegion, size: int): pointer =
+  proc alloc(r: var TMemRegion, size: int): pointer =
     result = alloc(size)
-  proc Alloc0(r: var TMemRegion, size: int): pointer =
+  proc alloc0(r: var TMemRegion, size: int): pointer =
     result = alloc0(size)
-  proc Dealloc(r: var TMemRegion, p: Pointer) = Dealloc(p)
-  proc deallocOsPages(r: var TMemRegion) {.inline.} = nil
-  proc deallocOsPages() {.inline.} = nil
+  proc dealloc(r: var TMemRegion, p: pointer) = dealloc(p)
+  proc deallocOsPages(r: var TMemRegion) {.inline.} = discard
+  proc deallocOsPages() {.inline.} = discard
 
 elif defined(nogc):
   # Even though we don't want the GC, we cannot simply use C's memory manager
@@ -266,13 +268,13 @@ elif defined(nogc):
   
   include "system/alloc"
 
-  proc initGC() = nil
-  proc GC_disable() = nil
-  proc GC_enable() = nil
-  proc GC_fullCollect() = nil
-  proc GC_setStrategy(strategy: TGC_Strategy) = nil
-  proc GC_enableMarkAndSweep() = nil
-  proc GC_disableMarkAndSweep() = nil
+  proc initGC() = discard
+  proc GC_disable() = discard
+  proc GC_enable() = discard
+  proc GC_fullCollect() = discard
+  proc GC_setStrategy(strategy: TGC_Strategy) = discard
+  proc GC_enableMarkAndSweep() = discard
+  proc GC_disableMarkAndSweep() = discard
   proc GC_getStatistics(): string = return ""
   
   
@@ -285,9 +287,9 @@ elif defined(nogc):
   proc growObj(old: pointer, newsize: int): pointer =
     result = realloc(old, newsize)
 
-  proc setStackBottom(theStackBottom: pointer) = nil
-  proc nimGCref(p: pointer) {.compilerproc, inline.} = nil
-  proc nimGCunref(p: pointer) {.compilerproc, inline.} = nil
+  proc setStackBottom(theStackBottom: pointer) = discard
+  proc nimGCref(p: pointer) {.compilerproc, inline.} = discard
+  proc nimGCunref(p: pointer) {.compilerproc, inline.} = discard
   
   proc unsureAsgnRef(dest: ppointer, src: pointer) {.compilerproc, inline.} =
     dest[] = src

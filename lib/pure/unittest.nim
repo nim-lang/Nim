@@ -37,8 +37,8 @@ var
   
   checkpoints: seq[string] = @[]
 
-template TestSetupIMPL*: stmt {.immediate, dirty.} = nil
-template TestTeardownIMPL*: stmt {.immediate, dirty.} = nil
+template TestSetupIMPL*: stmt {.immediate, dirty.} = discard
+template TestTeardownIMPL*: stmt {.immediate, dirty.} = discard
 
 proc shouldRun(testName: string): bool =
   result = true
@@ -98,8 +98,12 @@ template fail* =
 
   when not defined(ECMAScript):
     if AbortOnError: quit(1)
-  
-  TestStatusIMPL = FAILED
+ 
+  when defined(TestStatusIMPL):
+    TestStatusIMPL = FAILED
+  else:
+    program_result += 1
+
   checkpoints = @[]
 
 macro check*(conditions: stmt): stmt {.immediate.} =
@@ -111,7 +115,8 @@ macro check*(conditions: stmt): stmt {.immediate.} =
     counter = 0
 
   template asgn(a, value: expr): stmt =
-    let a = value
+    var a = value # XXX: we need "var: var" here in order to
+                  # preserve the semantics of var params
   
   template print(name, value: expr): stmt =
     when compiles(string($value)):
@@ -121,7 +126,7 @@ macro check*(conditions: stmt): stmt {.immediate.} =
     for i in 1 .. <exp.len:
       if exp[i].kind notin nnkLiterals:
         inc counter
-        var arg = newIdentNode(":p" & ($counter))
+        var arg = newIdentNode(":p" & $counter)
         var argStr = exp[i].toStrLit
         if exp[i].kind in nnkCallKinds: inspectArgs(exp[i])
         argsAsgns.add getAst(asgn(arg, exp[i]))
@@ -141,12 +146,14 @@ macro check*(conditions: stmt): stmt {.immediate.} =
       
     var checkedStr = checked.toStrLit
     inspectArgs(checked)
-    result = getAst(rewrite(checked, checked.lineinfo, checkedStr, argsAsgns, argsPrintOuts))
+    result = getAst(rewrite(checked, checked.lineinfo, checkedStr,
+                            argsAsgns, argsPrintOuts))
 
   of nnkStmtList:
     result = newNimNode(nnkStmtList)
     for i in countup(0, checked.len - 1):
-      result.add(newCall(!"check", checked[i]))
+      if checked[i].kind != nnkCommentStmt:
+        result.add(newCall(!"check", checked[i]))
 
   else:
     template rewrite(Exp, lineInfoLit: expr, expLit: string): stmt =
@@ -170,7 +177,7 @@ macro expect*(exceptions: varargs[expr], body: stmt): stmt {.immediate.} =
       checkpoint(lineInfoLit & ": Expect Failed, no exception was thrown.")
       fail()
     except errorTypes:
-      nil
+      discard
 
   var body = exp[exp.len - 1]
 

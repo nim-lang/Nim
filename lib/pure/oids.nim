@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -28,7 +28,7 @@ proc hexbyte*(hex: char): int =
   of '0'..'9': result = (ord(hex) - ord('0'))
   of 'a'..'f': result = (ord(hex) - ord('a') + 10)
   of 'A'..'F': result = (ord(hex) - ord('A') + 10)
-  else: nil
+  else: discard
 
 proc parseOid*(str: cstring): TOid =
   ## parses an OID.
@@ -51,6 +51,10 @@ proc oidToString*(oid: TOid, str: cstring) =
     str[2 * i + 1] = hex[b and 0xF]
     inc(i)
   str[24] = '\0'
+
+proc `$`*(oid: TOid): string =
+  result = newString(25)
+  oidToString(oid, result)
 
 var
   incr: int 

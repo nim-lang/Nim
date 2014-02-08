@@ -13,7 +13,7 @@ import
   strutils, lists, intsets, options, lexer, ast, astalgo, trees, treetab,
   wordrecg, 
   ropes, msgs, platform, os, condsyms, idents, renderer, types, extccomp, math, 
-  magicsys, nversion, nimsets, parser, times, passes, rodread, evals
+  magicsys, nversion, nimsets, parser, times, passes, rodread, vmdef
 
 type 
   TOptionEntry* = object of lists.TListEntry # entries to put on a
@@ -21,7 +21,7 @@ type
     options*: TOptions
     defaultCC*: TCallingConvention
     dynlib*: PLib
-    Notes*: TNoteKinds
+    notes*: TNoteKinds
     otherPragmas*: PNode      # every pragma can be pushed
 
   POptionEntry* = ref TOptionEntry
@@ -32,7 +32,7 @@ type
     resultSym*: PSym          # the result symbol (if we are in a proc)
     nestedLoopCounter*: int   # whether we are in a loop or not
     nestedBlockCounter*: int  # whether we are in a block or not
-    InTryStmt*: int           # whether we are in a try statement; works also
+    inTryStmt*: int           # whether we are in a try statement; works also
                               # in standalone ``except`` and ``finally``
     next*: PProcCon           # used for stacking procedure contexts
   
@@ -42,7 +42,7 @@ type
 
   TExprFlag* = enum 
     efLValue, efWantIterator, efInTypeof, efWantStmt, efDetermineType,
-    efAllowDestructor
+    efAllowDestructor, efWantValue
   TExprFlags* = set[TExprFlag]
 
   PContext* = ref TContext
@@ -55,15 +55,16 @@ type
     friendModule*: PSym        # current friend module; may access private data;
                                # this is used so that generic instantiations
                                # can access private object fields
-    InstCounter*: int          # to prevent endless instantiations
+    instCounter*: int          # to prevent endless instantiations
    
     threadEntries*: TSymSeq    # list of thread entries to check
-    AmbiguousSymbols*: TIntSet # ids of all ambiguous symbols (cannot
+    ambiguousSymbols*: TIntSet # ids of all ambiguous symbols (cannot
                                # store this info in the syms themselves!)
-    InGenericContext*: int     # > 0 if we are in a generic type
-    InUnrolledContext*: int    # > 0 if we are unrolling a loop
-    InCompilesContext*: int    # > 0 if we are in a ``compiles`` magic
-    InGenericInst*: int        # > 0 if we are instantiating a generic
+    inTypeClass*: int          # > 0 if we are in a user-defined type class
+    inGenericContext*: int     # > 0 if we are in a generic type
+    inUnrolledContext*: int    # > 0 if we are unrolling a loop
+    inCompilesContext*: int    # > 0 if we are in a ``compiles`` magic
+    inGenericInst*: int        # > 0 if we are instantiating a generic
     converters*: TSymSeq       # sequence of converters
     patterns*: TSymSeq         # sequence of pattern matchers
     optionStack*: TLinkedList
@@ -72,7 +73,9 @@ type
     libs*: TLinkedList         # all libs used by this module
     semConstExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.} # for the pragmas
     semExpr*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}
-    semTryExpr*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}
+    semTryExpr*: proc (c: PContext, n: PNode,flags: TExprFlags = {},
+                       bufferErrors = false): PNode {.nimcall.}
+    semTryConstExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.}
     semOperand*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}
     semConstBoolExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.} # XXX bite the bullet
     semOverloadedCall*: proc (c: PContext, n, nOrig: PNode,
@@ -81,7 +84,7 @@ type
     includedFiles*: TIntSet    # used to detect recursive include files
     userPragmas*: TStrTable
     evalContext*: PEvalContext
-    UnknownIdents*: TIntSet    # ids of all unknown identifiers to prevent
+    unknownIdents*: TIntSet    # ids of all unknown identifiers to prevent
                                # naming it multiple times
     generics*: seq[TInstantiationPair] # pending list of instantiated generics to compile
     lastGenericIdx*: int      # used for the generics stack
@@ -112,8 +115,8 @@ proc scopeDepth*(c: PContext): int {.inline.} =
 
 # owner handling:
 proc getCurrOwner*(): PSym
-proc PushOwner*(owner: PSym)
-proc PopOwner*()
+proc pushOwner*(owner: PSym)
+proc popOwner*()
 # implementation
 
 var gOwners*: seq[PSym] = @[]
@@ -126,20 +129,20 @@ proc getCurrOwner(): PSym =
   # BUGFIX: global array is needed!
   result = gOwners[high(gOwners)]
 
-proc PushOwner(owner: PSym) = 
+proc pushOwner(owner: PSym) = 
   add(gOwners, owner)
 
-proc PopOwner() = 
+proc popOwner() = 
   var length = len(gOwners)
-  if length > 0: setlen(gOwners, length - 1)
-  else: InternalError("popOwner")
+  if length > 0: setLen(gOwners, length - 1)
+  else: internalError("popOwner")
 
 proc lastOptionEntry(c: PContext): POptionEntry = 
   result = POptionEntry(c.optionStack.tail)
 
 proc pushProcCon*(c: PContext, owner: PSym) {.inline.} = 
   if owner == nil: 
-    InternalError("owner is nil")
+    internalError("owner is nil")
     return
   var x: PProcCon
   new(x)
@@ -158,7 +161,7 @@ proc newOptionEntry(): POptionEntry =
 
 proc newContext(module: PSym): PContext =
   new(result)
-  result.AmbiguousSymbols = initIntset()
+  result.ambiguousSymbols = initIntSet()
   initLinkedList(result.optionStack)
   initLinkedList(result.libs)
   append(result.optionStack, newOptionEntry())
@@ -170,13 +173,13 @@ proc newContext(module: PSym): PContext =
   result.includedFiles = initIntSet()
   initStrTable(result.userPragmas)
   result.generics = @[]
-  result.UnknownIdents = initIntSet()
+  result.unknownIdents = initIntSet()
 
 proc inclSym(sq: var TSymSeq, s: PSym) =
   var L = len(sq)
   for i in countup(0, L - 1): 
     if sq[i].id == s.id: return 
-  setlen(sq, L + 1)
+  setLen(sq, L + 1)
   sq[L] = s
 
 proc addConverter*(c: PContext, conv: PSym) =
@@ -196,28 +199,55 @@ proc addToLib(lib: PLib, sym: PSym) =
 
 proc makePtrType(c: PContext, baseType: PType): PType = 
   result = newTypeS(tyPtr, c)
-  addSonSkipIntLit(result, baseType.AssertNotNil)
+  addSonSkipIntLit(result, baseType.assertNotNil)
 
 proc makeVarType(c: PContext, baseType: PType): PType = 
   result = newTypeS(tyVar, c)
-  addSonSkipIntLit(result, baseType.AssertNotNil)
+  addSonSkipIntLit(result, baseType.assertNotNil)
 
 proc makeTypeDesc*(c: PContext, typ: PType): PType =
   result = newTypeS(tyTypeDesc, c)
-  result.addSonSkipIntLit(typ.AssertNotNil)
+  result.addSonSkipIntLit(typ.assertNotNil)
 
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let typedesc = makeTypeDesc(c, typ)
+  rawAddSon(typedesc, newTypeS(tyNone, c))
   let sym = newSym(skType, idAnon, getCurrOwner(), info).linkTo(typedesc)
   return newSymNode(sym, info)
 
-proc newTypeS(kind: TTypeKind, c: PContext): PType = 
-  result = newType(kind, getCurrOwner())
+proc makeTypeFromExpr*(c: PContext, n: PNode): PType =
+  result = newTypeS(tyFromExpr, c)
+  result.n = n
 
 proc newTypeWithSons*(c: PContext, kind: TTypeKind,
                       sons: seq[PType]): PType =
   result = newType(kind, getCurrOwner())
   result.sons = sons
+
+proc makeStaticExpr*(c: PContext, n: PNode): PNode =
+  result = newNodeI(nkStaticExpr, n.info)
+  result.sons = @[n]
+  result.typ = newTypeWithSons(c, tyStatic, @[n.typ])
+
+proc makeAndType*(c: PContext, t1, t2: PType): PType =
+  result = newTypeS(tyAnd, c)
+  result.sons = @[t1, t2]
+  propagateToOwner(result, t1)
+  propagateToOwner(result, t2)
+
+proc makeOrType*(c: PContext, t1, t2: PType): PType =
+  result = newTypeS(tyOr, c)
+  result.sons = @[t1, t2]
+  propagateToOwner(result, t1)
+  propagateToOwner(result, t2)
+
+proc makeNotType*(c: PContext, t1: PType): PType =
+  result = newTypeS(tyNot, c)
+  result.sons = @[t1]
+  propagateToOwner(result, t1)
+
+proc newTypeS(kind: TTypeKind, c: PContext): PType =
+  result = newType(kind, getCurrOwner())
 
 proc errorType*(c: PContext): PType =
   ## creates a type representing an error state
@@ -232,7 +262,7 @@ proc fillTypeS(dest: PType, kind: TTypeKind, c: PContext) =
   dest.owner = getCurrOwner()
   dest.size = - 1
 
-proc makeRangeType*(c: PContext; first, last: biggestInt;
+proc makeRangeType*(c: PContext; first, last: BiggestInt;
                     info: TLineInfo; intType = getSysType(tyInt)): PType =
   var n = newNodeI(nkRange, info)
   addSon(n, newIntTypeNode(nkIntLit, first, intType))
@@ -247,7 +277,7 @@ proc markIndirect*(c: PContext, s: PSym) {.inline.} =
     # XXX add to 'c' for global analysis
 
 proc illFormedAst*(n: PNode) =
-  GlobalError(n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
+  globalError(n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
 
 proc checkSonsLen*(n: PNode, length: int) = 
   if sonsLen(n) != length: illFormedAst(n)

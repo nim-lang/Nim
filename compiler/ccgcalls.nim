@@ -73,7 +73,7 @@ proc isInCurrentFrame(p: BProc, n: PNode): bool =
     result = false
   of nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
     result = isInCurrentFrame(p, n.sons[0])
-  else: nil
+  else: discard
 
 proc openArrayLoc(p: BProc, n: PNode): PRope =
   var a: TLoc
@@ -88,7 +88,7 @@ proc openArrayLoc(p: BProc, n: PNode): PRope =
       result = ropef("$1->data, $1->$2", [a.rdLoc, lenField()])
   of tyArray, tyArrayConstr:
     result = ropef("$1, $2", [rdLoc(a), toRope(lengthOrd(a.t))])
-  else: InternalError("openArrayLoc: " & typeToString(a.t))
+  else: internalError("openArrayLoc: " & typeToString(a.t))
 
 proc genArgStringToCString(p: BProc, 
                            n: PNode): PRope {.inline.} =
@@ -146,7 +146,8 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
   proc addComma(r: PRope): PRope =
     result = if r == nil: r else: con(r, ~", ")
 
-  const CallPattern = "$1.ClEnv? $1.ClPrc($3$1.ClEnv) : (($4)($1.ClPrc))($2)"
+  const PatProc = "$1.ClEnv? $1.ClPrc($3$1.ClEnv):(($4)($1.ClPrc))($2)"
+  const PatIter = "$1.ClPrc($3$1.ClEnv)" # we know the env exists
   var op: TLoc
   initLocExpr(p, ri.sons[0], op)
   var pl: PRope
@@ -164,9 +165,10 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
     if i < length - 1: app(pl, ~", ")
   
   template genCallPattern {.dirty.} =
-    lineF(p, cpsStmts, CallPattern & ";$n", op.r, pl, pl.addComma, rawProc)
+    lineF(p, cpsStmts, callPattern & ";$n", op.r, pl, pl.addComma, rawProc)
 
   let rawProc = getRawProcType(p, typ)
+  let callPattern = if tfIterator in typ.flags: PatIter else: PatProc
   if typ.sons[0] != nil:
     if isInvalidReturnType(typ.sons[0]):
       if sonsLen(ri) > 1: app(pl, ~", ")
@@ -190,7 +192,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
       assert(d.t != nil)        # generate an assignment to d:
       var list: TLoc
       initLoc(list, locCall, d.t, OnUnknown)
-      list.r = ropef(CallPattern, op.r, pl, pl.addComma, rawProc)
+      list.r = ropef(callPattern, op.r, pl, pl.addComma, rawProc)
       genAssignment(p, d, list, {}) # no need for deep copying
   else:
     genCallPattern()
@@ -243,7 +245,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
   for i in countup(3, length-1):
     assert(sonsLen(typ) == sonsLen(typ.n))
     if i >= sonsLen(typ):
-      InternalError(ri.info, "varargs for objective C method?")
+      internalError(ri.info, "varargs for objective C method?")
     assert(typ.n.sons[i].kind == nkSym)
     var param = typ.n.sons[i].sym
     app(pl, ~" ")
@@ -290,6 +292,7 @@ proc genCall(p: BProc, e: PNode, d: var TLoc) =
     genNamedParamCall(p, e, d)
   else:
     genPrefixCall(p, nil, e, d)
+  postStmtActions(p)
   when false:
     if d.s == onStack and containsGarbageCollectedRef(d.t): keepAlive(p, d)
 
@@ -303,6 +306,7 @@ proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
     genNamedParamCall(p, ri, d)
   else:
     genPrefixCall(p, le, ri, d)
+  postStmtActions(p)
   when false:
     if d.s == onStack and containsGarbageCollectedRef(d.t): keepAlive(p, d)
 

@@ -98,6 +98,7 @@ type
       params*: seq[string] ## Parameters of the IRC message
       origin*: string      ## The channel/user that this msg originated from
       raw*: string         ## Raw IRC message
+      timestamp*: TTime    ## UNIX epoch time the message was received
   
 proc send*(irc: PIRC, message: string, sendImmediately = false) =
   ## Sends ``message`` as a raw command. It adds ``\c\L`` for you.
@@ -160,9 +161,10 @@ proc isNumber(s: string): bool =
   result = i == s.len and s.len > 0
 
 proc parseMessage(msg: string): TIRCEvent =
-  result.typ = EvMsg
-  result.cmd = MUnknown
-  result.raw = msg
+  result.typ       = EvMsg
+  result.cmd       = MUnknown
+  result.raw       = msg
+  result.timestamp = times.getTime()
   var i = 0
   # Process the prefix
   if msg[i] == ':':
@@ -344,7 +346,7 @@ proc poll*(irc: PIRC, ev: var TIRCEvent,
   var line = TaintedString""
   var socks = @[irc.sock]
   var ret = socks.select(timeout)
-  if socks.len() == 0 and ret != 0:
+  if socks.len() != 0 and ret != 0:
     irc.sock.readLine(line)
     ev = irc.processLine(line.string)
     result = true
@@ -474,12 +476,12 @@ when isMainModule:
   var client = irc("amber.tenthbit.net", nick="TestBot1234",
                    joinChans = @["#flood"])
   client.connect()
-  while True:
+  while true:
     var event: TIRCEvent
     if client.poll(event):
       case event.typ
       of EvConnected:
-        nil
+        discard
       of EvDisconnected:
         break
       of EvMsg:

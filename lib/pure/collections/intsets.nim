@@ -50,7 +50,7 @@ proc mustRehash(length, counter: int): bool {.inline.} =
 proc nextTry(h, maxHash: THash): THash {.inline.} = 
   result = ((5 * h) + 1) and maxHash 
 
-proc IntSetGet(t: TIntSet, key: int): PTrunk = 
+proc intSetGet(t: TIntSet, key: int): PTrunk = 
   var h = key and t.max
   while t.data[h] != nil: 
     if t.data[h].key == key: 
@@ -58,7 +58,7 @@ proc IntSetGet(t: TIntSet, key: int): PTrunk =
     h = nextTry(h, t.max)
   result = nil
 
-proc IntSetRawInsert(t: TIntSet, data: var TTrunkSeq, desc: PTrunk) = 
+proc intSetRawInsert(t: TIntSet, data: var TTrunkSeq, desc: PTrunk) = 
   var h = desc.key and t.max
   while data[h] != nil: 
     assert(data[h] != desc)
@@ -66,22 +66,22 @@ proc IntSetRawInsert(t: TIntSet, data: var TTrunkSeq, desc: PTrunk) =
   assert(data[h] == nil)
   data[h] = desc
 
-proc IntSetEnlarge(t: var TIntSet) = 
+proc intSetEnlarge(t: var TIntSet) = 
   var n: TTrunkSeq
   var oldMax = t.max
   t.max = ((t.max + 1) * 2) - 1
   newSeq(n, t.max + 1)
-  for i in countup(0, oldmax): 
-    if t.data[i] != nil: IntSetRawInsert(t, n, t.data[i])
+  for i in countup(0, oldMax): 
+    if t.data[i] != nil: intSetRawInsert(t, n, t.data[i])
   swap(t.data, n)
 
-proc IntSetPut(t: var TIntSet, key: int): PTrunk = 
+proc intSetPut(t: var TIntSet, key: int): PTrunk = 
   var h = key and t.max
   while t.data[h] != nil: 
     if t.data[h].key == key: 
       return t.data[h]
     h = nextTry(h, t.max)
-  if mustRehash(t.max + 1, t.counter): IntSetEnlarge(t)
+  if mustRehash(t.max + 1, t.counter): intSetEnlarge(t)
   inc(t.counter)
   h = key and t.max
   while t.data[h] != nil: h = nextTry(h, t.max)
@@ -94,7 +94,7 @@ proc IntSetPut(t: var TIntSet, key: int): PTrunk =
 
 proc contains*(s: TIntSet, key: int): bool =
   ## returns true iff `key` is in `s`.  
-  var t = IntSetGet(s, `shr`(key, TrunkShift))
+  var t = intSetGet(s, `shr`(key, TrunkShift))
   if t != nil: 
     var u = key and TrunkMask
     result = (t.bits[`shr`(u, IntShift)] and `shl`(1, u and IntMask)) != 0
@@ -103,14 +103,14 @@ proc contains*(s: TIntSet, key: int): bool =
   
 proc incl*(s: var TIntSet, key: int) = 
   ## includes an element `key` in `s`.
-  var t = IntSetPut(s, `shr`(key, TrunkShift))
+  var t = intSetPut(s, `shr`(key, TrunkShift))
   var u = key and TrunkMask
   t.bits[`shr`(u, IntShift)] = t.bits[`shr`(u, IntShift)] or
       `shl`(1, u and IntMask)
 
 proc excl*(s: var TIntSet, key: int) = 
   ## excludes `key` from the set `s`.
-  var t = IntSetGet(s, `shr`(key, TrunkShift))
+  var t = intSetGet(s, `shr`(key, TrunkShift))
   if t != nil: 
     var u = key and TrunkMask
     t.bits[`shr`(u, IntShift)] = t.bits[`shr`(u, IntShift)] and
@@ -119,7 +119,7 @@ proc excl*(s: var TIntSet, key: int) =
 proc containsOrIncl*(s: var TIntSet, key: int): bool = 
   ## returns true if `s` contains `key`, otherwise `key` is included in `s`
   ## and false is returned.
-  var t = IntSetGet(s, `shr`(key, TrunkShift))
+  var t = intSetGet(s, `shr`(key, TrunkShift))
   if t != nil: 
     var u = key and TrunkMask
     result = (t.bits[`shr`(u, IntShift)] and `shl`(1, u and IntMask)) != 0

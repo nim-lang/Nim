@@ -7,7 +7,18 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements a generator of HTML/Latex from `reStructuredText`:idx:.
+## This module implements a generator of HTML/Latex from
+## `reStructuredText`:idx: (see http://docutils.sourceforge.net/rst.html for
+## information on this markup syntax). You can generate HTML output through the
+## convenience proc ``rstToHtml``, which provided an input string with rst
+## markup returns a string with the generated HTML. The final output is meant
+## to be embedded inside a full document you provide yourself, so it won't
+## contain the usual ``<header>`` or ``<body>`` parts.
+##
+## You can also create a ``TRstGenerator`` structure and populate it with the
+## other lower level methods to finally build complete documents. This requires
+## many options and tweaking, but you are not limited to snippets and can
+## generate `LaTeX documents <https://en.wikipedia.org/wiki/LaTeX>`_ too.
 
 import strutils, os, hashes, strtabs, rstast, rst, highlite
 
@@ -33,20 +44,58 @@ type
     splitAfter*: int          # split too long entries in the TOC
     tocPart*: seq[TTocEntry]
     hasToc*: bool
-    theIndex: string
+    theIndex: string # Contents of the index file to be dumped at the end.
     options*: TRstParseOptions
     findFile*: TFindFileHandler
     msgHandler*: TMsgHandler
     filename*: string
     meta*: array[TMetaEnum, string]
   
-  PDoc = var TRstGenerator
+  PDoc = var TRstGenerator ## Alias to type less.
 
 proc initRstGenerator*(g: var TRstGenerator, target: TOutputTarget,
                        config: PStringTable, filename: string,
                        options: TRstParseOptions,
                        findFile: TFindFileHandler,
                        msgHandler: TMsgHandler) =
+  ## Initializes a ``TRstGenerator``.
+  ##
+  ## You need to call this before using a ``TRstGenerator`` with any other
+  ## procs in this module. Pass a non ``nil`` ``PStringTable`` value as
+  ## ``config`` with parameters used by the HTML output generator.  If you
+  ## don't know what to use, pass the results of the ``defaultConfig()`` proc.
+  ## The ``filename`` is symbolic and used only for error reporting, you can
+  ## pass any non ``nil`` string here.
+  ##
+  ## The ``TRstParseOptions``, ``TFindFileHandler`` and ``TMsgHandler`` types
+  ## are defined in the the `packages/docutils/rst module <rst.html>`_.
+  ## ``options`` selects the behaviour of the rst parser.
+  ##
+  ## ``findFile`` is a proc used by the rst ``include`` directive among others.
+  ## The purpose of this proc is to mangle or filter paths. It receives paths
+  ## specified in the rst document and has to return a valid path to existing
+  ## files or the empty string otherwise.  If you pass ``nil``, a default proc
+  ## will be used which given a path returns the input path only if the file
+  ## exists. One use for this proc is to transform relative paths found in the
+  ## document to absolute path, useful if the rst file and the resources it
+  ## references are not in the same directory as the current working directory.
+  ##
+  ## The ``msgHandler`` is a proc used for user error reporting. It will be
+  ## called with the filename, line, col, and type of any error found during
+  ## parsing. If you pass ``nil``, a default message handler will be used which
+  ## writes the messages to the standard output.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##
+  ##   import packages/docutils/rstgen
+  ##
+  ##   var gen: TRstGenerator
+  ##
+  ##   gen.initRstGenerator(outHtml, defaultConfig(),
+  ##     "filename", {}, nil, nil)
+
   g.config = config
   g.target = target
   g.tocPart = @[]
@@ -62,9 +111,13 @@ proc initRstGenerator*(g: var TRstGenerator, target: TOutputTarget,
   for i in low(g.meta)..high(g.meta): g.meta[i] = ""
 
 proc writeIndexFile*(g: var TRstGenerator, outfile: string) =
+  ## Writes the current index buffer to the specified output file.
+  ##
+  ## You previously need to add entries to the index with the ``setIndexTerm``
+  ## proc. If the index is empty the file won't be created.
   if g.theIndex.len > 0: writeFile(outfile, g.theIndex)
   
-proc addXmlChar(dest: var string, c: Char) = 
+proc addXmlChar(dest: var string, c: char) = 
   case c
   of '&': add(dest, "&amp;")
   of '<': add(dest, "&lt;")
@@ -72,14 +125,14 @@ proc addXmlChar(dest: var string, c: Char) =
   of '\"': add(dest, "&quot;")
   else: add(dest, c)
   
-proc addRtfChar(dest: var string, c: Char) = 
+proc addRtfChar(dest: var string, c: char) = 
   case c
   of '{': add(dest, "\\{")
   of '}': add(dest, "\\}")
   of '\\': add(dest, "\\\\")
   else: add(dest, c)
   
-proc addTexChar(dest: var string, c: Char) = 
+proc addTexChar(dest: var string, c: char) = 
   case c
   of '_': add(dest, "\\_")
   of '{': add(dest, "\\symbol{123}")
@@ -99,7 +152,7 @@ proc addTexChar(dest: var string, c: Char) =
 
 var splitter*: string = "<wbr />"
 
-proc escChar*(target: TOutputTarget, dest: var string, c: Char) {.inline.} = 
+proc escChar*(target: TOutputTarget, dest: var string, c: char) {.inline.} = 
   case target
   of outHtml:  addXmlChar(dest, c)
   of outLatex: addTexChar(dest, c)
@@ -112,7 +165,7 @@ proc nextSplitPoint*(s: string, start: int): int =
     of 'a'..'z': 
       if result + 1 < len(s) + 0: 
         if s[result + 1] in {'A'..'Z'}: return 
-    else: nil
+    else: discard
     inc(result)
   dec(result)                 # last valid index
   
@@ -147,7 +200,19 @@ proc dispA(target: TOutputTarget, dest: var string,
   if target != outLatex: addf(dest, xml, args)
   else: addf(dest, tex, args)
   
-proc renderRstToOut*(d: PDoc, n: PRstNode, result: var string)
+proc renderRstToOut*(d: var TRstGenerator, n: PRstNode, result: var string)
+  ## Writes into ``result`` the rst ast ``n`` using the ``d`` configuration.
+  ##
+  ## Before using this proc you need to initialise a ``TRstGenerator`` with
+  ## ``initRstGenerator`` and parse a rst file with ``rstParse`` from the
+  ## `packages/docutils/rst module <rst.html>`_. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##
+  ##   # ...configure gen and rst vars...
+  ##   var generatedHTML = ""
+  ##   renderRstToOut(gen, rst, generatedHTML)
+  ##   echo generatedHTML
 
 proc renderAux(d: PDoc, n: PRstNode, result: var string) = 
   for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], result)
@@ -162,7 +227,14 @@ proc renderAux(d: PDoc, n: PRstNode, frmtA, frmtB: string, result: var string) =
 
 # ---------------- index handling --------------------------------------------
 
-proc setIndexTerm*(d: PDoc, id, term: string) =
+proc setIndexTerm*(d: var TRstGenerator, id, term: string) =
+  ## Adds a `term` to the index using the specified hyperlink identifier.
+  ##
+  ## The ``d.theIndex`` string will be used to append the term in the format
+  ## ``term<tab>file#id``. The anchor will be the based on the name of the file
+  ## currently being parsed plus the `id`, which will be appended after a hash.
+  ##
+  ## The index won't be written to disk unless you call ``writeIndexFile``.
   d.theIndex.add(term)
   d.theIndex.add('\t')
   let htmlFile = changeFileExt(extractFilename(d.filename), HtmlExt)
@@ -202,14 +274,14 @@ proc `<-`(a: var TIndexEntry, b: TIndexEntry) =
 
 proc sortIndex(a: var openArray[TIndexEntry]) =
   # we use shellsort here; fast and simple
-  let N = len(a)
+  let n = len(a)
   var h = 1
   while true:
     h = 3 * h + 1
-    if h > N: break
+    if h > n: break
   while true:
     h = h div 3
-    for i in countup(h, N - 1):
+    for i in countup(h, n - 1):
       var v: TIndexEntry
       v <- a[i]
       var j = i
@@ -259,7 +331,7 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
   var refname = rstnodeToRefname(n)
   if d.hasToc:
     var length = len(d.tocPart)
-    setlen(d.tocPart, length + 1)
+    setLen(d.tocPart, length + 1)
     d.tocPart[length].refname = refname
     d.tocPart[length].n = n
     d.tocPart[length].header = tmp
@@ -295,7 +367,7 @@ proc renderTocEntry(d: PDoc, e: TTocEntry, result: var string) =
     "<li><a class=\"reference\" id=\"$1_toc\" href=\"#$1\">$2</a></li>\n", 
     "\\item\\label{$1_toc} $2\\ref{$1}\n", [e.refname, e.header])
 
-proc renderTocEntries*(d: PDoc, j: var int, lvl: int, result: var string) = 
+proc renderTocEntries*(d: var TRstGenerator, j: var int, lvl: int, result: var string) =
   var tmp = ""
   while j <= high(d.tocPart): 
     var a = abs(d.tocPart[j].n.level)
@@ -395,7 +467,7 @@ proc renderField(d: PDoc, n: PRstNode, result: var string) =
       if d.meta[metaAuthor].len == 0:
         d.meta[metaAuthor] = fieldval
         b = true
-    elif cmpIgnoreStyle(fieldName, "version") == 0: 
+    elif cmpIgnoreStyle(fieldname, "version") == 0: 
       if d.meta[metaVersion].len == 0:
         d.meta[metaVersion] = fieldval
         b = true
@@ -559,14 +631,14 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
 
 # -----------------------------------------------------------------------------
 
-proc getVarIdx(varnames: openarray[string], id: string): int = 
+proc getVarIdx(varnames: openArray[string], id: string): int = 
   for i in countup(0, high(varnames)): 
     if cmpIgnoreStyle(varnames[i], id) == 0: 
       return i
   result = -1
 
-proc formatNamedVars*(frmt: string, varnames: openarray[string], 
-                      varvalues: openarray[string]): string = 
+proc formatNamedVars*(frmt: string, varnames: openArray[string], 
+                      varvalues: openArray[string]): string = 
   var i = 0
   var L = len(frmt)
   result = ""
@@ -585,7 +657,7 @@ proc formatNamedVars*(frmt: string, varnames: openarray[string],
       of '0'..'9': 
         var j = 0
         while true: 
-          j = (j * 10) + Ord(frmt[i]) - ord('0')
+          j = (j * 10) + ord(frmt[i]) - ord('0')
           inc(i)
           if i > L-1 or frmt[i] notin {'0'..'9'}: break 
         if j > high(varvalues) + 1:
@@ -627,7 +699,18 @@ proc formatNamedVars*(frmt: string, varnames: openarray[string],
 
 
 proc defaultConfig*(): PStringTable =
-  ## creates a default configuration for HTML generation.
+  ## Returns a default configuration for embedded HTML generation.
+  ##
+  ## The returned ``PStringTable`` contains the paramters used by the HTML
+  ## engine to build the final output. For information on what these parameters
+  ## are and their purpose, please look up the file ``config/nimdoc.cfg``
+  ## bundled with the compiler.
+  ##
+  ## The only difference between the contents of that file and the values
+  ## provided by this proc is the ``doc.file`` variable. The ``doc.file``
+  ## variable of the configuration file contains HTML to build standalone
+  ## pages, while this proc returns just the content for procs like
+  ## ``rstToHtml`` to generate the bare minimum HTML.
   result = newStringTable(modeStyleInsensitive)
   
   template setConfigVar(key, val: expr) =
@@ -678,8 +761,26 @@ $content
 
 proc rstToHtml*(s: string, options: TRstParseOptions, 
                 config: PStringTable): string =
-  ## exported for *nimforum*.
-  
+  ## Converts an input rst string into embeddable HTML.
+  ##
+  ## This convenience proc parses any input string using rst markup (it doesn't
+  ## have to be a full document!) and returns an embeddable piece of HTML. The
+  ## proc is meant to be used in *online* environments without access to a
+  ## meaningful filesystem, and therefore rst ``include`` like directives won't
+  ## work. For an explanation of the ``config`` parameter see the
+  ## ``initRstGenerator`` proc. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   import packages/docutils/rstgen, strtabs
+  ##
+  ##   echo rstToHtml("*Hello* **world**!", {},
+  ##     newStringTable(modeStyleInsensitive))
+  ##   # --> <em>Hello</em> <strong>world</strong>!
+  ##
+  ## If you need to allow the rst ``include`` directive or tweak the generated
+  ## output you have to create your own ``TRstGenerator`` with
+  ## ``initRstGenerator`` and related procs.
+
   proc myFindFile(filename: string): string = 
     # we don't find any files in online mode:
     result = ""
@@ -692,4 +793,8 @@ proc rstToHtml*(s: string, options: TRstParseOptions,
   var rst = rstParse(s, filen, 0, 1, dummyHasToc, options)
   result = ""
   renderRstToOut(d, rst, result)
-  
+
+
+when isMainModule:
+  echo rstToHtml("*Hello* **world**!", {},
+    newStringTable(modeStyleInsensitive))

@@ -130,7 +130,7 @@ proc getThing(L: var TLexer, tok: var TToken, s: TCharSet) =
   tok.line = L.line
   tok.col = L.col
   var pos = L.bufpos
-  while True: 
+  while true: 
     add(tok.symbol, L.buf[pos])
     inc(pos)
     if L.buf[pos] notin s: break 
@@ -143,7 +143,7 @@ proc getAdornment(L: var TLexer, tok: var TToken) =
   tok.col = L.col
   var pos = L.bufpos
   var c = L.buf[pos]
-  while True: 
+  while true: 
     add(tok.symbol, L.buf[pos])
     inc(pos)
     if L.buf[pos] != c: break 
@@ -162,7 +162,7 @@ proc getIndentAux(L: var TLexer, start: int): int =
   if L.skipPounds: 
     if buf[pos] == '#': inc(pos)
     if buf[pos] == '#': inc(pos)
-  while True: 
+  while true: 
     case buf[pos]
     of ' ', '\x0B', '\x0C': 
       inc(pos)
@@ -242,7 +242,7 @@ proc getTokens(buffer: string, skipPounds: bool, tokens: var TTokenSeq): int =
       inc(result)
   while true: 
     inc(length)
-    setlen(tokens, length)
+    setLen(tokens, length)
     rawGetTok(L, tokens[length - 1])
     if tokens[length - 1].kind == tkEof: break 
   if tokens[0].kind == tkWhite: 
@@ -251,7 +251,7 @@ proc getTokens(buffer: string, skipPounds: bool, tokens: var TTokenSeq): int =
     tokens[0].kind = tkIndent
 
 type
-  TLevelMap = array[Char, int]
+  TLevelMap = array[char, int]
   TSubstitution{.final.} = object 
     key*: string
     value*: PRstNode
@@ -294,11 +294,11 @@ proc whichMsgClass*(k: TMsgKind): TMsgClass =
   
 proc defaultMsgHandler*(filename: string, line, col: int, msgkind: TMsgKind,
                         arg: string) {.procvar.} =
-  let mc = msgKind.whichMsgClass
-  let a = messages[msgKind] % arg
+  let mc = msgkind.whichMsgClass
+  let a = messages[msgkind] % arg
   let message = "$1($2, $3) $4: $5" % [filename, $line, $col, $mc, a]
   if mc == mcError: raise newException(EParseError, message)
-  else: Writeln(stdout, message)
+  else: writeln(stdout, message)
 
 proc defaultFindFile*(filename: string): string {.procvar.} = 
   if existsFile(filename): result = filename
@@ -339,7 +339,7 @@ proc pushInd(p: var TRstParser, ind: int) =
   add(p.indentStack, ind)
 
 proc popInd(p: var TRstParser) =
-  if len(p.indentStack) > 1: setlen(p.indentStack, len(p.indentStack) - 1)
+  if len(p.indentStack) > 1: setLen(p.indentStack, len(p.indentStack) - 1)
   
 proc initParser(p: var TRstParser, sharedState: PSharedState) = 
   p.indentStack = @[0]
@@ -408,7 +408,7 @@ proc setSub(p: var TRstParser, key: string, value: PRstNode) =
     if key == p.s.subs[i].key: 
       p.s.subs[i].value = value
       return 
-  setlen(p.s.subs, length + 1)
+  setLen(p.s.subs, length + 1)
   p.s.subs[length].key = key
   p.s.subs[length].value = value
 
@@ -421,7 +421,7 @@ proc setRef(p: var TRstParser, key: string, value: PRstNode) =
 
       p.s.refs[i].value = value
       return 
-  setlen(p.s.refs, length + 1)
+  setLen(p.s.refs, length + 1)
   p.s.refs[length].key = key
   p.s.refs[length].value = value
 
@@ -479,7 +479,7 @@ proc isInlineMarkupEnd(p: TRstParser, markup: string): bool =
       result = false
 
 proc isInlineMarkupStart(p: TRstParser, markup: string): bool = 
-  var d: Char
+  var d: char
   result = p.tok[p.idx].symbol == markup
   if not result: 
     return                    # Rule 1:
@@ -535,7 +535,7 @@ proc match(p: TRstParser, start: int, expr: string): bool =
         case p.tok[j].symbol[0]
         of 'a'..'z', 'A'..'Z': result = len(p.tok[j].symbol) == 1
         of '0'..'9': result = allCharsInSet(p.tok[j].symbol, {'0'..'9'})
-        else: nil
+        else: discard
     else: 
       var c = expr[i]
       var length = 0
@@ -615,7 +615,7 @@ proc matchVerbatim(p: TRstParser, start: int, expr: string): int =
   
 proc parseSmiley(p: var TRstParser): PRstNode =
   if p.tok[p.idx].symbol[0] notin SmileyStartChars: return
-  for key, val in items(smilies):
+  for key, val in items(Smilies):
     let m = matchVerbatim(p, p.idx, key)
     if m > 0:
       p.idx = m
@@ -629,18 +629,18 @@ when false:
                  '$', '(', ')', '~', '_', '?', '+', '-', '=', '\\', '.', '&',
                  '\128'..'\255'}
 
-proc isURL(p: TRstParser, i: int): bool =
+proc isUrl(p: TRstParser, i: int): bool =
   result = (p.tok[i+1].symbol == ":") and (p.tok[i+2].symbol == "//") and
     (p.tok[i+3].kind == tkWord) and
     (p.tok[i].symbol in ["http", "https", "ftp", "telnet", "file"])
 
-proc parseURL(p: var TRstParser, father: PRstNode) = 
+proc parseUrl(p: var TRstParser, father: PRstNode) = 
   #if p.tok[p.idx].symbol[strStart] == '<':
-  if isURL(p, p.idx):
+  if isUrl(p, p.idx):
     var n = newRstNode(rnStandaloneHyperlink)
     while true: 
       case p.tok[p.idx].kind
-      of tkWord, tkAdornment, tkOther: nil
+      of tkWord, tkAdornment, tkOther: discard
       of tkPunct: 
         if p.tok[p.idx+1].kind notin {tkWord, tkAdornment, tkOther, tkPunct}:
           break
@@ -806,7 +806,7 @@ proc parseInline(p: var TRstParser, father: PRstNode) =
         return
     add(father, newLeaf(p))
     inc(p.idx)
-  else: nil
+  else: discard
   
 proc getDirective(p: var TRstParser): string = 
   if p.tok[p.idx].kind == tkWhite and p.tok[p.idx+1].kind == tkWord: 
@@ -835,14 +835,14 @@ proc parseComment(p: var TRstParser): PRstNode =
       inc(p.idx)              # empty comment
     else: 
       var indent = p.tok[p.idx].ival
-      while True: 
+      while true: 
         case p.tok[p.idx].kind
         of tkEof: 
           break 
         of tkIndent: 
           if (p.tok[p.idx].ival < indent): break 
         else: 
-          nil
+          discard
         inc(p.idx)
   else:
     while p.tok[p.idx].kind notin {tkIndent, tkEof}: inc(p.idx)
@@ -864,18 +864,24 @@ proc getDirKind(s: string): TDirKind =
   else: result = dkNone
   
 proc parseLine(p: var TRstParser, father: PRstNode) = 
-  while True: 
+  while true: 
     case p.tok[p.idx].kind
     of tkWhite, tkWord, tkOther, tkPunct: parseInline(p, father)
     else: break 
+
+proc parseUntilNewline(p: var TRstParser, father: PRstNode) = 
+  while true: 
+    case p.tok[p.idx].kind
+    of tkWhite, tkWord, tkAdornment, tkOther, tkPunct: parseInline(p, father)
+    of tkEof, tkIndent: break
   
 proc parseSection(p: var TRstParser, result: PRstNode)
 proc parseField(p: var TRstParser): PRstNode = 
   result = newRstNode(rnField)
   var col = p.tok[p.idx].col
-  var fieldname = newRstNode(rnFieldname)
+  var fieldname = newRstNode(rnFieldName)
   parseUntil(p, fieldname, ":", false)
-  var fieldbody = newRstNode(rnFieldbody)
+  var fieldbody = newRstNode(rnFieldBody)
   if p.tok[p.idx].kind != tkIndent: parseLine(p, fieldbody)
   if p.tok[p.idx].kind == tkIndent: 
     var indent = p.tok[p.idx].ival
@@ -927,7 +933,7 @@ proc parseLiteralBlock(p: var TRstParser): PRstNode =
   if p.tok[p.idx].kind == tkIndent: 
     var indent = p.tok[p.idx].ival
     inc(p.idx)
-    while True: 
+    while true: 
       case p.tok[p.idx].kind
       of tkEof: 
         break 
@@ -947,7 +953,7 @@ proc parseLiteralBlock(p: var TRstParser): PRstNode =
       inc(p.idx)
   add(result, n)
 
-proc getLevel(map: var TLevelMap, lvl: var int, c: Char): int = 
+proc getLevel(map: var TLevelMap, lvl: var int, c: char): int = 
   if map[c] == 0: 
     inc(lvl)
     map[c] = lvl
@@ -993,7 +999,7 @@ proc whichSection(p: TRstParser): TRstNodeKind =
     elif match(p, p.idx + 1, "i"): result = rnOverline
     else: result = rnLeaf
   of tkPunct: 
-    if match(p, tokenAfterNewLine(p), "ai"): 
+    if match(p, tokenAfterNewline(p), "ai"): 
       result = rnHeadline
     elif p.tok[p.idx].symbol == "::": 
       result = rnLiteralBlock
@@ -1020,7 +1026,7 @@ proc whichSection(p: TRstParser): TRstNodeKind =
     else: 
       result = rnParagraph
   of tkWord, tkOther, tkWhite:
-    if match(p, tokenAfterNewLine(p), "ai"): result = rnHeadline
+    if match(p, tokenAfterNewline(p), "ai"): result = rnHeadline
     elif match(p, p.idx, "e) ") or match(p, p.idx, "e. "): result = rnEnumList
     elif isDefList(p): result = rnDefList
     else: result = rnParagraph
@@ -1046,7 +1052,7 @@ proc parseLineBlock(p: var TRstParser): PRstNode =
     popInd(p)
 
 proc parseParagraph(p: var TRstParser, result: PRstNode) = 
-  while True: 
+  while true: 
     case p.tok[p.idx].kind
     of tkIndent: 
       if p.tok[p.idx + 1].kind == tkIndent: 
@@ -1078,7 +1084,7 @@ proc parseParagraph(p: var TRstParser, result: PRstNode) =
 
 proc parseHeadline(p: var TRstParser): PRstNode = 
   result = newRstNode(rnHeadline)
-  parseLine(p, result)
+  parseUntilNewline(p, result)
   assert(p.tok[p.idx].kind == tkIndent)
   assert(p.tok[p.idx + 1].kind == tkAdornment)
   var c = p.tok[p.idx + 1].symbol[0]
@@ -1095,7 +1101,7 @@ proc getColumns(p: var TRstParser, cols: var TIntSeq) =
   var L = 0
   while true: 
     inc(L)
-    setlen(cols, L)
+    setLen(cols, L)
     cols[L - 1] = tokEnd(p)
     assert(p.tok[p.idx].kind == tkAdornment)
     inc(p.idx)
@@ -1113,7 +1119,7 @@ proc parseSimpleTable(p: var TRstParser): PRstNode =
     cols: TIntSeq
     row: seq[string]
     i, last, line: int
-    c: Char
+    c: char
     q: TRstParser
     a, b: PRstNode
   result = newRstNode(rnTable)
@@ -1129,7 +1135,7 @@ proc parseSimpleTable(p: var TRstParser): PRstNode =
         p.idx = last
         break 
       getColumns(p, cols)
-      setlen(row, len(cols))
+      setLen(row, len(cols))
       if a != nil: 
         for j in 0..len(a)-1: a.sons[j].kind = rnTableHeaderCell
     if p.tok[p.idx].kind == tkEof: break 
@@ -1172,7 +1178,7 @@ proc parseOverline(p: var TRstParser): PRstNode =
   inc(p.idx, 2)
   result = newRstNode(rnOverline)
   while true: 
-    parseLine(p, result)
+    parseUntilNewline(p, result)
     if p.tok[p.idx].kind == tkIndent: 
       inc(p.idx)
       if p.tok[p.idx - 1].ival > currInd(p): 
@@ -1237,7 +1243,7 @@ proc parseOptionList(p: var TRstParser): PRstNode =
   
 proc parseDefinitionList(p: var TRstParser): PRstNode = 
   result = nil
-  var j = tokenAfterNewLine(p) - 1
+  var j = tokenAfterNewline(p) - 1
   if (j >= 1) and (p.tok[j].kind == tkIndent) and
       (p.tok[j].ival > currInd(p)) and (p.tok[j - 1].symbol != "::"): 
     var col = p.tok[p.idx].col
@@ -1263,10 +1269,10 @@ proc parseDefinitionList(p: var TRstParser): PRstNode =
         break 
       if (p.tok[p.idx].kind == tkIndent) and (p.tok[p.idx].ival == col): 
         inc(p.idx)
-        j = tokenAfterNewLine(p) - 1
+        j = tokenAfterNewline(p) - 1
         if j >= 1 and p.tok[j].kind == tkIndent and p.tok[j].ival > col and
             p.tok[j-1].symbol != "::" and p.tok[j+1].kind != tkIndent: 
-          nil
+          discard
         else: 
           break 
     if len(result) == 0: result = nil
@@ -1284,7 +1290,7 @@ proc parseEnumList(p: var TRstParser): PRstNode =
     var col = p.tok[p.idx].col
     result = newRstNode(rnEnumList)
     inc(p.idx, wildpos[w] + 3)
-    var j = tokenAfterNewLine(p)
+    var j = tokenAfterNewline(p)
     if (p.tok[j].col == p.tok[p.idx].col) or match(p, j, wildcards[w]): 
       pushInd(p, p.tok[p.idx].col)
       while true: 
@@ -1329,11 +1335,11 @@ proc parseSection(p: var TRstParser, result: PRstNode) =
       inc(p.idx)              # skip '::'
       a = parseLiteralBlock(p)
     of rnBulletList: a = parseBulletList(p)
-    of rnLineblock: a = parseLineBlock(p)
+    of rnLineBlock: a = parseLineBlock(p)
     of rnDirective: a = parseDotDot(p)
     of rnEnumList: a = parseEnumList(p)
     of rnLeaf: rstMessage(p, meNewSectionExpected)
-    of rnParagraph: nil
+    of rnParagraph: discard
     of rnDefList: a = parseDefinitionList(p)
     of rnFieldList: 
       if p.idx > 0: dec(p.idx)
@@ -1345,7 +1351,7 @@ proc parseSection(p: var TRstParser, result: PRstNode) =
     of rnOptionList: a = parseOptionList(p)
     else:
       #InternalError("rst.parseSection()")
-      nil
+      discard
     if a == nil and k != rnDirective: 
       a = newRstNode(rnParagraph)
       parseParagraph(p, a)
@@ -1388,7 +1394,7 @@ proc parseDirective(p: var TRstParser, flags: TDirFlags): PRstNode =
   if hasArg in flags: 
     args = newRstNode(rnDirArg)
     if argIsFile in flags: 
-      while True: 
+      while true: 
         case p.tok[p.idx].kind
         of tkWord, tkOther, tkPunct, tkAdornment: 
           add(args, newLeaf(p))
@@ -1560,7 +1566,7 @@ proc parseDotDot(p: var TRstParser): PRstNode =
         result = dirRaw(p)
       else:
         rstMessage(p, meInvalidDirective, d)
-    of dkCodeblock: result = dirCodeBlock(p)
+    of dkCodeBlock: result = dirCodeBlock(p)
     of dkIndex: result = dirIndex(p)
     else: rstMessage(p, meInvalidDirective, d)
     popInd(p)
@@ -1618,7 +1624,7 @@ proc resolveSubs(p: var TRstParser, n: PRstNode): PRstNode =
       add(result, n)
       add(result, y)
   of rnLeaf: 
-    nil
+    discard
   of rnContents: 
     p.hasToc = true
   else: 

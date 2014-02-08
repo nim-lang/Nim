@@ -249,23 +249,23 @@ proc newLine*: TPeg {.inline.} =
   ## constructs the PEG `newline`:idx: (``\n``)
   result.kind = pkNewline
 
-proc UnicodeLetter*: TPeg {.inline.} = 
+proc unicodeLetter*: TPeg {.inline.} = 
   ## constructs the PEG ``\letter`` which matches any Unicode letter.
   result.kind = pkLetter
   
-proc UnicodeLower*: TPeg {.inline.} = 
+proc unicodeLower*: TPeg {.inline.} = 
   ## constructs the PEG ``\lower`` which matches any Unicode lowercase letter.
   result.kind = pkLower 
 
-proc UnicodeUpper*: TPeg {.inline.} = 
+proc unicodeUpper*: TPeg {.inline.} = 
   ## constructs the PEG ``\upper`` which matches any Unicode uppercase letter.
   result.kind = pkUpper
   
-proc UnicodeTitle*: TPeg {.inline.} = 
+proc unicodeTitle*: TPeg {.inline.} = 
   ## constructs the PEG ``\title`` which matches any Unicode title letter.
   result.kind = pkTitle
 
-proc UnicodeWhitespace*: TPeg {.inline.} = 
+proc unicodeWhitespace*: TPeg {.inline.} = 
   ## constructs the PEG ``\white`` which matches any Unicode 
   ## whitespace character.
   result.kind = pkWhitespace
@@ -306,7 +306,7 @@ proc backrefIgnoreStyle*(index: range[1..MaxSubPatterns]): TPeg {.
 
 proc spaceCost(n: TPeg): int =
   case n.kind
-  of pkEmpty: nil
+  of pkEmpty: discard
   of pkTerminal, pkTerminalIgnoreCase, pkTerminalIgnoreStyle, pkChar,
      pkGreedyRepChar, pkCharChoice, pkGreedyRepSet, 
      pkAny..pkWhitespace, pkGreedyAny:
@@ -340,28 +340,28 @@ proc newNonTerminal*(name: string, line, column: int): PNonTerminal {.
 
 template letters*: expr =
   ## expands to ``charset({'A'..'Z', 'a'..'z'})``
-  charset({'A'..'Z', 'a'..'z'})
+  charSet({'A'..'Z', 'a'..'z'})
   
 template digits*: expr =
   ## expands to ``charset({'0'..'9'})``
-  charset({'0'..'9'})
+  charSet({'0'..'9'})
 
 template whitespace*: expr =
   ## expands to ``charset({' ', '\9'..'\13'})``
-  charset({' ', '\9'..'\13'})
+  charSet({' ', '\9'..'\13'})
   
 template identChars*: expr =
   ## expands to ``charset({'a'..'z', 'A'..'Z', '0'..'9', '_'})``
-  charset({'a'..'z', 'A'..'Z', '0'..'9', '_'})
+  charSet({'a'..'z', 'A'..'Z', '0'..'9', '_'})
   
 template identStartChars*: expr =
   ## expands to ``charset({'A'..'Z', 'a'..'z', '_'})``
-  charset({'a'..'z', 'A'..'Z', '_'})
+  charSet({'a'..'z', 'A'..'Z', '_'})
 
 template ident*: expr =
   ## same as ``[a-zA-Z_][a-zA-z_0-9]*``; standard identifier
-  sequence(charset({'a'..'z', 'A'..'Z', '_'}),
-           *charset({'a'..'z', 'A'..'Z', '0'..'9', '_'}))
+  sequence(charSet({'a'..'z', 'A'..'Z', '_'}),
+           *charSet({'a'..'z', 'A'..'Z', '0'..'9', '_'}))
   
 template natural*: expr =
   ## same as ``\d+``
@@ -385,7 +385,7 @@ proc esc(c: char, reserved = {'\0'..'\255'}): string =
   elif c in reserved: result = '\\' & c
   else: result = $c
   
-proc singleQuoteEsc(c: Char): string = return "'" & esc(c, {'\''}) & "'"
+proc singleQuoteEsc(c: char): string = return "'" & esc(c, {'\''}) & "'"
 
 proc singleQuoteEsc(str: string): string = 
   result = "'"
@@ -409,11 +409,11 @@ proc charSetEscAux(cc: set[char]): string =
       c1 = c2
     inc(c1)
   
-proc CharSetEsc(cc: set[char]): string =
+proc charSetEsc(cc: set[char]): string =
   if card(cc) >= 128+64: 
-    result = "[^" & CharSetEscAux({'\1'..'\xFF'} - cc) & ']'
+    result = "[^" & charSetEscAux({'\1'..'\xFF'} - cc) & ']'
   else: 
-    result = '[' & CharSetEscAux(cc) & ']'
+    result = '[' & charSetEscAux(cc) & ']'
   
 proc toStrAux(r: TPeg, res: var string) = 
   case r.kind
@@ -590,7 +590,7 @@ proc rawMatch*(s: string, p: TPeg, start: int, c: var TCaptures): int {.
       var a: TRune
       result = start
       fastRuneAt(s, result, a)
-      if isWhitespace(a): dec(result, start)
+      if isWhiteSpace(a): dec(result, start)
       else: result = -1
     else:
       result = -1
@@ -747,7 +747,7 @@ template fillMatches(s, caps, c: expr) =
   for k in 0..c.ml-1:
     caps[k] = substr(s, c.matches[k][0], c.matches[k][1])
 
-proc match*(s: string, pattern: TPeg, matches: var openarray[string],
+proc match*(s: string, pattern: TPeg, matches: var openArray[string],
             start = 0): bool {.nosideEffect, rtl, extern: "npegs$1Capture".} =
   ## returns ``true`` if ``s[start..]`` matches the ``pattern`` and
   ## the captured substrings in the array ``matches``. If it does not
@@ -765,7 +765,7 @@ proc match*(s: string, pattern: TPeg,
   c.origStart = start
   result = rawMatch(s, pattern, start, c) == len(s)-start
 
-proc matchLen*(s: string, pattern: TPeg, matches: var openarray[string],
+proc matchLen*(s: string, pattern: TPeg, matches: var openArray[string],
                start = 0): int {.nosideEffect, rtl, extern: "npegs$1Capture".} =
   ## the same as ``match``, but it returns the length of the match,
   ## if there is no match, -1 is returned. Note that a match length
@@ -786,7 +786,7 @@ proc matchLen*(s: string, pattern: TPeg,
   c.origStart = start
   result = rawMatch(s, pattern, start, c)
 
-proc find*(s: string, pattern: TPeg, matches: var openarray[string],
+proc find*(s: string, pattern: TPeg, matches: var openArray[string],
            start = 0): int {.nosideEffect, rtl, extern: "npegs$1Capture".} =
   ## returns the starting position of ``pattern`` in ``s`` and the captured
   ## substrings in the array ``matches``. If it does not match, nothing
@@ -801,7 +801,7 @@ proc find*(s: string, pattern: TPeg, matches: var openarray[string],
   return -1
   # could also use the pattern here: (!P .)* P
   
-proc findBounds*(s: string, pattern: TPeg, matches: var openarray[string],
+proc findBounds*(s: string, pattern: TPeg, matches: var openArray[string],
                  start = 0): tuple[first, last: int] {.
                  nosideEffect, rtl, extern: "npegs$1Capture".} =
   ## returns the starting position and end position of ``pattern`` in ``s`` 
@@ -869,7 +869,7 @@ template `=~`*(s: string, pattern: TPeg): bool =
   ##  
   bind maxSubpatterns
   when not definedInScope(matches):
-    var matches {.inject.}: array[0..maxSubpatterns-1, string]
+    var matches {.inject.}: array[0..MaxSubpatterns-1, string]
   match(s, pattern, matches)
 
 # ------------------------- more string handling ------------------------------
@@ -1074,14 +1074,14 @@ const
     "@", "built-in", "escaped", "$", "$", "^"
   ]
 
-proc HandleCR(L: var TPegLexer, pos: int): int =
+proc handleCR(L: var TPegLexer, pos: int): int =
   assert(L.buf[pos] == '\c')
   inc(L.linenumber)
   result = pos+1
   if L.buf[result] == '\L': inc(result)
   L.lineStart = result
 
-proc HandleLF(L: var TPegLexer, pos: int): int =
+proc handleLF(L: var TPegLexer, pos: int): int =
   assert(L.buf[pos] == '\L')
   inc(L.linenumber)
   result = pos+1
@@ -1117,45 +1117,45 @@ proc handleHexChar(c: var TPegLexer, xi: var int) =
   of 'A'..'F': 
     xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('A') + 10)
     inc(c.bufpos)
-  else: nil
+  else: discard
 
 proc getEscapedChar(c: var TPegLexer, tok: var TToken) = 
   inc(c.bufpos)
   case c.buf[c.bufpos]
   of 'r', 'R', 'c', 'C': 
     add(tok.literal, '\c')
-    Inc(c.bufpos)
+    inc(c.bufpos)
   of 'l', 'L': 
     add(tok.literal, '\L')
-    Inc(c.bufpos)
+    inc(c.bufpos)
   of 'f', 'F': 
     add(tok.literal, '\f')
     inc(c.bufpos)
   of 'e', 'E': 
     add(tok.literal, '\e')
-    Inc(c.bufpos)
+    inc(c.bufpos)
   of 'a', 'A': 
     add(tok.literal, '\a')
-    Inc(c.bufpos)
+    inc(c.bufpos)
   of 'b', 'B': 
     add(tok.literal, '\b')
-    Inc(c.bufpos)
+    inc(c.bufpos)
   of 'v', 'V': 
     add(tok.literal, '\v')
-    Inc(c.bufpos)
+    inc(c.bufpos)
   of 't', 'T': 
     add(tok.literal, '\t')
-    Inc(c.bufpos)
+    inc(c.bufpos)
   of 'x', 'X': 
     inc(c.bufpos)
     var xi = 0
     handleHexChar(c, xi)
     handleHexChar(c, xi)
     if xi == 0: tok.kind = tkInvalid
-    else: add(tok.literal, Chr(xi))
+    else: add(tok.literal, chr(xi))
   of '0'..'9': 
     var val = ord(c.buf[c.bufpos]) - ord('0')
-    Inc(c.bufpos)
+    inc(c.bufpos)
     var i = 1
     while (i <= 3) and (c.buf[c.bufpos] in {'0'..'9'}): 
       val = val * 10 + ord(c.buf[c.bufpos]) - ord('0')
@@ -1169,7 +1169,7 @@ proc getEscapedChar(c: var TPegLexer, tok: var TToken) =
     tok.kind = tkInvalid
   else:
     add(tok.literal, c.buf[c.bufpos])
-    Inc(c.bufpos)
+    inc(c.bufpos)
   
 proc skip(c: var TPegLexer) = 
   var pos = c.bufpos
@@ -1177,14 +1177,14 @@ proc skip(c: var TPegLexer) =
   while true: 
     case buf[pos]
     of ' ', '\t': 
-      Inc(pos)
+      inc(pos)
     of '#':
       while not (buf[pos] in {'\c', '\L', '\0'}): inc(pos)
     of '\c':
-      pos = HandleCR(c, pos)
+      pos = handleCR(c, pos)
       buf = c.buf
     of '\L': 
-      pos = HandleLF(c, pos)
+      pos = handleLF(c, pos)
       buf = c.buf
     else: 
       break                   # EndOfFile also leaves the loop
@@ -1209,7 +1209,7 @@ proc getString(c: var TPegLexer, tok: var TToken) =
       break      
     else:
       add(tok.literal, buf[pos])
-      Inc(pos)
+      inc(pos)
   c.bufpos = pos
   
 proc getDollar(c: var TPegLexer, tok: var TToken) = 
@@ -1250,7 +1250,7 @@ proc getCharSet(c: var TPegLexer, tok: var TToken) =
       break
     else: 
       ch = buf[pos]
-      Inc(pos)
+      inc(pos)
     incl(tok.charset, ch)
     if buf[pos] == '-':
       if buf[pos+1] == ']':
@@ -1270,7 +1270,7 @@ proc getCharSet(c: var TPegLexer, tok: var TToken) =
           break
         else: 
           ch2 = buf[pos]
-          Inc(pos)
+          inc(pos)
         for i in ord(ch)+1 .. ord(ch2):
           incl(tok.charset, chr(i))
   c.bufpos = pos
@@ -1281,7 +1281,7 @@ proc getSymbol(c: var TPegLexer, tok: var TToken) =
   var buf = c.buf
   while true: 
     add(tok.literal, buf[pos])
-    Inc(pos)
+    inc(pos)
     if buf[pos] notin strutils.IdentChars: break
   c.bufpos = pos
   tok.kind = tkIdentifier
@@ -1298,7 +1298,7 @@ proc getBuiltin(c: var TPegLexer, tok: var TToken) =
 proc getTok(c: var TPegLexer, tok: var TToken) = 
   tok.kind = tkInvalid
   tok.modifier = modNone
-  setlen(tok.literal, 0)
+  setLen(tok.literal, 0)
   skip(c)
   case c.buf[c.bufpos]
   of '{':
@@ -1315,14 +1315,14 @@ proc getTok(c: var TPegLexer, tok: var TToken) =
     inc(c.bufpos)
     add(tok.literal, '}')
   of '[': 
-    getCharset(c, tok)
+    getCharSet(c, tok)
   of '(':
     tok.kind = tkParLe
-    Inc(c.bufpos)
+    inc(c.bufpos)
     add(tok.literal, '(')
   of ')':
     tok.kind = tkParRi
-    Inc(c.bufpos)
+    inc(c.bufpos)
     add(tok.literal, ')')
   of '.': 
     tok.kind = tkAny
@@ -1347,7 +1347,7 @@ proc getTok(c: var TPegLexer, tok: var TToken) =
       of "i": tok.modifier = modIgnoreCase
       of "y": tok.modifier = modIgnoreStyle
       of "v": tok.modifier = modVerbatim
-      else: nil
+      else: discard
       setLen(tok.literal, 0)
       if c.buf[c.bufpos] == '$':
         getDollar(c, tok)
@@ -1452,28 +1452,28 @@ proc modifiedTerm(s: string, m: TModifier): TPeg =
 
 proc modifiedBackref(s: int, m: TModifier): TPeg =
   case m
-  of modNone, modVerbatim: result = backRef(s)
-  of modIgnoreCase: result = backRefIgnoreCase(s)
-  of modIgnoreStyle: result = backRefIgnoreStyle(s)
+  of modNone, modVerbatim: result = backref(s)
+  of modIgnoreCase: result = backrefIgnoreCase(s)
+  of modIgnoreStyle: result = backrefIgnoreStyle(s)
 
 proc builtin(p: var TPegParser): TPeg =
   # do not use "y", "skip" or "i" as these would be ambiguous
   case p.tok.literal
   of "n": result = newLine()
-  of "d": result = charset({'0'..'9'})
-  of "D": result = charset({'\1'..'\xff'} - {'0'..'9'})
-  of "s": result = charset({' ', '\9'..'\13'})
-  of "S": result = charset({'\1'..'\xff'} - {' ', '\9'..'\13'})
-  of "w": result = charset({'a'..'z', 'A'..'Z', '_', '0'..'9'})
-  of "W": result = charset({'\1'..'\xff'} - {'a'..'z','A'..'Z','_','0'..'9'})
-  of "a": result = charset({'a'..'z', 'A'..'Z'})
-  of "A": result = charset({'\1'..'\xff'} - {'a'..'z', 'A'..'Z'})
+  of "d": result = charSet({'0'..'9'})
+  of "D": result = charSet({'\1'..'\xff'} - {'0'..'9'})
+  of "s": result = charSet({' ', '\9'..'\13'})
+  of "S": result = charSet({'\1'..'\xff'} - {' ', '\9'..'\13'})
+  of "w": result = charSet({'a'..'z', 'A'..'Z', '_', '0'..'9'})
+  of "W": result = charSet({'\1'..'\xff'} - {'a'..'z','A'..'Z','_','0'..'9'})
+  of "a": result = charSet({'a'..'z', 'A'..'Z'})
+  of "A": result = charSet({'\1'..'\xff'} - {'a'..'z', 'A'..'Z'})
   of "ident": result = pegs.ident
-  of "letter": result = UnicodeLetter()
-  of "upper": result = UnicodeUpper()
-  of "lower": result = UnicodeLower()
-  of "title": result = UnicodeTitle()
-  of "white": result = UnicodeWhitespace()
+  of "letter": result = unicodeLetter()
+  of "upper": result = unicodeUpper()
+  of "lower": result = unicodeLower()
+  of "title": result = unicodeTitle()
+  of "white": result = unicodeWhitespace()
   else: pegError(p, "unknown built-in: " & p.tok.literal)
 
 proc token(terminal: TPeg, p: TPegParser): TPeg = 
@@ -1494,7 +1494,7 @@ proc primary(p: var TPegParser): TPeg =
   of tkCurlyAt:
     getTok(p)
     return !*\primary(p).token(p)
-  else: nil
+  else: discard
   case p.tok.kind
   of tkIdentifier:
     if p.identIsVerbatim: 
@@ -1505,7 +1505,7 @@ proc primary(p: var TPegParser): TPeg =
     elif not arrowIsNextTok(p):
       var nt = getNonTerminal(p, p.tok.literal)
       incl(nt.flags, ntUsed)
-      result = nonTerminal(nt).token(p)
+      result = nonterminal(nt).token(p)
       getTok(p)
     else:
       pegError(p, "expression expected, but found: " & p.tok.literal)
@@ -1517,7 +1517,7 @@ proc primary(p: var TPegParser): TPeg =
   of tkCharSet:
     if '\0' in p.tok.charset:
       pegError(p, "binary zero ('\\0') not allowed in character class")
-    result = charset(p.tok.charset).token(p)
+    result = charSet(p.tok.charset).token(p)
     getTok(p)
   of tkParLe:
     getTok(p)
@@ -1549,7 +1549,7 @@ proc primary(p: var TPegParser): TPeg =
   of tkBackref:
     var m = p.tok.modifier
     if m == modNone: m = p.modifier
-    result = modifiedBackRef(p.tok.index, m).token(p)
+    result = modifiedBackref(p.tok.index, m).token(p)
     if p.tok.index < 0 or p.tok.index > p.captures: 
       pegError(p, "invalid back reference index: " & $p.tok.index)
     getTok(p)

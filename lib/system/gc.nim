@@ -9,7 +9,7 @@
 
 #            Garbage Collector
 #
-# The basic algorithm is *Deferrent Reference Counting* with cycle detection.
+# The basic algorithm is *Deferred Reference Counting* with cycle detection.
 # This is achieved by combining a Deutsch-Bobrow garbage collector
 # together with Christoper's partial mark-sweep garbage collector.
 #
@@ -84,7 +84,7 @@ var
   gch {.rtlThreadVar.}: TGcHeap
 
 when not defined(useNimRtl):
-  InstantiateForRegion(gch.region)
+  instantiateForRegion(gch.region)
 
 template acquire(gch: TGcHeap) = 
   when hasThreadSupport and hasSharedHeap:
@@ -132,9 +132,9 @@ when BitsPerPage mod (sizeof(int)*8) != 0:
 template color(c): expr = c.refCount and colorMask
 template setColor(c, col) =
   when col == rcBlack:
-    c.refcount = c.refCount and not colorMask
+    c.refcount = c.refcount and not colorMask
   else:
-    c.refcount = c.refCount and not colorMask or col
+    c.refcount = c.refcount and not colorMask or col
 
 proc writeCell(msg: cstring, c: PCell) =
   var kind = -1
@@ -151,10 +151,10 @@ template gcTrace(cell, state: expr): stmt {.immediate.} =
 
 # forward declarations:
 proc collectCT(gch: var TGcHeap)
-proc IsOnStack*(p: pointer): bool {.noinline.}
+proc isOnStack*(p: pointer): bool {.noinline.}
 proc forAllChildren(cell: PCell, op: TWalkOp)
 proc doOperation(p: pointer, op: TWalkOp)
-proc forAllChildrenAux(dest: Pointer, mt: PNimType, op: TWalkOp)
+proc forAllChildrenAux(dest: pointer, mt: PNimType, op: TWalkOp)
 # we need the prototype here for debugging purposes
 
 when hasThreadSupport and hasSharedHeap:
@@ -162,9 +162,9 @@ when hasThreadSupport and hasSharedHeap:
   template `++`(x: expr): stmt = discard atomicInc(x, rcIncrement)
 else:
   template `--`(x: expr): expr = 
-    Dec(x, rcIncrement)
+    dec(x, rcIncrement)
     x <% rcIncrement
-  template `++`(x: expr): stmt = Inc(x, rcIncrement)
+  template `++`(x: expr): stmt = inc(x, rcIncrement)
 
 proc prepareDealloc(cell: PCell) =
   when useMarkForDebug:
@@ -203,7 +203,7 @@ proc decRef(c: PCell) {.inline.} =
   gcAssert(c.refcount >=% rcIncrement, "decRef")
   if --c.refcount:
     rtlAddZCT(c)
-  elif canBeCycleRoot(c):
+  elif canbeCycleRoot(c):
     # unfortunately this is necessary here too, because a cycle might just
     # have been broken up and we could recycle it.
     rtlAddCycleRoot(c)
@@ -211,10 +211,10 @@ proc decRef(c: PCell) {.inline.} =
 
 proc incRef(c: PCell) {.inline.} = 
   gcAssert(isAllocatedPtr(gch.region, c), "incRef: interiorPtr")
-  c.refcount = c.refCount +% rcIncrement
+  c.refcount = c.refcount +% rcIncrement
   # and not colorMask
   #writeCell("incRef", c)
-  if canBeCycleRoot(c):
+  if canbeCycleRoot(c):
     rtlAddCycleRoot(c)
 
 proc nimGCref(p: pointer) {.compilerProc, inline.} = incRef(usrToCell(p))
@@ -235,7 +235,7 @@ proc nimGCunrefNoCycle(p: pointer) {.compilerProc, inline.} =
     sysAssert(allocInv(gch.region), "end nimGCunrefNoCycle 2")
   sysAssert(allocInv(gch.region), "end nimGCunrefNoCycle 5")
 
-proc asgnRef(dest: ppointer, src: pointer) {.compilerProc, inline.} =
+proc asgnRef(dest: PPointer, src: pointer) {.compilerProc, inline.} =
   # the code generator calls this proc!
   gcAssert(not isOnStack(dest), "asgnRef")
   # BUGFIX: first incRef then decRef!
@@ -243,7 +243,7 @@ proc asgnRef(dest: ppointer, src: pointer) {.compilerProc, inline.} =
   if dest[] != nil: decRef(usrToCell(dest[]))
   dest[] = src
 
-proc asgnRefNoCycle(dest: ppointer, src: pointer) {.compilerProc, inline.} =
+proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerProc, inline.} =
   # the code generator calls this proc if it is known at compile time that no 
   # cycle is possible.
   if src != nil:
@@ -255,7 +255,7 @@ proc asgnRefNoCycle(dest: ppointer, src: pointer) {.compilerProc, inline.} =
       rtlAddZCT(c)
   dest[] = src
 
-proc unsureAsgnRef(dest: ppointer, src: pointer) {.compilerProc.} =
+proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerProc.} =
   # unsureAsgnRef updates the reference counters only if dest is not on the
   # stack. It is used by the code generator if it cannot decide wether a
   # reference is in the stack or not (this can happen for var parameters).
@@ -318,7 +318,7 @@ proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: TWalkOp) =
       # inlined for speed
       if n.sons[i].kind == nkSlot:
         if n.sons[i].typ.kind in {tyRef, tyString, tySequence}:
-          doOperation(cast[ppointer](d +% n.sons[i].offset)[], op)
+          doOperation(cast[PPointer](d +% n.sons[i].offset)[], op)
         else:
           forAllChildrenAux(cast[pointer](d +% n.sons[i].offset), 
                             n.sons[i].typ, op)
@@ -329,29 +329,30 @@ proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: TWalkOp) =
     if m != nil: forAllSlotsAux(dest, m, op)
   of nkNone: sysAssert(false, "forAllSlotsAux")
 
-proc forAllChildrenAux(dest: Pointer, mt: PNimType, op: TWalkOp) =
+proc forAllChildrenAux(dest: pointer, mt: PNimType, op: TWalkOp) =
   var d = cast[TAddress](dest)
   if dest == nil: return # nothing to do
   if ntfNoRefs notin mt.flags:
-    case mt.Kind
+    case mt.kind
     of tyRef, tyString, tySequence: # leaf:
-      doOperation(cast[ppointer](d)[], op)
+      doOperation(cast[PPointer](d)[], op)
     of tyObject, tyTuple:
       forAllSlotsAux(dest, mt.node, op)
     of tyArray, tyArrayConstr, tyOpenArray:
       for i in 0..(mt.size div mt.base.size)-1:
         forAllChildrenAux(cast[pointer](d +% i *% mt.base.size), mt.base, op)
-    else: nil
+    else: discard
 
 proc forAllChildren(cell: PCell, op: TWalkOp) =
   gcAssert(cell != nil, "forAllChildren: 1")
-  gcAssert(cell.typ != nil, "forAllChildren: 2")
-  gcAssert cell.typ.kind in {tyRef, tySequence, tyString}, "forAllChildren: 3"
+  gcAssert(isAllocatedPtr(gch.region, cell), "forAllChildren: 2")
+  gcAssert(cell.typ != nil, "forAllChildren: 3")
+  gcAssert cell.typ.kind in {tyRef, tySequence, tyString}, "forAllChildren: 4"
   let marker = cell.typ.marker
   if marker != nil:
     marker(cellToUsr(cell), op.int)
   else:
-    case cell.typ.Kind
+    case cell.typ.kind
     of tyRef: # common case
       forAllChildrenAux(cellToUsr(cell), cell.typ.base, op)
     of tySequence:
@@ -361,7 +362,7 @@ proc forAllChildren(cell: PCell, op: TWalkOp) =
         for i in 0..s.len-1:
           forAllChildrenAux(cast[pointer](d +% i *% cell.typ.base.size +%
             GenericSeqSize), cell.typ.base, op)
-    else: nil
+    else: discard
 
 proc addNewObjToZCT(res: PCell, gch: var TGcHeap) {.inline.} =
   # we check the last 8 entries (cache line) for a slot that could be reused.
@@ -407,12 +408,19 @@ proc addNewObjToZCT(res: PCell, gch: var TGcHeap) {.inline.} =
         return
     add(gch.zct, res)
 
+{.push stackTrace: off, profiler:off.}
+proc gcInvariant*() =
+  sysAssert(allocInv(gch.region), "injected")
+  when defined(markForDebug):
+    markForDebug(gch)
+{.pop.}
+
 proc rawNewObj(typ: PNimType, size: int, gch: var TGcHeap): pointer =
   # generates a new object and sets its reference counter to 0
+  sysAssert(allocInv(gch.region), "rawNewObj begin")
   acquire(gch)
   gcAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
   collectCT(gch)
-  sysAssert(allocInv(gch.region), "rawNewObj begin")
   var res = cast[PCell](rawAlloc(gch.region, size + sizeof(TCell)))
   gcAssert((cast[TAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
@@ -511,13 +519,15 @@ proc growObj(old: pointer, newsize: int, gch: var TGcHeap): pointer =
         d[j] = res
         break
       dec(j)
-  if canBeCycleRoot(ol): excl(gch.cycleRoots, ol)
+  if canbeCycleRoot(ol): excl(gch.cycleRoots, ol)
   when logGC:
     writeCell("growObj old cell", ol)
     writeCell("growObj new cell", res)
   gcTrace(ol, csZctFreed)
   gcTrace(res, csAllocated)
-  when reallyDealloc: rawDealloc(gch.region, ol)
+  when reallyDealloc: 
+    sysAssert(allocInv(gch.region), "growObj before dealloc")
+    rawDealloc(gch.region, ol)
   else:
     sysAssert(ol.typ != nil, "growObj: 5")
     zeroMem(ol, sizeof(TCell))
@@ -537,7 +547,9 @@ proc freeCyclicCell(gch: var TGcHeap, c: PCell) =
   prepareDealloc(c)
   gcTrace(c, csCycFreed)
   when logGC: writeCell("cycle collector dealloc cell", c)
-  when reallyDealloc: rawDealloc(gch.region, c)
+  when reallyDealloc: 
+    sysAssert(allocInv(gch.region), "free cyclic cell")
+    rawDealloc(gch.region, c)
   else:
     gcAssert(c.typ != nil, "freeCyclicCell")
     zeroMem(c, sizeof(TCell))
@@ -561,7 +573,7 @@ proc scan(s: PCell) =
   
 proc collectWhite(s: PCell) =
   if s.color == rcWhite and s notin gch.cycleRoots:
-    s.setcolor(rcBlack)
+    s.setColor(rcBlack)
     forAllChildren(s, waCollectWhite)
     freeCyclicCell(gch, s)
 
@@ -570,7 +582,7 @@ proc markRoots(gch: var TGcHeap) =
   for s in elements(gch.cycleRoots):
     #writeCell("markRoot", s)
     inc tabSize
-    if s.color == rcPurple and s.refCount >=% rcIncrement:
+    if s.color == rcPurple and s.refcount >=% rcIncrement:
       markGray(s)
     else:
       excl(gch.cycleRoots, s)
@@ -620,8 +632,7 @@ proc doOperation(p: pointer, op: TWalkOp) =
   case op
   of waZctDecRef:
     #if not isAllocatedPtr(gch.region, c):
-    #  return
-    #  c_fprintf(c_stdout, "[GC] decref bug: %p", c) 
+    #  c_fprintf(c_stdout, "[GC] decref bug: %p", c)
     gcAssert(isAllocatedPtr(gch.region, c), "decRef: waZctDecRef")
     gcAssert(c.refcount >=% rcIncrement, "doOperation 2")
     #c.refcount = c.refcount -% rcIncrement
@@ -658,7 +669,7 @@ proc doOperation(p: pointer, op: TWalkOp) =
 proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} =
   doOperation(d, TWalkOp(op))
 
-proc CollectZCT(gch: var TGcHeap): bool
+proc collectZCT(gch: var TGcHeap): bool
 
 when useMarkForDebug or useBackupGc:
   proc markStackAndRegistersForSweep(gch: var TGcHeap) {.noinline, cdecl.}
@@ -858,7 +869,7 @@ else:
         sp = sp +% sizeof(pointer)*8
       # last few entries:
       while sp <=% max:
-        gcMark(gch, cast[ppointer](sp)[])
+        gcMark(gch, cast[PPointer](sp)[])
         sp = sp +% sizeof(pointer)
     
 proc markStackAndRegisters(gch: var TGcHeap) {.noinline, cdecl.} =
@@ -880,7 +891,7 @@ proc collectZCT(gch: var TGcHeap): bool =
   const workPackage = 100
   var L = addr(gch.zct.len)
   
-  when withRealtime:
+  when withRealTime:
     var steps = workPackage
     var t0: TTicks
     if gch.maxPause > 0: t0 = getticks()
@@ -893,7 +904,7 @@ proc collectZCT(gch: var TGcHeap): bool =
     c.refcount = c.refcount and not ZctFlag
     gch.zct.d[0] = gch.zct.d[L[] - 1]
     dec(L[])
-    when withRealtime: dec steps
+    when withRealTime: dec steps
     if c.refcount <% rcIncrement: 
       # It may have a RC > 0, if it is in the hardware stack or
       # it has not been removed yet from the ZCT. This is because
@@ -902,7 +913,7 @@ proc collectZCT(gch: var TGcHeap): bool =
       # In any case, it should be removed from the ZCT. But not
       # freed. **KEEP THIS IN MIND WHEN MAKING THIS INCREMENTAL!**
       when cycleGC:
-        if canBeCycleRoot(c): excl(gch.cycleRoots, c)
+        if canbeCycleRoot(c): excl(gch.cycleRoots, c)
       when logGC: writeCell("zct dealloc cell", c)
       gcTrace(c, csZctFreed)
       # We are about to free the object, call the finalizer BEFORE its
@@ -910,11 +921,13 @@ proc collectZCT(gch: var TGcHeap): bool =
       # access invalid memory. This is done by prepareDealloc():
       prepareDealloc(c)
       forAllChildren(c, waZctDecRef)
-      when reallyDealloc: rawDealloc(gch.region, c)
+      when reallyDealloc: 
+        sysAssert(allocInv(gch.region), "collectZCT: rawDealloc")
+        rawDealloc(gch.region, c)
       else:
         sysAssert(c.typ != nil, "collectZCT 2")
         zeroMem(c, sizeof(TCell))
-    when withRealtime:
+    when withRealTime:
       if steps == 0:
         steps = workPackage
         if gch.maxPause > 0:
@@ -939,7 +952,7 @@ proc unmarkStackAndRegisters(gch: var TGcHeap) =
   gch.decStack.len = 0
 
 proc collectCTBody(gch: var TGcHeap) =
-  when withRealtime:
+  when withRealTime:
     let t0 = getticks()
   sysAssert(allocInv(gch.region), "collectCT: begin")
   
@@ -957,12 +970,12 @@ proc collectCTBody(gch: var TGcHeap) =
         #discard collectZCT(gch)
         inc(gch.stat.cycleCollections)
         gch.cycleThreshold = max(InitialCycleThreshold, getOccupiedMem() *
-                                 cycleIncrease)
+                                 CycleIncrease)
         gch.stat.maxThreshold = max(gch.stat.maxThreshold, gch.cycleThreshold)
   unmarkStackAndRegisters(gch)
   sysAssert(allocInv(gch.region), "collectCT: end")
   
-  when withRealtime:
+  when withRealTime:
     let duration = getticks() - t0
     gch.stat.maxPause = max(gch.stat.maxPause, duration)
     when defined(reportMissedDeadlines):
@@ -984,7 +997,7 @@ proc collectCT(gch: var TGcHeap) =
       markForDebug(gch)
     collectCTBody(gch)
 
-when withRealtime:
+when withRealTime:
   proc toNano(x: int): TNanos {.inline.} =
     result = x * 1000
 
@@ -1016,11 +1029,7 @@ when not defined(useNimRtl):
         dec(gch.recGcLock)
 
   proc GC_setStrategy(strategy: TGC_Strategy) =
-    case strategy
-    of gcThroughput: nil
-    of gcResponsiveness: nil
-    of gcOptimizeSpace: nil
-    of gcOptimizeTime: nil
+    discard
 
   proc GC_enableMarkAndSweep() =
     gch.cycleThreshold = InitialCycleThreshold

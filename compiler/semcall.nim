@@ -19,7 +19,7 @@ proc sameMethodDispatcher(a, b: PSym): bool =
       if aa.sym == bb.sym: 
         result = true
     else:
-      nil
+      discard
       # generics have no dispatcher yet, so we need to compare the method
       # names; however, the names are equal anyway because otherwise we
       # wouldn't even consider them to be overloaded. But even this does
@@ -47,14 +47,14 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
   var z: TCandidate
   
   if sym == nil: return
-  initCandidate(best, sym, initialBinding, symScope)
-  initCandidate(alt, sym, initialBinding, symScope)
+  initCandidate(c, best, sym, initialBinding, symScope)
+  initCandidate(c, alt, sym, initialBinding, symScope)
   best.state = csNoMatch
   
   while sym != nil:
     if sym.kind in filter:
       determineType(c, sym)
-      initCandidate(z, sym, initialBinding, o.lastOverloadScope)
+      initCandidate(c, z, sym, initialBinding, o.lastOverloadScope)
       z.calleeSym = sym
       matches(c, n, orig, z)
       if errors != nil:
@@ -71,16 +71,16 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
           var cmp = cmpCandidates(best, z)
           if cmp < 0: best = z   # x is better than the best so far
           elif cmp == 0: alt = z # x is as good as the best so far
-          else: nil
+          else: discard
     sym = nextOverloadIter(o, c, headSymbol)
 
-proc NotFoundError*(c: PContext, n: PNode, errors: seq[string]) =
+proc notFoundError*(c: PContext, n: PNode, errors: seq[string]) =
   # Gives a detailed error message; this is separated from semOverloadedCall,
   # as semOverlodedCall is already pretty slow (and we need this information
   # only in case of an error).
-  if c.InCompilesContext > 0: 
+  if c.inCompilesContext > 0: 
     # fail fast:
-    GlobalError(n.info, errTypeMismatch, "")
+    globalError(n.info, errTypeMismatch, "")
   var result = msgKindToString(errTypeMismatch)
   add(result, describeArgs(c, n, 1 + ord(nfDelegate in n.flags)))
   add(result, ')')
@@ -93,7 +93,7 @@ proc NotFoundError*(c: PContext, n: PNode, errors: seq[string]) =
   if candidates != "":
     add(result, "\n" & msgKindToString(errButExpected) & "\n" & candidates)
 
-  LocalError(n.Info, errGenerated, result)
+  localError(n.info, errGenerated, result)
 
 proc gatherUsedSyms(c: PContext, usedSyms: var seq[PNode]) =
   for scope in walkScopes(c.currentScope):
@@ -139,7 +139,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
   let overloadsState = result.state
   if overloadsState != csMatch:
     if nfDelegate in n.flags:
-      InternalAssert f.kind == nkIdent
+      internalAssert f.kind == nkIdent
       let calleeName = newStrNode(nkStrLit, f.ident.s)
       calleeName.info = n.info
 
@@ -150,26 +150,26 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       pickBest(callOp)
 
     if overloadsState == csEmpty and result.state == csEmpty:
-      LocalError(n.info, errUndeclaredIdentifier, considerAcc(f).s)
+      localError(n.info, errUndeclaredIdentifier, considerAcc(f).s)
       return
     elif result.state != csMatch:
       if nfExprCall in n.flags:
-        LocalError(n.info, errExprXCannotBeCalled,
+        localError(n.info, errExprXCannotBeCalled,
                    renderTree(n, {renderNoComments}))
       else:
         errors = @[]
         pickBest(f)
-        NotFoundError(c, n, errors)
+        notFoundError(c, n, errors)
       return
 
   if alt.state == csMatch and cmpCandidates(result, alt) == 0 and
       not sameMethodDispatcher(result.calleeSym, alt.calleeSym):
-    InternalAssert result.state == csMatch
+    internalAssert result.state == csMatch
     #writeMatches(result)
     #writeMatches(alt)
     if c.inCompilesContext > 0: 
       # quick error message for performance of 'compiles' built-in:
-      GlobalError(n.Info, errGenerated, "ambiguous call")
+      globalError(n.info, errGenerated, "ambiguous call")
     elif gErrorCounter == 0:
       # don't cascade errors
       var args = "("
@@ -178,7 +178,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         add(args, typeToString(n.sons[i].typ))
       add(args, ")")
 
-      LocalError(n.Info, errGenerated, msgKindToString(errAmbiguousCallXYZ) % [
+      localError(n.info, errGenerated, msgKindToString(errAmbiguousCallXYZ) % [
         getProcHeader(result.calleeSym), getProcHeader(alt.calleeSym),
         args])
 
@@ -197,17 +197,17 @@ proc instGenericConvertersSons*(c: PContext, n: PNode, x: TCandidate) =
     for i in 1 .. <n.len:
       instGenericConvertersArg(c, n.sons[i], x)
 
-proc IndexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode = 
+proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode = 
   var m: TCandidate
-  initCandidate(m, f)
-  result = paramTypesMatch(c, m, f, a, arg, nil)
+  initCandidate(c, m, f)
+  result = paramTypesMatch(m, f, a, arg, nil)
   if m.genericConverter and result != nil:
     instGenericConvertersArg(c, result, m)
 
-proc ConvertTo*(c: PContext, f: PType, n: PNode): PNode = 
+proc convertTo*(c: PContext, f: PType, n: PNode): PNode = 
   var m: TCandidate
-  initCandidate(m, f)
-  result = paramTypesMatch(c, m, f, n.typ, n, nil)
+  initCandidate(c, m, f)
+  result = paramTypesMatch(m, f, n.typ, n, nil)
   if m.genericConverter and result != nil:
     instGenericConvertersArg(c, result, m)
 
@@ -225,7 +225,7 @@ proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
       result = x.call
       result.sons[0] = newSymNode(finalCallee, result.sons[0].info)
       result.typ = finalCallee.typ.sons[0]
-      if ContainsGenericType(result.typ): result.typ = errorType(c)
+      if containsGenericType(result.typ): result.typ = errorType(c)
       return
   result = x.call
   instGenericConvertersSons(c, result, x)
@@ -239,13 +239,13 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
   # else: result = errorNode(c, n)
     
 proc explicitGenericInstError(n: PNode): PNode =
-  LocalError(n.info, errCannotInstantiateX, renderTree(n))
+  localError(n.info, errCannotInstantiateX, renderTree(n))
   result = n
 
 proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
-  var x: TCandidate
-  initCandidate(x, s, n)
-  var newInst = generateInstance(c, s, x.bindings, n.info)
+  var m: TCandidate
+  initCandidate(c, m, s, n)
+  var newInst = generateInstance(c, s, m.bindings, n.info)
   markUsed(n, s)
   result = newSymNode(newInst, n.info)
 
@@ -260,7 +260,7 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
     # number of generic type parameters:
     if safeLen(s.ast.sons[genericParamsPos]) != n.len-1:
       let expected = safeLen(s.ast.sons[genericParamsPos])
-      LocalError(n.info, errGenerated, "cannot instantiate: " & renderTree(n) &
+      localError(n.info, errGenerated, "cannot instantiate: " & renderTree(n) &
          "; got " & $(n.len-1) & " type(s) but expected " & $expected)
       return n
     result = explicitGenericSym(c, n, s)
@@ -283,7 +283,7 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   else:
     result = explicitGenericInstError(n)
 
-proc SearchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
+proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
   # Searchs for the fn in the symbol table. If the parameter lists are suitable
   # for borrowing the sym in the symbol table is returned, else nil.
   # New approach: generate fn(x, y, z) where x, y, z have the proper types

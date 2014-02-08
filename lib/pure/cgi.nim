@@ -342,16 +342,35 @@ proc writeContentType*() =
   ##
   ## .. code-block:: Nimrod
   ##     write(stdout, "Content-type: text/html\n\n")
-  ##
-  ## It also modifies the debug stack traces so that they contain
-  ## ``<br />`` and are easily readable in a browser.
   write(stdout, "Content-type: text/html\n\n")
-  system.stackTraceNewLine = "<br />\n"
 
-proc setStackTraceNewLine*() =
-  ## Modifies the debug stack traces so that they contain
-  ## ``<br />`` and are easily readable in a browser.
-  system.stackTraceNewLine = "<br />\n"
+proc resetForStacktrace() =
+  stdout.write """<!--: spam
+Content-Type: text/html
+
+<body bgcolor=#f0f0f8><font color=#f0f0f8 size=-5> -->
+<body bgcolor=#f0f0f8><font color=#f0f0f8 size=-5> --> -->
+</font> </font> </font> </script> </object> </blockquote> </pre>
+</table> </table> </table> </table> </table> </font> </font> </font>
+"""
+
+proc writeErrorMessage*(data: string) =
+  ## Tries to reset browser state and writes `data` to stdout in
+  ## <plaintext> tag.
+  resetForStacktrace()
+  # We use <plaintext> here, instead of escaping, so stacktrace can
+  # be understood by human looking at source.
+  stdout.write("<plaintext>\n")
+  stdout.write(data)
+
+proc setStackTraceStdout*() =
+  ## Makes Nimrod output stacktraces to stdout, instead of server log.
+  errorMessageWriter = writeErrorMessage
+
+proc setStackTraceNewLine*() {.deprecated.} =
+  ## Makes Nimrod output stacktraces to stdout, instead of server log.
+  ## Depracated alias for setStackTraceStdout.
+  setStackTraceStdout()
 
 proc setCookie*(name, value: string) =
   ## Sets a cookie.
@@ -374,4 +393,3 @@ when isMainModule:
   const test1 = "abc\L+def xyz"
   assert UrlEncode(test1) == "abc%0A%2Bdef+xyz"
   assert UrlDecode(UrlEncode(test1)) == test1
-

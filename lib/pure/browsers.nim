@@ -29,14 +29,14 @@ proc openDefaultBrowser*(url: string) =
     when useWinUnicode:
       var o = newWideCString("open")
       var u = newWideCString(url)
-      discard ShellExecuteW(0'i32, o, u, nil, nil, SW_SHOWNORMAL)
+      discard shellExecuteW(0'i32, o, u, nil, nil, SW_SHOWNORMAL)
     else:
-      discard ShellExecuteA(0'i32, "open", url, nil, nil, SW_SHOWNORMAL)
+      discard shellExecuteA(0'i32, "open", url, nil, nil, SW_SHOWNORMAL)
   elif defined(macosx):
-    discard execShellCmd("open " & quoteIfContainsWhite(url))
+    discard execShellCmd("open " & quoteShell(url))
   else:
     const attempts = ["gnome-open ", "kde-open ", "xdg-open "]
-    var u = quoteIfContainsWhite(url)
+    var u = quoteShell(url)
     for a in items(attempts):
       if execShellCmd(a & u) == 0: return
     for b in getEnv("BROWSER").string.split(PathSep):
@@ -45,4 +45,4 @@ proc openDefaultBrowser*(url: string) =
         discard startProcess(command=b, args=[url], options={poUseShell})
         return
       except EOS:
-        nil
+        discard

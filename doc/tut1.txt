@@ -189,9 +189,24 @@ to a storage location:
   var x = "abc" # introduces a new variable `x` and assigns a value to it
   x = "xyz"     # assigns a new value to `x`
 
-``=`` is the *assignment operator*. The assignment operator cannot
-be overloaded, overwritten or forbidden, but this might change in a future
-version of Nimrod.
+``=`` is the *assignment operator*. The assignment operator cannot be
+overloaded, overwritten or forbidden, but this might change in a future version
+of Nimrod. You can declare multiple variables with a single assignment
+statement and all the variables will have the same value:
+
+.. code-block::
+  var x, y = 3  # assigns 3 to the variables `x` and `y`
+  echo "x ", x  # outputs "x 3"
+  echo "y ", y  # outputs "y 3"
+  x = 42        # changes `x` to 42 without changing `y`
+  echo "x ", x  # outputs "x 42"
+  echo "y ", y  # outputs "y 3"
+
+Note that declaring multiple variables with a single assignment which calls a
+procedure can have unexpected results: the compiler will *unroll* the
+assignments and end up calling the procedure several times. If the result of
+the procedure depends on side effects, your variables may end up having
+different values! For safety use only constant values.
 
 
 Constants
@@ -309,12 +324,12 @@ the compiler that for every other value nothing should be done:
   case n
   of 0..2, 4..7: echo("The number is in the set: {0, 1, 2, 4, 5, 6, 7}")
   of 3, 8: echo("The number is 3 or 8")
-  else: nil
+  else: discard
 
-The ``nil`` statement is a *do nothing* statement. The compiler knows that a
-case statement with an else part cannot fail and thus the error disappears. Note
-that it is impossible to cover all possible string values: that is why there is
-no such check for string cases.
+The empty ``discard`` statement is a *do nothing* statement. The compiler knows
+that a case statement with an else part cannot fail and thus the error 
+disappears. Note that it is impossible to cover all possible string values: 
+that is why there is no such check for string cases.
 
 In general the case statement is used for subrange types or enumerations where
 it is of great help that the compiler checks that you covered any possible
@@ -610,7 +625,7 @@ allow to silently throw away a return value:
   discard yes("May I ask a pointless question?")
 
 
-The return value can be ignored implicitely if the called proc/iterator has
+The return value can be ignored implicitly if the called proc/iterator has
 been declared with the ``discardable`` pragma: 
 
 .. code-block:: nimrod
@@ -798,7 +813,11 @@ important differences:
 
 However, you can also use a ``closure`` iterator to get a different set of
 restrictions. See `first class iterators <manual.html#first-class-iterators>`_
-for details.
+for details. Iterators can have the same name and parameters as a proc,
+essentially they have their own namespace. Therefore it is common practice to
+wrap iterators in procs of the same name which accumulate the result of the
+iterator and return it as a sequence, like ``split`` from the `strutils module
+<strutils.html>`_.
 
 
 Basic types
@@ -1077,7 +1096,7 @@ can also be used to include elements (and ranges of elements):
     TCharSet = set[char]
   var
     x: TCharSet
-  x = {'a'..'z', '0'..'9'} # This constructs a set that conains the
+  x = {'a'..'z', '0'..'9'} # This constructs a set that contains the
                            # letters from 'a' to 'z' and the digits
                            # from '0' to '9'
 
@@ -1201,7 +1220,7 @@ to specify a range from zero to the specified index minus one:
 Sequences
 ---------
 `Sequences`:idx: are similar to arrays but of dynamic length which may change
-during runtime (like strings). Since sequences are resizeable they are always
+during runtime (like strings). Since sequences are resizable they are always
 allocated on the heap and garbage collected.
 
 Sequences are always indexed with an ``int`` starting at position 0.
@@ -1302,6 +1321,30 @@ In this example ``$`` is applied to any argument that is passed to the
 parameter ``a``. Note that ``$`` applied to strings is a nop.
 
 
+Slices
+------
+
+Slices look similar to subranges types in syntax but are used in a different
+context. A slice is just an object of type TSlice which contains two bounds,
+`a` and `b`. By itself a slice is not very useful, but other collection types
+define operators which accept TSlice objects to define ranges.
+
+.. code-block:: nimrod
+
+  var
+    a = "Nimrod is a progamming language"
+    b = "Slices are useless."
+
+  echo a[10..15] # --> 'a prog'
+  b[11.. -2] = "useful"
+  echo b # --> 'Slices are useful.'
+
+In the previous example slices are used to modify a part of a string, and even
+a negative index is used. The slice's bounds can hold any value supported by
+their type, but it is the proc using the slice object which defines what values
+are accepted.
+
+
 Tuples
 ------
 
@@ -1351,6 +1394,45 @@ integer.
 Even though you don't need to declare a type for a tuple to use it, tuples
 created with different field names will be considered different objects despite
 having the same field types.
+
+Tuples can be *unpacked* during variable assignment (and only then!). This can
+be handy to assign directly the fields of the tuples to individually named
+variables. An example of this is the ``splitFile`` proc from the `os module
+<os.html>`_ which returns the directory, name and extension of a path at the
+same time. For tuple unpacking to work you have to use parenthesis around the
+values you want to assign the unpacking to, otherwise you will be assigning the
+same value to all the individual variables! Example:
+
+.. code-block:: nimrod
+
+  import os
+
+  let
+    path = "usr/local/nimrodc.html"
+    (dir, name, ext) = splitFile(path)
+    baddir, badname, badext = splitFile(path)
+  echo dir      # outputs `usr/local`
+  echo name     # outputs `nimrodc`
+  echo ext      # outputs `.html`
+  # All the following output the same line:
+  # `(dir: usr/local, name: nimrodc, ext: .html)`
+  echo baddir
+  echo badname
+  echo badext
+
+Tuple unpacking **only** works in ``var`` or ``let`` blocks. The following code
+won't compile:
+
+.. code-block:: nimrod
+
+  import os
+
+  var
+    path = "usr/local/nimrodc.html"
+    dir, name, ext = ""
+
+  (dir, name, ext) = splitFile(path)
+  # --> Error: '(dir, name, ext)' cannot be assigned to
 
 
 Reference and pointer types
@@ -1534,6 +1616,17 @@ rules apply:
   write(stdout, x(3))   # ambiguous: which `x` is to call?
 
 
+Excluding symbols
+-----------------
+
+The normal ``import`` statement will bring in all exported symbols.
+These can be limited by naming symbols which should be excluded with
+the ``except`` qualifier.
+
+.. code-block:: nimrod
+  import mymodule except y
+
+
 From statement
 --------------
 
@@ -1544,10 +1637,34 @@ exported symbols. An alternative that only imports listed symbols is the
 .. code-block:: nimrod
   from mymodule import x, y, z
 
+The ``from`` statement can also force namespace qualification on
+symbols, thereby making symbols available, but needing to be qualified
+to be used.
+
+.. code-block:: nimrod
+  from mymodule import x, y, z
+
+  x()           # use x without any qualification
+
+.. code-block:: nimrod
+  from mymodule import nil
+
+  mymodule.x()  # must qualify x with the module name as prefix
+
+  x()           # using x here without qualification is a compile error
+
+Since module names are generally long to be descriptive, you can also
+define a shorter alias to use when qualifying symbols.
+
+.. code-block:: nimrod
+  from mymodule as m import nil
+
+  m.x()         # m is aliasing mymodule
+
 
 Include statement
 -----------------
-The `include`:idx: statement does something fundametally different than
+The `include`:idx: statement does something fundamentally different than
 importing a module: it merely includes the contents of a file. The ``include``
 statement is useful to split up a large module into several files:
 

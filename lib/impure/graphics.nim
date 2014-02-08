@@ -343,7 +343,7 @@ proc fillRect*(sur: PSurface, r: TRect, col: TColor) =
   if sdl.FillRect(sur.s, addr(rect), sur.createSdlColor(col)) == -1:
     raiseEGraphics()
 
-proc Plot4EllipsePoints(sur: PSurface, CX, CY, X, Y: Natural, col: TColor) =
+proc plot4EllipsePoints(sur: PSurface, CX, CY, X, Y: Natural, col: TColor) =
   var video = cast[PPixels](sur.s.pixels)
   var pitch = sur.s.pitch.int div ColSize
   if CX+X <= sur.s.w-1:

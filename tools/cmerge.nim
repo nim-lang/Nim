@@ -34,7 +34,7 @@ proc main(dir, outfile: string) =
   else:
     quit("Cannot open for writing: " & outfile)
 
-if ParamCount() != 2:
+if paramCount() != 2:
   quit "Usage: cmerge directory outfile"
 else:
-  main(ParamStr(1), addFileExt(ParamStr(2), "c"))
+  main(paramStr(1), addFileExt(paramStr(2), "c"))
