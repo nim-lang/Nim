@@ -64,6 +64,8 @@ Core
 Collections and algorithms
 --------------------------
 
+* `algorithm <algorithm.html>`_
+  Implements some common generic algorithms like sort or binary search.
 * `tables <tables.html>`_
   Nimrod hash table support. Contains tables, ordered tables and count tables.
 * `sets <sets.html>`_
@@ -225,7 +227,12 @@ Parsers
 -------
 
 * `parseopt <parseopt.html>`_
-  The ``parseopt`` module implements a command line option parser. This
+  The ``parseopt`` module implements a command line option parser.
+  **Deprecated since version 0.9.3:** Use the `parseopt2
+  <parseopt2.html>`_ module instead.
+
+* `parseopt2 <parseopt2.html>`_
+  The ``parseopt2`` module implements a command line option parser. This
   supports long and short command options with optional values and command line
   arguments.
 
@@ -334,6 +341,9 @@ Miscellaneous
 * `endians <endians.html>`_
   This module contains helpers that deal with different byte orders.
 
+* `logging <logging.html>`_
+  This module implements a simple logger.
+
 
 Database support
 ----------------
@@ -379,9 +389,6 @@ Database support
 * `db_mongo <db_mongo.html>`_
   A higher level **mongodb** wrapper. 
 
-* `mongodb <mongo.html>`_
-  Lower level wrapper for the **mongodb** client C library.
-  
 
 Other
 -----
@@ -444,45 +451,6 @@ UNIX specific
 
 * `posix <posix.html>`_
   Contains a wrapper for the POSIX standard.
-* `cursorfont <cursorfont.html>`_
-  Part of the wrapper for X11.
-* `keysym <keysym.html>`_
-  Part of the wrapper for X11.
-* `x <x.html>`_
-  Part of the wrapper for X11.
-* `xatom <xatom.html>`_
-  Part of the wrapper for X11.
-* `xcms <xcms.html>`_
-  Part of the wrapper for X11.
-* `xf86dga <xf86dga.html>`_
-  Part of the wrapper for X11.
-* `xf86vmode <xf86vmode.html>`_
-  Part of the wrapper for X11.
-* `xi <xi.html>`_
-  Part of the wrapper for X11.
-* `xinerama <xinerama.html>`_
-  Part of the wrapper for X11.
-* `xkb <xkb.html>`_
-  Part of the wrapper for X11.
-* `xkblib <xkblib.html>`_
-  Part of the wrapper for X11.
-* `xlib <xlib.html>`_
-  Part of the wrapper for X11.
-* `xrandr <xrandr.html>`_
-  Part of the wrapper for X11.
-* `xrender <xrender.html>`_
-  Part of the wrapper for X11.
-* `xresource <xresource.html>`_
-  Part of the wrapper for X11.
-* `xshm <xshm.html>`_
-  Part of the wrapper for X11.
-* `xutil <xutil.html>`_
-  Part of the wrapper for X11.
-* `xv <xv.html>`_
-  Part of the wrapper for X11.
-* `xvlib <xvlib.html>`_
-  Part of the wrapper for X11.
-
 * `readline <readline.html>`_
   Part of the wrapper for the GNU readline library.
 * `history <history.html>`_
@@ -503,15 +471,6 @@ Regular expressions
 Graphics libraries
 ------------------
 
-* `cairo <cairo.html>`_
-  Wrapper for the cairo library.
-* `cairoft <cairoft.html>`_
-  Wrapper for the cairoft library.
-* `cairowin32 <cairowin32.html>`_
-  Wrapper for the cairowin32 library.
-* `cairoxlib <cairoxlib.html>`_
-  Wrapper for the cairoxlib library.
-
 * `sdl <sdl.html>`_
   Part of the wrapper for SDL.
 * `sdl_gfx <sdl_gfx.html>`_
@@ -527,47 +486,10 @@ Graphics libraries
 * `smpeg <smpeg.html>`_
   Part of the wrapper for SDL.
 
-* `gl <gl.html>`_
-  Part of the wrapper for OpenGL.
-* `glext <glext.html>`_
-  Part of the wrapper for OpenGL.
-* `glu <glu.html>`_
-  Part of the wrapper for OpenGL.
-* `glut <glut.html>`_
-  Part of the wrapper for OpenGL.
-* `glx <glx.html>`_
-  Part of the wrapper for OpenGL.
-* `wingl <wingl.html>`_
-  Part of the wrapper for OpenGL.
-
-* `opengl <opengl.html>`_
-  New wrapper for OpenGL supporting up to version 4.2.
-  
 
 GUI libraries
 -------------
-* `atk <atk.html>`_
-  Wrapper for the atk library.
-* `gdk2 <gdk2.html>`_
-  Wrapper for the gdk2 library.
-* `gdk2pixbuf <gdk2pixbuf.html>`_
-  Wrapper for the gdk2pixbuf library.
-* `gdkglext <gdkglext.html>`_
-  Wrapper for the gdkglext library.
-* `glib2 <glib2.html>`_
-  Wrapper for the glib2 library.
-* `gtk2 <gtk2.html>`_
-  Wrapper for the gtk2 library.
-* `gtkglext <gtkglext.html>`_
-  Wrapper for the gtkglext library.
-* `gtkhtml <gtkhtml.html>`_
-  Wrapper for the gtkhtml library.
-* `libglade2 <libglade2.html>`_
-  Wrapper for the libglade2 library.
-* `pango <pango.html>`_
-  Wrapper for the pango library.
-* `pangoutils <pangoutils.html>`_
-  Wrapper for the pangoutils library.
+
 * `iup <iup.html>`_
   Wrapper of the IUP GUI library.
 
@@ -581,6 +503,8 @@ Database support
   Contains a wrapper for the mySQL API.
 * `sqlite3 <sqlite3.html>`_
   Contains a wrapper for SQLite 3 API.
+* `mongodb <mongo.html>`_
+  Lower level wrapper for the **mongodb** client C library.
 * `odbcsql <odbcsql.html>`_
   interface to the ODBC driver.
 * `sphinx <sphinx.html>`_
@@ -608,21 +532,6 @@ Network Programming and Internet Protocols
 
 * `openssl <openssl.html>`_
   Wrapper for OpenSSL.
-
-
-Scripting languages
--------------------
-
-* `lua <lua.html>`_
-  Part of the wrapper for Lua.
-* `lualib <lualib.html>`_
-  Part of the wrapper for Lua.
-* `lauxlib <lauxlib.html>`_
-  Part of the wrapper for Lua.
-* `tcl <tcl.html>`_
-  Wrapper for the TCL programming language.
-* `python <python.html>`_
-  Wrapper for the Python programming language.
 
 
 Data Compression and Archiving

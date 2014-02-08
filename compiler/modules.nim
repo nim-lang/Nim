@@ -41,7 +41,7 @@ template crc(x: PSym): expr =
   gMemCacheData[x.position].crc
 
 proc crcChanged(fileIdx: int32): bool =
-  InternalAssert fileIdx >= 0 and fileIdx < gMemCacheData.len
+  internalAssert fileIdx >= 0 and fileIdx < gMemCacheData.len
   
   template updateStatus =
     gMemCacheData[fileIdx].crcStatus = if result: crcHasChanged
@@ -68,7 +68,7 @@ proc doCRC(fileIdx: int32) =
     # echo "FIRST CRC: ", fileIdx.ToFilename
     gMemCacheData[fileIdx].crc = crcFromFile(fileIdx.toFilename)
 
-proc addDep(x: Psym, dep: int32) =
+proc addDep(x: PSym, dep: int32) =
   growCache gMemCacheData, dep
   gMemCacheData[x.position].deps.safeAdd(dep)
 
@@ -130,7 +130,7 @@ proc newModule(fileIdx: int32): PSym =
   
   incl(result.flags, sfUsed)
   initStrTable(result.tab)
-  StrTableAdd(result.tab, result) # a module knows itself
+  strTableAdd(result.tab, result) # a module knows itself
 
 proc compileModule*(fileIdx: int32, flags: TSymFlags): PSym =
   result = getModule(fileIdx)
@@ -144,7 +144,7 @@ proc compileModule*(fileIdx: int32, flags: TSymFlags): PSym =
     if gCmd in {cmdCompileToC, cmdCompileToCpp, cmdCheck, cmdIdeTools}:
       rd = handleSymbolFile(result)
       if result.id < 0: 
-        InternalError("handleSymbolFile should have set the module\'s ID")
+        internalError("handleSymbolFile should have set the module\'s ID")
         return
     else:
       result.id = getID()
@@ -155,7 +155,7 @@ proc compileModule*(fileIdx: int32, flags: TSymFlags): PSym =
       doCRC fileIdx
   else:
     if checkDepMem(fileIdx) == Yes:
-      result = CompileModule(fileIdx, flags)
+      result = compileModule(fileIdx, flags)
     else:
       result = gCompiledModules[fileIdx]
 
@@ -164,14 +164,14 @@ proc importModule*(s: PSym, fileIdx: int32): PSym {.procvar.} =
   result = compileModule(fileIdx, {})
   if optCaasEnabled in gGlobalOptions: addDep(s, fileIdx)
   if sfSystemModule in result.flags:
-    LocalError(result.info, errAttemptToRedefine, result.Name.s)
+    localError(result.info, errAttemptToRedefine, result.name.s)
 
 proc includeModule*(s: PSym, fileIdx: int32): PNode {.procvar.} =
   result = syntaxes.parseFile(fileIdx)
   if optCaasEnabled in gGlobalOptions:
     growCache gMemCacheData, fileIdx
     addDep(s, fileIdx)
-    doCrc(fileIdx)
+    doCRC(fileIdx)
 
 proc `==^`(a, b: string): bool =
   try:
@@ -180,17 +180,17 @@ proc `==^`(a, b: string): bool =
     result = false
 
 proc compileSystemModule* =
-  if magicsys.SystemModule == nil:
-    SystemFileIdx = fileInfoIdx(options.libpath/"system.nim")
-    discard CompileModule(SystemFileIdx, {sfSystemModule})
+  if magicsys.systemModule == nil:
+    systemFileIdx = fileInfoIdx(options.libpath/"system.nim")
+    discard compileModule(systemFileIdx, {sfSystemModule})
 
-proc CompileProject*(projectFile = gProjectMainIdx) =
+proc compileProject*(projectFile = gProjectMainIdx) =
   let systemFileIdx = fileInfoIdx(options.libpath / "system.nim")
-  if projectFile == SystemFileIdx:
-    discard CompileModule(projectFile, {sfMainModule, sfSystemModule})
+  if projectFile == systemFileIdx:
+    discard compileModule(projectFile, {sfMainModule, sfSystemModule})
   else:
     compileSystemModule()
-    discard CompileModule(projectFile, {sfMainModule})
+    discard compileModule(projectFile, {sfMainModule})
 
 var stdinModule: PSym
 proc makeStdinModule*(): PSym =

@@ -49,7 +49,7 @@ proc parseExpr(L: var TLexer, tok: var TToken): bool =
     var b = parseAndExpr(L, tok)
     result = result or b
 
-proc EvalppIf(L: var TLexer, tok: var TToken): bool = 
+proc evalppIf(L: var TLexer, tok: var TToken): bool = 
   ppGetTok(L, tok)            # skip 'if' or 'elif'
   result = parseExpr(L, tok)
   if tok.tokType == tkColon: ppGetTok(L, tok)
@@ -60,7 +60,7 @@ var condStack: seq[bool] = @[]
 proc doEnd(L: var TLexer, tok: var TToken) = 
   if high(condStack) < 0: lexMessage(L, errTokenExpected, "@if")
   ppGetTok(L, tok)            # skip 'end'
-  setlen(condStack, high(condStack))
+  setLen(condStack, high(condStack))
 
 type 
   TJumpDest = enum 
@@ -75,18 +75,18 @@ proc doElse(L: var TLexer, tok: var TToken) =
   
 proc doElif(L: var TLexer, tok: var TToken) = 
   if high(condStack) < 0: lexMessage(L, errTokenExpected, "@if")
-  var res = EvalppIf(L, tok)
+  var res = evalppIf(L, tok)
   if condStack[high(condStack)] or not res: jumpToDirective(L, tok, jdElseEndif)
   else: condStack[high(condStack)] = true
   
 proc jumpToDirective(L: var TLexer, tok: var TToken, dest: TJumpDest) = 
   var nestedIfs = 0
-  while True: 
+  while true: 
     if (tok.ident != nil) and (tok.ident.s == "@"): 
       ppGetTok(L, tok)
       case whichKeyword(tok.ident)
       of wIf: 
-        Inc(nestedIfs)
+        inc(nestedIfs)
       of wElse: 
         if (dest == jdElseEndif) and (nestedIfs == 0): 
           doElse(L, tok)
@@ -99,21 +99,21 @@ proc jumpToDirective(L: var TLexer, tok: var TToken, dest: TJumpDest) =
         if nestedIfs == 0: 
           doEnd(L, tok)
           break 
-        if nestedIfs > 0: Dec(nestedIfs)
+        if nestedIfs > 0: dec(nestedIfs)
       else: 
-        nil
+        discard
       ppGetTok(L, tok)
-    elif tok.tokType == tkEof: 
+    elif tok.tokType == tkEof:
       lexMessage(L, errTokenExpected, "@end")
-    else: 
+    else:
       ppGetTok(L, tok)
   
 proc parseDirective(L: var TLexer, tok: var TToken) = 
   ppGetTok(L, tok)            # skip @
   case whichKeyword(tok.ident)
   of wIf:
-    setlen(condStack, len(condStack) + 1)
-    var res = EvalppIf(L, tok)
+    setLen(condStack, len(condStack) + 1)
+    var res = evalppIf(L, tok)
     condStack[high(condStack)] = res
     if not res: jumpToDirective(L, tok, jdElseEndif)
   of wElif: doElif(L, tok)
@@ -121,7 +121,7 @@ proc parseDirective(L: var TLexer, tok: var TToken) =
   of wEnd: doEnd(L, tok)
   of wWrite: 
     ppGetTok(L, tok)
-    msgs.MsgWriteln(tokToStr(tok))
+    msgs.msgWriteln(tokToStr(tok))
     ppGetTok(L, tok)
   else:
     case tok.ident.s.normalize
@@ -135,13 +135,13 @@ proc parseDirective(L: var TLexer, tok: var TToken) =
       ppGetTok(L, tok)
       var key = tokToStr(tok)
       ppGetTok(L, tok)
-      os.putEnv(key, tokToStr(tok) & os.getenv(key))
+      os.putEnv(key, tokToStr(tok) & os.getEnv(key))
       ppGetTok(L, tok)
     of "appendenv":
       ppGetTok(L, tok)
       var key = tokToStr(tok)
       ppGetTok(L, tok)
-      os.putEnv(key, os.getenv(key) & tokToStr(tok))
+      os.putEnv(key, os.getEnv(key) & tokToStr(tok))
       ppGetTok(L, tok)
     else: lexMessage(L, errInvalidDirectiveX, tokToStr(tok))
   
@@ -196,7 +196,7 @@ proc readConfigFile(filename: string) =
     L: TLexer
     tok: TToken
     stream: PLLStream
-  stream = LLStreamOpen(filename, fmRead)
+  stream = llStreamOpen(filename, fmRead)
   if stream != nil:
     initToken(tok)
     openLexer(L, filename, stream)
@@ -219,7 +219,7 @@ proc getSystemConfigPath(filename: string): string =
     if not existsFile(result): result = joinPath([p, "etc", filename])
     if not existsFile(result): result = "/etc/" & filename
 
-proc LoadConfigs*(cfg: string) =
+proc loadConfigs*(cfg: string) =
   # set default value (can be overwritten):
   if libpath == "": 
     # choose default libpath:
@@ -243,11 +243,6 @@ proc LoadConfigs*(cfg: string) =
     readConfigFile(pd / cfg)
     
     if gProjectName.len != 0:
-      var conffile = changeFileExt(gProjectFull, "cfg")
-      if conffile != pd / cfg and existsFile(conffile):
-        readConfigFile(conffile)
-        rawMessage(warnConfigDeprecated, conffile)
-      
       # new project wide config file:
       readConfigFile(changeFileExt(gProjectFull, "nimrod.cfg"))
  

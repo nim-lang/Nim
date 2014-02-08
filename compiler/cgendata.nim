@@ -61,8 +61,8 @@ type
   
   TCProc{.final.} = object    # represents C proc that is currently generated
     prc*: PSym                # the Nimrod proc that this C proc belongs to
-    BeforeRetNeeded*: bool    # true iff 'BeforeRet' label for proc is needed
-    ThreadVarAccessed*: bool  # true if the proc already accessed some threadvar
+    beforeRetNeeded*: bool    # true iff 'BeforeRet' label for proc is needed
+    threadVarAccessed*: bool  # true if the proc already accessed some threadvar
     nestedTryStmts*: seq[PNode] # in how many nested try statements we are
                                 # (the vars must be volatile then)
     inExceptBlock*: int       # are we currently inside an except block?
@@ -78,7 +78,7 @@ type
     maxFrameLen*: int         # max length of frame descriptor
     module*: BModule          # used to prevent excessive parameter passing
     withinLoop*: int          # > 0 if we are within a loop
-    gcFrameId*: natural       # for the GC stack marking
+    gcFrameId*: Natural       # for the GC stack marking
     gcFrameType*: PRope       # the struct {} we put the GC markers into
   
   TTypeSeq* = seq[PType]
@@ -86,11 +86,12 @@ type
     module*: PSym
     filename*: string
     s*: TCFileSections        # sections of the C file
-    PreventStackTrace*: bool  # true if stack traces need to be prevented
+    preventStackTrace*: bool  # true if stack traces need to be prevented
     usesThreadVars*: bool     # true if the module uses a thread var
-    FrameDeclared*: bool      # hack for ROD support so that we don't declare
+    frameDeclared*: bool      # hack for ROD support so that we don't declare
                               # a frame var twice in an init proc
     isHeaderFile*: bool       # C source file is the header file
+    includesStringh*: bool    # C source file already includes ``<string.h>``
     cfilename*: string        # filename of the module (including path,
                               # without extension)
     typeCache*: TIdTable      # cache the generated types
@@ -107,12 +108,14 @@ type
     forwardedProcs*: TSymSeq  # keep forwarded procs here
     typeNodes*, nimTypes*: int # used for type info generation
     typeNodesName*, nimTypesName*: PRope # used for type info generation
-    labels*: natural          # for generating unique module-scope names
+    labels*: Natural          # for generating unique module-scope names
     extensionLoaders*: array['0'..'9', PRope] # special procs for the
                                               # OpenGL wrapper
+    injectStmt*: PRope
 
 var
-  mainModProcs*, mainModInit*, mainDatInit*: PRope # parts of the main module
+  mainModProcs*, mainModInit*, otherModsInit*, mainDatInit*: PRope
+    # varuious parts of the main module
   gMapping*: PRope             # the generated mapping file (if requested)
   gModules*: seq[BModule] = @[] # list of all compiled modules
   gForwardedProcsCounter*: int = 0

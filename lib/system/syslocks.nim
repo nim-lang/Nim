@@ -22,49 +22,52 @@ when defined(Windows):
 
     TSysCond = THandle
           
-  proc InitSysLock(L: var TSysLock) {.stdcall, noSideEffect,
+  proc initSysLock(L: var TSysLock) {.stdcall, noSideEffect,
     dynlib: "kernel32", importc: "InitializeCriticalSection".}
     ## Initializes the lock `L`.
 
-  proc TryAcquireSysAux(L: var TSysLock): int32 {.stdcall, noSideEffect,
+  proc tryAcquireSysAux(L: var TSysLock): int32 {.stdcall, noSideEffect,
     dynlib: "kernel32", importc: "TryEnterCriticalSection".}
     ## Tries to acquire the lock `L`.
     
-  proc TryAcquireSys(L: var TSysLock): bool {.inline.} = 
+  proc tryAcquireSys(L: var TSysLock): bool {.inline.} = 
     result = TryAcquireSysAux(L) != 0'i32
 
-  proc AcquireSys(L: var TSysLock) {.stdcall, noSideEffect,
+  proc acquireSys(L: var TSysLock) {.stdcall, noSideEffect,
     dynlib: "kernel32", importc: "EnterCriticalSection".}
     ## Acquires the lock `L`.
     
-  proc ReleaseSys(L: var TSysLock) {.stdcall, noSideEffect,
+  proc releaseSys(L: var TSysLock) {.stdcall, noSideEffect,
     dynlib: "kernel32", importc: "LeaveCriticalSection".}
     ## Releases the lock `L`.
 
-  proc DeinitSys(L: var TSysLock) {.stdcall, noSideEffect,
+  proc deinitSys(L: var TSysLock) {.stdcall, noSideEffect,
     dynlib: "kernel32", importc: "DeleteCriticalSection".}
 
-  proc CreateEvent(lpEventAttributes: pointer, 
+  proc createEvent(lpEventAttributes: pointer, 
                    bManualReset, bInitialState: int32,
                    lpName: cstring): TSysCond {.stdcall, noSideEffect,
     dynlib: "kernel32", importc: "CreateEventA".}
   
-  proc CloseHandle(hObject: THandle) {.stdcall, noSideEffect,
+  proc closeHandle(hObject: THandle) {.stdcall, noSideEffect,
     dynlib: "kernel32", importc: "CloseHandle".}
-  proc WaitForSingleObject(hHandle: THandle, dwMilliseconds: int32): int32 {.
+  proc waitForSingleObject(hHandle: THandle, dwMilliseconds: int32): int32 {.
     stdcall, dynlib: "kernel32", importc: "WaitForSingleObject".}
 
-  proc SignalSysCond(hEvent: TSysCond) {.stdcall, noSideEffect,
+  proc signalSysCond(hEvent: TSysCond) {.stdcall, noSideEffect,
     dynlib: "kernel32", importc: "SetEvent".}
   
-  proc InitSysCond(cond: var TSysCond) {.inline.} =
-    cond = CreateEvent(nil, 0'i32, 0'i32, nil)
-  proc DeinitSysCond(cond: var TSysCond) {.inline.} =
-    CloseHandle(cond)
-  proc WaitSysCond(cond: var TSysCond, lock: var TSysLock) =
+  proc initSysCond(cond: var TSysCond) {.inline.} =
+    cond = createEvent(nil, 0'i32, 0'i32, nil)
+  proc deinitSysCond(cond: var TSysCond) {.inline.} =
+    closeHandle(cond)
+  proc waitSysCond(cond: var TSysCond, lock: var TSysLock) =
     releaseSys(lock)
-    discard WaitForSingleObject(cond, -1'i32)
+    discard waitForSingleObject(cond, -1'i32)
     acquireSys(lock)
+
+  proc waitSysCondWindows(cond: var TSysCond) =
+    discard waitForSingleObject(cond, -1'i32)
 
 else:
   type
@@ -73,29 +76,29 @@ else:
     TSysCond {.importc: "pthread_cond_t", pure, final,
                header: "<sys/types.h>".} = object
 
-  proc InitSysLock(L: var TSysLock, attr: pointer = nil) {.
+  proc initSysLock(L: var TSysLock, attr: pointer = nil) {.
     importc: "pthread_mutex_init", header: "<pthread.h>", noSideEffect.}
 
-  proc AcquireSys(L: var TSysLock) {.noSideEffect,
+  proc acquireSys(L: var TSysLock) {.noSideEffect,
     importc: "pthread_mutex_lock", header: "<pthread.h>".}
-  proc TryAcquireSysAux(L: var TSysLock): cint {.noSideEffect,
+  proc tryAcquireSysAux(L: var TSysLock): cint {.noSideEffect,
     importc: "pthread_mutex_trylock", header: "<pthread.h>".}
 
-  proc TryAcquireSys(L: var TSysLock): bool {.inline.} = 
-    result = TryAcquireSysAux(L) == 0'i32
+  proc tryAcquireSys(L: var TSysLock): bool {.inline.} = 
+    result = tryAcquireSysAux(L) == 0'i32
 
-  proc ReleaseSys(L: var TSysLock) {.noSideEffect,
+  proc releaseSys(L: var TSysLock) {.noSideEffect,
     importc: "pthread_mutex_unlock", header: "<pthread.h>".}
-  proc DeinitSys(L: var TSysLock) {.
+  proc deinitSys(L: var TSysLock) {.
     importc: "pthread_mutex_destroy", header: "<pthread.h>".}
 
-  proc InitSysCond(cond: var TSysCond, cond_attr: pointer = nil) {.
+  proc initSysCond(cond: var TSysCond, cond_attr: pointer = nil) {.
     importc: "pthread_cond_init", header: "<pthread.h>".}
-  proc WaitSysCond(cond: var TSysCond, lock: var TSysLock) {.
+  proc waitSysCond(cond: var TSysCond, lock: var TSysLock) {.
     importc: "pthread_cond_wait", header: "<pthread.h>".}
-  proc SignalSysCond(cond: var TSysCond) {.
+  proc signalSysCond(cond: var TSysCond) {.
     importc: "pthread_cond_signal", header: "<pthread.h>".}
   
-  proc DeinitSysCond(cond: var TSysCond) {.
+  proc deinitSysCond(cond: var TSysCond) {.
     importc: "pthread_cond_destroy", header: "<pthread.h>".}
   

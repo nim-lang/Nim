@@ -3,7 +3,7 @@ News
 ====
 
 
-2013-XX-XX Version 0.9.4 released
+2014-XX-XX Version 0.9.4 released
 =================================
 
 
@@ -28,6 +28,18 @@ Changes affecting backwards compatibility
   require an error code to be passed to them. This error code can be retrieved
   using the new ``OSLastError`` proc.
 - ``os.parentDir`` now returns "" if there is no parent dir.
+- In CGI scripts stacktraces are shown to the user only 
+  if ``cgi.setStackTraceStdout`` is used.
+- The symbol binding rules for clean templates changed: ``bind`` for any
+  symbol that's not a parameter is now the default. ``mixin`` can be used
+  to require instantiation scope for a symbol.
+- ``quoteIfContainsWhite`` now escapes argument in such way that it can be safely
+  passed to shell, instead of just adding double quotes.
+- ``macros.dumpTree`` and ``macros.dumpLisp`` have been made ``immediate``,
+  ``dumpTreeImm`` and ``dumpLispImm`` are now deprecated.
+- The ``nil`` statement has been deprecated, use an empty ``discard`` instead.
+- ``sockets.select`` now prunes sockets that are **not** ready from the list
+  of sockets given to it.
 
 
 Compiler Additions
@@ -41,6 +53,10 @@ Compiler Additions
   over the generated code.
 - The compiler now supports a ``computedGoto`` pragma to support very fast
   dispatching for interpreters and the like.
+- The old evaluation engine has been replaced by a proper register based
+  virtual machine. This fixes numerous bugs for ``nimrod i`` and for macro
+  evaluation.
+- ``--gc:none`` produces warnings when code uses the GC.
 
 
 Language Additions
@@ -48,14 +64,18 @@ Language Additions
 
 - Arrays can now be declared with a single integer literal ``N`` instead of a
   range; the range is then ``0..N-1``.
-- ``macros.dumpTree`` and ``macros.dumpLisp`` have been made ``immediate``,
-  ``dumpTreeImm`` and ``dumpLispImm`` are now deprecated.
 - Added ``requiresInit`` pragma to enforce explicit initialization.
-- Added ``using statement`` for better authoring domain-specific languages and
-  OOP-like syntactic sugar.
-- Added ``delegator pragma`` for handling calls to missing procs and fields at
-  compile-time.
-- Support for user-defined type classes have been added.
+- Exported templates are allowed to access hidden fields.
+- The ``using statement`` enables you to more easily author domain-specific
+  languages and libraries providing OOP-like syntactic sugar.
+- Added a new ``delegator pragma`` for handling calls to missing procs and
+  fields at compile-time.
+- The overload resolution now supports ``static[T]`` params that must be
+  evaluable at compile-time.
+- Support for user-defined type classes has been added.
+- The *command syntax* is supported in a lot more contexts.
+- Anonymous iterators are now supported and iterators can capture variables
+  of an outer proc.
 
 
 Tools improvements
@@ -309,7 +329,7 @@ Changes affecting backwards compatibility
 - The Nimrod type system now distinguishes ``openarray`` from ``varargs``.
 - Templates are now ``hygienic``. Use the ``dirty`` pragma to get the old
   behaviour.
-- Objects that have no ancestor are now implicitely ``final``. Use 
+- Objects that have no ancestor are now implicitly ``final``. Use 
   the ``inheritable`` pragma to introduce new object roots apart 
   from ``TObject``.
 - Macros now receive parameters like templates do; use the ``callsite`` builtin
@@ -439,7 +459,7 @@ Language Additions
 - The error pragma can now be used to mark symbols whose *usage* should trigger
   a compile-time error.
 - There is a new ``discardable`` pragma that can be used to mark a routine 
-  so that its result can be discarded implicitely.
+  so that its result can be discarded implicitly.
 - Added a new ``noinit`` pragma to prevent automatic initialization to zero
   of variables.
 - Constants can now have the type ``seq``.

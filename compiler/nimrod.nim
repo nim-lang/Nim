@@ -13,9 +13,9 @@ when defined(gcc) and defined(windows):
   else:
     {.link: "icons/nimrod_icon.o".}
 
-import 
-  commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes, 
-  extccomp, strutils, os, platform, main, parseopt, service
+import
+  commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes,
+  extccomp, strutils, os, osproc, platform, main, parseopt, service
 
 when hasTinyCBackend:
   import tccgen
@@ -23,7 +23,7 @@ when hasTinyCBackend:
 when defined(profiler) or defined(memProfiler):
   {.hint: "Profiling support is turned on!".}
   import nimprof
-  
+
 proc prependCurDir(f: string): string =
   when defined(unix):
     if os.isAbsolute(f): result = f
@@ -31,12 +31,12 @@ proc prependCurDir(f: string): string =
   else:
     result = f
 
-proc HandleCmdLine() =
+proc handleCmdLine() =
   if paramCount() == 0:
     writeCommandLineUsage()
   else:
     # Process command line arguments:
-    ProcessCmdLine(passCmd1, "")
+    processCmdLine(passCmd1, "")
     if gProjectName != "":
       try:
         gProjectFull = canonicalizePath(gProjectName)
@@ -47,12 +47,12 @@ proc HandleCmdLine() =
       gProjectName = p.name
     else:
       gProjectPath = getCurrentDir()
-    LoadConfigs(DefaultConfig) # load all config files
+    loadConfigs(DefaultConfig) # load all config files
     # now process command line arguments again, because some options in the
     # command line can overwite the config file's settings
     extccomp.initVars()
-    ProcessCmdLine(passCmd2, "")
-    MainCommand()
+    processCmdLine(passCmd2, "")
+    mainCommand()
     if gVerbosity >= 2: echo(GC_getStatistics())
     #echo(GC_getStatistics())
     if msgs.gErrorCounter == 0:
@@ -61,12 +61,18 @@ proc HandleCmdLine() =
           tccgen.run()
       if optRun in gGlobalOptions:
         if gCmd == cmdCompileToJS:
-          var ex = quoteIfContainsWhite(
+          var ex = quoteShell(
             completeCFilePath(changeFileExt(gProjectFull, "js").prependCurDir))
           execExternalProgram("node " & ex & ' ' & service.arguments)
         else:
-          var ex = quoteIfContainsWhite(
-            changeFileExt(gProjectFull, exeExt).prependCurDir)
+          var binPath: string
+          if options.outFile.len > 0:
+            # If the user specified an outFile path, use that directly.
+            binPath = options.outFile.prependCurDir
+          else:
+            # Figure out ourselves a valid binary name.
+            binPath = changeFileExt(gProjectFull, ExeExt).prependCurDir
+          var ex = quoteShell(binPath)
           execExternalProgram(ex & ' ' & service.arguments)
 
 when defined(GC_setMaxPause):
@@ -75,6 +81,8 @@ when defined(GC_setMaxPause):
 when compileOption("gc", "v2") or compileOption("gc", "refc"):
   # the new correct mark&sweet collector is too slow :-/
   GC_disableMarkAndSweep()
-condsyms.InitDefines()
-HandleCmdLine()
-quit(int8(msgs.gErrorCounter > 0))
+condsyms.initDefines()
+
+when not defined(selftest):
+  handleCmdLine()
+  quit(int8(msgs.gErrorCounter > 0))

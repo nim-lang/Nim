@@ -7,13 +7,14 @@ finally for from
 generic
 if import in include interface is isnot iterator
 lambda let
-macro method mixin using mod
+macro method mixin mod
 nil not notin
 object of or out
 proc ptr
 raise ref return
 shared shl shr static
 template try tuple type
+using
 var
 when while with without
 xor

@@ -94,7 +94,7 @@ proc nextPowerOfTwo*(x: int): int =
   result = result or (result shr 4)
   result = result or (result shr 2)
   result = result or (result shr 1)
-  Inc(result)
+  inc(result)
 
 proc countBits32*(n: int32): int {.noSideEffect.} =
   ## counts the set bits in `n`.
@@ -103,17 +103,17 @@ proc countBits32*(n: int32): int {.noSideEffect.} =
   v = (v and 0x33333333'i32) +% ((v shr 2'i32) and 0x33333333'i32)
   result = ((v +% (v shr 4'i32) and 0xF0F0F0F'i32) *% 0x1010101'i32) shr 24'i32
 
-proc sum*[T](x: openarray[T]): T {.noSideEffect.} = 
+proc sum*[T](x: openArray[T]): T {.noSideEffect.} = 
   ## computes the sum of the elements in `x`. 
   ## If `x` is empty, 0 is returned.
   for i in items(x): result = result + i
 
-proc mean*(x: openarray[float]): float {.noSideEffect.} = 
+proc mean*(x: openArray[float]): float {.noSideEffect.} = 
   ## computes the mean of the elements in `x`. 
   ## If `x` is empty, NaN is returned.
   result = sum(x) / toFloat(len(x))
 
-proc variance*(x: openarray[float]): float {.noSideEffect.} = 
+proc variance*(x: openArray[float]): float {.noSideEffect.} = 
   ## computes the variance of the elements in `x`. 
   ## If `x` is empty, NaN is returned.
   result = 0.0

@@ -10,7 +10,10 @@
 ## This module provides the standard Nimrod command line parser.
 ## It supports one convenience iterator over all command line options and some
 ## lower-level features.
-
+##
+## **Deprecated since version 0.9.3:** Use the `parseopt2 <parseopt2.html>`_
+## module instead as this version has issues with spaces in arguments.
+{.deprecated.}
 {.push debugger: off.}
 
 include "system/inclrtl"
@@ -34,7 +37,7 @@ type
                               ## or the argument, ``value`` is not "" if
                               ## the option was given a value
 
-when defined(os.ParamCount):
+when defined(os.paramCount):
   # we cannot provide this for NimRtl creation on Posix, because we can't 
   # access the command line arguments then!
 
@@ -47,7 +50,7 @@ when defined(os.ParamCount):
       result.cmd = cmdline
     else: 
       result.cmd = ""
-      for i in countup(1, ParamCount()): 
+      for i in countup(1, paramCount()): 
         result.cmd = result.cmd & quoteIfContainsWhite(paramStr(i).string) & ' '
     result.kind = cmdEnd
     result.key = TaintedString""
@@ -91,8 +94,8 @@ proc next*(p: var TOptParser) {.
   var i = p.pos
   while p.cmd[i] in {'\x09', ' '}: inc(i)
   p.pos = i
-  setlen(p.key.string, 0)
-  setlen(p.val.string, 0)
+  setLen(p.key.string, 0)
+  setLen(p.val.string, 0)
   if p.inShortState: 
     handleShortOption(p)
     return 
@@ -102,7 +105,7 @@ proc next*(p: var TOptParser) {.
   of '-': 
     inc(i)
     if p.cmd[i] == '-': 
-      p.kind = cmdLongOption
+      p.kind = cmdLongoption
       inc(i)
       i = parseWord(p.cmd, i, p.key.string, {'\0', ' ', '\x09', ':', '='})
       while p.cmd[i] in {'\x09', ' '}: inc(i)

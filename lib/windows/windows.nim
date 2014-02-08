@@ -21856,15 +21856,9 @@ proc InflateRect*(lprc: var TRect, dx, dy: int): WINBOOL{.stdcall,
     dynlib: "user32", importc: "InflateRect".}
 proc InitializeAcl*(pAcl: var TACL, nAclLength, dwAclRevision: DWORD): WINBOOL{.
     stdcall, dynlib: "advapi32", importc: "InitializeAcl".}
-proc InitializeCriticalSectionAndSpinCount*(
-    lpCriticalSection: var TRTLCriticalSection, dwSpinCount: DWORD): WINBOOL{.
-    stdcall, dynlib: "kernel32",
-    importc: "InitializeCriticalSectionAndSpinCount".}
 proc InitializeSid*(Sid: Pointer, pIdentifierAuthority: TSIDIdentifierAuthority,
                     nSubAuthorityCount: int8): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "InitializeSid".}
-proc InsertMenuItem*(p1: HMENU, p2: UINT, p3: WINBOOL, p4: TMenuItemInfo): WINBOOL{.
-    stdcall, dynlib: "user32", importc: "InsertMenuItemA".}
 proc InsertMenuItemA*(p1: HMENU, p2: UINT, p3: WINBOOL, p4: TMenuItemInfoA): WINBOOL{.
     stdcall, dynlib: "user32", importc: "InsertMenuItemA".}
   #function InsertMenuItemW(p1: HMENU; p2: UINT; p3: WINBOOL; const p4: TMenuItemInfoW): WINBOOL; stdcall; external 'user32' name 'InsertMenuItemW';
@@ -22362,11 +22356,6 @@ proc SetConsoleCursorInfo*(hConsoleOutput: THandle,
                            lpConsoleCursorInfo: TConsoleCursorInfo): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "SetConsoleCursorInfo".}
   #function SetConsoleWindowInfo(hConsoleOutput: THandle; bAbsolute: WINBOOL; const lpConsoleWindow: TSmallRect): WINBOOL; stdcall; external 'kernel32' name 'SetConsoleWindowInfo';
-proc SetCriticalSectionSpinCount*(lpCriticalSection: var TRTLCriticalSection,
-                                  dwSpinCount: DWORD): DWORD{.stdcall,
-    dynlib: "kernel32", importc: "SetCriticalSectionSpinCount".}
-proc SetDeviceGammaRamp*(DC: HDC, Ramp: pointer): WINBOOL{.stdcall,
-    dynlib: "gdi32", importc: "SetDeviceGammaRamp".}
 proc SetDIBColorTable*(DC: HDC, p2, p3: UINT, RGBQuadSTructs: pointer): UINT{.
     stdcall, dynlib: "gdi32", importc: "SetDIBColorTable".}
 proc SetDIBits*(DC: HDC, Bitmap: HBITMAP, StartScan, NumScans: UINT,
@@ -22476,8 +22465,6 @@ proc TranslateMDISysAccel*(hWndClient: HWND, lpMsg: TMsg): WINBOOL{.stdcall,
 proc TranslateMessage*(lpMsg: TMsg): WINBOOL{.stdcall, dynlib: "user32",
     importc: "TranslateMessage".}
   #function TransparentDIBits(DC: HDC; p2, p3, p4, p5: Integer; const p6: Pointer; const p7: PBitmapInfo; p8: UINT; p9, p10, p11, p12: Integer; p13: UINT): WINBOOL;stdcall; external 'gdi32' name 'TransparentDIBits';
-proc TryEnterCriticalSection*(lpCriticalSection: var TRTLCriticalSection): WINBOOL{.
-    stdcall, dynlib: "kernel32", importc: "TryEnterCriticalSection".}
 proc UnhandledExceptionFilter*(ExceptionInfo: TExceptionPointers): int32{.
     stdcall, dynlib: "kernel32", importc: "UnhandledExceptionFilter".}
 proc UnionRect*(lprcDst: var TRect, lprcSrc1, lprcSrc2: TRect): WINBOOL{.
@@ -22846,12 +22833,6 @@ proc PRIMARYLANGID*(lgid: int32): int16 =
 proc SUBLANGID*(lgid: int32): int32 =
   # return type might be wrong
   result = toU16(lgid) shr 10'i16
-
-proc LANGIDFROMLCID*(lcid: int32): int16 =
-  result = toU16(lcid)
-
-proc SORTIDFROMLCID*(lcid: int32): int16 =
-  result = toU16((lcid and 0x000FFFFF'i32) shr 16'i32)
 
 proc MAKELCID*(lgid, srtid: int32): DWORD =
   result = toU32(srtid shl 16'i32 or lgid and 0xffff'i32)

@@ -1,7 +1,7 @@
 #
 #
 #         Maintenance program for Nimrod  
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -26,7 +26,7 @@ const
 +-----------------------------------------------------------------+
 |         Maintenance program for Nimrod                          |
 |             Version $1|
-|             (c) 2013 Andreas Rumpf                              |
+|             (c) 2014 Andreas Rumpf                              |
 +-----------------------------------------------------------------+
 Build time: $2, $3
 
@@ -42,9 +42,10 @@ Possible Commands:
   csource [options]        builds the C sources for installation
   zip                      builds the installation ZIP package
   inno [options]           builds the Inno Setup installer (for Windows)
-  tests                    run the testsuite
+  tests [options]          run the testsuite
   update                   updates nimrod to the latest version from github
                            (compile koch with -d:withUpdate to enable)
+  temp options             creates a temporary compiler for testing
 Boot options:
   -d:release               produce a release version of the compiler
   -d:tinyc                 include the Tiny C backend (not supported on Windows)
@@ -109,16 +110,16 @@ proc findStartNimrod: string =
   # If these fail, we try to build nimrod with the "build.(sh|bat)" script.
   var nimrod = "nimrod".exe
   result = "bin" / nimrod
-  if ExistsFile(result): return
+  if existsFile(result): return
   for dir in split(getEnv("PATH"), PathSep):
-    if ExistsFile(dir / nimrod): return nimrod
+    if existsFile(dir / nimrod): return dir / nimrod
   when defined(Posix):
     const buildScript = "build.sh"
-    if ExistsFile(buildScript): 
+    if existsFile(buildScript): 
       if tryExec("./" & buildScript): return "bin" / nimrod
   else:
     const buildScript = "build.bat"
-    if ExistsFile(buildScript): 
+    if existsFile(buildScript): 
       if tryExec(buildScript): return "bin" / nimrod
   
   echo("Found no nimrod compiler and every attempt to build one failed!")
@@ -177,24 +178,24 @@ proc cleanAux(dir: string) =
       of "nimcache": 
         echo "removing dir: ", path
         removeDir(path)
-      of "dist", ".git", "icons": nil
+      of "dist", ".git", "icons": discard
       else: cleanAux(path)
-    else: nil
+    else: discard
 
 proc removePattern(pattern: string) = 
-  for f in WalkFiles(pattern): 
+  for f in walkFiles(pattern): 
     echo "removing: ", f
     removeFile(f)
 
 proc clean(args: string) = 
-  if ExistsFile("koch.dat"): removeFile("koch.dat")
+  if existsFile("koch.dat"): removeFile("koch.dat")
   removePattern("web/*.html")
   removePattern("doc/*.html")
   cleanAux(getCurrentDir())
   for kind, path in walkDir(getCurrentDir() / "build"):
     if kind == pcDir: 
       echo "removing dir: ", path
-      RemoveDir(path)
+      removeDir(path)
 
 # -------------- update -------------------------------------------------------
 
@@ -259,14 +260,22 @@ when defined(withUpdate):
 
 # -------------- tests --------------------------------------------------------
 
+template `|`(a, b): expr = (if a.len > 0: a else: b)
+
 proc tests(args: string) =
   # we compile the tester with taintMode:on to have a basic
   # taint mode test :-)
-  exec("nimrod cc --taintMode:on tests/tester")
-  exec(getCurrentDir() / "tests/tester".exe & " reject")
-  exec(getCurrentDir() / "tests/tester".exe & " compile")
-  exec(getCurrentDir() / "tests/tester".exe & " run")
-  exec(getCurrentDir() / "tests/tester".exe & " merge")
+  exec "nimrod cc --taintMode:on tests/testament/tester"
+  let tester = quoteShell(getCurrentDir() / "tests/testament/tester".exe)
+  exec tester & " " & (args|"all")
+  exec tester & " html"
+
+proc temp(args: string) =
+  var output = "compiler" / "nimrod".exe
+  var finalDest = "bin" / "nimrod_temp".exe
+  exec("nimrod c compiler" / "nimrod")
+  copyExe(output, finalDest)
+  if args.len > 0: exec(finalDest & " " & args)
 
 proc showHelp() = 
   quit(HelpText % [NimrodVersion & repeatChar(44-len(NimrodVersion)), 
@@ -291,6 +300,7 @@ of cmdArgument:
       update(op.cmdLineRest)
     else:
       quit "this Koch has not been compiled with -d:withUpdate"
+  of "temp": temp(op.cmdLineRest)
   else: showHelp()
 of cmdEnd: showHelp()
 

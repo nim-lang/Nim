@@ -85,7 +85,7 @@ template rawInsertImpl() {.dirty.} =
   data[h].val = val
   data[h].slot = seFilled
 
-proc RawGet[A, B](t: TTable[A, B], key: A): int =
+proc rawGet[A, B](t: TTable[A, B], key: A): int =
   rawGetImpl()
 
 proc `[]`*[A, B](t: TTable[A, B], key: A): B =
@@ -93,13 +93,13 @@ proc `[]`*[A, B](t: TTable[A, B], key: A): B =
   ## default empty value for the type `B` is returned
   ## and no exception is raised. One can check with ``hasKey`` whether the key
   ## exists.
-  var index = RawGet(t, key)
+  var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
 
 proc mget*[A, B](t: var TTable[A, B], key: A): var B =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``EInvalidKey`` exception is raised.
-  var index = RawGet(t, key)
+  var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
   else: raise newException(EInvalidKey, "key not found: " & $key)
 
@@ -107,39 +107,39 @@ proc hasKey*[A, B](t: TTable[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   result = rawGet(t, key) >= 0
 
-proc RawInsert[A, B](t: var TTable[A, B], data: var TKeyValuePairSeq[A, B],
+proc rawInsert[A, B](t: var TTable[A, B], data: var TKeyValuePairSeq[A, B],
                      key: A, val: B) =
   rawInsertImpl()
 
-proc Enlarge[A, B](t: var TTable[A, B]) =
+proc enlarge[A, B](t: var TTable[A, B]) =
   var n: TKeyValuePairSeq[A, B]
   newSeq(n, len(t.data) * growthFactor)
   for i in countup(0, high(t.data)):
-    if t.data[i].slot == seFilled: RawInsert(t, n, t.data[i].key, t.data[i].val)
+    if t.data[i].slot == seFilled: rawInsert(t, n, t.data[i].key, t.data[i].val)
   swap(t.data, n)
 
-template AddImpl() {.dirty.} =
-  if mustRehash(len(t.data), t.counter): Enlarge(t)
-  RawInsert(t, t.data, key, val)
+template addImpl() {.dirty.} =
+  if mustRehash(len(t.data), t.counter): enlarge(t)
+  rawInsert(t, t.data, key, val)
   inc(t.counter)
 
-template PutImpl() {.dirty.} =
-  var index = RawGet(t, key)
+template putImpl() {.dirty.} =
+  var index = rawGet(t, key)
   if index >= 0:
     t.data[index].val = val
   else:
-    AddImpl()
+    addImpl()
 
 when false:
   # not yet used:
-  template HasKeyOrPutImpl() {.dirty.} =
-    var index = RawGet(t, key)
+  template hasKeyOrPutImpl() {.dirty.} =
+    var index = rawGet(t, key)
     if index >= 0:
       t.data[index].val = val
       result = true
     else:
-      if mustRehash(len(t.data), t.counter): Enlarge(t)
-      RawInsert(t, t.data, key, val)
+      if mustRehash(len(t.data), t.counter): enlarge(t)
+      rawInsert(t, t.data, key, val)
       inc(t.counter)
       result = false
 
@@ -149,11 +149,11 @@ proc `[]=`*[A, B](t: var TTable[A, B], key: A, val: B) =
 
 proc add*[A, B](t: var TTable[A, B], key: A, val: B) =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
-  AddImpl()
+  addImpl()
   
 proc del*[A, B](t: var TTable[A, B], key: A) =
   ## deletes `key` from hash table `t`.
-  var index = RawGet(t, key)
+  let index = rawGet(t, key)
   if index >= 0:
     t.data[index].slot = seDeleted
     dec(t.counter)
@@ -168,7 +168,7 @@ proc initTable*[A, B](initialSize=64): TTable[A, B] =
   result.counter = 0
   newSeq(result.data, initialSize)
 
-proc toTable*[A, B](pairs: openarray[tuple[key: A, 
+proc toTable*[A, B](pairs: openArray[tuple[key: A, 
                     val: B]]): TTable[A, B] =
   ## creates a new hash table that contains the given `pairs`.
   result = initTable[A, B](nextPowerOfTwo(pairs.len+10))
@@ -189,6 +189,16 @@ template dollarImpl(): stmt {.dirty.} =
 proc `$`*[A, B](t: TTable[A, B]): string =
   ## The `$` operator for hash tables.
   dollarImpl()
+  
+proc `==`*[A, B](s, t: TTable[A, B]): bool =
+  s.counter == t.counter and s.data == t.data
+  
+proc indexBy*[A, B, C](collection: A, index: proc(x: B): C): TTable[C, B] =
+  ## Index the collection with the proc provided.
+  # TODO: As soon as supported, change collection: A to collection: A[B]
+  result = initTable[C, B]()
+  for item in collection:
+    result[index(item)] = item
 
 # ------------------------------ ordered table ------------------------------
 
@@ -240,7 +250,7 @@ iterator mvalues*[A, B](t: var TOrderedTable[A, B]): var B =
   forAllOrderedPairs:
     yield t.data[h].val
 
-proc RawGet[A, B](t: TOrderedTable[A, B], key: A): int =
+proc rawGet[A, B](t: TOrderedTable[A, B], key: A): int =
   rawGetImpl()
 
 proc `[]`*[A, B](t: TOrderedTable[A, B], key: A): B =
@@ -248,13 +258,13 @@ proc `[]`*[A, B](t: TOrderedTable[A, B], key: A): B =
   ## default empty value for the type `B` is returned
   ## and no exception is raised. One can check with ``hasKey`` whether the key
   ## exists.
-  var index = RawGet(t, key)
+  var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
 
 proc mget*[A, B](t: var TOrderedTable[A, B], key: A): var B =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``EInvalidKey`` exception is raised.
-  var index = RawGet(t, key)
+  var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
   else: raise newException(EInvalidKey, "key not found: " & $key)
 
@@ -262,7 +272,7 @@ proc hasKey*[A, B](t: TOrderedTable[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   result = rawGet(t, key) >= 0
 
-proc RawInsert[A, B](t: var TOrderedTable[A, B], 
+proc rawInsert[A, B](t: var TOrderedTable[A, B], 
                      data: var TOrderedKeyValuePairSeq[A, B],
                      key: A, val: B) =
   rawInsertImpl()
@@ -271,7 +281,7 @@ proc RawInsert[A, B](t: var TOrderedTable[A, B],
   if t.last >= 0: data[t.last].next = h
   t.last = h
 
-proc Enlarge[A, B](t: var TOrderedTable[A, B]) =
+proc enlarge[A, B](t: var TOrderedTable[A, B]) =
   var n: TOrderedKeyValuePairSeq[A, B]
   newSeq(n, len(t.data) * growthFactor)
   var h = t.first
@@ -280,7 +290,7 @@ proc Enlarge[A, B](t: var TOrderedTable[A, B]) =
   while h >= 0:
     var nxt = t.data[h].next
     if t.data[h].slot == seFilled: 
-      RawInsert(t, n, t.data[h].key, t.data[h].val)
+      rawInsert(t, n, t.data[h].key, t.data[h].val)
     h = nxt
   swap(t.data, n)
 
@@ -290,7 +300,7 @@ proc `[]=`*[A, B](t: var TOrderedTable[A, B], key: A, val: B) =
 
 proc add*[A, B](t: var TOrderedTable[A, B], key: A, val: B) =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
-  AddImpl()
+  addImpl()
 
 proc initOrderedTable*[A, B](initialSize=64): TOrderedTable[A, B] =
   ## creates a new ordered hash table that is empty.
@@ -304,7 +314,7 @@ proc initOrderedTable*[A, B](initialSize=64): TOrderedTable[A, B] =
   result.last = -1
   newSeq(result.data, initialSize)
 
-proc toOrderedTable*[A, B](pairs: openarray[tuple[key: A, 
+proc toOrderedTable*[A, B](pairs: openArray[tuple[key: A, 
                            val: B]]): TOrderedTable[A, B] =
   ## creates a new ordered hash table that contains the given `pairs`.
   result = initOrderedTable[A, B](nextPowerOfTwo(pairs.len+10))
@@ -398,7 +408,7 @@ iterator mvalues*[A](t: TCountTable[A]): var int =
   for h in 0..high(t.data):
     if t.data[h].val != 0: yield t.data[h].val
 
-proc RawGet[A](t: TCountTable[A], key: A): int =
+proc rawGet[A](t: TCountTable[A], key: A): int =
   var h: THash = hash(key) and high(t.data) # start with real hash value
   while t.data[h].val != 0:
     if t.data[h].key == key: return h
@@ -409,13 +419,13 @@ proc `[]`*[A](t: TCountTable[A], key: A): int =
   ## retrieves the value at ``t[key]``. If `key` is not in `t`,
   ## 0 is returned. One can check with ``hasKey`` whether the key
   ## exists.
-  var index = RawGet(t, key)
+  var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
 
 proc mget*[A](t: var TCountTable[A], key: A): var int =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``EInvalidKey`` exception is raised.
-  var index = RawGet(t, key)
+  var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
   else: raise newException(EInvalidKey, "key not found: " & $key)
 
@@ -423,24 +433,24 @@ proc hasKey*[A](t: TCountTable[A], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   result = rawGet(t, key) >= 0
 
-proc RawInsert[A](t: TCountTable[A], data: var seq[tuple[key: A, val: int]],
+proc rawInsert[A](t: TCountTable[A], data: var seq[tuple[key: A, val: int]],
                   key: A, val: int) =
   var h: THash = hash(key) and high(data)
   while data[h].val != 0: h = nextTry(h, high(data))
   data[h].key = key
   data[h].val = val
 
-proc Enlarge[A](t: var TCountTable[A]) =
+proc enlarge[A](t: var TCountTable[A]) =
   var n: seq[tuple[key: A, val: int]]
   newSeq(n, len(t.data) * growthFactor)
   for i in countup(0, high(t.data)):
-    if t.data[i].val != 0: RawInsert(t, n, t.data[i].key, t.data[i].val)
+    if t.data[i].val != 0: rawInsert(t, n, t.data[i].key, t.data[i].val)
   swap(t.data, n)
 
 proc `[]=`*[A](t: var TCountTable[A], key: A, val: int) =
   ## puts a (key, value)-pair into `t`. `val` has to be positive.
   assert val > 0
-  PutImpl()
+  putImpl()
 
 proc initCountTable*[A](initialSize=64): TCountTable[A] =
   ## creates a new count table that is empty.
@@ -463,15 +473,15 @@ proc `$`*[A](t: TCountTable[A]): string =
 
 proc inc*[A](t: var TCountTable[A], key: A, val = 1) = 
   ## increments `t[key]` by `val`.
-  var index = RawGet(t, key)
+  var index = rawGet(t, key)
   if index >= 0:
     inc(t.data[index].val, val)
   else:
-    if mustRehash(len(t.data), t.counter): Enlarge(t)
-    RawInsert(t, t.data, key, val)
+    if mustRehash(len(t.data), t.counter): enlarge(t)
+    rawInsert(t, t.data, key, val)
     inc(t.counter)
 
-proc Smallest*[A](t: TCountTable[A]): tuple[key: A, val: int] =
+proc smallest*[A](t: TCountTable[A]): tuple[key: A, val: int] =
   ## returns the largest (key,val)-pair. Efficiency: O(n)
   assert t.len > 0
   var minIdx = 0
@@ -480,7 +490,7 @@ proc Smallest*[A](t: TCountTable[A]): tuple[key: A, val: int] =
   result.key = t.data[minIdx].key
   result.val = t.data[minIdx].val
 
-proc Largest*[A](t: TCountTable[A]): tuple[key: A, val: int] =
+proc largest*[A](t: TCountTable[A]): tuple[key: A, val: int] =
   ## returns the (key,val)-pair with the largest `val`. Efficiency: O(n)
   assert t.len > 0
   var maxIdx = 0

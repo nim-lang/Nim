@@ -54,7 +54,7 @@ proc parseInt*(s: string, value: var int, validRange: TSlice[int]) {.
   try:
     discard parseutils.parseInt(s, x, 0)
   except EOverflow:
-    nil
+    discard
   if x in validRange: value = x
 
 when isMainModule:

@@ -28,7 +28,7 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: PRope, n: PNode) =
     for i in countup(0, sonsLen(n) - 1):
       genTraverseProc(c, accessor, n.sons[i])
   of nkRecCase:
-    if (n.sons[0].kind != nkSym): InternalError(n.info, "genTraverseProc")
+    if (n.sons[0].kind != nkSym): internalError(n.info, "genTraverseProc")
     var p = c.p
     let disc = n.sons[0].sym
     lineF(p, cpsStmts, "switch ($1.$2) {$n", accessor, disc.loc.r)
@@ -74,7 +74,7 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: PRope, typ: PType) =
       genTraverseProc(c, accessor.parentObj, typ.sons[i])
     if typ.n != nil: genTraverseProc(c, accessor, typ.n)
   of tyTuple:
-    let typ = GetUniqueType(typ)
+    let typ = getUniqueType(typ)
     for i in countup(0, sonsLen(typ) - 1):
       genTraverseProc(c, rfmt(nil, "$1.Field$2", accessor, i.toRope), typ.sons[i])
   of tyRef, tyString, tySequence:
@@ -83,7 +83,7 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: PRope, typ: PType) =
     if typ.callConv == ccClosure:
       lineCg(p, cpsStmts, c.visitorFrmt, rfmt(nil, "$1.ClEnv", accessor))
   else:
-    nil
+    discard
 
 proc genTraverseProcSeq(c: var TTraversalClosure, accessor: PRope, typ: PType) =
   var p = c.p
@@ -111,7 +111,7 @@ proc genTraverseProc(m: BModule, typ: PType, reason: TTypeInfoReason): PRope =
   lineF(p, cpsInit, "a = ($1)p;$n", t)
   
   c.p = p
-  assert typ.kind != tyTypedesc
+  assert typ.kind != tyTypeDesc
   if typ.kind == tySequence:
     genTraverseProcSeq(c, "a".toRope, typ)
   else:

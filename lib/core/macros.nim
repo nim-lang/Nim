@@ -59,7 +59,8 @@ type
     nnkBindStmt, nnkMixinStmt, nnkUsingStmt,
     nnkCommentStmt, nnkStmtListExpr, nnkBlockExpr,
     nnkStmtListType, nnkBlockType, nnkTypeOfExpr, nnkObjectTy,
-    nnkTupleTy, nnkTypeClassTy, nnkRecList, nnkRecCase, nnkRecWhen,
+    nnkTupleTy, nnkTypeClassTy, nnkStaticTy,
+    nnkRecList, nnkRecCase, nnkRecWhen,
     nnkRefTy, nnkPtrTy, nnkVarTy,
     nnkConstTy, nnkMutableTy,
     nnkDistinctTy,
@@ -147,18 +148,24 @@ proc del*(father: PNimrodNode, idx = 0, n = 1) {.magic: "NDel".}
 proc kind*(n: PNimrodNode): TNimrodNodeKind {.magic: "NKind".}
   ## returns the `kind` of the node `n`.
 
-proc intVal*(n: PNimrodNode): biggestInt {.magic: "NIntVal".}
-proc floatVal*(n: PNimrodNode): biggestFloat {.magic: "NFloatVal".}
+proc intVal*(n: PNimrodNode): BiggestInt {.magic: "NIntVal".}
+proc floatVal*(n: PNimrodNode): BiggestFloat {.magic: "NFloatVal".}
 proc symbol*(n: PNimrodNode): PNimrodSymbol {.magic: "NSymbol".}
 proc ident*(n: PNimrodNode): TNimrodIdent {.magic: "NIdent".}
 proc typ*(n: PNimrodNode): typedesc {.magic: "NGetType".}
 proc strVal*(n: PNimrodNode): string  {.magic: "NStrVal".}
 
-proc `intVal=`*(n: PNimrodNode, val: biggestInt) {.magic: "NSetIntVal".}
-proc `floatVal=`*(n: PNimrodNode, val: biggestFloat) {.magic: "NSetFloatVal".}
+proc `intVal=`*(n: PNimrodNode, val: BiggestInt) {.magic: "NSetIntVal".}
+proc `floatVal=`*(n: PNimrodNode, val: BiggestFloat) {.magic: "NSetFloatVal".}
 proc `symbol=`*(n: PNimrodNode, val: PNimrodSymbol) {.magic: "NSetSymbol".}
 proc `ident=`*(n: PNimrodNode, val: TNimrodIdent) {.magic: "NSetIdent".}
-proc `typ=`*(n: PNimrodNode, typ: typedesc) {.magic: "NSetType".}
+#proc `typ=`*(n: PNimrodNode, typ: typedesc) {.magic: "NSetType".}
+# this is not sound! Unfortunately forbidding 'typ=' is not enough, as you
+# can easily do:
+#   let bracket = semCheck([1, 2])
+#   let fake = semCheck(2.0)
+#   bracket[0] = fake  # constructs a mixed array with ints and floats!
+
 proc `strVal=`*(n: PNimrodNode, val: string) {.magic: "NSetStrVal".}
 
 proc newNimNode*(kind: TNimrodNodeKind,
@@ -181,12 +188,12 @@ proc newStrLitNode*(s: string): PNimrodNode {.compileTime.} =
   result = newNimNode(nnkStrLit)
   result.strVal = s
 
-proc newIntLitNode*(i: biggestInt): PNimrodNode {.compileTime.} =
+proc newIntLitNode*(i: BiggestInt): PNimrodNode {.compileTime.} =
   ## creates a int literal node from `i`
   result = newNimNode(nnkIntLit)
   result.intVal = i
 
-proc newFloatLitNode*(f: biggestFloat): PNimrodNode {.compileTime.} =
+proc newFloatLitNode*(f: BiggestFloat): PNimrodNode {.compileTime.} =
   ## creates a float literal node from `f`
   result = newNimNode(nnkFloatLit)
   result.floatVal = f
@@ -268,6 +275,8 @@ proc quote*(bl: stmt, op = "``"): PNimrodNode {.magic: "QuoteAst".}
   ##
   ## Example:
   ##   
+  ## .. code-block:: nimrod
+  ##
   ##   macro check(ex: expr): stmt =
   ##     # this is a simplified version of the check macro from the
   ##     # unittest module.
@@ -285,15 +294,6 @@ proc quote*(bl: stmt, op = "``"): PNimrodNode {.magic: "QuoteAst".}
   ##       if not `ex`:
   ##         echo `info` & ": Check failed: " & `expString`
   
-template emit*(e: expr[string]): stmt =
-  ## accepts a single string argument and treats it as nimrod code
-  ## that should be inserted verbatim in the program
-  ## Example:
-  ##
-  ##   emit("echo " & '"' & "hello world".toUpper & '"')
-  ##
-  eval: result = e.parseStmt
-
 proc expectKind*(n: PNimrodNode, k: TNimrodNodeKind) {.compileTime.} =
   ## checks that `n` is of kind `k`. If this is not the case,
   ## compilation aborts with an error message. This is useful for writing
@@ -341,12 +341,12 @@ proc newLit*(c: char): PNimrodNode {.compileTime.} =
   result = newNimNode(nnkCharLit)
   result.intVal = ord(c)
 
-proc newLit*(i: biggestInt): PNimrodNode {.compileTime.} =
+proc newLit*(i: BiggestInt): PNimrodNode {.compileTime.} =
   ## produces a new integer literal node.
   result = newNimNode(nnkIntLit)
   result.intVal = i
 
-proc newLit*(f: biggestFloat): PNimrodNode {.compileTime.} =
+proc newLit*(f: BiggestFloat): PNimrodNode {.compileTime.} =
   ## produces a new float literal node.
   result = newNimNode(nnkFloatLit)
   result.floatVal = f
@@ -377,7 +377,7 @@ proc treeRepr*(n: PNimrodNode): string {.compileTime.} =
     res.add(($n.kind).substr(3))
 
     case n.kind
-    of nnkEmpty: nil # same as nil node in this representation
+    of nnkEmpty: discard # same as nil node in this representation
     of nnkNilLit: res.add(" nil")
     of nnkCharLit..nnkInt64Lit: res.add(" " & $n.intVal)
     of nnkFloatLit..nnkFloat64Lit: res.add(" " & $n.floatVal)
@@ -402,13 +402,14 @@ proc lispRepr*(n: PNimrodNode): string {.compileTime.} =
   add(result, "(")
 
   case n.kind
-  of nnkEmpty: nil # same as nil node in this representation
+  of nnkEmpty: discard # same as nil node in this representation
   of nnkNilLit: add(result, "nil")
   of nnkCharLit..nnkInt64Lit: add(result, $n.intVal)
   of nnkFloatLit..nnkFloat64Lit: add(result, $n.floatVal)
   of nnkStrLit..nnkTripleStrLit: add(result, $n.strVal)
   of nnkIdent: add(result, "!\"" & $n.ident & '"')
-  of nnkSym, nnkNone: assert false
+  of nnkSym: add(result, $n.symbol)
+  of nnkNone: assert false
   else:
     add(result, lispRepr(n[0]))
     for j in 1..n.len-1:
@@ -474,6 +475,34 @@ proc newDotExpr*(a, b: PNimrodNode): PNimrodNode {.compileTime.} =
 
 proc newIdentDefs*(name, kind: PNimrodNode; 
                    default = newEmptyNode()): PNimrodNode {.compileTime.} = 
+  ## Creates a new ``nnkIdentDefs`` node of a specific kind and value.
+  ##
+  ## ``nnkIdentDefs`` need to have at least three children, but they can have
+  ## more: first comes a list of identifiers followed by a type and value
+  ## nodes. This helper proc creates a three node subtree, the first subnode
+  ## being a single identifier name. Both the ``kind`` node and ``default``
+  ## (value) nodes may be empty depending on where the ``nnkIdentDefs``
+  ## appears: tuple or object definitions will have an empty ``default`` node,
+  ## ``let`` or ``var`` blocks may have an empty ``kind`` node if the
+  ## identifier is being assigned a value. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##
+  ##   var varSection = newNimNode(nnkVarSection).add(
+  ##     newIdentDefs(ident("a"), ident("string")),
+  ##     newIdentDefs(ident("b"), newEmptyNode(), newLit(3)))
+  ##   # --> var
+  ##   #       a: string
+  ##   #       b = 3
+  ##
+  ## If you need to create multiple identifiers you need to use the lower level
+  ## ``newNimNode``:
+  ##
+  ## .. code-block:: nimrod
+  ##
+  ##   result = newNimNode(nnkIdentDefs).add(
+  ##     ident("a"), ident("b"), ident("c"), ident("string"),
+  ##       newStrLitNode("Hello"))
   newNimNode(nnkIdentDefs).add(name, kind, default)
 
 proc newNilLit*(): PNimrodNode {.compileTime.} =
@@ -494,14 +523,14 @@ const
 
 from strutils import cmpIgnoreStyle, format
 
-proc ExpectKind*(n: PNimrodNode; k: set[TNimrodNodeKind]) {.compileTime.} =
+proc expectKind*(n: PNimrodNode; k: set[TNimrodNodeKind]) {.compileTime.} =
   assert n.kind in k, "Expected one of $1, got $2".format(k, n.kind)
 
-proc newProc*(name = newEmptyNode(); params: openarray[PNimrodNode] = [];  
+proc newProc*(name = newEmptyNode(); params: openArray[PNimrodNode] = [newEmptyNode()];  
     body: PNimrodNode = newStmtList(), procType = nnkProcDef): PNimrodNode {.compileTime.} =
   ## shortcut for creating a new proc
   ##
-  ## The ``params`` array should start with the return type of the proc, 
+  ## The ``params`` array must start with the return type of the proc, 
   ## followed by a list of IdentDefs which specify the params.
   assert procType in RoutineNodes
   result = newNimNode(procType).add(
@@ -535,7 +564,7 @@ proc copyChildrenTo*(src, dest: PNimrodNode) {.compileTime.}=
     dest.add src[i].copyNimTree
 
 template expectRoutine(node: PNimrodNode): stmt =
-  expectKind(node, routineNodes)
+  expectKind(node, RoutineNodes)
   
 proc name*(someProc: PNimrodNode): PNimrodNode {.compileTime.} =
   someProc.expectRoutine
@@ -572,7 +601,7 @@ proc body*(someProc: PNimrodNode): PNimrodNode {.compileTime.} =
   of routineNodes:
     return someProc[6]
   of nnkBlockStmt, nnkWhileStmt:
-    return someproc[1]
+    return someProc[1]
   of nnkForStmt:
     return someProc.last
   else: 
@@ -596,7 +625,7 @@ proc `$`*(node: PNimrodNode): string {.compileTime.} =
   of nnkIdent:
     result = $node.ident
   of nnkStrLit:
-    result = node.strval
+    result = node.strVal
   else: 
     badNodeKind node.kind, "$"
 
@@ -607,10 +636,13 @@ iterator children*(n: PNimrodNode): PNimrodNode {.inline.}=
   for i in 0 .. high(n):
     yield n[i]
 
-template findChild*(n: PNimrodNode; cond: expr): PNimrodNode {.immediate, dirty.} =
-  ## Find the first child node matching condition (or nil)
-  ## var res = findChild(n, it.kind == nnkPostfix and it.basename.ident == !"foo")
-  
+template findChild*(n: PNimrodNode; cond: expr): PNimrodNode {.
+  immediate, dirty.} =
+  ## Find the first child node matching condition (or nil).
+  ## 
+  ## .. code-block:: nimrod
+  ##   var res = findChild(n, it.kind == nnkPostfix and
+  ##                          it.basename.ident == !"foo")
   block:
     var result: PNimrodNode
     for it in n.children:
@@ -619,7 +651,7 @@ template findChild*(n: PNimrodNode; cond: expr): PNimrodNode {.immediate, dirty.
         break
     result
 
-proc insert*(a: PNimrodNOde; pos: int; b: PNimrodNode) {.compileTime.} =
+proc insert*(a: PNimrodNode; pos: int; b: PNimrodNode) {.compileTime.} =
   ## Insert node B into A at pos
   if high(a) < pos:
     ## add some empty nodes first
@@ -640,14 +672,14 @@ proc basename*(a: PNimrodNode): PNimrodNode {.compiletime.} =
   of nnkIdent: return a
   of nnkPostfix, nnkPrefix: return a[1]
   else: 
-    quit "Do not know how to get basename of ("& treerepr(a) &")\n"& repr(a)
+    quit "Do not know how to get basename of ("& treeRepr(a) &")\n"& repr(a)
     
 proc `basename=`*(a: PNimrodNode; val: string) {.compileTime.}=
   case a.kind
   of nnkIdent: macros.`ident=`(a,  !val)
   of nnkPostfix, nnkPrefix: a[1] = ident(val)
   else:
-    quit "Do not know how to get basename of ("& treerepr(a)& ")\n"& repr(a)
+    quit "Do not know how to get basename of ("& treeRepr(a)& ")\n"& repr(a)
 
 proc postfix*(node: PNimrodNode; op: string): PNimrodNode {.compileTime.} = 
   newNimNode(nnkPostfix).add(ident(op), node)
@@ -698,6 +730,18 @@ proc addIdentIfAbsent*(dest: PNimrodNode, ident: string) {.compiletime.} =
       if ident.eqIdent($node): return
     of nnkExprColonExpr:
       if ident.eqIdent($node[0]): return
-    else: nil
+    else: discard
   dest.add(ident(ident))
 
+when not defined(booting):
+  template emit*(e: static[string]): stmt =
+    ## accepts a single string argument and treats it as nimrod code
+    ## that should be inserted verbatim in the program
+    ## Example:
+    ##
+    ## .. code-block:: nimrod
+    ##   emit("echo " & '"' & "hello world".toUpper & '"')
+    ##
+    macro payload: stmt {.gensym.} =
+      result = parseStmt(e)
+    payload()

@@ -65,38 +65,38 @@ template rawInsertImpl() {.dirty.} =
   data[h].key = key
   data[h].slot = seFilled
 
-proc RawGet[A](s: TSet[A], key: A): int =
+proc rawGet[A](s: TSet[A], key: A): int =
   rawGetImpl()
 
 proc contains*[A](s: TSet[A], key: A): bool =
   ## returns true iff `key` is in `s`.
-  var index = RawGet(s, key)
+  var index = rawGet(s, key)
   result = index >= 0
 
-proc RawInsert[A](s: var TSet[A], data: var TKeyValuePairSeq[A], key: A) =
+proc rawInsert[A](s: var TSet[A], data: var TKeyValuePairSeq[A], key: A) =
   rawInsertImpl()
 
-proc Enlarge[A](s: var TSet[A]) =
+proc enlarge[A](s: var TSet[A]) =
   var n: TKeyValuePairSeq[A]
   newSeq(n, len(s.data) * growthFactor)
   for i in countup(0, high(s.data)):
-    if s.data[i].slot == seFilled: RawInsert(s, n, s.data[i].key)
+    if s.data[i].slot == seFilled: rawInsert(s, n, s.data[i].key)
   swap(s.data, n)
 
 template inclImpl() {.dirty.} =
-  var index = RawGet(s, key)
+  var index = rawGet(s, key)
   if index < 0:
-    if mustRehash(len(s.data), s.counter): Enlarge(s)
-    RawInsert(s, s.data, key)
+    if mustRehash(len(s.data), s.counter): enlarge(s)
+    rawInsert(s, s.data, key)
     inc(s.counter)
 
 template containsOrInclImpl() {.dirty.} =
-  var index = RawGet(s, key)
+  var index = rawGet(s, key)
   if index >= 0:
     result = true
   else:
-    if mustRehash(len(s.data), s.counter): Enlarge(s)
-    RawInsert(s, s.data, key)
+    if mustRehash(len(s.data), s.counter): enlarge(s)
+    rawInsert(s, s.data, key)
     inc(s.counter)
 
 proc incl*[A](s: var TSet[A], key: A) =
@@ -105,7 +105,7 @@ proc incl*[A](s: var TSet[A], key: A) =
 
 proc excl*[A](s: var TSet[A], key: A) =
   ## excludes `key` from the set `s`.
-  var index = RawGet(s, key)
+  var index = rawGet(s, key)
   if index >= 0:
     s.data[index].slot = seDeleted
     dec(s.counter)
@@ -122,7 +122,7 @@ proc initSet*[A](initialSize=64): TSet[A] =
   result.counter = 0
   newSeq(result.data, initialSize)
 
-proc toSet*[A](keys: openarray[A]): TSet[A] =
+proc toSet*[A](keys: openArray[A]): TSet[A] =
   ## creates a new hash set that contains the given `keys`.
   result = initSet[A](nextPowerOfTwo(keys.len+10))
   for key in items(keys): result.incl(key)
@@ -169,15 +169,15 @@ iterator items*[A](s: TOrderedSet[A]): A =
   forAllOrderedPairs:
     yield s.data[h].key
 
-proc RawGet[A](s: TOrderedSet[A], key: A): int =
+proc rawGet[A](s: TOrderedSet[A], key: A): int =
   rawGetImpl()
 
 proc contains*[A](s: TOrderedSet[A], key: A): bool =
   ## returns true iff `key` is in `s`.
-  var index = RawGet(s, key)
+  var index = rawGet(s, key)
   result = index >= 0
 
-proc RawInsert[A](s: var TOrderedSet[A], 
+proc rawInsert[A](s: var TOrderedSet[A], 
                   data: var TOrderedKeyValuePairSeq[A], key: A) =
   rawInsertImpl()
   data[h].next = -1
@@ -185,7 +185,7 @@ proc RawInsert[A](s: var TOrderedSet[A],
   if s.last >= 0: data[s.last].next = h
   s.last = h
 
-proc Enlarge[A](s: var TOrderedSet[A]) =
+proc enlarge[A](s: var TOrderedSet[A]) =
   var n: TOrderedKeyValuePairSeq[A]
   newSeq(n, len(s.data) * growthFactor)
   var h = s.first
@@ -194,7 +194,7 @@ proc Enlarge[A](s: var TOrderedSet[A]) =
   while h >= 0:
     var nxt = s.data[h].next
     if s.data[h].slot == seFilled: 
-      RawInsert(s, n, s.data[h].key)
+      rawInsert(s, n, s.data[h].key)
     h = nxt
   swap(s.data, n)
 
@@ -216,7 +216,7 @@ proc initOrderedSet*[A](initialSize=64): TOrderedSet[A] =
   result.last = -1
   newSeq(result.data, initialSize)
 
-proc toOrderedSet*[A](keys: openarray[A]): TOrderedSet[A] =
+proc toOrderedSet*[A](keys: openArray[A]): TOrderedSet[A] =
   ## creates a new ordered hash set that contains the given `keys`.
   result = initOrderedSet[A](nextPowerOfTwo(keys.len+10))
   for key in items(keys): result.incl(key)
@@ -225,4 +225,19 @@ proc `$`*[A](s: TOrderedSet[A]): string =
   ## The `$` operator for ordered hash sets.
   dollarImpl()
 
+proc `<`*[A](s, t: TSet[A]): bool =
+  ## Is s a strict subset of t?
+  s.counter != t.counter and s <= t
 
+proc `<=`*[A](s, t: TSet[A]): bool =
+  ## Is s a subset of t?
+  result = false
+  if s.counter > t.counter: return
+  result = true
+  for item in s:
+    if not(t.contains(item)):
+      result = false
+      return
+      
+proc `==`*[A](s, t: TSet[A]): bool =
+  s.counter == t.counter and s <= t

@@ -243,7 +243,7 @@ type
 # remain compatible. 
 
 type 
-  Textra*{.pure, final.} = object 
+  TExtra*{.pure, final.} = object 
     flags*: int                 ## Bits for which fields are set 
     study_data*: pointer        ## Opaque data from pcre_study() 
     match_limit*: int           ## Maximum number of calls to match() 
@@ -260,7 +260,7 @@ type
 # without modification. 
 
 type 
-  Tcallout_block*{.pure, final.} = object 
+  TCalloutBlock*{.pure, final.} = object 
     version*: cint            ## Identifies version of block 
     callout_number*: cint     ## Number compiled into pattern 
     offset_vector*: ptr cint  ## The offset vector 
@@ -284,7 +284,7 @@ type
 # User defined callback which provides a stack just before the match starts.
 
 type
-  Tjit_callback* = proc(p: pointer): ptr Tjit_stack{.cdecl.}
+  TJitCallback* = proc(p: pointer): ptr Tjit_stack{.cdecl.}
 
 # Exported PCRE functions 
 
@@ -303,18 +303,18 @@ proc copy_substring*(a2: cstring, a3: ptr cint, a4: cint, a5: cint,
                      a6: cstring, 
                      a7: cint): cint{.cdecl, importc: "pcre_copy_substring", 
                                       pcreImport.}
-proc dfa_exec*(a2: ptr TPcre, a3: ptr Textra, a4: cstring, a5: cint, 
+proc dfa_exec*(a2: ptr TPcre, a3: ptr TExtra, a4: cstring, a5: cint, 
                a6: cint, a7: cint, a8: ptr cint, a9: cint, a10: ptr cint, 
                a11: cint): cint{.cdecl, importc: "pcre_dfa_exec", 
                                  pcreImport.}
-proc exec*(a2: ptr TPcre, a3: ptr Textra, a4: cstring, a5: cint, a6: cint, 
+proc exec*(a2: ptr TPcre, a3: ptr TExtra, a4: cstring, a5: cint, a6: cint, 
            a7: cint, a8: ptr cint, a9: cint): cint {.
            cdecl, importc: "pcre_exec", pcreImport.}
 proc free_substring*(a2: cstring){.cdecl, importc: "pcre_free_substring", 
                                    pcreImport.}
 proc free_substring_list*(a2: cstringArray){.cdecl, 
     importc: "pcre_free_substring_list", pcreImport.}
-proc fullinfo*(a2: ptr TPcre, a3: ptr Textra, a4: cint, a5: pointer): cint{.
+proc fullinfo*(a2: ptr TPcre, a3: ptr TExtra, a4: cint, a5: pointer): cint{.
     cdecl, importc: "pcre_fullinfo", pcreImport.}
 proc get_named_substring*(a2: ptr TPcre, a3: cstring, a4: ptr cint, a5: cint, 
                           a6: cstring, a7: cstringArray): cint{.cdecl, 
@@ -334,13 +334,13 @@ proc maketables*(): ptr char{.cdecl, importc: "pcre_maketables",
                                        pcreImport.}
 proc refcount*(a2: ptr TPcre, a3: cint): cint{.cdecl, importc: "pcre_refcount", 
     pcreImport.}
-proc study*(a2: ptr TPcre, a3: cint, a4: var cstring): ptr Textra{.cdecl, 
+proc study*(a2: ptr TPcre, a3: cint, a4: var cstring): ptr TExtra{.cdecl, 
     importc: "pcre_study", pcreImport.}
 proc version*(): cstring{.cdecl, importc: "pcre_version", pcreImport.}
 
 # Utility functions for byte order swaps.
 
-proc pattern_to_host_byte_order*(a2: ptr TPcre, a3: ptr Textra,
+proc pattern_to_host_byte_order*(a2: ptr TPcre, a3: ptr TExtra,
     a4: ptr char): cint{.cdecl, importc: "pcre_pattern_to_host_byte_order",
     pcreImport.}
 
@@ -350,7 +350,7 @@ proc jit_stack_alloc*(a2: cint, a3: cint): ptr Tjit_stack{.cdecl,
     importc: "pcre_jit_stack_alloc", pcreImport.}
 proc jit_stack_free*(a2: ptr Tjit_stack){.cdecl, importc: "pcre_jit_stack_free",
     pcreImport.}
-proc assign_jit_stack*(a2: ptr Textra, a3: Tjit_callback, a4: pointer){.cdecl,
+proc assign_jit_stack*(a2: ptr TExtra, a3: TJitCallback, a4: pointer){.cdecl,
     importc: "pcre_assign_jit_stack", pcreImport.}
 
 var 

@@ -151,7 +151,7 @@ const
   # GetSystemMetrics
   SM_SERVERR2 = 89 
   
-proc GlobalMemoryStatusEx*(lpBuffer: var TMEMORYSTATUSEX){.stdcall, dynlib: "kernel32",
+proc globalMemoryStatusEx*(lpBuffer: var TMEMORYSTATUSEX){.stdcall, dynlib: "kernel32",
     importc: "GlobalMemoryStatusEx".}
     
 proc getMemoryInfo*(): TMemoryInfo =
@@ -159,7 +159,7 @@ proc getMemoryInfo*(): TMemoryInfo =
   var statex: TMEMORYSTATUSEX
   statex.dwLength = sizeof(statex).int32
 
-  GlobalMemoryStatusEx(statex)
+  globalMemoryStatusEx(statex)
   result.MemoryLoad = statex.dwMemoryLoad
   result.TotalPhysMem = statex.ullTotalPhys
   result.AvailablePhysMem = statex.ullAvailPhys
@@ -168,20 +168,20 @@ proc getMemoryInfo*(): TMemoryInfo =
   result.TotalVirtualMem = statex.ullTotalVirtual
   result.AvailableVirtualMem = statex.ullAvailExtendedVirtual
 
-proc GetVersionEx*(lpVersionInformation: var TOSVERSIONINFOEX): WINBOOL{.stdcall,
+proc getVersionEx*(lpVersionInformation: var TOSVERSIONINFOEX): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetVersionExA".}
 
-proc GetProcAddress*(hModule: int, lpProcName: cstring): pointer{.stdcall,
+proc getProcAddress*(hModule: int, lpProcName: cstring): pointer{.stdcall,
     dynlib: "kernel32", importc: "GetProcAddress".}
 
-proc GetModuleHandleA*(lpModuleName: cstring): int{.stdcall,
-     dynlib: "kernel32", importc.}
+proc getModuleHandleA*(lpModuleName: cstring): int{.stdcall,
+     dynlib: "kernel32", importc: "GetModuleHandleA".}
 
 proc getVersionInfo*(): TVersionInfo =
   ## Retrieves operating system info
   var osvi: TOSVERSIONINFOEX
   osvi.dwOSVersionInfoSize = sizeof(osvi).int32
-  discard GetVersionEx(osvi)
+  discard getVersionEx(osvi)
   result.majorVersion = osvi.dwMajorVersion
   result.minorVersion = osvi.dwMinorVersion
   result.buildNumber = osvi.dwBuildNumber
@@ -197,8 +197,8 @@ proc getProductInfo*(majorVersion, minorVersion, SPMajorVersion,
   ## Retrieves Windows' ProductInfo, this function only works in Vista and 7
 
   var pGPI = cast[proc (dwOSMajorVersion, dwOSMinorVersion, 
-              dwSpMajorVersion, dwSpMinorVersion: int32, outValue: Pint32)](GetProcAddress(
-                GetModuleHandleA("kernel32.dll"), "GetProductInfo"))
+              dwSpMajorVersion, dwSpMinorVersion: int32, outValue: Pint32)](getProcAddress(
+                getModuleHandleA("kernel32.dll"), "GetProductInfo"))
                 
   if pGPI != nil:
     var dwType: int32
@@ -207,25 +207,25 @@ proc getProductInfo*(majorVersion, minorVersion, SPMajorVersion,
   else:
     return PRODUCT_UNDEFINED
 
-proc GetSystemInfo*(lpSystemInfo: LPSYSTEM_INFO){.stdcall, dynlib: "kernel32",
+proc getSystemInfo*(lpSystemInfo: LPSYSTEM_INFO){.stdcall, dynlib: "kernel32",
     importc: "GetSystemInfo".}
     
 proc getSystemInfo*(): TSYSTEM_INFO =
   ## Returns the SystemInfo
 
   # Use GetNativeSystemInfo if it's available
-  var pGNSI = cast[proc (lpSystemInfo: LPSYSTEM_INFO)](GetProcAddress(
-                GetModuleHandleA("kernel32.dll"), "GetNativeSystemInfo"))
+  var pGNSI = cast[proc (lpSystemInfo: LPSYSTEM_INFO)](getProcAddress(
+                getModuleHandleA("kernel32.dll"), "GetNativeSystemInfo"))
                 
   var systemi: TSYSTEM_INFO              
   if pGNSI != nil:
     pGNSI(addr(systemi))
   else:
-    GetSystemInfo(addr(systemi))
+    getSystemInfo(addr(systemi))
 
   return systemi
 
-proc GetSystemMetrics*(nIndex: int32): int32{.stdcall, dynlib: "user32",
+proc getSystemMetrics*(nIndex: int32): int32{.stdcall, dynlib: "user32",
     importc: "GetSystemMetrics".}
 
 proc `$`*(osvi: TVersionInfo): string =
@@ -283,11 +283,11 @@ proc `$`*(osvi: TVersionInfo): string =
       of PRODUCT_WEB_SERVER:
         result.add("Web Server Edition")
       else:
-        nil
+        discard
     # End of Windows 6.*
 
     if osvi.majorVersion == 5 and osvi.minorVersion == 2:
-      if GetSystemMetrics(SM_SERVERR2) != 0:
+      if getSystemMetrics(SM_SERVERR2) != 0:
         result.add("Windows Server 2003 R2, ")
       elif (osvi.SuiteMask and VER_SUITE_PERSONAL) != 0: # Not sure if this will work
         result.add("Windows Storage Server 2003")
@@ -365,21 +365,21 @@ proc `$`*(osvi: TVersionInfo): string =
     result = "Unknown version of windows[Kernel version <= 4]"
     
 
-proc getFileSize*(file: string): biggestInt =
+proc getFileSize*(file: string): BiggestInt =
   var fileData: TWIN32_FIND_DATA
 
   when useWinUnicode:
     var aa = newWideCString(file)
-    var hFile = FindFirstFileW(aa, fileData)
+    var hFile = findFirstFileW(aa, fileData)
   else:
-    var hFile = FindFirstFileA(file, fileData)
+    var hFile = findFirstFileA(file, fileData)
   
   if hFile == INVALID_HANDLE_VALUE:
-    raise newException(EIO, $GetLastError())
+    raise newException(EIO, $getLastError())
   
   return fileData.nFileSizeLow
 
-proc GetDiskFreeSpaceEx*(lpDirectoryName: cstring, lpFreeBytesAvailableToCaller,
+proc getDiskFreeSpaceEx*(lpDirectoryName: cstring, lpFreeBytesAvailableToCaller,
                          lpTotalNumberOfBytes,
                          lpTotalNumberOfFreeBytes: var TFiletime): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetDiskFreeSpaceExA".}
@@ -387,7 +387,7 @@ proc GetDiskFreeSpaceEx*(lpDirectoryName: cstring, lpFreeBytesAvailableToCaller,
 proc getPartitionInfo*(partition: string): TPartitionInfo =
   ## Retrieves partition info, for example ``partition`` may be ``"C:\"``
   var FreeBytes, TotalBytes, TotalFreeBytes: TFiletime 
-  var res = GetDiskFreeSpaceEx(r"C:\", FreeBytes, TotalBytes, 
+  var res = getDiskFreeSpaceEx(r"C:\", FreeBytes, TotalBytes, 
                                TotalFreeBytes)
   return (FreeBytes, TotalBytes)
 

@@ -139,27 +139,27 @@ type
 proc newDelegate*(): PDelegate =
   ## Creates a new delegate.
   new(result)
-  result.handleRead = (proc (h: PObject) = nil)
-  result.handleWrite = (proc (h: PObject) = nil)
-  result.handleError = (proc (h: PObject) = nil)
+  result.handleRead = (proc (h: PObject) = discard)
+  result.handleWrite = (proc (h: PObject) = discard)
+  result.handleError = (proc (h: PObject) = discard)
   result.hasDataBuffered = (proc (h: PObject): bool = return false)
-  result.task = (proc (h: PObject) = nil)
+  result.task = (proc (h: PObject) = discard)
   result.mode = fmRead
 
 proc newAsyncSocket(): PAsyncSocket =
   new(result)
   result.info = SockIdle
 
-  result.handleRead = (proc (s: PAsyncSocket) = nil)
+  result.handleRead = (proc (s: PAsyncSocket) = discard)
   result.handleWrite = nil
-  result.handleConnect = (proc (s: PAsyncSocket) = nil)
-  result.handleAccept = (proc (s: PAsyncSocket) = nil)
-  result.handleTask = (proc (s: PAsyncSocket) = nil)
+  result.handleConnect = (proc (s: PAsyncSocket) = discard)
+  result.handleAccept = (proc (s: PAsyncSocket) = discard)
+  result.handleTask = (proc (s: PAsyncSocket) = discard)
 
   result.lineBuffer = "".TaintedString
   result.sendBuffer = ""
 
-proc AsyncSocket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM, 
+proc asyncSocket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM, 
                   protocol: TProtocol = IPPROTO_TCP, 
                   buffered = true): PAsyncSocket =
   ## Initialises an AsyncSocket object. If a socket cannot be initialised
@@ -233,8 +233,11 @@ proc asyncSockHandleWrite(h: PObject) =
       let sock = PAsyncSocket(h)
       try:
         let bytesSent = sock.socket.sendAsync(sock.sendBuffer)
-        assert bytesSent > 0
-        if bytesSent != sock.sendBuffer.len:
+        if bytesSent == 0:
+          # Apparently the socket cannot be written to. Even though select
+          # just told us that it can be... This used to be an assert. Just
+          # do nothing instead.
+        elif bytesSent != sock.sendBuffer.len:
           sock.sendBuffer = sock.sendBuffer[bytesSent .. -1]
         elif bytesSent == sock.sendBuffer.len:
           sock.sendBuffer = ""
@@ -686,5 +689,5 @@ when isMainModule:
   server.listen()
   d.register(server)
   
-  while d.poll(-1): nil
+  while d.poll(-1): discard
     

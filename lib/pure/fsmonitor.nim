@@ -64,10 +64,10 @@ const
 proc newMonitor*(): PFSMonitor =
   ## Creates a new file system monitor.
   new(result)
-  result.fd = inotifyInit()
   result.targets = initTable[cint, string]()
+  result.fd = inotifyInit()
   if result.fd < 0:
-    OSError()
+    OSError(OSLastError())
 
 proc add*(monitor: PFSMonitor, target: string,
                filters = {MonitorAll}): cint {.discardable.} =
@@ -93,7 +93,7 @@ proc add*(monitor: PFSMonitor, target: string,
   
   result = inotifyAddWatch(monitor.fd, target, INFilter.uint32)
   if result < 0:
-    OSError()
+    OSError(OSLastError())
   monitor.targets.add(result, target)
 
 proc del*(monitor: PFSMonitor, wd: cint) =
@@ -101,7 +101,7 @@ proc del*(monitor: PFSMonitor, wd: cint) =
   ##
   ## If ``wd`` is not a part of ``monitor`` an EOS error is raised.
   if inotifyRmWatch(monitor.fd, wd) < 0:
-    OSError()
+    OSError(OSLastError())
 
 proc getEvent(m: PFSMonitor, fd: cint): seq[TMonitorEvent] =
   result = @[]
@@ -184,7 +184,7 @@ proc FSMonitorRead(h: PObject) =
 proc toDelegate(m: PFSMonitor): PDelegate =
   result = newDelegate()
   result.deleVal = m
-  result.fd = m.fd
+  result.fd = (type(result.fd))(m.fd)
   result.mode = fmRead
   result.handleRead = FSMonitorRead
   result.open = true

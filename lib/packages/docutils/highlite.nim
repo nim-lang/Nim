@@ -19,7 +19,7 @@ type
     gtEof, gtNone, gtWhitespace, gtDecNumber, gtBinNumber, gtHexNumber, 
     gtOctNumber, gtFloatNumber, gtIdentifier, gtKeyword, gtStringLit, 
     gtLongStringLit, gtCharLit, gtEscapeSequence, # escape sequence like \xff
-    gtOperator, gtPunctation, gtComment, gtLongComment, gtRegularExpression, 
+    gtOperator, gtPunctuation, gtComment, gtLongComment, gtRegularExpression, 
     gtTagStart, gtTagEnd, gtKey, gtValue, gtRawData, gtAssembler, 
     gtPreprocessor, gtDirective, gtCommand, gtRule, gtHyperlink, gtLabel, 
     gtReference, gtOther
@@ -39,7 +39,7 @@ const
   tokenClassToStr*: array[TTokenClass, string] = ["Eof", "None", "Whitespace", 
     "DecNumber", "BinNumber", "HexNumber", "OctNumber", "FloatNumber", 
     "Identifier", "Keyword", "StringLit", "LongStringLit", "CharLit", 
-    "EscapeSequence", "Operator", "Punctation", "Comment", "LongComment", 
+    "EscapeSequence", "Operator", "Punctuation", "Comment", "LongComment", 
     "RegularExpression", "TagStart", "TagEnd", "Key", "Value", "RawData", 
     "Assembler", "Preprocessor", "Directive", "Command", "Rule", "Hyperlink", 
     "Label", "Reference", "Other"]
@@ -53,7 +53,7 @@ const
     "interface", "is", "isnot", "iterator", "lambda", "let", "macro", "method",
     "mixin", "mod", "nil", "not", "notin", "object", "of", "or", "out", "proc",
     "ptr", "raise", "ref", "return", "shared", "shl", "shr", "static",
-    "template", "try", "tuple", "type", "var", "when", "while", "with",
+    "template", "try", "tuple", "type", "using", "var", "when", "while", "with",
     "without", "xor", "yield"]
 
 proc getSourceLanguage*(name: string): TSourceLanguage = 
@@ -73,7 +73,7 @@ proc initGeneralTokenizer*(g: var TGeneralTokenizer, buf: string) =
   g.pos = pos
 
 proc deinitGeneralTokenizer*(g: var TGeneralTokenizer) = 
-  nil
+  discard
 
 proc nimGetKeyword(id: string): TTokenClass = 
   for k in nimrodKeywords:
@@ -102,7 +102,7 @@ proc nimNumberPostfix(g: var TGeneralTokenizer, position: int): int =
       if g.buf[pos] in {'0'..'9'}: inc(pos)
       if g.buf[pos] in {'0'..'9'}: inc(pos)
     else: 
-      nil
+      discard
   result = pos
 
 proc nimNumber(g: var TGeneralTokenizer, position: int): int = 
@@ -258,7 +258,7 @@ proc nimNextToken(g: var TGeneralTokenizer) =
           else: inc(pos)
     of '(', ')', '[', ']', '{', '}', '`', ':', ',', ';': 
       inc(pos)
-      g.kind = gtPunctation
+      g.kind = gtPunctuation
     of '\0': 
       g.kind = gtEof
     else: 
@@ -321,7 +321,7 @@ proc generalStrLit(g: var TGeneralTokenizer, position: int): int =
         inc(pos)
   result = pos
 
-proc isKeyword(x: openarray[string], y: string): int = 
+proc isKeyword(x: openArray[string], y: string): int = 
   var a = 0
   var b = len(x) - 1
   while a <= b: 
@@ -335,7 +335,7 @@ proc isKeyword(x: openarray[string], y: string): int =
       return mid
   result = - 1
 
-proc isKeywordIgnoreCase(x: openarray[string], y: string): int = 
+proc isKeywordIgnoreCase(x: openArray[string], y: string): int = 
   var a = 0
   var b = len(x) - 1
   while a <= b: 
@@ -354,7 +354,7 @@ type
     hasPreprocessor, hasNestedComments
   TTokenizerFlags = set[TTokenizerFlag]
 
-proc clikeNextToken(g: var TGeneralTokenizer, keywords: openarray[string], 
+proc clikeNextToken(g: var TGeneralTokenizer, keywords: openArray[string], 
                     flags: TTokenizerFlags) = 
   const 
     hexChars = {'0'..'9', 'A'..'F', 'a'..'f'}
@@ -428,7 +428,7 @@ proc clikeNextToken(g: var TGeneralTokenizer, keywords: openarray[string],
         g.kind = gtOperator
     of 'a'..'z', 'A'..'Z', '_', '\x80'..'\xFF': 
       var id = ""
-      while g.buf[pos] in SymChars: 
+      while g.buf[pos] in symChars: 
         add(id, g.buf[pos])
         inc(pos)
       if isKeyword(keywords, id) >= 0: g.kind = gtKeyword
@@ -473,7 +473,7 @@ proc clikeNextToken(g: var TGeneralTokenizer, keywords: openarray[string],
         else: inc(pos)
     of '(', ')', '[', ']', '{', '}', ':', ',', ';', '.': 
       inc(pos)
-      g.kind = gtPunctation
+      g.kind = gtPunctuation
     of '\0': 
       g.kind = gtEof
     else: 
