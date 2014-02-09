@@ -211,7 +211,9 @@ proc initInterval*(miliseconds, seconds, minutes, hours, days, months,
   result.months = months
   result.years = years
 
-proc isLeapYear(year: int): bool =
+proc isLeapYear*(year: int): bool =
+  ## returns true if ``year`` is a leap year
+
   if year mod 400 == 0:
     return true
   elif year mod 100 == 0: 
@@ -221,7 +223,9 @@ proc isLeapYear(year: int): bool =
   else:
     return false
 
-proc getDaysInMonth(month: TMonth, year: int): int =
+proc getDaysInMonth*(month: TMonth, year: int): int =
+  ## gets the amount of days in a ``month`` of a ``year``
+
   # http://www.dispersiondesign.com/articles/time/number_of_days_in_a_month
   case month 
   of mFeb: result = if isLeapYear(year): 29 else: 28

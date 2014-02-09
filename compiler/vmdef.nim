@@ -34,9 +34,11 @@ type
     opcAsgnComplex,
 
     opcLdArr,  # a = b[c]
+    opcLdArrRef,
     opcWrArr,  # a[b] = c
     opcWrArrRef,
     opcLdObj,  # a = b.c
+    opcLdObjRef,
     opcWrObj,  # a.b = c
     opcWrObjRef,
     opcAddr,

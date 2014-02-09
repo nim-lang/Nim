@@ -123,9 +123,14 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   test "gcleak2"
   test "gctest"
   test "gcleak3"
+  test "gcleak4"
+  test "gcleak5"
   test "weakrefs"
   test "cycleleak"
   test "closureleak"
+  test "refarrayleak"
+  test "stackrefleak"
+  
 
 # ------------------------- threading tests -----------------------------------
 

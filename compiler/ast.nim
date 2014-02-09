@@ -1129,7 +1129,7 @@ proc newType(kind: TTypeKind, owner: PSym): PType =
   result.align = 2            # default alignment
   result.id = getID()
   when debugIds:
-    RegisterId(result)
+    registerId(result)
   #if result.id < 2000 then
   #  MessageOut(typeKindToStr[kind] & ' has id: ' & toString(result.id))
   
@@ -1166,7 +1166,7 @@ proc copyType(t: PType, owner: PSym, keepId: bool): PType =
   if keepId: 
     result.id = t.id
   else: 
-    when debugIds: RegisterId(result)
+    when debugIds: registerId(result)
   result.sym = t.sym          # backend-info should not be copied
   
 proc copySym(s: PSym, keepId: bool = false): PSym = 
@@ -1177,7 +1177,7 @@ proc copySym(s: PSym, keepId: bool = false): PSym =
     result.id = s.id
   else: 
     result.id = getID()
-    when debugIds: RegisterId(result)
+    when debugIds: registerId(result)
   result.flags = s.flags
   result.magic = s.magic
   if s.kind == skModule:

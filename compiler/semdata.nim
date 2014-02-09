@@ -42,7 +42,7 @@ type
 
   TExprFlag* = enum 
     efLValue, efWantIterator, efInTypeof, efWantStmt, efDetermineType,
-    efAllowDestructor
+    efAllowDestructor, efWantValue
   TExprFlags* = set[TExprFlag]
 
   PContext* = ref TContext
@@ -211,6 +211,7 @@ proc makeTypeDesc*(c: PContext, typ: PType): PType =
 
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let typedesc = makeTypeDesc(c, typ)
+  rawAddSon(typedesc, newTypeS(tyNone, c))
   let sym = newSym(skType, idAnon, getCurrOwner(), info).linkTo(typedesc)
   return newSymNode(sym, info)
 

@@ -561,14 +561,31 @@ proc strTableContains(t: TStrTable, n: PSym): bool =
 
 proc strTableRawInsert(data: var TSymSeq, n: PSym) = 
   var h: THash = n.name.h and high(data)
-  while data[h] != nil: 
-    if data[h] == n:
-      # allowed for 'export' feature:
-      #InternalError(n.info, "StrTableRawInsert: " & n.name.s)
-      return
-    h = nextTry(h, high(data))
-  assert(data[h] == nil)
-  data[h] = n
+  if sfImmediate notin n.flags:
+    # fast path:
+    while data[h] != nil:
+      if data[h] == n:
+        # allowed for 'export' feature:
+        #InternalError(n.info, "StrTableRawInsert: " & n.name.s)
+        return
+      h = nextTry(h, high(data))
+    assert(data[h] == nil)
+    data[h] = n
+  else:
+    # slow path; we have to ensure immediate symbols are preferred for
+    # symbol lookups.
+    # consider the chain: foo (immediate), foo, bar, bar (immediate)
+    # then bar (immediate) gets replaced with foo (immediate) and the non
+    # immediate foo is picked! Thus we need to replace it with the first
+    # slot that has in fact the same identifier stored in it!
+    var favPos = -1
+    while data[h] != nil:
+      if data[h] == n: return
+      if favPos < 0 and data[h].name.id == n.name.id: favPos = h
+      h = nextTry(h, high(data))
+    assert(data[h] == nil)
+    data[h] = n
+    if favPos >= 0: swap data[h], data[favPos]
 
 proc symTabReplaceRaw(data: var TSymSeq, prevSym: PSym, newSym: PSym) =
   assert prevSym.name.h == newSym.name.h

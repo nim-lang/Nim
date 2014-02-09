@@ -740,7 +740,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       # we fill it out later. For magic generics like 'seq', it won't be filled
       # so we use tyEmpty instead of nil to not crash for strange conversions
       # like: mydata.seq
-      rawAddSon(s.typ, newTypeS(tyEmpty, c))
+      rawAddSon(s.typ, newTypeS(tyNone, c))
       s.ast = a
       inc c.inGenericContext
       var body = semTypeNode(c, a.sons[2], nil)
@@ -748,7 +748,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       if body != nil:
         body.sym = s
         body.size = -1 # could not be computed properly
-      s.typ.sons[sonsLen(s.typ) - 1] = body
+        s.typ.sons[sonsLen(s.typ) - 1] = body
       popOwner()
       closeScope(c)
     elif a.sons[2].kind != nkEmpty: 
@@ -972,6 +972,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   else:
     s = n[namePos].sym
     typeIsDetermined = s.typ == nil
+    s.ast = n
+    s.scope = c.currentScope
+
     # if typeIsDetermined: assert phase == stepCompileBody
     # else: assert phase == stepDetermineType
   # before compiling the proc body, set as current the scope
@@ -1206,7 +1209,7 @@ proc usesResult(n: PNode): bool =
       for c in n:
         if usesResult(c): return true
 
-proc semStmtList(c: PContext, n: PNode): PNode =
+proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # these must be last statements in a block:
   const
     LastBlockStmts = {nkRaiseStmt, nkReturnStmt, nkBreakStmt, nkContinueStmt}
@@ -1247,12 +1250,14 @@ proc semStmtList(c: PContext, n: PNode): PNode =
       if n.sons[i].typ == enforceVoidContext or usesResult(n.sons[i]):
         voidContext = true
         n.typ = enforceVoidContext
-      if i != last or voidContext or c.inTypeClass > 0:
+      if i == last and efWantValue in flags:
+        n.typ = n.sons[i].typ
+        if not isEmptyType(n.typ): n.kind = nkStmtListExpr
+      elif i != last or voidContext or c.inTypeClass > 0:
         discardCheck(c, n.sons[i])
       else:
         n.typ = n.sons[i].typ
-        if not isEmptyType(n.typ):
-          n.kind = nkStmtListExpr
+        if not isEmptyType(n.typ): n.kind = nkStmtListExpr
       case n.sons[i].kind
       of nkVarSection, nkLetSection:
         let (outer, inner) = insertDestructors(c, n.sons[i])

@@ -311,7 +311,8 @@ when defined(ssl):
       newCTX.SSLCTXSetVerify(SSLVerifyNone, nil)
     if newCTX == nil:
       SSLError()
-    
+
+    discard newCTX.SSLCTXSetMode(SSL_MODE_AUTO_RETRY)
     newCTX.loadCertificates(certFile, keyFile)
     return PSSLContext(newCTX)
 
@@ -1291,14 +1292,14 @@ proc readLine*(socket: TSocket, line: var TaintedString, timeout = -1) {.
     var c: char
     discard waitFor(socket, waited, timeout, 1, "readLine")
     var n = recv(socket, addr(c), 1)
-    if n < 0: osError(osLastError())
+    if n < 0: socket.socketError()
     elif n == 0: return
     if c == '\r':
       discard waitFor(socket, waited, timeout, 1, "readLine")
       n = peekChar(socket, c)
       if n > 0 and c == '\L':
         discard recv(socket, addr(c), 1)
-      elif n <= 0: osError(osLastError())
+      elif n <= 0: socket.socketError()
       addNLIfEmpty()
       return
     elif c == '\L': 

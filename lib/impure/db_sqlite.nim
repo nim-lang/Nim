@@ -148,7 +148,8 @@ proc getValue*(db: TDbConn, query: TSqlQuery,
   if finalize(stmt) != SQLITE_OK: dbError(db)
   
 proc tryInsertID*(db: TDbConn, query: TSqlQuery, 
-                  args: varargs[string, `$`]): int64 {.tags: [FWriteDb].} =
+                  args: varargs[string, `$`]): int64
+                  {.tags: [FWriteDb], raises: [].} =
   ## executes the query (typically "INSERT") and returns the 
   ## generated ID for the row or -1 in case of an error. 
   var q = dbFormat(query, args)
@@ -157,7 +158,8 @@ proc tryInsertID*(db: TDbConn, query: TSqlQuery,
   if prepare_v2(db, q, q.len.cint, stmt, nil) == SQLITE_OK:
     if step(stmt) == SQLITE_DONE:
       result = last_insert_rowid(db)
-  if finalize(stmt) != SQLITE_OK: dbError(db)
+    if finalize(stmt) != SQLITE_OK:
+      result = -1
 
 proc insertID*(db: TDbConn, query: TSqlQuery, 
                args: varargs[string, `$`]): int64 {.tags: [FWriteDb].} = 

@@ -45,6 +45,16 @@ const
   NewLines* = {'\13', '\10'}
     ## the set of characters a newline terminator can start with
 
+  AllChars* = {'\x00'..'\xFF'}
+    ## A set with all the possible characters. Not very useful by its own, you
+    ## can use it to create *inverted* sets to make the ``find()`` proc find
+    ## **invalid** characters in strings. Example:
+    ##
+    ## .. code-block:: nimrod
+    ##   let invalid = AllChars - Digits
+    ##   doAssert "01234".find(invalid) == -1
+    ##   doAssert "01A34".find(invalid) == 2
+
 proc toLower*(c: char): char {.noSideEffect, procvar,
   rtl, extern: "nsuToLowerChar".} =
   ## Converts `c` into lower case. This works only for the letters A-Z.

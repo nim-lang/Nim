@@ -35,7 +35,7 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     result.typ = errorType(c)
 
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
-  result = semExpr(c, n, flags)
+  result = semExpr(c, n, flags+{efWantValue})
   if result.isNil or result.kind == nkEmpty: 
     # do not produce another redundant error message:
     #raiseRecoverableError("")
@@ -1706,8 +1706,8 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = n
   result.typ = t
   result.kind = nkObjConstr
-  t = skipTypes(t, abstractInst)
-  if t.kind == tyRef: t = skipTypes(t.sons[0], abstractInst)
+  t = skipTypes(t, {tyGenericInst})
+  if t.kind == tyRef: t = skipTypes(t.sons[0], {tyGenericInst})
   if t.kind != tyObject:
     localError(n.info, errGenerated, "object constructor needs an object type")
     return
@@ -1819,6 +1819,10 @@ proc semExport(c: PContext, n: PNode): PNode =
   c.module.ast.add x
   result = n
 
+proc setGenericParams(c: PContext, n: PNode) =
+  for i in 1 .. <n.len:
+    n[i].typ = semTypeNode(c, n[i], nil)
+
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode = 
   result = n
   if gCmd == cmdIdeTools: suggestExpr(c, n)
@@ -1924,10 +1928,12 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       else:
         #liMessage(n.info, warnUser, renderTree(n));
         result = semIndirectOp(c, n, flags)
-    elif isSymChoice(n.sons[0]) or n[0].kind == nkBracketExpr and 
-        isSymChoice(n[0][0]):
+    elif n[0].kind == nkBracketExpr and isSymChoice(n[0][0]):
+      # indirectOp can deal with explicit instantiations; the fixes
+      # the 'newSeq[T](x)' bug
+      setGenericParams(c, n.sons[0])
       result = semDirectOp(c, n, flags)
-    elif nfDelegate in n.flags:
+    elif isSymChoice(n.sons[0]) or nfDelegate in n.flags:
       result = semDirectOp(c, n, flags)
     else:
       result = semIndirectOp(c, n, flags)
@@ -1993,7 +1999,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     result = semStaticExpr(c, n)
   of nkAsgn: result = semAsgn(c, n)
   of nkBlockStmt, nkBlockExpr: result = semBlock(c, n)
-  of nkStmtList, nkStmtListExpr: result = semStmtList(c, n)
+  of nkStmtList, nkStmtListExpr: result = semStmtList(c, n, flags)
   of nkRaiseStmt: result = semRaise(c, n)
   of nkVarSection: result = semVarOrLet(c, n, skVar)
   of nkLetSection: result = semVarOrLet(c, n, skLet)
