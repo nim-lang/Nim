@@ -3,4 +3,4 @@
 #type
 #  TStringArr = array [0.. *] of string
 
-proc exportme* = nil
+proc exportme* = discard

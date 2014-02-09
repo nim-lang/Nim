@@ -1,5 +1,6 @@
 discard """
-  output: '''(bar: bar)
+  output: '''24
+(bar: bar)
 1244
 6
 abcdefghijklmnopqrstuvwxyz
@@ -7,6 +8,10 @@ abcdefghijklmnopqrstuvwxyz
 """
 
 import strutils
+
+const fac4 = (var x = 1; for i in 1..4: x *= i; x)
+
+echo fac4
 
 when true:
   proc test(foo: proc (x, y: int): bool) =
@@ -69,3 +74,15 @@ proc semiProblem() =
   if false: echo "aye"; echo "indeed"
 
 semiProblem()
+
+
+# bug #844
+
+import json 
+proc parseResponse(): PJsonNode =
+  result = % { "key1": % { "key2": % "value" } }
+  for key, val in result["key1"]:
+    var excMsg = key & "("
+    if (var n=result["key2"]; n != nil):
+      excMsg &= n.str
+    raise newException(ESynch, excMsg)

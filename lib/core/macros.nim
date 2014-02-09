@@ -294,19 +294,6 @@ proc quote*(bl: stmt, op = "``"): PNimrodNode {.magic: "QuoteAst".}
   ##       if not `ex`:
   ##         echo `info` & ": Check failed: " & `expString`
   
-when not defined(booting):
-  template emit*(e: static[string]): stmt =
-    ## accepts a single string argument and treats it as nimrod code
-    ## that should be inserted verbatim in the program
-    ## Example:
-    ##
-    ## .. code-block:: nimrod
-    ##   emit("echo " & '"' & "hello world".toUpper & '"')
-    ##
-    macro payload: stmt {.gensym.} =
-      result = e.parseStmt
-    payload()
-
 proc expectKind*(n: PNimrodNode, k: TNimrodNodeKind) {.compileTime.} =
   ## checks that `n` is of kind `k`. If this is not the case,
   ## compilation aborts with an error message. This is useful for writing
@@ -421,7 +408,8 @@ proc lispRepr*(n: PNimrodNode): string {.compileTime.} =
   of nnkFloatLit..nnkFloat64Lit: add(result, $n.floatVal)
   of nnkStrLit..nnkTripleStrLit: add(result, $n.strVal)
   of nnkIdent: add(result, "!\"" & $n.ident & '"')
-  of nnkSym, nnkNone: assert false
+  of nnkSym: add(result, $n.symbol)
+  of nnkNone: assert false
   else:
     add(result, lispRepr(n[0]))
     for j in 1..n.len-1:
@@ -745,3 +733,15 @@ proc addIdentIfAbsent*(dest: PNimrodNode, ident: string) {.compiletime.} =
     else: discard
   dest.add(ident(ident))
 
+when not defined(booting):
+  template emit*(e: static[string]): stmt =
+    ## accepts a single string argument and treats it as nimrod code
+    ## that should be inserted verbatim in the program
+    ## Example:
+    ##
+    ## .. code-block:: nimrod
+    ##   emit("echo " & '"' & "hello world".toUpper & '"')
+    ##
+    macro payload: stmt {.gensym.} =
+      result = parseStmt(e)
+    payload()

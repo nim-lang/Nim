@@ -159,3 +159,22 @@ proc generateHtml*(filename: string, commit: int) =
   outfile.write(HtmlEnd)
   close(db)
   close(outfile)
+
+proc generateJson*(filename: string, commit: int) =
+  const selRow = """select count(*),
+                           sum(result = 'reSuccess'), 
+                           sum(result = 'reIgnored')
+                    from TestResult
+                    where [commit] = ? and machine = ?
+                    order by category"""
+  var db = open(connection="testament.db", user="testament", password="",
+                database="testament")
+  let lastCommit = db.getCommit(commit)
+
+  var outfile = open(filename, fmWrite)
+
+  let data = db.getRow(sql(selRow), lastCommit, $backend.getMachine(db))
+
+  outfile.writeln("""{"total": $#, "passed": $#, "skipped": $#}""" % data)
+  close(db)
+  close(outfile)

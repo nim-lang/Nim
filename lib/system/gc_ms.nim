@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -59,11 +59,11 @@ var
   gch {.rtlThreadVar.}: TGcHeap
 
 when not defined(useNimRtl):
-  InstantiateForRegion(gch.region)
+  instantiateForRegion(gch.region)
 
 template acquire(gch: TGcHeap) = 
   when hasThreadSupport and hasSharedHeap:
-    AcquireSys(HeapLock)
+    acquireSys(HeapLock)
 
 template release(gch: TGcHeap) = 
   when hasThreadSupport and hasSharedHeap:
@@ -90,7 +90,7 @@ proc extGetCellType(c: pointer): PNimType {.compilerproc.} =
   # used for code generation concerning debugging
   result = usrToCell(c).typ
 
-proc unsureAsgnRef(dest: ppointer, src: pointer) {.inline.} =
+proc unsureAsgnRef(dest: PPointer, src: pointer) {.inline.} =
   dest[] = src
 
 proc internRefcount(p: pointer): int {.exportc: "getRefcount".} =
@@ -114,10 +114,10 @@ when BitsPerPage mod (sizeof(int)*8) != 0:
 
 # forward declarations:
 proc collectCT(gch: var TGcHeap)
-proc IsOnStack*(p: pointer): bool {.noinline.}
+proc isOnStack*(p: pointer): bool {.noinline.}
 proc forAllChildren(cell: PCell, op: TWalkOp)
 proc doOperation(p: pointer, op: TWalkOp)
-proc forAllChildrenAux(dest: Pointer, mt: PNimType, op: TWalkOp)
+proc forAllChildrenAux(dest: pointer, mt: PNimType, op: TWalkOp)
 # we need the prototype here for debugging purposes
 
 proc prepareDealloc(cell: PCell) =
@@ -162,19 +162,19 @@ proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: TWalkOp) =
     if m != nil: forAllSlotsAux(dest, m, op)
   of nkNone: sysAssert(false, "forAllSlotsAux")
 
-proc forAllChildrenAux(dest: Pointer, mt: PNimType, op: TWalkOp) =
+proc forAllChildrenAux(dest: pointer, mt: PNimType, op: TWalkOp) =
   var d = cast[TAddress](dest)
   if dest == nil: return # nothing to do
   if ntfNoRefs notin mt.flags:
-    case mt.Kind
+    case mt.kind
     of tyRef, tyString, tySequence: # leaf:
-      doOperation(cast[ppointer](d)[], op)
+      doOperation(cast[PPointer](d)[], op)
     of tyObject, tyTuple:
       forAllSlotsAux(dest, mt.node, op)
     of tyArray, tyArrayConstr, tyOpenArray:
       for i in 0..(mt.size div mt.base.size)-1:
         forAllChildrenAux(cast[pointer](d +% i *% mt.base.size), mt.base, op)
-    else: nil
+    else: discard
 
 proc forAllChildren(cell: PCell, op: TWalkOp) =
   gcAssert(cell != nil, "forAllChildren: 1")
@@ -184,7 +184,7 @@ proc forAllChildren(cell: PCell, op: TWalkOp) =
   if marker != nil:
     marker(cellToUsr(cell), op.int)
   else:
-    case cell.typ.Kind
+    case cell.typ.kind
     of tyRef: # common case
       forAllChildrenAux(cellToUsr(cell), cell.typ.base, op)
     of tySequence:
@@ -194,7 +194,7 @@ proc forAllChildren(cell: PCell, op: TWalkOp) =
         for i in 0..s.len-1:
           forAllChildrenAux(cast[pointer](d +% i *% cell.typ.base.size +%
             GenericSeqSize), cell.typ.base, op)
-    else: nil
+    else: discard
 
 proc rawNewObj(typ: PNimType, size: int, gch: var TGcHeap): pointer =
   # generates a new object and sets its reference counter to 0
@@ -466,7 +466,7 @@ else:
         sp = sp +% sizeof(pointer)*8
       # last few entries:
       while sp <=% max:
-        gcMark(gch, cast[ppointer](sp)[])
+        gcMark(gch, cast[PPointer](sp)[])
         sp = sp +% sizeof(pointer)
 
 # ----------------------------------------------------------------------------
@@ -505,7 +505,7 @@ when not defined(useNimRtl):
       else:
         dec(gch.recGcLock)
 
-  proc GC_setStrategy(strategy: TGC_Strategy) = nil
+  proc GC_setStrategy(strategy: TGC_Strategy) = discard
 
   proc GC_enableMarkAndSweep() =
     gch.cycleThreshold = InitialThreshold

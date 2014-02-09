@@ -2333,29 +2333,29 @@ when not defined(JS): #and not defined(NimrodVM):
 
 elif defined(JS):
   # Stubs:
-  proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} = nil
+  proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} = discard
 
-  proc GC_disable() = nil
-  proc GC_enable() = nil
-  proc GC_fullCollect() = nil
-  proc GC_setStrategy(strategy: TGC_Strategy) = nil
-  proc GC_enableMarkAndSweep() = nil
-  proc GC_disableMarkAndSweep() = nil
+  proc GC_disable() = discard
+  proc GC_enable() = discard
+  proc GC_fullCollect() = discard
+  proc GC_setStrategy(strategy: TGC_Strategy) = discard
+  proc GC_enableMarkAndSweep() = discard
+  proc GC_disableMarkAndSweep() = discard
   proc GC_getStatistics(): string = return ""
   
   proc getOccupiedMem(): int = return -1
   proc getFreeMem(): int = return -1
   proc getTotalMem(): int = return -1
 
-  proc dealloc(p: pointer) = nil
-  proc alloc(size: int): pointer = nil
-  proc alloc0(size: int): pointer = nil
-  proc realloc(p: Pointer, newsize: int): pointer = nil
+  proc dealloc(p: pointer) = discard
+  proc alloc(size: int): pointer = discard
+  proc alloc0(size: int): pointer = discard
+  proc realloc(p: Pointer, newsize: int): pointer = discard
 
-  proc allocShared(size: int): pointer = nil
-  proc allocShared0(size: int): pointer = nil
-  proc deallocShared(p: pointer) = nil
-  proc reallocShared(p: pointer, newsize: int): pointer = nil
+  proc allocShared(size: int): pointer = discard
+  proc allocShared0(size: int): pointer = discard
+  proc deallocShared(p: pointer) = discard
+  proc reallocShared(p: pointer, newsize: int): pointer = discard
 
   when defined(JS):
     include "system/jssys"
@@ -2490,11 +2490,11 @@ proc staticRead*(filename: string): string {.magic: "Slurp".}
   ## ``slurp`` is an alias for ``staticRead``.
 
 proc gorge*(command: string, input = ""): string {.
-  magic: "StaticExec".} = nil
+  magic: "StaticExec".} = discard
   ## This is an alias for ``staticExec``.
 
 proc staticExec*(command: string, input = ""): string {.
-  magic: "StaticExec".} = nil
+  magic: "StaticExec".} = discard
   ## Executes an external process at compile-time.
   ## if `input` is not an empty string, it will be passed as a standard input
   ## to the executed program.
@@ -2561,7 +2561,7 @@ proc instantiationInfo*(index = -1, fullPaths = false): tuple[
   ##         $pos.line, astToStr(code)]
   ##       assert false, "A test expecting failure succeeded?"
   ##     except exception:
-  ##       nil
+  ##       discard
   ##
   ##   proc tester(pos: int): int =
   ##     let

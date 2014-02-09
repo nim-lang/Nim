@@ -135,7 +135,7 @@ proc interactivePasses =
   #setTarget(osNimrodVM, cpuNimrodVM)
   initDefines()
   defineSymbol("nimrodvm")
-  when hasFFI: DefineSymbol("nimffi")
+  when hasFFI: defineSymbol("nimffi")
   registerPass(verbosePass)
   registerPass(semPass)
   registerPass(evalPass)
@@ -324,7 +324,7 @@ proc mainCommand* =
     wantMainModule()
     when hasTinyCBackend:
       extccomp.setCC("tcc")
-      CommandCompileToC()
+      commandCompileToC()
     else:
       rawMessage(errInvalidCommandX, command)
   of "js", "compiletojs":
@@ -450,7 +450,8 @@ proc mainCommand* =
     echo "  tries : ", gCacheTries
     echo "  misses: ", gCacheMisses
     echo "  int tries: ", gCacheIntTries
-    echo "  efficiency: ", formatFloat(1-(gCacheMisses.float/gCacheTries.float), ffDecimal, 3)
+    echo "  efficiency: ", formatFloat(1-(gCacheMisses.float/gCacheTries.float),
+                                       ffDecimal, 3)
 
   when SimiluateCaasMemReset:
     resetMemory()

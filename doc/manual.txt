@@ -12,6 +12,8 @@ Nimrod Manual
   user to one/some of the other players, but the total amount seems to remain
   pretty much constant for a given task. -- Ran
 
+
+
 About this document
 ===================
 
@@ -1313,12 +1315,9 @@ Examples:
 
 .. code-block:: nimrod
 
-  type
-    TCallback = proc (x: int) {.cdecl.}
+  proc printItem(x: int) = ...
 
-  proc printItem(x: Int) = ...
-
-  proc forEach(c: TCallback) =
+  proc forEach(c: proc (x: int) {.cdecl.}) =
     ...
 
   forEach(printItem)  # this will NOT work because calling conventions differ
@@ -1479,7 +1478,7 @@ But it seems all this boilerplate code needs to be repeated for the ``TEuro``
 currency. This can be solved with templates_.
 
 .. code-block:: nimrod
-  template Additive(typ: typedesc): stmt =
+  template additive(typ: typedesc): stmt =
     proc `+` *(x, y: typ): typ {.borrow.}
     proc `-` *(x, y: typ): typ {.borrow.}
     
@@ -1487,26 +1486,26 @@ currency. This can be solved with templates_.
     proc `+` *(x: typ): typ {.borrow.}
     proc `-` *(x: typ): typ {.borrow.}
 
-  template Multiplicative(typ, base: typedesc): stmt =
+  template multiplicative(typ, base: typedesc): stmt =
     proc `*` *(x: typ, y: base): typ {.borrow.}
     proc `*` *(x: base, y: typ): typ {.borrow.}
     proc `div` *(x: typ, y: base): typ {.borrow.}
     proc `mod` *(x: typ, y: base): typ {.borrow.}
 
-  template Comparable(typ: typedesc): stmt =
+  template comparable(typ: typedesc): stmt =
     proc `<` * (x, y: typ): bool {.borrow.}
     proc `<=` * (x, y: typ): bool {.borrow.}
     proc `==` * (x, y: typ): bool {.borrow.}
 
-  template DefineCurrency(typ, base: expr): stmt =
+  template defineCurrency(typ, base: expr): stmt =
     type
       typ* = distinct base
-    Additive(typ)
-    Multiplicative(typ, base)
-    Comparable(typ)
+    additive(typ)
+    multiplicative(typ, base)
+    comparable(typ)
     
-  DefineCurrency(TDollar, int)
-  DefineCurrency(TEuro, int)
+  defineCurrency(TDollar, int)
+  defineCurrency(TEuro, int)
 
 
 Void type
@@ -2232,6 +2231,8 @@ Instead of:
 Using statement
 ---------------
 
+**Warning**: The ``using`` statement is highly experimental!
+
 The `using statement`:idx: provides syntactic convenience for procs that
 heavily use a single contextual parameter. When applied to a variable or a
 constant, it will instruct Nimrod to automatically consider the used symbol as
@@ -2457,6 +2458,83 @@ notation. (Thus an operator can have more than two parameters):
 
   assert `*+`(3, 4, 6) == `*`(a, `+`(b, c))
 
+
+Method call syntax
+------------------
+
+For object oriented programming, the syntax ``obj.method(args)`` can be used 
+instead of ``method(obj, args)``. The parentheses can be omitted if there are no
+remaining arguments: ``obj.len`` (instead of ``len(obj)``).
+
+This `method call syntax`:idx: is not restricted to objects, it can be used
+to supply any type of first argument for procedures:
+
+.. code-block:: nimrod
+  
+  echo("abc".len) # is the same as echo(len("abc"))
+  echo("abc".toUpper())
+  echo({'a', 'b', 'c'}.card)
+  stdout.writeln("Hallo") # the same as writeln(stdout, "Hallo")
+
+Another way to look at the method call syntax is that it provides the missing
+postfix notation.
+
+
+Properties
+----------
+Nimrod has no need for *get-properties*: Ordinary get-procedures that are called
+with the *method call syntax* achieve the same. But setting a value is 
+different; for this a special setter syntax is needed:
+
+.. code-block:: nimrod
+  
+  type
+    TSocket* = object of TObject
+      FHost: int # cannot be accessed from the outside of the module
+                 # the `F` prefix is a convention to avoid clashes since
+                 # the accessors are named `host`
+
+  proc `host=`*(s: var TSocket, value: int) {.inline.} =
+    ## setter of hostAddr
+    s.FHost = value
+  
+  proc host*(s: TSocket): int {.inline.} =
+    ## getter of hostAddr
+    return s.FHost
+
+  var
+    s: TSocket
+  s.host = 34  # same as `host=`(s, 34)
+
+
+Command invocation syntax
+-------------------------
+
+Routines can be invoked without the ``()`` if the call is syntatically
+a statement. This `command invocation syntax`:idx: also works for
+expressions, but then only a single argument may follow. This restriction
+means ``echo f 1, f 2`` is parsed as ``echo(f(1), f(2))`` and not as
+``echo(f(1, f(2)))``. The method call syntax may be used to provide one
+more argument in this case:
+
+.. code-block:: nimrod
+  proc optarg(x:int, y:int = 0):int = x + y
+  proc singlearg(x:int):int = 20*x
+  
+  echo optarg 1, " ", singlearg 2  # prints "1 40"
+  
+  let fail = optarg 1, optarg 8   # Wrong. Too many arguments for a command call
+  let x = optarg(1, optarg 8)  # traditional procedure call with 2 arguments
+  let y = 1.optarg optarg 8    # same thing as above, w/o the parenthesis
+  assert x == y
+
+The command invocation syntax also can't have complex expressions as arguments. 
+For example: (`anonymous procs`_), ``if``, ``case`` or ``try``. The (`do 
+notation`_) is limited, but usable for a single proc (see the example in the 
+corresponding section). Function calls with no arguments still needs () to 
+distinguish between a call and the function itself as a first class value.
+
+
 Closures
 --------
 
@@ -2468,6 +2546,7 @@ to the closure (its environment) and they are accessed by reference by both
 the closure and its enclosing scope (i.e. any modifications made to them are
 visible in both places). The closure environment may be allocated on the heap
 or on the stack if the compiler determines that this would be safe.
+
 
 Anonymous Procs
 ---------------
@@ -2495,6 +2574,9 @@ calls can use the ``do`` keyword:
 .. code-block:: nimrod
   sort(cities) do (x,y: string) -> int:
     cmp(x.len, y.len)
+  # Less parenthesis using the method plus command syntax:
+  cities = cities.map do (x:string) -> string:  
+    "City of " & x
 
 ``do`` is written after the parentheses enclosing the regular proc params. 
 The proc expression represented by the do block is appended to them.
@@ -2849,7 +2931,7 @@ parameters of an outer factory proc:
         yield x
         inc x
 
-  let foo = mycount 1, 4
+  let foo = mycount(1, 4)
 
   for f in foo():
     echo f
@@ -3440,11 +3522,39 @@ A symbol can be forced to be open by a `mixin`:idx: declaration:
 
 .. code-block:: nimrod
   proc create*[T](): ref T =
-    # there is no overloaded 'mixin' here, so we need to state that it's an
+    # there is no overloaded 'init' here, so we need to state that it's an
     # open symbol explicitly:
     mixin init
     new result
     init result
+
+
+Bind statement
+--------------
+
+The `bind`:idx: statement is the counterpart to the ``mixin`` statement. It 
+can be used to explicitly declare identifiers that should be bound early (i.e.
+the identifiers should be looked up in the scope of the template/generic
+definition):
+
+.. code-block:: nimrod
+  # Module A
+  var 
+    lastId = 0
+  
+  template genId*: expr =
+    bind lastId
+    inc(lastId)
+    lastId
+
+.. code-block:: nimrod
+  # Module B
+  import A
+  
+  echo genId()
+
+But a ``bind`` is rarely useful because symbol binding from the definition
+scope is the default.
 
 
 Templates
@@ -3506,28 +3616,6 @@ receive undeclared identifiers:
   declareInt(x) # valid
 
 
-Scoping in templates
---------------------
-
-The template body does not open a new scope. To open a new scope a ``block``
-statement can be used:
-
-.. code-block:: nimrod
-  template declareInScope(x: expr, t: typedesc): stmt {.immediate.} = 
-    var x: t
-    
-  template declareInNewScope(x: expr, t: typedesc): stmt {.immediate.} = 
-    # open a new scope:
-    block: 
-      var x: t
-
-  declareInScope(a, int)
-  a = 42  # works, `a` is known here
-  
-  declareInNewScope(b, int)
-  b = 42  # does not work, `b` is unknown
-
-
 Passing a code block to a template
 ----------------------------------
 
@@ -3538,26 +3626,28 @@ special ``:`` syntax:
 .. code-block:: nimrod
 
   template withFile(f, fn, mode: expr, actions: stmt): stmt {.immediate.} =
-    block:
-      var f: TFile
-      if open(f, fn, mode):
-        try:
-          actions
-        finally:
-          close(f)
-      else:
-        quit("cannot open: " & fn)
+    var f: TFile
+    if open(f, fn, mode):
+      try:
+        actions
+      finally:
+        close(f)
+    else:
+      quit("cannot open: " & fn)
       
   withFile(txt, "ttempl3.txt", fmWrite):
     txt.writeln("line 1")
     txt.writeln("line 2")
   
 In the example the two ``writeln`` statements are bound to the ``actions``
-parameter. 
+parameter.
 
-**Note:** The symbol binding rules for templates might change!
 
-Symbol binding within templates happens after template instantiation: 
+Symbol binding in templates
+---------------------------
+
+A template is a `hygienic`:idx: macro and so opens a new scope. Most symbols are
+bound from the definition scope of the template:
 
 .. code-block:: nimrod
   # Module A
@@ -3572,34 +3662,11 @@ Symbol binding within templates happens after template instantiation:
   # Module B
   import A
   
-  echo genId() # Error: undeclared identifier: 'lastId'
+  echo genId() # Works as 'lastId' has been bound in 'genId's defining scope
 
+As in generics symbol binding can be influenced via ``mixin`` or ``bind`` 
+statements.
 
-Bind statement
---------------
-
-Exporting a template is a often a leaky abstraction as it can depend on 
-symbols that are not visible from a client module. However, to compensate for
-this case, a `bind`:idx: statement can be used: It declares all identifiers
-that should be bound early (i.e. when the template is parsed):
-
-.. code-block:: nimrod
-  # Module A
-  var 
-    lastId = 0
-  
-  template genId*: expr =
-    bind lastId
-    inc(lastId)
-    lastId
-
-.. code-block:: nimrod
-  # Module B
-  import A
-  
-  echo genId() # Works
-
-A ``bind`` statement can also be used in generics for the same purpose.
 
 
 Identifier construction
@@ -3942,13 +4009,13 @@ Static params can also appear in the signatures of generic types:
 
   type
     Matrix[M,N: static[int]; T: Number] = array[0..(M*N - 1), T]
-      # Please, note how `Number` is just a type constraint here, while
+      # Note how `Number` is just a type constraint here, while
       # `static[int]` requires us to supply a compile-time int value
 
     AffineTransform2D[T] = Matrix[3, 3, T]
     AffineTransform3D[T] = Matrix[4, 4, T]
 
-  AffineTransform3D[float] # OK
+  AffineTransform3D[float]  # OK
   AffineTransform2D[string] # Error, `string` is not a `Number`
 
 
@@ -4685,6 +4752,10 @@ These rules ensure that the construction is tied to a variable and can easily
 be destructed at its scope exit. Later versions of the language will improve
 the support of destructors.
 
+Be aware that destructors are not called for objects allocated with ``new``.
+This may change in future versions of language, but for now use 
+the ``finalizer`` parameter to ``new``.
+
 
 delegator pragma
 ----------------
@@ -5173,9 +5244,9 @@ the same feature under the same name.
 Exportc pragma
 --------------
 The `exportc`:idx: pragma provides a means to export a type, a variable, or a
-procedure to C. The optional argument is a string containing the C identifier.
-If the argument is missing, the C name is the Nimrod
-identifier *exactly as spelled*:
+procedure to C. Enums and constants can't be exported. The optional argument
+is a string containing the C identifier.  If the argument is missing, the C
+name is the Nimrod identifier *exactly as spelled*:
 
 .. code-block:: Nimrod
   proc callme(formatstr: cstring) {.exportc: "callMe", varargs.}

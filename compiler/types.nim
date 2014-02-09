@@ -47,7 +47,8 @@ proc equalParams*(a, b: PNode): TParamsEquality
   # returns whether the parameter lists of the procs a, b are exactly the same
 proc isOrdinalType*(t: PType): bool
 proc enumHasHoles*(t: PType): bool
-const 
+
+const
   abstractPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyDistinct, tyOrdinal,
                    tyConst, tyMutable, tyTypeDesc}
   abstractVar* = {tyVar, tyGenericInst, tyDistinct, tyOrdinal,
@@ -451,7 +452,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       of tyProc: "proc"
       of tyObject: "object"
       of tyTuple: "tuple"
-      else: (internalAssert false; "")
+      else: (internalAssert(false); "")
   of tyUserTypeClassInst:
     let body = t.base
     result = body.sym.name.s & "["
@@ -1257,7 +1258,7 @@ proc containsGenericTypeIter(t: PType, closure: PObject): bool =
     return true
 
   if t.kind == tyTypeDesc:
-    if t.sonsLen == 0: return true
+    if t.sons[0].kind == tyNone: return true
     if containsGenericTypeIter(t.base, closure): return true
     return false
   

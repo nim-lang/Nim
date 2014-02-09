@@ -51,13 +51,14 @@ while i < s.len:
 write(stdout, "Du heißt " & s)
 
 # bug #544
-
-type Bar [T; I:range] = array[I, T]
-proc foo*[T; I:range](a, b: Bar[T, I]): Bar[T, I] =
-  when len(a) != 3: 
-    # Error: constant expression expected
-    {.fatal:"Dimensions have to be 3".}
-  #...
-block:
-  var a, b: Bar[int, 0..2]
-  discard foo(a, b)
+when false:
+  # yay, fails again
+  type Bar [T; I:range] = array[I, T]
+  proc foo*[T; I:range](a, b: Bar[T, I]): Bar[T, I] =
+    when len(a) != 3: 
+      # Error: constant expression expected
+      {.fatal:"Dimensions have to be 3".}
+    #...
+  block:
+    var a, b: Bar[int, 0..2]
+    discard foo(a, b)

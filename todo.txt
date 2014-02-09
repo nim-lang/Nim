@@ -1,9 +1,10 @@
 version 0.9.4
 =============
 
-- better debugging support for writes to locations
-- document new templating symbol binding rules
-- fix eval in macros.nim
+- fix GC issues
+- fix macros\tstringinterp.nim
+- test and fix showoff
+- fix closure iterators
 
 
 Bugs
@@ -16,7 +17,6 @@ Bugs
 - compilation of niminst takes way too long. looks like a regression
 - docgen: sometimes effects are listed twice
 - 'result' is not properly cleaned for NRVO --> use uninit checking instead
-- sneaking with qualifiedLookup() is really broken!
 - blocks can "export" an identifier but the CCG generates {} for them ...
 - osproc execProcesses can deadlock if all processes fail (as experienced
   in c++ mode)
@@ -25,6 +25,9 @@ Bugs
 version 0.9.x
 =============
 
+- implement 'union' and 'bits' pragmas
+- fix closures
+- test and fix exception handling
 - ensure (ref T)(a, b) works as a type conversion and type constructor
 - optimize 'genericReset'; 'newException' leads to code bloat
 - stack-less GC

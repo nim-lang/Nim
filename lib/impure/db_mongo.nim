@@ -58,7 +58,7 @@ proc open*(host: string = defaultHost, port: int = defaultPort): TDbConn {.
   ## be established.
   init(result)
   
-  let x = connect(result, host, port.cint)
+  let x = client(result, host, port.cint)
   if x != 0'i32:
     dbError(result, "cannot open: " & host)
 
@@ -119,7 +119,7 @@ proc insertId*(db: var TDbConn, namespace: string, data: PJsonNode): TOid {.
   ## the generated OID for the ``_id`` field.
   result = genOid()
   var x = jsonToBSon(data, result)
-  insert(db, namespace, x)
+  insert(db, namespace, x, nil)
   destroy(x)
 
 proc insert*(db: var TDbConn, namespace: string, data: PJsonNode) {.
