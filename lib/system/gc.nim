@@ -802,7 +802,7 @@ when defined(sparc): # For SPARC architecture.
     # Addresses decrease as the stack grows.
     while sp <= max:
       gcMark(gch, sp[])
-      sp = cast[ppointer](cast[TAddress](sp) +% sizeof(pointer))
+      sp = cast[PPointer](cast[TAddress](sp) +% sizeof(pointer))
 
 elif defined(ELATE):
   {.error: "stack marking code is to be written for this architecture".}
