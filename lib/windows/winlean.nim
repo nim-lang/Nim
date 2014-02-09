@@ -689,8 +689,8 @@ var
   WSAID_GETACCEPTEXSOCKADDRS*: TGUID = TGUID(D1: 0xb5367df2'i32, D2: 0xcbac'i16, D3: 0x11cf, D4: [
     0x95'i8, 0xca'i8, 0x00'i8, 0x80'i8, 0x5f'i8, 0x48'i8, 0xa1'i8, 0x92'i8])
 
-proc WSAIoctl*(s: TSocketHandle, dwIoControlCode: dword, lpvInBuffer: pointer,
-  cbInBuffer: dword, lpvOutBuffer: pointer, cbOutBuffer: dword,
+proc WSAIoctl*(s: TSocketHandle, dwIoControlCode: DWORD, lpvInBuffer: pointer,
+  cbInBuffer: DWORD, lpvOutBuffer: pointer, cbOutBuffer: DWORD,
   lpcbBytesReturned: PDword, lpOverlapped: POVERLAPPED,
   lpCompletionRoutine: POVERLAPPED_COMPLETION_ROUTINE): cint 
   {.stdcall, importc: "WSAIoctl", dynlib: "Ws2_32.dll".}
