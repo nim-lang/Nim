@@ -59,8 +59,7 @@ primarySuffix = '(' (exprColonEqExpr comma?)* ')' doBlocks?
               | '.' optInd ('type' | 'addr' | symbol) generalizedLit?
               | '[' optInd indexExprList optPar ']'
               | '{' optInd indexExprList optPar '}'
-              | &( '`'|IDENT|literal|'cast') expr ^+ ',' # command syntax
-                     (doBlock | macroColon)?
+              | &( '`'|IDENT|literal|'cast') expr # command syntax
 condExpr = expr colcom expr optInd
         ('elif' expr colcom expr optInd)*
          'else' colcom expr

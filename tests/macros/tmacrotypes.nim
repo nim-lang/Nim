@@ -1,3 +1,7 @@
+discard """
+  disabled: true
+"""
+
 import macros, typetraits
 
 macro checkType(ex, expected: expr): stmt {.immediate.} =

@@ -35,6 +35,7 @@ type
     lex*: TLexer              # the lexer that is used for parsing
     tok*: TToken              # the current token
     inPragma: int
+    inSemiStmtList: int
 
 proc parseAll*(p: var TParser): PNode
 proc openParser*(p: var TParser, filename: string, inputstream: PLLStream)
@@ -455,11 +456,13 @@ proc complexOrSimpleStmt(p: var TParser): PNode
 proc simpleExpr(p: var TParser, mode = pmNormal): PNode
 
 proc semiStmtList(p: var TParser, result: PNode) =
+  inc p.inSemiStmtList
   result.add(complexOrSimpleStmt(p))
   while p.tok.tokType == tkSemiColon:
     getTok(p)
     optInd(p, result)
     result.add(complexOrSimpleStmt(p))
+  dec p.inSemiStmtList
   result.kind = nkStmtListExpr
 
 proc parsePar(p: var TParser): PNode =
@@ -642,8 +645,7 @@ proc primarySuffix(p: var TParser, r: PNode): PNode =
   #|               | '.' optInd ('type' | 'addr' | symbol) generalizedLit?
   #|               | '[' optInd indexExprList optPar ']'
   #|               | '{' optInd indexExprList optPar '}'
-  #|               | &( '`'|IDENT|literal|'cast') expr ^+ ',' # command syntax
-  #|                      (doBlock | macroColon)?
+  #|               | &( '`'|IDENT|literal|'cast') expr # command syntax
   result = r
   while p.tok.indent < 0:
     case p.tok.tokType
@@ -672,16 +674,18 @@ proc primarySuffix(p: var TParser, r: PNode): PNode =
         let a = result
         result = newNodeP(nkCommand, p)
         addSon(result, a)
-        while p.tok.tokType != tkEof:
-          let a = parseExpr(p)
-          addSon(result, a)
-          if p.tok.tokType != tkComma: break
-          getTok(p)
-          optInd(p, a)
-        if p.tok.tokType == tkDo:
-          parseDoBlocks(p, result)
-        else:
-          result = parseMacroColon(p, result)
+        addSon result, parseExpr(p)
+        when false:
+          while p.tok.tokType != tkEof:
+            let a = parseExpr(p)
+            addSon(result, a)
+            if p.tok.tokType != tkComma: break
+            getTok(p)
+            optInd(p, a)
+          if p.tok.tokType == tkDo:
+            parseDoBlocks(p, result)
+          else:
+            result = parseMacroColon(p, result)
       break
     else:
       break
@@ -1103,7 +1107,9 @@ proc parseExprStmt(p: var TParser): PNode =
   #|              doBlocks
   #|               / macroColon
   #|            ))?
+  inc p.inPragma
   var a = simpleExpr(p)
+  dec p.inPragma
   if p.tok.tokType == tkEquals: 
     getTok(p)
     optInd(p, result)
@@ -1878,14 +1884,18 @@ proc parseStmt(p: var TParser): PNode =
       parMessage(p, errComplexStmtRequiresInd)
       result = ast.emptyNode
     else:
-      result = newNodeP(nkStmtList, p)
-      while true:
-        if p.tok.indent >= 0: parMessage(p, errInvalidIndentation)     
-        let a = simpleStmt(p)
-        if a.kind == nkEmpty: parMessage(p, errExprExpected, p.tok)
-        result.add(a)
-        if p.tok.tokType != tkSemiColon: break
-        getTok(p)
+      if p.inSemiStmtList > 0:
+        result = simpleStmt(p)
+        if result.kind == nkEmpty: parMessage(p, errExprExpected, p.tok)
+      else:
+        result = newNodeP(nkStmtList, p)
+        while true:
+          if p.tok.indent >= 0: parMessage(p, errInvalidIndentation)     
+          let a = simpleStmt(p)
+          if a.kind == nkEmpty: parMessage(p, errExprExpected, p.tok)
+          result.add(a)
+          if p.tok.tokType != tkSemiColon: break
+          getTok(p)
   
 proc parseAll(p: var TParser): PNode = 
   result = newNodeP(nkStmtList, p)

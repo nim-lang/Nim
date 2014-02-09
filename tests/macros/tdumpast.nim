@@ -2,7 +2,7 @@
 
 import macros
 
-template plus(a, b: expr): expr =
+template plus(a, b: expr): expr {.dirty} =
   a + b
 
 macro call(e: expr): expr =

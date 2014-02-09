@@ -107,3 +107,20 @@ that up to 100 objects are traversed and freed before it checks again. Thus
 ``workPackage`` affects the timing granularity and may need to be tweaked in
 highly specialized environments or for older hardware.
 
+
+Keeping track of memory
+-----------------------
+
+If you need to pass around memory allocated by Nimrod to C, you can use the
+procs ``GC_ref`` and ``GC_unref`` to mark objects as referenced to avoid them
+being freed by the GC. Other useful procs from `system <system.html>`_ you can
+use to keep track of memory are:
+
+* getTotalMem(): returns the amount of total memory managed by the GC.
+* getOccupiedMem(): bytes reserved by the GC and used by objects.
+* getFreeMem(): bytes reserved by the GC and not in use.
+
+In addition to ``GC_ref`` and ``GC_unref`` you can avoid the GC by manually
+allocating memory with procs like ``alloc``, ``allocShared``, or
+``allocCStringArray``. The GC won't try to free them, you need to call their
+respective *dealloc* pairs when you are done with them or they will leak.

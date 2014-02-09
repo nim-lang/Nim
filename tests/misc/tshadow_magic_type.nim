@@ -11,7 +11,7 @@ type
 
 # Caused by this.
 proc seq*() =
-  nil
+  discard
 
 proc lrange*(key: string): TRedisList =
   var foo: TListItem

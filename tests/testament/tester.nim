@@ -208,20 +208,6 @@ proc makeTest(test, options: string, cat: Category, action = actionCompile,
 
 include categories
 
-proc toJson(res: TResults): PJsonNode =
-  result = newJObject()
-  result["total"] = newJInt(res.total)
-  result["passed"] = newJInt(res.passed)
-  result["skipped"] = newJInt(res.skipped)
-
-proc outputJson(reject, compile, run: TResults) =
-  var doc = newJObject()
-  doc["reject"] = toJson(reject)
-  doc["compile"] = toJson(compile)
-  doc["run"] = toJson(run)
-  var s = pretty(doc)
-  writeFile(jsonFile, s)
-
 # proc runCaasTests(r: var TResults) =
 #   for test, output, status, mode in caasTestsRunner():
 #     r.addResult(test, "", output & "-> " & $mode,
@@ -259,6 +245,7 @@ proc main() =
     var commit = 0
     discard parseInt(p.cmdLineRest.string, commit)
     generateHtml(resultsFile, commit)
+    generateJson(jsonFile, commit)
   else:
     quit usage
 
