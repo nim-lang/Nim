@@ -5136,51 +5136,54 @@ Example:
 .. code-block:: nimrod
   {.deadCodeElim: on.}
 
-NoForward pragma
-----------------
-The `noforward`:idx: pragma can be used to turn on and off a special compilation
-mode that to large extent eliminates the need for forward declarations. In this
-mode, the proc definitions may appear out of order and the compiler will postpone
-their semantic analysis and compilation until it actually needs to generate code
-using the definitions. In this regard, this mode is similar to the modus operandi
-of dynamic scripting languages, where the function calls are not resolved until
-the code is executed. Here is the detailed algorithm taken by the compiler:
 
-1. When a callable symbol is first encountered, the compiler will only note the
-symbol callable name and it will add it to the appropriate overload set in the
-current scope. At this step, it won't try to resolve any of the type expressions
-used in the signature of the symbol (so they can refer to other not yet defined
-symbols).
+..
+  NoForward pragma
+  ----------------
+  The `noforward`:idx: pragma can be used to turn on and off a special compilation
+  mode that to large extent eliminates the need for forward declarations. In this
+  mode, the proc definitions may appear out of order and the compiler will postpone
+  their semantic analysis and compilation until it actually needs to generate code
+  using the definitions. In this regard, this mode is similar to the modus operandi
+  of dynamic scripting languages, where the function calls are not resolved until
+  the code is executed. Here is the detailed algorithm taken by the compiler:
 
-2. When a top level call is encountered (usually at the very end of the module),
-the compiler will try to determine the actual types of all of the symbols in the
-matching overload set. This is a potentially recursive process as the signatures
-of the symbols may include other call expressions, whoose types will be resolved
-at this point too.
+  1. When a callable symbol is first encountered, the compiler will only note the
+  symbol callable name and it will add it to the appropriate overload set in the
+  current scope. At this step, it won't try to resolve any of the type expressions
+  used in the signature of the symbol (so they can refer to other not yet defined
+  symbols).
 
-3. Finally, after the best overload is picked, the compiler will start compiling
-the body of the respective symbol. This in turn will lead the compiler to discover
-more call expresions that need to be resolved and steps 2 and 3 will be repeated
-as necessary.
+  2. When a top level call is encountered (usually at the very end of the module),
+  the compiler will try to determine the actual types of all of the symbols in the
+  matching overload set. This is a potentially recursive process as the signatures
+  of the symbols may include other call expressions, whoose types will be resolved
+  at this point too.
 
-Please note that if a callable symbol is never used in this scenario, its body
-will never be compiled. This is the default behavior leading to best compilation
-times, but if exhaustive compilation of all definitions is required, using 
-``nimrod check`` provides this option as well.
+  3. Finally, after the best overload is picked, the compiler will start compiling
+  the body of the respective symbol. This in turn will lead the compiler to discover
+  more call expresions that need to be resolved and steps 2 and 3 will be repeated
+  as necessary.
 
-Example:
+  Please note that if a callable symbol is never used in this scenario, its body
+  will never be compiled. This is the default behavior leading to best compilation
+  times, but if exhaustive compilation of all definitions is required, using 
+  ``nimrod check`` provides this option as well.
 
-.. code-block:: nimrod
+  Example:
 
-  {.noforward: on.}
+  .. code-block:: nimrod
 
-  proc foo(x: int) =
-    bar x
+    {.noforward: on.}
 
-  proc bar(x: int) =
-    echo x
+    proc foo(x: int) =
+      bar x
 
-  foo(10)
+    proc bar(x: int) =
+      echo x
+
+    foo(10)
+
 
 Pragma pragma
 -------------
