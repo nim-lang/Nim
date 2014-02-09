@@ -195,16 +195,31 @@ else:
     importc: "GetCurrentDirectoryA", dynlib: "kernel32", stdcall.}
   proc setCurrentDirectoryA*(lpPathName: cstring): int32 {.
     importc: "SetCurrentDirectoryA", dynlib: "kernel32", stdcall.}
-  proc createDirectoryA*(pathName: cstring, security: Pointer=nil): int32 {.
+  proc createDirectoryA*(pathName: cstring, security: pointer=nil): int32 {.
     importc: "CreateDirectoryA", dynlib: "kernel32", stdcall.}
   proc removeDirectoryA*(lpPathName: cstring): int32 {.
     importc: "RemoveDirectoryA", dynlib: "kernel32", stdcall.}
   proc setEnvironmentVariableA*(lpName, lpValue: cstring): int32 {.
     stdcall, dynlib: "kernel32", importc: "SetEnvironmentVariableA".}
 
-  proc getModuleFileNameA*(handle: THandle, buf: CString, size: int32): int32 {.
+  proc getModuleFileNameA*(handle: THandle, buf: cstring, size: int32): int32 {.
     importc: "GetModuleFileNameA", dynlib: "kernel32", stdcall.}
-  
+
+when useWinUnicode:
+  proc createSymbolicLinkW*(lpSymlinkFileName, lpTargetFileName: WideCString,
+                         flags: DWORD): int32 {.
+    importc:"CreateSymbolicLinkW", dynlib: "kernel32", stdcall.}
+  proc createHardLinkW*(lpFileName, lpExistingFileName: WideCString,
+                         security: pointer=nil): int32 {.
+    importc:"CreateHardLinkW", dynlib: "kernel32", stdcall.}
+else:
+  proc createSymbolicLinkA*(lpSymlinkFileName, lpTargetFileName: cstring,
+                           flags: DWORD): int32 {.
+    importc:"CreateSymbolicLinkA", dynlib: "kernel32", stdcall.}
+  proc createHardLinkA*(lpFileName, lpExistingFileName: cstring,
+                           security: pointer=nil): int32 {.
+    importc:"CreateHardLinkA", dynlib: "kernel32", stdcall.}
+
 const
   FILE_ATTRIBUTE_ARCHIVE* = 32'i32
   FILE_ATTRIBUTE_COMPRESSED* = 2048'i32
@@ -212,6 +227,7 @@ const
   FILE_ATTRIBUTE_DIRECTORY* = 16'i32
   FILE_ATTRIBUTE_HIDDEN* = 2'i32
   FILE_ATTRIBUTE_READONLY* = 1'i32
+  FILE_ATTRIBUTE_REPARSE_POINT* = 1024'i32
   FILE_ATTRIBUTE_SYSTEM* = 4'i32
   FILE_ATTRIBUTE_TEMPORARY* = 256'i32
 
@@ -284,7 +300,7 @@ else:
                            dwFileAttributes: int32): WINBOOL {.
       stdcall, dynlib: "kernel32", importc: "SetFileAttributesA".}
 
-  proc copyFileA*(lpExistingFileName, lpNewFileName: CString,
+  proc copyFileA*(lpExistingFileName, lpNewFileName: cstring,
                  bFailIfExists: cint): cint {.
     importc: "CopyFileA", stdcall, dynlib: "kernel32".}
 

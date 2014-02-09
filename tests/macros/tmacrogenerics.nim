@@ -1,10 +1,8 @@
 discard """
   file: "tmacrogenerics.nim"
   msg: '''
-instantiation 1 with int and float
-instantiation 2 with float and string
-instantiation 3 with string and string
-counter: 3
+instantiation 1 with typedesc and typedesc
+counter: 1
 '''
   output: "int\nfloat\nint\nstring"
 """

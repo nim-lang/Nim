@@ -22,11 +22,11 @@ proc factory2(a, b: int): iterator (): int =
       yield x
       inc x
 
-let foo = factory 1, 4
+let foo = factory(1, 4)
 
 for f in foo():
   echo f
 
-let foo2 = factory2 1,2
+let foo2 = factory2(1,2)
 
 for f in foo2(): echo f

@@ -480,7 +480,7 @@ proc untilElementEnd(x: var TXmlParser, result: PXmlNode,
         if htmlTag(x.elemName) in {tagOption, tagOptgroup}:
           errors.add(expected(x, result))
           break
-      else: nil
+      else: discard
       result.addNode(parse(x, errors))
     of xmlElementEnd: 
       if cmpIgnoreCase(x.elemName, result.tag) == 0: 
@@ -547,7 +547,7 @@ proc parse(x: var TXmlParser, errors: var seq[string]): PXmlNode =
     var u = entityToUtf8(x.rawData)
     if u.len != 0: result = newText(u)
     next(x)
-  of xmlEof: nil
+  of xmlEof: discard
 
 proc parseHtml*(s: PStream, filename: string, 
                 errors: var seq[string]): PXmlNode = 

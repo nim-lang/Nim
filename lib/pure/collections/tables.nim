@@ -189,6 +189,16 @@ template dollarImpl(): stmt {.dirty.} =
 proc `$`*[A, B](t: TTable[A, B]): string =
   ## The `$` operator for hash tables.
   dollarImpl()
+  
+proc `==`*[A, B](s, t: TTable[A, B]): bool =
+  s.counter == t.counter and s.data == t.data
+  
+proc indexBy*[A, B, C](collection: A, index: proc(x: B): C): TTable[C, B] =
+  ## Index the collection with the proc provided.
+  # TODO: As soon as supported, change collection: A to collection: A[B]
+  result = initTable[C, B]()
+  for item in collection:
+    result[index(item)] = item
 
 # ------------------------------ ordered table ------------------------------
 

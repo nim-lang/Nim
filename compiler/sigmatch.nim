@@ -105,6 +105,7 @@ proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
       var bound = binding[i].typ
       if bound != nil and formalTypeParam.kind != tyTypeDesc:
         bound = bound.skipTypes({tyTypeDesc})
+      assert bound != nil
       put(c.bindings, formalTypeParam, bound)
 
 proc newCandidate*(ctx: PContext, callee: PSym,
@@ -562,10 +563,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       #if result < isGeneric: result = isNone
       if result notin {isNone, isGeneric}:
         result = typeRangeRel(f, a)
-    elif skipTypes(f, {tyRange}).kind == a.kind:
-      result = isIntConv
-    elif isConvertibleToRange(skipTypes(f, {tyRange}), a):
-      result = isConvertible  # a convertible to f
+    else:
+      if skipTypes(f, {tyRange}).kind == a.kind:
+        result = isIntConv
+      elif isConvertibleToRange(skipTypes(f, {tyRange}), a):
+        result = isConvertible  # a convertible to f
   of tyInt:      result = handleRange(f, a, tyInt8, tyInt32)
   of tyInt8:     result = handleRange(f, a, tyInt8, tyInt8)
   of tyInt16:    result = handleRange(f, a, tyInt8, tyInt16)
@@ -636,7 +638,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   of tyOrdinal:
     if isOrdinalType(a):
       var x = if a.kind == tyOrdinal: a.sons[0] else: a
-      if f.sonsLen == 0:
+      if f.sons[0].kind == tyNone:
         result = isGeneric
       else:
         result = typeRel(c, f.sons[0], x)
@@ -736,7 +738,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   of tyGenericInst:
     let roota = a.skipGenericAlias
     let rootf = f.skipGenericAlias
-    if a.kind == tyGenericInst and roota.base == rootf.base :
+    if a.kind == tyGenericInst and roota.base == rootf.base:
       for i in 1 .. rootf.sonsLen-2:
         let ff = rootf.sons[i]
         let aa = roota.sons[i]
@@ -845,7 +847,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         # by a tyTypeDesc params. Unfortunately, this requires more substantial
         # changes in semtypinst and elsewhere.
         if a.kind == tyTypeDesc:
-          if f.sons == nil or f.sons.len == 0:
+          if f.sonsLen == 0:
             result = isGeneric
           else:
             internalAssert a.sons != nil and a.sons.len > 0
@@ -854,7 +856,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         else:
           result = isNone
       else:
-        if f.sonsLen > 0:
+        if f.sonsLen > 0 and f.sons[0].kind != tyNone:
           result = typeRel(c, f.lastSon, a)
         else:
           result = isGeneric
@@ -883,7 +885,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     var prev = PType(idTableGet(c.bindings, f))
     if prev == nil:
       if a.kind == tyTypeDesc:
-        if f.sonsLen == 0:
+        if f.sons[0].kind == tyNone:
           result = isGeneric
         else:
           result = typeRel(c, f.sons[0], a.sons[0])
