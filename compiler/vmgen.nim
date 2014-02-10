@@ -216,10 +216,12 @@ proc genx(c: PCtx; n: PNode; flags: TGenFlags = {}): TRegister =
   internalAssert tmp >= 0
   result = TRegister(tmp)
 
-proc clearDest(n: PNode; dest: var TDest) {.inline.} =
+proc clearDest(c: PCtx; n: PNode; dest: var TDest) {.inline.} =
   # stmt is different from 'void' in meta programming contexts.
   # So we only set dest to -1 if 'void':
-  if n.typ.isNil or n.typ.kind == tyEmpty: dest = -1
+  if dest >= 0 and (n.typ.isNil or n.typ.kind == tyEmpty):
+    c.freeTemp(dest)
+    dest = -1
 
 proc isNotOpr(n: PNode): bool =
   n.kind in nkCallKinds and n.sons[0].kind == nkSym and
@@ -259,7 +261,7 @@ proc genWhile(c: PCtx; n: PNode) =
 proc genBlock(c: PCtx; n: PNode; dest: var TDest) =
   withBlock(n.sons[0].sym):
     c.gen(n.sons[1], dest)
-  clearDest(n, dest)
+  c.clearDest(n, dest)
 
 proc genBreak(c: PCtx; n: PNode) =
   let L1 = c.xjmp(n, opcJmp)
@@ -297,14 +299,16 @@ proc genIf(c: PCtx, n: PNode; dest: var TDest) =
         else:
           c.gen(it.sons[0], tmp)
           elsePos = c.xjmp(it.sons[0], opcFJmp, tmp) # if false
+      c.clearDest(n, dest)
       c.gen(it.sons[1], dest) # then part
       if i < sonsLen(n)-1:
         endings.add(c.xjmp(it.sons[1], opcJmp, 0))
       c.patch(elsePos)
     else:
+      c.clearDest(n, dest)
       c.gen(it.sons[0], dest)
   for endPos in endings: c.patch(endPos)
-  clearDest(n, dest)
+  c.clearDest(n, dest)
 
 proc genAndOr(c: PCtx; n: PNode; opc: TOpcode; dest: var TDest) =
   #   asgn dest, a
@@ -385,8 +389,8 @@ proc genCase(c: PCtx; n: PNode; dest: var TDest) =
         if i < sonsLen(n)-1:
           endings.add(c.xjmp(it.lastSon, opcJmp, 0))
         c.patch(elsePos)
+      c.clearDest(n, dest)
   for endPos in endings: c.patch(endPos)
-  clearDest(n, dest)
 
 proc genType(c: PCtx; typ: PType): int =
   for i, t in c.types:
@@ -400,6 +404,7 @@ proc genTry(c: PCtx; n: PNode; dest: var TDest) =
   var endings: seq[TPosition] = @[]
   let elsePos = c.xjmp(n, opcTry, 0)
   c.gen(n.sons[0], dest)
+  c.clearDest(n, dest)
   c.patch(elsePos)
   for i in 1 .. <n.len:
     let it = n.sons[i]
@@ -415,6 +420,7 @@ proc genTry(c: PCtx; n: PNode; dest: var TDest) =
         # general except section:
         c.gABx(it, opcExcept, 0, 0)
       c.gen(it.lastSon, dest)
+      c.clearDest(n, dest)
       if i < sonsLen(n)-1:
         endings.add(c.xjmp(it, opcJmp, 0))
       c.patch(endExcept)
@@ -425,8 +431,8 @@ proc genTry(c: PCtx; n: PNode; dest: var TDest) =
   c.gABx(fin, opcFinally, 0, 0)
   if fin.kind == nkFinally:
     c.gen(fin.sons[0], dest)
+    c.clearDest(n, dest)
   c.gABx(fin, opcFinallyEnd, 0, 0)
-  clearDest(n, dest)
 
 proc genRaise(c: PCtx; n: PNode) =
   let dest = genx(c, n.sons[0])
@@ -860,7 +866,6 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
   of mNGenSym: genBinaryABC(c, n, dest, opcGenSym)
   of mMinI, mMaxI, mMinI64, mMaxI64, mAbsF64, mMinF64, mMaxF64, mAbsI, mAbsI64:
     c.genCall(n, dest)
-    clearDest(n, dest)
   of mExpandToAst:
     if n.len != 2:
       globalError(n.info, errGenerated, "expandToAst requires 1 argument")
@@ -1281,7 +1286,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       genMagic(c, n, dest)
     else:
       genCall(c, n, dest)
-      clearDest(n, dest)
+      clearDest(c, n, dest)
   of nkCharLit..nkInt64Lit:
     if isInt16Lit(n):
       if dest < 0: dest = c.getTemp(n.typ)

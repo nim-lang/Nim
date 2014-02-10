@@ -1376,7 +1376,7 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       getTemp(p, getSysType(tyInt), i) # our counter
       initLocExpr(p, e.sons[1], a)
       initLocExpr(p, e.sons[2], b)
-      if d.k == locNone: getTemp(p, a.t, d)
+      if d.k == locNone: getTemp(p, getSysType(tyBool), d)
       lineF(p, cpsStmts, lookupOpr[op],
            [rdLoc(i), toRope(size), rdLoc(d), rdLoc(a), rdLoc(b)])
     of mEqSet:
