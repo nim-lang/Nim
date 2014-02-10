@@ -4,7 +4,6 @@ version 0.9.4
 - fix GC issues
 - fix macros\tstringinterp.nim
 - test and fix showoff
-- fix closure iterators
 
 
 Bugs
