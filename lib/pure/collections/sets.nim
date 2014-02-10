@@ -241,3 +241,7 @@ proc `<=`*[A](s, t: TSet[A]): bool =
       
 proc `==`*[A](s, t: TSet[A]): bool =
   s.counter == t.counter and s <= t
+
+proc map*[A, B](data: TSet[A], op: proc (x: A): B {.closure.}): TSet[A] =
+  result = initSet[B]()
+  for i in data: result.incl(op(i))
