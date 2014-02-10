@@ -87,7 +87,7 @@ proc newRow(L: int): TRow =
   
 proc properFreeResult(sqlres: mysql.PRES, row: cstringArray) =  
   if row != nil:
-    while mysql.FetchRow(sqlres) != nil: nil
+    while mysql.FetchRow(sqlres) != nil: discard
   mysql.FreeResult(sqlres)
   
 iterator fastRows*(db: TDbConn, query: TSqlQuery,
@@ -194,13 +194,13 @@ proc open*(connection, user, password, database: string): TDbConn {.
   ## opens a database connection. Raises `EDb` if the connection could not
   ## be established.
   result = mysql.Init(nil)
-  if result == nil: dbError("could not open database connection")
-  var
-        cnctn = connection.split(':')
-        host = cnctn[0]
-        port: int32 = 3306
-  if cnctn.len > 1:
-        port = int32((cnctn[1]).parseInt())
+  if result == nil: dbError("could not open database connection") 
+  let
+    colonPos = connection.find(':')
+    host =        if colonPos < 0: connection
+                  else:            substr(connection, 0, colonPos-1)
+    port: int32 = if colonPos < 0: 0'i32
+                  else:            substr(connection, colonPos+1).parseInt.int32
   if mysql.RealConnect(result, host, user, password, database, 
                        port, nil, 0) == nil:
     var errmsg = $mysql.error(result)
