@@ -116,7 +116,8 @@ type
   TDep = tuple[e: PEnv, field: PSym]
   TEnv {.final.} = object of TObject
     attachedNode: PNode
-    createdVar: PSym         # if != nil it is a used environment
+    createdVar: PSym        # if != nil it is a used environment
+    createdVarComesFromIter: bool
     capturedVars: seq[PSym] # captured variables in this environment
     deps: seq[TDep]         # dependencies
     up: PEnv
@@ -571,7 +572,14 @@ proc rawClosureCreation(o: POuterContext, scope: PEnv; env: PSym): PNode =
       # maybe later: (sfByCopy in local.flags)
       # add ``env.param = param``
       result.add(newAsgnStmt(fieldAccess, newSymNode(local), env.info))
-    idNodeTablePut(o.localsToAccess, local, fieldAccess)
+    # it can happen that we already captured 'local' in some other environment
+    # then we capture by copy for now. This is not entirely correct but better
+    # than nothing:
+    let existing = idNodeTableGet(o.localsToAccess, local)
+    if existing.isNil:
+      idNodeTablePut(o.localsToAccess, local, fieldAccess)
+    else:
+      result.add(newAsgnStmt(fieldAccess, existing, env.info))
   # add support for 'up' references:
   for e, field in items(scope.deps):
     # add ``env.up = env2``
@@ -584,14 +592,19 @@ proc generateClosureCreation(o: POuterContext, scope: PEnv): PNode =
 
 proc generateIterClosureCreation(o: POuterContext; env: PEnv;
                                  scope: PNode): PSym =
-  result = newClosureCreationVar(o, env)
-  let cc = rawClosureCreation(o, env, result)
-  var insertPoint = scope.sons[0]
-  if insertPoint.kind == nkEmpty: scope.sons[0] = cc
+  if env.createdVarComesFromIter or env.createdVar.isNil:
+    # we have to create a new closure:
+    result = newClosureCreationVar(o, env)
+    let cc = rawClosureCreation(o, env, result)
+    var insertPoint = scope.sons[0]
+    if insertPoint.kind == nkEmpty: scope.sons[0] = cc
+    else:
+      assert cc.kind == nkStmtList and insertPoint.kind == nkStmtList
+      for x in cc: insertPoint.add(x)
+    if env.createdVar == nil: env.createdVar = result
   else:
-    assert cc.kind == nkStmtList and insertPoint.kind == nkStmtList
-    for x in cc: insertPoint.add(x)
-  if env.createdVar == nil: env.createdVar = result
+    result = env.createdVar
+  env.createdVarComesFromIter = true
 
 proc interestingIterVar(s: PSym): bool {.inline.} =
   result = s.kind in {skVar, skLet, skTemp, skForVar} and sfGlobal notin s.flags

@@ -16,8 +16,12 @@ const
 type
   THandle* = int
   LONG* = int32
+  ULONG* = int
+  PULONG* = ptr int
   WINBOOL* = int32
   DWORD* = int32
+  PDWORD* = ptr DWORD
+  LPINT* = ptr int32
   HDC* = THandle
   HGLRC* = THandle
 
@@ -632,3 +636,76 @@ when not useWinUnicode:
 proc unmapViewOfFile*(lpBaseAddress: pointer): WINBOOL {.stdcall,
     dynlib: "kernel32", importc: "UnmapViewOfFile".}
 
+type
+  TOVERLAPPED* {.final, pure.} = object
+    Internal*: DWORD
+    InternalHigh*: DWORD
+    Offset*: DWORD
+    OffsetHigh*: DWORD
+    hEvent*: THANDLE
+
+  POVERLAPPED* = ptr TOVERLAPPED
+
+  POVERLAPPED_COMPLETION_ROUTINE* = proc (para1: DWORD, para2: DWORD,
+      para3: POVERLAPPED){.stdcall.}
+
+  TGUID* {.final, pure.} = object
+    D1*: int32
+    D2*: int16
+    D3*: int16
+    D4*: array [0..7, int8]
+
+const
+  ERROR_IO_PENDING* = 997
+
+proc CreateIoCompletionPort*(FileHandle: THANDLE, ExistingCompletionPort: THANDLE,
+                             CompletionKey: DWORD,
+                             NumberOfConcurrentThreads: DWORD): THANDLE{.stdcall,
+    dynlib: "kernel32", importc: "CreateIoCompletionPort".}
+
+proc GetQueuedCompletionStatus*(CompletionPort: THandle,
+    lpNumberOfBytesTransferred: PDWORD, lpCompletionKey: PULONG,
+                                lpOverlapped: ptr POverlapped,
+                                dwMilliseconds: DWORD): WINBOOL{.stdcall,
+    dynlib: "kernel32", importc: "GetQueuedCompletionStatus".}
+
+const 
+ IOC_OUT* = 0x40000000
+ IOC_IN*  = 0x80000000
+ IOC_WS2* = 0x08000000
+ IOC_INOUT* = IOC_IN or IOC_OUT
+
+template WSAIORW*(x,y): expr = (IOC_INOUT or x or y)
+
+const
+  SIO_GET_EXTENSION_FUNCTION_POINTER* = WSAIORW(IOC_WS2,6).DWORD
+  SO_UPDATE_ACCEPT_CONTEXT* = 0x700B
+
+var
+  WSAID_CONNECTEX*: TGUID = TGUID(D1: 0x25a207b9, D2: 0xddf3'i16, D3: 0x4660, D4: [
+    0x8e'i8, 0xe9'i8, 0x76'i8, 0xe5'i8, 0x8c'i8, 0x74'i8, 0x06'i8, 0x3e'i8])
+  WSAID_ACCEPTEX*: TGUID = TGUID(D1: 0xb5367df1'i32, D2: 0xcbac'i16, D3: 0x11cf, D4: [
+    0x95'i8, 0xca'i8, 0x00'i8, 0x80'i8, 0x5f'i8, 0x48'i8, 0xa1'i8, 0x92'i8])
+  WSAID_GETACCEPTEXSOCKADDRS*: TGUID = TGUID(D1: 0xb5367df2'i32, D2: 0xcbac'i16, D3: 0x11cf, D4: [
+    0x95'i8, 0xca'i8, 0x00'i8, 0x80'i8, 0x5f'i8, 0x48'i8, 0xa1'i8, 0x92'i8])
+
+proc WSAIoctl*(s: TSocketHandle, dwIoControlCode: DWORD, lpvInBuffer: pointer,
+  cbInBuffer: DWORD, lpvOutBuffer: pointer, cbOutBuffer: DWORD,
+  lpcbBytesReturned: PDword, lpOverlapped: POVERLAPPED,
+  lpCompletionRoutine: POVERLAPPED_COMPLETION_ROUTINE): cint 
+  {.stdcall, importc: "WSAIoctl", dynlib: "Ws2_32.dll".}
+
+type
+  TWSABuf* {.importc: "WSABUF", header: "winsock2.h".} = object
+    len*: ULONG
+    buf*: cstring
+
+proc WSARecv*(s: TSocketHandle, buf: ptr TWSABuf, bufCount: DWORD,
+  bytesReceived, flags: PDWORD, lpOverlapped: POverlapped,
+  completionProc: POVERLAPPED_COMPLETION_ROUTINE): cint {.
+  stdcall, importc: "WSARecv", dynlib: "Ws2_32.dll".}
+
+proc WSASend*(s: TSocketHandle, buf: ptr TWSABuf, bufCount: DWORD,
+  bytesSent: PDWord, flags: DWORD, lpOverlapped: POverlapped,
+  completionProc: POVERLAPPED_COMPLETION_ROUTINE): cint {.
+  stdcall, importc: "WSASend", dynlib: "Ws2_32.dll".}
