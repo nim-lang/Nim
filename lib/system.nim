@@ -1672,6 +1672,18 @@ proc `$`*[T: set](x: T): string =
     result.add($value)
   result.add("}")
 
+proc `$`*[T: seq](x: T): string = 
+  ## generic ``$`` operator for seqs that is lifted from the components
+  ## of `x`. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   $(@[23, 45]) == "@[23, 45]"
+  result = "@["
+  for value in items(x):
+    if result.len > 2: result.add(", ")
+    result.add($value)
+  result.add("]")
+
 when false:
   proc `$`*[T](a: openArray[T]): string = 
     ## generic ``$`` operator for open arrays that is lifted from the elements
