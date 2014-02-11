@@ -1653,11 +1653,13 @@ proc `$`*[T: tuple|object](x: T): string =
   ##   $(23, 45) == "(23, 45)"
   ##   $() == "()"
   result = "("
+  var firstElement = true
   for name, value in fieldPairs(x):
-    if result.len > 1: result.add(", ")
+    if not(firstElement): result.add(", ")
     result.add(name)
     result.add(": ")
     result.add($value)
+    firstElement = false
   result.add(")")
 
 proc `$`*[T: set](x: T): string = 
@@ -1667,9 +1669,11 @@ proc `$`*[T: set](x: T): string =
   ## .. code-block:: nimrod
   ##   ${23, 45} == "{23, 45}"
   result = "{"
+  var firstElement = true
   for value in items(x):
-    if result.len > 1: result.add(", ")
+    if not(firstElement): result.add(", ")
     result.add($value)
+    firstElement = false
   result.add("}")
 
 proc `$`*[T: seq](x: T): string = 
@@ -1679,9 +1683,11 @@ proc `$`*[T: seq](x: T): string =
   ## .. code-block:: nimrod
   ##   $(@[23, 45]) == "@[23, 45]"
   result = "@["
+  var firstElement = true
   for value in items(x):
-    if result.len > 2: result.add(", ")
+    if not(firstElement): result.add(", ")
     result.add($value)
+    firstElement = false
   result.add("]")
 
 when false:
