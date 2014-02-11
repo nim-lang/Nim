@@ -204,7 +204,14 @@ proc semConv(c: PContext, n: PNode): PNode =
   if not isSymChoice(op):
     let status = checkConvertible(c, result.typ, op.typ)
     case status
-    of convOK: discard
+    of convOK:
+      # handle SomeProcType(SomeGenericProc)
+      # XXX: This needs fixing. checkConvertible uses typeRel internally, but
+      # doesn't bother to perform the work done in paramTypeMatchAux/fitNode
+      # so we are redoing the typeRel work here. Why does semConv exist as a
+      # separate proc from fitNode?
+      if op.kind == nkSym and op.sym.isGenericRoutine:
+        result.sons[1] = fitNode(c, result.typ, result.sons[1])
     of convNotNeedeed:
       message(n.info, hintConvFromXtoItselfNotNeeded, result.typ.typeToString)
     of convNotLegal:

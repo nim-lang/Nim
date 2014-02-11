@@ -690,8 +690,8 @@ Nimrod provides the ability to overload procedures similar to C++:
 .. code-block:: nimrod
   proc toString(x: int): string = ...
   proc toString(x: bool): string =
-    if x: return "true"
-    else: return "false"
+    if x: result = "true"
+    else: result = "false"
 
   echo(toString(13))   # calls the toString(x: int) proc
   echo(toString(true)) # calls the toString(x: bool) proc
@@ -1569,7 +1569,7 @@ This is best illustrated by an example:
   proc p*(x: A.T1): A.T1 =
     # this works because the compiler has already
     # added T1 to A's interface symbol table
-    return x + 1
+    result = x + 1
 
 
 A symbol of a module *can* be *qualified* with the ``module.symbol`` syntax. If
@@ -1600,11 +1600,11 @@ rules apply:
 
 .. code-block:: nimrod
   # Module A
-  proc x*(a: int): string = return $a
+  proc x*(a: int): string = result = $a
 
 .. code-block:: nimrod
   # Module B
-  proc x*(a: string): string = return $a
+  proc x*(a: string): string = result = $a
 
 .. code-block:: nimrod
   # Module C
