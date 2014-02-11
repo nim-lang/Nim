@@ -1690,19 +1690,6 @@ proc `$`*[T: seq](x: T): string =
     firstElement = false
   result.add("]")
 
-when false:
-  proc `$`*[T](a: openArray[T]): string = 
-    ## generic ``$`` operator for open arrays that is lifted from the elements
-    ## of `a`. Example:
-    ##
-    ## .. code-block:: nimrod
-    ##   $[23, 45] == "[23, 45]"
-    result = "["
-    for x in items(a):
-      if result.len > 1: result.add(", ")
-      result.add($x)
-    result.add("]")
-
 # ----------------- GC interface ---------------------------------------------
 
 when not defined(nimrodVM) and hostOS != "standalone":
