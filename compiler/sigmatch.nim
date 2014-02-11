@@ -51,6 +51,8 @@ type
     isSubtype,
     isSubrange,              # subrange of the wanted type; no type conversion
                              # but apart from that counts as ``isSubtype``
+    isInferred,              # generic proc was matched against a concrete type
+    isInferredConvertible,   # same as above, but requiring proc CC conversion
     isGeneric,
     isFromIntLit,            # conversion *from* int literal; proven safe
     isEqual
@@ -338,10 +340,40 @@ proc recordRel(c: var TCandidate, f, a: PType): TTypeRelation =
 proc allowsNil(f: PType): TTypeRelation {.inline.} =
   result = if tfNotNil notin f.flags: isSubtype else: isNone
 
-proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
-  proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
-    result = f.kind != a.kind and (f.kind == tyVar or a.kind == tyVar)
+proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
+  result = f.kind != a.kind and (f.kind == tyVar or a.kind == tyVar)
 
+proc procParamTypeRel(c: var TCandidate, f, a: PType,
+                      result: var TTypeRelation) =
+  var
+    m: TTypeRelation
+    f = f
+    
+  if a.isMetaType:
+    if f.isMetaType:
+      # we are matching a generic proc (as proc param)
+      # to another generic type appearing in the proc
+      # sigunature. there is a change that the target
+      # type is already fully-determined, so we are 
+      # going to try resolve it
+      f = generateTypeInstance(c.c, c.bindings, c.call.info, f)
+      if f == nil or f.isMetaType:
+        # no luck resolving the type, so the inference fails
+        result = isNone
+        return
+    let reverseRel = typeRel(c, a, f)
+    if reverseRel == isGeneric:
+      m = isInferred
+  else:
+    m = typeRel(c, f, a)
+
+  if m <= isSubtype or inconsistentVarTypes(f, a):
+    result = isNone
+    return
+  else:
+    result = minRel(m, result)
+
+proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   case a.kind
   of tyProc:
     if sonsLen(f) != sonsLen(a): return
@@ -350,18 +382,10 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     result = isEqual      # start with maximum; also correct for no
                           # params at all
     for i in countup(1, sonsLen(f)-1):
-      var m = typeRel(c, f.sons[i], a.sons[i])
-      if m <= isSubtype or inconsistentVarTypes(f.sons[i], a.sons[i]):
-        return isNone
-      else: result = minRel(m, result)
+      procParamTypeRel(c, f.sons[i], a.sons[i], result)
     if f.sons[0] != nil:
       if a.sons[0] != nil:
-        var m = typeRel(c, f.sons[0], a.sons[0])
-        # Subtype is sufficient for return types!
-        if m < isSubtype or inconsistentVarTypes(f.sons[0], a.sons[0]):
-          return isNone
-        elif m == isSubtype: result = isConvertible
-        else: result = minRel(m, result)
+        procParamTypeRel(c, f.sons[0], a.sons[0], result)
       else:
         return isNone
     elif a.sons[0] != nil:
@@ -376,7 +400,8 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     elif f.callConv != a.callConv:
       # valid to pass a 'nimcall' thingie to 'closure':
       if f.callConv == ccClosure and a.callConv == ccDefault:
-        result = isConvertible
+        result = if result != isInferred: isConvertible
+                 else: isInferredConvertible
       else:
         return isNone
     when useEffectSystem:
@@ -402,18 +427,8 @@ proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
 
 proc matchUserTypeClass*(c: PContext, m: var TCandidate,
                          ff, a: PType): TTypeRelation =
-  #if f.n == nil:
-  #  let r = typeRel(m, f, a)
-  #  return if r == isGeneric: arg else: nil
-
   var body = ff.skipTypes({tyUserTypeClassInst})
 
-  # var prev = PType(idTableGet(m.bindings, f))
-  # if prev != nil:
-  #   if sameType(prev, a): return arg
-  #   else: return nil
-
-  # pushInfoContext(arg.info)
   openScope(c)
   inc c.inTypeClass
 
@@ -462,7 +477,6 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
       else: discard
     
   return isGeneric
-  # put(m.bindings, f, a)
 
 proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   # typeRel can be used to establish various relationships between types:
@@ -988,7 +1002,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
     arg = argSemantized
     argType = argType
     c = m.c
-
+    
   if tfHasStatic in fMaybeStatic.flags:
     # XXX: When implicit statics are the default
     # this will be done earlier - we just have to
@@ -1022,6 +1036,13 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
     inc(m.subtypeMatches)
     #result = copyTree(arg)
     result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
+  of isInferred, isInferredConvertible:
+    var prc = if arg.kind in nkLambdaKinds: arg[0].sym
+              else: arg.sym
+    let inferred = c.semGenerateInstance(c, prc, m.bindings, arg.info)
+    result = newSymNode(inferred, arg.info)
+    if r == isInferredConvertible:
+      result = implicitConv(nkHiddenStdConv, f, result, m, c)
   of isGeneric:
     inc(m.genericMatches)
     if m.calleeSym != nil and m.calleeSym.kind in {skMacro, skTemplate}:
@@ -1035,10 +1056,10 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
         result = argOrig
     else:
       result = copyTree(arg)
-      result.typ = getInstantiatedType(c, arg, m, f) 
+      result.typ = getInstantiatedType(c, arg, m, f)
       # BUG: f may not be the right key!
       if skipTypes(result.typ, abstractVar-{tyTypeDesc}).kind in {tyTuple}:
-        result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c) 
+        result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
         # BUGFIX: use ``result.typ`` and not `f` here
   of isFromIntLit:
     # too lazy to introduce another ``*matches`` field, so we conflate

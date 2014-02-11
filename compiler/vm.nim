@@ -441,7 +441,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       decodeBImm(nkIntLit)
       #assert regs[rb].kind == nkBracket
       # also used by mNLen:
-      regs[ra].intVal = regs[rb].skipMeta.len - imm
+      regs[ra].intVal = regs[rb].skipMeta.safeLen - imm
     of opcLenStr:
       decodeBImm(nkIntLit)
       if regs[rb].kind == nkNilLit:
