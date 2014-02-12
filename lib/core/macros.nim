@@ -598,7 +598,7 @@ template badnodekind(k; f): stmt{.immediate.} =
 
 proc body*(someProc: PNimrodNode): PNimrodNode {.compileTime.} =
   case someProc.kind:
-  of routineNodes:
+  of RoutineNodes:
     return someProc[6]
   of nnkBlockStmt, nnkWhileStmt:
     return someProc[1]
@@ -609,7 +609,7 @@ proc body*(someProc: PNimrodNode): PNimrodNode {.compileTime.} =
 
 proc `body=`*(someProc: PNimrodNode, val: PNimrodNode) {.compileTime.} =
   case someProc.kind 
-  of routineNodes:
+  of RoutineNodes:
     someProc[6] = val
   of nnkBlockStmt, nnkWhileStmt:
     someProc[1] = val

@@ -74,7 +74,7 @@ proc URLdecode*(s: string): string =
     inc(j)
   setLen(result, j)
 
-proc addXmlChar(dest: var string, c: Char) {.inline.} =
+proc addXmlChar(dest: var string, c: char) {.inline.} =
   case c
   of '&': add(dest, "&amp;")
   of '<': add(dest, "&lt;")

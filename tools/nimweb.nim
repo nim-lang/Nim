@@ -9,7 +9,7 @@
 
 import
   os, strutils, times, parseopt, parsecfg, streams, strtabs, tables,
-  re, htmlgen, macros, md5
+  re, htmlgen, macros, md5, osproc
 
 type
   TKeyValPair = tuple[key, id, val: string]
@@ -19,6 +19,7 @@ type
     authors, projectName, projectTitle, logo, infile, outdir, ticker: string
     vars: PStringTable
     nimrodArgs: string
+    gitCommit: string
     quotations: TTable[string, tuple[quote, author: string]]
   TRssItem = object
     year, month, day, title: string
@@ -40,6 +41,11 @@ proc initConfigData(c: var TConfigData) =
   c.logo = ""
   c.ticker = ""
   c.vars = newStringTable(modeStyleInsensitive)
+  c.gitCommit = "master"
+  # Attempts to obtain the git current commit.
+  let (output, code) = execCmdEx("git log -n 1 --format=%H")
+  if code == 0 and output.strip.len == 40:
+    c.gitCommit = output.strip
   c.quotations = initTable[string, tuple[quote, author: string]]()
 
 include "website.tmpl"
@@ -197,6 +203,11 @@ proc parseIniFile(c: var TConfigData) =
       c.outdir = splitFile(c.infile).dir
   else:
     quit("cannot open: " & c.infile)
+  # Ugly hack to override git command output when building private repo.
+  if c.vars.hasKey("githash"):
+    let githash = c.vars["githash"].strip
+    if githash.len > 0:
+      c.gitCommit = githash
 
 # ------------------- main ----------------------------------------------------
 
@@ -219,14 +230,17 @@ proc buildDocSamples(c: var TConfigData, destPath: string) =
 proc buildDoc(c: var TConfigData, destPath: string) =
   # call nim for the documentation:
   for d in items(c.doc):
-    exec("nimrod rst2html $# -o:$# --index:on $#" %
-      [c.nimrodArgs, destPath / changeFileExt(splitFile(d).name, "html"), d])
+    exec("nimrod rst2html $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
+      [c.nimrodArgs, c.gitCommit,
+      destPath / changeFileExt(splitFile(d).name, "html"), d])
   for d in items(c.srcdoc):
-    exec("nimrod doc $# -o:$# --index:on $#" %
-      [c.nimrodArgs, destPath / changeFileExt(splitFile(d).name, "html"), d])
+    exec("nimrod doc $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
+      [c.nimrodArgs, c.gitCommit,
+      destPath / changeFileExt(splitFile(d).name, "html"), d])
   for d in items(c.srcdoc2):
-    exec("nimrod doc2 $# -o:$# --index:on $#" %
-      [c.nimrodArgs, destPath / changeFileExt(splitFile(d).name, "html"), d])
+    exec("nimrod doc2 $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
+      [c.nimrodArgs, c.gitCommit,
+      destPath / changeFileExt(splitFile(d).name, "html"), d])
   exec("nimrod buildIndex -o:$1/theindex.html $1" % [destPath])
 
 proc buildPdfDoc(c: var TConfigData, destPath: string) =
@@ -251,8 +265,9 @@ proc buildPdfDoc(c: var TConfigData, destPath: string) =
 proc buildAddDoc(c: var TConfigData, destPath: string) =
   # build additional documentation (without the index):
   for d in items(c.webdoc):
-    exec("nimrod doc $# -o:$# $#" %
-      [c.nimrodArgs, destPath / changeFileExt(splitFile(d).name, "html"), d])
+    exec("nimrod doc $# --docSeeSrcUrl:$# -o:$# $#" %
+      [c.nimrodArgs, c.gitCommit,
+      destPath / changeFileExt(splitFile(d).name, "html"), d])
 
 proc parseNewsTitles(inputFilename: string): seq[TRssItem] =
   # parses the file for titles and returns them as TRssItem blocks.
