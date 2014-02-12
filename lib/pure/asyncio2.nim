@@ -23,14 +23,13 @@ import sockets2, net
 # -- Futures
 
 type
-  PFutureVoid* = ref object of PObject
-    cbVoid: proc () {.closure.}
+  PFutureBase* = ref object of PObject
+    cb: proc () {.closure.}
     finished: bool
 
-  PFuture*[T] = ref object of PFutureVoid
+  PFuture*[T] = ref object of PFutureBase
     value: T
     error: ref EBase
-    cb: proc (future: PFuture[T]) {.closure.}
 
 proc newFuture*[T](): PFuture[T] =
   ## Creates a new future.
@@ -44,9 +43,7 @@ proc complete*[T](future: PFuture[T], val: T) =
   future.value = val
   future.finished = true
   if future.cb != nil:
-    future.cb(future)
-  if future.cbVoid != nil:
-    future.cbVoid()
+    future.cb()
 
 proc fail*[T](future: PFuture[T], error: ref EBase) =
   ## Completes ``future`` with ``error``.
@@ -54,27 +51,25 @@ proc fail*[T](future: PFuture[T], error: ref EBase) =
   future.finished = true
   future.error = error
   if future.cb != nil:
-    future.cb(future)
+    future.cb()
+
+proc `callback=`*(future: PFutureBase, cb: proc () {.closure.}) =
+  ## Sets the callback proc to be called when the future completes.
+  ##
+  ## If future has already completed then ``cb`` will be called immediately.
+  ##
+  ## **Note**: You most likely want the other ``callback`` setter which
+  ## passes ``future`` as a param to the callback.
+  future.cb = cb
+  if future.finished:
+    future.cb()
 
 proc `callback=`*[T](future: PFuture[T],
     cb: proc (future: PFuture[T]) {.closure.}) =
   ## Sets the callback proc to be called when the future completes.
   ##
   ## If future has already completed then ``cb`` will be called immediately.
-  future.cb = cb
-  if future.finished:
-    future.cb(future)
-
-proc `callbackVoid=`*(future: PFutureVoid, cb: proc () {.closure.}) =
-  ## Sets the **void** callback proc to be called when the future completes.
-  ##
-  ## If future has already completed then ``cb`` will be called immediately.
-  ##
-  ## **Note**: This is used for the ``await`` functionality, you most likely
-  ## want to use ``callback``.
-  future.cbVoid = cb
-  if future.finished:
-    future.cbVoid()
+  future.callback = proc () = cb(future)
 
 proc read*[T](future: PFuture[T]): T =
   ## Retrieves the value of ``future``. Future must be finished otherwise
