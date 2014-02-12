@@ -37,8 +37,9 @@ proc card*[A](s: TSet[A]): int =
 
 iterator items*[A](s: TSet[A]): A =
   ## iterates over any key in the table `t`.
-  for h in 0..high(s.data):
-    if s.data[h].slot == seFilled: yield s.data[h].key
+  if not isNil(s.data):
+    for h in 0..high(s.data):
+      if s.data[h].slot == seFilled: yield s.data[h].key
 
 const
   growthFactor = 2
@@ -51,6 +52,8 @@ proc nextTry(h, maxHash: THash): THash {.inline.} =
   result = ((5 * h) + 1) and maxHash
 
 template rawGetImpl() {.dirty.} =
+  if isNil(s.data):
+    return -1
   var h: THash = hash(key) and high(s.data) # start with real hash value
   while s.data[h].slot != seEmpty:
     if s.data[h].key == key and s.data[h].slot == seFilled:
@@ -72,6 +75,13 @@ proc contains*[A](s: TSet[A], key: A): bool =
   ## returns true iff `key` is in `s`.
   var index = rawGet(s, key)
   result = index >= 0
+
+proc initSet*[A](initialSize=64): TSet[A] =
+  ## creates a new hash set that is empty. `initialSize` needs to be
+  ## a power of two.
+  assert isPowerOfTwo(initialSize)
+  result.counter = 0
+  newSeq(result.data, initialSize)
 
 proc rawInsert[A](s: var TSet[A], data: var TKeyValuePairSeq[A], key: A) =
   rawInsertImpl()
@@ -101,6 +111,8 @@ template containsOrInclImpl() {.dirty.} =
 
 proc incl*[A](s: var TSet[A], key: A) =
   ## includes an element `key` in `s`.
+  if isNil(s.data):
+    s = initSet[A]()
   inclImpl()
 
 proc excl*[A](s: var TSet[A], key: A) =
@@ -113,14 +125,9 @@ proc excl*[A](s: var TSet[A], key: A) =
 proc containsOrIncl*[A](s: var TSet[A], key: A): bool =
   ## returns true if `s` contains `key`, otherwise `key` is included in `s`
   ## and false is returned.
+  if isNil(s.data):
+    s = initSet[A]()
   containsOrInclImpl()
-
-proc initSet*[A](initialSize=64): TSet[A] =
-  ## creates a new hash set that is empty. `initialSize` needs to be
-  ## a power of two.
-  assert isPowerOfTwo(initialSize)
-  result.counter = 0
-  newSeq(result.data, initialSize)
 
 proc toSet*[A](keys: openArray[A]): TSet[A] =
   ## creates a new hash set that contains the given `keys`.
@@ -158,7 +165,7 @@ proc card*[A](s: TOrderedSet[A]): int {.inline.} =
   result = s.counter
 
 template forAllOrderedPairs(yieldStmt: stmt) {.dirty, immediate.} =
-  var h = s.first
+  var h = if not isNil(s.data): s.first else: -1
   while h >= 0:
     var nxt = s.data[h].next
     if s.data[h].slot == seFilled: yieldStmt
@@ -176,6 +183,15 @@ proc contains*[A](s: TOrderedSet[A], key: A): bool =
   ## returns true iff `key` is in `s`.
   var index = rawGet(s, key)
   result = index >= 0
+
+proc initOrderedSet*[A](initialSize=64): TOrderedSet[A] =
+  ## creates a new ordered hash set that is empty. `initialSize` needs to be
+  ## a power of two.
+  assert isPowerOfTwo(initialSize)
+  result.counter = 0
+  result.first = -1
+  result.last = -1
+  newSeq(result.data, initialSize)
 
 proc rawInsert[A](s: var TOrderedSet[A], 
                   data: var TOrderedKeyValuePairSeq[A], key: A) =
@@ -200,21 +216,16 @@ proc enlarge[A](s: var TOrderedSet[A]) =
 
 proc incl*[A](s: var TOrderedSet[A], key: A) =
   ## includes an element `key` in `s`.
+  if isNil(s.data):
+    s = initOrderedSet[A]()
   inclImpl()
 
 proc containsOrIncl*[A](s: var TOrderedSet[A], key: A): bool =
   ## returns true if `s` contains `key`, otherwise `key` is included in `s`
   ## and false is returned.
+  if isNil(s.data):
+    s = initOrderedSet[A]()
   containsOrInclImpl()
-
-proc initOrderedSet*[A](initialSize=64): TOrderedSet[A] =
-  ## creates a new ordered hash set that is empty. `initialSize` needs to be
-  ## a power of two.
-  assert isPowerOfTwo(initialSize)
-  result.counter = 0
-  result.first = -1
-  result.last = -1
-  newSeq(result.data, initialSize)
 
 proc toOrderedSet*[A](keys: openArray[A]): TOrderedSet[A] =
   ## creates a new ordered hash set that contains the given `keys`.
