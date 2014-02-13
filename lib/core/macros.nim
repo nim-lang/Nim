@@ -516,7 +516,7 @@ proc last*(node: PNimrodNode): PNimrodNode {.compileTime.} = node[node.high]
 
 
 const
-  RoutineNodes* = {nnkProcDef, nnkMethodDef, nnkDo, nnkLambda}
+  RoutineNodes* = {nnkProcDef, nnkMethodDef, nnkDo, nnkLambda, nnkIteratorDef}
   AtomicNodes* = {nnkNone..nnkNilLit}
   CallNodes* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand, 
     nnkCallStrLit, nnkHiddenCallConv}
