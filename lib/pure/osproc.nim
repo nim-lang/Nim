@@ -791,7 +791,7 @@ elif not defined(useNimRtl):
   proc csystem(cmd: cstring): cint {.nodecl, importc: "system".}
 
   proc execCmd(command: string): int =
-    when defined(linux)
+    when defined(linux):
       result = csystem(command) shr 8
     else:
       result = csystem(command)
