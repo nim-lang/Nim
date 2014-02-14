@@ -2066,6 +2066,7 @@ proc pthread_spin_unlock*(a1: ptr Tpthread_spinlock): cint {.
 proc pthread_testcancel*() {.importc, header: "<pthread.h>".}
 
 
+proc exitnow*(code: int): void {.importc: "_exit", header: "<unistd.h>".}
 proc access*(a1: cstring, a2: cint): cint {.importc, header: "<unistd.h>".}
 proc alarm*(a1: cint): cint {.importc, header: "<unistd.h>".}
 proc chdir*(a1: cstring): cint {.importc, header: "<unistd.h>".}
