@@ -32,6 +32,7 @@ proc considerAcc*(n: PNode): PIdent =
         of nkSym: id.add(x.sym.name.s)
         else: globalError(n.info, errIdentifierExpected, renderTree(n))
       result = getIdent(id)
+  of nkOpenSymChoice, nkClosedSymChoice: result = n.sons[0].sym.name
   else:
     globalError(n.info, errIdentifierExpected, renderTree(n))
  
