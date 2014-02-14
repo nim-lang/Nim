@@ -21,3 +21,13 @@ q(a)
 
 echo "success"
 
+
+# bug #833
+
+type
+  PFuture*[T] = ref object
+    value*: T
+    finished*: bool
+    cb: proc (future: PFuture[T]) {.closure.}
+
+var k = PFuture[void]()
