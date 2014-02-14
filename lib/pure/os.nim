@@ -1037,10 +1037,10 @@ proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   ## the process has finished. To execute a program without having a
   ## shell involved, use the `execProcess` proc of the `osproc`
   ## module.
-  when defined(windows):
-    result = c_system(command)
-  else:
+  when defined(linux):
     result = c_system(command) shr 8
+  else:
+    result = c_system(command)
 
 # Environment handling cannot be put into RTL, because the ``envPairs``
 # iterator depends on ``environment``.
