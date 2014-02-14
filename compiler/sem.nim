@@ -120,7 +120,8 @@ proc commonType*(x, y: PType): PType =
     if a.kind == tyObject and b.kind == tyObject:
       result = commonSuperclass(a, b)
       # this will trigger an error later:
-      if result.isNil: return x
+      if result.isNil or result == a: return x
+      if result == b: return y
       if k != tyNone:
         let r = result
         result = newType(k, r.owner)
