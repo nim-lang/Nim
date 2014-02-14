@@ -791,7 +791,10 @@ elif not defined(useNimRtl):
   proc csystem(cmd: cstring): cint {.nodecl, importc: "system".}
 
   proc execCmd(command: string): int =
-    result = csystem(command) shr 8
+    when defined(linux)
+      result = csystem(command) shr 8
+    else:
+      result = csystem(command)
 
   proc createFdSet(fd: var TFdSet, s: seq[PProcess], m: var int) =
     FD_ZERO(fd)
