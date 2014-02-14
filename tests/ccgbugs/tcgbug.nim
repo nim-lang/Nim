@@ -19,6 +19,9 @@ var
 new(a)
 q(a)
 
+# bug #914
+var x = newWideCString("Hello")
+
 echo "success"
 
 
