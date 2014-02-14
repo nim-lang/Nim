@@ -58,6 +58,15 @@ Boot options:
 
 proc exe(f: string): string = return addFileExt(f, ExeExt)
 
+proc findNim(): string =
+  var nimrod = "nimrod".exe
+  result = "bin" / nimrod
+  if existsFile(result): return
+  for dir in split(getEnv("PATH"), PathSep):
+    if existsFile(dir / nimrod): return dir / nimrod
+  # assume there is a symlink to the exe or something:
+  return nimrod
+
 proc exec(cmd: string) =
   echo(cmd)
   if execShellCmd(cmd) != 0: quit("FAILURE")
@@ -70,15 +79,15 @@ const
   compileNimInst = "-d:useLibzipSrc tools/niminst/niminst"
 
 proc csource(args: string) = 
-  exec("nimrod cc $1 -r $3 --var:version=$2 csource compiler/nimrod.ini $1" %
-       [args, NimrodVersion, compileNimInst])
+  exec("$4 cc $1 -r $3 --var:version=$2 csource compiler/nimrod.ini $1" %
+       [args, NimrodVersion, compileNimInst, findNim()])
 
 proc zip(args: string) = 
-  exec("nimrod cc -r $2 --var:version=$1 zip compiler/nimrod.ini" %
-       [NimrodVersion, compileNimInst])
+  exec("$3 cc -r $2 --var:version=$1 zip compiler/nimrod.ini" %
+       [NimrodVersion, compileNimInst, findNim()])
   
 proc buildTool(toolname, args: string) = 
-  exec("nimrod cc $# $#" % [args, toolname])
+  exec("$# cc $# $#" % [findNim(), args, toolname])
   copyFile(dest="bin"/ splitFile(toolname).name.exe, source=toolname.exe)
 
 proc inno(args: string) =
@@ -90,13 +99,14 @@ proc inno(args: string) =
        NimrodVersion)
 
 proc install(args: string) = 
-  exec("nimrod cc -r $# --var:version=$# scripts compiler/nimrod.ini" %
-       [compileNimInst, NimrodVersion])
+  exec("$# cc -r $# --var:version=$# scripts compiler/nimrod.ini" %
+       [findNim(), compileNimInst, NimrodVersion])
   exec("sh ./install.sh $#" % args)
 
 proc web(args: string) =
-  exec(("nimrod cc -r tools/nimweb.nim web/nimrod --putenv:nimrodversion=$#" &
-        " --path:$#") % [NimrodVersion, getCurrentDir()])
+  exec(("$# cc -r tools/nimweb.nim web/nimrod --putenv:nimrodversion=$#" &
+        " --path:$#") % [findNim(), NimrodVersion,
+                         getCurrentDir().quoteIfContainsWhite])
 
 # -------------- boot ---------------------------------------------------------
 

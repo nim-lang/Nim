@@ -4,10 +4,10 @@
 
 import os, streams, parsexml, strutils
 
-if paramCount() < 1: 
+if paramCount() < 1:
   quit("Usage: htmltitle filename[.html]")
 
-var filename = addFileExt(ParamStr(1), "html")
+var filename = addFileExt(paramStr(1), "html")
 var s = newFileStream(filename, fmRead)
 if s == nil: quit("cannot open the file " & filename)
 var x: TXmlParser
@@ -23,13 +23,13 @@ while true:
         title.add(x.charData)
         x.next()
       if x.kind == xmlElementEnd and cmpIgnoreCase(x.elementName, "title") == 0:
-        Echo("Title: " & title)
+        echo("Title: " & title)
         quit(0) # Success!
       else:
         echo(x.errorMsgExpected("/title"))
   
   of xmlEof: break # end of file reached
-  else: nil # ignore other events
+  else: discard # ignore other events
 
 x.close()
 quit("Could not determine title!")

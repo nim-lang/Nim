@@ -67,7 +67,7 @@ when withThreads:
 
 proc hookAux(st: TStackTrace, costs: int) =
   # this is quite performance sensitive!
-  when withThreads: Acquire profilingLock
+  when withThreads: acquire profilingLock
   inc totalCalls
   var last = high(st)
   while last > 0 and isNil(st[last]): dec last
@@ -106,7 +106,7 @@ proc hookAux(st: TStackTrace, costs: int) =
       h = ((5 * h) + 1) and high(profileData)
       inc chain
     maxChainLen = max(maxChainLen, chain)
-  when withThreads: Release profilingLock
+  when withThreads: release profilingLock
 
 when defined(memProfiler):
   const
