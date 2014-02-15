@@ -153,6 +153,9 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode): PNode =
     discard
   of nkSym:
     result.sym = replaceTypeVarsS(cl, n.sym)
+    if result.sym.typ.kind == tyEmpty:
+      # don't add the 'void' field
+      result = newNode(nkRecList, n.info)
   of nkRecWhen:
     var branch: PNode = nil              # the branch to take
     for i in countup(0, sonsLen(n) - 1):

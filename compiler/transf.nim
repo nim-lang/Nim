@@ -754,6 +754,7 @@ proc transformStmt*(module: PSym, n: PNode): PNode =
     result = processTransf(c, n, module)
     result = liftLambdasForTopLevel(module, result)
     incl(result.flags, nfTransf)
+    when useEffectSystem: trackTopLevelStmt(module, result)
 
 proc transformExpr*(module: PSym, n: PNode): PNode =
   if nfTransf in n.flags:

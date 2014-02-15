@@ -4,7 +4,7 @@ type
   PMenuItem = ref object
 
 proc createMenuItem*(menu: PMenu, label: string, 
-                     action: proc (i: PMenuItem, p: pointer) {.cdecl.}) = nil
+                    action: proc (i: PMenuItem, p: pointer) {.cdecl.}) = discard
 
 var s: PMenu
 createMenuItem(s, "Go to definition...",
