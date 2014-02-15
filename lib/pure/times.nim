@@ -557,6 +557,119 @@ proc `$`*(m: TMonth): string =
       "November", "December"]
   return lookup[m]
 
+proc format_token(info: TTimeInfo, token: string, buf: var string) =
+  ## Helper of the format proc to parse individual tokens.
+  ##
+  ## Pass the found token in the user input string, and the buffer where the
+  ## final string is being built. This has to be a var value because certain
+  ## formatting tokens require modifying the previous characters.
+  case token
+  of "d":
+    buf.add($info.monthday)
+  of "dd":
+    if info.monthday < 10:
+      buf.add("0")
+    buf.add($info.monthday)
+  of "ddd":
+    buf.add(($info.weekday)[0 .. 2])
+  of "dddd":
+    buf.add($info.weekday)
+  of "h":
+    buf.add($(if info.hour > 12: info.hour - 12 else: info.hour))
+  of "hh":
+    let amerHour = if info.hour > 12: info.hour - 12 else: info.hour
+    if amerHour < 10:
+      buf.add('0')
+    buf.add($amerHour)
+  of "H":
+    buf.add($info.hour)
+  of "HH":
+    if info.hour < 10:
+      buf.add('0')
+    buf.add($info.hour)
+  of "m":
+    buf.add($info.minute)
+  of "mm":
+    if info.minute < 10:
+      buf.add('0')
+    buf.add($info.minute)
+  of "M":
+    buf.add($(int(info.month)+1))
+  of "MM":
+    if info.month < mOct:
+      buf.add('0')
+    buf.add($(int(info.month)+1))
+  of "MMM":
+    buf.add(($info.month)[0..2])
+  of "MMMM":
+    buf.add($info.month)
+  of "s":
+    buf.add($info.second)
+  of "ss":
+    if info.second < 10:
+      buf.add('0')
+    buf.add($info.second)
+  of "t":
+    if info.hour >= 12:
+      buf.add('P')
+    else: buf.add('A')
+  of "tt":
+    if info.hour >= 12:
+      buf.add("PM")
+    else: buf.add("AM")
+  of "y":
+    var fr = ($info.year).len()-1
+    if fr < 0: fr = 0
+    buf.add(($info.year)[fr .. ($info.year).len()-1])
+  of "yy":
+    var fr = ($info.year).len()-2
+    if fr < 0: fr = 0
+    var fyear = ($info.year)[fr .. ($info.year).len()-1]
+    if fyear.len != 2: fyear = repeatChar(2-fyear.len(), '0') & fyear
+    buf.add(fyear)
+  of "yyy":
+    var fr = ($info.year).len()-3
+    if fr < 0: fr = 0
+    var fyear = ($info.year)[fr .. ($info.year).len()-1]
+    if fyear.len != 3: fyear = repeatChar(3-fyear.len(), '0') & fyear
+    buf.add(fyear)
+  of "yyyy":
+    var fr = ($info.year).len()-4
+    if fr < 0: fr = 0
+    var fyear = ($info.year)[fr .. ($info.year).len()-1]
+    if fyear.len != 4: fyear = repeatChar(4-fyear.len(), '0') & fyear
+    buf.add(fyear)
+  of "yyyyy":
+    var fr = ($info.year).len()-5
+    if fr < 0: fr = 0
+    var fyear = ($info.year)[fr .. ($info.year).len()-1]
+    if fyear.len != 5: fyear = repeatChar(5-fyear.len(), '0') & fyear
+    buf.add(fyear)
+  of "z":
+    let hrs = (info.timezone div 60) div 60
+    buf.add($hrs)
+  of "zz":
+    let hrs = (info.timezone div 60) div 60
+
+    buf.add($hrs)
+    if hrs.abs < 10:
+      var atIndex = buf.len-(($hrs).len-(if hrs < 0: 1 else: 0))
+      buf.insert("0", atIndex)
+  of "zzz":
+    let hrs = (info.timezone div 60) div 60
+
+    buf.add($hrs & ":00")
+    if hrs.abs < 10:
+      var atIndex = buf.len-(($hrs & ":00").len-(if hrs < 0: 1 else: 0))
+      buf.insert("0", atIndex)
+  of "ZZZ":
+    buf.add(info.tzname)
+  of "":
+    discard
+  else:
+    raise newException(EInvalidValue, "Invalid format string: " & token)
+
+
 proc format*(info: TTimeInfo, f: string): string =
   ## This function formats `info` as specified by `f`. The following format
   ## specifiers are available:
@@ -600,112 +713,8 @@ proc format*(info: TTimeInfo, f: string): string =
   while true:
     case f[i]
     of ' ', '-', '/', ':', '\'', '\0', '(', ')', '[', ']', ',':
-      case currentF
-      of "d":
-        result.add($info.monthday)
-      of "dd":
-        if info.monthday < 10:
-          result.add("0")
-        result.add($info.monthday)
-      of "ddd":
-        result.add(($info.weekday)[0 .. 2])
-      of "dddd":
-        result.add($info.weekday)
-      of "h":
-        result.add($(if info.hour > 12: info.hour - 12 else: info.hour))
-      of "hh":
-        let amerHour = if info.hour > 12: info.hour - 12 else: info.hour
-        if amerHour < 10:
-          result.add('0')
-        result.add($amerHour)
-      of "H":
-        result.add($info.hour)
-      of "HH":
-        if info.hour < 10:
-          result.add('0')
-        result.add($info.hour)
-      of "m":
-        result.add($info.minute)
-      of "mm":
-        if info.minute < 10:
-          result.add('0')
-        result.add($info.minute)
-      of "M":
-        result.add($(int(info.month)+1))
-      of "MM":
-        if info.month < mOct:
-          result.add('0')
-        result.add($(int(info.month)+1))
-      of "MMM":
-        result.add(($info.month)[0..2])
-      of "MMMM":
-        result.add($info.month)
-      of "s":
-        result.add($info.second)
-      of "ss":
-        if info.second < 10:
-          result.add('0')
-        result.add($info.second)
-      of "t":
-        if info.hour >= 12:
-          result.add('P')
-        else: result.add('A')
-      of "tt":
-        if info.hour >= 12:
-          result.add("PM")
-        else: result.add("AM")
-      of "y":
-        var fr = ($info.year).len()-1
-        if fr < 0: fr = 0
-        result.add(($info.year)[fr .. ($info.year).len()-1])
-      of "yy":
-        var fr = ($info.year).len()-2
-        if fr < 0: fr = 0
-        var fyear = ($info.year)[fr .. ($info.year).len()-1]
-        if fyear.len != 2: fyear = repeatChar(2-fyear.len(), '0') & fyear
-        result.add(fyear)
-      of "yyy":
-        var fr = ($info.year).len()-3
-        if fr < 0: fr = 0
-        var fyear = ($info.year)[fr .. ($info.year).len()-1]
-        if fyear.len != 3: fyear = repeatChar(3-fyear.len(), '0') & fyear
-        result.add(fyear)
-      of "yyyy":
-        var fr = ($info.year).len()-4
-        if fr < 0: fr = 0
-        var fyear = ($info.year)[fr .. ($info.year).len()-1]
-        if fyear.len != 4: fyear = repeatChar(4-fyear.len(), '0') & fyear
-        result.add(fyear)
-      of "yyyyy":
-        var fr = ($info.year).len()-5
-        if fr < 0: fr = 0
-        var fyear = ($info.year)[fr .. ($info.year).len()-1]
-        if fyear.len != 5: fyear = repeatChar(5-fyear.len(), '0') & fyear
-        result.add(fyear)
-      of "z":
-        let hrs = (info.timezone div 60) div 60
-        result.add($hrs)
-      of "zz":
-        let hrs = (info.timezone div 60) div 60
-        
-        result.add($hrs)
-        if hrs.abs < 10:
-          var atIndex = result.len-(($hrs).len-(if hrs < 0: 1 else: 0))
-          result.insert("0", atIndex)
-      of "zzz":
-        let hrs = (info.timezone div 60) div 60
-        
-        result.add($hrs & ":00")
-        if hrs.abs < 10:
-          var atIndex = result.len-(($hrs & ":00").len-(if hrs < 0: 1 else: 0))
-          result.insert("0", atIndex)
-      of "ZZZ":
-        result.add(info.tzname)
-      of "":
-        discard
-      else:
-        raise newException(EInvalidValue, "Invalid format string: " & currentF)
-      
+      format_token(info, currentF, result)
+
       currentF = ""
       if f[i] == '\0': break
       
