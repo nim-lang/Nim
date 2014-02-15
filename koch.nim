@@ -276,7 +276,8 @@ proc tests(args: string) =
   # taint mode test :-)
   exec "nimrod cc --taintMode:on tests/testament/tester"
   let tester = quoteShell(getCurrentDir() / "tests/testament/tester".exe)
-  exec tester & " " & (args|"all")
+  let binPath = "--nimrod-binpath=" & quoteShell(getCurrentDir() / "bin/nimrod".exe)
+  exec tester & " " & binPath & " " & (args|"all")
   exec tester & " html"
 
 proc temp(args: string) =
