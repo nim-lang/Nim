@@ -335,7 +335,7 @@ proc exprColonEqExprList(p: var TParser, kind, elemKind: TNodeKind,
 
 proc setBaseFlags(n: PNode, base: TNumericalBase) = 
   case base
-  of base10: nil
+  of base10: discard
   of base2: incl(n.flags, nfBase2)
   of base8: incl(n.flags, nfBase8)
   of base16: incl(n.flags, nfBase16)
@@ -466,7 +466,7 @@ proc lowestExprAux(p: var TParser, v: var PNode, limit: int): TTokKind =
         eat(p, pxCurlyDirRi)
         opNode.ident = getIdent("&")
       else: 
-        nil
+        discard
     of pxMinus: 
       if p.tok.xkind == pxPer: 
         getTok(p)
@@ -477,7 +477,7 @@ proc lowestExprAux(p: var TParser, v: var PNode, limit: int): TTokKind =
     of pxNeq: 
       opNode.ident = getIdent("!=")
     else: 
-      nil
+      discard
     skipCom(p, opNode)        # read sub-expression with higher priority
     nextop = lowestExprAux(p, v2, opPred)
     addSon(node, opNode)
@@ -505,7 +505,7 @@ proc fixExpr(n: PNode): PNode =
             (n.sons[2].kind in {nkCharLit, nkStrLit}): 
           n.sons[0].ident = getIdent("&") # fix operator
   else: 
-    nil
+    discard
   if not (n.kind in {nkEmpty..nkNilLit}): 
     for i in countup(0, sonsLen(n) - 1): result.sons[i] = fixExpr(n.sons[i])
   
@@ -603,7 +603,7 @@ proc parseStmtList(p: var TParser): PNode =
     of pxCurlyDirLe, pxStarDirLe: 
       if not isHandledDirective(p): break 
     else: 
-      nil
+      discard
     addSon(result, parseStmt(p))
   if sonsLen(result) == 1: result = result.sons[0]
   
@@ -732,7 +732,7 @@ proc parseRepeat(p: var TParser): PNode =
   addSon(b, c)
   addSon(a, b)
   if b.sons[0].kind == nkIdent and b.sons[0].ident.id == getIdent("false").id: 
-    nil
+    discard
   else: 
     addSon(s, a)
   addSon(result, s)
@@ -840,7 +840,7 @@ proc parseParam(p: var TParser): PNode =
     getTok(p)
     v = newNodeP(nkVarTy, p)
   else: 
-    nil
+    discard
   while true: 
     case p.tok.xkind
     of pxSymbol: a = createIdentNodeP(p.tok.ident, p)
@@ -1133,7 +1133,7 @@ proc parseRecordPart(p: var TParser): PNode =
 proc exSymbol(n: var PNode) = 
   case n.kind
   of nkPostfix: 
-    nil
+    discard
   of nkPragmaExpr: 
     exSymbol(n.sons[0])
   of nkIdent, nkAccQuoted: 
@@ -1154,7 +1154,7 @@ proc fixRecordDef(n: var PNode) =
     for i in countup(0, sonsLen(n) - 1): fixRecordDef(n.sons[i])
   of nkIdentDefs: 
     for i in countup(0, sonsLen(n) - 3): exSymbol(n.sons[i])
-  of nkNilLit, nkEmpty: nil
+  of nkNilLit, nkEmpty: discard
   else: internalError(n.info, "fixRecordDef(): " & $n.kind)
   
 proc addPragmaToIdent(ident: var PNode, pragma: PNode) = 
@@ -1191,7 +1191,7 @@ proc parseRecordBody(p: var TParser, result, definition: PNode) =
     if definition != nil: addPragmaToIdent(definition.sons[0], parseCommand(p))
     else: internalError(result.info, "anonymous record is not supported")
   else: 
-    nil
+    discard
   opt(p, pxSemicolon)
   skipCom(p, result)
 
@@ -1399,7 +1399,7 @@ proc fixVarSection(p: var TParser, counter: PNode) =
 
 proc exSymbols(n: PNode) = 
   case n.kind
-  of nkEmpty..nkNilLit: nil
+  of nkEmpty..nkNilLit: discard
   of nkProcDef..nkIteratorDef: exSymbol(n.sons[namePos])
   of nkWhenStmt, nkStmtList: 
     for i in countup(0, sonsLen(n) - 1): exSymbols(n.sons[i])
@@ -1410,7 +1410,7 @@ proc exSymbols(n: PNode) =
       exSymbol(n.sons[i].sons[0])
       if n.sons[i].sons[2].kind == nkObjectTy: 
         fixRecordDef(n.sons[i].sons[2])
-  else: nil
+  else: discard
 
 proc parseBegin(p: var TParser, result: PNode) = 
   getTok(p)

@@ -9,7 +9,7 @@ proc init: TYourObj =
   result.y = -1
   
 proc f(x: var TYourObj) =
-  nil
+  discard
   
 var m: TMyObj = init()
 f(m)
