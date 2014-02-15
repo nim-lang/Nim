@@ -104,9 +104,8 @@ proc install(args: string) =
   exec("sh ./install.sh $#" % args)
 
 proc web(args: string) =
-  exec(("$# cc -r tools/nimweb.nim web/nimrod --putenv:nimrodversion=$#" &
-        " --path:$#") % [findNim(), NimrodVersion,
-                         getCurrentDir().quoteIfContainsWhite])
+  exec("$# cc -r tools/nimweb.nim web/nimrod --putenv:nimrodversion=$#" % 
+       [findNim(), NimrodVersion])
 
 # -------------- boot ---------------------------------------------------------
 
