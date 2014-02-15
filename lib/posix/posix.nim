@@ -2265,6 +2265,7 @@ proc gmtime_r*(a1: var TTime, a2: var Ttm): ptr Ttm {.importc, header: "<time.h>
 proc localtime*(a1: var TTime): ptr Ttm {.importc, header: "<time.h>".}
 proc localtime_r*(a1: var TTime, a2: var Ttm): ptr Ttm {.importc, header: "<time.h>".}
 proc mktime*(a1: var Ttm): TTime  {.importc, header: "<time.h>".}
+proc timegm*(a1: var Ttm): TTime  {.importc, header: "<time.h>".}
 proc nanosleep*(a1, a2: var Ttimespec): cint {.importc, header: "<time.h>".}
 proc strftime*(a1: cstring, a2: int, a3: cstring,
            a4: var Ttm): int {.importc, header: "<time.h>".}
