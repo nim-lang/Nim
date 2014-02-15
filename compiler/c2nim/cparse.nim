@@ -540,7 +540,7 @@ proc typeAtom(p: var TParser): PNode =
       if p.tok.s == "unsigned":
         isUnsigned = true
       elif p.tok.s == "signed" or p.tok.s == "int":
-        nil
+        discard
       else:
         add(x, p.tok.s)
       getTok(p, nil)
@@ -746,7 +746,7 @@ proc directDeclarator(p: var TParser, a: PNode, ident: ptr PNode): PNode =
       result = declarator(p, a, ident)
       eat(p, pxParRi, result)
   else:
-    nil
+    discard
   return parseTypeSuffix(p, a)
 
 proc declarator(p: var TParser, a: PNode, ident: ptr PNode): PNode =
@@ -1165,7 +1165,7 @@ proc enumSpecifier(p: var TParser): PNode =
 
 proc setBaseFlags(n: PNode, base: TNumericalBase) = 
   case base
-  of base10: nil
+  of base10: discard
   of base2: incl(n.flags, nfBase2)
   of base8: incl(n.flags, nfBase8)
   of base16: incl(n.flags, nfBase16)
@@ -1686,7 +1686,7 @@ proc switchStatement(p: var TParser): PNode =
       break
     of "case", "default":
       break
-    else: nil
+    else: discard
     addSon(result, statement(p))
   if sonsLen(result) == 0:
     # translate empty statement list to Nimrod's ``nil`` statement

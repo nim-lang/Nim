@@ -51,12 +51,12 @@ else: write(stdout, "BUG: F ist nicht in s!\n")
 a = {} #{'a'..'z'}
 for x in low(TAZ) .. high(TAZ):
   incl(a, x)
-  if x in a: nil
+  if x in a: discard
   else: write(stdout, "BUG: something not in a!\n")
 
 for x in low(TTokTypeRange) .. high(TTokTypeRange):
   if x in tokTypes:
-    nil
+    discard
     #writeln(stdout, "the token '$1' is in the set" % repr(x))
 
 #OUT Ha ein F ist in s!
