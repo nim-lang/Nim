@@ -683,20 +683,21 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
           incl(c.p.owner.flags, sfSideEffect)
 
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode
-proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode = 
+proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = nil
   checkMinSonsLen(n, 1)
   var prc = n.sons[0]
-  if n.sons[0].kind == nkDotExpr: 
+  if n.sons[0].kind == nkDotExpr:
     checkSonsLen(n.sons[0], 2)
     n.sons[0] = semFieldAccess(c, n.sons[0])
-    if n.sons[0].kind == nkDotCall: 
+    if n.sons[0].kind == nkDotCall:
       # it is a static call!
       result = n.sons[0]
       result.kind = nkCall
+      result.flags.incl nfExplicitCall
       for i in countup(1, sonsLen(n) - 1): addSon(result, n.sons[i])
       return semExpr(c, result, flags)
-  else: 
+  else:
     n.sons[0] = semExpr(c, n.sons[0])
   let nOrig = n.copyTree
   semOpAux(c, n)
@@ -999,7 +1000,7 @@ proc dotTransformation(c: PContext, n: PNode): PNode =
   else:
     var i = considerAcc(n.sons[1])
     result = newNodeI(nkDotCall, n.info)
-    result.flags.incl nfDelegate
+    result.flags.incl nfDotField
     addSon(result, newIdentNode(i, n[1].info))
     addSon(result, copyTree(n[0]))
   
@@ -1082,12 +1083,13 @@ proc semArrayAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
 proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
   var id = considerAcc(a[1])
-  let setterId = newIdentNode(getIdent(id.s & '='), n.info)
+  var setterId = newIdentNode(getIdent(id.s & '='), n.info)
   # a[0] is already checked for semantics, that does ``builtinFieldAccess``
   # this is ugly. XXX Semantic checking should use the ``nfSem`` flag for
   # nodes?
   let aOrig = nOrig[0]
   result = newNode(nkCall, n.info, sons = @[setterId, a[0], semExpr(c, n[1])])
+  result.flags.incl nfDotSetter
   let orig = newNode(nkCall, n.info, sons = @[setterId, aOrig[0], nOrig[1]])
   result = semOverloadedCallAnalyseEffects(c, result, orig, {})
   
@@ -1777,22 +1779,6 @@ proc semBlock(c: PContext, n: PNode): PNode =
   closeScope(c)
   dec(c.p.nestedBlockCounter)
 
-proc buildCall(n: PNode): PNode =
-  if n.kind == nkDotExpr and n.len == 2:
-    # x.y --> y(x)
-    result = newNodeI(nkCall, n.info, 2)
-    result.sons[0] = n.sons[1]
-    result.sons[1] = n.sons[0]
-  elif n.kind in nkCallKinds and n.sons[0].kind == nkDotExpr:
-    # x.y(a) -> y(x, a)
-    let a = n.sons[0]
-    result = newNodeI(nkCall, n.info, n.len+1)
-    result.sons[0] = a.sons[1]
-    result.sons[1] = a.sons[0]
-    for i in 1 .. <n.len: result.sons[i+1] = n.sons[i]
-  else:
-    result = n
-
 proc doBlockIsStmtList(n: PNode): bool =
   result = n.kind == nkDo and
            n[paramsPos].sonsLen == 1 and
@@ -1901,7 +1887,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit: 
     # check if it is an expression macro:
     checkMinSonsLen(n, 1)
-    let mode = if nfDelegate in n.flags: {} else: {checkUndeclared}
+    let mode = if nfDotField in n.flags: {} else: {checkUndeclared}
     var s = qualifiedLookUp(c, n.sons[0], mode)
     if s != nil: 
       if gCmd == cmdPretty and n.sons[0].kind == nkDotExpr:
@@ -1940,7 +1926,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       # the 'newSeq[T](x)' bug
       setGenericParams(c, n.sons[0])
       result = semDirectOp(c, n, flags)
-    elif isSymChoice(n.sons[0]) or nfDelegate in n.flags:
+    elif isSymChoice(n.sons[0]) or nfDotField in n.flags:
       result = semDirectOp(c, n, flags)
     else:
       result = semIndirectOp(c, n, flags)
