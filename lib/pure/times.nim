@@ -704,8 +704,11 @@ proc format*(info: TTimeInfo, f: string): string =
   ##    ZZZ      Displays the name of the timezone.                                                 ``GMT -> GMT``, ``EST -> EST``
   ## ==========  =================================================================================  ================================================
   ##
-  ## Other strings can be inserted by putting them in ``''``. For example ``hh'->'mm`` will give ``01->56``.
-  ## The following characters can be inserted without quoting them: ``:`` ``-`` ``(`` ``)`` ``/`` ``[`` ``]`` ``,``
+  ## Other strings can be inserted by putting them in ``''``. For example
+  ## ``hh'->'mm`` will give ``01->56``.  The following characters can be
+  ## inserted without quoting them: ``:`` ``-`` ``(`` ``)`` ``/`` ``[`` ``]``
+  ## ``,``. However you don't need to necessarily separate format specifiers, a
+  ## unambiguous format string like ``yyyyMMddhhmmss`` is valid too.
 
   result = ""
   var i = 0
@@ -725,7 +728,15 @@ proc format*(info: TTimeInfo, f: string): string =
           inc(i)
       else: result.add(f[i])
       
-    else: currentF.add(f[i])
+    else:
+      # Check if the letter being added matches previous accumulated buffer.
+      if currentF.len < 1 or currentF[high(currentF)] == f[i]:
+        currentF.add(f[i])
+      else:
+        format_token(info, currentF, result)
+        dec(i) # Move position back to re-process the character separately.
+        currentF = ""
+
     inc(i)
 
 {.pop.}
@@ -736,11 +747,15 @@ when isMainModule:
 
   var t = getGMTime(fromSeconds(2147483647))
   echo t.format("ddd dd MMM hh:mm:ss ZZZ yyyy")
+  echo t.format("ddd ddMMMhhmmssZZZyyyy")
   assert t.format("ddd dd MMM hh:mm:ss ZZZ yyyy") == "Tue 19 Jan 03:14:07 UTC 2038"
+  assert t.format("ddd ddMMMhh:mm:ssZZZyyyy") == "Tue 19Jan03:14:07UTC2038"
   
   assert t.format("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
     " ss t tt y yy yyy yyyy yyyyy z zz zzz ZZZ") == 
     "19 19 Tue Tuesday 3 03 3 03 14 14 1 01 Jan January 7 07 A AM 8 38 038 2038 02038 0 00 00:00 UTC"
+
+  assert t.format("yyyyMMddhhmmss") == "20380119031407"
   
   var t2 = getGMTime(fromSeconds(160070789)) # Mon 27 Jan 16:06:29 GMT 1975
   assert t2.format("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
