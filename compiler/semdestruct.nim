@@ -55,7 +55,9 @@ proc doDestructorStuff(c: PContext, s: PSym, n: PNode) =
             useSym(destructableT.destructor),
             n.sons[paramsPos][1][0]]))
 
-proc destroyField(c: PContext, field: PSym, holder: PNode): PNode =
+proc destroyFieldOrFields(c: PContext, field: PNode, holder: PNode): PNode
+
+proc destroySym(c: PContext, field: PSym, holder: PNode): PNode =
   let destructableT = instantiateDestructor(c, field.typ)
   if destructableT != nil:
     result = newNode(nkCall, field.info, @[
@@ -70,56 +72,49 @@ proc destroyCase(c: PContext, n: PNode, holder: PNode): PNode =
   for i in countup(1, n.len - 1):
     # of A, B:
     var caseBranch = newNode(n[i].kind, n[i].info, n[i].sons[0 .. -2])
-    let recList = n[i].lastSon
-    var destroyRecList = newNode(nkStmtList, n[i].info, @[])
-    template addField(f: expr): stmt =
-      let stmt = destroyField(c, f, holder)
-      if stmt != nil:
-        destroyRecList.addSon(stmt)
-        inc nonTrivialFields
-        
-    case recList.kind
-    of nkSym:
-      addField(recList.sym)
-    of nkRecList:
-      for j in countup(0, recList.len - 1):
-        addField(recList[j].sym)
+    
+    let stmt = destroyFieldOrFields(c, n[i].lastSon, holder)
+    if stmt == nil:
+      caseBranch.addSon(newNode(nkStmtList, n[i].info, @[]))
     else:
-      internalAssert false
-      
-    caseBranch.addSon(destroyRecList)
+      caseBranch.addSon(stmt)
+      nonTrivialFields += stmt.len
+    
     result.addSon(caseBranch)
+  
   # maybe no fields were destroyed?
   if nonTrivialFields == 0:
     result = nil
- 
+
+proc destroyFieldOrFields(c: PContext, field: PNode, holder: PNode): PNode =
+  template maybeAddLine(e: expr): stmt =
+    let stmt = e
+    if stmt != nil:
+      if result == nil: result = newNode(nkStmtList)
+      result.addSon(stmt)
+
+  case field.kind
+  of nkRecCase:
+    maybeAddLine destroyCase(c, field, holder)
+  of nkSym:
+    maybeAddLine destroySym(c, field.sym, holder)
+  of nkRecList:
+    for son in field:
+      maybeAddLine destroyFieldOrFields(c, son, holder)
+  else:
+    internalAssert false
+
 proc generateDestructor(c: PContext, t: PType): PNode =
   ## generate a destructor for a user-defined object or tuple type
   ## returns nil if the destructor turns out to be trivial
   
-  template addLine(e: expr): stmt =
-    if result == nil: result = newNode(nkStmtList)
-    result.addSon(e)
-
   # XXX: This may be true for some C-imported types such as
   # Tposix_spawnattr
   if t.n == nil or t.n.sons == nil: return
   internalAssert t.n.kind == nkRecList
   let destructedObj = newIdentNode(destructorParam, unknownLineInfo())
   # call the destructods of all fields
-  for s in countup(0, t.n.sons.len - 1):
-    case t.n.sons[s].kind
-    of nkRecCase:
-      let stmt = destroyCase(c, t.n.sons[s], destructedObj)
-      if stmt != nil: addLine(stmt)
-    of nkSym:
-      let stmt = destroyField(c, t.n.sons[s].sym, destructedObj)
-      if stmt != nil: addLine(stmt)
-    else:
-      # XXX just skip it for now so that the compiler doesn't crash, but
-      # please zahary fix it! arbitrary nesting of nkRecList/nkRecCase is
-      # possible. Any thread example seems to trigger this. 
-      discard
+  result = destroyFieldOrFields(c, t.n, destructedObj)
   # base classes' destructors will be automatically called by
   # semProcAux for both auto-generated and user-defined destructors
 

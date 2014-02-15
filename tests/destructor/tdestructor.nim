@@ -12,6 +12,13 @@ myobj destroyed
 ----
 mygeneric3 constructed
 mygeneric1 destroyed
+----
+mygeneric1 destroyed
+----
+myobj destroyed
+----
+----
+myobj destroyed
 '''
 """
 
@@ -31,6 +38,22 @@ type
     x: A
     y: B
     z: C
+  
+  TObjKind = enum A, B, C, D
+
+  TCaseObj = object
+    case kind: TObjKind
+    of A:
+      x: TMyGeneric1[int]
+    of B, C:
+      y: TMyObj
+    else:
+      case innerKind: TObjKind
+      of A, B, C:
+        p: TMyGeneric3[int, float, string]
+      of D:
+        q: TMyGeneric3[TMyObj, int, int]
+      r: string
 
 proc destruct(o: var TMyObj) {.destructor.} =
   if o.p != nil: dealloc o.p
@@ -81,4 +104,25 @@ mygeneric2[int](10)
 
 echo "----"
 mygeneric3()
+
+proc caseobj =
+  block:
+    echo "----"
+    var o1 = TCaseObj(kind: A, x: TMyGeneric1[int](x: 10))
+  
+  block:
+    echo "----"
+    var o2 = TCaseObj(kind: B, y: open())
+  
+  block:
+    echo "----"
+    var o3 = TCaseObj(kind: D, innerKind: B, r: "test",
+                      p: TMyGeneric3[int, float, string](x: 10, y: 1.0, z: "test"))
+
+  block:
+    echo "----"
+    var o4 = TCaseObj(kind: D, innerKind: D, r: "test",
+                      q: TMyGeneric3[TMyObj, int, int](x: open(), y: 1, z: 0))
+
+caseobj()
 
