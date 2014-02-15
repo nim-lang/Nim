@@ -346,22 +346,21 @@ proc semIs(c: PContext, n: PNode): PNode =
 
   result = n
   n.typ = getSysType(tyBool)
-  
-  n.sons[1] = semExprWithType(c, n[1], {efDetermineType})
-  
+ 
+  n.sons[1] = semExprWithType(c, n[1], {efDetermineType, efWantIterator})
   if n[2].kind notin {nkStrLit..nkTripleStrLit}:
     let t2 = semTypeNode(c, n[2], nil)
     n.sons[2] = newNodeIT(nkType, n[2].info, t2)
 
-  if n[1].typ.kind != tyTypeDesc:
-    n.sons[1] = makeTypeSymNode(c, n[1].typ, n[1].info)
-  elif n[1].typ.sonsLen == 0:
+  let lhsType = n[1].typ
+  if lhsType.kind != tyTypeDesc:
+    n.sons[1] = makeTypeSymNode(c, lhsType, n[1].info)
+  elif lhsType.base.kind == tyNone:
     # this is a typedesc variable, leave for evals
     return
 
-  let t1 = n[1].typ.sons[0]
   # BUGFIX: don't evaluate this too early: ``T is void``
-  if not containsGenericType(t1): result = isOpImpl(c, n)
+  if not n[1].typ.base.containsGenericType: result = isOpImpl(c, n)
 
 proc semOpAux(c: PContext, n: PNode) =
   const flags = {efDetermineType}
@@ -918,8 +917,8 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var ty = n.sons[0].typ
   var f: PSym = nil
   result = nil
-  if isTypeExpr(n.sons[0]) or ty.kind == tyTypeDesc and ty.len == 1:
-    if ty.kind == tyTypeDesc: ty = ty.sons[0]
+  if isTypeExpr(n.sons[0]) or ty.kind == tyTypeDesc and ty.base.kind != tyNone:
+    if ty.kind == tyTypeDesc: ty = ty.base
     case ty.kind
     of tyEnum:
       # look up if the identifier belongs to the enum:

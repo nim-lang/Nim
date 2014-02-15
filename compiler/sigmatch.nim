@@ -866,7 +866,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
           else:
             internalAssert a.sons != nil and a.sons.len > 0
             c.typedescMatched = true
-            result = typeRel(c, f.sons[0], a.sons[0])
+            result = typeRel(c, f.base, a.base)
         else:
           result = isNone
       else:
@@ -896,22 +896,20 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       result = isNone
 
   of tyTypeDesc:
+    if a.kind != tyTypeDesc: return isNone
+    
     var prev = PType(idTableGet(c.bindings, f))
     if prev == nil:
-      if a.kind == tyTypeDesc:
-        if f.sons[0].kind == tyNone:
-          result = isGeneric
-        else:
-          result = typeRel(c, f.sons[0], a.sons[0])
-        if result != isNone:
-          put(c.bindings, f, a)
+      if f.base.kind == tyNone:
+        result = isGeneric
       else:
-        result = isNone
+        result = typeRel(c, f.base, a.base)
+      if result != isNone:
+        put(c.bindings, f, a)
     else:
-      internalAssert prev.sonsLen == 1
       let toMatch = if tfUnresolved in f.flags: a
-                    else: a.sons[0]
-      result = typeRel(c, prev.sons[0], toMatch)
+                    else: a.base
+      result = typeRel(c, prev.base, toMatch)
   
   of tyStmt:
     result = isGeneric
@@ -1015,7 +1013,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
       argType = arg.typ
  
   var
-    a = if c.inTypeClass > 0: argType.skipTypes({tyTypeDesc})
+    a = if c.inTypeClass > 0: argType.skipTypes({tyTypeDesc, tyFieldAccessor})
         else: argType
  
     r = typeRel(m, f, a)

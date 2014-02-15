@@ -431,8 +431,8 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       add(result, typeToString(t.sons[i]))
     add(result, ']')
   of tyTypeDesc:
-    if t.len == 0: result = "typedesc"
-    else: result = "typedesc[" & typeToString(t.sons[0]) & "]"
+    if t.base.kind == tyNone: result = "typedesc"
+    else: result = "typedesc[" & typeToString(t.base) & "]"
   of tyStatic:
     internalAssert t.len > 0
     result = "static[" & typeToString(t.sons[0]) & "]"
@@ -1231,8 +1231,7 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
   of tyGenericInst, tyDistinct, tyGenericBody, tyMutable, tyConst, tyIter:
     result = computeSizeAux(lastSon(typ), a)
   of tyTypeDesc:
-    result = if typ.len == 1: computeSizeAux(typ.sons[0], a)
-             else: szUnknownSize
+    result = computeSizeAux(typ.base, a)
   of tyForward: return szIllegalRecursion
   else:
     #internalError("computeSizeAux()")
@@ -1258,7 +1257,7 @@ proc containsGenericTypeIter(t: PType, closure: PObject): bool =
     return true
 
   if t.kind == tyTypeDesc:
-    if t.sons[0].kind == tyNone: return true
+    if t.base.kind == tyNone: return true
     if containsGenericTypeIter(t.base, closure): return true
     return false
   
