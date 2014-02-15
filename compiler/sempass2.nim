@@ -476,7 +476,6 @@ proc track(tracked: PEffects, n: PNode) =
     if warnProveField in gNotes: checkFieldAccess(tracked.guards, n)
   of nkTryStmt: trackTryStmt(tracked, n)
   of nkPragma: trackPragmaStmt(tracked, n)
-  of nkMacroDef, nkTemplateDef: discard
   of nkAsgn, nkFastAsgn:
     track(tracked, n.sons[1])
     initVar(tracked, n.sons[0])
@@ -526,7 +525,9 @@ proc track(tracked: PEffects, n: PNode) =
       if sfDiscriminant in x.sons[0].sym.flags:
         addDiscriminantFact(tracked.guards, x)
     setLen(tracked.guards, oldFacts)
-  of nkTypeSection: discard
+  of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,
+      nkMacroDef, nkTemplateDef:
+    discard
   else:
     for i in 0 .. <safeLen(n): track(tracked, n.sons[i])
 
@@ -623,6 +624,9 @@ proc trackProc*(s: PSym, body: PNode) =
     effects.sons[tagEffects] = tagsSpec
     
 proc trackTopLevelStmt*(module: PSym; n: PNode) =
+  if n.kind in {nkPragma, nkMacroDef, nkTemplateDef, nkProcDef,
+                nkTypeSection, nkConverterDef, nkMethodDef, nkIteratorDef}:
+    return
   var effects = newNode(nkEffectList, n.info)
   var t: TEffects
   initEffects(effects, module, t)
