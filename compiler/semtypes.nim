@@ -1030,9 +1030,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       if s.kind != skError: localError(n.info, errTypeExpected)
       result = newOrPrevType(tyError, prev, c)
     elif s.kind == skParam and s.typ.kind == tyTypeDesc:
-      assert s.typ.len > 0
-      internalAssert prev == nil
-      result = s.typ.sons[0]
+      internalAssert s.typ.base.kind != tyNone and prev == nil
+      result = s.typ.base
     elif prev == nil:
       result = s.typ
     else: 
