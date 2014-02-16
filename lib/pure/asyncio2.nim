@@ -104,6 +104,7 @@ when defined(windows):
 
     PDispatcher* = ref object
       ioPort: THandle
+      hasHandles: bool
 
     TCustomOverlapped = object
       Internal*: DWORD
@@ -125,9 +126,13 @@ when defined(windows):
     if CreateIOCompletionPort(sock.THandle, p.ioPort,
                               cast[TCompletionKey](sock), 1) == 0:
       OSError(OSLastError())
+    p.hasHandles = true
 
   proc poll*(p: PDispatcher, timeout = 500) =
     ## Waits for completion events and processes them.
+    if not p.hasHandles:
+      raise newException(EInvalidValue, "No handles registered in dispatcher.")
+    
     let llTimeout =
       if timeout ==  -1: winlean.INFINITE
       else: timeout.int32
@@ -483,6 +488,7 @@ template createVar(futSymName: string, asyncProc: PNimrodNode,
   valueReceiver = newDotExpr(futSym, newIdentNode("read")) # -> future<x>.read
 
 proc processBody(node, retFutureSym: PNimrodNode): PNimrodNode {.compileTime.} =
+  result = node
   case node.kind
   of nnkReturnStmt:
     result = newNimNode(nnkStmtList)
@@ -490,8 +496,6 @@ proc processBody(node, retFutureSym: PNimrodNode): PNimrodNode {.compileTime.} =
       if node[0].kind == nnkEmpty: newIdentNode("result") else: node[0])
     result.add newNimNode(nnkYieldStmt).add(newNilLit())
   of nnkCommand:
-    result = node
-    echo(treeRepr(node))
     if node[0].ident == !"await":
       case node[1].kind
       of nnkIdent, nnkCall:
@@ -500,13 +504,13 @@ proc processBody(node, retFutureSym: PNimrodNode): PNimrodNode {.compileTime.} =
         result = newNimNode(nnkYieldStmt).add(node[1]) # -> yield x
       else:
         error("Invalid node kind in 'await', got: " & $node[1].kind)
-    elif node[1].kind == nnkIdent and node[1][0].ident == !"await":
+    elif node[1].kind == nnkCommand and node[1][0].kind == nnkIdent and
+         node[1][0].ident == !"await":
       # foo await x
       var newCommand = node
       createVar("future" & $node[0].ident, node[1][0], newCommand[1])
       result.add newCommand
   of nnkVarSection, nnkLetSection:
-    result = node
     case node[0][2].kind
     of nnkCommand:
       if node[0][2][0].ident == !"await":
@@ -517,7 +521,6 @@ proc processBody(node, retFutureSym: PNimrodNode): PNimrodNode {.compileTime.} =
         result.add newVarSection
     else: discard
   of nnkAsgn:
-    result = node
     case node[1].kind
     of nnkCommand:
       if node[1][0].ident == !"await":
@@ -532,9 +535,11 @@ proc processBody(node, retFutureSym: PNimrodNode): PNimrodNode {.compileTime.} =
       var dummy = newNimNode(nnkStmtList)
       createVar("futureDiscard_" & $toStrLit(node[0][1]), node[0][1], dummy)
   else:
-    result = node
     for i in 0 .. <node.len:
       result[i] = processBody(node[i], retFutureSym)
+
+  assert(not result.isNil)
+  #echo(treeRepr(result))
 
 proc getName(node: PNimrodNode): string {.compileTime.} =
   case node.kind
@@ -547,6 +552,8 @@ proc getName(node: PNimrodNode): string {.compileTime.} =
 
 macro async*(prc: stmt): stmt {.immediate.} =
   expectKind(prc, nnkProcDef)
+
+  hint("Processing " & prc[0].getName & " as an async proc.")
 
   # Verify that the return type is a PFuture[T]
   if prc[3][0].kind == nnkIdent:
@@ -658,7 +665,7 @@ when isMainModule:
   p.register(sock)
 
 
-  when true:
+  when false:
     # Await tests
     proc main(p: PDispatcher): PFuture[int] {.async.} =
       discard await p.connect(sock, "irc.freenode.net", TPort(6667))
@@ -684,7 +691,7 @@ when isMainModule:
     
 
   else:
-    when true:
+    when false:
 
       var f = p.connect(sock, "irc.freenode.org", TPort(6667))
       f.callback =
