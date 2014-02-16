@@ -1042,7 +1042,8 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind,
   of tyEmpty:
     result = taField in flags
   of tyTypeClasses:
-    result = true
+    result = tfGenericTypeParam in t.flags or
+             taField notin flags
   of tyGenericBody, tyGenericParam, tyGenericInvokation,
      tyNone, tyForward, tyFromExpr, tyFieldAccessor:
     result = false

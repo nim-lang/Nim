@@ -81,6 +81,7 @@ type
     semOverloadedCall*: proc (c: PContext, n, nOrig: PNode,
                               filter: TSymKinds): PNode {.nimcall.}
     semTypeNode*: proc(c: PContext, n: PNode, prev: PType): PType {.nimcall.}
+    semInferredLambda*: proc(c: PContext, pt: TIdTable, n: PNode): PNode
     semGenerateInstance*: proc (c: PContext, fn: PSym, pt: TIdTable,
                                 info: TLineInfo): PSym
     includedFiles*: TIntSet    # used to detect recursive include files

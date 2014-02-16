@@ -1039,10 +1039,11 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
     #result = copyTree(arg)
     result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
   of isInferred, isInferredConvertible:
-    var prc = if arg.kind in nkLambdaKinds: arg[0].sym
-              else: arg.sym
-    let inferred = c.semGenerateInstance(c, prc, m.bindings, arg.info)
-    result = newSymNode(inferred, arg.info)
+    if arg.kind in {nkProcDef, nkIteratorDef} + nkLambdaKinds:
+      result = c.semInferredLambda(c, m.bindings, arg)
+    else:
+      let inferred = c.semGenerateInstance(c, arg.sym, m.bindings, arg.info)
+      result = newSymNode(inferred, arg.info)
     if r == isInferredConvertible:
       result = implicitConv(nkHiddenStdConv, f, result, m, c)
   of isGeneric:
