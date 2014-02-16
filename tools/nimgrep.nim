@@ -249,7 +249,7 @@ proc walker(dir: string) =
     of pcDir: 
       if optRecursive in options:
         walker(path)
-    else: nil
+    else: discard
   if existsFile(dir): processFile(dir)
 
 proc writeHelp() = 
