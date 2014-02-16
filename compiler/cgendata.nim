@@ -58,6 +58,7 @@ type
     sections*: TCProcSections # the code beloging
     isLoop*: bool             # whether block is a loop
     nestedTryStmts*: int16    # how many try statements is it nested into
+    nestedExceptStmts*: int16 # how many except statements is it nested into
     frameLen*: int16
   
   TCProc{.final.} = object    # represents C proc that is currently generated
