@@ -20,15 +20,17 @@ const
   tester [options] command [arguments]
 
 Command:
-  all                         run all tests
-  c|category <category>       run all the tests of a certain category
-  html [commit]               generate $1 from the database; uses the latest
+  all                         Run all tests
+  c|category <category>       Run all the tests of a certain category
+  html [commit]               Generate $1 from the database; uses the latest
                               commit or a specific one (use -1 for the commit
                               before latest etc)
 Arguments:
   arguments are passed to the compiler
 Options:
-  --print                   also print results to the console
+  --print                   Also print results to the console
+  --nimrod-binpath          Path or command to use when invoking the nimrod
+                            compiler (default: "nimrod")
 """ % resultsFile
 
 type
@@ -54,7 +56,8 @@ let
   pegOfInterest = pegLineError / pegOtherError
 
 proc callCompiler(cmdTemplate, filename, options: string): TSpec =
-  let c = parseCmdLine(cmdTemplate % [options, filename])
+  let nimrodBinPath = os.getEnv("NIMROD_BIN_PATH").string
+  let c = parseCmdLine(cmdTemplate % [nimrodBinPath, options, filename])
   var p = startProcess(command=c[0], args=c[1.. -1],
                        options={poStdErrToStdOut, poUseShell})
   let outp = p.outputStream
@@ -217,15 +220,33 @@ proc main() =
   os.putenv "NIMTEST_NO_COLOR", "1"
   os.putenv "NIMTEST_OUTPUT_LVL", "PRINT_FAILURES"
 
-  backend.open()  
+  backend.open() 
   var optPrintResults = false
   var p = initOptParser()
   p.next()
-  if p.kind == cmdLongoption:
+
+  # Gather options
+  var nimrodBinPath = "nimrod"
+  while p.kind == cmdLongOption:
+    var value = p.val.string.normalize
     case p.key.string.normalize
-    of "print", "verbose": optPrintResults = true
-    else: quit usage
+    of "print", "verbose":
+      if value == "":
+        optPrintResults = true
+      else:
+        try:
+          optPrintResults = parseBool(value)
+        except EInvalidValue:
+          quit usage
+    of "nimrod-binpath":
+      if value == "":
+        quit usage
+      else:
+        nimrodBinPath = p.val.string
     p.next()
+  os.putenv "NIMROD_BIN_PATH", nimrodBinPath
+
+  # Now get the action
   if p.kind != cmdArgument: quit usage
   var action = p.key.string.normalize
   p.next()

@@ -10,7 +10,7 @@
 import parseutils, strutils, os, osproc, streams, parsecfg
 
 const
-  cmdTemplate* = r"nimrod cc --hints:on $# $#"
+  cmdTemplate* = r"$# cc --hints:on $# $#"
 
 type
   TTestAction* = enum

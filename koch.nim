@@ -276,7 +276,10 @@ proc tests(args: string) =
   # taint mode test :-)
   exec "nimrod cc --taintMode:on tests/testament/tester"
   let tester = quoteShell(getCurrentDir() / "tests/testament/tester".exe)
-  exec tester & " " & (args|"all")
+  let binPath = quoteShell(getCurrentDir() / "bin/nimrod".exe)
+  if not existsFile(binPath):
+    echo("[Warning] - '$#' not found, using 'nimrod' command." % binPath)
+  exec tester & " --bin-path=" & binPath & " " & (args|"all")
   exec tester & " html"
 
 proc temp(args: string) =
