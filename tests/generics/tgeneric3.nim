@@ -32,7 +32,7 @@ const
 proc len[T,D] (n:PNode[T,D]): Int {.inline.} =
   return n.Count
 
-proc clean[T: TOrdinal|TNumber](o: var T) {.inline.} = nil
+proc clean[T: TOrdinal|TNumber](o: var T) {.inline.} = discard
 
 proc clean[T: string|seq](o: var T) {.inline.} =
   o = nil
@@ -98,7 +98,7 @@ proc DeleteItem[T,D] (n: PNode[T,D], x: Int): PNode[T,D] {.inline.} =
     of cLen3 : setLen(n.slots, cLen3)
     of cLenCenter : setLen(n.slots, cLenCenter)
     of cLen4 : setLen(n.slots, cLen4)
-    else: nil
+    else: discard
     Result = n
 
   else :
@@ -232,7 +232,7 @@ proc InsertItem[T,D](APath: RPath[T,D], ANode:PNode[T,D], AKey: T, AValue: D) =
   of cLen3: setLen(APath.Nd.slots, cLenCenter)
   of cLenCenter: setLen(APath.Nd.slots, cLen4)
   of cLen4: setLen(APath.Nd.slots, cLenMax)
-  else: nil
+  else: discard
   for i in countdown(APath.Nd.Count.int - 1, x + 1): shallowCopy(APath.Nd.slots[i], APath.Nd.slots[i - 1])
   APath.Nd.slots[x] = setItem(AKey, AValue, ANode)
 

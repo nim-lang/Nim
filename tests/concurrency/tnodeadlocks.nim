@@ -12,7 +12,7 @@ var
   thr: array [0..5, TThread[tuple[a, b: int]]]
   L, M, N: TLock
 
-proc doNothing() = nil
+proc doNothing() = discard
 
 proc threadFunc(interval: tuple[a, b: int]) {.thread.} = 
   doNothing()
