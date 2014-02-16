@@ -764,6 +764,28 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       s.ast = a
       popOwner()
 
+proc checkForMetaFields(n: PNode) =
+  template checkMeta(t) =
+    if t.isMetaType and tfGenericTypeParam notin t.flags:
+      localError(n.info, errTIsNotAConcreteType, t.typeToString)
+  
+  case n.kind
+  of nkRecList, nkRecCase:
+    for s in n: checkForMetaFields(s)
+  of nkOfBranch, nkElse:
+    checkForMetaFields(n.lastSon)
+  of nkSym:
+    let t = n.sym.typ
+    case t.kind
+    of tySequence, tySet, tyArray, tyOpenArray, tyVar, tyPtr, tyRef,
+       tyProc, tyGenericInvokation, tyGenericInst:
+      for s in t.sons:
+        checkMeta(s)
+    else:
+      checkMeta(t)
+  else:
+    internalAssert false
+
 proc typeSectionFinalPass(c: PContext, n: PNode) = 
   for i in countup(0, sonsLen(n) - 1): 
     var a = n.sons[i]
@@ -780,6 +802,8 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
           assignType(s.typ, t)
           s.typ.id = t.id     # same id
       checkConstructedType(s.info, s.typ)
+      if s.typ.kind in {tyObject, tyTuple}:
+        checkForMetaFields(s.typ.n)
     let aa = a.sons[2]
     if aa.kind in {nkRefTy, nkPtrTy} and aa.len == 1 and
        aa.sons[0].kind == nkObjectTy:
