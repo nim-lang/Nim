@@ -342,7 +342,7 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
       h = h +% ord(c)
       h = h +% h shl 10
       h = h xor (h shr 6)
-    of '_': nil
+    of '_': discard
     else: break
     inc(pos)
   h = h +% h shl 3

@@ -19,8 +19,8 @@ of eB, eC: write(stdout, "b or c")
 case x
 of "Andreas", "Rumpf": write(stdout, "Hallo Meister!")
 of "aa", "bb": write(stdout, "Du bist nicht mein Meister")
-of "cc", "hash", "when": nil
-of "will", "it", "finally", "be", "generated": nil
+of "cc", "hash", "when": discard
+of "will", "it", "finally", "be", "generated": discard
 
 var z = case i
   of 1..5, 8, 9: "aa"
