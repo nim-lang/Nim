@@ -498,10 +498,14 @@ proc processBody(node, retFutureSym: PNimrodNode): PNimrodNode {.compileTime.} =
   of nnkCommand:
     if node[0].ident == !"await":
       case node[1].kind
-      of nnkIdent, nnkCall:
+      of nnkIdent:
         # await x
-        # await foo(p, x)
         result = newNimNode(nnkYieldStmt).add(node[1]) # -> yield x
+      of nnkCall:
+        # await foo(p, x)
+        var futureValue: PNimrodNode
+        createVar("future" & $node[1][0].toStrLit, node[1], futureValue)
+        result.add futureValue
       else:
         error("Invalid node kind in 'await', got: " & $node[1].kind)
     elif node[1].kind == nnkCommand and node[1][0].kind == nnkIdent and
@@ -510,6 +514,7 @@ proc processBody(node, retFutureSym: PNimrodNode): PNimrodNode {.compileTime.} =
       var newCommand = node
       createVar("future" & $node[0].ident, node[1][0], newCommand[1])
       result.add newCommand
+
   of nnkVarSection, nnkLetSection:
     case node[0][2].kind
     of nnkCommand:
@@ -534,11 +539,10 @@ proc processBody(node, retFutureSym: PNimrodNode): PNimrodNode {.compileTime.} =
     if node[0][0].ident == !"await":
       var dummy = newNimNode(nnkStmtList)
       createVar("futureDiscard_" & $toStrLit(node[0][1]), node[0][1], dummy)
-  else:
-    for i in 0 .. <node.len:
-      result[i] = processBody(node[i], retFutureSym)
-
-  assert(not result.isNil)
+  else: discard
+  
+  for i in 0 .. <result.len:
+    result[i] = processBody(result[i], retFutureSym)
   #echo(treeRepr(result))
 
 proc getName(node: PNimrodNode): string {.compileTime.} =

@@ -52,8 +52,7 @@ proc createServer(disp: PDispatcher, port: TPort): PFuture[int] {.async.} =
   server.bindAddr(port)
   server.listen()
   while true:
-    var client = await disp.accept(server)
-    discard readMessages(disp, client)
+    discard readMessages(disp, await disp.accept(server))
 
 discard disp.createServer(TPort(10335))
 discard disp.launchSwarm(TPort(10335))
