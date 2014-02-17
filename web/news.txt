@@ -3,86 +3,103 @@ News
 ====
 
 
-2014-XX-XX Version 0.9.4 released
-=================================
+..
+    2014-XX-XX Version 0.9.4 released
+    =================================
 
 
-Bugfixes
---------
+    Bugfixes
+    --------
 
 
-Library Additions
------------------
+    Library Additions
+    -----------------
 
-- Added ``macros.genSym`` builtin for AST generation.
-- Added ``macros.newLit`` procs for easier AST generation.
-
-
-Changes affecting backwards compatibility
------------------------------------------
-
-- The scoping rules for the ``if`` statement changed for better interaction 
-  with the new syntactic construct ``(;)``.
-- ``OSError`` family of procedures has been deprecated. Procedures with the same
-  name but which take different parameters have been introduced. These procs now
-  require an error code to be passed to them. This error code can be retrieved
-  using the new ``OSLastError`` proc.
-- ``os.parentDir`` now returns "" if there is no parent dir.
-- In CGI scripts stacktraces are shown to the user only 
-  if ``cgi.setStackTraceStdout`` is used.
-- The symbol binding rules for clean templates changed: ``bind`` for any
-  symbol that's not a parameter is now the default. ``mixin`` can be used
-  to require instantiation scope for a symbol.
-- ``quoteIfContainsWhite`` now escapes argument in such way that it can be safely
-  passed to shell, instead of just adding double quotes.
-- ``macros.dumpTree`` and ``macros.dumpLisp`` have been made ``immediate``,
-  ``dumpTreeImm`` and ``dumpLispImm`` are now deprecated.
-- The ``nil`` statement has been deprecated, use an empty ``discard`` instead.
-- ``sockets.select`` now prunes sockets that are **not** ready from the list
-  of sockets given to it.
+    - Added ``macros.genSym`` builtin for AST generation.
+    - Added ``macros.newLit`` procs for easier AST generation.
 
 
-Compiler Additions
-------------------
+    Changes affecting backwards compatibility
+    -----------------------------------------
 
-- The compiler can now warn about "uninitialized" variables. (There are no
-  real uninitialized variables in Nimrod as they are initialized to binary
-  zero). Activate via ``{.warning[Uninit]:on.}``.
-- The compiler now enforces the ``not nil`` constraint.
-- The compiler now supports a ``codegenDecl`` pragma for even more control
-  over the generated code.
-- The compiler now supports a ``computedGoto`` pragma to support very fast
-  dispatching for interpreters and the like.
-- The old evaluation engine has been replaced by a proper register based
-  virtual machine. This fixes numerous bugs for ``nimrod i`` and for macro
-  evaluation.
-- ``--gc:none`` produces warnings when code uses the GC.
-
-
-Language Additions
-------------------
-
-- Arrays can now be declared with a single integer literal ``N`` instead of a
-  range; the range is then ``0..N-1``.
-- Added ``requiresInit`` pragma to enforce explicit initialization.
-- Exported templates are allowed to access hidden fields.
-- The ``using statement`` enables you to more easily author domain-specific
-  languages and libraries providing OOP-like syntactic sugar.
-- Added the possibility to override various dot operators in order to handle
-  calls to missing procs and reads from undeclared fields at compile-time.
-- The overload resolution now supports ``static[T]`` params that must be
-  evaluable at compile-time.
-- Support for user-defined type classes has been added.
-- The *command syntax* is supported in a lot more contexts.
-- Anonymous iterators are now supported and iterators can capture variables
-  of an outer proc.
+    - The scoping rules for the ``if`` statement changed for better interaction 
+      with the new syntactic construct ``(;)``.
+    - ``OSError`` family of procedures has been deprecated. Procedures with the same
+      name but which take different parameters have been introduced. These procs now
+      require an error code to be passed to them. This error code can be retrieved
+      using the new ``OSLastError`` proc.
+    - ``os.parentDir`` now returns "" if there is no parent dir.
+    - In CGI scripts stacktraces are shown to the user only 
+      if ``cgi.setStackTraceStdout`` is used.
+    - The symbol binding rules for clean templates changed: ``bind`` for any
+      symbol that's not a parameter is now the default. ``mixin`` can be used
+      to require instantiation scope for a symbol.
+    - ``quoteIfContainsWhite`` now escapes argument in such way that it can be safely
+      passed to shell, instead of just adding double quotes.
+    - ``macros.dumpTree`` and ``macros.dumpLisp`` have been made ``immediate``,
+      ``dumpTreeImm`` and ``dumpLispImm`` are now deprecated.
+    - The ``nil`` statement has been deprecated, use an empty ``discard`` instead.
+    - ``sockets.select`` now prunes sockets that are **not** ready from the list
+      of sockets given to it.
 
 
-Tools improvements
-------------------
+    Compiler Additions
+    ------------------
 
-- c2nim can deal with a subset of C++. Use the ``--cpp`` command line option
-  to activate.
+    - The compiler can now warn about "uninitialized" variables. (There are no
+      real uninitialized variables in Nimrod as they are initialized to binary
+      zero). Activate via ``{.warning[Uninit]:on.}``.
+    - The compiler now enforces the ``not nil`` constraint.
+    - The compiler now supports a ``codegenDecl`` pragma for even more control
+      over the generated code.
+    - The compiler now supports a ``computedGoto`` pragma to support very fast
+      dispatching for interpreters and the like.
+    - The old evaluation engine has been replaced by a proper register based
+      virtual machine. This fixes numerous bugs for ``nimrod i`` and for macro
+      evaluation.
+    - ``--gc:none`` produces warnings when code uses the GC.
+
+
+    Language Additions
+    ------------------
+
+    - Arrays can now be declared with a single integer literal ``N`` instead of a
+      range; the range is then ``0..N-1``.
+    - Added ``requiresInit`` pragma to enforce explicit initialization.
+    - Exported templates are allowed to access hidden fields.
+    - The ``using statement`` enables you to more easily author domain-specific
+      languages and libraries providing OOP-like syntactic sugar.
+    - Added the possibility to override various dot operators in order to handle
+      calls to missing procs and reads from undeclared fields at compile-time.
+    - The overload resolution now supports ``static[T]`` params that must be
+      evaluable at compile-time.
+    - Support for user-defined type classes has been added.
+    - The *command syntax* is supported in a lot more contexts.
+    - Anonymous iterators are now supported and iterators can capture variables
+      of an outer proc.
+
+
+    Tools improvements
+    ------------------
+
+    - c2nim can deal with a subset of C++. Use the ``--cpp`` command line option
+      to activate.
+
+
+2014-02-11 Nimrod Featured in Dr. Dobb's
+========================================
+
+Nimrod has been `featured<http://www.drdobbs.com/open-source/nimrod-a-new-systems-programming-languag/240165321>`_
+as the cover story in the February 2014 issue of Dr. Dobb's Journal.
+
+
+2014-01-15 Nimrod Talk is Online
+================================
+
+Andreas Rumpf presented *Nimrod: A New Approach to Metaprogramming* at
+`Strange Loop 2013<https://thestrangeloop.com/sessions/nimrod-a-new-approach-to-meta-programming>`_.
+The `video and slides<http://www.infoq.com/presentations/nimrod>`_
+of the talk are now available.      
 
 
 2013-05-20 New website design!
