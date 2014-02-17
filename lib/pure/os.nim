@@ -349,12 +349,12 @@ when defined(windows):
 
     # template wrapBinary(varname, winApiProc, arg, arg2: expr) {.immediate.} =
     #   var varname = winApiProc(newWideCString(arg), arg2)
-    template getCommandLine(): expr = getCommandLineW()
+    # template getCommandLine(): expr = getCommandLineW()
 
     template getFilename(f: expr): expr =
       $cast[WideCString](addr(f.cFilename[0]))
   else:
-    template getCommandLine(): expr = getCommandLineA()
+    # template getCommandLine(): expr = getCommandLineA()
 
     template getFilename(f: expr): expr = $f.cFilename
 
