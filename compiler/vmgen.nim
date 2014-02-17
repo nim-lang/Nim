@@ -931,13 +931,11 @@ proc genAddrDeref(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
   # nkAddr we must not use 'unneededIndirection', but for deref we use it.
   if opc != opcAddr and unneededIndirection(n.sons[0]):
     gen(c, n.sons[0], dest, flags)
-    message(n.info, warnUser, "YES")
   else:
     let tmp = c.genx(n.sons[0], flags)
     if dest < 0: dest = c.getTemp(n.typ)
     gABC(c, n, opc, dest, tmp)
     c.freeTemp(tmp)
-    message(n.info, warnUser, "NO")
 
 proc whichAsgnOpc(n: PNode): TOpcode =
   case n.typ.skipTypes(abstractRange-{tyTypeDesc}).kind
