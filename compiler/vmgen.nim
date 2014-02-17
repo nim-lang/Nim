@@ -916,23 +916,28 @@ proc requiresCopy(n: PNode): bool =
 proc unneededIndirection(n: PNode): bool =
   n.typ.skipTypes(abstractInst-{tyTypeDesc}).kind == tyRef
 
-proc skipDeref(n: PNode): PNode =
-  if n.kind in {nkDerefExpr, nkHiddenDeref} and unneededIndirection(n.sons[0]):
-    result = n.sons[0]
-  else:
-    result = n
-
 proc genAddrDeref(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
                   flags: TGenFlags) = 
   # a nop for certain types
   let flags = if opc == opcAddr: flags+{gfAddrOf} else: flags
-  if unneededIndirection(n.sons[0]):
+  # consider:
+  # proc foo(f: var ref int) =
+  #   f = new(int)
+  # proc blah() =
+  #   var x: ref int
+  #   foo x
+  #
+  # The type of 'f' is 'var ref int' and of 'x' is 'ref int'. Hence for
+  # nkAddr we must not use 'unneededIndirection', but for deref we use it.
+  if opc != opcAddr and unneededIndirection(n.sons[0]):
     gen(c, n.sons[0], dest, flags)
+    message(n.info, warnUser, "YES")
   else:
     let tmp = c.genx(n.sons[0], flags)
     if dest < 0: dest = c.getTemp(n.typ)
     gABC(c, n, opc, dest, tmp)
     c.freeTemp(tmp)
+    message(n.info, warnUser, "NO")
 
 proc whichAsgnOpc(n: PNode): TOpcode =
   case n.typ.skipTypes(abstractRange-{tyTypeDesc}).kind
