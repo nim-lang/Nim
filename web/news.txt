@@ -91,7 +91,8 @@ News
 
 Nimrod has been `featured<http://www.drdobbs.com/open-source/nimrod-a-new-systems-programming-languag/240165321>`_
 as the cover story in the February 2014 issue of Dr. Dobb's Journal.
-      
+
+
 2014-01-15 Nimrod Talk is Online
 ================================
 
@@ -99,7 +100,8 @@ Andreas Rumpf presented *Nimrod: A New Approach to Metaprogramming* at
 `Strange Loop 2013<https://thestrangeloop.com/sessions/nimrod-a-new-approach-to-meta-programming>`_.
 The `video and slides<http://www.infoq.com/presentations/nimrod>`_
 of the talk are now available.      
-      
+
+
 2013-05-20 New website design!
 ==============================
 
