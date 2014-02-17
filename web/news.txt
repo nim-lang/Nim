@@ -68,8 +68,8 @@ Language Additions
 - Exported templates are allowed to access hidden fields.
 - The ``using statement`` enables you to more easily author domain-specific
   languages and libraries providing OOP-like syntactic sugar.
-- Added a new ``delegator pragma`` for handling calls to missing procs and
-  fields at compile-time.
+- Added the possibility to override various dot operators in order to handle
+  calls to missing procs and reads from undeclared fields at compile-time.
 - The overload resolution now supports ``static[T]`` params that must be
   evaluable at compile-time.
 - Support for user-defined type classes has been added.

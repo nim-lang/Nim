@@ -14,8 +14,8 @@ type
   TSomethingElse = object 
   PSomethingElse = ref TSomethingElse
 
-method foo(a: PNode, b: PSomethingElse) = nil
-method foo(a: PNodeFoo, b: PSomethingElse) = nil
+method foo(a: PNode, b: PSomethingElse) = discard
+method foo(a: PNodeFoo, b: PSomethingElse) = discard
 
 var o: TObject
 o.somethin()

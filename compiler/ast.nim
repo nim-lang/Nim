@@ -409,7 +409,9 @@ type
                 # efficiency
     nfTransf,   # node has been transformed
     nfSem       # node has been checked for semantics
-    nfDelegate  # the call can use a delegator
+    nfDotField  # the call can use a dot operator
+    nfDotSetter # the call can use a setter dot operarator
+    nfExplicitCall # x.y() was used instead of x.y
     nfExprCall  # this is an attempt to call a regular expression
     nfIsRef     # this node is a 'ref' node; used for the VM
 
@@ -843,7 +845,8 @@ const
   ExportableSymKinds* = {skVar, skConst, skProc, skMethod, skType, skIterator, 
     skMacro, skTemplate, skConverter, skEnumField, skLet, skStub}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
-                                      nfAllConst, nfDelegate, nfIsRef}
+                                      nfDotSetter, nfDotField,
+                                      nfAllConst,nfIsRef}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2
@@ -1043,6 +1046,10 @@ proc newFloatNode(kind: TNodeKind, floatVal: BiggestFloat): PNode =
 proc newStrNode(kind: TNodeKind, strVal: string): PNode = 
   result = newNode(kind)
   result.strVal = strVal
+
+proc withInfo*(n: PNode, info: TLineInfo): PNode =
+  n.info = info
+  return n
 
 proc newIdentNode(ident: PIdent, info: TLineInfo): PNode = 
   result = newNode(nkIdent)

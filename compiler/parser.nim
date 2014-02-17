@@ -281,7 +281,7 @@ proc parseSymbol(p: var TParser): PNode =
         add(result, newIdentNodeP(getIdent"{}", p))
         getTok(p)
         eat(p, tkCurlyRi)
-      of tokKeywordLow..tokKeywordHigh, tkSymbol, tkOpr, tkDotDot:
+      of tokKeywordLow..tokKeywordHigh, tkSymbol, tkOpr, tkDot, tkDotDot:
         add(result, newIdentNodeP(p.tok.ident, p))
         getTok(p)
       of tkIntLit..tkCharLit:

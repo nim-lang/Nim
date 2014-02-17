@@ -65,6 +65,7 @@ proc startBlock(p: BProc, start: TFormatStr = "{$n",
   setLen(p.blocks, result + 1)
   p.blocks[result].id = p.labels
   p.blocks[result].nestedTryStmts = p.nestedTryStmts.len.int16
+  p.blocks[result].nestedExceptStmts = p.inExceptBlock.int16
 
 proc assignLabel(b: var TBlock): PRope {.inline.} =
   b.label = con("LA", b.id.toRope)
@@ -260,14 +261,22 @@ proc genIf(p: BProc, n: PNode, d: var TLoc) =
     else: internalError(n.info, "genIf()")
   if sonsLen(n) > 1: fixLabel(p, lend)
 
-proc blockLeaveActions(p: BProc, howMany: int) = 
-  var L = p.nestedTryStmts.len
+
+proc blockLeaveActions(p: BProc, howManyTrys, howManyExcepts: int) = 
+  # This is called by return and break stmts.
+  # When jumping out of try/except/finally stmts,
+  # we need to pop safe points from try statements,
+  # execute finally-stmts, and pop exceptions
+  # from except stmts
+
+  let L = p.nestedTryStmts.len
+
   # danger of endless recursion! we workaround this here by a temp stack
   var stack: seq[PNode]
-  newSeq(stack, howMany)
-  for i in countup(1, howMany): 
+  newSeq(stack, howManyTrys)
+  for i in countup(1, howManyTrys): 
     stack[i-1] = p.nestedTryStmts[L-i]
-  setLen(p.nestedTryStmts, L-howMany)
+  setLen(p.nestedTryStmts, L-howManyTrys)
   
   var alreadyPoppedCnt = p.inExceptBlock
   for tryStmt in items(stack):
@@ -276,21 +285,26 @@ proc blockLeaveActions(p: BProc, howMany: int) =
         dec alreadyPoppedCnt
       else:
         linefmt(p, cpsStmts, "#popSafePoint();$n")
+    # Find finally-stmts for this try-stmt
+    # and generate a copy of the finally stmts here
     var finallyStmt = lastSon(tryStmt)
     if finallyStmt.kind == nkFinally: 
       genStmts(p, finallyStmt.sons[0])
   # push old elements again:
-  for i in countdown(howMany-1, 0): 
+  for i in countdown(howManyTrys-1, 0): 
     p.nestedTryStmts.add(stack[i])
+
   if gCmd != cmdCompileToCpp:
-    for i in countdown(p.inExceptBlock-1, 0):
+    # Pop exceptions that was handled by the
+    # except-blocks we are in
+    for i in countdown(howManyExcepts-1, 0):
       linefmt(p, cpsStmts, "#popCurrentException();$n")
 
 proc genReturnStmt(p: BProc, t: PNode) =
   p.beforeRetNeeded = true
   genLineDir(p, t)
   if (t.sons[0].kind != nkEmpty): genStmts(p, t.sons[0])
-  blockLeaveActions(p, min(1, p.nestedTryStmts.len))
+  blockLeaveActions(p, min(1, p.nestedTryStmts.len), p.inExceptBlock)
   lineFF(p, cpsStmts, "goto BeforeRet;$n", "br label %BeforeRet$n", [])
 
 proc genComputedGoto(p: BProc; n: PNode) =
@@ -450,7 +464,9 @@ proc genBreakStmt(p: BProc, t: PNode) =
     if idx < 0 or not p.blocks[idx].isLoop:
       internalError(t.info, "no loop to break")
   let label = assignLabel(p.blocks[idx])
-  blockLeaveActions(p, p.nestedTryStmts.len - p.blocks[idx].nestedTryStmts)
+  blockLeaveActions(p, 
+    p.nestedTryStmts.len - p.blocks[idx].nestedTryStmts,
+    p.inExceptBlock - p.blocks[idx].nestedExceptStmts)
   genLineDir(p, t)
   lineF(p, cpsStmts, "goto $1;$n", [label])
 
