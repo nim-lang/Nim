@@ -1,11 +1,11 @@
 <a class="news" href="news.html#Z2014-02-11-nimrod-featured-in-dr-dobb-s">
   <h3>Feb 11, 2014</h3>
-  <p>Nimrod in Dr. Dobb's</p>
+  <p>Nimrod in Dr. Dobb's.</p>
 </a>
 
 <a class="news" href="news.html#Z2014-01-15-nimrod-talk-is-online">
   <h3>Jan 15, 2014</h3>
-  <p>Nimrod Video is Online</p>
+  <p>Nimrod video is online.</p>
 </a>
 
 <a class="news" href="news.html#new-website-design">
