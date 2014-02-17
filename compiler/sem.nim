@@ -333,6 +333,7 @@ proc myOpen(module: PSym): PPassContext =
   c.semOperand = semOperand
   c.semConstBoolExpr = semConstBoolExpr
   c.semOverloadedCall = semOverloadedCall
+  c.semInferredLambda = semInferredLambda
   c.semGenerateInstance = generateInstance
   c.semTypeNode = semTypeNode
   pushProcCon(c, module)

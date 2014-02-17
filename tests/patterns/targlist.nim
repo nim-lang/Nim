@@ -2,7 +2,7 @@ discard """
   output: "12false3ha"
 """
 
-proc f(x: varargs[string, `$`]) = nil
+proc f(x: varargs[string, `$`]) = discard
 template optF{f(X)}(x: varargs[expr]) = 
   writeln(stdout, x)
 

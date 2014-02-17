@@ -29,6 +29,7 @@ proc checkConstructedType*(info: TLineInfo, typ: PType) =
     localError(info, errVarVarTypeNotAllowed)
   elif computeSize(t) == szIllegalRecursion:
     localError(info, errIllegalRecursionInTypeX, typeToString(t))
+  
   when false:
     if t.kind == tyObject and t.sons[0] != nil:
       if t.sons[0].kind != tyObject or tfFinal in t.sons[0].flags: 
@@ -409,14 +410,22 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       
       else: discard
 
+proc initTypeVars(p: PContext, pt: TIdTable, info: TLineInfo): TReplTypeVars =
+  initIdTable(result.symMap)
+  copyIdTable(result.typeMap, pt)
+  initIdTable(result.localCache)
+  result.info = info
+  result.c = p
+
+proc replaceTypesInBody*(p: PContext, pt: TIdTable, n: PNode): PNode =
+  var cl = initTypeVars(p, pt, n.info)
+  pushInfoContext(n.info)
+  result = replaceTypeVarsN(cl, n)
+  popInfoContext()
+  
 proc generateTypeInstance*(p: PContext, pt: TIdTable, info: TLineInfo,
                            t: PType): PType =
-  var cl: TReplTypeVars
-  initIdTable(cl.symMap)
-  copyIdTable(cl.typeMap, pt)
-  initIdTable(cl.localCache)
-  cl.info = info
-  cl.c = p
+  var cl = initTypeVars(p, pt, info)
   pushInfoContext(info)
   result = replaceTypeVarsT(cl, t)
   popInfoContext()
