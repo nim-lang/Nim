@@ -1324,8 +1324,8 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
         let (outer, inner) = insertDestructors(c, n.sons[i])
         if outer != nil:
           n.sons[i] = outer
-          for j in countup(i+1, length-1):
-            inner.addSon(semStmt(c, n.sons[j]))
+          var rest = newNode(nkStmtList, n.info, n.sons[i+1 .. length-1])
+          inner.addSon(semStmtList(c, rest, flags))
           n.sons.setLen(i+1)
           return
       of LastBlockStmts: 
