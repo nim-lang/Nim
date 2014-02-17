@@ -26,12 +26,7 @@ proc openDefaultBrowser*(url: string) =
   ## Otherwise the environment variable ``BROWSER`` is used to determine the
   ## default browser to use.
   when defined(windows):
-    when useWinUnicode:
-      var o = newWideCString("open")
-      var u = newWideCString(url)
-      discard shellExecuteW(0'i32, o, u, nil, nil, SW_SHOWNORMAL)
-    else:
-      discard shellExecuteA(0'i32, "open", url, nil, nil, SW_SHOWNORMAL)
+    discard shellExecute(0'i32, "open", url, nil, nil, SW_SHOWNORMAL)
   elif defined(macosx):
     discard execShellCmd("open " & quoteShell(url))
   else:

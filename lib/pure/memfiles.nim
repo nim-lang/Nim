@@ -68,10 +68,7 @@ proc open*(filename: string, mode: TFileMode = fmRead,
         if readonly: FILE_ATTRIBUTE_READONLY else: FILE_ATTRIBUTE_TEMPORARY,
         0)
 
-    when useWinUnicode:
-      result.fHandle = callCreateFile(createFileW, newWideCString(filename))
-    else:
-      result.fHandle = callCreateFile(CreateFileA, filename)
+    result.fHandle = callCreateFile(createFile, filename)
 
     if result.fHandle == INVALID_HANDLE_VALUE:
       fail(osLastError(), "error opening file")
