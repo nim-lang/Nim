@@ -89,7 +89,7 @@ when defined(posix):
     of AF_UNIX:        result = posix.AF_UNIX
     of AF_INET:        result = posix.AF_INET
     of AF_INET6:       result = posix.AF_INET6
-    else: nil
+    else: discard
 
   proc toInt(typ: TType): cint =
     case typ
@@ -97,7 +97,7 @@ when defined(posix):
     of SOCK_DGRAM:     result = posix.SOCK_DGRAM
     of SOCK_SEQPACKET: result = posix.SOCK_SEQPACKET
     of SOCK_RAW:       result = posix.SOCK_RAW
-    else: nil
+    else: discard
 
   proc toInt(p: TProtocol): cint =
     case p
@@ -107,7 +107,7 @@ when defined(posix):
     of IPPROTO_IPV6:   result = posix.IPPROTO_IPV6
     of IPPROTO_RAW:    result = posix.IPPROTO_RAW
     of IPPROTO_ICMP:   result = posix.IPPROTO_ICMP
-    else: nil
+    else: discard
 
 else:
   proc toInt(domain: TDomain): cint = 
