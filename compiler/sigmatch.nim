@@ -900,20 +900,27 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       result = isNone
 
   of tyTypeDesc:
-    if a.kind != tyTypeDesc: return isNone
-    
     var prev = PType(idTableGet(c.bindings, f))
     if prev == nil:
+      # proc foo(T: typedesc, x: T)
+      # when `f` is an unresolved typedesc, `a` could be any
+      # type, so we should not perform this check earlier
+      if a.kind != tyTypeDesc: return isNone
+    
       if f.base.kind == tyNone:
         result = isGeneric
       else:
         result = typeRel(c, f.base, a.base)
+      
       if result != isNone:
         put(c.bindings, f, a)
     else:
-      let toMatch = if tfUnresolved in f.flags: a
-                    else: a.base
-      result = typeRel(c, prev.base, toMatch)
+      if tfUnresolved in f.flags:
+        result = typeRel(c, prev.base, a)
+      elif a.kind == tyTypeDesc:
+        result = typeRel(c, prev.base, a.base)
+      else:
+        result = isNone
   
   of tyStmt:
     result = isGeneric
