@@ -4893,16 +4893,16 @@ field which is used for runtime type identification is omitted. This is
 necessary for binary compatibility with other compiled languages.
 
 
-NoStackFrame pragma
--------------------
-A proc can be marked with the `noStackFrame`:idx: pragma to tell the compiler
+AsmNoStackFrame pragma
+----------------------
+A proc can be marked with the `AsmNoStackFrame`:idx: pragma to tell the compiler
 it should not generate a stack frame for the proc. There are also no exit
 statements like ``return result;`` generated and the generated C function is
 declared as ``__declspec(naked)`` or ``__attribute__((naked))`` (depending on
 the used C compiler).
 
-**Note**: This pragma should only be used by procs which consist solely of assembler
-statements.
+**Note**: This pragma should only be used by procs which consist solely of
+assembler statements.
 
 error pragma
 ------------

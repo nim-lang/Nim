@@ -19,8 +19,6 @@ Bugs
 - docgen: sometimes effects are listed twice
 - 'result' is not properly cleaned for NRVO --> use uninit checking instead
 - blocks can "export" an identifier but the CCG generates {} for them ...
-- osproc execProcesses can deadlock if all processes fail (as experienced
-  in c++ mode)
 
 
 version 0.9.x
@@ -144,11 +142,9 @@ Not essential for 1.0.0
   semantics instead ...
 - implement "closure tuple consists of a single 'ref'" optimization
 - optimize method dispatchers
-- ``with proc `+`(x, y: T): T`` for generic code
 - new feature: ``distinct T with operations``
 - arglist as a type (iterator chaining); variable length type lists for generics
 - implement marker procs for message passing
-- activate more thread tests
 - implement closures that support nesting of *procs* > 1
 - object constructors: static check for fields if discriminator is known at 
   compile time

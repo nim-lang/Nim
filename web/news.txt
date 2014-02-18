@@ -41,6 +41,8 @@ News
     - The ``nil`` statement has been deprecated, use an empty ``discard`` instead.
     - ``sockets.select`` now prunes sockets that are **not** ready from the list
       of sockets given to it.
+    - The ``noStackFrame`` pragma has been renamed to ``asmNoStackFrame`` to
+      ensure you only use it when you know what you're doing.
 
 
     Compiler Additions

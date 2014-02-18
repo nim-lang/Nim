@@ -23,7 +23,7 @@ const
     wMagic, wNosideeffect, wSideeffect, wNoreturn, wDynlib, wHeader, 
     wCompilerproc, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge, 
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
-    wNoStackFrame, wError, wDiscardable, wNoInit, wDestructor, wCodegenDecl,
+    wAsmNoStackFrame, wError, wDiscardable, wNoInit, wDestructor, wCodegenDecl,
     wGensym, wInject, wRaises, wTags, wOperator, wDelegator}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas
@@ -47,7 +47,7 @@ const
     wInjectStmt}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wNosideeffect, wSideeffect, wNoreturn, wDynlib, wHeader, 
-    wDeprecated, wExtern, wThread, wImportCpp, wImportObjC, wNoStackFrame,
+    wDeprecated, wExtern, wThread, wImportCpp, wImportObjC, wAsmNoStackFrame,
     wRaises, wTags}
   typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl, 
     wPure, wHeader, wCompilerproc, wFinal, wSize, wExtern, wShallow, 
@@ -548,9 +548,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         of wNodecl: 
           noVal(it)
           incl(sym.loc.flags, lfNoDecl)
-        of wPure, wNoStackFrame:
+        of wPure, wAsmNoStackFrame:
           noVal(it)
-          if sym != nil: incl(sym.flags, sfPure)
+          if sym != nil:
+            if k == wPure and sym.kind in routineKinds: invalidPragma(it)
+            else: incl(sym.flags, sfPure)
         of wVolatile: 
           noVal(it)
           incl(sym.flags, sfVolatile)

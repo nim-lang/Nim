@@ -1514,7 +1514,7 @@ when not defined(NimrodVM):
     proc seqToPtr[T](x: seq[T]): pointer {.inline, nosideeffect.} =
       result = cast[pointer](x)
   else:
-    proc seqToPtr[T](x: seq[T]): pointer {.noStackFrame, nosideeffect.} =
+    proc seqToPtr[T](x: seq[T]): pointer {.asmNoStackFrame, nosideeffect.} =
       asm """return `x`"""
   
   proc `==` *[T](x, y: seq[T]): bool {.noSideEffect.} =
@@ -1797,7 +1797,7 @@ type
     len*: int           ## length of the inspectable slots
 
 when defined(JS):
-  proc add*(x: var string, y: cstring) {.noStackFrame.} =
+  proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
     asm """
       var len = `x`[0].length-1;
       for (var i = 0; i < `y`.length; ++i) {
