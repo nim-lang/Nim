@@ -65,7 +65,7 @@ html, body {
     
     #page { position:relative; float:left; padding:20px 30px 50px 50px; width:620px; color:#343739; }
       
-      #page h1 { margin-top:40px; }
+      #page h1 { margin-top:40px; line-height: 28px; }
       #page h2 { margin-top:40px; }
       
       #page p { text-align:justify; }
