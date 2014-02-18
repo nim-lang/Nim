@@ -1,14 +1,14 @@
-<a class="news" href="news.html#Z2014-02-11-nimrod-featured-in-dr-dobb-s">
+<a class="news" href="news.html#Z2014-02-11-nimrod-featured-in-dr-dobb-s-journal">
   <h3>Feb 11, 2014</h3>
   <p>Nimrod Featured in Dr. Dobb's Journal</p>
 </a>
 
-<a class="news" href="news.html#Z2014-01-15-nimrod-talk-is-online">
+<a class="news" href="news.html#Z2014-01-15-andreas-rumpf-s-talk-on-nimrod-at-strange-loop-2013-is-now-online">
   <h3>Jan 15, 2014</h3>
   <p>Andreas Rumpf's talk on Nimrod at Strange Loop 2013 is now online.</p>
 </a>
 
-<a class="news" href="news.html#new-website-design">
+<a class="news" href="news.html#Z2013-05-20-new-website-design">
   <h3>May 20, 2013</h3>
   <p>New website design!</p>
 </a>
