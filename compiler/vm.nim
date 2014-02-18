@@ -1025,7 +1025,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       regs[ra].sons[0].flags.incl nfIsRef
     of opcNCopyNimNode:
       decodeB(nkMetaNode)
-      setMeta(regs[ra], copyNode(regs[rb]))
+      setMeta(regs[ra], copyNode(regs[rb].skipMeta))
     of opcNCopyNimTree:
       decodeB(nkMetaNode)
       setMeta(regs[ra], copyTree(regs[rb]))

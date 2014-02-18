@@ -1,8 +1,10 @@
 version 0.9.4
 =============
 
+- fix macros\tstringinterp.nim:
+  - problem: needs another level of indirection for 'seq'
+  - problem: deref is not correct
 - fix GC issues
-- fix macros\tstringinterp.nim
 - test and fix showoff
 
 
