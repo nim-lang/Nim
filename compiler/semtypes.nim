@@ -705,7 +705,6 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       # result.rawAddSon(copyType(paramType.sons[i], getCurrOwner(), true))
     result = instGenericContainer(c, paramType.sym.info, result,
                                   allowMetaTypes = true)
-    result.lastSon.shouldHaveMeta
     result = newTypeWithSons(c, tyCompositeTypeClass, @[paramType, result])
     result = addImplicitGeneric(result)
   
