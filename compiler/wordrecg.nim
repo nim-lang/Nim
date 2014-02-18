@@ -62,7 +62,7 @@ type
     wWatchPoint, wSubsChar, 
     wAcyclic, wShallow, wUnroll, wLinearScanEnd, wComputedGoto, wInjectStmt,
     wWrite, wGensym, wInject, wDirty, wInheritable, wThreadVar, wEmit, 
-    wNoStackFrame,
+    wAsmNoStackFrame,
     wImplicitStatic, wGlobal, wCodegenDecl,
 
     wAuto, wBool, wCatch, wChar, wClass,
@@ -145,7 +145,7 @@ const
     "subschar", "acyclic", "shallow", "unroll", "linearscanend",
     "computedgoto", "injectstmt",
     "write", "gensym", "inject", "dirty", "inheritable", "threadvar", "emit",
-    "nostackframe", "implicitstatic", "global", "codegendecl",
+    "asmnostackframe", "implicitstatic", "global", "codegendecl",
     
     "auto", "bool", "catch", "char", "class",
     "const_cast", "default", "delete", "double",
