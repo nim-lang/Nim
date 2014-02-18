@@ -669,7 +669,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
   of tyTypeDesc:
     if tfUnresolved notin paramType.flags:
       # naked typedescs are not bindOnce types
-      if paramType.sonsLen == 0 and paramTypId != nil and
+      if paramType.base.kind == tyNone and paramTypId != nil and
          paramTypId.id == typedescId.id: paramTypId = nil
       result = addImplicitGeneric(c.newTypeWithSons(tyTypeDesc, paramType.sons))
   
@@ -1011,7 +1011,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     of mOrdinal: result = semOrdinal(c, n, prev)
     of mSeq: result = semContainer(c, n, tySequence, "seq", prev)
     of mVarargs: result = semVarargs(c, n, prev)
-    of mExpr, mTypeDesc:
+    of mTypeDesc: result = makeTypeDesc(c, semTypeNode(c, n[1], nil))
+    of mExpr:
       result = semTypeNode(c, n.sons[0], nil)
       if result != nil:
         result = copyType(result, getCurrOwner(), false)

@@ -1,5 +1,9 @@
 discard """
-  output: "he, no return type;abc a string"
+  output: '''12
+empty
+he, no return type;
+abc a string
+ha'''
 """
 
 proc ReturnT[T](x: T): T =
