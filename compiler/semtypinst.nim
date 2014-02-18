@@ -220,7 +220,7 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
   # is difficult to handle: 
   var body = t.sons[0]
   if body.kind != tyGenericBody: internalError(cl.info, "no generic body")
-  var header: PType = nil
+  var header: PType = t
   # search for some instantiation here:
   if cl.allowMetaTypes:
     result = PType(idTableGet(cl.localCache, t))
@@ -232,11 +232,13 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
     if x.kind == tyGenericParam:
       x = lookupTypeVar(cl, x)
       if x != nil:
-        if header == nil: header = instCopyType(cl, t)
+        if header == t: header = instCopyType(cl, t)
         header.sons[i] = x
         propagateToOwner(header, x)
+    else:
+      propagateToOwner(header, x)
   
-  if header != nil:
+  if header != t:
     # search again after first pass:
     result = searchInstTypes(header)
     if result != nil: return
@@ -244,6 +246,7 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
     header = instCopyType(cl, t)
   
   result = newType(tyGenericInst, t.sons[0].owner)
+  result.flags = header.flags
   # be careful not to propagate unnecessary flags here (don't use rawAddSon)
   result.sons = @[header.sons[0]]
   # ugh need another pass for deeply recursive generic types (e.g. PActor)
