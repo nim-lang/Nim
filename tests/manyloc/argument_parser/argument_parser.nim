@@ -178,14 +178,14 @@ template new_parsed_parameter*(tkind: Tparam_kind, expr): Tparsed_parameter =
   ##     #parsed_param3 = new_parsed_parameter(PK_INT, "231")
   var result {.gensym.}: Tparsed_parameter
   result.kind = tkind
-  when tkind == PK_EMPTY: nil
+  when tkind == PK_EMPTY: discard
   elif tkind == PK_INT: result.int_val = expr
   elif tkind == PK_BIGGEST_INT: result.big_int_val = expr
   elif tkind == PK_FLOAT: result.float_val = expr
   elif tkind == PK_BIGGEST_FLOAT: result.big_float_val = expr
   elif tkind == PK_STRING: result.str_val = expr
   elif tkind == PK_BOOL: result.bool_val = expr
-  elif tkind == PK_HELP: nil
+  elif tkind == PK_HELP: discard
   else: {.error: "unknown kind".}
   result
 
