@@ -321,9 +321,18 @@ proc genAndOr(c: PCtx; n: PNode; opc: TOpcode; dest: var TDest) =
   c.gen(n.sons[2], dest)
   c.patch(L1)
 
+proc nilLiteral(n: PNode): PNode =
+  if n.kind == nkNilLit and n.typ.sym != nil and
+       n.typ.sym.magic == mPNimrodNode:
+    let nilo = newNodeIT(nkNilLit, n.info, n.typ)
+    result = newNodeIT(nkMetaNode, n.info, n.typ)
+    result.add nilo
+  else:
+    result = n
+
 proc rawGenLiteral(c: PCtx; n: PNode): int =
   result = c.constants.len
-  c.constants.add n
+  c.constants.add n.nilLiteral
   internalAssert result < 0x7fff
 
 proc sameConstant*(a, b: PNode): bool =
@@ -907,17 +916,20 @@ proc requiresCopy(n: PNode): bool =
 proc unneededIndirection(n: PNode): bool =
   n.typ.skipTypes(abstractInst-{tyTypeDesc}).kind == tyRef
 
-proc skipDeref(n: PNode): PNode =
-  if n.kind in {nkDerefExpr, nkHiddenDeref} and unneededIndirection(n.sons[0]):
-    result = n.sons[0]
-  else:
-    result = n
-
 proc genAddrDeref(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
                   flags: TGenFlags) = 
   # a nop for certain types
   let flags = if opc == opcAddr: flags+{gfAddrOf} else: flags
-  if unneededIndirection(n.sons[0]):
+  # consider:
+  # proc foo(f: var ref int) =
+  #   f = new(int)
+  # proc blah() =
+  #   var x: ref int
+  #   foo x
+  #
+  # The type of 'f' is 'var ref int' and of 'x' is 'ref int'. Hence for
+  # nkAddr we must not use 'unneededIndirection', but for deref we use it.
+  if opc != opcAddr and unneededIndirection(n.sons[0]):
     gen(c, n.sons[0], dest, flags)
   else:
     let tmp = c.genx(n.sons[0], flags)
@@ -1109,7 +1121,12 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
     result = newNodeIT(nkFloatLit, info, t)
   of tyVar, tyPointer, tyPtr, tyCString, tySequence, tyString, tyExpr,
      tyStmt, tyTypeDesc, tyStatic, tyRef:
-    result = newNodeIT(nkNilLit, info, t)
+    if t.sym != nil and t.sym.magic == mPNimrodNode:
+      let nilo = newNodeIT(nkNilLit, info, t)
+      result = newNodeIT(nkMetaNode, info, t)
+      result.add nilo
+    else:
+      result = newNodeIT(nkNilLit, info, t)
   of tyProc:
     if t.callConv != ccClosure:
       result = newNodeIT(nkNilLit, info, t)
