@@ -105,7 +105,7 @@ type
     errThreadvarCannotInit, errWrongSymbolX, errIllegalCaptureX,
     errXCannotBeClosure, errXMustBeCompileTime,
     errCannotInferTypeOfTheLiteral,
-    errUser,
+    errBadExport, errUser
     warnCannotOpenFile, 
     warnOctalEscape, warnXIsNeverRead, warnXmightNotBeenInit, 
     warnDeprecated, warnConfigDeprecated,
@@ -350,6 +350,7 @@ const
     errXCannotBeClosure: "'$1' cannot have 'closure' calling convention",
     errXMustBeCompileTime: "'$1' can only be used in compile-time context",
     errCannotInferTypeOfTheLiteral: "cannot infer the type of the $1",
+    errBadExport: "invalid exported symbol, $1",
     errUser: "$1", 
     warnCannotOpenFile: "cannot open \'$1\' [CannotOpenFile]",
     warnOctalEscape: "octal escape sequences do not exist; leading zero is ignored [OctalEscape]", 

@@ -97,8 +97,27 @@ proc makeExternImport(s: PSym, extname: string) =
   incl(s.flags, sfImportc)
   excl(s.flags, sfForward)
 
-proc makeExternExport(s: PSym, extname: string) = 
+const invalidIdentChars = AllChars - IdentChars
+
+proc validateExternName(s: PSym, info: TLineInfo) =
+  ## Validates that the symbol name in s.loc.r is a valid C identifier.
+  ##
+  ## Valid identifiers are those alphanumeric including the underscore not
+  ## starting with a number. If the check fails, a friendly error will be
+  ## displayed to the user.
+  let target = ropeToStr(s.loc.r)
+  if target.len < 1:
+    localError(info, errBadExport, "can't be zero length")
+  if not (target[0] in IdentStartChars):
+    localError(info, errBadExport, "'" & target & "' can't start with a number")
+  if not target.allCharsInSet(IdentChars):
+    let pos = target.find(invalidIdentChars, 1)
+    localError(info, errBadExport, "'" & target &
+      "' contains bad character at byte " & $pos)
+
+proc makeExternExport(s: PSym, extname: string, info: TLineInfo) =
   setExternName(s, extname)
+  validateExternName(s, info)
   incl(s.flags, sfExportc)
 
 proc processImportCompilerProc(s: PSym, extname: string) =
@@ -515,7 +534,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
       if k in validPragmas: 
         case k
         of wExportc: 
-          makeExternExport(sym, getOptionalStr(c, it, "$1"))
+          makeExternExport(sym, getOptionalStr(c, it, "$1"), it.info)
           incl(sym.flags, sfUsed) # avoid wrong hints
         of wImportc: makeExternImport(sym, getOptionalStr(c, it, "$1"))
         of wImportCompilerProc:
@@ -601,7 +620,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           processDynLib(c, it, sym)
         of wCompilerproc: 
           noVal(it)           # compilerproc may not get a string!
-          makeExternExport(sym, "$1")
+          makeExternExport(sym, "$1", it.info)
           incl(sym.flags, sfCompilerProc)
           incl(sym.flags, sfUsed) # suppress all those stupid warnings
           registerCompilerProc(sym)
