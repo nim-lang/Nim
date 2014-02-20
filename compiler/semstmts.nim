@@ -143,10 +143,11 @@ proc discardCheck(c: PContext, result: PNode) =
       while n.kind in skipForDiscardable:
         n = n.lastSon
         n.typ = nil
-    elif c.inTypeClass > 0 and result.typ.kind == tyBool:
-      let verdict = semConstExpr(c, result)
-      if verdict.intVal == 0:
-        localError(result.info, "type class predicate failed")
+    elif c.inTypeClass > 0:
+      if result.typ.kind == tyBool:
+        let verdict = semConstExpr(c, result)
+        if verdict.intVal == 0:
+          localError(result.info, "type class predicate failed")
     elif result.typ.kind != tyError and gCmd != cmdInteractive:
       if result.typ.kind == tyNil:
         fixNilType(result)
