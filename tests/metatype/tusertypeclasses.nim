@@ -31,9 +31,10 @@ proc intval(x: int) = discard
 # check real and virtual fields
 type
   TFoo = generic T
-    intval T.x
+    T.x
+    y(T)
     intval T.y
-
+    
 proc y(x: TObj): int = 10
 
 proc testFoo(x: TFoo) = discard
