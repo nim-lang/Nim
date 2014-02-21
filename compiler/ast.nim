@@ -62,7 +62,7 @@ type
     nkTripleStrLit,       # a triple string literal """
     nkNilLit,             # the nil literal
                           # end of atoms
-    nkMetaNode,           # difficult to explain; represents itself
+    nkMetaNode_Obsolete,  # difficult to explain; represents itself
                           # (used for macros)
     nkDotCall,            # used to temporarily flag a nkCall node; 
                           # this is used
@@ -1111,10 +1111,6 @@ proc newNodeIT(kind: TNodeKind, info: TLineInfo, typ: PType): PNode =
   result = newNode(kind)
   result.info = info
   result.typ = typ
-
-proc newMetaNodeIT*(tree: PNode, info: TLineInfo, typ: PType): PNode =
-  result = newNodeIT(nkMetaNode, info, typ)
-  result.add(tree)
 
 var emptyParams = newNode(nkFormalParams)
 emptyParams.addSon(emptyNode)

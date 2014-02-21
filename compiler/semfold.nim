@@ -537,7 +537,7 @@ proc foldArrayAccess(m: PSym, n: PNode): PNode =
       if result.kind == nkExprColonExpr: result = result.sons[1]
     else:
       localError(n.info, errIndexOutOfBounds)
-  of nkBracket, nkMetaNode: 
+  of nkBracket: 
     if (idx >= 0) and (idx < sonsLen(x)): result = x.sons[int(idx)]
     else: localError(n.info, errIndexOutOfBounds)
   of nkStrLit..nkTripleStrLit: 

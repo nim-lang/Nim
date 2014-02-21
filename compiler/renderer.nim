@@ -1268,7 +1268,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       put(g, tkBracketLe, "[")
       gcomma(g, n)
       put(g, tkBracketRi, "]")
-  of nkMetaNode:
+  of nkMetaNode_Obsolete:
     put(g, tkParLe, "(META|")
     gsub(g, n.sons[0])
     put(g, tkParRi, ")")

@@ -8,7 +8,7 @@
 #
 
 ## This file implements the new evaluation engine for Nimrod code.
-## An instruction is 1-2 int32s in memory, it is a register based VM.
+## An instruction is 1-3 int32s in memory, it is a register based VM.
 
 import ast except getstr
 
@@ -23,10 +23,22 @@ when hasFFI:
   import evalffi
 
 type
+  TRegisterKind = enum
+    rkNone, rkNode, rkStr, rkInt, rkFloat, rkRegisterAddr, rkNodeAddr
+  TRegister = object  # with a custom mark proc, we could use the same
+                      # data representation as LuaJit (tagged NaNs).
+    case kind: TRegisterKind
+    of rkNone: nil
+    of rkInt: intVal: BiggestInt
+    of rkFloat: floatVal: BiggestFloat
+    of rkNode, rkStr: node: PNode
+    of rkRegisterAddr: regAddr: ptr TRegister
+    of rkNodeAddr: nodeAddr: ptr PNode
+
   PStackFrame* = ref TStackFrame
   TStackFrame* = object
     prc: PSym                 # current prc; proc that is evaluated
-    slots: TNodeSeq           # parameters passed to the proc + locals;
+    slots: seq[TRegister]     # parameters passed to the proc + locals;
                               # parameters come first
     next: PStackFrame         # for stacking
     comesFrom: int
@@ -63,24 +75,9 @@ proc bailOut(c: PCtx; tos: PStackFrame) =
 when not defined(nimComputedGoto):
   {.pragma: computedGoto.}
 
-proc myreset(n: PNode) =
+proc myreset(n: var TRegister) =
   when defined(system.reset): 
-    var oldInfo = n.info
-    reset(n[])
-    n.info = oldInfo
-
-proc skipMeta(n: PNode): PNode = (if n.kind != nkMetaNode: n else: n.sons[0])
-
-proc setMeta(n, child: PNode) =
-  assert n.kind == nkMetaNode
-  let child = child.skipMeta
-  if n.sons.isNil: n.sons = @[child]
-  else: n.sons[0] = child
-
-proc uast(n: PNode): PNode {.inline.} =
-  # "underlying ast"
-  assert n.kind == nkMetaNode
-  n.sons[0]
+    reset(n)
 
 template ensureKind(k: expr) {.immediate, dirty.} =
   if regs[ra].kind != k:
@@ -112,23 +109,20 @@ template decodeBx(k: expr) {.immediate, dirty.} =
 template move(a, b: expr) {.immediate, dirty.} = system.shallowCopy(a, b)
 # XXX fix minor 'shallowCopy' overloading bug in compiler
 
-proc moveConst(x, y: PNode) =
+template createStr(x) =
+  if x.node.isNil: x.node = newNode(nkStrLit)
+
+proc moveConst(x: var TRegister, y: TRegister) =
   if x.kind != y.kind:
     myreset(x)
     x.kind = y.kind
-  x.typ = y.typ
   case x.kind
-  of nkCharLit..nkInt64Lit: x.intVal = y.intVal
-  of nkFloatLit..nkFloat64Lit: x.floatVal = y.floatVal
-  of nkStrLit..nkTripleStrLit: move(x.strVal, y.strVal)
-  of nkIdent: x.ident = y.ident
-  of nkSym: x.sym = y.sym
-  of nkMetaNode:
-    if x.sons.isNil: x.sons = @[y.sons[0]]
-    else: x.sons[0] = y.sons[0]
-  else:
-    if x.kind notin {nkEmpty..nkNilLit}:
-      move(x.sons, y.sons)
+  of rkNone: discard
+  of rkInt: x.intVal = y.intVal
+  of rkFloat: x.floatVal = y.floatVal
+  of rkStr, rkNode: x.node = y.node
+  of rkRegisterAddr: x.regAddr = y.regAddr
+  of rkNodeAddr: x.nodeAddr = y.nodeAddr
 
 # this seems to be the best way to model the reference semantics
 # of PNimrodNode:
@@ -155,29 +149,59 @@ proc copyValue(src: PNode): PNode =
     for i in countup(0, sonsLen(src) - 1):
       result.sons[i] = copyValue(src.sons[i])
 
-proc asgnComplex(x, y: PNode) =
+proc asgnComplex(x: var TRegister, y: TRegister) =
   if x.kind != y.kind:
     myreset(x)
     x.kind = y.kind
-  x.typ = y.typ
   case x.kind
-  of nkCharLit..nkInt64Lit: x.intVal = y.intVal
-  of nkFloatLit..nkFloat64Lit: x.floatVal = y.floatVal
-  of nkStrLit..nkTripleStrLit: x.strVal = y.strVal
-  of nkIdent: x.ident = y.ident
-  of nkSym: x.sym = y.sym
-  of nkMetaNode:
-    if x.sons.isNil: x.sons = @[y.sons[0]]
-    else: x.sons[0] = y.sons[0]
+  of rkNone: discard
+  of rkInt: x.intVal = y.intVal
+  of rkFloat: x.floatVal = y.floatVal
+  of rkStr, rkNode: x.node = copyValue(y.node)
+  of rkRegisterAddr: x.regAddr = y.regAddr
+  of rkNodeAddr: x.nodeAddr = y.nodeAddr
+
+proc putIntoNode(n: PNode; x: TRegister) =
+  case x.kind
+  of rkNone: discard
+  of rkStr: 
+    if n.kind == nkNilLit:
+      system.reset(n[])
+      n.kind = nkStrLit
+    n.strVal = x.node.strVal
+  of rkInt: n.intVal = x.intVal
+  of rkFloat: n.floatVal = x.floatVal
+  of rkNode: n[] = x.node[]
+  of rkRegisterAddr: putIntoNode(n, x.regAddr[])
+  of rkNodeAddr: n[] = x.nodeAddr[][]
+
+proc putIntoReg(dest: var TRegister; n: PNode) =
+  case n.kind
+  of nkStrLit..nkTripleStrLit:
+    dest.kind = rkStr
+    createStr(dest)
+    dest.node.strVal = n.strVal
+  of nkCharLit..nkUInt64Lit:
+    dest.kind = rkInt
+    dest.intVal = n.intVal
+  of nkFloatLit..nkFloat128Lit:
+    dest.kind = rkFloat
+    dest.floatVal = n.floatVal
   else:
-    if x.kind notin {nkEmpty..nkNilLit}:
-      let y = y.copyValue
-      for i in countup(0, sonsLen(y) - 1): 
-        if i < x.len: x.sons[i] = y.sons[i]
-        else: addSon(x, y.sons[i])
+    dest.kind = rkNode
+    dest.node = n
+
+proc regToNode(x: TRegister): PNode =
+  case x.kind
+  of rkNone: result = newNode(nkEmpty)
+  of rkInt: result = newNode(nkIntLit); result.intVal = x.intVal
+  of rkFloat: result = newNode(nkFloatLit); result.floatVal = x.floatVal
+  of rkStr, rkNode: result = x.node
+  of rkRegisterAddr: result = regToNode(x.regAddr[])
+  of rkNodeAddr: result = x.nodeAddr[]
 
 template getstr(a: expr): expr =
-  (if a.kind in {nkStrLit..nkTripleStrLit}: a.strVal else: $chr(int(a.intVal)))
+  (if a.kind == rkStr: a.node.strVal else: $chr(int(a.intVal)))
 
 proc pushSafePoint(f: PStackFrame; pc: int) =
   if f.safePoints.isNil: f.safePoints = @[]
@@ -185,7 +209,7 @@ proc pushSafePoint(f: PStackFrame; pc: int) =
 
 proc popSafePoint(f: PStackFrame) = discard f.safePoints.pop()
 
-proc cleanUpOnException(c: PCtx; tos: PStackFrame; regs: TNodeSeq): int =
+proc cleanUpOnException(c: PCtx; tos: PStackFrame; regs: seq[TRegister]): int =
   let raisedType = c.currentExceptionA.typ.skipTypes(abstractPtrs)
   var f = tos
   while true:
@@ -227,50 +251,51 @@ proc cleanUpOnReturn(c: PCtx; f: PStackFrame): int =
       return pc
   return -1
 
-proc opConv*(dest, src: PNode, typ: PType): bool =
-  if typ.kind == tyString:
-    if dest.kind != nkStrLit:
+proc opConv*(dest: var TRegister, src: TRegister, desttyp, srctyp: PType): bool =
+  if desttyp.kind == tyString:
+    if dest.kind != rkStr:
       myreset(dest)
-      dest.kind = nkStrLit
-    case src.typ.skipTypes(abstractRange).kind
+      dest.kind = rkStr
+      dest.node = newNode(nkStrLit)
+    case srctyp.skipTypes(abstractRange).kind
     of tyEnum: 
-      dest.strVal = ordinalValToString(src)
+      dest.node.strVal = "too implement" #ordinalValToString(src)
     of tyInt..tyInt64, tyUInt..tyUInt64:
-      dest.strVal = $src.intVal
+      dest.node.strVal = $src.intVal
     of tyBool:
-      dest.strVal = if src.intVal == 0: "false" else: "true"
+      dest.node.strVal = if src.intVal == 0: "false" else: "true"
     of tyFloat..tyFloat128:
-      dest.strVal = $src.floatVal
+      dest.node.strVal = $src.floatVal
     of tyString, tyCString:
-      dest.strVal = src.strVal
+      dest.node.strVal = src.node.strVal
     of tyChar:
-      dest.strVal = $chr(src.intVal)
+      dest.node.strVal = $chr(src.intVal)
     else:
-      internalError("cannot convert to string " & typ.typeToString)
+      internalError("cannot convert to string " & desttyp.typeToString)
   else:
-    case skipTypes(typ, abstractRange).kind
+    case skipTypes(desttyp, abstractRange).kind
     of tyInt..tyInt64:
-      if dest.kind != nkIntLit:
-        myreset(dest); dest.kind = nkIntLit
-      case skipTypes(src.typ, abstractRange).kind
+      if dest.kind != rkInt:
+        myreset(dest); dest.kind = rkInt
+      case skipTypes(srctyp, abstractRange).kind
       of tyFloat..tyFloat64:
         dest.intVal = system.toInt(src.floatVal)
       else:
         dest.intVal = src.intVal
-      if dest.intVal < firstOrd(typ) or dest.intVal > lastOrd(typ):
+      if dest.intVal < firstOrd(desttyp) or dest.intVal > lastOrd(desttyp):
         return true
     of tyUInt..tyUInt64:
-      if dest.kind != nkIntLit:
-        myreset(dest); dest.kind = nkIntLit
-      case skipTypes(src.typ, abstractRange).kind
+      if dest.kind != rkInt:
+        myreset(dest); dest.kind = rkInt
+      case skipTypes(srctyp, abstractRange).kind
       of tyFloat..tyFloat64:
         dest.intVal = system.toInt(src.floatVal)
       else:
-        dest.intVal = src.intVal and ((1 shl typ.size)-1)
+        dest.intVal = src.intVal and ((1 shl desttyp.size)-1)
     of tyFloat..tyFloat64:
-      if dest.kind != nkFloatLit:
-        myreset(dest); dest.kind = nkFloatLit
-      case skipTypes(src.typ, abstractRange).kind
+      if dest.kind != rkFloat:
+        myreset(dest); dest.kind = rkFloat
+      case skipTypes(srctyp, abstractRange).kind
       of tyInt..tyInt64, tyUInt..tyUInt64, tyEnum, tyBool, tyChar: 
         dest.floatVal = toFloat(src.intVal.int)
       else:
@@ -282,15 +307,10 @@ proc compile(c: PCtx, s: PSym): int =
   result = vmgen.genProc(c, s)
   #c.echoCode
 
-proc regsContents(regs: TNodeSeq) =
-  for i in 0.. <regs.len:
-    echo "Register ", i
-    #debug regs[i]
-
-proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
+proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TRegister =
   var pc = start
   var tos = tos
-  var regs: TNodeSeq # alias to tos.slots for performance
+  var regs: seq[TRegister] # alias to tos.slots for performance
   move(regs, tos.slots)
   #echo "NEW RUN ------------------------"
   while true:
@@ -318,325 +338,330 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
     of opcYldYoid: assert false
     of opcYldVal: assert false
     of opcAsgnInt:
-      decodeB(nkIntLit)
+      decodeB(rkInt)
       regs[ra].intVal = regs[rb].intVal
     of opcAsgnStr:
-      if regs[instr.regB].kind == nkNilLit:
-        decodeB(nkNilLit)
-      else:
-        decodeB(nkStrLit)
-        regs[ra].strVal = regs[rb].strVal
+      decodeB(rkStr)
+      createStr regs[ra]
+      regs[ra].node.strVal = regs[rb].node.strVal
     of opcAsgnFloat:
-      decodeB(nkFloatLit)
+      decodeB(rkFloat)
       regs[ra].floatVal = regs[rb].floatVal
     of opcAsgnComplex:
       asgnComplex(regs[ra], regs[instr.regB])
     of opcAsgnRef:
       asgnRef(regs[ra], regs[instr.regB])
-    of opcWrGlobalRef:
-      asgnRef(c.globals.sons[instr.regBx-wordExcess-1], regs[ra])
-    of opcWrGlobal:
-      asgnComplex(c.globals.sons[instr.regBx-wordExcess-1], regs[ra])
-    of opcLdArr, opcLdArrRef:
-      # a = b[c]
+    of opcRegToNode:
+      decodeB(rkNode)
+      putIntoNode(regs[ra].node, regs[rb])
+    of opcNodeToReg:
+      let ra = instr.regA
       let rb = instr.regB
-      let rc = instr.regC
+      assert regs[rb].kind == rkNode
+      let nb = regs[rb].node
+      case nb.kind
+      of nkCharLit..nkInt64Lit:
+        ensureKind(rkInt)
+        regs[ra].intVal = nb.intVal
+      of nkFloatLit..nkFloat64Lit:
+        ensureKind(rkFloat)
+        regs[ra].floatVal = nb.floatVal
+      else:
+        ensureKind(rkNode)
+        regs[ra].node = nb
+    of opcLdArr:
+      # a = b[c]
+      decodeBC(rkNode)
       if regs[rc].intVal > high(int):
         stackTrace(c, tos, pc, errIndexOutOfBounds)
       let idx = regs[rc].intVal.int
       # XXX what if the array is not 0-based? -> codegen should insert a sub
-      assert regs[rb].kind != nkMetaNode
-      let src = regs[rb]
+      let src = regs[rb].node
       if src.kind notin {nkEmpty..nkNilLit} and idx <% src.len:
-        if instr.opcode == opcLdArrRef and false:
-          # XXX activate when seqs are fixed
-          asgnRef(regs[ra], src.sons[idx])
-        else:
-          asgnComplex(regs[ra], src.sons[idx])
+        regs[ra].node = src.sons[idx]
       else:
         stackTrace(c, tos, pc, errIndexOutOfBounds)
     of opcLdStrIdx:
-      decodeBC(nkIntLit)
+      decodeBC(rkInt)
       let idx = regs[rc].intVal.int
-      if idx <=% regs[rb].strVal.len:
-        regs[ra].intVal = regs[rb].strVal[idx].ord
+      if idx <=% regs[rb].node.strVal.len:
+        regs[ra].intVal = regs[rb].node.strVal[idx].ord
       else:
         stackTrace(c, tos, pc, errIndexOutOfBounds)
     of opcWrArr:
       # a[b] = c
-      let rb = instr.regB
-      let rc = instr.regC
+      decodeBC(rkNode)
       let idx = regs[rb].intVal.int
-      if idx <% regs[ra].len:
-        asgnComplex(regs[ra].sons[idx], regs[rc])
-      else:
-        stackTrace(c, tos, pc, errIndexOutOfBounds)
-    of opcWrArrRef:
-      let rb = instr.regB
-      let rc = instr.regC
-      let idx = regs[rb].intVal.int
-      if idx <% regs[ra].len:
-        asgnRef(regs[ra].sons[idx], regs[rc])
+      if idx <% regs[ra].node.len:
+        putIntoNode(regs[ra].node.sons[idx], regs[rc])
       else:
         stackTrace(c, tos, pc, errIndexOutOfBounds)
     of opcLdObj:
       # a = b.c
-      let rb = instr.regB
-      let rc = instr.regC
-      #Message(c.debug[pc], warnUser, $regs[rb].safeLen & " " & $rc)
-      asgnComplex(regs[ra], regs[rb].sons[rc])
-    of opcLdObjRef:
-      # a = b.c
-      let rb = instr.regB
-      let rc = instr.regC
-      # XXX activate when seqs are fixed
-      asgnComplex(regs[ra], regs[rb].sons[rc])
-      #asgnRef(regs[ra], regs[rb].sons[rc])
-    of opcWrObj:
-      # a.b = c
-      let rb = instr.regB
-      let rc = instr.regC
-      #if regs[ra].isNil or regs[ra].sons.isNil or rb >= len(regs[ra]):
-      #  debug regs[ra]
-      #  debug regs[rc]
-      #  echo "RB ", rb
-      #  internalError(c.debug[pc], "argl")
-      asgnComplex(regs[ra].sons[rb], regs[rc])
-    of opcWrObjRef:
-      let rb = instr.regB
-      let rc = instr.regC
-      asgnRef(regs[ra].sons[rb], regs[rc])
-    of opcWrStrIdx:
-      decodeBC(nkStrLit)
-      let idx = regs[rb].intVal.int
-      if idx <% regs[ra].strVal.len:
-        regs[ra].strVal[idx] = chr(regs[rc].intVal)
+      decodeBC(rkNode)
+      let src = regs[rb].node
+      if src.kind notin {nkEmpty..nkNilLit}:
+        regs[ra].node = src.sons[rc]
       else:
         stackTrace(c, tos, pc, errIndexOutOfBounds)
-    of opcAddr:
-      decodeB(nkRefTy)
-      if regs[ra].len == 0: regs[ra].add regs[rb]
-      else: regs[ra].sons[0] = regs[rb]
-    of opcDeref:
+    of opcWrObj:
+      # a.b = c
+      decodeBC(rkNode)
+      putIntoNode(regs[ra].node.sons[rb], regs[rc])
+    of opcWrStrIdx:
+      decodeBC(rkStr)
+      let idx = regs[rb].intVal.int
+      if idx <% regs[ra].node.strVal.len:
+        regs[ra].node.strVal[idx] = chr(regs[rc].intVal)
+      else:
+        stackTrace(c, tos, pc, errIndexOutOfBounds)
+    of opcAddrReg:
+      decodeB(rkRegisterAddr)
+      regs[ra].regAddr = addr(regs[rb])
+    of opcAddrNode:
+      decodeB(rkNodeAddr)
+      regs[ra].nodeAddr = addr(regs[rb].node)
+    of opcLdDeref:
       # a = b[]
+      let ra = instr.regA
       let rb = instr.regB
-      if regs[rb].kind == nkNilLit:
-        stackTrace(c, tos, pc, errNilAccess)
-      assert regs[rb].kind == nkRefTy
-      # XXX this is not correct
-      regs[ra] = regs[rb].sons[0]
+      case regs[rb].kind
+      of rkNodeAddr:
+        ensureKind(rkNode)
+        regs[ra].node = regs[rb].nodeAddr[]
+      of rkRegisterAddr:
+        ensureKind(regs[rb].regAddr.kind)
+        regs[ra] = regs[rb].regAddr[]
+      of rkNode:
+        if regs[rb].node.kind == nkNilLit:
+          stackTrace(c, tos, pc, errNilAccess)
+        assert regs[rb].node.kind == nkRefTy
+        regs[ra].node = regs[rb].node.sons[0]
+      else:
+        stackTrace(c, tos, pc, errIndexOutOfBounds)
+    of opcWrDeref:
+      # a[] = b
+      decodeBC(rkNode)
+      putIntoNode(regs[ra].node, regs[rc])
     of opcAddInt:
-      decodeBC(nkIntLit)
+      decodeBC(rkInt)
       regs[ra].intVal = regs[rb].intVal + regs[rc].intVal
     of opcAddImmInt:
-      decodeBImm(nkIntLit)
+      decodeBImm(rkInt)
       regs[ra].intVal = regs[rb].intVal + imm
     of opcSubInt:
-      decodeBC(nkIntLit)
+      decodeBC(rkInt)
       regs[ra].intVal = regs[rb].intVal - regs[rc].intVal
     of opcSubImmInt:
-      decodeBImm(nkIntLit)
+      decodeBImm(rkInt)
       regs[ra].intVal = regs[rb].intVal - imm
     of opcLenSeq:
-      decodeBImm(nkIntLit)
+      decodeBImm(rkInt)
       #assert regs[rb].kind == nkBracket
       # also used by mNLen:
-      regs[ra].intVal = regs[rb].skipMeta.safeLen - imm
+      regs[ra].intVal = regs[rb].node.safeLen - imm
     of opcLenStr:
-      decodeBImm(nkIntLit)
-      if regs[rb].kind == nkNilLit:
-        stackTrace(c, tos, pc, errNilAccess)
-      else:
-        assert regs[rb].kind in {nkStrLit..nkTripleStrLit}
-        regs[ra].intVal = regs[rb].strVal.len - imm
+      decodeBImm(rkInt)
+      assert regs[rb].kind == rkStr
+      regs[ra].intVal = regs[rb].node.strVal.len - imm
     of opcIncl:
-      decodeB(nkCurly)
-      if not inSet(regs[ra], regs[rb]): addSon(regs[ra], copyTree(regs[rb]))
+      decodeB(rkNode)
+      let b = regs[rb].regToNode
+      if not inSet(regs[ra].node, b):
+        addSon(regs[ra].node, copyTree(b))
     of opcInclRange:
-      decodeBC(nkCurly)
+      decodeBC(rkNode)
       var r = newNode(nkRange)
-      r.add regs[rb]
-      r.add regs[rc]
-      addSon(regs[ra], r.copyTree)
+      r.add regs[rb].node
+      r.add regs[rc].node
+      addSon(regs[ra].node, r.copyTree)
     of opcExcl:
-      decodeB(nkCurly)
-      var b = newNodeIT(nkCurly, regs[rb].info, regs[rb].typ)
-      addSon(b, regs[rb])
-      var r = diffSets(regs[ra], b)
-      discardSons(regs[ra])
-      for i in countup(0, sonsLen(r) - 1): addSon(regs[ra], r.sons[i])
+      decodeB(rkNode)
+      var b = newNodeIT(nkCurly, regs[rb].node.info, regs[rb].node.typ)
+      addSon(b, regs[rb].regToNode)
+      var r = diffSets(regs[ra].node, b)
+      discardSons(regs[ra].node)
+      for i in countup(0, sonsLen(r) - 1): addSon(regs[ra].node, r.sons[i])
     of opcCard:
-      decodeB(nkIntLit)
-      regs[ra].intVal = nimsets.cardSet(regs[rb])
+      decodeB(rkInt)
+      regs[ra].intVal = nimsets.cardSet(regs[rb].node)
     of opcMulInt:
-      decodeBC(nkIntLit)
+      decodeBC(rkInt)
       regs[ra].intVal = regs[rb].intVal * regs[rc].intVal
     of opcDivInt:
-      decodeBC(nkIntLit)
+      decodeBC(rkInt)
       regs[ra].intVal = regs[rb].intVal div regs[rc].intVal
     of opcModInt:
-      decodeBC(nkIntLit)
+      decodeBC(rkInt)
       regs[ra].intVal = regs[rb].intVal mod regs[rc].intVal
     of opcAddFloat:
-      decodeBC(nkFloatLit)
+      decodeBC(rkFloat)
       regs[ra].floatVal = regs[rb].floatVal + regs[rc].floatVal
     of opcSubFloat:
-      decodeBC(nkFloatLit)
+      decodeBC(rkFloat)
       regs[ra].floatVal = regs[rb].floatVal - regs[rc].floatVal
     of opcMulFloat:
-      decodeBC(nkFloatLit)
+      decodeBC(rkFloat)
       regs[ra].floatVal = regs[rb].floatVal * regs[rc].floatVal
     of opcDivFloat:
-      decodeBC(nkFloatLit)
+      decodeBC(rkFloat)
       regs[ra].floatVal = regs[rb].floatVal / regs[rc].floatVal
     of opcShrInt:
-      decodeBC(nkIntLit)
+      decodeBC(rkInt)
       regs[ra].intVal = regs[rb].intVal shr regs[rc].intVal
     of opcShlInt:
-      decodeBC(nkIntLit)
+      decodeBC(rkInt)
       regs[ra].intVal = regs[rb].intVal shl regs[rc].intVal
     of opcBitandInt:
-      decodeBC(nkIntLit)
+      decodeBC(rkInt)
       regs[ra].intVal = regs[rb].intVal and regs[rc].intVal
     of opcBitorInt:
-      decodeBC(nkIntLit)
+      decodeBC(rkInt)
       regs[ra].intVal = regs[rb].intVal or regs[rc].intVal
     of opcBitxorInt:
-      decodeBC(nkIntLit)
+      decodeBC(rkInt)
       regs[ra].intVal = regs[rb].intVal xor regs[rc].intVal
     of opcAddu:
-      decodeBC(nkIntLit)
+      decodeBC(rkInt)
       regs[ra].intVal = regs[rb].intVal +% regs[rc].intVal
     of opcSubu:
-      decodeBC(nkIntLit)
+      decodeBC(rkInt)
       regs[ra].intVal = regs[rb].intVal -% regs[rc].intVal
     of opcMulu: 
-      decodeBC(nkIntLit)
+      decodeBC(rkInt)
       regs[ra].intVal = regs[rb].intVal *% regs[rc].intVal
     of opcDivu:
-      decodeBC(nkIntLit)
+      decodeBC(rkInt)
       regs[ra].intVal = regs[rb].intVal /% regs[rc].intVal
     of opcModu:
-      decodeBC(nkIntLit)
+      decodeBC(rkInt)
       regs[ra].intVal = regs[rb].intVal %% regs[rc].intVal
     of opcEqInt:
-      decodeBC(nkIntLit)
+      decodeBC(rkInt)
       regs[ra].intVal = ord(regs[rb].intVal == regs[rc].intVal)
     of opcLeInt:
-      decodeBC(nkIntLit)
+      decodeBC(rkInt)
       regs[ra].intVal = ord(regs[rb].intVal <= regs[rc].intVal)
     of opcLtInt:
-      decodeBC(nkIntLit)
+      decodeBC(rkInt)
       regs[ra].intVal = ord(regs[rb].intVal < regs[rc].intVal)
     of opcEqFloat:
-      decodeBC(nkIntLit)
+      decodeBC(rkInt)
       regs[ra].intVal = ord(regs[rb].floatVal == regs[rc].floatVal)
     of opcLeFloat:
-      decodeBC(nkIntLit)
+      decodeBC(rkInt)
       regs[ra].intVal = ord(regs[rb].floatVal <= regs[rc].floatVal)
     of opcLtFloat:
-      decodeBC(nkIntLit)
+      decodeBC(rkInt)
       regs[ra].intVal = ord(regs[rb].floatVal < regs[rc].floatVal)
     of opcLeu:
-      decodeBC(nkIntLit)
+      decodeBC(rkInt)
       regs[ra].intVal = ord(regs[rb].intVal <=% regs[rc].intVal)
     of opcLtu:
-      decodeBC(nkIntLit)
+      decodeBC(rkInt)
       regs[ra].intVal = ord(regs[rb].intVal <% regs[rc].intVal)
     of opcEqRef:
-      decodeBC(nkIntLit)
-      regs[ra].intVal = ord((regs[rb].kind == nkNilLit and
-                             regs[rc].kind == nkNilLit) or
-                             regs[rb].sons == regs[rc].sons)
+      decodeBC(rkInt)
+      regs[ra].intVal = ord((regs[rb].node.kind == nkNilLit and
+                             regs[rc].node.kind == nkNilLit) or
+                             regs[rb].node == regs[rc].node)
     of opcEqNimrodNode:
-      decodeBC(nkIntLit)
-      regs[ra].intVal = ord(regs[rb].skipMeta == regs[rc].skipMeta)
+      decodeBC(rkInt)
+      regs[ra].intVal = ord(regs[rb].node == regs[rc].node)
     of opcXor:
-      decodeBC(nkIntLit)
+      decodeBC(rkInt)
       regs[ra].intVal = ord(regs[rb].intVal != regs[rc].intVal)
     of opcNot:
-      decodeB(nkIntLit)
-      assert regs[rb].kind == nkIntLit
+      decodeB(rkInt)
+      assert regs[rb].kind == rkInt
       regs[ra].intVal = 1 - regs[rb].intVal
     of opcUnaryMinusInt:
-      decodeB(nkIntLit)
-      assert regs[rb].kind == nkIntLit
+      decodeB(rkInt)
+      assert regs[rb].kind == rkInt
       regs[ra].intVal = -regs[rb].intVal
     of opcUnaryMinusFloat:
-      decodeB(nkFloatLit)
-      assert regs[rb].kind == nkFloatLit
+      decodeB(rkFloat)
+      assert regs[rb].kind == rkFloat
       regs[ra].floatVal = -regs[rb].floatVal
     of opcBitnotInt:
-      decodeB(nkIntLit)
-      assert regs[rb].kind == nkIntLit
+      decodeB(rkInt)
+      assert regs[rb].kind == rkInt
       regs[ra].intVal = not regs[rb].intVal
     of opcEqStr:
-      decodeBC(nkIntLit)
-      regs[ra].intVal = ord(regs[rb].strVal == regs[rc].strVal)
+      decodeBC(rkInt)
+      regs[ra].intVal = ord(regs[rb].node.strVal == regs[rc].node.strVal)
     of opcLeStr:
-      decodeBC(nkIntLit)
-      regs[ra].intVal = ord(regs[rb].strVal <= regs[rc].strVal)
+      decodeBC(rkInt)
+      regs[ra].intVal = ord(regs[rb].node.strVal <= regs[rc].node.strVal)
     of opcLtStr:
-      decodeBC(nkIntLit)
-      regs[ra].intVal = ord(regs[rb].strVal < regs[rc].strVal)
+      decodeBC(rkInt)
+      regs[ra].intVal = ord(regs[rb].node.strVal < regs[rc].node.strVal)
     of opcLeSet:
-      decodeBC(nkIntLit)
-      regs[ra].intVal = ord(containsSets(regs[rb], regs[rc]))
+      decodeBC(rkInt)
+      regs[ra].intVal = ord(containsSets(regs[rb].node, regs[rc].node))
     of opcEqSet: 
-      decodeBC(nkIntLit)
-      regs[ra].intVal = ord(equalSets(regs[rb], regs[rc]))
+      decodeBC(rkInt)
+      regs[ra].intVal = ord(equalSets(regs[rb].node, regs[rc].node))
     of opcLtSet:
-      decodeBC(nkIntLit)
-      let a = regs[rb]
-      let b = regs[rc]
+      decodeBC(rkInt)
+      let a = regs[rb].node
+      let b = regs[rc].node
       regs[ra].intVal = ord(containsSets(a, b) and not equalSets(a, b))
     of opcMulSet:
-      decodeBC(nkCurly)
-      move(regs[ra].sons, nimsets.intersectSets(regs[rb], regs[rc]).sons)
+      decodeBC(rkNode)
+      move(regs[ra].node.sons, 
+            nimsets.intersectSets(regs[rb].node, regs[rc].node).sons)
     of opcPlusSet: 
-      decodeBC(nkCurly)
-      move(regs[ra].sons, nimsets.unionSets(regs[rb], regs[rc]).sons)
+      decodeBC(rkNode)
+      move(regs[ra].node.sons,
+           nimsets.unionSets(regs[rb].node, regs[rc].node).sons)
     of opcMinusSet:
-      decodeBC(nkCurly)
-      move(regs[ra].sons, nimsets.diffSets(regs[rb], regs[rc]).sons)
+      decodeBC(rkNode)
+      move(regs[ra].node.sons,
+           nimsets.diffSets(regs[rb].node, regs[rc].node).sons)
     of opcSymdiffSet:
-      decodeBC(nkCurly)
-      move(regs[ra].sons, nimsets.symdiffSets(regs[rb], regs[rc]).sons)    
+      decodeBC(rkNode)
+      move(regs[ra].node.sons,
+           nimsets.symdiffSets(regs[rb].node, regs[rc].node).sons)    
     of opcConcatStr:
-      decodeBC(nkStrLit)
-      regs[ra].strVal = getstr(regs[rb])
+      decodeBC(rkStr)
+      createStr regs[ra]
+      regs[ra].node.strVal = getstr(regs[rb])
       for i in rb+1..rb+rc-1:
-        regs[ra].strVal.add getstr(regs[i])
+        regs[ra].node.strVal.add getstr(regs[i])
     of opcAddStrCh:
-      decodeB(nkStrLit)
-      regs[ra].strVal.add(regs[rb].intVal.chr)
+      decodeB(rkStr)
+      createStr regs[ra]
+      regs[ra].node.strVal.add(regs[rb].intVal.chr)
     of opcAddStrStr:
-      decodeB(nkStrLit)
-      regs[ra].strVal.add(regs[rb].strVal)
+      decodeB(rkStr)
+      createStr regs[ra]
+      regs[ra].node.strVal.add(regs[rb].node.strVal)
     of opcAddSeqElem:
-      decodeB(nkBracket)
-      regs[ra].add(copyTree(regs[rb]))
+      decodeB(rkNode)
+      regs[ra].node.add(copyTree(regs[rb].node))
     of opcEcho:
       let rb = instr.regB
       for i in ra..ra+rb-1:
-        #if regs[i].kind != nkStrLit: debug regs[i]
-        write(stdout, regs[i].strVal)
+        #if regs[i].kind != rkStr: debug regs[i]
+        write(stdout, regs[i].node.strVal)
       writeln(stdout, "")
     of opcContainsSet:
-      decodeBC(nkIntLit)
-      regs[ra].intVal = ord(inSet(regs[rb], regs[rc]))
+      decodeBC(rkInt)
+      regs[ra].intVal = ord(inSet(regs[rb].node, regs[rc].node))
     of opcSubStr:
-      decodeBC(nkStrLit)
+      decodeBC(rkStr)
       inc pc
       assert c.code[pc].opcode == opcSubStr
       let rd = c.code[pc].regA
-      regs[ra].strVal = substr(regs[rb].strVal, regs[rc].intVal.int, 
-                               regs[rd].intVal.int)
+      createStr regs[ra]
+      regs[ra].node.strVal = substr(regs[rb].node.strVal, 
+                                    regs[rc].intVal.int, regs[rd].intVal.int)
     of opcRangeChck:
       let rb = instr.regB
       let rc = instr.regC
-      if not (leValueConv(regs[rb], regs[ra]) and
-              leValueConv(regs[ra], regs[rc])):
+      if not (leValueConv(regs[rb].regToNode, regs[ra].regToNode) and
+              leValueConv(regs[ra].regToNode, regs[rc].regToNode)):
         stackTrace(c, tos, pc, errGenerated,
           msgKindToString(errIllegalConvFromXtoY) % [
           "unknown type" , "unknown type"])
@@ -644,8 +669,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       # dest = call regStart, n; where regStart = fn, arg1, ...
       let rb = instr.regB
       let rc = instr.regC
-      let isClosure = regs[rb].kind == nkPar
-      let prc = if not isClosure: regs[rb].sym else: regs[rb].sons[0].sym
+      let bb = regs[rb].node
+      let isClosure = bb.kind == nkPar
+      let prc = if not isClosure: bb.sym else: bb.sons[0].sym
       if sfImportc in prc.flags:
         if allowFFI notin c.features:
           globalError(c.debug[pc], errGenerated, "VM not allowed to do FFI")
@@ -659,7 +685,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
                                              rb+1, rc-1, c.debug[pc])
           if newValue.kind != nkEmpty:
             assert instr.opcode == opcIndCallAsgn
-            asgnRef(regs[ra], newValue)
+            putIntoReg(regs[ra], newValue)
         else:
           globalError(c.debug[pc], errGenerated, "VM not built with FFI support")
       elif prc.kind != skTemplate:
@@ -668,15 +694,15 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
         var newFrame = PStackFrame(prc: prc, comesFrom: pc, next: tos)
         newSeq(newFrame.slots, prc.offset)
         if not isEmptyType(prc.typ.sons[0]) or prc.kind == skMacro:
-          newFrame.slots[0] = getNullValue(prc.typ.sons[0], prc.info)
-        # pass every parameter by var (the language definition allows this):
+          putIntoReg(newFrame.slots[0], getNullValue(prc.typ.sons[0], prc.info))
         for i in 1 .. rc-1:
           newFrame.slots[i] = regs[rb+i]
         if isClosure:
-          newFrame.slots[rc] = regs[rb].sons[1]
+          newFrame.slots[rc].kind = rkNode
+          newFrame.slots[rc].node = regs[rb].node.sons[1]
         # allocate the temporaries:
-        for i in rc+ord(isClosure) .. <prc.offset:
-          newFrame.slots[i] = newNode(nkEmpty)
+        #for i in rc+ord(isClosure) .. <prc.offset:
+        #  newFrame.slots[i] = newNode(nkEmpty)
         tos = newFrame
         move(regs, newFrame.slots)
         # -1 for the following 'inc pc'
@@ -689,10 +715,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
                             c.module
         var macroCall = newNodeI(nkCall, c.debug[pc])
         macroCall.add(newSymNode(prc))
-        for i in 1 .. rc-1: macroCall.add(regs[rb+i].skipMeta)
+        for i in 1 .. rc-1: macroCall.add(regs[rb+i].node)
         let a = evalTemplate(macroCall, prc, genSymOwner)
-        ensureKind(nkMetaNode)
-        setMeta(regs[ra], a)
+        ensureKind(rkNode)
+        regs[ra].node = a
     of opcTJmp:
       # jump Bx if A != 0
       let rbx = instr.regBx - wordExcess - 1 # -1 for the following 'inc pc'
@@ -712,7 +738,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       let branch = c.constants[instr.regBx-wordExcess]
       var cond = false
       for j in countup(0, sonsLen(branch) - 2): 
-        if overlap(regs[ra], branch.sons[j]): 
+        if overlap(regs[ra].regToNode, branch.sons[j]): 
           cond = true
           break
       assert c.code[pc+1].opcode == opcFJmp
@@ -741,7 +767,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
           bailOut(c, tos)
           return
     of opcRaise:
-      let raised = regs[ra]
+      let raised = regs[ra].node
       c.currentExceptionA = raised
       c.exceptionInstr = pc
       # -1 because of the following 'inc'
@@ -750,217 +776,250 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
         bailOut(c, tos)
         return
     of opcNew:
+      ensureKind(rkNode)
       let typ = c.types[instr.regBx - wordExcess]
-      regs[ra] = getNullValue(typ, regs[ra].info)
-      regs[ra].flags.incl nfIsRef
+      regs[ra].node = getNullValue(typ, c.debug[pc])
+      regs[ra].node.flags.incl nfIsRef
     of opcNewSeq:
       let typ = c.types[instr.regBx - wordExcess]
       inc pc
-      ensureKind(nkBracket)
+      ensureKind(rkNode)
       let instr2 = c.code[pc]
       let count = regs[instr2.regA].intVal.int
-      regs[ra].typ = typ
-      newSeq(regs[ra].sons, count)
+      regs[ra].node = newNodeI(nkBracket, c.debug[pc])
+      regs[ra].node.typ = typ
+      newSeq(regs[ra].node.sons, count)
       for i in 0 .. <count:
-        regs[ra].sons[i] = getNullValue(typ.sons[0], regs[ra].info)
+        regs[ra].node.sons[i] = getNullValue(typ.sons[0], c.debug[pc])
     of opcNewStr:
-      decodeB(nkStrLit)
-      regs[ra].strVal = newString(regs[rb].intVal.int)
+      decodeB(rkStr)
+      regs[ra].node = newNodeI(nkStrLit, c.debug[pc])
+      regs[ra].node.strVal = newString(regs[rb].intVal.int)
     of opcLdImmInt:
       # dest = immediate value
-      decodeBx(nkIntLit)
+      decodeBx(rkInt)
       regs[ra].intVal = rbx
     of opcLdNull:
+      ensureKind(rkNode)
       let typ = c.types[instr.regBx - wordExcess]
-      regs[ra] = getNullValue(typ, c.debug[pc])
+      regs[ra].node = getNullValue(typ, c.debug[pc])
+      if regs[ra].node.kind in {nkStrLit..nkTripleStrLit}:
+        regs[ra].kind = rkStr
+    of opcLdNullReg:
+      let typ = c.types[instr.regBx - wordExcess]
+      if typ.skipTypes(abstractInst+{tyRange}-{tyTypeDesc}).kind in {
+          tyFloat..tyFloat128}:
+        ensureKind(rkFloat)
+        regs[ra].floatVal = 0.0
+      else:
+        ensureKind(rkInt)
+        regs[ra].intVal = 0
     of opcLdConst:
       let rb = instr.regBx - wordExcess
-      if regs[ra].isNil:
-        regs[ra] = copyTree(c.constants.sons[rb])
+      let cnst = c.constants.sons[rb]
+      if fitsRegister(cnst.typ):
+        putIntoReg(regs[ra], cnst)
+      elif cnst.kind in {nkStrLit..nkTripleStrLit}:
+        ensureKind(rkStr)
+        regs[ra].node = cnst
       else:
-        moveConst(regs[ra], c.constants.sons[rb])
+        ensureKind(rkNode)
+        regs[ra].node = cnst
     of opcAsgnConst:
       let rb = instr.regBx - wordExcess
-      if regs[ra].isNil:
-        regs[ra] = copyTree(c.constants.sons[rb])
+      let cnst = c.constants.sons[rb]
+      if fitsRegister(cnst.typ):
+        putIntoReg(regs[ra], cnst)
+      elif cnst.kind in {nkStrLit..nkTripleStrLit}:
+        ensureKind(rkStr)
+        regs[ra].node = cnst.copyTree
       else:
-        asgnComplex(regs[ra], c.constants.sons[rb])
+        ensureKind(rkNode)
+        regs[ra].node = cnst.copyTree
     of opcLdGlobal:
       let rb = instr.regBx - wordExcess - 1
-      if regs[ra].isNil:
-        regs[ra] = copyTree(c.globals.sons[rb])
-      else:
-        asgnComplex(regs[ra], c.globals.sons[rb])
+      ensureKind(rkNode)
+      regs[ra].node = c.globals.sons[rb]
     of opcRepr:
-      decodeB(nkStrLit)
-      regs[ra].strVal = renderTree(regs[rb].skipMeta, {renderNoComments})
+      decodeB(rkStr)
+      createStr regs[ra]
+      regs[ra].node.strVal = renderTree(regs[rb].node, {renderNoComments})
     of opcQuit:
       if c.mode in {emRepl, emStaticExpr, emStaticStmt}:
         message(c.debug[pc], hintQuitCalled)
-        quit(int(getOrdValue(regs[ra])))
+        quit(int(getOrdValue(regs[ra].regToNode)))
       else:
-        return nil
+        return TRegister(kind: rkNone)
     of opcSetLenStr:
-      decodeB(nkStrLit)
-      regs[ra].strVal.setLen(regs[rb].getOrdValue.int)
+      decodeB(rkStr)
+      createStr regs[ra]
+      regs[ra].node.strVal.setLen(regs[rb].intVal.int)
     of opcOf:
-      decodeBC(nkIntLit)
+      decodeBC(rkInt)
       let typ = c.types[regs[rc].intVal.int]
-      regs[ra].intVal = ord(inheritanceDiff(regs[rb].typ, typ) >= 0)
+      regs[ra].intVal = ord(inheritanceDiff(regs[rb].node.typ, typ) >= 0)
     of opcIs:
-      decodeBC(nkIntLit)
-      let t1 = regs[rb].typ.skipTypes({tyTypeDesc})
+      decodeBC(rkInt)
+      let t1 = regs[rb].node.typ.skipTypes({tyTypeDesc})
       let t2 = c.types[regs[rc].intVal.int]
       # XXX: This should use the standard isOpImpl
       let match = if t2.kind == tyUserTypeClass: true
                   else: sameType(t1, t2)
       regs[ra].intVal = ord(match)
     of opcSetLenSeq:
-      decodeB(nkBracket)
-      let newLen = regs[rb].getOrdValue.int
-      setLen(regs[ra].sons, newLen)
+      decodeB(rkNode)
+      let newLen = regs[rb].intVal.int
+      if regs[ra].node.isNil: stackTrace(c, tos, pc, errNilAccess)
+      else: setLen(regs[ra].node.sons, newLen)
     of opcSwap, opcReset:
       internalError(c.debug[pc], "too implement")
     of opcIsNil:
-      decodeB(nkIntLit)
-      regs[ra].intVal = ord(regs[rb].skipMeta.kind == nkNilLit)
+      decodeB(rkInt)
+      regs[ra].intVal = ord(regs[rb].node.kind == nkNilLit)
     of opcNBindSym:
-      decodeBx(nkMetaNode)
-      setMeta(regs[ra], copyTree(c.constants.sons[rbx]))
+      decodeBx(rkNode)
+      regs[ra].node = copyTree(c.constants.sons[rbx])
     of opcNChild:
-      decodeBC(nkMetaNode)
-      if regs[rb].kind != nkMetaNode:
-        internalError(c.debug[pc], "no MetaNode")
+      decodeBC(rkNode)
       let idx = regs[rc].intVal.int
-      let src = regs[rb].uast
+      let src = regs[rb].node
       if src.kind notin {nkEmpty..nkNilLit} and idx <% src.len:
-        setMeta(regs[ra], src.sons[idx])
+        regs[ra].node = src.sons[idx]
       else:
         stackTrace(c, tos, pc, errIndexOutOfBounds)
     of opcNSetChild:
-      decodeBC(nkMetaNode)
+      decodeBC(rkNode)
       let idx = regs[rb].intVal.int
-      var dest = regs[ra].uast
+      var dest = regs[ra].node
       if dest.kind notin {nkEmpty..nkNilLit} and idx <% dest.len:
-        dest.sons[idx] = regs[rc].uast
+        dest.sons[idx] = regs[rc].node
       else:
         stackTrace(c, tos, pc, errIndexOutOfBounds)
     of opcNAdd:
-      decodeBC(nkMetaNode)
-      var u = regs[rb].uast
-      u.add(regs[rc].uast)
-      setMeta(regs[ra], u)
+      decodeBC(rkNode)
+      var u = regs[rb].node
+      u.add(regs[rc].node)
+      regs[ra].node = u
     of opcNAddMultiple:
-      decodeBC(nkMetaNode)
-      let x = regs[rc]
-      var u = regs[rb].uast
+      decodeBC(rkNode)
+      let x = regs[rc].node
+      var u = regs[rb].node
       # XXX can be optimized:
-      for i in 0.. <x.len: u.add(x.sons[i].skipMeta)
-      setMeta(regs[ra], u)
+      for i in 0.. <x.len: u.add(x.sons[i])
+      regs[ra].node = u
     of opcNKind:
-      decodeB(nkIntLit)
-      regs[ra].intVal = ord(regs[rb].uast.kind)
+      decodeB(rkInt)
+      regs[ra].intVal = ord(regs[rb].node.kind)
     of opcNIntVal:
-      decodeB(nkIntLit)
-      let a = regs[rb].uast
+      decodeB(rkInt)
+      let a = regs[rb].node
       case a.kind
       of nkCharLit..nkInt64Lit: regs[ra].intVal = a.intVal
       else: stackTrace(c, tos, pc, errFieldXNotFound, "intVal")
     of opcNFloatVal:
-      decodeB(nkFloatLit)
-      let a = regs[rb].uast
+      decodeB(rkFloat)
+      let a = regs[rb].node
       case a.kind
       of nkFloatLit..nkFloat64Lit: regs[ra].floatVal = a.floatVal
       else: stackTrace(c, tos, pc, errFieldXNotFound, "floatVal")
     of opcNSymbol:
-      decodeB(nkSym)
-      let a = regs[rb].uast
+      decodeB(rkNode)
+      let a = regs[rb].node
       if a.kind == nkSym:
-        regs[ra].sym = a.sym
+        regs[ra].node = copyNode(a)
       else:
         stackTrace(c, tos, pc, errFieldXNotFound, "symbol")
     of opcNIdent:
-      decodeB(nkIdent)
-      let a = regs[rb].uast
+      decodeB(rkNode)
+      let a = regs[rb].node
       if a.kind == nkIdent:
-        regs[ra].ident = a.ident
+        regs[ra].node = copyNode(a)
       else:
         stackTrace(c, tos, pc, errFieldXNotFound, "ident")
     of opcNGetType:
       internalError(c.debug[pc], "unknown opcode " & $instr.opcode)
     of opcNStrVal:
-      decodeB(nkStrLit)
-      let a = regs[rb].uast
-      case a.kind
-      of nkStrLit..nkTripleStrLit: regs[ra].strVal = a.strVal
+      decodeB(rkStr)
+      createStr regs[ra]
+      let a = regs[rb].node
+      if a.kind in {nkStrLit..nkTripleStrLit}: regs[ra].node.strVal = a.strVal
       else: stackTrace(c, tos, pc, errFieldXNotFound, "strVal")
     of opcSlurp:
-      decodeB(nkStrLit)
-      regs[ra].strVal = opSlurp(regs[rb].strVal, c.debug[pc], c.module)
+      decodeB(rkStr)
+      createStr regs[ra]
+      regs[ra].node.strVal = opSlurp(regs[rb].node.strVal, c.debug[pc],
+                                     c.module)
     of opcGorge:
-      decodeBC(nkStrLit)
-      regs[ra].strVal = opGorge(regs[rb].strVal, regs[rc].strVal)
+      decodeBC(rkStr)
+      regs[ra].node.strVal = opGorge(regs[rb].node.strVal,
+                                     regs[rc].node.strVal)
     of opcNError:
-      stackTrace(c, tos, pc, errUser, regs[ra].strVal)
+      stackTrace(c, tos, pc, errUser, regs[ra].node.strVal)
     of opcNWarning:
-      message(c.debug[pc], warnUser, regs[ra].strVal)
+      message(c.debug[pc], warnUser, regs[ra].node.strVal)
     of opcNHint:
-      message(c.debug[pc], hintUser, regs[ra].strVal)
+      message(c.debug[pc], hintUser, regs[ra].node.strVal)
     of opcParseExprToAst:
-      decodeB(nkMetaNode)
+      decodeB(rkNode)
       # c.debug[pc].line.int - countLines(regs[rb].strVal) ?
-      let ast = parseString(regs[rb].strVal, c.debug[pc].toFilename,
+      let ast = parseString(regs[rb].node.strVal, c.debug[pc].toFilename,
                             c.debug[pc].line.int)
       if sonsLen(ast) != 1:
         globalError(c.debug[pc], errExprExpected, "multiple statements")
-      setMeta(regs[ra], ast.sons[0])
+      regs[ra].node = ast.sons[0]
     of opcParseStmtToAst:
-      decodeB(nkMetaNode)
-      let ast = parseString(regs[rb].strVal, c.debug[pc].toFilename,
+      decodeB(rkNode)
+      let ast = parseString(regs[rb].node.strVal, c.debug[pc].toFilename,
                             c.debug[pc].line.int)
-      setMeta(regs[ra], ast)
+      regs[ra].node = ast
     of opcCallSite:
-      ensureKind(nkMetaNode)
-      if c.callsite != nil: setMeta(regs[ra], c.callsite)
+      ensureKind(rkNode)
+      if c.callsite != nil: regs[ra].node = c.callsite
       else: stackTrace(c, tos, pc, errFieldXNotFound, "callsite")
     of opcNLineInfo:
-      decodeB(nkStrLit)
-      let n = regs[rb]
-      regs[ra].strVal = n.info.toFileLineCol
-      regs[ra].info = c.debug[pc]
+      decodeB(rkStr)
+      let n = regs[rb].node
+      createStr regs[ra]
+      regs[ra].node.strVal = n.info.toFileLineCol
+      regs[ra].node.info = c.debug[pc]
     of opcEqIdent:
-      decodeBC(nkIntLit)
-      if regs[rb].kind == nkIdent and regs[rc].kind == nkIdent:
-        regs[ra].intVal = ord(regs[rb].ident.id == regs[rc].ident.id)
+      decodeBC(rkInt)
+      if regs[rb].node.kind == nkIdent and regs[rc].node.kind == nkIdent:
+        regs[ra].intVal = ord(regs[rb].node.ident.id == regs[rc].node.ident.id)
       else:
         regs[ra].intVal = 0
     of opcStrToIdent:
-      decodeB(nkIdent)
-      if regs[rb].kind notin {nkStrLit..nkTripleStrLit}:
+      decodeB(rkNode)
+      if regs[rb].node.kind notin {nkStrLit..nkTripleStrLit}:
         stackTrace(c, tos, pc, errFieldXNotFound, "strVal")
       else:
-        regs[ra].info = c.debug[pc]
-        regs[ra].ident = getIdent(regs[rb].strVal)
+        regs[ra].node = newNodeI(nkIdent, c.debug[pc])
+        regs[ra].node.ident = getIdent(regs[rb].node.strVal)
     of opcIdentToStr:
-      decodeB(nkStrLit)
-      let a = regs[rb]
-      regs[ra].info = c.debug[pc]
+      decodeB(rkStr)
+      let a = regs[rb].node
+      createStr regs[ra]
+      regs[ra].node.info = c.debug[pc]
       if a.kind == nkSym:
-        regs[ra].strVal = a.sym.name.s
+        regs[ra].node.strVal = a.sym.name.s
       elif a.kind == nkIdent:
-        regs[ra].strVal = a.ident.s
+        regs[ra].node.strVal = a.ident.s
       else:
         stackTrace(c, tos, pc, errFieldXNotFound, "ident")
     of opcSetType:
-      regs[ra].typ = c.types[instr.regBx - wordExcess]
+      if regs[ra].kind != rkNode: globalError(c.debug[pc], "cannot set type")
+      regs[ra].node.typ = c.types[instr.regBx - wordExcess]
     of opcConv:
       let rb = instr.regB
       inc pc
-      let typ = c.types[c.code[pc].regBx - wordExcess]
-      if opConv(regs[ra], regs[rb], typ):
+      let desttyp = c.types[c.code[pc].regBx - wordExcess]
+      inc pc
+      let srctyp = c.types[c.code[pc].regBx - wordExcess]
+
+      if opConv(regs[ra], regs[rb], desttyp, srctyp):
         stackTrace(c, tos, pc, errGenerated,
           msgKindToString(errIllegalConvFromXtoY) % [
-          "unknown type" , "unknown type"])
+          typeToString(srctyp), typeToString(desttyp)])
     of opcCast:
       let rb = instr.regB
       inc pc
@@ -971,98 +1030,89 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       else:
         globalError(c.debug[pc], "cannot evaluate cast")
     of opcNSetIntVal:
-      decodeB(nkMetaNode)
-      var dest = regs[ra].uast
+      decodeB(rkNode)
+      var dest = regs[ra].node
       if dest.kind in {nkCharLit..nkInt64Lit} and 
-         regs[rb].kind in {nkCharLit..nkInt64Lit}:
+         regs[rb].kind in {rkInt}:
         dest.intVal = regs[rb].intVal
       else:
         stackTrace(c, tos, pc, errFieldXNotFound, "intVal")
     of opcNSetFloatVal:
-      decodeB(nkMetaNode)
-      var dest = regs[ra].uast
+      decodeB(rkNode)
+      var dest = regs[ra].node
       if dest.kind in {nkFloatLit..nkFloat64Lit} and 
-         regs[rb].kind in {nkFloatLit..nkFloat64Lit}:
+         regs[rb].kind in {rkFloat}:
         dest.floatVal = regs[rb].floatVal
       else: 
         stackTrace(c, tos, pc, errFieldXNotFound, "floatVal")
     of opcNSetSymbol:
-      decodeB(nkMetaNode)
-      var dest = regs[ra].uast
-      if dest.kind == nkSym and regs[rb].kind == nkSym:
-        dest.sym = regs[rb].sym
+      decodeB(rkNode)
+      var dest = regs[ra].node
+      if dest.kind == nkSym and regs[rb].node.kind == nkSym:
+        dest.sym = regs[rb].node.sym
       else: 
         stackTrace(c, tos, pc, errFieldXNotFound, "symbol")
     of opcNSetIdent:
-      decodeB(nkMetaNode)
-      var dest = regs[ra].uast
-      if dest.kind == nkIdent and regs[rb].kind == nkIdent:
-        dest.ident = regs[rb].ident
+      decodeB(rkNode)
+      var dest = regs[ra].node
+      if dest.kind == nkIdent and regs[rb].node.kind == nkIdent:
+        dest.ident = regs[rb].node.ident
       else: 
         stackTrace(c, tos, pc, errFieldXNotFound, "ident")
     of opcNSetType:
-      decodeB(nkMetaNode)
-      let b = regs[rb].skipMeta
+      decodeB(rkNode)
+      let b = regs[rb].node
       internalAssert b.kind == nkSym and b.sym.kind == skType
-      regs[ra].uast.typ = b.sym.typ
+      internalAssert regs[ra].node != nil
+      regs[ra].node.typ = b.sym.typ
     of opcNSetStrVal:
-      decodeB(nkMetaNode)
-      var dest = regs[ra].uast
+      decodeB(rkNode)
+      var dest = regs[ra].node
       if dest.kind in {nkStrLit..nkTripleStrLit} and 
-         regs[rb].kind in {nkStrLit..nkTripleStrLit}:
-        dest.strVal = regs[rb].strVal
+         regs[rb].kind in {rkStr}:
+        dest.strVal = regs[rb].node.strVal
       else:
         stackTrace(c, tos, pc, errFieldXNotFound, "strVal")
     of opcNNewNimNode:
-      decodeBC(nkMetaNode)
+      decodeBC(rkNode)
       var k = regs[rb].intVal
-      if k < 0 or k > ord(high(TNodeKind)) or k == ord(nkMetaNode):
+      if k < 0 or k > ord(high(TNodeKind)):
         internalError(c.debug[pc],
           "request to create a NimNode of invalid kind")
-      let cc = regs[rc].skipMeta
-      setMeta(regs[ra], newNodeI(TNodeKind(int(k)), 
-        if cc.kind == nkNilLit: c.debug[pc] else: cc.info))
-      regs[ra].sons[0].flags.incl nfIsRef
+      let cc = regs[rc].node
+      regs[ra].node = newNodeI(TNodeKind(int(k)),
+        if cc.kind == nkNilLit: c.debug[pc] else: cc.info)
+      regs[ra].node.flags.incl nfIsRef
     of opcNCopyNimNode:
-      decodeB(nkMetaNode)
-      setMeta(regs[ra], copyNode(regs[rb].skipMeta))
+      decodeB(rkNode)
+      regs[ra].node = copyNode(regs[rb].node)
     of opcNCopyNimTree:
-      decodeB(nkMetaNode)
-      setMeta(regs[ra], copyTree(regs[rb]))
+      decodeB(rkNode)
+      regs[ra].node = copyTree(regs[rb].node)
     of opcNDel:
-      decodeBC(nkMetaNode)
+      decodeBC(rkNode)
       let bb = regs[rb].intVal.int
       for i in countup(0, regs[rc].intVal.int-1):
-        delSon(regs[ra].uast, bb)
+        delSon(regs[ra].node, bb)
     of opcGenSym:
-      decodeBC(nkMetaNode)
+      decodeBC(rkNode)
       let k = regs[rb].intVal
-      let name = if regs[rc].strVal.len == 0: ":tmp" else: regs[rc].strVal
+      let name = if regs[rc].node.strVal.len == 0: ":tmp"
+                 else: regs[rc].node.strVal
       if k < 0 or k > ord(high(TSymKind)):
         internalError(c.debug[pc], "request to create symbol of invalid kind")
       var sym = newSym(k.TSymKind, name.getIdent, c.module, c.debug[pc])
       incl(sym.flags, sfGenSym)
-      setMeta(regs[ra], newSymNode(sym))
+      regs[ra].node = newSymNode(sym)
     of opcTypeTrait:
       # XXX only supports 'name' for now; we can use regC to encode the
       # type trait operation
-      decodeB(nkStrLit)
-      var typ = regs[rb].typ
+      decodeB(rkStr)
+      var typ = regs[rb].node.typ
       internalAssert typ != nil
       while typ.kind == tyTypeDesc and typ.len > 0: typ = typ.sons[0]
-      regs[ra].strVal = typ.typeToString(preferExported)
-    of opcGlobalOnce:
-      let rb = instr.regBx
-      if c.globals.sons[rb - wordExcess - 1].kind != nkEmpty:
-        # skip initialization instructions:
-        while true:
-          inc pc
-          if c.code[pc].opcode in {opcWrGlobal, opcWrGlobalRef} and
-             c.code[pc].regBx == rb:
-            break
-    of opcGlobalAlias:
-      let rb = instr.regBx - wordExcess - 1
-      regs[ra] = c.globals.sons[rb]
+      createStr regs[ra]
+      regs[ra].node.strVal = typ.typeToString(preferExported)
     inc pc
 
 proc fixType(result, n: PNode) {.inline.} =
@@ -1074,8 +1124,7 @@ proc fixType(result, n: PNode) {.inline.} =
 proc execute(c: PCtx, start: int): PNode =
   var tos = PStackFrame(prc: nil, comesFrom: 0, next: nil)
   newSeq(tos.slots, c.prc.maxSlots)
-  for i in 0 .. <c.prc.maxSlots: tos.slots[i] = newNode(nkEmpty)
-  result = rawExecute(c, start, tos)
+  result = rawExecute(c, start, tos).regToNode
 
 proc evalStmt*(c: PCtx, n: PNode) =
   let n = transformExpr(c.module, n)
@@ -1091,7 +1140,6 @@ proc evalExpr*(c: PCtx, n: PNode): PNode =
   assert c.code[start].opcode != opcEof
   result = execute(c, start)
   if not result.isNil:
-    result = result.skipMeta
     fixType(result, n)
 
 # for now we share the 'globals' environment. XXX Coming soon: An API for
@@ -1138,8 +1186,8 @@ proc evalConstExprAux(module, prc: PSym, n: PNode, mode: TEvalMode): PNode =
   assert c.code[start].opcode != opcEof
   var tos = PStackFrame(prc: prc, comesFrom: 0, next: nil)
   newSeq(tos.slots, c.prc.maxSlots)
-  for i in 0 .. <c.prc.maxSlots: tos.slots[i] = newNode(nkEmpty)
-  result = rawExecute(c, start, tos)
+  #for i in 0 .. <c.prc.maxSlots: tos.slots[i] = newNode(nkEmpty)
+  result = rawExecute(c, start, tos).regToNode
   fixType(result, n)
 
 proc evalConstExpr*(module: PSym, e: PNode): PNode = 
@@ -1154,10 +1202,7 @@ proc evalStaticStmt*(module: PSym, e: PNode, prc: PSym) =
 proc setupMacroParam(x: PNode): PNode =
   result = x
   if result.kind in {nkHiddenSubConv, nkHiddenStdConv}: result = result.sons[1]
-  let y = result
-  y.flags.incl nfIsRef
-  result = newNode(nkMetaNode)
-  result.add y
+  result.flags.incl nfIsRef
   result.typ = x.typ
 
 var evalMacroCounter: int
@@ -1183,15 +1228,15 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
   # doesn't end up in the parameter:
   #InternalAssert tos.slots.len >= L
   # return value:
-  tos.slots[0] = newNodeIT(nkEmpty, n.info, sym.typ.sons[0])
+  tos.slots[0].kind = rkNode
+  tos.slots[0].node = newNodeIT(nkEmpty, n.info, sym.typ.sons[0])
   # setup parameters:
   for i in 1 .. < min(tos.slots.len, L):
-    tos.slots[i] = setupMacroParam(n.sons[i])
+    tos.slots[i].kind = rkNode
+    tos.slots[i].node = setupMacroParam(n.sons[i])
   # temporary storage:
-  for i in L .. <maxSlots: tos.slots[i] = newNode(nkEmpty)
-  result = rawExecute(c, start, tos)
+  #for i in L .. <maxSlots: tos.slots[i] = newNode(nkEmpty)
+  result = rawExecute(c, start, tos).regToNode
   if cyclicTree(result): globalError(n.info, errCyclicTree)
   dec(evalMacroCounter)
-  if result != nil:
-    result = result.skipMeta
   c.callsite = nil
