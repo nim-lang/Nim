@@ -1,9 +1,8 @@
 version 0.9.4
 =============
 
-- fix macros\tstringinterp.nim:
-  - problem: needs another level of indirection for 'seq'
-  - problem: deref is not correct
+- make vmgen insert opcNodeToReg, opcRegToNode
+- fix macros\tstringinterp.nim
 - fix GC issues
 - test and fix showoff
 
@@ -40,7 +39,7 @@ version 0.9.x
 - built-in 'getImpl'
 
 - change comment handling in the AST; that's lots of work as c2nim and pas2nim
-  make use of the fast every node can have a comment!
+  make use of the fact every node can have a comment!
 
 
 version 0.9.X

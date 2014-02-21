@@ -1915,7 +1915,6 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       internalError(n.info, "expr: proc not init " & sym.name.s)
     putLocIntoDest(p, d, sym.loc)
   of nkClosure: genClosure(p, n, d)
-  of nkMetaNode: expr(p, n.sons[0], d)
 
   of nkEmpty: discard
   of nkWhileStmt: genWhileStmt(p, n)

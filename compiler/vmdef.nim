@@ -8,7 +8,7 @@
 #
 
 ## This module contains the type definitions for the new evaluation engine.
-## An instruction is 1-2 int32s in memory, it is a register based VM.
+## An instruction is 1-3 int32s in memory, it is a register based VM.
 
 import ast, passes, msgs, intsets
 
@@ -32,17 +32,17 @@ type
     opcAsgnFloat,
     opcAsgnRef,
     opcAsgnComplex,
+    opcRegToNode,
+    opcNodeToReg,
 
     opcLdArr,  # a = b[c]
-    opcLdArrRef,
     opcWrArr,  # a[b] = c
-    opcWrArrRef,
     opcLdObj,  # a = b.c
-    opcLdObjRef,
     opcWrObj,  # a.b = c
-    opcWrObjRef,
-    opcAddr,
-    opcDeref,
+    opcAddrReg,
+    opcAddrNode,
+    opcLdDeref,
+    opcWrDeref,
     opcWrStrIdx,
     opcLdStrIdx, # a = b[c]
     
@@ -117,15 +117,13 @@ type
     opcNew,
     opcNewSeq,
     opcLdNull,    # dest = nullvalue(types[Bx])
+    opcLdNullReg,
     opcLdConst,   # dest = constants[Bx]
     opcAsgnConst, # dest = copy(constants[Bx])
     opcLdGlobal,  # dest = globals[Bx]
+
     opcLdImmInt,  # dest = immediate value
     opcNBindSym,
-    opcWrGlobal,
-    opcWrGlobalRef,
-    opcGlobalAlias, # load an alias to a global into a register
-    opcGlobalOnce,  # used to introduce an assignment to a global once
     opcSetType,   # dest.typ = types[Bx]
     opcTypeTrait
 
