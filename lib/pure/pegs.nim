@@ -836,7 +836,9 @@ iterator findAll*(s: string, pattern: TPeg, start = 0): string =
   while i < s.len:
     c.ml = 0
     var L = rawMatch(s, pattern, i, c)
-    if L < 0: break
+    if L < 0:
+      inc(i, 1)
+      continue
     yield substr(s, i, i+L-1)
     inc(i, L)
     
