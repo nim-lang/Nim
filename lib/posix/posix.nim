@@ -2356,7 +2356,7 @@ proc FD_ZERO*(a1: var TFdSet) {.importc, header: "<sys/select.h>".}
 
 proc pselect*(a1: cint, a2, a3, a4: ptr TFdSet, a5: ptr Ttimespec,
          a6: var Tsigset): cint  {.importc, header: "<sys/select.h>".}
-proc select*(a1: cint, a2, a3, a4: ptr TFdSet, a5: ptr Ttimeval): cint {.
+proc select*(a1: cint | TSocketHandle, a2, a3, a4: ptr TFdSet, a5: ptr Ttimeval): cint {.
              importc, header: "<sys/select.h>".}
 
 when hasSpawnH:

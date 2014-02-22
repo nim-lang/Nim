@@ -97,8 +97,25 @@ proc makeExternImport(s: PSym, extname: string) =
   incl(s.flags, sfImportc)
   excl(s.flags, sfForward)
 
-proc makeExternExport(s: PSym, extname: string) = 
+const invalidIdentChars = AllChars - IdentChars
+
+proc validateExternCName(s: PSym, info: TLineInfo) =
+  ## Validates that the symbol name in s.loc.r is a valid C identifier.
+  ##
+  ## Valid identifiers are those alphanumeric including the underscore not
+  ## starting with a number. If the check fails, a generic error will be
+  ## displayed to the user.
+  let target = ropeToStr(s.loc.r)
+  if target.len < 1 or (not (target[0] in IdentStartChars)) or
+      (not target.allCharsInSet(IdentChars)):
+    localError(info, errGenerated, "invalid exported symbol")
+
+proc makeExternExport(s: PSym, extname: string, info: TLineInfo) =
   setExternName(s, extname)
+  case gCmd
+  of cmdCompileToC, cmdCompileToCpp, cmdCompileToOC:
+    validateExternCName(s, info)
+  else: discard
   incl(s.flags, sfExportc)
 
 proc processImportCompilerProc(s: PSym, extname: string) =
@@ -515,7 +532,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
       if k in validPragmas: 
         case k
         of wExportc: 
-          makeExternExport(sym, getOptionalStr(c, it, "$1"))
+          makeExternExport(sym, getOptionalStr(c, it, "$1"), it.info)
           incl(sym.flags, sfUsed) # avoid wrong hints
         of wImportc: makeExternImport(sym, getOptionalStr(c, it, "$1"))
         of wImportCompilerProc:
@@ -601,7 +618,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           processDynLib(c, it, sym)
         of wCompilerproc: 
           noVal(it)           # compilerproc may not get a string!
-          makeExternExport(sym, "$1")
+          makeExternExport(sym, "$1", it.info)
           incl(sym.flags, sfCompilerProc)
           incl(sym.flags, sfUsed) # suppress all those stupid warnings
           registerCompilerProc(sym)

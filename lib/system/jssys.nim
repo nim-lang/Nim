@@ -418,75 +418,74 @@ proc modInt64(a, b: int): int {.noStackFrame, compilerproc.} =
     return Math.floor(`a` % `b`);
   """
 
-proc NegInt(a: int): int {.compilerproc.} =
+proc negInt(a: int): int {.compilerproc.} =
   result = a*(-1)
 
-proc NegInt64(a: int64): int64 {.compilerproc.} =
+proc negInt64(a: int64): int64 {.compilerproc.} =
   result = a*(-1)
 
-proc AbsInt(a: int): int {.compilerproc.} =
+proc absInt(a: int): int {.compilerproc.} =
   result = if a < 0: a*(-1) else: a
 
-proc AbsInt64(a: int64): int64 {.compilerproc.} =
+proc absInt64(a: int64): int64 {.compilerproc.} =
   result = if a < 0: a*(-1) else: a
 
-proc LeU(a, b: int): bool {.compilerproc.} =
+proc leU(a, b: int): bool {.compilerproc.} =
   result = abs(a) <= abs(b)
 
-proc LtU(a, b: int): bool {.compilerproc.} =
+proc ltU(a, b: int): bool {.compilerproc.} =
   result = abs(a) < abs(b)
 
-proc LeU64(a, b: int64): bool {.compilerproc.} =
+proc leU64(a, b: int64): bool {.compilerproc.} =
   result = abs(a) <= abs(b)
-
-proc LtU64(a, b: int64): bool {.compilerproc.} =
+proc ltU64(a, b: int64): bool {.compilerproc.} =
   result = abs(a) < abs(b)
 
-proc AddU(a, b: int): int {.compilerproc.} =
+proc addU(a, b: int): int {.compilerproc.} =
   result = abs(a) + abs(b)
-proc AddU64(a, b: int64): int64 {.compilerproc.} =
+proc addU64(a, b: int64): int64 {.compilerproc.} =
   result = abs(a) + abs(b)
 
-proc SubU(a, b: int): int {.compilerproc.} =
+proc subU(a, b: int): int {.compilerproc.} =
   result = abs(a) - abs(b)
-proc SubU64(a, b: int64): int64 {.compilerproc.} =
+proc subU64(a, b: int64): int64 {.compilerproc.} =
   result = abs(a) - abs(b)
 
-proc MulU(a, b: int): int {.compilerproc.} =
+proc mulU(a, b: int): int {.compilerproc.} =
   result = abs(a) * abs(b)
-proc MulU64(a, b: int64): int64 {.compilerproc.} =
+proc mulU64(a, b: int64): int64 {.compilerproc.} =
   result = abs(a) * abs(b)
 
-proc DivU(a, b: int): int {.compilerproc.} =
+proc divU(a, b: int): int {.compilerproc.} =
   result = abs(a) div abs(b)
-proc DivU64(a, b: int64): int64 {.compilerproc.} =
+proc divU64(a, b: int64): int64 {.compilerproc.} =
   result = abs(a) div abs(b)
 
-proc ModU(a, b: int): int {.compilerproc.} =
+proc modU(a, b: int): int {.compilerproc.} =
   result = abs(a) mod abs(b)
-proc ModU64(a, b: int64): int64 {.compilerproc.} =
+proc modU64(a, b: int64): int64 {.compilerproc.} =
   result = abs(a) mod abs(b)
 
-proc Ze(a: int): int {.compilerproc.} =
-  result = a
-proc Ze64(a: int64): int64 {.compilerproc.} =
+proc ze*(a: int): int {.compilerproc.} =
   result = a
 
-proc ToU8(a: int): int8 {.noStackFrame, compilerproc.} =
+proc ze64*(a: int64): int64 {.compilerproc.} =
+  result = a
+
+proc toU8*(a: int): int8 {.noStackFrame, compilerproc.} =
   asm """
     return `a`;
   """
 
-proc ToU16(a: int): int16 {.noStackFrame, compilerproc.} =
+proc toU16*(a: int): int16 {.noStackFrame, compilerproc.} =
   asm """
     return `a`;
   """
 
-proc ToU32(a: int): int32 {.noStackFrame, compilerproc.} =
+proc toU32*(a: int64): int32 {.noStackFrame, compilerproc.} =
   asm """
     return `a`;
   """
-
 
 proc nimMin(a, b: int): int {.compilerproc.} = return if a <= b: a else: b
 proc nimMax(a, b: int): int {.compilerproc.} = return if a >= b: a else: b
@@ -500,9 +499,9 @@ proc isFatPointer(ti: PNimType): bool =
     tyArray, tyArrayConstr, tyTuple,
     tyOpenArray, tySet, tyVar, tyRef, tyPtr}
 
-proc NimCopy(x: pointer, ti: PNimType): pointer {.compilerproc.}
+proc nimCopy(x: pointer, ti: PNimType): pointer {.compilerproc.}
 
-proc NimCopyAux(dest, src: Pointer, n: ptr TNimNode) {.compilerproc.} =
+proc nimCopyAux(dest, src: Pointer, n: ptr TNimNode) {.compilerproc.} =
   case n.kind
   of nkNone: sysAssert(false, "NimCopyAux")
   of nkSlot:
@@ -518,7 +517,7 @@ proc NimCopyAux(dest, src: Pointer, n: ptr TNimNode) {.compilerproc.} =
       }
     """
 
-proc NimCopy(x: pointer, ti: PNimType): pointer =
+proc nimCopy(x: pointer, ti: PNimType): pointer =
   case ti.kind
   of tyPtr, tyRef, tyVar, tyNil:
     if not isFatPointer(ti):
@@ -585,7 +584,7 @@ proc genericReset(x: Pointer, ti: PNimType): pointer {.compilerproc.} =
   else:
     result = nil
 
-proc ArrayConstr(len: int, value: pointer, typ: PNimType): pointer {.
+proc arrayConstr(len: int, value: pointer, typ: PNimType): pointer {.
                  noStackFrame, compilerproc.} =
   # types are fake
   asm """

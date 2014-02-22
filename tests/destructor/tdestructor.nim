@@ -80,13 +80,13 @@ proc mygeneric1() =
   echo "mygeneric1 constructed"
 
 proc mygeneric2[T](val: T) =
-  var
-    a = open()
-    b = TMyGeneric2[int, T](x: 10, y: val)
-    c = TMyGeneric3[int, int, string](x: 10, y: 20, z: "test")
-
+  var a = open()
+  
+  var b = TMyGeneric2[int, T](x: 10, y: val)
   echo "mygeneric2 constructed"
 
+  var c = TMyGeneric3[int, int, string](x: 10, y: 20, z: "test")
+  
 proc mygeneric3 =
   var x = TMyGeneric3[int, string, TMyGeneric1[int]](
     x: 10, y: "test", z: TMyGeneric1[int](x: 10))

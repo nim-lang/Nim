@@ -1,15 +1,55 @@
-Discuss Nimrod in our `forum <http://forum.nimrod-code.org/>`_. 
+Forum
+=====
 
-Visit our project page at GitHub: http://github.com/Araq/Nimrod.
+The `Nimrod forum <http://forum.nimrod-code.org/>`_ is the place where most 
+discussions related to the language happen. It not only includes discussions
+relating to the design of Nimrod but also allows for beginners to ask questions
+relating to Nimrod.
 
-Wiki: http://github.com/Araq/Nimrod/wiki.
+IRC
+====
 
-Bug reports: http://github.com/Araq/Nimrod/issues.
+Many Nimrod developers are a part of the
+`#nimrod IRC channel <http://webchat.freenode.net/?channels=nimrod>`_ on
+Freenode. That is the place where the rest of the discussion relating to Nimrod
+occurs. Be sure to join us there if you wish to discuss Nimrod in real-time.
+IRC is the perfect place for people just starting to learn Nimrod and we
+welcome any questions that you may have!
 
-For quickest feedback, join our IRC channel: irc://irc.freenode.net/nimrod
-(logs at `<http://build.nimrod-code.org/irclogs/>`_).
+You may also be interested in reading the
+`IRC logs <http://build.nimrod-code.org/irclogs/>`_ which are an archive of all
+of the previous discussions that took place in the IRC channel.
 
-Check out our Twitter account for latest news and announcements: `@nimrodlang <http://twitter.com/nimrodlang>`_.
+Github
+======
+
+Nimrod's `source code <http://github.com/Araq/Nimrod>`_ is hosted on Github.
+Together with the `wiki <http://github.com/Araq/Nimrod/wiki>`_ and
+`issue tracker <http://github.com/Araq/Nimrod/issues>`_.
+
+Github also hosts other projects relating to Nimrod. These projects are a part
+of the `nimrod-code organisation <http://github.com/nimrod-code>`_.
+This includes the `Babel package manager <http://github.com/nimrod-code/babel>`_
+and its `package repository <http://github.com/nimrod-code/packages>`_. 
+
+Twitter
+=======
+
+Follow us `@nimrodlang <http://twitter.com/nimrodlang>`_ for latest news about
+Nimrod.
+
+Reddit
+======
+
+Subscribe to `/r/nimrod <http://reddit.com/r/nimrod>`_ for latest news about
+Nimrod.
+
+StackOverflow
+=============
+
+When asking a question relating to Nimrod, be sure to use the
+`Nimrod <http://stackoverflow.com/questions/tagged/nimrod>`_ tag in your 
+question.
 
 How to help
 ===========
@@ -26,7 +66,9 @@ can't find anything you fancy doing, you can always ask for inspiration on IRC
 Donations
 ---------
 
-If you love what we do and are feeling generous then you can always donate:
+If you love what we do and are feeling generous then you can always donate.
+Contributions of any quantity are greatly appreciated and will contribute to
+making Nimrod even better!
 
 Gittip
 ``````
