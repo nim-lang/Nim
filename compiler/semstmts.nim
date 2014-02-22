@@ -143,10 +143,11 @@ proc discardCheck(c: PContext, result: PNode) =
       while n.kind in skipForDiscardable:
         n = n.lastSon
         n.typ = nil
-    elif c.inTypeClass > 0 and result.typ.kind == tyBool:
-      let verdict = semConstExpr(c, result)
-      if verdict.intVal == 0:
-        localError(result.info, "type class predicate failed")
+    elif c.inTypeClass > 0:
+      if result.typ.kind == tyBool:
+        let verdict = semConstExpr(c, result)
+        if verdict.intVal == 0:
+          localError(result.info, "type class predicate failed")
     elif result.typ.kind != tyError and gCmd != cmdInteractive:
       if result.typ.kind == tyNil:
         fixNilType(result)
@@ -349,7 +350,12 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       # BUGFIX: ``fitNode`` is needed here!
       # check type compability between def.typ and typ:
       if typ != nil: def = fitNode(c, typ, def)
-      else: typ = skipIntLit(def.typ)
+      else:
+        typ = skipIntLit(def.typ)
+        if typ.kind in {tySequence, tyArray, tySet} and
+           typ.lastSon.kind == tyEmpty:
+          localError(def.info, errCannotInferTypeOfTheLiteral,
+                     ($typ.kind).substr(2).toLower)
     else:
       def = ast.emptyNode
       if symkind == skLet: localError(a.info, errLetNeedsInit)
@@ -764,6 +770,29 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       s.ast = a
       popOwner()
 
+proc checkForMetaFields(n: PNode) =
+  template checkMeta(t) =
+    if t != nil and t.isMetaType and tfGenericTypeParam notin t.flags:
+      localError(n.info, errTIsNotAConcreteType, t.typeToString)
+  
+  case n.kind
+  of nkRecList, nkRecCase:
+    for s in n: checkForMetaFields(s)
+  of nkOfBranch, nkElse:
+    checkForMetaFields(n.lastSon)
+  of nkSym:
+    let t = n.sym.typ
+    case t.kind
+    of tySequence, tySet, tyArray, tyOpenArray, tyVar, tyPtr, tyRef,
+       tyProc, tyGenericInvokation, tyGenericInst:
+      let start = ord(t.kind in {tyGenericInvokation, tyGenericInst})
+      for i in start .. <t.sons.len:
+        checkMeta(t.sons[i])
+    else:
+      checkMeta(t)
+  else:
+    internalAssert false
+
 proc typeSectionFinalPass(c: PContext, n: PNode) = 
   for i in countup(0, sonsLen(n) - 1): 
     var a = n.sons[i]
@@ -780,6 +809,8 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
           assignType(s.typ, t)
           s.typ.id = t.id     # same id
       checkConstructedType(s.info, s.typ)
+      if s.typ.kind in {tyObject, tyTuple}:
+        checkForMetaFields(s.typ.n)
     let aa = a.sons[2]
     if aa.kind in {nkRefTy, nkPtrTy} and aa.len == 1 and
        aa.sons[0].kind == nkObjectTy:
@@ -883,12 +914,19 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
     s = n[namePos].sym
   pushOwner(s)
   openScope(c)
-  if n.sons[genericParamsPos].kind != nkEmpty:
-    illFormedAst(n)           # process parameters:
+  var gp: PNode
+  if n.sons[genericParamsPos].kind != nkEmpty: 
+    n.sons[genericParamsPos] = semGenericParamList(c, n.sons[genericParamsPos])
+    gp = n.sons[genericParamsPos]
+  else:
+    gp = newNodeI(nkGenericParams, n.info)
+
   if n.sons[paramsPos].kind != nkEmpty:
-    var gp = newNodeI(nkGenericParams, n.info)
     semParamList(c, n.sons[paramsPos], gp, s)
-    paramsTypeCheck(c, s.typ)
+    # paramsTypeCheck(c, s.typ)
+    if sonsLen(gp) > 0 and n.sons[genericParamsPos].kind == nkEmpty:
+      # we have a list of implicit type parameters:
+      n.sons[genericParamsPos] = gp
   else:
     s.typ = newTypeS(tyProc, c)
     rawAddSon(s.typ, nil)
@@ -900,18 +938,47 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
       localError(n.sons[bodyPos].info, errImplOfXNotAllowed, s.name.s)
     #if efDetermineType notin flags:
     # XXX not good enough; see tnamedparamanonproc.nim
-    pushProcCon(c, s)
-    addResult(c, s.typ.sons[0], n.info, skProc)
-    let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
-    n.sons[bodyPos] = transformBody(c.module, semBody, s)
-    addResultNode(c, n)
-    popProcCon(c)
+    if n.sons[genericParamsPos].kind == nkEmpty:
+      pushProcCon(c, s)
+      addResult(c, s.typ.sons[0], n.info, skProc)
+      let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
+      n.sons[bodyPos] = transformBody(c.module, semBody, s)
+      addResultNode(c, n)
+      popProcCon(c)
     sideEffectsCheck(c, s)
   else:
     localError(n.info, errImplOfXexpected, s.name.s)
   closeScope(c)           # close scope for parameters
   popOwner()
   result.typ = s.typ
+
+proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
+  var n = n
+  
+  n = replaceTypesInBody(c, pt, n)
+  result = n
+  
+  n.sons[genericParamsPos] = emptyNode
+  n.sons[paramsPos] = n.typ.n
+  
+  openScope(c)
+  var s = n.sons[namePos].sym
+  addParams(c, n.typ.n, skProc)
+  pushProcCon(c, s)
+  addResult(c, n.typ.sons[0], n.info, skProc)
+  let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
+  n.sons[bodyPos] = transformBody(c.module, semBody, n.sons[namePos].sym)
+  addResultNode(c, n)
+  popProcCon(c)
+  closeScope(c)
+  
+  s.ast = result
+
+  # alternative variant (not quite working):
+  # var prc = arg[0].sym
+  # let inferred = c.semGenerateInstance(c, prc, m.bindings, arg.info)
+  # result = inferred.ast
+  # result.kind = arg.kind
 
 proc activate(c: PContext, n: PNode) =
   # XXX: This proc is part of my plan for getting rid of
@@ -1263,8 +1330,8 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
         let (outer, inner) = insertDestructors(c, n.sons[i])
         if outer != nil:
           n.sons[i] = outer
-          for j in countup(i+1, length-1):
-            inner.addSon(semStmt(c, n.sons[j]))
+          var rest = newNode(nkStmtList, n.info, n.sons[i+1 .. length-1])
+          inner.addSon(semStmtList(c, rest, flags))
           n.sons.setLen(i+1)
           return
       of LastBlockStmts: 

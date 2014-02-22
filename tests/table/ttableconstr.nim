@@ -1,7 +1,7 @@
 # Test if the new table constructor syntax works:
 
 template ignoreExpr(e: expr): stmt {.immediate.} =
-  nil
+  discard
 
 # test first class '..' syntactical citizen:  
 ignoreExpr x <> 2..4

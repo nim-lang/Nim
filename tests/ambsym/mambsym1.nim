@@ -7,4 +7,4 @@ type
 proc ha() =
   var
     x: TExport # no error
-  nil
+  discard

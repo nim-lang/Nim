@@ -38,3 +38,18 @@ proc bindAddr*(socket: TSocket, port = TPort(0), address = "") {.
       dealloc(aiList)
       osError(osLastError())
     dealloc(aiList)
+
+proc setBlocking*(s: TSocket, blocking: bool) {.tags: [].} =
+  ## Sets blocking mode on socket
+  when defined(Windows):
+    var mode = clong(ord(not blocking)) # 1 for non-blocking, 0 for blocking
+    if ioctlsocket(s, FIONBIO, addr(mode)) == -1:
+      osError(osLastError())
+  else: # BSD sockets
+    var x: int = fcntl(s, F_GETFL, 0)
+    if x == -1:
+      osError(osLastError())
+    else:
+      var mode = if blocking: x and not O_NONBLOCK else: x or O_NONBLOCK
+      if fcntl(s, F_SETFL, mode) == -1:
+        osError(osLastError())

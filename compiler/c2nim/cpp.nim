@@ -103,7 +103,7 @@ proc parseDefBody(p: var TParser, m: var TMacro, params: seq[string]) =
       m.body.add(tok)
     of pxDirConc: 
       # just ignore this token: this implements token merging correctly
-      nil
+      discard
     else:
       m.body.add(p.tok)
     # we do not want macro expansion here:
@@ -166,7 +166,7 @@ proc parseStmtList(p: var TParser): PNode =
     of pxDirectiveParLe, pxDirective: 
       case p.tok.s
       of "else", "endif", "elif": break
-    else: nil
+    else: discard
     addSon(result, statement(p))
   
 proc eatEndif(p: var TParser) =

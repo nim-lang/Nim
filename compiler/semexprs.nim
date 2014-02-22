@@ -1829,8 +1829,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       result = symChoice(c, n, s, scClosed)
       if result.kind == nkSym:
         markIndirect(c, result.sym)
-        if isGenericRoutine(result.sym):
-          localError(n.info, errInstantiateXExplicitely, s.name.s)
+        # if isGenericRoutine(result.sym):
+        #   localError(n.info, errInstantiateXExplicitely, s.name.s)
   of nkSym:
     # because of the changed symbol binding, this does not mean that we
     # don't have to check the symbol for semantics here again!
