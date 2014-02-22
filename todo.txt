@@ -1,7 +1,6 @@
 version 0.9.4
 =============
 
-- make vmgen insert opcNodeToReg, opcRegToNode
 - fix macros\tstringinterp.nim
 - fix GC issues
 - test and fix showoff

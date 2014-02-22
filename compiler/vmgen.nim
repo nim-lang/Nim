@@ -579,11 +579,10 @@ proc genAddSubInt(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
 
 proc genConv(c: PCtx; n, arg: PNode; dest: var TDest; opc=opcConv) =  
   let tmp = c.genx(arg)
-  c.gABx(n, opcSetType, tmp, genType(c, arg.typ))
   if dest < 0: dest = c.getTemp(n.typ)
   c.gABC(n, opc, dest, tmp)
   c.gABx(n, opc, 0, genType(c, n.typ))
-  if opc == opcConv: c.gABx(n, opc, 0, genType(c, arg.typ))
+  c.gABx(n, opc, 0, genType(c, arg.typ))
   c.freeTemp(tmp)
 
 proc genCard(c: PCtx; n: PNode; dest: var TDest) =
@@ -1504,7 +1503,7 @@ proc genProc(c: PCtx; s: PSym): int =
     c.gABC(body, opcEof, eofInstr.regA)
     c.optimizeJumps(result)
     s.offset = c.prc.maxSlots
-    #if s.name.s == "concatStyleInterpolation":
+    #if s.name.s == "traverse":
     #  c.echoCode(result)
     # echo renderTree(body)
     c.prc = oldPrc
