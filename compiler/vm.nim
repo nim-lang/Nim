@@ -257,11 +257,25 @@ proc opConv*(dest: var TRegister, src: TRegister, desttyp, srctyp: PType): bool 
       myreset(dest)
       dest.kind = rkStr
       dest.node = newNode(nkStrLit)
-    case srctyp.skipTypes(abstractRange).kind
-    of tyEnum: 
-      dest.node.strVal = "too implement" #ordinalValToString(src)
-    of tyInt..tyInt64, tyUInt..tyUInt64:
+    let styp = srctyp.skipTypes(abstractRange)
+    case styp.kind
+    of tyEnum:
+      let n = styp.n
+      let x = src.intVal.int
+      if x <% n.len and (let f = n.sons[x].sym; f.position == x):
+        dest.node.strVal = if f.ast.isNil: f.name.s else: f.ast.strVal
+      else:
+        for i in 0.. <n.len:
+          if n.sons[i].kind != nkSym: internalError("opConv for enum")
+          let f = n.sons[i].sym
+          if f.position == x:
+            dest.node.strVal = if f.ast.isNil: f.name.s else: f.ast.strVal
+            return
+        internalError("opConv for enum")
+    of tyInt..tyInt64:
       dest.node.strVal = $src.intVal
+    of tyUInt..tyUInt64:
+      dest.node.strVal = $uint64(src.intVal)
     of tyBool:
       dest.node.strVal = if src.intVal == 0: "false" else: "true"
     of tyFloat..tyFloat128:
@@ -1007,7 +1021,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TRegister =
       else:
         stackTrace(c, tos, pc, errFieldXNotFound, "ident")
     of opcSetType:
-      if regs[ra].kind != rkNode: globalError(c.debug[pc], "cannot set type")
+      if regs[ra].kind != rkNode:
+        internalError(c.debug[pc], "cannot set type")
       regs[ra].node.typ = c.types[instr.regBx - wordExcess]
     of opcConv:
       let rb = instr.regB
@@ -1023,9 +1038,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TRegister =
     of opcCast:
       let rb = instr.regB
       inc pc
-      let typ = c.types[c.code[pc].regBx - wordExcess]
+      let desttyp = c.types[c.code[pc].regBx - wordExcess]
+      inc pc
+      let srctyp = c.types[c.code[pc].regBx - wordExcess]
+
       when hasFFI:
-        let dest = fficast(regs[rb], typ)
+        let dest = fficast(regs[rb], desttyp)
         asgnRef(regs[ra], dest)
       else:
         globalError(c.debug[pc], "cannot evaluate cast")
