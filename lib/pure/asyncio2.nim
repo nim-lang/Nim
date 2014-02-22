@@ -9,8 +9,6 @@
 
 import os, oids, tables, strutils, macros
 
-import winlean
-
 import sockets2, net
 
 ## Asyncio2 
@@ -93,7 +91,10 @@ proc failed*[T](future: PFuture[T]): bool =
   ## Determines whether ``future`` completed with an error.
   future.error != nil
 
-when defined(windows):
+# TODO: Get rid of register. Do it implicitly.
+
+when defined(windows) or defined(nimdoc):
+  import winlean
   type
     TCompletionKey = dword
 
@@ -293,7 +294,10 @@ when defined(windows):
   proc recv*(p: PDispatcher, socket: TSocketHandle, size: int,
              flags: int = 0): PFuture[string] =
     ## Reads ``size`` bytes from ``socket``. Returned future will complete once
-    ## all of the requested data is read.
+    ## all of the requested data is read. If socket is disconnected during the
+    ## recv operation then the future may complete with only a part of the
+    ## requested data read. If socket is disconnected and no data is available
+    ## to be read then the future will complete with a value of ``""``.
 
     var retFuture = newFuture[string]()
     
@@ -448,24 +452,206 @@ when defined(windows):
 
     return retFuture
 
-  proc accept*(p: PDispatcher, socket: TSocketHandle): PFuture[TSocketHandle] =
-    ## Accepts a new connection. Returns a future containing the client socket
-    ## corresponding to that connection.
-    ## The future will complete when the connection is successfully accepted.
-    var retFut = newFuture[TSocketHandle]()
-    var fut = p.acceptAddr(socket)
-    fut.callback =
-      proc (future: PFuture[tuple[address: string, client: TSocketHandle]]) =
-        assert future.finished
-        if future.failed:
-          retFut.fail(future.error)
-        else:
-          retFut.complete(future.read.client)
-    return retFut
-
   initAll()
 else:
-  # TODO: Selectors.
+  import selectors
+  from posix import EINTR, EAGAIN, EINPROGRESS, EWOULDBLOCK, MSG_PEEK
+  type
+    TCallback = proc (sock: TSocketHandle): bool {.closure.}
+
+    PData* = ref object of PObject
+      sock: TSocketHandle
+      readCBs: seq[TCallback]
+      writeCBs: seq[TCallback]
+
+    PDispatcher* = ref object
+      selector: PSelector
+
+  proc newDispatcher*(): PDispatcher =
+    new result
+    result.selector = newSelector()
+
+  proc update(p: PDispatcher, sock: TSocketHandle, events: set[TEvent]) =
+    assert sock in p.selector
+    echo("Update: ", events)
+    if events == {}:
+      discard p.selector.unregister(sock)
+    else:
+      discard p.selector.update(sock, events)
+  
+  proc addRead(p: PDispatcher, sock: TSocketHandle, cb: TCallback) =
+    if sock notin p.selector:
+      var data = PData(sock: sock, readCBs: @[cb], writeCBs: @[])
+      p.selector.register(sock, {EvRead}, data.PObject)
+    else:
+      p.selector[sock].data.PData.readCBs.add(cb)
+      p.update(sock, p.selector[sock].events + {EvRead})
+  
+  proc addWrite(p: PDispatcher, sock: TSocketHandle, cb: TCallback) =
+    if sock notin p.selector:
+      var data = PData(sock: sock, readCBs: @[], writeCBs: @[cb])
+      p.selector.register(sock, {EvWrite}, data.PObject)
+    else:
+      p.selector[sock].data.PData.writeCBs.add(cb)
+      p.update(sock, p.selector[sock].events + {EvWrite})
+  
+  proc poll*(p: PDispatcher, timeout = 500) =
+    for info in p.selector.select(timeout):
+      let data = PData(info.key.data)
+      assert data.sock == info.key.fd
+      echo("R: ", data.readCBs.len, " W: ", data.writeCBs.len, ". ", info.events)
+      
+      if EvRead in info.events:
+        var newReadCBs: seq[TCallback] = @[]
+        for cb in data.readCBs:
+          if not cb(data.sock):
+            # Callback wants to be called again.
+            newReadCBs.add(cb)
+        data.readCBs = newReadCBs
+      
+      if EvWrite in info.events:
+        var newWriteCBs: seq[TCallback] = @[]
+        for cb in data.writeCBs:
+          if not cb(data.sock):
+            # Callback wants to be called again.
+            newWriteCBs.add(cb)
+        data.writeCBs = newWriteCBs
+  
+      var newEvents: set[TEvent]
+      if data.readCBs.len != 0: newEvents = {EvRead}
+      if data.writeCBs.len != 0: newEvents = newEvents + {EvWrite}
+      p.update(data.sock, newEvents)
+  
+  proc connect*(p: PDispatcher, socket: TSocketHandle, address: string, port: TPort,
+    af = AF_INET): PFuture[int] =
+    var retFuture = newFuture[int]()
+    
+    proc cb(sock: TSocketHandle): bool =
+      # We have connected.
+      retFuture.complete(0)
+      return true
+    
+    var aiList = getAddrInfo(address, port, af)
+    var success = false
+    var lastError: TOSErrorCode
+    var it = aiList
+    while it != nil:
+      var ret = connect(socket, it.ai_addr, it.ai_addrlen.TSocklen)
+      if ret == 0:
+        # Request to connect completed immediately.
+        success = true
+        retFuture.complete(0)
+        break
+      else:
+        lastError = osLastError()
+        if lastError.int32 == EINTR or lastError.int32 == EINPROGRESS:
+          success = true
+          addWrite(p, socket, cb)
+          break
+        else:
+          success = false
+      it = it.ai_next
+
+    dealloc(aiList)
+    if not success:
+      retFuture.fail(newException(EOS, osErrorMsg(lastError)))
+    return retFuture
+
+  proc recv*(p: PDispatcher, socket: TSocketHandle, size: int,
+             flags: int = 0): PFuture[string] =
+    var retFuture = newFuture[string]()
+    
+    var readBuffer = newString(size)
+    var sizeRead = 0
+    
+    proc cb(sock: TSocketHandle): bool =
+      result = true
+      let netSize = size - sizeRead
+      let res = recv(sock, addr readBuffer[sizeRead], netSize, flags.cint)
+      if res < 0:
+        let lastError = osLastError()
+        if lastError.int32 notin {EINTR, EWOULDBLOCK, EAGAIN}: 
+          retFuture.fail(newException(EOS, osErrorMsg(lastError)))
+        else:
+          result = false # We still want this callback to be called.
+      elif res == 0:
+        # Disconnected
+        if sizeRead == 0:
+          retFuture.complete("")
+        else:
+          readBuffer.setLen(sizeRead)
+          retFuture.complete(readBuffer)
+      else:
+        sizeRead.inc(res)
+        if res != netSize:
+          result = false # We want to read all the data requested.
+        else:
+          retFuture.complete(readBuffer)
+  
+    addRead(p, socket, cb)
+    return retFuture
+
+  proc send*(p: PDispatcher, socket: TSocketHandle, data: string): PFuture[int] =
+    var retFuture = newFuture[int]()
+    
+    var written = 0
+    
+    proc cb(sock: TSocketHandle): bool =
+      result = true
+      let netSize = data.len-written
+      var d = data.cstring
+      let res = send(sock, addr d[written], netSize, 0.cint)
+      if res < 0:
+        let lastError = osLastError()
+        if lastError.int32 notin {EINTR, EWOULDBLOCK, EAGAIN}:
+          retFuture.fail(newException(EOS, osErrorMsg(lastError)))
+        else:
+          result = false # We still want this callback to be called.
+      else:
+        written.inc(res)
+        if res != netSize:
+          result = false # We still have data to send.
+        else:
+          retFuture.complete(0)
+    addWrite(p, socket, cb)
+    return retFuture
+        
+
+  proc acceptAddr*(p: PDispatcher, socket: TSocketHandle): 
+      PFuture[tuple[address: string, client: TSocketHandle]] =
+    var retFuture = newFuture[tuple[address: string, client: TSocketHandle]]()
+    proc cb(sock: TSocketHandle): bool =
+      result = true
+      var sockAddress: Tsockaddr_in
+      var addrLen = sizeof(sockAddress).TSocklen
+      var client = accept(sock, cast[ptr TSockAddr](addr(sockAddress)),
+                          addr(addrLen))
+      if client == osInvalidSocket:
+        let lastError = osLastError()
+        assert lastError.int32 notin {EWOULDBLOCK, EAGAIN}
+        if lastError.int32 == EINTR:
+          return false
+        else:
+          retFuture.fail(newException(EOS, osErrorMsg(lastError)))
+      else:
+        retFuture.complete(($inet_ntoa(sockAddress.sin_addr), client))
+    addRead(p, socket, cb)
+    return retFuture
+
+proc accept*(p: PDispatcher, socket: TSocketHandle): PFuture[TSocketHandle] =
+  ## Accepts a new connection. Returns a future containing the client socket
+  ## corresponding to that connection.
+  ## The future will complete when the connection is successfully accepted.
+  var retFut = newFuture[TSocketHandle]()
+  var fut = p.acceptAddr(socket)
+  fut.callback =
+    proc (future: PFuture[tuple[address: string, client: TSocketHandle]]) =
+      assert future.finished
+      if future.failed:
+        retFut.fail(future.error)
+      else:
+        retFut.complete(future.read.client)
+  return retFut
 
 # -- Await Macro
 
@@ -665,8 +851,7 @@ when isMainModule:
   
   var p = newDispatcher()
   var sock = socket()
-  #sock.setBlocking false
-  p.register(sock)
+  sock.setBlocking false
 
 
   when false:
@@ -706,7 +891,7 @@ when isMainModule:
             var recvF = p.recv(sock, 10)
             recvF.callback =
               proc (future: PFuture[string]) =
-                echo("Read: ", future.read)
+                echo("Read ", future.read.len, ": ", future.read.repr)
 
     else:
 

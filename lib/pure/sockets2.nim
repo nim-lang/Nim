@@ -17,11 +17,13 @@ when hostos == "solaris":
 
 when defined(Windows):
   import winlean
+  export ioctlsocket
 else:
   import posix
+  export fcntl, F_GETFL, O_NONBLOCK, F_SETFL
 
 export TSocketHandle, TSockaddr_in, TAddrinfo, INADDR_ANY, TSockAddr, TSockLen,
-  inet_ntoa
+  inet_ntoa, recv, `==`, connect, send, accept
 
 type
   
@@ -63,10 +65,10 @@ type
 
 when defined(windows):
   let
-    OSInvalidSocket* = winlean.INVALID_SOCKET
+    osInvalidSocket* = winlean.INVALID_SOCKET
 else:
   let
-    OSInvalidSocket* = posix.INVALID_SOCKET
+    osInvalidSocket* = posix.INVALID_SOCKET
 
 proc `==`*(a, b: TPort): bool {.borrow.}
   ## ``==`` for ports.
