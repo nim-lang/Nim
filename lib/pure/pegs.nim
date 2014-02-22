@@ -838,9 +838,9 @@ iterator findAll*(s: string, pattern: TPeg, start = 0): string =
     var L = rawMatch(s, pattern, i, c)
     if L < 0:
       inc(i, 1)
-      continue
-    yield substr(s, i, i+L-1)
-    inc(i, L)
+    else:
+      yield substr(s, i, i+L-1)
+      inc(i, L)
     
 proc findAll*(s: string, pattern: TPeg, start = 0): seq[string] {.
   nosideEffect, rtl, extern: "npegs$1".} = 
