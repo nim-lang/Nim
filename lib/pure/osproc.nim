@@ -600,16 +600,13 @@ elif not defined(useNimRtl):
     sysArgs: cstringArray
     sysEnv: cstringArray
     workingDir: cstring
-    pStdin, pStdout, pStderr, pErrorPipe: array[0..1, cint]
+    pStdin, pStdout, pStderr: array[0..1, cint]
     optionPoUsePath: bool
     optionPoParentStreams: bool
     optionPoStdErrToStdOut: bool
 
   proc startProcessAuxSpawn(data: TStartProcessData): TPid {.tags: [FExecIO, FReadEnv].}
-
-  proc startProcessAuxFork(data: TStartProcessData): TPid {.tags: [FExecIO, FReadEnv].}
-  proc startProcessAfterFork(data: ptr TStartProcessData) {.
-    tags: [FExecIO, FReadEnv], noStackFrame, cdecl.}
+  proc startProcessAfterFork(data: ptr TStartProcessData) {.tags: [FExecIO, FReadEnv], cdecl.}
 
   proc startProcess(command: string,
                  workingDir: string = "",
@@ -661,11 +658,23 @@ elif not defined(useNimRtl):
     data.optionPoStdErrToStdOut = poStdErrToStdOut in options
     data.workingDir = workingDir
 
+    when defined(useClone):
+      const stackSize = 8096
+      let stackEnd = cast[clong](alloc(stackSize))
+      let stack = cast[pointer](stackEnd + stackSize)
+      let fn: pointer = startProcessAfterFork
+      pid = clone(fn, stack,
+                  cint(CLONE_VM or CLONE_VFORK or SIGCHLD),
+                  pointer(addr data), nil, nil, nil)
 
-    when defined(posix_spawn) and not defined(useFork) and not defined(useClone):
+      if pid < 0: osError(osLastError())
+    elif defined(posix_spawn) and not defined(useFork):
       pid = startProcessAuxSpawn(data)
     else:
-      pid = startProcessAuxFork(data)
+      pid = fork()
+      if pid < 0: osError(osLastError())
+      if pid == 0:
+        startProcessAfterFork(addr(data))
 
     # Parent process. Copy process information.
     if poEchoCmd in options:
@@ -738,79 +747,30 @@ elif not defined(useNimRtl):
     chck res
     return pid
 
-  proc startProcessAuxFork(data: TStartProcessData): TPid =
-    if pipe(data.pErrorPipe) != 0:
-        osError(osLastError())
-
-    finally:
-      discard close(data.pErrorPipe[readIdx])
-
-    var pid: TPid
-    var dataCopy = data
-
-    if defined(useClone):
-      const stackSize = 8096
-      let stackEnd = cast[clong](alloc(stackSize))
-      let stack = cast[pointer](stackEnd + stackSize)
-      let fn: pointer = startProcessAfterFork
-      pid = clone(fn, stack,
-                  cint(CLONE_VM or CLONE_VFORK or SIGCHLD),
-                  pointer(addr dataCopy), nil, nil, nil)
-      discard close(data.pErrorPipe[writeIdx])
-      dealloc(stack)
-    else:
-      pid = fork()
-      if pid == 0:
-        startProcessAfterFork(addr(dataCopy))
-        exitnow(1)
-
-    discard close(data.pErrorPipe[writeIdx])
-    if pid < 0: osError(osLastError())
-
-    var error: cint
-    let sizeRead = read(data.pErrorPipe[readIdx], addr error, sizeof(error))
-    if sizeRead == sizeof(error):
-      osError($strerror(error))
-
-    return pid
-
-  proc startProcessFail(data: ptr TStartProcessData) {.noStackFrame.} =
-    var error: cint = errno
-    discard write(data.pErrorPipe[writeIdx], addr error, sizeof(error))
-    exitnow(1)
-
   proc startProcessAfterFork(data: ptr TStartProcessData) =
     # Warning: no GC here!
-    # Or anythink that touches global structures - all called nimrod procs
-    # must be marked with noStackFrame. Inspect C code after making changes.
     if not data.optionPoParentStreams:
       discard close(data.pStdin[writeIdx])
-      if dup2(data.pStdin[readIdx], readIdx) < 0:
-        startProcessFail(data)
+      if dup2(data.pStdin[readIdx], readIdx) < 0: osError(osLastError())
       discard close(data.pStdout[readIdx])
-      if dup2(data.pStdout[writeIdx], writeIdx) < 0:
-        startProcessFail(data)
+      if dup2(data.pStdout[writeIdx], writeIdx) < 0: osError(osLastError())
       discard close(data.pStderr[readIdx])
       if data.optionPoStdErrToStdOut:
-        if dup2(data.pStdout[writeIdx], 2) < 0:
-          startProcessFail(data)
+        if dup2(data.pStdout[writeIdx], 2) < 0: osError(osLastError())
       else:
-        if dup2(data.pStderr[writeIdx], 2) < 0:
-          startProcessFail(data)
+        if dup2(data.pStderr[writeIdx], 2) < 0: osError(osLastError())
 
     if data.workingDir.len > 0:
       if chdir(data.workingDir) < 0:
-        startProcessFail(data)
-
-    discard close(data.pErrorPipe[readIdx])
-    discard fcntl(data.pErrorPipe[writeIdx], F_SETFD, FD_CLOEXEC)
+        quit("chdir failed")
 
     if data.optionPoUsePath:
       discard execvpe(data.sysCommand, data.sysArgs, data.sysEnv)
     else:
       discard execve(data.sysCommand, data.sysArgs, data.sysEnv)
 
-    startProcessFail(data)
+    # too risky to raise an exception here:
+    quit("execve call failed: " & $strerror(errno))
 
   proc close(p: PProcess) =
     if p.inStream != nil: close(p.inStream)
