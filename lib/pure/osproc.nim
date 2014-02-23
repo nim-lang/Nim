@@ -606,11 +606,10 @@ elif not defined(useNimRtl):
     optionPoStdErrToStdOut: bool
 
   proc startProcessAuxSpawn(data: TStartProcessData): TPid {.tags: [FExecIO, FReadEnv].}
+
   proc startProcessAuxFork(data: TStartProcessData): TPid {.tags: [FExecIO, FReadEnv].}
-  {.push stacktrace: off, profiler: off.}
   proc startProcessAfterFork(data: ptr TStartProcessData) {.
-    tags: [FExecIO, FReadEnv], cdecl.}
-  {.pop.}
+    tags: [FExecIO, FReadEnv], noStackFrame, cdecl.}
 
   proc startProcess(command: string,
                  workingDir: string = "",
@@ -775,8 +774,7 @@ elif not defined(useNimRtl):
 
     return pid
 
-  {.push stacktrace: off, profiler: off.}
-  proc startProcessFail(data: ptr TStartProcessData) =
+  proc startProcessFail(data: ptr TStartProcessData) {.noStackFrame.} =
     var error: cint = errno
     discard write(data.pErrorPipe[writeIdx], addr error, sizeof(error))
     exitnow(1)
@@ -813,7 +811,6 @@ elif not defined(useNimRtl):
       discard execve(data.sysCommand, data.sysArgs, data.sysEnv)
 
     startProcessFail(data)
-  {.pop}
 
   proc close(p: PProcess) =
     if p.inStream != nil: close(p.inStream)
