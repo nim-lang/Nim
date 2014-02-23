@@ -20,11 +20,6 @@ when defined(windows):
 else:
   import posix
 
-when defined(linux):
-  import linux
-  when not defined(useFork):
-    const useClone = true
-
 type
   TProcess = object of TObject
     when defined(windows):
@@ -595,23 +590,6 @@ elif not defined(useNimRtl):
       copyMem(result[i], addr(x[0]), x.len+1)
       inc(i)
 
-  type TStartProcessData = object
-    sysCommand: cstring
-    sysArgs: cstringArray
-    sysEnv: cstringArray
-    workingDir: cstring
-    pStdin, pStdout, pStderr, pErrorPipe: array[0..1, cint]
-    optionPoUsePath: bool
-    optionPoParentStreams: bool
-    optionPoStdErrToStdOut: bool
-
-  proc startProcessAuxSpawn(data: TStartProcessData): TPid {.tags: [FExecIO, FReadEnv].}
-  proc startProcessAuxFork(data: TStartProcessData): TPid {.tags: [FExecIO, FReadEnv].}
-  {.push stacktrace: off, profiler: off.}
-  proc startProcessAfterFork(data: ptr TStartProcessData) {.
-    tags: [FExecIO, FReadEnv], cdecl.}
-  {.pop.}
-
   proc startProcess(command: string,
                  workingDir: string = "",
                  args: openArray[string] = [],
@@ -638,36 +616,88 @@ elif not defined(useNimRtl):
       for arg in args.items:
         sysArgsRaw.add arg
 
-    var pid: TPid
-
     var sysArgs = allocCStringArray(sysArgsRaw)
     finally: deallocCStringArray(sysArgs)
 
-    var sysEnv = if env == nil:
-        envToCStringArray()
+    var pid: TPid
+    when defined(posix_spawn) and not defined(useFork):
+      var attr: Tposix_spawnattr
+      var fops: Tposix_spawn_file_actions
+
+      template chck(e: expr) =
+        if e != 0'i32: osError(osLastError())
+
+      chck posix_spawn_file_actions_init(fops)
+      chck posix_spawnattr_init(attr)
+
+      var mask: Tsigset
+      chck sigemptyset(mask)
+      chck posix_spawnattr_setsigmask(attr, mask)
+      chck posix_spawnattr_setpgroup(attr, 0'i32)
+
+      chck posix_spawnattr_setflags(attr, POSIX_SPAWN_USEVFORK or
+                                          POSIX_SPAWN_SETSIGMASK or
+                                          POSIX_SPAWN_SETPGROUP)
+
+      if poParentStreams notin options:
+        chck posix_spawn_file_actions_addclose(fops, pStdin[writeIdx])
+        chck posix_spawn_file_actions_adddup2(fops, pStdin[readIdx], readIdx)
+        chck posix_spawn_file_actions_addclose(fops, pStdout[readIdx])
+        chck posix_spawn_file_actions_adddup2(fops, pStdout[writeIdx], writeIdx)
+        chck posix_spawn_file_actions_addclose(fops, pStderr[readIdx])
+        if poStdErrToStdOut in options:
+          chck posix_spawn_file_actions_adddup2(fops, pStdout[writeIdx], 2)
+        else:
+          chck posix_spawn_file_actions_adddup2(fops, p_stderr[writeIdx], 2)
+
+      var sysEnv = if env == nil: envToCStringArray() else: envToCStringArray(env)
+      var res: cint
+      # FIXME: chdir is global to process
+      if workingDir.len > 0: os.setCurrentDir(workingDir)
+      if poUsePath in options:
+        res = posix_spawnp(pid, sysCommand, fops, attr, sysArgs, sysEnv)
       else:
-        envToCStringArray(env)
+        res = posix_spawn(pid, sysCommand, fops, attr, sysArgs, sysEnv)
+      deallocCStringArray(sysEnv)
+      discard posix_spawn_file_actions_destroy(fops)
+      discard posix_spawnattr_destroy(attr)
+      chck res
 
-    finally: deallocCStringArray(sysEnv)
-
-    var data: TStartProcessData
-    data.sysCommand = sysCommand
-    data.sysArgs = sysArgs
-    data.sysEnv = sysEnv
-    data.pStdin = pStdin
-    data.pStdout = pStdout
-    data.pStderr = pStderr
-    data.optionPoParentStreams = poParentStreams in options
-    data.optionPoUsePath = poUsePath in options
-    data.optionPoStdErrToStdOut = poStdErrToStdOut in options
-    data.workingDir = workingDir
-
-
-    when defined(posix_spawn) and not defined(useFork) and not defined(useClone):
-      pid = startProcessAuxSpawn(data)
     else:
-      pid = startProcessAuxFork(data)
+      pid = fork()
+      if pid < 0: osError(osLastError())
+      if pid == 0:
+        ## child process:
 
+        if poParentStreams notin options:
+          discard close(p_stdin[writeIdx])
+          if dup2(p_stdin[readIdx], readIdx) < 0: osError(osLastError())
+          discard close(p_stdout[readIdx])
+          if dup2(p_stdout[writeIdx], writeIdx) < 0: osError(osLastError())
+          discard close(p_stderr[readIdx])
+          if poStdErrToStdOut in options:
+            if dup2(p_stdout[writeIdx], 2) < 0: osError(osLastError())
+          else:
+            if dup2(p_stderr[writeIdx], 2) < 0: osError(osLastError())
+
+        # Create a new process group
+        if setpgid(0, 0) == -1: quit("setpgid call failed: " & $strerror(errno))
+
+        if workingDir.len > 0: os.setCurrentDir(workingDir)
+
+        if env == nil:
+          if poUsePath in options:
+            discard execvp(sysCommand, sysArgs)
+          else:
+            discard execv(sysCommand, sysArgs)
+        else:
+          var cEnv = envToCStringArray(env)
+          if poUsePath in options:
+            discard execvpe(sysCommand, sysArgs, cEnv)
+          else:
+            discard execve(sysCommand, sysArgs, cEnv)
+        # too risky to raise an exception here:
+        quit("execve call failed: " & $strerror(errno))
     # Parent process. Copy process information.
     if poEchoCmd in options:
       echo(command, " ", join(args, " "))
@@ -692,128 +722,6 @@ elif not defined(useNimRtl):
       discard close(pStderr[writeIdx])
       discard close(pStdin[readIdx])
       discard close(pStdout[writeIdx])
-
-  proc startProcessAuxSpawn(data: TStartProcessData): TPid =
-    var attr: Tposix_spawnattr
-    var fops: Tposix_spawn_file_actions
-
-    template chck(e: expr) =
-      if e != 0'i32: osError(osLastError())
-
-    chck posix_spawn_file_actions_init(fops)
-    chck posix_spawnattr_init(attr)
-
-    var mask: Tsigset
-    chck sigemptyset(mask)
-    chck posix_spawnattr_setsigmask(attr, mask)
-    chck posix_spawnattr_setpgroup(attr, 0'i32)
-
-    chck posix_spawnattr_setflags(attr, POSIX_SPAWN_USEVFORK or
-                                        POSIX_SPAWN_SETSIGMASK or
-                                        POSIX_SPAWN_SETPGROUP)
-
-    if not data.optionPoParentStreams:
-      chck posix_spawn_file_actions_addclose(fops, data.pStdin[writeIdx])
-      chck posix_spawn_file_actions_adddup2(fops, data.pStdin[readIdx], readIdx)
-      chck posix_spawn_file_actions_addclose(fops, data.pStdout[readIdx])
-      chck posix_spawn_file_actions_adddup2(fops, data.pStdout[writeIdx], writeIdx)
-      chck posix_spawn_file_actions_addclose(fops, data.pStderr[readIdx])
-      if data.optionPoStdErrToStdOut:
-        chck posix_spawn_file_actions_adddup2(fops, data.pStdout[writeIdx], 2)
-      else:
-        chck posix_spawn_file_actions_adddup2(fops, data.pStderr[writeIdx], 2)
-
-    var res: cint
-    # FIXME: chdir is global to process
-    if data.workingDir.len > 0:
-      setCurrentDir($data.workingDir)
-    var pid: TPid
-
-    if data.optionPoUsePath:
-      res = posix_spawnp(pid, data.sysCommand, fops, attr, data.sysArgs, data.sysEnv)
-    else:
-      res = posix_spawn(pid, data.sysCommand, fops, attr, data.sysArgs, data.sysEnv)
-
-    discard posix_spawn_file_actions_destroy(fops)
-    discard posix_spawnattr_destroy(attr)
-    chck res
-    return pid
-
-  proc startProcessAuxFork(data: TStartProcessData): TPid =
-    if pipe(data.pErrorPipe) != 0:
-        osError(osLastError())
-
-    finally:
-      discard close(data.pErrorPipe[readIdx])
-
-    var pid: TPid
-    var dataCopy = data
-
-    if defined(useClone):
-      const stackSize = 8096
-      let stackEnd = cast[clong](alloc(stackSize))
-      let stack = cast[pointer](stackEnd + stackSize)
-      let fn: pointer = startProcessAfterFork
-      pid = clone(fn, stack,
-                  cint(CLONE_VM or CLONE_VFORK or SIGCHLD),
-                  pointer(addr dataCopy), nil, nil, nil)
-      discard close(data.pErrorPipe[writeIdx])
-      dealloc(stack)
-    else:
-      pid = fork()
-      if pid == 0:
-        startProcessAfterFork(addr(dataCopy))
-        exitnow(1)
-
-    discard close(data.pErrorPipe[writeIdx])
-    if pid < 0: osError(osLastError())
-
-    var error: cint
-    let sizeRead = read(data.pErrorPipe[readIdx], addr error, sizeof(error))
-    if sizeRead == sizeof(error):
-      osError($strerror(error))
-
-    return pid
-
-  {.push stacktrace: off, profiler: off.}
-  proc startProcessFail(data: ptr TStartProcessData) =
-    var error: cint = errno
-    discard write(data.pErrorPipe[writeIdx], addr error, sizeof(error))
-    exitnow(1)
-
-  proc startProcessAfterFork(data: ptr TStartProcessData) =
-    # Warning: no GC here!
-    # Or anythink that touches global structures - all called nimrod procs
-    # must be marked with noStackFrame. Inspect C code after making changes.
-    if not data.optionPoParentStreams:
-      discard close(data.pStdin[writeIdx])
-      if dup2(data.pStdin[readIdx], readIdx) < 0:
-        startProcessFail(data)
-      discard close(data.pStdout[readIdx])
-      if dup2(data.pStdout[writeIdx], writeIdx) < 0:
-        startProcessFail(data)
-      discard close(data.pStderr[readIdx])
-      if data.optionPoStdErrToStdOut:
-        if dup2(data.pStdout[writeIdx], 2) < 0:
-          startProcessFail(data)
-      else:
-        if dup2(data.pStderr[writeIdx], 2) < 0:
-          startProcessFail(data)
-
-    if data.workingDir.len > 0:
-      if chdir(data.workingDir) < 0:
-        startProcessFail(data)
-
-    discard close(data.pErrorPipe[readIdx])
-    discard fcntl(data.pErrorPipe[writeIdx], F_SETFD, FD_CLOEXEC)
-
-    if data.optionPoUsePath:
-      discard execvpe(data.sysCommand, data.sysArgs, data.sysEnv)
-    else:
-      discard execve(data.sysCommand, data.sysArgs, data.sysEnv)
-
-    startProcessFail(data)
-  {.pop}
 
   proc close(p: PProcess) =
     if p.inStream != nil: close(p.inStream)
