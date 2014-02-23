@@ -750,7 +750,7 @@ elif not defined(useNimRtl):
     var dataCopy = data
 
     if defined(useClone):
-      const stackSize = 8096
+      const stackSize = 65536
       let stackEnd = cast[clong](alloc(stackSize))
       let stack = cast[pointer](stackEnd + stackSize)
       let fn: pointer = startProcessAfterFork
