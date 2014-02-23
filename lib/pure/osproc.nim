@@ -22,8 +22,6 @@ else:
 
 when defined(linux):
   import linux
-  when not defined(useFork):
-    const useClone = true
 
 type
   TProcess = object of TObject
@@ -663,7 +661,7 @@ elif not defined(useNimRtl):
     data.workingDir = workingDir
 
 
-    when defined(posix_spawn) and not defined(useFork) and not defined(useClone):
+    when defined(posix_spawn) and not defined(useFork) and not defined(useClone) and not defined(linux):
       pid = startProcessAuxSpawn(data)
     else:
       pid = startProcessAuxFork(data)
