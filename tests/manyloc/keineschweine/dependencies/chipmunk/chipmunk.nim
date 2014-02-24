@@ -18,10 +18,9 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 # 
-when defined(Linux):
-  const Lib = "libchipmunk.so.6.1.1"
-else:
-  {.error: "Platform unsupported".}
+
+const Lib = "libchipmunk.so.6.1.1"
+
 when defined(MoreNimrod):
   {.hint: "MoreNimrod defined; some Chipmunk functions replaced in Nimrod".}
 {.deadCodeElim: on.}
