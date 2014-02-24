@@ -653,6 +653,10 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
   var paramTypId = if not anon and paramType.sym != nil: paramType.sym.name
                    else: nil
 
+  template maybeLift(typ: PType): expr =
+    let lifted = liftingWalk(typ)
+    (if lifted != nil: lifted else: typ)
+
   template addImplicitGeneric(e: expr): expr =
     addImplicitGenericImpl(e, paramTypId)
 
@@ -663,7 +667,10 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
   of tyStatic:
     # proc(a: expr{string}, b: expr{nkLambda})
     # overload on compile time values and AST trees
-    result = addImplicitGeneric(c.newTypeWithSons(tyStatic, paramType.sons))
+    let base = paramType.base.maybeLift
+    if base.isMetaType and procKind == skMacro:
+      localError(info, errMacroBodyDependsOnGenericTypes, paramName)
+    result = addImplicitGeneric(c.newTypeWithSons(tyStatic, @[base]))
     result.flags.incl tfHasStatic
   
   of tyTypeDesc:
@@ -671,7 +678,8 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       # naked typedescs are not bindOnce types
       if paramType.base.kind == tyNone and paramTypId != nil and
          paramTypId.id == typedescId.id: paramTypId = nil
-      result = addImplicitGeneric(c.newTypeWithSons(tyTypeDesc, paramType.sons))
+      result = addImplicitGeneric(
+        c.newTypeWithSons(tyTypeDesc, @[paramType.base]))
   
   of tyDistinct:
     if paramType.sonsLen == 1:
