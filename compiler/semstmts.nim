@@ -126,7 +126,7 @@ proc implicitlyDiscardable(n: PNode): bool =
 proc fixNilType(n: PNode) =
   if isAtom(n):
     if n.kind != nkNilLit and n.typ != nil:
-      localError(n.info, errDiscardValue)
+      localError(n.info, errDiscardValueX, n.typ.typeToString)
   elif n.kind in {nkStmtList, nkStmtListExpr}:
     n.kind = nkStmtList
     for it in n: fixNilType(it)
@@ -154,7 +154,7 @@ proc discardCheck(c: PContext, result: PNode) =
       else:
         var n = result
         while n.kind in skipForDiscardable: n = n.lastSon
-        localError(n.info, errDiscardValue)
+        localError(n.info, errDiscardValueX, result.typ.typeToString)
 
 proc semIf(c: PContext, n: PNode): PNode = 
   result = n
@@ -331,6 +331,7 @@ proc checkNilable(v: PSym) =
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode = 
   var b: PNode
   result = copyNode(n)
+  var hasCompileTime = false
   for i in countup(0, sonsLen(n)-1): 
     var a = n.sons[i]
     if gCmd == cmdIdeTools: suggestStmt(c, a)
@@ -405,7 +406,9 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         v.typ = tup.sons[j]
         b.sons[j] = newSymNode(v)
       checkNilable(v)
-    
+      if sfCompileTime in v.flags: hasCompileTime = true
+  if hasCompileTime: vm.setupCompileTimeVar(c.module, result)
+
 proc semConst(c: PContext, n: PNode): PNode = 
   result = copyNode(n)
   for i in countup(0, sonsLen(n) - 1): 

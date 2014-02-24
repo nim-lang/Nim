@@ -51,7 +51,7 @@ macro okayy:stmt =
   for node in decls: result.add node
   for node in impls: result.add node
 
-importimpl(Item, int):
+importImpl(Item, int):
   echo 42
 importImpl(Foo, int16):
   echo 77

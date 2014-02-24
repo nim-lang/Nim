@@ -109,11 +109,17 @@ template decodeBx(k: expr) {.immediate, dirty.} =
 template move(a, b: expr) {.immediate, dirty.} = system.shallowCopy(a, b)
 # XXX fix minor 'shallowCopy' overloading bug in compiler
 
-template createStr(x) =
-  if x.node.isNil: x.node = newNode(nkStrLit)
+template createStrKeepNode(x) =
+  if x.node.isNil:
+    x.node = newNode(nkStrLit)
   elif x.node.kind == nkNilLit:
     system.reset(x.node[])
     x.node.kind = nkStrLit
+  else:
+    assert x.node.kind in {nkStrLit..nkTripleStrLit}
+
+template createStr(x) =
+  x.node = newNode(nkStrLit)
 
 proc moveConst(x: var TRegister, y: TRegister) =
   if x.kind != y.kind:
@@ -254,7 +260,7 @@ proc opConv*(dest: var TRegister, src: TRegister, desttyp, srctyp: PType): bool 
     if dest.kind != rkNode:
       myreset(dest)
       dest.kind = rkNode
-      dest.node = newNode(nkStrLit)
+    dest.node = newNode(nkStrLit)
     let styp = srctyp.skipTypes(abstractRange)
     case styp.kind
     of tyEnum:
@@ -329,8 +335,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TRegister =
     #{.computedGoto.}
     let instr = c.code[pc]
     let ra = instr.regA
-    #echo "PC ", pc, " ", c.code[pc].opcode, " ra ", ra
-    #message(c.debug[pc], warnUser, "gah")
+    #if c.traceActive:
+    #  echo "PC ", pc, " ", c.code[pc].opcode, " ra ", ra
+    #  message(c.debug[pc], warnUser, "Trace")
     case instr.opcode
     of opcEof: return regs[ra]
     of opcRet:
@@ -354,7 +361,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TRegister =
       regs[ra].intVal = regs[rb].intVal
     of opcAsgnStr:
       decodeB(rkNode)
-      createStr regs[ra]
+      createStrKeepNode regs[ra]
       regs[ra].node.strVal = regs[rb].node.strVal
     of opcAsgnFloat:
       decodeB(rkFloat)
@@ -454,7 +461,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TRegister =
     of opcWrDeref:
       # a[] = b
       decodeBC(rkNode)
-      putIntoNode(regs[ra].node, regs[rc])
+      putIntoNode(regs[ra].node, regs[rb])
     of opcAddInt:
       decodeBC(rkInt)
       regs[ra].intVal = regs[rb].intVal + regs[rc].intVal
@@ -484,8 +491,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TRegister =
     of opcInclRange:
       decodeBC(rkNode)
       var r = newNode(nkRange)
-      r.add regs[rb].node
-      r.add regs[rc].node
+      r.add regs[rb].regToNode
+      r.add regs[rc].regToNode
       addSon(regs[ra].node, r.copyTree)
     of opcExcl:
       decodeB(rkNode)
@@ -643,15 +650,18 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TRegister =
         regs[ra].node.strVal.add getstr(regs[i])
     of opcAddStrCh:
       decodeB(rkNode)
-      createStr regs[ra]
+      createStrKeepNode regs[ra]
       regs[ra].node.strVal.add(regs[rb].intVal.chr)
     of opcAddStrStr:
       decodeB(rkNode)
-      createStr regs[ra]
+      createStrKeepNode regs[ra]
       regs[ra].node.strVal.add(regs[rb].node.strVal)
     of opcAddSeqElem:
       decodeB(rkNode)
-      regs[ra].node.add(copyTree(regs[rb].node))
+      if regs[ra].node.kind == nkBracket:
+        regs[ra].node.add(copyTree(regs[rb].regToNode))
+      else:
+        stackTrace(c, tos, pc, errNilAccess)
     of opcEcho:
       let rb = instr.regB
       for i in ra..ra+rb-1:
@@ -660,7 +670,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TRegister =
       writeln(stdout, "")
     of opcContainsSet:
       decodeBC(rkInt)
-      regs[ra].intVal = ord(inSet(regs[rb].node, regs[rc].node))
+      regs[ra].intVal = ord(inSet(regs[rb].node, regs[rc].regToNode))
     of opcSubStr:
       decodeBC(rkNode)
       inc pc
@@ -815,8 +825,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TRegister =
       ensureKind(rkNode)
       let typ = c.types[instr.regBx - wordExcess]
       regs[ra].node = getNullValue(typ, c.debug[pc])
-      if regs[ra].node.kind in {nkStrLit..nkTripleStrLit}:
-        regs[ra].kind = rkNode
+      # opcLdNull really is the gist of the VM's problems: should it load
+      # a fresh null to  regs[ra].node  or to regs[ra].node[]? This really
+      # depends on whether regs[ra] represents the variable itself or wether
+      # it holds the indirection! Due to the way registers are re-used we cannot
+      # say for sure here! --> The codegen has to deal with it
+      # via 'genAsgnPatch'.
     of opcLdNullReg:
       let typ = c.types[instr.regBx - wordExcess]
       if typ.skipTypes(abstractInst+{tyRange}-{tyTypeDesc}).kind in {
@@ -858,7 +872,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TRegister =
         return TRegister(kind: rkNone)
     of opcSetLenStr:
       decodeB(rkNode)
-      createStr regs[ra]
+      createStrKeepNode regs[ra]
       regs[ra].node.strVal.setLen(regs[rb].intVal.int)
     of opcOf:
       decodeBC(rkInt)
@@ -1209,6 +1223,9 @@ proc evalStaticExpr*(module: PSym, e: PNode, prc: PSym): PNode =
 proc evalStaticStmt*(module: PSym, e: PNode, prc: PSym) =
   discard evalConstExprAux(module, prc, e, emStaticStmt)
 
+proc setupCompileTimeVar*(module: PSym, n: PNode) =
+  discard evalConstExprAux(module, nil, n, emStaticStmt)
+
 proc setupMacroParam(x: PNode): PNode =
   result = x
   if result.kind in {nkHiddenSubConv, nkHiddenStdConv}: result = result.sons[1]
@@ -1250,3 +1267,4 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
   if cyclicTree(result): globalError(n.info, errCyclicTree)
   dec(evalMacroCounter)
   c.callsite = nil
+  #debug result

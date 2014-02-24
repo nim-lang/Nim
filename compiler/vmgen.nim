@@ -451,9 +451,11 @@ proc genCall(c: PCtx; n: PNode; dest: var TDest) =
     c.gABC(n, opcIndCallAsgn, dest, x, n.len)
   c.freeTempRange(x, n.len)
 
+template isGlobal(s: PSym): bool = sfGlobal in s.flags and s.kind != skForVar
+
 proc needsAsgnPatch(n: PNode): bool = 
   n.kind in {nkBracketExpr, nkDotExpr, nkCheckedFieldExpr,
-             nkDerefExpr, nkHiddenDeref}
+             nkDerefExpr, nkHiddenDeref} or (n.kind == nkSym and n.sym.isGlobal)
 
 proc genAsgnPatch(c: PCtx; le: PNode, value: TRegister) =
   case le.kind
@@ -461,15 +463,25 @@ proc genAsgnPatch(c: PCtx; le: PNode, value: TRegister) =
     let dest = c.genx(le.sons[0], {gfAddrOf})
     let idx = c.genx(le.sons[1])
     c.gABC(le, opcWrArr, dest, idx, value)
+    c.freeTemp(dest)
+    c.freeTemp(idx)
   of nkDotExpr, nkCheckedFieldExpr:
     # XXX field checks here
     let left = if le.kind == nkDotExpr: le else: le.sons[0]
     let dest = c.genx(left.sons[0], {gfAddrOf})
     let idx = c.genx(left.sons[1])
     c.gABC(left, opcWrObj, dest, idx, value)
+    c.freeTemp(dest)
+    c.freeTemp(idx)
   of nkDerefExpr, nkHiddenDeref:
     let dest = c.genx(le.sons[0], {gfAddrOf})
     c.gABC(le, opcWrDeref, dest, value)
+    c.freeTemp(dest)
+  of nkSym:
+    if le.sym.isGlobal:
+      let dest = c.genx(le, {gfAddrOf})
+      c.gABC(le, opcWrDeref, dest, value)
+      c.freeTemp(dest)
   else:
     discard
 
@@ -608,6 +620,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     c.genAddSubInt(n, dest, opcAddInt)
   of mInc, mDec:
     unused(n, dest)
+    # XXX generates inefficient code for globals
     var d = c.genx(n.sons[1]).TDest
     c.genAddSubInt(n, d, if m == mInc: opcAddInt else: opcSubInt)
     c.genAsgnPatch(n.sons[1], d)
@@ -621,6 +634,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     c.genNewSeq(n)
   of mNewString:
     genUnaryABC(c, n, dest, opcNewStr)
+    # XXX buggy
   of mNewStringOfCap:
     # we ignore the 'cap' argument and translate it as 'newString(0)'.
     # eval n.sons[1] for possible side effects:
@@ -629,6 +643,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     if dest < 0: dest = c.getTemp(n.typ)
     c.gABC(n, opcNewStr, dest, tmp)
     c.freeTemp(tmp)
+    # XXX buggy
   of mLengthOpenArray, mLengthArray, mLengthSeq:
     genUnaryABI(c, n, dest, opcLenSeq)
   of mLengthStr:
@@ -955,8 +970,6 @@ proc genAsgn(c: PCtx; dest: TDest; ri: PNode; requiresCopy: bool) =
   gABC(c, ri, whichAsgnOpc(ri), dest, tmp)
   c.freeTemp(tmp)
 
-template isGlobal(s: PSym): bool = sfGlobal in s.flags and s.kind != skForVar
-
 proc setSlot(c: PCtx; v: PSym) =
   # XXX generate type initialization here?
   if v.position == 0:
@@ -1035,14 +1048,22 @@ proc cannotEval(n: PNode) {.noinline.} =
   globalError(n.info, errGenerated, "cannot evaluate at compile time: " &
     n.renderTree)
 
+proc getNullValue*(typ: PType, info: TLineInfo): PNode
+
 proc genGlobalInit(c: PCtx; n: PNode; s: PSym) =
-  c.globals.add(emptyNode.copyNode)
+  c.globals.add(getNullValue(s.typ, n.info))
   s.position = c.globals.len
   # This is rather hard to support, due to the laziness of the VM code
   # generator. See tests/compile/tmacro2 for why this is necesary:
   #   var decls{.compileTime.}: seq[PNimrodNode] = @[]
+  let dest = c.getTemp(s.typ)
+  c.gABx(n, opcLdGlobal, dest, s.position)
+  let tmp = c.genx(s.ast)
+  c.gABC(n, opcWrDeref, dest, tmp)
+  c.freeTemp(dest)
+  c.freeTemp(tmp)
 
-proc genRdVar(c: PCtx; n: PNode; dest: var TDest) =
+proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   let s = n.sym
   if s.isGlobal:
     if sfCompileTime in s.flags or c.mode == emRepl:
@@ -1052,7 +1073,14 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest) =
     if s.position == 0:
       if sfImportc in s.flags: c.importcSym(n.info, s)
       else: genGlobalInit(c, n, s)
-    c.gABx(n, opcLdGlobal, dest, s.position)
+    if dest < 0: dest = c.getTemp(n.typ)
+    if gfAddrOf notin flags and fitsRegister(s.typ):
+      var cc = c.getTemp(n.typ)
+      c.gABx(n, opcLdGlobal, cc, s.position)
+      c.gABC(n, opcNodeToReg, dest, cc)
+      c.freeTemp(cc)
+    else:
+      c.gABx(n, opcLdGlobal, dest, s.position)
   else:
     if s.kind == skForVar and c.mode == emRepl: c.setSlot s
     if s.position > 0 or (s.position == 0 and
@@ -1095,7 +1123,6 @@ proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   else:
     genAccess(c, n, dest, opcLdArr, flags)
 
-proc getNullValue*(typ: PType, info: TLineInfo): PNode
 proc getNullValueAux(obj: PNode, result: PNode) = 
   case obj.kind
   of nkRecList:
@@ -1161,7 +1188,7 @@ proc genVarSection(c: PCtx; n: PNode) =
         setSlot(c, a[i].sym)
         # v = t[i]
         var v: TDest = -1
-        genRdVar(c, a[i], v)
+        genRdVar(c, a[i], v, {gfAddrOf})
         c.gABC(n, opcWrObj, v, tmp, i)
         # XXX globals?
       c.freeTemp(tmp)
@@ -1184,6 +1211,7 @@ proc genVarSection(c: PCtx; n: PNode) =
           let val = c.genx(a.sons[2])
           c.gABC(a, opcWrDeref, tmp, val)
           c.freeTemp(val)
+          c.freeTemp(tmp)
       else:
         setSlot(c, s)
         if a.sons[2].kind == nkEmpty:
@@ -1202,8 +1230,17 @@ proc genVarSection(c: PCtx; n: PNode) =
 proc genArrayConstr(c: PCtx, n: PNode, dest: var TDest) =
   if dest < 0: dest = c.getTemp(n.typ)
   c.gABx(n, opcLdNull, dest, c.genType(n.typ))
+
+  let intType = getSysType(tyInt)
+  let seqType = n.typ.skipTypes(abstractVar-{tyTypeDesc})
+  if seqType.kind == tySequence:
+    var tmp = c.getTemp(intType)
+    c.gABx(n, opcLdImmInt, tmp, n.len)
+    c.gABx(n, opcNewSeq, dest, c.genType(seqType))
+    c.gABx(n, opcNewSeq, tmp, 0)
+    c.freeTemp(tmp)
+  
   if n.len > 0:
-    let intType = getSysType(tyInt)
     var tmp = getTemp(c, intType)
     c.gABx(n, opcLdNullReg, tmp, c.genType(intType))
     for x in n:
@@ -1271,7 +1308,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     let s = n.sym
     case s.kind
     of skVar, skForVar, skTemp, skLet, skParam, skResult:
-      genRdVar(c, n, dest)
+      genRdVar(c, n, dest, flags)
     of skProc, skConverter, skMacro, skTemplate, skMethod, skIterator:
       # 'skTemplate' is only allowed for 'getAst' support:
       if sfImportc in s.flags: c.importcSym(n.info, s)
@@ -1503,7 +1540,7 @@ proc genProc(c: PCtx; s: PSym): int =
     c.gABC(body, opcEof, eofInstr.regA)
     c.optimizeJumps(result)
     s.offset = c.prc.maxSlots
-    #if s.name.s == "traverse":
+    #if s.name.s == "importImpl_forward" or s.name.s == "importImpl":
     #  c.echoCode(result)
     # echo renderTree(body)
     c.prc = oldPrc
