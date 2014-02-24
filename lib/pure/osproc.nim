@@ -747,7 +747,7 @@ elif not defined(useNimRtl):
     var pid: TPid
     var dataCopy = data
 
-    if defined(useClone):
+    when defined(useClone):
       const stackSize = 65536
       let stackEnd = cast[clong](alloc(stackSize))
       let stack = cast[pointer](stackEnd + stackSize)
