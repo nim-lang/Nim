@@ -163,8 +163,6 @@ type
     blocks*: seq[TBlock]    # blocks; temp data structure
     slots*: array[TRegister, tuple[inUse: bool, kind: TSlotKind]]
     maxSlots*: int
-    globals*: array[TRegister, int] # hack: to support passing globals byref
-                                    # we map a slot persistently to a global
     
   PCtx* = ref TCtx
   TCtx* = object of passes.TPassContext # code gen context
@@ -181,6 +179,7 @@ type
     callsite*: PNode
     mode*: TEvalMode
     features*: TSandboxFlags
+    traceActive*: bool
 
   TPosition* = distinct int
 

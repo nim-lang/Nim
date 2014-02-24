@@ -641,9 +641,11 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
       result = evalStaticExpr(c.module, call, c.p.owner)
       if result.isNil: 
         localError(n.info, errCannotInterpretNodeX, renderTree(call))
+      else: result = fixupTypeAfterEval(c, result, n)
     else:
       result = evalConstExpr(c.module, call)
       if result.isNil: result = n
+      else: result = fixupTypeAfterEval(c, result, n)
     #if result != n:
     #  echo "SUCCESS evaluated at compile time: ", call.renderTree
 
@@ -653,6 +655,8 @@ proc semStaticExpr(c: PContext, n: PNode): PNode =
   if result.isNil:
     localError(n.info, errCannotInterpretNodeX, renderTree(n))
     result = emptyNode
+  else:
+    result = fixupTypeAfterEval(c, result, a)
 
 proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
                                      flags: TExprFlags): PNode =
