@@ -17,10 +17,9 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN 
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
-when defined(Linux):
-  const Lib = "libenet.so.1(|.0.3)"
-else:
-  {.error: "Your platform has not been accounted for."}
+
+const Lib = "libenet.so.1(|.0.3)"
+
 {.deadCodeElim: ON.}
 const 
   ENET_VERSION_MAJOR* = 1
@@ -267,7 +266,7 @@ const
   ENET_PEER_RELIABLE_WINDOW_SIZE         = 0x1000
   ENET_PEER_FREE_RELIABLE_WINDOWS        = 8
 
-when defined(Linux):
+when defined(Linux) or true:
   import posix
   const
     ENET_SOCKET_NULL*: cint = -1
