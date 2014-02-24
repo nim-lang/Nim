@@ -94,6 +94,7 @@ type
     errNewSectionExpected, errWhitespaceExpected, errXisNoValidIndexFile, 
     errCannotRenderX, errVarVarTypeNotAllowed, errInstantiateXExplicitely,
     errOnlyACallOpCanBeDelegator, errUsingNoSymbol,
+    errMacroBodyDependsOnGenericTypes,
     errDestructorNotGenericEnough,
     
     errXExpectsTwoArguments, 
@@ -326,6 +327,8 @@ const
     errInstantiateXExplicitely: "instantiate '$1' explicitely",
     errOnlyACallOpCanBeDelegator: "only a call operator can be a delegator",
     errUsingNoSymbol: "'$1' is not a variable, constant or a proc name",
+    errMacroBodyDependsOnGenericTypes: "the macro body cannot be compiled, " &
+                                       "because the parameter '$1' has a generic type",
     errDestructorNotGenericEnough: "Destructor signarue is too specific. " &
                                    "A destructor must be associated will all instantiations of a generic type",
     errXExpectsTwoArguments: "\'$1\' expects two arguments", 
