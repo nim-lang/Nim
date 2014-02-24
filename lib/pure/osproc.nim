@@ -747,7 +747,7 @@ elif not defined(useNimRtl):
     var pid: TPid
     var dataCopy = data
 
-    if defined(useClone):
+    when defined(useClone):
       const stackSize = 65536
       let stackEnd = cast[clong](alloc(stackSize))
       let stack = cast[pointer](stackEnd + stackSize)
@@ -779,6 +779,9 @@ elif not defined(useNimRtl):
     discard write(data.pErrorPipe[writeIdx], addr error, sizeof(error))
     exitnow(1)
 
+  when defined(macosx):
+    var environ {.importc.}: cstringArray
+
   proc startProcessAfterFork(data: ptr TStartProcessData) =
     # Warning: no GC here!
     # Or anythink that touches global structures - all called nimrod procs
@@ -806,7 +809,13 @@ elif not defined(useNimRtl):
     discard fcntl(data.pErrorPipe[writeIdx], F_SETFD, FD_CLOEXEC)
 
     if data.optionPoUsePath:
-      discard execvpe(data.sysCommand, data.sysArgs, data.sysEnv)
+      when defined(macosx):
+        # MacOSX doesn't have execvpe, so we need workaround.
+        # On MacOSX we can arrive here only from fork, so this is safe:
+        environ = data.sysEnv
+        discard execvp(data.sysCommand, data.sysArgs)
+      else:
+        discard execvpe(data.sysCommand, data.sysArgs, data.sysEnv)
     else:
       discard execve(data.sysCommand, data.sysArgs, data.sysEnv)
 
