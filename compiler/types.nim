@@ -463,7 +463,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   of tyAnd:
     result = typeToString(t.sons[0]) & " and " & typeToString(t.sons[1])
   of tyOr:
-    result = typeToString(t.sons[0]) & " and " & typeToString(t.sons[1])
+    result = typeToString(t.sons[0]) & " or " & typeToString(t.sons[1])
   of tyNot:
     result = "not " & typeToString(t.sons[0])
   of tyExpr:

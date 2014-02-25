@@ -1600,7 +1600,6 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     if lfNoDecl in s.loc.flags or s.magic != mNone: discard
     elif not p.g.generatedSyms.containsOrIncl(s.id):
       app(p.locals, genProc(p, s))
-  of nkMetaNode: gen(p, n.sons[0], r)
   of nkType: r.res = genTypeInfo(p, n.typ)
   of nkStmtList, nkStmtListExpr:
     # this shows the distinction is nice for backends and should be kept
