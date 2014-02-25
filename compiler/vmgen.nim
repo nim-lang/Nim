@@ -924,7 +924,7 @@ proc genAddrDeref(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
                   flags: TGenFlags) = 
   # a nop for certain types
   let isAddr = opc in {opcAddrNode, opcAddrReg}
-  let flags = if isAddr: flags+{gfAddrOf} else: flags
+  let newflags = if isAddr: flags+{gfAddrOf} else: flags
   # consider:
   # proc foo(f: var ref int) =
   #   f = new(int)
@@ -935,12 +935,14 @@ proc genAddrDeref(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
   # The type of 'f' is 'var ref int' and of 'x' is 'ref int'. Hence for
   # nkAddr we must not use 'unneededIndirection', but for deref we use it.
   if not isAddr and unneededIndirection(n.sons[0]):
-    gen(c, n.sons[0], dest, flags)
+    gen(c, n.sons[0], dest, newflags)
   else:
-    let tmp = c.genx(n.sons[0], flags)
+    let tmp = c.genx(n.sons[0], newflags)
     if dest < 0: dest = c.getTemp(n.typ)
     if not isAddr:
       gABC(c, n, opc, dest, tmp)
+      if gfAddrOf notin flags and fitsRegister(n.typ):
+        c.gABC(n, opcNodeToReg, dest, dest)
     elif c.prc.slots[tmp].kind >= slotTempUnknown:
       gABC(c, n, opcAddrReg, dest, tmp)
     else:
@@ -1541,8 +1543,8 @@ proc genProc(c: PCtx; s: PSym): int =
     c.optimizeJumps(result)
     s.offset = c.prc.maxSlots
     #if s.name.s == "importImpl_forward" or s.name.s == "importImpl":
-    #  c.echoCode(result)
-    # echo renderTree(body)
+    #c.echoCode(result)
+    #echo renderTree(body)
     c.prc = oldPrc
   else:
     c.prc.maxSlots = s.offset
