@@ -220,7 +220,7 @@ proc tryConstExpr(c: PContext, n: PNode): PNode =
       return nil
 
     result = fixupTypeAfterEval(c, result, e)
-  except:
+  except ERecoverableError:
     return nil
 
 proc semConstExpr(c: PContext, n: PNode): PNode =
