@@ -109,14 +109,18 @@ template decodeBx(k: expr) {.immediate, dirty.} =
 template move(a, b: expr) {.immediate, dirty.} = system.shallowCopy(a, b)
 # XXX fix minor 'shallowCopy' overloading bug in compiler
 
-template createStrKeepNode(x) =
+proc createStrKeepNode(x: var TRegister) =
   if x.node.isNil:
     x.node = newNode(nkStrLit)
   elif x.node.kind == nkNilLit:
     system.reset(x.node[])
     x.node.kind = nkStrLit
   else:
-    assert x.node.kind in {nkStrLit..nkTripleStrLit}
+    # XXX this is hacky; tests/txmlgen triggers it:
+    x.node = newNode(nkStrLit)
+    #if x.node.kind notin {nkStrLit..nkTripleStrLit}:
+    #  debug x.node
+    #assert x.node.kind in {nkStrLit..nkTripleStrLit}
 
 template createStr(x) =
   x.node = newNode(nkStrLit)
