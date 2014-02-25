@@ -183,7 +183,7 @@ type
     channel: string
     timestamp: TTime
     case kind*: TSeenType
-    of PSeenJoin: discard
+    of PSeenJoin: nil
     of PSeenPart, PSeenQuit, PSeenMsg:
       msg: string
     of PSeenNick:

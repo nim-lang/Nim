@@ -900,20 +900,27 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       result = isNone
 
   of tyTypeDesc:
-    if a.kind != tyTypeDesc: return isNone
-    
     var prev = PType(idTableGet(c.bindings, f))
     if prev == nil:
+      # proc foo(T: typedesc, x: T)
+      # when `f` is an unresolved typedesc, `a` could be any
+      # type, so we should not perform this check earlier
+      if a.kind != tyTypeDesc: return isNone
+    
       if f.base.kind == tyNone:
         result = isGeneric
       else:
         result = typeRel(c, f.base, a.base)
+      
       if result != isNone:
         put(c.bindings, f, a)
     else:
-      let toMatch = if tfUnresolved in f.flags: a
-                    else: a.base
-      result = typeRel(c, prev.base, toMatch)
+      if tfUnresolved in f.flags:
+        result = typeRel(c, prev.base, a)
+      elif a.kind == tyTypeDesc:
+        result = typeRel(c, prev.base, a.base)
+      else:
+        result = isNone
   
   of tyStmt:
     result = isGeneric
@@ -1022,6 +1029,28 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
  
     r = typeRel(m, f, a)
 
+  if r != isNone and m.calleeSym != nil and
+     m.calleeSym.kind in {skMacro, skTemplate}:
+    # XXX: duplicating this is ugly, maybe we should move this
+    # directly into typeRel using return-like templates
+    case r
+    of isConvertible, isIntConv: inc(m.convMatches)
+    of isSubtype, isSubrange: inc(m.subtypeMatches)
+    of isGeneric, isInferred: inc(m.genericMatches)
+    of isInferredConvertible: inc(m.genericMatches); inc(m.convMatches)
+    of isFromIntLit: inc(m.intConvMatches, 256)
+    of isEqual: inc(m.exactMatches)
+    of isNone: discard
+
+    if f.kind == tyStmt and argOrig.kind == nkDo:
+      return argOrig[bodyPos]
+    elif f.kind == tyTypeDesc:
+      return arg
+    elif f.kind == tyStatic:
+      return arg.typ.n
+    else:
+      return argOrig
+  
   case r
   of isConvertible:
     inc(m.convMatches)
@@ -1039,31 +1068,23 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
     #result = copyTree(arg)
     result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
   of isInferred, isInferredConvertible:
+    inc(m.genericMatches)
     if arg.kind in {nkProcDef, nkIteratorDef} + nkLambdaKinds:
       result = c.semInferredLambda(c, m.bindings, arg)
     else:
       let inferred = c.semGenerateInstance(c, arg.sym, m.bindings, arg.info)
       result = newSymNode(inferred, arg.info)
     if r == isInferredConvertible:
+      inc(m.convMatches)
       result = implicitConv(nkHiddenStdConv, f, result, m, c)
   of isGeneric:
     inc(m.genericMatches)
-    if m.calleeSym != nil and m.calleeSym.kind in {skMacro, skTemplate}:
-      if f.kind == tyStmt and argOrig.kind == nkDo:
-        result = argOrig[bodyPos]
-      elif f.kind == tyTypeDesc:
-        result = arg
-      elif f.kind == tyStatic:
-        result = arg.typ.n
-      else:
-        result = argOrig
-    else:
-      result = copyTree(arg)
-      result.typ = getInstantiatedType(c, arg, m, f)
-      # BUG: f may not be the right key!
-      if skipTypes(result.typ, abstractVar-{tyTypeDesc}).kind in {tyTuple}:
-        result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
-        # BUGFIX: use ``result.typ`` and not `f` here
+    result = copyTree(arg)
+    result.typ = getInstantiatedType(c, arg, m, f)
+    # BUG: f may not be the right key!
+    if skipTypes(result.typ, abstractVar-{tyTypeDesc}).kind in {tyTuple}:
+      result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
+      # BUGFIX: use ``result.typ`` and not `f` here
   of isFromIntLit:
     # too lazy to introduce another ``*matches`` field, so we conflate
     # ``isIntConv`` and ``isIntLit`` here:

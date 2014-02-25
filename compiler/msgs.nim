@@ -94,6 +94,7 @@ type
     errNewSectionExpected, errWhitespaceExpected, errXisNoValidIndexFile, 
     errCannotRenderX, errVarVarTypeNotAllowed, errInstantiateXExplicitely,
     errOnlyACallOpCanBeDelegator, errUsingNoSymbol,
+    errMacroBodyDependsOnGenericTypes,
     errDestructorNotGenericEnough,
     
     errXExpectsTwoArguments, 
@@ -104,6 +105,7 @@ type
     errXhasSideEffects, errIteratorExpected, errLetNeedsInit,
     errThreadvarCannotInit, errWrongSymbolX, errIllegalCaptureX,
     errXCannotBeClosure, errXMustBeCompileTime,
+    errCannotInferTypeOfTheLiteral,
     errUser,
     warnCannotOpenFile, 
     warnOctalEscape, warnXIsNeverRead, warnXmightNotBeenInit, 
@@ -325,6 +327,8 @@ const
     errInstantiateXExplicitely: "instantiate '$1' explicitely",
     errOnlyACallOpCanBeDelegator: "only a call operator can be a delegator",
     errUsingNoSymbol: "'$1' is not a variable, constant or a proc name",
+    errMacroBodyDependsOnGenericTypes: "the macro body cannot be compiled, " &
+                                       "because the parameter '$1' has a generic type",
     errDestructorNotGenericEnough: "Destructor signarue is too specific. " &
                                    "A destructor must be associated will all instantiations of a generic type",
     errXExpectsTwoArguments: "\'$1\' expects two arguments", 
@@ -348,6 +352,7 @@ const
     errIllegalCaptureX: "illegal capture '$1'",
     errXCannotBeClosure: "'$1' cannot have 'closure' calling convention",
     errXMustBeCompileTime: "'$1' can only be used in compile-time context",
+    errCannotInferTypeOfTheLiteral: "cannot infer the type of the $1",
     errUser: "$1", 
     warnCannotOpenFile: "cannot open \'$1\' [CannotOpenFile]",
     warnOctalEscape: "octal escape sequences do not exist; leading zero is ignored [OctalEscape]", 
