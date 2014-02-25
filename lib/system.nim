@@ -2014,8 +2014,10 @@ when not defined(JS): #and not defined(NimrodVM):
       ## Flushes `f`'s buffer.
 
     proc readAll*(file: TFile): TaintedString {.tags: [FReadIO].}
-      ## Reads all data from the stream `file`. Raises an IO exception
-      ## in case of an error
+      ## Reads all data from the stream `file`.
+      ##
+      ## Raises an IO exception in case of an error. It is an error if the
+      ## current file position is not at the beginning of the file.
     
     proc readFile*(filename: string): TaintedString {.tags: [FReadIO].}
       ## Opens a file named `filename` for reading. Then calls `readAll`

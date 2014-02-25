@@ -1,6 +1,6 @@
 discard """
   line: 21
-  errormsg: "invalid type: 'TTable'"
+  errormsg: "invalid type: 'TTable[string, proc (string)]'"
 """
 
 import tables

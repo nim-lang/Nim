@@ -962,8 +962,8 @@ proc genMainProc(m: BModule) =
     NimMainBody =
       "N_CDECL(void, NimMain)(void) {$N" &
         "\tPreMain();$N" &
-        "$1$N" &
-      "}$N"
+        "$1" &
+      "}$N$N"
 
     PosixNimMain =
       "int cmdCount;$N" &
@@ -977,20 +977,20 @@ proc genMainProc(m: BModule) =
         "\tcmdCount = argc;$N" &
         "\tgEnv = env;$N" &
         MainProcsWithResult &
-      "}$N"
+      "}$N$N"
   
     StandaloneCMain =
       "int main(void) {$N" &
         MainProcs &
         "\treturn 0;$N" &
-      "}$N"
+      "}$N$N"
     
     WinNimMain = NimMainBody
     
     WinCMain = "N_STDCALL(int, WinMain)(HINSTANCE hCurInstance, $N" &
       "                        HINSTANCE hPrevInstance, $N" &
       "                        LPSTR lpCmdLine, int nCmdShow) {$N" &
-      MainProcsWithResult & "}$N"
+      MainProcsWithResult & "}$N$N"
   
     WinNimDllMain = "N_LIB_EXPORT " & NimMainBody
 
@@ -998,14 +998,14 @@ proc genMainProc(m: BModule) =
       "BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fwdreason, $N" &
       "                    LPVOID lpvReserved) {$N" &
       "\tif(fwdreason == DLL_PROCESS_ATTACH) {$N" & MainProcs & "}$N" &
-      "\treturn 1;$N}$N"
+      "\treturn 1;$N}$N$N"
 
     PosixNimDllMain = WinNimDllMain
     
     PosixCDllMain =
       "void NIM_POSIX_INIT NimMainInit(void) {$N" &
         MainProcs &
-      "}$N"
+      "}$N$N"
 
   var nimMain, otherMain: TFormatStr
   if platform.targetOS == osWindows and
@@ -1034,7 +1034,7 @@ proc genMainProc(m: BModule) =
                               platform.targetOS == osStandalone: "".toRope
                             else: ropecg(m, "\t#initStackBottom();$N")
   inc(m.labels)
-  appcg(m, m.s[cfsProcs], "void PreMain() {$N" & PreMainBody & "}$N", [
+  appcg(m, m.s[cfsProcs], "void PreMain() {$N" & PreMainBody & "}$N$N", [
     mainDatInit, initStackBottomCall, gBreakpoints, otherModsInit])
 
   appcg(m, m.s[cfsProcs], nimMain, [mainModInit, toRope(m.labels)])
