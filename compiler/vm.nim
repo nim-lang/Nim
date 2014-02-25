@@ -115,10 +115,9 @@ proc createStrKeepNode(x: var TRegister) =
   elif x.node.kind == nkNilLit:
     system.reset(x.node[])
     x.node.kind = nkStrLit
-  else:
+  elif x.node.kind notin {nkStrLit..nkTripleStrLit}:
     # XXX this is hacky; tests/txmlgen triggers it:
     x.node = newNode(nkStrLit)
-    #if x.node.kind notin {nkStrLit..nkTripleStrLit}:
     #  debug x.node
     #assert x.node.kind in {nkStrLit..nkTripleStrLit}
 
