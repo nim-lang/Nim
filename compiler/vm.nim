@@ -460,11 +460,16 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TRegister =
         assert regs[rb].node.kind == nkRefTy
         regs[ra].node = regs[rb].node.sons[0]
       else:
-        stackTrace(c, tos, pc, errIndexOutOfBounds)
+        stackTrace(c, tos, pc, errNilAccess)
     of opcWrDeref:
       # a[] = b
-      decodeBC(rkNode)
-      putIntoNode(regs[ra].node, regs[rb])
+      let ra = instr.regA
+      let rb = instr.regB
+      case regs[ra].kind
+      of rkNodeAddr: putIntoNode(regs[ra].nodeAddr[], regs[rb])
+      of rkRegisterAddr: regs[ra].regAddr[] = regs[rb]
+      of rkNode: putIntoNode(regs[ra].node, regs[rb])
+      else: stackTrace(c, tos, pc, errNilAccess)
     of opcAddInt:
       decodeBC(rkInt)
       regs[ra].intVal = regs[rb].intVal + regs[rc].intVal
