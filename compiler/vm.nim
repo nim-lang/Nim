@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -25,20 +25,20 @@ when hasFFI:
 type
   TRegisterKind = enum
     rkNone, rkNode, rkInt, rkFloat, rkRegisterAddr, rkNodeAddr
-  TRegister = object  # with a custom mark proc, we could use the same
+  TFullReg = object   # with a custom mark proc, we could use the same
                       # data representation as LuaJit (tagged NaNs).
     case kind: TRegisterKind
     of rkNone: nil
     of rkInt: intVal: BiggestInt
     of rkFloat: floatVal: BiggestFloat
     of rkNode: node: PNode
-    of rkRegisterAddr: regAddr: ptr TRegister
+    of rkRegisterAddr: regAddr: ptr TFullReg
     of rkNodeAddr: nodeAddr: ptr PNode
 
   PStackFrame* = ref TStackFrame
   TStackFrame* = object
     prc: PSym                 # current prc; proc that is evaluated
-    slots: seq[TRegister]     # parameters passed to the proc + locals;
+    slots: seq[TFullReg]      # parameters passed to the proc + locals;
                               # parameters come first
     next: PStackFrame         # for stacking
     comesFrom: int
@@ -75,7 +75,7 @@ proc bailOut(c: PCtx; tos: PStackFrame) =
 when not defined(nimComputedGoto):
   {.pragma: computedGoto.}
 
-proc myreset(n: var TRegister) =
+proc myreset(n: var TFullReg) =
   when defined(system.reset): 
     reset(n)
 
@@ -109,7 +109,7 @@ template decodeBx(k: expr) {.immediate, dirty.} =
 template move(a, b: expr) {.immediate, dirty.} = system.shallowCopy(a, b)
 # XXX fix minor 'shallowCopy' overloading bug in compiler
 
-proc createStrKeepNode(x: var TRegister) =
+proc createStrKeepNode(x: var TFullReg) =
   if x.node.isNil:
     x.node = newNode(nkStrLit)
   elif x.node.kind == nkNilLit:
@@ -124,7 +124,7 @@ proc createStrKeepNode(x: var TRegister) =
 template createStr(x) =
   x.node = newNode(nkStrLit)
 
-proc moveConst(x: var TRegister, y: TRegister) =
+proc moveConst(x: var TFullReg, y: TFullReg) =
   if x.kind != y.kind:
     myreset(x)
     x.kind = y.kind
@@ -161,7 +161,7 @@ proc copyValue(src: PNode): PNode =
     for i in countup(0, sonsLen(src) - 1):
       result.sons[i] = copyValue(src.sons[i])
 
-proc asgnComplex(x: var TRegister, y: TRegister) =
+proc asgnComplex(x: var TFullReg, y: TFullReg) =
   if x.kind != y.kind:
     myreset(x)
     x.kind = y.kind
@@ -173,7 +173,7 @@ proc asgnComplex(x: var TRegister, y: TRegister) =
   of rkRegisterAddr: x.regAddr = y.regAddr
   of rkNodeAddr: x.nodeAddr = y.nodeAddr
 
-proc putIntoNode(n: PNode; x: TRegister) =
+proc putIntoNode(n: PNode; x: TFullReg) =
   case x.kind
   of rkNone: discard
   of rkInt: n.intVal = x.intVal
@@ -182,7 +182,7 @@ proc putIntoNode(n: PNode; x: TRegister) =
   of rkRegisterAddr: putIntoNode(n, x.regAddr[])
   of rkNodeAddr: n[] = x.nodeAddr[][]
 
-proc putIntoReg(dest: var TRegister; n: PNode) =
+proc putIntoReg(dest: var TFullReg; n: PNode) =
   case n.kind
   of nkStrLit..nkTripleStrLit:
     dest.kind = rkNode
@@ -198,7 +198,7 @@ proc putIntoReg(dest: var TRegister; n: PNode) =
     dest.kind = rkNode
     dest.node = n
 
-proc regToNode(x: TRegister): PNode =
+proc regToNode(x: TFullReg): PNode =
   case x.kind
   of rkNone: result = newNode(nkEmpty)
   of rkInt: result = newNode(nkIntLit); result.intVal = x.intVal
@@ -216,7 +216,7 @@ proc pushSafePoint(f: PStackFrame; pc: int) =
 
 proc popSafePoint(f: PStackFrame) = discard f.safePoints.pop()
 
-proc cleanUpOnException(c: PCtx; tos: PStackFrame; regs: seq[TRegister]): int =
+proc cleanUpOnException(c: PCtx; tos: PStackFrame; regs: seq[TFullReg]): int =
   let raisedType = c.currentExceptionA.typ.skipTypes(abstractPtrs)
   var f = tos
   while true:
@@ -258,7 +258,7 @@ proc cleanUpOnReturn(c: PCtx; f: PStackFrame): int =
       return pc
   return -1
 
-proc opConv*(dest: var TRegister, src: TRegister, desttyp, srctyp: PType): bool =
+proc opConv*(dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType): bool =
   if desttyp.kind == tyString:
     if dest.kind != rkNode:
       myreset(dest)
@@ -328,10 +328,10 @@ proc compile(c: PCtx, s: PSym): int =
   result = vmgen.genProc(c, s)
   #c.echoCode
 
-proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TRegister =
+proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
   var tos = tos
-  var regs: seq[TRegister] # alias to tos.slots for performance
+  var regs: seq[TFullReg] # alias to tos.slots for performance
   move(regs, tos.slots)
   #echo "NEW RUN ------------------------"
   while true:
@@ -877,7 +877,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TRegister =
         message(c.debug[pc], hintQuitCalled)
         quit(int(getOrdValue(regs[ra].regToNode)))
       else:
-        return TRegister(kind: rkNone)
+        return TFullReg(kind: rkNone)
     of opcSetLenStr:
       decodeB(rkNode)
       createStrKeepNode regs[ra]
