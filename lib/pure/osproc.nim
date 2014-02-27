@@ -168,6 +168,9 @@ proc processID*(p: PProcess): int {.rtl, extern: "nosp$1".} =
 proc waitForExit*(p: PProcess, timeout: int = -1): int {.rtl,
   extern: "nosp$1", tags: [].}
   ## waits for the process to finish and returns `p`'s error code.
+  ##
+  ## **Warning**: Be careful when using waitForExit for processes created without
+  ## poParentStreams because they may fill output buffers, causing deadlock.
 
 proc peekExitCode*(p: PProcess): int {.tags: [].}
   ## return -1 if the process is still running. Otherwise the process' exit code
