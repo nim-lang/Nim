@@ -761,6 +761,8 @@ proc genProcAux(m: BModule, prc: PSym) =
   var returnStmt: PRope = nil
   assert(prc.ast != nil)
   if sfPure notin prc.flags and prc.typ.sons[0] != nil:
+    if resultPos >= prc.ast.len:
+      internalError(prc.info, "proc has no result symbol")
     var res = prc.ast.sons[resultPos].sym # get result symbol
     if not isInvalidReturnType(prc.typ.sons[0]):
       if sfNoInit in prc.flags: incl(res.flags, sfNoInit)
