@@ -157,7 +157,7 @@ type
     slotTempInt,      # some temporary int
     slotTempFloat,    # some temporary float
     slotTempStr,      # some temporary string
-    slotTempComplex   # some complex temporary (n.sons field is used)
+    slotTempComplex   # some complex temporary (s.node field is used)
 
   PProc* = ref object
     blocks*: seq[TBlock]    # blocks; temp data structure
