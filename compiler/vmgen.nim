@@ -944,9 +944,9 @@ proc genAddrDeref(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
       if gfAddrOf notin flags and fitsRegister(n.typ):
         c.gABC(n, opcNodeToReg, dest, dest)
     elif c.prc.slots[tmp].kind >= slotTempUnknown:
-      gABC(c, n, opcAddrReg, dest, tmp)
-    else:
       gABC(c, n, opcAddrNode, dest, tmp)
+    else:
+      gABC(c, n, opcAddrReg, dest, tmp)
     c.freeTemp(tmp)
 
 proc whichAsgnOpc(n: PNode): TOpcode =
