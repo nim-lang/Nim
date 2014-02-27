@@ -173,12 +173,14 @@ proc asgnComplex(x: var TFullReg, y: TFullReg) =
   of rkRegisterAddr: x.regAddr = y.regAddr
   of rkNodeAddr: x.nodeAddr = y.nodeAddr
 
-proc putIntoNode(n: PNode; x: TFullReg) =
+proc putIntoNode(n: var PNode; x: TFullReg) =
   case x.kind
   of rkNone: discard
   of rkInt: n.intVal = x.intVal
   of rkFloat: n.floatVal = x.floatVal
-  of rkNode: n[] = x.node[]
+  of rkNode:
+    if nfIsRef in x.node.flags: n = x.node
+    else: n[] = x.node[]
   of rkRegisterAddr: putIntoNode(n, x.regAddr[])
   of rkNodeAddr: n[] = x.nodeAddr[][]
 

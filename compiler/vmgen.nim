@@ -1001,7 +1001,7 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
     c.gABC(left, opcWrObj, dest, idx, tmp)
     c.freeTemp(tmp)
   of nkDerefExpr, nkHiddenDeref:
-    let dest = c.genx(le, {gfAddrOf})
+    let dest = c.genx(le.sons[0], {gfAddrOf})
     let tmp = c.genx(ri)
     c.gABC(le, opcWrDeref, dest, tmp)
     c.freeTemp(tmp)
@@ -1542,9 +1542,9 @@ proc genProc(c: PCtx; s: PSym): int =
     c.gABC(body, opcEof, eofInstr.regA)
     c.optimizeJumps(result)
     s.offset = c.prc.maxSlots
-    #if s.name.s == "importImpl_forward" or s.name.s == "importImpl":
-    #c.echoCode(result)
-    #echo renderTree(body)
+    #if s.name.s == "xmlConstructor":
+    #  echo renderTree(body)
+    #  c.echoCode(result)
     c.prc = oldPrc
   else:
     c.prc.maxSlots = s.offset
