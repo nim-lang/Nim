@@ -17,7 +17,6 @@ when hostos == "solaris":
 
 when defined(Windows):
   import winlean
-  export ioctlsocket
 else:
   import posix
   export fcntl, F_GETFL, O_NONBLOCK, F_SETFL
@@ -66,6 +65,16 @@ type
 when defined(windows):
   let
     osInvalidSocket* = winlean.INVALID_SOCKET
+
+  const
+    IOCPARM_MASK* = 127
+    IOC_IN* = int(-2147483648)
+    FIONBIO* = IOC_IN.int32 or ((sizeof(int32) and IOCPARM_MASK) shl 16) or 
+                             (102 shl 8) or 126
+
+  proc ioctlsocket*(s: TSocketHandle, cmd: clong, 
+                   argptr: ptr clong): cint {.
+                   stdcall, importc: "ioctlsocket", dynlib: "ws2_32.dll".}
 else:
   let
     osInvalidSocket* = posix.INVALID_SOCKET
