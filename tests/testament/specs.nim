@@ -28,6 +28,8 @@ type
     reCodegenFailure,
     reCodeNotFound,
     reExeNotFound,
+    reInstallFailed     # package installation failed
+    reBuildFailed       # package building failed
     reIgnored,          # test is ignored
     reSuccess           # test was successful
   TTarget* = enum
