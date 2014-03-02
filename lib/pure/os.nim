@@ -344,22 +344,17 @@ proc unixToNativePath*(path: string, drive=""): string {.
 
 when defined(windows):
   when useWinUnicode:
-    template wrapUnary(varname, winApiProc, arg: expr) {.immediate.} =
-      var varname = winApiProc(newWideCString(arg))
+    # template wrapUnary(varname, winApiProc, arg: expr) {.immediate.} =
+    #   var varname = winApiProc(newWideCString(arg))
 
-    template wrapBinary(varname, winApiProc, arg, arg2: expr) {.immediate.} =
-      var varname = winApiProc(newWideCString(arg), arg2)
-    proc findFirstFile(a: string, b: var TWIN32_FIND_DATA): THandle =
-      result = findFirstFileW(newWideCString(a), b)
-    template findNextFile(a, b: expr): expr = findNextFileW(a, b)
-    template getCommandLine(): expr = getCommandLineW()
+    # template wrapBinary(varname, winApiProc, arg, arg2: expr) {.immediate.} =
+    #   var varname = winApiProc(newWideCString(arg), arg2)
+    # template getCommandLine(): expr = getCommandLineW()
 
     template getFilename(f: expr): expr =
       $cast[WideCString](addr(f.cFilename[0]))
   else:
-    template findFirstFile(a, b: expr): expr = findFirstFileA(a, b)
-    template findNextFile(a, b: expr): expr = findNextFileA(a, b)
-    template getCommandLine(): expr = getCommandLineA()
+    # template getCommandLine(): expr = getCommandLineA()
 
     template getFilename(f: expr): expr = $f.cFilename
 
@@ -372,10 +367,7 @@ proc existsFile*(filename: string): bool {.rtl, extern: "nos$1",
                                           tags: [FReadDir].} =
   ## Returns true if the file exists, false otherwise.
   when defined(windows):
-    when useWinUnicode:
-      wrapUnary(a, getFileAttributesW, filename)
-    else:
-      var a = getFileAttributesA(filename)
+    var a = getFileAttributes(filename)
     if a != -1'i32:
       result = (a and FILE_ATTRIBUTE_DIRECTORY) == 0'i32
   else:
@@ -386,10 +378,7 @@ proc existsDir*(dir: string): bool {.rtl, extern: "nos$1", tags: [FReadDir].} =
   ## Returns true iff the directory `dir` exists. If `dir` is a file, false
   ## is returned.
   when defined(windows):
-    when useWinUnicode:
-      wrapUnary(a, getFileAttributesW, dir)
-    else:
-      var a = getFileAttributesA(dir)
+    var a = getFileAttributes(dir)
     if a != -1'i32:
       result = (a and FILE_ATTRIBUTE_DIRECTORY) != 0'i32
   else:
@@ -401,10 +390,7 @@ proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
   ## Returns true iff the symlink `link` exists. Will return true
   ## regardless of whether the link points to a directory or file.
   when defined(windows):
-    when useWinUnicode:
-      wrapUnary(a, getFileAttributesW, link)
-    else:
-      var a = getFileAttributesA(link)
+    var a = getFileAttributes(link)
     if a != -1'i32:
       result = (a and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32
   else:
@@ -488,11 +474,8 @@ proc setCurrentDir*(newDir: string) {.inline, tags: [].} =
   ## Sets the `current working directory`:idx:; `EOS` is raised if
   ## `newDir` cannot been set.
   when defined(Windows):
-    when useWinUnicode:
-      if setCurrentDirectoryW(newWideCString(newDir)) == 0'i32:
-        osError(osLastError())
-    else:
-      if setCurrentDirectoryA(newDir) == 0'i32: osError(osLastError())
+    if setCurrentDirectory(newDir) == 0'i32:
+      osError(osLastError())
   else:
     if chdir(newDir) != 0'i32: osError(osLastError())
 
@@ -787,25 +770,12 @@ proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
   when defined(Windows):
     var success = true
 
-    when useWinUnicode:
-      var p1 = newWideCString(path1)
-      var p2 = newWideCString(path2)
-      template openHandle(path: expr): expr =
-        createFileW(path, 0'i32, FILE_SHARE_DELETE or FILE_SHARE_READ or
-          FILE_SHARE_WRITE, nil, OPEN_EXISTING,
-          FILE_FLAG_BACKUP_SEMANTICS or FILE_ATTRIBUTE_NORMAL, 0)
-
-      var f1 = openHandle(p1)
-      var f2 = openHandle(p2)
-
-    else:
-      template openHandle(path: expr): expr =
-        createFileA(path, 0'i32, FILE_SHARE_DELETE or FILE_SHARE_READ or
-          FILE_SHARE_WRITE, nil, OPEN_EXISTING,
-          FILE_FLAG_BACKUP_SEMANTICS or FILE_ATTRIBUTE_NORMAL, 0)
-
-      var f1 = openHandle(path1)
-      var f2 = openHandle(path2)
+    template openHandle(path: expr): expr =
+      createFile(path, 0'i32, FILE_SHARE_DELETE or FILE_SHARE_READ or
+        FILE_SHARE_WRITE, nil, OPEN_EXISTING,
+        FILE_FLAG_BACKUP_SEMANTICS or FILE_ATTRIBUTE_NORMAL, 0)
+    var f1 = openHandle(path1)
+    var f2 = openHandle(path2)
 
     var lastErr: TOSErrorCode
     if f1 != INVALID_HANDLE_VALUE and f2 != INVALID_HANDLE_VALUE:
@@ -898,10 +868,7 @@ proc getFilePermissions*(filename: string): set[TFilePermission] {.
     if (a.st_mode and S_IWOTH) != 0'i32: result.incl(fpOthersWrite)
     if (a.st_mode and S_IXOTH) != 0'i32: result.incl(fpOthersExec)
   else:
-    when useWinUnicode:
-      wrapUnary(res, getFileAttributesW, filename)
-    else:
-      var res = getFileAttributesA(filename)
+    var res = getFileAttributes(filename)
     if res == -1'i32: osError(osLastError())
     if (res and FILE_ATTRIBUTE_READONLY) != 0'i32:
       result = {fpUserExec, fpUserRead, fpGroupExec, fpGroupRead, 
@@ -930,19 +897,13 @@ proc setFilePermissions*(filename: string, permissions: set[TFilePermission]) {.
     
     if chmod(filename, p) != 0: osError(osLastError())
   else:
-    when useWinUnicode:
-      wrapUnary(res, getFileAttributesW, filename)
-    else:
-      var res = getFileAttributesA(filename)
+    var res = getFileAttributes(filename)
     if res == -1'i32: osError(osLastError())
     if fpUserWrite in permissions: 
       res = res and not FILE_ATTRIBUTE_READONLY
     else:
       res = res or FILE_ATTRIBUTE_READONLY
-    when useWinUnicode:
-      wrapBinary(res2, setFileAttributesW, filename, res)
-    else:
-      var res2 = setFileAttributesA(filename, res)
+    var res2 = setFileAttributes(filename, res)
     if res2 == - 1'i32: osError(osLastError())
 
 proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
@@ -957,12 +918,7 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
   ## `dest` already exists, the file attributes will be preserved and the
   ## content overwritten.
   when defined(Windows):
-    when useWinUnicode:
-      let s = newWideCString(source)
-      let d = newWideCString(dest)
-      if copyFileW(s, d, 0'i32) == 0'i32: osError(osLastError())
-    else:
-      if copyFileA(source, dest, 0'i32) == 0'i32: osError(osLastError())
+    if copyFile(source, dest, 0'i32) == 0'i32: osError(osLastError())
   else:
     # generic version of copyFile which works for any platform:
     const bufSize = 8000 # better for memory manager
@@ -998,30 +954,16 @@ when not defined(ENOENT) and not defined(Windows):
   else:
     var ENOENT {.importc, header: "<errno.h>".}: cint
 
-when defined(Windows):
-  when useWinUnicode:
-    template deleteFile(file: expr): expr {.immediate.} = deleteFileW(file)
-    template setFileAttributes(file, attrs: expr): expr {.immediate.} = 
-      setFileAttributesW(file, attrs)
-  else:
-    template deleteFile(file: expr): expr {.immediate.} = deleteFileA(file)
-    template setFileAttributes(file, attrs: expr): expr {.immediate.} = 
-      setFileAttributesA(file, attrs)
-
 proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [FWriteDir].} =
   ## Removes the `file`. If this fails, `EOS` is raised. This does not fail
   ## if the file never existed in the first place.
   ## On Windows, ignores the read-only attribute.
   when defined(Windows):
-    when useWinUnicode:
-      let f = newWideCString(file)
-    else:
-      let f = file
-    if deleteFile(f) == 0:
+    if deleteFile(file) == 0:
       if getLastError() == ERROR_ACCESS_DENIED: 
-        if setFileAttributes(f, FILE_ATTRIBUTE_NORMAL) == 0:
+        if setFileAttributes(file, FILE_ATTRIBUTE_NORMAL) == 0:
           osError(osLastError())
-        if deleteFile(f) == 0:
+        if deleteFile(file) == 0:
           osError(osLastError())
   else:
     if c_remove(file) != 0'i32 and errno != ENOENT:
@@ -1162,12 +1104,7 @@ proc putEnv*(key, val: string) {.tags: [FWriteEnv].} =
     if c_putenv(environment[indx]) != 0'i32:
       osError(osLastError())
   else:
-    when useWinUnicode:
-      var k = newWideCString(key)
-      var v = newWideCString(val)
-      if setEnvironmentVariableW(k, v) == 0'i32: osError(osLastError())
-    else:
-      if setEnvironmentVariableA(key, val) == 0'i32: osError(osLastError())
+    if setEnvironmentVariable(key, val) == 0'i32: osError(osLastError())
 
 iterator envPairs*(): tuple[key, value: TaintedString] {.tags: [FReadEnv].} =
   ## Iterate over all `environments variables`:idx:. In the first component
@@ -1300,10 +1237,7 @@ iterator walkDirRec*(dir: string, filter={pcFile, pcDir}): string {.
 
 proc rawRemoveDir(dir: string) =
   when defined(windows):
-    when useWinUnicode:
-      wrapUnary(res, removeDirectoryW, dir)
-    else:
-      var res = removeDirectoryA(dir)
+    var res = removeDirectory(dir)
     let lastError = osLastError()
     if res == 0'i32 and lastError.int32 != 3'i32 and
         lastError.int32 != 18'i32 and lastError.int32 != 2'i32:
@@ -1332,10 +1266,7 @@ proc rawCreateDir(dir: string) =
     if mkdir(dir, 0o711) != 0'i32 and errno != EEXIST:
       osError(osLastError())
   else:
-    when useWinUnicode:
-      wrapUnary(res, createDirectoryW, dir)
-    else:
-      var res = createDirectoryA(dir)
+    var res = createDirectory(dir)
     if res == 0'i32 and getLastError() != 183'i32:
       osError(osLastError())
 
@@ -1379,14 +1310,8 @@ proc createSymlink*(src, dest: string) =
   ## of symlinks to root users (administrators).
   when defined(Windows):
     let flag = dirExists(src).int32
-    when useWinUnicode:
-      var wSrc = newWideCString(src)
-      var wDst = newWideCString(dest)
-      if createSymbolicLinkW(wDst, wSrc, flag) == 0 or getLastError() != 0:
-        osError(osLastError())
-    else:
-      if createSymbolicLinkA(dest, src, flag) == 0 or getLastError() != 0:
-        osError(osLastError())
+    if createSymbolicLink(dest, src, flag) == 0 or getLastError() != 0:
+      osError(osLastError())
   else:
     if symlink(src, dest) != 0:
       osError(osLastError())
@@ -1398,14 +1323,8 @@ proc createHardlink*(src, dest: string) =
   ## **Warning**: Most OS's restrict the creation of hard links to 
   ## root users (administrators) .
   when defined(Windows):
-    when useWinUnicode:
-      var wSrc = newWideCString(src)
-      var wDst = newWideCString(dest)
-      if createHardLinkW(wDst, wSrc, nil) == 0:
-        osError(osLastError())
-    else:
-      if createHardLinkA(dest, src, nil) == 0:
-        osError(osLastError())
+    if createHardLink(dest, src, nil) == 0:
+      osError(osLastError())
   else:
     if link(src, dest) != 0:
       osError(osLastError())

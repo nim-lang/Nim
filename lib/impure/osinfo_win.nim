@@ -367,13 +367,7 @@ proc `$`*(osvi: TVersionInfo): string =
 
 proc getFileSize*(file: string): BiggestInt =
   var fileData: TWIN32_FIND_DATA
-
-  when useWinUnicode:
-    var aa = newWideCString(file)
-    var hFile = findFirstFileW(aa, fileData)
-  else:
-    var hFile = findFirstFileA(file, fileData)
-  
+  var hFile = findFirstFile(file, fileData)
   if hFile == INVALID_HANDLE_VALUE:
     raise newException(EIO, $getLastError())
   
