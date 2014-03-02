@@ -1192,7 +1192,8 @@ iterator walkFiles*(pattern: string): string {.tags: [FReadDir].} =
     res = findFirstFile(pattern, f)
     if res != -1:
       while true:
-        if not skipFindData(f):
+        if not skipFindData(f) and
+            (f.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) == 0'i32:
           yield splitFile(pattern).dir / extractFilename(getFilename(f))
         if findNextFile(res, f) == 0'i32: break
       findClose(res)
