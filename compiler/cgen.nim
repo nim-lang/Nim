@@ -1044,8 +1044,10 @@ proc genMainProc(m: BModule) =
     appcg(m, m.s[cfsProcs], otherMain, [])
 
 proc getSomeInitName(m: PSym, suffix: string): PRope =
+  assert m.kind == skModule
+  assert m.owner.kind == skPackage
   if {sfSystemModule, sfMainModule} * m.flags == {}:
-    result = m.info.toFullPath.getPackageName.mangle.toRope
+    result = m.owner.name.s.mangle.toRope
   result.app m.name.s
   result.app suffix
   

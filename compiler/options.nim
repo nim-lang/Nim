@@ -209,10 +209,15 @@ proc getGeneratedPath: string =
   result = if nimcacheDir.len > 0: nimcacheDir else: gProjectPath.shortenDir /
                                                          genSubDir
 
-var packageCache = newStringTable(when FileSystemCaseSensitive:
-                                    modeCaseInsensitive
-                                  else:
-                                    modeCaseSensitive)
+template newPackageCache(): expr =
+  newStringTable(when FileSystemCaseSensitive:
+                   modeCaseInsensitive
+                 else:
+                   modeCaseSensitive)
+
+var packageCache = newPackageCache()
+
+proc resetPackageCache*() = packageCache = newPackageCache()
 
 iterator myParentDirs(p: string): string =
   # XXX os's parentDirs is stupid (multiple yields) and triggers an old bug...
@@ -240,21 +245,6 @@ proc getPackageName*(path: string): string =
     packageCache[d] = result
     dec parents
     if parents <= 0: break
-  when false:
-    var q = 1
-    var b = 0
-    if path[len(path)-1] in {DirSep, AltSep}: q = 2
-    for i in countdown(len(path)-q, 0):
-      if path[i] in {DirSep, AltSep}:
-        if b == 0: b = i
-        else:
-          let x = path.substr(i+1, b-1)
-          case x.normalize
-          of "lib", "src", "source", "package", "pckg", "library", "private":
-            b = i
-          else:
-            return x.replace('.', '_')
-    result = ""
 
 proc withPackageName*(path: string): string =
   let x = path.getPackageName
