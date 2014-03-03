@@ -290,7 +290,7 @@ proc testBabelPackages(r: var TResults, options: string, cat: Category) =
 
 # ----------------------------------------------------------------------------
 
-const AdditionalCategories = ["debugger", "tools", "examples", "stdlib", "babel"]
+const AdditionalCategories = ["debugger", "tools", "examples", "stdlib"]
 
 proc `&.?`(a, b: string): string =
   # candidate for the stdlib?
