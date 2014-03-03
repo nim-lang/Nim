@@ -223,6 +223,10 @@ proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
       testNoSpec r, makeTest(test, options, cat, actionCompile)
 
 # ----------------------------- babel ----------------------------------------
+type PackageFilter = enum
+  pfCoreOnly
+  pfExtraOnly
+  pfAll
 
 let 
   babelExe = findExe("babel")
@@ -249,7 +253,7 @@ proc getPackageDir(package: string): string =
   else:
     result = commandOutput[0]
 
-iterator listPackages(listAll = false): tuple[name, url: string] =
+iterator listPackages(filter: PackageFilter): tuple[name, url: string] =
   let packageList = parseFile(packageIndex)
 
   for package in packageList.items():
@@ -257,18 +261,25 @@ iterator listPackages(listAll = false): tuple[name, url: string] =
       name = package["name"].str
       url = package["url"].str
       isCorePackage = "nimrod-code" in normalize(url)
-    if isCorePackage or listAll:
+    case filter:
+    of pfCoreOnly:
+      if isCorePackage:
+        yield (name, url)
+    of pfExtraOnly:
+      if not isCorePackage:
+        yield (name, url)
+    of pfAll:
       yield (name, url)
 
-proc testBabelPackages(r: var TResults, options: string, cat: Category) =
+proc testBabelPackages(r: var TResults, cat: Category, filter: PackageFilter) =
   if babelExe == "":
     quit("Cannot run babel tests: Babel binary not found.", quitFailure)
 
   if execCmd("$# update" % babelExe) == quitFailure:
     quit("Cannot run babel tests: Babel update failed.")
 
-  for name, url in listPackages():
-    var test = makeTest(name, options, cat)
+  for name, url in listPackages(filter):
+    var test = makeTest(name, "", cat)
     echo(url)
     let
       installProcess = startProcess(babelExe, "", ["install", "-y", name])
@@ -290,7 +301,7 @@ proc testBabelPackages(r: var TResults, options: string, cat: Category) =
 
 # ----------------------------------------------------------------------------
 
-const AdditionalCategories = ["debugger", "tools", "examples", "stdlib"]
+const AdditionalCategories = ["debugger", "tools", "examples", "stdlib", "babel-core"]
 
 proc `&.?`(a, b: string): string =
   # candidate for the stdlib?
@@ -330,8 +341,12 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
     compileExample(r, "examples/*.nim", options, cat)
     compileExample(r, "examples/gtk/*.nim", options, cat)
     compileExample(r, "examples/talk/*.nim", options, cat)
-  of "babel":
-    testBabelPackages(r, options, cat)
+  of "babel-core":
+    testBabelPackages(r, cat, pfCoreOnly)
+  of "babel-extra":
+    testBabelPackages(r, cat, pfExtraOnly)
+  of "babel-all":
+    testBabelPackages(r, cat, pfAll)
   else:
     for name in os.walkFiles("tests" & DirSep &.? cat.string / "t*.nim"):
       testSpec r, makeTest(name, options, cat)
