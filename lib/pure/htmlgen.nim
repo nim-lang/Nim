@@ -1,12 +1,17 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
+## **Warning**: This module uses ``immediate`` macros which are known to
+## cause problems. Do yourself a favor and import the module
+## as ``from htmlgen import nil`` and then fully qualify the macros.
+##
+##
 ## This module implements a simple `XML`:idx: and `HTML`:idx: code 
 ## generator. Each commonly used HTML tag has a corresponding macro
 ## that generates a string with its HTML representation.
@@ -15,11 +20,11 @@
 ##
 ## .. code-block:: nimrod
 ##   var nim = "Nimrod"
-##   echo h1(a(href="http://nimrod-code.org", nim))
+##   echo h1(a(href="http://nimrod-lang.org", nim))
 ##  
 ## Writes the string::
 ##   
-##   <h1><a href="http://nimrod-code.org">Nimrod</a></h1>
+##   <h1><a href="http://nimrod-lang.org">Nimrod</a></h1>
 ##
 
 import
