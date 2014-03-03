@@ -251,7 +251,7 @@ proc getPackageDir(package: string): string =
   if commandOutput.exitCode != quitSuccess:
     return ""
   else:
-    result = commandOutput[0]
+    result = commandOutput[0].string
 
 iterator listPackages(filter: PackageFilter): tuple[name, url: string] =
   let packageList = parseFile(packageIndex)
