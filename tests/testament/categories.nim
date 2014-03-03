@@ -222,9 +222,86 @@ proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
     else:
       testNoSpec r, makeTest(test, options, cat, actionCompile)
 
+# ----------------------------- babel ----------------------------------------
+type PackageFilter = enum
+  pfCoreOnly
+  pfExtraOnly
+  pfAll
+
+let 
+  babelExe = findExe("babel")
+  babelDir = getHomeDir() / ".babel"
+  packageDir = babelDir / "pkgs"
+  packageIndex = babelDir / "packages.json"
+
+proc waitForExitEx(p: PProcess): int =
+  var outp: PStream = outputStream(p)
+  var line = newStringOfCap(120).TaintedString
+  while true:
+    if outp.readLine(line):
+      discard
+    else:
+      result = peekExitCode(p)
+      if result != -1: break
+  close(p)
+
+proc getPackageDir(package: string): string =
+  ## TODO - Replace this with dom's version comparison magic.
+  var commandOutput = execCmdEx("babel path $#" % package)
+  if commandOutput.exitCode != quitSuccess:
+    return ""
+  else:
+    result = commandOutput[0]
+
+iterator listPackages(filter: PackageFilter): tuple[name, url: string] =
+  let packageList = parseFile(packageIndex)
+
+  for package in packageList.items():
+    let
+      name = package["name"].str
+      url = package["url"].str
+      isCorePackage = "nimrod-code" in normalize(url)
+    case filter:
+    of pfCoreOnly:
+      if isCorePackage:
+        yield (name, url)
+    of pfExtraOnly:
+      if not isCorePackage:
+        yield (name, url)
+    of pfAll:
+      yield (name, url)
+
+proc testBabelPackages(r: var TResults, cat: Category, filter: PackageFilter) =
+  if babelExe == "":
+    quit("Cannot run babel tests: Babel binary not found.", quitFailure)
+
+  if execCmd("$# update" % babelExe) == quitFailure:
+    quit("Cannot run babel tests: Babel update failed.")
+
+  for name, url in listPackages(filter):
+    var test = makeTest(name, "", cat)
+    echo(url)
+    let
+      installProcess = startProcess(babelExe, "", ["install", "-y", name])
+      installStatus = waitForExitEx(installProcess)
+    installProcess.close
+    if installStatus != quitSuccess:
+      r.addResult(test, "", "", reInstallFailed)
+      continue
+
+    let
+      buildPath = getPackageDir(name)[0.. -3]
+    let
+      buildProcess = startProcess(babelExe, buildPath, ["build"])
+      buildStatus = waitForExitEx(buildProcess)
+    buildProcess.close
+    if buildStatus != quitSuccess:
+      r.addResult(test, "", "", reBuildFailed)
+    r.addResult(test, "", "", reSuccess)
+
 # ----------------------------------------------------------------------------
 
-const AdditionalCategories = ["debugger", "tools", "examples", "stdlib"]
+const AdditionalCategories = ["debugger", "tools", "examples", "stdlib", "babel-core"]
 
 proc `&.?`(a, b: string): string =
   # candidate for the stdlib?
@@ -264,6 +341,12 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
     compileExample(r, "examples/*.nim", options, cat)
     compileExample(r, "examples/gtk/*.nim", options, cat)
     compileExample(r, "examples/talk/*.nim", options, cat)
+  of "babel-core":
+    testBabelPackages(r, cat, pfCoreOnly)
+  of "babel-extra":
+    testBabelPackages(r, cat, pfExtraOnly)
+  of "babel-all":
+    testBabelPackages(r, cat, pfAll)
   else:
     for name in os.walkFiles("tests" & DirSep &.? cat.string / "t*.nim"):
       testSpec r, makeTest(name, options, cat)
