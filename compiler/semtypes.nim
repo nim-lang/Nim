@@ -845,8 +845,10 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
                                    n.sons[0].info)
         if lifted != nil: r = lifted
         r.flags.incl tfRetType
-      result.sons[0] = skipIntLit(r)
-      res.typ = result.sons[0]
+      r = skipIntLit(r)
+      if kind == skIterator: r = newTypeWithSons(c, tyIter, @[r])
+      result.sons[0] = r
+      res.typ = r
 
 proc semStmtListType(c: PContext, n: PNode, prev: PType): PType =
   checkMinSonsLen(n, 1)
@@ -959,7 +961,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkTypeOfExpr:
     # for ``type(countup(1,3))``, see ``tests/ttoseq``.
     checkSonsLen(n, 1)
-    result = semExprWithType(c, n.sons[0], {efInTypeof}).typ
+    result = semExprWithType(c, n.sons[0], {efInTypeof}).typ.skipTypes({tyIter})
   of nkPar: 
     if sonsLen(n) == 1: result = semTypeNode(c, n.sons[0], prev)
     else:

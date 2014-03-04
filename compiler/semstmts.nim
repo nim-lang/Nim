@@ -616,7 +616,8 @@ proc symForVar(c: PContext, n: PNode): PSym =
 proc semForVars(c: PContext, n: PNode): PNode =
   result = n
   var length = sonsLen(n)
-  var iter = skipTypes(n.sons[length-2].typ, {tyGenericInst})
+  let iterBase = n.sons[length-2].typ.skipTypes({tyIter})
+  var iter = skipTypes(iterBase, {tyGenericInst})
   # length == 3 means that there is one for loop variable
   # and thus no tuple unpacking:
   if iter.kind != tyTuple or length == 3: 
@@ -626,7 +627,7 @@ proc semForVars(c: PContext, n: PNode): PNode =
       # BUGFIX: don't use `iter` here as that would strip away
       # the ``tyGenericInst``! See ``tests/compile/tgeneric.nim``
       # for an example:
-      v.typ = n.sons[length-2].typ
+      v.typ = iterBase
       n.sons[0] = newSymNode(v)
       if sfGenSym notin v.flags: addForVarDecl(c, v)
     else:

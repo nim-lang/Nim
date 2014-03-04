@@ -1192,7 +1192,7 @@ proc nullify[T](arr: var T) =
   for i in low(arr)..high(arr):
     arr[i] = nil
 
-proc resetModule*(m: var BModule) =
+proc resetModule*(m: BModule) =
   # between two compilations in CAAS mode, we can throw
   # away all the data that was written to disk
   initLinkedList(m.headerFiles)
