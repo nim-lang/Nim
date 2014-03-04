@@ -1266,7 +1266,7 @@ proc semYield(c: PContext, n: PNode): PNode =
     n.sons[0] = semExprWithType(c, n.sons[0]) # check for type compatibility:
     var restype = c.p.owner.typ.sons[0]
     if restype != nil:
-      n.sons[0] = fitNode(c, restype, n.sons[0])
+      n.sons[0] = fitNode(c, restype.base, n.sons[0])
       if n.sons[0].typ == nil: internalError(n.info, "semYield")
       semYieldVarResult(c, n, restype)
     else:
@@ -1884,7 +1884,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     message(n.info, warnDeprecated, "bind")
     result = semExpr(c, n.sons[0], flags)
   of nkTypeOfExpr, nkTupleTy, nkRefTy..nkEnumTy, nkStaticTy:
-    var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})
+    var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc, tyIter})
     result.typ = makeTypeDesc(c, typ)
     #result = symNodeFromType(c, typ, n.info)
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit: 

@@ -921,14 +921,18 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         result = typeRel(c, prev.base, a.base)
       else:
         result = isNone
-  
+ 
+  of tyIter:
+    if a.kind == f.kind: result = typeRel(c, f.base, a.base)
+    else: result = isNone
+
   of tyStmt:
     result = isGeneric
   
   of tyProxy:
     result = isEqual
   
-  else: internalError("typeRel: " & $f.kind)
+  else: internalAssert false
   
 proc cmpTypes*(c: PContext, f, a: PType): TTypeRelation = 
   var m: TCandidate
