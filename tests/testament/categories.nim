@@ -273,10 +273,12 @@ iterator listPackages(filter: PackageFilter): tuple[name, url: string] =
 
 proc testBabelPackages(r: var TResults, cat: Category, filter: PackageFilter) =
   if babelExe == "":
-    quit("Cannot run babel tests: Babel binary not found.", quitFailure)
+    echo("[Warning] - Cannot run babel tests: Babel binary not found.")
+    return
 
   if execCmd("$# update" % babelExe) == quitFailure:
-    quit("Cannot run babel tests: Babel update failed.")
+    echo("[Warning] - Cannot run babel tests: Babel update failed.")
+    return
 
   for name, url in listPackages(filter):
     var test = makeTest(name, "", cat)
