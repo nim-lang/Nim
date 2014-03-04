@@ -55,6 +55,17 @@ proc IPv6_loopback*(): TIpAddress =
     family: IpAddressFamily.IPv6,
     address_v6: [0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,1'u8])
 
+proc `==`*(lhs, rhs: TIpAddress): bool =
+  ## Compares two IpAddresses for Equality. Returns two if the addresses are equal
+  if lhs.family != rhs.family: return false
+  if lhs.family == IpAddressFamily.IPv4:
+    for i in low(lhs.address_v4) .. high(lhs.address_v4):
+      if lhs.address_v4[i] != rhs.address_v4[i]: return false
+  else: # IPv6
+    for i in low(lhs.address_v6) .. high(lhs.address_v6):
+      if lhs.address_v6[i] != rhs.address_v6[i]: return false
+  return true
+
 proc `$`*(address: TIpAddress): string =
   ## Converts an TIpAddress into the textual representation
   result = ""
@@ -115,7 +126,7 @@ proc parseIPv4Address(address_str: string): TIpAddress =
   result.family = IpAddressFamily.IPv4
 
   for i in 0 .. high(address_str):
-    if address_str[i] in {'0'..'9'}: # Character is a number
+    if address_str[i] in strutils.Digits: # Character is a number
       currentByte = currentByte * 10 + cast[uint16](ord(address_str[i]) - ord('0'))
       if currentByte > 255'u16: raise new EInvalidValue
       seperatorValid = true
@@ -175,8 +186,8 @@ proc parseIPv6Address(address_str: string): TIpAddress =
       currentShort = 0
       seperatorValid = false
       break
-    elif c in {'0'..'9','a'..'f','A'..'F'}:
-      if c in {'0'..'9'}: # Normal digit
+    elif c in strutils.HexDigits:
+      if c in strutils.Digits: # Normal digit
         currentShort = (currentShort shl 4) + cast[uint32](ord(c) - ord('0'))
       elif c >= 'a' and c <= 'f': # Lower case hex
         currentShort = (currentShort shl 4) + cast[uint32](ord(c) - ord('a')) + 10
@@ -197,7 +208,7 @@ proc parseIPv6Address(address_str: string): TIpAddress =
       groupCount.inc()
   else: # Must parse IPv4 address
     for i,c in address_str[v4StartPos..high(address_str)]:
-      if c in {'0'..'9'}: # Character is a number
+      if c in strutils.Digits: # Character is a number
         currentShort = currentShort * 10 + cast[uint32](ord(c) - ord('0'))
         if currentShort > 255'u32: raise new EInvalidValue
         seperatorValid = true
@@ -232,7 +243,7 @@ proc parseIPv6Address(address_str: string): TIpAddress =
 
 proc parseIpAddress*(address_str: string): TIpAddress =
   ## Parses an IP address
-  ## Throws EInvalidValue on error
+  ## Raises EInvalidValue on error
   if address_str == nil:
     raise new EInvalidValue
   if address_str.contains(':'):
