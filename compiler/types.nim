@@ -452,7 +452,8 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       of tyProc: "proc"
       of tyObject: "object"
       of tyTuple: "tuple"
-      else: (internalAssert(false); "")
+      of tyOpenArray: "openarray"
+      else: typeToStr[t.base.kind]
   of tyUserTypeClassInst:
     let body = t.base
     result = body.sym.name.s & "["

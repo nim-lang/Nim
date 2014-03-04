@@ -1,6 +1,7 @@
 version 0.9.4
 =============
 
+- make testament produce full JSON information
 - fix gensym capture bug
 - vm
   - at least try to get the basic type zoo ops right
