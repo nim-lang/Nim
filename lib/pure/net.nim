@@ -104,7 +104,7 @@ proc `$`*(address: TIpAddress): string =
         var word:uint16 = (cast[uint16](address.address_v6[i*2])) shl 8
         word = word or cast[uint16](address.address_v6[i*2+1])
 
-        if biggestZeroCount != 0 and # Check if in skip group
+        if biggestZeroCount != 0 and # Check if group is in skip group
           (i >= biggestZeroStart and i < (biggestZeroStart + biggestZeroCount)):
           if i == biggestZeroStart: # skip start
             result.add("::")
@@ -112,7 +112,18 @@ proc `$`*(address: TIpAddress): string =
         else:
           if printedLastGroup:
             result.add(':')
-          result.add(toHex(BiggestInt(word),4)) # this has too many digits
+          var
+            afterLeadingZeros = false
+            mask = 0xF000'u16
+          for j in 0'u16..3'u16:
+            var val = (mask and word) shr (4'u16*(3'u16-j))
+            if val != 0 or afterLeadingZeros:
+              if val < 0xA:
+                result.add(chr(uint16(ord('0'))+val))
+              else: # val >= 0xA
+                result.add(chr(uint16(ord('a'))+val-0xA))
+              afterLeadingZeros = true
+            mask = mask shr 4
           printedLastGroup = true
 
 proc parseIPv4Address(address_str: string): TIpAddress =
