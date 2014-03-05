@@ -1,7 +1,6 @@
 version 0.9.4
 =============
 
-- implement unchecked arrays
 - make testament produce full JSON information
 - fix gensym capture bug
 - vm
@@ -28,7 +27,7 @@ version 0.9.x
 =============
 
 - memory manager: add a measure of fragmentation
-- implement 'union' and 'bits' pragmas
+- implement 'bits' pragmas
 - fix closures/lambdalifting
 - ensure (ref T)(a, b) works as a type conversion and type constructor
 - optimize 'genericReset'; 'newException' leads to code bloat

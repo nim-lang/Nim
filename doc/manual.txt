@@ -5320,6 +5320,53 @@ strings automatically:
   printf("hallo %s", "world") # "world" will be passed as C string
 
 
+Union pragma
+------------
+The `union`:idx: pragma can be applied to any ``object`` type. It means all
+of the object's fields are overlaid in memory. This produces a ``union``
+instead of a ``struct`` in the generated C/C++ code. The object declaration
+then must not use inheritance or any GC'ed memory but this is currently not
+checked.
+
+**Future directions**: GC'ed memory should be allowed in unions and the GC
+should scan unions conservatively.
+
+
+Unchecked pragma
+----------------
+The `unchecked`:idx: pragma can be used to mark a named array as ``unchecked``
+meaning its bounds are not checked. This is often useful when one wishes to
+implement his own flexibly sized arrays. Additionally an unchecked array is
+translated into a C array of undetermined size:
+
+.. code-block:: nimrod
+  type
+    ArrayPart{.unchecked.} = array[0..0, int]
+    MySeq = object
+      len, cap: int
+      data: ArrayPart
+
+Produces roughly this C code:
+
+.. code-block:: C
+  typedef struct {
+    NI len;
+    NI cap;
+    NI data[];
+  } MySeq;
+
+The bounds checking done at compile time is not disabled for now, so to access
+``s.data[C]`` (where ``C`` is a constant) the array's index needs needs to
+include ``C``.
+
+The base type of the unchecked array may not contain any GC'ed memory but this
+is currently not checked.
+
+**Future directions**: GC'ed memory should be allowed in unchecked arrays and
+there should be an explicit annotation of how the GC is to determine the
+runtime size of the array.
+
+
 Dynlib pragma for import
 ------------------------
 With the `dynlib`:idx: pragma a procedure or a variable can be imported from
