@@ -185,6 +185,8 @@ proc `..`*[T](b: T): TSlice[T] {.noSideEffect, inline.} =
 
 when not defined(niminheritable):
   {.pragma: inheritable.}
+when not defined(nimunion):
+  {.pragma: unchecked.}
 
 const NoFakeVars* = defined(NimrodVM) ## true if the backend doesn't support \
   ## "fake variables" like 'var EBADF {.importc.}: cint'.
@@ -194,9 +196,10 @@ when not defined(JS):
     TGenericSeq {.compilerproc, pure, inheritable.} = object
       len, reserved: int
     PGenericSeq {.exportc.} = ptr TGenericSeq
+    UncheckedCharArray {.unchecked.} = array[0..100_000_000, char]
     # len and space without counting the terminating zero:
     NimStringDesc {.compilerproc, final.} = object of TGenericSeq
-      data: array[0..100_000_000, char]
+      data: UncheckedCharArray
     NimString = ptr NimStringDesc
 
 when not defined(JS) and not defined(NimrodVM):
