@@ -161,6 +161,7 @@ type
 
   PProc* = ref object
     blocks*: seq[TBlock]    # blocks; temp data structure
+    sym*: PSym
     slots*: array[TRegister, tuple[inUse: bool, kind: TSlotKind]]
     maxSlots*: int
     
