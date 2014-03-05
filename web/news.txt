@@ -60,6 +60,9 @@ News
       virtual machine. This fixes numerous bugs for ``nimrod i`` and for macro
       evaluation.
     - ``--gc:none`` produces warnings when code uses the GC.
+    - A ``union`` pragma for better C interoperability is now supported.
+    - Arrays can be annotated to be ``unchecked`` for easier low level
+      manipulations of memory.
 
 
     Language Additions
