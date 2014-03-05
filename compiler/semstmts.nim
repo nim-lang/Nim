@@ -1320,7 +1320,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
       if n.sons[i].typ == enforceVoidContext or usesResult(n.sons[i]):
         voidContext = true
         n.typ = enforceVoidContext
-      if i == last and efWantValue in flags:
+      if i == last and (length == 1 or efWantValue in flags):
         n.typ = n.sons[i].typ
         if not isEmptyType(n.typ): n.kind = nkStmtListExpr
       elif i != last or voidContext or c.inTypeClass > 0:

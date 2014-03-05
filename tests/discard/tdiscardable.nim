@@ -11,3 +11,19 @@ proc q[T](x, y: T): T {.discardable.} =
 p(8, 2)
 q[float](0.8, 0.2)
 
+# bug #942
+
+template maybeMod(x: Tinteger, module:Natural):expr =
+  if module > 0: x mod module
+  else: x
+
+proc foo(b: int):int =
+  var x = 1
+  result = x.maybeMod(b) # Works fine
+
+proc bar(b: int):int =
+  result = 1
+  result = result.maybeMod(b) # Error: value returned by statement has to be discarded
+
+echo foo(0)
+echo bar(0)
