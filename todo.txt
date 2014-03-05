@@ -1,6 +1,7 @@
 version 0.9.4
 =============
 
+- implement unchecked arrays
 - make testament produce full JSON information
 - fix gensym capture bug
 - vm
