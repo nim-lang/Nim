@@ -681,11 +681,6 @@ proc parseField(p: var TParser, kind: TNodeKind): PNode =
     else: result = mangledIdent(p.tok.s, p)
     getTok(p, result)
 
-proc takeOnlyFirstField(p: TParser, isUnion: bool): bool =
-  # if we generate an interface to a header file, *all* fields can be 
-  # generated:
-  result = isUnion and p.options.header.len == 0
-
 proc parseStructBody(p: var TParser, isUnion: bool,
                      kind: TNodeKind = nkRecList): PNode =
   result = newNodeP(kind, p)
@@ -698,8 +693,7 @@ proc parseStructBody(p: var TParser, isUnion: bool,
       var i = parseField(p, kind)
       t = parseTypeSuffix(p, t)
       addSon(def, i, t, ast.emptyNode)
-      if not takeOnlyFirstField(p, isUnion) or sonsLen(result) < 1: 
-        addSon(result, def)
+      addSon(result, def)
       if p.tok.xkind != pxComma: break
       getTok(p, def)
     eat(p, pxSemicolon, lastSon(result))
@@ -710,11 +704,12 @@ proc structPragmas(p: TParser, name: PNode, origName: string): PNode =
   result = newNodeP(nkPragmaExpr, p)
   addSon(result, exportSym(p, name, origName))
   var pragmas = newNodeP(nkPragma, p)
-  addSon(pragmas, newIdentNodeP("pure", p), newIdentNodeP("final", p))
+  #addSon(pragmas, newIdentNodeP("pure", p), newIdentNodeP("final", p))
   if p.options.header.len > 0:
     addSon(pragmas, newIdentStrLitPair("importc", origName, p),
                     newIdentStrLitPair("header", p.options.header, p))
-  addSon(result, pragmas)
+  if pragmas.len > 0: addSon(result, pragmas)
+  else: addSon(result, ast.emptyNode)
 
 proc enumPragmas(p: TParser, name: PNode): PNode =
   result = newNodeP(nkPragmaExpr, p)
@@ -726,9 +721,13 @@ proc enumPragmas(p: TParser, name: PNode): PNode =
   addSon(pragmas, e)
   addSon(result, pragmas)
 
-proc parseStruct(p: var TParser, isUnion: bool): PNode = 
+proc parseStruct(p: var TParser, isUnion: bool): PNode =
   result = newNodeP(nkObjectTy, p)
-  addSon(result, ast.emptyNode, ast.emptyNode) # no pragmas, no inheritance 
+  var pragmas = ast.emptyNode
+  if isUnion:
+    pragmas = newNodeP(nkPragma, p)
+    addSon(pragmas, newIdentNodeP("union", p))
+  addSon(result, pragmas, ast.emptyNode) # no inheritance 
   if p.tok.xkind == pxCurlyLe:
     addSon(result, parseStructBody(p, isUnion))
   else: 
