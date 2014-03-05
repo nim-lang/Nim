@@ -92,7 +92,7 @@ proc errorSym*(c: PContext, n: PNode): PSym =
   result.typ = errorType(c)
   incl(result.flags, sfDiscardable)
   # pretend it's imported from some unknown module to prevent cascading errors:
-  if gCmd != cmdInteractive:
+  if gCmd != cmdInteractive and c.inCompilesContext == 0:
     c.importTable.addSym(result)
 
 type 
