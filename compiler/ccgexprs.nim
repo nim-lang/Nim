@@ -736,7 +736,7 @@ proc genArrayElem(p: BProc, e: PNode, d: var TLoc) =
   var ty = skipTypes(skipTypes(a.t, abstractVarRange), abstractPtrs)
   var first = intLiteral(firstOrd(ty))
   # emit range check:
-  if (optBoundsCheck in p.options):
+  if optBoundsCheck in p.options and tfUncheckedArray notin ty.flags:
     if not isConstExpr(e.sons[1]):
       # semantic pass has already checked for const index expressions
       if firstOrd(ty) == 0:
