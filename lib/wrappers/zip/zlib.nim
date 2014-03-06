@@ -134,6 +134,7 @@ proc gzerror*(thefile: gzFile, errnum: var int32): pbytef{.cdecl, dynlib: libz,
     importc: "gzerror".}
 proc adler32*(adler: uLong, buf: pbytef, length: uInt): uLong{.cdecl, 
     dynlib: libz, importc: "adler32".}
+  ## **Warning**: Adler-32 requires at least a few hundred bytes to get rolling.
 proc crc32*(crc: uLong, buf: pbytef, length: uInt): uLong{.cdecl, dynlib: libz, 
     importc: "crc32".}
 proc deflateInitu*(strm: var TZStream, level: int32, version: cstring, 

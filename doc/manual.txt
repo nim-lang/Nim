@@ -1701,11 +1701,11 @@ algorithm returns true:
     result = isOrdinal(t) or t.kind in {float, float32, float64}
 
   proc isExplicitlyConvertible(a, b: PType): bool =
+    result = false
     if isImplicitlyConvertible(a, b): return true
     if typeEqualsOrDistinct(a, b): return true
     if isIntegralType(a) and isIntegralType(b): return true
     if isSubtype(a, b) or isSubtype(b, a): return true
-    return false
     
 The convertible relation can be relaxed by a user-defined type 
 `converter`:idx:.
@@ -1774,7 +1774,7 @@ Example:
 
 .. code-block:: nimrod
   proc p(x, y: int): int = 
-    return x + y
+    result = x + y
 
   discard p(3, 4) # discard the return value of `p`
 
@@ -1789,7 +1789,7 @@ been declared with the `discardable`:idx: pragma:
 
 .. code-block:: nimrod
   proc p(x, y: int): int {.discardable.} = 
-    return x + y
+    result = x + y
     
   p(3, 4) # now valid
 
@@ -2231,6 +2231,8 @@ Instead of:
 Using statement
 ---------------
 
+**Warning**: The ``using`` statement is highly experimental!
+
 The `using statement`:idx: provides syntactic convenience for procs that
 heavily use a single contextual parameter. When applied to a variable or a
 constant, it will instruct Nimrod to automatically consider the used symbol as
@@ -2438,7 +2440,7 @@ A procedure cannot modify its parameters (unless the parameters have the type
 .. code-block:: nimrod
   proc `$` (x: int): string =
     # converts an integer to a string; this is a prefix operator.
-    return intToStr(x)
+    result = intToStr(x)
 
 Operators with one parameter are prefix operators, operators with two
 parameters are infix operators. (However, the parser distinguishes these from
@@ -2452,7 +2454,7 @@ notation. (Thus an operator can have more than two parameters):
 .. code-block:: nimrod
   proc `*+` (a, b, c: int): int =
     # Multiply and add
-    return a * b + c
+    result = a * b + c
 
   assert `*+`(3, 4, 6) == `*`(a, `+`(b, c))
 
@@ -2498,7 +2500,7 @@ different; for this a special setter syntax is needed:
   
   proc host*(s: TSocket): int {.inline.} =
     ## getter of hostAddr
-    return s.FHost
+    s.FHost
 
   var
     s: TSocket
@@ -2648,11 +2650,12 @@ return values. This can be done in a cleaner way by returning a tuple:
 
 .. code-block:: nimrod
   proc divmod(a, b: int): tuple[res, remainder: int] =
-    return (a div b, a mod b)
+    (a div b, a mod b)
 
   var t = divmod(8, 5)
+
   assert t.res == 1
-  assert t.remainder = 3
+  assert t.remainder == 3
 
 One can use `tuple unpacking`:idx: to access the tuple's fields:
 
@@ -2724,7 +2727,7 @@ dispatch.
 
   method eval(e: ref TPlusExpr): int =
     # watch out: relies on dynamic binding
-    return eval(e.a) + eval(e.b)
+    result = eval(e.a) + eval(e.b)
   
   proc newLit(x: int): ref TLiteral =
     new(result)
@@ -2923,13 +2926,13 @@ parameters of an outer factory proc:
 
 .. code-block:: nimrod
   proc mycount(a, b: int): iterator (): int =
-    return iterator (): int =
+    result = iterator (): int =
       var x = a
       while x <= b:
         yield x
         inc x
 
-  let foo = mycount 1, 4
+  let foo = mycount(1, 4)
 
   for f in foo():
     echo f
@@ -3373,9 +3376,9 @@ module to illustrate this:
     ## requires `x` and `y` to be of the same tuple type
     ## generic ``==`` operator for tuples that is lifted from the components
     ## of `x` and `y`.
+    result = true
     for a, b in fields(x, y):
-      if a != b: return false
-    return true
+      if a != b: result = false
 
 Alternatively, the ``distinct`` type modifier can be applied to the type class 
 to allow each param matching the type class to bind to a different type. 
@@ -3997,9 +4000,9 @@ predicate:
 
   proc re(pattern: semistatic[string]): TRegEx =
     when isStatic(pattern):
-      return precompiledRegex(pattern)
+      result = precompiledRegex(pattern)
     else:
-      return compile(pattern)
+      result = compile(pattern)
 
 Static params can also appear in the signatures of generic types:
 
@@ -4102,6 +4105,59 @@ types that will match the typedesc param:
   var s = string.maxval # error, maxval is not implemented for string
 
 The constraint can be a concrete type or a type class.
+
+Special Operators
+=================
+
+dot operators
+-------------
+
+Nimrod offers a special family of dot operators that can be used to
+intercept and rewrite proc call and field access attempts, referring
+to previously undeclared symbol names. They can be used to provide a
+fluent interface to objects lying outside the static confines of the
+Nimrod's type system such as values from dynamic scripting languages
+or dynamic file formats such as JSON or XML.
+
+When Nimrod encounters an expression that cannot be resolved by the
+standard overload resolution rules, the current scope will be searched
+for a dot operator that can be matched against a re-written form of
+the expression, where the unknown field or proc name is converted to
+an additional static string parameter:
+
+.. code-block:: nimrod
+  a.b # becomes `.`(a, "b")
+  a.b(c, d) # becomes `.`(a, "b", c, d)
+
+The matched dot operators can be symbols of any callable kind (procs,
+templates and macros), depending on the desired effect:
+
+.. code-block:: nimrod
+  proc `.` (js: PJsonNode, field: string): JSON = js[field]
+
+  var js = parseJson("{ x: 1, y: 2}")
+  echo js.x # outputs 1
+  echo js.y # outputs 2
+
+The following dot operators are available:
+
+operator `.`
+------------ 
+This operator will be matched against both field accesses and method calls.
+
+operator `.()`
+---------------
+This operator will be matched exclusively against method calls. It has higher
+precedence than the `.` operator and this allows you to handle expressions like
+`x.y` and `x.y()` differently if you are interfacing with a scripting language
+for example.
+
+operator `.=`
+-------------
+This operator will be matched against assignments to missing fields.
+
+.. code-block:: nimrod
+  a.b = c # becomes `.=`(a, "b", c)
 
 
 Term rewriting macros
@@ -4506,7 +4562,7 @@ This is best illustrated by an example:
   proc p*(x: A.T1): A.T1 =
     # this works because the compiler has already
     # added T1 to A's interface symbol table
-    return x + 1
+    result = x + 1
 
 
 Import statement
@@ -4755,42 +4811,6 @@ This may change in future versions of language, but for now use
 the ``finalizer`` parameter to ``new``.
 
 
-delegator pragma
-----------------
-
-**Note**: The design of the delegator feature is subject to change.
-
-The delegator pragma can be used to intercept and rewrite proc call and field
-access attempts referring to previously undeclared symbol names. It can be used
-to provide a fluent interface to objects lying outside the static confines of
-the Nimrod's type system such as values from dynamic scripting languages or
-dynamic file formats such as JSON or XML.
-
-A delegator is a special form of the `()` operator marked with the delagator
-pragma. When Nimrod encounters an expression that cannot be resolved by the
-standard overload resolution, any delegators in the current scope will be
-matched against a rewritten form of the expression following the standard
-signature matching rules. In the rewritten expression, the name of the unknown
-proc or field name is inserted as an additional static string parameter always
-appearing in the leading position:
-
-.. code-block:: nimrod
-  a.b => delegator("b", a)
-  a.b(c, d) => delegator("b", a, c)
-  a b, c, d => delegator("a", b, c, d)
-
-
-The delegators can be any callable symbol type (procs, templates, macros)
-depending on the desired effect:
-
-.. code-block:: nimrod
-  proc `()` (field: string, js: PJsonNode): JSON {.delegator.} = js[field]
-
-  var js = parseJson("{ x: 1, y: 2}")
-  echo js.x # outputs 1
-  echo js.y # outputs 2
-
-
 procvar pragma
 --------------
 The `procvar`:idx: pragma is used to mark a proc that it can be passed to a
@@ -4873,16 +4893,16 @@ field which is used for runtime type identification is omitted. This is
 necessary for binary compatibility with other compiled languages.
 
 
-NoStackFrame pragma
--------------------
-A proc can be marked with the `noStackFrame`:idx: pragma to tell the compiler
+AsmNoStackFrame pragma
+----------------------
+A proc can be marked with the `AsmNoStackFrame`:idx: pragma to tell the compiler
 it should not generate a stack frame for the proc. There are also no exit
 statements like ``return result;`` generated and the generated C function is
 declared as ``__declspec(naked)`` or ``__attribute__((naked))`` (depending on
 the used C compiler).
 
-**Note**: This pragma should only be used by procs which consist solely of assembler
-statements.
+**Note**: This pragma should only be used by procs which consist solely of
+assembler statements.
 
 error pragma
 ------------
@@ -5134,51 +5154,54 @@ Example:
 .. code-block:: nimrod
   {.deadCodeElim: on.}
 
-NoForward pragma
-----------------
-The `noforward`:idx: pragma can be used to turn on and off a special compilation
-mode that to large extent eliminates the need for forward declarations. In this
-mode, the proc definitions may appear out of order and the compiler will postpone
-their semantic analysis and compilation until it actually needs to generate code
-using the definitions. In this regard, this mode is similar to the modus operandi
-of dynamic scripting languages, where the function calls are not resolved until
-the code is executed. Here is the detailed algorithm taken by the compiler:
 
-1. When a callable symbol is first encountered, the compiler will only note the
-symbol callable name and it will add it to the appropriate overload set in the
-current scope. At this step, it won't try to resolve any of the type expressions
-used in the signature of the symbol (so they can refer to other not yet defined
-symbols).
+..
+  NoForward pragma
+  ----------------
+  The `noforward`:idx: pragma can be used to turn on and off a special compilation
+  mode that to large extent eliminates the need for forward declarations. In this
+  mode, the proc definitions may appear out of order and the compiler will postpone
+  their semantic analysis and compilation until it actually needs to generate code
+  using the definitions. In this regard, this mode is similar to the modus operandi
+  of dynamic scripting languages, where the function calls are not resolved until
+  the code is executed. Here is the detailed algorithm taken by the compiler:
 
-2. When a top level call is encountered (usually at the very end of the module),
-the compiler will try to determine the actual types of all of the symbols in the
-matching overload set. This is a potentially recursive process as the signatures
-of the symbols may include other call expressions, whoose types will be resolved
-at this point too.
+  1. When a callable symbol is first encountered, the compiler will only note the
+  symbol callable name and it will add it to the appropriate overload set in the
+  current scope. At this step, it won't try to resolve any of the type expressions
+  used in the signature of the symbol (so they can refer to other not yet defined
+  symbols).
 
-3. Finally, after the best overload is picked, the compiler will start compiling
-the body of the respective symbol. This in turn will lead the compiler to discover
-more call expresions that need to be resolved and steps 2 and 3 will be repeated
-as necessary.
+  2. When a top level call is encountered (usually at the very end of the module),
+  the compiler will try to determine the actual types of all of the symbols in the
+  matching overload set. This is a potentially recursive process as the signatures
+  of the symbols may include other call expressions, whoose types will be resolved
+  at this point too.
 
-Please note that if a callable symbol is never used in this scenario, its body
-will never be compiled. This is the default behavior leading to best compilation
-times, but if exhaustive compilation of all definitions is required, using 
-``nimrod check`` provides this option as well.
+  3. Finally, after the best overload is picked, the compiler will start compiling
+  the body of the respective symbol. This in turn will lead the compiler to discover
+  more call expresions that need to be resolved and steps 2 and 3 will be repeated
+  as necessary.
 
-Example:
+  Please note that if a callable symbol is never used in this scenario, its body
+  will never be compiled. This is the default behavior leading to best compilation
+  times, but if exhaustive compilation of all definitions is required, using 
+  ``nimrod check`` provides this option as well.
 
-.. code-block:: nimrod
+  Example:
 
-  {.noforward: on.}
+  .. code-block:: nimrod
 
-  proc foo(x: int) =
-    bar x
+    {.noforward: on.}
 
-  proc bar(x: int) =
-    echo x
+    proc foo(x: int) =
+      bar x
 
-  foo(10)
+    proc bar(x: int) =
+      echo x
+
+    foo(10)
+
 
 Pragma pragma
 -------------
@@ -5197,7 +5220,7 @@ Example:
     {.pragma: rtl, importc, dynlib: "client.dll", cdecl.}
     
   proc p*(a, b: int): int {.rtl.} = 
-    return a+b
+    result = a+b
 
 In the example a new pragma named ``rtl`` is introduced that either imports
 a symbol from a dynamic library or exports the symbol for dynamic library
@@ -5295,6 +5318,53 @@ strings automatically:
   proc printf(formatstr: cstring) {.nodecl, varargs.}
 
   printf("hallo %s", "world") # "world" will be passed as C string
+
+
+Union pragma
+------------
+The `union`:idx: pragma can be applied to any ``object`` type. It means all
+of the object's fields are overlaid in memory. This produces a ``union``
+instead of a ``struct`` in the generated C/C++ code. The object declaration
+then must not use inheritance or any GC'ed memory but this is currently not
+checked.
+
+**Future directions**: GC'ed memory should be allowed in unions and the GC
+should scan unions conservatively.
+
+
+Unchecked pragma
+----------------
+The `unchecked`:idx: pragma can be used to mark a named array as ``unchecked``
+meaning its bounds are not checked. This is often useful when one wishes to
+implement his own flexibly sized arrays. Additionally an unchecked array is
+translated into a C array of undetermined size:
+
+.. code-block:: nimrod
+  type
+    ArrayPart{.unchecked.} = array[0..0, int]
+    MySeq = object
+      len, cap: int
+      data: ArrayPart
+
+Produces roughly this C code:
+
+.. code-block:: C
+  typedef struct {
+    NI len;
+    NI cap;
+    NI data[];
+  } MySeq;
+
+The bounds checking done at compile time is not disabled for now, so to access
+``s.data[C]`` (where ``C`` is a constant) the array's index needs needs to
+include ``C``.
+
+The base type of the unchecked array may not contain any GC'ed memory but this
+is currently not checked.
+
+**Future directions**: GC'ed memory should be allowed in unchecked arrays and
+there should be an explicit annotation of how the GC is to determine the
+runtime size of the array.
 
 
 Dynlib pragma for import

@@ -1543,7 +1543,7 @@ proc dirRaw(p: var TRstParser): PRstNode =
     elif cmpIgnoreCase(result.sons[0].sons[0].text, "latex") == 0: 
       dirRawAux(p, result, rnRawLatex, parseLiteralBlock)
     else:
-      rstMessage(p, meInvalidDirective, result.sons[0].text)
+      rstMessage(p, meInvalidDirective, result.sons[0].sons[0].text)
   else:
     dirRawAux(p, result, rnRaw, parseSectionWrapper)
 

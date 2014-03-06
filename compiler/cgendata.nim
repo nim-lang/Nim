@@ -41,7 +41,8 @@ type
     ctInt, ctInt8, ctInt16, ctInt32, ctInt64,
     ctFloat, ctFloat32, ctFloat64, ctFloat128,
     ctUInt, ctUInt8, ctUInt16, ctUInt32, ctUInt64,
-    ctArray, ctStruct, ctPtr, ctNimStr, ctNimSeq, ctProc, ctCString
+    ctArray, ctPtrToArray, ctStruct, ctPtr, ctNimStr, ctNimSeq, ctProc,
+    ctCString
   TCFileSections* = array[TCFileSection, PRope] # represents a generated C file
   TCProcSection* = enum       # the sections a generated C proc consists of
     cpsLocals,                # section of local variables for C proc
@@ -57,17 +58,20 @@ type
     sections*: TCProcSections # the code beloging
     isLoop*: bool             # whether block is a loop
     nestedTryStmts*: int16    # how many try statements is it nested into
+    nestedExceptStmts*: int16 # how many except statements is it nested into
     frameLen*: int16
   
   TCProc{.final.} = object    # represents C proc that is currently generated
     prc*: PSym                # the Nimrod proc that this C proc belongs to
     beforeRetNeeded*: bool    # true iff 'BeforeRet' label for proc is needed
     threadVarAccessed*: bool  # true if the proc already accessed some threadvar
-    nestedTryStmts*: seq[PNode] # in how many nested try statements we are
-                                # (the vars must be volatile then)
+    nestedTryStmts*: seq[PNode]   # in how many nested try statements we are
+                                  # (the vars must be volatile then)
     inExceptBlock*: int       # are we currently inside an except block?
                               # leaving such scopes by raise or by return must
                               # execute any applicable finally blocks
+    finallySafePoints*: seq[PRope]  # For correctly cleaning up exceptions when
+                                    # using return in finally statements
     labels*: Natural          # for generating unique labels in the C proc
     blocks*: seq[TBlock]      # nested blocks
     breakIdx*: int            # the block that will be exited
@@ -140,6 +144,7 @@ proc newProc*(prc: PSym, module: BModule): BProc =
   else: result.options = gOptions
   newSeq(result.blocks, 1)
   result.nestedTryStmts = @[]
+  result.finallySafePoints = @[]
 
 iterator cgenModules*: var BModule =
   for i in 0..high(gModules):

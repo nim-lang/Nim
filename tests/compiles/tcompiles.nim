@@ -24,3 +24,5 @@ ok supports(`+`, 34)
 
 no compiles(4+5.0 * "hallo")
 
+no compiles(undeclaredIdentifier)
+no compiles(undeclaredIdentifier)

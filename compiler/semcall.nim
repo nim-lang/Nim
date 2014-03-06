@@ -82,7 +82,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: seq[string]) =
     # fail fast:
     globalError(n.info, errTypeMismatch, "")
   var result = msgKindToString(errTypeMismatch)
-  add(result, describeArgs(c, n, 1 + ord(nfDelegate in n.flags)))
+  add(result, describeArgs(c, n, 1 + ord(nfDotField in n.flags)))
   add(result, ')')
   
   var candidates = ""
@@ -138,17 +138,35 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
   let overloadsState = result.state
   if overloadsState != csMatch:
-    if nfDelegate in n.flags:
-      internalAssert f.kind == nkIdent
-      let calleeName = newStrNode(nkStrLit, f.ident.s)
-      calleeName.info = n.info
+    if nfDotField in n.flags:
+      internalAssert f.kind == nkIdent and n.sonsLen >= 2
+      let calleeName = newStrNode(nkStrLit, f.ident.s).withInfo(n.info)
 
-      let callOp = newIdentNode(idDelegator, n.info)
-      n.sons[0..0] = [callOp, calleeName]
-      orig.sons[0..0] = [callOp, calleeName]
-     
+      # leave the op head symbol empty,
+      # we are going to try multiple variants
+      n.sons[0..1] = [nil, n[1], calleeName]
+      orig.sons[0..1] = [nil, orig[1], calleeName]
+      
+      template tryOp(x) =
+        let op = newIdentNode(getIdent(x), n.info)
+        n.sons[0] = op
+        orig.sons[0] = op
+        pickBest(op)
+
+      if nfExplicitCall in n.flags:
+        tryOp ".()"
+   
+      if result.state in {csEmpty, csNoMatch}:
+        tryOp "."
+
+    elif nfDotSetter in n.flags:
+      internalAssert f.kind == nkIdent and n.sonsLen == 3
+      let calleeName = newStrNode(nkStrLit, f.ident.s[0.. -2]).withInfo(n.info)
+      let callOp = newIdentNode(getIdent".=", n.info)
+      n.sons[0..1] = [callOp, n[1], calleeName]
+      orig.sons[0..1] = [callOp, orig[1], calleeName]
       pickBest(callOp)
-
+    
     if overloadsState == csEmpty and result.state == csEmpty:
       localError(n.info, errUndeclaredIdentifier, considerAcc(f).s)
       return

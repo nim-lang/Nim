@@ -1,6 +1,6 @@
 discard """
   line: 10
-  errormsg: "value returned by statement has to be discarded"
+  errormsg: "value of type 'string' has to be discarded"
 """
 
 # bug #578

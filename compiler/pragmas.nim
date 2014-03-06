@@ -23,7 +23,7 @@ const
     wMagic, wNosideeffect, wSideeffect, wNoreturn, wDynlib, wHeader, 
     wCompilerproc, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge, 
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
-    wNoStackFrame, wError, wDiscardable, wNoInit, wDestructor, wCodegenDecl,
+    wAsmNoStackFrame, wError, wDiscardable, wNoInit, wDestructor, wCodegenDecl,
     wGensym, wInject, wRaises, wTags, wOperator, wDelegator}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas
@@ -47,12 +47,12 @@ const
     wInjectStmt}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wNosideeffect, wSideeffect, wNoreturn, wDynlib, wHeader, 
-    wDeprecated, wExtern, wThread, wImportCpp, wImportObjC, wNoStackFrame,
+    wDeprecated, wExtern, wThread, wImportCpp, wImportObjC, wAsmNoStackFrame,
     wRaises, wTags}
   typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl, 
-    wPure, wHeader, wCompilerproc, wFinal, wSize, wExtern, wShallow, 
+    wPure, wHeader, wCompilerproc, wFinal, wSize, wExtern, wShallow,
     wImportCpp, wImportObjC, wError, wIncompleteStruct, wByCopy, wByRef,
-    wInheritable, wGensym, wInject, wRequiresInit}
+    wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion}
   fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern, 
     wImportCpp, wImportObjC, wError}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl, 
@@ -97,8 +97,25 @@ proc makeExternImport(s: PSym, extname: string) =
   incl(s.flags, sfImportc)
   excl(s.flags, sfForward)
 
-proc makeExternExport(s: PSym, extname: string) = 
+const invalidIdentChars = AllChars - IdentChars
+
+proc validateExternCName(s: PSym, info: TLineInfo) =
+  ## Validates that the symbol name in s.loc.r is a valid C identifier.
+  ##
+  ## Valid identifiers are those alphanumeric including the underscore not
+  ## starting with a number. If the check fails, a generic error will be
+  ## displayed to the user.
+  let target = ropeToStr(s.loc.r)
+  if target.len < 1 or (not (target[0] in IdentStartChars)) or
+      (not target.allCharsInSet(IdentChars)):
+    localError(info, errGenerated, "invalid exported symbol")
+
+proc makeExternExport(s: PSym, extname: string, info: TLineInfo) =
   setExternName(s, extname)
+  case gCmd
+  of cmdCompileToC, cmdCompileToCpp, cmdCompileToOC:
+    validateExternCName(s, info)
+  else: discard
   incl(s.flags, sfExportc)
 
 proc processImportCompilerProc(s: PSym, extname: string) =
@@ -515,7 +532,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
       if k in validPragmas: 
         case k
         of wExportc: 
-          makeExternExport(sym, getOptionalStr(c, it, "$1"))
+          makeExternExport(sym, getOptionalStr(c, it, "$1"), it.info)
           incl(sym.flags, sfUsed) # avoid wrong hints
         of wImportc: makeExternImport(sym, getOptionalStr(c, it, "$1"))
         of wImportCompilerProc:
@@ -548,9 +565,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         of wNodecl: 
           noVal(it)
           incl(sym.loc.flags, lfNoDecl)
-        of wPure, wNoStackFrame:
+        of wPure, wAsmNoStackFrame:
           noVal(it)
-          if sym != nil: incl(sym.flags, sfPure)
+          if sym != nil:
+            if k == wPure and sym.kind in routineKinds: invalidPragma(it)
+            else: incl(sym.flags, sfPure)
         of wVolatile: 
           noVal(it)
           incl(sym.flags, sfVolatile)
@@ -601,7 +620,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           processDynLib(c, it, sym)
         of wCompilerproc: 
           noVal(it)           # compilerproc may not get a string!
-          makeExternExport(sym, "$1")
+          makeExternExport(sym, "$1", it.info)
           incl(sym.flags, sfCompilerProc)
           incl(sym.flags, sfUsed) # suppress all those stupid warnings
           registerCompilerProc(sym)
@@ -699,6 +718,14 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           noVal(it)
           if sym.typ == nil: invalidPragma(it)
           else: incl(sym.typ.flags, tfIncompleteStruct)
+        of wUnchecked:
+          noVal(it)
+          if sym.typ == nil: invalidPragma(it)
+          else: incl(sym.typ.flags, tfUncheckedArray)
+        of wUnion:
+          noVal(it)
+          if sym.typ == nil: invalidPragma(it)
+          else: incl(sym.typ.flags, tfUnion)
         of wRequiresInit:
           noVal(it)
           if sym.typ == nil: invalidPragma(it)

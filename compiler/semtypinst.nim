@@ -29,6 +29,7 @@ proc checkConstructedType*(info: TLineInfo, typ: PType) =
     localError(info, errVarVarTypeNotAllowed)
   elif computeSize(t) == szIllegalRecursion:
     localError(info, errIllegalRecursionInTypeX, typeToString(t))
+  
   when false:
     if t.kind == tyObject and t.sons[0] != nil:
       if t.sons[0].kind != tyObject or tfFinal in t.sons[0].flags: 
@@ -153,6 +154,9 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode): PNode =
     discard
   of nkSym:
     result.sym = replaceTypeVarsS(cl, n.sym)
+    if result.sym.typ.kind == tyEmpty:
+      # don't add the 'void' field
+      result = newNode(nkRecList, n.info)
   of nkRecWhen:
     var branch: PNode = nil              # the branch to take
     for i in countup(0, sonsLen(n) - 1):
@@ -216,7 +220,7 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
   # is difficult to handle: 
   var body = t.sons[0]
   if body.kind != tyGenericBody: internalError(cl.info, "no generic body")
-  var header: PType = nil
+  var header: PType = t
   # search for some instantiation here:
   if cl.allowMetaTypes:
     result = PType(idTableGet(cl.localCache, t))
@@ -228,11 +232,13 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
     if x.kind == tyGenericParam:
       x = lookupTypeVar(cl, x)
       if x != nil:
-        if header == nil: header = instCopyType(cl, t)
+        if header == t: header = instCopyType(cl, t)
         header.sons[i] = x
         propagateToOwner(header, x)
+    else:
+      propagateToOwner(header, x)
   
-  if header != nil:
+  if header != t:
     # search again after first pass:
     result = searchInstTypes(header)
     if result != nil: return
@@ -240,6 +246,7 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
     header = instCopyType(cl, t)
   
   result = newType(tyGenericInst, t.sons[0].owner)
+  result.flags = header.flags
   # be careful not to propagate unnecessary flags here (don't use rawAddSon)
   result.sons = @[header.sons[0]]
   # ugh need another pass for deeply recursive generic types (e.g. PActor)
@@ -406,14 +413,22 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       
       else: discard
 
+proc initTypeVars(p: PContext, pt: TIdTable, info: TLineInfo): TReplTypeVars =
+  initIdTable(result.symMap)
+  copyIdTable(result.typeMap, pt)
+  initIdTable(result.localCache)
+  result.info = info
+  result.c = p
+
+proc replaceTypesInBody*(p: PContext, pt: TIdTable, n: PNode): PNode =
+  var cl = initTypeVars(p, pt, n.info)
+  pushInfoContext(n.info)
+  result = replaceTypeVarsN(cl, n)
+  popInfoContext()
+  
 proc generateTypeInstance*(p: PContext, pt: TIdTable, info: TLineInfo,
                            t: PType): PType =
-  var cl: TReplTypeVars
-  initIdTable(cl.symMap)
-  copyIdTable(cl.typeMap, pt)
-  initIdTable(cl.localCache)
-  cl.info = info
-  cl.c = p
+  var cl = initTypeVars(p, pt, info)
   pushInfoContext(info)
   result = replaceTypeVarsT(cl, t)
   popInfoContext()

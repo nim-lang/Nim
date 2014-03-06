@@ -130,7 +130,7 @@ proc walkDirRecursively(s: var seq[string], root, ext: string) =
       if cmpIgnoreCase(ext, splitFile(f).ext) == 0:
         add(s, f)
     of pcDir: walkDirRecursively(s, f, ext)
-    of pcLinkToDir: nil
+    of pcLinkToDir: discard
 
 proc addFiles(s: var seq[string], dir, ext: string, patterns: seq[string]) =
   for p in items(patterns):
@@ -153,7 +153,7 @@ proc parseIniFile(c: var TConfigData) =
       of cfgSectionStart:
         section = normalize(k.section)
         case section
-        of "project", "links", "tabs", "ticker", "documentation", "var": nil
+        of "project", "links", "tabs", "ticker", "documentation", "var": discard
         else: echo("[Warning] Skipping unknown section: " & section)
 
       of cfgKeyValuePair:
@@ -168,7 +168,7 @@ proc parseIniFile(c: var TConfigData) =
           of "logo": c.logo = v
           of "authors": c.authors = v
           else: quit(errorStr(p, "unknown variable: " & k.key))
-        of "var": nil
+        of "var": discard
         of "links":
           let valID = v.split(';')
           add(c.links, (k.key.replace('_', ' '), valID[1], valID[0]))
@@ -186,7 +186,7 @@ proc parseIniFile(c: var TConfigData) =
           let vSplit = v.split('-')
           doAssert vSplit.len == 2
           c.quotations[k.key.normalize] = (vSplit[0], vSplit[1])
-        else: nil
+        else: discard
 
       of cfgOption: quit(errorStr(p, "syntax error"))
       of cfgError: quit(errorStr(p, k.msg))
@@ -211,9 +211,9 @@ proc buildDocSamples(c: var TConfigData, destPath: string) =
   ## it didn't make much sense to integrate into the existing generic
   ## documentation builders.
   const src = "doc"/"docgen_sample.nim"
-  Exec("nimrod doc $# -o:$# $#" %
+  exec("nimrod doc $# -o:$# $#" %
     [c.nimrodArgs, destPath / "docgen_sample.html", src])
-  Exec("nimrod doc2 $# -o:$# $#" %
+  exec("nimrod doc2 $# -o:$# $#" %
     [c.nimrodArgs, destPath / "docgen_sample2.html", src])
 
 proc buildDoc(c: var TConfigData, destPath: string) =

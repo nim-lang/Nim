@@ -62,7 +62,7 @@ type
     nkTripleStrLit,       # a triple string literal """
     nkNilLit,             # the nil literal
                           # end of atoms
-    nkMetaNode,           # difficult to explain; represents itself
+    nkMetaNode_Obsolete,  # difficult to explain; represents itself
                           # (used for macros)
     nkDotCall,            # used to temporarily flag a nkCall node; 
                           # this is used
@@ -409,7 +409,9 @@ type
                 # efficiency
     nfTransf,   # node has been transformed
     nfSem       # node has been checked for semantics
-    nfDelegate  # the call can use a delegator
+    nfDotField  # the call can use a dot operator
+    nfDotSetter # the call can use a setter dot operarator
+    nfExplicitCall # x.y() was used instead of x.y
     nfExprCall  # this is an attempt to call a regular expression
     nfIsRef     # this node is a 'ref' node; used for the VM
 
@@ -479,12 +481,15 @@ type
     skStub,               # symbol is a stub and not yet loaded from the ROD
                           # file (it is loaded on demand, which may
                           # mean: never)
+    skPackage             # symbol is a package (used for canonicalization)
   TSymKinds* = set[TSymKind]
 
 const
   routineKinds* = {skProc, skMethod, skIterator, skConverter,
     skMacro, skTemplate}
   tfIncompleteStruct* = tfVarargs
+  tfUncheckedArray* = tfVarargs
+  tfUnion* = tfNoSideEffect
   skError* = skUnknown
   
   # type flags that are essential for type equality:
@@ -843,7 +848,8 @@ const
   ExportableSymKinds* = {skVar, skConst, skProc, skMethod, skType, skIterator, 
     skMacro, skTemplate, skConverter, skEnumField, skLet, skStub}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
-                                      nfAllConst, nfDelegate, nfIsRef}
+                                      nfDotSetter, nfDotField,
+                                      nfAllConst,nfIsRef}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2
@@ -1044,6 +1050,10 @@ proc newStrNode(kind: TNodeKind, strVal: string): PNode =
   result = newNode(kind)
   result.strVal = strVal
 
+proc withInfo*(n: PNode, info: TLineInfo): PNode =
+  n.info = info
+  return n
+
 proc newIdentNode(ident: PIdent, info: TLineInfo): PNode = 
   result = newNode(nkIdent)
   result.ident = ident
@@ -1104,10 +1114,6 @@ proc newNodeIT(kind: TNodeKind, info: TLineInfo, typ: PType): PNode =
   result = newNode(kind)
   result.info = info
   result.typ = typ
-
-proc newMetaNodeIT*(tree: PNode, info: TLineInfo, typ: PType): PNode =
-  result = newNodeIT(nkMetaNode, info, typ)
-  result.add(tree)
 
 var emptyParams = newNode(nkFormalParams)
 emptyParams.addSon(emptyNode)

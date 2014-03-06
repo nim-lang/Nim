@@ -204,7 +204,14 @@ proc semConv(c: PContext, n: PNode): PNode =
   if not isSymChoice(op):
     let status = checkConvertible(c, result.typ, op.typ)
     case status
-    of convOK: discard
+    of convOK:
+      # handle SomeProcType(SomeGenericProc)
+      # XXX: This needs fixing. checkConvertible uses typeRel internally, but
+      # doesn't bother to perform the work done in paramTypeMatchAux/fitNode
+      # so we are redoing the typeRel work here. Why does semConv exist as a
+      # separate proc from fitNode?
+      if op.kind == nkSym and op.sym.isGenericRoutine:
+        result.sons[1] = fitNode(c, result.typ, result.sons[1])
     of convNotNeedeed:
       message(n.info, hintConvFromXtoItselfNotNeeded, result.typ.typeToString)
     of convNotLegal:
@@ -339,22 +346,21 @@ proc semIs(c: PContext, n: PNode): PNode =
 
   result = n
   n.typ = getSysType(tyBool)
-  
-  n.sons[1] = semExprWithType(c, n[1], {efDetermineType})
-  
+ 
+  n.sons[1] = semExprWithType(c, n[1], {efDetermineType, efWantIterator})
   if n[2].kind notin {nkStrLit..nkTripleStrLit}:
     let t2 = semTypeNode(c, n[2], nil)
     n.sons[2] = newNodeIT(nkType, n[2].info, t2)
 
-  if n[1].typ.kind != tyTypeDesc:
-    n.sons[1] = makeTypeSymNode(c, n[1].typ, n[1].info)
-  elif n[1].typ.sonsLen == 0:
+  let lhsType = n[1].typ
+  if lhsType.kind != tyTypeDesc:
+    n.sons[1] = makeTypeSymNode(c, lhsType, n[1].info)
+  elif lhsType.base.kind == tyNone:
     # this is a typedesc variable, leave for evals
     return
 
-  let t1 = n[1].typ.sons[0]
   # BUGFIX: don't evaluate this too early: ``T is void``
-  if not containsGenericType(t1): result = isOpImpl(c, n)
+  if not n[1].typ.base.containsGenericType: result = isOpImpl(c, n)
 
 proc semOpAux(c: PContext, n: PNode) =
   const flags = {efDetermineType}
@@ -635,9 +641,11 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
       result = evalStaticExpr(c.module, call, c.p.owner)
       if result.isNil: 
         localError(n.info, errCannotInterpretNodeX, renderTree(call))
+      else: result = fixupTypeAfterEval(c, result, n)
     else:
       result = evalConstExpr(c.module, call)
       if result.isNil: result = n
+      else: result = fixupTypeAfterEval(c, result, n)
     #if result != n:
     #  echo "SUCCESS evaluated at compile time: ", call.renderTree
 
@@ -647,6 +655,8 @@ proc semStaticExpr(c: PContext, n: PNode): PNode =
   if result.isNil:
     localError(n.info, errCannotInterpretNodeX, renderTree(n))
     result = emptyNode
+  else:
+    result = fixupTypeAfterEval(c, result, a)
 
 proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
                                      flags: TExprFlags): PNode =
@@ -676,20 +686,21 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
           incl(c.p.owner.flags, sfSideEffect)
 
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode
-proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode = 
+proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = nil
   checkMinSonsLen(n, 1)
   var prc = n.sons[0]
-  if n.sons[0].kind == nkDotExpr: 
+  if n.sons[0].kind == nkDotExpr:
     checkSonsLen(n.sons[0], 2)
     n.sons[0] = semFieldAccess(c, n.sons[0])
-    if n.sons[0].kind == nkDotCall: 
+    if n.sons[0].kind == nkDotCall:
       # it is a static call!
       result = n.sons[0]
       result.kind = nkCall
+      result.flags.incl nfExplicitCall
       for i in countup(1, sonsLen(n) - 1): addSon(result, n.sons[i])
       return semExpr(c, result, flags)
-  else: 
+  else:
     n.sons[0] = semExpr(c, n.sons[0])
   let nOrig = n.copyTree
   semOpAux(c, n)
@@ -910,8 +921,8 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var ty = n.sons[0].typ
   var f: PSym = nil
   result = nil
-  if isTypeExpr(n.sons[0]) or ty.kind == tyTypeDesc and ty.len == 1:
-    if ty.kind == tyTypeDesc: ty = ty.sons[0]
+  if isTypeExpr(n.sons[0]) or ty.kind == tyTypeDesc and ty.base.kind != tyNone:
+    if ty.kind == tyTypeDesc: ty = ty.base
     case ty.kind
     of tyEnum:
       # look up if the identifier belongs to the enum:
@@ -992,7 +1003,7 @@ proc dotTransformation(c: PContext, n: PNode): PNode =
   else:
     var i = considerAcc(n.sons[1])
     result = newNodeI(nkDotCall, n.info)
-    result.flags.incl nfDelegate
+    result.flags.incl nfDotField
     addSon(result, newIdentNode(i, n[1].info))
     addSon(result, copyTree(n[0]))
   
@@ -1075,12 +1086,13 @@ proc semArrayAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
 proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
   var id = considerAcc(a[1])
-  let setterId = newIdentNode(getIdent(id.s & '='), n.info)
+  var setterId = newIdentNode(getIdent(id.s & '='), n.info)
   # a[0] is already checked for semantics, that does ``builtinFieldAccess``
   # this is ugly. XXX Semantic checking should use the ``nfSem`` flag for
   # nodes?
   let aOrig = nOrig[0]
   result = newNode(nkCall, n.info, sons = @[setterId, a[0], semExpr(c, n[1])])
+  result.flags.incl nfDotSetter
   let orig = newNode(nkCall, n.info, sons = @[setterId, aOrig[0], nOrig[1]])
   result = semOverloadedCallAnalyseEffects(c, result, orig, {})
   
@@ -1770,22 +1782,6 @@ proc semBlock(c: PContext, n: PNode): PNode =
   closeScope(c)
   dec(c.p.nestedBlockCounter)
 
-proc buildCall(n: PNode): PNode =
-  if n.kind == nkDotExpr and n.len == 2:
-    # x.y --> y(x)
-    result = newNodeI(nkCall, n.info, 2)
-    result.sons[0] = n.sons[1]
-    result.sons[1] = n.sons[0]
-  elif n.kind in nkCallKinds and n.sons[0].kind == nkDotExpr:
-    # x.y(a) -> y(x, a)
-    let a = n.sons[0]
-    result = newNodeI(nkCall, n.info, n.len+1)
-    result.sons[0] = a.sons[1]
-    result.sons[1] = a.sons[0]
-    for i in 1 .. <n.len: result.sons[i+1] = n.sons[i]
-  else:
-    result = n
-
 proc doBlockIsStmtList(n: PNode): bool =
   result = n.kind == nkDo and
            n[paramsPos].sonsLen == 1 and
@@ -1819,6 +1815,10 @@ proc semExport(c: PContext, n: PNode): PNode =
   c.module.ast.add x
   result = n
 
+proc setGenericParams(c: PContext, n: PNode) =
+  for i in 1 .. <n.len:
+    n[i].typ = semTypeNode(c, n[i], nil)
+
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode = 
   result = n
   if gCmd == cmdIdeTools: suggestExpr(c, n)
@@ -1833,8 +1833,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       result = symChoice(c, n, s, scClosed)
       if result.kind == nkSym:
         markIndirect(c, result.sym)
-        if isGenericRoutine(result.sym):
-          localError(n.info, errInstantiateXExplicitely, s.name.s)
+        # if isGenericRoutine(result.sym):
+        #   localError(n.info, errInstantiateXExplicitely, s.name.s)
   of nkSym:
     # because of the changed symbol binding, this does not mean that we
     # don't have to check the symbol for semantics here again!
@@ -1890,7 +1890,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit: 
     # check if it is an expression macro:
     checkMinSonsLen(n, 1)
-    let mode = if nfDelegate in n.flags: {} else: {checkUndeclared}
+    let mode = if nfDotField in n.flags: {} else: {checkUndeclared}
     var s = qualifiedLookUp(c, n.sons[0], mode)
     if s != nil: 
       if gCmd == cmdPretty and n.sons[0].kind == nkDotExpr:
@@ -1924,10 +1924,12 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       else:
         #liMessage(n.info, warnUser, renderTree(n));
         result = semIndirectOp(c, n, flags)
-    elif isSymChoice(n.sons[0]) or n[0].kind == nkBracketExpr and 
-        isSymChoice(n[0][0]):
+    elif n[0].kind == nkBracketExpr and isSymChoice(n[0][0]):
+      # indirectOp can deal with explicit instantiations; the fixes
+      # the 'newSeq[T](x)' bug
+      setGenericParams(c, n.sons[0])
       result = semDirectOp(c, n, flags)
-    elif nfDelegate in n.flags:
+    elif isSymChoice(n.sons[0]) or nfDotField in n.flags:
       result = semDirectOp(c, n, flags)
     else:
       result = semIndirectOp(c, n, flags)

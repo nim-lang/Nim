@@ -185,7 +185,7 @@ proc mapType(typ: PType): TCTypeKind =
   of tyPtr, tyVar, tyRef:
     var base = skipTypes(typ.sons[0], typedescInst)
     case base.kind
-    of tyOpenArray, tyArrayConstr, tyArray, tyVarargs: result = ctArray
+    of tyOpenArray, tyArrayConstr, tyArray, tyVarargs: result = ctPtrToArray
     else: result = ctPtr
   of tyPointer: result = ctPtr
   of tySequence: result = ctNimSeq
@@ -376,10 +376,13 @@ proc getTypePre(m: BModule, typ: PType): PRope =
   else: 
     result = getSimpleTypeDesc(m, typ)
     if result == nil: result = cacheGetType(m.typeCache, typ)
-  
+
+proc structOrUnion(t: PType): PRope =
+  (if tfUnion in t.flags: toRope("union") else: toRope("struct"))
+
 proc getForwardStructFormat(): string = 
-  if gCmd == cmdCompileToCpp: result = "struct $1;$n"
-  else: result = "typedef struct $1 $1;$n"
+  if gCmd == cmdCompileToCpp: result = "$1 $2;$n"
+  else: result = "typedef $1 $2 $2;$n"
   
 proc getTypeForward(m: BModule, typ: PType): PRope = 
   result = cacheGetType(m.forwTypeCache, typ)
@@ -390,7 +393,8 @@ proc getTypeForward(m: BModule, typ: PType): PRope =
   of tySequence, tyTuple, tyObject: 
     result = getTypeName(typ)
     if not isImportedType(typ): 
-      appf(m.s[cfsForwardTypes], getForwardStructFormat(), [result])
+      appf(m.s[cfsForwardTypes], getForwardStructFormat(),
+          [structOrUnion(typ), result])
     idTablePut(m.forwTypeCache, typ, result)
   else: internalError("getTypeForward(" & $typ.kind & ')')
   
@@ -445,7 +449,12 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
     if accessExpr != nil: ae = ropef("$1.$2", [accessExpr, sname])
     else: ae = sname
     fillLoc(field.loc, locField, field.typ, ae, OnUnknown)
-    appf(result, "$1 $2;$n", [getTypeDescAux(m, field.loc.t, check), sname])
+    let fieldType = field.loc.t
+    if fieldType.kind == tyArray and tfUncheckedArray in fieldType.flags:
+      appf(result, "$1 $2[SEQ_DECL_SIZE];$n",
+          [getTypeDescAux(m, fieldType.elemType, check), sname])
+    else:
+      appf(result, "$1 $2;$n", [getTypeDescAux(m, fieldType, check), sname])
   else: internalError(n.info, "genRecordFieldsAux()")
   
 proc getRecordFields(m: BModule, typ: PType, check: var TIntSet): PRope = 
@@ -455,23 +464,24 @@ proc getRecordDesc(m: BModule, typ: PType, name: PRope,
                    check: var TIntSet): PRope = 
   # declare the record:
   var hasField = false
+  let aStruct = structOrUnion(typ)
   if typ.kind == tyObject: 
     if typ.sons[0] == nil: 
       if (typ.sym != nil and sfPure in typ.sym.flags) or tfFinal in typ.flags: 
-        result = ropecg(m, "struct $1 {$n", [name])
+        result = ropecg(m, "$1 $2 {$n", [aStruct, name])
       else: 
-        result = ropecg(m, "struct $1 {$n#TNimType* m_type;$n", [name])
+        result = ropecg(m, "$1 $2 {$n#TNimType* m_type;$n", [aStruct, name])
         hasField = true
     elif gCmd == cmdCompileToCpp: 
-      result = ropecg(m, "struct $1 : public $2 {$n", 
-                      [name, getTypeDescAux(m, typ.sons[0], check)])
+      result = ropecg(m, "$1 $2 : public $3 {$n", 
+                      [aStruct, name, getTypeDescAux(m, typ.sons[0], check)])
       hasField = true
     else: 
-      result = ropecg(m, "struct $1 {$n  $2 Sup;$n", 
-                      [name, getTypeDescAux(m, typ.sons[0], check)])
+      result = ropecg(m, "$1 $2 {$n  $3 Sup;$n", 
+                      [aStruct, name, getTypeDescAux(m, typ.sons[0], check)])
       hasField = true
   else: 
-    result = ropef("struct $1 {$n", [name])
+    result = ropef("$1 $2 {$n", [aStruct, name])
   var desc = getRecordFields(m, typ, check)
   if (desc == nil) and not hasField: 
     appf(result, "char dummy;$n", [])
@@ -480,8 +490,8 @@ proc getRecordDesc(m: BModule, typ: PType, name: PRope,
   app(result, "};" & tnl)
 
 proc getTupleDesc(m: BModule, typ: PType, name: PRope, 
-                  check: var TIntSet): PRope = 
-  result = ropef("struct $1 {$n", [name])
+                  check: var TIntSet): PRope =
+  result = ropef("$1 $2 {$n", [structOrUnion(typ), name])
   var desc: PRope = nil
   for i in countup(0, sonsLen(typ) - 1): 
     appf(desc, "$1 Field$2;$n", 
@@ -557,7 +567,8 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var TIntSet): PRope =
     if result == nil: 
       result = getTypeName(t)
       if not isImportedType(t): 
-        appf(m.s[cfsForwardTypes], getForwardStructFormat(), [result])
+        appf(m.s[cfsForwardTypes], getForwardStructFormat(),
+            [structOrUnion(t), result])
       idTablePut(m.forwTypeCache, t, result)
     assert(cacheGetType(m.typeCache, t) == nil)
     idTablePut(m.typeCache, t, con(result, "*"))
@@ -588,7 +599,8 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var TIntSet): PRope =
     if result == nil: 
       result = getTypeName(t)
       if not isImportedType(t): 
-        appf(m.s[cfsForwardTypes], getForwardStructFormat(), [result])
+        appf(m.s[cfsForwardTypes], getForwardStructFormat(),
+           [structOrUnion(t), result])
       idTablePut(m.forwTypeCache, t, result)
     idTablePut(m.typeCache, t, result) # always call for sideeffects:
     if t.kind != tyTuple: recdesc = getRecordDesc(m, t, result, check)

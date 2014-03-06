@@ -1,13 +1,13 @@
 version 0.9.4
 =============
 
+- make testament produce full JSON information
+- fix gensym capture bug
+- vm
+  - at least try to get the basic type zoo ops right
+  - optimize opcAsgnStr
 - fix GC issues
-- fix macros\tstringinterp.nim
 - test and fix showoff
-- test C source code generation
-- test and fix closures
-- test and fix exception handling
-- implement 'union' and 'bits' pragmas
 
 
 Bugs
@@ -21,13 +21,14 @@ Bugs
 - docgen: sometimes effects are listed twice
 - 'result' is not properly cleaned for NRVO --> use uninit checking instead
 - blocks can "export" an identifier but the CCG generates {} for them ...
-- osproc execProcesses can deadlock if all processes fail (as experienced
-  in c++ mode)
 
 
 version 0.9.x
 =============
 
+- memory manager: add a measure of fragmentation
+- implement 'bits' pragmas
+- fix closures/lambdalifting
 - ensure (ref T)(a, b) works as a type conversion and type constructor
 - optimize 'genericReset'; 'newException' leads to code bloat
 - stack-less GC
@@ -41,7 +42,7 @@ version 0.9.x
 - built-in 'getImpl'
 
 - change comment handling in the AST; that's lots of work as c2nim and pas2nim
-  make use of the fast every node can have a comment!
+  make use of the fact every node can have a comment!
 
 
 version 0.9.X
@@ -143,11 +144,9 @@ Not essential for 1.0.0
   semantics instead ...
 - implement "closure tuple consists of a single 'ref'" optimization
 - optimize method dispatchers
-- ``with proc `+`(x, y: T): T`` for generic code
 - new feature: ``distinct T with operations``
 - arglist as a type (iterator chaining); variable length type lists for generics
 - implement marker procs for message passing
-- activate more thread tests
 - implement closures that support nesting of *procs* > 1
 - object constructors: static check for fields if discriminator is known at 
   compile time

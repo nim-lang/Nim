@@ -61,9 +61,8 @@ proc getSourceLanguage*(name: string): TSourceLanguage =
     if cmpIgnoreStyle(name, sourceLanguageToStr[i]) == 0: 
       return i
   result = langNone
-
-proc initGeneralTokenizer*(g: var TGeneralTokenizer, buf: string) = 
-  g.buf = cstring(buf)
+proc initGeneralTokenizer*(g: var TGeneralTokenizer, buf: cstring) =
+  g.buf = buf
   g.kind = low(TTokenClass)
   g.start = 0
   g.length = 0
@@ -71,6 +70,8 @@ proc initGeneralTokenizer*(g: var TGeneralTokenizer, buf: string) =
   var pos = 0                     # skip initial whitespace:
   while g.buf[pos] in {' ', '\x09'..'\x0D'}: inc(pos)
   g.pos = pos
+proc initGeneralTokenizer*(g: var TGeneralTokenizer, buf: string) = 
+  initGeneralTokenizer(g, cstring(buf))
 
 proc deinitGeneralTokenizer*(g: var TGeneralTokenizer) = 
   discard

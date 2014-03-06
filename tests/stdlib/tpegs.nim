@@ -72,7 +72,7 @@ type
     rule: TNode                   ## the rule that the symbol refers to
   TNode {.final, shallow.} = object
     case kind: TPegKind
-    of pkEmpty..pkWhitespace: nil
+    of pkEmpty..pkWhitespace: discard
     of pkTerminal, pkTerminalIgnoreCase, pkTerminalIgnoreStyle: term: string
     of pkChar, pkGreedyRepChar: ch: char
     of pkCharChoice, pkGreedyRepSet: charChoice: ref set[char]
@@ -123,7 +123,7 @@ proc add(d: var TPeg, s: TPeg) {.inline.} = add(d.sons, s)
 proc copyPeg(a: TPeg): TPeg = 
   result.kind = a.kind
   case a.kind
-  of pkEmpty..pkWhitespace: nil
+  of pkEmpty..pkWhitespace: discard
   of pkTerminal, pkTerminalIgnoreCase, pkTerminalIgnoreStyle: 
     result.term = a.term
   of pkChar, pkGreedyRepChar: 
@@ -229,7 +229,7 @@ when false:
     case a.kind
     of pkEmpty, pkAny, pkAnyRune, pkGreedyAny, pkNewLine, pkTerminal,
        pkTerminalIgnoreCase, pkTerminalIgnoreStyle, pkChar, pkGreedyRepChar,
-       pkCharChoice, pkGreedyRepSet: nil
+       pkCharChoice, pkGreedyRepSet: discard
     of pkNonTerminal: return true
     else:
       for i in 0..a.sons.len-1:
@@ -318,7 +318,7 @@ proc backrefIgnoreStyle*(index: range[1..MaxSubPatterns]): TPeg {.
 
 proc spaceCost(n: TPeg): int =
   case n.kind
-  of pkEmpty: nil
+  of pkEmpty: discard
   of pkTerminal, pkTerminalIgnoreCase, pkTerminalIgnoreStyle, pkChar,
      pkGreedyRepChar, pkCharChoice, pkGreedyRepSet, 
      pkAny..pkWhitespace, pkGreedyAny:
@@ -1111,7 +1111,7 @@ proc handleHexChar(c: var TPegLexer, xi: var int) =
   of 'A'..'F': 
     xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('A') + 10)
     inc(c.bufpos)
-  else: nil
+  else: discard
 
 proc getEscapedChar(c: var TPegLexer, tok: var TToken) = 
   inc(c.bufpos)
@@ -1341,7 +1341,7 @@ proc getTok(c: var TPegLexer, tok: var TToken) =
       of "i": tok.modifier = modIgnoreCase
       of "y": tok.modifier = modIgnoreStyle
       of "v": tok.modifier = modVerbatim
-      else: nil
+      else: discard
       setLen(tok.literal, 0)
       if c.buf[c.bufpos] == '$':
         getDollar(c, tok)
@@ -1488,7 +1488,7 @@ proc primary(p: var TPegParser): TPeg =
   of tkCurlyAt:
     getTok(p)
     return !*\primary(p).token(p)
-  else: nil
+  else: discard
   case p.tok.kind
   of tkIdentifier:
     if p.identIsVerbatim: 

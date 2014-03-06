@@ -14,7 +14,7 @@
 type
   TLibHandle* = pointer ## a handle to a dynamically loaded library
 
-proc loadLib*(path: string): TLibHandle
+proc loadLib*(path: string, global_symbols=false): TLibHandle
   ## loads a library from `path`. Returns nil if the library could not 
   ## be loaded.
 
@@ -53,6 +53,7 @@ when defined(posix):
   #
   var
     RTLD_NOW {.importc: "RTLD_NOW", header: "<dlfcn.h>".}: int
+    RTLD_GLOBAL {.importc: "RTLD_GLOBAL", header: "<dlfcn.h>".}: int
 
   proc dlclose(lib: TLibHandle) {.importc, header: "<dlfcn.h>".}
   proc dlopen(path: CString, mode: int): TLibHandle {.
@@ -60,7 +61,10 @@ when defined(posix):
   proc dlsym(lib: TLibHandle, name: cstring): pointer {.
       importc, header: "<dlfcn.h>".}
 
-  proc loadLib(path: string): TLibHandle = return dlopen(path, RTLD_NOW)
+  proc loadLib(path: string, global_symbols=false): TLibHandle = 
+    var flags = RTLD_NOW
+    if global_symbols: flags = flags or RTLD_GLOBAL
+    return dlopen(path, flags)
   proc loadLib(): TLibHandle = return dlopen(nil, RTLD_NOW)
   proc unloadLib(lib: TLibHandle) = dlclose(lib)
   proc symAddr(lib: TLibHandle, name: cstring): pointer = 
@@ -81,7 +85,7 @@ elif defined(windows) or defined(dos):
   proc getProcAddress(lib: THINSTANCE, name: cstring): pointer {.
       importc: "GetProcAddress", header: "<windows.h>", stdcall.}
 
-  proc loadLib(path: string): TLibHandle =
+  proc loadLib(path: string, global_symbols=false): TLibHandle =
     result = cast[TLibHandle](winLoadLibrary(path))
   proc loadLib(): TLibHandle =
     result = cast[TLibHandle](winLoadLibrary(nil))

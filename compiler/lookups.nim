@@ -32,6 +32,7 @@ proc considerAcc*(n: PNode): PIdent =
         of nkSym: id.add(x.sym.name.s)
         else: globalError(n.info, errIdentifierExpected, renderTree(n))
       result = getIdent(id)
+  of nkOpenSymChoice, nkClosedSymChoice: result = n.sons[0].sym.name
   else:
     globalError(n.info, errIdentifierExpected, renderTree(n))
  
@@ -91,7 +92,7 @@ proc errorSym*(c: PContext, n: PNode): PSym =
   result.typ = errorType(c)
   incl(result.flags, sfDiscardable)
   # pretend it's imported from some unknown module to prevent cascading errors:
-  if gCmd != cmdInteractive:
+  if gCmd != cmdInteractive and c.inCompilesContext == 0:
     c.importTable.addSym(result)
 
 type 

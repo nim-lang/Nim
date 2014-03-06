@@ -81,6 +81,9 @@ type
     semOverloadedCall*: proc (c: PContext, n, nOrig: PNode,
                               filter: TSymKinds): PNode {.nimcall.}
     semTypeNode*: proc(c: PContext, n: PNode, prev: PType): PType {.nimcall.}
+    semInferredLambda*: proc(c: PContext, pt: TIdTable, n: PNode): PNode
+    semGenerateInstance*: proc (c: PContext, fn: PSym, pt: TIdTable,
+                                info: TLineInfo): PSym
     includedFiles*: TIntSet    # used to detect recursive include files
     userPragmas*: TStrTable
     evalContext*: PEvalContext
@@ -211,7 +214,6 @@ proc makeTypeDesc*(c: PContext, typ: PType): PType =
 
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let typedesc = makeTypeDesc(c, typ)
-  rawAddSon(typedesc, newTypeS(tyNone, c))
   let sym = newSym(skType, idAnon, getCurrOwner(), info).linkTo(typedesc)
   return newSymNode(sym, info)
 

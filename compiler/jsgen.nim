@@ -275,11 +275,11 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["nimMax", "nimMax", "nimMax($1, $2)", "nimMax($1, $2)"], # MaxI64
     ["nimMin", "nimMin", "nimMin($1, $2)", "nimMin($1, $2)"], # MinF64
     ["nimMax", "nimMax", "nimMax($1, $2)", "nimMax($1, $2)"], # MaxF64
-    ["AddU", "AddU", "AddU($1, $2)", "AddU($1, $2)"], # AddU
-    ["SubU", "SubU", "SubU($1, $2)", "SubU($1, $2)"], # SubU
-    ["MulU", "MulU", "MulU($1, $2)", "MulU($1, $2)"], # MulU
-    ["DivU", "DivU", "DivU($1, $2)", "DivU($1, $2)"], # DivU
-    ["ModU", "ModU", "ModU($1, $2)", "ModU($1, $2)"], # ModU
+    ["addU", "addU", "addU($1, $2)", "addU($1, $2)"], # addU
+    ["subU", "subU", "subU($1, $2)", "subU($1, $2)"], # subU
+    ["mulU", "mulU", "mulU($1, $2)", "mulU($1, $2)"], # mulU
+    ["divU", "divU", "divU($1, $2)", "divU($1, $2)"], # divU
+    ["modU", "modU", "modU($1, $2)", "modU($1, $2)"], # modU
     ["", "", "($1 == $2)", "($1 == $2)"], # EqI
     ["", "", "($1 <= $2)", "($1 <= $2)"], # LeI
     ["", "", "($1 < $2)", "($1 < $2)"], # LtI
@@ -289,10 +289,10 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "($1 == $2)", "($1 == $2)"], # EqF64
     ["", "", "($1 <= $2)", "($1 <= $2)"], # LeF64
     ["", "", "($1 < $2)", "($1 < $2)"], # LtF64
-    ["LeU", "LeU", "LeU($1, $2)", "LeU($1, $2)"], # LeU
-    ["LtU", "LtU", "LtU($1, $2)", "LtU($1, $2)"], # LtU
-    ["LeU64", "LeU64", "LeU64($1, $2)", "LeU64($1, $2)"], # LeU64
-    ["LtU64", "LtU64", "LtU64($1, $2)", "LtU64($1, $2)"], # LtU64
+    ["leU", "leU", "leU($1, $2)", "leU($1, $2)"], # leU
+    ["ltU", "ltU", "ltU($1, $2)", "ltU($1, $2)"], # ltU
+    ["leU64", "leU64", "leU64($1, $2)", "leU64($1, $2)"], # leU64
+    ["ltU64", "ltU64", "ltU64($1, $2)", "ltU64($1, $2)"], # ltU64
     ["", "", "($1 == $2)", "($1 == $2)"], # EqEnum
     ["", "", "($1 <= $2)", "($1 <= $2)"], # LeEnum
     ["", "", "($1 < $2)", "($1 < $2)"], # LtEnum
@@ -309,10 +309,10 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "($1 == $2)", "($1 == $2)"], # EqCString
     ["", "", "($1 != $2)", "($1 != $2)"], # Xor
     ["", "", "($1 == $2)", "($1 == $2)"], # EqProc
-    ["NegInt", "", "NegInt($1)", "-($1)"], # UnaryMinusI
-    ["NegInt64", "", "NegInt64($1)", "-($1)"], # UnaryMinusI64
-    ["AbsInt", "", "AbsInt($1)", "Math.abs($1)"], # AbsI
-    ["AbsInt64", "", "AbsInt64($1)", "Math.abs($1)"], # AbsI64
+    ["negInt", "", "negInt($1)", "-($1)"], # UnaryMinusI
+    ["negInt64", "", "negInt64($1)", "-($1)"], # UnaryMinusI64
+    ["absInt", "", "absInt($1)", "Math.abs($1)"], # AbsI
+    ["absInt64", "", "absInt64($1)", "Math.abs($1)"], # AbsI64
     ["", "", "!($1)", "!($1)"], # Not
     ["", "", "+($1)", "+($1)"], # UnaryPlusI
     ["", "", "~($1)", "~($1)"], # BitnotI
@@ -327,9 +327,9 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["Ze16ToI64", "Ze16ToI64", "Ze16ToI64($1)", "Ze16ToI64($1)"], # mZe16ToI64
     ["Ze32ToI64", "Ze32ToI64", "Ze32ToI64($1)", "Ze32ToI64($1)"], # mZe32ToI64
     ["ZeIToI64", "ZeIToI64", "ZeIToI64($1)", "ZeIToI64($1)"], # mZeIToI64
-    ["ToU8", "ToU8", "ToU8($1)", "ToU8($1)"], # ToU8
-    ["ToU16", "ToU16", "ToU16($1)", "ToU16($1)"], # ToU16
-    ["ToU32", "ToU32", "ToU32($1)", "ToU32($1)"], # ToU32
+    ["toU8", "toU8", "toU8($1)", "toU8($1)"], # toU8
+    ["toU16", "toU16", "toU16($1)", "toU16($1)"], # toU16
+    ["toU32", "toU32", "toU32($1)", "toU32($1)"], # toU32
     ["", "", "$1", "$1"],     # ToFloat
     ["", "", "$1", "$1"],     # ToBiggestFloat
     ["", "", "Math.floor($1)", "Math.floor($1)"], # ToInt
@@ -375,11 +375,11 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["nimMax", "nimMax", "nimMax($1, $2)", "nimMax($1, $2)"], # MaxI64
     ["nimMin", "nimMin", "nimMin($1, $2)", "nimMin($1, $2)"], # MinF64
     ["nimMax", "nimMax", "nimMax($1, $2)", "nimMax($1, $2)"], # MaxF64
-    ["AddU", "AddU", "AddU($1, $2)", "AddU($1, $2)"], # AddU
-    ["SubU", "SubU", "SubU($1, $2)", "SubU($1, $2)"], # SubU
-    ["MulU", "MulU", "MulU($1, $2)", "MulU($1, $2)"], # MulU
-    ["DivU", "DivU", "DivU($1, $2)", "DivU($1, $2)"], # DivU
-    ["ModU", "ModU", "ModU($1, $2)", "ModU($1, $2)"], # ModU
+    ["addU", "addU", "addU($1, $2)", "addU($1, $2)"], # addU
+    ["subU", "subU", "subU($1, $2)", "subU($1, $2)"], # subU
+    ["mulU", "mulU", "mulU($1, $2)", "mulU($1, $2)"], # mulU
+    ["divU", "divU", "divU($1, $2)", "divU($1, $2)"], # divU
+    ["modU", "modU", "modU($1, $2)", "modU($1, $2)"], # modU
     ["", "", "($1 == $2)", "($1 == $2)"], # EqI
     ["", "", "($1 <= $2)", "($1 <= $2)"], # LeI
     ["", "", "($1 < $2)", "($1 < $2)"], # LtI
@@ -389,10 +389,10 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "($1 == $2)", "($1 == $2)"], # EqF64
     ["", "", "($1 <= $2)", "($1 <= $2)"], # LeF64
     ["", "", "($1 < $2)", "($1 < $2)"], # LtF64
-    ["LeU", "LeU", "LeU($1, $2)", "LeU($1, $2)"], # LeU
-    ["LtU", "LtU", "LtU($1, $2)", "LtU($1, $2)"], # LtU
-    ["LeU64", "LeU64", "LeU64($1, $2)", "LeU64($1, $2)"], # LeU64
-    ["LtU64", "LtU64", "LtU64($1, $2)", "LtU64($1, $2)"], # LtU64
+    ["leU", "leU", "leU($1, $2)", "leU($1, $2)"], # leU
+    ["ltU", "ltU", "ltU($1, $2)", "ltU($1, $2)"], # ltU
+    ["leU64", "leU64", "leU64($1, $2)", "leU64($1, $2)"], # leU64
+    ["ltU64", "ltU64", "ltU64($1, $2)", "ltU64($1, $2)"], # ltU64
     ["", "", "($1 == $2)", "($1 == $2)"], # EqEnum
     ["", "", "($1 <= $2)", "($1 <= $2)"], # LeEnum
     ["", "", "($1 < $2)", "($1 < $2)"], # LtEnum
@@ -409,10 +409,10 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "($1 == $2)", "($1 == $2)"], # EqCString
     ["", "", "($1 != $2)", "($1 != $2)"], # Xor
     ["", "", "($1 == $2)", "($1 == $2)"], # EqProc
-    ["NegInt", "", "NegInt($1)", "-($1)"], # UnaryMinusI
-    ["NegInt64", "", "NegInt64($1)", "-($1)"], # UnaryMinusI64
-    ["AbsInt", "", "AbsInt($1)", "Math.abs($1)"], # AbsI
-    ["AbsInt64", "", "AbsInt64($1)", "Math.abs($1)"], # AbsI64
+    ["negInt", "", "negInt($1)", "-($1)"], # UnaryMinusI
+    ["negInt64", "", "negInt64($1)", "-($1)"], # UnaryMinusI64
+    ["absInt", "", "absInt($1)", "Math.abs($1)"], # AbsI
+    ["absInt64", "", "absInt64($1)", "Math.abs($1)"], # AbsI64
     ["", "", "not ($1)", "not ($1)"], # Not
     ["", "", "+($1)", "+($1)"], # UnaryPlusI
     ["", "", "~($1)", "~($1)"], # BitnotI
@@ -427,9 +427,9 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["Ze16ToI64", "Ze16ToI64", "Ze16ToI64($1)", "Ze16ToI64($1)"], # mZe16ToI64
     ["Ze32ToI64", "Ze32ToI64", "Ze32ToI64($1)", "Ze32ToI64($1)"], # mZe32ToI64
     ["ZeIToI64", "ZeIToI64", "ZeIToI64($1)", "ZeIToI64($1)"], # mZeIToI64
-    ["ToU8", "ToU8", "ToU8($1)", "ToU8($1)"], # ToU8
-    ["ToU16", "ToU16", "ToU16($1)", "ToU16($1)"], # ToU16
-    ["ToU32", "ToU32", "ToU32($1)", "ToU32($1)"], # ToU32
+    ["toU8", "toU8", "toU8($1)", "toU8($1)"], # toU8
+    ["toU16", "toU16", "toU16($1)", "toU16($1)"], # toU16
+    ["toU32", "toU32", "toU32($1)", "toU32($1)"], # toU32
     ["", "", "$1", "$1"],     # ToFloat
     ["", "", "$1", "$1"],     # ToBiggestFloat
     ["", "", "Math.floor($1)", "Math.floor($1)"], # ToInt
@@ -812,8 +812,8 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
     if needsNoCopy(y) or noCopyNeeded:
       appf(p.body, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
     else:
-      useMagic(p, "NimCopy")
-      appf(p.body, "$1 = NimCopy($2, $3);$n",
+      useMagic(p, "nimCopy")
+      appf(p.body, "$1 = nimCopy($2, $3);$n",
            [a.res, b.res, genTypeInfo(p, y.typ)])
   of etyBaseIndex: 
     if a.typ != etyBaseIndex or b.typ != etyBaseIndex: 
@@ -1113,8 +1113,8 @@ proc createVar(p: PProc, typ: PType, indirect: bool): PRope =
     var length = int(lengthOrd(t))
     var e = elemType(t)
     if length > 32: 
-      useMagic(p, "ArrayConstr")
-      result = ropef("ArrayConstr($1, $2, $3)", [toRope(length), 
+      useMagic(p, "arrayConstr")
+      result = ropef("arrayConstr($1, $2, $3)", [toRope(length), 
           createVar(p, e, false), genTypeInfo(p, e)])
     else: 
       result = toRope("[")
@@ -1171,8 +1171,8 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
       if needsNoCopy(n): 
         s = a.res
       else: 
-        useMagic(p, "NimCopy")
-        s = ropef("NimCopy($1, $2)", [a.res, genTypeInfo(p, n.typ)])
+        useMagic(p, "nimCopy")
+        s = ropef("nimCopy($1, $2)", [a.res, genTypeInfo(p, n.typ)])
     of etyBaseIndex: 
       if (a.typ != etyBaseIndex): internalError(n.info, "genVarInit")
       if {sfAddrTaken, sfGlobal} * v.flags != {}: 
@@ -1600,7 +1600,6 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     if lfNoDecl in s.loc.flags or s.magic != mNone: discard
     elif not p.g.generatedSyms.containsOrIncl(s.id):
       app(p.locals, genProc(p, s))
-  of nkMetaNode: gen(p, n.sons[0], r)
   of nkType: r.res = genTypeInfo(p, n.typ)
   of nkStmtList, nkStmtListExpr:
     # this shows the distinction is nice for backends and should be kept
