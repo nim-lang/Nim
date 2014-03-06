@@ -64,7 +64,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
             errors[errors.len - 1].add("\n  " & err)
       if z.state == csMatch:
         # little hack so that iterators are preferred over everything else:
-        if sym.kind == skIterator: inc(z.exactMatches, 200)
+        if sym.kind in skIterators: inc(z.exactMatches, 200)
         case best.state
         of csEmpty, csNoMatch: best = z
         of csMatch:
@@ -289,8 +289,9 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
     result = newNodeI(a.kind, n.info)
     for i in countup(0, len(a)-1): 
       var candidate = a.sons[i].sym
-      if candidate.kind in {skProc, skMethod, skConverter, skIterator}: 
-        # if suffices that the candidate has the proper number of generic 
+      if candidate.kind in {skProc, skMethod, skConverter,
+                            skIterator, skClosureIterator}:
+        # it suffices that the candidate has the proper number of generic 
         # type parameters:
         if safeLen(candidate.ast.sons[genericParamsPos]) == n.len-1:
           result.add(explicitGenericSym(c, n, candidate))

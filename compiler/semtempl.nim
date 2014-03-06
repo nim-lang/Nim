@@ -171,7 +171,7 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym): PNode =
   of skUnknown: 
     # Introduced in this pass! Leave it as an identifier.
     result = n
-  of skProc, skMethod, skIterator, skConverter, skTemplate, skMacro:
+  of OverloadableSyms:
     result = symChoice(c, n, s, scOpen)
   of skGenericParam: 
     result = newSymNodeTypeDesc(s, n.info)
@@ -348,7 +348,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   of nkMethodDef:
     result = semRoutineInTemplBody(c, n, skMethod)
   of nkIteratorDef:
-    result = semRoutineInTemplBody(c, n, skIterator)
+    result = semRoutineInTemplBody(c, n, n[namePos].sym.kind)
   of nkTemplateDef:
     result = semRoutineInTemplBody(c, n, skTemplate)
   of nkMacroDef:

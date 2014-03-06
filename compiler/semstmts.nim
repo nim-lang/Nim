@@ -76,8 +76,8 @@ proc performProcvarCheck(c: PContext, n: PNode, s: PSym) =
 
 proc semProcvarCheck(c: PContext, n: PNode) =
   let n = n.skipConv
-  if n.kind == nkSym and n.sym.kind in {skProc, skMethod, skIterator,
-                                        skConverter}:
+  if n.kind == nkSym and n.sym.kind in {skProc, skMethod, skConverter,
+                                        skIterator, skClosureIterator}:
     performProcvarCheck(c, n, n.sym)
 
 proc semProc(c: PContext, n: PNode): PNode
@@ -665,7 +665,7 @@ proc semFor(c: PContext, n: PNode): PNode =
     # first class iterator:
     result = semForVars(c, n)
   elif call.kind notin nkCallKinds or call.sons[0].kind != nkSym or
-      call.sons[0].sym.kind != skIterator: 
+      call.sons[0].sym.kind notin skIterators:
     if length == 3:
       n.sons[length-2] = implicitIterator(c, "items", n.sons[length-2])
     elif length == 4:
@@ -998,8 +998,7 @@ proc activate(c: PContext, n: PNode) =
       discard
 
 proc maybeAddResult(c: PContext, s: PSym, n: PNode) =
-  if s.typ.sons[0] != nil and
-      (s.kind != skIterator or s.typ.callConv == ccClosure):
+  if s.typ.sons[0] != nil and s.kind != skIterator:
     addResult(c, s.typ.sons[0], n.info, s.kind)
     addResultNode(c, n)
 
@@ -1074,12 +1073,12 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     rawAddSon(s.typ, nil)
   if n.sons[patternPos].kind != nkEmpty:
     n.sons[patternPos] = semPattern(c, n.sons[patternPos])
-  if s.kind == skIterator: 
+  if s.kind in skIterators:
     s.typ.flags.incl(tfIterator)
   
   var proto = searchForProc(c, s.scope, s)
-  if proto == nil: 
-    if s.kind == skIterator and isAnon: s.typ.callConv = ccClosure
+  if proto == nil:
+    if s.kind == skClosureIterator: s.typ.callConv = ccClosure
     else: s.typ.callConv = lastOptionEntry(c).defaultCC
     # add it here, so that recursive procs are possible:
     if sfGenSym in s.flags: discard
@@ -1139,7 +1138,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         n.sons[bodyPos] = transformBody(c.module, semBody, s)
       popProcCon(c)
     else:
-      if s.typ.sons[0] != nil and kind != skIterator:
+      if s.typ.sons[0] != nil and kind notin skIterators:
         addDecl(c, newSym(skUnknown, getIdent"result", nil, n.info))
       var toBind = initIntSet()
       n.sons[bodyPos] = semGenericStmtScope(c, n.sons[bodyPos], {}, toBind)
@@ -1166,7 +1165,10 @@ proc determineType(c: PContext, s: PSym) =
   discard semProcAux(c, s.ast, s.kind, {}, stepDetermineType)
 
 proc semIterator(c: PContext, n: PNode): PNode =
-  result = semProcAux(c, n, skIterator, iteratorPragmas)
+  let kind = if hasPragma(n[pragmasPos], wClosure) or
+                n[namePos].kind == nkEmpty: skClosureIterator
+             else: skIterator
+  result = semProcAux(c, n, kind, iteratorPragmas)
   var s = result.sons[namePos].sym
   var t = s.typ
   if t.sons[0] == nil and s.typ.callConv != ccClosure:

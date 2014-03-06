@@ -662,11 +662,11 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
                                      flags: TExprFlags): PNode =
   if flags*{efInTypeof, efWantIterator} != {}:
     # consider: 'for x in pReturningArray()' --> we don't want the restriction
-    # to 'skIterator' anymore; skIterator is preferred in sigmatch already for
-    # typeof support.
+    # to 'skIterators' anymore; skIterators are preferred in sigmatch already 
+    # for typeof support.
     # for ``type(countup(1,3))``, see ``tests/ttoseq``.
     result = semOverloadedCall(c, n, nOrig,
-      {skProc, skMethod, skConverter, skMacro, skTemplate, skIterator})
+      {skProc, skMethod, skConverter, skMacro, skTemplate}+skIterators)
   else:
     result = semOverloadedCall(c, n, nOrig, 
       {skProc, skMethod, skConverter, skMacro, skTemplate})
@@ -679,7 +679,7 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
     case callee.kind
     of skMacro, skTemplate: discard
     else:
-      if (callee.kind == skIterator) and (callee.id == c.p.owner.id): 
+      if (callee.kind in skIterators) and (callee.id == c.p.owner.id): 
         localError(n.info, errRecursiveDependencyX, callee.name.s)
       if sfNoSideEffect notin callee.flags: 
         if {sfImportc, sfSideEffect} * callee.flags != {}:
@@ -1193,7 +1193,7 @@ proc semReturn(c: PContext, n: PNode): PNode =
   result = n
   checkSonsLen(n, 1)
   if c.p.owner.kind in {skConverter, skMethod, skProc, skMacro} or
-     (c.p.owner.kind == skIterator and c.p.owner.typ.callConv == ccClosure):
+     c.p.owner.kind == skClosureIterator:
     if n.sons[0].kind != nkEmpty:
       # transform ``return expr`` to ``result = expr; return``
       if c.p.resultSym != nil: 
@@ -1258,7 +1258,7 @@ proc semYieldVarResult(c: PContext, n: PNode, restype: PType) =
 proc semYield(c: PContext, n: PNode): PNode =
   result = n
   checkSonsLen(n, 1)
-  if c.p.owner == nil or c.p.owner.kind != skIterator:
+  if c.p.owner == nil or c.p.owner.kind notin skIterators:
     localError(n.info, errYieldNotAllowedHere)
   elif c.p.inTryStmt > 0 and c.p.owner.typ.callConv != ccInline:
     localError(n.info, errYieldNotAllowedInTryStmt)
@@ -1266,9 +1266,11 @@ proc semYield(c: PContext, n: PNode): PNode =
     n.sons[0] = semExprWithType(c, n.sons[0]) # check for type compatibility:
     var restype = c.p.owner.typ.sons[0]
     if restype != nil:
-      n.sons[0] = fitNode(c, restype.base, n.sons[0])
+      let adjustedRes = if c.p.owner.kind == skIterator: restype.base
+                        else: restype
+      n.sons[0] = fitNode(c, adjustedRes, n.sons[0])
       if n.sons[0].typ == nil: internalError(n.info, "semYield")
-      semYieldVarResult(c, n, restype)
+      semYieldVarResult(c, n, adjustedRes)
     else:
       localError(n.info, errCannotReturnExpr)
   elif c.p.owner.typ.sons[0] != nil:
@@ -1828,7 +1830,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     var s = lookUp(c, n)
     semCaptureSym(s, c.p.owner)
     result = semSym(c, n, s, flags)
-    if s.kind in {skProc, skMethod, skIterator, skConverter}:
+    if s.kind in {skProc, skMethod, skConverter}+skIterators:
       #performProcvarCheck(c, n, s)
       result = symChoice(c, n, s, scClosed)
       if result.kind == nkSym:
@@ -1918,7 +1920,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
           localError(n.info, errUseQualifier, s.name.s)
         elif s.magic == mNone: result = semDirectOp(c, n, flags)
         else: result = semMagic(c, n, s, flags)
-      of skProc, skMethod, skConverter, skIterator: 
+      of skProc, skMethod, skConverter, skIterators:
         if s.magic == mNone: result = semDirectOp(c, n, flags)
         else: result = semMagic(c, n, s, flags)
       else:
@@ -1942,7 +1944,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkBracketExpr:
     checkMinSonsLen(n, 1)
     var s = qualifiedLookUp(c, n.sons[0], {checkUndeclared})
-    if s != nil and s.kind in {skProc, skMethod, skConverter, skIterator}: 
+    if s != nil and s.kind in {skProc, skMethod, skConverter}+skIterators:
       # type parameters: partial generic specialization
       n.sons[0] = semSymGenericInstantiation(c, n.sons[0], s)
       result = explicitGenericInstantiation(c, n, s)

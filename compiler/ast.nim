@@ -469,7 +469,8 @@ type
     skResult,             # special 'result' variable
     skProc,               # a proc
     skMethod,             # a method
-    skIterator,           # an iterator
+    skIterator,           # an inline iterator
+    skClosureIterator,    # a resumable closure iterator
     skConverter,          # a type converter
     skMacro,              # a macro
     skTemplate,           # a template; currently also misused for user-defined
@@ -485,8 +486,8 @@ type
   TSymKinds* = set[TSymKind]
 
 const
-  routineKinds* = {skProc, skMethod, skIterator, skConverter,
-    skMacro, skTemplate}
+  routineKinds* = {skProc, skMethod, skIterator, skClosureIterator,
+                   skConverter, skMacro, skTemplate}
   tfIncompleteStruct* = tfVarargs
   skError* = skUnknown
   
@@ -820,8 +821,8 @@ type
 # the poor naming choices in the standard library.
 
 const 
-  OverloadableSyms* = {skProc, skMethod, skIterator, skConverter,
-    skModule, skTemplate, skMacro}
+  OverloadableSyms* = {skProc, skMethod, skIterator, skClosureIterator,
+    skConverter, skModule, skTemplate, skMacro}
 
   GenericTypes*: TTypeKinds = {tyGenericInvokation, tyGenericBody, 
     tyGenericParam}
@@ -843,7 +844,8 @@ const
                                     tyTuple, tySequence}
   NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr, tySequence,
     tyProc, tyString, tyError}
-  ExportableSymKinds* = {skVar, skConst, skProc, skMethod, skType, skIterator, 
+  ExportableSymKinds* = {skVar, skConst, skProc, skMethod, skType,
+    skIterator, skClosureIterator,
     skMacro, skTemplate, skConverter, skEnumField, skLet, skStub}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
                                       nfDotSetter, nfDotField,
@@ -869,7 +871,10 @@ const
   nkStrKinds* = {nkStrLit..nkTripleStrLit}
 
   skLocalVars* = {skVar, skLet, skForVar, skParam, skResult}
-  skProcKinds* = {skProc, skTemplate, skMacro, skIterator, skMethod, skConverter}
+  skProcKinds* = {skProc, skTemplate, skMacro, skIterator, skClosureIterator,
+                  skMethod, skConverter}
+
+  skIterators* = {skIterator, skClosureIterator}
 
   lfFullExternalName* = lfParamCopy # \
     # only used when 'gCmd == cmdPretty': Indicates that the symbol has been
@@ -1479,8 +1484,7 @@ proc originatingModule*(s: PSym): PSym =
   while result.kind != skModule: result = result.owner
 
 proc isRoutine*(s: PSym): bool {.inline.} =
-  result = s.kind in {skProc, skTemplate, skMacro, skIterator, skMethod,
-                      skConverter}
+  result = s.kind in skProcKinds
 
 proc hasPattern*(s: PSym): bool {.inline.} =
   result = isRoutine(s) and s.ast.sons[patternPos].kind != nkEmpty

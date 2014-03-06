@@ -953,6 +953,23 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
       let typ = semTypeNode(c, n, nil)
       result.sons.safeAdd(typ)
 
+proc semProcTypeWithScope(c: PContext, n: PNode,
+                        prev: PType, kind: TSymKind): PType =
+  checkSonsLen(n, 2)
+  openScope(c)
+  result = semProcTypeNode(c, n.sons[0], nil, prev, kind)
+  # dummy symbol for `pragma`:
+  var s = newSymS(kind, newIdentNode(getIdent("dummy"), n.info), c)
+  s.typ = result
+  if n.sons[1].kind == nkEmpty or n.sons[1].len == 0:
+    if result.callConv == ccDefault:
+      result.callConv = ccClosure
+      #Message(n.info, warnImplicitClosure, renderTree(n))
+  else:
+    pragma(c, s, n.sons[1], procTypePragmas)
+    when useEffectSystem: setEffectsForProcType(result, n.sons[1])
+  closeScope(c)
+
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   result = nil
   if gCmd == cmdIdeTools: suggestExpr(c, n)
@@ -1075,27 +1092,18 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     var base = semTypeNode(c, n.sons[0], nil)
     result.rawAddSon(base)
     result.flags.incl tfHasStatic
-  of nkProcTy, nkIteratorTy:
+  of nkIteratorTy:
+    if n.sonsLen == 0:
+      result = newConstraint(c, tyIter)
+    else:
+      result = semProcTypeWithScope(c, n, prev, skClosureIterator)
+      result.flags.incl(tfIterator)
+      result.callConv = ccClosure
+  of nkProcTy:
     if n.sonsLen == 0:
       result = newConstraint(c, tyProc)
     else:
-      checkSonsLen(n, 2)
-      openScope(c)
-      result = semProcTypeNode(c, n.sons[0], nil, prev, skProc)
-      # dummy symbol for `pragma`:
-      var s = newSymS(skProc, newIdentNode(getIdent("dummy"), n.info), c)
-      s.typ = result
-      if n.sons[1].kind == nkEmpty or n.sons[1].len == 0:
-        if result.callConv == ccDefault:
-          result.callConv = ccClosure
-          #Message(n.info, warnImplicitClosure, renderTree(n))
-      else:
-        pragma(c, s, n.sons[1], procTypePragmas)
-        when useEffectSystem: setEffectsForProcType(result, n.sons[1])
-      closeScope(c)
-    if n.kind == nkIteratorTy:
-      result.flags.incl(tfIterator)
-      result.callConv = ccClosure
+      result = semProcTypeWithScope(c, n, prev, skProc)
   of nkEnumTy: result = semEnum(c, n, prev)
   of nkType: result = n.typ
   of nkStmtListType: result = semStmtListType(c, n, prev)

@@ -109,7 +109,7 @@ type
 
 proc getSymRepr*(s: PSym): string = 
   case s.kind
-  of skProc, skMethod, skConverter, skIterator: result = getProcHeader(s)
+  of skProc, skMethod, skConverter, skIterators: result = getProcHeader(s)
   else: result = s.name.s
 
 proc ensureNoMissingOrUnusedSymbols(scope: PScope) =
