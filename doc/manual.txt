@@ -3441,7 +3441,7 @@ Declarative type classes are written in the following form:
       c.len is ordinal
       items(c) is iterator
       for value in c:
-        type(value) is T
+        value.type is T
 
 The type class will be matched if:
 
