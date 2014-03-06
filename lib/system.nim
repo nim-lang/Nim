@@ -1164,13 +1164,13 @@ when not defined(nimrodVM):
       ## from it before writing to it is undefined behaviour!
       ## The allocated memory belongs to its allocating thread!
       ## Use `allocShared` to allocate from a shared heap.
-    proc alloc*(T: typedesc, size = 1): ptr T {.inline.} =
+    proc create*(T: typedesc, size = 1): ptr T {.inline.} =
       ## allocates a new memory block with at least ``T.sizeof * size``
-      ## bytes. The block has to be freed with ``realloc(block, 0)`` or
-      ## ``dealloc(block)``. The block is not initialized, so reading
+      ## bytes. The block has to be freed with ``resize(block, 0)`` or
+      ## ``free(block)``. The block is not initialized, so reading
       ## from it before writing to it is undefined behaviour!
       ## The allocated memory belongs to its allocating thread!
-      ## Use `allocShared` to allocate from a shared heap.
+      ## Use `createShared` to allocate from a shared heap.
       cast[ptr T](alloc(T.sizeof * size))
     proc alloc0*(size: int): pointer {.noconv, rtl, tags: [].}
       ## allocates a new memory block with at least ``size`` bytes. The
@@ -1179,13 +1179,13 @@ when not defined(nimrodVM):
       ## containing zero, so it is somewhat safer than ``alloc``.
       ## The allocated memory belongs to its allocating thread!
       ## Use `allocShared0` to allocate from a shared heap.
-    proc alloc0*(T: typedesc, size = 1): ptr T {.inline.} =
+    proc create0*(T: typedesc, size = 1): ptr T {.inline.} =
       ## allocates a new memory block with at least ``T.sizeof * size``
-      ## bytes. The block has to be freed with ``realloc(block, 0)`` or
-      ## ``dealloc(block)``. The block is initialized with all bytes
-      ## containing zero, so it is somewhat safer than ``alloc``.
+      ## bytes. The block has to be freed with ``resize(block, 0)`` or
+      ## ``free(block)``. The block is initialized with all bytes
+      ## containing zero, so it is somewhat safer than ``create``.
       ## The allocated memory belongs to its allocating thread!
-      ## Use `allocShared0` to allocate from a shared heap.
+      ## Use `createShared0` to allocate from a shared heap.
       cast[ptr T](alloc0(T.sizeof * size))
     proc realloc*(p: pointer, newSize: int): pointer {.noconv, rtl, tags: [].}
       ## grows or shrinks a given memory block. If p is **nil** then a new
@@ -1199,10 +1199,10 @@ when not defined(nimrodVM):
       ## grows or shrinks a given memory block. If p is **nil** then a new
       ## memory block is returned. In either way the block has at least
       ## ``T.sizeof * newSize`` bytes. If ``newSize == 0`` and p is not
-      ## **nil** ``realloc`` calls ``dealloc(p)``. In other cases the block
-      ## has to be freed with ``dealloc``. The allocated memory belongs to
+      ## **nil** ``resize`` calls ``free(p)``. In other cases the block
+      ## has to be freed with ``free``. The allocated memory belongs to
       ## its allocating thread!
-      ## Use `reallocShared` to reallocate from a shared heap.
+      ## Use `resizeShared` to reallocate from a shared heap.
       cast[ptr T](realloc(p, T.sizeof * newSize))
     proc dealloc*(p: pointer) {.noconv, rtl, tags: [].}
       ## frees the memory allocated with ``alloc``, ``alloc0`` or
@@ -1212,16 +1212,18 @@ when not defined(nimrodVM):
       ## or other memory may be corrupted. 
       ## The freed memory must belong to its allocating thread!
       ## Use `deallocShared` to deallocate from a shared heap.
+    proc free*[T](p: ptr T) {.inline.} =
+      dealloc(p)
     proc allocShared*(size: int): pointer {.noconv, rtl.}
       ## allocates a new memory block on the shared heap with at
       ## least ``size`` bytes. The block has to be freed with
       ## ``reallocShared(block, 0)`` or ``deallocShared(block)``. The block
       ## is not initialized, so reading from it before writing to it is 
       ## undefined behaviour!
-    proc allocShared*(T: typedesc, size: int): ptr T {.inline.} =
+    proc createShared*(T: typedesc, size: int): ptr T {.inline.} =
       ## allocates a new memory block on the shared heap with at
       ## least ``T.sizeof * size`` bytes. The block has to be freed with
-      ## ``reallocShared(block, 0)`` or ``deallocShared(block)``. The block
+      ## ``resizeShared(block, 0)`` or ``freeShared(block)``. The block
       ## is not initialized, so reading from it before writing to it is 
       ## undefined behaviour!
       cast[ptr T](allocShared(T.sizeof * size))
@@ -1231,13 +1233,13 @@ when not defined(nimrodVM):
       ## ``reallocShared(block, 0)`` or ``deallocShared(block)``.
       ## The block is initialized with all bytes
       ## containing zero, so it is somewhat safer than ``allocShared``.
-    proc allocShared0*(T: typedesc, size: int): ptr T {.inline.} =
+    proc createShared0*(T: typedesc, size: int): ptr T {.inline.} =
       ## allocates a new memory block on the shared heap with at 
       ## least ``T.sizeof * size`` bytes. The block has to be freed with
-      ## ``reallocShared(block, 0)`` or ``deallocShared(block)``.
+      ## ``resizeShared(block, 0)`` or ``freeShared(block)``.
       ## The block is initialized with all bytes
-      ## containing zero, so it is somewhat safer than ``allocShared``.
-      cast[ptr T](allocShared(T.sizeof * size))
+      ## containing zero, so it is somewhat safer than ``createShared``.
+      cast[ptr T](allocShared0(T.sizeof * size))
     proc reallocShared*(p: pointer, newSize: int): pointer {.noconv, rtl.}
       ## grows or shrinks a given memory block on the heap. If p is **nil**
       ## then a new memory block is returned. In either way the block has at
@@ -1248,8 +1250,8 @@ when not defined(nimrodVM):
       ## grows or shrinks a given memory block on the heap. If p is **nil**
       ## then a new memory block is returned. In either way the block has at
       ## least ``T.sizeof * newSize`` bytes. If ``newSize == 0`` and p is
-      ## not **nil** ``reallocShared`` calls ``deallocShared(p)``. In other
-      ## cases the block has to be freed with ``deallocShared``.
+      ## not **nil** ``resizeShared`` calls ``freeShared(p)``. In other
+      ## cases the block has to be freed with ``freeShared``.
       cast[ptr T](reallocShared(p, T.sizeof * newSize))
     proc deallocShared*(p: pointer) {.noconv, rtl.}
       ## frees the memory allocated with ``allocShared``, ``allocShared0`` or
@@ -1257,6 +1259,13 @@ when not defined(nimrodVM):
       ## free the memory a leak occurs; if one tries to access freed
       ## memory (or just freeing it twice!) a core dump may happen
       ## or other memory may be corrupted.
+    proc freeShared*[T](p: ptr T) {.inline.} =
+      ## frees the memory allocated with ``createShared``, ``createShared0`` or
+      ## ``resizeShared``. This procedure is dangerous! If one forgets to
+      ## free the memory a leak occurs; if one tries to access freed
+      ## memory (or just freeing it twice!) a core dump may happen
+      ## or other memory may be corrupted.
+      deallocShared(p)
 
 proc swap*[T](a, b: var T) {.magic: "Swap", noSideEffect.}
   ## swaps the values `a` and `b`. This is often more efficient than
