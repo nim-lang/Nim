@@ -323,11 +323,6 @@ proc isOpImpl(c: PContext, n: PNode): PNode =
       result = newIntNode(nkIntLit, ord(t.kind == tyProc and
                                         t.callConv == ccClosure and 
                                         tfIterator notin t.flags))
-    of "iterator":
-      let t = skipTypes(t1, abstractRange)
-      result = newIntNode(nkIntLit, ord(t.kind == tyProc and
-                                        t.callConv == ccClosure and 
-                                        tfIterator in t.flags))
   else:
     var t2 = n[2].typ.skipTypes({tyTypeDesc})
     let lifted = liftParamType(c, skType, newNodeI(nkArgList, n.info),
