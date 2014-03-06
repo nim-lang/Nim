@@ -1195,7 +1195,7 @@ when not defined(nimrodVM):
       ## be freed with ``dealloc``.
       ## The allocated memory belongs to its allocating thread!
       ## Use `reallocShared` to reallocate from a shared heap.
-    proc reallocType*[T](p: ptr T, newSize: int): ptr T {.inline.} =
+    proc resize*[T](p: ptr T, newSize: int): ptr T {.inline.} =
       ## grows or shrinks a given memory block. If p is **nil** then a new
       ## memory block is returned. In either way the block has at least
       ## ``T.sizeof * newSize`` bytes. If ``newSize == 0`` and p is not
@@ -1244,7 +1244,7 @@ when not defined(nimrodVM):
       ## least ``newSize`` bytes. If ``newSize == 0`` and p is not **nil**
       ## ``reallocShared`` calls ``deallocShared(p)``. In other cases the
       ## block has to be freed with ``deallocShared``.
-    proc reallocSharedType*[T](p: ptr T, newSize: int): ptr T {.inline.} =
+    proc resizeShared*[T](p: ptr T, newSize: int): ptr T {.inline.} =
       ## grows or shrinks a given memory block on the heap. If p is **nil**
       ## then a new memory block is returned. In either way the block has at
       ## least ``T.sizeof * newSize`` bytes. If ``newSize == 0`` and p is
