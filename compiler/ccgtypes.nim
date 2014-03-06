@@ -69,7 +69,7 @@ proc mangleName(s: PSym): PRope =
   if result == nil: 
     if gCmd == cmdCompileToLLVM: 
       case s.kind
-      of skProc, skMethod, skConverter, skConst, skIterator: 
+      of skProc, skMethod, skConverter, skConst, skIterators:
         result = ~"@"
       of skVar, skForVar, skResult, skLet: 
         if sfGlobal in s.flags: result = ~"@"

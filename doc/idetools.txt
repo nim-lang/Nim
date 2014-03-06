@@ -279,8 +279,8 @@ skForVar
         col 7: ""
 
 
-skIterator
-----------
+skIterator, skClosureIterator
+-----------------------------
 
 The fourth column will be the empty string if the iterator is being
 defined, since at that point in the file the parser hasn't processed

@@ -113,7 +113,7 @@ proc newAsgnStmt(c: PTransf, le: PNode, ri: PTransNode): PTransNode =
   result[1] = ri
 
 proc transformSymAux(c: PTransf, n: PNode): PNode =
-  #if n.sym.kind == skIterator and n.sym.typ.callConv == ccClosure:
+  #if n.sym.kind == skClosureIterator:
   #  return liftIterSym(n)
   var b: PNode
   var tc = c.transCon
@@ -434,7 +434,6 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   var length = sonsLen(n)
   var call = n.sons[length - 2]
   if call.kind notin nkCallKinds or call.sons[0].kind != nkSym or 
-      call.sons[0].typ.callConv == ccClosure or
       call.sons[0].sym.kind != skIterator:
     n.sons[length-1] = transformLoopBody(c, n.sons[length-1]).PNode
     return lambdalifting.liftForLoop(n).PTransNode
@@ -454,7 +453,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   var newC = newTransCon(getCurrOwner(c))
   newC.forStmt = n
   newC.forLoopBody = loopBody
-  if iter.kind != skIterator: internalError(call.info, "transformFor") 
+  internalAssert iter.kind == skIterator
   # generate access statements for the parameters (unless they are constant)
   pushTransCon(c, newC)
   for i in countup(1, sonsLen(call) - 1): 
@@ -741,7 +740,7 @@ proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
     var c = openTransf(module, "")
     result = processTransf(c, n, prc)
     result = liftLambdas(prc, result)
-    #if prc.kind == skIterator and prc.typ.callConv == ccClosure:
+    #if prc.kind == skClosureIterator:
     #  result = lambdalifting.liftIterator(prc, result)
     incl(result.flags, nfTransf)
     when useEffectSystem: trackProc(prc, result)

@@ -232,9 +232,9 @@ proc newOuterContext(fn: PSym, up: POuterContext = nil): POuterContext =
   initIdNodeTable(result.localsToAccess)
   initIdTable(result.localsToEnv)
   initIdTable(result.lambdasToEnv)
-  result.isIter = fn.kind == skIterator and fn.typ.callConv == ccClosure
+  result.isIter = fn.kind == skClosureIterator
   if result.isIter: initIterContext(result, fn)
-  
+
 proc newInnerContext(fn: PSym): PInnerContext =
   new(result)
   result.fn = fn
@@ -292,8 +292,7 @@ proc newCall(a, b: PSym): PNode =
   result.add newSymNode(b)
 
 proc isInnerProc(s, outerProc: PSym): bool {.inline.} =
-  result = (s.kind in {skProc, skMethod, skConverter} or
-            s.kind == skIterator and s.typ.callConv == ccClosure) and
+  result = s.kind in {skProc, skMethod, skConverter, skClosureIterator} and
            s.skipGenericOwner == outerProc
   #s.typ.callConv == ccClosure
 
@@ -653,7 +652,7 @@ proc outerProcSons(o: POuterContext, n: PNode) =
 proc liftIterSym*(n: PNode): PNode =
   # transforms  (iter)  to  (let env = newClosure[iter](); (iter, env)) 
   let iter = n.sym
-  assert iter.kind == skIterator
+  assert iter.kind == skClosureIterator
 
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   
@@ -679,7 +678,7 @@ proc transformOuterProc(o: POuterContext, n: PNode): PNode =
 
     var closure = PEnv(idTableGet(o.lambdasToEnv, local))
 
-    if local.kind == skIterator and local.typ.callConv == ccClosure:
+    if local.kind == skClosureIterator:
       # consider: [i1, i2, i1]  Since we merged the iterator's closure
       # with the captured owning variables, we need to generate the
       # closure generation code again:
@@ -843,10 +842,10 @@ proc liftForLoop*(body: PNode): PNode =
   
   # static binding?
   var env: PSym
-  if call[0].kind == nkSym and call[0].sym.kind == skIterator:
+  if call[0].kind == nkSym and call[0].sym.kind == skClosureIterator:
     # createClosure()
     let iter = call[0].sym
-    assert iter.kind == skIterator
+    assert iter.kind == skClosureIterator
     env = copySym(getHiddenParam(iter))
 
     var v = newNodeI(nkVarSection, body.info)

@@ -42,7 +42,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym): PNode =
   of skUnknown: 
     # Introduced in this pass! Leave it as an identifier.
     result = n
-  of skProc, skMethod, skIterator, skConverter: 
+  of skProc, skMethod, skIterators, skConverter:
     result = symChoice(c, n, s, scOpen)
   of skTemplate:
     if macroToExpand(s):
@@ -141,7 +141,7 @@ proc semGenericStmt(c: PContext, n: PNode,
         # symbol lookup ...
       of skUnknown, skParam: 
         # Leave it as an identifier.
-      of skProc, skMethod, skIterator, skConverter: 
+      of skProc, skMethod, skIterators, skConverter:
         result.sons[0] = symChoice(c, n.sons[0], s, scOption)
         first = 1
       of skGenericParam:

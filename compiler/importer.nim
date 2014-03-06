@@ -103,7 +103,7 @@ proc importSymbol(c: PContext, n: PNode, fromMod: PSym) =
       internalError(n.info, "importSymbol: 2")
     # for an enumeration we have to add all identifiers
     case s.kind
-    of skProc, skMethod, skIterator, skMacro, skTemplate, skConverter:
+    of skProcKinds:
       # for a overloadable syms add all overloaded routines
       var it: TIdentIter
       var e = initIdentIter(it, fromMod.tab, s.name)
