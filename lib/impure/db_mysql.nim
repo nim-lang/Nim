@@ -87,7 +87,7 @@ proc newRow(L: int): TRow =
   
 proc properFreeResult(sqlres: mysql.PRES, row: cstringArray) =  
   if row != nil:
-    while mysql.FetchRow(sqlres) != nil: nil
+    while mysql.FetchRow(sqlres) != nil: discard
   mysql.FreeResult(sqlres)
   
 iterator fastRows*(db: TDbConn, query: TSqlQuery,

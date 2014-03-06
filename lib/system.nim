@@ -185,6 +185,8 @@ proc `..`*[T](b: T): TSlice[T] {.noSideEffect, inline.} =
 
 when not defined(niminheritable):
   {.pragma: inheritable.}
+when not defined(nimunion):
+  {.pragma: unchecked.}
 
 const NoFakeVars* = defined(NimrodVM) ## true if the backend doesn't support \
   ## "fake variables" like 'var EBADF {.importc.}: cint'.
@@ -194,9 +196,10 @@ when not defined(JS):
     TGenericSeq {.compilerproc, pure, inheritable.} = object
       len, reserved: int
     PGenericSeq {.exportc.} = ptr TGenericSeq
+    UncheckedCharArray {.unchecked.} = array[0..100_000_000, char]
     # len and space without counting the terminating zero:
     NimStringDesc {.compilerproc, final.} = object of TGenericSeq
-      data: array[0..100_000_000, char]
+      data: UncheckedCharArray
     NimString = ptr NimStringDesc
 
 when not defined(JS) and not defined(NimrodVM):
@@ -1559,7 +1562,7 @@ when not defined(NimrodVM):
     proc seqToPtr[T](x: seq[T]): pointer {.inline, nosideeffect.} =
       result = cast[pointer](x)
   else:
-    proc seqToPtr[T](x: seq[T]): pointer {.noStackFrame, nosideeffect.} =
+    proc seqToPtr[T](x: seq[T]): pointer {.asmNoStackFrame, nosideeffect.} =
       asm """return `x`"""
   
   proc `==` *[T](x, y: seq[T]): bool {.noSideEffect.} =
@@ -1842,7 +1845,7 @@ type
     len*: int           ## length of the inspectable slots
 
 when defined(JS):
-  proc add*(x: var string, y: cstring) {.noStackFrame.} =
+  proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
     asm """
       var len = `x`[0].length-1;
       for (var i = 0; i < `y`.length; ++i) {
@@ -2059,8 +2062,10 @@ when not defined(JS): #and not defined(NimrodVM):
       ## Flushes `f`'s buffer.
 
     proc readAll*(file: TFile): TaintedString {.tags: [FReadIO].}
-      ## Reads all data from the stream `file`. Raises an IO exception
-      ## in case of an error
+      ## Reads all data from the stream `file`.
+      ##
+      ## Raises an IO exception in case of an error. It is an error if the
+      ## current file position is not at the beginning of the file.
     
     proc readFile*(filename: string): TaintedString {.tags: [FReadIO].}
       ## Opens a file named `filename` for reading. Then calls `readAll`

@@ -120,7 +120,8 @@ proc commonType*(x, y: PType): PType =
     if a.kind == tyObject and b.kind == tyObject:
       result = commonSuperclass(a, b)
       # this will trigger an error later:
-      if result.isNil: return x
+      if result.isNil or result == a: return x
+      if result == b: return y
       if k != tyNone:
         let r = result
         result = newType(k, r.owner)
@@ -219,7 +220,7 @@ proc tryConstExpr(c: PContext, n: PNode): PNode =
       return nil
 
     result = fixupTypeAfterEval(c, result, e)
-  except:
+  except ERecoverableError:
     return nil
 
 proc semConstExpr(c: PContext, n: PNode): PNode =
@@ -332,6 +333,8 @@ proc myOpen(module: PSym): PPassContext =
   c.semOperand = semOperand
   c.semConstBoolExpr = semConstBoolExpr
   c.semOverloadedCall = semOverloadedCall
+  c.semInferredLambda = semInferredLambda
+  c.semGenerateInstance = generateInstance
   c.semTypeNode = semTypeNode
   pushProcCon(c, module)
   pushOwner(c.module)

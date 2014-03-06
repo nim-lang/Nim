@@ -431,8 +431,8 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       add(result, typeToString(t.sons[i]))
     add(result, ']')
   of tyTypeDesc:
-    if t.len == 0: result = "typedesc"
-    else: result = "typedesc[" & typeToString(t.sons[0]) & "]"
+    if t.base.kind == tyNone: result = "typedesc"
+    else: result = "typedesc[" & typeToString(t.base) & "]"
   of tyStatic:
     internalAssert t.len > 0
     result = "static[" & typeToString(t.sons[0]) & "]"
@@ -452,7 +452,8 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       of tyProc: "proc"
       of tyObject: "object"
       of tyTuple: "tuple"
-      else: (internalAssert(false); "")
+      of tyOpenArray: "openarray"
+      else: typeToStr[t.base.kind]
   of tyUserTypeClassInst:
     let body = t.base
     result = body.sym.name.s & "["
@@ -463,7 +464,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   of tyAnd:
     result = typeToString(t.sons[0]) & " and " & typeToString(t.sons[1])
   of tyOr:
-    result = typeToString(t.sons[0]) & " and " & typeToString(t.sons[1])
+    result = typeToString(t.sons[0]) & " or " & typeToString(t.sons[1])
   of tyNot:
     result = "not " & typeToString(t.sons[0])
   of tyExpr:
@@ -857,7 +858,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       if a.kind != b.kind: return false
     of dcEqOrDistinctOf:
       while a.kind == tyDistinct: a = a.sons[0]
-      if a.kind != b.kind: return false  
+      if a.kind != b.kind: return false
   case a.kind
   of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString,
      tyInt..tyBigNum, tyStmt, tyExpr:
@@ -1042,7 +1043,8 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind,
   of tyEmpty:
     result = taField in flags
   of tyTypeClasses:
-    result = true
+    result = tfGenericTypeParam in t.flags or
+             taField notin flags
   of tyGenericBody, tyGenericParam, tyGenericInvokation,
      tyNone, tyForward, tyFromExpr, tyFieldAccessor:
     result = false
@@ -1231,8 +1233,7 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
   of tyGenericInst, tyDistinct, tyGenericBody, tyMutable, tyConst, tyIter:
     result = computeSizeAux(lastSon(typ), a)
   of tyTypeDesc:
-    result = if typ.len == 1: computeSizeAux(typ.sons[0], a)
-             else: szUnknownSize
+    result = computeSizeAux(typ.base, a)
   of tyForward: return szIllegalRecursion
   else:
     #internalError("computeSizeAux()")
@@ -1258,7 +1259,7 @@ proc containsGenericTypeIter(t: PType, closure: PObject): bool =
     return true
 
   if t.kind == tyTypeDesc:
-    if t.sons[0].kind == tyNone: return true
+    if t.base.kind == tyNone: return true
     if containsGenericTypeIter(t.base, closure): return true
     return false
   

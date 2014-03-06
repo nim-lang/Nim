@@ -116,7 +116,8 @@ type
   TDep = tuple[e: PEnv, field: PSym]
   TEnv {.final.} = object of TObject
     attachedNode: PNode
-    createdVar: PSym         # if != nil it is a used environment
+    createdVar: PSym        # if != nil it is a used environment
+    createdVarComesFromIter: bool
     capturedVars: seq[PSym] # captured variables in this environment
     deps: seq[TDep]         # dependencies
     up: PEnv
@@ -571,7 +572,14 @@ proc rawClosureCreation(o: POuterContext, scope: PEnv; env: PSym): PNode =
       # maybe later: (sfByCopy in local.flags)
       # add ``env.param = param``
       result.add(newAsgnStmt(fieldAccess, newSymNode(local), env.info))
-    idNodeTablePut(o.localsToAccess, local, fieldAccess)
+    # it can happen that we already captured 'local' in some other environment
+    # then we capture by copy for now. This is not entirely correct but better
+    # than nothing:
+    let existing = idNodeTableGet(o.localsToAccess, local)
+    if existing.isNil:
+      idNodeTablePut(o.localsToAccess, local, fieldAccess)
+    else:
+      result.add(newAsgnStmt(fieldAccess, existing, env.info))
   # add support for 'up' references:
   for e, field in items(scope.deps):
     # add ``env.up = env2``
@@ -584,14 +592,19 @@ proc generateClosureCreation(o: POuterContext, scope: PEnv): PNode =
 
 proc generateIterClosureCreation(o: POuterContext; env: PEnv;
                                  scope: PNode): PSym =
-  result = newClosureCreationVar(o, env)
-  let cc = rawClosureCreation(o, env, result)
-  var insertPoint = scope.sons[0]
-  if insertPoint.kind == nkEmpty: scope.sons[0] = cc
+  if env.createdVarComesFromIter or env.createdVar.isNil:
+    # we have to create a new closure:
+    result = newClosureCreationVar(o, env)
+    let cc = rawClosureCreation(o, env, result)
+    var insertPoint = scope.sons[0]
+    if insertPoint.kind == nkEmpty: scope.sons[0] = cc
+    else:
+      assert cc.kind == nkStmtList and insertPoint.kind == nkStmtList
+      for x in cc: insertPoint.add(x)
+    if env.createdVar == nil: env.createdVar = result
   else:
-    assert cc.kind == nkStmtList and insertPoint.kind == nkStmtList
-    for x in cc: insertPoint.add(x)
-  if env.createdVar == nil: env.createdVar = result
+    result = env.createdVar
+  env.createdVarComesFromIter = true
 
 proc interestingIterVar(s: PSym): bool {.inline.} =
   result = s.kind in {skVar, skLet, skTemp, skForVar} and sfGlobal notin s.flags
@@ -637,6 +650,22 @@ proc outerProcSons(o: POuterContext, n: PNode) =
     let x = transformOuterProc(o, n.sons[i])
     if x != nil: n.sons[i] = x
 
+proc liftIterSym*(n: PNode): PNode =
+  # transforms  (iter)  to  (let env = newClosure[iter](); (iter, env)) 
+  let iter = n.sym
+  assert iter.kind == skIterator
+
+  result = newNodeIT(nkStmtListExpr, n.info, n.typ)
+  
+  var env = copySym(getHiddenParam(iter))
+  env.kind = skLet
+  var v = newNodeI(nkVarSection, n.info)
+  addVar(v, newSymNode(env))
+  result.add(v)
+  # add 'new' statement:
+  result.add(newCall(getSysSym"internalNew", env))
+  result.add makeClosure(iter, env, n.info)
+
 proc transformOuterProc(o: POuterContext, n: PNode): PNode =
   if n == nil: return nil
   case n.kind
@@ -649,17 +678,22 @@ proc transformOuterProc(o: POuterContext, n: PNode): PNode =
       return indirectAccess(newSymNode(o.closureParam), local, n.info)
 
     var closure = PEnv(idTableGet(o.lambdasToEnv, local))
-    if closure != nil:
-      # we need to replace the lambda with '(lambda, env)':
-      if local.kind == skIterator and local.typ.callConv == ccClosure:
-        # consider: [i1, i2, i1]  Since we merged the iterator's closure
-        # with the captured owning variables, we need to generate the
-        # closure generation code again:
-        #if local == o.fn: message(n.info, errRecursiveDependencyX, local.name.s)
-        # XXX why doesn't this work?
+
+    if local.kind == skIterator and local.typ.callConv == ccClosure:
+      # consider: [i1, i2, i1]  Since we merged the iterator's closure
+      # with the captured owning variables, we need to generate the
+      # closure generation code again:
+      if local == o.fn: message(n.info, errRecursiveDependencyX, local.name.s)
+      # XXX why doesn't this work?
+      if closure.isNil:
+        return liftIterSym(n)
+      else:
         let createdVar = generateIterClosureCreation(o, closure,
                                                      closure.attachedNode)
         return makeClosure(local, createdVar, n.info)
+
+    if closure != nil:
+      # we need to replace the lambda with '(lambda, env)':
       
       let a = closure.createdVar
       if a != nil:
@@ -772,22 +806,6 @@ proc liftLambdasForTopLevel*(module: PSym, body: PNode): PNode =
     result = ex
 
 # ------------------- iterator transformation --------------------------------
-
-proc liftIterSym*(n: PNode): PNode =
-  # transforms  (iter)  to  (let env = newClosure[iter](); (iter, env)) 
-  let iter = n.sym
-  assert iter.kind == skIterator
-
-  result = newNodeIT(nkStmtListExpr, n.info, n.typ)
-  
-  var env = copySym(getHiddenParam(iter))
-  env.kind = skLet
-  var v = newNodeI(nkVarSection, n.info)
-  addVar(v, newSymNode(env))
-  result.add(v)
-  # add 'new' statement:
-  result.add(newCall(getSysSym"internalNew", env))
-  result.add makeClosure(iter, env, n.info)
 
 proc liftForLoop*(body: PNode): PNode =
   # problem ahead: the iterator could be invoked indirectly, but then

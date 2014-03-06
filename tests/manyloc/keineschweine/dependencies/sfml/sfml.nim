@@ -6,7 +6,12 @@ when defined(linux):
     LibS = "libcsfml-system.so.2.0"
     LibW = "libcsfml-window.so.2.0"
 else:
-  {.error: "Platform unsupported".}
+  # We only compile for testing here, so it doesn't matter it's not supported
+  const
+    LibG = "libcsfml-graphics.so.2.0"
+    LibS = "libcsfml-system.so.2.0"
+    LibW = "libcsfml-window.so.2.0"
+  #{.error: "Platform unsupported".}
 {.deadCodeElim: on.}
 {.pragma: pf, pure, final.}
 type
@@ -153,8 +158,9 @@ type
     KeyF15,               #/< The F15 key
     KeyPause,             #/< The Pause key
     KeyCount              #/< Keep last -- the total number of keyboard keys
-when defined(linux): #or defined(bsd) ??
-  type TWindowHandle* = clong
+
+type TWindowHandle* = clong
+
 #elif defined(mac):
 #  type TWindowHandle* = pointer ##typedef void* sfWindowHandle; <- whatever the hell that is
 #elif defined(windows):

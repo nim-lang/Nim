@@ -36,7 +36,7 @@ block mainLoop:
               case x.kind
               of xmlEof: break mainLoop
               of xmlElementClose: break
-              else: nil
+              else: discard
             x.next() # skip ``xmlElementClose``
             # now we have the description for the ``a`` element
             var desc = ""
