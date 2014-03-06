@@ -16,7 +16,7 @@ assert cast[ptr array[4, int]](x)[3] == 0
 x = cast[ptr int](x.realloc(2))
 assert x != nil
 
-x = x.reallocType(4)
+x = x.resize(4)
 assert x != nil
 x.dealloc()
 
@@ -37,9 +37,9 @@ assert cast[ptr array[3, int]](x)[2] == 0
 x = cast[ptr int](reallocShared(x, 2))
 assert x != nil
 
-x = reallocType(x, 12)
+x = resize(x, 12)
 assert x != nil
 
-x = reallocSharedType(x, 1)
+x = resizeShared(x, 1)
 assert x != nil
 x.deallocShared()
