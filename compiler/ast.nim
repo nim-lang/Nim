@@ -489,6 +489,8 @@ const
   routineKinds* = {skProc, skMethod, skIterator, skClosureIterator,
                    skConverter, skMacro, skTemplate}
   tfIncompleteStruct* = tfVarargs
+  tfUncheckedArray* = tfVarargs
+  tfUnion* = tfNoSideEffect
   skError* = skUnknown
   
   # type flags that are essential for type equality:

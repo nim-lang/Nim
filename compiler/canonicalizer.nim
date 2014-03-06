@@ -161,6 +161,13 @@ proc hashType(c: var MD5Context, t: PType) =
   if tfShared in t.flags: c &= "shared"
   if tfNotNil in t.flags: c &= "not nil"
 
+proc canonConst(n: PNode): TUid =
+  var c: MD5Context
+  md5Init(c)
+  c.hashTree(n)
+  c.hashType(n.typ)
+  md5Final(c, MD5Digest(result))
+
 proc canonSym(s: PSym): TUid
   var c: MD5Context
   md5Init(c)

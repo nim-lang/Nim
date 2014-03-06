@@ -299,12 +299,12 @@ proc open*(address: string, server: bool, mode: TConnectionMode = conDEALER,
   else:
     if connect(result.s, address) != 0'i32: zmqError()
   
-proc close*(c: var TConnection) =
+proc close*(c: TConnection) =
   ## closes the connection.
   if close(c.s) != 0'i32: zmqError()
   if term(c.c) != 0'i32: zmqError()
   
-proc send*(c: var TConnection, msg: string) =
+proc send*(c: TConnection, msg: string) =
   ## sends a message over the connection.
   var m: TMsg
   if msg_init(m, msg.len) != 0'i32: zmqError()
@@ -312,7 +312,7 @@ proc send*(c: var TConnection, msg: string) =
   if send(c.s, m, 0'i32) != 0'i32: zmqError()
   discard msg_close(m)
   
-proc receive*(c: var TConnection): string =
+proc receive*(c: TConnection): string =
   ## receives a message from a connection.
   var m: TMsg
   if msg_init(m) != 0'i32: zmqError()
@@ -320,4 +320,3 @@ proc receive*(c: var TConnection): string =
   result = newString(msg_size(m))
   copyMem(addr(result[0]), msg_data(m), result.len)
   discard msg_close(m)
-  

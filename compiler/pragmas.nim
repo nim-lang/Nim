@@ -50,9 +50,9 @@ const
     wDeprecated, wExtern, wThread, wImportCpp, wImportObjC, wAsmNoStackFrame,
     wRaises, wTags}
   typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl, 
-    wPure, wHeader, wCompilerproc, wFinal, wSize, wExtern, wShallow, 
+    wPure, wHeader, wCompilerproc, wFinal, wSize, wExtern, wShallow,
     wImportCpp, wImportObjC, wError, wIncompleteStruct, wByCopy, wByRef,
-    wInheritable, wGensym, wInject, wRequiresInit}
+    wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion}
   fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern, 
     wImportCpp, wImportObjC, wError}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl, 
@@ -718,6 +718,14 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           noVal(it)
           if sym.typ == nil: invalidPragma(it)
           else: incl(sym.typ.flags, tfIncompleteStruct)
+        of wUnchecked:
+          noVal(it)
+          if sym.typ == nil: invalidPragma(it)
+          else: incl(sym.typ.flags, tfUncheckedArray)
+        of wUnion:
+          noVal(it)
+          if sym.typ == nil: invalidPragma(it)
+          else: incl(sym.typ.flags, tfUnion)
         of wRequiresInit:
           noVal(it)
           if sym.typ == nil: invalidPragma(it)
