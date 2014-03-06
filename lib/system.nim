@@ -1247,7 +1247,7 @@ when not defined(nimrodVM):
       ## least ``T.sizeof * newSize`` bytes. If ``newSize == 0`` and p is
       ## not **nil** ``reallocShared`` calls ``deallocShared(p)``. In other
       ## cases the block has to be freed with ``deallocShared``.
-      reallocShared(p, T.sizeof * n)
+      cast[ptr T](reallocShared(p, T.sizeof * newSize))
     proc deallocShared*(p: pointer) {.noconv, rtl.}
       ## frees the memory allocated with ``allocShared``, ``allocShared0`` or
       ## ``reallocShared``. This procedure is dangerous! If one forgets to
