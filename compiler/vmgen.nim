@@ -980,6 +980,25 @@ proc setSlot(c: PCtx; v: PSym) =
         kind: if v.kind == skLet: slotFixedLet else: slotFixedVar)
     inc c.prc.maxSlots
 
+proc cannotEval(n: PNode) {.noinline.} =
+  globalError(n.info, errGenerated, "cannot evaluate at compile time: " &
+    n.renderTree)
+
+proc isOwnedBy(a, b: PSym): bool =
+  var a = a.owner
+  while a != nil and a.kind != skModule:
+    if a == b: return true
+    a = a.owner
+
+proc checkCanEval(c: PCtx; n: PNode) =
+  # we need to ensure that we don't evaluate 'x' here:
+  # proc foo() = var x ...
+  let s = n.sym
+  if s.position == 0:
+    if s.kind in {skVar, skTemp, skLet, skParam, skResult} and 
+        not s.isOwnedBy(c.prc.sym) and s.owner != c.module:
+      cannotEval(n)
+
 proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
   case le.kind
   of nkBracketExpr:
@@ -1007,6 +1026,7 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
     c.freeTemp(tmp)
   of nkSym:
     let s = le.sym
+    checkCanEval(c, le)
     if s.isGlobal:
       withTemp(tmp, le.typ):
         c.gen(le, tmp, {gfAddrOf})
@@ -1014,7 +1034,7 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
         c.gABC(le, opcWrDeref, tmp, val)
         c.freeTemp(val)
     else:
-      if s.kind == skForVar and c.mode == emRepl: c.setSlot s
+      if s.kind == skForVar: c.setSlot s
       internalAssert s.position > 0 or (s.position == 0 and
                                         s.kind in {skParam,skResult})
       var dest: TRegister = s.position + ord(s.kind == skParam)
@@ -1045,10 +1065,6 @@ proc importcSym(c: PCtx; info: TLineInfo; s: PSym) =
   else:
     localError(info, errGenerated,
                "cannot 'importc' variable at compile time")
-
-proc cannotEval(n: PNode) {.noinline.} =
-  globalError(n.info, errGenerated, "cannot evaluate at compile time: " &
-    n.renderTree)
 
 proc getNullValue*(typ: PType, info: TLineInfo): PNode
 
@@ -1190,12 +1206,14 @@ proc genVarSection(c: PCtx; n: PNode) =
         setSlot(c, a[i].sym)
         # v = t[i]
         var v: TDest = -1
+        checkCanEval(c, a[i])
         genRdVar(c, a[i], v, {gfAddrOf})
         c.gABC(n, opcWrObj, v, tmp, i)
         # XXX globals?
       c.freeTemp(tmp)
     elif a.sons[0].kind == nkSym:
       let s = a.sons[0].sym
+      checkCanEval(c, a.sons[0])
       if s.isGlobal:
         if s.position == 0:
           if sfImportc in s.flags: c.importcSym(a.info, s)
@@ -1308,6 +1326,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
   case n.kind
   of nkSym:
     let s = n.sym
+    checkCanEval(c, n)
     case s.kind
     of skVar, skForVar, skTemp, skLet, skParam, skResult:
       genRdVar(c, n, dest, flags)
@@ -1525,7 +1544,7 @@ proc genProc(c: PCtx; s: PSym): int =
     # procs easily:
     let body = s.getBody
     let procStart = c.xjmp(body, opcJmp, 0)
-    var p = PProc(blocks: @[])
+    var p = PProc(blocks: @[], sym: s)
     let oldPrc = c.prc
     c.prc = p
     # iterate over the parameters and allocate space for them:
