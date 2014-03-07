@@ -97,8 +97,6 @@ proc makeExternImport(s: PSym, extname: string) =
   incl(s.flags, sfImportc)
   excl(s.flags, sfForward)
 
-const invalidIdentChars = AllChars - IdentChars
-
 proc validateExternCName(s: PSym, info: TLineInfo) =
   ## Validates that the symbol name in s.loc.r is a valid C identifier.
   ##
@@ -106,16 +104,14 @@ proc validateExternCName(s: PSym, info: TLineInfo) =
   ## starting with a number. If the check fails, a generic error will be
   ## displayed to the user.
   let target = ropeToStr(s.loc.r)
-  if target.len < 1 or (not (target[0] in IdentStartChars)) or
-      (not target.allCharsInSet(IdentChars)):
+  if target.len < 1 or target[0] notin IdentStartChars or
+      not target.allCharsInSet(IdentChars):
     localError(info, errGenerated, "invalid exported symbol")
 
 proc makeExternExport(s: PSym, extname: string, info: TLineInfo) =
   setExternName(s, extname)
-  case gCmd
-  of cmdCompileToC, cmdCompileToCpp, cmdCompileToOC:
+  if gCmd in {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC}:
     validateExternCName(s, info)
-  else: discard
   incl(s.flags, sfExportc)
 
 proc processImportCompilerProc(s: PSym, extname: string) =

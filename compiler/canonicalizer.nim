@@ -81,7 +81,7 @@ proc hashSym(c: var MD5Context, s: PSym) =
 
 proc hashTree(c: var MD5Context, n: PNode) =
   if n == nil:
-    c &= "noTreeKind"
+    c &= "\255"
     return
   var k = n.kind
   md5Update(c, cast[cstring](addr(k)), 1)
@@ -107,7 +107,7 @@ proc hashTree(c: var MD5Context, n: PNode) =
 proc hashType(c: var MD5Context, t: PType) =
   # modelled after 'typeToString'
   if t == nil: 
-    c &= "noTypeKind"
+    c &= "\254"
     return
 
   var k = t.kind
@@ -168,7 +168,7 @@ proc canonConst(n: PNode): TUid =
   c.hashType(n.typ)
   md5Final(c, MD5Digest(result))
 
-proc canonSym(s: PSym): TUid
+proc canonSym(s: PSym): TUid =
   var c: MD5Context
   md5Init(c)
   c.hashSym(s)
