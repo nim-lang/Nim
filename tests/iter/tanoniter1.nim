@@ -8,7 +8,7 @@ discard """
 """
 
 proc factory(a, b: int): iterator (): int =
-  iterator foo(): int =
+  iterator foo(): int {.closure.} =
     var x = a
     while x <= b:
       yield x

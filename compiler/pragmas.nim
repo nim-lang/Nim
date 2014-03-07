@@ -776,6 +776,17 @@ proc implictPragmas*(c: PContext, sym: PSym, n: PNode,
       addToLib(lib, sym)
       if sym.loc.r == nil: sym.loc.r = toRope(sym.name.s)
 
+proc hasPragma*(n: PNode, pragma: TSpecialWord): bool =
+  if n == nil or n.sons == nil:
+    return false
+
+  for p in n.sons:
+    var key = if p.kind == nkExprColonExpr: p[0] else: p
+    if key.kind == nkIdent and whichKeyword(key.ident) == pragma:
+      return true
+  
+  return false
+
 proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
   if n == nil: return
   for i in countup(0, sonsLen(n) - 1):

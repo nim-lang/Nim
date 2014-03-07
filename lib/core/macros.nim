@@ -88,7 +88,7 @@ type
     nskUnknown, nskConditional, nskDynLib, nskParam,
     nskGenericParam, nskTemp, nskModule, nskType, nskVar, nskLet, 
     nskConst, nskResult,
-    nskProc, nskMethod, nskIterator,
+    nskProc, nskMethod, nskIterator, nskClosureIterator,
     nskConverter, nskMacro, nskTemplate, nskField,
     nskEnumField, nskForVar, nskLabel,
     nskStub
