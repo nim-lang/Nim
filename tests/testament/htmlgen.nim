@@ -174,6 +174,10 @@ proc generateJson*(filename: string, commit: int) =
                 on A.name = B.name and A.category = B.category
                 where A.[commit] = ? and B.[commit] = ? and A.machine = ?
                    and A.result != B.result"""
+    selResults = """select 
+                      name, category, target, action, result, expected, given 
+                    from TestResult
+                    where [commit] = ?"""
   var db = open(connection="testament.db", user="testament", password="",
                 database="testament")
   let lastCommit = db.getCommit(commit)
@@ -188,6 +192,21 @@ proc generateJson*(filename: string, commit: int) =
   let data = db.getRow(sql(selRow), lastCommit, machine)
 
   outfile.writeln("""{"total": $#, "passed": $#, "skipped": $#""" % data)
+
+  let results = newJArray()
+  for row in db.rows(sql(selResults), lastCommit):
+    echo(repr(row))
+    var obj = newJObject()
+    obj["name"] = %row[0]
+    obj["category"] = %row[1]
+    obj["target"] = %row[2]
+    obj["action"] = %row[3]
+    obj["result"] = %row[4]
+    obj["expected"] = %row[5]
+    obj["given"] = %row[6]
+    results.add(obj)
+  outfile.writeln(""", "results": """)
+  outfile.write(results.pretty)
 
   if not previousCommit.isNil:
     let diff = newJArray()
