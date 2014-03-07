@@ -146,7 +146,7 @@ proc newProc*(prc: PSym, module: BModule): BProc =
   result.nestedTryStmts = @[]
   result.finallySafePoints = @[]
 
-iterator cgenModules*: var BModule =
+iterator cgenModules*: BModule =
   for i in 0..high(gModules):
     # ultimately, we are iterating over the file ids here.
     # some "files" won't have an associated cgen module (like stdin)

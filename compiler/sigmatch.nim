@@ -410,7 +410,10 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
         return isNone
     when useEffectSystem:
       if not compatibleEffects(f, a): return isNone
-  of tyNil: result = f.allowsNil
+  of tyNil:
+    result = f.allowsNil
+  of tyIter:
+    if tfIterator in f.flags: result = typeRel(c, f.base, a.base)
   else: discard
 
 proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
@@ -921,14 +924,21 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         result = typeRel(c, prev.base, a.base)
       else:
         result = isNone
-  
+ 
+  of tyIter:
+    if a.kind == tyIter or 
+      (a.kind == tyProc and tfIterator in a.flags):
+      result = typeRel(c, f.base, a.base)
+    else:
+      result = isNone
+
   of tyStmt:
     result = isGeneric
   
   of tyProxy:
     result = isEqual
   
-  else: internalError("typeRel: " & $f.kind)
+  else: internalAssert false
   
 proc cmpTypes*(c: PContext, f, a: PType): TTypeRelation = 
   var m: TCandidate
@@ -1138,7 +1148,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     z.calleeSym = m.calleeSym
     var best = -1
     for i in countup(0, sonsLen(arg) - 1): 
-      if arg.sons[i].sym.kind in {skProc, skIterator, skMethod, skConverter}: 
+      if arg.sons[i].sym.kind in {skProc, skMethod, skConverter}+skIterators:
         copyCandidate(z, m)
         var r = typeRel(z, f, arg.sons[i].typ)
         if r != isNone: 
