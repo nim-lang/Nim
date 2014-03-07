@@ -1164,13 +1164,13 @@ when not defined(nimrodVM):
       ## from it before writing to it is undefined behaviour!
       ## The allocated memory belongs to its allocating thread!
       ## Use `allocShared` to allocate from a shared heap.
-    proc create*(T: typedesc, size = 1): ptr T {.inline.} =
+    proc createU*(T: typedesc, size = 1): ptr T {.inline.} =
       ## allocates a new memory block with at least ``T.sizeof * size``
       ## bytes. The block has to be freed with ``resize(block, 0)`` or
       ## ``free(block)``. The block is not initialized, so reading
       ## from it before writing to it is undefined behaviour!
       ## The allocated memory belongs to its allocating thread!
-      ## Use `createShared` to allocate from a shared heap.
+      ## Use `createSharedU` to allocate from a shared heap.
       cast[ptr T](alloc(T.sizeof * size))
     proc alloc0*(size: int): pointer {.noconv, rtl, tags: [].}
       ## allocates a new memory block with at least ``size`` bytes. The
@@ -1179,13 +1179,13 @@ when not defined(nimrodVM):
       ## containing zero, so it is somewhat safer than ``alloc``.
       ## The allocated memory belongs to its allocating thread!
       ## Use `allocShared0` to allocate from a shared heap.
-    proc create0*(T: typedesc, size = 1): ptr T {.inline.} =
+    proc create*(T: typedesc, size = 1): ptr T {.inline.} =
       ## allocates a new memory block with at least ``T.sizeof * size``
       ## bytes. The block has to be freed with ``resize(block, 0)`` or
       ## ``free(block)``. The block is initialized with all bytes
-      ## containing zero, so it is somewhat safer than ``create``.
+      ## containing zero, so it is somewhat safer than ``createU``.
       ## The allocated memory belongs to its allocating thread!
-      ## Use `createShared0` to allocate from a shared heap.
+      ## Use `createShared` to allocate from a shared heap.
       cast[ptr T](alloc0(T.sizeof * size))
     proc realloc*(p: pointer, newSize: int): pointer {.noconv, rtl, tags: [].}
       ## grows or shrinks a given memory block. If p is **nil** then a new
@@ -1220,7 +1220,7 @@ when not defined(nimrodVM):
       ## ``reallocShared(block, 0)`` or ``deallocShared(block)``. The block
       ## is not initialized, so reading from it before writing to it is 
       ## undefined behaviour!
-    proc createShared*(T: typedesc, size: int): ptr T {.inline.} =
+    proc createSharedU*(T: typedesc, size: int): ptr T {.inline.} =
       ## allocates a new memory block on the shared heap with at
       ## least ``T.sizeof * size`` bytes. The block has to be freed with
       ## ``resizeShared(block, 0)`` or ``freeShared(block)``. The block
@@ -1233,12 +1233,12 @@ when not defined(nimrodVM):
       ## ``reallocShared(block, 0)`` or ``deallocShared(block)``.
       ## The block is initialized with all bytes
       ## containing zero, so it is somewhat safer than ``allocShared``.
-    proc createShared0*(T: typedesc, size: int): ptr T {.inline.} =
+    proc createShared*(T: typedesc, size: int): ptr T {.inline.} =
       ## allocates a new memory block on the shared heap with at 
       ## least ``T.sizeof * size`` bytes. The block has to be freed with
       ## ``resizeShared(block, 0)`` or ``freeShared(block)``.
       ## The block is initialized with all bytes
-      ## containing zero, so it is somewhat safer than ``createShared``.
+      ## containing zero, so it is somewhat safer than ``createSharedU``.
       cast[ptr T](allocShared0(T.sizeof * size))
     proc reallocShared*(p: pointer, newSize: int): pointer {.noconv, rtl.}
       ## grows or shrinks a given memory block on the heap. If p is **nil**
@@ -1260,7 +1260,7 @@ when not defined(nimrodVM):
       ## memory (or just freeing it twice!) a core dump may happen
       ## or other memory may be corrupted.
     proc freeShared*[T](p: ptr T) {.inline.} =
-      ## frees the memory allocated with ``createShared``, ``createShared0`` or
+      ## frees the memory allocated with ``createShared``, ``createSharedU`` or
       ## ``resizeShared``. This procedure is dangerous! If one forgets to
       ## free the memory a leak occurs; if one tries to access freed
       ## memory (or just freeing it twice!) a core dump may happen
