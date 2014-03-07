@@ -1164,7 +1164,7 @@ when not defined(nimrodVM):
       ## from it before writing to it is undefined behaviour!
       ## The allocated memory belongs to its allocating thread!
       ## Use `allocShared` to allocate from a shared heap.
-    proc createU*(T: typedesc, size = 1): ptr T {.inline.} =
+    proc createU*(T: typedesc, size = 1.Positive): ptr T {.inline.} =
       ## allocates a new memory block with at least ``T.sizeof * size``
       ## bytes. The block has to be freed with ``resize(block, 0)`` or
       ## ``free(block)``. The block is not initialized, so reading
@@ -1179,7 +1179,7 @@ when not defined(nimrodVM):
       ## containing zero, so it is somewhat safer than ``alloc``.
       ## The allocated memory belongs to its allocating thread!
       ## Use `allocShared0` to allocate from a shared heap.
-    proc create*(T: typedesc, size = 1): ptr T {.inline.} =
+    proc create*(T: typedesc, size = 1.Positive): ptr T {.inline.} =
       ## allocates a new memory block with at least ``T.sizeof * size``
       ## bytes. The block has to be freed with ``resize(block, 0)`` or
       ## ``free(block)``. The block is initialized with all bytes
@@ -1195,7 +1195,7 @@ when not defined(nimrodVM):
       ## be freed with ``dealloc``.
       ## The allocated memory belongs to its allocating thread!
       ## Use `reallocShared` to reallocate from a shared heap.
-    proc resize*[T](p: ptr T, newSize: int): ptr T {.inline.} =
+    proc resize*[T](p: ptr T, newSize: Natural): ptr T {.inline.} =
       ## grows or shrinks a given memory block. If p is **nil** then a new
       ## memory block is returned. In either way the block has at least
       ## ``T.sizeof * newSize`` bytes. If ``newSize == 0`` and p is not
@@ -1220,7 +1220,7 @@ when not defined(nimrodVM):
       ## ``reallocShared(block, 0)`` or ``deallocShared(block)``. The block
       ## is not initialized, so reading from it before writing to it is 
       ## undefined behaviour!
-    proc createSharedU*(T: typedesc, size: int): ptr T {.inline.} =
+    proc createSharedU*(T: typedesc, size = 1.Positive): ptr T {.inline.} =
       ## allocates a new memory block on the shared heap with at
       ## least ``T.sizeof * size`` bytes. The block has to be freed with
       ## ``resizeShared(block, 0)`` or ``freeShared(block)``. The block
@@ -1233,7 +1233,7 @@ when not defined(nimrodVM):
       ## ``reallocShared(block, 0)`` or ``deallocShared(block)``.
       ## The block is initialized with all bytes
       ## containing zero, so it is somewhat safer than ``allocShared``.
-    proc createShared*(T: typedesc, size: int): ptr T {.inline.} =
+    proc createShared*(T: typedesc, size = 1.Positive): ptr T {.inline.} =
       ## allocates a new memory block on the shared heap with at 
       ## least ``T.sizeof * size`` bytes. The block has to be freed with
       ## ``resizeShared(block, 0)`` or ``freeShared(block)``.
@@ -1246,7 +1246,7 @@ when not defined(nimrodVM):
       ## least ``newSize`` bytes. If ``newSize == 0`` and p is not **nil**
       ## ``reallocShared`` calls ``deallocShared(p)``. In other cases the
       ## block has to be freed with ``deallocShared``.
-    proc resizeShared*[T](p: ptr T, newSize: int): ptr T {.inline.} =
+    proc resizeShared*[T](p: ptr T, newSize: Natural): ptr T {.inline.} =
       ## grows or shrinks a given memory block on the heap. If p is **nil**
       ## then a new memory block is returned. In either way the block has at
       ## least ``T.sizeof * newSize`` bytes. If ``newSize == 0`` and p is
