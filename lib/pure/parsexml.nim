@@ -492,14 +492,6 @@ proc parseAttribute(my: var TXmlParser) =
       of '\0':
         markError(my, errQuoteExpected)
         break
-      of '&': 
-        if pendingSpace: 
-          add(my.b, ' ')
-          pendingSpace = false
-        my.bufpos = pos
-        parseEntity(my, my.b)
-        my.kind = xmlAttribute # parseEntity overwrites my.kind!
-        pos = my.bufpos
       of ' ', '\t': 
         pendingSpace = true
         inc(pos)

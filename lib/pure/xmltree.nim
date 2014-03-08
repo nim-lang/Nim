@@ -190,7 +190,7 @@ proc add*(result: var string, n: PXmlNode, indent = 0, indWidth = 2) =
         result.add(' ')
         result.add(key)
         result.add("=\"")
-        result.addEscaped(val)
+        result.add(val)
         result.add('"')
     if n.len > 0:
       result.add('>')
