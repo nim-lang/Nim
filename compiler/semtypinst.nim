@@ -305,6 +305,11 @@ proc skipIntLiteralParams(t: PType) =
     if skipped != p:
       t.sons[i] = skipped
       if i > 0: t.n.sons[i].sym.typ = skipped
+  
+  # when the typeof operator is used on a static input
+  # param, the results gets infected with static as well:
+  if t.sons[0] != nil and t.sons[0].kind == tyStatic:
+    t.sons[0] = t.sons[0].base
 
 proc propagateFieldFlags(t: PType, n: PNode) =
   # This is meant for objects and tuples
@@ -323,7 +328,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   result = t
   if t == nil: return
 
-  if t.kind in {tyStatic, tyGenericParam} + tyTypeClasses:
+  if t.kind in {tyStatic, tyGenericParam, tyIter} + tyTypeClasses:
     let lookup = PType(idTableGet(cl.typeMap, t))
     if lookup != nil: return lookup
   

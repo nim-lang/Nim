@@ -1014,6 +1014,10 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       result.typ = getInstantiatedType(c, arg, m, base(f))
     m.baseTypeMatch = true
 
+proc isInlineIterator*(t: PType): bool =
+  result = t.kind == tyIter or
+          (t.kind == tyBuiltInTypeClass and t.base.kind == tyIter)
+
 proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
                         argSemantized, argOrig: PNode): PNode =
   var
@@ -1021,7 +1025,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
     arg = argSemantized
     argType = argType
     c = m.c
-    
+   
   if tfHasStatic in fMaybeStatic.flags:
     # XXX: When implicit statics are the default
     # this will be done earlier - we just have to
@@ -1060,7 +1064,14 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
       return arg.typ.n
     else:
       return argOrig
-  
+
+  if r != isNone and f.isInlineIterator:
+    var inlined = newTypeS(tyStatic, c)
+    inlined.sons = @[argType]
+    inlined.n = argSemantized
+    put(m.bindings, f, inlined)
+    return argSemantized
+
   case r
   of isConvertible:
     inc(m.convMatches)
@@ -1188,7 +1199,9 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
     # a.typ == nil is valid
     result = a
   elif a.typ.isNil:
-    result = c.semOperand(c, a, {efDetermineType})
+    let flags = if formal.kind == tyIter: {efDetermineType, efWantIterator}
+                else: {efDetermineType}
+    result = c.semOperand(c, a, flags)
   else:
     result = a
 

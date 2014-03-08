@@ -721,7 +721,16 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
                                   allowMetaTypes = true)
     result = newTypeWithSons(c, tyCompositeTypeClass, @[paramType, result])
     result = addImplicitGeneric(result)
-  
+
+  of tyIter:
+    if paramType.callConv == ccInline:
+      if procKind notin {skTemplate, skMacro, skIterator}:
+        localError(info, errInlineIteratorsAsProcParams)
+      if paramType.len == 1:
+        let lifted = liftingWalk(paramType.base)
+        if lifted != nil: paramType.sons[0] = lifted
+      result = addImplicitGeneric(paramType)
+
   of tyGenericInst:
     if paramType.lastSon.kind == tyUserTypeClass:
       var cp = copyType(paramType, getCurrOwner(), false)
@@ -852,7 +861,11 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         if lifted != nil: r = lifted
         r.flags.incl tfRetType
       r = skipIntLit(r)
-      if kind == skIterator: r = newTypeWithSons(c, tyIter, @[r])
+      if kind == skIterator:
+        # see tchainediterators
+        # in cases like iterator foo(it: iterator): type(it)
+        # we don't need to change the return type to iter[T]
+        if not r.isInlineIterator: r = newTypeWithSons(c, tyIter, @[r])
       result.sons[0] = r
       res.typ = r
 
@@ -984,7 +997,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkTypeOfExpr:
     # for ``type(countup(1,3))``, see ``tests/ttoseq``.
     checkSonsLen(n, 1)
-    result = semExprWithType(c, n.sons[0], {efInTypeof}).typ.skipTypes({tyIter})
+    let typExpr = semExprWithType(c, n.sons[0], {efInTypeof})
+    result = typExpr.typ.skipTypes({tyIter})
   of nkPar: 
     if sonsLen(n) == 1: result = semTypeNode(c, n.sons[0], prev)
     else:
@@ -1103,8 +1117,12 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       result = newConstraint(c, tyIter)
     else:
       result = semProcTypeWithScope(c, n, prev, skClosureIterator)
-      result.flags.incl(tfIterator)
-      result.callConv = ccClosure
+      if n.lastSon.kind == nkPragma and hasPragma(n.lastSon, wInline):
+        result.kind = tyIter
+        result.callConv = ccInline
+      else:
+        result.flags.incl(tfIterator)
+        result.callConv = ccClosure
   of nkProcTy:
     if n.sonsLen == 0:
       result = newConstraint(c, tyProc)
