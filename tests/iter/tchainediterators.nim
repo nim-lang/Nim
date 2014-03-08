@@ -12,7 +12,7 @@ iterator gaz(it: iterator{.inline.}): type(it) =
   for x in it:
     yield x*2
 
-iterator baz(it: iterator{.inline.}): auto =
+iterator baz(it: iterator{.inline.}) =
   for x in gaz(it):
     yield x*2
 

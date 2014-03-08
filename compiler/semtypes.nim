@@ -849,9 +849,13 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       addParamOrResult(c, arg, kind)
       if gCmd == cmdPretty: checkDef(a.sons[j], arg)
 
-
+  var r: PType
   if n.sons[0].kind != nkEmpty:
-    var r = semTypeNode(c, n.sons[0], nil)
+    r = semTypeNode(c, n.sons[0], nil)
+  elif kind == skIterator:
+    r = newTypeS(tyAnything, c)
+  
+  if r != nil:
     # turn explicit 'void' return type into 'nil' because the rest of the 
     # compiler only checks for 'nil':
     if skipTypes(r, {tyGenericInst}).kind != tyEmpty:
