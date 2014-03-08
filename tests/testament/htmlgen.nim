@@ -195,7 +195,6 @@ proc generateJson*(filename: string, commit: int) =
 
   let results = newJArray()
   for row in db.rows(sql(selResults), lastCommit):
-    echo(repr(row))
     var obj = newJObject()
     obj["name"] = %row[0]
     obj["category"] = %row[1]
