@@ -139,6 +139,10 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     result = n.sym
     internalAssert sfGenSym in result.flags
     internalAssert result.kind == kind
+    # when there is a nested proc inside a template, semtmpl
+    # will assign a wrong owner during the first pass over the
+    # template; we must fix it here: see #909
+    result.owner = getCurrOwner()
   else:
     result = newSym(kind, considerAcc(n), getCurrOwner(), n.info)
 
