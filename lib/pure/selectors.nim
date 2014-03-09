@@ -10,11 +10,13 @@
 # TODO: Docs.
 
 import tables, os, unsigned, hashes
+import sockets2
 
 when defined(linux): import posix, epoll
 elif defined(windows): import winlean
 
 proc hash*(x: TSocketHandle): THash {.borrow.}
+proc `$`*(x: TSocketHandle): string {.borrow.}
 
 type
   TEvent* = enum
@@ -31,7 +33,7 @@ when defined(linux) or defined(nimdoc):
   type
     PSelector* = ref object
       epollFD: cint
-      events: array[64, ptr epoll_event]
+      events: array[64, epoll_event]
       fds: TTable[TSocketHandle, PSelectorKey]
   
   proc createEventStruct(events: set[TEvent], fd: TSocketHandle): epoll_event =
@@ -66,17 +68,25 @@ when defined(linux) or defined(nimdoc):
     var event = createEventStruct(events, fd)
     
     s.fds[fd].events = events
-    echo("About to update")
     if epoll_ctl(s.epollFD, EPOLL_CTL_MOD, fd, addr(event)) != 0:
+      if OSLastError().cint == ENOENT:
+        # Socket has been closed. Epoll automatically removes disconnected
+        # sockets.
+        s.fds.del(fd)
+        osError("Socket has been disconnected")
+        
       OSError(OSLastError())
-    echo("finished updating")
     result = s.fds[fd]
   
   proc unregister*(s: PSelector, fd: TSocketHandle): PSelectorKey {.discardable.} =
     if not s.fds.hasKey(fd):
       raise newException(EInvalidValue, "File descriptor not found.")
     if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fd, nil) != 0:
-      OSError(OSLastError())
+      if osLastError().cint == ENOENT:
+        # Socket has been closed. Epoll automatically removes disconnected
+        # sockets so its already been removed.
+      else:
+        OSError(OSLastError())
     result = s.fds[fd]
     s.fds.del(fd)
 
@@ -92,21 +102,21 @@ when defined(linux) or defined(nimdoc):
     ## on the ``fd``.
     result = @[]
     
-    let evNum = epoll_wait(s.epollFD, s.events[0], 64.cint, timeout.cint)
+    let evNum = epoll_wait(s.epollFD, addr s.events[0], 64.cint, timeout.cint)
     if evNum < 0: OSError(OSLastError())
     if evNum == 0: return @[]
     for i in 0 .. <evNum:
       var evSet: set[TEvent] = {}
       if (s.events[i].events and EPOLLIN) != 0: evSet = evSet + {EvRead}
       if (s.events[i].events and EPOLLOUT) != 0: evSet = evSet + {EvWrite}
-      
       let selectorKey = s.fds[s.events[i].data.fd.TSocketHandle]
+      assert selectorKey != nil
       result.add((selectorKey, evSet))
   
   proc newSelector*(): PSelector =
     new result
     result.epollFD = epoll_create(64)
-    result.events = cast[array[64, ptr epoll_event]](alloc0(sizeof(epoll_event)*64))
+    result.events = cast[array[64, epoll_event]](alloc0(sizeof(epoll_event)*64))
     result.fds = initTable[TSocketHandle, PSelectorKey]()
     if result.epollFD < 0:
       OSError(OSLastError())
