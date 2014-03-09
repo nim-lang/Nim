@@ -181,7 +181,8 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode): PNode =
   of nkStaticExpr:
     var n = prepareNode(cl, n)
     n = reResolveCallsWithTypedescParams(cl, n)
-    result = cl.c.semExpr(cl.c, n)
+    result = if cl.allowMetaTypes: n
+             else: cl.c.semExpr(cl.c, n)
   else:
     var length = sonsLen(n)
     if length > 0:
@@ -341,6 +342,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     result = replaceTypeVarsT(cl, lastSon(t))
 
   of tyFromExpr:
+    if cl.allowMetaTypes: return
     var n = prepareNode(cl, t.n)
     n = cl.c.semConstExpr(cl.c, n)
     if n.typ.kind == tyTypeDesc:

@@ -885,7 +885,7 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
   of nkSym: 
     if r.sym.name.id == field.id: result = r.sym
   else: illFormedAst(n)
-  
+
 proc makeDeref(n: PNode): PNode = 
   var t = skipTypes(n.typ, {tyGenericInst})
   result = n
@@ -898,6 +898,21 @@ proc makeDeref(n: PNode): PNode =
     result = newNodeIT(nkHiddenDeref, n.info, t.sons[0])
     addSon(result, a)
     t = skipTypes(t.sons[0], {tyGenericInst})
+
+proc readTypeParameter(c: PContext, ty: PType,
+                       paramName: PIdent, info: TLineInfo): PNode =
+  internalAssert ty.kind == tyGenericInst
+  let ty = ty.skipGenericAlias
+  let tbody = ty.sons[0]
+  for s in countup(0, tbody.len-2):
+    let tParam = tbody.sons[s]
+    if tParam.sym.name == paramName:
+      let rawTyp = ty.sons[s + 1]
+      if rawTyp.kind == tyStatic:
+        return rawTyp.n
+      else:
+        let foundTyp = makeTypeDesc(c, rawTyp)
+        return newSymNode(copySym(tParam.sym).linkTo(foundTyp), info)
 
 proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   ## returns nil if it's not a built-in field access
@@ -932,18 +947,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
         markUsed(n, f)
         return
     of tyGenericInst:
-      assert ty.sons[0].kind == tyGenericBody
-      let tbody = ty.sons[0]
-      for s in countup(0, tbody.len-2):
-        let tParam = tbody.sons[s]
-        if tParam.sym.name == i:
-          let rawTyp = ty.sons[s + 1]
-          if rawTyp.kind == tyStatic:
-            return rawTyp.n
-          else:
-            let foundTyp = makeTypeDesc(c, rawTyp)
-            return newSymNode(copySym(tParam.sym).linkTo(foundTyp), n.info)
-      return
+      return readTypeParameter(c, ty, i, n.info)
     of tyObject, tyTuple:
       if ty.n.kind == nkRecList:
         for field in ty.n.sons:
@@ -989,6 +993,10 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       n.sons[1] = newSymNode(f)
       n.typ = f.typ
       result = n
+
+  # we didn't find any field, let's look for a generic param
+  if result == nil and n.sons[0].typ.kind == tyGenericInst:
+    result = readTypeParameter(c, n.sons[0].typ, i, n.info)
 
 proc dotTransformation(c: PContext, n: PNode): PNode =
   if isSymChoice(n.sons[1]):
