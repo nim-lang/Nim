@@ -602,15 +602,24 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
     incl(result.flags, tfFinal)
 
 proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
-  if kind == skMacro and param.typ.kind notin {tyTypeDesc, tyStatic}:
-    # within a macro, every param has the type PNimrodNode!
-    # and param.typ.kind in {tyTypeDesc, tyExpr, tyStmt}:
-    let nn = getSysSym"PNimrodNode"
-    var a = copySym(param)
-    a.typ = nn.typ
-    if sfGenSym notin a.flags: addDecl(c, a)
+  template addDecl(x) =
+    if sfGenSym notin x.flags: addDecl(c, x)
+
+  if kind == skMacro:
+    if param.typ.kind == tyTypeDesc:
+      addDecl(param)
+    elif param.typ.kind == tyStatic:
+      var a = copySym(param)
+      a.typ = param.typ.base
+      addDecl(a)
+    else:
+      # within a macro, every param has the type PNimrodNode!
+      let nn = getSysSym"PNimrodNode"
+      var a = copySym(param)
+      a.typ = nn.typ
+      addDecl(a)
   else:
-    if sfGenSym notin param.flags: addDecl(c, param)
+    addDecl(param)
 
 let typedescId = getIdent"typedesc"
 
