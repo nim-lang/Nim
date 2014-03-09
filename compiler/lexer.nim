@@ -110,6 +110,8 @@ type
     fNumber*: BiggestFloat    # the parsed floating point literal
     base*: TNumericalBase     # the numerical base; only valid for int
                               # or float literals
+    strongSpaceA*: int8       # leading spaces of an operator
+    strongSpaceB*: int8       # trailing spaces of an operator
     literal*: string          # the parsed (string) literal; and
                               # documentation comments are here too
     line*, col*: int
@@ -119,6 +121,7 @@ type
     indentAhead*: int         # if > 0 an indendation has already been read
                               # this is needed because scanning comments
                               # needs so much look-ahead
+    strongSpaces*: bool
   
 
 var gLinesCompiled*: int  # all lines that have been compiled
@@ -183,6 +186,7 @@ proc initToken*(L: var TToken) =
   L.tokType = tkInvalid
   L.iNumber = 0
   L.indent = 0
+  L.strongSpaceA = 0
   L.literal = ""
   L.fNumber = 0.0
   L.base = base10
@@ -192,6 +196,7 @@ proc fillToken(L: var TToken) =
   L.tokType = tkInvalid
   L.iNumber = 0
   L.indent = 0
+  L.strongSpaceA = 0
   setLen(L.literal, 0)
   L.fNumber = 0.0
   L.base = base10
@@ -634,6 +639,14 @@ proc getOperator(L: var TLexer, tok: var TToken) =
     h = h !& ord(c)
     inc(pos)
   endOperator(L, tok, pos, h)
+  # advance pos but don't store it in L.bufpos so the next token (which might
+  # be an operator too) gets the preceeding spaces:
+  tok.strongSpaceB = 0
+  while buf[pos] == ' ':
+    inc pos
+    inc tok.strongSpaceB
+  if buf[pos] in {CR, LF, nimlexbase.EndOfFile}:
+    tok.strongSpaceB = -1
 
 proc scanComment(L: var TLexer, tok: var TToken) = 
   var pos = L.bufpos
@@ -677,10 +690,12 @@ proc scanComment(L: var TLexer, tok: var TToken) =
 proc skip(L: var TLexer, tok: var TToken) =
   var pos = L.bufpos
   var buf = L.buf
+  tok.strongSpaceA = 0
   while true:
     case buf[pos]
     of ' ':
       inc(pos)
+      inc(tok.strongSpaceA)
     of Tabulator:
       lexMessagePos(L, errTabulatorsAreNotAllowed, pos)
       inc(pos)
@@ -691,6 +706,7 @@ proc skip(L: var TLexer, tok: var TToken) =
       while buf[pos] == ' ':
         inc(pos)
         inc(indent)
+      tok.strongSpaceA = 0
       if buf[pos] > ' ':
         tok.indent = indent
         break
