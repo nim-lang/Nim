@@ -1,6 +1,6 @@
 discard """
   file: "tstaticparams.nim"
-  output: "abracadabra\ntest\n3\n15"
+  output: "abracadabra\ntest\n3\n15\4"
 """
 
 type 
@@ -41,3 +41,7 @@ type
 var m: AffineTransform3D[float]
 echo high(m)
 
+proc getRows(mtx: Matrix): int =
+  result = mtx.M
+
+echo getRows(m)
