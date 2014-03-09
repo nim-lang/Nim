@@ -1358,7 +1358,7 @@ proc expectString(c: PContext, n: PNode): string =
     localError(n.info, errStringLiteralExpected)
 
 proc getMagicSym(magic: TMagic): PSym =
-  result = newSym(skProc, getIdent($magic), getCurrOwner(), gCodegenLineInfo)
+  result = newSym(skProc, getIdent($magic), systemModule, gCodegenLineInfo)
   result.magic = magic
 
 proc newAnonSym(kind: TSymKind, info: TLineInfo,
