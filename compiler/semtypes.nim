@@ -147,26 +147,35 @@ proc semDistinct(c: PContext, n: PNode, prev: PType): PType =
   else:
     result = newConstraint(c, tyDistinct)
   
-proc semRangeAux(c: PContext, n: PNode, prev: PType): PType = 
+proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
   assert isRange(n)
   checkSonsLen(n, 3)
   result = newOrPrevType(tyRange, prev, c)
   result.n = newNodeI(nkRange, n.info)
-  if (n[1].kind == nkEmpty) or (n[2].kind == nkEmpty): 
+  if (n[1].kind == nkEmpty) or (n[2].kind == nkEmpty):
     localError(n.info, errRangeIsEmpty)
-  var a = semConstExpr(c, n[1])
-  var b = semConstExpr(c, n[2])
-  if not sameType(a.typ, b.typ):
+  
+  var imm: array[2, PNode]
+  imm[0] = semExprWithType(c, n[1], {efDetermineType})
+  imm[1] = semExprWithType(c, n[2], {efDetermineType})
+  
+  if not sameType(imm[0].typ, imm[1].typ):
     localError(n.info, errPureTypeMismatch)
-  elif a.typ.kind notin {tyInt..tyInt64,tyEnum,tyBool,tyChar,
-                         tyFloat..tyFloat128,tyUInt8..tyUInt32}:
+  elif not imm[0].typ.isOrdinalType:
     localError(n.info, errOrdinalTypeExpected)
-  elif enumHasHoles(a.typ): 
-    localError(n.info, errEnumXHasHoles, a.typ.sym.name.s)
-  elif not leValue(a, b): localError(n.info, errRangeIsEmpty)
-  addSon(result.n, a)
-  addSon(result.n, b)
-  addSonSkipIntLit(result, b.typ)
+  elif enumHasHoles(imm[0].typ):
+    localError(n.info, errEnumXHasHoles, imm[0].typ.sym.name.s)
+  
+  for i in 0..1:
+    if hasGenericArguments(imm[i]):
+      result.n.addSon makeStaticExpr(c, imm[i])
+    else:
+      result.n.addSon semConstExpr(c, imm[i])
+ 
+  if weakLeValue(result.n[0], result.n[1]) == impNo:
+    localError(n.info, errRangeIsEmpty)
+
+  addSonSkipIntLit(result, imm[0].typ)
 
 proc semRange(c: PContext, n: PNode, prev: PType): PType =
   result = nil
