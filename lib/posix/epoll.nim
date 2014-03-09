@@ -36,7 +36,7 @@ type
   epoll_data* {.importc: "union epoll_data", 
       header: "<sys/epoll.h>", pure, final.} = object # TODO: This is actually a union.
     #thePtr* {.importc: "ptr".}: pointer
-    fd*: cint # \
+    fd* {.importc: "fd".}: cint # \
     #u32*: uint32
     #u64*: uint64
 
