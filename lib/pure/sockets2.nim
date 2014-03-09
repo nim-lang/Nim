@@ -24,6 +24,10 @@ else:
 export TSocketHandle, TSockaddr_in, TAddrinfo, INADDR_ANY, TSockAddr, TSockLen,
   inet_ntoa, recv, `==`, connect, send, accept
 
+export
+  SO_ERROR,
+  SOL_SOCKET
+
 type
   
   TPort* = distinct uint16  ## port type
@@ -207,6 +211,24 @@ proc htons*(x: int16): int16 =
   ## On machines where the host byte order is the same as network byte
   ## order, this is a no-op; otherwise, it performs a 2-byte swap operation.
   result = sockets2.ntohs(x)
+
+proc getSockOptInt*(socket: TSocketHandle, level, optname: int): int {.
+  tags: [FReadIO].} = 
+  ## getsockopt for integer options.
+  var res: cint
+  var size = sizeof(res).TSocklen
+  if getsockopt(socket, cint(level), cint(optname), 
+                addr(res), addr(size)) < 0'i32:
+    osError(osLastError())
+  result = int(res)
+
+proc setSockOptInt*(socket: TSocketHandle, level, optname, optval: int) {.
+  tags: [FWriteIO].} =
+  ## setsockopt for integer options.
+  var value = cint(optval)
+  if setsockopt(socket, cint(level), cint(optname), addr(value),  
+                sizeof(value).TSocklen) < 0'i32:
+    osError(osLastError())
 
 when defined(Windows):
   var wsa: TWSADATA
