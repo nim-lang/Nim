@@ -473,7 +473,6 @@ else:
 
   proc update(p: PDispatcher, sock: TSocketHandle, events: set[TEvent]) =
     assert sock in p.selector
-    echo("Update: ", events)
     if events == {}:
       discard p.selector.unregister(sock)
     else:
@@ -499,23 +498,25 @@ else:
     for info in p.selector.select(timeout):
       let data = PData(info.key.data)
       assert data.sock == info.key.fd
-      echo("R: ", data.readCBs.len, " W: ", data.writeCBs.len, ". ", info.events)
       
       if EvRead in info.events:
-        var newReadCBs: seq[TCallback] = @[]
-        for cb in data.readCBs:
+        # Callback may add items to ``data.readCBs`` which causes issues if
+        # we are iterating over ``data.readCBs`` at the same time. We therefore
+        # make a copy to iterate over.
+        let currentCBs = data.readCBs
+        data.readCBs = @[]
+        for cb in currentCBs:
           if not cb(data.sock):
             # Callback wants to be called again.
-            newReadCBs.add(cb)
-        data.readCBs = newReadCBs
+            data.readCBs.add(cb)
       
       if EvWrite in info.events:
-        var newWriteCBs: seq[TCallback] = @[]
-        for cb in data.writeCBs:
+        let currentCBs = data.writeCBs
+        data.writeCBs = @[]
+        for cb in currentCBs:
           if not cb(data.sock):
             # Callback wants to be called again.
-            newWriteCBs.add(cb)
-        data.writeCBs = newWriteCBs
+            data.writeCBs.add(cb)
   
       var newEvents: set[TEvent]
       if data.readCBs.len != 0: newEvents = {EvRead}
@@ -615,7 +616,6 @@ else:
           retFuture.complete(0)
     addWrite(p, socket, cb)
     return retFuture
-        
 
   proc acceptAddr*(p: PDispatcher, socket: TSocketHandle): 
       PFuture[tuple[address: string, client: TSocketHandle]] =
@@ -854,7 +854,7 @@ when isMainModule:
   sock.setBlocking false
 
 
-  when false:
+  when true:
     # Await tests
     proc main(p: PDispatcher): PFuture[int] {.async.} =
       discard await p.connect(sock, "irc.freenode.net", TPort(6667))
@@ -880,7 +880,7 @@ when isMainModule:
     
 
   else:
-    when false:
+    when true:
 
       var f = p.connect(sock, "irc.freenode.org", TPort(6667))
       f.callback =
