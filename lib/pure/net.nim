@@ -139,7 +139,7 @@ proc parseIPv4Address(address_str: string): TIpAddress =
   for i in 0 .. high(address_str):
     if address_str[i] in strutils.Digits: # Character is a number
       currentByte = currentByte * 10 + cast[uint16](ord(address_str[i]) - ord('0'))
-      if currentByte > 255'u16: raise new EInvalidValue
+      if currentByte > 255'u16: raise newException(EInvalidValue, "Invalid IP Address")
       seperatorValid = true
     elif address_str[i] == '.': # IPv4 address separator
       if not seperatorValid or byteCount >= 3:
@@ -149,7 +149,7 @@ proc parseIPv4Address(address_str: string): TIpAddress =
       byteCount.inc
       seperatorValid = false
     else:
-      raise new EInvalidValue # Invalid character
+      raise newException(EInvalidValue, "Invalid IP Address") # Invalid character
 
   if byteCount != 3 or not seperatorValid:
     raise new EInvalidValue
@@ -159,7 +159,7 @@ proc parseIPv6Address(address_str: string): TIpAddress =
   ## Parses IPv6 adresses
   ## Raises EInvalidValue on errors
   result.family = IpAddressFamily.IPv6
-  if address_str.len < 2: raise new EInvalidValue
+  if address_str.len < 2: raise newException(EInvalidValue, "Invalid IP Address")
 
   var
     groupCount = 0
@@ -173,26 +173,26 @@ proc parseIPv6Address(address_str: string): TIpAddress =
 
   for i,c in address_str:
     if c == ':':
-      if not seperatorValid: raise new EInvalidValue
+      if not seperatorValid: raise newException(EInvalidValue, "Invalid IP Address")
       if lastWasColon:        
-        if dualColonGroup != -1: raise new EInvalidValue
+        if dualColonGroup != -1: raise newException(EInvalidValue, "Invalid IP Address")
         dualColonGroup = groupCount
         seperatorValid = false
       elif i != 0 and i != high(address_str):
-        if groupCount >= 8: raise new EInvalidValue
+        if groupCount >= 8: raise newException(EInvalidValue, "Invalid IP Address")
         result.address_v6[groupCount*2] = cast[uint8](currentShort shr 8)
         result.address_v6[groupCount*2+1] = cast[uint8](currentShort and 0xFF)
         currentShort = 0
         groupCount.inc()        
         if dualColonGroup != -1: seperatorValid = false
       elif i == 0: # only valid if address starts with ::
-        if address_str[1] != ':': raise new EInvalidValue
+        if address_str[1] != ':': raise newException(EInvalidValue, "Invalid IP Address")
       else: # i == high(address_str) - only valid if address ends with ::
-        if address_str[high(address_str)-1] != ':': raise new EInvalidValue
+        if address_str[high(address_str)-1] != ':': raise newException(EInvalidValue, "Invalid IP Address")
       lastWasColon = true
       currentGroupStart = i + 1
     elif c == '.': # Switch to parse IPv4 mode
-      if i < 3 or not seperatorValid or groupCount >= 7: raise new EInvalidValue
+      if i < 3 or not seperatorValid or groupCount >= 7: raise newException(EInvalidValue, "Invalid IP Address")
       v4StartPos = currentGroupStart
       currentShort = 0
       seperatorValid = false
@@ -204,16 +204,16 @@ proc parseIPv6Address(address_str: string): TIpAddress =
         currentShort = (currentShort shl 4) + cast[uint32](ord(c) - ord('a')) + 10
       else: # Upper case hex
         currentShort = (currentShort shl 4) + cast[uint32](ord(c) - ord('A')) + 10
-      if currentShort > 65535'u32: raise new EInvalidValue
+      if currentShort > 65535'u32: raise newException(EInvalidValue, "Invalid IP Address")
       lastWasColon = false
       seperatorValid = true
     else:
-      raise new EInvalidValue
+      raise newException(EInvalidValue, "Invalid IP Address")
 
 
   if v4StartPos == -1: # Don't parse v4. Copy the remaining v6 stuff
     if seperatorValid: # Copy remaining data
-      if groupCount >= 8: raise new EInvalidValue
+      if groupCount >= 8: raise newException(EInvalidValue, "Invalid IP Address")
       result.address_v6[groupCount*2] = cast[uint8](currentShort shr 8)
       result.address_v6[groupCount*2+1] = cast[uint8](currentShort and 0xFF)
       groupCount.inc()
@@ -221,7 +221,7 @@ proc parseIPv6Address(address_str: string): TIpAddress =
     for i,c in address_str[v4StartPos..high(address_str)]:
       if c in strutils.Digits: # Character is a number
         currentShort = currentShort * 10 + cast[uint32](ord(c) - ord('0'))
-        if currentShort > 255'u32: raise new EInvalidValue
+        if currentShort > 255'u32: raise newException(EInvalidValue, "Invalid IP Address")
         seperatorValid = true
       elif c == '.': # IPv4 address separator
         if not seperatorValid or byteCount >= 3:
@@ -231,7 +231,7 @@ proc parseIPv6Address(address_str: string): TIpAddress =
         byteCount.inc()
         seperatorValid = false
       else: # Invalid character
-        raise new EInvalidValue
+        raise newException(EInvalidValue, "Invalid IP Address")
 
     if byteCount != 3 or not seperatorValid:
       raise new EInvalidValue
@@ -240,23 +240,23 @@ proc parseIPv6Address(address_str: string): TIpAddress =
 
   # Shift and fill zeros in case of ::
   if groupCount > 8:
-    raise new EInvalidValue
+    raise newException(EInvalidValue, "Invalid IP Address")
   elif groupCount < 8: # must fill
-    if dualColonGroup == -1: raise new EInvalidValue
+    if dualColonGroup == -1: raise newException(EInvalidValue, "Invalid IP Address")
     var toFill = 8 - groupCount # The number of groups to fill
     var toShift = groupCount - dualColonGroup # Nr of known groups after ::
     for i in 0..2*toShift-1: # shift
       result.address_v6[15-i] = result.address_v6[groupCount*2-i-1]
     for i in 0..2*toFill-1: # fill with 0s
       result.address_v6[dualColonGroup*2+i] = 0
-  elif dualColonGroup != -1: raise new EInvalidValue
+  elif dualColonGroup != -1: raise newException(EInvalidValue, "Invalid IP Address")
 
 
 proc parseIpAddress*(address_str: string): TIpAddress =
   ## Parses an IP address
   ## Raises EInvalidValue on error
   if address_str == nil:
-    raise new EInvalidValue
+    raise newException(EInvalidValue, "IP Address string is nil")
   if address_str.contains(':'):
     return parseIPv6Address(address_str)
   else:
