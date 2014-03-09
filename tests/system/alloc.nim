@@ -2,44 +2,51 @@ var x: ptr int
 
 x = cast[ptr int](alloc(7))
 assert x != nil
-
-x = alloc(int, 3)
+x = cast[ptr int](x.realloc(2))
 assert x != nil
 x.dealloc()
 
-x = alloc0(int, 4)
+x = createU(int, 3)
+assert x != nil
+x.free()
+
+x = create(int, 4)
 assert cast[ptr array[4, int]](x)[0] == 0
 assert cast[ptr array[4, int]](x)[1] == 0
 assert cast[ptr array[4, int]](x)[2] == 0
 assert cast[ptr array[4, int]](x)[3] == 0
 
-x = cast[ptr int](x.realloc(2))
+x = x.resize(4)
 assert x != nil
-
-x = x.reallocType(4)
-assert x != nil
-x.dealloc()
+x.free()
 
 x = cast[ptr int](allocShared(100))
 assert x != nil
 deallocShared(x)
 
-x = allocShared(int, 3)
+x = createSharedU(int, 3)
 assert x != nil
-x.deallocShared()
+x.freeShared()
 
-x = allocShared0(int, 3)
+x = createShared(int, 3)
 assert x != nil
 assert cast[ptr array[3, int]](x)[0] == 0
 assert cast[ptr array[3, int]](x)[1] == 0
 assert cast[ptr array[3, int]](x)[2] == 0
 
-x = cast[ptr int](reallocShared(x, 2))
 assert x != nil
+x = cast[ptr int](x.resizeShared(2))
+assert x != nil
+x.freeShared()
 
-x = reallocType(x, 12)
+x = create(int, 10)
 assert x != nil
+x = x.resize(12)
+assert x != nil
+x.dealloc()
 
-x = reallocSharedType(x, 1)
+x = createShared(int, 1)
 assert x != nil
-x.deallocShared()
+x = x.resizeShared(1)
+assert x != nil
+x.freeShared()
