@@ -155,27 +155,30 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
   if (n[1].kind == nkEmpty) or (n[2].kind == nkEmpty):
     localError(n.info, errRangeIsEmpty)
   
-  var imm: array[2, PNode]
-  imm[0] = semExprWithType(c, n[1], {efDetermineType})
-  imm[1] = semExprWithType(c, n[2], {efDetermineType})
+  var range: array[2, PNode]
+  range[0] = semExprWithType(c, n[1], {efDetermineType})
+  range[1] = semExprWithType(c, n[2], {efDetermineType})
   
-  if not sameType(imm[0].typ, imm[1].typ):
+  var rangeT: array[2, PType]
+  for i in 0..1: rangeT[i] = range[i].typ.skipTypes({tyStatic}).skipIntLit
+
+  if not sameType(rangeT[0], rangeT[1]):
     localError(n.info, errPureTypeMismatch)
-  elif not imm[0].typ.isOrdinalType:
+  elif not rangeT[0].isOrdinalType:
     localError(n.info, errOrdinalTypeExpected)
-  elif enumHasHoles(imm[0].typ):
-    localError(n.info, errEnumXHasHoles, imm[0].typ.sym.name.s)
+  elif enumHasHoles(rangeT[0]):
+    localError(n.info, errEnumXHasHoles, rangeT[0].sym.name.s)
   
   for i in 0..1:
-    if hasGenericArguments(imm[i]):
-      result.n.addSon makeStaticExpr(c, imm[i])
+    if hasGenericArguments(range[i]):
+      result.n.addSon makeStaticExpr(c, range[i])
     else:
-      result.n.addSon semConstExpr(c, imm[i])
+      result.n.addSon semConstExpr(c, range[i])
  
   if weakLeValue(result.n[0], result.n[1]) == impNo:
     localError(n.info, errRangeIsEmpty)
 
-  addSonSkipIntLit(result, imm[0].typ)
+  addSonSkipIntLit(result, rangeT[0])
 
 proc semRange(c: PContext, n: PNode, prev: PType): PType =
   result = nil
