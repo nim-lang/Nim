@@ -198,7 +198,8 @@ proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
       result = semExprWithType(c, evaluated)
     else:
       result = evaluated
-      semmacrosanity.annotateType(result, eOrig.typ)
+      let expectedType = eOrig.typ.skipTypes({tyStatic})
+      semmacrosanity.annotateType(result, expectedType)
   else:
     result = semExprWithType(c, evaluated)
     #result = fitNode(c, e.typ, result) inlined with special case:
