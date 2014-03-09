@@ -1951,7 +1951,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkBracketExpr:
     checkMinSonsLen(n, 1)
     var s = qualifiedLookUp(c, n.sons[0], {checkUndeclared})
-    if s != nil and s.kind in {skProc, skMethod, skConverter}+skIterators:
+    if (s != nil and s.kind in {skProc, skMethod, skConverter}+skIterators) or
+        n[0].kind in nkSymChoices:
       # type parameters: partial generic specialization
       n.sons[0] = semSymGenericInstantiation(c, n.sons[0], s)
       result = explicitGenericInstantiation(c, n, s)
