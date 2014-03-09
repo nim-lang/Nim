@@ -10,28 +10,31 @@ discard """
 3
 1
 2
-3'''
+3
+aa
+bb
+aa
+bb'''
 """
 
-when false:
-  const s = @[1,2,3]
+const s = @[1,2,3]
 
-  macro foo: stmt =
-    for e in s:
-      echo e
+macro foo: stmt =
+  for e in s:
+    echo e
 
-  foo()
+foo()
 
-  static:
-    for e in s:
-      echo e
+static:
+  for e in s:
+    echo e
 
-  macro bar(x: static[seq[int]]): stmt =
-    for e in x:
-      echo e
+macro bar(x: static[seq[int]]): stmt =
+  for e in x:
+    echo e
 
-  bar s
-  bar(@[1, 2, 3])
+bar s
+bar(@[1, 2, 3])
 
 type
   TData = tuple
@@ -41,9 +44,6 @@ type
 const data: TData = (@["aa", "bb"], @[11, 22])
 
 static:
-  for x in data.letters:
-    echo x
-
   var m = data
   for x in m.letters:
     echo x
