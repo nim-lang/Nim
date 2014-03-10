@@ -314,6 +314,9 @@ static unsigned long nimNaN[2]={0xffffffff, 0x7fffffff};
 #    define INF INFINITY
 #  elif defined(HUGE_VAL)
 #    define INF  HUGE_VAL
+#  elif defined(_MSC_VER)
+#    include <float.h>
+#    define INF (DBL_MAX+DBL_MAX)
 #  else
 #    define INF (1.0 / 0.0)
 #  endif

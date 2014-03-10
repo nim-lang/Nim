@@ -818,6 +818,9 @@ type
     counter*: int
     data*: TObjectSeq
 
+  TImplication* = enum
+    impUnknown, impNo, impYes
+
 # BUGFIX: a module is overloadable so that a proc can have the
 # same name as an imported module. This is necessary because of
 # the poor naming choices in the standard library.
@@ -865,6 +868,7 @@ const
   nkCallKinds* = {nkCall, nkInfix, nkPrefix, nkPostfix,
                   nkCommand, nkCallStrLit, nkHiddenCallConv}
 
+  nkLiterals* = {nkCharLit..nkTripleStrLit}
   nkLambdaKinds* = {nkLambda, nkDo}
   declarativeDefs* = {nkProcDef, nkMethodDef, nkIteratorDef, nkConverterDef}
   procDefs* = nkLambdaKinds + declarativeDefs

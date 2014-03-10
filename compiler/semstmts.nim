@@ -661,10 +661,18 @@ proc semFor(c: PContext, n: PNode): PNode =
   openScope(c)
   n.sons[length-2] = semExprNoDeref(c, n.sons[length-2], {efWantIterator})
   var call = n.sons[length-2]
-  if call.kind in nkCallKinds and call.sons[0].typ.callConv == ccClosure:
+  let isCallExpr = call.kind in nkCallKinds
+  if isCallExpr and call.sons[0].sym.magic != mNone:
+    if call.sons[0].sym.magic == mOmpParFor:
+      result = semForVars(c, n)
+      result.kind = nkParForStmt
+    else:
+      result = semForFields(c, n, call.sons[0].sym.magic)
+  elif (isCallExpr and call.sons[0].typ.callConv == ccClosure) or
+      call.typ.kind == tyIter:
     # first class iterator:
     result = semForVars(c, n)
-  elif call.kind notin nkCallKinds or call.sons[0].kind != nkSym or
+  elif not isCallExpr or call.sons[0].kind != nkSym or
       call.sons[0].sym.kind notin skIterators:
     if length == 3:
       n.sons[length-2] = implicitIterator(c, "items", n.sons[length-2])
@@ -673,12 +681,6 @@ proc semFor(c: PContext, n: PNode): PNode =
     else:
       localError(n.sons[length-2].info, errIteratorExpected)
     result = semForVars(c, n)
-  elif call.sons[0].sym.magic != mNone:
-    if call.sons[0].sym.magic == mOmpParFor:
-      result = semForVars(c, n)
-      result.kind = nkParForStmt
-    else:
-      result = semForFields(c, n, call.sons[0].sym.magic)
   else:
     result = semForVars(c, n)
   # propagate any enforced VoidContext:

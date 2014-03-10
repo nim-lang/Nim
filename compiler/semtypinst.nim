@@ -181,7 +181,8 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode): PNode =
   of nkStaticExpr:
     var n = prepareNode(cl, n)
     n = reResolveCallsWithTypedescParams(cl, n)
-    result = cl.c.semExpr(cl.c, n)
+    result = if cl.allowMetaTypes: n
+             else: cl.c.semExpr(cl.c, n)
   else:
     var length = sonsLen(n)
     if length > 0:
@@ -305,6 +306,11 @@ proc skipIntLiteralParams(t: PType) =
     if skipped != p:
       t.sons[i] = skipped
       if i > 0: t.n.sons[i].sym.typ = skipped
+  
+  # when the typeof operator is used on a static input
+  # param, the results gets infected with static as well:
+  if t.sons[0] != nil and t.sons[0].kind == tyStatic:
+    t.sons[0] = t.sons[0].base
 
 proc propagateFieldFlags(t: PType, n: PNode) =
   # This is meant for objects and tuples
@@ -314,16 +320,15 @@ proc propagateFieldFlags(t: PType, n: PNode) =
   of nkSym:
     propagateToOwner(t, n.sym.typ)
   of nkRecList, nkRecCase, nkOfBranch, nkElse:
-    if n.sons != nil:
-      for son in n.sons:
-        propagateFieldFlags(t, son)
+    for son in n:
+      propagateFieldFlags(t, son)
   else: discard
 
 proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   result = t
   if t == nil: return
 
-  if t.kind in {tyStatic, tyGenericParam} + tyTypeClasses:
+  if t.kind in {tyStatic, tyGenericParam, tyIter} + tyTypeClasses:
     let lookup = PType(idTableGet(cl.typeMap, t))
     if lookup != nil: return lookup
   
@@ -336,6 +341,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     result = replaceTypeVarsT(cl, lastSon(t))
 
   of tyFromExpr:
+    if cl.allowMetaTypes: return
     var n = prepareNode(cl, t.n)
     n = cl.c.semConstExpr(cl.c, n)
     if n.typ.kind == tyTypeDesc:
