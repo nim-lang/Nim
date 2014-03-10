@@ -50,7 +50,7 @@ proc strTableGet*(t: TStrTable, name: PIdent): PSym
 type 
   TTabIter*{.final.} = object # consider all fields here private
     h*: THash                 # current hash
-  
+
 proc initTabIter*(ti: var TTabIter, tab: TStrTable): PSym
 proc nextIter*(ti: var TTabIter, tab: TStrTable): PSym
   # usage:
@@ -156,6 +156,12 @@ proc leValue*(a, b: PNode): bool =
     # don't raise an internal error for 'nimrod check':
     #InternalError(a.info, "leValue")
     discard
+
+proc weakLeValue*(a, b: PNode): TImplication =
+  if a.kind notin nkLiterals or b.kind notin nkLiterals:
+    result = impUnknown
+  else:
+    result = if leValue(a, b): impYes else: impNo
 
 proc lookupInRecord(n: PNode, field: PIdent): PSym = 
   result = nil

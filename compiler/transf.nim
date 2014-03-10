@@ -425,7 +425,7 @@ proc findWrongOwners(c: PTransf, n: PNode) =
         x.sym.owner.name.s & " " & getCurrOwner(c).name.s)
   else:
     for i in 0 .. <safeLen(n): findWrongOwners(c, n.sons[i])
-  
+
 proc transformFor(c: PTransf, n: PNode): PTransNode = 
   # generate access statements for the parameters (unless they are constant)
   # put mapping from formal parameters to actual parameters
@@ -433,12 +433,13 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
 
   var length = sonsLen(n)
   var call = n.sons[length - 2]
-  if call.kind notin nkCallKinds or call.sons[0].kind != nkSym or 
-      call.sons[0].sym.kind != skIterator:
+  if call.typ.kind != tyIter and
+    (call.kind notin nkCallKinds or call.sons[0].kind != nkSym or 
+      call.sons[0].sym.kind != skIterator):
     n.sons[length-1] = transformLoopBody(c, n.sons[length-1]).PNode
     return lambdalifting.liftForLoop(n).PTransNode
     #InternalError(call.info, "transformFor")
-
+  
   #echo "transforming: ", renderTree(n)
   result = newTransNode(nkStmtList, n.info, 0)
   var loopBody = transformLoopBody(c, n.sons[length-1])
@@ -459,6 +460,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   for i in countup(1, sonsLen(call) - 1): 
     var arg = transform(c, call.sons[i]).PNode
     var formal = skipTypes(iter.typ, abstractInst).n.sons[i].sym 
+    if arg.typ.kind == tyIter: continue
     case putArgInto(arg, formal.typ)
     of paDirectMapping: 
       idNodeTablePut(newC.mapping, formal, arg)
@@ -480,7 +482,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   dec(c.inlining)
   popInfoContext()
   popTransCon(c)
-  #echo "transformed: ", renderTree(n)
+  # echo "transformed: ", result.PNode.renderTree
   
 proc getMagicOp(call: PNode): TMagic = 
   if call.sons[0].kind == nkSym and

@@ -15,16 +15,24 @@ const
 var clientCount = 0
 
 proc sendMessages(disp: PDispatcher, client: TSocketHandle): PFuture[int] {.async.} =
+  echo("entering sendMessages")
   for i in 0 .. <messagesToSend:
-    discard await disp.send(client, "Message " & $i & "\c\L") 
+    discard await disp.send(client, "Message " & $i & "\c\L")
+  echo("returning sendMessages")
 
 proc launchSwarm(disp: PDispatcher, port: TPort): PFuture[int] {.async.} =
   for i in 0 .. <swarmSize:
     var sock = socket()
+    # TODO: We may need to explicitly register and unregister the fd.
+    # This is because when the socket is closed, selectors is not aware
+    # that it has been closed. While epoll is. Perhaps we should just unregister
+    # in close()?
+    echo(sock.cint)
     #disp.register(sock)
     discard await disp.connect(sock, "localhost", port)
     when true:
       discard await sendMessages(disp, sock)
+      echo("Calling close")
       sock.close()
     else:
       # Issue #932: https://github.com/Araq/Nimrod/issues/932

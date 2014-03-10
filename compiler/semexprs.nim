@@ -885,7 +885,7 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
   of nkSym: 
     if r.sym.name.id == field.id: result = r.sym
   else: illFormedAst(n)
-  
+
 proc makeDeref(n: PNode): PNode = 
   var t = skipTypes(n.typ, {tyGenericInst})
   result = n
@@ -898,6 +898,21 @@ proc makeDeref(n: PNode): PNode =
     result = newNodeIT(nkHiddenDeref, n.info, t.sons[0])
     addSon(result, a)
     t = skipTypes(t.sons[0], {tyGenericInst})
+
+proc readTypeParameter(c: PContext, ty: PType,
+                       paramName: PIdent, info: TLineInfo): PNode =
+  internalAssert ty.kind == tyGenericInst
+  let ty = ty.skipGenericAlias
+  let tbody = ty.sons[0]
+  for s in countup(0, tbody.len-2):
+    let tParam = tbody.sons[s]
+    if tParam.sym.name == paramName:
+      let rawTyp = ty.sons[s + 1]
+      if rawTyp.kind == tyStatic:
+        return rawTyp.n
+      else:
+        let foundTyp = makeTypeDesc(c, rawTyp)
+        return newSymNode(copySym(tParam.sym).linkTo(foundTyp), info)
 
 proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   ## returns nil if it's not a built-in field access
@@ -916,7 +931,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var ty = n.sons[0].typ
   var f: PSym = nil
   result = nil
-  if isTypeExpr(n.sons[0]) or ty.kind == tyTypeDesc and ty.base.kind != tyNone:
+  if isTypeExpr(n.sons[0]) or (ty.kind == tyTypeDesc and ty.base.kind != tyNone):
     if ty.kind == tyTypeDesc: ty = ty.base
     case ty.kind
     of tyEnum:
@@ -925,28 +940,17 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
         f = getSymFromList(ty.n, i)
         if f != nil: break 
         ty = ty.sons[0]         # enum inheritance
-      if f != nil: 
+      if f != nil:
         result = newSymNode(f)
         result.info = n.info
         result.typ = ty
         markUsed(n, f)
         return
     of tyGenericInst:
-      assert ty.sons[0].kind == tyGenericBody
-      let tbody = ty.sons[0]
-      for s in countup(0, tbody.len-2):
-        let tParam = tbody.sons[s]
-        if tParam.sym.name == i:
-          let rawTyp = ty.sons[s + 1]
-          if rawTyp.kind == tyStatic:
-            return rawTyp.n
-          else:
-            let foundTyp = makeTypeDesc(c, rawTyp)
-            return newSymNode(copySym(tParam.sym).linkTo(foundTyp), n.info)
-      return
+      return readTypeParameter(c, ty, i, n.info)
     of tyObject, tyTuple:
       if ty.n.kind == nkRecList:
-        for field in ty.n.sons:
+        for field in ty.n:
           if field.sym.name == i:
             n.typ = newTypeWithSons(c, tyFieldAccessor, @[ty, field.sym.typ])
             n.typ.n = copyTree(n)
@@ -958,6 +962,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # XXX: This is probably not relevant any more
     # reset to prevent 'nil' bug: see "tests/reject/tenumitems.nim":
     ty = n.sons[0].typ
+    return nil
     
   ty = skipTypes(ty, {tyGenericInst, tyVar, tyPtr, tyRef})
   var check: PNode = nil
@@ -989,6 +994,10 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       n.sons[1] = newSymNode(f)
       n.typ = f.typ
       result = n
+
+  # we didn't find any field, let's look for a generic param
+  if result == nil and n.sons[0].typ.kind == tyGenericInst:
+    result = readTypeParameter(c, n.sons[0].typ, i, n.info)
 
 proc dotTransformation(c: PContext, n: PNode): PNode =
   if isSymChoice(n.sons[1]):
@@ -1119,6 +1128,9 @@ proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
       n.sons[0] = x # 'result[]' --> 'result'
       n.sons[1] = takeImplicitAddr(c, ri)
 
+template resultTypeIsInferrable(typ: PType): expr =
+  typ.isMetaType and typ.kind != tyTypeDesc
+
 proc semAsgn(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 2)
   var a = n.sons[0]
@@ -1170,7 +1182,7 @@ proc semAsgn(c: PContext, n: PNode): PNode =
         if lhsIsResult: {efAllowDestructor} else: {})
     if lhsIsResult:
       n.typ = enforceVoidContext
-      if lhs.sym.typ.isMetaType and lhs.sym.typ.kind != tyTypeDesc:
+      if resultTypeIsInferrable(lhs.sym.typ):
         if cmpTypes(c, lhs.typ, rhs.typ) == isGeneric:
           internalAssert c.p.resultSym != nil
           lhs.typ = rhs.typ
@@ -1259,12 +1271,21 @@ proc semYield(c: PContext, n: PNode): PNode =
     localError(n.info, errYieldNotAllowedInTryStmt)
   elif n.sons[0].kind != nkEmpty:
     n.sons[0] = semExprWithType(c, n.sons[0]) # check for type compatibility:
-    var restype = c.p.owner.typ.sons[0]
+    var iterType = c.p.owner.typ
+    var restype = iterType.sons[0]
     if restype != nil:
       let adjustedRes = if c.p.owner.kind == skIterator: restype.base
                         else: restype
       n.sons[0] = fitNode(c, adjustedRes, n.sons[0])
       if n.sons[0].typ == nil: internalError(n.info, "semYield")
+      
+      if resultTypeIsInferrable(adjustedRes):
+        let inferred = n.sons[0].typ
+        if c.p.owner.kind == skIterator:
+          iterType.sons[0].sons[0] = inferred
+        else:
+          iterType.sons[0] = inferred
+      
       semYieldVarResult(c, n, adjustedRes)
     else:
       localError(n.info, errCannotReturnExpr)
@@ -1346,7 +1367,7 @@ proc expectString(c: PContext, n: PNode): string =
     localError(n.info, errStringLiteralExpected)
 
 proc getMagicSym(magic: TMagic): PSym =
-  result = newSym(skProc, getIdent($magic), getCurrOwner(), gCodegenLineInfo)
+  result = newSym(skProc, getIdent($magic), systemModule, gCodegenLineInfo)
   result.magic = magic
 
 proc newAnonSym(kind: TSymKind, info: TLineInfo,
@@ -1939,7 +1960,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkBracketExpr:
     checkMinSonsLen(n, 1)
     var s = qualifiedLookUp(c, n.sons[0], {checkUndeclared})
-    if s != nil and s.kind in {skProc, skMethod, skConverter}+skIterators:
+    if (s != nil and s.kind in {skProc, skMethod, skConverter}+skIterators) or
+        n[0].kind in nkSymChoices:
       # type parameters: partial generic specialization
       n.sons[0] = semSymGenericInstantiation(c, n.sons[0], s)
       result = explicitGenericInstantiation(c, n, s)

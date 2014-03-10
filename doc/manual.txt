@@ -2875,7 +2875,6 @@ as there are components in the tuple. The i'th iteration variable's type is
 the type of the i'th component. In other words, implicit tuple unpacking in a 
 for loop context is supported.
 
-
 Implict items/pairs invocations
 -------------------------------
 
@@ -2900,10 +2899,11 @@ First class iterators
 There are 2 kinds of iterators in Nimrod: *inline* and *closure* iterators.
 An `inline iterator`:idx: is an iterator that's always inlined by the compiler 
 leading to zero overhead for the abstraction, but may result in a heavy
-increase in code size. Inline iterators are second class
-citizens; one cannot pass them around like first class procs.
+increase in code size. Inline iterators are second class citizens;
+They can be passed as parameters only to other inlining code facilities like
+templates, macros and other inline iterators.
 
-In contrast to that, a `closure iterator`:idx: can be passed around:
+In contrast to that, a `closure iterator`:idx: can be passed around more freely:
 
 .. code-block:: nimrod
   iterator count0(): int {.closure.} =
@@ -2926,9 +2926,7 @@ Closure iterators have other restrictions than inline iterators:
 1. ``yield`` in a closure iterator can not occur in a ``try`` statement.
 2. For now, a closure iterator cannot be evaluated at compile time.
 3. ``return`` is allowed in a closure iterator (but rarely useful).
-4. Since closure iterators can be used as a collaborative tasking
-   system, ``void`` is a valid return type for them.
-5. Both inline and closure iterators cannot be recursive.
+4. Both inline and closure iterators cannot be recursive.
 
 Iterators that are neither marked ``{.closure.}`` nor ``{.inline.}`` explicitly
 default to being inline, but that this may change in future versions of the
@@ -2989,6 +2987,14 @@ parameters of an outer factory proc:
 
   for f in foo():
     echo f
+
+Implicit return type
+--------------------
+
+Since inline interators must always produce values that will be consumed in
+a for loop, the compiler will implicity use the ``auto`` return type if no
+type is given by the user. In contrast, since closure iterators can be used
+as a collaborative tasking system, ``void`` is a valid return type for them.
 
 
 Type sections
@@ -4069,8 +4075,8 @@ Static params can also appear in the signatures of generic types:
     AffineTransform2D[T] = Matrix[3, 3, T]
     AffineTransform3D[T] = Matrix[4, 4, T]
 
-  AffineTransform3D[float]  # OK
-  AffineTransform2D[string] # Error, `string` is not a `Number`
+  var m1: AffineTransform3D[float]  # OK
+  var m2: AffineTransform2D[string] # Error, `string` is not a `Number`
 
 
 typedesc
