@@ -1291,7 +1291,7 @@ proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
 proc propagateToOwner*(owner, elem: PType) =
   const HaveTheirOwnEmpty = {tySequence, tySet}
   owner.flags = owner.flags + (elem.flags * {tfHasShared, tfHasMeta,
-                                             tfHasStatic, tfHasGCedMem})
+                                             tfHasGCedMem})
   if tfNotNil in elem.flags:
     if owner.kind in {tyGenericInst, tyGenericBody, tyGenericInvokation}:
       owner.flags.incl tfNotNil
@@ -1307,9 +1307,6 @@ proc propagateToOwner*(owner, elem: PType) =
 
   if elem.kind in tyMetaTypes:
     owner.flags.incl tfHasMeta
-
-  if elem.kind == tyStatic:
-    owner.flags.incl tfHasStatic
 
   if elem.kind in {tyString, tyRef, tySequence} or
       elem.kind == tyProc and elem.callConv == ccClosure:
