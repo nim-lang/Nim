@@ -606,7 +606,8 @@ elif not defined(useNimRtl):
     optionPoParentStreams: bool
     optionPoStdErrToStdOut: bool
 
-  proc startProcessAuxSpawn(data: TStartProcessData): TPid {.tags: [FExecIO, FReadEnv].}
+  when not defined(useFork):
+    proc startProcessAuxSpawn(data: TStartProcessData): TPid {.tags: [FExecIO, FReadEnv].}
   proc startProcessAuxFork(data: TStartProcessData): TPid {.tags: [FExecIO, FReadEnv].}
   {.push stacktrace: off, profiler: off.}
   proc startProcessAfterFork(data: ptr TStartProcessData) {.
@@ -664,7 +665,8 @@ elif not defined(useNimRtl):
     data.workingDir = workingDir
 
 
-    when defined(posix_spawn) and not defined(useFork) and not defined(useClone) and not defined(linux):
+    when defined(posix_spawn) and not defined(useFork) and 
+        not defined(useClone) and not defined(linux):
       pid = startProcessAuxSpawn(data)
     else:
       pid = startProcessAuxFork(data)
@@ -694,55 +696,56 @@ elif not defined(useNimRtl):
       discard close(pStdin[readIdx])
       discard close(pStdout[writeIdx])
 
-  proc startProcessAuxSpawn(data: TStartProcessData): TPid =
-    var attr: Tposix_spawnattr
-    var fops: Tposix_spawn_file_actions
+  when not defined(useFork):
+    proc startProcessAuxSpawn(data: TStartProcessData): TPid =
+      var attr: Tposix_spawnattr
+      var fops: Tposix_spawn_file_actions
 
-    template chck(e: expr) =
-      if e != 0'i32: osError(osLastError())
+      template chck(e: expr) =
+        if e != 0'i32: osError(osLastError())
 
-    chck posix_spawn_file_actions_init(fops)
-    chck posix_spawnattr_init(attr)
+      chck posix_spawn_file_actions_init(fops)
+      chck posix_spawnattr_init(attr)
 
-    var mask: Tsigset
-    chck sigemptyset(mask)
-    chck posix_spawnattr_setsigmask(attr, mask)
-    chck posix_spawnattr_setpgroup(attr, 0'i32)
+      var mask: Tsigset
+      chck sigemptyset(mask)
+      chck posix_spawnattr_setsigmask(attr, mask)
+      chck posix_spawnattr_setpgroup(attr, 0'i32)
 
-    chck posix_spawnattr_setflags(attr, POSIX_SPAWN_USEVFORK or
-                                        POSIX_SPAWN_SETSIGMASK or
-                                        POSIX_SPAWN_SETPGROUP)
+      chck posix_spawnattr_setflags(attr, POSIX_SPAWN_USEVFORK or
+                                          POSIX_SPAWN_SETSIGMASK or
+                                          POSIX_SPAWN_SETPGROUP)
 
-    if not data.optionPoParentStreams:
-      chck posix_spawn_file_actions_addclose(fops, data.pStdin[writeIdx])
-      chck posix_spawn_file_actions_adddup2(fops, data.pStdin[readIdx], readIdx)
-      chck posix_spawn_file_actions_addclose(fops, data.pStdout[readIdx])
-      chck posix_spawn_file_actions_adddup2(fops, data.pStdout[writeIdx], writeIdx)
-      chck posix_spawn_file_actions_addclose(fops, data.pStderr[readIdx])
-      if data.optionPoStdErrToStdOut:
-        chck posix_spawn_file_actions_adddup2(fops, data.pStdout[writeIdx], 2)
+      if not data.optionPoParentStreams:
+        chck posix_spawn_file_actions_addclose(fops, data.pStdin[writeIdx])
+        chck posix_spawn_file_actions_adddup2(fops, data.pStdin[readIdx], readIdx)
+        chck posix_spawn_file_actions_addclose(fops, data.pStdout[readIdx])
+        chck posix_spawn_file_actions_adddup2(fops, data.pStdout[writeIdx], writeIdx)
+        chck posix_spawn_file_actions_addclose(fops, data.pStderr[readIdx])
+        if data.optionPoStdErrToStdOut:
+          chck posix_spawn_file_actions_adddup2(fops, data.pStdout[writeIdx], 2)
+        else:
+          chck posix_spawn_file_actions_adddup2(fops, data.pStderr[writeIdx], 2)
+
+      var res: cint
+      # FIXME: chdir is global to process
+      if data.workingDir.len > 0:
+        setCurrentDir($data.workingDir)
+      var pid: TPid
+
+      if data.optionPoUsePath:
+        res = posix_spawnp(pid, data.sysCommand, fops, attr, data.sysArgs, data.sysEnv)
       else:
-        chck posix_spawn_file_actions_adddup2(fops, data.pStderr[writeIdx], 2)
+        res = posix_spawn(pid, data.sysCommand, fops, attr, data.sysArgs, data.sysEnv)
 
-    var res: cint
-    # FIXME: chdir is global to process
-    if data.workingDir.len > 0:
-      setCurrentDir($data.workingDir)
-    var pid: TPid
-
-    if data.optionPoUsePath:
-      res = posix_spawnp(pid, data.sysCommand, fops, attr, data.sysArgs, data.sysEnv)
-    else:
-      res = posix_spawn(pid, data.sysCommand, fops, attr, data.sysArgs, data.sysEnv)
-
-    discard posix_spawn_file_actions_destroy(fops)
-    discard posix_spawnattr_destroy(attr)
-    chck res
-    return pid
+      discard posix_spawn_file_actions_destroy(fops)
+      discard posix_spawnattr_destroy(attr)
+      chck res
+      return pid
 
   proc startProcessAuxFork(data: TStartProcessData): TPid =
     if pipe(data.pErrorPipe) != 0:
-        osError(osLastError())
+      osError(osLastError())
 
     finally:
       discard close(data.pErrorPipe[readIdx])
