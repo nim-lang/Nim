@@ -219,14 +219,26 @@ proc tryConstExpr(c: PContext, n: PNode): PNode =
   result = getConstExpr(c.module, e)
   if result != nil: return
 
+  let oldErrorCount = msgs.gErrorCounter
+  let oldErrorMax = msgs.gErrorMax
+  let oldErrorOutputs = errorOutputs
+
+  errorOutputs = {}
+  msgs.gErrorMax = high(int)
+
   try:
     result = evalConstExpr(c.module, e)
     if result == nil or result.kind == nkEmpty:
-      return nil
+      result = nil
+    else:
+      result = fixupTypeAfterEval(c, result, e)
 
-    result = fixupTypeAfterEval(c, result, e)
   except ERecoverableError:
-    return nil
+    result = nil
+
+  msgs.gErrorCounter = oldErrorCount
+  msgs.gErrorMax = oldErrorMax
+  errorOutputs = oldErrorOutputs
 
 proc semConstExpr(c: PContext, n: PNode): PNode =
   var e = semExprWithType(c, n)
