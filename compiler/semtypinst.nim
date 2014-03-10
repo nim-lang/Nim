@@ -320,9 +320,8 @@ proc propagateFieldFlags(t: PType, n: PNode) =
   of nkSym:
     propagateToOwner(t, n.sym.typ)
   of nkRecList, nkRecCase, nkOfBranch, nkElse:
-    if n.sons != nil:
-      for son in n.sons:
-        propagateFieldFlags(t, son)
+    for son in n:
+      propagateFieldFlags(t, son)
   else: discard
 
 proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =

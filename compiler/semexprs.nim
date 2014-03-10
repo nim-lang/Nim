@@ -931,7 +931,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var ty = n.sons[0].typ
   var f: PSym = nil
   result = nil
-  if isTypeExpr(n.sons[0]) or ty.kind == tyTypeDesc and ty.base.kind != tyNone:
+  if isTypeExpr(n.sons[0]) or (ty.kind == tyTypeDesc and ty.base.kind != tyNone):
     if ty.kind == tyTypeDesc: ty = ty.base
     case ty.kind
     of tyEnum:
@@ -940,7 +940,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
         f = getSymFromList(ty.n, i)
         if f != nil: break 
         ty = ty.sons[0]         # enum inheritance
-      if f != nil: 
+      if f != nil:
         result = newSymNode(f)
         result.info = n.info
         result.typ = ty
@@ -950,7 +950,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       return readTypeParameter(c, ty, i, n.info)
     of tyObject, tyTuple:
       if ty.n.kind == nkRecList:
-        for field in ty.n.sons:
+        for field in ty.n:
           if field.sym.name == i:
             n.typ = newTypeWithSons(c, tyFieldAccessor, @[ty, field.sym.typ])
             n.typ.n = copyTree(n)
@@ -962,6 +962,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # XXX: This is probably not relevant any more
     # reset to prevent 'nil' bug: see "tests/reject/tenumitems.nim":
     ty = n.sons[0].typ
+    return nil
     
   ty = skipTypes(ty, {tyGenericInst, tyVar, tyPtr, tyRef})
   var check: PNode = nil
