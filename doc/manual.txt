@@ -79,8 +79,21 @@ program execution. Unless explicitly classified, an error is a static error.
 
 A `checked runtime error`:idx: is an error that the implementation detects
 and reports at runtime. The method for reporting such errors is via *raising
-exceptions*. However, the implementation provides a means to disable these
-runtime checks. See the section pragmas_ for details.
+exceptions* or *dying with a fatal error*. However, the implementation 
+provides a means to disable these runtime checks. See the section pragmas_
+for details. 
+
+Wether a checked runtime error results in an exception or in a fatal error at
+runtime is implementation specific. Thus the following program is always
+invalid:
+
+.. code-block:: nimrod
+  var a: array[0..1, char]
+  let i = 5
+  try:
+    a[i] = 'N'
+  except EInvalidIndex:
+    echo "invalid index"
 
 An `unchecked runtime error`:idx: is an error that is not guaranteed to be
 detected, and can cause the subsequent behavior of the computation to
@@ -522,7 +535,7 @@ Strong spaces
 The number of spaces preceeding a non-keyword operator affects precedence
 if the experimental parser directive ``#!strongSpaces`` is used. Indentation
 is not used to determine the number of spaces. If 2 or more operators have the
-same number of preceeding spaces the precedence table applies, so ``1 + 3 * 4``
+same number of preceding spaces the precedence table applies, so ``1 + 3 * 4``
 is still parsed as ``1 + (3 * 4)``, but ``1+3 * 4`` is parsed as ``(1+3) * 4``:
 
 .. code-block:: nimrod
@@ -3481,7 +3494,7 @@ Declarative type classes are written in the following form:
       c.len is ordinal
       items(c) is iterator
       for value in c:
-        value.type is T
+        type(value) is T
 
 The type class will be matched if:
 
