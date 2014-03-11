@@ -260,11 +260,12 @@ proc osError*(errorCode: TOSErrorCode) =
   ##
   ## If the error code is ``0`` or an error message could not be retrieved,
   ## the message ``unknown OS error`` will be used.
-  let msg = osErrorMsg(errorCode)
-  if msg == "":
-    raise newException(EOS, "unknown OS error")
-  else:
-    raise newException(EOS, msg)
+  var e: ref EOS; new(e)
+  e.errorCode = errorCode.int32
+  e.msg = osErrorMsg(errorCode)
+  if e.msg == "":
+    e.msg = "unknown OS error"
+  raise e
 
 {.push stackTrace:off.}
 proc osLastError*(): TOSErrorCode =
