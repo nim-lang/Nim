@@ -132,6 +132,7 @@ when defined(windows) or defined(nimdoc):
                               cast[TCompletionKey](sock), 1) == 0:
       OSError(OSLastError())
     p.handles.incl(sock)
+    # TODO: fd closure detection, we need to remove the fd from handles set
 
   proc verifyPresence(p: PDispatcher, sock: TSocketHandle) =
     ## Ensures that socket has been registered with the dispatcher.
@@ -471,7 +472,7 @@ when defined(windows) or defined(nimdoc):
                typ: TType = SOCK_STREAM,
                protocol: TProtocol = IPPROTO_TCP): TSocketHandle =
     ## Creates a new socket and registers it with the dispatcher implicitly.
-    result = socket()
+    result = socket(domain, typ, protocol)
     disp.register(result)
 
   initAll()
@@ -495,28 +496,29 @@ else:
 
   proc update(p: PDispatcher, sock: TSocketHandle, events: set[TEvent]) =
     assert sock in p.selector
-    if events == {}:
-      discard p.selector.unregister(sock)
-    else:
-      discard p.selector.update(sock, events)
+    discard p.selector.update(sock, events)
+
+  proc register(p: PDispatcher, sock: TSocketHandle) =
+    var data = PData(sock: sock, readCBs: @[], writeCBs: @[])
+    p.selector.register(sock, {}, data.PObject)
+
+  proc socket*(disp: PDispatcher, domain: TDomain = AF_INET,
+               typ: TType = SOCK_STREAM,
+               protocol: TProtocol = IPPROTO_TCP): TSocketHandle =
+    result = socket(domain, typ, protocol)
+    disp.register(result)
   
   proc addRead(p: PDispatcher, sock: TSocketHandle, cb: TCallback) =
-    #echo("addRead")
     if sock notin p.selector:
-      var data = PData(sock: sock, readCBs: @[cb], writeCBs: @[])
-      p.selector.register(sock, {EvRead}, data.PObject)
-      #echo("registered")
-    else:
-      p.selector[sock].data.PData.readCBs.add(cb)
-      p.update(sock, p.selector[sock].events + {EvRead})
+      raise newException(EInvalidValue, "File descriptor not registered.")
+    p.selector[sock].data.PData.readCBs.add(cb)
+    p.update(sock, p.selector[sock].events + {EvRead})
   
   proc addWrite(p: PDispatcher, sock: TSocketHandle, cb: TCallback) =
     if sock notin p.selector:
-      var data = PData(sock: sock, readCBs: @[], writeCBs: @[cb])
-      p.selector.register(sock, {EvWrite}, data.PObject)
-    else:
-      p.selector[sock].data.PData.writeCBs.add(cb)
-      p.update(sock, p.selector[sock].events + {EvWrite})
+      raise newException(EInvalidValue, "File descriptor not registered.")
+    p.selector[sock].data.PData.writeCBs.add(cb)
+    p.update(sock, p.selector[sock].events + {EvWrite})
   
   proc poll*(p: PDispatcher, timeout = 500) =
     for info in p.selector.select(timeout):
@@ -667,6 +669,7 @@ else:
         else:
           retFuture.fail(newException(EOS, osErrorMsg(lastError)))
       else:
+        p.register(client)
         retFuture.complete(($inet_ntoa(sockAddress.sin_addr), client))
     addRead(p, socket, cb)
     return retFuture
