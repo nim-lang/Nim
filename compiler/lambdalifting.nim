@@ -388,8 +388,17 @@ proc gatherVars(o: POuterContext, i: PInnerContext, n: PNode) =
       # call to some other inner proc; we need to track the dependencies for
       # this:
       let env = PEnv(idTableGet(o.lambdasToEnv, i.fn))
-      if env == nil: internalError(n.info, "no environment computed")
-      if o.currentEnv != env:
+      if env == nil:
+        var needParam = false
+        for k, v in idTablePairs(o.lambdasToEnv):
+          if k == s:
+            idTablePut(o.lambdasToEnv, i.fn, v)
+            needParam = true
+        if needParam and i.closureParam == nil:
+          addClosureParam(i, o.currentEnv)
+          i.fn.typ.callConv = ccClosure
+          incl(i.fn.typ.flags, tfCapturesEnv)
+      elif o.currentEnv != env:
         discard addDep(o.currentEnv, env, i.fn)
         internalError(n.info, "too complex environment handling required")
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkClosure: discard
