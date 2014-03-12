@@ -20,7 +20,7 @@ proc sendMessages(disp: PDispatcher, client: TSocketHandle): PFuture[int] {.asyn
 
 proc launchSwarm(disp: PDispatcher, port: TPort): PFuture[int] {.async.} =
   for i in 0 .. <swarmSize:
-    var sock = socket()
+    var sock = disp.socket()
 
     #disp.register(sock)
     discard await disp.connect(sock, "localhost", port)
@@ -48,7 +48,7 @@ proc readMessages(disp: PDispatcher, client: TSocketHandle): PFuture[int] {.asyn
         doAssert false
 
 proc createServer(disp: PDispatcher, port: TPort): PFuture[int] {.async.} =
-  var server = socket()
+  var server = disp.socket()
   #disp.register(server)
   server.bindAddr(port)
   server.listen()
