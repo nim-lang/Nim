@@ -145,33 +145,6 @@ proc atEndMark(buf: cstring, pos: int): bool =
   while s < NimMergeEndMark.len and buf[pos+s] == NimMergeEndMark[s]: inc s
   result = s == NimMergeEndMark.len
 
-when false:
-  proc readVerbatimSection(L: var TBaseLexer): PRope = 
-    var pos = L.bufpos
-    var buf = L.buf
-    result = newMutableRope(30_000)
-    while true:
-      case buf[pos]
-      of CR:
-        pos = nimlexbase.HandleCR(L, pos)
-        buf = L.buf
-        result.data.add(tnl)
-      of LF:
-        pos = nimlexbase.HandleLF(L, pos)
-        buf = L.buf
-        result.data.add(tnl)
-      of '\0':
-        InternalError("ccgmerge: expected: " & NimMergeEndMark)
-        break
-      else: 
-        if atEndMark(buf, pos):
-          inc pos, NimMergeEndMark.len
-          break
-        result.data.add(buf[pos])
-        inc pos
-    L.bufpos = pos
-    freezeMutableRope(result)
-
 proc readVerbatimSection(L: var TBaseLexer): PRope = 
   var pos = L.bufpos
   var buf = L.buf

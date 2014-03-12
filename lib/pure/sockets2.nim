@@ -17,13 +17,16 @@ when hostos == "solaris":
 
 when defined(Windows):
   import winlean
-  export ioctlsocket
 else:
   import posix
   export fcntl, F_GETFL, O_NONBLOCK, F_SETFL
 
 export TSocketHandle, TSockaddr_in, TAddrinfo, INADDR_ANY, TSockAddr, TSockLen,
   inet_ntoa, recv, `==`, connect, send, accept
+
+export
+  SO_ERROR,
+  SOL_SOCKET
 
 type
   
@@ -66,6 +69,16 @@ type
 when defined(windows):
   let
     osInvalidSocket* = winlean.INVALID_SOCKET
+
+  const
+    IOCPARM_MASK* = 127
+    IOC_IN* = int(-2147483648)
+    FIONBIO* = IOC_IN.int32 or ((sizeof(int32) and IOCPARM_MASK) shl 16) or 
+                             (102 shl 8) or 126
+
+  proc ioctlsocket*(s: TSocketHandle, cmd: clong, 
+                   argptr: ptr clong): cint {.
+                   stdcall, importc: "ioctlsocket", dynlib: "ws2_32.dll".}
 else:
   let
     osInvalidSocket* = posix.INVALID_SOCKET
@@ -198,6 +211,24 @@ proc htons*(x: int16): int16 =
   ## On machines where the host byte order is the same as network byte
   ## order, this is a no-op; otherwise, it performs a 2-byte swap operation.
   result = sockets2.ntohs(x)
+
+proc getSockOptInt*(socket: TSocketHandle, level, optname: int): int {.
+  tags: [FReadIO].} = 
+  ## getsockopt for integer options.
+  var res: cint
+  var size = sizeof(res).TSocklen
+  if getsockopt(socket, cint(level), cint(optname), 
+                addr(res), addr(size)) < 0'i32:
+    osError(osLastError())
+  result = int(res)
+
+proc setSockOptInt*(socket: TSocketHandle, level, optname, optval: int) {.
+  tags: [FWriteIO].} =
+  ## setsockopt for integer options.
+  var value = cint(optval)
+  if setsockopt(socket, cint(level), cint(optname), addr(value),  
+                sizeof(value).TSocklen) < 0'i32:
+    osError(osLastError())
 
 when defined(Windows):
   var wsa: TWSADATA

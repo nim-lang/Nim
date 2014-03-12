@@ -469,7 +469,8 @@ type
     skResult,             # special 'result' variable
     skProc,               # a proc
     skMethod,             # a method
-    skIterator,           # an iterator
+    skIterator,           # an inline iterator
+    skClosureIterator,    # a resumable closure iterator
     skConverter,          # a type converter
     skMacro,              # a macro
     skTemplate,           # a template; currently also misused for user-defined
@@ -481,12 +482,15 @@ type
     skStub,               # symbol is a stub and not yet loaded from the ROD
                           # file (it is loaded on demand, which may
                           # mean: never)
+    skPackage             # symbol is a package (used for canonicalization)
   TSymKinds* = set[TSymKind]
 
 const
-  routineKinds* = {skProc, skMethod, skIterator, skConverter,
-    skMacro, skTemplate}
+  routineKinds* = {skProc, skMethod, skIterator, skClosureIterator,
+                   skConverter, skMacro, skTemplate}
   tfIncompleteStruct* = tfVarargs
+  tfUncheckedArray* = tfVarargs
+  tfUnion* = tfNoSideEffect
   skError* = skUnknown
   
   # type flags that are essential for type equality:
@@ -814,13 +818,16 @@ type
     counter*: int
     data*: TObjectSeq
 
+  TImplication* = enum
+    impUnknown, impNo, impYes
+
 # BUGFIX: a module is overloadable so that a proc can have the
 # same name as an imported module. This is necessary because of
 # the poor naming choices in the standard library.
 
 const 
-  OverloadableSyms* = {skProc, skMethod, skIterator, skConverter,
-    skModule, skTemplate, skMacro}
+  OverloadableSyms* = {skProc, skMethod, skIterator, skClosureIterator,
+    skConverter, skModule, skTemplate, skMacro}
 
   GenericTypes*: TTypeKinds = {tyGenericInvokation, tyGenericBody, 
     tyGenericParam}
@@ -842,7 +849,8 @@ const
                                     tyTuple, tySequence}
   NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr, tySequence,
     tyProc, tyString, tyError}
-  ExportableSymKinds* = {skVar, skConst, skProc, skMethod, skType, skIterator, 
+  ExportableSymKinds* = {skVar, skConst, skProc, skMethod, skType,
+    skIterator, skClosureIterator,
     skMacro, skTemplate, skConverter, skEnumField, skLet, skStub}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
                                       nfDotSetter, nfDotField,
@@ -860,6 +868,7 @@ const
   nkCallKinds* = {nkCall, nkInfix, nkPrefix, nkPostfix,
                   nkCommand, nkCallStrLit, nkHiddenCallConv}
 
+  nkLiterals* = {nkCharLit..nkTripleStrLit}
   nkLambdaKinds* = {nkLambda, nkDo}
   declarativeDefs* = {nkProcDef, nkMethodDef, nkIteratorDef, nkConverterDef}
   procDefs* = nkLambdaKinds + declarativeDefs
@@ -868,7 +877,10 @@ const
   nkStrKinds* = {nkStrLit..nkTripleStrLit}
 
   skLocalVars* = {skVar, skLet, skForVar, skParam, skResult}
-  skProcKinds* = {skProc, skTemplate, skMacro, skIterator, skMethod, skConverter}
+  skProcKinds* = {skProc, skTemplate, skMacro, skIterator, skClosureIterator,
+                  skMethod, skConverter}
+
+  skIterators* = {skIterator, skClosureIterator}
 
   lfFullExternalName* = lfParamCopy # \
     # only used when 'gCmd == cmdPretty': Indicates that the symbol has been
@@ -1279,7 +1291,7 @@ proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
 proc propagateToOwner*(owner, elem: PType) =
   const HaveTheirOwnEmpty = {tySequence, tySet}
   owner.flags = owner.flags + (elem.flags * {tfHasShared, tfHasMeta,
-                                             tfHasStatic, tfHasGCedMem})
+                                             tfHasGCedMem})
   if tfNotNil in elem.flags:
     if owner.kind in {tyGenericInst, tyGenericBody, tyGenericInvokation}:
       owner.flags.incl tfNotNil
@@ -1295,9 +1307,6 @@ proc propagateToOwner*(owner, elem: PType) =
 
   if elem.kind in tyMetaTypes:
     owner.flags.incl tfHasMeta
-
-  if elem.kind == tyStatic:
-    owner.flags.incl tfHasStatic
 
   if elem.kind in {tyString, tyRef, tySequence} or
       elem.kind == tyProc and elem.callConv == ccClosure:
@@ -1478,8 +1487,7 @@ proc originatingModule*(s: PSym): PSym =
   while result.kind != skModule: result = result.owner
 
 proc isRoutine*(s: PSym): bool {.inline.} =
-  result = s.kind in {skProc, skTemplate, skMacro, skIterator, skMethod,
-                      skConverter}
+  result = s.kind in skProcKinds
 
 proc hasPattern*(s: PSym): bool {.inline.} =
   result = isRoutine(s) and s.ast.sons[patternPos].kind != nkEmpty

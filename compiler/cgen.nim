@@ -705,7 +705,7 @@ proc cgsym(m: BModule, name: string): PRope =
   var sym = magicsys.getCompilerProc(name)
   if sym != nil: 
     case sym.kind
-    of skProc, skMethod, skConverter, skIterator: genProc(m, sym)
+    of skProc, skMethod, skConverter, skIterators: genProc(m, sym)
     of skVar, skResult, skLet: genVarPrototype(m, sym)
     of skType: discard getTypeDesc(m, sym.typ)
     else: internalError("cgsym: " & name)
@@ -761,6 +761,8 @@ proc genProcAux(m: BModule, prc: PSym) =
   var returnStmt: PRope = nil
   assert(prc.ast != nil)
   if sfPure notin prc.flags and prc.typ.sons[0] != nil:
+    if resultPos >= prc.ast.len:
+      internalError(prc.info, "proc has no result symbol")
     var res = prc.ast.sons[resultPos].sym # get result symbol
     if not isInvalidReturnType(prc.typ.sons[0]):
       if sfNoInit in prc.flags: incl(res.flags, sfNoInit)
@@ -1042,8 +1044,10 @@ proc genMainProc(m: BModule) =
     appcg(m, m.s[cfsProcs], otherMain, [])
 
 proc getSomeInitName(m: PSym, suffix: string): PRope =
+  assert m.kind == skModule
+  assert m.owner.kind == skPackage
   if {sfSystemModule, sfMainModule} * m.flags == {}:
-    result = m.info.toFullPath.getPackageName.mangle.toRope
+    result = m.owner.name.s.mangle.toRope
   result.app m.name.s
   result.app suffix
   
@@ -1188,7 +1192,7 @@ proc nullify[T](arr: var T) =
   for i in low(arr)..high(arr):
     arr[i] = nil
 
-proc resetModule*(m: var BModule) =
+proc resetModule*(m: BModule) =
   # between two compilations in CAAS mode, we can throw
   # away all the data that was written to disk
   initLinkedList(m.headerFiles)

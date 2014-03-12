@@ -16,11 +16,12 @@ var clientCount = 0
 
 proc sendMessages(disp: PDispatcher, client: TSocketHandle): PFuture[int] {.async.} =
   for i in 0 .. <messagesToSend:
-    discard await disp.send(client, "Message " & $i & "\c\L") 
+    discard await disp.send(client, "Message " & $i & "\c\L")
 
 proc launchSwarm(disp: PDispatcher, port: TPort): PFuture[int] {.async.} =
   for i in 0 .. <swarmSize:
     var sock = socket()
+
     #disp.register(sock)
     discard await disp.connect(sock, "localhost", port)
     when true:

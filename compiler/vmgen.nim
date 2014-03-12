@@ -944,9 +944,9 @@ proc genAddrDeref(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
       if gfAddrOf notin flags and fitsRegister(n.typ):
         c.gABC(n, opcNodeToReg, dest, dest)
     elif c.prc.slots[tmp].kind >= slotTempUnknown:
-      gABC(c, n, opcAddrReg, dest, tmp)
-    else:
       gABC(c, n, opcAddrNode, dest, tmp)
+    else:
+      gABC(c, n, opcAddrReg, dest, tmp)
     c.freeTemp(tmp)
 
 proc whichAsgnOpc(n: PNode): TOpcode =
@@ -980,6 +980,25 @@ proc setSlot(c: PCtx; v: PSym) =
         kind: if v.kind == skLet: slotFixedLet else: slotFixedVar)
     inc c.prc.maxSlots
 
+proc cannotEval(n: PNode) {.noinline.} =
+  globalError(n.info, errGenerated, "cannot evaluate at compile time: " &
+    n.renderTree)
+
+proc isOwnedBy(a, b: PSym): bool =
+  var a = a.owner
+  while a != nil and a.kind != skModule:
+    if a == b: return true
+    a = a.owner
+
+proc checkCanEval(c: PCtx; n: PNode) =
+  # we need to ensure that we don't evaluate 'x' here:
+  # proc foo() = var x ...
+  let s = n.sym
+  if s.position == 0:
+    if s.kind in {skVar, skTemp, skLet, skParam, skResult} and 
+        not s.isOwnedBy(c.prc.sym) and s.owner != c.module:
+      cannotEval(n)
+
 proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
   case le.kind
   of nkBracketExpr:
@@ -1001,12 +1020,13 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
     c.gABC(left, opcWrObj, dest, idx, tmp)
     c.freeTemp(tmp)
   of nkDerefExpr, nkHiddenDeref:
-    let dest = c.genx(le, {gfAddrOf})
+    let dest = c.genx(le.sons[0], {gfAddrOf})
     let tmp = c.genx(ri)
     c.gABC(le, opcWrDeref, dest, tmp)
     c.freeTemp(tmp)
   of nkSym:
     let s = le.sym
+    checkCanEval(c, le)
     if s.isGlobal:
       withTemp(tmp, le.typ):
         c.gen(le, tmp, {gfAddrOf})
@@ -1014,7 +1034,7 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
         c.gABC(le, opcWrDeref, tmp, val)
         c.freeTemp(val)
     else:
-      if s.kind == skForVar and c.mode == emRepl: c.setSlot s
+      if s.kind == skForVar: c.setSlot s
       internalAssert s.position > 0 or (s.position == 0 and
                                         s.kind in {skParam,skResult})
       var dest: TRegister = s.position + ord(s.kind == skParam)
@@ -1045,10 +1065,6 @@ proc importcSym(c: PCtx; info: TLineInfo; s: PSym) =
   else:
     localError(info, errGenerated,
                "cannot 'importc' variable at compile time")
-
-proc cannotEval(n: PNode) {.noinline.} =
-  globalError(n.info, errGenerated, "cannot evaluate at compile time: " &
-    n.renderTree)
 
 proc getNullValue*(typ: PType, info: TLineInfo): PNode
 
@@ -1190,12 +1206,14 @@ proc genVarSection(c: PCtx; n: PNode) =
         setSlot(c, a[i].sym)
         # v = t[i]
         var v: TDest = -1
+        checkCanEval(c, a[i])
         genRdVar(c, a[i], v, {gfAddrOf})
         c.gABC(n, opcWrObj, v, tmp, i)
         # XXX globals?
       c.freeTemp(tmp)
     elif a.sons[0].kind == nkSym:
       let s = a.sons[0].sym
+      checkCanEval(c, a.sons[0])
       if s.isGlobal:
         if s.position == 0:
           if sfImportc in s.flags: c.importcSym(a.info, s)
@@ -1308,10 +1326,11 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
   case n.kind
   of nkSym:
     let s = n.sym
+    checkCanEval(c, n)
     case s.kind
     of skVar, skForVar, skTemp, skLet, skParam, skResult:
       genRdVar(c, n, dest, flags)
-    of skProc, skConverter, skMacro, skTemplate, skMethod, skIterator:
+    of skProc, skConverter, skMacro, skTemplate, skMethod, skIterators:
       # 'skTemplate' is only allowed for 'getAst' support:
       if sfImportc in s.flags: c.importcSym(n.info, s)
       genLit(c, n, dest)
@@ -1525,7 +1544,7 @@ proc genProc(c: PCtx; s: PSym): int =
     # procs easily:
     let body = s.getBody
     let procStart = c.xjmp(body, opcJmp, 0)
-    var p = PProc(blocks: @[])
+    var p = PProc(blocks: @[], sym: s)
     let oldPrc = c.prc
     c.prc = p
     # iterate over the parameters and allocate space for them:
@@ -1542,9 +1561,9 @@ proc genProc(c: PCtx; s: PSym): int =
     c.gABC(body, opcEof, eofInstr.regA)
     c.optimizeJumps(result)
     s.offset = c.prc.maxSlots
-    #if s.name.s == "importImpl_forward" or s.name.s == "importImpl":
-    #c.echoCode(result)
-    #echo renderTree(body)
+    #if s.name.s == "xmlConstructor":
+    #  echo renderTree(body)
+    #  c.echoCode(result)
     c.prc = oldPrc
   else:
     c.prc.maxSlots = s.offset

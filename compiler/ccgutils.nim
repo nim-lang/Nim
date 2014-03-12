@@ -130,7 +130,6 @@ proc getUniqueType*(key: PType): PType =
       idTablePut(gTypeTable[k], key, key)
       result = key
   of tyProc:
-    # tyVar is not 100% correct, but would speeds things up a little:
     if key.callConv != ccClosure:
       result = key
     else:

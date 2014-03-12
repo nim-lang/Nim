@@ -92,7 +92,7 @@ proc errorSym*(c: PContext, n: PNode): PSym =
   result.typ = errorType(c)
   incl(result.flags, sfDiscardable)
   # pretend it's imported from some unknown module to prevent cascading errors:
-  if gCmd != cmdInteractive:
+  if gCmd != cmdInteractive and c.inCompilesContext == 0:
     c.importTable.addSym(result)
 
 type 
@@ -109,7 +109,7 @@ type
 
 proc getSymRepr*(s: PSym): string = 
   case s.kind
-  of skProc, skMethod, skConverter, skIterator: result = getProcHeader(s)
+  of skProc, skMethod, skConverter, skIterators: result = getProcHeader(s)
   else: result = s.name.s
 
 proc ensureNoMissingOrUnusedSymbols(scope: PScope) =

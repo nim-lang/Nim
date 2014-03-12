@@ -1,6 +1,10 @@
 version 0.9.4
 =============
 
+- fix gensym capture bug
+- vm
+  - at least try to get the basic type zoo ops right
+  - optimize opcAsgnStr
 - fix GC issues
 - test and fix showoff
 
@@ -21,12 +25,12 @@ Bugs
 version 0.9.x
 =============
 
-- implement 'union' and 'bits' pragmas
-- fix closures
+- memory manager: add a measure of fragmentation
+- implement 'bits' pragmas
+- fix closures/lambdalifting
 - ensure (ref T)(a, b) works as a type conversion and type constructor
 - optimize 'genericReset'; 'newException' leads to code bloat
 - stack-less GC
-- implement strongSpaces:on
 - make '--implicitStatic:on' the default
 - implicit deref for parameter matching
 

@@ -173,12 +173,14 @@ proc asgnComplex(x: var TFullReg, y: TFullReg) =
   of rkRegisterAddr: x.regAddr = y.regAddr
   of rkNodeAddr: x.nodeAddr = y.nodeAddr
 
-proc putIntoNode(n: PNode; x: TFullReg) =
+proc putIntoNode(n: var PNode; x: TFullReg) =
   case x.kind
   of rkNone: discard
   of rkInt: n.intVal = x.intVal
   of rkFloat: n.floatVal = x.floatVal
-  of rkNode: n[] = x.node[]
+  of rkNode:
+    if nfIsRef in x.node.flags: n = x.node
+    else: n[] = x.node[]
   of rkRegisterAddr: putIntoNode(n, x.regAddr[])
   of rkNodeAddr: n[] = x.nodeAddr[][]
 
@@ -423,7 +425,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkNode)
       let src = regs[rb].node
       if src.kind notin {nkEmpty..nkNilLit}:
-        regs[ra].node = src.sons[rc]
+        let n = src.sons[rc]
+        regs[ra].node = if n.kind == nkExprColonExpr: n[1]
+                        else: n
       else:
         stackTrace(c, tos, pc, errIndexOutOfBounds)
     of opcWrObj:

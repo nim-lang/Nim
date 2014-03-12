@@ -13,8 +13,8 @@ import strutils, db_sqlite, md5
 
 var db: TDbConn
 
-# We *hash* the relevant information into 128 bit hashes. This should be good enough
-# to prevent any collisions.
+# We *hash* the relevant information into 128 bit hashes. This should be good
+# enough to prevent any collisions.
 
 type
   TUid = distinct MD5Digest
@@ -42,8 +42,7 @@ const
 proc toBase64a(s: cstring, len: int): string =
   ## encodes `s` into base64 representation. After `lineLen` characters, a 
   ## `newline` is added.
-  var total = ((len + 2) div 3) * 4
-  result = newStringOfCap(total)
+  result = newStringOfCap(((len + 2) div 3) * 4)
   var i = 0
   while i < s.len - 2:
     let a = ord(s[i])
@@ -82,7 +81,7 @@ proc hashSym(c: var MD5Context, s: PSym) =
 
 proc hashTree(c: var MD5Context, n: PNode) =
   if n == nil:
-    c &= "null"
+    c &= "\255"
     return
   var k = n.kind
   md5Update(c, cast[cstring](addr(k)), 1)
@@ -105,146 +104,275 @@ proc hashTree(c: var MD5Context, n: PNode) =
   else:
     for i in 0.. <n.len: hashTree(c, n.sons[i])
 
-const 
-  typeToStr: array[TTypeKind, string] = ["None", "bool", "Char", "empty",
-    "Array Constructor [$1]", "nil", "expr", "stmt", "typeDesc",
-    "GenericInvokation", "GenericBody", "GenericInst", "GenericParam",
-    "distinct $1", "enum", "ordinal[$1]", "array[$1, $2]", "object", "tuple",
-    "set[$1]", "range[$1]", "ptr ", "ref ", "var ", "seq[$1]", "proc",
-    "pointer", "OpenArray[$1]", "string", "CString", "Forward",
-    "int", "int8", "int16", "int32", "int64",
-    "float", "float32", "float64", "float128",
-    "uint", "uint8", "uint16", "uint32", "uint64",
-    "bignum", "const ",
-    "!", "varargs[$1]", "iter[$1]", "Error Type",
-    "BuiltInTypeClass", "UserTypeClass",
-    "UserTypeClassInst", "CompositeTypeClass",
-    "and", "or", "not", "any", "static", "TypeFromExpr", "FieldAccessor"]
+proc hashType(c: var MD5Context, t: PType) =
+  # modelled after 'typeToString'
+  if t == nil: 
+    c &= "\254"
+    return
 
-proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
-  var t = typ
-  result = ""
-  if t == nil: return 
-  if prefer == preferName and t.sym != nil and sfAnon notin t.sym.flags:
-    if t.kind == tyInt and isIntLit(t):
-      return t.sym.name.s & " literal(" & $t.n.intVal & ")"
-    return t.sym.name.s
+  var k = t.kind
+  md5Update(c, cast[cstring](addr(k)), 1)
+  
+  if t.sym != nil and sfAnon notin t.sym.flags:
+    # t.n for literals, but not for e.g. objects!
+    if t.kind in {tyFloat, tyInt}: c.hashNode(t.n)
+    c.hashSym(t.sym)
+    
   case t.kind
-  of tyInt:
-    if not isIntLit(t) or prefer == preferExported:
-      result = typeToStr[t.kind]
-    else:
-      result = "int literal(" & $t.n.intVal & ")"
   of tyGenericBody, tyGenericInst, tyGenericInvokation:
-    result = typeToString(t.sons[0]) & '['
-    for i in countup(1, sonsLen(t) -1 -ord(t.kind != tyGenericInvokation)):
-      if i > 1: add(result, ", ")
-      add(result, typeToString(t.sons[i]))
-    add(result, ']')
-  of tyTypeDesc:
-    if t.base.kind == tyNone: result = "typedesc"
-    else: result = "typedesc[" & typeToString(t.base) & "]"
-  of tyStatic:
-    internalAssert t.len > 0
-    result = "static[" & typeToString(t.sons[0]) & "]"
+    for i in countup(0, sonsLen(t) -1 -ord(t.kind != tyGenericInvokation)):
+      c.hashType t.sons[i]
   of tyUserTypeClass:
     internalAssert t.sym != nil and t.sym.owner != nil
-    return t.sym.owner.name.s
-  of tyBuiltInTypeClass:
-    result = case t.base.kind:
-      of tyVar: "var"
-      of tyRef: "ref"
-      of tyPtr: "ptr"
-      of tySequence: "seq"
-      of tyArray: "array"
-      of tySet: "set"
-      of tyRange: "range"
-      of tyDistinct: "distinct"
-      of tyProc: "proc"
-      of tyObject: "object"
-      of tyTuple: "tuple"
-      else: (internalAssert(false); "")
+    c &= t.sym.owner.name.s
   of tyUserTypeClassInst:
     let body = t.base
-    result = body.sym.name.s & "["
+    c.hashSym body.sym
     for i in countup(1, sonsLen(t) - 2):
-      if i > 1: add(result, ", ")
-      add(result, typeToString(t.sons[i]))
-    result.add "]"
-  of tyAnd:
-    result = typeToString(t.sons[0]) & " and " & typeToString(t.sons[1])
-  of tyOr:
-    result = typeToString(t.sons[0]) & " or " & typeToString(t.sons[1])
-  of tyNot:
-    result = "not " & typeToString(t.sons[0])
-  of tyExpr:
-    internalAssert t.len == 0
-    result = "expr"
+      c.hashType t.sons[i]
   of tyFromExpr, tyFieldAccessor:
-    result = renderTree(t.n)
-  of tyArray: 
-    if t.sons[0].kind == tyRange: 
-      result = "array[" & hashTree(t.sons[0].n) & ", " &
-          typeToString(t.sons[1]) & ']'
-    else: 
-      result = "array[" & typeToString(t.sons[0]) & ", " &
-          typeToString(t.sons[1]) & ']'
-  of tyArrayConstr: 
-    result = "Array constructor[" & hashTree(t.sons[0].n) & ", " &
-        typeToString(t.sons[1]) & ']'
-  of tySequence: 
-    result = "seq[" & typeToString(t.sons[0]) & ']'
-  of tyOrdinal: 
-    result = "ordinal[" & typeToString(t.sons[0]) & ']'
-  of tySet: 
-    result = "set[" & typeToString(t.sons[0]) & ']'
-  of tyOpenArray: 
-    result = "openarray[" & typeToString(t.sons[0]) & ']'
-  of tyDistinct: 
-    result = "distinct " & typeToString(t.sons[0], preferName)
+    c.hashTree(t.n)
+  of tyArrayConstr:
+    c.hashTree(t.sons[0].n)
+    c.hashType(t.sons[1])
   of tyTuple: 
-    # we iterate over t.sons here, because t.n may be nil
-    result = "tuple["
-    if t.n != nil: 
+    if t.n != nil:
       assert(sonsLen(t.n) == sonsLen(t))
       for i in countup(0, sonsLen(t.n) - 1): 
         assert(t.n.sons[i].kind == nkSym)
-        add(result, t.n.sons[i].sym.name.s & ": " & typeToString(t.sons[i]))
-        if i < sonsLen(t.n) - 1: add(result, ", ")
-    else: 
-      for i in countup(0, sonsLen(t) - 1): 
-        add(result, typeToString(t.sons[i]))
-        if i < sonsLen(t) - 1: add(result, ", ")
-    add(result, ']')
-  of tyPtr, tyRef, tyVar, tyMutable, tyConst: 
-    result = typeToStr[t.kind] & typeToString(t.sons[0])
+        c &= t.n.sons[i].sym.name.s
+        c &= ":"
+        c.hashType(t.sons[i])
+        c &= ","
+    else:
+      for i in countup(0, sonsLen(t) - 1): c.hashType t.sons[i]
   of tyRange:
-    result = "range " & hashTree(t.n)
-    if prefer != preferExported:
-      result.add("(" & typeToString(t.sons[0]) & ")")
+    c.hashTree(t.n)
+    c.hashType(t.sons[0])
   of tyProc:
-    result = if tfIterator in t.flags: "iterator (" else: "proc ("
-    for i in countup(1, sonsLen(t) - 1): 
-      add(result, typeToString(t.sons[i]))
-      if i < sonsLen(t) - 1: add(result, ", ")
-    add(result, ')')
-    if t.sons[0] != nil: add(result, ": " & typeToString(t.sons[0]))
-    var prag: string
-    if t.callConv != ccDefault: prag = CallingConvToStr[t.callConv]
-    else: prag = ""
-    if tfNoSideEffect in t.flags: 
-      addSep(prag)
-      add(prag, "noSideEffect")
-    if tfThread in t.flags:
-      addSep(prag)
-      add(prag, "thread")
-    if len(prag) != 0: add(result, "{." & prag & ".}")
-  of tyVarargs, tyIter:
-    result = typeToStr[t.kind] % typeToString(t.sons[0])
-  else: 
-    result = typeToStr[t.kind]
-  if tfShared in t.flags: result = "shared " & result
-  if tfNotNil in t.flags: result.add(" not nil")
+    c &= (if tfIterator in t.flags: "iterator " else: "proc ")
+    for i in 0.. <t.len: c.hashType(t.sons[i])
+    md5Update(c, cast[cstring](addr(t.callConv)), 1)
+
+    if tfNoSideEffect in t.flags: c &= ".noSideEffect"
+    if tfThread in t.flags: c &= ".thread"
+  else:
+    for i in 0.. <t.len: c.hashType(t.sons[i])
+  if tfShared in t.flags: c &= "shared"
+  if tfNotNil in t.flags: c &= "not nil"
+
+proc canonConst(n: PNode): TUid =
+  var c: MD5Context
+  md5Init(c)
+  c.hashTree(n)
+  c.hashType(n.typ)
+  md5Final(c, MD5Digest(result))
+
+proc canonSym(s: PSym): TUid =
+  var c: MD5Context
+  md5Init(c)
+  c.hashSym(s)
+  md5Final(c, MD5Digest(result))
+
+proc pushType(w: PRodWriter, t: PType) =
+  # check so that the stack does not grow too large:
+  if iiTableGet(w.index.tab, t.id) == InvalidKey:
+    w.tstack.add(t)
+
+proc pushSym(w: PRodWriter, s: PSym) =
+  # check so that the stack does not grow too large:
+  if iiTableGet(w.index.tab, s.id) == InvalidKey:
+    w.sstack.add(s)
+
+proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode, 
+                result: var string) = 
+  if n == nil: 
+    # nil nodes have to be stored too:
+    result.add("()")
+    return
+  result.add('(')
+  encodeVInt(ord(n.kind), result) 
+  # we do not write comments for now
+  # Line information takes easily 20% or more of the filesize! Therefore we
+  # omit line information if it is the same as the father's line information:
+  if fInfo.fileIndex != n.info.fileIndex: 
+    result.add('?')
+    encodeVInt(n.info.col, result)
+    result.add(',')
+    encodeVInt(n.info.line, result)
+    result.add(',')
+    encodeVInt(fileIdx(w, toFilename(n.info)), result)
+  elif fInfo.line != n.info.line:
+    result.add('?')
+    encodeVInt(n.info.col, result)
+    result.add(',')
+    encodeVInt(n.info.line, result)
+  elif fInfo.col != n.info.col:
+    result.add('?')
+    encodeVInt(n.info.col, result)
+  var f = n.flags * PersistentNodeFlags
+  if f != {}: 
+    result.add('$')
+    encodeVInt(cast[int32](f), result)
+  if n.typ != nil:
+    result.add('^')
+    encodeVInt(n.typ.id, result)
+    pushType(w, n.typ)
+  case n.kind
+  of nkCharLit..nkInt64Lit: 
+    if n.intVal != 0:
+      result.add('!')
+      encodeVBiggestInt(n.intVal, result)
+  of nkFloatLit..nkFloat64Lit: 
+    if n.floatVal != 0.0: 
+      result.add('!')
+      encodeStr($n.floatVal, result)
+  of nkStrLit..nkTripleStrLit:
+    if n.strVal != "": 
+      result.add('!')
+      encodeStr(n.strVal, result)
+  of nkIdent:
+    result.add('!')
+    encodeStr(n.ident.s, result)
+  of nkSym:
+    result.add('!')
+    encodeVInt(n.sym.id, result)
+    pushSym(w, n.sym)
+  else:
+    for i in countup(0, sonsLen(n) - 1): 
+      encodeNode(w, n.info, n.sons[i], result)
+  add(result, ')')
+
+proc encodeLoc(w: PRodWriter, loc: TLoc, result: var string) = 
+  var oldLen = result.len
+  result.add('<')
+  if loc.k != low(loc.k): encodeVInt(ord(loc.k), result)
+  if loc.s != low(loc.s): 
+    add(result, '*')
+    encodeVInt(ord(loc.s), result)
+  if loc.flags != {}: 
+    add(result, '$')
+    encodeVInt(cast[int32](loc.flags), result)
+  if loc.t != nil:
+    add(result, '^')
+    encodeVInt(cast[int32](loc.t.id), result)
+    pushType(w, loc.t)
+  if loc.r != nil: 
+    add(result, '!')
+    encodeStr(ropeToStr(loc.r), result)
+  if loc.a != 0: 
+    add(result, '?')
+    encodeVInt(loc.a, result)
+  if oldLen + 1 == result.len:
+    # no data was necessary, so remove the '<' again:
+    setLen(result, oldLen)
+  else:
+    add(result, '>')
+  
+proc encodeType(w: PRodWriter, t: PType, result: var string) = 
+  if t == nil: 
+    # nil nodes have to be stored too:
+    result.add("[]")
+    return
+  # we need no surrounding [] here because the type is in a line of its own
+  if t.kind == tyForward: internalError("encodeType: tyForward")
+  # for the new rodfile viewer we use a preceeding [ so that the data section
+  # can easily be disambiguated:
+  add(result, '[')
+  encodeVInt(ord(t.kind), result)
+  add(result, '+')
+  encodeVInt(t.id, result)
+  if t.n != nil: 
+    encodeNode(w, unknownLineInfo(), t.n, result)
+  if t.flags != {}: 
+    add(result, '$')
+    encodeVInt(cast[int32](t.flags), result)
+  if t.callConv != low(t.callConv): 
+    add(result, '?')
+    encodeVInt(ord(t.callConv), result)
+  if t.owner != nil: 
+    add(result, '*')
+    encodeVInt(t.owner.id, result)
+    pushSym(w, t.owner)
+  if t.sym != nil: 
+    add(result, '&')
+    encodeVInt(t.sym.id, result)
+    pushSym(w, t.sym)
+  if t.size != - 1: 
+    add(result, '/')
+    encodeVBiggestInt(t.size, result)
+  if t.align != 2: 
+    add(result, '=')
+    encodeVInt(t.align, result)
+  encodeLoc(w, t.loc, result)
+  for i in countup(0, sonsLen(t) - 1): 
+    if t.sons[i] == nil: 
+      add(result, "^()")
+    else: 
+      add(result, '^') 
+      encodeVInt(t.sons[i].id, result)
+      pushType(w, t.sons[i])
+
+proc encodeLib(w: PRodWriter, lib: PLib, info: TLineInfo, result: var string) = 
+  add(result, '|')
+  encodeVInt(ord(lib.kind), result)
+  add(result, '|')
+  encodeStr(ropeToStr(lib.name), result)
+  add(result, '|')
+  encodeNode(w, info, lib.path, result)
+
+proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
+  if s == nil:
+    # nil nodes have to be stored too:
+    result.add("{}")
+    return
+  # we need no surrounding {} here because the symbol is in a line of its own
+  encodeVInt(ord(s.kind), result)
+  result.add('+')
+  encodeVInt(s.id, result)
+  result.add('&')
+  encodeStr(s.name.s, result)
+  if s.typ != nil:
+    result.add('^')
+    encodeVInt(s.typ.id, result)
+    pushType(w, s.typ)
+  result.add('?')
+  if s.info.col != -1'i16: encodeVInt(s.info.col, result)
+  result.add(',')
+  if s.info.line != -1'i16: encodeVInt(s.info.line, result)
+  result.add(',')
+  encodeVInt(fileIdx(w, toFilename(s.info)), result)
+  if s.owner != nil:
+    result.add('*')
+    encodeVInt(s.owner.id, result)
+    pushSym(w, s.owner)
+  if s.flags != {}:
+    result.add('$')
+    encodeVInt(cast[int32](s.flags), result)
+  if s.magic != mNone:
+    result.add('@')
+    encodeVInt(ord(s.magic), result)
+  if s.options != w.options: 
+    result.add('!')
+    encodeVInt(cast[int32](s.options), result)
+  if s.position != 0: 
+    result.add('%')
+    encodeVInt(s.position, result)
+  if s.offset != - 1:
+    result.add('`')
+    encodeVInt(s.offset, result)
+  encodeLoc(w, s.loc, result)
+  if s.annex != nil: encodeLib(w, s.annex, s.info, result)
+  if s.constraint != nil:
+    add(result, '#')
+    encodeNode(w, unknownLineInfo(), s.constraint, result)
+  # lazy loading will soon reload the ast lazily, so the ast needs to be
+  # the last entry of a symbol:
+  if s.ast != nil:
+    # we used to attempt to save space here by only storing a dummy AST if
+    # it is not necessary, but Nimrod's heavy compile-time evaluation features
+    # make that unfeasible nowadays:
+    encodeNode(w, s.info, s.ast, result)
 
 
 proc createDb() =

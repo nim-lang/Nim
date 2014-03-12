@@ -17,11 +17,11 @@ proc execute*(program: string) =
   passes.gIncludeFile = includeModule
   passes.gImportModule = importModule
   initDefines()
-  LoadConfigs(DefaultConfig)
+  loadConfigs(DefaultConfig)
 
   initDefines()
-  DefineSymbol("nimrodvm")
-  when hasFFI: DefineSymbol("nimffi")
+  defineSymbol("nimrodvm")
+  when hasFFI: defineSymbol("nimffi")
   registerPass(verbosePass)
   registerPass(semPass)
   registerPass(vmPass)
@@ -30,4 +30,4 @@ proc execute*(program: string) =
   compileSystemModule()
   var m = makeStdinModule()
   incl(m.flags, sfMainModule)
-  processModule(m, LLStreamOpen(program), nil)
+  processModule(m, llStreamOpen(program), nil)

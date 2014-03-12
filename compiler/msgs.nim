@@ -96,8 +96,8 @@ type
     errOnlyACallOpCanBeDelegator, errUsingNoSymbol,
     errMacroBodyDependsOnGenericTypes,
     errDestructorNotGenericEnough,
-    
-    errXExpectsTwoArguments, 
+    errInlineIteratorsAsProcParams,
+    errXExpectsTwoArguments,
     errXExpectsObjectTypes, errXcanNeverBeOfThisSubtype, errTooManyIterations, 
     errCannotInterpretNodeX, errFieldXNotFound, errInvalidConversionFromTypeX, 
     errAssertionFailed, errCannotGenerateCodeForX, errXRequiresOneArgument, 
@@ -331,6 +331,8 @@ const
                                        "because the parameter '$1' has a generic type",
     errDestructorNotGenericEnough: "Destructor signarue is too specific. " &
                                    "A destructor must be associated will all instantiations of a generic type",
+    errInlineIteratorsAsProcParams: "inline iterators can be used as parameters only for " &
+                                    "templates, macros and other inline iterators",
     errXExpectsTwoArguments: "\'$1\' expects two arguments", 
     errXExpectsObjectTypes: "\'$1\' expects object types",
     errXcanNeverBeOfThisSubtype: "\'$1\' can never be of this subtype", 
@@ -717,19 +719,19 @@ proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
       writeStackTrace()
     quit 1
 
-  if msg >= fatalMin and msg <= fatalMax: 
+  if msg >= fatalMin and msg <= fatalMax:
     quit()
-  if msg >= errMin and msg <= errMax: 
+  if msg >= errMin and msg <= errMax:
     inc(gErrorCounter)
     options.gExitcode = 1'i8
-    if gErrorCounter >= gErrorMax: 
+    if gErrorCounter >= gErrorMax:
       quit()
     elif eh == doAbort and gCmd != cmdIdeTools:
       quit()
     elif eh == doRaise:
       raiseRecoverableError(s)
 
-proc `==`*(a, b: TLineInfo): bool = 
+proc `==`*(a, b: TLineInfo): bool =
   result = a.line == b.line and a.fileIndex == b.fileIndex
 
 proc writeContext(lastinfo: TLineInfo) = 

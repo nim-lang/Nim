@@ -473,16 +473,17 @@ else:
 
   proc update(p: PDispatcher, sock: TSocketHandle, events: set[TEvent]) =
     assert sock in p.selector
-    echo("Update: ", events)
     if events == {}:
       discard p.selector.unregister(sock)
     else:
       discard p.selector.update(sock, events)
   
   proc addRead(p: PDispatcher, sock: TSocketHandle, cb: TCallback) =
+    #echo("addRead")
     if sock notin p.selector:
       var data = PData(sock: sock, readCBs: @[cb], writeCBs: @[])
       p.selector.register(sock, {EvRead}, data.PObject)
+      #echo("registered")
     else:
       p.selector[sock].data.PData.readCBs.add(cb)
       p.update(sock, p.selector[sock].events + {EvRead})
@@ -499,28 +500,36 @@ else:
     for info in p.selector.select(timeout):
       let data = PData(info.key.data)
       assert data.sock == info.key.fd
-      echo("R: ", data.readCBs.len, " W: ", data.writeCBs.len, ". ", info.events)
-      
+      #echo("In poll ", data.sock.cint)
       if EvRead in info.events:
-        var newReadCBs: seq[TCallback] = @[]
-        for cb in data.readCBs:
+        # Callback may add items to ``data.readCBs`` which causes issues if
+        # we are iterating over ``data.readCBs`` at the same time. We therefore
+        # make a copy to iterate over.
+        let currentCBs = data.readCBs
+        data.readCBs = @[]
+        for cb in currentCBs:
           if not cb(data.sock):
             # Callback wants to be called again.
-            newReadCBs.add(cb)
-        data.readCBs = newReadCBs
+            data.readCBs.add(cb)
       
       if EvWrite in info.events:
-        var newWriteCBs: seq[TCallback] = @[]
-        for cb in data.writeCBs:
+        let currentCBs = data.writeCBs
+        data.writeCBs = @[]
+        for cb in currentCBs:
           if not cb(data.sock):
             # Callback wants to be called again.
-            newWriteCBs.add(cb)
-        data.writeCBs = newWriteCBs
-  
-      var newEvents: set[TEvent]
-      if data.readCBs.len != 0: newEvents = {EvRead}
-      if data.writeCBs.len != 0: newEvents = newEvents + {EvWrite}
-      p.update(data.sock, newEvents)
+            data.writeCBs.add(cb)
+      
+      if info.key in p.selector:
+        var newEvents: set[TEvent]
+        if data.readCBs.len != 0: newEvents = {EvRead}
+        if data.writeCBs.len != 0: newEvents = newEvents + {EvWrite}
+        if newEvents != info.key.events:
+          echo(info.key.events, " -> ", newEvents)
+          p.update(data.sock, newEvents)
+      else:
+        # FD no longer a part of the selector. Likely been closed
+        # (e.g. socket disconnected).
   
   proc connect*(p: PDispatcher, socket: TSocketHandle, address: string, port: TPort,
     af = AF_INET): PFuture[int] =
@@ -568,6 +577,7 @@ else:
       result = true
       let netSize = size - sizeRead
       let res = recv(sock, addr readBuffer[sizeRead], netSize, flags.cint)
+      #echo("recv cb res: ", res)
       if res < 0:
         let lastError = osLastError()
         if lastError.int32 notin {EINTR, EWOULDBLOCK, EAGAIN}: 
@@ -575,6 +585,7 @@ else:
         else:
           result = false # We still want this callback to be called.
       elif res == 0:
+        #echo("Disconnected recv: ", sizeRead)
         # Disconnected
         if sizeRead == 0:
           retFuture.complete("")
@@ -587,6 +598,7 @@ else:
           result = false # We want to read all the data requested.
         else:
           retFuture.complete(readBuffer)
+      #echo("Recv cb result: ", result)
   
     addRead(p, socket, cb)
     return retFuture
@@ -615,7 +627,6 @@ else:
           retFuture.complete(0)
     addWrite(p, socket, cb)
     return retFuture
-        
 
   proc acceptAddr*(p: PDispatcher, socket: TSocketHandle): 
       PFuture[tuple[address: string, client: TSocketHandle]] =
@@ -833,9 +844,13 @@ proc recvLine*(p: PDispatcher, socket: TSocketHandle): PFuture[string] {.async.}
   result = ""
   var c = ""
   while true:
+    #echo("1")
     c = await p.recv(socket, 1)
+    #echo("Received ", c.len)
     if c.len == 0:
+      #echo("returning")
       return
+    #echo("2")
     if c == "\r":
       c = await p.recv(socket, 1, MSG_PEEK)
       if c.len > 0 and c == "\L":
@@ -845,7 +860,9 @@ proc recvLine*(p: PDispatcher, socket: TSocketHandle): PFuture[string] {.async.}
     elif c == "\L":
       addNLIfEmpty()
       return
+    #echo("3")
     add(result.string, c)
+  #echo("4")
 
 when isMainModule:
   
@@ -854,11 +871,12 @@ when isMainModule:
   sock.setBlocking false
 
 
-  when false:
+  when true:
     # Await tests
     proc main(p: PDispatcher): PFuture[int] {.async.} =
       discard await p.connect(sock, "irc.freenode.net", TPort(6667))
       while true:
+        echo("recvLine")
         var line = await p.recvLine(sock)
         echo("Line is: ", line.repr)
         if line == "":
@@ -880,9 +898,9 @@ when isMainModule:
     
 
   else:
-    when false:
+    when true:
 
-      var f = p.connect(sock, "irc.freenode.org", TPort(6667))
+      var f = p.connect(sock, "irc.poop.nl", TPort(6667))
       f.callback =
         proc (future: PFuture[int]) =
           echo("Connected in future!")
@@ -898,11 +916,13 @@ when isMainModule:
       sock.bindAddr(TPort(6667))
       sock.listen()
       proc onAccept(future: PFuture[TSocketHandle]) =
-        echo "Accepted"
-        var t = p.send(future.read, "test\c\L")
+        let client = future.read
+        echo "Accepted ", client.cint
+        var t = p.send(client, "test\c\L")
         t.callback =
           proc (future: PFuture[int]) =
-            echo(future.read)
+            echo("Send: ", future.read)
+            client.close()
         
         var f = p.accept(sock)
         f.callback = onAccept

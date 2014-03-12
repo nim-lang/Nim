@@ -558,16 +558,19 @@ proc longMode(n: PNode, start: int = 0, theEnd: int = - 1): bool =
         result = true
         break 
 
-proc gstmts(g: var TSrcGen, n: PNode, c: TContext) = 
-  if n.kind == nkEmpty: return 
+proc gstmts(g: var TSrcGen, n: PNode, c: TContext, doIndent=true) =
+  if n.kind == nkEmpty: return
   if n.kind in {nkStmtList, nkStmtListExpr, nkStmtListType}:
-    indentNL(g)
-    for i in countup(0, sonsLen(n) - 1): 
+    if doIndent: indentNL(g)
+    for i in countup(0, sonsLen(n) - 1):
       optNL(g)
-      gsub(g, n.sons[i])
+      if n.sons[i].kind in {nkStmtList, nkStmtListExpr, nkStmtListType}:
+        gstmts(g, n.sons[i], c, doIndent=false)
+      else:
+        gsub(g, n.sons[i])
       gcoms(g)
-    dedent(g)
-  else: 
+    if doIndent: dedent(g)
+  else:
     if rfLongMode in c.flags: indentNL(g)
     gsub(g, n)
     gcoms(g)

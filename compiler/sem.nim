@@ -139,6 +139,10 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     result = n.sym
     internalAssert sfGenSym in result.flags
     internalAssert result.kind == kind
+    # when there is a nested proc inside a template, semtmpl
+    # will assign a wrong owner during the first pass over the
+    # template; we must fix it here: see #909
+    result.owner = getCurrOwner()
   else:
     result = newSym(kind, considerAcc(n), getCurrOwner(), n.info)
 
@@ -194,7 +198,8 @@ proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
       result = semExprWithType(c, evaluated)
     else:
       result = evaluated
-      semmacrosanity.annotateType(result, eOrig.typ)
+      let expectedType = eOrig.typ.skipTypes({tyStatic})
+      semmacrosanity.annotateType(result, expectedType)
   else:
     result = semExprWithType(c, evaluated)
     #result = fitNode(c, e.typ, result) inlined with special case:
@@ -214,14 +219,26 @@ proc tryConstExpr(c: PContext, n: PNode): PNode =
   result = getConstExpr(c.module, e)
   if result != nil: return
 
+  let oldErrorCount = msgs.gErrorCounter
+  let oldErrorMax = msgs.gErrorMax
+  let oldErrorOutputs = errorOutputs
+
+  errorOutputs = {}
+  msgs.gErrorMax = high(int)
+
   try:
     result = evalConstExpr(c.module, e)
     if result == nil or result.kind == nkEmpty:
-      return nil
+      result = nil
+    else:
+      result = fixupTypeAfterEval(c, result, e)
 
-    result = fixupTypeAfterEval(c, result, e)
   except ERecoverableError:
-    return nil
+    result = nil
+
+  msgs.gErrorCounter = oldErrorCount
+  msgs.gErrorMax = oldErrorMax
+  errorOutputs = oldErrorOutputs
 
 proc semConstExpr(c: PContext, n: PNode): PNode =
   var e = semExprWithType(c, n)

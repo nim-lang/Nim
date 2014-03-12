@@ -15,6 +15,7 @@ when defined(linux): import posix, epoll
 elif defined(windows): import winlean
 
 proc hash*(x: TSocketHandle): THash {.borrow.}
+proc `$`*(x: TSocketHandle): string {.borrow.}
 
 type
   TEvent* = enum
@@ -31,7 +32,7 @@ when defined(linux) or defined(nimdoc):
   type
     PSelector* = ref object
       epollFD: cint
-      events: array[64, ptr epoll_event]
+      events: array[64, epoll_event]
       fds: TTable[TSocketHandle, PSelectorKey]
   
   proc createEventStruct(events: set[TEvent], fd: TSocketHandle): epoll_event =
@@ -39,17 +40,14 @@ when defined(linux) or defined(nimdoc):
       result.events = EPOLLIN
     if EvWrite in events:
       result.events = result.events or EPOLLOUT
+    result.events = result.events or EPOLLRDHUP
     result.data.fd = fd.cint
   
   proc register*(s: PSelector, fd: TSocketHandle, events: set[TEvent],
       data: PObject): PSelectorKey {.discardable.} =
     ## Registers file descriptor ``fd`` to selector ``s`` with a set of TEvent
     ## ``events``.
-    if s.fds.hasKey(fd):
-      raise newException(EInvalidValue, "File descriptor already exists.")
-    
     var event = createEventStruct(events, fd)
-  
     if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fd, addr(event)) != 0:
       OSError(OSLastError())
   
@@ -61,20 +59,16 @@ when defined(linux) or defined(nimdoc):
   proc update*(s: PSelector, fd: TSocketHandle,
       events: set[TEvent]): PSelectorKey {.discardable.} =
     ## Updates the events which ``fd`` wants notifications for.
-    if not s.fds.hasKey(fd):
-      raise newException(EInvalidValue, "File descriptor not found.")
-    var event = createEventStruct(events, fd)
-    
-    s.fds[fd].events = events
-    echo("About to update")
-    if epoll_ctl(s.epollFD, EPOLL_CTL_MOD, fd, addr(event)) != 0:
-      OSError(OSLastError())
-    echo("finished updating")
-    result = s.fds[fd]
+    if s.fds[fd].events != events:
+      echo("Update ", fd.cint, " to ", events)
+      var event = createEventStruct(events, fd)
+      
+      s.fds[fd].events = events
+      if epoll_ctl(s.epollFD, EPOLL_CTL_MOD, fd, addr(event)) != 0:
+        OSError(OSLastError())
+      result = s.fds[fd]
   
   proc unregister*(s: PSelector, fd: TSocketHandle): PSelectorKey {.discardable.} =
-    if not s.fds.hasKey(fd):
-      raise newException(EInvalidValue, "File descriptor not found.")
     if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fd, nil) != 0:
       OSError(OSLastError())
     result = s.fds[fd]
@@ -92,28 +86,55 @@ when defined(linux) or defined(nimdoc):
     ## on the ``fd``.
     result = @[]
     
-    let evNum = epoll_wait(s.epollFD, s.events[0], 64.cint, timeout.cint)
+    let evNum = epoll_wait(s.epollFD, addr s.events[0], 64.cint, timeout.cint)
     if evNum < 0: OSError(OSLastError())
     if evNum == 0: return @[]
     for i in 0 .. <evNum:
       var evSet: set[TEvent] = {}
       if (s.events[i].events and EPOLLIN) != 0: evSet = evSet + {EvRead}
       if (s.events[i].events and EPOLLOUT) != 0: evSet = evSet + {EvWrite}
-      
       let selectorKey = s.fds[s.events[i].data.fd.TSocketHandle]
+      assert selectorKey != nil
       result.add((selectorKey, evSet))
+  
+      if (s.events[i].events and EPOLLHUP) != 0 or
+         (s.events[i].events and EPOLLRDHUP) != 0:
+        # fd closed
+        #echo("fd closed ", s.events[i].data.fd)
+        s.unregister(s.events[i].data.fd.TSocketHandle)
+  
+      #echo("Epoll: ", result[i].key.fd, " ", result[i].events, " ", result[i].key.events)
   
   proc newSelector*(): PSelector =
     new result
     result.epollFD = epoll_create(64)
-    result.events = cast[array[64, ptr epoll_event]](alloc0(sizeof(epoll_event)*64))
+    result.events = cast[array[64, epoll_event]](alloc0(sizeof(epoll_event)*64))
     result.fds = initTable[TSocketHandle, PSelectorKey]()
     if result.epollFD < 0:
       OSError(OSLastError())
 
   proc contains*(s: PSelector, fd: TSocketHandle): bool =
     ## Determines whether selector contains a file descriptor.
-    return s.fds.hasKey(fd)
+    if s.fds.hasKey(fd):
+      result = true
+      
+      # Ensure the underlying epoll instance still contains this fd.
+      var event = createEventStruct(s.fds[fd].events, fd)
+      if epoll_ctl(s.epollFD, EPOLL_CTL_MOD, fd, addr(event)) != 0:
+        let err = osLastError()
+        if err.cint in {ENOENT, EBADF}:
+          return false
+        OSError(OSLastError())
+    else:
+      return false
+
+  proc contains*(s: PSelector, key: PSelectorKey): bool =
+    ## Determines whether selector contains this selector key. More accurate
+    ## than checking if the file descriptor is in the selector because it
+    ## ensures that the keys are equal. File descriptors may not always be
+    ## unique especially when an fd is closed and then a new one is opened,
+    ## the new one may have the same value.
+    return key.fd in s and s.fds[key.fd] == key
 
   proc `[]`*(s: PSelector, fd: TSocketHandle): PSelectorKey =
     ## Retrieves the selector key for ``fd``.

@@ -50,9 +50,9 @@ const
     wDeprecated, wExtern, wThread, wImportCpp, wImportObjC, wAsmNoStackFrame,
     wRaises, wTags}
   typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl, 
-    wPure, wHeader, wCompilerproc, wFinal, wSize, wExtern, wShallow, 
+    wPure, wHeader, wCompilerproc, wFinal, wSize, wExtern, wShallow,
     wImportCpp, wImportObjC, wError, wIncompleteStruct, wByCopy, wByRef,
-    wInheritable, wGensym, wInject, wRequiresInit}
+    wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion}
   fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern, 
     wImportCpp, wImportObjC, wError}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl, 
@@ -97,8 +97,6 @@ proc makeExternImport(s: PSym, extname: string) =
   incl(s.flags, sfImportc)
   excl(s.flags, sfForward)
 
-const invalidIdentChars = AllChars - IdentChars
-
 proc validateExternCName(s: PSym, info: TLineInfo) =
   ## Validates that the symbol name in s.loc.r is a valid C identifier.
   ##
@@ -106,16 +104,14 @@ proc validateExternCName(s: PSym, info: TLineInfo) =
   ## starting with a number. If the check fails, a generic error will be
   ## displayed to the user.
   let target = ropeToStr(s.loc.r)
-  if target.len < 1 or (not (target[0] in IdentStartChars)) or
-      (not target.allCharsInSet(IdentChars)):
+  if target.len < 1 or target[0] notin IdentStartChars or
+      not target.allCharsInSet(IdentChars):
     localError(info, errGenerated, "invalid exported symbol")
 
 proc makeExternExport(s: PSym, extname: string, info: TLineInfo) =
   setExternName(s, extname)
-  case gCmd
-  of cmdCompileToC, cmdCompileToCpp, cmdCompileToOC:
+  if gCmd in {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC}:
     validateExternCName(s, info)
-  else: discard
   incl(s.flags, sfExportc)
 
 proc processImportCompilerProc(s: PSym, extname: string) =
@@ -718,6 +714,14 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           noVal(it)
           if sym.typ == nil: invalidPragma(it)
           else: incl(sym.typ.flags, tfIncompleteStruct)
+        of wUnchecked:
+          noVal(it)
+          if sym.typ == nil: invalidPragma(it)
+          else: incl(sym.typ.flags, tfUncheckedArray)
+        of wUnion:
+          noVal(it)
+          if sym.typ == nil: invalidPragma(it)
+          else: incl(sym.typ.flags, tfUnion)
         of wRequiresInit:
           noVal(it)
           if sym.typ == nil: invalidPragma(it)
@@ -771,6 +775,17 @@ proc implictPragmas*(c: PContext, sym: PSym, n: PNode,
       incl(sym.loc.flags, lfDynamicLib)
       addToLib(lib, sym)
       if sym.loc.r == nil: sym.loc.r = toRope(sym.name.s)
+
+proc hasPragma*(n: PNode, pragma: TSpecialWord): bool =
+  if n == nil or n.sons == nil:
+    return false
+
+  for p in n.sons:
+    var key = if p.kind == nkExprColonExpr: p[0] else: p
+    if key.kind == nkIdent and whichKeyword(key.ident) == pragma:
+      return true
+  
+  return false
 
 proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
   if n == nil: return

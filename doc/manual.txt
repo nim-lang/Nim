@@ -79,8 +79,21 @@ program execution. Unless explicitly classified, an error is a static error.
 
 A `checked runtime error`:idx: is an error that the implementation detects
 and reports at runtime. The method for reporting such errors is via *raising
-exceptions*. However, the implementation provides a means to disable these
-runtime checks. See the section pragmas_ for details.
+exceptions* or *dying with a fatal error*. However, the implementation 
+provides a means to disable these runtime checks. See the section pragmas_
+for details. 
+
+Wether a checked runtime error results in an exception or in a fatal error at
+runtime is implementation specific. Thus the following program is always
+invalid:
+
+.. code-block:: nimrod
+  var a: array[0..1, char]
+  let i = 5
+  try:
+    a[i] = 'N'
+  except EInvalidIndex:
+    echo "invalid index"
 
 An `unchecked runtime error`:idx: is an error that is not guaranteed to be
 detected, and can cause the subsequent behavior of the computation to
@@ -480,8 +493,8 @@ precedence and associativity; this is useful for meta programming.
 Associativity
 -------------
 
-All binary operators are left-associative, except binary operators whose
-relevant char is ``^``.
+Binary operators whose relevant character is ``^`` are right-associative, all
+other binary operators are left-associative.
 
 Precedence
 ----------
@@ -508,13 +521,53 @@ Precedence level    Operators                                      Relevant char
   7               ``+    -``                                       ``+  ~  |``         OP7
   6               ``&``                                            ``&``               OP6
   5               ``..``                                           ``.``               OP5
-  4               ``==  <= < >= > !=  in not_in is isnot not of``  ``= <  > !``        OP4
+  4               ``==  <= < >= > !=  in notin is isnot not of``   ``= <  > !``        OP4
   3               ``and``                                                              OP3
   2               ``or xor``                                                           OP2
   1                                                                ``@  : ?``          OP1
   0 (lowest)      *assignment operator* (like ``+=``, ``*=``)                          OP0
 ================  ===============================================  ==================  ===============
 
+
+Strong spaces
+-------------
+
+The number of spaces preceeding a non-keyword operator affects precedence
+if the experimental parser directive ``#!strongSpaces`` is used. Indentation
+is not used to determine the number of spaces. If 2 or more operators have the
+same number of preceding spaces the precedence table applies, so ``1 + 3 * 4``
+is still parsed as ``1 + (3 * 4)``, but ``1+3 * 4`` is parsed as ``(1+3) * 4``:
+
+.. code-block:: nimrod
+  #! strongSpaces
+  if foo+4 * 4 == 8 and b&c | 9  ++
+      bar:
+    echo ""
+  # is parsed as
+  if ((foo+4)*4 == 8) and (((b&c) | 9) ++ bar): echo ""
+
+
+Furthermore whether an operator is used a prefix operator is affected by the
+number of spaces: 
+
+.. code-block:: nimrod
+  #! strongSpaces
+  echo $foo
+  # is parsed as
+  echo($foo)
+
+This also affects whether ``[]``, ``{}``, ``()`` are parsed as constructors
+or as accessors:
+
+.. code-block:: nimrod
+  #! strongSpaces
+  echo (1,2)
+  # is parsed as
+  echo((1,2))
+
+
+Grammar
+-------
 
 The grammar's start symbol is ``module``.
 
@@ -2822,7 +2875,6 @@ as there are components in the tuple. The i'th iteration variable's type is
 the type of the i'th component. In other words, implicit tuple unpacking in a 
 for loop context is supported.
 
-
 Implict items/pairs invocations
 -------------------------------
 
@@ -2847,10 +2899,11 @@ First class iterators
 There are 2 kinds of iterators in Nimrod: *inline* and *closure* iterators.
 An `inline iterator`:idx: is an iterator that's always inlined by the compiler 
 leading to zero overhead for the abstraction, but may result in a heavy
-increase in code size. Inline iterators are second class
-citizens; one cannot pass them around like first class procs.
+increase in code size. Inline iterators are second class citizens;
+They can be passed as parameters only to other inlining code facilities like
+templates, macros and other inline iterators.
 
-In contrast to that, a `closure iterator`:idx: can be passed around:
+In contrast to that, a `closure iterator`:idx: can be passed around more freely:
 
 .. code-block:: nimrod
   iterator count0(): int {.closure.} =
@@ -2873,9 +2926,7 @@ Closure iterators have other restrictions than inline iterators:
 1. ``yield`` in a closure iterator can not occur in a ``try`` statement.
 2. For now, a closure iterator cannot be evaluated at compile time.
 3. ``return`` is allowed in a closure iterator (but rarely useful).
-4. Since closure iterators can be used as a collaborative tasking
-   system, ``void`` is a valid return type for them.
-5. Both inline and closure iterators cannot be recursive.
+4. Both inline and closure iterators cannot be recursive.
 
 Iterators that are neither marked ``{.closure.}`` nor ``{.inline.}`` explicitly
 default to being inline, but that this may change in future versions of the
@@ -2936,6 +2987,14 @@ parameters of an outer factory proc:
 
   for f in foo():
     echo f
+
+Implicit return type
+--------------------
+
+Since inline interators must always produce values that will be consumed in
+a for loop, the compiler will implicity use the ``auto`` return type if no
+type is given by the user. In contrast, since closure iterators can be used
+as a collaborative tasking system, ``void`` is a valid return type for them.
 
 
 Type sections
@@ -4016,8 +4075,8 @@ Static params can also appear in the signatures of generic types:
     AffineTransform2D[T] = Matrix[3, 3, T]
     AffineTransform3D[T] = Matrix[4, 4, T]
 
-  AffineTransform3D[float]  # OK
-  AffineTransform2D[string] # Error, `string` is not a `Number`
+  var m1: AffineTransform3D[float]  # OK
+  var m2: AffineTransform2D[string] # Error, `string` is not a `Number`
 
 
 typedesc
@@ -5318,6 +5377,53 @@ strings automatically:
   proc printf(formatstr: cstring) {.nodecl, varargs.}
 
   printf("hallo %s", "world") # "world" will be passed as C string
+
+
+Union pragma
+------------
+The `union`:idx: pragma can be applied to any ``object`` type. It means all
+of the object's fields are overlaid in memory. This produces a ``union``
+instead of a ``struct`` in the generated C/C++ code. The object declaration
+then must not use inheritance or any GC'ed memory but this is currently not
+checked.
+
+**Future directions**: GC'ed memory should be allowed in unions and the GC
+should scan unions conservatively.
+
+
+Unchecked pragma
+----------------
+The `unchecked`:idx: pragma can be used to mark a named array as ``unchecked``
+meaning its bounds are not checked. This is often useful when one wishes to
+implement his own flexibly sized arrays. Additionally an unchecked array is
+translated into a C array of undetermined size:
+
+.. code-block:: nimrod
+  type
+    ArrayPart{.unchecked.} = array[0..0, int]
+    MySeq = object
+      len, cap: int
+      data: ArrayPart
+
+Produces roughly this C code:
+
+.. code-block:: C
+  typedef struct {
+    NI len;
+    NI cap;
+    NI data[];
+  } MySeq;
+
+The bounds checking done at compile time is not disabled for now, so to access
+``s.data[C]`` (where ``C`` is a constant) the array's index needs needs to
+include ``C``.
+
+The base type of the unchecked array may not contain any GC'ed memory but this
+is currently not checked.
+
+**Future directions**: GC'ed memory should be allowed in unchecked arrays and
+there should be an explicit annotation of how the GC is to determine the
+runtime size of the array.
 
 
 Dynlib pragma for import

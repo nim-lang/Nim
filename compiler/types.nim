@@ -452,7 +452,8 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       of tyProc: "proc"
       of tyObject: "object"
       of tyTuple: "tuple"
-      else: (internalAssert(false); "")
+      of tyOpenArray: "openarray"
+      else: typeToStr[t.base.kind]
   of tyUserTypeClassInst:
     let body = t.base
     result = body.sym.name.s & "["
@@ -1246,7 +1247,7 @@ proc computeSize(typ: PType): BiggestInt =
 
 proc getReturnType*(s: PSym): PType =
   # Obtains the return type of a iterator/proc/macro/template
-  assert s.kind in {skProc, skTemplate, skMacro, skIterator}
+  assert s.kind in skProcKinds
   result = s.typ.sons[0]
 
 proc getSize(typ: PType): BiggestInt = 

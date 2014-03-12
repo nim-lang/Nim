@@ -274,10 +274,6 @@ proc pred(n: PNode): PNode =
   else:
     result = n
 
-type
-  TImplication* = enum
-    impUnknown, impNo, impYes  
-
 proc impliesEq(fact, eq: PNode): TImplication =
   let (loc, val) = if isLocation(eq.sons[1]): (1, 2) else: (2, 1)
   

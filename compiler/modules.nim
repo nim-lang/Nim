@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -20,7 +20,7 @@ type
   TModuleInMemory* = object
     compiledAt*: float
     crc*: TCrc32
-    deps*: seq[int32] ## XXX: slurped files are not currently tracked
+    deps*: seq[int32] ## XXX: slurped files are currently not tracked
     needsRecompile*: TNeedRecompile
     crcStatus*: TCrcStatus
 
@@ -83,7 +83,7 @@ proc resetAllModules* =
   for i in 0..gCompiledModules.high:
     if gCompiledModules[i] != nil:
       resetModule(i.int32)
-
+  resetPackageCache()
   # for m in cgenModules(): echo "CGEN MODULE FOUND"
 
 proc checkDepMem(fileIdx: int32): TNeedRecompile =
@@ -120,8 +120,9 @@ proc newModule(fileIdx: int32): PSym =
   if not isNimrodIdentifier(result.name.s):
     rawMessage(errInvalidModuleName, result.name.s)
   
-  result.owner = result       # a module belongs to itself
   result.info = newLineInfo(fileIdx, 1, 1)
+  result.owner = newSym(skPackage, getIdent(getPackageName(filename)), nil,
+                        result.info)
   result.position = fileIdx
   
   growCache gMemCacheData, fileIdx
