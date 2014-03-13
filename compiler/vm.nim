@@ -426,8 +426,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let src = regs[rb].node
       if src.kind notin {nkEmpty..nkNilLit}:
         let n = src.sons[rc]
-        regs[ra].node = if n.kind == nkExprColonExpr: n[1]
-                        else: n
+        regs[ra].node = n
       else:
         stackTrace(c, tos, pc, errIndexOutOfBounds)
     of opcWrObj:
