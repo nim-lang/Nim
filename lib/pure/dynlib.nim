@@ -92,7 +92,7 @@ elif defined(windows) or defined(dos):
   proc unloadLib(lib: TLibHandle) = FreeLibrary(cast[THINSTANCE](lib))
 
   proc symAddr(lib: TLibHandle, name: cstring): pointer =
-    result = GetProcAddress(cast[THINSTANCE](lib), name)
+    result = getProcAddress(cast[THINSTANCE](lib), name)
 
 else:
   {.error: "no implementation for dynlib".}

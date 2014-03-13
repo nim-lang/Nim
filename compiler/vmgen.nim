@@ -308,12 +308,20 @@ proc genAndOr(c: PCtx; n: PNode; opc: TOpcode; dest: var TDest) =
   c.gen(n.sons[2], dest)
   c.patch(L1)
 
-proc nilLiteral(n: PNode): PNode =
-  result = n
+proc canonConst(n: PNode): PNode =
+  if n.kind == nkExprColonExpr:
+    result = n.sons[1]
+  elif n.hasSubnodeWith(nkExprColonExpr):
+    result = n.copyNode
+    newSeq(result.sons, n.len)
+    for i in 0.. <n.len:
+      result.sons[i] = canonConst(n.sons[i])
+  else:
+    result = n
 
 proc rawGenLiteral(c: PCtx; n: PNode): int =
   result = c.constants.len
-  c.constants.add n.nilLiteral
+  c.constants.add n.canonConst
   internalAssert result < 0x7fff
 
 proc sameConstant*(a, b: PNode): bool =
@@ -329,10 +337,10 @@ proc sameConstant*(a, b: PNode): bool =
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
     of nkType: result = a.typ == b.typ
     of nkEmpty, nkNilLit: result = true
-    else: 
-      if sonsLen(a) == sonsLen(b): 
-        for i in countup(0, sonsLen(a) - 1): 
-          if not sameConstant(a.sons[i], b.sons[i]): return 
+    else:
+      if sonsLen(a) == sonsLen(b):
+        for i in countup(0, sonsLen(a) - 1):
+          if not sameConstant(a.sons[i], b.sons[i]): return
         result = true
 
 proc genLiteral(c: PCtx; n: PNode): int =
