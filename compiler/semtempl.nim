@@ -155,7 +155,11 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
       of nkPragmaExpr: x = x[0]
       of nkIdent: break
       else: illFormedAst(x)
-    c.toInject.incl(x.ident.id)
+    let ident = getIdentNode(c, x)
+    if not isTemplParam(c, ident):
+      c.toInject.incl(x.ident.id)
+    else:
+      replaceIdentBySym(n, ident)
   else:
     let ident = getIdentNode(c, n)
     if not isTemplParam(c, ident):
@@ -359,6 +363,8 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     result = semRoutineInTemplBody(c, n, skConverter)
   of nkPragmaExpr:
     result.sons[0] = semTemplBody(c, n.sons[0])
+  of nkPostfix:
+    result.sons[1] = semTemplBody(c, n.sons[1])
   of nkPragma:
     discard
   else:

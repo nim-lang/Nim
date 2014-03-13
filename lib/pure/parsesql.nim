@@ -267,7 +267,7 @@ proc getSymbol(c: var TSqlLexer, tok: var TToken) =
   while true: 
     add(tok.literal, buf[pos])
     Inc(pos)
-    if not (buf[pos] in {'a'..'z','A'..'Z','0'..'9','_','$', '\128'..'\255'}):
+    if buf[pos] notin {'a'..'z','A'..'Z','0'..'9','_','$', '\128'..'\255'}:
       break
   c.bufpos = pos
   tok.kind = tkIdentifier
