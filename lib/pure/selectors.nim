@@ -10,7 +10,6 @@
 # TODO: Docs.
 
 import tables, os, unsigned, hashes
-import sockets2
 
 when defined(linux): import posix, epoll
 elif defined(windows): import winlean
@@ -41,17 +40,14 @@ when defined(linux) or defined(nimdoc):
       result.events = EPOLLIN
     if EvWrite in events:
       result.events = result.events or EPOLLOUT
+    result.events = result.events or EPOLLRDHUP
     result.data.fd = fd.cint
   
   proc register*(s: PSelector, fd: TSocketHandle, events: set[TEvent],
       data: PObject): PSelectorKey {.discardable.} =
     ## Registers file descriptor ``fd`` to selector ``s`` with a set of TEvent
     ## ``events``.
-    if s.fds.hasKey(fd):
-      raise newException(EInvalidValue, "File descriptor already exists.")
-    
     var event = createEventStruct(events, fd)
-  
     if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fd, addr(event)) != 0:
       OSError(OSLastError())
   
@@ -63,30 +59,18 @@ when defined(linux) or defined(nimdoc):
   proc update*(s: PSelector, fd: TSocketHandle,
       events: set[TEvent]): PSelectorKey {.discardable.} =
     ## Updates the events which ``fd`` wants notifications for.
-    if not s.fds.hasKey(fd):
-      raise newException(EInvalidValue, "File descriptor not found.")
-    var event = createEventStruct(events, fd)
-    
-    s.fds[fd].events = events
-    if epoll_ctl(s.epollFD, EPOLL_CTL_MOD, fd, addr(event)) != 0:
-      if OSLastError().cint == ENOENT:
-        # Socket has been closed. Epoll automatically removes disconnected
-        # sockets.
-        s.fds.del(fd)
-        osError("Socket has been disconnected")
-        
-      OSError(OSLastError())
-    result = s.fds[fd]
+    if s.fds[fd].events != events:
+      echo("Update ", fd.cint, " to ", events)
+      var event = createEventStruct(events, fd)
+      
+      s.fds[fd].events = events
+      if epoll_ctl(s.epollFD, EPOLL_CTL_MOD, fd, addr(event)) != 0:
+        OSError(OSLastError())
+      result = s.fds[fd]
   
   proc unregister*(s: PSelector, fd: TSocketHandle): PSelectorKey {.discardable.} =
-    if not s.fds.hasKey(fd):
-      raise newException(EInvalidValue, "File descriptor not found.")
     if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fd, nil) != 0:
-      if osLastError().cint == ENOENT:
-        # Socket has been closed. Epoll automatically removes disconnected
-        # sockets so its already been removed.
-      else:
-        OSError(OSLastError())
+      OSError(OSLastError())
     result = s.fds[fd]
     s.fds.del(fd)
 
@@ -113,6 +97,14 @@ when defined(linux) or defined(nimdoc):
       assert selectorKey != nil
       result.add((selectorKey, evSet))
   
+      if (s.events[i].events and EPOLLHUP) != 0 or
+         (s.events[i].events and EPOLLRDHUP) != 0:
+        # fd closed
+        #echo("fd closed ", s.events[i].data.fd)
+        s.unregister(s.events[i].data.fd.TSocketHandle)
+  
+      #echo("Epoll: ", result[i].key.fd, " ", result[i].events, " ", result[i].key.events)
+  
   proc newSelector*(): PSelector =
     new result
     result.epollFD = epoll_create(64)
@@ -123,7 +115,26 @@ when defined(linux) or defined(nimdoc):
 
   proc contains*(s: PSelector, fd: TSocketHandle): bool =
     ## Determines whether selector contains a file descriptor.
-    return s.fds.hasKey(fd)
+    if s.fds.hasKey(fd):
+      result = true
+      
+      # Ensure the underlying epoll instance still contains this fd.
+      var event = createEventStruct(s.fds[fd].events, fd)
+      if epoll_ctl(s.epollFD, EPOLL_CTL_MOD, fd, addr(event)) != 0:
+        let err = osLastError()
+        if err.cint in {ENOENT, EBADF}:
+          return false
+        OSError(OSLastError())
+    else:
+      return false
+
+  proc contains*(s: PSelector, key: PSelectorKey): bool =
+    ## Determines whether selector contains this selector key. More accurate
+    ## than checking if the file descriptor is in the selector because it
+    ## ensures that the keys are equal. File descriptors may not always be
+    ## unique especially when an fd is closed and then a new one is opened,
+    ## the new one may have the same value.
+    return key.fd in s and s.fds[key.fd] == key
 
   proc `[]`*(s: PSelector, fd: TSocketHandle): PSelectorKey =
     ## Retrieves the selector key for ``fd``.

@@ -236,17 +236,20 @@ proc makeAndType*(c: PContext, t1, t2: PType): PType =
   result.sons = @[t1, t2]
   propagateToOwner(result, t1)
   propagateToOwner(result, t2)
+  result.flags.incl((t1.flags + t2.flags) * {tfHasStatic})
 
 proc makeOrType*(c: PContext, t1, t2: PType): PType =
   result = newTypeS(tyOr, c)
   result.sons = @[t1, t2]
   propagateToOwner(result, t1)
   propagateToOwner(result, t2)
+  result.flags.incl((t1.flags + t2.flags) * {tfHasStatic})
 
 proc makeNotType*(c: PContext, t1: PType): PType =
   result = newTypeS(tyNot, c)
   result.sons = @[t1]
   propagateToOwner(result, t1)
+  result.flags.incl(t1.flags * {tfHasStatic})
 
 proc newTypeS(kind: TTypeKind, c: PContext): PType =
   result = newType(kind, getCurrOwner())
