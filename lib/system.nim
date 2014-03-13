@@ -260,6 +260,7 @@ type
                               ## system raises.
   EIO* = object of ESystem    ## raised if an IO error occured.
   EOS* = object of ESystem    ## raised if an operating system service failed.
+    errorCode*: int32 ## OS-defined error code describing this error.
   EInvalidLibrary* = object of EOS ## raised if a dynamic library
                                    ## could not be loaded.
   EResourceExhausted* = object of ESystem ## raised if a resource request

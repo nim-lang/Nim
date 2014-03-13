@@ -719,19 +719,19 @@ proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
       writeStackTrace()
     quit 1
 
-  if msg >= fatalMin and msg <= fatalMax: 
+  if msg >= fatalMin and msg <= fatalMax:
     quit()
-  if msg >= errMin and msg <= errMax: 
+  if msg >= errMin and msg <= errMax:
     inc(gErrorCounter)
     options.gExitcode = 1'i8
-    if gErrorCounter >= gErrorMax: 
+    if gErrorCounter >= gErrorMax:
       quit()
     elif eh == doAbort and gCmd != cmdIdeTools:
       quit()
     elif eh == doRaise:
       raiseRecoverableError(s)
 
-proc `==`*(a, b: TLineInfo): bool = 
+proc `==`*(a, b: TLineInfo): bool =
   result = a.line == b.line and a.fileIndex == b.fileIndex
 
 proc writeContext(lastinfo: TLineInfo) = 
