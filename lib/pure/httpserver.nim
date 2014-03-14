@@ -60,7 +60,6 @@ when false:
     send(client, "<P>Error prohibited CGI execution." & wwwNL)
 
 proc headers(client: TSocket, filename: string) =
-  # XXX could use filename to determine file type
   send(client, "HTTP/1.1 200 OK" & wwwNL)
   send(client, ServerSig)
   var fname = filename
