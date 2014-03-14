@@ -26,19 +26,19 @@ proc launchSwarm(disp: PDispatcher, port: TPort): PFuture[int] {.async.} =
     discard await disp.connect(sock, "localhost", port)
     when true:
       discard await sendMessages(disp, sock)
-      sock.close()
+      disp.close(sock)
     else:
       # Issue #932: https://github.com/Araq/Nimrod/issues/932
       var msgFut = sendMessages(disp, sock)
       msgFut.callback =
         proc () =
-          sock.close()
+          disp.close(sock)
 
 proc readMessages(disp: PDispatcher, client: TSocketHandle): PFuture[int] {.async.} =
   while true:
     var line = await disp.recvLine(client)
     if line == "":
-      client.close()
+      disp.close(client)
       clientCount.inc
       break
     else:

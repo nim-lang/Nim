@@ -508,6 +508,10 @@ else:
     result = socket(domain, typ, protocol)
     disp.register(result)
   
+  proc close*(disp: PDispatcher, sock: TSocketHandle) =
+    sock.close()
+    disp.selector.unregister(sock)
+
   proc addRead(p: PDispatcher, sock: TSocketHandle, cb: TCallback) =
     if sock notin p.selector:
       raise newException(EInvalidValue, "File descriptor not registered.")
@@ -892,7 +896,7 @@ proc recvLine*(p: PDispatcher, socket: TSocketHandle): PFuture[string] {.async.}
 when isMainModule:
   
   var p = newDispatcher()
-  var sock = socket()
+  var sock = p.socket()
   sock.setBlocking false
 
 
