@@ -132,7 +132,6 @@ when defined(windows) or defined(nimdoc):
                               cast[TCompletionKey](sock), 1) == 0:
       OSError(OSLastError())
     p.handles.incl(sock)
-    # TODO: fd closure detection, we need to remove the fd from handles set
 
   proc verifyPresence(p: PDispatcher, sock: TSocketHandle) =
     ## Ensures that socket has been registered with the dispatcher.
@@ -474,6 +473,11 @@ when defined(windows) or defined(nimdoc):
     ## Creates a new socket and registers it with the dispatcher implicitly.
     result = socket(domain, typ, protocol)
     disp.register(result)
+
+  proc close*(disp: PDispatcher, socket: TSocketHandle) =
+    ## Closes a socket and ensures that it is unregistered.
+    socket.close()
+    disp.handles.excl(socket)
 
   initAll()
 else:
