@@ -34,6 +34,7 @@ type
     T.x
     y(T)
     intval T.y
+    let y = intval(T.y)
     
 proc y(x: TObj): int = 10
 
