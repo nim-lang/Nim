@@ -398,7 +398,7 @@ const
                     tyUserTypeClass, tyUserTypeClassInst,
                     tyAnd, tyOr, tyNot, tyAnything}
 
-  tyMetaTypes* = {tyGenericParam, tyTypeDesc, tyStatic, tyExpr} + tyTypeClasses
+  tyMetaTypes* = {tyGenericParam, tyTypeDesc, tyExpr} + tyTypeClasses
  
 type
   TTypeKinds* = set[TTypeKind]
@@ -969,7 +969,9 @@ var emptyNode* = newNode(nkEmpty)
 # There is a single empty node that is shared! Do not overwrite it!
 
 proc isMetaType*(t: PType): bool =
-  return t.kind in tyMetaTypes or tfHasMeta in t.flags
+  return t.kind in tyMetaTypes or
+         (t.kind == tyStatic and t.n == nil) or
+         tfHasMeta in t.flags
 
 proc linkTo*(t: PType, s: PSym): PType {.discardable.} =
   t.sym = s
@@ -1313,7 +1315,7 @@ proc propagateToOwner*(owner, elem: PType) =
   if tfShared in elem.flags:
     owner.flags.incl tfHasShared
 
-  if elem.kind in tyMetaTypes:
+  if elem.isMetaType:
     owner.flags.incl tfHasMeta
 
   if elem.kind in {tyString, tyRef, tySequence} or

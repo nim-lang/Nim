@@ -14,6 +14,9 @@ type
   TA2[T; I: static[int]] = array[0..I, T]
   TA3[T; I: static[int]] = array[I-1, T]
 
+  TObj = object
+    x: TA3[int, 3]
+
 proc takeFoo(x: TFoo) =
   echo "abracadabra"
   echo TFoo.Val
@@ -28,6 +31,7 @@ var
   t1: TA1[float, 1]
   t2: TA2[string, 4]
   t3: TA3[int, 10]
+  t4: TObj
 
 # example from the manual:
 type
