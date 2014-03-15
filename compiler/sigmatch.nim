@@ -1046,12 +1046,13 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
       # put(m.bindings, f, argType)
       return argSemantized
 
-    var evaluated = c.semTryConstExpr(c, arg)
-    if evaluated != nil:
-      arg.typ = newTypeS(tyStatic, c)
-      arg.typ.sons = @[evaluated.typ]
-      arg.typ.n = evaluated
-      argType = arg.typ
+    if argType.kind != tyStatic:
+      var evaluated = c.semTryConstExpr(c, arg)
+      if evaluated != nil:
+        arg.typ = newTypeS(tyStatic, c)
+        arg.typ.sons = @[evaluated.typ]
+        arg.typ.n = evaluated
+        argType = arg.typ
  
   var
     a = if c.inTypeClass > 0: argType.skipTypes({tyTypeDesc, tyFieldAccessor})
