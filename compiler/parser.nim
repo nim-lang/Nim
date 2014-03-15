@@ -713,9 +713,11 @@ proc primarySuffix(p: var TParser, r: PNode): PNode =
       break
     
 proc primary(p: var TParser, mode: TPrimaryMode): PNode
+proc simpleExprAux(p: var TParser, limit: int, mode: TPrimaryMode): PNode
 
-proc simpleExprAux(p: var TParser, limit: int, mode: TPrimaryMode): PNode =
-  result = primary(p, mode)
+proc parseOperators(p: var TParser, headNode: PNode,
+                    limit: int, mode: TPrimaryMode): PNode =
+  result = headNode
   # expand while operators have priorities higher than 'limit'
   var opPrec = getPrecedence(p.tok, p.strongSpaces)
   let modeB = if mode == pmTypeDef: pmTypeDesc else: mode
@@ -734,6 +736,10 @@ proc simpleExprAux(p: var TParser, limit: int, mode: TPrimaryMode): PNode =
     addSon(a, b)
     result = a
     opPrec = getPrecedence(p.tok, p.strongSpaces)
+
+proc simpleExprAux(p: var TParser, limit: int, mode: TPrimaryMode): PNode =
+  result = primary(p, mode)
+  result = parseOperators(p, result, limit, mode)
   
 proc simpleExpr(p: var TParser, mode = pmNormal): PNode =
   result = simpleExprAux(p, -1, mode)
@@ -1501,7 +1507,7 @@ proc parseSection(p: var TParser, kind: TNodeKind,
                   defparser: TDefParser): PNode =
   #| section(p) = COMMENT? p / (IND{>} (p / COMMENT)^+IND{=} DED)
   result = newNodeP(kind, p)
-  getTok(p)
+  if kind != nkTypeSection: getTok(p)
   skipComment(p, result)
   if realInd(p):
     withInd(p):
@@ -1862,7 +1868,16 @@ proc complexOrSimpleStmt(p: var TParser): PNode =
   of tkMacro: result = parseRoutine(p, nkMacroDef)
   of tkTemplate: result = parseRoutine(p, nkTemplateDef)
   of tkConverter: result = parseRoutine(p, nkConverterDef)
-  of tkType: result = parseSection(p, nkTypeSection, parseTypeDef)
+  of tkType:
+    getTok(p)
+    if p.tok.tokType == tkParLe:
+      getTok(p)
+      result = newNodeP(nkTypeOfExpr, p)
+      result.addSon(primary(p, pmTypeDesc))
+      eat(p, tkParRi)
+      result = parseOperators(p, result, -1, pmNormal)
+    else:
+      result = parseSection(p, nkTypeSection, parseTypeDef)
   of tkConst: result = parseSection(p, nkConstSection, parseConstant)
   of tkLet: result = parseSection(p, nkLetSection, parseVariable)
   of tkWhen: result = parseIfOrWhen(p, nkWhenStmt)
