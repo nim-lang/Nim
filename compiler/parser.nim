@@ -658,7 +658,7 @@ proc namedParams(p: var TParser, callee: PNode,
   exprColonEqExprListAux(p, endTok, result)
 
 proc parseMacroColon(p: var TParser, x: PNode): PNode
-proc primarySuffix(p: var TParser, r: PNode): PNode =
+proc primarySuffix(p: var TParser, r: PNode, baseIndent: int): PNode =
   #| primarySuffix = '(' (exprColonEqExpr comma?)* ')' doBlocks?
   #|               | doBlocks
   #|               | '.' optInd ('type' | 'addr' | symbol) generalizedLit?
@@ -666,7 +666,8 @@ proc primarySuffix(p: var TParser, r: PNode): PNode =
   #|               | '{' optInd indexExprList optPar '}'
   #|               | &( '`'|IDENT|literal|'cast') expr # command syntax
   result = r
-  while p.tok.indent < 0:
+  while p.tok.indent < 0 or
+       (p.tok.tokType == tkDot and p.tok.indent >= baseIndent):
     case p.tok.tokType
     of tkParLe:
       if p.strongSpaces and p.tok.strongSpaceA > 0: break
@@ -1007,8 +1008,9 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
     optInd(p, a)
     if isSigil: 
       #XXX prefix operators
+      let baseInd = p.lex.currLineIndent
       addSon(result, primary(p, pmSkipSuffix))
-      result = primarySuffix(p, result)
+      result = primarySuffix(p, result, baseInd)
     else:
       addSon(result, primary(p, pmNormal))
     return
@@ -1071,9 +1073,10 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
     optInd(p, result)
     addSon(result, primary(p, pmNormal))
   else:
+    let baseInd = p.lex.currLineIndent
     result = identOrLiteral(p, mode)
     if mode != pmSkipSuffix:
-      result = primarySuffix(p, result)
+      result = primarySuffix(p, result, baseInd)
 
 proc parseTypeDesc(p: var TParser): PNode =
   #| typeDesc = simpleExpr
@@ -1901,7 +1904,7 @@ proc parseStmt(p: var TParser): PNode =
           if p.tok.indent < 0 or p.tok.indent == p.currInd: discard
           else: break
         else:
-          if p.tok.indent > p.currInd:
+          if p.tok.indent > p.currInd and p.tok.tokType != tkDot:
             parMessage(p, errInvalidIndentation)
           break
         if p.tok.tokType in {tkCurlyRi, tkParRi, tkCurlyDotRi, tkBracketRi}:
@@ -1928,7 +1931,8 @@ proc parseStmt(p: var TParser): PNode =
       else:
         result = newNodeP(nkStmtList, p)
         while true:
-          if p.tok.indent >= 0: parMessage(p, errInvalidIndentation)     
+          if p.tok.indent >= 0:
+            parMessage(p, errInvalidIndentation)
           let a = simpleStmt(p)
           if a.kind == nkEmpty: parMessage(p, errExprExpected, p.tok)
           result.add(a)

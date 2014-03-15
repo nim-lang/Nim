@@ -101,6 +101,7 @@ type
     base10,                   # base10 is listed as the first element,
                               # so that it is the correct default value
     base2, base8, base16
+
   TToken* = object            # a Nimrod token
     tokType*: TTokType        # the type of the token
     indent*: int              # the indentation; != -1 if the token has been
@@ -121,8 +122,9 @@ type
     indentAhead*: int         # if > 0 an indendation has already been read
                               # this is needed because scanning comments
                               # needs so much look-ahead
+    currLineIndent*: int
     strongSpaces*: bool
-  
+
 
 var gLinesCompiled*: int  # all lines that have been compiled
 
@@ -206,6 +208,7 @@ proc openLexer(lex: var TLexer, fileIdx: int32, inputstream: PLLStream) =
   openBaseLexer(lex, inputstream)
   lex.fileIdx = fileidx
   lex.indentAhead = - 1
+  lex.currLineIndent = 0
   inc(lex.lineNumber, inputstream.lineOffset) 
 
 proc closeLexer(lex: var TLexer) = 
@@ -709,6 +712,7 @@ proc skip(L: var TLexer, tok: var TToken) =
       tok.strongSpaceA = 0
       if buf[pos] > ' ':
         tok.indent = indent
+        L.currLineIndent = indent
         break
     else:
       break                   # EndOfFile also leaves the loop
@@ -718,6 +722,7 @@ proc rawGetTok(L: var TLexer, tok: var TToken) =
   fillToken(tok)
   if L.indentAhead >= 0:
     tok.indent = L.indentAhead
+    L.currLineIndent = L.indentAhead
     L.indentAhead = -1
   else:
     tok.indent = -1
@@ -827,5 +832,5 @@ proc rawGetTok(L: var TLexer, tok: var TToken) =
         tok.tokType = tkInvalid
         lexMessage(L, errInvalidToken, c & " (\\" & $(ord(c)) & ')')
         inc(L.bufpos)
-  
+
 dummyIdent = getIdent("")
