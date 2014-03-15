@@ -93,18 +93,15 @@ proc read*[T](future: PFuture[T]): T =
 proc finished*[T](future: PFuture[T]): bool =
   ## Determines whether ``future`` has completed.
   ##
-  ## ``True`` may indicate an error or a value. Use ``hasError`` to distinguish.
+  ## ``True`` may indicate an error or a value. Use ``failed`` to distinguish.
   future.finished
 
 proc failed*[T](future: PFuture[T]): bool =
   ## Determines whether ``future`` completed with an error.
   future.error != nil
 
-# TODO: Get rid of register. Do it implicitly.
-
 when defined(windows) or defined(nimdoc):
   import winlean, sets, hashes
-  #from hashes import THash
   type
     TCompletionKey = dword
 
@@ -794,6 +791,9 @@ proc getName(node: PNimrodNode): string {.compileTime.} =
     assert false
 
 macro async*(prc: stmt): stmt {.immediate.} =
+  ## Macro which processes async procedures into the appropriate
+  ## iterators and yield statements.
+
   expectKind(prc, nnkProcDef)
 
   hint("Processing " & prc[0].getName & " as an async proc.")
@@ -893,6 +893,10 @@ proc recvLine*(p: PDispatcher, socket: TSocketHandle): PFuture[string] {.async.}
   ## will be set to it.
   ## 
   ## If the socket is disconnected, ``line`` will be set to ``""``.
+  ##
+  ## If the socket is disconnected in the middle of a line (before ``\r\L``
+  ## is read) then line will be set to ``""``.
+  ## The partial line **will be lost**.
   
   template addNLIfEmpty(): stmt =
     if result.len == 0:
@@ -901,13 +905,9 @@ proc recvLine*(p: PDispatcher, socket: TSocketHandle): PFuture[string] {.async.}
   result = ""
   var c = ""
   while true:
-    #echo("1")
     c = await p.recv(socket, 1)
-    #echo("Received ", c.len)
     if c.len == 0:
-      #echo("returning")
-      return
-    #echo("2")
+      return ""
     if c == "\r":
       c = await p.recv(socket, 1, MSG_PEEK)
       if c.len > 0 and c == "\L":
@@ -917,9 +917,7 @@ proc recvLine*(p: PDispatcher, socket: TSocketHandle): PFuture[string] {.async.}
     elif c == "\L":
       addNLIfEmpty()
       return
-    #echo("3")
     add(result.string, c)
-  #echo("4")
 
 when isMainModule:
   
