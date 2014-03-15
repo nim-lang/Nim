@@ -394,21 +394,11 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
           propagateToOwner(result, result.sons[i])
 
       result.n = replaceTypeVarsN(cl, result.n)
-      
-      # XXX: This is not really needed?
-      # if result.kind in GenericTypes:
-      #   localError(cl.info, errCannotInstantiateX, typeToString(t, preferName))
-
+     
       case result.kind
       of tyArray:
         let idx = result.sons[0]
-        if idx.kind == tyStatic:
-          if idx.n == nil:
-            let lookup = lookupTypeVar(cl, idx)
-            internalAssert lookup != nil
-            idx.n = lookup.n
-
-          result.sons[0] = makeRangeType(cl.c, 0, idx.n.intVal - 1, idx.n.info)
+        internalAssert idx.kind != tyStatic
        
       of tyObject, tyTuple:
         propagateFieldFlags(result, result.n)

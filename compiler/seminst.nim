@@ -15,8 +15,7 @@ proc instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable,
   if n.kind != nkGenericParams: 
     internalError(n.info, "instantiateGenericParamList; no generic params")
   newSeq(entry.concreteTypes, n.len)
-  for i in countup(0, n.len - 1):
-    var a = n.sons[i]
+  for i, a in n.pairs:
     if a.kind != nkSym: 
       internalError(a.info, "instantiateGenericParamList; no symbol")
     var q = a.sym
@@ -149,7 +148,6 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
                       info: TLineInfo): PSym =
   # no need to instantiate generic templates/macros:
   if fn.kind in {skTemplate, skMacro}: return fn
- 
   # generates an instantiated proc
   if c.instCounter > 1000: internalError(fn.ast.info, "nesting too deep")
   inc(c.instCounter)
@@ -183,9 +181,8 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
       pragma(c, result, n.sons[pragmasPos], allRoutinePragmas)
     if isNil(n.sons[bodyPos]):
       n.sons[bodyPos] = copyTree(fn.getBody)
-    if fn.kind != skTemplate:
-      instantiateBody(c, n, result)
-      sideEffectsCheck(c, result)
+    instantiateBody(c, n, result)
+    sideEffectsCheck(c, result)
     paramsTypeCheck(c, result.typ)
   else:
     result = oldPrc

@@ -382,6 +382,10 @@ type
       # sons[0]: type of containing object or tuple
       # sons[1]: field type
       # .n: nkDotExpr storing the field name
+    
+static:
+  # remind us when TTypeKind stops to fit in a single 64-bit word
+  assert TTypeKind.high.ord <= 63
 
 const
   tyPureObject* = tyTuple
@@ -448,6 +452,10 @@ type
     tfHasStatic
     tfGenericTypeParam
     tfImplicitTypeParam
+    tfWildcard        # consider a proc like foo[T, I](x: Type[T, I])
+                      # T and I here can bind to both typedesc and static types
+                      # before this is determined, we'll consider them to be a
+                      # wildcard type.
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -693,7 +701,7 @@ type
   TSym* {.acyclic.} = object of TIdObj
     # proc and type instantiations are cached in the generic symbol
     case kind*: TSymKind
-    of skType:
+    of skType, skGenericParam:
       typeInstCache*: seq[PType]
       typScope*: PScope
     of routineKinds:
@@ -1494,6 +1502,9 @@ proc hasPattern*(s: PSym): bool {.inline.} =
 
 iterator items*(n: PNode): PNode =
   for i in 0.. <n.len: yield n.sons[i]
+
+iterator pairs*(n: PNode): tuple[i: int, n: PNode] =
+  for i in 0.. <n.len: yield (i, n.sons[i])
 
 proc isAtom*(n: PNode): bool {.inline.} =
   result = n.kind >= nkNone and n.kind <= nkNilLit
