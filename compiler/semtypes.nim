@@ -203,6 +203,14 @@ proc nMinusOne(n: PNode): PNode =
     newSymNode(getSysMagic("<", mUnaryLt)),
     n])
 
+proc makeRangeWithStaticExpr(c: PContext, n: PNode): PType =
+  let intType = getSysType tyInt
+  result = newTypeS(tyRange, c)
+  result.sons = @[intType]
+  result.n = newNode(nkRange, n.info, @[
+    newIntTypeNode(nkIntLit, 0, intType),
+    makeStaticExpr(c, n.nMinusOne)])
+
 proc semArray(c: PContext, n: PNode, prev: PType): PType = 
   var indx, base: PType
   result = newOrPrevType(tyArray, prev, c)
@@ -220,7 +228,7 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
         internalAssert c.inGenericContext > 0
         if not isOrdinalType(e.typ.lastSon):
           localError(n[1].info, errOrdinalTypeExpected)
-        indx = e.typ
+        indx = makeRangeWithStaticExpr(c, e)
       elif e.kind in nkCallKinds and hasGenericArguments(e):
         if not isOrdinalType(e.typ):
           localError(n[1].info, errOrdinalTypeExpected)
@@ -229,12 +237,7 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
         # We are going to construct a range type that will be
         # properly filled-out in semtypinst (see how tyStaticExpr
         # is handled there).
-        let intType = getSysType(tyInt)
-        indx = newTypeS(tyRange, c)
-        indx.sons = @[intType]
-        indx.n = newNode(nkRange, n.info, @[
-          newIntTypeNode(nkIntLit, 0, intType),
-          makeStaticExpr(c, e.nMinusOne)])
+        indx = makeRangeWithStaticExpr(c, e)
       else:
         indx = e.typ.skipTypes({tyTypeDesc})
     addSonSkipIntLit(result, indx)
@@ -283,6 +286,18 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
         result = result.typ.sym.copySym
         result.typ = copyType(result.typ, result.typ.owner, true)
         result.typ.flags.incl tfUnresolved
+      
+      if result.kind == skGenericParam:
+        if result.typ.kind == tyGenericParam and result.typ.len == 0 and
+           tfWildcard in result.typ.flags:
+          # collapse the wild-card param to a type
+          result.kind = skType
+          result.typ.flags.excl tfWildcard
+          return
+        else:
+          localError(n.info, errTypeExpected)
+          return errorSym(c, n)
+
       if result.kind != skType: 
         # this implements the wanted ``var v: V, x: V`` feature ...
         var ov: TOverloadIter
@@ -737,7 +752,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       result.kind = tyUserTypeClassInst
       result.rawAddSon paramType.lastSon
       return addImplicitGeneric(result)
-    
+   
     result = instGenericContainer(c, paramType.sym.info, result,
                                   allowMetaTypes = true)
     result = newTypeWithSons(c, tyCompositeTypeClass, @[paramType, result])
@@ -787,11 +802,9 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       result = addImplicitGeneric(newTypeS(tyAnything, c))
   
   of tyGenericParam:
-    if tfGenericTypeParam in paramType.flags and false:
-      if paramType.sonsLen > 0:
-        result = liftingWalk(paramType.lastSon)
-      else:
-        result = addImplicitGeneric(newTypeS(tyAnything, c))
+    if tfWildcard in paramType.flags:
+      paramType.flags.excl tfWildcard
+      paramType.sym.kind = skType
  
   else: discard
 
@@ -804,8 +817,8 @@ proc semParamType(c: PContext, n: PNode, constraint: var PNode): PType =
   else:
     result = semTypeNode(c, n, nil)
 
-proc semProcTypeNode(c: PContext, n, genericParams: PNode, 
-                     prev: PType, kind: TSymKind): PType = 
+proc semProcTypeNode(c: PContext, n, genericParams: PNode,
+                     prev: PType, kind: TSymKind): PType =
   var
     res: PNode
     cl: TIntSet
@@ -894,6 +907,12 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       result.sons[0] = r
       res.typ = r
 
+  if genericParams != nil:
+    for n in genericParams:
+      if tfUnresolved in n.sym.typ.flags:
+        n.sym.kind = skType
+        n.sym.typ.flags.excl tfWildcard
+
 proc semStmtListType(c: PContext, n: PNode, prev: PType): PType =
   checkMinSonsLen(n, 1)
   var length = sonsLen(n)
@@ -944,7 +963,6 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     localError(n.info, errNoGenericParamsAllowedForX, s.name.s)
     return newOrPrevType(tyError, prev, c)
   else:
-
     var m = newCandidate(c, s, n)
     matches(c, n, copyTree(n), m)
     
@@ -1262,6 +1280,7 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
     
     if typ == nil:
       typ = newTypeS(tyGenericParam, c)
+      if father == nil: typ.flags.incl tfWildcard
 
     typ.flags.incl tfGenericTypeParam
 
@@ -1272,8 +1291,7 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
                       # type for each generic param. the index
                       # of the parameter will be stored in the
                       # attached symbol.
-      var s = case finalType.kind
-        of tyStatic:
+      var s = if finalType.kind == tyStatic or tfWildcard in typ.flags:
           newSymG(skGenericParam, a.sons[j], c).linkTo(finalType)
         else:
           newSymG(skType, a.sons[j], c).linkTo(finalType)

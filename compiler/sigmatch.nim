@@ -620,8 +620,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         else:
           fRange = prev
       result = typeRel(c, f.sons[1], a.sons[1])
-      if result < isGeneric: result = isNone
-      elif lengthOrd(fRange) != lengthOrd(a): result = isNone
+      if result < isGeneric:
+        result = isNone
+      elif lengthOrd(fRange) != lengthOrd(a):
+        result = isNone
     else: discard
   of tyOpenArray, tyVarargs:
     case a.kind
@@ -867,7 +869,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         # any value" and what we need is "match any type", which can be encoded
         # by a tyTypeDesc params. Unfortunately, this requires more substantial
         # changes in semtypinst and elsewhere.
-        if a.kind == tyTypeDesc:
+        if a.kind == tyTypeDesc or tfWildcard in a.flags:
           if f.sonsLen == 0:
             result = isGeneric
           else:
@@ -883,11 +885,16 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
           result = isGeneric
 
       if result == isGeneric:
-        var concrete = concreteType(c, a)
-        if concrete == nil:
-          result = isNone
+        var concrete = a
+        if tfWildcard in a.flags:
+          a.sym.kind = skType
+          a.flags.excl tfWildcard
         else:
-          if doBind: put(c.bindings, f, concrete)
+          concrete = concreteType(c, a)
+          if concrete == nil:
+            return isNone
+        if doBind:
+          put(c.bindings, f, concrete)
     elif a.kind == tyEmpty:
       result = isGeneric
     elif x.kind == tyGenericParam:
@@ -1025,11 +1032,20 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
     arg = argSemantized
     argType = argType
     c = m.c
-   
+ 
   if tfHasStatic in fMaybeStatic.flags:
     # XXX: When implicit statics are the default
     # this will be done earlier - we just have to
     # make sure that static types enter here
+    
+    # XXX: weaken tyGenericParam and call it tyGenericPlaceholder
+    # and finally start using tyTypedesc for generic types properly.
+    if argType.kind == tyGenericParam and tfWildcard in argType.flags:
+      argType.assignType(f)
+      argType.flags.incl tfUnresolved
+      # put(m.bindings, f, argType)
+      return argSemantized
+
     var evaluated = c.semTryConstExpr(c, arg)
     if evaluated != nil:
       arg.typ = newTypeS(tyStatic, c)

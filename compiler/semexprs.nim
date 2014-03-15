@@ -117,8 +117,8 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     elif s.ast != nil:
       result = semExpr(c, s.ast)
     else:
-      internalError(n.info, "no default for")
-      result = emptyNode
+      n.typ = s.typ
+      return n
   of skType:
     markUsed(n, s)
     result = newSymNode(s, n.info)
