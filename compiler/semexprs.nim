@@ -21,7 +21,7 @@ proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 
 proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   # same as 'semExprWithType' but doesn't check for proc vars
-  result = semExpr(c, n, flags)
+  result = semExpr(c, n, flags + {efOperand})
   if result.kind == nkEmpty: 
     # do not produce another redundant error message:
     #raiseRecoverableError("")
@@ -1218,6 +1218,7 @@ proc semReturn(c: PContext, n: PNode): PNode =
 
 proc semProcBody(c: PContext, n: PNode): PNode =
   openScope(c)
+  
   result = semExpr(c, n)
   if c.p.resultSym != nil and not isEmptyType(result.typ):
     # transform ``expr`` to ``result = expr``, but not if the expr is already
@@ -1241,6 +1242,10 @@ proc semProcBody(c: PContext, n: PNode): PNode =
       result = semAsgn(c, a)
   else:
     discardCheck(c, result)
+
+  if c.p.resultSym != nil and c.p.resultSym.typ.isMetaType:
+    localError(c.p.resultSym.info, errCannotInferReturnType)
+
   closeScope(c)
 
 proc semYieldVarResult(c: PContext, n: PNode, restype: PType) =
