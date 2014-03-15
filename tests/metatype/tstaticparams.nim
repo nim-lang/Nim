@@ -1,6 +1,6 @@
 discard """
   file: "tstaticparams.nim"
-  output: "abracadabra\ntest\n3\n15\4"
+  output: "abracadabra\ntest\n3\n15\n4\n2"
 """
 
 type 
@@ -49,3 +49,10 @@ proc getRows(mtx: Matrix): int =
   result = mtx.M
 
 echo getRows(m)
+
+# issue 997
+type TTest[T: static[int], U: static[int]] = array[0..T*U, int]
+type TTestSub[N: static[int]] = TTest[1, N]
+
+var x: TTestSub[2]
+echo x.high
