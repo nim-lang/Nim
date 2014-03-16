@@ -108,6 +108,7 @@ type
     errCannotInferTypeOfTheLiteral,
     errCannotInferReturnType,
     errGenericLambdaNotAllowed,
+    errCompilerDoesntSupportTarget,
     errUser,
     warnCannotOpenFile, 
     warnOctalEscape, warnXIsNeverRead, warnXmightNotBeenInit, 
@@ -361,6 +362,7 @@ const
     errGenericLambdaNotAllowed: "A nested proc can have generic parameters only when " &
                                 "it is used as an operand to another routine and the types " &
                                 "of the generic paramers can be infered from the expected signature.",
+    errCompilerDoesntSupportTarget: "The current compiler \'$1\' doesn't support the requested compilation target",
     errUser: "$1", 
     warnCannotOpenFile: "cannot open \'$1\' [CannotOpenFile]",
     warnOctalEscape: "octal escape sequences do not exist; leading zero is ignored [OctalEscape]", 
