@@ -1,5 +1,5 @@
 discard """
-  msg: 'type mismatch: got (PTest)'
+  msg: "type mismatch: got (PTest)"
 """
 
 type

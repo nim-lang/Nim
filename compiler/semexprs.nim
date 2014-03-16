@@ -612,7 +612,19 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
       if result.isNil: result = n
       else: return result
     result.typ = semfold.getIntervalType(callee.magic, call)
-    
+  
+  block maybeLabelAsStatic:
+    # XXX: temporary work-around needed for tlateboundstatic.
+    # This is certainly not correct, but it will get the job
+    # done until we have a more robust infrastructure for
+    # implicit statics.
+    if n.len > 1:
+      for i in 1 .. <n.len:
+        if n[i].typ.kind != tyStatic or tfUnresolved notin n[i].typ.flags:
+          break maybeLabelAsStatic
+      n.typ = newTypeWithSons(c, tyStatic, @[n.typ])
+      n.typ.flags.incl tfUnresolved
+
   # optimization pass: not necessary for correctness of the semantic pass
   if {sfNoSideEffect, sfCompileTime} * callee.flags != {} and
      {sfForward, sfImportc} * callee.flags == {}:

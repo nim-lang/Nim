@@ -1053,11 +1053,15 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
     # and finally start using tyTypedesc for generic types properly.
     if argType.kind == tyGenericParam and tfWildcard in argType.flags:
       argType.assignType(f)
-      argType.flags.incl tfUnresolved
       # put(m.bindings, f, argType)
       return argSemantized
 
-    if argType.kind != tyStatic:
+    if argType.kind == tyStatic:
+      if m.calleeSym.kind == skType:
+        result = newNodeI(nkType, argOrig.info)
+        result.typ = makeTypeFromExpr(c, arg)
+        return
+    else:
       var evaluated = c.semTryConstExpr(c, arg)
       if evaluated != nil:
         arg.typ = newTypeS(tyStatic, c)
