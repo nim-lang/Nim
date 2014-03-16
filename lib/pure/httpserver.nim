@@ -25,13 +25,19 @@
 ## **Warning:** The API of this module is unstable, and therefore is subject
 ## to change.
 
-import parseutils, strutils, os, osproc, strtabs, streams, sockets, asyncio
+import parseutils, strutils, os, osproc, strtabs, streams, sockets, asyncio, mimetypes
 
 const
   wwwNL* = "\r\L"
   ServerSig = "Server: httpserver.nim/1.0.0" & wwwNL
 
+var mimeData = newMimetypes()
+
 # --------------- output messages --------------------------------------------
+
+proc sendContentType(client: TSocket, contentType: string) =
+  send(client, "Content-type: " & contentType & wwwNL)
+  send(client, wwwNL)
 
 proc sendTextContentType(client: TSocket) =
   send(client, "Content-type: text/html" & wwwNL)
@@ -54,10 +60,15 @@ when false:
     send(client, "<P>Error prohibited CGI execution." & wwwNL)
 
 proc headers(client: TSocket, filename: string) =
-  # XXX could use filename to determine file type
   send(client, "HTTP/1.1 200 OK" & wwwNL)
   send(client, ServerSig)
-  sendTextContentType(client)
+  var fname = filename
+  var queryPos = fname.find('?')
+  if queryPos >= 0:
+    fname = fname[1..queryPos]
+  var (dir, name, ext) = splitFile(fname)
+  var contentType = mimeData.getMimetype(ext[1..ext.len], "text/html")
+  sendContentType(client, contentType)
 
 proc notFound(client: TSocket) =
   send(client, "HTTP/1.1 404 NOT FOUND" & wwwNL)
