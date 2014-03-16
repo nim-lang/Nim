@@ -11,7 +11,7 @@
 
 import
   parseutils, strutils, pegs, os, osproc, streams, parsecfg, json,
-  marshal, backend, parseopt, specs, htmlgen, browsers
+  marshal, backend, parseopt, specs, htmlgen, browsers, terminal
 
 const
   resultsFile = "testresults.html"
@@ -109,7 +109,12 @@ proc addResult(r: var TResults, test: TTest,
                           expected = expected,
                           given = given)
   r.data.addf("$#\t$#\t$#\t$#", name, expected, given, $success)
-  echo " [", $success, "]"
+  if success notin {reSuccess, reIgnored}:
+    styledEcho styleBright, fgRed, "^^^ [", $success, "]"
+    styledEcho styleDim, "EXPECTED:"
+    echo expected
+    styledEcho styleDim, "GIVEN:"
+    echo given
 
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest) =
   if strip(expected.msg) notin strip(given.msg):
@@ -147,7 +152,7 @@ proc testSpec(r: var TResults, test: TTest) =
   # major entry point for a single test
   let tname = test.name.addFileExt(".nim")
   inc(r.total)
-  stdout.write extractFilename(tname)
+  echo extractFilename(tname)
   var expected = parseSpec(tname)
   if expected.err == reIgnored:
     r.addResult(test, "", "", reIgnored)
