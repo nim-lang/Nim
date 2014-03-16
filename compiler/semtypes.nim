@@ -945,6 +945,11 @@ proc semGenericParamInInvokation(c: PContext, n: PNode): PType =
   result = semTypeNode(c, n, nil)
 
 proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType = 
+  if s.typ == nil:
+    localError(n.info, "cannot instantiate the '$1' $2" %
+                       [s.name.s, ($s.kind).substr(2).toLower])
+    return newOrPrevType(tyError, prev, c)
+  
   result = newOrPrevType(tyGenericInvokation, prev, c)
   addSonSkipIntLit(result, s.typ)
 
@@ -954,17 +959,13 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
       rawAddSon(result, typ)
     else: addSonSkipIntLit(result, typ)
 
-  if s.typ == nil:
-    localError(n.info, errCannotInstantiateX, s.name.s)
-    return newOrPrevType(tyError, prev, c)
-  elif s.typ.kind == tyForward:
+  if s.typ.kind == tyForward:
     for i in countup(1, sonsLen(n)-1):
       var elem = semGenericParamInInvokation(c, n.sons[i])
       addToResult(elem)
   elif s.typ.kind != tyGenericBody:
     #we likely got code of the form TypeA[TypeB] where TypeA is
     #not generic.
-    debug s.typ
     localError(n.info, errNoGenericParamsAllowedForX, s.name.s)
     return newOrPrevType(tyError, prev, c)
   else:
