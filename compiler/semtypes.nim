@@ -680,6 +680,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     s.position = genericParams.len
     genericParams.addSon(newSymNode(s))
     result = typeClass
+    addDecl(c, s)
  
   # XXX: There are codegen errors if this is turned into a nested proc
   template liftingWalk(typ: PType, anonFlag = false): expr =
@@ -802,10 +803,11 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       result = addImplicitGeneric(newTypeS(tyAnything, c))
   
   of tyGenericParam:
+    markUsed(genericParams, paramType.sym)
     if tfWildcard in paramType.flags:
       paramType.flags.excl tfWildcard
       paramType.sym.kind = skType
- 
+    
   else: discard
 
   # result = liftingWalk(paramType)
@@ -1108,13 +1110,17 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         for i in countup(1, n.len - 1):
           result.rawAddSon(semTypeNode(c, n.sons[i], nil))
     else: result = semGeneric(c, n, s, prev)
-  of nkIdent, nkDotExpr, nkAccQuoted: 
-    if n.kind == nkDotExpr:
-      let head = qualifiedLookUp(c, n[0], {checkAmbiguity, checkUndeclared})
-      if head.kind in {skType}:
-        var toBind = initIntSet()
-        var preprocessed = semGenericStmt(c, n, {}, toBind)
-        return makeTypeFromExpr(c, preprocessed)
+  of nkDotExpr:
+    var typeExpr = semExpr(c, n)
+    if typeExpr.typ.kind != tyTypeDesc:
+      localError(n.info, errTypeExpected)
+      return errorType(c)
+    result = typeExpr.typ.base
+    if result.isMetaType:
+      var toBind = initIntSet()
+      var preprocessed = semGenericStmt(c, n, {}, toBind)
+      return makeTypeFromExpr(c, preprocessed)
+  of nkIdent, nkAccQuoted:
     var s = semTypeIdent(c, n)
     if s.typ == nil: 
       if s.kind != skError: localError(n.info, errTypeExpected)

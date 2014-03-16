@@ -80,7 +80,7 @@ type
 
 proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType
 proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym
-proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode): PNode
+proc replaceTypeVarsN*(cl: var TReplTypeVars, n: PNode): PNode
 
 template checkMetaInvariants(cl: TReplTypeVars, t: PType) =
   when false:
@@ -210,7 +210,7 @@ proc lookupTypeVar(cl: TReplTypeVars, t: PType): PType =
   elif result.kind == tyGenericParam and not cl.allowMetaTypes:
     internalError(cl.info, "substitution with generic parameter")
 
-proc instCopyType(cl: var TReplTypeVars, t: PType): PType =
+proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
   # XXX: relying on allowMetaTypes is a kludge
   result = copyType(t, t.owner, cl.allowMetaTypes)
   result.flags.incl tfFromGeneric
@@ -281,7 +281,7 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
   rawAddSon(result, newbody)
   checkPartialConstructedType(cl.info, newbody)
 
-proc eraseVoidParams(t: PType) =
+proc eraseVoidParams*(t: PType) =
   if t.sons[0] != nil and t.sons[0].kind == tyEmpty:
     t.sons[0] = nil
   
@@ -298,7 +298,7 @@ proc eraseVoidParams(t: PType) =
       setLen t.n.sons, pos
       return
 
-proc skipIntLiteralParams(t: PType) =
+proc skipIntLiteralParams*(t: PType) =
   for i in 0 .. <t.sonsLen:
     let p = t.sons[i]
     if p == nil: continue
@@ -409,7 +409,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       
       else: discard
 
-proc initTypeVars(p: PContext, pt: TIdTable, info: TLineInfo): TReplTypeVars =
+proc initTypeVars*(p: PContext, pt: TIdTable, info: TLineInfo): TReplTypeVars =
   initIdTable(result.symMap)
   copyIdTable(result.typeMap, pt)
   initIdTable(result.localCache)
