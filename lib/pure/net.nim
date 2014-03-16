@@ -17,43 +17,45 @@ type
     IPv4  ## IPv4 address
 
   TIpAddress* = object ## stores an arbitrary IP address    
-    case family*: IpAddressFamily      ## the type of the IP address (IPv4 or IPv6)
+    case family*: IpAddressFamily ## the type of the IP address (IPv4 or IPv6)
     of IpAddressFamily.IPv6:
-      address_v6*: array[0..15, uint8] ## Contains the IP address in bytes in case of IPv6
+      address_v6*: array[0..15, uint8] ## Contains the IP address in bytes in
+                                       ## case of IPv6
     of IpAddressFamily.IPv4:
-      address_v4*: array[0..3, uint8]  ## Contains the IP address in bytes in case of IPv4
+      address_v4*: array[0..3, uint8] ## Contains the IP address in bytes in
+                                      ## case of IPv4
 
 proc IPv4_any*(): TIpAddress =
   ## Returns the IPv4 any address, which can be used to listen on all available
   ## network adapters
   result = TIpAddress(
     family: IpAddressFamily.IPv4,
-    address_v4: [0'u8, 0'u8, 0'u8, 0'u8])
+    address_v4: [0'u8, 0, 0, 0])
 
 proc IPv4_loopback*(): TIpAddress =
   ## Returns the IPv4 loopback address (127.0.0.1)
   result = TIpAddress(
     family: IpAddressFamily.IPv4,
-    address_v4: [127'u8, 0'u8, 0'u8, 1'u8])
+    address_v4: [127'u8, 0, 0, 1])
 
 proc IPv4_broadcast*(): TIpAddress =
   ## Returns the IPv4 broadcast address (255.255.255.255)
   result = TIpAddress(
     family: IpAddressFamily.IPv4,
-    address_v4: [255'u8, 255'u8, 255'u8, 255'u8])
+    address_v4: [255'u8, 255, 255, 255])
 
 proc IPv6_any*(): TIpAddress =
   ## Returns the IPv6 any address (::0), which can be used
   ## to listen on all available network adapters 
   result = TIpAddress(
     family: IpAddressFamily.IPv6,
-    address_v6: [0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,0'u8])
+    address_v6: [0'u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 
 proc IPv6_loopback*(): TIpAddress =
   ## Returns the IPv6 loopback address (::1)
   result = TIpAddress(
     family: IpAddressFamily.IPv6,
-    address_v6: [0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,0'u8,1'u8])
+    address_v6: [0'u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])
 
 proc `==`*(lhs, rhs: TIpAddress): bool =
   ## Compares two IpAddresses for Equality. Returns two if the addresses are equal
@@ -138,19 +140,23 @@ proc parseIPv4Address(address_str: string): TIpAddress =
 
   for i in 0 .. high(address_str):
     if address_str[i] in strutils.Digits: # Character is a number
-      currentByte = currentByte * 10 + cast[uint16](ord(address_str[i]) - ord('0'))
+      currentByte = currentByte * 10 +
+        cast[uint16](ord(address_str[i]) - ord('0'))
       if currentByte > 255'u16:
-        raise newException(EInvalidValue, "Invalid IP Address. Value is out of range")
+        raise newException(EInvalidValue,
+          "Invalid IP Address. Value is out of range")
       seperatorValid = true
     elif address_str[i] == '.': # IPv4 address separator
       if not seperatorValid or byteCount >= 3:
-        raise newException(EInvalidValue, "Invalid IP Address. The address consists of too many groups")
+        raise newException(EInvalidValue,
+          "Invalid IP Address. The address consists of too many groups")
       result.address_v4[byteCount] = cast[uint8](currentByte)
       currentByte = 0
       byteCount.inc
       seperatorValid = false
     else:
-      raise newException(EInvalidValue, "Invalid IP Address. Address contains an invalid character")
+      raise newException(EInvalidValue,
+        "Invalid IP Address. Address contains an invalid character")
 
   if byteCount != 3 or not seperatorValid:
     raise newException(EInvalidValue, "Invalid IP Address")
@@ -160,7 +166,8 @@ proc parseIPv6Address(address_str: string): TIpAddress =
   ## Parses IPv6 adresses
   ## Raises EInvalidValue on errors
   result.family = IpAddressFamily.IPv6
-  if address_str.len < 2: raise newException(EInvalidValue, "Invalid IP Address")
+  if address_str.len < 2:
+    raise newException(EInvalidValue, "Invalid IP Address")
 
   var
     groupCount = 0
@@ -174,13 +181,19 @@ proc parseIPv6Address(address_str: string): TIpAddress =
 
   for i,c in address_str:
     if c == ':':
-      if not seperatorValid: raise newException(EInvalidValue, "Invalid IP Address. Address contains an invalid seperator")
+      if not seperatorValid:
+        raise newException(EInvalidValue,
+          "Invalid IP Address. Address contains an invalid seperator")
       if lastWasColon:        
-        if dualColonGroup != -1: raise newException(EInvalidValue, "Invalid IP Address. Address contains more than one \"::\" seperator")
+        if dualColonGroup != -1:
+          raise newException(EInvalidValue,
+            "Invalid IP Address. Address contains more than one \"::\" seperator")
         dualColonGroup = groupCount
         seperatorValid = false
       elif i != 0 and i != high(address_str):
-        if groupCount >= 8: raise newException(EInvalidValue, "Invalid IP Address. The address consists of too many groups")
+        if groupCount >= 8:
+          raise newException(EInvalidValue,
+            "Invalid IP Address. The address consists of too many groups")
         result.address_v6[groupCount*2] = cast[uint8](currentShort shr 8)
         result.address_v6[groupCount*2+1] = cast[uint8](currentShort and 0xFF)
         currentShort = 0
@@ -188,14 +201,17 @@ proc parseIPv6Address(address_str: string): TIpAddress =
         if dualColonGroup != -1: seperatorValid = false
       elif i == 0: # only valid if address starts with ::
         if address_str[1] != ':':
-          raise newException(EInvalidValue, "Invalid IP Address. Address may not start with \":\"")
+          raise newException(EInvalidValue,
+            "Invalid IP Address. Address may not start with \":\"")
       else: # i == high(address_str) - only valid if address ends with ::
         if address_str[high(address_str)-1] != ':': 
-          raise newException(EInvalidValue, "Invalid IP Address. Address may not end with \":\"")
+          raise newException(EInvalidValue,
+            "Invalid IP Address. Address may not end with \":\"")
       lastWasColon = true
       currentGroupStart = i + 1
     elif c == '.': # Switch to parse IPv4 mode
-      if i < 3 or not seperatorValid or groupCount >= 7: raise newException(EInvalidValue, "Invalid IP Address")
+      if i < 3 or not seperatorValid or groupCount >= 7:
+        raise newException(EInvalidValue, "Invalid IP Address")
       v4StartPos = currentGroupStart
       currentShort = 0
       seperatorValid = false
@@ -208,16 +224,20 @@ proc parseIPv6Address(address_str: string): TIpAddress =
       else: # Upper case hex
         currentShort = (currentShort shl 4) + cast[uint32](ord(c) - ord('A')) + 10
       if currentShort > 65535'u32:
-        raise newException(EInvalidValue, "Invalid IP Address. Value is out of range")
+        raise newException(EInvalidValue,
+          "Invalid IP Address. Value is out of range")
       lastWasColon = false
       seperatorValid = true
     else:
-      raise newException(EInvalidValue, "Invalid IP Address. Address contains an invalid character")
+      raise newException(EInvalidValue,
+        "Invalid IP Address. Address contains an invalid character")
 
 
   if v4StartPos == -1: # Don't parse v4. Copy the remaining v6 stuff
     if seperatorValid: # Copy remaining data
-      if groupCount >= 8: raise newException(EInvalidValue, "Invalid IP Address. The address consists of too many groups")
+      if groupCount >= 8:
+        raise newException(EInvalidValue,
+          "Invalid IP Address. The address consists of too many groups")
       result.address_v6[groupCount*2] = cast[uint8](currentShort shr 8)
       result.address_v6[groupCount*2+1] = cast[uint8](currentShort and 0xFF)
       groupCount.inc()
@@ -226,7 +246,8 @@ proc parseIPv6Address(address_str: string): TIpAddress =
       if c in strutils.Digits: # Character is a number
         currentShort = currentShort * 10 + cast[uint32](ord(c) - ord('0'))
         if currentShort > 255'u32:
-          raise newException(EInvalidValue, "Invalid IP Address. Value is out of range")
+          raise newException(EInvalidValue,
+            "Invalid IP Address. Value is out of range")
         seperatorValid = true
       elif c == '.': # IPv4 address separator
         if not seperatorValid or byteCount >= 3:
@@ -236,7 +257,8 @@ proc parseIPv6Address(address_str: string): TIpAddress =
         byteCount.inc()
         seperatorValid = false
       else: # Invalid character
-        raise newException(EInvalidValue, "Invalid IP Address. Address contains an invalid character")
+        raise newException(EInvalidValue,
+          "Invalid IP Address. Address contains an invalid character")
 
     if byteCount != 3 or not seperatorValid:
       raise newException(EInvalidValue, "Invalid IP Address")
@@ -245,17 +267,21 @@ proc parseIPv6Address(address_str: string): TIpAddress =
 
   # Shift and fill zeros in case of ::
   if groupCount > 8:
-    raise newException(EInvalidValue, "Invalid IP Address. The address consists of too many groups")
+    raise newException(EInvalidValue,
+      "Invalid IP Address. The address consists of too many groups")
   elif groupCount < 8: # must fill
-    if dualColonGroup == -1: raise newException(EInvalidValue, "Invalid IP Address. The address consists of too few groups")
+    if dualColonGroup == -1:
+      raise newException(EInvalidValue,
+        "Invalid IP Address. The address consists of too few groups")
     var toFill = 8 - groupCount # The number of groups to fill
     var toShift = groupCount - dualColonGroup # Nr of known groups after ::
     for i in 0..2*toShift-1: # shift
       result.address_v6[15-i] = result.address_v6[groupCount*2-i-1]
     for i in 0..2*toFill-1: # fill with 0s
       result.address_v6[dualColonGroup*2+i] = 0
-  elif dualColonGroup != -1: raise newException(EInvalidValue, "Invalid IP Address. The address consists of too many groups")
-
+  elif dualColonGroup != -1:
+    raise newException(EInvalidValue,
+      "Invalid IP Address. The address consists of too many groups")
 
 proc parseIpAddress*(address_str: string): TIpAddress =
   ## Parses an IP address
