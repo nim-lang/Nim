@@ -62,7 +62,7 @@ proc open*(host: string = defaultHost, port: int = defaultPort): TDbConn {.
   if x != 0'i32:
     dbError(result, "cannot open: " & host)
 
-proc jsonToBSon(b: var TBSon, key: string, j: PJsonNode) =
+proc jsonToBson(b: var TBson, key: string, j: PJsonNode) =
   case j.kind
   of JString:
     add(b, key, j.str)
@@ -77,25 +77,34 @@ proc jsonToBSon(b: var TBSon, key: string, j: PJsonNode) =
   of JObject:
     addStartObject(b, key)
     for k, v in items(j.fields):
-      jsonToBSon(b, k, v)
+      jsonToBson(b, k, v)
     addFinishObject(b)
   of JArray:
     addStartArray(b, key)
     for i, e in pairs(j.elems):
-      jsonToBSon(b, $i, e)
+      jsonToBson(b, $i, e)
     addFinishArray(b)
 
-proc jsonToBSon*(j: PJsonNode, oid: TOid): TBSon =
+proc jsonToBson*(b: var TBson, j: PJsonNode, oid: TOid) =
   ## converts a JSON value into the BSON format. The result must be
   ## ``destroyed`` explicitely!
-  init(result)
+  init(b)
   assert j.kind == JObject
-  add(result, "_id", oid)
+  add(b, "_id", oid)
   for key, val in items(j.fields):
-    jsonToBSon(result, key, val)
-  finish(result)
+    jsonToBson(b, key, val)
+  finish(b)
 
-proc `[]`*(obj: var TBSon, fieldname: cstring): TBSon =
+proc jsonToBson*(b: var TBson, j: PJsonNode) =
+  ## converts a JSON value into the BSON format. The result must be
+  ## ``destroyed`` explicitely!
+  init(b)
+  assert j.kind == JObject
+  for key, val in items(j.fields):
+    jsonToBson(b, key, val)
+  finish(b)
+
+proc `[]`*(obj: var TBson, fieldname: cstring): TBson =
   ## retrieves the value belonging to `fieldname`. Raises `EInvalidKey` if
   ## the attribute does not exist.
   var it = initIter(obj)
@@ -103,10 +112,10 @@ proc `[]`*(obj: var TBSon, fieldname: cstring): TBSon =
   if res == bkEOO:
     raise newException(EInvalidIndex, "key not in object")
 
-proc getId*(obj: var TBSon): TOid =
+proc getId*(obj: var TBson): TOid =
   ## retrieves the ``_id`` attribute of `obj`.
   var it = initIter(obj)
-  var b: TBSon
+  var b: TBson
   let res = find(it, b, "_id")
   if res == bkOID:
     result = oidVal(it)[]
@@ -118,7 +127,8 @@ proc insertId*(db: var TDbConn, namespace: string, data: PJsonNode): TOid {.
   ## converts `data` to BSON format and inserts it in `namespace`. Returns
   ## the generated OID for the ``_id`` field.
   result = genOid()
-  var x = jsonToBSon(data, result)
+  var x: TBson
+  jsonToBson(x, data, result)
   insert(db, namespace, x, nil)
   destroy(x)
 
@@ -127,7 +137,7 @@ proc insert*(db: var TDbConn, namespace: string, data: PJsonNode) {.
   ## converts `data` to BSON format and inserts it in `namespace`.  
   discard InsertID(db, namespace, data)
 
-proc update*(db: var TDbConn, namespace: string, obj: var TBSon) {.
+proc update*(db: var TDbConn, namespace: string, obj: var TBson) {.
   tags: [FReadDB, FWriteDb].} =
   ## updates `obj` in `namespace`.
   var cond: TBson
@@ -140,7 +150,8 @@ proc update*(db: var TDbConn, namespace: string, obj: var TBSon) {.
 proc update*(db: var TDbConn, namespace: string, oid: TOid, obj: PJsonNode) {.
   tags: [FReadDB, FWriteDb].} =
   ## updates the data with `oid` to have the new data `obj`.
-  var a = jsonToBSon(obj, oid)
+  var a: TBson
+  jsonToBson(a, obj, oid)
   Update(db, namespace, a)
   destroy(a)
 
@@ -154,12 +165,12 @@ proc delete*(db: var TDbConn, namespace: string, oid: TOid) {.
   discard remove(db, namespace, cond)
   destroy(cond)
 
-proc delete*(db: var TDbConn, namespace: string, obj: var TBSon) {.
+proc delete*(db: var TDbConn, namespace: string, obj: var TBson) {.
   tags: [FWriteDb].} =
   ## Deletes the object `obj`.
   delete(db, namespace, getId(obj))
 
-iterator find*(db: var TDbConn, namespace: string): var TBSon {.
+iterator find*(db: var TDbConn, namespace: string): var TBson {.
   tags: [FReadDB].} =
   ## iterates over any object in `namespace`.
   var cursor: TCursor
@@ -169,7 +180,7 @@ iterator find*(db: var TDbConn, namespace: string): var TBSon {.
   destroy(cursor)
 
 iterator find*(db: var TDbConn, namespace: string, 
-               query, fields: var TBSon): var TBSon {.tags: [FReadDB].} =
+               query, fields: var TBson): var TBson {.tags: [FReadDB].} =
   ## yields the `fields` of any document that suffices `query`.
   var cursor = find(db, namespace, query, fields, 0'i32, 0'i32, 0'i32)
   if cursor != nil:
@@ -177,13 +188,13 @@ iterator find*(db: var TDbConn, namespace: string,
       yield bson(cursor[])[]
     destroy(cursor[])
 
-proc setupFieldnames(fields: varargs[string]): TBSon =
+proc setupFieldnames(fields: varargs[string]): TBson =
   init(result)
   for x in fields: add(result, x, 1'i32)
   finish(result)
 
 iterator find*(db: var TDbConn, namespace: string, 
-               query: var TBSon, fields: varargs[string]): var TBSon {.
+               query: var TBson, fields: varargs[string]): var TBson {.
                tags: [FReadDB].} =
   ## yields the `fields` of any document that suffices `query`. If `fields` 
   ## is ``[]`` the whole document is yielded.
@@ -195,13 +206,13 @@ iterator find*(db: var TDbConn, namespace: string,
     destroy(cursor[])
   destroy(f)
 
-proc setupQuery(query: string): TBSon =
+proc setupQuery(query: string): TBson =
   init(result)
   add(result, "$where", query)
   finish(result)
 
 iterator find*(db: var TDbConn, namespace: string, 
-               query: string, fields: varargs[string]): var TBSon {.
+               query: string, fields: varargs[string]): var TBson {.
                tags: [FReadDB].} =
   ## yields the `fields` of any document that suffices `query`. If `fields` 
   ## is ``[]`` the whole document is yielded.
@@ -217,10 +228,10 @@ iterator find*(db: var TDbConn, namespace: string,
 
 when false:
   # this doesn't work this way; would require low level hacking
-  iterator fieldPairs*(obj: var TBSon): tuple[key: cstring, value: TBSon] =
+  iterator fieldPairs*(obj: var TBson): tuple[key: cstring, value: TBson] =
     ## iterates over `obj` and yields all (key, value)-Pairs.
     var it = initIter(obj)
-    var v: TBSon
+    var v: TBson
     while next(it) != bkEOO:
       let key = key(it)
       discard init(v, value(it))
