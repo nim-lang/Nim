@@ -117,12 +117,9 @@ proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
       var oldPrc = c.generics[i].inst.sym
       pushInfoContext(oldPrc.info)
       openScope(c)
-      pushProcCon(c, oldPrc)
-      addProcDecls(c, oldPrc)
       var n = oldPrc.ast
       n.sons[bodyPos] = copyTree(s.getBody)
       instantiateBody(c, n, oldPrc)
-      popProcCon(c)
       closeScope(c)
       popInfoContext()
 
@@ -164,10 +161,11 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   # at this point semtypinst have to become part of sem, because it
   # will need to use openScope, addDecl, etc
   #
+  addDecl(c, prc)
+  
   pushInfoContext(info)
   var cl = initTypeVars(c, pt, info)
   var result = instCopyType(cl, prc.typ)
-  addDecl(c, prc)
   let originalParams = result.n
   result.n = originalParams.shallowCopy
   
@@ -175,10 +173,14 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
     result.sons[i] = replaceTypeVarsT(cl, result.sons[i])
     propagateToOwner(result, result.sons[i])
     let param = replaceTypeVarsN(cl, originalParams[i])
-    internalAssert param.kind == nkSym
     result.n.sons[i] = param
-    addDecl(c, param.sym)
-  
+    if param.kind == nkSym:
+      # XXX: this won't be true for void params
+      # implement pass-through of void params and
+      # the "sort by distance to point" container
+      param.sym.owner = prc
+      addDecl(c, param.sym)
+    
   result.sons[0] = replaceTypeVarsT(cl, result.sons[0])
   result.n.sons[0] = originalParams[0].copyTree
   

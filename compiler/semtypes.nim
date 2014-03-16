@@ -220,7 +220,7 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
     else:
       let e = semExprWithType(c, n.sons[1], {efDetermineType})
       if e.typ.kind == tyFromExpr:
-        indx = e.typ
+        indx = makeRangeWithStaticExpr(c, e.typ.n)
       elif e.kind in {nkIntLit..nkUInt64Lit}:
         indx = makeRangeType(c, 0, e.intVal-1, n.info, e.typ)
       elif e.kind == nkSym and e.typ.kind == tyStatic:
@@ -783,7 +783,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
         result = paramType
         result.lastSon.shouldHaveMeta
 
-    let liftBody = liftingWalk(paramType.lastSon)
+    let liftBody = liftingWalk(paramType.lastSon, true)
     if liftBody != nil:
       result = liftBody
       result.shouldHaveMeta
@@ -795,7 +795,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
 
     let expanded = instGenericContainer(c, info, paramType,
                                         allowMetaTypes = true)
-    result = liftingWalk(expanded)
+    result = liftingWalk(expanded, true)
 
   of tyUserTypeClass, tyBuiltInTypeClass, tyAnd, tyOr, tyNot:
     result = addImplicitGeneric(copyType(paramType, getCurrOwner(), true))
@@ -964,6 +964,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   elif s.typ.kind != tyGenericBody:
     #we likely got code of the form TypeA[TypeB] where TypeA is
     #not generic.
+    debug s.typ
     localError(n.info, errNoGenericParamsAllowedForX, s.name.s)
     return newOrPrevType(tyError, prev, c)
   else:

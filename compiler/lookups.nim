@@ -127,7 +127,10 @@ proc ensureNoMissingOrUnusedSymbols(scope: PScope) =
     elif {sfUsed, sfExported} * s.flags == {} and optHints in s.options: 
       # BUGFIX: check options in s!
       if s.kind notin {skForVar, skParam, skMethod, skUnknown, skGenericParam}:
-        message(s.info, hintXDeclaredButNotUsed, getSymRepr(s))
+        # XXX: implicit type params are currently skTypes
+        # maybe they can be made skGenericParam as well.
+        if s.typ != nil and tfImplicitTypeParam notin s.typ.flags:
+          message(s.info, hintXDeclaredButNotUsed, getSymRepr(s))
     s = nextIter(it, scope.symbols)
   
 proc wrongRedefinition*(info: TLineInfo, s: string) =
