@@ -704,11 +704,13 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
   of tyStatic:
     # proc(a: expr{string}, b: expr{nkLambda})
     # overload on compile time values and AST trees
+    if paramType.n != nil: return # this is a concrete type
+    if tfUnresolved in paramType.flags: return # already lifted
     let base = paramType.base.maybeLift
     if base.isMetaType and procKind == skMacro:
       localError(info, errMacroBodyDependsOnGenericTypes, paramName)
     result = addImplicitGeneric(c.newTypeWithSons(tyStatic, @[base]))
-    result.flags.incl tfHasStatic
+    result.flags.incl({tfHasStatic, tfUnresolved})
   
   of tyTypeDesc:
     if tfUnresolved notin paramType.flags:
@@ -911,7 +913,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
 
   if genericParams != nil:
     for n in genericParams:
-      if tfUnresolved in n.sym.typ.flags:
+      if tfWildcard in n.sym.typ.flags:
         n.sym.kind = skType
         n.sym.typ.flags.excl tfWildcard
 
@@ -981,7 +983,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
       let typ = m.call[i].typ.skipTypes({tyTypeDesc})
       if containsGenericType(typ): isConcrete = false
       addToResult(typ)
-    
+   
     if isConcrete:
       if s.ast == nil:
         localError(n.info, errCannotInstantiateX, s.name.s)

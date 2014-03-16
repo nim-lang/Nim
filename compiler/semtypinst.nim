@@ -96,8 +96,11 @@ proc replaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
   checkMetaInvariants(cl, result)
 
 proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
+  let t = replaceTypeVarsT(cl, n.typ)
+  if t != nil and t.kind == tyStatic and t.n != nil:
+    return t.n
   result = copyNode(n)
-  result.typ = replaceTypeVarsT(cl, n.typ)
+  result.typ = t
   if result.kind == nkSym: result.sym = replaceTypeVarsS(cl, n.sym)
   let isCall = result.kind in nkCallKinds
   for i in 0 .. <n.safeLen:
@@ -197,10 +200,10 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
     result = copySym(s, false)
     incl(result.flags, sfFromGeneric)
     idTablePut(cl.symMap, s, result)
-    result.typ = replaceTypeVarsT(cl, s.typ)
     result.owner = s.owner
+    result.typ = replaceTypeVarsT(cl, s.typ)
     result.ast = replaceTypeVarsN(cl, s.ast)
-
+    
 proc lookupTypeVar(cl: TReplTypeVars, t: PType): PType = 
   result = PType(idTableGet(cl.typeMap, t))
   if result == nil:

@@ -432,8 +432,9 @@ type
     tfFromGeneric,    # type is an instantiation of a generic; this is needed
                       # because for instantiations of objects, structural
                       # type equality has to be used
-    tfUnresolved,     # marks unresolved typedesc params: e.g.
+    tfUnresolved,     # marks unresolved typedesc/static params: e.g.
                       # proc foo(T: typedesc, list: seq[T]): var T
+                      # proc foo(L: static[int]): array[L, int]
     tfRetType,        # marks return types in proc (used to detect type classes 
                       # used as return types for return type inference)
     tfCapturesEnv,    # whether proc really captures some environment
