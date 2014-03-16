@@ -72,7 +72,7 @@ type
     rule: TNode                   ## the rule that the symbol refers to
   TNode {.final, shallow.} = object
     case kind: TPegKind
-    of pkEmpty..pkWhitespace: discard
+    of pkEmpty..pkWhitespace: nil
     of pkTerminal, pkTerminalIgnoreCase, pkTerminalIgnoreStyle: term: string
     of pkChar, pkGreedyRepChar: ch: char
     of pkCharChoice, pkGreedyRepSet: charChoice: ref set[char]

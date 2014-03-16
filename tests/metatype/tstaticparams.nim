@@ -54,5 +54,5 @@ echo getRows(m)
 type TTest[T: static[int], U: static[int]] = array[0..T*U, int]
 type TTestSub[N: static[int]] = TTest[1, N]
 
-var x: TTestSub[2]
-echo x.high
+var z: TTestSub[2]
+echo z.high

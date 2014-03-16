@@ -109,6 +109,7 @@ proc addResult(r: var TResults, test: TTest,
                           expected = expected,
                           given = given)
   r.data.addf("$#\t$#\t$#\t$#", name, expected, given, $success)
+  echo " [", $success, "]"
 
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest) =
   if strip(expected.msg) notin strip(given.msg):
@@ -146,7 +147,7 @@ proc testSpec(r: var TResults, test: TTest) =
   # major entry point for a single test
   let tname = test.name.addFileExt(".nim")
   inc(r.total)
-  echo extractFilename(tname)
+  stdout.write extractFilename(tname)
   var expected = parseSpec(tname)
   if expected.err == reIgnored:
     r.addResult(test, "", "", reIgnored)

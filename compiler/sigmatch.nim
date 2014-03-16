@@ -522,8 +522,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
 
   template bindingRet(res) =
     when res == isGeneric:
-      let bound = aOrig.skipTypes({tyRange}).skipIntLit
-      put(c.bindings, f, bound)
+      if doBind:
+        let bound = aOrig.skipTypes({tyRange}).skipIntLit
+        if doBind: put(c.bindings, f, bound)
     return res
 
   template considerPreviousT(body: stmt) {.immediate.} =
@@ -869,7 +870,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         # any value" and what we need is "match any type", which can be encoded
         # by a tyTypeDesc params. Unfortunately, this requires more substantial
         # changes in semtypinst and elsewhere.
-        if a.kind == tyTypeDesc or tfWildcard in a.flags:
+        if tfWildcard in a.flags:
+          result = isGeneric
+        elif a.kind == tyTypeDesc:
           if f.sonsLen == 0:
             result = isGeneric
           else:

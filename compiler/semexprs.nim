@@ -325,8 +325,13 @@ proc isOpImpl(c: PContext, n: PNode): PNode =
                                         tfIterator notin t.flags))
   else:
     var t2 = n[2].typ.skipTypes({tyTypeDesc})
+    # XXX: liftParamType started to perform addDecl
+    # we could do that instead in semTypeNode by snooping for added
+    # gnrc. params, then it won't be necessary to open a new scope here
+    openScope(c)
     let lifted = liftParamType(c, skType, newNodeI(nkArgList, n.info),
                                t2, ":anon", n.info)
+    closeScope(c)
     if lifted != nil: t2 = lifted
     var m: TCandidate
     initCandidate(c, m, t2)
@@ -1257,8 +1262,9 @@ proc semProcBody(c: PContext, n: PNode): PNode =
       result = semAsgn(c, a)
   else:
     discardCheck(c, result)
-
-  if c.p.resultSym != nil and c.p.resultSym.typ.isMetaType:
+  
+  if c.p.owner.kind notin {skMacro, skTemplate} and
+     c.p.resultSym != nil and c.p.resultSym.typ.isMetaType:
     localError(c.p.resultSym.info, errCannotInferReturnType)
 
   closeScope(c)

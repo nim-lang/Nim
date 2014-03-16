@@ -1,6 +1,7 @@
 discard """
   file: "tgenconstraints.nim"
   line: 25
+  disabled: true
   errormsg: "cannot instantiate T2"
 """
 
@@ -20,7 +21,8 @@ proc foo[T](x: T): T2[T] {.discardable.} =
 
 foo(10)
 
-proc bar(x: string|TNumber): T1[type(x)] {.discardable.} =
+# XXX: allow type intersections in situation like this
+proc bar(x: int|TNumber): T1[type(x)] {.discardable.} =
   when type(x) is TNumber:
     var o: T2[type(x)]
 

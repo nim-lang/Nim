@@ -26,7 +26,7 @@ foo 10
 foo "test"
 foo(@[TObj(x: 10), TObj(x: 20)])
 
-proc intval(x: int) = discard
+proc intval(x: int): int = 10
 
 # check real and virtual fields
 type
@@ -34,8 +34,8 @@ type
     T.x
     y(T)
     intval T.y
-    let y = intval(T.y)
-    
+    let z = intval(T.y)
+
 proc y(x: TObj): int = 10
 
 proc testFoo(x: TFoo) = discard
