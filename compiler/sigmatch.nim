@@ -944,8 +944,19 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   
   of tyProxy:
     result = isEqual
+
+  of tyFromExpr:
+    # fix the expression, so it contains the already instantiated types
+    let instantiated = replaceTypesInBody(c.c, c.bindings, f.n)
+    let reevaluted = c.c.semExpr(c.c, instantiated)
+    if reevaluted.typ.kind != tyTypeDesc:
+      localError(f.n.info, errTypeExpected)
+      result = isNone
+    else:
+      result = typeRel(c, a, reevaluted.typ.base)
   
-  else: internalAssert false
+  else:
+    internalAssert false
   
 proc cmpTypes*(c: PContext, f, a: PType): TTypeRelation = 
   var m: TCandidate

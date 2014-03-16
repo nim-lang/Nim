@@ -899,10 +899,13 @@ proc makeDeref(n: PNode): PNode =
     addSon(result, a)
     t = skipTypes(t.sons[0], {tyGenericInst})
 
-proc readTypeParameter(c: PContext, ty: PType,
+const tyTypeParamsHolders = {tyGenericInst, tyCompositeTypeClass}
+
+proc readTypeParameter(c: PContext, typ: PType,
                        paramName: PIdent, info: TLineInfo): PNode =
-  internalAssert ty.kind == tyGenericInst
-  let ty = ty.skipGenericAlias
+  let ty = if typ.kind == tyGenericInst: typ.skipGenericAlias
+           else: (internalAssert typ.kind == tyCompositeTypeClass; typ.sons[1])
+  
   let tbody = ty.sons[0]
   for s in countup(0, tbody.len-2):
     let tParam = tbody.sons[s]
@@ -946,7 +949,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
         result.typ = ty
         markUsed(n, f)
         return
-    of tyGenericInst:
+    of tyTypeParamsHolders:
       return readTypeParameter(c, ty, i, n.info)
     of tyObject, tyTuple:
       if ty.n.kind == nkRecList:
@@ -996,7 +999,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       result = n
 
   # we didn't find any field, let's look for a generic param
-  if result == nil and n.sons[0].typ.kind == tyGenericInst:
+  if result == nil and n.sons[0].typ.kind in tyTypeParamsHolders:
     result = readTypeParameter(c, n.sons[0].typ, i, n.info)
 
 proc dotTransformation(c: PContext, n: PNode): PNode =
