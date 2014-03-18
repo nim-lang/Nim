@@ -450,6 +450,7 @@ type
     tfHasMeta,        # type contains "wildcard" sub-types such as generic params
                       # or other type classes
     tfHasGCedMem,     # type contains GC'ed memory
+    tfPacked
     tfHasStatic
     tfGenericTypeParam
     tfImplicitTypeParam
