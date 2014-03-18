@@ -119,7 +119,7 @@ compiler vcc:
     debug: " /GZ /Zi ",
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
-    structStmtFmt: "$3$#1 $2",
+    structStmtFmt: "$3$n$1 $2",
     packedPragma: "#pragma pack(1)",
     props: {hasCpp, hasAssume, hasNakedDeclspec})
 
