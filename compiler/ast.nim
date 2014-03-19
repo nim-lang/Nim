@@ -435,6 +435,8 @@ type
     tfUnresolved,     # marks unresolved typedesc/static params: e.g.
                       # proc foo(T: typedesc, list: seq[T]): var T
                       # proc foo(L: static[int]): array[L, int]
+                      # can be attached to ranges to indicate that the range
+                      # depends on unresolved static params.
     tfRetType,        # marks return types in proc (used to detect type classes 
                       # used as return types for return type inference)
     tfCapturesEnv,    # whether proc really captures some environment

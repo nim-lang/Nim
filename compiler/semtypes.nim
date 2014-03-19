@@ -198,19 +198,6 @@ proc semRange(c: PContext, n: PNode, prev: PType): PType =
     localError(n.info, errXExpectsOneTypeParam, "range")
     result = newOrPrevType(tyError, prev, c)
 
-proc nMinusOne(n: PNode): PNode =
-  result = newNode(nkCall, n.info, @[
-    newSymNode(getSysMagic("<", mUnaryLt)),
-    n])
-
-proc makeRangeWithStaticExpr(c: PContext, n: PNode): PType =
-  let intType = getSysType(tyInt)
-  result = newTypeS(tyRange, c)
-  result.sons = @[intType]
-  result.n = newNode(nkRange, n.info, @[
-    newIntTypeNode(nkIntLit, 0, intType),
-    makeStaticExpr(c, n.nMinusOne)])
-
 proc semArray(c: PContext, n: PNode, prev: PType): PType = 
   var indx, base: PType
   result = newOrPrevType(tyArray, prev, c)
@@ -229,6 +216,7 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
         if not isOrdinalType(e.typ.lastSon):
           localError(n[1].info, errOrdinalTypeExpected)
         indx = makeRangeWithStaticExpr(c, e)
+        indx.flags.incl tfUnresolved
       elif e.kind in nkCallKinds and hasGenericArguments(e):
         if not isOrdinalType(e.typ):
           localError(n[1].info, errOrdinalTypeExpected)
@@ -628,17 +616,28 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
   if base == nil and tfInheritable notin result.flags:
     incl(result.flags, tfFinal)
 
+proc findEnforcedStaticType(t: PType): PType =
+  # This handles types such as `static[T] and Foo`,
+  # which are subset of `static[T]`, hence they could
+  # be treated in the same way
+  if t.kind == tyStatic: return t
+  if t.kind == tyAnd:
+    for s in t.sons:
+      let t = findEnforcedStaticType(s)
+      if t != nil: return t
+
 proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
   template addDecl(x) =
     if sfGenSym notin x.flags: addDecl(c, x)
 
   if kind == skMacro:
-    if param.typ.kind == tyTypeDesc:
-      addDecl(param)
-    elif param.typ.kind == tyStatic:
+    let staticType = findEnforcedStaticType(param.typ)
+    if staticType != nil:
       var a = copySym(param)
-      a.typ = param.typ.base
+      a.typ = staticType.base
       addDecl(a)
+    elif param.typ.kind == tyTypeDesc:
+      addDecl(param)
     else:
       # within a macro, every param has the type PNimrodNode!
       let nn = getSysSym"PNimrodNode"
@@ -944,14 +943,18 @@ proc semBlockType(c: PContext, n: PNode, prev: PType): PType =
 proc semGenericParamInInvokation(c: PContext, n: PNode): PType =
   result = semTypeNode(c, n, nil)
 
-proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType = 
+proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   if s.typ == nil:
     localError(n.info, "cannot instantiate the '$1' $2" %
                        [s.name.s, ($s.kind).substr(2).toLower])
     return newOrPrevType(tyError, prev, c)
   
+  var t = s.typ
+  if t.kind == tyCompositeTypeClass and t.base.kind == tyGenericBody:
+    t = t.base
+
   result = newOrPrevType(tyGenericInvokation, prev, c)
-  addSonSkipIntLit(result, s.typ)
+  addSonSkipIntLit(result, t)
 
   template addToResult(typ) =
     if typ.isNil:
@@ -959,23 +962,24 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
       rawAddSon(result, typ)
     else: addSonSkipIntLit(result, typ)
 
-  if s.typ.kind == tyForward:
+  if t.kind == tyForward:
     for i in countup(1, sonsLen(n)-1):
       var elem = semGenericParamInInvokation(c, n.sons[i])
       addToResult(elem)
-  elif s.typ.kind != tyGenericBody:
+    return
+  elif t.kind != tyGenericBody:
     #we likely got code of the form TypeA[TypeB] where TypeA is
     #not generic.
     localError(n.info, errNoGenericParamsAllowedForX, s.name.s)
     return newOrPrevType(tyError, prev, c)
   else:
-    var m = newCandidate(c, s, n)
+    var m = newCandidate(c, t)
     matches(c, n, copyTree(n), m)
     
     if m.state != csMatch:
-      var err = "cannot instantiate " & typeToString(s.typ) & "\n" &
+      var err = "cannot instantiate " & typeToString(t) & "\n" &
                 "got: (" & describeArgs(c, n) & ")\n" &
-                "but expected: (" & describeArgs(c, s.typ.n, 0) & ")"
+                "but expected: (" & describeArgs(c, t.n, 0) & ")"
       localError(n.info, errGenerated, err)
       return newOrPrevType(tyError, prev, c)
 
@@ -987,7 +991,8 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
       addToResult(typ)
    
     if isConcrete:
-      if s.ast == nil:
+      if s.ast == nil and s.typ.kind != tyCompositeTypeClass:
+        # XXX: What kind of error is this? is it still relevant?
         localError(n.info, errCannotInstantiateX, s.name.s)
         result = newOrPrevType(tyError, prev, c)
       else:

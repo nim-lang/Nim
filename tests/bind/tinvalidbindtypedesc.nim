@@ -1,5 +1,5 @@
 discard """
-  line: 11
+  line: 10
   errormsg: "type mismatch: got (typedesc[float], string)"
 """
 
