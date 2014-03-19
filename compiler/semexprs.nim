@@ -921,7 +921,7 @@ const tyTypeParamsHolders = {tyGenericInst, tyCompositeTypeClass}
 proc readTypeParameter(c: PContext, typ: PType,
                        paramName: PIdent, info: TLineInfo): PNode =
   let ty = if typ.kind == tyGenericInst: typ.skipGenericAlias
-           else: (internalAssert typ.kind == tyCompositeTypeClass; typ.sons[1])
+           else: (internalAssert(typ.kind == tyCompositeTypeClass); typ.sons[1])
   
   let tbody = ty.sons[0]
   for s in countup(0, tbody.len-2):

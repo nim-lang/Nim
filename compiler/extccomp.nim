@@ -47,6 +47,8 @@ type
     pic: string,         # command for position independent code
                          # used on some platforms
     asmStmtFrmt: string, # format of ASM statement
+    structStmtFmt: string, # Format for struct statement
+    packedPragma: string,  # Attribute/pragma to make struct packed (1-byte aligned)
     props: TInfoCCProps] # properties of the C compiler
 
 
@@ -77,6 +79,8 @@ compiler gcc:
     debug: "",
     pic: "-fPIC",
     asmStmtFrmt: "asm($1);$n",
+    structStmtFmt: "$1 $3 $2 ", # struct|union [packed] $name
+    packedPragma: "__attribute__((__packed__))",
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
             hasNakedAttribute})
 
@@ -115,6 +119,8 @@ compiler vcc:
     debug: " /GZ /Zi ",
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
+    structStmtFmt: "$3$n$1 $2",
+    packedPragma: "#pragma pack(1)",
     props: {hasCpp, hasAssume, hasNakedDeclspec})
 
 compiler icl:
@@ -148,6 +154,8 @@ compiler lcc:
     debug: " -g5 ",
     pic: "",
     asmStmtFrmt: "_asm{$n$1$n}$n",
+    structStmtFmt: "$1 $2",
+    packedPragma: "", # XXX: not supported yet
     props: {})
 
 compiler bcc:
@@ -170,6 +178,8 @@ compiler bcc:
     debug: "",
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
+    structStmtFmt: "$1 $2",
+    packedPragma: "", # XXX: not supported yet
     props: {hasCpp})
 
 compiler dmc:
@@ -192,6 +202,8 @@ compiler dmc:
     debug: " -g ",
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
+    structStmtFmt: "$3$n$1 $2",
+    packedPragma: "#pragma pack(1)",
     props: {hasCpp})
 
 compiler wcc:
@@ -214,6 +226,8 @@ compiler wcc:
     debug: " -d2 ",
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
+    structStmtFmt: "$1 $2",
+    packedPragma: "", # XXX: not supported yet
     props: {hasCpp})
 
 compiler tcc:
@@ -236,6 +250,8 @@ compiler tcc:
     debug: " -g ",
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
+    structStmtFmt: "$1 $2",
+    packedPragma: "", # XXX: not supported yet
     props: {hasSwitchRange, hasComputedGoto})
 
 compiler pcc:
@@ -259,6 +275,8 @@ compiler pcc:
     debug: " -Zi ",
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
+    structStmtFmt: "$1 $2",
+    packedPragma: "", # XXX: not supported yet
     props: {})
 
 compiler ucc:
@@ -281,6 +299,8 @@ compiler ucc:
     debug: "",
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
+    structStmtFmt: "$1 $2",
+    packedPragma: "", # XXX: not supported yet
     props: {})
 
 const 
