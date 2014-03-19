@@ -121,6 +121,8 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       return n
   of skType:
     markUsed(n, s)
+    if s.typ.kind == tyStatic and s.typ.n != nil:
+      return s.typ.n
     result = newSymNode(s, n.info)
     result.typ = makeTypeDesc(c, s.typ)
   else:
@@ -191,15 +193,35 @@ proc isCastable(dst, src: PType): bool =
 proc isSymChoice(n: PNode): bool {.inline.} =
   result = n.kind in nkSymChoices
 
+proc maybeLiftType(t: var PType, c: PContext, info: TLineInfo) =
+  # XXX: liftParamType started to perform addDecl
+  # we could do that instead in semTypeNode by snooping for added
+  # gnrc. params, then it won't be necessary to open a new scope here
+  openScope(c)
+  var lifted = liftParamType(c, skType, newNodeI(nkArgList, info),
+                         t, ":anon", info)
+  closeScope(c)
+  if lifted != nil: t = lifted
+
 proc semConv(c: PContext, n: PNode): PNode =
   if sonsLen(n) != 2:
     localError(n.info, errConvNeedsOneArg)
     return n
+
   result = newNodeI(nkConv, n.info)
-  result.typ = semTypeNode(c, n.sons[0], nil).skipTypes({tyGenericInst})
-  addSon(result, copyTree(n.sons[0]))
-  addSon(result, semExprWithType(c, n.sons[1]))
-  var op = result.sons[1]
+  var targetType = semTypeNode(c, n.sons[0], nil)
+  maybeLiftType(targetType, c, n[0].info)
+  result.addSon copyTree(n.sons[0])
+  var op = semExprWithType(c, n.sons[1])
+  
+  if targetType.isMetaType:
+    let final = inferWithMetatype(c, targetType, op, true)
+    result.addSon final
+    result.typ = final.typ
+    return
+
+  result.typ = targetType
+  addSon(result, op)
   
   if not isSymChoice(op):
     let status = checkConvertible(c, result.typ, op.typ)
@@ -221,7 +243,7 @@ proc semConv(c: PContext, n: PNode): PNode =
     for i in countup(0, sonsLen(op) - 1):
       let it = op.sons[i]
       let status = checkConvertible(c, result.typ, it.typ)
-      if status == convOK:
+      if status in {convOK, convNotNeedeed}:
         markUsed(n, it.sym)
         markIndirect(c, it.sym)
         return it
@@ -325,14 +347,7 @@ proc isOpImpl(c: PContext, n: PNode): PNode =
                                         tfIterator notin t.flags))
   else:
     var t2 = n[2].typ.skipTypes({tyTypeDesc})
-    # XXX: liftParamType started to perform addDecl
-    # we could do that instead in semTypeNode by snooping for added
-    # gnrc. params, then it won't be necessary to open a new scope here
-    openScope(c)
-    let lifted = liftParamType(c, skType, newNodeI(nkArgList, n.info),
-                               t2, ":anon", n.info)
-    closeScope(c)
-    if lifted != nil: t2 = lifted
+    maybeLiftType(t2, c, n.info)
     var m: TCandidate
     initCandidate(c, m, t2)
     let match = typeRel(m, t2, t1) != isNone
@@ -1202,7 +1217,7 @@ proc semAsgn(c: PContext, n: PNode): PNode =
         if lhsIsResult: {efAllowDestructor} else: {})
     if lhsIsResult:
       n.typ = enforceVoidContext
-      if resultTypeIsInferrable(lhs.sym.typ):
+      if c.p.owner.kind != skMacro and resultTypeIsInferrable(lhs.sym.typ):
         if cmpTypes(c, lhs.typ, rhs.typ) == isGeneric:
           internalAssert c.p.resultSym != nil
           lhs.typ = rhs.typ

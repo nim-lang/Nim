@@ -436,6 +436,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   of tyStatic:
     internalAssert t.len > 0
     result = "static[" & typeToString(t.sons[0]) & "]"
+    if t.n != nil: result.add "(" & renderTree(t.n) & ")"
   of tyUserTypeClass:
     internalAssert t.sym != nil and t.sym.owner != nil
     return t.sym.owner.name.s

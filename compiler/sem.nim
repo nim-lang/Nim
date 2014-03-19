@@ -66,6 +66,9 @@ proc fitNode(c: PContext, formal: PType, arg: PNode): PNode =
       result = copyTree(arg)
       result.typ = formal
 
+proc inferWithMetatype(c: PContext, formal: PType,
+                       arg: PNode, coerceDistincts = false): PNode
+
 var commonTypeBegin = PType(kind: tyExpr)
 
 proc commonType*(x, y: PType): PType =

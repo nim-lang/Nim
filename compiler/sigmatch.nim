@@ -40,6 +40,8 @@ type
     proxyMatch*: bool        # to prevent instantiations
     genericConverter*: bool  # true if a generic converter needs to
                              # be instantiated
+    coerceDistincts*: bool   # this is an explicit coercion that can strip away
+                             # a distrinct type
     typedescMatched: bool
     inheritancePenalty: int  # to prefer closest father object type
     errors*: seq[string]     # additional clarifications to be displayed to the
@@ -113,6 +115,9 @@ proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
 proc newCandidate*(ctx: PContext, callee: PSym,
                    binding: PNode, calleeScope = -1): TCandidate =
   initCandidate(ctx, result, callee, binding, calleeScope)
+
+proc newCandidate*(ctx: PContext, callee: PType): TCandidate =
+  initCandidate(ctx, result, callee)
 
 proc copyCandidate(a: var TCandidate, b: TCandidate) = 
   a.c = b.c
@@ -460,7 +465,8 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
     
     if param.kind == nkVarTy:
       dummyName = param[0]
-      dummyType = makeVarType(c, a)
+      dummyType = if a.kind != tyVar: makeVarType(c, a)
+                  else: a
     else:
       dummyName = param
       dummyType = a
@@ -470,7 +476,7 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
     dummyParam.typ = dummyType
     addDecl(c, dummyParam)
 
-  var checkedBody = c.semTryExpr(c, copyTree(body.n[3]), bufferErrors = false)
+  var checkedBody = c.semTryExpr(c, body.n[3].copyTree, bufferErrors = false)
   m.errors = bufferedMsgs
   clearBufferedMsgs()
   if checkedBody == nil: return isNone
@@ -623,6 +629,20 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       result = typeRel(c, f.sons[1], a.sons[1])
       if result < isGeneric:
         result = isNone
+      elif tfUnresolved in fRange.flags and
+           rangeHasStaticIf(fRange):
+        # This is a range from an array instantiated with a generic
+        # static param. We must extract the static param here and bind
+        # it to the size of the currently supplied array.
+        var
+          rangeStaticT = fRange.getStaticTypeFromRange
+          replacementT = newTypeWithSons(c.c, tyStatic, @[tyInt.getSysType])
+          inputUpperBound = a.sons[0].n[1].intVal
+        # we must correct for the off-by-one discrepancy between
+        # ranges and static params:
+        replacementT.n = newIntNode(nkIntLit, inputUpperBound + 1)
+        put(c.bindings, rangeStaticT, replacementT)
+        result = isGeneric
       elif lengthOrd(fRange) != lengthOrd(a):
         result = isNone
     else: discard
@@ -686,6 +706,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
           result = isSubtype
   of tyDistinct:
     if (a.kind == tyDistinct) and sameDistinctTypes(f, a): result = isEqual
+    elif c.coerceDistincts: result = typeRel(c, f.base, a)
   of tySet: 
     if a.kind == tySet: 
       if (f.sons[0].kind != tyGenericParam) and (a.sons[0].kind == tyEmpty): 
@@ -848,7 +869,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
 
   of tyUserTypeClass, tyUserTypeClassInst:
     considerPreviousT:
-      result = matchUserTypeClass(c.c, c, f, a)
+      result = matchUserTypeClass(c.c, c, f, aOrig)
       if result == isGeneric:
         put(c.bindings, f, a)
 
@@ -863,7 +884,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   of tyGenericParam:
     var x = PType(idTableGet(c.bindings, f))
     if x == nil:
-      if c.calleeSym != nil and c.calleeSym.kind == skType and
+      if c.calleeSym != nil and c.callee.kind == tyGenericBody and
          f.kind == tyGenericParam and not c.typedescMatched:
         # XXX: The fact that generic types currently use tyGenericParam for 
         # their parameters is really a misnomer. tyGenericParam means "match
@@ -1051,7 +1072,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
     # XXX: When implicit statics are the default
     # this will be done earlier - we just have to
     # make sure that static types enter here
-    
+     
     # XXX: weaken tyGenericParam and call it tyGenericPlaceholder
     # and finally start using tyTypedesc for generic types properly.
     if argType.kind == tyGenericParam and tfWildcard in argType.flags:
@@ -1060,7 +1081,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
       return argSemantized
 
     if argType.kind == tyStatic:
-      if m.calleeSym.kind == skType:
+      if m.callee.kind == tyGenericBody:
         result = newNodeI(nkType, argOrig.info)
         result.typ = makeTypeFromExpr(c, arg)
         return
