@@ -139,13 +139,12 @@ proc semVarType(c: PContext, n: PNode, prev: PType): PType =
     addSonSkipIntLit(result, base)
   else:
     result = newConstraint(c, tyVar)
-  
+
 proc semDistinct(c: PContext, n: PNode, prev: PType): PType = 
-  if sonsLen(n) == 1:
-    result = newOrPrevType(tyDistinct, prev, c)
-    addSonSkipIntLit(result, semTypeNode(c, n.sons[0], nil))
-  else:
-    result = newConstraint(c, tyDistinct)
+  if n.len == 0: return newConstraint(c, tyDistinct)
+  result = newOrPrevType(tyDistinct, prev, c)
+  addSonSkipIntLit(result, semTypeNode(c, n.sons[0], nil))
+  if n.len > 1: result.n = n[1]
   
 proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
   assert isRange(n)

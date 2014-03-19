@@ -491,6 +491,23 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
     
   return isGeneric
 
+proc shouldSkipDistinct(rules: PNode, callIdent: PIdent): bool =
+  if rules.kind == nkWith:
+    for r in rules:
+      if r.considerAcc == callIdent: return true
+    return false
+  else:
+    for r in rules:
+      if r.considerAcc == callIdent: return false
+    return true
+
+proc maybeSkipDistinct(t: PType, callee: PSym): PType =
+  if t != nil and t.kind == tyDistinct and t.n != nil and
+     shouldSkipDistinct(t.n, callee.name):
+    result = t.base
+  else:
+    result = t
+
 proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   # typeRel can be used to establish various relationships between types:
   #
@@ -518,7 +535,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   assert(aOrig != nil)
 
   # var and static arguments match regular modifier-free types
-  let a = aOrig.skipTypes({tyStatic, tyVar})
+  let a = aOrig.skipTypes({tyStatic, tyVar}).maybeSkipDistinct(c.calleeSym)
+  # XXX: Theoretically, maybeSkipDistinct could be called before we even
+  # start the param matching process. This could be done in `prepareOperand`
+  # for example, but unfortunately `prepareOperand` is not called in certain
+  # situation when nkDotExpr are rotated to nkDotCalls
   
   if a.kind == tyGenericInst and
       skipTypes(f, {tyVar}).kind notin {

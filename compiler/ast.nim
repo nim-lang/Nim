@@ -188,6 +188,10 @@ type
     nkStmtListType,       # a statement list ending in a type; for macros
     nkBlockType,          # a statement block ending in a type; for macros
                           # types as syntactic trees:
+
+    nkWith,               # distinct with `foo`
+    nkWithout,            # distinct without `foo`
+    
     nkTypeOfExpr,         # type(1+2)
     nkObjectTy,           # object body
     nkTupleTy,            # tuple body
@@ -418,7 +422,7 @@ type
     nfExplicitCall # x.y() was used instead of x.y
     nfExprCall  # this is an attempt to call a regular expression
     nfIsRef     # this node is a 'ref' node; used for the VM
-
+ 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 23)
     tfVarargs,        # procedure has C styled varargs

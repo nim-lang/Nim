@@ -67,7 +67,7 @@ proc optPar*(p: var TParser)
 proc optInd*(p: var TParser, n: PNode)
 proc indAndComment*(p: var TParser, n: PNode)
 proc setBaseFlags*(n: PNode, base: TNumericalBase)
-proc parseSymbol*(p: var TParser): PNode
+proc parseSymbol*(p: var TParser, allowNil = false): PNode
 proc parseTry(p: var TParser): PNode
 proc parseCase(p: var TParser): PNode
 # implementation
@@ -273,7 +273,7 @@ proc colcom(p: var TParser, n: PNode) =
   eat(p, tkColon)
   skipComment(p, n)
 
-proc parseSymbol(p: var TParser): PNode =
+proc parseSymbol(p: var TParser, allowNil = false): PNode =
   #| symbol = '`' (KEYW|IDENT|operator|'(' ')'|'[' ']'|'{' '}'|'='|literal)+ '`'
   #|        | IDENT
   case p.tok.tokType
@@ -312,9 +312,13 @@ proc parseSymbol(p: var TParser): PNode =
         break
     eat(p, tkAccent)
   else:
-    parMessage(p, errIdentifierExpected, p.tok)
-    getTok(p) # BUGFIX: We must consume a token here to prevent endless loops!
-    result = ast.emptyNode
+    if allowNil and p.tok.tokType == tkNil:
+      result = newNodeP(nkNilLit, p)
+      getTok(p)
+    else:
+      parMessage(p, errIdentifierExpected, p.tok)
+      getTok(p) # BUGFIX: We must consume a token here to prevent endless loops!
+      result = ast.emptyNode
 
 proc indexExpr(p: var TParser): PNode = 
   #| indexExpr = expr
@@ -964,14 +968,30 @@ proc isExprStart(p: TParser): bool =
      tkTuple, tkObject, tkType, tkWhen, tkCase, tkShared:
     result = true
   else: result = false
-  
-proc parseTypeDescKAux(p: var TParser, kind: TNodeKind, 
-                       mode: TPrimaryMode): PNode = 
+
+proc parseSymbolList(p: var TParser, result: PNode, allowNil = false) =
+  while true:
+    var s = parseSymbol(p, allowNil)
+    if s.kind == nkEmpty: break
+    addSon(result, s)
+    if p.tok.tokType != tkComma: break
+    getTok(p)
+    optInd(p, s)
+
+proc parseTypeDescKAux(p: var TParser, kind: TNodeKind,
+                       mode: TPrimaryMode): PNode =
   result = newNodeP(kind, p)
   getTok(p)
   optInd(p, result)
   if not isOperator(p.tok) and isExprStart(p):
     addSon(result, primary(p, mode))
+  if kind == nkDistinctTy and p.tok.tokType in {tkWith, tkWithout}:
+    let nodeKind = if p.tok.tokType == tkWith: nkWith
+                   else: nkWithout
+    getTok(p)
+    let list = newNodeP(nodeKind, p)
+    result.addSon list
+    parseSymbolList(p, list, allowNil = true)
 
 proc parseExpr(p: var TParser): PNode = 
   #| expr = (ifExpr
@@ -988,7 +1008,6 @@ proc parseExpr(p: var TParser): PNode =
 
 proc parseEnum(p: var TParser): PNode
 proc parseObject(p: var TParser): PNode
-proc parseDistinct(p: var TParser): PNode
 proc parseTypeClass(p: var TParser): PNode
 
 proc primary(p: var TParser, mode: TPrimaryMode): PNode = 
@@ -1742,13 +1761,6 @@ proc parseTypeClass(p: var TParser): PNode =
     addSon(result, emptyNode)
   else:
     addSon(result, parseStmt(p))
-
-proc parseDistinct(p: var TParser): PNode = 
-  #| distinct = 'distinct' optInd typeDesc
-  result = newNodeP(nkDistinctTy, p)
-  getTok(p)
-  optInd(p, result)
-  addSon(result, parseTypeDesc(p))
 
 proc parseTypeDef(p: var TParser): PNode = 
   #| typeDef = identWithPragma genericParamList? '=' optInd typeDefAux
