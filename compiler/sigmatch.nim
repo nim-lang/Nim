@@ -12,7 +12,7 @@
 
 import 
   intsets, ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst,
-  magicsys, condsyms, idents, lexer, options, parampatterns, strutils
+  magicsys, condsyms, idents, lexer, options, parampatterns, strutils, trees
 
 when not defined(noDocgen):
   import docgen
@@ -973,11 +973,17 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     # fix the expression, so it contains the already instantiated types
     let instantiated = replaceTypesInBody(c.c, c.bindings, f.n)
     let reevaluted = c.c.semExpr(c.c, instantiated)
-    if reevaluted.typ.kind != tyTypeDesc:
+    case reevaluted.typ.kind
+    of tyTypeDesc:
+      result = typeRel(c, a, reevaluted.typ.base)
+    of tyStatic:
+      result = typeRel(c, a, reevaluted.typ.base)
+      if result != isNone and reevaluted.typ.n != nil:
+        if not exprStructuralEquivalent(aOrig.n, reevaluted.typ.n):
+          result = isNone
+    else:
       localError(f.n.info, errTypeExpected)
       result = isNone
-    else:
-      result = typeRel(c, a, reevaluted.typ.base)
   
   else:
     internalAssert false
