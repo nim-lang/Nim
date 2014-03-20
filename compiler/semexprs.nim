@@ -931,7 +931,9 @@ proc makeDeref(n: PNode): PNode =
     addSon(result, a)
     t = skipTypes(t.sons[0], {tyGenericInst})
 
-const tyTypeParamsHolders = {tyGenericInst, tyCompositeTypeClass}
+const
+  tyTypeParamsHolders = {tyGenericInst, tyCompositeTypeClass}
+  tyDotOpTransparent = {tyVar, tyPtr, tyRef}
 
 proc readTypeParameter(c: PContext, typ: PType,
                        paramName: PIdent, info: TLineInfo): PNode =
@@ -968,6 +970,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = nil
   if isTypeExpr(n.sons[0]) or (ty.kind == tyTypeDesc and ty.base.kind != tyNone):
     if ty.kind == tyTypeDesc: ty = ty.base
+    ty = ty.skipTypes(tyDotOpTransparent)
     case ty.kind
     of tyEnum:
       # look up if the identifier belongs to the enum:
@@ -1031,8 +1034,10 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       result = n
 
   # we didn't find any field, let's look for a generic param
-  if result == nil and n.sons[0].typ.kind in tyTypeParamsHolders:
-    result = readTypeParameter(c, n.sons[0].typ, i, n.info)
+  if result == nil:
+    let t = n.sons[0].typ.skipTypes(tyDotOpTransparent)
+    if t.kind in tyTypeParamsHolders:
+      result = readTypeParameter(c, t, i, n.info)
 
 proc dotTransformation(c: PContext, n: PNode): PNode =
   if isSymChoice(n.sons[1]):
