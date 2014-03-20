@@ -61,7 +61,8 @@ News
       evaluation.
     - ``--gc:none`` produces warnings when code uses the GC.
     - A ``union`` pragma for better C interoperability is now supported.
-    - A ``packed`` pragma to control the memory packing/alignment of fields in an object.
+    - A ``packed`` pragma to control the memory packing/alignment of fields in 
+      an object.
     - Arrays can be annotated to be ``unchecked`` for easier low level
       manipulations of memory.
 
