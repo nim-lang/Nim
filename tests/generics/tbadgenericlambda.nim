@@ -1,5 +1,5 @@
 discard """
-  msg: "nested proc can have generic parameters only when"
+  errmsg: "nested proc can have generic parameters only when"
   line: 6
 """
 
