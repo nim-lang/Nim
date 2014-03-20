@@ -5392,9 +5392,14 @@ should scan unions conservatively.
 
 Packed pragma
 -------------
-The `packed`:idx: pragma can be applied to any ``object`` type. It ensures that the fields of an object is packed back-to-back in memory. It is useful to store packets or messages from/to network or hardware drivers, and for interoperability with C. Combining packed pragma with inheritance is not defined, and it should not be used with GC'ed memory (ref's).  
+The `packed`:idx: pragma can be applied to any ``object`` type. It ensures 
+that the fields of an object is packed back-to-back in memory. It is useful 
+to store packets or messages from/to network or hardware drivers, and for 
+interoperability with C. Combining packed pragma with inheritance is not 
+defined, and it should not be used with GC'ed memory (ref's).  
 
-**Future directions**: Using GC'ed memory in packed pragma will result in compile-time error. Usage with inheretinence should be defined and documented.
+**Future directions**: Using GC'ed memory in packed pragma will result in 
+compile-time error. Usage with inheritance should be defined and documented.
 
 Unchecked pragma
 ----------------
