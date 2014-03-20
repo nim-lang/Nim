@@ -1,8 +1,8 @@
 discard """
   cmd: "nimrod check $# $#"
-  msg: "'proc' is not a concrete type"
-  msg: "'Foo' is not a concrete type."
-  msg: "invalid type: 'TBaseMed'"
+  errmsg: "'proc' is not a concrete type"
+  errmsg: "'Foo' is not a concrete type."
+  errmsg: "invalid type: 'TBaseMed'"
 """
 
 type
