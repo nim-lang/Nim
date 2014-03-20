@@ -830,6 +830,12 @@ proc sameChildrenAux(a, b: PType, c: var TSameTypeClosure): bool =
     result = sameTypeOrNilAux(a.sons[i], b.sons[i], c)
     if not result: return 
 
+proc isGenericAlias*(t: PType): bool =
+  return t.kind == tyGenericInst and t.lastSon.kind == tyGenericInst
+
+proc skipGenericAlias*(t: PType): PType =
+  return if t.isGenericAlias: t.lastSon else: t
+
 proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
   template cycleCheck() =
     # believe it or not, the direct check for ``containsOrIncl(c, a, b)``
@@ -860,6 +866,19 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     of dcEqOrDistinctOf:
       while a.kind == tyDistinct: a = a.sons[0]
       if a.kind != b.kind: return false
+  
+  if x.kind == tyGenericInst:
+    let
+      lhs = x.skipGenericAlias
+      rhs = y.skipGenericAlias
+    if rhs.kind != tyGenericInst or lhs.base != rhs.base:
+      return false
+    for i in 1 .. lhs.len - 2:
+      let ff = rhs.sons[i]
+      let aa = lhs.sons[i]
+      if not sameTypeAux(ff, aa, c): return false
+    return true
+
   case a.kind
   of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString,
      tyInt..tyBigNum, tyStmt, tyExpr:
@@ -884,8 +903,6 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
   of tyTuple:
     cycleCheck()
     result = sameTuple(a, b, c) and sameFlags(a, b)
-  of tyGenericInst:    
-    result = sameTypeAux(lastSon(a), lastSon(b), c)
   of tyTypeDesc:
     if c.cmp == dcEqIgnoreDistinct: result = false
     elif ExactTypeDescValues in c.flags:
@@ -912,6 +929,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     result = sameTypeOrNilAux(a.sons[0], b.sons[0], c) and
         sameValue(a.n.sons[0], b.n.sons[0]) and
         sameValue(a.n.sons[1], b.n.sons[1])
+  of tyGenericInst: discard
   of tyNone: result = false  
 
 proc sameBackendType*(x, y: PType): bool =
@@ -1004,12 +1022,6 @@ proc matchType*(a: PType, pattern: openArray[tuple[k:TTypeKind, i:int]],
     if i >= a.sonsLen or a.sons[i] == nil: return false
     a = a.sons[i]
   result = a.kind == last
-
-proc isGenericAlias*(t: PType): bool =
-  return t.kind == tyGenericInst and t.lastSon.kind == tyGenericInst
-
-proc skipGenericAlias*(t: PType): PType =
-  return if t.isGenericAlias: t.lastSon else: t
 
 proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind,
                     flags: TTypeAllowedFlags = {}): bool =
