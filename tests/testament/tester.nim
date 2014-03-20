@@ -110,7 +110,7 @@ proc addResult(r: var TResults, test: TTest,
                           given = given)
   r.data.addf("$#\t$#\t$#\t$#", name, expected, given, $success)
   if success notin {reSuccess, reIgnored}:
-    styledEcho styleBright, fgRed, "^^^ [", $success, "]"
+    styledEcho styleBright, name, fgRed, " [", $success, "]"
     styledEcho styleDim, "EXPECTED:"
     echo expected
     styledEcho styleDim, "GIVEN:"
