@@ -9,7 +9,7 @@
 
 import os, oids, tables, strutils, macros
 
-import sockets2, net
+import sockets2
 
 ## Asyncio2 
 ## --------
@@ -772,7 +772,7 @@ proc processBody(node, retFutureSym: PNimrodNode): PNimrodNode {.compileTime.} =
     else: discard
   of nnkDiscardStmt:
     # discard await x
-    if node[0][0].ident == !"await":
+    if node[0][0].kind == nnkIdent and node[0][0].ident == !"await":
       var dummy = newNimNode(nnkStmtList)
       createVar("futureDiscard_" & $toStrLit(node[0][1]), node[0][1], dummy)
   else: discard
