@@ -202,7 +202,7 @@ const
     errXExpectsArrayType: "\'$1\' expects an array type", 
     errIteratorCannotBeInstantiated: "'$1' cannot be instantiated because its body has not been compiled yet", 
     errExprXAmbiguous: "expression '$1' ambiguous in this context", 
-    errConstantDivisionByZero: "constant division by zero", 
+    errConstantDivisionByZero: "division by zero", 
     errOrdinalTypeExpected: "ordinal type expected", 
     errOrdinalOrFloatTypeExpected: "ordinal or float type expected", 
     errOverOrUnderflow: "over- or underflow", 

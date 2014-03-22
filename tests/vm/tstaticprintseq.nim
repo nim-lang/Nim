@@ -14,7 +14,8 @@ discard """
 aa
 bb
 aa
-bb'''
+bb
+24'''
 """
 
 const s = @[1,2,3]
@@ -53,3 +54,22 @@ macro ff(d: static[TData]): stmt =
     echo x
 
 ff(data)
+
+
+# bug #1010
+
+proc `*==`(x: var int, y: int) {.inline, noSideEffect.} =
+  ## Binary `*=` operator for ordinals
+  x = x * y
+
+proc fac: int =
+  var x = 1;
+  for i in 1..4:
+    x *== i;
+  return x
+
+const y = fac()
+
+static:
+  echo y
+
