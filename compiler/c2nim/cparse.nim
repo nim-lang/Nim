@@ -624,10 +624,11 @@ proc parseTypeSuffix(p: var TParser, typ: PNode): PNode =
         # array type:
         result = newNodeP(nkBracketExpr, p)
         addSon(result, newIdentNodeP("array", p))
-        var r = newNodeP(nkRange, p)
-        addSon(r, newIntNodeP(nkIntLit, 0, p))
-        addSon(r, newBinary("-", index, newIntNodeP(nkIntLit, 1, p), p))
-        addSon(result, r)
+        #var r = newNodeP(nkRange, p)
+        #addSon(r, newIntNodeP(nkIntLit, 0, p))
+        #addSon(r, newBinary("-", index, newIntNodeP(nkIntLit, 1, p), p))
+        #addSon(result, r)
+        addSon(result, index)
         addSon(result, tmp)
       else:
         # pointer type:
