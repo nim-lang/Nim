@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2012 Nimrod Contributors
+#        (c) Copyright 2014 Nimrod Contributors
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -33,6 +33,43 @@ type
       mapHandle: int 
     else:
       handle: cint
+
+
+proc mapMem*(m: var TMemFile, mode: TFileMode = fmRead,
+             mappedSize = -1, offset = 0): pointer =
+  var readonly = mode == fmRead
+  when defined(windows):
+    result = mapViewOfFileEx(
+      m.mapHandle,
+      if readonly: FILE_MAP_READ else: FILE_MAP_WRITE,
+      int32(offset shr 32),
+      int32(offset and 0xffffffff),
+      if mappedSize == -1: 0 else: mappedSize,
+      nil)
+    if result == nil:
+      osError(osLastError())
+  else:
+    assert mappedSize > 0
+    result = mmap(
+      nil,
+      mappedSize,
+      if readonly: PROT_READ else: PROT_READ or PROT_WRITE,
+      if readonly: MAP_PRIVATE else: MAP_SHARED,
+      m.handle, offset)
+    if result == cast[pointer](MAP_FAILED):
+      osError(osLastError())
+
+
+proc unmapMem*(f: var TMemFile, p: pointer, size: int) =
+  ## unmaps the memory region ``(p, <p+size)`` of the mapped file `f`.
+  ## All changes are written back to the file system, if `f` was opened
+  ## with write access. ``size`` must be of exactly the size that was requested
+  ## via ``mapMem``.
+  when defined(windows):
+    if unmapViewOfFile(p) == 0: osError(osLastError())
+  else:
+    if munmap(p, size) != 0: osError(osLastError())
+
 
 proc open*(filename: string, mode: TFileMode = fmRead,
            mappedSize = -1, offset = 0, newFileSize = -1): TMemFile =
@@ -71,7 +108,7 @@ proc open*(filename: string, mode: TFileMode = fmRead,
     when useWinUnicode:
       result.fHandle = callCreateFile(createFileW, newWideCString(filename))
     else:
-      result.fHandle = callCreateFile(CreateFileA, filename)
+      result.fHandle = callCreateFile(createFileA, filename)
 
     if result.fHandle == INVALID_HANDLE_VALUE:
       fail(osLastError(), "error opening file")
@@ -170,14 +207,14 @@ proc close*(f: var TMemFile) =
 
   when defined(windows):
     if f.fHandle != INVALID_HANDLE_VALUE:
-      lastErr = osLastError()
       error = unmapViewOfFile(f.mem) == 0
+      lastErr = osLastError()
       error = (closeHandle(f.mapHandle) == 0) or error
       error = (closeHandle(f.fHandle) == 0) or error
   else:
     if f.handle != 0:
-      lastErr = osLastError()
       error = munmap(f.mem, f.size) != 0
+      lastErr = osLastError()
       error = (close(f.handle) != 0) or error
 
   f.size = 0
