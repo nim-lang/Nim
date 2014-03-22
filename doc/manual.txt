@@ -565,6 +565,11 @@ or as accessors:
   # is parsed as
   echo((1,2))
 
+Only 0, 1, 2, 4 or 8 spaces are allowed to specify precedence and it is
+enforced that infix operators have the same amount of spaces before and after
+them. This rules does not apply when a newline follows after the operator,
+then only the preceding spaces are considered.
+
 
 Grammar
 -------
