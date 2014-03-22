@@ -21,7 +21,7 @@ proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 
 proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   # same as 'semExprWithType' but doesn't check for proc vars
-  result = semExpr(c, n, flags)
+  result = semExpr(c, n, flags + {efOperand})
   if result.kind == nkEmpty: 
     # do not produce another redundant error message:
     #raiseRecoverableError("")
@@ -117,10 +117,12 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     elif s.ast != nil:
       result = semExpr(c, s.ast)
     else:
-      internalError(n.info, "no default for")
-      result = emptyNode
+      n.typ = s.typ
+      return n
   of skType:
     markUsed(n, s)
+    if s.typ.kind == tyStatic and s.typ.n != nil:
+      return s.typ.n
     result = newSymNode(s, n.info)
     result.typ = makeTypeDesc(c, s.typ)
   else:
@@ -191,15 +193,35 @@ proc isCastable(dst, src: PType): bool =
 proc isSymChoice(n: PNode): bool {.inline.} =
   result = n.kind in nkSymChoices
 
+proc maybeLiftType(t: var PType, c: PContext, info: TLineInfo) =
+  # XXX: liftParamType started to perform addDecl
+  # we could do that instead in semTypeNode by snooping for added
+  # gnrc. params, then it won't be necessary to open a new scope here
+  openScope(c)
+  var lifted = liftParamType(c, skType, newNodeI(nkArgList, info),
+                         t, ":anon", info)
+  closeScope(c)
+  if lifted != nil: t = lifted
+
 proc semConv(c: PContext, n: PNode): PNode =
   if sonsLen(n) != 2:
     localError(n.info, errConvNeedsOneArg)
     return n
+
   result = newNodeI(nkConv, n.info)
-  result.typ = semTypeNode(c, n.sons[0], nil).skipTypes({tyGenericInst})
-  addSon(result, copyTree(n.sons[0]))
-  addSon(result, semExprWithType(c, n.sons[1]))
-  var op = result.sons[1]
+  var targetType = semTypeNode(c, n.sons[0], nil)
+  maybeLiftType(targetType, c, n[0].info)
+  result.addSon copyTree(n.sons[0])
+  var op = semExprWithType(c, n.sons[1])
+  
+  if targetType.isMetaType:
+    let final = inferWithMetatype(c, targetType, op, true)
+    result.addSon final
+    result.typ = final.typ
+    return
+
+  result.typ = targetType
+  addSon(result, op)
   
   if not isSymChoice(op):
     let status = checkConvertible(c, result.typ, op.typ)
@@ -221,7 +243,7 @@ proc semConv(c: PContext, n: PNode): PNode =
     for i in countup(0, sonsLen(op) - 1):
       let it = op.sons[i]
       let status = checkConvertible(c, result.typ, it.typ)
-      if status == convOK:
+      if status in {convOK, convNotNeedeed}:
         markUsed(n, it.sym)
         markIndirect(c, it.sym)
         return it
@@ -325,9 +347,7 @@ proc isOpImpl(c: PContext, n: PNode): PNode =
                                         tfIterator notin t.flags))
   else:
     var t2 = n[2].typ.skipTypes({tyTypeDesc})
-    let lifted = liftParamType(c, skType, newNodeI(nkArgList, n.info),
-                               t2, ":anon", n.info)
-    if lifted != nil: t2 = lifted
+    maybeLiftType(t2, c, n.info)
     var m: TCandidate
     initCandidate(c, m, t2)
     let match = typeRel(m, t2, t1) != isNone
@@ -612,7 +632,19 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
       if result.isNil: result = n
       else: return result
     result.typ = semfold.getIntervalType(callee.magic, call)
-    
+  
+  block maybeLabelAsStatic:
+    # XXX: temporary work-around needed for tlateboundstatic.
+    # This is certainly not correct, but it will get the job
+    # done until we have a more robust infrastructure for
+    # implicit statics.
+    if n.len > 1:
+      for i in 1 .. <n.len:
+        if n[i].typ.kind != tyStatic or tfUnresolved notin n[i].typ.flags:
+          break maybeLabelAsStatic
+      n.typ = newTypeWithSons(c, tyStatic, @[n.typ])
+      n.typ.flags.incl tfUnresolved
+
   # optimization pass: not necessary for correctness of the semantic pass
   if {sfNoSideEffect, sfCompileTime} * callee.flags != {} and
      {sfForward, sfImportc} * callee.flags == {}:
@@ -899,10 +931,15 @@ proc makeDeref(n: PNode): PNode =
     addSon(result, a)
     t = skipTypes(t.sons[0], {tyGenericInst})
 
-proc readTypeParameter(c: PContext, ty: PType,
+const
+  tyTypeParamsHolders = {tyGenericInst, tyCompositeTypeClass}
+  tyDotOpTransparent = {tyVar, tyPtr, tyRef}
+
+proc readTypeParameter(c: PContext, typ: PType,
                        paramName: PIdent, info: TLineInfo): PNode =
-  internalAssert ty.kind == tyGenericInst
-  let ty = ty.skipGenericAlias
+  let ty = if typ.kind == tyGenericInst: typ.skipGenericAlias
+           else: (internalAssert(typ.kind == tyCompositeTypeClass); typ.sons[1])
+  
   let tbody = ty.sons[0]
   for s in countup(0, tbody.len-2):
     let tParam = tbody.sons[s]
@@ -933,6 +970,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = nil
   if isTypeExpr(n.sons[0]) or (ty.kind == tyTypeDesc and ty.base.kind != tyNone):
     if ty.kind == tyTypeDesc: ty = ty.base
+    ty = ty.skipTypes(tyDotOpTransparent)
     case ty.kind
     of tyEnum:
       # look up if the identifier belongs to the enum:
@@ -946,7 +984,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
         result.typ = ty
         markUsed(n, f)
         return
-    of tyGenericInst:
+    of tyTypeParamsHolders:
       return readTypeParameter(c, ty, i, n.info)
     of tyObject, tyTuple:
       if ty.n.kind == nkRecList:
@@ -996,8 +1034,10 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       result = n
 
   # we didn't find any field, let's look for a generic param
-  if result == nil and n.sons[0].typ.kind == tyGenericInst:
-    result = readTypeParameter(c, n.sons[0].typ, i, n.info)
+  if result == nil:
+    let t = n.sons[0].typ.skipTypes(tyDotOpTransparent)
+    if t.kind in tyTypeParamsHolders:
+      result = readTypeParameter(c, t, i, n.info)
 
 proc dotTransformation(c: PContext, n: PNode): PNode =
   if isSymChoice(n.sons[1]):
@@ -1182,7 +1222,7 @@ proc semAsgn(c: PContext, n: PNode): PNode =
         if lhsIsResult: {efAllowDestructor} else: {})
     if lhsIsResult:
       n.typ = enforceVoidContext
-      if resultTypeIsInferrable(lhs.sym.typ):
+      if c.p.owner.kind != skMacro and resultTypeIsInferrable(lhs.sym.typ):
         if cmpTypes(c, lhs.typ, rhs.typ) == isGeneric:
           internalAssert c.p.resultSym != nil
           lhs.typ = rhs.typ
@@ -1218,6 +1258,7 @@ proc semReturn(c: PContext, n: PNode): PNode =
 
 proc semProcBody(c: PContext, n: PNode): PNode =
   openScope(c)
+  
   result = semExpr(c, n)
   if c.p.resultSym != nil and not isEmptyType(result.typ):
     # transform ``expr`` to ``result = expr``, but not if the expr is already
@@ -1241,6 +1282,11 @@ proc semProcBody(c: PContext, n: PNode): PNode =
       result = semAsgn(c, a)
   else:
     discardCheck(c, result)
+  
+  if c.p.owner.kind notin {skMacro, skTemplate} and
+     c.p.resultSym != nil and c.p.resultSym.typ.isMetaType:
+    localError(c.p.resultSym.info, errCannotInferReturnType)
+
   closeScope(c)
 
 proc semYieldVarResult(c: PContext, n: PNode, restype: PType) =

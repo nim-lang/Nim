@@ -1,5 +1,5 @@
 discard """
-  msg: "type mismatch: got (array[0..2, float], array[0..1, float])"
+  errmsg: "type mismatch: got (array[0..2, float], array[0..1, float])"
 """
 
 proc `+`*[R, T] (v1, v2: array[R, T]): array[R, T] =

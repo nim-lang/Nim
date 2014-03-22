@@ -25,7 +25,7 @@ type
     C.len is Ordinal
     items(c) is iterator
     for value in C:
-      value.type is T
+      type(value) is T
 
 proc takesIntContainer(c: Container[int]) =
   for e in c: echo e

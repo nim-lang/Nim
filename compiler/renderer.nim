@@ -424,8 +424,11 @@ proc lsub(n: PNode): int =
   of nkRefTy: result = (if n.len > 0: lsub(n.sons[0])+1 else: 0) + len("ref")
   of nkPtrTy: result = (if n.len > 0: lsub(n.sons[0])+1 else: 0) + len("ptr")
   of nkVarTy: result = (if n.len > 0: lsub(n.sons[0])+1 else: 0) + len("var")
-  of nkDistinctTy: result = (if n.len > 0: lsub(n.sons[0])+1 else: 0) +
-                                                         len("Distinct")
+  of nkDistinctTy:
+    result = len("distinct") + (if n.len > 0: lsub(n.sons[0])+1 else: 0)
+    if n.len > 1:
+      result += (if n[1].kind == nkWith: len("_with_") else: len("_without_"))
+      result += lcomma(n[1])
   of nkStaticTy: result = (if n.len > 0: lsub(n.sons[0]) else: 0) +
                                                          len("static[]")
   of nkTypeDef: result = lsons(n) + 3
@@ -1020,9 +1023,15 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     else:
       put(g, tkVar, "var")
   of nkDistinctTy: 
-    if sonsLen(n) > 0:
+    if n.len > 0:
       putWithSpace(g, tkDistinct, "distinct")
       gsub(g, n.sons[0])
+      if n.len > 1:
+        if n[1].kind == nkWith:
+          putWithSpace(g, tkWith, " with")
+        else:
+          putWithSpace(g, tkWithout, " without")
+        gcomma(g, n[1])
     else:
       put(g, tkDistinct, "distinct")
   of nkTypeDef: 

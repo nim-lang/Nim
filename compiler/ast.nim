@@ -188,6 +188,10 @@ type
     nkStmtListType,       # a statement list ending in a type; for macros
     nkBlockType,          # a statement block ending in a type; for macros
                           # types as syntactic trees:
+
+    nkWith,               # distinct with `foo`
+    nkWithout,            # distinct without `foo`
+    
     nkTypeOfExpr,         # type(1+2)
     nkObjectTy,           # object body
     nkTupleTy,            # tuple body
@@ -382,6 +386,10 @@ type
       # sons[0]: type of containing object or tuple
       # sons[1]: field type
       # .n: nkDotExpr storing the field name
+    
+static:
+  # remind us when TTypeKind stops to fit in a single 64-bit word
+  assert TTypeKind.high.ord <= 63
 
 const
   tyPureObject* = tyTuple
@@ -394,7 +402,7 @@ const
                     tyUserTypeClass, tyUserTypeClassInst,
                     tyAnd, tyOr, tyNot, tyAnything}
 
-  tyMetaTypes* = {tyGenericParam, tyTypeDesc, tyStatic, tyExpr} + tyTypeClasses
+  tyMetaTypes* = {tyGenericParam, tyTypeDesc, tyExpr} + tyTypeClasses
  
 type
   TTypeKinds* = set[TTypeKind]
@@ -414,7 +422,7 @@ type
     nfExplicitCall # x.y() was used instead of x.y
     nfExprCall  # this is an attempt to call a regular expression
     nfIsRef     # this node is a 'ref' node; used for the VM
-
+ 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 23)
     tfVarargs,        # procedure has C styled varargs
@@ -428,8 +436,11 @@ type
     tfFromGeneric,    # type is an instantiation of a generic; this is needed
                       # because for instantiations of objects, structural
                       # type equality has to be used
-    tfUnresolved,     # marks unresolved typedesc params: e.g.
+    tfUnresolved,     # marks unresolved typedesc/static params: e.g.
                       # proc foo(T: typedesc, list: seq[T]): var T
+                      # proc foo(L: static[int]): array[L, int]
+                      # can be attached to ranges to indicate that the range
+                      # depends on unresolved static params.
     tfRetType,        # marks return types in proc (used to detect type classes 
                       # used as return types for return type inference)
     tfCapturesEnv,    # whether proc really captures some environment
@@ -445,9 +456,14 @@ type
     tfHasMeta,        # type contains "wildcard" sub-types such as generic params
                       # or other type classes
     tfHasGCedMem,     # type contains GC'ed memory
+    tfPacked
     tfHasStatic
     tfGenericTypeParam
     tfImplicitTypeParam
+    tfWildcard        # consider a proc like foo[T, I](x: Type[T, I])
+                      # T and I here can bind to both typedesc and static types
+                      # before this is determined, we'll consider them to be a
+                      # wildcard type.
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -693,7 +709,7 @@ type
   TSym* {.acyclic.} = object of TIdObj
     # proc and type instantiations are cached in the generic symbol
     case kind*: TSymKind
-    of skType:
+    of skType, skGenericParam:
       typeInstCache*: seq[PType]
       typScope*: PScope
     of routineKinds:
@@ -961,7 +977,9 @@ var emptyNode* = newNode(nkEmpty)
 # There is a single empty node that is shared! Do not overwrite it!
 
 proc isMetaType*(t: PType): bool =
-  return t.kind in tyMetaTypes or tfHasMeta in t.flags
+  return t.kind in tyMetaTypes or
+         (t.kind == tyStatic and t.n == nil) or
+         tfHasMeta in t.flags
 
 proc linkTo*(t: PType, s: PSym): PType {.discardable.} =
   t.sym = s
@@ -1305,7 +1323,7 @@ proc propagateToOwner*(owner, elem: PType) =
   if tfShared in elem.flags:
     owner.flags.incl tfHasShared
 
-  if elem.kind in tyMetaTypes:
+  if elem.isMetaType:
     owner.flags.incl tfHasMeta
 
   if elem.kind in {tyString, tyRef, tySequence} or
@@ -1494,6 +1512,9 @@ proc hasPattern*(s: PSym): bool {.inline.} =
 
 iterator items*(n: PNode): PNode =
   for i in 0.. <n.len: yield n.sons[i]
+
+iterator pairs*(n: PNode): tuple[i: int, n: PNode] =
+  for i in 0.. <n.len: yield (i, n.sons[i])
 
 proc isAtom*(n: PNode): bool {.inline.} =
   result = n.kind >= nkNone and n.kind <= nkNilLit

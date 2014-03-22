@@ -2364,12 +2364,32 @@ when not defined(JS): #and not defined(NimrodVM):
 
   when not defined(NimrodVM):
     proc likely*(val: bool): bool {.importc: "likely", nodecl, nosideeffect.}
-      ## can be used to mark a condition to be likely. This is a hint for the 
-      ## optimizer.
+      ## Hints the optimizer that `val` is likely going to be true.
+      ##
+      ## You can use this proc to decorate a branch condition. On certain
+      ## platforms this can help the processor predict better which branch is
+      ## going to be run. Example:
+      ##
+      ## .. code-block:: nimrod
+      ##   for value in inputValues:
+      ##     if likely(value <= 100):
+      ##       process(value)
+      ##     else:
+      ##       echo "Value too big!"
     
     proc unlikely*(val: bool): bool {.importc: "unlikely", nodecl, nosideeffect.}
-      ## can be used to mark a condition to be unlikely. This is a hint for the 
-      ## optimizer.
+      ## Hints the optimizer that `val` is likely going to be false.
+      ##
+      ## You can use this proc to decorate a branch condition. On certain
+      ## platforms this can help the processor predict better which branch is
+      ## going to be run. Example:
+      ##
+      ## .. code-block:: nimrod
+      ##   for value in inputValues:
+      ##     if unlikely(value > 100):
+      ##       echo "Value too big!"
+      ##     else:
+      ##       process(value)
       
     proc rawProc*[T: proc](x: T): pointer {.noSideEffect, inline.} =
       ## retrieves the raw proc pointer of the closure `x`. This is

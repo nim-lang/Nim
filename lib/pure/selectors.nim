@@ -60,7 +60,6 @@ when defined(linux) or defined(nimdoc):
       events: set[TEvent]): PSelectorKey {.discardable.} =
     ## Updates the events which ``fd`` wants notifications for.
     if s.fds[fd].events != events:
-      echo("Update ", fd.cint, " to ", events)
       var event = createEventStruct(events, fd)
       
       s.fds[fd].events = events
@@ -70,13 +69,24 @@ when defined(linux) or defined(nimdoc):
   
   proc unregister*(s: PSelector, fd: TSocketHandle): PSelectorKey {.discardable.} =
     if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fd, nil) != 0:
-      OSError(OSLastError())
+      let err = OSLastError()
+      if err.cint notin {ENOENT, EBADF}: # TODO: Why do we sometimes get an EBADF? Is this normal?
+        OSError(err)
     result = s.fds[fd]
     s.fds.del(fd)
 
   proc close*(s: PSelector) =
     if s.epollFD.close() != 0: OSError(OSLastError())
     dealloc(addr s.events) # TODO: Test this
+  
+  proc epollHasFd(s: PSelector, fd: TSocketHandle): bool =
+    result = true
+    var event = createEventStruct(s.fds[fd].events, fd)
+    if epoll_ctl(s.epollFD, EPOLL_CTL_MOD, fd, addr(event)) != 0:
+      let err = osLastError()
+      if err.cint in {ENOENT, EBADF}:
+        return false
+      OSError(OSLastError())
   
   proc select*(s: PSelector, timeout: int): seq[TReadyInfo] =
     ##
@@ -85,24 +95,19 @@ when defined(linux) or defined(nimdoc):
     ## of the ``TReadyInfo`` tuple which determines which events are ready
     ## on the ``fd``.
     result = @[]
-    
     let evNum = epoll_wait(s.epollFD, addr s.events[0], 64.cint, timeout.cint)
     if evNum < 0: OSError(OSLastError())
     if evNum == 0: return @[]
     for i in 0 .. <evNum:
+      let fd = s.events[i].data.fd.TSocketHandle
+    
       var evSet: set[TEvent] = {}
       if (s.events[i].events and EPOLLIN) != 0: evSet = evSet + {EvRead}
       if (s.events[i].events and EPOLLOUT) != 0: evSet = evSet + {EvWrite}
-      let selectorKey = s.fds[s.events[i].data.fd.TSocketHandle]
+      let selectorKey = s.fds[fd]
       assert selectorKey != nil
       result.add((selectorKey, evSet))
-  
-      if (s.events[i].events and EPOLLHUP) != 0 or
-         (s.events[i].events and EPOLLRDHUP) != 0:
-        # fd closed
-        #echo("fd closed ", s.events[i].data.fd)
-        s.unregister(s.events[i].data.fd.TSocketHandle)
-  
+
       #echo("Epoll: ", result[i].key.fd, " ", result[i].events, " ", result[i].key.events)
   
   proc newSelector*(): PSelector =
@@ -116,15 +121,8 @@ when defined(linux) or defined(nimdoc):
   proc contains*(s: PSelector, fd: TSocketHandle): bool =
     ## Determines whether selector contains a file descriptor.
     if s.fds.hasKey(fd):
-      result = true
-      
       # Ensure the underlying epoll instance still contains this fd.
-      var event = createEventStruct(s.fds[fd].events, fd)
-      if epoll_ctl(s.epollFD, EPOLL_CTL_MOD, fd, addr(event)) != 0:
-        let err = osLastError()
-        if err.cint in {ENOENT, EBADF}:
-          return false
-        OSError(OSLastError())
+      result = epollHasFd(s, fd)
     else:
       return false
 

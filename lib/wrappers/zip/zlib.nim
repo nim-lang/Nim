@@ -7,7 +7,7 @@ when defined(windows):
 elif defined(macosx):
   const libz = "libz.dylib"
 else:
-  const libz = "libz.so"
+  const libz = "libz.so.1"
 
 type
   Uint* = int32

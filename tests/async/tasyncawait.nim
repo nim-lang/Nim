@@ -14,31 +14,31 @@ const
 
 var clientCount = 0
 
-proc sendMessages(disp: PDispatcher, client: TSocketHandle): PFuture[int] {.async.} =
+proc sendMessages(disp: PDispatcher, client: TSocketHandle) {.async.} =
   for i in 0 .. <messagesToSend:
-    discard await disp.send(client, "Message " & $i & "\c\L")
+    await disp.send(client, "Message " & $i & "\c\L")
 
-proc launchSwarm(disp: PDispatcher, port: TPort): PFuture[int] {.async.} =
+proc launchSwarm(disp: PDispatcher, port: TPort) {.async.} =
   for i in 0 .. <swarmSize:
     var sock = disp.socket()
 
     #disp.register(sock)
-    discard await disp.connect(sock, "localhost", port)
+    await disp.connect(sock, "localhost", port)
     when true:
-      discard await sendMessages(disp, sock)
-      sock.close()
+      await sendMessages(disp, sock)
+      disp.close(sock)
     else:
       # Issue #932: https://github.com/Araq/Nimrod/issues/932
       var msgFut = sendMessages(disp, sock)
       msgFut.callback =
         proc () =
-          sock.close()
+          disp.close(sock)
 
-proc readMessages(disp: PDispatcher, client: TSocketHandle): PFuture[int] {.async.} =
+proc readMessages(disp: PDispatcher, client: TSocketHandle) {.async.} =
   while true:
     var line = await disp.recvLine(client)
     if line == "":
-      client.close()
+      disp.close(client)
       clientCount.inc
       break
     else:
@@ -47,16 +47,18 @@ proc readMessages(disp: PDispatcher, client: TSocketHandle): PFuture[int] {.asyn
       else:
         doAssert false
 
-proc createServer(disp: PDispatcher, port: TPort): PFuture[int] {.async.} =
+proc createServer(disp: PDispatcher, port: TPort) {.async.} =
   var server = disp.socket()
   #disp.register(server)
   server.bindAddr(port)
   server.listen()
   while true:
-    discard readMessages(disp, await disp.accept(server))
+    var client = await disp.accept(server)
+    readMessages(disp, client)
+    # TODO: Test: readMessages(disp, await disp.accept(server))
 
-discard disp.createServer(TPort(10335))
-discard disp.launchSwarm(TPort(10335))
+disp.createServer(TPort(10335))
+disp.launchSwarm(TPort(10335))
 while true:
   disp.poll()
   if clientCount == swarmSize: break

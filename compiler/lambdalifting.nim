@@ -518,7 +518,7 @@ proc searchForInnerProcs(o: POuterContext, n: PNode) =
       else:
         internalError(it.info, "transformOuter")
   of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef, nkTemplateDef, 
-     nkClosure:
+     nkClosure, nkTypeSection:
     # don't recurse here:
     # XXX recurse here and setup 'up' pointers
     discard

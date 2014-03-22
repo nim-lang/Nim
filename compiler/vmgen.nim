@@ -1570,7 +1570,7 @@ proc genProc(c: PCtx; s: PSym): int =
     c.gABC(body, opcEof, eofInstr.regA)
     c.optimizeJumps(result)
     s.offset = c.prc.maxSlots
-    #if s.name.s == "xmlConstructor":
+    #if s.name.s == "foo":
     #  echo renderTree(body)
     #  c.echoCode(result)
     c.prc = oldPrc
