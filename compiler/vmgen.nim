@@ -308,20 +308,20 @@ proc genAndOr(c: PCtx; n: PNode; opc: TOpcode; dest: var TDest) =
   c.gen(n.sons[2], dest)
   c.patch(L1)
 
-proc canonConst(n: PNode): PNode =
+proc canonValue*(n: PNode): PNode =
   if n.kind == nkExprColonExpr:
     result = n.sons[1]
   elif n.hasSubnodeWith(nkExprColonExpr):
     result = n.copyNode
     newSeq(result.sons, n.len)
     for i in 0.. <n.len:
-      result.sons[i] = canonConst(n.sons[i])
+      result.sons[i] = canonValue(n.sons[i])
   else:
     result = n
 
 proc rawGenLiteral(c: PCtx; n: PNode): int =
   result = c.constants.len
-  c.constants.add n.canonConst
+  c.constants.add n.canonValue
   internalAssert result < 0x7fff
 
 proc sameConstant*(a, b: PNode): bool =
@@ -1227,7 +1227,7 @@ proc genVarSection(c: PCtx; n: PNode) =
           if sfImportc in s.flags: c.importcSym(a.info, s)
           else:
             let sa = if s.ast.isNil: getNullValue(s.typ, a.info) 
-                     else: canonConst(s.ast)
+                     else: canonValue(s.ast)
             c.globals.add(sa)
             s.position = c.globals.len
         if a.sons[2].kind == nkEmpty:

@@ -10,6 +10,8 @@
 ## This file implements the new evaluation engine for Nimrod code.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
+const debugEchoCode = false
+
 import ast except getstr
 
 import
@@ -328,6 +330,7 @@ proc opConv*(dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType): bool =
 
 proc compile(c: PCtx, s: PSym): int = 
   result = vmgen.genProc(c, s)
+  when debugEchoCode: c.echoCode result
   #c.echoCode
 
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
@@ -381,18 +384,23 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNodeToReg:
       let ra = instr.regA
       let rb = instr.regB
-      assert regs[rb].kind == rkNode
-      let nb = regs[rb].node
-      case nb.kind
-      of nkCharLit..nkInt64Lit:
-        ensureKind(rkInt)
-        regs[ra].intVal = nb.intVal
-      of nkFloatLit..nkFloat64Lit:
-        ensureKind(rkFloat)
-        regs[ra].floatVal = nb.floatVal
+      # opcDeref might already have loaded it into a register. XXX Let's hope
+      # this is still correct this way:
+      if regs[rb].kind != rkNode:
+        regs[ra] = regs[rb]
       else:
-        ensureKind(rkNode)
-        regs[ra].node = nb
+        assert regs[rb].kind == rkNode
+        let nb = regs[rb].node
+        case nb.kind
+        of nkCharLit..nkInt64Lit:
+          ensureKind(rkInt)
+          regs[ra].intVal = nb.intVal
+        of nkFloatLit..nkFloat64Lit:
+          ensureKind(rkFloat)
+          regs[ra].floatVal = nb.floatVal
+        else:
+          ensureKind(rkNode)
+          regs[ra].node = nb
     of opcLdArr:
       # a = b[c]
       decodeBC(rkNode)
@@ -520,10 +528,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].intVal = regs[rb].intVal * regs[rc].intVal
     of opcDivInt:
       decodeBC(rkInt)
-      regs[ra].intVal = regs[rb].intVal div regs[rc].intVal
+      if regs[rc].intVal == 0: stackTrace(c, tos, pc, errConstantDivisionByZero)
+      else: regs[ra].intVal = regs[rb].intVal div regs[rc].intVal
     of opcModInt:
       decodeBC(rkInt)
-      regs[ra].intVal = regs[rb].intVal mod regs[rc].intVal
+      if regs[rc].intVal == 0: stackTrace(c, tos, pc, errConstantDivisionByZero)
+      else: regs[ra].intVal = regs[rb].intVal mod regs[rc].intVal
     of opcAddFloat:
       decodeBC(rkFloat)
       regs[ra].floatVal = regs[rb].floatVal + regs[rc].floatVal
@@ -1174,12 +1184,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].node.strVal = typ.typeToString(preferExported)
     inc pc
 
-proc fixType(result, n: PNode) {.inline.} =
-  # XXX do it deeply for complex values; there seems to be no simple
-  # solution except to check it deeply here.
-  #if result.typ.isNil: result.typ = n.typ
-  discard
-
 proc execute(c: PCtx, start: int): PNode =
   var tos = PStackFrame(prc: nil, comesFrom: 0, next: nil)
   newSeq(tos.slots, c.prc.maxSlots)
@@ -1198,8 +1202,6 @@ proc evalExpr*(c: PCtx, n: PNode): PNode =
   let start = genExpr(c, n)
   assert c.code[start].opcode != opcEof
   result = execute(c, start)
-  if not result.isNil:
-    fixType(result, n)
 
 # for now we share the 'globals' environment. XXX Coming soon: An API for
 # storing&loading the 'globals' environment to get what a component system
@@ -1243,11 +1245,11 @@ proc evalConstExprAux(module, prc: PSym, n: PNode, mode: TEvalMode): PNode =
   let start = genExpr(c, n, requiresValue = mode!=emStaticStmt)
   if c.code[start].opcode == opcEof: return emptyNode
   assert c.code[start].opcode != opcEof
+  when debugEchoCode: c.echoCode start
   var tos = PStackFrame(prc: prc, comesFrom: 0, next: nil)
   newSeq(tos.slots, c.prc.maxSlots)
   #for i in 0 .. <c.prc.maxSlots: tos.slots[i] = newNode(nkEmpty)
   result = rawExecute(c, start, tos).regToNode
-  fixType(result, n)
 
 proc evalConstExpr*(module: PSym, e: PNode): PNode = 
   result = evalConstExprAux(module, nil, e, emConst)
@@ -1264,6 +1266,7 @@ proc setupCompileTimeVar*(module: PSym, n: PNode) =
 proc setupMacroParam(x: PNode): PNode =
   result = x
   if result.kind in {nkHiddenSubConv, nkHiddenStdConv}: result = result.sons[1]
+  result = canonValue(result)
   result.flags.incl nfIsRef
   result.typ = x.typ
 
