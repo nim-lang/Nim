@@ -465,6 +465,15 @@ proc needsAsgnPatch(n: PNode): bool =
   n.kind in {nkBracketExpr, nkDotExpr, nkCheckedFieldExpr,
              nkDerefExpr, nkHiddenDeref} or (n.kind == nkSym and n.sym.isGlobal)
 
+proc genField(n: PNode): TRegister =
+  if n.kind != nkSym or n.sym.kind != skField:
+    internalError(n.info, "no field symbol")
+  let s = n.sym
+  if s.position > high(result):
+      internalError(n.info,
+        "too large offset! cannot generate code for: " & s.name.s)
+  result = s.position
+
 proc genAsgnPatch(c: PCtx; le: PNode, value: TRegister) =
   case le.kind
   of nkBracketExpr:
@@ -477,10 +486,9 @@ proc genAsgnPatch(c: PCtx; le: PNode, value: TRegister) =
     # XXX field checks here
     let left = if le.kind == nkDotExpr: le else: le.sons[0]
     let dest = c.genx(left.sons[0], {gfAddrOf})
-    let idx = c.genx(left.sons[1])
+    let idx = genField(left.sons[1])
     c.gABC(left, opcWrObj, dest, idx, value)
     c.freeTemp(dest)
-    c.freeTemp(idx)
   of nkDerefExpr, nkHiddenDeref:
     let dest = c.genx(le.sons[0], {gfAddrOf})
     c.gABC(le, opcWrDeref, dest, value)
@@ -1023,7 +1031,7 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
     # XXX field checks here
     let left = if le.kind == nkDotExpr: le else: le.sons[0]
     let dest = c.genx(left.sons[0], {gfAddrOf})
-    let idx = c.genx(left.sons[1])
+    let idx = genField(left.sons[1])
     let tmp = c.genx(ri)
     c.gABC(left, opcWrObj, dest, idx, tmp)
     c.freeTemp(tmp)
@@ -1108,11 +1116,12 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
     else:
       c.gABx(n, opcLdGlobal, dest, s.position)
   else:
-    if s.kind == skForVar and c.mode == emRepl: c.setSlot s
+    if s.kind == skForVar and c.mode == emRepl: c.setSlot(s)
     if s.position > 0 or (s.position == 0 and
                           s.kind in {skParam,skResult}):
       if dest < 0:
         dest = s.position + ord(s.kind == skParam)
+        internalAssert(c.prc.slots[dest].kind < slotSomeTemp)
       else:
         # we need to generate an assignment:
         genAsgn(c, dest, n, c.prc.slots[dest].kind >= slotSomeTemp)
@@ -1120,8 +1129,8 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
       # see tests/t99bott for an example that triggers it:
       cannotEval(n)
 
-proc genAccess(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
-               flags: TGenFlags) =
+proc genArrAccess2(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
+                   flags: TGenFlags) =
   let a = c.genx(n.sons[0], flags)
   let b = c.genx(n.sons[1], {})
   if dest < 0: dest = c.getTemp(n.typ)
@@ -1136,18 +1145,28 @@ proc genAccess(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
   c.freeTemp(b)
 
 proc genObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
-  genAccess(c, n, dest, opcLdObj, flags)
+  let a = c.genx(n.sons[0], flags)
+  let b = genField(n.sons[1])
+  if dest < 0: dest = c.getTemp(n.typ)
+  if gfAddrOf notin flags and fitsRegister(n.typ):
+    var cc = c.getTemp(n.typ)
+    c.gABC(n, opcLdObj, cc, a, b)
+    c.gABC(n, opcNodeToReg, dest, cc)
+    c.freeTemp(cc)
+  else:
+    c.gABC(n, opcLdObj, dest, a, b)
+  c.freeTemp(a)
 
 proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   # XXX implement field checks!
-  genAccess(c, n.sons[0], dest, opcLdObj, flags)
+  genObjAccess(c, n.sons[0], dest, flags)
 
 proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   if n.sons[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind in {
       tyString, tyCString}:
-    genAccess(c, n, dest, opcLdStrIdx, {})
+    genArrAccess2(c, n, dest, opcLdStrIdx, {})
   else:
-    genAccess(c, n, dest, opcLdArr, flags)
+    genArrAccess2(c, n, dest, opcLdArr, flags)
 
 proc getNullValueAux(obj: PNode, result: PNode) = 
   case obj.kind
@@ -1304,11 +1323,10 @@ proc genObjConstr(c: PCtx, n: PNode, dest: var TDest) =
   for i in 1.. <n.len:
     let it = n.sons[i]
     if it.kind == nkExprColonExpr and it.sons[0].kind == nkSym:
-      let idx = c.genx(it.sons[0])
+      let idx = genField(it.sons[0])
       let tmp = c.genx(it.sons[1])
       c.gABC(it, whichAsgnOpc(it.sons[1], opcWrObj), dest, idx, tmp)
       c.freeTemp(tmp)
-      c.freeTemp(idx)
     else:
       internalError(n.info, "invalid object constructor")
 
@@ -1319,11 +1337,10 @@ proc genTupleConstr(c: PCtx, n: PNode, dest: var TDest) =
   for i in 0.. <n.len:
     let it = n.sons[i]
     if it.kind == nkExprColonExpr:
-      let idx = c.genx(it.sons[0])
+      let idx = genField(it.sons[0])
       let tmp = c.genx(it.sons[1])
       c.gABC(it, whichAsgnOpc(it.sons[1], opcWrObj), dest, idx, tmp)
       c.freeTemp(tmp)
-      c.freeTemp(idx)
     else:
       let tmp = c.genx(it)
       c.gABC(it, whichAsgnOpc(it, opcWrObj), dest, i.TRegister, tmp)
@@ -1352,12 +1369,6 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       else:
         var lit = genLiteral(c, newIntNode(nkIntLit, s.position))
         c.gABx(n, opcLdConst, dest, lit)
-    of skField:
-      internalAssert dest < 0
-      if s.position > high(dest):
-        internalError(n.info, 
-          "too large offset! cannot generate code for: " & s.name.s)
-      dest = s.position
     of skType:
       genTypeLit(c, s.typ, dest)
     else:
