@@ -3,7 +3,7 @@ discard """
   cmd: "nimrod cc --hints:on $# $#"
   output: "5000"
 """
-import asyncio2, sockets2, net, strutils
+import asyncio2, sockets2, net, strutils, os
 
 var disp = newDispatcher()
 var msgCount = 0
@@ -50,8 +50,19 @@ proc readMessages(disp: PDispatcher, client: TSocketHandle) {.async.} =
 proc createServer(disp: PDispatcher, port: TPort) {.async.} =
   var server = disp.socket()
   #disp.register(server)
-  server.bindAddr(port)
-  server.listen()
+  block:
+    var name: TSockaddr_in
+    when defined(windows):
+      name.sin_family = toInt(AF_INET).int16
+    else:
+      name.sin_family = toInt(AF_INET)
+    name.sin_port = htons(int16(port))
+    name.sin_addr.s_addr = htonl(INADDR_ANY)
+    if bindAddr(server, cast[ptr TSockAddr](addr(name)),
+                  sizeof(name).TSocklen) < 0'i32:
+      osError(osLastError())
+  
+  discard server.listen()
   while true:
     var client = await disp.accept(server)
     readMessages(disp, client)
