@@ -1279,7 +1279,8 @@ proc leftBindingPower(p : var TParser, tok : ref TToken) : int =
   of pxComma:
     return 10
     # throw == 20
-  of pxAsgn, pxPlusAsgn, pxMinusAsgn, pxStarAsgn, pxSlashAsgn, pxModAsgn, pxShlAsgn, pxShrAsgn, pxAmpAsgn, pxHatAsgn, pxBarAsgn:
+  of pxAsgn, pxPlusAsgn, pxMinusAsgn, pxStarAsgn, pxSlashAsgn, pxModAsgn, 
+     pxShlAsgn, pxShrAsgn, pxAmpAsgn, pxHatAsgn, pxBarAsgn:
     return 30
   of pxConditional:
     return 40

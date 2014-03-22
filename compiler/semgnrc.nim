@@ -94,6 +94,8 @@ proc semGenericStmt(c: PContext, n: PNode,
     let luf = if withinMixin notin flags: {checkUndeclared} else: {}
     var s = qualifiedLookUp(c, n, luf)
     if s != nil: result = semGenericStmtSymbol(c, n, s)
+    else:
+      
     # XXX for example: ``result.add`` -- ``add`` needs to be looked up here...
   of nkEmpty, nkSym..nkNilLit:
     # see tests/compile/tgensymgeneric.nim:

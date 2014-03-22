@@ -499,17 +499,20 @@ other binary operators are left-associative.
 Precedence
 ----------
 
-For operators that are not keywords the precedence is determined by the
-following rules: 
+Unary operators always bind stronger than any binary 
+operator: ``$a + b`` is ``($a) + b`` and not ``$(a + b)``.
+
+If an unary operator's relevant character is ``@`` it is a `sigil-like`:idx: 
+operator which binds stronger than a ``primarySuffix``: ``@x.abc`` is parsed
+as ``(@x).abc`` whereas ``$x.abc`` is parsed as ``$(x.abc)``.
+
+
+For binary operators that are not keywords the precedence is determined by the
+following rules:
 
 If the operator ends with ``=`` and its relevant character is none of 
 ``<``, ``>``, ``!``, ``=``, ``~``, ``?``, it is an *assignment operator* which
 has the lowest precedence.
-
-If the operator's relevant character is ``@`` it is a `sigil-like`:idx: 
-operator which binds stronger than a ``primarySuffix``: ``@x.abc`` is parsed
-as ``(@x).abc`` whereas ``$x.abc`` is parsed as ``$(x.abc)``.
-
 
 Otherwise precedence is determined by the relevant character.
 
