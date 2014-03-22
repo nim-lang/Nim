@@ -9,14 +9,14 @@
 
 import os, oids, tables, strutils, macros
 
-import sockets2, net
+import rawsockets
 
-## Asyncio2 
+## AsyncDispatch
 ## --------
 ##
-## This module implements a brand new asyncio module based on Futures.
-## IOCP is used under the hood on Windows and the selectors module is used for
-## other operating systems.
+## This module implements a brand new dispatcher based on Futures.
+## On Windows IOCP is used and on other operating systems the selectors module
+## is used instead.
 
 # -- Futures
 
@@ -27,7 +27,7 @@ type
 
   PFuture*[T] = ref object of PFutureBase
     value: T
-    error: ref EBase
+    error*: ref EBase # TODO: This shouldn't be necessary, generics bug?
 
 proc newFuture*[T](): PFuture[T] =
   ## Creates a new future.
@@ -90,21 +90,23 @@ proc read*[T](future: PFuture[T]): T =
     # TODO: Make a custom exception type for this?
     raise newException(EInvalidValue, "Future still in progress.")
 
+proc readError*[T](future: PFuture[T]): ref EBase =
+  if future.error != nil: return future.error
+  else:
+    raise newException(EInvalidValue, "No error in future.")
+
 proc finished*[T](future: PFuture[T]): bool =
   ## Determines whether ``future`` has completed.
   ##
-  ## ``True`` may indicate an error or a value. Use ``hasError`` to distinguish.
+  ## ``True`` may indicate an error or a value. Use ``failed`` to distinguish.
   future.finished
 
 proc failed*[T](future: PFuture[T]): bool =
   ## Determines whether ``future`` completed with an error.
   future.error != nil
 
-# TODO: Get rid of register. Do it implicitly.
-
 when defined(windows) or defined(nimdoc):
   import winlean, sets, hashes
-  #from hashes import THash
   type
     TCompletionKey = dword
 
@@ -481,6 +483,7 @@ when defined(windows) or defined(nimdoc):
                protocol: TProtocol = IPPROTO_TCP): TSocketHandle =
     ## Creates a new socket and registers it with the dispatcher implicitly.
     result = socket(domain, typ, protocol)
+    result.setBlocking(false)
     disp.register(result)
 
   proc close*(disp: PDispatcher, socket: TSocketHandle) =
@@ -519,6 +522,7 @@ else:
                typ: TType = SOCK_STREAM,
                protocol: TProtocol = IPPROTO_TCP): TSocketHandle =
     result = socket(domain, typ, protocol)
+    result.setBlocking(false)
     disp.register(result)
   
   proc close*(disp: PDispatcher, sock: TSocketHandle) =
@@ -775,7 +779,7 @@ proc processBody(node, retFutureSym: PNimrodNode): PNimrodNode {.compileTime.} =
     else: discard
   of nnkDiscardStmt:
     # discard await x
-    if node[0][0].ident == !"await":
+    if node[0][0].kind == nnkIdent and node[0][0].ident == !"await":
       var dummy = newNimNode(nnkStmtList)
       createVar("futureDiscard_" & $toStrLit(node[0][1]), node[0][1], dummy)
   else: discard
@@ -794,6 +798,9 @@ proc getName(node: PNimrodNode): string {.compileTime.} =
     assert false
 
 macro async*(prc: stmt): stmt {.immediate.} =
+  ## Macro which processes async procedures into the appropriate
+  ## iterators and yield statements.
+
   expectKind(prc, nnkProcDef)
 
   hint("Processing " & prc[0].getName & " as an async proc.")
@@ -893,6 +900,10 @@ proc recvLine*(p: PDispatcher, socket: TSocketHandle): PFuture[string] {.async.}
   ## will be set to it.
   ## 
   ## If the socket is disconnected, ``line`` will be set to ``""``.
+  ##
+  ## If the socket is disconnected in the middle of a line (before ``\r\L``
+  ## is read) then line will be set to ``""``.
+  ## The partial line **will be lost**.
   
   template addNLIfEmpty(): stmt =
     if result.len == 0:
@@ -901,13 +912,9 @@ proc recvLine*(p: PDispatcher, socket: TSocketHandle): PFuture[string] {.async.}
   result = ""
   var c = ""
   while true:
-    #echo("1")
     c = await p.recv(socket, 1)
-    #echo("Received ", c.len)
     if c.len == 0:
-      #echo("returning")
-      return
-    #echo("2")
+      return ""
     if c == "\r":
       c = await p.recv(socket, 1, MSG_PEEK)
       if c.len > 0 and c == "\L":
@@ -917,9 +924,16 @@ proc recvLine*(p: PDispatcher, socket: TSocketHandle): PFuture[string] {.async.}
     elif c == "\L":
       addNLIfEmpty()
       return
-    #echo("3")
     add(result.string, c)
-  #echo("4")
+
+var gDisp*{.threadvar.}: PDispatcher ## Global dispatcher
+gDisp = newDispatcher()
+
+proc runForever*() =
+  ## Begins a never ending global dispatcher poll loop.
+  while true:
+    gDisp.poll()
+
 
 when isMainModule:
   

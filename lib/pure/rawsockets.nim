@@ -10,6 +10,8 @@
 ## This module implements a low-level cross-platform sockets interface. Look
 ## at the ``net`` module for the higher-level version.
 
+# TODO: Clean up the exports a bit and everything else in general.
+
 import unsigned, os
 
 when hostos == "solaris":
@@ -17,16 +19,21 @@ when hostos == "solaris":
 
 when defined(Windows):
   import winlean
+  export WSAEWOULDBLOCK
 else:
   import posix
-  export fcntl, F_GETFL, O_NONBLOCK, F_SETFL
+  export fcntl, F_GETFL, O_NONBLOCK, F_SETFL, EAGAIN, EWOULDBLOCK
 
 export TSocketHandle, TSockaddr_in, TAddrinfo, INADDR_ANY, TSockAddr, TSockLen,
-  inet_ntoa, recv, `==`, connect, send, accept
+  inet_ntoa, recv, `==`, connect, send, accept, recvfrom, sendto
 
 export
   SO_ERROR,
-  SOL_SOCKET
+  SOL_SOCKET,
+  SOMAXCONN,
+  SO_ACCEPTCONN, SO_BROADCAST, SO_DEBUG, SO_DONTROUTE,
+  SO_KEEPALIVE, SO_OOBINLINE, SO_REUSEADDR,
+  MSG_PEEK
 
 type
   
@@ -138,8 +145,6 @@ else:
 proc socket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM,
              protocol: TProtocol = IPPROTO_TCP): TSocketHandle =
   ## Creates a new socket; returns `InvalidSocket` if an error occurs.
-  
-  # TODO: The function which will use this will raise EOS.
   socket(toInt(domain), toInt(typ), toInt(protocol))
 
 proc close*(socket: TSocketHandle) =
@@ -154,14 +159,14 @@ proc close*(socket: TSocketHandle) =
 proc bindAddr*(socket: TSocketHandle, name: ptr TSockAddr, namelen: TSockLen): cint =
   result = bindSocket(socket, name, namelen)
 
-proc listen*(socket: TSocketHandle, backlog = SOMAXCONN) {.tags: [FReadIO].} =
+proc listen*(socket: TSocketHandle, backlog = SOMAXCONN): cint {.tags: [FReadIO].} =
   ## Marks ``socket`` as accepting connections. 
   ## ``Backlog`` specifies the maximum length of the 
   ## queue of pending connections.
   when defined(windows):
-    if winlean.listen(socket, cint(backlog)) < 0'i32: osError(osLastError())
+    result = winlean.listen(socket, cint(backlog))
   else:
-    if posix.listen(socket, cint(backlog)) < 0'i32: osError(osLastError())
+    result = posix.listen(socket, cint(backlog))
 
 proc getAddrInfo*(address: string, port: TPort, af: TDomain = AF_INET, typ: TType = SOCK_STREAM,
                  prot: TProtocol = IPPROTO_TCP): ptr TAddrInfo =
@@ -204,13 +209,110 @@ proc htonl*(x: int32): int32 =
   ## Converts 32-bit integers from host to network byte order. On machines
   ## where the host byte order is the same as network byte order, this is
   ## a no-op; otherwise, it performs a 4-byte swap operation.
-  result = sockets2.ntohl(x)
+  result = rawsockets.ntohl(x)
 
 proc htons*(x: int16): int16 =
   ## Converts 16-bit positive integers from host to network byte order.
   ## On machines where the host byte order is the same as network byte
   ## order, this is a no-op; otherwise, it performs a 2-byte swap operation.
-  result = sockets2.ntohs(x)
+  result = rawsockets.ntohs(x)
+
+proc getServByName*(name, proto: string): TServent {.tags: [FReadIO].} =
+  ## Searches the database from the beginning and finds the first entry for 
+  ## which the service name specified by ``name`` matches the s_name member
+  ## and the protocol name specified by ``proto`` matches the s_proto member.
+  ##
+  ## On posix this will search through the ``/etc/services`` file.
+  when defined(Windows):
+    var s = winlean.getservbyname(name, proto)
+  else:
+    var s = posix.getservbyname(name, proto)
+  if s == nil: raise newException(EOS, "Service not found.")
+  result.name = $s.s_name
+  result.aliases = cstringArrayToSeq(s.s_aliases)
+  result.port = TPort(s.s_port)
+  result.proto = $s.s_proto
+  
+proc getServByPort*(port: TPort, proto: string): TServent {.tags: [FReadIO].} = 
+  ## Searches the database from the beginning and finds the first entry for 
+  ## which the port specified by ``port`` matches the s_port member and the 
+  ## protocol name specified by ``proto`` matches the s_proto member.
+  ##
+  ## On posix this will search through the ``/etc/services`` file.
+  when defined(Windows):
+    var s = winlean.getservbyport(ze(int16(port)).cint, proto)
+  else:
+    var s = posix.getservbyport(ze(int16(port)).cint, proto)
+  if s == nil: raise newException(EOS, "Service not found.")
+  result.name = $s.s_name
+  result.aliases = cstringArrayToSeq(s.s_aliases)
+  result.port = TPort(s.s_port)
+  result.proto = $s.s_proto
+
+proc getHostByAddr*(ip: string): Thostent {.tags: [FReadIO].} =
+  ## This function will lookup the hostname of an IP Address.
+  var myaddr: TInAddr
+  myaddr.s_addr = inet_addr(ip)
+  
+  when defined(windows):
+    var s = winlean.gethostbyaddr(addr(myaddr), sizeof(myaddr).cuint,
+                                  cint(rawsockets.AF_INET))
+    if s == nil: osError(osLastError())
+  else:
+    var s = posix.gethostbyaddr(addr(myaddr), sizeof(myaddr).TSocklen, 
+                                cint(posix.AF_INET))
+    if s == nil:
+      raise newException(EOS, $hstrerror(h_errno))
+  
+  result.name = $s.h_name
+  result.aliases = cstringArrayToSeq(s.h_aliases)
+  when defined(windows): 
+    result.addrtype = TDomain(s.h_addrtype)
+  else:
+    if s.h_addrtype == posix.AF_INET:
+      result.addrtype = AF_INET
+    elif s.h_addrtype == posix.AF_INET6:
+      result.addrtype = AF_INET6
+    else:
+      raise newException(EOS, "unknown h_addrtype")
+  result.addrList = cstringArrayToSeq(s.h_addr_list)
+  result.length = int(s.h_length)
+
+proc getHostByName*(name: string): Thostent {.tags: [FReadIO].} = 
+  ## This function will lookup the IP address of a hostname.
+  when defined(Windows):
+    var s = winlean.gethostbyname(name)
+  else:
+    var s = posix.gethostbyname(name)
+  if s == nil: osError(osLastError())
+  result.name = $s.h_name
+  result.aliases = cstringArrayToSeq(s.h_aliases)
+  when defined(windows): 
+    result.addrtype = TDomain(s.h_addrtype)
+  else:
+    if s.h_addrtype == posix.AF_INET:
+      result.addrtype = AF_INET
+    elif s.h_addrtype == posix.AF_INET6:
+      result.addrtype = AF_INET6
+    else:
+      raise newException(EOS, "unknown h_addrtype")
+  result.addrList = cstringArrayToSeq(s.h_addr_list)
+  result.length = int(s.h_length)
+
+proc getSockName*(socket: TSocketHandle): TPort = 
+  ## returns the socket's associated port number.
+  var name: Tsockaddr_in
+  when defined(Windows):
+    name.sin_family = int16(ord(AF_INET))
+  else:
+    name.sin_family = posix.AF_INET
+  #name.sin_port = htons(cint16(port))
+  #name.sin_addr.s_addr = htonl(INADDR_ANY)
+  var namelen = sizeof(name).TSocklen
+  if getsockname(socket, cast[ptr TSockAddr](addr(name)),
+                 addr(namelen)) == -1'i32:
+    osError(osLastError())
+  result = TPort(rawsockets.ntohs(name.sin_port))
 
 proc getSockOptInt*(socket: TSocketHandle, level, optname: int): int {.
   tags: [FReadIO].} = 
@@ -229,6 +331,89 @@ proc setSockOptInt*(socket: TSocketHandle, level, optname, optval: int) {.
   if setsockopt(socket, cint(level), cint(optname), addr(value),  
                 sizeof(value).TSocklen) < 0'i32:
     osError(osLastError())
+
+proc setBlocking*(s: TSocketHandle, blocking: bool) =
+  ## Sets blocking mode on socket.
+  ##
+  ## Raises EOS on error.
+  when defined(Windows):
+    var mode = clong(ord(not blocking)) # 1 for non-blocking, 0 for blocking
+    if ioctlsocket(s, FIONBIO, addr(mode)) == -1:
+      osError(osLastError())
+  else: # BSD sockets
+    var x: int = fcntl(s, F_GETFL, 0)
+    if x == -1:
+      osError(osLastError())
+    else:
+      var mode = if blocking: x and not O_NONBLOCK else: x or O_NONBLOCK
+      if fcntl(s, F_SETFL, mode) == -1:
+        osError(osLastError())
+
+proc timeValFromMilliseconds(timeout = 500): Ttimeval =
+  if timeout != -1:
+    var seconds = timeout div 1000
+    result.tv_sec = seconds.int32
+    result.tv_usec = ((timeout - seconds * 1000) * 1000).int32
+
+proc createFdSet(fd: var TFdSet, s: seq[TSocketHandle], m: var int) = 
+  FD_ZERO(fd)
+  for i in items(s): 
+    m = max(m, int(i))
+    FD_SET(i, fd)
+   
+proc pruneSocketSet(s: var seq[TSocketHandle], fd: var TFdSet) = 
+  var i = 0
+  var L = s.len
+  while i < L:
+    if FD_ISSET(s[i], fd) == 0'i32:
+      s[i] = s[L-1]
+      dec(L)
+    else:
+      inc(i)
+  setLen(s, L)
+
+proc select*(readfds: var seq[TSocketHandle], timeout = 500): int =
+  ## Traditional select function. This function will return the number of
+  ## sockets that are ready to be read from, written to, or which have errors.
+  ## If there are none; 0 is returned. 
+  ## ``Timeout`` is in miliseconds and -1 can be specified for no timeout.
+  ## 
+  ## A socket is removed from the specific ``seq`` when it has data waiting to
+  ## be read/written to or has errors (``exceptfds``).
+  var tv {.noInit.}: Ttimeval = timeValFromMilliseconds(timeout)
+  
+  var rd: TFdSet
+  var m = 0
+  createFdSet((rd), readfds, m)
+  
+  if timeout != -1:
+    result = int(select(cint(m+1), addr(rd), nil, nil, addr(tv)))
+  else:
+    result = int(select(cint(m+1), addr(rd), nil, nil, nil))
+  
+  pruneSocketSet(readfds, (rd))
+
+proc selectWrite*(writefds: var seq[TSocketHandle], 
+                  timeout = 500): int {.tags: [FReadIO].} =
+  ## When a socket in ``writefds`` is ready to be written to then a non-zero
+  ## value will be returned specifying the count of the sockets which can be
+  ## written to. The sockets which can be written to will also be removed
+  ## from ``writefds``.
+  ##
+  ## ``timeout`` is specified in miliseconds and ``-1`` can be specified for
+  ## an unlimited time.
+  var tv {.noInit.}: Ttimeval = timeValFromMilliseconds(timeout)
+  
+  var wr: TFdSet
+  var m = 0
+  createFdSet((wr), writefds, m)
+  
+  if timeout != -1:
+    result = int(select(cint(m+1), nil, addr(wr), nil, addr(tv)))
+  else:
+    result = int(select(cint(m+1), nil, addr(wr), nil, nil))
+  
+  pruneSocketSet(writefds, (wr))
 
 when defined(Windows):
   var wsa: TWSADATA
