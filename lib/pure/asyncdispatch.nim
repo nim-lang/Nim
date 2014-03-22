@@ -9,14 +9,14 @@
 
 import os, oids, tables, strutils, macros
 
-import sockets2
+import rawsockets
 
-## Asyncio2 
+## AsyncDispatch
 ## --------
 ##
-## This module implements a brand new asyncio module based on Futures.
-## IOCP is used under the hood on Windows and the selectors module is used for
-## other operating systems.
+## This module implements a brand new dispatcher based on Futures.
+## On Windows IOCP is used and on other operating systems the selectors module
+## is used instead.
 
 # -- Futures
 
@@ -27,7 +27,7 @@ type
 
   PFuture*[T] = ref object of PFutureBase
     value: T
-    error: ref EBase
+    error*: ref EBase # TODO: This shouldn't be necessary, generics bug?
 
 proc newFuture*[T](): PFuture[T] =
   ## Creates a new future.
@@ -89,6 +89,11 @@ proc read*[T](future: PFuture[T]): T =
   else:
     # TODO: Make a custom exception type for this?
     raise newException(EInvalidValue, "Future still in progress.")
+
+proc readError*[T](future: PFuture[T]): ref EBase =
+  if future.error != nil: return future.error
+  else:
+    raise newException(EInvalidValue, "No error in future.")
 
 proc finished*[T](future: PFuture[T]): bool =
   ## Determines whether ``future`` has completed.
@@ -478,6 +483,7 @@ when defined(windows) or defined(nimdoc):
                protocol: TProtocol = IPPROTO_TCP): TSocketHandle =
     ## Creates a new socket and registers it with the dispatcher implicitly.
     result = socket(domain, typ, protocol)
+    result.setBlocking(false)
     disp.register(result)
 
   proc close*(disp: PDispatcher, socket: TSocketHandle) =
@@ -516,6 +522,7 @@ else:
                typ: TType = SOCK_STREAM,
                protocol: TProtocol = IPPROTO_TCP): TSocketHandle =
     result = socket(domain, typ, protocol)
+    result.setBlocking(false)
     disp.register(result)
   
   proc close*(disp: PDispatcher, sock: TSocketHandle) =
@@ -918,6 +925,15 @@ proc recvLine*(p: PDispatcher, socket: TSocketHandle): PFuture[string] {.async.}
       addNLIfEmpty()
       return
     add(result.string, c)
+
+var gDisp*{.threadvar.}: PDispatcher ## Global dispatcher
+gDisp = newDispatcher()
+
+proc runForever*() =
+  ## Begins a never ending global dispatcher poll loop.
+  while true:
+    gDisp.poll()
+
 
 when isMainModule:
   
