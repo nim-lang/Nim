@@ -64,6 +64,7 @@ type
     opcContainsSet, opcRepr, opcSetLenStr, opcSetLenSeq,
     opcSwap, opcIsNil, opcOf, opcIs,
     opcSubStr, opcConv, opcCast, opcQuit, opcReset,
+    opcNarrowS, opcNarrowU,
     
     opcAddStrCh,
     opcAddStrStr,

@@ -19,7 +19,7 @@ const
 when debugIds:
   import intsets
   
-  var usedIds = InitIntSet()
+  var usedIds = initIntSet()
 
 proc registerID*(id: PIdObj) = 
   when debugIds: 

@@ -902,8 +902,32 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let newLen = regs[rb].intVal.int
       if regs[ra].node.isNil: stackTrace(c, tos, pc, errNilAccess)
       else: setLen(regs[ra].node.sons, newLen)
-    of opcSwap, opcReset:
+    of opcSwap:
+      let rb = instr.regB
+      if regs[ra].kind == regs[rb].kind:
+        case regs[ra].kind
+        of rkNone: discard
+        of rkInt: swap regs[ra].intVal, regs[rb].intVal
+        of rkFloat: swap regs[ra].floatVal, regs[rb].floatVal
+        of rkNode: swap regs[ra].node, regs[rb].node
+        of rkRegisterAddr: swap regs[ra].regAddr, regs[rb].regAddr
+        of rkNodeAddr: swap regs[ra].nodeAddr, regs[rb].nodeAddr
+      else:
+        internalError(c.debug[pc], "cannot swap operands")
+    of opcReset:
       internalError(c.debug[pc], "too implement")
+    of opcNarrowS:
+      decodeBC(rkInt)
+      let min = -(1 shl (rc-1))
+      let max = (1 shl (rc-1))-1
+      if regs[rb].intVal >= min and regs[rb].intVal <= max:
+        regs[ra].intVal = regs[rb].intVal
+      else:
+        stackTrace(c, tos, pc, errGenerated,
+          msgKindToString(errUnhandledExceptionX) % "value out of range")
+    of opcNarrowU:
+      decodeBC(rkInt)
+      regs[ra].intVal = regs[rb].intVal and ((1'i64 shl rc)-1)
     of opcIsNil:
       decodeB(rkInt)
       regs[ra].intVal = ord(regs[rb].node.kind == nkNilLit)
