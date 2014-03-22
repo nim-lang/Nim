@@ -1226,7 +1226,8 @@ proc genVarSection(c: PCtx; n: PNode) =
         if s.position == 0:
           if sfImportc in s.flags: c.importcSym(a.info, s)
           else:
-            let sa = if s.ast.isNil: getNullValue(s.typ, a.info) else: s.ast
+            let sa = if s.ast.isNil: getNullValue(s.typ, a.info) 
+                     else: canonConst(s.ast)
             c.globals.add(sa)
             s.position = c.globals.len
         if a.sons[2].kind == nkEmpty:
