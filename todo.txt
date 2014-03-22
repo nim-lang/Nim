@@ -6,7 +6,6 @@ version 0.9.4
   - at least try to get the basic type zoo ops right
   - optimize opcAsgnStr
 - fix GC issues
-- test and fix showoff
 
 
 Bugs
@@ -27,6 +26,8 @@ version 0.9.x
 
 - memory manager: add a measure of fragmentation
 - implement 'bits' pragmas
+- we need a magic thisModule symbol
+- provide --nilChecks:on|off
 - fix closures/lambdalifting
 - ensure (ref T)(a, b) works as a type conversion and type constructor
 - optimize 'genericReset'; 'newException' leads to code bloat
