@@ -10,7 +10,7 @@
 ## This module implements a high-level cross-platform sockets interface.
 
 {.deadCodeElim: on.}
-import sockets2, os, strutils, unsigned, parseutils, times
+import rawsockets, os, strutils, unsigned, parseutils, times
 
 type
   IpAddressFamily* {.pure.} = enum ## Describes the type of an IP address
@@ -360,7 +360,7 @@ proc socket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM,
   ## Creates a new socket.
   ##
   ## If an error occurs EOS will be raised.
-  let fd = sockets2.socket(domain, typ, protocol)
+  let fd = rawsockets.socket(domain, typ, protocol)
   if fd == osInvalidSocket:
     osError(osLastError())
   result = newSocket(fd, buffered)

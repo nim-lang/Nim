@@ -209,13 +209,13 @@ proc htonl*(x: int32): int32 =
   ## Converts 32-bit integers from host to network byte order. On machines
   ## where the host byte order is the same as network byte order, this is
   ## a no-op; otherwise, it performs a 4-byte swap operation.
-  result = sockets2.ntohl(x)
+  result = rawsockets.ntohl(x)
 
 proc htons*(x: int16): int16 =
   ## Converts 16-bit positive integers from host to network byte order.
   ## On machines where the host byte order is the same as network byte
   ## order, this is a no-op; otherwise, it performs a 2-byte swap operation.
-  result = sockets2.ntohs(x)
+  result = rawsockets.ntohs(x)
 
 proc getServByName*(name, proto: string): TServent {.tags: [FReadIO].} =
   ## Searches the database from the beginning and finds the first entry for 
@@ -256,7 +256,7 @@ proc getHostByAddr*(ip: string): Thostent {.tags: [FReadIO].} =
   
   when defined(windows):
     var s = winlean.gethostbyaddr(addr(myaddr), sizeof(myaddr).cuint,
-                                  cint(sockets2.AF_INET))
+                                  cint(rawsockets.AF_INET))
     if s == nil: osError(osLastError())
   else:
     var s = posix.gethostbyaddr(addr(myaddr), sizeof(myaddr).TSocklen, 
@@ -312,7 +312,7 @@ proc getSockName*(socket: TSocketHandle): TPort =
   if getsockname(socket, cast[ptr TSockAddr](addr(name)),
                  addr(namelen)) == -1'i32:
     osError(osLastError())
-  result = TPort(sockets2.ntohs(name.sin_port))
+  result = TPort(rawsockets.ntohs(name.sin_port))
 
 proc getSockOptInt*(socket: TSocketHandle, level, optname: int): int {.
   tags: [FReadIO].} = 
