@@ -16,7 +16,7 @@ import
 type 
   TSystemCC* = enum 
     ccNone, ccGcc, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc, 
-    ccTcc, ccPcc, ccUcc, ccIcl, ccGpp
+    ccTcc, ccPcc, ccUcc, ccIcl
   TInfoCCProp* = enum         # properties of the C compiler:
     hasSwitchRange,           # CC allows ranges in switch statements (GNU C)
     hasComputedGoto,          # CC has computed goto (GNU C extension)
@@ -33,11 +33,12 @@ type
     optSpeed: string,    # the options for optimization for speed
     optSize: string,     # the options for optimization for size
     compilerExe: string, # the compiler's executable
+    cppCompiler: string, # name of the C++ compiler's executable (if supported)
     compileTmpl: string, # the compile command template
     buildGui: string,    # command to build a GUI application
     buildDll: string,    # command to build a shared library
     buildLib: string,    # command to build a static library
-    linkerExe: string,   # the linker's executable
+    linkerExe: string,   # the linker's executable (if not matching compiler's)
     linkTmpl: string,    # command to link files to produce an exe
     includeCmd: string,  # command to add an include dir
     linkDirCmd: string,  # command to add a lib dir
@@ -46,6 +47,8 @@ type
     pic: string,         # command for position independent code
                          # used on some platforms
     asmStmtFrmt: string, # format of ASM statement
+    structStmtFmt: string, # Format for struct statement
+    packedPragma: string,  # Attribute/pragma to make struct packed (1-byte aligned)
     props: TInfoCCProps] # properties of the C compiler
 
 
@@ -63,11 +66,12 @@ compiler gcc:
     optSpeed: " -O3 -ffast-math ",
     optSize: " -Os -ffast-math ",
     compilerExe: "gcc",
+    cppCompiler: "g++",
     compileTmpl: "-c $options $include -o $objfile $file",
     buildGui: " -mwindows",
     buildDll: " -shared",
     buildLib: "ar rcs $libfile $objfiles",
-    linkerExe: "gcc",
+    linkerExe: "",
     linkTmpl: "$buildgui $builddll -o $exefile $objfiles $options",
     includeCmd: " -I",
     linkDirCmd: " -L",
@@ -75,34 +79,25 @@ compiler gcc:
     debug: "",
     pic: "-fPIC",
     asmStmtFrmt: "asm($1);$n",
+    structStmtFmt: "$1 $3 $2 ", # struct|union [packed] $name
+    packedPragma: "__attribute__((__packed__))",
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
             hasNakedAttribute})
-    
-compiler gpp:
-  result = gcc()
-  
-  result.name = "gpp"
-  result.compilerExe = "g++"
-  result.linkerExe = "g++"  
-
-  result.buildDll = " -mdll" 
-  # XXX: Hmm, I'm keeping this from the previos version, 
-  # but my gcc doesn't even have such an option (is this mingw?)
 
 compiler llvmGcc:
   result = gcc()
   
   result.name = "llvm_gcc"
   result.compilerExe = "llvm-gcc"
+  result.cppCompiler = "llvm-g++"
   result.buildLib = "llvm-ar rcs $libfile $objfiles"
-  result.linkerExe = "llvm-gcc"
 
 compiler clang:
   result = llvmGcc()
 
   result.name = "clang"
   result.compilerExe = "clang"
-  result.linkerExe = "clang"
+  result.cppCompiler = "clang++"
 
 compiler vcc:
   result = (
@@ -111,6 +106,7 @@ compiler vcc:
     optSpeed: " /Ogityb2 /G7 /arch:SSE2 ",
     optSize: " /O1 /G7 ",
     compilerExe: "cl",
+    cppCompiler: "cl",
     compileTmpl: "/c $options $include /Fo$objfile $file",
     buildGui: " /link /SUBSYSTEM:WINDOWS ",
     buildDll: " /LD",
@@ -123,6 +119,8 @@ compiler vcc:
     debug: " /GZ /Zi ",
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
+    structStmtFmt: "$3$n$1 $2",
+    packedPragma: "#pragma pack(1)",
     props: {hasCpp, hasAssume, hasNakedDeclspec})
 
 compiler icl:
@@ -131,7 +129,7 @@ compiler icl:
     result = vcc()
   else:
     result = gcc()
-
+    
   result.name = "icl"
   result.compilerExe = "icl"
   result.linkerExe = "icl"
@@ -143,6 +141,7 @@ compiler lcc:
     optSpeed: " -O -p6 ",
     optSize: " -O -p6 ",
     compilerExe: "lcc",
+    cppCompiler: "",
     compileTmpl: "$options $include -Fo$objfile $file",
     buildGui: " -subsystem windows",
     buildDll: " -dll",
@@ -155,6 +154,8 @@ compiler lcc:
     debug: " -g5 ",
     pic: "",
     asmStmtFrmt: "_asm{$n$1$n}$n",
+    structStmtFmt: "$1 $2",
+    packedPragma: "", # XXX: not supported yet
     props: {})
 
 compiler bcc:
@@ -164,6 +165,7 @@ compiler bcc:
     optSpeed: " -O2 -6 ",
     optSize: " -O1 -6 ",
     compilerExe: "bcc32",
+    cppCompiler: "",
     compileTmpl: "-c $options $include -o$objfile $file",
     buildGui: " -tW",
     buildDll: " -tWD",
@@ -176,6 +178,8 @@ compiler bcc:
     debug: "",
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
+    structStmtFmt: "$1 $2",
+    packedPragma: "", # XXX: not supported yet
     props: {hasCpp})
 
 compiler dmc:
@@ -185,6 +189,7 @@ compiler dmc:
     optSpeed: " -ff -o -6 ",
     optSize: " -ff -o -6 ",
     compilerExe: "dmc",
+    cppCompiler: "",
     compileTmpl: "-c $options $include -o$objfile $file",
     buildGui: " -L/exet:nt/su:windows",
     buildDll: " -WD",
@@ -197,6 +202,8 @@ compiler dmc:
     debug: " -g ",
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
+    structStmtFmt: "$3$n$1 $2",
+    packedPragma: "#pragma pack(1)",
     props: {hasCpp})
 
 compiler wcc:
@@ -206,6 +213,7 @@ compiler wcc:
     optSpeed: " -ox -on -6 -d0 -fp6 -zW ",
     optSize: "",
     compilerExe: "wcl386",
+    cppCompiler: "",
     compileTmpl: "-c $options $include -fo=$objfile $file",
     buildGui: " -bw",
     buildDll: " -bd",
@@ -218,6 +226,8 @@ compiler wcc:
     debug: " -d2 ",
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
+    structStmtFmt: "$1 $2",
+    packedPragma: "", # XXX: not supported yet
     props: {hasCpp})
 
 compiler tcc:
@@ -227,6 +237,7 @@ compiler tcc:
     optSpeed: "",
     optSize: "",
     compilerExe: "tcc",
+    cppCompiler: "",
     compileTmpl: "-c $options $include -o $objfile $file",
     buildGui: "UNAVAILABLE!",
     buildDll: " -shared",
@@ -239,6 +250,8 @@ compiler tcc:
     debug: " -g ",
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
+    structStmtFmt: "$1 $2",
+    packedPragma: "", # XXX: not supported yet
     props: {hasSwitchRange, hasComputedGoto})
 
 compiler pcc:
@@ -249,6 +262,7 @@ compiler pcc:
     optSpeed: " -Ox ",
     optSize: " -Os ",
     compilerExe: "cc",
+    cppCompiler: "",
     compileTmpl: "-c $options $include -Fo$objfile $file",
     buildGui: " -SUBSYSTEM:WINDOWS",
     buildDll: " -DLL",
@@ -261,6 +275,8 @@ compiler pcc:
     debug: " -Zi ",
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
+    structStmtFmt: "$1 $2",
+    packedPragma: "", # XXX: not supported yet
     props: {})
 
 compiler ucc:
@@ -270,6 +286,7 @@ compiler ucc:
     optSpeed: " -O3 ",
     optSize: " -O1 ",
     compilerExe: "cc",
+    cppCompiler: "",
     compileTmpl: "-c $options $include -o $objfile $file",
     buildGui: "",
     buildDll: " -shared ",
@@ -282,6 +299,8 @@ compiler ucc:
     debug: "",
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
+    structStmtFmt: "$1 $2",
+    packedPragma: "", # XXX: not supported yet
     props: {})
 
 const 
@@ -297,8 +316,7 @@ const
     tcc(),
     pcc(),
     ucc(),
-    icl(),
-    gpp()]
+    icl()]
 
 const
   hExt* = ".h"
@@ -471,11 +489,21 @@ proc needsExeExt(): bool {.inline.} =
   result = (optGenScript in gGlobalOptions and targetOS == osWindows) or
                                        (platform.hostOS == osWindows)
 
+proc getCompilerExe(compiler: TSystemCC): string =
+  result = if gCmd == cmdCompileToCpp: CC[compiler].cppCompiler
+           else: CC[compiler].compilerExe
+  if result.len == 0:
+    rawMessage(errCompilerDoesntSupportTarget, CC[compiler].name)
+
+proc getLinkerExe(compiler: TSystemCC): string =
+  result = if CC[compiler].linkerExe.len > 0: CC[compiler].linkerExe
+           else: compiler.getCompilerExe
+
 proc getCompileCFileCmd*(cfilename: string, isExternal = false): string = 
   var c = cCompiler
   var options = cFileSpecificOptions(cfilename)
   var exe = getConfigVar(c, ".exe")
-  if exe.len == 0: exe = CC[c].compilerExe
+  if exe.len == 0: exe = c.getCompilerExe
   
   if needsExeExt(): exe = addFileExt(exe, "exe")
   if optGenDynLib in gGlobalOptions and
@@ -493,7 +521,7 @@ proc getCompileCFileCmd*(cfilename: string, isExternal = false): string =
     compilePattern = joinPath(ccompilerpath, exe)
   else: 
     includeCmd = ""
-    compilePattern = CC[c].compilerExe
+    compilePattern = c.getCompilerExe
   
   var cfile = if noAbsolutePaths(): extractFilename(cfilename) 
               else: cfilename
@@ -600,7 +628,7 @@ proc callCCompiler*(projectfile: string) =
       if optCompileOnly notin gGlobalOptions: execExternalProgram(linkCmd)
     else:
       var linkerExe = getConfigVar(c, ".linkerexe")
-      if len(linkerExe) == 0: linkerExe = CC[c].linkerExe
+      if len(linkerExe) == 0: linkerExe = c.getLinkerExe
       if needsExeExt(): linkerExe = addFileExt(linkerExe, "exe")
       if noAbsolutePaths(): linkCmd = quoteShell(linkerExe)
       else: linkCmd = quoteShell(joinPath(ccompilerpath, linkerExe))

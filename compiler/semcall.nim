@@ -228,12 +228,25 @@ proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode =
   if m.genericConverter and result != nil:
     instGenericConvertersArg(c, result, m)
 
-proc convertTo*(c: PContext, f: PType, n: PNode): PNode = 
+proc inferWithMetatype(c: PContext, formal: PType,
+                       arg: PNode, coerceDistincts = false): PNode =
   var m: TCandidate
-  initCandidate(c, m, f)
-  result = paramTypesMatch(m, f, n.typ, n, nil)
+  initCandidate(c, m, formal)
+  m.coerceDistincts = coerceDistincts
+  result = paramTypesMatch(m, formal, arg.typ, arg, nil)
   if m.genericConverter and result != nil:
     instGenericConvertersArg(c, result, m)
+  if result != nil:
+    # This almost exactly replicates the steps taken by the compiler during
+    # param matching. It performs an embarassing ammount of back-and-forth
+    # type jugling, but it's the price to pay for consistency and correctness
+    result.typ = generateTypeInstance(c, m.bindings, arg.info,
+                                      formal.skipTypes({tyCompositeTypeClass}))
+  else:
+    typeMismatch(arg, formal, arg.typ)
+    # error correction:
+    result = copyTree(arg)
+    result.typ = formal
 
 proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
   assert x.state == csMatch

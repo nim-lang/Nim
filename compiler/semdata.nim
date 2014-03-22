@@ -42,7 +42,7 @@ type
 
   TExprFlag* = enum 
     efLValue, efWantIterator, efInTypeof, efWantStmt, efDetermineType,
-    efAllowDestructor, efWantValue
+    efAllowDestructor, efWantValue, efOperand
   TExprFlags* = set[TExprFlag]
 
   PContext* = ref TContext
@@ -250,6 +250,27 @@ proc makeNotType*(c: PContext, t1: PType): PType =
   result.sons = @[t1]
   propagateToOwner(result, t1)
   result.flags.incl(t1.flags * {tfHasStatic})
+
+proc nMinusOne*(n: PNode): PNode =
+  result = newNode(nkCall, n.info, @[
+    newSymNode(getSysMagic("<", mUnaryLt)),
+    n])
+
+# Remember to fix the procs below this one when you make changes!
+proc makeRangeWithStaticExpr*(c: PContext, n: PNode): PType =
+  let intType = getSysType tyInt
+  result = newTypeS(tyRange, c)
+  result.sons = @[intType]
+  result.n = newNode(nkRange, n.info, @[
+    newIntTypeNode(nkIntLit, 0, intType),
+    makeStaticExpr(c, n.nMinusOne)])
+
+template rangeHasStaticIf*(t: PType): bool =
+  # this accepts the ranges's node
+  t.n[1].kind == nkStaticExpr
+
+template getStaticTypeFromRange*(t: PType): PType =
+  t.n[1][0][1].typ
 
 proc newTypeS(kind: TTypeKind, c: PContext): PType =
   result = newType(kind, getCurrOwner())

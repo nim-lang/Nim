@@ -1,6 +1,5 @@
 discard """
-  line: 11
-  file: "tbindtypedesc.nim"
+  line: 10
   errormsg: "type mismatch: got (typedesc[float], string)"
 """
 

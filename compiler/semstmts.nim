@@ -12,9 +12,6 @@
 
 var enforceVoidContext = PType(kind: tyStmt)
 
-proc semCommand(c: PContext, n: PNode): PNode =
-  result = semExprNoType(c, n)
-  
 proc semDiscard(c: PContext, n: PNode): PNode = 
   result = n
   checkSonsLen(n, 1)
@@ -133,6 +130,7 @@ proc fixNilType(n: PNode) =
   n.typ = nil
 
 proc discardCheck(c: PContext, result: PNode) =
+  if c.inTypeClass > 0: return
   if result.typ != nil and result.typ.kind notin {tyStmt, tyEmpty}:
     if result.kind == nkNilLit:
       result.typ = nil
@@ -143,11 +141,6 @@ proc discardCheck(c: PContext, result: PNode) =
       while n.kind in skipForDiscardable:
         n = n.lastSon
         n.typ = nil
-    elif c.inTypeClass > 0:
-      if result.typ.kind == tyBool:
-        let verdict = semConstExpr(c, result)
-        if verdict.intVal == 0:
-          localError(result.info, "type class predicate failed")
     elif result.typ.kind != tyError and gCmd != cmdInteractive:
       if result.typ.kind == tyNil:
         fixNilType(result)
@@ -944,13 +937,15 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
       localError(n.sons[bodyPos].info, errImplOfXNotAllowed, s.name.s)
     #if efDetermineType notin flags:
     # XXX not good enough; see tnamedparamanonproc.nim
-    if n.sons[genericParamsPos].kind == nkEmpty:
+    if gp.len == 0 or (gp.len == 1 and tfRetType in gp[0].typ.flags):
       pushProcCon(c, s)
       addResult(c, s.typ.sons[0], n.info, skProc)
       let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
       n.sons[bodyPos] = transformBody(c.module, semBody, s)
       addResultNode(c, n)
       popProcCon(c)
+    elif efOperand notin flags:
+      localError(n.info, errGenericLambdaNotAllowed)
     sideEffectsCheck(c, s)
   else:
     localError(n.info, errImplOfXexpected, s.name.s)
@@ -1322,13 +1317,17 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
       return
     else:
       n.sons[i] = semExpr(c, n.sons[i])
+      if c.inTypeClass > 0 and n[i].typ != nil and n[i].typ.kind == tyBool:
+        let verdict = semConstExpr(c, n[i])
+        if verdict.intVal == 0:
+          localError(result.info, "type class predicate failed")
       if n.sons[i].typ == enforceVoidContext or usesResult(n.sons[i]):
         voidContext = true
         n.typ = enforceVoidContext
       if i == last and (length == 1 or efWantValue in flags):
         n.typ = n.sons[i].typ
         if not isEmptyType(n.typ): n.kind = nkStmtListExpr
-      elif i != last or voidContext or c.inTypeClass > 0:
+      elif i != last or voidContext:
         discardCheck(c, n.sons[i])
       else:
         n.typ = n.sons[i].typ

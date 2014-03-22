@@ -43,6 +43,14 @@ proc complete*[T](future: PFuture[T], val: T) =
   if future.cb != nil:
     future.cb()
 
+proc complete*(future: PFuture[void]) =
+  ## Completes a void ``future``.
+  assert(not future.finished, "Future already finished, cannot finish twice.")
+  assert(future.error == nil)
+  future.finished = true
+  if future.cb != nil:
+    future.cb()
+
 proc fail*[T](future: PFuture[T], error: ref EBase) =
   ## Completes ``future`` with ``error``.
   assert(not future.finished, "Future already finished, cannot finish twice.")
@@ -76,7 +84,8 @@ proc read*[T](future: PFuture[T]): T =
   ## If the result of the future is an error then that error will be raised.
   if future.finished:
     if future.error != nil: raise future.error
-    return future.value
+    when T isnot void:
+      return future.value
   else:
     # TODO: Make a custom exception type for this?
     raise newException(EInvalidValue, "Future still in progress.")
@@ -132,7 +141,6 @@ when defined(windows) or defined(nimdoc):
                               cast[TCompletionKey](sock), 1) == 0:
       OSError(OSLastError())
     p.handles.incl(sock)
-    # TODO: fd closure detection, we need to remove the fd from handles set
 
   proc verifyPresence(p: PDispatcher, sock: TSocketHandle) =
     ## Ensures that socket has been registered with the dispatcher.
@@ -244,13 +252,13 @@ when defined(windows) or defined(nimdoc):
                   RemoteSockaddr, RemoteSockaddrLength)
 
   proc connect*(p: PDispatcher, socket: TSocketHandle, address: string, port: TPort,
-    af = AF_INET): PFuture[int] =
+    af = AF_INET): PFuture[void] =
     ## Connects ``socket`` to server at ``address:port``.
     ##
     ## Returns a ``PFuture`` which will complete when the connection succeeds
     ## or an error occurs.
     verifyPresence(p, socket)
-    var retFuture = newFuture[int]()# TODO: Change to void when that regression is fixed.
+    var retFuture = newFuture[void]()
     # Apparently ``ConnectEx`` expects the socket to be initially bound:
     var saddr: Tsockaddr_in
     saddr.sin_family = int16(toInt(af))
@@ -272,7 +280,7 @@ when defined(windows) or defined(nimdoc):
         proc (sock: TSocketHandle, bytesCount: DWord, errcode: TOSErrorCode) =
           if not retFuture.finished:
             if errcode == TOSErrorCode(-1):
-              retFuture.complete(0)
+              retFuture.complete()
             else:
               retFuture.fail(newException(EOS, osErrorMsg(errcode)))
       )
@@ -282,7 +290,7 @@ when defined(windows) or defined(nimdoc):
       if ret:
         # Request to connect completed immediately.
         success = true
-        retFuture.complete(0)
+        retFuture.complete()
         # We don't deallocate ``ol`` here because even though this completed
         # immediately poll will still be notified about its completion and it will
         # free ``ol``.
@@ -363,11 +371,11 @@ when defined(windows) or defined(nimdoc):
       # free ``ol``.
     return retFuture
 
-  proc send*(p: PDispatcher, socket: TSocketHandle, data: string): PFuture[int] =
+  proc send*(p: PDispatcher, socket: TSocketHandle, data: string): PFuture[void] =
     ## Sends ``data`` to ``socket``. The returned future will complete once all
     ## data has been sent.
     verifyPresence(p, socket)
-    var retFuture = newFuture[int]()
+    var retFuture = newFuture[void]()
 
     var dataBuf: TWSABuf
     dataBuf.buf = data
@@ -379,7 +387,7 @@ when defined(windows) or defined(nimdoc):
       proc (sock: TSocketHandle, bytesCount: DWord, errcode: TOSErrorCode) =
         if not retFuture.finished:
           if errcode == TOSErrorCode(-1):
-            retFuture.complete(0)
+            retFuture.complete()
           else:
             retFuture.fail(newException(EOS, osErrorMsg(errcode)))
     )
@@ -392,7 +400,7 @@ when defined(windows) or defined(nimdoc):
         retFuture.fail(newException(EOS, osErrorMsg(err)))
         dealloc(ol)
     else:
-      retFuture.complete(0)
+      retFuture.complete()
       # We don't deallocate ``ol`` here because even though this completed
       # immediately poll will still be notified about its completion and it will
       # free ``ol``.
@@ -475,6 +483,11 @@ when defined(windows) or defined(nimdoc):
     result = socket(domain, typ, protocol)
     disp.register(result)
 
+  proc close*(disp: PDispatcher, socket: TSocketHandle) =
+    ## Closes a socket and ensures that it is unregistered.
+    socket.close()
+    disp.handles.excl(socket)
+
   initAll()
 else:
   import selectors
@@ -508,6 +521,10 @@ else:
     result = socket(domain, typ, protocol)
     disp.register(result)
   
+  proc close*(disp: PDispatcher, sock: TSocketHandle) =
+    sock.close()
+    disp.selector.unregister(sock)
+
   proc addRead(p: PDispatcher, sock: TSocketHandle, cb: TCallback) =
     if sock notin p.selector:
       raise newException(EInvalidValue, "File descriptor not registered.")
@@ -556,12 +573,12 @@ else:
         # (e.g. socket disconnected).
   
   proc connect*(p: PDispatcher, socket: TSocketHandle, address: string, port: TPort,
-    af = AF_INET): PFuture[int] =
-    var retFuture = newFuture[int]()
+    af = AF_INET): PFuture[void] =
+    var retFuture = newFuture[void]()
     
     proc cb(sock: TSocketHandle): bool =
       # We have connected.
-      retFuture.complete(0)
+      retFuture.complete()
       return true
     
     var aiList = getAddrInfo(address, port, af)
@@ -573,7 +590,7 @@ else:
       if ret == 0:
         # Request to connect completed immediately.
         success = true
-        retFuture.complete(0)
+        retFuture.complete()
         break
       else:
         lastError = osLastError()
@@ -627,8 +644,8 @@ else:
     addRead(p, socket, cb)
     return retFuture
 
-  proc send*(p: PDispatcher, socket: TSocketHandle, data: string): PFuture[int] =
-    var retFuture = newFuture[int]()
+  proc send*(p: PDispatcher, socket: TSocketHandle, data: string): PFuture[void] =
+    var retFuture = newFuture[void]()
     
     var written = 0
     
@@ -648,7 +665,7 @@ else:
         if res != netSize:
           result = false # We still have data to send.
         else:
-          retFuture.complete(0)
+          retFuture.complete()
     addWrite(p, socket, cb)
     return retFuture
 
@@ -781,12 +798,17 @@ macro async*(prc: stmt): stmt {.immediate.} =
 
   hint("Processing " & prc[0].getName & " as an async proc.")
 
+  let returnType = prc[3][0]
+  var subtypeName = ""
   # Verify that the return type is a PFuture[T]
-  if prc[3][0].kind == nnkIdent:
-    error("Expected return type of 'PFuture' got '" & $prc[3][0] & "'")
-  elif prc[3][0].kind == nnkBracketExpr:
-    if $prc[3][0][0] != "PFuture":
-      error("Expected return type of 'PFuture' got '" & $prc[3][0][0] & "'")
+  if returnType.kind == nnkIdent:
+    error("Expected return type of 'PFuture' got '" & $returnType & "'")
+  elif returnType.kind == nnkBracketExpr:
+    if $returnType[0] != "PFuture":
+      error("Expected return type of 'PFuture' got '" & $returnType[0] & "'")
+    subtypeName = $returnType[1].ident
+  elif returnType.kind == nnkEmpty:
+    subtypeName = "void"
   
   # TODO: Why can't I use genSym? I get illegal capture errors for Syms.
   # TODO: It seems genSym is broken. Change all usages back to genSym when fixed
@@ -799,20 +821,24 @@ macro async*(prc: stmt): stmt {.immediate.} =
     newVarStmt(retFutureSym, 
       newCall(
         newNimNode(nnkBracketExpr).add(
-          newIdentNode("newFuture"),
-          prc[3][0][1])))) # Get type from return type of this proc.
-
+          newIdentNode(!"newFuture"), # TODO: Strange bug here? Remove the `!`.
+          newIdentNode(subtypeName))))) # Get type from return type of this proc
+  echo(treeRepr(outerProcBody))
   # -> iterator nameIter(): PFutureBase {.closure.} = 
   # ->   var result: T
   # ->   <proc_body>
   # ->   complete(retFuture, result)
   var iteratorNameSym = newIdentNode($prc[0].getName & "Iter") #genSym(nskIterator, $prc[0].ident & "Iter")
   var procBody = prc[6].processBody(retFutureSym)
-  procBody.insert(0, newNimNode(nnkVarSection).add(
-    newIdentDefs(newIdentNode("result"), prc[3][0][1]))) # -> var result: T
-  procBody.add(
-    newCall(newIdentNode("complete"),
-      retFutureSym, newIdentNode("result"))) # -> complete(retFuture, result)
+  if subtypeName != "void":
+    procBody.insert(0, newNimNode(nnkVarSection).add(
+      newIdentDefs(newIdentNode("result"), returnType[1]))) # -> var result: T
+    procBody.add(
+      newCall(newIdentNode("complete"),
+        retFutureSym, newIdentNode("result"))) # -> complete(retFuture, result)
+  else:
+    # -> complete(retFuture)
+    procBody.add(newCall(newIdentNode("complete"), retFutureSym))
   
   var closureIterator = newProc(iteratorNameSym, [newIdentNode("PFutureBase")],
                                 procBody, nnkIteratorDef)
@@ -847,6 +873,12 @@ macro async*(prc: stmt): stmt {.immediate.} =
   for i in 0 .. <result[4].len:
     if result[4][i].ident == !"async":
       result[4].del(i)
+  if subtypeName == "void":
+    # Add discardable pragma.
+    result[4].add(newIdentNode("discardable"))
+    if returnType.kind == nnkEmpty:
+      # Add PFuture[void]
+      result[3][0] = parseExpr("PFuture[void]")
 
   result[6] = outerProcBody
 
@@ -892,7 +924,7 @@ proc recvLine*(p: PDispatcher, socket: TSocketHandle): PFuture[string] {.async.}
 when isMainModule:
   
   var p = newDispatcher()
-  var sock = socket()
+  var sock = p.socket()
   sock.setBlocking false
 
 

@@ -464,24 +464,33 @@ proc getRecordDesc(m: BModule, typ: PType, name: PRope,
                    check: var TIntSet): PRope = 
   # declare the record:
   var hasField = false
-  let aStruct = structOrUnion(typ)
+
+  var attribute: PRope =
+    if tfPacked in typ.flags: toRope(CC[ccompiler].packedPragma)
+    else: nil
+
+  result = ropecg(m, CC[ccompiler].structStmtFmt, 
+    [structOrUnion(typ), name, attribute])
+
   if typ.kind == tyObject: 
+
     if typ.sons[0] == nil: 
       if (typ.sym != nil and sfPure in typ.sym.flags) or tfFinal in typ.flags: 
-        result = ropecg(m, "$1 $2 {$n", [aStruct, name])
+        appcg(m, result, " {$n", [])
       else: 
-        result = ropecg(m, "$1 $2 {$n#TNimType* m_type;$n", [aStruct, name])
+        appcg(m, result, " {$n#TNimType* m_type;$n", [name, attribute])
         hasField = true
     elif gCmd == cmdCompileToCpp: 
-      result = ropecg(m, "$1 $2 : public $3 {$n", 
-                      [aStruct, name, getTypeDescAux(m, typ.sons[0], check)])
+      appcg(m, result, " : public $1 {$n", 
+                      [getTypeDescAux(m, typ.sons[0], check)])
       hasField = true
     else: 
-      result = ropecg(m, "$1 $2 {$n  $3 Sup;$n", 
-                      [aStruct, name, getTypeDescAux(m, typ.sons[0], check)])
+      appcg(m, result, " {$n  $1 Sup;$n", 
+                      [getTypeDescAux(m, typ.sons[0], check)])
       hasField = true
   else: 
-    result = ropef("$1 $2 {$n", [aStruct, name])
+    appf(result, " {$n", [name])
+
   var desc = getRecordFields(m, typ, check)
   if (desc == nil) and not hasField: 
     appf(result, "char dummy;$n", [])

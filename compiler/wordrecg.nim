@@ -72,7 +72,7 @@ type
     wPrivate, wProtected, wPublic, wRegister, wReinterpret_cast,
     wShort, wSigned, wSizeof, wStatic_cast, wStruct, wSwitch,
     wThis, wThrow, wTrue, wTypedef, wTypeid, wTypename,
-    wUnion, wUnsigned, wVirtual, wVoid, wVolatile, wWchar_t,
+    wUnion, wPacked, wUnsigned, wVirtual, wVoid, wVolatile, wWchar_t,
 
     wAlignas, wAlignof, wConstexpr, wDecltype, wNullptr, wNoexcept,
     wThread_local, wStatic_assert, wChar16_t, wChar32_t,
@@ -155,7 +155,7 @@ const
     "private", "protected", "public", "register", "reinterpret_cast",
     "short", "signed", "sizeof", "static_cast", "struct", "switch",
     "this", "throw", "true", "typedef", "typeid",
-    "typename", "union", "unsigned", "virtual", "void", "volatile",
+    "typename", "union", "packed", "unsigned", "virtual", "void", "volatile",
     "wchar_t",
 
     "alignas", "alignof", "constexpr", "decltype", "nullptr", "noexcept",

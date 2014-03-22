@@ -1,9 +1,9 @@
 discard """
-  output: "Error: cannot evaluate at compile time: x"
+  errormsg: "cannot evaluate at compile time: x"
   line: 7
 """
 
-proc bla(x:int) = 
+proc bla(x:int) =
   when x == 0:
     echo "oops"
   else:
