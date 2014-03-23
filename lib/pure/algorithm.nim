@@ -78,7 +78,7 @@ proc lowerBound*[T](a: openarray[T], key: T, cmp: proc(x,y: T): int {.closure.})
     else:
       count = step
 
-proc lowerBound*[T](a: openarray[T], key: T): int = lowerBound(a, key, system.cmp[T])
+proc lowerBound*[T](a: openarray[T], key: T): int = lowerBound(a, key, cmp[T])
 proc merge[T](a, b: var openArray[T], lo, m, hi: int, 
               cmp: proc (x, y: T): int {.closure.}, order: TSortOrder) =
   template `<-` (a, b: expr) = 
