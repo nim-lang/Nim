@@ -11,7 +11,7 @@
 
 import
   unsigned, strutils, ast, astalgo, types, msgs, renderer, vmdef, 
-  trees, intsets, rodread, magicsys, options
+  trees, intsets, rodread, magicsys, options, lowerings
 
 from os import splitFile
 
@@ -636,11 +636,16 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     c.genAddSubInt(n, dest, opcAddInt)
   of mInc, mDec:
     unused(n, dest)
-    # XXX generates inefficient code for globals
-    var d = c.genx(n.sons[1]).TDest
-    c.genAddSubInt(n, d, if m == mInc: opcAddInt else: opcSubInt)
+    let opc = if m == mInc: opcAddInt else: opcSubInt
+    let d = c.genx(n.sons[1])
+    if n.sons[2].isInt8Lit:
+      c.gABI(n, succ(opc), d, d, n.sons[2].intVal)
+    else:
+      let tmp = c.genx(n.sons[2])
+      c.gABC(n, opc, d, d, tmp)
+      c.freeTemp(tmp)
     c.genAsgnPatch(n.sons[1], d)
-    c.freeTemp(d.TRegister)
+    c.freeTemp(d)
   of mOrd, mChr, mArrToSeq: c.gen(n.sons[1], dest)
   of mNew, mNewFinalize:
     unused(n, dest)
@@ -1006,6 +1011,10 @@ proc isOwnedBy(a, b: PSym): bool =
     if a == b: return true
     a = a.owner
 
+proc getOwner(c: PCtx): PSym =
+  result = c.prc.sym
+  if result.isNil: result = c.module
+
 proc checkCanEval(c: PCtx; n: PNode) =
   # we need to ensure that we don't evaluate 'x' here:
   # proc foo() = var x ...
@@ -1148,7 +1157,7 @@ proc genObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   let a = c.genx(n.sons[0], flags)
   let b = genField(n.sons[1])
   if dest < 0: dest = c.getTemp(n.typ)
-  if gfAddrOf notin flags and fitsRegister(n.typ):
+  if gfAddrOf notin flags and fitsRegister(n.typ.skipTypes({tyVar})):
     var cc = c.getTemp(n.typ)
     c.gABC(n, opcLdObj, cc, a, b)
     c.gABC(n, opcNodeToReg, dest, cc)
@@ -1228,16 +1237,10 @@ proc genVarSection(c: PCtx; n: PNode) =
     if a.kind == nkCommentStmt: continue
     #assert(a.sons[0].kind == nkSym) can happen for transformed vars
     if a.kind == nkVarTuple:
-      let tmp = c.genx(a.lastSon)
       for i in 0 .. a.len-3:
         setSlot(c, a[i].sym)
-        # v = t[i]
-        var v: TDest = -1
         checkCanEval(c, a[i])
-        genRdVar(c, a[i], v, {gfAddrOf})
-        c.gABC(n, opcWrObj, v, tmp, i)
-        # XXX globals?
-      c.freeTemp(tmp)
+      c.gen(lowerTupleUnpacking(a, c.getOwner))
     elif a.sons[0].kind == nkSym:
       let s = a.sons[0].sym
       checkCanEval(c, a.sons[0])
@@ -1581,7 +1584,7 @@ proc genProc(c: PCtx; s: PSym): int =
     c.gABC(body, opcEof, eofInstr.regA)
     c.optimizeJumps(result)
     s.offset = c.prc.maxSlots
-    #if s.name.s == "foo":
+    #if s.name.s == "tupleUnpack":
     #  echo renderTree(body)
     #  c.echoCode(result)
     c.prc = oldPrc

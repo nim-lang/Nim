@@ -486,6 +486,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].intVal = regs[rb].intVal + regs[rc].intVal
     of opcAddImmInt:
       decodeBImm(rkInt)
+      #message(c.debug[pc], warnUser, "came here")
+      #debug regs[rb].node
       regs[ra].intVal = regs[rb].intVal + imm
     of opcSubInt:
       decodeBC(rkInt)

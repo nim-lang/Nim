@@ -11,7 +11,7 @@
 
 import 
   intsets, strutils, lists, options, ast, astalgo, trees, treetab, msgs, os, 
-  idents, renderer, types, magicsys, rodread
+  idents, renderer, types, magicsys, rodread, lowerings
 
 discard """
   The basic approach is that captured vars need to be put on the heap and
@@ -535,13 +535,6 @@ proc newAsgnStmt(le, ri: PNode, info: TLineInfo): PNode =
   result = newNodeI(nkAsgn, info, 2)
   result.sons[0] = le
   result.sons[1] = ri
-
-proc addVar*(father, v: PNode) = 
-  var vpart = newNodeI(nkIdentDefs, v.info)
-  addSon(vpart, v)
-  addSon(vpart, ast.emptyNode)
-  addSon(vpart, ast.emptyNode)
-  addSon(father, vpart)
 
 proc newClosureCreationVar(o: POuterContext; e: PEnv): PSym =
   result = newSym(skVar, getIdent(envName), o.fn, e.attachedNode.info)
