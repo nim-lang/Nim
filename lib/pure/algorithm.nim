@@ -55,6 +55,30 @@ proc smartBinarySearch*[T](a: openArray[T], key: T): int =
 const
   onlySafeCode = true
 
+proc lowerBound*[T](a: openarray[T], key: T, cmp: proc(x,y: T): int {.closure.}): int =
+  ## same as binarySearch except that if key is not in `a` then this 
+  ## returns the location where `key` would be if it were. In other
+  ## words if you have a sorted sequence and you call insert(thing, elm, lowerBound(thing, elm))
+  ## the sequence will still be sorted
+  ##
+  ## `cmp` is the comparator function to use, the expected return values are the same as
+  ## that of system.cmp
+  result = a.low
+  var pos = result
+  var count, step: int
+  count = a.high - a.low + 1
+  while count != 0:
+    pos = result
+    step = count div 2
+    pos += step
+    if cmp(a[pos], key) < 0:
+      pos.inc
+      result = pos
+      count -= step + 1
+    else:
+      count = step
+
+proc lowerBound*[T](a: openarray[T], key: T): int = lowerBound(a, key, system.cmp[T])
 proc merge[T](a, b: var openArray[T], lo, m, hi: int, 
               cmp: proc (x, y: T): int {.closure.}, order: TSortOrder) =
   template `<-` (a, b: expr) = 
