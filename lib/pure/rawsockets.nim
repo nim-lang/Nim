@@ -143,7 +143,7 @@ else:
     result = cint(ord(p))
 
 
-proc socket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM,
+proc newRawSocket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM,
              protocol: TProtocol = IPPROTO_TCP): TSocketHandle =
   ## Creates a new socket; returns `InvalidSocket` if an error occurs.
   socket(toInt(domain), toInt(typ), toInt(protocol))
