@@ -20,10 +20,7 @@
 import 
   intsets, strutils, lists, options, ast, astalgo, trees, treetab, msgs, os, 
   idents, renderer, types, passes, semfold, magicsys, cgmeth, rodread,
-  lambdalifting, sempass2
-
-const 
-  genPrefix* = ":tmp"         # prefix for generated names
+  lambdalifting, sempass2, lowerings
 
 # implementation
 
@@ -240,13 +237,6 @@ proc transformLoopBody(c: PTransf, n: PNode): PTransNode =
     discard c.contSyms.pop()
   else: 
     result = transform(c, n)
-  
-proc newTupleAccess(tup: PNode, i: int): PNode = 
-  result = newNodeIT(nkBracketExpr, tup.info, tup.typ.sons[i])
-  addSon(result, copyTree(tup))
-  var lit = newNodeIT(nkIntLit, tup.info, getSysType(tyInt))
-  lit.intVal = i
-  addSon(result, lit)
 
 proc unpackTuple(c: PTransf, n: PNode, father: PTransNode) = 
   # XXX: BUG: what if `n` is an expression with side-effects?
