@@ -3,7 +3,7 @@ discard """
   cmd: "nimrod cc --hints:on $# $#"
   output: "5000"
 """
-import asyncio2, sockets2, net, strutils, os
+import asyncdispatch, rawsockets, net, strutils, os
 
 var disp = newDispatcher()
 var msgCount = 0

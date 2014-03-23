@@ -22,7 +22,8 @@ when defined(Windows):
   export WSAEWOULDBLOCK
 else:
   import posix
-  export fcntl, F_GETFL, O_NONBLOCK, F_SETFL, EAGAIN, EWOULDBLOCK
+  export fcntl, F_GETFL, O_NONBLOCK, F_SETFL, EAGAIN, EWOULDBLOCK, MSG_NOSIGNAL,
+    EINTR, EINPROGRESS
 
 export TSocketHandle, TSockaddr_in, TAddrinfo, INADDR_ANY, TSockAddr, TSockLen,
   inet_ntoa, recv, `==`, connect, send, accept, recvfrom, sendto
