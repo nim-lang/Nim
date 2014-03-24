@@ -5,7 +5,6 @@ discard """
 """
 import asyncdispatch, rawsockets, net, strutils, os
 
-var disp = newDispatcher()
 var msgCount = 0
 
 const
@@ -14,31 +13,31 @@ const
 
 var clientCount = 0
 
-proc sendMessages(disp: PDispatcher, client: TSocketHandle) {.async.} =
+proc sendMessages(client: TAsyncFD) {.async.} =
   for i in 0 .. <messagesToSend:
-    await disp.send(client, "Message " & $i & "\c\L")
+    await send(client, "Message " & $i & "\c\L")
 
-proc launchSwarm(disp: PDispatcher, port: TPort) {.async.} =
+proc launchSwarm(port: TPort) {.async.} =
   for i in 0 .. <swarmSize:
-    var sock = disp.socket()
+    var sock = newAsyncRawSocket()
 
     #disp.register(sock)
-    await disp.connect(sock, "localhost", port)
+    await connect(sock, "localhost", port)
     when true:
-      await sendMessages(disp, sock)
-      disp.close(sock)
+      await sendMessages(sock)
+      close(sock)
     else:
       # Issue #932: https://github.com/Araq/Nimrod/issues/932
-      var msgFut = sendMessages(disp, sock)
+      var msgFut = sendMessages(sock)
       msgFut.callback =
         proc () =
-          disp.close(sock)
+          close(sock)
 
-proc readMessages(disp: PDispatcher, client: TSocketHandle) {.async.} =
+proc readMessages(client: TAsyncFD) {.async.} =
   while true:
-    var line = await disp.recvLine(client)
+    var line = await recvLine(client)
     if line == "":
-      disp.close(client)
+      close(client)
       clientCount.inc
       break
     else:
@@ -47,8 +46,8 @@ proc readMessages(disp: PDispatcher, client: TSocketHandle) {.async.} =
       else:
         doAssert false
 
-proc createServer(disp: PDispatcher, port: TPort) {.async.} =
-  var server = disp.socket()
+proc createServer(port: TPort) {.async.} =
+  var server = newAsyncRawSocket()
   #disp.register(server)
   block:
     var name: TSockaddr_in
@@ -58,20 +57,20 @@ proc createServer(disp: PDispatcher, port: TPort) {.async.} =
       name.sin_family = toInt(AF_INET)
     name.sin_port = htons(int16(port))
     name.sin_addr.s_addr = htonl(INADDR_ANY)
-    if bindAddr(server, cast[ptr TSockAddr](addr(name)),
-                  sizeof(name).TSocklen) < 0'i32:
+    if bindAddr(server.TSocketHandle, cast[ptr TSockAddr](addr(name)),
+                sizeof(name).TSocklen) < 0'i32:
       osError(osLastError())
   
-  discard server.listen()
+  discard server.TSocketHandle.listen()
   while true:
-    var client = await disp.accept(server)
-    readMessages(disp, client)
+    var client = await accept(server)
+    readMessages(client)
     # TODO: Test: readMessages(disp, await disp.accept(server))
 
-disp.createServer(TPort(10335))
-disp.launchSwarm(TPort(10335))
+createServer(TPort(10335))
+launchSwarm(TPort(10335))
 while true:
-  disp.poll()
+  poll()
   if clientCount == swarmSize: break
 
 assert msgCount == swarmSize * messagesToSend
