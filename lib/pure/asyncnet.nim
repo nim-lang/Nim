@@ -1,3 +1,11 @@
+#
+#
+#            Nimrod's Runtime Library
+#        (c) Copyright 2014 Dominik Picheta
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
 import asyncdispatch
 import rawsockets
 import net
@@ -7,7 +15,7 @@ when defined(ssl):
 
 type
   TAsyncSocket = object ## socket type
-    fd: TSocketHandle
+    fd: TAsyncFD
     case isBuffered: bool # determines whether this socket is buffered.
     of true:
       buffer: array[0..BufferSize, char]
@@ -28,18 +36,18 @@ type
 
 # TODO: Save AF, domain etc info and reuse it in procs which need it like connect.
 
-proc newSocket(fd: TSocketHandle, isBuff: bool): PAsyncSocket =
-  assert fd != osInvalidSocket
+proc newSocket(fd: TAsyncFD, isBuff: bool): PAsyncSocket =
+  assert fd != osInvalidSocket.TAsyncFD
   new(result)
   result.fd = fd
   result.isBuffered = isBuff
   if isBuff:
     result.currPos = 0
 
-proc AsyncSocket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM,
+proc newAsyncSocket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM,
     protocol: TProtocol = IPPROTO_TCP, buffered = true): PAsyncSocket =
   ## Creates a new asynchronous socket.
-  result = newSocket(gDisp.socket(domain, typ, protocol), buffered)
+  result = newSocket(newAsyncRawSocket(domain, typ, protocol), buffered)
 
 proc connect*(socket: PAsyncSocket, address: string, port: TPort,
     af = AF_INET): PFuture[void] =
@@ -47,7 +55,7 @@ proc connect*(socket: PAsyncSocket, address: string, port: TPort,
   ##
   ## Returns a ``PFuture`` which will complete when the connection succeeds
   ## or an error occurs.
-  result = gDisp.connect(socket.fd, address, port, af)
+  result = connect(socket.fd, address, port, af)
 
 proc recv*(socket: PAsyncSocket, size: int,
            flags: int = 0): PFuture[string] =
@@ -56,12 +64,12 @@ proc recv*(socket: PAsyncSocket, size: int,
   ## recv operation then the future may complete with only a part of the
   ## requested data read. If socket is disconnected and no data is available
   ## to be read then the future will complete with a value of ``""``.
-  result = gDisp.recv(socket.fd, size, flags)
+  result = recv(socket.fd, size, flags)
 
 proc send*(socket: PAsyncSocket, data: string): PFuture[void] =
   ## Sends ``data`` to ``socket``. The returned future will complete once all
   ## data has been sent.
-  result = gDisp.send(socket.fd, data)
+  result = send(socket.fd, data)
 
 proc acceptAddr*(socket: PAsyncSocket): 
       PFuture[tuple[address: string, client: PAsyncSocket]] =
@@ -69,9 +77,9 @@ proc acceptAddr*(socket: PAsyncSocket):
   ## corresponding to that connection and the remote address of the client.
   ## The future will complete when the connection is successfully accepted.
   var retFuture = newFuture[tuple[address: string, client: PAsyncSocket]]()
-  var fut = gDisp.acceptAddr(socket.fd)
+  var fut = acceptAddr(socket.fd)
   fut.callback =
-    proc (future: PFuture[tuple[address: string, client: TSocketHandle]]) =
+    proc (future: PFuture[tuple[address: string, client: TAsyncFD]]) =
       assert future.finished
       if future.failed:
         retFuture.fail(future.readError)
@@ -133,7 +141,7 @@ proc recvLine*(socket: PAsyncSocket): PFuture[string] {.async.} =
 
 when isMainModule:
   proc main() {.async.} =
-    var sock = AsyncSocket()
+    var sock = newAsyncSocket()
     await sock.connect("irc.freenode.net", TPort(6667))
     while true:
       let line = await sock.recvLine()

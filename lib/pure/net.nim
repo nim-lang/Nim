@@ -347,7 +347,7 @@ type
 
   ETimeout* = object of ESynch
 
-proc newSocket(fd: TSocketHandle, isBuff: bool): PSocket =
+proc createSocket(fd: TSocketHandle, isBuff: bool): PSocket =
   assert fd != osInvalidSocket
   new(result)
   result.fd = fd
@@ -355,15 +355,15 @@ proc newSocket(fd: TSocketHandle, isBuff: bool): PSocket =
   if isBuff:
     result.currPos = 0
 
-proc socket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM,
+proc newSocket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM,
              protocol: TProtocol = IPPROTO_TCP, buffered = true): PSocket =
   ## Creates a new socket.
   ##
   ## If an error occurs EOS will be raised.
-  let fd = rawsockets.socket(domain, typ, protocol)
+  let fd = newRawSocket(domain, typ, protocol)
   if fd == osInvalidSocket:
     osError(osLastError())
-  result = newSocket(fd, buffered)
+  result = createSocket(fd, buffered)
 
 when defined(ssl):
   CRYPTO_malloc_init()
