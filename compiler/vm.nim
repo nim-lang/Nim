@@ -68,7 +68,9 @@ proc stackTrace(c: PCtx, tos: PStackFrame, pc: int,
                 msg: TMsgKind, arg = "") =
   msgWriteln("stack trace: (most recent call last)")
   stackTraceAux(c, tos, pc)
-  localError(c.debug[pc], msg, arg)
+  # XXX test if we want 'globalError' for every mode
+  if c.mode == emRepl: globalError(c.debug[pc], msg, arg)
+  else: localError(c.debug[pc], msg, arg)
 
 proc bailOut(c: PCtx; tos: PStackFrame) =
   stackTrace(c, tos, c.exceptionInstr, errUnhandledExceptionX,
@@ -332,6 +334,16 @@ proc compile(c: PCtx, s: PSym): int =
   result = vmgen.genProc(c, s)
   when debugEchoCode: c.echoCode result
   #c.echoCode
+
+template handleJmpBack() {.dirty.} =
+  if c.loopIterations <= 0:
+    if allowInfiniteLoops in c.features:
+      c.loopIterations = MaxLoopIterations
+    else:
+      msgWriteln("stack trace: (most recent call last)")
+      stackTraceAux(c, tos, pc)
+      globalError(c.debug[pc], errTooManyIterations)
+  dec(c.loopIterations)
 
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
@@ -735,6 +747,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           globalError(c.debug[pc], errGenerated, "VM not built with FFI support")
       elif prc.kind != skTemplate:
         let newPc = compile(c, prc)
+        # tricky: a recursion is also a jump back, so we use the same
+        # logic as for loops:
+        if newPc < pc: handleJmpBack()
         #echo "new pc ", newPc, " calling: ", prc.name.s
         var newFrame = PStackFrame(prc: prc, comesFrom: pc, next: tos)
         newSeq(newFrame.slots, prc.offset)
@@ -778,6 +793,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       # jump Bx
       let rbx = instr.regBx - wordExcess - 1 # -1 for the following 'inc pc'
       inc pc, rbx
+    of opcJmpBack:
+      let rbx = instr.regBx - wordExcess - 1 # -1 for the following 'inc pc'
+      inc pc, rbx
+      handleJmpBack()
     of opcBranch:
       # we know the next instruction is a 'fjmp':
       let branch = c.constants[instr.regBx-wordExcess]

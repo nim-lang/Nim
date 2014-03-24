@@ -92,10 +92,10 @@ proc genLabel(c: PCtx): TPosition =
   result = TPosition(c.code.len)
   #c.jumpTargets.incl(c.code.len)
 
-proc jmpBack(c: PCtx, n: PNode, opc: TOpcode, p = TPosition(0)) =
+proc jmpBack(c: PCtx, n: PNode, p = TPosition(0)) =
   let dist = p.int - c.code.len
   internalAssert(-0x7fff < dist and dist < 0x7fff)
-  gABx(c, n, opc, 0, dist)
+  gABx(c, n, opcJmpBack, 0, dist)
 
 proc patch(c: PCtx, p: TPosition) =
   # patch with current index
@@ -229,20 +229,20 @@ proc genWhile(c: PCtx; n: PNode) =
   withBlock(nil):
     if isTrue(n.sons[0]):
       c.gen(n.sons[1])
-      c.jmpBack(n, opcJmp, L1)
+      c.jmpBack(n, L1)
     elif isNotOpr(n.sons[0]):
       var tmp = c.genx(n.sons[0].sons[1])
       let L2 = c.xjmp(n, opcTJmp, tmp)
       c.freeTemp(tmp)
       c.gen(n.sons[1])
-      c.jmpBack(n, opcJmp, L1)
+      c.jmpBack(n, L1)
       c.patch(L2)
     else:
       var tmp = c.genx(n.sons[0])
       let L2 = c.xjmp(n, opcFJmp, tmp)
       c.freeTemp(tmp)
       c.gen(n.sons[1])
-      c.jmpBack(n, opcJmp, L1)
+      c.jmpBack(n, L1)
       c.patch(L2)
 
 proc genBlock(c: PCtx; n: PNode; dest: var TDest) =
@@ -1518,7 +1518,7 @@ proc optimizeJumps(c: PCtx; start: int) =
       var d = i + c.code[i].jmpDiff
       for iters in countdown(maxIterations, 0):
         case c.code[d].opcode
-        of opcJmp:
+        of opcJmp, opcJmpBack:
           d = d + c.code[d].jmpDiff
         of opcTJmp, opcFJmp:
           if c.code[d].regA != reg: break
@@ -1536,7 +1536,7 @@ proc optimizeJumps(c: PCtx; start: int) =
         else: break
       if d != i + c.code[i].jmpDiff:
         c.finalJumpTarget(i, d - i)
-    of opcJmp:
+    of opcJmp, opcJmpBack:
       var d = i + c.code[i].jmpDiff
       var iters = maxIterations
       while c.code[d].opcode == opcJmp and iters > 0:
