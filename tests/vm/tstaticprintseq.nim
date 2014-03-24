@@ -13,6 +13,8 @@ discard """
 3
 aa
 bb
+11
+22
 aa
 bb
 24'''
@@ -45,16 +47,17 @@ type
 const data: TData = (@["aa", "bb"], @[11, 22])
 
 static:
-  var m = data
-  for x in m.letters:
-    echo x
+  var m1 = data
+  for x in m1.letters: echo x
+
+  var m2: TData = data
+  for x in m2.numbers: echo x
 
 macro ff(d: static[TData]): stmt =
   for x in d.letters:
     echo x
 
 ff(data)
-
 
 # bug #1010
 
