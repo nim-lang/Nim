@@ -2,9 +2,6 @@ version 0.9.4
 =============
 
 - fix gensym capture bug
-- vm
-  - at least try to get the basic type zoo ops right
-  - optimize opcAsgnStr
 - fix GC issues
 
 
@@ -39,6 +36,7 @@ version 0.9.x
 - ``=`` should be overloadable; requires specialization for ``=``; general
   lift mechanism in the compiler is already implemented for 'fields'
 - built-in 'getImpl'
+- VM: optimize opcAsgnStr
 
 - change comment handling in the AST; that's lots of work as c2nim and pas2nim
   make use of the fact every node can have a comment!
