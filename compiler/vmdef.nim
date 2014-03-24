@@ -16,6 +16,9 @@ const
   byteExcess* = 128 # we use excess-K for immediates
   wordExcess* = 32768
 
+  MaxLoopIterations* = 500_000 # max iterations of all loops
+
+
 type
   TRegister* = range[0..255]
   TDest* = range[-1 .. 255]
@@ -110,6 +113,7 @@ type
     opcTJmp,  # jump Bx if A != 0
     opcFJmp,  # jump Bx if A == 0
     opcJmp,   # jump Bx
+    opcJmpBack, # jump Bx; resulting from a while loop
     opcBranch,  # branch for 'case'
     opcTry,
     opcExcept,
@@ -182,6 +186,7 @@ type
     mode*: TEvalMode
     features*: TSandboxFlags
     traceActive*: bool
+    loopIterations*: int
 
   TPosition* = distinct int
 
@@ -190,7 +195,7 @@ type
 proc newCtx*(module: PSym): PCtx =
   PCtx(code: @[], debug: @[],
     globals: newNode(nkStmtListExpr), constants: newNode(nkStmtList), types: @[],
-    prc: PProc(blocks: @[]), module: module)
+    prc: PProc(blocks: @[]), module: module, loopIterations: MaxLoopIterations)
 
 proc refresh*(c: PCtx, module: PSym) =
   c.module = module
