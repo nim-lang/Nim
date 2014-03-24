@@ -948,17 +948,15 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcReset:
       internalError(c.debug[pc], "too implement")
     of opcNarrowS:
-      decodeBC(rkInt)
-      let min = -(1 shl (rc-1))
-      let max = (1 shl (rc-1))-1
-      if regs[rb].intVal >= min and regs[rb].intVal <= max:
-        regs[ra].intVal = regs[rb].intVal
-      else:
+      decodeB(rkInt)
+      let min = -(1 shl (rb-1))
+      let max = (1 shl (rb-1))-1
+      if regs[ra].intVal < min or regs[ra].intVal > max:
         stackTrace(c, tos, pc, errGenerated,
           msgKindToString(errUnhandledExceptionX) % "value out of range")
     of opcNarrowU:
-      decodeBC(rkInt)
-      regs[ra].intVal = regs[rb].intVal and ((1'i64 shl rc)-1)
+      decodeB(rkInt)
+      regs[ra].intVal = regs[ra].intVal and ((1'i64 shl rb)-1)
     of opcIsNil:
       decodeB(rkInt)
       regs[ra].intVal = ord(regs[rb].node.kind == nkNilLit)

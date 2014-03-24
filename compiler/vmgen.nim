@@ -543,6 +543,30 @@ proc genBinaryABC(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
   c.freeTemp(tmp)
   c.freeTemp(tmp2)
 
+proc genNarrow(c: PCtx; n: PNode; dest: TDest) =
+  let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
+  # uint is uint64 in the VM, we we only need to mask the result for
+  # other unsigned types:
+  if t.kind in {tyUInt8..tyUInt32}:
+    c.gABC(n, opcNarrowU, dest, TRegister(t.size*8))
+  elif t.kind in {tyInt8..tyInt32}:
+    c.gABC(n, opcNarrowS, dest, TRegister(t.size*8))
+
+proc genNarrowU(c: PCtx; n: PNode; dest: TDest) =
+  let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
+  # uint is uint64 in the VM, we we only need to mask the result for
+  # other unsigned types:
+  if t.kind in {tyUInt8..tyUInt32, tyInt8..tyInt32}:
+    c.gABC(n, opcNarrowU, dest, TRegister(t.size*8))
+
+proc genBinaryABCnarrow(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
+  genBinaryABC(c, n, dest, opc)
+  genNarrow(c, n, dest)
+
+proc genBinaryABCnarrowU(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
+  genBinaryABC(c, n, dest, opc)
+  genNarrowU(c, n, dest)
+
 proc genSetType(c: PCtx; n: PNode; dest: TRegister) =
   let t = skipTypes(n.typ, abstractInst-{tyTypeDesc})
   if t.kind == tySet:
@@ -604,6 +628,7 @@ proc genAddSubInt(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
     c.freeTemp(tmp)
   else:
     genBinaryABC(c, n, dest, opc)
+  c.genNarrow(n, dest)
 
 proc genConv(c: PCtx; n, arg: PNode; dest: var TDest; opc=opcConv) =  
   let tmp = c.genx(arg)
@@ -644,6 +669,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
       let tmp = c.genx(n.sons[2])
       c.gABC(n, opc, d, d, tmp)
       c.freeTemp(tmp)
+    c.genNarrow(n.sons[1], d)
     c.genAsgnPatch(n.sons[1], d)
     c.freeTemp(d)
   of mOrd, mChr, mArrToSeq: c.gen(n.sons[1], dest)
@@ -678,23 +704,23 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     c.freeTemp(d)
     c.freeTemp(tmp)
   of mCard: genCard(c, n, dest)
-  of mMulI, mMulI64: genBinaryABC(c, n, dest, opcMulInt)
-  of mDivI, mDivI64: genBinaryABC(c, n, dest, opcDivInt)
-  of mModI, mModI64: genBinaryABC(c, n, dest, opcModInt)
+  of mMulI, mMulI64: genBinaryABCnarrow(c, n, dest, opcMulInt)
+  of mDivI, mDivI64: genBinaryABCnarrow(c, n, dest, opcDivInt)
+  of mModI, mModI64: genBinaryABCnarrow(c, n, dest, opcModInt)
   of mAddF64: genBinaryABC(c, n, dest, opcAddFloat)
   of mSubF64: genBinaryABC(c, n, dest, opcSubFloat)
   of mMulF64: genBinaryABC(c, n, dest, opcMulFloat)
   of mDivF64: genBinaryABC(c, n, dest, opcDivFloat)
-  of mShrI, mShrI64: genBinaryABC(c, n, dest, opcShrInt)
-  of mShlI, mShlI64: genBinaryABC(c, n, dest, opcShlInt)
-  of mBitandI, mBitandI64: genBinaryABC(c, n, dest, opcBitandInt)
-  of mBitorI, mBitorI64: genBinaryABC(c, n, dest, opcBitorInt)
-  of mBitxorI, mBitxorI64: genBinaryABC(c, n, dest, opcBitxorInt)
-  of mAddU: genBinaryABC(c, n, dest, opcAddu)
-  of mSubU: genBinaryABC(c, n, dest, opcSubu)
-  of mMulU: genBinaryABC(c, n, dest, opcMulu)
-  of mDivU: genBinaryABC(c, n, dest, opcDivu)
-  of mModU: genBinaryABC(c, n, dest, opcModu)
+  of mShrI, mShrI64: genBinaryABCnarrowU(c, n, dest, opcShrInt)
+  of mShlI, mShlI64: genBinaryABCnarrowU(c, n, dest, opcShlInt)
+  of mBitandI, mBitandI64: genBinaryABCnarrowU(c, n, dest, opcBitandInt)
+  of mBitorI, mBitorI64: genBinaryABCnarrowU(c, n, dest, opcBitorInt)
+  of mBitxorI, mBitxorI64: genBinaryABCnarrowU(c, n, dest, opcBitxorInt)
+  of mAddU: genBinaryABCnarrowU(c, n, dest, opcAddu)
+  of mSubU: genBinaryABCnarrowU(c, n, dest, opcSubu)
+  of mMulU: genBinaryABCnarrowU(c, n, dest, opcMulu)
+  of mDivU: genBinaryABCnarrowU(c, n, dest, opcDivu)
+  of mModU: genBinaryABCnarrowU(c, n, dest, opcModu)
   of mEqI, mEqI64, mEqB, mEqEnum, mEqCh:
     genBinaryABC(c, n, dest, opcEqInt)
   of mLeI, mLeI64, mLeEnum, mLeCh, mLeB:
@@ -708,12 +734,16 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
   of mLtPtr, mLtU, mLtU64: genBinaryABC(c, n, dest, opcLtu)
   of mEqProc, mEqRef, mEqUntracedRef, mEqCString:
     genBinaryABC(c, n, dest, opcEqRef)
-  of mXor: genBinaryABC(c, n, dest, opcXor)
+  of mXor: genBinaryABCnarrowU(c, n, dest, opcXor)
   of mNot: genUnaryABC(c, n, dest, opcNot)
-  of mUnaryMinusI, mUnaryMinusI64: genUnaryABC(c, n, dest, opcUnaryMinusInt)
+  of mUnaryMinusI, mUnaryMinusI64:
+    genUnaryABC(c, n, dest, opcUnaryMinusInt)
+    genNarrow(c, n, dest)
   of mUnaryMinusF64: genUnaryABC(c, n, dest, opcUnaryMinusFloat)
   of mUnaryPlusI, mUnaryPlusI64, mUnaryPlusF64: gen(c, n.sons[1], dest)
-  of mBitnotI, mBitnotI64: genUnaryABC(c, n, dest, opcBitnotInt)
+  of mBitnotI, mBitnotI64: 
+    genUnaryABC(c, n, dest, opcBitnotInt)
+    genNarrowU(c, n, dest)
   of mZe8ToI, mZe8ToI64, mZe16ToI, mZe16ToI64, mZe32ToI64, mZeIToI64,
      mToU8, mToU16, mToU32, mToFloat, mToBiggestFloat, mToInt, 
      mToBiggestInt, mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, 
