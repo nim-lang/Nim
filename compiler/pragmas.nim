@@ -52,7 +52,8 @@ const
   typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl, 
     wPure, wHeader, wCompilerproc, wFinal, wSize, wExtern, wShallow,
     wImportCpp, wImportObjC, wError, wIncompleteStruct, wByCopy, wByRef,
-    wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked}
+    wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
+    wBorrow}
   fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern, 
     wImportCpp, wImportObjC, wError}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl, 
@@ -511,6 +512,13 @@ proc pragmaRaisesOrTags(c: PContext, n: PNode) =
   else:
     invalidPragma(n)
 
+proc typeBorrow(sym: PSym, n: PNode) =
+  if n.kind == nkExprColonExpr:
+    let it = n.sons[1]
+    if it.kind != nkAccQuoted:
+      localError(n.info, "a type can only borrow `.` for now")
+  incl(sym.typ.flags, tfBorrowDot)
+
 proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
                   validPragmas: TSpecialWords): bool =
   var it = n.sons[i]
@@ -631,9 +639,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           noVal(it)
           if sym.typ == nil: invalidPragma(it)
           else: incl(sym.typ.flags, tfVarargs)
-        of wBorrow: 
-          noVal(it)
-          incl(sym.flags, sfBorrow)
+        of wBorrow:
+          if sym.kind == skType:
+            typeBorrow(sym, it)
+          else:
+            noVal(it)
+            incl(sym.flags, sfBorrow)
         of wFinal: 
           noVal(it)
           if sym.typ == nil: invalidPragma(it)

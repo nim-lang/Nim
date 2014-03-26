@@ -424,7 +424,7 @@ type
     nfIsRef     # this node is a 'ref' node; used for the VM
  
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 23)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 28)
     tfVarargs,        # procedure has C styled varargs
     tfNoSideEffect,   # procedure type does not allow side effects
     tfFinal,          # is the object final?
@@ -464,6 +464,8 @@ type
                       # T and I here can bind to both typedesc and static types
                       # before this is determined, we'll consider them to be a
                       # wildcard type.
+    tfGuarded         # guarded pointer
+    tfBorrowDot       # distinct type borrows '.'
 
   TTypeFlags* = set[TTypeFlag]
 
