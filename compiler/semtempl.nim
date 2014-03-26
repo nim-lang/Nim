@@ -232,6 +232,18 @@ proc semTemplSomeDecl(c: var TemplCtx, n: PNode, symKind: TSymKind) =
     for j in countup(0, L-3):
       addLocalDecl(c, a.sons[j], symKind)
 
+proc onlyReplaceParams(c: var TemplCtx, n: PNode): PNode =
+  result = n
+  if n.kind == nkIdent:
+    let s = qualifiedLookUp(c.c, n, {})
+    if s != nil:
+      if s.owner == c.owner and s.kind == skParam:
+        incl(s.flags, sfUsed)
+        result = newSymNode(s, n.info)
+  else:
+    for i in 0 .. <n.safeLen:
+      result.sons[i] = onlyReplaceParams(c, n.sons[i])
+
 proc semPattern(c: PContext, n: PNode): PNode
 proc semTemplBody(c: var TemplCtx, n: PNode): PNode = 
   result = n
@@ -365,6 +377,8 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     result.sons[0] = semTemplBody(c, n.sons[0])
   of nkPostfix:
     result.sons[1] = semTemplBody(c, n.sons[1])
+  of nkPragma:
+    result = onlyReplaceParams(c, n)
   else:
     # dotExpr is ambiguous: note that we explicitely allow 'x.TemplateParam',
     # so we use the generic code for nkDotExpr too
