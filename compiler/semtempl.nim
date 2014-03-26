@@ -365,8 +365,6 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     result.sons[0] = semTemplBody(c, n.sons[0])
   of nkPostfix:
     result.sons[1] = semTemplBody(c, n.sons[1])
-  of nkPragma:
-    discard
   else:
     # dotExpr is ambiguous: note that we explicitely allow 'x.TemplateParam',
     # so we use the generic code for nkDotExpr too
