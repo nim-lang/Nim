@@ -525,6 +525,8 @@ proc parsePar(p: var TParser): PNode =
       asgn.sons[0] = a
       asgn.sons[1] = b
       result.add(asgn)
+      if p.tok.tokType == tkSemiColon:
+        semiStmtList(p, result)
     elif p.tok.tokType == tkSemiColon:
       # stmt context:
       result.add(a)
