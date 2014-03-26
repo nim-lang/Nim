@@ -15,7 +15,7 @@ when defined(ssl):
 
 type
   # TODO: I would prefer to just do:
-  # PAsyncSocket* {.borrow: `.`.} = distinct PAsyncSocket. But that doesn't work.
+  # PAsyncSocket* {.borrow: `.`.} = distinct PSocket. But that doesn't work.
   TAsyncSocket {.borrow: `.`.} = distinct TSocketImpl
   PAsyncSocket* = ref TAsyncSocket
 

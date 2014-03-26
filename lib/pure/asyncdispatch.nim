@@ -766,7 +766,7 @@ proc processBody(node, retFutureSym: PNimrodNode): PNimrodNode {.compileTime.} =
       if node[0].kind == nnkEmpty: newIdentNode("result") else: node[0])
     result.add newNimNode(nnkYieldStmt).add(newNilLit())
   of nnkCommand:
-    if node[0].ident == !"await":
+    if node[0].kind == nnkIdent and node[0].ident == !"await":
       case node[1].kind
       of nnkIdent:
         # await x
@@ -782,7 +782,7 @@ proc processBody(node, retFutureSym: PNimrodNode): PNimrodNode {.compileTime.} =
          node[1][0].ident == !"await":
       # foo await x
       var newCommand = node
-      createVar("future" & $node[0].ident, node[1][0], newCommand[1])
+      createVar("future" & $node[0].toStrLit, node[1][1], newCommand[1])
       result.add newCommand
 
   of nnkVarSection, nnkLetSection:
@@ -801,7 +801,7 @@ proc processBody(node, retFutureSym: PNimrodNode): PNimrodNode {.compileTime.} =
       if node[1][0].ident == !"await":
         # x = await y
         var newAsgn = node
-        createVar("future" & $node[0].ident, node[1][1], newAsgn[1])
+        createVar("future" & $node[0].toStrLit, node[1][1], newAsgn[1])
         result.add newAsgn
     else: discard
   of nnkDiscardStmt:
@@ -857,7 +857,7 @@ macro async*(prc: stmt): stmt {.immediate.} =
         newNimNode(nnkBracketExpr).add(
           newIdentNode(!"newFuture"), # TODO: Strange bug here? Remove the `!`.
           newIdentNode(subtypeName))))) # Get type from return type of this proc
-  echo(treeRepr(outerProcBody))
+  
   # -> iterator nameIter(): PFutureBase {.closure.} = 
   # ->   var result: T
   # ->   <proc_body>

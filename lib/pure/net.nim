@@ -11,7 +11,7 @@
 
 {.deadCodeElim: on.}
 import rawsockets, os, strutils, unsigned, parseutils, times
-
+export TPort
 type
   IpAddressFamily* {.pure.} = enum ## Describes the type of an IP address
     IPv6, ## IPv6 address
