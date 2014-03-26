@@ -766,7 +766,7 @@ proc processBody(node, retFutureSym: PNimrodNode): PNimrodNode {.compileTime.} =
       if node[0].kind == nnkEmpty: newIdentNode("result") else: node[0])
     result.add newNimNode(nnkYieldStmt).add(newNilLit())
   of nnkCommand:
-    if node[0].ident == !"await":
+    if node[0].kind == nnkIdent and node[0].ident == !"await":
       case node[1].kind
       of nnkIdent:
         # await x
@@ -782,7 +782,7 @@ proc processBody(node, retFutureSym: PNimrodNode): PNimrodNode {.compileTime.} =
          node[1][0].ident == !"await":
       # foo await x
       var newCommand = node
-      createVar("future" & $node[0].ident, node[1][0], newCommand[1])
+      createVar("future" & $node[0].toStrLit, node[1][1], newCommand[1])
       result.add newCommand
 
   of nnkVarSection, nnkLetSection:
@@ -801,7 +801,7 @@ proc processBody(node, retFutureSym: PNimrodNode): PNimrodNode {.compileTime.} =
       if node[1][0].ident == !"await":
         # x = await y
         var newAsgn = node
-        createVar("future" & $node[0].ident, node[1][1], newAsgn[1])
+        createVar("future" & $node[0].toStrLit, node[1][1], newAsgn[1])
         result.add newAsgn
     else: discard
   of nnkDiscardStmt:
@@ -857,7 +857,7 @@ macro async*(prc: stmt): stmt {.immediate.} =
         newNimNode(nnkBracketExpr).add(
           newIdentNode(!"newFuture"), # TODO: Strange bug here? Remove the `!`.
           newIdentNode(subtypeName))))) # Get type from return type of this proc
-  echo(treeRepr(outerProcBody))
+  
   # -> iterator nameIter(): PFutureBase {.closure.} = 
   # ->   var result: T
   # ->   <proc_body>
@@ -957,80 +957,3 @@ proc runForever*() =
   ## Begins a never ending global dispatcher poll loop.
   while true:
     poll()
-
-when isMainModule:
-  
-  var p = newDispatcher()
-  var sock = p.socket()
-  sock.setBlocking false
-
-
-  when false:
-    # Await tests
-    proc main(p: PDispatcher): PFuture[int] {.async.} =
-      discard await p.connect(sock, "irc.freenode.net", TPort(6667))
-      while true:
-        echo("recvLine")
-        var line = await p.recvLine(sock)
-        echo("Line is: ", line.repr)
-        if line == "":
-          echo "Disconnected"
-          break
-
-    proc peekTest(p: PDispatcher): PFuture[int] {.async.} =
-      discard await p.connect(sock, "localhost", TPort(6667))
-      while true:
-        var line = await p.recv(sock, 1, MSG_PEEK)
-        var line2 = await p.recv(sock, 1)
-        echo(line.repr)
-        echo(line2.repr)
-        echo("---")
-        if line2 == "": break
-        sleep(500)
-
-    var f = main(p)
-    
-
-  else:
-    when false:
-
-      var f = p.connect(sock, "irc.poop.nl", TPort(6667))
-      f.callback =
-        proc (future: PFuture[int]) =
-          echo("Connected in future!")
-          echo(future.read)
-          for i in 0 .. 50:
-            var recvF = p.recv(sock, 10)
-            recvF.callback =
-              proc (future: PFuture[string]) =
-                echo("Read ", future.read.len, ": ", future.read.repr)
-
-    else:
-
-      sock.bindAddr(TPort(6667))
-      sock.listen()
-      proc onAccept(future: PFuture[TSocketHandle]) =
-        let client = future.read
-        echo "Accepted ", client.cint
-        var t = p.send(client, "test\c\L")
-        t.callback =
-          proc (future: PFuture[int]) =
-            echo("Send: ", future.read)
-            client.close()
-        
-        var f = p.accept(sock)
-        f.callback = onAccept
-        
-      var f = p.accept(sock)
-      f.callback = onAccept
-  
-  while true:
-    p.poll()
-
-
-
-
-
-  
-
-  

@@ -11,7 +11,7 @@
 
 {.deadCodeElim: on.}
 import rawsockets, os, strutils, unsigned, parseutils, times
-
+export TPort
 type
   IpAddressFamily* {.pure.} = enum ## Describes the type of an IP address
     IPv6, ## IPv6 address
@@ -318,22 +318,22 @@ const
   BufferSize*: int = 4000 ## size of a buffered socket's buffer
 
 type
-  TSocketImpl = object ## socket type
-    fd: TSocketHandle
-    case isBuffered: bool # determines whether this socket is buffered.
+  TSocketImpl* = object ## socket type
+    fd*: TSocketHandle
+    case isBuffered*: bool # determines whether this socket is buffered.
     of true:
-      buffer: array[0..BufferSize, char]
-      currPos: int # current index in buffer
-      bufLen: int # current length of buffer
+      buffer*: array[0..BufferSize, char]
+      currPos*: int # current index in buffer
+      bufLen*: int # current length of buffer
     of false: nil
     when defined(ssl):
-      case isSsl: bool
+      case isSsl*: bool
       of true:
-        sslHandle: PSSL
-        sslContext: PSSLContext
-        sslNoHandshake: bool # True if needs handshake.
-        sslHasPeekChar: bool
-        sslPeekChar: char
+        sslHandle*: PSSL
+        sslContext*: PSSLContext
+        sslNoHandshake*: bool # True if needs handshake.
+        sslHasPeekChar*: bool
+        sslPeekChar*: char
       of false: nil
   
   PSocket* = ref TSocketImpl
@@ -519,9 +519,9 @@ proc listen*(socket: PSocket, backlog = SOMAXCONN) {.tags: [FReadIO].} =
 
 proc bindAddr*(socket: PSocket, port = TPort(0), address = "") {.
   tags: [FReadIO].} =
-  ## Binds an address/port number to a socket.
-  ## Use address string in dotted decimal form like "a.b.c.d"
-  ## or leave "" for any address.
+  ## Binds ``address``:``port`` to the socket.
+  ##
+  ## If ``address`` is "" then ADDR_ANY will be bound.
 
   if address == "":
     var name: TSockaddr_in
