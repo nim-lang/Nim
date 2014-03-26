@@ -154,7 +154,7 @@ Optimizations
 =============
 
 - optimize 'if' with a constant condition --> necessary in frontend for better
-  dead code elimination
+  dead code elimination; also necessary to prevent  ``if c > 0: 1 div c``
 - escape analysis for string/seq seems to be easy to do too;
   even further write barrier specialization
 - inlining of first class functions

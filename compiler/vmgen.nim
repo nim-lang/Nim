@@ -1614,7 +1614,7 @@ proc genProc(c: PCtx; s: PSym): int =
     c.gABC(body, opcEof, eofInstr.regA)
     c.optimizeJumps(result)
     s.offset = c.prc.maxSlots
-    #if s.name.s == "tupleUnpack":
+    #if s.name.s == "addStuff":
     #  echo renderTree(body)
     #  c.echoCode(result)
     c.prc = oldPrc
