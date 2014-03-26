@@ -126,6 +126,7 @@ type
     opcLdConst,   # dest = constants[Bx]
     opcAsgnConst, # dest = copy(constants[Bx])
     opcLdGlobal,  # dest = globals[Bx]
+    opcLdGlobalAddr, # dest = addr(globals[Bx])
 
     opcLdImmInt,  # dest = immediate value
     opcNBindSym,

@@ -448,7 +448,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         let n = src.sons[rc]
         regs[ra].node = n
       else:
-        stackTrace(c, tos, pc, errIndexOutOfBounds)
+        stackTrace(c, tos, pc, errNilAccess)
     of opcWrObj:
       # a.b = c
       decodeBC(rkNode)
@@ -902,6 +902,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let rb = instr.regBx - wordExcess - 1
       ensureKind(rkNode)
       regs[ra].node = c.globals.sons[rb]
+    of opcLdGlobalAddr:
+      let rb = instr.regBx - wordExcess - 1
+      ensureKind(rkNodeAddr)
+      regs[ra].nodeAddr = addr(c.globals.sons[rb])
     of opcRepr:
       decodeB(rkNode)
       createStr regs[ra]
