@@ -1569,6 +1569,28 @@ currency. This can be solved with templates_.
   defineCurrency(TEuro, int)
 
 
+The borrow pragma can also be used to annotate the distinct type to allow
+certain builtin operations to be lifted:
+
+.. code-block:: nimrod
+  type
+    Foo = object
+      a, b: int
+      s: string
+
+    Bar {.borrow: `.`.} = distinct Foo
+
+  var bb: ref Bar
+  new bb
+  # field access now valid
+  bb.a = 90
+  bb.s = "abc"
+
+Currently only the dot accessor can be borrowed in this way.
+
+
+
+
 Void type
 ---------
 
