@@ -1481,9 +1481,8 @@ proc processQuotations(n: var PNode, op: string,
   elif n.kind == nkAccQuoted and op == "``":
     returnQuote n[0]
  
-  if not n.isAtom:
-    for i in 0 .. <n.len:
-      processQuotations(n.sons[i], op, quotes, ids)
+  for i in 0 .. <n.safeLen:
+    processQuotations(n.sons[i], op, quotes, ids)
 
 proc semQuoteAst(c: PContext, n: PNode): PNode =
   internalAssert n.len == 2 or n.len == 3
