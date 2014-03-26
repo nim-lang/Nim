@@ -4,7 +4,6 @@ version 0.9.4
 - fix gensym capture bug
 - fix GC issues
 
-
 Bugs
 ====
 
