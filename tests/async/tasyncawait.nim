@@ -21,7 +21,6 @@ proc launchSwarm(port: TPort) {.async.} =
   for i in 0 .. <swarmSize:
     var sock = newAsyncRawSocket()
 
-    #disp.register(sock)
     await connect(sock, "localhost", port)
     when true:
       await sendMessages(sock)
@@ -48,7 +47,6 @@ proc readMessages(client: TAsyncFD) {.async.} =
 
 proc createServer(port: TPort) {.async.} =
   var server = newAsyncRawSocket()
-  #disp.register(server)
   block:
     var name: TSockaddr_in
     when defined(windows):
