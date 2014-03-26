@@ -76,6 +76,8 @@
 ## currently only basic authentication is supported.
 
 import sockets, strutils, parseurl, parseutils, strtabs, base64
+import asyncnet, asyncdispatch
+import rawsockets
 
 type
   TResponse* = tuple[
@@ -286,16 +288,16 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
   add(headers, "\c\L")
   
   var s = socket()
-  var port = TPort(80)
+  var port = sockets.TPort(80)
   if r.scheme == "https":
     when defined(ssl):
       sslContext.wrapSocket(s)
-      port = TPort(443)
+      port = sockets.TPort(443)
     else:
       raise newException(EHttpRequestErr,
                 "SSL support is not available. Cannot connect over SSL.")
   if r.port != "":
-    port = TPort(r.port.parseInt)
+    port = sockets.TPort(r.port.parseInt)
   
   if timeout == -1:
     s.connect(r.hostname, port)
@@ -413,28 +415,217 @@ proc downloadFile*(url: string, outputFilename: string,
   else:
     fileError("Unable to open file")
 
+proc generateHeaders(r: TURL, httpMethod: THttpMethod,
+                     headers: PStringTable): string =
+  result = substr($httpMethod, len("http"))
+  # TODO: Proxies
+  result.add(" /" & r.path & r.query)
+  result.add(" HTTP/1.1\c\L")
+
+  add(result, "Host: " & r.hostname & "\c\L")
+  add(result, "Connection: Keep-Alive\c\L")
+  for key, val in headers:
+    add(result, key & ": " & val & "\c\L")
+
+  add(result, "\c\L")
+
+type
+  PAsyncHttpClient = ref object
+    socket: PAsyncSocket
+    connected: bool
+    currentURL: TURL ## Where we are currently connected.
+    headers: PStringTable
+    userAgent: string
+
+proc newAsyncHttpClient*(): PAsyncHttpClient =
+  new result
+  result.socket = newAsyncSocket()
+  result.headers = newStringTable(modeCaseInsensitive)
+  result.userAgent = defUserAgent
+
+proc parseChunks(client: PAsyncHttpClient): PFuture[string] {.async.} =
+  result = ""
+  var ri = 0
+  while true:
+    var chunkSize = 0
+    var chunkSizeStr = await client.socket.recvLine()
+    var i = 0
+    if chunkSizeStr == "":
+      httpError("Server terminated connection prematurely")
+    while true:
+      case chunkSizeStr[i]
+      of '0'..'9':
+        chunkSize = chunkSize shl 4 or (ord(chunkSizeStr[i]) - ord('0'))
+      of 'a'..'f':
+        chunkSize = chunkSize shl 4 or (ord(chunkSizeStr[i]) - ord('a') + 10)
+      of 'A'..'F':
+        chunkSize = chunkSize shl 4 or (ord(chunkSizeStr[i]) - ord('A') + 10)
+      of '\0':
+        break
+      of ';':
+        # http://tools.ietf.org/html/rfc2616#section-3.6.1
+        # We don't care about chunk-extensions.
+        break
+      else:
+        httpError("Invalid chunk size: " & chunkSizeStr)
+      inc(i)
+    if chunkSize <= 0: break
+    result.add await recv(client.socket, chunkSize)
+    discard await recv(client.socket, 2) # Skip \c\L
+    # Trailer headers will only be sent if the request specifies that we want
+    # them: http://tools.ietf.org/html/rfc2616#section-3.6.1
+  
+proc parseBody(client: PAsyncHttpClient,
+               headers: PStringTable): PFuture[string] {.async.} =
+  result = ""
+  if headers["Transfer-Encoding"] == "chunked":
+    result = await parseChunks(client)
+  else:
+    # -REGION- Content-Length
+    # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.3
+    var contentLengthHeader = headers["Content-Length"]
+    if contentLengthHeader != "":
+      var length = contentLengthHeader.parseint()
+      result = await client.socket.recv(length)
+      if result == "":
+        httpError("Got disconnected while trying to recv body.")
+    else:
+      # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.4 TODO
+      
+      # -REGION- Connection: Close
+      # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.5
+      if headers["Connection"] == "close":
+        var buf = ""
+        while True:
+          buf = await client.socket.recv(4000)
+          if buf == "": break
+          result.add(buf)
+
+proc parseResponse(client: PAsyncHttpClient,
+                   getBody: bool): PFuture[TResponse] {.async.} =
+  var parsedStatus = false
+  var linei = 0
+  var fullyRead = false
+  var line = ""
+  result.headers = newStringTable(modeCaseInsensitive)
+  while True:
+    linei = 0
+    line = await client.socket.recvLine()
+    if line == "": break # We've been disconnected.
+    if line == "\c\L":
+      fullyRead = true
+      break
+    if not parsedStatus:
+      # Parse HTTP version info and status code.
+      var le = skipIgnoreCase(line, "HTTP/", linei)
+      if le <= 0: httpError("invalid http version")
+      inc(linei, le)
+      le = skipIgnoreCase(line, "1.1", linei)
+      if le > 0: result.version = "1.1"
+      else:
+        le = skipIgnoreCase(line, "1.0", linei)
+        if le <= 0: httpError("unsupported http version")
+        result.version = "1.0"
+      inc(linei, le)
+      # Status code
+      linei.inc skipWhitespace(line, linei)
+      result.status = line[linei .. -1]
+      parsedStatus = true
+    else:
+      # Parse headers
+      var name = ""
+      var le = parseUntil(line, name, ':', linei)
+      if le <= 0: httpError("invalid headers")
+      inc(linei, le)
+      if line[linei] != ':': httpError("invalid headers")
+      inc(linei) # Skip :
+      
+      result.headers[name] = line[linei.. -1].strip()
+  if not fullyRead:
+    httpError("Connection was closed before full request has been made")
+  if getBody:
+    result.body = await parseBody(client, result.headers)
+  else:
+    result.body = ""
+
+proc close*(client: PAsyncHttpClient) =
+  ## Closes any connections held by the HttpClient.
+  if client.connected:
+    client.socket.close()
+    client.connected = false
+    #client.socket = newAsyncSocket()
+
+proc newConnection(client: PAsyncHttpClient, url: TURL) {.async.} =
+  if not client.connected or client.currentURL.hostname != url.hostname or
+      client.currentURL.scheme != url.scheme:
+    if client.connected: client.close()
+    if url.scheme == "https":
+      assert false, "TODO SSL"
+
+    # TODO: I should be able to write 'net.TPort' here...
+    let port =
+      if url.port == "": rawsockets.TPort(80)
+      else: rawsockets.TPort(url.port.parseInt)
+    
+    await client.socket.connect(url.hostname, port)
+    client.currentURL = url
+
+proc request*(client: PAsyncHttpClient, url: string, httpMethod = httpGET,
+              body = ""): PFuture[TResponse] {.async.} =
+  let r = parseUrl(url)
+  await newConnection(client, r)
+
+  if not client.headers.hasKey("user-agent") and client.userAgent != "":
+    client.headers["User-Agent"] = client.userAgent
+  
+  var headers = generateHeaders(r, httpMethod, client.headers)
+  
+  await client.socket.send(headers)
+  if body != "":
+    await client.socket.send(body)
+  
+  result = await parseResponse(client, httpMethod != httpHEAD)
 
 when isMainModule:
-  #downloadFile("http://force7.de/nimrod/index.html", "nimrodindex.html")
-  #downloadFile("http://www.httpwatch.com/", "ChunkTest.html")
-  #downloadFile("http://validator.w3.org/check?uri=http%3A%2F%2Fgoogle.com",
-  # "validator.html")
+  when true:
+    # Async
+    proc main() {.async.} =
+      var client = newAsyncHttpClient()
+      var resp = await client.request("http://picheta.me")
+      
+      echo("Got response: ", resp.status)
+      echo("Body:\n")
+      echo(resp.body)
 
-  #var r = get("http://validator.w3.org/check?uri=http%3A%2F%2Fgoogle.com&
-  #  charset=%28detect+automatically%29&doctype=Inline&group=0")
-  
-  var headers: string = "Content-Type: multipart/form-data; boundary=xyz\c\L"
-  var body: string = "--xyz\c\L"
-  # soap 1.2 output
-  body.add("Content-Disposition: form-data; name=\"output\"\c\L")
-  body.add("\c\Lsoap12\c\L")
-  
-  # html
-  body.add("--xyz\c\L")
-  body.add("Content-Disposition: form-data; name=\"uploaded_file\";" &
-           " filename=\"test.html\"\c\L")
-  body.add("Content-Type: text/html\c\L")
-  body.add("\c\L<html><head></head><body><p>test</p></body></html>\c\L")
-  body.add("--xyz--")
+      #var resp1 = await client.request("http://freenode.net")
+      #echo("Got response: ", resp1.status)
 
-  echo(postContent("http://validator.w3.org/check", headers, body))
+      var resp2 = await client.request("http://picheta.me/aasfasgf.html")
+      echo("Got response: ", resp2.status)
+    main()
+    runForever()
+
+  else:
+    #downloadFile("http://force7.de/nimrod/index.html", "nimrodindex.html")
+    #downloadFile("http://www.httpwatch.com/", "ChunkTest.html")
+    #downloadFile("http://validator.w3.org/check?uri=http%3A%2F%2Fgoogle.com",
+    # "validator.html")
+
+    #var r = get("http://validator.w3.org/check?uri=http%3A%2F%2Fgoogle.com&
+    #  charset=%28detect+automatically%29&doctype=Inline&group=0")
+    
+    var headers: string = "Content-Type: multipart/form-data; boundary=xyz\c\L"
+    var body: string = "--xyz\c\L"
+    # soap 1.2 output
+    body.add("Content-Disposition: form-data; name=\"output\"\c\L")
+    body.add("\c\Lsoap12\c\L")
+    
+    # html
+    body.add("--xyz\c\L")
+    body.add("Content-Disposition: form-data; name=\"uploaded_file\";" &
+             " filename=\"test.html\"\c\L")
+    body.add("Content-Type: text/html\c\L")
+    body.add("\c\L<html><head></head><body><p>test</p></body></html>\c\L")
+    body.add("--xyz--")
+
+    echo(postContent("http://validator.w3.org/check", headers, body))
