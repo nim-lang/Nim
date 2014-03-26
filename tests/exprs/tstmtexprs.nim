@@ -86,3 +86,9 @@ proc parseResponse(): PJsonNode =
     if (var n=result["key2"]; n != nil):
       excMsg &= n.str
     raise newException(ESynch, excMsg)
+
+
+
+#bug #992
+var se = @[1,2]
+let b = (se[1] = 1; 1)
