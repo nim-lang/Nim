@@ -258,7 +258,7 @@ proc nMinusOne*(n: PNode): PNode =
 
 # Remember to fix the procs below this one when you make changes!
 proc makeRangeWithStaticExpr*(c: PContext, n: PNode): PType =
-  let intType = getSysType tyInt
+  let intType = getSysType(tyInt)
   result = newTypeS(tyRange, c)
   result.sons = @[intType]
   result.n = newNode(nkRange, n.info, @[
