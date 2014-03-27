@@ -20,6 +20,8 @@
 when defined(Posix) and not defined(haiku):
   {.passl: "-lm".}
 
+import times
+
 const
   PI* = 3.1415926535897932384626433 ## the circle constant PI (Ludolph's number)
   E* = 2.71828182845904523536028747 ## Euler's number
@@ -201,7 +203,7 @@ when not defined(JS):
       result = drand48() * max
     
   proc randomize() =
-    randomize(gettime(nil))
+    randomize(cast[int](epochTime()))
 
   proc randomize(seed: int) =
     srand(cint(seed))
