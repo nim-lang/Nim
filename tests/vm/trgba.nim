@@ -6,7 +6,7 @@ discard """
 
 #bug #1009
 type
-  TAggRgba8* = array[4, byte]
+  TAggRgba8* = array[4, Byte]
 
 template R*(self: TAggRgba8): Byte = self[0]   
 template G*(self: TAggRgba8): Byte = self[1]   
