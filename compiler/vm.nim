@@ -318,7 +318,7 @@ proc opConv*(dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType): bool =
       of tyFloat..tyFloat64:
         dest.intVal = system.toInt(src.floatVal)
       else:
-        dest.intVal = src.intVal and ((1 shl desttyp.size)-1)
+        dest.intVal = src.intVal and ((1 shl (desttyp.size*8))-1)
     of tyFloat..tyFloat64:
       if dest.kind != rkFloat:
         myreset(dest); dest.kind = rkFloat

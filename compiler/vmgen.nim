@@ -41,7 +41,14 @@ proc codeListing(c: PCtx, result: var string, start=0) =
     let x = c.code[i]
 
     let opc = opcode(x)
-    if opc < firstABxInstr:
+    if opc in {opcConv, opcCast}:
+      let y = c.code[i+1]
+      let z = c.code[i+2]
+      result.addf("\t$#\tr$#, r$#, $#, $#", ($opc).substr(3), x.regA, x.regB,
+        c.types[y.regBx-wordExcess].typeToString, 
+        c.types[z.regBx-wordExcess].typeToString)
+      inc i, 2
+    elif opc < firstABxInstr:
       result.addf("\t$#\tr$#, r$#, r$#", ($opc).substr(3), x.regA, 
                   x.regB, x.regC)
     elif opc in relativeJumps:
