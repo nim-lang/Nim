@@ -770,8 +770,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
       else: invalidPragma(it)
   else: processNote(c, it)
 
-proc implictPragmas*(c: PContext, sym: PSym, n: PNode,
-                     validPragmas: TSpecialWords) =
+proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
+                      validPragmas: TSpecialWords) =
   if sym != nil and sym.kind != skModule:
     var it = POptionEntry(c.optionStack.head)
     while it != nil:
@@ -782,7 +782,7 @@ proc implictPragmas*(c: PContext, sym: PSym, n: PNode,
             internalError(n.info, "implicitPragmas")
       it = it.next.POptionEntry
 
-    if lfExportLib in sym.loc.flags and sfExportc notin sym.flags: 
+    if lfExportLib in sym.loc.flags and sfExportc notin sym.flags:
       localError(n.info, errDynlibRequiresExportc)
     var lib = POptionEntry(c.optionStack.tail).dynlib
     if {lfDynamicLib, lfHeader} * sym.loc.flags == {} and
@@ -806,4 +806,4 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
   if n == nil: return
   for i in countup(0, sonsLen(n) - 1):
     if singlePragma(c, sym, n, i, validPragmas): break
-  implictPragmas(c, sym, n, validPragmas)
+  implicitPragmas(c, sym, n, validPragmas)
