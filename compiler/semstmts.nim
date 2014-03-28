@@ -1038,6 +1038,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       return
   else:
     s = n[namePos].sym
+    s.owner = getCurrOwner()
     typeIsDetermined = s.typ == nil
     s.ast = n
     s.scope = c.currentScope
@@ -1165,6 +1166,11 @@ proc semIterator(c: PContext, n: PNode): PNode =
   let kind = if hasPragma(n[pragmasPos], wClosure) or
                 n[namePos].kind == nkEmpty: skClosureIterator
              else: skIterator
+  # gensym'ed iterator?
+  if n[namePos].kind == nkSym:
+    # gensym'ed iterators might need to become closure iterators:
+    n[namePos].sym.owner = getCurrOwner()
+    n[namePos].sym.kind = kind
   result = semProcAux(c, n, kind, iteratorPragmas)
   var s = result.sons[namePos].sym
   var t = s.typ
