@@ -28,6 +28,7 @@ macro async2(prc: stmt): stmt {.immediate.} =
   # -> iterator nameIter(): PFutureBase {.closure.} = <proc_body>
   # Changing this line to: newIdentNode($prc[0].ident & "Iter") # will make it work.
   var iteratorNameSym = genSym(nskIterator, $prc[0].ident & "Iter")
+  #var iteratorNameSym = newIdentNode($prc[0].ident & "Iter")
   var procBody = prc[6].convertReturns(retFutureSym)
 
   var closureIterator = newProc(iteratorNameSym, [newIdentNode("PFutureBase")],
