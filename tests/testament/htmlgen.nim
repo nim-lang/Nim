@@ -175,7 +175,8 @@ proc generateJson*(filename: string, commit: int) =
                 where A.[commit] = ? and B.[commit] = ? and A.machine = ?
                    and A.result != B.result"""
     selResults = """select 
-                      name, category, target, action, result, expected, given 
+                      category || '/' || target || '/' || name, 
+                      category, target, action, result, expected, given 
                     from TestResult
                     where [commit] = ?"""
   var db = open(connection="testament.db", user="testament", password="",
