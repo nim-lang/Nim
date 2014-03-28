@@ -19,6 +19,9 @@ Bugs
 version 0.9.x
 =============
 
+- pragmas need 'bindSym' support
+- pragmas need re-work: 'push' is dangerous, 'hasPragma' does not work
+  reliably with user-defined pragmas
 - memory manager: add a measure of fragmentation
 - implement 'bits' pragmas
 - we need a magic thisModule symbol
