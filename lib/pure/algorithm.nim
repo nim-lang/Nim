@@ -64,10 +64,11 @@ proc lowerBound*[T](a: openarray[T], key: T, cmp: proc(x,y: T): int {.closure.})
   ## `cmp` is the comparator function to use, the expected return values are the same as
   ## that of system.cmp
   ## 
-  ## example:
-  ## `var arr = @[1,2,3,5,6,7,8,9]`
-  ## `arr.insert(4, arr.lowerBound(4))`
-  ## after running the above arr is `[1,2,3,4,5,6,7,8,9]`
+  ## example::
+  ##
+  ##   var arr = @[1,2,3,5,6,7,8,9]
+  ##   arr.insert(4, arr.lowerBound(4))
+  ## `after running the above arr is `[1,2,3,4,5,6,7,8,9]`
   result = a.low
   var pos = result
   var count, step: int
