@@ -182,3 +182,137 @@ proc zlibAllocMem*(AppData: Pointer, Items, Size: int): Pointer {.cdecl.} =
 
 proc zlibFreeMem*(AppData, `Block`: Pointer) {.cdecl.} = 
   dealloc(`Block`)
+
+proc uncompress*(sourceBuf: cstring, sourceLen: int): string =
+  ## Given a deflated cstring returns its inflated version.
+  ##
+  ## Passing a nil cstring will crash this proc in release mode and assert in
+  ## debug mode.
+  ##
+  ## Returns nil on problems. Failure is a very loose concept, it could be you
+  ## passing a non deflated string, or it could mean not having enough memory
+  ## for the inflated version.
+  ##
+  ## The uncompression algorithm is based on
+  ## http://stackoverflow.com/questions/17820664 but does ignore some of the
+  ## original signed/unsigned checks, so may fail with big chunks of data
+  ## exceeding the positive size of an int32. The algorithm can deal with
+  ## concatenated deflated values properly.
+  assert (not sourceBuf.isNil)
+
+  var z: TZStream
+  # Initialize input.
+  z.next_in = sourceBuf
+
+  # Input left to decompress.
+  var left = zlib.Uint(sourceLen)
+  if left < 1:
+    # Incomplete gzip stream, or overflow?
+    return
+
+  # Create starting space for output (guess double the input size, will grow if
+  # needed -- in an extreme case, could end up needing more than 1000 times the
+  # input size)
+  var space = zlib.Uint(left shl 1)
+  if space < left:
+    space = left
+
+  var decompressed = newStringOfCap(space)
+
+  # Initialize output.
+  z.next_out = addr(decompressed[0])
+  # Output generated so far.
+  var have = 0
+
+  # Set up for gzip decoding.
+  z.avail_in = 0;
+  var status = inflateInit2(z, (15+16))
+  if status != Z_OK:
+    # Out of memory.
+    return
+
+  # Decompress all of self.
+  while true:
+    # Allow for concatenated gzip streams (per RFC 1952).
+    if status == Z_STREAM_END:
+      discard inflateReset(z)
+
+    # Provide input for inflate.
+    if z.avail_in == 0:
+      # This only makes sense in the C version using unsigned values.
+      z.avail_in = left
+      left -= z.avail_in
+
+    # Decompress the available input.
+    while true:
+      # Allocate more output space if none left.
+      if space == have:
+        # Double space, handle overflow.
+        space = space shl 1
+        if space < have:
+          # Space was likely already maxed out.
+          discard inflateEnd(z)
+          return
+
+        # Increase space.
+        decompressed.setLen(space)
+        # Update output pointer (might have moved).
+        z.next_out = addr(decompressed[have])
+
+      # Provide output space for inflate.
+      z.avail_out = zlib.Uint(space - have)
+      have += z.avail_out;
+
+      # Inflate and update the decompressed size.
+      status = inflate(z, Z_SYNC_FLUSH);
+      have -= z.avail_out;
+
+      # Bail out if any errors.
+      if status != Z_OK and status != Z_BUF_ERROR and status != Z_STREAM_END:
+        # Invalid gzip stream.
+        discard inflateEnd(z)
+        return
+
+      # Repeat until all output is generated from provided input (note
+      # that even if z.avail_in is zero, there may still be pending
+      # output -- we're not done until the output buffer isn't filled)
+      if z.avail_out != 0:
+        break
+    # Continue until all input consumed.
+    if left == 0 and z.avail_in == 0:
+      break
+  # Free the memory allocated by inflateInit2().
+  discard inflateEnd(z)
+
+  # Verify that the input is a valid gzip stream.
+  if status != Z_STREAM_END:
+    # Incomplete gzip stream.
+    return nil
+
+  decompressed.setLen(have)
+  result = decompressed
+
+
+proc inflate*(buffer: var string) =
+  ## Convenience proc which inflates a string containing compressed data.
+  ##
+  ## Passing a nil string will crash this proc in release mode and assert in
+  ## debug mode. It is ok to pass a buffer which doesn't contain deflated data,
+  ## in this case the proc won't modify the buffer. To check if data was
+  ## inflated compare the final length of the `buffer` with its original value.
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var data: string
+  ##   # Put something into data.
+  ##   let originalLen = len(data)
+  ##   data.inflate()
+  ##   if originalLen != len(data):
+  ##     echo "Data was inflated!"
+  ##   else:
+  ##     echo "Nothing to inflate"
+  assert (not buffer.isNil)
+  if buffer.len < 1: return
+  let temp = uncompress(addr(buffer[0]), buffer.len)
+  if not temp.isNil:
+    buffer = temp
