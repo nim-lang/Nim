@@ -1457,20 +1457,6 @@ iterator items*[IX, T](a: array[IX, T]): T {.inline.} =
       if i >= high(IX): break
       inc(i)
 
-iterator items*[T](a: seq[T]): T {.inline.} =
-  ## iterates over each item of `a`.
-  var i = 0
-  while i < len(a):
-    yield a[i]
-    inc(i)
-
-iterator items*(a: string): char {.inline.} =
-  ## iterates over each item of `a`.
-  var i = 0
-  while i < len(a):
-    yield a[i]
-    inc(i)
-
 iterator items*[T](a: set[T]): T {.inline.} =
   ## iterates over each element of `a`. `items` iterates only over the
   ## elements that are really in the set (and not over the ones the set is
@@ -2686,6 +2672,24 @@ template doAssert*(cond: bool, msg = "") =
   {.line: instantiationInfo().}:
     if not cond:
       raiseAssert(astToStr(cond) & ' ' & msg)
+
+iterator items*[T](a: seq[T]): T {.inline.} =
+  ## iterates over each item of `a`.
+  var i = 0
+  let L = len(a)
+  while i < L:
+    yield a[i]
+    inc(i)
+    assert(len(a) == L, "seq modified while iterating over it")
+
+iterator items*(a: string): char {.inline.} =
+  ## iterates over each item of `a`.
+  var i = 0
+  let L = len(a)
+  while i < L:
+    yield a[i]
+    inc(i)
+    assert(len(a) == L, "string modified while iterating over it")
 
 when not defined(nimhygiene):
   {.pragma: inject.}
