@@ -231,6 +231,9 @@ proc uncompress*(sourceBuf: cstring, sourceLen: int): string =
     # Out of memory.
     return
 
+  # Make sure memory allocated by inflateInit2() is freed eventually.
+  finally: discard inflateEnd(z)
+
   # Decompress all of self.
   while true:
     # Allow for concatenated gzip streams (per RFC 1952).
@@ -281,8 +284,6 @@ proc uncompress*(sourceBuf: cstring, sourceLen: int): string =
     # Continue until all input consumed.
     if left == 0 and z.avail_in == 0:
       break
-  # Free the memory allocated by inflateInit2().
-  discard inflateEnd(z)
 
   # Verify that the input is a valid gzip stream.
   if status != Z_STREAM_END:
