@@ -287,10 +287,10 @@ proc uncompress*(sourceBuf: cstring, sourceLen: int): string =
   # Verify that the input is a valid gzip stream.
   if status != Z_STREAM_END:
     # Incomplete gzip stream.
-    return nil
+    return
 
   decompressed.setLen(have)
-  result = decompressed
+  swap(result, decompressed)
 
 
 proc inflate*(buffer: var string): bool {.discardable.} =
@@ -303,7 +303,7 @@ proc inflate*(buffer: var string): bool {.discardable.} =
   ## Returns true if `buffer` was successfully inflated.
   assert (not buffer.isNil)
   if buffer.len < 1: return
-  let temp = uncompress(addr(buffer[0]), buffer.len)
+  var temp = uncompress(addr(buffer[0]), buffer.len)
   if not temp.isNil:
-    buffer = temp
+    swap(buffer, temp)
     result = true
