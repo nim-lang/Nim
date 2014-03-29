@@ -293,26 +293,17 @@ proc uncompress*(sourceBuf: cstring, sourceLen: int): string =
   result = decompressed
 
 
-proc inflate*(buffer: var string) =
+proc inflate*(buffer: var string): bool {.discardable.} =
   ## Convenience proc which inflates a string containing compressed data.
   ##
   ## Passing a nil string will crash this proc in release mode and assert in
   ## debug mode. It is ok to pass a buffer which doesn't contain deflated data,
-  ## in this case the proc won't modify the buffer. To check if data was
-  ## inflated compare the final length of the `buffer` with its original value.
-  ## Example:
+  ## in this case the proc won't modify the buffer.
   ##
-  ## .. code-block:: nimrod
-  ##   var data: string
-  ##   # Put something into data.
-  ##   let originalLen = len(data)
-  ##   data.inflate()
-  ##   if originalLen != len(data):
-  ##     echo "Data was inflated!"
-  ##   else:
-  ##     echo "Nothing to inflate"
+  ## Returns true if `buffer` was successfully inflated.
   assert (not buffer.isNil)
   if buffer.len < 1: return
   let temp = uncompress(addr(buffer[0]), buffer.len)
   if not temp.isNil:
     buffer = temp
+    result = true
