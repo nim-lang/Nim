@@ -356,7 +356,10 @@ proc captureVar(o: POuterContext, i: PInnerContext, local: PSym,
     # it's in some upper environment:
     access = indirectAccess(access, addDep(e, it, i.fn), info)
   access = indirectAccess(access, local, info)
-  incl(o.capturedVars, local.id)
+  if o.isIter:
+    if not containsOrIncl(o.capturedVars, local.id): addField(o.tup, local)
+  else:
+    incl(o.capturedVars, local.id)
   idNodeTablePut(i.localsToAccess, local, access)
 
 proc interestingVar(s: PSym): bool {.inline.} =
