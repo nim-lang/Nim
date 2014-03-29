@@ -752,7 +752,7 @@ template createVar(futSymName: string, asyncProc: PNimrodNode,
                    valueReceiver: expr) {.immediate, dirty.} =
   # TODO: Used template here due to bug #926
   result = newNimNode(nnkStmtList)
-  var futSym = newIdentNode(futSymName) #genSym(nskVar, "future")
+  var futSym = genSym(nskVar, "future")
   result.add newVarStmt(futSym, asyncProc) # -> var future<x> = y
   result.add newNimNode(nnkYieldStmt).add(futSym) # -> yield future<x>
   valueReceiver = newDotExpr(futSym, newIdentNode("read")) # -> future<x>.read
@@ -843,14 +843,11 @@ macro async*(prc: stmt): stmt {.immediate.} =
     subtypeName = $returnType[1].ident
   elif returnType.kind == nnkEmpty:
     subtypeName = "void"
-  
-  # TODO: Why can't I use genSym? I get illegal capture errors for Syms.
-  # TODO: It seems genSym is broken. Change all usages back to genSym when fixed
 
   var outerProcBody = newNimNode(nnkStmtList)
 
   # -> var retFuture = newFuture[T]()
-  var retFutureSym = newIdentNode("retFuture") #genSym(nskVar, "retFuture")
+  var retFutureSym = genSym(nskVar, "retFuture")
   outerProcBody.add(
     newVarStmt(retFutureSym, 
       newCall(
@@ -862,7 +859,7 @@ macro async*(prc: stmt): stmt {.immediate.} =
   # ->   var result: T
   # ->   <proc_body>
   # ->   complete(retFuture, result)
-  var iteratorNameSym = newIdentNode($prc[0].getName & "Iter") #genSym(nskIterator, $prc[0].ident & "Iter")
+  var iteratorNameSym = genSym(nskIterator, $prc[0].getName & "Iter")
   var procBody = prc[6].processBody(retFutureSym)
   if subtypeName != "void":
     procBody.insert(0, newNimNode(nnkVarSection).add(
@@ -881,7 +878,7 @@ macro async*(prc: stmt): stmt {.immediate.} =
 
   # -> var nameIterVar = nameIter
   # -> var first = nameIterVar()
-  var varNameIterSym = newIdentNode($prc[0].getName & "IterVar") #genSym(nskVar, $prc[0].ident & "IterVar")
+  var varNameIterSym = genSym(nskVar, $prc[0].getName & "IterVar")
   var varNameIter = newVarStmt(varNameIterSym, iteratorNameSym)
   outerProcBody.add varNameIter
   var varFirstSym = genSym(nskVar, "first")
