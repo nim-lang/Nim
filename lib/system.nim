@@ -1705,6 +1705,15 @@ proc `$`*[T: tuple|object](x: T): string =
     result.add($value)
     firstElement = false
   result.add(")")
+  
+proc collectionToString[T](x: T, b, e: string): string =
+  result = b
+  var firstElement = true
+  for value in items(x):
+    if not(firstElement): result.add(", ")
+    result.add($value)
+    firstElement = false
+  result.add(e)
 
 proc `$`*[T: set](x: T): string = 
   ## generic ``$`` operator for sets that is lifted from the components
@@ -1712,13 +1721,7 @@ proc `$`*[T: set](x: T): string =
   ##
   ## .. code-block:: nimrod
   ##   ${23, 45} == "{23, 45}"
-  result = "{"
-  var firstElement = true
-  for value in items(x):
-    if not(firstElement): result.add(", ")
-    result.add($value)
-    firstElement = false
-  result.add("}")
+  collectionToString(x, "{", "}")
 
 proc `$`*[T: seq](x: T): string = 
   ## generic ``$`` operator for seqs that is lifted from the components
@@ -1726,13 +1729,10 @@ proc `$`*[T: seq](x: T): string =
   ##
   ## .. code-block:: nimrod
   ##   $(@[23, 45]) == "@[23, 45]"
-  result = "@["
-  var firstElement = true
-  for value in items(x):
-    if not(firstElement): result.add(", ")
-    result.add($value)
-    firstElement = false
-  result.add("]")
+  collectionToString(x, "@[", "]")
+
+proc `$`*[T: array](x: T): string = 
+  collectionToString(x, "[", "]")
 
 # ----------------- GC interface ---------------------------------------------
 
