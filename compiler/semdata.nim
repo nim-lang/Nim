@@ -42,7 +42,7 @@ type
 
   TExprFlag* = enum 
     efLValue, efWantIterator, efInTypeof, efWantStmt, efDetermineType,
-    efAllowDestructor, efWantValue
+    efAllowDestructor, efWantValue, efOperand
   TExprFlags* = set[TExprFlag]
 
   PContext* = ref TContext
@@ -81,6 +81,9 @@ type
     semOverloadedCall*: proc (c: PContext, n, nOrig: PNode,
                               filter: TSymKinds): PNode {.nimcall.}
     semTypeNode*: proc(c: PContext, n: PNode, prev: PType): PType {.nimcall.}
+    semInferredLambda*: proc(c: PContext, pt: TIdTable, n: PNode): PNode
+    semGenerateInstance*: proc (c: PContext, fn: PSym, pt: TIdTable,
+                                info: TLineInfo): PSym
     includedFiles*: TIntSet    # used to detect recursive include files
     userPragmas*: TStrTable
     evalContext*: PEvalContext
@@ -211,7 +214,6 @@ proc makeTypeDesc*(c: PContext, typ: PType): PType =
 
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let typedesc = makeTypeDesc(c, typ)
-  rawAddSon(typedesc, newTypeS(tyNone, c))
   let sym = newSym(skType, idAnon, getCurrOwner(), info).linkTo(typedesc)
   return newSymNode(sym, info)
 
@@ -234,17 +236,41 @@ proc makeAndType*(c: PContext, t1, t2: PType): PType =
   result.sons = @[t1, t2]
   propagateToOwner(result, t1)
   propagateToOwner(result, t2)
+  result.flags.incl((t1.flags + t2.flags) * {tfHasStatic})
 
 proc makeOrType*(c: PContext, t1, t2: PType): PType =
   result = newTypeS(tyOr, c)
   result.sons = @[t1, t2]
   propagateToOwner(result, t1)
   propagateToOwner(result, t2)
+  result.flags.incl((t1.flags + t2.flags) * {tfHasStatic})
 
 proc makeNotType*(c: PContext, t1: PType): PType =
   result = newTypeS(tyNot, c)
   result.sons = @[t1]
   propagateToOwner(result, t1)
+  result.flags.incl(t1.flags * {tfHasStatic})
+
+proc nMinusOne*(n: PNode): PNode =
+  result = newNode(nkCall, n.info, @[
+    newSymNode(getSysMagic("<", mUnaryLt)),
+    n])
+
+# Remember to fix the procs below this one when you make changes!
+proc makeRangeWithStaticExpr*(c: PContext, n: PNode): PType =
+  let intType = getSysType(tyInt)
+  result = newTypeS(tyRange, c)
+  result.sons = @[intType]
+  result.n = newNode(nkRange, n.info, @[
+    newIntTypeNode(nkIntLit, 0, intType),
+    makeStaticExpr(c, n.nMinusOne)])
+
+template rangeHasStaticIf*(t: PType): bool =
+  # this accepts the ranges's node
+  t.n[1].kind == nkStaticExpr
+
+template getStaticTypeFromRange*(t: PType): PType =
+  t.n[1][0][1].typ
 
 proc newTypeS(kind: TTypeKind, c: PContext): PType =
   result = newType(kind, getCurrOwner())
@@ -272,7 +298,7 @@ proc makeRangeType*(c: PContext; first, last: BiggestInt;
   addSonSkipIntLit(result, intType) # basetype of range
 
 proc markIndirect*(c: PContext, s: PSym) {.inline.} =
-  if s.kind in {skProc, skConverter, skMethod, skIterator}:
+  if s.kind in {skProc, skConverter, skMethod, skIterator, skClosureIterator}:
     incl(s.flags, sfAddrTaken)
     # XXX add to 'c' for global analysis
 

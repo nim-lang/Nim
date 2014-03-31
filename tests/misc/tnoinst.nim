@@ -1,6 +1,6 @@
 discard """
   line: 12
-  errormsg: "instantiate 'notConcrete' explicitely"
+  errormsg: "instantiate 'notConcrete' explicitly"
 """
 
 proc wrap[T]() =

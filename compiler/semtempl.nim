@@ -155,7 +155,11 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
       of nkPragmaExpr: x = x[0]
       of nkIdent: break
       else: illFormedAst(x)
-    c.toInject.incl(x.ident.id)
+    let ident = getIdentNode(c, x)
+    if not isTemplParam(c, ident):
+      c.toInject.incl(x.ident.id)
+    else:
+      replaceIdentBySym(n, ident)
   else:
     let ident = getIdentNode(c, n)
     if not isTemplParam(c, ident):
@@ -171,7 +175,7 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym): PNode =
   of skUnknown: 
     # Introduced in this pass! Leave it as an identifier.
     result = n
-  of skProc, skMethod, skIterator, skConverter, skTemplate, skMacro:
+  of OverloadableSyms:
     result = symChoice(c, n, s, scOpen)
   of skGenericParam: 
     result = newSymNodeTypeDesc(s, n.info)
@@ -227,6 +231,18 @@ proc semTemplSomeDecl(c: var TemplCtx, n: PNode, symKind: TSymKind) =
     a.sons[L-1] = semTemplBody(c, a.sons[L-1])
     for j in countup(0, L-3):
       addLocalDecl(c, a.sons[j], symKind)
+
+proc onlyReplaceParams(c: var TemplCtx, n: PNode): PNode =
+  result = n
+  if n.kind == nkIdent:
+    let s = qualifiedLookUp(c.c, n, {})
+    if s != nil:
+      if s.owner == c.owner and s.kind == skParam:
+        incl(s.flags, sfUsed)
+        result = newSymNode(s, n.info)
+  else:
+    for i in 0 .. <n.safeLen:
+      result.sons[i] = onlyReplaceParams(c, n.sons[i])
 
 proc semPattern(c: PContext, n: PNode): PNode
 proc semTemplBody(c: var TemplCtx, n: PNode): PNode = 
@@ -348,7 +364,9 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   of nkMethodDef:
     result = semRoutineInTemplBody(c, n, skMethod)
   of nkIteratorDef:
-    result = semRoutineInTemplBody(c, n, skIterator)
+    let kind = if hasPragma(n[pragmasPos], wClosure): skClosureIterator
+               else: skIterator
+    result = semRoutineInTemplBody(c, n, kind)
   of nkTemplateDef:
     result = semRoutineInTemplBody(c, n, skTemplate)
   of nkMacroDef:
@@ -357,8 +375,10 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     result = semRoutineInTemplBody(c, n, skConverter)
   of nkPragmaExpr:
     result.sons[0] = semTemplBody(c, n.sons[0])
+  of nkPostfix:
+    result.sons[1] = semTemplBody(c, n.sons[1])
   of nkPragma:
-    discard
+    result = onlyReplaceParams(c, n)
   else:
     # dotExpr is ambiguous: note that we explicitely allow 'x.TemplateParam',
     # so we use the generic code for nkDotExpr too

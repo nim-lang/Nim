@@ -7,6 +7,6 @@ proc walkDirTree(root: string) =
     case k 
     of pcFile, pcLinkToFile: echo(f)
     of pcDir: walkDirTree(f)
-    of pcLinkToDir: nil
+    of pcLinkToDir: discard
 
 walkDirTree(".")

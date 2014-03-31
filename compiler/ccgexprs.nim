@@ -593,7 +593,7 @@ proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
 
 proc genDeref(p: BProc, e: PNode, d: var TLoc) =
   var a: TLoc
-  if mapType(e.sons[0].typ) == ctArray:
+  if mapType(e.sons[0].typ) in {ctArray, ctPtrToArray}:
     # XXX the amount of hacks for C's arrays is incredible, maybe we should
     # simply wrap them in a struct? --> Losing auto vectorization then?
     expr(p, e.sons[0], d)
@@ -736,7 +736,7 @@ proc genArrayElem(p: BProc, e: PNode, d: var TLoc) =
   var ty = skipTypes(skipTypes(a.t, abstractVarRange), abstractPtrs)
   var first = intLiteral(firstOrd(ty))
   # emit range check:
-  if (optBoundsCheck in p.options):
+  if optBoundsCheck in p.options and tfUncheckedArray notin ty.flags:
     if not isConstExpr(e.sons[1]):
       # semantic pass has already checked for const index expressions
       if firstOrd(ty) == 0:
@@ -1803,7 +1803,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       else:
         genProc(p.module, sym)
       putLocIntoDest(p, d, sym.loc)
-    of skProc, skConverter, skIterator:
+    of skProc, skConverter, skIterators:
       genProc(p.module, sym)
       if sym.loc.r == nil or sym.loc.t == nil:
         internalError(n.info, "expr: proc not init " & sym.name.s)
@@ -1915,7 +1915,6 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       internalError(n.info, "expr: proc not init " & sym.name.s)
     putLocIntoDest(p, d, sym.loc)
   of nkClosure: genClosure(p, n, d)
-  of nkMetaNode: expr(p, n.sons[0], d)
 
   of nkEmpty: discard
   of nkWhileStmt: genWhileStmt(p, n)

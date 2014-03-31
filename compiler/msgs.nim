@@ -67,7 +67,7 @@ type
     errAmbiguousCallXYZ, errWrongNumberOfArguments, 
     errXCannotBePassedToProcVar, 
     errXCannotBeInParamDecl, errPragmaOnlyInHeaderOfProc, errImplOfXNotAllowed, 
-    errImplOfXexpected, errNoSymbolToBorrowFromFound, errDiscardValue, 
+    errImplOfXexpected, errNoSymbolToBorrowFromFound, errDiscardValueX, 
     errInvalidDiscard, errIllegalConvFromXtoY, errCannotBindXTwice, 
     errInvalidOrderInArrayConstructor,
     errInvalidOrderInEnumX, errEnumXHasHoles, errExceptExpected, errInvalidTry, 
@@ -88,14 +88,16 @@ type
     errTemplateInstantiationTooNested, errInstantiationFrom, 
     errInvalidIndexValueForTuple, errCommandExpectsFilename,
     errMainModuleMustBeSpecified,
-    errXExpected, 
+    errXExpected,
+    errTIsNotAConcreteType,
     errInvalidSectionStart, errGridTableNotImplemented, errGeneralParseError, 
     errNewSectionExpected, errWhitespaceExpected, errXisNoValidIndexFile, 
     errCannotRenderX, errVarVarTypeNotAllowed, errInstantiateXExplicitely,
     errOnlyACallOpCanBeDelegator, errUsingNoSymbol,
+    errMacroBodyDependsOnGenericTypes,
     errDestructorNotGenericEnough,
-    
-    errXExpectsTwoArguments, 
+    errInlineIteratorsAsProcParams,
+    errXExpectsTwoArguments,
     errXExpectsObjectTypes, errXcanNeverBeOfThisSubtype, errTooManyIterations, 
     errCannotInterpretNodeX, errFieldXNotFound, errInvalidConversionFromTypeX, 
     errAssertionFailed, errCannotGenerateCodeForX, errXRequiresOneArgument, 
@@ -103,6 +105,10 @@ type
     errXhasSideEffects, errIteratorExpected, errLetNeedsInit,
     errThreadvarCannotInit, errWrongSymbolX, errIllegalCaptureX,
     errXCannotBeClosure, errXMustBeCompileTime,
+    errCannotInferTypeOfTheLiteral,
+    errCannotInferReturnType,
+    errGenericLambdaNotAllowed,
+    errCompilerDoesntSupportTarget,
     errUser,
     warnCannotOpenFile, 
     warnOctalEscape, warnXIsNeverRead, warnXmightNotBeenInit, 
@@ -196,7 +202,7 @@ const
     errXExpectsArrayType: "\'$1\' expects an array type", 
     errIteratorCannotBeInstantiated: "'$1' cannot be instantiated because its body has not been compiled yet", 
     errExprXAmbiguous: "expression '$1' ambiguous in this context", 
-    errConstantDivisionByZero: "constant division by zero", 
+    errConstantDivisionByZero: "division by zero", 
     errOrdinalTypeExpected: "ordinal type expected", 
     errOrdinalOrFloatTypeExpected: "ordinal or float type expected", 
     errOverOrUnderflow: "over- or underflow", 
@@ -263,7 +269,7 @@ const
     errImplOfXNotAllowed: "implementation of \'$1\' is not allowed", 
     errImplOfXexpected: "implementation of \'$1\' expected", 
     errNoSymbolToBorrowFromFound: "no symbol to borrow from found", 
-    errDiscardValue: "value returned by statement has to be discarded", 
+    errDiscardValueX: "value of type '$1' has to be discarded", 
     errInvalidDiscard: "statement returns no value that can be discarded", 
     errIllegalConvFromXtoY: "conversion from $1 to $2 is invalid",
     errCannotBindXTwice: "cannot bind parameter \'$1\' twice", 
@@ -312,6 +318,7 @@ const
     errCommandExpectsFilename: "command expects a filename argument",
     errMainModuleMustBeSpecified: "please, specify a main module in the project configuration file",
     errXExpected: "\'$1\' expected", 
+    errTIsNotAConcreteType: "\'$1\' is not a concrete type.",
     errInvalidSectionStart: "invalid section start",
     errGridTableNotImplemented: "grid table is not implemented", 
     errGeneralParseError: "general parse error",
@@ -323,8 +330,12 @@ const
     errInstantiateXExplicitely: "instantiate '$1' explicitely",
     errOnlyACallOpCanBeDelegator: "only a call operator can be a delegator",
     errUsingNoSymbol: "'$1' is not a variable, constant or a proc name",
+    errMacroBodyDependsOnGenericTypes: "the macro body cannot be compiled, " &
+                                       "because the parameter '$1' has a generic type",
     errDestructorNotGenericEnough: "Destructor signarue is too specific. " &
                                    "A destructor must be associated will all instantiations of a generic type",
+    errInlineIteratorsAsProcParams: "inline iterators can be used as parameters only for " &
+                                    "templates, macros and other inline iterators",
     errXExpectsTwoArguments: "\'$1\' expects two arguments", 
     errXExpectsObjectTypes: "\'$1\' expects object types",
     errXcanNeverBeOfThisSubtype: "\'$1\' can never be of this subtype", 
@@ -346,6 +357,12 @@ const
     errIllegalCaptureX: "illegal capture '$1'",
     errXCannotBeClosure: "'$1' cannot have 'closure' calling convention",
     errXMustBeCompileTime: "'$1' can only be used in compile-time context",
+    errCannotInferTypeOfTheLiteral: "cannot infer the type of the $1",
+    errCannotInferReturnType: "cannot infer the return type of the proc",
+    errGenericLambdaNotAllowed: "A nested proc can have generic parameters only when " &
+                                "it is used as an operand to another routine and the types " &
+                                "of the generic paramers can be infered from the expected signature.",
+    errCompilerDoesntSupportTarget: "The current compiler \'$1\' doesn't support the requested compilation target",
     errUser: "$1", 
     warnCannotOpenFile: "cannot open \'$1\' [CannotOpenFile]",
     warnOctalEscape: "octal escape sequences do not exist; leading zero is ignored [OctalEscape]", 
@@ -710,19 +727,19 @@ proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
       writeStackTrace()
     quit 1
 
-  if msg >= fatalMin and msg <= fatalMax: 
+  if msg >= fatalMin and msg <= fatalMax:
     quit()
-  if msg >= errMin and msg <= errMax: 
+  if msg >= errMin and msg <= errMax:
     inc(gErrorCounter)
     options.gExitcode = 1'i8
-    if gErrorCounter >= gErrorMax: 
+    if gErrorCounter >= gErrorMax:
       quit()
     elif eh == doAbort and gCmd != cmdIdeTools:
       quit()
     elif eh == doRaise:
       raiseRecoverableError(s)
 
-proc `==`*(a, b: TLineInfo): bool = 
+proc `==`*(a, b: TLineInfo): bool =
   result = a.line == b.line and a.fileIndex == b.fileIndex
 
 proc writeContext(lastinfo: TLineInfo) = 

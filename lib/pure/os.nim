@@ -260,11 +260,12 @@ proc osError*(errorCode: TOSErrorCode) =
   ##
   ## If the error code is ``0`` or an error message could not be retrieved,
   ## the message ``unknown OS error`` will be used.
-  let msg = osErrorMsg(errorCode)
-  if msg == "":
-    raise newException(EOS, "unknown OS error")
-  else:
-    raise newException(EOS, msg)
+  var e: ref EOS; new(e)
+  e.errorCode = errorCode.int32
+  e.msg = osErrorMsg(errorCode)
+  if e.msg == "":
+    e.msg = "unknown OS error"
+  raise e
 
 {.push stackTrace:off.}
 proc osLastError*(): TOSErrorCode =
@@ -1037,7 +1038,10 @@ proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   ## the process has finished. To execute a program without having a
   ## shell involved, use the `execProcess` proc of the `osproc`
   ## module.
-  result = c_system(command) shr 8
+  when defined(linux):
+    result = c_system(command) shr 8
+  else:
+    result = c_system(command)
 
 # Environment handling cannot be put into RTL, because the ``envPairs``
 # iterator depends on ``environment``.
@@ -1189,7 +1193,8 @@ iterator walkFiles*(pattern: string): string {.tags: [FReadDir].} =
     res = findFirstFile(pattern, f)
     if res != -1:
       while true:
-        if not skipFindData(f):
+        if not skipFindData(f) and
+            (f.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) == 0'i32:
           yield splitFile(pattern).dir / extractFilename(getFilename(f))
         if findNextFile(res, f) == 0'i32: break
       findClose(res)

@@ -32,6 +32,7 @@ proc considerAcc*(n: PNode): PIdent =
         of nkSym: id.add(x.sym.name.s)
         else: globalError(n.info, errIdentifierExpected, renderTree(n))
       result = getIdent(id)
+  of nkOpenSymChoice, nkClosedSymChoice: result = n.sons[0].sym.name
   else:
     globalError(n.info, errIdentifierExpected, renderTree(n))
  
@@ -91,7 +92,7 @@ proc errorSym*(c: PContext, n: PNode): PSym =
   result.typ = errorType(c)
   incl(result.flags, sfDiscardable)
   # pretend it's imported from some unknown module to prevent cascading errors:
-  if gCmd != cmdInteractive:
+  if gCmd != cmdInteractive and c.inCompilesContext == 0:
     c.importTable.addSym(result)
 
 type 
@@ -108,7 +109,7 @@ type
 
 proc getSymRepr*(s: PSym): string = 
   case s.kind
-  of skProc, skMethod, skConverter, skIterator: result = getProcHeader(s)
+  of skProc, skMethod, skConverter, skIterators: result = getProcHeader(s)
   else: result = s.name.s
 
 proc ensureNoMissingOrUnusedSymbols(scope: PScope) =
@@ -126,7 +127,10 @@ proc ensureNoMissingOrUnusedSymbols(scope: PScope) =
     elif {sfUsed, sfExported} * s.flags == {} and optHints in s.options: 
       # BUGFIX: check options in s!
       if s.kind notin {skForVar, skParam, skMethod, skUnknown, skGenericParam}:
-        message(s.info, hintXDeclaredButNotUsed, getSymRepr(s))
+        # XXX: implicit type params are currently skTypes
+        # maybe they can be made skGenericParam as well.
+        if s.typ != nil and tfImplicitTypeParam notin s.typ.flags:
+          message(s.info, hintXDeclaredButNotUsed, getSymRepr(s))
     s = nextIter(it, scope.symbols)
   
 proc wrongRedefinition*(info: TLineInfo, s: string) =

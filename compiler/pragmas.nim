@@ -23,7 +23,7 @@ const
     wMagic, wNosideeffect, wSideeffect, wNoreturn, wDynlib, wHeader, 
     wCompilerproc, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge, 
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
-    wNoStackFrame, wError, wDiscardable, wNoInit, wDestructor, wCodegenDecl,
+    wAsmNoStackFrame, wError, wDiscardable, wNoInit, wDestructor, wCodegenDecl,
     wGensym, wInject, wRaises, wTags, wOperator, wDelegator}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas
@@ -47,12 +47,13 @@ const
     wInjectStmt}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wNosideeffect, wSideeffect, wNoreturn, wDynlib, wHeader, 
-    wDeprecated, wExtern, wThread, wImportCpp, wImportObjC, wNoStackFrame,
+    wDeprecated, wExtern, wThread, wImportCpp, wImportObjC, wAsmNoStackFrame,
     wRaises, wTags}
   typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl, 
-    wPure, wHeader, wCompilerproc, wFinal, wSize, wExtern, wShallow, 
+    wPure, wHeader, wCompilerproc, wFinal, wSize, wExtern, wShallow,
     wImportCpp, wImportObjC, wError, wIncompleteStruct, wByCopy, wByRef,
-    wInheritable, wGensym, wInject, wRequiresInit}
+    wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
+    wBorrow}
   fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern, 
     wImportCpp, wImportObjC, wError}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl, 
@@ -97,8 +98,22 @@ proc makeExternImport(s: PSym, extname: string) =
   incl(s.flags, sfImportc)
   excl(s.flags, sfForward)
 
-proc makeExternExport(s: PSym, extname: string) = 
+proc validateExternCName(s: PSym, info: TLineInfo) =
+  ## Validates that the symbol name in s.loc.r is a valid C identifier.
+  ##
+  ## Valid identifiers are those alphanumeric including the underscore not
+  ## starting with a number. If the check fails, a generic error will be
+  ## displayed to the user.
+  let target = ropeToStr(s.loc.r)
+  if target.len < 1 or target[0] notin IdentStartChars or
+      not target.allCharsInSet(IdentChars):
+    localError(info, errGenerated, "invalid exported symbol")
+
+proc makeExternExport(s: PSym, extname: string, info: TLineInfo) =
   setExternName(s, extname)
+  # XXX to fix make it work with nimrtl.
+  #if gCmd in {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC}:
+  #  validateExternCName(s, info)
   incl(s.flags, sfExportc)
 
 proc processImportCompilerProc(s: PSym, extname: string) =
@@ -498,6 +513,13 @@ proc pragmaRaisesOrTags(c: PContext, n: PNode) =
   else:
     invalidPragma(n)
 
+proc typeBorrow(sym: PSym, n: PNode) =
+  if n.kind == nkExprColonExpr:
+    let it = n.sons[1]
+    if it.kind != nkAccQuoted:
+      localError(n.info, "a type can only borrow `.` for now")
+  incl(sym.typ.flags, tfBorrowDot)
+
 proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
                   validPragmas: TSpecialWords): bool =
   var it = n.sons[i]
@@ -515,7 +537,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
       if k in validPragmas: 
         case k
         of wExportc: 
-          makeExternExport(sym, getOptionalStr(c, it, "$1"))
+          makeExternExport(sym, getOptionalStr(c, it, "$1"), it.info)
           incl(sym.flags, sfUsed) # avoid wrong hints
         of wImportc: makeExternImport(sym, getOptionalStr(c, it, "$1"))
         of wImportCompilerProc:
@@ -548,9 +570,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         of wNodecl: 
           noVal(it)
           incl(sym.loc.flags, lfNoDecl)
-        of wPure, wNoStackFrame:
+        of wPure, wAsmNoStackFrame:
           noVal(it)
-          if sym != nil: incl(sym.flags, sfPure)
+          if sym != nil:
+            if k == wPure and sym.kind in routineKinds: invalidPragma(it)
+            else: incl(sym.flags, sfPure)
         of wVolatile: 
           noVal(it)
           incl(sym.flags, sfVolatile)
@@ -601,7 +625,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           processDynLib(c, it, sym)
         of wCompilerproc: 
           noVal(it)           # compilerproc may not get a string!
-          makeExternExport(sym, "$1")
+          makeExternExport(sym, "$1", it.info)
           incl(sym.flags, sfCompilerProc)
           incl(sym.flags, sfUsed) # suppress all those stupid warnings
           registerCompilerProc(sym)
@@ -616,9 +640,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           noVal(it)
           if sym.typ == nil: invalidPragma(it)
           else: incl(sym.typ.flags, tfVarargs)
-        of wBorrow: 
-          noVal(it)
-          incl(sym.flags, sfBorrow)
+        of wBorrow:
+          if sym.kind == skType:
+            typeBorrow(sym, it)
+          else:
+            noVal(it)
+            incl(sym.flags, sfBorrow)
         of wFinal: 
           noVal(it)
           if sym.typ == nil: invalidPragma(it)
@@ -640,6 +667,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           incl(sym.flags, sfThread)
           incl(sym.flags, sfProcvar)
           if sym.typ != nil: incl(sym.typ.flags, tfThread)
+        of wPacked:
+          noVal(it)
+          if sym.typ == nil: invalidPragma(it)
+          else: incl(sym.typ.flags, tfPacked)
         of wHint: message(it.info, hintUser, expectStrLit(c, it))
         of wWarning: message(it.info, warnUser, expectStrLit(c, it))
         of wError: 
@@ -699,6 +730,14 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           noVal(it)
           if sym.typ == nil: invalidPragma(it)
           else: incl(sym.typ.flags, tfIncompleteStruct)
+        of wUnchecked:
+          noVal(it)
+          if sym.typ == nil: invalidPragma(it)
+          else: incl(sym.typ.flags, tfUncheckedArray)
+        of wUnion:
+          noVal(it)
+          if sym.typ == nil: invalidPragma(it)
+          else: incl(sym.typ.flags, tfUnion)
         of wRequiresInit:
           noVal(it)
           if sym.typ == nil: invalidPragma(it)
@@ -732,8 +771,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
       else: invalidPragma(it)
   else: processNote(c, it)
 
-proc implictPragmas*(c: PContext, sym: PSym, n: PNode,
-                     validPragmas: TSpecialWords) =
+proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
+                      validPragmas: TSpecialWords) =
   if sym != nil and sym.kind != skModule:
     var it = POptionEntry(c.optionStack.head)
     while it != nil:
@@ -744,7 +783,7 @@ proc implictPragmas*(c: PContext, sym: PSym, n: PNode,
             internalError(n.info, "implicitPragmas")
       it = it.next.POptionEntry
 
-    if lfExportLib in sym.loc.flags and sfExportc notin sym.flags: 
+    if lfExportLib in sym.loc.flags and sfExportc notin sym.flags:
       localError(n.info, errDynlibRequiresExportc)
     var lib = POptionEntry(c.optionStack.tail).dynlib
     if {lfDynamicLib, lfHeader} * sym.loc.flags == {} and
@@ -753,8 +792,19 @@ proc implictPragmas*(c: PContext, sym: PSym, n: PNode,
       addToLib(lib, sym)
       if sym.loc.r == nil: sym.loc.r = toRope(sym.name.s)
 
+proc hasPragma*(n: PNode, pragma: TSpecialWord): bool =
+  if n == nil or n.sons == nil:
+    return false
+
+  for p in n.sons:
+    var key = if p.kind == nkExprColonExpr: p[0] else: p
+    if key.kind == nkIdent and whichKeyword(key.ident) == pragma:
+      return true
+  
+  return false
+
 proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
   if n == nil: return
   for i in countup(0, sonsLen(n) - 1):
     if singlePragma(c, sym, n, i, validPragmas): break
-  implictPragmas(c, sym, n, validPragmas)
+  implicitPragmas(c, sym, n, validPragmas)

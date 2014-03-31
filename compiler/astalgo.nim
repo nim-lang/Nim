@@ -50,7 +50,7 @@ proc strTableGet*(t: TStrTable, name: PIdent): PSym
 type 
   TTabIter*{.final.} = object # consider all fields here private
     h*: THash                 # current hash
-  
+
 proc initTabIter*(ti: var TTabIter, tab: TStrTable): PSym
 proc nextIter*(ti: var TTabIter, tab: TStrTable): PSym
   # usage:
@@ -156,6 +156,12 @@ proc leValue*(a, b: PNode): bool =
     # don't raise an internal error for 'nimrod check':
     #InternalError(a.info, "leValue")
     discard
+
+proc weakLeValue*(a, b: PNode): TImplication =
+  if a.kind notin nkLiterals or b.kind notin nkLiterals:
+    result = impUnknown
+  else:
+    result = if leValue(a, b): impYes else: impNo
 
 proc lookupInRecord(n: PNode, field: PIdent): PSym = 
   result = nil
@@ -337,7 +343,10 @@ proc treeToYamlAux(n: PNode, marker: var TIntSet, indent: int,
         appf(result, ",$N$1\"floatVal\": $2", 
             [istr, toRope(n.floatVal.toStrMaxPrecision)])
       of nkStrLit..nkTripleStrLit: 
-        appf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
+        if n.strVal.isNil:
+          appf(result, ",$N$1\"strVal\": null", [istr])
+        else:
+          appf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
       of nkSym: 
         appf(result, ",$N$1\"sym\": $2", 
              [istr, symToYamlAux(n.sym, marker, indent + 2, maxRecDepth)])
@@ -407,7 +416,10 @@ proc debugTree(n: PNode, indent: int, maxRecDepth: int): PRope =
         appf(result, ",$N$1\"floatVal\": $2", 
             [istr, toRope(n.floatVal.toStrMaxPrecision)])
       of nkStrLit..nkTripleStrLit: 
-        appf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
+        if n.strVal.isNil:
+          appf(result, ",$N$1\"strVal\": null", [istr])
+        else:
+          appf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
       of nkSym: 
         appf(result, ",$N$1\"sym\": $2_$3", 
             [istr, toRope(n.sym.name.s), toRope(n.sym.id)])

@@ -705,7 +705,7 @@ proc cgsym(m: BModule, name: string): PRope =
   var sym = magicsys.getCompilerProc(name)
   if sym != nil: 
     case sym.kind
-    of skProc, skMethod, skConverter, skIterator: genProc(m, sym)
+    of skProc, skMethod, skConverter, skIterators: genProc(m, sym)
     of skVar, skResult, skLet: genVarPrototype(m, sym)
     of skType: discard getTypeDesc(m, sym.typ)
     else: internalError("cgsym: " & name)
@@ -761,6 +761,8 @@ proc genProcAux(m: BModule, prc: PSym) =
   var returnStmt: PRope = nil
   assert(prc.ast != nil)
   if sfPure notin prc.flags and prc.typ.sons[0] != nil:
+    if resultPos >= prc.ast.len:
+      internalError(prc.info, "proc has no result symbol")
     var res = prc.ast.sons[resultPos].sym # get result symbol
     if not isInvalidReturnType(prc.typ.sons[0]):
       if sfNoInit in prc.flags: incl(res.flags, sfNoInit)
@@ -962,8 +964,8 @@ proc genMainProc(m: BModule) =
     NimMainBody =
       "N_CDECL(void, NimMain)(void) {$N" &
         "\tPreMain();$N" &
-        "$1$N" &
-      "}$N"
+        "$1" &
+      "}$N$N"
 
     PosixNimMain =
       "int cmdCount;$N" &
@@ -977,20 +979,20 @@ proc genMainProc(m: BModule) =
         "\tcmdCount = argc;$N" &
         "\tgEnv = env;$N" &
         MainProcsWithResult &
-      "}$N"
+      "}$N$N"
   
     StandaloneCMain =
       "int main(void) {$N" &
         MainProcs &
         "\treturn 0;$N" &
-      "}$N"
+      "}$N$N"
     
     WinNimMain = NimMainBody
     
     WinCMain = "N_STDCALL(int, WinMain)(HINSTANCE hCurInstance, $N" &
       "                        HINSTANCE hPrevInstance, $N" &
       "                        LPSTR lpCmdLine, int nCmdShow) {$N" &
-      MainProcsWithResult & "}$N"
+      MainProcsWithResult & "}$N$N"
   
     WinNimDllMain = "N_LIB_EXPORT " & NimMainBody
 
@@ -998,14 +1000,14 @@ proc genMainProc(m: BModule) =
       "BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fwdreason, $N" &
       "                    LPVOID lpvReserved) {$N" &
       "\tif(fwdreason == DLL_PROCESS_ATTACH) {$N" & MainProcs & "}$N" &
-      "\treturn 1;$N}$N"
+      "\treturn 1;$N}$N$N"
 
     PosixNimDllMain = WinNimDllMain
     
     PosixCDllMain =
       "void NIM_POSIX_INIT NimMainInit(void) {$N" &
         MainProcs &
-      "}$N"
+      "}$N$N"
 
   var nimMain, otherMain: TFormatStr
   if platform.targetOS == osWindows and
@@ -1034,7 +1036,7 @@ proc genMainProc(m: BModule) =
                               platform.targetOS == osStandalone: "".toRope
                             else: ropecg(m, "\t#initStackBottom();$N")
   inc(m.labels)
-  appcg(m, m.s[cfsProcs], "void PreMain() {$N" & PreMainBody & "}$N", [
+  appcg(m, m.s[cfsProcs], "void PreMain() {$N" & PreMainBody & "}$N$N", [
     mainDatInit, initStackBottomCall, gBreakpoints, otherModsInit])
 
   appcg(m, m.s[cfsProcs], nimMain, [mainModInit, toRope(m.labels)])
@@ -1042,8 +1044,10 @@ proc genMainProc(m: BModule) =
     appcg(m, m.s[cfsProcs], otherMain, [])
 
 proc getSomeInitName(m: PSym, suffix: string): PRope =
+  assert m.kind == skModule
+  assert m.owner.kind == skPackage
   if {sfSystemModule, sfMainModule} * m.flags == {}:
-    result = m.info.toFullPath.getPackageName.mangle.toRope
+    result = m.owner.name.s.mangle.toRope
   result.app m.name.s
   result.app suffix
   
@@ -1188,7 +1192,7 @@ proc nullify[T](arr: var T) =
   for i in low(arr)..high(arr):
     arr[i] = nil
 
-proc resetModule*(m: var BModule) =
+proc resetModule*(m: BModule) =
   # between two compilations in CAAS mode, we can throw
   # away all the data that was written to disk
   initLinkedList(m.headerFiles)

@@ -1,7 +1,7 @@
 # tests for the interpreter
 
 proc loops(a: var int) =
-  nil
+  discard
   #var
   #  b: int
   #b = glob

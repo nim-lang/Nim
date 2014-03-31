@@ -48,17 +48,17 @@ type
     nnkYieldStmt, nnkTryStmt, nnkFinally, nnkRaiseStmt,
     nnkReturnStmt, nnkBreakStmt, nnkContinueStmt, nnkBlockStmt, nnkStaticStmt,
     nnkDiscardStmt, nnkStmtList, 
-    
     nnkImportStmt,
     nnkImportExceptStmt,
     nnkExportStmt,
     nnkExportExceptStmt,
     nnkFromStmt,
     nnkIncludeStmt,
-    
     nnkBindStmt, nnkMixinStmt, nnkUsingStmt,
     nnkCommentStmt, nnkStmtListExpr, nnkBlockExpr,
-    nnkStmtListType, nnkBlockType, nnkTypeOfExpr, nnkObjectTy,
+    nnkStmtListType, nnkBlockType,
+    nnkWith, nnkWithout,
+    nnkTypeOfExpr, nnkObjectTy,
     nnkTupleTy, nnkTypeClassTy, nnkStaticTy,
     nnkRecList, nnkRecCase, nnkRecWhen,
     nnkRefTy, nnkPtrTy, nnkVarTy,
@@ -88,7 +88,7 @@ type
     nskUnknown, nskConditional, nskDynLib, nskParam,
     nskGenericParam, nskTemp, nskModule, nskType, nskVar, nskLet, 
     nskConst, nskResult,
-    nskProc, nskMethod, nskIterator,
+    nskProc, nskMethod, nskIterator, nskClosureIterator,
     nskConverter, nskMacro, nskTemplate, nskField,
     nskEnumField, nskForVar, nskLabel,
     nskStub
@@ -516,7 +516,7 @@ proc last*(node: PNimrodNode): PNimrodNode {.compileTime.} = node[node.high]
 
 
 const
-  RoutineNodes* = {nnkProcDef, nnkMethodDef, nnkDo, nnkLambda}
+  RoutineNodes* = {nnkProcDef, nnkMethodDef, nnkDo, nnkLambda, nnkIteratorDef}
   AtomicNodes* = {nnkNone..nnkNilLit}
   CallNodes* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand, 
     nnkCallStrLit, nnkHiddenCallConv}
