@@ -179,7 +179,7 @@ proc scanAndAppendWord(src: cstring, a: var TStaticStr, start: int): int =
   while True:
     case src[result]
     of 'a'..'z', '0'..'9': add(a, src[result])
-    of '_': nil # just skip it
+    of '_': discard # just skip it
     of 'A'..'Z': add(a, chr(ord(src[result]) - ord('A') + ord('a')))
     else: break
     inc(result)
@@ -203,7 +203,7 @@ proc scanNumber(src: cstring, a: var int, start: int): int =
   while true:
     case src[result]
     of '0'..'9': a = a * 10 + ord(src[result]) - ord('0')
-    of '_': nil # skip underscores (nice for long line numbers)
+    of '_': discard # skip underscores (nice for long line numbers)
     else: break
     inc(result)
 
@@ -524,7 +524,7 @@ proc lineHookImpl() {.nimcall.} =
   of dbBreakpoints:
     # debugger is only interested in breakpoints
     checkForBreakpoint()
-  else: nil
+  else: discard
 
 proc watchpointHookImpl(name: cstring) {.nimcall.} =
   dbgWriteStackTrace(framePtr)

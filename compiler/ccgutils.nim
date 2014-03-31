@@ -87,9 +87,10 @@ proc getUniqueType*(key: PType): PType =
       gCanonicalTypes[k] = key
       result = key
   of tyTypeDesc, tyTypeClasses, tyGenericParam,
-     tyFromExpr, tyStatic, tyFieldAccessor:
+     tyFromExpr, tyFieldAccessor:
     internalError("GetUniqueType")
-  of tyGenericInst, tyDistinct, tyOrdinal, tyMutable, tyConst, tyIter:
+  of tyGenericInst, tyDistinct, tyOrdinal, tyMutable,
+     tyConst, tyIter, tyStatic:
     result = getUniqueType(lastSon(key))
   of tyArrayConstr, tyGenericInvokation, tyGenericBody,
      tyOpenArray, tyArray, tySet, tyRange, tyTuple,
@@ -130,7 +131,6 @@ proc getUniqueType*(key: PType): PType =
       idTablePut(gTypeTable[k], key, key)
       result = key
   of tyProc:
-    # tyVar is not 100% correct, but would speeds things up a little:
     if key.callConv != ccClosure:
       result = key
     else:

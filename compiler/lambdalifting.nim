@@ -11,7 +11,7 @@
 
 import 
   intsets, strutils, lists, options, ast, astalgo, trees, treetab, msgs, os, 
-  idents, renderer, types, magicsys, rodread
+  idents, renderer, types, magicsys, rodread, lowerings
 
 discard """
   The basic approach is that captured vars need to be put on the heap and
@@ -232,9 +232,9 @@ proc newOuterContext(fn: PSym, up: POuterContext = nil): POuterContext =
   initIdNodeTable(result.localsToAccess)
   initIdTable(result.localsToEnv)
   initIdTable(result.lambdasToEnv)
-  result.isIter = fn.kind == skIterator and fn.typ.callConv == ccClosure
+  result.isIter = fn.kind == skClosureIterator
   if result.isIter: initIterContext(result, fn)
-  
+
 proc newInnerContext(fn: PSym): PInnerContext =
   new(result)
   result.fn = fn
@@ -292,8 +292,7 @@ proc newCall(a, b: PSym): PNode =
   result.add newSymNode(b)
 
 proc isInnerProc(s, outerProc: PSym): bool {.inline.} =
-  result = (s.kind in {skProc, skMethod, skConverter} or
-            s.kind == skIterator and s.typ.callConv == ccClosure) and
+  result = s.kind in {skProc, skMethod, skConverter, skClosureIterator} and
            s.skipGenericOwner == outerProc
   #s.typ.callConv == ccClosure
 
@@ -357,7 +356,10 @@ proc captureVar(o: POuterContext, i: PInnerContext, local: PSym,
     # it's in some upper environment:
     access = indirectAccess(access, addDep(e, it, i.fn), info)
   access = indirectAccess(access, local, info)
-  incl(o.capturedVars, local.id)
+  if o.isIter:
+    if not containsOrIncl(o.capturedVars, local.id): addField(o.tup, local)
+  else:
+    incl(o.capturedVars, local.id)
   idNodeTablePut(i.localsToAccess, local, access)
 
 proc interestingVar(s: PSym): bool {.inline.} =
@@ -519,7 +521,7 @@ proc searchForInnerProcs(o: POuterContext, n: PNode) =
       else:
         internalError(it.info, "transformOuter")
   of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef, nkTemplateDef, 
-     nkClosure:
+     nkClosure, nkTypeSection:
     # don't recurse here:
     # XXX recurse here and setup 'up' pointers
     discard
@@ -536,13 +538,6 @@ proc newAsgnStmt(le, ri: PNode, info: TLineInfo): PNode =
   result = newNodeI(nkAsgn, info, 2)
   result.sons[0] = le
   result.sons[1] = ri
-
-proc addVar*(father, v: PNode) = 
-  var vpart = newNodeI(nkIdentDefs, v.info)
-  addSon(vpart, v)
-  addSon(vpart, ast.emptyNode)
-  addSon(vpart, ast.emptyNode)
-  addSon(father, vpart)
 
 proc newClosureCreationVar(o: POuterContext; e: PEnv): PSym =
   result = newSym(skVar, getIdent(envName), o.fn, e.attachedNode.info)
@@ -653,7 +648,7 @@ proc outerProcSons(o: POuterContext, n: PNode) =
 proc liftIterSym*(n: PNode): PNode =
   # transforms  (iter)  to  (let env = newClosure[iter](); (iter, env)) 
   let iter = n.sym
-  assert iter.kind == skIterator
+  assert iter.kind == skClosureIterator
 
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   
@@ -679,7 +674,7 @@ proc transformOuterProc(o: POuterContext, n: PNode): PNode =
 
     var closure = PEnv(idTableGet(o.lambdasToEnv, local))
 
-    if local.kind == skIterator and local.typ.callConv == ccClosure:
+    if local.kind == skClosureIterator:
       # consider: [i1, i2, i1]  Since we merged the iterator's closure
       # with the captured owning variables, we need to generate the
       # closure generation code again:
@@ -843,10 +838,10 @@ proc liftForLoop*(body: PNode): PNode =
   
   # static binding?
   var env: PSym
-  if call[0].kind == nkSym and call[0].sym.kind == skIterator:
+  if call[0].kind == nkSym and call[0].sym.kind == skClosureIterator:
     # createClosure()
     let iter = call[0].sym
-    assert iter.kind == skIterator
+    assert iter.kind == skClosureIterator
     env = copySym(getHiddenParam(iter))
 
     var v = newNodeI(nkVarSection, body.info)

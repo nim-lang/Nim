@@ -1,10 +1,10 @@
 discard """
-  msg: '''
-int
-float
-TFoo
-TFoo
-'''
+  msg: '''int int
+float float
+int int
+TFoo TFoo
+int float
+TFoo TFoo'''
 """
 
 import typetraits
@@ -24,9 +24,8 @@ template reject(e: expr) =
 
 proc genericParamRepeated[T: typedesc](a: T, b: T) =
   static:
-    echo a.name
-    echo b.name
-
+    echo a.name, " ", b.name
+    
 accept genericParamRepeated(int, int)
 accept genericParamRepeated(float, float)
 
@@ -35,8 +34,7 @@ reject genericParamRepeated(int, float)
 
 proc genericParamOnce[T: typedesc](a, b: T) =
   static:
-    echo a.name
-    echo b.name
+    echo a.name, " ", b.name
 
 accept genericParamOnce(int, int)
 accept genericParamOnce(TFoo, TFoo)
@@ -68,8 +66,7 @@ reject typePairs2(string, int, TBAR, TBAR)
 
 proc dontBind(a: typedesc, b: typedesc) =
   static:
-    echo a.name
-    echo b.name
+    echo a.name, " ", b.name
 
 accept dontBind(int, float)
 accept dontBind(TFoo, TFoo)

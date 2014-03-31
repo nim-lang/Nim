@@ -2066,6 +2066,7 @@ proc pthread_spin_unlock*(a1: ptr Tpthread_spinlock): cint {.
 proc pthread_testcancel*() {.importc, header: "<pthread.h>".}
 
 
+proc exitnow*(code: int): void {.importc: "_exit", header: "<unistd.h>".}
 proc access*(a1: cstring, a2: cint): cint {.importc, header: "<unistd.h>".}
 proc alarm*(a1: cint): cint {.importc, header: "<unistd.h>".}
 proc chdir*(a1: cstring): cint {.importc, header: "<unistd.h>".}
@@ -2265,6 +2266,7 @@ proc gmtime_r*(a1: var TTime, a2: var Ttm): ptr Ttm {.importc, header: "<time.h>
 proc localtime*(a1: var TTime): ptr Ttm {.importc, header: "<time.h>".}
 proc localtime_r*(a1: var TTime, a2: var Ttm): ptr Ttm {.importc, header: "<time.h>".}
 proc mktime*(a1: var Ttm): TTime  {.importc, header: "<time.h>".}
+proc timegm*(a1: var Ttm): TTime  {.importc, header: "<time.h>".}
 proc nanosleep*(a1, a2: var Ttimespec): cint {.importc, header: "<time.h>".}
 proc strftime*(a1: cstring, a2: int, a3: cstring,
            a4: var Ttm): int {.importc, header: "<time.h>".}
@@ -2356,7 +2358,7 @@ proc FD_ZERO*(a1: var TFdSet) {.importc, header: "<sys/select.h>".}
 
 proc pselect*(a1: cint, a2, a3, a4: ptr TFdSet, a5: ptr Ttimespec,
          a6: var Tsigset): cint  {.importc, header: "<sys/select.h>".}
-proc select*(a1: cint, a2, a3, a4: ptr TFdSet, a5: ptr Ttimeval): cint {.
+proc select*(a1: cint | TSocketHandle, a2, a3, a4: ptr TFdSet, a5: ptr Ttimeval): cint {.
              importc, header: "<sys/select.h>".}
 
 when hasSpawnH:

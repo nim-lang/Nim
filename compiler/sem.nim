@@ -66,6 +66,9 @@ proc fitNode(c: PContext, formal: PType, arg: PNode): PNode =
       result = copyTree(arg)
       result.typ = formal
 
+proc inferWithMetatype(c: PContext, formal: PType,
+                       arg: PNode, coerceDistincts = false): PNode
+
 var commonTypeBegin = PType(kind: tyExpr)
 
 proc commonType*(x, y: PType): PType =
@@ -120,7 +123,8 @@ proc commonType*(x, y: PType): PType =
     if a.kind == tyObject and b.kind == tyObject:
       result = commonSuperclass(a, b)
       # this will trigger an error later:
-      if result.isNil: return x
+      if result.isNil or result == a: return x
+      if result == b: return y
       if k != tyNone:
         let r = result
         result = newType(k, r.owner)
@@ -138,6 +142,10 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     result = n.sym
     internalAssert sfGenSym in result.flags
     internalAssert result.kind == kind
+    # when there is a nested proc inside a template, semtmpl
+    # will assign a wrong owner during the first pass over the
+    # template; we must fix it here: see #909
+    result.owner = getCurrOwner()
   else:
     result = newSym(kind, considerAcc(n), getCurrOwner(), n.info)
 
@@ -193,7 +201,8 @@ proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
       result = semExprWithType(c, evaluated)
     else:
       result = evaluated
-      semmacrosanity.annotateType(result, eOrig.typ)
+      let expectedType = eOrig.typ.skipTypes({tyStatic})
+      semmacrosanity.annotateType(result, expectedType)
   else:
     result = semExprWithType(c, evaluated)
     #result = fitNode(c, e.typ, result) inlined with special case:
@@ -213,14 +222,26 @@ proc tryConstExpr(c: PContext, n: PNode): PNode =
   result = getConstExpr(c.module, e)
   if result != nil: return
 
+  let oldErrorCount = msgs.gErrorCounter
+  let oldErrorMax = msgs.gErrorMax
+  let oldErrorOutputs = errorOutputs
+
+  errorOutputs = {}
+  msgs.gErrorMax = high(int)
+
   try:
     result = evalConstExpr(c.module, e)
     if result == nil or result.kind == nkEmpty:
-      return nil
+      result = nil
+    else:
+      result = fixupTypeAfterEval(c, result, e)
 
-    result = fixupTypeAfterEval(c, result, e)
-  except:
-    return nil
+  except ERecoverableError:
+    result = nil
+
+  msgs.gErrorCounter = oldErrorCount
+  msgs.gErrorMax = oldErrorMax
+  errorOutputs = oldErrorOutputs
 
 proc semConstExpr(c: PContext, n: PNode): PNode =
   var e = semExprWithType(c, n)
@@ -332,6 +353,8 @@ proc myOpen(module: PSym): PPassContext =
   c.semOperand = semOperand
   c.semConstBoolExpr = semConstBoolExpr
   c.semOverloadedCall = semOverloadedCall
+  c.semInferredLambda = semInferredLambda
+  c.semGenerateInstance = generateInstance
   c.semTypeNode = semTypeNode
   pushProcCon(c, module)
   pushOwner(c.module)

@@ -431,11 +431,12 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       add(result, typeToString(t.sons[i]))
     add(result, ']')
   of tyTypeDesc:
-    if t.len == 0: result = "typedesc"
-    else: result = "typedesc[" & typeToString(t.sons[0]) & "]"
+    if t.base.kind == tyNone: result = "typedesc"
+    else: result = "typedesc[" & typeToString(t.base) & "]"
   of tyStatic:
     internalAssert t.len > 0
     result = "static[" & typeToString(t.sons[0]) & "]"
+    if t.n != nil: result.add "(" & renderTree(t.n) & ")"
   of tyUserTypeClass:
     internalAssert t.sym != nil and t.sym.owner != nil
     return t.sym.owner.name.s
@@ -452,7 +453,8 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       of tyProc: "proc"
       of tyObject: "object"
       of tyTuple: "tuple"
-      else: (internalAssert(false); "")
+      of tyOpenArray: "openarray"
+      else: typeToStr[t.base.kind]
   of tyUserTypeClassInst:
     let body = t.base
     result = body.sym.name.s & "["
@@ -463,7 +465,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   of tyAnd:
     result = typeToString(t.sons[0]) & " and " & typeToString(t.sons[1])
   of tyOr:
-    result = typeToString(t.sons[0]) & " and " & typeToString(t.sons[1])
+    result = typeToString(t.sons[0]) & " or " & typeToString(t.sons[1])
   of tyNot:
     result = "not " & typeToString(t.sons[0])
   of tyExpr:
@@ -828,6 +830,12 @@ proc sameChildrenAux(a, b: PType, c: var TSameTypeClosure): bool =
     result = sameTypeOrNilAux(a.sons[i], b.sons[i], c)
     if not result: return 
 
+proc isGenericAlias*(t: PType): bool =
+  return t.kind == tyGenericInst and t.lastSon.kind == tyGenericInst
+
+proc skipGenericAlias*(t: PType): PType =
+  return if t.isGenericAlias: t.lastSon else: t
+
 proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
   template cycleCheck() =
     # believe it or not, the direct check for ``containsOrIncl(c, a, b)``
@@ -857,7 +865,20 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       if a.kind != b.kind: return false
     of dcEqOrDistinctOf:
       while a.kind == tyDistinct: a = a.sons[0]
-      if a.kind != b.kind: return false  
+      if a.kind != b.kind: return false
+  
+  if x.kind == tyGenericInst:
+    let
+      lhs = x.skipGenericAlias
+      rhs = y.skipGenericAlias
+    if rhs.kind != tyGenericInst or lhs.base != rhs.base:
+      return false
+    for i in 1 .. lhs.len - 2:
+      let ff = rhs.sons[i]
+      let aa = lhs.sons[i]
+      if not sameTypeAux(ff, aa, c): return false
+    return true
+
   case a.kind
   of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString,
      tyInt..tyBigNum, tyStmt, tyExpr:
@@ -882,8 +903,6 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
   of tyTuple:
     cycleCheck()
     result = sameTuple(a, b, c) and sameFlags(a, b)
-  of tyGenericInst:    
-    result = sameTypeAux(lastSon(a), lastSon(b), c)
   of tyTypeDesc:
     if c.cmp == dcEqIgnoreDistinct: result = false
     elif ExactTypeDescValues in c.flags:
@@ -910,6 +929,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     result = sameTypeOrNilAux(a.sons[0], b.sons[0], c) and
         sameValue(a.n.sons[0], b.n.sons[0]) and
         sameValue(a.n.sons[1], b.n.sons[1])
+  of tyGenericInst: discard
   of tyNone: result = false  
 
 proc sameBackendType*(x, y: PType): bool =
@@ -1003,12 +1023,6 @@ proc matchType*(a: PType, pattern: openArray[tuple[k:TTypeKind, i:int]],
     a = a.sons[i]
   result = a.kind == last
 
-proc isGenericAlias*(t: PType): bool =
-  return t.kind == tyGenericInst and t.lastSon.kind == tyGenericInst
-
-proc skipGenericAlias*(t: PType): PType =
-  return if t.isGenericAlias: t.lastSon else: t
-
 proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind,
                     flags: TTypeAllowedFlags = {}): bool =
   assert(kind in {skVar, skLet, skConst, skParam, skResult})
@@ -1042,7 +1056,8 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind,
   of tyEmpty:
     result = taField in flags
   of tyTypeClasses:
-    result = true
+    result = tfGenericTypeParam in t.flags or
+             taField notin flags
   of tyGenericBody, tyGenericParam, tyGenericInvokation,
      tyNone, tyForward, tyFromExpr, tyFieldAccessor:
     result = false
@@ -1231,8 +1246,7 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
   of tyGenericInst, tyDistinct, tyGenericBody, tyMutable, tyConst, tyIter:
     result = computeSizeAux(lastSon(typ), a)
   of tyTypeDesc:
-    result = if typ.len == 1: computeSizeAux(typ.sons[0], a)
-             else: szUnknownSize
+    result = computeSizeAux(typ.base, a)
   of tyForward: return szIllegalRecursion
   else:
     #internalError("computeSizeAux()")
@@ -1246,7 +1260,7 @@ proc computeSize(typ: PType): BiggestInt =
 
 proc getReturnType*(s: PSym): PType =
   # Obtains the return type of a iterator/proc/macro/template
-  assert s.kind in {skProc, skTemplate, skMacro, skIterator}
+  assert s.kind in skProcKinds
   result = s.typ.sons[0]
 
 proc getSize(typ: PType): BiggestInt = 
@@ -1254,15 +1268,18 @@ proc getSize(typ: PType): BiggestInt =
   if result < 0: internalError("getSize: " & $typ.kind)
 
 proc containsGenericTypeIter(t: PType, closure: PObject): bool =
+  if t.kind == tyStatic:
+    return t.n == nil
+
+  if t.kind == tyTypeDesc:
+    if t.base.kind == tyNone: return true
+    if containsGenericTypeIter(t.base, closure): return true
+    return false
+
   if t.kind in GenericTypes + tyTypeClasses + {tyFromExpr}:
     return true
 
-  if t.kind == tyTypeDesc:
-    if t.sons[0].kind == tyNone: return true
-    if containsGenericTypeIter(t.base, closure): return true
-    return false
-  
-  return t.kind == tyStatic and t.n == nil
+  return false
 
 proc containsGenericType*(t: PType): bool = 
   result = iterOverType(t, containsGenericTypeIter, nil)

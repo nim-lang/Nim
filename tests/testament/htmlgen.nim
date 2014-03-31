@@ -9,7 +9,7 @@
 
 ## HTML generator for the tester.
 
-import db_sqlite, cgi, backend, strutils
+import db_sqlite, cgi, backend, strutils, json
 
 const
   TableHeader = """<table border="1">
@@ -114,8 +114,6 @@ proc getCommit(db: TDbConn, c: int): string =
   for thisCommit in db.rows(sql"select id from [Commit] order by id desc"):
     if commit == 0: result = thisCommit[0]
     inc commit
-  if result.isNil:
-    quit "cannot determine commit " & $c
 
 proc generateHtml*(filename: string, commit: int) =
   const selRow = """select name, category, target, action, 
@@ -161,20 +159,67 @@ proc generateHtml*(filename: string, commit: int) =
   close(outfile)
 
 proc generateJson*(filename: string, commit: int) =
-  const selRow = """select count(*),
+  const
+    selRow = """select count(*),
                            sum(result = 'reSuccess'), 
                            sum(result = 'reIgnored')
+                from TestResult
+                where [commit] = ? and machine = ?
+                order by category"""
+    selDiff = """select A.category || '/' || A.target || '/' || A.name,
+                        A.result,
+                        B.result
+                from TestResult A
+                inner join TestResult B
+                on A.name = B.name and A.category = B.category
+                where A.[commit] = ? and B.[commit] = ? and A.machine = ?
+                   and A.result != B.result"""
+    selResults = """select 
+                      category || '/' || target || '/' || name, 
+                      category, target, action, result, expected, given 
                     from TestResult
-                    where [commit] = ? and machine = ?
-                    order by category"""
+                    where [commit] = ?"""
   var db = open(connection="testament.db", user="testament", password="",
                 database="testament")
   let lastCommit = db.getCommit(commit)
+  if lastCommit.isNil:
+    quit "cannot determine commit " & $commit
+
+  let previousCommit = db.getCommit(commit-1)
 
   var outfile = open(filename, fmWrite)
 
-  let data = db.getRow(sql(selRow), lastCommit, $backend.getMachine(db))
+  let machine = $backend.getMachine(db)
+  let data = db.getRow(sql(selRow), lastCommit, machine)
 
-  outfile.writeln("""{"total": $#, "passed": $#, "skipped": $#}""" % data)
+  outfile.writeln("""{"total": $#, "passed": $#, "skipped": $#""" % data)
+
+  let results = newJArray()
+  for row in db.rows(sql(selResults), lastCommit):
+    var obj = newJObject()
+    obj["name"] = %row[0]
+    obj["category"] = %row[1]
+    obj["target"] = %row[2]
+    obj["action"] = %row[3]
+    obj["result"] = %row[4]
+    obj["expected"] = %row[5]
+    obj["given"] = %row[6]
+    results.add(obj)
+  outfile.writeln(""", "results": """)
+  outfile.write(results.pretty)
+
+  if not previousCommit.isNil:
+    let diff = newJArray()
+
+    for row in db.rows(sql(selDiff), previousCommit, lastCommit, machine):
+      var obj = newJObject()
+      obj["name"] = %row[0]
+      obj["old"] = %row[1]
+      obj["new"] = %row[2]
+      diff.add obj
+    outfile.writeln(""", "diff": """)
+    outfile.writeln(diff.pretty)
+
+  outfile.writeln "}"
   close(db)
   close(outfile)

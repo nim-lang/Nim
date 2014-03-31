@@ -74,7 +74,7 @@ Is translated into:
       printf("%s\x0A", x)
   else:
     template OUT*(x: expr): stmt = 
-      nil
+      discard
   
 As can been seen from the example, C's macros with parameters are mapped
 to Nimrod's templates. This mapping is the best one can do, but it is of course

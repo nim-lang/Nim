@@ -890,7 +890,7 @@ proc loadStub*(s: PSym) =
   
   # deactivate the GC here because we do a deep recursion and generate no
   # garbage when restoring parts of the object graph anyway.
-  # Since we die with internal errors if this fails, so no try-finally is
+  # Since we die with internal errors if this fails, no try-finally is
   # necessary.
   GC_disable()
   rawLoadStub(s)

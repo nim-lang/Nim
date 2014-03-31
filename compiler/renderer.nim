@@ -424,8 +424,11 @@ proc lsub(n: PNode): int =
   of nkRefTy: result = (if n.len > 0: lsub(n.sons[0])+1 else: 0) + len("ref")
   of nkPtrTy: result = (if n.len > 0: lsub(n.sons[0])+1 else: 0) + len("ptr")
   of nkVarTy: result = (if n.len > 0: lsub(n.sons[0])+1 else: 0) + len("var")
-  of nkDistinctTy: result = (if n.len > 0: lsub(n.sons[0])+1 else: 0) +
-                                                         len("Distinct")
+  of nkDistinctTy:
+    result = len("distinct") + (if n.len > 0: lsub(n.sons[0])+1 else: 0)
+    if n.len > 1:
+      result += (if n[1].kind == nkWith: len("_with_") else: len("_without_"))
+      result += lcomma(n[1])
   of nkStaticTy: result = (if n.len > 0: lsub(n.sons[0]) else: 0) +
                                                          len("static[]")
   of nkTypeDef: result = lsons(n) + 3
@@ -558,16 +561,19 @@ proc longMode(n: PNode, start: int = 0, theEnd: int = - 1): bool =
         result = true
         break 
 
-proc gstmts(g: var TSrcGen, n: PNode, c: TContext) = 
-  if n.kind == nkEmpty: return 
+proc gstmts(g: var TSrcGen, n: PNode, c: TContext, doIndent=true) =
+  if n.kind == nkEmpty: return
   if n.kind in {nkStmtList, nkStmtListExpr, nkStmtListType}:
-    indentNL(g)
-    for i in countup(0, sonsLen(n) - 1): 
+    if doIndent: indentNL(g)
+    for i in countup(0, sonsLen(n) - 1):
       optNL(g)
-      gsub(g, n.sons[i])
+      if n.sons[i].kind in {nkStmtList, nkStmtListExpr, nkStmtListType}:
+        gstmts(g, n.sons[i], c, doIndent=false)
+      else:
+        gsub(g, n.sons[i])
       gcoms(g)
-    dedent(g)
-  else: 
+    if doIndent: dedent(g)
+  else:
     if rfLongMode in c.flags: indentNL(g)
     gsub(g, n)
     gcoms(g)
@@ -1017,9 +1023,15 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     else:
       put(g, tkVar, "var")
   of nkDistinctTy: 
-    if sonsLen(n) > 0:
+    if n.len > 0:
       putWithSpace(g, tkDistinct, "distinct")
       gsub(g, n.sons[0])
+      if n.len > 1:
+        if n[1].kind == nkWith:
+          putWithSpace(g, tkWith, " with")
+        else:
+          putWithSpace(g, tkWithout, " without")
+        gcomma(g, n[1])
     else:
       put(g, tkDistinct, "distinct")
   of nkTypeDef: 
@@ -1268,7 +1280,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       put(g, tkBracketLe, "[")
       gcomma(g, n)
       put(g, tkBracketRi, "]")
-  of nkMetaNode:
+  of nkMetaNode_Obsolete:
     put(g, tkParLe, "(META|")
     gsub(g, n.sons[0])
     put(g, tkParRi, ")")

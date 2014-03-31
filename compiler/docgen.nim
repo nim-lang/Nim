@@ -42,17 +42,23 @@ proc compilerMsgHandler(filename: string, line, col: int,
   of mwUnsupportedLanguage: k = warnLanguageXNotSupported
   globalError(newLineInfo(filename, line, col), k, arg)
 
+proc docgenFindFile(s: string): string {.procvar.} =
+  result = options.findFile(s)
+  if result.len == 0:
+    result = getCurrentDir() / s
+    if not existsFile(result): result = ""
+
 proc parseRst(text, filename: string,
               line, column: int, hasToc: var bool,
               rstOptions: TRstParseOptions): PRstNode =
   result = rstParse(text, filename, line, column, hasToc, rstOptions,
-                    options.findFile, compilerMsgHandler)
+                    docgenFindFile, compilerMsgHandler)
 
 proc newDocumentor*(filename: string, config: PStringTable): PDoc =
   new(result)
   initRstGenerator(result[], (if gCmd != cmdRst2tex: outHtml else: outLatex),
                    options.gConfigVars, filename, {roSupportRawDirective},
-                   options.findFile, compilerMsgHandler)
+                   docgenFindFile, compilerMsgHandler)
   result.id = 100
 
 proc dispA(dest: var PRope, xml, tex: string, args: openArray[PRope]) =
@@ -360,7 +366,7 @@ proc generateJson(d: PDoc, n: PNode, jArray: PJsonNode = nil): PJsonNode =
 proc genSection(d: PDoc, kind: TSymKind) =
   const sectionNames: array[skModule..skTemplate, string] = [
     "Imports", "Types", "Vars", "Lets", "Consts", "Vars", "Procs", "Methods",
-    "Iterators", "Converters", "Macros", "Templates"
+    "Iterators", "Iterators", "Converters", "Macros", "Templates"
   ]
   if d.section[kind] == nil: return
   var title = sectionNames[kind].toRope

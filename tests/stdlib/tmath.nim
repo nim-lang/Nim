@@ -23,6 +23,13 @@ suite "random int":
       rand = random(100..1000)
       check rand < 1000
       check rand >= 100
+  test "randomize() again gives new numbers":      
+    randomize()
+    var rand1 = random(1000000)
+    randomize()
+    var rand2 = random(1000000)
+    check rand1 != rand2
+    
 
 suite "random float":
   test "there might be some randomness":
@@ -45,3 +52,10 @@ suite "random float":
       rand = random(100.0..1000.0)
       check rand < 1000.0
       check rand >= 100.0
+  test "randomize() again gives new numbers":      
+    randomize()
+    var rand1:float = random(1000000.0)
+    randomize()
+    var rand2:float = random(1000000.0)
+    check rand1 != rand2
+

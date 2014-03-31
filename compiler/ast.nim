@@ -62,7 +62,7 @@ type
     nkTripleStrLit,       # a triple string literal """
     nkNilLit,             # the nil literal
                           # end of atoms
-    nkMetaNode,           # difficult to explain; represents itself
+    nkMetaNode_Obsolete,  # difficult to explain; represents itself
                           # (used for macros)
     nkDotCall,            # used to temporarily flag a nkCall node; 
                           # this is used
@@ -188,6 +188,10 @@ type
     nkStmtListType,       # a statement list ending in a type; for macros
     nkBlockType,          # a statement block ending in a type; for macros
                           # types as syntactic trees:
+
+    nkWith,               # distinct with `foo`
+    nkWithout,            # distinct without `foo`
+    
     nkTypeOfExpr,         # type(1+2)
     nkObjectTy,           # object body
     nkTupleTy,            # tuple body
@@ -382,6 +386,10 @@ type
       # sons[0]: type of containing object or tuple
       # sons[1]: field type
       # .n: nkDotExpr storing the field name
+    
+static:
+  # remind us when TTypeKind stops to fit in a single 64-bit word
+  assert TTypeKind.high.ord <= 63
 
 const
   tyPureObject* = tyTuple
@@ -394,7 +402,7 @@ const
                     tyUserTypeClass, tyUserTypeClassInst,
                     tyAnd, tyOr, tyNot, tyAnything}
 
-  tyMetaTypes* = {tyGenericParam, tyTypeDesc, tyStatic, tyExpr} + tyTypeClasses
+  tyMetaTypes* = {tyGenericParam, tyTypeDesc, tyExpr} + tyTypeClasses
  
 type
   TTypeKinds* = set[TTypeKind]
@@ -409,12 +417,14 @@ type
                 # efficiency
     nfTransf,   # node has been transformed
     nfSem       # node has been checked for semantics
-    nfDelegate  # the call can use a delegator
+    nfDotField  # the call can use a dot operator
+    nfDotSetter # the call can use a setter dot operarator
+    nfExplicitCall # x.y() was used instead of x.y
     nfExprCall  # this is an attempt to call a regular expression
     nfIsRef     # this node is a 'ref' node; used for the VM
-
+ 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 23)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 28)
     tfVarargs,        # procedure has C styled varargs
     tfNoSideEffect,   # procedure type does not allow side effects
     tfFinal,          # is the object final?
@@ -426,8 +436,11 @@ type
     tfFromGeneric,    # type is an instantiation of a generic; this is needed
                       # because for instantiations of objects, structural
                       # type equality has to be used
-    tfUnresolved,     # marks unresolved typedesc params: e.g.
+    tfUnresolved,     # marks unresolved typedesc/static params: e.g.
                       # proc foo(T: typedesc, list: seq[T]): var T
+                      # proc foo(L: static[int]): array[L, int]
+                      # can be attached to ranges to indicate that the range
+                      # depends on unresolved static params.
     tfRetType,        # marks return types in proc (used to detect type classes 
                       # used as return types for return type inference)
     tfCapturesEnv,    # whether proc really captures some environment
@@ -443,9 +456,16 @@ type
     tfHasMeta,        # type contains "wildcard" sub-types such as generic params
                       # or other type classes
     tfHasGCedMem,     # type contains GC'ed memory
+    tfPacked
     tfHasStatic
     tfGenericTypeParam
     tfImplicitTypeParam
+    tfWildcard        # consider a proc like foo[T, I](x: Type[T, I])
+                      # T and I here can bind to both typedesc and static types
+                      # before this is determined, we'll consider them to be a
+                      # wildcard type.
+    tfGuarded         # guarded pointer
+    tfBorrowDot       # distinct type borrows '.'
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -467,7 +487,8 @@ type
     skResult,             # special 'result' variable
     skProc,               # a proc
     skMethod,             # a method
-    skIterator,           # an iterator
+    skIterator,           # an inline iterator
+    skClosureIterator,    # a resumable closure iterator
     skConverter,          # a type converter
     skMacro,              # a macro
     skTemplate,           # a template; currently also misused for user-defined
@@ -479,12 +500,15 @@ type
     skStub,               # symbol is a stub and not yet loaded from the ROD
                           # file (it is loaded on demand, which may
                           # mean: never)
+    skPackage             # symbol is a package (used for canonicalization)
   TSymKinds* = set[TSymKind]
 
 const
-  routineKinds* = {skProc, skMethod, skIterator, skConverter,
-    skMacro, skTemplate}
+  routineKinds* = {skProc, skMethod, skIterator, skClosureIterator,
+                   skConverter, skMacro, skTemplate}
   tfIncompleteStruct* = tfVarargs
+  tfUncheckedArray* = tfVarargs
+  tfUnion* = tfNoSideEffect
   skError* = skUnknown
   
   # type flags that are essential for type equality:
@@ -687,7 +711,7 @@ type
   TSym* {.acyclic.} = object of TIdObj
     # proc and type instantiations are cached in the generic symbol
     case kind*: TSymKind
-    of skType:
+    of skType, skGenericParam:
       typeInstCache*: seq[PType]
       typScope*: PScope
     of routineKinds:
@@ -812,13 +836,16 @@ type
     counter*: int
     data*: TObjectSeq
 
+  TImplication* = enum
+    impUnknown, impNo, impYes
+
 # BUGFIX: a module is overloadable so that a proc can have the
 # same name as an imported module. This is necessary because of
 # the poor naming choices in the standard library.
 
 const 
-  OverloadableSyms* = {skProc, skMethod, skIterator, skConverter,
-    skModule, skTemplate, skMacro}
+  OverloadableSyms* = {skProc, skMethod, skIterator, skClosureIterator,
+    skConverter, skModule, skTemplate, skMacro}
 
   GenericTypes*: TTypeKinds = {tyGenericInvokation, tyGenericBody, 
     tyGenericParam}
@@ -840,10 +867,12 @@ const
                                     tyTuple, tySequence}
   NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr, tySequence,
     tyProc, tyString, tyError}
-  ExportableSymKinds* = {skVar, skConst, skProc, skMethod, skType, skIterator, 
+  ExportableSymKinds* = {skVar, skConst, skProc, skMethod, skType,
+    skIterator, skClosureIterator,
     skMacro, skTemplate, skConverter, skEnumField, skLet, skStub}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
-                                      nfAllConst, nfDelegate, nfIsRef}
+                                      nfDotSetter, nfDotField,
+                                      nfAllConst,nfIsRef}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2
@@ -857,6 +886,7 @@ const
   nkCallKinds* = {nkCall, nkInfix, nkPrefix, nkPostfix,
                   nkCommand, nkCallStrLit, nkHiddenCallConv}
 
+  nkLiterals* = {nkCharLit..nkTripleStrLit}
   nkLambdaKinds* = {nkLambda, nkDo}
   declarativeDefs* = {nkProcDef, nkMethodDef, nkIteratorDef, nkConverterDef}
   procDefs* = nkLambdaKinds + declarativeDefs
@@ -865,7 +895,10 @@ const
   nkStrKinds* = {nkStrLit..nkTripleStrLit}
 
   skLocalVars* = {skVar, skLet, skForVar, skParam, skResult}
-  skProcKinds* = {skProc, skTemplate, skMacro, skIterator, skMethod, skConverter}
+  skProcKinds* = {skProc, skTemplate, skMacro, skIterator, skClosureIterator,
+                  skMethod, skConverter}
+
+  skIterators* = {skIterator, skClosureIterator}
 
   lfFullExternalName* = lfParamCopy # \
     # only used when 'gCmd == cmdPretty': Indicates that the symbol has been
@@ -946,7 +979,9 @@ var emptyNode* = newNode(nkEmpty)
 # There is a single empty node that is shared! Do not overwrite it!
 
 proc isMetaType*(t: PType): bool =
-  return t.kind in tyMetaTypes or tfHasMeta in t.flags
+  return t.kind in tyMetaTypes or
+         (t.kind == tyStatic and t.n == nil) or
+         tfHasMeta in t.flags
 
 proc linkTo*(t: PType, s: PSym): PType {.discardable.} =
   t.sym = s
@@ -1008,7 +1043,7 @@ proc discardSons(father: PNode) =
   father.sons = nil
 
 when defined(useNodeIds):
-  const nodeIdToDebug = 612777 # 612794
+  const nodeIdToDebug* = 482228 # 612794
   #612840 # 612905 # 614635 # 614637 # 614641
   # 423408
   #429107 # 430443 # 441048 # 441090 # 441153
@@ -1043,6 +1078,10 @@ proc newFloatNode(kind: TNodeKind, floatVal: BiggestFloat): PNode =
 proc newStrNode(kind: TNodeKind, strVal: string): PNode = 
   result = newNode(kind)
   result.strVal = strVal
+
+proc withInfo*(n: PNode, info: TLineInfo): PNode =
+  n.info = info
+  return n
 
 proc newIdentNode(ident: PIdent, info: TLineInfo): PNode = 
   result = newNode(nkIdent)
@@ -1104,10 +1143,6 @@ proc newNodeIT(kind: TNodeKind, info: TLineInfo, typ: PType): PNode =
   result = newNode(kind)
   result.info = info
   result.typ = typ
-
-proc newMetaNodeIT*(tree: PNode, info: TLineInfo, typ: PType): PNode =
-  result = newNodeIT(nkMetaNode, info, typ)
-  result.add(tree)
 
 var emptyParams = newNode(nkFormalParams)
 emptyParams.addSon(emptyNode)
@@ -1276,7 +1311,7 @@ proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
 proc propagateToOwner*(owner, elem: PType) =
   const HaveTheirOwnEmpty = {tySequence, tySet}
   owner.flags = owner.flags + (elem.flags * {tfHasShared, tfHasMeta,
-                                             tfHasStatic, tfHasGCedMem})
+                                             tfHasGCedMem})
   if tfNotNil in elem.flags:
     if owner.kind in {tyGenericInst, tyGenericBody, tyGenericInvokation}:
       owner.flags.incl tfNotNil
@@ -1290,11 +1325,8 @@ proc propagateToOwner*(owner, elem: PType) =
   if tfShared in elem.flags:
     owner.flags.incl tfHasShared
 
-  if elem.kind in tyMetaTypes:
+  if elem.isMetaType:
     owner.flags.incl tfHasMeta
-
-  if elem.kind == tyStatic:
-    owner.flags.incl tfHasStatic
 
   if elem.kind in {tyString, tyRef, tySequence} or
       elem.kind == tyProc and elem.callConv == ccClosure:
@@ -1475,14 +1507,16 @@ proc originatingModule*(s: PSym): PSym =
   while result.kind != skModule: result = result.owner
 
 proc isRoutine*(s: PSym): bool {.inline.} =
-  result = s.kind in {skProc, skTemplate, skMacro, skIterator, skMethod,
-                      skConverter}
+  result = s.kind in skProcKinds
 
 proc hasPattern*(s: PSym): bool {.inline.} =
   result = isRoutine(s) and s.ast.sons[patternPos].kind != nkEmpty
 
 iterator items*(n: PNode): PNode =
   for i in 0.. <n.len: yield n.sons[i]
+
+iterator pairs*(n: PNode): tuple[i: int, n: PNode] =
+  for i in 0.. <n.len: yield (i, n.sons[i])
 
 proc isAtom*(n: PNode): bool {.inline.} =
   result = n.kind >= nkNone and n.kind <= nkNilLit

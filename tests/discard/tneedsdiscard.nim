@@ -1,6 +1,6 @@
 discard """
   line: 10
-  errormsg: "value returned by statement has to be discarded"
+  errormsg: "value of type 'bool' has to be discarded"
 """
 
 proc p =

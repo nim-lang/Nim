@@ -26,3 +26,18 @@ foo 10
 foo "test"
 foo(@[TObj(x: 10), TObj(x: 20)])
 
+proc intval(x: int): int = 10
+
+# check real and virtual fields
+type
+  TFoo = generic T
+    T.x
+    y(T)
+    intval T.y
+    let z = intval(T.y)
+
+proc y(x: TObj): int = 10
+
+proc testFoo(x: TFoo) = discard
+testFoo(TObj(x: 10))
+

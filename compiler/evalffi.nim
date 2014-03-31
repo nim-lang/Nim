@@ -151,7 +151,7 @@ proc getField(n: PNode; position: int): PSym =
   else: discard
 
 proc packObject(x: PNode, typ: PType, res: pointer) =
-  InternalAssert x.kind in {nkObjConstr, nkPar}
+  internalAssert x.kind in {nkObjConstr, nkPar}
   # compute the field's offsets:
   discard typ.getSize
   for i in countup(ord(x.kind == nkObjConstr), sonsLen(x) - 1):

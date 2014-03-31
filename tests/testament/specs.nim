@@ -28,6 +28,8 @@ type
     reCodegenFailure,
     reCodeNotFound,
     reExeNotFound,
+    reInstallFailed     # package installation failed
+    reBuildFailed       # package building failed
     reIgnored,          # test is ignored
     reSuccess           # test was successful
   TTarget* = enum
@@ -112,7 +114,11 @@ proc parseSpec*(filename: string): TSpec =
       result.substr = true
     of "exitcode": 
       discard parseInt(e.value, result.exitCode)
-    of "errormsg", "msg":
+    of "msg":
+      result.msg = e.value
+      if result.action != actionRun:
+        result.action = actionCompile
+    of "errormsg":
       result.msg = e.value
       result.action = actionReject
     of "disabled":
