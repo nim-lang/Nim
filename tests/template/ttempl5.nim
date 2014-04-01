@@ -16,3 +16,14 @@ get_next_ident()
 
 
 #identifier expected, but found '(open|open|open)'
+
+#bug #880 (also example in the manual!)
+
+template typedef(name: expr, typ: typedesc) {.immediate.} =
+  type
+    `T name`* {.inject.} = typ
+    `P name`* {.inject.} = ref `T name`
+
+typedef(myint, int)
+var x: PMyInt
+
