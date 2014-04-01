@@ -328,6 +328,7 @@ proc canonValue*(n: PNode): PNode =
 
 proc rawGenLiteral(c: PCtx; n: PNode): int =
   result = c.constants.len
+  assert(n.kind != nkCall)
   c.constants.add n.canonValue
   internalAssert result < 0x7fff
 
@@ -1285,16 +1286,13 @@ proc genVarSection(c: PCtx; n: PNode) =
         if s.position == 0:
           if sfImportc in s.flags: c.importcSym(a.info, s)
           else:
-            let sa = if s.ast.isNil: getNullValue(s.typ, a.info) 
-                     else: canonValue(s.ast)
+            let sa = getNullValue(s.typ, a.info)
+            #if s.ast.isNil: getNullValue(s.typ, a.info)
+            #else: canonValue(s.ast)
+            assert sa.kind != nkCall
             c.globals.add(sa)
             s.position = c.globals.len
-        if a.sons[2].kind == nkEmpty:
-          when false:
-            withTemp(tmp, s.typ):
-              c.gABx(a, opcLdNull, tmp, c.genType(s.typ))
-              c.gABx(a, whichAsgnOpc(a.sons[0], opcWrGlobal), tmp, s.position)
-        else:
+        if a.sons[2].kind != nkEmpty:
           let tmp = c.genx(a.sons[0], {gfAddrOf})
           let val = c.genx(a.sons[2])
           c.gABC(a, opcWrDeref, tmp, val)
