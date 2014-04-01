@@ -17,7 +17,8 @@ bb
 22
 aa
 bb
-24'''
+24
+2147483647 2147483647'''
 """
 
 const s = @[1,2,3]
@@ -76,3 +77,6 @@ const y = fac()
 static:
   echo y
 
+static:
+  var foo = int32.high
+  echo foo, " ", int32.high
