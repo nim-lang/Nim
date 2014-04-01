@@ -138,6 +138,18 @@ proc semTemplBodyScope(c: var TemplCtx, n: PNode): PNode =
   result = semTemplBody(c, n)
   closeScope(c)
 
+proc onlyReplaceParams(c: var TemplCtx, n: PNode): PNode =
+  result = n
+  if n.kind == nkIdent:
+    let s = qualifiedLookUp(c.c, n, {})
+    if s != nil:
+      if s.owner == c.owner and s.kind == skParam:
+        incl(s.flags, sfUsed)
+        result = newSymNode(s, n.info)
+  else:
+    for i in 0 .. <n.safeLen:
+      result.sons[i] = onlyReplaceParams(c, n.sons[i])
+
 proc newGenSym(kind: TSymKind, n: PNode, c: var TemplCtx): PSym =
   result = newSym(kind, considerAcc(n), c.owner, n.info)
   incl(result.flags, sfGenSym)
@@ -154,7 +166,13 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
       of nkPostfix: x = x[1]
       of nkPragmaExpr: x = x[0]
       of nkIdent: break
-      else: illFormedAst(x)
+      of nkAccQuoted:
+        # consider:  type `T TemplParam` {.inject.}
+        # it suffices to return to treat it like 'inject':
+        n = onlyReplaceParams(c, n)
+        return
+      else:
+        illFormedAst(x)
     let ident = getIdentNode(c, x)
     if not isTemplParam(c, ident):
       c.toInject.incl(x.ident.id)
@@ -231,18 +249,6 @@ proc semTemplSomeDecl(c: var TemplCtx, n: PNode, symKind: TSymKind) =
     a.sons[L-1] = semTemplBody(c, a.sons[L-1])
     for j in countup(0, L-3):
       addLocalDecl(c, a.sons[j], symKind)
-
-proc onlyReplaceParams(c: var TemplCtx, n: PNode): PNode =
-  result = n
-  if n.kind == nkIdent:
-    let s = qualifiedLookUp(c.c, n, {})
-    if s != nil:
-      if s.owner == c.owner and s.kind == skParam:
-        incl(s.flags, sfUsed)
-        result = newSymNode(s, n.info)
-  else:
-    for i in 0 .. <n.safeLen:
-      result.sons[i] = onlyReplaceParams(c, n.sons[i])
 
 proc semPattern(c: PContext, n: PNode): PNode
 proc semTemplBody(c: var TemplCtx, n: PNode): PNode = 
@@ -380,7 +386,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   of nkPragma:
     result = onlyReplaceParams(c, n)
   else:
-    # dotExpr is ambiguous: note that we explicitely allow 'x.TemplateParam',
+    # dotExpr is ambiguous: note that we explicitly allow 'x.TemplateParam',
     # so we use the generic code for nkDotExpr too
     if n.kind == nkDotExpr or n.kind == nkAccQuoted:
       let s = qualifiedLookUp(c.c, n, {})
