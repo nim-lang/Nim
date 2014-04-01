@@ -78,5 +78,5 @@ static:
   echo y
 
 static:
-  var foo = int32.high
-  echo foo, " ", int32.high
+  var foo2 = int32.high
+  echo foo2, " ", int32.high
