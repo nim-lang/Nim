@@ -954,8 +954,10 @@ proc readTypeParameter(c: PContext, typ: PType,
 proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   ## returns nil if it's not a built-in field access
   checkSonsLen(n, 2)
-  # early exit for this; see tests/compile/tbindoverload.nim:
-  if isSymChoice(n.sons[1]): return
+  # tests/bind/tbindoverload.nim wants an early exit here, but seems to
+  # work without now. template/tsymchoicefield doesn't like an early exit
+  # here at all!
+  #if isSymChoice(n.sons[1]): return
 
   var s = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared})
   if s != nil:
