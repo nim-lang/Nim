@@ -111,8 +111,9 @@ proc validateExternCName(s: PSym, info: TLineInfo) =
 
 proc makeExternExport(s: PSym, extname: string, info: TLineInfo) =
   setExternName(s, extname)
-  if gCmd in {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC}:
-    validateExternCName(s, info)
+  # XXX to fix make it work with nimrtl.
+  #if gCmd in {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC}:
+  #  validateExternCName(s, info)
   incl(s.flags, sfExportc)
 
 proc processImportCompilerProc(s: PSym, extname: string) =
