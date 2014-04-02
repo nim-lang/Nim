@@ -495,18 +495,46 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       else: stackTrace(c, tos, pc, errNilAccess)
     of opcAddInt:
       decodeBC(rkInt)
-      regs[ra].intVal = regs[rb].intVal + regs[rc].intVal
+      let
+        bVal = regs[rb].intVal
+        cVal = regs[rc].intVal
+        sum = bVal +% cVal
+      if (sum xor bVal) >= 0 or (sum xor cVal) >= 0:
+        regs[ra].intVal = sum
+      else:
+        stackTrace(c, tos, pc, errOverOrUnderflow)
     of opcAddImmInt:
       decodeBImm(rkInt)
       #message(c.debug[pc], warnUser, "came here")
       #debug regs[rb].node
-      regs[ra].intVal = regs[rb].intVal + imm
+      let
+        bVal = regs[rb].intVal
+        cVal = imm
+        sum = bVal +% cVal
+      if (sum xor bVal) >= 0 or (sum xor cVal) >= 0:
+        regs[ra].intVal = sum
+      else:
+        stackTrace(c, tos, pc, errOverOrUnderflow)
     of opcSubInt:
       decodeBC(rkInt)
-      regs[ra].intVal = regs[rb].intVal - regs[rc].intVal
+      let
+        bVal = regs[rb].intVal
+        cVal = regs[rc].intVal
+        diff = bVal -% cVal
+      if (diff xor bVal) >= 0 or (diff xor not cVal) >= 0:
+        regs[ra].intVal = diff
+      else:
+        stackTrace(c, tos, pc, errOverOrUnderflow)
     of opcSubImmInt:
       decodeBImm(rkInt)
-      regs[ra].intVal = regs[rb].intVal - imm
+      let
+        bVal = regs[rb].intVal
+        cVal = imm
+        diff = bVal -% cVal
+      if (diff xor bVal) >= 0 or (diff xor not cVal) >= 0:
+        regs[ra].intVal = diff
+      else:
+        stackTrace(c, tos, pc, errOverOrUnderflow)
     of opcLenSeq:
       decodeBImm(rkInt)
       #assert regs[rb].kind == nkBracket
@@ -539,7 +567,18 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].intVal = nimsets.cardSet(regs[rb].node)
     of opcMulInt:
       decodeBC(rkInt)
-      regs[ra].intVal = regs[rb].intVal * regs[rc].intVal
+      let
+        bVal = regs[rb].intVal
+        cVal = regs[rc].intVal
+        product = bVal *% cVal
+        floatProd = toBiggestFloat(bVal) * toBiggestFloat(cVal)
+        resAsFloat = toBiggestFloat(product)
+      if resAsFloat == floatProd:
+        regs[ra].intVal = product
+      elif 32.0 * abs(resAsFloat - floatProd) <= abs(floatProd):
+        regs[ra].intVal = product
+      else:
+        stackTrace(c, tos, pc, errOverOrUnderflow)
     of opcDivInt:
       decodeBC(rkInt)
       if regs[rc].intVal == 0: stackTrace(c, tos, pc, errConstantDivisionByZero)
@@ -632,7 +671,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcUnaryMinusInt:
       decodeB(rkInt)
       assert regs[rb].kind == rkInt
-      regs[ra].intVal = -regs[rb].intVal
+      let val = regs[rb].intVal
+      if val != int64.low:
+        regs[ra].intVal = -val
+      else:
+        stackTrace(c, tos, pc, errOverOrUnderflow)
     of opcUnaryMinusFloat:
       decodeB(rkFloat)
       assert regs[rb].kind == rkFloat
