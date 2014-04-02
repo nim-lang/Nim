@@ -6,8 +6,6 @@ version 0.9.4
 Bugs
 ====
 
-- new VM:
-  - implement overflow checking
 - bug: 'type T = ref T' not recognized as illegal recursion
 - bug: type conversions concerning proc types are weird
 - compilation of niminst takes way too long. looks like a regression
@@ -19,6 +17,7 @@ Bugs
 version 0.9.x
 =============
 
+- fix the bug that keeps 'defer' template from working
 - pragmas need 'bindSym' support
 - pragmas need re-work: 'push' is dangerous, 'hasPragma' does not work
   reliably with user-defined pragmas
