@@ -432,7 +432,6 @@ proc generateHeaders(r: TURL, httpMethod: THttpMethod,
 type
   PAsyncHttpClient = ref object
     socket: PAsyncSocket
-    connected: bool
     currentURL: TURL ## Where we are currently connected.
     headers: PStringTable
     userAgent: string
@@ -548,24 +547,16 @@ proc parseResponse(client: PAsyncHttpClient,
   else:
     result.body = ""
 
-proc close*(client: PAsyncHttpClient) =
-  ## Closes any connections held by the HttpClient.
-  if client.connected:
-    client.socket.close()
-    client.connected = false
-    #client.socket = newAsyncSocket()
-
 proc newConnection(client: PAsyncHttpClient, url: TURL) {.async.} =
-  if not client.connected or client.currentURL.hostname != url.hostname or
+  if client.currentURL.hostname != url.hostname or
       client.currentURL.scheme != url.scheme:
-    if client.connected: client.close()
     if url.scheme == "https":
       assert false, "TODO SSL"
 
     # TODO: I should be able to write 'net.TPort' here...
     let port =
       if url.port == "": rawsockets.TPort(80)
-      else: rawsockets.TPort(url.port.parseInt)
+      else: rawsockets.TPort(url.port.parseInt) 
     
     await client.socket.connect(url.hostname, port)
     client.currentURL = url
@@ -597,10 +588,10 @@ when isMainModule:
       echo("Body:\n")
       echo(resp.body)
 
-      #var resp1 = await client.request("http://freenode.net")
-      #echo("Got response: ", resp1.status)
+      var resp1 = await client.request("http://picheta.me/aboutme.html")
+      echo("Got response: ", resp1.status)
 
-      var resp2 = await client.request("http://picheta.me/aasfasgf.html")
+      var resp2 = await client.request("http://picheta.me/aboutme.html")
       echo("Got response: ", resp2.status)
     main()
     runForever()

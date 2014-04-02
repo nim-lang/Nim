@@ -739,14 +739,16 @@ proc accept*(socket: TAsyncFD): PFuture[TAsyncFD] =
 
 # -- Await Macro
 
-template createCb*(cbName, varNameIterSym, retFutureSym: expr): stmt {.immediate, dirty.} =
-  proc cbName {.closure.} =
-    if not varNameIterSym.finished:
-      var next = varNameIterSym()
+template createCb*(retFutureSym, iteratorNameSym: expr): stmt {.immediate.} =
+  var nameIterVar = iteratorNameSym
+  proc cb {.closure.} =
+    if not nameIterVar.finished:
+      var next = nameIterVar()
       if next == nil:
         assert retFutureSym.finished, "Async procedure's return Future was not finished."
       else:
-        next.callback = cbName
+        next.callback = cb
+  cb()
 
 template createVar(futSymName: string, asyncProc: PNimrodNode,
                    valueReceiver: expr) {.immediate, dirty.} =
@@ -876,24 +878,10 @@ macro async*(prc: stmt): stmt {.immediate.} =
   closureIterator[4] = newNimNode(nnkPragma).add(newIdentNode("closure"))
   outerProcBody.add(closureIterator)
 
-  # -> var nameIterVar = nameIter
-  # -> var first = nameIterVar()
-  var varNameIterSym = genSym(nskVar, $prc[0].getName & "IterVar")
-  var varNameIter = newVarStmt(varNameIterSym, iteratorNameSym)
-  outerProcBody.add varNameIter
-  var varFirstSym = genSym(nskVar, "first")
-  var varFirst = newVarStmt(varFirstSym, newCall(varNameIterSym))
-  outerProcBody.add varFirst
-
-  # -> createCb(cb, nameIter, retFuture)
+  # -> createCb(retFuture)
   var cbName = newIdentNode("cb")
-  var procCb = newCall("createCb", cbName, varNameIterSym, retFutureSym)
+  var procCb = newCall("createCb", retFutureSym, iteratorNameSym)
   outerProcBody.add procCb
-
-  # -> first.callback = cb
-  outerProcBody.add newAssignment(
-    newDotExpr(varFirstSym, newIdentNode("callback")),
-    cbName)
 
   # -> return retFuture
   outerProcBody.add newNimNode(nnkReturnStmt).add(retFutureSym)
