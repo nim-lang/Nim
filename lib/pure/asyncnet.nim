@@ -116,7 +116,8 @@ proc recvLine*(socket: PAsyncSocket): PFuture[string] {.async.} =
     if c == "\r":
       c = await recv(socket, 1, MSG_PEEK)
       if c.len > 0 and c == "\L":
-        discard await recv(socket, 1)
+        let dummy = await recv(socket, 1)
+        assert dummy == "\L"
       addNLIfEmpty()
       return
     elif c == "\L":
@@ -148,7 +149,7 @@ when isMainModule:
     TestCases = enum
       HighClient, LowClient, LowServer
 
-  const test = LowServer
+  const test = HighClient
 
   when test == HighClient:
     proc main() {.async.} =

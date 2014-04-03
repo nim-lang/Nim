@@ -432,15 +432,28 @@ proc generateHeaders(r: TURL, httpMethod: THttpMethod,
 type
   PAsyncHttpClient = ref object
     socket: PAsyncSocket
+    connected: bool
     currentURL: TURL ## Where we are currently connected.
     headers: PStringTable
     userAgent: string
 
 proc newAsyncHttpClient*(): PAsyncHttpClient =
   new result
-  result.socket = newAsyncSocket()
   result.headers = newStringTable(modeCaseInsensitive)
   result.userAgent = defUserAgent
+
+proc close*(client: PAsyncHttpClient) =
+  ## Closes any connections held by the HttpClient.
+  if client.connected:
+    client.socket.close()
+    client.connected = false
+
+proc recvFull(socket: PAsyncSocket, size: int): PFuture[string] {.async.} =
+  ## Ensures that all the data requested is read and returned.
+  result = ""
+  while true:
+    if size == result.len: break
+    result.add await socket.recv(size - result.len)
 
 proc parseChunks(client: PAsyncHttpClient): PFuture[string] {.async.} =
   result = ""
@@ -469,8 +482,8 @@ proc parseChunks(client: PAsyncHttpClient): PFuture[string] {.async.} =
         httpError("Invalid chunk size: " & chunkSizeStr)
       inc(i)
     if chunkSize <= 0: break
-    result.add await recv(client.socket, chunkSize)
-    discard await recv(client.socket, 2) # Skip \c\L
+    result.add await recvFull(client.socket, chunkSize)
+    discard await recvFull(client.socket, 2) # Skip \c\L
     # Trailer headers will only be sent if the request specifies that we want
     # them: http://tools.ietf.org/html/rfc2616#section-3.6.1
   
@@ -485,9 +498,12 @@ proc parseBody(client: PAsyncHttpClient,
     var contentLengthHeader = headers["Content-Length"]
     if contentLengthHeader != "":
       var length = contentLengthHeader.parseint()
-      result = await client.socket.recv(length)
+      result = await client.socket.recvFull(length)
       if result == "":
-        httpError("Got disconnected while trying to recv body.")
+        httpError("Got disconnected while trying to read body.")
+      if result.len != length:
+        httpError("Received length doesn't match expected length. Wanted " &
+                  $length & " got " & $result.len)
     else:
       # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.4 TODO
       
@@ -496,7 +512,7 @@ proc parseBody(client: PAsyncHttpClient,
       if headers["Connection"] == "close":
         var buf = ""
         while True:
-          buf = await client.socket.recv(4000)
+          buf = await client.socket.recvFull(4000)
           if buf == "": break
           result.add(buf)
 
@@ -517,7 +533,11 @@ proc parseResponse(client: PAsyncHttpClient,
     if not parsedStatus:
       # Parse HTTP version info and status code.
       var le = skipIgnoreCase(line, "HTTP/", linei)
-      if le <= 0: httpError("invalid http version")
+      if le <= 0:
+        while true:
+          let nl = await client.socket.recvLine()
+          echo("Got another line: ", nl)
+        httpError("invalid http version, " & line.repr)
       inc(linei, le)
       le = skipIgnoreCase(line, "1.1", linei)
       if le > 0: result.version = "1.1"
@@ -550,16 +570,19 @@ proc parseResponse(client: PAsyncHttpClient,
 proc newConnection(client: PAsyncHttpClient, url: TURL) {.async.} =
   if client.currentURL.hostname != url.hostname or
       client.currentURL.scheme != url.scheme:
+    if client.connected: client.close()
+    client.socket = newAsyncSocket()
     if url.scheme == "https":
       assert false, "TODO SSL"
 
     # TODO: I should be able to write 'net.TPort' here...
     let port =
       if url.port == "": rawsockets.TPort(80)
-      else: rawsockets.TPort(url.port.parseInt) 
+      else: rawsockets.TPort(url.port.parseInt)
     
     await client.socket.connect(url.hostname, port)
     client.currentURL = url
+    client.connected = true
 
 proc request*(client: PAsyncHttpClient, url: string, httpMethod = httpGET,
               body = ""): PFuture[TResponse] {.async.} =
@@ -588,11 +611,18 @@ when isMainModule:
       echo("Body:\n")
       echo(resp.body)
 
-      var resp1 = await client.request("http://picheta.me/aboutme.html")
-      echo("Got response: ", resp1.status)
+      resp = await client.request("http://picheta.me/asfas.html")
+      echo("Got response: ", resp.status)
 
-      var resp2 = await client.request("http://picheta.me/aboutme.html")
-      echo("Got response: ", resp2.status)
+      resp = await client.request("http://picheta.me/aboutme.html")
+      echo("Got response: ", resp.status)
+
+      resp = await client.request("http://nimrod-lang.org/")
+      echo("Got response: ", resp.status)
+
+      resp = await client.request("http://nimrod-lang.org/download.html")
+      echo("Got response: ", resp.status)
+
     main()
     runForever()
 

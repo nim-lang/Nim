@@ -328,11 +328,18 @@ when defined(windows) or defined(nimdoc):
 
   proc recv*(socket: TAsyncFD, size: int,
              flags: int = 0): PFuture[string] =
-    ## Reads ``size`` bytes from ``socket``. Returned future will complete once
-    ## all of the requested data is read. If socket is disconnected during the
-    ## recv operation then the future may complete with only a part of the
-    ## requested data read. If socket is disconnected and no data is available
-    ## to be read then the future will complete with a value of ``""``.
+    ## Reads **up to** ``size`` bytes from ``socket``. Returned future will
+    ## complete once all the data requested is read, a part of the data has been
+    ## read, or the socket has disconnected in which case the future will
+    ## complete with a value of ``""`.
+
+
+    # Things to note:
+    #   * When WSARecv completes immediately then ``bytesReceived`` is very
+    #     unreliable.
+    #   * Still need to implement message-oriented socket disconnection,
+    #     '\0' in the message currently signifies a socket disconnect. Who
+    #     knows what will happen when someone sends that to our socket.
     verifyPresence(socket)
     var retFuture = newFuture[string]()
     
@@ -350,8 +357,8 @@ when defined(windows) or defined(nimdoc):
             if bytesCount == 0 and dataBuf.buf[0] == '\0':
               retFuture.complete("")
             else:
-              var data = newString(size)
-              copyMem(addr data[0], addr dataBuf.buf[0], size)
+              var data = newString(bytesCount)
+              copyMem(addr data[0], addr dataBuf.buf[0], bytesCount)
               retFuture.complete($data)
           else:
             retFuture.fail(newException(EOS, osErrorMsg(errcode)))
@@ -378,8 +385,15 @@ when defined(windows) or defined(nimdoc):
       # ~ http://msdn.microsoft.com/en-us/library/ms741688%28v=vs.85%29.aspx
     else:
       # Request to read completed immediately.
-      var data = newString(size)
-      copyMem(addr data[0], addr dataBuf.buf[0], size)
+      # From my tests bytesReceived isn't reliable.
+      let realSize =
+        if bytesReceived == 0:
+          size
+        else:
+          bytesReceived
+      assert dataBuf.buf[0] != '\0'
+      var data = newString(realSize)
+      copyMem(addr data[0], addr dataBuf.buf[0], realSize)
       retFuture.complete($data)
       # We don't deallocate ``ol`` here because even though this completed
       # immediately poll will still be notified about its completion and it will
@@ -646,8 +660,7 @@ else:
     
     proc cb(sock: TAsyncFD): bool =
       result = true
-      let netSize = size - sizeRead
-      let res = recv(sock.TSocketHandle, addr readBuffer[sizeRead], netSize,
+      let res = recv(sock.TSocketHandle, addr readBuffer[0], size,
                      flags.cint)
       #echo("recv cb res: ", res)
       if res < 0:
@@ -659,17 +672,9 @@ else:
       elif res == 0:
         #echo("Disconnected recv: ", sizeRead)
         # Disconnected
-        if sizeRead == 0:
-          retFuture.complete("")
-        else:
-          readBuffer.setLen(sizeRead)
-          retFuture.complete(readBuffer)
+        retFuture.complete("")
       else:
-        sizeRead.inc(res)
-        if res != netSize:
-          result = false # We want to read all the data requested.
-        else:
-          retFuture.complete(readBuffer)
+        retFuture.complete(readBuffer)
       #echo("Recv cb result: ", result)
   
     addRead(socket, cb)
