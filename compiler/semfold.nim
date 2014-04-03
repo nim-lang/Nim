@@ -113,12 +113,18 @@ proc pickMaxInt(n: PNode): BiggestInt =
     internalError(n.info, "pickMaxInt")
 
 proc makeRange(typ: PType, first, last: BiggestInt): PType = 
-  var n = newNode(nkRange)
-  addSon(n, newIntNode(nkIntLit, min(first, last)))
-  addSon(n, newIntNode(nkIntLit, max(first, last)))
-  result = newType(tyRange, typ.owner)
-  result.n = n
-  addSonSkipIntLit(result, skipTypes(typ, {tyRange}))
+  let minA = min(first, last)
+  let maxA = max(first, last)
+  let lowerNode = newIntNode(nkIntLit, minA)
+  if typ.kind == tyInt and minA == maxA:
+    result = getIntLitType(lowerNode)
+  else:
+    var n = newNode(nkRange)
+    addSon(n, lowerNode)
+    addSon(n, newIntNode(nkIntLit, maxA))
+    result = newType(tyRange, typ.owner)
+    result.n = n
+    addSonSkipIntLit(result, skipTypes(typ, {tyRange}))
 
 proc makeRangeF(typ: PType, first, last: BiggestFloat): PType =
   var n = newNode(nkRange)
