@@ -453,7 +453,9 @@ proc recvFull(socket: PAsyncSocket, size: int): PFuture[string] {.async.} =
   result = ""
   while true:
     if size == result.len: break
-    result.add await socket.recv(size - result.len)
+    let data = await socket.recv(size - result.len)
+    if data == "": break # We've been disconnected.
+    result.add data
 
 proc parseChunks(client: PAsyncHttpClient): PFuture[string] {.async.} =
   result = ""
