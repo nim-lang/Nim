@@ -1,8 +1,6 @@
 version 0.9.4
 =============
 
-- fix GC issues
-
 Bugs
 ====
 

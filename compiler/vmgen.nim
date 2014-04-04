@@ -1034,6 +1034,7 @@ proc genAsgn(c: PCtx; dest: TDest; ri: PNode; requiresCopy: bool) =
 proc setSlot(c: PCtx; v: PSym) =
   # XXX generate type initialization here?
   if v.position == 0:
+    if c.prc.maxSlots == 0: c.prc.maxSlots = 1
     v.position = c.prc.maxSlots
     c.prc.slots[v.position] = (inUse: true,
         kind: if v.kind == skLet: slotFixedLet else: slotFixedVar)
