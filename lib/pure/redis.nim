@@ -45,7 +45,7 @@ proc raiseInvalidReply(expected, got: char) =
           [$expected, $got])
 
 proc raiseNoOK(status: string) =
-  if status != "OK":
+  if status != "QUEUED" and status != "OK":
     raise newException(EInvalidReply, "Expected \"OK\" got \"$1\"" % status)
 
 proc parseStatus(r: TRedis): TRedisStatus =
@@ -64,6 +64,10 @@ proc parseStatus(r: TRedis): TRedisStatus =
 proc parseInteger(r: TRedis): TRedisInteger =
   var line = ""
   r.socket.readLine(line)
+
+  if line == "+QUEUED":  # inside of multi
+    return -1
+
   if line == "":
     raise newException(ERedis, "Server closed connection prematurely")
 
@@ -84,7 +88,10 @@ proc recv(sock: TSocket, size: int): TaintedString =
 proc parseBulk(r: TRedis, allowMBNil = False): TRedisString =
   var line = ""
   r.socket.readLine(line.TaintedString)
-  
+
+  if line == "+QUEUED" or line == "+OK": # inside of a transaction (multi)
+    return nil
+
   # Error.
   if line[0] == '-':
     raise newException(ERedis, strip(line))
@@ -107,6 +114,9 @@ proc parseBulk(r: TRedis, allowMBNil = False): TRedisString =
 proc parseMultiBulk(r: TRedis): TRedisList =
   var line = TaintedString""
   r.socket.readLine(line)
+
+  if line == "+QUEUED": # inside of a transaction (multi)
+    return nil
     
   if line.string[0] != '*':
     raiseInvalidReply('*', line.string[0])
@@ -722,6 +732,7 @@ proc discardMulti*(r: TRedis) =
 proc exec*(r: TRedis): TRedisList =
   ## Execute all commands issued after MULTI
   r.sendCommand("EXEC")
+
   return r.parseMultiBulk()
 
 proc multi*(r: TRedis) =
