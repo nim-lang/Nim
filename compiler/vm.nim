@@ -222,13 +222,14 @@ proc pushSafePoint(f: PStackFrame; pc: int) =
 
 proc popSafePoint(f: PStackFrame) = discard f.safePoints.pop()
 
-proc cleanUpOnException(c: PCtx; tos: PStackFrame; regs: seq[TFullReg]): int =
+proc cleanUpOnException(c: PCtx; tos: PStackFrame): 
+                                              tuple[pc: int, f: PStackFrame] =
   let raisedType = c.currentExceptionA.typ.skipTypes(abstractPtrs)
   var f = tos
   while true:
     while f.safePoints.isNil or f.safePoints.len == 0:
       f = f.next
-      if f.isNil: return -1
+      if f.isNil: return (-1, nil)
     var pc2 = f.safePoints[f.safePoints.high]
 
     var nextExceptOrFinally = -1
@@ -244,13 +245,13 @@ proc cleanUpOnException(c: PCtx; tos: PStackFrame; regs: seq[TFullReg]): int =
         c.currentExceptionB = c.currentExceptionA
         c.currentExceptionA = nil
         # execute the corresponding handler:
-        return pc2
+        return (pc2, f)
       inc pc2
     if nextExceptOrFinally >= 0:
       pc2 = nextExceptOrFinally
     if c.code[pc2].opcode == opcFinally:
       # execute the corresponding handler, but don't quit walking the stack:
-      return pc2
+      return (pc2, f)
     # not the right one:
     discard f.safePoints.pop
 
@@ -869,19 +870,27 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcFinallyEnd:
       if c.currentExceptionA != nil:
         # we are in a cleanup run:
-        pc = cleanUpOnException(c, tos, regs)-1
-        if pc < 0: 
+        let (newPc, newTos) = cleanUpOnException(c, tos)
+        if newPc-1 < 0:
           bailOut(c, tos)
           return
+        pc = newPc-1
+        if tos != newTos:
+          tos = newTos
+          move(regs, tos.slots)
     of opcRaise:
       let raised = regs[ra].node
       c.currentExceptionA = raised
       c.exceptionInstr = pc
+      let (newPc, newTos) = cleanUpOnException(c, tos)
       # -1 because of the following 'inc'
-      pc = cleanUpOnException(c, tos, regs) - 1
-      if pc < 0:
+      if pc-1 < 0:
         bailOut(c, tos)
         return
+      pc = newPc -1
+      if tos != newTos:
+        tos = newTos
+        move(regs, tos.slots)
     of opcNew:
       ensureKind(rkNode)
       let typ = c.types[instr.regBx - wordExcess]
