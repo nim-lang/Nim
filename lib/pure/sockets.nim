@@ -926,12 +926,16 @@ proc createFdSet(fd: var TFdSet, s: seq[TSocket], m: var int) =
     FD_SET(i.fd, fd)
    
 proc pruneSocketSet(s: var seq[TSocket], fd: var TFdSet) =
-  var newSet: seq[TSocket] = @[]
-  for sock in s:
-    if FD_ISSET(sock.fd, fd) == 1'i32:
-      ## Is set.
-      newSet.add(sock)
-  s = newSet
+  var i = 0
+  var L = s.len
+  while i < L:
+    if FD_ISSET(s[i].fd, fd) == 0'i32:
+      # not set.
+      s[i] = s[L-1]
+      dec(L)
+    else:
+      inc(i)
+  setLen(s, L)
 
 proc hasDataBuffered*(s: TSocket): bool =
   ## Determines whether a socket has data buffered.
