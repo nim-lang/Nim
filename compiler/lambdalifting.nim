@@ -121,14 +121,14 @@ type
     capturedVars: seq[PSym] # captured variables in this environment
     deps: seq[TDep]         # dependencies
     up: PEnv
-    tup: PType
+    obj: PType
   
-  TInnerContext {.final.} = object
+  TInnerContext = object
     fn: PSym
     closureParam: PSym
     localsToAccess: TIdNodeTable
     
-  TOuterContext {.final.} = object
+  TOuterContext = object
     fn: PSym # may also be a module!
     currentEnv: PEnv
     isIter: bool   # first class iterator?
@@ -139,8 +139,13 @@ type
     up: POuterContext
 
     closureParam, state, resultSym: PSym # only if isIter
-    tup: PType # only if isIter
+    obj: PType # only if isIter
 
+proc createObj(owner: PSym, info: TLineInfo): PType =
+  result = newType(tyObject, owner)
+  rawAddSon(result, nil)
+  incl result.flags, tfFinal
+  result.n = newNodeI(nkRecList, info)
 
 proc getStateType(iter: PSym): PType =
   var n = newNodeI(nkRange, iter.info)
@@ -185,13 +190,14 @@ proc getEnvParam(routine: PSym): PSym =
   if hidden.kind == nkSym and hidden.sym.name.s == paramName:
     result = hidden.sym
     
-proc addField(tup: PType, s: PSym) =
-  var field = newSym(skField, s.name, s.owner, s.info)
+proc addField(obj: PType; s: PSym) =
+  # because of 'gensym' support, we have to mangle the name with its ID.
+  # This is hacky but the clean solution is much more complex than it looks.
+  var field = newSym(skField, getIdent(s.name.s & $s.id), s.owner, s.info)
   let t = skipIntLit(s.typ)
   field.typ = t
-  field.position = sonsLen(tup)
-  addSon(tup.n, newSymNode(field))
-  rawAddSon(tup, t)
+  field.position = sonsLen(obj.n)
+  addSon(obj.n, newSymNode(field))
 
 proc initIterContext(c: POuterContext, iter: PSym) =
   c.fn = iter
@@ -199,25 +205,24 @@ proc initIterContext(c: POuterContext, iter: PSym) =
 
   var cp = getEnvParam(iter)
   if cp == nil:
-    c.tup = newType(tyTuple, iter)
-    c.tup.n = newNodeI(nkRecList, iter.info)
+    c.obj = createObj(iter, iter.info)
 
     cp = newSym(skParam, getIdent(paramName), iter, iter.info)
     incl(cp.flags, sfFromGeneric)
     cp.typ = newType(tyRef, iter)
-    rawAddSon(cp.typ, c.tup)
+    rawAddSon(cp.typ, c.obj)
     addHiddenParam(iter, cp)
 
     c.state = createStateField(iter)
-    addField(c.tup, c.state)
+    addField(c.obj, c.state)
   else:
-    c.tup = cp.typ.sons[0]
-    assert c.tup.kind == tyTuple
-    if c.tup.len > 0:
-      c.state = c.tup.n[0].sym
+    c.obj = cp.typ.sons[0]
+    assert c.obj.kind == tyObject
+    if c.obj.n.len > 0:
+      c.state = c.obj.n[0].sym
     else:
       c.state = createStateField(iter)
-      addField(c.tup, c.state)
+      addField(c.obj, c.state)
 
   c.closureParam = cp
   if iter.typ.sons[0] != nil:
@@ -244,8 +249,7 @@ proc newEnv(outerProc: PSym, up: PEnv, n: PNode): PEnv =
   new(result)
   result.deps = @[]
   result.capturedVars = @[]
-  result.tup = newType(tyTuple, outerProc)
-  result.tup.n = newNodeI(nkRecList, outerProc.info)
+  result.obj = createObj(outerProc, outerProc.info)
   result.up = up
   result.attachedNode = n
 
@@ -254,28 +258,28 @@ proc addCapturedVar(e: PEnv, v: PSym) =
     if x == v: return
   # XXX meh, just add the state field for every closure for now, it's too
   # hard to figure out if it comes from a closure iterator:
-  if e.tup.len == 0: addField(e.tup, createStateField(v.owner))
+  if e.obj.n.len == 0: addField(e.obj, createStateField(v.owner))
   e.capturedVars.add(v)
-  addField(e.tup, v)
+  addField(e.obj, v)
   
 proc addDep(e, d: PEnv, owner: PSym): PSym =
   for x, field in items(e.deps):
     if x == d: return field
-  var pos = sonsLen(e.tup)
+  var pos = sonsLen(e.obj.n)
   result = newSym(skField, getIdent(upName & $pos), owner, owner.info)
   result.typ = newType(tyRef, owner)
   result.position = pos
-  assert d.tup != nil
-  rawAddSon(result.typ, d.tup)
-  addField(e.tup, result)
+  assert d.obj != nil
+  rawAddSon(result.typ, d.obj)
+  addField(e.obj, result)
   e.deps.add((d, result))
   
 proc indirectAccess(a: PNode, b: PSym, info: TLineInfo): PNode = 
   # returns a[].b as a node
   var deref = newNodeI(nkHiddenDeref, info)
   deref.typ = a.typ.sons[0]
-  assert deref.typ.kind == tyTuple
-  let field = getSymFromList(deref.typ.n, b.name)
+  assert deref.typ.kind == tyObject
+  let field = getSymFromList(deref.typ.n, getIdent(b.name.s & $b.id))
   assert field != nil, b.name.s
   addSon(deref, a)
   result = newNodeI(nkDotExpr, info)
@@ -302,11 +306,11 @@ proc addClosureParam(i: PInnerContext, e: PEnv) =
     cp = newSym(skParam, getIdent(paramName), i.fn, i.fn.info)
     incl(cp.flags, sfFromGeneric)
     cp.typ = newType(tyRef, i.fn)
-    rawAddSon(cp.typ, e.tup)
+    rawAddSon(cp.typ, e.obj)
     addHiddenParam(i.fn, cp)
   else:
-    e.tup = cp.typ.sons[0]
-    assert e.tup.kind == tyTuple
+    e.obj = cp.typ.sons[0]
+    assert e.obj.kind == tyObject
   i.closureParam = cp
   #echo "closure param added for ", i.fn.name.s, " ", i.fn.id
 
@@ -357,7 +361,7 @@ proc captureVar(o: POuterContext, i: PInnerContext, local: PSym,
     access = indirectAccess(access, addDep(e, it, i.fn), info)
   access = indirectAccess(access, local, info)
   if o.isIter:
-    if not containsOrIncl(o.capturedVars, local.id): addField(o.tup, local)
+    if not containsOrIncl(o.capturedVars, local.id): addField(o.obj, local)
   else:
     incl(o.capturedVars, local.id)
   idNodeTablePut(i.localsToAccess, local, access)
@@ -543,7 +547,7 @@ proc newClosureCreationVar(o: POuterContext; e: PEnv): PSym =
   result = newSym(skVar, getIdent(envName), o.fn, e.attachedNode.info)
   incl(result.flags, sfShadowed)
   result.typ = newType(tyRef, o.fn)
-  result.typ.rawAddSon(e.tup)
+  result.typ.rawAddSon(e.obj)
 
 proc getClosureVar(o: POuterContext; e: PEnv): PSym =
   if e.createdVar == nil:
@@ -669,7 +673,7 @@ proc transformOuterProc(o: POuterContext, n: PNode): PNode =
     var local = n.sym
 
     if o.isIter and interestingIterVar(local) and o.fn.id == local.owner.id:
-      if not containsOrIncl(o.capturedVars, local.id): addField(o.tup, local)
+      if not containsOrIncl(o.capturedVars, local.id): addField(o.obj, local)
       return indirectAccess(newSymNode(o.closureParam), local, n.info)
 
     var closure = PEnv(idTableGet(o.lambdasToEnv, local))
