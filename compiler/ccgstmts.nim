@@ -138,7 +138,7 @@ proc genBreakState(p: BProc, n: PNode) =
   if n.sons[0].kind == nkClosure:
     # XXX this produces quite inefficient code!
     initLocExpr(p, n.sons[0].sons[1], a)
-    lineF(p, cpsStmts, "if (($1->Field0) < 0) break;$n", [rdLoc(a)])
+    lineF(p, cpsStmts, "if (((NI*) $1)[0] < 0) break;$n", [rdLoc(a)])
   else:
     initLocExpr(p, n.sons[0], a)
     # the environment is guaranteed to contain the 'state' field at offset 0:
