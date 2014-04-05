@@ -10,6 +10,7 @@
 import os, oids, tables, strutils, macros
 
 import rawsockets
+export TPort
 
 ## AsyncDispatch
 ## --------
@@ -17,6 +18,8 @@ import rawsockets
 ## This module implements a brand new dispatcher based on Futures.
 ## On Windows IOCP is used and on other operating systems the selectors module
 ## is used instead.
+
+# TODO: Discarded void PFutures need to checked for exception.
 
 # -- Futures
 
@@ -764,14 +767,24 @@ template createVar(futSymName: string, asyncProc: PNimrodNode,
   result.add newNimNode(nnkYieldStmt).add(futSym) # -> yield future<x>
   valueReceiver = newDotExpr(futSym, newIdentNode("read")) # -> future<x>.read
 
-proc processBody(node, retFutureSym: PNimrodNode): PNimrodNode {.compileTime.} =
+proc processBody(node, retFutureSym: PNimrodNode,
+                 subtypeName: string): PNimrodNode {.compileTime.} =
   result = node
   case node.kind
   of nnkReturnStmt:
     result = newNimNode(nnkStmtList)
-    result.add newCall(newIdentNode("complete"), retFutureSym,
-      if node[0].kind == nnkEmpty: newIdentNode("result") else: node[0])
-    result.add newNimNode(nnkYieldStmt).add(newNilLit())
+    if node[0].kind == nnkEmpty:
+      if subtypeName != "void":
+        result.add newCall(newIdentNode("complete"), retFutureSym,
+            newIdentNode("result"))
+      else:
+        result.add newCall(newIdentNode("complete"), retFutureSym)
+    else:
+      result.add newCall(newIdentNode("complete"), retFutureSym,
+        node[0].processBody(retFutureSym, subtypeName))
+
+    result.add newNimNode(nnkReturnStmt).add(newNilLit())
+    return # Don't process the children of this return stmt
   of nnkCommand:
     if node[0].kind == nnkIdent and node[0].ident == !"await":
       case node[1].kind
@@ -819,7 +832,7 @@ proc processBody(node, retFutureSym: PNimrodNode): PNimrodNode {.compileTime.} =
   else: discard
   
   for i in 0 .. <result.len:
-    result[i] = processBody(result[i], retFutureSym)
+    result[i] = processBody(result[i], retFutureSym, subtypeName)
   #echo(treeRepr(result))
 
 proc getName(node: PNimrodNode): string {.compileTime.} =
@@ -867,7 +880,7 @@ macro async*(prc: stmt): stmt {.immediate.} =
   # ->   <proc_body>
   # ->   complete(retFuture, result)
   var iteratorNameSym = genSym(nskIterator, $prc[0].getName & "Iter")
-  var procBody = prc[6].processBody(retFutureSym)
+  var procBody = prc[6].processBody(retFutureSym, subtypeName)
   if subtypeName != "void":
     procBody.insert(0, newNimNode(nnkVarSection).add(
       newIdentDefs(newIdentNode("result"), returnType[1]))) # -> var result: T

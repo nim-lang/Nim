@@ -430,7 +430,7 @@ proc generateHeaders(r: TURL, httpMethod: THttpMethod,
   add(result, "\c\L")
 
 type
-  PAsyncHttpClient = ref object
+  PAsyncHttpClient* = ref object
     socket: PAsyncSocket
     connected: bool
     currentURL: TURL ## Where we are currently connected.
