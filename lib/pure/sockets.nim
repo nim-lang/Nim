@@ -925,16 +925,13 @@ proc createFdSet(fd: var TFdSet, s: seq[TSocket], m: var int) =
     m = max(m, int(i.fd))
     FD_SET(i.fd, fd)
    
-proc pruneSocketSet(s: var seq[TSocket], fd: var TFdSet) = 
-  var i = 0
-  var L = s.len
-  while i < L:
-    if FD_ISSET(s[i].fd, fd) == 0'i32:
-      s[i] = s[L-1]
-      dec(L)
-    else:
-      inc(i)
-  setLen(s, L)
+proc pruneSocketSet(s: var seq[TSocket], fd: var TFdSet) =
+  var newSet: seq[TSocket] = @[]
+  for sock in s:
+    if FD_ISSET(sock.fd, fd) == 1'i32:
+      ## Is set.
+      newSet.add(sock)
+  s = newSet
 
 proc hasDataBuffered*(s: TSocket): bool =
   ## Determines whether a socket has data buffered.
@@ -954,9 +951,9 @@ proc checkBuffer(readfds: var seq[TSocket]): int =
   for s in readfds:
     if hasDataBuffered(s):
       inc(result)
-    else:
       res.add(s)
-  readfds = res
+  if result > 0:
+    readfds = res
 
 proc select*(readfds, writefds, exceptfds: var seq[TSocket], 
              timeout = 500): int {.tags: [FReadIO].} = 
@@ -965,8 +962,9 @@ proc select*(readfds, writefds, exceptfds: var seq[TSocket],
   ## If there are none; 0 is returned. 
   ## ``Timeout`` is in miliseconds and -1 can be specified for no timeout.
   ## 
-  ## A socket is removed from the specific ``seq`` when it has data waiting to
-  ## be read/written to or has errors (``exceptfds``).
+  ## Sockets which are **not** ready for reading, writing or which don't have
+  ## errors waiting on them are removed from the ``readfds``, ``writefds``,
+  ## ``exceptfds`` sequences respectively.
   let buffersFilled = checkBuffer(readfds)
   if buffersFilled > 0:
     return buffersFilled
@@ -1013,7 +1011,7 @@ proc selectWrite*(writefds: var seq[TSocket],
                   timeout = 500): int {.tags: [FReadIO].} =
   ## When a socket in ``writefds`` is ready to be written to then a non-zero
   ## value will be returned specifying the count of the sockets which can be
-  ## written to. The sockets which can be written to will also be removed
+  ## written to. The sockets which **cannot** be written to will also be removed
   ## from ``writefds``.
   ##
   ## ``timeout`` is specified in miliseconds and ``-1`` can be specified for
