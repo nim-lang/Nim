@@ -48,9 +48,17 @@ type
                               # XXX 'break' should perform cleanup actions
                               # What does the C backend do for it?
 
-proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int) =
+proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
   if x != nil:
-    stackTraceAux(c, x.next, x.comesFrom)
+    if recursionLimit == 0:
+      var calls = 0
+      var x = x
+      while x != nil:
+        inc calls
+        x = x.next
+      msgWriteln($calls & " calls omitted\n")
+      return
+    stackTraceAux(c, x.next, x.comesFrom, recursionLimit-1)
     var info = c.debug[pc]
     # we now use the same format as in system/except.nim
     var s = toFilename(info)
