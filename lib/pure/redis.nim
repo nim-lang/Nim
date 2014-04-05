@@ -85,13 +85,7 @@ proc recv(sock: TSocket, size: int): TaintedString =
   if sock.recv(cstring(result), size) != size:
     raise newException(EInvalidReply, "recv failed")
 
-proc parseBulk(r: TRedis, allowMBNil = False): TRedisString =
-  var line = ""
-  r.socket.readLine(line.TaintedString)
-
-  if line == "+QUEUED" or line == "+OK": # inside of a transaction (multi)
-    return nil
-
+proc parseSingle(r: TRedis, line:string, allowMBNil = False): TRedisString =
   # Error.
   if line[0] == '-':
     raise newException(ERedis, strip(line))
@@ -101,6 +95,9 @@ proc parseBulk(r: TRedis, allowMBNil = False): TRedisString =
     if line == "*-1":
        return RedisNil
   
+  if line == "+QUEUED" or line == "+OK" : # inside of a transaction (multi)
+    return nil
+
   if line[0] != '$':
     raiseInvalidReply('$', line[0])
   
@@ -111,6 +108,32 @@ proc parseBulk(r: TRedis, allowMBNil = False): TRedisString =
   var s = r.socket.recv(numBytes+2)
   result = strip(s.string)
 
+proc parseMultiLines(r: TRedis, countLine:string): TRedisList =
+  if countLine.string[0] != '*':
+    raiseInvalidReply('*', countLine.string[0])
+
+  var numElems = parseInt(countLine.string.substr(1))
+  if numElems == -1: return nil
+  result = @[]
+  for i in 1..numElems:
+    var line = ""
+    r.socket.readLine(line.TaintedString)
+    if line[0] == '*':  # after exec() may contain more multi-bulk replies
+      var parsed = r.parseMultiLines(line)
+      for item in parsed:
+        result.add(item)
+    else:
+     result.add(r.parseSingle(line))
+
+proc parseBulk(r: TRedis, allowMBNil = False): TRedisString =
+  var line = ""
+  r.socket.readLine(line.TaintedString)
+
+  if line == "+QUEUED" or line == "+OK": # inside of a transaction (multi)
+    return nil
+
+  return r.parseSingle(line, allowMBNil)
+
 proc parseMultiBulk(r: TRedis): TRedisList =
   var line = TaintedString""
   r.socket.readLine(line)
@@ -118,14 +141,8 @@ proc parseMultiBulk(r: TRedis): TRedisList =
   if line == "+QUEUED": # inside of a transaction (multi)
     return nil
     
-  if line.string[0] != '*':
-    raiseInvalidReply('*', line.string[0])
-  
-  var numElems = parseInt(line.string.substr(1))
-  if numElems == -1: return nil
-  result = @[]
-  for i in 1..numElems:
-    result.add(r.parseBulk())
+  return r.parseMultiLines(line)
+
 
 proc sendCommand(r: TRedis, cmd: string, args: varargs[string]) =
   var request = "*" & $(1 + args.len()) & "\c\L"
