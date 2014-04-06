@@ -6,6 +6,44 @@
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
+
+## This module implements a high-level asynchronous sockets API based on the
+## asynchronous dispatcher defined in the ``asyncdispatch`` module.
+##
+## Example
+## =======
+## 
+## The following example demonstrates a simple chat server.
+##
+## .. code-block::nimrod
+##
+##   import asyncnet, asyncdispatch
+##
+##   var clients: seq[PAsyncSocket] = @[]
+##
+##   proc processClient(client: PAsyncSocket) {.async.} =
+##     while true:
+##       let line = await client.recvLine()
+##       for c in clients:
+##         await c.send(line & "\c\L")
+##
+##   proc serve() {.async.} =
+##     var server = newAsyncSocket()
+##     server.bindAddr(TPort(12345))
+##     server.listen()
+##
+##     while true:
+##       let client = await server.accept()
+##       clients.add client
+##
+##       processClient(client)
+##
+##   serve()
+##   runForever()
+##
+##
+## **Note:** This module is still largely experimental.
+
 import asyncdispatch
 import rawsockets
 import net

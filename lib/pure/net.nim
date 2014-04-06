@@ -12,6 +12,9 @@
 {.deadCodeElim: on.}
 import rawsockets, os, strutils, unsigned, parseutils, times
 export TPort
+
+const useWinVersion = defined(Windows) or defined(nimdoc)
+
 type
   IpAddressFamily* {.pure.} = enum ## Describes the type of an IP address
     IPv6, ## IPv6 address
@@ -499,7 +502,7 @@ proc socketError*(socket: PSocket, err: int = -1, async = false) =
   if err == -1 and not (when defined(ssl): socket.isSSL else: false):
     let lastError = osLastError()
     if async:
-      when defined(windows):
+      when useWinVersion:
         if lastError.int32 == WSAEWOULDBLOCK:
           return
         else: osError(lastError)
@@ -525,7 +528,7 @@ proc bindAddr*(socket: PSocket, port = TPort(0), address = "") {.
 
   if address == "":
     var name: TSockaddr_in
-    when defined(windows):
+    when useWinVersion:
       name.sin_family = toInt(AF_INET).int16
     else:
       name.sin_family = toInt(AF_INET)
@@ -1009,7 +1012,7 @@ proc send*(socket: PSocket, data: pointer, size: int): int {.
     if socket.isSSL:
       return SSLWrite(socket.sslHandle, cast[cstring](data), size)
   
-  when defined(windows) or defined(macosx):
+  when useWinVersion or defined(macosx):
     result = send(socket.fd, data, size.cint, 0'i32)
   else:
     when defined(solaris): 
@@ -1088,7 +1091,7 @@ proc connectAsync(socket: PSocket, name: string, port = TPort(0),
       break
     else:
       lastError = osLastError()
-      when defined(windows):
+      when useWinVersion:
         # Windows EINTR doesn't behave same as POSIX.
         if lastError.int32 == WSAEWOULDBLOCK:
           success = true
