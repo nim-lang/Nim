@@ -13,13 +13,19 @@ import rawsockets
 export TPort
 
 ## AsyncDispatch
-## --------
+## -------------
 ##
 ## This module implements a brand new dispatcher based on Futures.
-## On Windows IOCP is used and on other operating systems the selectors module
-## is used instead.
+## On Windows IOCP is used and on other operating systems the ``selectors``
+## module is used instead.
+##
+## **Note:** This module is still largely experimental.
+
 
 # TODO: Discarded void PFutures need to checked for exception.
+# TODO: Exceptions are currently uncatchable due to the limitation that 
+# you cannot have yield in a try stmt. Perhaps I can get the macro to put
+# a user's try except around ``future.read``.
 
 # -- Futures
 
