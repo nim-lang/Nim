@@ -166,6 +166,7 @@ proc transformVarSection(c: PTransf, v: PNode): PTransNode =
         idNodeTablePut(c.transCon.mapping, it.sons[j].sym, newSymNode(newVar))
         defs[j] = newSymNode(newVar).PTransNode
       assert(it.sons[L-2].kind == nkEmpty)
+      defs[L-2] = ast.emptyNode.PTransNode
       defs[L-1] = transform(c, it.sons[L-1])
       result[i] = defs
 
