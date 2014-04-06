@@ -83,7 +83,7 @@ proc fac*(n: int): int {.noSideEffect.} =
 proc isPowerOfTwo*(x: int): bool {.noSideEffect.} =
   ## returns true, if `x` is a power of two, false otherwise.
   ## Zero and negative numbers are not a power of two.
-  return (x != 0) and ((x and (x - 1)) == 0) ;
+  return (x != 0) and ((x and (x - 1)) == 0)
 
 proc nextPowerOfTwo*(x: int): int {.noSideEffect.} =
   ## returns `x` rounded up to the nearest power of two.
