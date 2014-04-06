@@ -17,7 +17,9 @@ import unsigned, os
 when hostos == "solaris":
   {.passl: "-lsocket -lnsl".}
 
-when defined(Windows):
+const useWinVersion = defined(Windows) or defined(nimdoc)
+
+when useWinVersion:
   import winlean
   export WSAEWOULDBLOCK
 else:
@@ -74,7 +76,7 @@ type
     length*: int
     addrList*: seq[string]
 
-when defined(windows):
+when useWinVersion:
   let
     osInvalidSocket* = winlean.INVALID_SOCKET
 
@@ -106,7 +108,7 @@ proc toInt*(typ: TType): cint
 proc toInt*(p: TProtocol): cint
   ## Converts the TProtocol enum to a platform-dependent ``cint``.
 
-when defined(posix):
+when not useWinVersion:
   proc toInt(domain: TDomain): cint =
     case domain
     of AF_UNIX:        result = posix.AF_UNIX
@@ -150,7 +152,7 @@ proc newRawSocket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM,
 
 proc close*(socket: TSocketHandle) =
   ## closes a socket.
-  when defined(windows):
+  when useWinVersion:
     discard winlean.closeSocket(socket)
   else:
     discard posix.close(socket)
@@ -164,7 +166,7 @@ proc listen*(socket: TSocketHandle, backlog = SOMAXCONN): cint {.tags: [FReadIO]
   ## Marks ``socket`` as accepting connections. 
   ## ``Backlog`` specifies the maximum length of the 
   ## queue of pending connections.
-  when defined(windows):
+  when useWinVersion:
     result = winlean.listen(socket, cint(backlog))
   else:
     result = posix.listen(socket, cint(backlog))
@@ -181,8 +183,8 @@ proc getAddrInfo*(address: string, port: TPort, af: TDomain = AF_INET, typ: TTyp
   hints.ai_protocol = toInt(prot)
   var gaiResult = getAddrInfo(address, $port, addr(hints), result)
   if gaiResult != 0'i32:
-    when defined(windows):
-      OSError(OSLastError())
+    when useWinVersion:
+      osError(osLastError())
     else:
       raise newException(EOS, $gai_strerror(gaiResult))
 
@@ -224,7 +226,7 @@ proc getServByName*(name, proto: string): TServent {.tags: [FReadIO].} =
   ## and the protocol name specified by ``proto`` matches the s_proto member.
   ##
   ## On posix this will search through the ``/etc/services`` file.
-  when defined(Windows):
+  when useWinVersion:
     var s = winlean.getservbyname(name, proto)
   else:
     var s = posix.getservbyname(name, proto)
@@ -240,7 +242,7 @@ proc getServByPort*(port: TPort, proto: string): TServent {.tags: [FReadIO].} =
   ## protocol name specified by ``proto`` matches the s_proto member.
   ##
   ## On posix this will search through the ``/etc/services`` file.
-  when defined(Windows):
+  when useWinVersion:
     var s = winlean.getservbyport(ze(int16(port)).cint, proto)
   else:
     var s = posix.getservbyport(ze(int16(port)).cint, proto)
@@ -255,7 +257,7 @@ proc getHostByAddr*(ip: string): Thostent {.tags: [FReadIO].} =
   var myaddr: TInAddr
   myaddr.s_addr = inet_addr(ip)
   
-  when defined(windows):
+  when useWinVersion:
     var s = winlean.gethostbyaddr(addr(myaddr), sizeof(myaddr).cuint,
                                   cint(rawsockets.AF_INET))
     if s == nil: osError(osLastError())
@@ -267,7 +269,7 @@ proc getHostByAddr*(ip: string): Thostent {.tags: [FReadIO].} =
   
   result.name = $s.h_name
   result.aliases = cstringArrayToSeq(s.h_aliases)
-  when defined(windows): 
+  when useWinVersion: 
     result.addrtype = TDomain(s.h_addrtype)
   else:
     if s.h_addrtype == posix.AF_INET:
@@ -281,14 +283,14 @@ proc getHostByAddr*(ip: string): Thostent {.tags: [FReadIO].} =
 
 proc getHostByName*(name: string): Thostent {.tags: [FReadIO].} = 
   ## This function will lookup the IP address of a hostname.
-  when defined(Windows):
+  when useWinVersion:
     var s = winlean.gethostbyname(name)
   else:
     var s = posix.gethostbyname(name)
   if s == nil: osError(osLastError())
   result.name = $s.h_name
   result.aliases = cstringArrayToSeq(s.h_aliases)
-  when defined(windows): 
+  when useWinVersion: 
     result.addrtype = TDomain(s.h_addrtype)
   else:
     if s.h_addrtype == posix.AF_INET:
@@ -303,7 +305,7 @@ proc getHostByName*(name: string): Thostent {.tags: [FReadIO].} =
 proc getSockName*(socket: TSocketHandle): TPort = 
   ## returns the socket's associated port number.
   var name: Tsockaddr_in
-  when defined(Windows):
+  when useWinVersion:
     name.sin_family = int16(ord(AF_INET))
   else:
     name.sin_family = posix.AF_INET
@@ -337,7 +339,7 @@ proc setBlocking*(s: TSocketHandle, blocking: bool) =
   ## Sets blocking mode on socket.
   ##
   ## Raises EOS on error.
-  when defined(Windows):
+  when useWinVersion:
     var mode = clong(ord(not blocking)) # 1 for non-blocking, 0 for blocking
     if ioctlsocket(s, FIONBIO, addr(mode)) == -1:
       osError(osLastError())
@@ -418,4 +420,4 @@ proc selectWrite*(writefds: var seq[TSocketHandle],
 
 when defined(Windows):
   var wsa: TWSADATA
-  if WSAStartup(0x0101'i16, addr wsa) != 0: OSError(OSLastError())
+  if WSAStartup(0x0101'i16, addr wsa) != 0: osError(osLastError())
