@@ -47,12 +47,12 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym): PNode =
   of skTemplate:
     if macroToExpand(s):
       let n = fixImmediateParams(n)
-      result = semTemplateExpr(c, n, s, false)
+      result = semTemplateExpr(c, n, s, {efNoSemCheck})
     else:
       result = symChoice(c, n, s, scOpen)
   of skMacro: 
     if macroToExpand(s):
-      result = semMacroExpr(c, n, n, s, false)
+      result = semMacroExpr(c, n, n, s, {efNoSemCheck})
     else:
       result = symChoice(c, n, s, scOpen)
   of skGenericParam: 
@@ -126,14 +126,14 @@ proc semGenericStmt(c: PContext, n: PNode,
       case s.kind
       of skMacro:
         if macroToExpand(s):
-          result = semMacroExpr(c, n, n, s, false)
+          result = semMacroExpr(c, n, n, s, {efNoSemCheck})
         else:
           n.sons[0] = symChoice(c, n.sons[0], s, scOption)
           result = n
       of skTemplate: 
         if macroToExpand(s):
           let n = fixImmediateParams(n)
-          result = semTemplateExpr(c, n, s, false)
+          result = semTemplateExpr(c, n, s, {efNoSemCheck})
         else:
           n.sons[0] = symChoice(c, n.sons[0], s, scOption)
           result = n
