@@ -13,6 +13,7 @@ import tables, os, unsigned, hashes
 
 when defined(linux): import posix, epoll
 elif defined(windows): import winlean
+else: import posix
 
 proc hash*(x: TSocketHandle): THash {.borrow.}
 proc `$`*(x: TSocketHandle): string {.borrow.}
