@@ -394,7 +394,6 @@ when defined(windows) or defined(nimdoc):
           size
         else:
           bytesReceived
-      assert dataBuf.buf[0] != '\0'
       var data = newString(realSize)
       copyMem(addr data[0], addr dataBuf.buf[0], realSize)
       retFuture.complete($data)
