@@ -126,19 +126,12 @@ when defined(linux) or defined(nimdoc):
     else:
       return false
 
-  proc contains*(s: PSelector, key: PSelectorKey): bool =
-    ## Determines whether selector contains this selector key. More accurate
-    ## than checking if the file descriptor is in the selector because it
-    ## ensures that the keys are equal. File descriptors may not always be
-    ## unique especially when an fd is closed and then a new one is opened,
-    ## the new one may have the same value.
-    return key.fd in s and s.fds[key.fd] == key
-
   proc `[]`*(s: PSelector, fd: TSocketHandle): PSelectorKey =
     ## Retrieves the selector key for ``fd``.
     return s.fds[fd]
 
-elif defined(windows):
+else:
+  # TODO: kqueue for bsd/mac os x.
   type
     PSelector* = ref object
       fds: TTable[TSocketHandle, PSelectorKey]
@@ -228,11 +221,13 @@ elif defined(windows):
   proc `[]`*(s: PSelector, fd: TSocketHandle): PSelectorKey =
     return s.fds[fd]
 
-elif defined(bsd) or defined(macosx):
-  # TODO: kqueue
-  {.error: "Sorry your platform is not supported yet.".}
-else:
-  {.error: "Sorry your platform is not supported.".}
+proc contains*(s: PSelector, key: PSelectorKey): bool =
+  ## Determines whether selector contains this selector key. More accurate
+  ## than checking if the file descriptor is in the selector because it
+  ## ensures that the keys are equal. File descriptors may not always be
+  ## unique especially when an fd is closed and then a new one is opened,
+  ## the new one may have the same value.
+  return key.fd in s and s.fds[key.fd] == key
 
 when isMainModule:
   # Select()
@@ -258,12 +253,3 @@ when isMainModule:
       assert selector.unregister(sock.getFD).fd == sock.getFD
       selector.close()
       break
-  
-  
-  
-  
-  
-  
-  
-  
-  
