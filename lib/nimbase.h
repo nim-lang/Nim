@@ -376,7 +376,7 @@ static inline void GCGuard (void *ptr) { asm volatile ("" :: "X" (ptr)); }
 #  define GC_GUARD
 #endif
 
-/* Test to see if nimrod and the C compiler agrees on the size of a pointer.
+/* Test to see if nimrod and the C compiler agree on the size of a pointer.
    On disagreement, your C compiler will say something like: 
    "error: 'assert_numbits' declared as an array with a negative size" */
 typedef int assert_numbits[sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8 ? 1 : -1];
