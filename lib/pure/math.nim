@@ -75,28 +75,30 @@ proc binom*(n, k: int): int {.noSideEffect.} =
     result = (result * (n + 1 - i)) div i
     
 proc fac*(n: int): int {.noSideEffect.} = 
-  ## computes the faculty function
+  ## computes the faculty/factorial function.
   result = 1
   for i in countup(2, n):
     result = result * i
 
 proc isPowerOfTwo*(x: int): bool {.noSideEffect.} =
-  ## returns true, if x is a power of two, false otherwise.
-  ## Negative numbers are not a power of two.
-  return (x and -x) == x
+  ## returns true, if `x` is a power of two, false otherwise.
+  ## Zero and negative numbers are not a power of two.
+  return (x != 0) and ((x and (x - 1)) == 0) ;
 
-proc nextPowerOfTwo*(x: int): int =
-  ## returns the nearest power of two, so that
-  ## result**2 >= x > (result-1)**2.
-  result = x - 1
+proc nextPowerOfTwo*(x: int): int {.noSideEffect.} =
+  ## returns `x` rounded up to the nearest power of two.
+  ## Zero and negative numbers get rounded up to 1.
+  result = x - 1 
   when defined(cpu64):
     result = result or (result shr 32)
-  result = result or (result shr 16)
-  result = result or (result shr 8)
+  when sizeof(int) > 16:
+    result = result or (result shr 16)
+  when sizeof(int) > 8:
+    result = result or (result shr 8)
   result = result or (result shr 4)
   result = result or (result shr 2)
   result = result or (result shr 1)
-  inc(result)
+  result += 1 + ord(x<=0)
 
 proc countBits32*(n: int32): int {.noSideEffect.} =
   ## counts the set bits in `n`.
