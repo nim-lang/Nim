@@ -161,12 +161,13 @@ proc paramsTypeCheck(c: PContext, typ: PType) {.inline.} =
     localError(typ.n.info, errXisNoType, typeToString(typ))
 
 proc expectMacroOrTemplateCall(c: PContext, n: PNode): PSym
-proc semTemplateExpr(c: PContext, n: PNode, s: PSym, semCheck = true): PNode
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode
 proc semWhen(c: PContext, n: PNode, semCheck: bool = true): PNode
 proc isOpImpl(c: PContext, n: PNode): PNode
+proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
+                     flags: TExprFlags = {}): PNode
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
-                  semCheck: bool = true): PNode
+                  flags: TExprFlags = {}): PNode
 
 proc symFromType(t: PType, info: TLineInfo): PSym =
   if t.sym != nil: return t.sym
@@ -265,7 +266,8 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
 
 include hlo, seminst, semcall
 
-proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode = 
+proc semAfterMacroCall(c: PContext, n: PNode, s: PSym,
+                       flags: TExprFlags): PNode =
   inc(evalTemplateCounter)
   if evalTemplateCounter > 100:
     globalError(s.info, errTemplateInstantiationTooNested)
@@ -281,7 +283,7 @@ proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode =
       # BUGFIX: we cannot expect a type here, because module aliases would not 
       # work then (see the ``tmodulealias`` test)
       # semExprWithType(c, result)
-      result = semExpr(c, result)
+      result = semExpr(c, result, flags)
     of tyStmt:
       result = semStmt(c, result)
     of tyTypeDesc:
@@ -290,14 +292,14 @@ proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode =
       result.typ = makeTypeDesc(c, typ)
       #result = symNodeFromType(c, typ, n.info)
     else:
-      result = semExpr(c, result)
+      result = semExpr(c, result, flags)
       result = fitNode(c, s.typ.sons[0], result)
       #GlobalError(s.info, errInvalidParamKindX, typeToString(s.typ.sons[0]))
   dec(evalTemplateCounter)
   c.friendModule = oldFriend
 
-proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym, 
-                  semCheck: bool = true): PNode = 
+proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
+                  flags: TExprFlags = {}): PNode =
   markUsed(n, sym)
   if sym == c.p.owner:
     globalError(n.info, errRecursiveDependencyX, sym.name.s)
@@ -306,7 +308,8 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   #  c.evalContext = c.createEvalContext(emStatic)
 
   result = evalMacroCall(c.module, n, nOrig, sym)
-  if semCheck: result = semAfterMacroCall(c, result, sym)
+  if efNoSemCheck notin flags:
+    result = semAfterMacroCall(c, result, sym, flags)
 
 proc forceBool(c: PContext, n: PNode): PNode = 
   result = fitNode(c, getSysType(tyBool), n)
