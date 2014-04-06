@@ -668,6 +668,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         result = isNone
     else: discard
   of tyOpenArray, tyVarargs:
+    # varargs[expr] is special
+    if f.kind == tyVarargs and f.sons[0].kind == tyExpr: return
     case a.kind
     of tyOpenArray, tyVarargs:
       result = typeRel(c, base(f), base(a))
