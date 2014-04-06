@@ -435,15 +435,25 @@ type
     connected: bool
     currentURL: TURL ## Where we are currently connected.
     headers: PStringTable
+    maxRedirects: int
     userAgent: string
 
-proc newAsyncHttpClient*(): PAsyncHttpClient =
+proc newAsyncHttpClient*(userAgent = defUserAgent,
+    maxRedirects = 5): PAsyncHttpClient =
+  ## Creates a new PAsyncHttpClient instance.
+  ##
+  ## ``userAgent`` specifies the user agent that will be used when making
+  ## requests.
+  ##
+  ## ``maxRedirects`` specifies the maximum amount of redirects to follow,
+  ## default is 5.
   new result
   result.headers = newStringTable(modeCaseInsensitive)
   result.userAgent = defUserAgent
+  result.maxRedirects = maxRedirects
 
 proc close*(client: PAsyncHttpClient) =
-  ## Closes any connections held by the HttpClient.
+  ## Closes any connections held by the HTTP client.
   if client.connected:
     client.socket.close()
     client.connected = false
@@ -588,6 +598,14 @@ proc newConnection(client: PAsyncHttpClient, url: TURL) {.async.} =
 
 proc request*(client: PAsyncHttpClient, url: string, httpMethod = httpGET,
               body = ""): PFuture[TResponse] {.async.} =
+  ## Connects to the hostname specified by the URL and performs a request
+  ## using the method specified.
+  ##
+  ## Connection will kept alive. Further requests on the same ``client`` to
+  ## the same hostname will not require a new connection to be made. The
+  ## connection can be closed by using the ``close`` procedure.
+  ##
+  ## The returned future will complete once the request is completed.
   let r = parseUrl(url)
   await newConnection(client, r)
 
@@ -601,6 +619,19 @@ proc request*(client: PAsyncHttpClient, url: string, httpMethod = httpGET,
     await client.socket.send(body)
   
   result = await parseResponse(client, httpMethod != httpHEAD)
+
+proc get*(client: PAsyncHttpClient, url: string): PFuture[TResponse] {.async.} =
+  ## Connects to the hostname specified by the URL and performs a GET request.
+  ##
+  ## This procedure will follow redirects up to a maximum number of redirects
+  ## specified in ``newAsyncHttpClient``.
+  result = await client.request(url, httpGET)
+  var lastURL = url
+  for i in 1..client.maxRedirects:
+    if result.status.redirection():
+      let redirectTo = getNewLocation(lastURL, result.headers)
+      result = await client.request(redirectTo, httpGET)
+      lastUrl = redirectTo
 
 when isMainModule:
   when true:
