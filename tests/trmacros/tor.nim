@@ -1,6 +1,7 @@
 discard """
   output: '''3060
-true'''
+true
+3'''
 """
 
 template arithOps: expr = (`+` | `-` | `*`)
@@ -19,3 +20,9 @@ var
   c = false
 a = b and a
 echo a
+
+# bug #798
+template t012{(0|1|2){x}}(x: expr): expr = x+1
+let z = 1
+# outputs 3 thanks to fixpoint iteration:
+echo z
