@@ -10,11 +10,12 @@
 # this module does the semantic checking for expressions
 # included from sem.nim
 
-proc semTemplateExpr(c: PContext, n: PNode, s: PSym, semCheck = true): PNode = 
+proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
+                     flags: TExprFlags = {}): PNode =
   markUsed(n, s)
   pushInfoContext(n.info)
   result = evalTemplate(n, s, getCurrOwner())
-  if semCheck: result = semAfterMacroCall(c, result, s)
+  if efNoSemCheck notin flags: result = semAfterMacroCall(c, result, s, flags)
   popInfoContext()
 
 proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
@@ -95,8 +96,8 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       else: result = newSymNode(s, n.info)
     else:
       result = newSymNode(s, n.info)
-  of skMacro: result = semMacroExpr(c, n, n, s)
-  of skTemplate: result = semTemplateExpr(c, n, s)
+  of skMacro: result = semMacroExpr(c, n, n, s, flags)
+  of skTemplate: result = semTemplateExpr(c, n, s, flags)
   of skVar, skLet, skResult, skParam, skForVar:
     markUsed(n, s)
     # if a proc accesses a global variable, it is not side effect free:
@@ -793,8 +794,8 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
   result = n
   let callee = result.sons[0].sym
   case callee.kind
-  of skMacro: result = semMacroExpr(c, result, orig, callee)
-  of skTemplate: result = semTemplateExpr(c, result, callee)
+  of skMacro: result = semMacroExpr(c, result, orig, callee, flags)
+  of skTemplate: result = semTemplateExpr(c, result, callee, flags)
   else:
     semFinishOperands(c, result)
     activate(c, result)
@@ -1966,13 +1967,13 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
           result = semDirectOp(c, n, flags)
         else:
           var p = fixImmediateParams(n)
-          result = semMacroExpr(c, p, p, s)
+          result = semMacroExpr(c, p, p, s, flags)
       of skTemplate:
         if sfImmediate notin s.flags:
           result = semDirectOp(c, n, flags)
         else:
           var p = fixImmediateParams(n)
-          result = semTemplateExpr(c, p, s)
+          result = semTemplateExpr(c, p, s, flags)
       of skType:
         # XXX think about this more (``set`` procs)
         if n.len == 2:
