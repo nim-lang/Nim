@@ -664,8 +664,7 @@ else:
     var retFuture = newFuture[string]()
     
     var readBuffer = newString(size)
-    var sizeRead = 0
-    
+
     proc cb(sock: TAsyncFD): bool =
       result = true
       let res = recv(sock.TSocketHandle, addr readBuffer[0], size,
@@ -678,12 +677,11 @@ else:
         else:
           result = false # We still want this callback to be called.
       elif res == 0:
-        #echo("Disconnected recv: ", sizeRead)
         # Disconnected
         retFuture.complete("")
       else:
+        readBuffer.setLen(res)
         retFuture.complete(readBuffer)
-      #echo("Recv cb result: ", result)
   
     addRead(socket, cb)
     return retFuture
