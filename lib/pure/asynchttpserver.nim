@@ -8,6 +8,8 @@
 #
 
 ## This module implements a high performance asynchronous HTTP server.
+##
+## **Note:** This module is still largely experimental.
 
 import strtabs, asyncnet, asyncdispatch, parseutils, parseurl, strutils
 type

@@ -223,6 +223,30 @@ Internet Protocols and Support
 * `uri <uri.html>`_
   This module provides functions for working with URIs.
 
+* `asyncdispatch <asyncdispatch.html>`_
+  This module implements an asynchronous dispatcher for IO operations.
+
+  **Note:** This module is still largely experimental.
+
+* `asyncnet <asyncnet.html>`_
+  This module implements asynchronous sockets based on the ``asyncdispatch``
+  module.
+
+  **Note:** This module is still largely experimental.
+
+* `asynchttpserver <asynchttpserver.html>`_
+  This module implements an asynchronous HTTP server using the ``asyncnet``
+  module.
+
+  **Note:** This module is still largely experimental.
+
+* `net <net.html>`_
+  This module implements a high-level sockets API. It will replace the
+  ``sockets`` module in the future.
+
+* `rawsockets <rawsockets.html>`_
+  This module implements a low-level sockets API.
+
 Parsers
 -------
 
