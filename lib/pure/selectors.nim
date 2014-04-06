@@ -204,9 +204,9 @@ elif defined(windows):
     
     var retCode = 0
     if timeout != -1:
-      retCode = int(select(TSocketHandle(m+1), addr(rd), addr(wr), nil, addr(tv)))
+      retCode = int(select(cint(m+1), addr(rd), addr(wr), nil, addr(tv)))
     else:
-      retCode = int(select(TSocketHandle(m+1), addr(rd), addr(wr), nil, nil))
+      retCode = int(select(cint(m+1), addr(rd), addr(wr), nil, nil))
     
     if retCode < 0:
       OSError(OSLastError())
@@ -242,7 +242,7 @@ when isMainModule:
       sock: TSocket
   
   var sock = socket()
-  sock.setBlocking(false)
+  #sock.setBlocking(false)
   sock.connect("irc.freenode.net", TPort(6667))
   
   var selector = newSelector()
