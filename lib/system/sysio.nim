@@ -176,9 +176,10 @@ proc rawEchoNL() {.inline, compilerproc.} = write(stdout, "\n")
 
 # interface to the C procs:
 
-when defined(windows) and not defined(useWinAnsi):
+when (defined(windows) and not defined(useWinAnsi)) or defined(nimdoc):
   include "system/widestrs"
-  
+
+when defined(windows) and not defined(useWinAnsi):  
   proc wfopen(filename, mode: WideCString): pointer {.
     importc: "_wfopen", nodecl.}
   proc wfreopen(filename, mode: WideCString, stream: TFile): TFile {.

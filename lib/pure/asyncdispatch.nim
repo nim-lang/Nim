@@ -154,7 +154,7 @@ when defined(windows) or defined(nimdoc):
     let p = getGlobalDispatcher()
     if CreateIOCompletionPort(sock.THandle, p.ioPort,
                               cast[TCompletionKey](sock), 1) == 0:
-      OSError(OSLastError())
+      osError(osLastError())
     p.handles.incl(sock)
 
   proc verifyPresence(sock: TAsyncFD) =
@@ -191,7 +191,7 @@ when defined(windows) or defined(nimdoc):
           lpNumberOfBytesTransferred, TOSErrorCode(-1))
       dealloc(customOverlapped)
     else:
-      let errCode = OSLastError()
+      let errCode = osLastError()
       if lpOverlapped != nil:
         assert customOverlapped.data.sock == lpCompletionKey.TAsyncFD
         customOverlapped.data.cb(customOverlapped.data.sock,
@@ -201,7 +201,7 @@ when defined(windows) or defined(nimdoc):
         if errCode.int32 == WAIT_TIMEOUT:
           # Timed out
           discard
-        else: OSError(errCode)
+        else: osError(errCode)
 
   var connectExPtr: pointer = nil
   var acceptExPtr: pointer = nil
@@ -218,11 +218,11 @@ when defined(windows) or defined(nimdoc):
   proc initAll() =
     let dummySock = newRawSocket()
     if not initPointer(dummySock, connectExPtr, WSAID_CONNECTEX):
-      OSError(OSLastError())
+      osError(osLastError())
     if not initPointer(dummySock, acceptExPtr, WSAID_ACCEPTEX):
-      OSError(OSLastError())
+      osError(osLastError())
     if not initPointer(dummySock, getAcceptExSockAddrsPtr, WSAID_GETACCEPTEXSOCKADDRS):
-      OSError(OSLastError())
+      osError(osLastError())
 
   proc connectEx(s: TSocketHandle, name: ptr TSockAddr, namelen: cint, 
                   lpSendBuffer: pointer, dwSendDataLength: dword,
@@ -283,7 +283,7 @@ when defined(windows) or defined(nimdoc):
     saddr.sin_addr.s_addr = INADDR_ANY
     if bindAddr(socket.TSocketHandle, cast[ptr TSockAddr](addr(saddr)),
                   sizeof(saddr).TSockLen) < 0'i32:
-      OSError(OSLastError())
+      osError(osLastError())
 
     var aiList = getAddrInfo(address, port, af)
     var success = false
@@ -314,7 +314,7 @@ when defined(windows) or defined(nimdoc):
         # free ``ol``.
         break
       else:
-        lastError = OSLastError()
+        lastError = osLastError()
         if lastError.int32 == ERROR_IO_PENDING:
           # In this case ``ol`` will be deallocated in ``poll``.
           success = true
@@ -334,7 +334,7 @@ when defined(windows) or defined(nimdoc):
     ## Reads **up to** ``size`` bytes from ``socket``. Returned future will
     ## complete once all the data requested is read, a part of the data has been
     ## read, or the socket has disconnected in which case the future will
-    ## complete with a value of ``""`.
+    ## complete with a value of ``""``.
 
 
     # Things to note:
@@ -370,7 +370,7 @@ when defined(windows) or defined(nimdoc):
     let ret = WSARecv(socket.TSocketHandle, addr dataBuf, 1, addr bytesReceived,
                       addr flagsio, cast[POverlapped](ol), nil)
     if ret == -1:
-      let err = OSLastError()
+      let err = osLastError()
       if err.int32 != ERROR_IO_PENDING:
         retFuture.fail(newException(EOS, osErrorMsg(err)))
         dealloc(ol)
@@ -449,7 +449,7 @@ when defined(windows) or defined(nimdoc):
     var retFuture = newFuture[tuple[address: string, client: TAsyncFD]]()
 
     var clientSock = newRawSocket()
-    if clientSock == OSInvalidSocket: osError(osLastError())
+    if clientSock == osInvalidSocket: osError(osLastError())
 
     const lpOutputLen = 1024
     var lpOutputBuf = newString(lpOutputLen)
