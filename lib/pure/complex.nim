@@ -180,7 +180,15 @@ proc log2*(z: TComplex): TComplex =
 
 
 proc pow*(x, y: TComplex): TComplex =
-  ## `x` raised to the power `y`.
+  ## Computes `x` to the power of `y`.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   let
+  ##     x = (1.0, 2.0)
+  ##     y = (-1.0, 0.0)
+  ##   assert ( pow(x, y) =~ (0.2, -0.4) )
   if x.re == 0.0  and  x.im == 0.0:
     if y.re == 0.0  and  y.im == 0.0:
       result.re = 1.0
@@ -200,6 +208,17 @@ proc pow*(x, y: TComplex): TComplex =
     result.re = s*cos(r)
     result.im = s*sin(r)
            
+
+proc `**`*(x, y: TComplex): TComplex {.inline.} = pow(x, y)
+  ## Alias of ``pow``, computes `x` to the power of `y`.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   let
+  ##     x = (1.0, 2.0)
+  ##     y = (-1.0, 0.0)
+  ##   assert ( x ** y =~ (0.2, -0.4) )
 
 proc sin*(z: TComplex): TComplex =
   ## Returns the sine of `z`.
@@ -281,10 +300,13 @@ when isMainModule:
   assert( exp(ipi)  =~ m1 )
  
   assert( pow(a,b)   =~ (-3.72999124927876, -1.68815826725068) )
+  assert( pow(a,b)   =~ a ** b )
   assert( pow(z,a)   =~ (0.0, 0.0) )
   assert( pow(z,z)   =~ (1.0, 0.0) )
+  assert( pow(z,z)   =~ z ** z )
   assert( pow(a,one) =~ a )
   assert( pow(a,m1)  =~ (0.2, -0.4) )
+  assert( a ** m1    =~ (0.2, -0.4) )
 
   assert( ln(a)    =~ (0.804718956217050, 1.107148717794090) )
   assert( log10(a) =~ (0.349485002168009, 0.480828578784234) )

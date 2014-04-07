@@ -191,7 +191,22 @@ when not defined(JS):
   proc tan*(x: float): float {.importc: "tan", header: "<math.h>".}
   proc tanh*(x: float): float {.importc: "tanh", header: "<math.h>".}
   proc pow*(x, y: float): float {.importc: "pow", header: "<math.h>".}
-    ## computes x to power raised of y.
+    ## Computes `x` to the power of `y`.
+    ##
+    ## Example:
+    ##
+    ## .. code-block:: nimrod
+    ##   echo "Spectrum ", int(pow(2, 7))
+    ##   # --> Spectrum 128
+
+  proc `**`*(x, y: float): float {.inline.} = pow(x, y)
+    ## Alias of ``pow``, computes `x` to the power of `y`.
+    ##
+    ## Example:
+    ##
+    ## .. code-block:: nimrod
+    ##   echo "Spectrum ", int(2 ** 7)
+    ##   # --> Spectrum 128
     
   # C procs:
   proc gettime(dummy: ptr cint): cint {.importc: "time", header: "<time.h>".}
@@ -328,3 +343,4 @@ when isMainModule and not defined(JS):
   for i in 0..SIZE-1:
     assert buf[i] == random(high(int)), "non deterministic random seeding"
   echo "random values equal after reseeding"
+  assert int(2 ** 7) == 128
