@@ -146,21 +146,67 @@ Output::
 Related Options
 ===============
 
-``--project`` switch
+Project switch
+--------------
+
 ::
-  nimrod doc2 --project sample
+  nimrod doc2 --project filename.nim
 
 This will recursively generate documentation of all nimrod modules imported
 into the input module, including system modules. Be careful with this command,
 as it may end up sprinkling html files all over your filesystem!
 
 
-``--index`` switch
+Index switch
+------------
+
 ::
-  nimrod doc2 --index:on sample
+  nimrod doc2 --index:on filename.nim
 
 This will generate an index of all the exported symbols in the input Nimrod
-module, and put it into a neighboring file with the extension of `.idx`.
+module, and put it into a neighboring file with the extension of `.idx`. The
+index file is line oriented (newlines have to be escaped). Each line represents
+a tab separated record of several columns, the first two mandatory, the rest
+optional:
+
+1. Mandatory term being indexed. Terms can include quoting according to
+   Nimrod's rules (eg. ```^```)
+2. Base filename plus anchor hyper link (eg.
+   ``algorithm.html#*,int,TSortOrder``).
+3. Optional human readable string to display as hyper link. If the value is not
+   present or is the empty string, the hyper link will be rendered using the
+   term.
+4. Optional title or description of the hyper link. Browsers usually display
+   this as a tooltip after hovering a moment over the hyper link.
+
+Once index files have been generated for one or more modules, the Nimrod
+compiler command ``buildIndex directory`` can be run to go over all the index
+files in the specified directory to generate a `theindex.html <theindex.html>`_
+file.
+
+See source switch
+-----------------
+
+::
+  nimrod doc2 --docSeeSrcUrl:txt filename.nim
+
+When you pass the ``docSeeSrcUrl`` switch to docgen, after each documented item
+in your source code the hyper link *See source* will appear pointing to the
+implementation of that item on a GitHub repository. You can click the link to
+see the implementation of the item.
+
+If you want to reuse this feature in your own documentation you will have to
+modify ``config/nimdoc.cfg`` to contain a ``doc.item.seesrc`` value with a
+hyper link to your own code repository. As you will see by the comments in that
+file, the value ``txt`` passed on the command line will be used in the HTML
+template along others like ``$path`` and ``$line``.
+
+In the case of Nimrod's own documentation, the ``txt`` value is just a commit
+hash to append to a formatted URL to https://github.com/Araq/Nimrod. The
+``tools/nimweb.nim`` helper queries the current git commit hash during doc
+generation, but since you might be working on an unpublished repository, it
+also allows specifying a ``githash`` value in ``web/nimrod.ini`` to force a
+specific commit in the output.
 
 
 Other Input Formats
@@ -183,10 +229,83 @@ command is invoked identically to ``rst2html``, but outputs a .tex file instead
 of .html.
 
 
-Additional Resources
-=========
+HTML anchor generation
+======================
+
+When you run the ``rst2html`` command, all sections in the RST document will
+get an anchor you can hyper link to. Usually you can guess the anchor lower
+casing the section title and replacing spaces with dashes, and in any case you
+can get it from the table of contents. But when you run the ``doc`` or ``doc2``
+commands to generate API documentation, some symbol get one or two anchors at
+the same time: a numerical identifier, or a plain name plus a complex name.
+
+The numerical identifier is just a random number. The number gets assigned
+according to the section and position of the symbol in the file being processed
+and you should not rely on it being constant: if you add or remove a symbol the
+numbers may shuffle around.
+
+The plain name of a symbol is a simplified version of its fully exported
+signature. Variables or constants have the same plain name symbol as their
+complex name. The plain name for procs, templates, and other callable types
+will be their unquoted value after removing parameters, return types and
+pragmas. The plain name allows short and nice linking of symbols which works
+unless you have a module with collisions due to overloading.
+
+If you hyper link a plain name symbol and there are other matches on the same
+HTML file, most browsers will go to the first one. To differentiate the rest,
+you will need to use the complex name. A complex name for a callable type is
+made up from several parts:
+
+    (**plain symbol**)(**.type**),(**first param**)?(**,param type**)\*
+
+The first thing to note is that all callable types have at least a comma, even
+if they don't have any parameters. If there are parameters, they are
+represented by their types and will be comma separated. To the plain symbol a
+suffix may be added depending on the type of the callable:
+
+-------------   --------------
+Callable type   Suffix
+-------------   --------------
+proc            *empty string*
+macro           ``.m``
+method          ``.e``
+iterator        ``.i``
+template        ``.t``
+converter       ``.c``
+-------------   --------------
+
+The relationship of type to suffix is made by the proc ``complexName`` in the
+``compiler/docgen.nim`` file. Here are some examples of complex names for
+symbols in the `system module <system.html>`_.
+
+* ``type TSignedInt = int | int8 | int16 | int32 | int64`` **=>**
+  `#TSignedInt <system.html#TSignedInt>`_
+* ``var globalRaiseHook: proc (e: ref E_Base): bool {.nimcall.}`` **=>**
+  `#globalRaiseHook <system.html#globalRaiseHook>`_
+* ``const NimrodVersion = "0.0.0"`` **=>**
+  `#NimrodVersion <system.html#NimrodVersion>`_
+* ``proc getTotalMem(): int {.rtl, raises: [], tags: [].}`` **=>**
+  `#getTotalMem, <system.html#getTotalMem,>`_
+* ``proc len[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}`` **=>**
+  `#len,seq[T] <system.html#len,seq[T]>`_
+* ``iterator pairs[T](a: seq[T]): tuple[key: int, val: T] {.inline.}`` **=>**
+  `#pairs.i,seq[T] <system.html#pairs.i,seq[T]>`_
+* ``template newException[](exceptn: typedesc; message: string): expr`` **=>**
+  `#newException.t,typedesc,string
+  <system.html#newException.t,typedesc,string>`_
+
+
+Additional resources
+====================
 
 `Nimrod Compiler User Guide <nimrodc.html#command-line-switches>`_
 
 `RST Quick Reference
 <http://docutils.sourceforge.net/docs/user/rst/quickref.html>`_
+
+The output for HTML and LaTeX comes from the ``config/nimdoc.cfg`` and
+``config/nimdoc.tex.cfg`` configuration files. You can add and modify these
+files to your project to change the look of docgen output.
+
+You can import the `packages/docutils/rstgen module <rstgen.html>`_ in your
+programs if you want to reuse the compiler's documentation generation procs.
