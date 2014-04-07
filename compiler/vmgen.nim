@@ -1501,7 +1501,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     else:
       localError(n.info, errGenerated, "VM is not allowed to 'cast'")
   else:
-    internalError n.info, "too implement " & $n.kind
+    internalError n.info, "cannot generate VM code for " & n.renderTree
 
 proc removeLastEof(c: PCtx) =
   let last = c.code.len-1
