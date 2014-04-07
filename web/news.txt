@@ -30,7 +30,7 @@ kqueue has not been implemented yet but will be in the future.
 The Asynchronous IO API provides both
 a callback interface and an interface which allows you to write code as you
 would if you were writing synchronous code. The latter is done through
-the use of an ``await`` keyword which behaves similar to C#'s await. The
+the use of an ``await`` macro which behaves similar to C#'s await. The
 following is a very simple chat server demonstrating Nimrod's new async
 capabilities.
 
@@ -58,6 +58,11 @@ capabilities.
 
   serve()
   runForever()
+
+
+Note that this feature has been implemented with Nimrod's macro system and so
+``await`` and ``async`` are no keywords.
+
 
 Library Additions
 -----------------
