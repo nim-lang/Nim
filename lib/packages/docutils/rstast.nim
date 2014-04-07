@@ -9,7 +9,7 @@
 
 ## This module implements an AST for the `reStructuredText`:idx: parser.
 
-import strutils
+import strutils, json
 
 type
   TRstNodeKind* = enum        ## the possible node kinds of an PRstNode
@@ -286,3 +286,27 @@ proc renderRstToRst*(n: PRstNode, result: var string) =
   var d: TRenderContext
   renderRstToRst(d, n, result)
 
+proc renderRstToJsonNode(node: PRstNode): PJsonNode =
+  result =
+    %[
+      (key: "kind", val: %($node.kind)),
+      (key: "level", val: %BiggestInt(node.level))
+     ]
+  if node.text != nil:
+    result.add("text", %node.text)
+  if node.sons != nil and len(node.sons) > 0:
+    var accm = newSeq[PJsonNode](len(node.sons))
+    for i, son in node.sons:
+      accm[i] = renderRstToJsonNode(son)
+    result.add("sons", %accm)
+
+proc renderRstToJson*(node: PRstNode): string =
+  ## Writes the given RST node as JSON that is in the form
+  ## :: 
+  ##   {
+  ##     "kind":string node.kind,
+  ##     "text":optional string node.text,
+  ##     "level":optional int node.level,
+  ##     "sons":optional node array
+  ##   }
+  renderRstToJsonNode(node).pretty
