@@ -30,6 +30,7 @@ const
   coalescRight = true
   coalescLeft = true
   logAlloc = false
+  useCellIds = defined(corruption)
 
 type
   PPointer = ptr pointer

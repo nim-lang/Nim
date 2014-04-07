@@ -170,24 +170,24 @@ proc `!$`(h: THash): THash {.inline.} =
   result = result xor (result shr 11)
   result = result +% result shl 15
 
-proc hash(Data: Pointer, Size: int): THash =
+proc hash(data: pointer, size: int): THash =
   var h: THash = 0
-  var p = cast[cstring](Data)
+  var p = cast[cstring](data)
   var i = 0
   var s = size
   while s > 0:
     h = h !& ord(p[i])
-    Inc(i)
-    Dec(s)
+    inc(i)
+    cec(s)
   result = !$h
 
 proc hashGcHeader(data: pointer): THash =
   const headerSize = sizeof(int)*2
   result = hash(cast[pointer](cast[int](data) -% headerSize), headerSize)
 
-proc genericHashAux(dest: Pointer, mt: PNimType, shallow: bool,
+proc genericHashAux(dest: pointer, mt: PNimType, shallow: bool,
                     h: THash): THash
-proc genericHashAux(dest: Pointer, n: ptr TNimNode, shallow: bool,
+proc genericHashAux(dest: pointer, n: ptr TNimNode, shallow: bool,
                     h: THash): THash =
   var d = cast[TAddress](dest)
   case n.kind
@@ -203,7 +203,7 @@ proc genericHashAux(dest: Pointer, n: ptr TNimNode, shallow: bool,
     if m != nil: result = genericHashAux(dest, m, shallow, result)
   of nkNone: sysAssert(false, "genericHashAux")
 
-proc genericHashAux(dest: Pointer, mt: PNimType, shallow: bool, 
+proc genericHashAux(dest: pointer, mt: PNimType, shallow: bool, 
                     h: THash): THash =
   sysAssert(mt != nil, "genericHashAux 2")
   case mt.Kind
@@ -253,7 +253,7 @@ proc genericHashAux(dest: Pointer, mt: PNimType, shallow: bool,
   else:
     result = h !& hash(dest, mt.size) # hash raw bits
 
-proc genericHash(dest: Pointer, mt: PNimType): int =
+proc genericHash(dest: pointer, mt: PNimType): int =
   result = genericHashAux(dest, mt, false, 0)
   
 proc dbgRegisterWatchpoint(address: pointer, name: cstring,

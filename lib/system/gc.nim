@@ -68,6 +68,8 @@ type
                                    # non-zero count table
     stackBottom: pointer
     cycleThreshold: int
+    when useCellIds:
+      idGenerator: int
     zct: TCellSeq            # the zero count table
     decStack: TCellSeq       # cells in the stack that are to decref again
     cycleRoots: TCellSet
@@ -437,6 +439,9 @@ proc rawNewObj(typ: PNimType, size: int, gch: var TGcHeap): pointer =
   when logGC: writeCell("new cell", res)
   gcTrace(res, csAllocated)
   release(gch)
+  when useCellIds:
+    inc gch.idGenerator
+    res.id = gch.idGenerator
   result = cellToUsr(res)
   sysAssert(allocInv(gch.region), "rawNewObj end")
 
@@ -477,6 +482,9 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   when logGC: writeCell("new cell", res)
   gcTrace(res, csAllocated)
   release(gch)
+  when useCellIds:
+    inc gch.idGenerator
+    res.id = gch.idGenerator
   result = cellToUsr(res)
   zeroMem(result, size)
   sysAssert(allocInv(gch.region), "newObjRC1 end")
@@ -532,6 +540,9 @@ proc growObj(old: pointer, newsize: int, gch: var TGcHeap): pointer =
     sysAssert(ol.typ != nil, "growObj: 5")
     zeroMem(ol, sizeof(TCell))
   release(gch)
+  when useCellIds:
+    inc gch.idGenerator
+    res.id = gch.idGenerator
   result = cellToUsr(res)
   sysAssert(allocInv(gch.region), "growObj end")
   when defined(memProfiler): nimProfile(newsize-oldsize)
