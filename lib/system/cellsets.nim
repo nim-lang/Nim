@@ -18,6 +18,8 @@ type
     when trackAllocationSource:
       filename: cstring
       line: int
+    when useCellIds:
+      id: int
 
   PCell = ptr TCell
 
