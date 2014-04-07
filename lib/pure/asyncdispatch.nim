@@ -922,7 +922,7 @@ macro async*(prc: stmt): stmt {.immediate.} =
 
   result[6] = outerProcBody
 
-  echo(toStrLit(result))
+  #echo(toStrLit(result))
 
 proc recvLine*(socket: TAsyncFD): PFuture[string] {.async.} =
   ## Reads a line of data from ``socket``. Returned future will complete once
