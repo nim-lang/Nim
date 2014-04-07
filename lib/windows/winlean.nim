@@ -657,7 +657,12 @@ type
     D4*: array [0..7, int8]
 
 const
-  ERROR_IO_PENDING* = 997
+  ERROR_IO_PENDING* = 997 # a.k.a WSA_IO_PENDING
+  WSAECONNABORTED* = 10053
+  WSAECONNRESET* = 10054
+  WSAEDISCON* = 10101
+  WSAENETRESET* = 10052
+  WSAETIMEDOUT* = 10060
 
 proc CreateIoCompletionPort*(FileHandle: THANDLE, ExistingCompletionPort: THANDLE,
                              CompletionKey: DWORD,
