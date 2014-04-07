@@ -225,8 +225,18 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
         # properly filled-out in semtypinst (see how tyStaticExpr
         # is handled there).
         indx = makeRangeWithStaticExpr(c, e)
-      else:
+      elif e.kind == nkIdent:
         indx = e.typ.skipTypes({tyTypeDesc})
+      else:
+        let x = semConstExpr(c, e)
+        if x.kind in {nkIntLit..nkUInt64Lit}:
+          indx = makeRangeType(c, 0, x.intVal-1, n.info, 
+                               x.typ.skipTypes({tyTypeDesc}))
+        else:
+          indx = x.typ.skipTypes({tyTypeDesc})
+          if not isOrdinalType(indx):
+            localError(n[1].info, errOrdinalTypeExpected)
+          #localError(n[1].info, errConstExprExpected)
     addSonSkipIntLit(result, indx)
     if indx.kind == tyGenericInst: indx = lastSon(indx)
     if indx.kind notin {tyGenericParam, tyStatic, tyFromExpr}:
