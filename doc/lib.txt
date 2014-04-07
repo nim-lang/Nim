@@ -247,6 +247,10 @@ Internet Protocols and Support
 * `rawsockets <rawsockets.html>`_
   This module implements a low-level sockets API.
 
+* `selectors <selectors.html>`_
+  This module implements a selector API with backends specific to each OS.
+  Currently epoll on Linux and select on other operating systems.
+
 Parsers
 -------
 

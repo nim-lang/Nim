@@ -546,9 +546,6 @@ proc parseResponse(client: PAsyncHttpClient,
       # Parse HTTP version info and status code.
       var le = skipIgnoreCase(line, "HTTP/", linei)
       if le <= 0:
-        while true:
-          let nl = await client.socket.recvLine()
-          echo("Got another line: ", nl)
         httpError("invalid http version, " & line.repr)
       inc(linei, le)
       le = skipIgnoreCase(line, "1.1", linei)
