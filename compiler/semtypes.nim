@@ -234,8 +234,6 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
                                x.typ.skipTypes({tyTypeDesc}))
         else:
           indx = x.typ.skipTypes({tyTypeDesc})
-          if not isOrdinalType(indx):
-            localError(n[1].info, errOrdinalTypeExpected)
           #localError(n[1].info, errConstExprExpected)
     addSonSkipIntLit(result, indx)
     if indx.kind == tyGenericInst: indx = lastSon(indx)
