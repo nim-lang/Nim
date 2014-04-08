@@ -116,7 +116,7 @@ proc packSize(v: PNode, typ: PType): int =
     if v.kind in {nkNilLit, nkPtrLit}:
       result = sizeof(pointer)
     else:
-      result = sizeof(pointer) + packSize(v.sons[0], typ.sons[0])
+      result = sizeof(pointer) + packSize(v.sons[0], typ.lastSon)
   of tyDistinct, tyGenericInst:
     result = packSize(v, typ.sons[0])
   of tyArray, tyArrayConstr:
@@ -219,7 +219,7 @@ proc pack(v: PNode, typ: PType, res: pointer) =
         packRecCheck = 0
         globalError(v.info, "cannot map value to FFI " & typeToString(v.typ))
       inc packRecCheck
-      pack(v.sons[0], typ.sons[0], res +! sizeof(pointer))
+      pack(v.sons[0], typ.lastSon, res +! sizeof(pointer))
       dec packRecCheck
       awr(pointer, res +! sizeof(pointer))
   of tyArray, tyArrayConstr:
@@ -371,7 +371,7 @@ proc unpack(x: pointer, typ: PType, n: PNode): PNode =
       awi(nkPtrLit, cast[TAddress](p))
     elif n != nil and n.len == 1:
       internalAssert n.kind == nkRefTy
-      n.sons[0] = unpack(p, typ.sons[0], n.sons[0])
+      n.sons[0] = unpack(p, typ.lastSon, n.sons[0])
       result = n
     else:
       globalError(n.info, "cannot map value from FFI " & typeToString(typ))

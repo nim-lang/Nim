@@ -134,7 +134,7 @@ proc genTypeInfo(p: PProc, typ: PType): PRope =
               [result, toRope(ord(t.kind))])
     prepend(p.g.typeInfo, s)
     appf(p.g.typeInfo, "$1.base = $2;$n", 
-         [result, genTypeInfo(p, typ.sons[0])])
+         [result, genTypeInfo(p, typ.lastSon)])
   of tyArrayConstr, tyArray: 
     var s = ropef(
       "var $1 = {size: 0,kind: $2,base: null,node: null,finalizer: null};$n",

@@ -183,7 +183,7 @@ proc mapType(typ: PType): TCTypeKind =
       else: internalError("mapType")
   of tyRange: result = mapType(typ.sons[0])
   of tyPtr, tyVar, tyRef:
-    var base = skipTypes(typ.sons[0], typedescInst)
+    var base = skipTypes(typ.lastSon, typedescInst)
     case base.kind
     of tyOpenArray, tyArrayConstr, tyArray, tyVarargs: result = ctPtrToArray
     else: result = ctPtr
@@ -269,7 +269,7 @@ proc fillResult(param: PSym) =
 proc getParamTypeDesc(m: BModule, t: PType, check: var TIntSet): PRope =
   when false:
     if t.Kind in {tyRef, tyPtr, tyVar}:
-      var b = skipTypes(t.sons[0], typedescInst)
+      var b = skipTypes(t.lastson, typedescInst)
       if b.kind == tySet and mapSetType(b) == ctArray:
         return getTypeDescAux(m, b, check)
   result = getTypeDescAux(m, t, check)
@@ -530,7 +530,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var TIntSet): PRope =
     # C type generation into an analysis and a code generation phase somehow.
   case t.kind
   of tyRef, tyPtr, tyVar: 
-    et = getUniqueType(t.sons[0])
+    et = getUniqueType(t.lastSon)
     if et.kind in {tyArrayConstr, tyArray, tyOpenArray, tyVarargs}: 
       # this is correct! sets have no proper base type, so we treat
       # ``var set[char]`` in `getParamTypeDesc`

@@ -120,15 +120,23 @@ proc semVarargs(c: PContext, n: PNode, prev: PType): PType =
   else:
     localError(n.info, errXExpectsOneTypeParam, "varargs")
     addSonSkipIntLit(result, errorType(c))
-  
-proc semAnyRef(c: PContext, n: PNode, kind: TTypeKind, prev: PType): PType = 
-  if sonsLen(n) == 1:
-    result = newOrPrevType(kind, prev, c)
-    var base = semTypeNode(c, n.sons[0], nil)
-    addSonSkipIntLit(result, base)
-  else:
+
+proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
+  if n.len < 1:
     result = newConstraint(c, kind)
-  
+  else:
+    let n = if n[0].kind == nkBracket: n[0] else: n
+    checkMinSonsLen(n, 1)
+    result = newOrPrevType(kind, prev, c)
+    # check every except the last is an object:
+    for i in 0 .. n.len-2:
+      let region = semTypeNode(c, n[i], nil)
+      if region.skipTypes({tyGenericInst}).kind notin {tyError, tyObject}:
+        message n[i].info, errGenerated, "region needs to be an object type"
+      addSonSkipIntLit(result, region)
+    var base = semTypeNode(c, n.lastSon, nil)
+    addSonSkipIntLit(result, base)
+
 proc semVarType(c: PContext, n: PNode, prev: PType): PType = 
   if sonsLen(n) == 1: 
     result = newOrPrevType(tyVar, prev, c)

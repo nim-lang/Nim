@@ -111,7 +111,7 @@ proc mapType(typ: PType): TJSTypeKind =
   let t = skipTypes(typ, abstractInst)
   case t.kind
   of tyVar, tyRef, tyPtr: 
-    if skipTypes(t.sons[0], abstractInst).kind in MappedToObject: 
+    if skipTypes(t.lastSon, abstractInst).kind in MappedToObject: 
       result = etyObject
     else: 
       result = etyBaseIndex
@@ -912,7 +912,7 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
 
 proc genArrayAccess(p: PProc, n: PNode, r: var TCompRes) = 
   var ty = skipTypes(n.sons[0].typ, abstractVarRange)
-  if ty.kind in {tyRef, tyPtr}: ty = skipTypes(ty.sons[0], abstractVarRange)
+  if ty.kind in {tyRef, tyPtr}: ty = skipTypes(ty.lastSon, abstractVarRange)
   case ty.kind
   of tyArray, tyArrayConstr, tyOpenArray, tySequence, tyString, tyCString,
      tyVarargs:
@@ -957,7 +957,7 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
     genFieldAddr(p, n, r)
   of nkBracketExpr:
     var ty = skipTypes(n.sons[0].typ, abstractVarRange)
-    if ty.kind in {tyRef, tyPtr}: ty = skipTypes(ty.sons[0], abstractVarRange)
+    if ty.kind in {tyRef, tyPtr}: ty = skipTypes(ty.lastSon, abstractVarRange)
     case ty.kind
     of tyArray, tyArrayConstr, tyOpenArray, tySequence, tyString, tyCString,
        tyVarargs:

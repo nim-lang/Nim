@@ -780,7 +780,7 @@ proc genSeqElem(p: BProc, e: PNode, d: var TLoc) =
   initLocExpr(p, e.sons[1], b)
   var ty = skipTypes(a.t, abstractVarRange)
   if ty.kind in {tyRef, tyPtr}:
-    ty = skipTypes(ty.sons[0], abstractVarRange) # emit range check:
+    ty = skipTypes(ty.lastSon, abstractVarRange) # emit range check:
   if optBoundsCheck in p.options:
     if ty.kind == tyString:
       linefmt(p, cpsStmts,
@@ -1121,7 +1121,7 @@ proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
   while t.kind in {tyVar, tyPtr, tyRef}:
     if t.kind != tyVar: nilCheck = r
     r = rfmt(nil, "(*$1)", r)
-    t = skipTypes(t.sons[0], typedescInst)
+    t = skipTypes(t.lastSon, typedescInst)
   if gCmd != cmdCompileToCpp:
     while (t.kind == tyObject) and (t.sons[0] != nil):
       app(r, ~".Sup")
@@ -1737,7 +1737,7 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
     while t.kind in {tyVar, tyPtr, tyRef}:
       if t.kind != tyVar: nilCheck = r
       r = ropef("(*$1)", [r])
-      t = skipTypes(t.sons[0], abstractInst)
+      t = skipTypes(t.lastSon, abstractInst)
     if gCmd != cmdCompileToCpp:
       while t.kind == tyObject and t.sons[0] != nil:
         app(r, ".Sup")
@@ -1885,7 +1885,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkHiddenAddr, nkAddr: genAddr(p, n, d)
   of nkBracketExpr:
     var ty = skipTypes(n.sons[0].typ, abstractVarRange)
-    if ty.kind in {tyRef, tyPtr}: ty = skipTypes(ty.sons[0], abstractVarRange)
+    if ty.kind in {tyRef, tyPtr}: ty = skipTypes(ty.lastSon, abstractVarRange)
     case ty.kind
     of tyArray, tyArrayConstr: genArrayElem(p, n, d)
     of tyOpenArray, tyVarargs: genOpenArrayElem(p, n, d)

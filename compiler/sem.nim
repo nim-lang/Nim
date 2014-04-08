@@ -118,8 +118,8 @@ proc commonType*(x, y: PType): PType =
     if a.kind in {tyRef, tyPtr}:
       k = a.kind
       if b.kind != a.kind: return x
-      a = a.sons[0]
-      b = b.sons[0]
+      a = a.lastSon
+      b = b.lastSon
     if a.kind == tyObject and b.kind == tyObject:
       result = commonSuperclass(a, b)
       # this will trigger an error later:

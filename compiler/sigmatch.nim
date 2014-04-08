@@ -740,8 +740,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
           result = isNone     # BUGFIX!
   of tyPtr: 
     case a.kind
-    of tyPtr: 
-      result = typeRel(c, base(f), base(a))
+    of tyPtr:
+      for i in 0..min(f.len, a.len)-2:
+        if typeRel(c, f.sons[i], a.sons[i]) == isNone: return isNone
+      result = typeRel(c, f.lastSon, a.lastSon)
       if result <= isConvertible: result = isNone
       elif tfNotNil in f.flags and tfNotNil notin a.flags:
         result = isNilConversion
@@ -750,6 +752,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   of tyRef: 
     case a.kind
     of tyRef:
+      for i in 0..min(f.len, a.len)-2:
+        if typeRel(c, f.sons[i], a.sons[i]) == isNone: return isNone
       result = typeRel(c, base(f), base(a))
       if result <= isConvertible: result = isNone
       elif tfNotNil in f.flags and tfNotNil notin a.flags:
@@ -792,8 +796,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     of tyNil: result = f.allowsNil
     of tyString: result = isConvertible
     of tyPtr:
-      if a.sons[0].kind == tyChar: result = isConvertible
-    of tyArray: 
+      # ptr[Tag, char] is not convertible to 'cstring' for now:
+      if a.len == 1 and a.sons[0].kind == tyChar: result = isConvertible
+    of tyArray:
       if (firstOrd(a.sons[0]) == 0) and
           (skipTypes(a.sons[0], {tyRange}).kind in {tyInt..tyInt64}) and
           (a.sons[1].kind == tyChar): 

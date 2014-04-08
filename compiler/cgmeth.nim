@@ -59,8 +59,8 @@ proc sameMethodBucket(a, b: PSym): bool =
       aa = skipTypes(aa, {tyGenericInst})
       bb = skipTypes(bb, {tyGenericInst})
       if (aa.kind == bb.kind) and (aa.kind in {tyVar, tyPtr, tyRef}): 
-        aa = aa.sons[0]
-        bb = bb.sons[0]
+        aa = aa.lastSon
+        bb = bb.lastSon
       else: 
         break 
     if sameType(aa, bb) or

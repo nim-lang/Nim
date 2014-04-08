@@ -155,8 +155,8 @@ proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
   var d = skipTypes(castDest, abstractVar)
   var s = skipTypes(src, abstractVar-{tyTypeDesc})
   while (d != nil) and (d.kind in {tyPtr, tyRef}) and (d.kind == s.kind):
-    d = base(d)
-    s = base(s)
+    d = d.lastSon
+    s = s.lastSon
   if d == nil:
     result = convNotLegal
   elif d.kind == tyObject and s.kind == tyObject:
@@ -930,7 +930,7 @@ proc makeDeref(n: PNode): PNode =
     var a = result
     result = newNodeIT(nkHiddenDeref, n.info, t.sons[0])
     addSon(result, a)
-    t = skipTypes(t.sons[0], {tyGenericInst})
+    t = skipTypes(t.lastSon, {tyGenericInst})
 
 const
   tyTypeParamsHolders = {tyGenericInst, tyCompositeTypeClass}
@@ -1072,7 +1072,7 @@ proc semDeref(c: PContext, n: PNode): PNode =
   result = n
   var t = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar})
   case t.kind
-  of tyRef, tyPtr: n.typ = t.sons[0]
+  of tyRef, tyPtr: n.typ = t.lastSon
   else: result = nil
   #GlobalError(n.sons[0].info, errCircumNeedsPointer) 
 

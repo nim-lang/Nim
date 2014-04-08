@@ -508,7 +508,16 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         if i < sonsLen(t) - 1: add(result, ", ")
     add(result, ']')
   of tyPtr, tyRef, tyVar, tyMutable, tyConst: 
-    result = typeToStr[t.kind] & typeToString(t.sons[0])
+    result = typeToStr[t.kind]
+    if t.len >= 2:
+      setLen(result, result.len-1)
+      result.add '['
+      for i in countup(0, sonsLen(t) - 1): 
+        add(result, typeToString(t.sons[i]))
+        if i < sonsLen(t) - 1: add(result, ", ")
+      result.add ']'
+    else:
+      result.add typeToString(t.sons[0])
   of tyRange:
     result = "range " & rangeToStr(t.n)
     if prefer != preferExported:
@@ -1082,9 +1091,9 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind,
         typeAllowedAux(marker, t.sons[1], skVar, flags)
   of tyRef:
     if kind == skConst: return false
-    result = typeAllowedAux(marker, t.sons[0], skVar, flags+{taHeap})
+    result = typeAllowedAux(marker, t.lastSon, skVar, flags+{taHeap})
   of tyPtr:
-    result = typeAllowedAux(marker, t.sons[0], skVar, flags+{taHeap})
+    result = typeAllowedAux(marker, t.lastSon, skVar, flags+{taHeap})
   of tyArrayConstr, tySet, tyConst, tyMutable, tyIter:
     for i in countup(0, sonsLen(t) - 1):
       result = typeAllowedAux(marker, t.sons[i], kind, flags)
@@ -1293,7 +1302,7 @@ proc baseOfDistinct*(t: PType): PType =
     var it = result
     while it.kind in {tyPtr, tyRef}:
       parent = it
-      it = it.sons[0]
+      it = it.lastSon
     if it.kind == tyDistinct:
       internalAssert parent != nil
       parent.sons[0] = it.sons[0]

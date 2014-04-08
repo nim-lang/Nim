@@ -817,8 +817,8 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
       var st = s.typ
       if st.kind == tyGenericBody: st = st.lastSon
       internalAssert st.kind in {tyPtr, tyRef}
-      internalAssert st.sons[0].sym == nil
-      st.sons[0].sym = newSym(skType, getIdent(s.name.s & ":ObjectType"),
+      internalAssert st.lastSon.sym == nil
+      st.lastSon.sym = newSym(skType, getIdent(s.name.s & ":ObjectType"),
                               getCurrOwner(), s.info)
 
 proc semTypeSection(c: PContext, n: PNode): PNode =
