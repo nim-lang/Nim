@@ -212,22 +212,36 @@ proc optAsgnLoc(a: TLoc, t: PType, field: PRope): TLoc =
   result.heapRoot = a.heapRoot
 
 proc genOptAsgnTuple(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
+  let newflags =
+    if src.k == locData:
+      flags + { needToCopy }
+    elif tfShallow in dest.t.flags:
+      flags - { needToCopy }
+    else:
+      flags
   for i in 0 .. <dest.t.len:
     let t = dest.t.sons[i]
     let field = ropef("Field$1", i.toRope)
     genAssignment(p, optAsgnLoc(dest, t, field), 
-                     optAsgnLoc(src, t, field), flags)
+                     optAsgnLoc(src, t, field), newflags)
 
 proc genOptAsgnObject(p: BProc, dest, src: TLoc, flags: TAssignmentFlags,
                       t: PNode) =
   if t == nil: return
+  let newflags =
+    if src.k == locData:
+      flags + { needToCopy }
+    elif tfShallow in dest.t.flags:
+      flags - { needToCopy }
+    else:
+      flags
   case t.kind
   of nkSym:
     let field = t.sym
     genAssignment(p, optAsgnLoc(dest, field.typ, field.loc.r), 
-                     optAsgnLoc(src, field.typ, field.loc.r), flags)
+                     optAsgnLoc(src, field.typ, field.loc.r), newflags)
   of nkRecList:
-    for child in items(t): genOptAsgnObject(p, dest, src, flags, child)
+    for child in items(t): genOptAsgnObject(p, dest, src, newflags, child)
   else: nil
 
 proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
@@ -264,13 +278,13 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   of tyRef:
     genRefAssign(p, dest, src, flags)
   of tySequence:
-    if needToCopy notin flags:
+    if needToCopy notin flags and src.k != locData:
       genRefAssign(p, dest, src, flags)
     else:
       linefmt(p, cpsStmts, "#genericSeqAssign($1, $2, $3);$n",
               addrLoc(dest), rdLoc(src), genTypeInfo(p.module, dest.t))
   of tyString:
-    if needToCopy notin flags:
+    if needToCopy notin flags and src.k != locData:
       genRefAssign(p, dest, src, flags)
     else:
       if dest.s == OnStack or not usesNativeGC():
@@ -354,6 +368,22 @@ proc putLocIntoDest(p: BProc, d: var TLoc, s: TLoc) =
     else: genAssignment(p, d, s, {needToCopy})
   else:
     d = s # ``d`` is free, so fill it with ``s``
+
+proc putDataIntoDest(p: BProc, d: var TLoc, t: PType, r: PRope) =
+  var a: TLoc
+  if d.k != locNone:
+    # need to generate an assignment here
+    initLoc(a, locData, getUniqueType(t), OnUnknown)
+    a.r = r
+    if lfNoDeepCopy in d.flags: genAssignment(p, d, a, {})
+    else: genAssignment(p, d, a, {needToCopy})
+  else:
+    # we cannot call initLoc() here as that would overwrite
+    # the flags field!
+    d.k = locData
+    d.t = getUniqueType(t)
+    d.r = r
+    d.a = -1
 
 proc putIntoDest(p: BProc, d: var TLoc, t: PType, r: PRope) =
   var a: TLoc
@@ -1772,7 +1802,7 @@ proc exprComplexConst(p: BProc, n: PNode, d: var TLoc) =
   if d.k == locNone:
     fillLoc(d, locData, t, tmp, OnHeap)
   else:
-    putIntoDest(p, d, t, tmp)
+    putDataIntoDest(p, d, t, tmp)
 
 proc expr(p: BProc, n: PNode, d: var TLoc) =
   case n.kind
@@ -1826,7 +1856,9 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkNilLit:
     if not isEmptyType(n.typ):
       putIntoDest(p, d, n.typ, genLiteral(p, n))
-  of nkStrLit..nkTripleStrLit, nkIntLit..nkUInt64Lit,
+  of nkStrLit..nkTripleStrLit:
+    putDataIntoDest(p, d, n.typ, genLiteral(p, n))
+  of nkIntLit..nkUInt64Lit,
      nkFloatLit..nkFloat128Lit, nkCharLit:
     putIntoDest(p, d, n.typ, genLiteral(p, n))
   of nkCall, nkHiddenCallConv, nkInfix, nkPrefix, nkPostfix, nkCommand,
