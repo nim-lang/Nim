@@ -534,6 +534,10 @@ proc `div` *(x, y: int32): int32 {.magic: "DivI", noSideEffect.}
 proc `div` *(x, y: int64): int64 {.magic: "DivI64", noSideEffect.}
   ## computes the integer division. This is roughly the same as
   ## ``floor(x/y)``.
+  ## .. code-block:: Nimrod
+  ##   1 div 2 == 0
+  ##   2 div 2 == 1
+  ##   3 div 2 == 1
 
 proc `mod` *(x, y: int): int {.magic: "ModI", noSideEffect.}
 proc `mod` *(x, y: int8): int8 {.magic: "ModI", noSideEffect.}
@@ -549,6 +553,10 @@ proc `shr` *(x, y: int16): int16 {.magic: "ShrI", noSideEffect.}
 proc `shr` *(x, y: int32): int32 {.magic: "ShrI", noSideEffect.}
 proc `shr` *(x, y: int64): int64 {.magic: "ShrI64", noSideEffect.}
   ## computes the `shift right` operation of `x` and `y`.
+  ## .. code-block:: Nimrod
+  ##   0b0001_0000'i8 shr 2 == 0b0100_0000'i8
+  ##   0b1000_0000'i8 shr 2 == 0b0000_0000'i8
+  ##   0b0000_0001'i8 shr 9 == 0b0000_0000'i8
 
 proc `shl` *(x, y: int): int {.magic: "ShlI", noSideEffect.}
 proc `shl` *(x, y: int8): int8 {.magic: "ShlI", noSideEffect.}
@@ -1535,6 +1543,11 @@ proc `@`*[T](a: openArray[T]): seq[T] =
   for i in 0..a.len-1: result[i] = a[i]
 
 proc `&` *[T](x, y: seq[T]): seq[T] {.noSideEffect.} =
+  ## Concatinates two sequences.
+  ## Requires copying of the sequences.
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert(@[1, 2, 3, 4] & @[5, 6] == @[1, 2, 3, 4, 5, 6])
   newSeq(result, x.len + y.len)
   for i in 0..x.len-1:
     result[i] = x[i]
@@ -1542,12 +1555,22 @@ proc `&` *[T](x, y: seq[T]): seq[T] {.noSideEffect.} =
     result[i+x.len] = y[i]
 
 proc `&` *[T](x: seq[T], y: T): seq[T] {.noSideEffect.} =
+  ## Appends element y to the end of the sequence.
+  ## Requires copying of the sequence
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert(@[1, 2, 3] & 4 == @[1, 2, 3, 4])
   newSeq(result, x.len + 1)
   for i in 0..x.len-1:
     result[i] = x[i]
   result[x.len] = y
 
 proc `&` *[T](x: T, y: seq[T]): seq[T] {.noSideEffect.} =
+  ## Prepends the element x to the beginning of the sequence.
+  ## Requires copying of the sequence
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert(1 & @[2, 3, 4] == @[1, 2, 3, 4])
   newSeq(result, y.len + 1)
   result[0] = x
   for i in 0..y.len-1:
