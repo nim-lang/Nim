@@ -1507,7 +1507,11 @@ proc max*(x, y: float): float {.magic: "MaxF64", noSideEffect.} =
 {.pop.}
 
 proc clamp*[T](x, a, b: T): T =
-  ## limits the value ``x`` within the interval [a, b] 
+  ## limits the value ``x`` within the interval [a, b]
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert((1.4).clamp(0.0, 1.0) == 1.0)
+  ##   assert((0.5).clamp(0.0, 1.0) == 0.5)
   if x < a: return a
   if x > b: return b
   return x
