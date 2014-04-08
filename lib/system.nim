@@ -842,13 +842,28 @@ proc newStringOfCap*(cap: int): string {.
 
 proc `&` * (x: string, y: char): string {.
   magic: "ConStrStr", noSideEffect, merge.}
+  ## Concatinates `x` with `y`
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert("ab" & 'c' == "abc")
 proc `&` * (x: char, y: char): string {.
   magic: "ConStrStr", noSideEffect, merge.}
+  ## Concatinates `x` and `y` into a string
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert('a' & 'b' == "ab")
 proc `&` * (x, y: string): string {.
   magic: "ConStrStr", noSideEffect, merge.}
+  ## Concatinates `x` and `y`
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert("ab" & "cd" == "abcd")
 proc `&` * (x: char, y: string): string {.
   magic: "ConStrStr", noSideEffect, merge.}
-  ## is the `concatenation operator`. It concatenates `x` and `y`.
+  ## Concatinates `x` with `y`
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert('a' & "bc" == "abc")
 
 # implementation note: These must all have the same magic value "ConStrStr" so
 # that the merge optimization works properly. 
