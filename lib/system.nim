@@ -749,15 +749,49 @@ proc contains*[T](x: set[T], y: T): bool {.magic: "InSet", noSideEffect.}
   ## passes its arguments in reverse order.
 
 proc contains*[T](s: TSlice[T], value: T): bool {.noSideEffect, inline.} =
+  ## Checks if `value` is withing the range of `s`; returns true iff
+  ## `value >= s.a and value <= s.b`
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert((1..3).contains(1) == true)
+  ##   assert((1..3).contains(2) == true)
+  ##   assert((1..3).contains(4) == false)
   result = s.a <= value and value <= s.b
 
 template `in` * (x, y: expr): expr {.immediate.} = contains(y, x)
+  ## Suger for contains
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert(1 in (1..3) == true)
+  ##   assert(5 in (1..3) == false)
 template `notin` * (x, y: expr): expr {.immediate.} = not contains(y, x)
+  ## Sugar for not containing
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert(1 notin (1..3) == false)
+  ##   assert(5 notin (1..3) == true)
 
 proc `is` *[T, S](x: T, y: S): bool {.magic: "Is", noSideEffect.}
+  ## Checks if T is of the same type as S
+  ## 
+  ## .. code-block:: Nimrod
+  ##   proc test[T](a: T): int =
+  ##     when (T is int):
+  ##       return a
+  ##     else:
+  ##       return 0
+  ##
+  ##   assert(test[int](3) == 3)
+  ##   assert(test[string]("xyz") == 0)
 template `isnot` *(x, y: expr): expr {.immediate.} = not (x is y)
-
+  ## Negated version of `is`. Equivalent to `not(is(x,y))`
 proc `of` *[T, S](x: T, y: S): bool {.magic: "Of", noSideEffect.}
+  ## Checks if `x` has a type of `y`
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert(EFloatingPoint is EBase)
+  ##   assert(EIO is ESystem)
+  ##   assert(EDivByZero is EBase)
 
 proc cmp*[T](x, y: T): int {.procvar.} =
   ## Generic compare proc. Returns a value < 0 iff x < y, a value > 0 iff x > y
