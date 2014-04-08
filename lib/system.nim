@@ -302,7 +302,7 @@ type
                                         ## value does not fit.
 
   EOutOfRange* = object of ESynch       ## is raised if a range check error
-                                        ## occured.
+                                        ## occurred.
 
   EStackOverflow* = object of ESystem   ## is raised if the hardware stack
                                         ## used for subroutine calls overflowed.
@@ -993,9 +993,9 @@ const
     ## failure.
 
 var programResult* {.exportc: "nim_program_result".}: int
-  ## modify this varialbe to specify the exit code of the program
+  ## modify this variable to specify the exit code of the program
   ## under normal circumstances. When the program is terminated
-  ## prematurelly using ``quit``, this value is ignored.
+  ## prematurely using ``quit``, this value is ignored.
 
 proc quit*(errorcode: int = QuitSuccess) {.
   magic: "Exit", importc: "exit", header: "<stdlib.h>", noReturn.}
@@ -1352,42 +1352,42 @@ template `>%` *(x, y: expr): expr {.immediate.} = y <% x
   ## Returns true iff ``unsigned(x) > unsigned(y)``.
 
 proc `$` *(x: int): string {.magic: "IntToStr", noSideEffect.}
-  ## The stingify operator for an integer argument. Returns `x`
+  ## The stringify operator for an integer argument. Returns `x`
   ## converted to a decimal string.
 
 proc `$` *(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
-  ## The stingify operator for an integer argument. Returns `x`
+  ## The stringify operator for an integer argument. Returns `x`
   ## converted to a decimal string.
 
 when not defined(NimrodVM):
   when not defined(JS) and hostOS != "standalone":
     proc `$` *(x: uint64): string {.noSideEffect.}
-      ## The stingify operator for an unsigned integer argument. Returns `x`
+      ## The stringify operator for an unsigned integer argument. Returns `x`
       ## converted to a decimal string.
 
 proc `$` *(x: float): string {.magic: "FloatToStr", noSideEffect.}
-  ## The stingify operator for a float argument. Returns `x`
+  ## The stringify operator for a float argument. Returns `x`
   ## converted to a decimal string.
 
 proc `$` *(x: bool): string {.magic: "BoolToStr", noSideEffect.}
-  ## The stingify operator for a boolean argument. Returns `x`
+  ## The stringify operator for a boolean argument. Returns `x`
   ## converted to the string "false" or "true".
 
 proc `$` *(x: char): string {.magic: "CharToStr", noSideEffect.}
-  ## The stingify operator for a character argument. Returns `x`
+  ## The stringify operator for a character argument. Returns `x`
   ## converted to a string.
 
 proc `$` *(x: cstring): string {.magic: "CStrToStr", noSideEffect.}
-  ## The stingify operator for a CString argument. Returns `x`
+  ## The stringify operator for a CString argument. Returns `x`
   ## converted to a string.
 
 proc `$` *(x: string): string {.magic: "StrToStr", noSideEffect.}
-  ## The stingify operator for a string argument. Returns `x`
+  ## The stringify operator for a string argument. Returns `x`
   ## as it is. This operator is useful for generic code, so
   ## that ``$expr`` also works if ``expr`` is already a string.
 
 proc `$` *[TEnum: enum](x: TEnum): string {.magic: "EnumToStr", noSideEffect.}
-  ## The stingify operator for an enumeration argument. This works for
+  ## The stringify operator for an enumeration argument. This works for
   ## any enumeration type thanks to compiler magic. If
   ## a ``$`` operator for a concrete enumeration is provided, this is
   ## used instead. (In other words: *Overwriting* is possible.)
