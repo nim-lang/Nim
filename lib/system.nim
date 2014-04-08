@@ -869,7 +869,21 @@ proc `&` * (x: char, y: string): string {.
 # that the merge optimization works properly. 
 
 proc add*(x: var string, y: char) {.magic: "AppendStrCh", noSideEffect.}
+  ## Appends `y` to `x` in place
+  ##
+  ## .. code-block:: Nimrod
+  ##   var tmp = ""
+  ##   tmp.add('a')
+  ##   tmp.add('b')
+  ##   assert(tmp == "ab")
 proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
+  ## Concatinates `x` and `y` in place
+  ##
+  ## .. code-block:: Nimrod
+  ##   var tmp = ""
+  ##   tmp.add("ab")
+  ##   tmp.add("cd")
+  ##   assert(tmp == "abcd")
 
 type
   TEndian* = enum ## is a type describing the endianness of a processor.
