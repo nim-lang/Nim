@@ -1697,12 +1697,23 @@ proc `$`*[T: tuple|object](x: T): string =
   ##   $(23, 45) == "(23, 45)"
   ##   $() == "()"
   result = "("
+  var firstElement = true
   for name, value in fieldPairs(x):
-    if result.len > 1: result.add(", ")
+    if not(firstElement): result.add(", ")
     result.add(name)
     result.add(": ")
     result.add($value)
+    firstElement = false
   result.add(")")
+  
+proc collectionToString[T](x: T, b, e: string): string =
+  result = b
+  var firstElement = true
+  for value in items(x):
+    if not(firstElement): result.add(", ")
+    result.add($value)
+    firstElement = false
+  result.add(e)
 
 proc `$`*[T: set](x: T): string = 
   ## generic ``$`` operator for sets that is lifted from the components
@@ -1710,24 +1721,18 @@ proc `$`*[T: set](x: T): string =
   ##
   ## .. code-block:: nimrod
   ##   ${23, 45} == "{23, 45}"
-  result = "{"
-  for value in items(x):
-    if result.len > 1: result.add(", ")
-    result.add($value)
-  result.add("}")
+  collectionToString(x, "{", "}")
 
-when false:
-  proc `$`*[T](a: openArray[T]): string = 
-    ## generic ``$`` operator for open arrays that is lifted from the elements
-    ## of `a`. Example:
-    ##
-    ## .. code-block:: nimrod
-    ##   $[23, 45] == "[23, 45]"
-    result = "["
-    for x in items(a):
-      if result.len > 1: result.add(", ")
-      result.add($x)
-    result.add("]")
+proc `$`*[T: seq](x: T): string = 
+  ## generic ``$`` operator for seqs that is lifted from the components
+  ## of `x`. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   $(@[23, 45]) == "@[23, 45]"
+  collectionToString(x, "@[", "]")
+
+proc `$`*[T: array](x: T): string = 
+  collectionToString(x, "[", "]")
 
 # ----------------- GC interface ---------------------------------------------
 
