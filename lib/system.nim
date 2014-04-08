@@ -1710,12 +1710,12 @@ proc collectionToString[T](x: T, b, e: string): string =
   result = b
   var firstElement = true
   for value in items(x):
-    if not(firstElement): result.add(", ")
+    if not firstElement: result.add(", ")
     result.add($value)
     firstElement = false
   result.add(e)
 
-proc `$`*[T: set](x: T): string = 
+proc `$`*[T](x: set[T]): string = 
   ## generic ``$`` operator for sets that is lifted from the components
   ## of `x`. Example:
   ##
@@ -1723,7 +1723,7 @@ proc `$`*[T: set](x: T): string =
   ##   ${23, 45} == "{23, 45}"
   collectionToString(x, "{", "}")
 
-proc `$`*[T: seq](x: T): string = 
+proc `$`*[T](x: seq[T]): string = 
   ## generic ``$`` operator for seqs that is lifted from the components
   ## of `x`. Example:
   ##
@@ -1731,8 +1731,11 @@ proc `$`*[T: seq](x: T): string =
   ##   $(@[23, 45]) == "@[23, 45]"
   collectionToString(x, "@[", "]")
 
-proc `$`*[T: array](x: T): string = 
-  collectionToString(x, "[", "]")
+when false:
+  # causes bootstrapping to fail as we use array of chars and cstring should
+  # match better ...
+  proc `$`*[T, IDX](x: array[IDX, T]): string = 
+    collectionToString(x, "[", "]")
 
 # ----------------- GC interface ---------------------------------------------
 

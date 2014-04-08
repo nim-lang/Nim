@@ -1,6 +1,8 @@
 version 0.9.4
 =============
 
+- document region pointers
+
 Bugs
 ====
 
