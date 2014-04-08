@@ -842,25 +842,25 @@ proc newStringOfCap*(cap: int): string {.
 
 proc `&` * (x: string, y: char): string {.
   magic: "ConStrStr", noSideEffect, merge.}
-  ## Concatinates `x` with `y`
+  ## Concatenates `x` with `y`
   ##
   ## .. code-block:: Nimrod
   ##   assert("ab" & 'c' == "abc")
 proc `&` * (x: char, y: char): string {.
   magic: "ConStrStr", noSideEffect, merge.}
-  ## Concatinates `x` and `y` into a string
+  ## Concatenates `x` and `y` into a string
   ##
   ## .. code-block:: Nimrod
   ##   assert('a' & 'b' == "ab")
 proc `&` * (x, y: string): string {.
   magic: "ConStrStr", noSideEffect, merge.}
-  ## Concatinates `x` and `y`
+  ## Concatenates `x` and `y`
   ##
   ## .. code-block:: Nimrod
   ##   assert("ab" & "cd" == "abcd")
 proc `&` * (x: char, y: string): string {.
   magic: "ConStrStr", noSideEffect, merge.}
-  ## Concatinates `x` with `y`
+  ## Concatenates `x` with `y`
   ##
   ## .. code-block:: Nimrod
   ##   assert('a' & "bc" == "abc")
@@ -877,7 +877,7 @@ proc add*(x: var string, y: char) {.magic: "AppendStrCh", noSideEffect.}
   ##   tmp.add('b')
   ##   assert(tmp == "ab")
 proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
-  ## Concatinates `x` and `y` in place
+  ## Concatenates `x` and `y` in place
   ##
   ## .. code-block:: Nimrod
   ##   var tmp = ""
@@ -1610,7 +1610,7 @@ proc `@`*[T](a: openArray[T]): seq[T] =
   for i in 0..a.len-1: result[i] = a[i]
 
 proc `&` *[T](x, y: seq[T]): seq[T] {.noSideEffect.} =
-  ## Concatinates two sequences.
+  ## Concatenates two sequences.
   ## Requires copying of the sequences.
   ##
   ## .. code-block:: Nimrod
