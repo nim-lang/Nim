@@ -79,7 +79,7 @@ proc handleHexChar(c: var TSqlLexer, xi: var int) =
     xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('A') + 10)
     inc(c.bufpos)
   else: 
-    nil
+    discard
 
 proc handleOctChar(c: var TSqlLexer, xi: var int) = 
   if c.buf[c.bufpos] in {'0'..'7'}:
@@ -267,7 +267,7 @@ proc getSymbol(c: var TSqlLexer, tok: var TToken) =
   while true: 
     add(tok.literal, buf[pos])
     Inc(pos)
-    if not (buf[pos] in {'a'..'z','A'..'Z','0'..'9','_','$', '\128'..'\255'}):
+    if buf[pos] notin {'a'..'z','A'..'Z','0'..'9','_','$', '\128'..'\255'}:
       break
   c.bufpos = pos
   tok.kind = tkIdentifier
@@ -373,7 +373,7 @@ proc getOperator(c: var TSqlLexer, tok: var TToken) =
     of '+':
       if not trailingPlusMinus and buf[pos+1] notin operators and
            tok.literal.len > 0: break
-    of '*', '<', '>', '=': nil
+    of '*', '<', '>', '=': discard
     else: break
     add(tok.literal, buf[pos])
     inc(pos)
@@ -1120,7 +1120,7 @@ proc rs(n: PSqlNode, s: var string, indent: int,
 proc ra(n: PSqlNode, s: var string, indent: int) =
   if n == nil: return
   case n.kind
-  of nkNone: nil
+  of nkNone: discard
   of nkIdent:
     if allCharsInSet(n.strVal, {'\33'..'\127'}):
       s.add(n.strVal)

@@ -8,13 +8,16 @@
 #
 
 ## This module contains the type definitions for the new evaluation engine.
-## An instruction is 1-2 int32s in memory, it is a register based VM.
+## An instruction is 1-3 int32s in memory, it is a register based VM.
 
 import ast, passes, msgs, intsets
 
 const
   byteExcess* = 128 # we use excess-K for immediates
   wordExcess* = 32768
+
+  MaxLoopIterations* = 500_000 # max iterations of all loops
+
 
 type
   TRegister* = range[0..255]
@@ -32,15 +35,17 @@ type
     opcAsgnFloat,
     opcAsgnRef,
     opcAsgnComplex,
+    opcRegToNode,
+    opcNodeToReg,
 
     opcLdArr,  # a = b[c]
     opcWrArr,  # a[b] = c
-    opcWrArrRef,
     opcLdObj,  # a = b.c
     opcWrObj,  # a.b = c
-    opcWrObjRef,
-    opcAddr,
-    opcDeref,
+    opcAddrReg,
+    opcAddrNode,
+    opcLdDeref,
+    opcWrDeref,
     opcWrStrIdx,
     opcLdStrIdx, # a = b[c]
     
@@ -51,17 +56,18 @@ type
     opcLenSeq,
     opcLenStr,
 
-    opcIncl, opcExcl, opcCard, opcMulInt, opcDivInt, opcModInt,
+    opcIncl, opcInclRange, opcExcl, opcCard, opcMulInt, opcDivInt, opcModInt,
     opcAddFloat, opcSubFloat, opcMulFloat, opcDivFloat, opcShrInt, opcShlInt,
     opcBitandInt, opcBitorInt, opcBitxorInt, opcAddu, opcSubu, opcMulu, 
     opcDivu, opcModu, opcEqInt, opcLeInt, opcLtInt, opcEqFloat, 
-    opcLeFloat, opcLtFloat, opcLeu, opcLtu, opcEqRef, opcXor, 
+    opcLeFloat, opcLtFloat, opcLeu, opcLtu, opcEqRef, opcEqNimrodNode, opcXor, 
     opcNot, opcUnaryMinusInt, opcUnaryMinusFloat, opcBitnotInt, 
     opcEqStr, opcLeStr, opcLtStr, opcEqSet, opcLeSet, opcLtSet,
     opcMulSet, opcPlusSet, opcMinusSet, opcSymdiffSet, opcConcatStr,
     opcContainsSet, opcRepr, opcSetLenStr, opcSetLenSeq,
-    opcSwap, opcIsNil, opcOf,
+    opcSwap, opcIsNil, opcOf, opcIs,
     opcSubStr, opcConv, opcCast, opcQuit, opcReset,
+    opcNarrowS, opcNarrowU,
     
     opcAddStrCh,
     opcAddStrStr,
@@ -101,13 +107,13 @@ type
     opcRaise,
     opcNChild,
     opcNSetChild,
-    opcNBindSym, # opcodes for the AST manipulation following
     opcCallSite,
     opcNewStr,
   
     opcTJmp,  # jump Bx if A != 0
     opcFJmp,  # jump Bx if A == 0
     opcJmp,   # jump Bx
+    opcJmpBack, # jump Bx; resulting from a while loop
     opcBranch,  # branch for 'case'
     opcTry,
     opcExcept,
@@ -116,18 +122,35 @@ type
     opcNew,
     opcNewSeq,
     opcLdNull,    # dest = nullvalue(types[Bx])
+    opcLdNullReg,
     opcLdConst,   # dest = constants[Bx]
     opcAsgnConst, # dest = copy(constants[Bx])
     opcLdGlobal,  # dest = globals[Bx]
+    opcLdGlobalAddr, # dest = addr(globals[Bx])
+
     opcLdImmInt,  # dest = immediate value
-    opcWrGlobal,
-    opcWrGlobalRef,
+    opcNBindSym,
     opcSetType,   # dest.typ = types[Bx]
     opcTypeTrait
 
   TBlock* = object
     label*: PSym
     fixups*: seq[TPosition]
+
+  TEvalMode* = enum           ## reason for evaluation
+    emRepl,                   ## evaluate because in REPL mode
+    emConst,                  ## evaluate for 'const' according to spec
+    emOptimize,               ## evaluate for optimization purposes (same as
+                              ## emConst?)
+    emStaticExpr,             ## evaluate for enforced compile time eval
+                              ## ('static' context)
+    emStaticStmt              ## 'static' as an expression
+
+  TSandboxFlag* = enum        ## what the evaluation engine should allow
+    allowCast,                ## allow unsafe language feature: 'cast'
+    allowFFI,                 ## allow the FFI
+    allowInfiniteLoops        ## allow endless loops
+  TSandboxFlags* = set[TSandboxFlag]
 
   TSlotKind* = enum   # We try to re-use slots in a smart way to
                       # minimize allocations; however the VM supports arbitrary
@@ -140,10 +163,11 @@ type
     slotTempInt,      # some temporary int
     slotTempFloat,    # some temporary float
     slotTempStr,      # some temporary string
-    slotTempComplex   # some complex temporary (n.sons field is used)
+    slotTempComplex   # some complex temporary (s.node field is used)
 
   PProc* = ref object
     blocks*: seq[TBlock]    # blocks; temp data structure
+    sym*: PSym
     slots*: array[TRegister, tuple[inUse: bool, kind: TSlotKind]]
     maxSlots*: int
     
@@ -160,21 +184,28 @@ type
     prc*: PProc
     module*: PSym
     callsite*: PNode
+    mode*: TEvalMode
+    features*: TSandboxFlags
+    traceActive*: bool
+    loopIterations*: int
 
   TPosition* = distinct int
 
   PEvalContext* = PCtx
-
   
 proc newCtx*(module: PSym): PCtx =
   PCtx(code: @[], debug: @[],
-    globals: newNode(nkStmtList), constants: newNode(nkStmtList), types: @[],
-    prc: PProc(blocks: @[]), module: module)
+    globals: newNode(nkStmtListExpr), constants: newNode(nkStmtList), types: @[],
+    prc: PProc(blocks: @[]), module: module, loopIterations: MaxLoopIterations)
+
+proc refresh*(c: PCtx, module: PSym) =
+  c.module = module
+  c.prc = PProc(blocks: @[])
 
 const
   firstABxInstr* = opcTJmp
   largeInstrs* = { # instructions which use 2 int32s instead of 1:
-    opcSubstr, opcConv, opcCast, opcNewSeq, opcOf}
+    opcSubStr, opcConv, opcCast, opcNewSeq, opcOf}
   slotSomeTemp* = slotTempUnknown
   relativeJumps* = {opcTJmp, opcFJmp, opcJmp}
 
@@ -183,3 +214,5 @@ template regA*(x: TInstr): TRegister {.immediate.} = TRegister(x.uint32 shr 8'u3
 template regB*(x: TInstr): TRegister {.immediate.} = TRegister(x.uint32 shr 16'u32 and 0xff'u32)
 template regC*(x: TInstr): TRegister {.immediate.} = TRegister(x.uint32 shr 24'u32)
 template regBx*(x: TInstr): int {.immediate.} = (x.uint32 shr 16'u32).int
+
+template jmpDiff*(x: TInstr): int {.immediate.} = regBx(x) - wordExcess

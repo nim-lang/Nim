@@ -19,12 +19,12 @@ const
 when debugIds:
   import intsets
   
-  var usedIds = InitIntSet()
+  var usedIds = initIntSet()
 
 proc registerID*(id: PIdObj) = 
-  when debugIDs: 
-    if id.id == -1 or ContainsOrIncl(usedIds, id.id): 
-      InternalError("ID already used: " & $id.id)
+  when debugIds: 
+    if id.id == -1 or containsOrIncl(usedIds, id.id): 
+      internalError("ID already used: " & $id.id)
 
 proc getID*(): int {.inline.} = 
   result = gFrontEndId
@@ -37,8 +37,8 @@ proc backendId*(): int {.inline.} =
 proc setId*(id: int) {.inline.} = 
   gFrontEndId = max(gFrontEndId, id + 1)
 
-proc IDsynchronizationPoint*(idRange: int) = 
-  gFrontEndId = (gFrontEndId div IdRange + 1) * IdRange + 1
+proc idSynchronizationPoint*(idRange: int) = 
+  gFrontEndId = (gFrontEndId div idRange + 1) * idRange + 1
 
 proc toGid(f: string): string =
   # we used to use ``f.addFileExt("gid")`` (aka ``$project.gid``), but this
@@ -49,7 +49,7 @@ proc toGid(f: string): string =
 proc saveMaxIds*(project: string) =
   var f = open(project.toGid, fmWrite)
   f.writeln($gFrontEndId)
-  f.writeln($gBackEndId)
+  f.writeln($gBackendId)
   f.close()
   
 proc loadMaxIds*(project: string) =
@@ -61,5 +61,5 @@ proc loadMaxIds*(project: string) =
       if f.readLine(line):
         var backEndId = parseInt(line)
         gFrontEndId = max(gFrontEndId, frontEndId)
-        gBackEndId = max(gBackEndId, backEndId)
+        gBackendId = max(gBackendId, backEndId)
     f.close()

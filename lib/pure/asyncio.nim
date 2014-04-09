@@ -139,27 +139,27 @@ type
 proc newDelegate*(): PDelegate =
   ## Creates a new delegate.
   new(result)
-  result.handleRead = (proc (h: PObject) = nil)
-  result.handleWrite = (proc (h: PObject) = nil)
-  result.handleError = (proc (h: PObject) = nil)
+  result.handleRead = (proc (h: PObject) = discard)
+  result.handleWrite = (proc (h: PObject) = discard)
+  result.handleError = (proc (h: PObject) = discard)
   result.hasDataBuffered = (proc (h: PObject): bool = return false)
-  result.task = (proc (h: PObject) = nil)
+  result.task = (proc (h: PObject) = discard)
   result.mode = fmRead
 
 proc newAsyncSocket(): PAsyncSocket =
   new(result)
   result.info = SockIdle
 
-  result.handleRead = (proc (s: PAsyncSocket) = nil)
+  result.handleRead = (proc (s: PAsyncSocket) = discard)
   result.handleWrite = nil
-  result.handleConnect = (proc (s: PAsyncSocket) = nil)
-  result.handleAccept = (proc (s: PAsyncSocket) = nil)
-  result.handleTask = (proc (s: PAsyncSocket) = nil)
+  result.handleConnect = (proc (s: PAsyncSocket) = discard)
+  result.handleAccept = (proc (s: PAsyncSocket) = discard)
+  result.handleTask = (proc (s: PAsyncSocket) = discard)
 
   result.lineBuffer = "".TaintedString
   result.sendBuffer = ""
 
-proc AsyncSocket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM, 
+proc asyncSocket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM, 
                   protocol: TProtocol = IPPROTO_TCP, 
                   buffered = true): PAsyncSocket =
   ## Initialises an AsyncSocket object. If a socket cannot be initialised
@@ -167,7 +167,7 @@ proc AsyncSocket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM,
   result = newAsyncSocket()
   result.socket = socket(domain, typ, protocol, buffered)
   result.proto = protocol
-  if result.socket == InvalidSocket: OSError(OSLastError())
+  if result.socket == invalidSocket: osError(osLastError())
   result.socket.setBlocking(false)
 
 proc toAsyncSocket*(sock: TSocket, state: TInfo = SockConnected): PAsyncSocket =
@@ -357,7 +357,7 @@ proc acceptAddr*(server: PAsyncSocket, client: var PAsyncSocket,
     client.sslNeedAccept = false
     client.info = SockConnected
 
-  if c == InvalidSocket: SocketError(server.socket)
+  if c == invalidSocket: socketError(server.socket)
   c.setBlocking(false) # TODO: Needs to be tested.
   
   # deleg.open is set in ``toDelegate``.
@@ -481,7 +481,7 @@ proc recvLine*(s: PAsyncSocket, line: var TaintedString): bool {.deprecated.} =
   of RecvDisconnected:
     result = true
   of RecvFail:
-    s.SocketError(async = true)
+    s.socketError(async = true)
     result = false
 {.pop.}
 
@@ -615,11 +615,11 @@ proc poll*(d: PDispatcher, timeout: int = 500): bool =
     if d.hasDataBuffered(d.deleVal):
       hasDataBufferedCount.inc()
       d.handleRead(d.deleVal)
-  if hasDataBufferedCount > 0: return True
+  if hasDataBufferedCount > 0: return true
   
   if readDg.len() == 0 and writeDg.len() == 0:
     ## TODO: Perhaps this shouldn't return if errorDg has something?
-    return False
+    return false
   
   if select(readDg, writeDg, errorDg, timeout) != 0:
     for i in 0..len(d.delegates)-1:
@@ -689,5 +689,5 @@ when isMainModule:
   server.listen()
   d.register(server)
   
-  while d.poll(-1): nil
+  while d.poll(-1): discard
     

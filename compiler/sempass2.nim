@@ -84,10 +84,10 @@ proc initVar(a: PEffects, n: PNode) =
 proc initVarViaNew(a: PEffects, n: PNode) =
   if n.kind != nkSym: return
   let s = n.sym
-  if {tfNeedsInit, tfNotNil} * s.typ.flags == {tfNotNil}:
+  if {tfNeedsInit, tfNotNil} * s.typ.flags <= {tfNotNil}:
     # 'x' is not nil, but that doesn't mean it's not nil children
     # are initialized:
-    initVarViaNew(a, n)
+    initVar(a, n)
 
 proc useVar(a: PEffects, n: PNode) =
   let s = n.sym
@@ -95,12 +95,12 @@ proc useVar(a: PEffects, n: PNode) =
     if s.id notin a.init:
       if {tfNeedsInit, tfNotNil} * s.typ.flags != {}:
         when true:
-          Message(n.info, warnProveInit, s.name.s)
+          message(n.info, warnProveInit, s.name.s)
         else:
           Message(n.info, errGenerated,
             "'$1' might not have been initialized" % s.name.s)
       else:
-        Message(n.info, warnUninit, s.name.s)
+        message(n.info, warnUninit, s.name.s)
       # prevent superfluous warnings about the same variable:
       a.init.add s.id
 
@@ -162,8 +162,8 @@ proc mergeTags(a: PEffects, b, comesFrom: PNode) =
     for effect in items(b): addTag(a, effect, useLineInfo=comesFrom != nil)
 
 proc listEffects(a: PEffects) =
-  for e in items(a.exc):  Message(e.info, hintUser, typeToString(e.typ))
-  for e in items(a.tags): Message(e.info, hintUser, typeToString(e.typ))
+  for e in items(a.exc):  message(e.info, hintUser, typeToString(e.typ))
+  for e in items(a.tags): message(e.info, hintUser, typeToString(e.typ))
 
 proc catches(tracked: PEffects, e: PType) =
   let e = skipTypes(e, skipPtrs)
@@ -305,21 +305,21 @@ proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
     if n.kind == nkAddr:
       # addr(x[]) can't be proven, but addr(x) can:
       if not containsNode(n, {nkDerefExpr, nkHiddenDeref}): return
-    elif n.kind == nkSym and n.sym.kind in RoutineKinds:
+    elif n.kind == nkSym and n.sym.kind in routineKinds:
       # 'p' is not nil obviously:
       return
     case impliesNotNil(tracked.guards, n)
     of impUnknown:
-      Message(n.info, errGenerated, 
+      message(n.info, errGenerated, 
               "cannot prove '$1' is not nil" % n.renderTree)
     of impNo:
-      Message(n.info, errGenerated, "'$1' is provably nil" % n.renderTree)
+      message(n.info, errGenerated, "'$1' is provably nil" % n.renderTree)
     of impYes: discard
 
 proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
   let op = n.typ
   if op != nil and op.kind == tyProc and n.kind != nkNilLit:
-    InternalAssert op.n.sons[0].kind == nkEffectList
+    internalAssert op.n.sons[0].kind == nkEffectList
     var effectList = op.n.sons[0]
     let s = n.skipConv
     if s.kind == nkSym and s.sym.kind in routineKinds:
@@ -367,7 +367,7 @@ proc trackCase(tracked: PEffects, n: PNode) =
     for i in oldState.. <tracked.init.len:
       addToIntersection(inter, tracked.init[i])
     
-  let exh = case skipTypes(n.sons[0].Typ, abstractVarRange-{tyTypeDesc}).Kind
+  let exh = case skipTypes(n.sons[0].typ, abstractVarRange-{tyTypeDesc}).kind
             of tyFloat..tyFloat128, tyString:
               lastSon(n).kind == nkElse
             else:
@@ -466,8 +466,7 @@ proc track(tracked: PEffects, n: PNode) =
         mergeEffects(tracked, effectList.sons[exceptionEffects], n)
         mergeTags(tracked, effectList.sons[tagEffects], n)
     for i in 1 .. <len(n): trackOperand(tracked, n.sons[i], paramType(op, i))
-    if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, 
-                                           mNewSeq, mShallowCopy}:
+    if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
       # may not look like an assignment, but it is:
       initVarViaNew(tracked, n.sons[1])
     for i in 0 .. <safeLen(n):
@@ -477,7 +476,6 @@ proc track(tracked: PEffects, n: PNode) =
     if warnProveField in gNotes: checkFieldAccess(tracked.guards, n)
   of nkTryStmt: trackTryStmt(tracked, n)
   of nkPragma: trackPragmaStmt(tracked, n)
-  of nkMacroDef, nkTemplateDef: discard
   of nkAsgn, nkFastAsgn:
     track(tracked, n.sons[1])
     initVar(tracked, n.sons[0])
@@ -527,7 +525,9 @@ proc track(tracked: PEffects, n: PNode) =
       if sfDiscriminant in x.sons[0].sym.flags:
         addDiscriminantFact(tracked.guards, x)
     setLen(tracked.guards, oldFacts)
-  of nkTypeSection: discard
+  of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,
+      nkMacroDef, nkTemplateDef:
+    discard
   else:
     for i in 0 .. <safeLen(n): track(tracked, n.sons[i])
 
@@ -549,7 +549,7 @@ proc checkRaisesSpec(spec, real: PNode, msg: string, hints: bool) =
   if hints:
     for s in 0 .. <spec.len:
       if not used.contains(s):
-        Message(spec[s].info, hintXDeclaredButNotUsed, renderTree(spec[s]))
+        message(spec[s].info, hintXDeclaredButNotUsed, renderTree(spec[s]))
 
 proc checkMethodEffects*(disp, branch: PSym) =
   ## checks for consistent effects for multi methods.
@@ -568,42 +568,46 @@ proc checkMethodEffects*(disp, branch: PSym) =
 
 proc setEffectsForProcType*(t: PType, n: PNode) =
   var effects = t.n.sons[0]
-  InternalAssert t.kind == tyProc and effects.kind == nkEffectList
+  internalAssert t.kind == tyProc and effects.kind == nkEffectList
 
   let
     raisesSpec = effectSpec(n, wRaises)
     tagsSpec = effectSpec(n, wTags)
   if not isNil(raisesSpec) or not isNil(tagsSpec):
-    InternalAssert effects.len == 0
+    internalAssert effects.len == 0
     newSeq(effects.sons, effectListLen)
     if not isNil(raisesSpec):
       effects.sons[exceptionEffects] = raisesSpec
     if not isNil(tagsSpec):
       effects.sons[tagEffects] = tagsSpec
 
-proc trackProc*(s: PSym, body: PNode) =
-  var effects = s.typ.n.sons[0]
-  InternalAssert effects.kind == nkEffectList
-  # effects already computed?
-  if sfForward in s.flags: return
-  if effects.len == effectListLen: return
+proc initEffects(effects: PNode; s: PSym; t: var TEffects) =
   newSeq(effects.sons, effectListLen)
-  effects.sons[exceptionEffects] = newNodeI(nkArgList, body.info)
-  effects.sons[tagEffects] = newNodeI(nkArgList, body.info)
+  effects.sons[exceptionEffects] = newNodeI(nkArgList, s.info)
+  effects.sons[tagEffects] = newNodeI(nkArgList, s.info)
   
-  var t: TEffects
   t.exc = effects.sons[exceptionEffects]
   t.tags = effects.sons[tagEffects]
   t.owner = s
   t.init = @[]
   t.guards = @[]
+  
+proc trackProc*(s: PSym, body: PNode) =
+  var effects = s.typ.n.sons[0]
+  internalAssert effects.kind == nkEffectList
+  # effects already computed?
+  if sfForward in s.flags: return
+  if effects.len == effectListLen: return
+  
+  var t: TEffects
+  initEffects(effects, s, t)
   track(t, body)
   
   if not isEmptyType(s.typ.sons[0]) and tfNeedsInit in s.typ.sons[0].flags and
       s.kind in {skProc, skConverter, skMethod}:
     var res = s.ast.sons[resultPos].sym # get result symbol
     if res.id notin t.init:
-      Message(body.info, warnProveInit, "result")
+      message(body.info, warnProveInit, "result")
   let p = s.ast.sons[pragmasPos]
   let raisesSpec = effectSpec(p, wRaises)
   if not isNil(raisesSpec):
@@ -619,3 +623,12 @@ proc trackProc*(s: PSym, body: PNode) =
     # after the check, use the formal spec:
     effects.sons[tagEffects] = tagsSpec
     
+proc trackTopLevelStmt*(module: PSym; n: PNode) =
+  if n.kind in {nkPragma, nkMacroDef, nkTemplateDef, nkProcDef,
+                nkTypeSection, nkConverterDef, nkMethodDef, nkIteratorDef}:
+    return
+  var effects = newNode(nkEffectList, n.info)
+  var t: TEffects
+  initEffects(effects, module, t)
+
+  track(t, n)

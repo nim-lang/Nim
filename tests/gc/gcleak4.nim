@@ -6,7 +6,7 @@ when defined(GC_setMaxPause):
   GC_setMaxPause 2_000
 
 type
-  TExpr = object ## abstract base class for an expression
+  TExpr = object {.inheritable.} ## abstract base class for an expression
   PLiteral = ref TLiteral
   TLiteral = object of TExpr
     x: int

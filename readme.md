@@ -33,7 +33,7 @@ If you are on a fairly modern *nix system, the following steps should work:
 $ git clone git://github.com/Araq/Nimrod.git
 $ cd Nimrod
 $ git clone --depth 1 git://github.com/nimrod-code/csources
-$ cd csources && ./build.sh
+$ cd csources && sh build.sh
 $ cd ..
 $ bin/nimrod c koch
 $ ./koch boot -d:release
@@ -61,5 +61,5 @@ allowing you to create commercial applications.
 
 Read copying.txt for more details.
 
-Copyright (c) 2004-2013 Andreas Rumpf.
+Copyright (c) 2004-2014 Andreas Rumpf.
 All rights reserved.

@@ -149,7 +149,7 @@ proc readRow*(my: var TCsvParser, columns = 0): bool =
           of '\c': my.bufpos = handleCR(my, my.bufpos)
           of '\l': my.bufpos = handleLF(my, my.bufpos)
           else: break
-      of '\0': nil
+      of '\0': discard
       else: error(my, my.bufpos, my.sep & " expected")
       break
   

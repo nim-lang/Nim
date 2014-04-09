@@ -16,7 +16,7 @@ const
     # above X strings a hash-switch for strings is generated
 
 proc registerGcRoot(p: BProc, v: PSym) =
-  if gSelectedGc in {gcMarkAndSweep, gcGenerational} and
+  if gSelectedGC in {gcMarkAndSweep, gcGenerational} and
       containsGarbageCollectedRef(v.loc.t):
     # we register a specialized marked proc here; this has the advantage
     # that it works out of the box for thread local storage then :-)
@@ -26,7 +26,7 @@ proc registerGcRoot(p: BProc, v: PSym) =
 
 proc genVarTuple(p: BProc, n: PNode) = 
   var tup, field: TLoc
-  if n.kind != nkVarTuple: InternalError(n.info, "genVarTuple")
+  if n.kind != nkVarTuple: internalError(n.info, "genVarTuple")
   var L = sonsLen(n)
   genLineDir(p, n)
   initLocExpr(p, n.sons[L-1], tup)
@@ -45,7 +45,7 @@ proc genVarTuple(p: BProc, n: PNode) =
     if t.kind == tyTuple: 
       field.r = ropef("$1.Field$2", [rdLoc(tup), toRope(i)])
     else: 
-      if t.n.sons[i].kind != nkSym: InternalError(n.info, "genVarTuple")
+      if t.n.sons[i].kind != nkSym: internalError(n.info, "genVarTuple")
       field.r = ropef("$1.$2", 
                       [rdLoc(tup), mangleRecFieldName(t.n.sons[i].sym, t)])
     putLocIntoDest(p, v.loc, field)
@@ -62,9 +62,10 @@ proc startBlock(p: BProc, start: TFormatStr = "{$n",
   lineCg(p, cpsStmts, start, args)
   inc(p.labels)
   result = len(p.blocks)
-  setlen(p.blocks, result + 1)
+  setLen(p.blocks, result + 1)
   p.blocks[result].id = p.labels
   p.blocks[result].nestedTryStmts = p.nestedTryStmts.len.int16
+  p.blocks[result].nestedExceptStmts = p.inExceptBlock.int16
 
 proc assignLabel(b: var TBlock): PRope {.inline.} =
   b.label = con("LA", b.id.toRope)
@@ -81,7 +82,7 @@ proc endBlock(p: BProc, blockEnd: PRope) =
   let topBlock = p.blocks.len-1
   # the block is merged into the parent block
   app(p.blocks[topBlock-1].sections[cpsStmts], p.blocks[topBlock].blockBody)
-  setlen(p.blocks, topBlock)
+  setLen(p.blocks, topBlock)
   # this is done after the block is popped so $n is
   # properly indented when pretty printing is enabled
   line(p, cpsStmts, blockEnd)
@@ -126,7 +127,7 @@ proc genGotoState(p: BProc, n: PNode) =
   var a: TLoc
   initLocExpr(p, n.sons[0], a)
   lineF(p, cpsStmts, "switch ($1) {$n", [rdLoc(a)])
-  p.BeforeRetNeeded = true
+  p.beforeRetNeeded = true
   lineF(p, cpsStmts, "case -1: goto BeforeRet;$n", [])
   for i in 0 .. lastOrd(n.sons[0].typ):
     lineF(p, cpsStmts, "case $1: goto STATE$1;$n", [toRope(i)])
@@ -137,7 +138,7 @@ proc genBreakState(p: BProc, n: PNode) =
   if n.sons[0].kind == nkClosure:
     # XXX this produces quite inefficient code!
     initLocExpr(p, n.sons[0].sons[1], a)
-    lineF(p, cpsStmts, "if (($1->Field0) < 0) break;$n", [rdLoc(a)])
+    lineF(p, cpsStmts, "if (((NI*) $1)[0] < 0) break;$n", [rdLoc(a)])
   else:
     initLocExpr(p, n.sons[0], a)
     # the environment is guaranteed to contain the 'state' field at offset 0:
@@ -200,7 +201,7 @@ proc genConstStmt(p: BProc, t: PNode) =
   for i in countup(0, sonsLen(t) - 1): 
     var it = t.sons[i]
     if it.kind == nkCommentStmt: continue 
-    if it.kind != nkConstDef: InternalError(t.info, "genConstStmt")
+    if it.kind != nkConstDef: internalError(t.info, "genConstStmt")
     var c = it.sons[0].sym 
     if c.typ.containsCompileTimeOnly: continue
     if sfFakeConst in c.flags:
@@ -232,71 +233,91 @@ proc genIf(p: BProc, n: PNode, d: var TLoc) =
   #  Lend:
   var
     a: TLoc
-    Lelse: TLabel
+    lelse: TLabel
   if not isEmptyType(n.typ) and d.k == locNone:
     getTemp(p, n.typ, d)
   genLineDir(p, n)
-  let Lend = getLabel(p)
+  let lend = getLabel(p)
   for i in countup(0, sonsLen(n) - 1): 
     let it = n.sons[i]
     if it.len == 2: 
       when newScopeForIf: startBlock(p)
       initLocExpr(p, it.sons[0], a)
-      Lelse = getLabel(p)
+      lelse = getLabel(p)
       inc(p.labels)
       lineFF(p, cpsStmts, "if (!$1) goto $2;$n",
             "br i1 $1, label %LOC$3, label %$2$nLOC$3: $n",
-            [rdLoc(a), Lelse, toRope(p.labels)])
+            [rdLoc(a), lelse, toRope(p.labels)])
       when not newScopeForIf: startBlock(p)
       expr(p, it.sons[1], d)
       endBlock(p)
       if sonsLen(n) > 1:
-        lineFF(p, cpsStmts, "goto $1;$n", "br label %$1$n", [Lend])
-      fixLabel(p, Lelse)
+        lineFF(p, cpsStmts, "goto $1;$n", "br label %$1$n", [lend])
+      fixLabel(p, lelse)
     elif it.len == 1:
       startBlock(p)
       expr(p, it.sons[0], d)
       endBlock(p)
     else: internalError(n.info, "genIf()")
-  if sonsLen(n) > 1: fixLabel(p, Lend)
+  if sonsLen(n) > 1: fixLabel(p, lend)
 
-proc blockLeaveActions(p: BProc, howMany: int) = 
-  var L = p.nestedTryStmts.len
-  # danger of endless recursion! we workaround this here by a temp stack
+
+proc blockLeaveActions(p: BProc, howManyTrys, howManyExcepts: int) = 
+  # Called by return and break stmts.
+  # Deals with issues faced when jumping out of try/except/finally stmts,
+
   var stack: seq[PNode]
-  newSeq(stack, howMany)
-  for i in countup(1, howMany): 
-    stack[i-1] = p.nestedTryStmts[L-i]
-  setLen(p.nestedTryStmts, L-howMany)
+  newSeq(stack, 0)
   
   var alreadyPoppedCnt = p.inExceptBlock
-  for tryStmt in items(stack):
+  for i in countup(1, howManyTrys):
+
     if gCmd != cmdCompileToCpp:
+      # Pop safe points generated by try
       if alreadyPoppedCnt > 0:
         dec alreadyPoppedCnt
       else:
         linefmt(p, cpsStmts, "#popSafePoint();$n")
+
+    # Pop this try-stmt of the list of nested trys
+    # so we don't infinite recurse on it in the next step.
+    var tryStmt = p.nestedTryStmts.pop
+    stack.add(tryStmt)
+
+    # Find finally-stmt for this try-stmt
+    # and generate a copy of its sons
     var finallyStmt = lastSon(tryStmt)
     if finallyStmt.kind == nkFinally: 
       genStmts(p, finallyStmt.sons[0])
+
   # push old elements again:
-  for i in countdown(howMany-1, 0): 
+  for i in countdown(howManyTrys-1, 0): 
     p.nestedTryStmts.add(stack[i])
+
   if gCmd != cmdCompileToCpp:
-    for i in countdown(p.inExceptBlock-1, 0):
+    # Pop exceptions that was handled by the
+    # except-blocks we are in
+    for i in countdown(howManyExcepts-1, 0):
       linefmt(p, cpsStmts, "#popCurrentException();$n")
 
 proc genReturnStmt(p: BProc, t: PNode) =
   p.beforeRetNeeded = true
   genLineDir(p, t)
   if (t.sons[0].kind != nkEmpty): genStmts(p, t.sons[0])
-  blockLeaveActions(p, min(1, p.nestedTryStmts.len))
+  blockLeaveActions(p, 
+    howManyTrys    = p.nestedTryStmts.len,
+    howManyExcepts = p.inExceptBlock)
+  if (p.finallySafePoints.len > 0):
+    # If we're in a finally block, and we came here by exception
+    # consume it before we return.
+    var safePoint = p.finallySafePoints[p.finallySafePoints.len-1]
+    linefmt(p, cpsStmts, "if ($1.status != 0) #popCurrentException();$n", safePoint)    
   lineFF(p, cpsStmts, "goto BeforeRet;$n", "br label %BeforeRet$n", [])
 
 proc genComputedGoto(p: BProc; n: PNode) =
   # first pass: Generate array of computed labels:
   var casePos = -1
-  var arraySize: Int
+  var arraySize: int
   for i in 0 .. <n.len:
     let it = n.sons[i]
     if it.kind == nkCaseStmt:
@@ -322,8 +343,20 @@ proc genComputedGoto(p: BProc; n: PNode) =
     gotoArray.appf("&&TMP$#, ", (id+i).toRope)
   gotoArray.appf("&&TMP$#};$n", (id+arraySize).toRope)
   line(p, cpsLocals, gotoArray)
+
+  let topBlock = p.blocks.len-1
+  let oldBody = p.blocks[topBlock].sections[cpsStmts]
+  p.blocks[topBlock].sections[cpsStmts] = nil
   
+  for j in casePos+1 .. <n.len: genStmts(p, n.sons[j])
+  let tailB = p.blocks[topBlock].sections[cpsStmts]
+
+  p.blocks[topBlock].sections[cpsStmts] = nil
   for j in 0 .. casePos-1: genStmts(p, n.sons[j])
+  let tailA = p.blocks[topBlock].sections[cpsStmts]
+
+  p.blocks[topBlock].sections[cpsStmts] = oldBody.con(tailA)
+
   let caseStmt = n.sons[casePos]
   var a: TLoc
   initLocExpr(p, caseStmt.sons[0], a)
@@ -340,8 +373,11 @@ proc genComputedGoto(p: BProc; n: PNode) =
       let val = getOrdValue(it.sons[j])
       lineF(p, cpsStmts, "TMP$#:$n", intLiteral(val+id+1))
     genStmts(p, it.lastSon)
-    for j in casePos+1 .. <n.len: genStmts(p, n.sons[j])
-    for j in 0 .. casePos-1: genStmts(p, n.sons[j])
+    #for j in casePos+1 .. <n.len: genStmts(p, n.sons[j]) # tailB
+    #for j in 0 .. casePos-1: genStmts(p, n.sons[j])  # tailA
+    app(p.s(cpsStmts), tailB)
+    app(p.s(cpsStmts), tailA)
+
     var a: TLoc
     initLocExpr(p, caseStmt.sons[0], a)
     lineF(p, cpsStmts, "goto *$#[$#];$n", tmp, a.rdLoc)
@@ -352,7 +388,7 @@ proc genWhileStmt(p: BProc, t: PNode) =
   # significantly worse code
   var 
     a: TLoc
-    Labl: TLabel
+    labl: TLabel
   assert(sonsLen(t) == 2)
   inc(p.withinLoop)
   genLineDir(p, t)
@@ -366,7 +402,7 @@ proc genWhileStmt(p: BProc, t: PNode) =
       lineF(p, cpsStmts, "if (!$1) goto $2;$n", [rdLoc(a), label])
     var loopBody = t.sons[1]
     if loopBody.stmtsContainPragma(wComputedGoto) and
-        hasComputedGoto in CC[ccompiler].props:
+        hasComputedGoto in CC[cCompiler].props:
       # for closure support weird loop bodies are generated:
       if loopBody.len == 2 and loopBody.sons[0].kind == nkEmpty:
         loopBody = loopBody.sons[1]
@@ -401,7 +437,7 @@ proc genParForStmt(p: BProc, t: PNode) =
   preserveBreakIdx:
     let forLoopVar = t.sons[0].sym
     var rangeA, rangeB: TLoc
-    assignLocalVar(P, forLoopVar)
+    assignLocalVar(p, forLoopVar)
     #initLoc(forLoopVar.loc, locLocalVar, forLoopVar.typ, onStack)
     #discard mangleName(forLoopVar)
     let call = t.sons[1]
@@ -433,9 +469,11 @@ proc genBreakStmt(p: BProc, t: PNode) =
     # an unnamed 'break' can only break a loop after 'transf' pass:
     while idx >= 0 and not p.blocks[idx].isLoop: dec idx
     if idx < 0 or not p.blocks[idx].isLoop:
-      InternalError(t.info, "no loop to break")
+      internalError(t.info, "no loop to break")
   let label = assignLabel(p.blocks[idx])
-  blockLeaveActions(p, p.nestedTryStmts.len - p.blocks[idx].nestedTryStmts)
+  blockLeaveActions(p, 
+    p.nestedTryStmts.len - p.blocks[idx].nestedTryStmts,
+    p.inExceptBlock - p.blocks[idx].nestedExceptStmts)
   genLineDir(p, t)
   lineF(p, cpsStmts, "goto $1;$n", [label])
 
@@ -454,7 +492,7 @@ proc genRaiseStmt(p: BProc, t: PNode) =
       genSimpleBlock(p, finallyBlock.sons[0])
   if t.sons[0].kind != nkEmpty: 
     var a: TLoc
-    InitLocExpr(p, t.sons[0], a)
+    initLocExpr(p, t.sons[0], a)
     var e = rdLoc(a)
     var typ = skipTypes(t.sons[0].typ, abstractPtrs)
     genLineDir(p, t)
@@ -484,16 +522,16 @@ proc genCaseGenericBranch(p: BProc, b: PNode, e: TLoc,
 
 proc genCaseSecondPass(p: BProc, t: PNode, d: var TLoc, 
                        labId, until: int): TLabel = 
-  var Lend = getLabel(p)
+  var lend = getLabel(p)
   for i in 1..until:
     lineF(p, cpsStmts, "LA$1: ;$n", [toRope(labId + i)])
     if t.sons[i].kind == nkOfBranch:
       var length = sonsLen(t.sons[i])
       exprBlock(p, t.sons[i].sons[length - 1], d)
-      lineF(p, cpsStmts, "goto $1;$n", [Lend])
+      lineF(p, cpsStmts, "goto $1;$n", [lend])
     else:
       exprBlock(p, t.sons[i].sons[0], d)
-  result = Lend
+  result = lend
 
 proc genIfForCaseUntil(p: BProc, t: PNode, d: var TLoc,
                        rangeFormat, eqFormat: TFormatStr,
@@ -520,8 +558,8 @@ proc genCaseGeneric(p: BProc, t: PNode, d: var TLoc,
                     rangeFormat, eqFormat: TFormatStr) = 
   var a: TLoc
   initLocExpr(p, t.sons[0], a)
-  var Lend = genIfForCaseUntil(p, t, d, rangeFormat, eqFormat, sonsLen(t)-1, a)
-  fixLabel(p, Lend)
+  var lend = genIfForCaseUntil(p, t, d, rangeFormat, eqFormat, sonsLen(t)-1, a)
+  fixLabel(p, lend)
 
 proc genCaseStringBranch(p: BProc, b: PNode, e: TLoc, labl: TLabel, 
                          branches: var openArray[PRope]) = 
@@ -565,25 +603,25 @@ proc genStringCase(p: BProc, t: PNode, d: var TLoc) =
     if t.sons[sonsLen(t)-1].kind != nkOfBranch: 
       lineF(p, cpsStmts, "goto LA$1;$n", [toRope(p.labels)]) 
     # third pass: generate statements
-    var Lend = genCaseSecondPass(p, t, d, labId, sonsLen(t)-1)
-    fixLabel(p, Lend)
+    var lend = genCaseSecondPass(p, t, d, labId, sonsLen(t)-1)
+    fixLabel(p, lend)
   else:
     genCaseGeneric(p, t, d, "", "if (#eqStrings($1, $2)) goto $3;$n")
   
 proc branchHasTooBigRange(b: PNode): bool = 
   for i in countup(0, sonsLen(b)-2): 
     # last son is block
-    if (b.sons[i].Kind == nkRange) and
+    if (b.sons[i].kind == nkRange) and
         b.sons[i].sons[1].intVal - b.sons[i].sons[0].intVal > RangeExpandLimit: 
       return true
 
-proc IfSwitchSplitPoint(p: BProc, n: PNode): int =
+proc ifSwitchSplitPoint(p: BProc, n: PNode): int =
   for i in 1..n.len-1:
     var branch = n[i]
     var stmtBlock = lastSon(branch)
     if stmtBlock.stmtsContainPragma(wLinearScanEnd):
       result = i
-    elif hasSwitchRange notin CC[ccompiler].props: 
+    elif hasSwitchRange notin CC[cCompiler].props: 
       if branch.kind == nkOfBranch and branchHasTooBigRange(branch): 
         result = i
 
@@ -591,7 +629,7 @@ proc genCaseRange(p: BProc, branch: PNode) =
   var length = branch.len
   for j in 0 .. length-2: 
     if branch[j].kind == nkRange: 
-      if hasSwitchRange in CC[ccompiler].props: 
+      if hasSwitchRange in CC[cCompiler].props: 
         lineF(p, cpsStmts, "case $1 ... $2:$n", [
             genLiteral(p, branch[j][0]), 
             genLiteral(p, branch[j][1])])
@@ -599,18 +637,18 @@ proc genCaseRange(p: BProc, branch: PNode) =
         var v = copyNode(branch[j][0])
         while v.intVal <= branch[j][1].intVal: 
           lineF(p, cpsStmts, "case $1:$n", [genLiteral(p, v)])
-          Inc(v.intVal)
+          inc(v.intVal)
     else:
       lineF(p, cpsStmts, "case $1:$n", [genLiteral(p, branch[j])])
 
 proc genOrdinalCase(p: BProc, n: PNode, d: var TLoc) =
   # analyse 'case' statement:
-  var splitPoint = IfSwitchSplitPoint(p, n)
+  var splitPoint = ifSwitchSplitPoint(p, n)
   
   # generate if part (might be empty):
   var a: TLoc
   initLocExpr(p, n.sons[0], a)
-  var Lend = if splitPoint > 0: genIfForCaseUntil(p, n, d,
+  var lend = if splitPoint > 0: genIfForCaseUntil(p, n, d,
                     rangeFormat = "if ($1 >= $2 && $1 <= $3) goto $4;$n",
                     eqFormat = "if ($1 == $2) goto $3;$n", 
                     splitPoint, a) else: nil
@@ -629,10 +667,10 @@ proc genOrdinalCase(p: BProc, n: PNode, d: var TLoc) =
         hasDefault = true
       exprBlock(p, branch.lastSon, d)
       lineF(p, cpsStmts, "break;$n")
-    if (hasAssume in CC[ccompiler].props) and not hasDefault: 
+    if (hasAssume in CC[cCompiler].props) and not hasDefault: 
       lineF(p, cpsStmts, "default: __assume(0);$n")
     lineF(p, cpsStmts, "}$n")
-  if Lend != nil: fixLabel(p, Lend)
+  if lend != nil: fixLabel(p, lend)
   
 proc genCase(p: BProc, t: PNode, d: var TLoc) = 
   genLineDir(p, t)
@@ -691,7 +729,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   expr(p, t.sons[0], d)
   length = sonsLen(t)
   endBlock(p, ropecg(p.module, "} catch (NimException& $1) {$n", [exc]))
-  if optStackTrace in p.Options:
+  if optStackTrace in p.options:
     linefmt(p, cpsStmts, "#setFrame((TFrame*)&F);$n")
   inc p.inExceptBlock
   i = 1
@@ -764,7 +802,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
   #
   if not isEmptyType(t.typ) and d.k == locNone:
     getTemp(p, t.typ, d)
-  discard lists.IncludeStr(p.module.headerFiles, "<setjmp.h>")
+  discard lists.includeStr(p.module.headerFiles, "<setjmp.h>")
   genLineDir(p, t)
   var safePoint = getTempName()
   discard cgsym(p.module, "E_Base")
@@ -779,7 +817,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
   endBlock(p)
   startBlock(p, "else {$n")
   linefmt(p, cpsStmts, "#popSafePoint();$n")
-  if optStackTrace in p.Options:
+  if optStackTrace in p.options:
     linefmt(p, cpsStmts, "#setFrame((TFrame*)&F);$n")
   inc p.inExceptBlock
   var i = 1
@@ -812,18 +850,20 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
   discard pop(p.nestedTryStmts)
   endBlock(p) # end of else block
   if i < length and t.sons[i].kind == nkFinally:
+    p.finallySafePoints.add(safePoint)
     exprBlock(p, t.sons[i].sons[0], d)
+    discard pop(p.finallySafePoints)
   linefmt(p, cpsStmts, "if ($1.status != 0) #reraiseException();$n", safePoint)
 
 proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): PRope =
   var res = ""
   for i in countup(0, sonsLen(t) - 1):
-    case t.sons[i].Kind
+    case t.sons[i].kind
     of nkStrLit..nkTripleStrLit:
       res.add(t.sons[i].strVal)
     of nkSym:
       var sym = t.sons[i].sym
-      if sym.kind in {skProc, skIterator, skMethod}: 
+      if sym.kind in {skProc, skIterator, skClosureIterator, skMethod}:
         var a: TLoc
         initLocExpr(p, t.sons[i], a)
         res.add(rdLoc(a).ropeToStr)
@@ -835,9 +875,9 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): PRope =
           r = mangleName(sym)
           sym.loc.r = r       # but be consequent!
         res.add(r.ropeToStr)
-    else: InternalError(t.sons[i].info, "genAsmOrEmitStmt()")
+    else: internalError(t.sons[i].info, "genAsmOrEmitStmt()")
   
-  if isAsmStmt and hasGnuAsm in CC[ccompiler].props:
+  if isAsmStmt and hasGnuAsm in CC[cCompiler].props:
     for x in splitLines(res):
       var j = 0
       while x[j] in {' ', '\t'}: inc(j)
@@ -858,9 +898,9 @@ proc genAsmStmt(p: BProc, t: PNode) =
   var s = genAsmOrEmitStmt(p, t, isAsmStmt=true)
   if p.prc == nil:
     # top level asm statement?
-    appf(p.module.s[cfsProcHeaders], CC[ccompiler].asmStmtFrmt, [s])
+    appf(p.module.s[cfsProcHeaders], CC[cCompiler].asmStmtFrmt, [s])
   else:
-    lineF(p, cpsStmts, CC[ccompiler].asmStmtFrmt, [s])
+    lineF(p, cpsStmts, CC[cCompiler].asmStmtFrmt, [s])
 
 proc genEmit(p: BProc, t: PNode) = 
   genLineDir(p, t)
@@ -877,7 +917,7 @@ var
 
 proc genBreakPoint(p: BProc, t: PNode) = 
   var name: string
-  if optEndb in p.Options:
+  if optEndb in p.options:
     if t.kind == nkExprColonExpr: 
       assert(t.sons[1].kind in {nkStrLit..nkTripleStrLit})
       name = normalize(t.sons[1].strVal)
@@ -891,7 +931,7 @@ proc genBreakPoint(p: BProc, t: PNode) =
         makeCString(name)])
 
 proc genWatchpoint(p: BProc, n: PNode) =
-  if optEndb notin p.Options: return
+  if optEndb notin p.options: return
   var a: TLoc
   initLocExpr(p, n.sons[1], a)
   let typ = skipTypes(n.sons[1].typ, abstractVarRange)
@@ -905,7 +945,7 @@ proc genPragma(p: BProc, n: PNode) =
     case whichPragma(it)
     of wEmit: genEmit(p, it)
     of wBreakpoint: genBreakPoint(p, it)
-    of wWatchpoint: genWatchpoint(p, it)
+    of wWatchPoint: genWatchpoint(p, it)
     of wInjectStmt: 
       var p = newProc(nil, p.module)
       p.options = p.options - {optLineTrace, optStackTrace}
@@ -913,7 +953,7 @@ proc genPragma(p: BProc, n: PNode) =
       p.module.injectStmt = p.s(cpsStmts)
     else: discard
 
-proc FieldDiscriminantCheckNeeded(p: BProc, asgn: PNode): bool = 
+proc fieldDiscriminantCheckNeeded(p: BProc, asgn: PNode): bool = 
   if optFieldCheck in p.options:
     var le = asgn.sons[0]
     if le.kind == nkCheckedFieldExpr:
@@ -929,7 +969,7 @@ proc genDiscriminantCheck(p: BProc, a, tmp: TLoc, objtype: PType,
   assert t.kind == tyObject
   discard genTypeInfo(p.module, t)
   var L = lengthOrd(field.typ)
-  if not ContainsOrIncl(p.module.declaredThings, field.id):
+  if not containsOrIncl(p.module.declaredThings, field.id):
     appcg(p.module, cfsVars, "extern $1", 
           discriminatorTableDecl(p.module, t, field))
   lineCg(p, cpsStmts,
@@ -942,7 +982,7 @@ proc asgnFieldDiscriminant(p: BProc, e: PNode) =
   var dotExpr = e.sons[0]
   var d: PSym
   if dotExpr.kind == nkCheckedFieldExpr: dotExpr = dotExpr.sons[0]
-  InitLocExpr(p, e.sons[0], a)
+  initLocExpr(p, e.sons[0], a)
   getTemp(p, a.t, tmp)
   expr(p, e.sons[1], tmp)
   genDiscriminantCheck(p, a, tmp, dotExpr.sons[0].typ, dotExpr.sons[1].sym)
@@ -950,9 +990,9 @@ proc asgnFieldDiscriminant(p: BProc, e: PNode) =
   
 proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) = 
   genLineDir(p, e)
-  if not FieldDiscriminantCheckNeeded(p, e):
+  if not fieldDiscriminantCheckNeeded(p, e):
     var a: TLoc
-    InitLocExpr(p, e.sons[0], a)
+    initLocExpr(p, e.sons[0], a)
     if fastAsgn: incl(a.flags, lfNoDeepCopy)
     assert(a.t != nil)
     loadInto(p, e.sons[0], e.sons[1], a)
@@ -962,4 +1002,4 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
 proc genStmts(p: BProc, t: PNode) = 
   var a: TLoc
   expr(p, t, a)
-  InternalAssert a.k in {locNone, locTemp, locLocalVar}
+  internalAssert a.k in {locNone, locTemp, locLocalVar}

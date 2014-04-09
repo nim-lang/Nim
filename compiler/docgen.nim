@@ -14,7 +14,7 @@
 import
   ast, strutils, strtabs, options, msgs, os, ropes, idents,
   wordrecg, syntaxes, renderer, lexer, rstast, rst, rstgen, times, highlite,
-  importer, sempass2, json
+  importer, sempass2, json, xmltree, cgi, typesrenderer
 
 type
   TSections = array[TSymKind, PRope]
@@ -23,8 +23,9 @@ type
     id: int                  # for generating IDs
     toc, section: TSections
     indexValFilename: string
+    seenSymbols: PStringTable # avoids duplicate symbol generation for HTML.
 
-  PDoc* = ref TDocumentor
+  PDoc* = ref TDocumentor ## Alias to type less.
 
 proc compilerMsgHandler(filename: string, line, col: int,
                         msgKind: rst.TMsgKind, arg: string) {.procvar.} =
@@ -40,33 +41,40 @@ proc compilerMsgHandler(filename: string, line, col: int,
   of mwRedefinitionOfLabel: k = warnRedefinitionOfLabel
   of mwUnknownSubstitution: k = warnUnknownSubstitutionX
   of mwUnsupportedLanguage: k = warnLanguageXNotSupported
-  GlobalError(newLineInfo(filename, line, col), k, arg)
+  globalError(newLineInfo(filename, line, col), k, arg)
+
+proc docgenFindFile(s: string): string {.procvar.} =
+  result = options.findFile(s)
+  if result.len == 0:
+    result = getCurrentDir() / s
+    if not existsFile(result): result = ""
 
 proc parseRst(text, filename: string,
               line, column: int, hasToc: var bool,
               rstOptions: TRstParseOptions): PRstNode =
   result = rstParse(text, filename, line, column, hasToc, rstOptions,
-                    options.FindFile, compilerMsgHandler)
+                    docgenFindFile, compilerMsgHandler)
 
 proc newDocumentor*(filename: string, config: PStringTable): PDoc =
   new(result)
-  initRstGenerator(result[], (if gCmd != cmdRst2Tex: outHtml else: outLatex),
+  initRstGenerator(result[], (if gCmd != cmdRst2tex: outHtml else: outLatex),
                    options.gConfigVars, filename, {roSupportRawDirective},
-                   options.FindFile, compilerMsgHandler)
+                   docgenFindFile, compilerMsgHandler)
+  result.seenSymbols = newStringTable(modeCaseInsensitive)
   result.id = 100
 
-proc dispA(dest: var PRope, xml, tex: string, args: openarray[PRope]) =
-  if gCmd != cmdRst2Tex: appf(dest, xml, args)
+proc dispA(dest: var PRope, xml, tex: string, args: openArray[PRope]) =
+  if gCmd != cmdRst2tex: appf(dest, xml, args)
   else: appf(dest, tex, args)
 
-proc getVarIdx(varnames: openarray[string], id: string): int =
+proc getVarIdx(varnames: openArray[string], id: string): int =
   for i in countup(0, high(varnames)):
     if cmpIgnoreStyle(varnames[i], id) == 0:
       return i
   result = -1
 
-proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openarray[string],
-                         varvalues: openarray[PRope]): PRope =
+proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openArray[string],
+                         varvalues: openArray[PRope]): PRope =
   var i = 0
   var L = len(frmt)
   result = nil
@@ -85,7 +93,7 @@ proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openarray[string],
       of '0'..'9':
         var j = 0
         while true:
-          j = (j * 10) + Ord(frmt[i]) - ord('0')
+          j = (j * 10) + ord(frmt[i]) - ord('0')
           inc(i)
           if (i > L + 0 - 1) or not (frmt[i] in {'0'..'9'}): break
         if j > high(varvalues) + 1: internalError("ropeFormatNamedVars")
@@ -112,7 +120,7 @@ proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openarray[string],
         var idx = getVarIdx(varnames, id)
         if idx >= 0: app(result, varvalues[idx])
         else: rawMessage(errUnkownSubstitionVar, id)
-      else: InternalError("ropeFormatNamedVars")
+      else: internalError("ropeFormatNamedVars")
     var start = i
     while i < L:
       if frmt[i] != '$': inc(i)
@@ -124,7 +132,7 @@ proc genComment(d: PDoc, n: PNode): string =
   var dummyHasToc: bool
   if n.comment != nil and startsWith(n.comment, "##"):
     renderRstToOut(d[], parseRst(n.comment, toFilename(n.info),
-                               toLineNumber(n.info), toColumn(n.info),
+                               toLinenumber(n.info), toColumn(n.info),
                                dummyHasToc, d.options + {roSkipPounds}), result)
 
 proc genRecComment(d: PDoc, n: PNode): PRope =
@@ -137,6 +145,23 @@ proc genRecComment(d: PDoc, n: PNode): PRope =
         if result != nil: return
   else:
     n.comment = nil
+
+proc getPlainDocstring(n: PNode): string =
+  ## Gets the plain text docstring of a node non destructively.
+  ##
+  ## You need to call this before genRecComment, whose side effects are removal
+  ## of comments from the tree. The proc will recursively scan and return all
+  ## the concatenated ``##`` comments of the node.
+  result = ""
+  if n == nil: return
+  if n.comment != nil and startsWith(n.comment, "##"):
+    result = n.comment
+  if result.len < 1:
+    if n.kind notin {nkEmpty..nkNilLit}:
+      for i in countup(0, len(n)-1):
+        result = getPlainDocstring(n.sons[i])
+        if result.len > 0: return
+
 
 proc findDocComment(n: PNode): PNode =
   if n == nil: return nil
@@ -152,7 +177,7 @@ proc extractDocComment*(s: PSym, d: PDoc = nil): string =
     if not d.isNil:
       var dummyHasToc: bool
       renderRstToOut(d[], parseRst(n.comment, toFilename(n.info),
-                                   toLineNumber(n.info), toColumn(n.info),
+                                   toLinenumber(n.info), toColumn(n.info),
                                    dummyHasToc, d.options + {roSkipPounds}),
                      result)
     else:
@@ -199,14 +224,111 @@ proc getRstName(n: PNode): PRstNode =
     internalError(n.info, "getRstName()")
     result = nil
 
+proc newUniquePlainSymbol(d: PDoc, original: string): string =
+  ## Returns a new unique plain symbol made up from the original.
+  ##
+  ## When a collision is found in the seenSymbols table, new numerical variants
+  ## with underscore + number will be generated.
+  if not d.seenSymbols.hasKey(original):
+    result = original
+    d.seenSymbols[original] = ""
+    return
+
+  # Iterate over possible numeric variants of the original name.
+  var count = 2
+
+  while true:
+    result = original & "_" & $count
+    if not d.seenSymbols.hasKey(result):
+      d.seenSymbols[result] = ""
+      break
+    count += 1
+
+
+proc complexName(k: TSymKind, n: PNode, baseName: string): string =
+  ## Builds a complex unique href name for the node.
+  ##
+  ## Pass as ``baseName`` the plain symbol obtained from the nodeName. The
+  ## format of the returned symbol will be ``baseName(.callable type)?,(param
+  ## type)?(,param type)*``. The callable type part will be added only if the
+  ## node is not a proc, as those are the common ones. The suffix will be a dot
+  ## and a single letter representing the type of the callable. The parameter
+  ## types will be added with a preceeding dash. Return types won't be added.
+  ##
+  ## If you modify the output of this proc, please update the anchor generation
+  ## section of ``doc/docgen.txt``.
+  result = baseName
+  case k:
+  of skProc: result.add(defaultParamSeparator)
+  of skMacro: result.add(".m" & defaultParamSeparator)
+  of skMethod: result.add(".e" & defaultParamSeparator)
+  of skIterator: result.add(".i" & defaultParamSeparator)
+  of skTemplate: result.add(".t" & defaultParamSeparator)
+  of skConverter: result.add(".c" & defaultParamSeparator)
+  else: discard
+
+  if len(n) > paramsPos and n[paramsPos].kind == nkFormalParams:
+    result.add(renderParamTypes(n[paramsPos]))
+
+
+proc isCallable(n: PNode): bool =
+  ## Returns true if `n` contains a callable node.
+  case n.kind
+  of nkProcDef, nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef,
+    nkConverterDef: result = true
+  else:
+    result = false
+
+
+proc docstringSummary(rstText: string): string =
+  ## Returns just the first line or a brief chunk of text from a rst string.
+  ##
+  ## Most docstrings will contain a one liner summary, so stripping at the
+  ## first newline is usually fine. If after that the content is still too big,
+  ## it is stripped at the first comma, colon or dot, usual english sentence
+  ## separators.
+  ##
+  ## No guarantees are made on the size of the output, but it should be small.
+  ## Also, we hope to not break the rst, but maybe we do. If there is any
+  ## trimming done, an ellipsis unicode char is added.
+  const maxDocstringChars = 100
+  assert (rstText.len < 2 or (rstText[0] == '#' and rstText[1] == '#'))
+  result = rstText.substr(2).strip
+  var pos = result.find('\L')
+  if pos > 0:
+    result.delete(pos, result.len - 1)
+    result.add("…")
+  if pos < maxDocstringChars:
+    return
+  # Try to keep trimming at other natural boundaries.
+  pos = result.find({'.', ',', ':'})
+  let last = result.len - 1
+  if pos > 0 and pos < last:
+    result.delete(pos, last)
+    result.add("…")
+
+
 proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   if not isVisible(nameNode): return
-  var name = toRope(getName(d, nameNode))
+  let
+    name = getName(d, nameNode)
+    nameRope = name.toRope
+    plainDocstring = getPlainDocstring(n) # call here before genRecComment!
   var result: PRope = nil
-  var literal = ""
+  var literal, plainName = ""
   var kind = tkEof
   var comm = genRecComment(d, n)  # call this here for the side-effect!
   var r: TSrcGen
+  # Obtain the plain rendered string for hyperlink titles.
+  initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments,
+    renderNoPragmas, renderNoProcDefs})
+  while true:
+    getNextTok(r, kind, literal)
+    if kind == tkEof:
+      break
+    plainName.add(literal)
+
+  # Render the HTML hyperlink.
   initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments})
   while true:
     getNextTok(r, kind, literal)
@@ -247,13 +369,47 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
       dispA(result, "<span class=\"Other\">$1</span>", "\\spanOther{$1}",
             [toRope(esc(d.target, literal))])
   inc(d.id)
+  let
+    plainNameRope = toRope(xmltree.escape(plainName.strip))
+    cleanPlainSymbol = renderPlainSymbolName(nameNode)
+    complexSymbol = complexName(k, n, cleanPlainSymbol)
+    plainSymbolRope = toRope(cleanPlainSymbol)
+    plainSymbolEncRope = toRope(URLEncode(cleanPlainSymbol))
+    itemIDRope = toRope(d.id)
+    symbolOrId = d.newUniquePlainSymbol(complexSymbol)
+    symbolOrIdRope = symbolOrId.toRope
+    symbolOrIdEncRope = URLEncode(symbolOrId).toRope
+
+  var seeSrcRope: PRope = nil
+  let docItemSeeSrc = getConfigVar("doc.item.seesrc")
+  if docItemSeeSrc.len > 0 and options.docSeeSrcUrl.len > 0:
+    let urlRope = ropeFormatNamedVars(options.docSeeSrcUrl,
+      ["path", "line"], [n.info.toFilename.toRope, toRope($n.info.line)])
+    dispA(seeSrcRope, "$1", "", [ropeFormatNamedVars(docItemSeeSrc,
+        ["path", "line", "url"], [n.info.toFilename.toRope,
+        toRope($n.info.line), urlRope])])
+
   app(d.section[k], ropeFormatNamedVars(getConfigVar("doc.item"),
-                                        ["name", "header", "desc", "itemID"],
-                                        [name, result, comm, toRope(d.id)]))
+    ["name", "header", "desc", "itemID", "header_plain", "itemSym",
+      "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc", "seeSrc"],
+    [nameRope, result, comm, itemIDRope, plainNameRope, plainSymbolRope,
+      symbolOrIdRope, plainSymbolEncRope, symbolOrIdEncRope, seeSrcRope]))
   app(d.toc[k], ropeFormatNamedVars(getConfigVar("doc.item.toc"),
-                                    ["name", "header", "desc", "itemID"], [
-      toRope(getName(d, nameNode, d.splitAfter)), result, comm, toRope(d.id)]))
-  setIndexTerm(d[], $d.id, getName(d, nameNode))
+    ["name", "header", "desc", "itemID", "header_plain", "itemSym",
+      "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc"],
+    [toRope(getName(d, nameNode, d.splitAfter)), result, comm,
+      itemIDRope, plainNameRope, plainSymbolRope, symbolOrIdRope,
+      plainSymbolEncRope, symbolOrIdEncRope]))
+
+  # Ironically for types the complexSymbol is *cleaner* than the plainName
+  # because it doesn't include object fields or documentation comments. So we
+  # use the plain one for callable elements, and the complex for the rest.
+  var linkTitle = changeFileExt(extractFilename(d.filename), "") & " : "
+  if n.isCallable: linkTitle.add(xmltree.escape(plainName.strip))
+  else: linkTitle.add(xmltree.escape(complexSymbol.strip))
+
+  setIndexTerm(d[], symbolOrId, name, linkTitle,
+    xmltree.escape(plainDocstring.docstringSummary))
 
 proc genJSONItem(d: PDoc, n, nameNode: PNode, k: TSymKind): PJsonNode =
   if not isVisible(nameNode): return
@@ -272,7 +428,7 @@ proc genJSONItem(d: PDoc, n, nameNode: PNode, k: TSymKind): PJsonNode =
     result["code"] = %r.buf
 
 proc checkForFalse(n: PNode): bool =
-  result = n.kind == nkIdent and IdentEq(n.ident, "false")
+  result = n.kind == nkIdent and identEq(n.ident, "false")
 
 proc traceDeps(d: PDoc, n: PNode) =
   const k = skModule
@@ -313,7 +469,7 @@ proc generateDoc*(d: PDoc, n: PNode) =
   of nkImportStmt:
     for i in 0 .. sonsLen(n)-1: traceDeps(d, n.sons[i])
   of nkFromStmt, nkImportExceptStmt: traceDeps(d, n.sons[0])
-  else: nil
+  else: discard
 
 proc generateJson(d: PDoc, n: PNode, jArray: PJsonNode = nil): PJsonNode =
   case n.kind
@@ -355,12 +511,12 @@ proc generateJson(d: PDoc, n: PNode, jArray: PJsonNode = nil): PJsonNode =
     # generate documentation for the first branch only:
     if not checkForFalse(n.sons[0].sons[0]) and jArray != nil:
       discard generateJson(d, lastSon(n.sons[0]), jArray)
-  else: nil
+  else: discard
 
 proc genSection(d: PDoc, kind: TSymKind) =
   const sectionNames: array[skModule..skTemplate, string] = [
     "Imports", "Types", "Vars", "Lets", "Consts", "Vars", "Procs", "Methods",
-    "Iterators", "Converters", "Macros", "Templates"
+    "Iterators", "Iterators", "Converters", "Macros", "Templates"
   ]
   if d.section[kind] == nil: return
   var title = sectionNames[kind].toRope
@@ -408,7 +564,7 @@ proc genOutFile(d: PDoc): PRope =
 proc generateIndex*(d: PDoc) =
   if optGenIndex in gGlobalOptions:
     writeIndexFile(d[], splitFile(options.outFile).dir /
-                        splitFile(d.filename).name & indexExt)
+                        splitFile(d.filename).name & IndexExt)
 
 proc writeOutput*(d: PDoc, filename, outExt: string, useWarning = false) =
   var content = genOutFile(d)
@@ -417,7 +573,7 @@ proc writeOutput*(d: PDoc, filename, outExt: string, useWarning = false) =
   else:
     writeRope(content, getOutFile(filename, outExt), useWarning)
 
-proc CommandDoc*() =
+proc commandDoc*() =
   var ast = parseFile(gProjectMainIdx)
   if ast == nil: return
   var d = newDocumentor(gProjectFull, options.gConfigVars)
@@ -426,7 +582,7 @@ proc CommandDoc*() =
   writeOutput(d, gProjectFull, HtmlExt)
   generateIndex(d)
 
-proc CommandRstAux(filename, outExt: string) =
+proc commandRstAux(filename, outExt: string) =
   var filen = addFileExt(filename, "txt")
   var d = newDocumentor(filen, options.gConfigVars)
   var rst = parseRst(readFile(filen), filen, 0, 1, d.hasToc,
@@ -439,14 +595,14 @@ proc CommandRstAux(filename, outExt: string) =
   writeOutput(d, filename, outExt)
   generateIndex(d)
 
-proc CommandRst2Html*() =
-  CommandRstAux(gProjectFull, HtmlExt)
+proc commandRst2Html*() =
+  commandRstAux(gProjectFull, HtmlExt)
 
-proc CommandRst2TeX*() =
+proc commandRst2TeX*() =
   splitter = "\\-"
-  CommandRstAux(gProjectFull, TexExt)
+  commandRstAux(gProjectFull, TexExt)
 
-proc CommandJSON*() =
+proc commandJSON*() =
   var ast = parseFile(gProjectMainIdx)
   if ast == nil: return
   var d = newDocumentor(gProjectFull, options.gConfigVars)
@@ -460,7 +616,7 @@ proc CommandJSON*() =
     echo getOutFile(gProjectFull, JsonExt)
     writeRope(content, getOutFile(gProjectFull, JsonExt), useWarning = false)
 
-proc CommandBuildIndex*() =
+proc commandBuildIndex*() =
   var content = mergeIndexes(gProjectFull).toRope
 
   let code = ropeFormatNamedVars(getConfigVar("doc.file"), ["title",

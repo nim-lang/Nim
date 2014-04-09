@@ -42,7 +42,7 @@ proc isPartOfAux(n: PNode, b: PType, marker: var TIntSet): TAnalysisResult =
 proc isPartOfAux(a, b: PType, marker: var TIntSet): TAnalysisResult = 
   result = arNo
   if a == nil or b == nil: return 
-  if ContainsOrIncl(marker, a.id): return 
+  if containsOrIncl(marker, a.id): return 
   if compareTypes(a, b, dcEqIgnoreDistinct): return arYes
   case a.kind
   of tyObject: 
@@ -54,11 +54,11 @@ proc isPartOfAux(a, b: PType, marker: var TIntSet): TAnalysisResult =
     for i in countup(0, sonsLen(a) - 1): 
       result = isPartOfAux(a.sons[i], b, marker)
       if result == arYes: return 
-  else: nil
+  else: discard
 
 proc isPartOf(a, b: PType): TAnalysisResult = 
   ## checks iff 'a' can be part of 'b'. Iterates over VALUE types!
-  var marker = InitIntSet()
+  var marker = initIntSet()
   # watch out: parameters reversed because I'm too lazy to change the code...
   result = isPartOfAux(b, a, marker)
 
@@ -115,7 +115,7 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
           var x = if a[1].kind == nkHiddenStdConv: a[1][1] else: a[1]
           var y = if b[1].kind == nkHiddenStdConv: b[1][1] else: b[1]
           
-          if SameValue(x, y): result = arYes
+          if sameValue(x, y): result = arYes
           else: result = arNo
         # else: maybe and no are accurate
       else:
@@ -140,7 +140,7 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
       result = isPartOf(a[1], b[1])
     of nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
       result = isPartOf(a[0], b[0])
-    else: nil
+    else: discard
     # Calls return a new location, so a default of ``arNo`` is fine.
   else:
     # go down recursively; this is quite demanding:
@@ -177,6 +177,6 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
         if isPartOf(a.typ, b.typ) != arNo:
           result = isPartOf(a[0], b)
           if result == arNo: result = arMaybe
-      else: nil
-    else: nil
+      else: discard
+    else: discard
 

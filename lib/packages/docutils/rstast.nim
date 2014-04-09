@@ -9,7 +9,7 @@
 
 ## This module implements an AST for the `reStructuredText`:idx: parser.
 
-import strutils
+import strutils, json
 
 type
   TRstNodeKind* = enum        ## the possible node kinds of an PRstNode
@@ -62,9 +62,9 @@ type
                               # leaf val
 
 
-  PRSTNode* = ref TRstNode    ## an RST node
+  PRstNode* = ref TRstNode    ## an RST node
   TRstNodeSeq* = seq[PRstNode]
-  TRSTNode* {.acyclic, final.} = object ## an RST node's description
+  TRstNode* {.acyclic, final.} = object ## an RST node's description
     kind*: TRstNodeKind       ## the node's kind
     text*: string             ## valid for leafs in the AST; and the title of
                               ## the document or the section
@@ -120,11 +120,11 @@ proc renderRstToRst(d: var TRenderContext, n: PRstNode, result: var string) =
     
     let oldLen = result.len
     renderRstSons(d, n, result)
-    let HeadlineLen = result.len - oldLen
+    let headlineLen = result.len - oldLen
 
     result.add("\n")
     result.add(ind)
-    result.add repeatChar(HeadlineLen, lvlToChar[n.level])
+    result.add repeatChar(headlineLen, lvlToChar[n.level])
   of rnOverline:
     result.add("\n")
     result.add(ind)
@@ -132,7 +132,7 @@ proc renderRstToRst(d: var TRenderContext, n: PRstNode, result: var string) =
     var headline = ""
     renderRstSons(d, n, headline)
     
-    let lvl = repeatChar(headline.Len - d.indent, lvlToChar[n.level])
+    let lvl = repeatChar(headline.len - d.indent, lvlToChar[n.level])
     result.add(lvl)
     result.add("\n")
     result.add(headline)
@@ -286,3 +286,27 @@ proc renderRstToRst*(n: PRstNode, result: var string) =
   var d: TRenderContext
   renderRstToRst(d, n, result)
 
+proc renderRstToJsonNode(node: PRstNode): PJsonNode =
+  result =
+    %[
+      (key: "kind", val: %($node.kind)),
+      (key: "level", val: %BiggestInt(node.level))
+     ]
+  if node.text != nil:
+    result.add("text", %node.text)
+  if node.sons != nil and len(node.sons) > 0:
+    var accm = newSeq[PJsonNode](len(node.sons))
+    for i, son in node.sons:
+      accm[i] = renderRstToJsonNode(son)
+    result.add("sons", %accm)
+
+proc renderRstToJson*(node: PRstNode): string =
+  ## Writes the given RST node as JSON that is in the form
+  ## :: 
+  ##   {
+  ##     "kind":string node.kind,
+  ##     "text":optional string node.text,
+  ##     "level":optional int node.level,
+  ##     "sons":optional node array
+  ##   }
+  renderRstToJsonNode(node).pretty

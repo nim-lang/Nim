@@ -28,7 +28,7 @@ const
     ## More subpatterns cannot be captured!
 
 type
-  TRegExFlag* = enum     ## options for regular expressions
+  TRegexFlag* = enum     ## options for regular expressions
     reIgnoreCase = 0,    ## do caseless matching
     reMultiLine = 1,     ## ``^`` and ``$`` match newlines within data 
     reDotAll = 2,        ## ``.`` matches anything including NL
@@ -36,11 +36,11 @@ type
     reStudy = 4          ## study the expression (may be omitted if the
                          ## expression will be used only once)
     
-  TRegExDesc {.pure, final.}  = object 
+  TRegexDesc {.pure, final.}  = object 
     h: PPcre
     e: ptr TExtra
     
-  TRegEx* = ref TRegExDesc ## a compiled regular expression
+  TRegex* = ref TRegexDesc ## a compiled regular expression
     
   EInvalidRegEx* = object of EInvalidValue
     ## is raised if the pattern is no valid regular expression.
@@ -53,13 +53,13 @@ proc raiseInvalidRegex(msg: string) {.noinline, noreturn.} =
   
 proc rawCompile(pattern: string, flags: cint): PPcre =
   var
-    msg: CString
+    msg: cstring
     offset: cint
   result = pcre.Compile(pattern, flags, addr(msg), addr(offset), nil)
   if result == nil:
-    raiseInvalidRegEx($msg & "\n" & pattern & "\n" & repeatChar(offset) & "^\n")
+    raiseInvalidRegex($msg & "\n" & pattern & "\n" & repeatChar(offset) & "^\n")
 
-proc finalizeRegEx(x: TRegEx) = 
+proc finalizeRegEx(x: TRegex) = 
   # XXX This is a hack, but PCRE does not export its "free" function properly.
   # Sigh. The hack relies on PCRE's implementation (see ``pcre_get.c``).
   # Fortunately the implementation is unlikely to change. 
@@ -67,7 +67,7 @@ proc finalizeRegEx(x: TRegEx) =
   if not isNil(x.e):
     pcre.free_substring(cast[cstring](x.e))
 
-proc re*(s: string, flags = {reExtended, reStudy}): TRegEx =
+proc re*(s: string, flags = {reExtended, reStudy}): TRegex =
   ## Constructor of regular expressions. Note that Nimrod's
   ## extended raw string literals support this syntax ``re"[abc]"`` as
   ## a short form for ``re(r"[abc]")``.
@@ -78,7 +78,7 @@ proc re*(s: string, flags = {reExtended, reStudy}): TRegEx =
     result.e = pcre.study(result.h, 0, msg)
     if not isNil(msg): raiseInvalidRegex($msg)
 
-proc matchOrFind(s: string, pattern: TRegEx, matches: var openarray[string],
+proc matchOrFind(s: string, pattern: TRegex, matches: var openArray[string],
                  start, flags: cint): cint =
   var
     rawMatches: array[0..maxSubpatterns * 3 - 1, cint]
@@ -92,7 +92,7 @@ proc matchOrFind(s: string, pattern: TRegEx, matches: var openarray[string],
     else: matches[i-1] = ""
   return rawMatches[1] - rawMatches[0]
   
-proc findBounds*(s: string, pattern: TRegEx, matches: var openarray[string],
+proc findBounds*(s: string, pattern: TRegex, matches: var openArray[string],
                  start = 0): tuple[first, last: int] =
   ## returns the starting position and end position of `pattern` in `s` 
   ## and the captured
@@ -110,8 +110,8 @@ proc findBounds*(s: string, pattern: TRegEx, matches: var openarray[string],
     else: matches[i-1] = ""
   return (rawMatches[0].int, rawMatches[1].int - 1)
   
-proc findBounds*(s: string, pattern: TRegEx, 
-                 matches: var openarray[tuple[first, last: int]],
+proc findBounds*(s: string, pattern: TRegex, 
+                 matches: var openArray[tuple[first, last: int]],
                  start = 0): tuple[first, last: int] =
   ## returns the starting position and end position of ``pattern`` in ``s`` 
   ## and the captured substrings in the array `matches`. 
@@ -129,7 +129,7 @@ proc findBounds*(s: string, pattern: TRegEx,
     else: matches[i-1] = (-1,0)
   return (rawMatches[0].int, rawMatches[1].int - 1)
 
-proc findBounds*(s: string, pattern: TRegEx, 
+proc findBounds*(s: string, pattern: TRegex, 
                  start = 0): tuple[first, last: int] =
   ## returns the starting position of `pattern` in `s`. If it does not
   ## match, ``(-1,0)`` is returned.
@@ -140,14 +140,14 @@ proc findBounds*(s: string, pattern: TRegEx,
   if res < 0'i32: return (int(res), 0)
   return (int(rawMatches[0]), int(rawMatches[1]-1))
   
-proc matchOrFind(s: string, pattern: TRegEx, start, flags: cint): cint =
+proc matchOrFind(s: string, pattern: TRegex, start, flags: cint): cint =
   var rawMatches: array [0..maxSubpatterns * 3 - 1, cint]
   result = pcre.Exec(pattern.h, pattern.e, s, len(s).cint, start, flags,
                     cast[ptr cint](addr(rawMatches)), maxSubpatterns * 3)
   if result >= 0'i32:
     result = rawMatches[1] - rawMatches[0]
 
-proc match*(s: string, pattern: TRegEx, matches: var openarray[string],
+proc match*(s: string, pattern: TRegex, matches: var openArray[string],
            start = 0): bool =
   ## returns ``true`` if ``s[start..]`` matches the ``pattern`` and
   ## the captured substrings in the array ``matches``. If it does not
@@ -156,24 +156,24 @@ proc match*(s: string, pattern: TRegEx, matches: var openarray[string],
   return matchOrFind(s, pattern, matches, start.cint, 
                      pcre.ANCHORED) == cint(s.len - start)
 
-proc match*(s: string, pattern: TRegEx, start = 0): bool =
+proc match*(s: string, pattern: TRegex, start = 0): bool =
   ## returns ``true`` if ``s[start..]`` matches the ``pattern``.
   return matchOrFind(s, pattern, start.cint, pcre.ANCHORED) == cint(s.len-start)
 
-proc matchLen*(s: string, pattern: TRegEx, matches: var openarray[string],
+proc matchLen*(s: string, pattern: TRegex, matches: var openArray[string],
               start = 0): int =
   ## the same as ``match``, but it returns the length of the match,
   ## if there is no match, -1 is returned. Note that a match length
   ## of zero can happen.
   return matchOrFind(s, pattern, matches, start.cint, pcre.ANCHORED)
 
-proc matchLen*(s: string, pattern: TRegEx, start = 0): int =
+proc matchLen*(s: string, pattern: TRegex, start = 0): int =
   ## the same as ``match``, but it returns the length of the match,
   ## if there is no match, -1 is returned. Note that a match length
   ## of zero can happen. 
   return matchOrFind(s, pattern, start.cint, pcre.ANCHORED)
 
-proc find*(s: string, pattern: TRegEx, matches: var openarray[string],
+proc find*(s: string, pattern: TRegex, matches: var openArray[string],
            start = 0): int =
   ## returns the starting position of ``pattern`` in ``s`` and the captured
   ## substrings in the array ``matches``. If it does not match, nothing
@@ -190,7 +190,7 @@ proc find*(s: string, pattern: TRegEx, matches: var openarray[string],
     else: matches[i-1] = ""
   return rawMatches[0]
 
-proc find*(s: string, pattern: TRegEx, start = 0): int =
+proc find*(s: string, pattern: TRegex, start = 0): int =
   ## returns the starting position of ``pattern`` in ``s``. If it does not
   ## match, -1 is returned.
   var
@@ -200,7 +200,7 @@ proc find*(s: string, pattern: TRegEx, start = 0): int =
   if res < 0'i32: return res
   return rawMatches[0]
   
-iterator findAll*(s: string, pattern: TRegEx, start = 0): string = 
+iterator findAll*(s: string, pattern: TRegex, start = 0): string = 
   ## Yields all matching *substrings* of `s` that match `pattern`.
   ##
   ## Note that since this is an iterator you should not modify the string you
@@ -216,7 +216,7 @@ iterator findAll*(s: string, pattern: TRegEx, start = 0): string =
     yield substr(s, int(a), int(b)-1)
     i = b
 
-proc findAll*(s: string, pattern: TRegEx, start = 0): seq[string] = 
+proc findAll*(s: string, pattern: TRegex, start = 0): seq[string] = 
   ## returns all matching *substrings* of `s` that match `pattern`.
   ## If it does not match, @[] is returned.
   accumulateResult(findAll(s, pattern, start))
@@ -224,7 +224,7 @@ proc findAll*(s: string, pattern: TRegEx, start = 0): seq[string] =
 when not defined(nimhygiene):
   {.pragma: inject.}
 
-template `=~` *(s: string, pattern: TRegEx): expr = 
+template `=~` *(s: string, pattern: TRegex): expr = 
   ## This calls ``match`` with an implicit declared ``matches`` array that 
   ## can be used in the scope of the ``=~`` call: 
   ## 
@@ -244,30 +244,30 @@ template `=~` *(s: string, pattern: TRegEx): expr =
   ##
   bind maxSubPatterns
   when not definedInScope(matches):
-    var matches {.inject.}: array[0..maxSubPatterns-1, string]
+    var matches {.inject.}: array[0..MaxSubpatterns-1, string]
   match(s, pattern, matches)
 
 # ------------------------- more string handling ------------------------------
 
-proc contains*(s: string, pattern: TRegEx, start = 0): bool =
+proc contains*(s: string, pattern: TRegex, start = 0): bool =
   ## same as ``find(s, pattern, start) >= 0``
   return find(s, pattern, start) >= 0
 
-proc contains*(s: string, pattern: TRegEx, matches: var openArray[string],
+proc contains*(s: string, pattern: TRegex, matches: var openArray[string],
               start = 0): bool =
   ## same as ``find(s, pattern, matches, start) >= 0``
   return find(s, pattern, matches, start) >= 0
 
-proc startsWith*(s: string, prefix: TRegEx): bool =
+proc startsWith*(s: string, prefix: TRegex): bool =
   ## returns true if `s` starts with the pattern `prefix`
   result = matchLen(s, prefix) >= 0
 
-proc endsWith*(s: string, suffix: TRegEx): bool =
+proc endsWith*(s: string, suffix: TRegex): bool =
   ## returns true if `s` ends with the pattern `prefix`
   for i in 0 .. s.len-1:
     if matchLen(s, suffix, i) == s.len - i: return true
 
-proc replace*(s: string, sub: TRegEx, by = ""): string =
+proc replace*(s: string, sub: TRegex, by = ""): string =
   ## Replaces `sub` in `s` by the string `by`. Captures cannot be 
   ## accessed in `by`. Examples:
   ##
@@ -289,7 +289,7 @@ proc replace*(s: string, sub: TRegEx, by = ""): string =
     prev = match.last + 1
   add(result, substr(s, prev))
   
-proc replacef*(s: string, sub: TRegEx, by: string): string =
+proc replacef*(s: string, sub: TRegex, by: string): string =
   ## Replaces `sub` in `s` by the string `by`. Captures can be accessed in `by`
   ## with the notation ``$i`` and ``$#`` (see strutils.`%`). Examples:
   ##
@@ -327,7 +327,7 @@ proc replacef*(s: string, sub: TRegEx, by: string): string =
     add(result, substr(s, i))
   
 proc parallelReplace*(s: string, subs: openArray[
-                      tuple[pattern: TRegEx, repl: string]]): string = 
+                      tuple[pattern: TRegex, repl: string]]): string = 
   ## Returns a modified copy of `s` with the substitutions in `subs`
   ## applied in parallel.
   result = ""
@@ -347,14 +347,14 @@ proc parallelReplace*(s: string, subs: openArray[
   add(result, substr(s, i))  
   
 proc transformFile*(infile, outfile: string,
-                    subs: openArray[tuple[pattern: TRegEx, repl: string]]) =
+                    subs: openArray[tuple[pattern: TRegex, repl: string]]) =
   ## reads in the file `infile`, performs a parallel replacement (calls
   ## `parallelReplace`) and writes back to `outfile`. Raises ``EIO`` if an
   ## error occurs. This is supposed to be used for quick scripting.
   var x = readFile(infile).string
   writeFile(outfile, x.parallelReplace(subs))
   
-iterator split*(s: string, sep: TRegEx): string =
+iterator split*(s: string, sep: TRegex): string =
   ## Splits the string `s` into substrings.
   ##
   ## Substrings are separated by the regular expression `sep`.
@@ -386,7 +386,7 @@ iterator split*(s: string, sep: TRegEx): string =
     if first < last:
       yield substr(s, first, last-1)
 
-proc split*(s: string, sep: TRegEx): seq[string] =
+proc split*(s: string, sep: TRegex): seq[string] =
   ## Splits the string `s` into substrings.
   accumulateResult(split(s, sep))
   

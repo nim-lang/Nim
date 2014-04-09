@@ -136,7 +136,7 @@ proc delete*[T](s: var seq[T], first=0, last=0) =
     s[i].shallowCopy(s[j])
     inc(i)
     inc(j)
-  setlen(s, newLen)
+  setLen(s, newLen)
 
 proc insert*[T](dest: var seq[T], src: openArray[T], pos=0) =
   ## Inserts items from `src` into `dest` at position `pos`. This modifies
@@ -276,6 +276,38 @@ template foldr*(sequence, operation: expr): expr =
     result = operation
   result
 
+template mapIt*(seq1, typ, pred: expr): expr =
+  ## Convenience template around the ``map`` proc to reduce typing.
+  ##
+  ## The template injects the ``it`` variable which you can use directly in an
+  ## expression. You also need to pass as `typ` the type of the expression,
+  ## since the new returned sequence can have a different type than the
+  ## original.  Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   let
+  ##     nums = @[1, 2, 3, 4]
+  ##     strings = nums.mapIt(string, $(4 * it))
+  var result {.gensym.}: seq[typ] = @[]
+  for it {.inject.} in items(seq1):
+    result.add(pred)
+  result
+
+template mapIt*(varSeq, pred: expr) =
+  ## Convenience template around the mutable ``map`` proc to reduce typing.
+  ##
+  ## The template injects the ``it`` variable which you can use directly in an
+  ## expression. The expression has to return the same type as the sequence you
+  ## are mutating. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var nums = @[1, 2, 3, 4]
+  ##   nums.mapIt(it * 3)
+  ##   assert nums[0] + nums[3] == 15
+  for i in 0 .. <len(varSeq):
+    let it {.inject.} = varSeq[i]
+    varSeq[i] = pred
+
 when isMainModule:
   import strutils
   block: # concat test
@@ -380,5 +412,12 @@ when isMainModule:
     assert dest == outcome, """\
     Inserting [2,2,2,2,2,2] into [1,1,1,1,1,1,1,1]
     at 3 is [1,1,1,2,2,2,2,2,2,1,1,1,1,1]"""
+
+  block: # mapIt tests
+    var
+      nums = @[1, 2, 3, 4]
+      strings = nums.mapIt(string, $(4 * it))
+    nums.mapIt(it * 3)
+    assert nums[0] + nums[3] == 15
 
   echo "Finished doc tests"

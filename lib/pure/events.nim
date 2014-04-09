@@ -68,7 +68,7 @@ proc clearHandlers*(handler: var TEventHandler) =
   ## Clears all of the callbacks from the event handler.
   setLen(handler.handlers, 0)
 
-proc getEventhandler(emitter: var TEventEmitter, event: string): int =
+proc getEventHandler(emitter: var TEventEmitter, event: string): int =
   for k in 0..high(emitter.s):
     if emitter.s[k].name == event: return k
   return -1
@@ -94,8 +94,6 @@ proc emit*(emitter: var TEventEmitter, event: string, args: TEventArgs) =
   var i = getEventHandler(emitter, event)
   if i >= 0:
     emit(emitter, emitter.s[i], args)
-  else:
-    raise newException(EInvalidEvent, "invalid event: " & event)
 
 proc initEventEmitter*(): TEventEmitter =
   ## Creates and returns a new EventEmitter.

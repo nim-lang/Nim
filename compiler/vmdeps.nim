@@ -25,69 +25,12 @@ proc opGorge*(cmd, input: string): string =
 
 proc opSlurp*(file: string, info: TLineInfo, module: PSym): string = 
   try:
-    let filename = file.FindFile
+    let filename = file.findFile
     result = readFile(filename)
     # we produce a fake include statement for every slurped filename, so that
     # the module dependencies are accurate:
     appendToModule(module, newNode(nkIncludeStmt, info, @[
       newStrNode(nkStrLit, filename)]))
   except EIO:
+    localError(info, errCannotOpenFile, file)
     result = ""
-    LocalError(info, errCannotOpenFile, file)
-
-when false:
-  proc opExpandToAst*(c: PEvalContext, original: PNode): PNode =
-    var
-      n = original.copyTree
-      macroCall = n.sons[1]
-      expandedSym = macroCall.sons[0].sym
-
-    for i in countup(1, macroCall.sonsLen - 1):
-      macroCall.sons[i] = evalAux(c, macroCall.sons[i], {})
-
-    case expandedSym.kind
-    of skTemplate:
-      let genSymOwner = if c.tos != nil and c.tos.prc != nil:
-                          c.tos.prc 
-                        else:
-                          c.module
-      result = evalTemplate(macroCall, expandedSym, genSymOwner)
-    of skMacro:
-      # At this point macroCall.sons[0] is nkSym node.
-      # To be completely compatible with normal macro invocation,
-      # we want to replace it with nkIdent node featuring
-      # the original unmangled macro name.
-      macroCall.sons[0] = newIdentNode(expandedSym.name, expandedSym.info)
-      result = evalMacroCall(c, macroCall, original, expandedSym)
-    else:
-      InternalError(macroCall.info,
-        "ExpandToAst: expanded symbol is no macro or template")
-      result = emptyNode
-
-  proc opIs*(n: PNode): PNode =
-    InternalAssert n.sonsLen == 3 and
-      n[1].kind == nkSym and n[1].sym.kind == skType and
-      n[2].kind in {nkStrLit..nkTripleStrLit, nkType}
-    
-    let t1 = n[1].sym.typ
-
-    if n[2].kind in {nkStrLit..nkTripleStrLit}:
-      case n[2].strVal.normalize
-      of "closure":
-        let t = skipTypes(t1, abstractRange)
-        result = newIntNode(nkIntLit, ord(t.kind == tyProc and
-                                          t.callConv == ccClosure and 
-                                          tfIterator notin t.flags))
-      of "iterator":
-        let t = skipTypes(t1, abstractRange)
-        result = newIntNode(nkIntLit, ord(t.kind == tyProc and
-                                          t.callConv == ccClosure and 
-                                          tfIterator in t.flags))
-    else:
-      let t2 = n[2].typ
-      var match = if t2.kind == tyTypeClass: matchTypeClass(t2, t1)
-                  else: sameType(t1, t2)
-      result = newIntNode(nkIntLit, ord(match))
-
-    result.typ = n.typ
-

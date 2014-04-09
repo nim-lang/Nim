@@ -111,7 +111,7 @@ const
 when asmVersion and not defined(gcc) and not defined(llvm_gcc):
   # assembler optimized versions for compilers that
   # have an intel syntax assembler:
-  proc addInt(a, b: int): int {.compilerProc, noStackFrame.} =
+  proc addInt(a, b: int): int {.compilerProc, asmNoStackFrame.} =
     # a in eax, and b in edx
     asm """
         mov eax, `a`
@@ -121,7 +121,7 @@ when asmVersion and not defined(gcc) and not defined(llvm_gcc):
       theEnd:
     """
 
-  proc subInt(a, b: int): int {.compilerProc, noStackFrame.} =
+  proc subInt(a, b: int): int {.compilerProc, asmNoStackFrame.} =
     asm """
         mov eax, `a`
         sub eax, `b`
@@ -130,7 +130,7 @@ when asmVersion and not defined(gcc) and not defined(llvm_gcc):
       theEnd:
     """
 
-  proc negInt(a: int): int {.compilerProc, noStackFrame.} =
+  proc negInt(a: int): int {.compilerProc, asmNoStackFrame.} =
     asm """
         mov eax, `a`
         neg eax
@@ -139,7 +139,7 @@ when asmVersion and not defined(gcc) and not defined(llvm_gcc):
       theEnd:
     """
 
-  proc divInt(a, b: int): int {.compilerProc, noStackFrame.} =
+  proc divInt(a, b: int): int {.compilerProc, asmNoStackFrame.} =
     asm """
         mov eax, `a`
         mov ecx, `b`
@@ -150,7 +150,7 @@ when asmVersion and not defined(gcc) and not defined(llvm_gcc):
       theEnd:
     """
 
-  proc modInt(a, b: int): int {.compilerProc, noStackFrame.} =
+  proc modInt(a, b: int): int {.compilerProc, asmNoStackFrame.} =
     asm """
         mov eax, `a`
         mov ecx, `b`
@@ -162,7 +162,7 @@ when asmVersion and not defined(gcc) and not defined(llvm_gcc):
         mov eax, edx
     """
 
-  proc mulInt(a, b: int): int {.compilerProc, noStackFrame.} =
+  proc mulInt(a, b: int): int {.compilerProc, asmNoStackFrame.} =
     asm """
         mov eax, `a`
         mov ecx, `b`

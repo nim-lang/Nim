@@ -16,9 +16,9 @@ type
   MD5Digest* = array[0..15, int8]
   MD5Buffer = array[0..63, int8]
   MD5Context* {.final.} = object 
-    State: MD5State
-    Count: array[0..1, int32]
-    Buffer: MD5Buffer
+    state: MD5State
+    count: array[0..1, int32]
+    buffer: MD5Buffer
 
 const 
   padding: cstring = "\x80\0\0\0" &
@@ -32,16 +32,16 @@ const
                      "\0\0\0\0"
 
 proc F(x, y, z: int32): int32 {.inline.} = 
-  Result = (x and y) or ((not x) and z)
+  result = (x and y) or ((not x) and z)
 
 proc G(x, y, z: int32): int32 {.inline.} = 
-  Result = (x and z) or (y and (not z))
+  result = (x and z) or (y and (not z))
 
 proc H(x, y, z: int32): int32 {.inline.} = 
-  Result = x xor y xor z
+  result = x xor y xor z
 
 proc I(x, y, z: int32): int32 {.inline.} = 
-  Result = y xor (x or (not z))
+  result = y xor (x or (not z))
 
 proc rot(x: var int32, n: int8) {.inline.} = 
   x = toU32(x shl ze(n)) or (x shr toU32(32 -% ze(n)))
@@ -75,7 +75,7 @@ proc encode(dest: var MD5Block, src: cstring) =
                 ord(src[j+3]) shl 24)
     inc(j, 4)
 
-proc decode(dest: var openarray[int8], src: openarray[int32]) = 
+proc decode(dest: var openArray[int8], src: openArray[int32]) = 
   var i = 0
   for j in 0..high(src):
     dest[i] = toU8(src[j] and 0xff'i32)
@@ -87,7 +87,7 @@ proc decode(dest: var openarray[int8], src: openarray[int32]) =
 proc transform(Buffer: pointer, State: var MD5State) = 
   var
     myBlock: MD5Block
-  encode(myBlock, cast[cstring](buffer))
+  encode(myBlock, cast[cstring](Buffer))
   var a = State[0]
   var b = State[1]
   var c = State[2]
@@ -161,7 +161,7 @@ proc transform(Buffer: pointer, State: var MD5State) =
   State[2] = State[2] +% c
   State[3] = State[3] +% d
   
-proc MD5Init*(c: var MD5Context) = 
+proc md5Init*(c: var MD5Context) = 
   ## initializes a MD5Context  
   c.State[0] = 0x67452301'i32
   c.State[1] = 0xEFCDAB89'i32
@@ -169,64 +169,64 @@ proc MD5Init*(c: var MD5Context) =
   c.State[3] = 0x10325476'i32
   c.Count[0] = 0'i32
   c.Count[1] = 0'i32
-  ZeroMem(addr(c.Buffer), SizeOf(MD5Buffer))
+  zeroMem(addr(c.Buffer), sizeof(MD5Buffer))
 
-proc MD5Update*(c: var MD5Context, input: cstring, len: int) = 
+proc md5Update*(c: var MD5Context, input: cstring, len: int) = 
   ## updates the MD5Context with the `input` data of length `len`
   var input = input
-  var Index = (c.Count[0] shr 3) and 0x3F
+  var Index = (c.count[0] shr 3) and 0x3F
   c.Count[0] = c.count[0] +% toU32(len shl 3)
   if c.Count[0] < (len shl 3): c.Count[1] = c.count[1] +% 1'i32
   c.Count[1] = c.count[1] +% toU32(len shr 29)
   var PartLen = 64 - Index
   if len >= PartLen: 
-    CopyMem(addr(c.Buffer[Index]), Input, PartLen)
+    copyMem(addr(c.Buffer[Index]), input, PartLen)
     transform(addr(c.Buffer), c.State)
     var i = PartLen
     while i + 63 < len: 
-      Transform(addr(Input[I]), c.State)
+      transform(addr(input[i]), c.State)
       inc(i, 64)
-    CopyMem(addr(c.Buffer[0]), addr(Input[i]), len-i)
+    copyMem(addr(c.Buffer[0]), addr(input[i]), len-i)
   else:
-    CopyMem(addr(c.Buffer[Index]), addr(Input[0]), len)
+    copyMem(addr(c.Buffer[Index]), addr(input[0]), len)
 
-proc MD5Final*(c: var MD5Context, digest: var MD5Digest) = 
+proc md5Final*(c: var MD5Context, digest: var MD5Digest) = 
   ## finishes the MD5Context and stores the result in `digest`
   var
     Bits: MD5CBits
     PadLen: int
-  decode(bits, c.Count)
+  decode(Bits, c.Count)
   var Index = (c.Count[0] shr 3) and 0x3F
   if Index < 56: PadLen = 56 - Index
   else: PadLen = 120 - Index
-  MD5Update(c, padding, PadLen)
-  MD5Update(c, cast[cstring](addr(Bits)), 8)
+  md5Update(c, padding, PadLen)
+  md5Update(c, cast[cstring](addr(Bits)), 8)
   decode(digest, c.State)
-  ZeroMem(addr(c), SizeOf(MD5Context))
+  zeroMem(addr(c), sizeof(MD5Context))
 
 proc toMD5*(s: string): MD5Digest = 
   ## computes the MD5Digest value for a string `s`
   var c: MD5Context
-  MD5Init(c)
-  MD5Update(c, cstring(s), len(s))
-  MD5Final(c, result)
+  md5Init(c)
+  md5Update(c, cstring(s), len(s))
+  md5Final(c, result)
   
 proc `$`*(D: MD5Digest): string = 
   ## converts a MD5Digest value into its string representation
   const digits = "0123456789abcdef"
   result = ""
   for i in 0..15: 
-    add(result, Digits[(D[I] shr 4) and 0xF])
-    add(result, Digits[D[I] and 0xF])
+    add(result, Digits[(D[i] shr 4) and 0xF])
+    add(result, Digits[D[i] and 0xF])
 
 proc getMD5*(s: string): string =  
   ## computes an MD5 value of `s` and returns its string representation
   var 
     c: MD5Context
     d: MD5Digest
-  MD5Init(c)
-  MD5Update(c, cstring(s), len(s))
-  MD5Final(c, d)
+  md5Init(c)
+  md5Update(c, cstring(s), len(s))
+  md5Final(c, d)
   result = $d
   
 proc `==`*(D1, D2: MD5Digest): bool =  

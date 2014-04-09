@@ -1,11 +1,15 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2012 Dominik Picheta
+#        (c) Copyright 2014 Dominik Picheta
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
+
+## **Note**: This module will be deprecated in the future and merged into a
+## new ``url`` module.
+
 import strutils
 type
   TUrl* = distinct string

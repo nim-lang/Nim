@@ -65,7 +65,7 @@ proc dbFormat(formatstr: TSqlQuery, args: varargs[string]): string =
     else: 
       add(result, c)
   
-proc TryExec*(db: TDbConn, query: TSqlQuery, args: varargs[string, `$`]): bool {.
+proc tryExec*(db: TDbConn, query: TSqlQuery, args: varargs[string, `$`]): bool {.
   tags: [FReadDB, FWriteDb].} =
   ## tries to execute the query and returns true if successful, false otherwise.
   var q = dbFormat(query, args)
@@ -75,7 +75,7 @@ proc rawExec(db: TDbConn, query: TSqlQuery, args: varargs[string, `$`]) =
   var q = dbFormat(query, args)
   if mysql.RealQuery(db, q, q.len) != 0'i32: dbError(db)
 
-proc Exec*(db: TDbConn, query: TSqlQuery, args: varargs[string, `$`]) {.
+proc exec*(db: TDbConn, query: TSqlQuery, args: varargs[string, `$`]) {.
   tags: [FReadDB, FWriteDb].} =
   ## executes the query and raises EDB if not successful.
   var q = dbFormat(query, args)
@@ -87,10 +87,10 @@ proc newRow(L: int): TRow =
   
 proc properFreeResult(sqlres: mysql.PRES, row: cstringArray) =  
   if row != nil:
-    while mysql.FetchRow(sqlres) != nil: nil
+    while mysql.FetchRow(sqlres) != nil: discard
   mysql.FreeResult(sqlres)
   
-iterator FastRows*(db: TDbConn, query: TSqlQuery,
+iterator fastRows*(db: TDbConn, query: TSqlQuery,
                    args: varargs[string, `$`]): TRow {.tags: [FReadDB].} =
   ## executes the query and iterates over the result dataset. This is very 
   ## fast, but potenially dangerous: If the for-loop-body executes another
@@ -126,7 +126,7 @@ proc getRow*(db: TDbConn, query: TSqlQuery,
         add(result[i], row[i])
     properFreeResult(sqlres, row)
 
-proc GetAllRows*(db: TDbConn, query: TSqlQuery, 
+proc getAllRows*(db: TDbConn, query: TSqlQuery, 
                  args: varargs[string, `$`]): seq[TRow] {.tags: [FReadDB].} =
   ## executes the query and returns the whole result dataset.
   result = @[]
@@ -145,12 +145,12 @@ proc GetAllRows*(db: TDbConn, query: TSqlQuery,
       inc(j)
     mysql.FreeResult(sqlres)
 
-iterator Rows*(db: TDbConn, query: TSqlQuery, 
+iterator rows*(db: TDbConn, query: TSqlQuery, 
                args: varargs[string, `$`]): TRow {.tags: [FReadDB].} =
   ## same as `FastRows`, but slower and safe.
   for r in items(GetAllRows(db, query, args)): yield r
 
-proc GetValue*(db: TDbConn, query: TSqlQuery, 
+proc getValue*(db: TDbConn, query: TSqlQuery, 
                args: varargs[string, `$`]): string {.tags: [FReadDB].} = 
   ## executes the query and returns the first column of the first row of the
   ## result dataset. Returns "" if the dataset contains no rows or the database
@@ -160,7 +160,7 @@ proc GetValue*(db: TDbConn, query: TSqlQuery,
     result = row[0]
     break
 
-proc TryInsertID*(db: TDbConn, query: TSqlQuery, 
+proc tryInsertId*(db: TDbConn, query: TSqlQuery, 
                   args: varargs[string, `$`]): int64 {.tags: [FWriteDb].} =
   ## executes the query (typically "INSERT") and returns the 
   ## generated ID for the row or -1 in case of an error.
@@ -170,14 +170,14 @@ proc TryInsertID*(db: TDbConn, query: TSqlQuery,
   else:
     result = mysql.InsertId(db)
   
-proc InsertID*(db: TDbConn, query: TSqlQuery, 
+proc insertId*(db: TDbConn, query: TSqlQuery, 
                args: varargs[string, `$`]): int64 {.tags: [FWriteDb].} = 
   ## executes the query (typically "INSERT") and returns the 
   ## generated ID for the row.
   result = TryInsertID(db, query, args)
   if result < 0: dbError(db)
 
-proc ExecAffectedRows*(db: TDbConn, query: TSqlQuery, 
+proc execAffectedRows*(db: TDbConn, query: TSqlQuery, 
                        args: varargs[string, `$`]): int64 {.
                        tags: [FReadDB, FWriteDb].} = 
   ## runs the query (typically "UPDATE") and returns the
@@ -185,18 +185,24 @@ proc ExecAffectedRows*(db: TDbConn, query: TSqlQuery,
   rawExec(db, query, args)
   result = mysql.AffectedRows(db)
 
-proc Close*(db: TDbConn) {.tags: [FDb].} = 
+proc close*(db: TDbConn) {.tags: [FDb].} = 
   ## closes the database connection.
-  if db != nil: mysql.Close(db)
+  if db != nil: mysql.close(db)
 
-proc Open*(connection, user, password, database: string): TDbConn {.
+proc open*(connection, user, password, database: string): TDbConn {.
   tags: [FDb].} =
   ## opens a database connection. Raises `EDb` if the connection could not
   ## be established.
   result = mysql.Init(nil)
   if result == nil: dbError("could not open database connection") 
-  if mysql.RealConnect(result, "", user, password, database, 
-                       0'i32, nil, 0) == nil:
+  let
+    colonPos = connection.find(':')
+    host =        if colonPos < 0: connection
+                  else:            substr(connection, 0, colonPos-1)
+    port: int32 = if colonPos < 0: 0'i32
+                  else:            substr(connection, colonPos+1).parseInt.int32
+  if mysql.RealConnect(result, host, user, password, database, 
+                       port, nil, 0) == nil:
     var errmsg = $mysql.error(result)
     db_mysql.Close(result)
     dbError(errmsg)

@@ -346,7 +346,8 @@ proc poll*(irc: PIRC, ev: var TIRCEvent,
   var line = TaintedString""
   var socks = @[irc.sock]
   var ret = socks.select(timeout)
-  if socks.len() == 0 and ret != 0:
+  if ret == -1: osError(osLastError())
+  if socks.len() != 0 and ret != 0:
     irc.sock.readLine(line)
     ev = irc.processLine(line.string)
     result = true
@@ -476,12 +477,12 @@ when isMainModule:
   var client = irc("amber.tenthbit.net", nick="TestBot1234",
                    joinChans = @["#flood"])
   client.connect()
-  while True:
+  while true:
     var event: TIRCEvent
     if client.poll(event):
       case event.typ
       of EvConnected:
-        nil
+        discard
       of EvDisconnected:
         break
       of EvMsg:

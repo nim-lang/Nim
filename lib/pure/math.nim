@@ -20,6 +20,8 @@
 when defined(Posix) and not defined(haiku):
   {.passl: "-lm".}
 
+import times
+
 const
   PI* = 3.1415926535897932384626433 ## the circle constant PI (Ludolph's number)
   E* = 2.71828182845904523536028747 ## Euler's number
@@ -73,28 +75,30 @@ proc binom*(n, k: int): int {.noSideEffect.} =
     result = (result * (n + 1 - i)) div i
     
 proc fac*(n: int): int {.noSideEffect.} = 
-  ## computes the faculty function
+  ## computes the faculty/factorial function.
   result = 1
   for i in countup(2, n):
     result = result * i
 
 proc isPowerOfTwo*(x: int): bool {.noSideEffect.} =
-  ## returns true, if x is a power of two, false otherwise.
-  ## Negative numbers are not a power of two.
-  return (x and -x) == x
+  ## returns true, if `x` is a power of two, false otherwise.
+  ## Zero and negative numbers are not a power of two.
+  return (x != 0) and ((x and (x - 1)) == 0)
 
-proc nextPowerOfTwo*(x: int): int =
-  ## returns the nearest power of two, so that
-  ## result**2 >= x > (result-1)**2.
-  result = x - 1
+proc nextPowerOfTwo*(x: int): int {.noSideEffect.} =
+  ## returns `x` rounded up to the nearest power of two.
+  ## Zero and negative numbers get rounded up to 1.
+  result = x - 1 
   when defined(cpu64):
     result = result or (result shr 32)
-  result = result or (result shr 16)
-  result = result or (result shr 8)
+  when sizeof(int) > 16:
+    result = result or (result shr 16)
+  when sizeof(int) > 8:
+    result = result or (result shr 8)
   result = result or (result shr 4)
   result = result or (result shr 2)
   result = result or (result shr 1)
-  Inc(result)
+  result += 1 + ord(x<=0)
 
 proc countBits32*(n: int32): int {.noSideEffect.} =
   ## counts the set bits in `n`.
@@ -103,17 +107,17 @@ proc countBits32*(n: int32): int {.noSideEffect.} =
   v = (v and 0x33333333'i32) +% ((v shr 2'i32) and 0x33333333'i32)
   result = ((v +% (v shr 4'i32) and 0xF0F0F0F'i32) *% 0x1010101'i32) shr 24'i32
 
-proc sum*[T](x: openarray[T]): T {.noSideEffect.} = 
+proc sum*[T](x: openArray[T]): T {.noSideEffect.} = 
   ## computes the sum of the elements in `x`. 
   ## If `x` is empty, 0 is returned.
   for i in items(x): result = result + i
 
-proc mean*(x: openarray[float]): float {.noSideEffect.} = 
+proc mean*(x: openArray[float]): float {.noSideEffect.} = 
   ## computes the mean of the elements in `x`. 
   ## If `x` is empty, NaN is returned.
   result = sum(x) / toFloat(len(x))
 
-proc variance*(x: openarray[float]): float {.noSideEffect.} = 
+proc variance*(x: openArray[float]): float {.noSideEffect.} = 
   ## computes the variance of the elements in `x`. 
   ## If `x` is empty, NaN is returned.
   result = 0.0
@@ -201,7 +205,7 @@ when not defined(JS):
       result = drand48() * max
     
   proc randomize() =
-    randomize(gettime(nil))
+    randomize(cast[int](epochTime()))
 
   proc randomize(seed: int) =
     srand(cint(seed))

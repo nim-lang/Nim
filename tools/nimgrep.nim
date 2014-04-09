@@ -56,7 +56,7 @@ var
 
 proc ask(msg: string): string =
   stdout.write(msg)
-  result = stdin.readline()
+  result = stdin.readLine()
 
 proc Confirm: TConfirmEnum = 
   while true:
@@ -66,7 +66,7 @@ proc Confirm: TConfirmEnum =
     of "l", "all": return ceAll
     of "n", "no": return ceNo
     of "e", "none": return ceNone
-    else: nil
+    else: discard
 
 proc countLines(s: string, first, last: int): int = 
   var i = first
@@ -249,7 +249,7 @@ proc walker(dir: string) =
     of pcDir: 
       if optRecursive in options:
         walker(path)
-    else: nil
+    else: discard
   if existsFile(dir): processFile(dir)
 
 proc writeHelp() = 
@@ -308,7 +308,7 @@ checkOptions({optIgnoreCase, optIgnoreStyle}, "ignore_case", "ignore_style")
 
 if optStdin in options: 
   pattern = ask("pattern [ENTER to exit]: ")
-  if IsNil(pattern) or pattern.len == 0: quit(0)
+  if isNil(pattern) or pattern.len == 0: quit(0)
   if optReplace in options:
     replacement = ask("replacement [supports $1, $# notations]: ")
 

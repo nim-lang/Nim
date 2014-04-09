@@ -9,7 +9,7 @@
 
 ## This module implements the 'implies' relation for guards.
 
-import ast, astalgo, msgs, magicsys, nimsets, trees, types, renderer
+import ast, astalgo, msgs, magicsys, nimsets, trees, types, renderer, idents
 
 const
   someEq = {mEqI, mEqI64, mEqF64, mEqEnum, mEqCh, mEqB, mEqRef, mEqProc,
@@ -69,9 +69,23 @@ proc isLetLocation(m: PNode, isApprox: bool): bool =
 
 proc interestingCaseExpr*(m: PNode): bool = isLetLocation(m, true)
 
-proc swapArgs(fact: PNode, newOp: string, m: TMagic): PNode =
+proc getMagicOp(name: string, m: TMagic): PSym =
+  result = newSym(skProc, getIdent(name), nil, unknownLineInfo())
+  result.magic = m
+
+let
+  opLe = getMagicOp("<=", mLeI)
+  opLt = getMagicOp("<", mLtI)
+  opAnd = getMagicOp("and", mAnd)
+  opOr = getMagicOp("or", mOr)
+  opNot = getMagicOp("not", mNot)
+  opIsNil = getMagicOp("isnil", mIsNil)
+  opContains = getMagicOp("contains", mInSet)
+  opEq = getMagicOp("==", mEqI)
+
+proc swapArgs(fact: PNode, newOp: PSym): PNode =
   result = newNodeI(nkCall, fact.info, 3)
-  result.sons[0] = newSymNode(getSysMagic(newOp, m))
+  result.sons[0] = newSymNode(newOp)
   result.sons[1] = fact.sons[2]
   result.sons[2] = fact.sons[1]
 
@@ -82,9 +96,9 @@ proc neg(n: PNode): PNode =
     result = n.sons[1]
   of someLt:
     # not (a < b)  ==  a >= b  ==  b <= a
-    result = swapArgs(n, "<=", mLeI)
+    result = swapArgs(n, opLe)
   of someLe:
-    result = swapArgs(n, "<", mLtI)
+    result = swapArgs(n, opLt)
   of mInSet:
     if n.sons[1].kind != nkCurly: return nil
     let t = n.sons[2].typ.skipTypes(abstractInst)
@@ -110,7 +124,7 @@ proc neg(n: PNode): PNode =
       b = n.sons[2].neg
     if a != nil and b != nil:
       result = newNodeI(nkCall, n.info, 3)
-      result.sons[0] = newSymNode(getSysMagic("and", mAnd))
+      result.sons[0] = newSymNode(opAnd)
       result.sons[1] = a
       result.sons[2] = b
     elif a != nil:
@@ -120,12 +134,12 @@ proc neg(n: PNode): PNode =
   else:
     # leave  not (a == 4)  as it is
     result = newNodeI(nkCall, n.info, 2)
-    result.sons[0] = newSymNode(getSysMagic("not", mNot))
+    result.sons[0] = newSymNode(opNot)
     result.sons[1] = n
 
 proc buildIsNil(arg: PNode): PNode =
   result = newNodeI(nkCall, arg.info, 2)
-  result.sons[0] = newSymNode(getSysMagic("isNil", mIsNil))
+  result.sons[0] = newSymNode(opIsNil)
   result.sons[1] = arg
 
 proc usefulFact(n: PNode): PNode =
@@ -154,7 +168,7 @@ proc usefulFact(n: PNode): PNode =
       b = usefulFact(n.sons[2])
     if a != nil and b != nil:
       result = newNodeI(nkCall, n.info, 3)
-      result.sons[0] = newSymNode(getSysMagic("and", mAnd))
+      result.sons[0] = newSymNode(opAnd)
       result.sons[1] = a
       result.sons[2] = b
     elif a != nil:
@@ -177,7 +191,7 @@ proc usefulFact(n: PNode): PNode =
       b = usefulFact(n.sons[2]).neg
     if a != nil and b != nil:
       result = newNodeI(nkCall, n.info, 3)
-      result.sons[0] = newSymNode(getSysMagic("and", mAnd))
+      result.sons[0] = newSymNode(opAnd)
       result.sons[1] = a
       result.sons[2] = b
       result = result.neg
@@ -251,18 +265,14 @@ proc invalidateFacts*(m: var TModel, n: PNode) =
 
 proc valuesUnequal(a, b: PNode): bool =
   if a.isValue and b.isValue:
-    result = not SameValue(a, b)
+    result = not sameValue(a, b)
 
 proc pred(n: PNode): PNode =
-  if n.kind in {nkCharLit..nkUInt64Lit} and n.intVal != low(biggestInt):
+  if n.kind in {nkCharLit..nkUInt64Lit} and n.intVal != low(BiggestInt):
     result = copyNode(n)
     dec result.intVal
   else:
     result = n
-
-type
-  TImplication* = enum
-    impUnknown, impNo, impYes  
 
 proc impliesEq(fact, eq: PNode): TImplication =
   let (loc, val) = if isLocation(eq.sons[1]): (1, 2) else: (2, 1)
@@ -366,7 +376,7 @@ proc impliesIsNil(fact, eq: PNode): TImplication =
   else: discard
 
 proc impliesGe(fact, x, c: PNode): TImplication =
-  InternalAssert isLocation(x)
+  internalAssert isLocation(x)
   case fact.sons[0].sym.magic
   of someEq:
     if sameTree(fact.sons[1], x):
@@ -439,7 +449,7 @@ proc impliesLe(fact, x, c: PNode): TImplication =
         if leValue(c, fact.sons[1].pred): result = impNo
 
   of mNot, mOr, mAnd: internalError(x.info, "impliesLe")
-  else: nil
+  else: discard
 
 proc impliesLt(fact, x, c: PNode): TImplication =
   # x < 3  same as x <= 2:
@@ -484,7 +494,7 @@ proc factImplies(fact, prop: PNode): TImplication =
       if a == b: return ~a
       return impUnknown
     else:
-      InternalError(fact.info, "invalid fact")
+      internalError(fact.info, "invalid fact")
   of mAnd:
     result = factImplies(fact.sons[1], prop)
     if result != impUnknown: return result
@@ -520,7 +530,7 @@ proc buildOf(it, loc: PNode): PNode =
   s.typ = settype(loc)
   for i in 0..it.len-2: s.sons[i] = it.sons[i]
   result = newNodeI(nkCall, it.info, 3)
-  result.sons[0] = newSymNode(getSysMagic("contains", mInSet))
+  result.sons[0] = newSymNode(opContains)
   result.sons[1] = s
   result.sons[2] = loc
 
@@ -532,20 +542,20 @@ proc buildElse(n: PNode): PNode =
     for j in 0..branch.len-2:
       s.add(branch.sons[j])
   result = newNodeI(nkCall, n.info, 3)
-  result.sons[0] = newSymNode(getSysMagic("contains", mInSet))
+  result.sons[0] = newSymNode(opContains)
   result.sons[1] = s
   result.sons[2] = n.sons[0]
 
 proc addDiscriminantFact*(m: var TModel, n: PNode) =
   var fact = newNodeI(nkCall, n.info, 3)
-  fact.sons[0] = newSymNode(getSysMagic("==", mEqI))
+  fact.sons[0] = newSymNode(opEq)
   fact.sons[1] = n.sons[0]
   fact.sons[2] = n.sons[1]
   m.add fact
 
 proc addAsgnFact*(m: var TModel, key, value: PNode) =
   var fact = newNodeI(nkCall, key.info, 3)
-  fact.sons[0] = newSymNode(getSysMagic("==", mEqI))
+  fact.sons[0] = newSymNode(opEq)
   fact.sons[1] = key
   fact.sons[2] = value
   m.add fact
@@ -575,4 +585,4 @@ proc checkFieldAccess*(m: TModel, n: PNode) =
   for i in 1..n.len-1:
     let check = buildProperFieldCheck(n.sons[0], n.sons[i])
     if m.doesImply(check) != impYes:
-      Message(n.info, warnProveField, renderTree(n.sons[0])); break
+      message(n.info, warnProveField, renderTree(n.sons[0])); break

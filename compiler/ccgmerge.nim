@@ -108,7 +108,7 @@ proc genMergeInfo*(m: BModule): PRope =
   s.add("labels:")
   encodeVInt(m.labels, s)
   s.add(" hasframe:")
-  encodeVInt(ord(m.FrameDeclared), s)
+  encodeVInt(ord(m.frameDeclared), s)
   s.add(tnl)
   s.add("*/")
   result = s.toRope
@@ -119,8 +119,8 @@ proc skipWhite(L: var TBaseLexer) =
   var pos = L.bufpos
   while true:
     case ^pos
-    of CR: pos = nimlexbase.HandleCR(L, pos)
-    of LF: pos = nimlexbase.HandleLF(L, pos)
+    of CR: pos = nimlexbase.handleCR(L, pos)
+    of LF: pos = nimlexbase.handleLF(L, pos)
     of ' ': inc pos
     else: break
   L.bufpos = pos
@@ -129,8 +129,8 @@ proc skipUntilCmd(L: var TBaseLexer) =
   var pos = L.bufpos
   while true:
     case ^pos
-    of CR: pos = nimlexbase.HandleCR(L, pos)
-    of LF: pos = nimlexbase.HandleLF(L, pos)
+    of CR: pos = nimlexbase.handleCR(L, pos)
+    of LF: pos = nimlexbase.handleLF(L, pos)
     of '\0': break
     of '/': 
       if ^(pos+1) == '*' and ^(pos+2) == '\t':
@@ -145,33 +145,6 @@ proc atEndMark(buf: cstring, pos: int): bool =
   while s < NimMergeEndMark.len and buf[pos+s] == NimMergeEndMark[s]: inc s
   result = s == NimMergeEndMark.len
 
-when false:
-  proc readVerbatimSection(L: var TBaseLexer): PRope = 
-    var pos = L.bufpos
-    var buf = L.buf
-    result = newMutableRope(30_000)
-    while true:
-      case buf[pos]
-      of CR:
-        pos = nimlexbase.HandleCR(L, pos)
-        buf = L.buf
-        result.data.add(tnl)
-      of LF:
-        pos = nimlexbase.HandleLF(L, pos)
-        buf = L.buf
-        result.data.add(tnl)
-      of '\0':
-        InternalError("ccgmerge: expected: " & NimMergeEndMark)
-        break
-      else: 
-        if atEndMark(buf, pos):
-          inc pos, NimMergeEndMark.len
-          break
-        result.data.add(buf[pos])
-        inc pos
-    L.bufpos = pos
-    freezeMutableRope(result)
-
 proc readVerbatimSection(L: var TBaseLexer): PRope = 
   var pos = L.bufpos
   var buf = L.buf
@@ -179,15 +152,15 @@ proc readVerbatimSection(L: var TBaseLexer): PRope =
   while true:
     case buf[pos]
     of CR:
-      pos = nimlexbase.HandleCR(L, pos)
+      pos = nimlexbase.handleCR(L, pos)
       buf = L.buf
       r.add(tnl)
     of LF:
-      pos = nimlexbase.HandleLF(L, pos)
+      pos = nimlexbase.handleLF(L, pos)
       buf = L.buf
       r.add(tnl)
     of '\0':
-      InternalError("ccgmerge: expected: " & NimMergeEndMark)
+      internalError("ccgmerge: expected: " & NimMergeEndMark)
       break
     else: 
       if atEndMark(buf, pos):
@@ -208,7 +181,7 @@ proc readKey(L: var TBaseLexer, result: var string) =
   if buf[pos] != ':': internalError("ccgmerge: ':' expected")
   L.bufpos = pos + 1 # skip ':'
 
-proc NewFakeType(id: int): PType = 
+proc newFakeType(id: int): PType = 
   new(result)
   result.id = id
 
@@ -224,7 +197,7 @@ proc readTypeCache(L: var TBaseLexer, result: var TIdTable) =
     # XXX little hack: we create a "fake" type object with the correct Id
     # better would be to adapt the data structure to not even store the
     # object as key, but only the Id
-    IdTablePut(result, newFakeType(key), value.toRope)
+    idTablePut(result, newFakeType(key), value.toRope)
   inc L.bufpos
 
 proc readIntSet(L: var TBaseLexer, result: var TIntSet) =
@@ -249,14 +222,14 @@ proc processMergeInfo(L: var TBaseLexer, m: BModule) =
     of "declared":  readIntSet(L, m.declaredThings)
     of "typeInfo":  readIntSet(L, m.typeInfoMarker)
     of "labels":    m.labels = decodeVInt(L.buf, L.bufpos)
-    of "hasframe":  m.FrameDeclared = decodeVInt(L.buf, L.bufpos) != 0
-    else: InternalError("ccgmerge: unkown key: " & k)
+    of "hasframe":  m.frameDeclared = decodeVInt(L.buf, L.bufpos) != 0
+    else: internalError("ccgmerge: unkown key: " & k)
 
 when not defined(nimhygiene):
   {.pragma: inject.}
   
 template withCFile(cfilename: string, body: stmt) {.immediate.} = 
-  var s = LLStreamOpen(cfilename, fmRead)
+  var s = llStreamOpen(cfilename, fmRead)
   if s == nil: return
   var L {.inject.}: TBaseLexer
   openBaseLexer(L, s)
@@ -285,7 +258,7 @@ proc readMergeSections(cfilename: string, m: var TMergeSections) =
   withCFile(cfilename):
     readKey(L, k)
     if k == "NIM_merge_INFO":   
-      nil
+      discard
     elif ^L.bufpos == '*' and ^(L.bufpos+1) == '/':
       inc(L.bufpos, 2)
       # read back into section
@@ -300,9 +273,9 @@ proc readMergeSections(cfilename: string, m: var TMergeSections) =
         if sectionB >= 0 and sectionB <= high(TCProcSection).int:
           m.p[TCProcSection(sectionB)] = verbatim
         else:
-          InternalError("ccgmerge: unknown section: " & k)
+          internalError("ccgmerge: unknown section: " & k)
     else:
-      InternalError("ccgmerge: '*/' expected")
+      internalError("ccgmerge: '*/' expected")
 
 proc mergeRequired*(m: BModule): bool =
   for i in cfsHeaders..cfsProcs:
@@ -323,4 +296,3 @@ proc mergeFiles*(cfilename: string, m: BModule) =
     m.s[i] = con(old.f[i], m.s[i])
   for i in low(TCProcSection)..high(TCProcSection):
     m.initProc.s(i) = con(old.p[i], m.initProc.s(i))
-

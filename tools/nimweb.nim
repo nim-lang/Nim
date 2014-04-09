@@ -9,7 +9,7 @@
 
 import
   os, strutils, times, parseopt, parsecfg, streams, strtabs, tables,
-  re, htmlgen, macros, md5
+  re, htmlgen, macros, md5, osproc
 
 type
   TKeyValPair = tuple[key, id, val: string]
@@ -19,6 +19,7 @@ type
     authors, projectName, projectTitle, logo, infile, outdir, ticker: string
     vars: PStringTable
     nimrodArgs: string
+    gitCommit: string
     quotations: TTable[string, tuple[quote, author: string]]
   TRssItem = object
     year, month, day, title: string
@@ -40,6 +41,11 @@ proc initConfigData(c: var TConfigData) =
   c.logo = ""
   c.ticker = ""
   c.vars = newStringTable(modeStyleInsensitive)
+  c.gitCommit = "master"
+  # Attempts to obtain the git current commit.
+  let (output, code) = execCmdEx("git log -n 1 --format=%H")
+  if code == 0 and output.strip.len == 40:
+    c.gitCommit = output.strip
   c.quotations = initTable[string, tuple[quote, author: string]]()
 
 include "website.tmpl"
@@ -130,7 +136,7 @@ proc walkDirRecursively(s: var seq[string], root, ext: string) =
       if cmpIgnoreCase(ext, splitFile(f).ext) == 0:
         add(s, f)
     of pcDir: walkDirRecursively(s, f, ext)
-    of pcLinkToDir: nil
+    of pcLinkToDir: discard
 
 proc addFiles(s: var seq[string], dir, ext: string, patterns: seq[string]) =
   for p in items(patterns):
@@ -153,7 +159,7 @@ proc parseIniFile(c: var TConfigData) =
       of cfgSectionStart:
         section = normalize(k.section)
         case section
-        of "project", "links", "tabs", "ticker", "documentation", "var": nil
+        of "project", "links", "tabs", "ticker", "documentation", "var": discard
         else: echo("[Warning] Skipping unknown section: " & section)
 
       of cfgKeyValuePair:
@@ -168,7 +174,7 @@ proc parseIniFile(c: var TConfigData) =
           of "logo": c.logo = v
           of "authors": c.authors = v
           else: quit(errorStr(p, "unknown variable: " & k.key))
-        of "var": nil
+        of "var": discard
         of "links":
           let valID = v.split(';')
           add(c.links, (k.key.replace('_', ' '), valID[1], valID[0]))
@@ -186,7 +192,7 @@ proc parseIniFile(c: var TConfigData) =
           let vSplit = v.split('-')
           doAssert vSplit.len == 2
           c.quotations[k.key.normalize] = (vSplit[0], vSplit[1])
-        else: nil
+        else: discard
 
       of cfgOption: quit(errorStr(p, "syntax error"))
       of cfgError: quit(errorStr(p, k.msg))
@@ -197,35 +203,55 @@ proc parseIniFile(c: var TConfigData) =
       c.outdir = splitFile(c.infile).dir
   else:
     quit("cannot open: " & c.infile)
+  # Ugly hack to override git command output when building private repo.
+  if c.vars.hasKey("githash"):
+    let githash = c.vars["githash"].strip
+    if githash.len > 0:
+      c.gitCommit = githash
 
 # ------------------- main ----------------------------------------------------
 
-proc Exec(cmd: string) =
+proc exec(cmd: string) =
   echo(cmd)
   if os.execShellCmd(cmd) != 0: quit("external program failed")
+
+proc buildDocSamples(c: var TConfigData, destPath: string) =
+  ## Special case documentation sample proc.
+  ##
+  ## The docgen sample needs to be generated twice with different commands, so
+  ## it didn't make much sense to integrate into the existing generic
+  ## documentation builders.
+  const src = "doc"/"docgen_sample.nim"
+  exec("nimrod doc $# -o:$# $#" %
+    [c.nimrodArgs, destPath / "docgen_sample.html", src])
+  exec("nimrod doc2 $# -o:$# $#" %
+    [c.nimrodArgs, destPath / "docgen_sample2.html", src])
 
 proc buildDoc(c: var TConfigData, destPath: string) =
   # call nim for the documentation:
   for d in items(c.doc):
-    Exec("nimrod rst2html $# -o:$# --index:on $#" %
-      [c.nimrodArgs, destPath / changeFileExt(splitFile(d).name, "html"), d])
+    exec("nimrod rst2html $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
+      [c.nimrodArgs, c.gitCommit,
+      destPath / changeFileExt(splitFile(d).name, "html"), d])
   for d in items(c.srcdoc):
-    Exec("nimrod doc $# -o:$# --index:on $#" %
-      [c.nimrodArgs, destPath / changeFileExt(splitFile(d).name, "html"), d])
+    exec("nimrod doc $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
+      [c.nimrodArgs, c.gitCommit,
+      destPath / changeFileExt(splitFile(d).name, "html"), d])
   for d in items(c.srcdoc2):
-    Exec("nimrod doc2 $# -o:$# --index:on $#" %
-      [c.nimrodArgs, destPath / changeFileExt(splitFile(d).name, "html"), d])
-  Exec("nimrod buildIndex -o:$1/theindex.html $1" % [destPath])
+    exec("nimrod doc2 $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
+      [c.nimrodArgs, c.gitCommit,
+      destPath / changeFileExt(splitFile(d).name, "html"), d])
+  exec("nimrod buildIndex -o:$1/theindex.html $1" % [destPath])
 
 proc buildPdfDoc(c: var TConfigData, destPath: string) =
   if os.execShellCmd("pdflatex -version") != 0:
     echo "pdflatex not found; no PDF documentation generated"
   else:
     for d in items(c.pdf):
-      Exec("nimrod rst2tex $# $#" % [c.nimrodArgs, d])
+      exec("nimrod rst2tex $# $#" % [c.nimrodArgs, d])
       # call LaTeX twice to get cross references right:
-      Exec("pdflatex " & changeFileExt(d, "tex"))
-      Exec("pdflatex " & changeFileExt(d, "tex"))
+      exec("pdflatex " & changeFileExt(d, "tex"))
+      exec("pdflatex " & changeFileExt(d, "tex"))
       # delete all the crappy temporary files:
       var pdf = splitFile(d).name & ".pdf"
       moveFile(dest=destPath / pdf, source=pdf)
@@ -239,8 +265,9 @@ proc buildPdfDoc(c: var TConfigData, destPath: string) =
 proc buildAddDoc(c: var TConfigData, destPath: string) =
   # build additional documentation (without the index):
   for d in items(c.webdoc):
-    Exec("nimrod doc $# -o:$# $#" %
-      [c.nimrodArgs, destPath / changeFileExt(splitFile(d).name, "html"), d])
+    exec("nimrod doc $# --docSeeSrcUrl:$# -o:$# $#" %
+      [c.nimrodArgs, c.gitCommit,
+      destPath / changeFileExt(splitFile(d).name, "html"), d])
 
 proc parseNewsTitles(inputFilename: string): seq[TRssItem] =
   # parses the file for titles and returns them as TRssItem blocks.
@@ -253,7 +280,7 @@ proc parseNewsTitles(inputFilename: string): seq[TRssItem] =
   if not open(input, inputFilename):
     quit("Could not read $1 for rss generation" % [inputFilename])
   finally: input.close()
-  while input.readline(line):
+  while input.readLine(line):
     if line =~ reYearMonthDayTitle:
       result.add(TRssItem(year: matches[0], month: matches[1], day: matches[2],
         title: matches[3]))
@@ -332,7 +359,7 @@ proc main(c: var TConfigData) =
   for i in 0..c.tabs.len-1:
     var file = c.tabs[i].val
     let rss = if file in ["news", "index"]: extractFilename(rssUrl) else: ""
-    Exec(cmd % [c.nimrodArgs, file])
+    exec(cmd % [c.nimrodArgs, file])
     var temp = "web" / changeFileExt(file, "temp")
     var content: string
     try:
@@ -352,7 +379,9 @@ proc main(c: var TConfigData) =
   copyDir("web/assets", "web/upload/assets")
   buildNewsRss(c, "web/upload")
   buildAddDoc(c, "web/upload")
+  buildDocSamples(c, "web/upload")
   buildDoc(c, "web/upload")
+  buildDocSamples(c, "doc")
   buildDoc(c, "doc")
   buildPdfDoc(c, "doc")
 

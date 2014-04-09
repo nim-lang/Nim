@@ -144,7 +144,7 @@ proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
   ## be called before any possible `object branch transition`:idx:.
 
 # for low and high the return type T may not be correct, but
-# we handle that with compiler magic in SemLowHigh()
+# we handle that with compiler magic in semLowHigh()
 proc high*[T](x: T): T {.magic: "High", noSideEffect.}
   ## returns the highest possible index of an array, a sequence, a string or
   ## the highest possible value of an ordinal value `x`. As a special
@@ -159,7 +159,7 @@ type
   range*{.magic: "Range".}[T] ## Generic type to construct range types.
   array*{.magic: "Array".}[I, T]  ## Generic type to construct
                                   ## fixed-length arrays.
-  openarray*{.magic: "OpenArray".}[T]  ## Generic type to construct open arrays.
+  openArray*{.magic: "OpenArray".}[T]  ## Generic type to construct open arrays.
                                        ## Open arrays are implemented as a
                                        ## pointer to the array data and a
                                        ## length field.
@@ -185,24 +185,31 @@ proc `..`*[T](b: T): TSlice[T] {.noSideEffect, inline.} =
 
 when not defined(niminheritable):
   {.pragma: inheritable.}
+when not defined(nimunion):
+  {.pragma: unchecked.}
 
-when not defined(JS) and not defined(NimrodVM):
+const NoFakeVars* = defined(NimrodVM) ## true if the backend doesn't support \
+  ## "fake variables" like 'var EBADF {.importc.}: cint'.
+
+when not defined(JS):
   type
     TGenericSeq {.compilerproc, pure, inheritable.} = object
       len, reserved: int
     PGenericSeq {.exportc.} = ptr TGenericSeq
+    UncheckedCharArray {.unchecked.} = array[0..100_000_000, char]
     # len and space without counting the terminating zero:
     NimStringDesc {.compilerproc, final.} = object of TGenericSeq
-      data: array[0..100_000_000, char]
+      data: UncheckedCharArray
     NimString = ptr NimStringDesc
-    
+
+when not defined(JS) and not defined(NimrodVM):
   template space(s: PGenericSeq): int {.dirty.} =
     s.reserved and not seqShallowFlag
 
   include "system/hti"
 
 type
-  Byte* = uInt8 ## this is an alias for ``uint8``, that is an unsigned
+  Byte* = uint8 ## this is an alias for ``uint8``, that is an unsigned
                 ## int 8 bits wide.
 
   Natural* = range[0..high(int)]
@@ -253,6 +260,7 @@ type
                               ## system raises.
   EIO* = object of ESystem    ## raised if an IO error occured.
   EOS* = object of ESystem    ## raised if an operating system service failed.
+    errorCode*: int32 ## OS-defined error code describing this error.
   EInvalidLibrary* = object of EOS ## raised if a dynamic library
                                    ## could not be loaded.
   EResourceExhausted* = object of ESystem ## raised if a resource request
@@ -294,7 +302,7 @@ type
                                         ## value does not fit.
 
   EOutOfRange* = object of ESynch       ## is raised if a range check error
-                                        ## occured.
+                                        ## occurred.
 
   EStackOverflow* = object of ESystem   ## is raised if the hardware stack
                                         ## used for subroutine calls overflowed.
@@ -335,13 +343,13 @@ type
                      
   TResult* = enum Failure, Success
 
-proc sizeof*[T](x: T): natural {.magic: "SizeOf", noSideEffect.}
+proc sizeof*[T](x: T): Natural {.magic: "SizeOf", noSideEffect.}
   ## returns the size of ``x`` in bytes. Since this is a low-level proc,
   ## its usage is discouraged - using ``new`` for the most cases suffices
   ## that one never needs to know ``x``'s size. As a special semantic rule,
   ## ``x`` may also be a type identifier (``sizeof(int)`` is valid).
 
-proc `<`*[T](x: ordinal[T]): T {.magic: "UnaryLt", noSideEffect.}
+proc `<`*[T](x: Ordinal[T]): T {.magic: "UnaryLt", noSideEffect.}
   ## unary ``<`` that can be used for nice looking excluding ranges:
   ## 
   ## .. code-block:: nimrod
@@ -349,22 +357,22 @@ proc `<`*[T](x: ordinal[T]): T {.magic: "UnaryLt", noSideEffect.}
   ##
   ## Semantically this is the same as ``pred``. 
 
-proc succ*[T](x: ordinal[T], y = 1): T {.magic: "Succ", noSideEffect.}
+proc succ*[T](x: Ordinal[T], y = 1): T {.magic: "Succ", noSideEffect.}
   ## returns the ``y``-th successor of the value ``x``. ``T`` has to be
   ## an ordinal type. If such a value does not exist, ``EOutOfRange`` is raised
   ## or a compile time error occurs.
 
-proc pred*[T](x: ordinal[T], y = 1): T {.magic: "Pred", noSideEffect.}
+proc pred*[T](x: Ordinal[T], y = 1): T {.magic: "Pred", noSideEffect.}
   ## returns the ``y``-th predecessor of the value ``x``. ``T`` has to be
   ## an ordinal type. If such a value does not exist, ``EOutOfRange`` is raised
   ## or a compile time error occurs.
 
-proc inc*[T](x: var ordinal[T], y = 1) {.magic: "Inc", noSideEffect.}
+proc inc*[T](x: var Ordinal[T], y = 1) {.magic: "Inc", noSideEffect.}
   ## increments the ordinal ``x`` by ``y``. If such a value does not
   ## exist, ``EOutOfRange`` is raised or a compile time error occurs. This is a
   ## short notation for: ``x = succ(x, y)``.
 
-proc dec*[T](x: var ordinal[T], y = 1) {.magic: "Dec", noSideEffect.}
+proc dec*[T](x: var Ordinal[T], y = 1) {.magic: "Dec", noSideEffect.}
   ## decrements the ordinal ``x`` by ``y``. If such a value does not
   ## exist, ``EOutOfRange`` is raised or a compile time error occurs. This is a
   ## short notation for: ``x = pred(x, y)``.
@@ -418,9 +426,17 @@ proc incl*[T](x: var set[T], y: T) {.magic: "Incl", noSideEffect.}
   ## includes element ``y`` to the set ``x``. This is the same as
   ## ``x = x + {y}``, but it might be more efficient.
 
+template incl*[T](s: var set[T], flags: set[T]) =
+  ## includes the set of flags to the set ``x``.
+  s = s + flags
+
 proc excl*[T](x: var set[T], y: T) {.magic: "Excl", noSideEffect.}
   ## excludes element ``y`` to the set ``x``. This is the same as
   ## ``x = x - {y}``, but it might be more efficient.
+
+template excl*[T](s: var set[T], flags: set[T]) =
+  ## excludes the set of flags to ``x``.
+  s = s - flags
 
 proc card*[T](x: set[T]): int {.magic: "Card", noSideEffect.}
   ## returns the cardinality of the set ``x``, i.e. the number of elements
@@ -435,38 +451,38 @@ proc chr*(u: range[0..255]): char {.magic: "Chr", noSideEffect.}
 # --------------------------------------------------------------------------
 # built-in operators
 
-proc ze*(x: int8): int {.magic: "Ze8ToI", noSideEffect.}
-  ## zero extends a smaller integer type to ``int``. This treats `x` as
-  ## unsigned.
-proc ze*(x: int16): int {.magic: "Ze16ToI", noSideEffect.}
-  ## zero extends a smaller integer type to ``int``. This treats `x` as
-  ## unsigned.
+when not defined(JS):
+  proc ze*(x: int8): int {.magic: "Ze8ToI", noSideEffect.}
+    ## zero extends a smaller integer type to ``int``. This treats `x` as
+    ## unsigned.
+  proc ze*(x: int16): int {.magic: "Ze16ToI", noSideEffect.}
+    ## zero extends a smaller integer type to ``int``. This treats `x` as
+    ## unsigned.
 
-proc ze64*(x: int8): int64 {.magic: "Ze8ToI64", noSideEffect.}
-  ## zero extends a smaller integer type to ``int64``. This treats `x` as
-  ## unsigned.
-proc ze64*(x: int16): int64 {.magic: "Ze16ToI64", noSideEffect.}
-  ## zero extends a smaller integer type to ``int64``. This treats `x` as
-  ## unsigned.
+  proc ze64*(x: int8): int64 {.magic: "Ze8ToI64", noSideEffect.}
+    ## zero extends a smaller integer type to ``int64``. This treats `x` as
+    ## unsigned.
+  proc ze64*(x: int16): int64 {.magic: "Ze16ToI64", noSideEffect.}
+    ## zero extends a smaller integer type to ``int64``. This treats `x` as
+    ## unsigned.
 
-proc ze64*(x: int32): int64 {.magic: "Ze32ToI64", noSideEffect.}
-  ## zero extends a smaller integer type to ``int64``. This treats `x` as
-  ## unsigned.
-proc ze64*(x: int): int64 {.magic: "ZeIToI64", noSideEffect.}
-  ## zero extends a smaller integer type to ``int64``. This treats `x` as
-  ## unsigned. Does nothing if the size of an ``int`` is the same as ``int64``.
-  ## (This is the case on 64 bit processors.)
+  proc ze64*(x: int32): int64 {.magic: "Ze32ToI64", noSideEffect.}
+    ## zero extends a smaller integer type to ``int64``. This treats `x` as
+    ## unsigned.
+  proc ze64*(x: int): int64 {.magic: "ZeIToI64", noSideEffect.}
+    ## zero extends a smaller integer type to ``int64``. This treats `x` as
+    ## unsigned. Does nothing if the size of an ``int`` is the same as ``int64``.
+    ## (This is the case on 64 bit processors.)
 
-proc toU8*(x: int): int8 {.magic: "ToU8", noSideEffect.}
-  ## treats `x` as unsigned and converts it to a byte by taking the last 8 bits
-  ## from `x`.
-proc toU16*(x: int): int16 {.magic: "ToU16", noSideEffect.}
-  ## treats `x` as unsigned and converts it to an ``int16`` by taking the last
-  ## 16 bits from `x`.
-proc toU32*(x: int64): int32 {.magic: "ToU32", noSideEffect.}
-  ## treats `x` as unsigned and converts it to an ``int32`` by taking the
-  ## last 32 bits from `x`.
-
+  proc toU8*(x: int): int8 {.magic: "ToU8", noSideEffect.}
+    ## treats `x` as unsigned and converts it to a byte by taking the last 8 bits
+    ## from `x`.    
+  proc toU16*(x: int): int16 {.magic: "ToU16", noSideEffect.}
+    ## treats `x` as unsigned and converts it to an ``int16`` by taking the last
+    ## 16 bits from `x`.
+  proc toU32*(x: int64): int32 {.magic: "ToU32", noSideEffect.}
+    ## treats `x` as unsigned and converts it to an ``int32`` by taking the
+    ## last 32 bits from `x`.
 
 # integer calculations:
 proc `+` *(x: int): int {.magic: "UnaryPlusI", noSideEffect.}
@@ -518,6 +534,10 @@ proc `div` *(x, y: int32): int32 {.magic: "DivI", noSideEffect.}
 proc `div` *(x, y: int64): int64 {.magic: "DivI64", noSideEffect.}
   ## computes the integer division. This is roughly the same as
   ## ``floor(x/y)``.
+  ## .. code-block:: Nimrod
+  ##   1 div 2 == 0
+  ##   2 div 2 == 1
+  ##   3 div 2 == 1
 
 proc `mod` *(x, y: int): int {.magic: "ModI", noSideEffect.}
 proc `mod` *(x, y: int8): int8 {.magic: "ModI", noSideEffect.}
@@ -533,6 +553,10 @@ proc `shr` *(x, y: int16): int16 {.magic: "ShrI", noSideEffect.}
 proc `shr` *(x, y: int32): int32 {.magic: "ShrI", noSideEffect.}
 proc `shr` *(x, y: int64): int64 {.magic: "ShrI64", noSideEffect.}
   ## computes the `shift right` operation of `x` and `y`.
+  ## .. code-block:: Nimrod
+  ##   0b0001_0000'i8 shr 2 == 0b0100_0000'i8
+  ##   0b1000_0000'i8 shr 2 == 0b0000_0000'i8
+  ##   0b0000_0001'i8 shr 9 == 0b0000_0000'i8
 
 proc `shl` *(x, y: int): int {.magic: "ShlI", noSideEffect.}
 proc `shl` *(x, y: int8): int8 {.magic: "ShlI", noSideEffect.}
@@ -584,46 +608,46 @@ proc `<` *(x, y: int64): bool {.magic: "LtI64", noSideEffect.}
   ## Returns true iff `x` is less than `y`.
 
 type
-  IntMax32 = bool|int|int8|int16|int32
+  IntMax32 = int|int8|int16|int32
 
 proc `+%` *(x, y: IntMax32): IntMax32 {.magic: "AddU", noSideEffect.}
-proc `+%` *(x, y: Int64): Int64 {.magic: "AddU", noSideEffect.}
+proc `+%` *(x, y: int64): int64 {.magic: "AddU", noSideEffect.}
   ## treats `x` and `y` as unsigned and adds them. The result is truncated to
   ## fit into the result. This implements modulo arithmetic. No overflow
   ## errors are possible.
 
 proc `-%` *(x, y: IntMax32): IntMax32 {.magic: "SubU", noSideEffect.}
-proc `-%` *(x, y: Int64): Int64 {.magic: "SubU", noSideEffect.}
+proc `-%` *(x, y: int64): int64 {.magic: "SubU", noSideEffect.}
   ## treats `x` and `y` as unsigned and subtracts them. The result is
   ## truncated to fit into the result. This implements modulo arithmetic.
   ## No overflow errors are possible.
 
 proc `*%` *(x, y: IntMax32): IntMax32 {.magic: "MulU", noSideEffect.}
-proc `*%` *(x, y: Int64): Int64 {.magic: "MulU", noSideEffect.}
+proc `*%` *(x, y: int64): int64 {.magic: "MulU", noSideEffect.}
   ## treats `x` and `y` as unsigned and multiplies them. The result is
   ## truncated to fit into the result. This implements modulo arithmetic.
   ## No overflow errors are possible.
 
 proc `/%` *(x, y: IntMax32): IntMax32 {.magic: "DivU", noSideEffect.}
-proc `/%` *(x, y: Int64): Int64 {.magic: "DivU", noSideEffect.}
+proc `/%` *(x, y: int64): int64 {.magic: "DivU", noSideEffect.}
   ## treats `x` and `y` as unsigned and divides them. The result is
   ## truncated to fit into the result. This implements modulo arithmetic.
   ## No overflow errors are possible.
 
 proc `%%` *(x, y: IntMax32): IntMax32 {.magic: "ModU", noSideEffect.}
-proc `%%` *(x, y: Int64): Int64 {.magic: "ModU", noSideEffect.}
+proc `%%` *(x, y: int64): int64 {.magic: "ModU", noSideEffect.}
   ## treats `x` and `y` as unsigned and compute the modulo of `x` and `y`.
   ## The result is truncated to fit into the result.
   ## This implements modulo arithmetic.
   ## No overflow errors are possible.
   
 proc `<=%` *(x, y: IntMax32): bool {.magic: "LeU", noSideEffect.}
-proc `<=%` *(x, y: Int64): bool {.magic: "LeU64", noSideEffect.}
+proc `<=%` *(x, y: int64): bool {.magic: "LeU64", noSideEffect.}
   ## treats `x` and `y` as unsigned and compares them.
   ## Returns true iff ``unsigned(x) <= unsigned(y)``.
 
 proc `<%` *(x, y: IntMax32): bool {.magic: "LtU", noSideEffect.}
-proc `<%` *(x, y: Int64): bool {.magic: "LtU64", noSideEffect.}
+proc `<%` *(x, y: int64): bool {.magic: "LtU64", noSideEffect.}
   ## treats `x` and `y` as unsigned and compares them.
   ## Returns true iff ``unsigned(x) < unsigned(y)``.
 
@@ -725,15 +749,49 @@ proc contains*[T](x: set[T], y: T): bool {.magic: "InSet", noSideEffect.}
   ## passes its arguments in reverse order.
 
 proc contains*[T](s: TSlice[T], value: T): bool {.noSideEffect, inline.} =
+  ## Checks if `value` is withing the range of `s`; returns true iff
+  ## `value >= s.a and value <= s.b`
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert((1..3).contains(1) == true)
+  ##   assert((1..3).contains(2) == true)
+  ##   assert((1..3).contains(4) == false)
   result = s.a <= value and value <= s.b
 
 template `in` * (x, y: expr): expr {.immediate.} = contains(y, x)
-template `not_in` * (x, y: expr): expr {.immediate.} = not contains(y, x)
+  ## Suger for contains
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert(1 in (1..3) == true)
+  ##   assert(5 in (1..3) == false)
+template `notin` * (x, y: expr): expr {.immediate.} = not contains(y, x)
+  ## Sugar for not containing
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert(1 notin (1..3) == false)
+  ##   assert(5 notin (1..3) == true)
 
 proc `is` *[T, S](x: T, y: S): bool {.magic: "Is", noSideEffect.}
-template `is_not` *(x, y: expr): expr {.immediate.} = not (x is y)
-
+  ## Checks if T is of the same type as S
+  ## 
+  ## .. code-block:: Nimrod
+  ##   proc test[T](a: T): int =
+  ##     when (T is int):
+  ##       return a
+  ##     else:
+  ##       return 0
+  ##
+  ##   assert(test[int](3) == 3)
+  ##   assert(test[string]("xyz") == 0)
+template `isnot` *(x, y: expr): expr {.immediate.} = not (x is y)
+  ## Negated version of `is`. Equivalent to `not(is(x,y))`
 proc `of` *[T, S](x: T, y: S): bool {.magic: "Of", noSideEffect.}
+  ## Checks if `x` has a type of `y`
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert(EFloatingPoint is EBase)
+  ##   assert(EIO is ESystem)
+  ##   assert(EDivByZero is EBase)
 
 proc cmp*[T](x, y: T): int {.procvar.} =
   ## Generic compare proc. Returns a value < 0 iff x < y, a value > 0 iff x > y
@@ -784,19 +842,48 @@ proc newStringOfCap*(cap: int): string {.
 
 proc `&` * (x: string, y: char): string {.
   magic: "ConStrStr", noSideEffect, merge.}
+  ## Concatenates `x` with `y`
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert("ab" & 'c' == "abc")
 proc `&` * (x: char, y: char): string {.
   magic: "ConStrStr", noSideEffect, merge.}
+  ## Concatenates `x` and `y` into a string
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert('a' & 'b' == "ab")
 proc `&` * (x, y: string): string {.
   magic: "ConStrStr", noSideEffect, merge.}
+  ## Concatenates `x` and `y`
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert("ab" & "cd" == "abcd")
 proc `&` * (x: char, y: string): string {.
   magic: "ConStrStr", noSideEffect, merge.}
-  ## is the `concatenation operator`. It concatenates `x` and `y`.
+  ## Concatenates `x` with `y`
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert('a' & "bc" == "abc")
 
 # implementation note: These must all have the same magic value "ConStrStr" so
 # that the merge optimization works properly. 
 
 proc add*(x: var string, y: char) {.magic: "AppendStrCh", noSideEffect.}
+  ## Appends `y` to `x` in place
+  ##
+  ## .. code-block:: Nimrod
+  ##   var tmp = ""
+  ##   tmp.add('a')
+  ##   tmp.add('b')
+  ##   assert(tmp == "ab")
 proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
+  ## Concatenates `x` and `y` in place
+  ##
+  ## .. code-block:: Nimrod
+  ##   var tmp = ""
+  ##   tmp.add("ab")
+  ##   tmp.add("cd")
+  ##   assert(tmp == "abcd")
 
 type
   TEndian* = enum ## is a type describing the endianness of a processor.
@@ -906,9 +993,9 @@ const
     ## failure.
 
 var programResult* {.exportc: "nim_program_result".}: int
-  ## modify this varialbe to specify the exit code of the program
+  ## modify this variable to specify the exit code of the program
   ## under normal circumstances. When the program is terminated
-  ## prematurelly using ``quit``, this value is ignored.
+  ## prematurely using ``quit``, this value is ignored.
 
 proc quit*(errorcode: int = QuitSuccess) {.
   magic: "Exit", importc: "exit", header: "<stdlib.h>", noReturn.}
@@ -933,7 +1020,6 @@ template sysAssert(cond: bool, msg: string) =
     if not cond:
       echo "[SYSASSERT] ", msg
       quit 1
-  nil
 
 include "system/inclrtl"
 
@@ -1061,7 +1147,7 @@ proc toFloat*(i: int): float {.
   ## fails, `EInvalidValue` is raised. However, on most platforms the
   ## conversion cannot fail.
 
-proc toBiggestFloat*(i: biggestint): biggestfloat {.
+proc toBiggestFloat*(i: BiggestInt): BiggestFloat {.
   magic: "ToBiggestFloat", noSideEffect, importc: "toBiggestFloat".}
   ## converts an biggestint `i` into a ``biggestfloat``. If the conversion
   ## fails, `EInvalidValue` is raised. However, on most platforms the
@@ -1073,7 +1159,7 @@ proc toInt*(f: float): int {.
   ## rounds `f` if it does not contain an integer value. If the conversion
   ## fails (because `f` is infinite for example), `EInvalidValue` is raised.
 
-proc toBiggestInt*(f: biggestfloat): biggestint {.
+proc toBiggestInt*(f: BiggestFloat): BiggestInt {.
   magic: "ToBiggestInt", noSideEffect, importc: "toBiggestInt".}
   ## converts a biggestfloat `f` into a ``biggestint``. Conversion
   ## rounds `f` if it does not contain an integer value. If the conversion
@@ -1115,19 +1201,19 @@ proc substr*(s: string, first, last: int): string {.
   ## or `limit`:idx: a string's length.
 
 when not defined(nimrodVM):
-  proc zeroMem*(p: Pointer, size: int) {.importc, noDecl.}
+  proc zeroMem*(p: pointer, size: int) {.importc, noDecl.}
     ## overwrites the contents of the memory at ``p`` with the value 0.
     ## Exactly ``size`` bytes will be overwritten. Like any procedure
     ## dealing with raw memory this is *unsafe*.
 
-  proc copyMem*(dest, source: Pointer, size: int) {.
+  proc copyMem*(dest, source: pointer, size: int) {.
     importc: "memcpy", header: "<string.h>".}
     ## copies the contents from the memory at ``source`` to the memory
     ## at ``dest``. Exactly ``size`` bytes will be copied. The memory
     ## regions may not overlap. Like any procedure dealing with raw
     ## memory this is *unsafe*.
 
-  proc moveMem*(dest, source: Pointer, size: int) {.
+  proc moveMem*(dest, source: pointer, size: int) {.
     importc: "memmove", header: "<string.h>".}
     ## copies the contents from the memory at ``source`` to the memory
     ## at ``dest``. Exactly ``size`` bytes will be copied. The memory
@@ -1135,14 +1221,14 @@ when not defined(nimrodVM):
     ## and is thus somewhat more safe than ``copyMem``. Like any procedure
     ## dealing with raw memory this is still *unsafe*, though.
 
-  proc equalMem*(a, b: Pointer, size: int): bool {.
+  proc equalMem*(a, b: pointer, size: int): bool {.
     importc: "equalMem", noDecl, noSideEffect.}
     ## compares the memory blocks ``a`` and ``b``. ``size`` bytes will
     ## be compared. If the blocks are equal, true is returned, false
     ## otherwise. Like any procedure dealing with raw memory this is
     ## *unsafe*.
 
-  when hostOs != "standalone":
+  when hostOS != "standalone":
     proc alloc*(size: int): pointer {.noconv, rtl, tags: [].}
       ## allocates a new memory block with at least ``size`` bytes. The
       ## block has to be freed with ``realloc(block, 0)`` or
@@ -1150,6 +1236,14 @@ when not defined(nimrodVM):
       ## from it before writing to it is undefined behaviour!
       ## The allocated memory belongs to its allocating thread!
       ## Use `allocShared` to allocate from a shared heap.
+    proc createU*(T: typedesc, size = 1.Positive): ptr T {.inline.} =
+      ## allocates a new memory block with at least ``T.sizeof * size``
+      ## bytes. The block has to be freed with ``resize(block, 0)`` or
+      ## ``free(block)``. The block is not initialized, so reading
+      ## from it before writing to it is undefined behaviour!
+      ## The allocated memory belongs to its allocating thread!
+      ## Use `createSharedU` to allocate from a shared heap.
+      cast[ptr T](alloc(T.sizeof * size))
     proc alloc0*(size: int): pointer {.noconv, rtl, tags: [].}
       ## allocates a new memory block with at least ``size`` bytes. The
       ## block has to be freed with ``realloc(block, 0)`` or
@@ -1157,15 +1251,32 @@ when not defined(nimrodVM):
       ## containing zero, so it is somewhat safer than ``alloc``.
       ## The allocated memory belongs to its allocating thread!
       ## Use `allocShared0` to allocate from a shared heap.
-    proc realloc*(p: Pointer, newsize: int): pointer {.noconv, rtl, tags: [].}
+    proc create*(T: typedesc, size = 1.Positive): ptr T {.inline.} =
+      ## allocates a new memory block with at least ``T.sizeof * size``
+      ## bytes. The block has to be freed with ``resize(block, 0)`` or
+      ## ``free(block)``. The block is initialized with all bytes
+      ## containing zero, so it is somewhat safer than ``createU``.
+      ## The allocated memory belongs to its allocating thread!
+      ## Use `createShared` to allocate from a shared heap.
+      cast[ptr T](alloc0(T.sizeof * size))
+    proc realloc*(p: pointer, newSize: int): pointer {.noconv, rtl, tags: [].}
       ## grows or shrinks a given memory block. If p is **nil** then a new
       ## memory block is returned. In either way the block has at least
-      ## ``newsize`` bytes. If ``newsize == 0`` and p is not **nil**
+      ## ``newSize`` bytes. If ``newSize == 0`` and p is not **nil**
       ## ``realloc`` calls ``dealloc(p)``. In other cases the block has to
       ## be freed with ``dealloc``.
       ## The allocated memory belongs to its allocating thread!
       ## Use `reallocShared` to reallocate from a shared heap.
-    proc dealloc*(p: Pointer) {.noconv, rtl, tags: [].}
+    proc resize*[T](p: ptr T, newSize: Natural): ptr T {.inline.} =
+      ## grows or shrinks a given memory block. If p is **nil** then a new
+      ## memory block is returned. In either way the block has at least
+      ## ``T.sizeof * newSize`` bytes. If ``newSize == 0`` and p is not
+      ## **nil** ``resize`` calls ``free(p)``. In other cases the block
+      ## has to be freed with ``free``. The allocated memory belongs to
+      ## its allocating thread!
+      ## Use `resizeShared` to reallocate from a shared heap.
+      cast[ptr T](realloc(p, T.sizeof * newSize))
+    proc dealloc*(p: pointer) {.noconv, rtl, tags: [].}
       ## frees the memory allocated with ``alloc``, ``alloc0`` or
       ## ``realloc``. This procedure is dangerous! If one forgets to
       ## free the memory a leak occurs; if one tries to access freed
@@ -1173,31 +1284,60 @@ when not defined(nimrodVM):
       ## or other memory may be corrupted. 
       ## The freed memory must belong to its allocating thread!
       ## Use `deallocShared` to deallocate from a shared heap.
-
+    proc free*[T](p: ptr T) {.inline.} =
+      dealloc(p)
     proc allocShared*(size: int): pointer {.noconv, rtl.}
       ## allocates a new memory block on the shared heap with at
       ## least ``size`` bytes. The block has to be freed with
       ## ``reallocShared(block, 0)`` or ``deallocShared(block)``. The block
       ## is not initialized, so reading from it before writing to it is 
       ## undefined behaviour!
+    proc createSharedU*(T: typedesc, size = 1.Positive): ptr T {.inline.} =
+      ## allocates a new memory block on the shared heap with at
+      ## least ``T.sizeof * size`` bytes. The block has to be freed with
+      ## ``resizeShared(block, 0)`` or ``freeShared(block)``. The block
+      ## is not initialized, so reading from it before writing to it is 
+      ## undefined behaviour!
+      cast[ptr T](allocShared(T.sizeof * size))
     proc allocShared0*(size: int): pointer {.noconv, rtl.}
       ## allocates a new memory block on the shared heap with at 
       ## least ``size`` bytes. The block has to be freed with
       ## ``reallocShared(block, 0)`` or ``deallocShared(block)``.
       ## The block is initialized with all bytes
       ## containing zero, so it is somewhat safer than ``allocShared``.
-    proc reallocShared*(p: Pointer, newsize: int): pointer {.noconv, rtl.}
+    proc createShared*(T: typedesc, size = 1.Positive): ptr T {.inline.} =
+      ## allocates a new memory block on the shared heap with at 
+      ## least ``T.sizeof * size`` bytes. The block has to be freed with
+      ## ``resizeShared(block, 0)`` or ``freeShared(block)``.
+      ## The block is initialized with all bytes
+      ## containing zero, so it is somewhat safer than ``createSharedU``.
+      cast[ptr T](allocShared0(T.sizeof * size))
+    proc reallocShared*(p: pointer, newSize: int): pointer {.noconv, rtl.}
       ## grows or shrinks a given memory block on the heap. If p is **nil**
-      ## then a new memory block is returned. In either way the block has at least
-      ## ``newsize`` bytes. If ``newsize == 0`` and p is not **nil**
+      ## then a new memory block is returned. In either way the block has at
+      ## least ``newSize`` bytes. If ``newSize == 0`` and p is not **nil**
       ## ``reallocShared`` calls ``deallocShared(p)``. In other cases the
       ## block has to be freed with ``deallocShared``.
-    proc deallocShared*(p: Pointer) {.noconv, rtl.}
+    proc resizeShared*[T](p: ptr T, newSize: Natural): ptr T {.inline.} =
+      ## grows or shrinks a given memory block on the heap. If p is **nil**
+      ## then a new memory block is returned. In either way the block has at
+      ## least ``T.sizeof * newSize`` bytes. If ``newSize == 0`` and p is
+      ## not **nil** ``resizeShared`` calls ``freeShared(p)``. In other
+      ## cases the block has to be freed with ``freeShared``.
+      cast[ptr T](reallocShared(p, T.sizeof * newSize))
+    proc deallocShared*(p: pointer) {.noconv, rtl.}
       ## frees the memory allocated with ``allocShared``, ``allocShared0`` or
       ## ``reallocShared``. This procedure is dangerous! If one forgets to
       ## free the memory a leak occurs; if one tries to access freed
       ## memory (or just freeing it twice!) a core dump may happen
       ## or other memory may be corrupted.
+    proc freeShared*[T](p: ptr T) {.inline.} =
+      ## frees the memory allocated with ``createShared``, ``createSharedU`` or
+      ## ``resizeShared``. This procedure is dangerous! If one forgets to
+      ## free the memory a leak occurs; if one tries to access freed
+      ## memory (or just freeing it twice!) a core dump may happen
+      ## or other memory may be corrupted.
+      deallocShared(p)
 
 proc swap*[T](a, b: var T) {.magic: "Swap", noSideEffect.}
   ## swaps the values `a` and `b`. This is often more efficient than
@@ -1212,42 +1352,42 @@ template `>%` *(x, y: expr): expr {.immediate.} = y <% x
   ## Returns true iff ``unsigned(x) > unsigned(y)``.
 
 proc `$` *(x: int): string {.magic: "IntToStr", noSideEffect.}
-  ## The stingify operator for an integer argument. Returns `x`
+  ## The stringify operator for an integer argument. Returns `x`
   ## converted to a decimal string.
 
 proc `$` *(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
-  ## The stingify operator for an integer argument. Returns `x`
+  ## The stringify operator for an integer argument. Returns `x`
   ## converted to a decimal string.
 
 when not defined(NimrodVM):
   when not defined(JS) and hostOS != "standalone":
     proc `$` *(x: uint64): string {.noSideEffect.}
-      ## The stingify operator for an unsigned integer argument. Returns `x`
+      ## The stringify operator for an unsigned integer argument. Returns `x`
       ## converted to a decimal string.
 
 proc `$` *(x: float): string {.magic: "FloatToStr", noSideEffect.}
-  ## The stingify operator for a float argument. Returns `x`
+  ## The stringify operator for a float argument. Returns `x`
   ## converted to a decimal string.
 
 proc `$` *(x: bool): string {.magic: "BoolToStr", noSideEffect.}
-  ## The stingify operator for a boolean argument. Returns `x`
+  ## The stringify operator for a boolean argument. Returns `x`
   ## converted to the string "false" or "true".
 
 proc `$` *(x: char): string {.magic: "CharToStr", noSideEffect.}
-  ## The stingify operator for a character argument. Returns `x`
+  ## The stringify operator for a character argument. Returns `x`
   ## converted to a string.
 
-proc `$` *(x: Cstring): string {.magic: "CStrToStr", noSideEffect.}
-  ## The stingify operator for a CString argument. Returns `x`
+proc `$` *(x: cstring): string {.magic: "CStrToStr", noSideEffect.}
+  ## The stringify operator for a CString argument. Returns `x`
   ## converted to a string.
 
 proc `$` *(x: string): string {.magic: "StrToStr", noSideEffect.}
-  ## The stingify operator for a string argument. Returns `x`
+  ## The stringify operator for a string argument. Returns `x`
   ## as it is. This operator is useful for generic code, so
   ## that ``$expr`` also works if ``expr`` is already a string.
 
 proc `$` *[TEnum: enum](x: TEnum): string {.magic: "EnumToStr", noSideEffect.}
-  ## The stingify operator for an enumeration argument. This works for
+  ## The stringify operator for an enumeration argument. This works for
   ## any enumeration type thanks to compiler magic. If
   ## a ``$`` operator for a concrete enumeration is provided, this is
   ## used instead. (In other words: *Overwriting* is possible.)
@@ -1259,13 +1399,13 @@ proc getRefcount*[T](x: seq[T]): int {.importc: "getRefcount", noSideEffect.}
   ## retrieves the reference count of an heap-allocated object. The
   ## value is implementation-dependent.
 
-# new constants:
+
 const
-  inf* {.magic: "Inf".} = 1.0 / 0.0
+  Inf* {.magic: "Inf".} = 1.0 / 0.0
     ## contains the IEEE floating point value of positive infinity.
-  neginf* {.magic: "NegInf".} = -inf
+  NegInf* {.magic: "NegInf".} = -Inf
     ## contains the IEEE floating point value of negative infinity.
-  nan* {.magic: "NaN".} = 0.0 / 0.0
+  NaN* {.magic: "NaN".} = 0.0 / 0.0
     ## contains an IEEE floating point value of *Not A Number*. Note
     ## that you cannot compare a floating point value to this value
     ## and expect a reasonable result - use the `classify` procedure
@@ -1319,7 +1459,7 @@ iterator `||`*[S, T](a: S, b: T, annotation=""): T {.
   ## such isn't aware of the parallelism in your code! Be careful! Later
   ## versions of ``||`` will get proper support by Nimrod's code generator
   ## and GC.
-  nil
+  discard
 
 {.push stackTrace:off.}
 proc min*(x, y: int): int {.magic: "MinI", noSideEffect.} =
@@ -1367,12 +1507,16 @@ proc max*(x, y: float): float {.magic: "MaxF64", noSideEffect.} =
 {.pop.}
 
 proc clamp*[T](x, a, b: T): T =
-  ## limits the value ``x`` within the interval [a, b] 
+  ## limits the value ``x`` within the interval [a, b]
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert((1.4).clamp(0.0, 1.0) == 1.0)
+  ##   assert((0.5).clamp(0.0, 1.0) == 0.5)
   if x < a: return a
   if x > b: return b
   return x
 
-iterator items*[T](a: openarray[T]): T {.inline.} =
+iterator items*[T](a: openArray[T]): T {.inline.} =
   ## iterates over each item of `a`.
   var i = 0
   while i < len(a):
@@ -1387,20 +1531,6 @@ iterator items*[IX, T](a: array[IX, T]): T {.inline.} =
       yield a[i]
       if i >= high(IX): break
       inc(i)
-
-iterator items*[T](a: seq[T]): T {.inline.} =
-  ## iterates over each item of `a`.
-  var i = 0
-  while i < len(a):
-    yield a[i]
-    inc(i)
-
-iterator items*(a: string): char {.inline.} =
-  ## iterates over each item of `a`.
-  var i = 0
-  while i < len(a):
-    yield a[i]
-    inc(i)
 
 iterator items*[T](a: set[T]): T {.inline.} =
   ## iterates over each element of `a`. `items` iterates only over the
@@ -1425,7 +1555,7 @@ iterator items*(E: typedesc[enum]): E =
   for v in low(E)..high(E):
     yield v
 
-iterator pairs*[T](a: openarray[T]): tuple[key: int, val: T] {.inline.} =
+iterator pairs*[T](a: openArray[T]): tuple[key: int, val: T] {.inline.} =
   ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
   var i = 0
   while i < len(a):
@@ -1480,6 +1610,11 @@ proc `@`*[T](a: openArray[T]): seq[T] =
   for i in 0..a.len-1: result[i] = a[i]
 
 proc `&` *[T](x, y: seq[T]): seq[T] {.noSideEffect.} =
+  ## Concatenates two sequences.
+  ## Requires copying of the sequences.
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert(@[1, 2, 3, 4] & @[5, 6] == @[1, 2, 3, 4, 5, 6])
   newSeq(result, x.len + y.len)
   for i in 0..x.len-1:
     result[i] = x[i]
@@ -1487,12 +1622,22 @@ proc `&` *[T](x, y: seq[T]): seq[T] {.noSideEffect.} =
     result[i+x.len] = y[i]
 
 proc `&` *[T](x: seq[T], y: T): seq[T] {.noSideEffect.} =
+  ## Appends element y to the end of the sequence.
+  ## Requires copying of the sequence
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert(@[1, 2, 3] & 4 == @[1, 2, 3, 4])
   newSeq(result, x.len + 1)
   for i in 0..x.len-1:
     result[i] = x[i]
   result[x.len] = y
 
 proc `&` *[T](x: T, y: seq[T]): seq[T] {.noSideEffect.} =
+  ## Prepends the element x to the beginning of the sequence.
+  ## Requires copying of the sequence
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert(1 & @[2, 3, 4] == @[1, 2, 3, 4])
   newSeq(result, y.len + 1)
   result[0] = x
   for i in 0..y.len-1:
@@ -1503,7 +1648,7 @@ when not defined(NimrodVM):
     proc seqToPtr[T](x: seq[T]): pointer {.inline, nosideeffect.} =
       result = cast[pointer](x)
   else:
-    proc seqToPtr[T](x: seq[T]): pointer {.noStackFrame, nosideeffect.} =
+    proc seqToPtr[T](x: seq[T]): pointer {.asmNoStackFrame, nosideeffect.} =
       asm """return `x`"""
   
   proc `==` *[T](x, y: seq[T]): bool {.noSideEffect.} =
@@ -1642,37 +1787,45 @@ proc `$`*[T: tuple|object](x: T): string =
   ##   $(23, 45) == "(23, 45)"
   ##   $() == "()"
   result = "("
+  var firstElement = true
   for name, value in fieldPairs(x):
-    if result.len > 1: result.add(", ")
+    if not(firstElement): result.add(", ")
     result.add(name)
     result.add(": ")
     result.add($value)
+    firstElement = false
   result.add(")")
+  
+proc collectionToString[T](x: T, b, e: string): string =
+  result = b
+  var firstElement = true
+  for value in items(x):
+    if not firstElement: result.add(", ")
+    result.add($value)
+    firstElement = false
+  result.add(e)
 
-proc `$`*[T: set](x: T): string = 
+proc `$`*[T](x: set[T]): string = 
   ## generic ``$`` operator for sets that is lifted from the components
   ## of `x`. Example:
   ##
   ## .. code-block:: nimrod
   ##   ${23, 45} == "{23, 45}"
-  result = "{"
-  for value in items(x):
-    if result.len > 1: result.add(", ")
-    result.add($value)
-  result.add("}")
+  collectionToString(x, "{", "}")
+
+proc `$`*[T](x: seq[T]): string = 
+  ## generic ``$`` operator for seqs that is lifted from the components
+  ## of `x`. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   $(@[23, 45]) == "@[23, 45]"
+  collectionToString(x, "@[", "]")
 
 when false:
-  proc `$`*[T](a: openArray[T]): string = 
-    ## generic ``$`` operator for open arrays that is lifted from the elements
-    ## of `a`. Example:
-    ##
-    ## .. code-block:: nimrod
-    ##   $[23, 45] == "[23, 45]"
-    result = "["
-    for x in items(a):
-      if result.len > 1: result.add(", ")
-      result.add($x)
-    result.add("]")
+  # causes bootstrapping to fail as we use array of chars and cstring should
+  # match better ...
+  proc `$`*[T, IDX](x: array[IDX, T]): string = 
+    collectionToString(x, "[", "]")
 
 # ----------------- GC interface ---------------------------------------------
 
@@ -1786,7 +1939,7 @@ type
     len*: int           ## length of the inspectable slots
 
 when defined(JS):
-  proc add*(x: var string, y: cstring) {.noStackFrame.} =
+  proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
     asm """
       var len = `x`[0].length-1;
       for (var i = 0; i < `y`.length; ++i) {
@@ -1959,20 +2112,20 @@ when not defined(JS): #and not defined(NimrodVM):
         ## Template which expands to either stdout or stderr depending on
         ## `useStdoutAsStdmsg` compile-time switch.
 
-    proc Open*(f: var TFile, filename: string,
-               mode: TFileMode = fmRead, bufSize: int = -1): Bool {.tags: [].}
+    proc open*(f: var TFile, filename: string,
+               mode: TFileMode = fmRead, bufSize: int = -1): bool {.tags: [].}
       ## Opens a file named `filename` with given `mode`.
       ##
       ## Default mode is readonly. Returns true iff the file could be opened.
       ## This throws no exception if the file could not be opened.
 
-    proc Open*(f: var TFile, filehandle: TFileHandle,
-               mode: TFileMode = fmRead): Bool {.tags: [].}
+    proc open*(f: var TFile, filehandle: TFileHandle,
+               mode: TFileMode = fmRead): bool {.tags: [].}
       ## Creates a ``TFile`` from a `filehandle` with given `mode`.
       ##
       ## Default mode is readonly. Returns true iff the file could be opened.
       
-    proc Open*(filename: string,
+    proc open*(filename: string,
                mode: TFileMode = fmRead, bufSize: int = -1): TFile = 
       ## Opens a file named `filename` with given `mode`.
       ##
@@ -1989,22 +2142,24 @@ when not defined(JS): #and not defined(NimrodVM):
       ##
       ## Default mode is readonly. Returns true iff the file could be reopened.
 
-    proc Close*(f: TFile) {.importc: "fclose", header: "<stdio.h>", tags: [].}
+    proc close*(f: TFile) {.importc: "fclose", header: "<stdio.h>", tags: [].}
       ## Closes the file.
 
-    proc EndOfFile*(f: TFile): Bool {.tags: [].}
+    proc endOfFile*(f: TFile): bool {.tags: [].}
       ## Returns true iff `f` is at the end.
       
     proc readChar*(f: TFile): char {.
       importc: "fgetc", header: "<stdio.h>", tags: [FReadIO].}
       ## Reads a single character from the stream `f`.
-    proc FlushFile*(f: TFile) {.
+    proc flushFile*(f: TFile) {.
       importc: "fflush", header: "<stdio.h>", tags: [FWriteIO].}
       ## Flushes `f`'s buffer.
 
     proc readAll*(file: TFile): TaintedString {.tags: [FReadIO].}
-      ## Reads all data from the stream `file`. Raises an IO exception
-      ## in case of an error
+      ## Reads all data from the stream `file`.
+      ##
+      ## Raises an IO exception in case of an error. It is an error if the
+      ## current file position is not at the beginning of the file.
     
     proc readFile*(filename: string): TaintedString {.tags: [FReadIO].}
       ## Opens a file named `filename` for reading. Then calls `readAll`
@@ -2018,10 +2173,10 @@ when not defined(JS): #and not defined(NimrodVM):
 
     proc write*(f: TFile, r: float32) {.tags: [FWriteIO].}
     proc write*(f: TFile, i: int) {.tags: [FWriteIO].}
-    proc write*(f: TFile, i: biggestInt) {.tags: [FWriteIO].}
-    proc write*(f: TFile, r: biggestFloat) {.tags: [FWriteIO].}
+    proc write*(f: TFile, i: BiggestInt) {.tags: [FWriteIO].}
+    proc write*(f: TFile, r: BiggestFloat) {.tags: [FWriteIO].}
     proc write*(f: TFile, s: string) {.tags: [FWriteIO].}
-    proc write*(f: TFile, b: Bool) {.tags: [FWriteIO].}
+    proc write*(f: TFile, b: bool) {.tags: [FWriteIO].}
     proc write*(f: TFile, c: char) {.tags: [FWriteIO].}
     proc write*(f: TFile, c: cstring) {.tags: [FWriteIO].}
     proc write*(f: TFile, a: varargs[string, `$`]) {.tags: [FWriteIO].}
@@ -2047,13 +2202,13 @@ when not defined(JS): #and not defined(NimrodVM):
     proc getFileSize*(f: TFile): int64 {.tags: [FReadIO].}
       ## retrieves the file size (in bytes) of `f`.
 
-    proc ReadBytes*(f: TFile, a: var openarray[int8], start, len: int): int {.
+    proc readBytes*(f: TFile, a: var openArray[int8], start, len: int): int {.
       tags: [FReadIO].}
       ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
       ## the actual number of bytes that have been read which may be less than
       ## `len` (if not as many bytes are remaining), but not greater.
 
-    proc ReadChars*(f: TFile, a: var openarray[char], start, len: int): int {.
+    proc readChars*(f: TFile, a: var openArray[char], start, len: int): int {.
       tags: [FReadIO].}
       ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
       ## the actual number of bytes that have been read which may be less than
@@ -2064,13 +2219,13 @@ when not defined(JS): #and not defined(NimrodVM):
       ## the actual number of bytes that have been read which may be less than
       ## `len` (if not as many bytes are remaining), but not greater.
 
-    proc writeBytes*(f: TFile, a: openarray[int8], start, len: int): int {.
+    proc writeBytes*(f: TFile, a: openArray[int8], start, len: int): int {.
       tags: [FWriteIO].}
       ## writes the bytes of ``a[start..start+len-1]`` to the file `f`. Returns
       ## the number of actual written bytes, which may be less than `len` in case
       ## of an error.
 
-    proc writeChars*(f: tFile, a: openarray[char], start, len: int): int {.
+    proc writeChars*(f: TFile, a: openArray[char], start, len: int): int {.
       tags: [FWriteIO].}
       ## writes the bytes of ``a[start..start+len-1]`` to the file `f`. Returns
       ## the number of actual written bytes, which may be less than `len` in case
@@ -2192,7 +2347,7 @@ when not defined(JS): #and not defined(NimrodVM):
     const
       GenericSeqSize = (2 * sizeof(int))
       
-    proc getDiscriminant(aa: Pointer, n: ptr TNimNode): int =
+    proc getDiscriminant(aa: pointer, n: ptr TNimNode): int =
       sysAssert(n.kind == nkCase, "getDiscriminant: node != nkCase")
       var d: int
       var a = cast[TAddress](aa)
@@ -2203,7 +2358,7 @@ when not defined(JS): #and not defined(NimrodVM):
       else: sysAssert(false, "getDiscriminant: invalid n.typ.size")
       return d
 
-    proc selectBranch(aa: Pointer, n: ptr TNimNode): ptr TNimNode =
+    proc selectBranch(aa: pointer, n: ptr TNimNode): ptr TNimNode =
       var discr = getDiscriminant(aa, n)
       if discr <% n.len:
         result = n.sons[discr]
@@ -2225,8 +2380,19 @@ when not defined(JS): #and not defined(NimrodVM):
 
   when hostOS != "standalone":
     iterator lines*(filename: string): TaintedString {.tags: [FReadIO].} =
-      ## Iterate over any line in the file named `filename`.
-      ## If the file does not exist `EIO` is raised.
+      ## Iterates over any line in the file named `filename`.
+      ##
+      ## If the file does not exist `EIO` is raised. The trailing newline
+      ## character(s) are removed from the iterated lines. Example:
+      ##
+      ## .. code-block:: nimrod
+      ##   import strutils
+      ##
+      ##   proc transformLetters(filename: string) =
+      ##     var buffer = ""
+      ##     for line in filename.lines:
+      ##       buffer.add(line.replace("a", "0") & '\x0A')
+      ##     writeFile(filename, buffer)
       var f = open(filename)
       var res = TaintedString(newStringOfCap(80))
       while f.readLine(res): yield res
@@ -2234,6 +2400,17 @@ when not defined(JS): #and not defined(NimrodVM):
 
     iterator lines*(f: TFile): TaintedString {.tags: [FReadIO].} =
       ## Iterate over any line in the file `f`.
+      ##
+      ## The trailing newline character(s) are removed from the iterated lines.
+      ## Example:
+      ##
+      ## .. code-block:: nimrod
+      ##   proc countZeros(filename: TFile): tuple[lines, zeros: int] =
+      ##     for line in filename.lines:
+      ##       for letter in line:
+      ##         if letter == '0':
+      ##           result.zeros += 1
+      ##       result.lines += 1
       var res = TaintedString(newStringOfCap(80))
       while f.readLine(res): yield res
 
@@ -2271,12 +2448,32 @@ when not defined(JS): #and not defined(NimrodVM):
 
   when not defined(NimrodVM):
     proc likely*(val: bool): bool {.importc: "likely", nodecl, nosideeffect.}
-      ## can be used to mark a condition to be likely. This is a hint for the 
-      ## optimizer.
+      ## Hints the optimizer that `val` is likely going to be true.
+      ##
+      ## You can use this proc to decorate a branch condition. On certain
+      ## platforms this can help the processor predict better which branch is
+      ## going to be run. Example:
+      ##
+      ## .. code-block:: nimrod
+      ##   for value in inputValues:
+      ##     if likely(value <= 100):
+      ##       process(value)
+      ##     else:
+      ##       echo "Value too big!"
     
     proc unlikely*(val: bool): bool {.importc: "unlikely", nodecl, nosideeffect.}
-      ## can be used to mark a condition to be unlikely. This is a hint for the 
-      ## optimizer.
+      ## Hints the optimizer that `val` is likely going to be false.
+      ##
+      ## You can use this proc to decorate a branch condition. On certain
+      ## platforms this can help the processor predict better which branch is
+      ## going to be run. Example:
+      ##
+      ## .. code-block:: nimrod
+      ##   for value in inputValues:
+      ##     if unlikely(value > 100):
+      ##       echo "Value too big!"
+      ##     else:
+      ##       process(value)
       
     proc rawProc*[T: proc](x: T): pointer {.noSideEffect, inline.} =
       ## retrieves the raw proc pointer of the closure `x`. This is
@@ -2300,29 +2497,29 @@ when not defined(JS): #and not defined(NimrodVM):
 
 elif defined(JS):
   # Stubs:
-  proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} = nil
+  proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} = discard
 
-  proc GC_disable() = nil
-  proc GC_enable() = nil
-  proc GC_fullCollect() = nil
-  proc GC_setStrategy(strategy: TGC_Strategy) = nil
-  proc GC_enableMarkAndSweep() = nil
-  proc GC_disableMarkAndSweep() = nil
+  proc GC_disable() = discard
+  proc GC_enable() = discard
+  proc GC_fullCollect() = discard
+  proc GC_setStrategy(strategy: TGC_Strategy) = discard
+  proc GC_enableMarkAndSweep() = discard
+  proc GC_disableMarkAndSweep() = discard
   proc GC_getStatistics(): string = return ""
   
   proc getOccupiedMem(): int = return -1
   proc getFreeMem(): int = return -1
   proc getTotalMem(): int = return -1
 
-  proc dealloc(p: pointer) = nil
-  proc alloc(size: int): pointer = nil
-  proc alloc0(size: int): pointer = nil
-  proc realloc(p: Pointer, newsize: int): pointer = nil
+  proc dealloc(p: pointer) = discard
+  proc alloc(size: int): pointer = discard
+  proc alloc0(size: int): pointer = discard
+  proc realloc(p: Pointer, newsize: int): pointer = discard
 
-  proc allocShared(size: int): pointer = nil
-  proc allocShared0(size: int): pointer = nil
-  proc deallocShared(p: pointer) = nil
-  proc reallocShared(p: pointer, newsize: int): pointer = nil
+  proc allocShared(size: int): pointer = discard
+  proc allocShared0(size: int): pointer = discard
+  proc deallocShared(p: pointer) = discard
+  proc reallocShared(p: pointer, newsize: int): pointer = discard
 
   when defined(JS):
     include "system/jssys"
@@ -2457,11 +2654,11 @@ proc staticRead*(filename: string): string {.magic: "Slurp".}
   ## ``slurp`` is an alias for ``staticRead``.
 
 proc gorge*(command: string, input = ""): string {.
-  magic: "StaticExec".} = nil
+  magic: "StaticExec".} = discard
   ## This is an alias for ``staticExec``.
 
 proc staticExec*(command: string, input = ""): string {.
-  magic: "StaticExec".} = nil
+  magic: "StaticExec".} = discard
   ## Executes an external process at compile-time.
   ## if `input` is not an empty string, it will be passed as a standard input
   ## to the executed program.
@@ -2528,7 +2725,7 @@ proc instantiationInfo*(index = -1, fullPaths = false): tuple[
   ##         $pos.line, astToStr(code)]
   ##       assert false, "A test expecting failure succeeded?"
   ##     except exception:
-  ##       nil
+  ##       discard
   ##
   ##   proc tester(pos: int): int =
   ##     let
@@ -2547,7 +2744,7 @@ proc raiseAssert*(msg: string) {.noinline.} =
   sysFatal(EAssertionFailed, msg)
 
 when true:
-  proc hiddenRaiseAssert(msg: string) {.raises: [], tags: [].} =
+  proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
     # trick the compiler to not list ``EAssertionFailed`` when called
     # by ``assert``.
     type THide = proc (msg: string) {.noinline, raises: [], noSideEffect,
@@ -2560,11 +2757,11 @@ template assert*(cond: bool, msg = "") =
   ## raises an ``EAssertionFailure`` exception. However, the compiler may
   ## not generate any code at all for ``assert`` if it is advised to do so.
   ## Use ``assert`` for debugging purposes only.
-  bind instantiationInfo, hiddenRaiseAssert
+  bind instantiationInfo
+  mixin failedAssertImpl
   when compileOption("assertions"):
     {.line.}:
-      if not cond:
-        hiddenRaiseAssert(astToStr(cond) & ' ' & msg)
+      if not cond: failedAssertImpl(astToStr(cond) & ' ' & msg)
 
 template doAssert*(cond: bool, msg = "") =
   ## same as `assert` but is always turned on and not affected by the
@@ -2574,12 +2771,30 @@ template doAssert*(cond: bool, msg = "") =
     if not cond:
       raiseAssert(astToStr(cond) & ' ' & msg)
 
+iterator items*[T](a: seq[T]): T {.inline.} =
+  ## iterates over each item of `a`.
+  var i = 0
+  let L = len(a)
+  while i < L:
+    yield a[i]
+    inc(i)
+    assert(len(a) == L, "seq modified while iterating over it")
+
+iterator items*(a: string): char {.inline.} =
+  ## iterates over each item of `a`.
+  var i = 0
+  let L = len(a)
+  while i < L:
+    yield a[i]
+    inc(i)
+    assert(len(a) == L, "string modified while iterating over it")
+
 when not defined(nimhygiene):
   {.pragma: inject.}
 
-template onFailedAssert*(msg: expr, code: stmt): stmt =
-  ## Sets an assertion failure handler that will intercept any assert statements
-  ## following `onFailedAssert` in the current lexical scope.
+template onFailedAssert*(msg: expr, code: stmt): stmt {.dirty, immediate.} =
+  ## Sets an assertion failure handler that will intercept any assert
+  ## statements following `onFailedAssert` in the current lexical scope.
   ## Can be defined multiple times in a single function.
   ##  
   ## .. code-block:: nimrod
@@ -2596,8 +2811,8 @@ template onFailedAssert*(msg: expr, code: stmt): stmt =
   ##
   ##     assert(...)
   ##
-  template raiseAssert(msgIMPL: string): stmt =
-    let msg {.inject.} = msgIMPL
+  template failedAssertImpl(msgIMPL: string): stmt {.dirty, immediate.} =
+    let msg = msgIMPL
     code
 
 proc shallow*[T](s: var seq[T]) {.noSideEffect, inline.} =
@@ -2643,7 +2858,7 @@ when hostOS != "standalone":
       x[j+i] = item[j]
       inc(j)
 
-proc compiles*(x: expr): bool {.magic: "Compiles", noSideEffect.} =
+proc compiles*(x): bool {.magic: "Compiles", noSideEffect.} =
   ## Special compile-time procedure that checks whether `x` can be compiled
   ## without any semantic error.
   ## This can be used to check whether a type supports some operation:
@@ -2651,7 +2866,7 @@ proc compiles*(x: expr): bool {.magic: "Compiles", noSideEffect.} =
   ## .. code-block:: Nimrod
   ##   when not compiles(3 + 4):
   ##     echo "'+' for integers is available"
-  nil
+  discard
 
 when defined(initDebugger):
   initDebugger()
@@ -2692,4 +2907,13 @@ proc locals*(): TObject {.magic: "Locals", noSideEffect.} =
   ##   # -> name a with value something
   ##   # -> name b with value 4
   ##   # -> B is 1
-  nil
+  discard
+
+when not defined(booting):
+  type
+    semistatic*[T] = static[T] | T
+    # indicates a param of proc specialized for each static value,
+    # but also accepting run-time values
+
+  template isStatic*(x): expr = compiles(static(x))
+    # checks whether `x` is a value known at compile-time

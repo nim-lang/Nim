@@ -79,7 +79,7 @@ proc `==`(a: TStaticStr, b: cstring): bool =
 proc write(f: TFile, s: TStaticStr) =
   write(f, cstring(s.data))
 
-proc ListBreakPoints() =
+proc listBreakPoints() =
   write(stdout, EndbBeg)
   write(stdout, "| Breakpoints:\n")
   for b in listBreakpoints():
@@ -117,7 +117,7 @@ proc writeVariable(stream: TFile, slot: TVarSlot) =
   write(stream, " = ")
   writeln(stream, dbgRepr(slot.address, slot.typ))
 
-proc ListFrame(stream: TFile, f: PFrame) =
+proc listFrame(stream: TFile, f: PFrame) =
   write(stream, EndbBeg)
   write(stream, "| Frame (")
   write(stream, f.len)
@@ -126,7 +126,7 @@ proc ListFrame(stream: TFile, f: PFrame) =
     writeln(stream, getLocal(f, i).name)
   write(stream, EndbEnd)
 
-proc ListLocals(stream: TFile, f: PFrame) =
+proc listLocals(stream: TFile, f: PFrame) =
   write(stream, EndbBeg)
   write(stream, "| Frame (")
   write(stream, f.len)
@@ -135,7 +135,7 @@ proc ListLocals(stream: TFile, f: PFrame) =
     writeVariable(stream, getLocal(f, i))
   write(stream, EndbEnd)
 
-proc ListGlobals(stream: TFile) =
+proc listGlobals(stream: TFile) =
   write(stream, EndbBeg)
   write(stream, "| Globals:\n")
   for i in 0 .. getGlobalLen()-1:
@@ -179,7 +179,7 @@ proc scanAndAppendWord(src: cstring, a: var TStaticStr, start: int): int =
   while True:
     case src[result]
     of 'a'..'z', '0'..'9': add(a, src[result])
-    of '_': nil # just skip it
+    of '_': discard # just skip it
     of 'A'..'Z': add(a, chr(ord(src[result]) - ord('A') + ord('a')))
     else: break
     inc(result)
@@ -203,7 +203,7 @@ proc scanNumber(src: cstring, a: var int, start: int): int =
   while true:
     case src[result]
     of '0'..'9': a = a * 10 + ord(src[result]) - ord('0')
-    of '_': nil # skip underscores (nice for long line numbers)
+    of '_': discard # skip underscores (nice for long line numbers)
     else: break
     inc(result)
 
@@ -240,7 +240,7 @@ g, globals              display available global variables
 maxdisplay <integer>    set the display's recursion maximum
 """)
 
-proc InvalidCommand() =
+proc invalidCommand() =
   debugOut("[Warning] invalid command ignored (type 'h' for help) ")
 
 proc hasExt(s: cstring): bool =
@@ -272,7 +272,7 @@ proc createBreakPoint(s: cstring, start: int) =
     if not addBreakpoint(br.filename, br.low, br.high):
       debugOut("[Warning] no breakpoint could be set; out of breakpoint space ")
 
-proc BreakpointToggle(s: cstring, start: int) =
+proc breakpointToggle(s: cstring, start: int) =
   var a = parseBreakpoint(s, start)
   if not a.filename.isNil:
     var b = checkBreakpoints(a.filename, a.low)
@@ -316,13 +316,13 @@ proc dbgStackFrame(s: cstring, start: int, currFrame: PFrame) =
   var i = scanFilename(s, dbgTemp, start)
   if dbgTemp.len == 0:
     # just write it to stdout:
-    ListFrame(stdout, currFrame)
+    listFrame(stdout, currFrame)
   else:
     var stream = openAppend(dbgTemp.data)
     if stream == nil:
       debugOut("[Warning] could not open or create file ")
       return
-    ListFrame(stream, currFrame)
+    listFrame(stream, currFrame)
     close(stream)
 
 proc readLine(f: TFile, line: var TStaticStr): bool =
@@ -339,7 +339,7 @@ proc readLine(f: TFile, line: var TStaticStr): bool =
     add line, chr(int(c))
   result = true
 
-proc ListFilenames() =
+proc listFilenames() =
   write(stdout, EndbBeg)
   write(stdout, "| Files:\n")
   var i = 0
@@ -352,7 +352,7 @@ proc ListFilenames() =
   write(stdout, EndbEnd)
 
 proc dbgWriteStackTrace(f: PFrame)
-proc CommandPrompt() =
+proc commandPrompt() =
   # if we return from this routine, user code executes again
   var
     again = True
@@ -426,11 +426,11 @@ proc CommandPrompt() =
     elif ?"b" or ?"break":
       createBreakPoint(dbgUser.data, i)
     elif ?"breakpoints":
-      ListBreakPoints()
+      listBreakPoints()
     elif ?"toggle":
-      BreakpointToggle(dbgUser.data, i)
+      breakpointToggle(dbgUser.data, i)
     elif ?"filenames":
-      ListFilenames()
+      listFilenames()
     elif ?"maxdisplay":
       var parsed: int
       i = scanNumber(dbgUser.data, parsed, i)
@@ -438,15 +438,15 @@ proc CommandPrompt() =
         if parsed == 0: maxDisplayRecDepth = -1
         else: maxDisplayRecDepth = parsed
       else:
-        InvalidCommand()
-    else: InvalidCommand()
+        invalidCommand()
+    else: invalidCommand()
 
 proc endbStep() =
   # we get into here if an unhandled exception has been raised
   # XXX: do not allow the user to run the program any further?
   # XXX: BUG: the frame is lost here!
   dbgShowExecutionPoint()
-  CommandPrompt()
+  commandPrompt()
 
 proc dbgWriteStackTrace(f: PFrame) =
   const
@@ -506,25 +506,25 @@ proc checkForBreakpoint =
     write(stdout, ") ")
     write(stdout, framePtr.procname)
     write(stdout, " ***\n")
-    CommandPrompt()
+    commandPrompt()
 
 proc lineHookImpl() {.nimcall.} =
   case dbgState
   of dbStepInto:
     # we really want the command prompt here:
     dbgShowExecutionPoint()
-    CommandPrompt()
+    commandPrompt()
   of dbSkipCurrent, dbStepOver: # skip current routine
     if framePtr == dbgSkipToFrame:
       dbgShowExecutionPoint()
-      CommandPrompt()
+      commandPrompt()
     else:
       # breakpoints are wanted though (I guess)
       checkForBreakpoint()
   of dbBreakpoints:
     # debugger is only interested in breakpoints
     checkForBreakpoint()
-  else: nil
+  else: discard
 
 proc watchpointHookImpl(name: cstring) {.nimcall.} =
   dbgWriteStackTrace(framePtr)

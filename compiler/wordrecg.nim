@@ -28,9 +28,9 @@ type
     wElif, wElse, wEnd, wEnum, wExcept, wExport,
     wFinally, wFor, wFrom, wGeneric, wIf, wImport, wIn, 
     wInclude, wInterface, wIs, wIsnot, wIterator, wLambda, wLet,
-    wMacro, wMethod, wMixin, wUsing, wMod, wNil, 
+    wMacro, wMethod, wMixin, wMod, wNil, 
     wNot, wNotin, wObject, wOf, wOr, wOut, wProc, wPtr, wRaise, wRef, wReturn, 
-    wShared, wShl, wShr, wStatic, wTemplate, wTry, wTuple, wType, wVar, 
+    wShared, wShl, wShr, wStatic, wTemplate, wTry, wTuple, wType, wUsing, wVar, 
     wWhen, wWhile, wWith, wWithout, wXor, wYield,
     
     wColon, wColonColon, wEquals, wDot, wDotDot,
@@ -62,8 +62,8 @@ type
     wWatchPoint, wSubsChar, 
     wAcyclic, wShallow, wUnroll, wLinearScanEnd, wComputedGoto, wInjectStmt,
     wWrite, wGensym, wInject, wDirty, wInheritable, wThreadVar, wEmit, 
-    wNoStackFrame,
-    wImplicitStatic, wGlobal, wCodegenDecl,
+    wAsmNoStackFrame,
+    wImplicitStatic, wGlobal, wCodegenDecl, wUnchecked,
 
     wAuto, wBool, wCatch, wChar, wClass,
     wConst_cast, wDefault, wDelete, wDouble, wDynamic_cast,
@@ -72,7 +72,7 @@ type
     wPrivate, wProtected, wPublic, wRegister, wReinterpret_cast,
     wShort, wSigned, wSizeof, wStatic_cast, wStruct, wSwitch,
     wThis, wThrow, wTrue, wTypedef, wTypeid, wTypename,
-    wUnion, wUnsigned, wVirtual, wVoid, wVolatile, wWchar_t,
+    wUnion, wPacked, wUnsigned, wVirtual, wVoid, wVolatile, wWchar_t,
 
     wAlignas, wAlignof, wConstexpr, wDecltype, wNullptr, wNoexcept,
     wThread_local, wStatic_assert, wChar16_t, wChar32_t,
@@ -95,7 +95,7 @@ const
   
   cppNimSharedKeywords* = {
     wAsm, wBreak, wCase, wConst, wContinue, wDo, wElse, wEnum, wExport,
-    wFor, wIf, wReturn, wStatic, wTemplate, wTry, wWhile, wUsing }
+    wFor, wIf, wReturn, wStatic, wTemplate, wTry, wWhile, wUsing}
 
   specialWords*: array[low(TSpecialWord)..high(TSpecialWord), string] = ["", 
     
@@ -107,11 +107,11 @@ const
     "finally", "for", "from", "generic", "if", 
     "import", "in", "include", "interface", "is", "isnot", "iterator",
     "lambda", "let",
-    "macro", "method", "mixin", "using", "mod", "nil", "not", "notin",
+    "macro", "method", "mixin", "mod", "nil", "not", "notin",
     "object", "of", "or", 
     "out", "proc", "ptr", "raise", "ref", "return",
     "shared", "shl", "shr", "static",
-    "template", "try", "tuple", "type", "var", 
+    "template", "try", "tuple", "type", "using", "var", 
     "when", "while", "with", "without", "xor",
     "yield",
 
@@ -145,7 +145,7 @@ const
     "subschar", "acyclic", "shallow", "unroll", "linearscanend",
     "computedgoto", "injectstmt",
     "write", "gensym", "inject", "dirty", "inheritable", "threadvar", "emit",
-    "nostackframe", "implicitstatic", "global", "codegendecl",
+    "asmnostackframe", "implicitstatic", "global", "codegendecl", "unchecked",
     
     "auto", "bool", "catch", "char", "class",
     "const_cast", "default", "delete", "double",
@@ -155,7 +155,7 @@ const
     "private", "protected", "public", "register", "reinterpret_cast",
     "short", "signed", "sizeof", "static_cast", "struct", "switch",
     "this", "throw", "true", "typedef", "typeid",
-    "typename", "union", "unsigned", "virtual", "void", "volatile",
+    "typename", "union", "packed", "unsigned", "virtual", "void", "volatile",
     "wchar_t",
 
     "alignas", "alignof", "constexpr", "decltype", "nullptr", "noexcept",
@@ -166,7 +166,7 @@ const
     "inout", "bycopy", "byref", "oneway",
     ]
 
-proc findStr*(a: openarray[string], s: string): int = 
+proc findStr*(a: openArray[string], s: string): int = 
   for i in countup(low(a), high(a)): 
     if cmpIgnoreStyle(a[i], s) == 0: 
       return i
@@ -176,7 +176,7 @@ proc whichKeyword*(id: PIdent): TSpecialWord =
   if id.id < 0: result = wInvalid
   else: result = TSpecialWord(id.id)
 
-proc whichKeyword*(id: String): TSpecialWord = 
+proc whichKeyword*(id: string): TSpecialWord = 
   result = whichKeyword(getIdent(id))
   
 proc initSpecials() = 
