@@ -302,7 +302,7 @@ type
                                         ## value does not fit.
 
   EOutOfRange* = object of ESynch       ## is raised if a range check error
-                                        ## occured.
+                                        ## occurred.
 
   EStackOverflow* = object of ESystem   ## is raised if the hardware stack
                                         ## used for subroutine calls overflowed.
@@ -534,6 +534,10 @@ proc `div` *(x, y: int32): int32 {.magic: "DivI", noSideEffect.}
 proc `div` *(x, y: int64): int64 {.magic: "DivI64", noSideEffect.}
   ## computes the integer division. This is roughly the same as
   ## ``floor(x/y)``.
+  ## .. code-block:: Nimrod
+  ##   1 div 2 == 0
+  ##   2 div 2 == 1
+  ##   3 div 2 == 1
 
 proc `mod` *(x, y: int): int {.magic: "ModI", noSideEffect.}
 proc `mod` *(x, y: int8): int8 {.magic: "ModI", noSideEffect.}
@@ -549,6 +553,10 @@ proc `shr` *(x, y: int16): int16 {.magic: "ShrI", noSideEffect.}
 proc `shr` *(x, y: int32): int32 {.magic: "ShrI", noSideEffect.}
 proc `shr` *(x, y: int64): int64 {.magic: "ShrI64", noSideEffect.}
   ## computes the `shift right` operation of `x` and `y`.
+  ## .. code-block:: Nimrod
+  ##   0b0001_0000'i8 shr 2 == 0b0100_0000'i8
+  ##   0b1000_0000'i8 shr 2 == 0b0000_0000'i8
+  ##   0b0000_0001'i8 shr 9 == 0b0000_0000'i8
 
 proc `shl` *(x, y: int): int {.magic: "ShlI", noSideEffect.}
 proc `shl` *(x, y: int8): int8 {.magic: "ShlI", noSideEffect.}
@@ -741,15 +749,49 @@ proc contains*[T](x: set[T], y: T): bool {.magic: "InSet", noSideEffect.}
   ## passes its arguments in reverse order.
 
 proc contains*[T](s: TSlice[T], value: T): bool {.noSideEffect, inline.} =
+  ## Checks if `value` is withing the range of `s`; returns true iff
+  ## `value >= s.a and value <= s.b`
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert((1..3).contains(1) == true)
+  ##   assert((1..3).contains(2) == true)
+  ##   assert((1..3).contains(4) == false)
   result = s.a <= value and value <= s.b
 
 template `in` * (x, y: expr): expr {.immediate.} = contains(y, x)
+  ## Suger for contains
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert(1 in (1..3) == true)
+  ##   assert(5 in (1..3) == false)
 template `notin` * (x, y: expr): expr {.immediate.} = not contains(y, x)
+  ## Sugar for not containing
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert(1 notin (1..3) == false)
+  ##   assert(5 notin (1..3) == true)
 
 proc `is` *[T, S](x: T, y: S): bool {.magic: "Is", noSideEffect.}
+  ## Checks if T is of the same type as S
+  ## 
+  ## .. code-block:: Nimrod
+  ##   proc test[T](a: T): int =
+  ##     when (T is int):
+  ##       return a
+  ##     else:
+  ##       return 0
+  ##
+  ##   assert(test[int](3) == 3)
+  ##   assert(test[string]("xyz") == 0)
 template `isnot` *(x, y: expr): expr {.immediate.} = not (x is y)
-
+  ## Negated version of `is`. Equivalent to `not(is(x,y))`
 proc `of` *[T, S](x: T, y: S): bool {.magic: "Of", noSideEffect.}
+  ## Checks if `x` has a type of `y`
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert(EFloatingPoint is EBase)
+  ##   assert(EIO is ESystem)
+  ##   assert(EDivByZero is EBase)
 
 proc cmp*[T](x, y: T): int {.procvar.} =
   ## Generic compare proc. Returns a value < 0 iff x < y, a value > 0 iff x > y
@@ -800,19 +842,48 @@ proc newStringOfCap*(cap: int): string {.
 
 proc `&` * (x: string, y: char): string {.
   magic: "ConStrStr", noSideEffect, merge.}
+  ## Concatenates `x` with `y`
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert("ab" & 'c' == "abc")
 proc `&` * (x: char, y: char): string {.
   magic: "ConStrStr", noSideEffect, merge.}
+  ## Concatenates `x` and `y` into a string
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert('a' & 'b' == "ab")
 proc `&` * (x, y: string): string {.
   magic: "ConStrStr", noSideEffect, merge.}
+  ## Concatenates `x` and `y`
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert("ab" & "cd" == "abcd")
 proc `&` * (x: char, y: string): string {.
   magic: "ConStrStr", noSideEffect, merge.}
-  ## is the `concatenation operator`. It concatenates `x` and `y`.
+  ## Concatenates `x` with `y`
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert('a' & "bc" == "abc")
 
 # implementation note: These must all have the same magic value "ConStrStr" so
 # that the merge optimization works properly. 
 
 proc add*(x: var string, y: char) {.magic: "AppendStrCh", noSideEffect.}
+  ## Appends `y` to `x` in place
+  ##
+  ## .. code-block:: Nimrod
+  ##   var tmp = ""
+  ##   tmp.add('a')
+  ##   tmp.add('b')
+  ##   assert(tmp == "ab")
 proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
+  ## Concatenates `x` and `y` in place
+  ##
+  ## .. code-block:: Nimrod
+  ##   var tmp = ""
+  ##   tmp.add("ab")
+  ##   tmp.add("cd")
+  ##   assert(tmp == "abcd")
 
 type
   TEndian* = enum ## is a type describing the endianness of a processor.
@@ -922,9 +993,9 @@ const
     ## failure.
 
 var programResult* {.exportc: "nim_program_result".}: int
-  ## modify this varialbe to specify the exit code of the program
+  ## modify this variable to specify the exit code of the program
   ## under normal circumstances. When the program is terminated
-  ## prematurelly using ``quit``, this value is ignored.
+  ## prematurely using ``quit``, this value is ignored.
 
 proc quit*(errorcode: int = QuitSuccess) {.
   magic: "Exit", importc: "exit", header: "<stdlib.h>", noReturn.}
@@ -1281,42 +1352,42 @@ template `>%` *(x, y: expr): expr {.immediate.} = y <% x
   ## Returns true iff ``unsigned(x) > unsigned(y)``.
 
 proc `$` *(x: int): string {.magic: "IntToStr", noSideEffect.}
-  ## The stingify operator for an integer argument. Returns `x`
+  ## The stringify operator for an integer argument. Returns `x`
   ## converted to a decimal string.
 
 proc `$` *(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
-  ## The stingify operator for an integer argument. Returns `x`
+  ## The stringify operator for an integer argument. Returns `x`
   ## converted to a decimal string.
 
 when not defined(NimrodVM):
   when not defined(JS) and hostOS != "standalone":
     proc `$` *(x: uint64): string {.noSideEffect.}
-      ## The stingify operator for an unsigned integer argument. Returns `x`
+      ## The stringify operator for an unsigned integer argument. Returns `x`
       ## converted to a decimal string.
 
 proc `$` *(x: float): string {.magic: "FloatToStr", noSideEffect.}
-  ## The stingify operator for a float argument. Returns `x`
+  ## The stringify operator for a float argument. Returns `x`
   ## converted to a decimal string.
 
 proc `$` *(x: bool): string {.magic: "BoolToStr", noSideEffect.}
-  ## The stingify operator for a boolean argument. Returns `x`
+  ## The stringify operator for a boolean argument. Returns `x`
   ## converted to the string "false" or "true".
 
 proc `$` *(x: char): string {.magic: "CharToStr", noSideEffect.}
-  ## The stingify operator for a character argument. Returns `x`
+  ## The stringify operator for a character argument. Returns `x`
   ## converted to a string.
 
 proc `$` *(x: cstring): string {.magic: "CStrToStr", noSideEffect.}
-  ## The stingify operator for a CString argument. Returns `x`
+  ## The stringify operator for a CString argument. Returns `x`
   ## converted to a string.
 
 proc `$` *(x: string): string {.magic: "StrToStr", noSideEffect.}
-  ## The stingify operator for a string argument. Returns `x`
+  ## The stringify operator for a string argument. Returns `x`
   ## as it is. This operator is useful for generic code, so
   ## that ``$expr`` also works if ``expr`` is already a string.
 
 proc `$` *[TEnum: enum](x: TEnum): string {.magic: "EnumToStr", noSideEffect.}
-  ## The stingify operator for an enumeration argument. This works for
+  ## The stringify operator for an enumeration argument. This works for
   ## any enumeration type thanks to compiler magic. If
   ## a ``$`` operator for a concrete enumeration is provided, this is
   ## used instead. (In other words: *Overwriting* is possible.)
@@ -1436,7 +1507,11 @@ proc max*(x, y: float): float {.magic: "MaxF64", noSideEffect.} =
 {.pop.}
 
 proc clamp*[T](x, a, b: T): T =
-  ## limits the value ``x`` within the interval [a, b] 
+  ## limits the value ``x`` within the interval [a, b]
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert((1.4).clamp(0.0, 1.0) == 1.0)
+  ##   assert((0.5).clamp(0.0, 1.0) == 0.5)
   if x < a: return a
   if x > b: return b
   return x
@@ -1535,6 +1610,11 @@ proc `@`*[T](a: openArray[T]): seq[T] =
   for i in 0..a.len-1: result[i] = a[i]
 
 proc `&` *[T](x, y: seq[T]): seq[T] {.noSideEffect.} =
+  ## Concatenates two sequences.
+  ## Requires copying of the sequences.
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert(@[1, 2, 3, 4] & @[5, 6] == @[1, 2, 3, 4, 5, 6])
   newSeq(result, x.len + y.len)
   for i in 0..x.len-1:
     result[i] = x[i]
@@ -1542,12 +1622,22 @@ proc `&` *[T](x, y: seq[T]): seq[T] {.noSideEffect.} =
     result[i+x.len] = y[i]
 
 proc `&` *[T](x: seq[T], y: T): seq[T] {.noSideEffect.} =
+  ## Appends element y to the end of the sequence.
+  ## Requires copying of the sequence
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert(@[1, 2, 3] & 4 == @[1, 2, 3, 4])
   newSeq(result, x.len + 1)
   for i in 0..x.len-1:
     result[i] = x[i]
   result[x.len] = y
 
 proc `&` *[T](x: T, y: seq[T]): seq[T] {.noSideEffect.} =
+  ## Prepends the element x to the beginning of the sequence.
+  ## Requires copying of the sequence
+  ##
+  ## .. code-block:: Nimrod
+  ##   assert(1 & @[2, 3, 4] == @[1, 2, 3, 4])
   newSeq(result, y.len + 1)
   result[0] = x
   for i in 0..y.len-1:
