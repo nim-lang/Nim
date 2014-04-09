@@ -19,7 +19,7 @@ when defined(Windows):
 type 
   my_bool* = bool
   Pmy_bool* = ptr my_bool
-  PVIO* = Pointer
+  PVIO* = pointer
   Pgptr* = ptr gptr
   gptr* = cstring
   Pmy_socket* = ptr my_socket
@@ -645,7 +645,7 @@ type
     next_slave*: Pst_mysql
     last_used_slave*: Pst_mysql # needed for round-robin slave pick
     last_used_con*: Pst_mysql # needed for send/read/store/use result to work correctly with replication
-    stmts*: Pointer           # was PList, list of all statements
+    stmts*: pointer           # was PList, list of all statements
     methods*: Pst_mysql_methods
     thd*: pointer #   Points to boolean flag in MYSQL_RES  or MYSQL_STMT. We set this flag
                   #        from mysql_stmt_close if close had to cancel result set of this object.       
