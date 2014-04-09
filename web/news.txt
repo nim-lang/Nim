@@ -145,6 +145,7 @@ Language Additions
 - Anonymous iterators are now supported and iterators can capture variables
   of an outer proc.
 - The experimental ``strongSpaces`` parsing mode has been implemented.
+- You can annotate pointer types with regions for increased type safety.
 
 
 Tools improvements

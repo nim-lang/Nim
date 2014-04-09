@@ -738,27 +738,17 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         result = typeRel(c, f.sons[0], a.sons[0])
         if result <= isConvertible: 
           result = isNone     # BUGFIX!
-  of tyPtr: 
-    case a.kind
-    of tyPtr:
-      for i in 0..min(f.len, a.len)-2:
+  of tyPtr, tyRef:
+    if a.kind == f.kind:
+      # ptr[R, T] can be passed to ptr[T], but not the other way round:
+      if a.len < f.len: return isNone
+      for i in 0..f.len-2:
         if typeRel(c, f.sons[i], a.sons[i]) == isNone: return isNone
       result = typeRel(c, f.lastSon, a.lastSon)
       if result <= isConvertible: result = isNone
       elif tfNotNil in f.flags and tfNotNil notin a.flags:
         result = isNilConversion
-    of tyNil: result = f.allowsNil
-    else: discard
-  of tyRef: 
-    case a.kind
-    of tyRef:
-      for i in 0..min(f.len, a.len)-2:
-        if typeRel(c, f.sons[i], a.sons[i]) == isNone: return isNone
-      result = typeRel(c, base(f), base(a))
-      if result <= isConvertible: result = isNone
-      elif tfNotNil in f.flags and tfNotNil notin a.flags:
-        result = isNilConversion
-    of tyNil: result = f.allowsNil
+    elif a.kind == tyNil: result = f.allowsNil
     else: discard
   of tyProc:
     result = procTypeRel(c, f, a)
@@ -774,7 +764,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     of tyNil: result = f.allowsNil
     of tyProc:
       if a.callConv != ccClosure: result = isConvertible
-    of tyPtr, tyCString: result = isConvertible
+    of tyPtr:
+      # 'pointer' is NOT compatible to regionized pointers
+      # so 'dealloc(regionPtr)' fails:
+      if a.len == 1: result = isConvertible
+    of tyCString: result = isConvertible
     else: discard
   of tyString: 
     case a.kind

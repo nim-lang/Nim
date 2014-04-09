@@ -1366,6 +1366,65 @@ not nilable pointers. The details of this analysis are still to be specified
 here.
 
 
+Memory regions
+--------------
+
+The types ``ref`` and ``ptr`` can get an optional `region`:idx: annotation.
+A region has to be an object type.
+
+Regions are very useful to separate user space and kernel memory in the
+development of OS kernels:
+
+.. code-block:: nimrod
+  type
+    Kernel = object
+    Userspace = object
+
+  var a: ptr[Kernel, Stat]
+  var b: ptr[Userspace, Stat]
+
+  # the following does not compile as the pointer types are incompatible:
+  a = b
+
+In order to make generic code easier tor write ``ptr T`` is a subtype
+of ``ptr[R, T]`` for any ``R``.
+
+Furthermore the subtype relation of the region object types is lifted to
+the pointer types: If ``A <: B`` then ``ptr[T, A] <: ptr[T, B]``. This can be
+used to model subregions of memory. As a special typing rule ``ptr[R, T]`` is
+not compatible to ``pointer`` to prevent the following from compiling:
+
+.. code-block:: nimrod
+  # from system
+  proc dealloc(p: pointer)
+
+  # wrap some scripting language
+  type
+    PythonsHeap = object
+    PyObjectHeader = object
+      rc: int
+      typ: pointer
+    PyObject = ptr[PythonsHeap, PyObjectHeader]
+
+  proc createPyObject(): PyObject {.importc: "...".}
+  proc destroyPyObject(x: PyObject) {.importc: "...".}
+
+  var foo = createPyObject()
+  # type error here, how convenient:
+  dealloc(foo)
+
+
+Future directions:
+
+* Memory regions might become available for  ``string`` and ``seq`` too.
+* Bultin regions like ``private``, ``global`` and ``local`` will
+  prove very useful for the upcoming OpenCL target.
+* Bultin "regions" can model ``lent`` and ``unique`` pointers.
+* Syntactially ``ptr`` might become an infix operator so that ``region ptr T``
+  is transformed into ``ptr[region, T]``.
+
+
+
 Procedural type
 ---------------
 A `procedural type`:idx: is internally a pointer to a procedure. ``nil`` is
