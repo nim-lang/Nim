@@ -84,9 +84,7 @@ proc parseStatus(r: TRedis, line: string = ""): TRedisStatus =
   return line.substr(1) # Strip '+'
 
 proc readStatus(r:TRedis): TRedisStatus =
-  echo "top of readStatus"
   r.readSocket("OK")
-  echo "line is " & line
   return r.parseStatus(line)
  
 proc parseInteger(r: TRedis, line: string = ""): TRedisInteger =
