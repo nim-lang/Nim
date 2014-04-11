@@ -573,3 +573,35 @@ Scientific computing
 
 * `libsvm <libsvm.html>`_ 
   Low level wrapper for `lib svm <http://www.csie.ntu.edu.tw/~cjlin/libsvm/>`_.
+
+Babel
+====================
+
+Babel is a package manager for the Nimrod programming language.
+For instructions on how to install Babel packages see
+`its README <https://github.com/nimrod-code/babel#readme>`_.
+
+Official packages
+-----------------
+
+These packages are officially supported and will therefore be continually
+maintained to ensure that they work with the latest versions of the Nimrod
+compiler.
+
+.. raw:: html
+
+  <div id="officialPkgList"></div>
+
+Unofficial packages
+-------------------
+
+These packages have been developed by independent Nimrod developers and as
+such may not always be up to date with the latest developments in the
+Nimrod programming language.
+
+.. raw:: html
+
+  <div id="unofficialPkgList"></div>
+
+  <script type="text/javascript" src="babelpkglist.js"></script>
+  <script type="text/javascript" src="http://build.nimrod-lang.org/packages?callback=gotPackageList"></script>

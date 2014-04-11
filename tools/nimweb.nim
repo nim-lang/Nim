@@ -348,6 +348,10 @@ proc buildNewsRss(c: var TConfigData, destPath: string) =
 
   generateRss(destFilename, parseNewsTitles(srcFilename))
 
+proc buildJS(destPath: string) =
+  exec("nimrod js -d:release --out:$1 web/babelpkglist.nim" %
+      [destPath / "babelpkglist.js"])
+
 proc main(c: var TConfigData) =
   const
     cmd = "nimrod rst2html --compileonly $1 -o:web/$2.temp web/$2.txt"
@@ -377,6 +381,7 @@ proc main(c: var TConfigData) =
       quit("[Error] cannot write file: " & outfile)
     removeFile(temp)
   copyDir("web/assets", "web/upload/assets")
+  buildJS("web/upload")
   buildNewsRss(c, "web/upload")
   buildAddDoc(c, "web/upload")
   buildDocSamples(c, "web/upload")
