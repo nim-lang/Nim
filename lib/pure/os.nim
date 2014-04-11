@@ -448,6 +448,8 @@ proc getLastAccessTime*(file: string): TTime {.rtl, extern: "nos$1".} =
 
 proc getCreationTime*(file: string): TTime {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s creation time.
+  ## Note that under posix OS's, the returned time may actually be the time at
+  ## which the file's attribute's were last modified.
   when defined(posix):
     var res: TStat
     if stat(file, res) < 0'i32: osError(osLastError())
@@ -777,6 +779,25 @@ proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1".} =
   elif defined(posix):
     result = path[0] == '/'
 
+when defined(Windows):
+  proc openHandle(path: string, followSymlink=true): THandle =
+    var flags = FILE_FLAG_BACKUP_SEMANTICS or FILE_ATTRIBUTE_NORMAL
+    if not followSymlink:
+      flags = flags or FILE_FLAG_OPEN_REPARSE_POINT
+
+    when useWinUnicode:
+      result = createFileW(
+        newWideCString(path), 0'i32, 
+        FILE_SHARE_DELETE or FILE_SHARE_READ or FILE_SHARE_WRITE,
+        nil, OPEN_EXISTING, flags, 0
+        )
+    else:
+      result = createFileA(
+        path, 0'i32, 
+        FILE_SHARE_DELETE or FILE_SHARE_READ or FILE_SHARE_WRITE,
+        nil, OPEN_EXISTING, flags, 0
+        )
+
 proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
   tags: [FReadDir].} =
   ## Returns True if both pathname arguments refer to the same physical
@@ -787,26 +808,8 @@ proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
   ## sym-linked paths to the same file or directory.
   when defined(Windows):
     var success = true
-
-    when useWinUnicode:
-      var p1 = newWideCString(path1)
-      var p2 = newWideCString(path2)
-      template openHandle(path: expr): expr =
-        createFileW(path, 0'i32, FILE_SHARE_DELETE or FILE_SHARE_READ or
-          FILE_SHARE_WRITE, nil, OPEN_EXISTING,
-          FILE_FLAG_BACKUP_SEMANTICS or FILE_ATTRIBUTE_NORMAL, 0)
-
-      var f1 = openHandle(p1)
-      var f2 = openHandle(p2)
-
-    else:
-      template openHandle(path: expr): expr =
-        createFileA(path, 0'i32, FILE_SHARE_DELETE or FILE_SHARE_READ or
-          FILE_SHARE_WRITE, nil, OPEN_EXISTING,
-          FILE_FLAG_BACKUP_SEMANTICS or FILE_ATTRIBUTE_NORMAL, 0)
-
-      var f1 = openHandle(path1)
-      var f2 = openHandle(path2)
+    var f1 = openHandle(path1)
+    var f2 = openHandle(path2)
 
     var lastErr: TOSErrorCode
     if f1 != INVALID_HANDLE_VALUE and f2 != INVALID_HANDLE_VALUE:
@@ -1746,5 +1749,85 @@ proc expandTilde*(path: string): string =
     result = getHomeDir() / path[2..len(path)-1]
   else:
     result = path
+
+when defined(Windows):
+  type
+    DeviceId = int32
+    FileId = int64
+type
+  FileInfo = object
+    ## Contains information associated with a file object.
+    id: tuple[device: DeviceId, file: FileId] # Device and file id.
+    kind: TPathComponent # Kind of file object - directory, symlink, etc.
+    size: BiggestInt # Size of file.
+    permissions: set[TFilePermission] # File permissions
+    linkCount: BiggestInt # Number of hard links the file object has.
+    lastAccessTime: TTime # Time file was last accessed.
+    lastWriteTime: TTime # Time file was last modified/written to.
+    creationTime: TTime # Time file was created. Not supported on all systems!
+
+
+proc getFileInfo*(handle: THandle, result: var FileInfo) =
+  ## Retrieves file information for the file object represented by the given
+  ## handle.
+  ##
+  ## If the information cannot be retrieved, such as when the file handle
+  ## is invalid, an error will be thrown.
+  # Done: ID, Kind, Size, Permissions, Link Count
+  when defined(Windows):
+    template toTime(e): expr = winTimeToUnixTime(rdFileTime(e))
+    var info: TBY_HANDLE_FILE_INFORMATION
+    if getFileInformationByHandle(handle, addr info) == 0:
+      osError(osLastError())
+    result.id.device = info.dwVolumeSerialNumber
+    result.id.file = info.nFileIndexLow or (info.nFileIndexHigh shl 32)
+    result.size = info.nFileSizeLow or (info.nFileSizeHigh shl 32)
+    result.linkCount = info.nNumberOfLinks
+    result.lastAccessTime = toTime(info.ftLastAccessTime)
+    result.lastWriteTime = toTime(info.ftLastWriteTime)
+    result.creationTime = toTime(info.ftCreationTime)
+    
+    # Retrieve permissions
+    # TODO - Use a more accurate method of getting permissions?
+    if (info.dwFileAttributes and FILE_ATTRIBUTE_READONLY) != 0'i32:
+      result.permissions = {fpUserExec, fpUserRead, fpGroupExec, fpGroupRead,
+                            fpOthersExec, fpOthersRead}
+    else:
+      result.permissions = {fpUserExec..fpOthersRead}
+
+    # Retrieve file kind
+    # Should we include more file kinds?
+    result.kind = pcFile
+    if (info.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) != 0'i32:
+      result.kind = pcDir
+    # Should we optimize for the case when it's definately known that the file
+    # isn't a symlink (see the below procedure's "followSymlink")
+    if (info.dwFileAttributes and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32:
+      result.kind = succ(result.kind)
+      
+  else:
+    var rawInfo: TStat
+    if stat(handle, rawInfo) < 0'i32: osError(osLastError())
+
+proc getFileInfo*(path: string, followSymlink = true): FileInfo =
+  ## Retrieves file information for the file object pointed to by `path`.
+  ## 
+  ## Due to intrinsic differences between operating systems, the information
+  ## contained by the returned `FileInfo` structure will be slightly different
+  ## across platforms, and in some cases, incomplete or inaccurate.
+  ## 
+  ## When `followSymlink` is true, symlinks are followed and the information
+  ## retrieved is information related to the symlink's target. Otherwise,
+  ## information on the symlink itself is retrieved.
+  ## 
+  ## If the information cannot be retrieved, such as when the path doesn't
+  ## exist, or when permission restrictions prevent the program from retrieving
+  ## file information, an error will be thrown.
+  when defined(Windows):
+    var handle = openHandle(path, followSymlink)
+    if handle == INVALID_HANDLE_VALUE:
+      osError(osLastError())
+    getFileInfo(handle, result)
+    closeHandle(handle)
 
 {.pop.}
