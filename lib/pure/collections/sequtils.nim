@@ -88,6 +88,71 @@ proc zip*[S, T](seq1: seq[S], seq2: seq[T]): seq[tuple[a: S, b: T]] =
   newSeq(result, m)
   for i in 0 .. m-1: result[i] = (seq1[i], seq2[i])
 
+proc split*[T](s: seq[T], num: int, spread = true): seq[seq[T]] =
+  ## Splits a sequence `s` into `num` sub sequences.
+  ##
+  ## Returns a sequence of `num` sequences. For some input values this is the
+  ## inverse of the `concat <#concat>`_ proc.  The proc will assert in debug
+  ## builds if `s` is nil or `num` is less than one, and will likely crash on
+  ## release builds.  The sequence `s` can be empty, which will produce `num`
+  ## empty sequences.
+  ##
+  ## If `spread` is false and the length of `s` is not a multiple of `num`, the
+  ## proc will max out the first sub sequences with ``1 + len(s) div num``
+  ## entries, leaving the remainder of elements to the last sequence.
+  ##
+  ## On the other hand, if `spread` is true, the proc will distribute evenly
+  ## the remainder of the division across all sequences, which makes the result
+  ## more suited to multithreading where you are passing equal sized work units
+  ## to a thread pool and want to maximize core usage.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   let numbers = @[1, 2, 3, 4, 5, 6, 7]
+  ##   assert numbers.split(3) == @[@[1, 2, 3], @[4, 5], @[6, 7]]
+  ##   assert numbers.split(3, false)  == @[@[1, 2, 3], @[4, 5, 6], @[7]]
+  ##   assert numbers.split(6)[0] == @[1, 2]
+  ##   assert numbers.split(6)[5] == @[7]
+  assert(not s.isNil, "`s` can't be nil")
+  assert(num > 0, "`num` has to be greater than zero")
+  if num < 2:
+    result = @[s]
+    return
+
+  # Create the result and calculate the stride size and the remainder if any.
+  result = newSeq[seq[T]](num)
+  var
+    stride = s.len div num
+    first = 0
+    last = 0
+    extra = s.len mod num
+
+  if extra == 0 or spread == false:
+    # Use an algorithm which overcounts the stride and minimizes reading limits.
+    if extra > 0: inc(stride)
+
+    for i in 0 .. <num:
+      result[i] = newSeq[T]()
+      for g in first .. <min(s.len, first + stride):
+        result[i].add(s[g])
+      first += stride
+
+  else:
+    # Use an undercounting algorithm which *adds* the remainder each iteration.
+    for i in 0 .. <num:
+      last = first + stride
+      if extra > 0:
+        extra -= 1
+        inc(last)
+
+      result[i] = newSeq[T]()
+      for g in first .. <last:
+        result[i].add(s[g])
+      first = last
+
+
+
 iterator filter*[T](seq1: seq[T], pred: proc(item: T): bool {.closure.}): T =
   ## Iterates through a sequence and yields every item that fulfills the
   ## predicate.
@@ -419,5 +484,30 @@ when isMainModule:
       strings = nums.mapIt(string, $(4 * it))
     nums.mapIt(it * 3)
     assert nums[0] + nums[3] == 15
+
+  block: # split tests
+    let numbers = @[1, 2, 3, 4, 5, 6, 7]
+    doAssert numbers.split(3) == @[@[1, 2, 3], @[4, 5], @[6, 7]]
+    doAssert numbers.split(6)[0] == @[1, 2]
+    doAssert numbers.split(6)[5] == @[7]
+    let a = @[1, 2, 3, 4, 5, 6, 7]
+    doAssert a.split(1, true)   == @[@[1, 2, 3, 4, 5, 6, 7]]
+    doAssert a.split(1, false)  == @[@[1, 2, 3, 4, 5, 6, 7]]
+    doAssert a.split(2, true)   == @[@[1, 2, 3, 4], @[5, 6, 7]]
+    doAssert a.split(2, false)  == @[@[1, 2, 3, 4], @[5, 6, 7]]
+    doAssert a.split(3, true)   == @[@[1, 2, 3], @[4, 5], @[6, 7]]
+    doAssert a.split(3, false)  == @[@[1, 2, 3], @[4, 5, 6], @[7]]
+    doAssert a.split(4, true)   == @[@[1, 2], @[3, 4], @[5, 6], @[7]]
+    doAssert a.split(4, false)  == @[@[1, 2], @[3, 4], @[5, 6], @[7]]
+    doAssert a.split(5, true)   == @[@[1, 2], @[3, 4], @[5], @[6], @[7]]
+    doAssert a.split(5, false)  == @[@[1, 2], @[3, 4], @[5, 6], @[7], @[]]
+    doAssert a.split(6, true)   == @[@[1, 2], @[3], @[4], @[5], @[6], @[7]]
+    doAssert a.split(6, false)  == @[@[1, 2], @[3, 4], @[5, 6], @[7], @[], @[]]
+    doAssert a.split(8, false)  == a.split(8, true)
+    doAssert a.split(90, false) == a.split(90, true)
+    var b = @[0]
+    for f in 1 .. 25: b.add(f)
+    doAssert b.split(5, true)[4].len == 5
+    doAssert b.split(5, false)[4].len == 2
 
   echo "Finished doc tests"
