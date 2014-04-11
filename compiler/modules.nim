@@ -119,7 +119,11 @@ proc newModule(fileIdx: int32): PSym =
   result.name = getIdent(splitFile(filename).name)
   if not isNimrodIdentifier(result.name.s):
     rawMessage(errInvalidModuleName, result.name.s)
-  
+    
+  for module in gCompiledModules:
+    if module != nil and result.name.s == module.name.s:
+      rawMessage(errInvalidModuleName, result.name.s)
+
   result.info = newLineInfo(fileIdx, 1, 1)
   result.owner = newSym(skPackage, getIdent(getPackageName(filename)), nil,
                         result.info)
@@ -128,7 +132,11 @@ proc newModule(fileIdx: int32): PSym =
   growCache gMemCacheData, fileIdx
   growCache gCompiledModules, fileIdx
   gCompiledModules[result.position] = result
+<<<<<<< HEAD
   
+=======
+ 
+>>>>>>> 739b194... Fix #180 and #1059 by checking for duplicate module names
   incl(result.flags, sfUsed)
   initStrTable(result.tab)
   strTableAdd(result.tab, result) # a module knows itself
