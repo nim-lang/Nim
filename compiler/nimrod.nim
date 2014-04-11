@@ -61,8 +61,12 @@ proc handleCmdLine() =
           tccgen.run()
       if optRun in gGlobalOptions:
         if gCmd == cmdCompileToJS:
-          var ex = quoteShell(
-            completeCFilePath(changeFileExt(gProjectFull, "js").prependCurDir))
+          var ex: string
+          if options.outFile.len > 0:
+            ex = options.outFile.prependCurDir.quoteShell
+          else:
+            ex = quoteShell(
+              completeCFilePath(changeFileExt(gProjectFull, "js").prependCurDir))
           execExternalProgram("node " & ex & ' ' & service.arguments)
         else:
           var binPath: string
