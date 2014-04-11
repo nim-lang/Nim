@@ -19,8 +19,8 @@
 
 when defined(Posix) and not defined(haiku):
   {.passl: "-lm".}
-
-import times
+when not defined(js):
+  import times
 
 const
   PI* = 3.1415926535897932384626433 ## the circle constant PI (Ludolph's number)

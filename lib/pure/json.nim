@@ -861,26 +861,97 @@ proc parseJson(p: var TJsonParser): PJsonNode =
   of tkError, tkCurlyRi, tkBracketRi, tkColon, tkComma, tkEof:
     raiseParseErr(p, "{")
 
-proc parseJson*(s: PStream, filename: string): PJsonNode =
-  ## Parses from a stream `s` into a `PJsonNode`. `filename` is only needed
-  ## for nice error messages.
-  var p: TJsonParser
-  p.open(s, filename)
-  discard getTok(p) # read first token
-  result = p.parseJson()
-  p.close()
+when not defined(js):
+  proc parseJson*(s: PStream, filename: string): PJsonNode =
+    ## Parses from a stream `s` into a `PJsonNode`. `filename` is only needed
+    ## for nice error messages.
+    var p: TJsonParser
+    p.open(s, filename)
+    discard getTok(p) # read first token
+    result = p.parseJson()
+    p.close()
 
-proc parseJson*(buffer: string): PJsonNode = 
-  ## Parses JSON from `buffer`.
-  result = parseJson(newStringStream(buffer), "input")
+  proc parseJson*(buffer: string): PJsonNode =
+    ## Parses JSON from `buffer`.
+    result = parseJson(newStringStream(buffer), "input")
 
-proc parseFile*(filename: string): PJsonNode =
-  ## Parses `file` into a `PJsonNode`.
-  var stream = newFileStream(filename, fmRead)
-  if stream == nil: 
-    raise newException(EIO, "cannot read from file: " & filename)
-  result = parseJson(stream, filename)
-  
+  proc parseFile*(filename: string): PJsonNode =
+    ## Parses `file` into a `PJsonNode`.
+    var stream = newFileStream(filename, fmRead)
+    if stream == nil:
+      raise newException(EIO, "cannot read from file: " & filename)
+    result = parseJson(stream, filename)
+else:
+  from math import `mod`
+  type
+    TJSObject = object
+  proc parseNativeJson(x: cstring): TJSObject {.importc: "JSON.parse".}
+
+  proc getVarType(x): TJsonNodeKind =
+    result = JNull
+    proc getProtoName(y): cstring
+      {.importc: "Object.prototype.toString.call".}
+    case $getProtoName(x) # TODO: Implicit returns fail here.
+    of "[object Array]": return JArray
+    of "[object Object]": return JObject
+    of "[object Number]":
+      if cast[float](x) mod 1.0 == 0:
+        return JInt
+      else:
+        return JFloat
+    of "[object Boolean]": return JBool
+    of "[object Null]": return JNull
+    of "[object String]": return JString
+    else: assert false
+
+  proc len(x: TJSObject): int =
+    assert x.getVarType == JArray
+    asm """
+      return `x`.length;
+    """
+
+  proc `[]`(x: TJSObject, y: string): TJSObject =
+    assert x.getVarType == JObject
+    asm """
+      return `x`[`y`];
+    """
+
+  proc `[]`(x: TJSObject, y: int): TJSObject =
+    assert x.getVarType == JArray
+    asm """
+      return `x`[`y`];
+    """
+
+  proc convertObject(x: TJSObject): PJsonNode =
+    case getVarType(x)
+    of JArray:
+      result = newJArray()
+      for i in 0 .. <x.len:
+        result.add(x[i].convertObject())
+    of JObject:
+      result = newJObject()
+      asm """for (property in `x`) {
+        if (`x`.hasOwnProperty(property)) {
+      """
+      var nimProperty: cstring
+      var nimValue: TJSObject
+      asm "`nimProperty` = property; `nimValue` = `x`[property];"
+      result[$nimProperty] = nimValue.convertObject()
+      asm "}}"
+    of JInt:
+      result = newJInt(cast[int](x))
+    of JFloat:
+      result = newJFloat(cast[float](x))
+    of JString:
+      result = newJString($cast[cstring](x))
+    of JBool:
+      result = newJBool(cast[bool](x))
+    of JNull:
+      result = newJNull()
+
+  proc parseJson*(buffer: string): PJsonNode =
+    return parseNativeJson(buffer).convertObject()
+
 when false:
   import os
   var s = newFileStream(ParamStr(1), fmRead)
