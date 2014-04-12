@@ -51,7 +51,6 @@ Boot options:
   -d:tinyc                 include the Tiny C backend (not supported on Windows)
   -d:useGnuReadline        use the GNU readline library for interactive mode
                            (not needed on Windows)
-  -d:useFFI                build Nimrod with FFI support at compile time
   -d:nativeStacktrace      use native stack traces (only for Mac OS X or Linux)
   -d:noCaas                build Nimrod without CAAS support
 """
