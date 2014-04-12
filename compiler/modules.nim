@@ -119,16 +119,19 @@ proc newModule(fileIdx: int32): PSym =
   result.name = getIdent(splitFile(filename).name)
   if not isNimrodIdentifier(result.name.s):
     rawMessage(errInvalidModuleName, result.name.s)
-  
+    
   result.info = newLineInfo(fileIdx, 1, 1)
   result.owner = newSym(skPackage, getIdent(getPackageName(filename)), nil,
                         result.info)
   result.position = fileIdx
   
+  for module in gCompiledModules:
+    if module != nil and result.name.s == module.name.s and result.owner == module.owner:
+      rawMessage(errInvalidModuleName, result.name.s)
+
   growCache gMemCacheData, fileIdx
   growCache gCompiledModules, fileIdx
   gCompiledModules[result.position] = result
-  
   incl(result.flags, sfUsed)
   initStrTable(result.tab)
   strTableAdd(result.tab, result) # a module knows itself
