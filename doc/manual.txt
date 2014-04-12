@@ -1390,7 +1390,7 @@ In order to make generic code easier tor write ``ptr T`` is a subtype
 of ``ptr[R, T]`` for any ``R``.
 
 Furthermore the subtype relation of the region object types is lifted to
-the pointer types: If ``A <: B`` then ``ptr[T, A] <: ptr[T, B]``. This can be
+the pointer types: If ``A <: B`` then ``ptr[A, T] <: ptr[B, T]``. This can be
 used to model subregions of memory. As a special typing rule ``ptr[R, T]`` is
 not compatible to ``pointer`` to prevent the following from compiling:
 
