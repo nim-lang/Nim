@@ -194,7 +194,7 @@ proc `==`*[A, B](s, t: TTable[A, B]): bool =
   if s.counter == t.counter:
     # different insertion orders mean different 'data' seqs, so we have
     # to use the slow route here:
-    for key, val in a:
+    for key, val in s:
       if not hasKey(t, key): return false
       if mget(t, key) != val: return false
     return true
