@@ -16,10 +16,11 @@ Pure libraries do not depend on any external ``*.dll`` or ``lib*.so`` binary
 while impure libraries do. A wrapper is an impure library that is a very
 low-level interface to a C library.
 
-Read this `document <apis.html>`_ for a quick overview of the API design. If
-you can't find here some functionality you are looking for you could try using
-the 3rd party `package manager Babel <https://github.com/nimrod-code/babel>`_
-and its list of packages.
+Read this `document <apis.html>`_ for a quick overview of the API design.
+
+The `bottom <#babel>`_ of this page includes a list of 3rd party packages
+created by the Nimrod community. These packages are a useful addition to the
+modules in the standard library.
 
 
 Pure libraries
