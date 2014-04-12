@@ -353,11 +353,11 @@ when defined(windows) or defined(nimdoc):
     var retFuture = newFuture[string]()
     
     var dataBuf: TWSABuf
-    dataBuf.buf = newString(size)
+    dataBuf.buf = cast[cstring](alloc0(size))
     dataBuf.len = size
     
     var bytesReceived: DWord
-    var flagsio = flags.dword
+    var flagsio = flags.DWord
     var ol = cast[PCustomOverlapped](alloc0(sizeof(TCustomOverlapped)))
     ol.data = TCompletionData(sock: socket, cb:
       proc (sock: TAsyncFD, bytesCount: DWord, errcode: TOSErrorCode) =
@@ -367,10 +367,12 @@ when defined(windows) or defined(nimdoc):
               retFuture.complete("")
             else:
               var data = newString(bytesCount)
+              assert bytesCount <= size
               copyMem(addr data[0], addr dataBuf.buf[0], bytesCount)
               retFuture.complete($data)
           else:
             retFuture.fail(newException(EOS, osErrorMsg(errcode)))
+        dealloc dataBuf.buf
     )
 
     let ret = WSARecv(socket.TSocketHandle, addr dataBuf, 1, addr bytesReceived,
@@ -378,6 +380,7 @@ when defined(windows) or defined(nimdoc):
     if ret == -1:
       let err = osLastError()
       if err.int32 != ERROR_IO_PENDING:
+        dealloc dataBuf.buf
         retFuture.fail(newException(EOS, osErrorMsg(err)))
         dealloc(ol)
     elif ret == 0 and bytesReceived == 0 and dataBuf.buf[0] == '\0':
@@ -401,7 +404,9 @@ when defined(windows) or defined(nimdoc):
         else:
           bytesReceived
       var data = newString(realSize)
+      assert realSize <= size
       copyMem(addr data[0], addr dataBuf.buf[0], realSize)
+      #dealloc dataBuf.buf
       retFuture.complete($data)
       # We don't deallocate ``ol`` here because even though this completed
       # immediately poll will still be notified about its completion and it will
@@ -415,7 +420,7 @@ when defined(windows) or defined(nimdoc):
     var retFuture = newFuture[void]()
 
     var dataBuf: TWSABuf
-    dataBuf.buf = data
+    dataBuf.buf = data # since this is not used in a callback, this is fine
     dataBuf.len = data.len
 
     var bytesReceived, flags: DWord

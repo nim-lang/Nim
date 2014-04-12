@@ -92,6 +92,7 @@ proc recv*(socket: PAsyncSocket, size: int,
 proc send*(socket: PAsyncSocket, data: string): PFuture[void] =
   ## Sends ``data`` to ``socket``. The returned future will complete once all
   ## data has been sent.
+  assert socket != nil
   result = send(socket.fd.TAsyncFD, data)
 
 proc acceptAddr*(socket: PAsyncSocket): 

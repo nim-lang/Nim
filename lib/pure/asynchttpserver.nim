@@ -92,8 +92,11 @@ proc processClient(client: PAsyncSocket, address: string,
   # GET /path HTTP/1.1
   # Header: val
   # \n
-
   var request = newRequest()
+  request.hostname = address
+  assert client != nil
+  request.client = client
+
   # First line - GET /path HTTP/1.1
   let line = await client.recvLine() # TODO: Timeouts.
   if line == "":
@@ -102,6 +105,8 @@ proc processClient(client: PAsyncSocket, address: string,
   let lineParts = line.split(' ')
   if lineParts.len != 3:
     request.respond(Http400, "Invalid request. Got: " & line)
+    client.close()
+    return
 
   let reqMethod = lineParts[0]
   let path = lineParts[1]
@@ -127,15 +132,11 @@ proc processClient(client: PAsyncSocket, address: string,
   except EInvalidValue:
     request.respond(Http400, "Invalid request protocol. Got: " & protocol)
     return
-  request.hostname = address
-  request.client = client
   
   case reqMethod.normalize
   of "get":
     await callback(request)
   else:
-    echo(reqMethod.repr)
-    echo(line.repr)
     request.respond(Http400, "Invalid request method. Got: " & reqMethod)
 
   # Persistent connections
