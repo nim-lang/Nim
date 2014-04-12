@@ -129,3 +129,7 @@ proc hash*(x: float): THash {.inline.} =
 proc hash*[A](x: openArray[A]): THash =
   for it in items(x): result = result !& hash(it)
   result = !$result
+
+proc hash*[A](x: set[A]): THash =
+  for it in items(x): result = result !& hash(it)
+  result = !$result
