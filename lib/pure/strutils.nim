@@ -264,6 +264,19 @@ iterator split*(s: string, sep: char): string =
       yield substr(s, first, last-1)
       inc(last)
 
+iterator split*(s: string, sep: string): string =
+  ## Splits the string `s` into substrings using a string separator.
+  ##
+  ## Substrings are separated by the string `sep`.
+  var last = 0
+  if len(s) > 0:
+    while last <= len(s):
+      var first = last
+      while last < len(s) and s.substr(last, last + <sep.len) != sep:
+        inc(last)
+      yield substr(s, first, last-1)
+      inc(last, sep.len)
+
 iterator splitLines*(s: string): string =
   ## Splits the string `s` into its containing lines. Every newline
   ## combination (CR, LF, CR-LF) is supported. The result strings contain
@@ -327,6 +340,13 @@ proc split*(s: string, sep: char): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitChar".} =
   ## The same as the `split` iterator, but is a proc that returns a sequence
   ## of substrings.
+  accumulateResult(split(s, sep))
+
+proc split*(s: string, sep: string): seq[string] {.noSideEffect,
+  rtl, extern: "nsuSplitString".} =
+  ## Splits the string `s` into substrings using a string separator.
+  ##
+  ## Substrings are separated by the string `sep`.
   accumulateResult(split(s, sep))
 
 proc toHex*(x: BiggestInt, len: int): string {.noSideEffect,

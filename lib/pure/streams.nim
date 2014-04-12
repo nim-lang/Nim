@@ -239,45 +239,47 @@ proc newStringStream*(s: string = ""): PStringStream =
   result.readDataImpl = ssReadData
   result.writeDataImpl = ssWriteData
 
-type
-  PFileStream* = ref TFileStream ## a stream that encapsulates a `TFile`
-  TFileStream* = object of TStream
-    f: TFile
+when not defined(js):
 
-proc fsClose(s: PStream) =
-  if PFileStream(s).f != nil:
-    close(PFileStream(s).f)
-    PFileStream(s).f = nil
-proc fsFlush(s: PStream) = flushFile(PFileStream(s).f)
-proc fsAtEnd(s: PStream): bool = return endOfFile(PFileStream(s).f)
-proc fsSetPosition(s: PStream, pos: int) = setFilePos(PFileStream(s).f, pos)
-proc fsGetPosition(s: PStream): int = return int(getFilePos(PFileStream(s).f))
+  type
+    PFileStream* = ref TFileStream ## a stream that encapsulates a `TFile`
+    TFileStream* = object of TStream
+      f: TFile
 
-proc fsReadData(s: PStream, buffer: pointer, bufLen: int): int = 
-  result = readBuffer(PFileStream(s).f, buffer, bufLen)
-  
-proc fsWriteData(s: PStream, buffer: pointer, bufLen: int) = 
-  if writeBuffer(PFileStream(s).f, buffer, bufLen) != bufLen: 
-    raise newEIO("cannot write to stream")
+  proc fsClose(s: PStream) =
+    if PFileStream(s).f != nil:
+      close(PFileStream(s).f)
+      PFileStream(s).f = nil
+  proc fsFlush(s: PStream) = flushFile(PFileStream(s).f)
+  proc fsAtEnd(s: PStream): bool = return endOfFile(PFileStream(s).f)
+  proc fsSetPosition(s: PStream, pos: int) = setFilePos(PFileStream(s).f, pos)
+  proc fsGetPosition(s: PStream): int = return int(getFilePos(PFileStream(s).f))
 
-proc newFileStream*(f: TFile): PFileStream = 
-  ## creates a new stream from the file `f`.
-  new(result)
-  result.f = f
-  result.closeImpl = fsClose
-  result.atEndImpl = fsAtEnd
-  result.setPositionImpl = fsSetPosition
-  result.getPositionImpl = fsGetPosition
-  result.readDataImpl = fsReadData
-  result.writeDataImpl = fsWriteData
-  result.flushImpl = fsFlush
+  proc fsReadData(s: PStream, buffer: pointer, bufLen: int): int =
+    result = readBuffer(PFileStream(s).f, buffer, bufLen)
 
-proc newFileStream*(filename: string, mode: TFileMode): PFileStream = 
-  ## creates a new stream from the file named `filename` with the mode `mode`.
-  ## If the file cannot be opened, nil is returned. See the `system
-  ## <system.html>`_ module for a list of available TFileMode enums.
-  var f: TFile
-  if open(f, filename, mode): result = newFileStream(f)
+  proc fsWriteData(s: PStream, buffer: pointer, bufLen: int) =
+    if writeBuffer(PFileStream(s).f, buffer, bufLen) != bufLen:
+      raise newEIO("cannot write to stream")
+
+  proc newFileStream*(f: TFile): PFileStream =
+    ## creates a new stream from the file `f`.
+    new(result)
+    result.f = f
+    result.closeImpl = fsClose
+    result.atEndImpl = fsAtEnd
+    result.setPositionImpl = fsSetPosition
+    result.getPositionImpl = fsGetPosition
+    result.readDataImpl = fsReadData
+    result.writeDataImpl = fsWriteData
+    result.flushImpl = fsFlush
+
+  proc newFileStream*(filename: string, mode: TFileMode): PFileStream =
+    ## creates a new stream from the file named `filename` with the mode `mode`.
+    ## If the file cannot be opened, nil is returned. See the `system
+    ## <system.html>`_ module for a list of available TFileMode enums.
+    var f: TFile
+    if open(f, filename, mode): result = newFileStream(f)
 
 
 when true:

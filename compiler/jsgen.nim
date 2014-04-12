@@ -564,7 +564,7 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   moveInto(p, a, r)
   var i = 1
   if p.target == targetJS and length > 1 and n.sons[i].kind == nkExceptBranch:
-    appf(p.body, "} catch (EXC) {$n")
+    appf(p.body, "} catch (EXC) {$n  lastJSError = EXC;$n")
   elif p.target == targetLua:
     appf(p.body, "end)$n")
   while i < length and n.sons[i].kind == nkExceptBranch: 
@@ -1114,6 +1114,8 @@ proc createVar(p: PProc, typ: PType, indirect: bool): PRope =
     var e = elemType(t)
     if length > 32: 
       useMagic(p, "arrayConstr")
+      # XXX: arrayConstr depends on nimCopy. This line shouldn't be necessary.
+      useMagic(p, "nimCopy")
       result = ropef("arrayConstr($1, $2, $3)", [toRope(length), 
           createVar(p, e, false), genTypeInfo(p, e)])
     else: 
@@ -1314,7 +1316,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     if skipTypes(n.sons[1].typ, abstractVarRange).kind == tyCString:
         binaryExpr(p, n, r, "", "$1 += $2")
     else:
-      binaryExpr(p, n, r, "", "$1 = ($1.slice(0,-1)).concat($2)")
+      binaryExpr(p, n, r, "", "$1 = ($1.slice(0, -1)).concat($2)")
     # XXX: make a copy of $2, because of Javascript's sucking semantics
   of mAppendSeqElem: binaryExpr(p, n, r, "", "$1.push($2)")
   of mConStrStr: genConStrStr(p, n, r)
@@ -1341,7 +1343,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of ast.mDec:
     if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 -= $2")
     else: binaryExpr(p, n, r, "subInt", "$1 = subInt($1, $2)")
-  of mSetLengthStr: binaryExpr(p, n, r, "", "$1.length = ($2)-1")
+  of mSetLengthStr: binaryExpr(p, n, r, "", "$1.length = $2+1; $1[$1.length-1] = 0")
   of mSetLengthSeq: binaryExpr(p, n, r, "", "$1.length = $2")
   of mCard: unaryExpr(p, n, r, "SetCard", "SetCard($1)")
   of mLtSet: binaryExpr(p, n, r, "SetLt", "SetLt($1, $2)")
@@ -1698,7 +1700,12 @@ proc myClose(b: PPassContext, n: PNode): PNode =
   var m = BModule(b)
   if sfMainModule in m.module.flags:
     let code = wholeCode(m)
-    var outfile = changeFileExt(completeCFilePath(m.module.filename), "js")
+    let outfile =
+      if options.outFile.len > 0:
+        if options.outFile.isAbsolute: options.outFile
+        else: getCurrentDir() / options.outFile
+      else:
+       changeFileExt(completeCFilePath(m.module.filename), "js")
     discard writeRopeIfNotEqual(con(genHeader(), code), outfile)
 
 proc myOpenCached(s: PSym, rd: PRodReader): PPassContext = 

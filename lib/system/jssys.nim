@@ -12,7 +12,7 @@ when defined(nodejs):
 else:
   proc alert*(s: cstring) {.importc, nodecl.}
 
-proc log*(s: cstring) {.importc: "console.log", nodecl.}
+proc log*(s: cstring) {.importc: "console.log", varargs, nodecl.}
 
 type
   PSafePoint = ptr TSafePoint
@@ -27,11 +27,19 @@ type
     line: int # current line number
     filename: cstring
 
+  PJSError = ref object
+    columnNumber {.importc.}: int
+    fileName {.importc.}: cstring
+    lineNumber {.importc.}: int
+    message {.importc.}: cstring
+    stack {.importc.}: cstring
+
 var
   framePtr {.importc, nodecl, volatile.}: PCallFrame
   excHandler {.importc, nodecl, volatile.}: PSafePoint = nil
     # list of exception handlers
     # a global variable for the root of all try blocks
+  lastJSError {.importc, nodecl, volatile.}: PJSError = nil
 
 {.push stacktrace: off, profiler:off.}
 proc nimBoolToStr(x: bool): string {.compilerproc.} =
@@ -43,8 +51,12 @@ proc nimCharToStr(x: char): string {.compilerproc.} =
   result[0] = x
 
 proc getCurrentExceptionMsg*(): string =
-  if excHandler != nil: return $excHandler.exc.msg
-  return ""
+  if excHandler != nil and excHandler.exc != nil:
+    return $excHandler.exc.msg
+  elif lastJSError != nil:
+    return $lastJSError.message
+  else:
+    return ""
 
 proc auxWriteStackTrace(f: PCallFrame): string =
   type
@@ -77,11 +89,13 @@ proc auxWriteStackTrace(f: PCallFrame): string =
     add(result, "\n")
 
 proc rawWriteStackTrace(): string =
-  if framePtr == nil:
-    result = "No stack traceback available\n"
-  else:
-    result = "Traceback (most recent call last)\n"& auxWriteStackTrace(framePtr)
+  if framePtr != nil:
+    result = "Traceback (most recent call last)\n" & auxWriteStackTrace(framePtr)
     framePtr = nil
+  elif lastJSError != nil:
+    result = $lastJSError.stack
+  else:
+    result = "No stack traceback available\n"
 
 proc raiseException(e: ref E_Base, ename: cstring) {.
     compilerproc, asmNoStackFrame.} =
@@ -472,17 +486,17 @@ proc ze*(a: int): int {.compilerproc.} =
 proc ze64*(a: int64): int64 {.compilerproc.} =
   result = a
 
-proc ToU8(a: int): int8 {.asmNoStackFrame, compilerproc.} =
+proc toU8*(a: int): int8 {.asmNoStackFrame, compilerproc.} =
   asm """
     return `a`;
   """
 
-proc ToU16(a: int): int16 {.asmNoStackFrame, compilerproc.} =
+proc toU16*(a: int): int16 {.asmNoStackFrame, compilerproc.} =
   asm """
     return `a`;
   """
 
-proc ToU32(a: int): int32 {.asmNoStackFrame, compilerproc.} =
+proc toU32*(a: int64): int32 {.asmNoStackFrame, compilerproc.} =
   asm """
     return `a`;
   """
@@ -503,17 +517,17 @@ proc nimCopy(x: pointer, ti: PNimType): pointer {.compilerproc.}
 
 proc nimCopyAux(dest, src: Pointer, n: ptr TNimNode) {.compilerproc.} =
   case n.kind
-  of nkNone: sysAssert(false, "NimCopyAux")
+  of nkNone: sysAssert(false, "nimCopyAux")
   of nkSlot:
-    asm "`dest`[`n`.offset] = NimCopy(`src`[`n`.offset], `n`.typ);"
+    asm "`dest`[`n`.offset] = nimCopy(`src`[`n`.offset], `n`.typ);"
   of nkList:
     for i in 0..n.len-1:
-      NimCopyAux(dest, src, n.sons[i])
+      nimCopyAux(dest, src, n.sons[i])
   of nkCase:
     asm """
-      `dest`[`n`.offset] = NimCopy(`src`[`n`.offset], `n`.typ);
+      `dest`[`n`.offset] = nimCopy(`src`[`n`.offset], `n`.typ);
       for (var i = 0; i < `n`.sons.length; ++i) {
-        NimCopyAux(`dest`, `src`, `n`.sons[i][1]);
+        nimCopyAux(`dest`, `src`, `n`.sons[i][1]);
       }
     """
 
@@ -534,17 +548,17 @@ proc nimCopy(x: pointer, ti: PNimType): pointer =
       for (var key in `x`) { `result`[key] = `x`[key]; }
     """
   of tyTuple, tyObject:
-    if ti.base != nil: result = NimCopy(x, ti.base)
+    if ti.base != nil: result = nimCopy(x, ti.base)
     elif ti.kind == tyObject:
       asm "`result` = {m_type: `ti`};"
     else:
       asm "`result` = {};"
-    NimCopyAux(result, x, ti.node)
+    nimCopyAux(result, x, ti.node)
   of tySequence, tyArrayConstr, tyOpenArray, tyArray:
     asm """
       `result` = new Array(`x`.length);
       for (var i = 0; i < `x`.length; ++i) {
-        `result`[i] = NimCopy(`x`[i], `ti`.base);
+        `result`[i] = nimCopy(`x`[i], `ti`.base);
       }
     """
   of tyString:
@@ -584,12 +598,12 @@ proc genericReset(x: Pointer, ti: PNimType): pointer {.compilerproc.} =
   else:
     result = nil
 
-proc ArrayConstr(len: int, value: pointer, typ: PNimType): pointer {.
+proc arrayConstr(len: int, value: pointer, typ: PNimType): pointer {.
                  asmNoStackFrame, compilerproc.} =
   # types are fake
   asm """
     var result = new Array(`len`);
-    for (var i = 0; i < `len`; ++i) result[i] = NimCopy(`value`, `typ`);
+    for (var i = 0; i < `len`; ++i) result[i] = nimCopy(`value`, `typ`);
     return result;
   """
 
