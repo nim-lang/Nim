@@ -68,6 +68,15 @@ template rawInsertImpl() {.dirty.} =
 proc rawGet[A](s: TSet[A], key: A): int =
   rawGetImpl()
 
+proc mget*[A](s: var TSet[A], key: A): var A =
+  ## returns the element that is actually stored in 's' which has the same
+  ## value as 'key' or raises the ``EInvalidKey`` exception. This is useful
+  ## when one overloaded 'hash' and '==' but still needs reference semantics
+  ## for sharing.
+  var index = rawGet(s, key)
+  if index >= 0: result = t.data[index].key
+  else: raise newException(EInvalidKey, "key not found: " & $key)
+
 proc contains*[A](s: TSet[A], key: A): bool =
   ## returns true iff `key` is in `s`.
   var index = rawGet(s, key)
