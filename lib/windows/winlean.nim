@@ -716,3 +716,6 @@ proc WSASend*(s: TSocketHandle, buf: ptr TWSABuf, bufCount: DWORD,
   bytesSent: PDWord, flags: DWORD, lpOverlapped: POverlapped,
   completionProc: POVERLAPPED_COMPLETION_ROUTINE): cint {.
   stdcall, importc: "WSASend", dynlib: "Ws2_32.dll".}
+
+proc get_osfhandle*(fd:TFileHandle): THandle {.
+  importc:"__get_osfhandle", header:"<io.h>".}

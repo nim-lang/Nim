@@ -1771,7 +1771,8 @@ type
     lastWriteTime: TTime # Time file was last modified/written to.
     creationTime: TTime # Time file was created. Not supported on all systems!
 
-proc rawToFormalFileInfo(rawInfo, formalInfo): expr =
+template rawToFormalFileInfo(rawInfo, formalInfo): expr =
+  ## Transforms the native file info structure into the one nimrod uses.
   ## 'rawInfo' is either a 'TBY_HANDLE_FILE_INFORMATION' structure on Windows,
   ## or a 'TStat' structure on posix
   when defined(Windows):
@@ -1786,7 +1787,7 @@ proc rawToFormalFileInfo(rawInfo, formalInfo): expr =
     formalInfo.creationTime = toTime(rawInfo.ftCreationTime)
     
     # Retrieve basic permissions
-    if (info.dwFileAttributes and FILE_ATTRIBUTE_READONLY) != 0'i32:
+    if (rawInfo.dwFileAttributes and FILE_ATTRIBUTE_READONLY) != 0'i32:
       formalInfo.permissions = {fpUserExec, fpUserRead, fpGroupExec, 
                                 fpGroupRead, fpOthersExec, fpOthersRead}
     else:
@@ -1794,37 +1795,40 @@ proc rawToFormalFileInfo(rawInfo, formalInfo): expr =
 
     # Retrieve basic file kind
     result.kind = pcFile
-    if (info.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) != 0'i32:
+    if (rawInfo.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) != 0'i32:
       formalInfo.kind = pcDir
-    if (info.dwFileAttributes and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32:
+    if (rawInfo.dwFileAttributes and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32:
       formalInfo.kind = succ(result.kind)
 
   else:
+    template checkAndIncludeMode(rawMode, formalMode: expr) = 
+      if (rawInfo.st_mode and rawMode) != 0'i32:
+        formalInfo.permissions.incl(formalMode)
     formalInfo.id = (rawInfo.st_dev, rawInfo.st_ino)
-    formalInfo.size = getFileSize(handle)
-    formalInfo.linkCount = BiggestInt(rawInfo.st_Nlink)
+    formalInfo.size = rawInfo.st_size
+    formalInfo.linkCount = rawInfo.st_Nlink
     formalInfo.lastAccessTime = rawInfo.st_atime
     formalInfo.lastWriteTime = rawInfo.st_mtime
     formalInfo.creationTime = rawInfo.st_ctime
 
     result.permissions = {}
-    if (a.st_mode and S_IRUSR) != 0'i32: result.incl(fpUserRead)
-    if (a.st_mode and S_IWUSR) != 0'i32: result.incl(fpUserWrite)
-    if (a.st_mode and S_IXUSR) != 0'i32: result.incl(fpUserExec)
+    checkAndIncludeMode(S_IRUSR, fpUserRead)
+    checkAndIncludeMode(S_IWUSR, fpUserWrite)
+    checkAndIncludeMode(S_IXUSR, fpUserExec)
 
-    if (a.st_mode and S_IRGRP) != 0'i32: result.incl(fpGroupRead)
-    if (a.st_mode and S_IWGRP) != 0'i32: result.incl(fpGroupWrite)
-    if (a.st_mode and S_IXGRP) != 0'i32: result.incl(fpGroupExec)
+    checkAndIncludeMode(S_IRGRP, fpGroupRead)
+    checkAndIncludeMode(S_IWGRP, fpGroupWrite)
+    checkAndIncludeMode(S_IXGRP, fpGroupExec)
 
-    if (a.st_mode and S_IROTH) != 0'i32: result.incl(fpOthersRead)
-    if (a.st_mode and S_IWOTH) != 0'i32: result.incl(fpOthersWrite)
-    if (a.st_mode and S_IXOTH) != 0'i32: result.incl(fpOthersExec)
+    checkAndIncludeMode(S_IROTH, fpOthersRead)
+    checkAndIncludeMode(S_IWOTH, fpOthersWrite)
+    checkAndIncludeMode(S_IXOTH, fpOthersExec)
 
-    result.kind = pcFile
-    if S_ISDIR(s.st_mode): result.kind = pcDir
-    if S_ISLNK(s.st_mode): succ(result.kind)
+    formalInfo.kind = pcFile
+    if S_ISDIR(rawInfo.st_mode): formalInfo.kind = pcDir
+    if S_ISLNK(rawInfo.st_mode): formalInfo.kind.inc()
 
-proc getFileInfo*(handle: THandle, result: var FileInfo) =
+proc getFileInfo*(handle: TFileHandle, result: var FileInfo) =
   ## Retrieves file information for the file object represented by the given
   ## handle.
   ##
@@ -1833,7 +1837,10 @@ proc getFileInfo*(handle: THandle, result: var FileInfo) =
   # Done: ID, Kind, Size, Permissions, Link Count
   when defined(Windows):
     var rawInfo: TBY_HANDLE_FILE_INFORMATION
-    if getFileInformationByHandle(handle, addr rawInfo) == 0:
+    # We have to use the super special '_get_osfhandle' call (wrapped above)
+    # To transform the C file descripter to a native file handle.
+    var realHandle = get_osfhandle(handle)
+    if getFileInformationByHandle(realHandle, addr rawInfo) == 0:
       osError(osLastError())
     rawToFormalFileInfo(rawInfo, result)
   else:
@@ -1857,12 +1864,23 @@ proc getFileInfo*(path: string, followSymlink = true): FileInfo =
   ## exist, or when permission restrictions prevent the program from retrieving
   ## file information, an error will be thrown.
   when defined(Windows):
-    var handle = openHandle(path, followSymlink)
+    var 
+      handle = openHandle(path, followSymlink)
+      rawInfo: TBY_HANDLE_FILE_INFORMATION
     if handle == INVALID_HANDLE_VALUE:
       osError(osLastError())
-    getFileInfo(handle, result)
+    if getFileInformationByHandle(handle, addr rawInfo) == 0:
+      osError(osLastError())
+    rawToFormalFileInfo(rawInfo, result)
     discard closeHandle(handle)
   else:
-    var 
+    var rawInfo: TStat
+    if followSymlink:
+      if lstat(path, rawInfo) < 0'i32:
+        osError(osLastError())
+    else:
+      if stat(path, rawInfo) < 0'i32:
+        osError(osLastError())
+    rawToFormalFileInfo(rawInfo, result)
 
 {.pop.}
