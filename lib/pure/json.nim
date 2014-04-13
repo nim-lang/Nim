@@ -936,6 +936,14 @@ when isMainModule:
     raise newException(EInvalidValue, "That line was expected to fail")
   except EInvalidIndex: echo()
 
+  let passthroughTest = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd" }"""
+  # nil passthrough
+  assert(passthroughTest["doesnt_exist"][1] == nil)
+  assert(passthroughTest["doesnt_exist"]["anything"] == nil)
+  # default param
+  assert(passthroughTest["doesnt_exist",%true].bval)
+  assert(passthroughTest["doesnt_exist"][1,%true].bval)
+
   discard """
   while true:
     var json = stdin.readLine()
