@@ -134,7 +134,7 @@ proc processClient(client: PAsyncSocket, address: string,
     return
   
   case reqMethod.normalize
-  of "get":
+  of "get", "post", "head", "put", "delete", "trace", "options", "connect", "patch":
     await callback(request)
   else:
     request.respond(Http400, "Invalid request method. Got: " & reqMethod)
