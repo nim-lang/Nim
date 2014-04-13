@@ -1380,13 +1380,16 @@ development of OS kernels:
     Kernel = object
     Userspace = object
 
-  var a: ptr[Kernel, Stat]
-  var b: ptr[Userspace, Stat]
+  var a: Kernel ptr Stat
+  var b: Userspace ptr Stat
 
   # the following does not compile as the pointer types are incompatible:
   a = b
 
-In order to make generic code easier tor write ``ptr T`` is a subtype
+As the example shows ``ptr`` can also be used as a binary
+operator, ``region ptr T`` is a shortcut for ``ptr[region, T]``.
+
+In order to make generic code easier to write ``ptr T`` is a subtype
 of ``ptr[R, T]`` for any ``R``.
 
 Furthermore the subtype relation of the region object types is lifted to
@@ -1417,11 +1420,9 @@ not compatible to ``pointer`` to prevent the following from compiling:
 Future directions:
 
 * Memory regions might become available for  ``string`` and ``seq`` too.
-* Bultin regions like ``private``, ``global`` and ``local`` will
+* Builtin regions like ``private``, ``global`` and ``local`` will
   prove very useful for the upcoming OpenCL target.
-* Bultin "regions" can model ``lent`` and ``unique`` pointers.
-* Syntactially ``ptr`` might become an infix operator so that ``region ptr T``
-  is transformed into ``ptr[region, T]``.
+* Builtin "regions" can model ``lent`` and ``unique`` pointers.
 
 
 

@@ -220,7 +220,7 @@ proc getPrecedence(tok: TToken, strongSpaces: bool): int =
   of tkIn, tkNotin, tkIs, tkIsnot, tkNot, tkOf, tkAs: result = 5
   of tkDotDot: result = considerStrongSpaces(6)
   of tkAnd: result = 4
-  of tkOr, tkXor: result = 3
+  of tkOr, tkXor, tkPtr, tkRef: result = 3
   else: result = -10
 
 proc isOperator(tok: TToken): bool =

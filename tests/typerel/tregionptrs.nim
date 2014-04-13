@@ -5,9 +5,9 @@ discard """
 
 type
   RegionA = object
-  APtr = ptr[RegionA, int]
+  APtr = RegionA ptr int
   RegionB = object
-  BPtr = ptr[RegionB, int]
+  BPtr = RegionB ptr int
   
 var x,xx: APtr
 var y: BPtr

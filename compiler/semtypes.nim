@@ -125,11 +125,12 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
   if n.len < 1:
     result = newConstraint(c, kind)
   else:
+    let isCall = ord(n.kind in nkCallKinds)
     let n = if n[0].kind == nkBracket: n[0] else: n
     checkMinSonsLen(n, 1)
     result = newOrPrevType(kind, prev, c)
     # check every except the last is an object:
-    for i in 0 .. n.len-2:
+    for i in isCall .. n.len-2:
       let region = semTypeNode(c, n[i], nil)
       if region.skipTypes({tyGenericInst}).kind notin {tyError, tyObject}:
         message n[i].info, errGenerated, "region needs to be an object type"
@@ -1107,6 +1108,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
           result = makeNotType(c, negated)
         else:
           localError(n.info, errGenerated, "invalid type")
+      elif op.id == ord(wPtr):
+        result = semAnyRef(c, n, tyPtr, prev)
+      elif op.id == ord(wRef):
+        result = semAnyRef(c, n, tyRef, prev)
       else:
         result = semTypeExpr(c, n)
     else:
