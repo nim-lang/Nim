@@ -635,7 +635,7 @@ proc `[]`*(node: PJsonNode, name: string, default: PJsonNode = nil): PJsonNode =
   ##   foo["field1"]["field2"]
   ##
   ## If `field1` is undefined, it will return nil, and the access on `field2` will
-  ## pass through. Also returns default if the key is not found.
+  ## pass through and return nil. Also returns default if the key is not found.
   if isNil(node):
     return default
   assert(node.kind == JObject)
