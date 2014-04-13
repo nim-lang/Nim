@@ -629,13 +629,13 @@ proc len*(n: PJsonNode): int =
   else: discard
 
 proc `[]`*(node: PJsonNode, name: string, default: PJsonNode = nil): PJsonNode =
-  ## Gets a field from a `JObject`. If node is nil, this returns default
+  ## Gets a field from a `JObject`. If node is nil, this returns `default`
   ## This is to allow for chaining such as the following:
   ## .. code-block Nimrod
   ##   foo["field1"]["field2"]
   ##
   ## If `field1` is undefined, it will return nil, and the access on `field2` will
-  ## pass through and return nil. Also returns default if the key is not found.
+  ## pass through and return `default`. Also returns `default` if the key is not found.
   if isNil(node):
     return default
   assert(node.kind == JObject)
@@ -645,8 +645,9 @@ proc `[]`*(node: PJsonNode, name: string, default: PJsonNode = nil): PJsonNode =
   return default
   
 proc `[]`*(node: PJsonNode, index: int, default: PJsonNode = nil): PJsonNode =
-  ## Gets the node at `index` in an Array.If `node` is nil, this returns nil to
-  ## allow for chaining. Results are undefined if the index is out of range.
+  ## Gets the node at `index` in an Array.If `node` is nil, this returns `result`, 
+  ## which is by default `nil` to allow for chaining. Results are undefined if
+  ## the index is out of range.
   if isNil(node):
     return default
   assert(node.kind == JArray)
