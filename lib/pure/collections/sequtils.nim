@@ -88,14 +88,14 @@ proc zip*[S, T](seq1: seq[S], seq2: seq[T]): seq[tuple[a: S, b: T]] =
   newSeq(result, m)
   for i in 0 .. m-1: result[i] = (seq1[i], seq2[i])
 
-proc split*[T](s: seq[T], num: int, spread = true): seq[seq[T]] =
-  ## Splits a sequence `s` into `num` sub sequences.
+proc distribute*[T](s: seq[T], num: int, spread = true): seq[seq[T]] =
+  ## Splits and distributes a sequence `s` into `num` sub sequences.
   ##
   ## Returns a sequence of `num` sequences. For some input values this is the
   ## inverse of the `concat <#concat>`_ proc.  The proc will assert in debug
   ## builds if `s` is nil or `num` is less than one, and will likely crash on
-  ## release builds.  The sequence `s` can be empty, which will produce `num`
-  ## empty sequences.
+  ## release builds.  The input sequence `s` can be empty, which will produce
+  ## `num` empty sequences.
   ##
   ## If `spread` is false and the length of `s` is not a multiple of `num`, the
   ## proc will max out the first sub sequences with ``1 + len(s) div num``
@@ -110,10 +110,10 @@ proc split*[T](s: seq[T], num: int, spread = true): seq[seq[T]] =
   ##
   ## .. code-block:: nimrod
   ##   let numbers = @[1, 2, 3, 4, 5, 6, 7]
-  ##   assert numbers.split(3) == @[@[1, 2, 3], @[4, 5], @[6, 7]]
-  ##   assert numbers.split(3, false)  == @[@[1, 2, 3], @[4, 5, 6], @[7]]
-  ##   assert numbers.split(6)[0] == @[1, 2]
-  ##   assert numbers.split(6)[5] == @[7]
+  ##   assert numbers.distribute(3) == @[@[1, 2, 3], @[4, 5], @[6, 7]]
+  ##   assert numbers.distribute(3, false)  == @[@[1, 2, 3], @[4, 5, 6], @[7]]
+  ##   assert numbers.distribute(6)[0] == @[1, 2]
+  ##   assert numbers.distribute(6)[5] == @[7]
   assert(not s.isNil, "`s` can't be nil")
   assert(num > 0, "`num` has to be greater than zero")
   if num < 2:
@@ -485,29 +485,30 @@ when isMainModule:
     nums.mapIt(it * 3)
     assert nums[0] + nums[3] == 15
 
-  block: # split tests
+  block: # distribute tests
     let numbers = @[1, 2, 3, 4, 5, 6, 7]
-    doAssert numbers.split(3) == @[@[1, 2, 3], @[4, 5], @[6, 7]]
-    doAssert numbers.split(6)[0] == @[1, 2]
-    doAssert numbers.split(6)[5] == @[7]
+    doAssert numbers.distribute(3) == @[@[1, 2, 3], @[4, 5], @[6, 7]]
+    doAssert numbers.distribute(6)[0] == @[1, 2]
+    doAssert numbers.distribute(6)[5] == @[7]
     let a = @[1, 2, 3, 4, 5, 6, 7]
-    doAssert a.split(1, true)   == @[@[1, 2, 3, 4, 5, 6, 7]]
-    doAssert a.split(1, false)  == @[@[1, 2, 3, 4, 5, 6, 7]]
-    doAssert a.split(2, true)   == @[@[1, 2, 3, 4], @[5, 6, 7]]
-    doAssert a.split(2, false)  == @[@[1, 2, 3, 4], @[5, 6, 7]]
-    doAssert a.split(3, true)   == @[@[1, 2, 3], @[4, 5], @[6, 7]]
-    doAssert a.split(3, false)  == @[@[1, 2, 3], @[4, 5, 6], @[7]]
-    doAssert a.split(4, true)   == @[@[1, 2], @[3, 4], @[5, 6], @[7]]
-    doAssert a.split(4, false)  == @[@[1, 2], @[3, 4], @[5, 6], @[7]]
-    doAssert a.split(5, true)   == @[@[1, 2], @[3, 4], @[5], @[6], @[7]]
-    doAssert a.split(5, false)  == @[@[1, 2], @[3, 4], @[5, 6], @[7], @[]]
-    doAssert a.split(6, true)   == @[@[1, 2], @[3], @[4], @[5], @[6], @[7]]
-    doAssert a.split(6, false)  == @[@[1, 2], @[3, 4], @[5, 6], @[7], @[], @[]]
-    doAssert a.split(8, false)  == a.split(8, true)
-    doAssert a.split(90, false) == a.split(90, true)
+    doAssert a.distribute(1, true)   == @[@[1, 2, 3, 4, 5, 6, 7]]
+    doAssert a.distribute(1, false)  == @[@[1, 2, 3, 4, 5, 6, 7]]
+    doAssert a.distribute(2, true)   == @[@[1, 2, 3, 4], @[5, 6, 7]]
+    doAssert a.distribute(2, false)  == @[@[1, 2, 3, 4], @[5, 6, 7]]
+    doAssert a.distribute(3, true)   == @[@[1, 2, 3], @[4, 5], @[6, 7]]
+    doAssert a.distribute(3, false)  == @[@[1, 2, 3], @[4, 5, 6], @[7]]
+    doAssert a.distribute(4, true)   == @[@[1, 2], @[3, 4], @[5, 6], @[7]]
+    doAssert a.distribute(4, false)  == @[@[1, 2], @[3, 4], @[5, 6], @[7]]
+    doAssert a.distribute(5, true)   == @[@[1, 2], @[3, 4], @[5], @[6], @[7]]
+    doAssert a.distribute(5, false)  == @[@[1, 2], @[3, 4], @[5, 6], @[7], @[]]
+    doAssert a.distribute(6, true)   == @[@[1, 2], @[3], @[4], @[5], @[6], @[7]]
+    doAssert a.distribute(6, false)  == @[
+      @[1, 2], @[3, 4], @[5, 6], @[7], @[], @[]]
+    doAssert a.distribute(8, false)  == a.distribute(8, true)
+    doAssert a.distribute(90, false) == a.distribute(90, true)
     var b = @[0]
     for f in 1 .. 25: b.add(f)
-    doAssert b.split(5, true)[4].len == 5
-    doAssert b.split(5, false)[4].len == 2
+    doAssert b.distribute(5, true)[4].len == 5
+    doAssert b.distribute(5, false)[4].len == 2
 
   echo "Finished doc tests"
