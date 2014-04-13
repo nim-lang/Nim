@@ -644,13 +644,16 @@ proc `[]`*(node: PJsonNode, name: string, default: PJsonNode = nil): PJsonNode =
       return item
   return default
   
-proc `[]`*(node: PJsonNode, index: int, default: PJsonNode = nil): PJsonNode =
+proc `[]`*(node: PJsonNode, index: int, default: PJsonNode = nil): PJsonNode {.raises: [EInvalidIndex].}=
   ## Gets the node at `index` in an Array.If `node` is nil, this returns `result`, 
-  ## which is by default `nil` to allow for chaining. Results are undefined if
-  ## the index is out of range.
+  ## which is by default `nil` to allow for chaining. `EInvalidIndex` is raised if `index`
+  ## is out of bounds
   if isNil(node):
     return default
   assert(node.kind == JArray)
+  if index < 0 or index >= node.elems.len:
+    raise newException(EInvalidIndex,
+          "index " & $index & " is out of range [0, " & $node.elems.len & ")")
   return node.elems[index]
 
 proc hasKey*(node: PJsonNode, key: string): bool =
@@ -937,13 +940,29 @@ when isMainModule:
     raise newException(EInvalidValue, "That line was expected to fail")
   except EInvalidIndex: echo()
 
-  let passthroughTest = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd" }"""
+  let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd" }"""
   # nil passthrough
-  assert(passthroughTest["doesnt_exist"][1] == nil)
-  assert(passthroughTest["doesnt_exist"]["anything"] == nil)
+  assert(testJson["doesnt_exist"][1] == nil)
+  assert(testJson["doesnt_exist"]["anything"] == nil)
   # default param
-  assert(passthroughTest["doesnt_exist",%true].bval)
-  assert(passthroughTest["doesnt_exist"][1,%true].bval)
+  assert(testJson["doesnt_exist",%true].bval)
+  assert(testJson["doesnt_exist"][1,%true].bval)
+  
+  # Bounds checking
+  try:
+    let a = testJson["a"][9]
+    assert(false, "EInvalidIndex not thrown")
+  except EInvalidIndex:
+    discard
+  try:
+    let a = testJson["a"][-1]
+    assert(false, "EInvalidIndex not thrown")
+  except EInvalidIndex:
+    discard
+  try:
+    assert(testJson["a"][0].num == 1, "Index doesn't correspond to its value")
+  except:
+    assert(false, "EInvalidIndex thrown for valid index")
 
   discard """
   while true:
