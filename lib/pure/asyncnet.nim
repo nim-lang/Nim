@@ -80,14 +80,48 @@ proc connect*(socket: PAsyncSocket, address: string, port: TPort,
   ## or an error occurs.
   result = connect(socket.fd.TAsyncFD, address, port, af)
 
+proc readIntoBuf(socket: PAsyncSocket, flags: int): PFuture[int] {.async.} =
+  var data = await recv(socket.fd.TAsyncFD, BufferSize, flags)
+  if data.len != 0:
+    copyMem(addr socket.buffer[0], addr data[0], data.len)
+  socket.bufLen = data.len
+  socket.currPos = 0
+  result = data.len
+
 proc recv*(socket: PAsyncSocket, size: int,
-           flags: int = 0): PFuture[string] =
+           flags: int = 0): PFuture[string] {.async.} =
   ## Reads ``size`` bytes from ``socket``. Returned future will complete once
   ## all of the requested data is read. If socket is disconnected during the
   ## recv operation then the future may complete with only a part of the
   ## requested data read. If socket is disconnected and no data is available
   ## to be read then the future will complete with a value of ``""``.
-  result = recv(socket.fd.TAsyncFD, size, flags)
+  if socket.isBuffered:
+    result = newString(size)
+
+    template returnNow(readBytes: int) =
+      result.setLen(readBytes)
+      # Only increase buffer position when not peeking.
+      if (flags and MSG_PEEK) != MSG_PEEK:
+        socket.currPos.inc(readBytes)
+      return
+
+    if socket.bufLen == 0:
+      let res = await socket.readIntoBuf(flags and (not MSG_PEEK))
+      if res == 0: returnNow(0)
+
+    var read = 0
+    while read < size:
+      if socket.currPos >= socket.bufLen:
+        let res = await socket.readIntoBuf(flags and (not MSG_PEEK))
+        if res == 0: returnNow(read)
+
+      let chunk = min(socket.bufLen-socket.currPos, size-read)
+      copyMem(addr(result[read]), addr(socket.buffer[socket.currPos+read]), chunk)
+      read.inc(chunk)
+
+    returnNow(read)
+  else:
+    result = await recv(socket.fd.TAsyncFD, size, flags)
 
 proc send*(socket: PAsyncSocket, data: string): PFuture[void] =
   ## Sends ``data`` to ``socket``. The returned future will complete once all
