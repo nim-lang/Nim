@@ -1754,6 +1754,11 @@ when defined(Windows):
   type
     DeviceId = int32
     FileId = int64
+else:
+  type
+    DeviceId = TDev
+    FileId = TIno
+
 type
   FileInfo = object
     ## Contains information associated with a file object.
@@ -1766,6 +1771,58 @@ type
     lastWriteTime: TTime # Time file was last modified/written to.
     creationTime: TTime # Time file was created. Not supported on all systems!
 
+proc rawToFormalFileInfo(rawInfo, formalInfo): expr =
+  ## 'rawInfo' is either a 'TBY_HANDLE_FILE_INFORMATION' structure on Windows,
+  ## or a 'TStat' structure on posix
+  when defined(Windows):
+    template toTime(e): expr = winTimeToUnixTime(rdFileTime(e))
+    template merge(a, b): expr = a or (b shl 32)
+    formalInfo.id.device = rawInfo.dwVolumeSerialNumber
+    formalInfo.id.file = merge(rawInfo.nFileIndexLow, rawInfo.nFileIndexHigh)
+    formalInfo.size = merge(rawInfo.nFileSizeLow, rawInfo.nFileSizeHigh)
+    formalInfo.linkCount = rawInfo.nNumberOfLinks
+    formalInfo.lastAccessTime = toTime(rawInfo.ftLastAccessTime)
+    formalInfo.lastWriteTime = toTime(rawInfo.ftLastWriteTime)
+    formalInfo.creationTime = toTime(rawInfo.ftCreationTime)
+    
+    # Retrieve basic permissions
+    if (info.dwFileAttributes and FILE_ATTRIBUTE_READONLY) != 0'i32:
+      formalInfo.permissions = {fpUserExec, fpUserRead, fpGroupExec, 
+                                fpGroupRead, fpOthersExec, fpOthersRead}
+    else:
+      result.permissions = {fpUserExec..fpOthersRead}
+
+    # Retrieve basic file kind
+    result.kind = pcFile
+    if (info.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) != 0'i32:
+      formalInfo.kind = pcDir
+    if (info.dwFileAttributes and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32:
+      formalInfo.kind = succ(result.kind)
+
+  else:
+    formalInfo.id = (rawInfo.st_dev, rawInfo.st_ino)
+    formalInfo.size = getFileSize(handle)
+    formalInfo.linkCount = BiggestInt(rawInfo.st_Nlink)
+    formalInfo.lastAccessTime = rawInfo.st_atime
+    formalInfo.lastWriteTime = rawInfo.st_mtime
+    formalInfo.creationTime = rawInfo.st_ctime
+
+    result.permissions = {}
+    if (a.st_mode and S_IRUSR) != 0'i32: result.incl(fpUserRead)
+    if (a.st_mode and S_IWUSR) != 0'i32: result.incl(fpUserWrite)
+    if (a.st_mode and S_IXUSR) != 0'i32: result.incl(fpUserExec)
+
+    if (a.st_mode and S_IRGRP) != 0'i32: result.incl(fpGroupRead)
+    if (a.st_mode and S_IWGRP) != 0'i32: result.incl(fpGroupWrite)
+    if (a.st_mode and S_IXGRP) != 0'i32: result.incl(fpGroupExec)
+
+    if (a.st_mode and S_IROTH) != 0'i32: result.incl(fpOthersRead)
+    if (a.st_mode and S_IWOTH) != 0'i32: result.incl(fpOthersWrite)
+    if (a.st_mode and S_IXOTH) != 0'i32: result.incl(fpOthersExec)
+
+    result.kind = pcFile
+    if S_ISDIR(s.st_mode): result.kind = pcDir
+    if S_ISLNK(s.st_mode): succ(result.kind)
 
 proc getFileInfo*(handle: THandle, result: var FileInfo) =
   ## Retrieves file information for the file object represented by the given
@@ -1775,39 +1832,15 @@ proc getFileInfo*(handle: THandle, result: var FileInfo) =
   ## is invalid, an error will be thrown.
   # Done: ID, Kind, Size, Permissions, Link Count
   when defined(Windows):
-    template toTime(e): expr = winTimeToUnixTime(rdFileTime(e))
-    var info: TBY_HANDLE_FILE_INFORMATION
-    if getFileInformationByHandle(handle, addr info) == 0:
+    var rawInfo: TBY_HANDLE_FILE_INFORMATION
+    if getFileInformationByHandle(handle, addr rawInfo) == 0:
       osError(osLastError())
-    result.id.device = info.dwVolumeSerialNumber
-    result.id.file = info.nFileIndexLow or (info.nFileIndexHigh shl 32)
-    result.size = info.nFileSizeLow or (info.nFileSizeHigh shl 32)
-    result.linkCount = info.nNumberOfLinks
-    result.lastAccessTime = toTime(info.ftLastAccessTime)
-    result.lastWriteTime = toTime(info.ftLastWriteTime)
-    result.creationTime = toTime(info.ftCreationTime)
-    
-    # Retrieve permissions
-    # TODO - Use a more accurate method of getting permissions?
-    if (info.dwFileAttributes and FILE_ATTRIBUTE_READONLY) != 0'i32:
-      result.permissions = {fpUserExec, fpUserRead, fpGroupExec, fpGroupRead,
-                            fpOthersExec, fpOthersRead}
-    else:
-      result.permissions = {fpUserExec..fpOthersRead}
-
-    # Retrieve file kind
-    # Should we include more file kinds?
-    result.kind = pcFile
-    if (info.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) != 0'i32:
-      result.kind = pcDir
-    # Should we optimize for the case when it's definately known that the file
-    # isn't a symlink (see the below procedure's "followSymlink")
-    if (info.dwFileAttributes and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32:
-      result.kind = succ(result.kind)
-      
+    rawToFormalFileInfo(rawInfo, result)
   else:
     var rawInfo: TStat
-    if stat(handle, rawInfo) < 0'i32: osError(osLastError())
+    if fstat(handle, rawInfo) < 0'i32:
+      osError(osLastError())
+    rawToFormalFileInfo(rawInfo, result)
 
 proc getFileInfo*(path: string, followSymlink = true): FileInfo =
   ## Retrieves file information for the file object pointed to by `path`.
@@ -1828,6 +1861,8 @@ proc getFileInfo*(path: string, followSymlink = true): FileInfo =
     if handle == INVALID_HANDLE_VALUE:
       osError(osLastError())
     getFileInfo(handle, result)
-    closeHandle(handle)
+    discard closeHandle(handle)
+  else:
+    var 
 
 {.pop.}
