@@ -1082,12 +1082,6 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       gsub(g, n.sons[1])
     else:
       put(g, tkIterator, "iterator")
-  of nkSharedTy:
-    if sonsLen(n) > 0:
-      putWithSpace(g, tkShared, "shared")
-      gsub(g, n.sons[0])
-    else:
-      put(g, tkShared, "shared")
   of nkStaticTy:
     put(g, tkStatic, "static")
     put(g, tkBracketLe, "[")

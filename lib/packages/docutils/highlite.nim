@@ -52,7 +52,7 @@ const
     "finally", "for", "from", "generic", "if", "import", "in", "include",
     "interface", "is", "isnot", "iterator", "lambda", "let", "macro", "method",
     "mixin", "mod", "nil", "not", "notin", "object", "of", "or", "out", "proc",
-    "ptr", "raise", "ref", "return", "shared", "shl", "shr", "static",
+    "ptr", "raise", "ref", "return", "shl", "shr", "static",
     "template", "try", "tuple", "type", "using", "var", "when", "while", "with",
     "without", "xor", "yield"]
 
@@ -61,6 +61,7 @@ proc getSourceLanguage*(name: string): TSourceLanguage =
     if cmpIgnoreStyle(name, sourceLanguageToStr[i]) == 0: 
       return i
   result = langNone
+  
 proc initGeneralTokenizer*(g: var TGeneralTokenizer, buf: cstring) =
   g.buf = buf
   g.kind = low(TTokenClass)
@@ -70,6 +71,7 @@ proc initGeneralTokenizer*(g: var TGeneralTokenizer, buf: cstring) =
   var pos = 0                     # skip initial whitespace:
   while g.buf[pos] in {' ', '\x09'..'\x0D'}: inc(pos)
   g.pos = pos
+
 proc initGeneralTokenizer*(g: var TGeneralTokenizer, buf: string) = 
   initGeneralTokenizer(g, cstring(buf))
 
@@ -554,7 +556,7 @@ when isMainModule:
     let input = string(readFile(filename))
     keywords = input.split()
     break
-  doAssert (not keywords.isNil, "Couldn't read any keywords.txt file!")
+  doAssert(not keywords.isNil, "Couldn't read any keywords.txt file!")
   doAssert keywords.len == nimrodKeywords.len, "No matching lengths"
   for i in 0..keywords.len-1:
     #echo keywords[i], " == ", nimrodKeywords[i]

@@ -77,7 +77,7 @@ type
 
   TNumber* = TInteger|TReal
     ## type class matching all number types
-  
+
 proc defined*(x: expr): bool {.magic: "Defined", noSideEffect.}
   ## Special compile-time procedure that checks whether `x` is
   ## defined. `x` has to be an identifier or a qualified identifier.
@@ -187,6 +187,11 @@ when not defined(niminheritable):
   {.pragma: inheritable.}
 when not defined(nimunion):
   {.pragma: unchecked.}
+
+when defined(nimNewShared):
+  type
+    `shared`* {.magic: "Shared".}
+    guarded* {.magic: "Guarded".}
 
 const NoFakeVars* = defined(NimrodVM) ## true if the backend doesn't support \
   ## "fake variables" like 'var EBADF {.importc.}: cint'.
@@ -784,7 +789,8 @@ proc `is` *[T, S](x: T, y: S): bool {.magic: "Is", noSideEffect.}
   ##   assert(test[int](3) == 3)
   ##   assert(test[string]("xyz") == 0)
 template `isnot` *(x, y: expr): expr {.immediate.} = not (x is y)
-  ## Negated version of `is`. Equivalent to `not(is(x,y))`
+  ## Negated version of `is`. Equivalent to ``not(x is y)``.
+
 proc `of` *[T, S](x: T, y: S): bool {.magic: "Of", noSideEffect.}
   ## Checks if `x` has a type of `y`
   ##

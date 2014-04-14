@@ -1277,6 +1277,15 @@ proc processMagicType(c: PContext, m: PSym) =
     setMagicType(m, tyOrdinal, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))
   of mPNimrodNode: discard
+  of mShared:
+    setMagicType(m, tyObject, 0)
+    m.typ.n = newNodeI(nkRecList, m.info)
+    incl m.typ.flags, tfShared
+  of mGuarded:
+    setMagicType(m, tyObject, 0)
+    m.typ.n = newNodeI(nkRecList, m.info)
+    incl m.typ.flags, tfShared
+    rawAddSon(m.typ, sysTypeFromName"shared")
   else: localError(m.info, errTypeExpected)
   
 proc semGenericConstraints(c: PContext, x: PType): PType =

@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -14,11 +14,22 @@ import ast, astalgo, msgs, types, magicsys, semdata, renderer
 const
   tfInstClearedFlags = {tfHasMeta}
 
+proc sharedPtrCheck(info: TLineInfo, t: PType) =
+  if t.kind == tyPtr and t.len > 1:
+    if t.sons[0].sym.magic in {mShared, mGuarded}:
+      incl(t.flags, tfShared)
+      if t.sons[0].sym.magic == mGuarded: incl(t.flags, tfGuarded)
+      if tfHasGCedMem in t.flags:
+        localError(info, errGenerated,
+                   "shared memory may not refer to GC'ed thread local memory")
+
 proc checkPartialConstructedType(info: TLineInfo, t: PType) =
   if tfAcyclic in t.flags and skipTypes(t, abstractInst).kind != tyObject:
     localError(info, errInvalidPragmaX, "acyclic")
   elif t.kind == tyVar and t.sons[0].kind == tyVar:
     localError(info, errVarVarTypeNotAllowed)
+  else:
+    sharedPtrCheck(info, t)
 
 proc checkConstructedType*(info: TLineInfo, typ: PType) =
   var t = typ.skipTypes({tyDistinct})
@@ -29,7 +40,8 @@ proc checkConstructedType*(info: TLineInfo, typ: PType) =
     localError(info, errVarVarTypeNotAllowed)
   elif computeSize(t) == szIllegalRecursion:
     localError(info, errIllegalRecursionInTypeX, typeToString(t))
-  
+  else:
+    sharedPtrCheck(info, t)
   when false:
     if t.kind == tyObject and t.sons[0] != nil:
       if t.sons[0].kind != tyObject or tfFinal in t.sons[0].flags: 

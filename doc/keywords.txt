@@ -12,7 +12,7 @@ nil not notin
 object of or out
 proc ptr
 raise ref return
-shared shl shr static
+shl shr static
 template try tuple type
 using
 var
