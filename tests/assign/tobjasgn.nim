@@ -1,16 +1,21 @@
 discard """
-  output: '''0
+  output: '''0 0
 pre test a:test b:1 c:2 haha:3
 assignment test a:test b:1 c:2 haha:3
 '''
 """
 
-type TSomeObj = object of TObject
-  Variable: int
+# bug #1005
+
+type
+  TSomeObj = object of TObject
+    a: int
+  PSomeObj = ref object
+    a: int
  
 var a = TSomeObj()
- 
-echo a.Variable.`$`
+var b = PSomeObj()
+echo a.a, " ", b.a
 
 # bug #575
 

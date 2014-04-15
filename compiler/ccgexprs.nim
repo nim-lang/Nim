@@ -1060,6 +1060,8 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     t = t.sons[0].skipTypes(abstractInst)
     r = ropef("(*$1)", r)
     gcUsage(e)
+  else:
+    constructLoc(p, tmp)
   discard getTypeDesc(p.module, t)
   for i in 1 .. <e.len:
     let it = e.sons[i]
@@ -1082,6 +1084,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     tmp2.s = if isRef: OnHeap else: OnStack
     tmp2.heapRoot = tmp.r
     expr(p, it.sons[1], tmp2)
+
   if d.k == locNone:
     d = tmp
   else:
