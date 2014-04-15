@@ -1828,7 +1828,7 @@ template rawToFormalFileInfo(rawInfo, formalInfo): expr =
     if S_ISDIR(rawInfo.st_mode): formalInfo.kind = pcDir
     if S_ISLNK(rawInfo.st_mode): formalInfo.kind.inc()
 
-proc getFileInfo*(handle: TFileHandle, result: var FileInfo) =
+proc getFileInfo*(handle: TFileHandle): FileInfo =
   ## Retrieves file information for the file object represented by the given
   ## handle.
   ##
@@ -1848,6 +1848,9 @@ proc getFileInfo*(handle: TFileHandle, result: var FileInfo) =
     if fstat(handle, rawInfo) < 0'i32:
       osError(osLastError())
     rawToFormalFileInfo(rawInfo, result)
+
+proc getFileInfo*(file: TFile): FileInfo =
+  result = getFileInfo(file.fileHandle())
 
 proc getFileInfo*(path: string, followSymlink = true): FileInfo =
   ## Retrieves file information for the file object pointed to by `path`.
