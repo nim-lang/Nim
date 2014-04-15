@@ -249,6 +249,7 @@ proc reconnect*(irc: PIRC, timeout = 5000) =
   if secSinceReconnect < timeout:
     sleep(timeout - secSinceReconnect)
   irc.sock = socket()
+  if irc.sock == InvalidSocket: osError(osLastError())
   irc.connect()
   irc.lastReconnect = epochTime()
 
@@ -274,6 +275,7 @@ proc irc*(address: string, port: TPort = 6667.TPort,
   result.messageBuffer = @[]
   result.status = SockIdle
   result.sock = socket()
+  if result.sock == InvalidSocket: osError(osLastError())
 
 proc processLine(irc: PIRC, line: string): TIRCEvent =
   if line.len == 0:

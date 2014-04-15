@@ -102,6 +102,7 @@ proc open*(s: var TScgiState, port = TPort(4000), address = "127.0.0.1",
   s.input = newString(s.buflen) # will be reused
   
   s.server = socket()
+  if s.server == InvalidSocket: osError(osLastError())
   new(s.client) # Initialise s.client for `next`
   if s.server == InvalidSocket: scgiError("could not open socket")
   #s.server.connect(connectionName, port)

@@ -107,6 +107,7 @@ proc ftpClient*(address: string, port = TPort(21),
   result.isAsync = false
   result.dsockConnected = false
   result.csock = socket()
+  if result.csock == InvalidSocket: osError(osLastError())
 
 proc getDSock(ftp: PFTPClient): TSocket =
   if ftp.isAsync: return ftp.asyncDSock else: return ftp.dsock
@@ -213,6 +214,7 @@ proc pasv(ftp: PFTPClient) =
   ## Negotiate a data connection.
   if not ftp.isAsync:
     ftp.dsock = socket()
+    if ftp.dsock == InvalidSocket: osError(osLastError())
   else:
     ftp.asyncDSock = AsyncSocket()
     ftp.asyncDSock.handleRead =

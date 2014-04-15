@@ -288,6 +288,7 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
   add(headers, "\c\L")
   
   var s = socket()
+  if s == InvalidSocket: osError(osLastError())
   var port = sockets.TPort(80)
   if r.scheme == "https":
     when defined(ssl):
