@@ -718,4 +718,4 @@ proc WSASend*(s: TSocketHandle, buf: ptr TWSABuf, bufCount: DWORD,
   stdcall, importc: "WSASend", dynlib: "Ws2_32.dll".}
 
 proc get_osfhandle*(fd:TFileHandle): THandle {.
-  importc:"__get_osfhandle", header:"<io.h>".}
+  importc:"_get_osfhandle", header:"<io.h>".}
