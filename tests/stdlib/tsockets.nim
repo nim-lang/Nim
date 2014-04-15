@@ -1,4 +1,4 @@
-import sockets
+import sockets, os
 var s: TSocket
 s = socket()
 if s == InvalidSocket: osError(osLastError())
