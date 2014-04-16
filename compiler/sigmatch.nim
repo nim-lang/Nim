@@ -1284,6 +1284,7 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
     result = a
   elif a.typ.isNil:
     let flags = if formal.kind == tyIter: {efDetermineType, efWantIterator}
+                elif formal.kind == tyStmt: {efDetermineType, efWantStmt}
                 else: {efDetermineType}
     result = c.semOperand(c, a, flags)
   else:

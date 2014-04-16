@@ -722,10 +722,13 @@ proc alloc0(allocator: var TMemRegion, size: int): pointer =
   zeroMem(result, size)
 
 proc dealloc(allocator: var TMemRegion, p: pointer) =
+  sysAssert(p != nil, "dealloc 0")
   var x = cast[pointer](cast[TAddress](p) -% sizeof(TFreeCell))
-  sysAssert(cast[ptr TFreeCell](x).zeroField == 1, "dealloc 1")
+  sysAssert(x != nil, "dealloc 1")
+  sysAssert(isAccessible(allocator, x), "is not accessible")
+  sysAssert(cast[ptr TFreeCell](x).zeroField == 1, "dealloc 2")
   rawDealloc(allocator, x)
-  sysAssert(not isAllocatedPtr(allocator, x), "dealloc 2")
+  sysAssert(not isAllocatedPtr(allocator, x), "dealloc 3")
 
 proc realloc(allocator: var TMemRegion, p: pointer, newsize: int): pointer =
   if newsize > 0:

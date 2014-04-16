@@ -559,7 +559,7 @@ type
     mFloat, mFloat32, mFloat64, mFloat128,
     mBool, mChar, mString, mCstring,
     mPointer, mEmptySet, mIntSetBaseType, mNil, mExpr, mStmt, mTypeDesc,
-    mVoidType, mPNimrodNode, mShared, mGuarded,
+    mVoidType, mPNimrodNode, mShared, mGuarded, mLock, mSpawn,
     mIsMainModule, mCompileDate, mCompileTime, mNimrodVersion, mNimrodMajor,
     mNimrodMinor, mNimrodPatch, mCpuEndian, mHostOS, mHostCPU, mAppType,
     mNaN, mInf, mNegInf,

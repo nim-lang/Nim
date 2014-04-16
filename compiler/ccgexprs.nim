@@ -1632,6 +1632,9 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     localError(e.info, errCannotGenerateCodeForX, e.sons[0].sym.name.s)
   of mSlurp..mQuoteAst:
     localError(e.info, errXMustBeCompileTime, e.sons[0].sym.name.s)
+  of mSpawn:
+    let n = lowerings.wrapProcForSpawn(p.module.module, e.sons[1])
+    expr(p, n, d)
   else: internalError(e.info, "genMagicExpr: " & $op)
 
 proc genConstExpr(p: BProc, n: PNode): PRope

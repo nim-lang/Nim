@@ -141,12 +141,6 @@ type
     closureParam, state, resultSym: PSym # only if isIter
     obj: PType # only if isIter
 
-proc createObj(owner: PSym, info: TLineInfo): PType =
-  result = newType(tyObject, owner)
-  rawAddSon(result, nil)
-  incl result.flags, tfFinal
-  result.n = newNodeI(nkRecList, info)
-
 proc getStateType(iter: PSym): PType =
   var n = newNodeI(nkRange, iter.info)
   addSon(n, newIntNode(nkIntLit, -1))
@@ -189,15 +183,6 @@ proc getEnvParam(routine: PSym): PSym =
   let hidden = lastSon(params)
   if hidden.kind == nkSym and hidden.sym.name.s == paramName:
     result = hidden.sym
-    
-proc addField(obj: PType; s: PSym) =
-  # because of 'gensym' support, we have to mangle the name with its ID.
-  # This is hacky but the clean solution is much more complex than it looks.
-  var field = newSym(skField, getIdent(s.name.s & $s.id), s.owner, s.info)
-  let t = skipIntLit(s.typ)
-  field.typ = t
-  field.position = sonsLen(obj.n)
-  addSon(obj.n, newSymNode(field))
 
 proc initIterContext(c: POuterContext, iter: PSym) =
   c.fn = iter
@@ -273,22 +258,6 @@ proc addDep(e, d: PEnv, owner: PSym): PSym =
   rawAddSon(result.typ, d.obj)
   addField(e.obj, result)
   e.deps.add((d, result))
-  
-proc indirectAccess(a: PNode, b: PSym, info: TLineInfo): PNode = 
-  # returns a[].b as a node
-  var deref = newNodeI(nkHiddenDeref, info)
-  deref.typ = a.typ.sons[0]
-  assert deref.typ.kind == tyObject
-  let field = getSymFromList(deref.typ.n, getIdent(b.name.s & $b.id))
-  assert field != nil, b.name.s
-  addSon(deref, a)
-  result = newNodeI(nkDotExpr, info)
-  addSon(result, deref)
-  addSon(result, newSymNode(field))
-  result.typ = field.typ
-
-proc indirectAccess(a, b: PSym, info: TLineInfo): PNode =
-  result = indirectAccess(newSymNode(a), b, info)
 
 proc newCall(a, b: PSym): PNode =
   result = newNodeI(nkCall, a.info)

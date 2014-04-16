@@ -14,7 +14,7 @@ import
   options, intsets,
   nversion, nimsets, msgs, crc, bitsets, idents, lists, types, ccgutils, os,
   times, ropes, math, passes, rodread, wordrecg, treetab, cgmeth,
-  rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases
+  rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases, lowerings
 
 when options.hasTinyCBackend:
   import tccgen
