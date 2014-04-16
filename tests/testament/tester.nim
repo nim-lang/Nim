@@ -111,10 +111,10 @@ proc addResult(r: var TResults, test: TTest,
   r.data.addf("$#\t$#\t$#\t$#", name, expected, given, $success)
   if success notin {reSuccess, reIgnored}:
     styledEcho styleBright, name, fgRed, " [", $success, "]"
-    styledEcho styleDim, "EXPECTED:"
-    echo expected
-    styledEcho styleDim, "GIVEN:"
-    echo given
+    echo"Expected:"
+    styledEcho styleBright, expected
+    echo"Given:"
+    styledEcho styleBright, given
 
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest) =
   if strip(expected.msg) notin strip(given.msg):
@@ -152,7 +152,7 @@ proc testSpec(r: var TResults, test: TTest) =
   # major entry point for a single test
   let tname = test.name.addFileExt(".nim")
   inc(r.total)
-  echo extractFilename(tname)
+  styledEcho "Processing ", fgCyan, extractFilename(tname)
   var expected = parseSpec(tname)
   if expected.err == reIgnored:
     r.addResult(test, "", "", reIgnored)
@@ -178,8 +178,11 @@ proc testSpec(r: var TResults, test: TTest) =
           exeFile = changeFileExt(tname, ExeExt)
         
         if existsFile(exeFile):
+          if findExe("nodejs") == "":
+            r.addResult(test, expected.outp, "nodejs binary not in PATH", reExeNotFound)
+            return
           var (buf, exitCode) = execCmdEx(
-            (if test.target==targetJS: "node " else: "") & exeFile)
+            (if test.target == targetJS: "nodejs " else: "") & exeFile)
           if exitCode != expected.ExitCode:
             r.addResult(test, "exitcode: " & $expected.exitCode,
                               "exitcode: " & $exitCode, reExitCodesDiffer)
@@ -223,7 +226,7 @@ proc main() =
   os.putenv "NIMTEST_NO_COLOR", "1"
   os.putenv "NIMTEST_OUTPUT_LVL", "PRINT_FAILURES"
 
-  backend.open()  
+  backend.open()
   var optPrintResults = false
   var p = initOptParser()
   p.next()
@@ -238,9 +241,12 @@ proc main() =
   var r = initResults()
   case action
   of "all":
-    for kind, dir in walkDir("tests"):
-      if kind == pcDir and dir notin ["testament", "testdata", "nimcache"]:
-        processCategory(r, Category(dir), p.cmdLineRest.string)
+    let testsDir = "tests" & dirSep
+    for kind, dir in walkDir(testsDir):
+      assert testsDir.startsWith(testsDir)
+      let cat = dir[testsDir.len .. -1]
+      if kind == pcDir and cat notin ["testament", "testdata", "nimcache"]:
+        processCategory(r, Category(cat), p.cmdLineRest.string)
     for a in AdditionalCategories:
       processCategory(r, Category(a), p.cmdLineRest.string)
   of "c", "cat", "category":
@@ -255,11 +261,11 @@ proc main() =
   else:
     quit usage
 
-  if optPrintResults: 
+  if optPrintResults:
     if action == "html": openDefaultBrowser(resultsFile)
     else: echo r, r.data
   backend.close()
-  
+
 if paramCount() == 0:
   quit usage
 main()
