@@ -176,9 +176,8 @@ proc testSpec(r: var TResults, test: TTest) =
           exeFile = dir / "nimcache" / file & ".js"
         else:
           exeFile = changeFileExt(tname, ExeExt)
-        
         if existsFile(exeFile):
-          if findExe("nodejs") == "":
+          if test.target == targetJS and findExe("nodejs") == "":
             r.addResult(test, expected.outp, "nodejs binary not in PATH", reExeNotFound)
             return
           var (buf, exitCode) = execCmdEx(
