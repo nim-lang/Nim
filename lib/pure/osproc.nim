@@ -137,6 +137,14 @@ proc startProcess*(command: string,
   ## to `startProcess`. See the documentation of ``TProcessOption`` for the
   ## meaning of these flags. You need to `close` the process when done.
   ##
+  ## Note that you can't pass any `args` if you use the option
+  ## ``poEvalCommand``, which invokes the system shell to run the specified
+  ## `command`. In this situation you have to concatenate manually the contents
+  ## of `args` to `command` carefully escaping/quoting any special characters,
+  ## since it will be passed *as is* to the system shell. Each system/shell may
+  ## feature different escaping rules, so try to avoid this kind of shell
+  ## invokation if possible as it leads to non portable software.
+  ##
   ## Return value: The newly created process object. Nil is never returned,
   ## but ``EOS`` is raised in case of an error.
 
@@ -633,7 +641,7 @@ elif not defined(useNimRtl):
     if poEvalCommand in options:
       sysCommand = "/bin/sh"
       sysArgsRaw = @[sysCommand, "-c", command]
-      assert args.len == 0
+      assert args.len == 0, "`args` has to be empty when using poEvalCommand."
     else:
       sysCommand = command
       sysArgsRaw = @[command]
