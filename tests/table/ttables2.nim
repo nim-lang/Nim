@@ -1,6 +1,5 @@
 discard """
   output: '''true'''
-  cmd: "nimrod cc --hints:on $# $#"
 """
 
 import tables

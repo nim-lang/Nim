@@ -53,8 +53,10 @@ let
   pegSuccess = peg"'Hint: operation successful'.*"
   pegOfInterest = pegLineError / pegOtherError
 
-proc callCompiler(cmdTemplate, filename, options: string): TSpec =
-  let c = parseCmdLine(cmdTemplate % [options, filename])
+proc callCompiler(cmdTemplate, filename, options: string,
+                  target: TTarget): TSpec =
+  let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
+                       "options", options, "file", filename])
   var p = startProcess(command=c[0], args=c[1.. -1],
                        options={poStdErrToStdOut, poUseShell})
   let outp = p.outputStream
@@ -160,13 +162,15 @@ proc testSpec(r: var TResults, test: TTest) =
   else:
     case expected.action
     of actionCompile:
-      var given = callCompiler(expected.cmd, test.name, test.options)
+      var given = callCompiler(expected.cmd, test.name, test.options,
+                               test.target)
       if given.err == reSuccess:
         codegenCheck(test, expected.ccodeCheck, given)
       r.addResult(test, "", given.msg, given.err)
       if given.err == reSuccess: inc(r.passed)
     of actionRun:
-      var given = callCompiler(expected.cmd, test.name, test.options)
+      var given = callCompiler(expected.cmd, test.name, test.options,
+                               test.target)
       if given.err != reSuccess:
         r.addResult(test, "", given.msg, given.err)
       else:
@@ -178,7 +182,8 @@ proc testSpec(r: var TResults, test: TTest) =
           exeFile = changeFileExt(tname, ExeExt)
         if existsFile(exeFile):
           if test.target == targetJS and findExe("nodejs") == "":
-            r.addResult(test, expected.outp, "nodejs binary not in PATH", reExeNotFound)
+            r.addResult(test, expected.outp, "nodejs binary not in PATH",
+                        reExeNotFound)
             return
           var (buf, exitCode) = execCmdEx(
             (if test.target == targetJS: "nodejs " else: "") & exeFile)
@@ -196,7 +201,8 @@ proc testSpec(r: var TResults, test: TTest) =
         else:
           r.addResult(test, expected.outp, "executable not found", reExeNotFound)
     of actionReject:
-      var given = callCompiler(expected.cmd, test.name, test.options)
+      var given = callCompiler(expected.cmd, test.name, test.options,
+                               test.target)
       cmpMsgs(r, expected, given, test)
 
 proc testNoSpec(r: var TResults, test: TTest) =
@@ -204,7 +210,7 @@ proc testNoSpec(r: var TResults, test: TTest) =
   let tname = test.name.addFileExt(".nim")
   inc(r.total)
   echo extractFilename(tname)
-  let given = callCompiler(cmdTemplate, test.name, test.options)
+  let given = callCompiler(cmdTemplate, test.name, test.options, test.target)
   r.addResult(test, "", given.msg, given.err)
   if given.err == reSuccess: inc(r.passed)
 

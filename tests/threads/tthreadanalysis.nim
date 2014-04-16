@@ -2,7 +2,7 @@ discard """
   outputsub: "101"
   msg: "Warning: write to foreign heap"
   line: 37
-  cmd: "nimrod cc --hints:on --threads:on $# $#"
+  cmd: "nimrod $target --hints:on --threads:on $options $file"
 """
 
 import os

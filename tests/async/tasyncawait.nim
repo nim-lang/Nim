@@ -1,6 +1,5 @@
 discard """
   file: "tasyncawait.nim"
-  cmd: "nimrod cc --hints:on $# $#"
   output: "5000"
 """
 import asyncdispatch, rawsockets, net, strutils, os

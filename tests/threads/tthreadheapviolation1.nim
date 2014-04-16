@@ -1,7 +1,7 @@
 discard """
   line: 12
   errormsg: "write to foreign heap"
-  cmd: "nimrod cc --hints:on --threads:on $# $#"
+  cmd: "nimrod $target --hints:on --threads:on $options $file"
 """
 
 var 

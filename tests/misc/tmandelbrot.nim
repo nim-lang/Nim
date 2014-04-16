@@ -1,5 +1,5 @@
 discard """
-  cmd: "nimrod cc --hints:on -d:release $# $#"
+  cmd: "nimrod $target --hints:on -d:release $options $file"
 """
 
 # -*- nimrod -*-

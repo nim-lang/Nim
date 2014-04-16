@@ -1,5 +1,4 @@
 discard """
-  cmd: "nimrod js --hints:on $# $#"
   output: "1261129"
 """
 

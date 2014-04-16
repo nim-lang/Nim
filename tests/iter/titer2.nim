@@ -1,6 +1,6 @@
 discard """
   output: '''true'''
-  cmd: "nimrod cc --gc:none --hints:on --warnings:off $# $#"
+  cmd: "nimrod $target --gc:none --hints:on --warnings:off $options $file"
 """
 
 import hashes

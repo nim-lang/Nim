@@ -10,7 +10,7 @@
 import parseutils, strutils, os, osproc, streams, parsecfg
 
 const
-  cmdTemplate* = r"nimrod cc --hints:on $# $#"
+  cmdTemplate* = r"nimrod $target --hints:on $options $file"
 
 type
   TTestAction* = enum
@@ -51,6 +51,7 @@ type
 
 const
   targetToExt*: array[TTarget, string] = ["c", "cpp", "m", "js"]
+  targetToCmd*: array[TTarget, string] = ["c", "cpp", "objc", "js"]
 
 when not defined(parseCfgBool):
   # candidate for the stdlib:

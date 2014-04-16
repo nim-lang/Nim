@@ -1,6 +1,6 @@
 discard """
   file: "tasynciossl.nim"
-  cmd: "nimrod cc --hints:on --define:ssl $# $#"
+  cmd: "nimrod $target --hints:on --define:ssl $options $file"
   output: "20000"
 """
 import sockets, asyncio, strutils, times
