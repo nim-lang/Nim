@@ -53,6 +53,7 @@ Boot options:
                            (not needed on Windows)
   -d:nativeStacktrace      use native stack traces (only for Mac OS X or Linux)
   -d:noCaas                build Nimrod without CAAS support
+  -d:avoidTimeMachine      only for Mac OS X, excludes nimcache dir from backups
 """
 
 proc exe(f: string): string = return addFileExt(f, ExeExt)

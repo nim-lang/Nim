@@ -8,7 +8,7 @@
 #
 
 import
-  os, lists, strutils, strtabs
+  os, lists, strutils, strtabs, osproc, sets
   
 const
   hasTinyCBackend* = defined(tinyc)
@@ -16,6 +16,7 @@ const
   hasFFI* = defined(useFFI)
   newScopeForIf* = true
   useCaas* = not defined(noCaas)
+  noTimeMachine = defined(avoidTimeMachine) and defined(macosx)
 
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
@@ -263,6 +264,28 @@ proc toGeneratedFile*(path, ext: string): string =
   result = joinPath([getGeneratedPath(), changeFileExt(tail, ext)])
   #echo "toGeneratedFile(", path, ", ", ext, ") = ", result
 
+when noTimeMachine:
+  var alreadyExcludedDirs = initSet[string]()
+  proc excludeDirFromTimeMachine(dir: string) {.raises: [].} =
+    ## Calls a macosx command on the directory to exclude it from backups.
+    ##
+    ## The macosx tmutil command is invoked to mark the specified path as an
+    ## item to be excluded from time machine backups. If a path already exists
+    ## with files before excluding it, newer files won't be added to the
+    ## directory, but previous files won't be removed from the backup until the
+    ## user deletes that directory.
+    ##
+    ## The whole proc is optional and will ignore all kinds of errors. The only
+    ## way to be sure that it works is to call ``tmutil isexcluded path``.
+    if alreadyExcludedDirs.contains(dir): return
+    alreadyExcludedDirs.incl(dir)
+    try:
+      var p = startProcess("/usr/bin/tmutil", args = ["addexclusion", dir])
+      discard p.waitForExit
+      p.close
+    except E_Base, EOS:
+      discard
+
 proc completeGeneratedFilePath*(f: string, createSubDir: bool = true): string = 
   var (head, tail) = splitPath(f)
   #if len(head) > 0: head = removeTrailingDirSep(shortenDir(head & dirSep))
@@ -270,6 +293,8 @@ proc completeGeneratedFilePath*(f: string, createSubDir: bool = true): string =
   if createSubDir:
     try: 
       createDir(subdir)
+      when noTimeMachine:
+       excludeDirFromTimeMachine(subdir)
     except EOS: 
       writeln(stdout, "cannot create directory: " & subdir)
       quit(1)
