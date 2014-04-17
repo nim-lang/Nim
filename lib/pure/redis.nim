@@ -203,7 +203,6 @@ proc flushPipeline*(r: TRedis, wasMulti = false): TRedisList =
   for i in 0..tot-1:
     var ret = r.readNext()
     for item in ret:
-     var isOK = item.contains("OK")
      if not (item.contains("OK") or item.contains("QUEUED")):
        result.add(item)
 
