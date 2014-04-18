@@ -1,5 +1,5 @@
 discard """
-  output: '''0 0
+  output: '''8 5 0 0
 pre test a:test b:1 c:2 haha:3
 assignment test a:test b:1 c:2 haha:3
 '''
@@ -9,13 +9,13 @@ assignment test a:test b:1 c:2 haha:3
 
 type
   TSomeObj = object of TObject
-    a: int
+    a, b: int
   PSomeObj = ref object
-    a: int
+    a, b: int
  
-var a = TSomeObj()
-var b = PSomeObj()
-echo a.a, " ", b.a
+var a = TSomeObj(a: 8)
+var b = PSomeObj(a: 5)
+echo a.a, " ", b.a, " ", a.b, " ", b.b
 
 # bug #575
 
