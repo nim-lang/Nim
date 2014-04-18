@@ -196,7 +196,7 @@ proc `==`*[A, B](s, t: TTable[A, B]): bool =
     # to use the slow route here:
     for key, val in s:
       if not hasKey(t, key): return false
-      if mget(t, key) != val: return false
+      if t[key] != val: return false
     return true
   
 proc indexBy*[A, B, C](collection: A, index: proc(x: B): C): TTable[C, B] =
