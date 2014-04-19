@@ -4,6 +4,7 @@ Advanced commands:
   //compileToOC, objc       compile project to Objective C code
   //rst2html                convert a reStructuredText file to HTML
   //rst2tex                 convert a reStructuredText file to TeX
+  //jsondoc                 extract the documentation to a json file
   //buildIndex              build an index for the whole documentation
   //run                     run the project (with Tiny C backend; buggy!)
   //genDepend               generate a DOT file containing the
