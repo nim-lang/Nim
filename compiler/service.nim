@@ -84,6 +84,7 @@ proc serve*(action: proc (){.nimcall.}) =
   of "tcp", "":
     when useCaas:
       var server = socket()
+      if server == invalidSocket: osError(osLastError())
       let p = getConfigVar("server.port")
       let port = if p.len > 0: parseInt(p).TPort else: 6000.TPort
       server.bindAddr(port, getConfigVar("server.address"))

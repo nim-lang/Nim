@@ -90,6 +90,7 @@ const
   SQLITE_IGNORE* = 2          # Original from sqlite3.h: 
                               ##define SQLITE_STATIC      ((void(*)(void *))0)
                               ##define SQLITE_TRANSIENT   ((void(*)(void *))-1)
+  SQLITE_DETERMINISTIC* = 0x800
 
 const 
   SQLITE_STATIC* = nil

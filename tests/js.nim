@@ -1,5 +1,5 @@
 discard """
-  cmd: "nimrod js --hints:on $# $#"
+  cmd: "nimrod js --hints:on $options $file"
 """
 
 # This file tests the JavaScript generator

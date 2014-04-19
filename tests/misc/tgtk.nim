@@ -1,4 +1,6 @@
-
+discard """
+  disabled: true
+"""
 import
   gtk2, glib2, atk, gdk2, gdk2pixbuf, libglade2, pango,
   pangoutils

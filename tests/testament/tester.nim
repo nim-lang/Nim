@@ -53,8 +53,10 @@ let
   pegSuccess = peg"'Hint: operation successful'.*"
   pegOfInterest = pegLineError / pegOtherError
 
-proc callCompiler(cmdTemplate, filename, options: string): TSpec =
-  let c = parseCmdLine(cmdTemplate % [options, filename])
+proc callCompiler(cmdTemplate, filename, options: string,
+                  target: TTarget): TSpec =
+  let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
+                       "options", options, "file", filename])
   var p = startProcess(command=c[0], args=c[1.. -1],
                        options={poStdErrToStdOut, poUseShell})
   let outp = p.outputStream
@@ -111,10 +113,10 @@ proc addResult(r: var TResults, test: TTest,
   r.data.addf("$#\t$#\t$#\t$#", name, expected, given, $success)
   if success notin {reSuccess, reIgnored}:
     styledEcho styleBright, name, fgRed, " [", $success, "]"
-    styledEcho styleDim, "EXPECTED:"
-    echo expected
-    styledEcho styleDim, "GIVEN:"
-    echo given
+    echo"Expected:"
+    styledEcho styleBright, expected
+    echo"Given:"
+    styledEcho styleBright, given
 
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest) =
   if strip(expected.msg) notin strip(given.msg):
@@ -152,7 +154,7 @@ proc testSpec(r: var TResults, test: TTest) =
   # major entry point for a single test
   let tname = test.name.addFileExt(".nim")
   inc(r.total)
-  echo extractFilename(tname)
+  styledEcho "Processing ", fgCyan, extractFilename(tname)
   var expected = parseSpec(tname)
   if expected.err == reIgnored:
     r.addResult(test, "", "", reIgnored)
@@ -160,13 +162,15 @@ proc testSpec(r: var TResults, test: TTest) =
   else:
     case expected.action
     of actionCompile:
-      var given = callCompiler(expected.cmd, test.name, test.options)
+      var given = callCompiler(expected.cmd, test.name, test.options,
+                               test.target)
       if given.err == reSuccess:
         codegenCheck(test, expected.ccodeCheck, given)
       r.addResult(test, "", given.msg, given.err)
       if given.err == reSuccess: inc(r.passed)
     of actionRun:
-      var given = callCompiler(expected.cmd, test.name, test.options)
+      var given = callCompiler(expected.cmd, test.name, test.options,
+                               test.target)
       if given.err != reSuccess:
         r.addResult(test, "", given.msg, given.err)
       else:
@@ -176,10 +180,13 @@ proc testSpec(r: var TResults, test: TTest) =
           exeFile = dir / "nimcache" / file & ".js"
         else:
           exeFile = changeFileExt(tname, ExeExt)
-        
         if existsFile(exeFile):
+          if test.target == targetJS and findExe("nodejs") == "":
+            r.addResult(test, expected.outp, "nodejs binary not in PATH",
+                        reExeNotFound)
+            return
           var (buf, exitCode) = execCmdEx(
-            (if test.target==targetJS: "node " else: "") & exeFile)
+            (if test.target == targetJS: "nodejs " else: "") & exeFile)
           if exitCode != expected.ExitCode:
             r.addResult(test, "exitcode: " & $expected.exitCode,
                               "exitcode: " & $exitCode, reExitCodesDiffer)
@@ -194,7 +201,8 @@ proc testSpec(r: var TResults, test: TTest) =
         else:
           r.addResult(test, expected.outp, "executable not found", reExeNotFound)
     of actionReject:
-      var given = callCompiler(expected.cmd, test.name, test.options)
+      var given = callCompiler(expected.cmd, test.name, test.options,
+                               test.target)
       cmpMsgs(r, expected, given, test)
 
 proc testNoSpec(r: var TResults, test: TTest) =
@@ -202,7 +210,7 @@ proc testNoSpec(r: var TResults, test: TTest) =
   let tname = test.name.addFileExt(".nim")
   inc(r.total)
   echo extractFilename(tname)
-  let given = callCompiler(cmdTemplate, test.name, test.options)
+  let given = callCompiler(cmdTemplate, test.name, test.options, test.target)
   r.addResult(test, "", given.msg, given.err)
   if given.err == reSuccess: inc(r.passed)
 
@@ -223,7 +231,7 @@ proc main() =
   os.putenv "NIMTEST_NO_COLOR", "1"
   os.putenv "NIMTEST_OUTPUT_LVL", "PRINT_FAILURES"
 
-  backend.open()  
+  backend.open()
   var optPrintResults = false
   var p = initOptParser()
   p.next()
@@ -238,9 +246,12 @@ proc main() =
   var r = initResults()
   case action
   of "all":
-    for kind, dir in walkDir("tests"):
-      if kind == pcDir and dir notin ["testament", "testdata", "nimcache"]:
-        processCategory(r, Category(dir), p.cmdLineRest.string)
+    let testsDir = "tests" & dirSep
+    for kind, dir in walkDir(testsDir):
+      assert testsDir.startsWith(testsDir)
+      let cat = dir[testsDir.len .. -1]
+      if kind == pcDir and cat notin ["testament", "testdata", "nimcache"]:
+        processCategory(r, Category(cat), p.cmdLineRest.string)
     for a in AdditionalCategories:
       processCategory(r, Category(a), p.cmdLineRest.string)
   of "c", "cat", "category":
@@ -255,11 +266,11 @@ proc main() =
   else:
     quit usage
 
-  if optPrintResults: 
+  if optPrintResults:
     if action == "html": openDefaultBrowser(resultsFile)
     else: echo r, r.data
   backend.close()
-  
+
 if paramCount() == 0:
   quit usage
 main()

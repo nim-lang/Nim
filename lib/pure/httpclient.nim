@@ -75,7 +75,7 @@
 ## constructor should be used for this purpose. However,
 ## currently only basic authentication is supported.
 
-import sockets, strutils, parseurl, parseutils, strtabs, base64
+import sockets, strutils, parseurl, parseutils, strtabs, base64, os
 import asyncnet, asyncdispatch
 import rawsockets
 
@@ -288,6 +288,7 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
   add(headers, "\c\L")
   
   var s = socket()
+  if s == InvalidSocket: osError(osLastError())
   var port = sockets.TPort(80)
   if r.scheme == "https":
     when defined(ssl):

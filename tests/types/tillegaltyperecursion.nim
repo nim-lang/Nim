@@ -1,5 +1,5 @@
 discard """
-  cmd: "nimrod c --threads:on $# $#"
+  cmd: "nimrod $target --threads:on $options $file"
   errormsg: "illegal recursion in type 'TIRC'"
   line: 16
 """

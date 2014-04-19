@@ -2,7 +2,7 @@ discard """
   file: "tthreadanalysis3.nim"
   line: 35
   errormsg: "write to foreign heap"
-  cmd: "nimrod cc --hints:on --threads:on $# $#"
+  cmd: "nimrod $target --hints:on --threads:on $options $file"
 """
 
 import os

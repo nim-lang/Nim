@@ -179,10 +179,12 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
     
   for t in os.walkFiles("tests/js/t*.nim"):
     test(t)
-  for testfile in ["texceptions", "texcpt1", "texcsub", "tfinally",
-                   "tfinally2", "tfinally3", "tactiontable", "tmultim1",
-                   "tmultim3", "tmultim4"]:
-    test "tests/run/" & testfile & ".nim"
+  for testfile in ["exception/texceptions", "exception/texcpt1",
+                   "exception/texcsub", "exception/tfinally",
+                   "exception/tfinally2", "exception/tfinally3",
+                   "actiontable/tactiontable", "method/tmultim1",
+                   "method/tmultim3", "method/tmultim4"]:
+    test "tests/" & testfile & ".nim"
 
 # ------------------------- manyloc -------------------------------------------
 #proc runSpecialTests(r: var TResults, options: string) =

@@ -1,6 +1,6 @@
 discard """
   outputsub: "101"
-  cmd: "nimrod cc --hints:on --threads:on $# $#"
+  cmd: "nimrod $target --hints:on --threads:on $options $file"
 """
 
 import os, locks

@@ -178,7 +178,7 @@ proc hash(data: pointer, size: int): THash =
   while s > 0:
     h = h !& ord(p[i])
     inc(i)
-    cec(s)
+    dec(s)
   result = !$h
 
 proc hashGcHeader(data: pointer): THash =

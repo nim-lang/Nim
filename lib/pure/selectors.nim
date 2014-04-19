@@ -238,6 +238,7 @@ when isMainModule:
       sock: TSocket
   
   var sock = socket()
+  if sock == sockets.InvalidSocket: osError(osLastError())
   #sock.setBlocking(false)
   sock.connect("irc.freenode.net", TPort(6667))
   
