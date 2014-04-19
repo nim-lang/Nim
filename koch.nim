@@ -6,6 +6,8 @@
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
+#    See doc/koch.txt for documentation.
+#
 
 when defined(gcc) and defined(windows):
   when defined(x86):

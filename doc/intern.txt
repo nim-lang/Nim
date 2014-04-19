@@ -59,6 +59,8 @@ And for a debug version compatible with GDB::
 
 The ``koch`` program is Nimrod's maintenance script. It is a replacement for
 make and shell scripting with the advantage that it is much more portable.
+More information about its options can be found in the `koch <koch.html>`_
+documentation.
 
 
 Coding Guidelines
