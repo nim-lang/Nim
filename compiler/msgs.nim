@@ -170,7 +170,7 @@ const
     errInvalidNumberOfYieldExpr: "invalid number of \'yield\' expressions", 
     errCannotReturnExpr: "current routine cannot return an expression", 
     errAttemptToRedefine: "redefinition of \'$1\'", 
-    errStmtInvalidAfterReturn: "statement not allowed after \'return\', \'break\' or \'raise\'", 
+    errStmtInvalidAfterReturn: "statement not allowed after \'return\', \'break\', \'raise\' or \'continue'", 
     errStmtExpected: "statement expected", 
     errInvalidLabel: "\'$1\' is no label", 
     errInvalidCmdLineOption: "invalid command line option: \'$1\'", 
