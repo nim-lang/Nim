@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+{.deadCodeElim:on.}
+
 from posix import TSocketHandle
 
 const

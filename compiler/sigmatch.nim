@@ -402,7 +402,7 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     if tfNoSideEffect in f.flags and tfNoSideEffect notin a.flags:
       return isNone
     elif tfThread in f.flags and a.flags * {tfThread, tfNoSideEffect} == {}:
-      # noSideEffect implies ``tfThread``! XXX really?
+      # noSideEffect implies ``tfThread``!
       return isNone
     elif f.flags * {tfIterator} != a.flags * {tfIterator}:
       return isNone

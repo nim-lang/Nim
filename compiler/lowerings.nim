@@ -151,6 +151,8 @@ proc wrapProcForSpawn*(owner: PSym; n: PNode): PNode =
   if n.kind notin nkCallKinds or not n.typ.isEmptyType:
     localError(n.info, "'spawn' takes a call expression of type void")
     return
+  if {tfThread, tfNoSideEffect} * n[0].typ.flags == {}:
+    localError(n.info, "'spawn' takes a GC safe call expression")
   var
     threadParam = newSym(skParam, getIdent"thread", owner, n.info)
     argsParam = newSym(skParam, getIdent"args", owner, n.info)
@@ -196,7 +198,7 @@ proc wrapProcForSpawn*(owner: PSym; n: PNode): PNode =
     # we pick n's type here, which hopefully is 'tyArray' and not
     # 'tyOpenArray':
     var argType = n[i].typ.skipTypes(abstractInst)
-    if argType.kind == tyVar:
+    if i < formals.len and formals[i].typ.kind == tyVar:
       localError(n[i].info, "'spawn'ed function cannot have a 'var' parameter")
     elif containsTyRef(argType):
       localError(n[i].info, "'spawn'ed function cannot refer to 'ref'/closure")

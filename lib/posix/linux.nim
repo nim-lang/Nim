@@ -1,3 +1,5 @@
+{.deadCodeElim:on.}
+
 import posix
 
 const
@@ -22,4 +24,5 @@ const
 
 # fn should be of type proc (a2: pointer): void {.cdecl.}
 proc clone*(fn: pointer; child_stack: pointer; flags: cint;
-            arg: pointer; ptid: ptr TPid; tls: pointer; ctid: ptr TPid): cint {.importc, header: "<sched.h>".}
+            arg: pointer; ptid: ptr TPid; tls: pointer; 
+            ctid: ptr TPid): cint {.importc, header: "<sched.h>".}

@@ -27,6 +27,8 @@
 ## resulting C code will just ``#include <XYZ.h>`` and *not* define the
 ## symbols declared here.
 
+{.deadCodeElim:on.}
+
 from times import TTime
 
 const

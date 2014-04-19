@@ -9,7 +9,7 @@
 
 # Headers for procs that the code generator depends on ("compilerprocs")
 
-proc addChar(s: NimString, c: char): NimString {.compilerProc.}
+proc addChar(s: NimString, c: char): NimString {.compilerProc, gcsafe.}
 
 type
   TLibHandle = pointer       # private type
@@ -21,5 +21,5 @@ proc nimGetProcAddr(lib: TLibHandle, name: cstring): TProcAddr {.compilerproc.}
 
 proc nimLoadLibraryError(path: string) {.compilerproc, noinline.}
 
-proc setStackBottom(theStackBottom: pointer) {.compilerRtl, noinline.}
+proc setStackBottom(theStackBottom: pointer) {.compilerRtl, noinline, gcsafe.}
 

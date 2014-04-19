@@ -448,9 +448,9 @@ proc debug(n: PSym) =
     writeln(stdout, "skUnknown")
   else:
     #writeln(stdout, ropeToStr(symToYaml(n, 0, 1)))
-    writeln(stdout, ropeToStr(ropef("$1_$2: $3, $4", [
+    writeln(stdout, ropeToStr(ropef("$1_$2: $3, $4, $5", [
       toRope(n.name.s), toRope(n.id), flagsToStr(n.flags), 
-      flagsToStr(n.loc.flags)])))
+      flagsToStr(n.loc.flags), lineInfoToStr(n.info)])))
 
 proc debug(n: PType) = 
   writeln(stdout, ropeToStr(debugType(n)))

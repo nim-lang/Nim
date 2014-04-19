@@ -118,7 +118,7 @@ type
     warnNilStatement, warnAnalysisLoophole,
     warnDifferentHeaps, warnWriteToForeignHeap, warnImplicitClosure,
     warnEachIdentIsTuple, warnShadowIdent, 
-    warnProveInit, warnProveField, warnProveIndex,
+    warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe,
     warnUninit, warnGcMem, warnUser,
     hintSuccess, hintSuccessX,
     hintLineTooLong, hintXDeclaredButNotUsed, hintConvToBaseNotNeeded,
@@ -386,6 +386,7 @@ const
     warnProveInit: "Cannot prove that '$1' is initialized. This will become a compile time error in the future. [ProveInit]",
     warnProveField: "cannot prove that field '$1' is accessible [ProveField]",
     warnProveIndex: "cannot prove index '$1' is valid [ProveIndex]",
+    warnGcUnsafe: "not GC-safe: '$1' [GcUnsafe]",
     warnUninit: "'$1' might not have been initialized [Uninit]",
     warnGcMem: "'$1' uses GC'ed memory [GcMem]",
     warnUser: "$1 [User]", 
@@ -407,7 +408,7 @@ const
     hintUser: "$1 [User]"]
 
 const
-  WarningsToStr*: array[0..24, string] = ["CannotOpenFile", "OctalEscape", 
+  WarningsToStr*: array[0..25, string] = ["CannotOpenFile", "OctalEscape", 
     "XIsNeverRead", "XmightNotBeenInit",
     "Deprecated", "ConfigDeprecated",
     "SmallLshouldNotBeUsed", "UnknownMagic", 
@@ -415,7 +416,8 @@ const
     "CommentXIgnored", "NilStmt",
     "AnalysisLoophole", "DifferentHeaps", "WriteToForeignHeap",
     "ImplicitClosure", "EachIdentIsTuple", "ShadowIdent", 
-    "ProveInit", "ProveField", "ProveIndex", "Uninit", "GcMem", "User"]
+    "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "Uninit",
+    "GcMem", "User"]
 
   HintsToStr*: array[0..15, string] = ["Success", "SuccessX", "LineTooLong", 
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded", 
@@ -557,7 +559,7 @@ proc sourceLine*(i: TLineInfo): PRope
 var
   gNotes*: TNoteKinds = {low(TNoteKind)..high(TNoteKind)} - 
                         {warnShadowIdent, warnUninit,
-                         warnProveField, warnProveIndex}
+                         warnProveField, warnProveIndex, warnGcUnsafe}
   gErrorCounter*: int = 0     # counts the number of errors
   gHintCounter*: int = 0
   gWarnCounter*: int = 0

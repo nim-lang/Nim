@@ -311,8 +311,8 @@ proc newSharedState(options: TRstParseOptions,
   result.subs = @[]
   result.refs = @[]
   result.options = options
-  result.msgHandler = if isNil(msgHandler): defaultMsgHandler else: msgHandler
-  result.findFile = if isNil(findFile): defaultFindFile else: findFile
+  result.msgHandler = if not isNil(msgHandler): msgHandler else: defaultMsgHandler
+  result.findFile = if not isNil(findFile): findFile else: defaultFindFile
   
 proc rstMessage(p: TRstParser, msgKind: TMsgKind, arg: string) = 
   p.s.msgHandler(p.filename, p.line + p.tok[p.idx].line, 

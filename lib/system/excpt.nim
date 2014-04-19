@@ -11,7 +11,7 @@
 # use the heap (and nor exceptions) do not include the GC or memory allocator.
 
 var
-  errorMessageWriter*: (proc(msg: string) {.tags: [FWriteIO].})
+  errorMessageWriter*: (proc(msg: string) {.tags: [FWriteIO], gcsafe.})
     ## Function that will be called
     ## instead of stdmsg.write when printing stacktrace.
     ## Unstable API.
@@ -32,10 +32,10 @@ proc showErrorMessage(data: cstring) =
   else:
     writeToStdErr(data)
 
-proc chckIndx(i, a, b: int): int {.inline, compilerproc.}
-proc chckRange(i, a, b: int): int {.inline, compilerproc.}
-proc chckRangeF(x, a, b: float): float {.inline, compilerproc.}
-proc chckNil(p: pointer) {.noinline, compilerproc.}
+proc chckIndx(i, a, b: int): int {.inline, compilerproc, gcsafe.}
+proc chckRange(i, a, b: int): int {.inline, compilerproc, gcsafe.}
+proc chckRangeF(x, a, b: float): float {.inline, compilerproc, gcsafe.}
+proc chckNil(p: pointer) {.noinline, compilerproc, gcsafe.}
 
 var
   framePtr {.rtlThreadVar.}: PFrame
@@ -322,5 +322,5 @@ when not defined(noSignalHandler):
 
 proc setControlCHook(hook: proc () {.noconv.}) =
   # ugly cast, but should work on all architectures:
-  type TSignalHandler = proc (sig: cint) {.noconv.}
+  type TSignalHandler = proc (sig: cint) {.noconv, gcsafe.}
   c_signal(SIGINT, cast[TSignalHandler](hook))

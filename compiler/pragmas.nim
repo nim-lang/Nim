@@ -24,7 +24,7 @@ const
     wCompilerproc, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge, 
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
     wAsmNoStackFrame, wError, wDiscardable, wNoInit, wDestructor, wCodegenDecl,
-    wGensym, wInject, wRaises, wTags, wOperator, wDelegator}
+    wGensym, wInject, wRaises, wTags, wUses, wOperator, wDelegator, wGcSafe}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas
   templatePragmas* = {wImmediate, wDeprecated, wError, wGensym, wInject, wDirty,
@@ -35,7 +35,7 @@ const
   iteratorPragmas* = {FirstCallConv..LastCallConv, wNosideeffect, wSideeffect, 
     wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow, wExtern,
     wImportCpp, wImportObjC, wError, wDiscardable, wGensym, wInject, wRaises,
-    wTags, wOperator}
+    wTags, wUses, wOperator, wGcSafe}
   exprPragmas* = {wLine}
   stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangechecks,
     wBoundchecks, wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints,
@@ -48,7 +48,7 @@ const
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wNosideeffect, wSideeffect, wNoreturn, wDynlib, wHeader, 
     wDeprecated, wExtern, wThread, wImportCpp, wImportObjC, wAsmNoStackFrame,
-    wRaises, wTags}
+    wRaises, wUses, wTags, wGcSafe}
   typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl, 
     wPure, wHeader, wCompilerproc, wFinal, wSize, wExtern, wShallow,
     wImportCpp, wImportObjC, wError, wIncompleteStruct, wByCopy, wByRef,
@@ -64,7 +64,7 @@ const
     wExtern, wImportCpp, wImportObjC, wError, wGensym, wInject}
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideeffect,
-                      wThread, wRaises, wTags}
+                      wThread, wRaises, wUses, wTags, wGcSafe}
   allRoutinePragmas* = procPragmas + iteratorPragmas + lambdaPragmas
 
 proc pragma*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords)
@@ -513,6 +513,27 @@ proc pragmaRaisesOrTags(c: PContext, n: PNode) =
   else:
     invalidPragma(n)
 
+proc pragmaUses(c: PContext, n: PNode) =
+  proc processExc(c: PContext, x: PNode): PNode =
+    if x.kind in {nkAccQuoted, nkIdent, nkSym,
+                  nkOpenSymChoice, nkClosedSymChoice}:
+      if considerAcc(x).s == "*":
+        return newSymNode(ast.anyGlobal)
+    result = c.semExpr(c, x)
+    if result.kind != nkSym or sfGlobal notin result.sym.flags:
+      localError(x.info, "'$1' is not a global variable" % result.renderTree)
+      result = newSymNode(ast.anyGlobal)
+    
+  if n.kind == nkExprColonExpr:
+    let it = n.sons[1]
+    if it.kind notin {nkCurly, nkBracket}:
+      n.sons[1] = processExc(c, it)
+    else:
+      for i in 0 .. <it.len:
+        it.sons[i] = processExc(c, it.sons[i])
+  else:
+    invalidPragma(n)
+
 proc typeBorrow(sym: PSym, n: PNode) =
   if n.kind == nkExprColonExpr:
     let it = n.sons[1]
@@ -667,6 +688,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           incl(sym.flags, sfThread)
           incl(sym.flags, sfProcvar)
           if sym.typ != nil: incl(sym.typ.flags, tfThread)
+        of wGcSafe:
+          noVal(it)
+          incl(sym.flags, sfThread)
+          if sym.typ != nil: incl(sym.typ.flags, tfGcSafe)
+          else: invalidPragma(it)
         of wPacked:
           noVal(it)
           if sym.typ == nil: invalidPragma(it)
@@ -759,6 +785,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           if sym == nil: invalidPragma(it)
         of wLine: pragmaLine(c, it)
         of wRaises, wTags: pragmaRaisesOrTags(c, it)
+        of wUses: pragmaUses(c, it)
         of wOperator:
           if sym == nil: invalidPragma(it)
           else: sym.position = expectIntLit(c, it)

@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -44,7 +44,8 @@ type
     wImportCompilerProc,
     wImportc, wExportc, wIncompleteStruct, wRequiresInit,
     wAlign, wNodecl, wPure, wSideeffect, wHeader,
-    wNosideeffect, wNoreturn, wMerge, wLib, wDynlib, wCompilerproc, wProcVar, 
+    wNosideeffect, wGcSafe, wNoreturn, wMerge, wLib, wDynlib, 
+    wCompilerproc, wProcVar, 
     wFatal, wError, wWarning, wHint, wLine, wPush, wPop, wDefine, wUndef, 
     wLinedir, wStacktrace, wLinetrace, wLink, wCompile, 
     wLinksys, wDeprecated, wVarargs, wCallconv, wBreakpoint, wDebugger, 
@@ -63,7 +64,7 @@ type
     wAcyclic, wShallow, wUnroll, wLinearScanEnd, wComputedGoto, wInjectStmt,
     wWrite, wGensym, wInject, wDirty, wInheritable, wThreadVar, wEmit, 
     wAsmNoStackFrame,
-    wImplicitStatic, wGlobal, wCodegenDecl, wUnchecked, wGuard,
+    wImplicitStatic, wGlobal, wCodegenDecl, wUnchecked, wGuard, wUses,
 
     wAuto, wBool, wCatch, wChar, wClass,
     wConst_cast, wDefault, wDelete, wDouble, wDynamic_cast,
@@ -125,7 +126,7 @@ const
     "importcpp", "importobjc",
     "importcompilerproc", "importc", "exportc", "incompletestruct",
     "requiresinit", "align", "nodecl", "pure", "sideeffect",
-    "header", "nosideeffect", "noreturn", "merge", "lib", "dynlib", 
+    "header", "nosideeffect", "gcsafe", "noreturn", "merge", "lib", "dynlib", 
     "compilerproc", "procvar", "fatal", "error", "warning", "hint", "line", 
     "push", "pop", "define", "undef", "linedir", "stacktrace", "linetrace", 
     "link", "compile", "linksys", "deprecated", "varargs", 
@@ -146,7 +147,7 @@ const
     "computedgoto", "injectstmt",
     "write", "gensym", "inject", "dirty", "inheritable", "threadvar", "emit",
     "asmnostackframe", "implicitstatic", "global", "codegendecl", "unchecked",
-    "guard",
+    "guard", "uses",
     
     "auto", "bool", "catch", "char", "class",
     "const_cast", "default", "delete", "double",

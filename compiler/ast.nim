@@ -13,7 +13,7 @@ import
   msgs, hashes, nversion, options, strutils, crc, ropes, idents, lists, 
   intsets, idgen
 
-type 
+type
   TCallingConvention* = enum 
     ccDefault,                # proc has no explicit calling convention
     ccStdCall,                # procedure is stdcall
@@ -299,7 +299,7 @@ const
   nkEffectList* = nkArgList 
   # hacks ahead: an nkEffectList is a node with 4 children:
   exceptionEffects* = 0 # exceptions at position 0
-  readEffects* = 1      # read effects at position 1
+  usesEffects* = 1      # read effects at position 1
   writeEffects* = 2     # write effects at position 2
   tagEffects* = 3       # user defined tag ('gc', 'time' etc.)
   effectListLen* = 4    # list of effects list
@@ -432,7 +432,7 @@ type
     tfAcyclic,        # type is acyclic (for GC optimization)
     tfEnumHasHoles,   # enum cannot be mapped into a range
     tfShallow,        # type can be shallow copied on assignment
-    tfThread,         # proc type is marked as ``thread``
+    tfThread,         # proc type is marked as ``thread``; alias for ``gcsafe``
     tfFromGeneric,    # type is an instantiation of a generic; this is needed
                       # because for instantiations of objects, structural
                       # type equality has to be used
@@ -509,6 +509,7 @@ const
   tfIncompleteStruct* = tfVarargs
   tfUncheckedArray* = tfVarargs
   tfUnion* = tfNoSideEffect
+  tfGcSafe* = tfThread
   skError* = skUnknown
   
   # type flags that are essential for type equality:
@@ -978,6 +979,8 @@ template `{}=`*(n: PNode, i: int, s: PNode): stmt =
 var emptyNode* = newNode(nkEmpty)
 # There is a single empty node that is shared! Do not overwrite it!
 
+var anyGlobal* = newSym(skVar, getIdent("*"), nil, unknownLineInfo())
+
 proc isMetaType*(t: PType): bool =
   return t.kind in tyMetaTypes or
          (t.kind == tyStatic and t.n == nil) or
@@ -1310,8 +1313,7 @@ proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
 
 proc propagateToOwner*(owner, elem: PType) =
   const HaveTheirOwnEmpty = {tySequence, tySet}
-  owner.flags = owner.flags + (elem.flags * {tfHasShared, tfHasMeta,
-                                             tfHasGCedMem})
+  owner.flags = owner.flags + (elem.flags * {tfHasShared, tfHasMeta})
   if tfNotNil in elem.flags:
     if owner.kind in {tyGenericInst, tyGenericBody, tyGenericInvokation}:
       owner.flags.incl tfNotNil
@@ -1328,9 +1330,11 @@ proc propagateToOwner*(owner, elem: PType) =
   if elem.isMetaType:
     owner.flags.incl tfHasMeta
 
-  if elem.kind in {tyString, tyRef, tySequence} or
-      elem.kind == tyProc and elem.callConv == ccClosure:
-    owner.flags.incl tfHasGCedMem
+  if owner.kind != tyProc:
+    if elem.kind in {tyString, tyRef, tySequence} or
+        elem.kind == tyProc and elem.callConv == ccClosure or
+        tfHasGCedMem in elem.flags:
+      owner.flags.incl tfHasGCedMem
 
 proc rawAddSon*(father, son: PType) =
   if isNil(father.sons): father.sons = @[]

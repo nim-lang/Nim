@@ -85,7 +85,7 @@ type
     base: ptr TNimType
     node: ptr TNimNode # valid for tyRecord, tyObject, tyTuple, tyEnum
     finalizer: pointer # the finalizer for the type
-    marker: proc (p: pointer, op: int) {.nimcall.} # marker proc for GC
+    marker: proc (p: pointer, op: int) {.nimcall, gcsafe.} # marker proc for GC
   PNimType = ptr TNimType
   
 # node.len may be the ``first`` element of a set

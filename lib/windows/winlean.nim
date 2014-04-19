@@ -522,7 +522,7 @@ proc inet_addr*(cp: cstring): int32 {.
   stdcall, importc: "inet_addr", dynlib: ws2dll.} 
 
 proc WSAFDIsSet(s: TSocketHandle, FDSet: var TFdSet): bool {.
-  stdcall, importc: "__WSAFDIsSet", dynlib: ws2dll.}
+  stdcall, importc: "__WSAFDIsSet", dynlib: ws2dll, noSideEffect.}
 
 proc FD_ISSET*(Socket: TSocketHandle, FDSet: var TFdSet): cint = 
   result = if WSAFDIsSet(Socket, FDSet): 1'i32 else: 0'i32

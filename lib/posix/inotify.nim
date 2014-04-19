@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+{.deadCodeElim:on.}
+
 # Get the platform-dependent flags.  
 # Structure describing an inotify event.  
 type 

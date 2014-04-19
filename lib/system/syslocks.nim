@@ -52,7 +52,7 @@ when defined(Windows):
   proc closeHandle(hObject: THandle) {.stdcall, noSideEffect,
     dynlib: "kernel32", importc: "CloseHandle".}
   proc waitForSingleObject(hHandle: THandle, dwMilliseconds: int32): int32 {.
-    stdcall, dynlib: "kernel32", importc: "WaitForSingleObject".}
+    stdcall, dynlib: "kernel32", importc: "WaitForSingleObject", noSideEffect.}
 
   proc signalSysCond(hEvent: TSysCond) {.stdcall, noSideEffect,
     dynlib: "kernel32", importc: "SetEvent".}
@@ -89,16 +89,16 @@ else:
 
   proc releaseSys(L: var TSysLock) {.noSideEffect,
     importc: "pthread_mutex_unlock", header: "<pthread.h>".}
-  proc deinitSys(L: var TSysLock) {.
+  proc deinitSys(L: var TSysLock) {.noSideEffect,
     importc: "pthread_mutex_destroy", header: "<pthread.h>".}
 
   proc initSysCond(cond: var TSysCond, cond_attr: pointer = nil) {.
-    importc: "pthread_cond_init", header: "<pthread.h>".}
+    importc: "pthread_cond_init", header: "<pthread.h>", noSideEffect.}
   proc waitSysCond(cond: var TSysCond, lock: var TSysLock) {.
-    importc: "pthread_cond_wait", header: "<pthread.h>".}
+    importc: "pthread_cond_wait", header: "<pthread.h>", noSideEffect.}
   proc signalSysCond(cond: var TSysCond) {.
-    importc: "pthread_cond_signal", header: "<pthread.h>".}
+    importc: "pthread_cond_signal", header: "<pthread.h>", noSideEffect.}
   
-  proc deinitSysCond(cond: var TSysCond) {.
+  proc deinitSysCond(cond: var TSysCond) {.noSideEffect,
     importc: "pthread_cond_destroy", header: "<pthread.h>".}
   

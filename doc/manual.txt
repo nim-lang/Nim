@@ -5616,7 +5616,6 @@ Memory allocation requires no lock at all! This design easily scales to massive
 multicore processors that will become the norm in the future.
 
 
-
 Thread pragma
 -------------
 
@@ -5626,12 +5625,32 @@ violations of the `no heap sharing restriction`:idx:\: This restriction implies
 that it is invalid to construct a data structure that consists of memory 
 allocated from different (thread local) heaps. 
 
-Since the semantic checking of threads requires whole program analysis, 
-it is quite expensive and can be turned off with ``--threadanalysis:off`` to 
-improve compile times.
+A thread proc is passed to ``createThread`` or ``spawn`` and invoked 
+indirectly; so the ``thread`` pragma implies ``procvar``.
 
-A thread proc is passed to ``createThread`` and invoked indirectly; so the
-``thread`` pragma implies ``procvar``.
+
+GC safety
+---------
+
+We call a proc ``p`` `GC safe`:idx: when it doesn't access any global variable
+that contains GC'ed memory (``string``, ``seq``, ``ref`` or a closure) either
+directly or indirectly through a call to a GC unsafe proc. 
+
+The `gcsafe`:idx: annotation can be used to mark a proc to be gcsafe
+otherwise this property is inferred by the compiler. Note that ``noSideEfect``
+implies ``gcsafe``. The only way to create a thread is via ``spawn`` or
+``createThead``. ``spawn`` is usually the preferable method. Either way
+the invoked proc must not use ``var`` parameters nor must any of its parameters
+contain a ``ref`` or ``closure`` type. This enforces
+the *no heap sharing restriction*. 
+
+Routines that are imported from C are always assumed to be ``gcsafe``.
+
+Future directions:
+
+- For structured fork&join parallelism more efficient parameter passing can
+  be performed and much more can be proven safe.
+- A shared GC'ed heap is planned.
 
 
 Threadvar pragma
@@ -5648,84 +5667,13 @@ initialized within the ``var`` section. (Every thread local variable needs to
 be replicated at thread creation.)
 
 
-Actor model
------------
-
-**Caution**: This section is already outdated! XXX
-
-Nimrod supports the `actor model`:idx: of concurrency natively:
-
-.. code-block:: nimrod
-  type
-    TMsgKind = enum
-      mLine, mEof
-    TMsg = object
-      case k: TMsgKind
-      of mEof: nil
-      of mLine: data: string
-
-  var
-    thr: TThread[TMsg]
-    printedLines = 0
-    m: TMsg
-
-  proc print() {.thread.} =
-    while true:
-      var x = recv[TMsg]()
-      if x.k == mEof: break
-      echo x.data
-      discard atomicInc(printedLines)
-
-  createThread(thr, print)
-
-  var input = open("readme.txt")
-  while not endOfFile(input):
-    m.data = input.readLine()
-    thr.send(m)
-  close(input)
-  m.k = mEof
-  thr.send(m)
-  joinThread(thr)
-
-  echo printedLines
-
-In the actor model threads communicate only over sending messages (`send`:idx: 
-and `recv`:idx: built-ins), not by sharing memory. Every thread has 
-an `inbox`:idx: that keeps incoming messages until the thread requests a new
-message via the ``recv`` operation. The inbox is an unlimited FIFO queue.
-
-In the above example the ``print`` thread also communicates with its 
-parent thread over the ``printedLines`` global variable. In general, it is 
-highly advisable to only read from globals, but not to write to them. In fact
-a write to a global that contains GC'ed memory is always wrong, because it
-violates the *no heap sharing restriction*:
-
-.. code-block:: nimrod
-  var 
-    global: string
-    t: TThread[string]
-  
-  proc horrible() {.thread.} =
-    global = "string in thread local heap!"
-
-  createThread(t, horrible)
-  joinThread(t)
-  
-For the above code the compiler produces "Warning: write to foreign heap". This
-warning might become an error message in future versions of the compiler.
-
-Creating a thread is an expensive operation, because a new stack and heap needs
-to be created for the thread. It is therefore highly advisable that a thread
-handles a large amount of work. Nimrod prefers *coarse grained* 
-over *fine grained* concurrency.
-
-
 Threads and exceptions
 ----------------------
 
 The interaction between threads and exceptions is simple: A *handled* exception 
 in one thread cannot affect any other thread. However, an *unhandled* 
 exception in one thread terminates the whole *process*!
+
 
 Taint mode
 ==========
