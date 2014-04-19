@@ -148,12 +148,12 @@ the syntax, watch their indentation:
     # comment has not the correct indentation level -> syntax error!
 
 **Note**: To comment out a large piece of code, it is often better to use a
-``when false:`` statement. 
+``when false:`` statement.
 
 .. code-block:: nimrod
   when false:
     brokenCode()
-    
+
 Another option is to use the `discard`_ statement together with
 *long string literals* to create block comments:
 
@@ -161,7 +161,6 @@ Another option is to use the `discard`_ statement together with
   discard """ You can have any nimrod code text commented 
   out inside this with no indentation restrictions.
         yes("May I ask a pointless question?") """
-        
 
 
 Numbers
@@ -606,9 +605,11 @@ the exit.
   echo sumTillNegative(3, 4 , -1 , 6) # echos 7
 
 The ``result`` variable is already implicitly declared at the start of the 
-function and initialised with the type's default value, so declaring it again 
-with 'var return', for example, would shadow it with a normal variable of the
-same name.
+function, so declaring it again with 'var result', for example, would shadow it
+with a normal variable of the same name. The result variable is also already
+initialised with the type's default value. Note that referential data types will
+be ``nil`` at the start of the procedure, and thus may require manual
+initialisation.
 
       
 Parameters
