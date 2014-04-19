@@ -32,11 +32,11 @@ type
                    # local 
     waMarkPrecise  # fast precise marking
 
-  TFinalizer {.compilerproc.} = proc (self: pointer) {.nimcall.}
+  TFinalizer {.compilerproc.} = proc (self: pointer) {.nimcall, gcsafe.}
     # A ref type can have a finalizer that is called before the object's
     # storage is freed.
   
-  TGlobalMarkerProc = proc () {.nimcall.}
+  TGlobalMarkerProc = proc () {.nimcall, gcsafe.}
 
   TGcStat = object
     collections: int         # number of performed full collections
@@ -113,11 +113,11 @@ when BitsPerPage mod (sizeof(int)*8) != 0:
   {.error: "(BitsPerPage mod BitsPerUnit) should be zero!".}
 
 # forward declarations:
-proc collectCT(gch: var TGcHeap)
-proc isOnStack*(p: pointer): bool {.noinline.}
-proc forAllChildren(cell: PCell, op: TWalkOp)
-proc doOperation(p: pointer, op: TWalkOp)
-proc forAllChildrenAux(dest: pointer, mt: PNimType, op: TWalkOp)
+proc collectCT(gch: var TGcHeap) {.gcsafe.}
+proc isOnStack*(p: pointer): bool {.noinline, gcsafe.}
+proc forAllChildren(cell: PCell, op: TWalkOp) {.gcsafe.}
+proc doOperation(p: pointer, op: TWalkOp) {.gcsafe.}
+proc forAllChildrenAux(dest: pointer, mt: PNimType, op: TWalkOp) {.gcsafe.}
 # we need the prototype here for debugging purposes
 
 proc prepareDealloc(cell: PCell) =
@@ -150,7 +150,7 @@ proc initGC() =
       Init(gch.allocated)
       init(gch.marked)
 
-proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: TWalkOp) =
+proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: TWalkOp) {.gcsafe.} =
   var d = cast[TAddress](dest)
   case n.kind
   of nkSlot: forAllChildrenAux(cast[pointer](d +% n.offset), n.typ, op)
