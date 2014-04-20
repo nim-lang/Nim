@@ -26,8 +26,15 @@ proc createProcType(p, b: PNimrodNode): PNimrodNode {.compileTime.} =
     for i in 0 .. <p.len:
       let ident = p[i]
       var identDefs = newNimNode(nnkIdentDefs)
-      identDefs.add newIdentNode("i" & $i)
-      identDefs.add(ident)
+      case ident.kind
+      of nnkExprColonExpr:
+        identDefs.add ident[0]
+        identDefs.add ident[1]
+      of nnkIdent:
+        identDefs.add newIdentNode("i" & $i)
+        identDefs.add(ident)
+      else:
+        error("Incorrect type list in proc type declaration.")
       identDefs.add newEmptyNode()
       formalParams.add identDefs
   of nnkIdent:
