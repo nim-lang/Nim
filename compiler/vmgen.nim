@@ -70,6 +70,9 @@ proc echoCode*(c: PCtx, start=0) {.deprecated.} =
   echo buf
 
 proc gABC(ctx: PCtx; n: PNode; opc: TOpcode; a, b, c: TRegister = 0) =
+  ## Takes the registers `b` and `c`, applies the operation `opc` to them, and
+  ## stores the result into register `a`
+  ## The node is needed for debug information
   assert opc.ord < 255
   let ins = (opc.uint32 or (a.uint32 shl 8'u32) or
                            (b.uint32 shl 16'u32) or
@@ -78,6 +81,10 @@ proc gABC(ctx: PCtx; n: PNode; opc: TOpcode; a, b, c: TRegister = 0) =
   ctx.debug.add(n.info)
 
 proc gABI(c: PCtx; n: PNode; opc: TOpcode; a, b: TRegister; imm: BiggestInt) =
+  # Takes the `b` register and the immediate `imm`, appies the operation `opc`,
+  # and stores the output value into `a`.
+  # `imm` is signed and must be within [-127, 128]
+  assert(imm >= -127 and imm <= 128)
   let ins = (opc.uint32 or (a.uint32 shl 8'u32) or
                            (b.uint32 shl 16'u32) or
                            (imm+byteExcess).uint32 shl 24'u32).TInstr
@@ -85,6 +92,9 @@ proc gABI(c: PCtx; n: PNode; opc: TOpcode; a, b: TRegister; imm: BiggestInt) =
   c.debug.add(n.info)
 
 proc gABx(c: PCtx; n: PNode; opc: TOpcode; a: TRegister = 0; bx: int) =
+  # Applies `opc` to `bx` and stores it into register `a`
+  # `bx` must be signed and in the range [-32767, 32768]
+  assert(bx >= -32767 and bx <= 32768)
   let ins = (opc.uint32 or a.uint32 shl 8'u32 or 
             (bx+wordExcess).uint32 shl 16'u32).TInstr
   c.code.add(ins)
@@ -316,15 +326,7 @@ proc genAndOr(c: PCtx; n: PNode; opc: TOpcode; dest: var TDest) =
   c.patch(L1)
 
 proc canonValue*(n: PNode): PNode =
-  if n.kind == nkExprColonExpr:
-    result = n.sons[1]
-  elif n.hasSubnodeWith(nkExprColonExpr):
-    result = n.copyNode
-    newSeq(result.sons, n.len)
-    for i in 0.. <n.len:
-      result.sons[i] = canonValue(n.sons[i])
-  else:
-    result = n
+  result = n
 
 proc rawGenLiteral(c: PCtx; n: PNode): int =
   result = c.constants.len

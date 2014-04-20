@@ -26,8 +26,15 @@ proc createProcType(p, b: PNimrodNode): PNimrodNode {.compileTime.} =
     for i in 0 .. <p.len:
       let ident = p[i]
       var identDefs = newNimNode(nnkIdentDefs)
-      identDefs.add newIdentNode("i" & $i)
-      identDefs.add(ident)
+      case ident.kind
+      of nnkExprColonExpr:
+        identDefs.add ident[0]
+        identDefs.add ident[1]
+      of nnkIdent:
+        identDefs.add newIdentNode("i" & $i)
+        identDefs.add(ident)
+      else:
+        error("Incorrect type list in proc type declaration.")
       identDefs.add newEmptyNode()
       formalParams.add identDefs
   of nnkIdent:
@@ -47,7 +54,7 @@ proc createProcType(p, b: PNimrodNode): PNimrodNode {.compileTime.} =
 macro `=>`*(p, b: expr): expr {.immediate.} =
   ## Syntax sugar for anonymous procedures.
   ##
-  ## ..code-block:: nimrod
+  ## .. code-block:: nimrod
   ##
   ##   proc passTwoAndTwo(f: (int, int) -> int): int =
   ##     f(2, 2)
@@ -98,7 +105,7 @@ macro `=>`*(p, b: expr): expr {.immediate.} =
 macro `->`*(p, b: expr): expr {.immediate.} =
   ## Syntax sugar for procedure types.
   ##
-  ## ..code-block:: nimrod
+  ## .. code-block:: nimrod
   ##
   ##   proc pass2(f: (float, float) -> float): float =
   ##     f(2, 2)

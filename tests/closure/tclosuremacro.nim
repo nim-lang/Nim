@@ -5,6 +5,7 @@ discard """
 3
 3
 noReturn
+6
 '''
 """
 
@@ -36,8 +37,7 @@ echo doWithOneAndTwo((x, y) => x + y)
 
 noReturn(() -> void => echo("noReturn"))
 
-when false:
-  proc pass2(f: (int, int) -> int): (int) -> int =
-    (x: int) -> int => f(2, x)
+proc pass2(f: (int, int) -> int): (int) -> int =
+  (x: int) -> int => f(2, x)
 
-  #echo pass2((x, y) => x + y)
+echo pass2((x, y) => x + y)(4)

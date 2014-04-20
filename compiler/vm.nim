@@ -354,6 +354,11 @@ template handleJmpBack() {.dirty.} =
       globalError(c.debug[pc], errTooManyIterations)
   dec(c.loopIterations)
 
+proc skipColon(n: PNode): PNode =
+  result = n
+  if n.kind == nkExprColonExpr:
+    result = n.sons[1]
+
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
   var tos = tos
@@ -454,7 +459,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkNode)
       let src = regs[rb].node
       if src.kind notin {nkEmpty..nkNilLit}:
-        let n = src.sons[rc]
+        let n = src.sons[rc].skipColon
         regs[ra].node = n
       else:
         stackTrace(c, tos, pc, errNilAccess)
@@ -1099,6 +1104,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                                      c.module)
     of opcGorge:
       decodeBC(rkNode)
+      createStr regs[ra]
       regs[ra].node.strVal = opGorge(regs[rb].node.strVal,
                                      regs[rc].node.strVal)
     of opcNError:

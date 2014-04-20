@@ -253,6 +253,7 @@ proc findUsages(node: PNode, s: PSym) =
     lastLineInfo = node.info
 
 proc findDefinition(node: PNode, s: PSym) =
+  if node.isNil or s.isNil: return
   if isTracked(node.info, s.name.s.len):
     suggestWriteln(symToStr(s, isLocal=false, sectionDef))
     suggestQuit()
