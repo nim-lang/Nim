@@ -7,10 +7,6 @@ proc swapEndian16*(outp, inp: pointer) =
   var o = cast[cstring](outp)
   o[0] = i[1]
   o[1] = i[0]
-when cpuEndian == bigEndian:
-  proc bigEndian16(outp, inp: pointer) {.inline.} = copyMem(outp, inp, 2)
-else:
-  proc bigEndian16*(outp, inp: pointer) {.inline.} = swapEndian16(outp, inp)
 
 import enet
 

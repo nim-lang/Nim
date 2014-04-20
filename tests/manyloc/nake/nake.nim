@@ -74,7 +74,7 @@ else:
           echo "Unknown option: ", key, ": ", val
       of cmdArgument:
         task = key
-      else: nil
+      else: discard
     if printTaskList or task.isNil or not(tasks.hasKey(task)):
       echo "Available tasks:"
       for name, task in pairs(tasks):

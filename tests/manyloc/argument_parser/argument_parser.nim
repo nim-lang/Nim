@@ -292,9 +292,9 @@ proc parse_parameter(quit_on_failure: bool, param, value: string,
       raise_or_quit(EInvalidValue, ("parameter $1 requires a " &
         "float, but $2 can't be parsed into one") % [param, escape(value)])
   of PK_EMPTY:
-    nil
+    discard
   of PK_HELP:
-    nil
+    discard
 
 
 template build_specification_lookup():

@@ -15,14 +15,14 @@ proc chckRange(i, a, b: int): int {.inline, compilerproc.}
 proc chckRangeF(x, a, b: float): float {.inline, compilerproc.}
 proc chckNil(p: pointer) {.inline, compilerproc.}
 
-proc pushFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} = nil
-proc popFrame {.compilerRtl, inl.} = nil
+proc pushFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} = discard
+proc popFrame {.compilerRtl, inl.} = discard
 
-proc setFrame(s: PFrame) {.compilerRtl, inl.} = nil
-proc pushSafePoint(s: PSafePoint) {.compilerRtl, inl.} = nil
-proc popSafePoint {.compilerRtl, inl.} = nil
-proc pushCurrentException(e: ref E_Base) {.compilerRtl, inl.} = nil
-proc popCurrentException {.compilerRtl, inl.} = nil
+proc setFrame(s: PFrame) {.compilerRtl, inl.} = discard
+proc pushSafePoint(s: PSafePoint) {.compilerRtl, inl.} = discard
+proc popSafePoint {.compilerRtl, inl.} = discard
+proc pushCurrentException(e: ref E_Base) {.compilerRtl, inl.} = discard
+proc popCurrentException {.compilerRtl, inl.} = discard
 
 # some platforms have native support for stack traces:
 const
@@ -38,6 +38,6 @@ proc raiseException(e: ref E_Base, ename: CString) {.compilerRtl.} =
 proc reraiseException() {.compilerRtl.} =
   sysFatal(ENoExceptionToReraise, "no exception to reraise")
 
-proc WriteStackTrace() = nil
+proc writeStackTrace() = discard
 
-proc setControlCHook(hook: proc () {.noconv.}) = nil
+proc setControlCHook(hook: proc () {.noconv.}) = discard
