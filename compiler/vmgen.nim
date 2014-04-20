@@ -316,15 +316,7 @@ proc genAndOr(c: PCtx; n: PNode; opc: TOpcode; dest: var TDest) =
   c.patch(L1)
 
 proc canonValue*(n: PNode): PNode =
-  if n.kind == nkExprColonExpr:
-    result = n.sons[1]
-  elif n.hasSubnodeWith(nkExprColonExpr):
-    result = n.copyNode
-    newSeq(result.sons, n.len)
-    for i in 0.. <n.len:
-      result.sons[i] = canonValue(n.sons[i])
-  else:
-    result = n
+  result = n
 
 proc rawGenLiteral(c: PCtx; n: PNode): int =
   result = c.constants.len
