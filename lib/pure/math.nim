@@ -12,6 +12,8 @@
 ## Basic math routines for Nimrod.
 ## This module is available for the JavaScript target.
 
+include "system/inclrtl"
+
 {.push debugger:off .} # the user does not want to trace a part
                        # of the standard library!
 
@@ -127,25 +129,25 @@ proc variance*(x: openArray[float]): float {.noSideEffect.} =
     result = result + diff*diff
   result = result / toFloat(len(x))
 
-proc random*(max: int): int
+proc random*(max: int): int {.gcsafe.}
   ## returns a random number in the range 0..max-1. The sequence of
   ## random number is always the same, unless `randomize` is called
   ## which initializes the random number generator with a "random"
   ## number, i.e. a tickcount.
 
 when not defined(windows):
-  proc random*(max: float): float
+  proc random*(max: float): float {.gcsafe.}
     ## returns a random number in the range 0..<max. The sequence of
     ## random number is always the same, unless `randomize` is called
     ## which initializes the random number generator with a "random"
     ## number, i.e. a tickcount. This is currently not supported for windows.
 
-proc randomize*()
+proc randomize*() {.gcsafe.}
   ## initializes the random number generator with a "random"
   ## number, i.e. a tickcount. Note: Does nothing for the JavaScript target,
   ## as JavaScript does not support this.
   
-proc randomize*(seed: int)
+proc randomize*(seed: int) {.gcsafe.}
   ## initializes the random number generator with a specific seed.
   ## Note: Does nothing for the JavaScript target,
   ## as JavaScript does not support this.
@@ -227,8 +229,8 @@ else:
     result = int(floor(mathrandom() * float(max)))
   proc random(max: float): float =
     result = float(mathrandom() * float(max))
-  proc randomize() = nil
-  proc randomize(seed: int) = nil
+  proc randomize() = discard
+  proc randomize(seed: int) = discard
   
   proc sqrt*(x: float): float {.importc: "Math.sqrt", nodecl.}
   proc ln*(x: float): float {.importc: "Math.log", nodecl.}

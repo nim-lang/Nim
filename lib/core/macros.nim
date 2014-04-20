@@ -7,6 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
+include "system/inclrtl"
 
 ## This module contains the interface to the compiler's abstract syntax
 ## tree (`AST`:idx:). Macros operate on this tree.
@@ -109,19 +110,20 @@ const
   nnkCallKinds* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
                    nnkCallStrLit}
 
-proc `[]`*(n: PNimrodNode, i: int): PNimrodNode {.magic: "NChild".}
+proc `[]`*(n: PNimrodNode, i: int): PNimrodNode {.magic: "NChild", noSideEffect.}
   ## get `n`'s `i`'th child.
 
-proc `[]=`*(n: PNimrodNode, i: int, child: PNimrodNode) {.magic: "NSetChild".}
+proc `[]=`*(n: PNimrodNode, i: int, child: PNimrodNode) {.magic: "NSetChild",
+  noSideEffect.}
   ## set `n`'s `i`'th child to `child`.
 
-proc `!`*(s: string): TNimrodIdent {.magic: "StrToIdent".}
+proc `!`*(s: string): TNimrodIdent {.magic: "StrToIdent", noSideEffect.}
   ## constructs an identifier from the string `s`
 
-proc `$`*(i: TNimrodIdent): string {.magic: "IdentToStr".}
+proc `$`*(i: TNimrodIdent): string {.magic: "IdentToStr", noSideEffect.}
   ## converts a Nimrod identifier to a string
 
-proc `$`*(s: PNimrodSymbol): string {.magic: "IdentToStr".}
+proc `$`*(s: PNimrodSymbol): string {.magic: "IdentToStr", noSideEffect.}
   ## converts a Nimrod symbol to a string
 
 proc `==`*(a, b: TNimrodIdent): bool {.magic: "EqIdent", noSideEffect.}
@@ -130,35 +132,36 @@ proc `==`*(a, b: TNimrodIdent): bool {.magic: "EqIdent", noSideEffect.}
 proc `==`*(a, b: PNimrodNode): bool {.magic: "EqNimrodNode", noSideEffect.}
   ## compares two Nimrod nodes
 
-proc len*(n: PNimrodNode): int {.magic: "NLen".}
+proc len*(n: PNimrodNode): int {.magic: "NLen", noSideEffect.}
   ## returns the number of children of `n`.
 
-proc add*(father, child: PNimrodNode): PNimrodNode {.magic: "NAdd", discardable.}
+proc add*(father, child: PNimrodNode): PNimrodNode {.magic: "NAdd", discardable,
+  noSideEffect.}
   ## Adds the `child` to the `father` node. Returns the
   ## father node so that calls can be nested.
 
 proc add*(father: PNimrodNode, children: varargs[PNimrodNode]): PNimrodNode {.
-  magic: "NAddMultiple", discardable.}
+  magic: "NAddMultiple", discardable, noSideEffect.}
   ## Adds each child of `children` to the `father` node.
   ## Returns the `father` node so that calls can be nested.
 
-proc del*(father: PNimrodNode, idx = 0, n = 1) {.magic: "NDel".}
+proc del*(father: PNimrodNode, idx = 0, n = 1) {.magic: "NDel", noSideEffect.}
   ## deletes `n` children of `father` starting at index `idx`.
 
-proc kind*(n: PNimrodNode): TNimrodNodeKind {.magic: "NKind".}
+proc kind*(n: PNimrodNode): TNimrodNodeKind {.magic: "NKind", noSideEffect.}
   ## returns the `kind` of the node `n`.
 
-proc intVal*(n: PNimrodNode): BiggestInt {.magic: "NIntVal".}
-proc floatVal*(n: PNimrodNode): BiggestFloat {.magic: "NFloatVal".}
-proc symbol*(n: PNimrodNode): PNimrodSymbol {.magic: "NSymbol".}
-proc ident*(n: PNimrodNode): TNimrodIdent {.magic: "NIdent".}
-proc typ*(n: PNimrodNode): typedesc {.magic: "NGetType".}
-proc strVal*(n: PNimrodNode): string  {.magic: "NStrVal".}
+proc intVal*(n: PNimrodNode): BiggestInt {.magic: "NIntVal", noSideEffect.}
+proc floatVal*(n: PNimrodNode): BiggestFloat {.magic: "NFloatVal", noSideEffect.}
+proc symbol*(n: PNimrodNode): PNimrodSymbol {.magic: "NSymbol", noSideEffect.}
+proc ident*(n: PNimrodNode): TNimrodIdent {.magic: "NIdent", noSideEffect.}
+proc typ*(n: PNimrodNode): typedesc {.magic: "NGetType", noSideEffect.}
+proc strVal*(n: PNimrodNode): string  {.magic: "NStrVal", noSideEffect.}
 
-proc `intVal=`*(n: PNimrodNode, val: BiggestInt) {.magic: "NSetIntVal".}
-proc `floatVal=`*(n: PNimrodNode, val: BiggestFloat) {.magic: "NSetFloatVal".}
-proc `symbol=`*(n: PNimrodNode, val: PNimrodSymbol) {.magic: "NSetSymbol".}
-proc `ident=`*(n: PNimrodNode, val: TNimrodIdent) {.magic: "NSetIdent".}
+proc `intVal=`*(n: PNimrodNode, val: BiggestInt) {.magic: "NSetIntVal", noSideEffect.}
+proc `floatVal=`*(n: PNimrodNode, val: BiggestFloat) {.magic: "NSetFloatVal", noSideEffect.}
+proc `symbol=`*(n: PNimrodNode, val: PNimrodSymbol) {.magic: "NSetSymbol", noSideEffect.}
+proc `ident=`*(n: PNimrodNode, val: TNimrodIdent) {.magic: "NSetIdent", noSideEffect.}
 #proc `typ=`*(n: PNimrodNode, typ: typedesc) {.magic: "NSetType".}
 # this is not sound! Unfortunately forbidding 'typ=' is not enough, as you
 # can easily do:
@@ -166,24 +169,24 @@ proc `ident=`*(n: PNimrodNode, val: TNimrodIdent) {.magic: "NSetIdent".}
 #   let fake = semCheck(2.0)
 #   bracket[0] = fake  # constructs a mixed array with ints and floats!
 
-proc `strVal=`*(n: PNimrodNode, val: string) {.magic: "NSetStrVal".}
+proc `strVal=`*(n: PNimrodNode, val: string) {.magic: "NSetStrVal", noSideEffect.}
 
 proc newNimNode*(kind: TNimrodNodeKind,
-                 n: PNimrodNode=nil): PNimrodNode {.magic: "NNewNimNode".}
+                 n: PNimrodNode=nil): PNimrodNode {.magic: "NNewNimNode", noSideEffect.}
 
-proc copyNimNode*(n: PNimrodNode): PNimrodNode {.magic: "NCopyNimNode".}
-proc copyNimTree*(n: PNimrodNode): PNimrodNode {.magic: "NCopyNimTree".}
+proc copyNimNode*(n: PNimrodNode): PNimrodNode {.magic: "NCopyNimNode", noSideEffect.}
+proc copyNimTree*(n: PNimrodNode): PNimrodNode {.magic: "NCopyNimTree", noSideEffect.}
 
-proc error*(msg: string) {.magic: "NError".}
+proc error*(msg: string) {.magic: "NError", gcsafe.}
   ## writes an error message at compile time
 
-proc warning*(msg: string) {.magic: "NWarning".}
+proc warning*(msg: string) {.magic: "NWarning", gcsafe.}
   ## writes a warning message at compile time
 
-proc hint*(msg: string) {.magic: "NHint".}
+proc hint*(msg: string) {.magic: "NHint", gcsafe.}
   ## writes a hint message at compile time
 
-proc newStrLitNode*(s: string): PNimrodNode {.compileTime.} =
+proc newStrLitNode*(s: string): PNimrodNode {.compileTime, noSideEffect.} =
   ## creates a string literal node from `s`
   result = newNimNode(nnkStrLit)
   result.strVal = s
@@ -219,7 +222,7 @@ type
                          ## any other means in the language currently)
 
 proc bindSym*(ident: string, rule: TBindSymRule = brClosed): PNimrodNode {.
-              magic: "NBindSym".}
+              magic: "NBindSym", noSideEffect.}
   ## creates a node that binds `ident` to a symbol node. The bound symbol
   ## may be an overloaded symbol.
   ## If ``rule == brClosed`` either an ``nkClosedSymChoice`` tree is
@@ -230,11 +233,11 @@ proc bindSym*(ident: string, rule: TBindSymRule = brClosed): PNimrodNode {.
   ## returned even if the symbol is not ambiguous.
 
 proc genSym*(kind: TNimrodSymKind = nskLet; ident = ""): PNimrodNode {.
-  magic: "NGenSym".}
+  magic: "NGenSym", noSideEffect.}
   ## generates a fresh symbol that is guaranteed to be unique. The symbol
   ## needs to occur in a declaration context.
 
-proc callsite*(): PNimrodNode {.magic: "NCallSite".}
+proc callsite*(): PNimrodNode {.magic: "NCallSite", gcsafe.}
   ## returns the AST if the invokation expression that invoked this macro.
 
 proc toStrLit*(n: PNimrodNode): PNimrodNode {.compileTime.} =
@@ -242,19 +245,19 @@ proc toStrLit*(n: PNimrodNode): PNimrodNode {.compileTime.} =
   ## in a string literal node
   return newStrLitNode(repr(n))
 
-proc lineinfo*(n: PNimrodNode): string {.magic: "NLineInfo".}
+proc lineinfo*(n: PNimrodNode): string {.magic: "NLineInfo", noSideEffect.}
   ## returns the position the node appears in the original source file
   ## in the form filename(line, col)
 
-proc parseExpr*(s: string): PNimrodNode {.magic: "ParseExprToAst".}
+proc parseExpr*(s: string): PNimrodNode {.magic: "ParseExprToAst", noSideEffect.}
   ## Compiles the passed string to its AST representation.
   ## Expects a single expression.
 
-proc parseStmt*(s: string): PNimrodNode {.magic: "ParseStmtToAst".}
+proc parseStmt*(s: string): PNimrodNode {.magic: "ParseStmtToAst", noSideEffect.}
   ## Compiles the passed string to its AST representation.
   ## Expects one or more statements.
 
-proc getAst*(macroOrTemplate: expr): PNimrodNode {.magic: "ExpandToAst".}
+proc getAst*(macroOrTemplate: expr): PNimrodNode {.magic: "ExpandToAst", noSideEffect.}
   ## Obtains the AST nodes returned from a macro or template invocation.
   ## Example:
   ##
@@ -263,7 +266,7 @@ proc getAst*(macroOrTemplate: expr): PNimrodNode {.magic: "ExpandToAst".}
   ##   macro FooMacro() =
   ##     var ast = getAst(BarTemplate())
 
-proc quote*(bl: stmt, op = "``"): PNimrodNode {.magic: "QuoteAst".}
+proc quote*(bl: stmt, op = "``"): PNimrodNode {.magic: "QuoteAst", noSideEffect.}
   ## Quasi-quoting operator.
   ## Accepts an expression or a block and returns the AST that represents it.
   ## Within the quoted AST, you are able to interpolate PNimrodNode expressions

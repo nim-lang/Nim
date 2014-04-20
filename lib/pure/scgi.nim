@@ -26,6 +26,8 @@
 ## **Warning:** The API of this module is unstable, and therefore is subject
 ## to change.
 
+include "system/inclrtl"
+
 import sockets, strutils, os, strtabs, asyncio
 
 type
@@ -82,7 +84,7 @@ type
   
   TAsyncScgiState = object
     handleRequest: proc (client: PAsyncSocket, 
-                         input: string, headers: PStringTable) {.closure.}
+                         input: string, headers: PStringTable) {.closure,gcsafe.}
     asyncServer: PAsyncSocket
     disp: PDispatcher
   PAsyncScgiState* = ref TAsyncScgiState
@@ -150,7 +152,7 @@ proc writeStatusOkTextContent*(c: TSocket, contentType = "text/html") =
          "Content-Type: $1\r\L\r\L" % contentType)
 
 proc run*(handleRequest: proc (client: TSocket, input: string, 
-                               headers: PStringTable): bool {.nimcall.},
+                               headers: PStringTable): bool {.nimcall,gcsafe.},
           port = TPort(4000)) = 
   ## encapsulates the SCGI object and main loop.
   var s: TScgiState
@@ -246,7 +248,8 @@ proc handleAccept(sock: PAsyncSocket, s: PAsyncScgiState) =
   s.disp.register(client)
 
 proc open*(handleRequest: proc (client: PAsyncSocket, 
-                                input: string, headers: PStringTable) {.closure.},
+                                input: string, headers: PStringTable) {.
+                                closure, gcsafe.},
            port = TPort(4000), address = "127.0.0.1",
            reuseAddr = false): PAsyncScgiState =
   ## Creates an ``PAsyncScgiState`` object which serves as a SCGI server.

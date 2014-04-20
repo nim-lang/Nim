@@ -32,6 +32,8 @@
 ## **Warning:** The API of this module is unstable, and therefore is subject
 ## to change.
 
+include "system/inclrtl"
+
 import sockets, strutils, parseutils, times, asyncio, os
 
 type
@@ -41,7 +43,7 @@ type
     nick, user, realname, serverPass: string
     case isAsync: bool
     of true:
-      handleEvent: proc (irc: PAsyncIRC, ev: TIRCEvent) {.closure.}
+      handleEvent: proc (irc: PAsyncIRC, ev: TIRCEvent) {.closure, gcsafe.}
       asyncSock: PAsyncSocket
       myDispatcher: PDispatcher
     of false:
@@ -445,7 +447,7 @@ proc asyncIRC*(address: string, port: TPort = 6667.TPort,
               realname = "NimrodBot", serverPass = "",
               joinChans: seq[string] = @[],
               msgLimit: bool = true,
-              ircEvent: proc (irc: PAsyncIRC, ev: TIRCEvent) {.closure.}
+              ircEvent: proc (irc: PAsyncIRC, ev: TIRCEvent) {.closure,gcsafe.}
               ): PAsyncIRC =
   ## Use this function if you want to use asyncio's dispatcher.
   ## 

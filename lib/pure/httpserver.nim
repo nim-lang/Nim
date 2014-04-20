@@ -477,7 +477,7 @@ proc nextAsync(s: PAsyncHTTPServer) =
     s.path = data.substr(i, last-1)
 
 proc asyncHTTPServer*(handleRequest: proc (server: PAsyncHTTPServer, client: TSocket, 
-                        path, query: string): bool {.closure.},
+                        path, query: string): bool {.closure, gcsafe.},
                      port = TPort(80), address = "",
                      reuseAddr = false): PAsyncHTTPServer =
   ## Creates an Asynchronous HTTP server at ``port``.

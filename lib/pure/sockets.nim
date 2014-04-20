@@ -24,6 +24,8 @@
 ## Asynchronous sockets are supported, however a better alternative is to use
 ## the `asyncio <asyncio.html>`_ module.
 
+include "system/inclrtl"
+
 {.deadCodeElim: on.}
 
 when hostOS == "solaris":
@@ -544,7 +546,7 @@ proc acceptAddr*(server: TSocket, client: var TSocket, address: var string) {.
             else:
               SSLError("Unknown error")
 
-proc setBlocking*(s: TSocket, blocking: bool) {.tags: [].}
+proc setBlocking*(s: TSocket, blocking: bool) {.tags: [], gcsafe.}
   ## Sets blocking mode on socket
 
 when defined(ssl):

@@ -377,7 +377,7 @@ proc setCookie*(name, value: string) =
   write(stdout, "Set-Cookie: ", name, "=", value, "\n")
 
 var
-  gcookies: PStringTable = nil
+  gcookies {.threadvar.}: PStringTable
 
 proc getCookie*(name: string): TaintedString =
   ## Gets a cookie. If no cookie of `name` exists, "" is returned.

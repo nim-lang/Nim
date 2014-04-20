@@ -1564,7 +1564,7 @@ when defined(windows):
   # ourselves. This has the additional benefit that the program's behaviour
   # is always the same -- independent of the used C compiler.
   var
-    ownArgv: seq[string]
+    ownArgv {.threadvar.}: seq[string]
 
   proc paramCount*(): int {.rtl, extern: "nos$1", tags: [FReadIO].} =
     ## Returns the number of `command line arguments`:idx: given to the

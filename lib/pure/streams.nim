@@ -12,6 +12,8 @@
 ## interface for Nimrod file objects (`TFile`) and strings. Other modules
 ## may provide other implementations for this standard stream interface.
 
+include "system/inclrtl"
+
 proc newEIO(msg: string): ref EIO =
   new(result)
   result.msg = msg
@@ -23,15 +25,15 @@ type
                                ## here shouldn't be used directly. They are
                                ## accessible so that a stream implementation
                                ## can override them.
-    closeImpl*: proc (s: PStream) {.nimcall, tags: [].}
-    atEndImpl*: proc (s: PStream): bool {.nimcall, tags: [].}
-    setPositionImpl*: proc (s: PStream, pos: int) {.nimcall, tags: [].}
-    getPositionImpl*: proc (s: PStream): int {.nimcall, tags: [].}
+    closeImpl*: proc (s: PStream) {.nimcall, tags: [], gcsafe.}
+    atEndImpl*: proc (s: PStream): bool {.nimcall, tags: [], gcsafe.}
+    setPositionImpl*: proc (s: PStream, pos: int) {.nimcall, tags: [], gcsafe.}
+    getPositionImpl*: proc (s: PStream): int {.nimcall, tags: [], gcsafe.}
     readDataImpl*: proc (s: PStream, buffer: pointer,
-                         bufLen: int): int {.nimcall, tags: [FReadIO].}
+                         bufLen: int): int {.nimcall, tags: [FReadIO], gcsafe.}
     writeDataImpl*: proc (s: PStream, buffer: pointer, bufLen: int) {.nimcall,
-      tags: [FWriteIO].}
-    flushImpl*: proc (s: PStream) {.nimcall, tags: [FWriteIO].}
+      tags: [FWriteIO], gcsafe.}
+    flushImpl*: proc (s: PStream) {.nimcall, tags: [FWriteIO], gcsafe.}
 
 proc flush*(s: PStream) =
   ## flushes the buffers that the stream `s` might use.

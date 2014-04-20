@@ -192,9 +192,6 @@ when defined(nimNewShared):
   type
     `shared`* {.magic: "Shared".}
     guarded* {.magic: "Guarded".}
-else:
-  {.pragma: gcsafe.}
-#{.pragma: gcsafe.}
 
 const NoFakeVars* = defined(NimrodVM) ## true if the backend doesn't support \
   ## "fake variables" like 'var EBADF {.importc.}: cint'.

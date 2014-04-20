@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+include "system/inclrtl"
+
 import os, oids, tables, strutils, macros
 
 import rawsockets
@@ -31,7 +33,7 @@ export TPort
 
 type
   PFutureBase* = ref object of PObject
-    cb: proc () {.closure.}
+    cb: proc () {.closure,gcsafe.}
     finished: bool
 
   PFuture*[T] = ref object of PFutureBase
@@ -68,7 +70,7 @@ proc fail*[T](future: PFuture[T], error: ref EBase) =
   if future.cb != nil:
     future.cb()
 
-proc `callback=`*(future: PFutureBase, cb: proc () {.closure.}) =
+proc `callback=`*(future: PFutureBase, cb: proc () {.closure,gcsafe.}) =
   ## Sets the callback proc to be called when the future completes.
   ##
   ## If future has already completed then ``cb`` will be called immediately.
@@ -80,7 +82,7 @@ proc `callback=`*(future: PFutureBase, cb: proc () {.closure.}) =
     future.cb()
 
 proc `callback=`*[T](future: PFuture[T],
-    cb: proc (future: PFuture[T]) {.closure.}) =
+    cb: proc (future: PFuture[T]) {.closure,gcsafe.}) =
   ## Sets the callback proc to be called when the future completes.
   ##
   ## If future has already completed then ``cb`` will be called immediately.
@@ -122,7 +124,7 @@ when defined(windows) or defined(nimdoc):
     TCompletionData* = object
       sock: TAsyncFD
       cb: proc (sock: TAsyncFD, bytesTransferred: DWORD,
-                errcode: TOSErrorCode) {.closure.}
+                errcode: TOSErrorCode) {.closure,gcsafe.}
 
     PDispatcher* = ref object
       ioPort: THandle
@@ -237,7 +239,7 @@ when defined(windows) or defined(nimdoc):
     let func =
       cast[proc (s: TSocketHandle, name: ptr TSockAddr, namelen: cint, 
          lpSendBuffer: pointer, dwSendDataLength: dword,
-         lpdwBytesSent: PDWORD, lpOverlapped: POverlapped): bool {.stdcall.}](connectExPtr)
+         lpdwBytesSent: PDWORD, lpOverlapped: POverlapped): bool {.stdcall,gcsafe.}](connectExPtr)
 
     result = func(s, name, namelen, lpSendBuffer, dwSendDataLength, lpdwBytesSent,
          lpOverlapped)
@@ -251,7 +253,7 @@ when defined(windows) or defined(nimdoc):
       cast[proc (listenSock, acceptSock: TSocketHandle, lpOutputBuffer: pointer,
                  dwReceiveDataLength, dwLocalAddressLength,
                  dwRemoteAddressLength: DWORD, lpdwBytesReceived: PDWORD,
-                 lpOverlapped: POverlapped): bool {.stdcall.}](acceptExPtr)
+                 lpOverlapped: POverlapped): bool {.stdcall,gcsafe.}](acceptExPtr)
     result = func(listenSock, acceptSock, lpOutputBuffer, dwReceiveDataLength,
         dwLocalAddressLength, dwRemoteAddressLength, lpdwBytesReceived,
         lpOverlapped)
@@ -268,7 +270,7 @@ when defined(windows) or defined(nimdoc):
                  dwReceiveDataLength, dwLocalAddressLength,
                  dwRemoteAddressLength: DWORD, LocalSockaddr: ptr ptr TSockAddr,
                  LocalSockaddrLength: lpint, RemoteSockaddr: ptr ptr TSockAddr,
-                RemoteSockaddrLength: lpint) {.stdcall.}](getAcceptExSockAddrsPtr)
+                RemoteSockaddrLength: lpint) {.stdcall,gcsafe.}](getAcceptExSockAddrsPtr)
     
     func(lpOutputBuffer, dwReceiveDataLength, dwLocalAddressLength,
                   dwRemoteAddressLength, LocalSockaddr, LocalSockaddrLength,
@@ -537,7 +539,7 @@ else:
   from posix import EINTR, EAGAIN, EINPROGRESS, EWOULDBLOCK, MSG_PEEK
   type
     TAsyncFD* = distinct cint
-    TCallback = proc (sock: TAsyncFD): bool {.closure.}
+    TCallback = proc (sock: TAsyncFD): bool {.closure,gcsafe.}
 
     PData* = ref object of PObject
       sock: TAsyncFD
@@ -757,7 +759,7 @@ proc accept*(socket: TAsyncFD): PFuture[TAsyncFD] =
 
 template createCb*(retFutureSym, iteratorNameSym: expr): stmt {.immediate.} =
   var nameIterVar = iteratorNameSym
-  proc cb {.closure.} =
+  proc cb {.closure,gcsafe.} =
     if not nameIterVar.finished:
       var next = nameIterVar()
       if next == nil:

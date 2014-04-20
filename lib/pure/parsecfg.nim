@@ -70,7 +70,7 @@ const
   SymChars: TCharSet = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\x80'..'\xFF', '.',
                         '/', '\\'} 
   
-proc rawGetTok(c: var TCfgParser, tok: var TToken)
+proc rawGetTok(c: var TCfgParser, tok: var TToken) {.gcsafe.}
 
 proc open*(c: var TCfgParser, input: PStream, filename: string, 
            lineOffset = 0) {.

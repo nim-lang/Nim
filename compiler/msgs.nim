@@ -118,7 +118,7 @@ type
     warnNilStatement, warnAnalysisLoophole,
     warnDifferentHeaps, warnWriteToForeignHeap, warnImplicitClosure,
     warnEachIdentIsTuple, warnShadowIdent, 
-    warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe,
+    warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe, warnGcUnsafe2,
     warnUninit, warnGcMem, warnUser,
     hintSuccess, hintSuccessX,
     hintLineTooLong, hintXDeclaredButNotUsed, hintConvToBaseNotNeeded,
@@ -387,6 +387,7 @@ const
     warnProveField: "cannot prove that field '$1' is accessible [ProveField]",
     warnProveIndex: "cannot prove index '$1' is valid [ProveIndex]",
     warnGcUnsafe: "not GC-safe: '$1' [GcUnsafe]",
+    warnGcUnsafe2: "cannot prove '$1' is GC-safe. This will become a compile time error in the future.",
     warnUninit: "'$1' might not have been initialized [Uninit]",
     warnGcMem: "'$1' uses GC'ed memory [GcMem]",
     warnUser: "$1 [User]", 
@@ -408,7 +409,7 @@ const
     hintUser: "$1 [User]"]
 
 const
-  WarningsToStr*: array[0..25, string] = ["CannotOpenFile", "OctalEscape", 
+  WarningsToStr*: array[0..26, string] = ["CannotOpenFile", "OctalEscape", 
     "XIsNeverRead", "XmightNotBeenInit",
     "Deprecated", "ConfigDeprecated",
     "SmallLshouldNotBeUsed", "UnknownMagic", 
@@ -416,7 +417,7 @@ const
     "CommentXIgnored", "NilStmt",
     "AnalysisLoophole", "DifferentHeaps", "WriteToForeignHeap",
     "ImplicitClosure", "EachIdentIsTuple", "ShadowIdent", 
-    "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "Uninit",
+    "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
     "GcMem", "User"]
 
   HintsToStr*: array[0..15, string] = ["Success", "SuccessX", "LineTooLong", 

@@ -16,6 +16,8 @@
 #    -> defined(useNimRtl) or appType == "lib" and not defined(createNimRtl)
 # 3) Exported into nimrtl.
 #    -> appType == "lib" and defined(createNimRtl)
+when not defined(nimNewShared):
+  {.pragma: gcsafe.}
 
 when defined(createNimRtl):
   when defined(useNimRtl): 
@@ -24,7 +26,7 @@ when defined(createNimRtl):
     {.error: "nimrtl must be built as a library!".}
 
 when defined(createNimRtl): 
-  {.pragma: rtl, exportc: "nimrtl_$1", dynlib.}
+  {.pragma: rtl, exportc: "nimrtl_$1", dynlib, gcsafe.}
   {.pragma: inl.}
   {.pragma: compilerRtl, compilerproc, exportc: "nimrtl_$1", dynlib.}
 elif defined(useNimRtl):
@@ -34,11 +36,11 @@ elif defined(useNimRtl):
     const nimrtl* = "nimrtl.dylib"
   else: 
     const nimrtl* = "libnimrtl.so"
-  {.pragma: rtl, importc: "nimrtl_$1", dynlib: nimrtl.}
+  {.pragma: rtl, importc: "nimrtl_$1", dynlib: nimrtl, gcsafe.}
   {.pragma: inl.}
   {.pragma: compilerRtl, compilerproc, importc: "nimrtl_$1", dynlib: nimrtl.}
 else:
-  {.pragma: rtl.}
+  {.pragma: rtl, gcsafe.}
   {.pragma: inl, inline.}
   {.pragma: compilerRtl, compilerproc.}
 

@@ -53,7 +53,7 @@ const
     wPure, wHeader, wCompilerproc, wFinal, wSize, wExtern, wShallow,
     wImportCpp, wImportObjC, wError, wIncompleteStruct, wByCopy, wByRef,
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
-    wBorrow}
+    wBorrow, wGcSafe}
   fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern, 
     wImportCpp, wImportObjC, wError}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl, 
@@ -690,7 +690,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           if sym.typ != nil: incl(sym.typ.flags, tfThread)
         of wGcSafe:
           noVal(it)
-          incl(sym.flags, sfThread)
+          if sym.kind != skType: incl(sym.flags, sfThread)
           if sym.typ != nil: incl(sym.typ.flags, tfGcSafe)
           else: invalidPragma(it)
         of wPacked:

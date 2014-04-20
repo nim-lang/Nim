@@ -6,6 +6,8 @@
 #    distribution, for details about the copyright.
 #
 
+include "system/inclrtl"
+
 import sockets, os
 
 ## This module implements an asynchronous event loop together with asynchronous sockets
@@ -98,13 +100,13 @@ type
     fd*: TSocketHandle
     deleVal*: PObject
 
-    handleRead*: proc (h: PObject) {.nimcall.}
-    handleWrite*: proc (h: PObject) {.nimcall.}
-    handleError*: proc (h: PObject) {.nimcall.}
-    hasDataBuffered*: proc (h: PObject): bool {.nimcall.}
+    handleRead*: proc (h: PObject) {.nimcall, gcsafe.}
+    handleWrite*: proc (h: PObject) {.nimcall, gcsafe.}
+    handleError*: proc (h: PObject) {.nimcall, gcsafe.}
+    hasDataBuffered*: proc (h: PObject): bool {.nimcall, gcsafe.}
     
     open*: bool
-    task*: proc (h: PObject) {.nimcall.}
+    task*: proc (h: PObject) {.nimcall, gcsafe.}
     mode*: TFileMode
     
   PDelegate* = ref TDelegate
@@ -118,13 +120,13 @@ type
     socket: TSocket
     info: TInfo
 
-    handleRead*: proc (s: PAsyncSocket) {.closure.}
-    handleWrite: proc (s: PAsyncSocket) {.closure.}
-    handleConnect*: proc (s:  PAsyncSocket) {.closure.}
+    handleRead*: proc (s: PAsyncSocket) {.closure, gcsafe.}
+    handleWrite: proc (s: PAsyncSocket) {.closure, gcsafe.}
+    handleConnect*: proc (s:  PAsyncSocket) {.closure, gcsafe.}
 
-    handleAccept*: proc (s:  PAsyncSocket) {.closure.}
+    handleAccept*: proc (s:  PAsyncSocket) {.closure, gcsafe.}
 
-    handleTask*: proc (s: PAsyncSocket) {.closure.}
+    handleTask*: proc (s: PAsyncSocket) {.closure, gcsafe.}
 
     lineBuffer: TaintedString ## Temporary storage for ``readLine``
     sendBuffer: string ## Temporary storage for ``send``
@@ -213,7 +215,7 @@ proc asyncSockHandleRead(h: PObject) =
   else:
     PAsyncSocket(h).handleAccept(PAsyncSocket(h))
 
-proc close*(sock: PAsyncSocket)
+proc close*(sock: PAsyncSocket) {.gcsafe.}
 proc asyncSockHandleWrite(h: PObject) =
   when defined(ssl):
     if PAsyncSocket(h).socket.isSSL and not
@@ -254,7 +256,7 @@ proc asyncSockHandleWrite(h: PObject) =
         PAsyncSocket(h).deleg.mode = fmRead
 
 when defined(ssl):
-  proc asyncSockDoHandshake(h: PObject) =
+  proc asyncSockDoHandshake(h: PObject) {.gcsafe.} =
     if PAsyncSocket(h).socket.isSSL and not
          PAsyncSocket(h).socket.gotHandshake:
       if PAsyncSocket(h).sslNeedAccept:
@@ -437,7 +439,7 @@ proc isSendDataBuffered*(s: PAsyncSocket): bool =
   return s.sendBuffer.len != 0
 
 proc setHandleWrite*(s: PAsyncSocket,
-    handleWrite: proc (s: PAsyncSocket) {.closure.}) =
+    handleWrite: proc (s: PAsyncSocket) {.closure, gcsafe.}) =
   ## Setter for the ``handleWrite`` event.
   ##
   ## To remove this event you should use the ``delHandleWrite`` function.

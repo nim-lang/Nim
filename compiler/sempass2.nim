@@ -113,7 +113,8 @@ proc useVar(a: PEffects, n: PNode) =
   if {sfGlobal, sfThread} * s.flags == {sfGlobal} and s.kind == skVar:
     when trackGlobals:
       a.addUse(copyNode(n))
-    if tfHasGCedMem in s.typ.flags or s.typ.isGCedMem:
+    if (tfHasGCedMem in s.typ.flags or s.typ.isGCedMem) and 
+        tfGcSafe notin s.typ.flags:
       message(n.info, warnGcUnsafe, renderTree(n))
       a.gcUnsafe = true
 
@@ -517,6 +518,7 @@ proc track(tracked: PEffects, n: PNode) =
           addEffect(tracked, createRaise(n))
           addTag(tracked, createTag(n))
           when trackGlobals: addUse(tracked, createAnyGlobal(n))
+          # XXX handle 'gcsafe' properly for callbacks!
       else:
         mergeEffects(tracked, effectList.sons[exceptionEffects], n)
         mergeTags(tracked, effectList.sons[tagEffects], n)
@@ -704,7 +706,8 @@ proc trackProc*(s: PSym, body: PNode) =
         "uses an unlisted global variable: ", hints=on, symbolPredicate)
       effects.sons[usesEffects] = usesSpec
   if sfThread in s.flags and t.gcUnsafe:
-    localError(s.info, "'$1' is not GC-safe" % s.name.s)
+    localError(s.info, warnGcUnsafe2, s.name.s)
+    #localError(s.info, "'$1' is not GC-safe" % s.name.s)
   if not t.gcUnsafe: s.typ.flags.incl tfGcSafe
   
 proc trackTopLevelStmt*(module: PSym; n: PNode) =

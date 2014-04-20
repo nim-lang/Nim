@@ -29,7 +29,7 @@ type
     region: TMemRegion
   PRawChannel = ptr TRawChannel
   TLoadStoreMode = enum mStore, mLoad
-  TChannel*[TMsg] = TRawChannel ## a channel for thread communication
+  TChannel* {.gcsafe.}[TMsg] = TRawChannel ## a channel for thread communication
 
 const ChannelDeadMask = -2
 

@@ -135,38 +135,38 @@ type
     months*: int      ## The number of months
     years*: int       ## The number of years
 
-proc getTime*(): TTime {.tags: [FTime].}
+proc getTime*(): TTime {.tags: [FTime], gcsafe.}
   ## gets the current calendar time as a UNIX epoch value (number of seconds
   ## elapsed since 1970) with integer precission. Use epochTime for higher
   ## resolution.
-proc getLocalTime*(t: TTime): TTimeInfo {.tags: [FTime], raises: [].}
+proc getLocalTime*(t: TTime): TTimeInfo {.tags: [FTime], raises: [], gcsafe.}
   ## converts the calendar time `t` to broken-time representation,
   ## expressed relative to the user's specified time zone.
-proc getGMTime*(t: TTime): TTimeInfo {.tags: [FTime], raises: [].}
+proc getGMTime*(t: TTime): TTimeInfo {.tags: [FTime], raises: [], gcsafe.}
   ## converts the calendar time `t` to broken-down time representation,
   ## expressed in Coordinated Universal Time (UTC).
 
-proc timeInfoToTime*(timeInfo: TTimeInfo): TTime {.tags: [].}
+proc timeInfoToTime*(timeInfo: TTimeInfo): TTime {.tags: [], gcsafe.}
   ## converts a broken-down time structure to
   ## calendar time representation. The function ignores the specified
   ## contents of the structure members `weekday` and `yearday` and recomputes
   ## them from the other information in the broken-down time structure.
 
-proc fromSeconds*(since1970: float): TTime {.tags: [], raises: [].}
+proc fromSeconds*(since1970: float): TTime {.tags: [], raises: [], gcsafe.}
   ## Takes a float which contains the number of seconds since the unix epoch and
   ## returns a time object.
 
-proc fromSeconds*(since1970: int64): TTime {.tags: [], raises: [].} = 
+proc fromSeconds*(since1970: int64): TTime {.tags: [], raises: [], gcsafe.} = 
   ## Takes an int which contains the number of seconds since the unix epoch and
   ## returns a time object.
   fromSeconds(float(since1970))
 
-proc toSeconds*(time: TTime): float {.tags: [], raises: [].}
+proc toSeconds*(time: TTime): float {.tags: [], raises: [], gcsafe.}
   ## Returns the time in seconds since the unix epoch.
 
-proc `$` *(timeInfo: TTimeInfo): string {.tags: [], raises: [].}
+proc `$` *(timeInfo: TTimeInfo): string {.tags: [], raises: [], gcsafe.}
   ## converts a `TTimeInfo` object to a string representation.
-proc `$` *(time: TTime): string {.tags: [], raises: [].}
+proc `$` *(time: TTime): string {.tags: [], raises: [], gcsafe.}
   ## converts a calendar time to a string representation.
 
 proc `-`*(a, b: TTime): int64 {.
@@ -189,14 +189,15 @@ proc `==`*(a, b: TTime): bool {.
   result = a - b == 0
 
 when not defined(JS):
-  proc getTzname*(): tuple[nonDST, DST: string] {.tags: [FTime], raises: [].}
+  proc getTzname*(): tuple[nonDST, DST: string] {.tags: [FTime], raises: [],
+    gcsafe.}
     ## returns the local timezone; ``nonDST`` is the name of the local non-DST
     ## timezone, ``DST`` is the name of the local DST timezone.
 
-proc getTimezone*(): int {.tags: [FTime], raises: [].}
+proc getTimezone*(): int {.tags: [FTime], raises: [], gcsafe.}
   ## returns the offset of the local (non-DST) timezone in seconds west of UTC.
 
-proc getStartMilsecs*(): int {.deprecated, tags: [FTime].}
+proc getStartMilsecs*(): int {.deprecated, tags: [FTime], gcsafe.}
   ## get the miliseconds from the start of the program. **Deprecated since
   ## version 0.8.10.** Use ``epochTime`` or ``cpuTime`` instead.
 

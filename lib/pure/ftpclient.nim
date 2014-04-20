@@ -6,6 +6,8 @@
 #    distribution, for details about the copyright.
 #
 
+include "system/inclrtl"
+
 import sockets, strutils, parseutils, times, os, asyncio
 
 ## This module **partially** implements an FTP client as specified
@@ -41,7 +43,7 @@ type
       dummyA, dummyB: pointer # workaround a Nimrod API issue
       asyncCSock: PAsyncSocket
       asyncDSock: PAsyncSocket
-      handleEvent*: proc (ftp: PAsyncFTPClient, ev: TFTPEvent) {.closure.}
+      handleEvent*: proc (ftp: PAsyncFTPClient, ev: TFTPEvent){.closure,gcsafe.}
       disp: PDispatcher
       asyncDSockID: PDelegate
     user, pass: string
@@ -59,7 +61,7 @@ type
     JRetrText, JRetr, JStore
 
   TFTPJob = object
-    prc: proc (ftp: PFTPClient, async: bool): bool {.nimcall.}
+    prc: proc (ftp: PFTPClient, async: bool): bool {.nimcall, gcsafe.}
     case typ*: FTPJobType
     of JRetrText:
       lines: string
@@ -148,7 +150,8 @@ proc assertReply(received: TaintedString, expected: varargs[string]) =
                      [expected.join("' or '"), received.string])
 
 proc createJob(ftp: PFTPClient,
-               prc: proc (ftp: PFTPClient, async: bool): bool {.nimcall.},
+               prc: proc (ftp: PFTPClient, async: bool): bool {.
+                          nimcall,gcsafe.},
                cmd: FTPJobType) =
   if ftp.jobInProgress:
     raise newException(EFTP, "Unable to do two jobs at once.")
@@ -558,7 +561,7 @@ proc csockHandleRead(s: PAsyncSocket, ftp: PAsyncFTPClient) =
 
 proc asyncFTPClient*(address: string, port = TPort(21),
                      user, pass = "",
-    handleEvent: proc (ftp: PAsyncFTPClient, ev: TFTPEvent) {.closure.} = 
+    handleEvent: proc (ftp: PAsyncFTPClient, ev: TFTPEvent) {.closure,gcsafe.} = 
       (proc (ftp: PAsyncFTPClient, ev: TFTPEvent) = discard)): PAsyncFTPClient =
   ## Create a ``PAsyncFTPClient`` object.
   ##
