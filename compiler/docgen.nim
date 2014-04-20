@@ -513,6 +513,24 @@ proc generateJson(d: PDoc, n: PNode, jArray: PJsonNode = nil): PJsonNode =
       discard generateJson(d, lastSon(n.sons[0]), jArray)
   else: discard
 
+proc stripTOCHTML(s: string): string =
+  ## Ugly quick hack to remove HTML tags from TOC titles.
+  ##
+  ## A TTocEntry.header field already contains rendered HTML tags. Instead of
+  ## implementing a proper version of rstgen.renderRstToOut() which recursively
+  ## renders an rst tree to plain text, we simply remove text found between
+  ## angled brackets. Given the limited possibilities of rst inside TOC titles
+  ## this should be enough.
+  result = s
+  var first = result.find('<')
+  while first >= 0:
+    let last = result.find('>', first)
+    if last < 0:
+      # Abort, since we didn't found a closing angled bracket.
+      return
+    result.delete(first, last)
+    first = result.find('<', first)
+
 proc genSection(d: PDoc, kind: TSymKind) =
   const sectionNames: array[skModule..skTemplate, string] = [
     "Imports", "Types", "Vars", "Lets", "Consts", "Vars", "Procs", "Methods",
@@ -549,6 +567,13 @@ proc genOutFile(d: PDoc): PRope =
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
     title = "Module " & extractFilename(changeFileExt(d.filename, ""))
+
+  # Generate entries also for other entries in the toc.
+  for tocPart in d.tocPart:
+    # Use &nbsp; to indicate the current level for the output HTML.
+    assert tocPart.n.level >= 0
+    setIndexTerm(d[], tocPart.refname, tocPart.header.stripTOCHTML,
+      repeatStr(max(0, tocPart.n.level), "&nbsp;") & tocPart.header)
 
   let bodyname = if d.hasToc: "doc.body_toc" else: "doc.body_no_toc"
   content = ropeFormatNamedVars(getConfigVar(bodyname), ["title",
