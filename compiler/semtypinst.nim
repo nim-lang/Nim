@@ -19,7 +19,7 @@ proc sharedPtrCheck(info: TLineInfo, t: PType) =
     if t.sons[0].sym.magic in {mShared, mGuarded}:
       incl(t.flags, tfShared)
       if t.sons[0].sym.magic == mGuarded: incl(t.flags, tfGuarded)
-      if tfHasGCedMem in t.flags:
+      if tfHasGCedMem in t.flags or t.isGCedMem:
         localError(info, errGenerated,
                    "shared memory may not refer to GC'ed thread local memory")
 

@@ -14,7 +14,7 @@ import
   wordrecg, ropes, msgs, os, condsyms, idents, renderer, types, platform, math,
   magicsys, parser, nversion, nimsets, semfold, importer,
   procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
-  semthreads, intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
+  intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, pretty, semmacrosanity
 
 # implementation
@@ -415,12 +415,7 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
       if getCurrentException() of ESuggestDone: result = nil
       else: result = ast.emptyNode
       #if gCmd == cmdIdeTools: findSuggest(c, n)
-  
-proc checkThreads(c: PContext) =
-  if not needsGlobalAnalysis(): return
-  for i in 0 .. c.threadEntries.len-1:
-    semthreads.analyseThreadProc(c.threadEntries[i])
-  
+    
 proc myClose(context: PPassContext, n: PNode): PNode = 
   var c = PContext(context)
   closeScope(c)         # close module's scope
@@ -431,7 +426,6 @@ proc myClose(context: PPassContext, n: PNode): PNode =
   addCodeForGenerics(c, result)
   if c.module.ast != nil:
     result.add(c.module.ast)
-  checkThreads(c)
   popOwner()
   popProcCon(c)
 

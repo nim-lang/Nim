@@ -1311,6 +1311,10 @@ proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   result = t
   while result.kind in kinds: result = lastSon(result)
 
+proc isGCedMem*(t: PType): bool {.inline.} =
+  result = t.kind in {tyString, tyRef, tySequence} or
+           t.kind == tyProc and t.callConv == ccClosure
+
 proc propagateToOwner*(owner, elem: PType) =
   const HaveTheirOwnEmpty = {tySequence, tySet}
   owner.flags = owner.flags + (elem.flags * {tfHasShared, tfHasMeta})
@@ -1331,9 +1335,7 @@ proc propagateToOwner*(owner, elem: PType) =
     owner.flags.incl tfHasMeta
 
   if owner.kind != tyProc:
-    if elem.kind in {tyString, tyRef, tySequence} or
-        elem.kind == tyProc and elem.callConv == ccClosure or
-        tfHasGCedMem in elem.flags:
+    if elem.isGCedMem or tfHasGCedMem in elem.flags:
       owner.flags.incl tfHasGCedMem
 
 proc rawAddSon*(father, son: PType) =

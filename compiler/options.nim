@@ -60,7 +60,6 @@ type                          # please make sure we have under 32 options
     optContext,               # ideTools: 'context'
     optDef,                   # ideTools: 'def'
     optUsages,                # ideTools: 'usages'
-    optThreadAnalysis,        # thread analysis pass
     optTaintMode,             # taint mode turned on
     optTlsEmulation,          # thread var emulation turned on
     optGenIndex               # generate index file for documentation;
@@ -95,7 +94,7 @@ var
                          optBoundsCheck, optOverflowCheck, optAssert, optWarns, 
                          optHints, optStackTrace, optLineTrace,
                          optPatterns, optNilCheck}
-  gGlobalOptions*: TGlobalOptions = {optThreadAnalysis}
+  gGlobalOptions*: TGlobalOptions = {}
   gExitcode*: int8
   gCmd*: TCommands = cmdNone  # the command
   gSelectedGC* = gcRefc       # the selected GC

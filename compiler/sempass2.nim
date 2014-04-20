@@ -113,7 +113,7 @@ proc useVar(a: PEffects, n: PNode) =
   if {sfGlobal, sfThread} * s.flags == {sfGlobal} and s.kind == skVar:
     when trackGlobals:
       a.addUse(copyNode(n))
-    if tfHasGCedMem in s.typ.flags: 
+    if tfHasGCedMem in s.typ.flags or s.typ.isGCedMem:
       message(n.info, warnGcUnsafe, renderTree(n))
       a.gcUnsafe = true
 

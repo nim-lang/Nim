@@ -57,7 +57,6 @@ type
                                # can access private object fields
     instCounter*: int          # to prevent endless instantiations
    
-    threadEntries*: TSymSeq    # list of thread entries to check
     ambiguousSymbols*: TIntSet # ids of all ambiguous symbols (cannot
                                # store this info in the syms themselves!)
     inTypeClass*: int          # > 0 if we are in a user-defined type class
@@ -170,7 +169,6 @@ proc newContext(module: PSym): PContext =
   append(result.optionStack, newOptionEntry())
   result.module = module
   result.friendModule = module
-  result.threadEntries = @[]
   result.converters = @[]
   result.patterns = @[]
   result.includedFiles = initIntSet()

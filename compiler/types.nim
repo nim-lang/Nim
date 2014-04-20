@@ -538,7 +538,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       add(prag, "noSideEffect")
     if tfThread in t.flags:
       addSep(prag)
-      add(prag, "thread")
+      add(prag, "gcsafe")
     if len(prag) != 0: add(result, "{." & prag & ".}")
   of tyVarargs, tyIter:
     result = typeToStr[t.kind] % typeToString(t.sons[0])

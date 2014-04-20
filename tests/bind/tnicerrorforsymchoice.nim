@@ -1,18 +1,18 @@
 discard """
   line: 18
-  errormsg: "type mismatch: got (proc (TScgi) | proc (PAsyncSocket, PStringTable, string))"
+  errormsg: "type mismatch: got (proc (TScgi) | proc (PAsyncSocket, PStringTable, string){.gcsafe.})"
 """
 
 #bug #442
 import scgi, sockets, asyncio, strtabs
 proc handleSCGIRequest[TScgi: TScgiState | PAsyncScgiState](s: TScgi) =
-  nil
+  discard
 proc handleSCGIRequest(client: PAsyncSocket, headers: PStringTable, 
                        input: string) =
-  nil
+  discard
 
 proc test(handle: proc (client: PAsyncSocket, headers: PStringTable, 
                         input: string), b: int) =
-  nil
+  discard
 
 test(handleSCGIRequest)

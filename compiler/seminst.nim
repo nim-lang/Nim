@@ -127,9 +127,6 @@ proc sideEffectsCheck(c: PContext, s: PSym) =
   if {sfNoSideEffect, sfSideEffect} * s.flags ==
       {sfNoSideEffect, sfSideEffect}: 
     localError(s.info, errXhasSideEffects, s.name.s)
-  elif sfThread in s.flags and semthreads.needsGlobalAnalysis() and 
-      s.ast.sons[genericParamsPos].kind == nkEmpty:
-    c.threadEntries.add(s)
 
 proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
                           allowMetaTypes = false): PType =

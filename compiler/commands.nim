@@ -168,7 +168,6 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
   of "forcebuild", "f": result = contains(gGlobalOptions, optForceFullMake)
   of "warnings", "w": result = contains(gOptions, optWarns)
   of "hints": result = contains(gOptions, optHints)
-  of "threadanalysis": result = contains(gGlobalOptions, optThreadAnalysis)
   of "stacktrace": result = contains(gOptions, optStackTrace)
   of "linetrace": result = contains(gOptions, optLineTrace)
   of "debugger": result = contains(gOptions, optEndb)
@@ -330,7 +329,6 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   of "warning": processSpecificNote(arg, wWarning, pass, info)
   of "hint": processSpecificNote(arg, wHint, pass, info)
   of "hints": processOnOffSwitch({optHints}, arg, pass, info)
-  of "threadanalysis": processOnOffSwitchG({optThreadAnalysis}, arg, pass, info)
   of "stacktrace": processOnOffSwitch({optStackTrace}, arg, pass, info)
   of "linetrace": processOnOffSwitch({optLineTrace}, arg, pass, info)
   of "debugger": 

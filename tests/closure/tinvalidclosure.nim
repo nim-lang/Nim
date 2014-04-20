@@ -1,6 +1,6 @@
 discard """
   line: 12
-  errormsg: "type mismatch: got (proc (int){.closure.})"
+  errormsg: "type mismatch: got (proc (int){.closure, gcsafe.})"
 """
 
 proc ugh[T](x: T) {.closure.} =
