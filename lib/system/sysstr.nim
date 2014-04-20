@@ -252,10 +252,8 @@ proc nimIntToStr(x: int): string {.compilerRtl.} =
 
 proc nimFloatToStr(x: float): string {.compilerproc.} =
   var buf: array [0..59, char]
-  c_sprintf(buf, "%#.f", x)
-  result = $buf
-  if result[len(result)-1] == '.':
-    result.add("0")
+  c_sprintf(buf, "%#.16e", x)
+  return $buf
 
 proc nimInt64ToStr(x: int64): string {.compilerRtl.} =
   result = newString(sizeof(x)*4)
