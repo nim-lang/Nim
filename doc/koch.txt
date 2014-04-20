@@ -65,6 +65,16 @@ options:
   directories and check their backup exclusion bit::
 
     $ find . -type d -name nimcache -exec tmutil isexcluded \{\} \;
+-d:useFFI
+  Nimrod code can use the `foreign function interface (FFI)
+  <manual.html#foreign-function-interface>`_ at runtime, but macros
+  are limited to pure Nimrod code at compilation time.  Enabling
+  this switch will allow macros to execute non-nimrod code at
+  compilation time (eg. open a file and write to it).
+--gc:refc|v2|markAndSweep|boehm|none
+  Selects which garbage collection strategy to use for the compiler
+  and generated code. See the `Nimrod's Garbage Collector <gc.html>`_
+  documentation for more information.
 
 After compilation is finished you will hopefully end up with the nimrod
 compiler in the ``bin`` directory. You can add Nimrod's ``bin`` directory to
