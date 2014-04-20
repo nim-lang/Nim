@@ -20,7 +20,8 @@ new(a)
 q(a)
 
 # bug #914
-var x = newWideCString("Hello")
+when defined(windows):
+  var x = newWideCString("Hello")
 
 echo "success"
 

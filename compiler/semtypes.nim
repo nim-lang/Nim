@@ -194,10 +194,15 @@ proc semRange(c: PContext, n: PNode, prev: PType): PType =
     if isRange(n[1]):
       result = semRangeAux(c, n[1], prev)
       let n = result.n
-      if n.sons[0].kind in {nkCharLit..nkUInt64Lit}:
-        if n.sons[0].intVal > 0 or n.sons[1].intVal < 0:
-          incl(result.flags, tfNeedsInit)
-      elif n.sons[0].floatVal > 0.0 or n.sons[1].floatVal < 0.0:
+      if n.sons[0].kind in {nkCharLit..nkUInt64Lit} and n.sons[0].intVal > 0:
+        incl(result.flags, tfNeedsInit)
+      elif n.sons[1].kind in {nkCharLit..nkUInt64Lit} and n.sons[1].intVal < 0:
+        incl(result.flags, tfNeedsInit)
+      elif n.sons[0].kind in {nkFloatLit..nkFloat64Lit} and 
+          n.sons[0].floatVal > 0.0:
+        incl(result.flags, tfNeedsInit)
+      elif n.sons[1].kind in {nkFloatLit..nkFloat64Lit} and 
+          n.sons[1].floatVal < 0.0:
         incl(result.flags, tfNeedsInit)
     else:
       localError(n.sons[0].info, errRangeExpected)
