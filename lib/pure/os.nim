@@ -448,6 +448,8 @@ proc getLastAccessTime*(file: string): TTime {.rtl, extern: "nos$1".} =
 
 proc getCreationTime*(file: string): TTime {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s creation time.
+  ## Note that under posix OS's, the returned time may actually be the time at
+  ## which the file's attribute's were last modified.
   when defined(posix):
     var res: TStat
     if stat(file, res) < 0'i32: osError(osLastError())
@@ -777,6 +779,25 @@ proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1".} =
   elif defined(posix):
     result = path[0] == '/'
 
+when defined(Windows):
+  proc openHandle(path: string, followSymlink=true): THandle =
+    var flags = FILE_FLAG_BACKUP_SEMANTICS or FILE_ATTRIBUTE_NORMAL
+    if not followSymlink:
+      flags = flags or FILE_FLAG_OPEN_REPARSE_POINT
+
+    when useWinUnicode:
+      result = createFileW(
+        newWideCString(path), 0'i32, 
+        FILE_SHARE_DELETE or FILE_SHARE_READ or FILE_SHARE_WRITE,
+        nil, OPEN_EXISTING, flags, 0
+        )
+    else:
+      result = createFileA(
+        path, 0'i32, 
+        FILE_SHARE_DELETE or FILE_SHARE_READ or FILE_SHARE_WRITE,
+        nil, OPEN_EXISTING, flags, 0
+        )
+
 proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
   tags: [FReadDir].} =
   ## Returns True if both pathname arguments refer to the same physical
@@ -787,26 +808,8 @@ proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
   ## sym-linked paths to the same file or directory.
   when defined(Windows):
     var success = true
-
-    when useWinUnicode:
-      var p1 = newWideCString(path1)
-      var p2 = newWideCString(path2)
-      template openHandle(path: expr): expr =
-        createFileW(path, 0'i32, FILE_SHARE_DELETE or FILE_SHARE_READ or
-          FILE_SHARE_WRITE, nil, OPEN_EXISTING,
-          FILE_FLAG_BACKUP_SEMANTICS or FILE_ATTRIBUTE_NORMAL, 0)
-
-      var f1 = openHandle(p1)
-      var f2 = openHandle(p2)
-
-    else:
-      template openHandle(path: expr): expr =
-        createFileA(path, 0'i32, FILE_SHARE_DELETE or FILE_SHARE_READ or
-          FILE_SHARE_WRITE, nil, OPEN_EXISTING,
-          FILE_FLAG_BACKUP_SEMANTICS or FILE_ATTRIBUTE_NORMAL, 0)
-
-      var f1 = openHandle(path1)
-      var f2 = openHandle(path2)
+    var f1 = openHandle(path1)
+    var f2 = openHandle(path2)
 
     var lastErr: TOSErrorCode
     if f1 != INVALID_HANDLE_VALUE and f2 != INVALID_HANDLE_VALUE:
@@ -1746,5 +1749,141 @@ proc expandTilde*(path: string): string =
     result = getHomeDir() / path[2..len(path)-1]
   else:
     result = path
+
+when defined(Windows):
+  type
+    DeviceId = int32
+    FileId = int64
+else:
+  type
+    DeviceId = TDev
+    FileId = TIno
+
+type
+  FileInfo = object
+    ## Contains information associated with a file object.
+    id: tuple[device: DeviceId, file: FileId] # Device and file id.
+    kind: TPathComponent # Kind of file object - directory, symlink, etc.
+    size: BiggestInt # Size of file.
+    permissions: set[TFilePermission] # File permissions
+    linkCount: BiggestInt # Number of hard links the file object has.
+    lastAccessTime: TTime # Time file was last accessed.
+    lastWriteTime: TTime # Time file was last modified/written to.
+    creationTime: TTime # Time file was created. Not supported on all systems!
+
+template rawToFormalFileInfo(rawInfo, formalInfo): expr =
+  ## Transforms the native file info structure into the one nimrod uses.
+  ## 'rawInfo' is either a 'TBY_HANDLE_FILE_INFORMATION' structure on Windows,
+  ## or a 'TStat' structure on posix
+  when defined(Windows):
+    template toTime(e): expr = winTimeToUnixTime(rdFileTime(e))
+    template merge(a, b): expr = a or (b shl 32)
+    formalInfo.id.device = rawInfo.dwVolumeSerialNumber
+    formalInfo.id.file = merge(rawInfo.nFileIndexLow, rawInfo.nFileIndexHigh)
+    formalInfo.size = merge(rawInfo.nFileSizeLow, rawInfo.nFileSizeHigh)
+    formalInfo.linkCount = rawInfo.nNumberOfLinks
+    formalInfo.lastAccessTime = toTime(rawInfo.ftLastAccessTime)
+    formalInfo.lastWriteTime = toTime(rawInfo.ftLastWriteTime)
+    formalInfo.creationTime = toTime(rawInfo.ftCreationTime)
+    
+    # Retrieve basic permissions
+    if (rawInfo.dwFileAttributes and FILE_ATTRIBUTE_READONLY) != 0'i32:
+      formalInfo.permissions = {fpUserExec, fpUserRead, fpGroupExec, 
+                                fpGroupRead, fpOthersExec, fpOthersRead}
+    else:
+      result.permissions = {fpUserExec..fpOthersRead}
+
+    # Retrieve basic file kind
+    result.kind = pcFile
+    if (rawInfo.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) != 0'i32:
+      formalInfo.kind = pcDir
+    if (rawInfo.dwFileAttributes and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32:
+      formalInfo.kind = succ(result.kind)
+
+  else:
+    template checkAndIncludeMode(rawMode, formalMode: expr) = 
+      if (rawInfo.st_mode and rawMode) != 0'i32:
+        formalInfo.permissions.incl(formalMode)
+    formalInfo.id = (rawInfo.st_dev, rawInfo.st_ino)
+    formalInfo.size = rawInfo.st_size
+    formalInfo.linkCount = rawInfo.st_Nlink
+    formalInfo.lastAccessTime = rawInfo.st_atime
+    formalInfo.lastWriteTime = rawInfo.st_mtime
+    formalInfo.creationTime = rawInfo.st_ctime
+
+    result.permissions = {}
+    checkAndIncludeMode(S_IRUSR, fpUserRead)
+    checkAndIncludeMode(S_IWUSR, fpUserWrite)
+    checkAndIncludeMode(S_IXUSR, fpUserExec)
+
+    checkAndIncludeMode(S_IRGRP, fpGroupRead)
+    checkAndIncludeMode(S_IWGRP, fpGroupWrite)
+    checkAndIncludeMode(S_IXGRP, fpGroupExec)
+
+    checkAndIncludeMode(S_IROTH, fpOthersRead)
+    checkAndIncludeMode(S_IWOTH, fpOthersWrite)
+    checkAndIncludeMode(S_IXOTH, fpOthersExec)
+
+    formalInfo.kind = pcFile
+    if S_ISDIR(rawInfo.st_mode): formalInfo.kind = pcDir
+    if S_ISLNK(rawInfo.st_mode): formalInfo.kind.inc()
+
+proc getFileInfo*(handle: TFileHandle): FileInfo =
+  ## Retrieves file information for the file object represented by the given
+  ## handle.
+  ##
+  ## If the information cannot be retrieved, such as when the file handle
+  ## is invalid, an error will be thrown.
+  # Done: ID, Kind, Size, Permissions, Link Count
+  when defined(Windows):
+    var rawInfo: TBY_HANDLE_FILE_INFORMATION
+    # We have to use the super special '_get_osfhandle' call (wrapped above)
+    # To transform the C file descripter to a native file handle.
+    var realHandle = get_osfhandle(handle)
+    if getFileInformationByHandle(realHandle, addr rawInfo) == 0:
+      osError(osLastError())
+    rawToFormalFileInfo(rawInfo, result)
+  else:
+    var rawInfo: TStat
+    if fstat(handle, rawInfo) < 0'i32:
+      osError(osLastError())
+    rawToFormalFileInfo(rawInfo, result)
+
+proc getFileInfo*(file: TFile): FileInfo =
+  result = getFileInfo(file.fileHandle())
+
+proc getFileInfo*(path: string, followSymlink = true): FileInfo =
+  ## Retrieves file information for the file object pointed to by `path`.
+  ## 
+  ## Due to intrinsic differences between operating systems, the information
+  ## contained by the returned `FileInfo` structure will be slightly different
+  ## across platforms, and in some cases, incomplete or inaccurate.
+  ## 
+  ## When `followSymlink` is true, symlinks are followed and the information
+  ## retrieved is information related to the symlink's target. Otherwise,
+  ## information on the symlink itself is retrieved.
+  ## 
+  ## If the information cannot be retrieved, such as when the path doesn't
+  ## exist, or when permission restrictions prevent the program from retrieving
+  ## file information, an error will be thrown.
+  when defined(Windows):
+    var 
+      handle = openHandle(path, followSymlink)
+      rawInfo: TBY_HANDLE_FILE_INFORMATION
+    if handle == INVALID_HANDLE_VALUE:
+      osError(osLastError())
+    if getFileInformationByHandle(handle, addr rawInfo) == 0:
+      osError(osLastError())
+    rawToFormalFileInfo(rawInfo, result)
+    discard closeHandle(handle)
+  else:
+    var rawInfo: TStat
+    if followSymlink:
+      if lstat(path, rawInfo) < 0'i32:
+        osError(osLastError())
+    else:
+      if stat(path, rawInfo) < 0'i32:
+        osError(osLastError())
+    rawToFormalFileInfo(rawInfo, result)
 
 {.pop.}

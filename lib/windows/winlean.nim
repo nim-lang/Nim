@@ -581,6 +581,7 @@ const
   INVALID_FILE_SIZE* = -1'i32
 
   FILE_FLAG_BACKUP_SEMANTICS* = 33554432'i32
+  FILE_FLAG_OPEN_REPARSE_POINT* = 0x00200000'i32
 
 # Error Constants
 const
@@ -715,3 +716,6 @@ proc WSASend*(s: TSocketHandle, buf: ptr TWSABuf, bufCount: DWORD,
   bytesSent: PDWord, flags: DWORD, lpOverlapped: POverlapped,
   completionProc: POVERLAPPED_COMPLETION_ROUTINE): cint {.
   stdcall, importc: "WSASend", dynlib: "Ws2_32.dll".}
+
+proc get_osfhandle*(fd:TFileHandle): THandle {.
+  importc:"_get_osfhandle", header:"<io.h>".}
