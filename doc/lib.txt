@@ -373,6 +373,9 @@ Miscellaneous
 * `logging <logging.html>`_
   This module implements a simple logger.
 
+* `future <future.html>`_
+  This module implements new experimental features. Currently the syntax
+  sugar for anonymous procedures.
 
 Database support
 ----------------
