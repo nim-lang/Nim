@@ -532,7 +532,24 @@ proc mergeIndexes*(dir: string): string =
 
   
 # ----------------------------------------------------------------------------      
-  
+proc stripTOCHTML(s: string): string =
+  ## Ugly quick hack to remove HTML tags from TOC titles.
+  ##
+  ## A TTocEntry.header field already contains rendered HTML tags. Instead of
+  ## implementing a proper version of renderRstToOut() which recursively
+  ## renders an rst tree to plain text, we simply remove text found between
+  ## angled brackets. Given the limited possibilities of rst inside TOC titles
+  ## this should be enough.
+  result = s
+  var first = result.find('<')
+  while first >= 0:
+    let last = result.find('>', first)
+    if last < 0:
+      # Abort, since we didn't found a closing angled bracket.
+      return
+    result.delete(first, last)
+    first = result.find('<', first)
+
 proc renderHeadline(d: PDoc, n: PRstNode, result: var string) = 
   var tmp = ""
   for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], tmp)
@@ -544,6 +561,11 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
     d.tocPart[length].refname = refname
     d.tocPart[length].n = n
     d.tocPart[length].header = tmp
+
+    # Use spaces to indicate the current level for the output HTML index.
+    assert n.level >= 0
+    setIndexTerm(d, refname, tmp.stripTOCHTML,
+      repeatChar(max(0, n.level), ' ') & tmp)
     
     dispA(d.target, result,
         "\n<h$1><a class=\"toc-backref\" id=\"$2\" href=\"#$2_toc\">$3</a></h$1>", 
