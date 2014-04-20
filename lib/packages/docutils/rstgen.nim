@@ -23,7 +23,8 @@
 ## many options and tweaking, but you are not limited to snippets and can
 ## generate `LaTeX documents <https://en.wikipedia.org/wiki/LaTeX>`_ too.
 
-import strutils, os, hashes, strtabs, rstast, rst, highlite
+import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
+  algorithm
 
 const
   HtmlExt = "html"
@@ -120,8 +121,8 @@ proc initRstGenerator*(g: var TRstGenerator, target: TOutputTarget,
 proc writeIndexFile*(g: var TRstGenerator, outfile: string) =
   ## Writes the current index buffer to the specified output file.
   ##
-  ## You previously need to add entries to the index with the ``setIndexTerm``
-  ## proc. If the index is empty the file won't be created.
+  ## You previously need to add entries to the index with the `setIndexTerm()
+  ## <#setIndexTerm>`_ proc. If the index is empty the file won't be created.
   if g.theIndex.len > 0: writeFile(outfile, g.theIndex)
   
 proc addXmlChar(dest: var string, c: char) = 
@@ -255,16 +256,21 @@ proc setIndexTerm*(d: var TRstGenerator, id, term: string,
   ## Adds a `term` to the index using the specified hyperlink identifier.
   ##
   ## The ``d.theIndex`` string will be used to append the term in the format
-  ## ``term<tab>file#id``. The anchor will be the based on the name of the file
-  ## currently being parsed plus the specified `id`. The `id` will be appended
-  ## with a hash character only if its length is not zero, otherwise no
-  ## specific anchor will be generated.  If `linkTitle` or `linkDesc` are not
-  ## the empty string, two additional columns with their contents will be
-  ## added.
+  ## ``term<tab>file#id``.
   ##
-  ## The index won't be written to disk unless you call ``writeIndexFile``. The
-  ## purpose of the index is documented in the `docgen tools guide
-  ## <docgen.html#index-switch>`_.
+  ## The anchor will be the based on the name of the file currently being
+  ## parsed plus the specified `id`. The `id` will be appended with a hash
+  ## character only if its length is not zero, otherwise no specific anchor
+  ## will be generated.  In general you should only pass an empty `id` value
+  ## for the title of standalone rst documents (they are special for the
+  ## `mergeIndexes() <#mergeIndexes>`_ proc).
+  ##
+  ## If `linkTitle` or `linkDesc` are not the empty string, two additional
+  ## columns with their contents will be added.
+  ##
+  ## The index won't be written to disk unless you call `writeIndexFile()
+  ## <#writeIndexFile>`_. The purpose of the index is documented in the `docgen
+  ## tools guide <docgen.html#index-switch>`_.
   d.theIndex.add(term)
   d.theIndex.add('\t')
   let htmlFile = changeFileExt(extractFilename(d.filename), HtmlExt)
@@ -335,43 +341,18 @@ proc sortIndex(a: var openArray[TIndexEntry]) =
       a[j] <- v
     if h == 1: break
 
-proc mergeIndexes*(dir: string): string =
-  ## merges all index files in `dir` and returns the generated index as HTML.
-  ## The result is no full HTML for flexibility.
-  var a: seq[TIndexEntry]
-  newSeq(a, 15_000)
-  setLen(a, 0)
-  var L = 0
-  for kind, path in walkDir(dir):
-    if kind == pcFile and path.endsWith(IndexExt):
-      for line in lines(path):
-        let s = line.find('\t')
-        if s < 0: continue
-        setLen(a, L+1)
-        a[L].keyword = line.substr(0, s-1)
-        a[L].link = line.substr(s+1)
-        if a[L].link.find('\t') > 0:
-          let extraCols = a[L].link.split('\t')
-          a[L].link = extraCols[0]
-          assert extraCols.len == 3
-          a[L].linkTitle = extraCols[1].unquoteIndexColumn
-          a[L].linkDesc = extraCols[2].unquoteIndexColumn
-        else:
-          a[L].linkTitle = nil
-          a[L].linkDesc = nil
-        inc L
-  sortIndex(a)
+proc generateSymbolIndex(symbols: seq[TIndexEntry]): string =
   result = ""
   var i = 0
-  while i < L:
-    result.addf("<dt><span>$1</span></dt><ul class=\"simple\"><dd>\n", 
-                [a[i].keyword])
+  while i < symbols.len:
+    result.addf("<dt><span>$1</span></dt><ul class=\"simple\"><dd>\n",
+                [symbols[i].keyword])
     var j = i
-    while j < L and a[i].keyword == a[j].keyword:
+    while j < symbols.len and symbols[i].keyword == symbols[j].keyword:
       let
-        url = a[j].link
-        text = if not a[j].linkTitle.isNil: a[j].linkTitle else: url
-        desc = if not a[j].linkDesc.isNil: a[j].linkDesc else: ""
+        url = symbols[j].link
+        text = if not symbols[j].linkTitle.isNil: symbols[j].linkTitle else: url
+        desc = if not symbols[j].linkDesc.isNil: symbols[j].linkDesc else: ""
       if desc.len > 0:
         result.addf("""<li><a class="reference external"
           title="$3" href="$1">$2</a></li>
@@ -382,6 +363,173 @@ proc mergeIndexes*(dir: string): string =
       inc j
     result.add("</ul></dd>\n")
     i = j
+
+proc isDocumentationTitle(hyperlink: string): bool =
+  ## Returns true if the hyperlink is actually a documentation title.
+  ##
+  ## Documentation titles lack the hash. See `mergeIndexes() <#mergeIndexes>`_
+  ## for a more detailed explanation.
+  result = hyperlink.find('#') < 0
+
+proc `or`(x, y: string): string {.inline.} =
+  result = if x.isNil: y else: x
+
+proc stripTOCLevel(s: string): tuple[level: int, text: string] =
+  ## Returns the *level* of the toc along with the text without it.
+  for c in 0 .. <s.len:
+    result.level = c
+    if s[c] != ' ': break
+  result.text = s[result.level .. <s.len]
+
+proc indentToLevel(level: var int, newLevel: int): string =
+  ## Returns the sequence of <ul>|</ul> characters to switch to `newLevel`.
+  ##
+  ## The amount of lists added/removed will be based on the `level` variable,
+  ## which will be reset to `newLevel` at the end of the proc.
+  result = ""
+  if level == newLevel:
+    return
+  if newLevel > level:
+    result = repeatStr(newLevel - level, "<ul>")
+  else:
+    result = repeatStr(level - newLevel, "</ul>")
+  level = newLevel
+
+proc generateDocumentationTOC(entries: seq[TIndexEntry]):
+    tuple[toc, titleRef: string] =
+  ## Returns the sequence of index entries in an HTML hierarchical list.
+  result.toc = ""
+  # Build a list of levels and extracted titles to make processing easier.
+  var
+    levels: seq[tuple[level: int, text: string]]
+    L = 0
+    level = 1
+  levels.newSeq(entries.len)
+  for entry in entries:
+    let (rawLevel, rawText) = stripTOCLevel(entry.linkTitle or entry.keyword)
+    if rawLevel < 1:
+      # This is a normal symbol, push it *inside* one level from the last one.
+      levels[L].level = level + 1
+    else:
+      # The level did change, update the level indicator.
+      level = rawLevel
+      levels[L].level = rawLevel
+
+    levels[L].text = rawText
+    inc L
+
+  # Now generate hierarchical lists based on the precalculated levels.
+  result.toc = "<ul>\n"
+  level = 1
+  L = 0
+  while L < entries.len:
+    let link = entries[L].link
+    if link.isDocumentationTitle:
+      result.titleRef = link
+    else:
+      result.toc.add(level.indentToLevel(levels[L].level))
+      result.toc.add("<li><a href=\"" & link & "\">" &
+        levels[L].text & "</a>\n")
+    inc L
+  result.toc.add(level.indentToLevel(1) & "</ul>\n")
+  assert(not result.titleRef.isNil, "Can't use this proc on an API index")
+
+proc generateDocumentationIndex(
+    docs: TTable[string, seq[TIndexEntry]]): string =
+  ## Returns all the documentation TOCs in an HTML hierarchical list.
+  result = ""
+
+  # Sort the titles to generate their toc in alphabetical order.
+  var titles = toSeq(keys[string, seq[TIndexEntry]](docs))
+  sort(titles, system.cmp)
+
+  for title in titles:
+    let (list, titleRef) = generateDocumentationTOC(docs[title])
+    result.add("<ul><li><a href=\"" & titleRef & "\">" &
+      title & "</a>\n" & list & "</ul>\n")
+
+proc mergeIndexes*(dir: string): string =
+  ## Merges all index files in `dir` and returns the generated index as HTML.
+  ##
+  ## This proc will first scan `dir` for index files with the ``.idx``
+  ## extension previously created by commands like ``nimrod doc|rst2html``
+  ## which use the ``--index:on`` switch. These index files are the result of
+  ## calls to `setIndexTerm() <#setIndexTerm>`_ and `writeIndexFile()
+  ## <#writeIndexFile>`_, so they are simple tab separated files.
+  ##
+  ## As convention this proc will split index files into two categories:
+  ## documentation and API. API indices will be all joined together into a
+  ## single big sorted index, making the bulk of the final index. This is good
+  ## for API documentation because many symbols are repated in different
+  ## modules. On the other hand, documentation indices are essentially table of
+  ## contents plus a few special markers. These documents will be rendered in a
+  ## separate section which tries to maintain the order and hierarchy of the
+  ## symbols in the index file.
+  ##
+  ## To differentiate between a documentation and API file a convention is
+  ## used: indices which contain one entry without the HTML hash character (#)
+  ## will be considered `documentation`, since this hash-less entry is the
+  ## explicit title of the document.  Indices without this explicit entry will
+  ## be considered `generated API` extracted out of a source ``.nim`` file.
+  ##
+  ## Returns the merged and sorted indices into a single HTML block which can
+  ## be further embedded into nimdoc templates.
+  var
+    symbols: seq[TIndexEntry]
+    docs = initTable[string, seq[TIndexEntry]](32)
+  newSeq(symbols, 15_000)
+  setLen(symbols, 0)
+  var L = 0
+  # Scan index files and build the list of symbols.
+  for kind, path in walkDir(dir):
+    if kind == pcFile and path.endsWith(IndexExt):
+      var
+        fileEntries: seq[TIndexEntry]
+        foundTitle = ""
+        F = 0
+      newSeq(fileEntries, 500)
+      setLen(fileEntries, 0)
+      for line in lines(path):
+        let s = line.find('\t')
+        if s < 0: continue
+        setLen(fileEntries, F+1)
+        fileEntries[F].keyword = line.substr(0, s-1)
+        fileEntries[F].link = line.substr(s+1)
+        # See if we detect a title, a link without a #foobar part.
+        if foundTitle.len < 1 and fileEntries[F].link.isDocumentationTitle:
+          foundTitle = fileEntries[F].keyword
+
+        if fileEntries[F].link.find('\t') > 0:
+          let extraCols = fileEntries[F].link.split('\t')
+          fileEntries[F].link = extraCols[0]
+          assert extraCols.len == 3
+          fileEntries[F].linkTitle = extraCols[1].unquoteIndexColumn
+          fileEntries[F].linkDesc = extraCols[2].unquoteIndexColumn
+        else:
+          fileEntries[F].linkTitle = nil
+          fileEntries[F].linkDesc = nil
+        inc F
+      # Depending on type add this to the list of symbols or table of APIs.
+      if foundTitle.len > 0:
+        docs[foundTitle] = fileEntries
+      else:
+        setLen(symbols, L + F)
+        for i in 0 .. <F:
+          symbols[L] = fileEntries[i]
+          inc L
+
+  result = ""
+  # Generate the HTML block with API documents.
+  if docs.len > 0:
+    result.add("<h2>Documentation files</h2>\n")
+    result.add(generateDocumentationIndex(docs))
+
+  # Generate the HTML block with symbols.
+  if L > 0:
+    sortIndex(symbols)
+    result.add("<h2>API symbols</h2>\n")
+    result.add(generateSymbolIndex(symbols))
+
   
 # ----------------------------------------------------------------------------      
   

@@ -570,10 +570,10 @@ proc genOutFile(d: PDoc): PRope =
 
   # Generate entries also for other entries in the toc.
   for tocPart in d.tocPart:
-    # Use &nbsp; to indicate the current level for the output HTML.
+    # Use spaces to indicate the current level for the output HTML.
     assert tocPart.n.level >= 0
     setIndexTerm(d[], tocPart.refname, tocPart.header.stripTOCHTML,
-      repeatStr(max(0, tocPart.n.level), "&nbsp;") & tocPart.header)
+      repeatChar(max(0, tocPart.n.level), ' ') & tocPart.header)
 
   let bodyname = if d.hasToc: "doc.body_toc" else: "doc.body_no_toc"
   content = ropeFormatNamedVars(getConfigVar(bodyname), ["title",
