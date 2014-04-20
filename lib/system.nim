@@ -2210,7 +2210,7 @@ when not defined(JS): #and not defined(NimrodVM):
       ## otherwise. If ``false`` is returned `line` contains no new data.
 
     proc writeln*[Ty](f: TFile, x: varargs[Ty, `$`]) {.inline, 
-                             tags: [FWriteIO], gcsafe.}
+                             tags: [FWriteIO].}
       ## writes the values `x` to `f` and then writes "\n".
       ## May throw an IO exception.
 
