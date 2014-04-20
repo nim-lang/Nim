@@ -615,11 +615,13 @@ elif not defined(useNimRtl):
     optionPoStdErrToStdOut: bool
 
   when not defined(useFork):
-    proc startProcessAuxSpawn(data: TStartProcessData): TPid {.tags: [FExecIO, FReadEnv].}
-  proc startProcessAuxFork(data: TStartProcessData): TPid {.tags: [FExecIO, FReadEnv].}
+    proc startProcessAuxSpawn(data: TStartProcessData): TPid {.
+      tags: [FExecIO, FReadEnv], gcsafe.}
+  proc startProcessAuxFork(data: TStartProcessData): TPid {.
+    tags: [FExecIO, FReadEnv], gcsafe.}
   {.push stacktrace: off, profiler: off.}
   proc startProcessAfterFork(data: ptr TStartProcessData) {.
-    tags: [FExecIO, FReadEnv], cdecl.}
+    tags: [FExecIO, FReadEnv], cdecl, gcsafe.}
   {.pop.}
 
   proc startProcess(command: string,
@@ -946,7 +948,7 @@ elif not defined(useNimRtl):
 proc execCmdEx*(command: string, options: set[TProcessOption] = {
                 poStdErrToStdOut, poUsePath}): tuple[
                 output: TaintedString,
-                exitCode: int] {.tags: [FExecIO, FReadIO].} =
+                exitCode: int] {.tags: [FExecIO, FReadIO], gcsafe.} =
   ## a convenience proc that runs the `command`, grabs all its output and
   ## exit code and returns both.
   var p = startCmd(command, options)

@@ -705,11 +705,12 @@ proc trackProc*(s: PSym, body: PNode) =
       checkRaisesSpec(usesSpec, t.uses,
         "uses an unlisted global variable: ", hints=on, symbolPredicate)
       effects.sons[usesEffects] = usesSpec
-  if sfThread in s.flags and t.gcUnsafe:
-    localError(s.info, warnGcUnsafe2, s.name.s)
-    #localError(s.info, "'$1' is not GC-safe" % s.name.s)
-  if not t.gcUnsafe: s.typ.flags.incl tfGcSafe
-  
+  if optThreadAnalysis in gGlobalOptions:
+    if sfThread in s.flags and t.gcUnsafe:
+      localError(s.info, warnGcUnsafe2, s.name.s)
+      #localError(s.info, "'$1' is not GC-safe" % s.name.s)
+    if not t.gcUnsafe: s.typ.flags.incl tfGcSafe
+
 proc trackTopLevelStmt*(module: PSym; n: PNode) =
   if n.kind in {nkPragma, nkMacroDef, nkTemplateDef, nkProcDef,
                 nkTypeSection, nkConverterDef, nkMethodDef, nkIteratorDef}:

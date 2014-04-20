@@ -12,7 +12,7 @@
 const
   genPrefix* = ":tmp"         # prefix for generated names
 
-import ast, astalgo, types, idents, magicsys, msgs
+import ast, astalgo, types, idents, magicsys, msgs, options
 
 proc newTupleAccess*(tup: PNode, i: int): PNode =
   result = newNodeIT(nkBracketExpr, tup.info, tup.typ.skipTypes(
@@ -151,8 +151,9 @@ proc wrapProcForSpawn*(owner: PSym; n: PNode): PNode =
   if n.kind notin nkCallKinds or not n.typ.isEmptyType:
     localError(n.info, "'spawn' takes a call expression of type void")
     return
-  if {tfThread, tfNoSideEffect} * n[0].typ.flags == {}:
-    localError(n.info, "'spawn' takes a GC safe call expression")
+  if optThreadAnalysis in gGlobalOptions:
+    if {tfThread, tfNoSideEffect} * n[0].typ.flags == {}:
+      localError(n.info, "'spawn' takes a GC safe call expression")
   var
     threadParam = newSym(skParam, getIdent"thread", owner, n.info)
     argsParam = newSym(skParam, getIdent"args", owner, n.info)

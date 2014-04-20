@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -689,10 +689,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           incl(sym.flags, sfProcvar)
           if sym.typ != nil: incl(sym.typ.flags, tfThread)
         of wGcSafe:
-          noVal(it)
-          if sym.kind != skType: incl(sym.flags, sfThread)
-          if sym.typ != nil: incl(sym.typ.flags, tfGcSafe)
-          else: invalidPragma(it)
+          if optThreadAnalysis in gGlobalOptions:
+            noVal(it)
+            if sym.kind != skType: incl(sym.flags, sfThread)
+            if sym.typ != nil: incl(sym.typ.flags, tfGcSafe)
+            else: invalidPragma(it)
         of wPacked:
           noVal(it)
           if sym.typ == nil: invalidPragma(it)

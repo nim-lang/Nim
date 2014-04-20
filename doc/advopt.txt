@@ -63,6 +63,7 @@ Advanced options:
   --lineDir:on|off          generation of #line directive on|off
   --embedsrc                embeds the original source code as comments
                             in the generated output
+  --threadanalysis:on|off   turn thread analysis on|off
   --tlsEmulation:on|off     turn thread local storage emulation on|off
   --taintMode:on|off        turn taint mode on|off
   --symbolFiles:on|off      turn symbol files on|off (experimental)
