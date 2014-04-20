@@ -151,7 +151,7 @@ proc threadTests(r: var TResults, cat: Category, options: string) =
   #test "tthreadanalysis"
   #test "tthreadsort"
   test "tthreadanalysis2"
-  test "tthreadanalysis3"
+  #test "tthreadanalysis3"
   test "tthreadheapviolation1"
 
 # ------------------------- IO tests ------------------------------------------
