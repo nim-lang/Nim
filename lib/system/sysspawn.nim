@@ -121,6 +121,7 @@ proc slave(w: ptr Worker) {.thread.} =
     signal(gSomeReady)
     await(w.taskArrived)
     assert(not w.ready)
+    # shield against spurious wakeups:
     if w.data != nil:
       w.f(w, w.data)
       w.data = nil

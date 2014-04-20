@@ -193,6 +193,8 @@ when defined(nimNewShared):
     `shared`* {.magic: "Shared".}
     guarded* {.magic: "Guarded".}
 
+include "system/inclrtl"
+
 const NoFakeVars* = defined(NimrodVM) ## true if the backend doesn't support \
   ## "fake variables" like 'var EBADF {.importc.}: cint'.
 
@@ -1026,8 +1028,6 @@ template sysAssert(cond: bool, msg: string) =
     if not cond:
       echo "[SYSASSERT] ", msg
       quit 1
-
-include "system/inclrtl"
 
 when not defined(JS) and not defined(nimrodVm) and hostOS != "standalone":
   include "system/cgprocs"
