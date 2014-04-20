@@ -854,7 +854,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   of tyAnd:
     considerPreviousT:
       for branch in f.sons:
-        if typeRel(c, branch, aOrig) == isNone:
+        if typeRel(c, branch, aOrig) < isSubtype:
           return isNone
 
       bindingRet isGeneric
@@ -862,7 +862,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   of tyOr:
     considerPreviousT:
       for branch in f.sons:
-        if typeRel(c, branch, aOrig) != isNone:
+        if typeRel(c, branch, aOrig) >= isSubtype:
           bindingRet isGeneric
        
       return isNone
