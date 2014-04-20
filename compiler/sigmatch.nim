@@ -148,6 +148,9 @@ proc sumGeneric(t: PType): int =
       result = ord(t.kind == tyGenericInvokation)
       for i in 0 .. <t.len: result += t.sons[i].sumGeneric
       break
+    of tyProc:
+      # proc matche proc better than 'stmt' to disambiguate 'spawn'
+      return 1
     of tyGenericParam, tyExpr, tyStatic, tyStmt, tyTypeDesc: break
     else: return 0
 

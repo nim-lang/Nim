@@ -10,7 +10,7 @@
 # The generic ``repr`` procedure. It is an invaluable debugging tool.
 
 when not defined(useNimRtl):
-  proc reprAny(p: pointer, typ: PNimType): string {.compilerRtl.}
+  proc reprAny(p: pointer, typ: PNimType): string {.compilerRtl, gcsafe.}
 
 proc reprInt(x: int64): string {.compilerproc.} = return $x
 proc reprFloat(x: float): string {.compilerproc.} = return $x
@@ -78,7 +78,7 @@ proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
 type
   PByteArray = ptr array[0.. 0xffff, int8]
 
-proc addSetElem(result: var string, elem: int, typ: PNimType) =
+proc addSetElem(result: var string, elem: int, typ: PNimType) {.gcsafe.} =
   case typ.kind
   of tyEnum: add result, reprEnum(elem, typ)
   of tyBool: add result, reprBool(bool(elem))
@@ -147,7 +147,7 @@ when not defined(useNimRtl):
     for i in 0..cl.indent-1: add result, ' '
 
   proc reprAux(result: var string, p: pointer, typ: PNimType,
-               cl: var TReprClosure)
+               cl: var TReprClosure) {.gcsafe.}
 
   proc reprArray(result: var string, p: pointer, typ: PNimType,
                  cl: var TReprClosure) =
@@ -172,7 +172,7 @@ when not defined(useNimRtl):
     add result, "]"
 
   proc reprRecordAux(result: var string, p: pointer, n: ptr TNimNode,
-                     cl: var TReprClosure) =
+                     cl: var TReprClosure) {.gcsafe.} =
     case n.kind
     of nkNone: sysAssert(false, "reprRecordAux")
     of nkSlot:

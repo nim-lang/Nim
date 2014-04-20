@@ -342,9 +342,10 @@ proc canFormAcycleAux(marker: var TIntSet, typ: PType, startId: int): bool =
       result = t.id == startId
     # Inheritance can introduce cyclic types, however this is not relevant
     # as the type that is passed to 'new' is statically known!
-    #if t.kind == tyObject and tfFinal notin t.flags:
-    #  # damn inheritance may introduce cycles:
-    #  result = true
+    # er but we use it also for the write barrier ...
+    if t.kind == tyObject and tfFinal notin t.flags:
+      # damn inheritance may introduce cycles:
+      result = true
   of tyProc: result = typ.callConv == ccClosure
   else: discard
 

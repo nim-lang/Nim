@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -49,9 +49,9 @@ proc deinitRawChannel(p: pointer) =
   deinitSysCond(c.cond)
 
 proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel, 
-              mode: TLoadStoreMode)
+              mode: TLoadStoreMode) {.gcsafe.}
 proc storeAux(dest, src: pointer, n: ptr TNimNode, t: PRawChannel,
-              mode: TLoadStoreMode) =
+              mode: TLoadStoreMode) {.gcsafe.} =
   var
     d = cast[TAddress](dest)
     s = cast[TAddress](src)
@@ -209,7 +209,6 @@ proc send*[TMsg](c: var TChannel[TMsg], msg: TMsg) =
 
 proc llRecv(q: PRawChannel, res: pointer, typ: PNimType) =
   # to save space, the generic is as small as possible
-  acquireSys(q.lock)
   q.ready = true
   while q.count <= 0:
     waitSysCond(q.cond, q.lock)
@@ -218,17 +217,29 @@ proc llRecv(q: PRawChannel, res: pointer, typ: PNimType) =
     releaseSys(q.lock)
     sysFatal(EInvalidValue, "cannot receive message of wrong type")
   rawRecv(q, res, typ)
-  releaseSys(q.lock)
 
 proc recv*[TMsg](c: var TChannel[TMsg]): TMsg =
   ## receives a message from the channel `c`. This blocks until
   ## a message has arrived! You may use ``peek`` to avoid the blocking.
   var q = cast[PRawChannel](addr(c))
+  acquireSys(q.lock)
   llRecv(q, addr(result), cast[PNimType](getTypeInfo(result)))
+  releaseSys(q.lock)
+
+proc tryRecv*[TMsg](c: var TChannel[TMsg]): tuple[dataAvaliable: bool,
+                                                  msg: TMsg] =
+  ## try to receives a message from the channel `c` if available. Otherwise
+  ## it returns ``(false, default(msg))``.
+  var q = cast[PRawChannel](addr(c))
+  if q.mask != ChannelDeadMask:
+    lockChannel(q):
+      llRecv(q, addr(result.msg), cast[PNimType](getTypeInfo(result.msg)))
+      result.dataAvaliable = true
 
 proc peek*[TMsg](c: var TChannel[TMsg]): int =
   ## returns the current number of messages in the channel `c`. Returns -1
-  ## if the channel has been closed.
+  ## if the channel has been closed. **Note**: This is dangerous to use
+  ## as it encourages races. It's much better to use ``tryRecv`` instead.
   var q = cast[PRawChannel](addr(c))
   if q.mask != ChannelDeadMask:
     lockChannel(q):

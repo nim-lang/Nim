@@ -162,6 +162,7 @@ proc wrapProcForSpawn*(owner: PSym; n: PNode): PNode =
     argsParam.typ = ptrType
     argsParam.position = 1
   var objType = createObj(owner, n.info)
+  incl(objType.flags, tfFinal)
   let castExpr = createCastExpr(argsParam, objType)
 
   var scratchObj = newSym(skVar, getIdent"scratch", owner, n.info)

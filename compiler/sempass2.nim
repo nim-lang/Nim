@@ -71,7 +71,7 @@ type
     init: seq[int] # list of initialized variables
     guards: TModel # nested guards
     locked: seq[PNode] # locked locations
-    gcUnsafe: bool
+    gcUnsafe, isRecursive: bool
   PEffects = var TEffects
 
 proc isLocalVar(a: PEffects, s: PSym): bool =
@@ -502,7 +502,9 @@ proc track(tracked: PEffects, n: PNode) =
     # are indistinguishable from normal procs (both have tyProc type) and
     # we can detect them only by checking for attached nkEffectList.
     if op != nil and op.kind == tyProc and op.n.sons[0].kind == nkEffectList:
-      if notGcSafe(op) and not importedFromC(a):
+      if a.kind == nkSym and a.sym == tracked.owner:
+        tracked.isRecursive = true
+      elif notGcSafe(op) and not importedFromC(a):
         message(n.info, warnGcUnsafe, renderTree(n))
         tracked.gcUnsafe = true
       var effectList = op.n.sons[0]

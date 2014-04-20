@@ -1,7 +1,18 @@
-# Implements Nimrod's 'spawn'.
+#
+#
+#            Nimrod's Runtime Library
+#        (c) Copyright 2014 Andreas Rumpf
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
+## Implements Nimrod's 'spawn'.
+
+when not defined(NimString): 
+  {.error: "You must not import this module explicitly".}
 
 {.push stackTrace:off.}
-include system.syslocks
 
 when (defined(x86) or defined(amd64)) and defined(gcc):
   proc cpuRelax {.inline.} =
@@ -10,12 +21,12 @@ elif (defined(x86) or defined(amd64)) and defined(vcc):
   proc cpuRelax {.importc: "YieldProcessor", header: "<windows.h>".}
 elif defined(intelc):
   proc cpuRelax {.importc: "_mm_pause", header: "xmmintrin.h".}
-else:
+elif false:
   from os import sleep
 
   proc cpuRelax {.inline.} = os.sleep(1)
 
-when defined(windows):
+when defined(windows) and not defined(gcc):
   proc interlockedCompareExchange(p: pointer; exchange, comparand: int32): int32
     {.importc: "InterlockedCompareExchange", header: "<windows.h>", cdecl.}
 
@@ -70,6 +81,7 @@ proc await(cv: var FastCondVar) =
   #    return
   #  cpuRelax()
   #cv.slowPath = true
+  # XXX For some reason this crashes some test programs
   await(cv.slow)
   cv.event = false
 

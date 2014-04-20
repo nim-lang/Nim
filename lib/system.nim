@@ -2018,7 +2018,7 @@ when not defined(sysFatal):
       e.msg = message & arg
       raise e
 
-proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo".}
+proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo", gcsafe.}
   ## get type information for `x`. Ordinary code should not use this, but
   ## the `typeinfo` module instead.
 
@@ -2209,10 +2209,14 @@ when not defined(JS): #and not defined(NimrodVM):
       ## Returns ``false`` if the end of the file has been reached, ``true``
       ## otherwise. If ``false`` is returned `line` contains no new data.
 
-    proc writeln*[Ty](f: TFile, x: varargs[Ty, `$`]) {.inline, 
-                             tags: [FWriteIO].}
-      ## writes the values `x` to `f` and then writes "\n".
-      ## May throw an IO exception.
+    when not defined(booting):
+      proc writeln*[Ty](f: TFile, x: varargs[Ty, `$`]) {.inline, 
+                               tags: [FWriteIO], gcsafe.}
+        ## writes the values `x` to `f` and then writes "\n".
+        ## May throw an IO exception.
+    else:
+      proc writeln*[Ty](f: TFile, x: varargs[Ty, `$`]) {.inline, 
+                               tags: [FWriteIO].}
 
     proc getFileSize*(f: TFile): int64 {.tags: [FReadIO], gcsafe.}
       ## retrieves the file size (in bytes) of `f`.
@@ -2935,3 +2939,6 @@ when not defined(booting):
 
   template isStatic*(x): expr = compiles(static(x))
     # checks whether `x` is a value known at compile-time
+
+when hasThreadSupport:
+  when hostOS != "standalone": include "system/sysspawn"
