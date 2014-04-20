@@ -26,6 +26,10 @@ type
     expected: int ## number of replies expected if pipelined
 
 type
+  TSendMode = enum
+    normal, pipelined, multiple
+
+type
   TRedis* {.pure, final.} = object
     socket: TSocket
     connected: bool
@@ -978,15 +982,14 @@ iterator hPairs*(r: TRedis, key: string): tuple[key, value: string] =
       yield (k, i)
       k = ""
 
-proc someTests(r: TRedis, how: string):seq[string] =
+proc someTests(r: TRedis, how: TSendMode):seq[string] =
   var list:seq[string] = @[]
 
-  case how
-  of "pipelined":
+  if how == pipelined:
     r.startPipelining()
-  of "multi": 
+  elif how ==  multiple: 
     r.multi()
-
+    
   r.setk("nim:test", "Testing something.")
   r.setk("nim:utf8", "こんにちは")
   r.setk("nim:esc", "\\ths ągt\\")
@@ -1019,11 +1022,11 @@ proc someTests(r: TRedis, how: string):seq[string] =
   list.add(r.echoServ("BLAH"))
 
   case how
-  of "normal":
+  of normal:
     return list
-  of "pipelined":
+  of pipelined:
     return r.flushPipeline()
-  of "multi":
+  of multiple:
     return r.exec()
 
 proc assertListsIdentical(listA, listB: seq[string]) =
@@ -1038,12 +1041,12 @@ when isMainModule:
     var r = open()
 
     # Test with no pipelining
-    var listNormal = r.someTests("normal")
+    var listNormal = r.someTests(normal)
 
     # Test with pipelining enabled
-    var listPipelined = r.someTests("pipelined")
+    var listPipelined = r.someTests(pipelined)
     assertListsIdentical(listNormal, listPipelined)
 
     # Test with multi/exec() (automatic pipelining)
-    var listMulti = r.someTests("multi")
+    var listMulti = r.someTests(multiple)
     assertListsIdentical(listNormal, listMulti)
