@@ -541,8 +541,14 @@ proc genOutFile(d: PDoc): PRope =
   if toc != nil:
     toc = ropeFormatNamedVars(getConfigVar("doc.toc"), ["content"], [toc])
   for i in countup(low(TSymKind), high(TSymKind)): app(code, d.section[i])
-  if d.meta[metaTitle].len != 0: title = d.meta[metaTitle]
-  else: title = "Module " & extractFilename(changeFileExt(d.filename, ""))
+
+  # Extract the title. Non API modules generate an entry in the index table.
+  if d.meta[metaTitle].len != 0:
+    title = d.meta[metaTitle]
+    setIndexTerm(d[], "", title)
+  else:
+    # Modules get an automatic title for the HTML, but no entry in the index.
+    title = "Module " & extractFilename(changeFileExt(d.filename, ""))
 
   let bodyname = if d.hasToc: "doc.body_toc" else: "doc.body_no_toc"
   content = ropeFormatNamedVars(getConfigVar(bodyname), ["title",

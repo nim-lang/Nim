@@ -256,9 +256,11 @@ proc setIndexTerm*(d: var TRstGenerator, id, term: string,
   ##
   ## The ``d.theIndex`` string will be used to append the term in the format
   ## ``term<tab>file#id``. The anchor will be the based on the name of the file
-  ## currently being parsed plus the `id`, which will be appended after a hash.
-  ## If `linkTitle` or `linkDesc` are not the empty string, two additional
-  ## columns with their contents will be added.
+  ## currently being parsed plus the specified `id`. The `id` will be appended
+  ## with a hash character only if its length is not zero, otherwise no
+  ## specific anchor will be generated.  If `linkTitle` or `linkDesc` are not
+  ## the empty string, two additional columns with their contents will be
+  ## added.
   ##
   ## The index won't be written to disk unless you call ``writeIndexFile``. The
   ## purpose of the index is documented in the `docgen tools guide
@@ -267,8 +269,9 @@ proc setIndexTerm*(d: var TRstGenerator, id, term: string,
   d.theIndex.add('\t')
   let htmlFile = changeFileExt(extractFilename(d.filename), HtmlExt)
   d.theIndex.add(htmlFile)
-  d.theIndex.add('#')
-  d.theIndex.add(id)
+  if id.len > 0:
+    d.theIndex.add('#')
+    d.theIndex.add(id)
   if linkTitle.len > 0 or linkDesc.len > 0:
     d.theIndex.add('\t' & linkTitle.quoteIndexColumn)
     d.theIndex.add('\t' & linkDesc.quoteIndexColumn)
