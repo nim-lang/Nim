@@ -410,12 +410,13 @@ proc generateDocumentationTOC(entries: seq[TIndexEntry]):
     if rawLevel < 1:
       # This is a normal symbol, push it *inside* one level from the last one.
       levels[L].level = level + 1
+      # Also, ignore the linkTitle and use directly the keyword.
+      levels[L].text = entry.keyword
     else:
       # The level did change, update the level indicator.
       level = rawLevel
       levels[L].level = rawLevel
-
-    levels[L].text = rawText
+      levels[L].text = rawText
     inc L
 
   # Now generate hierarchical lists based on the precalculated levels.
