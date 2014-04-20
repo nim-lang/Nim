@@ -150,6 +150,18 @@ the syntax, watch their indentation:
 **Note**: To comment out a large piece of code, it is often better to use a
 ``when false:`` statement.
 
+.. code-block:: nimrod
+  when false:
+    brokenCode()
+
+Another option is to use the `discard`_ statement together with
+*long string literals* to create block comments:
+
+.. code-block:: nimrod
+  discard """ You can have any nimrod code text commented 
+  out inside this with no indentation restrictions.
+        yes("May I ask a pointless question?") """
+
 
 Numbers
 -------
@@ -575,27 +587,46 @@ Some terminology: in the example ``question`` is called a (formal) *parameter*,
 
 Result variable
 ---------------
-A procedure that returns a value has an implicit ``result`` variable that
-represents the return value. A ``return`` statement with no expression is a
-shorthand for ``return result``. So all three code snippets are equivalent:
+A procedure that returns a value has an implicit ``result`` variable declared 
+that represents the return value. A ``return`` statement with no expression is a
+shorthand for ``return result``. The ``result`` value is always returned 
+automatically at the end a procedure if there is no ``return`` statement at
+the exit.
 
 .. code-block:: nimrod
-  return 42
+  proc sumTillNegative(x: varargs[int]): int = 
+    for i in x:
+      if i < 0:
+        return
+      result = result + i  
+      
+  echo sumTillNegative() # echos 0
+  echo sumTillNegative(3, 4, 5) # echos 12
+  echo sumTillNegative(3, 4 , -1 , 6) # echos 7
 
-.. code-block:: nimrod
-  result = 42
-  return
+The ``result`` variable is already implicitly declared at the start of the 
+function, so declaring it again with 'var result', for example, would shadow it
+with a normal variable of the same name. The result variable is also already
+initialised with the type's default value. Note that referential data types will
+be ``nil`` at the start of the procedure, and thus may require manual
+initialisation.
 
-.. code-block:: nimrod
-  result = 42
-  return result
-
-
+      
 Parameters
 ----------
-Parameters are constant in the procedure body. Their value cannot be changed
-because this allows the compiler to implement parameter passing in the most
-efficient way. If the procedure needs to modify the argument for the
+Parameters are constant in the procedure body. By default, their value cannot be
+changed because this allows the compiler to implement parameter passing in the 
+most efficient way. If a mutable variable is needed inside the procedure, it has
+to be declared with ``var`` in the procedure body. Shadowing the parameter name
+is possible, and actually an idiom: 
+
+.. code-block:: nimrod
+  proc printSeq(s: seq, nprinted: int = -1) =
+    var nprinted = if nprinted == -1: s.len else: min(nprinted, s.len)
+    for i in 0 .. <nprinted:
+      echo s[i]
+    
+If the procedure needs to modify the argument for the
 caller, a ``var`` parameter can be used:
 
 .. code-block:: nimrod
@@ -633,6 +664,9 @@ been declared with the ``discardable`` pragma:
     return x + y
     
   p(3, 4) # now valid
+
+The discard statement can also be used to create block comments as described
+in the `Comments`_.
 
 
 Named arguments
