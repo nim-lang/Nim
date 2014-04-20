@@ -46,20 +46,30 @@ type
     c: TSysCond
     when defined(posix):
       stupidLock: TSysLock
+      counter: int
 
 proc createCondVar(): CondVar =
   initSysCond(result.c)
   when defined(posix):
     initSysLock(result.stupidLock)
-    acquireSys(result.stupidLock)
+    #acquireSys(result.stupidLock)
 
 proc await(cv: var CondVar) =
   when defined(posix):
-    waitSysCond(cv.c, cv.stupidLock)
+    acquireSys(cv.stupidLock)
+    while cv.counter <= 0:
+      waitSysCond(cv.c, cv.stupidLock)
+    dec cv.counter
+    releaseSys(cv.stupidLock)
   else:
     waitSysCondWindows(cv.c)
 
-proc signal(cv: var CondVar) = signalSysCond(cv.c)
+proc signal(cv: var CondVar) =
+  when defined(posix):
+    acquireSys(cv.stupidLock)
+    inc cv.counter
+    releaseSys(cv.stupidLock)
+  signalSysCond(cv.c)
 
 type
   FastCondVar = object
@@ -70,7 +80,7 @@ proc createFastCondVar(): FastCondVar =
   initSysCond(result.slow.c)
   when defined(posix):
     initSysLock(result.slow.stupidLock)
-    acquireSys(result.slow.stupidLock)
+    #acquireSys(result.slow.stupidLock)
   result.event = false
   result.slowPath = false
 
