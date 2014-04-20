@@ -54,7 +54,7 @@ macro `=>`*(p, b: expr): expr {.immediate.} =
   ##
   ##   passTwoAndTwo((x, y) => x + y) # 4
   
-  echo treeRepr(p)
+  #echo treeRepr(p)
   #echo(treeRepr(b))
   var params: seq[PNimrodNode] = @[newIdentNode("auto")]
 
@@ -92,7 +92,7 @@ macro `=>`*(p, b: expr): expr {.immediate.} =
     error("Incorrect procedure parameter list.")
   result = newProc(params = params, body = b, procType = nnkLambda)
   #echo(result.treeRepr)
-  echo(result.toStrLit())
+  #echo(result.toStrLit())
   #return result # TODO: Bug?
 
 macro `->`*(p, b: expr): expr {.immediate.} =
