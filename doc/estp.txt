@@ -1,6 +1,6 @@
-============================================
-  Embedded Stack Trace Profiler User Guide
-============================================
+===================================================
+  Embedded Stack Trace Profiler (ESTP) User Guide
+===================================================
 
 :Author: Andreas Rumpf
 :Version: |nimrodversion|

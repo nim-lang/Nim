@@ -1,6 +1,6 @@
-===========================================
-  Embedded Nimrod Debugger User Guide
-===========================================
+==============================================
+  Embedded Nimrod Debugger (ENDB) User Guide
+==============================================
 
 :Author: Andreas Rumpf
 :Version: |nimrodversion|
