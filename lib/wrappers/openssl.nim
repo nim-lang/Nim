@@ -441,7 +441,7 @@ const
   MD5_LBLOCK* = int(MD5_CBLOCK div 4)
   MD5_DIGEST_LENGTH* = 16
 type 
-  MD5_CTX* {.importc.} = object 
+  MD5_CTX* = object 
     A,B,C,D,Nl,Nh: MD5_LONG
     data: array[MD5_LBLOCK, MD5_LONG]
     num: cuint
