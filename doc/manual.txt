@@ -3575,6 +3575,8 @@ match anything without discrimination.
 User defined type classes
 -------------------------
 
+**Note**: User defined type classes are still in development.
+
 The user-defined type classes are available in two flavours - declarative and
 imperative. Both are used to specify an arbitrary set of requirements that the
 matched type must satisfy.
@@ -3599,13 +3601,13 @@ b) all statically evaluatable boolean expressions in the body must be true
 
 The identifiers following the `generic` keyword represent instances of the
 currently matched type. These instances can act both as variables of the type,
-when used in contexts, where a value is expected, and as the type itself, when
-used in a contexts, where a type is expected.
+when used in contexts where a value is expected, and as the type itself when
+used in contexts where a type is expected.
 
 Please note that the ``is`` operator allows one to easily verify the precise
 type signatures of the required operations, but since type inference and
 default parameters are still applied in the provided block, it's also possible
-to encode usage protocols that doesn't reveal implementation details.
+to encode usage protocols that do not reveal implementation details.
 
 As a special rule providing further convenience when writing type classes, any
 type value appearing in a callable expression will be treated as a variable of
@@ -4118,6 +4120,8 @@ Special Types
 static[T]
 ---------
 
+**Note**: static[T] is still in development.
+
 As their name suggests, static params must be known at compile-time:
 
 .. code-block:: nimrod
@@ -4254,6 +4258,7 @@ types that will match the typedesc param:
   var s = string.maxval # error, maxval is not implemented for string
 
 The constraint can be a concrete type or a type class.
+
 
 Special Operators
 =================
@@ -5600,10 +5605,8 @@ This is only useful if the program is compiled as a dynamic library via the
 Threads
 =======
 
-Even though Nimrod's `thread`:idx: support and semantics are preliminary, 
-they should be quite usable already. To enable thread support 
-the ``--threads:on`` command line switch needs to be used. The ``system``
-module then contains several threading primitives. 
+To enable thread support the ``--threads:on`` command line switch needs to 
+be used. The ``system`` module then contains several threading primitives. 
 See the `threads <threads.html>`_ and `channels <channels.html>`_ modules 
 for the thread API.
 
@@ -5645,6 +5648,11 @@ contain a ``ref`` or ``closure`` type. This enforces
 the *no heap sharing restriction*. 
 
 Routines that are imported from C are always assumed to be ``gcsafe``.
+To enable the GC-safety checking the ``--threadAnalysis:on`` command line
+switch must be used. This is a temporary workaround to ease the porting effort
+from old code to the new threading model. In the future the thread analysis
+will always be performed.
+
 
 Future directions:
 
@@ -5673,6 +5681,35 @@ Threads and exceptions
 The interaction between threads and exceptions is simple: A *handled* exception 
 in one thread cannot affect any other thread. However, an *unhandled* 
 exception in one thread terminates the whole *process*!
+
+
+Spawn
+-----
+
+Nimrod has a builtin thread pool that can be used for CPU intensive tasks. For
+IO intensive tasks the upcoming ``async`` and ``await`` features should be
+used. `spawn`:idx: is used to pass a task to the thread pool:
+
+.. code-block:: nimrod
+  proc processLine(line: string) =
+    # do some heavy lifting here:
+    discard
+    
+  for x in lines("myinput.txt"):
+    spawn processLine(x)
+  sync()
+
+Currently the expression that ``spawn`` takes is however quite restricted: 
+
+* It must be a call expresion ``f(a, ...)``.
+* ``f`` must be ``gcsafe``.
+* ``f`` must not have the calling convention ``closure``.
+* ``f``'s parameters may not be of type ``var`` nor may they contain ``ref``.
+  This means you have to use raw ``ptr``'s for data passing reminding the
+  programmer to be careful.
+* For *safe* data exchange between ``f`` and the caller a global ``TChannel``
+  needs to be used. Other means will be provided soon.
+
 
 
 Taint mode
