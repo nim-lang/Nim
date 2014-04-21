@@ -1,18 +1,12 @@
-Here you can download the latest version of the Nimrod Compiler.
-Please choose your platform:
-* source-based installation: `<download/nimrod_0.9.2.zip>`_
-* installer for Windows XP/Vista/7 (i386, 32bit): `<download/nimrod_0.9.2.exe>`_
-  (includes GCC and everything else you need)
-* minimal installer for Windows XP/Vista/7 (i386, 32bit): `<download/nimrod_gamera_0.9.2.exe>`_
-  ("Gamera edition": includes only a minimal GCC)
+Starting with 0.9.4 we now advise people to build directly from the
+github `master <https://github.com/Araq/Nimrod#compiling>`_ branch::
 
-The source-based installation has been tested on these systems:
-* Linux: i386, AMD64, PowerPC, ARM
-* BSD: AMD64
-* Mac OS X: i386, AMD64
-* Solaris: AMD64
+  git clone git://github.com/Araq/Nimrod.git
+  cd Nimrod
+  git clone --depth 1 git://github.com/nimrod-code/csources
+  cd csources && sh build.sh
+  cd ..
+  bin/nimrod c koch
+  ./koch boot -d:release
 
-Other UNIX-based operating systems may work.
-
-.. include:: ../install.txt
-
+Prebuilt binaries will be available soon.

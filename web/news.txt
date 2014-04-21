@@ -12,11 +12,15 @@ The Nimrod development community is proud to announce the release of version
 considered beta quality! Lots of new features have been implemented but most
 do not fullfill our quality standards.**
 
+This release can be downloaded from `github <https://github.com/Araq/Nimrod>`_.
+Prebuilt binaries will be available soon.
+
 This release includes about 1300 changes in total including various bug
 fixes, new languages features and standard library additions and improvements.
 This release brings with it support for user-defined type classes, a brand
 new VM for executing Nimrod code at compile-time and new symbol binding
 rules for clean templates.
+
 It also introduces support for the brand new
 `Babel package manager <https://github.com/nimrod-code/babel>`_ which
 has itself seen its first release recently. Many of the wrappers that were
@@ -117,6 +121,8 @@ Changes affecting backwards compatibility
   of sockets given to it.
 - The ``noStackFrame`` pragma has been renamed to ``asmNoStackFrame`` to
   ensure you only use it when you know what you're doing.
+- Many of the wrappers that were present in the standard library have been
+  moved to separate repositories and should now be installed using Babel.
 
 
 Compiler Additions
@@ -140,7 +146,6 @@ Compiler Additions
 - Arrays can be annotated to be ``unchecked`` for easier low level
   manipulations of memory.
 - Support for the new Babel package manager.
-- Added support for builtin ``spawn`` for easy thread pool usage.
 
 
 Language Additions
@@ -162,6 +167,7 @@ Language Additions
   of an outer proc.
 - The experimental ``strongSpaces`` parsing mode has been implemented.
 - You can annotate pointer types with regions for increased type safety.
+- Added support for the builtin ``spawn`` for easy thread pool usage.
 
 
 Tools improvements
