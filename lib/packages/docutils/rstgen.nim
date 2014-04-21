@@ -72,10 +72,15 @@ proc initRstGenerator*(g: var TRstGenerator, target: TOutputTarget,
   ##
   ## You need to call this before using a ``TRstGenerator`` with any other
   ## procs in this module. Pass a non ``nil`` ``PStringTable`` value as
-  ## ``config`` with parameters used by the HTML output generator.  If you
-  ## don't know what to use, pass the results of the ``defaultConfig()`` proc.
-  ## The ``filename`` is symbolic and used only for error reporting, you can
-  ## pass any non ``nil`` string here.
+  ## `config` with parameters used by the HTML output generator.  If you don't
+  ## know what to use, pass the results of the `defaultConfig()
+  ## <#defaultConfig>_` proc.
+  ##
+  ## The `filename` will be used mostly for error reporting, you can pass any
+  ## non ``nil`` string here. If `filename` ends with the ``.nim`` extension,
+  ## the title for the document will be set by default to ``Module filename``.
+  ## This default title can be overriden by the embedded rst, but it helps to
+  ## prettify the generated index if no title is found.
   ##
   ## The ``TRstParseOptions``, ``TFindFileHandler`` and ``TMsgHandler`` types
   ## are defined in the the `packages/docutils/rst module <rst.html>`_.
@@ -115,6 +120,9 @@ proc initRstGenerator*(g: var TRstGenerator, target: TOutputTarget,
   g.options = options
   g.findFile = findFile
   g.currentSection = ""
+  let fileParts = filename.splitFile
+  if fileParts.ext == ".nim":
+    g.currentSection = "Module " & fileParts.name
   g.seenIndexTerms = initTable[string, int]()
   g.msgHandler = msgHandler
   
