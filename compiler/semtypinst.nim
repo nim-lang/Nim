@@ -352,8 +352,9 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     result = handleGenericInvokation(cl, t)
 
   of tyGenericBody:
-    internalError(cl.info, "ReplaceTypeVarsT: tyGenericBody" )
-    result = replaceTypeVarsT(cl, lastSon(t))
+    localError(cl.info, errCannotInstantiateX, typeToString(t))
+    result = t
+    #result = replaceTypeVarsT(cl, lastSon(t))
 
   of tyFromExpr:
     if cl.allowMetaTypes: return
