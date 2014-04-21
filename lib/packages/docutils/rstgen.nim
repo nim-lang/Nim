@@ -562,8 +562,13 @@ proc readIndexDir(dir: string):
         inc F
       # Depending on type add this to the list of symbols or table of APIs.
       if title.keyword.isNil:
-        setLen(result.symbols, L + F)
         for i in 0 .. <F:
+          # Don't add to symbols TOC entries (they start with a whitespace).
+          let toc = fileEntries[i].linkTitle
+          if not toc.isNil and toc.len > 0 and toc[0] == ' ':
+            continue
+          # Ok, non TOC entry, add it.
+          setLen(result.symbols, L + 1)
           result.symbols[L] = fileEntries[i]
           inc L
         result.modules.add(path.splitFile.name)
