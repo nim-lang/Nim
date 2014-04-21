@@ -484,12 +484,24 @@ proc generateDocumentationJumps(docs: TIndexedDocs): string =
 
   result.add(chunks.join(", ") & ".<br>")
 
+proc generateModuleJumps(modules: seq[string]): string =
+  ## Returns a plain list of hyperlinks to the list of modules.
+  result = "Modules: "
+
+  var chunks: seq[string] = @[]
+  for name in modules:
+    chunks.add("<a href=\"" & name & ".html\">" & name & "</a>")
+
+  result.add(chunks.join(", ") & ".<br>")
+
 proc readIndexDir(dir: string):
-    tuple[symbols: seq[TIndexEntry], docs: TIndexedDocs] =
+    tuple[modules: seq[string], symbols: seq[TIndexEntry], docs: TIndexedDocs] =
   ## Walks `dir` reading ``.idx`` files converting them in TIndexEntry items.
   ##
-  ## Returns the list of free symbol entries and the separate documentation
-  ## indexes found. See the documentation of ``mergeIndexes`` for details.
+  ## Returns the list of found module names, the list of free symbol entries
+  ## and the different documentation indexes. The list of modules is sorted.
+  ## See the documentation of ``mergeIndexes`` for details.
+  result.modules = @[]
   result.docs = initTable[TIndexEntry, seq[TIndexEntry]](32)
   newSeq(result.symbols, 15_000)
   setLen(result.symbols, 0)
@@ -530,10 +542,13 @@ proc readIndexDir(dir: string):
         for i in 0 .. <F:
           result.symbols[L] = fileEntries[i]
           inc L
+        result.modules.add(path.splitFile.name)
       else:
         # Generate the symbolic anchor for index quickjumps.
         title.linkTitle = "doc_toc_" & $result.docs.len
         result.docs[title] = fileEntries
+
+  sort(result.modules, system.cmp)
 
 proc mergeIndexes*(dir: string): string =
   ## Merges all index files in `dir` and returns the generated index as HTML.
@@ -561,13 +576,18 @@ proc mergeIndexes*(dir: string): string =
   ##
   ## Returns the merged and sorted indices into a single HTML block which can
   ## be further embedded into nimdoc templates.
-  var (symbols, docs) = readIndexDir(dir)
+  var (modules, symbols, docs) = readIndexDir(dir)
   assert(not symbols.isNil)
 
   result = ""
   # Generate a quick jump list of documents.
   if docs.len > 0:
     result.add(generateDocumentationJumps(docs))
+    result.add("<p />")
+
+  # Generate hyperlinks to all the linked modules.
+  if modules.len > 0:
+    result.add(generateModuleJumps(modules))
     result.add("<p />")
 
   # Generate the HTML block with API documents.
