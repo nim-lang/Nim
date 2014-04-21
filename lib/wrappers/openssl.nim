@@ -433,3 +433,70 @@ else:
   proc SSLGetMode(s: PSSL): int = 
     result = SSLctrl(s, SSL_CTRL_MODE, 0, nil)
 
+# <openssl/md5.h>
+type 
+  MD5_LONG* = cuint
+const 
+  MD5_CBLOCK* = 64
+  MD5_LBLOCK* = int(MD5_CBLOCK div 4)
+  MD5_DIGEST_LENGTH* = 16
+type 
+  MD5_CTX* {.importc.} = object 
+    A,B,C,D,Nl,Nh: MD5_LONG
+    data: array[MD5_LBLOCK, MD5_LONG]
+    num: cuint
+
+{.pragma: ic, importc: "$1".}
+{.push callconv:cdecl, dynlib:DLLUtilName.}
+proc MD5_Init*(c: var MD5_CTX): cint{.ic.}
+proc MD5_Update*(c: var MD5_CTX; data: pointer; len: csize): cint{.ic.}
+proc MD5_Final*(md: cstring; c: var MD5_CTX): cint{.ic.}
+proc MD5*(d: ptr cuchar; n: csize; md: ptr cuchar): ptr cuchar{.ic.}
+proc MD5_Transform*(c: var MD5_CTX; b: ptr cuchar){.ic.}
+{.pop.}
+
+from strutils import toHex,toLower
+
+proc hexStr (buf:cstring): string =
+  # turn md5s output into a nice hex str 
+  result = newStringOfCap(32)
+  for i in 0 .. <16:
+    result.add toHex(buf[i].ord, 2).toLower
+
+proc MD5_File* (file: string): string {.raises:[EIO,Ebase].} =
+  ## Generate MD5 hash for a file. Result is a 32 character
+  # hex string with lowercase characters (like the output
+  # of `md5sum`
+  const
+    sz = 512
+  let f = open(file,fmRead)
+  var
+    buf: array[sz,char]
+    ctx: MD5_CTX
+
+  discard md5_init(ctx)
+  while(let bytes = f.readChars(buf, 0, sz); bytes > 0):
+    discard md5_update(ctx, buf[0].addr, bytes)
+
+  discard md5_final( buf[0].addr, ctx )
+  f.close
+  
+  result = hexStr(buf)
+
+proc MD5_Str* (str:string): string {.raises:[EIO].} =
+  ##Generate MD5 hash for a string. Result is a 32 character
+  #hex string with lowercase characters
+  var 
+    ctx: MD5_CTX
+    res: array[MD5_DIGEST_LENGTH,char]
+    input = str.cstring
+  discard md5_init(ctx)
+
+  var i = 0
+  while i < str.len:
+    let L = min(str.len - i, 512)
+    discard md5_update(ctx, input[i].addr, L)
+    i += L
+
+  discard md5_final(res,ctx)
+  result = hexStr(res)
