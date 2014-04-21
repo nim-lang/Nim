@@ -667,13 +667,13 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
 
 proc renderOverline(d: PDoc, n: PRstNode, result: var string) = 
   if d.meta[metaTitle].len == 0:
-    d.currentSection = d.meta[metaTitle]
     for i in countup(0, len(n)-1):
       renderRstToOut(d, n.sons[i], d.meta[metaTitle])
+    d.currentSection = d.meta[metaTitle]
   elif d.meta[metaSubtitle].len == 0:
-    d.currentSection = d.meta[metaSubtitle]
     for i in countup(0, len(n)-1):
       renderRstToOut(d, n.sons[i], d.meta[metaSubtitle])
+    d.currentSection = d.meta[metaSubtitle]
   else:
     var tmp = ""
     for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], tmp)
