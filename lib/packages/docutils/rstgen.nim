@@ -232,7 +232,7 @@ proc renderRstToOut*(d: var TRstGenerator, n: PRstNode, result: var string)
 proc renderAux(d: PDoc, n: PRstNode, result: var string) = 
   for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], result)
 
-proc renderAux(d: PDoc, n: PRstNode, frmtA, frmtB: string, result: var string) = 
+proc renderAux(d: PDoc, n: PRstNode, frmtA, frmtB: string, result: var string) =
   var tmp = ""
   for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], tmp)
   if d.target != outLatex:
@@ -618,7 +618,8 @@ proc mergeIndexes*(dir: string): string =
     result.add(generateSymbolIndex(symbols))
 
   
-# ----------------------------------------------------------------------------      
+# ----------------------------------------------------------------------------
+
 proc stripTOCHTML(s: string): string =
   ## Ugly quick hack to remove HTML tags from TOC titles.
   ##
@@ -649,11 +650,9 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
     d.tocPart[length].n = n
     d.tocPart[length].header = tmp
 
-    dispA(d.target, result,
-        "\n<h$1><a class=\"toc-backref\" id=\"$2\" href=\"#$2_toc\">$3</a></h$1>", 
-        "\\rsth$4{$3}\\label{$2}\n", [$n.level, 
-        d.tocPart[length].refname, tmp, 
-        $chr(n.level - 1 + ord('A'))])
+    dispA(d.target, result, "\n<h$1><a class=\"toc-backref\" " &
+      "id=\"$2\" href=\"#$2_toc\">$3</a></h$1>", "\\rsth$4{$3}\\label{$2}\n",
+      [$n.level, d.tocPart[length].refname, tmp, $chr(n.level - 1 + ord('A'))])
   else:
     dispA(d.target, result, "\n<h$1 id=\"$2\">$3</h$1>", 
                             "\\rsth$4{$3}\\label{$2}\n", [
@@ -688,7 +687,8 @@ proc renderTocEntry(d: PDoc, e: TTocEntry, result: var string) =
     "<li><a class=\"reference\" id=\"$1_toc\" href=\"#$1\">$2</a></li>\n", 
     "\\item\\label{$1_toc} $2\\ref{$1}\n", [e.refname, e.header])
 
-proc renderTocEntries*(d: var TRstGenerator, j: var int, lvl: int, result: var string) =
+proc renderTocEntries*(d: var TRstGenerator, j: var int, lvl: int,
+    result: var string) =
   var tmp = ""
   while j <= high(d.tocPart): 
     var a = abs(d.tocPart[j].n.level)
@@ -832,7 +832,8 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
           [tmp])
   of rnField: renderField(d, n, result)
   of rnFieldName: 
-    renderAux(d, n, "<th class=\"docinfo-name\">$1:</th>", "\\item[$1:]", result)
+    renderAux(d, n, "<th class=\"docinfo-name\">$1:</th>",
+                    "\\item[$1:]", result)
   of rnFieldBody: 
     renderAux(d, n, "<td>$1</td>", " $1\n", result)
   of rnIndex: 
@@ -891,8 +892,9 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnRef: 
     var tmp = ""
     renderAux(d, n, tmp)
-    dispA(d.target, result, "<a class=\"reference external\" href=\"#$2\">$1</a>", 
-                            "$1\\ref{$2}", [tmp, rstnodeToRefname(n)])
+    dispA(d.target, result,
+      "<a class=\"reference external\" href=\"#$2\">$1</a>",
+      "$1\\ref{$2}", [tmp, rstnodeToRefname(n)])
   of rnStandaloneHyperlink: 
     renderAux(d, n, 
       "<a class=\"reference external\" href=\"$1\">$1</a>", 
@@ -902,9 +904,9 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     var tmp1 = ""
     renderRstToOut(d, n.sons[0], tmp0)
     renderRstToOut(d, n.sons[1], tmp1)
-    dispA(d.target, result, "<a class=\"reference external\" href=\"$2\">$1</a>", 
-                   "\\href{$2}{$1}", 
-                   [tmp0, tmp1])
+    dispA(d.target, result,
+      "<a class=\"reference external\" href=\"$2\">$1</a>",
+      "\\href{$2}{$1}", [tmp0, tmp1])
   of rnDirArg, rnRaw: renderAux(d, n, result)
   of rnRawHtml:
     if d.target != outLatex:
