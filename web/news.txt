@@ -4,11 +4,13 @@ News
 
 
 
-2014-XX-XX Version 0.9.4 released
+2014-04-21 Version 0.9.4 released
 =================================
 
 The Nimrod development community is proud to announce the release of version
-0.9.4 of the Nimrod compiler and tools.
+0.9.4 of the Nimrod compiler and tools. **Note: This release has to be
+considered beta quality! Lots of new features have been implemented but most
+do not fullfill our quality standards.**
 
 This release includes about 1300 changes in total including various bug
 fixes, new languages features and standard library additions and improvements.
@@ -63,6 +65,16 @@ capabilities.
 Note that this feature has been implemented with Nimrod's macro system and so
 ``await`` and ``async`` are no keywords.
 
+Syntactic sugar for anonymous procedures has also been introduced. It too has
+been implemented as a macro. The following shows some simple usage of the new
+syntax:
+ 
+.. code-block::nimrod
+  import future
+  
+  var s = @[1, 2, 3, 4, 5]
+  echo(s.map((x: int) => x * 5))
+
 
 Library Additions
 -----------------
@@ -77,6 +89,9 @@ Library Additions
 - Added module ``selectors``.
 - Added module ``asynchttpserver``.
 - Added support for the new asynchronous IO in the ``httpclient`` module.
+- Added a Python-inspired ``future`` module that feature upcoming additions
+  to the ``system`` module.
+
 
 Changes affecting backwards compatibility
 -----------------------------------------
@@ -125,6 +140,7 @@ Compiler Additions
 - Arrays can be annotated to be ``unchecked`` for easier low level
   manipulations of memory.
 - Support for the new Babel package manager.
+- Added support for builtin ``spawn`` for easy thread pool usage.
 
 
 Language Additions
