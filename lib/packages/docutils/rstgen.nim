@@ -76,11 +76,12 @@ proc initRstGenerator*(g: var TRstGenerator, target: TOutputTarget,
   ## know what to use, pass the results of the `defaultConfig()
   ## <#defaultConfig>_` proc.
   ##
-  ## The `filename` will be used mostly for error reporting, you can pass any
-  ## non ``nil`` string here. If `filename` ends with the ``.nim`` extension,
-  ## the title for the document will be set by default to ``Module filename``.
-  ## This default title can be overriden by the embedded rst, but it helps to
-  ## prettify the generated index if no title is found.
+  ## The `filename` parameter will be used for error reporting and creating
+  ## index hyperlinks to the file, but you can pass an empty string here if you
+  ## are parsing a stream in memory. If `filename` ends with the ``.nim``
+  ## extension, the title for the document will be set by default to ``Module
+  ## filename``.  This default title can be overriden by the embedded rst, but
+  ## it helps to prettify the generated index if no title is found.
   ##
   ## The ``TRstParseOptions``, ``TFindFileHandler`` and ``TMsgHandler`` types
   ## are defined in the the `packages/docutils/rst module <rst.html>`_.
@@ -270,15 +271,19 @@ proc setIndexTerm*(d: var TRstGenerator, id, term: string,
                    linkTitle, linkDesc = "") =
   ## Adds a `term` to the index using the specified hyperlink identifier.
   ##
-  ## The ``d.theIndex`` string will be used to append the term in the format
-  ## ``term<tab>file#id``.
+  ## A new entry will be added to the index using the format
+  ## ``term<tab>file#id``. The file part will come from the `filename`
+  ## parameter used in a previous call to the `initRstGenerator()
+  ## <#initRstGenerator>`_ proc.
   ##
-  ## The anchor will be the based on the name of the file currently being
-  ## parsed plus the specified `id`. The `id` will be appended with a hash
-  ## character only if its length is not zero, otherwise no specific anchor
-  ## will be generated.  In general you should only pass an empty `id` value
-  ## for the title of standalone rst documents (they are special for the
-  ## `mergeIndexes() <#mergeIndexes>`_ proc).
+  ## The `id` will be appended with a hash character only if its length is not
+  ## zero, otherwise no specific anchor will be generated. In general you
+  ## should only pass an empty `id` value for the title of standalone rst
+  ## documents (they are special for the `mergeIndexes() <#mergeIndexes>`_
+  ## proc, see `Index (idx) file format <docgen.html#index-idx-file-format>`_
+  ## for more information). Unlike other index terms, title entries are
+  ## inserted at the beginning of the accumulated buffer to maintain a logical
+  ## order of entries.
   ##
   ## If `linkTitle` or `linkDesc` are not the empty string, two additional
   ## columns with their contents will be added.
@@ -286,17 +291,25 @@ proc setIndexTerm*(d: var TRstGenerator, id, term: string,
   ## The index won't be written to disk unless you call `writeIndexFile()
   ## <#writeIndexFile>`_. The purpose of the index is documented in the `docgen
   ## tools guide <docgen.html#index-switch>`_.
-  d.theIndex.add(term)
-  d.theIndex.add('\t')
+  assert(not d.theIndex.isNil)
+  var
+    entry = term
+    isTitle = false
+  entry.add('\t')
   let htmlFile = changeFileExt(extractFilename(d.filename), HtmlExt)
-  d.theIndex.add(htmlFile)
+  entry.add(htmlFile)
   if id.len > 0:
-    d.theIndex.add('#')
-    d.theIndex.add(id)
+    entry.add('#')
+    entry.add(id)
+  else:
+    isTitle = true
   if linkTitle.len > 0 or linkDesc.len > 0:
-    d.theIndex.add('\t' & linkTitle.quoteIndexColumn)
-    d.theIndex.add('\t' & linkDesc.quoteIndexColumn)
-  d.theIndex.add("\n")
+    entry.add('\t' & linkTitle.quoteIndexColumn)
+    entry.add('\t' & linkDesc.quoteIndexColumn)
+  entry.add("\n")
+
+  if isTitle: d.theIndex.insert(entry)
+  else: d.theIndex.add(entry)
 
 proc hash(n: PRstNode): int =
   if n.kind == rnLeaf:
