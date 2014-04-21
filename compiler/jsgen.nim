@@ -135,10 +135,10 @@ proc mapType(typ: PType): TJSTypeKind =
     result = etyNone
   of tyProc: result = etyProc
   of tyCString: result = etyString
-  
-proc mangle(name: string): string = 
-  result = ""
-  for i in countup(0, len(name) - 1): 
+
+proc mangle(name: string): string =
+  result = "_"
+  for i in countup(0, len(name) - 1):
     case name[i]
     of 'A'..'Z': 
       add(result, chr(ord(name[i]) - ord('A') + ord('a')))
