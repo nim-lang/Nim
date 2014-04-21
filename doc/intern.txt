@@ -156,7 +156,7 @@ generator.
 Compilation cache
 =================
 
-The implementation of the `compilation cache`:idx: is tricky: There are lots
+The implementation of the compilation cache is tricky: There are lots
 of issues to be solved for the front- and backend. In the following 
 sections *global* means *shared between modules* or *property of the whole
 program*.

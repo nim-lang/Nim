@@ -110,7 +110,7 @@ useful for embedding HTML code templates for example.
 Comments
 --------
 
-`Comments`:idx: start anywhere outside a string or character literal with the
+Comments start anywhere outside a string or character literal with the
 hash character ``#``. Documentation comments start with ``##``. Multiline
 comments need to be aligned at the same column:
 
@@ -224,7 +224,7 @@ different values! For safety use only constant values.
 Constants
 =========
 
-`Constants`:idx: are symbols which are bound to a value. The constant's value
+Constants are symbols which are bound to a value. The constant's value
 cannot change. The compiler must be able to evaluate the expression in a
 constant declaration at compile time:
 
@@ -369,7 +369,7 @@ he types in nothing (only presses RETURN).
 For statement
 -------------
 
-The `for`:idx: statement is a construct to loop over any element an *iterator*
+The ``for`` statement is a construct to loop over any element an *iterator*
 provides. The example uses the built-in ``countup`` iterator:
 
 .. code-block:: nimrod
@@ -481,7 +481,7 @@ Example:
   else:
     echo("unknown operating system")
 
-The `when`:idx: statement is almost identical to the ``if`` statement with some
+The ``when`` statement is almost identical to the ``if`` statement with some
 differences:
 
 * Each condition has to be a constant expression since it is evaluated by the
@@ -791,7 +791,7 @@ However, this cannot be done for mutually recursive procedures:
 
 Here ``odd`` depends on ``even`` and vice versa. Thus ``even`` needs to be
 introduced to the compiler before it is completely defined. The syntax for
-such a `forward declaration`:idx: is simple: just omit the ``=`` and the
+such a forward declaration is simple: just omit the ``=`` and the
 procedure's body.
 
 Later versions of the language may get rid of the need for forward
@@ -863,7 +863,7 @@ that are available for them in detail.
 Booleans
 --------
 
-The `boolean`:idx: type is named ``bool`` in Nimrod and consists of the two
+The boolean type is named ``bool`` in Nimrod and consists of the two
 pre-defined values ``true`` and ``false``. Conditions in while,
 if, elif, when statements need to be of type bool.
 
@@ -1030,7 +1030,7 @@ Enumeration and object types cannot be defined on the fly, but only within a
 
 Enumerations
 ------------
-A variable of an `enumeration`:idx: type can only be assigned a value of a
+A variable of an enumeration type can only be assigned a value of a
 limited set. This set consists of ordered symbols. Each symbol is mapped
 to an integer value internally. The first symbol is represented
 at runtime by 0, the second by 1 and so on. Example:
@@ -1069,7 +1069,7 @@ An explicit ordered enum can have *holes*:
 Ordinal types
 -------------
 Enumerations without holes, integer types, ``char`` and ``bool`` (and
-subranges) are called `ordinal`:idx: types. Ordinal types have quite
+subranges) are called ordinal types. Ordinal types have quite
 a few special operations:
 
 -----------------     --------------------------------------------------------
@@ -1094,7 +1094,7 @@ checks turned on.)
 
 Subranges
 ---------
-A `subrange`:idx: type is a range of values from an integer or enumeration type
+A subrange type is a range of values from an integer or enumeration type
 (the base type). Example:
 
 .. code-block:: nimrod
@@ -1117,7 +1117,7 @@ avoid this common programming error.
 
 Sets
 ----
-The `set type`:idx: models the mathematical notion of a set. The set's
+The set type models the mathematical notion of a set. The set's
 basetype can only be an ordinal type. The reason is that sets are implemented
 as high performance bit vectors.
 
@@ -1161,7 +1161,7 @@ constants that should be ``or``'ed together.
 
 Arrays
 ------
-An `array`:idx: is a simple fixed length container. Each element in
+An array is a simple fixed length container. Each element in
 the array has the same type. The array's index type can be any ordinal type.
 
 Arrays can be constructed via ``[]``: 
@@ -1253,7 +1253,7 @@ to specify a range from zero to the specified index minus one:
 
 Sequences
 ---------
-`Sequences`:idx: are similar to arrays but of dynamic length which may change
+Sequences are similar to arrays but of dynamic length which may change
 during runtime (like strings). Since sequences are resizable they are always
 allocated on the heap and garbage collected.
 
@@ -1471,7 +1471,7 @@ won't compile:
 
 Reference and pointer types
 ---------------------------
-References (similar to `pointers`:idx: in other programming languages) are a
+References (similar to pointers in other programming languages) are a
 way to introduce many-to-one relationships. This means different references can
 point to and modify the same location in memory.
 
@@ -1513,7 +1513,7 @@ If a reference points to *nothing*, it has the value ``nil``.
 
 Procedural type
 ---------------
-A `procedural type`:idx: is a (somewhat abstract) pointer to a procedure.
+A procedural type is a (somewhat abstract) pointer to a procedure.
 ``nil`` is an allowed value for a variable of a procedural type.
 Nimrod uses procedural types to achieve `functional`:idx: programming
 techniques.
@@ -1543,7 +1543,7 @@ listed in the `manual <manual.html>`_.
 
 Modules
 =======
-Nimrod supports splitting a program into pieces with a `module`:idx: concept.
+Nimrod supports splitting a program into pieces with a module concept.
 Each module is in its own file. Modules enable `information hiding`:idx: and
 `separate compilation`:idx:. A module may gain access to symbols of another
 module by the `import`:idx: statement. Only top-level symbols that are marked
@@ -1698,7 +1698,7 @@ define a shorter alias to use when qualifying symbols.
 
 Include statement
 -----------------
-The `include`:idx: statement does something fundamentally different than
+The ``include`` statement does something fundamentally different than
 importing a module: it merely includes the contents of a file. The ``include``
 statement is useful to split up a large module into several files:
 

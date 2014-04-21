@@ -7,7 +7,7 @@
 
 
 Nimrod comes with a platform independent profiler -
-the `Embedded Stack Trace Profiler`:idx: (`ESTP`:idx:). The profiler 
+the Embedded Stack Trace Profiler (ESTP). The profiler 
 is *embedded* into your executable. To activate the profiler you need to do: 
 
 * compile your program with the ``--profiler:on --stackTrace:on`` command 
