@@ -730,7 +730,7 @@ proc retIsNotVoid(s: PSym): bool =
   result = (s.typ.sons[0] != nil) and not isInvalidReturnType(s.typ.sons[0])
 
 proc initFrame(p: BProc, procname, filename: PRope): PRope =
-  discard cgsym(p.module, "pushFrame")
+  discard cgsym(p.module, "nimFrame")
   if p.maxFrameLen > 0:
     discard cgsym(p.module, "TVarSlot")
     result = rfmt(nil, "\tnimfrs($1, $2, $3, $4)$N",

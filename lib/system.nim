@@ -193,6 +193,47 @@ when defined(nimNewShared):
     `shared`* {.magic: "Shared".}
     guarded* {.magic: "Guarded".}
 
+# comparison operators:
+proc `==` *[TEnum: enum](x, y: TEnum): bool {.magic: "EqEnum", noSideEffect.}
+proc `==` *(x, y: pointer): bool {.magic: "EqRef", noSideEffect.}
+proc `==` *(x, y: string): bool {.magic: "EqStr", noSideEffect.}
+proc `==` *(x, y: cstring): bool {.magic: "EqCString", noSideEffect.}
+proc `==` *(x, y: char): bool {.magic: "EqCh", noSideEffect.}
+proc `==` *(x, y: bool): bool {.magic: "EqB", noSideEffect.}
+proc `==` *[T](x, y: set[T]): bool {.magic: "EqSet", noSideEffect.}
+proc `==` *[T](x, y: ref T): bool {.magic: "EqRef", noSideEffect.}
+proc `==` *[T](x, y: ptr T): bool {.magic: "EqRef", noSideEffect.}
+proc `==` *[T: proc](x, y: T): bool {.magic: "EqProc", noSideEffect.}
+
+proc `<=` *[TEnum: enum](x, y: TEnum): bool {.magic: "LeEnum", noSideEffect.}
+proc `<=` *(x, y: string): bool {.magic: "LeStr", noSideEffect.}
+proc `<=` *(x, y: char): bool {.magic: "LeCh", noSideEffect.}
+proc `<=` *[T](x, y: set[T]): bool {.magic: "LeSet", noSideEffect.}
+proc `<=` *(x, y: bool): bool {.magic: "LeB", noSideEffect.}
+proc `<=` *[T](x, y: ref T): bool {.magic: "LePtr", noSideEffect.}
+proc `<=` *(x, y: pointer): bool {.magic: "LePtr", noSideEffect.}
+
+proc `<` *[TEnum: enum](x, y: TEnum): bool {.magic: "LtEnum", noSideEffect.}
+proc `<` *(x, y: string): bool {.magic: "LtStr", noSideEffect.}
+proc `<` *(x, y: char): bool {.magic: "LtCh", noSideEffect.}
+proc `<` *[T](x, y: set[T]): bool {.magic: "LtSet", noSideEffect.}
+proc `<` *(x, y: bool): bool {.magic: "LtB", noSideEffect.}
+proc `<` *[T](x, y: ref T): bool {.magic: "LtPtr", noSideEffect.}
+proc `<` *[T](x, y: ptr T): bool {.magic: "LtPtr", noSideEffect.}
+proc `<` *(x, y: pointer): bool {.magic: "LtPtr", noSideEffect.}
+
+template `!=` * (x, y: expr): expr {.immediate.} =
+  ## unequals operator. This is a shorthand for ``not (x == y)``.
+  not (x == y)
+
+template `>=` * (x, y: expr): expr {.immediate.} =
+  ## "is greater or equals" operator. This is the same as ``y <= x``.
+  y <= x
+
+template `>` * (x, y: expr): expr {.immediate.} =
+  ## "is greater" operator. This is the same as ``y < x``.
+  y < x
+
 include "system/inclrtl"
 
 const NoFakeVars* = defined(NimrodVM) ## true if the backend doesn't support \
@@ -694,47 +735,6 @@ proc `-` *[T](x, y: set[T]): set[T] {.magic: "MinusSet", noSideEffect.}
 proc `-+-` *[T](x, y: set[T]): set[T] {.magic: "SymDiffSet", noSideEffect.}
   ## computes the symmetric set difference. This is the same as
   ## ``(A - B) + (B - A)``, but more efficient.
-
-# comparison operators:
-proc `==` *[TEnum: enum](x, y: TEnum): bool {.magic: "EqEnum", noSideEffect.}
-proc `==` *(x, y: pointer): bool {.magic: "EqRef", noSideEffect.}
-proc `==` *(x, y: string): bool {.magic: "EqStr", noSideEffect.}
-proc `==` *(x, y: cstring): bool {.magic: "EqCString", noSideEffect.}
-proc `==` *(x, y: char): bool {.magic: "EqCh", noSideEffect.}
-proc `==` *(x, y: bool): bool {.magic: "EqB", noSideEffect.}
-proc `==` *[T](x, y: set[T]): bool {.magic: "EqSet", noSideEffect.}
-proc `==` *[T](x, y: ref T): bool {.magic: "EqRef", noSideEffect.}
-proc `==` *[T](x, y: ptr T): bool {.magic: "EqRef", noSideEffect.}
-proc `==` *[T: proc](x, y: T): bool {.magic: "EqProc", noSideEffect.}
-
-proc `<=` *[TEnum: enum](x, y: TEnum): bool {.magic: "LeEnum", noSideEffect.}
-proc `<=` *(x, y: string): bool {.magic: "LeStr", noSideEffect.}
-proc `<=` *(x, y: char): bool {.magic: "LeCh", noSideEffect.}
-proc `<=` *[T](x, y: set[T]): bool {.magic: "LeSet", noSideEffect.}
-proc `<=` *(x, y: bool): bool {.magic: "LeB", noSideEffect.}
-proc `<=` *[T](x, y: ref T): bool {.magic: "LePtr", noSideEffect.}
-proc `<=` *(x, y: pointer): bool {.magic: "LePtr", noSideEffect.}
-
-proc `<` *[TEnum: enum](x, y: TEnum): bool {.magic: "LtEnum", noSideEffect.}
-proc `<` *(x, y: string): bool {.magic: "LtStr", noSideEffect.}
-proc `<` *(x, y: char): bool {.magic: "LtCh", noSideEffect.}
-proc `<` *[T](x, y: set[T]): bool {.magic: "LtSet", noSideEffect.}
-proc `<` *(x, y: bool): bool {.magic: "LtB", noSideEffect.}
-proc `<` *[T](x, y: ref T): bool {.magic: "LtPtr", noSideEffect.}
-proc `<` *[T](x, y: ptr T): bool {.magic: "LtPtr", noSideEffect.}
-proc `<` *(x, y: pointer): bool {.magic: "LtPtr", noSideEffect.}
-
-template `!=` * (x, y: expr): expr {.immediate.} =
-  ## unequals operator. This is a shorthand for ``not (x == y)``.
-  not (x == y)
-
-template `>=` * (x, y: expr): expr {.immediate.} =
-  ## "is greater or equals" operator. This is the same as ``y <= x``.
-  y <= x
-
-template `>` * (x, y: expr): expr {.immediate.} =
-  ## "is greater" operator. This is the same as ``y < x``.
-  y < x
 
 proc contains*[T](x: set[T], y: T): bool {.magic: "InSet", noSideEffect.}
   ## One should overload this proc if one wants to overload the ``in`` operator.

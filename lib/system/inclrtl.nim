@@ -30,9 +30,9 @@ when defined(createNimRtl):
   {.pragma: inl.}
   {.pragma: compilerRtl, compilerproc, exportc: "nimrtl_$1", dynlib.}
 elif defined(useNimRtl):
-  when hostOS == "windows": 
+  when defined(windows): 
     const nimrtl* = "nimrtl.dll"
-  elif hostOS == "macosx":
+  elif defined(macosx):
     const nimrtl* = "nimrtl.dylib"
   else: 
     const nimrtl* = "libnimrtl.so"

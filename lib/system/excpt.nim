@@ -44,9 +44,15 @@ var
     # a global variable for the root of all try blocks
   currException {.rtlThreadVar.}: ref E_Base
 
-proc pushFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} =
-  s.prev = framePtr
-  framePtr = s
+when defined(nimRequiresNimFrame):
+  proc nimFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} =
+    s.prev = framePtr
+    framePtr = s
+else:
+  proc pushFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} =
+    # XXX only for backwards compatibility
+    s.prev = framePtr
+    framePtr = s
 
 proc popFrame {.compilerRtl, inl.} =
   framePtr = framePtr.prev

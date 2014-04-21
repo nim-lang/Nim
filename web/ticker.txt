@@ -1,5 +1,5 @@
 <a class="news" href="news.html#Z2014-XX-XX-version-0-9-4-released">
-  <h3>Apr 20, 2014</h3>
+  <h3>Apr 21, 2014</h3>
   <p>Nimrod version 0.9.4 has been released!</p>
 </a>
 

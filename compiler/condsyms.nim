@@ -49,6 +49,7 @@ proc initDefines*() =
   defineSymbol("nimcomputedgoto")
   defineSymbol("nimunion")
   defineSymbol("nimnewshared")
+  defineSymbol("nimrequiresnimframe")
   
   # add platform specific symbols:
   case targetCPU
