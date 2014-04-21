@@ -69,7 +69,7 @@ proc renderType(n: PNode): string =
     for i in 1 .. <len(n): result.add(renderType(n[i]) & ',')
     result[<len(result)] = ']'
   else: result = ""
-  assert (not result.isNil)
+  assert(not result.isNil)
 
 
 proc renderParamTypes(found: var seq[string], n: PNode) =
@@ -86,13 +86,11 @@ proc renderParamTypes(found: var seq[string], n: PNode) =
     let typePos = len(n) - 2
     assert typePos > 0
     var typeStr = renderType(n[typePos])
-    if typeStr.len < 1:
+    if typeStr.len < 1 and n[typePos+1].kind != nkEmpty:
       # Try with the last node, maybe its a default value.
-      assert n[typePos+1].kind != nkEmpty
       let typ = n[typePos+1].typ
       if not typ.isNil: typeStr = typeToString(typ, preferExported)
-      if typeStr.len < 1:
-        return
+      if typeStr.len < 1: return
     for i in 0 .. <typePos:
       assert n[i].kind == nkIdent
       found.add(typeStr)

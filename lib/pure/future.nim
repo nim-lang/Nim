@@ -115,4 +115,4 @@ macro `->`*(p, b: expr): expr {.immediate.} =
   ##   proc pass2(f: proc (x, y: float): float): float =
   ##     f(2, 2)
 
-  createProcType(p, b)
+  result = createProcType(p, b)
