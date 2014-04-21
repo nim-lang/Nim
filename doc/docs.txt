@@ -6,18 +6,18 @@ The documentation consists of several documents:
 - | `Tutorial (part II) <tut2.html>`_
   | The Nimrod tutorial part two deals with the advanced language constructs.
 
+- | `Language Manual <manual.html>`_
+  | The Nimrod manual is a draft that will evolve into a proper specification.
+
 - | `Library documentation <lib.html>`_
   | This document describes Nimrod's standard library.
 
-- | `User guide <nimrodc.html>`_
+- | `Compiler user guide <nimrodc.html>`_
   | The user guide lists command line arguments, special features of the
     compiler, etc.
 
 - | `Tools documentation <tools.html>`_
   | Description of some tools that come with the standard distribution.
-
-- | `Manual <manual.html>`_
-  | The Nimrod manual is a draft that will evolve into a proper specification.
 
 - | `GC <gc.html>`_
   | Additional documentation about Nimrod's GC and how to operate it in a
