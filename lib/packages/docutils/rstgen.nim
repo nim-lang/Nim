@@ -57,6 +57,9 @@ type
     currentSection: string ## \
     ## Stores the empty string or the last headline/overline found in the rst
     ## document, so it can be used as a prettier name for term index generation.
+    seenIndexTerms: TTable[string, int] ## \
+    ## Keeps count of same text index terms to generate different identifiers
+    ## for hyperlinks. See renderIndexTerm proc for details.
   
   PDoc = var TRstGenerator ## Alias to type less.
 
@@ -112,6 +115,7 @@ proc initRstGenerator*(g: var TRstGenerator, target: TOutputTarget,
   g.options = options
   g.findFile = findFile
   g.currentSection = ""
+  g.seenIndexTerms = initTable[string, int]()
   g.msgHandler = msgHandler
   
   let s = config["split.item.toc"]
@@ -295,8 +299,20 @@ proc hash(n: PRstNode): int =
       result = result !& hash(n.sons[i])
     result = !$result
 
-proc renderIndexTerm(d: PDoc, n: PRstNode, result: var string) =
-  let id = rstnodeToRefname(n) & '_' & $abs(hash(n))
+proc renderIndexTerm*(d: PDoc, n: PRstNode, result: var string) =
+  ## Renders the string decorated within \`foobar\`\:idx\: markers.
+  ##
+  ## Additionally adds the encosed text to the index as a term. Since we are
+  ## interested in different instances of the same term to have different
+  ## entries, a table is used to keep track of the amount of times a term has
+  ## previously appeared to give a different identifier value for each.
+  let refname = n.rstnodeToRefname
+  if d.seenIndexTerms.hasKey(refname):
+    d.seenIndexTerms[refname] = d.seenIndexTerms[refname] + 1
+  else:
+    d.seenIndexTerms[refname] = 1
+  let id = refname & '_' & $d.seenIndexTerms[refname]
+
   var term = ""
   renderAux(d, n, term)
   setIndexTerm(d, id, term, d.currentSection)
