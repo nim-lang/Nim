@@ -406,7 +406,7 @@ proc generateSymbolIndex(symbols: seq[TIndexEntry]): string =
   result = ""
   var i = 0
   while i < symbols.len:
-    result.addf("<dt><span>$1</span></dt><ul class=\"simple\"><dd>\n",
+    result.addf("<dt><span>$1:</span></dt><ul class=\"simple\"><dd>\n",
                 [symbols[i].keyword])
     var j = i
     while j < symbols.len and symbols[i].keyword == symbols[j].keyword:
