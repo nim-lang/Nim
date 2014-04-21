@@ -33,20 +33,8 @@ proc mangleField(name: string): string =
       add(result, toHex(ord(name[i]), 2))
 
 proc mangle(name: string): string =
-  case name[0]
-  of 'A'..'Z':
-    result = ""
-    add(result, chr(ord(name[0]) - ord('A') + ord('a')))
-  of 'a'..'z':
-    result = ""
-    add(result, name[0])
-  of '0'..'9':
-    result = "_"
-    add(result, name[0])
-  of '_':
-      discard
-  else: result = "HEX" & toHex(ord(name[0]), 2)
-  for i in countup(1, len(name) - 1):
+  result = "_"
+  for i in countup(0, len(name) - 1):
     case name[i]
     of 'A'..'Z': 
       add(result, chr(ord(name[i]) - ord('A') + ord('a')))
