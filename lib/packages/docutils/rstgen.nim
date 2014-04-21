@@ -315,8 +315,9 @@ type
     ##
     ## The key is a *fake* TIndexEntry which will contain the title of the
     ## document in the `keyword` field and `link` will contain the html
-    ## filename for the document. `linkTitle` and `linkDesc` will be nil. The
-    ## value indexed by this TIndexEntry is a sequence with the real index
+    ## filename for the document. `linkTitle` and `linkDesc` will be nil.
+    ##
+    ## The value indexed by this TIndexEntry is a sequence with the real index
     ## entries found in the ``.idx`` file.
 
 
@@ -466,8 +467,22 @@ proc generateDocumentationIndex(docs: TIndexedDocs): string =
 
   for title in titles:
     let tocList = generateDocumentationTOC(docs[title])
-    result.add("<ul><li><a href=\"" & title.link & "\">" &
-      title.keyword & "</a>\n" & tocList & "</ul>\n")
+    result.add("<ul><li><a href=\"" &
+      title.link & "\">" & title.keyword & "</a>\n" & tocList & "</ul>\n")
+
+proc generateDocumentationJumps(docs: TIndexedDocs): string =
+  ## Returns a plain list of hyperlinks to documentation TOCs in HTML.
+  result = "Documents: "
+
+  # Sort the titles to generate their toc in alphabetical order.
+  var titles = toSeq(keys[TIndexEntry, seq[TIndexEntry]](docs))
+  sort(titles, cmp)
+
+  var chunks: seq[string] = @[]
+  for title in titles:
+    chunks.add("<a href=\"" & title.link & "\">" & title.keyword & "</a>")
+
+  result.add(chunks.join(", ") & ".<br>")
 
 proc readIndexDir(dir: string):
     tuple[symbols: seq[TIndexEntry], docs: TIndexedDocs] =
@@ -516,6 +531,8 @@ proc readIndexDir(dir: string):
           result.symbols[L] = fileEntries[i]
           inc L
       else:
+        # Generate the symbolic anchor for index quickjumps.
+        title.linkTitle = "doc_toc_" & $result.docs.len
         result.docs[title] = fileEntries
 
 proc mergeIndexes*(dir: string): string =
@@ -548,6 +565,11 @@ proc mergeIndexes*(dir: string): string =
   assert(not symbols.isNil)
 
   result = ""
+  # Generate a quick jump list of documents.
+  if docs.len > 0:
+    result.add(generateDocumentationJumps(docs))
+    result.add("<p />")
+
   # Generate the HTML block with API documents.
   if docs.len > 0:
     result.add("<h2>Documentation files</h2>\n")
