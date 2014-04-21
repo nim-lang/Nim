@@ -79,3 +79,10 @@ string                  str
 identifier              ident
 indentation             indent
 -------------------     ------------   --------------------------------------
+
+
+Coding Guidelines
+=================
+
+For coding guidelines see the `Internals of the Nimrod Compiler
+<intern.html#coding-guidelines>`_ documentation.
