@@ -208,6 +208,9 @@ proc dispA(target: TOutputTarget, dest: var string,
   if target != outLatex: addf(dest, xml, args)
   else: addf(dest, tex, args)
   
+proc `or`(x, y: string): string {.inline.} =
+  result = if x.isNil: y else: x
+
 proc renderRstToOut*(d: var TRstGenerator, n: PRstNode, result: var string)
   ## Writes into ``result`` the rst ast ``n`` using the ``d`` configuration.
   ##
@@ -307,11 +310,31 @@ type
     linkTitle: string ## If not nil, contains a prettier text for the href
     linkDesc: string ## If not nil, the title attribute of the final href
 
+  TIndexedDocs {.pure, final.} = TTable[TIndexEntry, seq[TIndexEntry]] ## \
+    ## Contains the index sequences for doc types.
+    ##
+    ## The key is a *fake* TIndexEntry which will contain the title of the
+    ## document in the `keyword` field and `link` will contain the html
+    ## filename for the document. `linkTitle` and `linkDesc` will be nil. The
+    ## value indexed by this TIndexEntry is a sequence with the real index
+    ## entries found in the ``.idx`` file.
+
+
 proc cmp(a, b: TIndexEntry): int =
   ## Sorts two ``TIndexEntry`` first by `keyword` field, then by `link`.
   result = cmpIgnoreStyle(a.keyword, b.keyword)
   if result == 0:
     result = cmpIgnoreStyle(a.link, b.link)
+
+proc hash(x: TIndexEntry): int =
+  ## Returns the hash for the combined fields of the type.
+  ##
+  ## The hash is computed as the concatenated string of all available fields.
+  assert(not x.keyword.isNil)
+  assert(not x.link.isNil)
+  let value = x.keyword & x.link & (x.linkTitle or "") & (x.linkDesc or "")
+  result = value.hash
+
 
 proc `<-`(a: var TIndexEntry, b: TIndexEntry) =
   shallowCopy a.keyword, b.keyword
@@ -371,9 +394,6 @@ proc isDocumentationTitle(hyperlink: string): bool =
   ## for a more detailed explanation.
   result = hyperlink.find('#') < 0
 
-proc `or`(x, y: string): string {.inline.} =
-  result = if x.isNil: y else: x
-
 proc stripTOCLevel(s: string): tuple[level: int, text: string] =
   ## Returns the *level* of the toc along with the text without it.
   for c in 0 .. <s.len:
@@ -395,12 +415,12 @@ proc indentToLevel(level: var int, newLevel: int): string =
     result = repeatStr(level - newLevel, "</ul>")
   level = newLevel
 
-proc generateDocumentationTOC(entries: seq[TIndexEntry]):
-    tuple[toc, titleRef: string] =
+proc generateDocumentationTOC(entries: seq[TIndexEntry]): string =
   ## Returns the sequence of index entries in an HTML hierarchical list.
-  result.toc = ""
+  result = ""
   # Build a list of levels and extracted titles to make processing easier.
   var
+    titleRef: string
     levels: seq[tuple[level: int, text: string]]
     L = 0
     level = 1
@@ -420,34 +440,83 @@ proc generateDocumentationTOC(entries: seq[TIndexEntry]):
     inc L
 
   # Now generate hierarchical lists based on the precalculated levels.
-  result.toc = "<ul>\n"
+  result = "<ul>\n"
   level = 1
   L = 0
   while L < entries.len:
     let link = entries[L].link
     if link.isDocumentationTitle:
-      result.titleRef = link
+      titleRef = link
     else:
-      result.toc.add(level.indentToLevel(levels[L].level))
-      result.toc.add("<li><a href=\"" & link & "\">" &
+      result.add(level.indentToLevel(levels[L].level))
+      result.add("<li><a href=\"" & link & "\">" &
         levels[L].text & "</a>\n")
     inc L
-  result.toc.add(level.indentToLevel(1) & "</ul>\n")
-  assert(not result.titleRef.isNil, "Can't use this proc on an API index")
+  result.add(level.indentToLevel(1) & "</ul>\n")
+  assert(not titleRef.isNil,
+    "Can't use this proc on an API index, docs always have a title entry")
 
-proc generateDocumentationIndex(
-    docs: TTable[string, seq[TIndexEntry]]): string =
+proc generateDocumentationIndex(docs: TIndexedDocs): string =
   ## Returns all the documentation TOCs in an HTML hierarchical list.
   result = ""
 
   # Sort the titles to generate their toc in alphabetical order.
-  var titles = toSeq(keys[string, seq[TIndexEntry]](docs))
-  sort(titles, system.cmp)
+  var titles = toSeq(keys[TIndexEntry, seq[TIndexEntry]](docs))
+  sort(titles, cmp)
 
   for title in titles:
-    let (list, titleRef) = generateDocumentationTOC(docs[title])
-    result.add("<ul><li><a href=\"" & titleRef & "\">" &
-      title & "</a>\n" & list & "</ul>\n")
+    let tocList = generateDocumentationTOC(docs[title])
+    result.add("<ul><li><a href=\"" & title.link & "\">" &
+      title.keyword & "</a>\n" & tocList & "</ul>\n")
+
+proc readIndexDir(dir: string):
+    tuple[symbols: seq[TIndexEntry], docs: TIndexedDocs] =
+  ## Walks `dir` reading ``.idx`` files converting them in TIndexEntry items.
+  ##
+  ## Returns the list of free symbol entries and the separate documentation
+  ## indexes found. See the documentation of ``mergeIndexes`` for details.
+  result.docs = initTable[TIndexEntry, seq[TIndexEntry]](32)
+  newSeq(result.symbols, 15_000)
+  setLen(result.symbols, 0)
+  var L = 0
+  # Scan index files and build the list of symbols.
+  for kind, path in walkDir(dir):
+    if kind == pcFile and path.endsWith(IndexExt):
+      var
+        fileEntries: seq[TIndexEntry]
+        title: TIndexEntry
+        F = 0
+      newSeq(fileEntries, 500)
+      setLen(fileEntries, 0)
+      for line in lines(path):
+        let s = line.find('\t')
+        if s < 0: continue
+        setLen(fileEntries, F+1)
+        fileEntries[F].keyword = line.substr(0, s-1)
+        fileEntries[F].link = line.substr(s+1)
+        # See if we detect a title, a link without a `#foobar` trailing part.
+        if title.keyword.isNil and fileEntries[F].link.isDocumentationTitle:
+          title.keyword = fileEntries[F].keyword
+          title.link = fileEntries[F].link
+
+        if fileEntries[F].link.find('\t') > 0:
+          let extraCols = fileEntries[F].link.split('\t')
+          fileEntries[F].link = extraCols[0]
+          assert extraCols.len == 3
+          fileEntries[F].linkTitle = extraCols[1].unquoteIndexColumn
+          fileEntries[F].linkDesc = extraCols[2].unquoteIndexColumn
+        else:
+          fileEntries[F].linkTitle = nil
+          fileEntries[F].linkDesc = nil
+        inc F
+      # Depending on type add this to the list of symbols or table of APIs.
+      if title.keyword.isNil:
+        setLen(result.symbols, L + F)
+        for i in 0 .. <F:
+          result.symbols[L] = fileEntries[i]
+          inc L
+      else:
+        result.docs[title] = fileEntries
 
 proc mergeIndexes*(dir: string): string =
   ## Merges all index files in `dir` and returns the generated index as HTML.
@@ -475,49 +544,8 @@ proc mergeIndexes*(dir: string): string =
   ##
   ## Returns the merged and sorted indices into a single HTML block which can
   ## be further embedded into nimdoc templates.
-  var
-    symbols: seq[TIndexEntry]
-    docs = initTable[string, seq[TIndexEntry]](32)
-  newSeq(symbols, 15_000)
-  setLen(symbols, 0)
-  var L = 0
-  # Scan index files and build the list of symbols.
-  for kind, path in walkDir(dir):
-    if kind == pcFile and path.endsWith(IndexExt):
-      var
-        fileEntries: seq[TIndexEntry]
-        foundTitle = ""
-        F = 0
-      newSeq(fileEntries, 500)
-      setLen(fileEntries, 0)
-      for line in lines(path):
-        let s = line.find('\t')
-        if s < 0: continue
-        setLen(fileEntries, F+1)
-        fileEntries[F].keyword = line.substr(0, s-1)
-        fileEntries[F].link = line.substr(s+1)
-        # See if we detect a title, a link without a #foobar part.
-        if foundTitle.len < 1 and fileEntries[F].link.isDocumentationTitle:
-          foundTitle = fileEntries[F].keyword
-
-        if fileEntries[F].link.find('\t') > 0:
-          let extraCols = fileEntries[F].link.split('\t')
-          fileEntries[F].link = extraCols[0]
-          assert extraCols.len == 3
-          fileEntries[F].linkTitle = extraCols[1].unquoteIndexColumn
-          fileEntries[F].linkDesc = extraCols[2].unquoteIndexColumn
-        else:
-          fileEntries[F].linkTitle = nil
-          fileEntries[F].linkDesc = nil
-        inc F
-      # Depending on type add this to the list of symbols or table of APIs.
-      if foundTitle.len > 0:
-        docs[foundTitle] = fileEntries
-      else:
-        setLen(symbols, L + F)
-        for i in 0 .. <F:
-          symbols[L] = fileEntries[i]
-          inc L
+  var (symbols, docs) = readIndexDir(dir)
+  assert(not symbols.isNil)
 
   result = ""
   # Generate the HTML block with API documents.
@@ -526,7 +554,7 @@ proc mergeIndexes*(dir: string): string =
     result.add(generateDocumentationIndex(docs))
 
   # Generate the HTML block with symbols.
-  if L > 0:
+  if symbols.len > 0:
     sortIndex(symbols)
     result.add("<h2>API symbols</h2>\n")
     result.add(generateSymbolIndex(symbols))
