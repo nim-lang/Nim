@@ -62,7 +62,6 @@ proc parseAll(p: var TParsers): PNode =
   of skinEndX: 
     internalError("parser to implement") 
     result = ast.emptyNode
-    # skinEndX: result := pendx.parseAll(p.parser);
   
 proc parseTopLevelStmt(p: var TParsers): PNode = 
   case p.skin
@@ -73,7 +72,6 @@ proc parseTopLevelStmt(p: var TParsers): PNode =
   of skinEndX: 
     internalError("parser to implement") 
     result = ast.emptyNode
-    #skinEndX: result := pendx.parseTopLevelStmt(p.parser);
   
 proc utf8Bom(s: string): int = 
   if (s[0] == '\xEF') and (s[1] == '\xBB') and (s[2] == '\xBF'): 
