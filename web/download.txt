@@ -1,7 +1,103 @@
+You can download the latest version of the Nimrod compiler here. You can
+use the binaries provided or build from source.
+
+Binaries
+========
+
+All installers and archives contain the html documentation and tools
+(nimgrep, c2nim and babel).
+
+**Note:** The Nimrod compiler requires a C compiler to compile software. On
+Windows we recommend that you use
+`Mingw-w64 <http://mingw-w64.sourceforge.net/>`_. GCC is recommended on Linux
+and clang on Mac OS X.
+
+Installers
+----------
+
+Installers will be available soon.
+
+
+
+Archives
+--------
+
+Windows
+~~~~~~~
+
+The "full" version includes a full mingw distribution which includes a C
+compiler. The "slim" version lacks this.
+
+* Full (i386, 32bit): `<download/nimrod_0.9.4_windows_i386_full.zip>`_
+
+  .. raw:: html
+    <p style="font-size: 8pt; margin-top: 0;">
+    SHA256: 8ee18faaa3a3d5df482c7abd6aa7ea87a350d7328b80ce1e2d486b59a7a93956
+    </p>
+
+* Slim (i386, 32bit): `<download/nimrod_0.9.4_windows_i386_slim.zip>`_
+
+  .. raw:: html
+      <p style="font-size: 8pt; margin-top: 0;">
+      SHA256: 7024fb8ad8f98c0bd4949ae36ed11b52b4e401754bbd62a11199d6dc8628d857 
+      </p>
+
+* Full (amd64, 64bit): `<download/nimrod_0.9.4_windows_amd64_full.zip>`_
+
+  .. raw:: html
+    <p style="font-size: 8pt; margin-top: 0;">
+    SHA256: cb33cacc1a84fec771323d24cb6d9795f4803882466a9f417b424990aa49e18a
+    </p>
+
+* Slim (amd64, 64bit): `<download/nimrod_0.9.4_windows_amd64_slim.zip>`_
+
+  .. raw:: html
+      <p style="font-size: 8pt; margin-top: 0;">
+      SHA256: fcf877e4bd1ebfa214749af6e4811cd8539af19f1d7b23017e4bd7f6cbfb3eba
+      </p>
+
+Linux
+~~~~~
+
+* Linux (i386, 32bit): `<download/nimrod_0.9.4_linux_i386.tar.gz>`_
+
+  .. raw:: html
+      <p style="font-size: 8pt; margin-top: 0;">
+      SHA256: 79DD337A77AC4313A75F2C5EED8252F00BBBDEB1E0C3504660D4A52EA63DBA92
+      </p>
+* Linux (amd64, 64bit): `<download/nimrod_0.9.4_linux_amd64.tar.gz>`_
+
+  .. raw:: html
+    <p style="font-size: 8pt; margin-top: 0;">
+    SHA256: 6F6CB3C727BA8059B7605C02942AE7910C20C2A3DC6A8A600D90D50FE61F0D8C
+    </p>
+* Linux (ppc64, 64bit): `<download/nimrod_0.9.4_linux_ppc64.tar.gz>`_
+
+  .. raw:: html
+      <p style="font-size: 8pt; margin-top: 0;">
+      SHA256: 5DAC2D9F7F545929E04540E6E2594C68FC3126A3B2F7B1FA7DBA5E295B4A7D31
+      </p>
+
+Mac OS X
+~~~~~~~~
+
+* Mac OS X (amd64, 64bit): `<download/nimrod_0.9.4_macosx_amd64.zip>`_
+
+  .. raw:: html
+      <p style="font-size: 8pt; margin-top: 0;">
+      SHA256: E6F3A8E434DF3E89686F043954C6DFC09ABEBC0FC09D3B9A6B35C2B3102F7C3C
+      </p>
+
+If a binary for your platform is not available then you must build from source.
+Bleeding edge binaries are available from the `Nimrod build farm <http://build.nimrod-lang.org/>`_.
+
+Source
+======
+
 Starting with 0.9.4 we now advise people to build directly from the
 github `master <https://github.com/Araq/Nimrod#compiling>`_ branch::
 
-  git clone git://github.com/Araq/Nimrod.git
+  git clone -b master git://github.com/Araq/Nimrod.git
   cd Nimrod
   git clone --depth 1 git://github.com/nimrod-code/csources
   cd csources && sh build.sh
@@ -9,4 +105,7 @@ github `master <https://github.com/Araq/Nimrod#compiling>`_ branch::
   bin/nimrod c koch
   ./koch boot -d:release
 
-Prebuilt binaries will be available soon.
+The ``master`` branch always contains the latest stable version of the compiler.
+If you want bleeding edge then switch to the ``devel`` branch and follow
+the same instructions outlined above.
+

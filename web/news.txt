@@ -9,13 +9,15 @@ News
 
 The Nimrod development community is proud to announce the release of version
 0.9.4 of the Nimrod compiler and tools. **Note: This release has to be
-considered beta quality! Lots of new features have been implemented but most
-do not fullfill our quality standards.**
+considered beta quality! Lots of new features have been implemented but
+unfortunately some do not fullfill our quality standards yet.**
 
-This release can be downloaded from `github <https://github.com/Araq/Nimrod>`_.
-Prebuilt binaries will be available soon.
+Prebuilt binaries and instructions for building from source are available
+on the `download page <download.html>`_.
 
-This release includes about 1300 changes in total including various bug
+This release includes about 
+`1400 changes <https://github.com/Araq/Nimrod/compare/v0.9.2...v0.9.4>`_
+in total including various bug
 fixes, new languages features and standard library additions and improvements.
 This release brings with it support for user-defined type classes, a brand
 new VM for executing Nimrod code at compile-time and new symbol binding
@@ -79,6 +81,8 @@ syntax:
   var s = @[1, 2, 3, 4, 5]
   echo(s.map((x: int) => x * 5))
 
+A list of changes follows, for a comprehensive list of changes take a look
+`here <https://github.com/Araq/Nimrod/compare/v0.9.2...v0.9.4>`_.
 
 Library Additions
 -----------------
