@@ -633,11 +633,6 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
     d.tocPart[length].n = n
     d.tocPart[length].header = tmp
 
-    # Use spaces to indicate the current level for the output HTML index.
-    assert n.level >= 0
-    setIndexTerm(d, refname, tmp.stripTOCHTML,
-      repeatChar(max(0, n.level), ' ') & tmp)
-    
     dispA(d.target, result,
         "\n<h$1><a class=\"toc-backref\" id=\"$2\" href=\"#$2_toc\">$3</a></h$1>", 
         "\\rsth$4{$3}\\label{$2}\n", [$n.level, 
@@ -648,7 +643,12 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
                             "\\rsth$4{$3}\\label{$2}\n", [
         $n.level, refname, tmp, 
         $chr(n.level - 1 + ord('A'))])
-  
+
+  # Generate index entry using spaces to indicate TOC level for the output HTML.
+  assert n.level >= 0
+  setIndexTerm(d, refname, tmp.stripTOCHTML,
+    repeatChar(max(0, n.level), ' ') & tmp)
+
 proc renderOverline(d: PDoc, n: PRstNode, result: var string) = 
   if d.meta[metaTitle].len == 0:
     d.currentSection = d.meta[metaTitle]
