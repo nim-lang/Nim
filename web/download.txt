@@ -15,9 +15,36 @@ and clang on Mac OS X.
 Installers
 ----------
 
-Installers will be available soon.
+The "full" version includes a full mingw distribution which includes a C
+compiler. The "slim" version lacks this.
 
+* Full (i386, 32bit): `<download/nimrod_0.9.4_windows_i386_full.exe>`_
 
+  .. raw:: html
+    <p style="font-size: 8pt; margin-top: 0;">
+    SHA256: dca7c63d0c1861d2d7c51b2e7a29fa98371750a10ab282d5df9de22a07719c24
+    </p>
+
+* Slim (i386, 32bit): `<download/nimrod_0.9.4_windows_i386_slim.exe>`_
+
+  .. raw:: html
+      <p style="font-size: 8pt; margin-top: 0;">
+      SHA256: c0fcd1201bd20fad1e14b9d2cc2529494057068de1dd01f871cf129f088a8242
+      </p>
+
+* Full (amd64, 64bit): `<download/nimrod_0.9.4_windows_amd64_full.exe>`_
+
+  .. raw:: html
+    <p style="font-size: 8pt; margin-top: 0;">
+    SHA256: af9d478c2f3361e0f238fcb07fa8e7ae5821938c0f9063c6670e925c9ae9d16e
+    </p>
+
+* Slim (amd64, 64bit): `<download/nimrod_0.9.4_windows_amd64_slim.exe>`_
+
+  .. raw:: html
+      <p style="font-size: 8pt; margin-top: 0;">
+      SHA256: 90c380721a46be2b9b8d5437187f701940aefc2e1fb9722dbc543f5c5a3bb85e
+      </p>
 
 Archives
 --------
