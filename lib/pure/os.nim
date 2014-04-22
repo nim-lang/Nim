@@ -1612,6 +1612,7 @@ when defined(linux) or defined(solaris) or defined(bsd) or defined(aix):
       len = readlink(procPath, result, len)
     setLen(result, len)
 
+when not (defined(windows) or defined(macosx)):
   proc getApplHeuristic(): string =
     result = string(paramStr(0))
     # POSIX guaranties that this contains the executable
