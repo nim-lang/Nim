@@ -62,7 +62,7 @@ type  # BaseTsd.h -- Type definitions for the basic sized types
 
 type  # WinDef.h -- Basic Windows Type Definitions
   # BaseTypes
-  UINT = int32
+  UINT* = int32
   ULONG* = int
   PULONG* = ptr int
   USHORT* = int16
@@ -19683,7 +19683,7 @@ proc SetSysColors*(cElements: int32, lpaElements: var wINT,
     dynlib: "user32", importc: "SetSysColors".}
 proc DrawFocusRect*(hDC: HDC, lprc: var RECT): WINBOOL{.stdcall,
     dynlib: "user32", importc: "DrawFocusRect".}
-proc FillRect*(hDC: HDC, lprc: RECT, hbr: HBRUSH): int32{.stdcall,
+proc FillRect*(hDC: HDC, lprc: var RECT, hbr: HBRUSH): int32{.stdcall,
     dynlib: "user32", importc: "FillRect".}
 proc FrameRect*(hDC: HDC, lprc: var RECT, hbr: HBRUSH): int32{.stdcall,
     dynlib: "user32", importc: "FrameRect".}
