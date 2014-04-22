@@ -5688,7 +5688,7 @@ Spawn
 
 Nimrod has a builtin thread pool that can be used for CPU intensive tasks. For
 IO intensive tasks the upcoming ``async`` and ``await`` features should be
-used. `spawn`:idx: is used to pass a task to the thread pool:
+used instead. `spawn`:idx: is used to pass a task to the thread pool:
 
 .. code-block:: nimrod
   proc processLine(line: string) =
