@@ -1614,14 +1614,17 @@ when defined(linux) or defined(solaris) or defined(bsd) or defined(aix):
 
 when not (defined(windows) or defined(macosx)):
   proc getApplHeuristic(): string =
-    result = string(paramStr(0))
-    # POSIX guaranties that this contains the executable
-    # as it has been executed by the calling process
-    if len(result) > 0 and result[0] != DirSep: # not an absolute path?
-      # iterate over any path in the $PATH environment variable
-      for p in split(string(getEnv("PATH")), {PathSep}):
-        var x = joinPath(p, result)
-        if existsFile(x): return x
+    when defined(paramStr):
+      result = string(paramStr(0))
+      # POSIX guaranties that this contains the executable
+      # as it has been executed by the calling process
+      if len(result) > 0 and result[0] != DirSep: # not an absolute path?
+        # iterate over any path in the $PATH environment variable
+        for p in split(string(getEnv("PATH")), {PathSep}):
+          var x = joinPath(p, result)
+          if existsFile(x): return x
+    else:
+      result = ""
 
 when defined(macosx):
   type
