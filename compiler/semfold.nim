@@ -380,6 +380,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mInSet: result = newIntNodeT(ord(inSet(a, b)), n)
   of mRepr:
     # BUGFIX: we cannot eval mRepr here for reasons that I forgot.
+    discard
   of mIntToStr, mInt64ToStr: result = newStrNodeT($(getOrdValue(a)), n)
   of mBoolToStr: 
     if getOrdValue(a) == 0: result = newStrNodeT("false", n)

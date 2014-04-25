@@ -1,5 +1,16 @@
-version 0.9.4
+version 0.9.6
 =============
+
+- fix the bug that keeps 'defer' template from working
+- make '--implicitStatic:on' the default
+- fix the tuple unpacking in lambda bug
+- make tuple unpacking work in a non-var/let context
+- special rule for ``[]=``
+- ``=`` should be overloadable; requires specialization for ``=``; general
+  lift mechanism in the compiler is already implemented for 'fields'
+- built-in 'getImpl'
+- type API for macros; make 'spawn' a macro
+- markAndSweepGC should expose an API for fibers
 
 
 Bugs
@@ -16,7 +27,6 @@ Bugs
 version 0.9.x
 =============
 
-- fix the bug that keeps 'defer' template from working
 - pragmas need 'bindSym' support
 - pragmas need re-work: 'push' is dangerous, 'hasPragma' does not work
   reliably with user-defined pragmas
@@ -28,17 +38,9 @@ version 0.9.x
 - ensure (ref T)(a, b) works as a type conversion and type constructor
 - optimize 'genericReset'; 'newException' leads to code bloat
 - stack-less GC
-- make '--implicitStatic:on' the default
 - implicit deref for parameter matching
 
-- special rule for ``[]=``
-- ``=`` should be overloadable; requires specialization for ``=``; general
-  lift mechanism in the compiler is already implemented for 'fields'
-- built-in 'getImpl'
 - VM: optimize opcAsgnStr
-
-- change comment handling in the AST; that's lots of work as c2nim and pas2nim
-  make use of the fact every node can have a comment!
 
 
 version 0.9.X
@@ -111,10 +113,6 @@ GC
 - precise stack marking; embrace C++ code generation for that
 - marker procs for Boehm GC
 - hybrid GC
-- GC: implement simple generational GC
-  * first version: mark black in write barrier
-  * second version: introduce fake roots instead of marking black
-  * third version: find some clever heuristic which is preferable
 - acyclic vs prunable; introduce GC hints
 - use big blocks in the allocator
 - object pooling support for *hard* realtime systems
