@@ -299,7 +299,7 @@ of cmdArgument:
   of "boot": boot(op.cmdLineRest)
   of "clean": clean(op.cmdLineRest)
   of "web": web(op.cmdLineRest)
-  of "csource": csource(op.cmdLineRest)
+  of "csource", "csources": csource(op.cmdLineRest)
   of "zip": zip(op.cmdLineRest)
   of "inno": inno(op.cmdLineRest)
   of "install": install(op.cmdLineRest)

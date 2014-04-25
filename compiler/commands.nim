@@ -50,11 +50,33 @@ proc writeAdvancedUsage(pass: TCmdLinePass) =
                                  CPU[platform.hostCPU].name]) & AdvancedUsage)
     quit(0)
 
+template bootSwitch(name, expr, userString: expr): expr =
+  # Helper to build boot constants, for debugging you can 'echo' the else part.
+  const name = if expr: " " & userString else: ""
+
+bootSwitch(usedAvoidTimeMachine, noTimeMachine, "-d:avoidTimeMachine")
+bootSwitch(usedRelease, defined(release), "-d:release")
+bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
+bootSwitch(usedGnuReadline, defined(useGnuReadline), "-d:useGnuReadline")
+bootSwitch(usedNativeStacktrace,
+  defined(nativeStackTrace) and nativeStackTraceSupported,
+  "-d:nativeStackTrace")
+bootSwitch(usedNoCaas, defined(noCaas), "-d:noCaas")
+bootSwitch(usedFFI, hasFFI, "-d:useFFI")
+bootSwitch(usedBoehm, defined(boehmgc), "--gc:boehm")
+bootSwitch(usedMarkAndSweep, defined(gcmarkandsweep), "--gc:markAndSweep")
+bootSwitch(usedGenerational, defined(gcgenerational), "--gc:generational")
+bootSwitch(usedNoGC, defined(nogc), "--gc:none")
+
+
 proc writeVersionInfo(pass: TCmdLinePass) = 
   if pass == passCmd1:
     msgWriteln(`%`(HelpMessage, [VersionAsString, 
                                  platform.OS[platform.hostOS].name, 
                                  CPU[platform.hostCPU].name]))
+    msgWriteln("active boot switches:" & usedRelease & usedAvoidTimeMachine &
+      usedTinyC & usedGnuReadline & usedNativeStacktrace & usedNoCaas &
+      usedFFI & usedBoehm & usedMarkAndSweep & usedGenerational & usedNoGC)
     quit(0)
 
 var

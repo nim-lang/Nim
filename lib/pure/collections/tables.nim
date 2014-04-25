@@ -10,6 +10,47 @@
 ## The ``tables`` module implements an efficient hash table that is
 ## a mapping from keys to values.
 ##
+## If you are using simple standard types like ``int`` or ``string`` for the
+## keys of the table you won't have any problems, but as soon as you try to use
+## a more complex object as a key you will be greeted by a strange compiler
+## error::
+##
+##   Error: type mismatch: got (Person)
+##   but expected one of:
+##   hashes.hash(x: openarray[A]): THash
+##   hashes.hash(x: int): THash
+##   hashes.hash(x: float): THash
+##   …
+##
+## What is happening here is that the types used for table keys require to have
+## a ``hash()`` proc which will convert them to a `THash <hashes.html#THash>`_
+## value, and the compiler is listing all the hash functions it knows. After
+## you add such a proc for your custom type everything will work. See this
+## example:
+##
+## .. code-block:: nimrod
+##   type
+##     Person = object
+##       firstName, lastName: string
+##
+##   proc hash(x: Person): THash =
+##     ## Piggyback on the already available string hash proc.
+##     ##
+##     ## Without this proc nothing works!
+##     result = hash(x.firstName & x.lastName)
+##
+##   var
+##     salaries = initTable[Person, int]()
+##     p1, p2: Person
+##
+##   p1.firstName = "Jon"
+##   p1.lastName = "Ross"
+##   salaries[p1] = 30_000
+##
+##   p2.firstName = "소진"
+##   p2.lastName = "박"
+##   salaries[p2] = 45_000
+##
 ## **Note:** The data types declared here have *value semantics*: This means
 ## that ``=`` performs a copy of the hash table.
 
@@ -526,3 +567,30 @@ proc sort*[A](t: var TCountTable[A]) =
         if j < h: break
     if h == 1: break
 
+when isMainModule:
+  type
+    Person = object
+      firstName, lastName: string
+
+  proc hash(x: Person): THash =
+    ## Piggyback on the already available string hash proc.
+    ##
+    ## Without this proc nothing works!
+    result = hash(x.firstName & x.lastName)
+
+  var
+    salaries = initTable[Person, int]()
+    p1, p2: Person
+  p1.firstName = "Jon"
+  p1.lastName = "Ross"
+  salaries[p1] = 30_000
+  p2.firstName = "소진"
+  p2.lastName = "박"
+  salaries[p2] = 45_000
+  var
+    s2 = initOrderedTable[Person, int]()
+    s3 = initCountTable[Person]()
+  s2[p1] = 30_000
+  s2[p2] = 45_000
+  s3[p1] = 30_000
+  s3[p2] = 45_000
