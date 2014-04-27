@@ -234,6 +234,11 @@ template `>` * (x, y: expr): expr {.immediate.} =
   ## "is greater" operator. This is the same as ``y < x``.
   y < x
 
+const
+  appType* {.magic: "AppType"}: string = ""
+    ## a string that describes the application type. Possible values:
+    ## "console", "gui", "lib".
+
 include "system/inclrtl"
 
 const NoFakeVars* = defined(NimrodVM) ## true if the backend doesn't support \
@@ -939,10 +944,6 @@ const
   hostCPU* {.magic: "HostCPU"}: string = ""
     ## a string that describes the host CPU. Possible values:
     ## "i386", "alpha", "powerpc", "sparc", "amd64", "mips", "arm".
-  
-  appType* {.magic: "AppType"}: string = ""
-    ## a string that describes the application type. Possible values:
-    ## "console", "gui", "lib".
   
   seqShallowFlag = low(int)
   

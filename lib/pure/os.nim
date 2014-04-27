@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -1612,6 +1612,20 @@ when defined(linux) or defined(solaris) or defined(bsd) or defined(aix):
       len = readlink(procPath, result, len)
     setLen(result, len)
 
+when not (defined(windows) or defined(macosx)):
+  proc getApplHeuristic(): string =
+    when defined(paramStr):
+      result = string(paramStr(0))
+      # POSIX guaranties that this contains the executable
+      # as it has been executed by the calling process
+      if len(result) > 0 and result[0] != DirSep: # not an absolute path?
+        # iterate over any path in the $PATH environment variable
+        for p in split(string(getEnv("PATH")), {PathSep}):
+          var x = joinPath(p, result)
+          if existsFile(x): return x
+    else:
+      result = ""
+
 when defined(macosx):
   type
     cuint32* {.importc: "unsigned int", nodecl.} = int
@@ -1648,10 +1662,13 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [FReadIO].} =
       setlen(result, int(len))
   elif defined(linux) or defined(aix):
     result = getApplAux("/proc/self/exe")
+    if result.len == 0: result = getApplHeuristic()
   elif defined(solaris):
     result = getApplAux("/proc/" & $getpid() & "/path/a.out")
+    if result.len == 0: result = getApplHeuristic()
   elif defined(freebsd):
     result = getApplAux("/proc/" & $getpid() & "/file")
+    if result.len == 0: result = getApplHeuristic()
   elif defined(macosx):
     var size: cuint32
     getExecPath1(nil, size)
@@ -1663,15 +1680,7 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [FReadIO].} =
   else:
     # little heuristic that may work on other POSIX-like systems:
     result = string(getEnv("_"))
-    if len(result) == 0:
-      result = string(paramStr(0))
-      # POSIX guaranties that this contains the executable
-      # as it has been executed by the calling process
-      if len(result) > 0 and result[0] != DirSep: # not an absolute path?
-        # iterate over any path in the $PATH environment variable
-        for p in split(string(getEnv("PATH")), {PathSep}):
-          var x = joinPath(p, result)
-          if existsFile(x): return x
+    if result.len == 0: result = getApplHeuristic()
 
 proc getApplicationFilename*(): string {.rtl, extern: "nos$1", deprecated.} =
   ## Returns the filename of the application's executable.
