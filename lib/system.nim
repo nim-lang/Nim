@@ -2413,7 +2413,7 @@ when not defined(JS): #and not defined(NimrodVM):
       ##     for line in filename.lines:
       ##       buffer.add(line.replace("a", "0") & '\x0A')
       ##     writeFile(filename, buffer)
-      var f = open(filename)
+      var f = open(filename, bufSize=8000)
       var res = TaintedString(newStringOfCap(80))
       while f.readLine(res): yield res
       close(f)
