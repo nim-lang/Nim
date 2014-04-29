@@ -48,12 +48,15 @@ type
                              # non-zero count table
     stackBottom: pointer
     cycleThreshold: int
+    when useCellIds:
+      idGenerator: int
     when withBitvectors:
       allocated, marked: TCellSet
     tempStack: TCellSeq      # temporary stack for recursion elimination
     recGcLock: int           # prevent recursion via finalizers; no thread lock
     region: TMemRegion       # garbage collected region
     stat: TGcStat
+    additionalRoots: TCellSeq # dummy roots for GC_ref/unref
 
 var
   gch {.rtlThreadVar.}: TGcHeap
@@ -131,13 +134,26 @@ proc prepareDealloc(cell: PCell) =
     (cast[TFinalizer](cell.typ.finalizer))(cellToUsr(cell))
     dec(gch.recGcLock)
 
-proc nimGCref(p: pointer) {.compilerProc, inline.} = 
+proc nimGCref(p: pointer) {.compilerProc.} = 
   # we keep it from being collected by pretending it's not even allocated:
-  when withBitvectors: excl(gch.allocated, usrToCell(p))
-  else: usrToCell(p).refcount = rcBlack
-proc nimGCunref(p: pointer) {.compilerProc, inline.} = 
-  when withBitvectors: incl(gch.allocated, usrToCell(p))
-  else: usrToCell(p).refcount = rcWhite
+  when false:
+    when withBitvectors: excl(gch.allocated, usrToCell(p))
+    else: usrToCell(p).refcount = rcBlack
+  add(gch.additionalRoots, usrToCell(p))
+
+proc nimGCunref(p: pointer) {.compilerProc.} =
+  let cell = usrToCell(p)
+  var L = gch.additionalRoots.len
+  var i = L
+  let d = gch.additionalRoots.d
+  while i >= 0:
+    if d[i] == cell:
+      d[i] = d[L]
+      dec gch.additionalRoots.len
+      break
+  when false:
+    when withBitvectors: incl(gch.allocated, usrToCell(p))
+    else: usrToCell(p).refcount = rcWhite
 
 proc initGC() =
   when not defined(useNimRtl):
@@ -146,6 +162,7 @@ proc initGC() =
     gch.stat.maxThreshold = 0
     gch.stat.maxStackSize = 0
     init(gch.tempStack)
+    init(gch.additionalRoots)
     when withBitvectors:
       Init(gch.allocated)
       init(gch.marked)
@@ -212,7 +229,15 @@ proc rawNewObj(typ: PNimType, size: int, gch: var TGcHeap): pointer =
   res.refcount = 0
   release(gch)
   when withBitvectors: incl(gch.allocated, res)
+  when useCellIds:
+    inc gch.idGenerator
+    res.id = gch.idGenerator
   result = cellToUsr(res)
+
+when useCellIds:
+  proc getCellId*[T](x: ref T): int =
+    let p = usrToCell(cast[pointer](x))
+    result = p.id
 
 {.pop.}
 
@@ -262,6 +287,9 @@ proc growObj(old: pointer, newsize: int, gch: var TGcHeap): pointer =
   else:
     zeroMem(ol, sizeof(TCell))
   when withBitvectors: incl(gch.allocated, res)
+  when useCellIds:
+    inc gch.idGenerator
+    res.id = gch.idGenerator
   release(gch)
   result = cellToUsr(res)
   when defined(memProfiler): nimProfile(newsize-oldsize)
@@ -332,8 +360,19 @@ proc sweep(gch: var TGcHeap) =
         if c.refcount == rcBlack: c.refcount = rcWhite
         else: freeCyclicCell(gch, c)
 
+when false:
+  proc newGcInvariant*() =
+    for x in allObjects(gch.region):
+      if isCell(x):
+        var c = cast[PCell](x)
+        if c.typ == nil:
+          writeStackTrace()
+          quit 1
+
 proc markGlobals(gch: var TGcHeap) =
   for i in 0 .. < globalMarkersLen: globalMarkers[i]()
+  let d = gch.additionalRoots.d
+  for i in 0 .. < gch.additionalRoots.len: mark(gch, d[i])
 
 proc gcMark(gch: var TGcHeap, p: pointer) {.inline.} =
   # the addresses are not as cells on the stack, so turn them to cells:
