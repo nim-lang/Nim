@@ -166,6 +166,7 @@ proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
   elif (skipTypes(castDest, abstractVarRange).kind in IntegralTypes) and
       (skipTypes(src, abstractVarRange-{tyTypeDesc}).kind in IntegralTypes):
     # accept conversion between integral types
+    discard
   else:
     # we use d, s here to speed up that operation a bit:
     case cmpTypes(c, d, s)
@@ -2060,6 +2061,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkClosedSymChoice, nkOpenSymChoice:
     # handling of sym choices is context dependent
     # the node is left intact for now
+    discard
   of nkStaticExpr:
     result = semStaticExpr(c, n)
   of nkAsgn: result = semAsgn(c, n)

@@ -11,6 +11,7 @@ version 0.9.6
 - built-in 'getImpl'
 - type API for macros; make 'spawn' a macro
 - markAndSweepGC should expose an API for fibers
+- prevent 'alloc(TypeWithGCedMemory)'
 
 
 Bugs

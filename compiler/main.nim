@@ -69,6 +69,7 @@ proc commandCompileToC =
     # echo "BEFORE CHECK DEP"
     # discard checkDepMem(gProjectMainIdx)
     # echo "CHECK DEP COMPLETE"
+    discard
 
   compileProject()
   cgenWriteModules()

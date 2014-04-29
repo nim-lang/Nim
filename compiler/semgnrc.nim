@@ -141,6 +141,7 @@ proc semGenericStmt(c: PContext, n: PNode,
         # symbol lookup ...
       of skUnknown, skParam: 
         # Leave it as an identifier.
+        discard
       of skProc, skMethod, skIterators, skConverter:
         result.sons[0] = symChoice(c, n.sons[0], s, scOption)
         first = 1
