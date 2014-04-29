@@ -143,7 +143,7 @@ proc nimGCref(p: pointer) {.compilerProc.} =
 
 proc nimGCunref(p: pointer) {.compilerProc.} =
   let cell = usrToCell(p)
-  var L = gch.additionalRoots.len
+  var L = gch.additionalRoots.len-1
   var i = L
   let d = gch.additionalRoots.d
   while i >= 0:
@@ -151,6 +151,7 @@ proc nimGCunref(p: pointer) {.compilerProc.} =
       d[i] = d[L]
       dec gch.additionalRoots.len
       break
+    dec(i)
   when false:
     when withBitvectors: incl(gch.allocated, usrToCell(p))
     else: usrToCell(p).refcount = rcWhite
