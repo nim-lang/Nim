@@ -639,7 +639,7 @@ proc unmapViewOfFile*(lpBaseAddress: pointer): WINBOOL {.stdcall,
     dynlib: "kernel32", importc: "UnmapViewOfFile".}
 
 type
-  TOVERLAPPED* {.final, pure.} = object
+  TOVERLAPPED* {.pure, inheritable.} = object
     Internal*: DWORD
     InternalHigh*: DWORD
     Offset*: DWORD
@@ -672,7 +672,7 @@ proc CreateIoCompletionPort*(FileHandle: THANDLE, ExistingCompletionPort: THANDL
 
 proc GetQueuedCompletionStatus*(CompletionPort: THandle,
     lpNumberOfBytesTransferred: PDWORD, lpCompletionKey: PULONG,
-                                lpOverlapped: ptr POverlapped,
+                                lpOverlapped: pointer,
                                 dwMilliseconds: DWORD): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetQueuedCompletionStatus".}
 
