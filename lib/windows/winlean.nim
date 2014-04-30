@@ -672,7 +672,7 @@ proc CreateIoCompletionPort*(FileHandle: THANDLE, ExistingCompletionPort: THANDL
 
 proc GetQueuedCompletionStatus*(CompletionPort: THandle,
     lpNumberOfBytesTransferred: PDWORD, lpCompletionKey: PULONG,
-                                lpOverlapped: pointer,
+                                lpOverlapped: ptr POverlapped,
                                 dwMilliseconds: DWORD): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetQueuedCompletionStatus".}
 

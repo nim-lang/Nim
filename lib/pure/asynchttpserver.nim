@@ -174,7 +174,9 @@ when isMainModule:
   proc cb(req: TRequest) {.async.} =
     #echo(req.reqMethod, " ", req.url)
     #echo(req.headers)
-    await req.respond(Http200, "Hello World")
+    let headers = {"Date": "Tue, 29 Apr 2014 23:40:08 GMT",
+        "Content-type": "text/plain; charset=utf-8"}
+    await req.respond(Http200, "Hello World", headers.newStringTable())
 
   server.serve(TPort(5555), cb)
   runForever()

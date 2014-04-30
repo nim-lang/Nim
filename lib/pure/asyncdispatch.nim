@@ -182,8 +182,9 @@ when defined(windows) or defined(nimdoc):
     var lpNumberOfBytesTransferred: DWORD
     var lpCompletionKey: ULONG
     var customOverlapped: PCustomOverlapped
-    let res = GetQueuedCompletionStatus(p.ioPort, addr lpNumberOfBytesTransferred,
-        addr lpCompletionKey, addr customOverlapped, llTimeout).bool
+    let res = GetQueuedCompletionStatus(p.ioPort,
+        addr lpNumberOfBytesTransferred, addr lpCompletionKey,
+        cast[ptr POverlapped](addr customOverlapped), llTimeout).bool
 
     # http://stackoverflow.com/a/12277264/492186
     # TODO: http://www.serverframework.com/handling-multiple-pending-socket-read-and-write-operations.html
