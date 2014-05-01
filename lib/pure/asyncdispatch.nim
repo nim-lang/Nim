@@ -37,10 +37,10 @@ type
   PFutureBase* = ref object of PObject
     cb: proc () {.closure,gcsafe.}
     finished: bool
+    error*: ref EBase
 
   PFuture*[T] = ref object of PFutureBase
     value: T
-    error*: ref EBase # TODO: This shouldn't be necessary, generics bug?
 
 proc newFuture*[T](): PFuture[T] =
   ## Creates a new future.
@@ -114,7 +114,7 @@ proc finished*[T](future: PFuture[T]): bool =
   ## ``True`` may indicate an error or a value. Use ``failed`` to distinguish.
   future.finished
 
-proc failed*[T](future: PFuture[T]): bool =
+proc failed*(future: PFutureBase): bool =
   ## Determines whether ``future`` completed with an error.
   future.error != nil
 
@@ -764,25 +764,56 @@ proc accept*(socket: TAsyncFD): PFuture[TAsyncFD] =
 template createCb*(retFutureSym, iteratorNameSym: expr): stmt {.immediate.} =
   var nameIterVar = iteratorNameSym
   proc cb {.closure,gcsafe.} =
-    if not nameIterVar.finished:
-      var next = nameIterVar()
-      if next == nil:
-        assert retFutureSym.finished, "Async procedure's return Future was not finished."
-      else:
-        next.callback = cb
+    try:
+      if not nameIterVar.finished:
+        var next = nameIterVar()
+        if next == nil:
+          assert retFutureSym.finished, "Async procedure's return Future was not finished."
+        else:
+          next.callback = cb
+    except:
+      retFutureSym.fail(getCurrentException())
   cb()
 
+proc generateExceptionCheck(futSym,
+    exceptBranch, rootReceiver: PNimrodNode): PNimrodNode {.compileTime.} =
+  if exceptBranch == nil:
+    result = rootReceiver
+  else:
+    if exceptBranch[0].kind == nnkStmtList:
+      result = newIfStmt(
+        (newDotExpr(futSym, newIdentNode("failed")),
+           exceptBranch[0]
+         )
+      )
+    else:
+      expectKind(exceptBranch[1], nnkStmtList)
+      result = newIfStmt(
+        (newDotExpr(futSym, newIdentNode("failed")),
+           newIfStmt(
+             (infix(newDotExpr(futSym, newIdentNode("error")), "of", exceptBranch[0]),
+              exceptBranch[1])
+           )
+         )
+      )
+    let elseNode = newNimNode(nnkElse)
+    elseNode.add newNimNode(nnkStmtList)
+    elseNode[0].add rootReceiver
+    result.add elseNode
+
 template createVar(futSymName: string, asyncProc: PNimrodNode,
-                   valueReceiver: expr) {.immediate, dirty.} =
-  # TODO: Used template here due to bug #926
+                   valueReceiver, rootReceiver: expr) {.immediate, dirty.} =
   result = newNimNode(nnkStmtList)
   var futSym = genSym(nskVar, "future")
   result.add newVarStmt(futSym, asyncProc) # -> var future<x> = y
   result.add newNimNode(nnkYieldStmt).add(futSym) # -> yield future<x>
   valueReceiver = newDotExpr(futSym, newIdentNode("read")) # -> future<x>.read
+  result.add generateExceptionCheck(futSym, exceptBranch, rootReceiver)
 
 proc processBody(node, retFutureSym: PNimrodNode,
-                 subtypeName: string): PNimrodNode {.compileTime.} =
+                 subtypeName: string,
+                 exceptBranch: PNimrodNode): PNimrodNode {.compileTime.} =
+  #echo(node.treeRepr)
   result = node
   case node.kind
   of nnkReturnStmt:
@@ -795,7 +826,7 @@ proc processBody(node, retFutureSym: PNimrodNode,
         result.add newCall(newIdentNode("complete"), retFutureSym)
     else:
       result.add newCall(newIdentNode("complete"), retFutureSym,
-        node[0].processBody(retFutureSym, subtypeName))
+        node[0].processBody(retFutureSym, subtypeName, exceptBranch))
 
     result.add newNimNode(nnkReturnStmt).add(newNilLit())
     return # Don't process the children of this return stmt
@@ -808,16 +839,16 @@ proc processBody(node, retFutureSym: PNimrodNode,
       of nnkCall:
         # await foo(p, x)
         var futureValue: PNimrodNode
-        createVar("future" & $node[1][0].toStrLit, node[1], futureValue)
-        result.add futureValue
+        createVar("future" & $node[1][0].toStrLit, node[1], futureValue,
+                  futureValue)
       else:
         error("Invalid node kind in 'await', got: " & $node[1].kind)
     elif node[1].kind == nnkCommand and node[1][0].kind == nnkIdent and
          node[1][0].ident == !"await":
       # foo await x
       var newCommand = node
-      createVar("future" & $node[0].toStrLit, node[1][1], newCommand[1])
-      result.add newCommand
+      createVar("future" & $node[0].toStrLit, node[1][1], newCommand[1],
+                newCommand)
 
   of nnkVarSection, nnkLetSection:
     case node[0][2].kind
@@ -826,8 +857,7 @@ proc processBody(node, retFutureSym: PNimrodNode,
         # var x = await y
         var newVarSection = node # TODO: Should this use copyNimNode?
         createVar("future" & $node[0][0].ident, node[0][2][1],
-          newVarSection[0][2])
-        result.add newVarSection
+          newVarSection[0][2], newVarSection)
     else: discard
   of nnkAsgn:
     case node[1].kind
@@ -835,19 +865,42 @@ proc processBody(node, retFutureSym: PNimrodNode,
       if node[1][0].ident == !"await":
         # x = await y
         var newAsgn = node
-        createVar("future" & $node[0].toStrLit, node[1][1], newAsgn[1])
-        result.add newAsgn
+        createVar("future" & $node[0].toStrLit, node[1][1], newAsgn[1], newAsgn)
     else: discard
   of nnkDiscardStmt:
     # discard await x
     if node[0][0].kind == nnkIdent and node[0][0].ident == !"await":
-      var dummy = newNimNode(nnkStmtList)
-      createVar("futureDiscard_" & $toStrLit(node[0][1]), node[0][1], dummy)
+      var newDiscard = node
+      createVar("futureDiscard_" & $toStrLit(node[0][1]), node[0][1],
+                newDiscard[0], newDiscard)
+  of nnkTryStmt:
+    # try: await x; except: ...
+    result = newNimNode(nnkStmtList)
+    proc processForTry(n: PNimrodNode, i: var int,
+                       res: PNimrodNode): bool {.compileTime.} =
+      result = false
+      while i < n[0].len:
+        var processed = processBody(n[0][i], retFutureSym, subtypeName, n[1])
+        if processed.kind != n[0][i].kind or processed.len != n[0][i].len:
+          expectKind(processed, nnkStmtList)
+          expectKind(processed[2][1], nnkElse)
+          i.inc
+          discard processForTry(n, i, processed[2][1][0])
+          res.add processed
+          result = true
+        else:
+          res.add n[0][i]
+          i.inc
+    var i = 0
+    if not processForTry(node, i, result):
+      var temp = node
+      temp[0] = result
+      result = temp
+    return
   else: discard
-  
+
   for i in 0 .. <result.len:
-    result[i] = processBody(result[i], retFutureSym, subtypeName)
-  #echo(treeRepr(result))
+    result[i] = processBody(result[i], retFutureSym, subtypeName, exceptBranch)
 
 proc getName(node: PNimrodNode): string {.compileTime.} =
   case node.kind
@@ -894,7 +947,7 @@ macro async*(prc: stmt): stmt {.immediate.} =
   # ->   <proc_body>
   # ->   complete(retFuture, result)
   var iteratorNameSym = genSym(nskIterator, $prc[0].getName & "Iter")
-  var procBody = prc[6].processBody(retFutureSym, subtypeName)
+  var procBody = prc[6].processBody(retFutureSym, subtypeName, nil)
   if subtypeName != "void":
     procBody.insert(0, newNimNode(nnkVarSection).add(
       newIdentDefs(newIdentNode("result"), returnType[1]))) # -> var result: T
