@@ -2620,7 +2620,7 @@ proc `[]=`*[Idx, T](a: var array[Idx, T], x: TSlice[int], b: openArray[T]) =
   if L == b.len:
     for i in 0 .. <L: a[i+x.a] = b[i]
   else:
-    sysFatal(EOutOfRange, "differing lengths for slice assignment")
+    sysFatal(EOutOfRange, "different lengths for slice assignment")
 
 proc `[]`*[Idx, T](a: array[Idx, T], x: TSlice[Idx]): seq[T] =
   ## slice operation for arrays. Negative indexes are **not** supported
@@ -2642,7 +2642,7 @@ proc `[]=`*[Idx, T](a: var array[Idx, T], x: TSlice[Idx], b: openArray[T]) =
       a[j] = b[i]
       inc(j)
   else:
-    sysFatal(EOutOfRange, "differing lengths for slice assignment")
+    sysFatal(EOutOfRange, "different lengths for slice assignment")
 
 proc `[]`*[T](s: seq[T], x: TSlice[int]): seq[T] = 
   ## slice operation for sequences. Negative indexes are supported.

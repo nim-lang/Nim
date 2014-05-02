@@ -313,6 +313,7 @@ proc mark(gch: var TGcHeap, c: PCell) =
       if not containsOrIncl(gch.marked, d):
         forAllChildren(d, waMarkPrecise)
   else:
+    # XXX no 'if c.refCount != rcBlack' here?
     c.refCount = rcBlack
     gcAssert gch.tempStack.len == 0, "stack not empty!"
     forAllChildren(c, waMarkPrecise)

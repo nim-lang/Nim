@@ -597,7 +597,7 @@ const
     mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr, mStrToStr, mEnumToStr, 
     mAnd, mOr, mEqStr, mLeStr, mLtStr, mEqSet, mLeSet, mLtSet, mMulSet, 
     mPlusSet, mMinusSet, mSymDiffSet, mConStrStr, mConArrArr, mConArrT, 
-    mConTArr, mConTT, mSlice, 
+    mConTArr, mConTT,
     mAppendStrCh, mAppendStrStr, mAppendSeqElem, 
     mInRange, mInSet, mRepr,
     mRand, 
