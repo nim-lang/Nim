@@ -640,8 +640,8 @@ proc unmapViewOfFile*(lpBaseAddress: pointer): WINBOOL {.stdcall,
 
 type
   TOVERLAPPED* {.pure, inheritable.} = object
-    Internal*: DWORD
-    InternalHigh*: DWORD
+    Internal*: PULONG
+    InternalHigh*: PULONG
     Offset*: DWORD
     OffsetHigh*: DWORD
     hEvent*: THANDLE
