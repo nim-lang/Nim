@@ -811,7 +811,7 @@ template createVar(futSymName: string, asyncProc: PNimrodNode,
   result.add generateExceptionCheck(futSym, exceptBranch, rootReceiver)
 
 proc processBody(node, retFutureSym: PNimrodNode,
-                 subtypeName: string,
+                 subTypeIsVoid: bool,
                  exceptBranch: PNimrodNode): PNimrodNode {.compileTime.} =
   #echo(node.treeRepr)
   result = node
@@ -819,14 +819,14 @@ proc processBody(node, retFutureSym: PNimrodNode,
   of nnkReturnStmt:
     result = newNimNode(nnkStmtList)
     if node[0].kind == nnkEmpty:
-      if subtypeName != "void":
+      if not subtypeIsVoid:
         result.add newCall(newIdentNode("complete"), retFutureSym,
             newIdentNode("result"))
       else:
         result.add newCall(newIdentNode("complete"), retFutureSym)
     else:
       result.add newCall(newIdentNode("complete"), retFutureSym,
-        node[0].processBody(retFutureSym, subtypeName, exceptBranch))
+        node[0].processBody(retFutureSym, subtypeIsVoid, exceptBranch))
 
     result.add newNimNode(nnkReturnStmt).add(newNilLit())
     return # Don't process the children of this return stmt
@@ -880,7 +880,7 @@ proc processBody(node, retFutureSym: PNimrodNode,
                        res: PNimrodNode): bool {.compileTime.} =
       result = false
       while i < n[0].len:
-        var processed = processBody(n[0][i], retFutureSym, subtypeName, n[1])
+        var processed = processBody(n[0][i], retFutureSym, subtypeIsVoid, n[1])
         if processed.kind != n[0][i].kind or processed.len != n[0][i].len:
           expectKind(processed, nnkStmtList)
           expectKind(processed[2][1], nnkElse)
@@ -900,7 +900,7 @@ proc processBody(node, retFutureSym: PNimrodNode,
   else: discard
 
   for i in 0 .. <result.len:
-    result[i] = processBody(result[i], retFutureSym, subtypeName, exceptBranch)
+    result[i] = processBody(result[i], retFutureSym, subtypeIsVoid, exceptBranch)
 
 proc getName(node: PNimrodNode): string {.compileTime.} =
   case node.kind
@@ -920,35 +920,36 @@ macro async*(prc: stmt): stmt {.immediate.} =
   hint("Processing " & prc[0].getName & " as an async proc.")
 
   let returnType = prc[3][0]
-  var subtypeName = ""
   # Verify that the return type is a PFuture[T]
   if returnType.kind == nnkIdent:
     error("Expected return type of 'PFuture' got '" & $returnType & "'")
   elif returnType.kind == nnkBracketExpr:
     if $returnType[0] != "PFuture":
       error("Expected return type of 'PFuture' got '" & $returnType[0] & "'")
-    subtypeName = $returnType[1].ident
-  elif returnType.kind == nnkEmpty:
-    subtypeName = "void"
+
+  let subtypeIsVoid = returnType.kind == nnkEmpty
 
   var outerProcBody = newNimNode(nnkStmtList)
 
   # -> var retFuture = newFuture[T]()
   var retFutureSym = genSym(nskVar, "retFuture")
+  var subRetType =
+    if returnType.kind == nnkEmpty: newIdentNode("void")
+    else: returnType[1]
   outerProcBody.add(
     newVarStmt(retFutureSym, 
       newCall(
         newNimNode(nnkBracketExpr).add(
           newIdentNode(!"newFuture"), # TODO: Strange bug here? Remove the `!`.
-          newIdentNode(subtypeName))))) # Get type from return type of this proc
+          subRetType)))) # Get type from return type of this proc
   
   # -> iterator nameIter(): PFutureBase {.closure.} = 
   # ->   var result: T
   # ->   <proc_body>
   # ->   complete(retFuture, result)
   var iteratorNameSym = genSym(nskIterator, $prc[0].getName & "Iter")
-  var procBody = prc[6].processBody(retFutureSym, subtypeName, nil)
-  if subtypeName != "void":
+  var procBody = prc[6].processBody(retFutureSym, subtypeIsVoid, nil)
+  if not subtypeIsVoid:
     procBody.insert(0, newNimNode(nnkVarSection).add(
       newIdentDefs(newIdentNode("result"), returnType[1]))) # -> var result: T
     procBody.add(
@@ -977,7 +978,7 @@ macro async*(prc: stmt): stmt {.immediate.} =
   for i in 0 .. <result[4].len:
     if result[4][i].ident == !"async":
       result[4].del(i)
-  if subtypeName == "void":
+  if subtypeIsVoid:
     # Add discardable pragma.
     result[4].add(newIdentNode("discardable"))
     if returnType.kind == nnkEmpty:
