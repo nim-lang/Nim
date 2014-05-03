@@ -298,7 +298,13 @@ when not defined(noSignalHandler):
       elif s == SIGILL: action("SIGILL: Illegal operation.\n")
       elif s == SIGBUS: 
         action("SIGBUS: Illegal storage access. (Attempt to read from nil?)\n")
-      else: action("unknown signal\n")
+      else:
+        block platformSpecificSignal:
+          when defined(SIGPIPE):
+            if s == SIGPIPE:
+              action("SIGPIPE: Pipe closed.\n")
+              break platformSpecificSignal
+          action("unknown signal\n")
 
     # print stack trace and quit
     when hasSomeStackTrace:
@@ -323,6 +329,8 @@ when not defined(noSignalHandler):
     c_signal(SIGFPE, signalHandler)
     c_signal(SIGILL, signalHandler)
     c_signal(SIGBUS, signalHandler)
+    when defined(SIGPIPE):
+      c_signal(SIGPIPE, signalHandler)
 
   registerSignalHandler() # call it in initialization section
 
