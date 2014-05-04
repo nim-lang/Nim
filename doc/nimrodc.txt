@@ -360,7 +360,7 @@ Example:
   static int cvariable = 420;
   """.}
 
-  proc embedsC() {.noStackFrame.} = 
+  proc embedsC() {.asmNoStackFrame.} = 
     var nimrodVar = 89
     # use backticks to access Nimrod symbols within an emit section:
     {.emit: """fprintf(stdout, "%d\n", cvariable + (int)`nimrodVar`);""".}

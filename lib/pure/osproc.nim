@@ -801,7 +801,7 @@ elif not defined(useNimRtl):
   proc startProcessAfterFork(data: ptr TStartProcessData) =
     # Warning: no GC here!
     # Or anythink that touches global structures - all called nimrod procs
-    # must be marked with noStackFrame. Inspect C code after making changes.
+    # must be marked with asmNoStackFrame. Inspect C code after making changes.
     if not data.optionPoParentStreams:
       discard close(data.pStdin[writeIdx])
       if dup2(data.pStdin[readIdx], readIdx) < 0:
