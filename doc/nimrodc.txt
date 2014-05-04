@@ -361,7 +361,7 @@ Example:
   """.}
 
   {.push stackTrace:off.}
-  proc embedsC() = 
+  proc embedsC() =
     var nimrodVar = 89
     # use backticks to access Nimrod symbols within an emit section:
     {.emit: """fprintf(stdout, "%d\n", cvariable + (int)`nimrodVar`);""".}
