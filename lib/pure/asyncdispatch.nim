@@ -869,7 +869,8 @@ proc processBody(node, retFutureSym: PNimrodNode,
     else: discard
   of nnkDiscardStmt:
     # discard await x
-    if node[0][0].kind == nnkIdent and node[0][0].ident == !"await":
+    if node[0].kind != nnkEmpty and node[0][0].kind == nnkIdent and
+          node[0][0].ident == !"await":
       var newDiscard = node
       createVar("futureDiscard_" & $toStrLit(node[0][1]), node[0][1],
                 newDiscard[0], newDiscard)
