@@ -284,11 +284,11 @@ proc resetMemory =
     echo GC_getStatistics()
 
 const
-  SimiluateCaasMemReset = false
+  SimulateCaasMemReset = false
   PrintRopeCacheStats = false
 
 proc mainCommand* =
-  when SimiluateCaasMemReset:
+  when SimulateCaasMemReset:
     gGlobalOptions.incl(optCaasEnabled)
 
   # In "nimrod serve" scenario, each command must reset the registered passes
@@ -454,6 +454,6 @@ proc mainCommand* =
     echo "  efficiency: ", formatFloat(1-(gCacheMisses.float/gCacheTries.float),
                                        ffDecimal, 3)
 
-  when SimiluateCaasMemReset:
+  when SimulateCaasMemReset:
     resetMemory()
 

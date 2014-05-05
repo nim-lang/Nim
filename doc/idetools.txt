@@ -528,7 +528,7 @@ suite is not integrated with the main test suite and you have to
 run it manually. First you have to compile the tester::
 
 	$ cd my/nimrod/checkout/tests
-	$ nimrod c caasdriver.nim
+	$ nimrod c testament/caasdriver.nim
 
 Running the ``caasdriver`` without parameters will attempt to process
 all the test cases in all three operation modes. If a test succeeds

@@ -25,7 +25,7 @@ const
   silentReplaceText = "--verbosity:0 --hints:off"
 
 var
-  TesterDir = getAppDir()
+  TesterDir = getAppDir() / ".."
   NimrodBin = TesterDir / "../bin/nimrod"
 
 proc replaceVars(session: var TNimrodSession, text: string): string =
