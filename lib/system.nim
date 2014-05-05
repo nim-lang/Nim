@@ -2719,9 +2719,6 @@ proc `/=`*[T: float|float32|float64] (x: var T, y: T) {.inline, noSideEffect.} =
 
 proc `&=`* (x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
 
-proc rand*(max: int): int {.magic: "Rand", sideEffect.}
-  ## compile-time `random` function. Useful for debugging.
-
 proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
   ## converts the AST of `x` into a string representation. This is very useful
   ## for debugging.
