@@ -178,8 +178,11 @@ proc open*(filename: string, mode: TFileMode = fmRead,
 
     if newFileSize != -1:
       flags = flags or O_CREAT or O_TRUNC
+      var permissions_mode = S_IRUSR or S_IWUSR
+      result.handle = open(filename, flags, permissions_mode)
+    else:
+      result.handle = open(filename, flags)
 
-    result.handle = open(filename, flags)
     if result.handle == -1:
       # XXX: errno is supposed to be set here
       # Is there an exception that wraps it?
