@@ -331,6 +331,7 @@ proc canonValue*(n: PNode): PNode =
 proc rawGenLiteral(c: PCtx; n: PNode): int =
   result = c.constants.len
   assert(n.kind != nkCall)
+  n.flags.incl nfAllConst
   c.constants.add n.canonValue
   internalAssert result < 0x7fff
 
