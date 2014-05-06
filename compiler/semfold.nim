@@ -405,10 +405,8 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
      mExit, mInc, ast.mDec, mEcho, mSwap, mAppendStrCh, 
      mAppendStrStr, mAppendSeqElem, mSetLengthStr, mSetLengthSeq, 
      mParseExprToAst, mParseStmtToAst, mExpandToAst, mTypeTrait,
-     mNLen..mNError, mEqRef, mSlurp, mStaticExec, mNGenSym, mSpawn:
+     mNLen..mNError, mEqRef, mSlurp, mStaticExec, mNGenSym, mSpawn, mParallel:
     discard
-  of mRand:
-    result = newIntNodeT(math.random(a.getInt.int), n)
   else: internalError(a.info, "evalOp(" & $m & ')')
   
 proc getConstIfExpr(c: PSym, n: PNode): PNode = 
