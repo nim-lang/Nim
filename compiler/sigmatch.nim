@@ -479,7 +479,7 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
     dummyParam.typ = dummyType
     addDecl(c, dummyParam)
 
-  var checkedBody = c.semTryExpr(c, body.n[3].copyTree, bufferErrors = false)
+  var checkedBody = c.semTryExpr(c, body.n[3].copyTree, bufferErrors = true)
   m.errors = bufferedMsgs
   clearBufferedMsgs()
   if checkedBody == nil: return isNone
