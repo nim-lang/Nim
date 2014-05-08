@@ -167,7 +167,7 @@ might contain some cruft even when dead code elimination is turned on. So
 the final release build should be done with ``--symbolFiles:off``.
 
 Due to the aggregation of C code it is also recommended that each project
-resists in its own directory so that the generated ``nimcache`` directory
+resides in its own directory so that the generated ``nimcache`` directory
 is not shared between different projects.
 
 
