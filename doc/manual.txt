@@ -123,7 +123,7 @@ This means that all the control structures are recognized by indentation.
 Indentation consists only of spaces; tabulators are not allowed.
 
 The indentation handling is implemented as follows: The lexer annotates the
-following token with the preceeding number of spaces; indentation is not
+following token with the preceding number of spaces; indentation is not
 a separate token. This trick allows parsing of Nimrod with only 1 token of
 lookahead.
 
@@ -617,7 +617,7 @@ Ordinal types
 
 Integers, bool, characters and enumeration types (and subranges of these
 types) belong to ordinal types. For reasons of simplicity of implementation
-the types ``uint`` and ``uint64`` are no ordinal types.
+the types ``uint`` and ``uint64`` are not ordinal types.
 
 
 Pre-defined integer types
@@ -686,7 +686,7 @@ kinds of integer types are used: the smaller type is converted to the larger.
 A `narrowing type conversion`:idx: converts a larger to a smaller type (for
 example ``int32 -> int16``. A `widening type conversion`:idx: converts a 
 smaller type to a larger type (for example ``int16 -> int32``). In Nimrod only
-widening type conversion are *implicit*:
+widening type conversions are *implicit*:
 
 .. code-block:: nimrod
   var myInt16 = 5i16
@@ -1519,7 +1519,7 @@ Most calling conventions exist only for the Windows 32-bit platform.
 
 Assigning/passing a procedure to a procedural variable is only allowed if one
 of the following conditions hold:
-1) The procedure that is accessed resists in the current module.
+1) The procedure that is accessed resides in the current module.
 2) The procedure is marked with the ``procvar`` pragma (see `procvar pragma`_).
 3) The procedure has a calling convention that differs from ``nimcall``.
 4) The procedure is anonymous.
@@ -1527,8 +1527,8 @@ of the following conditions hold:
 The rules' purpose is to prevent the case that extending a non-``procvar`` 
 procedure with default parameters breaks client code.
 
-The default calling convention is ``nimcall``, unless it is an inner proc (
-a proc inside of a proc). For an inner proc an analysis is performed whether it
+The default calling convention is ``nimcall``, unless it is an inner proc (a
+proc inside of a proc). For an inner proc an analysis is performed whether it
 accesses its environment. If it does so, it has the calling convention
 ``closure``, otherwise it has the calling convention ``nimcall``.
 
