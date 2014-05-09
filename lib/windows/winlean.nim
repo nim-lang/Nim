@@ -640,8 +640,8 @@ proc unmapViewOfFile*(lpBaseAddress: pointer): WINBOOL {.stdcall,
 
 type
   TOVERLAPPED* {.pure, inheritable.} = object
-    Internal*: DWORD
-    InternalHigh*: DWORD
+    Internal*: PULONG
+    InternalHigh*: PULONG
     Offset*: DWORD
     OffsetHigh*: DWORD
     hEvent*: THANDLE
@@ -718,4 +718,12 @@ proc WSASend*(s: TSocketHandle, buf: ptr TWSABuf, bufCount: DWORD,
   stdcall, importc: "WSASend", dynlib: "Ws2_32.dll".}
 
 proc get_osfhandle*(fd:TFileHandle): THandle {.
-  importc:"_get_osfhandle", header:"<io.h>".}
+  importc: "_get_osfhandle", header:"<io.h>".}
+
+proc getSystemTimes*(lpIdleTime, lpKernelTime, 
+                     lpUserTime: var TFILETIME): WINBOOL {.stdcall,
+  dynlib: "kernel32", importc: "GetSystemTimes".}
+
+proc getProcessTimes*(hProcess: THandle; lpCreationTime, lpExitTime,
+  lpKernelTime, lpUserTime: var TFILETIME): WINBOOL {.stdcall,
+  dynlib: "kernel32", importc: "GetProcessTimes".}

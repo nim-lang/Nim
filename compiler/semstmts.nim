@@ -190,7 +190,7 @@ proc semCase(c: PContext, n: PNode): PNode =
   var typ = commonTypeBegin
   var hasElse = false
   case skipTypes(n.sons[0].typ, abstractVarRange-{tyTypeDesc}).kind
-  of tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32:
+  of tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32, tyBool:
     chckCovered = true
   of tyFloat..tyFloat128, tyString, tyError:
     discard

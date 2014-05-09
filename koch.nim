@@ -167,7 +167,7 @@ const
   cleanExt = [
     ".ppu", ".o", ".obj", ".dcu", ".~pas", ".~inc", ".~dsk", ".~dpr",
     ".map", ".tds", ".err", ".bak", ".pyc", ".exe", ".rod", ".pdb", ".idb",
-    ".idx"
+    ".idx", ".ilk"
   ]
   ignore = [
     ".bzrignore", "nimrod", "nimrod.exe", "koch", "koch.exe", ".gitignore"

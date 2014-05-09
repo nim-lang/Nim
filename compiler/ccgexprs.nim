@@ -1623,7 +1623,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mIncl, mExcl, mCard, mLtSet, mLeSet, mEqSet, mMulSet, mPlusSet, mMinusSet,
      mInSet:
     genSetOp(p, e, d, op)
-  of mNewString, mNewStringOfCap, mCopyStr, mCopyStrLast, mExit, mRand:
+  of mNewString, mNewStringOfCap, mCopyStr, mCopyStrLast, mExit:
     var opr = e.sons[0].sym
     if lfNoDecl notin opr.loc.flags:
       discard cgsym(p.module, opr.loc.r.ropeToStr)

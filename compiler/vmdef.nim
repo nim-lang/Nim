@@ -207,7 +207,7 @@ const
   largeInstrs* = { # instructions which use 2 int32s instead of 1:
     opcSubStr, opcConv, opcCast, opcNewSeq, opcOf}
   slotSomeTemp* = slotTempUnknown
-  relativeJumps* = {opcTJmp, opcFJmp, opcJmp}
+  relativeJumps* = {opcTJmp, opcFJmp, opcJmp, opcJmpBack}
 
 template opcode*(x: TInstr): TOpcode {.immediate.} = TOpcode(x.uint32 and 0xff'u32)
 template regA*(x: TInstr): TRegister {.immediate.} = TRegister(x.uint32 shr 8'u32 and 0xff'u32)

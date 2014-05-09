@@ -331,6 +331,7 @@ proc canonValue*(n: PNode): PNode =
 proc rawGenLiteral(c: PCtx; n: PNode): int =
   result = c.constants.len
   assert(n.kind != nkCall)
+  n.flags.incl nfAllConst
   c.constants.add n.canonValue
   internalAssert result < 0x7fff
 
@@ -1622,7 +1623,7 @@ proc genProc(c: PCtx; s: PSym): int =
     c.gABC(body, opcEof, eofInstr.regA)
     c.optimizeJumps(result)
     s.offset = c.prc.maxSlots
-    #if s.name.s == "addStuff":
+    #if s.name.s == "parse_until_symbol":
     #  echo renderTree(body)
     #  c.echoCode(result)
     c.prc = oldPrc
