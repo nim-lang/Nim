@@ -270,7 +270,7 @@ proc OPENSSL_config*(configName: cstring){.cdecl, dynlib: DLLSSLName, importc.}
 
 when not defined(windows):
   proc CRYPTO_set_mem_functions(a,b,c: pointer){.cdecl, 
-    dynlib: DLLSSLName, importc.}
+    dynlib: DLLUtilName, importc.}
 
 proc CRYPTO_malloc_init*() =
   when not defined(windows):
