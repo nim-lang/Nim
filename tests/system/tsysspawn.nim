@@ -4,20 +4,22 @@ discard """
   cmd: "nimrod $target --threads:on $options $file"
 """
 
+import threadpool
+
 var
   x, y = 0
 
 proc p1 =
-  for i in 0 .. 1_000_000:
+  for i in 0 .. 10_000:
     discard
 
-  inc x
+  atomicInc x
 
 proc p2 =
-  for i in 0 .. 1_000_000:
+  for i in 0 .. 10_000:
     discard
 
-  inc y, 2
+  atomicInc y, 2
 
 for i in 0.. 3:
   spawn(p1())

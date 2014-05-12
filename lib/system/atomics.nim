@@ -1,13 +1,14 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
 ## Atomic operations for Nimrod.
+{.push stackTrace:off.}
 
 when (defined(gcc) or defined(llvm_gcc)) and hasThreadSupport:
   type 
@@ -203,3 +204,31 @@ proc atomicDec*(memLoc: var int, x: int = 1): int =
   else:
     dec(memLoc, x)
     result = memLoc
+
+when defined(windows) and not defined(gcc):
+  proc interlockedCompareExchange(p: pointer; exchange, comparand: int32): int32
+    {.importc: "InterlockedCompareExchange", header: "<windows.h>", cdecl.}
+
+  proc cas*[T: bool|int](p: ptr T; oldValue, newValue: T): bool =
+    interlockedCompareExchange(p, newValue.int32, oldValue.int32) != 0
+
+else:
+  # this is valid for GCC and Intel C++
+  proc cas*[T: bool|int](p: ptr T; oldValue, newValue: T): bool
+    {.importc: "__sync_bool_compare_and_swap", nodecl.}
+  # XXX is this valid for 'int'?
+
+
+when (defined(x86) or defined(amd64)) and defined(gcc):
+  proc cpuRelax {.inline.} =
+    {.emit: """asm volatile("pause" ::: "memory");""".}
+elif (defined(x86) or defined(amd64)) and defined(vcc):
+  proc cpuRelax {.importc: "YieldProcessor", header: "<windows.h>".}
+elif defined(intelc):
+  proc cpuRelax {.importc: "_mm_pause", header: "xmmintrin.h".}
+elif false:
+  from os import sleep
+
+  proc cpuRelax {.inline.} = os.sleep(1)
+
+{.pop.}

@@ -114,11 +114,15 @@ proc callCodegenProc*(name: string, arg1: PNode;
     if arg3 != nil: result.add arg3
 
 proc createWrapperProc(f: PNode; threadParam, argsParam: PSym;
-                       varSection, call: PNode): PSym =
+                       varSection, call, barrier: PNode): PSym =
   var body = newNodeI(nkStmtList, f.info)
   body.add varSection
+  if barrier != nil:
+    body.add callCodeGenProc("barrierEnter", barrier)
   body.add callCodeGenProc("nimArgsPassingDone", newSymNode(threadParam))
   body.add call
+  if barrier != nil:
+    body.add callCodeGenProc("barrierLeave", barrier)
 
   var params = newNodeI(nkFormalParams, f.info)
   params.add emptyNode
@@ -146,7 +150,7 @@ proc createCastExpr(argsParam: PSym; objType: PType): PNode =
   result.typ = newType(tyPtr, objType.owner)
   result.typ.rawAddSon(objType)
 
-proc wrapProcForSpawn*(owner: PSym; n: PNode): PNode =
+proc wrapProcForSpawn*(owner: PSym; n: PNode; barrier: PNode = nil): PNode =
   result = newNodeI(nkStmtList, n.info)
   if n.kind notin nkCallKinds or not n.typ.isEmptyType:
     localError(n.info, "'spawn' takes a call expression of type void")
@@ -162,6 +166,7 @@ proc wrapProcForSpawn*(owner: PSym; n: PNode): PNode =
     threadParam.typ = ptrType
     argsParam.typ = ptrType
     argsParam.position = 1
+
   var objType = createObj(owner, n.info)
   incl(objType.flags, tfFinal)
   let castExpr = createCastExpr(argsParam, objType)
@@ -223,6 +228,17 @@ proc wrapProcForSpawn*(owner: PSym; n: PNode): PNode =
 
     call.add(newSymNode(temp))
 
-  let wrapper = createWrapperProc(fn, threadParam, argsParam, varSection, call)
+  var barrierAsExpr: PNode = nil
+  if barrier != nil:
+    let typ = newType(tyPtr, owner)
+    typ.rawAddSon(magicsys.getCompilerProc("Barrier").typ)
+    var field = newSym(skField, getIdent"barrier", owner, n.info)
+    field.typ = typ
+    objType.addField(field)
+    result.add newFastAsgnStmt(newDotExpr(scratchObj, field), barrier)
+    barrierAsExpr = indirectAccess(castExpr, field, n.info)
+
+  let wrapper = createWrapperProc(fn, threadParam, argsParam, varSection, call,
+                                  barrierAsExpr)
   result.add callCodeGenProc("nimSpawn", wrapper.newSymNode,
                              genAddrOf(scratchObj.newSymNode))

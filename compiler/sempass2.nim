@@ -89,7 +89,7 @@ proc initVarViaNew(a: PEffects, n: PNode) =
   if n.kind != nkSym: return
   let s = n.sym
   if {tfNeedsInit, tfNotNil} * s.typ.flags <= {tfNotNil}:
-    # 'x' is not nil, but that doesn't mean it's not nil children
+    # 'x' is not nil, but that doesn't mean its "not nil" children
     # are initialized:
     initVar(a, n)
 
@@ -478,7 +478,7 @@ proc trackBlock(tracked: PEffects, n: PNode) =
   else:
     track(tracked, n)
 
-proc isTrue(n: PNode): bool =
+proc isTrue*(n: PNode): bool =
   n.kind == nkSym and n.sym.kind == skEnumField and n.sym.position != 0 or
     n.kind == nkIntLit and n.intVal != 0
 

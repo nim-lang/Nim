@@ -9,7 +9,8 @@
 
 ## This module implements the 'implies' relation for guards.
 
-import ast, astalgo, msgs, magicsys, nimsets, trees, types, renderer, idents
+import ast, astalgo, msgs, magicsys, nimsets, trees, types, renderer, idents,
+  saturate
 
 const
   someEq = {mEqI, mEqI64, mEqF64, mEqEnum, mEqCh, mEqB, mEqRef, mEqProc,
@@ -24,6 +25,17 @@ const
   someLen = {mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq}
 
   someIn = {mInRange, mInSet}
+
+  someHigh = {mHigh}
+  # we don't list unsigned here because wrap around semantics suck for
+  # proving anything:
+  someAdd = {mAddI, mAddI64, mAddF64, mSucc}
+  someSub = {mSubI, mSubI64, mSubF64, mPred}
+  someMul = {mMulI, mMulI64, mMulF64}
+  someDiv = {mDivI, mDivI64, mDivF64}
+  someMod = {mModI, mModI64}
+  someMax = {mMaxI, mMaxI64, mMaxF64}
+  someMin = {mMinI, mMinI64, mMinF64}
 
 proc isValue(n: PNode): bool = n.kind in {nkCharLit..nkNilLit}
 proc isLocation(n: PNode): bool = not n.isValue
@@ -69,19 +81,24 @@ proc isLetLocation(m: PNode, isApprox: bool): bool =
 
 proc interestingCaseExpr*(m: PNode): bool = isLetLocation(m, true)
 
-proc getMagicOp(name: string, m: TMagic): PSym =
+proc createMagic*(name: string, m: TMagic): PSym =
   result = newSym(skProc, getIdent(name), nil, unknownLineInfo())
   result.magic = m
 
 let
-  opLe = getMagicOp("<=", mLeI)
-  opLt = getMagicOp("<", mLtI)
-  opAnd = getMagicOp("and", mAnd)
-  opOr = getMagicOp("or", mOr)
-  opNot = getMagicOp("not", mNot)
-  opIsNil = getMagicOp("isnil", mIsNil)
-  opContains = getMagicOp("contains", mInSet)
-  opEq = getMagicOp("==", mEqI)
+  opLe = createMagic("<=", mLeI)
+  opLt = createMagic("<", mLtI)
+  opAnd = createMagic("and", mAnd)
+  opOr = createMagic("or", mOr)
+  opNot = createMagic("not", mNot)
+  opIsNil = createMagic("isnil", mIsNil)
+  opContains = createMagic("contains", mInSet)
+  opEq = createMagic("==", mEqI)
+  opAdd = createMagic("+", mAddI)
+  opSub = createMagic("-", mSubI)
+  opMul = createMagic("*", mMulI)
+  opDiv = createMagic("div", mDivI)
+  opLen = createMagic("len", mLengthSeq)
 
 proc swapArgs(fact: PNode, newOp: PSym): PNode =
   result = newNodeI(nkCall, fact.info, 3)
@@ -137,17 +154,118 @@ proc neg(n: PNode): PNode =
     result.sons[0] = newSymNode(opNot)
     result.sons[1] = n
 
-proc buildIsNil(arg: PNode): PNode =
-  result = newNodeI(nkCall, arg.info, 2)
-  result.sons[0] = newSymNode(opIsNil)
-  result.sons[1] = arg
+proc buildCall(op: PSym; a: PNode): PNode =
+  result = newNodeI(nkCall, a.info, 2)
+  result.sons[0] = newSymNode(op)
+  result.sons[1] = a
+
+proc buildCall(op: PSym; a, b: PNode): PNode =
+  result = newNodeI(nkCall, a.info, 3)
+  result.sons[0] = newSymNode(op)
+  result.sons[1] = a
+  result.sons[2] = b
+
+proc `+@`*(a: PNode; b: BiggestInt): PNode =
+  opAdd.buildCall(a, nkIntLit.newIntNode(b))
+
+proc `|+|`(a, b: PNode): PNode =
+  result = copyNode(a)
+  if a.kind in {nkCharLit..nkUInt64Lit}: result.intVal = a.intVal |+| b.intVal
+  else: result.floatVal = a.floatVal + b.floatVal
+
+proc `|*|`(a, b: PNode): PNode =
+  result = copyNode(a)
+  if a.kind in {nkCharLit..nkUInt64Lit}: result.intVal = a.intVal |*| b.intVal
+  else: result.floatVal = a.floatVal * b.floatVal
+
+proc zero(): PNode = nkIntLit.newIntNode(0)
+proc one(): PNode = nkIntLit.newIntNode(1)
+proc minusOne(): PNode = nkIntLit.newIntNode(-1)
+
+proc lowBound*(x: PNode): PNode = nkIntLit.newIntNode(firstOrd(x.typ))
+proc highBound*(x: PNode): PNode =
+  if x.typ.skipTypes(abstractInst).kind == tyArray:
+    nkIntLit.newIntNode(lastOrd(x.typ))
+  else:
+    opAdd.buildCall(opLen.buildCall(x), minusOne())
+
+proc canon*(n: PNode): PNode =
+  # XXX for now only the new code in 'semparallel' uses this
+  if n.safeLen >= 1:
+    result = newNodeI(n.kind, n.info, n.len)
+    for i in 0 .. < n.safeLen:
+      result.sons[i] = canon(n.sons[i])
+  else:
+    result = n
+  case result.getMagic
+  of someEq, someAdd, someMul, someMin, someMax:
+    # these are symmetric; put value as last:
+    if result.sons[1].isValue and not result.sons[2].isValue:
+      result = swapArgs(result, result.sons[0].sym)
+      # (4 + foo) + 2 --> (foo + 4) + 2
+  of someHigh:
+    # high == len+(-1)
+    result = opAdd.buildCall(opLen.buildCall(result[1]), minusOne())
+  of mUnaryMinusI, mUnaryMinusI64:
+    result = buildCall(opAdd, result[1], newIntNode(nkIntLit, -1))
+  of someSub:
+    # x - 4  -->  x + (-4)
+    var b = result[2]
+    if b.kind in {nkCharLit..nkUInt64Lit} and b.intVal != low(BiggestInt):
+      b = copyNode(b)
+      b.intVal = -b.intVal
+      result = buildCall(opAdd, result[1], b)
+    elif b.kind in {nkFloatLit..nkFloat64Lit}:
+      b = copyNode(b)
+      b.floatVal = -b.floatVal
+      result = buildCall(opAdd, result[1], b)    
+  of someLen:
+    result.sons[0] = opLen.newSymNode
+  else: discard
+
+  # re-association:
+  # (foo+5)+5 --> foo+10;  same for '*'
+  case result.getMagic
+  of someAdd:
+    if result[2].isValue and 
+        result[1].getMagic in someAdd and result[1][2].isValue:
+      result = opAdd.buildCall(result[1][1], result[1][2] |+| result[2])
+  of someMul:
+    if result[2].isValue and 
+        result[1].getMagic in someMul and result[1][2].isValue:
+      result = opAdd.buildCall(result[1][1], result[1][2] |*| result[2])
+  else: discard
+
+  # most important rule: (x-4) < a.len -->  x < a.len+4
+  case result.getMagic
+  of someLe, someLt:
+    let x = result[1]
+    let y = result[2]
+    if x.kind in nkCallKinds and x.len == 3 and x[2].isValue and 
+        isLetLocation(x[1], true):
+      case x.getMagic
+      of someSub:
+        result = buildCall(result[0].sym, x[1], opAdd.buildCall(y, x[2]))
+      of someAdd:
+        result = buildCall(result[0].sym, x[1], opSub.buildCall(y, x[2]))
+      else: discard
+    elif y.kind in nkCallKinds and y.len == 3 and y[2].isValue and 
+        isLetLocation(y[1], true):
+      # a.len < x-3
+      case y.getMagic
+      of someSub:
+        result = buildCall(result[0].sym, y[1], opAdd.buildCall(x, y[2]))
+      of someAdd:
+        result = buildCall(result[0].sym, y[1], opSub.buildCall(x, y[2]))
+      else: discard
+  else: discard
 
 proc usefulFact(n: PNode): PNode =
   case n.getMagic
   of someEq:
     if skipConv(n.sons[2]).kind == nkNilLit and (
         isLetLocation(n.sons[1], false) or isVar(n.sons[1])):
-      result = buildIsNil(n.sons[1])
+      result = opIsNil.buildCall(n.sons[1])
     else:
       if isLetLocation(n.sons[1], true) or isLetLocation(n.sons[2], true):
         # XXX algebraic simplifications!  'i-1 < a.len' --> 'i < a.len+1'
@@ -217,7 +335,7 @@ proc addFactNeg*(m: var TModel, n: PNode) =
   let n = n.neg
   if n != nil: addFact(m, n)
 
-proc sameTree(a, b: PNode): bool = 
+proc sameTree*(a, b: PNode): bool = 
   result = false
   if a == b:
     result = true
@@ -519,7 +637,46 @@ proc doesImply*(facts: TModel, prop: PNode): TImplication =
       if result != impUnknown: return
 
 proc impliesNotNil*(facts: TModel, arg: PNode): TImplication =
-  result = doesImply(facts, buildIsNil(arg).neg)
+  result = doesImply(facts, opIsNil.buildCall(arg).neg)
+
+proc proveLe*(m: TModel; a, b: PNode): TImplication =
+  let res = canon(opLe.buildCall(a, b))
+  # we hardcode lots of axioms here:
+  let a = res[1]
+  let b = res[2]
+  #   0 <= 3
+  if a.isValue and b.isValue:
+    return if leValue(a, b): impYes else: impNo
+
+  # use type information too:  x <= 4  iff  high(x) <= 4
+  if b.isValue and a.typ != nil and a.typ.isOrdinalType:
+    if lastOrd(a.typ) <= b.intVal: return impYes
+  # 3 <= x   iff  low(x) <= 3
+  if a.isValue and b.typ != nil and b.typ.isOrdinalType:
+    if firstOrd(b.typ) <= a.intVal: return impYes
+
+  # x <= x
+  if sameTree(a, b): return impYes
+
+  #   x <= x+c  iff 0 <= c
+  if b.getMagic in someAdd and sameTree(a, b[1]):
+    return proveLe(m, zero(), b[2])
+
+  #   x <= x*c  if  1 <= c and 0 <= x:
+  if b.getMagic in someMul and sameTree(a, b[1]):
+    if proveLe(m, one(), b[2]) == impYes and proveLe(m, zero(), a) == impYes:
+      return impYes
+
+  #   x div c <= x   if   1 <= c  and  0 <= x:
+  if a.getMagic in someDiv and sameTree(a[1], b):
+    if proveLe(m, one(), a[2]) == impYes and proveLe(m, zero(), b) == impYes:
+      return impYes
+
+  # use the knowledge base:
+  return doesImply(m, res)
+
+proc addFactLe*(m: var TModel; a, b: PNode) =
+  m.add canon(opLe.buildCall(a, b))
 
 proc settype(n: PNode): PType =
   result = newType(tySet, n.typ.owner)

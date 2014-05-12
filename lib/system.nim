@@ -2934,6 +2934,3 @@ when not defined(booting):
 
   template isStatic*(x): expr = compiles(static(x))
     # checks whether `x` is a value known at compile-time
-
-when hasThreadSupport:
-  when hostOS != "standalone": include "system/sysspawn"
