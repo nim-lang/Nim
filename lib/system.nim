@@ -1460,6 +1460,13 @@ iterator `..`*[S, T](a: S, b: T): T {.inline.} =
     yield res
     inc res
 
+iterator `..`*[T](a: T): T {.inline.} =
+  ## shortcut for yielding values in this interval: ``[default(T), b]``
+  var res = 0
+  while res <= a:
+    yield res
+    inc res
+
 iterator `||`*[S, T](a: S, b: T, annotation=""): T {.
   inline, magic: "OmpParFor", sideEffect.} =
   ## parallel loop iterator. Same as `..` but the loop may run in parallel.
