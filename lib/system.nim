@@ -1461,7 +1461,7 @@ iterator `..`*[S, T](a: S, b: T): T {.inline.} =
     inc res
 
 iterator `..`*[T](a: T): T {.inline.} =
-  ## shortcut for yielding values in this interval: ``[default(T), b]``
+  ## shortcut for countup(default(T), a).
   var res = 0
   while res <= a:
     yield res
