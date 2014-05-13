@@ -152,7 +152,7 @@ proc boot(args: string) =
   copyExe(findStartNimrod(), 0.thVersion)
   for i in 0..2:
     echo "iteration: ", i+1
-    exec i.thVersion & " cc $# $# compiler" / "nimrod.nim" % [bootOptions, args]
+    exec i.thVersion & " cpp $# $# compiler" / "nimrod.nim" % [bootOptions, args]
     if sameFileContent(output, i.thVersion):
       copyExe(output, finalDest)
       echo "executables are equal: SUCCESS!"
@@ -282,7 +282,7 @@ proc tests(args: string) =
 proc temp(args: string) =
   var output = "compiler" / "nimrod".exe
   var finalDest = "bin" / "nimrod_temp".exe
-  exec("nimrod c compiler" / "nimrod")
+  exec("nimrod cpp compiler" / "nimrod")
   copyExe(output, finalDest)
   if args.len > 0: exec(finalDest & " " & args)
 
