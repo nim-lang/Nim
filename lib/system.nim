@@ -1462,7 +1462,7 @@ iterator `..`*[S, T](a: S, b: T): T {.inline.} =
 
 iterator `..`*[T](a: T): T {.inline.} =
   ## shortcut for countup(default(T), a).
-  var res = 0
+  var res: T
   while res <= a:
     yield res
     inc res
