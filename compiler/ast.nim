@@ -605,9 +605,9 @@ const
   # thus cannot be overloaded (also documented in the spec!):
   SpecialSemMagics* = {
     mDefined, mDefinedInScope, mCompiles, mLow, mHigh, mSizeOf, mIs, mOf, 
-    mEcho, mShallowCopy, mExpandToAst}
+    mEcho, mShallowCopy, mExpandToAst, mParallel}
 
-type 
+type
   PNode* = ref TNode
   TNodeSeq* = seq[PNode]
   PType* = ref TType

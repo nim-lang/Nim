@@ -68,6 +68,7 @@ proc addField*(obj: PType; s: PSym) =
   var field = newSym(skField, getIdent(s.name.s & $s.id), s.owner, s.info)
   let t = skipIntLit(s.typ)
   field.typ = t
+  assert t.kind != tyStmt
   field.position = sonsLen(obj.n)
   addSon(obj.n, newSymNode(field))
 

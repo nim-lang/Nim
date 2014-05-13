@@ -74,12 +74,20 @@ type
     data: pointer
     ready: bool # put it here for correct alignment!
     initialized: bool # whether it has even been initialized
+    shutdown: bool # the pool requests to shut down this worker thread
 
 proc nimArgsPassingDone(p: pointer) {.compilerProc.} =
   let w = cast[ptr Worker](p)
   signal(w.taskStarted)
 
+const
+  MaxThreadPoolSize* = 256 ## maximal size of the thread pool. 256 threads
+                           ## should be good enough for anybody ;-)
+
 var
+  currentPoolSize: int
+  maxPoolSize = MaxThreadPoolSize
+  minPoolSize = 4
   gSomeReady = createCondVar()
   readyWorker: ptr Worker
 
@@ -91,15 +99,9 @@ proc slave(w: ptr Worker) {.thread.} =
     await(w.taskArrived)
     assert(not w.ready)
     w.f(w, w.data)
-
-const
-  MaxThreadPoolSize* = 256 ## maximal size of the thread pool. 256 threads
-                           ## should be good enough for anybody ;-)
-
-var
-  currentPoolSize: int
-  maxPoolSize = MaxThreadPoolSize
-  minPoolSize = 4
+    if w.shutdown:
+      w.shutdown = false
+      atomicDec currentPoolSize
 
 proc setMinPoolSize*(size: range[1..MaxThreadPoolSize]) =
   ## sets the minimal thread pool size. The default value of this is 4.
@@ -183,13 +185,15 @@ proc nimSpawn(fn: WorkerProc; data: pointer) {.compilerProc.} =
             if not workersData[currentPoolSize].initialized:
               activateThread(currentPoolSize)
             let w = addr(workersData[currentPoolSize])
-            inc currentPoolSize
+            atomicInc currentPoolSize
             if selectWorker(w, fn, data):
               release(stateLock)
               return
             # else we didn't succeed but some other thread, so do nothing.
         of doShutdownThread:
-          if currentPoolSize > minPoolSize: dec currentPoolSize
+          if currentPoolSize > minPoolSize:
+            let w = addr(workersData[currentPoolSize-1])
+            w.shutdown = true
           # we don't free anything here. Too dangerous.
         release(stateLock)
       # else the acquire failed, but this means some

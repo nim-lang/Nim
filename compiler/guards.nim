@@ -160,13 +160,13 @@ proc buildCall(op: PSym; a: PNode): PNode =
   result.sons[1] = a
 
 proc buildCall(op: PSym; a, b: PNode): PNode =
-  result = newNodeI(nkCall, a.info, 3)
+  result = newNodeI(nkInfix, a.info, 3)
   result.sons[0] = newSymNode(op)
   result.sons[1] = a
   result.sons[2] = b
 
 proc `+@`*(a: PNode; b: BiggestInt): PNode =
-  opAdd.buildCall(a, nkIntLit.newIntNode(b))
+  (if b != 0: opAdd.buildCall(a, nkIntLit.newIntNode(b)) else: a)
 
 proc `|+|`(a, b: PNode): PNode =
   result = copyNode(a)

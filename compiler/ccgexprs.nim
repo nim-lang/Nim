@@ -1638,6 +1638,9 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mSpawn:
     let n = lowerings.wrapProcForSpawn(p.module.module, e.sons[1])
     expr(p, n, d)
+  of mParallel:
+    let n = semparallel.liftParallel(p.module.module, e)
+    expr(p, n, d)
   else: internalError(e.info, "genMagicExpr: " & $op)
 
 proc genConstExpr(p: BProc, n: PNode): PRope
