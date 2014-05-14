@@ -49,9 +49,10 @@ when defined(linux) or defined(nimdoc):
     ## Registers file descriptor ``fd`` to selector ``s`` with a set of TEvent
     ## ``events``.
     var event = createEventStruct(events, fd)
-    if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fd, addr(event)) != 0:
-      OSError(OSLastError())
-  
+    if events != {}:
+      if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fd, addr(event)) != 0:
+        OSError(OSLastError())
+
     var key = PSelectorKey(fd: fd, events: events, data: data)
   
     s.fds[fd] = key
@@ -61,11 +62,27 @@ when defined(linux) or defined(nimdoc):
       events: set[TEvent]): PSelectorKey {.discardable.} =
     ## Updates the events which ``fd`` wants notifications for.
     if s.fds[fd].events != events:
-      var event = createEventStruct(events, fd)
+      if events == {}:
+        # This fd is idle -- it should not be registered to epoll.
+        # But it should remain a part of this selector instance.
+        # This is to prevent epoll_wait from returning immediately
+        # because its got fds which are waiting for no events and
+        # are therefore constantly ready. (leading to 100% CPU usage).
+        if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fd, nil) != 0:
+          OSError(OSLastError())
+        s.fds[fd].events = events
+      else:
+        var event = createEventStruct(events, fd)
+        if s.fds[fd].events == {}:
+          # This fd is idle. It's not a member of this epoll instance and must
+          # be re-registered.
+          if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fd, addr(event)) != 0:
+            OSError(OSLastError())
+        else:
+          if epoll_ctl(s.epollFD, EPOLL_CTL_MOD, fd, addr(event)) != 0:
+            OSError(OSLastError())
+        s.fds[fd].events = events
       
-      s.fds[fd].events = events
-      if epoll_ctl(s.epollFD, EPOLL_CTL_MOD, fd, addr(event)) != 0:
-        OSError(OSLastError())
       result = s.fds[fd]
   
   proc unregister*(s: PSelector, fd: TSocketHandle): PSelectorKey {.discardable.} =
@@ -123,7 +140,10 @@ when defined(linux) or defined(nimdoc):
     ## Determines whether selector contains a file descriptor.
     if s.fds.hasKey(fd):
       # Ensure the underlying epoll instance still contains this fd.
-      result = epollHasFd(s, fd)
+      if s.fds[fd].events != {}:
+        result = epollHasFd(s, fd)
+      else:
+        result = true
     else:
       return false
 
