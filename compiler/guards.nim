@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -165,9 +165,6 @@ proc buildCall(op: PSym; a, b: PNode): PNode =
   result.sons[1] = a
   result.sons[2] = b
 
-proc `+@`*(a: PNode; b: BiggestInt): PNode =
-  (if b != 0: opAdd.buildCall(a, nkIntLit.newIntNode(b)) else: a)
-
 proc `|+|`(a, b: PNode): PNode =
   result = copyNode(a)
   if a.kind in {nkCharLit..nkUInt64Lit}: result.intVal = a.intVal |+| b.intVal
@@ -178,22 +175,56 @@ proc `|*|`(a, b: PNode): PNode =
   if a.kind in {nkCharLit..nkUInt64Lit}: result.intVal = a.intVal |*| b.intVal
   else: result.floatVal = a.floatVal * b.floatVal
 
+proc negate(a, b, res: PNode): PNode =
+  if b.kind in {nkCharLit..nkUInt64Lit} and b.intVal != low(BiggestInt):
+    var b = copyNode(b)
+    b.intVal = -b.intVal
+    if a.kind in {nkCharLit..nkUInt64Lit}:
+      b.intVal = b.intVal |+| a.intVal
+      result = b
+    else:
+      result = buildCall(opAdd, a, b)
+  elif b.kind in {nkFloatLit..nkFloat64Lit}:
+    var b = copyNode(b)
+    b.floatVal = -b.floatVal
+    result = buildCall(opAdd, a, b)
+  else:
+    result = res
+
 proc zero(): PNode = nkIntLit.newIntNode(0)
 proc one(): PNode = nkIntLit.newIntNode(1)
 proc minusOne(): PNode = nkIntLit.newIntNode(-1)
 
-proc lowBound*(x: PNode): PNode = nkIntLit.newIntNode(firstOrd(x.typ))
+proc lowBound*(x: PNode): PNode = 
+  result = nkIntLit.newIntNode(firstOrd(x.typ))
+  result.info = x.info
+
 proc highBound*(x: PNode): PNode =
-  if x.typ.skipTypes(abstractInst).kind == tyArray:
-    nkIntLit.newIntNode(lastOrd(x.typ))
-  else:
-    opAdd.buildCall(opLen.buildCall(x), minusOne())
+  result = if x.typ.skipTypes(abstractInst).kind == tyArray:
+             nkIntLit.newIntNode(lastOrd(x.typ))
+           else:
+             opAdd.buildCall(opLen.buildCall(x), minusOne())
+  result.info = x.info
+
+proc reassociation(n: PNode): PNode =
+  result = n
+  # (foo+5)+5 --> foo+10;  same for '*'
+  case result.getMagic
+  of someAdd:
+    if result[2].isValue and 
+        result[1].getMagic in someAdd and result[1][2].isValue:
+      result = opAdd.buildCall(result[1][1], result[1][2] |+| result[2])
+  of someMul:
+    if result[2].isValue and 
+        result[1].getMagic in someMul and result[1][2].isValue:
+      result = opAdd.buildCall(result[1][1], result[1][2] |*| result[2])
+  else: discard
 
 proc canon*(n: PNode): PNode =
   # XXX for now only the new code in 'semparallel' uses this
   if n.safeLen >= 1:
-    result = newNodeI(n.kind, n.info, n.len)
-    for i in 0 .. < n.safeLen:
+    result = shallowCopy(n)
+    for i in 0 .. < n.len:
       result.sons[i] = canon(n.sons[i])
   else:
     result = n
@@ -210,32 +241,12 @@ proc canon*(n: PNode): PNode =
     result = buildCall(opAdd, result[1], newIntNode(nkIntLit, -1))
   of someSub:
     # x - 4  -->  x + (-4)
-    var b = result[2]
-    if b.kind in {nkCharLit..nkUInt64Lit} and b.intVal != low(BiggestInt):
-      b = copyNode(b)
-      b.intVal = -b.intVal
-      result = buildCall(opAdd, result[1], b)
-    elif b.kind in {nkFloatLit..nkFloat64Lit}:
-      b = copyNode(b)
-      b.floatVal = -b.floatVal
-      result = buildCall(opAdd, result[1], b)    
+    result = negate(result[1], result[2], result)
   of someLen:
     result.sons[0] = opLen.newSymNode
   else: discard
 
-  # re-association:
-  # (foo+5)+5 --> foo+10;  same for '*'
-  case result.getMagic
-  of someAdd:
-    if result[2].isValue and 
-        result[1].getMagic in someAdd and result[1][2].isValue:
-      result = opAdd.buildCall(result[1][1], result[1][2] |+| result[2])
-  of someMul:
-    if result[2].isValue and 
-        result[1].getMagic in someMul and result[1][2].isValue:
-      result = opAdd.buildCall(result[1][1], result[1][2] |*| result[2])
-  else: discard
-
+  result = reassociation(result)
   # most important rule: (x-4) < a.len -->  x < a.len+4
   case result.getMagic
   of someLe, someLt:
@@ -245,20 +256,31 @@ proc canon*(n: PNode): PNode =
         isLetLocation(x[1], true):
       case x.getMagic
       of someSub:
-        result = buildCall(result[0].sym, x[1], opAdd.buildCall(y, x[2]))
+        result = buildCall(result[0].sym, x[1], 
+                           reassociation(opAdd.buildCall(y, x[2])))
       of someAdd:
-        result = buildCall(result[0].sym, x[1], opSub.buildCall(y, x[2]))
+        # Rule A:
+        let plus = negate(y, x[2], nil).reassociation
+        if plus != nil: result = buildCall(result[0].sym, x[1], plus)
       else: discard
     elif y.kind in nkCallKinds and y.len == 3 and y[2].isValue and 
         isLetLocation(y[1], true):
       # a.len < x-3
       case y.getMagic
       of someSub:
-        result = buildCall(result[0].sym, y[1], opAdd.buildCall(x, y[2]))
+        result = buildCall(result[0].sym, y[1],
+                           reassociation(opAdd.buildCall(x, y[2])))
       of someAdd:
-        result = buildCall(result[0].sym, y[1], opSub.buildCall(x, y[2]))
+        let plus = negate(x, y[2], nil).reassociation
+        # ensure that Rule A will not trigger afterwards with the
+        # additional 'not isLetLocation' constraint:
+        if plus != nil and not isLetLocation(x, true):
+          result = buildCall(result[0].sym, plus, y[1])
       else: discard
   else: discard
+
+proc `+@`*(a: PNode; b: BiggestInt): PNode =
+  canon(if b != 0: opAdd.buildCall(a, nkIntLit.newIntNode(b)) else: a)
 
 proc usefulFact(n: PNode): PNode =
   case n.getMagic
@@ -639,8 +661,20 @@ proc doesImply*(facts: TModel, prop: PNode): TImplication =
 proc impliesNotNil*(facts: TModel, arg: PNode): TImplication =
   result = doesImply(facts, opIsNil.buildCall(arg).neg)
 
+proc simpleSlice*(a, b: PNode): BiggestInt =
+  # returns 'c' if a..b matches (i+c)..(i+c), -1 otherwise. (i)..(i) is matched
+  # as if it is (i+0)..(i+0).
+  if guards.sameTree(a, b):
+    if a.getMagic in someAdd and a[2].kind in {nkCharLit..nkUInt64Lit}:
+      result = a[2].intVal
+    else:
+      result = 0
+  else:
+    result = -1
+
 proc proveLe*(m: TModel; a, b: PNode): TImplication =
   let res = canon(opLe.buildCall(a, b))
+  #echo renderTree(res)
   # we hardcode lots of axioms here:
   let a = res[1]
   let b = res[2]
@@ -661,6 +695,10 @@ proc proveLe*(m: TModel; a, b: PNode): TImplication =
   #   x <= x+c  iff 0 <= c
   if b.getMagic in someAdd and sameTree(a, b[1]):
     return proveLe(m, zero(), b[2])
+
+  #   x+c <= x  iff c <= 0
+  if a.getMagic in someAdd and sameTree(b, a[1]):
+    return proveLe(m, a[2], zero())
 
   #   x <= x*c  if  1 <= c and 0 <= x:
   if b.getMagic in someMul and sameTree(a, b[1]):

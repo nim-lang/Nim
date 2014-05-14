@@ -9,6 +9,8 @@
 
 ## Semantic checking for 'parallel'.
 
+# - codegen needs to support mSlice
+# - lowerings must not perform unnecessary copies
 # - slices should become "nocopy" to openArray (+)
 #   - need to perform bound checks (+)
 #
@@ -153,6 +155,8 @@ proc addLowerBoundAsFacts(c: var AnalysisCtx) =
 
 proc addSlice(c: var AnalysisCtx; n: PNode; x, le, ri: PNode) =
   checkLocal(c, n)
+  let le = le.canon
+  let ri = ri.canon
   # perform static bounds checking here; and not later!
   let oldState = c.guards.len
   addLowerBoundAsFacts(c)
@@ -166,16 +170,16 @@ proc overlap(m: TModel; x,y,c,d: PNode) =
   case proveLe(m, x, d)
   of impUnknown:
     localError(x.info,
-      "cannot prove: $# > $#; required for $#..$# disjoint from $#..$#" %
+      "cannot prove: $# > $#; required for ($#)..($#) disjoint from ($#)..($#)" %
         [?x, ?d, ?x, ?y, ?c, ?d])
   of impYes:
     case proveLe(m, c, y)
     of impUnknown:
       localError(x.info,
-        "cannot prove: $# > $#; required for $#..$# disjoint from $#..$#" %
+        "cannot prove: $# > $#; required for ($#)..($#) disjoint from ($#)..($#)" %
           [?y, ?d, ?x, ?y, ?c, ?d])
     of impYes:
-      localError(x.info, "$#..$# not disjoint from $#..$#" % [?x, ?y, ?c, ?d])
+      localError(x.info, "($#)..($#) not disjoint from ($#)..($#)" % [?x, ?y, ?c, ?d])
     of impNo: discard
   of impNo: discard
 
@@ -220,14 +224,25 @@ proc checkSlicesAreDisjoint(c: var AnalysisCtx) =
       let x = c.slices[i]
       let y = c.slices[j]
       if x.spawnId != y.spawnId and guards.sameTree(x.x, y.x):
-        if not x.inLoop and not y.inLoop:
+        if not x.inLoop or not y.inLoop:
+          # XXX strictly speaking, 'or' is not correct here and it needs to
+          # be 'and'. However this prevents too many obviously correct programs
+          # like f(a[0..x]); for i in x+1 .. a.high: f(a[i])
           overlap(c.guards, x.a, x.b, y.a, y.b)
+        elif (let k = simpleSlice(x.a, x.b); let m = simpleSlice(y.a, y.b);
+              k >= 0 and m >= 0):
+          # ah I cannot resist the temptation and add another sweet heuristic:
+          # if both slices have the form (i+k)..(i+k)  and (i+m)..(i+m) we
+          # check they are disjoint and k < stride and m < stride:
+          overlap(c.guards, x.a, x.b, y.a, y.b)
+          let stride = min(c.stride(x.a), c.stride(y.a))
+          if k < stride and m < stride:
+            discard
+          else:
+            localError(x.x.info, "cannot prove ($#)..($#) disjoint from ($#)..($#)" %
+              [?x.a, ?x.b, ?y.a, ?y.b])
         else:
-          # ah I cannot resists the temptation and add another sweet heuristic:
-          # if both slices have the form (i+c)..(i+c)  and (i+d)..(i+d) we
-          # check they are disjoint and c <= stride and d <= stride:
-          # XXX
-          localError(x.x.info, "cannot prove $#..$# disjoint from $#..$#" %
+          localError(x.x.info, "cannot prove ($#)..($#) disjoint from ($#)..($#)" %
             [?x.a, ?x.b, ?y.a, ?y.b])
 
 proc analyse(c: var AnalysisCtx; n: PNode)
@@ -369,9 +384,9 @@ proc transformSlices(n: PNode): PNode =
       result.add n[2][2]
       return result
   if n.safeLen > 0:
-    result = copyNode(n)
+    result = shallowCopy(n)
     for i in 0 .. < n.len:
-      result.add transformSlices(n.sons[i])
+      result.sons[i] = transformSlices(n.sons[i])
   else:
     result = n
 
@@ -383,9 +398,9 @@ proc transformSpawn(owner: PSym; n, barrier: PNode): PNode =
         result = transformSlices(n)
         return wrapProcForSpawn(owner, result[1], barrier)
   elif n.safeLen > 0:
-    result = copyNode(n)
+    result = shallowCopy(n)
     for i in 0 .. < n.len:
-      result.add transformSpawn(owner, n.sons[i], barrier)
+      result.sons[i] = transformSpawn(owner, n.sons[i], barrier)
   else:
     result = n
 
