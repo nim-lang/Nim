@@ -161,20 +161,4 @@ proc makeSingleLineCString*(s: string): string =
     result.add(c.toCChar)
   result.add('\"')
 
-proc makeLLVMString*(s: string): PRope = 
-  const MaxLineLength = 64
-  result = nil
-  var res = "c\""
-  for i in countup(0, len(s) - 1): 
-    if (i + 1) mod MaxLineLength == 0: 
-      app(result, toRope(res))
-      setLen(res, 0)
-    case s[i]
-    of '\0'..'\x1F', '\x80'..'\xFF', '\"', '\\': 
-      add(res, '\\')
-      add(res, toHex(ord(s[i]), 2))
-    else: add(res, s[i])
-  add(res, "\\00\"")
-  app(result, toRope(res))
-
 initTypeTables()

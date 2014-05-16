@@ -67,16 +67,6 @@ proc isKeyword(w: PIdent): bool =
 proc mangleName(s: PSym): PRope = 
   result = s.loc.r
   if result == nil: 
-    if gCmd == cmdCompileToLLVM: 
-      case s.kind
-      of skProc, skMethod, skConverter, skConst, skIterators:
-        result = ~"@"
-      of skVar, skForVar, skResult, skLet: 
-        if sfGlobal in s.flags: result = ~"@"
-        else: result = ~"%"
-      of skTemp, skParam, skType, skEnumField, skModule: 
-        result = ~"%"
-      else: internalError(s.info, "mangleName")
     when oKeepVariableNames:
       let keepOrigName = s.kind in skLocalVars - {skForVar} and 
         {sfFromGeneric, sfGlobal, sfShadowed, sfGenSym} * s.flags == {} and
@@ -142,13 +132,11 @@ proc typeName(typ: PType): PRope =
            else: ~"TY"
 
 proc getTypeName(typ: PType): PRope = 
-  if (typ.sym != nil) and ({sfImportc, sfExportc} * typ.sym.flags != {}) and
-      (gCmd != cmdCompileToLLVM): 
+  if (typ.sym != nil) and ({sfImportc, sfExportc} * typ.sym.flags != {}): 
     result = typ.sym.loc.r
   else:
     if typ.loc.r == nil:
-      typ.loc.r = if gCmd != cmdCompileToLLVM: con(typ.typeName, typ.id.toRope)
-                  else: con([~"%", typ.typeName, typ.id.toRope])
+      typ.loc.r = con(typ.typeName, typ.id.toRope)
     result = typ.loc.r
   if result == nil: internalError("getTypeName: " & $typ.kind)
   
@@ -225,9 +213,6 @@ const
     "N_SYSCALL", # this is probably not correct for all platforms,
                  # but one can #define it to what one wants 
     "N_INLINE", "N_NOINLINE", "N_FASTCALL", "N_CLOSURE", "N_NOCONV"]
-  CallingConvToStrLLVM: array[TCallingConvention, string] = ["fastcc $1", 
-    "stdcall $1", "ccc $1", "safecall $1", "syscall $1", "$1 alwaysinline", 
-    "$1 noinline", "fastcc $1", "ccc $1", "$1"]
 
 proc cacheGetType(tab: TIdTable, key: PType): PRope = 
   # returns nil if we need to declare this type
@@ -309,23 +294,23 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var PRope,
       # this fixes the 'sort' bug:
       if param.typ.kind == tyVar: param.loc.s = OnUnknown
       # need to pass hidden parameter:
-      appff(params, ", NI $1Len$2", ", @NI $1Len$2", [param.loc.r, j.toRope])
+      appf(params, ", NI $1Len$2", [param.loc.r, j.toRope])
       inc(j)
       arr = arr.sons[0]
   if (t.sons[0] != nil) and isInvalidReturnType(t.sons[0]): 
     var arr = t.sons[0]
     if params != nil: app(params, ", ")
     app(params, getTypeDescAux(m, arr, check))
-    if (mapReturnType(t.sons[0]) != ctArray) or (gCmd == cmdCompileToLLVM): 
+    if (mapReturnType(t.sons[0]) != ctArray) : 
       app(params, "*")
-    appff(params, " Result", " @Result", [])
+    appf(params, " Result", [])
   if t.callConv == ccClosure and declareEnvironment: 
     if params != nil: app(params, ", ")
     app(params, "void* ClEnv")
   if tfVarargs in t.flags: 
     if params != nil: app(params, ", ")
     app(params, "...")
-  if params == nil and gCmd != cmdCompileToLLVM: app(params, "void)")
+  if params == nil: app(params, "void)")
   else: app(params, ")")
   params = con("(", params)
 
@@ -681,7 +666,7 @@ proc genProcHeader(m: BModule, prc: PSym): PRope =
     rettype, params: PRope
   genCLineDir(result, prc.info)
   # using static is needed for inline procs
-  if gCmd != cmdCompileToLLVM and lfExportLib in prc.loc.flags:
+  if lfExportLib in prc.loc.flags:
     if m.isHeaderFile:
       result.app "N_LIB_IMPORT "
     else:

@@ -532,7 +532,7 @@ proc cmdChangeTriggersRecompilation(old, new: TCommands): bool =
   # new command forces us to consider it here :-)
   case old
   of cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,
-      cmdCompileToJS, cmdCompileToLLVM:
+      cmdCompileToJS:
     if new in {cmdDoc, cmdCheck, cmdIdeTools, cmdPretty, cmdDef,
                cmdInteractive}:
       return false

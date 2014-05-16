@@ -71,7 +71,7 @@ type                          # please make sure we have under 32 options
   TCommands* = enum           # Nimrod's commands
                               # **keep binary compatible**
     cmdNone, cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, 
-    cmdCompileToJS, cmdCompileToLLVM, cmdInterpret, cmdPretty, cmdDoc, 
+    cmdCompileToJS, cmdInterpret, cmdPretty, cmdDoc, 
     cmdGenDepend, cmdDump, 
     cmdCheck,                 # semantic checking for whole project
     cmdParse,                 # parse a single file (for debugging)
