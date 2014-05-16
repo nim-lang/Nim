@@ -20,12 +20,6 @@ import
 
 from magicsys import systemModule, resetSysTypes
 
-const
-  hasLLVM_Backend = false
-
-when hasLLVM_Backend:
-  import llvmgen
-
 proc rodPass =
   if optSymbolFiles in gGlobalOptions:
     registerPass(rodwritePass)
@@ -111,14 +105,6 @@ proc commandCompileToC =
     resetCompilationLists()
     ccgutils.resetCaches()
     GC_fullCollect()
-
-when hasLLVM_Backend:
-  proc commandCompileToLLVM =
-    semanticPasses()
-    registerPass(llvmgen.llvmgenPass())
-    rodPass()
-    #registerPass(cleanupPass())
-    compileProject()
 
 proc commandCompileToJS =
   #incl(gGlobalOptions, optSafeCode)
@@ -332,13 +318,6 @@ proc mainCommand* =
     gCmd = cmdCompileToJS
     wantMainModule()
     commandCompileToJS()
-  of "compiletollvm":
-    gCmd = cmdCompileToLLVM
-    wantMainModule()
-    when hasLLVM_Backend:
-      CommandCompileToLLVM()
-    else:
-      rawMessage(errInvalidCommandX, command)
   of "pretty":
     gCmd = cmdPretty
     wantMainModule()

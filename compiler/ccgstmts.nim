@@ -245,14 +245,13 @@ proc genIf(p: BProc, n: PNode, d: var TLoc) =
       initLocExpr(p, it.sons[0], a)
       lelse = getLabel(p)
       inc(p.labels)
-      lineFF(p, cpsStmts, "if (!$1) goto $2;$n",
-            "br i1 $1, label %LOC$3, label %$2$nLOC$3: $n",
+      lineF(p, cpsStmts, "if (!$1) goto $2;$n",
             [rdLoc(a), lelse, toRope(p.labels)])
       when not newScopeForIf: startBlock(p)
       expr(p, it.sons[1], d)
       endBlock(p)
       if sonsLen(n) > 1:
-        lineFF(p, cpsStmts, "goto $1;$n", "br label %$1$n", [lend])
+        lineF(p, cpsStmts, "goto $1;$n", [lend])
       fixLabel(p, lelse)
     elif it.len == 1:
       startBlock(p)
@@ -312,7 +311,7 @@ proc genReturnStmt(p: BProc, t: PNode) =
     # consume it before we return.
     var safePoint = p.finallySafePoints[p.finallySafePoints.len-1]
     linefmt(p, cpsStmts, "if ($1.status != 0) #popCurrentException();$n", safePoint)    
-  lineFF(p, cpsStmts, "goto BeforeRet;$n", "br label %BeforeRet$n", [])
+  lineF(p, cpsStmts, "goto BeforeRet;$n", [])
 
 proc genComputedGoto(p: BProc; n: PNode) =
   # first pass: Generate array of computed labels:
