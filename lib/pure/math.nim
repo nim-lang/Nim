@@ -139,7 +139,8 @@ proc random*(max: float): float {.gcsafe.}
   ## returns a random number in the range 0..<max. The sequence of
   ## random number is always the same, unless `randomize` is called
   ## which initializes the random number generator with a "random"
-  ## number, i.e. a tickcount. This is currently not supported for windows.
+  ## number, i.e. a tickcount. This has a 16-bit resolution on windows
+  ## and a 48-bit resolution on other platforms.
 
 proc randomize*() {.gcsafe.}
   ## initializes the random number generator with a "random"
