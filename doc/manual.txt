@@ -965,6 +965,14 @@ stack roots conservatively. One can use the builtin procs ``GC_ref`` and
 ``GC_unref`` to keep the string data alive for the rare cases where it does
 not work.
 
+A `$` proc is defined for cstrings that returns a string. Thus to get a nimrod
+string from a cstring:
+
+.. code-block:: nimrod
+  var str: string = "Hello!"
+  var cstr: cstring = s
+  var newstr: string = $cstr
+
 
 Structured types
 ----------------
