@@ -135,12 +135,11 @@ proc random*(max: int): int {.gcsafe.}
   ## which initializes the random number generator with a "random"
   ## number, i.e. a tickcount.
 
-when not defined(windows):
-  proc random*(max: float): float {.gcsafe.}
-    ## returns a random number in the range 0..<max. The sequence of
-    ## random number is always the same, unless `randomize` is called
-    ## which initializes the random number generator with a "random"
-    ## number, i.e. a tickcount. This is currently not supported for windows.
+proc random*(max: float): float {.gcsafe.}
+  ## returns a random number in the range 0..<max. The sequence of
+  ## random number is always the same, unless `randomize` is called
+  ## which initializes the random number generator with a "random"
+  ## number, i.e. a tickcount. This is currently not supported for windows.
 
 proc randomize*() {.gcsafe.}
   ## initializes the random number generator with a "random"
@@ -205,7 +204,14 @@ when not defined(JS):
     proc drand48(): float {.importc: "drand48", header: "<stdlib.h>".}
     proc random(max: float): float =
       result = drand48() * max
-    
+  when defined(windows):
+    proc random(max: float): float =
+      # we are hardcodeing this because
+      # importcing macros is extremely problematic
+      # and because the value is publicly documented
+      # on MSDN and very unlikely to change
+      const rand_max = 32767
+      result = (float(rand()) / float(rand_max)) * max
   proc randomize() =
     randomize(cast[int](epochTime()))
 
