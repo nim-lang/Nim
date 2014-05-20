@@ -60,7 +60,6 @@ when not defined(memProfiler):
     else: interval = intervalInUs * 1000 - tickCountCorrection
   
 when withThreads:
-  import locks
   var
     profilingLock: TLock
 
