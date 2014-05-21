@@ -136,18 +136,6 @@ proc mapType(typ: PType): TJSTypeKind =
   of tyProc: result = etyProc
   of tyCString: result = etyString
   
-proc mangle(name: string): string = 
-  result = ""
-  for i in countup(0, len(name) - 1): 
-    case name[i]
-    of 'A'..'Z': 
-      add(result, chr(ord(name[i]) - ord('A') + ord('a')))
-    of '_': 
-      discard
-    of 'a'..'z', '0'..'9': 
-      add(result, name[i])
-    else: add(result, 'X' & toHex(ord(name[i]), 2))
-  
 proc mangleName(s: PSym): PRope = 
   result = s.loc.r
   if result == nil: 
