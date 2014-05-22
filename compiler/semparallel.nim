@@ -9,8 +9,8 @@
 
 ## Semantic checking for 'parallel'.
 
-# - codegen needs to support mSlice
-# - lowerings must not perform unnecessary copies
+# - codegen needs to support mSlice (+)
+# - lowerings must not perform unnecessary copies (+)
 # - slices should become "nocopy" to openArray (+)
 #   - need to perform bound checks (+)
 #
@@ -19,7 +19,7 @@
 #   - what about 'f(a)'? --> f shouldn't have side effects anyway
 # - passed arrays need to be ensured not to alias
 # - passed slices need to be ensured to be disjoint (+)
-# - output slices need special logic
+# - output slices need special logic (+)
 
 import
   ast, astalgo, idents, lowerings, magicsys, guards, sempass2, msgs,
@@ -94,23 +94,6 @@ proc getSlot(c: var AnalysisCtx; v: PSym): ptr MonotonicVar =
   c.locals[L].v = v
   return addr(c.locals[L])
 
-proc getRoot(n: PNode): PSym =
-  ## ``getRoot`` takes a *path* ``n``. A path is an lvalue expression
-  ## like ``obj.x[i].y``. The *root* of a path is the symbol that can be
-  ## determined as the owner; ``obj`` in the example.
-  case n.kind
-  of nkSym:
-    if n.sym.kind in {skVar, skResult, skTemp, skLet, skForVar}:
-      result = n.sym
-  of nkDotExpr, nkBracketExpr, nkHiddenDeref, nkDerefExpr,
-      nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
-    result = getRoot(n.sons[0])
-  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
-    result = getRoot(n.sons[1])
-  of nkCallKinds:
-    if getMagic(n) == mSlice: result = getRoot(n.sons[1])
-  else: discard
-
 proc gatherArgs(c: var AnalysisCtx; n: PNode) =
   for i in 0.. <n.safeLen:
     let root = getRoot n[i]
@@ -184,14 +167,26 @@ proc overlap(m: TModel; x,y,c,d: PNode) =
   of impNo: discard
 
 proc stride(c: AnalysisCtx; n: PNode): BiggestInt =
-  # note: 0 if it cannot be determined is just right because then
-  # we analyse 'i..i' and 'i+0 .. i+0' and these are not disjoint!
   if isLocal(n):
     let s = c.lookupSlot(n.sym)
     if s >= 0 and c.locals[s].stride != nil:
       result = c.locals[s].stride.intVal
   else:
     for i in 0 .. <n.safeLen: result += stride(c, n.sons[i])
+
+proc subStride(c: AnalysisCtx; n: PNode): PNode =
+  # substitute with stride:
+  if isLocal(n):
+    let s = c.lookupSlot(n.sym)
+    if s >= 0 and c.locals[s].stride != nil:
+      result = n +@ c.locals[s].stride.intVal
+    else:
+      result = n
+  elif n.safeLen > 0:
+    result = shallowCopy(n)
+    for i in 0 .. <n.len: result.sons[i] = subStride(c, n.sons[i])
+  else:
+    result = n
 
 proc checkSlicesAreDisjoint(c: var AnalysisCtx) =
   # this is the only thing that we need to perform after we have traversed
@@ -200,7 +195,7 @@ proc checkSlicesAreDisjoint(c: var AnalysisCtx) =
   addLowerBoundAsFacts(c)
   # Every slice used in a loop needs to be disjoint with itself:
   for x,a,b,id,inLoop in items(c.slices):
-    if inLoop: overlap(c.guards, a,b, a+@c.stride(a), b+@c.stride(b))
+    if inLoop: overlap(c.guards, a,b, c.subStride(a), c.subStride(b))
   # Another tricky example is:
   #   while true:
   #     spawn f(a[i])
@@ -283,23 +278,19 @@ proc analyseCall(c: var AnalysisCtx; n: PNode; op: PSym) =
 
 proc analyseCase(c: var AnalysisCtx; n: PNode) =
   analyse(c, n.sons[0])
-  #let oldState = c.locals.len
   let oldFacts = c.guards.len
   for i in 1.. <n.len:
     let branch = n.sons[i]
-    #setLen(c.locals, oldState)
     setLen(c.guards, oldFacts)
     addCaseBranchFacts(c.guards, n, i)
     for i in 0 .. <branch.len:
       analyse(c, branch.sons[i])
-  #setLen(c.locals, oldState)
   setLen(c.guards, oldFacts)
 
 proc analyseIf(c: var AnalysisCtx; n: PNode) =
   analyse(c, n.sons[0].sons[0])
   let oldFacts = c.guards.len
   addFact(c.guards, n.sons[0].sons[0])
-  #let oldState = c.locals.len
 
   analyse(c, n.sons[0].sons[1])
   for i in 1.. <n.len:
@@ -309,10 +300,8 @@ proc analyseIf(c: var AnalysisCtx; n: PNode) =
       addFactNeg(c.guards, n.sons[j].sons[0])
     if branch.len > 1:
       addFact(c.guards, branch.sons[0])
-    #setLen(c.locals, oldState)
     for i in 0 .. <branch.len:
       analyse(c, branch.sons[i])
-  #setLen(c.locals, oldState)
   setLen(c.guards, oldFacts)
 
 proc analyse(c: var AnalysisCtx; n: PNode) =
@@ -390,17 +379,40 @@ proc transformSlices(n: PNode): PNode =
   else:
     result = n
 
+proc transformSpawn(owner: PSym; n, barrier: PNode): PNode
+proc transformSpawnSons(owner: PSym; n, barrier: PNode): PNode =
+  result = shallowCopy(n)
+  for i in 0 .. < n.len:
+    result.sons[i] = transformSpawn(owner, n.sons[i], barrier)
+
 proc transformSpawn(owner: PSym; n, barrier: PNode): PNode =
-  if n.kind in nkCallKinds:
-    if n[0].kind == nkSym:
-      let op = n[0].sym
-      if op.magic == mSpawn:
-        result = transformSlices(n)
-        return wrapProcForSpawn(owner, result[1], barrier)
+  case n.kind
+  of nkVarSection:
+    result = nil
+    for it in n:
+      let b = it.lastSon
+      if getMagic(b) == mSpawn:
+        if it.len != 3: localError(it.info, "invalid context for 'spawn'")
+        let m = transformSlices(b)
+        if result.isNil:
+          result = newNodeI(nkStmtList, n.info)
+          result.add n
+        result.add wrapProcForSpawn(owner, m[1], b.typ, barrier, it[0])
+        it.sons[it.len-1] = emptyNode
+    if result.isNil: result = n
+  of nkAsgn, nkFastAsgn:
+    let b = n[1]
+    if getMagic(b) == mSpawn:
+      let m = transformSlices(b)
+      return wrapProcForSpawn(owner, m[1], b.typ, barrier, n[0])
+    result = transformSpawnSons(owner, n, barrier)
+  of nkCallKinds:
+    if getMagic(n) == mSpawn:
+      result = transformSlices(n)
+      return wrapProcForSpawn(owner, result[1], n.typ, barrier, nil)
+    result = transformSpawnSons(owner, n, barrier)
   elif n.safeLen > 0:
-    result = shallowCopy(n)
-    for i in 0 .. < n.len:
-      result.sons[i] = transformSpawn(owner, n.sons[i], barrier)
+    result = transformSpawnSons(owner, n, barrier)
   else:
     result = n
 
@@ -440,3 +452,4 @@ proc liftParallel*(owner: PSym; n: PNode): PNode =
   result.add callCodeGenProc("openBarrier", barrier)
   result.add transformSpawn(owner, body, barrier)
   result.add callCodeGenProc("closeBarrier", barrier)
+

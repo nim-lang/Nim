@@ -672,12 +672,8 @@ proc simpleSlice*(a, b: PNode): BiggestInt =
   else:
     result = -1
 
-proc proveLe*(m: TModel; a, b: PNode): TImplication =
-  let res = canon(opLe.buildCall(a, b))
-  #echo renderTree(res)
-  # we hardcode lots of axioms here:
-  let a = res[1]
-  let b = res[2]
+proc ple(m: TModel; a, b: PNode): TImplication =  
+  template `<=?`(a,b): expr = ple(m,a,b) == impYes
   #   0 <= 3
   if a.isValue and b.isValue:
     return if leValue(a, b): impYes else: impNo
@@ -692,26 +688,46 @@ proc proveLe*(m: TModel; a, b: PNode): TImplication =
   # x <= x
   if sameTree(a, b): return impYes
 
-  #   x <= x+c  iff 0 <= c
-  if b.getMagic in someAdd and sameTree(a, b[1]):
-    return proveLe(m, zero(), b[2])
+  # 0 <= x.len
+  if b.getMagic in someLen and a.isValue:
+    if a.intVal <= 0: return impYes
 
-  #   x+c <= x  iff c <= 0
-  if a.getMagic in someAdd and sameTree(b, a[1]):
-    return proveLe(m, a[2], zero())
+  #   x <= y+c  if 0 <= c and x <= y
+  if b.getMagic in someAdd and zero() <=? b[2] and a <=? b[1]: return impYes
 
-  #   x <= x*c  if  1 <= c and 0 <= x:
-  if b.getMagic in someMul and sameTree(a, b[1]):
-    if proveLe(m, one(), b[2]) == impYes and proveLe(m, zero(), a) == impYes:
-      return impYes
+  #   x+c <= y  if c <= 0 and x <= y
+  if a.getMagic in someAdd and a[2] <=? zero() and a[1] <=? b: return impYes
 
-  #   x div c <= x   if   1 <= c  and  0 <= x:
-  if a.getMagic in someDiv and sameTree(a[1], b):
-    if proveLe(m, one(), a[2]) == impYes and proveLe(m, zero(), b) == impYes:
-      return impYes
+  #   x <= y*c  if  1 <= c and x <= y  and 0 <= y
+  if b.getMagic in someMul:
+    if a <=? b[1] and one() <=? b[2] and zero() <=? b[1]: return impYes
+
+  #   x div c <= y   if   1 <= c  and  0 <= y  and x <= y:
+  if a.getMagic in someDiv:
+    if one() <=? a[2] and zero() <=? b and a[1] <=? b: return impYes
+
+  # slightly subtle:
+  # x <= max(y, z)  iff x <= y or x <= z
+  # note that 'x <= max(x, z)' is a special case of the above rule
+  if b.getMagic in someMax:
+    if a <=? b[1] or a <=? b[2]: return impYes
+
+  # min(x, y) <= z  iff x <= z or y <= z
+  if a.getMagic in someMin:
+    if a[1] <=? b or a[2] <=? b: return impYes
 
   # use the knowledge base:
-  return doesImply(m, res)
+  return doesImply(m, opLe.buildCall(a, b))
+
+proc proveLe*(m: TModel; a, b: PNode): TImplication =
+  #echo "ROOT ", renderTree(a), " <=? ", b.rendertree
+  let x = canon(opLe.buildCall(a, b))
+  #echo renderTree(res)
+  result = ple(m, x[1], x[2])
+  if result == impUnknown:
+    # try an alternative:  a <= b  iff  not (b < a)  iff  not (b+1 <= a):
+    let y = canon(opLe.buildCall(opAdd.buildCall(b, one()), a))
+    result = ~ple(m, y[1], y[2])
 
 proc addFactLe*(m: var TModel; a, b: PNode) =
   m.add canon(opLe.buildCall(a, b))

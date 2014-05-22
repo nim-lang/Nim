@@ -115,6 +115,12 @@ proc semLocals(c: PContext, n: PNode): PNode =
         if it.typ.skipTypes({tyGenericInst}).kind == tyVar: a = newDeref(a)
         result.add(a)
 
+proc createFuture(c: PContext; t: PType; info: TLineInfo): PType =
+  result = newType(tyGenericInvokation, c.module)
+  addSonSkipIntLit(result, magicsys.getCompilerProc("Future").typ)
+  addSonSkipIntLit(result, t)
+  result = instGenericContainer(c, info, result, allowMetaTypes = false)
+
 proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode
 proc magicsAfterOverloadResolution(c: PContext, n: PNode, 
                                    flags: TExprFlags): PNode =
@@ -130,5 +136,9 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mShallowCopy: result = semShallowCopy(c, n, flags)
   of mNBindSym: result = semBindSym(c, n)
   of mLocals: result = semLocals(c, n)
+  of mSpawn:
+    result = n
+    # later passes may transform the type 'Future[T]' back into 'T'
+    if not n[1].typ.isEmptyType:
+      result.typ = createFuture(c, n[1].typ, n.info)
   else: result = n
-

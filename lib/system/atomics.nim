@@ -209,12 +209,12 @@ when defined(windows) and not defined(gcc):
   proc interlockedCompareExchange(p: pointer; exchange, comparand: int32): int32
     {.importc: "InterlockedCompareExchange", header: "<windows.h>", cdecl.}
 
-  proc cas*[T: bool|int](p: ptr T; oldValue, newValue: T): bool =
+  proc cas*[T: bool|int|ptr](p: ptr T; oldValue, newValue: T): bool =
     interlockedCompareExchange(p, newValue.int32, oldValue.int32) != 0
-
+  # XXX fix for 64 bit build
 else:
   # this is valid for GCC and Intel C++
-  proc cas*[T: bool|int](p: ptr T; oldValue, newValue: T): bool
+  proc cas*[T: bool|int|ptr](p: ptr T; oldValue, newValue: T): bool
     {.importc: "__sync_bool_compare_and_swap", nodecl.}
   # XXX is this valid for 'int'?
 

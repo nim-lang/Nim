@@ -1,5 +1,5 @@
 discard """
-  errormsg: "cannot prove: i + 1 <= 30"
+  errormsg: "can prove: i + 1 > 30"
   line: 21
 """
 
