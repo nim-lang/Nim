@@ -45,7 +45,7 @@ type  # BaseTsd.h -- Type definitions for the basic sized types
   ULONG32* = int32
   DWORD32* = int32
   LONG64* = int64
-  ULONG64* = int64
+  ULONG64* = uint64
   DWORD64* = int64
   PDWORD64* = ptr DWORD64
   # int32 on Win32, int64 on Win64
@@ -63,8 +63,8 @@ type  # BaseTsd.h -- Type definitions for the basic sized types
 type  # WinDef.h -- Basic Windows Type Definitions
   # BaseTypes
   UINT = int32
-  ULONG* = int
-  PULONG* = ptr int
+  ULONG* = int32
+  PULONG* = ptr int32
   USHORT* = int16
   PUSHORT* = ptr int16
   UCHAR* = int8
@@ -90,8 +90,11 @@ type  # WinDef.h -- Basic Windows Type Definitions
   LPVOID* = pointer
   LPCVOID* = pointer
 
-  # INT* = int  # Cannot work and not necessary anyway
-  PUINT* = ptr int
+  # we need to make sure to use the right sizes
+  # when calling a function that takes an INT
+  # int32 or cint should be used
+  INT = int32  
+  PUINT* = ptr uint32
 
   WPARAM* = LONG_PTR
   LPARAM* = LONG_PTR
@@ -99,7 +102,8 @@ type  # WinDef.h -- Basic Windows Type Definitions
 
   ATOM* = int16
   TAtom* = ATOM
-  HANDLE* = int
+  HANDLE* = int64 # this is void* in C but it is not /really/ a pointer and
+                  # windows plays fast and loose with types
   THandle* = HANDLE
   PHANDLE* = ptr HANDLE
   LPHANDLE* = ptr HANDLE
@@ -137,7 +141,7 @@ type  # WinDef.h -- Basic Windows Type Definitions
 
   HFILE* = HANDLE
   HCURSOR* = HANDLE # = HICON
-  COLORREF* = int
+  COLORREF* = DWORD
   LPCOLORREF* = ptr COLORREF
 
   POINT* {.final, pure.} = object
@@ -22758,12 +22762,12 @@ proc LocalDiscard*(hlocMem: HLOCAL): HLOCAL =
 
 # WinGDI.h
 
-proc GetGValue*(rgb: int32): int8 =
-  result = toU8(rgb shr 8'i32)
+#proc GetGValue*(rgb: int32): int8 =
+#  result = toU8(rgb shr 8'i32)
 proc RGB*(r, g, b: int): COLORREF =
   result = toU32(r) or (toU32(g) shl 8) or (toU32(b) shl 16)
 proc RGB*(r, g, b: range[0 .. 255]): COLORREF =
-  result = r or g shl 8 or b shl 16
+  result = COLORREF(r or g shl 8 or b shl 16)
 
 proc PALETTERGB*(r, g, b: range[0..255]): COLORREF =
   result = 0x02000000 or RGB(r, g, b)
