@@ -532,7 +532,7 @@ when defined(windows) or defined(nimdoc):
     result.TSocketHandle.setBlocking(false)
     register(result)
 
-  proc close*(socket: TAsyncFD) =
+  proc closeSocket*(socket: TAsyncFD) =
     ## Closes a socket and ensures that it is unregistered.
     socket.TSocketHandle.close()
     getGlobalDispatcher().handles.excl(socket)
@@ -581,7 +581,7 @@ else:
     result.TSocketHandle.setBlocking(false)
     register(result)
   
-  proc close*(sock: TAsyncFD) =
+  proc closeSocket*(sock: TAsyncFD) =
     let disp = getGlobalDispatcher()
     sock.TSocketHandle.close()
     disp.selector.unregister(sock.TSocketHandle)
