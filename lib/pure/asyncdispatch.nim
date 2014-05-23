@@ -537,6 +537,10 @@ when defined(windows) or defined(nimdoc):
     socket.TSocketHandle.close()
     getGlobalDispatcher().handles.excl(socket)
 
+  proc unregister*(fd: TAsyncFD) =
+    ## Unregisters ``fd``.
+    getGlobalDispatcher().handles.excl(fd)
+
   initAll()
 else:
   import selectors
@@ -585,6 +589,9 @@ else:
     let disp = getGlobalDispatcher()
     sock.TSocketHandle.close()
     disp.selector.unregister(sock.TSocketHandle)
+
+  proc unregister*(fd: TAsyncFD) =
+    getGlobalDispatcher().selector.unregister(fd.TSocketHandle)
 
   proc addRead(sock: TAsyncFD, cb: TCallback) =
     let p = getGlobalDispatcher()
