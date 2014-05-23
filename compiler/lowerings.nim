@@ -86,8 +86,14 @@ proc indirectAccess*(a: PNode, b: string, info: TLineInfo): PNode =
   # returns a[].b as a node
   var deref = newNodeI(nkHiddenDeref, info)
   deref.typ = a.typ.skipTypes(abstractInst).sons[0]
-  assert deref.typ.kind == tyObject
-  let field = getSymFromList(deref.typ.n, getIdent(b))
+  var t = deref.typ
+  var field: PSym
+  while true:
+    assert t.kind == tyObject
+    field = getSymFromList(t.n, getIdent(b))
+    if field != nil: break
+    t = t.sons[0]
+    if t == nil: break
   assert field != nil, b
   addSon(deref, a)
   result = newNodeI(nkDotExpr, info)
@@ -124,6 +130,7 @@ proc callCodegenProc*(name: string, arg1: PNode;
     result.add arg1
     if arg2 != nil: result.add arg2
     if arg3 != nil: result.add arg3
+    result.typ = sym.typ.sons[0]
 
 # we have 4 cases to consider:
 # - a void proc --> nothing to do
@@ -152,15 +159,21 @@ discard """
 We generate roughly this:
 
 proc f_wrapper(args) =
+  barrierEnter(args.barrier)  # for parallel statement
   var a = args.a # copy strings/seqs; thread transfer; not generated for
                  # the 'parallel' statement
   var b = args.b
 
-  args.fut = createFuture(thread, sizeof(T)) # optional
+  args.fut = nimCreateFuture(thread, sizeof(T)) # optional
+  nimFutureCreateCondVar(args.fut)  # optional
   nimArgsPassingDone() # signal parent that the work is done
+  # 
   args.fut.blob = f(a, b, ...)
+  nimFutureSignal(args.fut)
+  
   # - or -
   f(a, b, ...)
+  barrierLeave(args.barrier)  # for parallel statement
 
 stmtList:
   var scratchObj
@@ -196,8 +209,12 @@ proc createWrapperProc(f: PNode; threadParam, argsParam: PSym;
 
   body.add callCodeGenProc("nimArgsPassingDone", threadParam.newSymNode)
   if fut != nil:
-    body.add newAsgnStmt(indirectAccess(fut, 
-        if fut.typ.futureKind==futGC: "data" else: "blob", fut.info), call)
+    let fk = fut.typ.sons[1].futureKind
+    if fk == futInvalid:
+      localError(f.info, "cannot create a future of type: " & 
+        typeToString(fut.typ.sons[1]))
+    body.add newAsgnStmt(indirectAccess(fut,
+      if fk == futGC: "data" else: "blob", fut.info), call)
     if barrier == nil:
       body.add callCodeGenProc("nimFutureSignal", fut)
   else:

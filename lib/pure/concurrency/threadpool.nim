@@ -57,7 +57,7 @@ proc openBarrier*(b: ptr Barrier) {.compilerProc.} =
   b.cv = createCondVar()
 
 proc closeBarrier*(b: ptr Barrier) {.compilerProc.} =
-  await(b.cv)
+  while b.counter > 0: await(b.cv)
   destroyCondVar(b.cv)
 
 {.pop.}
@@ -136,8 +136,13 @@ proc nimFutureCreateCondVar(fut: RawFuture) {.compilerProc.} =
   fut.usesCondVar = true
 
 proc nimFutureSignal(fut: RawFuture) {.compilerProc.} =
-  assert fut.usesCondVar
-  signal(fut.cv)
+  if fut.ai != nil:
+    acquire(fut.ai.cv.L)
+    fut.ai.idx = fut.idx
+    inc fut.ai.cv.counter
+    release(fut.ai.cv.L)
+    signal(fut.ai.cv.c)
+  if fut.usesCondVar: signal(fut.cv)
 
 proc await*[T](fut: Future[T]) =
   ## waits until the value for the future arrives.
@@ -147,21 +152,12 @@ proc `^`*[T](fut: Future[T]): T =
   ## blocks until the value is available and then returns this value. Note
   ## this reading is destructive for reasons of efficiency and convenience.
   ## This calls ``finished(fut)``.
-  await(fut)
+  if fut.usesCondVar: await(fut)
   when T is string or T is seq or T is ref:
     result = cast[T](fut.data)
   else:
-    result = fut.payload
+    result = fut.blob
   finished(fut)
-
-proc notify*(fut: RawFuture) {.compilerproc.} =
-  if fut.ai != nil:
-    acquire(fut.ai.cv.L)
-    fut.ai.idx = fut.idx
-    inc fut.ai.cv.counter
-    release(fut.ai.cv.L)
-    signal(fut.ai.cv.c)
-  if fut.usesCondVar: signal(fut.cv)
 
 proc awaitAny*(futures: openArray[RawFuture]): int =
   # awaits any of the given futures. Returns the index of one future for which
@@ -169,6 +165,8 @@ proc awaitAny*(futures: openArray[RawFuture]): int =
   ## same time. That means if you await([a,b]) and await([b,c]) the second
   ## call will only await 'c'. If there is no future left to be able to wait
   ## on, -1 is returned.
+  ## **Note**: This results in non-deterministic behaviour and so should be
+  ## avoided.
   var ai: AwaitInfo
   ai.cv = createCondVar()
   var conflicts = 0
@@ -245,19 +243,18 @@ proc preferSpawn*(): bool =
   ## it is not necessary to call this directly; use 'spawnX' instead.
   result = gSomeReady.counter > 0
 
-proc spawn*(call: stmt) {.magic: "Spawn".}
+proc spawn*(call: expr): expr {.magic: "Spawn".}
   ## always spawns a new task, so that the 'call' is never executed on
   ## the calling thread. 'call' has to be proc call 'p(...)' where 'p'
   ## is gcsafe and has 'void' as the return type.
 
-template spawnX*(call: stmt) =
+template spawnX*(call: expr): expr =
   ## spawns a new task if a CPU core is ready, otherwise executes the
   ## call in the calling thread. Usually it is advised to
   ## use 'spawn' in order to not block the producer for an unknown
   ## amount of time. 'call' has to be proc call 'p(...)' where 'p'
   ## is gcsafe and has 'void' as the return type.
-  if preferSpawn(): spawn call
-  else: call
+  (if preferSpawn(): spawn call else: call)
 
 proc parallel*(body: stmt) {.magic: "Parallel".}
   ## a parallel section can be used to execute a block in parallel. ``body``

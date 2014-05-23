@@ -1579,6 +1579,12 @@ proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode =
   else:
     result = semDirectOp(c, n, flags)
 
+proc createFuture(c: PContext; t: PType; info: TLineInfo): PType =
+  result = newType(tyGenericInvokation, c.module)
+  addSonSkipIntLit(result, magicsys.getCompilerProc("Future").typ)
+  addSonSkipIntLit(result, t)
+  result = instGenericContainer(c, info, result, allowMetaTypes = false)
+
 proc setMs(n: PNode, s: PSym): PNode = 
   result = n
   n.sons[0] = newSymNode(s)
@@ -1610,6 +1616,12 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     var x = n.lastSon
     if x.kind == nkDo: x = x.sons[bodyPos]
     result.sons[1] = semStmt(c, x)
+  of mSpawn:
+    result = setMs(n, s)
+    result.sons[1] = semExpr(c, n.sons[1])
+    # later passes may transform the type 'Future[T]' back into 'T'
+    if not result[1].typ.isEmptyType:
+      result.typ = createFuture(c, result[1].typ, n.info)
   else: result = semDirectOp(c, n, flags)
 
 proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
