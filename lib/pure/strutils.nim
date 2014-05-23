@@ -374,54 +374,92 @@ proc intToStr*(x: int, minchars: int = 1): string {.noSideEffect,
   if x < 0:
     result = '-' & result
 
-proc parseInt*(s: string): int {.noSideEffect, procvar,
-  rtl, extern: "nsuParseInt".} =
-  ## Parses a decimal integer value contained in `s`. If `s` is not
-  ## a valid integer, `EInvalidValue` is raised.
-  var L = parseutils.parseInt(s, result, 0)
-  if L != s.len or L == 0:
-    raise newException(EInvalidValue, "invalid integer: " & s)
+proc charToNumber(n: char, radix: int): int {.noSideEffect.} =
+  ## Finds the value of ``n`` at the given ``radix``
+  if radix notin {2..36}:
+    raise newException(EInvalidValue, "Radix `" & $radix &
+                                      "` is out of the range [2, 36]")
+  if n in {'0'..'9'}:
+    result = ord(n) - ord('0')
+  elif n in {'A'..'Z'}:
+    result = ord(n) - ord('A') + 10
+  elif n in {'a'..'z'}:
+    result = ord(n) - ord('a') + 10
+  if result >= radix:
+    raise newException(EInvalidValue, "Charecter `" & $n &
+                                      "` does not fit in radix `" & $radix & "`")
 
-proc parseBiggestInt*(s: string): BiggestInt {.noSideEffect, procvar,
-  rtl, extern: "nsuParseBiggestInt".} =
-  ## Parses a decimal integer value contained in `s`. If `s` is not
-  ## a valid integer, `EInvalidValue` is raised.
-  var L = parseutils.parseBiggestInt(s, result, 0)
-  if L != s.len or L == 0:
-    raise newException(EInvalidValue, "invalid integer: " & s)
+{.push overflowChecks: on.}
+proc parseBiggestInt*(s: string, radix: int = 10): BiggestInt {.noSideEffect,
+  procvar, raises: [EInvalidValue], rtl, extern: "nsuParseBiggestInt".} =
+  ## Parses the decimal integer contained in `s`. `s` may contain underscores
+  ## and a leading sign digit. Any radix notation must be stripped, and `s`
+  ## must be a valid number in its radix and fit inside a `BiggestInt`,
+  ## otherwise a `EInvalidValue` exception is thrown.
+  var idx = 0
+  var sign = -1
+  if s[0] == '-': # Parse the sign
+    inc idx
+    sign = +1
+  elif s[0] == '+':
+    inc idx
+  try:
+    while idx < len(s):
+      if s[idx] == '_': discard
+      else:
+        result *= radix
+        result -= charToNumber(s[idx], radix)
+      inc idx
+    result *= sign
+  except EOverflow:
+    raise newException(EInvalidValue, "`" & s & "` too big, overflow occured")
+
+proc parseInt*(s: string, radix: int = 10): int {.noSideEffect, procvar,
+  raises: [EInvalidValue], rtl, extern: "nsuParseInt".} =
+  ## Parses the decimal integer contained in `s`. `s` may contain underscores
+  ## and a leading sign digit. Any radix notation must be stripped, and `s`
+  ## must be a valid number in its radix and fit inside a `BiggestInt`,
+  ## otherwise a `EInvalidValue` exception is thrown.
+  var res =  parseBiggestInt(s, radix)
+  if res > high(int) or res < low(int):
+    raise newException(EInvalidValue, "`" & s & "` too big, overflow occured")
+  else:
+    result = int(res)
+{.pop.}
+
+proc parseOctInt*(s: string): int {.noSideEffect, procvar
+  raises: [EInvalidValue], rtl, extern: "nsuParseOctInt".} =
+  ## Parses an octal integer value contained in `s`. If `s` is not
+  ## a valid integer, `EInvalidValue` is raised. `s` can have one of the
+  ## following optional prefixes: ``0o``, ``0O``.
+  ## Underscores within `s` are ignored.
+  var i = 0
+  if s[i] == '0' and (s[i+1] in {'o', 'O'}): inc(i, 2)
+
+  result = parseInt(s.substr(i), 8)
+
+proc parseHexInt*(s: string): int {.noSideEffect, procvar,
+  raises: [EInvalidValue], rtl, extern: "nsuParseHexInt".} =
+  ## Parses a hexadecimal integer value contained in `s`. If `s` is not
+  ## a valid integer, `EInvalidValue` is raised. `s` can have one of the
+  ## following optional prefixes: ``0x``, ``0X``, ``#``.
+  ## Underscores within `s` are ignored.
+  var i = 0
+  if s[i] == '0' and s[i+1] in {'x', 'X'}: inc(i, 2)
+  elif s[i] == '#': inc(i)
+
+  result = parseInt(s.substr(i), 16)
 
 proc parseFloat*(s: string): float {.noSideEffect, procvar,
   rtl, extern: "nsuParseFloat".} =
   ## Parses a decimal floating point value contained in `s`. If `s` is not
   ## a valid floating point number, `EInvalidValue` is raised. ``NAN``,
   ## ``INF``, ``-INF`` are also supported (case insensitive comparison).
+  # XXX: Make parseutils depend on strutils, instead of the other way
+  # XXX: Make the float parsing perfect, current version has significant error
   var L = parseutils.parseFloat(s, result, 0)
   if L != s.len or L == 0:
     raise newException(EInvalidValue, "invalid float: " & s)
-
-proc parseHexInt*(s: string): int {.noSideEffect, procvar,
-  rtl, extern: "nsuParseHexInt".} =
-  ## Parses a hexadecimal integer value contained in `s`. If `s` is not
-  ## a valid integer, `EInvalidValue` is raised. `s` can have one of the
-  ## following optional prefixes: ``0x``, ``0X``, ``#``.
-  ## Underscores within `s` are ignored.
-  var i = 0
-  if s[i] == '0' and (s[i+1] == 'x' or s[i+1] == 'X'): inc(i, 2)
-  elif s[i] == '#': inc(i)
-  while true:
-    case s[i]
-    of '_': inc(i)
-    of '0'..'9':
-      result = result shl 4 or (ord(s[i]) - ord('0'))
-      inc(i)
-    of 'a'..'f':
-      result = result shl 4 or (ord(s[i]) - ord('a') + 10)
-      inc(i)
-    of 'A'..'F':
-      result = result shl 4 or (ord(s[i]) - ord('A') + 10)
-      inc(i)
-    of '\0': break
-    else: raise newException(EInvalidValue, "invalid integer: " & s)
 
 proc parseBool*(s: string): bool =
   ## Parses a value into a `bool`. If ``s`` is one of the following values:
@@ -824,23 +862,6 @@ proc delete*(s: var string, first, last: int) {.noSideEffect,
     inc(i)
     inc(j)
   setLen(s, newLen)
-
-proc parseOctInt*(s: string): int {.noSideEffect,
-  rtl, extern: "nsuParseOctInt".} =
-  ## Parses an octal integer value contained in `s`. If `s` is not
-  ## a valid integer, `EInvalidValue` is raised. `s` can have one of the
-  ## following optional prefixes: ``0o``, ``0O``.
-  ## Underscores within `s` are ignored.
-  var i = 0
-  if s[i] == '0' and (s[i+1] == 'o' or s[i+1] == 'O'): inc(i, 2)
-  while true:
-    case s[i]
-    of '_': inc(i)
-    of '0'..'7':
-      result = result shl 3 or (ord(s[i]) - ord('0'))
-      inc(i)
-    of '\0': break
-    else: raise newException(EInvalidValue, "invalid integer: " & s)
 
 proc toOct*(x: BiggestInt, len: int): string {.noSideEffect,
   rtl, extern: "nsuToOct".} =
