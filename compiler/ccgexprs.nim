@@ -484,7 +484,7 @@ proc unaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
     opr: array[mUnaryMinusI..mAbsI64, string] = [
       mUnaryMinusI: "((NI$2)-($1))",
       mUnaryMinusI64: "-($1)",
-      mAbsI: "(NI$2)abs($1)",
+      mAbsI: "($1 > 0? ($1) : -($1))",
       mAbsI64: "($1 > 0? ($1) : -($1))"]
   var
     a: TLoc
