@@ -15,7 +15,8 @@ import
 
 proc ensureNoMissingOrUnusedSymbols(scope: PScope)
 
-proc considerAccents*(n: PNode): PIdent = 
+proc considerAccents*(n: PNode): PIdent =
+  ## Retrieve a PIdent from a PNode, taking into account accent nodes.
   case n.kind
   of nkIdent: result = n.ident
   of nkSym: result = n.sym.name
