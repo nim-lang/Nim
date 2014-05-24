@@ -62,7 +62,7 @@ type  # BaseTsd.h -- Type definitions for the basic sized types
 
 type  # WinDef.h -- Basic Windows Type Definitions
   # BaseTypes
-  UINT = int32
+  WINUINT* = int32
   ULONG* = int
   PULONG* = ptr int
   USHORT* = int16
@@ -137,7 +137,7 @@ type  # WinDef.h -- Basic Windows Type Definitions
 
   HFILE* = HANDLE
   HCURSOR* = HANDLE # = HICON
-  COLORREF* = int
+  COLORREF* = DWORD
   LPCOLORREF* = ptr COLORREF
 
   POINT* {.final, pure.} = object
@@ -238,7 +238,7 @@ type
   CALTYPE* = int
   CALID* = int
   CCHAR* = char
-  TCOLORREF* = int
+  TCOLORREF* = COLORREF
   WINT* = int32
   PINTEGER* = ptr int32
   PBOOL* = ptr WINBOOL
@@ -19683,7 +19683,7 @@ proc SetSysColors*(cElements: int32, lpaElements: var wINT,
     dynlib: "user32", importc: "SetSysColors".}
 proc DrawFocusRect*(hDC: HDC, lprc: var RECT): WINBOOL{.stdcall,
     dynlib: "user32", importc: "DrawFocusRect".}
-proc FillRect*(hDC: HDC, lprc: RECT, hbr: HBRUSH): int32{.stdcall,
+proc FillRect*(hDC: HDC, lprc: var RECT, hbr: HBRUSH): int32{.stdcall,
     dynlib: "user32", importc: "FillRect".}
 proc FrameRect*(hDC: HDC, lprc: var RECT, hbr: HBRUSH): int32{.stdcall,
     dynlib: "user32", importc: "FrameRect".}
@@ -22758,12 +22758,12 @@ proc LocalDiscard*(hlocMem: HLOCAL): HLOCAL =
 
 # WinGDI.h
 
-proc GetGValue*(rgb: int32): int8 =
-  result = toU8(rgb shr 8'i32)
+discard """proc GetGValue*(rgb: int32): int8 =
+  result = toU8(rgb shr 8'i32)"""
 proc RGB*(r, g, b: int): COLORREF =
   result = toU32(r) or (toU32(g) shl 8) or (toU32(b) shl 16)
 proc RGB*(r, g, b: range[0 .. 255]): COLORREF =
-  result = r or g shl 8 or b shl 16
+  result = toU32(r) or (toU32(g) shl 8) or (toU32(b) shl 16)
 
 proc PALETTERGB*(r, g, b: range[0..255]): COLORREF =
   result = 0x02000000 or RGB(r, g, b)
