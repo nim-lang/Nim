@@ -15,14 +15,14 @@ import
 
 proc ensureNoMissingOrUnusedSymbols(scope: PScope)
 
-proc considerAcc*(n: PNode): PIdent = 
+proc considerAccents*(n: PNode): PIdent = 
   case n.kind
   of nkIdent: result = n.ident
   of nkSym: result = n.sym.name
   of nkAccQuoted:
     case n.len
     of 0: globalError(n.info, errIdentifierExpected, renderTree(n))
-    of 1: result = considerAcc(n.sons[0])
+    of 1: result = considerAccents(n.sons[0])
     else:
       var id = ""
       for i in 0.. <n.len:
@@ -82,10 +82,10 @@ proc searchInScopes*(c: PContext, s: PIdent, filter: TSymKinds): PSym =
 proc errorSym*(c: PContext, n: PNode): PSym =
   ## creates an error symbol to avoid cascading errors (for IDE support)
   var m = n
-  # ensure that 'considerAcc' can't fail:
+  # ensure that 'considerAccents' can't fail:
   if m.kind == nkDotExpr: m = m.sons[1]
   let ident = if m.kind in {nkIdent, nkSym, nkAccQuoted}: 
-      considerAcc(m)
+      considerAccents(m)
     else:
       getIdent("err:" & renderTree(m))
   result = newSym(skError, ident, getCurrOwner(), n.info)
@@ -189,7 +189,7 @@ proc lookUp*(c: PContext, n: PNode): PSym =
   of nkSym:
     result = n.sym
   of nkAccQuoted:
-    var ident = considerAcc(n)
+    var ident = considerAccents(n)
     result = searchInScopes(c, ident)
     if result == nil:
       localError(n.info, errUndeclaredIdentifier, ident.s)
@@ -208,7 +208,7 @@ type
 proc qualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym = 
   case n.kind
   of nkIdent, nkAccQuoted:
-    var ident = considerAcc(n)
+    var ident = considerAccents(n)
     result = searchInScopes(c, ident)
     if result == nil and checkUndeclared in flags: 
       localError(n.info, errUndeclaredIdentifier, ident.s)
@@ -228,7 +228,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym =
       if n.sons[1].kind == nkIdent: 
         ident = n.sons[1].ident
       elif n.sons[1].kind == nkAccQuoted: 
-        ident = considerAcc(n.sons[1])
+        ident = considerAccents(n.sons[1])
       if ident != nil: 
         if m == c.module: 
           result = strTableGet(c.topLevelScope.symbols, ident)
@@ -251,7 +251,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym =
 proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   case n.kind
   of nkIdent, nkAccQuoted:
-    var ident = considerAcc(n)
+    var ident = considerAccents(n)
     o.scope = c.currentScope
     o.mode = oimNoQualifier
     while true:
@@ -272,7 +272,7 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
       if n.sons[1].kind == nkIdent: 
         ident = n.sons[1].ident
       elif n.sons[1].kind == nkAccQuoted:
-        ident = considerAcc(n.sons[1])
+        ident = considerAccents(n.sons[1])
       if ident != nil: 
         if o.m == c.module: 
           # a module may access its private members:
@@ -354,5 +354,5 @@ when false:
       if sfImmediate in a.flags: return a
       a = nextOverloadIter(o, c, n)
     if result == nil and checkUndeclared in flags: 
-      localError(n.info, errUndeclaredIdentifier, n.considerAcc.s)
+      localError(n.info, errUndeclaredIdentifier, n.considerAccents.s)
       result = errorSym(c, n)

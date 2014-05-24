@@ -93,7 +93,7 @@ proc rawImportSymbol(c: PContext, s: PSym) =
     if hasPattern(s): addPattern(c, s)
 
 proc importSymbol(c: PContext, n: PNode, fromMod: PSym) = 
-  let ident = lookups.considerAcc(n)
+  let ident = lookups.considerAccents(n)
   let s = strTableGet(fromMod.tab, ident)
   if s == nil:
     localError(n.info, errUndeclaredIdentifier, ident.s)
@@ -193,7 +193,7 @@ proc evalImportExcept*(c: PContext, n: PNode): PNode =
     addDecl(c, m)               # add symbol to symbol table of module
     var exceptSet = initIntSet()
     for i in countup(1, sonsLen(n) - 1): 
-      let ident = lookups.considerAcc(n.sons[i])
+      let ident = lookups.considerAccents(n.sons[i])
       exceptSet.incl(ident.id)
     importAllSymbolsExcept(c, m, exceptSet)
     importForwarded(c, m.ast, exceptSet)

@@ -1,4 +1,4 @@
-import renderer, strutils, ast, msgs, types
+import renderer, strutils, ast, msgs, types, astalgo
 
 const defaultParamSeparator* = ","
 
@@ -92,7 +92,7 @@ proc renderParamTypes(found: var seq[string], n: PNode) =
       if not typ.isNil: typeStr = typeToString(typ, preferExported)
       if typeStr.len < 1: return
     for i in 0 .. <typePos:
-      assert n[i].kind == nkIdent
+      assert ((n[i].kind == nkIdent) or (n[i].kind == nkAccQuoted))
       found.add(typeStr)
   else:
     internalError(n.info, "renderParamTypes(found,n) with " & $n.kind)

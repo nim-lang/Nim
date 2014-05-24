@@ -497,11 +497,11 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
 proc shouldSkipDistinct(rules: PNode, callIdent: PIdent): bool =
   if rules.kind == nkWith:
     for r in rules:
-      if r.considerAcc == callIdent: return true
+      if r.considerAccents == callIdent: return true
     return false
   else:
     for r in rules:
-      if r.considerAcc == callIdent: return false
+      if r.considerAccents == callIdent: return false
     return true
 
 proc maybeSkipDistinct(t: PType, callee: PSym): PType =
@@ -1302,7 +1302,7 @@ proc prepareOperand(c: PContext; a: PNode): PNode =
 proc prepareNamedParam(a: PNode) =
   if a.sons[0].kind != nkIdent:
     var info = a.sons[0].info
-    a.sons[0] = newIdentNode(considerAcc(a.sons[0]), info)
+    a.sons[0] = newIdentNode(considerAccents(a.sons[0]), info)
 
 proc arrayConstr(c: PContext, n: PNode): PType =
   result = newTypeS(tyArrayConstr, c)
