@@ -13,7 +13,7 @@
 
 proc mangleField(name: string): string =
   result = mangle(name)
-  if name[0] in 'a'..'z':
+  if name[0] in Letters:
     result[0] = name[0].toUpper
 
 proc isKeyword(w: PIdent): bool =
