@@ -62,7 +62,7 @@ type  # BaseTsd.h -- Type definitions for the basic sized types
 
 type  # WinDef.h -- Basic Windows Type Definitions
   # BaseTypes
-  UINT* = int32
+  WINUINT* = int32
   ULONG* = int
   PULONG* = ptr int
   USHORT* = int16
