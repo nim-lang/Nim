@@ -71,6 +71,11 @@ proc fail*[T](future: PFuture[T], error: ref EBase) =
   future.error = error
   if future.cb != nil:
     future.cb()
+  else:
+    # This is to prevent exceptions from being silently ignored when a future
+    # is discarded.
+    # TODO: This may turn out to be a bad idea.
+    raise error
 
 proc `callback=`*(future: PFutureBase, cb: proc () {.closure,gcsafe.}) =
   ## Sets the callback proc to be called when the future completes.
