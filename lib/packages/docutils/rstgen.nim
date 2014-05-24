@@ -364,15 +364,16 @@ proc cmp(a, b: TIndexEntry): int =
   if result == 0:
     result = cmpIgnoreStyle(a.link, b.link)
 
-proc hash(x: TIndexEntry): int =
+proc hash(x: TIndexEntry): THash =
   ## Returns the hash for the combined fields of the type.
   ##
-  ## The hash is computed as the concatenated string of all available fields.
+  ## The hash is computed as the chained hash of the individual string hashes.
   assert(not x.keyword.isNil)
   assert(not x.link.isNil)
-  let value = x.keyword & x.link & (x.linkTitle or "") & (x.linkDesc or "")
-  result = value.hash
-
+  result = x.keyword.hash !& x.link.hash
+  result = result !& (x.linkTitle or "").hash
+  result = result !& (x.linkDesc or "").hash
+  result = !$result
 
 proc `<-`(a: var TIndexEntry, b: TIndexEntry) =
   shallowCopy a.keyword, b.keyword
