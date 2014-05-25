@@ -183,7 +183,7 @@ elif defined(linux):
     ## Retrieves the selector key for ``fd``.
     return s.fds[fd]
 
-elif defined(openbsd) or defined(macosx):
+elif not defined(nimdoc):
   # TODO: kqueue for bsd/mac os x.
   type
     PSelector* = ref object
