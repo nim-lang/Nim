@@ -1,6 +1,6 @@
-=====
-Tools
-=====
+===========================
+Tools available with Nimrod
+===========================
 
 The standard distribution ships with the following tools:
 

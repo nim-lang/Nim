@@ -69,8 +69,10 @@ Coding Guidelines
 * Max line length is 80 characters.
 * Provide spaces around binary operators if that enhances readability.
 * Use a space after a colon, but not before it.
-* Start types with a capital ``T``, unless they are pointers/references which start
-  with ``P``. 
+* Start types with a capital ``T``, unless they are pointers/references which
+  start with ``P``.
+
+See also the `API naming design <apis.html>`_ document.
 
 
 Porting to new platforms
@@ -156,7 +158,7 @@ generator.
 Compilation cache
 =================
 
-The implementation of the `compilation cache`:idx: is tricky: There are lots
+The implementation of the compilation cache is tricky: There are lots
 of issues to be solved for the front- and backend. In the following 
 sections *global* means *shared between modules* or *property of the whole
 program*.
