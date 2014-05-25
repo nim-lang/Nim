@@ -11,7 +11,7 @@
 
 import tables, os, unsigned, hashes
 
-when defined(linux) or defined(macosx): 
+when defined(linux): 
   import posix, epoll
 elif defined(windows): 
   import winlean
@@ -32,7 +32,36 @@ type
 
   TReadyInfo* = tuple[key: PSelectorKey, events: set[TEvent]]
 
-when defined(linux) or defined(nimdoc):
+when defined(nimdoc):
+  type
+    PSelector* = ref object
+      ## An object which holds file descripters to be checked for read/write
+      ## status.
+      fds: TTable[TSocketHandle, PSelectorKey]
+
+  proc register*(s: PSelector, fd: TSocketHandle, events: set[TEvent],
+                 data: PObject): PSelectorKey {.discardable.} =
+    ## Registers file descriptor ``fd`` to selector ``s`` with a set of TEvent
+    ## ``events``.
+
+  proc update*(s: PSelector, fd: TSocketHandle,
+               events: set[TEvent]): PSelectorKey {.discardable.} =
+    ## Updates the events which ``fd`` wants notifications for.
+
+  proc select*(s: PSelector, timeout: int): seq[TReadyInfo] =
+    ## The ``events`` field of the returned ``key`` contains the original events
+    ## for which the ``fd`` was bound. This is contrary to the ``events`` field
+    ## of the ``TReadyInfo`` tuple which determines which events are ready
+    ## on the ``fd``.
+
+  proc contains*(s: PSelector, fd: TSocketHandle): bool =
+    ## Determines whether selector contains a file descriptor.
+
+  proc `[]`*(s: PSelector, fd: TSocketHandle): PSelectorKey =
+    ## Retrieves the selector key for ``fd``.
+
+
+elif defined(linux):
   type
     PSelector* = ref object
       epollFD: cint
@@ -154,7 +183,7 @@ when defined(linux) or defined(nimdoc):
     ## Retrieves the selector key for ``fd``.
     return s.fds[fd]
 
-else:
+elif defined(openbsd) or defined(macosx):
   # TODO: kqueue for bsd/mac os x.
   type
     PSelector* = ref object
@@ -253,7 +282,7 @@ proc contains*(s: PSelector, key: PSelectorKey): bool =
   ## the new one may have the same value.
   return key.fd in s and s.fds[key.fd] == key
 
-when isMainModule:
+when isMainModule and not defined(nimdoc):
   # Select()
   import sockets
   type
