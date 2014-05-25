@@ -220,7 +220,7 @@ proc listen*(socket: PAsyncSocket, backlog = SOMAXCONN) =
 
 proc close*(socket: PAsyncSocket) =
   ## Closes the socket.
-  socket.fd.TAsyncFD.close()
+  socket.fd.TAsyncFD.closeSocket()
   # TODO SSL
 
 when isMainModule:

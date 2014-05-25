@@ -123,7 +123,7 @@ This means that all the control structures are recognized by indentation.
 Indentation consists only of spaces; tabulators are not allowed.
 
 The indentation handling is implemented as follows: The lexer annotates the
-following token with the preceeding number of spaces; indentation is not
+following token with the preceding number of spaces; indentation is not
 a separate token. This trick allows parsing of Nimrod with only 1 token of
 lookahead.
 
@@ -617,7 +617,7 @@ Ordinal types
 
 Integers, bool, characters and enumeration types (and subranges of these
 types) belong to ordinal types. For reasons of simplicity of implementation
-the types ``uint`` and ``uint64`` are no ordinal types.
+the types ``uint`` and ``uint64`` are not ordinal types.
 
 
 Pre-defined integer types
@@ -686,7 +686,7 @@ kinds of integer types are used: the smaller type is converted to the larger.
 A `narrowing type conversion`:idx: converts a larger to a smaller type (for
 example ``int32 -> int16``. A `widening type conversion`:idx: converts a 
 smaller type to a larger type (for example ``int16 -> int32``). In Nimrod only
-widening type conversion are *implicit*:
+widening type conversions are *implicit*:
 
 .. code-block:: nimrod
   var myInt16 = 5i16
@@ -964,6 +964,14 @@ memory. However in practice this almost never happens as the GC considers
 stack roots conservatively. One can use the builtin procs ``GC_ref`` and
 ``GC_unref`` to keep the string data alive for the rare cases where it does
 not work.
+
+A `$` proc is defined for cstrings that returns a string. Thus to get a nimrod
+string from a cstring:
+
+.. code-block:: nimrod
+  var str: string = "Hello!"
+  var cstr: cstring = s
+  var newstr: string = $cstr
 
 
 Structured types
@@ -1519,7 +1527,7 @@ Most calling conventions exist only for the Windows 32-bit platform.
 
 Assigning/passing a procedure to a procedural variable is only allowed if one
 of the following conditions hold:
-1) The procedure that is accessed resists in the current module.
+1) The procedure that is accessed resides in the current module.
 2) The procedure is marked with the ``procvar`` pragma (see `procvar pragma`_).
 3) The procedure has a calling convention that differs from ``nimcall``.
 4) The procedure is anonymous.
@@ -1527,8 +1535,8 @@ of the following conditions hold:
 The rules' purpose is to prevent the case that extending a non-``procvar`` 
 procedure with default parameters breaks client code.
 
-The default calling convention is ``nimcall``, unless it is an inner proc (
-a proc inside of a proc). For an inner proc an analysis is performed whether it
+The default calling convention is ``nimcall``, unless it is an inner proc (a
+proc inside of a proc). For an inner proc an analysis is performed whether it
 accesses its environment. If it does so, it has the calling convention
 ``closure``, otherwise it has the calling convention ``nimcall``.
 
@@ -1541,6 +1549,10 @@ incompatible with its base type. In particular, it is an essential property
 of a distinct type that it **does not** imply a subtype relation between it
 and its base type. Explicit type conversions from a distinct type to its
 base type and vice versa are allowed.
+
+
+Modelling currencies
+~~~~~~~~~~~~~~~~~~~~
 
 A distinct type can be used to model different physical `units`:idx: with a
 numerical base type, for example. The following example models currencies.
@@ -1649,6 +1661,67 @@ certain builtin operations to be lifted:
 Currently only the dot accessor can be borrowed in this way.
 
 
+Avoiding SQL injection attacks
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+An SQL statement that is passed from Nimrod to an SQL database might be
+modelled as a string. However, using string templates and filling in the
+values is vulnerable to the famous `SQL injection attack`:idx:\:
+
+.. code-block:: nimrod
+  import strutils
+
+  proc query(db: TDbHandle, statement: string) = ...
+
+  var
+    username: string
+
+  db.query("SELECT FROM users WHERE name = '$1'" % username)
+  # Horrible security hole, but the compiler does not mind!
+
+This can be avoided by distinguishing strings that contain SQL from strings
+that don't. Distinct types provide a means to introduce a new string type
+``TSQL`` that is incompatible with ``string``:
+
+.. code-block:: nimrod
+  type
+    TSQL = distinct string
+
+  proc query(db: TDbHandle, statement: TSQL) = ...
+
+  var
+    username: string
+
+  db.query("SELECT FROM users WHERE name = '$1'" % username)
+  # Error at compile time: `query` expects an SQL string!
+
+
+It is an essential property of abstract types that they **do not** imply a
+subtype relation between the abtract type and its base type. Explict type
+conversions from ``string`` to ``TSQL`` are allowed:
+
+.. code-block:: nimrod
+  import strutils, sequtils
+
+  proc properQuote(s: string): TSQL =
+    # quotes a string properly for an SQL statement
+    return TSQL(s)
+
+  proc `%` (frmt: TSQL, values: openarray[string]): TSQL =
+    # quote each argument:
+    let v = values.mapIt(TSQL, properQuote(it))
+    # we need a temporary type for the type conversion :-(
+    type TStrSeq = seq[string]
+    # call strutils.`%`:
+    result = TSQL(string(frmt) % TStrSeq(v))
+
+  db.query("SELECT FROM users WHERE name = '$1'".TSQL % [username])
+
+Now we have compile-time checking against SQL injection attacks.  Since
+``"".TSQL`` is transformed to ``TSQL("")`` no new syntax is needed for nice
+looking ``TSQL`` string literals. The hypothetical ``TSQL`` type actually
+exists in the library as the `TSqlQuery type <db_sqlite.html#TSqlQuery>`_ of
+modules like `db_sqlite <db_sqlite.html>`_.
 
 
 Void type

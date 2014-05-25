@@ -10,7 +10,7 @@
 # set handling
 
 type
-  TNimSet = array [0..4*2048-1, int8]
+  TNimSet = array [0..4*2048-1, uint8]
 
 proc countBits32(n: int32): int {.compilerproc.} =
   var v = n
@@ -25,4 +25,4 @@ proc countBits64(n: int64): int {.compilerproc.} =
 proc cardSet(s: TNimSet, len: int): int {.compilerproc.} =
   result = 0
   for i in countup(0, len-1):
-    inc(result, countBits32(int32(ze(s[i]))))
+    inc(result, countBits32(int32(s[i])))

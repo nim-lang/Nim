@@ -503,7 +503,8 @@ proc assignLocalVar(p: BProc, s: PSym) =
     if sfRegister in s.flags: app(decl, " register")
     #elif skipTypes(s.typ, abstractInst).kind in GcTypeKinds:
     #  app(decl, " GC_GUARD")
-    if sfVolatile in s.flags or p.nestedTryStmts.len > 0: 
+    if sfVolatile in s.flags or (p.nestedTryStmts.len > 0 and
+                                 gCmd != cmdCompileToCpp):
       app(decl, " volatile")
     appf(decl, " $1;$n", [s.loc.r])
   else:

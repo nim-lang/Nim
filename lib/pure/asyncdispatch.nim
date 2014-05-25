@@ -71,6 +71,11 @@ proc fail*[T](future: PFuture[T], error: ref EBase) =
   future.error = error
   if future.cb != nil:
     future.cb()
+  else:
+    # This is to prevent exceptions from being silently ignored when a future
+    # is discarded.
+    # TODO: This may turn out to be a bad idea.
+    raise error
 
 proc `callback=`*(future: PFutureBase, cb: proc () {.closure,gcsafe.}) =
   ## Sets the callback proc to be called when the future completes.
@@ -532,10 +537,14 @@ when defined(windows) or defined(nimdoc):
     result.TSocketHandle.setBlocking(false)
     register(result)
 
-  proc close*(socket: TAsyncFD) =
+  proc closeSocket*(socket: TAsyncFD) =
     ## Closes a socket and ensures that it is unregistered.
     socket.TSocketHandle.close()
     getGlobalDispatcher().handles.excl(socket)
+
+  proc unregister*(fd: TAsyncFD) =
+    ## Unregisters ``fd``.
+    getGlobalDispatcher().handles.excl(fd)
 
   initAll()
 else:
@@ -581,10 +590,13 @@ else:
     result.TSocketHandle.setBlocking(false)
     register(result)
   
-  proc close*(sock: TAsyncFD) =
+  proc closeSocket*(sock: TAsyncFD) =
     let disp = getGlobalDispatcher()
     sock.TSocketHandle.close()
     disp.selector.unregister(sock.TSocketHandle)
+
+  proc unregister*(fd: TAsyncFD) =
+    getGlobalDispatcher().selector.unregister(fd.TSocketHandle)
 
   proc addRead(sock: TAsyncFD, cb: TCallback) =
     let p = getGlobalDispatcher()
@@ -801,8 +813,9 @@ proc generateExceptionCheck(futSym,
     elseNode[0].add rootReceiver
     result.add elseNode
 
-template createVar(futSymName: string, asyncProc: PNimrodNode,
-                   valueReceiver, rootReceiver: expr) {.immediate, dirty.} =
+template createVar(result: var PNimrodNode, futSymName: string,
+                   asyncProc: PNimrodNode,
+                   valueReceiver, rootReceiver: expr) =
   result = newNimNode(nnkStmtList)
   var futSym = genSym(nskVar, "future")
   result.add newVarStmt(futSym, asyncProc) # -> var future<x> = y
@@ -839,7 +852,7 @@ proc processBody(node, retFutureSym: PNimrodNode,
       of nnkCall:
         # await foo(p, x)
         var futureValue: PNimrodNode
-        createVar("future" & $node[1][0].toStrLit, node[1], futureValue,
+        result.createVar("future" & $node[1][0].toStrLit, node[1], futureValue,
                   futureValue)
       else:
         error("Invalid node kind in 'await', got: " & $node[1].kind)
@@ -847,7 +860,7 @@ proc processBody(node, retFutureSym: PNimrodNode,
          node[1][0].ident == !"await":
       # foo await x
       var newCommand = node
-      createVar("future" & $node[0].toStrLit, node[1][1], newCommand[1],
+      result.createVar("future" & $node[0].toStrLit, node[1][1], newCommand[1],
                 newCommand)
 
   of nnkVarSection, nnkLetSection:
@@ -856,7 +869,7 @@ proc processBody(node, retFutureSym: PNimrodNode,
       if node[0][2][0].ident == !"await":
         # var x = await y
         var newVarSection = node # TODO: Should this use copyNimNode?
-        createVar("future" & $node[0][0].ident, node[0][2][1],
+        result.createVar("future" & $node[0][0].ident, node[0][2][1],
           newVarSection[0][2], newVarSection)
     else: discard
   of nnkAsgn:
@@ -865,14 +878,14 @@ proc processBody(node, retFutureSym: PNimrodNode,
       if node[1][0].ident == !"await":
         # x = await y
         var newAsgn = node
-        createVar("future" & $node[0].toStrLit, node[1][1], newAsgn[1], newAsgn)
+        result.createVar("future" & $node[0].toStrLit, node[1][1], newAsgn[1], newAsgn)
     else: discard
   of nnkDiscardStmt:
     # discard await x
     if node[0].kind != nnkEmpty and node[0][0].kind == nnkIdent and
           node[0][0].ident == !"await":
       var newDiscard = node
-      createVar("futureDiscard_" & $toStrLit(node[0][1]), node[0][1],
+      result.createVar("futureDiscard_" & $toStrLit(node[0][1]), node[0][1],
                 newDiscard[0], newDiscard)
   of nnkTryStmt:
     # try: await x; except: ...

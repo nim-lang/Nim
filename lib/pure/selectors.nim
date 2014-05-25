@@ -11,9 +11,12 @@
 
 import tables, os, unsigned, hashes
 
-when defined(linux): import posix, epoll
-elif defined(windows): import winlean
-else: import posix
+when defined(linux): 
+  import posix, epoll
+elif defined(windows): 
+  import winlean
+else: 
+  import posix
 
 proc hash*(x: TSocketHandle): THash {.borrow.}
 proc `$`*(x: TSocketHandle): string {.borrow.}
@@ -29,7 +32,36 @@ type
 
   TReadyInfo* = tuple[key: PSelectorKey, events: set[TEvent]]
 
-when defined(linux) or defined(nimdoc):
+when defined(nimdoc):
+  type
+    PSelector* = ref object
+      ## An object which holds file descripters to be checked for read/write
+      ## status.
+      fds: TTable[TSocketHandle, PSelectorKey]
+
+  proc register*(s: PSelector, fd: TSocketHandle, events: set[TEvent],
+                 data: PObject): PSelectorKey {.discardable.} =
+    ## Registers file descriptor ``fd`` to selector ``s`` with a set of TEvent
+    ## ``events``.
+
+  proc update*(s: PSelector, fd: TSocketHandle,
+               events: set[TEvent]): PSelectorKey {.discardable.} =
+    ## Updates the events which ``fd`` wants notifications for.
+
+  proc select*(s: PSelector, timeout: int): seq[TReadyInfo] =
+    ## The ``events`` field of the returned ``key`` contains the original events
+    ## for which the ``fd`` was bound. This is contrary to the ``events`` field
+    ## of the ``TReadyInfo`` tuple which determines which events are ready
+    ## on the ``fd``.
+
+  proc contains*(s: PSelector, fd: TSocketHandle): bool =
+    ## Determines whether selector contains a file descriptor.
+
+  proc `[]`*(s: PSelector, fd: TSocketHandle): PSelectorKey =
+    ## Retrieves the selector key for ``fd``.
+
+
+elif defined(linux):
   type
     PSelector* = ref object
       epollFD: cint
@@ -49,9 +81,10 @@ when defined(linux) or defined(nimdoc):
     ## Registers file descriptor ``fd`` to selector ``s`` with a set of TEvent
     ## ``events``.
     var event = createEventStruct(events, fd)
-    if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fd, addr(event)) != 0:
-      OSError(OSLastError())
-  
+    if events != {}:
+      if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fd, addr(event)) != 0:
+        OSError(OSLastError())
+
     var key = PSelectorKey(fd: fd, events: events, data: data)
   
     s.fds[fd] = key
@@ -61,11 +94,27 @@ when defined(linux) or defined(nimdoc):
       events: set[TEvent]): PSelectorKey {.discardable.} =
     ## Updates the events which ``fd`` wants notifications for.
     if s.fds[fd].events != events:
-      var event = createEventStruct(events, fd)
+      if events == {}:
+        # This fd is idle -- it should not be registered to epoll.
+        # But it should remain a part of this selector instance.
+        # This is to prevent epoll_wait from returning immediately
+        # because its got fds which are waiting for no events and
+        # are therefore constantly ready. (leading to 100% CPU usage).
+        if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fd, nil) != 0:
+          OSError(OSLastError())
+        s.fds[fd].events = events
+      else:
+        var event = createEventStruct(events, fd)
+        if s.fds[fd].events == {}:
+          # This fd is idle. It's not a member of this epoll instance and must
+          # be re-registered.
+          if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fd, addr(event)) != 0:
+            OSError(OSLastError())
+        else:
+          if epoll_ctl(s.epollFD, EPOLL_CTL_MOD, fd, addr(event)) != 0:
+            OSError(OSLastError())
+        s.fds[fd].events = events
       
-      s.fds[fd].events = events
-      if epoll_ctl(s.epollFD, EPOLL_CTL_MOD, fd, addr(event)) != 0:
-        OSError(OSLastError())
       result = s.fds[fd]
   
   proc unregister*(s: PSelector, fd: TSocketHandle): PSelectorKey {.discardable.} =
@@ -123,7 +172,10 @@ when defined(linux) or defined(nimdoc):
     ## Determines whether selector contains a file descriptor.
     if s.fds.hasKey(fd):
       # Ensure the underlying epoll instance still contains this fd.
-      result = epollHasFd(s, fd)
+      if s.fds[fd].events != {}:
+        result = epollHasFd(s, fd)
+      else:
+        result = true
     else:
       return false
 
@@ -131,7 +183,7 @@ when defined(linux) or defined(nimdoc):
     ## Retrieves the selector key for ``fd``.
     return s.fds[fd]
 
-else:
+elif not defined(nimdoc):
   # TODO: kqueue for bsd/mac os x.
   type
     PSelector* = ref object
@@ -230,7 +282,7 @@ proc contains*(s: PSelector, key: PSelectorKey): bool =
   ## the new one may have the same value.
   return key.fd in s and s.fds[key.fd] == key
 
-when isMainModule:
+when isMainModule and not defined(nimdoc):
   # Select()
   import sockets
   type

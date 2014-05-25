@@ -903,7 +903,7 @@ elif not defined(useNimRtl):
       createStream(p.errStream, p.errHandle, fmRead)
     return p.errStream
 
-  proc csystem(cmd: cstring): cint {.nodecl, importc: "system".}
+  proc csystem(cmd: cstring): cint {.nodecl, importc: "system", header: "<stdlib.h>".}
 
   proc execCmd(command: string): int =
     when defined(linux):

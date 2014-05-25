@@ -152,7 +152,7 @@ proc boot(args: string) =
   copyExe(findStartNimrod(), 0.thVersion)
   for i in 0..2:
     echo "iteration: ", i+1
-    exec i.thVersion & " cc $# $# compiler" / "nimrod.nim" % [bootOptions, args]
+    exec i.thVersion & " c $# $# compiler" / "nimrod.nim" % [bootOptions, args]
     if sameFileContent(output, i.thVersion):
       copyExe(output, finalDest)
       echo "executables are equal: SUCCESS!"
@@ -167,7 +167,7 @@ const
   cleanExt = [
     ".ppu", ".o", ".obj", ".dcu", ".~pas", ".~inc", ".~dsk", ".~dpr",
     ".map", ".tds", ".err", ".bak", ".pyc", ".exe", ".rod", ".pdb", ".idb",
-    ".idx"
+    ".idx", ".ilk"
   ]
   ignore = [
     ".bzrignore", "nimrod", "nimrod.exe", "koch", "koch.exe", ".gitignore"
