@@ -885,6 +885,8 @@ const
 
   nkCallKinds* = {nkCall, nkInfix, nkPrefix, nkPostfix,
                   nkCommand, nkCallStrLit, nkHiddenCallConv}
+  nkIdentKinds* = {nkIdent, nkSym, nkAccQuoted, nkOpenSymChoice,
+                   nkClosedSymChoice}
 
   nkLiterals* = {nkCharLit..nkTripleStrLit}
   nkLambdaKinds* = {nkLambda, nkDo}

@@ -134,26 +134,26 @@ proc callCodegenProc*(name: string, arg1: PNode;
 
 # we have 4 cases to consider:
 # - a void proc --> nothing to do
-# - a proc returning GC'ed memory --> requires a future
+# - a proc returning GC'ed memory --> requires a promise
 # - a proc returning non GC'ed memory --> pass as hidden 'var' parameter
-# - not in a parallel environment --> requires a future for memory safety
+# - not in a parallel environment --> requires a promise for memory safety
 type
   TSpawnResult = enum
-    srVoid, srFuture, srByVar
-  TFutureKind = enum
-    futInvalid # invalid type T for 'Future[T]'
-    futGC      # Future of a GC'ed type
-    futBlob    # Future of a blob type
+    srVoid, srPromise, srByVar
+  TPromiseKind = enum
+    promInvalid # invalid type T for 'Promise[T]'
+    promGC      # Promise of a GC'ed type
+    promBlob    # Promise of a blob type
 
 proc spawnResult(t: PType; inParallel: bool): TSpawnResult =
   if t.isEmptyType: srVoid
   elif inParallel and not containsGarbageCollectedRef(t): srByVar
-  else: srFuture
+  else: srPromise
 
-proc futureKind(t: PType): TFutureKind =
-  if t.skipTypes(abstractInst).kind in {tyRef, tyString, tySequence}: futGC
-  elif containsGarbageCollectedRef(t): futInvalid
-  else: futBlob
+proc promiseKind(t: PType): TPromiseKind =
+  if t.skipTypes(abstractInst).kind in {tyRef, tyString, tySequence}: promGC
+  elif containsGarbageCollectedRef(t): promInvalid
+  else: promBlob
 
 discard """
 We generate roughly this:
@@ -164,12 +164,12 @@ proc f_wrapper(args) =
                  # the 'parallel' statement
   var b = args.b
 
-  args.fut = nimCreateFuture(thread, sizeof(T)) # optional
-  nimFutureCreateCondVar(args.fut)  # optional
+  args.prom = nimCreatePromise(thread, sizeof(T)) # optional
+  nimPromiseCreateCondVar(args.prom)  # optional
   nimArgsPassingDone() # signal parent that the work is done
   # 
-  args.fut.blob = f(a, b, ...)
-  nimFutureSignal(args.fut)
+  args.prom.blob = f(a, b, ...)
+  nimPromiseSignal(args.prom)
   
   # - or -
   f(a, b, ...)
@@ -181,42 +181,42 @@ stmtList:
   scratchObj.b = b
 
   nimSpawn(f_wrapper, addr scratchObj)
-  scratchObj.fut # optional
+  scratchObj.prom # optional
 
 """
 
-proc createNimCreateFutureCall(fut, threadParam: PNode): PNode =
-  let size = newNodeIT(nkCall, fut.info, getSysType(tyInt))
+proc createNimCreatePromiseCall(prom, threadParam: PNode): PNode =
+  let size = newNodeIT(nkCall, prom.info, getSysType(tyInt))
   size.add newSymNode(createMagic("sizeof", mSizeOf))
-  assert fut.typ.kind == tyGenericInst
-  size.add newNodeIT(nkType, fut.info, fut.typ.sons[1])
+  assert prom.typ.kind == tyGenericInst
+  size.add newNodeIT(nkType, prom.info, prom.typ.sons[1])
 
-  let castExpr = newNodeIT(nkCast, fut.info, fut.typ)
+  let castExpr = newNodeIT(nkCast, prom.info, prom.typ)
   castExpr.add emptyNode
-  castExpr.add callCodeGenProc("nimCreateFuture", threadParam, size)
-  result = newFastAsgnStmt(fut, castExpr)
+  castExpr.add callCodeGenProc("nimCreatePromise", threadParam, size)
+  result = newFastAsgnStmt(prom, castExpr)
 
 proc createWrapperProc(f: PNode; threadParam, argsParam: PSym;
-                       varSection, call, barrier, fut: PNode): PSym =
+                       varSection, call, barrier, prom: PNode): PSym =
   var body = newNodeI(nkStmtList, f.info)
   body.add varSection
   if barrier != nil:
     body.add callCodeGenProc("barrierEnter", barrier)
-  if fut != nil:
-    body.add createNimCreateFutureCall(fut, threadParam.newSymNode)
+  if prom != nil:
+    body.add createNimCreatePromiseCall(prom, threadParam.newSymNode)
     if barrier == nil:
-      body.add callCodeGenProc("nimFutureCreateCondVar", fut)
+      body.add callCodeGenProc("nimPromiseCreateCondVar", prom)
 
   body.add callCodeGenProc("nimArgsPassingDone", threadParam.newSymNode)
-  if fut != nil:
-    let fk = fut.typ.sons[1].futureKind
-    if fk == futInvalid:
-      localError(f.info, "cannot create a future of type: " & 
-        typeToString(fut.typ.sons[1]))
-    body.add newAsgnStmt(indirectAccess(fut,
-      if fk == futGC: "data" else: "blob", fut.info), call)
+  if prom != nil:
+    let fk = prom.typ.sons[1].promiseKind
+    if fk == promInvalid:
+      localError(f.info, "cannot create a promise of type: " & 
+        typeToString(prom.typ.sons[1]))
+    body.add newAsgnStmt(indirectAccess(prom,
+      if fk == promGC: "data" else: "blob", prom.info), call)
     if barrier == nil:
-      body.add callCodeGenProc("nimFutureSignal", fut)
+      body.add callCodeGenProc("nimPromiseSignal", prom)
   else:
     body.add call
   if barrier != nil:
@@ -381,7 +381,7 @@ proc wrapProcForSpawn*(owner: PSym; n: PNode; retType: PType;
   of srVoid:
     internalAssert dest == nil
     result = newNodeI(nkStmtList, n.info)
-  of srFuture:
+  of srPromise:
     internalAssert dest == nil
     result = newNodeIT(nkStmtListExpr, n.info, retType)
   of srByVar:
@@ -450,17 +450,17 @@ proc wrapProcForSpawn*(owner: PSym; n: PNode; retType: PType;
     result.add newFastAsgnStmt(newDotExpr(scratchObj, field), barrier)
     barrierAsExpr = indirectAccess(castExpr, field, n.info)
 
-  var futField, futAsExpr: PNode = nil
-  if spawnKind == srFuture:
-    var field = newSym(skField, getIdent"fut", owner, n.info)
+  var promField, promAsExpr: PNode = nil
+  if spawnKind == srPromise:
+    var field = newSym(skField, getIdent"prom", owner, n.info)
     field.typ = retType
     objType.addField(field)
-    futField = newDotExpr(scratchObj, field)
-    futAsExpr = indirectAccess(castExpr, field, n.info)
+    promField = newDotExpr(scratchObj, field)
+    promAsExpr = indirectAccess(castExpr, field, n.info)
 
   let wrapper = createWrapperProc(fn, threadParam, argsParam, varSection, call,
-                                  barrierAsExpr, futAsExpr)
+                                  barrierAsExpr, promAsExpr)
   result.add callCodeGenProc("nimSpawn", wrapper.newSymNode,
                              genAddrOf(scratchObj.newSymNode))
 
-  if spawnKind == srFuture: result.add futField
+  if spawnKind == srPromise: result.add promField
