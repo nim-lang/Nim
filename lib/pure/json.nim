@@ -628,29 +628,26 @@ proc len*(n: PJsonNode): int =
   of JObject: result = n.fields.len
   else: discard
 
-proc `[]`*(node: PJsonNode, name: string, default: PJsonNode = nil): PJsonNode =
-  ## Gets a field from a `JObject`. If node is nil, this returns `default`
-  ## This is to allow for chaining such as the following:
-  ## .. code-block Nimrod
-  ##   foo["field1"]["field2"]
-  ##
-  ## If `field1` is undefined, it will return nil, and the access on `field2` will
-  ## pass through and return `default`. Also returns `default` if the key is not found.
+proc `[]`*(node: PJsonNode, name: string): PJsonNode
+     {.raises: [EInvalidValue].} =
+  ## Gets a field from a `JObject`. If `node` is nil, raises an
+  ## `EInvalidValue` exception. If the value at `name` does not
+  ## exist, returns nil
   if isNil(node):
-    return default
+    raise newException(EInvalidValue, "node may not be nil")
   assert(node.kind == JObject)
   for key, item in items(node.fields):
     if key == name:
       return item
-  return default
+  return nil
   
-proc `[]`*(node: PJsonNode, index: int, default: PJsonNode = nil): PJsonNode {.raises: [EInvalidIndex].}=
-  ## Gets the node at `index` in an Array.If `node` is nil, this returns `result`, 
-  ## which is by default `nil` to allow for chaining. `EInvalidIndex` is raised if `index`
+proc `[]`*(node: PJsonNode, index: int): PJsonNode 
+     {.raises: [EInvalidIndex, EInvalidValue].} =
+  ## Gets the node at `index` in an Array. `EInvalidIndex` is raised if `index`
   ## is out of bounds
-  if isNil(node):
-    return default
   assert(node.kind == JArray)
+  if isNil(node):
+    raise newException(EInvalidValue, "node may not be nil")
   if index < 0 or index >= node.elems.len:
     raise newException(EInvalidIndex,
           "index " & $index & " is out of range [0, " & $node.elems.len & ")")
@@ -685,6 +682,25 @@ proc `[]=`*(obj: PJsonNode, key: string, val: PJsonNode) =
       obj.fields[i].val = val
       return
   obj.fields.add((key, val))
+
+proc `{}`*(node: PJsonNode, names: varargs[string]): PJsonNode =
+  ## Transverses the node and gets the given value. If any of the
+  ## names does not exist, returns nil
+  result = node
+  for name in names:
+    result = result[name]
+    if isNil(result):
+      return nil
+
+proc `{}=`*(node: PJsonNode, names: varargs[string], value: PJsonNode) =
+  ## Transverses the node and tries to set the value at the given location
+  ## to `value` If any of the names are missing, they are added
+  var node = node
+  for i in 0..(names.len-2):
+    if isNil(node[names[i]]):
+      node[names[i]] = newJObject()
+    node = node[names[i]]
+  node[names[names.len-1]] = value
 
 proc delete*(obj: PJsonNode, key: string) =
   ## Deletes ``obj[key]`` preserving the order of the other (key, value)-pairs.
@@ -942,12 +958,10 @@ when isMainModule:
 
   let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd" }"""
   # nil passthrough
-  assert(testJson["doesnt_exist"][1] == nil)
-  assert(testJson["doesnt_exist"]["anything"] == nil)
-  # default param
-  assert(testJson["doesnt_exist",%true].bval)
-  assert(testJson["doesnt_exist"][1,%true].bval)
-  
+  assert(testJson{"doesnt_exist", "anything"} == nil)
+  testJson{["c", "d"]} = %true
+  assert(testJson["c"]["d"].bval)
+
   # Bounds checking
   try:
     let a = testJson["a"][9]
