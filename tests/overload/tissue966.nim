@@ -1,5 +1,5 @@
 discard """
-  errormsg: "type mismatch: got (PTest)"
+  errormsg: "type mismatch: got (tissue966.PTest)"
 """
 
 type
