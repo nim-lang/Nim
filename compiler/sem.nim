@@ -134,7 +134,7 @@ proc isTopLevel(c: PContext): bool {.inline.} =
   result = c.currentScope.depthLevel <= 2
 
 proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym = 
-  result = newSym(kind, considerAccents(n), getCurrOwner(), n.info)
+  result = newSym(kind, considerQuotedIdent(n), getCurrOwner(), n.info)
 
 proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
   # like newSymS, but considers gensym'ed symbols
@@ -147,7 +147,7 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     # template; we must fix it here: see #909
     result.owner = getCurrOwner()
   else:
-    result = newSym(kind, considerAccents(n), getCurrOwner(), n.info)
+    result = newSym(kind, considerQuotedIdent(n), getCurrOwner(), n.info)
 
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
                  allowed: TSymFlags): PSym

@@ -168,7 +168,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       pickBest(callOp)
    
     if overloadsState == csEmpty and result.state == csEmpty:
-      localError(n.info, errUndeclaredIdentifier, considerAccents(f).s)
+      localError(n.info, errUndeclaredIdentifier, considerQuotedIdent(f).s)
       return
     elif result.state != csMatch:
       if nfExprCall in n.flags:

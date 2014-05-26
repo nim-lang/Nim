@@ -387,7 +387,7 @@ proc semOpAux(c: PContext, n: PNode) =
     var a = n.sons[i]
     if a.kind == nkExprEqExpr and sonsLen(a) == 2: 
       var info = a.sons[0].info
-      a.sons[0] = newIdentNode(considerAccents(a.sons[0]), info)
+      a.sons[0] = newIdentNode(considerQuotedIdent(a.sons[0]), info)
       a.sons[1] = semExprWithType(c, a.sons[1], flags)
       a.typ = a.sons[1].typ
     else:
@@ -970,7 +970,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
   n.sons[0] = semExprWithType(c, n.sons[0], flags+{efDetermineType})
   #restoreOldStyleType(n.sons[0])
-  var i = considerAccents(n.sons[1])
+  var i = considerQuotedIdent(n.sons[1])
   var ty = n.sons[0].typ
   var f: PSym = nil
   result = nil
@@ -1051,7 +1051,7 @@ proc dotTransformation(c: PContext, n: PNode): PNode =
     addSon(result, n.sons[1])
     addSon(result, copyTree(n[0]))
   else:
-    var i = considerAccents(n.sons[1])
+    var i = considerQuotedIdent(n.sons[1])
     result = newNodeI(nkDotCall, n.info)
     result.flags.incl nfDotField
     addSon(result, newIdentNode(i, n[1].info))
@@ -1135,7 +1135,7 @@ proc semArrayAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     result = semExpr(c, buildOverloadedSubscripts(n, getIdent"[]"))
 
 proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
-  var id = considerAccents(a[1])
+  var id = considerQuotedIdent(a[1])
   var setterId = newIdentNode(getIdent(id.s & '='), n.info)
   # a[0] is already checked for semantics, that does ``builtinFieldAccess``
   # this is ugly. XXX Semantic checking should use the ``nfSem`` flag for
@@ -1369,7 +1369,7 @@ proc lookUpForDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
       else: 
         localError(n.sons[1].info, errIdentifierExpected, "")
   of nkAccQuoted:
-    result = lookUpForDefined(c, considerAccents(n), onlyCurrentScope)
+    result = lookUpForDefined(c, considerQuotedIdent(n), onlyCurrentScope)
   of nkSym:
     result = n.sym
   else: 
