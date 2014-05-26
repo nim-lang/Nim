@@ -192,6 +192,8 @@ proc isCastable(dst, src: PType): bool =
     result = false
   elif ss < 0: 
     result = false
+  elif not typeAllowed(dst, skParam):
+    result = false
   else: 
     result = (ds >= ss) or
         (skipTypes(dst, abstractInst).kind in IntegralTypes) or
