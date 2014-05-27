@@ -377,32 +377,32 @@ type
 #    Definitions for callback procedures
 #
 type
-  BFFCALLBACK* = proc (para1: HWND, para2: UINT, para3: LPARAM, para4: LPARAM): int32{.
+  BFFCALLBACK* = proc (para1: HWND, para2: WINUINT, para3: LPARAM, para4: LPARAM): int32{.
       stdcall.}
-  LPCCHOOKPROC* = proc (para1: HWND, para2: UINT, para3: WPARAM, para4: LPARAM): UINT{.
+  LPCCHOOKPROC* = proc (para1: HWND, para2: WINUINT, para3: WPARAM, para4: LPARAM): WINUINT{.
       stdcall.}
-  LPCFHOOKPROC* = proc (para1: HWND, para2: UINT, para3: WPARAM, para4: LPARAM): UINT{.
+  LPCFHOOKPROC* = proc (para1: HWND, para2: WINUINT, para3: WPARAM, para4: LPARAM): WINUINT{.
       stdcall.}
   PTHREAD_START_ROUTINE* = Pointer
   LPTHREAD_START_ROUTINE* = PTHREAD_START_ROUTINE
   EDITSTREAMCALLBACK* = proc (para1: DWORD, para2: LPBYTE, para3: LONG,
                               para4: LONG): DWORD{.stdcall.}
-  LPFRHOOKPROC* = proc (para1: HWND, para2: UINT, para3: WPARAM, para4: LPARAM): UINT{.
+  LPFRHOOKPROC* = proc (para1: HWND, para2: WINUINT, para3: WPARAM, para4: LPARAM): WINUINT{.
       stdcall.}
-  LPOFNHOOKPROC* = proc (para1: HWND, para2: UINT, para3: WPARAM, para4: LPARAM): UINT{.
+  LPOFNHOOKPROC* = proc (para1: HWND, para2: WINUINT, para3: WPARAM, para4: LPARAM): WINUINT{.
       stdcall.}
-  LPPRINTHOOKPROC* = proc (para1: HWND, para2: UINT, para3: WPARAM,
-                           para4: LPARAM): UINT{.stdcall.}
-  LPSETUPHOOKPROC* = proc (para1: HWND, para2: UINT, para3: WPARAM,
-                           para4: LPARAM): UINT{.stdcall.}
-  DLGPROC* = proc (para1: HWND, para2: UINT, para3: WPARAM, para4: LPARAM): LRESULT{.
+  LPPRINTHOOKPROC* = proc (para1: HWND, para2: WINUINT, para3: WPARAM,
+                           para4: LPARAM): WINUINT{.stdcall.}
+  LPSETUPHOOKPROC* = proc (para1: HWND, para2: WINUINT, para3: WPARAM,
+                           para4: LPARAM): WINUINT{.stdcall.}
+  DLGPROC* = proc (para1: HWND, para2: WINUINT, para3: WPARAM, para4: LPARAM): LRESULT{.
       stdcall.}
-  PFNPROPSHEETCALLBACK* = proc (para1: HWND, para2: UINT, para3: LPARAM): int32{.
+  PFNPROPSHEETCALLBACK* = proc (para1: HWND, para2: WINUINT, para3: LPARAM): int32{.
       stdcall.}
   LPSERVICE_MAIN_FUNCTION* = proc (para1: DWORD, para2: LPTSTR){.stdcall.}
   PFNTVCOMPARE* = proc (para1: LPARAM, para2: LPARAM, para3: LPARAM): int32{.
       stdcall.}
-  WNDPROC* = proc (para1: HWND, para2: UINT, para3: WPARAM, para4: LPARAM): LRESULT{.
+  WNDPROC* = proc (para1: HWND, para2: WINUINT, para3: WPARAM, para4: LPARAM): LRESULT{.
       stdcall.}
   FARPROC* = pointer
   TFarProc* = FARPROC
@@ -416,9 +416,9 @@ type
   DESKTOPENUMPROC* = FARPROC
   ENUMWINDOWSPROC* = proc (para1: HWND, para2: LPARAM): WINBOOL{.stdcall.}
   ENUMWINDOWSTATIONPROC* = proc (para1: LPTSTR, para2: LPARAM): WINBOOL{.stdcall.}
-  SENDASYNCPROC* = proc (para1: HWND, para2: UINT, para3: DWORD, para4: LRESULT){.
+  SENDASYNCPROC* = proc (para1: HWND, para2: WINUINT, para3: DWORD, para4: LRESULT){.
       stdcall.}
-  TIMERPROC* = proc (para1: HWND, para2: UINT, para3: UINT, para4: DWORD){.
+  TIMERPROC* = proc (para1: HWND, para2: WINUINT, para3: WINUINT, para4: DWORD){.
       stdcall.}
   GRAYSTRINGPROC* = FARPROC
   DRAWSTATEPROC* = proc (para1: HDC, para2: LPARAM, para3: WPARAM, para4: int32,
@@ -432,10 +432,10 @@ type
   ENUMOBJECTSPROC* = proc (para1: LPVOID, para2: LPARAM){.stdcall.}
   LINEDDAPROC* = proc (para1: int32, para2: int32, para3: LPARAM){.stdcall.}
   TABORTPROC* = proc (para1: HDC, para2: int32): WINBOOL{.stdcall.}
-  LPPAGEPAINTHOOK* = proc (para1: HWND, para2: UINT, para3: WPARAM,
-                           para4: LPARAM): UINT{.stdcall.}
-  LPPAGESETUPHOOK* = proc (para1: HWND, para2: UINT, para3: WPARAM,
-                           para4: LPARAM): UINT{.stdcall.}
+  LPPAGEPAINTHOOK* = proc (para1: HWND, para2: WINUINT, para3: WPARAM,
+                           para4: LPARAM): WINUINT{.stdcall.}
+  LPPAGESETUPHOOK* = proc (para1: HWND, para2: WINUINT, para3: WPARAM,
+                           para4: LPARAM): WINUINT{.stdcall.}
   ICMENUMPROC* = proc (para1: LPTSTR, para2: LPARAM): int32{.stdcall.}
   EDITWORDBREAKPROCEX* = proc (para1: cstring, para2: LONG, para3: int8,
                                para4: WINT): LONG{.stdcall.}
@@ -448,9 +448,9 @@ type
   CALINFO_ENUMPROC* = proc (para1: LPTSTR): WINBOOL{.stdcall.}
   PHANDLER_ROUTINE* = proc (para1: DWORD): WINBOOL{.stdcall.}
   LPHANDLER_FUNCTION* = proc (para1: DWORD): WINBOOL{.stdcall.}
-  PFNGETPROFILEPATH* = proc (para1: LPCTSTR, para2: LPSTR, para3: UINT): UINT{.
+  PFNGETPROFILEPATH* = proc (para1: LPCTSTR, para2: LPSTR, para3: WINUINT): WINUINT{.
       stdcall.}
-  PFNRECONCILEPROFILE* = proc (para1: LPCTSTR, para2: LPCTSTR, para3: DWORD): UINT{.
+  PFNRECONCILEPROFILE* = proc (para1: LPCTSTR, para2: LPCTSTR, para3: DWORD): WINUINT{.
       stdcall.}
   PFNPROCESSPOLICIES* = proc (para1: HWND, para2: LPCTSTR, para3: LPCTSTR,
                               para4: LPCTSTR, para5: DWORD): WINBOOL{.stdcall.}
@@ -498,7 +498,7 @@ else:
     SERVICES_FAILED_DATABASE* = SERVICES_FAILED_DATABASEA
     SC_GROUP_IDENTIFIER* = SC_GROUP_IDENTIFIERA
 type
-  PFNCALLBACK* = proc (para1, para2: UINT, para3: HCONV, para4, para5: HSZ,
+  PFNCALLBACK* = proc (para1, para2: WINUINT, para3: HCONV, para4, para5: HSZ,
                        para6: HDDEDATA, para7, para8: DWORD): HDDEData{.stdcall.}
   CALLB* = PFNCALLBACK
   SECURITY_CONTEXT_TRACKING_MODE* = WINBOOL
@@ -6872,7 +6872,7 @@ type
   va_list* = cstring
   TABC* {.final, pure.} = object
     abcA*: int32
-    abcB*: UINT
+    abcB*: WINUINT
     abcC*: int32
 
   LPABC* = ptr TABC
@@ -6913,7 +6913,7 @@ type
 
   TACCESS_DENIED_ACE* = ACCESS_DENIED_ACE
   ACCESSTIMEOUT* {.final, pure.} = object
-    cbSize*: UINT
+    cbSize*: WINUINT
     dwFlags*: DWORD
     iTimeOutMSec*: DWORD
 
@@ -6982,7 +6982,7 @@ type
   TADDJOB_INFO_1* = ADDJOB_INFO_1
   PADDJOB_INFO_1* = ptr ADDJOB_INFO_1
   ANIMATIONINFO* {.final, pure.} = object
-    cbSize*: UINT
+    cbSize*: WINUINT
     iMinAnimate*: int32
 
   LPANIMATIONINFO* = ptr ANIMATIONINFO
@@ -6992,8 +6992,8 @@ type
   APPBARDATA* {.final, pure.} = object
     cbSize*: DWORD
     hWnd*: HWND
-    uCallbackMessage*: UINT
-    uEdge*: UINT
+    uCallbackMessage*: WINUINT
+    uEdge*: WINUINT
     rc*: RECT
     lParam*: LPARAM
 
@@ -7147,7 +7147,7 @@ type
     pidlRoot*: LPCITEMIDLIST
     pszDisplayName*: LPSTR
     lpszTitle*: LPCSTR
-    ulFlags*: UINT
+    ulFlags*: WINUINT
     lpfn*: BFFCALLBACK
     lParam*: LPARAM
     iImage*: int32
@@ -7244,7 +7244,7 @@ type
   TCHAR_INFO* = CHAR_INFO
   PCHAR_INFO* = ptr CHAR_INFO
   CHARFORMAT* {.final, pure.} = object
-    cbSize*: UINT
+    cbSize*: WINUINT
     dwMask*: DWORD
     dwEffects*: DWORD
     yHeight*: LONG
@@ -7276,8 +7276,8 @@ type
   TFONTSIGNATURE* = FONTSIGNATURE
   PFONTSIGNATURE* = ptr FONTSIGNATURE
   CHARSETINFO* {.final, pure.} = object
-    ciCharset*: UINT
-    ciACP*: UINT
+    ciCharset*: WINUINT
+    ciACP*: WINUINT
     fs*: FONTSIGNATURE
 
   LPCHARSETINFO* = ptr CHARSETINFO
@@ -7359,15 +7359,15 @@ type
   LPCHOOSEFONT* = ptr TCHOOSEFONT
   PCHOOSEFONT* = ptr TCHOOSEFONT
   CIDA* {.final, pure.} = object
-    cidl*: UINT
-    aoffset*: array[0..0, UINT]
+    cidl*: WINUINT
+    aoffset*: array[0..0, WINUINT]
 
   LPIDA* = ptr CIDA
   TIDA* = CIDA
   PIDA* = ptr CIDA
   CLIENTCREATESTRUCT* {.final, pure.} = object
     hWindowMenu*: HANDLE
-    idFirstChild*: UINT
+    idFirstChild*: WINUINT
 
   LPCLIENTCREATESTRUCT* = ptr CLIENTCREATESTRUCT
   TCLIENTCREATESTRUCT* = CLIENTCREATESTRUCT
@@ -7537,12 +7537,12 @@ type
   TCOMMTIMEOUTS* = COMMTIMEOUTS
   PCOMMTIMEOUTS* = ptr COMMTIMEOUTS
   COMPAREITEMSTRUCT* {.final, pure.} = object
-    CtlType*: UINT
-    CtlID*: UINT
+    CtlType*: WINUINT
+    CtlID*: WINUINT
     hwndItem*: HWND
-    itemID1*: UINT
+    itemID1*: WINUINT
     itemData1*: ULONG_PTR
-    itemID2*: UINT
+    itemID2*: WINUINT
     itemData2*: ULONG_PTR
 
   TCOMPAREITEMSTRUCT* = COMPAREITEMSTRUCT
@@ -7936,9 +7936,9 @@ type
   PSECURITY_QUALITY_OF_SERVICE* = ptr SECURITY_QUALITY_OF_SERVICE
   TSECURITYQUALITYOFSERVICE* = SECURITY_QUALITY_OF_SERVICE
   CONVCONTEXT* {.final, pure.} = object
-    cb*: UINT
-    wFlags*: UINT
-    wCountryID*: UINT
+    cb*: WINUINT
+    wFlags*: WINUINT
+    wCountryID*: WINUINT
     iCodePage*: int32
     dwLangID*: DWORD
     dwSecurity*: DWORD
@@ -7954,11 +7954,11 @@ type
     hszServiceReq*: HSZ
     hszTopic*: HSZ
     hszItem*: HSZ
-    wFmt*: UINT
-    wType*: UINT
-    wStatus*: UINT
-    wConvst*: UINT
-    wLastError*: UINT
+    wFmt*: WINUINT
+    wType*: WINUINT
+    wStatus*: WINUINT
+    wConvst*: WINUINT
+    wLastError*: WINUINT
     hConvList*: HCONVLIST
     ConvCtxt*: CONVCONTEXT
     hwnd*: HWND
@@ -7974,7 +7974,7 @@ type
   TCOPYDATASTRUCT* = COPYDATASTRUCT
   PCOPYDATASTRUCT* = ptr COPYDATASTRUCT
   CPINFO* {.final, pure.} = object
-    MaxCharSize*: UINT
+    MaxCharSize*: WINUINT
     DefaultChar*: array[0..(MAX_DEFAULTCHAR) - 1, int8]
     LeadByte*: array[0..(MAX_LEADBYTES) - 1, int8]
 
@@ -8012,13 +8012,13 @@ type
   PCREATETHREADDEBUGINFO* = ptr CREATE_THREAD_DEBUG_INFO
 
   CURRENCYFMT* {.final, pure.} = object
-    NumDigits*: UINT
-    LeadingZero*: UINT
-    Grouping*: UINT
+    NumDigits*: WINUINT
+    LeadingZero*: WINUINT
+    Grouping*: WINUINT
     lpDecimalSep*: LPTSTR
     lpThousandSep*: LPTSTR
-    NegativeOrder*: UINT
-    PositiveOrder*: UINT
+    NegativeOrder*: WINUINT
+    PositiveOrder*: WINUINT
     lpCurrencySymbol*: LPTSTR
 
   Tcurrencyfmt* = CURRENCYFMT
@@ -8047,7 +8047,7 @@ type
   CWPSTRUCT* {.final, pure.} = object
     lParam*: LPARAM
     wParam*: WPARAM
-    message*: UINT
+    message*: WINUINT
     hwnd*: HWND
 
   TCWPSTRUCT* = CWPSTRUCT
@@ -8161,8 +8161,8 @@ proc fAckReq*(a: var DDELN): int16
 proc set_fAckReq*(a: var DDELN, fAckReq: int16)
 type
   DDEML_MSG_HOOK_DATA* {.final, pure.} = object
-    uiLo*: UINT
-    uiHi*: UINT
+    uiLo*: WINUINT
+    uiHi*: WINUINT
     cbData*: DWORD
     Data*: array[0..7, DWORD]
 
@@ -8329,9 +8329,9 @@ type
   TDEBUGHOOKINFO* = DEBUGHOOKINFO
   PDEBUGHOOKINFO* = ptr DEBUGHOOKINFO
   DELETEITEMSTRUCT* {.final, pure.} = object
-    CtlType*: UINT
-    CtlID*: UINT
-    itemID*: UINT
+    CtlType*: WINUINT
+    CtlID*: WINUINT
+    itemID*: WINUINT
     hwndItem*: HWND
     itemData*: ULONG_PTR
 
@@ -8572,7 +8572,7 @@ type
   TDOCINFOA* = DOCINFO
   PDOCINFO* = ptr DOCINFO
   DRAGLISTINFO* {.final, pure.} = object
-    uNotification*: UINT
+    uNotification*: WINUINT
     hWnd*: HWND
     ptCursor*: POINT
 
@@ -8580,11 +8580,11 @@ type
   TDRAGLISTINFO* = DRAGLISTINFO
   PDRAGLISTINFO* = ptr DRAGLISTINFO
   DRAWITEMSTRUCT* {.final, pure.} = object
-    CtlType*: UINT
-    CtlID*: UINT
-    itemID*: UINT
-    itemAction*: UINT
-    itemState*: UINT
+    CtlType*: WINUINT
+    CtlID*: WINUINT
+    itemID*: WINUINT
+    itemAction*: WINUINT
+    itemState*: WINUINT
     hwndItem*: HWND
     hDC*: HDC
     rcItem*: RECT
@@ -8594,11 +8594,11 @@ type
   TDRAWITEMSTRUCT* = DRAWITEMSTRUCT
   PDRAWITEMSTRUCT* = ptr DRAWITEMSTRUCT
   DRAWTEXTPARAMS* {.final, pure.} = object
-    cbSize*: UINT
+    cbSize*: WINUINT
     iTabLength*: int32
     iLeftMargin*: int32
     iRightMargin*: int32
-    uiLengthDrawn*: UINT
+    uiLengthDrawn*: WINUINT
 
   LPDRAWTEXTPARAMS* = ptr DRAWTEXTPARAMS
   TDRAWTEXTPARAMS* = DRAWTEXTPARAMS
@@ -8720,7 +8720,7 @@ type
   TEMRBITBLT* = EMRBITBLT
   PEMRBITBLT* = ptr EMRBITBLT
   LOGBRUSH* {.final, pure.} = object
-    lbStyle*: UINT
+    lbStyle*: WINUINT
     lbColor*: COLORREF
     lbHatch*: LONG
 
@@ -8806,7 +8806,7 @@ type
   TEMRCREATEPALETTE* = EMRCREATEPALETTE
   PEMRCREATEPALETTE* = ptr EMRCREATEPALETTE
   LOGPEN* {.final, pure.} = object
-    lopnStyle*: UINT
+    lopnStyle*: WINUINT
     lopnWidth*: POINT
     lopnColor*: COLORREF
 
@@ -8881,9 +8881,9 @@ type
   TEMREXTCREATEFONTINDIRECTW* = EMREXTCREATEFONTINDIRECTW
   PEMREXTCREATEFONTINDIRECTW* = ptr EMREXTCREATEFONTINDIRECTW
   EXTLOGPEN* {.final, pure.} = object
-    elpPenStyle*: UINT
-    elpWidth*: UINT
-    elpBrushStyle*: UINT
+    elpPenStyle*: WINUINT
+    elpWidth*: WINUINT
+    elpBrushStyle*: WINUINT
     elpColor*: COLORREF
     elpHatch*: LONG
     elpNumEntries*: DWORD
@@ -9424,8 +9424,8 @@ type
   PEMRENABLEICM* = ptr EMRSELECTCLIPPATH
   NMHDR* {.final, pure.} = object
     hwndFrom*: HWND
-    idFrom*: UINT
-    code*: UINT
+    idFrom*: WINUINT
+    code*: WINUINT
 
   TNMHDR* = NMHDR
   PNMHDR* = ptr NMHDR
@@ -9483,7 +9483,7 @@ type
   PENHMETARECORD* = ptr TENHMETARECORD
   TENPROTECTED* {.final, pure.} = object
     nmhdr*: NMHDR
-    msg*: UINT
+    msg*: WINUINT
     wParam*: WPARAM
     lParam*: LPARAM
     chrg*: CHARRANGE
@@ -9546,9 +9546,9 @@ type
   TEVENTLOGRECORD* = EVENTLOGRECORD
   PEVENTLOGRECORD* = ptr EVENTLOGRECORD
   EVENTMSG* {.final, pure.} = object
-    message*: UINT
-    paramL*: UINT
-    paramH*: UINT
+    message*: WINUINT
+    paramL*: WINUINT
+    paramH*: WINUINT
     time*: DWORD
     hwnd*: HWND
 
@@ -9570,7 +9570,7 @@ type
   TEXTBUTTON* = EXT_BUTTON
   PEXTBUTTON* = ptr EXT_BUTTON
   FILTERKEYS* {.final, pure.} = object
-    cbSize*: UINT
+    cbSize*: WINUINT
     dwFlags*: DWORD
     iWaitMSec*: DWORD
     iDelayMSec*: DWORD
@@ -9646,7 +9646,7 @@ type
     dwSize*: DWORD
     szMenuName*: array[0..(MENU_TEXT_LEN) - 1, TCHAR]
     hMenu*: HMENU
-    wMenuDelta*: UINT
+    wMenuDelta*: WINUINT
 
   TFMSLOAD* = FMS_LOAD
   PFMSLOAD* = ptr FMS_LOAD
@@ -9694,13 +9694,13 @@ type
   GCP_RESULTS* {.final, pure.} = object
     lStructSize*: DWORD
     lpOutString*: LPTSTR
-    lpOrder*: ptr UINT
+    lpOrder*: ptr WINUINT
     lpDx*: ptr WINT
     lpCaretPos*: ptr WINT
     lpClass*: LPTSTR
-    lpGlyphs*: ptr UINT
-    nGlyphs*: UINT
-    nMaxFit*: UINT
+    lpGlyphs*: ptr WINUINT
+    nGlyphs*: WINUINT
+    nMaxFit*: WINUINT
 
   LPGCP_RESULTS* = ptr GCP_RESULTS
   TGCPRESULTS* = GCP_RESULTS
@@ -9714,8 +9714,8 @@ type
   PGENERIC_MAPPING* = ptr GENERIC_MAPPING
   TGENERICMAPPING* = GENERIC_MAPPING
   GLYPHMETRICS* {.final, pure.} = object
-    gmBlackBoxX*: UINT
-    gmBlackBoxY*: UINT
+    gmBlackBoxX*: WINUINT
+    gmBlackBoxY*: WINUINT
     gmptGlyphOrigin*: POINT
     gmCellIncX*: SHORT
     gmCellIncY*: SHORT
@@ -9730,13 +9730,13 @@ type
   LPHANDLETABLE* = ptr HANDLETABLE
   HD_HITTESTINFO* {.final, pure.} = object
     pt*: POINT
-    flags*: UINT
+    flags*: WINUINT
     iItem*: int32
 
   THDHITTESTINFO* = HD_HITTESTINFO
   PHDHITTESTINFO* = ptr HD_HITTESTINFO
   HD_ITEM* {.final, pure.} = object
-    mask*: UINT
+    mask*: WINUINT
     cxy*: int32
     pszText*: LPTSTR
     hbm*: HBITMAP
@@ -9753,7 +9753,7 @@ type
     y*: int32
     cx*: int32
     cy*: int32
-    flags*: UINT
+    flags*: WINUINT
 
   LPWINDOWPOS* = ptr WINDOWPOS
   TWINDOWPOS* = WINDOWPOS
@@ -9773,7 +9773,7 @@ type
   THDNOTIFY* = HD_NOTIFY
   PHDNOTIFY* = ptr HD_NOTIFY
   HELPINFO* {.final, pure.} = object
-    cbSize*: UINT
+    cbSize*: WINUINT
     iContextType*: int32
     iCtrlId*: int32
     hItemHandle*: HANDLE
@@ -9795,7 +9795,7 @@ type
   THELPWININFO* = HELPWININFO
   PHELPWININFO* = ptr HELPWININFO
   HIGHCONTRAST* {.final, pure.} = object
-    cbSize*: UINT
+    cbSize*: WINUINT
     dwFlags*: DWORD
     lpszDefaultScheme*: LPTSTR
 
@@ -9818,7 +9818,7 @@ type
   TICONINFO* = ICONINFO
   PICONINFO* = ptr ICONINFO
   ICONMETRICS* {.final, pure.} = object
-    cbSize*: UINT
+    cbSize*: WINUINT
     iHorzSpacing*: int32
     iVertSpacing*: int32
     iTitleWrap*: int32
@@ -9860,7 +9860,7 @@ type
   TWINDOWBUFFERSIZERECORD* = WINDOW_BUFFER_SIZE_RECORD
   PWINDOWBUFFERSIZERECORD* = ptr WINDOW_BUFFER_SIZE_RECORD
   MENU_EVENT_RECORD* {.final, pure.} = object
-    dwCommandId*: UINT
+    dwCommandId*: WINUINT
 
   PMENU_EVENT_RECORD* = ptr MENU_EVENT_RECORD
   TMENUEVENTRECORD* = MENU_EVENT_RECORD
@@ -10039,7 +10039,7 @@ type
   PLUID_AND_ATTRIBUTES_ARRAY* = ptr LUID_AND_ATTRIBUTES_ARRAY
   TLUIDANDATTRIBUTESARRAY* = LUID_AND_ATTRIBUTES_ARRAY
   LV_COLUMN* {.final, pure.} = object
-    mask*: UINT
+    mask*: WINUINT
     fmt*: int32
     cx*: int32
     pszText*: LPTSTR
@@ -10049,11 +10049,11 @@ type
   TLVCOLUMN* = LV_COLUMN
   PLVCOLUMN* = ptr LV_COLUMN
   LV_ITEM* {.final, pure.} = object
-    mask*: UINT
+    mask*: WINUINT
     iItem*: int32
     iSubItem*: int32
-    state*: UINT
-    stateMask*: UINT
+    state*: WINUINT
+    stateMask*: WINUINT
     pszText*: LPTSTR
     cchTextMax*: int32
     iImage*: int32
@@ -10068,17 +10068,17 @@ type
   TLVDISPINFO* = LV_DISPINFO
   PLVDISPINFO* = ptr LV_DISPINFO
   LV_FINDINFO* {.final, pure.} = object
-    flags*: UINT
+    flags*: WINUINT
     psz*: LPCTSTR
     lParam*: LPARAM
     pt*: POINT
-    vkDirection*: UINT
+    vkDirection*: WINUINT
 
   TLVFINDINFO* = LV_FINDINFO
   PLVFINDINFO* = ptr LV_FINDINFO
   LV_HITTESTINFO* {.final, pure.} = object
     pt*: POINT
-    flags*: UINT
+    flags*: WINUINT
     iItem*: int32
 
   TLVHITTESTINFO* = LV_HITTESTINFO
@@ -10086,7 +10086,7 @@ type
   LV_KEYDOWN* {.final, pure.} = object
     hdr*: NMHDR
     wVKey*: int16
-    flags*: UINT
+    flags*: WINUINT
 
   TLVKEYDOWN* = LV_KEYDOWN
   PLVKEYDOWN* = ptr LV_KEYDOWN
@@ -10113,11 +10113,11 @@ type
   TMDICREATESTRUCT* = MDICREATESTRUCT
   PMDICREATESTRUCT* = ptr MDICREATESTRUCT
   MEASUREITEMSTRUCT* {.final, pure.} = object
-    CtlType*: UINT
-    CtlID*: UINT
-    itemID*: UINT
-    itemWidth*: UINT
-    itemHeight*: UINT
+    CtlType*: WINUINT
+    CtlID*: WINUINT
+    itemID*: WINUINT
+    itemWidth*: WINUINT
+    itemHeight*: WINUINT
     itemData*: ULONG_PTR
 
   LPMEASUREITEMSTRUCT* = ptr MEASUREITEMSTRUCT
@@ -10163,7 +10163,7 @@ type
   MENUEX_TEMPLATE_ITEM* {.final, pure.} = object
     dwType*: DWORD
     dwState*: DWORD
-    uId*: UINT
+    uId*: WINUINT
     bResInfo*: int8
     szText*: array[0..0, WCHAR]
     dwHelpId*: DWORD
@@ -10174,7 +10174,7 @@ type
     cbSize*: DWORD
     fMask*: DWORD
     dwStyle*: DWORD
-    cyMax*: UINT
+    cyMax*: WINUINT
     hbrBack*: HBRUSH
     dwContextHelpID*: DWORD
     dwMenuData*: ULONG_PTR
@@ -10184,17 +10184,17 @@ type
   TMENUINFO* = MENUINFO
   PMENUINFO* = ptr MENUINFO
   MENUITEMINFO* {.final, pure.} = object
-    cbSize*: UINT
-    fMask*: UINT
-    fType*: UINT
-    fState*: UINT
-    wID*: UINT
+    cbSize*: WINUINT
+    fMask*: WINUINT
+    fType*: WINUINT
+    fState*: WINUINT
+    wID*: WINUINT
     hSubMenu*: HMENU
     hbmpChecked*: HBITMAP
     hbmpUnchecked*: HBITMAP
     dwItemData*: ULONG_PTR
     dwTypeData*: LPTSTR
-    cch*: UINT
+    cch*: WINUINT
     hbmpItem*: HBITMAP
 
   LPMENUITEMINFO* = ptr MENUITEMINFO
@@ -10248,7 +10248,7 @@ type
   TMETARECORD* = METARECORD
   PMETARECORD* = ptr METARECORD
   MINIMIZEDMETRICS* {.final, pure.} = object
-    cbSize*: UINT
+    cbSize*: WINUINT
     iWidth*: int32
     iHorzGap*: int32
     iVertGap*: int32
@@ -10309,12 +10309,12 @@ type
   TMODEMSETTINGS* = MODEMSETTINGS
   PMODEMSETTINGS* = ptr MODEMSETTINGS
   MONCBSTRUCT* {.final, pure.} = object
-    cb*: UINT
+    cb*: WINUINT
     dwTime*: DWORD
     hTask*: HANDLE
     dwRet*: DWORD
-    wType*: UINT
-    wFmt*: UINT
+    wType*: WINUINT
+    wFmt*: WINUINT
     hConv*: HCONV
     hsz1*: HSZ
     hsz2*: HSZ
@@ -10328,7 +10328,7 @@ type
   TMONCBSTRUCT* = MONCBSTRUCT
   PMONCBSTRUCT* = ptr MONCBSTRUCT
   MONCONVSTRUCT* {.final, pure.} = object
-    cb*: UINT
+    cb*: WINUINT
     fConnect*: WINBOOL
     dwTime*: DWORD
     hTask*: HANDLE
@@ -10340,15 +10340,15 @@ type
   TMONCONVSTRUCT* = MONCONVSTRUCT
   PMONCONVSTRUCT* = ptr MONCONVSTRUCT
   MONERRSTRUCT* {.final, pure.} = object
-    cb*: UINT
-    wLastError*: UINT
+    cb*: WINUINT
+    wLastError*: WINUINT
     dwTime*: DWORD
     hTask*: HANDLE
 
   TMONERRSTRUCT* = MONERRSTRUCT
   PMONERRSTRUCT* = ptr MONERRSTRUCT
   MONHSZSTRUCT* {.final, pure.} = object
-    cb*: UINT
+    cb*: WINUINT
     fsAction*: WINBOOL
     dwTime*: DWORD
     hsz*: HSZ
@@ -10370,7 +10370,7 @@ type
   TMONITORINFO2* = MONITOR_INFO_2
   PMONITORINFO2* = ptr MONITOR_INFO_2
   MONLINKSTRUCT* {.final, pure.} = object
-    cb*: UINT
+    cb*: WINUINT
     dwTime*: DWORD
     hTask*: HANDLE
     fEstablished*: WINBOOL
@@ -10378,7 +10378,7 @@ type
     hszSvc*: HSZ
     hszTopic*: HSZ
     hszItem*: HSZ
-    wFmt*: UINT
+    wFmt*: WINUINT
     fServer*: WINBOOL
     hConvServer*: HCONV
     hConvClient*: HCONV
@@ -10386,11 +10386,11 @@ type
   TMONLINKSTRUCT* = MONLINKSTRUCT
   PMONLINKSTRUCT* = ptr MONLINKSTRUCT
   MONMSGSTRUCT* {.final, pure.} = object
-    cb*: UINT
+    cb*: WINUINT
     hwndTo*: HWND
     dwTime*: DWORD
     hTask*: HANDLE
-    wMsg*: UINT
+    wMsg*: WINUINT
     wParam*: WPARAM
     lParam*: LPARAM
     dmhd*: DDEML_MSG_HOOK_DATA
@@ -10400,7 +10400,7 @@ type
   MOUSEHOOKSTRUCT* {.final, pure.} = object
     pt*: POINT
     hwnd*: HWND
-    wHitTestCode*: UINT
+    wHitTestCode*: WINUINT
     dwExtraInfo*: DWORD
 
   LPMOUSEHOOKSTRUCT* = ptr MOUSEHOOKSTRUCT
@@ -10420,7 +10420,7 @@ type
   MSGBOXCALLBACK* = proc (lpHelpInfo: LPHELPINFO){.stdcall.}
   TMSGBOXCALLBACK* = MSGBOXCALLBACK
   MSGBOXPARAMS* {.final, pure.} = object
-    cbSize*: UINT
+    cbSize*: WINUINT
     hwndOwner*: HWND
     hInstance*: HINST
     lpszText*: LPCSTR
@@ -10437,7 +10437,7 @@ type
   PMSGBOXPARAMS* = ptr MSGBOXPARAMS
   MSGFILTER* {.final, pure.} = object
     nmhdr*: NMHDR
-    msg*: UINT
+    msg*: WINUINT
     wParam*: WPARAM
     lParam*: LPARAM
 
@@ -10546,9 +10546,9 @@ type
     tmPitchAndFamily*: int8
     tmCharSet*: int8
     ntmFlags*: DWORD
-    ntmSizeEM*: UINT
-    ntmCellHeight*: UINT
-    ntmAvgWidth*: UINT
+    ntmSizeEM*: WINUINT
+    ntmCellHeight*: WINUINT
+    ntmAvgWidth*: WINUINT
 
   TNEWTEXTMETRIC* = NEWTEXTMETRIC
   PNEWTEXTMETRIC* = ptr NEWTEXTMETRIC
@@ -10562,19 +10562,19 @@ type
     hdr*: NMHDR
     iItem*: int32
     iSubItem*: int32
-    uNewState*: UINT
-    uOldState*: UINT
-    uChanged*: UINT
+    uNewState*: WINUINT
+    uOldState*: WINUINT
+    uChanged*: WINUINT
     ptAction*: POINT
     lParam*: LPARAM
 
   TNMLISTVIEW* = NM_LISTVIEW
   PNMLISTVIEW* = ptr NM_LISTVIEW
   TV_ITEM* {.final, pure.} = object
-    mask*: UINT
+    mask*: WINUINT
     hItem*: HTREEITEM
-    state*: UINT
-    stateMask*: UINT
+    state*: WINUINT
+    stateMask*: WINUINT
     pszText*: LPTSTR
     cchTextMax*: int32
     iImage*: int32
@@ -10587,7 +10587,7 @@ type
   PTVITEM* = ptr TV_ITEM
   NM_TREEVIEW* {.final, pure.} = object
     hdr*: NMHDR
-    action*: UINT
+    action*: WINUINT
     itemOld*: TV_ITEM
     itemNew*: TV_ITEM
     ptDrag*: POINT
@@ -10603,7 +10603,7 @@ type
   TNMUPDOWN* = NM_UPDOWNW
   PNMUPDOWN* = ptr NM_UPDOWNW
   NONCLIENTMETRICS* {.final, pure.} = object
-    cbSize*: UINT
+    cbSize*: WINUINT
     iBorderWidth*: int32
     iScrollWidth*: int32
     iScrollHeight*: int32
@@ -10666,12 +10666,12 @@ type
   TNSSERVICEINFO* = NS_SERVICE_INFO
   PNSSERVICEINFO* = ptr NS_SERVICE_INFO
   NUMBERFMT* {.final, pure.} = object
-    NumDigits*: UINT
-    LeadingZero*: UINT
-    Grouping*: UINT
+    NumDigits*: WINUINT
+    LeadingZero*: WINUINT
+    Grouping*: WINUINT
     lpDecimalSep*: LPTSTR
     lpThousandSep*: LPTSTR
-    NegativeOrder*: UINT
+    NegativeOrder*: WINUINT
 
   Tnumberfmt* = NUMBERFMT
   Pnumberfmt* = ptr NUMBERFMT
@@ -10821,31 +10821,31 @@ type
   TTEXTMETRICW* = TEXTMETRICW
   PTEXTMETRICW* = ptr TEXTMETRICW
   OUTLINETEXTMETRIC* {.final, pure.} = object
-    otmSize*: UINT
+    otmSize*: WINUINT
     otmTextMetrics*: TEXTMETRIC
     otmFiller*: int8
     otmPanoseNumber*: PANOSE
-    otmfsSelection*: UINT
-    otmfsType*: UINT
+    otmfsSelection*: WINUINT
+    otmfsType*: WINUINT
     otmsCharSlopeRise*: int32
     otmsCharSlopeRun*: int32
     otmItalicAngle*: int32
-    otmEMSquare*: UINT
+    otmEMSquare*: WINUINT
     otmAscent*: int32
     otmDescent*: int32
-    otmLineGap*: UINT
-    otmsCapEmHeight*: UINT
-    otmsXHeight*: UINT
+    otmLineGap*: WINUINT
+    otmsCapEmHeight*: WINUINT
+    otmsXHeight*: WINUINT
     otmrcFontBox*: RECT
     otmMacAscent*: int32
     otmMacDescent*: int32
-    otmMacLineGap*: UINT
-    otmusMinimumPPEM*: UINT
+    otmMacLineGap*: WINUINT
+    otmusMinimumPPEM*: WINUINT
     otmptSubscriptSize*: POINT
     otmptSubscriptOffset*: POINT
     otmptSuperscriptSize*: POINT
     otmptSuperscriptOffset*: POINT
-    otmsStrikeoutSize*: UINT
+    otmsStrikeoutSize*: WINUINT
     otmsStrikeoutPosition*: int32
     otmsUnderscoreSize*: int32
     otmsUnderscorePosition*: int32
@@ -10900,7 +10900,7 @@ type
   TPAINTSTRUCT* = PAINTSTRUCT
   PPAINTSTRUCT* = ptr PAINTSTRUCT
   PARAFORMAT* {.final, pure.} = object
-    cbSize*: UINT
+    cbSize*: WINUINT
     dwMask*: DWORD
     wNumbering*: int16
     wReserved*: int16
@@ -10981,9 +10981,9 @@ type
   POLYTEXT* {.final, pure.} = object
     x*: int32
     y*: int32
-    n*: UINT
+    n*: WINUINT
     lpstr*: LPCTSTR
-    uiFlags*: UINT
+    uiFlags*: WINUINT
     rcl*: RECT
     pdx*: ptr int32
 
@@ -11169,7 +11169,7 @@ type
   LPPROCESS_INFORMATION* = ptr PROCESS_INFORMATION
   TPROCESSINFORMATION* = PROCESS_INFORMATION
   PPROCESSINFORMATION* = ptr PROCESS_INFORMATION
-  LPFNPSPCALLBACK* = proc (para1: HWND, para2: UINT, para3: LPVOID): UINT{.
+  LPFNPSPCALLBACK* = proc (para1: HWND, para2: WINUINT, para3: LPVOID): WINUINT{.
       stdcall.}
   TFNPSPCALLBACK* = LPFNPSPCALLBACK
   PROPSHEETPAGE* {.final, pure.} = object
@@ -11181,7 +11181,7 @@ type
     pfnDlgProc*: DLGPROC
     lParam*: LPARAM
     pfnCallback*: LPFNPSPCALLBACK
-    pcRefParent*: ptr UINT
+    pcRefParent*: ptr WINUINT
 
   LPPROPSHEETPAGE* = ptr PROPSHEETPAGE
   LPCPROPSHEETPAGE* = ptr PROPSHEETPAGE
@@ -11197,7 +11197,7 @@ type
     hInstance*: HINST
     pszIcon*: LPCTSTR
     pszCaption*: LPCTSTR
-    nPages*: UINT
+    nPages*: WINUINT
     pStartPage*: LPCTSTR
     phpage*: ptr HPROPSHEETPAGE
     pfnCallback*: PFNPROPSHEETCALLBACK
@@ -11243,7 +11243,7 @@ type
   TPSHNOTIFY* = PSHNOTIFY
   PPSHNOTIFY* = ptr PSHNOTIFY
   PUNCTUATION* {.final, pure.} = object
-    iSize*: UINT
+    iSize*: WINUINT
     szPunctuation*: LPSTR
 
   Tpunctuation* = PUNCTUATION
@@ -11395,11 +11395,11 @@ type
   TRGNDATA* = RGNDATA
   PRGNDATA* = ptr RGNDATA
   SCROLLINFO* {.final, pure.} = object
-    cbSize*: UINT
-    fMask*: UINT
+    cbSize*: WINUINT
+    fMask*: WINUINT
     nMin*: int32
     nMax*: int32
-    nPage*: UINT
+    nPage*: WINUINT
     nPos*: int32
     nTrackPos*: int32
 
@@ -11499,7 +11499,7 @@ type
   PFILEOPFLAGS* = ptr FILEOP_FLAGS
   SHFILEOPSTRUCT* {.final, pure.} = object
     hwnd*: HWND
-    wFunc*: UINT
+    wFunc*: WINUINT
     pFrom*: LPCSTR
     pTo*: LPCSTR
     fFlags*: FILEOP_FLAGS
@@ -11537,7 +11537,7 @@ type
   TSINGLELISTENTRY* = SINGLE_LIST_ENTRY
   PSINGLELISTENTRY* = ptr SINGLE_LIST_ENTRY
   SOUNDSENTRY* {.final, pure.} = object
-    cbSize*: UINT
+    cbSize*: WINUINT
     dwFlags*: DWORD
     iFSTextEffect*: DWORD
     iFSTextEffectMSec*: DWORD
@@ -11584,7 +11584,7 @@ type
   TSTICKYKEYS* = STICKYKEYS
   PSTICKYKEYS* = ptr STICKYKEYS
   STRRET* {.final, pure.} = object
-    uType*: UINT
+    uType*: WINUINT
     cStr*: array[0..(MAX_PATH) - 1, char]
 
   LPSTRRET* = ptr STRRET
@@ -11709,7 +11709,7 @@ type
   PTAPEWRITEMARKS* = ptr TAPE_WRITE_MARKS
   TTBADDBITMAP* {.final, pure.} = object
     hInst*: HINST
-    nID*: UINT
+    nID*: WINUINT
 
   LPTBADDBITMAP* = ptr TTBADDBITMAP
   PTBADDBITMAP* = ptr TTBADDBITMAP
@@ -11744,14 +11744,14 @@ type
   PTBSAVEPARAMS* = ptr TBSAVEPARAMS
   TC_HITTESTINFO* {.final, pure.} = object
     pt*: POINT
-    flags*: UINT
+    flags*: WINUINT
 
   TTCHITTESTINFO* = TC_HITTESTINFO
   PTCHITTESTINFO* = ptr TC_HITTESTINFO
   TC_ITEM* {.final, pure.} = object
-    mask*: UINT
-    lpReserved1*: UINT
-    lpReserved2*: UINT
+    mask*: WINUINT
+    lpReserved1*: WINUINT
+    lpReserved2*: WINUINT
     pszText*: LPTSTR
     cchTextMax*: int32
     iImage*: int32
@@ -11760,9 +11760,9 @@ type
   TTCITEM* = TC_ITEM
   PTCITEM* = ptr TC_ITEM
   TC_ITEMHEADER* {.final, pure.} = object
-    mask*: UINT
-    lpReserved1*: UINT
-    lpReserved2*: UINT
+    mask*: WINUINT
+    lpReserved1*: WINUINT
+    lpReserved2*: WINUINT
     pszText*: LPTSTR
     cchTextMax*: int32
     iImage*: int32
@@ -11772,7 +11772,7 @@ type
   TC_KEYDOWN* {.final, pure.} = object
     hdr*: NMHDR
     wVKey*: int16
-    flags*: UINT
+    flags*: WINUINT
 
   TTCKEYDOWN* = TC_KEYDOWN
   PTCKEYDOWN* = ptr TC_KEYDOWN
@@ -11855,10 +11855,10 @@ type
 
   PTOKENUSER* = ptr TTOKEN_USER
   TOOLINFO* {.final, pure.} = object
-    cbSize*: UINT
-    uFlags*: UINT
+    cbSize*: WINUINT
+    uFlags*: WINUINT
     hwnd*: HWND
-    uId*: UINT
+    uId*: WINUINT
     rect*: RECT
     hinst*: HINST
     lpszText*: LPTSTR
@@ -11871,13 +11871,13 @@ type
     lpszText*: LPTSTR
     szText*: array[0..79, char]
     hinst*: HINST
-    uFlags*: UINT
+    uFlags*: WINUINT
 
   LPTOOLTIPTEXT* = ptr TOOLTIPTEXT
   TTOOLTIPTEXT* = TOOLTIPTEXT
   PTOOLTIPTEXT* = ptr TOOLTIPTEXT
   TPMPARAMS* {.final, pure.} = object
-    cbSize*: UINT
+    cbSize*: WINUINT
     rcExclude*: RECT
 
   LPTPMPARAMS* = ptr TPMPARAMS
@@ -11923,7 +11923,7 @@ type
   PTVDISPINFO* = ptr TV_DISPINFO
   TV_HITTESTINFO* {.final, pure.} = object
     pt*: POINT
-    flags*: UINT
+    flags*: WINUINT
     hItem*: HTREEITEM
 
   LPTV_HITTESTINFO* = ptr TV_HITTESTINFO
@@ -11940,7 +11940,7 @@ type
   TV_KEYDOWN* {.final, pure.} = object
     hdr*: NMHDR
     wVKey*: int16
-    flags*: UINT
+    flags*: WINUINT
 
   TTVKEYDOWN* = TV_KEYDOWN
   PTVKEYDOWN* = ptr TV_KEYDOWN
@@ -11953,8 +11953,8 @@ type
   TTVSORTCB* = TV_SORTCB
   PTVSORTCB* = ptr TV_SORTCB
   UDACCEL* {.final, pure.} = object
-    nSec*: UINT
-    nInc*: UINT
+    nSec*: WINUINT
+    nInc*: WINUINT
 
   TUDACCEL* = UDACCEL
   PUDACCEL* = ptr UDACCEL
@@ -12045,9 +12045,9 @@ type
   TWIN32STREAMID* = WIN32_STREAM_ID
   PWIN32STREAMID* = ptr WIN32_STREAM_ID
   WINDOWPLACEMENT* {.final, pure.} = object
-    len*: UINT
-    flags*: UINT
-    showCmd*: UINT
+    len*: WINUINT
+    flags*: WINUINT
+    showCmd*: WINUINT
     ptMinPosition*: POINT
     ptMaxPosition*: POINT
     rcNormalPosition*: RECT
@@ -12055,7 +12055,7 @@ type
   TWINDOWPLACEMENT* = WINDOWPLACEMENT
   PWINDOWPLACEMENT* = ptr WINDOWPLACEMENT
   WNDCLASS* {.final, pure.} = object
-    style*: UINT
+    style*: WINUINT
     lpfnWndProc*: WNDPROC
     cbClsExtra*: int32
     cbWndExtra*: int32
@@ -12071,7 +12071,7 @@ type
   TWNDCLASSA* = WNDCLASS
   PWNDCLASS* = ptr WNDCLASS
   WNDCLASSW* {.final, pure.} = object
-    style*: UINT
+    style*: WINUINT
     lpfnWndProc*: WNDPROC
     cbClsExtra*: int32
     cbWndExtra*: int32
@@ -12086,8 +12086,8 @@ type
   TWNDCLASSW* = WNDCLASSW
   PWNDCLASSW* = ptr WNDCLASSW
   WNDCLASSEX* {.final, pure.} = object
-    cbSize*: UINT
-    style*: UINT
+    cbSize*: WINUINT
+    style*: WINUINT
     lpfnWndProc*: WNDPROC
     cbClsExtra*: int32
     cbWndExtra*: int32
@@ -12104,8 +12104,8 @@ type
   TWNDCLASSEXA* = WNDCLASSEX
   PWNDCLASSEX* = ptr WNDCLASSEX
   WNDCLASSEXW* {.final, pure.} = object
-    cbSize*: UINT
-    style*: UINT
+    cbSize*: WINUINT
+    style*: WINUINT
     lpfnWndProc*: WNDPROC
     cbClsExtra*: int32
     cbWndExtra*: int32
@@ -12362,9 +12362,9 @@ type
   NOTIFYICONDATAA* {.final, pure.} = object
     cbSize*: DWORD
     Wnd*: HWND
-    uID*: UINT
-    uFlags*: UINT
-    uCallbackMessage*: UINT
+    uID*: WINUINT
+    uFlags*: WINUINT
+    uCallbackMessage*: WINUINT
     hIcon*: HICON
     szTip*: array[0..63, Char]
 
@@ -12372,9 +12372,9 @@ type
   NOTIFYICONDATAW* {.final, pure.} = object
     cbSize*: DWORD
     Wnd*: HWND
-    uID*: UINT
-    uFlags*: UINT
-    uCallbackMessage*: UINT
+    uID*: WINUINT
+    uFlags*: WINUINT
+    uCallbackMessage*: WINUINT
     hIcon*: HICON
     szTip*: array[0..63, int16]
 
@@ -13519,7 +13519,7 @@ else:
 type
   MSG* {.final, pure.} = object
     hwnd*: HWND
-    message*: UINT
+    message*: WINUINT
     wParam*: WPARAM
     lParam*: LPARAM
     time*: DWORD
@@ -13530,20 +13530,20 @@ type
   PMSG* = ptr MSG
   PMessage* = ptr TMessage
   TMessage* {.final, pure.} = object          #fields according to ICS
-    msg*: UINT
+    msg*: WINUINT
     wParam*: WPARAM
     lParam*: LPARAM
     Result*: LRESULT
 
   TWMSize* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     SizeType*: WPARAM
     Width*: HALFPARAM
     Height*: HALFPARAM
     Result*: LRESULT
 
   TWMNoParams* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     Unused*: array[0..3, HALFPARAM]
     Result*: LRESULT
 
@@ -13553,7 +13553,7 @@ type
   TWMClose* = TWMNoParams
   TWMQueryUIState* = TWMNoParams
   TWMUIState* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     Action*: int16
     Flags*: int16
     Unused*: HRESULT
@@ -13561,7 +13561,7 @@ type
   TWMChangeUIState* = TWMUIState
   TWMUpdateUIState* = TWMUIState
   TWMKey* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     CharCode*: int16
     Unused*: int16
     KeyData*: int32
@@ -13574,7 +13574,7 @@ type
   TWMSysKeyDown* = TWMKey
   TWMSysKeyUp* = TWMKey
   TWMMenuChar* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     User*: Char
     MenuFlag*: int16
     Menu*: HMENU
@@ -13586,7 +13586,7 @@ type
   TWMSysColorChange* = TWMNoParams
   TWMQueryDragIcon* = TWMNoParams
   TWMScroll* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     ScrollCode*: HALFPARAM
     Pos*: HALFPARAM
     ScrollBar*: HWND
@@ -13595,59 +13595,59 @@ type
   TWMHScroll* = TWMScroll
   TWMVScroll* = TWMScroll
   TWMGetText* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     TextMax*: LPARAM
     Text*: cstring
     Result*: LRESULT
 
   TWMGetTextLength* = TWMNoParams
   TWMKillFocus* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     FocusedWnd*: HWND
     UnUsed*: WPARAM
     Result*: LRESULT
 
   TWMSetCursor* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     CursorWnd*: HWND
     HitTest*: HALFPARAM
     MouseMsg*: HALFPARAM
     Result*: LRESULT
 
   TWMSetFocus* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     FocusedWnd*: HWND
     Unused*: WPARAM
     Result*: LRESULT
 
   TWMSetFont* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     Font*: HFONT
     Redraw*: HALFPARAMBOOL
     Unused*: HALFPARAM
     Result*: LRESULT
 
   TWMShowWindow* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     Show*: HALFPARAMBOOL
     Unused*: HALFPARAM
     Status*: WPARAM
     Result*: LRESULT
 
   TWMEraseBkgnd* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     DC*: HDC
     Unused*: LPARAM
     Result*: LRESULT
 
   TWMNCHitTest* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     Unused*: int32
     Pos*: TSmallPoint
     Result*: LRESULT
 
   TWMMouse* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     Keys*: int32
     Pos*: TSmallPoint
     Result*: LRESULT
@@ -13659,14 +13659,14 @@ type
   TWMMButtonDown* = TWMMouse
   TWMMButtonUp* = TWMMouse
   TWMMouseWheel* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     Keys*: int16
     WheelDelta*: int16
     Pos*: TSmallPoint
     Result*: LRESULT
 
   TWMNCHitMessage* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     HitTest*: int32
     XCursor*: int16
     YCursor*: int16
@@ -13684,51 +13684,51 @@ type
   TWMRButtonUp* = TWMMouse
   TWMMouseMove* = TWMMouse
   TWMPaint* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     DC*: HDC
     Unused*: int32
     Result*: LRESULT
 
   TWMCommand* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     ItemID*: int16
     NotifyCode*: int16
     Ctl*: HWND
     Result*: LRESULT
 
   TWMNotify* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     IDCtrl*: int32
     NMHdr*: PNMHdr
     Result*: LRESULT
 
   TWMPrint* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     DC*: HDC
     Flags*: int
     Result*: LRESULT
 
   TWMPrintClient* = TWMPrint
   TWMWinIniChange* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     Unused*: int
     Section*: cstring
     Result*: LRESULT
 
   TWMContextMenu* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     hWnd*: HWND
     Pos*: TSmallPoint
     Result*: LRESULT
 
   TWMNCCalcSize* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     CalcValidRects*: WINBOOL
     CalcSize_Params*: PNCCalcSizeParams
     Result*: LRESULT
 
   TWMCharToItem* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     Key*: int16
     CaretPos*: int16
     ListBox*: HWND
@@ -13737,7 +13737,7 @@ type
   TWMVKeyToItem* = TWMCharToItem
   TMyEventRange = range[0'i16..16000'i16]
   TWMParentNotify* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     case Event*: TMyEventRange
     of TMyEventRange(WM_CREATE), TMyEventRange(WM_DESTROY):
         ChildID*: int16
@@ -13756,7 +13756,7 @@ type
         Result*: LRESULT
 
   TWMSysCommand* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     CmdType*: int32
     XPos*: int16
     YPos*: int16
@@ -13774,13 +13774,13 @@ type
   #      Key*: int16
 
   TWMMove* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     Unused*: int
     Pos*: TSmallPoint
     Result*: LRESULT
 
   TWMWindowPosMsg* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     Unused*: int
     WindowPos*: PWindowPos
     Result*: LRESULT
@@ -13788,101 +13788,101 @@ type
   TWMWindowPosChanged* = TWMWindowPosMsg
   TWMWindowPosChanging* = TWMWindowPosMsg
   TWMCompareItem* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     Ctl*: HWnd
     CompareItemStruct*: PCompareItemStruct
     Result*: LRESULT
 
   TWMDeleteItem* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     Ctl*: HWND
     DeleteItemStruct*: PDeleteItemStruct
     Result*: LRESULT
 
   TWMDrawItem* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     Ctl*: HWND
     DrawItemStruct*: PDrawItemStruct
     Result*: LRESULT
 
   TWMMeasureItem* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     IDCtl*: HWnd
     MeasureItemStruct*: PMeasureItemStruct
     Result*: LRESULT
 
   TWMNCCreate* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     Unused*: int
     CreateStruct*: PCreateStruct
     Result*: LRESULT
 
   TWMInitMenuPopup* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     MenuPopup*: HMENU
     Pos*: int16
     SystemMenu*: WordBool
     Result*: LRESULT
 
   TWMMenuSelect* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     IDItem*: int16
     MenuFlag*: int16
     Menu*: HMENU
     Result*: LRESULT
 
   TWMActivate* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     Active*: int16
     Minimized*: WordBool
     ActiveWindow*: HWND
     Result*: LRESULT
 
   TWMQueryEndSession* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     Source*: int32
     Unused*: int32
     Result*: LRESULT
 
   TWMMDIActivate* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     DeactiveWnd*: HWND
     ActiveWnd*: HWND
     Result*: LRESULT
 
   TWMNextDlgCtl* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     CtlFocus*: int32
     Handle*: WordBool
     Unused*: int16
     Result*: LRESULT
 
   TWMHelp* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     Unused*: int
     HelpInfo*: PHelpInfo
     Result*: LRESULT
 
   TWMGetMinMaxInfo* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     Unused*: int
     MinMaxInfo*: PMinMaxInfo
     Result*: LRESULT
 
   TWMSettingChange* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     Flag*: int
     Section*: cstring
     Result*: LRESULT
 
   TWMCreate* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     Unused*: int
     CreateStruct*: PCreateStruct
     Result*: LRESULT
 
   TWMCtlColor* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     ChildDC*: HDC
     ChildWnd*: HWND
     Result*: LRESULT
@@ -13895,38 +13895,38 @@ type
   TWMCtlColorDlg* = TWMCtlColor
   TWMCtlColorEdit* = TWMCtlColor
   TWMInitDialog* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     Focus*: HWND
     InitParam*: int32
     Result*: LRESULT
 
   TWMNCPaint* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     RGN*: HRGN
     Unused*: int32
     Result*: LRESULT
 
   TWMSetText* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     Unused*: int32
     Text*: cstring
     Result*: LRESULT
 
   TWMSizeClipboard* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     Viewer*: HWND
     RC*: THandle
     Result*: LRESULT
 
   TWMSpoolerStatus* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     JobStatus*: LPARAM
     JobsLeft*: WPARAM
     Unused*: WPARAM
     Result*: LRESULT
 
   TWMStyleChange* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     StyleType*: LPARAM
     StyleStruct*: PStyleStruct
     Result*: LRESULT
@@ -13934,42 +13934,42 @@ type
   TWMStyleChanged* = TWMStyleChange
   TWMStyleChanging* = TWMStyleChange
   TWMSysDeadChar* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     CharCode*: WPARAM
     Unused*: WPARAM
     KeyData*: LPARAM
     Result*: LRESULT
 
   TWMSystemError* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     ErrSpec*: WPARAM
     Unused*: LPARAM
     Result*: LRESULT
 
   TWMTimeChange* = TWMNoParams
   TWMTimer* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     TimerID*: LPARAM
     TimerProc*: TFarProc
     Result*: LRESULT
 
   TWMUndo* = TWMNoParams
   TWMVScrollClipboard* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     Viewer*: HWND
     ScollCode*: WPARAM
     ThumbPos*: WPARAM
     Result*: LRESULT
 
   TWMDisplayChange* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     BitsPerPixel*: int
     Width*: WPARAM
     Height*: WPARAM
     Result*: LRESULT
 
   TWMDropFiles* {.final, pure.} = object
-    Msg*: UINT
+    Msg*: WINUINT
     Drop*: THANDLE
     Unused*: LPARAM
     Result*: LRESULT
@@ -14042,7 +14042,7 @@ proc GetModuleFileNameA*(hModule: HINST, lpFilename: LPSTR, nSize: DWORD): DWORD
     stdcall, dynlib: "kernel32", importc.}
 proc GetModuleHandleA*(lpModuleName: LPCSTR): HMODULE{.stdcall,
      dynlib: "kernel32", importc.}
-proc FatalAppExitA*(uAction: UINT, lpMessageText: LPCSTR){.stdcall,
+proc FatalAppExitA*(uAction: WINUINT, lpMessageText: LPCSTR){.stdcall,
      dynlib: "kernel32", importc.}
 proc GetCommandLineA*(): LPSTR{.stdcall, dynlib: "kernel32", importc.}
 proc GetEnvironmentVariableA*(lpName: LPCSTR, lpBuffer: LPSTR, nSize: DWORD): DWORD{.
@@ -14080,15 +14080,15 @@ proc GlobalAddAtomA*(lpString: LPCSTR): ATOM{.stdcall, dynlib: "kernel32",
     importc: "GlobalAddAtomA".}
 proc GlobalFindAtomA*(lpString: LPCSTR): ATOM{.stdcall, dynlib: "kernel32",
     importc: "GlobalFindAtomA".}
-proc GlobalGetAtomNameA*(nAtom: ATOM, lpBuffer: LPSTR, nSize: int32): UINT{.
+proc GlobalGetAtomNameA*(nAtom: ATOM, lpBuffer: LPSTR, nSize: int32): WINUINT{.
     stdcall, dynlib: "kernel32", importc: "GlobalGetAtomNameA".}
 proc AddAtomA*(lpString: LPCSTR): ATOM{.stdcall, dynlib: "kernel32",
                                         importc: "AddAtomA".}
 proc FindAtomA*(lpString: LPCSTR): ATOM{.stdcall, dynlib: "kernel32",
     importc: "FindAtomA".}
-proc GetAtomNameA*(nAtom: ATOM, lpBuffer: LPSTR, nSize: int32): UINT{.stdcall,
+proc GetAtomNameA*(nAtom: ATOM, lpBuffer: LPSTR, nSize: int32): WINUINT{.stdcall,
     dynlib: "kernel32", importc: "GetAtomNameA".}
-proc GetProfileIntA*(lpAppName: LPCSTR, lpKeyName: LPCSTR, nDefault: WINT): UINT{.
+proc GetProfileIntA*(lpAppName: LPCSTR, lpKeyName: LPCSTR, nDefault: WINT): WINUINT{.
     stdcall, dynlib: "kernel32", importc: "GetProfileIntA".}
 proc GetProfileStringA*(lpAppName: LPCSTR, lpKeyName: LPCSTR, lpDefault: LPCSTR,
                         lpReturnedString: LPSTR, nSize: DWORD): DWORD{.stdcall,
@@ -14101,7 +14101,7 @@ proc GetProfileSectionA*(lpAppName: LPCSTR, lpReturnedString: LPSTR,
 proc WriteProfileSectionA*(lpAppName: LPCSTR, lpString: LPCSTR): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "WriteProfileSectionA".}
 proc GetPrivateProfileIntA*(lpAppName: LPCSTR, lpKeyName: LPCSTR,
-                            nDefault: WINT, lpFileName: LPCSTR): UINT{.stdcall,
+                            nDefault: WINT, lpFileName: LPCSTR): WINUINT{.stdcall,
     dynlib: "kernel32", importc: "GetPrivateProfileIntA".}
 proc GetPrivateProfileStringA*(lpAppName: LPCSTR, lpKeyName: LPCSTR,
                                lpDefault: LPCSTR, lpReturnedString: LPSTR,
@@ -14117,16 +14117,16 @@ proc GetPrivateProfileSectionA*(lpAppName: LPCSTR, lpReturnedString: LPSTR,
 proc WritePrivateProfileSectionA*(lpAppName: LPCSTR, lpString: LPCSTR,
                                   lpFileName: LPCSTR): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "WritePrivateProfileSectionA".}
-proc GetDriveTypeA*(lpRootPathName: LPCSTR): UINT{.stdcall, dynlib: "kernel32",
+proc GetDriveTypeA*(lpRootPathName: LPCSTR): WINUINT{.stdcall, dynlib: "kernel32",
     importc: "GetDriveTypeA".}
-proc GetSystemDirectoryA*(lpBuffer: LPSTR, uSize: UINT): UINT{.stdcall,
+proc GetSystemDirectoryA*(lpBuffer: LPSTR, uSize: WINUINT): WINUINT{.stdcall,
     dynlib: "kernel32", importc: "GetSystemDirectoryA".}
 proc GetTempPathA*(nBufferLength: DWORD, lpBuffer: LPSTR): DWORD{.stdcall,
     dynlib: "kernel32", importc: "GetTempPathA".}
 proc GetTempFileNameA*(lpPathName: LPCSTR, lpPrefixString: LPCSTR,
-                       uUnique: UINT, lpTempFileName: LPSTR): UINT{.stdcall,
+                       uUnique: WINUINT, lpTempFileName: LPSTR): WINUINT{.stdcall,
     dynlib: "kernel32", importc: "GetTempFileNameA".}
-proc GetWindowsDirectoryA*(lpBuffer: LPSTR, uSize: UINT): UINT{.stdcall,
+proc GetWindowsDirectoryA*(lpBuffer: LPSTR, uSize: WINUINT): WINUINT{.stdcall,
     dynlib: "kernel32", importc: "GetWindowsDirectoryA".}
 proc SetCurrentDirectoryA*(lpPathName: LPCSTR): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "SetCurrentDirectoryA".}
@@ -14267,7 +14267,7 @@ proc GetFileSecurityA*(lpFileName: LPCSTR,
 proc FindFirstChangeNotificationA*(lpPathName: LPCSTR, bWatchSubtree: WINBOOL,
                                    dwNotifyFilter: DWORD): HANDLE{.stdcall,
     dynlib: "kernel32", importc: "FindFirstChangeNotificationA".}
-proc IsBadStringPtrA*(lpsz: LPCSTR, ucchMax: UINT): WINBOOL{.stdcall,
+proc IsBadStringPtrA*(lpsz: LPCSTR, ucchMax: WINUINT): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "IsBadStringPtrA".}
 proc LookupAccountSidA*(lpSystemName: LPCSTR, Sid: PSID, Name: LPSTR,
                         cbName: LPDWORD, ReferencedDomainName: LPSTR,
@@ -14304,7 +14304,7 @@ proc SetComputerNameA*(lpComputerName: LPCSTR): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "SetComputerNameA".}
 proc GetUserNameA*(lpBuffer: LPSTR, nSize: LPDWORD): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "GetUserNameA".}
-proc LoadKeyboardLayoutA*(pwszKLID: LPCSTR, Flags: UINT): HKL{.stdcall,
+proc LoadKeyboardLayoutA*(pwszKLID: LPCSTR, Flags: WINUINT): HKL{.stdcall,
     dynlib: "user32", importc: "LoadKeyboardLayoutA".}
 proc GetKeyboardLayoutNameA*(pwszKLID: LPSTR): WINBOOL{.stdcall,
     dynlib: "user32", importc: "GetKeyboardLayoutNameA".}
@@ -14332,35 +14332,35 @@ proc GetUserObjectInformationA*(hObj: HANDLE, nIndex: int32, pvInfo: PVOID,
 proc SetUserObjectInformationA*(hObj: HANDLE, nIndex: int32, pvInfo: PVOID,
                                 nLength: DWORD): WINBOOL{.stdcall,
     dynlib: "user32", importc: "SetUserObjectInformationA".}
-proc RegisterWindowMessageA*(lpString: LPCSTR): UINT{.stdcall, dynlib: "user32",
+proc RegisterWindowMessageA*(lpString: LPCSTR): WINUINT{.stdcall, dynlib: "user32",
     importc: "RegisterWindowMessageA".}
-proc GetMessageA*(lpMsg: LPMSG, wnd: HWND, wMsgFilterMin: UINT,
-                  wMsgFilterMax: UINT): WINBOOL{.stdcall, dynlib: "user32",
+proc GetMessageA*(lpMsg: LPMSG, wnd: HWND, wMsgFilterMin: WINUINT,
+                  wMsgFilterMax: WINUINT): WINBOOL{.stdcall, dynlib: "user32",
     importc: "GetMessageA".}
 proc DispatchMessageA*(lpMsg: LPMSG): LONG{.stdcall, dynlib: "user32",
     importc: "DispatchMessageA".}
-proc PeekMessageA*(lpMsg: LPMSG, wnd: HWND, wMsgFilterMin: UINT,
-                   wMsgFilterMax: UINT, wRemoveMsg: UINT): WINBOOL{.stdcall,
+proc PeekMessageA*(lpMsg: LPMSG, wnd: HWND, wMsgFilterMin: WINUINT,
+                   wMsgFilterMax: WINUINT, wRemoveMsg: WINUINT): WINBOOL{.stdcall,
     dynlib: "user32", importc: "PeekMessageA".}
-proc SendMessageA*(wnd: HWND, Msg: UINT, wp: WPARAM, lp: LPARAM): LRESULT{.
+proc SendMessageA*(wnd: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM): LRESULT{.
     stdcall, dynlib: "user32", importc: "SendMessageA".}
-proc SendMessageTimeoutA*(wnd: HWND, Msg: UINT, wp: WPARAM, lp: LPARAM,
-                          fuFlags: UINT, uTimeout: UINT, lpdwResult: LPDWORD): LRESULT{.
+proc SendMessageTimeoutA*(wnd: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM,
+                          fuFlags: WINUINT, uTimeout: WINUINT, lpdwResult: LPDWORD): LRESULT{.
     stdcall, dynlib: "user32", importc: "SendMessageTimeoutA".}
-proc SendNotifyMessageA*(wnd: HWND, Msg: UINT, wp: WPARAM, lp: LPARAM): WINBOOL{.
+proc SendNotifyMessageA*(wnd: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM): WINBOOL{.
     stdcall, dynlib: "user32", importc: "SendNotifyMessageA".}
-proc SendMessageCallbackA*(wnd: HWND, Msg: UINT, wp: WPARAM,
+proc SendMessageCallbackA*(wnd: HWND, Msg: WINUINT, wp: WPARAM,
                            lp: LPARAM, lpResultCallBack: SENDASYNCPROC,
                            dwData: DWORD): WINBOOL{.stdcall, dynlib: "user32",
     importc: "SendMessageCallbackA".}
-proc PostMessageA*(wnd: HWND, Msg: UINT, wp: WPARAM, lp: LPARAM): WINBOOL{.
+proc PostMessageA*(wnd: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM): WINBOOL{.
     stdcall, dynlib: "user32", importc: "PostMessageA".}
-proc PostThreadMessageA*(idThread: DWORD, Msg: UINT, wp: WPARAM,
+proc PostThreadMessageA*(idThread: DWORD, Msg: WINUINT, wp: WPARAM,
                          lp: LPARAM): WINBOOL{.stdcall, dynlib: "user32",
     importc: "PostThreadMessageA".}
-proc DefWindowProcA*(wnd: HWND, Msg: UINT, wp: WPARAM, lp: LPARAM): LRESULT{.
+proc DefWindowProcA*(wnd: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM): LRESULT{.
     stdcall, dynlib: "user32", importc: "DefWindowProcA".}
-proc CallWindowProcA*(lpPrevWndFunc: WNDPROC, wnd: HWND, Msg: UINT,
+proc CallWindowProcA*(lpPrevWndFunc: WNDPROC, wnd: HWND, Msg: WINUINT,
                       wp: WPARAM, lp: LPARAM): LRESULT{.stdcall,
     dynlib: "user32", importc: "CallWindowProcA".}
 proc RegisterClassA*(lpWndClass: LPWNDCLASS): ATOM{.stdcall, dynlib: "user32",
@@ -14398,18 +14398,18 @@ proc DialogBoxIndirectParamA*(hInstance: HINST, hDialogTemplate: LPCDLGTEMPLATE,
 proc SetDlgItemTextA*(hDlg: HWND, nIDDlgItem: int32, lpString: LPCSTR): WINBOOL{.
     stdcall, dynlib: "user32", importc: "SetDlgItemTextA".}
 proc GetDlgItemTextA*(hDlg: HWND, nIDDlgItem: int32, lpString: LPSTR,
-                      nMaxCount: int32): UINT{.stdcall, dynlib: "user32",
+                      nMaxCount: int32): WINUINT{.stdcall, dynlib: "user32",
     importc: "GetDlgItemTextA".}
-proc SendDlgItemMessageA*(hDlg: HWND, nIDDlgItem: int32, Msg: UINT,
+proc SendDlgItemMessageA*(hDlg: HWND, nIDDlgItem: int32, Msg: WINUINT,
                           wp: WPARAM, lp: LPARAM): LONG{.stdcall,
     dynlib: "user32", importc: "SendDlgItemMessageA".}
-proc DefDlgProcA*(hDlg: HWND, Msg: UINT, wp: WPARAM, lp: LPARAM): LRESULT{.
+proc DefDlgProcA*(hDlg: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM): LRESULT{.
     stdcall, dynlib: "user32", importc: "DefDlgProcA".}
 proc CallMsgFilterA*(lpMsg: LPMSG, nCode: int32): WINBOOL{.stdcall,
     dynlib: "user32", importc: "CallMsgFilterA".}
-proc RegisterClipboardFormatA*(lpszFormat: LPCSTR): UINT{.stdcall,
+proc RegisterClipboardFormatA*(lpszFormat: LPCSTR): WINUINT{.stdcall,
     dynlib: "user32", importc: "RegisterClipboardFormatA".}
-proc GetClipboardFormatNameA*(format: UINT, lpszFormatName: LPSTR,
+proc GetClipboardFormatNameA*(format: WINUINT, lpszFormatName: LPSTR,
                               cchMaxCount: int32): int32{.stdcall,
     dynlib: "user32", importc: "GetClipboardFormatNameA".}
 proc CharToOemA*(lpszSrc: LPCSTR, lpszDst: LPSTR): WINBOOL{.stdcall,
@@ -14446,9 +14446,9 @@ proc VkKeyScanA*(ch: CHAR): SHORT{.stdcall, dynlib: "user32",
                                    importc: "VkKeyScanA".}
 proc VkKeyScanExA*(ch: CHAR, dwhkl: HKL): SHORT{.stdcall, dynlib: "user32",
     importc: "VkKeyScanExA".}
-proc MapVirtualKeyA*(uCode: UINT, uMapType: UINT): UINT{.stdcall,
+proc MapVirtualKeyA*(uCode: WINUINT, uMapType: WINUINT): WINUINT{.stdcall,
     dynlib: "user32", importc: "MapVirtualKeyA".}
-proc MapVirtualKeyExA*(uCode: UINT, uMapType: UINT, dwhkl: HKL): UINT{.stdcall,
+proc MapVirtualKeyExA*(uCode: WINUINT, uMapType: WINUINT, dwhkl: HKL): WINUINT{.stdcall,
     dynlib: "user32", importc: "MapVirtualKeyExA".}
 proc LoadAcceleratorsA*(hInstance: HINST, lpTableName: LPCSTR): HACCEL{.stdcall,
     dynlib: "user32", importc: "LoadAcceleratorsA".}
@@ -14463,35 +14463,35 @@ proc LoadMenuA*(hInstance: HINST, lpMenuName: LPCSTR): HMENU{.stdcall,
     dynlib: "user32", importc: "LoadMenuA".}
 proc LoadMenuIndirectA*(lpMenuTemplate: LPMENUTEMPLATE): HMENU{.stdcall,
     dynlib: "user32", importc: "LoadMenuIndirectA".}
-proc ChangeMenuA*(menu: HMENU, cmd: UINT, lpszNewItem: LPCSTR, cmdInsert: UINT,
-                  flags: UINT): WINBOOL{.stdcall, dynlib: "user32",
+proc ChangeMenuA*(menu: HMENU, cmd: WINUINT, lpszNewItem: LPCSTR, cmdInsert: WINUINT,
+                  flags: WINUINT): WINBOOL{.stdcall, dynlib: "user32",
     importc: "ChangeMenuA".}
-proc GetMenuStringA*(menu: HMENU, uIDItem: UINT, lpString: LPSTR,
-                     nMaxCount: int32, uFlag: UINT): int32{.stdcall,
+proc GetMenuStringA*(menu: HMENU, uIDItem: WINUINT, lpString: LPSTR,
+                     nMaxCount: int32, uFlag: WINUINT): int32{.stdcall,
     dynlib: "user32", importc: "GetMenuStringA".}
-proc InsertMenuA*(menu: HMENU, uPosition: UINT, uFlags: UINT, uIDNewItem: UINT,
+proc InsertMenuA*(menu: HMENU, uPosition: WINUINT, uFlags: WINUINT, uIDNewItem: WINUINT,
                   lpNewItem: LPCSTR): WINBOOL{.stdcall, dynlib: "user32",
     importc: "InsertMenuA".}
-proc AppendMenuA*(menu: HMENU, uFlags: UINT, uIDNewItem: UINT,
+proc AppendMenuA*(menu: HMENU, uFlags: WINUINT, uIDNewItem: WINUINT,
                   lpNewItem: LPCSTR): WINBOOL{.stdcall, dynlib: "user32",
     importc: "AppendMenuA".}
-proc ModifyMenuA*(hMnu: HMENU, uPosition: UINT, uFlags: UINT, uIDNewItem: UINT,
+proc ModifyMenuA*(hMnu: HMENU, uPosition: WINUINT, uFlags: WINUINT, uIDNewItem: WINUINT,
                   lpNewItem: LPCSTR): WINBOOL{.stdcall, dynlib: "user32",
     importc: "ModifyMenuA".}
-proc InsertMenuItemA*(para1: HMENU, para2: UINT, para3: WINBOOL,
+proc InsertMenuItemA*(para1: HMENU, para2: WINUINT, para3: WINBOOL,
                       para4: LPCMENUITEMINFO): WINBOOL{.stdcall,
     dynlib: "user32", importc: "InsertMenuItemA".}
-proc GetMenuItemInfoA*(para1: HMENU, para2: UINT, para3: WINBOOL,
+proc GetMenuItemInfoA*(para1: HMENU, para2: WINUINT, para3: WINBOOL,
                        para4: LPMENUITEMINFO): WINBOOL{.stdcall,
     dynlib: "user32", importc: "GetMenuItemInfoA".}
-proc SetMenuItemInfoA*(para1: HMENU, para2: UINT, para3: WINBOOL,
+proc SetMenuItemInfoA*(para1: HMENU, para2: WINUINT, para3: WINBOOL,
                        para4: LPCMENUITEMINFO): WINBOOL{.stdcall,
     dynlib: "user32", importc: "SetMenuItemInfoA".}
 proc DrawTextA*(hDC: HDC, lpString: LPCSTR, nCount: int32, lpRect: LPRECT,
-                uFormat: UINT): int32{.stdcall, dynlib: "user32",
+                uFormat: WINUINT): int32{.stdcall, dynlib: "user32",
                                        importc: "DrawTextA".}
 proc DrawTextExA*(para1: HDC, para2: LPSTR, para3: int32, para4: LPRECT,
-                  para5: UINT, para6: LPDRAWTEXTPARAMS): int32{.stdcall,
+                  para5: WINUINT, para6: LPDRAWTEXTPARAMS): int32{.stdcall,
     dynlib: "user32", importc: "DrawTextExA".}
 proc GrayStringA*(hDC: HDC, hBrush: HBRUSH, lpOutputFunc: GRAYSTRINGPROC,
                   lpData: LPARAM, nCount: int32, X: int32, Y: int32,
@@ -14499,7 +14499,7 @@ proc GrayStringA*(hDC: HDC, hBrush: HBRUSH, lpOutputFunc: GRAYSTRINGPROC,
     dynlib: "user32", importc: "GrayStringA".}
 proc DrawStateA*(para1: HDC, para2: HBRUSH, para3: DRAWSTATEPROC, para4: LPARAM,
                  para5: WPARAM, para6: int32, para7: int32, para8: int32,
-                 para9: int32, para10: UINT): WINBOOL{.stdcall,
+                 para9: int32, para10: WINUINT): WINBOOL{.stdcall,
     dynlib: "user32", importc: "DrawStateA".}
 proc TabbedTextOutA*(hDC: HDC, X: int32, Y: int32, lpString: LPCSTR,
                      nCount: int32, nTabPositions: int32,
@@ -14526,7 +14526,7 @@ proc GetWindowTextLengthA*(wnd: HWND): int32{.stdcall, dynlib: "user32",
     importc: "GetWindowTextLengthA".}
 proc MessageBoxA*(wnd: HWND, lpText: LPCSTR, lpCaption: LPCSTR, uType: int): int32{.
     stdcall, dynlib: "user32", importc: "MessageBoxA".}
-proc MessageBoxExA*(wnd: HWND, lpText: LPCSTR, lpCaption: LPCSTR, uType: UINT,
+proc MessageBoxExA*(wnd: HWND, lpText: LPCSTR, lpCaption: LPCSTR, uType: WINUINT,
                     wLanguageId: int16): int32{.stdcall, dynlib: "user32",
     importc: "MessageBoxExA".}
 proc MessageBoxIndirectA*(para1: LPMSGBOXPARAMS): int32{.stdcall,
@@ -14574,44 +14574,44 @@ proc LoadCursorFromFileA*(lpFileName: LPCSTR): HCURSOR{.stdcall,
     dynlib: "user32", importc: "LoadCursorFromFileA".}
 proc LoadIconA*(hInstance: HINST, lpIconName: LPCSTR): HICON{.stdcall,
     dynlib: "user32", importc: "LoadIconA".}
-proc LoadImageA*(para1: HINST, para2: LPCSTR, para3: UINT, para4: int32,
-                 para5: int32, para6: UINT): HANDLE{.stdcall, dynlib: "user32",
+proc LoadImageA*(para1: HINST, para2: LPCSTR, para3: WINUINT, para4: int32,
+                 para5: int32, para6: WINUINT): HANDLE{.stdcall, dynlib: "user32",
     importc: "LoadImageA".}
-proc LoadStringA*(hInstance: HINST, uID: UINT, lpBuffer: LPSTR,
+proc LoadStringA*(hInstance: HINST, uID: WINUINT, lpBuffer: LPSTR,
                   nBufferMax: int32): int32{.stdcall, dynlib: "user32",
     importc: "LoadStringA".}
 proc IsDialogMessageA*(hDlg: HWND, lpMsg: LPMSG): WINBOOL{.stdcall,
     dynlib: "user32", importc: "IsDialogMessageA".}
 proc DlgDirListA*(hDlg: HWND, lpPathSpec: LPSTR, nIDListBox: int32,
-                  nIDStaticPath: int32, uFileType: UINT): int32{.stdcall,
+                  nIDStaticPath: int32, uFileType: WINUINT): int32{.stdcall,
     dynlib: "user32", importc: "DlgDirListA".}
 proc DlgDirSelectExA*(hDlg: HWND, lpString: LPSTR, nCount: int32,
                       nIDListBox: int32): WINBOOL{.stdcall, dynlib: "user32",
     importc: "DlgDirSelectExA".}
 proc DlgDirListComboBoxA*(hDlg: HWND, lpPathSpec: LPSTR, nIDComboBox: int32,
-                          nIDStaticPath: int32, uFiletype: UINT): int32{.
+                          nIDStaticPath: int32, uFiletype: WINUINT): int32{.
     stdcall, dynlib: "user32", importc: "DlgDirListComboBoxA".}
 proc DlgDirSelectComboBoxExA*(hDlg: HWND, lpString: LPSTR, nCount: int32,
                               nIDComboBox: int32): WINBOOL{.stdcall,
     dynlib: "user32", importc: "DlgDirSelectComboBoxExA".}
-proc DefFrameProcA*(wnd: HWND, hWndMDIClient: HWND, uMsg: UINT, wp: WPARAM,
+proc DefFrameProcA*(wnd: HWND, hWndMDIClient: HWND, uMsg: WINUINT, wp: WPARAM,
                     lp: LPARAM): LRESULT{.stdcall, dynlib: "user32",
     importc: "DefFrameProcA".}
-proc DefMDIChildProcA*(wnd: HWND, uMsg: UINT, wp: WPARAM, lp: LPARAM): LRESULT{.
+proc DefMDIChildProcA*(wnd: HWND, uMsg: WINUINT, wp: WPARAM, lp: LPARAM): LRESULT{.
     stdcall, dynlib: "user32", importc: "DefMDIChildProcA".}
 proc CreateMDIWindowA*(lpClassName: LPSTR, lpWindowName: LPSTR, dwStyle: DWORD,
                        X: int32, Y: int32, nWidth: int32, nHeight: int32,
                        hWndParent: HWND, hInstance: HINST, lp: LPARAM): HWND{.
     stdcall, dynlib: "user32", importc: "CreateMDIWindowA".}
-proc WinHelpA*(hWndMain: HWND, lpszHelp: LPCSTR, uCommand: UINT, dwData: DWORD): WINBOOL{.
+proc WinHelpA*(hWndMain: HWND, lpszHelp: LPCSTR, uCommand: WINUINT, dwData: DWORD): WINBOOL{.
     stdcall, dynlib: "user32", importc: "WinHelpA".}
 proc ChangeDisplaySettingsA*(lpDevMode: LPDEVMODE, dwFlags: DWORD): LONG{.
     stdcall, dynlib: "user32", importc: "ChangeDisplaySettingsA".}
 proc EnumDisplaySettingsA*(lpszDeviceName: LPCSTR, iModeNum: DWORD,
                            lpDevMode: LPDEVMODE): WINBOOL{.stdcall,
     dynlib: "user32", importc: "EnumDisplaySettingsA".}
-proc SystemParametersInfoA*(uiAction: UINT, uiParam: UINT, pvParam: PVOID,
-                            fWinIni: UINT): WINBOOL{.stdcall, dynlib: "user32",
+proc SystemParametersInfoA*(uiAction: WINUINT, uiParam: WINUINT, pvParam: PVOID,
+                            fWinIni: WINUINT): WINBOOL{.stdcall, dynlib: "user32",
     importc: "SystemParametersInfoA".}
 proc AddFontResourceA*(para1: LPCSTR): int32{.stdcall, dynlib: "gdi32",
     importc: "AddFontResourceA".}
@@ -14643,24 +14643,24 @@ proc EnumFontsA*(para1: HDC, para2: LPCSTR, para3: ENUMFONTSPROC, para4: LPARAM)
     stdcall, dynlib: "gdi32", importc: "EnumFontsA".}
 proc EnumFontsA*(para1: HDC, para2: LPCSTR, para3: ENUMFONTSPROC, para4: pointer): int32{.
     stdcall, dynlib: "gdi32", importc: "EnumFontsA".}
-proc GetCharWidthA*(para1: HDC, para2: UINT, para3: UINT, para4: LPINT): WINBOOL{.
+proc GetCharWidthA*(para1: HDC, para2: WINUINT, para3: WINUINT, para4: LPINT): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "GetCharWidthA".}
-proc GetCharWidth32A*(para1: HDC, para2: UINT, para3: UINT, para4: LPINT): WINBOOL{.
+proc GetCharWidth32A*(para1: HDC, para2: WINUINT, para3: WINUINT, para4: LPINT): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "GetCharWidth32A".}
-proc GetCharWidthFloatA*(para1: HDC, para2: UINT, para3: UINT, para4: ptr float32): WINBOOL{.
+proc GetCharWidthFloatA*(para1: HDC, para2: WINUINT, para3: WINUINT, para4: ptr float32): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "GetCharWidthFloatA".}
-proc GetCharABCWidthsA*(para1: HDC, para2: UINT, para3: UINT, para4: LPABC): WINBOOL{.
+proc GetCharABCWidthsA*(para1: HDC, para2: WINUINT, para3: WINUINT, para4: LPABC): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "GetCharABCWidthsA".}
-proc GetCharABCWidthsFloatA*(para1: HDC, para2: UINT, para3: UINT,
+proc GetCharABCWidthsFloatA*(para1: HDC, para2: WINUINT, para3: WINUINT,
                              para4: LPABCFLOAT): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetCharABCWidthsFloatA".}
-proc GetGlyphOutlineA*(para1: HDC, para2: UINT, para3: UINT,
+proc GetGlyphOutlineA*(para1: HDC, para2: WINUINT, para3: WINUINT,
                        para4: LPGLYPHMETRICS, para5: DWORD, para6: LPVOID,
                        para7: PMAT2): DWORD{.stdcall, dynlib: "gdi32",
     importc: "GetGlyphOutlineA".}
 proc GetMetaFileA*(para1: LPCSTR): HMETAFILE{.stdcall, dynlib: "gdi32",
     importc: "GetMetaFileA".}
-proc GetOutlineTextMetricsA*(para1: HDC, para2: UINT, para3: LPOUTLINETEXTMETRIC): UINT{.
+proc GetOutlineTextMetricsA*(para1: HDC, para2: WINUINT, para3: LPOUTLINETEXTMETRIC): WINUINT{.
     stdcall, dynlib: "gdi32", importc: "GetOutlineTextMetricsA".}
 proc GetTextExtentPointA*(para1: HDC, para2: LPCSTR, para3: int32, para4: LPSIZE): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "GetTextExtentPointA".}
@@ -14684,7 +14684,7 @@ proc CreateEnhMetaFileA*(para1: HDC, para2: LPCSTR, para3: LPRECT, para4: LPCSTR
     stdcall, dynlib: "gdi32", importc: "CreateEnhMetaFileA".}
 proc GetEnhMetaFileA*(para1: LPCSTR): HENHMETAFILE{.stdcall, dynlib: "gdi32",
     importc: "GetEnhMetaFileA".}
-proc GetEnhMetaFileDescriptionA*(para1: HENHMETAFILE, para2: UINT, para3: LPSTR): UINT{.
+proc GetEnhMetaFileDescriptionA*(para1: HENHMETAFILE, para2: WINUINT, para3: LPSTR): WINUINT{.
     stdcall, dynlib: "gdi32", importc: "GetEnhMetaFileDescriptionA".}
 proc GetTextMetricsA*(para1: HDC, para2: LPTEXTMETRIC): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetTextMetricsA".}
@@ -14695,8 +14695,8 @@ proc GetObjectA*(para1: HGDIOBJ, para2: int32, para3: LPVOID): int32{.stdcall,
 proc TextOutA*(para1: HDC, para2: int32, para3: int32, para4: LPCSTR,
                para5: int32): WINBOOL{.stdcall, dynlib: "gdi32",
                                        importc: "TextOutA".}
-proc ExtTextOutA*(para1: HDC, para2: int32, para3: int32, para4: UINT,
-                  para5: LPRECT, para6: LPCSTR, para7: UINT, para8: LPINT): WINBOOL{.
+proc ExtTextOutA*(para1: HDC, para2: int32, para3: int32, para4: WINUINT,
+                  para5: LPRECT, para6: LPCSTR, para7: WINUINT, para8: LPINT): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "ExtTextOutA".}
 proc PolyTextOutA*(para1: HDC, para2: PPOLYTEXT, para3: int32): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "PolyTextOutA".}
@@ -14712,19 +14712,19 @@ proc GetICMProfileA*(para1: HDC, para2: DWORD, para3: LPSTR): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetICMProfileA".}
 proc SetICMProfileA*(para1: HDC, para2: LPSTR): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "SetICMProfileA".}
-proc UpdateICMRegKeyA*(para1: DWORD, para2: DWORD, para3: LPSTR, para4: UINT): WINBOOL{.
+proc UpdateICMRegKeyA*(para1: DWORD, para2: DWORD, para3: LPSTR, para4: WINUINT): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "UpdateICMRegKeyA".}
 proc EnumICMProfilesA*(para1: HDC, para2: ICMENUMPROC, para3: LPARAM): int32{.
     stdcall, dynlib: "gdi32", importc: "EnumICMProfilesA".}
 proc PropertySheetA*(lppsph: LPCPROPSHEETHEADER): int32{.stdcall,
     dynlib: "comctl32", importc: "PropertySheetA".}
 proc ImageList_LoadImageA*(hi: HINST, lpbmp: LPCSTR, cx: int32, cGrow: int32,
-                           crMask: COLORREF, uType: UINT, uFlags: UINT): HIMAGELIST{.
+                           crMask: COLORREF, uType: WINUINT, uFlags: WINUINT): HIMAGELIST{.
     stdcall, dynlib: "comctl32", importc: "ImageList_LoadImageA".}
 proc CreateStatusWindowA*(style: LONG, lpszText: LPCSTR, hwndParent: HWND,
-                          wID: UINT): HWND{.stdcall, dynlib: "comctl32",
+                          wID: WINUINT): HWND{.stdcall, dynlib: "comctl32",
     importc: "CreateStatusWindowA".}
-proc DrawStatusTextA*(hDC: HDC, lprc: LPRECT, pszText: LPCSTR, uFlags: UINT){.
+proc DrawStatusTextA*(hDC: HDC, lprc: LPRECT, pszText: LPCSTR, uFlags: WINUINT){.
     stdcall, dynlib: "comctl32", importc: "DrawStatusTextA".}
 proc GetOpenFileNameA*(para1: LPOPENFILENAME): WINBOOL{.stdcall,
     dynlib: "comdlg32", importc: "GetOpenFileNameA".}
@@ -15077,7 +15077,7 @@ proc Shell_NotifyIconA*(dwMessage: DWORD, lpData: PNotifyIconDataA): WINBOOL{.
 proc DdeCreateStringHandleA*(para1: DWORD, para2: cstring, para3: int32): HSZ{.
     stdcall, dynlib: "user32", importc: "DdeCreateStringHandleA".}
 proc DdeInitializeA*(para1: LPDWORD, para2: PFNCALLBACK, para3: DWORD,
-                     para4: DWORD): UINT{.stdcall, dynlib: "user32",
+                     para4: DWORD): WINUINT{.stdcall, dynlib: "user32",
     importc: "DdeInitializeA".}
 proc DdeQueryStringA*(para1: DWORD, para2: HSZ, para3: cstring, para4: DWORD,
                       para5: int32): DWORD{.stdcall, dynlib: "user32",
@@ -15157,7 +15157,7 @@ proc GetModuleFileNameW*(hModule: HINST, lpFilename: LPWSTR, nSize: DWORD): DWOR
     stdcall, dynlib: "kernel32", importc: "GetModuleFileNameW".}
 proc GetModuleHandleW*(lpModuleName: LPCWSTR): HMODULE{.stdcall,
     dynlib: "kernel32", importc: "GetModuleHandleW".}
-proc FatalAppExitW*(uAction: UINT, lpMessageText: LPCWSTR){.stdcall,
+proc FatalAppExitW*(uAction: WINUINT, lpMessageText: LPCWSTR){.stdcall,
     dynlib: "kernel32", importc: "FatalAppExitW".}
 proc GetCommandLineW*(): LPWSTR{.stdcall, dynlib: "kernel32",
                                  importc: "GetCommandLineW".}
@@ -15194,15 +15194,15 @@ proc GlobalAddAtomW*(lpString: LPCWSTR): ATOM{.stdcall, dynlib: "kernel32",
     importc: "GlobalAddAtomW".}
 proc GlobalFindAtomW*(lpString: LPCWSTR): ATOM{.stdcall, dynlib: "kernel32",
     importc: "GlobalFindAtomW".}
-proc GlobalGetAtomNameW*(nAtom: ATOM, lpBuffer: LPWSTR, nSize: int32): UINT{.
+proc GlobalGetAtomNameW*(nAtom: ATOM, lpBuffer: LPWSTR, nSize: int32): WINUINT{.
     stdcall, dynlib: "kernel32", importc: "GlobalGetAtomNameW".}
 proc AddAtomW*(lpString: LPCWSTR): ATOM{.stdcall, dynlib: "kernel32",
     importc: "AddAtomW".}
 proc FindAtomW*(lpString: LPCWSTR): ATOM{.stdcall, dynlib: "kernel32",
     importc: "FindAtomW".}
-proc GetAtomNameW*(nAtom: ATOM, lpBuffer: LPWSTR, nSize: int32): UINT{.stdcall,
+proc GetAtomNameW*(nAtom: ATOM, lpBuffer: LPWSTR, nSize: int32): WINUINT{.stdcall,
     dynlib: "kernel32", importc: "GetAtomNameW".}
-proc GetProfileIntW*(lpAppName: LPCWSTR, lpKeyName: LPCWSTR, nDefault: WINT): UINT{.
+proc GetProfileIntW*(lpAppName: LPCWSTR, lpKeyName: LPCWSTR, nDefault: WINT): WINUINT{.
     stdcall, dynlib: "kernel32", importc: "GetProfileIntW".}
 proc GetProfileStringW*(lpAppName: LPCWSTR, lpKeyName: LPCWSTR,
                         lpDefault: LPCWSTR, lpReturnedString: LPWSTR,
@@ -15217,7 +15217,7 @@ proc GetProfileSectionW*(lpAppName: LPCWSTR, lpReturnedString: LPWSTR,
 proc WriteProfileSectionW*(lpAppName: LPCWSTR, lpString: LPCWSTR): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "WriteProfileSectionW".}
 proc GetPrivateProfileIntW*(lpAppName: LPCWSTR, lpKeyName: LPCWSTR,
-                            nDefault: WINT, lpFileName: LPCWSTR): UINT{.stdcall,
+                            nDefault: WINT, lpFileName: LPCWSTR): WINUINT{.stdcall,
     dynlib: "kernel32", importc: "GetPrivateProfileIntW".}
 proc GetPrivateProfileStringW*(lpAppName: LPCWSTR, lpKeyName: LPCWSTR,
                                lpDefault: LPCWSTR, lpReturnedString: LPWSTR,
@@ -15232,16 +15232,16 @@ proc GetPrivateProfileSectionW*(lpAppName: LPCWSTR, lpReturnedString: LPWSTR,
 proc WritePrivateProfileSectionW*(lpAppName: LPCWSTR, lpString: LPCWSTR,
                                   lpFileName: LPCWSTR): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "WritePrivateProfileSectionW".}
-proc GetDriveTypeW*(lpRootPathName: LPCWSTR): UINT{.stdcall, dynlib: "kernel32",
+proc GetDriveTypeW*(lpRootPathName: LPCWSTR): WINUINT{.stdcall, dynlib: "kernel32",
     importc: "GetDriveTypeW".}
-proc GetSystemDirectoryW*(lpBuffer: LPWSTR, uSize: UINT): UINT{.stdcall,
+proc GetSystemDirectoryW*(lpBuffer: LPWSTR, uSize: WINUINT): WINUINT{.stdcall,
     dynlib: "kernel32", importc: "GetSystemDirectoryW".}
 proc GetTempPathW*(nBufferLength: DWORD, lpBuffer: LPWSTR): DWORD{.stdcall,
     dynlib: "kernel32", importc: "GetTempPathW".}
 proc GetTempFileNameW*(lpPathName: LPCWSTR, lpPrefixString: LPCWSTR,
-                       uUnique: UINT, lpTempFileName: LPWSTR): UINT{.stdcall,
+                       uUnique: WINUINT, lpTempFileName: LPWSTR): WINUINT{.stdcall,
     dynlib: "kernel32", importc: "GetTempFileNameW".}
-proc GetWindowsDirectoryW*(lpBuffer: LPWSTR, uSize: UINT): UINT{.stdcall,
+proc GetWindowsDirectoryW*(lpBuffer: LPWSTR, uSize: WINUINT): WINUINT{.stdcall,
     dynlib: "kernel32", importc: "GetWindowsDirectoryW".}
 proc SetCurrentDirectoryW*(lpPathName: LPCWSTR): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "SetCurrentDirectoryW".}
@@ -15382,7 +15382,7 @@ proc GetFileSecurityW*(lpFileName: LPCWSTR,
 proc FindFirstChangeNotificationW*(lpPathName: LPCWSTR, bWatchSubtree: WINBOOL,
                                    dwNotifyFilter: DWORD): HANDLE{.stdcall,
     dynlib: "kernel32", importc: "FindFirstChangeNotificationW".}
-proc IsBadStringPtrW*(lpsz: LPCWSTR, ucchMax: UINT): WINBOOL{.stdcall,
+proc IsBadStringPtrW*(lpsz: LPCWSTR, ucchMax: WINUINT): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "IsBadStringPtrW".}
 proc LookupAccountSidW*(lpSystemName: LPCWSTR, Sid: PSID, Name: LPWSTR,
                         cbName: LPDWORD, ReferencedDomainName: LPWSTR,
@@ -15421,7 +15421,7 @@ proc SetComputerNameW*(lpComputerName: LPCWSTR): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "SetComputerNameW".}
 proc GetUserNameW*(lpBuffer: LPWSTR, nSize: LPDWORD): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "GetUserNameW".}
-proc LoadKeyboardLayoutW*(pwszKLID: LPCWSTR, Flags: UINT): HKL{.stdcall,
+proc LoadKeyboardLayoutW*(pwszKLID: LPCWSTR, Flags: WINUINT): HKL{.stdcall,
     dynlib: "user32", importc: "LoadKeyboardLayoutW".}
 proc GetKeyboardLayoutNameW*(pwszKLID: LPWSTR): WINBOOL{.stdcall,
     dynlib: "user32", importc: "GetKeyboardLayoutNameW".}
@@ -15449,35 +15449,35 @@ proc GetUserObjectInformationW*(hObj: HANDLE, nIndex: int32, pvInfo: PVOID,
 proc SetUserObjectInformationW*(hObj: HANDLE, nIndex: int32, pvInfo: PVOID,
                                 nLength: DWORD): WINBOOL{.stdcall,
     dynlib: "user32", importc: "SetUserObjectInformationW".}
-proc RegisterWindowMessageW*(lpString: LPCWSTR): UINT{.stdcall,
+proc RegisterWindowMessageW*(lpString: LPCWSTR): WINUINT{.stdcall,
     dynlib: "user32", importc: "RegisterWindowMessageW".}
-proc GetMessageW*(lpMsg: LPMSG, wnd: HWND, wMsgFilterMin: UINT,
-                  wMsgFilterMax: UINT): WINBOOL{.stdcall, dynlib: "user32",
+proc GetMessageW*(lpMsg: LPMSG, wnd: HWND, wMsgFilterMin: WINUINT,
+                  wMsgFilterMax: WINUINT): WINBOOL{.stdcall, dynlib: "user32",
     importc: "GetMessageW".}
 proc DispatchMessageW*(lpMsg: LPMSG): LONG{.stdcall, dynlib: "user32",
     importc: "DispatchMessageW".}
-proc PeekMessageW*(lpMsg: LPMSG, wnd: HWND, wMsgFilterMin: UINT,
-                   wMsgFilterMax: UINT, wRemoveMsg: UINT): WINBOOL{.stdcall,
+proc PeekMessageW*(lpMsg: LPMSG, wnd: HWND, wMsgFilterMin: WINUINT,
+                   wMsgFilterMax: WINUINT, wRemoveMsg: WINUINT): WINBOOL{.stdcall,
     dynlib: "user32", importc: "PeekMessageW".}
-proc SendMessageW*(wnd: HWND, Msg: UINT, wp: WPARAM, lp: LPARAM): LRESULT{.
+proc SendMessageW*(wnd: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM): LRESULT{.
     stdcall, dynlib: "user32", importc: "SendMessageW".}
-proc SendMessageTimeoutW*(wnd: HWND, Msg: UINT, wp: WPARAM, lp: LPARAM,
-                          fuFlags: UINT, uTimeout: UINT, lpdwResult: LPDWORD): LRESULT{.
+proc SendMessageTimeoutW*(wnd: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM,
+                          fuFlags: WINUINT, uTimeout: WINUINT, lpdwResult: LPDWORD): LRESULT{.
     stdcall, dynlib: "user32", importc: "SendMessageTimeoutW".}
-proc SendNotifyMessageW*(wnd: HWND, Msg: UINT, wp: WPARAM, lp: LPARAM): WINBOOL{.
+proc SendNotifyMessageW*(wnd: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM): WINBOOL{.
     stdcall, dynlib: "user32", importc: "SendNotifyMessageW".}
-proc SendMessageCallbackW*(wnd: HWND, Msg: UINT, wp: WPARAM,
+proc SendMessageCallbackW*(wnd: HWND, Msg: WINUINT, wp: WPARAM,
                            lp: LPARAM, lpResultCallBack: SENDASYNCPROC,
                            dwData: DWORD): WINBOOL{.stdcall, dynlib: "user32",
     importc: "SendMessageCallbackW".}
-proc PostMessageW*(wnd: HWND, Msg: UINT, wp: WPARAM, lp: LPARAM): WINBOOL{.
+proc PostMessageW*(wnd: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM): WINBOOL{.
     stdcall, dynlib: "user32", importc: "PostMessageW".}
-proc PostThreadMessageW*(idThread: DWORD, Msg: UINT, wp: WPARAM,
+proc PostThreadMessageW*(idThread: DWORD, Msg: WINUINT, wp: WPARAM,
                          lp: LPARAM): WINBOOL{.stdcall, dynlib: "user32",
     importc: "PostThreadMessageW".}
-proc DefWindowProcW*(wnd: HWND, Msg: UINT, wp: WPARAM, lp: LPARAM): LRESULT{.
+proc DefWindowProcW*(wnd: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM): LRESULT{.
     stdcall, dynlib: "user32", importc: "DefWindowProcW".}
-proc CallWindowProcW*(lpPrevWndFunc: WNDPROC, wnd: HWND, Msg: UINT,
+proc CallWindowProcW*(lpPrevWndFunc: WNDPROC, wnd: HWND, Msg: WINUINT,
                       wp: WPARAM, lp: LPARAM): LRESULT{.stdcall,
     dynlib: "user32", importc: "CallWindowProcW".}
 proc RegisterClassW*(lpWndClass: LPWNDCLASSW): ATOM{.stdcall, dynlib: "user32",
@@ -15515,18 +15515,18 @@ proc DialogBoxIndirectParamW*(hInstance: HINST, hDialogTemplate: LPCDLGTEMPLATE,
 proc SetDlgItemTextW*(hDlg: HWND, nIDDlgItem: int32, lpString: LPCWSTR): WINBOOL{.
     stdcall, dynlib: "user32", importc: "SetDlgItemTextW".}
 proc GetDlgItemTextW*(hDlg: HWND, nIDDlgItem: int32, lpString: LPWSTR,
-                      nMaxCount: int32): UINT{.stdcall, dynlib: "user32",
+                      nMaxCount: int32): WINUINT{.stdcall, dynlib: "user32",
     importc: "GetDlgItemTextW".}
-proc SendDlgItemMessageW*(hDlg: HWND, nIDDlgItem: int32, Msg: UINT,
+proc SendDlgItemMessageW*(hDlg: HWND, nIDDlgItem: int32, Msg: WINUINT,
                           wp: WPARAM, lp: LPARAM): LONG{.stdcall,
     dynlib: "user32", importc: "SendDlgItemMessageW".}
-proc DefDlgProcW*(hDlg: HWND, Msg: UINT, wp: WPARAM, lp: LPARAM): LRESULT{.
+proc DefDlgProcW*(hDlg: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM): LRESULT{.
     stdcall, dynlib: "user32", importc: "DefDlgProcW".}
 proc CallMsgFilterW*(lpMsg: LPMSG, nCode: int32): WINBOOL{.stdcall,
     dynlib: "user32", importc: "CallMsgFilterW".}
-proc RegisterClipboardFormatW*(lpszFormat: LPCWSTR): UINT{.stdcall,
+proc RegisterClipboardFormatW*(lpszFormat: LPCWSTR): WINUINT{.stdcall,
     dynlib: "user32", importc: "RegisterClipboardFormatW".}
-proc GetClipboardFormatNameW*(format: UINT, lpszFormatName: LPWSTR,
+proc GetClipboardFormatNameW*(format: WINUINT, lpszFormatName: LPWSTR,
                               cchMaxCount: int32): int32{.stdcall,
     dynlib: "user32", importc: "GetClipboardFormatNameW".}
 proc CharToOemW*(lpszSrc: LPCWSTR, lpszDst: LPSTR): WINBOOL{.stdcall,
@@ -15563,9 +15563,9 @@ proc VkKeyScanW*(ch: WCHAR): SHORT{.stdcall, dynlib: "user32",
                                     importc: "VkKeyScanW".}
 proc VkKeyScanExW*(ch: WCHAR, dwhkl: HKL): SHORT{.stdcall, dynlib: "user32",
     importc: "VkKeyScanExW".}
-proc MapVirtualKeyW*(uCode: UINT, uMapType: UINT): UINT{.stdcall,
+proc MapVirtualKeyW*(uCode: WINUINT, uMapType: WINUINT): WINUINT{.stdcall,
     dynlib: "user32", importc: "MapVirtualKeyW".}
-proc MapVirtualKeyExW*(uCode: UINT, uMapType: UINT, dwhkl: HKL): UINT{.stdcall,
+proc MapVirtualKeyExW*(uCode: WINUINT, uMapType: WINUINT, dwhkl: HKL): WINUINT{.stdcall,
     dynlib: "user32", importc: "MapVirtualKeyExW".}
 proc LoadAcceleratorsW*(hInstance: HINST, lpTableName: LPCWSTR): HACCEL{.
     stdcall, dynlib: "user32", importc: "LoadAcceleratorsW".}
@@ -15580,35 +15580,35 @@ proc LoadMenuW*(hInstance: HINST, lpMenuName: LPCWSTR): HMENU{.stdcall,
     dynlib: "user32", importc: "LoadMenuW".}
 proc LoadMenuIndirectW*(lpMenuTemplate: LPMENUTEMPLATE): HMENU{.stdcall,
     dynlib: "user32", importc: "LoadMenuIndirectW".}
-proc ChangeMenuW*(menu: HMENU, cmd: UINT, lpszNewItem: LPCWSTR,
-                  cmdInsert: UINT, flags: UINT): WINBOOL{.stdcall,
+proc ChangeMenuW*(menu: HMENU, cmd: WINUINT, lpszNewItem: LPCWSTR,
+                  cmdInsert: WINUINT, flags: WINUINT): WINBOOL{.stdcall,
     dynlib: "user32", importc: "ChangeMenuW".}
-proc GetMenuStringW*(menu: HMENU, uIDItem: UINT, lpString: LPWSTR,
-                     nMaxCount: int32, uFlag: UINT): int32{.stdcall,
+proc GetMenuStringW*(menu: HMENU, uIDItem: WINUINT, lpString: LPWSTR,
+                     nMaxCount: int32, uFlag: WINUINT): int32{.stdcall,
     dynlib: "user32", importc: "GetMenuStringW".}
-proc InsertMenuW*(menu: HMENU, uPosition: UINT, uFlags: UINT, uIDNewItem: UINT,
+proc InsertMenuW*(menu: HMENU, uPosition: WINUINT, uFlags: WINUINT, uIDNewItem: WINUINT,
                   lpNewItem: LPCWSTR): WINBOOL{.stdcall, dynlib: "user32",
     importc: "InsertMenuW".}
-proc AppendMenuW*(menu: HMENU, uFlags: UINT, uIDNewItem: UINT,
+proc AppendMenuW*(menu: HMENU, uFlags: WINUINT, uIDNewItem: WINUINT,
                   lpNewItem: LPCWSTR): WINBOOL{.stdcall, dynlib: "user32",
     importc: "AppendMenuW".}
-proc ModifyMenuW*(hMnu: HMENU, uPosition: UINT, uFlags: UINT, uIDNewItem: UINT,
+proc ModifyMenuW*(hMnu: HMENU, uPosition: WINUINT, uFlags: WINUINT, uIDNewItem: WINUINT,
                   lpNewItem: LPCWSTR): WINBOOL{.stdcall, dynlib: "user32",
     importc: "ModifyMenuW".}
-proc InsertMenuItemW*(para1: HMENU, para2: UINT, para3: WINBOOL,
+proc InsertMenuItemW*(para1: HMENU, para2: WINUINT, para3: WINBOOL,
                       para4: LPCMENUITEMINFO): WINBOOL{.stdcall,
     dynlib: "user32", importc: "InsertMenuItemW".}
-proc GetMenuItemInfoW*(para1: HMENU, para2: UINT, para3: WINBOOL,
+proc GetMenuItemInfoW*(para1: HMENU, para2: WINUINT, para3: WINBOOL,
                        para4: LPMENUITEMINFO): WINBOOL{.stdcall,
     dynlib: "user32", importc: "GetMenuItemInfoW".}
-proc SetMenuItemInfoW*(para1: HMENU, para2: UINT, para3: WINBOOL,
+proc SetMenuItemInfoW*(para1: HMENU, para2: WINUINT, para3: WINBOOL,
                        para4: LPCMENUITEMINFO): WINBOOL{.stdcall,
     dynlib: "user32", importc: "SetMenuItemInfoW".}
 proc DrawTextW*(hDC: HDC, lpString: LPCWSTR, nCount: int32, lpRect: LPRECT,
-                uFormat: UINT): int32{.stdcall, dynlib: "user32",
+                uFormat: WINUINT): int32{.stdcall, dynlib: "user32",
                                        importc: "DrawTextW".}
 proc DrawTextExW*(para1: HDC, para2: LPWSTR, para3: int32, para4: LPRECT,
-                  para5: UINT, para6: LPDRAWTEXTPARAMS): int32{.stdcall,
+                  para5: WINUINT, para6: LPDRAWTEXTPARAMS): int32{.stdcall,
     dynlib: "user32", importc: "DrawTextExW".}
 proc GrayStringW*(hDC: HDC, hBrush: HBRUSH, lpOutputFunc: GRAYSTRINGPROC,
                   lpData: LPARAM, nCount: int32, X: int32, Y: int32,
@@ -15616,7 +15616,7 @@ proc GrayStringW*(hDC: HDC, hBrush: HBRUSH, lpOutputFunc: GRAYSTRINGPROC,
     dynlib: "user32", importc: "GrayStringW".}
 proc DrawStateW*(para1: HDC, para2: HBRUSH, para3: DRAWSTATEPROC, para4: LPARAM,
                  para5: WPARAM, para6: int32, para7: int32, para8: int32,
-                 para9: int32, para10: UINT): WINBOOL{.stdcall,
+                 para9: int32, para10: WINUINT): WINBOOL{.stdcall,
     dynlib: "user32", importc: "DrawStateW".}
 proc TabbedTextOutW*(hDC: HDC, X: int32, Y: int32, lpString: LPCWSTR,
                      nCount: int32, nTabPositions: int32,
@@ -15641,10 +15641,10 @@ proc GetWindowTextW*(wnd: HWND, lpString: LPWSTR, nMaxCount: int32): int32{.
     stdcall, dynlib: "user32", importc: "GetWindowTextW".}
 proc GetWindowTextLengthW*(wnd: HWND): int32{.stdcall, dynlib: "user32",
     importc: "GetWindowTextLengthW".}
-proc MessageBoxW*(wnd: HWND, lpText: LPCWSTR, lpCaption: LPCWSTR, uType: UINT): int32{.
+proc MessageBoxW*(wnd: HWND, lpText: LPCWSTR, lpCaption: LPCWSTR, uType: WINUINT): int32{.
     stdcall, dynlib: "user32", importc: "MessageBoxW".}
 proc MessageBoxExW*(wnd: HWND, lpText: LPCWSTR, lpCaption: LPCWSTR,
-                    uType: UINT, wLanguageId: int16): int32{.stdcall,
+                    uType: WINUINT, wLanguageId: int16): int32{.stdcall,
     dynlib: "user32", importc: "MessageBoxExW".}
 proc MessageBoxIndirectW*(para1: LPMSGBOXPARAMS): int32{.stdcall,
     dynlib: "user32", importc: "MessageBoxIndirectW".}
@@ -15691,45 +15691,45 @@ proc LoadCursorFromFileW*(lpFileName: LPCWSTR): HCURSOR{.stdcall,
     dynlib: "user32", importc: "LoadCursorFromFileW".}
 proc LoadIconW*(hInstance: HINST, lpIconName: LPCWSTR): HICON{.stdcall,
     dynlib: "user32", importc: "LoadIconW".}
-proc LoadImageW*(para1: HINST, para2: LPCWSTR, para3: UINT, para4: int32,
-                 para5: int32, para6: UINT): HANDLE{.stdcall, dynlib: "user32",
+proc LoadImageW*(para1: HINST, para2: LPCWSTR, para3: WINUINT, para4: int32,
+                 para5: int32, para6: WINUINT): HANDLE{.stdcall, dynlib: "user32",
     importc: "LoadImageW".}
-proc LoadStringW*(hInstance: HINST, uID: UINT, lpBuffer: LPWSTR,
+proc LoadStringW*(hInstance: HINST, uID: WINUINT, lpBuffer: LPWSTR,
                   nBufferMax: int32): int32{.stdcall, dynlib: "user32",
     importc: "LoadStringW".}
 proc IsDialogMessageW*(hDlg: HWND, lpMsg: LPMSG): WINBOOL{.stdcall,
     dynlib: "user32", importc: "IsDialogMessageW".}
 proc DlgDirListW*(hDlg: HWND, lpPathSpec: LPWSTR, nIDListBox: int32,
-                  nIDStaticPath: int32, uFileType: UINT): int32{.stdcall,
+                  nIDStaticPath: int32, uFileType: WINUINT): int32{.stdcall,
     dynlib: "user32", importc: "DlgDirListW".}
 proc DlgDirSelectExW*(hDlg: HWND, lpString: LPWSTR, nCount: int32,
                       nIDListBox: int32): WINBOOL{.stdcall, dynlib: "user32",
     importc: "DlgDirSelectExW".}
 proc DlgDirListComboBoxW*(hDlg: HWND, lpPathSpec: LPWSTR, nIDComboBox: int32,
-                          nIDStaticPath: int32, uFiletype: UINT): int32{.
+                          nIDStaticPath: int32, uFiletype: WINUINT): int32{.
     stdcall, dynlib: "user32", importc: "DlgDirListComboBoxW".}
 proc DlgDirSelectComboBoxExW*(hDlg: HWND, lpString: LPWSTR, nCount: int32,
                               nIDComboBox: int32): WINBOOL{.stdcall,
     dynlib: "user32", importc: "DlgDirSelectComboBoxExW".}
-proc DefFrameProcW*(wnd: HWND, hWndMDIClient: HWND, uMsg: UINT, w: WPARAM,
+proc DefFrameProcW*(wnd: HWND, hWndMDIClient: HWND, uMsg: WINUINT, w: WPARAM,
                     lp: LPARAM): LRESULT{.stdcall, dynlib: "user32",
     importc: "DefFrameProcW".}
-proc DefMDIChildProcW*(wnd: HWND, uMsg: UINT, wp: WPARAM, lp: LPARAM): LRESULT{.
+proc DefMDIChildProcW*(wnd: HWND, uMsg: WINUINT, wp: WPARAM, lp: LPARAM): LRESULT{.
     stdcall, dynlib: "user32", importc: "DefMDIChildProcW".}
 proc CreateMDIWindowW*(lpClassName: LPWSTR, lpWindowName: LPWSTR,
                        dwStyle: DWORD, X: int32, Y: int32, nWidth: int32,
                        nHeight: int32, hWndParent: HWND, hInstance: HINST,
                        lp: LPARAM): HWND{.stdcall, dynlib: "user32",
     importc: "CreateMDIWindowW".}
-proc WinHelpW*(hWndMain: HWND, lpszHelp: LPCWSTR, uCommand: UINT, dwData: DWORD): WINBOOL{.
+proc WinHelpW*(hWndMain: HWND, lpszHelp: LPCWSTR, uCommand: WINUINT, dwData: DWORD): WINBOOL{.
     stdcall, dynlib: "user32", importc: "WinHelpW".}
 proc ChangeDisplaySettingsW*(lpDevMode: LPDEVMODEW, dwFlags: DWORD): LONG{.
     stdcall, dynlib: "user32", importc: "ChangeDisplaySettingsW".}
 proc EnumDisplaySettingsW*(lpszDeviceName: LPCWSTR, iModeNum: DWORD,
                            lpDevMode: LPDEVMODEW): WINBOOL{.stdcall,
     dynlib: "user32", importc: "EnumDisplaySettingsW".}
-proc SystemParametersInfoW*(uiAction: UINT, uiParam: UINT, pvParam: PVOID,
-                            fWinIni: UINT): WINBOOL{.stdcall, dynlib: "user32",
+proc SystemParametersInfoW*(uiAction: WINUINT, uiParam: WINUINT, pvParam: PVOID,
+                            fWinIni: WINUINT): WINBOOL{.stdcall, dynlib: "user32",
     importc: "SystemParametersInfoW".}
 proc AddFontResourceW*(para1: LPCWSTR): int32{.stdcall, dynlib: "gdi32",
     importc: "AddFontResourceW".}
@@ -15763,24 +15763,24 @@ proc EnumFontsW*(para1: HDC, para2: LPCWSTR, para3: ENUMFONTSPROC, para4: LPARAM
 proc EnumFontsW*(para1: HDC, para2: LPCWSTR, para3: ENUMFONTSPROC,
                  para4: pointer): int32{.stdcall, dynlib: "gdi32",
     importc: "EnumFontsW".}
-proc GetCharWidthW*(para1: HDC, para2: UINT, para3: UINT, para4: LPINT): WINBOOL{.
+proc GetCharWidthW*(para1: HDC, para2: WINUINT, para3: WINUINT, para4: LPINT): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "GetCharWidthW".}
-proc GetCharWidth32W*(para1: HDC, para2: UINT, para3: UINT, para4: LPINT): WINBOOL{.
+proc GetCharWidth32W*(para1: HDC, para2: WINUINT, para3: WINUINT, para4: LPINT): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "GetCharWidth32W".}
-proc GetCharWidthFloatW*(para1: HDC, para2: UINT, para3: UINT, para4: ptr float32): WINBOOL{.
+proc GetCharWidthFloatW*(para1: HDC, para2: WINUINT, para3: WINUINT, para4: ptr float32): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "GetCharWidthFloatW".}
-proc GetCharABCWidthsW*(para1: HDC, para2: UINT, para3: UINT, para4: LPABC): WINBOOL{.
+proc GetCharABCWidthsW*(para1: HDC, para2: WINUINT, para3: WINUINT, para4: LPABC): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "GetCharABCWidthsW".}
-proc GetCharABCWidthsFloatW*(para1: HDC, para2: UINT, para3: UINT,
+proc GetCharABCWidthsFloatW*(para1: HDC, para2: WINUINT, para3: WINUINT,
                              para4: LPABCFLOAT): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetCharABCWidthsFloatW".}
-proc GetGlyphOutlineW*(para1: HDC, para2: UINT, para3: UINT,
+proc GetGlyphOutlineW*(para1: HDC, para2: WINUINT, para3: WINUINT,
                        para4: LPGLYPHMETRICS, para5: DWORD, para6: LPVOID,
                        para7: PMAT2): DWORD{.stdcall, dynlib: "gdi32",
     importc: "GetGlyphOutlineW".}
 proc GetMetaFileW*(para1: LPCWSTR): HMETAFILE{.stdcall, dynlib: "gdi32",
     importc: "GetMetaFileW".}
-proc GetOutlineTextMetricsW*(para1: HDC, para2: UINT, para3: LPOUTLINETEXTMETRIC): UINT{.
+proc GetOutlineTextMetricsW*(para1: HDC, para2: WINUINT, para3: LPOUTLINETEXTMETRIC): WINUINT{.
     stdcall, dynlib: "gdi32", importc: "GetOutlineTextMetricsW".}
 proc GetTextExtentPointW*(para1: HDC, para2: LPCWSTR, para3: int32,
                           para4: LPSIZE): WINBOOL{.stdcall, dynlib: "gdi32",
@@ -15806,7 +15806,7 @@ proc CreateEnhMetaFileW*(para1: HDC, para2: LPCWSTR, para3: LPRECT,
     importc: "CreateEnhMetaFileW".}
 proc GetEnhMetaFileW*(para1: LPCWSTR): HENHMETAFILE{.stdcall, dynlib: "gdi32",
     importc: "GetEnhMetaFileW".}
-proc GetEnhMetaFileDescriptionW*(para1: HENHMETAFILE, para2: UINT, para3: LPWSTR): UINT{.
+proc GetEnhMetaFileDescriptionW*(para1: HENHMETAFILE, para2: WINUINT, para3: LPWSTR): WINUINT{.
     stdcall, dynlib: "gdi32", importc: "GetEnhMetaFileDescriptionW".}
 proc GetTextMetricsW*(para1: HDC, para2: LPTEXTMETRIC): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetTextMetricsW".}
@@ -15817,8 +15817,8 @@ proc GetObjectW*(para1: HGDIOBJ, para2: int32, para3: LPVOID): int32{.stdcall,
 proc TextOutW*(para1: HDC, para2: int32, para3: int32, para4: LPCWSTR,
                para5: int32): WINBOOL{.stdcall, dynlib: "gdi32",
                                        importc: "TextOutW".}
-proc ExtTextOutW*(para1: HDC, para2: int32, para3: int32, para4: UINT,
-                  para5: LPRECT, para6: LPCWSTR, para7: UINT, para8: LPINT): WINBOOL{.
+proc ExtTextOutW*(para1: HDC, para2: int32, para3: int32, para4: WINUINT,
+                  para5: LPRECT, para6: LPCWSTR, para7: WINUINT, para8: LPINT): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "ExtTextOutW".}
 proc PolyTextOutW*(para1: HDC, para2: PPOLYTEXT, para3: int32): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "PolyTextOutW".}
@@ -15834,7 +15834,7 @@ proc GetICMProfileW*(para1: HDC, para2: DWORD, para3: LPWSTR): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetICMProfileW".}
 proc SetICMProfileW*(para1: HDC, para2: LPWSTR): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "SetICMProfileW".}
-proc UpdateICMRegKeyW*(para1: DWORD, para2: DWORD, para3: LPWSTR, para4: UINT): WINBOOL{.
+proc UpdateICMRegKeyW*(para1: DWORD, para2: DWORD, para3: LPWSTR, para4: WINUINT): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "UpdateICMRegKeyW".}
 proc EnumICMProfilesW*(para1: HDC, para2: ICMENUMPROC, para3: LPARAM): int32{.
     stdcall, dynlib: "gdi32", importc: "EnumICMProfilesW".}
@@ -15843,12 +15843,12 @@ proc CreatePropertySheetPageW*(lppsp: LPCPROPSHEETPAGE): HPROPSHEETPAGE{.
 proc PropertySheetW*(lppsph: LPCPROPSHEETHEADER): int32{.stdcall,
     dynlib: "comctl32", importc: "PropertySheetW".}
 proc ImageList_LoadImageW*(hi: HINST, lpbmp: LPCWSTR, cx: int32, cGrow: int32,
-                           crMask: COLORREF, uType: UINT, uFlags: UINT): HIMAGELIST{.
+                           crMask: COLORREF, uType: WINUINT, uFlags: WINUINT): HIMAGELIST{.
     stdcall, dynlib: "comctl32", importc: "ImageList_LoadImageW".}
 proc CreateStatusWindowW*(style: LONG, lpszText: LPCWSTR, hwndParent: HWND,
-                          wID: UINT): HWND{.stdcall, dynlib: "comctl32",
+                          wID: WINUINT): HWND{.stdcall, dynlib: "comctl32",
     importc: "CreateStatusWindowW".}
-proc DrawStatusTextW*(hDC: HDC, lprc: LPRECT, pszText: LPCWSTR, uFlags: UINT){.
+proc DrawStatusTextW*(hDC: HDC, lprc: LPRECT, pszText: LPCWSTR, uFlags: WINUINT){.
     stdcall, dynlib: "comctl32", importc: "DrawStatusTextW".}
 proc GetOpenFileNameW*(para1: LPOPENFILENAME): WINBOOL{.stdcall,
     dynlib: "comdlg32", importc: "GetOpenFileNameW".}
@@ -16203,7 +16203,7 @@ proc Shell_NotifyIconW*(dwMessage: DWORD, lpData: PNotifyIconDataA): WINBOOL{.
 proc DdeCreateStringHandleW*(para1: DWORD, para2: LPCWSTR, para3: int32): HSZ{.
     stdcall, dynlib: "user32", importc: "DdeCreateStringHandleW".}
 proc DdeInitializeW*(para1: LPDWORD, para2: PFNCALLBACK, para3: DWORD,
-                     para4: DWORD): UINT{.stdcall, dynlib: "user32",
+                     para4: DWORD): WINUINT{.stdcall, dynlib: "user32",
     importc: "DdeInitializeW".}
 proc DdeQueryStringW*(para1: DWORD, para2: HSZ, para3: LPCWSTR, para4: DWORD,
                       para5: int32): DWORD{.stdcall, dynlib: "user32",
@@ -16286,7 +16286,7 @@ when defined(winUnicode):
       stdcall, dynlib: "kernel32", importc: "GetModuleFileNameW".}
   proc GetModuleHandle*(lpModuleName: LPCWSTR): HMODULE{.stdcall,
       dynlib: "kernel32", importc: "GetModuleHandleW".}
-  proc FatalAppExit*(uAction: UINT, lpMessageText: LPCWSTR){.stdcall,
+  proc FatalAppExit*(uAction: WINUINT, lpMessageText: LPCWSTR){.stdcall,
       dynlib: "kernel32", importc: "FatalAppExitW".}
   proc GetCommandLine*(): LPWSTR{.stdcall, dynlib: "kernel32",
                                   importc: "GetCommandLineW".}
@@ -16324,15 +16324,15 @@ when defined(winUnicode):
       importc: "GlobalAddAtomW".}
   proc GlobalFindAtom*(lpString: LPCWSTR): ATOM{.stdcall, dynlib: "kernel32",
       importc: "GlobalFindAtomW".}
-  proc GlobalGetAtomName*(nAtom: ATOM, lpBuffer: LPWSTR, nSize: int32): UINT{.
+  proc GlobalGetAtomName*(nAtom: ATOM, lpBuffer: LPWSTR, nSize: int32): WINUINT{.
       stdcall, dynlib: "kernel32", importc: "GlobalGetAtomNameW".}
   proc AddAtom*(lpString: LPCWSTR): ATOM{.stdcall, dynlib: "kernel32",
       importc: "AddAtomW".}
   proc FindAtom*(lpString: LPCWSTR): ATOM{.stdcall, dynlib: "kernel32",
       importc: "FindAtomW".}
-  proc GetAtomName*(nAtom: ATOM, lpBuffer: LPWSTR, nSize: int32): UINT{.stdcall,
+  proc GetAtomName*(nAtom: ATOM, lpBuffer: LPWSTR, nSize: int32): WINUINT{.stdcall,
       dynlib: "kernel32", importc: "GetAtomNameW".}
-  proc GetProfileInt*(lpAppName: LPCWSTR, lpKeyName: LPCWSTR, nDefault: WINT): UINT{.
+  proc GetProfileInt*(lpAppName: LPCWSTR, lpKeyName: LPCWSTR, nDefault: WINT): WINUINT{.
       stdcall, dynlib: "kernel32", importc: "GetProfileIntW".}
   proc GetProfileString*(lpAppName: LPCWSTR, lpKeyName: LPCWSTR,
                          lpDefault: LPCWSTR, lpReturnedString: LPWSTR,
@@ -16347,7 +16347,7 @@ when defined(winUnicode):
   proc WriteProfileSection*(lpAppName: LPCWSTR, lpString: LPCWSTR): WINBOOL{.
       stdcall, dynlib: "kernel32", importc: "WriteProfileSectionW".}
   proc GetPrivateProfileInt*(lpAppName: LPCWSTR, lpKeyName: LPCWSTR,
-                             nDefault: WINT, lpFileName: LPCWSTR): UINT{.
+                             nDefault: WINT, lpFileName: LPCWSTR): WINUINT{.
       stdcall, dynlib: "kernel32", importc: "GetPrivateProfileIntW".}
   proc GetPrivateProfileString*(lpAppName: LPCWSTR, lpKeyName: LPCWSTR,
                                 lpDefault: LPCWSTR, lpReturnedString: LPWSTR,
@@ -16362,16 +16362,16 @@ when defined(winUnicode):
   proc WritePrivateProfileSection*(lpAppName: LPCWSTR, lpString: LPCWSTR,
                                    lpFileName: LPCWSTR): WINBOOL{.stdcall,
       dynlib: "kernel32", importc: "WritePrivateProfileSectionW".}
-  proc GetDriveType*(lpRootPathName: LPCWSTR): UINT{.stdcall,
+  proc GetDriveType*(lpRootPathName: LPCWSTR): WINUINT{.stdcall,
       dynlib: "kernel32", importc: "GetDriveTypeW".}
-  proc GetSystemDirectory*(lpBuffer: LPWSTR, uSize: UINT): UINT{.stdcall,
+  proc GetSystemDirectory*(lpBuffer: LPWSTR, uSize: WINUINT): WINUINT{.stdcall,
       dynlib: "kernel32", importc: "GetSystemDirectoryW".}
   proc GetTempPath*(nBufferLength: DWORD, lpBuffer: LPWSTR): DWORD{.stdcall,
       dynlib: "kernel32", importc: "GetTempPathW".}
   proc GetTempFileName*(lpPathName: LPCWSTR, lpPrefixString: LPCWSTR,
-                        uUnique: UINT, lpTempFileName: LPWSTR): UINT{.stdcall,
+                        uUnique: WINUINT, lpTempFileName: LPWSTR): WINUINT{.stdcall,
       dynlib: "kernel32", importc: "GetTempFileNameW".}
-  proc GetWindowsDirectory*(lpBuffer: LPWSTR, uSize: UINT): UINT{.stdcall,
+  proc GetWindowsDirectory*(lpBuffer: LPWSTR, uSize: WINUINT): WINUINT{.stdcall,
       dynlib: "kernel32", importc: "GetWindowsDirectoryW".}
   proc SetCurrentDirectory*(lpPathName: LPCWSTR): WINBOOL{.stdcall,
       dynlib: "kernel32", importc: "SetCurrentDirectoryW".}
@@ -16513,7 +16513,7 @@ when defined(winUnicode):
   proc FindFirstChangeNotification*(lpPathName: LPCWSTR, bWatchSubtree: WINBOOL,
                                     dwNotifyFilter: DWORD): HANDLE{.stdcall,
       dynlib: "kernel32", importc: "FindFirstChangeNotificationW".}
-  proc IsBadStringPtr*(lpsz: LPCWSTR, ucchMax: UINT): WINBOOL{.stdcall,
+  proc IsBadStringPtr*(lpsz: LPCWSTR, ucchMax: WINUINT): WINBOOL{.stdcall,
       dynlib: "kernel32", importc: "IsBadStringPtrW".}
   proc LookupAccountSid*(lpSystemName: LPCWSTR, Sid: PSID, Name: LPWSTR,
                          cbName: LPDWORD, ReferencedDomainName: LPWSTR,
@@ -16553,7 +16553,7 @@ when defined(winUnicode):
       dynlib: "kernel32", importc: "SetComputerNameW".}
   proc GetUserName*(lpBuffer: LPWSTR, nSize: LPDWORD): WINBOOL{.stdcall,
       dynlib: "advapi32", importc: "GetUserNameW".}
-  proc LoadKeyboardLayout*(pwszKLID: LPCWSTR, Flags: UINT): HKL{.stdcall,
+  proc LoadKeyboardLayout*(pwszKLID: LPCWSTR, Flags: WINUINT): HKL{.stdcall,
       dynlib: "user32", importc: "LoadKeyboardLayoutW".}
   proc GetKeyboardLayoutName*(pwszKLID: LPWSTR): WINBOOL{.stdcall,
       dynlib: "user32", importc: "GetKeyboardLayoutNameW".}
@@ -16581,36 +16581,36 @@ when defined(winUnicode):
   proc SetUserObjectInformation*(hObj: HANDLE, nIndex: int32, pvInfo: PVOID,
                                  nLength: DWORD): WINBOOL{.stdcall,
       dynlib: "user32", importc: "SetUserObjectInformationW".}
-  proc RegisterWindowMessage*(lpString: LPCWSTR): UINT{.stdcall,
+  proc RegisterWindowMessage*(lpString: LPCWSTR): WINUINT{.stdcall,
       dynlib: "user32", importc: "RegisterWindowMessageW".}
-  proc GetMessage*(lpMsg: LPMSG, wnd: HWND, wMsgFilterMin: UINT,
-                   wMsgFilterMax: UINT): WINBOOL{.stdcall, dynlib: "user32",
+  proc GetMessage*(lpMsg: LPMSG, wnd: HWND, wMsgFilterMin: WINUINT,
+                   wMsgFilterMax: WINUINT): WINBOOL{.stdcall, dynlib: "user32",
       importc: "GetMessageW".}
   proc DispatchMessage*(lpMsg: LPMSG): LONG{.stdcall, dynlib: "user32",
       importc: "DispatchMessageW".}
-  proc PeekMessage*(lpMsg: LPMSG, wnd: HWND, wMsgFilterMin: UINT,
-                    wMsgFilterMax: UINT, wRemoveMsg: UINT): WINBOOL{.stdcall,
+  proc PeekMessage*(lpMsg: LPMSG, wnd: HWND, wMsgFilterMin: WINUINT,
+                    wMsgFilterMax: WINUINT, wRemoveMsg: WINUINT): WINBOOL{.stdcall,
       dynlib: "user32", importc: "PeekMessageW".}
-  proc SendMessage*(wnd: HWND, Msg: UINT, wp: WPARAM, lp: LPARAM): LRESULT{.
+  proc SendMessage*(wnd: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM): LRESULT{.
       stdcall, dynlib: "user32", importc: "SendMessageW".}
-  proc SendMessageTimeout*(wnd: HWND, Msg: UINT, wp: WPARAM,
-                           lp: LPARAM, fuFlags: UINT, uTimeout: UINT,
+  proc SendMessageTimeout*(wnd: HWND, Msg: WINUINT, wp: WPARAM,
+                           lp: LPARAM, fuFlags: WINUINT, uTimeout: WINUINT,
                            lpdwResult: LPDWORD): LRESULT{.stdcall,
       dynlib: "user32", importc: "SendMessageTimeoutW".}
-  proc SendNotifyMessage*(wnd: HWND, Msg: UINT, wp: WPARAM, lp: LPARAM): WINBOOL{.
+  proc SendNotifyMessage*(wnd: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM): WINBOOL{.
       stdcall, dynlib: "user32", importc: "SendNotifyMessageW".}
-  proc SendMessageCallback*(wnd: HWND, Msg: UINT, wp: WPARAM,
+  proc SendMessageCallback*(wnd: HWND, Msg: WINUINT, wp: WPARAM,
                             lp: LPARAM, lpResultCallBack: SENDASYNCPROC,
                             dwData: DWORD): WINBOOL{.stdcall, dynlib: "user32",
       importc: "SendMessageCallbackW".}
-  proc PostMessage*(wnd: HWND, Msg: UINT, wp: WPARAM, lp: LPARAM): WINBOOL{.
+  proc PostMessage*(wnd: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM): WINBOOL{.
       stdcall, dynlib: "user32", importc: "PostMessageW".}
-  proc PostThreadMessage*(idThread: DWORD, Msg: UINT, wp: WPARAM,
+  proc PostThreadMessage*(idThread: DWORD, Msg: WINUINT, wp: WPARAM,
                           lp: LPARAM): WINBOOL{.stdcall, dynlib: "user32",
       importc: "PostThreadMessageW".}
-  proc DefWindowProc*(wnd: HWND, Msg: UINT, wp: WPARAM, lp: LPARAM): LRESULT{.
+  proc DefWindowProc*(wnd: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM): LRESULT{.
       stdcall, dynlib: "user32", importc: "DefWindowProcW".}
-  proc CallWindowProc*(lpPrevWndFunc: WNDPROC, wnd: HWND, Msg: UINT,
+  proc CallWindowProc*(lpPrevWndFunc: WNDPROC, wnd: HWND, Msg: WINUINT,
                        wp: WPARAM, lp: LPARAM): LRESULT{.stdcall,
       dynlib: "user32", importc: "CallWindowProcW".}
   proc RegisterClass*(lpWndClass: LPWNDCLASS): ATOM{.stdcall, dynlib: "user32",
@@ -16650,18 +16650,18 @@ when defined(winUnicode):
   proc SetDlgItemText*(hDlg: HWND, nIDDlgItem: int32, lpString: LPCWSTR): WINBOOL{.
       stdcall, dynlib: "user32", importc: "SetDlgItemTextW".}
   proc GetDlgItemText*(hDlg: HWND, nIDDlgItem: int32, lpString: LPWSTR,
-                       nMaxCount: int32): UINT{.stdcall, dynlib: "user32",
+                       nMaxCount: int32): WINUINT{.stdcall, dynlib: "user32",
       importc: "GetDlgItemTextW".}
-  proc SendDlgItemMessage*(hDlg: HWND, nIDDlgItem: int32, Msg: UINT,
+  proc SendDlgItemMessage*(hDlg: HWND, nIDDlgItem: int32, Msg: WINUINT,
                            wp: WPARAM, lp: LPARAM): LONG{.stdcall,
       dynlib: "user32", importc: "SendDlgItemMessageW".}
-  proc DefDlgProc*(hDlg: HWND, Msg: UINT, wp: WPARAM, lp: LPARAM): LRESULT{.
+  proc DefDlgProc*(hDlg: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM): LRESULT{.
       stdcall, dynlib: "user32", importc: "DefDlgProcW".}
   proc CallMsgFilter*(lpMsg: LPMSG, nCode: int32): WINBOOL{.stdcall,
       dynlib: "user32", importc: "CallMsgFilterW".}
-  proc RegisterClipboardFormat*(lpszFormat: LPCWSTR): UINT{.stdcall,
+  proc RegisterClipboardFormat*(lpszFormat: LPCWSTR): WINUINT{.stdcall,
       dynlib: "user32", importc: "RegisterClipboardFormatW".}
-  proc GetClipboardFormatName*(format: UINT, lpszFormatName: LPWSTR,
+  proc GetClipboardFormatName*(format: WINUINT, lpszFormatName: LPWSTR,
                                cchMaxCount: int32): int32{.stdcall,
       dynlib: "user32", importc: "GetClipboardFormatNameW".}
   proc CharToOem*(lpszSrc: LPCWSTR, lpszDst: LPSTR): WINBOOL{.stdcall,
@@ -16698,9 +16698,9 @@ when defined(winUnicode):
                                      importc: "VkKeyScanW".}
   proc VkKeyScanEx*(ch: WCHAR, dwhkl: HKL): SHORT{.stdcall, dynlib: "user32",
       importc: "VkKeyScanExW".}
-  proc MapVirtualKey*(uCode: UINT, uMapType: UINT): UINT{.stdcall,
+  proc MapVirtualKey*(uCode: WINUINT, uMapType: WINUINT): WINUINT{.stdcall,
       dynlib: "user32", importc: "MapVirtualKeyW".}
-  proc MapVirtualKeyEx*(uCode: UINT, uMapType: UINT, dwhkl: HKL): UINT{.stdcall,
+  proc MapVirtualKeyEx*(uCode: WINUINT, uMapType: WINUINT, dwhkl: HKL): WINUINT{.stdcall,
       dynlib: "user32", importc: "MapVirtualKeyExW".}
   proc LoadAccelerators*(hInstance: HINST, lpTableName: LPCWSTR): HACCEL{.
       stdcall, dynlib: "user32", importc: "LoadAcceleratorsW".}
@@ -16715,35 +16715,35 @@ when defined(winUnicode):
       dynlib: "user32", importc: "LoadMenuW".}
   proc LoadMenuIndirect*(lpMenuTemplate: LPMENUTEMPLATE): HMENU{.stdcall,
       dynlib: "user32", importc: "LoadMenuIndirectW".}
-  proc ChangeMenu*(menu: HMENU, cmd: UINT, lpszNewItem: LPCWSTR,
-                   cmdInsert: UINT, flags: UINT): WINBOOL{.stdcall,
+  proc ChangeMenu*(menu: HMENU, cmd: WINUINT, lpszNewItem: LPCWSTR,
+                   cmdInsert: WINUINT, flags: WINUINT): WINBOOL{.stdcall,
       dynlib: "user32", importc: "ChangeMenuW".}
-  proc GetMenuString*(menu: HMENU, uIDItem: UINT, lpString: LPWSTR,
-                      nMaxCount: int32, uFlag: UINT): int32{.stdcall,
+  proc GetMenuString*(menu: HMENU, uIDItem: WINUINT, lpString: LPWSTR,
+                      nMaxCount: int32, uFlag: WINUINT): int32{.stdcall,
       dynlib: "user32", importc: "GetMenuStringW".}
-  proc InsertMenu*(menu: HMENU, uPosition: UINT, uFlags: UINT,
-                   uIDNewItem: UINT, lpNewItem: LPCWSTR): WINBOOL{.stdcall,
+  proc InsertMenu*(menu: HMENU, uPosition: WINUINT, uFlags: WINUINT,
+                   uIDNewItem: WINUINT, lpNewItem: LPCWSTR): WINBOOL{.stdcall,
       dynlib: "user32", importc: "InsertMenuW".}
-  proc AppendMenu*(menu: HMENU, uFlags: UINT, uIDNewItem: UINT,
+  proc AppendMenu*(menu: HMENU, uFlags: WINUINT, uIDNewItem: WINUINT,
                    lpNewItem: LPCWSTR): WINBOOL{.stdcall, dynlib: "user32",
       importc: "AppendMenuW".}
-  proc ModifyMenu*(hMnu: HMENU, uPosition: UINT, uFlags: UINT, uIDNewItem: UINT,
+  proc ModifyMenu*(hMnu: HMENU, uPosition: WINUINT, uFlags: WINUINT, uIDNewItem: WINUINT,
                    lpNewItem: LPCWSTR): WINBOOL{.stdcall, dynlib: "user32",
       importc: "ModifyMenuW".}
-  proc InsertMenuItem*(para1: HMENU, para2: UINT, para3: WINBOOL,
+  proc InsertMenuItem*(para1: HMENU, para2: WINUINT, para3: WINBOOL,
                        para4: LPCMENUITEMINFO): WINBOOL{.stdcall,
       dynlib: "user32", importc: "InsertMenuItemW".}
-  proc GetMenuItemInfo*(para1: HMENU, para2: UINT, para3: WINBOOL,
+  proc GetMenuItemInfo*(para1: HMENU, para2: WINUINT, para3: WINBOOL,
                         para4: LPMENUITEMINFO): WINBOOL{.stdcall,
       dynlib: "user32", importc: "GetMenuItemInfoW".}
-  proc SetMenuItemInfo*(para1: HMENU, para2: UINT, para3: WINBOOL,
+  proc SetMenuItemInfo*(para1: HMENU, para2: WINUINT, para3: WINBOOL,
                         para4: LPCMENUITEMINFO): WINBOOL{.stdcall,
       dynlib: "user32", importc: "SetMenuItemInfoW".}
   proc DrawText*(hDC: HDC, lpString: LPCWSTR, nCount: int32, lpRect: LPRECT,
-                 uFormat: UINT): int32{.stdcall, dynlib: "user32",
+                 uFormat: WINUINT): int32{.stdcall, dynlib: "user32",
                                         importc: "DrawTextW".}
   proc DrawTextEx*(para1: HDC, para2: LPWSTR, para3: int32, para4: LPRECT,
-                   para5: UINT, para6: LPDRAWTEXTPARAMS): int32{.stdcall,
+                   para5: WINUINT, para6: LPDRAWTEXTPARAMS): int32{.stdcall,
       dynlib: "user32", importc: "DrawTextExW".}
   proc GrayString*(hDC: HDC, hBrush: HBRUSH, lpOutputFunc: GRAYSTRINGPROC,
                    lpData: LPARAM, nCount: int32, X: int32, Y: int32,
@@ -16751,7 +16751,7 @@ when defined(winUnicode):
       dynlib: "user32", importc: "GrayStringW".}
   proc DrawState*(para1: HDC, para2: HBRUSH, para3: DRAWSTATEPROC,
                   para4: LPARAM, para5: WPARAM, para6: int32, para7: int32,
-                  para8: int32, para9: int32, para10: UINT): WINBOOL{.stdcall,
+                  para8: int32, para9: int32, para10: WINUINT): WINBOOL{.stdcall,
       dynlib: "user32", importc: "DrawStateW".}
   proc TabbedTextOut*(hDC: HDC, X: int32, Y: int32, lpString: LPCWSTR,
                       nCount: int32, nTabPositions: int32,
@@ -16776,10 +16776,10 @@ when defined(winUnicode):
       stdcall, dynlib: "user32", importc: "GetWindowTextW".}
   proc GetWindowTextLength*(wnd: HWND): int32{.stdcall, dynlib: "user32",
       importc: "GetWindowTextLengthW".}
-  proc MessageBox*(wnd: HWND, lpText: LPCWSTR, lpCaption: LPCWSTR, uType: UINT): int32{.
+  proc MessageBox*(wnd: HWND, lpText: LPCWSTR, lpCaption: LPCWSTR, uType: WINUINT): int32{.
       stdcall, dynlib: "user32", importc: "MessageBoxW".}
   proc MessageBoxEx*(wnd: HWND, lpText: LPCWSTR, lpCaption: LPCWSTR,
-                     uType: UINT, wLanguageId: int16): int32{.stdcall,
+                     uType: WINUINT, wLanguageId: int16): int32{.stdcall,
       dynlib: "user32", importc: "MessageBoxExW".}
   proc MessageBoxIndirect*(para1: LPMSGBOXPARAMS): int32{.stdcall,
       dynlib: "user32", importc: "MessageBoxIndirectW".}
@@ -16826,45 +16826,45 @@ when defined(winUnicode):
       dynlib: "user32", importc: "LoadCursorFromFileW".}
   proc LoadIcon*(hInstance: HINST, lpIconName: LPCWSTR): HICON{.stdcall,
       dynlib: "user32", importc: "LoadIconW".}
-  proc LoadImage*(para1: HINST, para2: LPCWSTR, para3: UINT, para4: int32,
-                  para5: int32, para6: UINT): HANDLE{.stdcall, dynlib: "user32",
+  proc LoadImage*(para1: HINST, para2: LPCWSTR, para3: WINUINT, para4: int32,
+                  para5: int32, para6: WINUINT): HANDLE{.stdcall, dynlib: "user32",
       importc: "LoadImageW".}
-  proc LoadString*(hInstance: HINST, uID: UINT, lpBuffer: LPWSTR,
+  proc LoadString*(hInstance: HINST, uID: WINUINT, lpBuffer: LPWSTR,
                    nBufferMax: int32): int32{.stdcall, dynlib: "user32",
       importc: "LoadStringW".}
   proc IsDialogMessage*(hDlg: HWND, lpMsg: LPMSG): WINBOOL{.stdcall,
       dynlib: "user32", importc: "IsDialogMessageW".}
   proc DlgDirList*(hDlg: HWND, lpPathSpec: LPWSTR, nIDListBox: int32,
-                   nIDStaticPath: int32, uFileType: UINT): int32{.stdcall,
+                   nIDStaticPath: int32, uFileType: WINUINT): int32{.stdcall,
       dynlib: "user32", importc: "DlgDirListW".}
   proc DlgDirSelectEx*(hDlg: HWND, lpString: LPWSTR, nCount: int32,
                        nIDListBox: int32): WINBOOL{.stdcall, dynlib: "user32",
       importc: "DlgDirSelectExW".}
   proc DlgDirListComboBox*(hDlg: HWND, lpPathSpec: LPWSTR, nIDComboBox: int32,
-                           nIDStaticPath: int32, uFiletype: UINT): int32{.
+                           nIDStaticPath: int32, uFiletype: WINUINT): int32{.
       stdcall, dynlib: "user32", importc: "DlgDirListComboBoxW".}
   proc DlgDirSelectComboBoxEx*(hDlg: HWND, lpString: LPWSTR, nCount: int32,
                                nIDComboBox: int32): WINBOOL{.stdcall,
       dynlib: "user32", importc: "DlgDirSelectComboBoxExW".}
-  proc DefFrameProc*(wnd: HWND, hWndMDIClient: HWND, uMsg: UINT,
+  proc DefFrameProc*(wnd: HWND, hWndMDIClient: HWND, uMsg: WINUINT,
                      wp: WPARAM, lp: LPARAM): LRESULT{.stdcall,
       dynlib: "user32", importc: "DefFrameProcW".}
-  proc DefMDIChildProc*(wnd: HWND, uMsg: UINT, wp: WPARAM, lp: LPARAM): LRESULT{.
+  proc DefMDIChildProc*(wnd: HWND, uMsg: WINUINT, wp: WPARAM, lp: LPARAM): LRESULT{.
       stdcall, dynlib: "user32", importc: "DefMDIChildProcW".}
   proc CreateMDIWindow*(lpClassName: LPWSTR, lpWindowName: LPWSTR,
                         dwStyle: DWORD, X: int32, Y: int32, nWidth: int32,
                         nHeight: int32, hWndParent: HWND, hInstance: HINST,
                         lp: LPARAM): HWND{.stdcall, dynlib: "user32",
       importc: "CreateMDIWindowW".}
-  proc WinHelp*(hWndMain: HWND, lpszHelp: LPCWSTR, uCommand: UINT, dwData: DWORD): WINBOOL{.
+  proc WinHelp*(hWndMain: HWND, lpszHelp: LPCWSTR, uCommand: WINUINT, dwData: DWORD): WINBOOL{.
       stdcall, dynlib: "user32", importc: "WinHelpW".}
   proc ChangeDisplaySettings*(lpDevMode: LPDEVMODE, dwFlags: DWORD): LONG{.
       stdcall, dynlib: "user32", importc: "ChangeDisplaySettingsW".}
   proc EnumDisplaySettings*(lpszDeviceName: LPCWSTR, iModeNum: DWORD,
                             lpDevMode: LPDEVMODEW): WINBOOL{.stdcall,
       dynlib: "user32", importc: "EnumDisplaySettingsW".}
-  proc SystemParametersInfo*(uiAction: UINT, uiParam: UINT, pvParam: PVOID,
-                             fWinIni: UINT): WINBOOL{.stdcall, dynlib: "user32",
+  proc SystemParametersInfo*(uiAction: WINUINT, uiParam: WINUINT, pvParam: PVOID,
+                             fWinIni: WINUINT): WINBOOL{.stdcall, dynlib: "user32",
       importc: "SystemParametersInfoW".}
   proc AddFontResource*(para1: LPCWSTR): int32{.stdcall, dynlib: "gdi32",
       importc: "AddFontResourceW".}
@@ -16899,25 +16899,25 @@ when defined(winUnicode):
   proc EnumFonts*(para1: HDC, para2: LPCWSTR, para3: ENUMFONTSPROC,
                   para4: pointer): int32{.stdcall, dynlib: "gdi32",
       importc: "EnumFontsW".}
-  proc GetCharWidth*(para1: HDC, para2: UINT, para3: UINT, para4: LPINT): WINBOOL{.
+  proc GetCharWidth*(para1: HDC, para2: WINUINT, para3: WINUINT, para4: LPINT): WINBOOL{.
       stdcall, dynlib: "gdi32", importc: "GetCharWidthW".}
-  proc GetCharWidth32*(para1: HDC, para2: UINT, para3: UINT, para4: LPINT): WINBOOL{.
+  proc GetCharWidth32*(para1: HDC, para2: WINUINT, para3: WINUINT, para4: LPINT): WINBOOL{.
       stdcall, dynlib: "gdi32", importc: "GetCharWidth32W".}
-  proc GetCharWidthFloat*(para1: HDC, para2: UINT, para3: UINT, para4: ptr float32): WINBOOL{.
+  proc GetCharWidthFloat*(para1: HDC, para2: WINUINT, para3: WINUINT, para4: ptr float32): WINBOOL{.
       stdcall, dynlib: "gdi32", importc: "GetCharWidthFloatW".}
-  proc GetCharABCWidths*(para1: HDC, para2: UINT, para3: UINT, para4: LPABC): WINBOOL{.
+  proc GetCharABCWidths*(para1: HDC, para2: WINUINT, para3: WINUINT, para4: LPABC): WINBOOL{.
       stdcall, dynlib: "gdi32", importc: "GetCharABCWidthsW".}
-  proc GetCharABCWidthsFloat*(para1: HDC, para2: UINT, para3: UINT,
+  proc GetCharABCWidthsFloat*(para1: HDC, para2: WINUINT, para3: WINUINT,
                               para4: LPABCFLOAT): WINBOOL{.stdcall,
       dynlib: "gdi32", importc: "GetCharABCWidthsFloatW".}
-  proc GetGlyphOutline*(para1: HDC, para2: UINT, para3: UINT,
+  proc GetGlyphOutline*(para1: HDC, para2: WINUINT, para3: WINUINT,
                         para4: LPGLYPHMETRICS, para5: DWORD, para6: LPVOID,
                         para7: PMAT2): DWORD{.stdcall, dynlib: "gdi32",
       importc: "GetGlyphOutlineW".}
   proc GetMetaFile*(para1: LPCWSTR): HMETAFILE{.stdcall, dynlib: "gdi32",
       importc: "GetMetaFileW".}
-  proc GetOutlineTextMetrics*(para1: HDC, para2: UINT,
-                              para3: LPOUTLINETEXTMETRIC): UINT{.stdcall,
+  proc GetOutlineTextMetrics*(para1: HDC, para2: WINUINT,
+                              para3: LPOUTLINETEXTMETRIC): WINUINT{.stdcall,
       dynlib: "gdi32", importc: "GetOutlineTextMetricsW".}
   proc GetTextExtentPoint*(para1: HDC, para2: LPCWSTR, para3: int32,
                            para4: LPSIZE): WINBOOL{.stdcall, dynlib: "gdi32",
@@ -16943,8 +16943,8 @@ when defined(winUnicode):
       importc: "CreateEnhMetaFileW".}
   proc GetEnhMetaFile*(para1: LPCWSTR): HENHMETAFILE{.stdcall, dynlib: "gdi32",
       importc: "GetEnhMetaFileW".}
-  proc GetEnhMetaFileDescription*(para1: HENHMETAFILE, para2: UINT,
-                                  para3: LPWSTR): UINT{.stdcall,
+  proc GetEnhMetaFileDescription*(para1: HENHMETAFILE, para2: WINUINT,
+                                  para3: LPWSTR): WINUINT{.stdcall,
       dynlib: "gdi32", importc: "GetEnhMetaFileDescriptionW".}
   proc GetTextMetrics*(para1: HDC, para2: LPTEXTMETRIC): WINBOOL{.stdcall,
       dynlib: "gdi32", importc: "GetTextMetricsW".}
@@ -16955,8 +16955,8 @@ when defined(winUnicode):
   proc TextOut*(para1: HDC, para2: int32, para3: int32, para4: LPCWSTR,
                 para5: int32): WINBOOL{.stdcall, dynlib: "gdi32",
                                         importc: "TextOutW".}
-  proc ExtTextOut*(para1: HDC, para2: int32, para3: int32, para4: UINT,
-                   para5: LPRECT, para6: LPCWSTR, para7: UINT, para8: LPINT): WINBOOL{.
+  proc ExtTextOut*(para1: HDC, para2: int32, para3: int32, para4: WINUINT,
+                   para5: LPRECT, para6: LPCWSTR, para7: WINUINT, para8: LPINT): WINBOOL{.
       stdcall, dynlib: "gdi32", importc: "ExtTextOutW".}
   proc PolyTextOut*(para1: HDC, para2: PPOLYTEXT, para3: int32): WINBOOL{.
       stdcall, dynlib: "gdi32", importc: "PolyTextOutW".}
@@ -16974,7 +16974,7 @@ when defined(winUnicode):
   proc SetICMProfile*(para1: HDC, para2: LPWSTR): WINBOOL{.stdcall,
 
       dynlib: "gdi32", importc: "SetICMProfileW".}
-  proc UpdateICMRegKey*(para1: DWORD, para2: DWORD, para3: LPWSTR, para4: UINT): WINBOOL{.
+  proc UpdateICMRegKey*(para1: DWORD, para2: DWORD, para3: LPWSTR, para4: WINUINT): WINBOOL{.
       stdcall, dynlib: "gdi32", importc: "UpdateICMRegKeyW".}
   proc EnumICMProfiles*(para1: HDC, para2: ICMENUMPROC, para3: LPARAM): int32{.
       stdcall, dynlib: "gdi32", importc: "EnumICMProfilesW".}
@@ -16983,12 +16983,12 @@ when defined(winUnicode):
   proc PropertySheet*(lppsph: LPCPROPSHEETHEADER): int32{.stdcall,
       dynlib: "comctl32", importc: "PropertySheetW".}
   proc ImageList_LoadImage*(hi: HINST, lpbmp: LPCWSTR, cx: int32, cGrow: int32,
-                            crMask: COLORREF, uType: UINT, uFlags: UINT): HIMAGELIST{.
+                            crMask: COLORREF, uType: WINUINT, uFlags: WINUINT): HIMAGELIST{.
       stdcall, dynlib: "comctl32", importc: "ImageList_LoadImageW".}
   proc CreateStatusWindow*(style: LONG, lpszText: LPCWSTR, hwndParent: HWND,
-                           wID: UINT): HWND{.stdcall, dynlib: "comctl32",
+                           wID: WINUINT): HWND{.stdcall, dynlib: "comctl32",
       importc: "CreateStatusWindowW".}
-  proc DrawStatusText*(hDC: HDC, lprc: LPRECT, pszText: LPCWSTR, uFlags: UINT){.
+  proc DrawStatusText*(hDC: HDC, lprc: LPRECT, pszText: LPCWSTR, uFlags: WINUINT){.
       stdcall, dynlib: "comctl32", importc: "DrawStatusTextW".}
   proc GetOpenFileName*(para1: LPOPENFILENAME): WINBOOL{.stdcall,
       dynlib: "comdlg32", importc: "GetOpenFileNameW".}
@@ -17348,7 +17348,7 @@ when defined(winUnicode):
   proc DdeCreateStringHandle*(para1: DWORD, para2: LPCWSTR, para3: int32): HSZ{.
       stdcall, dynlib: "user32", importc: "DdeCreateStringHandleW".}
   proc DdeInitialize*(para1: LPDWORD, para2: PFNCALLBACK, para3: DWORD,
-                      para4: DWORD): UINT{.stdcall, dynlib: "user32",
+                      para4: DWORD): WINUINT{.stdcall, dynlib: "user32",
       importc: "DdeInitializeW".}
   proc DdeQueryString*(para1: DWORD, para2: HSZ, para3: LPCWSTR, para4: DWORD,
                        para5: int32): DWORD{.stdcall, dynlib: "user32",
@@ -17429,7 +17429,7 @@ else:
       stdcall, dynlib: "kernel32", importc: "GetModuleFileNameA".}
   proc GetModuleHandle*(lpModuleName: LPCSTR): HMODULE{.stdcall,
       dynlib: "kernel32", importc: "GetModuleHandleA".}
-  proc FatalAppExit*(uAction: UINT, lpMessageText: LPCSTR){.stdcall,
+  proc FatalAppExit*(uAction: WINUINT, lpMessageText: LPCSTR){.stdcall,
       dynlib: "kernel32", importc: "FatalAppExitA".}
   proc GetCommandLine*(): LPSTR{.stdcall, dynlib: "kernel32",
                                  importc: "GetCommandLineA".}
@@ -17466,15 +17466,15 @@ else:
       importc: "GlobalAddAtomA".}
   proc GlobalFindAtom*(lpString: LPCSTR): ATOM{.stdcall, dynlib: "kernel32",
       importc: "GlobalFindAtomA".}
-  proc GlobalGetAtomName*(nAtom: ATOM, lpBuffer: LPSTR, nSize: int32): UINT{.
+  proc GlobalGetAtomName*(nAtom: ATOM, lpBuffer: LPSTR, nSize: int32): WINUINT{.
       stdcall, dynlib: "kernel32", importc: "GlobalGetAtomNameA".}
   proc AddAtom*(lpString: LPCSTR): ATOM{.stdcall, dynlib: "kernel32",
       importc: "AddAtomA".}
   proc FindAtom*(lpString: LPCSTR): ATOM{.stdcall, dynlib: "kernel32",
       importc: "FindAtomA".}
-  proc GetAtomName*(nAtom: ATOM, lpBuffer: LPSTR, nSize: int32): UINT{.stdcall,
+  proc GetAtomName*(nAtom: ATOM, lpBuffer: LPSTR, nSize: int32): WINUINT{.stdcall,
       dynlib: "kernel32", importc: "GetAtomNameA".}
-  proc GetProfileInt*(lpAppName: LPCSTR, lpKeyName: LPCSTR, nDefault: WINT): UINT{.
+  proc GetProfileInt*(lpAppName: LPCSTR, lpKeyName: LPCSTR, nDefault: WINT): WINUINT{.
       stdcall, dynlib: "kernel32", importc: "GetProfileIntA".}
   proc GetProfileString*(lpAppName: LPCSTR, lpKeyName: LPCSTR,
                          lpDefault: LPCSTR, lpReturnedString: LPSTR,
@@ -17489,7 +17489,7 @@ else:
   proc WriteProfileSection*(lpAppName: LPCSTR, lpString: LPCSTR): WINBOOL{.
       stdcall, dynlib: "kernel32", importc: "WriteProfileSectionA".}
   proc GetPrivateProfileInt*(lpAppName: LPCSTR, lpKeyName: LPCSTR,
-                             nDefault: WINT, lpFileName: LPCSTR): UINT{.stdcall,
+                             nDefault: WINT, lpFileName: LPCSTR): WINUINT{.stdcall,
       dynlib: "kernel32", importc: "GetPrivateProfileIntA".}
   proc GetPrivateProfileString*(lpAppName: LPCSTR, lpKeyName: LPCSTR,
                                 lpDefault: LPCSTR, lpReturnedString: LPSTR,
@@ -17504,16 +17504,16 @@ else:
   proc WritePrivateProfileSection*(lpAppName: LPCSTR, lpString: LPCSTR,
                                    lpFileName: LPCSTR): WINBOOL{.stdcall,
       dynlib: "kernel32", importc: "WritePrivateProfileSectionA".}
-  proc GetDriveType*(lpRootPathName: LPCSTR): UINT{.stdcall, dynlib: "kernel32",
+  proc GetDriveType*(lpRootPathName: LPCSTR): WINUINT{.stdcall, dynlib: "kernel32",
       importc: "GetDriveTypeA".}
-  proc GetSystemDirectory*(lpBuffer: LPSTR, uSize: UINT): UINT{.stdcall,
+  proc GetSystemDirectory*(lpBuffer: LPSTR, uSize: WINUINT): WINUINT{.stdcall,
       dynlib: "kernel32", importc: "GetSystemDirectoryA".}
   proc GetTempPath*(nBufferLength: DWORD, lpBuffer: LPSTR): DWORD{.stdcall,
       dynlib: "kernel32", importc: "GetTempPathA".}
   proc GetTempFileName*(lpPathName: LPCSTR, lpPrefixString: LPCSTR,
-                        uUnique: UINT, lpTempFileName: LPSTR): UINT{.stdcall,
+                        uUnique: WINUINT, lpTempFileName: LPSTR): WINUINT{.stdcall,
       dynlib: "kernel32", importc: "GetTempFileNameA".}
-  proc GetWindowsDirectory*(lpBuffer: LPSTR, uSize: UINT): UINT{.stdcall,
+  proc GetWindowsDirectory*(lpBuffer: LPSTR, uSize: WINUINT): WINUINT{.stdcall,
       dynlib: "kernel32", importc: "GetWindowsDirectoryA".}
   proc SetCurrentDirectory*(lpPathName: LPCSTR): WINBOOL{.stdcall,
       dynlib: "kernel32", importc: "SetCurrentDirectoryA".}
@@ -17654,7 +17654,7 @@ else:
   proc FindFirstChangeNotification*(lpPathName: LPCSTR, bWatchSubtree: WINBOOL,
                                     dwNotifyFilter: DWORD): HANDLE{.stdcall,
       dynlib: "kernel32", importc: "FindFirstChangeNotificationA".}
-  proc IsBadStringPtr*(lpsz: LPCSTR, ucchMax: UINT): WINBOOL{.stdcall,
+  proc IsBadStringPtr*(lpsz: LPCSTR, ucchMax: WINUINT): WINBOOL{.stdcall,
       dynlib: "kernel32", importc: "IsBadStringPtrA".}
   proc LookupAccountSid*(lpSystemName: LPCSTR, Sid: PSID, Name: LPSTR,
                          cbName: LPDWORD, ReferencedDomainName: LPSTR,
@@ -17694,7 +17694,7 @@ else:
       dynlib: "advapi32", importc: "GetUserNameA".}
   proc wvsprintf*(para1: LPSTR, para2: LPCSTR, arglist: va_list): int32{.
       stdcall, dynlib: "user32", importc: "wvsprintfA".}
-  proc LoadKeyboardLayout*(pwszKLID: LPCSTR, Flags: UINT): HKL{.stdcall,
+  proc LoadKeyboardLayout*(pwszKLID: LPCSTR, Flags: WINUINT): HKL{.stdcall,
       dynlib: "user32", importc: "LoadKeyboardLayoutA".}
   proc GetKeyboardLayoutName*(pwszKLID: LPSTR): WINBOOL{.stdcall,
       dynlib: "user32", importc: "GetKeyboardLayoutNameA".}
@@ -17722,36 +17722,36 @@ else:
   proc SetUserObjectInformation*(hObj: HANDLE, nIndex: int32, pvInfo: PVOID,
                                  nLength: DWORD): WINBOOL{.stdcall,
       dynlib: "user32", importc: "SetUserObjectInformationA".}
-  proc RegisterWindowMessage*(lpString: LPCSTR): UINT{.stdcall,
+  proc RegisterWindowMessage*(lpString: LPCSTR): WINUINT{.stdcall,
       dynlib: "user32", importc: "RegisterWindowMessageA".}
-  proc GetMessage*(lpMsg: LPMSG, wnd: HWND, wMsgFilterMin: UINT,
-                   wMsgFilterMax: UINT): WINBOOL{.stdcall, dynlib: "user32",
+  proc GetMessage*(lpMsg: LPMSG, wnd: HWND, wMsgFilterMin: WINUINT,
+                   wMsgFilterMax: WINUINT): WINBOOL{.stdcall, dynlib: "user32",
       importc: "GetMessageA".}
   proc DispatchMessage*(lpMsg: LPMSG): LONG{.stdcall, dynlib: "user32",
       importc: "DispatchMessageA".}
-  proc PeekMessage*(lpMsg: LPMSG, wnd: HWND, wMsgFilterMin: UINT,
-                    wMsgFilterMax: UINT, wRemoveMsg: UINT): WINBOOL{.stdcall,
+  proc PeekMessage*(lpMsg: LPMSG, wnd: HWND, wMsgFilterMin: WINUINT,
+                    wMsgFilterMax: WINUINT, wRemoveMsg: WINUINT): WINBOOL{.stdcall,
       dynlib: "user32", importc: "PeekMessageA".}
-  proc SendMessage*(wnd: HWND, Msg: UINT, wp: WPARAM, lp: LPARAM): LRESULT{.
+  proc SendMessage*(wnd: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM): LRESULT{.
       stdcall, dynlib: "user32", importc: "SendMessageA".}
-  proc SendMessageTimeout*(wnd: HWND, Msg: UINT, wp: WPARAM,
-                           lp: LPARAM, fuFlags: UINT, uTimeout: UINT,
+  proc SendMessageTimeout*(wnd: HWND, Msg: WINUINT, wp: WPARAM,
+                           lp: LPARAM, fuFlags: WINUINT, uTimeout: WINUINT,
                            lpdwResult: LPDWORD): LRESULT{.stdcall,
       dynlib: "user32", importc: "SendMessageTimeoutA".}
-  proc SendNotifyMessage*(wnd: HWND, Msg: UINT, wp: WPARAM, lp: LPARAM): WINBOOL{.
+  proc SendNotifyMessage*(wnd: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM): WINBOOL{.
       stdcall, dynlib: "user32", importc: "SendNotifyMessageA".}
-  proc SendMessageCallback*(wnd: HWND, Msg: UINT, wp: WPARAM,
+  proc SendMessageCallback*(wnd: HWND, Msg: WINUINT, wp: WPARAM,
                             lp: LPARAM, lpResultCallBack: SENDASYNCPROC,
                             dwData: DWORD): WINBOOL{.stdcall, dynlib: "user32",
       importc: "SendMessageCallbackA".}
-  proc PostMessage*(wnd: HWND, Msg: UINT, wp: WPARAM, lp: LPARAM): WINBOOL{.
+  proc PostMessage*(wnd: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM): WINBOOL{.
       stdcall, dynlib: "user32", importc: "PostMessageA".}
-  proc PostThreadMessage*(idThread: DWORD, Msg: UINT, wp: WPARAM,
+  proc PostThreadMessage*(idThread: DWORD, Msg: WINUINT, wp: WPARAM,
                           lp: LPARAM): WINBOOL{.stdcall, dynlib: "user32",
       importc: "PostThreadMessageA".}
-  proc DefWindowProc*(wnd: HWND, Msg: UINT, wp: WPARAM, lp: LPARAM): LRESULT{.
+  proc DefWindowProc*(wnd: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM): LRESULT{.
       stdcall, dynlib: "user32", importc: "DefWindowProcA".}
-  proc CallWindowProc*(lpPrevWndFunc: WNDPROC, wnd: HWND, Msg: UINT,
+  proc CallWindowProc*(lpPrevWndFunc: WNDPROC, wnd: HWND, Msg: WINUINT,
                        wp: WPARAM, lp: LPARAM): LRESULT{.stdcall,
       dynlib: "user32", importc: "CallWindowProcA".}
   proc RegisterClass*(lpWndClass: LPWNDCLASS): ATOM{.stdcall, dynlib: "user32",
@@ -17791,18 +17791,18 @@ else:
   proc SetDlgItemText*(hDlg: HWND, nIDDlgItem: int32, lpString: LPCSTR): WINBOOL{.
       stdcall, dynlib: "user32", importc: "SetDlgItemTextA".}
   proc GetDlgItemText*(hDlg: HWND, nIDDlgItem: int32, lpString: LPSTR,
-                       nMaxCount: int32): UINT{.stdcall, dynlib: "user32",
+                       nMaxCount: int32): WINUINT{.stdcall, dynlib: "user32",
       importc: "GetDlgItemTextA".}
-  proc SendDlgItemMessage*(hDlg: HWND, nIDDlgItem: int32, Msg: UINT,
+  proc SendDlgItemMessage*(hDlg: HWND, nIDDlgItem: int32, Msg: WINUINT,
                            wp: WPARAM, lp: LPARAM): LONG{.stdcall,
       dynlib: "user32", importc: "SendDlgItemMessageA".}
-  proc DefDlgProc*(hDlg: HWND, Msg: UINT, wp: WPARAM, lp: LPARAM): LRESULT{.
+  proc DefDlgProc*(hDlg: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM): LRESULT{.
       stdcall, dynlib: "user32", importc: "DefDlgProcA".}
   proc CallMsgFilter*(lpMsg: LPMSG, nCode: int32): WINBOOL{.stdcall,
       dynlib: "user32", importc: "CallMsgFilterA".}
-  proc RegisterClipboardFormat*(lpszFormat: LPCSTR): UINT{.stdcall,
+  proc RegisterClipboardFormat*(lpszFormat: LPCSTR): WINUINT{.stdcall,
       dynlib: "user32", importc: "RegisterClipboardFormatA".}
-  proc GetClipboardFormatName*(format: UINT, lpszFormatName: LPSTR,
+  proc GetClipboardFormatName*(format: WINUINT, lpszFormatName: LPSTR,
                                cchMaxCount: int32): int32{.stdcall,
       dynlib: "user32", importc: "GetClipboardFormatNameA".}
   proc CharToOem*(lpszSrc: LPCSTR, lpszDst: LPSTR): WINBOOL{.stdcall,
@@ -17839,9 +17839,9 @@ else:
                                     importc: "VkKeyScanA".}
   proc VkKeyScanEx*(ch: CHAR, dwhkl: HKL): SHORT{.stdcall, dynlib: "user32",
       importc: "VkKeyScanExA".}
-  proc MapVirtualKey*(uCode: UINT, uMapType: UINT): UINT{.stdcall,
+  proc MapVirtualKey*(uCode: WINUINT, uMapType: WINUINT): WINUINT{.stdcall,
       dynlib: "user32", importc: "MapVirtualKeyA".}
-  proc MapVirtualKeyEx*(uCode: UINT, uMapType: UINT, dwhkl: HKL): UINT{.stdcall,
+  proc MapVirtualKeyEx*(uCode: WINUINT, uMapType: WINUINT, dwhkl: HKL): WINUINT{.stdcall,
       dynlib: "user32", importc: "MapVirtualKeyExA".}
   proc LoadAccelerators*(hInstance: HINST, lpTableName: LPCSTR): HACCEL{.
       stdcall, dynlib: "user32", importc: "LoadAcceleratorsA".}
@@ -17856,35 +17856,35 @@ else:
       dynlib: "user32", importc: "LoadMenuA".}
   proc LoadMenuIndirect*(lpMenuTemplate: LPMENUTEMPLATE): HMENU{.stdcall,
       dynlib: "user32", importc: "LoadMenuIndirectA".}
-  proc ChangeMenu*(menu: HMENU, cmd: UINT, lpszNewItem: LPCSTR,
-                   cmdInsert: UINT, flags: UINT): WINBOOL{.stdcall,
+  proc ChangeMenu*(menu: HMENU, cmd: WINUINT, lpszNewItem: LPCSTR,
+                   cmdInsert: WINUINT, flags: WINUINT): WINBOOL{.stdcall,
       dynlib: "user32", importc: "ChangeMenuA".}
-  proc GetMenuString*(menu: HMENU, uIDItem: UINT, lpString: LPSTR,
-                      nMaxCount: int32, uFlag: UINT): int32{.stdcall,
+  proc GetMenuString*(menu: HMENU, uIDItem: WINUINT, lpString: LPSTR,
+                      nMaxCount: int32, uFlag: WINUINT): int32{.stdcall,
       dynlib: "user32", importc: "GetMenuStringA".}
-  proc InsertMenu*(menu: HMENU, uPosition: UINT, uFlags: UINT,
-                   uIDNewItem: UINT, lpNewItem: LPCSTR): WINBOOL{.stdcall,
+  proc InsertMenu*(menu: HMENU, uPosition: WINUINT, uFlags: WINUINT,
+                   uIDNewItem: WINUINT, lpNewItem: LPCSTR): WINBOOL{.stdcall,
       dynlib: "user32", importc: "InsertMenuA".}
-  proc AppendMenu*(menu: HMENU, uFlags: UINT, uIDNewItem: UINT,
+  proc AppendMenu*(menu: HMENU, uFlags: WINUINT, uIDNewItem: WINUINT,
                    lpNewItem: LPCSTR): WINBOOL{.stdcall, dynlib: "user32",
       importc: "AppendMenuA".}
-  proc ModifyMenu*(hMnu: HMENU, uPosition: UINT, uFlags: UINT, uIDNewItem: UINT,
+  proc ModifyMenu*(hMnu: HMENU, uPosition: WINUINT, uFlags: WINUINT, uIDNewItem: WINUINT,
                    lpNewItem: LPCSTR): WINBOOL{.stdcall, dynlib: "user32",
       importc: "ModifyMenuA".}
-  proc InsertMenuItem*(para1: HMENU, para2: UINT, para3: WINBOOL,
+  proc InsertMenuItem*(para1: HMENU, para2: WINUINT, para3: WINBOOL,
                        para4: LPCMENUITEMINFO): WINBOOL{.stdcall,
       dynlib: "user32", importc: "InsertMenuItemA".}
-  proc GetMenuItemInfo*(para1: HMENU, para2: UINT, para3: WINBOOL,
+  proc GetMenuItemInfo*(para1: HMENU, para2: WINUINT, para3: WINBOOL,
                         para4: LPMENUITEMINFO): WINBOOL{.stdcall,
       dynlib: "user32", importc: "GetMenuItemInfoA".}
-  proc SetMenuItemInfo*(para1: HMENU, para2: UINT, para3: WINBOOL,
+  proc SetMenuItemInfo*(para1: HMENU, para2: WINUINT, para3: WINBOOL,
                         para4: LPCMENUITEMINFO): WINBOOL{.stdcall,
       dynlib: "user32", importc: "SetMenuItemInfoA".}
   proc DrawText*(hDC: HDC, lpString: LPCSTR, nCount: int32, lpRect: LPRECT,
-                 uFormat: UINT): int32{.stdcall, dynlib: "user32",
+                 uFormat: WINUINT): int32{.stdcall, dynlib: "user32",
                                         importc: "DrawTextA".}
   proc DrawTextEx*(para1: HDC, para2: LPSTR, para3: int32, para4: LPRECT,
-                   para5: UINT, para6: LPDRAWTEXTPARAMS): int32{.stdcall,
+                   para5: WINUINT, para6: LPDRAWTEXTPARAMS): int32{.stdcall,
       dynlib: "user32", importc: "DrawTextExA".}
   proc GrayString*(hDC: HDC, hBrush: HBRUSH, lpOutputFunc: GRAYSTRINGPROC,
                    lpData: LPARAM, nCount: int32, X: int32, Y: int32,
@@ -17892,7 +17892,7 @@ else:
       dynlib: "user32", importc: "GrayStringA".}
   proc DrawState*(para1: HDC, para2: HBRUSH, para3: DRAWSTATEPROC,
                   para4: LPARAM, para5: WPARAM, para6: int32, para7: int32,
-                  para8: int32, para9: int32, para10: UINT): WINBOOL{.stdcall,
+                  para8: int32, para9: int32, para10: WINUINT): WINBOOL{.stdcall,
       dynlib: "user32", importc: "DrawStateA".}
   proc TabbedTextOut*(dc: HDC, X: int32, Y: int32, lpString: LPCSTR,
                       nCount: int32, nTabPositions: int32,
@@ -17917,9 +17917,9 @@ else:
       stdcall, dynlib: "user32", importc: "GetWindowTextA".}
   proc GetWindowTextLength*(wnd: HWND): int32{.stdcall, dynlib: "user32",
       importc: "GetWindowTextLengthA".}
-  proc MessageBox*(wnd: HWND, lpText: LPCSTR, lpCaption: LPCSTR, uType: UINT): int32{.
+  proc MessageBox*(wnd: HWND, lpText: LPCSTR, lpCaption: LPCSTR, uType: WINUINT): int32{.
       stdcall, dynlib: "user32", importc: "MessageBoxA".}
-  proc MessageBoxEx*(wnd: HWND, lpText: LPCSTR, lpCaption: LPCSTR, uType: UINT,
+  proc MessageBoxEx*(wnd: HWND, lpText: LPCSTR, lpCaption: LPCSTR, uType: WINUINT,
                      wLanguageId: int16): int32{.stdcall, dynlib: "user32",
       importc: "MessageBoxExA".}
   proc MessageBoxIndirect*(para1: LPMSGBOXPARAMS): int32{.stdcall,
@@ -17967,44 +17967,44 @@ else:
       dynlib: "user32", importc: "LoadCursorFromFileA".}
   proc LoadIcon*(hInstance: HINST, lpIconName: LPCSTR): HICON{.stdcall,
       dynlib: "user32", importc: "LoadIconA".}
-  proc LoadImage*(para1: HINST, para2: LPCSTR, para3: UINT, para4: int32,
-                  para5: int32, para6: UINT): HANDLE{.stdcall, dynlib: "user32",
+  proc LoadImage*(para1: HINST, para2: LPCSTR, para3: WINUINT, para4: int32,
+                  para5: int32, para6: WINUINT): HANDLE{.stdcall, dynlib: "user32",
       importc: "LoadImageA".}
-  proc LoadString*(hInstance: HINST, uID: UINT, lpBuffer: LPSTR,
+  proc LoadString*(hInstance: HINST, uID: WINUINT, lpBuffer: LPSTR,
                    nBufferMax: int32): int32{.stdcall, dynlib: "user32",
       importc: "LoadStringA".}
   proc IsDialogMessage*(hDlg: HWND, lpMsg: LPMSG): WINBOOL{.stdcall,
       dynlib: "user32", importc: "IsDialogMessageA".}
   proc DlgDirList*(hDlg: HWND, lpPathSpec: LPSTR, nIDListBox: int32,
-                   nIDStaticPath: int32, uFileType: UINT): int32{.stdcall,
+                   nIDStaticPath: int32, uFileType: WINUINT): int32{.stdcall,
       dynlib: "user32", importc: "DlgDirListA".}
   proc DlgDirSelectEx*(hDlg: HWND, lpString: LPSTR, nCount: int32,
                        nIDListBox: int32): WINBOOL{.stdcall, dynlib: "user32",
       importc: "DlgDirSelectExA".}
   proc DlgDirListComboBox*(hDlg: HWND, lpPathSpec: LPSTR, nIDComboBox: int32,
-                           nIDStaticPath: int32, uFiletype: UINT): int32{.
+                           nIDStaticPath: int32, uFiletype: WINUINT): int32{.
       stdcall, dynlib: "user32", importc: "DlgDirListComboBoxA".}
   proc DlgDirSelectComboBoxEx*(hDlg: HWND, lpString: LPSTR, nCount: int32,
                                nIDComboBox: int32): WINBOOL{.stdcall,
       dynlib: "user32", importc: "DlgDirSelectComboBoxExA".}
-  proc DefFrameProc*(wnd: HWND, hWndMDIClient: HWND, uMsg: UINT,
+  proc DefFrameProc*(wnd: HWND, hWndMDIClient: HWND, uMsg: WINUINT,
                      wp: WPARAM, lp: LPARAM): LRESULT{.stdcall,
       dynlib: "user32", importc: "DefFrameProcA".}
-  proc DefMDIChildProc*(wnd: HWND, uMsg: UINT, wp: WPARAM, lp: LPARAM): LRESULT{.
+  proc DefMDIChildProc*(wnd: HWND, uMsg: WINUINT, wp: WPARAM, lp: LPARAM): LRESULT{.
       stdcall, dynlib: "user32", importc: "DefMDIChildProcA".}
   proc CreateMDIWindow*(lpClassName: LPSTR, lpWindowName: LPSTR, dwStyle: DWORD,
                         X: int32, Y: int32, nWidth: int32, nHeight: int32,
                         hWndParent: HWND, hInstance: HINST, lp: LPARAM): HWND{.
       stdcall, dynlib: "user32", importc: "CreateMDIWindowA".}
-  proc WinHelp*(hWndMain: HWND, lpszHelp: LPCSTR, uCommand: UINT, dwData: DWORD): WINBOOL{.
+  proc WinHelp*(hWndMain: HWND, lpszHelp: LPCSTR, uCommand: WINUINT, dwData: DWORD): WINBOOL{.
       stdcall, dynlib: "user32", importc: "WinHelpA".}
   proc ChangeDisplaySettings*(lpDevMode: LPDEVMODE, dwFlags: DWORD): LONG{.
       stdcall, dynlib: "user32", importc: "ChangeDisplaySettingsA".}
   proc EnumDisplaySettings*(lpszDeviceName: LPCSTR, iModeNum: DWORD,
                             lpDevMode: LPDEVMODE): WINBOOL{.stdcall,
       dynlib: "user32", importc: "EnumDisplaySettingsA".}
-  proc SystemParametersInfo*(uiAction: UINT, uiParam: UINT, pvParam: PVOID,
-                             fWinIni: UINT): WINBOOL{.stdcall, dynlib: "user32",
+  proc SystemParametersInfo*(uiAction: WINUINT, uiParam: WINUINT, pvParam: PVOID,
+                             fWinIni: WINUINT): WINBOOL{.stdcall, dynlib: "user32",
       importc: "SystemParametersInfoA".}
   proc AddFontResource*(para1: LPCSTR): int32{.stdcall, dynlib: "gdi32",
       importc: "AddFontResourceA".}
@@ -18037,25 +18037,25 @@ else:
   proc EnumFonts*(para1: HDC, para2: LPCSTR, para3: ENUMFONTSPROC,
                   para4: pointer): int32{.stdcall, dynlib: "gdi32",
       importc: "EnumFontsA".}
-  proc GetCharWidth*(para1: HDC, para2: UINT, para3: UINT, para4: LPINT): WINBOOL{.
+  proc GetCharWidth*(para1: HDC, para2: WINUINT, para3: WINUINT, para4: LPINT): WINBOOL{.
       stdcall, dynlib: "gdi32", importc: "GetCharWidthA".}
-  proc GetCharWidth32*(para1: HDC, para2: UINT, para3: UINT, para4: LPINT): WINBOOL{.
+  proc GetCharWidth32*(para1: HDC, para2: WINUINT, para3: WINUINT, para4: LPINT): WINBOOL{.
       stdcall, dynlib: "gdi32", importc: "GetCharWidth32A".}
-  proc GetCharWidthFloat*(para1: HDC, para2: UINT, para3: UINT, para4: ptr float32): WINBOOL{.
+  proc GetCharWidthFloat*(para1: HDC, para2: WINUINT, para3: WINUINT, para4: ptr float32): WINBOOL{.
       stdcall, dynlib: "gdi32", importc: "GetCharWidthFloatA".}
-  proc GetCharABCWidths*(para1: HDC, para2: UINT, para3: UINT, para4: LPABC): WINBOOL{.
+  proc GetCharABCWidths*(para1: HDC, para2: WINUINT, para3: WINUINT, para4: LPABC): WINBOOL{.
       stdcall, dynlib: "gdi32", importc: "GetCharABCWidthsA".}
-  proc GetCharABCWidthsFloat*(para1: HDC, para2: UINT, para3: UINT,
+  proc GetCharABCWidthsFloat*(para1: HDC, para2: WINUINT, para3: WINUINT,
                               para4: LPABCFLOAT): WINBOOL{.stdcall,
       dynlib: "gdi32", importc: "GetCharABCWidthsFloatA".}
-  proc GetGlyphOutline*(para1: HDC, para2: UINT, para3: UINT,
+  proc GetGlyphOutline*(para1: HDC, para2: WINUINT, para3: WINUINT,
                         para4: LPGLYPHMETRICS, para5: DWORD, para6: LPVOID,
                         para7: PMAT2): DWORD{.stdcall, dynlib: "gdi32",
       importc: "GetGlyphOutlineA".}
   proc GetMetaFile*(para1: LPCSTR): HMETAFILE{.stdcall, dynlib: "gdi32",
       importc: "GetMetaFileA".}
-  proc GetOutlineTextMetrics*(para1: HDC, para2: UINT,
-                              para3: LPOUTLINETEXTMETRIC): UINT{.stdcall,
+  proc GetOutlineTextMetrics*(para1: HDC, para2: WINUINT,
+                              para3: LPOUTLINETEXTMETRIC): WINUINT{.stdcall,
       dynlib: "gdi32", importc: "GetOutlineTextMetricsA".}
   proc GetTextExtentPoint*(para1: HDC, para2: LPCSTR, para3: int32,
                            para4: LPSIZE): WINBOOL{.stdcall, dynlib: "gdi32",
@@ -18081,7 +18081,7 @@ else:
       importc: "CreateEnhMetaFileA".}
   proc GetEnhMetaFile*(para1: LPCSTR): HENHMETAFILE{.stdcall, dynlib: "gdi32",
       importc: "GetEnhMetaFileA".}
-  proc GetEnhMetaFileDescription*(para1: HENHMETAFILE, para2: UINT, para3: LPSTR): UINT{.
+  proc GetEnhMetaFileDescription*(para1: HENHMETAFILE, para2: WINUINT, para3: LPSTR): WINUINT{.
       stdcall, dynlib: "gdi32", importc: "GetEnhMetaFileDescriptionA".}
   proc GetTextMetrics*(para1: HDC, para2: LPTEXTMETRIC): WINBOOL{.stdcall,
       dynlib: "gdi32", importc: "GetTextMetricsA".}
@@ -18092,8 +18092,8 @@ else:
   proc TextOut*(para1: HDC, para2: int32, para3: int32, para4: LPCSTR,
                 para5: int32): WINBOOL{.stdcall, dynlib: "gdi32",
                                         importc: "TextOutA".}
-  proc ExtTextOut*(para1: HDC, para2: int32, para3: int32, para4: UINT,
-                   para5: LPRECT, para6: LPCSTR, para7: UINT, para8: LPINT): WINBOOL{.
+  proc ExtTextOut*(para1: HDC, para2: int32, para3: int32, para4: WINUINT,
+                   para5: LPRECT, para6: LPCSTR, para7: WINUINT, para8: LPINT): WINBOOL{.
       stdcall, dynlib: "gdi32", importc: "ExtTextOutA".}
   proc PolyTextOut*(para1: HDC, para2: PPOLYTEXT, para3: int32): WINBOOL{.
       stdcall, dynlib: "gdi32", importc: "PolyTextOutA".}
@@ -18110,19 +18110,19 @@ else:
       dynlib: "gdi32", importc: "GetICMProfileA".}
   proc SetICMProfile*(para1: HDC, para2: LPSTR): WINBOOL{.stdcall,
       dynlib: "gdi32", importc: "SetICMProfileA".}
-  proc UpdateICMRegKey*(para1: DWORD, para2: DWORD, para3: LPSTR, para4: UINT): WINBOOL{.
+  proc UpdateICMRegKey*(para1: DWORD, para2: DWORD, para3: LPSTR, para4: WINUINT): WINBOOL{.
       stdcall, dynlib: "gdi32", importc: "UpdateICMRegKeyA".}
   proc EnumICMProfiles*(para1: HDC, para2: ICMENUMPROC, para3: LPARAM): int32{.
       stdcall, dynlib: "gdi32", importc: "EnumICMProfilesA".}
   proc PropertySheet*(lppsph: LPCPROPSHEETHEADER): int32{.stdcall,
       dynlib: "comctl32", importc: "PropertySheetA".}
   proc ImageList_LoadImage*(hi: HINST, lpbmp: LPCSTR, cx: int32, cGrow: int32,
-                            crMask: COLORREF, uType: UINT, uFlags: UINT): HIMAGELIST{.
+                            crMask: COLORREF, uType: WINUINT, uFlags: WINUINT): HIMAGELIST{.
       stdcall, dynlib: "comctl32", importc: "ImageList_LoadImageA".}
   proc CreateStatusWindow*(style: LONG, lpszText: LPCSTR, hwndParent: HWND,
-                           wID: UINT): HWND{.stdcall, dynlib: "comctl32",
+                           wID: WINUINT): HWND{.stdcall, dynlib: "comctl32",
       importc: "CreateStatusWindowA".}
-  proc DrawStatusText*(hDC: HDC, lprc: LPRECT, pszText: LPCSTR, uFlags: UINT){.
+  proc DrawStatusText*(hDC: HDC, lprc: LPRECT, pszText: LPCSTR, uFlags: WINUINT){.
       stdcall, dynlib: "comctl32", importc: "DrawStatusTextA".}
   proc GetOpenFileName*(para1: LPOPENFILENAME): WINBOOL{.stdcall,
       dynlib: "comdlg32", importc: "GetOpenFileNameA".}
@@ -18477,7 +18477,7 @@ else:
   proc DdeCreateStringHandle*(para1: DWORD, para2: cstring, para3: int32): HSZ{.
       stdcall, dynlib: "user32", importc: "DdeCreateStringHandleA".}
   proc DdeInitialize*(para1: LPDWORD, para2: PFNCALLBACK, para3: DWORD,
-                      para4: DWORD): UINT{.stdcall, dynlib: "user32",
+                      para4: DWORD): WINUINT{.stdcall, dynlib: "user32",
       importc: "DdeInitializeA".}
   proc DdeQueryString*(para1: DWORD, para2: HSZ, para3: cstring, para4: DWORD,
                        para5: int32): DWORD{.stdcall, dynlib: "user32",
@@ -18519,7 +18519,7 @@ proc GlobalReAlloc*(hMem: HGLOBAL, dwBytes: DWORD, uFlags: INT): HGLOBAL{.
     stdcall, dynlib: "kernel32", importc: "GlobalReAlloc".}
 proc GlobalSize*(hMem: HGLOBAL): DWORD{.stdcall, dynlib: "kernel32",
                                         importc: "GlobalSize".}
-proc GlobalFlags*(hMem: HGLOBAL): UINT{.stdcall, dynlib: "kernel32",
+proc GlobalFlags*(hMem: HGLOBAL): WINUINT{.stdcall, dynlib: "kernel32",
                                         importc: "GlobalFlags".}
 proc GlobalLock*(hMem: HGLOBAL): LPVOID{.stdcall, dynlib: "kernel32",
     importc: "GlobalLock".}
@@ -18529,7 +18529,7 @@ proc GlobalUnlock*(hMem: HGLOBAL): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "GlobalUnlock".}
 proc GlobalFree*(hMem: HGLOBAL): HGLOBAL{.stdcall, dynlib: "kernel32",
     importc: "GlobalFree".}
-proc GlobalCompact*(dwMinFree: DWORD): UINT{.stdcall, dynlib: "kernel32",
+proc GlobalCompact*(dwMinFree: DWORD): WINUINT{.stdcall, dynlib: "kernel32",
     importc: "GlobalCompact".}
 proc GlobalFix*(hMem: HGLOBAL){.stdcall, dynlib: "kernel32",
                                 importc: "GlobalFix".}
@@ -18541,9 +18541,9 @@ proc GlobalUnWire*(hMem: HGLOBAL): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "GlobalUnWire".}
 proc GlobalMemoryStatus*(lpBuffer: LPMEMORYSTATUS){.stdcall, dynlib: "kernel32",
     importc: "GlobalMemoryStatus".}
-proc LocalAlloc*(uFlags: UINT, uBytes: UINT): HLOCAL{.stdcall,
+proc LocalAlloc*(uFlags: WINUINT, uBytes: WINUINT): HLOCAL{.stdcall,
     dynlib: "kernel32", importc: "LocalAlloc".}
-proc LocalReAlloc*(hMem: HLOCAL, uBytes: UINT, uFlags: UINT): HLOCAL{.stdcall,
+proc LocalReAlloc*(hMem: HLOCAL, uBytes: WINUINT, uFlags: WINUINT): HLOCAL{.stdcall,
     dynlib: "kernel32", importc: "LocalReAlloc".}
 proc LocalLock*(hMem: HLOCAL): LPVOID{.stdcall, dynlib: "kernel32",
                                        importc: "LocalLock".}
@@ -18551,15 +18551,15 @@ proc LocalHandle*(pMem: LPCVOID): HLOCAL{.stdcall, dynlib: "kernel32",
     importc: "LocalHandle".}
 proc LocalUnlock*(hMem: HLOCAL): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "LocalUnlock".}
-proc LocalSize*(hMem: HLOCAL): UINT{.stdcall, dynlib: "kernel32",
+proc LocalSize*(hMem: HLOCAL): WINUINT{.stdcall, dynlib: "kernel32",
                                      importc: "LocalSize".}
-proc LocalFlags*(hMem: HLOCAL): UINT{.stdcall, dynlib: "kernel32",
+proc LocalFlags*(hMem: HLOCAL): WINUINT{.stdcall, dynlib: "kernel32",
                                       importc: "LocalFlags".}
 proc LocalFree*(hMem: HLOCAL): HLOCAL{.stdcall, dynlib: "kernel32",
                                        importc: "LocalFree".}
-proc LocalShrink*(hMem: HLOCAL, cbNewSize: UINT): UINT{.stdcall,
+proc LocalShrink*(hMem: HLOCAL, cbNewSize: WINUINT): WINUINT{.stdcall,
     dynlib: "kernel32", importc: "LocalShrink".}
-proc LocalCompact*(uMinFree: UINT): UINT{.stdcall, dynlib: "kernel32",
+proc LocalCompact*(uMinFree: WINUINT): WINUINT{.stdcall, dynlib: "kernel32",
     importc: "LocalCompact".}
 proc FlushInstructionCache*(hProcess: HANDLE, lpBaseAddress: LPCVOID,
                             dwSize: DWORD): WINBOOL{.stdcall,
@@ -18595,7 +18595,7 @@ proc HeapSize*(hHeap: HANDLE, dwFlags: DWORD, lpMem: LPCVOID): DWORD{.stdcall,
     dynlib: "kernel32", importc: "HeapSize".}
 proc HeapValidate*(hHeap: HANDLE, dwFlags: DWORD, lpMem: LPCVOID): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "HeapValidate".}
-proc HeapCompact*(hHeap: HANDLE, dwFlags: DWORD): UINT{.stdcall,
+proc HeapCompact*(hHeap: HANDLE, dwFlags: DWORD): WINUINT{.stdcall,
     dynlib: "kernel32", importc: "HeapCompact".}
 proc GetProcessHeap*(): HANDLE{.stdcall, dynlib: "kernel32",
                                 importc: "GetProcessHeap".}
@@ -18628,9 +18628,9 @@ proc GetCurrentProcess*(): HANDLE{.stdcall, dynlib: "kernel32",
                                    importc: "GetCurrentProcess".}
 proc GetCurrentProcessId*(): DWORD{.stdcall, dynlib: "kernel32",
                                     importc: "GetCurrentProcessId".}
-proc ExitProcess*(uExitCode: UINT){.stdcall, dynlib: "kernel32",
+proc ExitProcess*(uExitCode: WINUINT){.stdcall, dynlib: "kernel32",
                                     importc: "ExitProcess".}
-proc TerminateProcess*(hProcess: HANDLE, uExitCode: UINT): WINBOOL{.stdcall,
+proc TerminateProcess*(hProcess: HANDLE, uExitCode: WINUINT): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "TerminateProcess".}
 proc SetProcessAffinityMask*(hProcess: THandle, dwProcessAffinityMask: DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "SetProcessAffinityMask".}
@@ -18681,7 +18681,7 @@ proc CreateIoCompletionPort*(FileHandle: HANDLE, ExistingCompletionPort: HANDLE,
                              CompletionKey: DWORD,
                              NumberOfConcurrentThreads: DWORD): HANDLE{.stdcall,
     dynlib: "kernel32", importc: "CreateIoCompletionPort".}
-proc SetErrorMode*(uMode: UINT): UINT{.stdcall, dynlib: "kernel32",
+proc SetErrorMode*(uMode: WINUINT): WINUINT{.stdcall, dynlib: "kernel32",
                                        importc: "SetErrorMode".}
 proc ReadProcessMemory*(hProcess: HANDLE, lpBaseAddress: LPCVOID,
                         lpBuffer: LPVOID, nSize: DWORD,
@@ -18741,7 +18741,7 @@ proc InitAtomTable*(nSize: DWORD): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "InitAtomTable".}
 proc DeleteAtom*(nAtom: ATOM): ATOM{.stdcall, dynlib: "kernel32",
                                      importc: "DeleteAtom".}
-proc SetHandleCount*(uNumber: UINT): UINT{.stdcall, dynlib: "kernel32",
+proc SetHandleCount*(uNumber: WINUINT): WINUINT{.stdcall, dynlib: "kernel32",
     importc: "SetHandleCount".}
 proc GetLogicalDrives*(): DWORD{.stdcall, dynlib: "kernel32",
                                  importc: "GetLogicalDrives".}
@@ -18803,7 +18803,7 @@ proc SetHandleInformation*(hObject: HANDLE, dwMask: DWORD, dwFlags: DWORD): WINB
     stdcall, dynlib: "kernel32", importc: "SetHandleInformation".}
 proc LoadModule*(lpModuleName: LPCSTR, lpParameterBlock: LPVOID): DWORD{.
     stdcall, dynlib: "kernel32", importc: "LoadModule".}
-proc WinExec*(lpCmdLine: LPCSTR, uCmdShow: UINT): UINT{.stdcall,
+proc WinExec*(lpCmdLine: LPCSTR, uCmdShow: WINUINT): WINUINT{.stdcall,
     dynlib: "kernel32", importc: "WinExec".}
 proc ClearCommBreak*(hFile: HANDLE): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "ClearCommBreak".}
@@ -18954,15 +18954,15 @@ proc FlushViewOfFile*(lpBaseAddress: LPCVOID, dwNumberOfBytesToFlush: DWORD): WI
     stdcall, dynlib: "kernel32", importc: "FlushViewOfFile".}
 proc UnmapViewOfFile*(lpBaseAddress: LPVOID): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "UnmapViewOfFile".}
-proc OpenFile*(lpFileName: LPCSTR, lpReOpenBuff: LPOFSTRUCT, uStyle: UINT): HFILE{.
+proc OpenFile*(lpFileName: LPCSTR, lpReOpenBuff: LPOFSTRUCT, uStyle: WINUINT): HFILE{.
     stdcall, dynlib: "kernel32", importc: "OpenFile".}
 proc lopen*(lpPathName: LPCSTR, iReadWrite: int32): HFILE{.stdcall,
     dynlib: "kernel32", importc: "_lopen".}
 proc lcreat*(lpPathName: LPCSTR, iAttribute: int32): HFILE{.stdcall,
     dynlib: "kernel32", importc: "_lcreat".}
-proc lread*(hFile: HFILE, lpBuffer: LPVOID, uBytes: UINT): UINT{.stdcall,
+proc lread*(hFile: HFILE, lpBuffer: LPVOID, uBytes: WINUINT): WINUINT{.stdcall,
     dynlib: "kernel32", importc: "_lread".}
-proc lwrite*(hFile: HFILE, lpBuffer: LPCSTR, uBytes: UINT): UINT{.stdcall,
+proc lwrite*(hFile: HFILE, lpBuffer: LPCSTR, uBytes: WINUINT): WINUINT{.stdcall,
     dynlib: "kernel32", importc: "_lwrite".}
 proc hread*(hFile: HFILE, lpBuffer: LPVOID, lBytes: int32): int32{.stdcall,
     dynlib: "kernel32", importc: "_hread".}
@@ -19233,13 +19233,13 @@ proc SetPriorityClass*(hProcess: HANDLE, dwPriorityClass: DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "SetPriorityClass".}
 proc GetPriorityClass*(hProcess: HANDLE): DWORD{.stdcall, dynlib: "kernel32",
     importc: "GetPriorityClass".}
-proc IsBadReadPtr*(lp: pointer, ucb: UINT): WINBOOL{.stdcall,
+proc IsBadReadPtr*(lp: pointer, ucb: WINUINT): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "IsBadReadPtr".}
-proc IsBadWritePtr*(lp: LPVOID, ucb: UINT): WINBOOL{.stdcall,
+proc IsBadWritePtr*(lp: LPVOID, ucb: WINUINT): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "IsBadWritePtr".}
-proc IsBadHugeReadPtr*(lp: pointer, ucb: UINT): WINBOOL{.stdcall,
+proc IsBadHugeReadPtr*(lp: pointer, ucb: WINUINT): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "IsBadHugeReadPtr".}
-proc IsBadHugeWritePtr*(lp: LPVOID, ucb: UINT): WINBOOL{.stdcall,
+proc IsBadHugeWritePtr*(lp: LPVOID, ucb: WINUINT): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "IsBadHugeWritePtr".}
 proc IsBadCodePtr*(lpfn: FARPROC): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "IsBadCodePtr".}
@@ -19249,7 +19249,7 @@ proc QueryPerformanceCounter*(lpPerformanceCount: PLARGE_INTEGER): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "QueryPerformanceCounter".}
 proc QueryPerformanceFrequency*(lpFrequency: PLARGE_INTEGER): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "QueryPerformanceFrequency".}
-proc ActivateKeyboardLayout*(hkl: HKL, Flags: UINT): WINBOOL{.stdcall,
+proc ActivateKeyboardLayout*(hkl: HKL, Flags: WINUINT): WINBOOL{.stdcall,
     dynlib: "user32", importc: "ActivateKeyboardLayout".}
 proc UnloadKeyboardLayout*(hkl: HKL): WINBOOL{.stdcall, dynlib: "user32",
     importc: "UnloadKeyboardLayout".}
@@ -19286,11 +19286,11 @@ proc TranslateMessage*(lpMsg: LPMSG): WINBOOL{.stdcall, dynlib: "user32",
     importc: "TranslateMessage".}
 proc SetMessageQueue*(cMessagesMax: int32): WINBOOL{.stdcall, dynlib: "user32",
     importc: "SetMessageQueue".}
-proc RegisterHotKey*(wnd: HWND, anID: int32, fsModifiers: UINT, vk: UINT): WINBOOL{.
+proc RegisterHotKey*(wnd: HWND, anID: int32, fsModifiers: WINUINT, vk: WINUINT): WINBOOL{.
     stdcall, dynlib: "user32", importc: "RegisterHotKey".}
 proc UnregisterHotKey*(wnd: HWND, anID: int32): WINBOOL{.stdcall,
     dynlib: "user32", importc: "UnregisterHotKey".}
-proc ExitWindowsEx*(uFlags: UINT, dwReserved: DWORD): WINBOOL{.stdcall,
+proc ExitWindowsEx*(uFlags: WINUINT, dwReserved: DWORD): WINBOOL{.stdcall,
     dynlib: "user32", importc: "ExitWindowsEx".}
 proc SwapMouseButton*(fSwap: WINBOOL): WINBOOL{.stdcall, dynlib: "user32",
     importc: "SwapMouseButton".}
@@ -19302,7 +19302,7 @@ proc GetMessageExtraInfo*(): LONG{.stdcall, dynlib: "user32",
                                    importc: "GetMessageExtraInfo".}
 proc SetMessageExtraInfo*(lp: LPARAM): LPARAM{.stdcall, dynlib: "user32",
     importc: "SetMessageExtraInfo".}
-proc BroadcastSystemMessage*(para1: DWORD, para2: LPDWORD, para3: UINT,
+proc BroadcastSystemMessage*(para1: DWORD, para2: LPDWORD, para3: WINUINT,
                              para4: WPARAM, para5: LPARAM): int32{.stdcall,
     dynlib: "user32", importc: "BroadcastSystemMessage".}
 proc AttachThreadInput*(idAttach: DWORD, idAttachTo: DWORD, fAttach: WINBOOL): WINBOOL{.
@@ -19316,9 +19316,9 @@ proc PostQuitMessage*(nExitCode: int32){.stdcall, dynlib: "user32",
     importc: "PostQuitMessage".}
 proc InSendMessage*(): WINBOOL{.stdcall, dynlib: "user32",
                                 importc: "InSendMessage".}
-proc GetDoubleClickTime*(): UINT{.stdcall, dynlib: "user32",
+proc GetDoubleClickTime*(): WINUINT{.stdcall, dynlib: "user32",
                                   importc: "GetDoubleClickTime".}
-proc SetDoubleClickTime*(para1: UINT): WINBOOL{.stdcall, dynlib: "user32",
+proc SetDoubleClickTime*(para1: WINUINT): WINBOOL{.stdcall, dynlib: "user32",
     importc: "SetDoubleClickTime".}
 proc IsWindow*(wnd: HWND): WINBOOL{.stdcall, dynlib: "user32",
                                      importc: "IsWindow".}
@@ -19344,7 +19344,7 @@ proc MoveWindow*(wnd: HWND, X: int32, Y: int32, nWidth: int32, nHeight: int32,
                  bRepaint: WINBOOL): WINBOOL{.stdcall, dynlib: "user32",
     importc: "MoveWindow".}
 proc SetWindowPos*(wnd: HWND, hWndInsertAfter: HWND, X: int32, Y: int32,
-                   cx: int32, cy: int32, uFlags: UINT): WINBOOL{.stdcall,
+                   cx: int32, cy: int32, uFlags: WINUINT): WINBOOL{.stdcall,
     dynlib: "user32", importc: "SetWindowPos".}
 proc GetWindowPlacement*(wnd: HWND, lpwndpl: var WINDOWPLACEMENT): WINBOOL{.
     stdcall, dynlib: "user32", importc: "GetWindowPlacement".}
@@ -19357,7 +19357,7 @@ proc SetWindowPlacement*(wnd: HWND, lpwndpl: PWINDOWPLACEMENT): WINBOOL{.
 proc BeginDeferWindowPos*(nNumWindows: int32): HDWP{.stdcall, dynlib: "user32",
     importc: "BeginDeferWindowPos".}
 proc DeferWindowPos*(hWinPosInfo: HDWP, wnd: HWND, hWndInsertAfter: HWND,
-                     x: int32, y: int32, cx: int32, cy: int32, uFlags: UINT): HDWP{.
+                     x: int32, y: int32, cx: int32, cy: int32, uFlags: WINUINT): HDWP{.
     stdcall, dynlib: "user32", importc: "DeferWindowPos".}
 proc EndDeferWindowPos*(hWinPosInfo: HDWP): WINBOOL{.stdcall, dynlib: "user32",
     importc: "EndDeferWindowPos".}
@@ -19374,18 +19374,18 @@ proc EndDialog*(hDlg: HWND, nResult: int32): WINBOOL{.stdcall, dynlib: "user32",
     importc: "EndDialog".}
 proc GetDlgItem*(hDlg: HWND, nIDDlgItem: int32): HWND{.stdcall,
     dynlib: "user32", importc: "GetDlgItem".}
-proc SetDlgItemInt*(hDlg: HWND, nIDDlgItem: int32, uValue: UINT,
+proc SetDlgItemInt*(hDlg: HWND, nIDDlgItem: int32, uValue: WINUINT,
                     bSigned: WINBOOL): WINBOOL{.stdcall, dynlib: "user32",
     importc: "SetDlgItemInt".}
 proc GetDlgItemInt*(hDlg: HWND, nIDDlgItem: int32, lpTranslated: var WINBOOL,
-                    bSigned: WINBOOL): UINT{.stdcall, dynlib: "user32",
+                    bSigned: WINBOOL): WINUINT{.stdcall, dynlib: "user32",
     importc: "GetDlgItemInt".}
-proc CheckDlgButton*(hDlg: HWND, nIDButton: int32, uCheck: UINT): WINBOOL{.
+proc CheckDlgButton*(hDlg: HWND, nIDButton: int32, uCheck: WINUINT): WINBOOL{.
     stdcall, dynlib: "user32", importc: "CheckDlgButton".}
 proc CheckRadioButton*(hDlg: HWND, nIDFirstButton: int32, nIDLastButton: int32,
                        nIDCheckButton: int32): WINBOOL{.stdcall,
     dynlib: "user32", importc: "CheckRadioButton".}
-proc IsDlgButtonChecked*(hDlg: HWND, nIDButton: int32): UINT{.stdcall,
+proc IsDlgButtonChecked*(hDlg: HWND, nIDButton: int32): WINUINT{.stdcall,
     dynlib: "user32", importc: "IsDlgButtonChecked".}
 proc GetNextDlgGroupItem*(hDlg: HWND, hCtl: HWND, bPrevious: WINBOOL): HWND{.
     stdcall, dynlib: "user32", importc: "GetNextDlgGroupItem".}
@@ -19407,19 +19407,19 @@ proc GetClipboardViewer*(): HWND{.stdcall, dynlib: "user32",
                                   importc: "GetClipboardViewer".}
 proc ChangeClipboardChain*(hWndRemove: HWND, hWndNewNext: HWND): WINBOOL{.
     stdcall, dynlib: "user32", importc: "ChangeClipboardChain".}
-proc SetClipboardData*(uFormat: UINT, hMem: HANDLE): HANDLE{.stdcall,
+proc SetClipboardData*(uFormat: WINUINT, hMem: HANDLE): HANDLE{.stdcall,
     dynlib: "user32", importc: "SetClipboardData".}
-proc GetClipboardData*(uFormat: UINT): HANDLE{.stdcall, dynlib: "user32",
+proc GetClipboardData*(uFormat: WINUINT): HANDLE{.stdcall, dynlib: "user32",
     importc: "GetClipboardData".}
 proc CountClipboardFormats*(): int32{.stdcall, dynlib: "user32",
                                       importc: "CountClipboardFormats".}
-proc EnumClipboardFormats*(format: UINT): UINT{.stdcall, dynlib: "user32",
+proc EnumClipboardFormats*(format: WINUINT): WINUINT{.stdcall, dynlib: "user32",
     importc: "EnumClipboardFormats".}
 proc EmptyClipboard*(): WINBOOL{.stdcall, dynlib: "user32",
                                  importc: "EmptyClipboard".}
-proc IsClipboardFormatAvailable*(format: UINT): WINBOOL{.stdcall,
+proc IsClipboardFormatAvailable*(format: WINUINT): WINBOOL{.stdcall,
     dynlib: "user32", importc: "IsClipboardFormatAvailable".}
-proc GetPriorityClipboardFormat*(paFormatPriorityList: var UINT, cFormats: int32): int32{.
+proc GetPriorityClipboardFormat*(paFormatPriorityList: var WINUINT, cFormats: int32): int32{.
     stdcall, dynlib: "user32", importc: "GetPriorityClipboardFormat".}
 proc GetOpenClipboardWindow*(): HWND{.stdcall, dynlib: "user32",
                                       importc: "GetOpenClipboardWindow".}
@@ -19432,7 +19432,7 @@ proc SetFocus*(wnd: HWND): HWND{.stdcall, dynlib: "user32", importc: "SetFocus".
 proc GetActiveWindow*(): HWND{.stdcall, dynlib: "user32",
                                importc: "GetActiveWindow".}
 proc GetFocus*(): HWND{.stdcall, dynlib: "user32", importc: "GetFocus".}
-proc GetKBCodePage*(): UINT{.stdcall, dynlib: "user32", importc: "GetKBCodePage".}
+proc GetKBCodePage*(): WINUINT{.stdcall, dynlib: "user32", importc: "GetKBCodePage".}
 proc GetKeyState*(nVirtKey: int32): SHORT{.stdcall, dynlib: "user32",
     importc: "GetKeyState".}
 proc GetAsyncKeyState*(vKey: int32): SHORT{.stdcall, dynlib: "user32",
@@ -19443,14 +19443,14 @@ proc SetKeyboardState*(lpKeyState: LPBYTE): WINBOOL{.stdcall, dynlib: "user32",
     importc: "SetKeyboardState".}
 proc GetKeyboardType*(nTypeFlag: int32): int32{.stdcall, dynlib: "user32",
     importc: "GetKeyboardType".}
-proc ToAscii*(uVirtKey: UINT, uScanCode: UINT, lpKeyState: PBYTE,
-              lpChar: LPWORD, uFlags: UINT): int32{.stdcall, dynlib: "user32",
+proc ToAscii*(uVirtKey: WINUINT, uScanCode: WINUINT, lpKeyState: PBYTE,
+              lpChar: LPWORD, uFlags: WINUINT): int32{.stdcall, dynlib: "user32",
     importc: "ToAscii".}
-proc ToAsciiEx*(uVirtKey: UINT, uScanCode: UINT, lpKeyState: PBYTE,
-                lpChar: LPWORD, uFlags: UINT, dwhkl: HKL): int32{.stdcall,
+proc ToAsciiEx*(uVirtKey: WINUINT, uScanCode: WINUINT, lpKeyState: PBYTE,
+                lpChar: LPWORD, uFlags: WINUINT, dwhkl: HKL): int32{.stdcall,
     dynlib: "user32", importc: "ToAsciiEx".}
-proc ToUnicode*(wVirtKey: UINT, wScanCode: UINT, lpKeyState: PBYTE,
-                pwszBuff: LPWSTR, cchBuff: int32, wFlags: UINT): int32{.stdcall,
+proc ToUnicode*(wVirtKey: WINUINT, wScanCode: WINUINT, lpKeyState: PBYTE,
+                pwszBuff: LPWSTR, cchBuff: int32, wFlags: WINUINT): int32{.stdcall,
     dynlib: "user32", importc: "ToUnicode".}
 proc OemKeyScan*(wOemChar: int16): DWORD{.stdcall, dynlib: "user32",
     importc: "OemKeyScan".}
@@ -19461,7 +19461,7 @@ proc mouse_event*(dwFlags: DWORD, dx: DWORD, dy: DWORD, cButtons: DWORD,
                                        importc: "mouse_event".}
 proc GetInputState*(): WINBOOL{.stdcall, dynlib: "user32",
                                 importc: "GetInputState".}
-proc GetQueueStatus*(flags: UINT): DWORD{.stdcall, dynlib: "user32",
+proc GetQueueStatus*(flags: WINUINT): DWORD{.stdcall, dynlib: "user32",
     importc: "GetQueueStatus".}
 proc GetCapture*(): HWND{.stdcall, dynlib: "user32", importc: "GetCapture".}
 proc SetCapture*(wnd: HWND): HWND{.stdcall, dynlib: "user32",
@@ -19472,9 +19472,9 @@ proc MsgWaitForMultipleObjects*(nCount: DWORD, pHandles: LPHANDLE,
                                 fWaitAll: WINBOOL, dwMilliseconds: DWORD,
                                 dwWakeMask: DWORD): DWORD{.stdcall,
     dynlib: "user32", importc: "MsgWaitForMultipleObjects".}
-proc SetTimer*(wnd: HWND, nIDEvent: UINT, uElapse: UINT, lpTimerFunc: TIMERPROC): UINT{.
+proc SetTimer*(wnd: HWND, nIDEvent: WINUINT, uElapse: WINUINT, lpTimerFunc: TIMERPROC): WINUINT{.
     stdcall, dynlib: "user32", importc: "SetTimer".}
-proc KillTimer*(wnd: HWND, uIDEvent: UINT): WINBOOL{.stdcall, dynlib: "user32",
+proc KillTimer*(wnd: HWND, uIDEvent: WINUINT): WINBOOL{.stdcall, dynlib: "user32",
     importc: "KillTimer".}
 proc IsWindowUnicode*(wnd: HWND): WINBOOL{.stdcall, dynlib: "user32",
     importc: "IsWindowUnicode".}
@@ -19489,10 +19489,10 @@ proc GetSystemMetrics*(nIndex: int32): int32{.stdcall, dynlib: "user32",
 proc GetMenu*(wnd: HWND): HMENU{.stdcall, dynlib: "user32", importc: "GetMenu".}
 proc SetMenu*(wnd: HWND, menu: HMENU): WINBOOL{.stdcall, dynlib: "user32",
     importc: "SetMenu".}
-proc HiliteMenuItem*(wnd: HWND, menu: HMENU, uIDHiliteItem: UINT,
-                     uHilite: UINT): WINBOOL{.stdcall, dynlib: "user32",
+proc HiliteMenuItem*(wnd: HWND, menu: HMENU, uIDHiliteItem: WINUINT,
+                     uHilite: WINUINT): WINBOOL{.stdcall, dynlib: "user32",
     importc: "HiliteMenuItem".}
-proc GetMenuState*(menu: HMENU, uId: UINT, uFlags: UINT): UINT{.stdcall,
+proc GetMenuState*(menu: HMENU, uId: WINUINT, uFlags: WINUINT): WINUINT{.stdcall,
     dynlib: "user32", importc: "GetMenuState".}
 proc DrawMenuBar*(wnd: HWND): WINBOOL{.stdcall, dynlib: "user32",
                                         importc: "DrawMenuBar".}
@@ -19503,37 +19503,37 @@ proc CreatePopupMenu*(): HMENU{.stdcall, dynlib: "user32",
                                 importc: "CreatePopupMenu".}
 proc DestroyMenu*(menu: HMENU): WINBOOL{.stdcall, dynlib: "user32",
     importc: "DestroyMenu".}
-proc CheckMenuItem*(menu: HMENU, uIDCheckItem: UINT, uCheck: UINT): DWORD{.
+proc CheckMenuItem*(menu: HMENU, uIDCheckItem: WINUINT, uCheck: WINUINT): DWORD{.
     stdcall, dynlib: "user32", importc: "CheckMenuItem".}
-proc EnableMenuItem*(menu: HMENU, uIDEnableItem: UINT, uEnable: UINT): WINBOOL{.
+proc EnableMenuItem*(menu: HMENU, uIDEnableItem: WINUINT, uEnable: WINUINT): WINBOOL{.
     stdcall, dynlib: "user32", importc: "EnableMenuItem".}
 proc GetSubMenu*(menu: HMENU, nPos: int32): HMENU{.stdcall, dynlib: "user32",
     importc: "GetSubMenu".}
-proc GetMenuItemID*(menu: HMENU, nPos: int32): UINT{.stdcall, dynlib: "user32",
+proc GetMenuItemID*(menu: HMENU, nPos: int32): WINUINT{.stdcall, dynlib: "user32",
     importc: "GetMenuItemID".}
 proc GetMenuItemCount*(menu: HMENU): int32{.stdcall, dynlib: "user32",
     importc: "GetMenuItemCount".}
-proc RemoveMenu*(menu: HMENU, uPosition: UINT, uFlags: UINT): WINBOOL{.stdcall,
+proc RemoveMenu*(menu: HMENU, uPosition: WINUINT, uFlags: WINUINT): WINBOOL{.stdcall,
     dynlib: "user32", importc: "RemoveMenu".}
-proc DeleteMenu*(menu: HMENU, uPosition: UINT, uFlags: UINT): WINBOOL{.stdcall,
+proc DeleteMenu*(menu: HMENU, uPosition: WINUINT, uFlags: WINUINT): WINBOOL{.stdcall,
     dynlib: "user32", importc: "DeleteMenu".}
-proc SetMenuItemBitmaps*(menu: HMENU, uPosition: UINT, uFlags: UINT,
+proc SetMenuItemBitmaps*(menu: HMENU, uPosition: WINUINT, uFlags: WINUINT,
                          hBitmapUnchecked: HBITMAP, hBitmapChecked: HBITMAP): WINBOOL{.
     stdcall, dynlib: "user32", importc: "SetMenuItemBitmaps".}
 proc GetMenuCheckMarkDimensions*(): LONG{.stdcall, dynlib: "user32",
     importc: "GetMenuCheckMarkDimensions".}
-proc TrackPopupMenu*(menu: HMENU, uFlags: UINT, x: int32, y: int32,
+proc TrackPopupMenu*(menu: HMENU, uFlags: WINUINT, x: int32, y: int32,
                      nReserved: int32, wnd: HWND, prcRect: var RECT): WINBOOL{.
     stdcall, dynlib: "user32", importc: "TrackPopupMenu".}
-proc GetMenuDefaultItem*(menu: HMENU, fByPos: UINT, gmdiFlags: UINT): UINT{.
+proc GetMenuDefaultItem*(menu: HMENU, fByPos: WINUINT, gmdiFlags: WINUINT): WINUINT{.
     stdcall, dynlib: "user32", importc: "GetMenuDefaultItem".}
-proc SetMenuDefaultItem*(menu: HMENU, uItem: UINT, fByPos: UINT): WINBOOL{.
+proc SetMenuDefaultItem*(menu: HMENU, uItem: WINUINT, fByPos: WINUINT): WINBOOL{.
     stdcall, dynlib: "user32", importc: "SetMenuDefaultItem".}
-proc GetMenuItemRect*(wnd: HWND, menu: HMENU, uItem: UINT, lprcItem: LPRECT): WINBOOL{.
+proc GetMenuItemRect*(wnd: HWND, menu: HMENU, uItem: WINUINT, lprcItem: LPRECT): WINBOOL{.
     stdcall, dynlib: "user32", importc: "GetMenuItemRect".}
 proc MenuItemFromPoint*(wnd: HWND, menu: HMENU, ptScreen: POINT): int32{.
     stdcall, dynlib: "user32", importc: "MenuItemFromPoint".}
-proc DragObject*(para1: HWND, para2: HWND, para3: UINT, para4: DWORD,
+proc DragObject*(para1: HWND, para2: HWND, para3: WINUINT, para4: DWORD,
                  para5: HCURSOR): DWORD{.stdcall, dynlib: "user32",
     importc: "DragObject".}
 proc DragDetect*(wnd: HWND, pt: POINT): WINBOOL{.stdcall, dynlib: "user32",
@@ -19586,9 +19586,9 @@ proc InvalidateRgn*(wnd: HWND, hRgn: HRGN, bErase: WINBOOL): WINBOOL{.stdcall,
 proc ValidateRgn*(wnd: HWND, hRgn: HRGN): WINBOOL{.stdcall, dynlib: "user32",
     importc: "ValidateRgn".}
 proc RedrawWindow*(wnd: HWND, lprcUpdate: var RECT, hrgnUpdate: HRGN,
-                   flags: UINT): WINBOOL{.stdcall, dynlib: "user32",
+                   flags: WINUINT): WINBOOL{.stdcall, dynlib: "user32",
     importc: "RedrawWindow".}
-proc RedrawWindow*(wnd: HWND, lprcUpdate: LPRECT, hrgnUpdate: HRGN, flags: UINT): WINBOOL{.
+proc RedrawWindow*(wnd: HWND, lprcUpdate: LPRECT, hrgnUpdate: HRGN, flags: WINUINT): WINBOOL{.
     stdcall, dynlib: "user32", importc: "RedrawWindow".}
 proc LockWindowUpdate*(hWndLock: HWND): WINBOOL{.stdcall, dynlib: "user32",
     importc: "LockWindowUpdate".}
@@ -19600,7 +19600,7 @@ proc ScrollDC*(hDC: HDC, dx: int32, dy: int32, lprcScroll: var RECT,
     stdcall, dynlib: "user32", importc: "ScrollDC".}
 proc ScrollWindowEx*(wnd: HWND, dx: int32, dy: int32, prcScroll: var RECT,
                      prcClip: var RECT, hrgnUpdate: HRGN, prcUpdate: LPRECT,
-                     flags: UINT): int32{.stdcall, dynlib: "user32",
+                     flags: WINUINT): int32{.stdcall, dynlib: "user32",
     importc: "ScrollWindowEx".}
 proc SetScrollPos*(wnd: HWND, nBar: int32, nPos: int32, bRedraw: WINBOOL): int32{.
     stdcall, dynlib: "user32", importc: "SetScrollPos".}
@@ -19613,7 +19613,7 @@ proc GetScrollRange*(wnd: HWND, nBar: int32, lpMinPos: LPINT, lpMaxPos: LPINT): 
     stdcall, dynlib: "user32", importc: "GetScrollRange".}
 proc ShowScrollBar*(wnd: HWND, wBar: int32, bShow: WINBOOL): WINBOOL{.stdcall,
     dynlib: "user32", importc: "ShowScrollBar".}
-proc EnableScrollBar*(wnd: HWND, wSBflags: UINT, wArrows: UINT): WINBOOL{.
+proc EnableScrollBar*(wnd: HWND, wSBflags: WINUINT, wArrows: WINUINT): WINBOOL{.
     stdcall, dynlib: "user32", importc: "EnableScrollBar".}
 proc GetClientRect*(wnd: HWND, lpRect: LPRECT): WINBOOL{.stdcall,
     dynlib: "user32", importc: "GetClientRect".}
@@ -19632,7 +19632,7 @@ proc SetMenuContextHelpId*(para1: HMENU, para2: DWORD): WINBOOL{.stdcall,
     dynlib: "user32", importc: "SetMenuContextHelpId".}
 proc GetMenuContextHelpId*(para1: HMENU): DWORD{.stdcall, dynlib: "user32",
     importc: "GetMenuContextHelpId".}
-proc MessageBeep*(uType: UINT): WINBOOL{.stdcall, dynlib: "user32",
+proc MessageBeep*(uType: WINUINT): WINBOOL{.stdcall, dynlib: "user32",
     importc: "MessageBeep".}
 proc ShowCursor*(bShow: WINBOOL): int32{.stdcall, dynlib: "user32",
     importc: "ShowCursor".}
@@ -19649,9 +19649,9 @@ proc GetClipCursor*(lpRect: LPRECT): WINBOOL{.stdcall, dynlib: "user32",
 proc GetCursor*(): HCURSOR{.stdcall, dynlib: "user32", importc: "GetCursor".}
 proc CreateCaret*(wnd: HWND, hBitmap: HBITMAP, nWidth: int32, nHeight: int32): WINBOOL{.
     stdcall, dynlib: "user32", importc: "CreateCaret".}
-proc GetCaretBlinkTime*(): UINT{.stdcall, dynlib: "user32",
+proc GetCaretBlinkTime*(): WINUINT{.stdcall, dynlib: "user32",
                                  importc: "GetCaretBlinkTime".}
-proc SetCaretBlinkTime*(uMSeconds: UINT): WINBOOL{.stdcall, dynlib: "user32",
+proc SetCaretBlinkTime*(uMSeconds: WINUINT): WINBOOL{.stdcall, dynlib: "user32",
     importc: "SetCaretBlinkTime".}
 proc DestroyCaret*(): WINBOOL{.stdcall, dynlib: "user32",
                                importc: "DestroyCaret".}
@@ -19668,7 +19668,7 @@ proc ClientToScreen*(wnd: HWND, lpPoint: LPPOINT): WINBOOL{.stdcall,
 proc ScreenToClient*(wnd: HWND, lpPoint: LPPOINT): WINBOOL{.stdcall,
     dynlib: "user32", importc: "ScreenToClient".}
 proc MapWindowPoints*(hWndFrom: HWND, hWndTo: HWND, lpPoints: LPPOINT,
-                      cPoints: UINT): int32{.stdcall, dynlib: "user32",
+                      cPoints: WINUINT): int32{.stdcall, dynlib: "user32",
     importc: "MapWindowPoints".}
 proc WindowFromPoint*(Point: POINT): HWND{.stdcall, dynlib: "user32",
     importc: "WindowFromPoint".}
@@ -19743,7 +19743,7 @@ proc GetWindowThreadProcessId*(wnd: HWND, lpdwProcessId: LPDWORD): DWORD{.
     stdcall, dynlib: "user32", importc: "GetWindowThreadProcessId".}
 proc GetLastActivePopup*(wnd: HWND): HWND{.stdcall, dynlib: "user32",
     importc: "GetLastActivePopup".}
-proc GetWindow*(wnd: HWND, uCmd: UINT): HWND{.stdcall, dynlib: "user32",
+proc GetWindow*(wnd: HWND, uCmd: WINUINT): HWND{.stdcall, dynlib: "user32",
     importc: "GetWindow".}
 proc UnhookWindowsHook*(nCode: int32, pfnFilterProc: HOOKPROC): WINBOOL{.
     stdcall, dynlib: "user32", importc: "UnhookWindowsHook".}
@@ -19751,8 +19751,8 @@ proc UnhookWindowsHookEx*(hhk: HHOOK): WINBOOL{.stdcall, dynlib: "user32",
     importc: "UnhookWindowsHookEx".}
 proc CallNextHookEx*(hhk: HHOOK, nCode: int32, wp: WPARAM, lp: LPARAM): LRESULT{.
     stdcall, dynlib: "user32", importc: "CallNextHookEx".}
-proc CheckMenuRadioItem*(para1: HMENU, para2: UINT, para3: UINT, para4: UINT,
-                         para5: UINT): WINBOOL{.stdcall, dynlib: "user32",
+proc CheckMenuRadioItem*(para1: HMENU, para2: WINUINT, para3: WINUINT, para4: WINUINT,
+                         para5: WINUINT): WINBOOL{.stdcall, dynlib: "user32",
     importc: "CheckMenuRadioItem".}
 proc CreateCursor*(hInst: HINST, xHotSpot: int32, yHotSpot: int32,
                    nWidth: int32, nHeight: int32, pvANDPlane: pointer,
@@ -19771,17 +19771,17 @@ proc LookupIconIdFromDirectory*(presbits: PBYTE, fIcon: WINBOOL): int32{.
     stdcall, dynlib: "user32", importc: "LookupIconIdFromDirectory".}
 proc LookupIconIdFromDirectoryEx*(presbits: PBYTE, fIcon: WINBOOL,
                                   cxDesired: int32, cyDesired: int32,
-                                  Flags: UINT): int32{.stdcall,
+                                  Flags: WINUINT): int32{.stdcall,
     dynlib: "user32", importc: "LookupIconIdFromDirectoryEx".}
 proc CreateIconFromResource*(presbits: PBYTE, dwResSize: DWORD, fIcon: WINBOOL,
                              dwVer: DWORD): HICON{.stdcall, dynlib: "user32",
     importc: "CreateIconFromResource".}
 proc CreateIconFromResourceEx*(presbits: PBYTE, dwResSize: DWORD,
                                fIcon: WINBOOL, dwVer: DWORD, cxDesired: int32,
-                               cyDesired: int32, Flags: UINT): HICON{.stdcall,
+                               cyDesired: int32, Flags: WINUINT): HICON{.stdcall,
     dynlib: "user32", importc: "CreateIconFromResourceEx".}
-proc CopyImage*(para1: HANDLE, para2: UINT, para3: int32, para4: int32,
-                para5: UINT): HICON{.stdcall, dynlib: "user32",
+proc CopyImage*(para1: HANDLE, para2: WINUINT, para3: int32, para4: int32,
+                para5: WINUINT): HICON{.stdcall, dynlib: "user32",
                                      importc: "CopyImage".}
 proc CreateIconIndirect*(piconinfo: PICONINFO): HICON{.stdcall,
     dynlib: "user32", importc: "CreateIconIndirect".}
@@ -19798,37 +19798,37 @@ proc GetScrollInfo*(para1: HWND, para2: int32, para3: LPSCROLLINFO): WINBOOL{.
     stdcall, dynlib: "user32", importc: "GetScrollInfo".}
 proc TranslateMDISysAccel*(hWndClient: HWND, lpMsg: LPMSG): WINBOOL{.stdcall,
     dynlib: "user32", importc: "TranslateMDISysAccel".}
-proc ArrangeIconicWindows*(wnd: HWND): UINT{.stdcall, dynlib: "user32",
+proc ArrangeIconicWindows*(wnd: HWND): WINUINT{.stdcall, dynlib: "user32",
     importc: "ArrangeIconicWindows".}
-proc TileWindows*(hwndParent: HWND, wHow: UINT, lpRect: var RECT, cKids: UINT,
+proc TileWindows*(hwndParent: HWND, wHow: WINUINT, lpRect: var RECT, cKids: WINUINT,
                   lpKids: var HWND): int16{.stdcall, dynlib: "user32",
     importc: "TileWindows".}
-proc CascadeWindows*(hwndParent: HWND, wHow: UINT, lpRect: var RECT,
-                     cKids: UINT, lpKids: var HWND): int16{.stdcall,
+proc CascadeWindows*(hwndParent: HWND, wHow: WINUINT, lpRect: var RECT,
+                     cKids: WINUINT, lpKids: var HWND): int16{.stdcall,
     dynlib: "user32", importc: "CascadeWindows".}
 proc SetLastErrorEx*(dwErrCode: DWORD, dwType: DWORD){.stdcall,
     dynlib: "user32", importc: "SetLastErrorEx".}
 proc SetDebugErrorLevel*(dwLevel: DWORD){.stdcall, dynlib: "user32",
     importc: "SetDebugErrorLevel".}
-proc DrawEdge*(hdc: HDC, qrc: LPRECT, edge: UINT, grfFlags: UINT): WINBOOL{.
+proc DrawEdge*(hdc: HDC, qrc: LPRECT, edge: WINUINT, grfFlags: WINUINT): WINBOOL{.
     stdcall, dynlib: "user32", importc: "DrawEdge".}
-proc DrawFrameControl*(para1: HDC, para2: LPRECT, para3: UINT, para4: UINT): WINBOOL{.
+proc DrawFrameControl*(para1: HDC, para2: LPRECT, para3: WINUINT, para4: WINUINT): WINBOOL{.
     stdcall, dynlib: "user32", importc: "DrawFrameControl".}
-proc DrawCaption*(para1: HWND, para2: HDC, para3: var RECT, para4: UINT): WINBOOL{.
+proc DrawCaption*(para1: HWND, para2: HDC, para3: var RECT, para4: WINUINT): WINBOOL{.
     stdcall, dynlib: "user32", importc: "DrawCaption".}
 proc DrawAnimatedRects*(wnd: HWND, idAni: int32, lprcFrom: var RECT,
                         lprcTo: var RECT): WINBOOL{.stdcall, dynlib: "user32",
     importc: "DrawAnimatedRects".}
-proc TrackPopupMenuEx*(para1: HMENU, para2: UINT, para3: int32, para4: int32,
+proc TrackPopupMenuEx*(para1: HMENU, para2: WINUINT, para3: int32, para4: int32,
                        para5: HWND, para6: LPTPMPARAMS): WINBOOL{.stdcall,
     dynlib: "user32", importc: "TrackPopupMenuEx".}
-proc ChildWindowFromPointEx*(para1: HWND, para2: POINT, para3: UINT): HWND{.
+proc ChildWindowFromPointEx*(para1: HWND, para2: POINT, para3: WINUINT): HWND{.
     stdcall, dynlib: "user32", importc: "ChildWindowFromPointEx".}
 proc DrawIconEx*(hdc: HDC, xLeft: int32, yTop: int32, icon: HICON,
-                 cxWidth: int32, cyWidth: int32, istepIfAniCur: UINT,
-                 hbrFlickerFreeDraw: HBRUSH, diFlags: UINT): WINBOOL{.stdcall,
+                 cxWidth: int32, cyWidth: int32, istepIfAniCur: WINUINT,
+                 hbrFlickerFreeDraw: HBRUSH, diFlags: WINUINT): WINBOOL{.stdcall,
     dynlib: "user32", importc: "DrawIconEx".}
-proc AnimatePalette*(para1: HPALETTE, para2: UINT, para3: UINT,
+proc AnimatePalette*(para1: HPALETTE, para2: WINUINT, para3: WINUINT,
                      para4: var PALETTEENTRY): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "AnimatePalette".}
 proc Arc*(para1: HDC, para2: int32, para3: int32, para4: int32, para5: int32,
@@ -19846,7 +19846,7 @@ proc CloseMetaFile*(para1: HDC): HMETAFILE{.stdcall, dynlib: "gdi32",
     importc: "CloseMetaFile".}
 proc CombineRgn*(para1: HRGN, para2: HRGN, para3: HRGN, para4: int32): int32{.
     stdcall, dynlib: "gdi32", importc: "CombineRgn".}
-proc CreateBitmap*(para1: int32, para2: int32, para3: UINT, para4: UINT,
+proc CreateBitmap*(para1: int32, para2: int32, para3: WINUINT, para4: WINUINT,
                    para5: pointer): HBITMAP{.stdcall, dynlib: "gdi32",
     importc: "CreateBitmap".}
 proc CreateBitmapIndirect*(para1: var BITMAP): HBITMAP{.stdcall,
@@ -19860,11 +19860,11 @@ proc CreateDiscardableBitmap*(para1: HDC, para2: int32, para3: int32): HBITMAP{.
 proc CreateCompatibleDC*(para1: HDC): HDC{.stdcall, dynlib: "gdi32",
     importc: "CreateCompatibleDC".}
 proc CreateDIBitmap*(para1: HDC, para2: var BITMAPINFOHEADER, para3: DWORD,
-                     para4: pointer, para5: var BITMAPINFO, para6: UINT): HBITMAP{.
+                     para4: pointer, para5: var BITMAPINFO, para6: WINUINT): HBITMAP{.
     stdcall, dynlib: "gdi32", importc: "CreateDIBitmap".}
-proc CreateDIBPatternBrush*(para1: HGLOBAL, para2: UINT): HBRUSH{.stdcall,
+proc CreateDIBPatternBrush*(para1: HGLOBAL, para2: WINUINT): HBRUSH{.stdcall,
     dynlib: "gdi32", importc: "CreateDIBPatternBrush".}
-proc CreateDIBPatternBrushPt*(para1: pointer, para2: UINT): HBRUSH{.stdcall,
+proc CreateDIBPatternBrushPt*(para1: pointer, para2: WINUINT): HBRUSH{.stdcall,
     dynlib: "gdi32", importc: "CreateDIBPatternBrushPt".}
 proc CreateEllipticRgn*(para1: int32, para2: int32, para3: int32, para4: int32): HRGN{.
     stdcall, dynlib: "gdi32", importc: "CreateEllipticRgn".}
@@ -19918,7 +19918,7 @@ proc ExcludeClipRect*(para1: HDC, para2: int32, para3: int32, para4: int32,
 proc ExtCreateRegion*(para1: var XFORM, para2: DWORD, para3: var RGNDATA): HRGN{.
     stdcall, dynlib: "gdi32", importc: "ExtCreateRegion".}
 proc ExtFloodFill*(para1: HDC, para2: int32, para3: int32, para4: COLORREF,
-                   para5: UINT): WINBOOL{.stdcall, dynlib: "gdi32",
+                   para5: WINUINT): WINBOOL{.stdcall, dynlib: "gdi32",
     importc: "ExtFloodFill".}
 proc FillRgn*(para1: HDC, para2: HRGN, para3: HBRUSH): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "FillRgn".}
@@ -19938,7 +19938,7 @@ proc GetBitmapBits*(para1: HBITMAP, para2: LONG, para3: LPVOID): LONG{.stdcall,
     dynlib: "gdi32", importc: "GetBitmapBits".}
 proc GetBitmapDimensionEx*(para1: HBITMAP, para2: LPSIZE): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetBitmapDimensionEx".}
-proc GetBoundsRect*(para1: HDC, para2: LPRECT, para3: UINT): UINT{.stdcall,
+proc GetBoundsRect*(para1: HDC, para2: LPRECT, para3: WINUINT): WINUINT{.stdcall,
     dynlib: "gdi32", importc: "GetBoundsRect".}
 proc GetBrushOrgEx*(para1: HDC, para2: LPPOINT): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetBrushOrgEx".}
@@ -19948,14 +19948,14 @@ proc GetClipRgn*(para1: HDC, para2: HRGN): int32{.stdcall, dynlib: "gdi32",
     importc: "GetClipRgn".}
 proc GetMetaRgn*(para1: HDC, para2: HRGN): int32{.stdcall, dynlib: "gdi32",
     importc: "GetMetaRgn".}
-proc GetCurrentObject*(para1: HDC, para2: UINT): HGDIOBJ{.stdcall,
+proc GetCurrentObject*(para1: HDC, para2: WINUINT): HGDIOBJ{.stdcall,
     dynlib: "gdi32", importc: "GetCurrentObject".}
 proc GetCurrentPositionEx*(para1: HDC, para2: LPPOINT): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetCurrentPositionEx".}
 proc GetDeviceCaps*(para1: HDC, para2: int32): int32{.stdcall, dynlib: "gdi32",
     importc: "GetDeviceCaps".}
-proc GetDIBits*(para1: HDC, para2: HBITMAP, para3: UINT, para4: UINT,
-                para5: LPVOID, para6: LPBITMAPINFO, para7: UINT): int32{.
+proc GetDIBits*(para1: HDC, para2: HBITMAP, para3: WINUINT, para4: WINUINT,
+                para5: LPVOID, para6: LPBITMAPINFO, para7: WINUINT): int32{.
     stdcall, dynlib: "gdi32", importc: "GetDIBits".}
 proc GetFontData*(para1: HDC, para2: DWORD, para3: DWORD, para4: LPVOID,
                   para5: DWORD): DWORD{.stdcall, dynlib: "gdi32",
@@ -19964,16 +19964,16 @@ proc GetGraphicsMode*(para1: HDC): int32{.stdcall, dynlib: "gdi32",
     importc: "GetGraphicsMode".}
 proc GetMapMode*(para1: HDC): int32{.stdcall, dynlib: "gdi32",
                                      importc: "GetMapMode".}
-proc GetMetaFileBitsEx*(para1: HMETAFILE, para2: UINT, para3: LPVOID): UINT{.
+proc GetMetaFileBitsEx*(para1: HMETAFILE, para2: WINUINT, para3: LPVOID): WINUINT{.
     stdcall, dynlib: "gdi32", importc: "GetMetaFileBitsEx".}
 proc GetNearestColor*(para1: HDC, para2: COLORREF): COLORREF{.stdcall,
     dynlib: "gdi32", importc: "GetNearestColor".}
-proc GetNearestPaletteIndex*(para1: HPALETTE, para2: COLORREF): UINT{.stdcall,
+proc GetNearestPaletteIndex*(para1: HPALETTE, para2: COLORREF): WINUINT{.stdcall,
     dynlib: "gdi32", importc: "GetNearestPaletteIndex".}
 proc GetObjectType*(h: HGDIOBJ): DWORD{.stdcall, dynlib: "gdi32",
                                         importc: "GetObjectType".}
-proc GetPaletteEntries*(para1: HPALETTE, para2: UINT, para3: UINT,
-                        para4: LPPALETTEENTRY): UINT{.stdcall, dynlib: "gdi32",
+proc GetPaletteEntries*(para1: HPALETTE, para2: WINUINT, para3: WINUINT,
+                        para4: LPPALETTEENTRY): WINUINT{.stdcall, dynlib: "gdi32",
     importc: "GetPaletteEntries".}
 proc GetPixel*(para1: HDC, para2: int32, para3: int32): COLORREF{.stdcall,
     dynlib: "gdi32", importc: "GetPixel".}
@@ -19981,7 +19981,7 @@ proc GetPixelFormat*(para1: HDC): int32{.stdcall, dynlib: "gdi32",
     importc: "GetPixelFormat".}
 proc GetPolyFillMode*(para1: HDC): int32{.stdcall, dynlib: "gdi32",
     importc: "GetPolyFillMode".}
-proc GetRasterizerCaps*(para1: LPRASTERIZER_STATUS, para2: UINT): WINBOOL{.
+proc GetRasterizerCaps*(para1: LPRASTERIZER_STATUS, para2: WINUINT): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "GetRasterizerCaps".}
 proc GetRegionData*(para1: HRGN, para2: DWORD, para3: LPRGNDATA): DWORD{.
     stdcall, dynlib: "gdi32", importc: "GetRegionData".}
@@ -19991,14 +19991,14 @@ proc GetStockObject*(para1: int32): HGDIOBJ{.stdcall, dynlib: "gdi32",
     importc: "GetStockObject".}
 proc GetStretchBltMode*(para1: HDC): int32{.stdcall, dynlib: "gdi32",
     importc: "GetStretchBltMode".}
-proc GetSystemPaletteEntries*(para1: HDC, para2: UINT, para3: UINT,
-                              para4: LPPALETTEENTRY): UINT{.stdcall,
+proc GetSystemPaletteEntries*(para1: HDC, para2: WINUINT, para3: WINUINT,
+                              para4: LPPALETTEENTRY): WINUINT{.stdcall,
     dynlib: "gdi32", importc: "GetSystemPaletteEntries".}
-proc GetSystemPaletteUse*(para1: HDC): UINT{.stdcall, dynlib: "gdi32",
+proc GetSystemPaletteUse*(para1: HDC): WINUINT{.stdcall, dynlib: "gdi32",
     importc: "GetSystemPaletteUse".}
 proc GetTextCharacterExtra*(para1: HDC): int32{.stdcall, dynlib: "gdi32",
     importc: "GetTextCharacterExtra".}
-proc GetTextAlign*(para1: HDC): UINT{.stdcall, dynlib: "gdi32",
+proc GetTextAlign*(para1: HDC): WINUINT{.stdcall, dynlib: "gdi32",
                                       importc: "GetTextAlign".}
 proc GetTextColor*(para1: HDC): COLORREF{.stdcall, dynlib: "gdi32",
     importc: "GetTextColor".}
@@ -20064,12 +20064,12 @@ proc Rectangle*(para1: HDC, para2: int32, para3: int32, para4: int32,
                                         importc: "Rectangle".}
 proc RestoreDC*(para1: HDC, para2: int32): WINBOOL{.stdcall, dynlib: "gdi32",
     importc: "RestoreDC".}
-proc RealizePalette*(para1: HDC): UINT{.stdcall, dynlib: "gdi32",
+proc RealizePalette*(para1: HDC): WINUINT{.stdcall, dynlib: "gdi32",
                                         importc: "RealizePalette".}
 proc RoundRect*(para1: HDC, para2: int32, para3: int32, para4: int32,
                 para5: int32, para6: int32, para7: int32): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "RoundRect".}
-proc ResizePalette*(para1: HPALETTE, para2: UINT): WINBOOL{.stdcall,
+proc ResizePalette*(para1: HPALETTE, para2: WINUINT): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "ResizePalette".}
 proc SaveDC*(para1: HDC): int32{.stdcall, dynlib: "gdi32", importc: "SaveDC".}
 proc SelectClipRgn*(para1: HDC, para2: HRGN): int32{.stdcall, dynlib: "gdi32",
@@ -20088,15 +20088,15 @@ proc SetBkMode*(para1: HDC, para2: int32): int32{.stdcall, dynlib: "gdi32",
     importc: "SetBkMode".}
 proc SetBitmapBits*(para1: HBITMAP, para2: DWORD, para3: pointer): LONG{.
     stdcall, dynlib: "gdi32", importc: "SetBitmapBits".}
-proc SetBoundsRect*(para1: HDC, para2: var RECT, para3: UINT): UINT{.stdcall,
+proc SetBoundsRect*(para1: HDC, para2: var RECT, para3: WINUINT): WINUINT{.stdcall,
     dynlib: "gdi32", importc: "SetBoundsRect".}
-proc SetDIBits*(para1: HDC, para2: HBITMAP, para3: UINT, para4: UINT,
-                para5: pointer, para6: PBITMAPINFO, para7: UINT): int32{.
+proc SetDIBits*(para1: HDC, para2: HBITMAP, para3: WINUINT, para4: WINUINT,
+                para5: pointer, para6: PBITMAPINFO, para7: WINUINT): int32{.
     stdcall, dynlib: "gdi32", importc: "SetDIBits".}
 proc SetDIBitsToDevice*(para1: HDC, para2: int32, para3: int32, para4: DWORD,
-                        para5: DWORD, para6: int32, para7: int32, para8: UINT,
-                        para9: UINT, para10: pointer, para11: var BITMAPINFO,
-                        para12: UINT): int32{.stdcall, dynlib: "gdi32",
+                        para5: DWORD, para6: int32, para7: int32, para8: WINUINT,
+                        para9: WINUINT, para10: pointer, para11: var BITMAPINFO,
+                        para12: WINUINT): int32{.stdcall, dynlib: "gdi32",
     importc: "SetDIBitsToDevice".}
 proc SetMapperFlags*(para1: HDC, para2: DWORD): DWORD{.stdcall, dynlib: "gdi32",
     importc: "SetMapperFlags".}
@@ -20104,10 +20104,10 @@ proc SetGraphicsMode*(hdc: HDC, iMode: int32): int32{.stdcall, dynlib: "gdi32",
     importc: "SetGraphicsMode".}
 proc SetMapMode*(para1: HDC, para2: int32): int32{.stdcall, dynlib: "gdi32",
     importc: "SetMapMode".}
-proc SetMetaFileBitsEx*(para1: UINT, para2: var int8): HMETAFILE{.stdcall,
+proc SetMetaFileBitsEx*(para1: WINUINT, para2: var int8): HMETAFILE{.stdcall,
     dynlib: "gdi32", importc: "SetMetaFileBitsEx".}
-proc SetPaletteEntries*(para1: HPALETTE, para2: UINT, para3: UINT,
-                        para4: var PALETTEENTRY): UINT{.stdcall,
+proc SetPaletteEntries*(para1: HPALETTE, para2: WINUINT, para3: WINUINT,
+                        para4: var PALETTEENTRY): WINUINT{.stdcall,
     dynlib: "gdi32", importc: "SetPaletteEntries".}
 proc SetPixel*(para1: HDC, para2: int32, para3: int32, para4: COLORREF): COLORREF{.
     stdcall, dynlib: "gdi32", importc: "SetPixel".}
@@ -20125,26 +20125,26 @@ proc SetRectRgn*(para1: HRGN, para2: int32, para3: int32, para4: int32,
 proc StretchDIBits*(para1: HDC, para2: int32, para3: int32, para4: int32,
                     para5: int32, para6: int32, para7: int32, para8: int32,
                     para9: int32, para10: pointer, para11: var BITMAPINFO,
-                    para12: UINT, para13: DWORD): int32{.stdcall,
+                    para12: WINUINT, para13: DWORD): int32{.stdcall,
     dynlib: "gdi32", importc: "StretchDIBits".}
 proc SetROP2*(para1: HDC, para2: int32): int32{.stdcall, dynlib: "gdi32",
     importc: "SetROP2".}
 proc SetStretchBltMode*(para1: HDC, para2: int32): int32{.stdcall,
     dynlib: "gdi32", importc: "SetStretchBltMode".}
-proc SetSystemPaletteUse*(para1: HDC, para2: UINT): UINT{.stdcall,
+proc SetSystemPaletteUse*(para1: HDC, para2: WINUINT): WINUINT{.stdcall,
     dynlib: "gdi32", importc: "SetSystemPaletteUse".}
 proc SetTextCharacterExtra*(para1: HDC, para2: int32): int32{.stdcall,
     dynlib: "gdi32", importc: "SetTextCharacterExtra".}
 proc SetTextColor*(para1: HDC, para2: COLORREF): COLORREF{.stdcall,
     dynlib: "gdi32", importc: "SetTextColor".}
-proc SetTextAlign*(para1: HDC, para2: UINT): UINT{.stdcall, dynlib: "gdi32",
+proc SetTextAlign*(para1: HDC, para2: WINUINT): WINUINT{.stdcall, dynlib: "gdi32",
     importc: "SetTextAlign".}
 proc SetTextJustification*(para1: HDC, para2: int32, para3: int32): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "SetTextJustification".}
 proc UpdateColors*(para1: HDC): WINBOOL{.stdcall, dynlib: "gdi32",
     importc: "UpdateColors".}
 proc PlayMetaFileRecord*(para1: HDC, para2: LPHANDLETABLE, para3: LPMETARECORD,
-                         para4: UINT): WINBOOL{.stdcall, dynlib: "gdi32",
+                         para4: WINUINT): WINBOOL{.stdcall, dynlib: "gdi32",
     importc: "PlayMetaFileRecord".}
 proc EnumMetaFile*(para1: HDC, para2: HMETAFILE, para3: ENUMMETAFILEPROC,
                    para4: LPARAM): WINBOOL{.stdcall, dynlib: "gdi32",
@@ -20156,28 +20156,28 @@ proc DeleteEnhMetaFile*(para1: HENHMETAFILE): WINBOOL{.stdcall, dynlib: "gdi32",
 proc EnumEnhMetaFile*(para1: HDC, para2: HENHMETAFILE, para3: ENHMETAFILEPROC,
                       para4: LPVOID, para5: var RECT): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "EnumEnhMetaFile".}
-proc GetEnhMetaFileHeader*(para1: HENHMETAFILE, para2: UINT,
-                           para3: LPENHMETAHEADER): UINT{.stdcall,
+proc GetEnhMetaFileHeader*(para1: HENHMETAFILE, para2: WINUINT,
+                           para3: LPENHMETAHEADER): WINUINT{.stdcall,
     dynlib: "gdi32", importc: "GetEnhMetaFileHeader".}
-proc GetEnhMetaFilePaletteEntries*(para1: HENHMETAFILE, para2: UINT,
-                                   para3: LPPALETTEENTRY): UINT{.stdcall,
+proc GetEnhMetaFilePaletteEntries*(para1: HENHMETAFILE, para2: WINUINT,
+                                   para3: LPPALETTEENTRY): WINUINT{.stdcall,
     dynlib: "gdi32", importc: "GetEnhMetaFilePaletteEntries".}
-proc GetEnhMetaFileBits*(para1: HENHMETAFILE, para2: UINT, para3: LPBYTE): UINT{.
+proc GetEnhMetaFileBits*(para1: HENHMETAFILE, para2: WINUINT, para3: LPBYTE): WINUINT{.
     stdcall, dynlib: "gdi32", importc: "GetEnhMetaFileBits".}
-proc GetWinMetaFileBits*(para1: HENHMETAFILE, para2: UINT, para3: LPBYTE,
-                         para4: wINT, para5: HDC): UINT{.stdcall,
+proc GetWinMetaFileBits*(para1: HENHMETAFILE, para2: WINUINT, para3: LPBYTE,
+                         para4: wINT, para5: HDC): WINUINT{.stdcall,
     dynlib: "gdi32", importc: "GetWinMetaFileBits".}
 proc PlayEnhMetaFile*(para1: HDC, para2: HENHMETAFILE, para3: RECT): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "PlayEnhMetaFile".}
 proc PlayEnhMetaFileRecord*(para1: HDC, para2: LPHANDLETABLE,
-                            para3: var TENHMETARECORD, para4: UINT): WINBOOL{.
+                            para3: var TENHMETARECORD, para4: WINUINT): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "PlayEnhMetaFileRecord".}
-proc SetEnhMetaFileBits*(para1: UINT, para2: var int8): HENHMETAFILE{.stdcall,
+proc SetEnhMetaFileBits*(para1: WINUINT, para2: var int8): HENHMETAFILE{.stdcall,
     dynlib: "gdi32", importc: "SetEnhMetaFileBits".}
-proc SetWinMetaFileBits*(para1: UINT, para2: var int8, para3: HDC,
+proc SetWinMetaFileBits*(para1: WINUINT, para2: var int8, para3: HDC,
                          para4: var METAFILEPICT): HENHMETAFILE{.stdcall,
     dynlib: "gdi32", importc: "SetWinMetaFileBits".}
-proc GdiComment*(para1: HDC, para2: UINT, para3: var int8): WINBOOL{.stdcall,
+proc GdiComment*(para1: HDC, para2: WINUINT, para3: var int8): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GdiComment".}
 proc AngleArc*(para1: HDC, para2: int32, para3: int32, para4: DWORD,
                para5: float32, para6: float32): WINBOOL{.stdcall,
@@ -20192,12 +20192,12 @@ proc ModifyWorldTransform*(para1: HDC, para2: var XFORM, para3: DWORD): WINBOOL{
     stdcall, dynlib: "gdi32", importc: "ModifyWorldTransform".}
 proc CombineTransform*(para1: LPXFORM, para2: var XFORM, para3: var XFORM): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "CombineTransform".}
-proc CreateDIBSection*(para1: HDC, para2: var BITMAPINFO, para3: UINT,
+proc CreateDIBSection*(para1: HDC, para2: var BITMAPINFO, para3: WINUINT,
                        para4: var pointer, para5: HANDLE, para6: DWORD): HBITMAP{.
     stdcall, dynlib: "gdi32", importc: "CreateDIBSection".}
-proc GetDIBColorTable*(para1: HDC, para2: UINT, para3: UINT, para4: var RGBQUAD): UINT{.
+proc GetDIBColorTable*(para1: HDC, para2: WINUINT, para3: WINUINT, para4: var RGBQUAD): WINUINT{.
     stdcall, dynlib: "gdi32", importc: "GetDIBColorTable".}
-proc SetDIBColorTable*(para1: HDC, para2: UINT, para3: UINT, para4: var RGBQUAD): UINT{.
+proc SetDIBColorTable*(para1: HDC, para2: WINUINT, para3: WINUINT, para4: var RGBQUAD): WINUINT{.
     stdcall, dynlib: "gdi32", importc: "SetDIBColorTable".}
 proc SetColorAdjustment*(para1: HDC, para2: var COLORADJUSTMENT): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "SetColorAdjustment".}
@@ -20324,7 +20324,7 @@ proc DestroyPropertySheetPage*(hPSPage: HPROPSHEETPAGE): WINBOOL{.stdcall,
 proc InitCommonControls*(){.stdcall, dynlib: "comctl32",
                             importc: "InitCommonControls".}
 proc ImageList_AddIcon*(himl: HIMAGELIST, hicon: HICON): int32
-proc ImageList_Create*(cx: int32, cy: int32, flags: UINT, cInitial: int32,
+proc ImageList_Create*(cx: int32, cy: int32, flags: WINUINT, cInitial: int32,
                        cGrow: int32): HIMAGELIST{.stdcall, dynlib: "comctl32",
     importc: "ImageList_Create".}
 proc ImageList_Destroy*(himl: HIMAGELIST): WINBOOL{.stdcall, dynlib: "comctl32",
@@ -20342,7 +20342,7 @@ proc ImageList_GetBkColor*(himl: HIMAGELIST): COLORREF{.stdcall,
 proc ImageList_SetOverlayImage*(himl: HIMAGELIST, iImage: int32, iOverlay: int32): WINBOOL{.
     stdcall, dynlib: "comctl32", importc: "ImageList_SetOverlayImage".}
 proc ImageList_Draw*(himl: HIMAGELIST, i: int32, hdcDst: HDC, x: int32,
-                     y: int32, fStyle: UINT): WINBOOL{.stdcall,
+                     y: int32, fStyle: WINUINT): WINBOOL{.stdcall,
     dynlib: "comctl32", importc: "ImageList_Draw".}
 proc ImageList_Replace*(himl: HIMAGELIST, i: int32, hbmImage: HBITMAP,
                         hbmMask: HBITMAP): WINBOOL{.stdcall, dynlib: "comctl32",
@@ -20351,11 +20351,11 @@ proc ImageList_AddMasked*(himl: HIMAGELIST, hbmImage: HBITMAP, crMask: COLORREF)
     stdcall, dynlib: "comctl32", importc: "ImageList_AddMasked".}
 proc ImageList_DrawEx*(himl: HIMAGELIST, i: int32, hdcDst: HDC, x: int32,
                        y: int32, dx: int32, dy: int32, rgbBk: COLORREF,
-                       rgbFg: COLORREF, fStyle: UINT): WINBOOL{.stdcall,
+                       rgbFg: COLORREF, fStyle: WINUINT): WINBOOL{.stdcall,
     dynlib: "comctl32", importc: "ImageList_DrawEx".}
 proc ImageList_Remove*(himl: HIMAGELIST, i: int32): WINBOOL{.stdcall,
     dynlib: "comctl32", importc: "ImageList_Remove".}
-proc ImageList_GetIcon*(himl: HIMAGELIST, i: int32, flags: UINT): HICON{.
+proc ImageList_GetIcon*(himl: HIMAGELIST, i: int32, flags: WINUINT): HICON{.
     stdcall, dynlib: "comctl32", importc: "ImageList_GetIcon".}
 proc ImageList_BeginDrag*(himlTrack: HIMAGELIST, iTrack: int32,
                           dxHotspot: int32, dyHotspot: int32): WINBOOL{.stdcall,
@@ -20385,20 +20385,20 @@ proc ImageList_GetImageInfo*(himl: HIMAGELIST, i: int32,
 proc ImageList_Merge*(himl1: HIMAGELIST, i1: int32, himl2: HIMAGELIST,
                       i2: int32, dx: int32, dy: int32): HIMAGELIST{.stdcall,
     dynlib: "comctl32", importc: "ImageList_Merge".}
-proc ImageList_SetImageCount*(himl: HIMAGELIST, uNewCount: UINT): int{.stdcall,
+proc ImageList_SetImageCount*(himl: HIMAGELIST, uNewCount: WINUINT): int{.stdcall,
     dynlib: "comctl32.dll", importc: "ImageList_SetImageCount".}
-proc CreateToolbarEx*(wnd: HWND, ws: DWORD, wID: UINT, nBitmaps: int32,
-                      hBMInst: HINST, wBMID: UINT, lpButtons: LPCTBBUTTON,
+proc CreateToolbarEx*(wnd: HWND, ws: DWORD, wID: WINUINT, nBitmaps: int32,
+                      hBMInst: HINST, wBMID: WINUINT, lpButtons: LPCTBBUTTON,
                       iNumButtons: int32, dxButton: int32, dyButton: int32,
-                      dxBitmap: int32, dyBitmap: int32, uStructSize: UINT): HWND{.
+                      dxBitmap: int32, dyBitmap: int32, uStructSize: WINUINT): HWND{.
     stdcall, dynlib: "comctl32", importc: "CreateToolbarEx".}
-proc CreateMappedBitmap*(hInstance: HINST, idBitmap: int32, wFlags: UINT,
+proc CreateMappedBitmap*(hInstance: HINST, idBitmap: int32, wFlags: WINUINT,
                          lpColorMap: LPCOLORMAP, iNumMaps: int32): HBITMAP{.
     stdcall, dynlib: "comctl32", importc: "CreateMappedBitmap".}
-proc MenuHelp*(uMsg: UINT, wp: WPARAM, lp: LPARAM, hMainMenu: HMENU,
-               hInst: HINST, hwndStatus: HWND, lpwIDs: var UINT){.stdcall,
+proc MenuHelp*(uMsg: WINUINT, wp: WPARAM, lp: LPARAM, hMainMenu: HMENU,
+               hInst: HINST, hwndStatus: HWND, lpwIDs: var WINUINT){.stdcall,
     dynlib: "comctl32", importc: "MenuHelp".}
-proc ShowHideMenuCtl*(wnd: HWND, uFlags: UINT, lpInfo: LPINT): WINBOOL{.
+proc ShowHideMenuCtl*(wnd: HWND, uFlags: WINUINT, lpInfo: LPINT): WINBOOL{.
     stdcall, dynlib: "comctl32", importc: "ShowHideMenuCtl".}
 proc GetEffectiveClientRect*(wnd: HWND, lprc: LPRECT, lpInfo: LPINT){.stdcall,
     dynlib: "comctl32", importc: "GetEffectiveClientRect".}
@@ -20428,21 +20428,21 @@ proc RegNotifyChangeKeyValue*(key: HKEY, bWatchSubtree: WINBOOL,
                               dwNotifyFilter: DWORD, hEvent: HANDLE,
                               fAsynchronus: WINBOOL): LONG{.stdcall,
     dynlib: "advapi32", importc: "RegNotifyChangeKeyValue".}
-proc IsValidCodePage*(CodePage: UINT): WINBOOL{.stdcall, dynlib: "kernel32",
+proc IsValidCodePage*(CodePage: WINUINT): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "IsValidCodePage".}
-proc GetACP*(): UINT{.stdcall, dynlib: "kernel32", importc: "GetACP".}
-proc GetOEMCP*(): UINT{.stdcall, dynlib: "kernel32", importc: "GetOEMCP".}
-proc GetCPInfo*(para1: UINT, para2: LPCPINFO): WINBOOL{.stdcall,
+proc GetACP*(): WINUINT{.stdcall, dynlib: "kernel32", importc: "GetACP".}
+proc GetOEMCP*(): WINUINT{.stdcall, dynlib: "kernel32", importc: "GetOEMCP".}
+proc GetCPInfo*(para1: WINUINT, para2: LPCPINFO): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetCPInfo".}
 proc IsDBCSLeadByte*(TestChar: int8): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "IsDBCSLeadByte".}
-proc IsDBCSLeadByteEx*(CodePage: UINT, TestChar: int8): WINBOOL{.stdcall,
+proc IsDBCSLeadByteEx*(CodePage: WINUINT, TestChar: int8): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "IsDBCSLeadByteEx".}
-proc MultiByteToWideChar*(CodePage: UINT, dwFlags: DWORD,
+proc MultiByteToWideChar*(CodePage: WINUINT, dwFlags: DWORD,
                           lpMultiByteStr: LPCSTR, cchMultiByte: int32,
                           lpWideCharStr: LPWSTR, cchWideChar: int32): int32{.
     stdcall, dynlib: "kernel32", importc: "MultiByteToWideChar".}
-proc WideCharToMultiByte*(CodePage: UINT, dwFlags: DWORD,
+proc WideCharToMultiByte*(CodePage: WINUINT, dwFlags: DWORD,
                           lpWideCharStr: LPCWSTR, cchWideChar: int32,
                           lpMultiByteStr: LPSTR, cchMultiByte: int32,
                           lpDefaultChar: LPCSTR, lpUsedDefaultChar: LPBOOL): int32{.
@@ -20520,12 +20520,12 @@ proc CreateConsoleScreenBuffer*(dwDesiredAccess: DWORD, dwShareMode: DWORD,
                                 lpSecurityAttributes: var SECURITY_ATTRIBUTES,
                                 dwFlags: DWORD, lpScreenBufferData: LPVOID): HANDLE{.
     stdcall, dynlib: "kernel32", importc: "CreateConsoleScreenBuffer".}
-proc GetConsoleCP*(): UINT{.stdcall, dynlib: "kernel32", importc: "GetConsoleCP".}
-proc SetConsoleCP*(wCodePageID: UINT): WINBOOL{.stdcall, dynlib: "kernel32",
+proc GetConsoleCP*(): WINUINT{.stdcall, dynlib: "kernel32", importc: "GetConsoleCP".}
+proc SetConsoleCP*(wCodePageID: WINUINT): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "SetConsoleCP".}
-proc GetConsoleOutputCP*(): UINT{.stdcall, dynlib: "kernel32",
+proc GetConsoleOutputCP*(): WINUINT{.stdcall, dynlib: "kernel32",
                                   importc: "GetConsoleOutputCP".}
-proc SetConsoleOutputCP*(wCodePageID: UINT): WINBOOL{.stdcall,
+proc SetConsoleOutputCP*(wCodePageID: WINUINT): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "SetConsoleOutputCP".}
 proc WNetConnectionDialog*(wnd: HWND, dwType: DWORD): DWORD{.stdcall,
     dynlib: "mpr", importc: "WNetConnectionDialog".}
@@ -20562,7 +20562,7 @@ proc UnlockServiceDatabase*(ScLock: SC_LOCK): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "UnlockServiceDatabase".}
 proc ChoosePixelFormat*(para1: HDC, para2: PPIXELFORMATDESCRIPTOR): int32{.
     stdcall, dynlib: "gdi32", importc: "ChoosePixelFormat".}
-proc DescribePixelFormat*(para1: HDC, para2: int32, para3: UINT,
+proc DescribePixelFormat*(para1: HDC, para2: int32, para3: WINUINT,
                           para4: LPPIXELFORMATDESCRIPTOR): int32{.stdcall,
     dynlib: "gdi32", importc: "DescribePixelFormat".}
 proc SetPixelFormat*(para1: HDC, para2: int32, para3: PPIXELFORMATDESCRIPTOR): WINBOOL{.
@@ -20584,7 +20584,7 @@ proc DdeAccessData*(para1: HDDEDATA, para2: PDWORD): PBYTE{.stdcall,
 proc DdeAddData*(para1: HDDEDATA, para2: PBYTE, para3: DWORD, para4: DWORD): HDDEDATA{.
     stdcall, dynlib: "user32", importc: "DdeAddData".}
 proc DdeClientTransaction*(para1: PBYTE, para2: DWORD, para3: HCONV, para4: HSZ,
-                           para5: UINT, para6: UINT, para7: DWORD, para8: PDWORD): HDDEDATA{.
+                           para5: WINUINT, para6: WINUINT, para7: DWORD, para8: PDWORD): HDDEDATA{.
     stdcall, dynlib: "user32", importc: "DdeClientTransaction".}
 proc DdeCmpStringHandles*(para1: HSZ, para2: HSZ): int32{.stdcall,
     dynlib: "user32", importc: "DdeCmpStringHandles".}
@@ -20594,13 +20594,13 @@ proc DdeConnectList*(para1: DWORD, para2: HSZ, para3: HSZ, para4: HCONVLIST,
                      para5: PCONVCONTEXT): HCONVLIST{.stdcall, dynlib: "user32",
     importc: "DdeConnectList".}
 proc DdeCreateDataHandle*(para1: DWORD, para2: LPBYTE, para3: DWORD,
-                          para4: DWORD, para5: HSZ, para6: UINT, para7: UINT): HDDEDATA{.
+                          para4: DWORD, para5: HSZ, para6: WINUINT, para7: WINUINT): HDDEDATA{.
     stdcall, dynlib: "user32", importc: "DdeCreateDataHandle".}
 proc DdeDisconnect*(para1: HCONV): WINBOOL{.stdcall, dynlib: "user32",
     importc: "DdeDisconnect".}
 proc DdeDisconnectList*(para1: HCONVLIST): WINBOOL{.stdcall, dynlib: "user32",
     importc: "DdeDisconnectList".}
-proc DdeEnableCallback*(para1: DWORD, para2: HCONV, para3: UINT): WINBOOL{.
+proc DdeEnableCallback*(para1: DWORD, para2: HCONV, para3: WINUINT): WINBOOL{.
     stdcall, dynlib: "user32", importc: "DdeEnableCallback".}
 proc DdeFreeDataHandle*(para1: HDDEDATA): WINBOOL{.stdcall, dynlib: "user32",
     importc: "DdeFreeDataHandle".}
@@ -20608,17 +20608,17 @@ proc DdeFreeStringHandle*(para1: DWORD, para2: HSZ): WINBOOL{.stdcall,
     dynlib: "user32", importc: "DdeFreeStringHandle".}
 proc DdeGetData*(para1: HDDEDATA, para2: LPBYTE, para3: DWORD, para4: DWORD): DWORD{.
     stdcall, dynlib: "user32", importc: "DdeGetData".}
-proc DdeGetLastError*(para1: DWORD): UINT{.stdcall, dynlib: "user32",
+proc DdeGetLastError*(para1: DWORD): WINUINT{.stdcall, dynlib: "user32",
     importc: "DdeGetLastError".}
 proc DdeImpersonateClient*(para1: HCONV): WINBOOL{.stdcall, dynlib: "user32",
     importc: "DdeImpersonateClient".}
 proc DdeKeepStringHandle*(para1: DWORD, para2: HSZ): WINBOOL{.stdcall,
     dynlib: "user32", importc: "DdeKeepStringHandle".}
-proc DdeNameService*(para1: DWORD, para2: HSZ, para3: HSZ, para4: UINT): HDDEDATA{.
+proc DdeNameService*(para1: DWORD, para2: HSZ, para3: HSZ, para4: WINUINT): HDDEDATA{.
     stdcall, dynlib: "user32", importc: "DdeNameService".}
 proc DdePostAdvise*(para1: DWORD, para2: HSZ, para3: HSZ): WINBOOL{.stdcall,
     dynlib: "user32", importc: "DdePostAdvise".}
-proc DdeQueryConvInfo*(para1: HCONV, para2: DWORD, para3: PCONVINFO): UINT{.
+proc DdeQueryConvInfo*(para1: HCONV, para2: DWORD, para3: PCONVINFO): WINUINT{.
     stdcall, dynlib: "user32", importc: "DdeQueryConvInfo".}
 proc DdeQueryNextServer*(para1: HCONVLIST, para2: HCONV): HCONV{.stdcall,
     dynlib: "user32", importc: "DdeQueryNextServer".}
@@ -20630,18 +20630,18 @@ proc DdeUnaccessData*(para1: HDDEDATA): WINBOOL{.stdcall, dynlib: "user32",
     importc: "DdeUnaccessData".}
 proc DdeUninitialize*(para1: DWORD): WINBOOL{.stdcall, dynlib: "user32",
     importc: "DdeUninitialize".}
-proc SHAddToRecentDocs*(para1: UINT, para2: LPCVOID){.stdcall,
+proc SHAddToRecentDocs*(para1: WINUINT, para2: LPCVOID){.stdcall,
     dynlib: "shell32", importc: "SHAddToRecentDocs".}
 proc SHBrowseForFolder*(para1: LPBROWSEINFO): LPITEMIDLIST{.stdcall,
     dynlib: "shell32", importc: "SHBrowseForFolder".}
-proc SHChangeNotify*(para1: LONG, para2: UINT, para3: LPCVOID, para4: LPCVOID){.
+proc SHChangeNotify*(para1: LONG, para2: WINUINT, para3: LPCVOID, para4: LPCVOID){.
     stdcall, dynlib: "shell32", importc: "SHChangeNotify".}
 proc SHFileOperation*(para1: LPSHFILEOPSTRUCT): int32{.stdcall,
     dynlib: "shell32", importc: "SHFileOperation".}
 proc SHFreeNameMappings*(para1: HANDLE){.stdcall, dynlib: "shell32",
     importc: "SHFreeNameMappings".}
 proc SHGetFileInfo*(para1: LPCTSTR, para2: DWORD, para3: var SHFILEINFO,
-                    para4: UINT, para5: UINT): DWORD{.stdcall,
+                    para4: WINUINT, para5: WINUINT): DWORD{.stdcall,
     dynlib: "shell32", importc: "SHGetFileInfo".}
 proc SHGetPathFromIDList*(para1: LPCITEMIDLIST, para2: LPTSTR): WINBOOL{.
     stdcall, dynlib: "shell32", importc: "SHGetPathFromIDList".}
@@ -20657,7 +20657,7 @@ proc wglCreateContext*(para1: HDC): HGLRC{.stdcall, dynlib: "opengl32",
     importc: "wglCreateContext".}
 proc wglCreateLayerContext*(para1: HDC, para2: int32): HGLRC{.stdcall,
     dynlib: "opengl32", importc: "wglCreateLayerContext".}
-proc wglCopyContext*(para1: HGLRC, para2: HGLRC, para3: UINT): WINBOOL{.stdcall,
+proc wglCopyContext*(para1: HGLRC, para2: HGLRC, para3: WINUINT): WINBOOL{.stdcall,
     dynlib: "opengl32", importc: "wglCopyContext".}
 proc wglDeleteContext*(para1: HGLRC): WINBOOL{.stdcall, dynlib: "opengl32",
     importc: "wglDeleteContext".}
@@ -20681,7 +20681,7 @@ proc wglUseFontOutlinesA*(para1: HDC, para2: DWORD, para3: DWORD, para4: DWORD,
                           para5: float32, para6: float32, para7: int32,
                           para8: LPGLYPHMETRICSFLOAT): WINBOOL{.stdcall,
     dynlib: "opengl32", importc: "wglUseFontOutlinesA".}
-proc wglDescribeLayerPlane*(para1: HDC, para2: int32, para3: int32, para4: UINT,
+proc wglDescribeLayerPlane*(para1: HDC, para2: int32, para3: int32, para4: WINUINT,
                             para5: LPLAYERPLANEDESCRIPTOR): WINBOOL{.stdcall,
     dynlib: "opengl32", importc: "wglDescribeLayerPlane".}
 proc wglGetLayerPaletteEntries*(para1: HDC, para2: int32, para3: int32,
@@ -20694,7 +20694,7 @@ proc wglRealizeLayerPalette*(para1: HDC, para2: int32, para3: WINBOOL): WINBOOL{
 proc wglSetLayerPaletteEntries*(para1: HDC, para2: int32, para3: int32,
                                 para4: int32, para5: var COLORREF): int32{.
     stdcall, dynlib: "opengl32", importc: "wglSetLayerPaletteEntries".}
-proc wglSwapLayerBuffers*(para1: HDC, para2: UINT): WINBOOL{.stdcall,
+proc wglSwapLayerBuffers*(para1: HDC, para2: WINUINT): WINBOOL{.stdcall,
     dynlib: "opengl32", importc: "wglSwapLayerBuffers".}
 proc wglUseFontOutlinesW*(para1: HDC, para2: DWORD, para3: DWORD, para4: DWORD,
                           para5: float32, para6: float32, para7: int32,
@@ -20703,7 +20703,7 @@ proc wglUseFontOutlinesW*(para1: HDC, para2: DWORD, para3: DWORD, para4: DWORD,
   # translated macros
 proc Animate_Create*(hWndP: HWND, id: HMENU, dwStyle: DWORD, hInstance: HINST): HWND
 proc Animate_Open*(wnd: HWND, szName: LPTSTR): LRESULT
-proc Animate_Play*(wnd: HWND, `from`, `to`: int32, rep: UINT): LRESULT
+proc Animate_Play*(wnd: HWND, `from`, `to`: int32, rep: WINUINT): LRESULT
 
 proc Animate_Stop*(wnd: HWND): LRESULT
 proc Animate_Close*(wnd: HWND): LRESULT
@@ -20734,7 +20734,7 @@ proc Header_GetItemCount*(hwndHD: HWND): int32
 proc Header_InsertItem*(hwndHD: HWND, index: int32, hdi: var HD_ITEM): int32
 proc Header_Layout*(hwndHD: HWND, layout: var HD_LAYOUT): WINBOOL
 proc Header_SetItem*(hwndHD: HWND, index: int32, hdi: var HD_ITEM): WINBOOL
-proc ListView_Arrange*(hwndLV: HWND, code: UINT): LRESULT
+proc ListView_Arrange*(hwndLV: HWND, code: WINUINT): LRESULT
 proc ListView_CreateDragImage*(wnd: HWND, i: int32, lpptUpLeft: LPPOINT): LRESULT
 proc ListView_DeleteAllItems*(wnd: HWND): LRESULT
 proc ListView_DeleteColumn*(wnd: HWND, iCol: int32): LRESULT
@@ -20769,7 +20769,7 @@ proc ListView_InsertItem*(wnd: HWND, item: var LV_ITEM): LRESULT
 proc ListView_RedrawItems*(hwndLV: HWND, iFirst, iLast: int32): LRESULT
 proc ListView_Scroll*(hwndLV: HWND, dx, dy: int32): LRESULT
 proc ListView_SetBkColor*(wnd: HWND, clrBk: COLORREF): LRESULT
-proc ListView_SetCallbackMask*(wnd: HWND, mask: UINT): LRESULT
+proc ListView_SetCallbackMask*(wnd: HWND, mask: WINUINT): LRESULT
 proc ListView_SetColumn*(wnd: HWND, iCol: int32, col: var LV_COLUMN): LRESULT
 proc ListView_SetColumnWidth*(wnd: HWND, iCol, cx: int32): LRESULT
 proc ListView_SetImageList*(wnd: HWND, himl: int32, iImageList: HIMAGELIST): LRESULT
@@ -20842,7 +20842,7 @@ proc TabCtrl_GetToolTips*(wnd: HWND): LRESULT
 proc TabCtrl_SetToolTips*(wnd: HWND, hwndTT: int32): LRESULT
 proc TabCtrl_GetCurFocus*(wnd: HWND): LRESULT
 proc TabCtrl_SetCurFocus*(wnd: HWND, i: int32): LRESULT
-proc SNDMSG*(wnd: HWND, Msg: UINT, wp: WPARAM, lp: LPARAM): LRESULT
+proc SNDMSG*(wnd: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM): LRESULT
 proc CommDlg_OpenSave_GetSpecA*(hdlg: HWND, psz: LPSTR, cbmax: int32): LRESULT
 proc CommDlg_OpenSave_GetSpecW*(hdlg: HWND, psz: LPWSTR, cbmax: int32): LRESULT
 when defined(winUnicode):
@@ -20865,7 +20865,7 @@ proc CommDlg_OpenSave_GetFolderIDList*(hdlg: HWND, pidl: LPVOID, cbmax: int32): 
 proc CommDlg_OpenSave_SetControlText*(hdlg: HWND, id: int32, text: LPSTR): LRESULT
 proc CommDlg_OpenSave_HideControl*(hdlg: HWND, id: int32): LRESULT
 proc CommDlg_OpenSave_SetDefExt*(hdlg: HWND, pszext: LPSTR): LRESULT
-proc GetNextWindow*(wnd: HWND, uCmd: UINT): HWND{.stdcall, dynlib: "user32",
+proc GetNextWindow*(wnd: HWND, uCmd: WINUINT): HWND{.stdcall, dynlib: "user32",
     importc: "GetWindow".}
 proc GlobalAllocPtr*(flags, cb: DWord): Pointer
 proc GlobalFreePtr*(lp: Pointer): Pointer
@@ -21183,9 +21183,9 @@ proc CreateDialogIndirectParam*(hInstance: HINST, lpTemplate: TDlgTemplate,
     dynlib: "user32", importc: "CreateDialogIndirectParamA".}
   #function CreateDialogIndirectParamA(hInstance: HINST; const lpTemplate: TDlgTemplate; hWndParent: HWND; lpDialogFunc: TFNDlgProc; dwInitParam: LPARAM): HWND; stdcall; external 'user32' name 'CreateDialogIndirectParamA';
   #function CreateDialogIndirectParamW(hInstance: HINST; const lpTemplate: TDlgTemplate; hWndParent: HWND; lpDialogFunc: TFNDlgProc; dwInitParam: LPARAM): HWND; stdcall; external 'user32' name 'CreateDialogIndirectParamW';
-  #function CreateDIBitmap(DC: HDC; var InfoHeader: TBitmapInfoHeader; dwUsage: DWORD; InitBits: PChar; var InitInfo: TBitmapInfo; wUsage: UINT): HBITMAP; stdcall; external 'gdi32' name 'CreateDIBitmap';
-  #function CreateDIBPatternBrushPt(const p1: Pointer; p2: UINT): HBRUSH; stdcall; external 'gdi32' name 'CreateDIBPatternBrushPt';
-  #function CreateDIBSection(DC: HDC; const p2: TBitmapInfo; p3: UINT; var p4: Pointer; p5: THandle; p6: DWORD): HBITMAP; stdcall; external 'gdi32' name 'CreateDIBSection';
+  #function CreateDIBitmap(DC: HDC; var InfoHeader: TBitmapInfoHeader; dwUsage: DWORD; InitBits: PChar; var InitInfo: TBitmapInfo; wUsage: WINUINT): HBITMAP; stdcall; external 'gdi32' name 'CreateDIBitmap';
+  #function CreateDIBPatternBrushPt(const p1: Pointer; p2: WINUINT): HBRUSH; stdcall; external 'gdi32' name 'CreateDIBPatternBrushPt';
+  #function CreateDIBSection(DC: HDC; const p2: TBitmapInfo; p3: WINUINT; var p4: Pointer; p5: THandle; p6: DWORD): HBITMAP; stdcall; external 'gdi32' name 'CreateDIBSection';
   #function CreateEllipticRgnIndirect(const p1: TRect): HRGN; stdcall; external 'gdi32' name 'CreateEllipticRgnIndirect';
   #function CreateFontIndirect(const p1: TLogFont): HFONT;stdcall; external 'gdi32' name 'CreateFontIndirectA';
   #function CreateFontIndirectA(const p1: TLogFontA): HFONT; stdcall; external 'gdi32' name 'CreateFontIndirectA';
@@ -21251,7 +21251,7 @@ proc DdeSetQualityOfService*(hWndClient: HWnd,
                              pqosPrev: PSecurityQualityOfService): WINBOOL{.
     stdcall, dynlib: "user32", importc: "DdeSetQualityOfService".}
   #function DeleteAce(var pAcl: TACL; dwAceIndex: DWORD): WINBOOL; stdcall; external 'advapi32' name 'DeleteAce';
-proc DescribePixelFormat*(DC: HDC, p2: int, p3: UINT,
+proc DescribePixelFormat*(DC: HDC, p2: int, p3: WINUINT,
                           p4: var TPixelFormatDescriptor): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "DescribePixelFormat".}
   #function DestroyPrivateObjectSecurity(var ObjectDescriptor: PSecurityDescriptor): WINBOOL; stdcall; external 'advapi32' name 'DestroyPrivateObjectSecurity';
@@ -21283,29 +21283,29 @@ proc DosDateTimeToFileTime*(wFatDate, wFatTime: int16, lpFileTime: var TFileTime
 proc DPtoLP*(DC: HDC, Points: pointer, Count: int): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "DPtoLP".}
   # function DrawAnimatedRects(wnd: HWND; idAni: Integer; const lprcFrom, lprcTo: TRect): WINBOOL; stdcall; external 'user32' name 'DrawAnimatedRects';
-  #function DrawCaption(p1: HWND; p2: HDC; const p3: TRect; p4: UINT): WINBOOL; stdcall; external 'user32' name 'DrawCaption';
-proc DrawEdge*(hdc: HDC, qrc: var TRect, edge: UINT, grfFlags: UINT): WINBOOL{.
+  #function DrawCaption(p1: HWND; p2: HDC; const p3: TRect; p4: WINUINT): WINBOOL; stdcall; external 'user32' name 'DrawCaption';
+proc DrawEdge*(hdc: HDC, qrc: var TRect, edge: WINUINT, grfFlags: WINUINT): WINBOOL{.
     stdcall, dynlib: "user32", importc: "DrawEdge".}
   #function DrawFocusRect(hDC: HDC; const lprc: TRect): WINBOOL; stdcall; external 'user32' name 'DrawFocusRect';
-proc DrawFrameControl*(DC: HDC, Rect: TRect, uType, uState: UINT): WINBOOL{.
+proc DrawFrameControl*(DC: HDC, Rect: TRect, uType, uState: WINUINT): WINBOOL{.
     stdcall, dynlib: "user32", importc: "DrawFrameControl".}
 proc DrawText*(hDC: HDC, lpString: cstring, nCount: int, lpRect: var TRect,
-               uFormat: UINT): int{.stdcall, dynlib: "user32",
+               uFormat: WINUINT): int{.stdcall, dynlib: "user32",
                                     importc: "DrawTextA".}
 proc DrawTextA*(hDC: HDC, lpString: LPCSTR, nCount: int, lpRect: var TRect,
-                uFormat: UINT): int{.stdcall, dynlib: "user32",
+                uFormat: WINUINT): int{.stdcall, dynlib: "user32",
                                      importc: "DrawTextA".}
 proc DrawTextEx*(DC: HDC, lpchText: cstring, cchText: int, p4: var TRect,
-                 dwDTFormat: UINT, DTParams: PDrawTextParams): int{.stdcall,
+                 dwDTFormat: WINUINT, DTParams: PDrawTextParams): int{.stdcall,
     dynlib: "user32", importc: "DrawTextExA".}
 proc DrawTextExA*(DC: HDC, lpchText: LPCSTR, cchText: int, p4: var TRect,
-                  dwDTFormat: UINT, DTParams: PDrawTextParams): int{.stdcall,
+                  dwDTFormat: WINUINT, DTParams: PDrawTextParams): int{.stdcall,
     dynlib: "user32", importc: "DrawTextExA".}
 proc DrawTextExW*(DC: HDC, lpchText: LPWSTR, cchText: int, p4: var TRect,
-                  dwDTFormat: UINT, DTParams: PDrawTextParams): int{.stdcall,
+                  dwDTFormat: WINUINT, DTParams: PDrawTextParams): int{.stdcall,
     dynlib: "user32", importc: "DrawTextExW".}
 proc DrawTextW*(hDC: HDC, lpString: LPWSTR, nCount: int, lpRect: var TRect,
-                uFormat: UINT): int{.stdcall, dynlib: "user32",
+                uFormat: WINUINT): int{.stdcall, dynlib: "user32",
                                      importc: "DrawTextW".}
   #function DuplicateTokenEx(hExistingToken: THandle; dwDesiredAccess: DWORD; lpTokenAttributes: PSecurityAttributes; ImpersonationLevel: TSecurityImpersonationLevel; TokenType: TTokenType; var phNewToken: THandle): WINBOOL;
   #  stdcall; external 'advapi32' name 'DuplicateTokenEx';
@@ -21377,9 +21377,9 @@ proc FindNextFileW*(hFindFile: THandle, lpFindFileData: var TWIN32FindDataW): WI
   #function FrameRect(hDC: HDC; const lprc: TRect; hbr: HBRUSH): Integer; stdcall; external 'user32' name 'FrameRect';
   #function GetAce(const pAcl: TACL; dwAceIndex: DWORD; var pAce: Pointer): WINBOOL; stdcall; external 'advapi32' name 'GetAce';
   #function GetAclInformation(const pAcl: TACL; pAclInformation: Pointer; nAclInformationLength: DWORD; dwAclInformationClass: TAclInformationClass): WINBOOL; stdcall; external 'advapi32' name 'GetAclInformation';
-  #function GetAltTabInfo(wnd: HWND; iItem: Integer; var pati: TAltTabInfo; pszItemText: PChar; cchItemText: UINT): WINBOOL;stdcall; external 'user32' name 'GetAltTabInfoA';
-  #function GetAltTabInfoA(wnd: HWND; iItem: Integer; var pati: TAltTabInfo; pszItemText: LPCSTR; cchItemText: UINT): WINBOOL;stdcall; external 'user32' name 'GetAltTabInfoA';
-  #function GetAltTabInfoW(wnd: HWND; iItem: Integer; var pati: TAltTabInfo; pszItemText: LPWSTR; cchItemText: UINT): WINBOOL;stdcall; external 'user32' name 'GetAltTabInfoW';
+  #function GetAltTabInfo(wnd: HWND; iItem: Integer; var pati: TAltTabInfo; pszItemText: PChar; cchItemText: WINUINT): WINBOOL;stdcall; external 'user32' name 'GetAltTabInfoA';
+  #function GetAltTabInfoA(wnd: HWND; iItem: Integer; var pati: TAltTabInfo; pszItemText: LPCSTR; cchItemText: WINUINT): WINBOOL;stdcall; external 'user32' name 'GetAltTabInfoA';
+  #function GetAltTabInfoW(wnd: HWND; iItem: Integer; var pati: TAltTabInfo; pszItemText: LPWSTR; cchItemText: WINUINT): WINBOOL;stdcall; external 'user32' name 'GetAltTabInfoW';
 proc GetAspectRatioFilterEx*(DC: HDC, p2: var TSize): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetAspectRatioFilterEx".}
 proc GetBinaryType*(lpApplicationName: cstring, lpBinaryType: var DWORD): WINBOOL{.
@@ -21390,24 +21390,24 @@ proc GetBinaryTypeW*(lpApplicationName: LPWSTR, lpBinaryType: var DWORD): WINBOO
     stdcall, dynlib: "kernel32", importc: "GetBinaryTypeW".}
 proc GetBitmapDimensionEx*(p1: HBITMAP, p2: var TSize): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetBitmapDimensionEx".}
-proc GetBoundsRect*(DC: HDC, p2: var TRect, p3: UINT): UINT{.stdcall,
+proc GetBoundsRect*(DC: HDC, p2: var TRect, p3: WINUINT): WINUINT{.stdcall,
     dynlib: "gdi32", importc: "GetBoundsRect".}
 proc GetBrushOrgEx*(DC: HDC, p2: var TPoint): WINBOOL{.stdcall, dynlib: "gdi32",
     importc: "GetBrushOrgEx".}
 proc GetCaretPos*(lpPoint: var TPoint): WINBOOL{.stdcall, dynlib: "user32",
     importc: "GetCaretPos".}
-proc GetCharABCWidths*(DC: HDC, p2, p3: UINT, ABCStructs: pointer): WINBOOL{.
+proc GetCharABCWidths*(DC: HDC, p2, p3: WINUINT, ABCStructs: pointer): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "GetCharABCWidthsA".}
-proc GetCharABCWidthsA*(DC: HDC, p2, p3: UINT, ABCStructs: pointer): WINBOOL{.
+proc GetCharABCWidthsA*(DC: HDC, p2, p3: WINUINT, ABCStructs: pointer): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "GetCharABCWidthsA".}
-proc GetCharABCWidthsFloat*(DC: HDC, p2, p3: UINT, ABCFloatSturcts: pointer): WINBOOL{.
+proc GetCharABCWidthsFloat*(DC: HDC, p2, p3: WINUINT, ABCFloatSturcts: pointer): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "GetCharABCWidthsFloatA".}
-proc GetCharABCWidthsFloatA*(DC: HDC, p2, p3: UINT, ABCFloatSturcts: pointer): WINBOOL{.
+proc GetCharABCWidthsFloatA*(DC: HDC, p2, p3: WINUINT, ABCFloatSturcts: pointer): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "GetCharABCWidthsFloatA".}
-proc GetCharABCWidthsFloatW*(DC: HDC, p2, p3: UINT, ABCFloatSturcts: pointer): WINBOOL{.
+proc GetCharABCWidthsFloatW*(DC: HDC, p2, p3: WINUINT, ABCFloatSturcts: pointer): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "GetCharABCWidthsFloatW".}
-  #function GetCharABCWidthsI(DC: HDC; p2, p3: UINT; p4: PWORD; const Widths): WINBOOL;stdcall; external 'gdi32' name 'GetCharABCWidthsI';
-proc GetCharABCWidthsW*(DC: HDC, p2, p3: UINT, ABCStructs: pointer): WINBOOL{.
+  #function GetCharABCWidthsI(DC: HDC; p2, p3: WINUINT; p4: PWORD; const Widths): WINBOOL;stdcall; external 'gdi32' name 'GetCharABCWidthsI';
+proc GetCharABCWidthsW*(DC: HDC, p2, p3: WINUINT, ABCStructs: pointer): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "GetCharABCWidthsW".}
 proc GetCharacterPlacement*(DC: HDC, p2: cstring, p3, p4: WINBOOL,
                             p5: var TGCPResults, p6: DWORD): DWORD{.stdcall,
@@ -21418,24 +21418,24 @@ proc GetCharacterPlacementA*(DC: HDC, p2: LPCSTR, p3, p4: WINBOOL,
 proc GetCharacterPlacementW*(DC: HDC, p2: LPWSTR, p3, p4: WINBOOL,
                              p5: var TGCPResults, p6: DWORD): DWORD{.stdcall,
     dynlib: "gdi32", importc: "GetCharacterPlacementW".}
-proc GetCharWidth*(DC: HDC, p2, p3: UINT, Widths: pointer): WINBOOL{.stdcall,
+proc GetCharWidth*(DC: HDC, p2, p3: WINUINT, Widths: pointer): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetCharWidthA".}
-proc GetCharWidth32*(DC: HDC, p2, p3: UINT, Widths: pointer): WINBOOL{.stdcall,
+proc GetCharWidth32*(DC: HDC, p2, p3: WINUINT, Widths: pointer): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetCharWidth32A".}
-proc GetCharWidth32A*(DC: HDC, p2, p3: UINT, Widths: pointer): WINBOOL{.stdcall,
+proc GetCharWidth32A*(DC: HDC, p2, p3: WINUINT, Widths: pointer): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetCharWidth32A".}
-proc GetCharWidth32W*(DC: HDC, p2, p3: UINT, Widths: pointer): WINBOOL{.stdcall,
+proc GetCharWidth32W*(DC: HDC, p2, p3: WINUINT, Widths: pointer): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetCharWidth32W".}
-proc GetCharWidthA*(DC: HDC, p2, p3: UINT, Widths: pointer): WINBOOL{.stdcall,
+proc GetCharWidthA*(DC: HDC, p2, p3: WINUINT, Widths: pointer): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetCharWidthA".}
-proc GetCharWidthFloat*(DC: HDC, p2, p3: UINT, Widths: pointer): WINBOOL{.
+proc GetCharWidthFloat*(DC: HDC, p2, p3: WINUINT, Widths: pointer): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "GetCharWidthFloatA".}
-proc GetCharWidthFloatA*(DC: HDC, p2, p3: UINT, Widths: pointer): WINBOOL{.
+proc GetCharWidthFloatA*(DC: HDC, p2, p3: WINUINT, Widths: pointer): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "GetCharWidthFloatA".}
-proc GetCharWidthFloatW*(DC: HDC, p2, p3: UINT, Widths: pointer): WINBOOL{.
+proc GetCharWidthFloatW*(DC: HDC, p2, p3: WINUINT, Widths: pointer): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "GetCharWidthFloatW".}
-  #function GetCharWidthI(DC: HDC; p2, p3: UINT; p4: PWORD; const Widths:pointer): WINBOOL;stdcall; external 'gdi32' name 'GetCharWidthI';
-proc GetCharWidthW*(DC: HDC, p2, p3: UINT, Widths: pointer): WINBOOL{.stdcall,
+  #function GetCharWidthI(DC: HDC; p2, p3: WINUINT; p4: PWORD; const Widths:pointer): WINBOOL;stdcall; external 'gdi32' name 'GetCharWidthI';
+proc GetCharWidthW*(DC: HDC, p2, p3: WINUINT, Widths: pointer): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetCharWidthW".}
 proc GetClassInfo*(hInstance: HINST, lpClassName: cstring,
                    lpWndClass: var TWndClass): WINBOOL{.stdcall,
@@ -21484,7 +21484,7 @@ proc GetConsoleMode*(hConsoleHandle: THandle, lpMode: var DWORD): WINBOOL{.
 proc GetConsoleScreenBufferInfo*(hConsoleOutput: THandle,
     lpConsoleScreenBufferInfo: var TConsoleScreenBufferInfo): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetConsoleScreenBufferInfo".}
-proc GetCPInfo*(CodePage: UINT, lpCPInfo: var TCPInfo): WINBOOL{.stdcall,
+proc GetCPInfo*(CodePage: WINUINT, lpCPInfo: var TCPInfo): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetCPInfo".}
   #function GetCurrentHwProfile(var lpHwProfileInfo: THWProfileInfo): WINBOOL;stdcall; external 'advapi32' name 'GetCurrentHwProfileA';
   #function GetCurrentHwProfileA(var lpHwProfileInfo: THWProfileInfoA): WINBOOL;stdcall; external 'advapi32' name 'GetCurrentHwProfileA';
@@ -21504,10 +21504,10 @@ proc GetDefaultCommConfigA*(lpszName: LPCSTR, lpCC: var TCommConfig,
 proc GetDefaultCommConfigW*(lpszName: LPWSTR, lpCC: var TCommConfig,
                             lpdwSize: var DWORD): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetDefaultCommConfigW".}
-proc GetDIBColorTable*(DC: HDC, p2, p3: UINT, RGBQuadStructs: pointer): UINT{.
+proc GetDIBColorTable*(DC: HDC, p2, p3: WINUINT, RGBQuadStructs: pointer): WINUINT{.
     stdcall, dynlib: "gdi32", importc: "GetDIBColorTable".}
-proc GetDIBits*(DC: HDC, Bitmap: HBitmap, StartScan, NumScans: UINT,
-                Bits: Pointer, BitInfo: var TBitmapInfo, Usage: UINT): int{.
+proc GetDIBits*(DC: HDC, Bitmap: HBitmap, StartScan, NumScans: WINUINT,
+                Bits: Pointer, BitInfo: var TBitmapInfo, Usage: WINUINT): int{.
     stdcall, dynlib: "gdi32", importc: "GetDIBits".}
 proc GetDiskFreeSpace*(lpRootPathName: cstring, lpSectorsPerCluster,
     lpBytesPerSector, lpNumberOfFreeClusters, lpTotalNumberOfClusters: var DWORD): WINBOOL{.
@@ -21539,7 +21539,7 @@ proc GetDiskFreeSpaceExA*(lpDirectoryName: LPCSTR, lpFreeBytesAvailableToCaller,
 proc GetDiskFreeSpaceExW*(lpDirectoryName: LPWSTR, lpFreeBytesAvailableToCaller,
     lpTotalNumberOfBytes: pLargeInteger, lpTotalNumberOfFreeBytes: PLargeInteger): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetDiskFreeSpaceExW".}
-  #function GetEnhMetaFilePixelFormat(p1: HENHMETAFILE; p2: Cardinal; var p3: TPixelFormatDescriptor): UINT;stdcall; external 'gdi32' name 'GetEnhMetaFilePixelFormat';
+  #function GetEnhMetaFilePixelFormat(p1: HENHMETAFILE; p2: Cardinal; var p3: TPixelFormatDescriptor): WINUINT;stdcall; external 'gdi32' name 'GetEnhMetaFilePixelFormat';
 proc GetExitCodeProcess*(hProcess: THandle, lpExitCode: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetExitCodeProcess".}
 proc GetExitCodeThread*(hThread: THandle, lpExitCode: var DWORD): WINBOOL{.
@@ -21559,13 +21559,13 @@ proc GetFileVersionInfoSizeW*(lptstrFilename: LPWSTR, lpdwHandle: var DWORD): DW
   # function GetFullPathName(lpFileName: PChar; nBufferLength: DWORD; lpBuffer: PChar; var lpFilePart: PChar): DWORD;stdcall; external 'kernel32' name 'GetFullPathNameA';
   # function GetFullPathNameA(lpFileName: LPCSTR; nBufferLength: DWORD; lpBuffer: LPCSTR; var lpFilePart: LPCSTR): DWORD; stdcall; external 'kernel32' name 'GetFullPathNameA';
   # function GetFullPathNameW(lpFileName: LPWSTR; nBufferLength: DWORD; lpBuffer: LPWSTR; var lpFilePart: LPWSTR): DWORD; stdcall; external 'kernel32' name 'GetFullPathNameW';
-proc GetGlyphOutline*(DC: HDC, p2, p3: UINT, p4: TGlyphMetrics, p5: DWORD,
+proc GetGlyphOutline*(DC: HDC, p2, p3: WINUINT, p4: TGlyphMetrics, p5: DWORD,
                       p6: Pointer, p7: TMat2): DWORD{.stdcall, dynlib: "gdi32",
     importc: "GetGlyphOutlineA".}
-proc GetGlyphOutlineA*(DC: HDC, p2, p3: UINT, p4: TGlyphMetrics, p5: DWORD,
+proc GetGlyphOutlineA*(DC: HDC, p2, p3: WINUINT, p4: TGlyphMetrics, p5: DWORD,
                        p6: Pointer, p7: TMat2): DWORD{.stdcall, dynlib: "gdi32",
     importc: "GetGlyphOutlineA".}
-proc GetGlyphOutlineW*(DC: HDC, p2, p3: UINT, p4: TGlyphMetrics, p5: DWORD,
+proc GetGlyphOutlineW*(DC: HDC, p2, p3: WINUINT, p4: TGlyphMetrics, p5: DWORD,
                        p6: Pointer, p7: TMat2): DWORD{.stdcall, dynlib: "gdi32",
     importc: "GetGlyphOutlineW".}
   #function GetGUIThreadInfo(idThread: DWORD; var pgui: TGUIThreadinfo): WINBOOL;stdcall; external 'user32' name 'GetGUIThreadInfo';
@@ -21579,7 +21579,7 @@ proc GetIconInfo*(icon: HICON, piconinfo: var TIconInfo): WINBOOL{.stdcall,
   #function GetKernelObjectSecurity(Handle: THandle; RequestedInformation: SECURITY_INFORMATION; pSecurityDescriptor: PSecurityDescriptor; nLength: DWORD; var lpnLengthNeeded: DWORD): WINBOOL; stdcall; external 'advapi32' name 'GetKernelObjectSecurity';
 proc GetKerningPairs*(DC: HDC, Count: DWORD, KerningPairs: pointer): DWORD{.
     stdcall, dynlib: "gdi32", importc: "GetKerningPairs".}
-proc GetKeyboardLayoutList*(nBuff: int, List: pointer): UINT{.stdcall,
+proc GetKeyboardLayoutList*(nBuff: int, List: pointer): WINUINT{.stdcall,
     dynlib: "user32", importc: "GetKeyboardLayoutList".}
   #function GetKeyboardState(var KeyState: TKeyboardState): WINBOOL; stdcall; external 'user32' name 'GetKeyboardState';
   #function GetLastInputInfo(var plii: TLastInputInfo): WINBOOL;stdcall; external 'user32' name 'GetLastInputInfo';
@@ -21606,24 +21606,24 @@ proc GetMailslotInfo*(hMailslot: THandle, lpMaxMessageSize: Pointer,
     dynlib: "kernel32", importc: "GetMailslotInfo".}
   #function GetMenuBarInfo(hend: HWND; idObject, idItem: Longint; var pmbi: TMenuBarInfo): WINBOOL;stdcall; external 'user32' name 'GetMenuBarInfo';
   #function GetMenuInfo(menu: HMENU; var lpmi: TMenuInfo): WINBOOL;stdcall; external 'user32' name 'GetMenuInfo';
-proc GetMenuItemInfo*(p1: HMENU, p2: UINT, p3: WINBOOL, p4: var TMenuItemInfo): WINBOOL{.
+proc GetMenuItemInfo*(p1: HMENU, p2: WINUINT, p3: WINBOOL, p4: var TMenuItemInfo): WINBOOL{.
     stdcall, dynlib: "user32", importc: "GetMenuItemInfoA".}
-proc GetMenuItemInfoA*(p1: HMENU, p2: UINT, p3: WINBOOL, p4: var TMenuItemInfoA): WINBOOL{.
+proc GetMenuItemInfoA*(p1: HMENU, p2: WINUINT, p3: WINBOOL, p4: var TMenuItemInfoA): WINBOOL{.
     stdcall, dynlib: "user32", importc: "GetMenuItemInfoA".}
-  #function GetMenuItemInfoW(p1: HMENU; p2: UINT; p3: WINBOOL; var p4: TMenuItemInfoW): WINBOOL; stdcall; external 'user32' name 'GetMenuItemInfoW';
-proc GetMenuItemRect*(wnd: HWND, menu: HMENU, uItem: UINT, lprcItem: var TRect): WINBOOL{.
+  #function GetMenuItemInfoW(p1: HMENU; p2: WINUINT; p3: WINBOOL; var p4: TMenuItemInfoW): WINBOOL; stdcall; external 'user32' name 'GetMenuItemInfoW';
+proc GetMenuItemRect*(wnd: HWND, menu: HMENU, uItem: WINUINT, lprcItem: var TRect): WINBOOL{.
     stdcall, dynlib: "user32", importc: "GetMenuItemRect".}
-proc GetMessage*(lpMsg: var TMsg, wnd: HWND, wMsgFilterMin, wMsgFilterMax: UINT): WINBOOL{.
+proc GetMessage*(lpMsg: var TMsg, wnd: HWND, wMsgFilterMin, wMsgFilterMax: WINUINT): WINBOOL{.
     stdcall, dynlib: "user32", importc: "GetMessageA".}
 proc GetMessageA*(lpMsg: var TMsg, wnd: HWND,
-                  wMsgFilterMin, wMsgFilterMax: UINT): WINBOOL{.stdcall,
+                  wMsgFilterMin, wMsgFilterMax: WINUINT): WINBOOL{.stdcall,
     dynlib: "user32", importc: "GetMessageA".}
 proc GetMessageW*(lpMsg: var TMsg, wnd: HWND,
-                  wMsgFilterMin, wMsgFilterMax: UINT): WINBOOL{.stdcall,
+                  wMsgFilterMin, wMsgFilterMax: WINUINT): WINBOOL{.stdcall,
     dynlib: "user32", importc: "GetMessageW".}
 proc GetMiterLimit*(DC: HDC, Limit: var float32): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetMiterLimit".}
-  #function GetMouseMovePoints(cbSize: UINT; var lppt, lpptBuf: TMouseMovePoint; nBufPoints: Integer; resolution: DWORD): Integer;stdcall; external 'user32' name 'GetMouseMovePoints';
+  #function GetMouseMovePoints(cbSize: WINUINT; var lppt, lpptBuf: TMouseMovePoint; nBufPoints: Integer; resolution: DWORD): Integer;stdcall; external 'user32' name 'GetMouseMovePoints';
 proc GetNamedPipeInfo*(hNamedPipe: THandle, lpFlags: var DWORD,
                        lpOutBufferSize, lpInBufferSize, lpMaxInstances: Pointer): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetNamedPipeInfo".}
@@ -21637,8 +21637,8 @@ proc GetNumberOfConsoleMouseButtons*(lpNumberOfMouseButtons: var DWORD): WINBOOL
 proc GetOverlappedResult*(hFile: THandle, lpOverlapped: TOverlapped,
                           lpNumberOfBytesTransferred: var DWORD, bWait: WINBOOL): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetOverlappedResult".}
-proc GetPaletteEntries*(Palette: HPALETTE, StartIndex, NumEntries: UINT,
-                        PaletteEntries: pointer): UINT{.stdcall,
+proc GetPaletteEntries*(Palette: HPALETTE, StartIndex, NumEntries: WINUINT,
+                        PaletteEntries: pointer): WINUINT{.stdcall,
     dynlib: "gdi32", importc: "GetPaletteEntries".}
 proc GetPath*(DC: HDC, Points, Types: pointer, nSize: int): int{.stdcall,
     dynlib: "gdi32", importc: "GetPath".}
@@ -21656,13 +21656,13 @@ proc GetPrivateProfileSectionNames*(lpszReturnBuffer: LPTSTR, nSize: DWORD,
                                     lpFileName: LPCTSTR): DWORD{.stdcall,
     dynlib: "kernel32", importc: "GetPrivateProfileSectionNamesA".}
 proc GetPrivateProfileStructA*(lpszSection, lpszKey: LPCSTR, lpStruct: LPVOID,
-                               uSizeStruct: UINT, szFile: LPCSTR): WINBOOL{.
+                               uSizeStruct: WINUINT, szFile: LPCSTR): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetPrivateProfileStructA".}
 proc GetPrivateProfileStructW*(lpszSection, lpszKey: LPCWSTR, lpStruct: LPVOID,
-                               uSizeStruct: UINT, szFile: LPCWSTR): WINBOOL{.
+                               uSizeStruct: WINUINT, szFile: LPCWSTR): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetPrivateProfileStructW".}
 proc GetPrivateProfileStruct*(lpszSection, lpszKey: LPCTSTR, lpStruct: LPVOID,
-                              uSizeStruct: UINT, szFile: LPCTSTR): WINBOOL{.
+                              uSizeStruct: WINUINT, szFile: LPCTSTR): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetPrivateProfileStructA".}
 proc GetProcessAffinityMask*(hProcess: THandle, lpProcessAffinityMask,
     lpSystemAffinityMask: var DWORD): WINBOOL{.stdcall, dynlib: "kernel32",
@@ -21685,7 +21685,7 @@ proc GetQueuedCompletionStatus*(CompletionPort: THandle,
                                 lpOverlapped: var POverlapped,
                                 dwMilliseconds: DWORD): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetQueuedCompletionStatus".}
-proc GetRasterizerCaps*(p1: var TRasterizerStatus, p2: UINT): WINBOOL{.stdcall,
+proc GetRasterizerCaps*(p1: var TRasterizerStatus, p2: WINUINT): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetRasterizerCaps".}
 proc GetRgnBox*(RGN: HRGN, p2: var TRect): int{.stdcall, dynlib: "gdi32",
     importc: "GetRgnBox".}
@@ -21715,8 +21715,8 @@ proc GetStringTypeExW*(Locale: LCID, dwInfoType: DWORD, lpSrcStr: LPWSTR,
 proc GetStringTypeW*(dwInfoType: DWORD, lpSrcStr: WCHAR, cchSrc: WINBOOL,
                      lpCharType: var int16): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetStringTypeW".}
-proc GetSystemPaletteEntries*(DC: HDC, StartIndex, NumEntries: UINT,
-                              PaletteEntries: pointer): UINT{.stdcall,
+proc GetSystemPaletteEntries*(DC: HDC, StartIndex, NumEntries: WINUINT,
+                              PaletteEntries: pointer): WINUINT{.stdcall,
     dynlib: "gdi32", importc: "GetSystemPaletteEntries".}
 proc GetSystemPowerStatus*(lpSystemPowerStatus: var TSystemPowerStatus): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetSystemPowerStatus".}
@@ -21859,9 +21859,9 @@ proc InitializeAcl*(pAcl: var TACL, nAclLength, dwAclRevision: DWORD): WINBOOL{.
 proc InitializeSid*(Sid: Pointer, pIdentifierAuthority: TSIDIdentifierAuthority,
                     nSubAuthorityCount: int8): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "InitializeSid".}
-proc InsertMenuItemA*(p1: HMENU, p2: UINT, p3: WINBOOL, p4: TMenuItemInfoA): WINBOOL{.
+proc InsertMenuItemA*(p1: HMENU, p2: WINUINT, p3: WINBOOL, p4: TMenuItemInfoA): WINBOOL{.
     stdcall, dynlib: "user32", importc: "InsertMenuItemA".}
-  #function InsertMenuItemW(p1: HMENU; p2: UINT; p3: WINBOOL; const p4: TMenuItemInfoW): WINBOOL; stdcall; external 'user32' name 'InsertMenuItemW';
+  #function InsertMenuItemW(p1: HMENU; p2: WINUINT; p3: WINBOOL; const p4: TMenuItemInfoW): WINBOOL; stdcall; external 'user32' name 'InsertMenuItemW';
 proc IntersectRect*(lprcDst: var TRect, lprcSrc1, lprcSrc2: TRect): WINBOOL{.
     stdcall, dynlib: "user32", importc: "IntersectRect".}
   #function InvertRect(hDC: HDC; const lprc: TRect): WINBOOL; stdcall; external 'user32' name 'InvertRect';
@@ -21967,7 +21967,7 @@ proc MakeSelfRelativeSD*(pAbsoluteSecurityDescriptor: PSecurityDescriptor,
     dynlib: "advapi32", importc: "MakeSelfRelativeSD".}
 proc MapDialogRect*(hDlg: HWND, lpRect: var TRect): WINBOOL{.stdcall,
     dynlib: "user32", importc: "MapDialogRect".}
-proc MapWindowPoints*(hWndFrom, hWndTo: HWND, lpPoints: pointer, cPoints: UINT): int{.
+proc MapWindowPoints*(hWndFrom, hWndTo: HWND, lpPoints: pointer, cPoints: WINUINT): int{.
     stdcall, dynlib: "user32", importc: "MapWindowPoints".}
 proc MessageBoxIndirect*(MsgBoxParams: TMsgBoxParams): WINBOOL{.stdcall,
     dynlib: "user32", importc: "MessageBoxIndirectA".}
@@ -21982,7 +21982,7 @@ proc MsgWaitForMultipleObjects*(nCount: DWORD, pHandles: pointer,
 proc MsgWaitForMultipleObjectsEx*(nCount: DWORD, pHandles: pointer,
                                   dwMilliseconds, dwWakeMask, dwFlags: DWORD): DWORD{.
     stdcall, dynlib: "user32", importc: "MsgWaitForMultipleObjectsEx".}
-  # function MultiByteToWideChar(CodePage: UINT; dwFlags: DWORD; const lpMultiByteStr: LPCSTR; cchMultiByte: Integer; lLPWSTRStr: LPWSTR; cchWideChar: Integer): Integer; stdcall; external 'kernel32' name 'MultiByteToWideChar';
+  # function MultiByteToWideChar(CodePage: WINUINT; dwFlags: DWORD; const lpMultiByteStr: LPCSTR; cchMultiByte: Integer; lLPWSTRStr: LPWSTR; cchWideChar: Integer): Integer; stdcall; external 'kernel32' name 'MultiByteToWideChar';
 proc ObjectOpenAuditAlarm*(SubsystemName: cstring, HandleId: Pointer,
                            ObjectTypeName: cstring, ObjectName: cstring,
                            pSecurityDescriptor: PSecurityDescriptor,
@@ -22031,7 +22031,7 @@ proc OffsetViewportOrgEx*(DC: HDC, X, Y: int, Points: pointer): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "OffsetViewportOrgEx".}
 proc OffsetWindowOrgEx*(DC: HDC, X, Y: int, Points: pointer): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "OffsetWindowOrgEx".}
-proc OpenFile*(lpFileName: LPCSTR, lpReOpenBuff: var TOFStruct, uStyle: UINT): HFILE{.
+proc OpenFile*(lpFileName: LPCSTR, lpReOpenBuff: var TOFStruct, uStyle: WINUINT): HFILE{.
     stdcall, dynlib: "kernel32", importc: "OpenFile".}
 proc OpenProcessToken*(ProcessHandle: THandle, DesiredAccess: DWORD,
                        TokenHandle: var THandle): WINBOOL{.stdcall,
@@ -22049,19 +22049,19 @@ proc PeekConsoleInputW*(hConsoleInput: THandle, lpBuffer: var TInputRecord,
                         nLength: DWORD, lpNumberOfEventsRead: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "PeekConsoleInputW".}
 proc PeekMessage*(lpMsg: var TMsg, wnd: HWND,
-                  wMsgFilterMin, wMsgFilterMax, wRemoveMsg: UINT): WINBOOL{.
+                  wMsgFilterMin, wMsgFilterMax, wRemoveMsg: WINUINT): WINBOOL{.
     stdcall, dynlib: "user32", importc: "PeekMessageA".}
 proc PeekMessageA*(lpMsg: var TMsg, wnd: HWND,
-                   wMsgFilterMin, wMsgFilterMax, wRemoveMsg: UINT): WINBOOL{.
+                   wMsgFilterMin, wMsgFilterMax, wRemoveMsg: WINUINT): WINBOOL{.
     stdcall, dynlib: "user32", importc: "PeekMessageA".}
 proc PeekMessageW*(lpMsg: var TMsg, wnd: HWND,
-                   wMsgFilterMin, wMsgFilterMax, wRemoveMsg: UINT): WINBOOL{.
+                   wMsgFilterMin, wMsgFilterMax, wRemoveMsg: WINUINT): WINBOOL{.
     stdcall, dynlib: "user32", importc: "PeekMessageW".}
   #function PlayEnhMetaFile(DC: HDC; p2: HENHMETAFILE; const p3: TRect): WINBOOL; stdcall; external 'gdi32' name 'PlayEnhMetaFile';
 proc PlayEnhMetaFileRecord*(DC: HDC, p2: var THandleTable, p3: TEnhMetaRecord,
-                            p4: UINT): WINBOOL{.stdcall, dynlib: "gdi32",
+                            p4: WINUINT): WINBOOL{.stdcall, dynlib: "gdi32",
     importc: "PlayEnhMetaFileRecord".}
-proc PlayMetaFileRecord*(DC: HDC, p2: THandleTable, p3: TMetaRecord, p4: UINT): WINBOOL{.
+proc PlayMetaFileRecord*(DC: HDC, p2: THandleTable, p3: TMetaRecord, p4: WINUINT): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "PlayMetaFileRecord".}
 proc PlgBlt*(DC: HDC, PointsArray: pointer, p3: HDC, p4, p5, p6, p7: int,
              p8: HBITMAP, p9, p10: int): WINBOOL{.stdcall, dynlib: "gdi32",
@@ -22328,21 +22328,21 @@ proc ScrollWindow*(wnd: HWND, XAmount: int32, YAmount: int32, rect: LPRECT,
     importc: "ScrollWindow".}
 proc ScrollWindowEx*(wnd: HWND, dx: int32, dy: int32, prcScroll: lpRECT,
                      prcClip: lpRECT, hrgnUpdate: HRGN, prcUpdate: LPRECT,
-                     flags: UINT): int32{.stdcall, dynlib: "user32",
+                     flags: WINUINT): int32{.stdcall, dynlib: "user32",
     importc: "ScrollWindowEx".}
   #function ScrollDC(DC: HDC; DX, DY: Integer; var Scroll, Clip: TRect; Rgn: HRGN; Update: PRect): WINBOOL; stdcall; external 'user32' name 'ScrollDC';
   #function SearchPath(lpPath, lpFileName, lpExtension: PChar; nBufferLength: DWORD; lpBuffer: PChar; var lpFilePart: PChar): DWORD;stdcall; external 'kernel32' name 'SearchPathA';
   #function SearchPathA(lpPath, lpFileName, lpExtension: LPCSTR; nBufferLength: DWORD; lpBuffer: LPCSTR; var lpFilePart: LPCSTR): DWORD; stdcall; external 'kernel32' name 'SearchPathA';
   #function SearchPathW(lpPath, lpFileName, lpExtension: LPWSTR; nBufferLength: DWORD; lpBuffer: LPWSTR; var lpFilePart: LPWSTR): DWORD; stdcall; external 'kernel32' name 'SearchPathW';
-  #function SendInput(cInputs: UINT; var pInputs: TInput; cbSize: Integer): UINT;stdcall; external 'user32' name 'SendInput';
-proc SendMessageTimeout*(wnd: HWND, Msg: UINT, wp: WPARAM, lp: LPARAM,
-                         fuFlags, uTimeout: UINT, lpdwResult: var DWORD): LRESULT{.
+  #function SendInput(cInputs: WINUINT; var pInputs: TInput; cbSize: Integer): WINUINT;stdcall; external 'user32' name 'SendInput';
+proc SendMessageTimeout*(wnd: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM,
+                         fuFlags, uTimeout: WINUINT, lpdwResult: var DWORD): LRESULT{.
     stdcall, dynlib: "user32", importc: "SendMessageTimeoutA".}
-proc SendMessageTimeoutA*(wnd: HWND, Msg: UINT, wp: WPARAM, lp: LPARAM,
-                          fuFlags, uTimeout: UINT, lpdwResult: var DWORD): LRESULT{.
+proc SendMessageTimeoutA*(wnd: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM,
+                          fuFlags, uTimeout: WINUINT, lpdwResult: var DWORD): LRESULT{.
     stdcall, dynlib: "user32", importc: "SendMessageTimeoutA".}
-proc SendMessageTimeoutW*(wnd: HWND, Msg: UINT, wp: WPARAM, lp: LPARAM,
-                          fuFlags, uTimeout: UINT, lpdwResult: var DWORD): LRESULT{.
+proc SendMessageTimeoutW*(wnd: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM,
+                          fuFlags, uTimeout: WINUINT, lpdwResult: var DWORD): LRESULT{.
     stdcall, dynlib: "user32", importc: "SendMessageTimeoutW".}
   #function SetAclInformation(var pAcl: TACL; pAclInformation: Pointer; nAclInformationLength: DWORD; dwAclInformationClass: TAclInformationClass): WINBOOL; stdcall; external 'advapi32' name 'SetAclInformation';
   #function SetColorAdjustment(DC: HDC; const p2: TColorAdjustment): WINBOOL; stdcall; external 'gdi32' name 'SetColorAdjustment';
@@ -22356,13 +22356,13 @@ proc SetConsoleCursorInfo*(hConsoleOutput: THandle,
                            lpConsoleCursorInfo: TConsoleCursorInfo): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "SetConsoleCursorInfo".}
   #function SetConsoleWindowInfo(hConsoleOutput: THandle; bAbsolute: WINBOOL; const lpConsoleWindow: TSmallRect): WINBOOL; stdcall; external 'kernel32' name 'SetConsoleWindowInfo';
-proc SetDIBColorTable*(DC: HDC, p2, p3: UINT, RGBQuadSTructs: pointer): UINT{.
+proc SetDIBColorTable*(DC: HDC, p2, p3: WINUINT, RGBQuadSTructs: pointer): WINUINT{.
     stdcall, dynlib: "gdi32", importc: "SetDIBColorTable".}
-proc SetDIBits*(DC: HDC, Bitmap: HBITMAP, StartScan, NumScans: UINT,
-                Bits: Pointer, BitsInfo: var TBitmapInfo, Usage: UINT): int{.
+proc SetDIBits*(DC: HDC, Bitmap: HBITMAP, StartScan, NumScans: WINUINT,
+                Bits: Pointer, BitsInfo: var TBitmapInfo, Usage: WINUINT): int{.
     stdcall, dynlib: "gdi32", importc: "SetDIBits".}
-  #function SetDIBitsToDevice(DC: HDC; DestX, DestY: Integer; Width, Height: DWORD; SrcX, SrcY: Integer; nStartScan, NumScans: UINT; Bits: Pointer; var BitsInfo: TBitmapInfo; Usage: UINT): Integer; stdcall; external 'gdi32' name 'SetDIBitsToDevice';
-proc SetEnhMetaFileBits*(para1: UINT, para2: pointer): HENHMETAFILE{.stdcall,
+  #function SetDIBitsToDevice(DC: HDC; DestX, DestY: Integer; Width, Height: DWORD; SrcX, SrcY: Integer; nStartScan, NumScans: WINUINT; Bits: Pointer; var BitsInfo: TBitmapInfo; Usage: WINUINT): Integer; stdcall; external 'gdi32' name 'SetDIBitsToDevice';
+proc SetEnhMetaFileBits*(para1: WINUINT, para2: pointer): HENHMETAFILE{.stdcall,
     dynlib: "gdi32", importc: "SetEnhMetaFileBits".}
 proc SetFileTime*(hFile: HANDLE, lpCreationTime: var FILETIME,
                   lpLastAccessTime: var FILETIME, lpLastWriteTime: var FILETIME): WINBOOL{.
@@ -22370,18 +22370,18 @@ proc SetFileTime*(hFile: HANDLE, lpCreationTime: var FILETIME,
   #function SetKeyboardState(var KeyState: TKeyboardState): WINBOOL; stdcall; external 'user32' name 'SetKeyboardState';
   #function SetLocalTime(const lpSystemTime: TSystemTime): WINBOOL; stdcall; external 'kernel32' name 'SetLocalTime';
   #function SetMenuInfo(menu: HMENU; const lpcmi: TMenuInfo): WINBOOL;stdcall; external 'user32' name 'SetMenuInfo';
-proc SetMenuItemInfo*(p1: HMENU, p2: UINT, p3: WINBOOL, p4: TMenuItemInfo): WINBOOL{.
+proc SetMenuItemInfo*(p1: HMENU, p2: WINUINT, p3: WINBOOL, p4: TMenuItemInfo): WINBOOL{.
     stdcall, dynlib: "user32", importc: "SetMenuItemInfoA".}
-proc SetMenuItemInfoA*(p1: HMENU, p2: UINT, p3: WINBOOL, p4: TMenuItemInfoA): WINBOOL{.
+proc SetMenuItemInfoA*(p1: HMENU, p2: WINUINT, p3: WINBOOL, p4: TMenuItemInfoA): WINBOOL{.
     stdcall, dynlib: "user32", importc: "SetMenuItemInfoA".}
-  #function SetMenuItemInfoW(p1: HMENU; p2: UINT; p3: WINBOOL; const p4: TMenuItemInfoW): WINBOOL; stdcall; external 'user32' name 'SetMenuItemInfoW';
-proc SetMetaFileBitsEx*(p1: UINT, p2: cstring): HMETAFILE{.stdcall,
+  #function SetMenuItemInfoW(p1: HMENU; p2: WINUINT; p3: WINBOOL; const p4: TMenuItemInfoW): WINBOOL; stdcall; external 'user32' name 'SetMenuItemInfoW';
+proc SetMetaFileBitsEx*(p1: WINUINT, p2: cstring): HMETAFILE{.stdcall,
     dynlib: "gdi32", importc: "SetMetaFileBitsEx".}
 proc SetNamedPipeHandleState*(hNamedPipe: THandle, lpMode: var DWORD,
     lpMaxCollectionCount, lpCollectDataTimeout: Pointer): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "SetNamedPipeHandleState".}
-proc SetPaletteEntries*(Palette: HPALETTE, StartIndex, NumEntries: UINT,
-                        PaletteEntries: pointer): UINT{.stdcall,
+proc SetPaletteEntries*(Palette: HPALETTE, StartIndex, NumEntries: WINUINT,
+                        PaletteEntries: pointer): WINUINT{.stdcall,
     dynlib: "gdi32", importc: "SetPaletteEntries".}
   #function SetPrivateObjectSecurity(SecurityInformation: SECURITY_INFORMATION; ModificationDescriptor: PSecurityDescriptor; var ObjectsSecurityDescriptor: PSecurityDescriptor; const GenericMapping: TGenericMapping; Token: THandle): WINBOOL;
   #  stdcall; external 'advapi32' name 'SetPrivateObjectSecurity';
@@ -22407,7 +22407,7 @@ proc SetWaitableTimer*(hTimer: THandle, lpDueTime: var TLargeInteger,
                        lPeriod: int32, pfnCompletionRoutine: TFNTimerAPCRoutine,
                        lpArgToCompletionRoutine: Pointer, fResume: WINBOOL): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "SetWaitableTimer".}
-proc SetWinMetaFileBits*(p1: UINT, p2: cstring, p3: HDC, p4: TMetaFilePict): HENHMETAFILE{.
+proc SetWinMetaFileBits*(p1: WINUINT, p2: cstring, p3: HDC, p4: TMetaFilePict): HENHMETAFILE{.
     stdcall, dynlib: "gdi32", importc: "SetWinMetaFileBits".}
   #function SetWorldTransform(DC: HDC; const p2: TXForm): WINBOOL; stdcall; external 'gdi32' name 'SetWorldTransform';
 proc StartDoc*(DC: HDC, p2: TDocInfo): int{.stdcall, dynlib: "gdi32",
@@ -22415,7 +22415,7 @@ proc StartDoc*(DC: HDC, p2: TDocInfo): int{.stdcall, dynlib: "gdi32",
 proc StartDocA*(DC: HDC, p2: TDocInfoA): int{.stdcall, dynlib: "gdi32",
     importc: "StartDocA".}
   #function StartDocW(DC: HDC; const p2: TDocInfoW): Integer; stdcall; external 'gdi32' name 'StartDocW';
-  #function StretchDIBits(DC: HDC; DestX, DestY, DestWidth, DestHegiht, SrcX, SrcY, SrcWidth, SrcHeight: Integer; Bits: Pointer; var BitsInfo: TBitmapInfo; Usage: UINT; Rop: DWORD): Integer; stdcall; external 'gdi32' name 'StretchDIBits';
+  #function StretchDIBits(DC: HDC; DestX, DestY, DestWidth, DestHegiht, SrcX, SrcY, SrcWidth, SrcHeight: Integer; Bits: Pointer; var BitsInfo: TBitmapInfo; Usage: WINUINT; Rop: DWORD): Integer; stdcall; external 'gdi32' name 'StretchDIBits';
 proc SubtractRect*(lprcDst: var TRect, lprcSrc1, lprcSrc2: TRect): WINBOOL{.
     stdcall, dynlib: "user32", importc: "SubtractRect".}
 proc SystemTimeToFileTime*(lpSystemTime: TSystemTime, lpFileTime: var TFileTime): WINBOOL{.
@@ -22435,15 +22435,15 @@ proc TabbedTextOutW*(hDC: HDC, X, Y: int, lpString: LPWSTR,
                      nCount, nTabPositions: int, lpnTabStopPositions: pointer,
                      nTabOrigin: int): int32{.stdcall, dynlib: "user32",
     importc: "TabbedTextOutW".}
-  #function ToAscii(uVirtKey, uScanCode: UINT; const KeyState: TKeyboardState; lpChar: PChar; uFlags: UINT): Integer; stdcall; external 'user32' name 'ToAscii';
-  #function ToAsciiEx(uVirtKey: UINT; uScanCode: UINT; const KeyState: TKeyboardState; lpChar: PChar; uFlags: UINT; dwhkl: HKL): Integer; stdcall; external 'user32' name 'ToAsciiEx';
-  #function ToUnicode(wVirtKey, wScanCode: UINT; const KeyState: TKeyboardState; var pwszBuff; cchBuff: Integer; wFlags: UINT): Integer; stdcall; external 'user32' name 'ToUnicode';
+  #function ToAscii(uVirtKey, uScanCode: WINUINT; const KeyState: TKeyboardState; lpChar: PChar; uFlags: WINUINT): Integer; stdcall; external 'user32' name 'ToAscii';
+  #function ToAsciiEx(uVirtKey: WINUINT; uScanCode: WINUINT; const KeyState: TKeyboardState; lpChar: PChar; uFlags: WINUINT; dwhkl: HKL): Integer; stdcall; external 'user32' name 'ToAsciiEx';
+  #function ToUnicode(wVirtKey, wScanCode: WINUINT; const KeyState: TKeyboardState; var pwszBuff; cchBuff: Integer; wFlags: WINUINT): Integer; stdcall; external 'user32' name 'ToUnicode';
   # Careful, NT and higher only.
 proc TrackMouseEvent*(EventTrack: var TTrackMouseEvent): WINBOOL{.stdcall,
     dynlib: "user32", importc: "TrackMouseEvent".}
 proc TrackMouseEvent*(lpEventTrack: PTrackMouseEvent): WINBOOL{.stdcall,
     dynlib: "user32", importc: "TrackMouseEvent".}
-proc TrackPopupMenu*(menu: HMENU, uFlags: UINT, x: int32, y: int32,
+proc TrackPopupMenu*(menu: HMENU, uFlags: WINUINT, x: int32, y: int32,
                      nReserved: int32, wnd: HWND, prcRect: PRect): WINBOOL{.
     stdcall, dynlib: "user32", importc: "TrackPopupMenu".}
 proc TransactNamedPipe*(hNamedPipe: THandle, lpInBuffer: Pointer,
@@ -22464,7 +22464,7 @@ proc TranslateMDISysAccel*(hWndClient: HWND, lpMsg: TMsg): WINBOOL{.stdcall,
     dynlib: "user32", importc: "TranslateMDISysAccel".}
 proc TranslateMessage*(lpMsg: TMsg): WINBOOL{.stdcall, dynlib: "user32",
     importc: "TranslateMessage".}
-  #function TransparentDIBits(DC: HDC; p2, p3, p4, p5: Integer; const p6: Pointer; const p7: PBitmapInfo; p8: UINT; p9, p10, p11, p12: Integer; p13: UINT): WINBOOL;stdcall; external 'gdi32' name 'TransparentDIBits';
+  #function TransparentDIBits(DC: HDC; p2, p3, p4, p5: Integer; const p6: Pointer; const p7: PBitmapInfo; p8: WINUINT; p9, p10, p11, p12: Integer; p13: WINUINT): WINBOOL;stdcall; external 'gdi32' name 'TransparentDIBits';
 proc UnhandledExceptionFilter*(ExceptionInfo: TExceptionPointers): int32{.
     stdcall, dynlib: "kernel32", importc: "UnhandledExceptionFilter".}
 proc UnionRect*(lprcDst: var TRect, lprcSrc1, lprcSrc2: TRect): WINBOOL{.
@@ -22474,39 +22474,39 @@ proc UnlockFileEx*(hFile: THandle, dwReserved, nNumberOfBytesToUnlockLow: DWORD,
     stdcall, dynlib: "kernel32", importc: "UnlockFileEx".}
 proc VerFindFile*(uFlags: DWORD,
                   szFileName, szWinDir, szAppDir, szCurDir: cstring,
-                  lpuCurDirLen: var UINT, szDestDir: cstring,
-                  lpuDestDirLen: var UINT): DWORD{.stdcall, dynlib: "version",
+                  lpuCurDirLen: var WINUINT, szDestDir: cstring,
+                  lpuDestDirLen: var WINUINT): DWORD{.stdcall, dynlib: "version",
     importc: "VerFindFileA".}
 proc VerFindFileA*(uFlags: DWORD,
                    szFileName, szWinDir, szAppDir, szCurDir: LPCSTR,
-                   lpuCurDirLen: var UINT, szDestDir: LPCSTR,
-                   lpuDestDirLen: var UINT): DWORD{.stdcall, dynlib: "version",
+                   lpuCurDirLen: var WINUINT, szDestDir: LPCSTR,
+                   lpuDestDirLen: var WINUINT): DWORD{.stdcall, dynlib: "version",
     importc: "VerFindFileA".}
 proc VerFindFileW*(uFlags: DWORD,
                    szFileName, szWinDir, szAppDir, szCurDir: LPWSTR,
-                   lpuCurDirLen: var UINT, szDestDir: LPWSTR,
-                   lpuDestDirLen: var UINT): DWORD{.stdcall, dynlib: "version",
+                   lpuCurDirLen: var WINUINT, szDestDir: LPWSTR,
+                   lpuDestDirLen: var WINUINT): DWORD{.stdcall, dynlib: "version",
     importc: "VerFindFileW".}
 proc VerInstallFile*(uFlags: DWORD, szSrcFileName, szDestFileName, szSrcDir,
                                     szDestDir, szCurDir, szTmpFile: cstring,
-                     lpuTmpFileLen: var UINT): DWORD{.stdcall,
+                     lpuTmpFileLen: var WINUINT): DWORD{.stdcall,
     dynlib: "version", importc: "VerInstallFileA".}
 proc VerInstallFileA*(uFlags: DWORD, szSrcFileName, szDestFileName, szSrcDir,
                                      szDestDir, szCurDir, szTmpFile: LPCSTR,
-                      lpuTmpFileLen: var UINT): DWORD{.stdcall,
+                      lpuTmpFileLen: var WINUINT): DWORD{.stdcall,
     dynlib: "version", importc: "VerInstallFileA".}
 proc VerInstallFileW*(uFlags: DWORD, szSrcFileName, szDestFileName, szSrcDir,
                                      szDestDir, szCurDir, szTmpFile: LPWSTR,
-                      lpuTmpFileLen: var UINT): DWORD{.stdcall,
+                      lpuTmpFileLen: var WINUINT): DWORD{.stdcall,
     dynlib: "version", importc: "VerInstallFileW".}
 proc VerQueryValue*(pBlock: Pointer, lpSubBlock: cstring,
-                    lplpBuffer: var Pointer, puLen: var UINT): WINBOOL{.stdcall,
+                    lplpBuffer: var Pointer, puLen: var WINUINT): WINBOOL{.stdcall,
     dynlib: "version", importc: "VerQueryValueA".}
 proc VerQueryValueA*(pBlock: Pointer, lpSubBlock: LPCSTR,
-                     lplpBuffer: var Pointer, puLen: var UINT): WINBOOL{.
+                     lplpBuffer: var Pointer, puLen: var WINUINT): WINBOOL{.
     stdcall, dynlib: "version", importc: "VerQueryValueA".}
 proc VerQueryValueW*(pBlock: Pointer, lpSubBlock: LPWSTR,
-                     lplpBuffer: var Pointer, puLen: var UINT): WINBOOL{.
+                     lplpBuffer: var Pointer, puLen: var WINUINT): WINBOOL{.
     stdcall, dynlib: "version", importc: "VerQueryValueW".}
 proc VirtualQuery*(lpAddress: Pointer, lpBuffer: var TMemoryBasicInformation,
                    dwLength: DWORD): DWORD{.stdcall, dynlib: "kernel32",
@@ -22526,7 +22526,7 @@ proc wglGetLayerPaletteEntries*(p1: HDC, p2, p3, p4: int, pcr: pointer): int{.
     stdcall, dynlib: "opengl32", importc: "wglGetLayerPaletteEntries".}
 proc wglSetLayerPaletteEntries*(p1: HDC, p2, p3, p4: int, pcr: pointer): int{.
     stdcall, dynlib: "opengl32", importc: "wglSetLayerPaletteEntries".}
-  #function wglSwapMultipleBuffers(p1: UINT; const p2: PWGLSwap): DWORD;stdcall; external 'opengl32' name 'wglSwapMultipleBuffers';
+  #function wglSwapMultipleBuffers(p1: WINUINT; const p2: PWGLSwap): DWORD;stdcall; external 'opengl32' name 'wglSwapMultipleBuffers';
   #function WinSubmitCertificate(var lpCertificate: TWinCertificate): WINBOOL;stdcall; external 'imaghlp' name 'WinSubmitCertificate';
   #function WinVerifyTrust(wnd: HWND; const ActionID: TGUID; ActionData: Pointer): Longint;stdcall; external 'imaghlp' name 'WinVerifyTrust';
 proc WNetAddConnection2*(lpNetResource: var TNetResource,
@@ -22698,14 +22698,14 @@ proc WriteFileEx*(hFile: THandle, lpBuffer: Pointer,
                   lpCompletionRoutine: FARPROC): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "WriteFileEx".}
 proc WritePrivateProfileStructA*(lpszSection, lpszKey: LPCSTR, lpStruct: LPVOID,
-                                 uSizeStruct: UINT, szFile: LPCSTR): WINBOOL{.
+                                 uSizeStruct: WINUINT, szFile: LPCSTR): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "WritePrivateProfileStructA".}
 proc WritePrivateProfileStructW*(lpszSection, lpszKey: LPCWSTR,
-                                 lpStruct: LPVOID, uSizeStruct: UINT,
+                                 lpStruct: LPVOID, uSizeStruct: WINUINT,
                                  szFile: LPCWSTR): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "WritePrivateProfileStructW".}
 proc WritePrivateProfileStruct*(lpszSection, lpszKey: LPCTSTR, lpStruct: LPVOID,
-                                uSizeStruct: UINT, szFile: LPCTSTR): WINBOOL{.
+                                uSizeStruct: WINUINT, szFile: LPCTSTR): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "WritePrivateProfileStructA".}
 proc WriteProcessMemory*(hProcess: THandle, lpBaseAddress: Pointer,
                          lpBuffer: Pointer, nSize: DWORD,
@@ -23363,7 +23363,7 @@ proc Animate_Create(hWndP: HWND, id: HMENU, dwStyle: DWORD, hInstance: HINST): H
 proc Animate_Open(wnd: HWND, szName: LPTSTR): LRESULT =
   result = SendMessage(wnd, ACM_OPEN, 0, cast[LPARAM](szName))
 
-proc Animate_Play(wnd: HWND, `from`, `to`: int32, rep: UINT): LRESULT =
+proc Animate_Play(wnd: HWND, `from`, `to`: int32, rep: WINUINT): LRESULT =
   result = SendMessage(wnd, ACM_PLAY, WPARAM(rep),
                        LPARAM(MAKELONG(`from`, `to`)))
 
@@ -23458,7 +23458,7 @@ proc Header_SetItem(hwndHD: HWND, index: int32, hdi: var HD_ITEM): WINBOOL =
   result = WINBOOL(SendMessage(hwndHD, HDM_SETITEM, WPARAM(index),
                                cast[LPARAM](addr(hdi))))
 
-proc ListView_Arrange(hwndLV: HWND, code: UINT): LRESULT =
+proc ListView_Arrange(hwndLV: HWND, code: WINUINT): LRESULT =
   result = SendMessage(hwndLV, LVM_ARRANGE, WPARAM(code), 0)
 
 proc ListView_CreateDragImage(wnd: HWND, i: int32, lpptUpLeft: LPPOINT): LRESULT =
@@ -23566,7 +23566,7 @@ proc ListView_Scroll(hwndLV: HWND, dx, dy: int32): LRESULT =
 proc ListView_SetBkColor(wnd: HWND, clrBk: COLORREF): LRESULT =
   result = SendMessage(wnd, LVM_SETBKCOLOR, 0, LPARAM(clrBk))
 
-proc ListView_SetCallbackMask(wnd: HWND, mask: UINT): LRESULT =
+proc ListView_SetCallbackMask(wnd: HWND, mask: WINUINT): LRESULT =
   result = SendMessage(wnd, LVM_SETCALLBACKMASK, WPARAM(mask), 0)
 
 proc ListView_SetColumn(wnd: HWND, iCol: int32, col: var LV_COLUMN): LRESULT =
@@ -23577,7 +23577,7 @@ proc ListView_SetColumnWidth(wnd: HWND, iCol, cx: int32): LRESULT =
 
 proc ListView_SetImageList(wnd: HWND, himl: int32, iImageList: HIMAGELIST): LRESULT =
   result = SendMessage(wnd, LVM_SETIMAGELIST, WPARAM(iImageList),
-                       LPARAM(UINT(himl)))
+                       LPARAM(WINUINT(himl)))
 
 proc ListView_SetItem(wnd: HWND, item: var LV_ITEM): LRESULT =
   result = SendMessage(wnd, LVM_SETITEM, 0, cast[LPARAM](addr(item)))
@@ -23597,8 +23597,8 @@ proc ListView_SetItemPosition32(hwndLV: HWND, i, x, y: int32): LRESULT =
 
 proc ListView_SetItemState(hwndLV: HWND, i, data, mask: int32): LRESULT =
   var gnu_lvi: LV_ITEM
-  gnu_lvi.stateMask = uint(mask)
-  gnu_lvi.state = uint(data)
+  gnu_lvi.stateMask = WINUINT(mask)
+  gnu_lvi.state = WINUINT(data)
   result = SendMessage(hwndLV, LVM_SETITEMSTATE, WPARAM(i),
                        cast[LPARAM](addr(gnu_lvi)))
 
@@ -23648,7 +23648,7 @@ proc TreeView_GetImageList(wnd: HWND, iImage: WPARAM): LRESULT =
   result = SendMessage(wnd, TVM_GETIMAGELIST, iImage, 0)
 
 proc TreeView_SetImageList(wnd: HWND, himl: HIMAGELIST, iImage: WPARAM): LRESULT =
-  result = SendMessage(wnd, TVM_SETIMAGELIST, iImage, LPARAM(UINT(himl)))
+  result = SendMessage(wnd, TVM_SETIMAGELIST, iImage, LPARAM(WINUINT(himl)))
 
 proc TreeView_GetNextItem(wnd: HWND, hitem: HTREEITEM, code: int32): LRESULT =
   result = SendMessage(wnd, TVM_GETNEXTITEM, WPARAM(code), cast[LPARAM](hitem))
@@ -23735,7 +23735,7 @@ proc TabCtrl_GetImageList(wnd: HWND): LRESULT =
   result = SendMessage(wnd, TCM_GETIMAGELIST, 0, 0)
 
 proc TabCtrl_SetImageList(wnd: HWND, himl: HIMAGELIST): LRESULT =
-  result = SendMessage(wnd, TCM_SETIMAGELIST, 0, LPARAM(UINT(himl)))
+  result = SendMessage(wnd, TCM_SETIMAGELIST, 0, LPARAM(WINUINT(himl)))
 
 proc TabCtrl_GetItemCount(wnd: HWND): LRESULT =
   result = SendMessage(wnd, TCM_GETITEMCOUNT, 0, 0)
@@ -23797,7 +23797,7 @@ proc TabCtrl_GetCurFocus(wnd: HWND): LRESULT =
 proc TabCtrl_SetCurFocus(wnd: HWND, i: int32): LRESULT =
   result = SendMessage(wnd, TCM_SETCURFOCUS, i, 0)
 
-proc SNDMSG(wnd: HWND, Msg: UINT, wp: WPARAM, lp: LPARAM): LRESULT =
+proc SNDMSG(wnd: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM): LRESULT =
   result = SendMessage(wnd, Msg, wp, lp)
 
 proc CommDlg_OpenSave_GetSpecA(hdlg: HWND, psz: LPSTR, cbmax: int32): LRESULT =
