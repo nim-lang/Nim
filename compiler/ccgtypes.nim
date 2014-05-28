@@ -13,8 +13,8 @@
 
 proc mangleField(name: string): string =
   result = mangle(name)
-  if name[0] in 'a'..'z':
-    result[0] = name[0].toUpper
+  result[0] = result[0].toUpper # Mangling makes everything lowercase,
+                                # but some identifiers are C keywords
 
 proc isKeyword(w: PIdent): bool =
   # nimrod and C++ share some keywords
