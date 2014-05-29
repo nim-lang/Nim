@@ -868,7 +868,7 @@ proc lookupMacro(c: PContext, n: PNode): PSym =
     result = n.sym
     if result.kind notin {skMacro, skTemplate}: result = nil
   else:
-    result = searchInScopes(c, considerAcc(n), {skMacro, skTemplate})
+    result = searchInScopes(c, considerQuotedIdent(n), {skMacro, skTemplate})
 
 proc semProcAnnotation(c: PContext, prc: PNode): PNode =
   var n = prc.sons[pragmasPos]
@@ -879,7 +879,7 @@ proc semProcAnnotation(c: PContext, prc: PNode): PNode =
     let m = lookupMacro(c, key)
     if m == nil:
       if key.kind == nkIdent and key.ident.id == ord(wDelegator):
-        if considerAcc(prc.sons[namePos]).s == "()":
+        if considerQuotedIdent(prc.sons[namePos]).s == "()":
           prc.sons[namePos] = newIdentNode(idDelegator, prc.info)
           prc.sons[pragmasPos] = copyExcept(n, i)
         else:

@@ -69,7 +69,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym): PNode =
 proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags, 
             ctx: var TIntSet): PNode =
   result = n
-  let ident = considerAcc(n)
+  let ident = considerQuotedIdent(n)
   var s = searchInScopes(c, ident)
   if s == nil:
     if ident.id notin ctx and withinMixin notin flags:
@@ -114,7 +114,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     let fn = n.sons[0]
     var s = qualifiedLookUp(c, fn, {})
     if s == nil and withinMixin notin flags and
-        fn.kind in {nkIdent, nkAccQuoted} and considerAcc(fn).id notin ctx:
+        fn.kind in {nkIdent, nkAccQuoted} and considerQuotedIdent(fn).id notin ctx:
       localError(n.info, errUndeclaredIdentifier, fn.renderTree)
     
     var first = 0
