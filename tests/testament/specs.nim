@@ -46,7 +46,7 @@ type
     msg*: string
     ccodeCheck*: string
     err*: TResultEnum
-    substr*: bool
+    substr*, sortoutput*: bool
     targets*: set[TTarget]
 
 const
@@ -113,6 +113,8 @@ proc parseSpec*(filename: string): TSpec =
       result.action = actionRun
       result.outp = e.value
       result.substr = true
+    of "sortoutput":
+      result.sortoutput = parseCfgBool(e.value)
     of "exitcode": 
       discard parseInt(e.value, result.exitCode)
     of "msg":

@@ -11,7 +11,8 @@
 
 import
   parseutils, strutils, pegs, os, osproc, streams, parsecfg, json,
-  marshal, backend, parseopt, specs, htmlgen, browsers, terminal
+  marshal, backend, parseopt, specs, htmlgen, browsers, terminal, sequtils,
+  algorithm
 
 const
   resultsFile = "testresults.html"
@@ -150,6 +151,11 @@ proc codegenCheck(test: TTest, check: string, given: var TSpec) =
     except EIO:
       given.err = reCodeNotFound
 
+proc makeDeterministic(s: string): string =
+  var x = toSeq(s.lines)
+  sort(x, system.cmp)
+  result = join(x, "\n")
+
 proc testSpec(r: var TResults, test: TTest) =
   # major entry point for a single test
   let tname = test.name.addFileExt(".nim")
@@ -191,7 +197,9 @@ proc testSpec(r: var TResults, test: TTest) =
             r.addResult(test, "exitcode: " & $expected.exitCode,
                               "exitcode: " & $exitCode, reExitCodesDiffer)
           else:
-            if strip(buf.string) != strip(expected.outp):
+            var bufB = strip(buf.string)
+            if expected.sortoutput: bufB = makeDeterministic(bufB)
+            if bufB != strip(expected.outp):
               if not (expected.substr and expected.outp in buf.string):
                 given.err = reOutputsDiffer
             if given.err == reSuccess:
