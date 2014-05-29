@@ -246,6 +246,7 @@ proc canon*(n: PNode): PNode =
     result.sons[0] = opLen.newSymNode
   else: discard
 
+  result = skipConv(result)
   result = reassociation(result)
   # most important rule: (x-4) < a.len -->  x < a.len+4
   case result.getMagic
@@ -672,7 +673,9 @@ proc simpleSlice*(a, b: PNode): BiggestInt =
   else:
     result = -1
 
-proc ple(m: TModel; a, b: PNode): TImplication =  
+proc pleViaModel(model: TModel; aa, bb: PNode): TImplication
+
+proc ple(m: TModel; a, b: PNode): TImplication =
   template `<=?`(a,b): expr = ple(m,a,b) == impYes
   #   0 <= 3
   if a.isValue and b.isValue:
@@ -717,12 +720,68 @@ proc ple(m: TModel; a, b: PNode): TImplication =
     if a[1] <=? b or a[2] <=? b: return impYes
 
   # use the knowledge base:
-  return doesImply(m, opLe.buildCall(a, b))
+  return pleViaModel(m, a, b)
+  #return doesImply(m, opLe.buildCall(a, b))
+
+type TReplacements = seq[tuple[a,b: PNode]]
+
+proc replaceSubTree(n, x, by: PNode): PNode =
+  if sameTree(n, x):
+    result = by
+  elif hasSubTree(n, x):
+    result = shallowCopy(n)
+    for i in 0 .. safeLen(n)-1:
+      result.sons[i] = replaceSubTree(n.sons[i], x, by)
+  else:
+    result = n
+
+proc applyReplacements(n: PNode; rep: TReplacements): PNode =
+  result = n
+  for x in rep: result = result.replaceSubTree(x.a, x.b)
+
+proc pleViaModelRec(m: var TModel; a, b: PNode): TImplication =
+  # now check for inferrable facts: a <= b and b <= c  implies a <= c
+  for i in 0..m.high:
+    let fact = m[i]
+    if fact != nil and fact.getMagic in someLe:
+      # x <= y implies a <= b  if  a <= x and y <= b
+      let x = fact[1]
+      let y = fact[2]
+      # mark as used:
+      m[i] = nil
+      if ple(m, a, x) == impYes:
+        if ple(m, y, b) == impYes: return impYes
+        #if pleViaModelRec(m, y, b): return impYes
+
+proc pleViaModel(model: TModel; aa, bb: PNode): TImplication =
+  # compute replacements:
+  var replacements: TReplacements = @[]
+  for fact in model:
+    if fact != nil and fact.getMagic in someEq:
+      let a = fact[1]
+      let b = fact[2]
+      if a.kind == nkSym: replacements.add((a,b))
+      else: replacements.add((b,a))
+  var m: TModel
+  var a = aa
+  var b = bb
+  if replacements.len > 0:
+    m = @[]
+    # make the other facts consistent:
+    for fact in model:
+      if fact != nil and fact.getMagic notin someEq:
+        # XXX 'canon' should not be necessary here, but it is
+        m.add applyReplacements(fact, replacements).canon
+    a = applyReplacements(aa, replacements)
+    b = applyReplacements(bb, replacements)
+  else:
+    # we have to make a copy here, because the model will be modified:
+    m = model
+  result = pleViaModelRec(m, a, b)
 
 proc proveLe*(m: TModel; a, b: PNode): TImplication =
-  #echo "ROOT ", renderTree(a), " <=? ", b.rendertree
   let x = canon(opLe.buildCall(a, b))
-  #echo renderTree(res)
+  #echo "ROOT ", renderTree(x[1]), " <=? ", renderTree(x[2])
   result = ple(m, x[1], x[2])
   if result == impUnknown:
     # try an alternative:  a <= b  iff  not (b < a)  iff  not (b+1 <= a):

@@ -59,7 +59,8 @@ type
   TDirection = enum
     ascending, descending
   MonotonicVar = object
-    v: PSym
+    v, alias: PSym        # to support the ordinary 'countup' iterator
+                          # we need to detect aliases
     lower, upper, stride: PNode
     dir: TDirection
     blacklisted: bool     # blacklisted variables that are not monotonic
@@ -83,7 +84,7 @@ proc initAnalysisCtx(): AnalysisCtx =
 
 proc lookupSlot(c: AnalysisCtx; s: PSym): int =
   for i in 0.. <c.locals.len:
-    if c.locals[i].v == s: return i
+    if c.locals[i].v == s or c.locals[i].alias == s: return i
   return -1
 
 proc getSlot(c: var AnalysisCtx; v: PSym): ptr MonotonicVar =
@@ -103,6 +104,11 @@ proc gatherArgs(c: var AnalysisCtx; n: PNode) =
           if r == root: break addRoot
         c.args.add root
     gatherArgs(c, n[i])
+
+proc isSingleAssignable(n: PNode): bool =
+  n.kind == nkSym and (let s = n.sym;
+    s.kind in {skTemp, skForVar, skLet} and
+          {sfAddrTaken, sfGlobal} * s.flags == {})
 
 proc isLocal(n: PNode): bool =
   n.kind == nkSym and (let s = n.sym;
@@ -290,16 +296,16 @@ proc analyseCase(c: var AnalysisCtx; n: PNode) =
 proc analyseIf(c: var AnalysisCtx; n: PNode) =
   analyse(c, n.sons[0].sons[0])
   let oldFacts = c.guards.len
-  addFact(c.guards, n.sons[0].sons[0])
+  addFact(c.guards, canon(n.sons[0].sons[0]))
 
   analyse(c, n.sons[0].sons[1])
   for i in 1.. <n.len:
     let branch = n.sons[i]
     setLen(c.guards, oldFacts)
     for j in 0..i-1:
-      addFactNeg(c.guards, n.sons[j].sons[0])
+      addFactNeg(c.guards, canon(n.sons[j].sons[0]))
     if branch.len > 1:
-      addFact(c.guards, branch.sons[0])
+      addFact(c.guards, canon(branch.sons[0]))
     for i in 0 .. <branch.len:
       analyse(c, branch.sons[i])
   setLen(c.guards, oldFacts)
@@ -307,9 +313,12 @@ proc analyseIf(c: var AnalysisCtx; n: PNode) =
 proc analyse(c: var AnalysisCtx; n: PNode) =
   case n.kind
   of nkAsgn, nkFastAsgn:
-    # since we already ensure sfAddrTaken is not in s.flags, we only need to
-    # prevent direct assignments to the monotonic variable:
-    if n[0].isLocal:
+    if n[0].isSingleAssignable and n[1].isLocal:
+      let slot = c.getSlot(n[1].sym)
+      slot.alias = n[0].sym
+    elif n[0].isLocal:
+      # since we already ensure sfAddrTaken is not in s.flags, we only need to
+      # prevent direct assignments to the monotonic variable:
       let slot = c.getSlot(n[0].sym)
       slot.blackListed = true
     invalidateFacts(c.guards, n[0])
@@ -348,13 +357,13 @@ proc analyse(c: var AnalysisCtx; n: PNode) =
       # loop may never execute:
       let oldState = c.locals.len
       let oldFacts = c.guards.len
-      addFact(c.guards, n.sons[0])
+      addFact(c.guards, canon(n.sons[0]))
       analyse(c, n.sons[1])
       setLen(c.locals, oldState)
       setLen(c.guards, oldFacts)
       # we know after the loop the negation holds:
       if not hasSubnodeWith(n.sons[1], nkBreakStmt):
-        addFactNeg(c.guards, n.sons[0])
+        addFactNeg(c.guards, canon(n.sons[0]))
     dec c.inLoop
   of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,
       nkMacroDef, nkTemplateDef, nkConstSection, nkPragma:
@@ -429,6 +438,7 @@ proc liftParallel*(owner: PSym; n: PNode): PNode =
   # - detect monotonic local integer variables
   # - detect used slices
   # - detect used arguments
+  #echo "PAR ", renderTree(n)
   
   var a = initAnalysisCtx()
   let body = n.lastSon
