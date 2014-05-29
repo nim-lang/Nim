@@ -2408,7 +2408,8 @@ Nimrod identifiers shall be enclosed in a special character which can be
 specified in the statement's pragmas. The default special character is ``'`'``:
 
 .. code-block:: nimrod
-  proc addInt(a, b: int): int {.noStackFrame.} =
+  {.push stackTrace:off.}
+  proc addInt(a, b: int): int =
     # a in eax, and b in edx
     asm """
         mov eax, `a`
@@ -2417,6 +2418,7 @@ specified in the statement's pragmas. The default special character is ``'`'``:
         call `raiseOverflow`
       theEnd:
     """
+  {.pop.}
 
 If the GNU assembler is used, quotes and newlines are inserted automatically:
 
