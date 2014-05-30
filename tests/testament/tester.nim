@@ -11,7 +11,7 @@
 
 import
   parseutils, strutils, pegs, os, osproc, streams, parsecfg, json,
-  marshal, backend, parseopt, specs, htmlgen, browsers, terminal, sequtils,
+  marshal, backend, parseopt, specs, htmlgen, browsers, terminal,
   algorithm
 
 const
@@ -152,7 +152,7 @@ proc codegenCheck(test: TTest, check: string, given: var TSpec) =
       given.err = reCodeNotFound
 
 proc makeDeterministic(s: string): string =
-  var x = toSeq(s.lines)
+  var x = splitLines(s)
   sort(x, system.cmp)
   result = join(x, "\n")
 
@@ -200,7 +200,7 @@ proc testSpec(r: var TResults, test: TTest) =
             var bufB = strip(buf.string)
             if expected.sortoutput: bufB = makeDeterministic(bufB)
             if bufB != strip(expected.outp):
-              if not (expected.substr and expected.outp in buf.string):
+              if not (expected.substr and expected.outp in bufB):
                 given.err = reOutputsDiffer
             if given.err == reSuccess:
               codeGenCheck(test, expected.ccodeCheck, given)

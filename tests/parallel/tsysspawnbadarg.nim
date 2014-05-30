@@ -1,9 +1,9 @@
 discard """
-  line: 7
+  line: 9
   errormsg: "'spawn' takes a call expression"
   cmd: "nimrod $target --threads:on $options $file"
 """
 
 import threadpool
 
-spawn(1)
+let foo = spawn(1)
