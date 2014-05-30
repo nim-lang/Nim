@@ -7,14 +7,15 @@ discard """
   sortoutput: true
 """
 
-import threadpool, math
+import threadpool, os
 
 proc p(x: int) =
+  os.sleep(100 - x*10)
   echo x
 
 proc testFor(a, b: int; foo: var openArray[int]) =
   parallel:
-    for i in max(a, 0) .. min(b, foo.len-1):
+    for i in max(a, 0) .. min(b, foo.high):
       spawn p(foo[i])
 
 var arr = [0, 1, 2, 3, 4, 5, 6, 7]
