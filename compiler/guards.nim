@@ -752,6 +752,14 @@ proc pleViaModelRec(m: var TModel; a, b: PNode): TImplication =
       if ple(m, a, x) == impYes:
         if ple(m, y, b) == impYes: return impYes
         #if pleViaModelRec(m, y, b): return impYes
+      # fact:  16 <= i
+      #         x    y
+      # question: i <= 15? no!
+      result = impliesLe(fact, a, b)
+      if result != impUnknown: return result
+      if sameTree(y, a):
+        result = ple(m, x, b)
+        if result != impUnknown: return result
 
 proc pleViaModel(model: TModel; aa, bb: PNode): TImplication =
   # compute replacements:

@@ -338,7 +338,7 @@ proc setupArgsForParallelism(n: PNode; objType: PType; scratchObj: PSym;
       objType.addField(fieldB)
       
       if getMagic(n) == mSlice:
-        let a = genAddrOf(n[0])
+        let a = genAddrOf(n[1])
         field.typ = a.typ
         objType.addField(field)
         result.add newFastAsgnStmt(newDotExpr(scratchObj, field), a)

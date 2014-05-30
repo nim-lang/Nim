@@ -166,7 +166,7 @@ proc overlap(m: TModel; x,y,c,d: PNode) =
     of impUnknown:
       localError(x.info,
         "cannot prove: $# > $#; required for ($#)..($#) disjoint from ($#)..($#)" %
-          [?y, ?d, ?x, ?y, ?c, ?d])
+          [?c, ?y, ?x, ?y, ?c, ?d])
     of impYes:
       localError(x.info, "($#)..($#) not disjoint from ($#)..($#)" % [?x, ?y, ?c, ?d])
     of impNo: discard
