@@ -197,18 +197,21 @@ proc createNimCreatePromiseCall(prom, threadParam: PNode): PNode =
   result = newFastAsgnStmt(prom, castExpr)
 
 proc createWrapperProc(f: PNode; threadParam, argsParam: PSym;
-                       varSection, call, barrier, prom: PNode): PSym =
+                       varSection, call, barrier, prom: PNode;
+                       spawnKind: TSpawnResult): PSym =
   var body = newNodeI(nkStmtList, f.info)
   if barrier != nil:
     body.add callCodeGenProc("barrierEnter", barrier)
   body.add varSection
-  if prom != nil:
+  if prom != nil and spawnKind != srByVar:
     body.add createNimCreatePromiseCall(prom, threadParam.newSymNode)
     if barrier == nil:
       body.add callCodeGenProc("nimPromiseCreateCondVar", prom)
 
   body.add callCodeGenProc("nimArgsPassingDone", threadParam.newSymNode)
-  if prom != nil:
+  if spawnKind == srByVar:
+    body.add newAsgnStmt(genDeref(prom), call)
+  elif prom != nil:
     let fk = prom.typ.sons[1].promiseKind
     if fk == promInvalid:
       localError(f.info, "cannot create a promise of type: " & 
@@ -471,9 +474,16 @@ proc wrapProcForSpawn*(owner: PSym; n: PNode; retType: PType;
     objType.addField(field)
     promField = newDotExpr(scratchObj, field)
     promAsExpr = indirectAccess(castExpr, field, n.info)
+  elif spawnKind == srByVar:
+    var field = newSym(skField, getIdent"prom", owner, n.info)
+    field.typ = newType(tyPtr, objType.owner)
+    field.typ.rawAddSon(retType)
+    objType.addField(field)
+    promAsExpr = indirectAccess(castExpr, field, n.info)
+    result.add newFastAsgnStmt(newDotExpr(scratchObj, field), genAddrOf(dest))
 
   let wrapper = createWrapperProc(fn, threadParam, argsParam, varSection, call,
-                                  barrierAsExpr, promAsExpr)
+                                  barrierAsExpr, promAsExpr, spawnKind)
   result.add callCodeGenProc("nimSpawn", wrapper.newSymNode,
                              genAddrOf(scratchObj.newSymNode))
 

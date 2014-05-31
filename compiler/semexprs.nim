@@ -1615,13 +1615,17 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     result = setMs(n, s)
     var x = n.lastSon
     if x.kind == nkDo: x = x.sons[bodyPos]
+    inc c.inParallelStmt
     result.sons[1] = semStmt(c, x)
+    dec c.inParallelStmt
   of mSpawn:
     result = setMs(n, s)
     result.sons[1] = semExpr(c, n.sons[1])
-    # later passes may transform the type 'Promise[T]' back into 'T'
     if not result[1].typ.isEmptyType:
-      result.typ = createPromise(c, result[1].typ, n.info)
+      if c.inParallelStmt > 0:
+        result.typ = result[1].typ
+      else:
+        result.typ = createPromise(c, result[1].typ, n.info)
   else: result = semDirectOp(c, n, flags)
 
 proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
