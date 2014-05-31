@@ -176,21 +176,26 @@ proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
     else:
       discard
 
-proc isCastable(dst, src: PType): bool = 
+proc isCastable(dst, src: PType): bool =
+  ## Checks whether the source type can be casted to the destination type.
+  ## Casting is very unrestrictive; casts are allowed as long as 
+  ## castDest.size >= src.size, and typeAllowed(dst, skParam)
   #const
   #  castableTypeKinds = {tyInt, tyPtr, tyRef, tyCstring, tyString, 
   #                       tySequence, tyPointer, tyNil, tyOpenArray,
   #                       tyProc, tySet, tyEnum, tyBool, tyChar}
-  var ds, ss: BiggestInt
-  # this is very unrestrictive; cast is allowed if castDest.size >= src.size
-  ds = computeSize(dst)
-  ss = computeSize(src)
-  if ds < 0: 
+  var dstSize, srcSize: BiggestInt
+
+  dstSize = computeSize(dst)
+  srcSize = computeSize(src)
+  if dstSize < 0: 
     result = false
-  elif ss < 0: 
+  elif srcSize < 0: 
+    result = false
+  elif not typeAllowed(dst, skParam):
     result = false
   else: 
-    result = (ds >= ss) or
+    result = (dstSize >= srcSize) or
         (skipTypes(dst, abstractInst).kind in IntegralTypes) or
         (skipTypes(src, abstractInst-{tyTypeDesc}).kind in IntegralTypes)
   
@@ -254,6 +259,7 @@ proc semConv(c: PContext, n: PNode): PNode =
     localError(n.info, errUseQualifier, op.sons[0].sym.name.s)
 
 proc semCast(c: PContext, n: PNode): PNode = 
+  ## Semantically analyze a casting ("cast[type](param)")
   if optSafeCode in gGlobalOptions: localError(n.info, errCastNotInSafeMode)
   #incl(c.p.owner.flags, sfSideEffect)
   checkSonsLen(n, 2)
