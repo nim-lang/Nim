@@ -628,29 +628,21 @@ proc len*(n: PJsonNode): int =
   of JObject: result = n.fields.len
   else: discard
 
-proc `[]`*(node: PJsonNode, name: string): PJsonNode
-     {.raises: [EInvalidValue].} =
-  ## Gets a field from a `JObject`. If `node` is nil, raises an
-  ## `EInvalidValue` exception. If the value at `name` does not
-  ## exist, returns nil
-  if isNil(node):
-    raise newException(EInvalidValue, "node may not be nil")
+proc `[]`*(node: PJsonNode, name: string): PJsonNode =
+  ## Gets a field from a `JObject`, which must not be nil.
+  ## If the value at `name` does not exist, returns nil
+  assert(node != nil)
   assert(node.kind == JObject)
   for key, item in items(node.fields):
     if key == name:
       return item
   return nil
   
-proc `[]`*(node: PJsonNode, index: int): PJsonNode 
-     {.raises: [EInvalidIndex, EInvalidValue].} =
-  ## Gets the node at `index` in an Array. `EInvalidIndex` is raised if `index`
+proc `[]`*(node: PJsonNode, index: int): PJsonNode =
+  ## Gets the node at `index` in an Array. Result is undefined if `index`
   ## is out of bounds
   assert(node.kind == JArray)
-  if isNil(node):
-    raise newException(EInvalidValue, "node may not be nil")
-  if index < 0 or index >= node.elems.len:
-    raise newException(EInvalidIndex,
-          "index " & $index & " is out of range [0, " & $node.elems.len & ")")
+  assert(node != nil)
   return node.elems[index]
 
 proc hasKey*(node: PJsonNode, key: string): bool =
