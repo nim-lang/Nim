@@ -1434,6 +1434,20 @@ when not defined(nimrodVM) and hostOS != "standalone":
   proc getTotalMem*(): int {.rtl.}
     ## returns the number of bytes that are owned by the process.
 
+  when hasThreadSupport:
+    proc getOccupiedSharedMem*(): int {.rtl.}
+      ## returns the number of bytes that are owned by the process
+      ## on the shared heap and hold data. This is only available when
+      ## threads are enabled.
+
+    proc getFreeSharedMem*(): int {.rtl.}
+      ## returns the number of bytes that are owned by the
+      ## process on the shared heap, but do not hold any meaningful data.
+      ## This is only available when threads are enabled.
+
+    proc getTotalSharedMem*(): int {.rtl.}
+      ## returns the number of bytes on the shared heap that are owned by the
+      ## process. This is only available when threads are enabled.
 
 iterator countdown*[T](a, b: T, step = 1): T {.inline.} =
   ## Counts from ordinal value `a` down to `b` with the given
