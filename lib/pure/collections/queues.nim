@@ -59,7 +59,7 @@ proc enqueue*[T](q: var TQueue[T], item: T) =
 
 proc dequeue*[T](q: var TQueue[T]): T =
   ## removes and returns the first element of the queue `q`.
-  assert q.len > 0
+  assert q.count > 0
   dec q.count
   result = q.data[q.rd]
   q.rd = (q.rd + 1) and q.mask

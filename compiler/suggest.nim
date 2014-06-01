@@ -63,8 +63,11 @@ proc filterSym(s: PSym): bool {.inline.} =
 
 proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
   let fmoduleId = getModule(f).id
-  result = sfExported in f.flags or fmoduleId == c.module.id or
-      fmoduleId == c.friendModule.id
+  result = sfExported in f.flags or fmoduleId == c.module.id
+  for module in c.friendModules:
+    if fmoduleId == module.id:
+      result = true
+      break
 
 proc suggestField(c: PContext, s: PSym, outputs: var int) = 
   if filterSym(s) and fieldVisible(c, s):
