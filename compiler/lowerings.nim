@@ -155,6 +155,17 @@ proc promiseKind(t: PType): TPromiseKind =
   elif containsGarbageCollectedRef(t): promInvalid
   else: promBlob
 
+proc addLocalVar(varSection: PNode; owner: PSym; typ: PType; v: PNode): PSym =
+  result = newSym(skTemp, getIdent(genPrefix), owner, varSection.info)
+  result.typ = typ
+  incl(result.flags, sfFromGeneric)
+
+  var vpart = newNodeI(nkIdentDefs, varSection.info, 3)
+  vpart.sons[0] = newSymNode(result)
+  vpart.sons[1] = ast.emptyNode
+  vpart.sons[2] = v
+  varSection.add vpart
+
 discard """
 We generate roughly this:
 
@@ -202,6 +213,9 @@ proc createWrapperProc(f: PNode; threadParam, argsParam: PSym;
   var body = newNodeI(nkStmtList, f.info)
   if barrier != nil:
     body.add callCodeGenProc("barrierEnter", barrier)
+  var threadLocalProm: PSym
+  if spawnKind == srByVar:
+    threadLocalProm = addLocalVar(varSection, argsParam.owner, prom.typ, prom)
   body.add varSection
   if prom != nil and spawnKind != srByVar:
     body.add createNimCreatePromiseCall(prom, threadParam.newSymNode)
@@ -210,7 +224,7 @@ proc createWrapperProc(f: PNode; threadParam, argsParam: PSym;
 
   body.add callCodeGenProc("nimArgsPassingDone", threadParam.newSymNode)
   if spawnKind == srByVar:
-    body.add newAsgnStmt(genDeref(prom), call)
+    body.add newAsgnStmt(genDeref(threadLocalProm.newSymNode), call)
   elif prom != nil:
     let fk = prom.typ.sons[1].promiseKind
     if fk == promInvalid:
@@ -250,17 +264,6 @@ proc createCastExpr(argsParam: PSym; objType: PType): PNode =
   result.add newSymNode(argsParam)
   result.typ = newType(tyPtr, objType.owner)
   result.typ.rawAddSon(objType)
-
-proc addLocalVar(varSection: PNode; owner: PSym; typ: PType; v: PNode): PSym =
-  result = newSym(skTemp, getIdent(genPrefix), owner, varSection.info)
-  result.typ = typ
-  incl(result.flags, sfFromGeneric)
-
-  var vpart = newNodeI(nkIdentDefs, varSection.info, 3)
-  vpart.sons[0] = newSymNode(result)
-  vpart.sons[1] = ast.emptyNode
-  vpart.sons[2] = v
-  varSection.add vpart
 
 proc setupArgsForConcurrency(n: PNode; objType: PType; scratchObj: PSym, 
                              castExpr, call, varSection, result: PNode) =

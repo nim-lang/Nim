@@ -1,3 +1,7 @@
+discard """
+  output: '''3.141792613595791
+3.141792613595791'''
+"""
 
 import strutils, math, threadpool
 
