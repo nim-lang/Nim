@@ -1084,8 +1084,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkCallKinds:
     if isRange(n):
       result = semRangeAux(c, n, prev)
-    elif n[0].kind == nkIdent:
-      let op = n.sons[0].ident
+    elif n[0].kind notin nkIdentKinds:
+      result = semTypeExpr(c, n)
+    else:
+      let op = considerAcc(n.sons[0])
       if op.id in {ord(wAnd), ord(wOr)} or op.s == "|":
         checkSonsLen(n, 3)
         var
@@ -1120,8 +1122,6 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = semAnyRef(c, n, tyRef, prev)
       else:
         result = semTypeExpr(c, n)
-    else:
-      result = semTypeExpr(c, n)
   of nkWhenStmt:
     var whenResult = semWhen(c, n, false)
     if whenResult.kind == nkStmtList: whenResult.kind = nkStmtListType

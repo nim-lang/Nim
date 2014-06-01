@@ -42,7 +42,6 @@ type
   cstring* {.magic: Cstring.} ## built-in cstring (*compatible string*) type
   pointer* {.magic: Pointer.} ## built-in pointer type, use the ``addr``
                               ## operator to get a pointer to a variable
-
 const
   on* = true    ## alias for ``true``
   off* = false  ## alias for ``false``
@@ -51,6 +50,9 @@ const
 
 type
   Ordinal* {.magic: Ordinal.}[T]
+  `ptr`* {.magic: Pointer.}[T] ## built-in generic untraced pointer type
+  `ref`* {.magic: Pointer.}[T] ## built-in generic traced pointer type
+
   `nil` {.magic: "Nil".}
   expr* {.magic: Expr.} ## meta type to denote an expression (for templates)
   stmt* {.magic: Stmt.} ## meta type to denote a statement (for templates)
@@ -2948,6 +2950,3 @@ when not defined(booting):
 
   template isStatic*(x): expr = compiles(static(x))
     # checks whether `x` is a value known at compile-time
-
-when hasThreadSupport:
-  when hostOS != "standalone": include "system/sysspawn"

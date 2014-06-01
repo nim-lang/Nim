@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -13,7 +13,7 @@
 include "system/inclrtl"
 
 import
-  strutils, os, strtabs, streams
+  strutils, os, strtabs, streams, cpuinfo
 
 when defined(windows):
   import winlean
@@ -225,42 +225,10 @@ proc errorHandle*(p: PProcess): TFileHandle {.rtl, extern: "nosp$1",
   ## it is closed when closing the PProcess ``p``.
   result = p.errHandle
 
-when defined(macosx) or defined(bsd):
-  const
-    CTL_HW = 6
-    HW_AVAILCPU = 25
-    HW_NCPU = 3
-  proc sysctl(x: ptr array[0..3, cint], y: cint, z: pointer,
-              a: var csize, b: pointer, c: int): cint {.
-             importc: "sysctl", header: "<sys/sysctl.h>".}
-
 proc countProcessors*(): int {.rtl, extern: "nosp$1".} =
   ## returns the numer of the processors/cores the machine has.
   ## Returns 0 if it cannot be detected.
-  when defined(windows):
-    var x = getEnv("NUMBER_OF_PROCESSORS")
-    if x.len > 0: result = parseInt(x.string)
-  elif defined(macosx) or defined(bsd):
-    var
-      mib: array[0..3, cint]
-      numCPU: int
-      len: csize
-    mib[0] = CTL_HW
-    mib[1] = HW_AVAILCPU
-    len = sizeof(numCPU)
-    discard sysctl(addr(mib), 2, addr(numCPU), len, nil, 0)
-    if numCPU < 1:
-      mib[1] = HW_NCPU
-      discard sysctl(addr(mib), 2, addr(numCPU), len, nil, 0)
-    result = numCPU
-  elif defined(hpux):
-    result = mpctl(MPC_GETNUMSPUS, nil, nil)
-  elif defined(irix):
-    var SC_NPROC_ONLN {.importc: "_SC_NPROC_ONLN", header: "<unistd.h>".}: cint
-    result = sysconf(SC_NPROC_ONLN)
-  else:
-    result = sysconf(SC_NPROCESSORS_ONLN)
-  if result <= 0: result = 1
+  result = cpuinfo.countProcessors()
 
 proc execProcesses*(cmds: openArray[string],
                     options = {poStdErrToStdOut, poParentStreams},

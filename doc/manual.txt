@@ -2823,7 +2823,7 @@ The following builtin procs cannot be overloaded for reasons of implementation
 simplicity (they require specialized semantic checking)::
 
   defined, definedInScope, compiles, low, high, sizeOf, 
-  is, of, echo, shallowCopy, getAst
+  is, of, echo, shallowCopy, getAst, spawn
 
 Thus they act more like keywords than like ordinary identifiers; unlike a 
 keyword however, a redefinition may `shadow`:idx: the definition in 

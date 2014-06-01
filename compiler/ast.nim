@@ -605,9 +605,9 @@ const
   # thus cannot be overloaded (also documented in the spec!):
   SpecialSemMagics* = {
     mDefined, mDefinedInScope, mCompiles, mLow, mHigh, mSizeOf, mIs, mOf, 
-    mEcho, mShallowCopy, mExpandToAst}
+    mEcho, mShallowCopy, mExpandToAst, mParallel, mSpawn}
 
-type 
+type
   PNode* = ref TNode
   TNodeSeq* = seq[PNode]
   PType* = ref TType
@@ -885,6 +885,8 @@ const
 
   nkCallKinds* = {nkCall, nkInfix, nkPrefix, nkPostfix,
                   nkCommand, nkCallStrLit, nkHiddenCallConv}
+  nkIdentKinds* = {nkIdent, nkSym, nkAccQuoted, nkOpenSymChoice,
+                   nkClosedSymChoice}
 
   nkLiterals* = {nkCharLit..nkTripleStrLit}
   nkLambdaKinds* = {nkLambda, nkDo}
