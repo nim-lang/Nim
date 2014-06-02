@@ -205,20 +205,30 @@ proc createNimCreatePromiseCall(prom, threadParam: PNode): PNode =
   let castExpr = newNodeIT(nkCast, prom.info, prom.typ)
   castExpr.add emptyNode
   castExpr.add callCodeGenProc("nimCreatePromise", threadParam, size)
-  result = newFastAsgnStmt(prom, castExpr)
+  result = castExpr
 
 proc createWrapperProc(f: PNode; threadParam, argsParam: PSym;
                        varSection, call, barrier, prom: PNode;
                        spawnKind: TSpawnResult): PSym =
   var body = newNodeI(nkStmtList, f.info)
+  var threadLocalBarrier: PSym
   if barrier != nil:
-    body.add callCodeGenProc("barrierEnter", barrier)
+    var varSection = newNodeI(nkVarSection, barrier.info)
+    threadLocalBarrier = addLocalVar(varSection, argsParam.owner, 
+                                     barrier.typ, barrier)
+    body.add varSection
+    body.add callCodeGenProc("barrierEnter", threadLocalBarrier.newSymNode)
   var threadLocalProm: PSym
   if spawnKind == srByVar:
     threadLocalProm = addLocalVar(varSection, argsParam.owner, prom.typ, prom)
+  elif prom != nil:
+    internalAssert prom.typ.kind == tyGenericInst
+    threadLocalProm = addLocalVar(varSection, argsParam.owner, prom.typ, 
+      createNimCreatePromiseCall(prom, threadParam.newSymNode))
+    
   body.add varSection
   if prom != nil and spawnKind != srByVar:
-    body.add createNimCreatePromiseCall(prom, threadParam.newSymNode)
+    body.add newFastAsgnStmt(prom, threadLocalProm.newSymNode)
     if barrier == nil:
       body.add callCodeGenProc("nimPromiseCreateCondVar", prom)
 
@@ -230,14 +240,16 @@ proc createWrapperProc(f: PNode; threadParam, argsParam: PSym;
     if fk == promInvalid:
       localError(f.info, "cannot create a promise of type: " & 
         typeToString(prom.typ.sons[1]))
-    body.add newAsgnStmt(indirectAccess(prom,
+    body.add newAsgnStmt(indirectAccess(threadLocalProm.newSymNode,
       if fk == promGC: "data" else: "blob", prom.info), call)
     if barrier == nil:
-      body.add callCodeGenProc("nimPromiseSignal", prom)
+      # by now 'prom' is shared and thus might have beeen overwritten! we need
+      # to use the thread-local view instead:
+      body.add callCodeGenProc("nimPromiseSignal", threadLocalProm.newSymNode)
   else:
     body.add call
   if barrier != nil:
-    body.add callCodeGenProc("barrierLeave", barrier)
+    body.add callCodeGenProc("barrierLeave", threadLocalBarrier.newSymNode)
 
   var params = newNodeI(nkFormalParams, f.info)
   params.add emptyNode

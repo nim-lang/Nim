@@ -42,22 +42,30 @@ proc signal(cv: var CondVar) =
 
 type
   Barrier* {.compilerProc.} = object
-    counter: int
+    entered: int
     cv: CondVar
+    cacheAlign: array[0..20, byte] # ensure 'left' is not on the same
+                                   # cache line as 'entered'
+    left: int
 
 proc barrierEnter*(b: ptr Barrier) {.compilerProc.} =
-  atomicInc b.counter
+  atomicInc b.entered
 
 proc barrierLeave*(b: ptr Barrier) {.compilerProc.} =
-  atomicDec b.counter
-  if b.counter <= 0: signal(b.cv)
+  atomicInc b.left
+  # these can only be equal if 'closeBarrier' already signaled its interest
+  # in this event:
+  if b.left == b.entered: signal(b.cv)
 
 proc openBarrier*(b: ptr Barrier) {.compilerProc.} =
-  b.counter = 0
+  b.entered = 0
   b.cv = createCondVar()
+  b.left = -1
 
 proc closeBarrier*(b: ptr Barrier) {.compilerProc.} =
-  while b.counter > 0: await(b.cv)
+  # signal interest in the "all done" event:
+  atomicInc b.left
+  while b.left != b.entered: await(b.cv)
   destroyCondVar(b.cv)
 
 {.pop.}
@@ -151,7 +159,7 @@ proc await*[T](prom: Promise[T]) =
   if prom.usesCondVar: await(prom.cv)
 
 proc awaitAndThen*[T](prom: Promise[T]; action: proc (x: T) {.closure.}) =
-  ## blocks until the value is available and then passes this value
+  ## blocks until the ``prom`` is available and then passes its value
   ## to ``action``. Note that due to Nimrod's parameter passing semantics this
   ## means that ``T`` doesn't need to be copied and so ``awaitAndThen`` can
   ## sometimes be more efficient than ``^``.
