@@ -268,11 +268,15 @@ include hlo, seminst, semcall
 
 proc semAfterMacroCall(c: PContext, n: PNode, s: PSym,
                        flags: TExprFlags): PNode =
+  ## Semantically check the output of a macro.
+  ## This involves processes such as re-checking the macro output for type
+  ## coherence, making sure that variables declared with 'let' aren't
+  ## reassigned, and binding the unbound identifiers that the macro output
+  ## contains.
   inc(evalTemplateCounter)
   if evalTemplateCounter > 100:
     globalError(s.info, errTemplateInstantiationTooNested)
-  let oldFriend = c.friendModule
-  c.friendModule = s.owner.getModule
+  c.friendModules.add(s.owner.getModule)
 
   result = n
   if s.typ.sons[0] == nil:
@@ -296,7 +300,7 @@ proc semAfterMacroCall(c: PContext, n: PNode, s: PSym,
       result = fitNode(c, s.typ.sons[0], result)
       #GlobalError(s.info, errInvalidParamKindX, typeToString(s.typ.sons[0]))
   dec(evalTemplateCounter)
-  c.friendModule = oldFriend
+  discard c.friendModules.pop()
 
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   flags: TExprFlags = {}): PNode =

@@ -66,10 +66,16 @@ proc toCover(t: PType): BiggestInt =
     result = lengthOrd(skipTypes(t, abstractVar-{tyTypeDesc}))
 
 proc performProcvarCheck(c: PContext, n: PNode, s: PSym) =
+  ## Checks that the given symbol is a proper procedure variable, meaning
+  ## that it 
   var smoduleId = getModule(s).id
   if sfProcvar notin s.flags and s.typ.callConv == ccDefault and
-      smoduleId != c.module.id and smoduleId != c.friendModule.id: 
-    localError(n.info, errXCannotBePassedToProcVar, s.name.s)
+      smoduleId != c.module.id:
+    block outer:
+      for module in c.friendModules:
+        if smoduleId == module.id:
+          break outer
+      localError(n.info, errXCannotBePassedToProcVar, s.name.s)
 
 proc semProcvarCheck(c: PContext, n: PNode) =
   let n = n.skipConv
