@@ -151,7 +151,7 @@ proc await*[T](prom: Promise[T]) =
   if prom.usesCondVar: await(prom.cv)
 
 proc awaitAndThen*[T](prom: Promise[T]; action: proc (x: T) {.closure.}) =
-  ## blocks until the value is available and then passes this value
+  ## blocks until the ``prom`` is available and then passes its value
   ## to ``action``. Note that due to Nimrod's parameter passing semantics this
   ## means that ``T`` doesn't need to be copied and so ``awaitAndThen`` can
   ## sometimes be more efficient than ``^``.
