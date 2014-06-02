@@ -211,8 +211,13 @@ proc createWrapperProc(f: PNode; threadParam, argsParam: PSym;
                        varSection, call, barrier, prom: PNode;
                        spawnKind: TSpawnResult): PSym =
   var body = newNodeI(nkStmtList, f.info)
+  var threadLocalBarrier: PSym
   if barrier != nil:
-    body.add callCodeGenProc("barrierEnter", barrier)
+    var varSection = newNodeI(nkVarSection, barrier.info)
+    threadLocalBarrier = addLocalVar(varSection, argsParam.owner, 
+                                     barrier.typ, barrier)
+    body.add varSection
+    body.add callCodeGenProc("barrierEnter", threadLocalBarrier.newSymNode)
   var threadLocalProm: PSym
   if spawnKind == srByVar:
     threadLocalProm = addLocalVar(varSection, argsParam.owner, prom.typ, prom)
@@ -244,7 +249,7 @@ proc createWrapperProc(f: PNode; threadParam, argsParam: PSym;
   else:
     body.add call
   if barrier != nil:
-    body.add callCodeGenProc("barrierLeave", barrier)
+    body.add callCodeGenProc("barrierLeave", threadLocalBarrier.newSymNode)
 
   var params = newNodeI(nkFormalParams, f.info)
   params.add emptyNode
