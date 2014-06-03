@@ -5485,7 +5485,7 @@ the argument is missing, the C name is the Nimrod identifier *exactly as
 spelled*:
 
 .. code-block::
-  proc printf(formatstr: cstring) {.header: "stdio.h", importc: "printf", varargs.}
+  proc printf(formatstr: cstring) {.header: "<stdio.h>", importc: "printf", varargs.}
 
 Note that this pragma is somewhat of a misnomer: Other backends will provide
 the same feature under the same name.
