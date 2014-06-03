@@ -296,22 +296,17 @@ proc parseSymbol(p: var TParser, allowNil = false): PNode =
   of tkAccent: 
     result = newNodeP(nkAccQuoted, p)
     getTok(p)
-    var bracketAccm = ""
+    var accm = ""
     while true:
       case p.tok.tokType
-      of tkIntLit..tkCharLit, tkBracketLe, tkBracketRi, tkParLe, tkParRi,
-         tkCurlyRi, tkCurlyLe, tkEquals:
-        bracketAccm.add(tokToStr(p.tok))
-        getTok(p)
-      of tokKeywordLow..tokKeywordHigh, tkSymbol, tkOpr, tkDot, tkDotDot:
-        add(result, newIdentNodeP(p.tok.ident, p))
-        getTok(p)
-      else:
-        if result.len == 0 and bracketAccm == "": 
+      of tkAccent, tkEof:
+        if accm == "": 
           parMessage(p, errIdentifierExpected, p.tok)
         break
-    if bracketAccm != "":
-      result.add(newIdentNodeP(getIdent(bracketAccm), p))
+      else:
+        accm.add(tokToStr(p.tok))
+        getTok(p)
+    result.add(newIdentNodeP(getIdent(accm), p))
     eat(p, tkAccent)
   else:
     if allowNil and p.tok.tokType == tkNil:
