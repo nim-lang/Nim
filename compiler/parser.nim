@@ -147,8 +147,10 @@ proc expectIdent(p: TParser) =
 proc eat(p: var TParser, tokType: TTokType) =
   ## Move the parser to the next token if the current token is of type
   ## `tokType`, otherwise error.
-  if p.tok.tokType == tokType: getTok(p)
-  else: lexMessage(p.lex, errTokenExpected, TokTypeToStr[tokType])
+  if p.tok.tokType == tokType:
+    getTok(p)
+  else:
+    lexMessage(p.lex, errTokenExpected, TokTypeToStr[tokType])
   
 proc parLineInfo(p: TParser): TLineInfo =
   ## Retrieve the line information associated with the parser's current state.
@@ -285,7 +287,7 @@ proc colcom(p: var TParser, n: PNode) =
   skipComment(p, n)
 
 proc parseSymbol(p: var TParser, allowNil = false): PNode =
-  #| symbol = '`' (KEYW|IDENT|operator|'(' ')'|'[' ']'|'{' '}'|'='|literal)+ '`'
+  #| symbol = '`' (KEYW|IDENT|operator|'('|')'|'['|']'|'{'|'}'|'='|literal)+ '`'
   #|        | IDENT
   case p.tok.tokType
   of tkSymbol: 
@@ -296,29 +298,16 @@ proc parseSymbol(p: var TParser, allowNil = false): PNode =
     getTok(p)
     while true:
       case p.tok.tokType
-      of tkBracketLe: 
-        add(result, newIdentNodeP(getIdent"[]", p))
+      of tkIntLit..tkCharLit, tkBracketLe, tkBracketRi, tkParLe, tkParRi,
+         tkCurlyRi, tkCurlyLe, tkEquals:
+        add(result, newIdentNodeP(getIdent(tokToStr(p.tok)), p))
         getTok(p)
-        eat(p, tkBracketRi)
-      of tkEquals:
-        add(result, newIdentNodeP(getIdent"=", p))
-        getTok(p)
-      of tkParLe:
-        add(result, newIdentNodeP(getIdent"()", p))
-        getTok(p)
-        eat(p, tkParRi)
-      of tkCurlyLe:
-        add(result, newIdentNodeP(getIdent"{}", p))
-        getTok(p)
-        eat(p, tkCurlyRi)
       of tokKeywordLow..tokKeywordHigh, tkSymbol, tkOpr, tkDot, tkDotDot:
         add(result, newIdentNodeP(p.tok.ident, p))
         getTok(p)
-      of tkIntLit..tkCharLit:
-        add(result, newIdentNodeP(getIdent(tokToStr(p.tok)), p))
-        getTok(p)
       else:
         if result.len == 0: 
+          echo repr p.tok
           parMessage(p, errIdentifierExpected, p.tok)
         break
     eat(p, tkAccent)
