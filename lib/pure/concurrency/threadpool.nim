@@ -40,33 +40,39 @@ proc signal(cv: var CondVar) =
   release(cv.L)
   signal(cv.c)
 
+const CacheLineSize = 32 # true for most archs
+
 type
-  Barrier* {.compilerProc.} = object
+  Barrier {.compilerProc.} = object
     entered: int
-    cv: CondVar
-    cacheAlign: array[0..20, byte] # ensure 'left' is not on the same
-                                   # cache line as 'entered'
+    cv: CondVar # condvar takes 3 words at least
+    when sizeof(int) < 8:
+      cacheAlign: array[CacheLineSize-4*sizeof(int), byte] 
     left: int
+    cacheAlign2: array[CacheLineSize-sizeof(int), byte]
+    interest: bool ## wether the master is interested in the "all done" event
 
-proc barrierEnter*(b: ptr Barrier) {.compilerProc.} =
-  atomicInc b.entered
+proc barrierEnter(b: ptr Barrier) {.compilerProc, inline.} =
+  ## due to the signaling between threads, it is ensured we are the only
+  ## one with access to 'entered' so we don't need 'atomicInc' here:
+  inc b.entered
 
-proc barrierLeave*(b: ptr Barrier) {.compilerProc.} =
+proc barrierLeave(b: ptr Barrier) {.compilerProc, inline.} =
   atomicInc b.left
-  # these can only be equal if 'closeBarrier' already signaled its interest
-  # in this event:
-  if b.left == b.entered: signal(b.cv)
+  if b.interest and b.left == b.entered: signal(b.cv)
 
-proc openBarrier*(b: ptr Barrier) {.compilerProc.} =
+proc openBarrier(b: ptr Barrier) {.compilerProc, inline.} =
   b.entered = 0
-  b.cv = createCondVar()
-  b.left = -1
+  b.left = 0
+  b.interest = false
 
-proc closeBarrier*(b: ptr Barrier) {.compilerProc.} =
-  # signal interest in the "all done" event:
-  atomicInc b.left
-  while b.left != b.entered: await(b.cv)
-  destroyCondVar(b.cv)
+proc closeBarrier(b: ptr Barrier) {.compilerProc.} =
+  if b.left != b.entered:
+    b.cv = createCondVar()
+    b.interest = true # XXX we really need to ensure no re-orderings are done
+                      # by the C compiler here
+    while b.left != b.entered: await(b.cv)
+    destroyCondVar(b.cv)
 
 {.pop.}
 
