@@ -299,7 +299,7 @@ proc parseSymbol(p: var TParser, allowNil = false): PNode =
     var accm = ""
     while true:
       case p.tok.tokType
-      of tkAccent, tkEof:
+      of tkAccent:
         if accm == "": 
           parMessage(p, errIdentifierExpected, p.tok)
         break
