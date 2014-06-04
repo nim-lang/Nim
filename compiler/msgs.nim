@@ -116,7 +116,7 @@ type
     warnSmallLshouldNotBeUsed, warnUnknownMagic, warnRedefinitionOfLabel, 
     warnUnknownSubstitutionX, warnLanguageXNotSupported, warnCommentXIgnored, 
     warnNilStatement, warnAnalysisLoophole,
-    warnDifferentHeaps, warnWriteToForeignHeap, warnImplicitClosure,
+    warnDifferentHeaps, warnWriteToForeignHeap, warnUnsafeCode,
     warnEachIdentIsTuple, warnShadowIdent, 
     warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe, warnGcUnsafe2,
     warnUninit, warnGcMem, warnUser,
@@ -380,7 +380,7 @@ const
     warnAnalysisLoophole: "thread analysis incomplete due to unknown call '$1' [AnalysisLoophole]",
     warnDifferentHeaps: "possible inconsistency of thread local heaps [DifferentHeaps]",
     warnWriteToForeignHeap: "write to foreign heap [WriteToForeignHeap]",
-    warnImplicitClosure: "implicit closure convention: '$1' [ImplicitClosure]",
+    warnUnsafeCode: "unsafe code: '$1' [UnsafeCode]",
     warnEachIdentIsTuple: "each identifier is a tuple [EachIdentIsTuple]",
     warnShadowIdent: "shadowed identifier: '$1' [ShadowIdent]",
     warnProveInit: "Cannot prove that '$1' is initialized. This will become a compile time error in the future. [ProveInit]",
@@ -416,7 +416,7 @@ const
     "RedefinitionOfLabel", "UnknownSubstitutionX", "LanguageXNotSupported", 
     "CommentXIgnored", "NilStmt",
     "AnalysisLoophole", "DifferentHeaps", "WriteToForeignHeap",
-    "ImplicitClosure", "EachIdentIsTuple", "ShadowIdent", 
+    "UnsafeCode", "EachIdentIsTuple", "ShadowIdent", 
     "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
     "GcMem", "User"]
 

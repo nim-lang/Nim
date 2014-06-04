@@ -16,7 +16,7 @@
 Nimrod differs from many other compilers in that it is really fast,
 and being so fast makes it suited to provide external queries for
 text editors about the source code being written. Through the
-`idetools`:idx: command of `the compiler <nimrodc.html>`_, any IDE
+``idetools`` command of `the compiler <nimrodc.html>`_, any IDE
 can query a ``.nim`` source file and obtain useful information like
 definition of symbols or suggestions for completion.
 
@@ -169,7 +169,7 @@ clicks it and after a second or two the IDE displays where that
 symbol is defined. Such latencies would be terrible for features
 like symbol suggestion, plus why wait at all if we can avoid it?
 
-The idetools command can be run as a compiler service (`caas`:idx:),
+The idetools command can be run as a compiler service (CAAS),
 where you first launch the compiler and it will stay online as a
 server, accepting queries in a telnet like fashion. The advantage
 of staying on is that for many queries the compiler can cache the
@@ -528,7 +528,7 @@ suite is not integrated with the main test suite and you have to
 run it manually. First you have to compile the tester::
 
 	$ cd my/nimrod/checkout/tests
-	$ nimrod c caasdriver.nim
+	$ nimrod c testament/caasdriver.nim
 
 Running the ``caasdriver`` without parameters will attempt to process
 all the test cases in all three operation modes. If a test succeeds

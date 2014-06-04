@@ -10,7 +10,7 @@
 ## Serialization utilities for the compiler.
 import strutils
 
-proc c_sprintf(buf, frmt: cstring) {.importc: "sprintf", nodecl, varargs.}
+proc c_sprintf(buf, frmt: cstring) {.importc: "sprintf", header: "<stdio.h>", nodecl, varargs.}
 
 proc toStrMaxPrecision*(f: BiggestFloat): string = 
   if f != f:

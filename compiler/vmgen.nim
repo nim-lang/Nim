@@ -331,6 +331,7 @@ proc canonValue*(n: PNode): PNode =
 proc rawGenLiteral(c: PCtx; n: PNode): int =
   result = c.constants.len
   assert(n.kind != nkCall)
+  n.flags.incl nfAllConst
   c.constants.add n.canonValue
   internalAssert result < 0x7fff
 
@@ -968,7 +969,7 @@ const
 
 proc fitsRegister*(t: PType): bool =
   t.skipTypes(abstractInst-{tyTypeDesc}).kind in {
-    tyRange, tyEnum, tyBool, tyInt..tyUInt64}
+    tyRange, tyEnum, tyBool, tyInt..tyUInt64, tyChar}
 
 proc requiresCopy(n: PNode): bool =
   if n.typ.skipTypes(abstractInst-{tyTypeDesc}).kind in atomicTypes:
@@ -1190,6 +1191,8 @@ proc genArrAccess2(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
     c.gABC(n, opcNodeToReg, dest, cc)
     c.freeTemp(cc)
   else:
+    #message(n.info, warnUser, "argh")
+    #echo "FLAGS ", flags, " ", fitsRegister(n.typ), " ", typeToString(n.typ)
     c.gABC(n, opc, dest, a, b)
   c.freeTemp(a)
   c.freeTemp(b)
@@ -1622,7 +1625,7 @@ proc genProc(c: PCtx; s: PSym): int =
     c.gABC(body, opcEof, eofInstr.regA)
     c.optimizeJumps(result)
     s.offset = c.prc.maxSlots
-    #if s.name.s == "addStuff":
+    #if s.name.s == "find":
     #  echo renderTree(body)
     #  c.echoCode(result)
     c.prc = oldPrc

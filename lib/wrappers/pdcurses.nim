@@ -554,14 +554,12 @@ template BUTTON_CHANGED*(x: expr): expr =
 template BUTTON_STATUS*(x: expr): expr = 
   (Mouse_status.button[(x) - 1])
 
-template ACS_PICK*(w, n: expr): expr = 
-  (cast[int32](w) or A_ALTCHARSET)
+template ACS_PICK*(w, n: expr): expr = int32(w) or A_ALTCHARSET
 
-template KEY_F*(n: expr): expr = 
-  (KEY_F0 + (n))
+template KEY_F*(n: expr): expr = KEY_F0 + n
 
 template COLOR_PAIR*(n: expr): expr = 
-  ((cast[cunsignedlong]((n)) shl COLOR_SHIFT) and A_COLOR)
+  ((cunsignedlong(n) shl COLOR_SHIFT) and A_COLOR)
 
 template PAIR_NUMBER*(n: expr): expr = 
   (((n) and A_COLOR) shr COLOR_SHIFT)

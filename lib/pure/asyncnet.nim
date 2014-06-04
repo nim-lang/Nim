@@ -97,29 +97,35 @@ proc recv*(socket: PAsyncSocket, size: int,
   ## to be read then the future will complete with a value of ``""``.
   if socket.isBuffered:
     result = newString(size)
-
-    template returnNow(readBytes: int) =
-      result.setLen(readBytes)
-      # Only increase buffer position when not peeking.
-      if (flags and MSG_PEEK) != MSG_PEEK:
-        socket.currPos.inc(readBytes)
-      return
+    let originalBufPos = socket.currPos
 
     if socket.bufLen == 0:
       let res = await socket.readIntoBuf(flags and (not MSG_PEEK))
-      if res == 0: returnNow(0)
+      if res == 0:
+        result.setLen(0)
+        return
 
     var read = 0
     while read < size:
       if socket.currPos >= socket.bufLen:
+        if (flags and MSG_PEEK) == MSG_PEEK:
+          # We don't want to get another buffer if we're peeking.
+          result.setLen(read)
+          return
         let res = await socket.readIntoBuf(flags and (not MSG_PEEK))
-        if res == 0: returnNow(read)
+        if res == 0:
+          result.setLen(read)
+          return
 
       let chunk = min(socket.bufLen-socket.currPos, size-read)
-      copyMem(addr(result[read]), addr(socket.buffer[socket.currPos+read]), chunk)
+      copyMem(addr(result[read]), addr(socket.buffer[socket.currPos]), chunk)
       read.inc(chunk)
+      socket.currPos.inc(chunk)
 
-    returnNow(read)
+    if (flags and MSG_PEEK) == MSG_PEEK:
+      # Restore old buffer cursor position.
+      socket.currPos = originalBufPos
+    result.setLen(read)
   else:
     result = await recv(socket.fd.TAsyncFD, size, flags)
 
@@ -214,7 +220,7 @@ proc listen*(socket: PAsyncSocket, backlog = SOMAXCONN) =
 
 proc close*(socket: PAsyncSocket) =
   ## Closes the socket.
-  socket.fd.TAsyncFD.close()
+  socket.fd.TAsyncFD.closeSocket()
   # TODO SSL
 
 when isMainModule:

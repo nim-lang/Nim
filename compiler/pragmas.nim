@@ -517,7 +517,7 @@ proc pragmaUses(c: PContext, n: PNode) =
   proc processExc(c: PContext, x: PNode): PNode =
     if x.kind in {nkAccQuoted, nkIdent, nkSym,
                   nkOpenSymChoice, nkClosedSymChoice}:
-      if considerAcc(x).s == "*":
+      if considerQuotedIdent(x).s == "*":
         return newSymNode(ast.anyGlobal)
     result = c.semExpr(c, x)
     if result.kind != nkSym or sfGlobal notin result.sym.flags:

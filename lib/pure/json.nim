@@ -629,7 +629,9 @@ proc len*(n: PJsonNode): int =
   else: discard
 
 proc `[]`*(node: PJsonNode, name: string): PJsonNode =
-  ## Gets a field from a `JObject`. Returns nil if the key is not found.
+  ## Gets a field from a `JObject`, which must not be nil.
+  ## If the value at `name` does not exist, returns nil
+  assert(node != nil)
   assert(node.kind == JObject)
   for key, item in items(node.fields):
     if key == name:
@@ -637,8 +639,10 @@ proc `[]`*(node: PJsonNode, name: string): PJsonNode =
   return nil
   
 proc `[]`*(node: PJsonNode, index: int): PJsonNode =
-  ## Gets the node at `index` in an Array.
+  ## Gets the node at `index` in an Array. Result is undefined if `index`
+  ## is out of bounds
   assert(node.kind == JArray)
+  assert(node != nil)
   return node.elems[index]
 
 proc hasKey*(node: PJsonNode, key: string): bool =
@@ -670,6 +674,25 @@ proc `[]=`*(obj: PJsonNode, key: string, val: PJsonNode) =
       obj.fields[i].val = val
       return
   obj.fields.add((key, val))
+
+proc `{}`*(node: PJsonNode, names: varargs[string]): PJsonNode =
+  ## Transverses the node and gets the given value. If any of the
+  ## names does not exist, returns nil
+  result = node
+  for name in names:
+    result = result[name]
+    if isNil(result):
+      return nil
+
+proc `{}=`*(node: PJsonNode, names: varargs[string], value: PJsonNode) =
+  ## Transverses the node and tries to set the value at the given location
+  ## to `value` If any of the names are missing, they are added
+  var node = node
+  for i in 0..(names.len-2):
+    if isNil(node[names[i]]):
+      node[names[i]] = newJObject()
+    node = node[names[i]]
+  node[names[names.len-1]] = value
 
 proc delete*(obj: PJsonNode, key: string) =
   ## Deletes ``obj[key]`` preserving the order of the other (key, value)-pairs.
@@ -995,6 +1018,28 @@ when isMainModule:
     echo(parsed["key2"][12123])
     raise newException(EInvalidValue, "That line was expected to fail")
   except EInvalidIndex: echo()
+
+  let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd" }"""
+  # nil passthrough
+  assert(testJson{"doesnt_exist", "anything"} == nil)
+  testJson{["c", "d"]} = %true
+  assert(testJson["c"]["d"].bval)
+
+  # Bounds checking
+  try:
+    let a = testJson["a"][9]
+    assert(false, "EInvalidIndex not thrown")
+  except EInvalidIndex:
+    discard
+  try:
+    let a = testJson["a"][-1]
+    assert(false, "EInvalidIndex not thrown")
+  except EInvalidIndex:
+    discard
+  try:
+    assert(testJson["a"][0].num == 1, "Index doesn't correspond to its value")
+  except:
+    assert(false, "EInvalidIndex thrown for valid index")
 
   discard """
   while true:

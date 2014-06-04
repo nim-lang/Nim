@@ -1,6 +1,5 @@
 discard """
-disabled: true
-output: '''StmtList
+msg: '''StmtList
   VarSection
     IdentDefs
       Ident !"x"

@@ -166,6 +166,7 @@ proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
   elif (skipTypes(castDest, abstractVarRange).kind in IntegralTypes) and
       (skipTypes(src, abstractVarRange-{tyTypeDesc}).kind in IntegralTypes):
     # accept conversion between integral types
+    discard
   else:
     # we use d, s here to speed up that operation a bit:
     case cmpTypes(c, d, s)
@@ -175,21 +176,26 @@ proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
     else:
       discard
 
-proc isCastable(dst, src: PType): bool = 
+proc isCastable(dst, src: PType): bool =
+  ## Checks whether the source type can be casted to the destination type.
+  ## Casting is very unrestrictive; casts are allowed as long as 
+  ## castDest.size >= src.size, and typeAllowed(dst, skParam)
   #const
   #  castableTypeKinds = {tyInt, tyPtr, tyRef, tyCstring, tyString, 
   #                       tySequence, tyPointer, tyNil, tyOpenArray,
   #                       tyProc, tySet, tyEnum, tyBool, tyChar}
-  var ds, ss: BiggestInt
-  # this is very unrestrictive; cast is allowed if castDest.size >= src.size
-  ds = computeSize(dst)
-  ss = computeSize(src)
-  if ds < 0: 
+  var dstSize, srcSize: BiggestInt
+
+  dstSize = computeSize(dst)
+  srcSize = computeSize(src)
+  if dstSize < 0: 
     result = false
-  elif ss < 0: 
+  elif srcSize < 0: 
+    result = false
+  elif not typeAllowed(dst, skParam):
     result = false
   else: 
-    result = (ds >= ss) or
+    result = (dstSize >= srcSize) or
         (skipTypes(dst, abstractInst).kind in IntegralTypes) or
         (skipTypes(src, abstractInst-{tyTypeDesc}).kind in IntegralTypes)
   
@@ -253,6 +259,7 @@ proc semConv(c: PContext, n: PNode): PNode =
     localError(n.info, errUseQualifier, op.sons[0].sym.name.s)
 
 proc semCast(c: PContext, n: PNode): PNode = 
+  ## Semantically analyze a casting ("cast[type](param)")
   if optSafeCode in gGlobalOptions: localError(n.info, errCastNotInSafeMode)
   #incl(c.p.owner.flags, sfSideEffect)
   checkSonsLen(n, 2)
@@ -386,7 +393,7 @@ proc semOpAux(c: PContext, n: PNode) =
     var a = n.sons[i]
     if a.kind == nkExprEqExpr and sonsLen(a) == 2: 
       var info = a.sons[0].info
-      a.sons[0] = newIdentNode(considerAcc(a.sons[0]), info)
+      a.sons[0] = newIdentNode(considerQuotedIdent(a.sons[0]), info)
       a.sons[1] = semExprWithType(c, a.sons[1], flags)
       a.typ = a.sons[1].typ
     else:
@@ -969,7 +976,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
   n.sons[0] = semExprWithType(c, n.sons[0], flags+{efDetermineType})
   #restoreOldStyleType(n.sons[0])
-  var i = considerAcc(n.sons[1])
+  var i = considerQuotedIdent(n.sons[1])
   var ty = n.sons[0].typ
   var f: PSym = nil
   result = nil
@@ -1050,7 +1057,7 @@ proc dotTransformation(c: PContext, n: PNode): PNode =
     addSon(result, n.sons[1])
     addSon(result, copyTree(n[0]))
   else:
-    var i = considerAcc(n.sons[1])
+    var i = considerQuotedIdent(n.sons[1])
     result = newNodeI(nkDotCall, n.info)
     result.flags.incl nfDotField
     addSon(result, newIdentNode(i, n[1].info))
@@ -1134,7 +1141,7 @@ proc semArrayAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     result = semExpr(c, buildOverloadedSubscripts(n, getIdent"[]"))
 
 proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
-  var id = considerAcc(a[1])
+  var id = considerQuotedIdent(a[1])
   var setterId = newIdentNode(getIdent(id.s & '='), n.info)
   # a[0] is already checked for semantics, that does ``builtinFieldAccess``
   # this is ugly. XXX Semantic checking should use the ``nfSem`` flag for
@@ -1368,7 +1375,7 @@ proc lookUpForDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
       else: 
         localError(n.sons[1].info, errIdentifierExpected, "")
   of nkAccQuoted:
-    result = lookUpForDefined(c, considerAcc(n), onlyCurrentScope)
+    result = lookUpForDefined(c, considerQuotedIdent(n), onlyCurrentScope)
   of nkSym:
     result = n.sym
   else: 
@@ -2060,6 +2067,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkClosedSymChoice, nkOpenSymChoice:
     # handling of sym choices is context dependent
     # the node is left intact for now
+    discard
   of nkStaticExpr:
     result = semStaticExpr(c, n)
   of nkAsgn: result = semAsgn(c, n)

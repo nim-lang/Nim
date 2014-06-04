@@ -97,7 +97,7 @@ Library Additions
 - Added module ``selectors``.
 - Added module ``asynchttpserver``.
 - Added support for the new asynchronous IO in the ``httpclient`` module.
-- Added a Python-inspired ``future`` module that feature upcoming additions
+- Added a Python-inspired ``future`` module that features upcoming additions
   to the ``system`` module.
 
 

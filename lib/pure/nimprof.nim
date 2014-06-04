@@ -58,8 +58,9 @@ when not defined(memProfiler):
     ## instruction count measure instead then.
     if intervalInUs <= 0: interval = 0
     else: interval = intervalInUs * 1000 - tickCountCorrection
-  
+
 when withThreads:
+  import locks
   var
     profilingLock: TLock
 
@@ -72,7 +73,7 @@ proc hookAux(st: TStackTrace, costs: int) =
   var last = high(st)
   while last > 0 and isNil(st[last]): dec last
   var h = hash(pointer(st[last])) and high(profileData)
-  
+
   # we use probing for maxChainLen entries and replace the encountered entry
   # with the minimal 'total' value:
   if emptySlots == 0:
@@ -133,7 +134,7 @@ else:
       hookAux(st, 1)
     elif getticks() - t0 > interval:
       hookAux(st, 1)
-      t0 = getticks()  
+      t0 = getticks()
 
 proc getTotal(x: ptr TProfileEntry): int =
   result = if isNil(x): 0 else: x.total
@@ -145,7 +146,7 @@ proc `//`(a, b: int): string =
   result = format("$1/$2 = $3%", a, b, formatFloat(a / b * 100.0, ffDefault, 2))
 
 proc writeProfile() {.noconv.} =
-  when defined(system.TStackTrace): 
+  when defined(system.TStackTrace):
     system.profilerHook = nil
   const filename = "profile_results.txt"
   echo "writing " & filename & "..."
@@ -156,7 +157,7 @@ proc writeProfile() {.noconv.} =
     var entries = 0
     for i in 0..high(profileData):
       if profileData[i] != nil: inc entries
-    
+
     var perProc = initCountTable[string]()
     for i in 0..entries-1:
       var dups = initSet[string]()
@@ -166,7 +167,7 @@ proc writeProfile() {.noconv.} =
         let p = $procname
         if not containsOrIncl(dups, p):
           perProc.inc(p, profileData[i].total)
-    
+
     var sum = 0
     # only write the first 100 entries:
     for i in 0..min(100, entries-1):

@@ -805,6 +805,7 @@ proc recv*(socket: PSocket, data: pointer, size: int): int {.tags: [FReadIO].} =
     
       let chunk = min(socket.bufLen-socket.currPos, size-read)
       var d = cast[cstring](data)
+      assert size-read >= chunk
       copyMem(addr(d[read]), addr(socket.buffer[socket.currPos]), chunk)
       read.inc(chunk)
       socket.currPos.inc(chunk)
@@ -871,6 +872,7 @@ proc recv*(socket: PSocket, data: pointer, size: int, timeout: int): int {.
   while read < size:
     let avail = waitFor(socket, waited, timeout, size-read, "recv")
     var d = cast[cstring](data)
+    assert avail <= size-read
     result = recv(socket, addr(d[read]), avail)
     if result == 0: break
     if result < 0:

@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -485,6 +485,11 @@ proc isTrue(n: PNode): bool =
 proc paramType(op: PType, i: int): PType =
   if op != nil and i < op.len: result = op.sons[i]
 
+proc cstringCheck(tracked: PEffects; n: PNode) =
+  if n.sons[0].typ.kind == tyCString and (let a = skipConv(n[1]);
+      a.typ.kind == tyString and a.kind notin {nkStrLit..nkTripleStrLit}):
+    message(n.info, warnUnsafeCode, renderTree(n))
+
 proc track(tracked: PEffects, n: PNode) =
   case n.kind
   of nkSym:
@@ -541,6 +546,7 @@ proc track(tracked: PEffects, n: PNode) =
     track(tracked, n.sons[0])
     addAsgnFact(tracked.guards, n.sons[0], n.sons[1])
     notNilCheck(tracked, n.sons[1], n.sons[0].typ)
+    when false: cstringCheck(tracked, n)
   of nkVarSection:
     for child in n:
       let last = lastSon(child)

@@ -127,7 +127,8 @@ proc createStrKeepNode(x: var TFullReg) =
   elif x.node.kind == nkNilLit:
     system.reset(x.node[])
     x.node.kind = nkStrLit
-  elif x.node.kind notin {nkStrLit..nkTripleStrLit}:
+  elif x.node.kind notin {nkStrLit..nkTripleStrLit} or
+      nfAllConst in x.node.flags:
     # XXX this is hacky; tests/txmlgen triggers it:
     x.node = newNode(nkStrLit)
     #  debug x.node

@@ -161,6 +161,30 @@ proc makeSingleLineCString*(s: string): string =
     result.add(c.toCChar)
   result.add('\"')
 
+proc mangle*(name: string): string =
+  ## Lowercases the given name and manges any non-alphanumeric characters
+  ## so they are represented as `HEX____`. If the name starts with a number,
+  ## `N` is prepended
+  result = ""
+  case name[0]
+  of Letters:
+    result.add(name[0].toLower)
+  of Digits:
+    result.add("N" & name[0])
+  else:
+    result = "HEX" & toHex(ord(name[0]), 2)
+  for i in 1..(name.len-1):
+    let c = name[i]
+    case c
+    of 'A'..'Z':
+      add(result, c.toLower)
+    of '_':
+      discard
+    of 'a'..'z', '0'..'9':
+      add(result, c)
+    else:
+      add(result, "HEX" & toHex(ord(c), 2))
+
 proc makeLLVMString*(s: string): PRope = 
   const MaxLineLength = 64
   result = nil

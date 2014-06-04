@@ -800,8 +800,8 @@ elif not defined(useNimRtl):
 
   proc startProcessAfterFork(data: ptr TStartProcessData) =
     # Warning: no GC here!
-    # Or anythink that touches global structures - all called nimrod procs
-    # must be marked with noStackFrame. Inspect C code after making changes.
+    # Or anything that touches global structures - all called nimrod procs
+    # must be marked with stackTrace:off. Inspect C code after making changes.
     if not data.optionPoParentStreams:
       discard close(data.pStdin[writeIdx])
       if dup2(data.pStdin[readIdx], readIdx) < 0:
@@ -903,7 +903,7 @@ elif not defined(useNimRtl):
       createStream(p.errStream, p.errHandle, fmRead)
     return p.errStream
 
-  proc csystem(cmd: cstring): cint {.nodecl, importc: "system".}
+  proc csystem(cmd: cstring): cint {.nodecl, importc: "system", header: "<stdlib.h>".}
 
   proc execCmd(command: string): int =
     when defined(linux):

@@ -82,6 +82,9 @@ when not defined(readLineFromStdin):
   proc readLineFromStdin(prompt: string, line: var string): bool =
     stdout.write(prompt)
     result = readLine(stdin, line)
+    if not result:
+      stdout.write("\n")
+      quit(0)
 
 proc endsWith*(x: string, s: set[char]): bool =
   var i = x.len-1

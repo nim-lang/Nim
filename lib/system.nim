@@ -1434,6 +1434,20 @@ when not defined(nimrodVM) and hostOS != "standalone":
   proc getTotalMem*(): int {.rtl.}
     ## returns the number of bytes that are owned by the process.
 
+  when hasThreadSupport:
+    proc getOccupiedSharedMem*(): int {.rtl.}
+      ## returns the number of bytes that are owned by the process
+      ## on the shared heap and hold data. This is only available when
+      ## threads are enabled.
+
+    proc getFreeSharedMem*(): int {.rtl.}
+      ## returns the number of bytes that are owned by the
+      ## process on the shared heap, but do not hold any meaningful data.
+      ## This is only available when threads are enabled.
+
+    proc getTotalSharedMem*(): int {.rtl.}
+      ## returns the number of bytes on the shared heap that are owned by the
+      ## process. This is only available when threads are enabled.
 
 iterator countdown*[T](a, b: T, step = 1): T {.inline.} =
   ## Counts from ordinal value `a` down to `b` with the given
@@ -2413,7 +2427,7 @@ when not defined(JS): #and not defined(NimrodVM):
       ##     for line in filename.lines:
       ##       buffer.add(line.replace("a", "0") & '\x0A')
       ##     writeFile(filename, buffer)
-      var f = open(filename)
+      var f = open(filename, bufSize=8000)
       var res = TaintedString(newStringOfCap(80))
       while f.readLine(res): yield res
       close(f)
@@ -2620,7 +2634,7 @@ proc `[]=`*[Idx, T](a: var array[Idx, T], x: TSlice[int], b: openArray[T]) =
   if L == b.len:
     for i in 0 .. <L: a[i+x.a] = b[i]
   else:
-    sysFatal(EOutOfRange, "differing lengths for slice assignment")
+    sysFatal(EOutOfRange, "different lengths for slice assignment")
 
 proc `[]`*[Idx, T](a: array[Idx, T], x: TSlice[Idx]): seq[T] =
   ## slice operation for arrays. Negative indexes are **not** supported
@@ -2642,7 +2656,7 @@ proc `[]=`*[Idx, T](a: var array[Idx, T], x: TSlice[Idx], b: openArray[T]) =
       a[j] = b[i]
       inc(j)
   else:
-    sysFatal(EOutOfRange, "differing lengths for slice assignment")
+    sysFatal(EOutOfRange, "different lengths for slice assignment")
 
 proc `[]`*[T](s: seq[T], x: TSlice[int]): seq[T] = 
   ## slice operation for sequences. Negative indexes are supported.
@@ -2718,9 +2732,6 @@ proc `/=`*[T: float|float32|float64] (x: var T, y: T) {.inline, noSideEffect.} =
   x = x / y
 
 proc `&=`* (x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
-
-proc rand*(max: int): int {.magic: "Rand", sideEffect.}
-  ## compile-time `random` function. Useful for debugging.
 
 proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
   ## converts the AST of `x` into a string representation. This is very useful

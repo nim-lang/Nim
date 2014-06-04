@@ -164,20 +164,10 @@ Index switch
   nimrod doc2 --index:on filename.nim
 
 This will generate an index of all the exported symbols in the input Nimrod
-module, and put it into a neighboring file with the extension of `.idx`. The
-index file is line oriented (newlines have to be escaped). Each line represents
-a tab separated record of several columns, the first two mandatory, the rest
-optional:
-
-1. Mandatory term being indexed. Terms can include quoting according to
-   Nimrod's rules (eg. ```^```)
-2. Base filename plus anchor hyper link (eg.
-   ``algorithm.html#*,int,TSortOrder``).
-3. Optional human readable string to display as hyper link. If the value is not
-   present or is the empty string, the hyper link will be rendered using the
-   term.
-4. Optional title or description of the hyper link. Browsers usually display
-   this as a tooltip after hovering a moment over the hyper link.
+module, and put it into a neighboring file with the extension of ``.idx``. The
+index file is line oriented (newlines have to be escaped). Each line
+represents a tab separated record of several columns, the first two mandatory,
+the rest optional. See the `Index (idx) file format`_ section for details.
 
 Once index files have been generated for one or more modules, the Nimrod
 compiler command ``buildIndex directory`` can be run to go over all the index
@@ -293,6 +283,60 @@ symbols in the `system module <system.html>`_.
 * ``template newException[](exceptn: typedesc; message: string): expr`` **=>**
   `#newException.t,typedesc,string
   <system.html#newException.t,typedesc,string>`_
+
+
+Index (idx) file format
+=======================
+
+Files with the ``.idx`` extension are generated when you use the `Index
+switch`_ along with commands to generate documentation from source or text
+files. You can programatically generate indices with the `setIndexTerm()
+<rstgen.html#setIndexTerm>`_ and `writeIndexFile()
+<rstgen.html#writeIndexFile>`_ procs. The purpose of ``idx`` files is to hold
+the interesting symbols and their HTML references so they can be later
+concatenated into a big index file with `mergeIndexes()
+<rstgen.html#mergeIndexes>`_.  This section documents the file format in
+detail.
+
+Index files are line oriented and tab separated (newline and tab characters
+have to be escaped). Each line represents a record with at least two fields,
+but can have up to four (additional columns are ignored). The content of these
+columns is:
+
+1. Mandatory term being indexed. Terms can include quoting according to
+   Nimrod's rules (eg. \`^\` like in `the actors module
+   <actors.html#^,ptr.TChannel[T]>`_).
+2. Base filename plus anchor hyper link (eg.
+   ``algorithm.html#*,int,TSortOrder``).
+3. Optional human readable string to display as hyper link. If the value is not
+   present or is the empty string, the hyper link will be rendered
+   using the term. Prefix whitespace indicates that this entry is
+   not for an API symbol but for a TOC entry.
+4. Optional title or description of the hyper link. Browsers usually display
+   this as a tooltip after hovering a moment over the hyper link.
+
+The index generation tools try to differentiate between documentation
+generated from ``.nim`` files and documentation generated from ``.txt`` or
+``.rst`` files. The former are always closely related to source code and
+consist mainly of API entries. The latter are generic documents meant for
+human reading.
+
+To differentiate both types (documents and APIs), the index generator will add
+to the index of documents an entry with the title of the document. Since the
+title is the topmost element, it will be added with a second field containing
+just the filename without any HTML anchor.  By convention this entry without
+anchor is the *title entry*, and since entries in the index file are added as
+they are scanned, the title entry will be the first line. The title for APIs
+is not present because it can be generated concatenating the name of the file
+to the word **Module**.
+
+Normal symbols are added to the index with surrounding whitespaces removed. An
+exception to this are table of content (TOC) entries. TOC entries are added to
+the index file with their third column having as much prefix spaces as their
+level is in the TOC (at least 1 character). The prefix whitespace helps to
+filter TOC entries from API or text symbols. This is important because the
+amount of spaces is used to replicate the hiearchy for document TOCs in the
+final index, and TOC entries found in ``.nim`` files are discarded.
 
 
 Additional resources

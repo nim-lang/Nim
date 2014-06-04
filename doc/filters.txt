@@ -26,7 +26,7 @@ available parameters depend on the invoked filter.
 Pipe operator
 =============
 
-Filters can be combined with the ``|`` `pipe operator`:idx:\ ::
+Filters can be combined with the ``|`` pipe operator::
 
   #! strip(startswith="<") | stdtmpl
   #proc generateXML(name, age: string): string =
@@ -46,7 +46,7 @@ after each filter application.
 Replace filter
 --------------
 
-The `replace`:idx: filter replaces substrings in each line.
+The replace filter replaces substrings in each line.
 
 Parameters and their defaults:
 
@@ -60,7 +60,7 @@ Parameters and their defaults:
 Strip filter
 ------------
 
-The `strip`:idx: filter simply removes leading and trailing whitespace from
+The strip filter simply removes leading and trailing whitespace from
 each line.
 
 Parameters and their defaults:
@@ -79,7 +79,7 @@ Parameters and their defaults:
 StdTmpl filter
 --------------
 
-The `stdtmpl`:idx: filter provides a simple templating engine for Nimrod. The
+The stdtmpl filter provides a simple templating engine for Nimrod. The
 filter uses a line based parser: Lines prefixed with a *meta character*
 (default: ``#``) contain Nimrod code, other lines are verbatim. Because
 indentation-based parsing is not suited for a templating engine, control flow

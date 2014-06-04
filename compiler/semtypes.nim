@@ -116,7 +116,7 @@ proc semVarargs(c: PContext, n: PNode, prev: PType): PType =
     var base = semTypeNode(c, n.sons[1], nil)
     addSonSkipIntLit(result, base)
     if sonsLen(n) == 3:
-      result.n = newIdentNode(considerAcc(n.sons[2]), n.sons[2].info)
+      result.n = newIdentNode(considerQuotedIdent(n.sons[2]), n.sons[2].info)
   else:
     localError(n.info, errXExpectsOneTypeParam, "varargs")
     addSonSkipIntLit(result, errorType(c))
@@ -385,6 +385,7 @@ proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
     case kind
     of skType: 
       # process pragmas later, because result.typ has not been set yet
+      discard
     of skField: pragma(c, result, n.sons[1], fieldPragmas)
     of skVar:   pragma(c, result, n.sons[1], varPragmas)
     of skLet:   pragma(c, result, n.sons[1], letPragmas)

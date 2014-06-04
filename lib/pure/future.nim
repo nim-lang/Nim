@@ -18,7 +18,6 @@ proc createProcType(p, b: PNimrodNode): PNimrodNode {.compileTime.} =
   result = newNimNode(nnkProcTy)
   var formalParams = newNimNode(nnkFormalParams)
 
-  expectKind(b, nnkIdent)
   formalParams.add b
 
   case p.kind
