@@ -303,6 +303,8 @@ proc parseSymbol(p: var TParser, allowNil = false): PNode =
         if accm == "": 
           parMessage(p, errIdentifierExpected, p.tok)
         break
+      of tkEof, tkInvalid, tkComment:
+          parMessage(p, errIdentifierExpected, p.tok)
       else:
         accm.add(tokToStr(p.tok))
         getTok(p)
