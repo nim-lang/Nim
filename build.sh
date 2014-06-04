@@ -15,8 +15,6 @@ popd
 bin/nimrod c koch
 ./koch boot -d:release -d:useGnuReadline
 export PATH="`pwd`/bin:$PATH"
-echo "PATH IS $PATH"
-return 1
 
 pushd compiler
 nimrod c -d:release c2nim/c2nim.nim
