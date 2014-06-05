@@ -619,6 +619,44 @@ proc `%`*(elements: openArray[PJsonNode]): PJsonNode =
   newSeq(result.elems, elements.len)
   for i, p in pairs(elements): result.elems[i] = p
 
+proc `==`* (a,b: PJsonNode): bool =
+  ## Check two nodes for equality
+  if a.kind != b.kind: false
+  else:
+    case a.kind
+    of JString:
+      a.str == b.str
+    of JInt:
+      a.num == b.num
+    of JFloat:
+      a.fnum == b.fnum
+    of JBool:
+      a.bval == b.bval
+    of JNull:
+      true
+    of JArray:
+      a.elems == b.elems
+    of JObject:
+      a.fields == b.fields
+
+proc hash* (n:PJsonNode): THash =
+  ## Compute the hash for a JSON node
+  case n.kind
+  of jArray:
+    result = hash(n.elems)
+  of jObject:
+    result = hash(n.fields)
+  of jInt:
+    result = hash(n.num)
+  of jFloat:
+    result = hash(n.fnum)
+  of jBool:
+    result = hash(n.bval.int)
+  of jString:
+    result = hash(n.str)
+  of jNull:
+    result = hash(0)
+
 proc len*(n: PJsonNode): int = 
   ## If `n` is a `JArray`, it returns the number of elements.
   ## If `n` is a `JObject`, it returns the number of pairs.
