@@ -642,19 +642,19 @@ proc `==`* (a,b: PJsonNode): bool =
 proc hash* (n:PJsonNode): THash =
   ## Compute the hash for a JSON node
   case n.kind
-  of jArray:
+  of JArray:
     result = hash(n.elems)
-  of jObject:
+  of JObject:
     result = hash(n.fields)
-  of jInt:
+  of JInt:
     result = hash(n.num)
-  of jFloat:
+  of JFloat:
     result = hash(n.fnum)
-  of jBool:
+  of JBool:
     result = hash(n.bval.int)
-  of jString:
+  of JString:
     result = hash(n.str)
-  of jNull:
+  of JNull:
     result = hash(0)
 
 proc len*(n: PJsonNode): int = 
