@@ -1585,6 +1585,16 @@ proc createPromise(c: PContext; t: PType; info: TLineInfo): PType =
   addSonSkipIntLit(result, t)
   result = instGenericContainer(c, info, result, allowMetaTypes = false)
 
+proc instantiateCreatePromiseCall(c: PContext; t: PType;
+                                  info: TLineInfo): PSym =
+  let sym = magicsys.getCompilerProc("nimCreatePromise")
+  if sym == nil:
+    localError(info, errSystemNeeds, "nimCreatePromise")
+  var bindings: TIdTable 
+  initIdTable(bindings)
+  bindings.idTablePut(sym.ast[genericParamsPos].sons[0].typ, t)
+  result = c.semGenerateInstance(c, sym, bindings, info)
+
 proc setMs(n: PNode, s: PSym): PNode = 
   result = n
   n.sons[0] = newSymNode(s)
@@ -1626,6 +1636,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
         result.typ = result[1].typ
       else:
         result.typ = createPromise(c, result[1].typ, n.info)
+      result.add instantiateCreatePromiseCall(c, result[1].typ, n.info).newSymNode
   else: result = semDirectOp(c, n, flags)
 
 proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =

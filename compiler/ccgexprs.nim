@@ -1636,7 +1636,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mSlurp..mQuoteAst:
     localError(e.info, errXMustBeCompileTime, e.sons[0].sym.name.s)
   of mSpawn:
-    let n = lowerings.wrapProcForSpawn(p.module.module, e[1], e.typ, nil, nil)
+    let n = lowerings.wrapProcForSpawn(p.module.module, e, e.typ, nil, nil)
     expr(p, n, d)
   of mParallel:
     let n = semparallel.liftParallel(p.module.module, e)

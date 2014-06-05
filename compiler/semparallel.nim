@@ -406,19 +406,19 @@ proc transformSpawn(owner: PSym; n, barrier: PNode): PNode =
         if result.isNil:
           result = newNodeI(nkStmtList, n.info)
           result.add n
-        result.add wrapProcForSpawn(owner, m[1], b.typ, barrier, it[0])
+        result.add wrapProcForSpawn(owner, m, b.typ, barrier, it[0])
         it.sons[it.len-1] = emptyNode
     if result.isNil: result = n
   of nkAsgn, nkFastAsgn:
     let b = n[1]
     if getMagic(b) == mSpawn:
       let m = transformSlices(b)
-      return wrapProcForSpawn(owner, m[1], b.typ, barrier, n[0])
+      return wrapProcForSpawn(owner, m, b.typ, barrier, n[0])
     result = transformSpawnSons(owner, n, barrier)
   of nkCallKinds:
     if getMagic(n) == mSpawn:
       result = transformSlices(n)
-      return wrapProcForSpawn(owner, result[1], n.typ, barrier, nil)
+      return wrapProcForSpawn(owner, result, n.typ, barrier, nil)
     result = transformSpawnSons(owner, n, barrier)
   elif n.safeLen > 0:
     result = transformSpawnSons(owner, n, barrier)

@@ -153,9 +153,11 @@ when (defined(gcc) or defined(llvm_gcc)) and hasThreadSupport:
     ## A value of 0 indicates typical alignment should be used. The compiler may also 
     ## ignore this parameter.
 
+  template fence*() = atomicThreadFence(ATOMIC_SEQ_CST)
 elif defined(vcc) and hasThreadSupport:
   proc addAndFetch*(p: ptr int, val: int): int {.
     importc: "NimXadd", nodecl.}
+
 else:
   proc addAndFetch*(p: ptr int, val: int): int {.inline.} =
     inc(p[], val)
@@ -230,5 +232,11 @@ elif false:
   from os import sleep
 
   proc cpuRelax {.inline.} = os.sleep(1)
+
+when not defined(fence) and hasThreadSupport:
+  # XXX fixme
+  proc fence*() {.inline.} =
+    var dummy: bool
+    discard cas(addr dummy, false, true)
 
 {.pop.}
