@@ -53,12 +53,15 @@ type
     interest: bool ## wether the master is interested in the "all done" event
 
 proc barrierEnter(b: ptr Barrier) {.compilerProc, inline.} =
-  ## due to the signaling between threads, it is ensured we are the only
-  ## one with access to 'entered' so we don't need 'atomicInc' here:
+  # due to the signaling between threads, it is ensured we are the only
+  # one with access to 'entered' so we don't need 'atomicInc' here:
   inc b.entered
+  # also we need no 'fence' instructions here as soon 'nimArgsPassingDone'
+  # will be called which already will perform a fence for us.
 
 proc barrierLeave(b: ptr Barrier) {.compilerProc, inline.} =
   atomicInc b.left
+  when not defined(x86): fence()
   if b.interest and b.left == b.entered: signal(b.cv)
 
 proc openBarrier(b: ptr Barrier) {.compilerProc, inline.} =
@@ -67,10 +70,12 @@ proc openBarrier(b: ptr Barrier) {.compilerProc, inline.} =
   b.interest = false
 
 proc closeBarrier(b: ptr Barrier) {.compilerProc.} =
+  fence()
   if b.left != b.entered:
     b.cv = createCondVar()
-    b.interest = true # XXX we really need to ensure no re-orderings are done
-                      # by the C compiler here
+    fence()
+    b.interest = true
+    fence()
     while b.left != b.entered: await(b.cv)
     destroyCondVar(b.cv)
 
@@ -207,9 +212,9 @@ proc `^`*[T](prom: Promise[T]): T =
     result = prom.blob
 
 proc awaitAny*(promises: openArray[RawPromise]): int =
-  # awaits any of the given promises. Returns the index of one promise for which
-  ## a value arrived. A promise only supports one call to 'awaitAny' at the
-  ## same time. That means if you await([a,b]) and await([b,c]) the second
+  ## awaits any of the given promises. Returns the index of one promise for
+  ## which a value arrived. A promise only supports one call to 'awaitAny' at
+  ## the same time. That means if you await([a,b]) and await([b,c]) the second
   ## call will only await 'c'. If there is no promise left to be able to wait
   ## on, -1 is returned.
   ## **Note**: This results in non-deterministic behaviour and so should be
@@ -294,14 +299,16 @@ proc preferSpawn*(): bool =
 proc spawn*(call: expr): expr {.magic: "Spawn".}
   ## always spawns a new task, so that the 'call' is never executed on
   ## the calling thread. 'call' has to be proc call 'p(...)' where 'p'
-  ## is gcsafe and has 'void' as the return type.
+  ## is gcsafe and has a return type that is either 'void' or compatible
+  ## with ``Promise[T]``.
 
 template spawnX*(call: expr): expr =
   ## spawns a new task if a CPU core is ready, otherwise executes the
   ## call in the calling thread. Usually it is advised to
   ## use 'spawn' in order to not block the producer for an unknown
   ## amount of time. 'call' has to be proc call 'p(...)' where 'p'
-  ## is gcsafe and has 'void' as the return type.
+  ## is gcsafe and has a return type that is either 'void' or compatible
+  ## with ``Promise[T]``.
   (if preferSpawn(): spawn call else: call)
 
 proc parallel*(body: stmt) {.magic: "Parallel".}

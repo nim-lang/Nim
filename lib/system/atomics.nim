@@ -10,7 +10,9 @@
 ## Atomic operations for Nimrod.
 {.push stackTrace:off.}
 
-when (defined(gcc) or defined(llvm_gcc)) and hasThreadSupport:
+const someGcc = defined(gcc) or defined(llvm_gcc) or defined(clang)
+
+when someGcc and hasThreadSupport:
   type 
     AtomMemModel* = enum
       ATOMIC_RELAXED,  ## No barriers or synchronization. 
@@ -163,33 +165,6 @@ else:
     inc(p[], val)
     result = p[]
 
-# atomic compare and swap (CAS) funcitons to implement lock-free algorithms  
-      
-#if defined(windows) and not defined(gcc) and hasThreadSupport:
-#    proc InterlockedCompareExchangePointer(mem: ptr pointer,
-#      newValue: pointer, comparand: pointer) : pointer {.nodecl, 
-#        importc: "InterlockedCompareExchangePointer", header:"windows.h".}
-
-#    proc compareAndSwap*[T](mem: ptr T, 
-#      expected: T, newValue: T): bool {.inline.}=
-#      ## Returns true if successfully set value at mem to newValue when value
-#      ## at mem == expected
-#      return InterlockedCompareExchangePointer(addr(mem), 
-#        addr(newValue), addr(expected))[] == expected
-    
-#elif not hasThreadSupport:
-#  proc compareAndSwap*[T](mem: ptr T, 
-#                          expected: T, newValue: T): bool {.inline.} =
-#      ## Returns true if successfully set value at mem to newValue when value
-#      ## at mem == expected
-#      var oldval = mem[]
-#      if oldval == expected:
-#        mem[] = newValue
-#        return true
-#      return false
-
-
-# Some convenient functions 
 proc atomicInc*(memLoc: var int, x: int = 1): int =
   when defined(gcc) and hasThreadSupport:
     result = atomic_add_fetch(memLoc.addr, x, ATOMIC_RELAXED)
@@ -207,7 +182,7 @@ proc atomicDec*(memLoc: var int, x: int = 1): int =
     dec(memLoc, x)
     result = memLoc
 
-when defined(windows) and not defined(gcc):
+when defined(windows) and not someGcc:
   proc interlockedCompareExchange(p: pointer; exchange, comparand: int32): int32
     {.importc: "InterlockedCompareExchange", header: "<windows.h>", cdecl.}
 
@@ -221,7 +196,7 @@ else:
   # XXX is this valid for 'int'?
 
 
-when (defined(x86) or defined(amd64)) and defined(gcc):
+when (defined(x86) or defined(amd64)) and (defined(gcc) or defined(llvm_gcc)):
   proc cpuRelax {.inline.} =
     {.emit: """asm volatile("pause" ::: "memory");""".}
 elif (defined(x86) or defined(amd64)) and defined(vcc):
