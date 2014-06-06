@@ -253,7 +253,17 @@ proc nimIntToStr(x: int): string {.compilerRtl.} =
 proc nimFloatToStr(x: float): string {.compilerproc.} =
   var buf: array [0..59, char]
   c_sprintf(buf, "%.16g", x)
-  return $buf
+  # Should account for the - sign.
+  if not('.' in buf) and (buf[0] in '0'..'9' or buf[1] in '0'..'9'):
+    var breaking = 0
+    for index, c in buf:
+      if not(c in '0'..'9'):
+        breaking = index - 1
+        break
+    moveMem(addr(buf[breaking+2]), addr(buf[breaking]), len(buf) - 2 - breaking)
+    buf[breaking+1] = '.'
+    buf[breaking+2] = '0'
+  result = $buf
 
 proc nimInt64ToStr(x: int64): string {.compilerRtl.} =
   result = newString(sizeof(x)*4)
