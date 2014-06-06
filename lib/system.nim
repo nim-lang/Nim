@@ -88,6 +88,15 @@ proc defined*(x: expr): bool {.magic: "Defined", noSideEffect.}
   ##   when not defined(strutils.toUpper):
   ##     # provide our own toUpper proc here, because strutils is
   ##     # missing it.
+  ##
+  ## You can also check external symbols introduced through the compiler's
+  ## `-d:x switch <nimrodc.html#compile-time-symbols>`_ to enable build time
+  ## conditionals:
+  ##
+  ## .. code-block:: Nimrod
+  ##   when not defined(release):
+  ##     # Do here programmer friendly expensive sanity checks.
+  ##   # Put here the normal code
 
 when defined(useNimRtl):
   {.deadCodeElim: on.}
@@ -2812,10 +2821,15 @@ when true:
     THide(raiseAssert)(msg)
 
 template assert*(cond: bool, msg = "") =
-  ## provides a means to implement `programming by contracts`:idx: in Nimrod.
+  ## Raises ``EAssertionFailure`` with `msg` if `cond` is false.
+  ##
+  ## Provides a means to implement `programming by contracts`:idx: in Nimrod.
   ## ``assert`` evaluates expression ``cond`` and if ``cond`` is false, it
-  ## raises an ``EAssertionFailure`` exception. However, the compiler may
-  ## not generate any code at all for ``assert`` if it is advised to do so.
+  ## raises an ``EAssertionFailure`` exception. However, the compiler may not
+  ## generate any code at all for ``assert`` if it is advised to do so through
+  ## the ``-d:release`` or ``--assertions:off`` `command line switches
+  ## <nimrodc.html#command-line-switches>`_.
+  ##
   ## Use ``assert`` for debugging purposes only.
   bind instantiationInfo
   mixin failedAssertImpl
