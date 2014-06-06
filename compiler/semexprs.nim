@@ -1579,17 +1579,17 @@ proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode =
   else:
     result = semDirectOp(c, n, flags)
 
-proc createPromise(c: PContext; t: PType; info: TLineInfo): PType =
+proc createFlowVar(c: PContext; t: PType; info: TLineInfo): PType =
   result = newType(tyGenericInvokation, c.module)
-  addSonSkipIntLit(result, magicsys.getCompilerProc("Promise").typ)
+  addSonSkipIntLit(result, magicsys.getCompilerProc("FlowVar").typ)
   addSonSkipIntLit(result, t)
   result = instGenericContainer(c, info, result, allowMetaTypes = false)
 
-proc instantiateCreatePromiseCall(c: PContext; t: PType;
+proc instantiateCreateFlowVarCall(c: PContext; t: PType;
                                   info: TLineInfo): PSym =
-  let sym = magicsys.getCompilerProc("nimCreatePromise")
+  let sym = magicsys.getCompilerProc("nimCreateFlowVar")
   if sym == nil:
-    localError(info, errSystemNeeds, "nimCreatePromise")
+    localError(info, errSystemNeeds, "nimCreateFlowVar")
   var bindings: TIdTable 
   initIdTable(bindings)
   bindings.idTablePut(sym.ast[genericParamsPos].sons[0].typ, t)
@@ -1635,8 +1635,8 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       if c.inParallelStmt > 0:
         result.typ = result[1].typ
       else:
-        result.typ = createPromise(c, result[1].typ, n.info)
-      result.add instantiateCreatePromiseCall(c, result[1].typ, n.info).newSymNode
+        result.typ = createFlowVar(c, result[1].typ, n.info)
+      result.add instantiateCreateFlowVarCall(c, result[1].typ, n.info).newSymNode
   else: result = semDirectOp(c, n, flags)
 
 proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
