@@ -86,7 +86,7 @@ proc indirectAccess*(a: PNode, b: string, info: TLineInfo): PNode =
   # returns a[].b as a node
   var deref = newNodeI(nkHiddenDeref, info)
   deref.typ = a.typ.skipTypes(abstractInst).sons[0]
-  var t = deref.typ
+  var t = deref.typ.skipTypes(abstractInst)
   var field: PSym
   while true:
     assert t.kind == tyObject
@@ -94,6 +94,7 @@ proc indirectAccess*(a: PNode, b: string, info: TLineInfo): PNode =
     if field != nil: break
     t = t.sons[0]
     if t == nil: break
+    t = t.skipTypes(abstractInst)
   assert field != nil, b
   addSon(deref, a)
   result = newNodeI(nkDotExpr, info)
@@ -132,28 +133,33 @@ proc callCodegenProc*(name: string, arg1: PNode;
     if arg3 != nil: result.add arg3
     result.typ = sym.typ.sons[0]
 
+proc callProc(a: PNode): PNode =
+  result = newNodeI(nkCall, a.info)
+  result.add a
+  result.typ = a.typ.sons[0]
+
 # we have 4 cases to consider:
 # - a void proc --> nothing to do
-# - a proc returning GC'ed memory --> requires a promise
+# - a proc returning GC'ed memory --> requires a flowVar
 # - a proc returning non GC'ed memory --> pass as hidden 'var' parameter
-# - not in a parallel environment --> requires a promise for memory safety
+# - not in a parallel environment --> requires a flowVar for memory safety
 type
   TSpawnResult = enum
-    srVoid, srPromise, srByVar
-  TPromiseKind = enum
-    promInvalid # invalid type T for 'Promise[T]'
-    promGC      # Promise of a GC'ed type
-    promBlob    # Promise of a blob type
+    srVoid, srFlowVar, srByVar
+  TFlowVarKind = enum
+    fvInvalid # invalid type T for 'FlowVar[T]'
+    fvGC      # FlowVar of a GC'ed type
+    fvBlob    # FlowVar of a blob type
 
 proc spawnResult(t: PType; inParallel: bool): TSpawnResult =
   if t.isEmptyType: srVoid
   elif inParallel and not containsGarbageCollectedRef(t): srByVar
-  else: srPromise
+  else: srFlowVar
 
-proc promiseKind(t: PType): TPromiseKind =
-  if t.skipTypes(abstractInst).kind in {tyRef, tyString, tySequence}: promGC
-  elif containsGarbageCollectedRef(t): promInvalid
-  else: promBlob
+proc flowVarKind(t: PType): TFlowVarKind =
+  if t.skipTypes(abstractInst).kind in {tyRef, tyString, tySequence}: fvGC
+  elif containsGarbageCollectedRef(t): fvInvalid
+  else: fvBlob
 
 proc addLocalVar(varSection: PNode; owner: PSym; typ: PType; v: PNode): PSym =
   result = newSym(skTemp, getIdent(genPrefix), owner, varSection.info)
@@ -169,18 +175,18 @@ proc addLocalVar(varSection: PNode; owner: PSym; typ: PType; v: PNode): PSym =
 discard """
 We generate roughly this:
 
-proc f_wrapper(args) =
+proc f_wrapper(thread, args) =
   barrierEnter(args.barrier)  # for parallel statement
   var a = args.a # thread transfer; deepCopy or shallowCopy or no copy
                  # depending on whether we're in a 'parallel' statement
   var b = args.b
+  var fv = args.fv
 
-  args.prom = nimCreatePromise(thread, sizeof(T)) # optional
-  nimPromiseCreateCondVar(args.prom)  # optional
+  fv.owner = thread # optional
   nimArgsPassingDone() # signal parent that the work is done
   # 
-  args.prom.blob = f(a, b, ...)
-  nimPromiseSignal(args.prom)
+  args.fv.blob = f(a, b, ...)
+  nimFlowVarSignal(args.fv)
   
   # - or -
   f(a, b, ...)
@@ -192,23 +198,12 @@ stmtList:
   scratchObj.b = b
 
   nimSpawn(f_wrapper, addr scratchObj)
-  scratchObj.prom # optional
+  scratchObj.fv # optional
 
 """
 
-proc createNimCreatePromiseCall(prom, threadParam: PNode): PNode =
-  let size = newNodeIT(nkCall, prom.info, getSysType(tyInt))
-  size.add newSymNode(createMagic("sizeof", mSizeOf))
-  assert prom.typ.kind == tyGenericInst
-  size.add newNodeIT(nkType, prom.info, prom.typ.sons[1])
-
-  let castExpr = newNodeIT(nkCast, prom.info, prom.typ)
-  castExpr.add emptyNode
-  castExpr.add callCodeGenProc("nimCreatePromise", threadParam, size)
-  result = castExpr
-
 proc createWrapperProc(f: PNode; threadParam, argsParam: PSym;
-                       varSection, call, barrier, prom: PNode;
+                       varSection, call, barrier, fv: PNode;
                        spawnKind: TSpawnResult): PSym =
   var body = newNodeI(nkStmtList, f.info)
   var threadLocalBarrier: PSym
@@ -220,32 +215,32 @@ proc createWrapperProc(f: PNode; threadParam, argsParam: PSym;
     body.add callCodeGenProc("barrierEnter", threadLocalBarrier.newSymNode)
   var threadLocalProm: PSym
   if spawnKind == srByVar:
-    threadLocalProm = addLocalVar(varSection, argsParam.owner, prom.typ, prom)
-  elif prom != nil:
-    internalAssert prom.typ.kind == tyGenericInst
-    threadLocalProm = addLocalVar(varSection, argsParam.owner, prom.typ, 
-      createNimCreatePromiseCall(prom, threadParam.newSymNode))
+    threadLocalProm = addLocalVar(varSection, argsParam.owner, fv.typ, fv)
+  elif fv != nil:
+    internalAssert fv.typ.kind == tyGenericInst
+    threadLocalProm = addLocalVar(varSection, argsParam.owner, fv.typ, fv)
     
   body.add varSection
-  if prom != nil and spawnKind != srByVar:
-    body.add newFastAsgnStmt(prom, threadLocalProm.newSymNode)
-    if barrier == nil:
-      body.add callCodeGenProc("nimPromiseCreateCondVar", prom)
+  if fv != nil and spawnKind != srByVar:
+    # generate:
+    #   fv.owner = threadParam
+    body.add newAsgnStmt(indirectAccess(threadLocalProm.newSymNode,
+      "owner", fv.info), threadParam.newSymNode)
 
   body.add callCodeGenProc("nimArgsPassingDone", threadParam.newSymNode)
   if spawnKind == srByVar:
     body.add newAsgnStmt(genDeref(threadLocalProm.newSymNode), call)
-  elif prom != nil:
-    let fk = prom.typ.sons[1].promiseKind
-    if fk == promInvalid:
-      localError(f.info, "cannot create a promise of type: " & 
-        typeToString(prom.typ.sons[1]))
+  elif fv != nil:
+    let fk = fv.typ.sons[1].flowVarKind
+    if fk == fvInvalid:
+      localError(f.info, "cannot create a flowVar of type: " & 
+        typeToString(fv.typ.sons[1]))
     body.add newAsgnStmt(indirectAccess(threadLocalProm.newSymNode,
-      if fk == promGC: "data" else: "blob", prom.info), call)
+      if fk == fvGC: "data" else: "blob", fv.info), call)
     if barrier == nil:
-      # by now 'prom' is shared and thus might have beeen overwritten! we need
+      # by now 'fv' is shared and thus might have beeen overwritten! we need
       # to use the thread-local view instead:
-      body.add callCodeGenProc("nimPromiseSignal", threadLocalProm.newSymNode)
+      body.add callCodeGenProc("nimFlowVarSignal", threadLocalProm.newSymNode)
   else:
     body.add call
   if barrier != nil:
@@ -404,22 +399,23 @@ proc setupArgsForParallelism(n: PNode; objType: PType; scratchObj: PSym;
                                     indirectAccess(castExpr, field, n.info))
       call.add(threadLocal.newSymNode)
 
-proc wrapProcForSpawn*(owner: PSym; n: PNode; retType: PType; 
+proc wrapProcForSpawn*(owner: PSym; spawnExpr: PNode; retType: PType; 
                        barrier, dest: PNode = nil): PNode =
   # if 'barrier' != nil, then it is in a 'parallel' section and we
   # generate quite different code
+  let n = spawnExpr[1]
   let spawnKind = spawnResult(retType, barrier!=nil)
   case spawnKind
   of srVoid:
     internalAssert dest == nil
     result = newNodeI(nkStmtList, n.info)
-  of srPromise:
+  of srFlowVar:
     internalAssert dest == nil
     result = newNodeIT(nkStmtListExpr, n.info, retType)
   of srByVar:
     if dest == nil: localError(n.info, "'spawn' must not be discarded")
     result = newNodeI(nkStmtList, n.info)
-  
+
   if n.kind notin nkCallKinds:
     localError(n.info, "'spawn' takes a call expression")
     return
@@ -482,24 +478,29 @@ proc wrapProcForSpawn*(owner: PSym; n: PNode; retType: PType;
     result.add newFastAsgnStmt(newDotExpr(scratchObj, field), barrier)
     barrierAsExpr = indirectAccess(castExpr, field, n.info)
 
-  var promField, promAsExpr: PNode = nil
-  if spawnKind == srPromise:
-    var field = newSym(skField, getIdent"prom", owner, n.info)
+  var fvField, fvAsExpr: PNode = nil
+  if spawnKind == srFlowVar:
+    var field = newSym(skField, getIdent"fv", owner, n.info)
     field.typ = retType
     objType.addField(field)
-    promField = newDotExpr(scratchObj, field)
-    promAsExpr = indirectAccess(castExpr, field, n.info)
+    fvField = newDotExpr(scratchObj, field)
+    fvAsExpr = indirectAccess(castExpr, field, n.info)
+    # create flowVar:
+    result.add newFastAsgnStmt(fvField, callProc(spawnExpr[2]))
+    if barrier == nil:
+      result.add callCodeGenProc("nimFlowVarCreateCondVar", fvField)
+
   elif spawnKind == srByVar:
-    var field = newSym(skField, getIdent"prom", owner, n.info)
+    var field = newSym(skField, getIdent"fv", owner, n.info)
     field.typ = newType(tyPtr, objType.owner)
     field.typ.rawAddSon(retType)
     objType.addField(field)
-    promAsExpr = indirectAccess(castExpr, field, n.info)
+    fvAsExpr = indirectAccess(castExpr, field, n.info)
     result.add newFastAsgnStmt(newDotExpr(scratchObj, field), genAddrOf(dest))
 
   let wrapper = createWrapperProc(fn, threadParam, argsParam, varSection, call,
-                                  barrierAsExpr, promAsExpr, spawnKind)
+                                  barrierAsExpr, fvAsExpr, spawnKind)
   result.add callCodeGenProc("nimSpawn", wrapper.newSymNode,
                              genAddrOf(scratchObj.newSymNode))
 
-  if spawnKind == srPromise: result.add promField
+  if spawnKind == srFlowVar: result.add fvField
