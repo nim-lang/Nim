@@ -1767,9 +1767,38 @@ iterator fields*[S:tuple|object, T:tuple|object](x: S, y: T): tuple[a,b: expr] {
   ## in the loop body.
 iterator fieldPairs*[T: tuple|object](x: T): TObject {.
   magic: "FieldPairs", noSideEffect.}
-  ## iterates over every field of `x`. Warning: This really transforms
-  ## the 'for' and unrolls the loop. The current implementation also has a bug
-  ## that affects symbol binding in the loop body.
+  ## Iterates over every field of `x` returning their name and value.
+  ##
+  ## When you iterate over objects with different field types you have to use
+  ## the compile time ``when`` instead of a runtime ``if`` to select the code
+  ## you want to run for each type. To perform the comparison use the `is
+  ## operator <manual.html#is-operator>`_. Example:
+  ##
+  ## .. code-block:: Nimrod
+  ##
+  ##   type
+  ##     Custom = object
+  ##       foo: string
+  ##       bar: bool
+  ##
+  ##   proc `$`(x: Custom): string =
+  ##     result = "Custom:"
+  ##     for name, value in x.fieldPairs:
+  ##       when value is bool:
+  ##         result.add("\n\t" & name & " is " & $value)
+  ##       else:
+  ##         if value.isNil:
+  ##           result.add("\n\t" & name & " (nil)")
+  ##         else:
+  ##           result.add("\n\t" & name & " '" & value & "'")
+  ##
+  ## Another way to do the same without ``when`` is to leave the task of
+  ## picking the appropriate code to a secondary proc which you overload for
+  ## each field type and pass the `value` to.
+  ##
+  ## Warning: This really transforms the 'for' and unrolls the loop. The
+  ## current implementation also has a bug that affects symbol binding in the
+  ## loop body.
 iterator fieldPairs*[S: tuple|object, T: tuple|object](x: S, y: T): tuple[
   a, b: expr] {.
   magic: "FieldPairs", noSideEffect.}
