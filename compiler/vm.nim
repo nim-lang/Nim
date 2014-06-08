@@ -48,6 +48,15 @@ type
                               # XXX 'break' should perform cleanup actions
                               # What does the C backend do for it?
 
+proc `$`(self: TFullReg): string =
+  case self.kind
+  of rkNone: result = "nil"
+  of rkInt: result = $self.intVal
+  of rkFloat: result = $self.floatVal
+  of rkNode: result = renderTree(self.node)
+  of rkRegisterAddr: result = "->" & $self.regAddr[]
+  of rkNodeAddr: result = "->" & renderTree(self.nodeAddr[])
+
 proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
   if x != nil:
     if recursionLimit == 0:
@@ -1276,17 +1285,25 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   except:
     echo "|==============================|"
     echo "|Internal virtual machine error|"
+    echo "|   This is a bug, report it!  |"
     echo "|==============================|"
-    echo "    This is a bug, report it!   "
     echo "Program stack trace:"
     c.stackTraceAux(tos, pc)
     echo "================================"
     echo "Program counter is " & $pc
+
     echo "Opcode context is "
-    var programAccm = "["
+    var opcodeAccm = "["
     for i in 0..(c.code.len-1):
-      programAccm &= int(c.code[i]).toHex(9) & ", "
-    echo programAccm , "]"
+      opcodeAccm &= int(c.code[i]).toHex(8) & ", "
+    echo opcodeAccm , "]"
+
+    var registerAccm = "["
+    for i, reg in c.prc.slots:
+      if reg.inUse or reg.kind != slotEmpty:
+        registerAccm &= "($1, $2, $3), " % [$i, $regs[i].kind,  $regs[i]]
+    echo "Current registers: ", registerAccm & "]"
+
     echo "================================"
     echo "         VM Stack Trace         "
     raise
