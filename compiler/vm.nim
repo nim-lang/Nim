@@ -1294,8 +1294,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
 
     echo "Opcode context is "
     var opcodeAccm = "["
-    for i in 0..(c.code.len-1):
-      opcodeAccm &= int(c.code[i]).toHex(8) & ", "
+    for instr in c.code:
+      opcodeAccm &= int(instr).toHex(8) & ", "
     echo opcodeAccm , "]"
 
     var registerAccm = "["
