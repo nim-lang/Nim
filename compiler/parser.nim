@@ -981,6 +981,7 @@ proc parseSymbolList(p: var TParser, result: PNode, allowNil = false) =
 
 proc parseTypeDescKAux(p: var TParser, kind: TNodeKind,
                        mode: TPrimaryMode): PNode =
+  #| distinct = 'distinct' optInd typeDesc
   result = newNodeP(kind, p)
   getTok(p)
   optInd(p, result)

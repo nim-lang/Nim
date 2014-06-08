@@ -82,6 +82,7 @@ paramListColon = paramList? (':' optInd typeDesc)?
 doBlock = 'do' paramListArrow pragmas? colcom stmt
 doBlocks = doBlock ^* IND{=}
 procExpr = 'proc' paramListColon pragmas? ('=' COMMENT? stmt)?
+distinct = 'distinct' optInd typeDesc
 expr = (ifExpr
       | whenExpr
       | caseExpr
