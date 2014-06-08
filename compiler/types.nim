@@ -1152,11 +1152,12 @@ proc computeRecSizeAux(n: PNode, a, currOffset: var BiggestInt): BiggestInt =
     result = computeSizeAux(n.sym.typ, a)
     n.sym.offset = int(currOffset)
   else: 
-    internalError("computeRecSizeAux()")
+    # internalError("computeRecSizeAux()")
+    n.debug
     a = 1
-    result = - 1
+    result = - 2
 
-const 
+const
   szIllegalRecursion* = -2
   szUnknownSize* = -1
 

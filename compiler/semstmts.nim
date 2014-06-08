@@ -828,6 +828,9 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
                               getCurrOwner(), s.info)
 
 proc semTypeSection(c: PContext, n: PNode): PNode =
+  ## Processes a type section. This must be done in separate passes, in order
+  ## to allow the type definitions in the section to reference each other
+  ## without regard for the order of their definitions.
   typeSectionLeftSidePass(c, n)
   typeSectionRightSidePass(c, n)
   typeSectionFinalPass(c, n)
