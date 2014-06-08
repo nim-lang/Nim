@@ -24,7 +24,7 @@ ampExpr = plusExpr (OP6 optInd plusExpr)*
 plusExpr = mulExpr (OP7 optInd mulExpr)*
 mulExpr = dollarExpr (OP8 optInd dollarExpr)*
 dollarExpr = primary (OP9 optInd primary)*
-symbol = '`' (KEYW|IDENT|operator|'(' ')'|'[' ']'|'{' '}'|'='|literal)+ '`'
+symbol = '`' (KEYW|IDENT|operator|'('|')'|'['|']'|'{'|'}'|'='|literal)+ '`'
        | IDENT
 indexExpr = expr
 indexExprList = indexExpr ^+ comma
@@ -82,6 +82,7 @@ paramListColon = paramList? (':' optInd typeDesc)?
 doBlock = 'do' paramListArrow pragmas? colcom stmt
 doBlocks = doBlock ^* IND{=}
 procExpr = 'proc' paramListColon pragmas? ('=' COMMENT? stmt)?
+distinct = 'distinct' optInd typeDesc
 expr = (ifExpr
       | whenExpr
       | caseExpr
@@ -166,7 +167,6 @@ object = 'object' pragma? ('of' typeDesc)? COMMENT? objectPart
 typeClassParam = ('var')? symbol
 typeClass = typeClassParam ^* ',' (pragma)? ('of' typeDesc ^* ',')?
               &IND{>} stmt
-distinct = 'distinct' optInd typeDesc
 typeDef = identWithPragma genericParamList? '=' optInd typeDefAux
             indAndComment?
 varTuple = '(' optInd identWithPragma ^+ comma optPar ')' '=' optInd expr

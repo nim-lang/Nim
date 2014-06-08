@@ -147,8 +147,10 @@ proc expectIdent(p: TParser) =
 proc eat(p: var TParser, tokType: TTokType) =
   ## Move the parser to the next token if the current token is of type
   ## `tokType`, otherwise error.
-  if p.tok.tokType == tokType: getTok(p)
-  else: lexMessage(p.lex, errTokenExpected, TokTypeToStr[tokType])
+  if p.tok.tokType == tokType:
+    getTok(p)
+  else:
+    lexMessage(p.lex, errTokenExpected, TokTypeToStr[tokType])
   
 proc parLineInfo(p: TParser): TLineInfo =
   ## Retrieve the line information associated with the parser's current state.
@@ -285,7 +287,7 @@ proc colcom(p: var TParser, n: PNode) =
   skipComment(p, n)
 
 proc parseSymbol(p: var TParser, allowNil = false): PNode =
-  #| symbol = '`' (KEYW|IDENT|operator|'(' ')'|'[' ']'|'{' '}'|'='|literal)+ '`'
+  #| symbol = '`' (KEYW|IDENT|operator|'('|')'|'['|']'|'{'|'}'|'='|literal)+ '`'
   #|        | IDENT
   case p.tok.tokType
   of tkSymbol: 
@@ -294,33 +296,19 @@ proc parseSymbol(p: var TParser, allowNil = false): PNode =
   of tkAccent: 
     result = newNodeP(nkAccQuoted, p)
     getTok(p)
+    var accm = ""
     while true:
       case p.tok.tokType
-      of tkBracketLe: 
-        add(result, newIdentNodeP(getIdent"[]", p))
-        getTok(p)
-        eat(p, tkBracketRi)
-      of tkEquals:
-        add(result, newIdentNodeP(getIdent"=", p))
-        getTok(p)
-      of tkParLe:
-        add(result, newIdentNodeP(getIdent"()", p))
-        getTok(p)
-        eat(p, tkParRi)
-      of tkCurlyLe:
-        add(result, newIdentNodeP(getIdent"{}", p))
-        getTok(p)
-        eat(p, tkCurlyRi)
-      of tokKeywordLow..tokKeywordHigh, tkSymbol, tkOpr, tkDot, tkDotDot:
-        add(result, newIdentNodeP(p.tok.ident, p))
-        getTok(p)
-      of tkIntLit..tkCharLit:
-        add(result, newIdentNodeP(getIdent(tokToStr(p.tok)), p))
-        getTok(p)
-      else:
-        if result.len == 0: 
+      of tkAccent:
+        if accm == "": 
           parMessage(p, errIdentifierExpected, p.tok)
         break
+      of tkEof, tkInvalid, tkComment:
+          parMessage(p, errIdentifierExpected, p.tok)
+      else:
+        accm.add(tokToStr(p.tok))
+        getTok(p)
+    result.add(newIdentNodeP(getIdent(accm), p))
     eat(p, tkAccent)
   else:
     if allowNil and p.tok.tokType == tkNil:
@@ -993,6 +981,7 @@ proc parseSymbolList(p: var TParser, result: PNode, allowNil = false) =
 
 proc parseTypeDescKAux(p: var TParser, kind: TNodeKind,
                        mode: TPrimaryMode): PNode =
+  #| distinct = 'distinct' optInd typeDesc
   result = newNodeP(kind, p)
   getTok(p)
   optInd(p, result)
