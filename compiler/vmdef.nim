@@ -167,8 +167,11 @@ type
 
   PProc* = ref object
     blocks*: seq[TBlock]    # blocks; temp data structure
-    sym*: PSym
-    slots*: array[TRegister, tuple[inUse: bool, kind: TSlotKind]]
+    sym*: PSym              # The symbol for the currently executing procedure
+    slots*: array[TRegister, tuple[inUse: bool, kind: TSlotKind]] #\
+                            # Answers "Is this register in use?"
+                            # and "what kind is it?"
+                            # Actual data stored in PStackTrace.slots
     maxSlots*: int
     
   PCtx* = ref TCtx
@@ -181,7 +184,7 @@ type
     types*: seq[PType]      # some instructions reference types (e.g. 'except')
     currentExceptionA*, currentExceptionB*: PNode
     exceptionInstr*: int # index of instruction that raised the exception
-    prc*: PProc
+    prc*: PProc          # the currently executing procedure and its registers
     module*: PSym
     callsite*: PNode
     mode*: TEvalMode
