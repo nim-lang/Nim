@@ -24,7 +24,7 @@ ampExpr = plusExpr (OP6 optInd plusExpr)*
 plusExpr = mulExpr (OP7 optInd mulExpr)*
 mulExpr = dollarExpr (OP8 optInd dollarExpr)*
 dollarExpr = primary (OP9 optInd primary)*
-symbol = '`' (KEYW|IDENT|operator|'('|')'|'['|']'|'{'|'}'|'='|literal)+ '`'
+symbol = '`' (KEYW|IDENT|literal|(operator|'('|')'|'['|']'|'{'|'}'|'=')+)+ '`'
        | IDENT
 indexExpr = expr
 indexExprList = indexExpr ^+ comma

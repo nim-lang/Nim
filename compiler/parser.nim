@@ -287,7 +287,7 @@ proc colcom(p: var TParser, n: PNode) =
   skipComment(p, n)
 
 proc parseSymbol(p: var TParser, allowNil = false): PNode =
-  #| symbol = '`' (KEYW|IDENT|operator|'('|')'|'['|']'|'{'|'}'|'='|literal)+ '`'
+  #| symbol = '`' (KEYW|IDENT|literal|(operator|'('|')'|'['|']'|'{'|'}'|'=')+)+ '`'
   #|        | IDENT
   case p.tok.tokType
   of tkSymbol: 
@@ -296,19 +296,24 @@ proc parseSymbol(p: var TParser, allowNil = false): PNode =
   of tkAccent: 
     result = newNodeP(nkAccQuoted, p)
     getTok(p)
-    var accm = ""
     while true:
       case p.tok.tokType
       of tkAccent:
-        if accm == "": 
+        if result.len == 0: 
           parMessage(p, errIdentifierExpected, p.tok)
         break
-      of tkEof, tkInvalid, tkComment:
-          parMessage(p, errIdentifierExpected, p.tok)
-      else:
-        accm.add(tokToStr(p.tok))
+      of tkOpr, tkDot, tkDotDot, tkEquals, tkParLe..tkParDotRi:
+        var accm = ""
+        while p.tok.tokType in {tkOpr, tkDot, tkDotDot, tkEquals,
+                                tkParLe..tkParDotRi}:
+          accm.add(tokToStr(p.tok))
+          getTok(p)
+        result.add(newIdentNodeP(getIdent(accm), p))
+      of tokKeywordLow..tokKeywordHigh, tkSymbol, tkIntLit..tkCharLit:
+        result.add(newIdentNodeP(getIdent(tokToStr(p.tok)), p))
         getTok(p)
-    result.add(newIdentNodeP(getIdent(accm), p))
+      else:
+        parMessage(p, errIdentifierExpected, p.tok)
     eat(p, tkAccent)
   else:
     if allowNil and p.tok.tokType == tkNil:
