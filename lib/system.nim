@@ -2942,6 +2942,10 @@ proc locals*(): TObject {.magic: "Locals", noSideEffect.} =
   ##   # -> B is 1
   discard
 
+proc deepCopy*[T](x: T): T {.magic: "DeepCopy", noSideEffect.}
+  ## performs a deep copy of `x`. This is also used by the code generator
+  ## for the implementation of ``spawn``.
+
 when not defined(booting):
   type
     semistatic*[T] = static[T] | T

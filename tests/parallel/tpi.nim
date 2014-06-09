@@ -8,7 +8,7 @@ import strutils, math, threadpool
 proc term(k: float): float = 4 * math.pow(-1, k) / (2*k + 1)
 
 proc piU(n: int): float =
-  var ch = newSeq[Promise[float]](n+1)
+  var ch = newSeq[FlowVar[float]](n+1)
   for k in 0..n:
     ch[k] = spawn term(float(k))
   for k in 0..n:

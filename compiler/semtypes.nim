@@ -1087,7 +1087,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     elif n[0].kind notin nkIdentKinds:
       result = semTypeExpr(c, n)
     else:
-      let op = considerAcc(n.sons[0])
+      let op = considerQuotedIdent(n.sons[0])
       if op.id in {ord(wAnd), ord(wOr)} or op.s == "|":
         checkSonsLen(n, 3)
         var

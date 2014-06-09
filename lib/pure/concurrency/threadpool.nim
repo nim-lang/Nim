@@ -47,7 +47,7 @@ type
     entered: int
     cv: CondVar # condvar takes 3 words at least
     when sizeof(int) < 8:
-      cacheAlign: array[CacheLineSize-4*sizeof(int), byte] 
+      cacheAlign: array[CacheLineSize-4*sizeof(int), byte]
     left: int
     cacheAlign2: array[CacheLineSize-sizeof(int), byte]
     interest: bool ## wether the master is interested in the "all done" event
@@ -90,8 +90,8 @@ type
     cv: CondVar
     idx: int
 
-  RawFlowVar* = ref RawFlowVarObj ## untyped base class for 'FlowVar[T]'
-  RawFlowVarObj = object of TObject
+  FlowVarBase* = ref FlowVarBaseObj ## untyped base class for 'FlowVar[T]'
+  FlowVarBaseObj = object of TObject
     ready, usesCondVar: bool
     cv: CondVar #\
     # for 'awaitAny' support
@@ -100,7 +100,7 @@ type
     data: pointer  # we incRef and unref it to keep it alive
     owner: pointer # ptr Worker
 
-  FlowVarObj[T] = object of RawFlowVarObj
+  FlowVarObj[T] = object of FlowVarBaseObj
     blob: T
 
   FlowVar*{.compilerProc.}[T] = ref FlowVarObj[T] ## a data flow variable
@@ -123,7 +123,7 @@ type
     shutdown: bool # the pool requests to shut down this worker thread
     q: ToFreeQueue
 
-proc await*(fv: RawFlowVar) =
+proc await*(fv: FlowVarBase) =
   ## waits until the value for the flowVar arrives. Usually it is not necessary
   ## to call this explicitly.
   if fv.usesCondVar:
@@ -131,7 +131,7 @@ proc await*(fv: RawFlowVar) =
     await(fv.cv)
     destroyCondVar(fv.cv)
 
-proc finished(fv: RawFlowVar) =
+proc finished(fv: FlowVarBase) =
   doAssert fv.ai.isNil, "flowVar is still attached to an 'awaitAny'"
   # we have to protect against the rare cases where the owner of the flowVar
   # simply disregards the flowVar and yet the "flowVarr" has not yet written
@@ -171,11 +171,11 @@ proc fvFinalizer[T](fv: FlowVar[T]) = finished(fv)
 proc nimCreateFlowVar[T](): FlowVar[T] {.compilerProc.} =
   new(result, fvFinalizer)
 
-proc nimFlowVarCreateCondVar(fv: RawFlowVar) {.compilerProc.} =
+proc nimFlowVarCreateCondVar(fv: FlowVarBase) {.compilerProc.} =
   fv.cv = createCondVar()
   fv.usesCondVar = true
 
-proc nimFlowVarSignal(fv: RawFlowVar) {.compilerProc.} =
+proc nimFlowVarSignal(fv: FlowVarBase) {.compilerProc.} =
   if fv.ai != nil:
     acquire(fv.ai.cv.L)
     fv.ai.idx = fv.idx
@@ -211,7 +211,7 @@ proc `^`*[T](fv: FlowVar[T]): T =
   else:
     result = fv.blob
 
-proc awaitAny*(flowVars: openArray[RawFlowVar]): int =
+proc awaitAny*(flowVars: openArray[FlowVarBase]): int =
   ## awaits any of the given flowVars. Returns the index of one flowVar for
   ## which a value arrived. A flowVar only supports one call to 'awaitAny' at
   ## the same time. That means if you await([a,b]) and await([b,c]) the second
