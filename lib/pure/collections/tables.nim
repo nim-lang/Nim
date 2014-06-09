@@ -52,25 +52,8 @@
 ##   p2.lastName = "박"
 ##   salaries[p2] = 45_000
 ##
-## **Note:** The data types declared here starting with the **T** prefix have
-## *value semantics*: This means that ``=`` performs a copy of the hash table.
-## On the other hand, types declared with the **P** prefix have *reference
-## semantics*. Behaviour comparison:
-##
-## .. code-block:: nimrod
-##   var valueWords = initTable[string, string]()
-##   valueWords["teh"] = "the"
-##   var valueWordsClone = valueWords
-##   # Changing the clone won't change the original.
-##   valueWordsClone["teh"] = "thehehe"
-##   assert valueWords["teh"] != valueWordsClone["teh"]
-##
-##   var refWords = newTable[string, string]()
-##   refWords["teh"] = "the"
-##   var refWordsShadow = refWords
-##   # Both the shadow and the original share the same data.
-##   refWordsShadow["teh"] = "thehehe"
-##   assert refWords["teh"] == refWordsShadow["teh"]
+## **Note:** The data types declared here have *value semantics*: This means
+## that ``=`` performs a copy of the hash table.
 
 import
   hashes, math
@@ -878,16 +861,3 @@ when isMainModule:
   s2[p2] = 45_000
   s3[p1] = 30_000
   s3[p2] = 45_000
-
-  # Ref verification.
-  var valueWords = initTable[string, string]()
-  valueWords["teh"] = "the"
-  var valueWordsClone = valueWords
-  valueWordsClone["teh"] = "thehehe"
-  assert valueWords["teh"] != valueWordsClone["teh"]
-
-  var refWords = newTable[string, string]()
-  refWords["teh"] = "the"
-  var refWordsShadow = refWords
-  refWordsShadow["teh"] = "thehehe"
-  assert refWords["teh"] == refWordsShadow["teh"]
