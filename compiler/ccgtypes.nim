@@ -798,7 +798,8 @@ proc genObjectInfo(m: BModule, typ: PType, name: PRope) =
   appf(m.s[cfsTypeInit3], "$1.node = &$2;$n", [name, tmp])
   var t = typ.sons[0]
   while t != nil:
-    t.skipTypes(abstractInst).flags.incl tfObjHasKids
+    t = t.skipTypes(abstractInst)
+    t.flags.incl tfObjHasKids
     t = t.sons[0]
 
 proc genTupleInfo(m: BModule, typ: PType, name: PRope) =
