@@ -414,11 +414,11 @@ const
 proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   var t = typ
   result = ""
-  if t == nil: return 
+  if t == nil: return
   if prefer == preferName and t.sym != nil and sfAnon notin t.sym.flags:
     if t.kind == tyInt and isIntLit(t):
       return t.sym.name.s & " literal(" & $t.n.intVal & ")"
-    return t.sym.name.s
+    return typ.owner.name.s & '.' & t.sym.name.s
   case t.kind
   of tyInt:
     if not isIntLit(t) or prefer == preferExported:
@@ -542,7 +542,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     if len(prag) != 0: add(result, "{." & prag & ".}")
   of tyVarargs, tyIter:
     result = typeToStr[t.kind] % typeToString(t.sons[0])
-  else: 
+  else:
     result = typeToStr[t.kind]
   if tfShared in t.flags: result = "shared " & result
   if tfNotNil in t.flags: result.add(" not nil")
