@@ -88,6 +88,18 @@ Level  Description
 =====  ============================================
 
 
+Compile time symbols
+--------------------
+
+Through the ``-d:x`` or ``--define:x`` switch you can define compile time
+symbols for conditional compilation. The defined switches can be checked in
+source code with the `when statement <manual.html#when-statement>`_ and
+`defined proc <system.html#defined>`_. The typical use of this switch is to
+enable builds in release mode (``-d:release``) where certain safety checks are
+omitted for better performance. Another common use is the ``-d:ssl`` switch to
+activate `SSL sockets <sockets.html>`_.
+
+
 Configuration files
 -------------------
 

@@ -37,7 +37,8 @@
 ##     ## Piggyback on the already available string hash proc.
 ##     ##
 ##     ## Without this proc nothing works!
-##     result = hash(x.firstName & x.lastName)
+##     result = x.firstName.hash !& x.lastName.hash
+##     result = !$result
 ##
 ##   var
 ##     salaries = initTable[Person, int]()
@@ -848,7 +849,8 @@ when isMainModule:
     ## Piggyback on the already available string hash proc.
     ##
     ## Without this proc nothing works!
-    result = hash(x.firstName & x.lastName)
+    result = x.firstName.hash !& x.lastName.hash
+    result = !$result
 
   var
     salaries = initTable[Person, int]()
