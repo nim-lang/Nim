@@ -145,6 +145,14 @@ proc mget*[A, B](t: var TTable[A, B], key: A): var B =
   if index >= 0: result = t.data[index].val
   else: raise newException(EInvalidKey, "key not found: " & $key)
 
+iterator allValues*[A, B](t: TTable[A, B]; key: A): B =
+  ## iterates over any value in the table `t` that belongs to the given `key`.
+  var h: THash = hash(key) and high(t.data)
+  while t.data[h].slot != seEmpty:
+    if t.data[h].key == key and t.data[h].slot == seFilled:
+      yield t.data[h].val
+    h = nextTry(h, high(t.data))
+
 proc hasKey*[A, B](t: TTable[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   result = rawGet(t, key) >= 0
@@ -313,8 +321,7 @@ proc newTable*[A, B](initialSize=64): PTable[A, B] =
   new(result)
   result[] = initTable[A, B](initialSize)
 
-proc newTable*[A, B](pairs: openArray[tuple[key: A, 
-                    val: B]]): PTable[A, B] =
+proc newTable*[A, B](pairs: openArray[tuple[key: A, val: B]]): PTable[A, B] =
   ## creates a new hash table that contains the given `pairs`.
   new(result)
   result[] = toTable[A, B](pairs)
