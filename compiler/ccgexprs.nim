@@ -1144,6 +1144,24 @@ proc genNewFinalize(p: BProc, e: PNode) =
   genObjectInit(p, cpsStmts, bt, a, false)
   gcUsage(e)
 
+proc genOfHelper(p: BProc; dest: PType; a: PRope): PRope =
+  # unfortunately 'genTypeInfo' sets tfObjHasKids as a side effect, so we
+  # have to call it here first:
+  let ti = genTypeInfo(p.module, dest)
+  if tfFinal in dest.flags or (p.module.objHasKidsValid and
+                               tfObjHasKids notin dest.flags):
+    result = ropef("$1.m_type == $2", a, ti)
+  else:
+    discard cgsym(p.module, "TNimType")
+    inc p.module.labels
+    let cache = con("Nim_OfCheck_CACHE", p.module.labels.toRope)
+    appf(p.module.s[cfsVars], "static TNimType* $#[2];$n", cache)
+    result = rfmt(p.module, "#isObjWithCache($#.m_type, $#, $#)", a, ti, cache)
+  when false:
+    # former version:
+    result = rfmt(p.module, "#isObj($1.m_type, $2)",
+                  a, genTypeInfo(p.module, dest))
+
 proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
   var a: TLoc
   initLocExpr(p, x, a)
@@ -1163,11 +1181,9 @@ proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
     globalError(x.info, errGenerated, 
       "no 'of' operator available for pure objects")
   if nilCheck != nil:
-    r = rfmt(p.module, "(($1) && #isObj($2.m_type, $3))",
-             nilCheck, r, genTypeInfo(p.module, dest))
+    r = rfmt(p.module, "(($1) && ($2))", nilCheck, genOfHelper(p, dest, r))
   else:
-    r = rfmt(p.module, "#isObj($1.m_type, $2)",
-             r, genTypeInfo(p.module, dest))
+    r = rfmt(p.module, "($1)", genOfHelper(p, dest, r))
   putIntoDest(p, d, getSysType(tyBool), r)
 
 proc genOf(p: BProc, n: PNode, d: var TLoc) =

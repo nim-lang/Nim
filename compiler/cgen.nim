@@ -1383,6 +1383,7 @@ proc myClose(b: PPassContext, n: PNode): PNode =
   registerModuleToMain(m.module)
 
   if sfMainModule in m.module.flags: 
+    m.objHasKidsValid = true
     var disp = generateMethodDispatchers()
     for i in 0..sonsLen(disp)-1: genProcAux(m, disp.sons[i].sym)
     genMainProc(m)

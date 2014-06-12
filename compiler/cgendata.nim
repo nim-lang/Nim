@@ -96,6 +96,7 @@ type
                               # a frame var twice in an init proc
     isHeaderFile*: bool       # C source file is the header file
     includesStringh*: bool    # C source file already includes ``<string.h>``
+    objHasKidsValid*: bool    # whether we can rely on tfObjHasKids
     cfilename*: string        # filename of the module (including path,
                               # without extension)
     typeCache*: TIdTable      # cache the generated types
