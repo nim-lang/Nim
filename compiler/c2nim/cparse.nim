@@ -19,7 +19,7 @@
 
 import 
   os, llstream, renderer, clex, idents, strutils, pegs, ast, astalgo, msgs,
-  options, strtabs, times
+  options, strtabs, hashes
 
 type 
   TParserFlag = enum
@@ -691,11 +691,6 @@ proc parseField(p: var TParser, kind: TNodeKind): PNode =
     else: result = mangledIdent(p.tok.s, p)
     getTok(p, result)
 
-proc getNewModuleWideId(): int =
-  var id {.global.} = 0
-  id.inc
-  id
-
 proc structPragmas(p: TParser, name: PNode, origName: string): PNode = 
   assert name.kind == nkIdent
   result = newNodeP(nkPragmaExpr, p)
@@ -708,15 +703,18 @@ proc structPragmas(p: TParser, name: PNode, origName: string): PNode =
   if pragmas.len > 0: addSon(result, pragmas)
   else: addSon(result, ast.emptyNode)
 
+proc hashPosition(p: TParser): string =
+  let lineInfo = parLineInfo(p)
+  let fileInfo = fileInfos[lineInfo.fileIndex]
+  result = $hash(fileInfo.shortName & "_" & $lineInfo.line & "_" & $lineInfo.col).uint
+
 proc parseInnerStruct(p: var TParser, stmtList: PNode, isUnion: bool): PNode =
   getTok(p, nil)
   if p.tok.xkind != pxCurlyLe:
     parMessage(p, errUser, "Expected '{' but found '" & $(p.tok[]) & "'")
   
-  let time = getTime().int
-  let id = getNewModuleWideId()
-  let structName =  if isUnion: "INNER_C_UNION_" & $time & "_" & $id
-                    else: "INNER_C_STRUCT_" & $time & "_" & $id
+  let structName =  if isUnion: "INNER_C_UNION_" & p.hashPosition
+                    else: "INNER_C_STRUCT_" & p.hashPosition
   let typeSection = newNodeP(nkTypeSection, p)
   let newStruct = newNodeP(nkObjectTy, p)
   var pragmas = ast.emptyNode
@@ -751,10 +749,9 @@ proc parseStructBody(p: var TParser, stmtList: PNode, isUnion: bool,
         backtrackContext(p)
         baseTyp = parseInnerStruct(p, stmtList, gotUnion)
         if p.tok.xkind == pxSemiColon:
-          let id = getNewModuleWideId()
           let def = newNodeP(nkIdentDefs, p)
           var t = pointer(p, baseTyp)
-          let i = fieldIdent("ano_" & $id, p)
+          let i = fieldIdent("ano_" & p.hashPosition, p)
           t = parseTypeSuffix(p, t)
           addSon(def, i, t, ast.emptyNode)
           addSon(result, def)
