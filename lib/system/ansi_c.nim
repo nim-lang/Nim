@@ -106,9 +106,12 @@ proc c_fopen(filename, mode: cstring): C_TextFileStar {.
   importc: "fopen", header: "<stdio.h>".}
 proc c_fclose(f: C_TextFileStar) {.importc: "fclose", header: "<stdio.h>".}
 
-proc c_sprintf(buf, frmt: cstring) {.header: "<stdio.h>", 
+proc c_sprintf(buf, frmt: cstring): int {.header: "<stdio.h>", 
   importc: "sprintf", varargs, noSideEffect.}
   # we use it only in a way that cannot lead to security issues
+
+proc c_localeconv():ptr cstring {.header: "<locale.h>",
+  importc: "localeconv", noSideEffect.}
 
 proc c_fread(buf: pointer, size, n: int, f: C_BinaryFileStar): int {.
   importc: "fread", header: "<stdio.h>".}

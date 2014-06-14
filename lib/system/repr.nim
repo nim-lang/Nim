@@ -17,12 +17,12 @@ proc reprFloat(x: float): string {.compilerproc.} = return $x
 
 proc reprPointer(x: pointer): string {.compilerproc.} =
   var buf: array [0..59, char]
-  c_sprintf(buf, "%p", x)
+  discard c_sprintf(buf, "%p", x)
   return $buf
 
 proc `$`(x: uint64): string =
   var buf: array [0..59, char]
-  c_sprintf(buf, "%llu", x)
+  discard c_sprintf(buf, "%llu", x)
   return $buf
 
 proc reprStrAux(result: var string, s: string) =

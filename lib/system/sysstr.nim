@@ -250,10 +250,16 @@ proc nimIntToStr(x: int): string {.compilerRtl.} =
   for j in 0..i div 2 - 1:
     swap(result[j], result[i-j-1])
 
-proc nimFloatToStr(x: float): string {.compilerproc.} =
-  var buf: array [0..59, char]
-  c_sprintf(buf, "%#.16e", x)
-  return $buf
+proc nimFloatToStr(f: float): string {.compilerproc.} =
+  var buf: array [0..64, char]
+  var n:int = c_sprintf(buf, "%.16g", f)
+  for i in 0..n-1:
+    if buf[i] notin {'0'..'9','-'}:
+      return $buf
+  buf[n] = c_localeconv()[0]
+  buf[n+1] = '0'
+  buf[n+2] = '\0'
+  result = $buf
 
 proc nimInt64ToStr(x: int64): string {.compilerRtl.} =
   result = newString(sizeof(x)*4)
