@@ -669,7 +669,7 @@ proc len*(n: PJsonNode): int =
 proc `[]`*(node: PJsonNode, name: string): PJsonNode =
   ## Gets a field from a `JObject`, which must not be nil.
   ## If the value at `name` does not exist, returns nil
-  assert(node != nil)
+  assert(not isNil(node))
   assert(node.kind == JObject)
   for key, item in items(node.fields):
     if key == name:
