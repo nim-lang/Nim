@@ -19,7 +19,7 @@
 
 import 
   os, llstream, renderer, clex, idents, strutils, pegs, ast, astalgo, msgs,
-  options, strtabs, hashes
+  options, strtabs, hashes, algorithm
 
 type 
   TParserFlag = enum
@@ -915,9 +915,16 @@ proc parseTrailingDefinedTypes(p: var TParser, section, typ: PNode) =
     newTyp = parseTypeSuffix(p, newTyp)
     addTypeDef(section, newName, newTyp)
 
-proc enumFields(p: var TParser): PNode = 
+proc createConst(name, typ, val: PNode, p: TParser): PNode =
+  result = newNodeP(nkConstDef, p)
+  addSon(result, name, typ, val)
+
+proc enumFields(p: var TParser, constList: PNode): PNode = 
   result = newNodeP(nkEnumTy, p)
   addSon(result, ast.emptyNode) # enum does not inherit from anything
+  var i: BiggestInt = 0
+  var field: tuple[id: BiggestInt, node: PNode]
+  var fields = newSeq[type(field)]()
   while true:
     var e = skipIdent(p)
     if p.tok.xkind == pxAsgn: 
@@ -927,12 +934,34 @@ proc enumFields(p: var TParser): PNode =
       e = newNodeP(nkEnumFieldDef, p)
       addSon(e, a, c)
       skipCom(p, e)
-    
-    addSon(result, e)
+      i = c.intVal
+    else:
+      inc(i)
+    field.id = i
+    field.node = e
+    fields.add(field)
     if p.tok.xkind != pxComma: break
     getTok(p, e)
     # allow trailing comma:
     if p.tok.xkind == pxCurlyRi: break
+  fields.sort do (x, y: type(field)) -> int:
+    cmp(x.id, y.id)
+  var lastId: BiggestInt = -1
+  var lastIdent: PNode
+  for f in fields:
+    if f.id == lastId:
+      var currentIdent: PNode
+      case f.node.kind:
+      of nkEnumFieldDef: currentIdent = f.node.sons[0]
+      else: currentIdent = f.node
+      var constant = createConst( currentIdent, ast.emptyNode, lastIdent, p)
+      constList.addSon(constant)
+    else:
+      addSon(result, f.node)
+      lastId = f.id
+      case f.node.kind:
+      of nkEnumFieldDef: lastIdent = f.node.sons[0]
+      else: lastIdent = f.node
 
 proc parseTypedefStruct(p: var TParser, result: PNode, stmtList: PNode, isUnion: bool) = 
   getTok(p, result)
@@ -974,11 +1003,11 @@ proc parseTypedefStruct(p: var TParser, result: PNode, stmtList: PNode, isUnion:
   else:
     expectIdent(p)
 
-proc parseTypedefEnum(p: var TParser, result: PNode) = 
+proc parseTypedefEnum(p: var TParser, result, constSection: PNode) = 
   getTok(p, result)
   if p.tok.xkind == pxCurlyLe:
     getTok(p, result)
-    var t = enumFields(p)
+    var t = enumFields(p, constSection)
     eat(p, pxCurlyRi, t)
     var origName = p.tok.s
     markTypeIdent(p, nil)
@@ -993,7 +1022,7 @@ proc parseTypedefEnum(p: var TParser, result: PNode) =
     case p.tok.xkind 
     of pxCurlyLe:
       getTok(p, result)
-      var t = enumFields(p)
+      var t = enumFields(p, constSection)
       eat(p, pxCurlyRi, t)
       if p.tok.xkind == pxSymbol: 
         # typedef enum tagABC {} abc, *pabc;
@@ -1022,6 +1051,7 @@ proc parseTypedefEnum(p: var TParser, result: PNode) =
 proc parseTypeDef(p: var TParser): PNode =  
   result = newNodeP(nkStmtList, p)
   var typeSection = newNodeP(nkTypeSection, p)
+  var afterStatements = newNodeP(nkStmtList, p)
   while p.tok.xkind == pxSymbol and p.tok.s == "typedef":
     getTok(p, typeSection)
     inc(p.inTypeDef)
@@ -1029,7 +1059,10 @@ proc parseTypeDef(p: var TParser): PNode =
     case p.tok.s
     of "struct": parseTypedefStruct(p, typeSection, result, isUnion=false)
     of "union": parseTypedefStruct(p, typeSection, result, isUnion=true)
-    of "enum": parseTypedefEnum(p, typeSection)
+    of "enum":
+      var constSection = newNodeP(nkConstSection, p)
+      parseTypedefEnum(p, typeSection, constSection)
+      addSon(afterStatements, constSection)
     of "class":
       if pfCpp in p.options.flags:
         parseTypedefStruct(p, typeSection, result, isUnion=false)
@@ -1043,6 +1076,8 @@ proc parseTypeDef(p: var TParser): PNode =
     dec(p.inTypeDef)
   
   addSon(result, typeSection)
+  for s in afterStatements:
+    addSon(result, s)
   
 proc skipDeclarationSpecifiers(p: var TParser) =
   while p.tok.xkind == pxSymbol:
@@ -1155,10 +1190,6 @@ proc declaration(p: var TParser): PNode =
     result = parseVarDecl(p, baseTyp, rettyp, origName)
   assert result != nil
 
-proc createConst(name, typ, val: PNode, p: TParser): PNode =
-  result = newNodeP(nkConstDef, p)
-  addSon(result, name, typ, val)
-
 proc enumSpecifier(p: var TParser): PNode =  
   saveContext(p)
   getTok(p, nil) # skip "enum"
@@ -1204,12 +1235,16 @@ proc enumSpecifier(p: var TParser): PNode =
       closeContext(p)
       var name = result
       # create a type section containing the enum
-      result = newNodeP(nkTypeSection, p)
+      result = newNodeP(nkStmtList, p)
+      var tSection = newNodeP(nkTypeSection, p)
       var t = newNodeP(nkTypeDef, p)
       getTok(p, t)
-      var e = enumFields(p)
+      var constSection = newNodeP(nkConstSection, p)
+      var e = enumFields(p, constSection)
       addSon(t, exportSym(p, name, origName), ast.emptyNode, e)
-      addSon(result, t)
+      addSon(tSection, t)
+      addSon(result, tSection)
+      addSon(result, constSection)
       eat(p, pxCurlyRi, result)
       eat(p, pxSemicolon)
     of pxSemicolon:
