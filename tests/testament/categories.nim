@@ -282,26 +282,33 @@ proc testBabelPackages(r: var TResults, cat: Category, filter: PackageFilter) =
     echo("[Warning] - Cannot run babel tests: Babel update failed.")
     return
 
-  for name, url in listPackages(filter):
-    var test = makeTest(name, "", cat)
-    echo(url)
-    let
-      installProcess = startProcess(babelExe, "", ["install", "-y", name])
-      installStatus = waitForExitEx(installProcess)
-    installProcess.close
-    if installStatus != quitSuccess:
-      r.addResult(test, "", "", reInstallFailed)
-      continue
+  let packageFileTest = makeTest("PackageFileParsed", "", cat)
+  try:
+    for name, url in listPackages(filter):
+      var test = makeTest(name, "", cat)
+      echo(url)
+      let
+        installProcess = startProcess(babelExe, "", ["install", "-y", name])
+        installStatus = waitForExitEx(installProcess)
+      installProcess.close
+      if installStatus != quitSuccess:
+        r.addResult(test, "", "", reInstallFailed)
+        continue
 
-    let
-      buildPath = getPackageDir(name)[0.. -3]
-    let
-      buildProcess = startProcess(babelExe, buildPath, ["build"])
-      buildStatus = waitForExitEx(buildProcess)
-    buildProcess.close
-    if buildStatus != quitSuccess:
-      r.addResult(test, "", "", reBuildFailed)
-    r.addResult(test, "", "", reSuccess)
+      let
+        buildPath = getPackageDir(name)[0.. -3]
+      let
+        buildProcess = startProcess(babelExe, buildPath, ["build"])
+        buildStatus = waitForExitEx(buildProcess)
+      buildProcess.close
+      if buildStatus != quitSuccess:
+        r.addResult(test, "", "", reBuildFailed)
+      r.addResult(test, "", "", reSuccess)
+    r.addResult(packageFileTest, "", "", reSuccess)
+  except EJsonParsingError:
+    echo("[Warning] - Cannot run babel tests: Invalid package file.")
+    r.addResult(packageFileTest, "", "", reBuildFailed)
+
 
 # ----------------------------------------------------------------------------
 
