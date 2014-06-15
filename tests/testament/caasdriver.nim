@@ -86,6 +86,10 @@ proc doProcCommand(session: var TNimrodSession, command: string): string =
 
 proc doCommand(session: var TNimrodSession, command: string) =
   if session.mode == CaasRun:
+    if not session.nim.running:
+      session.lastOutput = "FAILED TO EXECUTE: " & command & "\n" &
+          "Exit code " & $session.nim.peekExitCode
+      return
     session.lastOutput = doCaasCommand(session,
                                        command & " " & session.filename)
   else:
