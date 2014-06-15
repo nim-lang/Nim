@@ -1385,8 +1385,8 @@ Tuples
 A tuple type defines various named *fields* and an *order* of the fields.
 The constructor ``()`` can be used to construct tuples. The order of the
 fields in the constructor must match the order in the tuple's definition.
-Different tuple-types are *equivalent* if they specify the same fields of
-the same type in the same order.
+Different tuple-types are *equivalent* if they specify fields of
+the same type and of the same name in the same order.
 
 The assignment operator for tuples copies each component. The notation
 ``t.field`` is used to access a tuple's field. Another notation is
