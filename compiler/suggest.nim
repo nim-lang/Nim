@@ -322,7 +322,7 @@ proc suggestSym*(n: PNode, s: PSym) {.inline.} =
     findUsages(n, s)
   if optDef in gGlobalOptions:
     findDefinition(n, s)
-  if isServing:
+  if isServing and not n.isNil:
     addToSourceMap(s, n.info)
 
 proc markUsed(n: PNode, s: PSym) =
