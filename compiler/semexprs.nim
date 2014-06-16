@@ -1394,11 +1394,6 @@ proc semDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PNode =
   result.info = n.info
   result.typ = getSysType(tyBool)
 
-proc setMs(n: PNode, s: PSym): PNode = 
-  result = n
-  n.sons[0] = newSymNode(s)
-  n.sons[0].info = n.info
-
 proc expectMacroOrTemplateCall(c: PContext, n: PNode): PSym =
   ## The argument to the proc should be nkCall(...) or similar
   ## Returns the macro/template symbol
@@ -1590,6 +1585,27 @@ proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode =
   else:
     result = semDirectOp(c, n, flags)
 
+proc createFlowVar(c: PContext; t: PType; info: TLineInfo): PType =
+  result = newType(tyGenericInvokation, c.module)
+  addSonSkipIntLit(result, magicsys.getCompilerProc("FlowVar").typ)
+  addSonSkipIntLit(result, t)
+  result = instGenericContainer(c, info, result, allowMetaTypes = false)
+
+proc instantiateCreateFlowVarCall(c: PContext; t: PType;
+                                  info: TLineInfo): PSym =
+  let sym = magicsys.getCompilerProc("nimCreateFlowVar")
+  if sym == nil:
+    localError(info, errSystemNeeds, "nimCreateFlowVar")
+  var bindings: TIdTable 
+  initIdTable(bindings)
+  bindings.idTablePut(sym.ast[genericParamsPos].sons[0].typ, t)
+  result = c.semGenerateInstance(c, sym, bindings, info)
+
+proc setMs(n: PNode, s: PSym): PNode = 
+  result = n
+  n.sons[0] = newSymNode(s)
+  n.sons[0].info = n.info
+
 proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode = 
   # this is a hotspot in the compiler!
   # DON'T forget to update ast.SpecialSemMagics if you add a magic here!
@@ -1611,6 +1627,22 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     checkSonsLen(n, 2)
     result = newStrNodeT(renderTree(n[1], {renderNoComments}), n)
     result.typ = getSysType(tyString)
+  of mParallel:
+    result = setMs(n, s)
+    var x = n.lastSon
+    if x.kind == nkDo: x = x.sons[bodyPos]
+    inc c.inParallelStmt
+    result.sons[1] = semStmt(c, x)
+    dec c.inParallelStmt
+  of mSpawn:
+    result = setMs(n, s)
+    result.sons[1] = semExpr(c, n.sons[1])
+    if not result[1].typ.isEmptyType:
+      if c.inParallelStmt > 0:
+        result.typ = result[1].typ
+      else:
+        result.typ = createFlowVar(c, result[1].typ, n.info)
+      result.add instantiateCreateFlowVarCall(c, result[1].typ, n.info).newSymNode
   else: result = semDirectOp(c, n, flags)
 
 proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =

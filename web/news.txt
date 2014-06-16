@@ -2,6 +2,23 @@
 News
 ====
 
+..
+  2014-06-29 Version 0.9.6 released
+  =================================
+
+  Changes affecting backwards compatibility
+  -----------------------------------------
+
+  - ``spawn`` now uses an elaborate self-adapting thread pool and as such
+    has been moved into its own module. So to use it, you now have to import
+    ``threadpool``.
+
+
+  Library Additions
+  -----------------
+
+  - Added module ``cpuinfo``.
+  - Added module ``threadpool``.
 
 
 2014-04-21 Version 0.9.4 released

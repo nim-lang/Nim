@@ -86,7 +86,7 @@ proc openArrayLoc(p: BProc, n: PNode): PRope =
     initLocExpr(p, q[2], b)
     initLocExpr(p, q[3], c)
     let fmt =
-      case skipTypes(a.t, abstractVar).kind
+      case skipTypes(a.t, abstractVar+{tyPtr}).kind
       of tyOpenArray, tyVarargs, tyArray, tyArrayConstr:
         "($1)+($2), ($3)-($2)+1"
       of tyString, tySequence:

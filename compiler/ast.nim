@@ -561,7 +561,7 @@ type
     mFloat, mFloat32, mFloat64, mFloat128,
     mBool, mChar, mString, mCstring,
     mPointer, mEmptySet, mIntSetBaseType, mNil, mExpr, mStmt, mTypeDesc,
-    mVoidType, mPNimrodNode, mShared, mGuarded, mLock, mSpawn,
+    mVoidType, mPNimrodNode, mShared, mGuarded, mLock, mSpawn, mDeepCopy,
     mIsMainModule, mCompileDate, mCompileTime, mNimrodVersion, mNimrodMajor,
     mNimrodMinor, mNimrodPatch, mCpuEndian, mHostOS, mHostCPU, mAppType,
     mNaN, mInf, mNegInf,
@@ -606,9 +606,9 @@ const
   # thus cannot be overloaded (also documented in the spec!):
   SpecialSemMagics* = {
     mDefined, mDefinedInScope, mCompiles, mLow, mHigh, mSizeOf, mIs, mOf, 
-    mEcho, mShallowCopy, mExpandToAst}
+    mEcho, mShallowCopy, mExpandToAst, mParallel, mSpawn}
 
-type 
+type
   PNode* = ref TNode
   TNodeSeq* = seq[PNode]
   PType* = ref TType
@@ -886,6 +886,8 @@ const
 
   nkCallKinds* = {nkCall, nkInfix, nkPrefix, nkPostfix,
                   nkCommand, nkCallStrLit, nkHiddenCallConv}
+  nkIdentKinds* = {nkIdent, nkSym, nkAccQuoted, nkOpenSymChoice,
+                   nkClosedSymChoice}
 
   nkLiterals* = {nkCharLit..nkTripleStrLit}
   nkLambdaKinds* = {nkLambda, nkDo}

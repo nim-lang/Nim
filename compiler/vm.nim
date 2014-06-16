@@ -131,8 +131,9 @@ proc createStrKeepNode(x: var TFullReg) =
       nfAllConst in x.node.flags:
     # XXX this is hacky; tests/txmlgen triggers it:
     x.node = newNode(nkStrLit)
-    #  debug x.node
-    #assert x.node.kind in {nkStrLit..nkTripleStrLit}
+    # It not only hackey, it is also wrong for tgentemplate. The primary
+    # cause of bugs like these is that the VM does not properly distinguish
+    # between variable defintions (var foo = e) and variable updates (foo = e).
 
 template createStr(x) =
   x.node = newNode(nkStrLit)

@@ -14,30 +14,6 @@ when not defined(NimString):
 
 {.push stackTrace:off.}
 
-when (defined(x86) or defined(amd64)) and defined(gcc):
-  proc cpuRelax {.inline.} =
-    {.emit: """asm volatile("pause" ::: "memory");""".}
-elif (defined(x86) or defined(amd64)) and defined(vcc):
-  proc cpuRelax {.importc: "YieldProcessor", header: "<windows.h>".}
-elif defined(intelc):
-  proc cpuRelax {.importc: "_mm_pause", header: "xmmintrin.h".}
-elif false:
-  from os import sleep
-
-  proc cpuRelax {.inline.} = os.sleep(1)
-
-when defined(windows) and not defined(gcc):
-  proc interlockedCompareExchange(p: pointer; exchange, comparand: int32): int32
-    {.importc: "InterlockedCompareExchange", header: "<windows.h>", cdecl.}
-
-  proc cas(p: ptr bool; oldValue, newValue: bool): bool =
-    interlockedCompareExchange(p, newValue.int32, oldValue.int32) != 0
-
-else:
-  # this is valid for GCC and Intel C++
-  proc cas(p: ptr bool; oldValue, newValue: bool): bool
-    {.importc: "__sync_bool_compare_and_swap", nodecl.}
-
 # We declare our own condition variables here to get rid of the dummy lock
 # on Windows:
 
@@ -53,6 +29,9 @@ proc createCondVar(): CondVar =
   when defined(posix):
     initSysLock(result.stupidLock)
     #acquireSys(result.stupidLock)
+
+proc destroyCondVar(c: var CondVar) {.inline.} =
+  deinitSysCond(c.c)
 
 proc await(cv: var CondVar) =
   when defined(posix):
@@ -99,6 +78,26 @@ proc signal(cv: var FastCondVar) =
   cv.event = true
   #if cas(addr cv.slowPath, true, false):
   signal(cv.slow)
+
+type
+  Barrier* {.compilerProc.} = object
+    counter: int
+    cv: CondVar
+
+proc barrierEnter*(b: ptr Barrier) {.compilerProc.} =
+  atomicInc b.counter
+
+proc barrierLeave*(b: ptr Barrier) {.compilerProc.} =
+  atomicDec b.counter
+  if b.counter <= 0: signal(b.cv)
+
+proc openBarrier*(b: ptr Barrier) {.compilerProc.} =
+  b.counter = 0
+  b.cv = createCondVar()
+
+proc closeBarrier*(b: ptr Barrier) {.compilerProc.} =
+  await(b.cv)
+  destroyCondVar(b.cv)
 
 {.pop.}
 
