@@ -254,7 +254,7 @@ proc nimFloatToStr(x: float): string {.compilerproc.} =
   var buf: array [0..59, char]
   c_sprintf(buf, "%.16g", x)
   # Should account for the - sign.
-  if not('.' in buf) and (buf[0] in '0'..'9' or buf[1] in '0'..'9'):
+  if not('.' in buf) and (buf[0] in '0'..'9' or buf[0] is '-') and not('e' in buf):
     var breaking = 0
     for index, c in buf:
       if not(c in '0'..'9'):
