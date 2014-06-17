@@ -25,3 +25,16 @@ typedef enum food
 	cucumber = 2,
 	chocolate = 6
 };
+
+typedef enum numbers
+{
+	one = 1,
+	two,
+	nten = - 10,
+	nnine,
+	four = 4,
+	three = + 3,
+	positivenine = + 9,
+	nfour = - 4,
+	negativeten = -10
+};

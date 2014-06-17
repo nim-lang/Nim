@@ -919,11 +919,23 @@ proc createConst(name, typ, val: PNode, p: TParser): PNode =
   result = newNodeP(nkConstDef, p)
   addSon(result, name, typ, val)
 
+proc exprToNumber(n: PNode not nil): tuple[succ: bool, val: BiggestInt] =
+  result = (false, 0.BiggestInt)
+  case n.kind:
+  of nkPrefix:
+    # Check for negative/positive numbers  -3  or  +6
+    if n.sons.len == 2 and n.sons[0].kind == nkIdent and n.sons[1].kind == nkIntLit:
+      let pre = n.sons[0]
+      let num = n.sons[1]
+      if pre.ident.s == "-": result = (true, - num.intVal)
+      elif pre.ident.s == "+": result = (true, num.intVal)
+  else: discard
+
 proc enumFields(p: var TParser, constList: PNode): PNode = 
   result = newNodeP(nkEnumTy, p)
   addSon(result, ast.emptyNode) # enum does not inherit from anything
   var i: BiggestInt = 0
-  var field: tuple[id: BiggestInt, node: PNode]
+  var field: tuple[id: BiggestInt, isNumber: bool, node: PNode]
   var fields = newSeq[type(field)]()
   while true:
     var e = skipIdent(p)
@@ -934,9 +946,19 @@ proc enumFields(p: var TParser, constList: PNode): PNode =
       e = newNodeP(nkEnumFieldDef, p)
       addSon(e, a, c)
       skipCom(p, e)
-      i = c.intVal
+      if c.kind == nkIntLit:
+        i = c.intVal
+        field.isNumber = true
+      else:
+        var (success, number) = exprToNumber(c)
+        if success:
+          i = number
+          field.isNumber = true
+        else:
+          field.isNumber = false
     else:
       inc(i)
+      field.isNumber = true
     field.id = i
     field.node = e
     fields.add(field)
@@ -946,22 +968,32 @@ proc enumFields(p: var TParser, constList: PNode): PNode =
     if p.tok.xkind == pxCurlyRi: break
   fields.sort do (x, y: type(field)) -> int:
     cmp(x.id, y.id)
-  var lastId: BiggestInt = -1
+  var lastId: BiggestInt
   var lastIdent: PNode
-  for f in fields:
-    if f.id == lastId:
+  for count, f in fields:
+    if not f.isNumber:
+      addSon(result, f.node)
+    elif f.id == lastId and count > 0:
       var currentIdent: PNode
       case f.node.kind:
-      of nkEnumFieldDef: currentIdent = f.node.sons[0]
-      else: currentIdent = f.node
+      of nkEnumFieldDef:
+        if f.node.sons.len > 0 and f.node.sons[0].kind == nkIdent:
+          currentIdent = f.node.sons[0]
+        else: parMessage(p, errGenerated, "Warning: When sorting enum fields an expected nkIdent was not found. Check the fields!")
+      of nkIdent: currentIdent = f.node
+      else: parMessage(p, errGenerated, "Warning: When sorting enum fields an expected nkIdent was not found. Check the fields!")
       var constant = createConst( currentIdent, ast.emptyNode, lastIdent, p)
       constList.addSon(constant)
     else:
       addSon(result, f.node)
       lastId = f.id
       case f.node.kind:
-      of nkEnumFieldDef: lastIdent = f.node.sons[0]
-      else: lastIdent = f.node
+      of nkEnumFieldDef:
+        if f.node.sons.len > 0 and f.node.sons[0].kind == nkIdent:
+          lastIdent = f.node.sons[0]
+        else: parMessage(p, errGenerated, "Warning: When sorting enum fields an expected nkIdent was not found. Check the fields!")
+      of nkIdent: lastIdent = f.node
+      else: parMessage(p, errGenerated, "Warning: When sorting enum fields an expected nkIdent was not found. Check the fields!")
 
 proc parseTypedefStruct(p: var TParser, result: PNode, stmtList: PNode, isUnion: bool) = 
   getTok(p, result)
