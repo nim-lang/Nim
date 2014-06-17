@@ -679,8 +679,8 @@ proc `[]`*(node: PJsonNode, name: string): PJsonNode =
 proc `[]`*(node: PJsonNode, index: int): PJsonNode =
   ## Gets the node at `index` in an Array. Result is undefined if `index`
   ## is out of bounds
+  assert(not isNil(node))
   assert(node.kind == JArray)
-  assert(node != nil)
   return node.elems[index]
 
 proc hasKey*(node: PJsonNode, key: string): bool =
