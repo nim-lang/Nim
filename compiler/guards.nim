@@ -625,7 +625,7 @@ proc factImplies(fact, prop: PNode): TImplication =
     #  == not a or not b == not (a and b)
     let arg = fact.sons[1]
     case arg.getMagic
-    of mIsNil:
+    of mIsNil, mEqRef:
       return ~factImplies(arg, prop)
     of mAnd:
       # not (a and b)  means  not a or not b:
