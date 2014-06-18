@@ -14,12 +14,13 @@
 import strtabs, asyncnet, asyncdispatch, parseutils, parseurl, strutils
 type
   TRequest* = object
-    client: PAsyncSocket # TODO: Separate this into a Response object?
+    client*: PAsyncSocket # TODO: Separate this into a Response object?
     reqMethod*: string
     headers*: PStringTable
     protocol*: tuple[orig: string, major, minor: int]
     url*: TURL
     hostname*: string ## The hostname of the client that made the request.
+    body*: string # TODO
 
   PAsyncHttpServer* = ref object
     socket: PAsyncSocket
@@ -168,6 +169,10 @@ proc serve*(server: PAsyncHttpServer, port: TPort,
     #var (address, client) = await server.socket.acceptAddr()
     var fut = await server.socket.acceptAddr()
     processClient(fut.client, fut.address, callback)
+
+proc close*(server: PAsyncHttpServer) =
+  ## Terminates the async http server instance.
+  server.socket.close()
 
 when isMainModule:
   var server = newAsyncHttpServer()

@@ -39,7 +39,6 @@ export
   MSG_PEEK
 
 type
-  
   TPort* = distinct uint16  ## port type
   
   TDomain* = enum   ## domain, which specifies the protocol family of the
