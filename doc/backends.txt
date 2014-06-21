@@ -18,16 +18,18 @@ Introduction
 ============
 
 The `Nimrod Compiler User Guide <nimrodc.html>`_ documents the typical
-compiler usage, using the ``compile`` or ``c`` command to transform a ``.nim``
-file into one or more ``.c`` files which are then compiled with the platform's
-C compiler into a static binary. However there are other commands to compile
-to C++, Objective-C or JavaScript. This document tries to concentrate in a
-single place all the backend and interfacing options.
+compiler invocation, using the ``compile`` or ``c`` command to transform a
+``.nim`` file into one or more ``.c`` files which are then compiled with the
+platform's C compiler into a static binary. However there are other commands
+to compile to C++, Objective-C or JavaScript. This document tries to
+concentrate in a single place all the backend and interfacing options.
 
-The Nimrod compiler supports mainly two backends: the C (and derivate) and
-the JavaScript targets. The C target creates source files which can be
-compiled into a library or a final executable. The JavaScript target generates
-a ``.js`` file which you call from an HTML file.
+The Nimrod compiler supports mainly two backends: the C (and derivate) and the
+JavaScript targets. The C target creates source files which can be compiled
+into a library or a final executable. The JavaScript target generates a
+``.js`` file which you call from an HTML file. On top of generating a library
+or executable, Nimrod offers bidirectional interfacing with the backend
+targets through generic and specific pragmas.
 
 
 Backends
@@ -53,8 +55,10 @@ line invocations::
     $ nimrod cpp hallo.nim
     $ nimrod objc hallo.nim
 
-The compiler commands select the backend but if you need to specify more
-carefully the backend compiler…
+The compiler commands select the target backend, but if needed you can
+`specify additional switches for cross compilation
+<nimrodc.html#cross-compilation>`_ to select the target CPU, operative system
+or compiler/linker commands.
 
 
 The JavaScript target
@@ -93,10 +97,54 @@ platform for easily building fast, scalable network applications
 Interfacing
 ===========
 
-intro
+Nimrod offers bidirectional interfacing with the target backend. This means
+that you can call backend code from Nimrod and Nimrod code can be called by
+the backend code. Usually the direction of which calls which depends on your
+software architecture (is Nimrod your main program or is Nimrod providing a
+component?).
+
 
 Nimrod code calling the backend
 --------------------------------
+
+Nimrod code can interface with the backend through the `Foreign function
+interface <manual.html#foreign-function-interface>`_ mainly through the
+`importc pragma <manual.html#importc-pragma>`_. The ``importc`` pragma is the
+*generic* way of making backend code available in Nimrod and is available in
+all the target backends (JavaScript too).  The C++ or Objective-C backends
+have their respective `ImportCpp <nimrodc.html#importcpp-pragma>`_ and
+`ImportObjC <nimrodc.html#importobjc-pragma>`_ pragmas to call methods from
+classes.
+
+Whenever you use any of these pragmas you need to integrate native code into
+your final binary. In the case of JavaScript this is no problem at all, the
+same html file which hosts the generated JavaScript will likely provide other
+JavaScript functions which you are importing with ``importc``.
+
+However, for the C like targets you need to link external code either
+statically or dynamically. The preferred way of integrating native code is to
+use dynamic linking because it allows you to compile Nimrod programs without
+the need for having the related development libraries installed. This is done
+through the `dynlib pragma for import
+<manual.html#dynlib-pragma-for-import>`_, though more specific control can be
+gained using the `dynlib module <dynlib.html>`_.
+
+The `dynlibOverride <nimrodc.html#dynliboverride>`_ command line switch allows
+to avoid dynamic linking if you need to statically link something instead.
+Nimrod wrappers designed to statically link source files can use the `compile
+pragma <nimrodc.html#compile-pragma>`_ if there are few sources or providing
+them along the Nimrod code is easier than using a system library. Libraries
+installed on the host system can be linked in with the `PassL pragma
+<nimrodc.html#passl-pragma>`_.
+
+To wrap native code, take a look at the `c2nim tool <c2nim.html>`_ which helps
+with the process of scanning and transforming header files into a Nimrod
+interface.
+
+Example in C.
+
+Example in JS.
+
 
 Backend code calling Nimrod
 ---------------------------
