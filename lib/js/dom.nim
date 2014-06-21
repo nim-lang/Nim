@@ -7,7 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-## Declaration of the Document Object Model for the JavaScript backend.
+## Declaration of the Document Object Model for the `JavaScript backend
+## <backends.html#the-javascript-target>`_.
 
 when not defined(js) and not defined(Nimdoc):
   {.error: "This module only works on the JavaScript platform".}

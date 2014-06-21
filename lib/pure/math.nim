@@ -10,7 +10,8 @@
 ##   Constructive mathematics is naturally typed. -- Simon Thompson
 ## 
 ## Basic math routines for Nimrod.
-## This module is available for the JavaScript target.
+## This module is available for the `JavaScript target
+## <backends.html#the-javascript-target>`_.
 
 include "system/inclrtl"
 
