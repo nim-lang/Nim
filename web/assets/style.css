@@ -93,7 +93,7 @@ html, body {
         border-left:10px solid #8f9698;
         background:#f3f6f8;
         font-size:15px;
-        font-family:courier;
+        font-family:courier, monospace;
         letter-spacing:0;
         line-height:17px;
       }
