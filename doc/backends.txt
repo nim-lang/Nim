@@ -1,0 +1,113 @@
+================================
+   Nimrod Backend Integration
+================================
+
+:Author: Puppet Master
+:Version: |nimrodversion|
+
+.. contents::
+
+  "If we all reacted the same way, we'd be predictable, and there's
+  always more than one way to view a situation. What's true for the
+  group is also true for the individual. It's simple: overspecialize,
+  and you breed in weakness.  It's slow death." -- Major Motoko
+  Kusanagi
+
+
+Introduction
+============
+
+The `Nimrod Compiler User Guide <nimrodc.html>`_ documents the typical
+compiler usage, using the ``compile`` or ``c`` command to transform a ``.nim``
+file into one or more ``.c`` files which are then compiled with the platform's
+C compiler into a static binary. However there are other commands to compile
+to C++, Objective-C or JavaScript. This document tries to concentrate in a
+single place all the backend and interfacing options.
+
+The Nimrod compiler supports mainly two backends: the C (and derivate) and
+the JavaScript targets. The C target creates source files which can be
+compiled into a library or a final executable. The JavaScript target generates
+a ``.js`` file which you call from an HTML file.
+
+
+Backends
+========
+
+The C like targets
+------------------
+
+The commands to compile to either C, C++ or Objective-C are:
+
+  //compileToC, cc          compile project with C code generator
+  //compileToCpp, cpp       compile project to C++ code
+  //compileToOC, objc       compile project to Objective C code
+
+The most significant difference between these commands is that if you look
+into the ``nimcache`` directory you will find ``.c``, ``.cpp`` or ``.m``
+files, other than that all of them will produce a native binary for your
+project.  This allows you to take the generated code and place it directly
+into a project using any of these languages. Here are some typical command
+line invocations::
+
+    $ nimrod c hallo.nim
+    $ nimrod cpp hallo.nim
+    $ nimrod objc hallo.nim
+
+The compiler commands select the backend but if you need to specify more
+carefully the backend compiler…
+
+
+The JavaScript target
+---------------------
+
+Nimrod can also generate `JavaScript`:idx: code through the ``js`` command.
+However, the JavaScript code generator is experimental!
+
+Nimrod targets JavaScript 1.5 which is supported by any widely used browser.
+Since JavaScript does not have a portable means to include another module,
+Nimrod just generates a long ``.js`` file.
+
+Features or modules that the JavaScript platform does not support are not
+available. This includes:
+
+* manual memory management (``alloc``, etc.)
+* casting and other unsafe operations (``cast`` operator, ``zeroMem``, etc.)
+* file management
+* most modules of the Standard library
+* proper 64 bit integer arithmetic
+* unsigned integer arithmetic
+
+However, the modules `strutils <strutils.html>`_, `math <math.html>`_, and
+`times <times.html>`_ are available! To access the DOM, use the `dom
+<dom.html>`_ module that is only available for the JavaScript platform.
+
+To compile a Nimrod module into a ``.js`` file use the ``js`` command; the
+default is a ``.js`` file that is supposed to be referenced in an ``.html``
+file. However, you can also run the code with `nodejs`:idx:, a `software
+platform for easily building fast, scalable network applications
+<http://nodejs.org>`_::
+
+  nimrod js -d:nodejs -r examples/hallo.nim
+
+
+Interfacing
+===========
+
+intro
+
+Nimrod code calling the backend
+--------------------------------
+
+Backend code calling Nimrod
+---------------------------
+
+mention NimMain
+
+Memory management
+=================
+
+Garbage collection, life of objects
+-----------------------------------
+
+Thread coordination
+-------------------
