@@ -5488,7 +5488,10 @@ spelled*:
   proc printf(formatstr: cstring) {.header: "<stdio.h>", importc: "printf", varargs.}
 
 Note that this pragma is somewhat of a misnomer: Other backends will provide
-the same feature under the same name.
+the same feature under the same name. Also, if you are interfacing with C++
+you can use the `ImportCpp pragma <nimrodc.html#importcpp-pragma>`_ and
+interfacing with Objective-C the `ImportObjC pragma
+<nimrodc.html#importobjc-pragma>`_.
 
 
 Exportc pragma

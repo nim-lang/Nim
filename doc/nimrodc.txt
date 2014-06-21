@@ -384,9 +384,10 @@ Example:
 
 ImportCpp pragma
 ----------------
-The ``importcpp`` pragma can be used to import `C++`:idx: methods. The
-generated code then uses the C++ method calling syntax: ``obj->method(arg)``.
-In addition with the ``header`` and ``emit`` pragmas this allows *sloppy*
+Similar to the `importc pragma for C <manual.html#importc-pragma>`_, the
+``importcpp`` pragma can be used to import `C++`:idx: methods. The generated
+code then uses the C++ method calling syntax: ``obj->method(arg)``.  In
+addition with the ``header`` and ``emit`` pragmas this allows *sloppy*
 interfacing with libraries written in C++:
 
 .. code-block:: Nimrod
@@ -422,11 +423,11 @@ emits C++ code.
 
 ImportObjC pragma
 -----------------
-The ``importobjc`` pragma can be used to import `Objective C`:idx: methods. 
-The generated code then uses the Objective C method calling 
-syntax: ``[obj method param1: arg]``.
-In addition with the ``header`` and ``emit`` pragmas this allows *sloppy*
-interfacing with libraries written in Objective C:
+Similar to the `importc pragma for C <manual.html#importc-pragma>`_, the
+``importobjc`` pragma can be used to import `Objective C`:idx: methods.  The
+generated code then uses the Objective C method calling syntax: ``[obj method
+param1: arg]``.  In addition with the ``header`` and ``emit`` pragmas this
+allows *sloppy* interfacing with libraries written in Objective C:
 
 .. code-block:: Nimrod
   # horrible example of how to interface with GNUStep ...
