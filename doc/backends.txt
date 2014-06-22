@@ -110,8 +110,8 @@ Nimrod code calling the backend
 Nimrod code can interface with the backend through the `Foreign function
 interface <manual.html#foreign-function-interface>`_ mainly through the
 `importc pragma <manual.html#importc-pragma>`_. The ``importc`` pragma is the
-*generic* way of making backend code available in Nimrod and is available in
-all the target backends (JavaScript too).  The C++ or Objective-C backends
+*generic* way of making backend symbols available in Nimrod and is available
+in all the target backends (JavaScript too).  The C++ or Objective-C backends
 have their respective `ImportCpp <nimrodc.html#importcpp-pragma>`_ and
 `ImportObjC <nimrodc.html#importobjc-pragma>`_ pragmas to call methods from
 classes.
@@ -215,10 +215,117 @@ javascript, you should see the value ``10``. In JavaScript the `echo proc
 Backend code calling Nimrod
 ---------------------------
 
-mention NimMain
+Backend code can interface with Nimrod code exposed through the `exportc
+pragma <manual.html#exportc-pragma>`_. The ``exportc`` pragma is the *generic*
+way of making Nimrod symbols available to the backends. By default the Nimrod
+compiler will mangle all the Nimrod symbols to avoid any name collision, so
+the most significant thing the ``exportc`` pragma does is maintain the Nimrod
+symbol name, or if specified, use an alternative symbol for the backend in
+case the symbol rules don't match.
+
+The JavaScript target doesn't have any further interfacing considerations
+since it also has garbage collection, but the C targets require you to
+initialize Nimrod's internals, which is done calling a ``NimMain`` function.
+Also, C code requires you to specify a forward declaration for functions or
+the compiler will asume certain types for the return value and parameters
+which will likely make your program crash at runtime.
+
+The Nimrod compiler can generate a C interface header through the ``--header``
+command line switch. The generated header will contain all the exported
+symbols and the ``NimMain`` proc which you need to call before any other
+Nimrod code.
+
+
+Nimrod invocation example from C
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Create a ``fib.nim`` file with the following content:
+
+.. code-block:: nimrod
+
+  proc fib(a: cint): cint {.exportc.} =
+    if a <= 2:
+      result = 1
+    else:
+      result = fib(a - 1) + fib(a - 2)
+
+Create a ``maths.c`` file with the following content:
+
+.. code-block:: c
+
+  #include "fib.h"
+  #include <stdio.h>
+
+  int main(void)
+  {
+    NimMain();
+    for (int f = 0; f < 10; f++)
+      printf("Fib of %d is %d\n", f, fib(f));
+    return 0;
+  }
+
+Now you can run the following Unix like commands to first generate C sources
+form the Nimrod code, then link it into a static binary::
+
+  $ nimrod c --noMain --noLinking --header:fib.h fib.nim
+  $ gcc -o m -Inimcache -Ipath/to/nimrod/lib nimcache/*.c maths.c
+
+The first command runs the Nimrod compiler with three special options to avoid
+generating a ``main()`` function in the generated files, avoid linking the
+object files into a final binary, and explicitly generate a header file for C
+integration. All the generated files are placed into the ``nimcache``
+directory. That's why the next command compiles the ``maths.c`` source plus
+all the ``.c`` files form ``nimcache``. In addition to this path, you also
+have to tell the C compiler where to find Nimrod's ``nimbase.h`` header file.
+
+Instead of depending on the generation of the individual ``.c`` files you can
+also ask the Nimrod compiler to generate a statically linked library::
+
+  $ nimrod c --app:staticLib --noMain --header fib.nim
+  $ gcc -o m -Inimcache -Ipath/to/nimrod/lib libfib.nim.a maths.c
+
+The Nimrod compiler will handle linking the source files generated in the
+``nimcache`` directory into the ``libfib.nim.a`` static library, which you can
+then link into your C program.  Note that these commands are generic and will
+vary for each system. For instance, on Linux systems you will likely need to
+use ``-ldl`` too to link in required dlopen functionality.
+
+
+Nimrod invocation example from JavaScript
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Create a ``mhost.html`` file with the following content:
+
+.. code-block::
+
+  <html><body>
+  <script type="text/javascript" src="fib.js"></script>
+  <script type="text/javascript">
+  alert("Fib for 9 is " + fib(9));
+  </script>
+  </body></html>
+
+Create a ``fib.nim`` file with the following content (or reuse the one
+from the previous section):
+
+.. code-block:: nimrod
+
+  proc fib(a: cint): cint {.exportc.} =
+    if a <= 2:
+      result = 1
+    else:
+      result = fib(a - 1) + fib(a - 2)
+
+Compile the Nimrod code to JavaScript with ``nimrod js -o:fib.js fib.nim`` and
+open ``mhost.html`` in a browser. If the browser supports javascript, you
+should see an alert box displaying the text ``Fib for 9 is 34``.
+
 
 Memory management
 =================
+
+Strings and C strings
+---------------------
 
 Garbage collection, life of objects
 -----------------------------------
