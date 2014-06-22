@@ -387,4 +387,24 @@ these for the Nimrod side should be enough.
 
 
 Thread coordination
-===================
+-------------------
+
+When the ``NimMain()`` function is called Nimrod initializes the garbage
+collector to the current thread, which is usually the main thread of your
+application. If your C code later spawns a different thread and calls Nimrod
+code, the garbage collector will fail to work properly and you will crash.
+
+As long as you don't use the threadvar emulation Nimrod uses native thread
+variables, of which you get a fresh version whenever you create a thread. You
+can then attach a GC to this thread via
+
+.. code-block:: nimrod
+
+  setStackBottom(addr(someLocal))
+  initGC()
+
+At the moment this support is still experimental so you need to expose these
+functions yourself or submit patches to request a public API. If the Nimrod
+code you are calling is short lived, another possible solution is to disable
+the garbage collector and enable it after the call from your background
+thread.
