@@ -713,14 +713,12 @@ proc `[]=`*(obj: PJsonNode, key: string, val: PJsonNode) =
       return
   obj.fields.add((key, val))
 
-proc `{}`*(node: PJsonNode, names: varargs[string]): PJsonNode =
+proc `{}`*(node: PJsonNode, key: string): PJsonNode =
   ## Transverses the node and gets the given value. If any of the
   ## names does not exist, returns nil
   result = node
-  for name in names:
-    result = result[name]
-    if isNil(result):
-      return nil
+  if isNil(node): return nil
+  result = result[key]
 
 proc `{}=`*(node: PJsonNode, names: varargs[string], value: PJsonNode) =
   ## Transverses the node and tries to set the value at the given location
@@ -1059,7 +1057,7 @@ when isMainModule:
 
   let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd" }"""
   # nil passthrough
-  assert(testJson{"doesnt_exist", "anything"} == nil)
+  assert(testJson{"doesnt_exist"}{"anything"}.isNil)
   testJson{["c", "d"]} = %true
   assert(testJson["c"]["d"].bval)
 
