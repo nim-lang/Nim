@@ -182,6 +182,24 @@ proc filter*[T](seq1: seq[T], pred: proc(item: T): bool {.closure.}): seq[T] =
   ##   assert f2 == @["yellow"]
   accumulateResult(filter(seq1, pred))
 
+proc keepIf*[T](seq1: var seq[T], pred: proc(item: T): bool {.closure.}) =
+  ## Keeps the items in the passed sequence if they fulfilled the predicate.
+  ## Same as the ``filter`` proc, but modifies the sequence directly.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var floats = @[13.0, 12.5, 5.8, 2.0, 6.1, 9.9, 10.1]
+  ##   filter(floats, proc(x: float): bool = x > 10)
+  ##   assert floats == @[13.0, 12.5, 10.1]
+  var pos = 0
+  for i in 0 .. <len(seq1):
+    if pred(seq1[i]):
+      if pos != i:
+        seq1[pos] = seq1[i]
+      inc(pos)
+  setLen(seq1, pos)
+
 proc delete*[T](s: var seq[T], first=0, last=0) =
   ## Deletes in `s` the items at position `first` .. `last`. This modifies
   ## `s` itself, it does not return a copy.
@@ -251,6 +269,27 @@ template filterIt*(seq1, pred: expr): expr {.immediate.} =
   for it {.inject.} in items(seq1):
     if pred: result.add(it)
   result
+
+template keepIfIt*(varSeq, pred: expr) =
+  ## Convenience template around the ``keepIf`` proc to reduce typing.
+  ##
+  ## Unlike the `proc` version, the predicate needs to be an expression using
+  ## the ``it`` variable for testing, like: ``keepIfIt("abcxyz", it == 'x')``.
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var candidates = @["foo", "bar", "baz", "foobar"]
+  ##   keepIfIt(candidates, it.len == 3 and it[0] == 'b')
+  ##   assert candidates == @["bar", "baz"]
+  var pos = 0
+  for i in 0 .. <len(varSeq):
+    let it {.inject.} = varSeq[i]
+    if pred:
+      if pos != i:
+        varSeq[pos] = varSeq[i]
+      inc(pos)
+  setLen(varSeq, pos)
+
 
 template toSeq*(iter: expr): expr {.immediate.} =
   ## Transforms any iterator into a sequence.
@@ -418,6 +457,11 @@ when isMainModule:
       echo($n)
     # echoes 4, 8, 4 in separate lines
 
+  block: # keepIf test
+    var floats = @[13.0, 12.5, 5.8, 2.0, 6.1, 9.9, 10.1]
+    keepIf(floats, proc(x: float): bool = x > 10)
+    assert floats == @[13.0, 12.5, 10.1]
+
   block: # filterIt test
     let
       temperatures = @[-272.15, -2.0, 24.5, 44.31, 99.9, -113.44]
@@ -425,6 +469,11 @@ when isMainModule:
       notAcceptable = filterIt(temperatures, it > 50 or it < -10)
     assert acceptable == @[-2.0, 24.5, 44.31]
     assert notAcceptable == @[-272.15, 99.9, -113.44]
+
+  block: # keepIfIt test
+    var candidates = @["foo", "bar", "baz", "foobar"]
+    keepIfIt(candidates, it.len == 3 and it[0] == 'b')
+    assert candidates == @["bar", "baz"]
 
   block: # toSeq test
     let
