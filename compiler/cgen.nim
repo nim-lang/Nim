@@ -1050,6 +1050,7 @@ proc getSomeInitName(m: PSym, suffix: string): PRope =
   assert m.owner.kind == skPackage
   if {sfSystemModule, sfMainModule} * m.flags == {}:
     result = m.owner.name.s.mangle.toRope
+    result.app "_"
   result.app m.name.s
   result.app suffix
   
