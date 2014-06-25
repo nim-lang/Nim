@@ -157,19 +157,19 @@ proc `$`*[A](s: TSet[A]): string =
 
 proc union*[A](s1, s2: TSet[A]): TSet[A] =
   ## returns a new set of all items that are contained in at
-  ## least one of `l` and `r`
+  ## least one of `s1` and `s2`
   result = s1
   incl(result, s2)
 
 proc intersection*[A](s1, s2: TSet[A]): TSet[A] =
-  ## returns a new set of all items that are contained in both `l` and `r`
+  ## returns a new set of all items that are contained in both `s1` and `s2`
   result = initSet[A](min(s1.data.len, s2.data.len))
   for item in s1:
     if item in s2: incl(result, item)
 
 proc symmetricDifference*[A](s1, s2: TSet[A]): TSet[A] =
   ## returns a new set of all items that are contained in either
-  ## `l` or `r`, but not both
+  ## `s1` or `s2`, but not both
   result = s1
   for item in s2:
     if containsOrIncl(result, item): excl(result, item)
@@ -187,7 +187,7 @@ proc `xor`*[A](s1, s2: TSet[A]): TSet[A] {.inline.} =
   result = symmetricDifference(s1, s2)
 
 proc disjoint*[A](s1, s2: TSet[A]): bool =
-  ## returns true iff `l` and `r` have no items in common
+  ## returns true iff `s1` and `s2` have no items in common
   for item in s1:
     if item in s2: return false
   return true
