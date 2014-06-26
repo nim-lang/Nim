@@ -787,10 +787,12 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     c.freeTemp(tmp)
   of mSwap: 
     unused(n, dest)
-    var d = c.genx(n.sons[1])
-    var tmp = c.genx(n.sons[2])
-    c.gABC(n, opcSwap, d, tmp)
-    c.freeTemp(tmp)
+    var
+      d1 = c.genx(n.sons[1])
+      d2 = c.genx(n.sons[2])
+    c.gABC(n, opcSwap, d1, d2)
+    c.genAsgnPatch(n.sons[1], d1)
+    c.genAsgnPatch(n.sons[2], d2)
   of mIsNil: genUnaryABC(c, n, dest, opcIsNil)
   of mCopyStr:
     if dest < 0: dest = c.getTemp(n.typ)
