@@ -41,6 +41,7 @@ when defined(windows):
 
   const 
     winEncodings = [
+      (1,   "OEMCP"), # current OEM codepage
       (037, "IBM037"), # IBM EBCDIC US-Canada 
       (437, "IBM437"), # OEM United States 
       (500, "IBM500"), # IBM EBCDIC International 
