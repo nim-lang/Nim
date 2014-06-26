@@ -174,15 +174,15 @@ proc symmetricDifference*[A](s1, s2: TSet[A]): TSet[A] =
   for item in s2:
     if containsOrIncl(result, item): excl(result, item)
 
-proc `or`*[A](s1, s2: TSet[A]): TSet[A] {.inline.} =
+proc `+`*[A](s1, s2: TSet[A]): TSet[A] {.inline.} =
   ## alias for `union`
   result = union(s1, s2)
 
-proc `and`*[A](s1, s2: TSet[A]): TSet[A] {.inline.} =
+proc `*`*[A](s1, s2: TSet[A]): TSet[A] {.inline.} =
   ## alias for `intersection`
   result = intersection(s1, s2)
 
-proc `xor`*[A](s1, s2: TSet[A]): TSet[A] {.inline.} =
+proc `-+-`*[A](s1, s2: TSet[A]): TSet[A] {.inline.} =
   ## alias for `symmetricDifference`
   result = symmetricDifference(s1, s2)
 
