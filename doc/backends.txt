@@ -26,10 +26,13 @@ concentrate in a single place all the backend and interfacing options.
 
 The Nimrod compiler supports mainly two backend families: the C, C++ and
 Objective-C targets and the JavaScript target. `The C like targets`_ creates
-source files which can be compiled into a library or a final executable. The
-JavaScript target generates a ``.js`` file which you call from an HTML file.
-On top of generating a library or executable, Nimrod offers bidirectional
-interfacing with the backend targets through generic and specific pragmas.
+source files which can be compiled into a library or a final executable. `The
+JavaScript target`_ can generate a ``.js`` file which you reference from an
+HTML file or create a `standalone nodejs program <http://nodejs.org>`_.
+
+On top of generating libraries or standalone applications, Nimrod offers
+bidirectional interfacing with the backend targets through generic and
+specific pragmas.
 
 
 Backends
