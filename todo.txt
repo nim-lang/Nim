@@ -155,7 +155,6 @@ Not essential for 1.0.0
 - implement the "snoopResult" pragma; no, make a strutils with string append
   semantics instead ...
 - implement "closure tuple consists of a single 'ref'" optimization
-- optimize method dispatchers
 - new feature: ``distinct T with operations``
 - arglist as a type (iterator chaining); variable length type lists for generics
 - implement marker procs for message passing

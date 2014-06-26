@@ -90,6 +90,15 @@ proc defined*(x: expr): bool {.magic: "Defined", noSideEffect.}
   ##   when not defined(strutils.toUpper):
   ##     # provide our own toUpper proc here, because strutils is
   ##     # missing it.
+  ##
+  ## You can also check external symbols introduced through the compiler's
+  ## `-d:x switch <nimrodc.html#compile-time-symbols>`_ to enable build time
+  ## conditionals:
+  ##
+  ## .. code-block:: Nimrod
+  ##   when not defined(release):
+  ##     # Do here programmer friendly expensive sanity checks.
+  ##   # Put here the normal code
 
 when defined(useNimRtl):
   {.deadCodeElim: on.}
@@ -1769,9 +1778,38 @@ iterator fields*[S:tuple|object, T:tuple|object](x: S, y: T): tuple[a,b: expr] {
   ## in the loop body.
 iterator fieldPairs*[T: tuple|object](x: T): TObject {.
   magic: "FieldPairs", noSideEffect.}
-  ## iterates over every field of `x`. Warning: This really transforms
-  ## the 'for' and unrolls the loop. The current implementation also has a bug
-  ## that affects symbol binding in the loop body.
+  ## Iterates over every field of `x` returning their name and value.
+  ##
+  ## When you iterate over objects with different field types you have to use
+  ## the compile time ``when`` instead of a runtime ``if`` to select the code
+  ## you want to run for each type. To perform the comparison use the `is
+  ## operator <manual.html#is-operator>`_. Example:
+  ##
+  ## .. code-block:: Nimrod
+  ##
+  ##   type
+  ##     Custom = object
+  ##       foo: string
+  ##       bar: bool
+  ##
+  ##   proc `$`(x: Custom): string =
+  ##     result = "Custom:"
+  ##     for name, value in x.fieldPairs:
+  ##       when value is bool:
+  ##         result.add("\n\t" & name & " is " & $value)
+  ##       else:
+  ##         if value.isNil:
+  ##           result.add("\n\t" & name & " (nil)")
+  ##         else:
+  ##           result.add("\n\t" & name & " '" & value & "'")
+  ##
+  ## Another way to do the same without ``when`` is to leave the task of
+  ## picking the appropriate code to a secondary proc which you overload for
+  ## each field type and pass the `value` to.
+  ##
+  ## Warning: This really transforms the 'for' and unrolls the loop. The
+  ## current implementation also has a bug that affects symbol binding in the
+  ## loop body.
 iterator fieldPairs*[S: tuple|object, T: tuple|object](x: S, y: T): tuple[
   a, b: expr] {.
   magic: "FieldPairs", noSideEffect.}
@@ -2785,10 +2823,15 @@ when true:
     THide(raiseAssert)(msg)
 
 template assert*(cond: bool, msg = "") =
-  ## provides a means to implement `programming by contracts`:idx: in Nimrod.
+  ## Raises ``EAssertionFailure`` with `msg` if `cond` is false.
+  ##
+  ## Provides a means to implement `programming by contracts`:idx: in Nimrod.
   ## ``assert`` evaluates expression ``cond`` and if ``cond`` is false, it
-  ## raises an ``EAssertionFailure`` exception. However, the compiler may
-  ## not generate any code at all for ``assert`` if it is advised to do so.
+  ## raises an ``EAssertionFailure`` exception. However, the compiler may not
+  ## generate any code at all for ``assert`` if it is advised to do so through
+  ## the ``-d:release`` or ``--assertions:off`` `command line switches
+  ## <nimrodc.html#command-line-switches>`_.
+  ##
   ## Use ``assert`` for debugging purposes only.
   bind instantiationInfo
   mixin failedAssertImpl

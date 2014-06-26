@@ -52,7 +52,7 @@ type
     importTable*: PScope       # scope for all imported symbols
     topLevelScope*: PScope     # scope for all top-level symbols
     p*: PProcCon               # procedure context
-    friendModule*: PSym        # current friend module; may access private data;
+    friendModules*: seq[PSym]  # friend modules; may access private data;
                                # this is used so that generic instantiations
                                # can access private object fields
     instCounter*: int          # to prevent endless instantiations
@@ -169,7 +169,7 @@ proc newContext(module: PSym): PContext =
   initLinkedList(result.libs)
   append(result.optionStack, newOptionEntry())
   result.module = module
-  result.friendModule = module
+  result.friendModules = @[module]
   result.converters = @[]
   result.patterns = @[]
   result.includedFiles = initIntSet()

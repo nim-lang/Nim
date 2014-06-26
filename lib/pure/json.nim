@@ -619,6 +619,44 @@ proc `%`*(elements: openArray[PJsonNode]): PJsonNode =
   newSeq(result.elems, elements.len)
   for i, p in pairs(elements): result.elems[i] = p
 
+proc `==`* (a,b: PJsonNode): bool =
+  ## Check two nodes for equality
+  if a.kind != b.kind: false
+  else:
+    case a.kind
+    of JString:
+      a.str == b.str
+    of JInt:
+      a.num == b.num
+    of JFloat:
+      a.fnum == b.fnum
+    of JBool:
+      a.bval == b.bval
+    of JNull:
+      true
+    of JArray:
+      a.elems == b.elems
+    of JObject:
+      a.fields == b.fields
+
+proc hash* (n:PJsonNode): THash =
+  ## Compute the hash for a JSON node
+  case n.kind
+  of JArray:
+    result = hash(n.elems)
+  of JObject:
+    result = hash(n.fields)
+  of JInt:
+    result = hash(n.num)
+  of JFloat:
+    result = hash(n.fnum)
+  of JBool:
+    result = hash(n.bval.int)
+  of JString:
+    result = hash(n.str)
+  of JNull:
+    result = hash(0)
+
 proc len*(n: PJsonNode): int = 
   ## If `n` is a `JArray`, it returns the number of elements.
   ## If `n` is a `JObject`, it returns the number of pairs.
@@ -631,7 +669,7 @@ proc len*(n: PJsonNode): int =
 proc `[]`*(node: PJsonNode, name: string): PJsonNode =
   ## Gets a field from a `JObject`, which must not be nil.
   ## If the value at `name` does not exist, returns nil
-  assert(node != nil)
+  assert(not isNil(node))
   assert(node.kind == JObject)
   for key, item in items(node.fields):
     if key == name:
@@ -641,8 +679,8 @@ proc `[]`*(node: PJsonNode, name: string): PJsonNode =
 proc `[]`*(node: PJsonNode, index: int): PJsonNode =
   ## Gets the node at `index` in an Array. Result is undefined if `index`
   ## is out of bounds
+  assert(not isNil(node))
   assert(node.kind == JArray)
-  assert(node != nil)
   return node.elems[index]
 
 proc hasKey*(node: PJsonNode, key: string): bool =
@@ -675,14 +713,12 @@ proc `[]=`*(obj: PJsonNode, key: string, val: PJsonNode) =
       return
   obj.fields.add((key, val))
 
-proc `{}`*(node: PJsonNode, names: varargs[string]): PJsonNode =
+proc `{}`*(node: PJsonNode, key: string): PJsonNode =
   ## Transverses the node and gets the given value. If any of the
   ## names does not exist, returns nil
   result = node
-  for name in names:
-    result = result[name]
-    if isNil(result):
-      return nil
+  if isNil(node): return nil
+  result = result[key]
 
 proc `{}=`*(node: PJsonNode, names: varargs[string], value: PJsonNode) =
   ## Transverses the node and tries to set the value at the given location
@@ -1021,7 +1057,7 @@ when isMainModule:
 
   let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd" }"""
   # nil passthrough
-  assert(testJson{"doesnt_exist", "anything"} == nil)
+  assert(testJson{"doesnt_exist"}{"anything"}.isNil)
   testJson{["c", "d"]} = %true
   assert(testJson["c"]["d"].bval)
 

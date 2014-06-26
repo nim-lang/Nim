@@ -119,8 +119,8 @@ proc getEvent(m: PFSMonitor, fd: cint): seq[TMonitorEvent] =
     var mev: TMonitorEvent
     mev.wd = event.wd
     if event.len.int != 0:
-      mev.name = newString(event.len.int)
-      copyMem(addr(mev.name[0]), addr event.name, event.len.int-1)
+      let cstr = event.name.addr.cstring
+      mev.name = $cstr
     else:
       mev.name = ""
     

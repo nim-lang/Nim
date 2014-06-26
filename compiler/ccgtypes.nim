@@ -796,6 +796,11 @@ proc genObjectInfo(m: BModule, typ: PType, name: PRope) =
   var tmp = getNimNode(m)
   genObjectFields(m, typ, typ.n, tmp)
   appf(m.s[cfsTypeInit3], "$1.node = &$2;$n", [name, tmp])
+  var t = typ.sons[0]
+  while t != nil:
+    t = t.skipTypes(abstractInst)
+    t.flags.incl tfObjHasKids
+    t = t.sons[0]
 
 proc genTupleInfo(m: BModule, typ: PType, name: PRope) =
   genTypeInfoAuxBase(m, typ, name, toRope("0"))

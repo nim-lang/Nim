@@ -150,6 +150,15 @@ proc sort*[T](a: var openArray[T],
   ##    # overload:
   ##    sort(myStrArray, system.cmp)
   ##
+  ## You can inline adhoc comparison procs with the `do notation
+  ## <manual.html#do-notation>`_. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##
+  ##   people.sort do (x, y: Person) -> int:
+  ##     result = cmp(x.surname, y.surname)
+  ##     if result == 0:
+  ##       result = cmp(x.name, y.name)
   var n = a.len
   var b: seq[T]
   newSeq(b, n div 2)

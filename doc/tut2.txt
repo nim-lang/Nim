@@ -501,7 +501,7 @@ with the file and line where the uncaught exception is being raised, which may
 help you locate the offending code which has changed.
 
 If you want to add the ``{.raises.}`` pragma to existing code, the compiler can
-also help you. You can add the ``{.effect.}`` pragma statement to your proc and
+also help you. You can add the ``{.effects.}`` pragma statement to your proc and
 the compiler will output all inferred effects up to that point (exception
 tracking is part of Nimrod's effect system). Another more roundabout way to
 find out the list of exceptions raised by a proc is to use the Nimrod ``doc2``

@@ -86,6 +86,10 @@ proc doProcCommand(session: var TNimrodSession, command: string): string =
 
 proc doCommand(session: var TNimrodSession, command: string) =
   if session.mode == CaasRun:
+    if not session.nim.running:
+      session.lastOutput = "FAILED TO EXECUTE: " & command & "\n" &
+          "Exit code " & $session.nim.peekExitCode
+      return
     session.lastOutput = doCaasCommand(session,
                                        command & " " & session.filename)
   else:
@@ -102,7 +106,7 @@ proc close(session: var TNimrodSession) {.destructor.} =
   if session.mode == CaasRun:
     session.nim.close
 
-proc doScenario(script: string, output: PStream, mode: TRunMode): bool =
+proc doScenario(script: string, output: PStream, mode: TRunMode, verbose: bool): bool =
   result = true
 
   var f = open(script)
@@ -134,7 +138,7 @@ proc doScenario(script: string, output: PStream, mode: TRunMode): bool =
         continue
       elif line.startsWith(">"):
         s.doCommand(line.substr(1).strip)
-        output.writeln line, "\n", s.lastOutput
+        output.writeln line, "\n", if verbose: s.lastOutput else: ""
       else:
         var expectMatch = true
         var pattern = s.replaceVars(line)
@@ -151,13 +155,14 @@ proc doScenario(script: string, output: PStream, mode: TRunMode): bool =
           output.writeln "FAILURE ", line
           result = false
 
-iterator caasTestsRunner*(filter = ""): tuple[test, output: string,
-                                              status: bool, mode: TRunMode] =
+iterator caasTestsRunner*(filter = "", verbose = false): tuple[test,
+                                              output: string, status: bool,
+                                              mode: TRunMode] =
   for scenario in os.walkFiles(TesterDir / "caas/*.txt"):
     if filter.len > 0 and find(scenario, filter) == -1: continue
     for mode in modes:
       var outStream = newStringStream()
-      let r = doScenario(scenario, outStream, mode)
+      let r = doScenario(scenario, outStream, mode, verbose)
       yield (scenario, outStream.data, r, mode)
 
 when isMainModule:
@@ -175,9 +180,12 @@ when isMainModule:
   if verbose and len(filter) > 0:
     echo "Running only test cases matching filter '$1'" % [filter]
 
-  for test, output, result, mode in caasTestsRunner(filter):
+  for test, output, result, mode in caasTestsRunner(filter, verbose):
     if not result or verbose:
-      echo test, "\n", output, "-> ", $mode, ":", $result, "\n-----"
+      echo "Mode ", $mode, " (", if result: "succeeded)" else: "failed)"
+      echo test
+      echo output
+      echo "---------\n"
     if not result:
       failures += 1
 

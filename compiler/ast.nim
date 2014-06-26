@@ -511,6 +511,7 @@ const
   tfUncheckedArray* = tfVarargs
   tfUnion* = tfNoSideEffect
   tfGcSafe* = tfThread
+  tfObjHasKids* = tfEnumHasHoles
   skError* = skUnknown
   
   # type flags that are essential for type equality:

@@ -63,8 +63,11 @@ proc filterSym(s: PSym): bool {.inline.} =
 
 proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
   let fmoduleId = getModule(f).id
-  result = sfExported in f.flags or fmoduleId == c.module.id or
-      fmoduleId == c.friendModule.id
+  result = sfExported in f.flags or fmoduleId == c.module.id
+  for module in c.friendModules:
+    if fmoduleId == module.id:
+      result = true
+      break
 
 proc suggestField(c: PContext, s: PSym, outputs: var int) = 
   if filterSym(s) and fieldVisible(c, s):
@@ -319,7 +322,7 @@ proc suggestSym*(n: PNode, s: PSym) {.inline.} =
     findUsages(n, s)
   if optDef in gGlobalOptions:
     findDefinition(n, s)
-  if isServing:
+  if isServing and not n.isNil:
     addToSourceMap(s, n.info)
 
 proc markUsed(n: PNode, s: PSym) =

@@ -70,9 +70,10 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       counter = x
     of nkSym: 
       e = n.sons[i].sym
-    of nkIdent: 
+    of nkIdent, nkAccQuoted: 
       e = newSymS(skEnumField, n.sons[i], c)
-    else: illFormedAst(n)
+    else:
+      illFormedAst(n[i])
     e.typ = result
     e.position = int(counter)
     if e.position == 0: hasNull = true

@@ -27,9 +27,11 @@ export TPort
 
 
 # TODO: Discarded void PFutures need to checked for exception.
-# TODO: Exceptions are currently uncatchable due to the limitation that 
-# you cannot have yield in a try stmt. Perhaps I can get the macro to put
-# a user's try except around ``future.read``.
+# TODO: ``except`` statement (without `try`) does not work.
+# TODO: Multiple exception names in a ``except`` don't work.
+# TODO: The effect system (raises: []) has trouble with my try transformation.
+# TODO: Can't await in a 'except' body
+
 
 # -- Futures
 
@@ -922,14 +924,17 @@ proc getName(node: PNimrodNode): string {.compileTime.} =
     return $node[1].ident
   of nnkIdent:
     return $node.ident
+  of nnkEmpty:
+    return "anonymous"
   else:
-    assert false
+    error("Unknown name.")
 
 macro async*(prc: stmt): stmt {.immediate.} =
   ## Macro which processes async procedures into the appropriate
   ## iterators and yield statements.
-
-  expectKind(prc, nnkProcDef)
+  if prc.kind notin {nnkProcDef, nnkLambda}:
+    error("Cannot transform this node kind into an async proc." &
+          " Proc definition or lambda node expected.")
 
   hint("Processing " & prc[0].getName & " as an async proc.")
 
@@ -941,7 +946,9 @@ macro async*(prc: stmt): stmt {.immediate.} =
     if $returnType[0] != "PFuture":
       error("Expected return type of 'PFuture' got '" & $returnType[0] & "'")
 
-  let subtypeIsVoid = returnType.kind == nnkEmpty
+  let subtypeIsVoid = returnType.kind == nnkEmpty or
+        (returnType.kind == nnkBracketExpr and
+         returnType[1].kind == nnkIdent and returnType[1].ident == !"void")
 
   var outerProcBody = newNimNode(nnkStmtList)
 
@@ -990,17 +997,19 @@ macro async*(prc: stmt): stmt {.immediate.} =
 
   # Remove the 'async' pragma.
   for i in 0 .. <result[4].len:
-    if result[4][i].ident == !"async":
+    if result[4][i].kind == nnkIdent and result[4][i].ident == !"async":
       result[4].del(i)
   if subtypeIsVoid:
     # Add discardable pragma.
-    result[4].add(newIdentNode("discardable"))
+    if prc.kind == nnkProcDef: # TODO: This is a workaround for #1287
+      result[4].add(newIdentNode("discardable"))
     if returnType.kind == nnkEmpty:
       # Add PFuture[void]
       result[3][0] = parseExpr("PFuture[void]")
 
   result[6] = outerProcBody
 
+  #echo(treeRepr(result))
   #echo(toStrLit(result))
 
 proc recvLine*(socket: TAsyncFD): PFuture[string] {.async.} =
