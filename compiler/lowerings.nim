@@ -64,6 +64,22 @@ proc createObj*(owner: PSym, info: TLineInfo): PType =
   incl result.flags, tfFinal
   result.n = newNodeI(nkRecList, info)
 
+proc rawAddField*(obj: PType; field: PSym) =
+  assert field.kind == skField
+  field.position = sonsLen(obj.n)
+  addSon(obj.n, newSymNode(field))
+
+proc rawIndirectAccess*(a: PNode; field: PSym; info: TLineInfo): PNode = 
+  # returns a[].field as a node
+  assert field.kind == skField
+  var deref = newNodeI(nkHiddenDeref, info)
+  deref.typ = a.typ.skipTypes(abstractInst).sons[0]
+  addSon(deref, a)
+  result = newNodeI(nkDotExpr, info)
+  addSon(result, deref)
+  addSon(result, newSymNode(field))
+  result.typ = field.typ
+
 proc addField*(obj: PType; s: PSym) =
   # because of 'gensym' support, we have to mangle the name with its ID.
   # This is hacky but the clean solution is much more complex than it looks.
