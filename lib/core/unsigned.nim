@@ -57,3 +57,16 @@ proc `<=`*[T: SomeUInt](x, y: T): bool {.magic: "LeU", noSideEffect.}
 
 proc `<`*[T: SomeUInt](x, y: T): bool {.magic: "LtU", noSideEffect.}
   ## Returns true iff ``unsigned(x) < unsigned(y)``.
+
+proc `+=`*[T: uint|uint64](x: var T, y: T) {.magic: "Inc", noSideEffect.}
+  ## Increments uints and uint64s, uint8..uint32 are TOrdinals, and already
+  ## have a definition in the System module.
+
+proc `-=`*[T: uint|uint64](x: var T, y: T) {.magic: "Dec", noSideEffect.}
+  ## Decrements uints and uint64s, uint8..uint32 are TOrdinals, and already
+  ## have a definition in the System module.
+
+proc `*=`*[T: uint|uint64](x: var T, y: T) {.inline, noSideEffect.} =
+  ## Binary `*=` operator for uints and uint64s, uint8..uint32 are TOrdinals,
+  ## and already have a definition in the System module.
+  x = x * y
