@@ -240,9 +240,6 @@ proc newEnv(o: POuterContext; up: PEnv, n: PNode; owner: PSym): PEnv =
   result.next = o.head
   o.head = result
   if owner.kind != skModule and (up == nil or up.fn != owner):
-    if owner.ast == nil:
-      debug owner
-      echo owner.name.s
     let param = getEnvParam(owner)
     if param != nil:
       result.obj = param.typ.sons[0]
@@ -808,8 +805,9 @@ proc transformOuterProc(o: POuterContext, n: PNode; it: TIter): PNode =
     if it.fn.kind == skClosureIterator and interestingIterVar(local) and
         it.fn == local.owner:
       # every local goes through the closure:
-      if not containsOrIncl(o.capturedVars, local.id):
-        addField(it.obj, local)
+      #if not containsOrIncl(o.capturedVars, local.id):
+      #  addField(it.obj, local)
+      addUniqueField(it.obj, local)
       return indirectAccess(newSymNode(it.closureParam), local, n.info)
 
     var closure = PEnv(idTableGet(o.lambdasToEnv, local))
@@ -853,10 +851,18 @@ proc transformOuterProc(o: POuterContext, n: PNode; it: TIter): PNode =
   of nkLambdaKinds, nkIteratorDef:
     if n.typ != nil:
       result = transformOuterProc(o, n.sons[namePos], it)
-  of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef, nkTemplateDef,
-      nkClosure:
+  of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef, nkTemplateDef:
     # don't recurse here:
     discard
+  of nkClosure:
+    if n.sons[0].kind == nkSym:
+      var local = n.sons[0].sym
+      if isInnerProc(local, o.fn) and o.processed.contains(local.id):
+        o.processed.excl(local.id)
+        let body = local.getBody
+        let newBody = transformOuterProcBody(o, body, initIter(local))
+        if newBody != nil:
+          local.ast.sons[bodyPos] = newBody
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     let x = transformOuterProc(o, n.sons[1], it)
     if x != nil: n.sons[1] = x
@@ -878,6 +884,8 @@ proc liftLambdas*(fn: PSym, body: PNode): PNode =
     # ignore forward declaration:
     result = body
   else:
+    #if fn.name.s == "cbOuter":
+    #  echo rendertree(fn.ast, {renderIds})
     var o = newOuterContext(fn)
     let ex = closureCreationPoint(body)
     let env = newEnv(o, nil, ex, fn)
@@ -890,7 +898,7 @@ proc liftLambdas*(fn: PSym, body: PNode): PNode =
       discard transformOuterProcBody(o, body, initIter(fn))
       result = ex
     finishEnvironments(o)
-    #if fn.name.s == "cbOuter" or fn.name.s == "factory2":
+    #if fn.name.s == "cbOuter":
     #  echo rendertree(result, {renderIds})
 
 proc liftLambdasForTopLevel*(module: PSym, body: PNode): PNode =

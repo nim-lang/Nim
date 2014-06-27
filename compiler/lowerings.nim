@@ -90,6 +90,16 @@ proc addField*(obj: PType; s: PSym) =
   field.position = sonsLen(obj.n)
   addSon(obj.n, newSymNode(field))
 
+proc addUniqueField*(obj: PType; s: PSym) =
+  let fieldName = getIdent(s.name.s & $s.id)
+  if lookupInRecord(obj.n, fieldName) == nil:
+    var field = newSym(skField, fieldName, s.owner, s.info)
+    let t = skipIntLit(s.typ)
+    field.typ = t
+    assert t.kind != tyStmt
+    field.position = sonsLen(obj.n)
+    addSon(obj.n, newSymNode(field))
+
 proc newDotExpr(obj, b: PSym): PNode =
   result = newNodeI(nkDotExpr, obj.info)
   let field = getSymFromList(obj.typ.n, getIdent(b.name.s & $b.id))
