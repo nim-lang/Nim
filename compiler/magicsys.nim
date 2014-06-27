@@ -27,6 +27,8 @@ var
   gSysTypes: array[TTypeKind, PType]
   compilerprocs: TStrTable
 
+proc nilOrSysInt*: PType = gSysTypes[tyInt]
+
 proc registerSysType(t: PType) = 
   if gSysTypes[t.kind] == nil: gSysTypes[t.kind] = t
   

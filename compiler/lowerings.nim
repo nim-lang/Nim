@@ -111,12 +111,27 @@ proc indirectAccess*(a: PNode, b: string, info: TLineInfo): PNode =
     t = t.sons[0]
     if t == nil: break
     t = t.skipTypes(abstractInst)
-  assert field != nil, b
+  #if field == nil:
+  #  debug deref.typ
+  #  echo deref.typ.id
+  internalAssert field != nil, b
   addSon(deref, a)
   result = newNodeI(nkDotExpr, info)
   addSon(result, deref)
   addSon(result, newSymNode(field))
   result.typ = field.typ
+
+proc getFieldFromObj*(t: PType; v: PSym): PSym =
+  assert v.kind != skField
+  let fieldName = getIdent(v.name.s & $v.id)
+  var t = t
+  while true:
+    assert t.kind == tyObject
+    result = getSymFromList(t.n, fieldName)
+    if result != nil: break
+    t = t.sons[0]
+    if t == nil: break
+    t = t.skipTypes(abstractInst)
 
 proc indirectAccess*(a: PNode, b: PSym, info: TLineInfo): PNode = 
   # returns a[].b as a node

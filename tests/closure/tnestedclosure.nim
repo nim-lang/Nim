@@ -2,7 +2,8 @@ discard """
   output: '''foo88
 23 24foo 88
 foo88
-23 24foo 88'''
+23 24foo 88
+hohoho'''
 """
 
 # test nested closure
@@ -34,3 +35,17 @@ proc dummy =
 dummy()
 
 main(24)
+
+# Jester + async triggered this bug:
+proc cbOuter() =
+  var response = "hohoho"
+  block:
+    proc cbIter() =
+      block:
+        proc fooIter() =
+          echo response
+        fooIter()
+        
+    cbIter()
+
+cbOuter()

@@ -154,11 +154,19 @@ proc getStateType(iter: PSym): PType =
   addSon(n, newIntNode(nkIntLit, 0))
   result = newType(tyRange, iter)
   result.n = n
-  rawAddSon(result, getSysType(tyInt))
+  var intType = nilOrSysInt()
+  if intType.isNil: intType = newType(tyInt, iter)
+  rawAddSon(result, intType)
 
 proc createStateField(iter: PSym): PSym =
   result = newSym(skField, getIdent(":state"), iter, iter.info)
   result.typ = getStateType(iter)
+
+proc createEnvObj(owner: PSym): PType =
+  # YYY meh, just add the state field for every closure for now, it's too
+  # hard to figure out if it comes from a closure iterator:
+  result = createObj(owner, owner.info)
+  rawAddField(result, createStateField(owner))
 
 proc newIterResult(iter: PSym): PSym =
   if resultPos < iter.ast.len:
@@ -197,24 +205,18 @@ proc initIter(iter: PSym): TIter =
   if iter.kind == skClosureIterator:
     var cp = getEnvParam(iter)
     if cp == nil:
-      result.obj = createObj(iter, iter.info)
+      result.obj = createEnvObj(iter)
 
       cp = newSym(skParam, getIdent(paramName), iter, iter.info)
       incl(cp.flags, sfFromGeneric)
       cp.typ = newType(tyRef, iter)
       rawAddSon(cp.typ, result.obj)
       addHiddenParam(iter, cp)
-
-      result.state = createStateField(iter)
-      rawAddField(result.obj, result.state)
     else:
       result.obj = cp.typ.sons[0]
       assert result.obj.kind == tyObject
-      if result.obj.n.len > 0:
-        result.state = result.obj.n[0].sym
-      else:
-        result.state = createStateField(iter)
-        rawAddField(result.obj, result.state)
+    internalAssert result.obj.n.len > 0
+    result.state = result.obj.n[0].sym
     result.closureParam = cp
     if iter.typ.sons[0] != nil:
       result.resultSym = newIterResult(iter)
@@ -231,20 +233,26 @@ proc newOuterContext(fn: PSym): POuterContext =
 proc newEnv(o: POuterContext; up: PEnv, n: PNode; owner: PSym): PEnv =
   new(result)
   result.capturedVars = @[]
-  result.obj = createObj(owner, owner.info)
   result.up = up
   result.attachedNode = n
   result.fn = owner
   result.vars = initIntSet()
   result.next = o.head
   o.head = result
+  if owner.kind != skModule and (up == nil or up.fn != owner):
+    if owner.ast == nil:
+      debug owner
+      echo owner.name.s
+    let param = getEnvParam(owner)
+    if param != nil:
+      result.obj = param.typ.sons[0]
+      assert result.obj.kind == tyObject
+  if result.obj.isNil:
+    result.obj = createEnvObj(owner)
 
 proc addCapturedVar(e: PEnv, v: PSym) =
   for x in e.capturedVars:
     if x == v: return
-  # YYY meh, just add the state field for every closure for now, it's too
-  # hard to figure out if it comes from a closure iterator:
-  if e.obj.n.len == 0: addField(e.obj, createStateField(v.owner))
   e.capturedVars.add(v)
   addField(e.obj, v)
 
@@ -262,7 +270,7 @@ proc isInnerProc(s, outerProc: PSym): bool =
       owner = owner.owner
   #s.typ.callConv == ccClosure
 
-proc addClosureParam(fn: PSym; e: PEnv): PSym =
+proc addClosureParam(fn: PSym; e: PEnv) =
   var cp = getEnvParam(fn)
   if cp == nil:
     cp = newSym(skParam, getIdent(paramName), fn, fn.info)
@@ -270,11 +278,9 @@ proc addClosureParam(fn: PSym; e: PEnv): PSym =
     cp.typ = newType(tyRef, fn)
     rawAddSon(cp.typ, e.obj)
     addHiddenParam(fn, cp)
-  else:
-    #assert e.obj == nil or e.obj == cp.typ.sons[0]
-    e.obj = cp.typ.sons[0]
-    assert e.obj.kind == tyObject
-  result = cp
+    #else:
+    #cp.typ.sons[0] = e.obj
+    #assert e.obj.kind == tyObject
 
 proc illegalCapture(s: PSym): bool {.inline.} =
   result = skipTypes(s.typ, abstractInst).kind in 
@@ -296,7 +302,7 @@ proc nestedAccess(top: PEnv; local: PSym): PNode =
   #        echo [:paramI.up.]foo
   #      inner([:envO])
   #    outer([:env])
-  if not (interestingVar(local) and top.fn != local.owner):
+  if not interestingVar(local) or top.fn == local.owner:
     return nil
   # check it's in fact a captured variable:
   var it = top
@@ -307,7 +313,6 @@ proc nestedAccess(top: PEnv; local: PSym): PNode =
   let envParam = top.fn.getEnvParam
   internalAssert(not envParam.isNil)
   var access = newSymNode(envParam)
-  # we could also simply check the tuple type for the field here, I think.
   it = top.up
   while it != nil:
     if it.vars.contains(local.id):
@@ -316,6 +321,17 @@ proc nestedAccess(top: PEnv; local: PSym): PNode =
     internalAssert it.upField != nil
     access = indirectAccess(access, it.upField, local.info)
     it = it.up
+  when false:
+    # Type based expression construction works too, but turned out to hide
+    # other bugs:
+    while true:
+      let obj = access.typ.sons[0]
+      let field = getFieldFromObj(obj, local)
+      if field != nil:
+        return rawIndirectAccess(access, field, local.info)
+      let upField = lookupInRecord(obj.n, getIdent(upName))
+      if upField == nil: break
+      access = rawIndirectAccess(access, upField, local.info)
   return nil
 
 proc createUpField(obj, fieldType: PType): PSym =
@@ -324,6 +340,7 @@ proc createUpField(obj, fieldType: PType): PSym =
   result.typ = newType(tyRef, obj.owner)
   result.position = pos
   rawAddSon(result.typ, fieldType)
+  #rawAddField(obj, result)
   addField(obj, result)
 
 proc captureVar(o: POuterContext; top: PEnv; local: PSym; 
@@ -348,10 +365,13 @@ proc captureVar(o: POuterContext; top: PEnv; local: PSym;
     if it.fn != local.owner:
       it.fn.typ.callConv = ccClosure
       incl(it.fn.typ.flags, tfCapturesEnv)
-      discard addClosureParam(it.fn, it.up)
+
+      var u = it.up
+      while u != nil and u.fn == it.fn: u = u.up
+      addClosureParam(it.fn, u)
 
       if idTableGet(o.lambdasToEnv, it.fn) == nil:
-        idTablePut(o.lambdasToEnv, it.fn, it.up)
+        if u != nil: idTablePut(o.lambdasToEnv, it.fn, u)
 
     it = it.up
   # don't do this: 'top' might not require a closure:
@@ -521,7 +541,7 @@ proc searchForInnerProcs(o: POuterContext, n: PNode, env: PEnv) =
         #assert tfCapturesEnv notin n.sym.typ.flags
         if idTableGet(o.lambdasToEnv, fn) == nil:
           idTablePut(o.lambdasToEnv, fn, env)
-        discard addClosureParam(fn, env)
+        addClosureParam(fn, env)
 
       elif fn.getEnvParam != nil:
         # only transform if it really needs a closure:
@@ -616,7 +636,7 @@ proc rawClosureCreation(o: POuterContext, scope: PEnv; env: PSym): PNode =
     else:
       result.add(newAsgnStmt(indirectAccess(env, scope.upField, env.info),
                  newSymNode(getClosureVar(scope.up)), env.info))
-  
+
 proc generateClosureCreation(o: POuterContext, scope: PEnv): PNode =
   var env = getClosureVar(scope)
   result = rawClosureCreation(o, scope, env)
@@ -643,6 +663,9 @@ proc interestingIterVar(s: PSym): bool {.inline.} =
 proc transformOuterProc(o: POuterContext, n: PNode, it: TIter): PNode
 
 proc transformYield(c: POuterContext, n: PNode, it: TIter): PNode =
+  assert it.state != nil
+  assert it.state.typ != nil
+  assert it.state.typ.n != nil
   inc it.state.typ.n.sons[1].intVal
   let stateNo = it.state.typ.n.sons[1].intVal
 
@@ -867,7 +890,7 @@ proc liftLambdas*(fn: PSym, body: PNode): PNode =
       discard transformOuterProcBody(o, body, initIter(fn))
       result = ex
     finishEnvironments(o)
-    #if fn.name.s == "factory" or fn.name.s == "factory2":
+    #if fn.name.s == "cbOuter" or fn.name.s == "factory2":
     #  echo rendertree(result, {renderIds})
 
 proc liftLambdasForTopLevel*(module: PSym, body: PNode): PNode =
