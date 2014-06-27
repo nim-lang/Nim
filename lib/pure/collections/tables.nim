@@ -246,7 +246,8 @@ template equalsImpl() =
     # different insertion orders mean different 'data' seqs, so we have
     # to use the slow route here:
     for key, val in s:
-      if not hasKey(t, key): return false
+      # prefix notation leads to automatic dereference in case of PTable
+      if not t.hasKey(key): return false
       if t[key] != val: return false
     return true
   
@@ -332,7 +333,9 @@ proc `$`*[A, B](t: PTable[A, B]): string =
   dollarImpl()
 
 proc `==`*[A, B](s, t: PTable[A, B]): bool =
-  equalsImpl()
+  if isNil(s): result = isNil(t)
+  elif isNil(t): result = false
+  else: equalsImpl()
 
 proc newTableFrom*[A, B, C](collection: A, index: proc(x: B): C): PTable[C, B] =
   ## Index the collection with the proc provided.
