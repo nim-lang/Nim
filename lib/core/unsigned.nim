@@ -70,3 +70,11 @@ proc `*=`*[T: uint|uint64](x: var T, y: T) {.inline, noSideEffect.} =
   ## Binary `*=` operator for uints and uint64s, uint8..uint32 are TOrdinals,
   ## and already have a definition in the System module.
   x = x * y
+
+proc inc*[T: uint|uint64](x: var T, y = 1) {.magic: "Inc", noSideEffect.}
+  ## Increments uints and uint64s ``x`` by ``y``, uint8..uint32 are TOrdinals,
+  ## and already have a definition in the System module.
+
+proc dec*[T: uint|uint64](x: var T, y = 1) {.magic: "Dec", noSideEffect.}
+  ## Decrements uints and uint64s ``x`` by ``y``, uint8..uint32 are TOrdinals,
+  ## and already have a definition in the System module.
