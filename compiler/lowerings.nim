@@ -114,7 +114,7 @@ proc indirectAccess*(a: PNode, b: string, info: TLineInfo): PNode =
   #if field == nil:
   #  debug deref.typ
   #  echo deref.typ.id
-  internalAssert field != nil, b
+  internalAssert field != nil
   addSon(deref, a)
   result = newNodeI(nkDotExpr, info)
   addSon(result, deref)
