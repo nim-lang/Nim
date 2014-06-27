@@ -50,6 +50,6 @@ var concatseq = concat(seq1,seq2)
 echo "Concat: ", $$(concatseq)
 
 var seq3 = @[1,2,3,4,5,5,5,7]
-var discntseq = distnct(seq3)
-echo "Distnct: ", $$(discntseq)
+var dedupseq = deduplicate(seq3)
+echo "Deduplicate: ", $$(dedupseq)
 

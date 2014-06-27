@@ -47,19 +47,15 @@ proc concat*[T](seqs: varargs[seq[T]]): seq[T] =
       result[i] = itm
       inc(i)
 
-proc distnct*[T](seq1: seq[T]): seq[T] =
+proc deduplicate*[T](seq1: seq[T]): seq[T] =
   ## Returns a new sequence without duplicates.
-  ##
-  ## This proc is `misspelled` on purpose to avoid a clash with the keyword
-  ## ``distinct`` used to `define a derived type incompatible with its base
-  ## type <manual.html#distinct-type>`_. Example:
   ##
   ## .. code-block:: nimrod
   ##   let
   ##     dup1 = @[1, 1, 3, 4, 2, 2, 8, 1, 4]
   ##     dup2 = @["a", "a", "c", "d", "d"]
-  ##     unique1 = distnct(dup1)
-  ##     unique2 = distnct(dup2)
+  ##     unique1 = deduplicate(dup1)
+  ##     unique2 = deduplicate(dup2)
   ##   assert unique1 == @[1, 3, 4, 2, 8]
   ##   assert unique2 == @["a", "c", "d"]
   result = @[]
@@ -387,8 +383,8 @@ when isMainModule:
     let
       dup1 = @[1, 1, 3, 4, 2, 2, 8, 1, 4]
       dup2 = @["a", "a", "c", "d", "d"]
-      unique1 = distnct(dup1)
-      unique2 = distnct(dup2)
+      unique1 = deduplicate(dup1)
+      unique2 = deduplicate(dup2)
     assert unique1 == @[1, 3, 4, 2, 8]
     assert unique2 == @["a", "c", "d"]
 
