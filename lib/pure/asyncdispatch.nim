@@ -26,12 +26,12 @@ export TPort
 ## **Note:** This module is still largely experimental.
 
 
-# TODO: Discarded void PFutures need to checked for exception.
+# TODO: Discarded void PFutures need to be checked for exception.
 # TODO: ``except`` statement (without `try`) does not work.
 # TODO: Multiple exception names in a ``except`` don't work.
 # TODO: The effect system (raises: []) has trouble with my try transformation.
 # TODO: Can't await in a 'except' body
-
+# TODO: getCurrentException(Msg) don't work
 
 # -- Futures
 
@@ -77,7 +77,8 @@ proc fail*[T](future: PFuture[T], error: ref EBase) =
     # This is to prevent exceptions from being silently ignored when a future
     # is discarded.
     # TODO: This may turn out to be a bad idea.
-    raise error
+    # Turns out this is a bad idea.
+    #raise error
 
 proc `callback=`*(future: PFutureBase, cb: proc () {.closure,gcsafe.}) =
   ## Sets the callback proc to be called when the future completes.
@@ -775,14 +776,16 @@ proc accept*(socket: TAsyncFD): PFuture[TAsyncFD] =
 
 # -- Await Macro
 
-template createCb*(retFutureSym, iteratorNameSym: expr): stmt {.immediate.} =
+template createCb*(retFutureSym, iteratorNameSym,
+                   name: expr): stmt {.immediate.} =
   var nameIterVar = iteratorNameSym
   proc cb {.closure,gcsafe.} =
     try:
       if not nameIterVar.finished:
         var next = nameIterVar()
         if next == nil:
-          assert retFutureSym.finished, "Async procedure's return Future was not finished."
+          assert retFutureSym.finished, "Async procedure's (" &
+                 name & ") return Future was not finished."
         else:
           next.callback = cb
     except:
@@ -987,7 +990,8 @@ macro async*(prc: stmt): stmt {.immediate.} =
 
   # -> createCb(retFuture)
   var cbName = newIdentNode("cb")
-  var procCb = newCall("createCb", retFutureSym, iteratorNameSym)
+  var procCb = newCall("createCb", retFutureSym, iteratorNameSym,
+                       newStrLitNode(prc[0].getName))
   outerProcBody.add procCb
 
   # -> return retFuture
@@ -1010,6 +1014,7 @@ macro async*(prc: stmt): stmt {.immediate.} =
   result[6] = outerProcBody
 
   #echo(treeRepr(result))
+  #if prc[0].getName == "routeReq":
   #echo(toStrLit(result))
 
 proc recvLine*(socket: TAsyncFD): PFuture[string] {.async.} =
