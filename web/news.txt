@@ -12,6 +12,8 @@ News
   - ``spawn`` now uses an elaborate self-adapting thread pool and as such
     has been moved into its own module. So to use it, you now have to import
     ``threadpool``.
+  - ``c2nim`` moved into its own repository and is now a Babel package.
+  - ``pas2nim`` moved into its own repository and is now a Babel package.
 
 
   Library Additions

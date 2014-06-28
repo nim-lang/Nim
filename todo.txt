@@ -1,6 +1,11 @@
 version 0.9.6
 =============
 
+- move pas2nim into its own repository
+- tester: .elf
+- overloading of '='; general lift mechanism
+
+
 Concurrency
 -----------
 
