@@ -779,6 +779,7 @@ proc accept*(socket: TAsyncFD): PFuture[TAsyncFD] =
 template createCb*(retFutureSym, iteratorNameSym,
                    name: expr): stmt {.immediate.} =
   var nameIterVar = iteratorNameSym
+  #{.push stackTrace: off.}
   proc cb {.closure,gcsafe.} =
     try:
       if not nameIterVar.finished:
@@ -791,7 +792,7 @@ template createCb*(retFutureSym, iteratorNameSym,
     except:
       retFutureSym.fail(getCurrentException())
   cb()
-
+  #{.pop.}
 proc generateExceptionCheck(futSym,
     exceptBranch, rootReceiver: PNimrodNode): PNimrodNode {.compileTime.} =
   if exceptBranch == nil:
