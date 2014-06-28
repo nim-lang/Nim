@@ -112,12 +112,20 @@ proc incl*[A](s: var TSet[A], key: A) =
   ## includes an element `key` in `s`.
   inclImpl()
 
+proc incl*[A](s: var TSet[A], other: TSet[A]) =
+  ## includes everything in `other` in `s`
+  for item in other: incl(s, item)
+
 proc excl*[A](s: var TSet[A], key: A) =
   ## excludes `key` from the set `s`.
   var index = rawGet(s, key)
   if index >= 0:
     s.data[index].slot = seDeleted
     dec(s.counter)
+
+proc excl*[A](s: var TSet[A], other: TSet[A]) =
+  ## excludes everything in `other` from `s`.
+  for item in other: excl(s, item)
 
 proc containsOrIncl*[A](s: var TSet[A], key: A): bool =
   ## returns true if `s` contains `key`, otherwise `key` is included in `s`
@@ -146,6 +154,43 @@ template dollarImpl(): stmt {.dirty.} =
 proc `$`*[A](s: TSet[A]): string =
   ## The `$` operator for hash sets.
   dollarImpl()
+
+proc union*[A](s1, s2: TSet[A]): TSet[A] =
+  ## returns a new set of all items that are contained in at
+  ## least one of `s1` and `s2`
+  result = s1
+  incl(result, s2)
+
+proc intersection*[A](s1, s2: TSet[A]): TSet[A] =
+  ## returns a new set of all items that are contained in both `s1` and `s2`
+  result = initSet[A](min(s1.data.len, s2.data.len))
+  for item in s1:
+    if item in s2: incl(result, item)
+
+proc symmetricDifference*[A](s1, s2: TSet[A]): TSet[A] =
+  ## returns a new set of all items that are contained in either
+  ## `s1` or `s2`, but not both
+  result = s1
+  for item in s2:
+    if containsOrIncl(result, item): excl(result, item)
+
+proc `+`*[A](s1, s2: TSet[A]): TSet[A] {.inline.} =
+  ## alias for `union`
+  result = union(s1, s2)
+
+proc `*`*[A](s1, s2: TSet[A]): TSet[A] {.inline.} =
+  ## alias for `intersection`
+  result = intersection(s1, s2)
+
+proc `-+-`*[A](s1, s2: TSet[A]): TSet[A] {.inline.} =
+  ## alias for `symmetricDifference`
+  result = symmetricDifference(s1, s2)
+
+proc disjoint*[A](s1, s2: TSet[A]): bool =
+  ## returns true iff `s1` and `s2` have no items in common
+  for item in s1:
+    if item in s2: return false
+  return true
 
 # ------------------------------ ordered set ------------------------------
 
@@ -210,6 +255,10 @@ proc enlarge[A](s: var TOrderedSet[A]) =
 proc incl*[A](s: var TOrderedSet[A], key: A) =
   ## includes an element `key` in `s`.
   inclImpl()
+
+proc incl*[A](s: var TSet[A], other: TOrderedSet[A]) =
+  ## includes everything in `other` in `s`
+  for item in other: incl(s, item)
 
 proc containsOrIncl*[A](s: var TOrderedSet[A], key: A): bool =
   ## returns true if `s` contains `key`, otherwise `key` is included in `s`
