@@ -431,12 +431,12 @@ proc pred*[T](x: Ordinal[T], y = 1): T {.magic: "Pred", noSideEffect.}
   ## an ordinal type. If such a value does not exist, ``EOutOfRange`` is raised
   ## or a compile time error occurs.
 
-proc inc*[T](x: var Ordinal[T], y = 1) {.magic: "Inc", noSideEffect.}
+proc inc*[T: Ordinal|uint|uint64](x: var T, y = 1) {.magic: "Inc", noSideEffect.}
   ## increments the ordinal ``x`` by ``y``. If such a value does not
   ## exist, ``EOutOfRange`` is raised or a compile time error occurs. This is a
   ## short notation for: ``x = succ(x, y)``.
 
-proc dec*[T](x: var Ordinal[T], y = 1) {.magic: "Dec", noSideEffect.}
+proc dec*[T: Ordinal|uint|uint64](x: var T, y = 1) {.magic: "Dec", noSideEffect.}
   ## decrements the ordinal ``x`` by ``y``. If such a value does not
   ## exist, ``EOutOfRange`` is raised or a compile time error occurs. This is a
   ## short notation for: ``x = pred(x, y)``.
@@ -2745,13 +2745,13 @@ proc staticExec*(command: string, input = ""): string {.
   ## inside a pragma like `passC <nimrodc.html#passc-pragma>`_ or `passL
   ## <nimrodc.html#passl-pragma>`_.
 
-proc `+=`*[T: TOrdinal](x: var T, y: T) {.magic: "Inc", noSideEffect.}
+proc `+=`*[T: TOrdinal|uint|uint64](x: var T, y: T) {.magic: "Inc", noSideEffect.}
   ## Increments an ordinal
 
-proc `-=`*[T: TOrdinal](x: var T, y: T) {.magic: "Dec", noSideEffect.}
+proc `-=`*[T: TOrdinal|uint|uint64](x: var T, y: T) {.magic: "Dec", noSideEffect.}
   ## Decrements an ordinal
 
-proc `*=`*[T: TOrdinal](x: var T, y: T) {.inline, noSideEffect.} =
+proc `*=`*[T: TOrdinal|uint|uint64](x: var T, y: T) {.inline, noSideEffect.} =
   ## Binary `*=` operator for ordinals
   x = x * y
 
