@@ -270,16 +270,16 @@ template filterIt*(seq1, pred: expr): expr {.immediate.} =
     if pred: result.add(it)
   result
 
-template keepIfIt*(varSeq, pred: expr) =
+template keepItIf*(varSeq, pred: expr) =
   ## Convenience template around the ``keepIf`` proc to reduce typing.
   ##
   ## Unlike the `proc` version, the predicate needs to be an expression using
-  ## the ``it`` variable for testing, like: ``keepIfIt("abcxyz", it == 'x')``.
+  ## the ``it`` variable for testing, like: ``keepItIf("abcxyz", it == 'x')``.
   ## Example:
   ##
   ## .. code-block:: nimrod
   ##   var candidates = @["foo", "bar", "baz", "foobar"]
-  ##   keepIfIt(candidates, it.len == 3 and it[0] == 'b')
+  ##   keepItIf(candidates, it.len == 3 and it[0] == 'b')
   ##   assert candidates == @["bar", "baz"]
   var pos = 0
   for i in 0 .. <len(varSeq):
@@ -470,9 +470,9 @@ when isMainModule:
     assert acceptable == @[-2.0, 24.5, 44.31]
     assert notAcceptable == @[-272.15, 99.9, -113.44]
 
-  block: # keepIfIt test
+  block: # keepItIf test
     var candidates = @["foo", "bar", "baz", "foobar"]
-    keepIfIt(candidates, it.len == 3 and it[0] == 'b')
+    keepItIf(candidates, it.len == 3 and it[0] == 'b')
     assert candidates == @["bar", "baz"]
 
   block: # toSeq test
