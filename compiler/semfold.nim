@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -537,17 +537,18 @@ proc foldArrayAccess(m: PSym, n: PNode): PNode =
   var idx = getOrdValue(y)
   case x.kind
   of nkPar: 
-    if (idx >= 0) and (idx < sonsLen(x)): 
+    if idx >= 0 and idx < sonsLen(x):
       result = x.sons[int(idx)]
       if result.kind == nkExprColonExpr: result = result.sons[1]
     else:
       localError(n.info, errIndexOutOfBounds)
-  of nkBracket: 
-    if (idx >= 0) and (idx < sonsLen(x)): result = x.sons[int(idx)]
+  of nkBracket:
+    idx = idx - x.typ.firstOrd
+    if idx >= 0 and idx < x.len: result = x.sons[int(idx)]
     else: localError(n.info, errIndexOutOfBounds)
-  of nkStrLit..nkTripleStrLit: 
+  of nkStrLit..nkTripleStrLit:
     result = newNodeIT(nkCharLit, x.info, n.typ)
-    if (idx >= 0) and (idx < len(x.strVal)): 
+    if idx >= 0 and idx < len(x.strVal): 
       result.intVal = ord(x.strVal[int(idx)])
     elif idx == len(x.strVal): 
       discard

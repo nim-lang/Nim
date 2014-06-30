@@ -84,21 +84,27 @@ proc gABI(c: PCtx; n: PNode; opc: TOpcode; a, b: TRegister; imm: BiggestInt) =
   # Takes the `b` register and the immediate `imm`, appies the operation `opc`,
   # and stores the output value into `a`.
   # `imm` is signed and must be within [-127, 128]
-  assert(imm >= -127 and imm <= 128)
-  let ins = (opc.uint32 or (a.uint32 shl 8'u32) or
-                           (b.uint32 shl 16'u32) or
-                           (imm+byteExcess).uint32 shl 24'u32).TInstr
-  c.code.add(ins)
-  c.debug.add(n.info)
+  if imm >= -127 and imm <= 128:
+    let ins = (opc.uint32 or (a.uint32 shl 8'u32) or
+                             (b.uint32 shl 16'u32) or
+                             (imm+byteExcess).uint32 shl 24'u32).TInstr
+    c.code.add(ins)
+    c.debug.add(n.info)
+  else:
+    localError(n.info, errGenerated,
+      "VM: immediate value does not fit into an int8")
 
 proc gABx(c: PCtx; n: PNode; opc: TOpcode; a: TRegister = 0; bx: int) =
   # Applies `opc` to `bx` and stores it into register `a`
   # `bx` must be signed and in the range [-32767, 32768]
-  assert(bx >= -32767 and bx <= 32768)
-  let ins = (opc.uint32 or a.uint32 shl 8'u32 or 
-            (bx+wordExcess).uint32 shl 16'u32).TInstr
-  c.code.add(ins)
-  c.debug.add(n.info)
+  if bx >= -32767 and bx <= 32768:
+    let ins = (opc.uint32 or a.uint32 shl 8'u32 or 
+              (bx+wordExcess).uint32 shl 16'u32).TInstr
+    c.code.add(ins)
+    c.debug.add(n.info)
+  else:
+    localError(n.info, errGenerated,
+      "VM: immediate value does not fit into an int16")
 
 proc xjmp(c: PCtx; n: PNode; opc: TOpcode; a: TRegister = 0): TPosition =
   #assert opc in {opcJmp, opcFJmp, opcTJmp}
@@ -485,11 +491,22 @@ proc genField(n: PNode): TRegister =
         "too large offset! cannot generate code for: " & s.name.s)
   result = s.position
 
+proc genIndex(c: PCtx; n: PNode; arr: PType): TRegister =
+  if arr.skipTypes(abstractInst).kind == tyArray and (let x = firstOrd(arr);
+      x != 0):
+    let tmp = c.genx(n)
+    # freeing the temporary here means we can produce:  regA = regA - Imm
+    c.freeTemp(tmp)
+    result = c.getTemp(n.typ)
+    c.gABI(n, opcSubImmInt, result, tmp, x.int)
+  else:
+    result = c.genx(n)
+
 proc genAsgnPatch(c: PCtx; le: PNode, value: TRegister) =
   case le.kind
   of nkBracketExpr:
     let dest = c.genx(le.sons[0], {gfAddrOf})
-    let idx = c.genx(le.sons[1])
+    let idx = c.genIndex(le.sons[1], le.sons[0].typ)
     c.gABC(le, opcWrArr, dest, idx, value)
     c.freeTemp(dest)
     c.freeTemp(idx)
@@ -1072,7 +1089,7 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
   case le.kind
   of nkBracketExpr:
     let dest = c.genx(le.sons[0], {gfAddrOf})
-    let idx = c.genx(le.sons[1])
+    let idx = c.genIndex(le.sons[1], le.sons[0].typ)
     let tmp = c.genx(ri)
     if le.sons[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind in {
         tyString, tyCString}:
@@ -1185,7 +1202,7 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
 proc genArrAccess2(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
                    flags: TGenFlags) =
   let a = c.genx(n.sons[0], flags)
-  let b = c.genx(n.sons[1], {})
+  let b = c.genIndex(n.sons[1], n.sons[0].typ)
   if dest < 0: dest = c.getTemp(n.typ)
   if gfAddrOf notin flags and fitsRegister(n.typ):
     var cc = c.getTemp(n.typ)
