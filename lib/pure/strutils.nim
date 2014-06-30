@@ -10,6 +10,8 @@
 ## This module contains various string utility routines.
 ## See the module `re <re.html>`_ for regular expression support.
 ## See the module `pegs <pegs.html>`_ for PEG support.
+## This module is available for the `JavaScript target
+## <backends.html#the-javascript-target>`_.
 
 import parseutils
 
