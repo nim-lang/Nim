@@ -93,10 +93,9 @@ proc buildTool(toolname, args: string) =
   copyFile(dest="bin"/ splitFile(toolname).name.exe, source=toolname.exe)
 
 proc inno(args: string) =
-  # make sure we have generated the c2nim and niminst executables:
+  # make sure we have generated the niminst executables:
   buildTool("tools/niminst/niminst", args)
   buildTool("tools/nimgrep", args)
-  buildTool("compiler/c2nim/c2nim", args)  
   exec("tools" / "niminst" / "niminst --var:version=$# inno compiler/nimrod" % 
        NimrodVersion)
 
