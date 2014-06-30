@@ -305,7 +305,7 @@ proc semAfterMacroCall(c: PContext, n: PNode, s: PSym,
 
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   flags: TExprFlags = {}): PNode =
-  markUsed(n, sym)
+  markUsed(n.info, sym)
   if sym == c.p.owner:
     globalError(n.info, errRecursiveDependencyX, sym.name.s)
 

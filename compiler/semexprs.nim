@@ -12,7 +12,7 @@
 
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
                      flags: TExprFlags = {}): PNode =
-  markUsed(n, s)
+  markUsed(n.info, s)
   pushInfoContext(n.info)
   result = evalTemplate(n, s, getCurrOwner())
   if efNoSemCheck notin flags: result = semAfterMacroCall(c, result, s, flags)
@@ -78,7 +78,7 @@ proc inlineConst(n: PNode, s: PSym): PNode {.inline.} =
 proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode = 
   case s.kind
   of skConst:
-    markUsed(n, s)
+    markUsed(n.info, s)
     case skipTypes(s.typ, abstractInst-{tyTypeDesc}).kind
     of  tyNil, tyChar, tyInt..tyInt64, tyFloat..tyFloat128, 
         tyTuple, tySet, tyUInt..tyUInt64:
@@ -101,7 +101,7 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of skMacro: result = semMacroExpr(c, n, n, s, flags)
   of skTemplate: result = semTemplateExpr(c, n, s, flags)
   of skVar, skLet, skResult, skParam, skForVar:
-    markUsed(n, s)
+    markUsed(n.info, s)
     # if a proc accesses a global variable, it is not side effect free:
     if sfGlobal in s.flags:
       incl(c.p.owner.flags, sfSideEffect)
@@ -123,13 +123,13 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       n.typ = s.typ
       return n
   of skType:
-    markUsed(n, s)
+    markUsed(n.info, s)
     if s.typ.kind == tyStatic and s.typ.n != nil:
       return s.typ.n
     result = newSymNode(s, n.info)
     result.typ = makeTypeDesc(c, s.typ)
   else:
-    markUsed(n, s)
+    markUsed(n.info, s)
     result = newSymNode(s, n.info)
 
 type
@@ -253,7 +253,7 @@ proc semConv(c: PContext, n: PNode): PNode =
       let it = op.sons[i]
       let status = checkConvertible(c, result.typ, it.typ)
       if status in {convOK, convNotNeedeed}:
-        markUsed(n, it.sym)
+        markUsed(n.info, it.sym)
         markIndirect(c, it.sym)
         return it
     localError(n.info, errUseQualifier, op.sons[0].sym.name.s)
@@ -971,7 +971,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
   var s = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared})
   if s != nil:
-    markUsed(n.sons[1], s)
+    markUsed(n.sons[1].info, s)
     return semSym(c, n, s, flags)
 
   n.sons[0] = semExprWithType(c, n.sons[0], flags+{efDetermineType})
@@ -994,7 +994,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
         result = newSymNode(f)
         result.info = n.info
         result.typ = ty
-        markUsed(n, f)
+        markUsed(n.info, f)
         return
     of tyTypeParamsHolders:
       return readTypeParameter(c, ty, i, n.info)
@@ -1026,7 +1026,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if f != nil:
       if fieldVisible(c, f):
         # is the access to a public field or in the same module or in a friend?
-        markUsed(n.sons[1], f)
+        markUsed(n.sons[1].info, f)
         n.sons[0] = makeDeref(n.sons[0])
         n.sons[1] = newSymNode(f) # we now have the correct field
         n.typ = f.typ
@@ -1039,7 +1039,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   elif ty.kind == tyTuple and ty.n != nil: 
     f = getSymFromList(ty.n, i)
     if f != nil:
-      markUsed(n.sons[1], f)
+      markUsed(n.sons[1].info, f)
       n.sons[0] = makeDeref(n.sons[0])
       n.sons[1] = newSymNode(f)
       n.typ = f.typ
@@ -1450,7 +1450,7 @@ proc semExpandToAst(c: PContext, n: PNode): PNode =
   if expandedSym.kind == skError: return n
 
   macroCall.sons[0] = newSymNode(expandedSym, macroCall.info)
-  markUsed(n, expandedSym)
+  markUsed(n.info, expandedSym)
 
   for i in countup(1, macroCall.len-1):
     macroCall.sons[i] = semExprWithType(c, macroCall[i], {})
@@ -1881,7 +1881,7 @@ proc semBlock(c: PContext, n: PNode): PNode =
     if sfGenSym notin labl.flags:
       addDecl(c, labl)
       n.sons[0] = newSymNode(labl, n.sons[0].info)
-    suggestSym(n.sons[0], labl)
+    suggestSym(n.sons[0].info, labl)
   n.sons[1] = semExpr(c, n.sons[1])
   n.typ = n.sons[1].typ
   if isEmptyType(n.typ): n.kind = nkBlockStmt
@@ -2001,7 +2001,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     var s = qualifiedLookUp(c, n.sons[0], mode)
     if s != nil: 
       if gCmd == cmdPretty and n.sons[0].kind == nkDotExpr:
-        pretty.checkUse(n.sons[0].sons[1], s)
+        pretty.checkUse(n.sons[0].sons[1].info, s)
       case s.kind
       of skMacro:
         if sfImmediate notin s.flags:

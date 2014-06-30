@@ -33,7 +33,7 @@ proc semBreakOrContinue(c: PContext, n: PNode): PNode =
       x.info = n.info
       incl(s.flags, sfUsed)
       n.sons[0] = x
-      suggestSym(x, s)
+      suggestSym(x.info, s)
     else:
       localError(n.info, errInvalidControlFlowX, s.name.s)
   elif (c.p.nestedLoopCounter <= 0) and (c.p.nestedBlockCounter <= 0): 
@@ -319,7 +319,7 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
     incl(result.flags, sfGlobal)
   else:
     result = semIdentWithPragma(c, kind, n, {})
-  suggestSym(n, result)
+  suggestSym(n.info, result)
 
 proc checkNilable(v: PSym) =
   if sfGlobal in v.flags and {tfNotNil, tfNeedsInit} * v.typ.flags != {}:

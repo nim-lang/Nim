@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -149,8 +149,8 @@ proc checkDef(c: PGen; n: PNode) =
   if n.kind != nkSym: return
   checkDef(n, n.sym)
 
-proc checkUse*(n: PNode, s: PSym) =
-  if n.info.fileIndex < 0: return
+proc checkUse*(info: TLineInfo; s: PSym) =
+  if info.fileIndex < 0: return
   # we simply convert it to what it looks like in the definition
   # for consistency
   
@@ -159,10 +159,10 @@ proc checkUse*(n: PNode, s: PSym) =
   if s.kind in {skType, skGenericParam} and sfAnon in s.flags: return
   let newName = s.name.s
   
-  loadFile(n.info)
+  loadFile(info)
   
-  let line = gSourceFiles[n.info.fileIndex].lines[n.info.line-1]
-  var first = min(n.info.col.int, line.len)
+  let line = gSourceFiles[info.fileIndex].lines[info.line-1]
+  var first = min(info.col.int, line.len)
   if first < 0: return
   #inc first, skipIgnoreCase(line, "proc ", first)
   while first > 0 and line[first-1] in Letters: dec first
@@ -179,8 +179,8 @@ proc checkUse*(n: PNode, s: PSym) =
       if x.match(peg"\s* {\ident} \s* '=' \s* y$1 ('#' .*)?"):
         x = ""
     
-    system.shallowCopy(gSourceFiles[n.info.fileIndex].lines[n.info.line-1], x)
-    gSourceFiles[n.info.fileIndex].dirty = true
+    system.shallowCopy(gSourceFiles[info.fileIndex].lines[info.line-1], x)
+    gSourceFiles[info.fileIndex].dirty = true
 
 when false:
   var cannotRename = initIntSet()
@@ -220,53 +220,9 @@ when false:
         result.add s[i]
       inc i
 
-  proc checkUse(c: PGen; n: PNode) =
-    if n.info.fileIndex < 0: return
-    let s = n.sym
-    # operators stay as they are:
-    if s.kind in {skResult, skTemp} or s.name.s[0] notin Letters: return
-    if s.kind in {skType, skGenericParam} and sfAnon in s.flags: return
-    
-    if s.id in cannotRename: return
-    
-    let newName = if rules.hasKey(s.name.s): rules[s.name.s]
-                  else: beautifyName(s.name.s, n.sym.kind)
-    
-    loadFile(n.info)
-    
-    let line = gSourceFiles[n.info.fileIndex].lines[n.info.line-1]
-    var first = min(n.info.col.int, line.len)
-    if first < 0: return
-    #inc first, skipIgnoreCase(line, "proc ", first)
-    while first > 0 and line[first-1] in Letters: dec first
-    if first < 0: return
-    if line[first] == '`': inc first
-    
-    if {sfImportc, sfExportc} * s.flags != {}:
-      # careful, we must ensure the resulting name still matches the external
-      # name:
-      if newName != s.name.s and newName != s.loc.r.ropeToStr and
-          lfFullExternalName notin s.loc.flags:
-        #Message(n.info, errGenerated, 
-        #  "cannot rename $# to $# due to external name" % [s.name.s, newName])
-        cannotRename.incl(s.id)
-        return
-    let last = first+identLen(line, first)-1
-    if differ(line, first, last, newName):
-      # last-first+1 != newName.len or 
-      var x = line.subStr(0, first-1) & newName & line.substr(last+1)
-      when removeTP:
-        # the WinAPI module is full of 'TX = X' which after the substitution
-        # becomes 'X = X'. We remove those lines:
-        if x.match(peg"\s* {\ident} \s* '=' \s* y$1 ('#' .*)?"):
-          x = ""
-      
-      system.shallowCopy(gSourceFiles[n.info.fileIndex].lines[n.info.line-1], x)
-      gSourceFiles[n.info.fileIndex].dirty = true
-
 proc check(c: PGen, n: PNode) =
   case n.kind
-  of nkSym: checkUse(n, n.sym)
+  of nkSym: checkUse(n.info, n.sym)
   of nkBlockStmt, nkBlockExpr, nkBlockType:
     checkDef(c, n[0])
     check(c, n.sons[1])

@@ -251,7 +251,7 @@ proc inferWithMetatype(c: PContext, formal: PType,
 proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
   assert x.state == csMatch
   var finalCallee = x.calleeSym
-  markUsed(n.sons[0], finalCallee)
+  markUsed(n.sons[0].info, finalCallee)
   if finalCallee.ast == nil:
     internalError(n.info, "calleeSym.ast is nil") # XXX: remove this check!
   if finalCallee.ast.sons[genericParamsPos].kind != nkEmpty:
@@ -283,7 +283,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
   var m: TCandidate
   initCandidate(c, m, s, n)
   var newInst = generateInstance(c, s, m.bindings, n.info)
-  markUsed(n, s)
+  markUsed(n.info, s)
   result = newSymNode(newInst, n.info)
 
 proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode = 

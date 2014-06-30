@@ -281,7 +281,7 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
   else:
     result = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared})
     if result != nil:
-      markUsed(n, result)
+      markUsed(n.info, result)
       if result.kind == skParam and result.typ.kind == tyTypeDesc:
         # This is a typedesc param. is it already bound?
         # it's not bound when it's used multiple times in the
@@ -562,7 +562,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var TIntSet, pos: var int,
     let rec = rectype.sym
     for i in countup(0, sonsLen(n)-3):
       var f = semIdentWithPragma(c, skField, n.sons[i], {sfExported})
-      suggestSym(n.sons[i], f)
+      suggestSym(n.sons[i].info, f)
       f.typ = typ
       f.position = pos
       if (rec != nil) and ({sfImportc, sfExportc} * rec.flags != {}) and
@@ -827,7 +827,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       result = addImplicitGeneric(newTypeS(tyAnything, c))
   
   of tyGenericParam:
-    markUsed(genericParams, paramType.sym)
+    markUsed(info, paramType.sym)
     if tfWildcard in paramType.flags:
       paramType.flags.excl tfWildcard
       paramType.sym.kind = skType
@@ -1181,7 +1181,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       else: 
         assignType(prev, t)
         result = prev
-      markUsed(n, n.sym)
+      markUsed(n.info, n.sym)
     else:
       if n.sym.kind != skError: localError(n.info, errTypeExpected)
       result = newOrPrevType(tyError, prev, c)

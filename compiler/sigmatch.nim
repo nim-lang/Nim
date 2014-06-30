@@ -62,7 +62,7 @@ type
 const
   isNilConversion = isConvertible # maybe 'isIntConv' fits better?
     
-proc markUsed*(n: PNode, s: PSym)
+proc markUsed*(info: TLineInfo, s: PSym)
 
 proc initCandidateAux(ctx: PContext,
                       c: var TCandidate, callee: PType) {.inline.} =
@@ -1058,7 +1058,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       dest = generateTypeInstance(c, m.bindings, arg, dest)
     let fdest = typeRel(m, f, dest)
     if fdest in {isEqual, isGeneric}: 
-      markUsed(arg, c.converters[i])
+      markUsed(arg.info, c.converters[i])
       var s = newSymNode(c.converters[i])
       s.typ = c.converters[i].typ
       s.info = arg.info
@@ -1271,7 +1271,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
       result = nil
     else: 
       # only one valid interpretation found:
-      markUsed(arg, arg.sons[best].sym)
+      markUsed(arg.info, arg.sons[best].sym)
       result = paramTypesMatchAux(m, f, arg.sons[best].typ, arg.sons[best],
                                   argOrig)
 
