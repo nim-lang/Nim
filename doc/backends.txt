@@ -6,12 +6,7 @@
 :Version: |nimrodversion|
 
 .. contents::
-
-  "If we all reacted the same way, we'd be predictable, and there's
-  always more than one way to view a situation. What's true for the
-  group is also true for the individual. It's simple: overspecialize,
-  and you breed in weakness.  It's slow death." -- Major Motoko
-  Kusanagi
+  "Heresy grows from idleness." -- Unknown.
 
 
 Introduction
@@ -160,7 +155,7 @@ Create a ``calculator.nim`` file with the following content:
 .. code-block:: nimrod
 
   {.compile: "logic.c".}
-  proc addTwoIntegers(a, b: int): int {.importc.}
+  proc addTwoIntegers(a, b: cint): cint {.importc.}
 
   when isMainModule:
     echo addTwoIntegers(3, 7)
@@ -407,7 +402,8 @@ can then attach a GC to this thread via
   initGC()
 
 At the moment this support is still experimental so you need to expose these
-functions yourself or submit patches to request a public API. If the Nimrod
-code you are calling is short lived, another possible solution is to disable
-the garbage collector and enable it after the call from your background
-thread.
+functions yourself or submit patches to request a public API. 
+
+It is **not** safe to disable the garbage collector and enable it after the
+call from your background thread even if the code you are calling is short
+lived.

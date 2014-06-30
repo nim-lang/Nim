@@ -1,6 +1,8 @@
 version 0.9.6
 =============
 
+- some table related tests are wrong (memory usage checks)
+
 Concurrency
 -----------
 

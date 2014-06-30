@@ -9,6 +9,13 @@
 
 ## This module implements the code generator for the VM.
 
+# Important things to remember:
+# - The VM does not distinguish between definitions ('var x = y') and
+#   assignments ('x = y'). For simple data types that fit into a register
+#   this doesn't matter. However it matters for strings and other complex
+#   types that use the 'node' field; the reason is that slots are
+#   re-used in a register based VM. XXX Come up with an example.
+
 import
   unsigned, strutils, ast, astalgo, types, msgs, renderer, vmdef, 
   trees, intsets, rodread, magicsys, options, lowerings
