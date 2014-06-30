@@ -546,7 +546,7 @@ proc flattenTree(root: PNode): PNode =
     flattenTreeAux(result, root, op)
   else: 
     result = root
-  
+
 proc transformCall(c: PTransf, n: PNode): PTransNode = 
   var n = flattenTree(n)
   var op = getMergeOp(n)
@@ -565,6 +565,9 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
           inc(j)
       add(result, a.PTransNode)
     if len(result) == 2: result = result[1]
+  elif getMagic(n) == mNBindSym:
+    # for bindSym(myconst) we MUST NOT perform constant folding:
+    result = n.PTransNode
   else:
     let s = transformSons(c, n).PNode
     # bugfix: check after 'transformSons' if it's still a method call:
