@@ -384,9 +384,10 @@ Example:
 
 ImportCpp pragma
 ----------------
-The ``importcpp`` pragma can be used to import `C++`:idx: methods. The
-generated code then uses the C++ method calling syntax: ``obj->method(arg)``.
-In addition with the ``header`` and ``emit`` pragmas this allows *sloppy*
+Similar to the `importc pragma for C <manual.html#importc-pragma>`_, the
+``importcpp`` pragma can be used to import `C++`:idx: methods. The generated
+code then uses the C++ method calling syntax: ``obj->method(arg)``.  In
+addition with the ``header`` and ``emit`` pragmas this allows *sloppy*
 interfacing with libraries written in C++:
 
 .. code-block:: Nimrod
@@ -422,11 +423,11 @@ emits C++ code.
 
 ImportObjC pragma
 -----------------
-The ``importobjc`` pragma can be used to import `Objective C`:idx: methods. 
-The generated code then uses the Objective C method calling 
-syntax: ``[obj method param1: arg]``.
-In addition with the ``header`` and ``emit`` pragmas this allows *sloppy*
-interfacing with libraries written in Objective C:
+Similar to the `importc pragma for C <manual.html#importc-pragma>`_, the
+``importobjc`` pragma can be used to import `Objective C`:idx: methods.  The
+generated code then uses the Objective C method calling syntax: ``[obj method
+param1: arg]``.  In addition with the ``header`` and ``emit`` pragmas this
+allows *sloppy* interfacing with libraries written in Objective C:
 
 .. code-block:: Nimrod
   # horrible example of how to interface with GNUStep ...
@@ -550,6 +551,16 @@ against. For instance, to link statically against Lua this command might work
 on Linux::
 
   nimrod c --dynlibOverride:lua --passL:liblua.lib program.nim
+
+
+Backend language options
+========================
+
+The typical compiler usage involves using the ``compile`` or ``c`` command to
+transform a ``.nim`` file into one or more ``.c`` files which are then
+compiled with the platform's C compiler into a static binary. However there
+are other commands to compile to C++, Objective-C or Javascript. More details
+can be read in the `Nimrod Backend Integration document <backends.html>`_.
 
 
 Nimrod documentation tools
@@ -695,35 +706,3 @@ efficient:
     else: quit(errorStr(p, "expected: console or gui"))
   of "license": c.license = UnixToNativePath(k.value)
   else: quit(errorStr(p, "unknown variable: " & k.key))
-
-
-The JavaScript target
-=====================
-
-Nimrod can also generate `JavaScript`:idx: code. However, the
-JavaScript code generator is experimental!
-
-Nimrod targets JavaScript 1.5 which is supported by any widely used browser.
-Since JavaScript does not have a portable means to include another module,
-Nimrod just generates a long ``.js`` file.
-
-Features or modules that the JavaScript platform does not support are not
-available. This includes:
-
-* manual memory management (``alloc``, etc.)
-* casting and other unsafe operations (``cast`` operator, ``zeroMem``, etc.)
-* file management
-* most modules of the Standard library
-* proper 64 bit integer arithmetic
-* unsigned integer arithmetic
-
-However, the modules `strutils`:idx:, `math`:idx:, and `times`:idx: are
-available! To access the DOM, use the `dom`:idx: module that is only
-available for the JavaScript platform.
-
-To compile a Nimrod module into a ``.js`` file use the ``js`` command; the
-default is a  ``.js`` file that is supposed to be referenced in an ``.html``
-file. However, you can also run the code with `nodejs`:idx:\:  
-
-  nimrod js -d:nodejs -r examples/hallo.nim
-
