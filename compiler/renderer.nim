@@ -146,28 +146,29 @@ proc makeNimString(s: string): string =
   for i in countup(0, len(s)-1): add(result, toNimChar(s[i]))
   add(result, '\"')
 
-proc putComment(g: var TSrcGen, s: string) = 
+proc putComment(g: var TSrcGen, s: string) =
+  if s.isNil: return
   var i = 0
   var comIndent = 1
   var isCode = (len(s) >= 2) and (s[1] != ' ')
   var ind = g.lineLen
   var com = ""
-  while true: 
+  while true:
     case s[i]
-    of '\0': 
-      break 
-    of '\x0D': 
+    of '\0':
+      break
+    of '\x0D':
       put(g, tkComment, com)
       com = ""
       inc(i)
       if s[i] == '\x0A': inc(i)
       optNL(g, ind)
-    of '\x0A': 
+    of '\x0A':
       put(g, tkComment, com)
       com = ""
       inc(i)
       optNL(g, ind)
-    of '#': 
+    of '#':
       add(com, s[i])
       inc(i)
       comIndent = 0
@@ -175,10 +176,10 @@ proc putComment(g: var TSrcGen, s: string) =
         add(com, s[i])
         inc(i)
         inc(comIndent)
-    of ' ', '\x09': 
+    of ' ', '\x09':
       add(com, s[i])
       inc(i)
-    else: 
+    else:
       # we may break the comment into a multi-line comment if the line
       # gets too long:
       # compute length of the following word:
@@ -195,10 +196,10 @@ proc putComment(g: var TSrcGen, s: string) =
   optNL(g)
 
 proc maxLineLength(s: string): int = 
-  result = 0
+  if s.isNil: return 0
   var i = 0
   var lineLen = 0
-  while true: 
+  while true:
     case s[i]
     of '\0': 
       break 
@@ -459,7 +460,7 @@ proc lsub(n: PNode): int =
   of nkBreakStmt: result = lsub(n.sons[0]) + len("break_")
   of nkContinueStmt: result = lsub(n.sons[0]) + len("continue_")
   of nkPragma: result = lcomma(n) + 4
-  of nkCommentStmt: result = len(n.comment)
+  of nkCommentStmt: result = if n.comment.isNil: 0 else: len(n.comment)
   of nkOfBranch: result = lcomma(n, 0, - 2) + lsub(lastSon(n)) + len("of_:_")
   of nkImportAs: result = lsub(n.sons[0]) + len("_as_") + lsub(n.sons[1])
   of nkElifBranch: result = lsons(n) + len("elif_:_")
