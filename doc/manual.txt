@@ -263,15 +263,16 @@ String literals can also be delimited by three double quotes
 ``"""`` ... ``"""``.
 Literals in this form may run for several lines, may contain ``"`` and do not
 interpret any escape sequences.
-For convenience, when the opening ``"""`` is immediately followed by a newline,
-the newline is not included in the string. The ending of the string literal is
-defined by the pattern ``"""[^"]``, so this:
-  
+For convenience, when the opening ``"""`` is followed by a newline (there may
+be whitespace between the opening ``"""`` and the newline),
+the newline (and the preceding whitespace) is not included in the string. The
+ending of the string literal is defined by the pattern ``"""[^"]``, so this:
+
 .. code-block:: nimrod 
   """"long string within quotes""""
-  
+
 Produces::
-  
+
   "long string within quotes"
 
 

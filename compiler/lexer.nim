@@ -537,6 +537,10 @@ proc getString(L: var TLexer, tok: var TToken, rawMode: bool) =
     tok.tokType = tkTripleStrLit # long string literal:
     inc(pos, 2)               # skip ""
     # skip leading newline:
+    if buf[pos] in {' ', '\t'}:
+      var newpos = pos+1
+      while buf[newpos] in {' ', '\t'}: inc newpos
+      if buf[newpos] in {CR, LF}: pos = newpos
     pos = handleCRLF(L, pos)
     buf = L.buf
     while true: 
