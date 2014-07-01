@@ -1,4 +1,4 @@
-﻿========================
+========================
 Nimrod Tutorial (Part I)
 ========================
 
@@ -1521,17 +1521,13 @@ techniques.
 Example:
 
 .. code-block:: nimrod
+  proc echoItem(x: int) = echo(x)
 
-  type
-    TCallback = proc (x: int)
-
-  proc echoItem(x: Int) = echo(x)
-
-  proc forEach(callback: TCallback) =
+  proc forEach(action: proc (x: int)) =
     const
       data = [2, 3, 5, 7, 11]
     for d in items(data):
-      callback(d)
+      action(d)
 
   forEach(echoItem)
 
