@@ -1398,10 +1398,10 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     of mIncl:
       var ts = "NI" & $(size * 8)
       binaryStmtInExcl(p, e, d,
-          "$1 |=((" & ts & ")(1)<<(($2)%(sizeof(" & ts & ")*8)));$n")
+          "$1 |= ((" & ts & ")1)<<(($2)%(sizeof(" & ts & ")*8));$n")
     of mExcl:
       var ts = "NI" & $(size * 8)
-      binaryStmtInExcl(p, e, d, "$1 &= ~((" & ts & ")(1) << (($2) % (sizeof(" &
+      binaryStmtInExcl(p, e, d, "$1 &= ~(((" & ts & ")1) << (($2) % (sizeof(" &
           ts & ")*8)));$n")
     of mCard:
       if size <= 4: unaryExprChar(p, e, d, "#countBits32($1)")
