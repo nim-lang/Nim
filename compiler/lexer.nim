@@ -347,7 +347,7 @@ proc getNumber(L: var TLexer): TToken =
         result.base = base2
         while true: 
           case L.buf[pos]
-          of 'A'..'Z', 'a'..'z', '2'..'9', '.': 
+          of '2'..'9', '.': 
             lexMessage(L, errInvalidNumber, result.literal)
             inc(pos)
           of '_': 
@@ -363,7 +363,7 @@ proc getNumber(L: var TLexer): TToken =
         result.base = base8
         while true: 
           case L.buf[pos]
-          of 'A'..'Z', 'a'..'z', '8'..'9', '.': 
+          of '8'..'9', '.': 
             lexMessage(L, errInvalidNumber, result.literal)
             inc(pos)
           of '_': 
@@ -377,25 +377,22 @@ proc getNumber(L: var TLexer): TToken =
           else: break 
       of 'O': 
         lexMessage(L, errInvalidNumber, result.literal)
-      of 'x', 'X': 
+      of 'x', 'X':
         result.base = base16
-        while true: 
+        while true:
           case L.buf[pos]
-          of 'G'..'Z', 'g'..'z': 
-            lexMessage(L, errInvalidNumber, result.literal)
-            inc(pos)
-          of '_': 
-            if L.buf[pos+1] notin {'0'..'9', 'a'..'f', 'A'..'F'}: 
+          of '_':
+            if L.buf[pos+1] notin {'0'..'9', 'a'..'f', 'A'..'F'}:
               lexMessage(L, errInvalidToken, "_")
               break
             inc(pos)
-          of '0'..'9': 
+          of '0'..'9':
             xi = `shl`(xi, 4) or (ord(L.buf[pos]) - ord('0'))
             inc(pos)
-          of 'a'..'f': 
+          of 'a'..'f':
             xi = `shl`(xi, 4) or (ord(L.buf[pos]) - ord('a') + 10)
             inc(pos)
-          of 'A'..'F': 
+          of 'A'..'F':
             xi = `shl`(xi, 4) or (ord(L.buf[pos]) - ord('A') + 10)
             inc(pos)
           else: break 
