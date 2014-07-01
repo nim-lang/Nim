@@ -9,9 +9,33 @@
 
 # This module handles the parsing of command line arguments.
 
+
+# We do this here before the 'import' statement so 'defined' does not get
+# confused with 'TGCMode.gcGenerational' etc.
+template bootSwitch(name, expr, userString: expr): expr =
+  # Helper to build boot constants, for debugging you can 'echo' the else part.
+  const name = if expr: " " & userString else: ""
+
+bootSwitch(usedRelease, defined(release), "-d:release")
+bootSwitch(usedGnuReadline, defined(useGnuReadline), "-d:useGnuReadline")
+bootSwitch(usedNoCaas, defined(noCaas), "-d:noCaas")
+bootSwitch(usedBoehm, defined(boehmgc), "--gc:boehm")
+bootSwitch(usedMarkAndSweep, defined(gcmarkandsweep), "--gc:markAndSweep")
+bootSwitch(usedGenerational, defined(gcgenerational), "--gc:generational")
+bootSwitch(usedNoGC, defined(nogc), "--gc:none")
+
 import 
   os, msgs, options, nversion, condsyms, strutils, extccomp, platform, lists, 
   wordrecg, parseutils, babelcmd, idents
+
+# but some have deps to imported modules. Yay.
+bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
+bootSwitch(usedAvoidTimeMachine, noTimeMachine, "-d:avoidTimeMachine")
+bootSwitch(usedNativeStacktrace,
+  defined(nativeStackTrace) and nativeStackTraceSupported,
+  "-d:nativeStackTrace")
+bootSwitch(usedFFI, hasFFI, "-d:useFFI")
+
 
 proc writeCommandLineUsage*()
 
@@ -49,25 +73,6 @@ proc writeAdvancedUsage(pass: TCmdLinePass) =
                                  platform.OS[platform.hostOS].name, 
                                  CPU[platform.hostCPU].name]) & AdvancedUsage)
     quit(0)
-
-template bootSwitch(name, expr, userString: expr): expr =
-  # Helper to build boot constants, for debugging you can 'echo' the else part.
-  const name = if expr: " " & userString else: ""
-
-bootSwitch(usedAvoidTimeMachine, noTimeMachine, "-d:avoidTimeMachine")
-bootSwitch(usedRelease, defined(release), "-d:release")
-bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
-bootSwitch(usedGnuReadline, defined(useGnuReadline), "-d:useGnuReadline")
-bootSwitch(usedNativeStacktrace,
-  defined(nativeStackTrace) and nativeStackTraceSupported,
-  "-d:nativeStackTrace")
-bootSwitch(usedNoCaas, defined(noCaas), "-d:noCaas")
-bootSwitch(usedFFI, hasFFI, "-d:useFFI")
-bootSwitch(usedBoehm, defined(boehmgc), "--gc:boehm")
-bootSwitch(usedMarkAndSweep, defined(gcmarkandsweep), "--gc:markAndSweep")
-bootSwitch(usedGenerational, defined(gcgenerational), "--gc:generational")
-bootSwitch(usedNoGC, defined(nogc), "--gc:none")
-
 
 proc writeVersionInfo(pass: TCmdLinePass) = 
   if pass == passCmd1:
