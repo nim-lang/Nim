@@ -864,7 +864,13 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
   var counter = 0
   for i in countup(1, n.len - 1):
     var a = n.sons[i]
-    if a.kind != nkIdentDefs: illFormedAst(a)
+    if a.kind != nkIdentDefs:
+      # for some generic instantiations the passed ':env' parameter
+      # for closures has already been produced (see bug #898). We simply
+      # skip this parameter here. It'll then be re-generated in another LL
+      # pass over this instantiation:
+      if a.kind == nkSym and sfFromGeneric in a.sym.flags: continue
+      illFormedAst(a)
     checkMinSonsLen(a, 3)
     var
       typ: PType = nil

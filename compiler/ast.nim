@@ -1048,7 +1048,7 @@ proc discardSons(father: PNode) =
   father.sons = nil
 
 when defined(useNodeIds):
-  const nodeIdToDebug* = 482228 # 612794
+  const nodeIdToDebug* = 310841 # 612794
   #612840 # 612905 # 614635 # 614637 # 614641
   # 423408
   #429107 # 430443 # 441048 # 441090 # 441153
