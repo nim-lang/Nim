@@ -115,7 +115,7 @@ proc newModule(fileIdx: int32): PSym =
   new(result)
   result.id = - 1             # for better error checking
   result.kind = skModule
-  let filename = fileIdx.toFilename
+  let filename = fileIdx.toFullPath
   result.name = getIdent(splitFile(filename).name)
   if not isNimrodIdentifier(result.name.s):
     rawMessage(errInvalidModuleName, result.name.s)
