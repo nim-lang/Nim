@@ -86,7 +86,7 @@ distinct = 'distinct' optInd typeDesc
 expr = (ifExpr
       | whenExpr
       | caseExpr
-      | tryStmt)
+      | tryExpr)
       / simpleExpr
 typeKeyw = 'var' | 'ref' | 'ptr' | 'shared' | 'type' | 'tuple'
          | 'proc' | 'iterator' | 'distinct' | 'object' | 'enum'
@@ -135,6 +135,9 @@ caseStmt = 'case' expr ':'? COMMENT?
 tryStmt = 'try' colcom stmt &(IND{=}? 'except'|'finally')
            (IND{=}? 'except' exprList colcom stmt)*
            (IND{=}? 'finally' colcom stmt)?
+tryExpr = 'try' colcom stmt &(optInd 'except'|'finally')
+           (optInd 'except' exprList colcom stmt)*
+           (optInd 'finally' colcom stmt)?
 exceptBlock = 'except' colcom stmt
 forStmt = 'for' (identWithPragma ^+ comma) 'in' expr colcom stmt
 blockStmt = 'block' symbol? colcom stmt

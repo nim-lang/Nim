@@ -4,7 +4,8 @@ discard """
 1244
 6
 abcdefghijklmnopqrstuvwxyz
-145 23'''
+145 23
+3'''
 """
 
 import strutils
@@ -92,3 +93,32 @@ proc parseResponse(): PJsonNode =
 #bug #992
 var se = @[1,2]
 let b = (se[1] = 1; 1)
+
+
+# bug #1161
+
+type
+  PFooBase = ref object of PObject
+    field: int
+
+  PFoo[T] = ref object of PFooBase
+    field2: T
+
+var testIf =
+  if true:
+    2
+  else:
+    3
+
+var testCase =
+  case 8
+  of 8: 9
+  else: 10
+
+var testTry =
+  try:
+    PFoo[string](field: 3, field2: "asfasf")
+  except:
+    PFooBase(field: 5)
+
+echo(testTry.field)

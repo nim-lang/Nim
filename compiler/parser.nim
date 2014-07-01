@@ -63,7 +63,7 @@ proc optInd*(p: var TParser, n: PNode)
 proc indAndComment*(p: var TParser, n: PNode)
 proc setBaseFlags*(n: PNode, base: TNumericalBase)
 proc parseSymbol*(p: var TParser, allowNil = false): PNode
-proc parseTry(p: var TParser): PNode
+proc parseTry(p: var TParser; isExpr: bool): PNode
 proc parseCase(p: var TParser): PNode
 # implementation
 
@@ -845,7 +845,7 @@ proc parseIdentColonEquals(p: var TParser, flags: TDeclaredIdentFlags): PNode =
     addSon(result, parseTypeDesc(p))
   else: 
     addSon(result, ast.emptyNode)
-    if (p.tok.tokType != tkEquals) and not (withBothOptional in flags): 
+    if p.tok.tokType != tkEquals and withBothOptional notin flags: 
       parMessage(p, errColonOrEqualsExpected, p.tok)
   if p.tok.tokType == tkEquals: 
     getTok(p)
@@ -1004,13 +1004,13 @@ proc parseExpr(p: var TParser): PNode =
   #| expr = (ifExpr
   #|       | whenExpr
   #|       | caseExpr
-  #|       | tryStmt)
+  #|       | tryExpr)
   #|       / simpleExpr
   case p.tok.tokType:
   of tkIf: result = parseIfExpr(p, nkIfExpr)
   of tkWhen: result = parseIfExpr(p, nkWhenExpr)
   of tkCase: result = parseCase(p)
-  of tkTry: result = parseTry(p)
+  of tkTry: result = parseTry(p, isExpr=true)
   else: result = simpleExpr(p)
 
 proc parseEnum(p: var TParser): PNode
@@ -1363,22 +1363,25 @@ proc parseCase(p: var TParser): PNode =
   if wasIndented:
     p.currInd = oldInd
     
-proc parseTry(p: var TParser): PNode =
+proc parseTry(p: var TParser; isExpr: bool): PNode =
   #| tryStmt = 'try' colcom stmt &(IND{=}? 'except'|'finally')
   #|            (IND{=}? 'except' exprList colcom stmt)*
   #|            (IND{=}? 'finally' colcom stmt)?
+  #| tryExpr = 'try' colcom stmt &(optInd 'except'|'finally')
+  #|            (optInd 'except' exprList colcom stmt)*
+  #|            (optInd 'finally' colcom stmt)?
   result = newNodeP(nkTryStmt, p)
   getTok(p)
   eat(p, tkColon)
   skipComment(p, result)
   addSon(result, parseStmt(p))
   var b: PNode = nil
-  while sameOrNoInd(p):
+  while sameOrNoInd(p) or isExpr:
     case p.tok.tokType
-    of tkExcept: 
+    of tkExcept:
       b = newNodeP(nkExceptBranch, p)
       exprList(p, tkColon, b)
-    of tkFinally: 
+    of tkFinally:
       b = newNodeP(nkFinally, p)
       getTokNoInd(p)
       eat(p, tkColon)
@@ -1877,7 +1880,7 @@ proc complexOrSimpleStmt(p: var TParser): PNode =
   of tkIf: result = parseIfOrWhen(p, nkIfStmt)
   of tkWhile: result = parseWhile(p)
   of tkCase: result = parseCase(p)
-  of tkTry: result = parseTry(p)
+  of tkTry: result = parseTry(p, isExpr=false)
   of tkFinally: result = parseExceptBlock(p, nkFinally)
   of tkExcept: result = parseExceptBlock(p, nkExceptBranch)
   of tkFor: result = parseFor(p)
