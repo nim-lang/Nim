@@ -714,11 +714,12 @@ proc genFieldCheck(p: BProc, e: PNode, obj: PRope, field: PSym) =
     assert(it.sons[0].kind == nkSym)
     let op = it.sons[0].sym
     if op.magic == mNot: it = it.sons[1]
-    assert(it.sons[2].kind == nkSym)
+    let disc = it.sons[2].skipConv
+    assert(disc.kind == nkSym)
     initLoc(test, locNone, it.typ, OnStack)
     initLocExpr(p, it.sons[1], u)
-    initLoc(v, locExpr, it.sons[2].typ, OnUnknown)
-    v.r = ropef("$1.$2", [obj, it.sons[2].sym.loc.r])
+    initLoc(v, locExpr, disc.typ, OnUnknown)
+    v.r = ropef("$1.$2", [obj, disc.sym.loc.r])
     genInExprAux(p, it, u, v, test)
     let id = nodeTableTestOrSet(p.module.dataCache,
                                newStrNode(nkStrLit, field.name.s), gBackendId)
