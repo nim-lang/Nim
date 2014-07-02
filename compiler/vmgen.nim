@@ -14,7 +14,12 @@
 #   assignments ('x = y'). For simple data types that fit into a register
 #   this doesn't matter. However it matters for strings and other complex
 #   types that use the 'node' field; the reason is that slots are
-#   re-used in a register based VM. XXX Come up with an example.
+#   re-used in a register based VM. Example:
+# 
+# .. code-block:: nimrod
+#   let s = a & b  # no matter what, create fresh node
+#   s = a & b  # no matter what, keep the node
+#   
 
 import
   unsigned, strutils, ast, astalgo, types, msgs, renderer, vmdef, 
@@ -1335,6 +1340,8 @@ proc genVarSection(c: PCtx; n: PNode) =
         if a.sons[2].kind == nkEmpty:
           c.gABx(a, ldNullOpcode(s.typ), s.position, c.genType(s.typ))
         else:
+          if not fitsRegister(s.typ):
+            c.gABx(a, ldNullOpcode(s.typ), s.position, c.genType(s.typ))
           gen(c, a.sons[2], s.position.TRegister)
     else:
       # assign to a.sons[0]; happens for closures

@@ -138,6 +138,9 @@ proc createStrKeepNode(x: var TFullReg) =
 template createStr(x) =
   x.node = newNode(nkStrLit)
 
+template createSet(x) =
+  x.node = newNode(nkCurly)
+
 proc moveConst(x: var TFullReg, y: TFullReg) =
   if x.kind != y.kind:
     myreset(x)
@@ -722,18 +725,22 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].intVal = ord(containsSets(a, b) and not equalSets(a, b))
     of opcMulSet:
       decodeBC(rkNode)
+      createSet(regs[ra])
       move(regs[ra].node.sons, 
             nimsets.intersectSets(regs[rb].node, regs[rc].node).sons)
     of opcPlusSet: 
       decodeBC(rkNode)
+      createSet(regs[ra])
       move(regs[ra].node.sons,
            nimsets.unionSets(regs[rb].node, regs[rc].node).sons)
     of opcMinusSet:
       decodeBC(rkNode)
+      createSet(regs[ra])
       move(regs[ra].node.sons,
            nimsets.diffSets(regs[rb].node, regs[rc].node).sons)
     of opcSymdiffSet:
       decodeBC(rkNode)
+      createSet(regs[ra])
       move(regs[ra].node.sons,
            nimsets.symdiffSets(regs[rb].node, regs[rc].node).sons)    
     of opcConcatStr:
