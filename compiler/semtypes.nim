@@ -443,14 +443,14 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
     elif isRange(b):
       branch.sons[i] = semCaseBranchRange(c, t, b, covered)
     else:
+      # constant sets and arrays are allowed:
       var r = semConstExpr(c, b)
       # for ``{}`` we want to trigger the type mismatch in ``fitNode``:
-      if r.kind != nkCurly or len(r) == 0:
+      if r.kind notin {nkCurly, nkBracket} or len(r) == 0:
         checkMinSonsLen(t, 1)
         branch.sons[i] = skipConv(fitNode(c, t.sons[0].typ, r))
         inc(covered)
       else:
-        # constant sets have special rules
         # first element is special and will overwrite: branch.sons[i]:
         branch.sons[i] = semCaseBranchSetElem(c, t, r[0], covered)
         # other elements have to be added to ``branch``

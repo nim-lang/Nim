@@ -2228,12 +2228,12 @@ type.
 If the expression is not of an ordinal type, and no ``else`` part is
 given, control passes after the ``case`` statement.
 
-To suppress the static error in the ordinal case an ``else`` part with a ``nil``
-statement can be used.
+To suppress the static error in the ordinal case an ``else`` part with an
+empty ``discard`` statement can be used.
 
 As a special semantic extension, an expression in an ``of`` branch of a case
-statement may evaluate to a set constructor; the set is then expanded into 
-a list of its elements:
+statement may evaluate to a set or array constructor; the set or array is then
+expanded into a list of its elements:
 
 .. code-block:: nimrod
   const
