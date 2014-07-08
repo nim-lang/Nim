@@ -46,6 +46,7 @@ const
   on* = true    ## alias for ``true``
   off* = false  ## alias for ``false``
 
+{.push warning[GcMem]: off.}
 {.push hints: off.}
 
 type
@@ -2988,6 +2989,8 @@ proc locals*(): TObject {.magic: "Locals", noSideEffect.} =
 proc deepCopy*[T](x: T): T {.magic: "DeepCopy", noSideEffect.} = discard
   ## performs a deep copy of `x`. This is also used by the code generator
   ## for the implementation of ``spawn``.
+
+{.pop.} #{.push warning[GcMem]: off.}
 
 when not defined(booting):
   type
