@@ -5466,7 +5466,7 @@ and warning message contains a symbol in brackets. This is the message's
 identifier that can be used to enable or disable it:
 
 .. code-block:: Nimrod
-  {.warning[LineTooLong]: off.} # turn off warning about too long lines
+  {.hint[LineTooLong]: off.} # turn off the hint about too long lines
 
 This is often better than disabling all warnings at once.
 
