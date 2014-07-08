@@ -6,7 +6,10 @@ f
 TTaa
 TTaa
 TTaa
-TTaa'''
+TTaa
+true
+true
+nil'''
 
 output: '''test'''
 """
@@ -62,3 +65,16 @@ macro m(s:static[Td]) : stmt =
 const s=("TT", 3)
 m(s)
 m(s)
+
+# bug #933
+
+proc nilcheck(): PNimrodNode {.compileTime.} =
+  echo(result == nil) # true
+  echo(result.isNil) # true
+  echo(repr(result)) # nil
+
+macro testnilcheck(): stmt =
+  result = newNimNode(nnkStmtList)
+  discard nilcheck()
+
+testnilcheck()

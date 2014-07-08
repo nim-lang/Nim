@@ -671,14 +671,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcLtu:
       decodeBC(rkInt)
       regs[ra].intVal = ord(regs[rb].intVal <% regs[rc].intVal)
-    of opcEqRef:
+    of opcEqRef, opcEqNimrodNode:
       decodeBC(rkInt)
       regs[ra].intVal = ord((regs[rb].node.kind == nkNilLit and
                              regs[rc].node.kind == nkNilLit) or
                              regs[rb].node == regs[rc].node)
-    of opcEqNimrodNode:
-      decodeBC(rkInt)
-      regs[ra].intVal = ord(regs[rb].node == regs[rc].node)
     of opcXor:
       decodeBC(rkInt)
       regs[ra].intVal = ord(regs[rb].intVal != regs[rc].intVal)
