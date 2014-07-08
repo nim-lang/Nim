@@ -438,7 +438,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if regs[rc].intVal > high(int):
         stackTrace(c, tos, pc, errIndexOutOfBounds)
       let idx = regs[rc].intVal.int
-      # XXX what if the array is not 0-based? -> codegen should insert a sub
       let src = regs[rb].node
       if src.kind notin {nkEmpty..nkNilLit} and idx <% src.len:
         regs[ra].node = src.sons[idx]
@@ -504,13 +503,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       else:
         stackTrace(c, tos, pc, errNilAccess)
     of opcWrDeref:
-      # a[] = b
+      # a[] = c; b unused
       let ra = instr.regA
-      let rb = instr.regB
+      let rc = instr.regC
       case regs[ra].kind
-      of rkNodeAddr: putIntoNode(regs[ra].nodeAddr[], regs[rb])
-      of rkRegisterAddr: regs[ra].regAddr[] = regs[rb]
-      of rkNode: putIntoNode(regs[ra].node, regs[rb])
+      of rkNodeAddr: putIntoNode(regs[ra].nodeAddr[], regs[rc])
+      of rkRegisterAddr: regs[ra].regAddr[] = regs[rc]
+      of rkNode: putIntoNode(regs[ra].node, regs[rc])
       else: stackTrace(c, tos, pc, errNilAccess)
     of opcAddInt:
       decodeBC(rkInt)
@@ -751,11 +750,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node.strVal.add getstr(regs[i])
     of opcAddStrCh:
       decodeB(rkNode)
-      createStrKeepNode regs[ra]
+      #createStrKeepNode regs[ra]
       regs[ra].node.strVal.add(regs[rb].intVal.chr)
     of opcAddStrStr:
       decodeB(rkNode)
-      createStrKeepNode regs[ra]
+      #createStrKeepNode regs[ra]
       regs[ra].node.strVal.add(regs[rb].node.strVal)
     of opcAddSeqElem:
       decodeB(rkNode)
@@ -992,7 +991,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         return TFullReg(kind: rkNone)
     of opcSetLenStr:
       decodeB(rkNode)
-      createStrKeepNode regs[ra]
+      #createStrKeepNode regs[ra]
       regs[ra].node.strVal.setLen(regs[rb].intVal.int)
     of opcOf:
       decodeBC(rkInt)
