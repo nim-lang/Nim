@@ -7,13 +7,13 @@ version 0.9.6
 Concurrency
 -----------
 
+- 'gcsafe' inferrence needs to be fixed
 - the disjoint checker needs to deal with 'a = spawn f(); g = spawn f()'
 - implement 'deepCopy' builtin
 - implement 'foo[1..4] = spawn(f[4..7])'
 - support for exception propagation
 - Minor: The copying of the 'ref Promise' into the thead local storage only
   happens to work due to the write barrier's implementation
-- 'gcsafe' inferrence needs to be fixed
 - implement lock levels --> first without the more complex race avoidance
 - document the new 'spawn' and 'parallel' statements
 

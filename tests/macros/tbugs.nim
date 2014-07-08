@@ -11,7 +11,8 @@ true
 true
 nil'''
 
-output: '''test'''
+output: '''test
+2'''
 """
 
 type
@@ -78,3 +79,12 @@ macro testnilcheck(): stmt =
   discard nilcheck()
 
 testnilcheck()
+
+# bug #1323
+
+proc calc(): array[1, int] =
+  result[0].inc()
+  result[0].inc()
+
+const c = calc()
+echo c[0]

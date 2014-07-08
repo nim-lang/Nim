@@ -1244,12 +1244,15 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
       # see tests/t99bott for an example that triggers it:
       cannotEval(n)
 
+template needsRegLoad(): expr =
+  gfAddrOf notin flags and fitsRegister(n.typ.skipTypes({tyVar}))
+
 proc genArrAccess2(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
                    flags: TGenFlags) =
   let a = c.genx(n.sons[0], flags)
   let b = c.genIndex(n.sons[1], n.sons[0].typ)
   if dest < 0: dest = c.getTemp(n.typ)
-  if gfAddrOf notin flags and fitsRegister(n.typ):
+  if needsRegLoad():
     var cc = c.getTemp(n.typ)
     c.gABC(n, opc, cc, a, b)
     c.gABC(n, opcNodeToReg, dest, cc)
@@ -1265,7 +1268,7 @@ proc genObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   let a = c.genx(n.sons[0], flags)
   let b = genField(n.sons[1])
   if dest < 0: dest = c.getTemp(n.typ)
-  if gfAddrOf notin flags and fitsRegister(n.typ.skipTypes({tyVar})):
+  if needsRegLoad():
     var cc = c.getTemp(n.typ)
     c.gABC(n, opcLdObj, cc, a, b)
     c.gABC(n, opcNodeToReg, dest, cc)
@@ -1700,7 +1703,7 @@ proc genProc(c: PCtx; s: PSym): int =
     c.gABC(body, opcEof, eofInstr.regA)
     c.optimizeJumps(result)
     s.offset = c.prc.maxSlots
-    #if s.name.s == "get_data":
+    #if s.name.s == "calc":
     #  echo renderTree(body)
     #  c.echoCode(result)
     c.prc = oldPrc
