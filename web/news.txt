@@ -20,6 +20,7 @@ News
   - Added module ``cpuinfo``.
   - Added module ``threadpool``.
   - ``sequtils.distnct`` has been renamed to ``sequtils.deduplicate``.
+  - Added ``algorithm.reversed``
 
 
 2014-04-21 Version 0.9.4 released
