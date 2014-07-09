@@ -902,10 +902,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       c.exceptionInstr = pc
       let (newPc, newTos) = cleanUpOnException(c, tos)
       # -1 because of the following 'inc'
-      if pc-1 < 0:
+      if newPc-1 < 0:
         bailOut(c, tos)
         return
-      pc = newPc -1
+      pc = newPc-1
       if tos != newTos:
         tos = newTos
         move(regs, tos.slots)
