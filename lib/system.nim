@@ -2664,6 +2664,8 @@ when hostOS != "standalone":
 proc `[]`*[Idx, T](a: array[Idx, T], x: TSlice[int]): seq[T] =
   ## slice operation for arrays. Negative indexes are **not** supported
   ## because the array might have negative bounds.
+  when low(a) < 0:
+    {.error: "Slicing for arrays with negative indices is unsupported.".}
   var L = x.b - x.a + 1
   newSeq(result, L)
   for i in 0.. <L: result[i] = a[i + x.a]
@@ -2671,6 +2673,8 @@ proc `[]`*[Idx, T](a: array[Idx, T], x: TSlice[int]): seq[T] =
 proc `[]=`*[Idx, T](a: var array[Idx, T], x: TSlice[int], b: openArray[T]) =
   ## slice assignment for arrays. Negative indexes are **not** supported
   ## because the array might have negative bounds.
+  when low(a) < 0:
+    {.error: "Slicing for arrays with negative indices is unsupported.".}
   var L = x.b - x.a + 1
   if L == b.len:
     for i in 0 .. <L: a[i+x.a] = b[i]
