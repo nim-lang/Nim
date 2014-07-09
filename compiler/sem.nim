@@ -305,6 +305,8 @@ proc semAfterMacroCall(c: PContext, n: PNode, s: PSym,
 
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   flags: TExprFlags = {}): PNode =
+  pushInfoContext(nOrig.info)
+
   markUsed(n.info, sym)
   if sym == c.p.owner:
     globalError(n.info, errRecursiveDependencyX, sym.name.s)
@@ -315,6 +317,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   result = evalMacroCall(c.module, n, nOrig, sym)
   if efNoSemCheck notin flags:
     result = semAfterMacroCall(c, result, sym, flags)
+  popInfoContext()
 
 proc forceBool(c: PContext, n: PNode): PNode = 
   result = fitNode(c, getSysType(tyBool), n)
