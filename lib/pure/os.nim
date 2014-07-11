@@ -1769,16 +1769,16 @@ else:
     FileId = TIno
 
 type
-  FileInfo = object
+  FileInfo* = object
     ## Contains information associated with a file object.
-    id: tuple[device: DeviceId, file: FileId] # Device and file id.
-    kind: TPathComponent # Kind of file object - directory, symlink, etc.
-    size: BiggestInt # Size of file.
-    permissions: set[TFilePermission] # File permissions
-    linkCount: BiggestInt # Number of hard links the file object has.
-    lastAccessTime: TTime # Time file was last accessed.
-    lastWriteTime: TTime # Time file was last modified/written to.
-    creationTime: TTime # Time file was created. Not supported on all systems!
+    id*: tuple[device: DeviceId, file: FileId] # Device and file id.
+    kind*: TPathComponent # Kind of file object - directory, symlink, etc.
+    size*: BiggestInt # Size of file.
+    permissions*: set[TFilePermission] # File permissions
+    linkCount*: BiggestInt # Number of hard links the file object has.
+    lastAccessTime*: TTime # Time file was last accessed.
+    lastWriteTime*: TTime # Time file was last modified/written to.
+    creationTime*: TTime # Time file was created. Not supported on all systems!
 
 template rawToFormalFileInfo(rawInfo, formalInfo): expr =
   ## Transforms the native file info structure into the one nimrod uses.
