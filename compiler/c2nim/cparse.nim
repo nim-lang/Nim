@@ -1535,7 +1535,7 @@ proc leftExpression(p : var TParser, tok : TToken, left : PNode) : PNode =
     addSon(result, expression(p, 130))
   of pxMinus: # 130
     result = newNodeP(nkInfix, p)
-    addSon(result, newIdentNodeP("+", p), left)
+    addSon(result, newIdentNodeP("-", p), left)
     addSon(result, expression(p, 130))
   of pxStar: # 140
     result = newNodeP(nkInfix, p)
