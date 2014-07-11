@@ -12,6 +12,8 @@ News
   - ``spawn`` now uses an elaborate self-adapting thread pool and as such
     has been moved into its own module. So to use it, you now have to import
     ``threadpool``.
+  - The symbol binding rules in generics changed: ``bar`` in ``foo.bar`` is
+    now considered for implicit early binding.
 
 
   Library Additions

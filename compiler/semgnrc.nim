@@ -101,7 +101,7 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
     let n = n[1]
     let ident = considerQuotedIdent(n)
     var s = searchInScopes(c, ident)
-    if s != nil:
+    if s != nil and s.kind in routineKinds:
       if withinBind in flags:
         result = newDot(result, symChoice(c, n, s, scClosed))
       elif s.name.id in ctx:
