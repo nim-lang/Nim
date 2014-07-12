@@ -279,8 +279,13 @@ proc `mod`*(x, y: float): float =
   result = if y == 0.0: x else: x - y * (x/y).floor
 
 proc random*[T](x: TSlice[T]): T =
+  ## For a slice `a .. b` returns a value in the range `a .. b-1`.
   result = random(x.b - x.a) + x.a
-  
+
+proc random[T](a: openarray[T]): T =
+  ## returns a random element from the openarray `a`.
+  result = a[random(a.low..a.len)]
+
 type
   TRunningStat* {.pure,final.} = object  ## an accumulator for statistical data
     n*: int                              ## number of pushed data
