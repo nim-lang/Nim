@@ -51,10 +51,15 @@ proc `==`*(protocol: tuple[orig: string, major, minor: int],
 proc newAsyncHttpServer*(): PAsyncHttpServer =
   new result
 
-proc sendHeaders*(req: TRequest, headers: PStringTable) {.async.} =
-  ## Sends the specified headers to the requesting client.
+proc addHeaders(msg: var string, headers: PStringTable) =
   for k, v in headers:
-    await req.client.send(k & ": " & v & "\c\L")
+    msg.add(k & ": " & v & "\c\L")
+
+proc sendHeaders*(req: TRequest, headers: PStringTable): PFuture[void] =
+  ## Sends the specified headers to the requesting client.
+  var msg = ""
+  addHeaders(msg, headers)
+  return req.client.send(msg)
 
 proc respond*(req: TRequest, code: THttpCode,
         content: string, headers: PStringTable = newStringTable()) {.async.} =
@@ -64,9 +69,9 @@ proc respond*(req: TRequest, code: THttpCode,
   ## This procedure will **not** close the client socket.
   var customHeaders = headers
   customHeaders["Content-Length"] = $content.len
-  await req.client.send("HTTP/1.1 " & $code & "\c\L")
-  await sendHeaders(req, headers)
-  await req.client.send("\c\L" & content)
+  var msg = "HTTP/1.1 " & $code & "\c\L"
+  msg.addHeaders(customHeaders)
+  await req.client.send(msg & "\c\L" & content)
 
 proc newRequest(): TRequest =
   result.headers = newStringTable(modeCaseInsensitive)
@@ -93,90 +98,91 @@ proc sendStatus(client: PAsyncSocket, status: string): PFuture[void] =
 
 proc processClient(client: PAsyncSocket, address: string,
                  callback: proc (request: TRequest): PFuture[void]) {.async.} =
-  # GET /path HTTP/1.1
-  # Header: val
-  # \n
-  var request = newRequest()
-  request.hostname = address
-  assert client != nil
-  request.client = client
-  var runCallback = true
-
-  # First line - GET /path HTTP/1.1
-  let line = await client.recvLine() # TODO: Timeouts.
-  if line == "":
-    client.close()
-    return
-  let lineParts = line.split(' ')
-  if lineParts.len != 3:
-    request.respond(Http400, "Invalid request. Got: " & line)
-    runCallback = false
-
-  let reqMethod = lineParts[0]
-  let path = lineParts[1]
-  let protocol = lineParts[2]
-
-  # Headers
-  var i = 0
   while true:
-    i = 0
-    let headerLine = await client.recvLine()
-    if headerLine == "":
-      client.close(); return
-    if headerLine == "\c\L": break
-    # TODO: Compiler crash
-    #let (key, value) = parseHeader(headerLine)
-    let kv = parseHeader(headerLine)
-    request.headers[kv.key] = kv.value
+    # GET /path HTTP/1.1
+    # Header: val
+    # \n
+    var request = newRequest()
+    request.hostname = address
+    assert client != nil
+    request.client = client
+    var runCallback = true
 
-  request.reqMethod = reqMethod
-  request.url = parseUrl(path)
-  try:
-    request.protocol = protocol.parseProtocol()
-  except EInvalidValue:
-    request.respond(Http400, "Invalid request protocol. Got: " & protocol)
-    runCallback = false
-
-  if reqMethod.normalize == "post":
-    # Check for Expect header
-    if request.headers.hasKey("Expect"):
-      if request.headers["Expect"].toLower == "100-continue":
-        await client.sendStatus("100 Continue")
-      else:
-        await client.sendStatus("417 Expectation Failed")
-  
-    # Read the body
-    # - Check for Content-length header
-    if request.headers.hasKey("Content-Length"):
-      var contentLength = 0
-      if parseInt(request.headers["Content-Length"], contentLength) == 0:
-        await request.respond(Http400, "Bad Request. Invalid Content-Length.")
-      else:
-        request.body = await client.recv(contentLength)
-        assert request.body.len == contentLength
-    else:
-      await request.respond(Http400, "Bad Request. No Content-Length.")
+    # First line - GET /path HTTP/1.1
+    let line = await client.recvLine() # TODO: Timeouts.
+    if line == "":
+      client.close()
+      return
+    let lineParts = line.split(' ')
+    if lineParts.len != 3:
+      request.respond(Http400, "Invalid request. Got: " & line)
       runCallback = false
 
-  case reqMethod.normalize
-  of "get", "post", "head", "put", "delete", "trace", "options", "connect", "patch":
-    if runCallback:
-      await callback(request)
-  else:
-    await request.respond(Http400, "Invalid request method. Got: " & reqMethod)
+    let reqMethod = lineParts[0]
+    let path = lineParts[1]
+    let protocol = lineParts[2]
 
-  # Persistent connections
-  if (request.protocol == HttpVer11 and
-      request.headers["connection"].normalize != "close") or
-     (request.protocol == HttpVer10 and
-      request.headers["connection"].normalize == "keep-alive"):
-    # In HTTP 1.1 we assume that connection is persistent. Unless connection
-    # header states otherwise.
-    # In HTTP 1.0 we assume that the connection should not be persistent.
-    # Unless the connection header states otherwise.
-    await processClient(client, address, callback)
-  else:
-    request.client.close()
+    # Headers
+    var i = 0
+    while true:
+      i = 0
+      let headerLine = await client.recvLine()
+      if headerLine == "":
+        client.close(); return
+      if headerLine == "\c\L": break
+      # TODO: Compiler crash
+      #let (key, value) = parseHeader(headerLine)
+      let kv = parseHeader(headerLine)
+      request.headers[kv.key] = kv.value
+
+    request.reqMethod = reqMethod
+    request.url = parseUrl(path)
+    try:
+      request.protocol = protocol.parseProtocol()
+    except EInvalidValue:
+      request.respond(Http400, "Invalid request protocol. Got: " & protocol)
+      runCallback = false
+
+    if reqMethod.normalize == "post":
+      # Check for Expect header
+      if request.headers.hasKey("Expect"):
+        if request.headers["Expect"].toLower == "100-continue":
+          await client.sendStatus("100 Continue")
+        else:
+          await client.sendStatus("417 Expectation Failed")
+    
+      # Read the body
+      # - Check for Content-length header
+      if request.headers.hasKey("Content-Length"):
+        var contentLength = 0
+        if parseInt(request.headers["Content-Length"], contentLength) == 0:
+          await request.respond(Http400, "Bad Request. Invalid Content-Length.")
+        else:
+          request.body = await client.recv(contentLength)
+          assert request.body.len == contentLength
+      else:
+        await request.respond(Http400, "Bad Request. No Content-Length.")
+        runCallback = false
+
+    case reqMethod.normalize
+    of "get", "post", "head", "put", "delete", "trace", "options", "connect", "patch":
+      if runCallback:
+        await callback(request)
+    else:
+      await request.respond(Http400, "Invalid request method. Got: " & reqMethod)
+
+    # Persistent connections
+    if (request.protocol == HttpVer11 and
+        request.headers["connection"].normalize != "close") or
+       (request.protocol == HttpVer10 and
+        request.headers["connection"].normalize == "keep-alive"):
+      # In HTTP 1.1 we assume that connection is persistent. Unless connection
+      # header states otherwise.
+      # In HTTP 1.0 we assume that the connection should not be persistent.
+      # Unless the connection header states otherwise.
+    else:
+      request.client.close()
+      break
 
 proc serve*(server: PAsyncHttpServer, port: TPort,
             callback: proc (request: TRequest): PFuture[void],

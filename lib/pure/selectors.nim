@@ -163,7 +163,7 @@ elif defined(linux):
   proc newSelector*(): PSelector =
     new result
     result.epollFD = epoll_create(64)
-    result.events = cast[array[64, epoll_event]](alloc0(sizeof(epoll_event)*64))
+    #result.events = cast[array[64, epoll_event]](alloc0(sizeof(epoll_event)*64))
     result.fds = initTable[TSocketHandle, PSelectorKey]()
     if result.epollFD < 0:
       OSError(OSLastError())

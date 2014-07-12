@@ -110,12 +110,10 @@ proc recv*(socket: PAsyncSocket, size: int,
       if socket.currPos >= socket.bufLen:
         if (flags and MSG_PEEK) == MSG_PEEK:
           # We don't want to get another buffer if we're peeking.
-          result.setLen(read)
-          return
+          break
         let res = await socket.readIntoBuf(flags and (not MSG_PEEK))
         if res == 0:
-          result.setLen(read)
-          return
+          break
 
       let chunk = min(socket.bufLen-socket.currPos, size-read)
       copyMem(addr(result[read]), addr(socket.buffer[socket.currPos]), chunk)
@@ -181,28 +179,60 @@ proc recvLine*(socket: PAsyncSocket): PFuture[string] {.async.} =
   ## If the socket is disconnected in the middle of a line (before ``\r\L``
   ## is read) then line will be set to ``""``.
   ## The partial line **will be lost**.
-  
   template addNLIfEmpty(): stmt =
     if result.len == 0:
       result.add("\c\L")
 
-  result = ""
-  var c = ""
-  while true:
-    c = await recv(socket, 1)
-    if c.len == 0:
-      return ""
-    if c == "\r":
-      c = await recv(socket, 1, MSG_PEEK)
-      if c.len > 0 and c == "\L":
-        let dummy = await recv(socket, 1)
-        assert dummy == "\L"
-      addNLIfEmpty()
-      return
-    elif c == "\L":
-      addNLIfEmpty()
-      return
-    add(result.string, c)
+  if socket.isBuffered:
+    result = ""
+    if socket.bufLen == 0:
+      let res = await socket.readIntoBuf(0)
+      if res == 0:
+        return
+
+    var lastR = false
+    while true:
+      if socket.currPos >= socket.bufLen:
+        let res = await socket.readIntoBuf(0)
+        if res == 0:
+          result = ""
+          break
+
+      case socket.buffer[socket.currPos]
+      of '\r':
+        lastR = true
+        addNLIfEmpty()
+      of '\L':
+        addNLIfEmpty()
+        socket.currPos.inc()
+        return
+      else:
+        if lastR:
+          socket.currPos.inc()
+          return
+        else:
+          result.add socket.buffer[socket.currPos]
+      socket.currPos.inc()
+  else:
+    
+
+    result = ""
+    var c = ""
+    while true:
+      c = await recv(socket, 1)
+      if c.len == 0:
+        return ""
+      if c == "\r":
+        c = await recv(socket, 1, MSG_PEEK)
+        if c.len > 0 and c == "\L":
+          let dummy = await recv(socket, 1)
+          assert dummy == "\L"
+        addNLIfEmpty()
+        return
+      elif c == "\L":
+        addNLIfEmpty()
+        return
+      add(result.string, c)
 
 proc bindAddr*(socket: PAsyncSocket, port = TPort(0), address = "") =
   ## Binds ``address``:``port`` to the socket.

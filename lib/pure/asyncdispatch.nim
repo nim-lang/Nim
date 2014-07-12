@@ -552,7 +552,18 @@ when defined(windows) or defined(nimdoc):
   initAll()
 else:
   import selectors
-  from posix import EINTR, EAGAIN, EINPROGRESS, EWOULDBLOCK, MSG_PEEK
+  when defined(windows):
+    import winlean
+    const
+      EINTR = WSAEINPROGRESS
+      EINPROGRESS = WSAEINPROGRESS
+      EWOULDBLOCK = WSAEWOULDBLOCK
+      EAGAIN = EINPROGRESS
+      MSG_NOSIGNAL = 0
+  else:
+    from posix import EINTR, EAGAIN, EINPROGRESS, EWOULDBLOCK, MSG_PEEK,
+                      MSG_NOSIGNAL
+  
   type
     TAsyncFD* = distinct cint
     TCallback = proc (sock: TAsyncFD): bool {.closure,gcsafe.}
@@ -693,12 +704,12 @@ else:
 
     proc cb(sock: TAsyncFD): bool =
       result = true
-      let res = recv(sock.TSocketHandle, addr readBuffer[0], size,
+      let res = recv(sock.TSocketHandle, addr readBuffer[0], size.cint,
                      flags.cint)
       #echo("recv cb res: ", res)
       if res < 0:
         let lastError = osLastError()
-        if lastError.int32 notin {EINTR, EWOULDBLOCK, EAGAIN}: 
+        if lastError.int32 notin {EINTR, EWOULDBLOCK, EAGAIN}:
           retFuture.fail(newException(EOS, osErrorMsg(lastError)))
         else:
           result = false # We still want this callback to be called.
@@ -708,8 +719,8 @@ else:
       else:
         readBuffer.setLen(res)
         retFuture.complete(readBuffer)
-  
-    addRead(socket, cb)
+    if not cb(socket):
+      addRead(socket, cb)
     return retFuture
 
   proc send*(socket: TAsyncFD, data: string): PFuture[void] =
@@ -721,7 +732,8 @@ else:
       result = true
       let netSize = data.len-written
       var d = data.cstring
-      let res = send(sock.TSocketHandle, addr d[written], netSize, 0.cint)
+      let res = send(sock.TSocketHandle, addr d[written], netSize.cint,
+                     MSG_NOSIGNAL)
       if res < 0:
         let lastError = osLastError()
         if lastError.int32 notin {EINTR, EWOULDBLOCK, EAGAIN}:
@@ -734,7 +746,8 @@ else:
           result = false # We still have data to send.
         else:
           retFuture.complete()
-    addWrite(socket, cb)
+    if not cb(socket):
+      addWrite(socket, cb)
     return retFuture
 
   proc acceptAddr*(socket: TAsyncFD): 
@@ -756,7 +769,8 @@ else:
       else:
         register(client.TAsyncFD)
         retFuture.complete(($inet_ntoa(sockAddress.sin_addr), client.TAsyncFD))
-    addRead(socket, cb)
+    if not cb(socket):
+      addRead(socket, cb)
     return retFuture
 
 proc accept*(socket: TAsyncFD): PFuture[TAsyncFD] =
