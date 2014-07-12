@@ -719,8 +719,9 @@ else:
       else:
         readBuffer.setLen(res)
         retFuture.complete(readBuffer)
-    if not cb(socket):
-      addRead(socket, cb)
+    # TODO: The following causes a massive slowdown.
+    #if not cb(socket):
+    addRead(socket, cb)
     return retFuture
 
   proc send*(socket: TAsyncFD, data: string): PFuture[void] =
@@ -746,8 +747,9 @@ else:
           result = false # We still have data to send.
         else:
           retFuture.complete()
-    if not cb(socket):
-      addWrite(socket, cb)
+    # TODO: The following causes crashes.
+    #if not cb(socket):
+    addWrite(socket, cb)
     return retFuture
 
   proc acceptAddr*(socket: TAsyncFD): 
@@ -769,8 +771,7 @@ else:
       else:
         register(client.TAsyncFD)
         retFuture.complete(($inet_ntoa(sockAddress.sin_addr), client.TAsyncFD))
-    if not cb(socket):
-      addRead(socket, cb)
+    addRead(socket, cb)
     return retFuture
 
 proc accept*(socket: TAsyncFD): PFuture[TAsyncFD] =
