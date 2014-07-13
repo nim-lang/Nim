@@ -126,6 +126,15 @@ proc failed*(future: PFutureBase): bool =
   ## Determines whether ``future`` completed with an error.
   future.error != nil
 
+proc asyncCheck*[T](future: PFuture[T]) =
+  ## Sets a callback on ``future`` which raises an exception if the future
+  ## finished with an error.
+  ##
+  ## This should be used instead of ``discard`` to discard void futures.
+  future.callback =
+    proc () =
+      if future.failed: raise future.error
+
 when defined(windows) or defined(nimdoc):
   import winlean, sets, hashes
   type
@@ -1021,8 +1030,6 @@ macro async*(prc: stmt): stmt {.immediate.} =
       result[4].del(i)
   if subtypeIsVoid:
     # Add discardable pragma.
-    if prc.kind == nnkProcDef: # TODO: This is a workaround for #1287
-      result[4].add(newIdentNode("discardable"))
     if returnType.kind == nnkEmpty:
       # Add PFuture[void]
       result[3][0] = parseExpr("PFuture[void]")

@@ -106,7 +106,6 @@ proc processClient(client: PAsyncSocket, address: string,
     request.hostname = address
     assert client != nil
     request.client = client
-    var runCallback = true
 
     # First line - GET /path HTTP/1.1
     let line = await client.recvLine() # TODO: Timeouts.
@@ -115,8 +114,8 @@ proc processClient(client: PAsyncSocket, address: string,
       return
     let lineParts = line.split(' ')
     if lineParts.len != 3:
-      request.respond(Http400, "Invalid request. Got: " & line)
-      runCallback = false
+      await request.respond(Http400, "Invalid request. Got: " & line)
+      continue
 
     let reqMethod = lineParts[0]
     let path = lineParts[1]
@@ -140,8 +139,9 @@ proc processClient(client: PAsyncSocket, address: string,
     try:
       request.protocol = protocol.parseProtocol()
     except EInvalidValue:
-      request.respond(Http400, "Invalid request protocol. Got: " & protocol)
-      runCallback = false
+      asyncCheck request.respond(Http400, "Invalid request protocol. Got: " &
+          protocol)
+      continue
 
     if reqMethod.normalize == "post":
       # Check for Expect header
@@ -162,12 +162,11 @@ proc processClient(client: PAsyncSocket, address: string,
           assert request.body.len == contentLength
       else:
         await request.respond(Http400, "Bad Request. No Content-Length.")
-        runCallback = false
+        continue
 
     case reqMethod.normalize
     of "get", "post", "head", "put", "delete", "trace", "options", "connect", "patch":
-      if runCallback:
-        await callback(request)
+      await callback(request)
     else:
       await request.respond(Http400, "Invalid request method. Got: " & reqMethod)
 
@@ -199,7 +198,7 @@ proc serve*(server: PAsyncHttpServer, port: TPort,
     # TODO: Causes compiler crash.
     #var (address, client) = await server.socket.acceptAddr()
     var fut = await server.socket.acceptAddr()
-    processClient(fut.client, fut.address, callback)
+    asyncCheck processClient(fut.client, fut.address, callback)
 
 proc close*(server: PAsyncHttpServer) =
   ## Terminates the async http server instance.
