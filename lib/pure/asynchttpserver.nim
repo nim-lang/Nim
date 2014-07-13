@@ -213,5 +213,5 @@ when isMainModule:
         "Content-type": "text/plain; charset=utf-8"}
     await req.respond(Http200, "Hello World", headers.newStringTable())
 
-  server.serve(TPort(5555), cb)
+  asyncCheck server.serve(TPort(5555), cb)
   runForever()

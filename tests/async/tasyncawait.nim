@@ -61,11 +61,11 @@ proc createServer(port: TPort) {.async.} =
   discard server.TSocketHandle.listen()
   while true:
     var client = await accept(server)
-    readMessages(client)
+    asyncCheck readMessages(client)
     # TODO: Test: readMessages(disp, await disp.accept(server))
 
-createServer(TPort(10335))
-launchSwarm(TPort(10335))
+asyncCheck createServer(TPort(10335))
+asyncCheck launchSwarm(TPort(10335))
 while true:
   poll()
   if clientCount == swarmSize: break

@@ -36,4 +36,4 @@ proc main {.async.} =
   discard await g()
   echo 6
 
-main()
+asyncCheck main()

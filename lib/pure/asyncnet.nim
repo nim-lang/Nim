@@ -271,7 +271,7 @@ when isMainModule:
           break
         else:
           echo("Got line: ", line)
-    main()
+    asyncCheck main()
   elif test == LowClient:
     var sock = newAsyncSocket()
     var f = connect(sock, "irc.freenode.net", TPort(6667))

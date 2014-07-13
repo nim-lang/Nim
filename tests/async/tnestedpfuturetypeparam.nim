@@ -5,4 +5,4 @@ proc main {.async.} =
     await newAsyncSocket().connect("www.google.com", TPort(80))
   let x = await f()
 
-main()
+asyncCheck main()
