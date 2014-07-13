@@ -11,8 +11,9 @@ include "system/inclrtl"
 
 import os, oids, tables, strutils, macros
 
-import rawsockets
-export TPort
+import rawsockets, net
+
+export TPort, TSocketFlags
 
 #{.injectStmt: newGcInvariant().}
 
@@ -353,7 +354,7 @@ when defined(windows) or defined(nimdoc):
     return retFuture
 
   proc recv*(socket: TAsyncFD, size: int,
-             flags: int = 0): PFuture[string] =
+             flags = {TSocketFlags.SafeDisconn}): PFuture[string] =
     ## Reads **up to** ``size`` bytes from ``socket``. Returned future will
     ## complete once all the data requested is read, a part of the data has been
     ## read, or the socket has disconnected in which case the future will
@@ -373,7 +374,7 @@ when defined(windows) or defined(nimdoc):
     dataBuf.len = size
     
     var bytesReceived: DWord
-    var flagsio = flags.DWord
+    var flagsio = flags.toOSFlags().DWord
     var ol = PCustomOverlapped()
     GC_ref(ol)
     ol.data = TCompletionData(sock: socket, cb:
@@ -403,7 +404,10 @@ when defined(windows) or defined(nimdoc):
           dealloc dataBuf.buf
           dataBuf.buf = nil
         GC_unref(ol)
-        retFuture.fail(newException(EOS, osErrorMsg(err)))
+        if flags.isDisconnectionError(err):
+          retFuture.complete("")
+        else:
+          retFuture.fail(newException(EOS, osErrorMsg(err)))
     elif ret == 0 and bytesReceived == 0 and dataBuf.buf[0] == '\0':
       # We have to ensure that the buffer is empty because WSARecv will tell
       # us immediatelly when it was disconnected, even when there is still
@@ -434,7 +438,8 @@ when defined(windows) or defined(nimdoc):
       # free ``ol``.
     return retFuture
 
-  proc send*(socket: TAsyncFD, data: string): PFuture[void] =
+  proc send*(socket: TAsyncFD, data: string,
+             flags = {TSocketFlags.SafeDisconn}): PFuture[void] =
     ## Sends ``data`` to ``socket``. The returned future will complete once all
     ## data has been sent.
     verifyPresence(socket)
@@ -444,7 +449,7 @@ when defined(windows) or defined(nimdoc):
     dataBuf.buf = data # since this is not used in a callback, this is fine
     dataBuf.len = data.len
 
-    var bytesReceived, flags: DWord
+    var bytesReceived, lowFlags: DWord
     var ol = PCustomOverlapped()
     GC_ref(ol)
     ol.data = TCompletionData(sock: socket, cb:
@@ -457,12 +462,15 @@ when defined(windows) or defined(nimdoc):
     )
 
     let ret = WSASend(socket.TSocketHandle, addr dataBuf, 1, addr bytesReceived,
-                      flags, cast[POverlapped](ol), nil)
+                      lowFlags, cast[POverlapped](ol), nil)
     if ret == -1:
       let err = osLastError()
       if err.int32 != ERROR_IO_PENDING:
-        retFuture.fail(newException(EOS, osErrorMsg(err)))
         GC_unref(ol)
+        if flags.isDisconnectionError(err):
+          retFuture.complete()
+        else:
+          retFuture.fail(newException(EOS, osErrorMsg(err)))
     else:
       retFuture.complete()
       # We don't deallocate ``ol`` here because even though this completed
@@ -706,7 +714,7 @@ else:
     return retFuture
 
   proc recv*(socket: TAsyncFD, size: int,
-             flags: int = 0): PFuture[string] =
+             flags = {TSocketFlags.SafeDisconn}): PFuture[string] =
     var retFuture = newFuture[string]()
     
     var readBuffer = newString(size)
@@ -719,7 +727,10 @@ else:
       if res < 0:
         let lastError = osLastError()
         if lastError.int32 notin {EINTR, EWOULDBLOCK, EAGAIN}:
-          retFuture.fail(newException(EOS, osErrorMsg(lastError)))
+          if flags.isDisconnectionError(lastError):
+            retFuture.complete("")
+          else:
+            retFuture.fail(newException(EOS, osErrorMsg(lastError)))
         else:
           result = false # We still want this callback to be called.
       elif res == 0:
@@ -733,7 +744,8 @@ else:
     addRead(socket, cb)
     return retFuture
 
-  proc send*(socket: TAsyncFD, data: string): PFuture[void] =
+  proc send*(socket: TAsyncFD, data: string,
+             flags = {TSocketFlags.SafeDisconn}): PFuture[void] =
     var retFuture = newFuture[void]()
     
     var written = 0
@@ -747,7 +759,10 @@ else:
       if res < 0:
         let lastError = osLastError()
         if lastError.int32 notin {EINTR, EWOULDBLOCK, EAGAIN}:
-          retFuture.fail(newException(EOS, osErrorMsg(lastError)))
+          if flags.isDisconnectionError(lastError):
+            retFuture.complete("")
+          else:
+            retFuture.fail(newException(EOS, osErrorMsg(lastError)))
         else:
           result = false # We still want this callback to be called.
       else:
@@ -1065,7 +1080,7 @@ proc recvLine*(socket: TAsyncFD): PFuture[string] {.async.} =
     if c.len == 0:
       return ""
     if c == "\r":
-      c = await recv(socket, 1, MSG_PEEK)
+      c = await recv(socket, 1, {TSocketFlags.SafeDisconn, TSocketFlags.Peek})
       if c.len > 0 and c == "\L":
         discard await recv(socket, 1)
       addNLIfEmpty()

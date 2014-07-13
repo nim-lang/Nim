@@ -80,7 +80,8 @@ proc connect*(socket: PAsyncSocket, address: string, port: TPort,
   ## or an error occurs.
   result = connect(socket.fd.TAsyncFD, address, port, af)
 
-proc readIntoBuf(socket: PAsyncSocket, flags: int): PFuture[int] {.async.} =
+proc readIntoBuf(socket: PAsyncSocket,
+    flags: set[TSocketFlags]): PFuture[int] {.async.} =
   var data = await recv(socket.fd.TAsyncFD, BufferSize, flags)
   if data.len != 0:
     copyMem(addr socket.buffer[0], addr data[0], data.len)
@@ -89,7 +90,7 @@ proc readIntoBuf(socket: PAsyncSocket, flags: int): PFuture[int] {.async.} =
   result = data.len
 
 proc recv*(socket: PAsyncSocket, size: int,
-           flags: int = 0): PFuture[string] {.async.} =
+           flags = {TSocketFlags.SafeDisconn}): PFuture[string] {.async.} =
   ## Reads ``size`` bytes from ``socket``. Returned future will complete once
   ## all of the requested data is read. If socket is disconnected during the
   ## recv operation then the future may complete with only a part of the
@@ -100,7 +101,7 @@ proc recv*(socket: PAsyncSocket, size: int,
     let originalBufPos = socket.currPos
 
     if socket.bufLen == 0:
-      let res = await socket.readIntoBuf(flags and (not MSG_PEEK))
+      let res = await socket.readIntoBuf(flags - {TSocketFlags.Peek})
       if res == 0:
         result.setLen(0)
         return
@@ -108,10 +109,10 @@ proc recv*(socket: PAsyncSocket, size: int,
     var read = 0
     while read < size:
       if socket.currPos >= socket.bufLen:
-        if (flags and MSG_PEEK) == MSG_PEEK:
+        if TSocketFlags.Peek in flags:
           # We don't want to get another buffer if we're peeking.
           break
-        let res = await socket.readIntoBuf(flags and (not MSG_PEEK))
+        let res = await socket.readIntoBuf(flags - {TSocketFlags.Peek})
         if res == 0:
           break
 
@@ -120,18 +121,19 @@ proc recv*(socket: PAsyncSocket, size: int,
       read.inc(chunk)
       socket.currPos.inc(chunk)
 
-    if (flags and MSG_PEEK) == MSG_PEEK:
+    if TSocketFlags.Peek in flags:
       # Restore old buffer cursor position.
       socket.currPos = originalBufPos
     result.setLen(read)
   else:
     result = await recv(socket.fd.TAsyncFD, size, flags)
 
-proc send*(socket: PAsyncSocket, data: string): PFuture[void] =
+proc send*(socket: PAsyncSocket, data: string,
+           flags = {TSocketFlags.SafeDisconn}): PFuture[void] =
   ## Sends ``data`` to ``socket``. The returned future will complete once all
   ## data has been sent.
   assert socket != nil
-  result = send(socket.fd.TAsyncFD, data)
+  result = send(socket.fd.TAsyncFD, data, flags)
 
 proc acceptAddr*(socket: PAsyncSocket): 
       PFuture[tuple[address: string, client: PAsyncSocket]] =
@@ -166,7 +168,8 @@ proc accept*(socket: PAsyncSocket): PFuture[PAsyncSocket] =
         retFut.complete(future.read.client)
   return retFut
 
-proc recvLine*(socket: PAsyncSocket): PFuture[string] {.async.} =
+proc recvLine*(socket: PAsyncSocket,
+    flags = {TSocketFlags.SafeDisconn}): PFuture[string] {.async.} =
   ## Reads a line of data from ``socket``. Returned future will complete once
   ## a full line is read or an error occurs.
   ##
@@ -179,21 +182,23 @@ proc recvLine*(socket: PAsyncSocket): PFuture[string] {.async.} =
   ## If the socket is disconnected in the middle of a line (before ``\r\L``
   ## is read) then line will be set to ``""``.
   ## The partial line **will be lost**.
+  ##
+  ## **Warning**: The ``Peek`` flag is not yet implemented.
   template addNLIfEmpty(): stmt =
     if result.len == 0:
       result.add("\c\L")
-
+  assert TSocketFlags.Peek notin flags ## TODO:
   if socket.isBuffered:
     result = ""
     if socket.bufLen == 0:
-      let res = await socket.readIntoBuf(0)
+      let res = await socket.readIntoBuf(flags)
       if res == 0:
         return
 
     var lastR = false
     while true:
       if socket.currPos >= socket.bufLen:
-        let res = await socket.readIntoBuf(0)
+        let res = await socket.readIntoBuf(flags)
         if res == 0:
           result = ""
           break
@@ -214,18 +219,16 @@ proc recvLine*(socket: PAsyncSocket): PFuture[string] {.async.} =
           result.add socket.buffer[socket.currPos]
       socket.currPos.inc()
   else:
-    
-
     result = ""
     var c = ""
     while true:
-      c = await recv(socket, 1)
+      c = await recv(socket, 1, flags)
       if c.len == 0:
         return ""
       if c == "\r":
-        c = await recv(socket, 1, MSG_PEEK)
+        c = await recv(socket, 1, flags + {TSocketFlags.Peek})
         if c.len > 0 and c == "\L":
-          let dummy = await recv(socket, 1)
+          let dummy = await recv(socket, 1, flags)
           assert dummy == "\L"
         addNLIfEmpty()
         return
