@@ -722,7 +722,7 @@ else:
     proc cb(sock: TAsyncFD): bool =
       result = true
       let res = recv(sock.TSocketHandle, addr readBuffer[0], size.cint,
-                     flags.cint)
+                     flags.toOSFlags())
       #echo("recv cb res: ", res)
       if res < 0:
         let lastError = osLastError()
@@ -760,7 +760,7 @@ else:
         let lastError = osLastError()
         if lastError.int32 notin {EINTR, EWOULDBLOCK, EAGAIN}:
           if flags.isDisconnectionError(lastError):
-            retFuture.complete("")
+            retFuture.complete()
           else:
             retFuture.fail(newException(EOS, osErrorMsg(lastError)))
         else:
