@@ -41,6 +41,7 @@ type
     cb: proc () {.closure,gcsafe.}
     finished: bool
     error*: ref EBase
+    stackTrace: string ## For debugging purposes only.
 
   PFuture*[T] = ref object of PFutureBase
     value: T
@@ -49,10 +50,23 @@ proc newFuture*[T](): PFuture[T] =
   ## Creates a new future.
   new(result)
   result.finished = false
+  result.stackTrace = getStackTrace()
+
+proc checkFinished[T](future: PFuture[T]) =
+  if future.finished:
+    echo("<----->")
+    echo(future.stackTrace)
+    echo("-----")
+    when T is string:
+      echo("Contents: ", future.value.repr)
+    echo("<----->")
+    echo("Future already finished, cannot finish twice.")
+    assert false
 
 proc complete*[T](future: PFuture[T], val: T) =
   ## Completes ``future`` with value ``val``.
-  assert(not future.finished, "Future already finished, cannot finish twice.")
+  #assert(not future.finished, "Future already finished, cannot finish twice.")
+  checkFinished(future)
   assert(future.error == nil)
   future.value = val
   future.finished = true
@@ -61,7 +75,8 @@ proc complete*[T](future: PFuture[T], val: T) =
 
 proc complete*(future: PFuture[void]) =
   ## Completes a void ``future``.
-  assert(not future.finished, "Future already finished, cannot finish twice.")
+  #assert(not future.finished, "Future already finished, cannot finish twice.")
+  checkFinished(future)
   assert(future.error == nil)
   future.finished = true
   if future.cb != nil:
@@ -69,7 +84,8 @@ proc complete*(future: PFuture[void]) =
 
 proc fail*[T](future: PFuture[T], error: ref EBase) =
   ## Completes ``future`` with ``error``.
-  assert(not future.finished, "Future already finished, cannot finish twice.")
+  #assert(not future.finished, "Future already finished, cannot finish twice.")
+  checkFinished(future)
   future.finished = true
   future.error = error
   if future.cb != nil:
