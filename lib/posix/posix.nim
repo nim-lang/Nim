@@ -1578,8 +1578,17 @@ var
     ## Terminates a record (if supported by the protocol).
   MSG_OOB* {.importc, header: "<sys/socket.h>".}: cint
     ## Out-of-band data.
-  MSG_NOSIGNAL* {.importc, header: "<sys/socket.h>".}: cint
-    ## No SIGPIPE generated when an attempt to send is made on a stream-oriented socket that is no longer connected.
+
+when defined(macosx):
+  var
+    MSG_HAVEMORE* {.importc, header: "<sys/socket.h>".}: cint
+    MSG_NOSIGNAL* = MSG_HAVEMORE
+else:
+  var
+    MSG_NOSIGNAL* {.importc, header: "<sys/socket.h>".}: cint
+      ## No SIGPIPE generated when an attempt to send is made on a stream-oriented socket that is no longer connected.
+
+var
   MSG_PEEK* {.importc, header: "<sys/socket.h>".}: cint
     ## Leave received data in queue.
   MSG_TRUNC* {.importc, header: "<sys/socket.h>".}: cint
