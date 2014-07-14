@@ -167,6 +167,12 @@ proc intersection*[A](s1, s2: TSet[A]): TSet[A] =
   for item in s1:
     if item in s2: incl(result, item)
 
+proc difference*[A](s1, s2: TSet[A]): TSet[A] =
+  ## returns a new set of all items that are contained in `s1`, but not in `s2`
+  result = s1
+  for item in s2:
+    if contains(result, item): excl(result, item)
+
 proc symmetricDifference*[A](s1, s2: TSet[A]): TSet[A] =
   ## returns a new set of all items that are contained in either
   ## `s1` or `s2`, but not both
@@ -181,6 +187,10 @@ proc `+`*[A](s1, s2: TSet[A]): TSet[A] {.inline.} =
 proc `*`*[A](s1, s2: TSet[A]): TSet[A] {.inline.} =
   ## alias for `intersection`
   result = intersection(s1, s2)
+
+proc `-`*[A](s1, s2: TSet[A]): TSet[A] {.inline.} =
+  ## alias for `difference`
+  result = difference(s1, s2)
 
 proc `-+-`*[A](s1, s2: TSet[A]): TSet[A] {.inline.} =
   ## alias for `symmetricDifference`
