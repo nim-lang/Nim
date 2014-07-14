@@ -122,9 +122,9 @@ Source
 ======
 
 Starting with 0.9.4 we now advise people to build directly from the
-github `master <https://github.com/Araq/Nimrod#compiling>`_ branch::
+github `devel <https://github.com/Araq/Nimrod#compiling>`_ branch::
 
-  git clone -b master git://github.com/Araq/Nimrod.git
+  git clone -b devel git://github.com/Araq/Nimrod.git
   cd Nimrod
   git clone --depth 1 git://github.com/nimrod-code/csources
   cd csources && sh build.sh
