@@ -24,6 +24,15 @@ type
   FReadDb* = object of FDb   ## effect that denotes a read operation
   FWriteDb* = object of FDb  ## effect that denotes a write operation
 
+proc sql*(query: string): TSqlQuery {.noSideEffect, inline.} =
+  ## constructs a TSqlQuery from the string `query`. This is supposed to be 
+  ## used as a raw-string-literal modifier:
+  ## ``sql"update user set counter = counter + 1"``
+  ##
+  ## If assertions are turned off, it does nothing. If assertions are turned 
+  ## on, later versions will check the string for valid syntax.
+  result = TSqlQuery(query)
+
 proc dbError(db: TDbConn) {.noreturn.} = 
   ## raises an EDb exception.
   var e: ref EDb
