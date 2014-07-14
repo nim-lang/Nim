@@ -1,6 +1,6 @@
-=================================
-  c2nim  User's manual
-=================================
+=======================
+  c2nim User's manual
+=======================
 
 :Author: Andreas Rumpf
 :Version: |nimrodversion|

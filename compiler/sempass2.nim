@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -89,7 +89,7 @@ proc initVarViaNew(a: PEffects, n: PNode) =
   if n.kind != nkSym: return
   let s = n.sym
   if {tfNeedsInit, tfNotNil} * s.typ.flags <= {tfNotNil}:
-    # 'x' is not nil, but that doesn't mean it's not nil children
+    # 'x' is not nil, but that doesn't mean its "not nil" children
     # are initialized:
     initVar(a, n)
 
@@ -478,12 +478,17 @@ proc trackBlock(tracked: PEffects, n: PNode) =
   else:
     track(tracked, n)
 
-proc isTrue(n: PNode): bool =
+proc isTrue*(n: PNode): bool =
   n.kind == nkSym and n.sym.kind == skEnumField and n.sym.position != 0 or
     n.kind == nkIntLit and n.intVal != 0
 
 proc paramType(op: PType, i: int): PType =
   if op != nil and i < op.len: result = op.sons[i]
+
+proc cstringCheck(tracked: PEffects; n: PNode) =
+  if n.sons[0].typ.kind == tyCString and (let a = skipConv(n[1]);
+      a.typ.kind == tyString and a.kind notin {nkStrLit..nkTripleStrLit}):
+    message(n.info, warnUnsafeCode, renderTree(n))
 
 proc track(tracked: PEffects, n: PNode) =
   case n.kind
@@ -541,6 +546,7 @@ proc track(tracked: PEffects, n: PNode) =
     track(tracked, n.sons[0])
     addAsgnFact(tracked.guards, n.sons[0], n.sons[1])
     notNilCheck(tracked, n.sons[1], n.sons[0].typ)
+    when false: cstringCheck(tracked, n)
   of nkVarSection:
     for child in n:
       let last = lastSon(child)

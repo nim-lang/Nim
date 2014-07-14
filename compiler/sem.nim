@@ -15,7 +15,8 @@ import
   magicsys, parser, nversion, nimsets, semfold, importer,
   procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
-  evaltempl, patterns, parampatterns, sempass2, pretty, semmacrosanity
+  evaltempl, patterns, parampatterns, sempass2, pretty, semmacrosanity,
+  semparallel
 
 # implementation
 
@@ -134,7 +135,7 @@ proc isTopLevel(c: PContext): bool {.inline.} =
   result = c.currentScope.depthLevel <= 2
 
 proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym = 
-  result = newSym(kind, considerAcc(n), getCurrOwner(), n.info)
+  result = newSym(kind, considerQuotedIdent(n), getCurrOwner(), n.info)
 
 proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
   # like newSymS, but considers gensym'ed symbols
@@ -147,7 +148,7 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     # template; we must fix it here: see #909
     result.owner = getCurrOwner()
   else:
-    result = newSym(kind, considerAcc(n), getCurrOwner(), n.info)
+    result = newSym(kind, considerQuotedIdent(n), getCurrOwner(), n.info)
 
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
                  allowed: TSymFlags): PSym
@@ -268,11 +269,15 @@ include hlo, seminst, semcall
 
 proc semAfterMacroCall(c: PContext, n: PNode, s: PSym,
                        flags: TExprFlags): PNode =
+  ## Semantically check the output of a macro.
+  ## This involves processes such as re-checking the macro output for type
+  ## coherence, making sure that variables declared with 'let' aren't
+  ## reassigned, and binding the unbound identifiers that the macro output
+  ## contains.
   inc(evalTemplateCounter)
   if evalTemplateCounter > 100:
     globalError(s.info, errTemplateInstantiationTooNested)
-  let oldFriend = c.friendModule
-  c.friendModule = s.owner.getModule
+  c.friendModules.add(s.owner.getModule)
 
   result = n
   if s.typ.sons[0] == nil:
@@ -296,11 +301,13 @@ proc semAfterMacroCall(c: PContext, n: PNode, s: PSym,
       result = fitNode(c, s.typ.sons[0], result)
       #GlobalError(s.info, errInvalidParamKindX, typeToString(s.typ.sons[0]))
   dec(evalTemplateCounter)
-  c.friendModule = oldFriend
+  discard c.friendModules.pop()
 
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   flags: TExprFlags = {}): PNode =
-  markUsed(n, sym)
+  pushInfoContext(nOrig.info)
+
+  markUsed(n.info, sym)
   if sym == c.p.owner:
     globalError(n.info, errRecursiveDependencyX, sym.name.s)
 
@@ -310,6 +317,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   result = evalMacroCall(c.module, n, nOrig, sym)
   if efNoSemCheck notin flags:
     result = semAfterMacroCall(c, result, sym, flags)
+  popInfoContext()
 
 proc forceBool(c: PContext, n: PNode): PNode = 
   result = fitNode(c, getSysType(tyBool), n)

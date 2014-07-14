@@ -127,14 +127,19 @@ proc createStrKeepNode(x: var TFullReg) =
   elif x.node.kind == nkNilLit:
     system.reset(x.node[])
     x.node.kind = nkStrLit
-  elif x.node.kind notin {nkStrLit..nkTripleStrLit}:
+  elif x.node.kind notin {nkStrLit..nkTripleStrLit} or
+      nfAllConst in x.node.flags:
     # XXX this is hacky; tests/txmlgen triggers it:
     x.node = newNode(nkStrLit)
-    #  debug x.node
-    #assert x.node.kind in {nkStrLit..nkTripleStrLit}
+    # It not only hackey, it is also wrong for tgentemplate. The primary
+    # cause of bugs like these is that the VM does not properly distinguish
+    # between variable defintions (var foo = e) and variable updates (foo = e).
 
 template createStr(x) =
   x.node = newNode(nkStrLit)
+
+template createSet(x) =
+  x.node = newNode(nkCurly)
 
 proc moveConst(x: var TFullReg, y: TFullReg) =
   if x.kind != y.kind:
@@ -433,7 +438,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if regs[rc].intVal > high(int):
         stackTrace(c, tos, pc, errIndexOutOfBounds)
       let idx = regs[rc].intVal.int
-      # XXX what if the array is not 0-based? -> codegen should insert a sub
       let src = regs[rb].node
       if src.kind notin {nkEmpty..nkNilLit} and idx <% src.len:
         regs[ra].node = src.sons[idx]
@@ -499,13 +503,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       else:
         stackTrace(c, tos, pc, errNilAccess)
     of opcWrDeref:
-      # a[] = b
+      # a[] = c; b unused
       let ra = instr.regA
-      let rb = instr.regB
+      let rc = instr.regC
       case regs[ra].kind
-      of rkNodeAddr: putIntoNode(regs[ra].nodeAddr[], regs[rb])
-      of rkRegisterAddr: regs[ra].regAddr[] = regs[rb]
-      of rkNode: putIntoNode(regs[ra].node, regs[rb])
+      of rkNodeAddr: putIntoNode(regs[ra].nodeAddr[], regs[rc])
+      of rkRegisterAddr: regs[ra].regAddr[] = regs[rc]
+      of rkNode: putIntoNode(regs[ra].node, regs[rc])
       else: stackTrace(c, tos, pc, errNilAccess)
     of opcAddInt:
       decodeBC(rkInt)
@@ -667,14 +671,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcLtu:
       decodeBC(rkInt)
       regs[ra].intVal = ord(regs[rb].intVal <% regs[rc].intVal)
-    of opcEqRef:
+    of opcEqRef, opcEqNimrodNode:
       decodeBC(rkInt)
       regs[ra].intVal = ord((regs[rb].node.kind == nkNilLit and
                              regs[rc].node.kind == nkNilLit) or
                              regs[rb].node == regs[rc].node)
-    of opcEqNimrodNode:
-      decodeBC(rkInt)
-      regs[ra].intVal = ord(regs[rb].node == regs[rc].node)
     of opcXor:
       decodeBC(rkInt)
       regs[ra].intVal = ord(regs[rb].intVal != regs[rc].intVal)
@@ -720,18 +721,22 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].intVal = ord(containsSets(a, b) and not equalSets(a, b))
     of opcMulSet:
       decodeBC(rkNode)
+      createSet(regs[ra])
       move(regs[ra].node.sons, 
             nimsets.intersectSets(regs[rb].node, regs[rc].node).sons)
     of opcPlusSet: 
       decodeBC(rkNode)
+      createSet(regs[ra])
       move(regs[ra].node.sons,
            nimsets.unionSets(regs[rb].node, regs[rc].node).sons)
     of opcMinusSet:
       decodeBC(rkNode)
+      createSet(regs[ra])
       move(regs[ra].node.sons,
            nimsets.diffSets(regs[rb].node, regs[rc].node).sons)
     of opcSymdiffSet:
       decodeBC(rkNode)
+      createSet(regs[ra])
       move(regs[ra].node.sons,
            nimsets.symdiffSets(regs[rb].node, regs[rc].node).sons)    
     of opcConcatStr:
@@ -742,11 +747,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node.strVal.add getstr(regs[i])
     of opcAddStrCh:
       decodeB(rkNode)
-      createStrKeepNode regs[ra]
+      #createStrKeepNode regs[ra]
       regs[ra].node.strVal.add(regs[rb].intVal.chr)
     of opcAddStrStr:
       decodeB(rkNode)
-      createStrKeepNode regs[ra]
+      #createStrKeepNode regs[ra]
       regs[ra].node.strVal.add(regs[rb].node.strVal)
     of opcAddSeqElem:
       decodeB(rkNode)
@@ -897,10 +902,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       c.exceptionInstr = pc
       let (newPc, newTos) = cleanUpOnException(c, tos)
       # -1 because of the following 'inc'
-      if pc-1 < 0:
+      if newPc-1 < 0:
         bailOut(c, tos)
         return
-      pc = newPc -1
+      pc = newPc-1
       if tos != newTos:
         tos = newTos
         move(regs, tos.slots)
@@ -983,7 +988,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         return TFullReg(kind: rkNone)
     of opcSetLenStr:
       decodeB(rkNode)
-      createStrKeepNode regs[ra]
+      #createStrKeepNode regs[ra]
       regs[ra].node.strVal.setLen(regs[rb].intVal.int)
     of opcOf:
       decodeBC(rkInt)

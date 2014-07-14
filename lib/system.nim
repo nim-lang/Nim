@@ -42,15 +42,18 @@ type
   cstring* {.magic: Cstring.} ## built-in cstring (*compatible string*) type
   pointer* {.magic: Pointer.} ## built-in pointer type, use the ``addr``
                               ## operator to get a pointer to a variable
-
 const
   on* = true    ## alias for ``true``
   off* = false  ## alias for ``false``
 
+{.push warning[GcMem]: off.}
 {.push hints: off.}
 
 type
   Ordinal* {.magic: Ordinal.}[T]
+  `ptr`* {.magic: Pointer.}[T] ## built-in generic untraced pointer type
+  `ref`* {.magic: Pointer.}[T] ## built-in generic traced pointer type
+
   `nil` {.magic: "Nil".}
   expr* {.magic: Expr.} ## meta type to denote an expression (for templates)
   stmt* {.magic: Stmt.} ## meta type to denote a statement (for templates)
@@ -88,6 +91,15 @@ proc defined*(x: expr): bool {.magic: "Defined", noSideEffect.}
   ##   when not defined(strutils.toUpper):
   ##     # provide our own toUpper proc here, because strutils is
   ##     # missing it.
+  ##
+  ## You can also check external symbols introduced through the compiler's
+  ## `-d:x switch <nimrodc.html#compile-time-symbols>`_ to enable build time
+  ## conditionals:
+  ##
+  ## .. code-block:: Nimrod
+  ##   when not defined(release):
+  ##     # Do here programmer friendly expensive sanity checks.
+  ##   # Put here the normal code
 
 when defined(useNimRtl):
   {.deadCodeElim: on.}
@@ -233,6 +245,11 @@ template `>=` * (x, y: expr): expr {.immediate.} =
 template `>` * (x, y: expr): expr {.immediate.} =
   ## "is greater" operator. This is the same as ``y < x``.
   y < x
+
+const
+  appType* {.magic: "AppType"}: string = ""
+    ## a string that describes the application type. Possible values:
+    ## "console", "gui", "lib".
 
 include "system/inclrtl"
 
@@ -415,12 +432,12 @@ proc pred*[T](x: Ordinal[T], y = 1): T {.magic: "Pred", noSideEffect.}
   ## an ordinal type. If such a value does not exist, ``EOutOfRange`` is raised
   ## or a compile time error occurs.
 
-proc inc*[T](x: var Ordinal[T], y = 1) {.magic: "Inc", noSideEffect.}
+proc inc*[T: Ordinal|uint|uint64](x: var T, y = 1) {.magic: "Inc", noSideEffect.}
   ## increments the ordinal ``x`` by ``y``. If such a value does not
   ## exist, ``EOutOfRange`` is raised or a compile time error occurs. This is a
   ## short notation for: ``x = succ(x, y)``.
 
-proc dec*[T](x: var Ordinal[T], y = 1) {.magic: "Dec", noSideEffect.}
+proc dec*[T: Ordinal|uint|uint64](x: var T, y = 1) {.magic: "Dec", noSideEffect.}
   ## decrements the ordinal ``x`` by ``y``. If such a value does not
   ## exist, ``EOutOfRange`` is raised or a compile time error occurs. This is a
   ## short notation for: ``x = pred(x, y)``.
@@ -940,10 +957,6 @@ const
     ## a string that describes the host CPU. Possible values:
     ## "i386", "alpha", "powerpc", "sparc", "amd64", "mips", "arm".
   
-  appType* {.magic: "AppType"}: string = ""
-    ## a string that describes the application type. Possible values:
-    ## "console", "gui", "lib".
-  
   seqShallowFlag = low(int)
   
 proc compileOption*(option: string): bool {.
@@ -1433,6 +1446,20 @@ when not defined(nimrodVM) and hostOS != "standalone":
   proc getTotalMem*(): int {.rtl.}
     ## returns the number of bytes that are owned by the process.
 
+  when hasThreadSupport:
+    proc getOccupiedSharedMem*(): int {.rtl.}
+      ## returns the number of bytes that are owned by the process
+      ## on the shared heap and hold data. This is only available when
+      ## threads are enabled.
+
+    proc getFreeSharedMem*(): int {.rtl.}
+      ## returns the number of bytes that are owned by the
+      ## process on the shared heap, but do not hold any meaningful data.
+      ## This is only available when threads are enabled.
+
+    proc getTotalSharedMem*(): int {.rtl.}
+      ## returns the number of bytes on the shared heap that are owned by the
+      ## process. This is only available when threads are enabled.
 
 iterator countdown*[T](a, b: T, step = 1): T {.inline.} =
   ## Counts from ordinal value `a` down to `b` with the given
@@ -1752,9 +1779,38 @@ iterator fields*[S:tuple|object, T:tuple|object](x: S, y: T): tuple[a,b: expr] {
   ## in the loop body.
 iterator fieldPairs*[T: tuple|object](x: T): TObject {.
   magic: "FieldPairs", noSideEffect.}
-  ## iterates over every field of `x`. Warning: This really transforms
-  ## the 'for' and unrolls the loop. The current implementation also has a bug
-  ## that affects symbol binding in the loop body.
+  ## Iterates over every field of `x` returning their name and value.
+  ##
+  ## When you iterate over objects with different field types you have to use
+  ## the compile time ``when`` instead of a runtime ``if`` to select the code
+  ## you want to run for each type. To perform the comparison use the `is
+  ## operator <manual.html#is-operator>`_. Example:
+  ##
+  ## .. code-block:: Nimrod
+  ##
+  ##   type
+  ##     Custom = object
+  ##       foo: string
+  ##       bar: bool
+  ##
+  ##   proc `$`(x: Custom): string =
+  ##     result = "Custom:"
+  ##     for name, value in x.fieldPairs:
+  ##       when value is bool:
+  ##         result.add("\n\t" & name & " is " & $value)
+  ##       else:
+  ##         if value.isNil:
+  ##           result.add("\n\t" & name & " (nil)")
+  ##         else:
+  ##           result.add("\n\t" & name & " '" & value & "'")
+  ##
+  ## Another way to do the same without ``when`` is to leave the task of
+  ## picking the appropriate code to a secondary proc which you overload for
+  ## each field type and pass the `value` to.
+  ##
+  ## Warning: This really transforms the 'for' and unrolls the loop. The
+  ## current implementation also has a bug that affects symbol binding in the
+  ## loop body.
 iterator fieldPairs*[S: tuple|object, T: tuple|object](x: S, y: T): tuple[
   a, b: expr] {.
   magic: "FieldPairs", noSideEffect.}
@@ -2412,7 +2468,7 @@ when not defined(JS): #and not defined(NimrodVM):
       ##     for line in filename.lines:
       ##       buffer.add(line.replace("a", "0") & '\x0A')
       ##     writeFile(filename, buffer)
-      var f = open(filename)
+      var f = open(filename, bufSize=8000)
       var res = TaintedString(newStringOfCap(80))
       while f.readLine(res): yield res
       close(f)
@@ -2608,6 +2664,8 @@ when hostOS != "standalone":
 proc `[]`*[Idx, T](a: array[Idx, T], x: TSlice[int]): seq[T] =
   ## slice operation for arrays. Negative indexes are **not** supported
   ## because the array might have negative bounds.
+  when low(a) < 0:
+    {.error: "Slicing for arrays with negative indices is unsupported.".}
   var L = x.b - x.a + 1
   newSeq(result, L)
   for i in 0.. <L: result[i] = a[i + x.a]
@@ -2615,11 +2673,13 @@ proc `[]`*[Idx, T](a: array[Idx, T], x: TSlice[int]): seq[T] =
 proc `[]=`*[Idx, T](a: var array[Idx, T], x: TSlice[int], b: openArray[T]) =
   ## slice assignment for arrays. Negative indexes are **not** supported
   ## because the array might have negative bounds.
+  when low(a) < 0:
+    {.error: "Slicing for arrays with negative indices is unsupported.".}
   var L = x.b - x.a + 1
   if L == b.len:
     for i in 0 .. <L: a[i+x.a] = b[i]
   else:
-    sysFatal(EOutOfRange, "differing lengths for slice assignment")
+    sysFatal(EOutOfRange, "different lengths for slice assignment")
 
 proc `[]`*[Idx, T](a: array[Idx, T], x: TSlice[Idx]): seq[T] =
   ## slice operation for arrays. Negative indexes are **not** supported
@@ -2641,7 +2701,7 @@ proc `[]=`*[Idx, T](a: var array[Idx, T], x: TSlice[Idx], b: openArray[T]) =
       a[j] = b[i]
       inc(j)
   else:
-    sysFatal(EOutOfRange, "differing lengths for slice assignment")
+    sysFatal(EOutOfRange, "different lengths for slice assignment")
 
 proc `[]`*[T](s: seq[T], x: TSlice[int]): seq[T] = 
   ## slice operation for sequences. Negative indexes are supported.
@@ -2690,13 +2750,13 @@ proc staticExec*(command: string, input = ""): string {.
   ## inside a pragma like `passC <nimrodc.html#passc-pragma>`_ or `passL
   ## <nimrodc.html#passl-pragma>`_.
 
-proc `+=`*[T: TOrdinal](x: var T, y: T) {.magic: "Inc", noSideEffect.}
+proc `+=`*[T: TOrdinal|uint|uint64](x: var T, y: T) {.magic: "Inc", noSideEffect.}
   ## Increments an ordinal
 
-proc `-=`*[T: TOrdinal](x: var T, y: T) {.magic: "Dec", noSideEffect.}
+proc `-=`*[T: TOrdinal|uint|uint64](x: var T, y: T) {.magic: "Dec", noSideEffect.}
   ## Decrements an ordinal
 
-proc `*=`*[T: TOrdinal](x: var T, y: T) {.inline, noSideEffect.} =
+proc `*=`*[T: TOrdinal|uint|uint64](x: var T, y: T) {.inline, noSideEffect.} =
   ## Binary `*=` operator for ordinals
   x = x * y
 
@@ -2717,9 +2777,6 @@ proc `/=`*[T: float|float32|float64] (x: var T, y: T) {.inline, noSideEffect.} =
   x = x / y
 
 proc `&=`* (x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
-
-proc rand*(max: int): int {.magic: "Rand", sideEffect.}
-  ## compile-time `random` function. Useful for debugging.
 
 proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
   ## converts the AST of `x` into a string representation. This is very useful
@@ -2771,10 +2828,15 @@ when true:
     THide(raiseAssert)(msg)
 
 template assert*(cond: bool, msg = "") =
-  ## provides a means to implement `programming by contracts`:idx: in Nimrod.
+  ## Raises ``EAssertionFailure`` with `msg` if `cond` is false.
+  ##
+  ## Provides a means to implement `programming by contracts`:idx: in Nimrod.
   ## ``assert`` evaluates expression ``cond`` and if ``cond`` is false, it
-  ## raises an ``EAssertionFailure`` exception. However, the compiler may
-  ## not generate any code at all for ``assert`` if it is advised to do so.
+  ## raises an ``EAssertionFailure`` exception. However, the compiler may not
+  ## generate any code at all for ``assert`` if it is advised to do so through
+  ## the ``-d:release`` or ``--assertions:off`` `command line switches
+  ## <nimrodc.html#command-line-switches>`_.
+  ##
   ## Use ``assert`` for debugging purposes only.
   bind instantiationInfo
   mixin failedAssertImpl
@@ -2928,6 +2990,12 @@ proc locals*(): TObject {.magic: "Locals", noSideEffect.} =
   ##   # -> B is 1
   discard
 
+proc deepCopy*[T](x: T): T {.magic: "DeepCopy", noSideEffect.} = discard
+  ## performs a deep copy of `x`. This is also used by the code generator
+  ## for the implementation of ``spawn``.
+
+{.pop.} #{.push warning[GcMem]: off.}
+
 when not defined(booting):
   type
     semistatic*[T] = static[T] | T
@@ -2936,6 +3004,3 @@ when not defined(booting):
 
   template isStatic*(x): expr = compiles(static(x))
     # checks whether `x` is a value known at compile-time
-
-when hasThreadSupport:
-  when hostOS != "standalone": include "system/sysspawn"

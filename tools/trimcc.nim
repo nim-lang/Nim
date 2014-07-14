@@ -21,7 +21,7 @@ proc walker(dir: string) =
         moveFile(dest=path, sourc=newName(path))
     of pcDir:
       walker(path)
-    else: nil
+    else: discard
 
 if paramCount() == 1:
   walker(paramStr(1))

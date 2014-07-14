@@ -347,7 +347,7 @@ proc getNumber(L: var TLexer): TToken =
         result.base = base2
         while true: 
           case L.buf[pos]
-          of 'A'..'Z', 'a'..'z', '2'..'9', '.': 
+          of '2'..'9', '.': 
             lexMessage(L, errInvalidNumber, result.literal)
             inc(pos)
           of '_': 
@@ -363,7 +363,7 @@ proc getNumber(L: var TLexer): TToken =
         result.base = base8
         while true: 
           case L.buf[pos]
-          of 'A'..'Z', 'a'..'z', '8'..'9', '.': 
+          of '8'..'9', '.': 
             lexMessage(L, errInvalidNumber, result.literal)
             inc(pos)
           of '_': 
@@ -377,25 +377,22 @@ proc getNumber(L: var TLexer): TToken =
           else: break 
       of 'O': 
         lexMessage(L, errInvalidNumber, result.literal)
-      of 'x', 'X': 
+      of 'x', 'X':
         result.base = base16
-        while true: 
+        while true:
           case L.buf[pos]
-          of 'G'..'Z', 'g'..'z': 
-            lexMessage(L, errInvalidNumber, result.literal)
-            inc(pos)
-          of '_': 
-            if L.buf[pos+1] notin {'0'..'9', 'a'..'f', 'A'..'F'}: 
+          of '_':
+            if L.buf[pos+1] notin {'0'..'9', 'a'..'f', 'A'..'F'}:
               lexMessage(L, errInvalidToken, "_")
               break
             inc(pos)
-          of '0'..'9': 
+          of '0'..'9':
             xi = `shl`(xi, 4) or (ord(L.buf[pos]) - ord('0'))
             inc(pos)
-          of 'a'..'f': 
+          of 'a'..'f':
             xi = `shl`(xi, 4) or (ord(L.buf[pos]) - ord('a') + 10)
             inc(pos)
-          of 'A'..'F': 
+          of 'A'..'F':
             xi = `shl`(xi, 4) or (ord(L.buf[pos]) - ord('A') + 10)
             inc(pos)
           else: break 
@@ -424,8 +421,14 @@ proc getNumber(L: var TLexer): TToken =
       if (result.iNumber < low(int32)) or (result.iNumber > high(int32)):
         if result.tokType == tkIntLit:
           result.tokType = tkInt64Lit
-        elif result.tokType in {tkInt8Lit, tkInt16Lit}:
-          lexMessage(L, errInvalidNumber, result.literal)
+        elif result.tokType in {tkInt8Lit, tkInt16Lit, tkInt32Lit}:
+          lexMessage(L, errNumberOutOfRange, result.literal)
+      elif result.tokType == tkInt8Lit and
+          (result.iNumber < int8.low or result.iNumber > int8.high):
+        lexMessage(L, errNumberOutOfRange, result.literal)
+      elif result.tokType == tkInt16Lit and
+          (result.iNumber < int16.low or result.iNumber > int16.high):
+        lexMessage(L, errNumberOutOfRange, result.literal)
   except EInvalidValue:
     lexMessage(L, errInvalidNumber, result.literal)
   except EOverflow, EOutOfRange:
@@ -537,6 +540,10 @@ proc getString(L: var TLexer, tok: var TToken, rawMode: bool) =
     tok.tokType = tkTripleStrLit # long string literal:
     inc(pos, 2)               # skip ""
     # skip leading newline:
+    if buf[pos] in {' ', '\t'}:
+      var newpos = pos+1
+      while buf[newpos] in {' ', '\t'}: inc newpos
+      if buf[newpos] in {CR, LF}: pos = newpos
     pos = handleCRLF(L, pos)
     buf = L.buf
     while true: 

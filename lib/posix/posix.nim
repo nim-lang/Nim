@@ -846,7 +846,7 @@ var
   FE_UPWARD* {.importc, header: "<fenv.h>".}: cint
   FE_DFL_ENV* {.importc, header: "<fenv.h>".}: cint
 
-when not defined(haiku):
+when not defined(haiku) and not defined(OpenBSD):
   var
     MM_HARD* {.importc, header: "<fmtmsg.h>".}: cint
       ## Source of the condition is hardware.
@@ -1578,8 +1578,17 @@ var
     ## Terminates a record (if supported by the protocol).
   MSG_OOB* {.importc, header: "<sys/socket.h>".}: cint
     ## Out-of-band data.
-  MSG_NOSIGNAL* {.importc, header: "<sys/socket.h>".}: cint
-    ## No SIGPIPE generated when an attempt to send is made on a stream-oriented socket that is no longer connected.
+
+when defined(macosx):
+  var
+    MSG_HAVEMORE* {.importc, header: "<sys/socket.h>".}: cint
+    MSG_NOSIGNAL* = MSG_HAVEMORE
+else:
+  var
+    MSG_NOSIGNAL* {.importc, header: "<sys/socket.h>".}: cint
+      ## No SIGPIPE generated when an attempt to send is made on a stream-oriented socket that is no longer connected.
+
+var
   MSG_PEEK* {.importc, header: "<sys/socket.h>".}: cint
     ## Leave received data in queue.
   MSG_TRUNC* {.importc, header: "<sys/socket.h>".}: cint
@@ -1816,7 +1825,7 @@ proc feholdexcept*(a1: ptr Tfenv): cint {.importc, header: "<fenv.h>".}
 proc fesetenv*(a1: ptr Tfenv): cint {.importc, header: "<fenv.h>".}
 proc feupdateenv*(a1: ptr Tfenv): cint {.importc, header: "<fenv.h>".}
 
-when not defined(haiku):
+when not defined(haiku) and not defined(OpenBSD):
   proc fmtmsg*(a1: int, a2: cstring, a3: cint,
               a4, a5, a6: cstring): cint {.importc, header: "<fmtmsg.h>".}
 

@@ -69,7 +69,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym): PNode =
 proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags, 
             ctx: var TIntSet): PNode =
   result = n
-  let ident = considerAcc(n)
+  let ident = considerQuotedIdent(n)
   var s = searchInScopes(c, ident)
   if s == nil:
     if ident.id notin ctx and withinMixin notin flags:
@@ -82,7 +82,37 @@ proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags,
     else:
       result = semGenericStmtSymbol(c, n, s)
   # else: leave as nkIdent
+
+proc newDot(n, b: PNode): PNode =
+  result = newNodeI(nkDotExpr, n.info)
+  result.add(n.sons[0])
+  result.add(b)
+
+proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags, 
+                 ctx: var TIntSet): PNode =
+  assert n.kind == nkDotExpr
+  let luf = if withinMixin notin flags: {checkUndeclared} else: {}
   
+  var s = qualifiedLookUp(c, n, luf)
+  if s != nil:
+    result = semGenericStmtSymbol(c, n, s)
+  else:
+    result = n
+    let n = n[1]
+    let ident = considerQuotedIdent(n)
+    var s = searchInScopes(c, ident)
+    if s != nil and s.kind in routineKinds:
+      if withinBind in flags:
+        result = newDot(result, symChoice(c, n, s, scClosed))
+      elif s.name.id in ctx:
+        result = newDot(result, symChoice(c, n, s, scForceOpen))
+      else:
+        let sym = semGenericStmtSymbol(c, n, s)
+        if sym.kind == nkSym:
+          result = newDot(result, symChoice(c, n, s, scForceOpen))
+        else:
+          result = newDot(result, sym)
+
 proc semGenericStmt(c: PContext, n: PNode, 
                     flags: TSemGenericFlags, ctx: var TIntSet): PNode =
   result = n
@@ -91,10 +121,11 @@ proc semGenericStmt(c: PContext, n: PNode,
   of nkIdent, nkAccQuoted:
     result = lookup(c, n, flags, ctx)
   of nkDotExpr:
-    let luf = if withinMixin notin flags: {checkUndeclared} else: {}
-    var s = qualifiedLookUp(c, n, luf)
-    if s != nil: result = semGenericStmtSymbol(c, n, s)
+    #let luf = if withinMixin notin flags: {checkUndeclared} else: {}
+    #var s = qualifiedLookUp(c, n, luf)
+    #if s != nil: result = semGenericStmtSymbol(c, n, s)
     # XXX for example: ``result.add`` -- ``add`` needs to be looked up here...
+    result = fuzzyLookup(c, n, flags, ctx)
   of nkEmpty, nkSym..nkNilLit:
     # see tests/compile/tgensymgeneric.nim:
     # We need to open the gensym'ed symbol again so that the instantiation
@@ -114,7 +145,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     let fn = n.sons[0]
     var s = qualifiedLookUp(c, fn, {})
     if s == nil and withinMixin notin flags and
-        fn.kind in {nkIdent, nkAccQuoted} and considerAcc(fn).id notin ctx:
+        fn.kind in {nkIdent, nkAccQuoted} and considerQuotedIdent(fn).id notin ctx:
       localError(n.info, errUndeclaredIdentifier, fn.renderTree)
     
     var first = 0
@@ -141,6 +172,7 @@ proc semGenericStmt(c: PContext, n: PNode,
         # symbol lookup ...
       of skUnknown, skParam: 
         # Leave it as an identifier.
+        discard
       of skProc, skMethod, skIterators, skConverter:
         result.sons[0] = symChoice(c, n.sons[0], s, scOption)
         first = 1

@@ -23,7 +23,8 @@
 ## many options and tweaking, but you are not limited to snippets and can
 ## generate `LaTeX documents <https://en.wikipedia.org/wiki/LaTeX>`_ too.
 
-import strutils, os, hashes, strtabs, rstast, rst, highlite
+import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
+  algorithm
 
 const
   HtmlExt = "html"
@@ -56,6 +57,9 @@ type
     currentSection: string ## \
     ## Stores the empty string or the last headline/overline found in the rst
     ## document, so it can be used as a prettier name for term index generation.
+    seenIndexTerms: TTable[string, int] ## \
+    ## Keeps count of same text index terms to generate different identifiers
+    ## for hyperlinks. See renderIndexTerm proc for details.
   
   PDoc = var TRstGenerator ## Alias to type less.
 
@@ -68,10 +72,16 @@ proc initRstGenerator*(g: var TRstGenerator, target: TOutputTarget,
   ##
   ## You need to call this before using a ``TRstGenerator`` with any other
   ## procs in this module. Pass a non ``nil`` ``PStringTable`` value as
-  ## ``config`` with parameters used by the HTML output generator.  If you
-  ## don't know what to use, pass the results of the ``defaultConfig()`` proc.
-  ## The ``filename`` is symbolic and used only for error reporting, you can
-  ## pass any non ``nil`` string here.
+  ## `config` with parameters used by the HTML output generator.  If you don't
+  ## know what to use, pass the results of the `defaultConfig()
+  ## <#defaultConfig>_` proc.
+  ##
+  ## The `filename` parameter will be used for error reporting and creating
+  ## index hyperlinks to the file, but you can pass an empty string here if you
+  ## are parsing a stream in memory. If `filename` ends with the ``.nim``
+  ## extension, the title for the document will be set by default to ``Module
+  ## filename``.  This default title can be overriden by the embedded rst, but
+  ## it helps to prettify the generated index if no title is found.
   ##
   ## The ``TRstParseOptions``, ``TFindFileHandler`` and ``TMsgHandler`` types
   ## are defined in the the `packages/docutils/rst module <rst.html>`_.
@@ -111,6 +121,10 @@ proc initRstGenerator*(g: var TRstGenerator, target: TOutputTarget,
   g.options = options
   g.findFile = findFile
   g.currentSection = ""
+  let fileParts = filename.splitFile
+  if fileParts.ext == ".nim":
+    g.currentSection = "Module " & fileParts.name
+  g.seenIndexTerms = initTable[string, int]()
   g.msgHandler = msgHandler
   
   let s = config["split.item.toc"]
@@ -120,8 +134,8 @@ proc initRstGenerator*(g: var TRstGenerator, target: TOutputTarget,
 proc writeIndexFile*(g: var TRstGenerator, outfile: string) =
   ## Writes the current index buffer to the specified output file.
   ##
-  ## You previously need to add entries to the index with the ``setIndexTerm``
-  ## proc. If the index is empty the file won't be created.
+  ## You previously need to add entries to the index with the `setIndexTerm()
+  ## <#setIndexTerm>`_ proc. If the index is empty the file won't be created.
   if g.theIndex.len > 0: writeFile(outfile, g.theIndex)
   
 proc addXmlChar(dest: var string, c: char) = 
@@ -207,6 +221,9 @@ proc dispA(target: TOutputTarget, dest: var string,
   if target != outLatex: addf(dest, xml, args)
   else: addf(dest, tex, args)
   
+proc `or`(x, y: string): string {.inline.} =
+  result = if x.isNil: y else: x
+
 proc renderRstToOut*(d: var TRstGenerator, n: PRstNode, result: var string)
   ## Writes into ``result`` the rst ast ``n`` using the ``d`` configuration.
   ##
@@ -224,7 +241,7 @@ proc renderRstToOut*(d: var TRstGenerator, n: PRstNode, result: var string)
 proc renderAux(d: PDoc, n: PRstNode, result: var string) = 
   for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], result)
 
-proc renderAux(d: PDoc, n: PRstNode, frmtA, frmtB: string, result: var string) = 
+proc renderAux(d: PDoc, n: PRstNode, frmtA, frmtB: string, result: var string) =
   var tmp = ""
   for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], tmp)
   if d.target != outLatex:
@@ -254,25 +271,45 @@ proc setIndexTerm*(d: var TRstGenerator, id, term: string,
                    linkTitle, linkDesc = "") =
   ## Adds a `term` to the index using the specified hyperlink identifier.
   ##
-  ## The ``d.theIndex`` string will be used to append the term in the format
-  ## ``term<tab>file#id``. The anchor will be the based on the name of the file
-  ## currently being parsed plus the `id`, which will be appended after a hash.
+  ## A new entry will be added to the index using the format
+  ## ``term<tab>file#id``. The file part will come from the `filename`
+  ## parameter used in a previous call to the `initRstGenerator()
+  ## <#initRstGenerator>`_ proc.
+  ##
+  ## The `id` will be appended with a hash character only if its length is not
+  ## zero, otherwise no specific anchor will be generated. In general you
+  ## should only pass an empty `id` value for the title of standalone rst
+  ## documents (they are special for the `mergeIndexes() <#mergeIndexes>`_
+  ## proc, see `Index (idx) file format <docgen.html#index-idx-file-format>`_
+  ## for more information). Unlike other index terms, title entries are
+  ## inserted at the beginning of the accumulated buffer to maintain a logical
+  ## order of entries.
+  ##
   ## If `linkTitle` or `linkDesc` are not the empty string, two additional
   ## columns with their contents will be added.
   ##
-  ## The index won't be written to disk unless you call ``writeIndexFile``. The
-  ## purpose of the index is documented in the `docgen tools guide
-  ## <docgen.html#index-switch>`_.
-  d.theIndex.add(term)
-  d.theIndex.add('\t')
+  ## The index won't be written to disk unless you call `writeIndexFile()
+  ## <#writeIndexFile>`_. The purpose of the index is documented in the `docgen
+  ## tools guide <docgen.html#index-switch>`_.
+  assert(not d.theIndex.isNil)
+  var
+    entry = term
+    isTitle = false
+  entry.add('\t')
   let htmlFile = changeFileExt(extractFilename(d.filename), HtmlExt)
-  d.theIndex.add(htmlFile)
-  d.theIndex.add('#')
-  d.theIndex.add(id)
+  entry.add(htmlFile)
+  if id.len > 0:
+    entry.add('#')
+    entry.add(id)
+  else:
+    isTitle = true
   if linkTitle.len > 0 or linkDesc.len > 0:
-    d.theIndex.add('\t' & linkTitle.quoteIndexColumn)
-    d.theIndex.add('\t' & linkDesc.quoteIndexColumn)
-  d.theIndex.add("\n")
+    entry.add('\t' & linkTitle.quoteIndexColumn)
+    entry.add('\t' & linkDesc.quoteIndexColumn)
+  entry.add("\n")
+
+  if isTitle: d.theIndex.insert(entry)
+  else: d.theIndex.add(entry)
 
 proc hash(n: PRstNode): int =
   if n.kind == rnLeaf:
@@ -283,8 +320,20 @@ proc hash(n: PRstNode): int =
       result = result !& hash(n.sons[i])
     result = !$result
 
-proc renderIndexTerm(d: PDoc, n: PRstNode, result: var string) =
-  let id = rstnodeToRefname(n) & '_' & $abs(hash(n))
+proc renderIndexTerm*(d: PDoc, n: PRstNode, result: var string) =
+  ## Renders the string decorated within \`foobar\`\:idx\: markers.
+  ##
+  ## Additionally adds the encosed text to the index as a term. Since we are
+  ## interested in different instances of the same term to have different
+  ## entries, a table is used to keep track of the amount of times a term has
+  ## previously appeared to give a different identifier value for each.
+  let refname = n.rstnodeToRefname
+  if d.seenIndexTerms.hasKey(refname):
+    d.seenIndexTerms[refname] = d.seenIndexTerms[refname] + 1
+  else:
+    d.seenIndexTerms[refname] = 1
+  let id = refname & '_' & $d.seenIndexTerms[refname]
+
   var term = ""
   renderAux(d, n, term)
   setIndexTerm(d, id, term, d.currentSection)
@@ -298,11 +347,33 @@ type
     linkTitle: string ## If not nil, contains a prettier text for the href
     linkDesc: string ## If not nil, the title attribute of the final href
 
+  TIndexedDocs {.pure, final.} = TTable[TIndexEntry, seq[TIndexEntry]] ## \
+    ## Contains the index sequences for doc types.
+    ##
+    ## The key is a *fake* TIndexEntry which will contain the title of the
+    ## document in the `keyword` field and `link` will contain the html
+    ## filename for the document. `linkTitle` and `linkDesc` will be nil.
+    ##
+    ## The value indexed by this TIndexEntry is a sequence with the real index
+    ## entries found in the ``.idx`` file.
+
+
 proc cmp(a, b: TIndexEntry): int =
   ## Sorts two ``TIndexEntry`` first by `keyword` field, then by `link`.
   result = cmpIgnoreStyle(a.keyword, b.keyword)
   if result == 0:
     result = cmpIgnoreStyle(a.link, b.link)
+
+proc hash(x: TIndexEntry): THash =
+  ## Returns the hash for the combined fields of the type.
+  ##
+  ## The hash is computed as the chained hash of the individual string hashes.
+  assert(not x.keyword.isNil)
+  assert(not x.link.isNil)
+  result = x.keyword.hash !& x.link.hash
+  result = result !& (x.linkTitle or "").hash
+  result = result !& (x.linkDesc or "").hash
+  result = !$result
 
 proc `<-`(a: var TIndexEntry, b: TIndexEntry) =
   shallowCopy a.keyword, b.keyword
@@ -332,43 +403,18 @@ proc sortIndex(a: var openArray[TIndexEntry]) =
       a[j] <- v
     if h == 1: break
 
-proc mergeIndexes*(dir: string): string =
-  ## merges all index files in `dir` and returns the generated index as HTML.
-  ## The result is no full HTML for flexibility.
-  var a: seq[TIndexEntry]
-  newSeq(a, 15_000)
-  setLen(a, 0)
-  var L = 0
-  for kind, path in walkDir(dir):
-    if kind == pcFile and path.endsWith(IndexExt):
-      for line in lines(path):
-        let s = line.find('\t')
-        if s < 0: continue
-        setLen(a, L+1)
-        a[L].keyword = line.substr(0, s-1)
-        a[L].link = line.substr(s+1)
-        if a[L].link.find('\t') > 0:
-          let extraCols = a[L].link.split('\t')
-          a[L].link = extraCols[0]
-          assert extraCols.len == 3
-          a[L].linkTitle = extraCols[1].unquoteIndexColumn
-          a[L].linkDesc = extraCols[2].unquoteIndexColumn
-        else:
-          a[L].linkTitle = nil
-          a[L].linkDesc = nil
-        inc L
-  sortIndex(a)
+proc generateSymbolIndex(symbols: seq[TIndexEntry]): string =
   result = ""
   var i = 0
-  while i < L:
-    result.addf("<dt><span>$1</span></dt><ul class=\"simple\"><dd>\n", 
-                [a[i].keyword])
+  while i < symbols.len:
+    result.addf("<dt><span>$1:</span></dt><ul class=\"simple\"><dd>\n",
+                [symbols[i].keyword])
     var j = i
-    while j < L and a[i].keyword == a[j].keyword:
+    while j < symbols.len and symbols[i].keyword == symbols[j].keyword:
       let
-        url = a[j].link
-        text = if not a[j].linkTitle.isNil: a[j].linkTitle else: url
-        desc = if not a[j].linkDesc.isNil: a[j].linkDesc else: ""
+        url = symbols[j].link
+        text = if not symbols[j].linkTitle.isNil: symbols[j].linkTitle else: url
+        desc = if not symbols[j].linkDesc.isNil: symbols[j].linkDesc else: ""
       if desc.len > 0:
         result.addf("""<li><a class="reference external"
           title="$3" href="$1">$2</a></li>
@@ -379,9 +425,246 @@ proc mergeIndexes*(dir: string): string =
       inc j
     result.add("</ul></dd>\n")
     i = j
+
+proc isDocumentationTitle(hyperlink: string): bool =
+  ## Returns true if the hyperlink is actually a documentation title.
+  ##
+  ## Documentation titles lack the hash. See `mergeIndexes() <#mergeIndexes>`_
+  ## for a more detailed explanation.
+  result = hyperlink.find('#') < 0
+
+proc stripTOCLevel(s: string): tuple[level: int, text: string] =
+  ## Returns the *level* of the toc along with the text without it.
+  for c in 0 .. <s.len:
+    result.level = c
+    if s[c] != ' ': break
+  result.text = s[result.level .. <s.len]
+
+proc indentToLevel(level: var int, newLevel: int): string =
+  ## Returns the sequence of <ul>|</ul> characters to switch to `newLevel`.
+  ##
+  ## The amount of lists added/removed will be based on the `level` variable,
+  ## which will be reset to `newLevel` at the end of the proc.
+  result = ""
+  if level == newLevel:
+    return
+  if newLevel > level:
+    result = repeatStr(newLevel - level, "<ul>")
+  else:
+    result = repeatStr(level - newLevel, "</ul>")
+  level = newLevel
+
+proc generateDocumentationTOC(entries: seq[TIndexEntry]): string =
+  ## Returns the sequence of index entries in an HTML hierarchical list.
+  result = ""
+  # Build a list of levels and extracted titles to make processing easier.
+  var
+    titleRef: string
+    levels: seq[tuple[level: int, text: string]]
+    L = 0
+    level = 1
+  levels.newSeq(entries.len)
+  for entry in entries:
+    let (rawLevel, rawText) = stripTOCLevel(entry.linkTitle or entry.keyword)
+    if rawLevel < 1:
+      # This is a normal symbol, push it *inside* one level from the last one.
+      levels[L].level = level + 1
+      # Also, ignore the linkTitle and use directly the keyword.
+      levels[L].text = entry.keyword
+    else:
+      # The level did change, update the level indicator.
+      level = rawLevel
+      levels[L].level = rawLevel
+      levels[L].text = rawText
+    inc L
+
+  # Now generate hierarchical lists based on the precalculated levels.
+  result = "<ul>\n"
+  level = 1
+  L = 0
+  while L < entries.len:
+    let link = entries[L].link
+    if link.isDocumentationTitle:
+      titleRef = link
+    else:
+      result.add(level.indentToLevel(levels[L].level))
+      result.add("<li><a href=\"" & link & "\">" &
+        levels[L].text & "</a>\n")
+    inc L
+  result.add(level.indentToLevel(1) & "</ul>\n")
+  assert(not titleRef.isNil,
+    "Can't use this proc on an API index, docs always have a title entry")
+
+proc generateDocumentationIndex(docs: TIndexedDocs): string =
+  ## Returns all the documentation TOCs in an HTML hierarchical list.
+  result = ""
+
+  # Sort the titles to generate their toc in alphabetical order.
+  var titles = toSeq(keys[TIndexEntry, seq[TIndexEntry]](docs))
+  sort(titles, cmp)
+
+  for title in titles:
+    let tocList = generateDocumentationTOC(docs[title])
+    result.add("<ul><li><a href=\"" &
+      title.link & "\">" & title.keyword & "</a>\n" & tocList & "</ul>\n")
+
+proc generateDocumentationJumps(docs: TIndexedDocs): string =
+  ## Returns a plain list of hyperlinks to documentation TOCs in HTML.
+  result = "Documents: "
+
+  # Sort the titles to generate their toc in alphabetical order.
+  var titles = toSeq(keys[TIndexEntry, seq[TIndexEntry]](docs))
+  sort(titles, cmp)
+
+  var chunks: seq[string] = @[]
+  for title in titles:
+    chunks.add("<a href=\"" & title.link & "\">" & title.keyword & "</a>")
+
+  result.add(chunks.join(", ") & ".<br>")
+
+proc generateModuleJumps(modules: seq[string]): string =
+  ## Returns a plain list of hyperlinks to the list of modules.
+  result = "Modules: "
+
+  var chunks: seq[string] = @[]
+  for name in modules:
+    chunks.add("<a href=\"" & name & ".html\">" & name & "</a>")
+
+  result.add(chunks.join(", ") & ".<br>")
+
+proc readIndexDir(dir: string):
+    tuple[modules: seq[string], symbols: seq[TIndexEntry], docs: TIndexedDocs] =
+  ## Walks `dir` reading ``.idx`` files converting them in TIndexEntry items.
+  ##
+  ## Returns the list of found module names, the list of free symbol entries
+  ## and the different documentation indexes. The list of modules is sorted.
+  ## See the documentation of ``mergeIndexes`` for details.
+  result.modules = @[]
+  result.docs = initTable[TIndexEntry, seq[TIndexEntry]](32)
+  newSeq(result.symbols, 15_000)
+  setLen(result.symbols, 0)
+  var L = 0
+  # Scan index files and build the list of symbols.
+  for kind, path in walkDir(dir):
+    if kind == pcFile and path.endsWith(IndexExt):
+      var
+        fileEntries: seq[TIndexEntry]
+        title: TIndexEntry
+        F = 0
+      newSeq(fileEntries, 500)
+      setLen(fileEntries, 0)
+      for line in lines(path):
+        let s = line.find('\t')
+        if s < 0: continue
+        setLen(fileEntries, F+1)
+        fileEntries[F].keyword = line.substr(0, s-1)
+        fileEntries[F].link = line.substr(s+1)
+        # See if we detect a title, a link without a `#foobar` trailing part.
+        if title.keyword.isNil and fileEntries[F].link.isDocumentationTitle:
+          title.keyword = fileEntries[F].keyword
+          title.link = fileEntries[F].link
+
+        if fileEntries[F].link.find('\t') > 0:
+          let extraCols = fileEntries[F].link.split('\t')
+          fileEntries[F].link = extraCols[0]
+          assert extraCols.len == 3
+          fileEntries[F].linkTitle = extraCols[1].unquoteIndexColumn
+          fileEntries[F].linkDesc = extraCols[2].unquoteIndexColumn
+        else:
+          fileEntries[F].linkTitle = nil
+          fileEntries[F].linkDesc = nil
+        inc F
+      # Depending on type add this to the list of symbols or table of APIs.
+      if title.keyword.isNil:
+        for i in 0 .. <F:
+          # Don't add to symbols TOC entries (they start with a whitespace).
+          let toc = fileEntries[i].linkTitle
+          if not toc.isNil and toc.len > 0 and toc[0] == ' ':
+            continue
+          # Ok, non TOC entry, add it.
+          setLen(result.symbols, L + 1)
+          result.symbols[L] = fileEntries[i]
+          inc L
+        result.modules.add(path.splitFile.name)
+      else:
+        # Generate the symbolic anchor for index quickjumps.
+        title.linkTitle = "doc_toc_" & $result.docs.len
+        result.docs[title] = fileEntries
+
+  sort(result.modules, system.cmp)
+
+proc mergeIndexes*(dir: string): string =
+  ## Merges all index files in `dir` and returns the generated index as HTML.
+  ##
+  ## This proc will first scan `dir` for index files with the ``.idx``
+  ## extension previously created by commands like ``nimrod doc|rst2html``
+  ## which use the ``--index:on`` switch. These index files are the result of
+  ## calls to `setIndexTerm() <#setIndexTerm>`_ and `writeIndexFile()
+  ## <#writeIndexFile>`_, so they are simple tab separated files.
+  ##
+  ## As convention this proc will split index files into two categories:
+  ## documentation and API. API indices will be all joined together into a
+  ## single big sorted index, making the bulk of the final index. This is good
+  ## for API documentation because many symbols are repated in different
+  ## modules. On the other hand, documentation indices are essentially table of
+  ## contents plus a few special markers. These documents will be rendered in a
+  ## separate section which tries to maintain the order and hierarchy of the
+  ## symbols in the index file.
+  ##
+  ## To differentiate between a documentation and API file a convention is
+  ## used: indices which contain one entry without the HTML hash character (#)
+  ## will be considered `documentation`, since this hash-less entry is the
+  ## explicit title of the document.  Indices without this explicit entry will
+  ## be considered `generated API` extracted out of a source ``.nim`` file.
+  ##
+  ## Returns the merged and sorted indices into a single HTML block which can
+  ## be further embedded into nimdoc templates.
+  var (modules, symbols, docs) = readIndexDir(dir)
+  assert(not symbols.isNil)
+
+  result = ""
+  # Generate a quick jump list of documents.
+  if docs.len > 0:
+    result.add(generateDocumentationJumps(docs))
+    result.add("<p />")
+
+  # Generate hyperlinks to all the linked modules.
+  if modules.len > 0:
+    result.add(generateModuleJumps(modules))
+    result.add("<p />")
+
+  # Generate the HTML block with API documents.
+  if docs.len > 0:
+    result.add("<h2>Documentation files</h2>\n")
+    result.add(generateDocumentationIndex(docs))
+
+  # Generate the HTML block with symbols.
+  if symbols.len > 0:
+    sortIndex(symbols)
+    result.add("<h2>API symbols</h2>\n")
+    result.add(generateSymbolIndex(symbols))
+
   
-# ----------------------------------------------------------------------------      
-  
+# ----------------------------------------------------------------------------
+
+proc stripTOCHTML(s: string): string =
+  ## Ugly quick hack to remove HTML tags from TOC titles.
+  ##
+  ## A TTocEntry.header field already contains rendered HTML tags. Instead of
+  ## implementing a proper version of renderRstToOut() which recursively
+  ## renders an rst tree to plain text, we simply remove text found between
+  ## angled brackets. Given the limited possibilities of rst inside TOC titles
+  ## this should be enough.
+  result = s
+  var first = result.find('<')
+  while first >= 0:
+    let last = result.find('>', first)
+    if last < 0:
+      # Abort, since we didn't found a closing angled bracket.
+      return
+    result.delete(first, last)
+    first = result.find('<', first)
+
 proc renderHeadline(d: PDoc, n: PRstNode, result: var string) = 
   var tmp = ""
   for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], tmp)
@@ -393,27 +676,30 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
     d.tocPart[length].refname = refname
     d.tocPart[length].n = n
     d.tocPart[length].header = tmp
-    
-    dispA(d.target, result,
-        "\n<h$1><a class=\"toc-backref\" id=\"$2\" href=\"#$2_toc\">$3</a></h$1>", 
-        "\\rsth$4{$3}\\label{$2}\n", [$n.level, 
-        d.tocPart[length].refname, tmp, 
-        $chr(n.level - 1 + ord('A'))])
+
+    dispA(d.target, result, "\n<h$1><a class=\"toc-backref\" " &
+      "id=\"$2\" href=\"#$2_toc\">$3</a></h$1>", "\\rsth$4{$3}\\label{$2}\n",
+      [$n.level, d.tocPart[length].refname, tmp, $chr(n.level - 1 + ord('A'))])
   else:
     dispA(d.target, result, "\n<h$1 id=\"$2\">$3</h$1>", 
                             "\\rsth$4{$3}\\label{$2}\n", [
         $n.level, refname, tmp, 
         $chr(n.level - 1 + ord('A'))])
-  
+
+  # Generate index entry using spaces to indicate TOC level for the output HTML.
+  assert n.level >= 0
+  setIndexTerm(d, refname, tmp.stripTOCHTML,
+    repeatChar(max(0, n.level), ' ') & tmp)
+
 proc renderOverline(d: PDoc, n: PRstNode, result: var string) = 
   if d.meta[metaTitle].len == 0:
-    d.currentSection = d.meta[metaTitle]
     for i in countup(0, len(n)-1):
       renderRstToOut(d, n.sons[i], d.meta[metaTitle])
+    d.currentSection = d.meta[metaTitle]
   elif d.meta[metaSubtitle].len == 0:
-    d.currentSection = d.meta[metaSubtitle]
     for i in countup(0, len(n)-1):
       renderRstToOut(d, n.sons[i], d.meta[metaSubtitle])
+    d.currentSection = d.meta[metaSubtitle]
   else:
     var tmp = ""
     for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], tmp)
@@ -428,7 +714,8 @@ proc renderTocEntry(d: PDoc, e: TTocEntry, result: var string) =
     "<li><a class=\"reference\" id=\"$1_toc\" href=\"#$1\">$2</a></li>\n", 
     "\\item\\label{$1_toc} $2\\ref{$1}\n", [e.refname, e.header])
 
-proc renderTocEntries*(d: var TRstGenerator, j: var int, lvl: int, result: var string) =
+proc renderTocEntries*(d: var TRstGenerator, j: var int, lvl: int,
+    result: var string) =
   var tmp = ""
   while j <= high(d.tocPart): 
     var a = abs(d.tocPart[j].n.level)
@@ -572,7 +859,8 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
           [tmp])
   of rnField: renderField(d, n, result)
   of rnFieldName: 
-    renderAux(d, n, "<th class=\"docinfo-name\">$1:</th>", "\\item[$1:]", result)
+    renderAux(d, n, "<th class=\"docinfo-name\">$1:</th>",
+                    "\\item[$1:]", result)
   of rnFieldBody: 
     renderAux(d, n, "<td>$1</td>", " $1\n", result)
   of rnIndex: 
@@ -631,8 +919,9 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnRef: 
     var tmp = ""
     renderAux(d, n, tmp)
-    dispA(d.target, result, "<a class=\"reference external\" href=\"#$2\">$1</a>", 
-                            "$1\\ref{$2}", [tmp, rstnodeToRefname(n)])
+    dispA(d.target, result,
+      "<a class=\"reference external\" href=\"#$2\">$1</a>",
+      "$1\\ref{$2}", [tmp, rstnodeToRefname(n)])
   of rnStandaloneHyperlink: 
     renderAux(d, n, 
       "<a class=\"reference external\" href=\"$1\">$1</a>", 
@@ -642,9 +931,9 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     var tmp1 = ""
     renderRstToOut(d, n.sons[0], tmp0)
     renderRstToOut(d, n.sons[1], tmp1)
-    dispA(d.target, result, "<a class=\"reference external\" href=\"$2\">$1</a>", 
-                   "\\href{$2}{$1}", 
-                   [tmp0, tmp1])
+    dispA(d.target, result,
+      "<a class=\"reference external\" href=\"$2\">$1</a>",
+      "\\href{$2}{$1}", [tmp0, tmp1])
   of rnDirArg, rnRaw: renderAux(d, n, result)
   of rnRawHtml:
     if d.target != outLatex:

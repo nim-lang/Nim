@@ -2,6 +2,7 @@ Advanced commands:
   //compileToC, cc          compile project with C code generator
   //compileToCpp, cpp       compile project to C++ code
   //compileToOC, objc       compile project to Objective C code
+  //js                      compile project to Javascript
   //rst2html                convert a reStructuredText file to HTML
   //rst2tex                 convert a reStructuredText file to TeX
   //jsondoc                 extract the documentation to a json file

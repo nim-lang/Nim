@@ -535,7 +535,7 @@ Database support
 * `odbcsql <odbcsql.html>`_
   interface to the ODBC driver.
 * `sphinx <sphinx.html>`_
-  Nimrod wrapper for ``shpinx``.
+  Nimrod wrapper for ``sphinx``.
 
 
 XML Processing

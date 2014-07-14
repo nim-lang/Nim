@@ -77,18 +77,38 @@ proc isInCurrentFrame(p: BProc, n: PNode): bool =
 
 proc openArrayLoc(p: BProc, n: PNode): PRope =
   var a: TLoc
-  initLocExpr(p, n, a)
-  case skipTypes(a.t, abstractVar).kind
-  of tyOpenArray, tyVarargs:
-    result = ropef("$1, $1Len0", [rdLoc(a)])
-  of tyString, tySequence:
-    if skipTypes(n.typ, abstractInst).kind == tyVar:
-      result = ropef("(*$1)->data, (*$1)->$2", [a.rdLoc, lenField()])
-    else:
-      result = ropef("$1->data, $1->$2", [a.rdLoc, lenField()])
-  of tyArray, tyArrayConstr:
-    result = ropef("$1, $2", [rdLoc(a), toRope(lengthOrd(a.t))])
-  else: internalError("openArrayLoc: " & typeToString(a.t))
+
+  let q = skipConv(n)
+  if getMagic(q) == mSlice:
+    # magic: pass slice to openArray:
+    var b, c: TLoc
+    initLocExpr(p, q[1], a)
+    initLocExpr(p, q[2], b)
+    initLocExpr(p, q[3], c)
+    let fmt =
+      case skipTypes(a.t, abstractVar+{tyPtr}).kind
+      of tyOpenArray, tyVarargs, tyArray, tyArrayConstr:
+        "($1)+($2), ($3)-($2)+1"
+      of tyString, tySequence:
+        if skipTypes(n.typ, abstractInst).kind == tyVar:
+          "(*$1)->data+($2), ($3)-($2)+1"
+        else:
+          "$1->data+($2), ($3)-($2)+1"
+      else: (internalError("openArrayLoc: " & typeToString(a.t)); "")
+    result = ropef(fmt, [rdLoc(a), rdLoc(b), rdLoc(c)])
+  else:
+    initLocExpr(p, n, a)
+    case skipTypes(a.t, abstractVar).kind
+    of tyOpenArray, tyVarargs:
+      result = ropef("$1, $1Len0", [rdLoc(a)])
+    of tyString, tySequence:
+      if skipTypes(n.typ, abstractInst).kind == tyVar:
+        result = ropef("(*$1)->data, (*$1)->$2", [a.rdLoc, lenField()])
+      else:
+        result = ropef("$1->data, $1->$2", [a.rdLoc, lenField()])
+    of tyArray, tyArrayConstr:
+      result = ropef("$1, $2", [rdLoc(a), toRope(lengthOrd(a.t))])
+    else: internalError("openArrayLoc: " & typeToString(a.t))
 
 proc genArgStringToCString(p: BProc, 
                            n: PNode): PRope {.inline.} =

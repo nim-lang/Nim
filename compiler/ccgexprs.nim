@@ -484,7 +484,7 @@ proc unaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
     opr: array[mUnaryMinusI..mAbsI64, string] = [
       mUnaryMinusI: "((NI$2)-($1))",
       mUnaryMinusI64: "-($1)",
-      mAbsI: "(NI$2)abs($1)",
+      mAbsI: "($1 > 0? ($1) : -($1))",
       mAbsI64: "($1 > 0? ($1) : -($1))"]
   var
     a: TLoc
@@ -714,11 +714,12 @@ proc genFieldCheck(p: BProc, e: PNode, obj: PRope, field: PSym) =
     assert(it.sons[0].kind == nkSym)
     let op = it.sons[0].sym
     if op.magic == mNot: it = it.sons[1]
-    assert(it.sons[2].kind == nkSym)
+    let disc = it.sons[2].skipConv
+    assert(disc.kind == nkSym)
     initLoc(test, locNone, it.typ, OnStack)
     initLocExpr(p, it.sons[1], u)
-    initLoc(v, locExpr, it.sons[2].typ, OnUnknown)
-    v.r = ropef("$1.$2", [obj, it.sons[2].sym.loc.r])
+    initLoc(v, locExpr, disc.typ, OnUnknown)
+    v.r = ropef("$1.$2", [obj, disc.sym.loc.r])
     genInExprAux(p, it, u, v, test)
     let id = nodeTableTestOrSet(p.module.dataCache,
                                newStrNode(nkStrLit, field.name.s), gBackendId)
@@ -1144,6 +1145,24 @@ proc genNewFinalize(p: BProc, e: PNode) =
   genObjectInit(p, cpsStmts, bt, a, false)
   gcUsage(e)
 
+proc genOfHelper(p: BProc; dest: PType; a: PRope): PRope =
+  # unfortunately 'genTypeInfo' sets tfObjHasKids as a side effect, so we
+  # have to call it here first:
+  let ti = genTypeInfo(p.module, dest)
+  if tfFinal in dest.flags or (p.module.objHasKidsValid and
+                               tfObjHasKids notin dest.flags):
+    result = ropef("$1.m_type == $2", a, ti)
+  else:
+    discard cgsym(p.module, "TNimType")
+    inc p.module.labels
+    let cache = con("Nim_OfCheck_CACHE", p.module.labels.toRope)
+    appf(p.module.s[cfsVars], "static TNimType* $#[2];$n", cache)
+    result = rfmt(p.module, "#isObjWithCache($#.m_type, $#, $#)", a, ti, cache)
+  when false:
+    # former version:
+    result = rfmt(p.module, "#isObj($1.m_type, $2)",
+                  a, genTypeInfo(p.module, dest))
+
 proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
   var a: TLoc
   initLocExpr(p, x, a)
@@ -1163,11 +1182,9 @@ proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
     globalError(x.info, errGenerated, 
       "no 'of' operator available for pure objects")
   if nilCheck != nil:
-    r = rfmt(p.module, "(($1) && #isObj($2.m_type, $3))",
-             nilCheck, r, genTypeInfo(p.module, dest))
+    r = rfmt(p.module, "(($1) && ($2))", nilCheck, genOfHelper(p, dest, r))
   else:
-    r = rfmt(p.module, "#isObj($1.m_type, $2)",
-             r, genTypeInfo(p.module, dest))
+    r = rfmt(p.module, "($1)", genOfHelper(p, dest, r))
   putIntoDest(p, d, getSysType(tyBool), r)
 
 proc genOf(p: BProc, n: PNode, d: var TLoc) =
@@ -1382,10 +1399,10 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     of mIncl:
       var ts = "NI" & $(size * 8)
       binaryStmtInExcl(p, e, d,
-          "$1 |=((" & ts & ")(1)<<(($2)%(sizeof(" & ts & ")*8)));$n")
+          "$1 |= ((" & ts & ")1)<<(($2)%(sizeof(" & ts & ")*8));$n")
     of mExcl:
       var ts = "NI" & $(size * 8)
-      binaryStmtInExcl(p, e, d, "$1 &= ~((" & ts & ")(1) << (($2) % (sizeof(" &
+      binaryStmtInExcl(p, e, d, "$1 &= ~(((" & ts & ")1) << (($2) % (sizeof(" &
           ts & ")*8)));$n")
     of mCard:
       if size <= 4: unaryExprChar(p, e, d, "#countBits32($1)")
@@ -1623,7 +1640,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mIncl, mExcl, mCard, mLtSet, mLeSet, mEqSet, mMulSet, mPlusSet, mMinusSet,
      mInSet:
     genSetOp(p, e, d, op)
-  of mNewString, mNewStringOfCap, mCopyStr, mCopyStrLast, mExit, mRand:
+  of mNewString, mNewStringOfCap, mCopyStr, mCopyStrLast, mExit:
     var opr = e.sons[0].sym
     if lfNoDecl notin opr.loc.flags:
       discard cgsym(p.module, opr.loc.r.ropeToStr)
@@ -1636,7 +1653,10 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mSlurp..mQuoteAst:
     localError(e.info, errXMustBeCompileTime, e.sons[0].sym.name.s)
   of mSpawn:
-    let n = lowerings.wrapProcForSpawn(p.module.module, e.sons[1])
+    let n = lowerings.wrapProcForSpawn(p.module.module, e, e.typ, nil, nil)
+    expr(p, n, d)
+  of mParallel:
+    let n = semparallel.liftParallel(p.module.module, e)
     expr(p, n, d)
   else: internalError(e.info, "genMagicExpr: " & $op)
 

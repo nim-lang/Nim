@@ -10,6 +10,48 @@
 ## The ``tables`` module implements an efficient hash table that is
 ## a mapping from keys to values.
 ##
+## If you are using simple standard types like ``int`` or ``string`` for the
+## keys of the table you won't have any problems, but as soon as you try to use
+## a more complex object as a key you will be greeted by a strange compiler
+## error::
+##
+##   Error: type mismatch: got (Person)
+##   but expected one of:
+##   hashes.hash(x: openarray[A]): THash
+##   hashes.hash(x: int): THash
+##   hashes.hash(x: float): THash
+##   …
+##
+## What is happening here is that the types used for table keys require to have
+## a ``hash()`` proc which will convert them to a `THash <hashes.html#THash>`_
+## value, and the compiler is listing all the hash functions it knows. After
+## you add such a proc for your custom type everything will work. See this
+## example:
+##
+## .. code-block:: nimrod
+##   type
+##     Person = object
+##       firstName, lastName: string
+##
+##   proc hash(x: Person): THash =
+##     ## Piggyback on the already available string hash proc.
+##     ##
+##     ## Without this proc nothing works!
+##     result = x.firstName.hash !& x.lastName.hash
+##     result = !$result
+##
+##   var
+##     salaries = initTable[Person, int]()
+##     p1, p2: Person
+##
+##   p1.firstName = "Jon"
+##   p1.lastName = "Ross"
+##   salaries[p1] = 30_000
+##
+##   p2.firstName = "소진"
+##   p2.lastName = "박"
+##   salaries[p2] = 45_000
+##
 ## **Note:** The data types declared here have *value semantics*: This means
 ## that ``=`` performs a copy of the hash table.
 
@@ -25,6 +67,7 @@ type
   TTable* {.final, myShallow.}[A, B] = object ## generic hash table
     data: TKeyValuePairSeq[A, B]
     counter: int
+  PTable*[A,B] = ref TTable[A, B]
 
 when not defined(nimhygiene):
   {.pragma: dirty.}
@@ -102,6 +145,14 @@ proc mget*[A, B](t: var TTable[A, B], key: A): var B =
   var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
   else: raise newException(EInvalidKey, "key not found: " & $key)
+
+iterator allValues*[A, B](t: TTable[A, B]; key: A): B =
+  ## iterates over any value in the table `t` that belongs to the given `key`.
+  var h: THash = hash(key) and high(t.data)
+  while t.data[h].slot != seEmpty:
+    if t.data[h].key == key and t.data[h].slot == seFilled:
+      yield t.data[h].val
+    h = nextTry(h, high(t.data))
 
 proc hasKey*[A, B](t: TTable[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
@@ -190,7 +241,7 @@ proc `$`*[A, B](t: TTable[A, B]): string =
   ## The `$` operator for hash tables.
   dollarImpl()
   
-proc `==`*[A, B](s, t: TTable[A, B]): bool =
+template equalsImpl() =
   if s.counter == t.counter:
     # different insertion orders mean different 'data' seqs, so we have
     # to use the slow route here:
@@ -199,10 +250,94 @@ proc `==`*[A, B](s, t: TTable[A, B]): bool =
       if t[key] != val: return false
     return true
   
+proc `==`*[A, B](s, t: TTable[A, B]): bool =
+  equalsImpl()
+  
 proc indexBy*[A, B, C](collection: A, index: proc(x: B): C): TTable[C, B] =
   ## Index the collection with the proc provided.
   # TODO: As soon as supported, change collection: A to collection: A[B]
   result = initTable[C, B]()
+  for item in collection:
+    result[index(item)] = item
+
+proc len*[A, B](t: PTable[A, B]): int =
+  ## returns the number of keys in `t`.
+  result = t.counter
+
+iterator pairs*[A, B](t: PTable[A, B]): tuple[key: A, val: B] =
+  ## iterates over any (key, value) pair in the table `t`.
+  for h in 0..high(t.data):
+    if t.data[h].slot == seFilled: yield (t.data[h].key, t.data[h].val)
+
+iterator mpairs*[A, B](t: PTable[A, B]): tuple[key: A, val: var B] =
+  ## iterates over any (key, value) pair in the table `t`. The values
+  ## can be modified.
+  for h in 0..high(t.data):
+    if t.data[h].slot == seFilled: yield (t.data[h].key, t.data[h].val)
+
+iterator keys*[A, B](t: PTable[A, B]): A =
+  ## iterates over any key in the table `t`.
+  for h in 0..high(t.data):
+    if t.data[h].slot == seFilled: yield t.data[h].key
+
+iterator values*[A, B](t: PTable[A, B]): B =
+  ## iterates over any value in the table `t`.
+  for h in 0..high(t.data):
+    if t.data[h].slot == seFilled: yield t.data[h].val
+
+iterator mvalues*[A, B](t: PTable[A, B]): var B =
+  ## iterates over any value in the table `t`. The values can be modified.
+  for h in 0..high(t.data):
+    if t.data[h].slot == seFilled: yield t.data[h].val
+
+proc `[]`*[A, B](t: PTable[A, B], key: A): B =
+  ## retrieves the value at ``t[key]``. If `key` is not in `t`,
+  ## default empty value for the type `B` is returned
+  ## and no exception is raised. One can check with ``hasKey`` whether the key
+  ## exists.
+  result = t[][key]
+
+proc mget*[A, B](t: PTable[A, B], key: A): var B =
+  ## retrieves the value at ``t[key]``. The value can be modified.
+  ## If `key` is not in `t`, the ``EInvalidKey`` exception is raised.
+  t[].mget(key)
+
+proc hasKey*[A, B](t: PTable[A, B], key: A): bool =
+  ## returns true iff `key` is in the table `t`.
+  result = t[].hasKey(key)
+
+proc `[]=`*[A, B](t: PTable[A, B], key: A, val: B) =
+  ## puts a (key, value)-pair into `t`.
+  t[][key] = val
+
+proc add*[A, B](t: PTable[A, B], key: A, val: B) =
+  ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
+  t[].add(key, val)
+  
+proc del*[A, B](t: PTable[A, B], key: A) =
+  ## deletes `key` from hash table `t`.
+  t[].del(key)
+
+proc newTable*[A, B](initialSize=64): PTable[A, B] =
+  new(result)
+  result[] = initTable[A, B](initialSize)
+
+proc newTable*[A, B](pairs: openArray[tuple[key: A, val: B]]): PTable[A, B] =
+  ## creates a new hash table that contains the given `pairs`.
+  new(result)
+  result[] = toTable[A, B](pairs)
+
+proc `$`*[A, B](t: PTable[A, B]): string =
+  ## The `$` operator for hash tables.
+  dollarImpl()
+
+proc `==`*[A, B](s, t: PTable[A, B]): bool =
+  equalsImpl()
+
+proc newTableFrom*[A, B, C](collection: A, index: proc(x: B): C): PTable[C, B] =
+  ## Index the collection with the proc provided.
+  # TODO: As soon as supported, change collection: A to collection: A[B]
+  result = newTable[C, B]()
   for item in collection:
     result[index(item)] = item
 
@@ -216,6 +351,7 @@ type
       final, myShallow.}[A, B] = object ## table that remembers insertion order
     data: TOrderedKeyValuePairSeq[A, B]
     counter, first, last: int
+  POrderedTable*[A, B] = ref TOrderedTable[A, B]
 
 proc len*[A, B](t: TOrderedTable[A, B]): int {.inline.} =
   ## returns the number of keys in `t`.
@@ -376,6 +512,96 @@ proc sort*[A, B](t: var TOrderedTable[A, B],
   t.first = list
   t.last = tail
 
+proc len*[A, B](t: POrderedTable[A, B]): int {.inline.} =
+  ## returns the number of keys in `t`.
+  result = t.counter
+
+template forAllOrderedPairs(yieldStmt: stmt) {.dirty, immediate.} =
+  var h = t.first
+  while h >= 0:
+    var nxt = t.data[h].next
+    if t.data[h].slot == seFilled: yieldStmt
+    h = nxt
+
+iterator pairs*[A, B](t: POrderedTable[A, B]): tuple[key: A, val: B] =
+  ## iterates over any (key, value) pair in the table `t` in insertion
+  ## order.
+  forAllOrderedPairs:
+    yield (t.data[h].key, t.data[h].val)
+
+iterator mpairs*[A, B](t: POrderedTable[A, B]): tuple[key: A, val: var B] =
+  ## iterates over any (key, value) pair in the table `t` in insertion
+  ## order. The values can be modified.
+  forAllOrderedPairs:
+    yield (t.data[h].key, t.data[h].val)
+
+iterator keys*[A, B](t: POrderedTable[A, B]): A =
+  ## iterates over any key in the table `t` in insertion order.
+  forAllOrderedPairs:
+    yield t.data[h].key
+
+iterator values*[A, B](t: POrderedTable[A, B]): B =
+  ## iterates over any value in the table `t` in insertion order.
+  forAllOrderedPairs:
+    yield t.data[h].val
+
+iterator mvalues*[A, B](t: POrderedTable[A, B]): var B =
+  ## iterates over any value in the table `t` in insertion order. The values
+  ## can be modified.
+  forAllOrderedPairs:
+    yield t.data[h].val
+
+proc `[]`*[A, B](t: POrderedTable[A, B], key: A): B =
+  ## retrieves the value at ``t[key]``. If `key` is not in `t`,
+  ## default empty value for the type `B` is returned
+  ## and no exception is raised. One can check with ``hasKey`` whether the key
+  ## exists.
+  result = t[][key]
+
+proc mget*[A, B](t: POrderedTable[A, B], key: A): var B =
+  ## retrieves the value at ``t[key]``. The value can be modified.
+  ## If `key` is not in `t`, the ``EInvalidKey`` exception is raised.
+  result = t[].mget(key)
+
+proc hasKey*[A, B](t: POrderedTable[A, B], key: A): bool =
+  ## returns true iff `key` is in the table `t`.
+  result = t[].hasKey(key)
+
+proc `[]=`*[A, B](t: POrderedTable[A, B], key: A, val: B) =
+  ## puts a (key, value)-pair into `t`.
+  t[][key] = val
+
+proc add*[A, B](t: POrderedTable[A, B], key: A, val: B) =
+  ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
+  t[].add(key, val)
+
+proc newOrderedTable*[A, B](initialSize=64): POrderedTable[A, B] =
+  ## creates a new ordered hash table that is empty.
+  ##
+  ## `initialSize` needs to be a power of two. If you need to accept runtime
+  ## values for this you could use the ``nextPowerOfTwo`` proc from the
+  ## `math <math.html>`_ module.
+  new(result)
+  result[] = initOrderedTable[A, B]()
+
+proc newOrderedTable*[A, B](pairs: openArray[tuple[key: A, 
+                           val: B]]): POrderedTable[A, B] =
+  ## creates a new ordered hash table that contains the given `pairs`.
+  result = newOrderedTable[A, B](nextPowerOfTwo(pairs.len+10))
+  for key, val in items(pairs): result[key] = val
+
+proc `$`*[A, B](t: POrderedTable[A, B]): string =
+  ## The `$` operator for ordered hash tables.
+  dollarImpl()
+
+proc sort*[A, B](t: POrderedTable[A, B], 
+                 cmp: proc (x,y: tuple[key: A, val: B]): int) =
+  ## sorts `t` according to `cmp`. This modifies the internal list
+  ## that kept the insertion order, so insertion order is lost after this
+  ## call but key lookup and insertions remain possible after `sort` (in
+  ## contrast to the `sort` for count tables).
+  t[].sort(cmp)
+
 # ------------------------------ count tables -------------------------------
 
 type
@@ -383,6 +609,7 @@ type
       A] = object ## table that counts the number of each key
     data: seq[tuple[key: A, val: int]]
     counter: int
+  PCountTable*[A] = ref TCountTable[A]
 
 proc len*[A](t: TCountTable[A]): int =
   ## returns the number of keys in `t`.
@@ -526,3 +753,118 @@ proc sort*[A](t: var TCountTable[A]) =
         if j < h: break
     if h == 1: break
 
+proc len*[A](t: PCountTable[A]): int =
+  ## returns the number of keys in `t`.
+  result = t.counter
+
+iterator pairs*[A](t: PCountTable[A]): tuple[key: A, val: int] =
+  ## iterates over any (key, value) pair in the table `t`.
+  for h in 0..high(t.data):
+    if t.data[h].val != 0: yield (t.data[h].key, t.data[h].val)
+
+iterator mpairs*[A](t: PCountTable[A]): tuple[key: A, val: var int] =
+  ## iterates over any (key, value) pair in the table `t`. The values can
+  ## be modified.
+  for h in 0..high(t.data):
+    if t.data[h].val != 0: yield (t.data[h].key, t.data[h].val)
+
+iterator keys*[A](t: PCountTable[A]): A =
+  ## iterates over any key in the table `t`.
+  for h in 0..high(t.data):
+    if t.data[h].val != 0: yield t.data[h].key
+
+iterator values*[A](t: PCountTable[A]): int =
+  ## iterates over any value in the table `t`.
+  for h in 0..high(t.data):
+    if t.data[h].val != 0: yield t.data[h].val
+
+iterator mvalues*[A](t: PCountTable[A]): var int =
+  ## iterates over any value in the table `t`. The values can be modified.
+  for h in 0..high(t.data):
+    if t.data[h].val != 0: yield t.data[h].val
+
+proc `[]`*[A](t: PCountTable[A], key: A): int =
+  ## retrieves the value at ``t[key]``. If `key` is not in `t`,
+  ## 0 is returned. One can check with ``hasKey`` whether the key
+  ## exists.
+  result = t[][key]
+
+proc mget*[A](t: PCountTable[A], key: A): var int =
+  ## retrieves the value at ``t[key]``. The value can be modified.
+  ## If `key` is not in `t`, the ``EInvalidKey`` exception is raised.
+  result = t[].mget(key)
+
+proc hasKey*[A](t: PCountTable[A], key: A): bool =
+  ## returns true iff `key` is in the table `t`.
+  result = t[].hasKey(key)
+
+proc `[]=`*[A](t: PCountTable[A], key: A, val: int) =
+  ## puts a (key, value)-pair into `t`. `val` has to be positive.
+  assert val > 0
+  t[][key] = val
+
+proc newCountTable*[A](initialSize=64): PCountTable[A] =
+  ## creates a new count table that is empty.
+  ##
+  ## `initialSize` needs to be a power of two. If you need to accept runtime
+  ## values for this you could use the ``nextPowerOfTwo`` proc from the
+  ## `math <math.html>`_ module.
+  new(result)
+  result[] = initCountTable[A](initialSize)
+
+proc newCountTable*[A](keys: openArray[A]): PCountTable[A] =
+  ## creates a new count table with every key in `keys` having a count of 1.
+  result = newCountTable[A](nextPowerOfTwo(keys.len+10))
+  for key in items(keys): result[key] = 1
+
+proc `$`*[A](t: PCountTable[A]): string =
+  ## The `$` operator for count tables.
+  dollarImpl()
+
+proc inc*[A](t: PCountTable[A], key: A, val = 1) = 
+  ## increments `t[key]` by `val`.
+  t[].inc(key, val)
+
+proc smallest*[A](t: PCountTable[A]): tuple[key: A, val: int] =
+  ## returns the largest (key,val)-pair. Efficiency: O(n)
+  t[].smallest
+
+proc largest*[A](t: PCountTable[A]): tuple[key: A, val: int] =
+  ## returns the (key,val)-pair with the largest `val`. Efficiency: O(n)
+  t[].largest
+
+proc sort*[A](t: PCountTable[A]) =
+  ## sorts the count table so that the entry with the highest counter comes
+  ## first. This is destructive! You must not modify `t` afterwards!
+  ## You can use the iterators `pairs`,  `keys`, and `values` to iterate over
+  ## `t` in the sorted order.
+  t[].sort
+
+when isMainModule:
+  type
+    Person = object
+      firstName, lastName: string
+
+  proc hash(x: Person): THash =
+    ## Piggyback on the already available string hash proc.
+    ##
+    ## Without this proc nothing works!
+    result = x.firstName.hash !& x.lastName.hash
+    result = !$result
+
+  var
+    salaries = initTable[Person, int]()
+    p1, p2: Person
+  p1.firstName = "Jon"
+  p1.lastName = "Ross"
+  salaries[p1] = 30_000
+  p2.firstName = "소진"
+  p2.lastName = "박"
+  salaries[p2] = 45_000
+  var
+    s2 = initOrderedTable[Person, int]()
+    s3 = initCountTable[Person]()
+  s2[p1] = 30_000
+  s2[p2] = 45_000
+  s3[p1] = 30_000
+  s3[p2] = 45_000

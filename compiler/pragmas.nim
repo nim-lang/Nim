@@ -517,7 +517,7 @@ proc pragmaUses(c: PContext, n: PNode) =
   proc processExc(c: PContext, x: PNode): PNode =
     if x.kind in {nkAccQuoted, nkIdent, nkSym,
                   nkOpenSymChoice, nkClosedSymChoice}:
-      if considerAcc(x).s == "*":
+      if considerQuotedIdent(x).s == "*":
         return newSymNode(ast.anyGlobal)
     result = c.semExpr(c, x)
     if result.kind != nkSym or sfGlobal notin result.sym.flags:
@@ -644,12 +644,13 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           incl(sym.flags, sfNoReturn)
         of wDynlib: 
           processDynLib(c, it, sym)
-        of wCompilerproc: 
+        of wCompilerproc:
           noVal(it)           # compilerproc may not get a string!
-          makeExternExport(sym, "$1", it.info)
-          incl(sym.flags, sfCompilerProc)
-          incl(sym.flags, sfUsed) # suppress all those stupid warnings
-          registerCompilerProc(sym)
+          if sfFromGeneric notin sym.flags:
+            makeExternExport(sym, "$1", it.info)
+            incl(sym.flags, sfCompilerProc)
+            incl(sym.flags, sfUsed) # suppress all those stupid warnings
+            registerCompilerProc(sym)
         of wProcVar: 
           noVal(it)
           incl(sym.flags, sfProcvar)

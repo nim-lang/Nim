@@ -190,6 +190,9 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
 
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
                       info: TLineInfo): PSym =
+  ## Generates a new instance of a generic procedure.
+  ## The `pt` parameter is a type-unsafe mapping table used to link generic
+  ## parameters to their concrete types within the generic instance.
   # no need to instantiate generic templates/macros:
   if fn.kind in {skTemplate, skMacro}: return fn
   # generates an instantiated proc
@@ -199,8 +202,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   var n = copyTree(fn.ast)
   # NOTE: for access of private fields within generics from a different module
   # we set the friend module:
-  var oldFriend = c.friendModule
-  c.friendModule = getModule(fn)
+  c.friendModules.add(getModule(fn))
   #let oldScope = c.currentScope
   #c.currentScope = fn.scope
   result = copySym(fn, false)
@@ -236,6 +238,6 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   closeScope(c)           # close scope for parameters
   popOwner()
   #c.currentScope = oldScope
-  c.friendModule = oldFriend
+  discard c.friendModules.pop()
   dec(c.instCounter)
   if result.kind == skMethod: finishMethod(c, result)

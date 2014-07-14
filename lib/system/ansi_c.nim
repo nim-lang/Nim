@@ -57,6 +57,7 @@ when not defined(SIGINT):
         SIGINT = cint(2)
         SIGSEGV = cint(11)
         SIGTERM = cint(15)
+        SIGPIPE = cint(13)
     else:
       {.error: "SIGABRT not ported to your platform".}
   else:
@@ -66,6 +67,8 @@ when not defined(SIGINT):
       SIGABRT {.importc: "SIGABRT", nodecl.}: cint
       SIGFPE {.importc: "SIGFPE", nodecl.}: cint
       SIGILL {.importc: "SIGILL", nodecl.}: cint
+    when defined(macosx) or defined(linux):
+      var SIGPIPE {.importc: "SIGPIPE", nodecl.}: cint
 
 when defined(macosx):
   when NoFakeVars:

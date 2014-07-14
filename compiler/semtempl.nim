@@ -59,7 +59,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule): PNode =
     # (s.kind notin routineKinds or s.magic != mNone):
     # for instance 'nextTry' is both in tables.nim and astalgo.nim ...
     result = newSymNode(s, n.info)
-    markUsed(n, s)
+    markUsed(n.info, s)
   else:
     # semantic checking requires a type; ``fitNode`` deals with it
     # appropriately
@@ -93,7 +93,7 @@ proc semBindStmt(c: PContext, n: PNode, toBind: var TIntSet): PNode =
 
 proc semMixinStmt(c: PContext, n: PNode, toMixin: var TIntSet): PNode =
   for i in 0 .. < n.len:
-    toMixin.incl(considerAcc(n.sons[i]).id)
+    toMixin.incl(considerQuotedIdent(n.sons[i]).id)
   result = newNodeI(nkEmpty, n.info)
   
 proc replaceIdentBySym(n: var PNode, s: PNode) =
@@ -151,7 +151,7 @@ proc onlyReplaceParams(c: var TemplCtx, n: PNode): PNode =
       result.sons[i] = onlyReplaceParams(c, n.sons[i])
 
 proc newGenSym(kind: TSymKind, n: PNode, c: var TemplCtx): PSym =
-  result = newSym(kind, considerAcc(n), c.owner, n.info)
+  result = newSym(kind, considerQuotedIdent(n), c.owner, n.info)
   incl(result.flags, sfGenSym)
   incl(result.flags, sfShadowed)
 

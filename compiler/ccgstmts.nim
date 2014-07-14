@@ -593,6 +593,7 @@ proc genStringCase(p: BProc, t: PNode, d: var TLoc) =
       else: 
         # else statement: nothing to do yet
         # but we reserved a label, which we use later
+        discard
     linefmt(p, cpsStmts, "switch (#hashString($1) & $2) {$n", 
             rdLoc(a), toRope(bitMask))
     for j in countup(0, high(branches)):

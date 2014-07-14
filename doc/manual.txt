@@ -123,7 +123,7 @@ This means that all the control structures are recognized by indentation.
 Indentation consists only of spaces; tabulators are not allowed.
 
 The indentation handling is implemented as follows: The lexer annotates the
-following token with the preceeding number of spaces; indentation is not
+following token with the preceding number of spaces; indentation is not
 a separate token. This trick allows parsing of Nimrod with only 1 token of
 lookahead.
 
@@ -152,7 +152,7 @@ statements (simplified example)::
 Comments
 --------
 
-`Comments`:idx: start anywhere outside a string or character literal with the
+Comments start anywhere outside a string or character literal with the
 hash character ``#``.
 Comments consist of a concatenation of `comment pieces`:idx:. A comment piece
 starts with ``#`` and runs until the end of the line. The end of line characters
@@ -188,7 +188,7 @@ which code snippet the comment refers to.
 Identifiers & Keywords
 ----------------------
 
-`Identifiers`:idx: in Nimrod can be any string of letters, digits
+Identifiers in Nimrod can be any string of letters, digits
 and underscores, beginning with a letter. Two immediate following
 underscores ``__`` are not allowed::
 
@@ -201,7 +201,7 @@ classified as a ``letter`` and may thus be part of an identifier but later
 versions of the language may assign some Unicode characters to belong to the
 operator characters instead.
 
-The following `keywords`:idx: are reserved and cannot be used as identifiers:
+The following keywords are reserved and cannot be used as identifiers:
 
 .. code-block:: nimrod
    :file: keywords.txt
@@ -224,7 +224,7 @@ String literals
 
 Terminal symbol in the grammar: ``STR_LIT``.
 
-`String literals`:idx: can be delimited by matching double quotes, and can
+String literals can be delimited by matching double quotes, and can
 contain the following `escape sequences`:idx:\ :
 
 ==================         ===================================================
@@ -263,15 +263,16 @@ String literals can also be delimited by three double quotes
 ``"""`` ... ``"""``.
 Literals in this form may run for several lines, may contain ``"`` and do not
 interpret any escape sequences.
-For convenience, when the opening ``"""`` is immediately followed by a newline,
-the newline is not included in the string. The ending of the string literal is
-defined by the pattern ``"""[^"]``, so this:
-  
+For convenience, when the opening ``"""`` is followed by a newline (there may
+be whitespace between the opening ``"""`` and the newline),
+the newline (and the preceding whitespace) is not included in the string. The
+ending of the string literal is defined by the pattern ``"""[^"]``, so this:
+
 .. code-block:: nimrod 
   """"long string within quotes""""
-  
+
 Produces::
-  
+
   "long string within quotes"
 
 
@@ -280,7 +281,7 @@ Raw string literals
 
 Terminal symbol in the grammar: ``RSTR_LIT``.
 
-There are also `raw string literals`:idx: that are preceded with the 
+There are also raw string literals that are preceded with the 
 letter ``r`` (or ``R``) and are delimited by matching double quotes (just 
 like ordinary string literals) and do not interpret the escape sequences. 
 This is especially convenient for regular expressions or Windows paths:
@@ -313,7 +314,7 @@ Terminal symbols in the grammar: ``GENERALIZED_STR_LIT``,
 
 The construct ``identifier"string literal"`` (without whitespace between the
 identifier and the opening quotation mark) is a
-`generalized raw string literal`:idx:. It is a shortcut for the construct
+generalized raw string literal. It is a shortcut for the construct
 ``identifier(r"string literal")``, so it denotes a procedure call with a
 raw string literal as its only argument. Generalized raw string literals
 are especially convenient for embedding mini languages directly into Nimrod
@@ -365,7 +366,7 @@ type is used for Unicode characters, it can represent any Unicode character.
 Numerical constants
 -------------------
 
-`Numerical constants`:idx: are of a single type and have the form::
+Numerical constants are of a single type and have the form::
 
   hexdigit = digit | 'A'..'F' | 'a'..'f'
   octdigit = '0'..'7'
@@ -440,7 +441,7 @@ is approximately 1.72826e35 according to the IEEE floating point standard.
 Operators
 ---------
 
-In Nimrod one can define his own operators. An `operator`:idx: is any
+In Nimrod one can define his own operators. An operator is any
 combination of the following characters::
 
        =     +     -     *     /     <     >
@@ -587,7 +588,7 @@ The grammar's start symbol is ``module``.
 Types
 =====
 
-All expressions have a `type`:idx: which is known at compile time. Nimrod
+All expressions have a type which is known at compile time. Nimrod
 is statically typed. One can declare new types, which is in essence defining
 an identifier that can be used to denote this custom type.
 
@@ -605,7 +606,7 @@ These are the major type classes:
 
 Ordinal types
 -------------
-`Ordinal types`:idx: have the following characteristics:
+Ordinal types have the following characteristics:
 
 - Ordinal types are countable and ordered. This property allows
   the operation of functions as ``Inc``, ``Ord``, ``Dec`` on ordinal types to
@@ -617,7 +618,7 @@ Ordinal types
 
 Integers, bool, characters and enumeration types (and subranges of these
 types) belong to ordinal types. For reasons of simplicity of implementation
-the types ``uint`` and ``uint64`` are no ordinal types.
+the types ``uint`` and ``uint64`` are not ordinal types.
 
 
 Pre-defined integer types
@@ -686,7 +687,7 @@ kinds of integer types are used: the smaller type is converted to the larger.
 A `narrowing type conversion`:idx: converts a larger to a smaller type (for
 example ``int32 -> int16``. A `widening type conversion`:idx: converts a 
 smaller type to a larger type (for example ``int16 -> int32``). In Nimrod only
-widening type conversion are *implicit*:
+widening type conversions are *implicit*:
 
 .. code-block:: nimrod
   var myInt16 = 5i16
@@ -705,7 +706,7 @@ For further details, see `Convertible relation`_.
 
 Subrange types
 --------------
-A `subrange`:idx: type is a range of values from an ordinal type (the base
+A subrange type is a range of values from an ordinal type (the base
 type). To define a subrange type, one must specify it's limiting values: the
 lowest and highest value of the type:
 
@@ -806,7 +807,7 @@ the ``+``, ``-``, ``*``, ``/`` operators for floating point types.
 
 Boolean type
 ------------
-The `boolean`:idx: type is named `bool`:idx: in Nimrod and can be one of the two
+The boolean type is named `bool`:idx: in Nimrod and can be one of the two
 pre-defined values ``true`` and ``false``. Conditions in while,
 if, elif, when statements need to be of type bool.
 
@@ -830,7 +831,7 @@ The size of the bool type is one byte.
 
 Character type
 --------------
-The `character type`:idx: is named ``char`` in Nimrod. Its size is one byte.
+The character type is named ``char`` in Nimrod. Its size is one byte.
 Thus it cannot represent an UTF-8 character, but a part of it.
 The reason for this is efficiency: for the overwhelming majority of use-cases,
 the resulting programs will still handle UTF-8 properly as UTF-8 was specially
@@ -845,7 +846,7 @@ character. ``TRune`` is declared in the `unicode module <unicode.html>`_.
 
 Enumeration types
 -----------------
-`Enumeration`:idx: types define a new type whose values consist of the ones
+Enumeration types define a new type whose values consist of the ones
 specified. The values are ordered. Example:
 
 .. code-block:: nimrod
@@ -915,7 +916,7 @@ via ``TMyEnum.value``:
 
 String type
 -----------
-All string literals are of the type `string`:idx:. A string in Nimrod is very
+All string literals are of the type ``string``. A string in Nimrod is very
 similar to a sequence of characters. However, strings in Nimrod are both
 zero-terminated and have a length field. One can retrieve the length with the
 builtin ``len`` procedure; the length never counts the terminating zero.
@@ -942,7 +943,7 @@ i-th *unichar*. The iterator ``runes`` from the `unicode module
 
 CString type
 ------------
-The `cstring`:idx: type represents a pointer to a zero-terminated char array
+The ``cstring`` type represents a pointer to a zero-terminated char array
 compatible to the type ``char*`` in Ansi C. Its primary purpose lies in easy
 interfacing with C. The index operation ``s[i]`` means the i-th *char* of 
 ``s``; however no bounds checking for ``cstring`` is performed making the
@@ -965,23 +966,31 @@ stack roots conservatively. One can use the builtin procs ``GC_ref`` and
 ``GC_unref`` to keep the string data alive for the rare cases where it does
 not work.
 
+A `$` proc is defined for cstrings that returns a string. Thus to get a nimrod
+string from a cstring:
+
+.. code-block:: nimrod
+  var str: string = "Hello!"
+  var cstr: cstring = s
+  var newstr: string = $cstr
+
 
 Structured types
 ----------------
-A variable of a `structured type`:idx: can hold multiple values at the same
+A variable of a structured type can hold multiple values at the same
 time. Structured types can be nested to unlimited levels. Arrays, sequences,
 tuples, objects and sets belong to the structured types.
 
 Array and sequence types
 ------------------------
-`Arrays`:idx: are a homogeneous type, meaning that each element in the array
+Arrays are a homogeneous type, meaning that each element in the array
 has the same type. Arrays always have a fixed length which is specified at
 compile time (except for open arrays). They can be indexed by any ordinal type.
 A parameter ``A`` may be an *open array*, in which case it is indexed by
 integers from 0 to ``len(A)-1``. An array expression may be constructed by the
 array constructor ``[]``.
 
-`Sequences`:idx: are similar to arrays but of dynamic length which may change
+Sequences are similar to arrays but of dynamic length which may change
 during runtime (like strings). Sequences are implemented as growable arrays, 
 allocating pieces of memory as items are added. A sequence ``S`` is always
 indexed by integers from 0 to ``len(S)-1`` and its bounds are checked. 
@@ -1038,7 +1047,7 @@ supported because this is seldom needed and cannot be done efficiently.
 Varargs
 -------
 
-A `varargs`:idx: parameter is an openarray parameter that additionally
+A ``varargs`` parameter is an openarray parameter that additionally
 allows to pass a variable number of arguments to a procedure. The compiler 
 converts the list of arguments to an array implicitly:
 
@@ -1073,7 +1082,7 @@ parameter ``a``. (Note that ``$`` applied to strings is a nop.)
 
 Tuples and object types
 -----------------------
-A variable of a `tuple`:idx: or `object`:idx: type is a heterogeneous storage
+A variable of a tuple or object type is a heterogeneous storage
 container.
 A tuple or object defines various named *fields* of a type. A tuple also
 defines an *order* of the fields. Tuples are meant for heterogeneous storage
@@ -1081,7 +1090,8 @@ types with no overhead and few abstraction possibilities. The constructor ``()``
 can be used to construct tuples. The order of the fields in the constructor
 must match the order of the tuple's definition. Different tuple-types are
 *equivalent* if they specify the same fields of the same type in the same
-order.
+order. The *names* of the fields also have to be identical but this might
+change in a future version of the language.
 
 The assignment operator for tuples copies each component.
 The default assignment operator for objects copies each component. Overloading
@@ -1153,7 +1163,7 @@ For a ``ref object`` type ``system.new`` is invoked implicitly.
 Object variants
 ---------------
 Often an object hierarchy is overkill in certain situations where simple
-`variant`:idx: types are needed.
+variant types are needed.
 
 An example:
 
@@ -1211,7 +1221,7 @@ branch switch ``system.reset`` has to be used.
 
 Set type
 --------
-The `set type`:idx: models the mathematical notion of a set. The set's
+The set type models the mathematical notion of a set. The set's
 basetype can only be an ordinal type. The reason is that sets are implemented
 as high performance bit vectors.
 
@@ -1246,7 +1256,7 @@ operation             meaning
 
 Reference and pointer types
 ---------------------------
-References (similar to `pointers`:idx: in other programming languages) are a
+References (similar to pointers in other programming languages) are a
 way to introduce many-to-one relationships. This means different references can
 point to and modify the same location in memory (also called `aliasing`:idx:).
 
@@ -1344,7 +1354,7 @@ Not nil annotation
 ------------------
 
 All types for that ``nil`` is a valid value can be annotated to 
-exclude ``nil`` as a valid value with the `not nil`:idx: annotation:
+exclude ``nil`` as a valid value with the ``not nil`` annotation:
 
 .. code-block:: nimrod
   type
@@ -1369,7 +1379,7 @@ here.
 Memory regions
 --------------
 
-The types ``ref`` and ``ptr`` can get an optional `region`:idx: annotation.
+The types ``ref`` and ``ptr`` can get an optional ``region`` annotation.
 A region has to be an object type.
 
 Regions are very useful to separate user space and kernel memory in the
@@ -1428,7 +1438,7 @@ Future directions:
 
 Procedural type
 ---------------
-A `procedural type`:idx: is internally a pointer to a procedure. ``nil`` is
+A procedural type is internally a pointer to a procedure. ``nil`` is
 an allowed value for variables of a procedural type. Nimrod uses procedural
 types to achieve `functional`:idx: programming techniques.
 
@@ -1519,7 +1529,7 @@ Most calling conventions exist only for the Windows 32-bit platform.
 
 Assigning/passing a procedure to a procedural variable is only allowed if one
 of the following conditions hold:
-1) The procedure that is accessed resists in the current module.
+1) The procedure that is accessed resides in the current module.
 2) The procedure is marked with the ``procvar`` pragma (see `procvar pragma`_).
 3) The procedure has a calling convention that differs from ``nimcall``.
 4) The procedure is anonymous.
@@ -1527,8 +1537,8 @@ of the following conditions hold:
 The rules' purpose is to prevent the case that extending a non-``procvar`` 
 procedure with default parameters breaks client code.
 
-The default calling convention is ``nimcall``, unless it is an inner proc (
-a proc inside of a proc). For an inner proc an analysis is performed whether it
+The default calling convention is ``nimcall``, unless it is an inner proc (a
+proc inside of a proc). For an inner proc an analysis is performed whether it
 accesses its environment. If it does so, it has the calling convention
 ``closure``, otherwise it has the calling convention ``nimcall``.
 
@@ -1536,11 +1546,15 @@ accesses its environment. If it does so, it has the calling convention
 Distinct type
 -------------
 
-A `distinct type`:idx: is new type derived from a `base type`:idx: that is
+A ``distinct`` type is new type derived from a `base type`:idx: that is
 incompatible with its base type. In particular, it is an essential property
 of a distinct type that it **does not** imply a subtype relation between it
 and its base type. Explicit type conversions from a distinct type to its
 base type and vice versa are allowed.
+
+
+Modelling currencies
+~~~~~~~~~~~~~~~~~~~~
 
 A distinct type can be used to model different physical `units`:idx: with a
 numerical base type, for example. The following example models currencies.
@@ -1649,12 +1663,73 @@ certain builtin operations to be lifted:
 Currently only the dot accessor can be borrowed in this way.
 
 
+Avoiding SQL injection attacks
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+An SQL statement that is passed from Nimrod to an SQL database might be
+modelled as a string. However, using string templates and filling in the
+values is vulnerable to the famous `SQL injection attack`:idx:\:
+
+.. code-block:: nimrod
+  import strutils
+
+  proc query(db: TDbHandle, statement: string) = ...
+
+  var
+    username: string
+
+  db.query("SELECT FROM users WHERE name = '$1'" % username)
+  # Horrible security hole, but the compiler does not mind!
+
+This can be avoided by distinguishing strings that contain SQL from strings
+that don't. Distinct types provide a means to introduce a new string type
+``TSQL`` that is incompatible with ``string``:
+
+.. code-block:: nimrod
+  type
+    TSQL = distinct string
+
+  proc query(db: TDbHandle, statement: TSQL) = ...
+
+  var
+    username: string
+
+  db.query("SELECT FROM users WHERE name = '$1'" % username)
+  # Error at compile time: `query` expects an SQL string!
+
+
+It is an essential property of abstract types that they **do not** imply a
+subtype relation between the abtract type and its base type. Explict type
+conversions from ``string`` to ``TSQL`` are allowed:
+
+.. code-block:: nimrod
+  import strutils, sequtils
+
+  proc properQuote(s: string): TSQL =
+    # quotes a string properly for an SQL statement
+    return TSQL(s)
+
+  proc `%` (frmt: TSQL, values: openarray[string]): TSQL =
+    # quote each argument:
+    let v = values.mapIt(TSQL, properQuote(it))
+    # we need a temporary type for the type conversion :-(
+    type TStrSeq = seq[string]
+    # call strutils.`%`:
+    result = TSQL(string(frmt) % TStrSeq(v))
+
+  db.query("SELECT FROM users WHERE name = '$1'".TSQL % [username])
+
+Now we have compile-time checking against SQL injection attacks.  Since
+``"".TSQL`` is transformed to ``TSQL("")`` no new syntax is needed for nice
+looking ``TSQL`` string literals. The hypothetical ``TSQL`` type actually
+exists in the library as the `TSqlQuery type <db_sqlite.html#TSqlQuery>`_ of
+modules like `db_sqlite <db_sqlite.html>`_.
 
 
 Void type
 ---------
 
-The `void`:idx: type denotes the absense of any type. Parameters of 
+The ``void`` type denotes the absense of any type. Parameters of 
 type ``void`` are treated as non-existent, ``void`` as a return type means that
 the procedure does not return a value:
 
@@ -1887,7 +1962,7 @@ To be written.
 Statements and expressions
 ==========================
 
-Nimrod uses the common statement/expression paradigm: `Statements`:idx: do not
+Nimrod uses the common statement/expression paradigm: Statements do not
 produce a value in contrast to expressions. However, some expressions are 
 statements.
 
@@ -1904,7 +1979,7 @@ Statement list expression
 
 Statements can also occur in an expression context that looks 
 like ``(stmt1; stmt2; ...; ex)``. This is called
-an `statement list expression`:idx: or ``(;)``. The type 
+an statement list expression or ``(;)``. The type 
 of ``(stmt1; stmt2; ...; ex)`` is the type of ``ex``. All the other statements
 must be of type ``void``. (One can use ``discard`` to produce a ``void`` type.)
 ``(;)`` does not introduce a new scope.
@@ -1921,7 +1996,7 @@ Example:
 
   discard p(3, 4) # discard the return value of `p`
 
-The `discard`:idx: statement evaluates its expression for side-effects and
+The ``discard`` statement evaluates its expression for side-effects and
 throws the expression's resulting value away. 
 
 Ignoring the return value of a procedure without using a discard statement is
@@ -1949,7 +2024,7 @@ An empty ``discard`` statement is often used as a null statement:
 Var statement
 -------------
 
-`Var`:idx: statements declare new local and global variables and
+Var statements declare new local and global variables and
 initialize them. A comma separated list of variables can be used to specify
 variables of the same type:
 
@@ -2018,7 +2093,7 @@ initialized and does not rely on syntactic properties:
 let statement
 -------------
 
-A `Let`:idx: statement declares new local and global `single assignment`:idx:
+A ``let`` statement declares new local and global `single assignment`:idx:
 variables and binds a value to them. The syntax is the of the ``var`` 
 statement, except that the keyword ``var`` is replaced by the keyword ``let``.
 Let variables are not l-values and can thus not be passed to ``var`` parameters
@@ -2060,7 +2135,7 @@ they contain such a type.
 Static statement/expression
 ---------------------------
 
-A `static`:idx: statement/expression can be used to enforce compile 
+A static statement/expression can be used to enforce compile 
 time evaluation explicitly. Enforced compile time evaluation can even evaluate
 code that has side effects: 
 
@@ -2094,7 +2169,7 @@ Example:
   else:
     echo("Boring name...")
 
-The `if`:idx: statement is a simple way to make a branch in the control flow:
+The ``if`` statement is a simple way to make a branch in the control flow:
 The expression after the keyword ``if`` is evaluated, if it is true
 the corresponding statements after the ``:`` are executed. Otherwise
 the expression after the ``elif`` is evaluated (if there is an
@@ -2140,7 +2215,7 @@ Example:
     else:                   echo("unknown command")
   
 
-The `case`:idx: statement is similar to the if statement, but it represents
+The ``case`` statement is similar to the if statement, but it represents
 a multi-branch selection. The expression after the keyword ``case`` is
 evaluated and if its value is in a *slicelist* the corresponding statements
 (after the ``of`` keyword) are executed. If the value is not in any
@@ -2153,12 +2228,12 @@ type.
 If the expression is not of an ordinal type, and no ``else`` part is
 given, control passes after the ``case`` statement.
 
-To suppress the static error in the ordinal case an ``else`` part with a ``nil``
-statement can be used.
+To suppress the static error in the ordinal case an ``else`` part with an
+empty ``discard`` statement can be used.
 
 As a special semantic extension, an expression in an ``of`` branch of a case
-statement may evaluate to a set constructor; the set is then expanded into 
-a list of its elements:
+statement may evaluate to a set or array constructor; the set or array is then
+expanded into a list of its elements:
 
 .. code-block:: nimrod
   const
@@ -2194,7 +2269,7 @@ Example:
   else:
     echo("cannot happen!")
 
-The `when`:idx: statement is almost identical to the ``if`` statement with some
+The ``when`` statement is almost identical to the ``if`` statement with some
 exceptions:
 
 * Each condition (``expr``) has to be a constant expression (of type ``bool``).
@@ -2216,7 +2291,7 @@ Example:
 .. code-block:: nimrod
   return 40+2
 
-The `return`:idx: statement ends the execution of the current procedure.
+The ``return`` statement ends the execution of the current procedure.
 It is only allowed in procedures. If there is an ``expr``, this is syntactic
 sugar for:
 
@@ -2243,7 +2318,7 @@ Example:
 .. code-block:: nimrod
   yield (1, 2, 3)
 
-The `yield`:idx: statement is used instead of the ``return`` statement in
+The ``yield`` statement is used instead of the ``return`` statement in
 iterators. It is only valid in iterators. Execution is returned to the body
 of the for loop that called the iterator. Yield does not end the iteration
 process, but execution is passed back to the iterator if the next iteration
@@ -2266,7 +2341,7 @@ Example:
           break myblock # leave the block, in this case both for-loops
   echo(found)
 
-The block statement is a means to group statements to a (named) `block`:idx:.
+The block statement is a means to group statements to a (named) ``block``.
 Inside the block, the ``break`` statement is allowed to leave the block
 immediately. A ``break`` statement can contain a name of a surrounding
 block to specify which block is to leave.
@@ -2280,7 +2355,7 @@ Example:
 .. code-block:: nimrod
   break
 
-The `break`:idx: statement is used to leave a block immediately. If ``symbol``
+The ``break`` statement is used to leave a block immediately. If ``symbol``
 is given, it is the name of the enclosing block that is to leave. If it is
 absent, the innermost block is left.
 
@@ -2298,7 +2373,7 @@ Example:
     pw = readLine(stdin)
 
 
-The `while`:idx: statement is executed until the ``expr`` evaluates to false.
+The ``while`` statement is executed until the ``expr`` evaluates to false.
 Endless loops are no error. ``while`` statements open an `implicit block`,
 so that they can be left with a ``break`` statement.
 
@@ -2306,7 +2381,7 @@ so that they can be left with a ``break`` statement.
 Continue statement
 ------------------
 
-A `continue`:idx: statement leads to the immediate next iteration of the
+A ``continue`` statement leads to the immediate next iteration of the
 surrounding loop construct. It is only allowed within a loop. A continue
 statement is syntactic sugar for a nested block:
 
@@ -2329,13 +2404,14 @@ Is equivalent to:
 Assembler statement
 -------------------
 
-The direct embedding of `assembler`:idx: code into Nimrod code is supported
+The direct embedding of assembler code into Nimrod code is supported
 by the unsafe ``asm`` statement. Identifiers in the assembler code that refer to
 Nimrod identifiers shall be enclosed in a special character which can be
 specified in the statement's pragmas. The default special character is ``'`'``:
 
 .. code-block:: nimrod
-  proc addInt(a, b: int): int {.noStackFrame.} =
+  {.push stackTrace:off.}
+  proc addInt(a, b: int): int =
     # a in eax, and b in edx
     asm """
         mov eax, `a`
@@ -2344,6 +2420,7 @@ specified in the statement's pragmas. The default special character is ``'`'``:
         call `raiseOverflow`
       theEnd:
     """
+  {.pop.}
 
 If the GNU assembler is used, quotes and newlines are inserted automatically:
 
@@ -2376,7 +2453,7 @@ Using statement
 
 **Warning**: The ``using`` statement is highly experimental!
 
-The `using statement`:idx: provides syntactic convenience for procs that
+The using statement provides syntactic convenience for procs that
 heavily use a single contextual parameter. When applied to a variable or a
 constant, it will instruct Nimrod to automatically consider the used symbol as
 a hidden leading parameter for any procedure calls, following the using
@@ -2461,7 +2538,7 @@ the last expression as the result value, much like in an `expr` template.
 Table constructor
 -----------------
 
-A `table constructor`:idx: is syntactic sugar for an array constructor:
+A table constructor is syntactic sugar for an array constructor:
 
 .. code-block:: nimrod
   {"key1": "value1", "key2", "key3": "value2"}
@@ -2508,7 +2585,7 @@ only needed for low-level programming and are inherently unsafe.
 
 The addr operator
 -----------------
-The `addr`:idx: operator returns the address of an l-value. If the type of the
+The ``addr`` operator returns the address of an l-value. If the type of the
 location is ``T``, the `addr` operator result is of the type ``ptr T``. An
 address is always an untraced reference. Taking the address of an object that
 resides on the stack is **unsafe**, as the pointer may live longer than the
@@ -2609,7 +2686,7 @@ For object oriented programming, the syntax ``obj.method(args)`` can be used
 instead of ``method(obj, args)``. The parentheses can be omitted if there are no
 remaining arguments: ``obj.len`` (instead of ``len(obj)``).
 
-This `method call syntax`:idx: is not restricted to objects, it can be used
+This method call syntax is not restricted to objects, it can be used
 to supply any type of first argument for procedures:
 
 .. code-block:: nimrod
@@ -2654,7 +2731,7 @@ Command invocation syntax
 -------------------------
 
 Routines can be invoked without the ``()`` if the call is syntatically
-a statement. This `command invocation syntax`:idx: also works for
+a statement. This command invocation syntax also works for
 expressions, but then only a single argument may follow. This restriction
 means ``echo f 1, f 2`` is parsed as ``echo(f(1), f(2))`` and not as
 ``echo(f(1, f(2)))``. The method call syntax may be used to provide one
@@ -2748,7 +2825,7 @@ The following builtin procs cannot be overloaded for reasons of implementation
 simplicity (they require specialized semantic checking)::
 
   defined, definedInScope, compiles, low, high, sizeOf, 
-  is, of, echo, shallowCopy, getAst
+  is, of, echo, shallowCopy, getAst, spawn
 
 Thus they act more like keywords than like ordinary identifiers; unlike a 
 keyword however, a redefinition may `shadow`:idx: the definition in 
@@ -2851,7 +2928,7 @@ The ``[]`` subscript operator for arrays/openarrays/sequences can be overloaded.
 Multi-methods
 =============
 
-Procedures always use static dispatch. `Multi-methods`:idx: use dynamic
+Procedures always use static dispatch. Multi-methods use dynamic
 dispatch.
 
 .. code-block:: nimrod
@@ -3104,7 +3181,7 @@ Example:
       line: int       # the line the symbol was declared in
       code: PNode     # the symbol's abstract syntax tree
 
-A `type`:idx: section begins with the ``type`` keyword. It contains multiple
+A type section begins with the ``type`` keyword. It contains multiple
 type definitions. A type definition binds a type to a name. Type definitions
 can be recursive or even mutually recursive. Mutually recursive types are only
 possible within a single ``type`` section. Nominal types like ``objects`` 
@@ -3141,7 +3218,7 @@ Example:
       close(f)
 
 
-The statements after the `try`:idx: are executed in sequential order unless
+The statements after the ``try`` are executed in sequential order unless
 an exception ``e`` is raised. If the exception type of ``e`` matches any
 listed in an ``except`` clause the corresponding statements are executed.
 The statements following the ``except`` clauses are called
@@ -3163,7 +3240,7 @@ is not executed (if an exception occurs).
 Except and finally statements
 -----------------------------
 
-`except`:idx: and `finally`:idx: can also be used as a stand-alone statements.
+``except`` and ``finally`` can also be used as a stand-alone statements.
 Any statements following them in the current block will be considered to be 
 in an implicit try block:
 
@@ -3212,9 +3289,9 @@ exception (unless a raise hook has been provided).
 OnRaise builtin
 ---------------
 
-``system.onRaise`` can be used to override the behaviour of ``raise`` for a
-single ``try`` statement. `onRaise`:idx: has to be called within the ``try`` 
-statement that should be affected.
+`system.onRaise() <system.html#onRaise>`_ can be used to override the
+behaviour of ``raise`` for a single ``try`` statement. ``onRaise`` has to be
+called within the ``try`` statement that should be affected.
 
 This allows for a Lisp-like `condition system`:idx:\:
 
@@ -3243,7 +3320,7 @@ Effect system
 Exception tracking
 ------------------
 
-Nimrod supports `exception tracking`:idx:. The `raises`:idx: pragma can be used
+Nimrod supports exception tracking. The `raises`:idx: pragma can be used
 to explicitly define which exceptions a proc/iterator/method/converter is 
 allowed to raise. The compiler verifies this:
 
@@ -3351,7 +3428,7 @@ exception tracking.
 Effects pragma
 --------------
 
-The `effects`:idx: pragma has been designed to assist the programmer with the
+The ``effects`` pragma has been designed to assist the programmer with the
 effects analysis. It is a statement that makes the compiler output all inferred
 effects up to the ``effects``'s position:
 
@@ -3420,7 +3497,7 @@ Example:
   for str in inorder(root):
     writeln(stdout, str)
 
-`Generics`:idx: are Nimrod's means to parametrize procs, iterators or types with
+Generics are Nimrod's means to parametrize procs, iterators or types with
 `type parameters`:idx:. Depending on context, the brackets are used either to
 introduce type parameters or to instantiate a generic proc, iterator or type.
 
@@ -3428,7 +3505,7 @@ introduce type parameters or to instantiate a generic proc, iterator or type.
 Is operator
 -----------
 
-The `is`:idx: operator checks for type equivalence at compile time. It is
+The ``is`` operator checks for type equivalence at compile time. It is
 therefore very useful for type specialization within generic code: 
 
 .. code-block:: nimrod
@@ -3443,7 +3520,7 @@ therefore very useful for type specialization within generic code:
 Type operator
 -------------
 
-The `type`:idx: (in many other languages called `typeof`:idx:) operator can
+The ``type`` (in many other languages called `typeof`:idx:) operator can
 be used to get the type of an expression: 
 
 .. code-block:: nimrod
@@ -3466,7 +3543,7 @@ other interpretations:
 Type Classes
 ------------
 
-A `type class`:idx: is a special pseudo-type that can be used to match against
+A type class is a special pseudo-type that can be used to match against
 types in the context of overload resolution or the ``is`` operator. 
 Nimrod supports the following built-in type classes:
 
@@ -3684,7 +3761,7 @@ A symbol can be forced to be open by a `mixin`:idx: declaration:
 Bind statement
 --------------
 
-The `bind`:idx: statement is the counterpart to the ``mixin`` statement. It 
+The ``bind`` statement is the counterpart to the ``mixin`` statement. It 
 can be used to explicitly declare identifiers that should be bound early (i.e.
 the identifiers should be looked up in the scope of the template/generic
 definition):
@@ -3712,7 +3789,7 @@ scope is the default.
 Templates
 =========
 
-A `template`:idx: is a simple form of a macro: It is a simple substitution
+A template is a simple form of a macro: It is a simple substitution
 mechanism that operates on Nimrod's abstract syntax trees. It is processed in
 the semantic pass of the compiler.
 
@@ -3744,7 +3821,7 @@ expected.
 Ordinary vs immediate templates
 -------------------------------
 
-There are two different kinds of templates: `immediate`:idx: templates and
+There are two different kinds of templates: immediate templates and
 ordinary templates. Ordinary templates take part in overloading resolution. As
 such their arguments need to be type checked before the template is invoked.
 So ordinary templates cannot receive undeclared identifiers:
@@ -3939,7 +4016,7 @@ a template. ``inject`` and ``gensym`` have no effect in ``dirty`` templates.
 Macros
 ======
 
-A `macro`:idx: is a special kind of low level template. Macros can be used
+A macro is a special kind of low level template. Macros can be used
 to implement `domain specific languages`:idx:. Like templates, macros come in
 the 2 flavors *immediate* and *ordinary*.
 
@@ -4317,7 +4394,7 @@ This operator will be matched against assignments to missing fields.
 Term rewriting macros
 =====================
 
-`Term rewriting macros`:idx: are macros or templates that have not only
+Term rewriting macros are macros or templates that have not only
 a *name* but also a *pattern* that is searched for after the semantic checking
 phase of the compiler: This means they provide an easy way to enhance the 
 compilation pipeline with user defined optimizations:
@@ -4653,7 +4730,7 @@ ordinary routines.
 Move optimization
 -----------------
 
-The ``call`` constraint is particularly useful to implement a `move`:idx: 
+The ``call`` constraint is particularly useful to implement a move 
 optimization for types that have copying semantics:
 
 .. code-block:: nimrod
@@ -4679,7 +4756,7 @@ optimization for types that have copying semantics:
 
 Modules
 =======
-Nimrod supports splitting a program into pieces by a `module`:idx: concept.
+Nimrod supports splitting a program into pieces by a module concept.
 Each module needs to be in its own file and has its own `namespace`:idx:.
 Modules enable `information hiding`:idx: and `separate compilation`:idx:.
 A module may gain access to symbols of another module by the `import`:idx:
@@ -4722,7 +4799,7 @@ This is best illustrated by an example:
 Import statement
 ~~~~~~~~~~~~~~~~
 
-After the `import`:idx: statement a list of module names can follow or a single
+After the ``import`` statement a list of module names can follow or a single
 module name followed by an ``except`` to prevent some symbols to be imported:
 
 .. code-block:: nimrod
@@ -4765,7 +4842,7 @@ Likewise the following does not make sense as the name is ``strutils`` already:
 From import statement
 ~~~~~~~~~~~~~~~~~~~~~
 
-After the `from`:idx: statement a module name follows followed by 
+After the ``from`` statement a module name follows followed by 
 an ``import`` to list the symbols one likes to use without explict
 full qualification:
 
@@ -4784,7 +4861,7 @@ in ``module``.
 Export statement
 ~~~~~~~~~~~~~~~~
 
-An `export`:idx: statement can be used for symbol fowarding so that client
+An ``export`` statement can be used for symbol fowarding so that client
 modules don't need to import a module's dependencies:
 
 .. code-block:: nimrod
@@ -4812,7 +4889,7 @@ Scope rules
 -----------
 Identifiers are valid from the point of their declaration until the end of
 the block in which the declaration occurred. The range where the identifier
-is known is the `scope`:idx: of the identifier. The exact scope of an
+is known is the scope of the identifier. The exact scope of an
 identifier depends on the way it was declared.
 
 Block scope
@@ -4885,7 +4962,7 @@ to access the feature becomes available.
 
 noSideEffect pragma
 -------------------
-The `noSideEffect`:idx: pragma is used to mark a proc/iterator to have no side
+The ``noSideEffect`` pragma is used to mark a proc/iterator to have no side
 effects. This means that the proc/iterator only changes locations that are
 reachable from its parameters and the return value only depends on the
 arguments. If none of its parameters have the type ``var T``
@@ -4907,7 +4984,7 @@ proc with no side effects:
 destructor pragma
 -----------------
 
-The `destructor`:idx: pragma is used to mark a proc to act as a type destructor.
+The ``destructor`` pragma is used to mark a proc to act as a type destructor.
 The proc must have a single parameter with a concrete type (the name of a
 generic type is allowed too).
 
@@ -4967,25 +5044,25 @@ the ``finalizer`` parameter to ``new``.
 
 procvar pragma
 --------------
-The `procvar`:idx: pragma is used to mark a proc that it can be passed to a
+The ``procvar`` pragma is used to mark a proc that it can be passed to a
 procedural variable.
 
 
 compileTime pragma
 ------------------
-The `compileTime`:idx: pragma is used to mark a proc to be used at compile
+The ``compileTime`` pragma is used to mark a proc to be used at compile
 time only. No code will be generated for it. Compile time procs are useful
 as helpers for macros.
 
 
 noReturn pragma
 ---------------
-The `noreturn`:idx: pragma is used to mark a proc that never returns. 
+The ``noreturn`` pragma is used to mark a proc that never returns. 
 
 
 Acyclic pragma
 --------------
-The `acyclic`:idx: pragma can be used for object types to mark them as acyclic
+The ``acyclic`` pragma can be used for object types to mark them as acyclic
 even though they seem to be cyclic. This is an **optimization** for the garbage
 collector to not consider objects of this type as part of a cycle:
 
@@ -5016,13 +5093,13 @@ memory, but nothing worse happens.
 
 Final pragma
 ------------
-The `final`:idx: pragma can be used for an object type to specify that it
+The ``final`` pragma can be used for an object type to specify that it
 cannot be inherited from.
 
 
 shallow pragma
 --------------
-The `shallow`:idx: pragma affects the semantics of a type: The compiler is
+The ``shallow`` pragma affects the semantics of a type: The compiler is
 allowed to make a shallow copy. This can cause serious semantic issues and
 break memory safety! However, it can speed up assignments considerably, 
 because the semantics of Nimrod require deep copying of sequences and strings. 
@@ -5042,14 +5119,14 @@ structure:
 
 Pure pragma
 -----------
-An object type can be marked with the `pure`:idx: pragma so that its type 
+An object type can be marked with the ``pure`` pragma so that its type 
 field which is used for runtime type identification is omitted. This is
 necessary for binary compatibility with other compiled languages.
 
 
 AsmNoStackFrame pragma
 ----------------------
-A proc can be marked with the `AsmNoStackFrame`:idx: pragma to tell the compiler
+A proc can be marked with the ``AsmNoStackFrame`` pragma to tell the compiler
 it should not generate a stack frame for the proc. There are also no exit
 statements like ``return result;`` generated and the generated C function is
 declared as ``__declspec(naked)`` or ``__attribute__((naked))`` (depending on
@@ -5060,7 +5137,7 @@ assembler statements.
 
 error pragma
 ------------
-The `error`:idx: pragma is used to make the compiler output an error message
+The ``error`` pragma is used to make the compiler output an error message
 with the given content. Compilation does not necessarily abort after an error
 though. 
 
@@ -5076,7 +5153,7 @@ operation is valid due to overloading and type conversions:
 
 fatal pragma
 ------------
-The `fatal`:idx: pragma is used to make the compiler output an error message
+The ``fatal`` pragma is used to make the compiler output an error message
 with the given content. In contrast to the ``error`` pragma, compilation
 is guaranteed to be aborted by this pragma. Example:
 
@@ -5086,17 +5163,17 @@ is guaranteed to be aborted by this pragma. Example:
 
 warning pragma
 --------------
-The `warning`:idx: pragma is used to make the compiler output a warning message
+The ``warning`` pragma is used to make the compiler output a warning message
 with the given content. Compilation continues after the warning.
 
 hint pragma
 -----------
-The `hint`:idx: pragma is used to make the compiler output a hint message with
+The ``hint`` pragma is used to make the compiler output a hint message with
 the given content. Compilation continues after the hint.
 
 line pragma
 -----------
-The `line`:idx: pragma can be used to affect line information of the annotated
+The ``line`` pragma can be used to affect line information of the annotated
 statement as seen in stack backtraces:
 
 .. code-block:: nimrod
@@ -5114,7 +5191,7 @@ If the ``line`` pragma is used with a parameter, the parameter needs be a
 
 linearScanEnd pragma
 --------------------
-The `linearScanEnd`:idx: pragma can be used to tell the compiler how to 
+The ``linearScanEnd`` pragma can be used to tell the compiler how to 
 compile a Nimrod `case`:idx: statement. Syntactically it has to be used as a
 statement:
 
@@ -5142,7 +5219,7 @@ whole ``case`` statement, the whole ``case`` statement uses linear scanning.
 
 computedGoto pragma
 -------------------
-The `computedGoto`:idx: pragma can be used to tell the compiler how to 
+The ``computedGoto`` pragma can be used to tell the compiler how to 
 compile a Nimrod `case`:idx: in a ``while true`` statement. 
 Syntactically it has to be used as a statement inside the loop:
 
@@ -5187,7 +5264,7 @@ extension the pragma is simply ignored.
 
 unroll pragma
 -------------
-The `unroll`:idx: pragma can be used to tell the compiler that it should unroll
+The ``unroll`` pragma can be used to tell the compiler that it should unroll
 a `for`:idx: or `while`:idx: loop for runtime efficiency: 
 
 .. code-block:: nimrod
@@ -5266,7 +5343,7 @@ but are used to override the settings temporarily. Example:
 
 register pragma
 ---------------
-The `register`:idx: pragma is for variables only. It declares the variable as
+The ``register`` pragma is for variables only. It declares the variable as
 ``register``, giving the compiler a hint that the variable should be placed
 in a hardware register for faster access. C compilers usually ignore this
 though and for good reasons: Often they do a better job without it anyway.
@@ -5277,7 +5354,7 @@ example) it may provide benefits, though.
 
 global pragma
 -------------
-The `global`:idx: pragma can be applied to a variable within a proc to instruct
+The ``global`` pragma can be applied to a variable within a proc to instruct
 the compiler to store it in a global location and initialize it once at program
 startup.
 
@@ -5294,7 +5371,7 @@ and before any variable in a module that imports it.
 
 DeadCodeElim pragma
 -------------------
-The `deadCodeElim`:idx: pragma only applies to whole modules: It tells the
+The ``deadCodeElim`` pragma only applies to whole modules: It tells the
 compiler to activate (or deactivate) dead code elimination for the module the
 pragma appears in.
 
@@ -5312,7 +5389,7 @@ Example:
 ..
   NoForward pragma
   ----------------
-  The `noforward`:idx: pragma can be used to turn on and off a special compilation
+  The ``noforward`` pragma can be used to turn on and off a special compilation
   mode that to large extent eliminates the need for forward declarations. In this
   mode, the proc definitions may appear out of order and the compiler will postpone
   their semantic analysis and compilation until it actually needs to generate code
@@ -5360,7 +5437,7 @@ Example:
 Pragma pragma
 -------------
 
-The `pragma`:idx: pragma can be used to declare user defined pragmas. This is 
+The ``pragma`` pragma can be used to declare user defined pragmas. This is 
 useful because Nimrod's templates and macros do not affect pragmas. User 
 defined pragmas are in a different module-wide scope than all other symbols. 
 They cannot be imported from a module.
@@ -5389,7 +5466,7 @@ and warning message contains a symbol in brackets. This is the message's
 identifier that can be used to enable or disable it:
 
 .. code-block:: Nimrod
-  {.warning[LineTooLong]: off.} # turn off warning about too long lines
+  {.hint[LineTooLong]: off.} # turn off the hint about too long lines
 
 This is often better than disabling all warnings at once.
 
@@ -5404,21 +5481,24 @@ are documented here.
 
 Importc pragma
 --------------
-The `importc`:idx: pragma provides a means to import a proc or a variable
+The ``importc`` pragma provides a means to import a proc or a variable
 from C. The optional argument is a string containing the C identifier. If
 the argument is missing, the C name is the Nimrod identifier *exactly as
 spelled*:
 
 .. code-block::
-  proc printf(formatstr: cstring) {.importc: "printf", varargs.}
+  proc printf(formatstr: cstring) {.header: "<stdio.h>", importc: "printf", varargs.}
 
 Note that this pragma is somewhat of a misnomer: Other backends will provide
-the same feature under the same name.
+the same feature under the same name. Also, if you are interfacing with C++
+you can use the `ImportCpp pragma <nimrodc.html#importcpp-pragma>`_ and
+interfacing with Objective-C the `ImportObjC pragma
+<nimrodc.html#importobjc-pragma>`_.
 
 
 Exportc pragma
 --------------
-The `exportc`:idx: pragma provides a means to export a type, a variable, or a
+The ``exportc`` pragma provides a means to export a type, a variable, or a
 procedure to C. Enums and constants can't be exported. The optional argument
 is a string containing the C identifier.  If the argument is missing, the C
 name is the Nimrod identifier *exactly as spelled*:
@@ -5432,7 +5512,7 @@ the same feature under the same name.
 
 Extern pragma
 -------------
-Like ``exportc`` or ``importc`` the `extern`:idx: pragma affects name
+Like ``exportc`` or ``importc``, the ``extern`` pragma affects name
 mangling. The string literal passed to ``extern`` can be a format string:
 
 .. code-block:: Nimrod
@@ -5445,7 +5525,7 @@ In the example the external name of ``p`` is set to ``prefixp``.
 Bycopy pragma
 -------------
 
-The `bycopy`:idx: pragma can be applied to an object or tuple type and
+The ``bycopy`` pragma can be applied to an object or tuple type and
 instructs the compiler to pass the type by value to procs:
 
 .. code-block:: nimrod
@@ -5457,13 +5537,13 @@ instructs the compiler to pass the type by value to procs:
 Byref pragma
 ------------
 
-The `byref`:idx: pragma can be applied to an object or tuple type and instructs
+The ``byref`` pragma can be applied to an object or tuple type and instructs
 the compiler to pass the type by reference (hidden pointer) to procs.
 
 
 Varargs pragma
 --------------
-The `varargs`:idx: pragma can be applied to procedures only (and procedure 
+The ``varargs`` pragma can be applied to procedures only (and procedure 
 types). It tells Nimrod that the proc can take a variable number of parameters 
 after the last specified parameter. Nimrod string values will be converted to C
 strings automatically:
@@ -5476,7 +5556,7 @@ strings automatically:
 
 Union pragma
 ------------
-The `union`:idx: pragma can be applied to any ``object`` type. It means all
+The ``union`` pragma can be applied to any ``object`` type. It means all
 of the object's fields are overlaid in memory. This produces a ``union``
 instead of a ``struct`` in the generated C/C++ code. The object declaration
 then must not use inheritance or any GC'ed memory but this is currently not
@@ -5487,7 +5567,7 @@ should scan unions conservatively.
 
 Packed pragma
 -------------
-The `packed`:idx: pragma can be applied to any ``object`` type. It ensures 
+The ``packed`` pragma can be applied to any ``object`` type. It ensures 
 that the fields of an object are packed back-to-back in memory. It is useful 
 to store packets or messages from/to network or hardware drivers, and for 
 interoperability with C. Combining packed pragma with inheritance is not 
@@ -5498,7 +5578,7 @@ compile-time error. Usage with inheritance should be defined and documented.
 
 Unchecked pragma
 ----------------
-The `unchecked`:idx: pragma can be used to mark a named array as ``unchecked``
+The ``unchecked`` pragma can be used to mark a named array as ``unchecked``
 meaning its bounds are not checked. This is often useful when one wishes to
 implement his own flexibly sized arrays. Additionally an unchecked array is
 translated into a C array of undetermined size:
@@ -5533,7 +5613,7 @@ runtime size of the array.
 
 Dynlib pragma for import
 ------------------------
-With the `dynlib`:idx: pragma a procedure or a variable can be imported from
+With the ``dynlib`` pragma a procedure or a variable can be imported from
 a dynamic library (``.dll`` files for Windows, ``lib*.so`` files for UNIX). 
 The non-optional argument has to be the name of the dynamic library:
 
@@ -5623,7 +5703,7 @@ Thread pragma
 -------------
 
 A proc that is executed as a new thread of execution should be marked by the
-`thread pragma`:idx:. The compiler checks procedures marked as ``thread`` for
+``thread`` pragma. The compiler checks procedures marked as ``thread`` for
 violations of the `no heap sharing restriction`:idx:\: This restriction implies
 that it is invalid to construct a data structure that consists of memory 
 allocated from different (thread local) heaps. 
@@ -5664,7 +5744,7 @@ Future directions:
 Threadvar pragma
 ----------------
 
-A global variable can be marked with the `threadvar`:idx: pragma; it is 
+A global variable can be marked with the ``threadvar`` pragma; it is 
 a `thread-local`:idx: variable then:
 
 .. code-block:: nimrod
@@ -5688,7 +5768,7 @@ Spawn
 
 Nimrod has a builtin thread pool that can be used for CPU intensive tasks. For
 IO intensive tasks the upcoming ``async`` and ``await`` features should be
-used. `spawn`:idx: is used to pass a task to the thread pool:
+used instead. `spawn`:idx: is used to pass a task to the thread pool:
 
 .. code-block:: nimrod
   proc processLine(line: string) =
@@ -5716,7 +5796,7 @@ Taint mode
 ==========
 
 The Nimrod compiler and most parts of the standard library support 
-a `taint mode`:idx:. Input strings are declared with the `TaintedString`:idx: 
+a taint mode. Input strings are declared with the `TaintedString`:idx: 
 string type declared in the ``system`` module.
 
 If the taint mode is turned on (via the ``--taintMode:on`` command line 

@@ -135,7 +135,7 @@ The ``EInvalidObjectConversion`` exception is raised if ``x`` is not a
 Object variants
 ---------------
 Often an object hierarchy is overkill in certain situations where simple
-`variant`:idx: types are needed.
+variant types are needed.
 
 An example:
 
@@ -182,7 +182,7 @@ bound to a class. This has disadvantages:
   ``join`` a string method or an array method?
 
 Nimrod avoids these problems by not assigning methods to a class. All methods
-in Nimrod are `multi-methods`:idx:. As we will see later, multi-methods are
+in Nimrod are multi-methods. As we will see later, multi-methods are
 distinguished from procs only for dynamic binding purposes.
 
 
@@ -194,7 +194,7 @@ The syntax ``obj.method(args)`` can be used instead of ``method(obj, args)``.
 If there are no remaining arguments, the parentheses can be omitted:
 ``obj.len`` (instead of ``len(obj)``).
 
-This `method call syntax`:idx: is not restricted to objects, it can be used
+This method call syntax is not restricted to objects, it can be used
 for any type:
 
 .. code-block:: nimrod
@@ -343,7 +343,7 @@ evaluation or dead code elimination do not work with methods.
 Exceptions
 ==========
 
-In Nimrod `exceptions`:idx: are objects. By convention, exception types are
+In Nimrod exceptions are objects. By convention, exception types are
 prefixed with an 'E', not 'T'. The `system <system.html>`_ module defines an
 exception hierarchy that you might want to stick to. Exceptions derive from
 E_Base, which provides the common interface.
@@ -380,7 +380,7 @@ the template ``newException`` in the ``system`` module can be used:
 Try statement
 -------------
 
-The `try`:idx: statement handles exceptions:
+The ``try`` statement handles exceptions:
 
 .. code-block:: nimrod
   # read the first two lines of a text file that should contain numbers
@@ -501,7 +501,7 @@ with the file and line where the uncaught exception is being raised, which may
 help you locate the offending code which has changed.
 
 If you want to add the ``{.raises.}`` pragma to existing code, the compiler can
-also help you. You can add the ``{.effect.}`` pragma statement to your proc and
+also help you. You can add the ``{.effects.}`` pragma statement to your proc and
 the compiler will output all inferred effects up to that point (exception
 tracking is part of Nimrod's effect system). Another more roundabout way to
 find out the list of exceptions raised by a proc is to use the Nimrod ``doc2``
@@ -513,7 +513,7 @@ procs with the list of raised exceptions. You can read more about Nimrod's
 Generics
 ========
 
-`Generics`:idx: are Nimrod's means to parametrize procs, iterators or types
+Generics are Nimrod's means to parametrize procs, iterators or types
 with `type parameters`:idx:. They are most useful for efficient type safe
 containers:
 
@@ -714,9 +714,9 @@ know how the Nimrod concrete syntax is converted to an abstract syntax tree
 (AST). The AST is documented in the `macros <macros.html>`_ module.
 
 Once your macro is finished, there are two ways to invoke it:
-(1) invoking a macro like a procedure call (`expression macros`:idx:)
+(1) invoking a macro like a procedure call (expression macros)
 (2) invoking a macro with the special ``macrostmt``
-    syntax (`statement macros`:idx:)
+    syntax (statement macros)
 
 
 Expression Macros

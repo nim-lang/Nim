@@ -9,7 +9,8 @@
 
 
 ## This module contains routines and types for dealing with time.
-## This module is available for the JavaScript target.
+## This module is available for the `JavaScript target
+## <backends.html#the-javascript-target>`_.
 
 {.push debugger:off.} # the user does not want to trace a part
                       # of the standard library!

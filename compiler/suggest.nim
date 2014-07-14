@@ -63,8 +63,11 @@ proc filterSym(s: PSym): bool {.inline.} =
 
 proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
   let fmoduleId = getModule(f).id
-  result = sfExported in f.flags or fmoduleId == c.module.id or
-      fmoduleId == c.friendModule.id
+  result = sfExported in f.flags or fmoduleId == c.module.id
+  for module in c.friendModules:
+    if fmoduleId == module.id:
+      result = true
+      break
 
 proc suggestField(c: PContext, s: PSym, outputs: var int) = 
   if filterSym(s) and fieldVisible(c, s):
@@ -243,18 +246,18 @@ var
   usageSym*: PSym
   lastLineInfo: TLineInfo
 
-proc findUsages(node: PNode, s: PSym) =
-  if usageSym == nil and isTracked(node.info, s.name.s.len):
+proc findUsages(info: TLineInfo; s: PSym) =
+  if usageSym == nil and isTracked(info, s.name.s.len):
     usageSym = s
     suggestWriteln(symToStr(s, isLocal=false, sectionUsage))
   elif s == usageSym:
-    if lastLineInfo != node.info:
-      suggestWriteln(symToStr(s, isLocal=false, sectionUsage, node.info))
-    lastLineInfo = node.info
+    if lastLineInfo != info:
+      suggestWriteln(symToStr(s, isLocal=false, sectionUsage, info))
+    lastLineInfo = info
 
-proc findDefinition(node: PNode, s: PSym) =
-  if node.isNil or s.isNil: return
-  if isTracked(node.info, s.name.s.len):
+proc findDefinition(info: TLineInfo; s: PSym) =
+  if s.isNil: return
+  if isTracked(info, s.name.s.len):
     suggestWriteln(symToStr(s, isLocal=false, sectionDef))
     suggestQuit()
 
@@ -313,26 +316,26 @@ proc defFromSourceMap*(i: TLineInfo) =
   
   defFromLine(gSourceMaps[i.fileIndex].lines[i.line].entries, i.col)
 
-proc suggestSym*(n: PNode, s: PSym) {.inline.} =
+proc suggestSym*(info: TLineInfo; s: PSym) {.inline.} =
   ## misnamed: should be 'symDeclared'
   if optUsages in gGlobalOptions:
-    findUsages(n, s)
+    findUsages(info, s)
   if optDef in gGlobalOptions:
-    findDefinition(n, s)
+    findDefinition(info, s)
   if isServing:
-    addToSourceMap(s, n.info)
+    addToSourceMap(s, info)
 
-proc markUsed(n: PNode, s: PSym) =
+proc markUsed(info: TLineInfo; s: PSym) =
   incl(s.flags, sfUsed)
   if {sfDeprecated, sfError} * s.flags != {}:
-    if sfDeprecated in s.flags: message(n.info, warnDeprecated, s.name.s)
-    if sfError in s.flags: localError(n.info, errWrongSymbolX, s.name.s)
-  suggestSym(n, s)
-  if gCmd == cmdPretty: checkUse(n, s)
+    if sfDeprecated in s.flags: message(info, warnDeprecated, s.name.s)
+    if sfError in s.flags: localError(info, errWrongSymbolX, s.name.s)
+  suggestSym(info, s)
+  if gCmd == cmdPretty: checkUse(info, s)
 
 proc useSym*(sym: PSym): PNode =
   result = newSymNode(sym)
-  markUsed(result, sym)
+  markUsed(result.info, sym)
 
 proc suggestExpr*(c: PContext, node: PNode) = 
   var cp = msgs.inCheckpoint(node.info)

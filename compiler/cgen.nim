@@ -14,7 +14,8 @@ import
   options, intsets,
   nversion, nimsets, msgs, crc, bitsets, idents, lists, types, ccgutils, os,
   times, ropes, math, passes, rodread, wordrecg, treetab, cgmeth,
-  rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases, lowerings
+  rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases, lowerings,
+  semparallel
 
 when options.hasTinyCBackend:
   import tccgen
@@ -503,7 +504,8 @@ proc assignLocalVar(p: BProc, s: PSym) =
     if sfRegister in s.flags: app(decl, " register")
     #elif skipTypes(s.typ, abstractInst).kind in GcTypeKinds:
     #  app(decl, " GC_GUARD")
-    if sfVolatile in s.flags or p.nestedTryStmts.len > 0: 
+    if sfVolatile in s.flags or (p.nestedTryStmts.len > 0 and
+                                 gCmd != cmdCompileToCpp):
       app(decl, " volatile")
     appf(decl, " $1;$n", [s.loc.r])
   else:
@@ -1048,6 +1050,7 @@ proc getSomeInitName(m: PSym, suffix: string): PRope =
   assert m.owner.kind == skPackage
   if {sfSystemModule, sfMainModule} * m.flags == {}:
     result = m.owner.name.s.mangle.toRope
+    result.app "_"
   result.app m.name.s
   result.app suffix
   
@@ -1382,6 +1385,7 @@ proc myClose(b: PPassContext, n: PNode): PNode =
   registerModuleToMain(m.module)
 
   if sfMainModule in m.module.flags: 
+    m.objHasKidsValid = true
     var disp = generateMethodDispatchers()
     for i in 0..sonsLen(disp)-1: genProcAux(m, disp.sons[i].sym)
     genMainProc(m)

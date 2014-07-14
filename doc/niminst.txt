@@ -1,6 +1,6 @@
-=================================
-  niminst  User's manual
-=================================
+=========================
+  niminst User's manual
+=========================
 
 :Author: Andreas Rumpf
 :Version: |nimrodversion|

@@ -654,7 +654,7 @@ when isMainModule:
       resp = await client.request("http://nimrod-lang.org/download.html")
       echo("Got response: ", resp.status)
 
-    main()
+    asyncCheck main()
     runForever()
 
   else:

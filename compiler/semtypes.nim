@@ -70,9 +70,10 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       counter = x
     of nkSym: 
       e = n.sons[i].sym
-    of nkIdent: 
+    of nkIdent, nkAccQuoted: 
       e = newSymS(skEnumField, n.sons[i], c)
-    else: illFormedAst(n)
+    else:
+      illFormedAst(n[i])
     e.typ = result
     e.position = int(counter)
     if e.position == 0: hasNull = true
@@ -116,7 +117,7 @@ proc semVarargs(c: PContext, n: PNode, prev: PType): PType =
     var base = semTypeNode(c, n.sons[1], nil)
     addSonSkipIntLit(result, base)
     if sonsLen(n) == 3:
-      result.n = newIdentNode(considerAcc(n.sons[2]), n.sons[2].info)
+      result.n = newIdentNode(considerQuotedIdent(n.sons[2]), n.sons[2].info)
   else:
     localError(n.info, errXExpectsOneTypeParam, "varargs")
     addSonSkipIntLit(result, errorType(c))
@@ -280,7 +281,7 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
   else:
     result = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared})
     if result != nil:
-      markUsed(n, result)
+      markUsed(n.info, result)
       if result.kind == skParam and result.typ.kind == tyTypeDesc:
         # This is a typedesc param. is it already bound?
         # it's not bound when it's used multiple times in the
@@ -385,6 +386,7 @@ proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
     case kind
     of skType: 
       # process pragmas later, because result.typ has not been set yet
+      discard
     of skField: pragma(c, result, n.sons[1], fieldPragmas)
     of skVar:   pragma(c, result, n.sons[1], varPragmas)
     of skLet:   pragma(c, result, n.sons[1], letPragmas)
@@ -441,14 +443,14 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
     elif isRange(b):
       branch.sons[i] = semCaseBranchRange(c, t, b, covered)
     else:
+      # constant sets and arrays are allowed:
       var r = semConstExpr(c, b)
       # for ``{}`` we want to trigger the type mismatch in ``fitNode``:
-      if r.kind != nkCurly or len(r) == 0:
+      if r.kind notin {nkCurly, nkBracket} or len(r) == 0:
         checkMinSonsLen(t, 1)
         branch.sons[i] = skipConv(fitNode(c, t.sons[0].typ, r))
         inc(covered)
       else:
-        # constant sets have special rules
         # first element is special and will overwrite: branch.sons[i]:
         branch.sons[i] = semCaseBranchSetElem(c, t, r[0], covered)
         # other elements have to be added to ``branch``
@@ -560,7 +562,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var TIntSet, pos: var int,
     let rec = rectype.sym
     for i in countup(0, sonsLen(n)-3):
       var f = semIdentWithPragma(c, skField, n.sons[i], {sfExported})
-      suggestSym(n.sons[i], f)
+      suggestSym(n.sons[i].info, f)
       f.typ = typ
       f.position = pos
       if (rec != nil) and ({sfImportc, sfExportc} * rec.flags != {}) and
@@ -825,7 +827,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       result = addImplicitGeneric(newTypeS(tyAnything, c))
   
   of tyGenericParam:
-    markUsed(genericParams, paramType.sym)
+    markUsed(info, paramType.sym)
     if tfWildcard in paramType.flags:
       paramType.flags.excl tfWildcard
       paramType.sym.kind = skType
@@ -862,7 +864,13 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
   var counter = 0
   for i in countup(1, n.len - 1):
     var a = n.sons[i]
-    if a.kind != nkIdentDefs: illFormedAst(a)
+    if a.kind != nkIdentDefs:
+      # for some generic instantiations the passed ':env' parameter
+      # for closures has already been produced (see bug #898). We simply
+      # skip this parameter here. It'll then be re-generated in another LL
+      # pass over this instantiation:
+      if a.kind == nkSym and sfFromGeneric in a.sym.flags: continue
+      illFormedAst(a)
     checkMinSonsLen(a, 3)
     var
       typ: PType = nil
@@ -1083,8 +1091,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkCallKinds:
     if isRange(n):
       result = semRangeAux(c, n, prev)
-    elif n[0].kind == nkIdent:
-      let op = n.sons[0].ident
+    elif n[0].kind notin nkIdentKinds:
+      result = semTypeExpr(c, n)
+    else:
+      let op = considerQuotedIdent(n.sons[0])
       if op.id in {ord(wAnd), ord(wOr)} or op.s == "|":
         checkSonsLen(n, 3)
         var
@@ -1119,8 +1129,6 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = semAnyRef(c, n, tyRef, prev)
       else:
         result = semTypeExpr(c, n)
-    else:
-      result = semTypeExpr(c, n)
   of nkWhenStmt:
     var whenResult = semWhen(c, n, false)
     if whenResult.kind == nkStmtList: whenResult.kind = nkStmtListType
@@ -1179,7 +1187,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       else: 
         assignType(prev, t)
         result = prev
-      markUsed(n, n.sym)
+      markUsed(n.info, n.sym)
     else:
       if n.sym.kind != skError: localError(n.info, errTypeExpected)
       result = newOrPrevType(tyError, prev, c)

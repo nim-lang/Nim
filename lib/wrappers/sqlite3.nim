@@ -106,15 +106,15 @@ type
   Pstmt* = ptr Tstmt
   Tvalue{.pure, final.} = object 
   Pvalue* = ptr Tvalue
-  PPValue* = ptr Pvalue 
+  PValueArg* = array[0..127, Pvalue]
   
   Tcallback* = proc (para1: pointer, para2: int32, para3, 
                      para4: cstringArray): int32{.cdecl.}
   Tbind_destructor_func* = proc (para1: pointer){.cdecl.}
   Tcreate_function_step_func* = proc (para1: Pcontext, para2: int32, 
-                                      para3: PPValue){.cdecl.}
+                                      para3: PValueArg){.cdecl.}
   Tcreate_function_func_func* = proc (para1: Pcontext, para2: int32, 
-                                      para3: PPValue){.cdecl.}
+                                      para3: PValueArg){.cdecl.}
   Tcreate_function_final_func* = proc (para1: Pcontext){.cdecl.}
   Tresult_func* = proc (para1: pointer){.cdecl.}
   Tcreate_collation_func* = proc (para1: pointer, para2: int32, para3: pointer, 
