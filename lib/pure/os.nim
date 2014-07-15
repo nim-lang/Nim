@@ -1633,7 +1633,7 @@ elif not defined(createNimRtl):
 
   proc paramStr*(i: int): TaintedString {.tags: [FReadIO].} =
     # Docstring in nimdoc block.
-    if i < cmdCount and i >= 0: result = TaintedString($cmdLine[i])
+    if i < cmdCount and i >= 0: return TaintedString($cmdLine[i])
     raise newException(EInvalidIndex, "invalid index")
 
   proc paramCount*(): int {.tags: [FReadIO].} =
