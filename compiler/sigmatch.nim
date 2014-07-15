@@ -62,7 +62,7 @@ type
 const
   isNilConversion = isConvertible # maybe 'isIntConv' fits better?
     
-proc markUsed*(n: PNode, s: PSym)
+proc markUsed*(info: TLineInfo, s: PSym)
 
 proc initCandidateAux(ctx: PContext,
                       c: var TCandidate, callee: PType) {.inline.} =
@@ -497,11 +497,11 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
 proc shouldSkipDistinct(rules: PNode, callIdent: PIdent): bool =
   if rules.kind == nkWith:
     for r in rules:
-      if r.considerAcc == callIdent: return true
+      if r.considerQuotedIdent == callIdent: return true
     return false
   else:
     for r in rules:
-      if r.considerAcc == callIdent: return false
+      if r.considerQuotedIdent == callIdent: return false
     return true
 
 proc maybeSkipDistinct(t: PType, callee: PSym): PType =
@@ -1058,7 +1058,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       dest = generateTypeInstance(c, m.bindings, arg, dest)
     let fdest = typeRel(m, f, dest)
     if fdest in {isEqual, isGeneric}: 
-      markUsed(arg, c.converters[i])
+      markUsed(arg.info, c.converters[i])
       var s = newSymNode(c.converters[i])
       s.typ = c.converters[i].typ
       s.info = arg.info
@@ -1271,7 +1271,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
       result = nil
     else: 
       # only one valid interpretation found:
-      markUsed(arg, arg.sons[best].sym)
+      markUsed(arg.info, arg.sons[best].sym)
       result = paramTypesMatchAux(m, f, arg.sons[best].typ, arg.sons[best],
                                   argOrig)
 
@@ -1302,7 +1302,7 @@ proc prepareOperand(c: PContext; a: PNode): PNode =
 proc prepareNamedParam(a: PNode) =
   if a.sons[0].kind != nkIdent:
     var info = a.sons[0].info
-    a.sons[0] = newIdentNode(considerAcc(a.sons[0]), info)
+    a.sons[0] = newIdentNode(considerQuotedIdent(a.sons[0]), info)
 
 proc arrayConstr(c: PContext, n: PNode): PType =
   result = newTypeS(tyArrayConstr, c)

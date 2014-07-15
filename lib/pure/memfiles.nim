@@ -74,9 +74,22 @@ proc unmapMem*(f: var TMemFile, p: pointer, size: int) =
 proc open*(filename: string, mode: TFileMode = fmRead,
            mappedSize = -1, offset = 0, newFileSize = -1): TMemFile =
   ## opens a memory mapped file. If this fails, ``EOS`` is raised.
-  ## `newFileSize` can only be set if the file is not opened with ``fmRead``
-  ## access. `mappedSize` and `offset` can be used to map only a slice of
-  ## the file.
+  ## `newFileSize` can only be set if the file does not exist and is opened
+  ## with write access (e.g., with fmReadWrite). `mappedSize` and `offset`
+  ## can be used to map only a slice of the file. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var
+  ##     mm, mm_full, mm_half: TMemFile
+  ##
+  ##   mm = memfiles.open("/tmp/test.mmap", mode = fmWrite, newFileSize = 1024)    # Create a new file
+  ##   mm.close()
+  ##
+  ##   # Read the whole file, would fail if newFileSize was set
+  ##   mm_full = memfiles.open("/tmp/test.mmap", mode = fmReadWrite, mappedSize = -1)
+  ##
+  ##   # Read the first 512 bytes
+  ##   mm_half = memfiles.open("/tmp/test.mmap", mode = fmReadWrite, mappedSize = 512)
 
   # The file can be resized only when write mode is used:
   assert newFileSize == -1 or mode != fmRead
@@ -165,8 +178,11 @@ proc open*(filename: string, mode: TFileMode = fmRead,
 
     if newFileSize != -1:
       flags = flags or O_CREAT or O_TRUNC
+      var permissions_mode = S_IRUSR or S_IWUSR
+      result.handle = open(filename, flags, permissions_mode)
+    else:
+      result.handle = open(filename, flags)
 
-    result.handle = open(filename, flags)
     if result.handle == -1:
       # XXX: errno is supposed to be set here
       # Is there an exception that wraps it?

@@ -20,3 +20,15 @@ type
 
 var a = Bar(y: 100, x: 200) # works
 var b = Bar(x: 100, y: 200) # used to fail
+
+# bug 1275
+
+type
+  Graphic = object of TObject
+    case kind: range[0..1]
+    of 0:
+      radius: float
+    of 1:
+      size: tuple[w, h: float]
+
+var d = Graphic(kind: 1, size: (12.9, 6.9))

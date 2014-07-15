@@ -2,6 +2,26 @@
 News
 ====
 
+..
+  2014-06-29 Version 0.9.6 released
+  =================================
+
+  Changes affecting backwards compatibility
+  -----------------------------------------
+
+  - ``spawn`` now uses an elaborate self-adapting thread pool and as such
+    has been moved into its own module. So to use it, you now have to import
+    ``threadpool``.
+  - The symbol binding rules in generics changed: ``bar`` in ``foo.bar`` is
+    now considered for implicit early binding.
+
+
+  Library Additions
+  -----------------
+
+  - Added module ``cpuinfo``.
+  - Added module ``threadpool``.
+  - ``sequtils.distnct`` has been renamed to ``sequtils.deduplicate``.
 
 
 2014-04-21 Version 0.9.4 released
@@ -9,13 +29,15 @@ News
 
 The Nimrod development community is proud to announce the release of version
 0.9.4 of the Nimrod compiler and tools. **Note: This release has to be
-considered beta quality! Lots of new features have been implemented but most
-do not fullfill our quality standards.**
+considered beta quality! Lots of new features have been implemented but
+unfortunately some do not fullfill our quality standards yet.**
 
-This release can be downloaded from `github <https://github.com/Araq/Nimrod>`_.
-Prebuilt binaries will be available soon.
+Prebuilt binaries and instructions for building from source are available
+on the `download page <download.html>`_.
 
-This release includes about 1300 changes in total including various bug
+This release includes about 
+`1400 changes <https://github.com/Araq/Nimrod/compare/v0.9.2...v0.9.4>`_
+in total including various bug
 fixes, new languages features and standard library additions and improvements.
 This release brings with it support for user-defined type classes, a brand
 new VM for executing Nimrod code at compile-time and new symbol binding
@@ -79,6 +101,8 @@ syntax:
   var s = @[1, 2, 3, 4, 5]
   echo(s.map((x: int) => x * 5))
 
+A list of changes follows, for a comprehensive list of changes take a look
+`here <https://github.com/Araq/Nimrod/compare/v0.9.2...v0.9.4>`_.
 
 Library Additions
 -----------------
@@ -93,7 +117,7 @@ Library Additions
 - Added module ``selectors``.
 - Added module ``asynchttpserver``.
 - Added support for the new asynchronous IO in the ``httpclient`` module.
-- Added a Python-inspired ``future`` module that feature upcoming additions
+- Added a Python-inspired ``future`` module that features upcoming additions
   to the ``system`` module.
 
 

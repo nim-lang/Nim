@@ -243,7 +243,7 @@ when not defined(useNimRtl):
       
     # on UNIX, the GC uses ``SIGFREEZE`` to tell every thread to stop so that
     # the GC can examine the stacks?
-    proc stopTheWord() = nil
+    proc stopTheWord() = discard
     
 # We jump through some hops here to ensure that Nimrod thread procs can have
 # the Nimrod calling convention. This is needed because thread procs are 

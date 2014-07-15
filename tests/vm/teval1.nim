@@ -16,4 +16,9 @@ const
   
 echo "##", x, "##"
 
+# bug #1310
+static:
+    var i, j: set[int8] = {}
+    var k = i + j
+
 

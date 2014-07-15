@@ -24,7 +24,7 @@ ampExpr = plusExpr (OP6 optInd plusExpr)*
 plusExpr = mulExpr (OP7 optInd mulExpr)*
 mulExpr = dollarExpr (OP8 optInd dollarExpr)*
 dollarExpr = primary (OP9 optInd primary)*
-symbol = '`' (KEYW|IDENT|operator|'(' ')'|'[' ']'|'{' '}'|'='|literal)+ '`'
+symbol = '`' (KEYW|IDENT|literal|(operator|'('|')'|'['|']'|'{'|'}'|'=')+)+ '`'
        | IDENT
 indexExpr = expr
 indexExprList = indexExpr ^+ comma
@@ -82,10 +82,11 @@ paramListColon = paramList? (':' optInd typeDesc)?
 doBlock = 'do' paramListArrow pragmas? colcom stmt
 doBlocks = doBlock ^* IND{=}
 procExpr = 'proc' paramListColon pragmas? ('=' COMMENT? stmt)?
+distinct = 'distinct' optInd typeDesc
 expr = (ifExpr
       | whenExpr
       | caseExpr
-      | tryStmt)
+      | tryExpr)
       / simpleExpr
 typeKeyw = 'var' | 'ref' | 'ptr' | 'shared' | 'type' | 'tuple'
          | 'proc' | 'iterator' | 'distinct' | 'object' | 'enum'
@@ -134,6 +135,9 @@ caseStmt = 'case' expr ':'? COMMENT?
 tryStmt = 'try' colcom stmt &(IND{=}? 'except'|'finally')
            (IND{=}? 'except' exprList colcom stmt)*
            (IND{=}? 'finally' colcom stmt)?
+tryExpr = 'try' colcom stmt &(optInd 'except'|'finally')
+           (optInd 'except' exprList colcom stmt)*
+           (optInd 'finally' colcom stmt)?
 exceptBlock = 'except' colcom stmt
 forStmt = 'for' (identWithPragma ^+ comma) 'in' expr colcom stmt
 blockStmt = 'block' symbol? colcom stmt
@@ -166,7 +170,6 @@ object = 'object' pragma? ('of' typeDesc)? COMMENT? objectPart
 typeClassParam = ('var')? symbol
 typeClass = typeClassParam ^* ',' (pragma)? ('of' typeDesc ^* ',')?
               &IND{>} stmt
-distinct = 'distinct' optInd typeDesc
 typeDef = identWithPragma genericParamList? '=' optInd typeDefAux
             indAndComment?
 varTuple = '(' optInd identWithPragma ^+ comma optPar ')' '=' optInd expr

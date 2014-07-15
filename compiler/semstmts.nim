@@ -33,7 +33,7 @@ proc semBreakOrContinue(c: PContext, n: PNode): PNode =
       x.info = n.info
       incl(s.flags, sfUsed)
       n.sons[0] = x
-      suggestSym(x, s)
+      suggestSym(x.info, s)
     else:
       localError(n.info, errInvalidControlFlowX, s.name.s)
   elif (c.p.nestedLoopCounter <= 0) and (c.p.nestedBlockCounter <= 0): 
@@ -66,10 +66,16 @@ proc toCover(t: PType): BiggestInt =
     result = lengthOrd(skipTypes(t, abstractVar-{tyTypeDesc}))
 
 proc performProcvarCheck(c: PContext, n: PNode, s: PSym) =
+  ## Checks that the given symbol is a proper procedure variable, meaning
+  ## that it 
   var smoduleId = getModule(s).id
   if sfProcvar notin s.flags and s.typ.callConv == ccDefault and
-      smoduleId != c.module.id and smoduleId != c.friendModule.id: 
-    localError(n.info, errXCannotBePassedToProcVar, s.name.s)
+      smoduleId != c.module.id:
+    block outer:
+      for module in c.friendModules:
+        if smoduleId == module.id:
+          break outer
+      localError(n.info, errXCannotBePassedToProcVar, s.name.s)
 
 proc semProcvarCheck(c: PContext, n: PNode) =
   let n = n.skipConv
@@ -190,7 +196,7 @@ proc semCase(c: PContext, n: PNode): PNode =
   var typ = commonTypeBegin
   var hasElse = false
   case skipTypes(n.sons[0].typ, abstractVarRange-{tyTypeDesc}).kind
-  of tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32:
+  of tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32, tyBool:
     chckCovered = true
   of tyFloat..tyFloat128, tyString, tyError:
     discard
@@ -313,7 +319,7 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
     incl(result.flags, sfGlobal)
   else:
     result = semIdentWithPragma(c, kind, n, {})
-  suggestSym(n, result)
+  suggestSym(n.info, result)
 
 proc checkNilable(v: PSym) =
   if sfGlobal in v.flags and {tfNotNil, tfNeedsInit} * v.typ.flags != {}:
@@ -655,7 +661,7 @@ proc semFor(c: PContext, n: PNode): PNode =
   n.sons[length-2] = semExprNoDeref(c, n.sons[length-2], {efWantIterator})
   var call = n.sons[length-2]
   let isCallExpr = call.kind in nkCallKinds
-  if isCallExpr and call.sons[0].sym.magic != mNone:
+  if isCallExpr and call[0].kind == nkSym and call[0].sym.magic != mNone:
     if call.sons[0].sym.magic == mOmpParFor:
       result = semForVars(c, n)
       result.kind = nkParForStmt
@@ -822,6 +828,9 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
                               getCurrOwner(), s.info)
 
 proc semTypeSection(c: PContext, n: PNode): PNode =
+  ## Processes a type section. This must be done in separate passes, in order
+  ## to allow the type definitions in the section to reference each other
+  ## without regard for the order of their definitions.
   typeSectionLeftSidePass(c, n)
   typeSectionRightSidePass(c, n)
   typeSectionFinalPass(c, n)
@@ -868,7 +877,7 @@ proc lookupMacro(c: PContext, n: PNode): PSym =
     result = n.sym
     if result.kind notin {skMacro, skTemplate}: result = nil
   else:
-    result = searchInScopes(c, considerAcc(n), {skMacro, skTemplate})
+    result = searchInScopes(c, considerQuotedIdent(n), {skMacro, skTemplate})
 
 proc semProcAnnotation(c: PContext, prc: PNode): PNode =
   var n = prc.sons[pragmasPos]
@@ -879,7 +888,7 @@ proc semProcAnnotation(c: PContext, prc: PNode): PNode =
     let m = lookupMacro(c, key)
     if m == nil:
       if key.kind == nkIdent and key.ident.id == ord(wDelegator):
-        if considerAcc(prc.sons[namePos]).s == "()":
+        if considerQuotedIdent(prc.sons[namePos]).s == "()":
           prc.sons[namePos] = newIdentNode(idDelegator, prc.info)
           prc.sons[pragmasPos] = copyExcept(n, i)
         else:

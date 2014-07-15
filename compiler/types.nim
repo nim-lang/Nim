@@ -1118,6 +1118,11 @@ proc typeAllowed(t: PType, kind: TSymKind): bool =
 proc align(address, alignment: BiggestInt): BiggestInt = 
   result = (address + (alignment - 1)) and not (alignment - 1)
 
+const
+  szNonConcreteType* = -3
+  szIllegalRecursion* = -2
+  szUnknownSize* = -1
+
 proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt
 proc computeRecSizeAux(n: PNode, a, currOffset: var BiggestInt): BiggestInt = 
   var maxAlign, maxSize, b, res: BiggestInt
@@ -1151,14 +1156,9 @@ proc computeRecSizeAux(n: PNode, a, currOffset: var BiggestInt): BiggestInt =
   of nkSym: 
     result = computeSizeAux(n.sym.typ, a)
     n.sym.offset = int(currOffset)
-  else: 
-    internalError("computeRecSizeAux()")
+  else:
     a = 1
-    result = - 1
-
-const 
-  szIllegalRecursion* = -2
-  szUnknownSize* = -1
+    result = szNonConcreteType
 
 proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
   var res, maxAlign, length, currOffset: BiggestInt

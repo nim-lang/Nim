@@ -88,6 +88,18 @@ Level  Description
 =====  ============================================
 
 
+Compile time symbols
+--------------------
+
+Through the ``-d:x`` or ``--define:x`` switch you can define compile time
+symbols for conditional compilation. The defined switches can be checked in
+source code with the `when statement <manual.html#when-statement>`_ and
+`defined proc <system.html#defined>`_. The typical use of this switch is to
+enable builds in release mode (``-d:release``) where certain safety checks are
+omitted for better performance. Another common use is the ``-d:ssl`` switch to
+activate `SSL sockets <sockets.html>`_.
+
+
 Configuration files
 -------------------
 
@@ -116,7 +128,7 @@ The default build of a project is a `debug build`:idx:. To compile a
 Search path handling
 --------------------
 
-Nimrod has the concept of a global `search path`:idx: (PATH) that is queried to
+Nimrod has the concept of a global search path (PATH) that is queried to
 determine where to find imported modules or include files. If multiple files are
 found an ambiguity error is produced.
 
@@ -167,14 +179,14 @@ might contain some cruft even when dead code elimination is turned on. So
 the final release build should be done with ``--symbolFiles:off``.
 
 Due to the aggregation of C code it is also recommended that each project
-resists in its own directory so that the generated ``nimcache`` directory
+resides in its own directory so that the generated ``nimcache`` directory
 is not shared between different projects.
 
 
 Cross compilation
 =================
 
-To `cross compile`:idx:, use for example::
+To cross compile, use for example::
 
   nimrod c --cpu:i386 --os:linux --compile_only --gen_script myproject.nim
 
@@ -200,7 +212,7 @@ DLL generation
 
 Nimrod supports the generation of DLLs. However, there must be only one 
 instance of the GC per process/address space. This instance is contained in
-``nimrtl.dll``. This means that every generated Nimrod `DLL`:idx: depends
+``nimrtl.dll``. This means that every generated Nimrod DLL depends
 on ``nimrtl.dll``. To generate the "nimrtl.dll" file, use the command::
   
   nimrod c -d:release lib/nimrtl.nim
@@ -251,7 +263,7 @@ generator and are subject to change.
 
 NoDecl pragma
 -------------
-The `noDecl`:idx: pragma can be applied to almost any symbol (variable, proc,
+The ``noDecl`` pragma can be applied to almost any symbol (variable, proc,
 type, etc.) and is sometimes useful for interoperability with C:
 It tells Nimrod that it should not generate a declaration for the symbol in
 the C code. For example:
@@ -268,7 +280,7 @@ However, the ``header`` pragma is often the better alternative.
 
 Header pragma
 -------------
-The `header`:idx: pragma is very similar to the ``noDecl`` pragma: It can be
+The ``header`` pragma is very similar to the ``noDecl`` pragma: It can be
 applied to almost any symbol and specifies that it should not be declared
 and instead the generated code should contain an ``#include``:
 
@@ -287,7 +299,7 @@ encloses the header file in ``""`` in the generated C code.
 
 IncompleteStruct pragma
 -----------------------
-The `incompleteStruct`:idx: pragma tells the compiler to not use the 
+The ``incompleteStruct`` pragma tells the compiler to not use the 
 underlying C ``struct`` in a ``sizeof`` expression:
 
 .. code-block:: Nimrod
@@ -298,7 +310,7 @@ underlying C ``struct`` in a ``sizeof`` expression:
 
 Compile pragma
 --------------
-The `compile`:idx: pragma can be used to compile and link a C/C++ source file 
+The ``compile`` pragma can be used to compile and link a C/C++ source file 
 with the project: 
 
 .. code-block:: Nimrod
@@ -311,7 +323,7 @@ of the file.
 
 Link pragma
 -----------
-The `link`:idx: pragma can be used to link an additional file with the project: 
+The ``link`` pragma can be used to link an additional file with the project: 
 
 .. code-block:: Nimrod
   {.link: "myfile.o".}
@@ -319,7 +331,7 @@ The `link`:idx: pragma can be used to link an additional file with the project:
 
 PassC pragma
 ------------
-The `passC`:idx: pragma can be used to pass additional parameters to the C
+The ``passC`` pragma can be used to pass additional parameters to the C
 compiler like you would using the commandline switch ``--passC``:
 
 .. code-block:: Nimrod
@@ -333,7 +345,7 @@ embed parameters from an external command at compile time:
 
 PassL pragma
 ------------
-The `passL`:idx: pragma can be used to pass additional parameters to the linker
+The ``passL`` pragma can be used to pass additional parameters to the linker
 like you would using the commandline switch ``--passL``:
 
 .. code-block:: Nimrod
@@ -348,7 +360,7 @@ embed parameters from an external command at compile time:
 
 Emit pragma
 -----------
-The `emit`:idx: pragma can be used to directly affect the output of the 
+The ``emit`` pragma can be used to directly affect the output of the 
 compiler's code generator. So it makes your code unportable to other code
 generators/backends. Its usage is highly discouraged! However, it can be
 extremely useful for interfacing with `C++`:idx: or `Objective C`:idx: code.
@@ -360,19 +372,22 @@ Example:
   static int cvariable = 420;
   """.}
 
-  proc embedsC() {.noStackFrame.} = 
+  {.push stackTrace:off.}
+  proc embedsC() =
     var nimrodVar = 89
     # use backticks to access Nimrod symbols within an emit section:
     {.emit: """fprintf(stdout, "%d\n", cvariable + (int)`nimrodVar`);""".}
+  {.pop.}
 
   embedsC()
 
 
 ImportCpp pragma
 ----------------
-The `importcpp`:idx: pragma can be used to import `C++`:idx: methods. The
-generated code then uses the C++ method calling syntax: ``obj->method(arg)``.
-In addition with the ``header`` and ``emit`` pragmas this allows *sloppy*
+Similar to the `importc pragma for C <manual.html#importc-pragma>`_, the
+``importcpp`` pragma can be used to import `C++`:idx: methods. The generated
+code then uses the C++ method calling syntax: ``obj->method(arg)``.  In
+addition with the ``header`` and ``emit`` pragmas this allows *sloppy*
 interfacing with libraries written in C++:
 
 .. code-block:: Nimrod
@@ -408,11 +423,11 @@ emits C++ code.
 
 ImportObjC pragma
 -----------------
-The `importobjc`:idx: pragma can be used to import `Objective C`:idx: methods. 
-The generated code then uses the Objective C method calling 
-syntax: ``[obj method param1: arg]``.
-In addition with the ``header`` and ``emit`` pragmas this allows *sloppy*
-interfacing with libraries written in Objective C:
+Similar to the `importc pragma for C <manual.html#importc-pragma>`_, the
+``importobjc`` pragma can be used to import `Objective C`:idx: methods.  The
+generated code then uses the Objective C method calling syntax: ``[obj method
+param1: arg]``.  In addition with the ``header`` and ``emit`` pragmas this
+allows *sloppy* interfacing with libraries written in Objective C:
 
 .. code-block:: Nimrod
   # horrible example of how to interface with GNUStep ...
@@ -458,7 +473,7 @@ emits Objective C code.
 CodegenDecl pragma
 ------------------
 
-The `codegenDecl`:idx: pragma can be used to directly influence Nimrod's code
+The ``codegenDecl`` pragma can be used to directly influence Nimrod's code
 generator. It receives a format string that determines how the variable or 
 proc is declared in the generated code:
 
@@ -473,7 +488,7 @@ proc is declared in the generated code:
 InjectStmt pragma
 -----------------
 
-The `injectStmt`:idx: pragma can be used to inject a statement before every
+The ``injectStmt`` pragma can be used to inject a statement before every
 other statement in the current module. It is only supposed to be used for
 debugging:
 
@@ -485,28 +500,28 @@ debugging:
 
 LineDir option
 --------------
-The `lineDir`:idx: option can be turned on or off. If turned on the
+The ``lineDir`` option can be turned on or off. If turned on the
 generated C code contains ``#line`` directives. This may be helpful for
 debugging with GDB.
 
 
 StackTrace option
 -----------------
-If the `stackTrace`:idx: option is turned on, the generated C contains code to
+If the ``stackTrace`` option is turned on, the generated C contains code to
 ensure that proper stack traces are given if the program crashes or an
 uncaught exception is raised.
 
 
 LineTrace option
 ----------------
-The `lineTrace`:idx: option implies the ``stackTrace`` option. If turned on,
+The ``lineTrace`` option implies the ``stackTrace`` option. If turned on,
 the generated C contains code to ensure that proper stack traces with line
 number information are given if the program crashes or an uncaught exception
 is raised.
 
 Debugger option
 ---------------
-The `debugger`:idx: option enables or disables the *Embedded Nimrod Debugger*.
+The ``debugger`` option enables or disables the *Embedded Nimrod Debugger*.
 See the documentation of endb_ for further information.
 
 
@@ -518,7 +533,7 @@ ENDB. See the documentation of `endb <endb.html>`_ for further information.
 
 Volatile pragma
 ---------------
-The `volatile`:idx: pragma is for variables only. It declares the variable as
+The ``volatile`` pragma is for variables only. It declares the variable as
 ``volatile``, whatever that means in C/C++ (its semantics are not well defined
 in C/C++).
 
@@ -530,12 +545,22 @@ DynlibOverride
 
 By default Nimrod's ``dynlib`` pragma causes the compiler to generate 
 ``GetProcAddress`` (or their Unix counterparts)
-calls to bind to a DLL. With the `dynlibOverride`:idx: command line switch this
+calls to bind to a DLL. With the ``dynlibOverride`` command line switch this
 can be prevented and then via ``--passL`` the static library can be linked
 against. For instance, to link statically against Lua this command might work
 on Linux::
 
   nimrod c --dynlibOverride:lua --passL:liblua.lib program.nim
+
+
+Backend language options
+========================
+
+The typical compiler usage involves using the ``compile`` or ``c`` command to
+transform a ``.nim`` file into one or more ``.c`` files which are then
+compiled with the platform's C compiler into a static binary. However there
+are other commands to compile to C++, Objective-C or Javascript. More details
+can be read in the `Nimrod Backend Integration document <backends.html>`_.
 
 
 Nimrod documentation tools
@@ -556,7 +581,7 @@ for further information.
 Nimrod interactive mode
 =======================
 
-The Nimrod compiler supports an `interactive mode`:idx:. This is also known as
+The Nimrod compiler supports an interactive mode. This is also known as
 a `REPL`:idx: (*read eval print loop*). If Nimrod has been built with the 
 ``-d:useGnuReadline`` switch, it uses the GNU readline library for terminal
 input management. To start Nimrod in interactive mode use the command 
@@ -681,35 +706,3 @@ efficient:
     else: quit(errorStr(p, "expected: console or gui"))
   of "license": c.license = UnixToNativePath(k.value)
   else: quit(errorStr(p, "unknown variable: " & k.key))
-
-
-The JavaScript target
-=====================
-
-Nimrod can also generate `JavaScript`:idx: code. However, the
-JavaScript code generator is experimental!
-
-Nimrod targets JavaScript 1.5 which is supported by any widely used browser.
-Since JavaScript does not have a portable means to include another module,
-Nimrod just generates a long ``.js`` file.
-
-Features or modules that the JavaScript platform does not support are not
-available. This includes:
-
-* manual memory management (``alloc``, etc.)
-* casting and other unsafe operations (``cast`` operator, ``zeroMem``, etc.)
-* file management
-* most modules of the Standard library
-* proper 64 bit integer arithmetic
-* unsigned integer arithmetic
-
-However, the modules `strutils`:idx:, `math`:idx:, and `times`:idx: are
-available! To access the DOM, use the `dom`:idx: module that is only
-available for the JavaScript platform.
-
-To compile a Nimrod module into a ``.js`` file use the ``js`` command; the
-default is a  ``.js`` file that is supposed to be referenced in an ``.html``
-file. However, you can also run the code with `nodejs`:idx:\:  
-
-  nimrod js -d:nodejs -r examples/hallo.nim
-

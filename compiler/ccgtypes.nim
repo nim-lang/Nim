@@ -11,49 +11,10 @@
 
 # ------------------------- Name Mangling --------------------------------
 
-proc mangleField(name: string): string = 
-  case name[0]
-  of 'a'..'z': 
-    result = ""
-    add(result, chr(ord(name[0]) - ord('a') + ord('A')))
-  of '0'..'9', 'A'..'Z': 
-    result = ""
-    add(result, name[0])
-  else: result = "HEX" & toHex(ord(name[0]), 2)
-  for i in countup(1, len(name) - 1): 
-    case name[i]
-    of 'A'..'Z': 
-      add(result, chr(ord(name[i]) - ord('A') + ord('a')))
-    of '_': 
-      discard
-    of 'a'..'z', '0'..'9': 
-      add(result, name[i])
-    else: 
-      add(result, "HEX")
-      add(result, toHex(ord(name[i]), 2))
-
-proc mangle(name: string): string = 
-  when false:
-    case name[0]
-    of 'a'..'z': 
-      result = ""
-      add(result, chr(ord(name[0]) - ord('a') + ord('A')))
-    of '0'..'9', 'A'..'Z': 
-      result = ""
-      add(result, name[0])
-    else: result = "HEX" & toHex(ord(name[0]), 2)
-  result = ""
-  for i in countup(0, len(name) - 1): 
-    case name[i]
-    of 'A'..'Z': 
-      add(result, chr(ord(name[i]) - ord('A') + ord('a')))
-    of '_': 
-      discard
-    of 'a'..'z', '0'..'9': 
-      add(result, name[i])
-    else: 
-      add(result, "HEX")
-      add(result, toHex(ord(name[i]), 2))
+proc mangleField(name: string): string =
+  result = mangle(name)
+  result[0] = result[0].toUpper # Mangling makes everything lowercase,
+                                # but some identifiers are C keywords
 
 proc isKeyword(w: PIdent): bool =
   # nimrod and C++ share some keywords
@@ -835,6 +796,11 @@ proc genObjectInfo(m: BModule, typ: PType, name: PRope) =
   var tmp = getNimNode(m)
   genObjectFields(m, typ, typ.n, tmp)
   appf(m.s[cfsTypeInit3], "$1.node = &$2;$n", [name, tmp])
+  var t = typ.sons[0]
+  while t != nil:
+    t = t.skipTypes(abstractInst)
+    t.flags.incl tfObjHasKids
+    t = t.sons[0]
 
 proc genTupleInfo(m: BModule, typ: PType, name: PRope) =
   genTypeInfoAuxBase(m, typ, name, toRope("0"))

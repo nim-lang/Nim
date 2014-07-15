@@ -179,7 +179,8 @@ when not defined(nimmixin):
     # internal proc used for destroying sequences and arrays
     for i in countup(0, r.len - 1): destroy(r[i])
 else:
-  # XXX Why is this exported and no compilerproc?
+  # XXX Why is this exported and no compilerproc? -> compilerprocs cannot be
+  # generic for now
   proc nimDestroyRange*[T](r: T) =
     # internal proc used for destroying sequences and arrays
     mixin destroy

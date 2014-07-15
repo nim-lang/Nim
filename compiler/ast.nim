@@ -510,6 +510,7 @@ const
   tfUncheckedArray* = tfVarargs
   tfUnion* = tfNoSideEffect
   tfGcSafe* = tfThread
+  tfObjHasKids* = tfEnumHasHoles
   skError* = skUnknown
   
   # type flags that are essential for type equality:
@@ -549,7 +550,7 @@ type
     mFields, mFieldPairs, mOmpParFor,
     mAppendStrCh, mAppendStrStr, mAppendSeqElem,
     mInRange, mInSet, mRepr, mExit, mSetLengthStr, mSetLengthSeq,
-    mIsPartOf, mAstToStr, mRand,
+    mIsPartOf, mAstToStr, mParallel,
     mSwap, mIsNil, mArrToSeq, mCopyStr, mCopyStrLast,
     mNewString, mNewStringOfCap,
     mReset,
@@ -560,7 +561,7 @@ type
     mFloat, mFloat32, mFloat64, mFloat128,
     mBool, mChar, mString, mCstring,
     mPointer, mEmptySet, mIntSetBaseType, mNil, mExpr, mStmt, mTypeDesc,
-    mVoidType, mPNimrodNode, mShared, mGuarded, mLock, mSpawn,
+    mVoidType, mPNimrodNode, mShared, mGuarded, mLock, mSpawn, mDeepCopy,
     mIsMainModule, mCompileDate, mCompileTime, mNimrodVersion, mNimrodMajor,
     mNimrodMinor, mNimrodPatch, mCpuEndian, mHostOS, mHostCPU, mAppType,
     mNaN, mInf, mNegInf,
@@ -597,18 +598,17 @@ const
     mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr, mStrToStr, mEnumToStr, 
     mAnd, mOr, mEqStr, mLeStr, mLtStr, mEqSet, mLeSet, mLtSet, mMulSet, 
     mPlusSet, mMinusSet, mSymDiffSet, mConStrStr, mConArrArr, mConArrT, 
-    mConTArr, mConTT, mSlice, 
+    mConTArr, mConTT,
     mAppendStrCh, mAppendStrStr, mAppendSeqElem, 
     mInRange, mInSet, mRepr,
-    mRand, 
     mCopyStr, mCopyStrLast}
   # magics that require special semantic checking and
   # thus cannot be overloaded (also documented in the spec!):
   SpecialSemMagics* = {
     mDefined, mDefinedInScope, mCompiles, mLow, mHigh, mSizeOf, mIs, mOf, 
-    mEcho, mShallowCopy, mExpandToAst}
+    mEcho, mShallowCopy, mExpandToAst, mParallel, mSpawn}
 
-type 
+type
   PNode* = ref TNode
   TNodeSeq* = seq[PNode]
   PType* = ref TType
@@ -873,7 +873,7 @@ const
     skMacro, skTemplate, skConverter, skEnumField, skLet, skStub}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
                                       nfDotSetter, nfDotField,
-                                      nfAllConst,nfIsRef}
+                                      nfIsRef}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2
@@ -886,6 +886,8 @@ const
 
   nkCallKinds* = {nkCall, nkInfix, nkPrefix, nkPostfix,
                   nkCommand, nkCallStrLit, nkHiddenCallConv}
+  nkIdentKinds* = {nkIdent, nkSym, nkAccQuoted, nkOpenSymChoice,
+                   nkClosedSymChoice}
 
   nkLiterals* = {nkCharLit..nkTripleStrLit}
   nkLambdaKinds* = {nkLambda, nkDo}
@@ -1046,7 +1048,7 @@ proc discardSons(father: PNode) =
   father.sons = nil
 
 when defined(useNodeIds):
-  const nodeIdToDebug* = 482228 # 612794
+  const nodeIdToDebug* = 310841 # 612794
   #612840 # 612905 # 614635 # 614637 # 614641
   # 423408
   #429107 # 430443 # 441048 # 441090 # 441153

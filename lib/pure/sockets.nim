@@ -295,7 +295,7 @@ when defined(ssl):
     of protSSLv23:
       newCTX = SSL_CTX_new(SSLv23_method()) # SSlv2,3 and TLS1 support.
     of protSSLv2:
-      when not defined(linux):
+      when not defined(linux) and not defined(OpenBSD):
         newCTX = SSL_CTX_new(SSLv2_method())
       else:
         SSLError()

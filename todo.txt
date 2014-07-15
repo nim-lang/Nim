@@ -1,5 +1,39 @@
-version 0.9.4
+version 0.9.6
 =============
+
+- scopes are still broken for generic instantiation!
+- integrate the new LL into the devel branch
+- start experimental branch
+
+Concurrency
+-----------
+
+- 'gcsafe' inferrence needs to be fixed
+- the disjoint checker needs to deal with 'a = spawn f(); g = spawn f()'
+- implement 'deepCopy' builtin
+- implement 'foo[1..4] = spawn(f[4..7])'
+- support for exception propagation
+- Minor: The copying of the 'ref Promise' into the thead local storage only
+  happens to work due to the write barrier's implementation
+- implement lock levels --> first without the more complex race avoidance
+- document the new 'spawn' and 'parallel' statements
+
+
+Misc
+----
+
+- fix the bug that keeps 'defer' template from working
+- make '--implicitStatic:on' the default
+- fix the tuple unpacking in lambda bug
+- make tuple unpacking work in a non-var/let context
+- special rule for ``[]=``
+- ``=`` should be overloadable; requires specialization for ``=``; general
+  lift mechanism in the compiler is already implemented for 'fields'
+- built-in 'getImpl'
+- type API for macros; make 'spawn' a macro
+- markAndSweepGC should expose an API for fibers
+- prevent 'alloc(TypeWithGCedMemory)'
+- some table related tests are wrong (memory usage checks)
 
 
 Bugs
@@ -16,7 +50,6 @@ Bugs
 version 0.9.x
 =============
 
-- fix the bug that keeps 'defer' template from working
 - pragmas need 'bindSym' support
 - pragmas need re-work: 'push' is dangerous, 'hasPragma' does not work
   reliably with user-defined pragmas
@@ -28,17 +61,9 @@ version 0.9.x
 - ensure (ref T)(a, b) works as a type conversion and type constructor
 - optimize 'genericReset'; 'newException' leads to code bloat
 - stack-less GC
-- make '--implicitStatic:on' the default
 - implicit deref for parameter matching
 
-- special rule for ``[]=``
-- ``=`` should be overloadable; requires specialization for ``=``; general
-  lift mechanism in the compiler is already implemented for 'fields'
-- built-in 'getImpl'
 - VM: optimize opcAsgnStr
-
-- change comment handling in the AST; that's lots of work as c2nim and pas2nim
-  make use of the fact every node can have a comment!
 
 
 version 0.9.X
@@ -111,10 +136,6 @@ GC
 - precise stack marking; embrace C++ code generation for that
 - marker procs for Boehm GC
 - hybrid GC
-- GC: implement simple generational GC
-  * first version: mark black in write barrier
-  * second version: introduce fake roots instead of marking black
-  * third version: find some clever heuristic which is preferable
 - acyclic vs prunable; introduce GC hints
 - use big blocks in the allocator
 - object pooling support for *hard* realtime systems
@@ -139,7 +160,6 @@ Not essential for 1.0.0
 - implement the "snoopResult" pragma; no, make a strutils with string append
   semantics instead ...
 - implement "closure tuple consists of a single 'ref'" optimization
-- optimize method dispatchers
 - new feature: ``distinct T with operations``
 - arglist as a type (iterator chaining); variable length type lists for generics
 - implement marker procs for message passing

@@ -21,11 +21,12 @@ const useWinVersion = defined(Windows) or defined(nimdoc)
 
 when useWinVersion:
   import winlean
-  export WSAEWOULDBLOCK
+  export WSAEWOULDBLOCK, WSAECONNRESET, WSAECONNABORTED, WSAENETRESET,
+         WSAEDISCON
 else:
   import posix
   export fcntl, F_GETFL, O_NONBLOCK, F_SETFL, EAGAIN, EWOULDBLOCK, MSG_NOSIGNAL,
-    EINTR, EINPROGRESS
+    EINTR, EINPROGRESS, ECONNRESET, EPIPE, ENETRESET
 
 export TSocketHandle, TSockaddr_in, TAddrinfo, INADDR_ANY, TSockAddr, TSockLen,
   inet_ntoa, recv, `==`, connect, send, accept, recvfrom, sendto
@@ -39,7 +40,6 @@ export
   MSG_PEEK
 
 type
-  
   TPort* = distinct uint16  ## port type
   
   TDomain* = enum   ## domain, which specifies the protocol family of the

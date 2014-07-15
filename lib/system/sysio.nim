@@ -115,10 +115,14 @@ proc readAllBuffer(file: TFile): string =
   # bytes we need to read before the buffer is empty.
   result = ""
   var buffer = newString(BufSize)
-  var bytesRead = BufSize
-  while bytesRead == BufSize:
-    bytesRead = readBuffer(file, addr(buffer[0]), BufSize)
-    result.add(buffer)
+  while true:
+    var bytesRead = readBuffer(file, addr(buffer[0]), BufSize)
+    if bytesRead == BufSize:
+      result.add(buffer)
+    else:
+      buffer.setLen(bytesRead)
+      result.add(buffer)
+      break
   
 proc rawFileSize(file: TFile): int = 
   # this does not raise an error opposed to `getFileSize`

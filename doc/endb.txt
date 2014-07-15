@@ -1,6 +1,6 @@
-===========================================
-  Embedded Nimrod Debugger User Guide
-===========================================
+==============================================
+  Embedded Nimrod Debugger (ENDB) User Guide
+==============================================
 
 :Author: Andreas Rumpf
 :Version: |nimrodversion|
@@ -9,7 +9,7 @@
 
 
 Nimrod comes with a platform independent debugger -
-the `Embedded Nimrod Debugger`:idx: (`ENDB`:idx:). The debugger is
+the Embedded Nimrod Debugger (ENDB). The debugger is
 *embedded* into your executable if it has been
 compiled with the ``--debugger:on`` command line option.
 This also defines the conditional symbol ``ENDB`` for you.
@@ -102,7 +102,7 @@ necessary: A special pragma has been defined for this:
 The ``breakpoint`` pragma
 -------------------------
 
-The `breakpoint`:idx: pragma is syntactically a statement. It can be used
+The ``breakpoint`` pragma is syntactically a statement. It can be used
 to mark the *following line* as a breakpoint:
 
 .. code-block:: Nimrod
@@ -122,7 +122,7 @@ debugging.
 The ``watchpoint`` pragma
 -------------------------
 
-The `watchpoint`:idx: pragma is syntactically a statement. It can be used
+The ``watchpoint`` pragma is syntactically a statement. It can be used
 to mark a location as a watchpoint:
 
 .. code-block:: Nimrod

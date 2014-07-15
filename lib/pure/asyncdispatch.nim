@@ -11,8 +11,11 @@ include "system/inclrtl"
 
 import os, oids, tables, strutils, macros
 
-import rawsockets
-export TPort
+import rawsockets, net
+
+export TPort, TSocketFlags
+
+#{.injectStmt: newGcInvariant().}
 
 ## AsyncDispatch
 ## -------------
@@ -24,10 +27,12 @@ export TPort
 ## **Note:** This module is still largely experimental.
 
 
-# TODO: Discarded void PFutures need to checked for exception.
-# TODO: Exceptions are currently uncatchable due to the limitation that 
-# you cannot have yield in a try stmt. Perhaps I can get the macro to put
-# a user's try except around ``future.read``.
+# TODO: Discarded void PFutures need to be checked for exception.
+# TODO: ``except`` statement (without `try`) does not work.
+# TODO: Multiple exception names in a ``except`` don't work.
+# TODO: The effect system (raises: []) has trouble with my try transformation.
+# TODO: Can't await in a 'except' body
+# TODO: getCurrentException(Msg) don't work
 
 # -- Futures
 
@@ -35,19 +40,33 @@ type
   PFutureBase* = ref object of PObject
     cb: proc () {.closure,gcsafe.}
     finished: bool
+    error*: ref EBase
+    stackTrace: string ## For debugging purposes only.
 
   PFuture*[T] = ref object of PFutureBase
     value: T
-    error*: ref EBase # TODO: This shouldn't be necessary, generics bug?
 
 proc newFuture*[T](): PFuture[T] =
   ## Creates a new future.
   new(result)
   result.finished = false
+  result.stackTrace = getStackTrace()
+
+proc checkFinished[T](future: PFuture[T]) =
+  if future.finished:
+    echo("<----->")
+    echo(future.stackTrace)
+    echo("-----")
+    when T is string:
+      echo("Contents: ", future.value.repr)
+    echo("<----->")
+    echo("Future already finished, cannot finish twice.")
+    assert false
 
 proc complete*[T](future: PFuture[T], val: T) =
   ## Completes ``future`` with value ``val``.
-  assert(not future.finished, "Future already finished, cannot finish twice.")
+  #assert(not future.finished, "Future already finished, cannot finish twice.")
+  checkFinished(future)
   assert(future.error == nil)
   future.value = val
   future.finished = true
@@ -56,7 +75,8 @@ proc complete*[T](future: PFuture[T], val: T) =
 
 proc complete*(future: PFuture[void]) =
   ## Completes a void ``future``.
-  assert(not future.finished, "Future already finished, cannot finish twice.")
+  #assert(not future.finished, "Future already finished, cannot finish twice.")
+  checkFinished(future)
   assert(future.error == nil)
   future.finished = true
   if future.cb != nil:
@@ -64,11 +84,18 @@ proc complete*(future: PFuture[void]) =
 
 proc fail*[T](future: PFuture[T], error: ref EBase) =
   ## Completes ``future`` with ``error``.
-  assert(not future.finished, "Future already finished, cannot finish twice.")
+  #assert(not future.finished, "Future already finished, cannot finish twice.")
+  checkFinished(future)
   future.finished = true
   future.error = error
   if future.cb != nil:
     future.cb()
+  else:
+    # This is to prevent exceptions from being silently ignored when a future
+    # is discarded.
+    # TODO: This may turn out to be a bad idea.
+    # Turns out this is a bad idea.
+    #raise error
 
 proc `callback=`*(future: PFutureBase, cb: proc () {.closure,gcsafe.}) =
   ## Sets the callback proc to be called when the future completes.
@@ -112,9 +139,18 @@ proc finished*[T](future: PFuture[T]): bool =
   ## ``True`` may indicate an error or a value. Use ``failed`` to distinguish.
   future.finished
 
-proc failed*[T](future: PFuture[T]): bool =
+proc failed*(future: PFutureBase): bool =
   ## Determines whether ``future`` completed with an error.
   future.error != nil
+
+proc asyncCheck*[T](future: PFuture[T]) =
+  ## Sets a callback on ``future`` which raises an exception if the future
+  ## finished with an error.
+  ##
+  ## This should be used instead of ``discard`` to discard void futures.
+  future.callback =
+    proc () =
+      if future.failed: raise future.error
 
 when defined(windows) or defined(nimdoc):
   import winlean, sets, hashes
@@ -130,15 +166,10 @@ when defined(windows) or defined(nimdoc):
       ioPort: THandle
       handles: TSet[TAsyncFD]
 
-    TCustomOverlapped = object
-      Internal*: DWORD
-      InternalHigh*: DWORD
-      Offset*: DWORD
-      OffsetHigh*: DWORD
-      hEvent*: THANDLE
+    TCustomOverlapped = object of TOVERLAPPED
       data*: TCompletionData
 
-    PCustomOverlapped = ptr TCustomOverlapped
+    PCustomOverlapped = ref TCustomOverlapped
 
     TAsyncFD* = distinct int
 
@@ -184,27 +215,27 @@ when defined(windows) or defined(nimdoc):
       else: timeout.int32
     var lpNumberOfBytesTransferred: DWORD
     var lpCompletionKey: ULONG
-    var lpOverlapped: POverlapped
-    let res = GetQueuedCompletionStatus(p.ioPort, addr lpNumberOfBytesTransferred,
-        addr lpCompletionKey, addr lpOverlapped, llTimeout).bool
+    var customOverlapped: PCustomOverlapped
+    let res = GetQueuedCompletionStatus(p.ioPort,
+        addr lpNumberOfBytesTransferred, addr lpCompletionKey,
+        cast[ptr POverlapped](addr customOverlapped), llTimeout).bool
 
     # http://stackoverflow.com/a/12277264/492186
     # TODO: http://www.serverframework.com/handling-multiple-pending-socket-read-and-write-operations.html
-    var customOverlapped = cast[PCustomOverlapped](lpOverlapped)
     if res:
       # This is useful for ensuring the reliability of the overlapped struct.
       assert customOverlapped.data.sock == lpCompletionKey.TAsyncFD
 
       customOverlapped.data.cb(customOverlapped.data.sock,
           lpNumberOfBytesTransferred, TOSErrorCode(-1))
-      dealloc(customOverlapped)
+      GC_unref(customOverlapped)
     else:
       let errCode = osLastError()
-      if lpOverlapped != nil:
+      if customOverlapped != nil:
         assert customOverlapped.data.sock == lpCompletionKey.TAsyncFD
         customOverlapped.data.cb(customOverlapped.data.sock,
             lpNumberOfBytesTransferred, errCode)
-        dealloc(customOverlapped)
+        GC_unref(customOverlapped)
       else:
         if errCode.int32 == WAIT_TIMEOUT:
           # Timed out
@@ -300,7 +331,8 @@ when defined(windows) or defined(nimdoc):
     while it != nil:
       # "the OVERLAPPED structure must remain valid until the I/O completes"
       # http://blogs.msdn.com/b/oldnewthing/archive/2011/02/02/10123392.aspx
-      var ol = cast[PCustomOverlapped](alloc0(sizeof(TCustomOverlapped)))
+      var ol = PCustomOverlapped()
+      GC_ref(ol)
       ol.data = TCompletionData(sock: socket, cb:
         proc (sock: TAsyncFD, bytesCount: DWord, errcode: TOSErrorCode) =
           if not retFuture.finished:
@@ -328,7 +360,7 @@ when defined(windows) or defined(nimdoc):
           success = true
           break
         else:
-          dealloc(ol)
+          GC_unref(ol)
           success = false
       it = it.ai_next
 
@@ -338,7 +370,7 @@ when defined(windows) or defined(nimdoc):
     return retFuture
 
   proc recv*(socket: TAsyncFD, size: int,
-             flags: int = 0): PFuture[string] =
+             flags = {TSocketFlags.SafeDisconn}): PFuture[string] =
     ## Reads **up to** ``size`` bytes from ``socket``. Returned future will
     ## complete once all the data requested is read, a part of the data has been
     ## read, or the socket has disconnected in which case the future will
@@ -352,15 +384,15 @@ when defined(windows) or defined(nimdoc):
     #     '\0' in the message currently signifies a socket disconnect. Who
     #     knows what will happen when someone sends that to our socket.
     verifyPresence(socket)
-    var retFuture = newFuture[string]()
-    
+    var retFuture = newFuture[string]()    
     var dataBuf: TWSABuf
     dataBuf.buf = cast[cstring](alloc0(size))
     dataBuf.len = size
     
     var bytesReceived: DWord
-    var flagsio = flags.DWord
-    var ol = cast[PCustomOverlapped](alloc0(sizeof(TCustomOverlapped)))
+    var flagsio = flags.toOSFlags().DWord
+    var ol = PCustomOverlapped()
+    GC_ref(ol)
     ol.data = TCompletionData(sock: socket, cb:
       proc (sock: TAsyncFD, bytesCount: DWord, errcode: TOSErrorCode) =
         if not retFuture.finished:
@@ -374,7 +406,9 @@ when defined(windows) or defined(nimdoc):
               retFuture.complete($data)
           else:
             retFuture.fail(newException(EOS, osErrorMsg(errcode)))
-        dealloc dataBuf.buf
+        if dataBuf.buf != nil:
+          dealloc dataBuf.buf
+          dataBuf.buf = nil
     )
 
     let ret = WSARecv(socket.TSocketHandle, addr dataBuf, 1, addr bytesReceived,
@@ -382,9 +416,14 @@ when defined(windows) or defined(nimdoc):
     if ret == -1:
       let err = osLastError()
       if err.int32 != ERROR_IO_PENDING:
-        dealloc dataBuf.buf
-        dealloc(ol)
-        retFuture.fail(newException(EOS, osErrorMsg(err)))
+        if dataBuf.buf != nil:
+          dealloc dataBuf.buf
+          dataBuf.buf = nil
+        GC_unref(ol)
+        if flags.isDisconnectionError(err):
+          retFuture.complete("")
+        else:
+          retFuture.fail(newException(EOS, osErrorMsg(err)))
     elif ret == 0 and bytesReceived == 0 and dataBuf.buf[0] == '\0':
       # We have to ensure that the buffer is empty because WSARecv will tell
       # us immediatelly when it was disconnected, even when there is still
@@ -415,7 +454,8 @@ when defined(windows) or defined(nimdoc):
       # free ``ol``.
     return retFuture
 
-  proc send*(socket: TAsyncFD, data: string): PFuture[void] =
+  proc send*(socket: TAsyncFD, data: string,
+             flags = {TSocketFlags.SafeDisconn}): PFuture[void] =
     ## Sends ``data`` to ``socket``. The returned future will complete once all
     ## data has been sent.
     verifyPresence(socket)
@@ -425,8 +465,9 @@ when defined(windows) or defined(nimdoc):
     dataBuf.buf = data # since this is not used in a callback, this is fine
     dataBuf.len = data.len
 
-    var bytesReceived, flags: DWord
-    var ol = cast[PCustomOverlapped](alloc0(sizeof(TCustomOverlapped)))
+    var bytesReceived, lowFlags: DWord
+    var ol = PCustomOverlapped()
+    GC_ref(ol)
     ol.data = TCompletionData(sock: socket, cb:
       proc (sock: TAsyncFD, bytesCount: DWord, errcode: TOSErrorCode) =
         if not retFuture.finished:
@@ -437,12 +478,15 @@ when defined(windows) or defined(nimdoc):
     )
 
     let ret = WSASend(socket.TSocketHandle, addr dataBuf, 1, addr bytesReceived,
-                      flags, cast[POverlapped](ol), nil)
+                      lowFlags, cast[POverlapped](ol), nil)
     if ret == -1:
       let err = osLastError()
       if err.int32 != ERROR_IO_PENDING:
-        retFuture.fail(newException(EOS, osErrorMsg(err)))
-        dealloc(ol)
+        GC_unref(ol)
+        if flags.isDisconnectionError(err):
+          retFuture.complete()
+        else:
+          retFuture.fail(newException(EOS, osErrorMsg(err)))
     else:
       retFuture.complete()
       # We don't deallocate ``ol`` here because even though this completed
@@ -490,7 +534,8 @@ when defined(windows) or defined(nimdoc):
          client: clientSock.TAsyncFD)
       )
 
-    var ol = cast[PCustomOverlapped](alloc0(sizeof(TCustomOverlapped)))
+    var ol = PCustomOverlapped()
+    GC_ref(ol)
     ol.data = TCompletionData(sock: socket, cb:
       proc (sock: TAsyncFD, bytesCount: DWord, errcode: TOSErrorCode) =
         if not retFuture.finished:
@@ -511,7 +556,7 @@ when defined(windows) or defined(nimdoc):
       let err = osLastError()
       if err.int32 != ERROR_IO_PENDING:
         retFuture.fail(newException(EOS, osErrorMsg(err)))
-        dealloc(ol)
+        GC_unref(ol)
     else:
       completeAccept()
       # We don't deallocate ``ol`` here because even though this completed
@@ -528,15 +573,30 @@ when defined(windows) or defined(nimdoc):
     result.TSocketHandle.setBlocking(false)
     register(result)
 
-  proc close*(socket: TAsyncFD) =
+  proc closeSocket*(socket: TAsyncFD) =
     ## Closes a socket and ensures that it is unregistered.
     socket.TSocketHandle.close()
     getGlobalDispatcher().handles.excl(socket)
 
+  proc unregister*(fd: TAsyncFD) =
+    ## Unregisters ``fd``.
+    getGlobalDispatcher().handles.excl(fd)
+
   initAll()
 else:
   import selectors
-  from posix import EINTR, EAGAIN, EINPROGRESS, EWOULDBLOCK, MSG_PEEK
+  when defined(windows):
+    import winlean
+    const
+      EINTR = WSAEINPROGRESS
+      EINPROGRESS = WSAEINPROGRESS
+      EWOULDBLOCK = WSAEWOULDBLOCK
+      EAGAIN = EINPROGRESS
+      MSG_NOSIGNAL = 0
+  else:
+    from posix import EINTR, EAGAIN, EINPROGRESS, EWOULDBLOCK, MSG_PEEK,
+                      MSG_NOSIGNAL
+  
   type
     TAsyncFD* = distinct cint
     TCallback = proc (sock: TAsyncFD): bool {.closure,gcsafe.}
@@ -577,10 +637,13 @@ else:
     result.TSocketHandle.setBlocking(false)
     register(result)
   
-  proc close*(sock: TAsyncFD) =
+  proc closeSocket*(sock: TAsyncFD) =
     let disp = getGlobalDispatcher()
     sock.TSocketHandle.close()
     disp.selector.unregister(sock.TSocketHandle)
+
+  proc unregister*(fd: TAsyncFD) =
+    getGlobalDispatcher().selector.unregister(fd.TSocketHandle)
 
   proc addRead(sock: TAsyncFD, cb: TCallback) =
     let p = getGlobalDispatcher()
@@ -667,20 +730,23 @@ else:
     return retFuture
 
   proc recv*(socket: TAsyncFD, size: int,
-             flags: int = 0): PFuture[string] =
+             flags = {TSocketFlags.SafeDisconn}): PFuture[string] =
     var retFuture = newFuture[string]()
     
     var readBuffer = newString(size)
 
     proc cb(sock: TAsyncFD): bool =
       result = true
-      let res = recv(sock.TSocketHandle, addr readBuffer[0], size,
-                     flags.cint)
+      let res = recv(sock.TSocketHandle, addr readBuffer[0], size.cint,
+                     flags.toOSFlags())
       #echo("recv cb res: ", res)
       if res < 0:
         let lastError = osLastError()
-        if lastError.int32 notin {EINTR, EWOULDBLOCK, EAGAIN}: 
-          retFuture.fail(newException(EOS, osErrorMsg(lastError)))
+        if lastError.int32 notin {EINTR, EWOULDBLOCK, EAGAIN}:
+          if flags.isDisconnectionError(lastError):
+            retFuture.complete("")
+          else:
+            retFuture.fail(newException(EOS, osErrorMsg(lastError)))
         else:
           result = false # We still want this callback to be called.
       elif res == 0:
@@ -689,11 +755,13 @@ else:
       else:
         readBuffer.setLen(res)
         retFuture.complete(readBuffer)
-  
+    # TODO: The following causes a massive slowdown.
+    #if not cb(socket):
     addRead(socket, cb)
     return retFuture
 
-  proc send*(socket: TAsyncFD, data: string): PFuture[void] =
+  proc send*(socket: TAsyncFD, data: string,
+             flags = {TSocketFlags.SafeDisconn}): PFuture[void] =
     var retFuture = newFuture[void]()
     
     var written = 0
@@ -702,11 +770,15 @@ else:
       result = true
       let netSize = data.len-written
       var d = data.cstring
-      let res = send(sock.TSocketHandle, addr d[written], netSize, 0.cint)
+      let res = send(sock.TSocketHandle, addr d[written], netSize.cint,
+                     MSG_NOSIGNAL)
       if res < 0:
         let lastError = osLastError()
         if lastError.int32 notin {EINTR, EWOULDBLOCK, EAGAIN}:
-          retFuture.fail(newException(EOS, osErrorMsg(lastError)))
+          if flags.isDisconnectionError(lastError):
+            retFuture.complete()
+          else:
+            retFuture.fail(newException(EOS, osErrorMsg(lastError)))
         else:
           result = false # We still want this callback to be called.
       else:
@@ -715,6 +787,8 @@ else:
           result = false # We still have data to send.
         else:
           retFuture.complete()
+    # TODO: The following causes crashes.
+    #if not cb(socket):
     addWrite(socket, cb)
     return retFuture
 
@@ -757,41 +831,76 @@ proc accept*(socket: TAsyncFD): PFuture[TAsyncFD] =
 
 # -- Await Macro
 
-template createCb*(retFutureSym, iteratorNameSym: expr): stmt {.immediate.} =
+template createCb*(retFutureSym, iteratorNameSym,
+                   name: expr): stmt {.immediate.} =
   var nameIterVar = iteratorNameSym
+  #{.push stackTrace: off.}
   proc cb {.closure,gcsafe.} =
-    if not nameIterVar.finished:
-      var next = nameIterVar()
-      if next == nil:
-        assert retFutureSym.finished, "Async procedure's return Future was not finished."
-      else:
-        next.callback = cb
+    try:
+      if not nameIterVar.finished:
+        var next = nameIterVar()
+        if next == nil:
+          assert retFutureSym.finished, "Async procedure's (" &
+                 name & ") return Future was not finished."
+        else:
+          next.callback = cb
+    except:
+      retFutureSym.fail(getCurrentException())
   cb()
+  #{.pop.}
+proc generateExceptionCheck(futSym,
+    exceptBranch, rootReceiver: PNimrodNode): PNimrodNode {.compileTime.} =
+  if exceptBranch == nil:
+    result = rootReceiver
+  else:
+    if exceptBranch[0].kind == nnkStmtList:
+      result = newIfStmt(
+        (newDotExpr(futSym, newIdentNode("failed")),
+           exceptBranch[0]
+         )
+      )
+    else:
+      expectKind(exceptBranch[1], nnkStmtList)
+      result = newIfStmt(
+        (newDotExpr(futSym, newIdentNode("failed")),
+           newIfStmt(
+             (infix(newDotExpr(futSym, newIdentNode("error")), "of", exceptBranch[0]),
+              exceptBranch[1])
+           )
+         )
+      )
+    let elseNode = newNimNode(nnkElse)
+    elseNode.add newNimNode(nnkStmtList)
+    elseNode[0].add rootReceiver
+    result.add elseNode
 
-template createVar(futSymName: string, asyncProc: PNimrodNode,
-                   valueReceiver: expr) {.immediate, dirty.} =
-  # TODO: Used template here due to bug #926
+template createVar(result: var PNimrodNode, futSymName: string,
+                   asyncProc: PNimrodNode,
+                   valueReceiver, rootReceiver: expr) =
   result = newNimNode(nnkStmtList)
   var futSym = genSym(nskVar, "future")
   result.add newVarStmt(futSym, asyncProc) # -> var future<x> = y
   result.add newNimNode(nnkYieldStmt).add(futSym) # -> yield future<x>
   valueReceiver = newDotExpr(futSym, newIdentNode("read")) # -> future<x>.read
+  result.add generateExceptionCheck(futSym, exceptBranch, rootReceiver)
 
 proc processBody(node, retFutureSym: PNimrodNode,
-                 subtypeName: string): PNimrodNode {.compileTime.} =
+                 subTypeIsVoid: bool,
+                 exceptBranch: PNimrodNode): PNimrodNode {.compileTime.} =
+  #echo(node.treeRepr)
   result = node
   case node.kind
   of nnkReturnStmt:
     result = newNimNode(nnkStmtList)
     if node[0].kind == nnkEmpty:
-      if subtypeName != "void":
+      if not subtypeIsVoid:
         result.add newCall(newIdentNode("complete"), retFutureSym,
             newIdentNode("result"))
       else:
         result.add newCall(newIdentNode("complete"), retFutureSym)
     else:
       result.add newCall(newIdentNode("complete"), retFutureSym,
-        node[0].processBody(retFutureSym, subtypeName))
+        node[0].processBody(retFutureSym, subtypeIsVoid, exceptBranch))
 
     result.add newNimNode(nnkReturnStmt).add(newNilLit())
     return # Don't process the children of this return stmt
@@ -804,16 +913,16 @@ proc processBody(node, retFutureSym: PNimrodNode,
       of nnkCall:
         # await foo(p, x)
         var futureValue: PNimrodNode
-        createVar("future" & $node[1][0].toStrLit, node[1], futureValue)
-        result.add futureValue
+        result.createVar("future" & $node[1][0].toStrLit, node[1], futureValue,
+                  futureValue)
       else:
         error("Invalid node kind in 'await', got: " & $node[1].kind)
     elif node[1].kind == nnkCommand and node[1][0].kind == nnkIdent and
          node[1][0].ident == !"await":
       # foo await x
       var newCommand = node
-      createVar("future" & $node[0].toStrLit, node[1][1], newCommand[1])
-      result.add newCommand
+      result.createVar("future" & $node[0].toStrLit, node[1][1], newCommand[1],
+                newCommand)
 
   of nnkVarSection, nnkLetSection:
     case node[0][2].kind
@@ -821,9 +930,8 @@ proc processBody(node, retFutureSym: PNimrodNode,
       if node[0][2][0].ident == !"await":
         # var x = await y
         var newVarSection = node # TODO: Should this use copyNimNode?
-        createVar("future" & $node[0][0].ident, node[0][2][1],
-          newVarSection[0][2])
-        result.add newVarSection
+        result.createVar("future" & $node[0][0].ident, node[0][2][1],
+          newVarSection[0][2], newVarSection)
     else: discard
   of nnkAsgn:
     case node[1].kind
@@ -831,19 +939,43 @@ proc processBody(node, retFutureSym: PNimrodNode,
       if node[1][0].ident == !"await":
         # x = await y
         var newAsgn = node
-        createVar("future" & $node[0].toStrLit, node[1][1], newAsgn[1])
-        result.add newAsgn
+        result.createVar("future" & $node[0].toStrLit, node[1][1], newAsgn[1], newAsgn)
     else: discard
   of nnkDiscardStmt:
     # discard await x
-    if node[0][0].kind == nnkIdent and node[0][0].ident == !"await":
-      var dummy = newNimNode(nnkStmtList)
-      createVar("futureDiscard_" & $toStrLit(node[0][1]), node[0][1], dummy)
+    if node[0].kind != nnkEmpty and node[0][0].kind == nnkIdent and
+          node[0][0].ident == !"await":
+      var newDiscard = node
+      result.createVar("futureDiscard_" & $toStrLit(node[0][1]), node[0][1],
+                newDiscard[0], newDiscard)
+  of nnkTryStmt:
+    # try: await x; except: ...
+    result = newNimNode(nnkStmtList)
+    proc processForTry(n: PNimrodNode, i: var int,
+                       res: PNimrodNode): bool {.compileTime.} =
+      result = false
+      while i < n[0].len:
+        var processed = processBody(n[0][i], retFutureSym, subtypeIsVoid, n[1])
+        if processed.kind != n[0][i].kind or processed.len != n[0][i].len:
+          expectKind(processed, nnkStmtList)
+          expectKind(processed[2][1], nnkElse)
+          i.inc
+          discard processForTry(n, i, processed[2][1][0])
+          res.add processed
+          result = true
+        else:
+          res.add n[0][i]
+          i.inc
+    var i = 0
+    if not processForTry(node, i, result):
+      var temp = node
+      temp[0] = result
+      result = temp
+    return
   else: discard
-  
+
   for i in 0 .. <result.len:
-    result[i] = processBody(result[i], retFutureSym, subtypeName)
-  #echo(treeRepr(result))
+    result[i] = processBody(result[i], retFutureSym, subtypeIsVoid, exceptBranch)
 
 proc getName(node: PNimrodNode): string {.compileTime.} =
   case node.kind
@@ -851,47 +983,53 @@ proc getName(node: PNimrodNode): string {.compileTime.} =
     return $node[1].ident
   of nnkIdent:
     return $node.ident
+  of nnkEmpty:
+    return "anonymous"
   else:
-    assert false
+    error("Unknown name.")
 
 macro async*(prc: stmt): stmt {.immediate.} =
   ## Macro which processes async procedures into the appropriate
   ## iterators and yield statements.
-
-  expectKind(prc, nnkProcDef)
+  if prc.kind notin {nnkProcDef, nnkLambda}:
+    error("Cannot transform this node kind into an async proc." &
+          " Proc definition or lambda node expected.")
 
   hint("Processing " & prc[0].getName & " as an async proc.")
 
   let returnType = prc[3][0]
-  var subtypeName = ""
   # Verify that the return type is a PFuture[T]
   if returnType.kind == nnkIdent:
     error("Expected return type of 'PFuture' got '" & $returnType & "'")
   elif returnType.kind == nnkBracketExpr:
     if $returnType[0] != "PFuture":
       error("Expected return type of 'PFuture' got '" & $returnType[0] & "'")
-    subtypeName = $returnType[1].ident
-  elif returnType.kind == nnkEmpty:
-    subtypeName = "void"
+
+  let subtypeIsVoid = returnType.kind == nnkEmpty or
+        (returnType.kind == nnkBracketExpr and
+         returnType[1].kind == nnkIdent and returnType[1].ident == !"void")
 
   var outerProcBody = newNimNode(nnkStmtList)
 
   # -> var retFuture = newFuture[T]()
   var retFutureSym = genSym(nskVar, "retFuture")
+  var subRetType =
+    if returnType.kind == nnkEmpty: newIdentNode("void")
+    else: returnType[1]
   outerProcBody.add(
     newVarStmt(retFutureSym, 
       newCall(
         newNimNode(nnkBracketExpr).add(
           newIdentNode(!"newFuture"), # TODO: Strange bug here? Remove the `!`.
-          newIdentNode(subtypeName))))) # Get type from return type of this proc
+          subRetType)))) # Get type from return type of this proc
   
   # -> iterator nameIter(): PFutureBase {.closure.} = 
   # ->   var result: T
   # ->   <proc_body>
   # ->   complete(retFuture, result)
   var iteratorNameSym = genSym(nskIterator, $prc[0].getName & "Iter")
-  var procBody = prc[6].processBody(retFutureSym, subtypeName)
-  if subtypeName != "void":
+  var procBody = prc[6].processBody(retFutureSym, subtypeIsVoid, nil)
+  if not subtypeIsVoid:
     procBody.insert(0, newNimNode(nnkVarSection).add(
       newIdentDefs(newIdentNode("result"), returnType[1]))) # -> var result: T
     procBody.add(
@@ -908,7 +1046,8 @@ macro async*(prc: stmt): stmt {.immediate.} =
 
   # -> createCb(retFuture)
   var cbName = newIdentNode("cb")
-  var procCb = newCall("createCb", retFutureSym, iteratorNameSym)
+  var procCb = newCall("createCb", retFutureSym, iteratorNameSym,
+                       newStrLitNode(prc[0].getName))
   outerProcBody.add procCb
 
   # -> return retFuture
@@ -918,17 +1057,18 @@ macro async*(prc: stmt): stmt {.immediate.} =
 
   # Remove the 'async' pragma.
   for i in 0 .. <result[4].len:
-    if result[4][i].ident == !"async":
+    if result[4][i].kind == nnkIdent and result[4][i].ident == !"async":
       result[4].del(i)
-  if subtypeName == "void":
+  if subtypeIsVoid:
     # Add discardable pragma.
-    result[4].add(newIdentNode("discardable"))
     if returnType.kind == nnkEmpty:
       # Add PFuture[void]
       result[3][0] = parseExpr("PFuture[void]")
 
   result[6] = outerProcBody
 
+  #echo(treeRepr(result))
+  #if prc[0].getName == "routeReq":
   #echo(toStrLit(result))
 
 proc recvLine*(socket: TAsyncFD): PFuture[string] {.async.} =
@@ -956,7 +1096,7 @@ proc recvLine*(socket: TAsyncFD): PFuture[string] {.async.} =
     if c.len == 0:
       return ""
     if c == "\r":
-      c = await recv(socket, 1, MSG_PEEK)
+      c = await recv(socket, 1, {TSocketFlags.SafeDisconn, TSocketFlags.Peek})
       if c.len > 0 and c == "\L":
         discard await recv(socket, 1)
       addNLIfEmpty()

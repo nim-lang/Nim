@@ -29,8 +29,8 @@ elif defined(macosx):
 else: 
   const 
     readlineDll* = "libreadline.so.6(|.0)"
-##  mangle "'TCommandFunc'" TCommandFunc
-##  mangle TvcpFunc TvcpFunc
+#  mangle "'TCommandFunc'" TCommandFunc
+#  mangle TvcpFunc TvcpFunc
 
 import rltypedefs
 

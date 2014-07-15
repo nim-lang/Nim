@@ -23,19 +23,19 @@ proc launchSwarm(port: TPort) {.async.} =
     await connect(sock, "localhost", port)
     when true:
       await sendMessages(sock)
-      close(sock)
+      closeSocket(sock)
     else:
       # Issue #932: https://github.com/Araq/Nimrod/issues/932
       var msgFut = sendMessages(sock)
       msgFut.callback =
         proc () =
-          close(sock)
+          closeSocket(sock)
 
 proc readMessages(client: TAsyncFD) {.async.} =
   while true:
     var line = await recvLine(client)
     if line == "":
-      close(client)
+      closeSocket(client)
       clientCount.inc
       break
     else:
@@ -61,11 +61,11 @@ proc createServer(port: TPort) {.async.} =
   discard server.TSocketHandle.listen()
   while true:
     var client = await accept(server)
-    readMessages(client)
+    asyncCheck readMessages(client)
     # TODO: Test: readMessages(disp, await disp.accept(server))
 
-createServer(TPort(10335))
-launchSwarm(TPort(10335))
+asyncCheck createServer(TPort(10335))
+asyncCheck launchSwarm(TPort(10335))
 while true:
   poll()
   if clientCount == swarmSize: break

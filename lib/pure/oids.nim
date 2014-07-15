@@ -62,9 +62,9 @@ var
 
 proc genOid*(): TOid =
   ## generates a new OID.
-  proc rand(): cint {.importc: "rand", nodecl.}
+  proc rand(): cint {.importc: "rand", header: "<stdlib.h>", nodecl.}
   proc gettime(dummy: ptr cint): cint {.importc: "time", header: "<time.h>".}
-  proc srand(seed: cint) {.importc: "srand", nodecl.}
+  proc srand(seed: cint) {.importc: "srand", header: "<stdlib.h>", nodecl.}
 
   var t = gettime(nil)
   

@@ -835,4 +835,20 @@ template instantiateForRegion(allocator: expr) =
     else:
       result = realloc(p, newsize)
 
+  when hasThreadSupport:
+
+    template sharedMemStatsShared(v: int) {.immediate.} =
+      acquireSys(heapLock)
+      result = v
+      releaseSys(heapLock)
+
+    proc getFreeSharedMem(): int =
+      sharedMemStatsShared(sharedHeap.freeMem)
+
+    proc getTotalSharedMem(): int =
+      sharedMemStatsShared(sharedHeap.currMem)
+
+    proc getOccupiedSharedMem(): int =
+      sharedMemStatsShared(sharedHeap.currMem - sharedHeap.freeMem)
+
 {.pop.}

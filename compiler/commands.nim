@@ -9,9 +9,33 @@
 
 # This module handles the parsing of command line arguments.
 
+
+# We do this here before the 'import' statement so 'defined' does not get
+# confused with 'TGCMode.gcGenerational' etc.
+template bootSwitch(name, expr, userString: expr): expr =
+  # Helper to build boot constants, for debugging you can 'echo' the else part.
+  const name = if expr: " " & userString else: ""
+
+bootSwitch(usedRelease, defined(release), "-d:release")
+bootSwitch(usedGnuReadline, defined(useGnuReadline), "-d:useGnuReadline")
+bootSwitch(usedNoCaas, defined(noCaas), "-d:noCaas")
+bootSwitch(usedBoehm, defined(boehmgc), "--gc:boehm")
+bootSwitch(usedMarkAndSweep, defined(gcmarkandsweep), "--gc:markAndSweep")
+bootSwitch(usedGenerational, defined(gcgenerational), "--gc:generational")
+bootSwitch(usedNoGC, defined(nogc), "--gc:none")
+
 import 
   os, msgs, options, nversion, condsyms, strutils, extccomp, platform, lists, 
   wordrecg, parseutils, babelcmd, idents
+
+# but some have deps to imported modules. Yay.
+bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
+bootSwitch(usedAvoidTimeMachine, noTimeMachine, "-d:avoidTimeMachine")
+bootSwitch(usedNativeStacktrace,
+  defined(nativeStackTrace) and nativeStackTraceSupported,
+  "-d:nativeStackTrace")
+bootSwitch(usedFFI, hasFFI, "-d:useFFI")
+
 
 proc writeCommandLineUsage*()
 
@@ -55,6 +79,14 @@ proc writeVersionInfo(pass: TCmdLinePass) =
     msgWriteln(`%`(HelpMessage, [VersionAsString, 
                                  platform.OS[platform.hostOS].name, 
                                  CPU[platform.hostCPU].name]))
+
+    const gitHash = gorge("git log -n 1 --format=%H")
+    if gitHash.strip.len == 40:
+      msgWriteln("git hash: " & gitHash)
+
+    msgWriteln("active boot switches:" & usedRelease & usedAvoidTimeMachine &
+      usedTinyC & usedGnuReadline & usedNativeStacktrace & usedNoCaas &
+      usedFFI & usedBoehm & usedMarkAndSweep & usedGenerational & usedNoGC)
     quit(0)
 
 var

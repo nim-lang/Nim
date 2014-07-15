@@ -10,7 +10,7 @@
 ## This module implements the pattern matching features for term rewriting
 ## macro support.
 
-import strutils, ast, astalgo, types, msgs, idents, renderer, wordrecg
+import strutils, ast, astalgo, types, msgs, idents, renderer, wordrecg, trees
 
 # we precompile the pattern here for efficiency into some internal
 # stack based VM :-) Why? Because it's fun; I did no benchmarks to see if that
@@ -215,6 +215,9 @@ proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
     result = arLValue
   of nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr: 
     result = isAssignable(owner, n.sons[0])
+  of nkCallKinds:
+    # builtin slice keeps lvalue-ness:
+    if getMagic(n) == mSlice: result = isAssignable(owner, n.sons[1])
   else:
     discard
 

@@ -67,6 +67,28 @@ proc chckObjAsgn(a, b: PNimType) {.compilerproc, inline.} =
   if a != b:
     sysFatal(EInvalidObjectAssignment, "invalid object assignment")
 
+type ObjCheckCache = array[0..1, PNimType]
+
+proc isObjSlowPath(obj, subclass: PNimType;
+                   cache: var ObjCheckCache): bool {.noinline.} =
+  # checks if obj is of type subclass:
+  var x = obj.base
+  while x != subclass:
+    if x == nil:
+      cache[0] = obj
+      return false
+    x = x.base
+  cache[1] = obj
+  return true
+
+proc isObjWithCache(obj, subclass: PNimType;
+                    cache: var ObjCheckCache): bool {.compilerProc, inline.} =
+  if obj == subclass: return true
+  if obj.base == subclass: return true
+  if cache[0] == obj: return false
+  if cache[1] == obj: return true
+  return isObjSlowPath(obj, subclass, cache)
+
 proc isObj(obj, subclass: PNimType): bool {.compilerproc.} =
   # checks if obj is of type subclass:
   var x = obj
