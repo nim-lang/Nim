@@ -50,6 +50,7 @@ proc initDefines*() =
   defineSymbol("nimunion")
   defineSymbol("nimnewshared")
   defineSymbol("nimrequiresnimframe")
+  defineSymbol("nimparsebiggestfloatmagic")
   
   # add platform specific symbols:
   case targetCPU

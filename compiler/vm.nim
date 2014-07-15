@@ -16,7 +16,7 @@ import ast except getstr
 
 import
   strutils, astalgo, msgs, vmdef, vmgen, nimsets, types, passes, unsigned,
-  parser, vmdeps, idents, trees, renderer, options, transf
+  parser, vmdeps, idents, trees, renderer, options, transf, parseutils
 
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
@@ -776,6 +776,18 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       createStr regs[ra]
       regs[ra].node.strVal = substr(regs[rb].node.strVal, 
                                     regs[rc].intVal.int, regs[rd].intVal.int)
+    of opcParseFloat:
+      decodeBC(rkInt)
+      inc pc
+      assert c.code[pc].opcode == opcParseFloat
+      let rd = c.code[pc].regA
+      var rcAddr = addr(regs[rc])
+      if rcAddr.kind == rkRegisterAddr: rcAddr = rcAddr.regAddr
+      elif regs[rc].kind != rkFloat:
+        myreset(regs[rc])
+        regs[rc].kind = rkFloat
+      regs[ra].intVal = parseBiggestFloat(regs[rb].node.strVal,
+                                          rcAddr.floatVal, regs[rd].intVal.int)
     of opcRangeChck:
       let rb = instr.regB
       let rc = instr.regC

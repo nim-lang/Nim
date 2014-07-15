@@ -852,6 +852,24 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     c.freeTemp(tmp1)
     c.freeTemp(tmp2)
     c.freeTemp(tmp3)
+  of mParseBiggestFloat:
+    if dest < 0: dest = c.getTemp(n.typ)
+    var d2: TRegister
+    # skip 'nkHiddenAddr':
+    let d2AsNode = n.sons[2].sons[0]
+    if needsAsgnPatch(d2AsNode):
+      d2 = c.getTemp(getSysType(tyFloat))
+    else:
+      d2 = c.genx(d2AsNode)
+    var
+      tmp1 = c.genx(n.sons[1])
+      tmp3 = c.genx(n.sons[3])
+    c.gABC(n, opcParseFloat, dest, tmp1, d2)
+    c.gABC(n, opcParseFloat, tmp3)
+    c.freeTemp(tmp1)
+    c.freeTemp(tmp3)
+    c.genAsgnPatch(d2AsNode, d2)
+    c.freeTemp(d2)    
   of mReset:
     unused(n, dest)
     var d = c.genx(n.sons[1])

@@ -231,94 +231,96 @@ proc parseInt*(s: string, number: var int, start = 0): int {.
   else:
     number = int(res)
 
-proc parseBiggestFloat*(s: string, number: var BiggestFloat, start = 0): int {.
-  rtl, extern: "npuParseBiggestFloat", noSideEffect.} =
-  ## parses a float starting at `start` and stores the value into `number`.
-  ## Result is the number of processed chars or 0 if a parsing error
-  ## occurred.
+when defined(nimParseBiggestFloatMagic):
+  proc parseBiggestFloat*(s: string, number: var BiggestFloat, start = 0): int {.
+    magic: "ParseBiggestFloat", importc: "nimParseBiggestFloat", noSideEffect.}
+    ## parses a float starting at `start` and stores the value into `number`.
+    ## Result is the number of processed chars or 0 if a parsing error
+    ## occurred.
+else:
+  proc tenToThePowerOf(b: int): BiggestFloat =
+    var b = b
+    var a = 10.0
+    result = 1.0
+    while true:
+      if (b and 1) == 1:
+        result *= a
+      b = b shr 1
+      if b == 0: break
+      a *= a
 
-  type struct_lconv {.importc: "struct lconv",header:"<locale.h>".} =
-    object
-      # Unneeded fields have been omitted.
-      decimal_point: cstring
-
-  proc localeconv(): ptr struct_lconv {.importc, header: "<locale.h>",
-    noSideEffect.}
-
-  proc strtod(buf: cstring, endptr: ptr cstring): float64 {.importc,
-    header: "<stdlib.h>", noSideEffect.}
-
-  # This routine leverages `strtod()` for the non-trivial task of
-  # parsing floating point numbers correctly. Because `strtod()` is
-  # locale-dependent with respect to the radix character, we create
-  # a copy where the decimal point is replaced with the locale's
-  # radix character.
-
-  var
-    i = start
-    sign = 1.0
-    t = ""
-    hasdigits = false
-  
-  # Sign?
-  if s[i] == '+' or s[i] == '-':
-    if s[i] == '-':
+  proc parseBiggestFloat*(s: string, number: var BiggestFloat, start = 0): int {.
+    rtl, extern: "npuParseBiggestFloat", noSideEffect.} =
+    ## parses a float starting at `start` and stores the value into `number`.
+    ## Result is the number of processed chars or 0 if there occured a parsing
+    ## error.
+    var
+      esign = 1.0
+      sign = 1.0
+      i = start
+      exponent: int
+      flags: int
+    number = 0.0
+    if s[i] == '+': inc(i)
+    elif s[i] == '-':
       sign = -1.0
-    add(t, s[i])
-    inc(i)
-
-  # NaN?
-  if s[i] == 'N' or s[i] == 'n':
-    if s[i+1] == 'A' or s[i+1] == 'a':
-      if s[i+2] == 'N' or s[i+2] == 'n':
-        if s[i+3] notin IdentChars:
-          number = NaN
-          return i+3 - start
-    return 0
-
-  # Inf?
-  if s[i] == 'I' or s[i] == 'i':
-    if s[i+1] == 'N' or s[i+1] == 'n':
-      if s[i+2] == 'F' or s[i+2] == 'f':
-        if s[i+3] notin IdentChars: 
-          number = Inf*sign
-          return i+3 - start
-    return 0
-
-  # Integer part?
-  while s[i] in {'0'..'9'}:
-    hasdigits = true
-    add(t, s[i])
-    inc(i)
-    while s[i] == '_': inc(i)
-
-  # Fractional part?
-  if s[i] == '.':
-    add(t, localeconv().decimal_point)
-    inc(i)
-    while s[i] in {'0'..'9'}:
-      hasdigits = true
-      add(t, s[i])
       inc(i)
-      while s[i] == '_': inc(i)
-  if not hasdigits:
-    return 0
-
-  # Exponent?
-  if s[i] in {'e', 'E'}:
-    add(t, s[i])
-    inc(i)
-    if s[i] in {'+', '-'}:
-      add(t, s[i])
-      inc(i)
-    if s[i] notin {'0'..'9'}:
+    if s[i] == 'N' or s[i] == 'n':
+      if s[i+1] == 'A' or s[i+1] == 'a':
+        if s[i+2] == 'N' or s[i+2] == 'n':
+          if s[i+3] notin IdentChars:
+            number = NaN
+            return i+3 - start
+      return 0
+    if s[i] == 'I' or s[i] == 'i':
+      if s[i+1] == 'N' or s[i+1] == 'n':
+        if s[i+2] == 'F' or s[i+2] == 'f':
+          if s[i+3] notin IdentChars: 
+            number = Inf*sign
+            return i+3 - start
       return 0
     while s[i] in {'0'..'9'}:
-      add(t, s[i])
+      # Read integer part
+      flags = flags or 1
+      number = number * 10.0 + toFloat(ord(s[i]) - ord('0'))
       inc(i)
       while s[i] == '_': inc(i)
-  number = strtod(t, nil)
-  result = i - start
+    # Decimal?
+    if s[i] == '.':
+      var hd = 1.0
+      inc(i)
+      while s[i] in {'0'..'9'}:
+        # Read fractional part
+        flags = flags or 2
+        number = number * 10.0 + toFloat(ord(s[i]) - ord('0'))
+        hd = hd * 10.0
+        inc(i)
+        while s[i] == '_': inc(i)
+      number = number / hd # this complicated way preserves precision
+    # Again, read integer and fractional part
+    if flags == 0: return 0
+    # Exponent?
+    if s[i] in {'e', 'E'}:
+      inc(i)
+      if s[i] == '+':
+        inc(i)
+      elif s[i] == '-':
+        esign = -1.0
+        inc(i)
+      if s[i] notin {'0'..'9'}:
+        return 0
+      while s[i] in {'0'..'9'}:
+        exponent = exponent * 10 + ord(s[i]) - ord('0')
+        inc(i)
+        while s[i] == '_': inc(i)
+    # Calculate Exponent
+    let hd = tenToThePowerOf(exponent)
+    if esign > 0.0: number = number * hd
+    else:           number = number / hd
+    # evaluate sign
+    number = number * sign
+    result = i - start
+
 
 proc parseFloat*(s: string, number: var float, start = 0): int {.
   rtl, extern: "npuParseFloat", noSideEffect.} =

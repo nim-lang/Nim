@@ -252,14 +252,113 @@ proc nimIntToStr(x: int): string {.compilerRtl.} =
 
 proc nimFloatToStr(f: float): string {.compilerproc.} =
   var buf: array [0..64, char]
-  var n:int = c_sprintf(buf, "%.16g", f)
+  var n: int = c_sprintf(buf, "%.16g", f)
+  var hasDot = false
   for i in 0..n-1:
-    if buf[i] notin {'0'..'9','-'}:
-      return $buf
-  buf[n] = c_localeconv()[0]
-  buf[n+1] = '0'
-  buf[n+2] = '\0'
+    if buf[i] == ',':
+      buf[i] = '.'
+      hasDot = true
+    elif buf[i] in {'e', 'E', '.'}: 
+      hasDot = true
+  if not hasDot:
+    buf[n] = '.'
+    buf[n+1] = '0'
+    buf[n+2] = '\0'
   result = $buf
+
+proc strtod(buf: cstring, endptr: ptr cstring): float64 {.importc,
+  header: "<stdlib.h>", noSideEffect.}
+
+var decimalPoint: char
+
+proc getDecimalPoint(): char =
+  result = decimalPoint
+  if result == '\0':
+    if strtod("0,5", nil) == 0.5: result = ','
+    else: result = '.'
+    # yes this is threadsafe in practice, spare me:
+    decimalPoint = result
+
+const
+  IdentChars = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
+
+proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
+                          start = 0): int {.compilerProc.} =
+  # This routine leverages `strtod()` for the non-trivial task of
+  # parsing floating point numbers correctly. Because `strtod()` is
+  # locale-dependent with respect to the radix character, we create
+  # a copy where the decimal point is replaced with the locale's
+  # radix character.
+  var
+    i = start
+    sign = 1.0
+    t: array[128, char]
+    ti = 0
+    hasdigits = false
+
+  template addToBuf(c) =
+    if ti < t.high:
+      t[ti] = c; inc(ti)
+  
+  # Sign?
+  if s[i] == '+' or s[i] == '-':
+    if s[i] == '-':
+      sign = -1.0
+    t[ti] = s[i]
+    inc(i); inc(ti)
+
+  # NaN?
+  if s[i] == 'N' or s[i] == 'n':
+    if s[i+1] == 'A' or s[i+1] == 'a':
+      if s[i+2] == 'N' or s[i+2] == 'n':
+        if s[i+3] notin IdentChars:
+          number = NaN
+          return i+3 - start
+    return 0
+
+  # Inf?
+  if s[i] == 'I' or s[i] == 'i':
+    if s[i+1] == 'N' or s[i+1] == 'n':
+      if s[i+2] == 'F' or s[i+2] == 'f':
+        if s[i+3] notin IdentChars: 
+          number = Inf*sign
+          return i+3 - start
+    return 0
+
+  # Integer part?
+  while s[i] in {'0'..'9'}:
+    hasdigits = true
+    addToBuf(s[i])
+    inc(i);
+    while s[i] == '_': inc(i)
+
+  # Fractional part?
+  if s[i] == '.':
+    addToBuf(getDecimalPoint())
+    inc(i)
+    while s[i] in {'0'..'9'}:
+      hasdigits = true
+      addToBuf(s[i])
+      inc(i)
+      while s[i] == '_': inc(i)
+  if not hasdigits:
+    return 0
+
+  # Exponent?
+  if s[i] in {'e', 'E'}:
+    addToBuf(s[i])
+    inc(i)
+    if s[i] in {'+', '-'}:
+      addToBuf(s[i])
+      inc(i)
+    if s[i] notin {'0'..'9'}:
+      return 0
+    while s[i] in {'0'..'9'}:
+      addToBuf(s[i])
+      inc(i)
+      while s[i] == '_': inc(i)
+  number = strtod(t, nil)
+  result = i - start
 
 proc nimInt64ToStr(x: int64): string {.compilerRtl.} =
   result = newString(sizeof(x)*4)

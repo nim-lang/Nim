@@ -553,7 +553,7 @@ type
     mInRange, mInSet, mRepr, mExit, mSetLengthStr, mSetLengthSeq,
     mIsPartOf, mAstToStr, mParallel,
     mSwap, mIsNil, mArrToSeq, mCopyStr, mCopyStrLast,
-    mNewString, mNewStringOfCap,
+    mNewString, mNewStringOfCap, mParseBiggestFloat,
     mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
     mOrdinal,
