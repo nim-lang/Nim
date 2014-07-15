@@ -312,7 +312,7 @@ proc testBabelPackages(r: var TResults, cat: Category, filter: PackageFilter) =
 
 # ----------------------------------------------------------------------------
 
-const AdditionalCategories = ["debugger", "tools", "examples", "stdlib", "babel-core"]
+const AdditionalCategories = ["debugger", "examples", "stdlib", "babel-core"]
 
 proc `&.?`(a, b: string): string =
   # candidate for the stdlib?
@@ -336,9 +336,6 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
     gcTests(r, cat, options)
   of "debugger":
     debuggerTests(r, cat, options)
-  of "tools":
-    testSpec r, makeTest("compiler/c2nim/c2nim.nim", options, cat)
-    testSpec r, makeTest("compiler/pas2nim/pas2nim.nim", options, cat)
   of "manyloc":
     manyLoc r, cat, options
   of "threads":
