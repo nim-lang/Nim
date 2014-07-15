@@ -351,15 +351,25 @@ proc split*(s: string, sep: string): seq[string] {.noSideEffect,
   ## Substrings are separated by the string `sep`.
   accumulateResult(split(s, sep))
 
-proc toHex*(x: BiggestInt, len: int): string {.noSideEffect,
+proc binDigits(x: BiggestInt, r: int): int =
+  ## Calculates how many digits `x` has when each digit covers `r` bits.
+  result = 1
+  var y = x shr r
+  while y > 0:
+    y = y shr r
+    inc(result)
+
+proc toHex*(x: BiggestInt, len: Natural = 0): string {.noSideEffect,
   rtl, extern: "nsuToHex".} =
   ## Converts `x` to its hexadecimal representation. The resulting string
-  ## will be exactly `len` characters long. No prefix like ``0x``
-  ## is generated. `x` is treated as an unsigned value.
+  ## will be exactly `len` characters long. By default the length is determined
+  ## automatically. No prefix like ``0x`` is generated. `x` is treated as an
+  ## unsigned value.
   const
     HexChars = "0123456789ABCDEF"
   var
     shift: BiggestInt
+    len = if len == 0: binDigits(x, 4) else: len
   result = newString(len)
   for j in countdown(len-1, 0):
     result[j] = HexChars[toU32(x shr shift) and 0xF'i32]
@@ -850,28 +860,30 @@ proc parseOctInt*(s: string): int {.noSideEffect,
     of '\0': break
     else: raise newException(EInvalidValue, "invalid integer: " & s)
 
-proc toOct*(x: BiggestInt, len: int): string {.noSideEffect,
+proc toOct*(x: BiggestInt, len: Natural = 0): string {.noSideEffect,
   rtl, extern: "nsuToOct".} =
   ## converts `x` into its octal representation. The resulting string is
-  ## always `len` characters long. No leading ``0o`` prefix is generated.
+  ## always `len` characters long. By default the length is determined
+  ## automatically. No leading ``0o`` prefix is generated.
   var
     mask: BiggestInt = 7
     shift: BiggestInt = 0
-  assert(len > 0)
+    len = if len == 0: binDigits(x, 3) else: len
   result = newString(len)
   for j in countdown(len-1, 0):
     result[j] = chr(int((x and mask) shr shift) + ord('0'))
     shift = shift + 3
     mask = mask shl 3
 
-proc toBin*(x: BiggestInt, len: int): string {.noSideEffect,
+proc toBin*(x: BiggestInt, len: Natural = 0): string {.noSideEffect,
   rtl, extern: "nsuToBin".} =
   ## converts `x` into its binary representation. The resulting string is
-  ## always `len` characters long. No leading ``0b`` prefix is generated.
+  ## always `len` characters long. By default the length is determined
+  ## automatically. No leading ``0b`` prefix is generated.
   var
     mask: BiggestInt = 1
     shift: BiggestInt = 0
-  assert(len > 0)
+    len = if len == 0: binDigits(x, 1) else: len
   result = newString(len)
   for j in countdown(len-1, 0):
     result[j] = chr(int((x and mask) shr shift) + ord('0'))
