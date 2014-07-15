@@ -661,7 +661,8 @@ proc semFor(c: PContext, n: PNode): PNode =
   n.sons[length-2] = semExprNoDeref(c, n.sons[length-2], {efWantIterator})
   var call = n.sons[length-2]
   let isCallExpr = call.kind in nkCallKinds
-  if isCallExpr and call[0].kind == nkSym and call[0].sym.magic != mNone:
+  if isCallExpr and call[0].kind == nkSym and
+      call[0].sym.magic in {mFields, mFieldPairs, mOmpParFor}:
     if call.sons[0].sym.magic == mOmpParFor:
       result = semForVars(c, n)
       result.kind = nkParForStmt
