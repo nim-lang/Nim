@@ -82,7 +82,8 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     case skipTypes(s.typ, abstractInst-{tyTypeDesc}).kind
     of  tyNil, tyChar, tyInt..tyInt64, tyFloat..tyFloat128, 
         tyTuple, tySet, tyUInt..tyUInt64:
-      result = inlineConst(n, s)
+      if s.magic == mNone: result = inlineConst(n, s)
+      else: result = newSymNode(s, n.info)
     of tyArrayConstr, tySequence:
       # Consider::
       #     const x = []
