@@ -1560,7 +1560,52 @@ proc getTempDir*(): string {.rtl, extern: "nos$1", tags: [FReadEnv].} =
   when defined(windows): return string(getEnv("TEMP")) & "\\"
   else: return "/tmp/"
 
-when defined(windows):
+when defined(nimdoc):
+  # Common forward declaration docstring block for parameter retrieval procs.
+  proc paramCount*(): int {.tags: [FReadIO].} =
+    ## Returns the number of `command line arguments`:idx: given to the
+    ## application.
+    ##
+    ## If your binary was called without parameters this will return zero.  You
+    ## can later query each individual paramater with `paramStr() <#paramStr>`_
+    ## or retrieve all of them in one go with `commandLineParams()
+    ## <#commandLineParams>`_.
+    ##
+    ## **Availability**: On Posix there is no portable way to get the command
+    ## line from a DLL and thus the proc isn't defined in this environment. You
+    ## can test for its availability with `defined() <system.html#defined>`_.
+    ## Example:
+    ##
+    ## .. code-block:: nimrod
+    ##   when defined(paramCount):
+    ##     # Use paramCount() here
+    ##   else:
+    ##     # Do something else!
+
+  proc paramStr*(i: int): TaintedString {.tags: [FReadIO].} =
+    ## Returns the `i`-th `command line argument`:idx: given to the application.
+    ##
+    ## `i` should be in the range `1..paramCount()`, the `EInvalidIndex`
+    ## exception will be raised for invalid values.  Instead of iterating over
+    ## `paramCount() <#paramCount>`_ with this proc you can call the
+    ## convenience `commandLineParams() <#commandLineParams>`_.
+    ##
+    ## It is possible to call ``paramStr(0)`` but this will return OS specific
+    ## contents (usually the name of the invoked executable). You should avoid
+    ## this and call `getAppFilename() <#getAppFilename>`_ instead.
+    ##
+    ## **Availability**: On Posix there is no portable way to get the command
+    ## line from a DLL and thus the proc isn't defined in this environment. You
+    ## can test for its availability with `defined() <system.html#defined>`_.
+    ## Example:
+    ##
+    ## .. code-block:: nimrod
+    ##   when defined(paramStr):
+    ##     # Use paramStr() here
+    ##   else:
+    ##     # Do something else!
+
+elif defined(windows):
   # Since we support GUI applications with Nimrod, we sometimes generate
   # a WinMain entry proc. But a WinMain proc has no access to the parsed
   # command line arguments. The way to get them differs. Thus we parse them
@@ -1570,18 +1615,13 @@ when defined(windows):
     ownArgv {.threadvar.}: seq[string]
 
   proc paramCount*(): int {.rtl, extern: "nos$1", tags: [FReadIO].} =
-    ## Returns the number of `command line arguments`:idx: given to the
-    ## application.
+    # Docstring in nimdoc block.
     if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLine())
     result = ownArgv.len-1
 
   proc paramStr*(i: int): TaintedString {.rtl, extern: "nos$1",
     tags: [FReadIO].} =
-    ## Returns the `i`-th `command line argument`:idx: given to the
-    ## application.
-    ##
-    ## `i` should be in the range `1..paramCount()`, else
-    ## the `EOutOfIndex` exception is raised.
+    # Docstring in nimdoc block.
     if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLine())
     return TaintedString(ownArgv[i])
 
@@ -1592,13 +1632,31 @@ elif not defined(createNimRtl):
     cmdLine {.importc: "cmdLine".}: cstringArray
 
   proc paramStr*(i: int): TaintedString {.tags: [FReadIO].} =
-    if i < cmdCount and i >= 0: return TaintedString($cmdLine[i])
+    # Docstring in nimdoc block.
+    if i < cmdCount and i >= 0: result = TaintedString($cmdLine[i])
     raise newException(EInvalidIndex, "invalid index")
 
-  proc paramCount*(): int {.tags: [FReadIO].} = return cmdCount-1
+  proc paramCount*(): int {.tags: [FReadIO].} =
+    # Docstring in nimdoc block.
+    result = cmdCount-1
 
-when defined(paramCount):
+when defined(paramCount) or defined(nimdoc):
   proc commandLineParams*(): seq[TaintedString] =
+    ## Convenience proc which returns the command line parameters.
+    ##
+    ## This returns **only** the parameters. If you want to get the application
+    ## executable filename, call `getAppFilename() <#getAppFilename>`_.
+    ##
+    ## **Availability**: On Posix there is no portable way to get the command
+    ## line from a DLL and thus the proc isn't defined in this environment. You
+    ## can test for its availability with `defined() <system.html#defined>`_.
+    ## Example:
+    ##
+    ## .. code-block:: nimrod
+    ##   when defined(commandLineParams):
+    ##     # Use commandLineParams() here
+    ##   else:
+    ##     # Do something else!
     result = @[]
     for i in 1..paramCount():
       result.add(paramStr(i))

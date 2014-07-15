@@ -113,6 +113,45 @@ proc `*` *(x: TComplex, y: float): TComplex =
   result.im = x.im * y
 
 
+proc `+=` *(x: var TComplex, y: TComplex) =
+  ## Add `y` to `x`.
+  x.re += y.re
+  x.im += y.im
+
+proc `+=` *(x: var TComplex, y: float) =
+  ## Add `y` to the complex number `x`.
+  x.re += y
+
+proc `-=` *(x: var TComplex, y: TComplex) =
+  ## Subtract `y` from `x`.
+  x.re -= y.re
+  x.im -= y.im
+
+proc `-=` *(x: var TComplex, y: float) =
+  ## Subtract `y` from the complex number `x`.
+  x.re -= y
+
+proc `*=` *(x: var TComplex, y: TComplex) =
+  ## Multiply `y` to `x`.
+  let im = x.im * y.re + x.re * y.im
+  x.re = x.re * y.re - x.im * y.im
+  x.im = im
+
+proc `*=` *(x: var TComplex, y: float) =
+  ## Multiply `y` to the complex number `x`.
+  x.re *= y
+  x.im *= y
+
+proc `/=` *(x: var TComplex, y: TComplex) =
+  ## Divide `x` by `y` in place.
+  x = x / y
+
+proc `/=` *(x : var TComplex, y: float) =
+  ## Divide complex `x` by float `y` in place.
+  x.re /= y
+  x.im /= y
+
+
 proc abs*(z: TComplex): float =
   ## Return the distance from (0,0) to `z`.
 

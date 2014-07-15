@@ -34,6 +34,20 @@ proc reverse*[T](a: var openArray[T]) =
   ## reverses the array `a`.
   reverse(a, 0, a.high)
 
+proc reversed*[T](a: openArray[T], first, last: int): seq[T] =
+  ## returns the reverse of the array `a[first..last]`.
+  result = newSeq[T](last - first + 1)
+  var x = first
+  var y = last
+  while x <= last:
+    result[x] = a[y]
+    dec(y)
+    inc(x)
+
+proc reversed*[T](a: openArray[T]): seq[T] =
+  ## returns the reverse of the array `a`.
+  reversed(a, 0, a.high)
+
 proc binarySearch*[T](a: openArray[T], key: T): int =
   ## binary search for `key` in `a`. Returns -1 if not found.
   var b = len(a)

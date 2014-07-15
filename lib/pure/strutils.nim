@@ -535,7 +535,12 @@ proc wordWrap*(s: string, maxLineWidth = 80,
   ## word wraps `s`.
   result = newStringOfCap(s.len + s.len shr 6)
   var spaceLeft = maxLineWidth
+  var lastSep = ""
   for word, isSep in tokenize(s, seps):
+    if isSep:
+      lastSep = word
+      spaceLeft = spaceLeft - len(word)
+      continue
     if len(word) > spaceLeft:
       if splitLongWords and len(word) > maxLineWidth:
         result.add(substr(word, 0, spaceLeft-1))
@@ -554,7 +559,8 @@ proc wordWrap*(s: string, maxLineWidth = 80,
         result.add(word)
     else:
       spaceLeft = spaceLeft - len(word)
-      result.add(word)
+      result.add(lastSep & word)
+      lastSep.setLen(0)
 
 proc unindent*(s: string, eatAllIndent = false): string {.
                noSideEffect, rtl, extern: "nsuUnindent".} =
