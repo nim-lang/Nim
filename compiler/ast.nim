@@ -417,6 +417,7 @@ type
                 # efficiency
     nfTransf,   # node has been transformed
     nfSem       # node has been checked for semantics
+    nfLL        # node has gone through lambda lifting
     nfDotField  # the call can use a dot operator
     nfDotSetter # the call can use a setter dot operarator
     nfExplicitCall # x.y() was used instead of x.y
@@ -1505,7 +1506,7 @@ proc isGenericRoutine*(s: PSym): bool =
 proc skipGenericOwner*(s: PSym): PSym =
   internalAssert s.kind in skProcKinds
   ## Generic instantiations are owned by their originating generic
-  ## symbol. This proc skips such owners and goes straigh to the owner
+  ## symbol. This proc skips such owners and goes straight to the owner
   ## of the generic itself (the module or the enclosing proc).
   result = if sfFromGeneric in s.flags: s.owner.owner
            else: s.owner

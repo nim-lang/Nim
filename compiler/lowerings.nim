@@ -64,6 +64,22 @@ proc createObj*(owner: PSym, info: TLineInfo): PType =
   incl result.flags, tfFinal
   result.n = newNodeI(nkRecList, info)
 
+proc rawAddField*(obj: PType; field: PSym) =
+  assert field.kind == skField
+  field.position = sonsLen(obj.n)
+  addSon(obj.n, newSymNode(field))
+
+proc rawIndirectAccess*(a: PNode; field: PSym; info: TLineInfo): PNode = 
+  # returns a[].field as a node
+  assert field.kind == skField
+  var deref = newNodeI(nkHiddenDeref, info)
+  deref.typ = a.typ.skipTypes(abstractInst).sons[0]
+  addSon(deref, a)
+  result = newNodeI(nkDotExpr, info)
+  addSon(result, deref)
+  addSon(result, newSymNode(field))
+  result.typ = field.typ
+
 proc addField*(obj: PType; s: PSym) =
   # because of 'gensym' support, we have to mangle the name with its ID.
   # This is hacky but the clean solution is much more complex than it looks.
@@ -73,6 +89,16 @@ proc addField*(obj: PType; s: PSym) =
   assert t.kind != tyStmt
   field.position = sonsLen(obj.n)
   addSon(obj.n, newSymNode(field))
+
+proc addUniqueField*(obj: PType; s: PSym) =
+  let fieldName = getIdent(s.name.s & $s.id)
+  if lookupInRecord(obj.n, fieldName) == nil:
+    var field = newSym(skField, fieldName, s.owner, s.info)
+    let t = skipIntLit(s.typ)
+    field.typ = t
+    assert t.kind != tyStmt
+    field.position = sonsLen(obj.n)
+    addSon(obj.n, newSymNode(field))
 
 proc newDotExpr(obj, b: PSym): PNode =
   result = newNodeI(nkDotExpr, obj.info)
@@ -95,12 +121,27 @@ proc indirectAccess*(a: PNode, b: string, info: TLineInfo): PNode =
     t = t.sons[0]
     if t == nil: break
     t = t.skipTypes(abstractInst)
-  assert field != nil, b
+  #if field == nil:
+  #  debug deref.typ
+  #  echo deref.typ.id
+  internalAssert field != nil
   addSon(deref, a)
   result = newNodeI(nkDotExpr, info)
   addSon(result, deref)
   addSon(result, newSymNode(field))
   result.typ = field.typ
+
+proc getFieldFromObj*(t: PType; v: PSym): PSym =
+  assert v.kind != skField
+  let fieldName = getIdent(v.name.s & $v.id)
+  var t = t
+  while true:
+    assert t.kind == tyObject
+    result = getSymFromList(t.n, fieldName)
+    if result != nil: break
+    t = t.sons[0]
+    if t == nil: break
+    t = t.skipTypes(abstractInst)
 
 proc indirectAccess*(a: PNode, b: PSym, info: TLineInfo): PNode = 
   # returns a[].b as a node

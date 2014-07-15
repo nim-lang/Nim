@@ -14,6 +14,8 @@ News
     ``threadpool``.
   - The symbol binding rules in generics changed: ``bar`` in ``foo.bar`` is
     now considered for implicit early binding.
+  - ``c2nim`` moved into its own repository and is now a Babel package.
+  - ``pas2nim`` moved into its own repository and is now a Babel package.
 
 
   Library Additions
