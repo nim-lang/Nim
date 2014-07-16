@@ -646,10 +646,10 @@ proc tenToThePowerOf(b: int): BiggestFloat =
   result = 1.0
   while true:
     if (b and 1) == 1:
-      result *= a
+      result = result * a
     b = b shr 1
     if b == 0: break
-    a *= a
+    a = a * a
 
 const
   IdentChars = {'a'..'z', 'A'..'Z', '0'..'9', '_'}

@@ -2,7 +2,6 @@ version 0.9.6
 =============
 
 - scopes are still broken for generic instantiation!
-- integrate the new LL into the devel branch
 - start experimental branch
 - overloading of '='; general lift mechanism
 
