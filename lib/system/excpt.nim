@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -43,16 +43,6 @@ var
     # list of exception handlers
     # a global variable for the root of all try blocks
   currException {.rtlThreadVar.}: ref E_Base
-
-when defined(nimRequiresNimFrame):
-  proc nimFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} =
-    s.prev = framePtr
-    framePtr = s
-else:
-  proc pushFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} =
-    # XXX only for backwards compatibility
-    s.prev = framePtr
-    framePtr = s
 
 proc popFrame {.compilerRtl, inl.} =
   framePtr = framePtr.prev
@@ -279,6 +269,23 @@ proc getStackTrace(e: ref E_Base): string =
     result = e.trace
   else:
     result = ""
+
+when defined(nimRequiresNimFrame):
+  proc stackOverflow() {.noinline.} =
+    writeStackTrace()
+    showErrorMessage("Stack overflow\n")
+    quitOrDebug()
+
+  proc nimFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} =
+    s.calldepth = if framePtr == nil: 0 else: framePtr.calldepth+1
+    s.prev = framePtr
+    framePtr = s
+    if s.calldepth == 2000: stackOverflow()
+else:
+  proc pushFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} =
+    # XXX only for backwards compatibility
+    s.prev = framePtr
+    framePtr = s
 
 when defined(endb):
   var

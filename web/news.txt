@@ -16,7 +16,8 @@ News
     now considered for implicit early binding.
   - ``c2nim`` moved into its own repository and is now a Babel package.
   - ``pas2nim`` moved into its own repository and is now a Babel package.
-
+  - ``system.$`` for floating point types now produces a human friendly string
+    representation.
 
   Library Additions
   -----------------
