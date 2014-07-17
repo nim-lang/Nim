@@ -101,5 +101,5 @@ Roadmap to 1.0
 ==============
 
 Please have a look at
-this `wiki page <https://github.com/Araq/Nimrod/wiki/Feature-Matrix>`_ for
+this `wiki page <https://github.com/Araq/Nimrod/wiki/Roadmap>`_ for
 an up-to-date overview.
