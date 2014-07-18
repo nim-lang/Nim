@@ -280,9 +280,11 @@ iterator split*(s: string, sep: string): string =
       inc(last, sep.len)
 
 iterator splitLines*(s: string): string =
-  ## Splits the string `s` into its containing lines. Every newline
-  ## combination (CR, LF, CR-LF) is supported. The result strings contain
-  ## no trailing ``\n``.
+  ## Splits the string `s` into its containing lines.
+  ##
+  ## Every `character literal <manual.html#character-literals>`_ newline
+  ## combination (CR, LF, CR-LF) is supported. The result strings contain no
+  ## trailing ``\n``.
   ##
   ## Example:
   ##
@@ -315,13 +317,25 @@ iterator splitLines*(s: string): string =
 
 proc splitLines*(s: string): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitLines".} =
-  ## The same as the `splitLines` iterator, but is a proc that returns a
-  ## sequence of substrings.
+  ## The same as the `splitLines <#splitLines.i,string>`_ iterator, but is a
+  ## proc that returns a sequence of substrings.
   accumulateResult(splitLines(s))
 
 proc countLines*(s: string): int {.noSideEffect,
   rtl, extern: "nsuCountLines".} =
-  ## same as ``len(splitLines(s))``, but much more efficient.
+  ## Returns the number of new line separators in the string `s`.
+  ##
+  ## This is the same as ``len(splitLines(s))``, but much more efficient
+  ## because it doesn't modify the string creating temporal objects. Every
+  ## `character literal <manual.html#character-literals>`_ newline combination
+  ## (CR, LF, CR-LF) is supported.
+  ##
+  ## Despite its name this proc might not actually return the *number of lines*
+  ## in `s` because the concept of what a line is can vary. For example, a
+  ## string like ``Hello world`` is a line of text, but the proc will return a
+  ## value of zero because there are no newline separators.  Also, text editors
+  ## usually don't count trailing newline characters in a text file as a new
+  ## empty line, but this proc will.
   var i = 0
   while i < s.len:
     case s[i]
