@@ -186,7 +186,7 @@ proc keepIf*[T](seq1: var seq[T], pred: proc(item: T): bool {.closure.}) =
   ##
   ## .. code-block:: nimrod
   ##   var floats = @[13.0, 12.5, 5.8, 2.0, 6.1, 9.9, 10.1]
-  ##   filter(floats, proc(x: float): bool = x > 10)
+  ##   keepIf(floats, proc(x: float): bool = x > 10)
   ##   assert floats == @[13.0, 12.5, 10.1]
   var pos = 0
   for i in 0 .. <len(seq1):
