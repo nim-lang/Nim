@@ -24,7 +24,7 @@
 ## generate `LaTeX documents <https://en.wikipedia.org/wiki/LaTeX>`_ too.
 
 import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
-  algorithm
+  algorithm, parseutils
 
 const
   HtmlExt = "html"
@@ -62,6 +62,19 @@ type
     ## for hyperlinks. See renderIndexTerm proc for details.
   
   PDoc = var TRstGenerator ## Alias to type less.
+
+  CodeBlockParams = object ## Stores code block params.
+    numberLines: bool ## True if the renderer has to show line numbers.
+    startLine: int ## The starting line of the code block, by default 1.
+    langStr: string ## Input string used to specify the language.
+    lang: TSourceLanguage ## Type of highlighting, by default none.
+
+
+proc init(p: var CodeBlockParams) =
+  ## Default initialisation of CodeBlockParams to sane values.
+  p.startLine = 1
+  p.lang = langNone
+  p.langStr = ""
 
 proc initRstGenerator*(g: var TRstGenerator, target: TOutputTarget,
                        config: PStringTable, filename: string,
@@ -761,26 +774,95 @@ proc renderSmiley(d: PDoc, n: PRstNode, result: var string) =
         height="17" hspace="2" vspace="2" />""",
     "\\includegraphics{$1}", [n.text])
   
+proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
+  ## Parses useful fields which can appear before a code block.
+  ##
+  ## This supports the special ``default-language`` internal string generated
+  ## by the ``rst`` module to communicate a specific default language.
+  case n.getArgument.toLower
+  of "number-lines":
+    params.numberLines = true
+    # See if the field has a parameter specifying a different line than 1.
+    var number: int
+    if parseInt(n.getFieldValue, number) > 0:
+      params.startLine = number
+  of "default-language":
+    params.langStr = n.getFieldValue.strip
+    params.lang = params.langStr.getSourceLanguage
+  else:
+    d.msgHandler(d.filename, 1, 0, mwUnsupportedField, n.getArgument)
+
+proc parseCodeBlockParams(d: PDoc, n: PRstNode): CodeBlockParams =
+  ## Iterates over all code block fields and returns processed params.
+  ##
+  ## Also processes the argument of the directive as the default language. This
+  ## is done last so as to override any internal communication field variables.
+  result.init
+  if n.isNil:
+    return
+  assert n.kind == rnCodeBlock
+  assert(not n.sons[2].isNil)
+
+  # Parse the field list for rendering parameters if there are any.
+  if not n.sons[1].isNil:
+    for son in n.sons[1].sons: d.parseCodeBlockField(son, result)
+
+  # Parse the argument and override the language.
+  result.langStr = strip(getArgument(n))
+  if result.langStr != "":
+    result.lang = getSourceLanguage(result.langStr)
+
+proc buildLinesHTMLTable(params: CodeBlockParams, code: string):
+    tuple[beginTable, endTable: string] =
+  ## Returns the necessary tags to start/end a code block in HTML.
+  ##
+  ## If the numberLines has not been used, the tags will default to a simple
+  ## <pre> pair. Otherwise it will build a table and insert an initial column
+  ## with all the line numbers, which requires you to pass the `code` to detect
+  ## how many lines have to be generated (and starting at which point!).
+  if not params.numberLines:
+    result = ("<pre>", "</pre>")
+    return
+
+  var codeLines = code.strip(leading = false).countLines
+  assert codeLines > 0
+  result.beginTable = """<table><tbody><tr><td class="blob-line-nums"><pre>"""
+  var line = params.startLine
+  while codeLines > 0:
+    result.beginTable.add($line & "\n")
+    line.inc
+    codeLines.dec
+  result.beginTable.add("</pre></td><td><pre>")
+  result.endTable = "</pre></td></tr></tbody></table>"
+
 proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
+  ## Renders a code block, appending it to `result`.
+  ##
+  ## If the code block uses the ``number-lines`` option, a table will be
+  ## generated with two columns, the first being a list of numbers and the
+  ## second the code block itself. The code block can use syntax highlighting,
+  ## which depends on the directive argument specified by the rst input, and
+  ## may also come from the parser through the internal ``default-language``
+  ## option to differentiate between a plain code block and nimrod's code block
+  ## extension.
+  assert n.kind == rnCodeBlock
   if n.sons[2] == nil: return
+  var params = d.parseCodeBlockParams(n)
   var m = n.sons[2].sons[0]
   assert m.kind == rnLeaf
-  var langstr = strip(getArgument(n))
-  var lang: TSourceLanguage
-  if langstr == "":
-    lang = langNimrod         # default language
-  else:
-    lang = getSourceLanguage(langstr)
-  
-  dispA(d.target, result, "<pre>", "\\begin{rstpre}\n", [])
-  if lang == langNone:
-    d.msgHandler(d.filename, 1, 0, mwUnsupportedLanguage, langstr)
+
+  let (blockStart, blockEnd) = params.buildLinesHTMLTable(m.text)
+
+  dispA(d.target, result, blockStart, "\\begin{rstpre}\n", [])
+  if params.lang == langNone:
+    if len(params.langStr) > 0:
+      d.msgHandler(d.filename, 1, 0, mwUnsupportedLanguage, params.langStr)
     result.add(m.text)
   else:
     var g: TGeneralTokenizer
     initGeneralTokenizer(g, m.text)
     while true: 
-      getNextToken(g, lang)
+      getNextToken(g, params.lang)
       case g.kind
       of gtEof: break 
       of gtNone, gtWhitespace: 
@@ -790,8 +872,8 @@ proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
           esc(d.target, substr(m.text, g.start, g.length+g.start-1)),
           tokenClassToStr[g.kind]])
     deinitGeneralTokenizer(g)
-  dispA(d.target, result, "</pre>", "\n\\end{rstpre}\n")
-  
+  dispA(d.target, result, blockEnd, "\n\\end{rstpre}\n")
+
 proc renderContainer(d: PDoc, n: PRstNode, result: var string) = 
   var tmp = ""
   renderRstToOut(d, n.sons[2], tmp)
