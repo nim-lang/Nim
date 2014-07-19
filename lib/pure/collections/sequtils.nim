@@ -388,6 +388,7 @@ template mapIt*(seq1, typ, pred: expr): expr =
   ##   let
   ##     nums = @[1, 2, 3, 4]
   ##     strings = nums.mapIt(string, $(4 * it))
+  ##   assert strings == @["4", "8", "12", "16"]
   var result {.gensym.}: seq[typ] = @[]
   for it {.inject.} in items(seq1):
     result.add(pred)
