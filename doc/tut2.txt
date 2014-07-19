@@ -752,9 +752,8 @@ variable number of arguments:
 
   debug(a[0], a[1], x)
 
-The macro call expands to:
+The macro call expands to::
 
-.. code-block:: nimrod
   write(stdout, "a[0]")
   write(stdout, ": ")
   writeln(stdout, a[0])
@@ -851,9 +850,9 @@ to be included along the program containing the license information::
 The ``readCfgAtRuntime`` proc will open the given filename and return a
 ``TTable`` from the `tables module <tables.html>`_. The parsing of the file is
 done (without much care for handling invalid data or corner cases) using the
-``splitLines`` proc from the `strutils module <strutils.html>`_. There are many
-things which can fail; mind the purpose is explaining how to make this run at
-compile time, not how to properly implement a DRM scheme.
+`splitLines proc from the strutils module <strutils.html#splitLines>`_. There
+are many things which can fail; mind the purpose is explaining how to make
+this run at compile time, not how to properly implement a DRM scheme.
 
 The reimplementation of this code as a compile time proc will allow us to get
 rid of the ``data.cfg`` file we would need to distribute along the binary, plus
@@ -876,6 +875,8 @@ time string with the *generated source code*, which we then pass to the
 modified source code implementing the macro:
 
 .. code-block:: nimrod
+   :number-lines:
+
   import macros, strutils
 
   macro readCfgAndBuildSource(cfgFilename: string): stmt =
@@ -902,29 +903,31 @@ modified source code implementing the macro:
     echo cfglicenseKey
     echo cfgversion
 
-The good news is not much has changed! First, we need to change the handling of
-the input parameter. In the dynamic version the ``readCfgAtRuntime`` proc
-receives a string parameter. However, in the macro version it is also declared
-as string, but this is the *outside* interface of the macro.  When the macro is
-run, it actually gets a ``PNimrodNode`` object instead of a string, and we have
-to call the ``strVal`` proc from the `macros module <macros.html>`_ to obtain
-the string being passed in to the macro.
+The good news is not much has changed! First, we need to change the handling
+of the input parameter (line 3). In the dynamic version the
+``readCfgAtRuntime`` proc receives a string parameter. However, in the macro
+version it is also declared as string, but this is the *outside* interface of
+the macro.  When the macro is run, it actually gets a ``PNimrodNode`` object
+instead of a string, and we have to call the `strVal proc
+<macros.html#strVal>`_ (line 5) from the `macros module <macros.html>`_ to
+obtain the string being passed in to the macro.
 
-Second, we cannot use the ``readFile`` proc from the `system module
-<system.html>`_ due to FFI restriction at compile time. If we try to use this
-proc, or any other which depends on FFI, the compiler will error with the
-message ``cannot evaluate`` and a dump of the macro's source code, along with a
-stack trace where the compiler reached before bailing out. We can get around
-this limitation by using the ``slurp`` proc from the `system module
-<system.html>`_, which was precisely made for compilation time (just like
-``gorge`` which executes an external program and captures its output).
+Second, we cannot use the `readFile proc <system.html#readFile>`_ from the
+`system module <system.html>`_ due to FFI restriction at compile time. If we
+try to use this proc, or any other which depends on FFI, the compiler will
+error with the message ``cannot evaluate`` and a dump of the macro's source
+code, along with a stack trace where the compiler reached before bailing out.
+We can get around this limitation by using the `slurp proc
+<system.html#slurp>`_ from the `system module <system.html>`_, which was
+precisely made for compilation time (just like `gorge <system.html#gorge>`_
+which executes an external program and captures its output).
 
-The interesting thing is that our macro does not return a runtime ``TTable``
-object. Instead, it builds up Nimrod source code into the ``source`` variable.
-For each line of the configuration file a ``const`` variable will be generated.
-To avoid conflicts we prefix these variables with ``cfg``. In essence, what the
-compiler is doing is replacing the line calling the macro with the following
-snippet of code:
+The interesting thing is that our macro does not return a runtime `TTable
+<tables.html#TTable>`_ object. Instead, it builds up Nimrod source code into
+the ``source`` variable.  For each line of the configuration file a ``const``
+variable will be generated (line 15).  To avoid conflicts we prefix these
+variables with ``cfg``. In essence, what the compiler is doing is replacing
+the line calling the macro with the following snippet of code:
 
 .. code-block:: nimrod
   const cfgversion= "1.1"
@@ -933,13 +936,14 @@ snippet of code:
 
 You can verify this yourself adding the line ``echo source`` somewhere at the
 end of the macro and compiling the program. Another difference is that instead
-of calling the usual ``quit`` proc to abort (which we could still call) this
-version calls the ``error`` proc. The ``error`` proc has the same behavior as
-``quit`` but will dump also the source and file line information where the
-error happened, making it easier for the programmer to find where compilation
-failed. In this situation it would point to the line invoking the macro, but
-**not** the line of ``data.cfg`` we are processing, that's something the macro
-itself would need to control.
+of calling the usual `quit proc <system.html#quit>`_ to abort (which we could
+still call) this version calls the `error proc <macros.html#error>`_ (line
+14). The ``error`` proc has the same behavior as ``quit`` but will dump also
+the source and file line information where the error happened, making it
+easier for the programmer to find where compilation failed. In this situation
+it would point to the line invoking the macro, but **not** the line of
+``data.cfg`` we are processing, that's something the macro itself would need
+to control.
 
 
 Generating AST by hand
@@ -947,11 +951,11 @@ Generating AST by hand
 
 To generate an AST we would need to intimately know the structures used by the
 Nimrod compiler exposed in the `macros module <macros.html>`_, which at first
-look seems a daunting task. But we can use as helper shortcut the ``dumpTree``
-macro, which is used as a statement macro instead of an expression macro.
-Since we know that we want to generate a bunch of ``const`` symbols we can
-create the following source file and compile it to see what the compiler
-*expects* from us:
+look seems a daunting task. But we can use as helper shortcut the `dumpTree
+macro <macros.html#dumpTree>`_, which is used as a statement macro instead of
+an expression macro.  Since we know that we want to generate a bunch of
+``const`` symbols we can create the following source file and compile it to
+see what the compiler *expects* from us:
 
 .. code-block:: nimrod
   import macros
@@ -997,6 +1001,8 @@ with this knowledge, let's look at the finished version of the AST building
 macro:
 
 .. code-block:: nimrod
+   :number-lines:
+
   import macros, strutils
 
   macro readCfgAndBuildAST(cfgFilename: string): stmt =
@@ -1032,19 +1038,20 @@ Since we are building on the previous example generating source code, we will
 only mention the differences to it. Instead of creating a temporary ``string``
 variable and writing into it source code as if it were written *by hand*, we
 use the ``result`` variable directly and create a statement list node
-(``nnkStmtList``) which will hold our children.
+(``nnkStmtList``) which will hold our children (line 7).
 
 For each input line we have to create a constant definition (``nnkConstDef``)
 and wrap it inside a constant section (``nnkConstSection``). Once these
-variables are created, we fill them hierarchichally like the previous AST dump
-tree showed: the constant definition is a child of the section definition, and
-the constant definition has an identifier node, an empty node (we let the
-compiler figure out the type), and a string literal with the value.
+variables are created, we fill them hierarchichally (line 17) like the
+previous AST dump tree showed: the constant definition is a child of the
+section definition, and the constant definition has an identifier node, an
+empty node (we let the compiler figure out the type), and a string literal
+with the value.
 
 A last tip when writing a macro: if you are not sure the AST you are building
 looks ok, you may be tempted to use the ``dumpTree`` macro. But you can't use
 it *inside* the macro you are writting/debugging. Instead ``echo`` the string
-generated by ``treeRepr``. If at the end of the this example you add ``echo
-treeRepr(result)`` you should get the same output as using the ``dumpTree``
-macro, but of course you can call that at any point of the macro where you
-might be having troubles.
+generated by `treeRepr <macros.html#treeRepr>`_. If at the end of the this
+example you add ``echo treeRepr(result)`` you should get the same output as
+using the ``dumpTree`` macro, but of course you can call that at any point of
+the macro where you might be having troubles.
