@@ -2232,9 +2232,12 @@ when not defined(JS): #and not defined(NimrodVM):
       ## current file position is not at the beginning of the file.
     
     proc readFile*(filename: string): TaintedString {.tags: [FReadIO], gcsafe.}
-      ## Opens a file named `filename` for reading. Then calls `readAll`
-      ## and closes the file afterwards. Returns the string. 
-      ## Raises an IO exception in case of an error.
+      ## Opens a file named `filename` for reading.
+      ##
+      ## Then calls `readAll <#readAll>`_ and closes the file afterwards.
+      ## Returns the string.  Raises an IO exception in case of an error. If
+      ## you need to call this inside a compile time macro you can use
+      ## `staticRead <#staticRead>`_.
 
     proc writeFile*(filename, content: string) {.tags: [FWriteIO], gcsafe.}
       ## Opens a file named `filename` for writing. Then writes the
@@ -2726,19 +2729,20 @@ proc `[]=`*[T](s: var seq[T], x: TSlice[int], b: openArray[T]) =
     spliceImpl(s, a, L, b)
 
 proc slurp*(filename: string): string {.magic: "Slurp".}
-  ## This is an alias for ``staticRead``.
+  ## This is an alias for `staticRead <#staticRead>`_.
 
 proc staticRead*(filename: string): string {.magic: "Slurp".}
-  ## Compile-time ``readFile`` proc for easy `resource`:idx: embedding:
+  ## Compile-time `readFile <#readFile>`_ proc for easy `resource`:idx:
+  ## embedding:
   ##
   ## .. code-block:: nimrod
   ##     const myResource = staticRead"mydatafile.bin"
   ##
-  ## ``slurp`` is an alias for ``staticRead``.
+  ## `slurp <#slurp>`_ is an alias for ``staticRead``.
 
 proc gorge*(command: string, input = ""): string {.
   magic: "StaticExec".} = discard
-  ## This is an alias for ``staticExec``.
+  ## This is an alias for `staticExec <#staticExec>`_.
 
 proc staticExec*(command: string, input = ""): string {.
   magic: "StaticExec".} = discard
@@ -2750,9 +2754,9 @@ proc staticExec*(command: string, input = ""): string {.
   ##     const buildInfo = "Revision " & staticExec("git rev-parse HEAD") & 
   ##                       "\nCompiled on " & staticExec("uname -v")
   ##
-  ## ``gorge`` is an alias for ``staticExec``. Note that you can use this proc
-  ## inside a pragma like `passC <nimrodc.html#passc-pragma>`_ or `passL
-  ## <nimrodc.html#passl-pragma>`_.
+  ## `gorge <#gorge>`_ is an alias for ``staticExec``. Note that you can use
+  ## this proc inside a pragma like `passC <nimrodc.html#passc-pragma>`_ or
+  ## `passL <nimrodc.html#passl-pragma>`_.
 
 proc `+=`*[T: TOrdinal|uint|uint64](x: var T, y: T) {.magic: "Inc", noSideEffect.}
   ## Increments an ordinal
