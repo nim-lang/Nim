@@ -49,6 +49,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
     of cmdArgument:
       if argsCount == 0:
         options.command = p.key
+        if p.key == "run": gGlobalOptions.incl(optRun)
       else:
         if pass == passCmd1: options.commandArgs.add p.key
         if argsCount == 1:
