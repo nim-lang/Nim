@@ -260,7 +260,7 @@ proc nimFloatToStr(f: float): string {.compilerproc.} =
       hasDot = true
     elif buf[i] in {'e', 'E', '.'}: 
       hasDot = true
-  if not hasDot:
+  if not hasDot and $buf notin ["inf", "-inf", "nan", "-nan"]:
     buf[n] = '.'
     buf[n+1] = '0'
     buf[n+2] = '\0'
