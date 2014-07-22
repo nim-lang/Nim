@@ -258,7 +258,7 @@ proc nimFloatToStr(f: float): string {.compilerproc.} =
     if buf[i] == ',':
       buf[i] = '.'
       hasDot = true
-    elif buf[i] in {'e', 'E', '.'}: 
+    elif buf[i] in {'a'..'z', 'A'..'Z', '.'}: 
       hasDot = true
   if not hasDot:
     buf[n] = '.'
