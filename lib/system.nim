@@ -783,7 +783,7 @@ proc contains*[T](s: TSlice[T], value: T): bool {.noSideEffect, inline.} =
   result = s.a <= value and value <= s.b
 
 template `in` * (x, y: expr): expr {.immediate.} = contains(y, x)
-  ## Suger for contains
+  ## Sugar for contains
   ##
   ## .. code-block:: Nimrod
   ##   assert(1 in (1..3) == true)
