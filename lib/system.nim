@@ -1052,7 +1052,7 @@ proc add *[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
   ## containers should also call their adding proc `add` for consistency.
   ## Generic code becomes much easier to write if the Nimrod naming scheme is
   ## respected.
-  var xl = x.len
+  let xl = x.len
   setLen(x, xl + y.len)
   for i in 0..high(y): x[xl+i] = y[i]
 
@@ -1066,20 +1066,20 @@ proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
 proc del*[T](x: var seq[T], i: int) {.noSideEffect.} = 
   ## deletes the item at index `i` by putting ``x[high(x)]`` into position `i`.
   ## This is an O(1) operation.
-  var xl = x.len
+  let xl = x.len
   shallowCopy(x[i], x[xl-1])
   setLen(x, xl-1)
   
 proc delete*[T](x: var seq[T], i: int) {.noSideEffect.} = 
   ## deletes the item at index `i` by moving ``x[i+1..]`` by one position.
   ## This is an O(n) operation.
-  var xl = x.len
+  let xl = x.len
   for j in i..xl-2: shallowCopy(x[j], x[j+1]) 
   setLen(x, xl-1)
   
 proc insert*[T](x: var seq[T], item: T, i = 0) {.noSideEffect.} = 
   ## inserts `item` into `x` at position `i`.
-  var xl = x.len
+  let xl = x.len
   setLen(x, xl+1)
   var j = xl-1
   while j >= i:
