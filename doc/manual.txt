@@ -4970,9 +4970,9 @@ or ``ref T`` or ``ptr T`` this means no locations are modified. It is a static
 error to mark a proc/iterator to have no side effect if the compiler cannot
 verify this.
 
-As a special semantic rule, the built-in ``debugEcho`` pretends to be free of 
-side effects, so that it can be used for debugging routines marked as
-``noSideEffect``.
+As a special semantic rule, the built-in `debugEcho <system.html#debugEcho>`_
+pretends to be free of side effects, so that it can be used for debugging
+routines marked as ``noSideEffect``.
 
 **Future directions**: ``func`` may become a keyword and syntactic sugar for a
 proc with no side effects:

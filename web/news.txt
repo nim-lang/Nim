@@ -18,6 +18,8 @@ News
   - ``pas2nim`` moved into its own repository and is now a Babel package.
   - ``system.$`` for floating point types now produces a human friendly string
     representation.
+  - ``uri.TUrl`` as well as the ``parseurl`` module are now deprecated in favour
+    of the new ``TUri`` type in the ``uri`` module.
 
   Library Additions
   -----------------
@@ -26,7 +28,7 @@ News
   - Added module ``threadpool``.
   - ``sequtils.distnct`` has been renamed to ``sequtils.deduplicate``.
   - Added ``algorithm.reversed``
-
+  - Added ``uri.combine`` and ``uri.parseUri``.
 
 2014-04-21 Version 0.9.4 released
 =================================

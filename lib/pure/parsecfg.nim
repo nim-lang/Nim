@@ -350,7 +350,8 @@ proc next*(c: var TCfgParser): TCfgEvent {.rtl, extern: "npc$1".} =
     rawGetTok(c, c.tok)
     if c.tok.kind == tkBracketRi: 
       rawGetTok(c, c.tok)
-    else: 
+    else:
+      reset(result)
       result.kind = cfgError
       result.msg = errorStr(c, "']' expected, but found: " & c.tok.literal)
   of tkInvalid, tkEquals, tkColon, tkBracketRi: 

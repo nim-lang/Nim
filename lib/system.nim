@@ -783,7 +783,7 @@ proc contains*[T](s: TSlice[T], value: T): bool {.noSideEffect, inline.} =
   result = s.a <= value and value <= s.b
 
 template `in` * (x, y: expr): expr {.immediate.} = contains(y, x)
-  ## Suger for contains
+  ## Sugar for contains
   ##
   ## .. code-block:: Nimrod
   ##   assert(1 in (1..3) == true)
@@ -1052,7 +1052,7 @@ proc add *[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
   ## containers should also call their adding proc `add` for consistency.
   ## Generic code becomes much easier to write if the Nimrod naming scheme is
   ## respected.
-  var xl = x.len
+  let xl = x.len
   setLen(x, xl + y.len)
   for i in 0..high(y): x[xl+i] = y[i]
 
@@ -1066,20 +1066,20 @@ proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
 proc del*[T](x: var seq[T], i: int) {.noSideEffect.} = 
   ## deletes the item at index `i` by putting ``x[high(x)]`` into position `i`.
   ## This is an O(1) operation.
-  var xl = x.len
+  let xl = x.len
   shallowCopy(x[i], x[xl-1])
   setLen(x, xl-1)
   
 proc delete*[T](x: var seq[T], i: int) {.noSideEffect.} = 
   ## deletes the item at index `i` by moving ``x[i+1..]`` by one position.
   ## This is an O(n) operation.
-  var xl = x.len
+  let xl = x.len
   for j in i..xl-2: shallowCopy(x[j], x[j+1]) 
   setLen(x, xl-1)
   
 proc insert*[T](x: var seq[T], item: T, i = 0) {.noSideEffect.} = 
   ## inserts `item` into `x` at position `i`.
-  var xl = x.len
+  let xl = x.len
   setLen(x, xl+1)
   var j = xl-1
   while j >= i:
@@ -2026,19 +2026,25 @@ elif hostOS != "standalone":
   {.pop.}
 
 proc echo*[T](x: varargs[T, `$`]) {.magic: "Echo", tags: [FWriteIO], gcsafe.}
-  ## special built-in that takes a variable number of arguments. Each argument
+  ## Writes and flushes the parameters to the standard output.
+  ##
+  ## Special built-in that takes a variable number of arguments. Each argument
   ## is converted to a string via ``$``, so it works for user-defined
   ## types that have an overloaded ``$`` operator.
   ## It is roughly equivalent to ``writeln(stdout, x); flush(stdout)``, but
   ## available for the JavaScript target too.
+  ##
   ## Unlike other IO operations this is guaranteed to be thread-safe as
-  ## ``echo`` is very often used for debugging convenience.
+  ## ``echo`` is very often used for debugging convenience. If you want to use
+  ## ``echo`` inside a `proc without side effects
+  ## <manual.html#nosideeffect-pragma>`_ you can use `debugEcho <#debugEcho>`_
+  ## instead.
 
 proc debugEcho*[T](x: varargs[T, `$`]) {.magic: "Echo", noSideEffect, 
                                          tags: [], raises: [].}
-  ## Same as ``echo``, but as a special semantic rule, ``debugEcho`` pretends
-  ## to be free of side effects, so that it can be used for debugging routines
-  ## marked as ``noSideEffect``.
+  ## Same as `echo <#echo>`_, but as a special semantic rule, ``debugEcho``
+  ## pretends to be free of side effects, so that it can be used for debugging
+  ## routines marked as `noSideEffect <manual.html#nosideeffect-pragma>`_.
 
 template newException*(exceptn: typedesc, message: string): expr =
   ## creates an exception object of type ``exceptn`` and sets its ``msg`` field

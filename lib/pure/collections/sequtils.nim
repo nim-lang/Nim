@@ -186,7 +186,7 @@ proc keepIf*[T](seq1: var seq[T], pred: proc(item: T): bool {.closure.}) =
   ##
   ## .. code-block:: nimrod
   ##   var floats = @[13.0, 12.5, 5.8, 2.0, 6.1, 9.9, 10.1]
-  ##   filter(floats, proc(x: float): bool = x > 10)
+  ##   keepIf(floats, proc(x: float): bool = x > 10)
   ##   assert floats == @[13.0, 12.5, 10.1]
   var pos = 0
   for i in 0 .. <len(seq1):
@@ -388,6 +388,7 @@ template mapIt*(seq1, typ, pred: expr): expr =
   ##   let
   ##     nums = @[1, 2, 3, 4]
   ##     strings = nums.mapIt(string, $(4 * it))
+  ##   assert strings == @["4", "8", "12", "16"]
   var result {.gensym.}: seq[typ] = @[]
   for it {.inject.} in items(seq1):
     result.add(pred)
