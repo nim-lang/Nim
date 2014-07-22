@@ -414,13 +414,14 @@ proc sizeof*[T](x: T): Natural {.magic: "SizeOf", noSideEffect.}
   ## that one never needs to know ``x``'s size. As a special semantic rule,
   ## ``x`` may also be a type identifier (``sizeof(int)`` is valid).
 
-proc `<`*[T](x: Ordinal[T]): T {.magic: "UnaryLt", noSideEffect.}
+proc `<`*[T](x: Ordinal[T]): T {.noSideEffect, inline.} =
   ## unary ``<`` that can be used for nice looking excluding ranges:
   ## 
   ## .. code-block:: nimrod
   ##   for i in 0 .. <10: echo i
   ##
   ## Semantically this is the same as ``pred``. 
+  result = pred(x)
 
 proc succ*[T](x: Ordinal[T], y = 1): T {.magic: "Succ", noSideEffect.}
   ## returns the ``y``-th successor of the value ``x``. ``T`` has to be
