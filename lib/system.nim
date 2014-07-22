@@ -814,9 +814,9 @@ proc `of` *[T, S](x: T, y: S): bool {.magic: "Of", noSideEffect.}
   ## Checks if `x` has a type of `y`
   ##
   ## .. code-block:: Nimrod
-  ##   assert(EFloatingPoint is EBase)
-  ##   assert(EIO is ESystem)
-  ##   assert(EDivByZero is EBase)
+  ##   assert(EFloatingPoint of EBase)
+  ##   assert(EIO of ESystem)
+  ##   assert(EDivByZero of EBase)
 
 proc cmp*[T](x, y: T): int {.procvar.} =
   ## Generic compare proc. Returns a value < 0 iff x < y, a value > 0 iff x > y
