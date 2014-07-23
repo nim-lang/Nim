@@ -30,17 +30,14 @@ type
 
     when defined(windows):
       fHandle: int
-      mapHandle: int
+      mapHandle: int 
     else:
       handle: cint
 
 
 proc mapMem*(m: var TMemFile, mode: TFileMode = fmRead,
-             mappedSize = -1, offset = 0,
-             use_map_populate = false): pointer =
+             mappedSize = -1, offset = 0): pointer =
   var readonly = mode == fmRead
-  if not use_map_populate:
-    MAP_POPULATE = 0
   when defined(windows):
     result = mapViewOfFileEx(
       m.mapHandle,
@@ -75,8 +72,7 @@ proc unmapMem*(f: var TMemFile, p: pointer, size: int) =
 
 
 proc open*(filename: string, mode: TFileMode = fmRead,
-           mappedSize = -1, offset = 0, newFileSize = -1,
-           use_map_populate = false): TMemFile =
+           mappedSize = -1, offset = 0, newFileSize = -1): TMemFile =
   ## opens a memory mapped file. If this fails, ``EOS`` is raised.
   ## `newFileSize` can only be set if the file does not exist and is opened
   ## with write access (e.g., with fmReadWrite). `mappedSize` and `offset`
@@ -98,8 +94,6 @@ proc open*(filename: string, mode: TFileMode = fmRead,
   # The file can be resized only when write mode is used:
   assert newFileSize == -1 or mode != fmRead
   var readonly = mode == fmRead
-  if not use_map_populate:
-    MAP_POPULATE = 0
 
   template rollback =
     result.mem = nil
