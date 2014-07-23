@@ -1375,6 +1375,8 @@ var
     ## Share changes.
   MAP_PRIVATE* {.importc, header: "<sys/mman.h>".}: cint
     ## Changes are private.
+  MAP_POPULATE* {.importc, header: "<sys/mman.h>".}: cint
+    ## Populate (prefault) page tables for a mapping.
   MAP_FIXED* {.importc, header: "<sys/mman.h>".}: cint
     ## Interpret addr exactly.
   MS_ASYNC* {.importc, header: "<sys/mman.h>".}: cint
