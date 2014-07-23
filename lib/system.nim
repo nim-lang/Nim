@@ -476,6 +476,23 @@ proc newSeq*[T](len = 0): seq[T] =
   ##   #inputStrings[3] = "out of bounds"
   newSeq(result, len)
 
+template newSeqWith*(len: int, init: expr): expr =
+  ## creates a new sequence, calling `init` to initialize each value. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var seq2D = newSeqWith(20, newSeq[bool](10))
+  ##   seq2D[0][0] = true
+  ##   seq2D[1][0] = true
+  ##   seq2D[0][1] = true
+  ##
+  ##   import math
+  ##   var seqRand = newSeqWith(20, random(10))
+  ##   echo seqRand
+  var result {.gensym.} = newSeq[type(init)](len)
+  for i in 0 .. <len:
+    result[i] = init
+  result
+
 proc len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.
   magic: "LengthOpenArray", noSideEffect.}
 proc len*(x: string): int {.magic: "LengthStr", noSideEffect.}
