@@ -803,6 +803,44 @@ proc rfind*(s, sub: string, start: int = -1): int {.noSideEffect.} =
     if result != -1: return
   return -1
 
+proc count*(s: string, sub: string): int {.noSideEffect,
+  rtl, extern: "nsuCountString".} =
+  ## Count the occurences of a substring `sub` in the string `s`. Overlapping
+  ## occurences of `sub` do not count.
+  var i = 0
+  while true:
+    i = s.find(sub, i)
+    if i < 0:
+      break
+    i += sub.len
+    inc result
+
+proc count*(s: string, sub: char): int {.noSideEffect,
+  rtl, extern: "nsuCountChar".} =
+  ## Count the occurences of the character `sub` in the string `s`.
+  for c in s:
+    if c == sub:
+      inc result
+
+proc count*(s: string, subs: set[char]): int {.noSideEffect,
+  rtl, extern: "nsuCountCharSet".} =
+  ## Count the occurences of the group of character `subs` in the string `s`.
+  for c in s:
+    if c in subs:
+      inc result
+
+proc countOverlapping*(s: string, sub: string): int {.noSideEffect,
+  rtl, extern: "nsuCountOverlapping".} =
+  ## Count the occurences of a substring `sub` in the string `s`. Overlapping
+  ## occurences of `sub` do count.
+  var i = 0
+  while true:
+    i = s.find(sub, i)
+    if i < 0:
+      break
+    inc i
+    inc result
+
 proc quoteIfContainsWhite*(s: string): string {.deprecated.} =
   ## Returns ``'"' & s & '"'`` if `s` contains a space and does not
   ## start with a quote, else returns `s`.
@@ -1354,3 +1392,8 @@ when isMainModule:
   doAssert parseEnum[TMyEnum]("enu_D") == enuD
 
   doAssert parseEnum("invalid enum value", enC) == enC
+
+  doAssert count("foofoofoo", "foofoo") == 1
+  doAssert countOverlapping("foofoofoo", "foofoo") == 2
+  doAssert count("foofoofoo", 'f') == 3
+  doAssert count("foofoofoobar", {'f','b'}) == 4
