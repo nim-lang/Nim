@@ -851,6 +851,13 @@ proc setLen*(s: var string, newlen: int) {.
   ## ``s`` will be truncated. `s` cannot be nil! To initialize a string with
   ## a size, use ``newString`` instead. 
 
+proc newSeqOfCap*[T](cap = 0): seq[T] =
+  ## returns a new sequence of length ``0`` but with capacity `cap`.This
+  ## procedure exists only for optimization purposes; the same effect can be
+  ## achieved with ``add``.
+  newSeq(result, cap)
+  setLen(result, 0)
+
 proc newString*(len: int): string {.
   magic: "NewString", importc: "mnewString", noSideEffect.}
   ## returns a new string of length ``len`` but with uninitialized
