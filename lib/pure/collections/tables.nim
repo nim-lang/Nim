@@ -335,7 +335,7 @@ proc `$`*[A, B](t: PTable[A, B]): string =
 proc `==`*[A, B](s, t: PTable[A, B]): bool =
   if isNil(s): result = isNil(t)
   elif isNil(t): result = false
-  else: equalsImpl()
+  else: result = equalsImpl()
 
 proc newTableFrom*[A, B, C](collection: A, index: proc(x: B): C): PTable[C, B] =
   ## Index the collection with the proc provided.
