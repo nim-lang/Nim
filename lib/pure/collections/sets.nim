@@ -249,6 +249,21 @@ type
     data: TOrderedKeyValuePairSeq[A]
     counter, first, last: int
 
+proc isValid*[A](s: TOrderedSet[A]): bool =
+  ## Returns `true` if the ordered set has been initialized with `initSet
+  ## <#initOrderedSet>`_.
+  ##
+  ## Most operations over an uninitialized ordered set will crash at runtime
+  ## and `assert <system.html#assert>`_ in debug builds. You can use this proc
+  ## in your own methods to verify that ordered sets passed to your procs are
+  ## correctly initialized. Example:
+  ##
+  ## .. code-block :: nimrod
+  ##   proc saveTarotCards(cards: TOrderedSet[int]) =
+  ##     assert cards.isValid, "Pass an initialized set!"
+  ##     # Do stuff here, may crash in release builds!
+  result = not s.data.isNil
+
 proc len*[A](s: TOrderedSet[A]): int {.inline.} =
   ## returns the number of keys in `s`.
   result = s.counter
@@ -266,6 +281,7 @@ template forAllOrderedPairs(yieldStmt: stmt) {.dirty, immediate.} =
 
 iterator items*[A](s: TOrderedSet[A]): A =
   ## iterates over any key in the set `s` in insertion order.
+  assert s.isValid, "The set needs to be initialized."
   forAllOrderedPairs:
     yield s.data[h].key
 
@@ -274,6 +290,7 @@ proc rawGet[A](s: TOrderedSet[A], key: A): int =
 
 proc contains*[A](s: TOrderedSet[A], key: A): bool =
   ## returns true iff `key` is in `s`.
+  assert s.isValid, "The set needs to be initialized."
   var index = rawGet(s, key)
   result = index >= 0
 
@@ -300,15 +317,19 @@ proc enlarge[A](s: var TOrderedSet[A]) =
 
 proc incl*[A](s: var TOrderedSet[A], key: A) =
   ## includes an element `key` in `s`.
+  assert s.isValid, "The set needs to be initialized."
   inclImpl()
 
 proc incl*[A](s: var TSet[A], other: TOrderedSet[A]) =
   ## includes everything in `other` in `s`
+  assert s.isValid, "The set `s` needs to be initialized."
+  assert other.isValid, "The set `other` needs to be initialized."
   for item in other: incl(s, item)
 
 proc containsOrIncl*[A](s: var TOrderedSet[A], key: A): bool =
   ## returns true if `s` contains `key`, otherwise `key` is included in `s`
   ## and false is returned.
+  assert s.isValid, "The set needs to be initialized."
   containsOrInclImpl()
 
 proc initOrderedSet*[A](initialSize=64): TOrderedSet[A] =
@@ -327,6 +348,7 @@ proc toOrderedSet*[A](keys: openArray[A]): TOrderedSet[A] =
 
 proc `$`*[A](s: TOrderedSet[A]): string =
   ## The `$` operator for ordered hash sets.
+  assert s.isValid, "The set needs to be initialized."
   dollarImpl()
 
 proc `<`*[A](s, t: TSet[A]): bool =
@@ -411,6 +433,42 @@ proc testModule() =
     assert disjoint(a, b) == false
     assert disjoint(a, b - a) == true
 
+  block isValidTest:
+    var cards: TOrderedSet[string]
+    proc saveTarotCards(cards: TOrderedSet[string]) =
+      assert cards.isValid, "Pass an initialized set!"
+    cards = initOrderedSet[string]()
+    cards.saveTarotCards
+
+  block lenTest:
+    var values: TOrderedSet[int]
+    assert(not values.isValid)
+    assert values.len == 0
+    assert values.card == 0
+
+  block setIterator:
+    type pair = tuple[a, b: int]
+    var a, b = initOrderedSet[pair]()
+    a.incl((2, 3))
+    a.incl((3, 2))
+    a.incl((2, 3))
+    for x, y in a.items:
+      b.incl((x - 2, y + 1))
+    assert a.len == b.card
+    assert a.len == 2
+
+  block setContains:
+    var values = initOrderedSet[int]()
+    assert(not values.contains(2))
+    values.incl(2)
+    assert values.contains(2)
+
+  block toSeqAndString:
+    var a = toOrderedSet[int]([2, 4, 5])
+    var b = initOrderedSet[int]()
+    for x in [2, 4, 5]: b.incl(x)
+    assert($a == $b)
+    # assert(a == b) # https://github.com/Araq/Nimrod/issues/1413
 
   echo "Micro tests run successfully."
 
