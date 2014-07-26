@@ -23,7 +23,11 @@ type
   TSlotEnum = enum seEmpty, seFilled, seDeleted
   TKeyValuePair[A] = tuple[slot: TSlotEnum, key: A]
   TKeyValuePairSeq[A] = seq[TKeyValuePair[A]]
-  TSet* {.final, myShallow.}[A] = object ## a generic hash set
+  TSet* {.final, myShallow.}[A] = object ## \
+    ## A generic hash set.
+    ##
+    ## Use `init() <#init,TSet[A]>`_ or `initSet[type]() <#initSet>`_ before
+    ## calling other procs on it.
     data: TKeyValuePairSeq[A]
     counter: int
 
@@ -156,12 +160,39 @@ proc containsOrIncl*[A](s: var TSet[A], key: A): bool =
   assert s.isValid, "The set needs to be initialized."
   containsOrInclImpl()
 
-proc initSet*[A](initialSize=64): TSet[A] =
-  ## creates a new hash set that is empty. `initialSize` needs to be
-  ## a power of two.
+proc init*[A](s: var TSet[A], initialSize=64) =
+  ## Initializes a hash set.
+  ##
+  ## The `initialSize` parameter needs to be a power of too. You can use
+  ## `math.nextPowerOfTwo() <math.html#nextPowerOfTwo>`_ to guarantee that at
+  ## runtime. All set variables have to be initialized before you can use them
+  ## with other procs from this module with the exception of `isValid()
+  ## <#isValid,TSet[A]>`_ and `len() <#len,TSet[A]>`_.
+  ##
+  ## You can call this method on a previously initialized hash set, which will
+  ## discard all its values. This might be more convenient than iterating over
+  ## existing values and calling `excl() <#excl,TSet[A],A>`_ on them. Example:
+  ##
+  ## .. code-block ::
+  ##   var a: TSet[int]
+  ##   a.init(4)
+  ##   a.incl(2)
+  ##   a.init
+  ##   assert a.len == 0 and a.isValid
   assert isPowerOfTwo(initialSize)
-  result.counter = 0
-  newSeq(result.data, initialSize)
+  s.counter = 0
+  newSeq(s.data, initialSize)
+
+proc initSet*[A](initialSize=64): TSet[A] =
+  ## Convenience wrapper around `init() <#init,TSet[A]>`_.
+  ##
+  ## Returns an empty hash set you can assign directly in ``var`` blocks in a
+  ## single line. Example:
+  ##
+  ## .. code-block ::
+  ##   var a = initSet[int](4)
+  ##   a.incl(2)
+  result.init(initialSize)
 
 proc toSet*[A](keys: openArray[A]): TSet[A] =
   ## creates a new hash set that contains the given `keys`.
@@ -519,6 +550,15 @@ proc testModule() =
     a = initOrderedSet[int](4)
     a.incl(2)
     assert a.len == 1
+
+    var b: TSet[int]
+    b.init(4)
+    b.incl(2)
+    b.init
+    assert b.len == 0 and b.isValid
+    b = initSet[int](4)
+    b.incl(2)
+    assert b.len == 1
 
   echo "Micro tests run successfully."
 
