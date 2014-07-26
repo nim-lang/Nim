@@ -27,6 +27,20 @@ type
     data: TKeyValuePairSeq[A]
     counter: int
 
+proc isValid*[A](s: TSet[A]): bool =
+  ## Returns `true` if the set has been initialized with `initSet <#initSet>`_.
+  ##
+  ## Most operations over an uninitialized set will crash at runtime and
+  ## `assert <system.html#assert>`_ in debug builds. You can use this proc in
+  ## your own methods to verify that sets passed to your procs are correctly
+  ## initialized. Example:
+  ##
+  ## .. code-block :: nimrod
+  ##   proc savePreferences(options: TSet[string]) =
+  ##     assert options.isValid, "Pass an initialized set!"
+  ##     # Do stuff here, may crash in release builds!
+  result = not s.data.isNil
+
 proc len*[A](s: TSet[A]): int =
   ## returns the number of keys in `s`.
   result = s.counter
@@ -37,6 +51,7 @@ proc card*[A](s: TSet[A]): int =
 
 iterator items*[A](s: TSet[A]): A =
   ## iterates over any key in the table `t`.
+  assert s.isValid, "The set needs to be initialized."
   for h in 0..high(s.data):
     if s.data[h].slot == seFilled: yield s.data[h].key
 
@@ -73,12 +88,14 @@ proc mget*[A](s: var TSet[A], key: A): var A =
   ## value as 'key' or raises the ``EInvalidKey`` exception. This is useful
   ## when one overloaded 'hash' and '==' but still needs reference semantics
   ## for sharing.
+  assert s.isValid, "The set needs to be initialized."
   var index = rawGet(s, key)
   if index >= 0: result = t.data[index].key
   else: raise newException(EInvalidKey, "key not found: " & $key)
 
 proc contains*[A](s: TSet[A], key: A): bool =
   ## returns true iff `key` is in `s`.
+  assert s.isValid, "The set needs to be initialized."
   var index = rawGet(s, key)
   result = index >= 0
 
@@ -110,14 +127,18 @@ template containsOrInclImpl() {.dirty.} =
 
 proc incl*[A](s: var TSet[A], key: A) =
   ## includes an element `key` in `s`.
+  assert s.isValid, "The set needs to be initialized."
   inclImpl()
 
 proc incl*[A](s: var TSet[A], other: TSet[A]) =
   ## includes everything in `other` in `s`
+  assert s.isValid, "The set `s` needs to be initialized."
+  assert other.isValid, "The set `other` needs to be initialized."
   for item in other: incl(s, item)
 
 proc excl*[A](s: var TSet[A], key: A) =
   ## excludes `key` from the set `s`.
+  assert s.isValid, "The set needs to be initialized."
   var index = rawGet(s, key)
   if index >= 0:
     s.data[index].slot = seDeleted
@@ -125,11 +146,14 @@ proc excl*[A](s: var TSet[A], key: A) =
 
 proc excl*[A](s: var TSet[A], other: TSet[A]) =
   ## excludes everything in `other` from `s`.
+  assert s.isValid, "The set `s` needs to be initialized."
+  assert other.isValid, "The set `other` needs to be initialized."
   for item in other: excl(s, item)
 
 proc containsOrIncl*[A](s: var TSet[A], key: A): bool =
   ## returns true if `s` contains `key`, otherwise `key` is included in `s`
   ## and false is returned.
+  assert s.isValid, "The set needs to be initialized."
   containsOrInclImpl()
 
 proc initSet*[A](initialSize=64): TSet[A] =
@@ -153,22 +177,29 @@ template dollarImpl(): stmt {.dirty.} =
 
 proc `$`*[A](s: TSet[A]): string =
   ## The `$` operator for hash sets.
+  assert s.isValid, "The set needs to be initialized."
   dollarImpl()
 
 proc union*[A](s1, s2: TSet[A]): TSet[A] =
   ## returns a new set of all items that are contained in at
   ## least one of `s1` and `s2`
+  assert s1.isValid, "The set `s1` needs to be initialized."
+  assert s2.isValid, "The set `s2` needs to be initialized."
   result = s1
   incl(result, s2)
 
 proc intersection*[A](s1, s2: TSet[A]): TSet[A] =
   ## returns a new set of all items that are contained in both `s1` and `s2`
+  assert s1.isValid, "The set `s1` needs to be initialized."
+  assert s2.isValid, "The set `s2` needs to be initialized."
   result = initSet[A](min(s1.data.len, s2.data.len))
   for item in s1:
     if item in s2: incl(result, item)
 
 proc difference*[A](s1, s2: TSet[A]): TSet[A] =
   ## returns a new set of all items that are contained in `s1`, but not in `s2`
+  assert s1.isValid, "The set `s1` needs to be initialized."
+  assert s2.isValid, "The set `s2` needs to be initialized."
   result = initSet[A]()
   for item in s1:
     if not contains(s2, item):
@@ -177,6 +208,8 @@ proc difference*[A](s1, s2: TSet[A]): TSet[A] =
 proc symmetricDifference*[A](s1, s2: TSet[A]): TSet[A] =
   ## returns a new set of all items that are contained in either
   ## `s1` or `s2`, but not both
+  assert s1.isValid, "The set `s1` needs to be initialized."
+  assert s2.isValid, "The set `s2` needs to be initialized."
   result = s1
   for item in s2:
     if containsOrIncl(result, item): excl(result, item)
@@ -199,6 +232,8 @@ proc `-+-`*[A](s1, s2: TSet[A]): TSet[A] {.inline.} =
 
 proc disjoint*[A](s1, s2: TSet[A]): bool =
   ## returns true iff `s1` and `s2` have no items in common
+  assert s1.isValid, "The set `s1` needs to be initialized."
+  assert s2.isValid, "The set `s2` needs to be initialized."
   for item in s1:
     if item in s2: return false
   return true
@@ -314,3 +349,69 @@ proc `==`*[A](s, t: TSet[A]): bool =
 proc map*[A, B](data: TSet[A], op: proc (x: A): B {.closure.}): TSet[B] =
   result = initSet[B]()
   for item in data: result.incl(op(item))
+
+proc testModule() =
+  ## Internal micro test to validate docstrings and such.
+  block isValidTest:
+    var options: TSet[string]
+    proc savePreferences(options: TSet[string]) =
+      assert options.isValid, "Pass an initialized set!"
+    options = initSet[string]()
+    options.savePreferences
+
+  block lenTest:
+    var values: TSet[int]
+    assert(not values.isValid)
+    assert values.len == 0
+    assert values.card == 0
+
+  block setIterator:
+    type pair = tuple[a, b: int]
+    var a, b = initSet[pair]()
+    a.incl((2, 3))
+    a.incl((3, 2))
+    a.incl((2, 3))
+    for x, y in a.items:
+      b.incl((x - 2, y + 1))
+    assert a.len == b.card
+    assert a.len == 2
+    echo b
+
+  block setContains:
+    var values = initSet[int]()
+    assert(not values.contains(2))
+    values.incl(2)
+    assert values.contains(2)
+    values.excl(2)
+    assert(not values.contains(2))
+
+  block toSeqAndString:
+    var a = toSet[int]([2, 4, 5])
+    var b = initSet[int]()
+    for x in [2, 4, 5]: b.incl(x)
+    assert($a == $b)
+
+  block setOperations:
+    var
+      a = toset[string](["a", "b"])
+      b = toset[string](["b", "c"])
+      c = union(a, b)
+    assert c == toSet[string](["a", "b", "c"])
+    var d = intersection(a, b)
+    assert d == toSet[string](["b"])
+    var e = difference(a, b)
+    assert e == toSet[string](["a"])
+    var f = symmetricDifference(a, b)
+    assert f == toSet[string](["a", "c"])
+    # Alias test.
+    assert a + b == toSet[string](["a", "b", "c"])
+    assert a * b == toSet[string](["b"])
+    assert a - b == toSet[string](["a"])
+    assert a -+- b == toSet[string](["a", "c"])
+    assert disjoint(a, b) == false
+    assert disjoint(a, b - a) == true
+
+
+  echo "Micro tests run successfully."
+
+when isMainModule and not defined(release): testModule()
