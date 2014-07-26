@@ -266,7 +266,11 @@ type
     slot: TSlotEnum, next: int, key: A]
   TOrderedKeyValuePairSeq[A] = seq[TOrderedKeyValuePair[A]]
   TOrderedSet* {.
-      final, myShallow.}[A] = object ## set that remembers insertion order
+      final, myShallow.}[A] = object ## \
+    ## A generic hash set that remembers insertion order.
+    ##
+    ## Use `init() <#init,TOrderedSet[A]>`_ or `initOrderedSet[type]()
+    ## <#initOrderedSet>`_ before calling other procs on it.
     data: TOrderedKeyValuePairSeq[A]
     counter, first, last: int
 
@@ -353,14 +357,41 @@ proc containsOrIncl*[A](s: var TOrderedSet[A], key: A): bool =
   assert s.isValid, "The set needs to be initialized."
   containsOrInclImpl()
 
-proc initOrderedSet*[A](initialSize=64): TOrderedSet[A] =
-  ## creates a new ordered hash set that is empty. `initialSize` needs to be
-  ## a power of two.
+proc init*[A](s: var TOrderedSet[A], initialSize=64) =
+  ## Initializes an ordered hash set.
+  ##
+  ## The `initialSize` parameter needs to be a power of too. You can use
+  ## `math.nextPowerOfTwo() <math.html#nextPowerOfTwo>`_ to guarantee that at
+  ## runtime. All set variables have to be initialized before you can use them
+  ## with other procs from this module with the exception of `isValid()
+  ## <#isValid,TOrderedSet[A]>`_ and `len() <#len,TOrderedSet[A]>`_.
+  ##
+  ## You can call this method on a previously initialized ordered hash set to
+  ## discard its values. At the moment this is the only method to remove
+  ## elements from an ordered hash set. Example:
+  ##
+  ## .. code-block ::
+  ##   var a: TOrderedSet[int]
+  ##   a.init(4)
+  ##   a.incl(2)
+  ##   a.init
+  ##   assert a.len == 0 and a.isValid
   assert isPowerOfTwo(initialSize)
-  result.counter = 0
-  result.first = -1
-  result.last = -1
-  newSeq(result.data, initialSize)
+  s.counter = 0
+  s.first = -1
+  s.last = -1
+  newSeq(s.data, initialSize)
+
+proc initOrderedSet*[A](initialSize=64): TOrderedSet[A] =
+  ## Convenience wrapper around `init() <#init,TOrderedSet[A]>`_.
+  ##
+  ## Returns an empty ordered hash set you can assign directly in ``var``
+  ## blocks in a single line. Example:
+  ##
+  ## .. code-block ::
+  ##   var a = initOrderedSet[int](4)
+  ##   a.incl(2)
+  result.init(initialSize)
 
 proc toOrderedSet*[A](keys: openArray[A]): TOrderedSet[A] =
   ## creates a new ordered hash set that contains the given `keys`.
@@ -478,6 +509,16 @@ proc testModule() =
     for x in [2, 4, 5]: b.incl(x)
     assert($a == $b)
     # assert(a == b) # https://github.com/Araq/Nimrod/issues/1413
+
+  block initBlocks:
+    var a: TOrderedSet[int]
+    a.init(4)
+    a.incl(2)
+    a.init
+    assert a.len == 0 and a.isValid
+    a = initOrderedSet[int](4)
+    a.incl(2)
+    assert a.len == 1
 
   echo "Micro tests run successfully."
 
