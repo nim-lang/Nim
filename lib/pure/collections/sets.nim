@@ -425,6 +425,10 @@ proc testModule() =
     assert e == toSet[string](["a"])
     var f = symmetricDifference(a, b)
     assert f == toSet[string](["a", "c"])
+    assert d < a and d < b
+    assert((a < a) == false)
+    assert d <= a and d <= b
+    assert((a <= a))
     # Alias test.
     assert a + b == toSet[string](["a", "b", "c"])
     assert a * b == toSet[string](["b"])
@@ -432,6 +436,11 @@ proc testModule() =
     assert a -+- b == toSet[string](["a", "c"])
     assert disjoint(a, b) == false
     assert disjoint(a, b - a) == true
+
+  block mapSet:
+    var a = toSet[int]([1, 2, 3])
+    var b = a.map(proc (x: int): string = $x)
+    assert b == toSet[string](["1", "2", "3"])
 
   block isValidTest:
     var cards: TOrderedSet[string]
