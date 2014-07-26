@@ -1117,47 +1117,8 @@ avoid this common programming error.
 
 Sets
 ----
-The set type models the mathematical notion of a set. The set's
-basetype can only be an ordinal type. The reason is that sets are implemented
-as high performance bit vectors.
 
-Sets can be constructed via the set constructor: ``{}`` is the empty set. The
-empty set is type compatible with any concrete set type. The constructor
-can also be used to include elements (and ranges of elements):
-
-.. code-block:: nimrod
-  type
-    TCharSet = set[char]
-  var
-    x: TCharSet
-  x = {'a'..'z', '0'..'9'} # This constructs a set that contains the
-                           # letters from 'a' to 'z' and the digits
-                           # from '0' to '9'
-
-These operations are supported by sets:
-
-==================    ========================================================
-operation             meaning
-==================    ========================================================
-``A + B``             union of two sets
-``A * B``             intersection of two sets
-``A - B``             difference of two sets (A without B's elements)
-``A == B``            set equality
-``A <= B``            subset relation (A is subset of B or equal to B)
-``A < B``             strong subset relation (A is a real subset of B)
-``e in A``            set membership (A contains element e)
-``e notin A``         A does not contain element e
-``contains(A, e)``    A contains element e
-``A -+- B``           symmetric set difference (= (A - B) + (B - A))
-``card(A)``           the cardinality of A (number of elements in A)
-``incl(A, elem)``     same as ``A = A + {elem}``
-``excl(A, elem)``     same as ``A = A - {elem}``
-==================    ========================================================
-
-Sets are often used to define a type for the *flags* of a procedure. This is
-a much cleaner (and type safe) solution than just defining integer
-constants that should be ``or``'ed together.
-
+.. include:: sets_fragment.txt
 
 Arrays
 ------
