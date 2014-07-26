@@ -238,6 +238,27 @@ proc disjoint*[A](s1, s2: TSet[A]): bool =
     if item in s2: return false
   return true
 
+proc `<`*[A](s, t: TSet[A]): bool =
+  ## Is s a strict subset of t?
+  s.counter != t.counter and s <= t
+
+proc `<=`*[A](s, t: TSet[A]): bool =
+  ## Is s a subset of t?
+  result = false
+  if s.counter > t.counter: return
+  result = true
+  for item in s:
+    if not(t.contains(item)):
+      result = false
+      return
+
+proc `==`*[A](s, t: TSet[A]): bool =
+  s.counter == t.counter and s <= t
+
+proc map*[A, B](data: TSet[A], op: proc (x: A): B {.closure.}): TSet[B] =
+  result = initSet[B]()
+  for item in data: result.incl(op(item))
+
 # ------------------------------ ordered set ------------------------------
 
 type
@@ -350,27 +371,6 @@ proc `$`*[A](s: TOrderedSet[A]): string =
   ## The `$` operator for ordered hash sets.
   assert s.isValid, "The set needs to be initialized."
   dollarImpl()
-
-proc `<`*[A](s, t: TSet[A]): bool =
-  ## Is s a strict subset of t?
-  s.counter != t.counter and s <= t
-
-proc `<=`*[A](s, t: TSet[A]): bool =
-  ## Is s a subset of t?
-  result = false
-  if s.counter > t.counter: return
-  result = true
-  for item in s:
-    if not(t.contains(item)):
-      result = false
-      return
-      
-proc `==`*[A](s, t: TSet[A]): bool =
-  s.counter == t.counter and s <= t
-
-proc map*[A, B](data: TSet[A], op: proc (x: A): B {.closure.}): TSet[B] =
-  result = initSet[B]()
-  for item in data: result.incl(op(item))
 
 proc testModule() =
   ## Internal micro test to validate docstrings and such.
