@@ -786,6 +786,13 @@ proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
     var number: int
     if parseInt(n.getFieldValue, number) > 0:
       params.startLine = number
+  of "file":
+    # The ``file`` option is a Nimrod extension to the official spec, it acts
+    # like it would for other directives like ``raw`` or ``cvs-table``. This
+    # field is dealt with in ``rst.nim`` which replaces the existing block with
+    # the referenced file, so we only need to ignore it here to avoid incorrect
+    # warning messages.
+    discard
   of "default-language":
     params.langStr = n.getFieldValue.strip
     params.lang = params.langStr.getSourceLanguage

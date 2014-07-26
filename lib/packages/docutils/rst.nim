@@ -1520,6 +1520,10 @@ proc dirCodeBlock(p: var TRstParser, nimrodExtension = false): PRstNode =
   ## fake internal field to comminicate with the generator. The field is named
   ## ``default-language``, which is unlikely to collide with a field specified
   ## by any random rst input file.
+  ##
+  ## As an extension this proc will process the ``file`` extension field and if
+  ## present will replace the code block with the contents of the referenced
+  ## file.
   result = parseDirective(p, {hasArg, hasOptions}, parseLiteralBlock)
   var filename = strip(getFieldValue(result, "file"))
   if filename != "": 
