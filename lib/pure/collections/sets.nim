@@ -65,6 +65,9 @@ proc len*[A](s: TSet[A]): int =
 
 proc card*[A](s: TSet[A]): int =
   ## Alias for `len() <#len,TSet[A]>`_.
+  ##
+  ## Card stands for the `cardinality
+  ## <http://en.wikipedia.org/wiki/Cardinality>`_ of a set.
   result = s.counter
 
 iterator items*[A](s: TSet[A]): A =
@@ -530,6 +533,9 @@ proc len*[A](s: TOrderedSet[A]): int {.inline.} =
 
 proc card*[A](s: TOrderedSet[A]): int {.inline.} =
   ## Alias for `len() <#len,TOrderedSet[A]>`_.
+  ##
+  ## Card stands for the `cardinality
+  ## <http://en.wikipedia.org/wiki/Cardinality>`_ of a set.
   result = s.counter
 
 template forAllOrderedPairs(yieldStmt: stmt) {.dirty, immediate.} =
