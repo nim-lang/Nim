@@ -1363,7 +1363,13 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1", tags: [FWriteDir].} =
 
 proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [FWriteIO, FReadIO].} =
-  ## Copies a directory from `source` to `dest`. If this fails, `EOS` is raised.
+  ## Copies a directory from `source` to `dest`.
+  ##
+  ## If this fails, `EOS` is raised. On the Windows platform this proc will
+  ## copy the attributes from `source` into `dest`. On other platforms created
+  ## files and directories will inherit the default permissions of a newly
+  ## created file/directory for the user. To preserve attributes recursively on
+  ## these platforms use `copyDirWithPermissions() <#copyDirWithPermissions>`_.
   createDir(dest)
   for kind, path in walkDir(source):
     var noSource = path.substr(source.len()+1)
@@ -1522,6 +1528,37 @@ proc copyFileWithPermissions*(source, dest: string,
     except:
       if not ignorePermissionErrors:
         raise
+
+proc copyDirWithPermissions*(source, dest: string,
+    ignorePermissionErrors = true) {.rtl, extern: "nos$1",
+    tags: [FWriteIO, FReadIO].} =
+  ## Copies a directory from `source` to `dest` preserving file permissions.
+  ##
+  ## If this fails, `EOS` is raised. This is a wrapper proc around `copyDir()
+  ## <#copyDir>`_ and `copyFileWithPermissions() <#copyFileWithPermissions>`_
+  ## on non Windows platforms. On Windows this proc is just a wrapper for
+  ## `copyDir() <#copyDir>`_ since that proc already copies attributes.
+  ##
+  ## On non Windows systems permissions are copied after the file or directory
+  ## itself has been copied, which won't happen atomically and could lead to a
+  ## race condition. If `ignorePermissionErrors` is true, errors while
+  ## reading/setting file attributes will be ignored, otherwise will raise
+  ## `OSError`.
+  createDir(dest)
+  when not defined(Windows):
+    try:
+      setFilePermissions(dest, getFilePermissions(source))
+    except:
+      if not ignorePermissionErrors:
+        raise
+  for kind, path in walkDir(source):
+    var noSource = path.substr(source.len()+1)
+    case kind
+    of pcFile:
+      copyFileWithPermissions(path, dest / noSource, ignorePermissionErrors)
+    of pcDir:
+      copyDirWithPermissions(path, dest / noSource, ignorePermissionErrors)
+    else: discard
 
 proc inclFilePermissions*(filename: string,
                           permissions: set[TFilePermission]) {.
