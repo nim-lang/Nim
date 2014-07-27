@@ -322,6 +322,66 @@ earlier, JavaScript doesn't require an initialisation call to ``NimMain`` or
 similar function and you can call the exported Nimrod proc directly.
 
 
+Nimcache naming logic
+---------------------
+
+The `nimcache`:idx: directory is generated during compilation and will hold
+either temporary or final files depending on your backend target. The default
+name for the directory is ``nimcache`` but you can use the ``--nimcache``
+`compiler switch <nimrodc.html#command-line-switches>`_ to change it.
+
+Nimcache and C like targets
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The C like backends will place their temporary ``.c``, ``.cpp`` or ``.m`` files
+in the ``nimcache`` directory. The name of this files follows this logic:
+
+* Filenames for your project will be renamed from ``.nim`` to have the
+  extension of your target backend (from now on ``.c`` for these examples), but
+  otherwise nothing else will change. This will quickly break if your project
+  consists of a main ``proj.nim`` file which includes a ``utils/proj.nim``
+  file: both ``proj.nim`` files will generate the same name ``proj.c`` output
+  in the ``nimcache`` directory overwriting themselves!
+
+* Filenames for modules found in the standard library will be named
+  ``stdlib_module.c``. Unless you are doing something special, you
+  will end up with at least ``stdlib_system.c``, since the `system
+  module <system.html>`_ is always imported automatically. Same for
+  the `hashes module <hashes.html>`_ which will be named
+  ``stdlib_hashes.c``
+
+* Filenames for modules not part of the standard library and found
+  through additional paths specified with the ``--path`` compiler
+  switch will use as prefix their parent directory. For example,
+  the `rstgen module <rstgen.html>`_ will generate ``docutils_rstgen.c``
+  because the `lib/packages/docutils directory
+  <https://github.com/Araq/Nimrod/tree/devel/lib/packages/docutils>`_ is
+  not included in the standard library and you need to either write
+  ``import packages/docutils/rstgen`` or add
+  ``--path:"$lib/pkages/docutils`` to the compiler switches to be
+  able to use it.
+
+* Filenames for modules imported from `babel packages
+  <https://github.com/nimrod-code/babel>`_ will end up with
+  ``babelPackageName_module.c``. For example, if you import the
+  ``argument_parser`` module from the same name babel package you will end up
+  with a ``argument_parser_argument_parser.c`` file under ``nimcache``.
+
+To find out about what paths are part of the default standard library, create a
+dummy ``hello.nim`` file and run ``nimrod dump hello.nim``. This will display
+the defined simbols and the list of paths for the standard library.
+
+
+Nimcache and the Javascript target
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Unless you explicitly use the ``-o:filename.js`` switch as mentioned in the
+previous examples, the compiler will create a ``filename.js`` file in the
+``nimcache`` directory using the name of your input nimrod file. There are no
+other temporary files generated, the output is always a single self contained
+``.js`` file.
+
+
 Memory management
 =================
 

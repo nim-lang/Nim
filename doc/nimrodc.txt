@@ -154,7 +154,9 @@ Generated C code directory
 --------------------------
 The generated files that Nimrod produces all go into a subdirectory called
 ``nimcache`` in your project directory. This makes it easy to delete all
-generated files.
+generated files. Files generated in this directory follow a naming logic which
+you can read about in the `Nimrod Backend Integration document
+<backends.html#nimcache-naming-logic>`_.
 
 However, the generated C code is not platform independent. C code generated for
 Linux does not compile on Windows, for instance. The comment on top of the
