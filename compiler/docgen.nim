@@ -41,6 +41,7 @@ proc compilerMsgHandler(filename: string, line, col: int,
   of mwRedefinitionOfLabel: k = warnRedefinitionOfLabel
   of mwUnknownSubstitution: k = warnUnknownSubstitutionX
   of mwUnsupportedLanguage: k = warnLanguageXNotSupported
+  of mwUnsupportedField: k = warnFieldXNotSupported
   globalError(newLineInfo(filename, line, col), k, arg)
 
 proc docgenFindFile(s: string): string {.procvar.} =

@@ -114,7 +114,8 @@ type
     warnOctalEscape, warnXIsNeverRead, warnXmightNotBeenInit, 
     warnDeprecated, warnConfigDeprecated,
     warnSmallLshouldNotBeUsed, warnUnknownMagic, warnRedefinitionOfLabel, 
-    warnUnknownSubstitutionX, warnLanguageXNotSupported, warnCommentXIgnored, 
+    warnUnknownSubstitutionX, warnLanguageXNotSupported,
+    warnFieldXNotSupported, warnCommentXIgnored, 
     warnNilStatement, warnAnalysisLoophole,
     warnDifferentHeaps, warnWriteToForeignHeap, warnUnsafeCode,
     warnEachIdentIsTuple, warnShadowIdent, 
@@ -375,6 +376,7 @@ const
     warnRedefinitionOfLabel: "redefinition of label \'$1\' [RedefinitionOfLabel]", 
     warnUnknownSubstitutionX: "unknown substitution \'$1\' [UnknownSubstitutionX]", 
     warnLanguageXNotSupported: "language \'$1\' not supported [LanguageXNotSupported]", 
+    warnFieldXNotSupported: "field \'$1\' not supported [FieldXNotSupported]", 
     warnCommentXIgnored: "comment \'$1\' ignored [CommentXIgnored]", 
     warnNilStatement: "'nil' statement is deprecated; use an empty 'discard' statement instead [NilStmt]", 
     warnAnalysisLoophole: "thread analysis incomplete due to unknown call '$1' [AnalysisLoophole]",
@@ -409,11 +411,12 @@ const
     hintUser: "$1 [User]"]
 
 const
-  WarningsToStr*: array[0..26, string] = ["CannotOpenFile", "OctalEscape", 
+  WarningsToStr*: array[0..27, string] = ["CannotOpenFile", "OctalEscape", 
     "XIsNeverRead", "XmightNotBeenInit",
     "Deprecated", "ConfigDeprecated",
     "SmallLshouldNotBeUsed", "UnknownMagic", 
-    "RedefinitionOfLabel", "UnknownSubstitutionX", "LanguageXNotSupported", 
+    "RedefinitionOfLabel", "UnknownSubstitutionX",
+    "LanguageXNotSupported", "FieldXNotSupported",
     "CommentXIgnored", "NilStmt",
     "AnalysisLoophole", "DifferentHeaps", "WriteToForeignHeap",
     "UnsafeCode", "EachIdentIsTuple", "ShadowIdent", 

@@ -1006,11 +1006,11 @@ else:
 
 const
   QuitSuccess* = 0
-    ## is the value that should be passed to ``quit`` to indicate
+    ## is the value that should be passed to `quit <#quit>`_ to indicate
     ## success.
 
   QuitFailure* = 1
-    ## is the value that should be passed to ``quit`` to indicate
+    ## is the value that should be passed to `quit <#quit>`_ to indicate
     ## failure.
 
 var programResult* {.exportc: "nim_program_result".}: int
@@ -1023,10 +1023,11 @@ proc quit*(errorcode: int = QuitSuccess) {.
   ## Stops the program immediately with an exit code.
   ##
   ## Before stopping the program the "quit procedures" are called in the
-  ## opposite order they were added with ``addQuitProc``. ``quit`` never
-  ## returns and ignores any exception that may have been raised by the quit
-  ## procedures.  It does *not* call the garbage collector to free all the
-  ## memory, unless a quit procedure calls ``GC_collect``.
+  ## opposite order they were added with `addQuitProc <#addQuitProc>`_.
+  ## ``quit`` never returns and ignores any exception that may have been raised
+  ## by the quit procedures.  It does *not* call the garbage collector to free
+  ## all the memory, unless a quit procedure calls `GC_fullCollect
+  ## <#GC_fullCollect>`_.
   ##
   ## The proc ``quit(QuitSuccess)`` is called implicitly when your nimrod
   ## program finishes without incident. A raised unhandled exception is
@@ -1034,7 +1035,8 @@ proc quit*(errorcode: int = QuitSuccess) {.
   ##
   ## Note that this is a *runtime* call and using ``quit`` inside a macro won't
   ## have any compile time effect. If you need to stop the compiler inside a
-  ## macro, use the ``error`` or ``fatal`` pragmas.
+  ## macro, use the `error <manual.html#error-pragma>`_ or `fatal
+  ## <manual.html#fatal-pragma>`_ pragmas.
 
 template sysAssert(cond: bool, msg: string) =
   when defined(useSysAssert):
@@ -1186,11 +1188,12 @@ proc toBiggestInt*(f: BiggestFloat): BiggestInt {.
 
 proc addQuitProc*(QuitProc: proc() {.noconv.}) {.
   importc: "atexit", header: "<stdlib.h>".}
-  ## adds/registers a quit procedure. Each call to ``addQuitProc``
-  ## registers another quit procedure. Up to 30 procedures can be
-  ## registered. They are executed on a last-in, first-out basis
-  ## (that is, the last function registered is the first to be executed).
-  ## ``addQuitProc`` raises an EOutOfIndex if ``quitProc`` cannot be
+  ## Adds/registers a quit procedure.
+  ##
+  ## Each call to ``addQuitProc`` registers another quit procedure. Up to 30
+  ## procedures can be registered. They are executed on a last-in, first-out
+  ## basis (that is, the last function registered is the first to be executed).
+  ## ``addQuitProc`` raises an EOutOfIndex exception if ``QuitProc`` cannot be
   ## registered.
 
 # Support for addQuitProc() is done by Ansi C's facilities here.
@@ -2235,9 +2238,12 @@ when not defined(JS): #and not defined(NimrodVM):
       ## current file position is not at the beginning of the file.
     
     proc readFile*(filename: string): TaintedString {.tags: [FReadIO], gcsafe.}
-      ## Opens a file named `filename` for reading. Then calls `readAll`
-      ## and closes the file afterwards. Returns the string. 
-      ## Raises an IO exception in case of an error.
+      ## Opens a file named `filename` for reading.
+      ##
+      ## Then calls `readAll <#readAll>`_ and closes the file afterwards.
+      ## Returns the string.  Raises an IO exception in case of an error. If
+      ## you need to call this inside a compile time macro you can use
+      ## `staticRead <#staticRead>`_.
 
     proc writeFile*(filename, content: string) {.tags: [FWriteIO], gcsafe.}
       ## Opens a file named `filename` for writing. Then writes the
@@ -2729,19 +2735,20 @@ proc `[]=`*[T](s: var seq[T], x: TSlice[int], b: openArray[T]) =
     spliceImpl(s, a, L, b)
 
 proc slurp*(filename: string): string {.magic: "Slurp".}
-  ## This is an alias for ``staticRead``.
+  ## This is an alias for `staticRead <#staticRead>`_.
 
 proc staticRead*(filename: string): string {.magic: "Slurp".}
-  ## Compile-time ``readFile`` proc for easy `resource`:idx: embedding:
+  ## Compile-time `readFile <#readFile>`_ proc for easy `resource`:idx:
+  ## embedding:
   ##
   ## .. code-block:: nimrod
   ##     const myResource = staticRead"mydatafile.bin"
   ##
-  ## ``slurp`` is an alias for ``staticRead``.
+  ## `slurp <#slurp>`_ is an alias for ``staticRead``.
 
 proc gorge*(command: string, input = ""): string {.
   magic: "StaticExec".} = discard
-  ## This is an alias for ``staticExec``.
+  ## This is an alias for `staticExec <#staticExec>`_.
 
 proc staticExec*(command: string, input = ""): string {.
   magic: "StaticExec".} = discard
@@ -2753,9 +2760,9 @@ proc staticExec*(command: string, input = ""): string {.
   ##     const buildInfo = "Revision " & staticExec("git rev-parse HEAD") & 
   ##                       "\nCompiled on " & staticExec("uname -v")
   ##
-  ## ``gorge`` is an alias for ``staticExec``. Note that you can use this proc
-  ## inside a pragma like `passC <nimrodc.html#passc-pragma>`_ or `passL
-  ## <nimrodc.html#passl-pragma>`_.
+  ## `gorge <#gorge>`_ is an alias for ``staticExec``. Note that you can use
+  ## this proc inside a pragma like `passC <nimrodc.html#passc-pragma>`_ or
+  ## `passL <nimrodc.html#passl-pragma>`_.
 
 proc `+=`*[T: TOrdinal|uint|uint64](x: var T, y: T) {.magic: "Inc", noSideEffect.}
   ## Increments an ordinal
