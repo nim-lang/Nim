@@ -454,11 +454,11 @@ proc getBiggestUint*(x: TAny): uint64 =
   ## represent an unsigned integer.
   var t = skipRange(x.rawtype)
   case t.kind
-  of akUInt: result = uint64(cast[ptr uint](x.value)[])
-  of akUInt8: result = uint64(cast[ptr uint8](x.value)[])
-  of akUInt16: result = uint64(cast[ptr uint16](x.value)[])
-  of akUInt32: result = uint64(cast[ptr uint32](x.value)[])
-  of akUInt64: result = uint64(cast[ptr uint64](x.value)[])
+  of tyUInt: result = uint64(cast[ptr uint](x.value)[])
+  of tyUInt8: result = uint64(cast[ptr uint8](x.value)[])
+  of tyUInt16: result = uint64(cast[ptr uint16](x.value)[])
+  of tyUInt32: result = uint64(cast[ptr uint32](x.value)[])
+  of tyUInt64: result = uint64(cast[ptr uint64](x.value)[])
   else: assert false
 
 proc setBiggestUint*(x: TAny; y: uint64) =
@@ -466,11 +466,11 @@ proc setBiggestUint*(x: TAny; y: uint64) =
   ## unsigned integer.
   var t = skipRange(x.rawtype)
   case t.kind:
-  of akUInt: result = cast[ptr uint](x.value)[] = uint(y)
-  of akUInt8: result = cast[ptr uint8](x.value)[] = uint8(y)
-  of akUInt16: result = cast[ptr uint16](x.value)[] = uint16(y)
-  of akUInt32: result = cast[ptr uint32](x.value)[] = uint32(y)
-  of akUInt64: result = cast[ptr uint64](x.value)[] = uint64(y)
+  of tyUInt: cast[ptr uint](x.value)[] = uint(y)
+  of tyUInt8: cast[ptr uint8](x.value)[] = uint8(y)
+  of tyUInt16: cast[ptr uint16](x.value)[] = uint16(y)
+  of tyUInt32: cast[ptr uint32](x.value)[] = uint32(y)
+  of tyUInt64: cast[ptr uint64](x.value)[] = uint64(y)
   else: assert false
 
 proc getChar*(x: TAny): char =
