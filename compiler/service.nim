@@ -59,7 +59,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
       inc argsCount
           
   if pass == passCmd2:
-    if optRun notin gGlobalOptions and arguments != "":
+    if optRun notin gGlobalOptions and arguments != "" and options.command.normalize != "run":
       rawMessage(errArgsNeedRunOption, [])
 
 proc serve*(action: proc (){.nimcall.}) =
