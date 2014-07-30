@@ -121,11 +121,13 @@ proc createDocument*(dom: PDOMImplementation, namespaceURI: string, qualifiedNam
   new(doc)
   doc.FNamespaceURI = namespaceURI
   doc.FImplementation = dom
+  doc.attributes = @[]
   
   var elTag: PElement
   new(elTag)
   elTag.FTagName = qualifiedName
   elTag.FNodeName = qualifiedName
+  elTag.attributes = @[]
   doc.FDocumentElement = elTag
   doc.FNodeType = DocumentNode
   
@@ -140,6 +142,7 @@ proc createDocument*(dom: PDOMImplementation, n: PElement): PDocument =
   doc.FDocumentElement = n
   doc.FImplementation = dom
   doc.FNodeType = DocumentNode
+  doc.attributes = @[]
   
   return doc
   
