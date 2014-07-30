@@ -294,8 +294,8 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     echo repr(options.searchPaths)
     lists.excludePath(options.searchPaths, path)
     lists.excludePath(options.lazyPaths, path)
-    if (len(path) > 0) and (path[len(path) - 1] == DirSep)::
-      let strippedPath = removeTrailingDirSep(path)
+    if (len(path) > 0) and (path[len(path) - 1] == DirSep):
+      let strippedPath = path[0 .. (len(path) - 2)]
       lists.excludePath(options.searchPaths, strippedPath)
       lists.excludePath(options.lazyPaths, strippedPath)
     echo repr(options.searchPaths)
