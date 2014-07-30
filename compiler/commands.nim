@@ -290,9 +290,15 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     options.gNoBabelPath = true
   of "excludepath":
     expectArg(switch, arg, pass, info)
-    let path = processPath(arg)
-    lists.excludeStr(options.searchPaths, path)
-    lists.excludeStr(options.lazyPaths, path)
+    let
+      path = processPath(arg)
+      strippedPath = removeTrailingDirSep(path)
+    echo repr(options.searchPaths)
+    lists.excludePath(options.searchPaths, path)
+    lists.excludePath(options.lazyPaths, path)
+    lists.excludePath(options.searchPaths, strippedPath)
+    lists.excludePath(options.lazyPaths, strippedPath)
+    echo repr(options.searchPaths)
   of "nimcache":
     expectArg(switch, arg, pass, info)
     options.nimcacheDir = processPath(arg)
