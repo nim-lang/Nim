@@ -1321,7 +1321,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mLengthSeq, mLengthOpenArray, mLengthArray:
     unaryExpr(p, n, r, "", "$1.length")
   of mHigh:
-    if skipTypes(n.sons[0].typ, abstractVar).kind == tyString:
+    if skipTypes(n.sons[1].typ, abstractVar).kind == tyString:
       unaryExpr(p, n, r, "", "($1.length-2)")
     else:
       unaryExpr(p, n, r, "", "($1.length-1)")
