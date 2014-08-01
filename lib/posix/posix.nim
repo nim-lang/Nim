@@ -90,7 +90,7 @@ type
     d_ino*: Tino  ## File serial number.
     d_name*: array [0..255, char] ## Name of entry.
 
-  Tflock* {.importc: "flock", final, pure,
+  Tflock* {.importc: "struct flock", final, pure,
             header: "<fcntl.h>".} = object ## flock type
     l_type*: cshort   ## Type of lock; F_RDLCK, F_WRLCK, F_UNLCK.
     l_whence*: cshort ## Flag for starting offset.
