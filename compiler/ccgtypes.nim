@@ -453,7 +453,7 @@ proc getRecordDesc(m: BModule, typ: PType, name: PRope,
     appf(result, " {$n", [name])
 
   var desc = getRecordFields(m, typ, check)
-  if (desc == nil) and not hasField: 
+  if desc == nil and not hasField: 
     appf(result, "char dummy;$n", [])
   else: 
     app(result, desc)
@@ -895,11 +895,20 @@ type
 
 include ccgtrav
 
-proc genTypeInfo(m: BModule, t: PType): PRope = 
+proc genDeepCopyProc(m: BModule; s: PSym; result: PRope) =
+  genProc(m, s)
+  appf(m.s[cfsTypeInit3], "$1.deepcopy = (N_NIMCALL_PTR(void*, void*)) $2;$n",
+     [result, s.loc.r])
+
+proc genTypeInfo(m: BModule, t: PType): PRope =
+  let origType = t
   var t = getUniqueType(t)
   result = ropef("NTI$1", [toRope(t.id)])
   if containsOrIncl(m.typeInfoMarker, t.id):
     return con("(&".toRope, result, ")".toRope)
+  
+  # getUniqueType doesn't skip tyDistinct when that has an overriden operation:
+  while t.kind == tyDistinct: t = t.lastSon
   let owner = t.skipTypes(typedescPtrs).owner.getModule
   if owner != m.module:
     # make sure the type info is created in the owner module
@@ -936,6 +945,10 @@ proc genTypeInfo(m: BModule, t: PType): PRope =
     # results are not deterministic!
     genTupleInfo(m, t, result)
   else: internalError("genTypeInfo(" & $t.kind & ')')
+  if t.deepCopy != nil:
+    genDeepCopyProc(m, t.deepCopy, result)
+  elif origType.deepCopy != nil:
+    genDeepCopyProc(m, origType.deepCopy, result)  
   result = con("(&".toRope, result, ")".toRope)
 
 proc genTypeSection(m: BModule, n: PNode) = 

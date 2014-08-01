@@ -39,7 +39,7 @@ type
 
     wDestroy,
     
-    wImmediate, wDestructor, wDelegator,
+    wImmediate, wDestructor, wDelegator, wOverride,
     wImportCpp, wImportObjC,
     wImportCompilerProc,
     wImportc, wExportc, wIncompleteStruct, wRequiresInit,
@@ -122,7 +122,7 @@ const
 
     "destroy",
     
-    "immediate", "destructor", "delegator",
+    "immediate", "destructor", "delegator", "override",
     "importcpp", "importobjc",
     "importcompilerproc", "importc", "exportc", "incompletestruct",
     "requiresinit", "align", "nodecl", "pure", "sideeffect",

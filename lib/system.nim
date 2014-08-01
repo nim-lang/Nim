@@ -2997,10 +2997,13 @@ proc locals*(): TObject {.magic: "Locals", noSideEffect.} =
   ##   # -> B is 1
   discard
 
-proc deepCopy*[T](x: T): T {.magic: "DeepCopy", noSideEffect.} =
-  ## performs a deep copy of `x`. This is also used by the code generator
-  ## for the implementation of ``spawn``.
-  discard
+when hostOS != "standalone" and not defined(NimrodVM) and not defined(JS):
+  proc deepCopy*[T](x: var T, y: T) {.noSideEffect, magic: "DeepCopy".} =
+    ## performs a deep copy of `x`. This is also used by the code generator
+    ## for the implementation of ``spawn``.
+    discard
+
+  include "system/deepcopy"
 
 {.pop.} #{.push warning[GcMem]: off.}
 

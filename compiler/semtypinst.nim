@@ -137,7 +137,7 @@ proc hasGenericArguments*(n: PNode): bool =
     return false
 
 proc reResolveCallsWithTypedescParams(cl: var TReplTypeVars, n: PNode): PNode =
-  # This is needed fo tgenericshardcases
+  # This is needed for tgenericshardcases
   # It's possible that a generic param will be used in a proc call to a
   # typedesc accepting proc. After generic param substitution, such procs
   # should be optionally instantiated with the correct type. In order to

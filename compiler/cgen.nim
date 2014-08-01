@@ -295,6 +295,7 @@ proc postStmtActions(p: BProc) {.inline.} =
 
 proc accessThreadLocalVar(p: BProc, s: PSym)
 proc emulatedThreadVars(): bool {.inline.}
+proc genProc(m: BModule, prc: PSym)
 
 include "ccgtypes.nim"
 
@@ -574,7 +575,6 @@ proc fixLabel(p: BProc, labl: TLabel) =
 
 proc genVarPrototype(m: BModule, sym: PSym)
 proc requestConstImpl(p: BProc, sym: PSym)
-proc genProc(m: BModule, prc: PSym)
 proc genStmts(p: BProc, t: PNode)
 proc expr(p: BProc, n: PNode, d: var TLoc)
 proc genProcPrototype(m: BModule, sym: PSym)

@@ -2497,7 +2497,7 @@ variable to use:
 
 When the compiler reaches the second ``add`` call, both ``a`` and ``b`` could
 be used with the proc, so one gets ``Error: expression '(a|b)' has no type (or
-is ambiguous)``. To solve this you would need to nest ``using`` with a
+is ambiguous)``. To solve this one would need to nest ``using`` with a
 ``block`` statement so as to control the reach of the ``using`` statement.
 
 If expression
@@ -4347,7 +4347,7 @@ Nimrod offers a special family of dot operators that can be used to
 intercept and rewrite proc call and field access attempts, referring
 to previously undeclared symbol names. They can be used to provide a
 fluent interface to objects lying outside the static confines of the
-Nimrod's type system such as values from dynamic scripting languages
+type system such as values from dynamic scripting languages
 or dynamic file formats such as JSON or XML.
 
 When Nimrod encounters an expression that cannot be resolved by the
@@ -4379,8 +4379,8 @@ This operator will be matched against both field accesses and method calls.
 operator `.()`
 ---------------
 This operator will be matched exclusively against method calls. It has higher
-precedence than the `.` operator and this allows you to handle expressions like
-`x.y` and `x.y()` differently if you are interfacing with a scripting language
+precedence than the `.` operator and this allows one to handle expressions like
+`x.y` and `x.y()` differently if one is interfacing with a scripting language
 for example.
 
 operator `.=`
@@ -4389,6 +4389,115 @@ This operator will be matched against assignments to missing fields.
 
 .. code-block:: nimrod
   a.b = c # becomes `.=`(a, "b", c)
+
+
+Type bound operations
+=====================
+
+There are 3 operations that are bound to a type:
+
+1. Assignment
+2. Destruction
+3. Deep copying for communication between threads
+
+These operations can be *overriden* instead of *overloaded*. This means the
+implementation is automatically lifted to structured types. For instance if type
+``T`` has an overriden assignment operator ``=`` this operator is also used
+for assignments of the type ``seq[T]``. Since these operations are bound to a
+type they have to be bound to a nominal type for reasons of simplicity of
+implementation: This means an overriden ``deepCopy`` for ``ref T`` is really
+bound to ``T`` and not to ``ref T``. This also means that one cannot override
+``deepCopy`` for both ``ptr T`` and ``ref T`` at the same time; instead a
+helper distinct or object type has to be used for one pointer type.
+
+
+operator `=`
+------------
+
+This operator is the assignment operator. Note that in the contexts 
+like ``let v = expr``, ``var v = expr``, ``parameter = defaultValue`` or for
+parameter passing no assignment is performed. The ``override`` pragma is
+optional for overriding ``=``.
+
+
+destructors
+-----------
+
+A destructor must have a single parameter with a concrete type (the name of a
+generic type is allowed too). The name of the destructor has to be ``destroy``
+and it need to be annotated with the ``override`` pragma.
+
+``destroy(v)`` will be automatically invoked for every local stack 
+variable ``v`` that goes out of scope.
+
+If a structured type features a field with destructable type and 
+the user has not provided an explicit implementation, a destructor for the
+structured type will be automatically generated. Calls to any base class 
+destructors in both user-defined and generated destructors will be inserted.
+
+A destructor is attached to the type it destructs; expressions of this type
+can then only be used in *destructible contexts* and as parameters:
+
+.. code-block:: nimrod
+  type
+    TMyObj = object
+      x, y: int
+      p: pointer
+      
+  proc destroy(o: var TMyObj) {.override.} =
+    if o.p != nil: dealloc o.p
+    
+  proc open: TMyObj =
+    result = TMyObj(x: 1, y: 2, p: alloc(3))
+ 
+  proc work(o: TMyObj) =
+    echo o.x
+    # No destructor invoked here for 'o' as 'o' is a parameter.
+
+  proc main() =
+    # destructor automatically invoked at the end of the scope:
+    var x = open()
+    # valid: pass 'x' to some other proc:
+    work(x)
+    
+    # Error: usage of a type with a destructor in a non destructible context
+    echo open()
+
+A destructible context is currently only the following:
+
+1. The ``expr`` in ``var x = expr``.
+2. The ``expr`` in ``let x = expr``.
+3. The ``expr`` in ``return expr``.
+4. The ``expr`` in ``result = expr`` where ``result`` is the special symbol
+   introduced by the compiler.
+
+These rules ensure that the construction is tied to a variable and can easily
+be destructed at its scope exit. Later versions of the language will improve
+the support of destructors.
+
+Be aware that destructors are not called for objects allocated with ``new``.
+This may change in future versions of language, but for now the ``finalizer``
+parameter to ``new`` has to be used.
+
+
+deepCopy
+--------
+
+``deepCopy`` is a builtin that is invoked whenever data is passed to
+a ``spawn``'ed proc to ensure memory safety. The programmer can override its
+behaviour for a specific ``ref`` or ``ptr`` type ``T``. (Later versions of the
+language may weaken this restriction.)
+
+The signature has to be:
+
+.. code-block:: nimrod
+  proc deepCopy(x: T): T {.override.}
+
+This mechanism is used by most data structures that support shared memory like
+channels to implement thread safe automatic memory management.
+
+The builtin ``deepCopy`` can even clone closures and their environments. See
+the documentation of `spawn`_ for details.
 
 
 Term rewriting macros
@@ -4985,62 +5094,14 @@ destructor pragma
 -----------------
 
 The ``destructor`` pragma is used to mark a proc to act as a type destructor.
-The proc must have a single parameter with a concrete type (the name of a
-generic type is allowed too).
+Its usage is deprecated, use the ``override`` pragma instead.
+See `type bound operations`_.
 
-Destructors will be automatically invoked when a local stack variable goes 
-out of scope.
 
-If a record type features a field with destructable type and 
-the user have not provided explicit implementation, Nimrod will automatically
-generate a destructor for the record type. Nimrod will automatically insert
-calls to any base class destructors in both user-defined and generated
-destructors.
+override pragma
+---------------
 
-A destructor is attached to the type it destructs; expressions of this type
-can then only be used in *destructible contexts* and as parameters:
-
-.. code-block:: nimrod
-  type
-    TMyObj = object
-      x, y: int
-      p: pointer
-      
-  proc destruct(o: var TMyObj) {.destructor.} =
-    if o.p != nil: dealloc o.p
-    
-  proc open: TMyObj =
-    result = TMyObj(x: 1, y: 2, p: alloc(3))
- 
-  proc work(o: TMyObj) =
-    echo o.x
-    # No destructor invoked here for 'o' as 'o' is a parameter.
-
-  proc main() =
-    # destructor automatically invoked at the end of the scope:
-    var x = open()
-    # valid: pass 'x' to some other proc:
-    work(x)
-    
-    # Error: usage of a type with a destructor in a non destructible context
-    echo open()
-
-A destructible context is currently only the following:
-
-1. The ``expr`` in ``var x = expr``.
-2. The ``expr`` in ``let x = expr``.
-3. The ``expr`` in ``return expr``.
-4. The ``expr`` in ``result = expr`` where ``result`` is the special symbol
-   introduced by the compiler.
-
-These rules ensure that the construction is tied to a variable and can easily
-be destructed at its scope exit. Later versions of the language will improve
-the support of destructors.
-
-Be aware that destructors are not called for objects allocated with ``new``.
-This may change in future versions of language, but for now use 
-the ``finalizer`` parameter to ``new``.
-
+See `type bound operations`_ instead.
 
 procvar pragma
 --------------
@@ -5490,10 +5551,10 @@ spelled*:
   proc printf(formatstr: cstring) {.header: "<stdio.h>", importc: "printf", varargs.}
 
 Note that this pragma is somewhat of a misnomer: Other backends will provide
-the same feature under the same name. Also, if you are interfacing with C++
-you can use the `ImportCpp pragma <nimrodc.html#importcpp-pragma>`_ and
+the same feature under the same name. Also, if one is interfacing with C++
+the `ImportCpp pragma <nimrodc.html#importcpp-pragma>`_ and
 interfacing with Objective-C the `ImportObjC pragma
-<nimrodc.html#importobjc-pragma>`_.
+<nimrodc.html#importobjc-pragma>`_ can be used.
 
 
 Exportc pragma
@@ -5781,12 +5842,14 @@ used instead. `spawn`:idx: is used to pass a task to the thread pool:
 
 Currently the expression that ``spawn`` takes is however quite restricted: 
 
-* It must be a call expresion ``f(a, ...)``.
+* It must be a call expression ``f(a, ...)``.
 * ``f`` must be ``gcsafe``.
 * ``f`` must not have the calling convention ``closure``.
-* ``f``'s parameters may not be of type ``var`` nor may they contain ``ref``.
-  This means you have to use raw ``ptr``'s for data passing reminding the
+* ``f``'s parameters may not be of type ``var``.
+  This means one has to use raw ``ptr``'s for data passing reminding the
   programmer to be careful.
+* ``ref`` parameters are deeply copied which is a subtle semantic change and
+  can cause performance problems but ensures memory safety.
 * For *safe* data exchange between ``f`` and the caller a global ``TChannel``
   needs to be used. Other means will be provided soon.
 

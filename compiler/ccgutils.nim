@@ -89,8 +89,10 @@ proc getUniqueType*(key: PType): PType =
   of tyTypeDesc, tyTypeClasses, tyGenericParam,
      tyFromExpr, tyFieldAccessor:
     internalError("GetUniqueType")
-  of tyGenericInst, tyDistinct, tyOrdinal, tyMutable,
-     tyConst, tyIter, tyStatic:
+  of tyDistinct:
+    if key.deepCopy != nil: result = key
+    else: result = getUniqueType(lastSon(key))
+  of tyGenericInst, tyOrdinal, tyMutable, tyConst, tyIter, tyStatic:
     result = getUniqueType(lastSon(key))
   of tyArrayConstr, tyGenericInvokation, tyGenericBody,
      tyOpenArray, tyArray, tySet, tyRange, tyTuple,

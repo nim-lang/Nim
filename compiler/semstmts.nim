@@ -1009,6 +1009,28 @@ proc maybeAddResult(c: PContext, s: PSym, n: PNode) =
     addResult(c, s.typ.sons[0], n.info, s.kind)
     addResultNode(c, n)
 
+proc semOverride(c: PContext, s: PSym, n: PNode) =
+  case s.name.s.normalize
+  of "destroy": doDestructorStuff(c, s, n)
+  of "deepcopy":
+    if s.typ.len == 2 and
+        s.typ.sons[1].skipTypes(abstractInst).kind in {tyRef, tyPtr} and
+        sameType(s.typ.sons[1], s.typ.sons[0]):
+      # Note: we store the deepCopy in the base of the pointer to mitigate
+      # the problem that pointers are structural types:
+      let t = s.typ.sons[1].skipTypes(abstractInst).lastSon.skipTypes(abstractInst)
+      if t.kind in {tyObject, tyDistinct, tyEnum}:
+        t.deepCopy = s
+      else:
+        localError(n.info, errGenerated,
+                   "cannot bind 'deepCopy' to: " & typeToString(t))
+    else:
+      localError(n.info, errGenerated,
+                 "signature for 'deepCopy' must be proc[T: ptr|ref](x: T): T")
+  of "=": discard
+  else: localError(n.info, errGenerated,
+                   "'destroy' or 'deepCopy' expected for 'override'")
+
 type
   TProcCompilationSteps = enum
     stepRegisterSymbol,
@@ -1125,7 +1147,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     popOwner()
     pushOwner(s)
   s.options = gOptions
-  if sfDestructor in s.flags: doDestructorStuff(c, s, n)
+  if sfOverriden in s.flags: semOverride(c, s, n)
   if n.sons[bodyPos].kind != nkEmpty:
     # for DLL generation it is annoying to check for sfImportc!
     if sfBorrow in s.flags:

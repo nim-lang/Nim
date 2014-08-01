@@ -263,7 +263,7 @@ type
     sfNamedParamCall, # symbol needs named parameter call syntax in target
                       # language; for interfacing with Objective C
     sfDiscardable,    # returned value may be discarded implicitly
-    sfDestructor,     # proc is destructor
+    sfOverriden,      # proc is overriden
     sfGenSym          # symbol is 'gensym'ed; do not add to symbol table
 
   TSymFlags* = set[TSymFlag]
@@ -785,12 +785,13 @@ type
                               # the body of the user-defined type class
                               # formal param list
                               # else: unused
-    destructor*: PSym         # destructor. warning: nil here may not necessary
-                              # mean that there is no destructor.
-                              # see instantiateDestructor in types.nim
     owner*: PSym              # the 'owner' of the type
     sym*: PSym                # types have the sym associated with them
                               # it is used for converting types to strings
+    destructor*: PSym         # destructor. warning: nil here may not necessary
+                              # mean that there is no destructor.
+                              # see instantiateDestructor in semdestruct.nim
+    deepCopy*: PSym           # overriden 'deepCopy' operation
     size*: BiggestInt         # the size of the type in bytes
                               # -1 means that the size is unkwown
     align*: int               # the type's alignment requirements
@@ -1190,6 +1191,7 @@ proc assignType(dest, src: PType) =
   dest.size = src.size
   dest.align = src.align
   dest.destructor = src.destructor
+  dest.deepCopy = src.deepCopy
   # this fixes 'type TLock = TSysLock':
   if src.sym != nil:
     if dest.sym != nil:

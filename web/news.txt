@@ -20,6 +20,14 @@ News
     representation.
   - ``uri.TUrl`` as well as the ``parseurl`` module are now deprecated in favour
     of the new ``TUri`` type in the ``uri`` module.
+  - The ``destructor`` pragma has been deprecated. Use the ``override`` pragma
+    instead. The destructor's name has to be ``destroy`` now.
+
+  Language Additions
+  ------------------
+
+  - There is a new ``parallel`` statement for safe fork&join parallel computing.
+  
 
   Library Additions
   -----------------
