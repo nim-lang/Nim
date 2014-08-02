@@ -594,7 +594,8 @@ compiler.
 
 .. raw:: html
 
-  <div id="officialPkgList"></div>
+  <div id="officialPkgList"><b>If you are reading this you are missing
+  babelpkglist.js or have javascript disabled in your browser.</b></div>
 
 Unofficial packages
 -------------------
@@ -605,7 +606,8 @@ Nimrod programming language.
 
 .. raw:: html
 
-  <div id="unofficialPkgList"></div>
+  <div id="unofficialPkgList"><b>If you are reading this you are missing
+  babelpkglist.js or have javascript disabled in your browser.</b></div>
 
   <script type="text/javascript" src="babelpkglist.js"></script>
   <script type="text/javascript" src="http://build.nimrod-lang.org/packages?callback=gotPackageList"></script>

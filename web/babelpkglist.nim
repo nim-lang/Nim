@@ -50,19 +50,17 @@ proc processContent(content: string) =
 
   var officialPkgListDiv = document.getElementById("officialPkgList")
 
-  officialPkgListDiv.innerHTML.add(
+  officialPkgListDiv.innerHTML =
     p("There are currently " & $officialCount &
       " official packages in the Babel package repository.") &
     ul(officialList)
-  )
 
   var unofficialPkgListDiv = document.getElementById("unofficialPkgList")
 
-  unofficialPkgListDiv.innerHTML.add(
+  unofficialPkgListDiv.innerHTML =
     p("There are currently " & $unofficialCount &
       " unofficial packages in the Babel package repository.") &
     ul(unofficialList)
-  )
 
 proc gotPackageList(apiReply: TData) {.exportc.} =
   let decoded = decodeContent($apiReply.content)
