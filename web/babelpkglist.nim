@@ -21,7 +21,7 @@ proc processContent(content: string) =
   var jsonArr = jsonDoc.elems
 
   jsonArr.sort do (x, y: PJsonNode) -> int:
-    system.cmp(x["name"].str, y["name"].str)
+    strutils.cmpIgnoreCase(x["name"].str, y["name"].str)
 
   var
     officialList = ""
