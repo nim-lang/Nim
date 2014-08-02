@@ -38,8 +38,7 @@ proc processContent(content: string) =
       else: pkg["url"].str
     let
       desc = pkg["description"].str
-      # Review array index access when #1291 is solved.
-      dot = if desc.high > 0 and desc[<desc.high] in endings: "" else: "."
+      dot = if desc.high > 0 and desc[desc.high] in endings: "" else: "."
       listItem = li(a(href=pkgWeb, pkg["name"].str), " ", desc & dot)
     if pkg["url"].str.startsWith("git://github.com/nimrod-code") or
        "official" in pkg["tags"].elems:
