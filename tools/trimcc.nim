@@ -18,7 +18,7 @@ proc walker(dir: string) =
       else:
         echo "Required: ", path
         # copy back:
-        moveFile(dest=path, sourc=newName(path))
+        moveFile(dest=path, source=newName(path))
     of pcDir:
       walker(path)
     else: discard
