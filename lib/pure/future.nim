@@ -119,35 +119,39 @@ macro `->`*(p, b: expr): expr {.immediate.} =
 type ListComprehension = object
 var lc*: ListComprehension
 
-macro `[]`*(lc: ListComprehension, x, t): expr =
-  ## List comprehensions.
+macro `[]`*(lc: ListComprehension, comp, typ: expr): expr =
+  ## List comprehension, returns a sequence. `comp` is the actual list
+  ## comprehension, for example ``x | (x <- 1..10, x mod 2 == 0)``. `typ` is
+  ## the type that will be stored inside the result seq.
   ##
   ## .. code-block:: nimrod
+  ##
+  ##   echo lc[x | (x <- 1..10, x mod 2 == 0), int]
   ##
   ##   const n = 20
   ##   echo lc[(x,y,z) | (x <- 1..n, y <- x..n, z <- y..n, x*x + y*y == z*z),
   ##           tuple[a,b,c: int]]
 
-  expectLen(x, 3)
-  expectKind(x, nnkInfix)
-  expectKind(x[0], nnkIdent)
-  assert($x[0].ident == "|")
+  expectLen(comp, 3)
+  expectKind(comp, nnkInfix)
+  expectKind(comp[0], nnkIdent)
+  assert($comp[0].ident == "|")
 
   result = newCall(
     newDotExpr(
       newIdentNode("result"),
       newIdentNode("add")),
-    x[1])
+    comp[1])
 
-  for i in countdown(x[2].len-1, 0):
-    let y = x[2][i]
-    expectKind(y, nnkInfix)
-    expectMinLen(y, 1)
-    if y[0].kind == nnkIdent and $y[0].ident == "<-":
-      expectLen(y, 3)
-      result = newNimNode(nnkForStmt).add(y[1], y[2], result)
+  for i in countdown(comp[2].len-1, 0):
+    let x = comp[2][i]
+    expectKind(x, nnkInfix)
+    expectMinLen(x, 1)
+    if x[0].kind == nnkIdent and $x[0].ident == "<-":
+      expectLen(x, 3)
+      result = newNimNode(nnkForStmt).add(x[1], x[2], result)
     else:
-      result = newIfStmt((y, result))
+      result = newIfStmt((x, result))
 
   result = newNimNode(nnkCall).add(
     newNimNode(nnkPar).add(
@@ -158,7 +162,7 @@ macro `[]`*(lc: ListComprehension, x, t): expr =
         newNimNode(nnkFormalParams).add(
           newNimNode(nnkBracketExpr).add(
             newIdentNode("seq"),
-            t)),
+            typ)),
         newEmptyNode(),
         newEmptyNode(),
         newStmtList(
