@@ -13,6 +13,21 @@
 ## Each module implicitly imports the System module; it must not be listed
 ## explicitly. Because of this there cannot be a user-defined module named
 ## ``system``.
+##
+## Exception hierarchy
+## ===================
+##
+## For visual convenience here is the exception inheritance hierarchy
+## represented as a tree:
+##
+## .. include:: ../doc/exception_hierarchy_fragment.txt
+##
+## Module system
+## =============
+##
+
+# That lonesome header above is to prevent :idx: entries from being mentioned
+# in the global index as part of the previous header (Exception hierarchy).
 
 type
   int* {.magic: Int.} ## default integer type; bitwidth depends on
@@ -301,9 +316,11 @@ type
   FWriteIO* = object of FIO    ## Effect describing a write IO operation.
   FExecIO* = object of FIO     ## Effect describing an executing IO operation.
 
-  E_Base* {.compilerproc.} = object of TObject ## base exception class;
-                                               ## each exception has to
-                                               ## inherit from `E_Base`.
+  E_Base* {.compilerproc.} = object of TObject ## \
+    ## Base exception class.
+    ##
+    ## Each exception has to inherit from `E_Base`. See the full `exception
+    ## hierarchy`_.
     parent: ref E_Base        ## parent exception (can be used as a stack)
     name: cstring             ## The exception's name is its Nimrod identifier.
                               ## This field is filled automatically in the
@@ -313,99 +330,142 @@ type
                                         ## is bad style.
     trace: string
 
-  EAsynch* = object of E_Base ## Abstract exception class for
-                              ## *asynchronous exceptions* (interrupts).
-                              ## This is rarely needed: Most
-                              ## exception types inherit from `ESynch`
-  ESynch* = object of E_Base  ## Abstract exception class for
-                              ## *synchronous exceptions*. Most exceptions
-                              ## should be inherited (directly or indirectly)
-                              ## from ESynch.
-  ESystem* = object of ESynch ## Abstract class for exceptions that the runtime
-                              ## system raises.
-  EIO* = object of ESystem    ## raised if an IO error occured.
-  EOS* = object of ESystem    ## raised if an operating system service failed.
+  EAsynch* = object of E_Base ## \
+    ## Abstract exception class for *asynchronous exceptions* (interrupts).
+    ##
+    ## This is rarely needed: most exception types inherit from `ESynch
+    ## <#ESynch>`_. See the full `exception hierarchy`_.
+  EControlC* = object of EAsynch ## \
+    ## Raised for Ctrl+C key presses in console applications.
+    ##
+    ## See the full `exception hierarchy`_.
+  ESynch* = object of E_Base ## \
+    ## Abstract exception class for *synchronous exceptions*.
+    ##
+    ## Most exceptions should be inherited (directly or indirectly) from
+    ## `ESynch` instead of from `EAsynch <#EAsynch>`_. See the full `exception
+    ## hierarchy`_.
+  ESystem* = object of ESynch ## \
+    ## Abstract class for exceptions that the runtime system raises.
+    ##
+    ## See the full `exception hierarchy`_.
+  EIO* = object of ESystem ## \
+    ## Raised if an IO error occured.
+    ##
+    ## See the full `exception hierarchy`_.
+  EOS* = object of ESystem ## \
+    ## Raised if an operating system service failed.
+    ##
+    ## See the full `exception hierarchy`_.
     errorCode*: int32 ## OS-defined error code describing this error.
-  EInvalidLibrary* = object of EOS ## raised if a dynamic library
-                                   ## could not be loaded.
-  EResourceExhausted* = object of ESystem ## raised if a resource request
-                                          ## could not be fullfilled.
-  EArithmetic* = object of ESynch       ## raised if any kind of arithmetic
-                                        ## error occured.
-  EDivByZero* {.compilerproc.} =
-    object of EArithmetic ## is the exception class for integer divide-by-zero
-                          ## errors.
-  EOverflow* {.compilerproc.} =
-    object of EArithmetic  ## is the exception class for integer calculations
-                           ## whose results are too large to fit in the
-                           ## provided bits.
+  EInvalidLibrary* = object of EOS ## \
+    ## Raised if a dynamic library could not be loaded.
+    ##
+    ## See the full `exception hierarchy`_.
+  EResourceExhausted* = object of ESystem ## \
+    ## Raised if a resource request could not be fullfilled.
+    ##
+    ## See the full `exception hierarchy`_.
+  EArithmetic* = object of ESynch ## \
+    ## Raised if any kind of arithmetic error occured.
+    ##
+    ## See the full `exception hierarchy`_.
+  EDivByZero* {.compilerproc.} = object of EArithmetic ## \
+    ## Raised for runtime integer divide-by-zero errors.
+    ##
+    ## See the full `exception hierarchy`_.
+  EOverflow* {.compilerproc.} = object of EArithmetic ## \
+    ## Raised for runtime integer overflows.
+    ##
+    ## This happens for calculations whose results are too large to fit in the
+    ## provided bits.  See the full `exception hierarchy`_.
+  EAccessViolation* {.compilerproc.} = object of ESynch ## \
+    ## Raised for invalid memory access errors
+    ##
+    ## See the full `exception hierarchy`_.
+  EAssertionFailed* {.compilerproc.} = object of ESynch ## \
+    ## Raised when assertion is proved wrong.
+    ##
+    ## Usually the result of using the `assert() template <#assert>`_.  See the
+    ## full `exception hierarchy`_.
+  EInvalidValue* = object of ESynch ## \
+    ## Raised for string and object conversion errors.
+  EInvalidKey* = object of EInvalidValue ## \
+    ## Raised if a key cannot be found in a table.
+    ##
+    ## Mostly used by the `tables <tables.html>`_ module, it can also be raised
+    ## by other collection modules like `sets <sets.html>`_ or `strtabs
+    ## <strtabs.html>`_. See the full `exception hierarchy`_.
+  EOutOfMemory* = object of ESystem ## \
+    ## Raised for unsuccessful attempts to allocate memory.
+    ##
+    ## See the full `exception hierarchy`_.
+  EInvalidIndex* = object of ESynch ## \
+    ## Raised if an array index is out of bounds.
+    ##
+    ## See the full `exception hierarchy`_.
+  EInvalidField* = object of ESynch ## \
+    ## Raised if a record field is not accessible because its dicriminant's
+    ## value does not fit.
+    ##
+    ## See the full `exception hierarchy`_.
+  EOutOfRange* = object of ESynch ## \
+    ## Raised if a range check error occurred.
+    ##
+    ## See the full `exception hierarchy`_.
+  EStackOverflow* = object of ESystem ## \
+    ## Raised if the hardware stack used for subroutine calls overflowed.
+    ##
+    ## See the full `exception hierarchy`_.
+  ENoExceptionToReraise* = object of ESynch ## \
+    ## Raised if there is no exception to reraise.
+    ##
+    ## See the full `exception hierarchy`_.
+  EInvalidObjectAssignment* = object of ESynch ## \
+    ## Raised if an object gets assigned to its parent's object.
+    ##
+    ## See the full `exception hierarchy`_.
+  EInvalidObjectConversion* = object of ESynch ## \
+    ## Raised if an object is converted to an incompatible object type.
+    ##
+    ## See the full `exception hierarchy`_.
+  EFloatingPoint* = object of ESynch ## \
+    ## Base class for floating point exceptions.
+    ##
+    ## See the full `exception hierarchy`_.
+  EFloatInvalidOp* {.compilerproc.} = object of EFloatingPoint ## \
+    ## Raised by invalid operations according to IEEE.
+    ##
+    ## Raised by ``0.0/0.0``, for example.  See the full `exception
+    ## hierarchy`_.
+  EFloatDivByZero* {.compilerproc.} = object of EFloatingPoint ## \
+    ## Raised by division by zero.
+    ##
+    ## Divisor is zero and dividend is a finite nonzero number.  See the full
+    ## `exception hierarchy`_.
+  EFloatOverflow* {.compilerproc.} = object of EFloatingPoint ## \
+    ## Raised for overflows.
+    ##
+    ## The operation produced a result that exceeds the range of the exponent.
+    ## See the full `exception hierarchy`_.
+  EFloatUnderflow* {.compilerproc.} = object of EFloatingPoint ## \
+    ## Raised for underflows.
+    ##
+    ## The operation produced a result that is too small to be represented as a
+    ## normal number. See the full `exception hierarchy`_.
+  EFloatInexact* {.compilerproc.} = object of EFloatingPoint ## \
+    ## Raised for inexact results.
+    ##
+    ## The operation produced a result that cannot be represented with infinite
+    ## precision -- for example: ``2.0 / 3.0, log(1.1)``
+    ##
+    ## **NOTE**: Nimrod currently does not detect these!  See the full
+    ## `exception hierarchy`_.
+  EDeadThread* = object of ESynch ## \
+    ## Raised if it is attempted to send a message to a dead thread.
+    ##
+    ## See the full `exception hierarchy`_.
 
-  EAccessViolation* {.compilerproc.} =
-    object of ESynch ## the exception class for invalid memory access errors
-
-  EAssertionFailed* {.compilerproc.} =
-    object of ESynch  ## is the exception class for Assert
-                      ## procedures that is raised if the
-                      ## assertion proves wrong
-
-  EControlC* = object of EAsynch        ## is the exception class for Ctrl+C
-                                        ## key presses in console applications.
-
-  EInvalidValue* = object of ESynch     ## is the exception class for string
-                                        ## and object conversion errors.
-  EInvalidKey* = object of EInvalidValue ## is the exception class if a key
-                                         ## cannot be found in a table.
-
-  EOutOfMemory* = object of ESystem     ## is the exception class for
-                                        ## unsuccessful attempts to allocate
-                                        ## memory.
-
-  EInvalidIndex* = object of ESynch     ## is raised if an array index is out
-                                        ## of bounds.
-  EInvalidField* = object of ESynch     ## is raised if a record field is not
-                                        ## accessible because its dicriminant's
-                                        ## value does not fit.
-
-  EOutOfRange* = object of ESynch       ## is raised if a range check error
-                                        ## occurred.
-
-  EStackOverflow* = object of ESystem   ## is raised if the hardware stack
-                                        ## used for subroutine calls overflowed.
-
-  ENoExceptionToReraise* = object of ESynch ## is raised if there is no
-                                            ## exception to reraise.
-
-  EInvalidObjectAssignment* =
-    object of ESynch ## is raised if an object gets assigned to its
-                     ## parent's object.
-
-  EInvalidObjectConversion* =
-    object of ESynch ## is raised if an object is converted to an incompatible
-                     ## object type.
-
-  EFloatingPoint* = object of ESynch ## base class for floating point exceptions
-  EFloatInvalidOp* {.compilerproc.} = 
-    object of EFloatingPoint ## Invalid operation according to IEEE: Raised by 
-                             ## 0.0/0.0, for example.
-  EFloatDivByZero* {.compilerproc.} = 
-    object of EFloatingPoint ## Division by zero. Divisor is zero and dividend 
-                             ## is a finite nonzero number.
-  EFloatOverflow* {.compilerproc.} = 
-    object of EFloatingPoint ## Overflow. Operation produces a result 
-                             ## that exceeds the range of the exponent
-  EFloatUnderflow* {.compilerproc.} = 
-    object of EFloatingPoint ## Underflow. Operation produces a result 
-                             ## that is too small to be represented as 
-                             ## a normal number
-  EFloatInexact* {.compilerproc.} = 
-    object of EFloatingPoint ## Inexact. Operation produces a result
-                             ## that cannot be represented with infinite
-                             ## precision -- for example, 2.0 / 3.0, log(1.1) 
-                             ## NOTE: Nimrod currently does not detect these!
-  EDeadThread* =
-    object of ESynch ## is raised if it is attempted to send a message to a
-                     ## dead thread.
-                     
   TResult* = enum Failure, Success
 
 proc sizeof*[T](x: T): Natural {.magic: "SizeOf", noSideEffect.}

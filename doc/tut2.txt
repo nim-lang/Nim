@@ -443,39 +443,9 @@ Exception hierarchy
 
 If you want to create your own exceptions you can inherit from E_Base, but you
 can also inherit from one of the existing exceptions if they fit your purpose.
-The exception tree is::
+The exception tree is:
 
-  * E_Base
-    * EAsynch
-      * EControlC
-    * ESynch
-      * ESystem
-        * EIO
-        * EOS
-          * EInvalidLibrary
-      * EResourceExhausted
-      * EOutOfMemory
-      * EStackOverflow
-    * EArithmetic
-      * EDivByZero
-      * EOverflow
-    * EAccessViolation
-    * EAssertionFailed
-    * EInvalidValue
-      * EInvalidKey
-    * EInvalidIndex
-    * EInvalidField
-    * EOutOfRange
-    * ENoExceptionToReraise
-    * EInvalidObjectAssignment
-    * EInvalidObjectConversion
-    * EFloatingPoint
-      * EFloatInvalidOp
-      * EFloatDivByZero
-      * EFloatOverflow
-      * EFloatUnderflow
-      * EFloatInexact
-    * EDeadThread
+.. include:: exception_hierarchy_fragment.txt
 
 See the `system <system.html>`_ module for a description of each exception.
 
