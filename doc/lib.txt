@@ -56,7 +56,10 @@ Core
 
 * `typeinfo <typeinfo.html>`_
   Provides (unsafe) access to Nimrod's run time type information. 
-  
+
+* `typetraits <typetraits.html>`_
+  This module defines compile-time reflection procs for working with types.
+
 * `actors <actors.html>`_
   Actor support for Nimrod; implemented as a layer on top of the threads and
   channels modules.
