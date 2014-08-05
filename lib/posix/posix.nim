@@ -29,6 +29,9 @@
 
 {.deadCodeElim:on.}
 
+when defined(Posix) and not defined(haiku):
+  {.passl: "-lm".}
+
 from times import TTime
 
 const
