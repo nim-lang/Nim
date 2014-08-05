@@ -61,6 +61,13 @@ Core
   Actor support for Nimrod; implemented as a layer on top of the threads and
   channels modules.
 
+* `threadpool <threadpool.html>`_
+  Implements Nimrod's `spawn <manual.html#spawn>`_.
+
+* `cpuinfo <cpuinfo.html>`_
+  This module implements procs to determine the number of CPUs / cores.
+
+
 
 Collections and algorithms
 --------------------------
