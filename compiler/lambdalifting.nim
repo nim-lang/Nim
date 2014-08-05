@@ -843,8 +843,15 @@ proc transformOuterProc(o: POuterContext, n: PNode; it: TIter): PNode =
       # every local goes through the closure:
       #if not containsOrIncl(o.capturedVars, local.id):
       #  addField(it.obj, local)
-      addUniqueField(it.obj, local)
-      return indirectAccess(newSymNode(it.closureParam), local, n.info)
+      if contains(o.capturedVars, local.id):
+        # change 'local' to 'closure.local', unless it's a 'byCopy' variable:
+        # if sfByCopy notin local.flags:
+        result = idNodeTableGet(o.localsToAccess, local)
+        assert result != nil, "cannot find: " & local.name.s
+        return result
+      else:
+        addUniqueField(it.obj, local)
+        return indirectAccess(newSymNode(it.closureParam), local, n.info)
 
     var closure = PEnv(idTableGet(o.lambdasToEnv, local))
     if local.kind == skClosureIterator:
