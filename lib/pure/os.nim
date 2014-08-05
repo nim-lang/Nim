@@ -1457,7 +1457,8 @@ proc parseCmdLine*(c: string): seq[string] {.
   var a = ""
   while true:
     setLen(a, 0)
-    while c[i] == ' ' or c[i] == '\t': inc(i)
+    # eat all delimiting whitespace
+    while c[i] == ' ' or c[i] == '\t' or c [i] == '\l' or c [i] == '\r' : inc(i)
     when defined(windows):
       # parse a single argument according to the above rules:
       if c[i] == '\0': break
