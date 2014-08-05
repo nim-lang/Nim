@@ -420,6 +420,59 @@ proc setBiggestInt*(x: TAny, y: biggestInt) =
   of tyUInt32: cast[ptr uint32](x.value)[] = uint32(y)
   else: assert false
 
+proc getUInt*(x: TAny): uint =
+  ## retrieve the uint value out of `x`, `x` needs to represent an uint.
+  assert skipRange(x.rawtype).kind == tyUInt
+  result = cast[ptr uint](x.value)[]
+
+proc getUInt8*(x: TAny): uint8 =
+  ## retrieve the uint8 value out of `x`, `x` needs to represent an
+  ## uint8.
+  assert skipRange(x.rawtype).kind == tyUInt8
+  result = cast[ptr uint8](x.value)[]
+
+proc getUInt16*(x: TAny): uint16 =
+  ## retrieve the uint16 value out of `x`, `x` needs to represent an
+  ## uint16.
+  assert skipRange(x.rawtype).kind == tyUInt16
+  result = cast[ptr uint16](x.value)[]
+
+proc getUInt32*(x: TAny): uint32 =
+  ## retrieve the uint32 value out of `x`, `x` needs to represent an
+  ## uint32.
+  assert skipRange(x.rawtype).kind == tyUInt32
+  result = cast[ptr uint32](x.value)[]
+
+proc getUInt64*(x: TAny): uint64 =
+  ## retrieve the uint64 value out of `x`, `x` needs to represent an
+  ## uint64.
+  assert skipRange(x.rawtype).kind == tyUInt64
+  result = cast[ptr uint64](x.value)[]
+
+proc getBiggestUint*(x: TAny): uint64 =
+  ## retrieve the unsigned integer value out of `x`. `x` needs to
+  ## represent an unsigned integer.
+  var t = skipRange(x.rawtype)
+  case t.kind
+  of tyUInt: result = uint64(cast[ptr uint](x.value)[])
+  of tyUInt8: result = uint64(cast[ptr uint8](x.value)[])
+  of tyUInt16: result = uint64(cast[ptr uint16](x.value)[])
+  of tyUInt32: result = uint64(cast[ptr uint32](x.value)[])
+  of tyUInt64: result = uint64(cast[ptr uint64](x.value)[])
+  else: assert false
+
+proc setBiggestUint*(x: TAny; y: uint64) =
+  ## sets the unsigned integer value of `c`. `c` needs to represent an
+  ## unsigned integer.
+  var t = skipRange(x.rawtype)
+  case t.kind:
+  of tyUInt: cast[ptr uint](x.value)[] = uint(y)
+  of tyUInt8: cast[ptr uint8](x.value)[] = uint8(y)
+  of tyUInt16: cast[ptr uint16](x.value)[] = uint16(y)
+  of tyUInt32: cast[ptr uint32](x.value)[] = uint32(y)
+  of tyUInt64: cast[ptr uint64](x.value)[] = uint64(y)
+  else: assert false
+
 proc getChar*(x: TAny): char =
   ## retrieve the char value out of `x`. `x` needs to represent a char.
   var t = skipRange(x.rawtype)

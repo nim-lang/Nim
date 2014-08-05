@@ -763,7 +763,7 @@ elif not defined(useNimRtl):
     discard write(data.pErrorPipe[writeIdx], addr error, sizeof(error))
     exitnow(1)
 
-  when defined(macosx):
+  when defined(macosx) or defined(freebsd):
     var environ {.importc.}: cstringArray
 
   proc startProcessAfterFork(data: ptr TStartProcessData) =
@@ -793,7 +793,7 @@ elif not defined(useNimRtl):
     discard fcntl(data.pErrorPipe[writeIdx], F_SETFD, FD_CLOEXEC)
 
     if data.optionPoUsePath:
-      when defined(macosx):
+      when defined(macosx) or defined(freebsd):
         # MacOSX doesn't have execvpe, so we need workaround.
         # On MacOSX we can arrive here only from fork, so this is safe:
         environ = data.sysEnv

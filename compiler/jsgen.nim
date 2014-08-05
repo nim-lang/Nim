@@ -1321,7 +1321,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mLengthSeq, mLengthOpenArray, mLengthArray:
     unaryExpr(p, n, r, "", "$1.length")
   of mHigh:
-    if skipTypes(n.sons[0].typ, abstractVar).kind == tyString:
+    if skipTypes(n.sons[1].typ, abstractVar).kind == tyString:
       unaryExpr(p, n, r, "", "($1.length-2)")
     else:
       unaryExpr(p, n, r, "", "($1.length-1)")
@@ -1532,6 +1532,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     genSym(p, n, r)
   of nkCharLit..nkInt64Lit:
     r.res = toRope(n.intVal)
+    r.kind = resExpr
   of nkNilLit:
     if isEmptyType(n.typ):
       discard
@@ -1539,8 +1540,10 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       r.typ = etyBaseIndex
       r.address = toRope"null" | toRope"nil"
       r.res = toRope"0"
+      r.kind = resExpr
     else:
       r.res = toRope"null" | toRope"nil"
+      r.kind = resExpr
   of nkStrLit..nkTripleStrLit:
     if skipTypes(n.typ, abstractVarRange).kind == tyString: 
       useMagic(p, "cstrToNimstr")
@@ -1556,6 +1559,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       if f > 0.0: r.res = toRope"Infinity"
       else: r.res = toRope"-Infinity"
     else: r.res = toRope(f.toStrMaxPrecision)
+    r.kind = resExpr
   of nkCallKinds:
     if (n.sons[0].kind == nkSym) and (n.sons[0].sym.magic != mNone): 
       genMagic(p, n, r)

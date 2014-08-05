@@ -621,9 +621,13 @@ proc `%`*(elements: openArray[PJsonNode]): PJsonNode =
 
 proc `==`* (a,b: PJsonNode): bool =
   ## Check two nodes for equality
-  if a.kind != b.kind: false
+  if a.isNil:
+    if b.isNil: return true
+    return false
+  elif b.isNil or a.kind != b.kind: 
+    return false
   else:
-    case a.kind
+    return case a.kind
     of JString:
       a.str == b.str
     of JInt:

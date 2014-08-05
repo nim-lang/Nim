@@ -955,11 +955,12 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
   ##
   ## If this fails, `EOS` is raised. On the Windows platform this proc will
   ## copy the source file's attributes into dest. On other platforms you need
-  ## to use getFilePermissions and setFilePermissions to copy them by hand (or
-  ## use the convenience copyFileWithPermissions() proc), otherwise `dest` will
-  ## inherit the default permissions of a newly created file for the user. If
-  ## `dest` already exists, the file attributes will be preserved and the
-  ## content overwritten.
+  ## to use `getFilePermissions() <#getFilePermissions>`_ and
+  ## `setFilePermissions() <#setFilePermissions>`_ to copy them by hand (or use
+  ## the convenience `copyFileWithPermissions() <#copyFileWithPermissions>`_
+  ## proc), otherwise `dest` will inherit the default permissions of a newly
+  ## created file for the user. If `dest` already exists, the file attributes
+  ## will be preserved and the content overwritten.
   when defined(Windows):
     when useWinUnicode:
       let s = newWideCString(source)
@@ -1363,7 +1364,13 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1", tags: [FWriteDir].} =
 
 proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [FWriteIO, FReadIO].} =
-  ## Copies a directory from `source` to `dest`. If this fails, `EOS` is raised.
+  ## Copies a directory from `source` to `dest`.
+  ##
+  ## If this fails, `EOS` is raised. On the Windows platform this proc will
+  ## copy the attributes from `source` into `dest`. On other platforms created
+  ## files and directories will inherit the default permissions of a newly
+  ## created file/directory for the user. To preserve attributes recursively on
+  ## these platforms use `copyDirWithPermissions() <#copyDirWithPermissions>`_.
   createDir(dest)
   for kind, path in walkDir(source):
     var noSource = path.substr(source.len()+1)
@@ -1507,14 +1514,17 @@ proc copyFileWithPermissions*(source, dest: string,
                               ignorePermissionErrors = true) =
   ## Copies a file from `source` to `dest` preserving file permissions.
   ##
-  ## This is a wrapper proc around copyFile, getFilePermissions and
-  ## setFilePermissions on non Windows platform. On windows this proc is just a
-  ## wrapper for copyFile since that proc already copies attributes.
+  ## This is a wrapper proc around `copyFile() <#copyFile>`_,
+  ## `getFilePermissions() <#getFilePermissions>`_ and `setFilePermissions()
+  ## <#setFilePermissions>`_ on non Windows platform. On Windows this proc is
+  ## just a wrapper for `copyFile() <#copyFile>`_ since that proc already
+  ## copies attributes.
   ##
-  ## On non windows systems permissions are copied after the file itself has
+  ## On non Windows systems permissions are copied after the file itself has
   ## been copied, which won't happen atomically and could lead to a race
-  ## condition. If ignorePermissionErrors is true, errors while reading/setting
-  ## file attributes will be ignored, otherwise will raise `OSError`.
+  ## condition. If `ignorePermissionErrors` is true, errors while
+  ## reading/setting file attributes will be ignored, otherwise will raise
+  ## `OSError`.
   copyFile(source, dest)
   when not defined(Windows):
     try:
@@ -1522,6 +1532,37 @@ proc copyFileWithPermissions*(source, dest: string,
     except:
       if not ignorePermissionErrors:
         raise
+
+proc copyDirWithPermissions*(source, dest: string,
+    ignorePermissionErrors = true) {.rtl, extern: "nos$1",
+    tags: [FWriteIO, FReadIO].} =
+  ## Copies a directory from `source` to `dest` preserving file permissions.
+  ##
+  ## If this fails, `EOS` is raised. This is a wrapper proc around `copyDir()
+  ## <#copyDir>`_ and `copyFileWithPermissions() <#copyFileWithPermissions>`_
+  ## on non Windows platforms. On Windows this proc is just a wrapper for
+  ## `copyDir() <#copyDir>`_ since that proc already copies attributes.
+  ##
+  ## On non Windows systems permissions are copied after the file or directory
+  ## itself has been copied, which won't happen atomically and could lead to a
+  ## race condition. If `ignorePermissionErrors` is true, errors while
+  ## reading/setting file attributes will be ignored, otherwise will raise
+  ## `OSError`.
+  createDir(dest)
+  when not defined(Windows):
+    try:
+      setFilePermissions(dest, getFilePermissions(source))
+    except:
+      if not ignorePermissionErrors:
+        raise
+  for kind, path in walkDir(source):
+    var noSource = path.substr(source.len()+1)
+    case kind
+    of pcFile:
+      copyFileWithPermissions(path, dest / noSource, ignorePermissionErrors)
+    of pcDir:
+      copyDirWithPermissions(path, dest / noSource, ignorePermissionErrors)
+    else: discard
 
 proc inclFilePermissions*(filename: string,
                           permissions: set[TFilePermission]) {.

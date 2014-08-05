@@ -1604,15 +1604,15 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mGetTypeInfo: genGetTypeInfo(p, e, d)
   of mSwap: genSwap(p, e, d)
   of mUnaryLt: 
-    if optOverflowCheck notin p.options: unaryExpr(p, e, d, "$1 - 1")
+    if optOverflowCheck notin p.options: unaryExpr(p, e, d, "($1 - 1)")
     else: unaryExpr(p, e, d, "#subInt($1, 1)")
   of mPred:
     # XXX: range checking?
-    if optOverflowCheck notin p.options: binaryExpr(p, e, d, "$1 - $2")
+    if optOverflowCheck notin p.options: binaryExpr(p, e, d, "($1 - $2)")
     else: binaryExpr(p, e, d, "#subInt($1, $2)")
   of mSucc:
     # XXX: range checking?
-    if optOverflowCheck notin p.options: binaryExpr(p, e, d, "$1 + $2")
+    if optOverflowCheck notin p.options: binaryExpr(p, e, d, "($1 + $2)")
     else: binaryExpr(p, e, d, "#addInt($1, $2)")
   of mInc:
     if optOverflowCheck notin p.options:

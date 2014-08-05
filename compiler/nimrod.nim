@@ -58,7 +58,7 @@ proc handleCmdLine() =
     if msgs.gErrorCounter == 0:
       when hasTinyCBackend:
         if gCmd == cmdRun:
-          tccgen.run()
+          tccgen.run(service.arguments)
       if optRun in gGlobalOptions:
         if gCmd == cmdCompileToJS:
           var ex: string

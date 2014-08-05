@@ -2031,7 +2031,7 @@ proc echo*[T](x: varargs[T, `$`]) {.magic: "Echo", tags: [FWriteIO], gcsafe.}
   ## Special built-in that takes a variable number of arguments. Each argument
   ## is converted to a string via ``$``, so it works for user-defined
   ## types that have an overloaded ``$`` operator.
-  ## It is roughly equivalent to ``writeln(stdout, x); flush(stdout)``, but
+  ## It is roughly equivalent to ``writeln(stdout, x); flushFile(stdout)``, but
   ## available for the JavaScript target too.
   ##
   ## Unlike other IO operations this is guaranteed to be thread-safe as
