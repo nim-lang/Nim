@@ -1909,6 +1909,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     of skVar, skForVar, skResult, skLet:
       if sfGlobal in sym.flags: genVarPrototype(p.module, sym)
       if sym.loc.r == nil or sym.loc.t == nil:
+        #echo "FAILED FOR PRCO ", p.prc.name.s
         internalError n.info, "expr: var not init " & sym.name.s & "_" & $sym.id
       if sfThread in sym.flags:
         accessThreadLocalVar(p, sym)
