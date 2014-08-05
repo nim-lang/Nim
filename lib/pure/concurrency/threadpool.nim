@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Implements Nimrod's 'spawn'.
+## Implements Nimrod's `spawn <manual.html#spawn>`_.
 
 import cpuinfo, cpuload, locks
 
