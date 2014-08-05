@@ -1020,7 +1020,10 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       # the problem that pointers are structural types:
       let t = s.typ.sons[1].skipTypes(abstractInst).lastSon.skipTypes(abstractInst)
       if t.kind in {tyObject, tyDistinct, tyEnum}:
-        t.deepCopy = s
+        if t.deepCopy.isNil: t.deepCopy = s
+        else: 
+          localError(n.info, errGenerated,
+                     "cannot bind another 'deepCopy' to: " & typeToString(t))
       else:
         localError(n.info, errGenerated,
                    "cannot bind 'deepCopy' to: " & typeToString(t))
