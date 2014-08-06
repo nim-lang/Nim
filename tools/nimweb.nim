@@ -215,6 +215,11 @@ proc exec(cmd: string) =
   echo(cmd)
   if os.execShellCmd(cmd) != 0: quit("external program failed")
 
+proc mexec(cmds: openarray[string]) =
+  ## Multiprocessor version of exec
+  if 0 != execProcesses(cmds, {poStdErrToStdOut, poParentStreams, poEchoCmd}):
+    quit("external program failed")
+
 proc buildDocSamples(c: var TConfigData, destPath: string) =
   ## Special case documentation sample proc.
   ##
@@ -229,18 +234,26 @@ proc buildDocSamples(c: var TConfigData, destPath: string) =
 
 proc buildDoc(c: var TConfigData, destPath: string) =
   # call nim for the documentation:
+  var
+    commands = newSeq[string](len(c.doc) + len(c.srcdoc) + len(c.srcdoc2))
+    i = 0
   for d in items(c.doc):
-    exec("nimrod rst2html $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
+    commands[i] = "nimrod rst2html $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
       [c.nimrodArgs, c.gitCommit,
-      destPath / changeFileExt(splitFile(d).name, "html"), d])
+      destPath / changeFileExt(splitFile(d).name, "html"), d]
+    i.inc
   for d in items(c.srcdoc):
-    exec("nimrod doc $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
+    commands[i] = "nimrod doc $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
       [c.nimrodArgs, c.gitCommit,
-      destPath / changeFileExt(splitFile(d).name, "html"), d])
+      destPath / changeFileExt(splitFile(d).name, "html"), d]
+    i.inc
   for d in items(c.srcdoc2):
-    exec("nimrod doc2 $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
+    commands[i] = "nimrod doc2 $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
       [c.nimrodArgs, c.gitCommit,
-      destPath / changeFileExt(splitFile(d).name, "html"), d])
+      destPath / changeFileExt(splitFile(d).name, "html"), d]
+    i.inc
+
+  mexec(commands)
   exec("nimrod buildIndex -o:$1/theindex.html $1" % [destPath])
 
 proc buildPdfDoc(c: var TConfigData, destPath: string) =
@@ -264,10 +277,12 @@ proc buildPdfDoc(c: var TConfigData, destPath: string) =
 
 proc buildAddDoc(c: var TConfigData, destPath: string) =
   # build additional documentation (without the index):
-  for d in items(c.webdoc):
-    exec("nimrod doc $# --docSeeSrcUrl:$# -o:$# $#" %
+  var commands = newSeq[string](c.webdoc.len)
+  for i, doc in pairs(c.webdoc):
+    commands[i] = "nimrod doc $# --docSeeSrcUrl:$# -o:$# $#" %
       [c.nimrodArgs, c.gitCommit,
-      destPath / changeFileExt(splitFile(d).name, "html"), d])
+      destPath / changeFileExt(splitFile(doc).name, "html"), doc]
+  mexec(commands)
 
 proc parseNewsTitles(inputFilename: string): seq[TRssItem] =
   # parses the file for titles and returns them as TRssItem blocks.
