@@ -32,6 +32,12 @@ proc genericDeepCopyAux(dest, src: pointer, n: ptr TNimNode) {.gcsafe.} =
       genericDeepCopyAux(dest, src, m)
   of nkNone: sysAssert(false, "genericDeepCopyAux")
 
+proc copyDeepString(src: NimString): NimString {.inline.} =
+  if src != nil:
+    result = rawNewString(src.space)
+    result.len = src.len
+    c_memcpy(result.data, src.data, (src.len + 1) * sizeof(char))
+
 proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) =
   var
     d = cast[TAddress](dest)
@@ -44,10 +50,10 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) =
     if s2 == nil:
       unsureAsgnRef(x, s2)
     else:
-      unsureAsgnRef(x, copyString(cast[NimString](s2)))
+      unsureAsgnRef(x, copyDeepString(cast[NimString](s2)))
   of tySequence:
     var s2 = cast[PPointer](src)[]
-    var seq = cast[PGenericSeq](s2)      
+    var seq = cast[PGenericSeq](s2)
     var x = cast[PPointer](dest)
     if s2 == nil:
       unsureAsgnRef(x, s2)
@@ -76,25 +82,31 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) =
       genericDeepCopyAux(cast[pointer](d +% i*% mt.base.size),
                          cast[pointer](s +% i*% mt.base.size), mt.base)
   of tyRef:
-    var z: pointer
     if mt.base.deepCopy != nil:
-      z = mt.base.deepCopy(cast[PPointer](s)[])
+      let z = mt.base.deepCopy(cast[PPointer](src)[])
+      unsureAsgnRef(cast[PPointer](dest), z)
     else:
       # we modify the header of the cell temporarily; instead of the type
       # field we store a forwarding pointer. XXX This is bad when the cloning
       # fails due to OOM etc.
-      let x = usrToCell(cast[PPointer](s)[])
+      let s2 = cast[PPointer](src)[]
+      if s2 == nil:
+        unsureAsgnRef(cast[PPointer](dest), s2)
+        return
+      let x = usrToCell(s2)
       let forw = cast[int](x.typ)
       if (forw and 1) == 1:
         # we stored a forwarding pointer, so let's use that:
-        z = cast[pointer](forw and not 1)
+        let z = cast[pointer](forw and not 1)
+        unsureAsgnRef(cast[PPointer](dest), z)
       else:
         let realType = x.typ
-        z = newObj(realType, realType.base.size)
+        let z = newObj(realType, realType.base.size)
+        
+        unsureAsgnRef(cast[PPointer](dest), z)
         x.typ = cast[PNimType](cast[int](z) or 1)
-        genericDeepCopyAux(dest, addr(z), realType)
+        genericDeepCopyAux(z, s2, realType.base)
         x.typ = realType
-    unsureAsgnRef(cast[PPointer](dest), z)
   of tyPtr:
     # no cycle check here, but also not really required
     if mt.base.deepCopy != nil:
@@ -102,12 +114,13 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) =
     else:
       cast[PPointer](dest)[] = cast[PPointer](s)[]
   else:
-    copyMem(dest, src, mt.size) # copy raw bits
+    copyMem(dest, src, mt.size)
 
 proc genericDeepCopy(dest, src: pointer, mt: PNimType) {.compilerProc.} =
   genericDeepCopyAux(dest, src, mt)
 
 proc genericSeqDeepCopy(dest, src: pointer, mt: PNimType) {.compilerProc.} =
+  # also invoked for 'string'
   var src = src
   genericDeepCopy(dest, addr(src), mt)
 

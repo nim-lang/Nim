@@ -360,13 +360,13 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   else: internalError("genAssignment: " & $ty.kind)
 
 proc genDeepCopy(p: BProc; dest, src: TLoc) =
-  var ty = skipTypes(dest.t, abstractRange)
+  var ty = skipTypes(dest.t, abstractVarRange)
   case ty.kind
-  of tyPtr, tyRef, tyString, tyProc, tyTuple, tyObject, tyArray, tyArrayConstr:
+  of tyPtr, tyRef, tyProc, tyTuple, tyObject, tyArray, tyArrayConstr:
     # XXX optimize this
     linefmt(p, cpsStmts, "#genericDeepCopy((void*)$1, (void*)$2, $3);$n",
             addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t))
-  of tySequence:
+  of tySequence, tyString:
     linefmt(p, cpsStmts, "#genericSeqDeepCopy($1, $2, $3);$n",
             addrLoc(dest), rdLoc(src), genTypeInfo(p.module, dest.t))
   of tyOpenArray, tyVarargs:
@@ -1687,9 +1687,10 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     expr(p, n, d)
   of mDeepCopy:
     var a, b: TLoc
-    initLocExpr(p, e.sons[1], a)
+    let x = if e[1].kind in {nkAddr, nkHiddenAddr}: e[1][0] else: e[1]
+    initLocExpr(p, x, a)
     initLocExpr(p, e.sons[2], b)
-    genDeepCopy(p, a, b) 
+    genDeepCopy(p, a, b)
   else: internalError(e.info, "genMagicExpr: " & $op)
 
 proc genConstExpr(p: BProc, n: PNode): PRope
