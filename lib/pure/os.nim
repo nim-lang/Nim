@@ -1860,12 +1860,12 @@ proc expandTilde*(path: string): string =
 
 when defined(Windows):
   type
-    DeviceId = int32
-    FileId = int64
+    DeviceId* = int32
+    FileId* = int64
 else:
   type
-    DeviceId = TDev
-    FileId = TIno
+    DeviceId* = TDev
+    FileId* = TIno
 
 type
   FileInfo* = object
@@ -1907,6 +1907,7 @@ template rawToFormalFileInfo(rawInfo, formalInfo): expr =
       formalInfo.kind = pcDir
     if (rawInfo.dwFileAttributes and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32:
       formalInfo.kind = succ(result.kind)
+
 
   else:
     template checkAndIncludeMode(rawMode, formalMode: expr) = 
@@ -1993,5 +1994,22 @@ proc getFileInfo*(path: string, followSymlink = true): FileInfo =
       if stat(path, rawInfo) < 0'i32:
         osError(osLastError())
     rawToFormalFileInfo(rawInfo, result)
+
+proc isHidden*(path: string): bool =
+  ## Determines whether a given path is hidden or not. Returns false if the
+  ## file doesn't exist. On Windows, a file is hidden if the file's 'hidden'
+  ## attribute is set. On Unix-like systems, a file is hidden if it starts
+  ## with a '.' ."
+  when defined(Windows):
+    wrapUnary(attributes, getFileAttributesW, path)
+    if attributes != -1'i32:
+      result = (attributes and FILE_ATTRIBUTE_HIDDEN) != 0'i32
+    else:
+      result = false
+  else:
+    if fileExists(path):
+      result = (path[0] == '.')
+    else:
+      result = false
 
 {.pop.}
