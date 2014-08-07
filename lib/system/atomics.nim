@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Atomic operations for Nimrod.
+# Atomic operations for Nimrod.
 {.push stackTrace:off.}
 
 const someGcc = defined(gcc) or defined(llvm_gcc) or defined(clang)

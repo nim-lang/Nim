@@ -17,10 +17,9 @@ Introduction
 
 
 This document is a tutorial for the programming language *Nimrod*. 
-This tutorial assumes that you are familiar with basic programming concepts 
-like variables, types or statements but is kept very basic. The manual 
-contains many more examples of the advanced language features.
-
+This tutorial assumes that you are familiar with basic programming concepts
+like variables, types or statements but is kept very basic. The `manual
+<manual.html>`_ contains many more examples of the advanced language features.
 
 
 
@@ -40,9 +39,9 @@ Save this code to the file "greetings.nim". Now compile and run it::
 
   nimrod compile --run greetings.nim
 
-With the ``--run`` switch Nimrod executes the file automatically
-after compilation. You can give your program command line arguments by
-appending them after the filename::
+With the ``--run`` `switch <nimrodc.html#command-line-switches>`_ Nimrod
+executes the file automatically after compilation. You can give your program
+command line arguments by appending them after the filename::
 
   nimrod compile --run greetings.nim arg1 arg2
 
@@ -54,9 +53,10 @@ To compile a release version use::
   
   nimrod c -d:release greetings.nim
 
-By default the Nimrod compiler generates a large amount of runtime checks 
-aiming for your debugging pleasure. With ``-d:release`` these checks are 
-turned off and optimizations are turned on.
+By default the Nimrod compiler generates a large amount of runtime checks
+aiming for your debugging pleasure. With ``-d:release`` these checks are
+`turned off and optimizations are turned on
+<nimrodc.html#compile-time-symbols>`_.
 
 Though it should be pretty obvious what the program does, I will explain the
 syntax: statements which are not indented are executed when the program
@@ -65,9 +65,10 @@ done with spaces only, tabulators are not allowed.
 
 String literals are enclosed in double quotes. The ``var`` statement declares
 a new variable named ``name`` of type ``string`` with the value that is
-returned by the ``readLine`` procedure. Since the compiler knows that
-``readLine`` returns a string, you can leave out the type in the declaration
-(this is called `local type inference`:idx:). So this will work too:
+returned by the `readLine <system.html#readLine,TFile>`_ procedure. Since the
+compiler knows that `readLine <system.html#readLine,TFile>`_ returns a string,
+you can leave out the type in the declaration (this is called `local type
+inference`:idx:). So this will work too:
 
 .. code-block:: Nimrod
   var name = readLine(stdin)
@@ -75,10 +76,10 @@ returned by the ``readLine`` procedure. Since the compiler knows that
 Note that this is basically the only form of type inference that exists in
 Nimrod: it is a good compromise between brevity and readability.
 
-The "hello world" program contains several identifiers that are already
-known to the compiler: ``echo``, ``readLine``, etc. These built-ins are
-declared in the system_ module which is implicitly imported by any other
-module.
+The "hello world" program contains several identifiers that are already known
+to the compiler: ``echo``, `readLine <system.html#readLine,TFile>`_, etc.
+These built-ins are declared in the system_ module which is implicitly
+imported by any other module.
 
 
 Lexical elements
@@ -154,11 +155,11 @@ the syntax, watch their indentation:
   when false:
     brokenCode()
 
-Another option is to use the `discard`_ statement together with
-*long string literals* to create block comments:
+Another option is to use the `discard statement`_ together with *long string
+literals* to create block comments:
 
 .. code-block:: nimrod
-  discard """ You can have any nimrod code text commented 
+  discard """ You can have any Nimrod code text commented
   out inside this with no indentation restrictions.
         yes("May I ask a pointless question?") """
 
@@ -257,10 +258,10 @@ that can not be re-assigned, ``const`` means "enforce compile time evaluation
 and put it into a data section":
 
 .. code-block::
-  const input = readline(stdin) # Error: constant expression expected
+  const input = readLine(stdin) # Error: constant expression expected
   
 .. code-block::
-  let input = readline(stdin)   # works
+  let input = readLine(stdin)   # works
 
 
 Control flow statements
@@ -285,9 +286,10 @@ The if statement is one way to branch the control flow:
   else:
     echo("Hi, ", name, "!")
 
-There can be zero or more elif parts, and the else part is optional. The
-keyword ``elif`` is short for ``else if``, and is useful to avoid excessive
-indentation. (The ``""`` is the empty string. It contains no characters.)
+There can be zero or more ``elif`` parts, and the ``else`` part is optional.
+The keyword ``elif`` is short for ``else if``, and is useful to avoid
+excessive indentation. (The ``""`` is the empty string. It contains no
+characters.)
 
 
 Case statement
@@ -338,7 +340,7 @@ the compiler that for every other value nothing should be done:
   of 3, 8: echo("The number is 3 or 8")
   else: discard
 
-The empty ``discard`` statement is a *do nothing* statement. The compiler knows
+The empty `discard statement`_ is a *do nothing* statement. The compiler knows
 that a case statement with an else part cannot fail and thus the error 
 disappears. Note that it is impossible to cover all possible string values: 
 that is why there is no such check for string cases.
@@ -370,7 +372,8 @@ For statement
 -------------
 
 The ``for`` statement is a construct to loop over any element an *iterator*
-provides. The example uses the built-in ``countup`` iterator:
+provides. The example uses the built-in `countup <system.html#countup>`_
+iterator:
 
 .. code-block:: nimrod
   echo("Counting to ten: ")
@@ -378,11 +381,11 @@ provides. The example uses the built-in ``countup`` iterator:
     echo($i)
   # --> Outputs 1 2 3 4 5 6 7 8 9 10 on different lines
 
-The built-in ``$`` operator turns an integer (``int``) and many other types
-into a string. The variable ``i`` is implicitly declared by the ``for`` loop
-and has the type ``int``, because that is what ``countup`` returns. ``i`` runs
-through the values 1, 2, .., 10. Each value is ``echo``-ed. This code does
-the same:
+The built-in `$ <system.html#$>`_ operator turns an integer (``int``) and many
+other types into a string. The variable ``i`` is implicitly declared by the
+``for`` loop and has the type ``int``, because that is what `countup
+<system.html#countup>`_ returns. ``i`` runs through the values 1, 2, .., 10.
+Each value is ``echo``-ed. This code does the same:
 
 .. code-block:: nimrod
   echo("Counting to 10: ")
@@ -400,8 +403,8 @@ Counting down can be achieved as easily (but is less often needed):
     echo($i)
   # --> Outputs 10 9 8 7 6 5 4 3 2 1 on different lines
 
-Since counting up occurs so often in programs, Nimrod also has a ``..`` iterator
-that does the same:
+Since counting up occurs so often in programs, Nimrod also has a `..
+<system.html#...i,S,T>`_ iterator that does the same:
 
 .. code-block:: nimrod
   for i in 1..10:
@@ -553,9 +556,10 @@ an expression is allowed:
 Procedures
 ==========
 
-To define new commands like ``echo``, ``readline`` in the examples, the concept
-of a `procedure` is needed. (Some languages call them *methods* or
-*functions*.) In Nimrod new procedures are defined with the ``proc`` keyword:
+To define new commands like `echo <system.html#echo>`_ and `readLine
+<system.html#readLine,TFile>`_ in the examples, the concept of a `procedure`
+is needed. (Some languages call them *methods* or *functions*.) In Nimrod new
+procedures are defined with the ``proc`` keyword:
 
 .. code-block:: nimrod
   proc yes(question: string): bool =
@@ -649,7 +653,7 @@ a tuple as a return value instead of using var parameters.
 Discard statement
 -----------------
 To call a procedure that returns a value just for its side effects and ignoring
-its return value, a discard statement **has** to be used. Nimrod does not
+its return value, a ``discard`` statement **has** to be used. Nimrod does not
 allow to silently throw away a return value:
 
 .. code-block:: nimrod
@@ -665,8 +669,8 @@ been declared with the ``discardable`` pragma:
     
   p(3, 4) # now valid
 
-The discard statement can also be used to create block comments as described
-in the `Comments`_.
+The ``discard`` statement can also be used to create block comments as
+described in the `Comments`_ section.
 
 
 Named arguments
@@ -730,12 +734,12 @@ Nimrod provides the ability to overload procedures similar to C++:
   echo(toString(13))   # calls the toString(x: int) proc
   echo(toString(true)) # calls the toString(x: bool) proc
 
-(Note that ``toString`` is usually the ``$`` operator in Nimrod.)
-The compiler chooses the most appropriate proc for the ``toString`` calls. How
-this overloading resolution algorithm works exactly is not discussed here
-(it will be specified in the manual soon).
-However, it does not lead to nasty surprises and is based on a quite simple
-unification algorithm. Ambiguous calls are reported as errors.
+(Note that ``toString`` is usually the `$ <system.html#$>`_ operator in
+Nimrod.) The compiler chooses the most appropriate proc for the ``toString``
+calls. How this overloading resolution algorithm works exactly is not
+discussed here (it will be specified in the manual soon).  However, it does
+not lead to nasty surprises and is based on a quite simple unification
+algorithm. Ambiguous calls are reported as errors.
 
 
 Operators
@@ -758,7 +762,7 @@ User defined operators are allowed. Nothing stops you from defining your own
 The operator's precedence is determined by its first character. The details
 can be found in the manual.
 
-To define a new operator enclose the operator in "``":
+To define a new operator enclose the operator in backticks "``":
 
 .. code-block:: nimrod
   proc `$` (x: myDataType): string = ...
@@ -811,7 +815,8 @@ Let's return to the boring counting example:
   for i in countup(1, 10):
     echo($i)
 
-Can a ``countup`` proc be written that supports this loop? Lets try:
+Can a `countup <system.html#countup>`_ proc be written that supports this
+loop? Lets try:
 
 .. code-block:: nimrod
   proc countup(a, b: int): int =
@@ -976,24 +981,25 @@ type:
 The common operators ``+ - * /  <  <=  ==  !=  >  >=`` are defined for
 floats and follow the IEEE standard.
 
-Automatic type conversion in expressions with different kinds
-of floating point types is performed: the smaller type is
-converted to the larger. Integer types are **not** converted to floating point
-types automatically and vice versa. The ``toInt`` and ``toFloat`` procs can be
-used for these conversions.
+Automatic type conversion in expressions with different kinds of floating
+point types is performed: the smaller type is converted to the larger. Integer
+types are **not** converted to floating point types automatically and vice
+versa. The `toInt <system.html#toInt>`_ and `toFloat <system.html#toFloat>`_
+procs can be used for these conversions.
 
 
 Internal type representation
 ============================
 
-As mentioned earlier, the built-in ``$`` (stringify) operator turns any basic
-type into a string, which you can then print to the screen with the ``echo``
-proc. However, advanced types, or types you may define yourself won't work with
-the ``$`` operator until you define one for them. Sometimes you just want to
-debug the current value of a complex type without having to write its ``$``
-operator.  You can use then the ``repr`` proc which works with any type and
-even complex data graphs with cycles. The following example shows that even for
-basic types there is a difference between the ``$`` and ``repr`` outputs:
+As mentioned earlier, the built-in `$ <system.html#$>`_ (stringify) operator
+turns any basic type into a string, which you can then print to the screen
+with the ``echo`` proc. However, advanced types, or types you may define
+yourself won't work with the ``$`` operator until you define one for them.
+Sometimes you just want to debug the current value of a complex type without
+having to write its ``$`` operator.  You can use then the `repr
+<system.html#repr>`_ proc which works with any type and even complex data
+graphs with cycles. The following example shows that even for basic types
+there is a difference between the ``$`` and ``repr`` outputs:
 
 .. code-block:: nimrod
   var
@@ -1087,9 +1093,10 @@ Operation             Comment
 ``pred(x, n)``        returns the `n`'th predecessor of `x`
 -----------------     --------------------------------------------------------
 
-The ``inc dec succ pred`` operations can fail by raising an `EOutOfRange` or
-`EOverflow` exception. (If the code has been compiled with the proper runtime
-checks turned on.)
+The `inc <system.html#inc>`_, `dec <system.html#dec>`_, `succ
+<system.html#succ>`_ and `pred <system.html#pred>`_ operations can fail by
+raising an `EOutOfRange` or `EOverflow` exception. (If the code has been
+compiled with the proper runtime checks turned on.)
 
 
 Subranges
@@ -1107,12 +1114,12 @@ to 5. Assigning any other value to a variable of type ``TSubrange`` is a
 compile-time or runtime error. Assignments from the base type to one of its
 subrange types (and vice versa) are allowed.
 
-The ``system`` module defines the important ``natural`` type as
-``range[0..high(int)]`` (``high`` returns the maximal value). Other programming
-languages mandate the usage of unsigned integers for natural numbers. This is
-often **wrong**: you don't want unsigned arithmetic (which wraps around) just
-because the numbers cannot be negative. Nimrod's ``natural`` type helps to
-avoid this common programming error.
+The ``system`` module defines the important `Natural <system.html#Natural>`_
+type as ``range[0..high(int)]`` (`high <system.html#high>`_ returns the
+maximal value). Other programming languages mandate the usage of unsigned
+integers for natural numbers. This is often **wrong**: you don't want unsigned
+arithmetic (which wraps around) just because the numbers cannot be negative.
+Nimrod's ``Natural`` type helps to avoid this common programming error.
 
 
 Sets
@@ -1145,8 +1152,9 @@ checks can be disabled via pragmas or invoking the compiler with the
 Arrays are value types, like any other Nimrod type. The assignment operator
 copies the whole array contents.
 
-The built-in ``len`` proc returns the array's length. ``low(a)`` returns the
-lowest valid index for the array `a` and ``high(a)`` the highest valid index.
+The built-in `len <system.html#len,TOpenArray>`_ proc returns the array's
+length. `low(a) <system.html#low>`_ returns the lowest valid index for the
+array `a` and `high(a) <system.html#high>`_ the highest valid index.
 
 .. code-block:: nimrod
   type
@@ -1218,13 +1226,14 @@ Sequences are similar to arrays but of dynamic length which may change
 during runtime (like strings). Since sequences are resizable they are always
 allocated on the heap and garbage collected.
 
-Sequences are always indexed with an ``int`` starting at position 0.
-The ``len``, ``low`` and ``high`` operations are available for sequences too.
-The notation ``x[i]`` can be used to access the i-th element of ``x``.
+Sequences are always indexed with an ``int`` starting at position 0.  The `len
+<system.html#len,seq[T]>`_, `low <system.html#low>`_ and `high
+<system.html#high>`_ operations are available for sequences too.  The notation
+``x[i]`` can be used to access the i-th element of ``x``.
 
 Sequences can be constructed by the array constructor ``[]`` in conjunction
 with the array to sequence operator ``@``. Another way to allocate space for
-a sequence is to call the built-in ``newSeq`` procedure.
+a sequence is to call the built-in `newSeq <system.html#newSeq>`_ procedure.
 
 A sequence may be passed to an openarray parameter.
 
@@ -1245,10 +1254,11 @@ object on the heap, so there is a trade-off to be made here.
 The ``for`` statement can be used with one or two variables when used with a
 sequence. When you use the one variable form, the variable will hold the value
 provided by the sequence. The ``for`` statement is looping over the results
-from the ``items()`` iterator from the `system <system.html>`_ module.  But if
-you use the two variable form, the first variable will hold the index position
-and the second variable will hold the value. Here the ``for`` statement is
-looping over the results from the ``pairs()`` iterator from the `system
+from the `items() <system.html#items.i,seq[T]>`_ iterator from the `system
+<system.html>`_ module.  But if you use the two variable form, the first
+variable will hold the index position and the second variable will hold the
+value. Here the ``for`` statement is looping over the results from the
+`pairs() <system.html#pairs.i,seq[T]>`_ iterator from the `system
 <system.html>`_ module.  Examples:
 
 .. code-block:: nimrod
@@ -1269,12 +1279,13 @@ Open arrays
 -----------
 **Note**: Openarrays can only be used for parameters.
 
-Often fixed size arrays turn out to be too inflexible; procedures should
-be able to deal with arrays of different sizes. The `openarray`:idx: type
-allows this. Openarrays are always indexed with an ``int`` starting at
-position 0. The ``len``, ``low`` and ``high`` operations are available
-for open arrays too. Any array with a compatible base type can be passed to
-an openarray parameter, the index type does not matter.
+Often fixed size arrays turn out to be too inflexible; procedures should be
+able to deal with arrays of different sizes. The `openarray`:idx: type allows
+this. Openarrays are always indexed with an ``int`` starting at position 0.
+The `len <system.html#len,TOpenArray>`_, `low <system.html#low>`_ and `high
+<system.html#high>`_ operations are available for open arrays too.  Any array
+with a compatible base type can be passed to an openarray parameter, the index
+type does not matter.
 
 The openarray type cannot be nested: multidimensional openarrays are not
 supported because this is seldom needed and cannot be done efficiently.
@@ -1312,8 +1323,9 @@ type conversions in this context:
   # is transformed by the compiler to:
   myWriteln(stdout, [$123, $"def", $4.0])
 
-In this example ``$`` is applied to any argument that is passed to the 
-parameter ``a``. Note that ``$`` applied to strings is a nop.
+In this example `$ <system.html#$>`_ is applied to any argument that is passed
+to the parameter ``a``. Note that `$ <system.html#$>`_ applied to strings is a
+nop.
 
 
 Slices
@@ -1392,11 +1404,12 @@ having the same field types.
 
 Tuples can be *unpacked* during variable assignment (and only then!). This can
 be handy to assign directly the fields of the tuples to individually named
-variables. An example of this is the ``splitFile`` proc from the `os module
-<os.html>`_ which returns the directory, name and extension of a path at the
-same time. For tuple unpacking to work you have to use parenthesis around the
-values you want to assign the unpacking to, otherwise you will be assigning the
-same value to all the individual variables! Example:
+variables. An example of this is the `splitFile <os.html#splitFile>`_ proc
+from the `os module <os.html>`_ which returns the directory, name and
+extension of a path at the same time. For tuple unpacking to work you have to
+use parenthesis around the values you want to assign the unpacking to,
+otherwise you will be assigning the same value to all the individual
+variables! Example:
 
 .. code-block:: nimrod
 
