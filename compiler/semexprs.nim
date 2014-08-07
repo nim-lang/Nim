@@ -185,6 +185,8 @@ proc isCastable(dst, src: PType): bool =
   #  castableTypeKinds = {tyInt, tyPtr, tyRef, tyCstring, tyString, 
   #                       tySequence, tyPointer, tyNil, tyOpenArray,
   #                       tyProc, tySet, tyEnum, tyBool, tyChar}
+  if dst.kind == tyOpenArray:
+    return false
   var dstSize, srcSize: BiggestInt
 
   dstSize = computeSize(dst)
