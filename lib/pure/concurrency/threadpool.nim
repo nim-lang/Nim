@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Implements Nimrod's 'spawn'.
+## Implements Nimrod's `spawn <manual.html#spawn>`_.
 
 when not compileOption("threads"):
   {.error: "Threadpool requires --threads:on option.".}

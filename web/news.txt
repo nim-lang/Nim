@@ -9,17 +9,19 @@ News
   Changes affecting backwards compatibility
   -----------------------------------------
 
-  - ``spawn`` now uses an elaborate self-adapting thread pool and as such
-    has been moved into its own module. So to use it, you now have to import
-    ``threadpool``.
+  - `spawn <manual.html#spawn>`_ now uses an elaborate self-adapting thread pool
+    and as such has been moved into its own module. So to use it, you now have
+    to import `threadpool <threadpool.html>`_.
   - The symbol binding rules in generics changed: ``bar`` in ``foo.bar`` is
     now considered for implicit early binding.
-  - ``c2nim`` moved into its own repository and is now a Babel package.
-  - ``pas2nim`` moved into its own repository and is now a Babel package.
+  - ``c2nim`` moved into its own repository and is now a `Babel package
+    <https://github.com/nimrod-code/c2nim>`_.
+  - ``pas2nim`` moved into its own repository and is now a `Babel package
+    <https://github.com/nimrod-code/pas2nim>`_.
   - ``system.$`` for floating point types now produces a human friendly string
     representation.
   - ``uri.TUrl`` as well as the ``parseurl`` module are now deprecated in favour
-    of the new ``TUri`` type in the ``uri`` module.
+    of the new ``TUri`` type in the `uri <uri.html>`_ module.
   - The ``destructor`` pragma has been deprecated. Use the ``override`` pragma
     instead. The destructor's name has to be ``destroy`` now.
   - ``lambda`` is not a keyword anymore.
@@ -28,16 +30,18 @@ News
   ------------------
 
   - There is a new ``parallel`` statement for safe fork&join parallel computing.
-  
+
 
   Library Additions
   -----------------
 
-  - Added module ``cpuinfo``.
-  - Added module ``threadpool``.
-  - ``sequtils.distnct`` has been renamed to ``sequtils.deduplicate``.
-  - Added ``algorithm.reversed``
-  - Added ``uri.combine`` and ``uri.parseUri``.
+  - Added module `cpuinfo <cpuinfo.html>`_.
+  - Added module `threadpool <threadpool.html>`_.
+  - ``sequtils.distnct`` has been renamed to `sequtils.deduplicate
+    <sequtils.html#deduplicate>`_.
+  - Added `algorithm.reversed <algorithm.html#reversed>`_.
+  - Added `uri.combine <uri.html#combine>`_ and `uri.parseUri
+    <uri.html#parseUri>`_.
 
 2014-04-21 Version 0.9.4 released
 =================================
@@ -65,17 +69,18 @@ present in the standard library have been moved to separate repositories
 and should now be installed using Babel.
 
 Apart from that a new **experimental** Asynchronous IO API has been added via
-the ``asyncdispatch`` and ``asyncnet`` modules. The ``net`` and ``rawsockets``
-modules have also been added and they will likely replace the sockets
-module in the next release. The Asynchronous IO API has been designed to
-take advantage of Linux's epoll and Windows' IOCP APIs, support for BSD's
-kqueue has not been implemented yet but will be in the future.
+the `asyncdispatch <asyncdispatch.html>`_ and `asyncnet <asyncnet.html>`_
+modules. The `net <net.html>`_ and `rawsockets <rawsockets.html>`_ modules
+have also been added and they will likely replace the `sockets
+<sockets.html>`_ module in the next release. The Asynchronous IO API has been
+designed to take advantage of Linux's epoll and Windows' IOCP APIs, support
+for BSD's kqueue has not been implemented yet but will be in the future.
 The Asynchronous IO API provides both
 a callback interface and an interface which allows you to write code as you
-would if you were writing synchronous code. The latter is done through
-the use of an ``await`` macro which behaves similar to C#'s await. The
-following is a very simple chat server demonstrating Nimrod's new async
-capabilities.
+would if you were writing synchronous code. The latter is done through the use
+of an `await <threadpool.html#await>`_ macro which behaves similar to C#'s
+await. The following is a very simple chat server demonstrating Nimrod's new
+async capabilities.
 
 .. code-block::nimrod
   import asyncnet, asyncdispatch
@@ -104,7 +109,8 @@ capabilities.
 
 
 Note that this feature has been implemented with Nimrod's macro system and so
-``await`` and ``async`` are no keywords.
+`await <threadpool.html#await>`_ and `async <asyncdispatch.html#async>`_ are
+no keywords.
 
 Syntactic sugar for anonymous procedures has also been introduced. It too has
 been implemented as a macro. The following shows some simple usage of the new
@@ -122,18 +128,19 @@ A list of changes follows, for a comprehensive list of changes take a look
 Library Additions
 -----------------
 
-- Added ``macros.genSym`` builtin for AST generation.
-- Added ``macros.newLit`` procs for easier AST generation.
-- Added module ``logging``.
-- Added module ``asyncdispatch``.
-- Added module ``asyncnet``.
-- Added module ``net``.
-- Added module ``rawsockets``.
-- Added module ``selectors``.
-- Added module ``asynchttpserver``.
-- Added support for the new asynchronous IO in the ``httpclient`` module.
-- Added a Python-inspired ``future`` module that features upcoming additions
-  to the ``system`` module.
+- Added `macros.genSym <macros.html#genSym>`_ builtin for AST generation.
+- Added `macros.newLit <macros.html#newLit>`_ procs for easier AST generation.
+- Added module `logging <logging.html>`_.
+- Added module `asyncdispatch <asyncdispatch.html>`_.
+- Added module `asyncnet <asyncnet.html>`_.
+- Added module `net <net.html>`_.
+- Added module `rawsockets <rawsockets.html>`_.
+- Added module `selectors <selectors.html>`_.
+- Added module `asynchttpserver <asynchttpserver.html>`_.
+- Added support for the new asynchronous IO in the `httpclient
+  <httpclient.html>`_ module.
+- Added a Python-inspired `future <future.html>`_ module that features
+  upcoming additions to the `system <system.html>`_ module.
 
 
 Changes affecting backwards compatibility
@@ -145,19 +152,22 @@ Changes affecting backwards compatibility
   name but which take different parameters have been introduced. These procs now
   require an error code to be passed to them. This error code can be retrieved
   using the new ``OSLastError`` proc.
-- ``os.parentDir`` now returns "" if there is no parent dir.
+- `os.parentDir <os.html#parentDir>`_ now returns "" if there is no parent dir.
 - In CGI scripts stacktraces are shown to the user only 
-  if ``cgi.setStackTraceStdout`` is used.
+  if `cgi.setStackTraceStdout <cgi.html#setStackTraceStdout>`_ is used.
 - The symbol binding rules for clean templates changed: ``bind`` for any
   symbol that's not a parameter is now the default. ``mixin`` can be used
   to require instantiation scope for a symbol.
-- ``quoteIfContainsWhite`` now escapes argument in such way that it can be safely
-  passed to shell, instead of just adding double quotes.
-- ``macros.dumpTree`` and ``macros.dumpLisp`` have been made ``immediate``,
-  ``dumpTreeImm`` and ``dumpLispImm`` are now deprecated.
+- `quoteIfContainsWhite <strutils.html#quoteIfContainsWhite>`_ now escapes
+  argument in such way that it can be safely passed to shell, instead of just
+  adding double quotes.
+- `macros.dumpTree <macros.html#dumpTree>`_ and `macros.dumpLisp
+  <macros.html#dumpLisp>`_ have been made ``immediate``, `dumpTreeImm
+  <macros.html#dumpTreeImm>`_ and `dumpLispImm <macros.html#dumpLispImm>`_ are
+  now deprecated.
 - The ``nil`` statement has been deprecated, use an empty ``discard`` instead.
-- ``sockets.select`` now prunes sockets that are **not** ready from the list
-  of sockets given to it.
+- `sockets.select <sockets.html#select>`_ now prunes sockets that are **not**
+  ready from the list of sockets given to it.
 - The ``noStackFrame`` pragma has been renamed to ``asmNoStackFrame`` to
   ensure you only use it when you know what you're doing.
 - Many of the wrappers that were present in the standard library have been
@@ -194,8 +204,9 @@ Language Additions
   range; the range is then ``0..N-1``.
 - Added ``requiresInit`` pragma to enforce explicit initialization.
 - Exported templates are allowed to access hidden fields.
-- The ``using statement`` enables you to more easily author domain-specific
-  languages and libraries providing OOP-like syntactic sugar.
+- The `using statement <manual.html#using-statement>`_ enables you to more
+  easily author domain-specific languages and libraries providing OOP-like
+  syntactic sugar.
 - Added the possibility to override various dot operators in order to handle
   calls to missing procs and reads from undeclared fields at compile-time.
 - The overload resolution now supports ``static[T]`` params that must be
@@ -206,7 +217,8 @@ Language Additions
   of an outer proc.
 - The experimental ``strongSpaces`` parsing mode has been implemented.
 - You can annotate pointer types with regions for increased type safety.
-- Added support for the builtin ``spawn`` for easy thread pool usage.
+- Added support for the builtin `spawn <manual.html#spawn>`_ for easy thread
+  pool usage.
 
 
 Tools improvements
