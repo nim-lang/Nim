@@ -93,20 +93,27 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) =
       if s2 == nil:
         unsureAsgnRef(cast[PPointer](dest), s2)
         return
-      let x = usrToCell(s2)
-      let forw = cast[int](x.typ)
-      if (forw and 1) == 1:
-        # we stored a forwarding pointer, so let's use that:
-        let z = cast[pointer](forw and not 1)
-        unsureAsgnRef(cast[PPointer](dest), z)
+      when defined(usrToCell):
+        # unfortunately we only have cycle detection for our native GCs.
+        let x = usrToCell(s2)
+        let forw = cast[int](x.typ)
+        if (forw and 1) == 1:
+          # we stored a forwarding pointer, so let's use that:
+          let z = cast[pointer](forw and not 1)
+          unsureAsgnRef(cast[PPointer](dest), z)
+        else:
+          let realType = x.typ
+          let z = newObj(realType, realType.base.size)
+          
+          unsureAsgnRef(cast[PPointer](dest), z)
+          x.typ = cast[PNimType](cast[int](z) or 1)
+          genericDeepCopyAux(z, s2, realType.base)
+          x.typ = realType
       else:
         let realType = x.typ
-        let z = newObj(realType, realType.base.size)
-        
+        let z = newObj(realType, realType.base.size)        
         unsureAsgnRef(cast[PPointer](dest), z)
-        x.typ = cast[PNimType](cast[int](z) or 1)
-        genericDeepCopyAux(z, s2, realType.base)
-        x.typ = realType
+        genericDeepCopyAux(z, s2, realType.base)        
   of tyPtr:
     # no cycle check here, but also not really required
     if mt.base.deepCopy != nil:
