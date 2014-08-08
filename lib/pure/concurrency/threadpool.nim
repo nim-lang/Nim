@@ -9,6 +9,9 @@
 
 ## Implements Nimrod's 'spawn'.
 
+when not compileOption("threads"):
+  {.error: "Threadpool requires --threads:on option.".}
+
 import cpuinfo, cpuload, locks
 
 {.push stackTrace:off.}
