@@ -110,7 +110,7 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) =
           genericDeepCopyAux(z, s2, realType.base)
           x.typ = realType
       else:
-        let realType = x.typ
+        let realType = mt
         let z = newObj(realType, realType.base.size)        
         unsureAsgnRef(cast[PPointer](dest), z)
         genericDeepCopyAux(z, s2, realType.base)        
