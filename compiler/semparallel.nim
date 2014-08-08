@@ -462,4 +462,3 @@ proc liftParallel*(owner: PSym; n: PNode): PNode =
   result.add callCodeGenProc("openBarrier", barrier)
   result.add transformSpawn(owner, body, barrier)
   result.add callCodeGenProc("closeBarrier", barrier)
-

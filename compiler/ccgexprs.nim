@@ -1922,7 +1922,9 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         putLocIntoDest(p, d, sym.loc)
     of skTemp:
       if sym.loc.r == nil or sym.loc.t == nil:
-        internalError(n.info, "expr: temp not init " & sym.name.s)
+        #echo "FAILED FOR PRCO ", p.prc.name.s
+        #echo renderTree(p.prc.ast, {renderIds})
+        internalError(n.info, "expr: temp not init " & sym.name.s & "_" & $sym.id)
       putLocIntoDest(p, d, sym.loc)
     of skParam:
       if sym.loc.r == nil or sym.loc.t == nil:

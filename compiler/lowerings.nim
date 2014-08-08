@@ -218,7 +218,6 @@ proc addLocalVar(varSection, varInit: PNode; owner: PSym; typ: PType;
     deepCopyCall.sons[0] = newSymNode(createMagic("deepCopy", mDeepCopy))
     deepCopyCall.sons[1] = newSymNode(result)
     deepCopyCall.sons[2] = v
-    deepCopyCall.typ = typ
     varInit.add deepCopyCall
 
 discard """
@@ -257,10 +256,10 @@ proc createWrapperProc(f: PNode; threadParam, argsParam: PSym;
   var body = newNodeI(nkStmtList, f.info)
   var threadLocalBarrier: PSym
   if barrier != nil:
-    var varSection = newNodeI(nkVarSection, barrier.info)
-    threadLocalBarrier = addLocalVar(varSection, nil, argsParam.owner, 
+    var varSection2 = newNodeI(nkVarSection, barrier.info)
+    threadLocalBarrier = addLocalVar(varSection2, nil, argsParam.owner, 
                                      barrier.typ, barrier)
-    body.add varSection
+    body.add varSection2
     body.add callCodeGenProc("barrierEnter", threadLocalBarrier.newSymNode)
   var threadLocalProm: PSym
   if spawnKind == srByVar:
@@ -268,8 +267,7 @@ proc createWrapperProc(f: PNode; threadParam, argsParam: PSym;
   elif fv != nil:
     internalAssert fv.typ.kind == tyGenericInst
     threadLocalProm = addLocalVar(varSection, nil, argsParam.owner, fv.typ, fv)
-  if barrier == nil:
-    body.add varSection
+  body.add varSection
   body.add varInit
   if fv != nil and spawnKind != srByVar:
     # generate:
