@@ -925,7 +925,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkCheckedFieldExpr, nkHiddenAddr, nkHiddenDeref: 
     gsub(g, n.sons[0])
   of nkLambda:
-    putWithSpace(g, tkLambda, "proc")
+    putWithSpace(g, tkProc, "proc")
     gsub(g, n.sons[paramsPos])
     gsub(g, n.sons[pragmasPos])
     put(g, tkSpaces, Space)

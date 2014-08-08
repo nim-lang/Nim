@@ -22,6 +22,7 @@ News
     of the new ``TUri`` type in the ``uri`` module.
   - The ``destructor`` pragma has been deprecated. Use the ``override`` pragma
     instead. The destructor's name has to be ``destroy`` now.
+  - ``lambda`` is not a keyword anymore.
 
   Language Additions
   ------------------
