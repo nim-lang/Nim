@@ -23,11 +23,13 @@ features.**
 
 Pragmas
 =======
+
 Pragmas are Nimrod's method to give the compiler additional information/
-commands without introducing a massive number of new keywords. Pragmas are 
-enclosed in the special ``{.`` and ``.}`` curly dot brackets. This tutorial 
-does not cover pragmas. See the `manual <manual.html>`_ 
-or `user guide <nimrodc.html>`_ for a description of the available pragmas.
+commands without introducing a massive number of new keywords. Pragmas are
+enclosed in the special ``{.`` and ``.}`` curly dot brackets. This tutorial
+does not cover pragmas. See the `manual <manual.html#pragmas>`_ or `user guide
+<nimrodc.html#additional-features>`_ for a description of the available
+pragmas.
 
 
 Object Oriented Programming
@@ -421,9 +423,10 @@ the rest of the procedure - that is not within a ``finally`` clause -
 is not executed (if an exception occurs).
 
 If you need to *access* the actual exception object or message inside an
-``except`` branch you can use the getCurrentException() and
-getCurrentExceptionMsg() procs from the `system <system.html>`_ module.
-Example:
+``except`` branch you can use the `getCurrentException()
+<system.html#getCurrentException>`_ and `getCurrentExceptionMsg()
+<system.html#getCurrentExceptionMsg>`_ procs from the `system <system.html>`_
+module.  Example:
 
 .. code-block:: nimrod
   try:
@@ -440,39 +443,9 @@ Exception hierarchy
 
 If you want to create your own exceptions you can inherit from E_Base, but you
 can also inherit from one of the existing exceptions if they fit your purpose.
-The exception tree is::
+The exception tree is:
 
-  * E_Base
-    * EAsynch
-      * EControlC
-    * ESynch
-      * ESystem
-        * EIO
-        * EOS
-          * EInvalidLibrary
-      * EResourceExhausted
-      * EOutOfMemory
-      * EStackOverflow
-    * EArithmetic
-      * EDivByZero
-      * EOverflow
-    * EAccessViolation
-    * EAssertionFailed
-    * EInvalidValue
-      * EInvalidKey
-    * EInvalidIndex
-    * EInvalidField
-    * EOutOfRange
-    * ENoExceptionToReraise
-    * EInvalidObjectAssignment
-    * EInvalidObjectConversion
-    * EFloatingPoint
-      * EFloatInvalidOp
-      * EFloatDivByZero
-      * EFloatOverflow
-      * EFloatUnderflow
-      * EFloatInexact
-    * EDeadThread
+.. include:: exception_hierarchy_fragment.txt
 
 See the `system <system.html>`_ module for a description of each exception.
 
@@ -663,8 +636,8 @@ statement:
   declareInNewScope(b, int)
   b = 42  # does not work, `b` is unknown
 
-(The manual explains why the ``immediate`` pragma is needed for these 
-templates.)
+(The `manual explains <manual.html#ordinary-vs-immediate-templates>`_  why the
+``immediate`` pragma is needed for these templates.)
 
 If there is a ``stmt`` parameter it should be the last in the template
 declaration. The reason is that statements can be passed to a template
