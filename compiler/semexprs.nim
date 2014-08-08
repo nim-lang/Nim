@@ -185,19 +185,23 @@ proc isCastable(dst, src: PType): bool =
   #  castableTypeKinds = {tyInt, tyPtr, tyRef, tyCstring, tyString, 
   #                       tySequence, tyPointer, tyNil, tyOpenArray,
   #                       tyProc, tySet, tyEnum, tyBool, tyChar}
-  if dst.kind == tyOpenArray:
+  if skipTypes(dst, abstractInst-{tyOpenArray}).kind == tyOpenArray:
     return false
   var dstSize, srcSize: BiggestInt
 
   dstSize = computeSize(dst)
   srcSize = computeSize(src)
   if dstSize < 0: 
+    echo 'a'
     result = false
   elif srcSize < 0: 
+    echo 'b'
     result = false
   elif not typeAllowed(dst, skParam):
+    echo 'c'
     result = false
   else: 
+    echo 'd'
     result = (dstSize >= srcSize) or
         (skipTypes(dst, abstractInst).kind in IntegralTypes) or
         (skipTypes(src, abstractInst-{tyTypeDesc}).kind in IntegralTypes)
