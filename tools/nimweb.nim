@@ -21,6 +21,7 @@ type
     nimrodArgs: string
     gitCommit: string
     quotations: TTable[string, tuple[quote, author: string]]
+    numProcessors: int # Set by parallelBuild:n, only works for values > 0.
   TRssItem = object
     year, month, day, title: string
 
@@ -42,6 +43,7 @@ proc initConfigData(c: var TConfigData) =
   c.ticker = ""
   c.vars = newStringTable(modeStyleInsensitive)
   c.gitCommit = "master"
+  c.numProcessors = countProcessors()
   # Attempts to obtain the git current commit.
   let (output, code) = execCmdEx("git log -n 1 --format=%H")
   if code == 0 and output.strip.len == 40:
@@ -121,6 +123,12 @@ proc parseCmdLine(c: var TConfigData) =
         stdout.write(Version & "\n")
         quit(0)
       of "o", "output": c.outdir = val
+      of "parallelbuild":
+        try:
+          let num = parseInt(val)
+          if num != 0: c.numProcessors = num
+        except EInvalidValue:
+          quit("invalid numeric value for --parallelBuild")
       of "var":
         var idx = val.find('=')
         if idx < 0: quit("invalid command line")
@@ -187,6 +195,12 @@ proc parseIniFile(c: var TConfigData) =
           of "srcdoc": addFiles(c.srcdoc, "lib", ".nim", split(v, {';'}))
           of "srcdoc2": addFiles(c.srcdoc2, "lib", ".nim", split(v, {';'}))
           of "webdoc": addFiles(c.webdoc, "lib", ".nim", split(v, {';'}))
+          of "parallelbuild":
+            try:
+              let num = parseInt(v)
+              if num != 0: c.numProcessors = num
+            except EInvalidValue:
+              quit("invalid numeric value for --parallelBuild in config")
           else: quit(errorStr(p, "unknown variable: " & k.key))
         of "quotations":
           let vSplit = v.split('-')
@@ -215,10 +229,19 @@ proc exec(cmd: string) =
   echo(cmd)
   if os.execShellCmd(cmd) != 0: quit("external program failed")
 
-proc mexec(cmds: openarray[string]) =
+proc sexec(cmds: openarray[string]) =
+  ## Serial queue wrapper around exec.
+  for cmd in cmds: exec(cmd)
+
+proc mexec(cmds: openarray[string], processors: int) =
   ## Multiprocessor version of exec
+  if processors < 2:
+    sexec(cmds)
+    return
+
   if 0 != execProcesses(cmds, {poStdErrToStdOut, poParentStreams, poEchoCmd}):
-    quit("external program failed")
+    echo "external program failed, retrying serial work queue for logs!"
+    sexec(cmds)
 
 proc buildDocSamples(c: var TConfigData, destPath: string) =
   ## Special case documentation sample proc.
@@ -253,7 +276,7 @@ proc buildDoc(c: var TConfigData, destPath: string) =
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
 
-  mexec(commands)
+  mexec(commands, c.numProcessors)
   exec("nimrod buildIndex -o:$1/theindex.html $1" % [destPath])
 
 proc buildPdfDoc(c: var TConfigData, destPath: string) =
@@ -282,7 +305,7 @@ proc buildAddDoc(c: var TConfigData, destPath: string) =
     commands[i] = "nimrod doc $# --docSeeSrcUrl:$# -o:$# $#" %
       [c.nimrodArgs, c.gitCommit,
       destPath / changeFileExt(splitFile(doc).name, "html"), doc]
-  mexec(commands)
+  mexec(commands, c.numProcessors)
 
 proc parseNewsTitles(inputFilename: string): seq[TRssItem] =
   # parses the file for titles and returns them as TRssItem blocks.
