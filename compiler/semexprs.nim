@@ -199,6 +199,8 @@ proc isCastable(dst, src: PType): bool =
     result = (dstSize >= srcSize) or
         (skipTypes(dst, abstractInst).kind in IntegralTypes) or
         (skipTypes(src, abstractInst-{tyTypeDesc}).kind in IntegralTypes)
+  if result and src.kind == tyNil:
+    result = dst.size <= platform.ptrSize
   
 proc isSymChoice(n: PNode): bool {.inline.} =
   result = n.kind in nkSymChoices
