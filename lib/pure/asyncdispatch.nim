@@ -639,7 +639,7 @@ else:
       readCBs: seq[TCallback]
       writeCBs: seq[TCallback]
 
-    PDispatcher* = ref object
+    PDispatcher* = ref object of PDispatcherBase
       selector: PSelector
 
   proc `==`*(x, y: TAsyncFD): bool {.borrow.}
