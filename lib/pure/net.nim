@@ -361,7 +361,7 @@ proc isDisconnectionError*(flags: set[TSocketFlags],
   when useWinVersion:
     TSocketFlags.SafeDisconn in flags and
       lastError.int32 in {WSAECONNRESET, WSAECONNABORTED, WSAENETRESET,
-                          WSAEDISCON}
+                          WSAEDISCON, ERROR_NETNAME_DELETED}
   else:
     TSocketFlags.SafeDisconn in flags and
       lastError.int32 in {ECONNRESET, EPIPE, ENETRESET} 

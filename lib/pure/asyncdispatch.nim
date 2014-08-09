@@ -41,7 +41,8 @@ type
     cb: proc () {.closure,gcsafe.}
     finished: bool
     error*: ref EBase
-    when defined(debug):
+    errorStackTrace*: string
+    when not defined(release):
       stackTrace: string ## For debugging purposes only.
       id: int
       fromProc: string
@@ -57,14 +58,14 @@ proc newFuture*[T](fromProc: string = "unspecified"): PFuture[T] =
   ## that this future belongs to, is a good habit as it helps with debugging.
   new(result)
   result.finished = false
-  when defined(debug):
+  when not defined(release):
     result.stackTrace = getStackTrace()
     result.id = currentID
     result.fromProc = fromProc
     currentID.inc()
 
 proc checkFinished[T](future: PFuture[T]) =
-  when defined(debug):
+  when not defined(release):
     if future.finished:
       echo("<-----> ", future.id, " ", future.fromProc)
       echo(future.stackTrace)
@@ -101,6 +102,8 @@ proc fail*[T](future: PFuture[T], error: ref EBase) =
   checkFinished(future)
   future.finished = true
   future.error = error
+  future.errorStackTrace =
+    if getStackTrace(error) == "": getStackTrace() else: getStackTrace(error)
   if future.cb != nil:
     future.cb()
   else:
@@ -128,6 +131,15 @@ proc `callback=`*[T](future: PFuture[T],
   ## If future has already completed then ``cb`` will be called immediately.
   future.callback = proc () = cb(future)
 
+proc echoOriginalStackTrace[T](future: PFuture[T]) =
+  # TODO: Come up with something better.
+  when not defined(release):
+    echo("Original stack trace in ", future.fromProc, ":")
+    if not future.errorStackTrace.isNil() and future.errorStackTrace != "":
+      echo(future.errorStackTrace)
+    else:
+      echo("Empty or nil stack trace.")
+
 proc read*[T](future: PFuture[T]): T =
   ## Retrieves the value of ``future``. Future must be finished otherwise
   ## this function will fail with a ``EInvalidValue`` exception.
@@ -135,6 +147,7 @@ proc read*[T](future: PFuture[T]): T =
   ## If the result of the future is an error then that error will be raised.
   if future.finished:
     if future.error != nil:
+      echoOriginalStackTrace(future)
       raise future.error
     when T isnot void:
       return future.value
@@ -165,6 +178,7 @@ proc asyncCheck*[T](future: PFuture[T]) =
   future.callback =
     proc () =
       if future.failed:
+        echoOriginalStackTrace(future)
         raise future.error
 
 type
@@ -438,7 +452,10 @@ when defined(windows) or defined(nimdoc):
               copyMem(addr data[0], addr dataBuf.buf[0], bytesCount)
               retFuture.complete($data)
           else:
-            retFuture.fail(newException(EOS, osErrorMsg(errcode)))
+            if flags.isDisconnectionError(errcode):
+              retFuture.complete("")
+            else:
+              retFuture.fail(newException(EOS, osErrorMsg(errcode)))
         if dataBuf.buf != nil:
           dealloc dataBuf.buf
           dataBuf.buf = nil
