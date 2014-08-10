@@ -36,9 +36,9 @@
 ##       let client = await server.accept()
 ##       clients.add client
 ##
-##       processClient(client)
+##       asyncCheck processClient(client)
 ##
-##   serve()
+##   asyncCheck serve()
 ##   runForever()
 ##
 ##
