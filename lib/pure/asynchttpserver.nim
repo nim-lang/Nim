@@ -199,6 +199,8 @@ proc serve*(server: PAsyncHttpServer, port: TPort,
     #var (address, client) = await server.socket.acceptAddr()
     var fut = await server.socket.acceptAddr()
     asyncCheck processClient(fut.client, fut.address, callback)
+    #echo(f.isNil)
+    #echo(f.repr)
 
 proc close*(server: PAsyncHttpServer) =
   ## Terminates the async http server instance.

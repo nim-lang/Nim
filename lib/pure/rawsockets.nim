@@ -22,7 +22,7 @@ const useWinVersion = defined(Windows) or defined(nimdoc)
 when useWinVersion:
   import winlean
   export WSAEWOULDBLOCK, WSAECONNRESET, WSAECONNABORTED, WSAENETRESET,
-         WSAEDISCON
+         WSAEDISCON, ERROR_NETNAME_DELETED
 else:
   import posix
   export fcntl, F_GETFL, O_NONBLOCK, F_SETFL, EAGAIN, EWOULDBLOCK, MSG_NOSIGNAL,

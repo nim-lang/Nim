@@ -140,7 +140,7 @@ proc acceptAddr*(socket: PAsyncSocket):
   ## Accepts a new connection. Returns a future containing the client socket
   ## corresponding to that connection and the remote address of the client.
   ## The future will complete when the connection is successfully accepted.
-  var retFuture = newFuture[tuple[address: string, client: PAsyncSocket]]()
+  var retFuture = newFuture[tuple[address: string, client: PAsyncSocket]]("asyncnet.acceptAddr")
   var fut = acceptAddr(socket.fd.TAsyncFD)
   fut.callback =
     proc (future: PFuture[tuple[address: string, client: TAsyncFD]]) =
@@ -157,7 +157,7 @@ proc accept*(socket: PAsyncSocket): PFuture[PAsyncSocket] =
   ## Accepts a new connection. Returns a future containing the client socket
   ## corresponding to that connection.
   ## The future will complete when the connection is successfully accepted.
-  var retFut = newFuture[PAsyncSocket]()
+  var retFut = newFuture[PAsyncSocket]("asyncnet.accept")
   var fut = acceptAddr(socket)
   fut.callback =
     proc (future: PFuture[tuple[address: string, client: PAsyncSocket]]) =
