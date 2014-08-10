@@ -192,16 +192,12 @@ proc isCastable(dst, src: PType): bool =
   dstSize = computeSize(dst)
   srcSize = computeSize(src)
   if dstSize < 0: 
-    echo 'a'
     result = false
-  elif srcSize < 0: 
-    echo 'b'
+  elif srcSize < 0:
     result = false
   elif not typeAllowed(dst, skParam):
-    echo 'c'
     result = false
   else: 
-    echo 'd'
     result = (dstSize >= srcSize) or
         (skipTypes(dst, abstractInst).kind in IntegralTypes) or
         (skipTypes(src, abstractInst-{tyTypeDesc}).kind in IntegralTypes)
