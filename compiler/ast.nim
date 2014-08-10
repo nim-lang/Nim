@@ -1313,6 +1313,10 @@ proc newSons(father: PNode, length: int) =
     setLen(father.sons, length)
 
 proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
+  ## Used throughout the compiler code to test whether a type tree contains or
+  ## doesn't contain a specific type/types - it is often the case that only the
+  ## last child nodes of a type tree need to be searched. This is a really hot
+  ## path within the compiler!
   result = t
   while result.kind in kinds: result = lastSon(result)
 
