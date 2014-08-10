@@ -23,7 +23,7 @@
 
 import
   ast, astalgo, idents, lowerings, magicsys, guards, sempass2, msgs,
-  renderer
+  renderer, types
 from trees import getMagic
 from strutils import `%`
 
@@ -406,12 +406,17 @@ proc transformSpawn(owner: PSym; n, barrier: PNode): PNode =
         if result.isNil:
           result = newNodeI(nkStmtList, n.info)
           result.add n
-        result.add wrapProcForSpawn(owner, m, b.typ, barrier, it[0])
-        it.sons[it.len-1] = emptyNode
+        let t = b[1][0].typ.sons[0]
+        if spawnResult(t, true) == srByVar:
+          result.add wrapProcForSpawn(owner, m, b.typ, barrier, it[0])
+          it.sons[it.len-1] = emptyNode
+        else:
+          it.sons[it.len-1] = wrapProcForSpawn(owner, m, b.typ, barrier, nil)
     if result.isNil: result = n
   of nkAsgn, nkFastAsgn:
     let b = n[1]
-    if getMagic(b) == mSpawn:
+    if getMagic(b) == mSpawn and (let t = b[1][0].typ.sons[0];
+        spawnResult(t, true) == srByVar):
       let m = transformSlices(b)
       return wrapProcForSpawn(owner, m, b.typ, barrier, n[0])
     result = transformSpawnSons(owner, n, barrier)

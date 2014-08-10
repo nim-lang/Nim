@@ -185,14 +185,14 @@ proc callProc(a: PNode): PNode =
 # - a proc returning non GC'ed memory --> pass as hidden 'var' parameter
 # - not in a parallel environment --> requires a flowVar for memory safety
 type
-  TSpawnResult = enum
+  TSpawnResult* = enum
     srVoid, srFlowVar, srByVar
   TFlowVarKind = enum
     fvInvalid # invalid type T for 'FlowVar[T]'
     fvGC      # FlowVar of a GC'ed type
     fvBlob    # FlowVar of a blob type
 
-proc spawnResult(t: PType; inParallel: bool): TSpawnResult =
+proc spawnResult*(t: PType; inParallel: bool): TSpawnResult =
   if t.isEmptyType: srVoid
   elif inParallel and not containsGarbageCollectedRef(t): srByVar
   else: srFlowVar

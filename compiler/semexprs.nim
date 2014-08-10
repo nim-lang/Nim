@@ -1643,10 +1643,10 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     result = setMs(n, s)
     result.sons[1] = semExpr(c, n.sons[1])
     if not result[1].typ.isEmptyType:
-      if c.inParallelStmt > 0:
-        result.typ = result[1].typ
-      else:
+      if spawnResult(result[1].typ, c.inParallelStmt > 0) == srFlowVar:
         result.typ = createFlowVar(c, result[1].typ, n.info)
+      else:
+        result.typ = result[1].typ
       result.add instantiateCreateFlowVarCall(c, result[1].typ, n.info).newSymNode
   else: result = semDirectOp(c, n, flags)
 
