@@ -365,8 +365,9 @@ when defined(windows):
     template getFilename(f: expr): expr = $f.cFilename
 
   proc skipFindData(f: TWIN32_FIND_DATA): bool {.inline.} =
+    # Note - takes advantage of null delimiter in the cstring
     const dot = ord('.')
-    result = f.cFileName[0].int == dot and(f.cFileName[1].int == 0 or
+    result = f.cFileName[0].int == dot and (f.cFileName[1].int == 0 or
              f.cFileName[1].int == dot and f.cFileName[2].int == 0)
 
 proc existsFile*(filename: string): bool {.rtl, extern: "nos$1",
@@ -1997,19 +1998,24 @@ proc getFileInfo*(path: string, followSymlink = true): FileInfo =
 
 proc isHidden*(path: string): bool =
   ## Determines whether a given path is hidden or not. Returns false if the
-  ## file doesn't exist. On Windows, a file is hidden if the file's 'hidden'
-  ## attribute is set. On Unix-like systems, a file is hidden if it starts
-  ## with a '.' ."
+  ## file doesn't exist. The given path must be accessible from the current
+  ## working directory of the program.
+  ## 
+  ## On Windows, a file is hidden if the file's 'hidden' attribute is set.
+  ## On Unix-like systems, a file is hidden if it starts with a '.' (period)
+  ## and is not *just* '.' or '..' ' ."
   when defined(Windows):
     wrapUnary(attributes, getFileAttributesW, path)
     if attributes != -1'i32:
       result = (attributes and FILE_ATTRIBUTE_HIDDEN) != 0'i32
-    else:
-      result = false
   else:
     if fileExists(path):
-      result = (path[0] == '.')
-    else:
-      result = false
+      let
+        fileName = extractFilename(path)
+        nameLen = len(fileName)
+      if nameLen == 2:
+        result = (fileName[0] == '.') and (fileName[1] != '.')
+      elif nameLen > 2:
+        result = (fileName[0] == '.') and (fileName[3] != '.')
 
 {.pop.}
