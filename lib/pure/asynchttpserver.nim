@@ -11,14 +11,14 @@
 ##
 ## **Note:** This module is still largely experimental.
 
-import strtabs, asyncnet, asyncdispatch, parseutils, parseurl, strutils
+import strtabs, asyncnet, asyncdispatch, parseutils, uri, strutils
 type
   TRequest* = object
     client*: PAsyncSocket # TODO: Separate this into a Response object?
     reqMethod*: string
     headers*: PStringTable
     protocol*: tuple[orig: string, major, minor: int]
-    url*: TURL
+    url*: TUri
     hostname*: string ## The hostname of the client that made the request.
     body*: string
 
@@ -135,7 +135,7 @@ proc processClient(client: PAsyncSocket, address: string,
       request.headers[kv.key] = kv.value
 
     request.reqMethod = reqMethod
-    request.url = parseUrl(path)
+    request.url = parseUri(path)
     try:
       request.protocol = protocol.parseProtocol()
     except EInvalidValue:
