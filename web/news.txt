@@ -38,6 +38,8 @@ News
   - ``sequtils.distnct`` has been renamed to ``sequtils.deduplicate``.
   - Added ``algorithm.reversed``
   - Added ``uri.combine`` and ``uri.parseUri``.
+  - Some sockets procedures now support a ``SafeDisconn`` flag which causes 
+    them to handle disconnection errors and not raise them.
 
 2014-04-21 Version 0.9.4 released
 =================================

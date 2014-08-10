@@ -135,13 +135,13 @@ proc send*(socket: PAsyncSocket, data: string,
   assert socket != nil
   result = send(socket.fd.TAsyncFD, data, flags)
 
-proc acceptAddr*(socket: PAsyncSocket): 
+proc acceptAddr*(socket: PAsyncSocket, flags = {TSocketFlags.SafeDisconn}):
       PFuture[tuple[address: string, client: PAsyncSocket]] =
   ## Accepts a new connection. Returns a future containing the client socket
   ## corresponding to that connection and the remote address of the client.
   ## The future will complete when the connection is successfully accepted.
   var retFuture = newFuture[tuple[address: string, client: PAsyncSocket]]("asyncnet.acceptAddr")
-  var fut = acceptAddr(socket.fd.TAsyncFD)
+  var fut = acceptAddr(socket.fd.TAsyncFD, flags)
   fut.callback =
     proc (future: PFuture[tuple[address: string, client: TAsyncFD]]) =
       assert future.finished
@@ -153,12 +153,13 @@ proc acceptAddr*(socket: PAsyncSocket):
         retFuture.complete(resultTup)
   return retFuture
 
-proc accept*(socket: PAsyncSocket): PFuture[PAsyncSocket] =
+proc accept*(socket: PAsyncSocket,
+    flags = {TSocketFlags.SafeDisconn}): PFuture[PAsyncSocket] =
   ## Accepts a new connection. Returns a future containing the client socket
   ## corresponding to that connection.
   ## The future will complete when the connection is successfully accepted.
   var retFut = newFuture[PAsyncSocket]("asyncnet.accept")
-  var fut = acceptAddr(socket)
+  var fut = acceptAddr(socket, flags)
   fut.callback =
     proc (future: PFuture[tuple[address: string, client: PAsyncSocket]]) =
       assert future.finished

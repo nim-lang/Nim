@@ -569,8 +569,8 @@ proc bindAddr*(socket: PSocket, port = TPort(0), address = "") {.
       osError(osLastError())
     dealloc(aiList)
 
-proc acceptAddr*(server: PSocket, client: var PSocket, address: var string) {.
-  tags: [FReadIO].} =
+proc acceptAddr*(server: PSocket, client: var PSocket, address: var string,
+                 flags = {TSocketFlags.SafeDisconn}) {.tags: [FReadIO].} =
   ## Blocks until a connection is being made from a client. When a connection
   ## is made sets ``client`` to the client socket and ``address`` to the address
   ## of the connecting client.
@@ -581,6 +581,11 @@ proc acceptAddr*(server: PSocket, client: var PSocket, address: var string) {.
   ##
   ## **Note**: ``client`` must be initialised (with ``new``), this function 
   ## makes no effort to initialise the ``client`` variable.
+  ##
+  ## The ``accept`` call may result in an error if the connecting socket
+  ## disconnects during the duration of the ``accept``. If the ``SafeDisconn``
+  ## flag is specified then this error will not be raised and instead
+  ## accept will be called again.
   assert(client != nil)
   var sockAddress: Tsockaddr_in
   var addrLen = sizeof(sockAddress).TSocklen
@@ -589,6 +594,8 @@ proc acceptAddr*(server: PSocket, client: var PSocket, address: var string) {.
   
   if sock == osInvalidSocket:
     let err = osLastError()
+    if flags.isDisconnectionError(err):
+      acceptAddr(server, client, address, flags)
     osError(err)
   else:
     client.fd = sock
@@ -658,15 +665,20 @@ when false: #defined(ssl):
       acceptAddrPlain(AcceptNoClient, AcceptSuccess):
         doHandshake()
 
-proc accept*(server: PSocket, client: var PSocket) {.tags: [FReadIO].} =
+proc accept*(server: PSocket, client: var PSocket,
+             flags = {TSocketFlags.SafeDisconn}) {.tags: [FReadIO].} =
   ## Equivalent to ``acceptAddr`` but doesn't return the address, only the
   ## socket.
   ## 
   ## **Note**: ``client`` must be initialised (with ``new``), this function
   ## makes no effort to initialise the ``client`` variable.
-  
+  ##
+  ## The ``accept`` call may result in an error if the connecting socket
+  ## disconnects during the duration of the ``accept``. If the ``SafeDisconn``
+  ## flag is specified then this error will not be raised and instead
+  ## accept will be called again.
   var addrDummy = ""
-  acceptAddr(server, client, addrDummy)
+  acceptAddr(server, client, addrDummy, flags)
 
 proc close*(socket: PSocket) =
   ## Closes a socket.
