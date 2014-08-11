@@ -1768,8 +1768,9 @@ proc checkPar(n: PNode): TParKind =
   var length = sonsLen(n)
   if length == 0: 
     result = paTuplePositions # ()
-  elif length == 1: 
-    result = paSingle         # (expr)
+  elif length == 1:
+    if n.sons[0].kind == nkExprColonExpr: result = paTupleFields
+    else: result = paSingle         # (expr)
   else:
     if n.sons[0].kind == nkExprColonExpr: result = paTupleFields
     else: result = paTuplePositions
