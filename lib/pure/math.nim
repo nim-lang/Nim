@@ -219,7 +219,7 @@ when not defined(JS):
 
   proc randomize(seed: int) =
     srand(cint(seed))
-    when defined(srand48): srand48(seed)
+    when declared(srand48): srand48(seed)
   proc random(max: int): int =
     result = int(rand()) mod max
 

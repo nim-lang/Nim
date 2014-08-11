@@ -643,7 +643,7 @@ elif not defined(useNimRtl):
     data.workingDir = workingDir
 
 
-    when defined(posix_spawn) and not defined(useFork) and 
+    when declared(posix_spawn) and not defined(useFork) and 
         not defined(useClone) and not defined(linux):
       pid = startProcessAuxSpawn(data)
     else:

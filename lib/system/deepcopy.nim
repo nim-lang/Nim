@@ -93,7 +93,7 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) =
       if s2 == nil:
         unsureAsgnRef(cast[PPointer](dest), s2)
         return
-      when defined(usrToCell):
+      when declared(usrToCell):
         # unfortunately we only have cycle detection for our native GCs.
         let x = usrToCell(s2)
         let forw = cast[int](x.typ)

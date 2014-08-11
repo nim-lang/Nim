@@ -32,7 +32,7 @@ proc eqStrings(a, b: NimString): bool {.inline, compilerProc.} =
   return a.len == b.len and
     c_memcmp(a.data, b.data, a.len * sizeof(char)) == 0'i32
 
-when defined(allocAtomic):
+when declared(allocAtomic):
   template allocStr(size: expr): expr =
     cast[NimString](allocAtomic(size))
 else:
@@ -85,7 +85,7 @@ proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
   if src != nil:
     var s = src.space
     if s < 8: s = 7
-    when defined(newObjRC1):
+    when declared(newObjRC1):
       result = cast[NimString](newObjRC1(addr(strDesc), sizeof(TGenericSeq) +
                                s+1))
     else:

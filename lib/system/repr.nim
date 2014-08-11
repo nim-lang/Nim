@@ -121,7 +121,7 @@ proc reprSet(p: pointer, typ: PNimType): string {.compilerRtl.} =
 type
   TReprClosure {.final.} = object # we cannot use a global variable here
                                   # as this wouldn't be thread-safe
-    when defined(TCellSet):
+    when declared(TCellSet):
       marked: TCellSet
     recdepth: int       # do not recurse endlessly
     indent: int         # indentation
@@ -130,16 +130,16 @@ when not defined(useNimRtl):
   proc initReprClosure(cl: var TReprClosure) =
     # Important: cellsets does not lock the heap when doing allocations! We
     # have to do it here ...
-    when hasThreadSupport and hasSharedHeap and defined(heapLock):
+    when hasThreadSupport and hasSharedHeap and declared(heapLock):
       AcquireSys(HeapLock)
-    when defined(TCellSet):
+    when declared(TCellSet):
       init(cl.marked)
     cl.recdepth = -1      # default is to display everything!
     cl.indent = 0
 
   proc deinitReprClosure(cl: var TReprClosure) =
-    when defined(TCellSet): deinit(cl.marked)
-    when hasThreadSupport and hasSharedHeap and defined(heapLock): 
+    when declared(TCellSet): deinit(cl.marked)
+    when hasThreadSupport and hasSharedHeap and declared(heapLock): 
       ReleaseSys(HeapLock)
 
   proc reprBreak(result: var string, cl: TReprClosure) =
@@ -201,7 +201,7 @@ when not defined(useNimRtl):
   proc reprRef(result: var string, p: pointer, typ: PNimType,
                cl: var TReprClosure) =
     # we know that p is not nil here:
-    when defined(TCellSet):
+    when declared(TCellSet):
       when defined(boehmGC) or defined(nogc):
         var cell = cast[PCell](p)
       else:

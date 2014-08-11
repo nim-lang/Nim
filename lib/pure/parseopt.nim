@@ -37,7 +37,7 @@ type
                               ## or the argument, ``value`` is not "" if
                               ## the option was given a value
 
-when defined(os.paramCount):
+when declared(os.paramCount):
   # we cannot provide this for NimRtl creation on Posix, because we can't 
   # access the command line arguments then!
 
@@ -127,7 +127,7 @@ proc cmdLineRest*(p: TOptParser): TaintedString {.
   ## retrieves the rest of the command line that has not been parsed yet.
   result = strip(substr(p.cmd, p.pos, len(p.cmd) - 1)).TaintedString
 
-when defined(initOptParser):
+when declared(initOptParser):
 
   iterator getopt*(): tuple[kind: TCmdLineKind, key, val: TaintedString] =
     ## This is an convenience iterator for iterating over the command line.

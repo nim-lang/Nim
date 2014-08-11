@@ -87,9 +87,7 @@ proc bailOut(c: PCtx; tos: PStackFrame) =
 when not defined(nimComputedGoto):
   {.pragma: computedGoto.}
 
-proc myreset(n: var TFullReg) =
-  when defined(system.reset): 
-    reset(n)
+proc myreset(n: var TFullReg) = reset(n)
 
 template ensureKind(k: expr) {.immediate, dirty.} =
   if regs[ra].kind != k:

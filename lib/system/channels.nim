@@ -14,7 +14,7 @@
 ## **Note:** The current implementation of message passing is slow and does
 ## not work with cyclic data structures.
   
-when not defined(NimString): 
+when not declared(NimString):
   {.error: "You must not import this module explicitly".}
 
 type

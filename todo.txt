@@ -8,7 +8,7 @@ version 0.9.6
 Concurrency
 -----------
 
-- 'gcsafe' inferrence needs to be fixed
+- 'gcsafe' inference needs to be fixed
 - 'deepCopy' needs to be instantiated for
   generics *when the type is constructed*
 - test 'deepCopy'

@@ -26,7 +26,7 @@ const
   withThreads = compileOption("threads")
   tickCountCorrection = 50_000
 
-when not defined(system.TStackTrace):
+when not declared(system.TStackTrace):
   type TStackTrace = array [0..20, cstring]
 
 # We use a simple hash table of bounded size to keep track of the stack traces:
@@ -146,7 +146,7 @@ proc `//`(a, b: int): string =
   result = format("$1/$2 = $3%", a, b, formatFloat(a / b * 100.0, ffDefault, 2))
 
 proc writeProfile() {.noconv.} =
-  when defined(system.TStackTrace):
+  when declared(system.TStackTrace):
     system.profilerHook = nil
   const filename = "profile_results.txt"
   echo "writing " & filename & "..."
@@ -189,16 +189,16 @@ var
   disabled: int
 
 proc disableProfiling*() =
-  when defined(system.TStackTrace):
+  when declared(system.TStackTrace):
     atomicDec disabled
     system.profilerHook = nil
 
 proc enableProfiling*() =
-  when defined(system.TStackTrace):
+  when declared(system.TStackTrace):
     if atomicInc(disabled) >= 0:
       system.profilerHook = hook
 
-when defined(system.TStackTrace):
+when declared(system.TStackTrace):
   system.profilerHook = hook
   addQuitProc(writeProfile)
 

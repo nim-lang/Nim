@@ -102,7 +102,7 @@ proc newAny(value: pointer, rawType: PNimType): TAny =
   result.value = value
   result.rawType = rawType
 
-when defined(system.TVarSlot):
+when declared(system.TVarSlot):
   proc toAny*(x: TVarSlot): TAny {.inline.} =
     ## constructs a ``TAny`` object from a variable slot ``x``. 
     ## This captures `x`'s address, so `x` can be modified with its

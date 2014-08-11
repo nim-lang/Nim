@@ -997,7 +997,7 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
   if c_rename(source, dest) != 0'i32:
     raise newException(EOS, $strerror(errno))
 
-when not defined(ENOENT) and not defined(Windows):
+when not declared(ENOENT) and not defined(Windows):
   when NoFakeVars:
     const ENOENT = cint(2) # 2 on most systems including Solaris
   else:
@@ -1615,11 +1615,11 @@ when defined(nimdoc):
     ##
     ## **Availability**: On Posix there is no portable way to get the command
     ## line from a DLL and thus the proc isn't defined in this environment. You
-    ## can test for its availability with `defined() <system.html#defined>`_.
+    ## can test for its availability with `declared() <system.html#declared>`_.
     ## Example:
     ##
     ## .. code-block:: nimrod
-    ##   when defined(paramCount):
+    ##   when declared(paramCount):
     ##     # Use paramCount() here
     ##   else:
     ##     # Do something else!
@@ -1638,11 +1638,11 @@ when defined(nimdoc):
     ##
     ## **Availability**: On Posix there is no portable way to get the command
     ## line from a DLL and thus the proc isn't defined in this environment. You
-    ## can test for its availability with `defined() <system.html#defined>`_.
+    ## can test for its availability with `declared() <system.html#declared>`_.
     ## Example:
     ##
     ## .. code-block:: nimrod
-    ##   when defined(paramStr):
+    ##   when declared(paramStr):
     ##     # Use paramStr() here
     ##   else:
     ##     # Do something else!
@@ -1682,7 +1682,7 @@ elif not defined(createNimRtl):
     # Docstring in nimdoc block.
     result = cmdCount-1
 
-when defined(paramCount) or defined(nimdoc):
+when declared(paramCount) or defined(nimdoc):
   proc commandLineParams*(): seq[TaintedString] =
     ## Convenience proc which returns the command line parameters.
     ##
@@ -1691,11 +1691,11 @@ when defined(paramCount) or defined(nimdoc):
     ##
     ## **Availability**: On Posix there is no portable way to get the command
     ## line from a DLL and thus the proc isn't defined in this environment. You
-    ## can test for its availability with `defined() <system.html#defined>`_.
+    ## can test for its availability with `declared() <system.html#declared>`_.
     ## Example:
     ##
     ## .. code-block:: nimrod
-    ##   when defined(commandLineParams):
+    ##   when declared(commandLineParams):
     ##     # Use commandLineParams() here
     ##   else:
     ##     # Do something else!
@@ -1714,7 +1714,7 @@ when defined(linux) or defined(solaris) or defined(bsd) or defined(aix):
 
 when not (defined(windows) or defined(macosx)):
   proc getApplHeuristic(): string =
-    when defined(paramStr):
+    when declared(paramStr):
       result = string(paramStr(0))
       # POSIX guaranties that this contains the executable
       # as it has been executed by the calling process

@@ -23,6 +23,9 @@ News
   - The ``destructor`` pragma has been deprecated. Use the ``override`` pragma
     instead. The destructor's name has to be ``destroy`` now.
   - ``lambda`` is not a keyword anymore.
+  - **system.defined has been split into system.defined and system.declared**.
+    You have to use ``--symbol`` to declare new conditional symbols that can be
+    set via ``--define``.
 
   Language Additions
   ------------------
@@ -38,6 +41,7 @@ News
   - ``sequtils.distnct`` has been renamed to ``sequtils.deduplicate``.
   - Added ``algorithm.reversed``
   - Added ``uri.combine`` and ``uri.parseUri``.
+
 
 2014-04-21 Version 0.9.4 released
 =================================

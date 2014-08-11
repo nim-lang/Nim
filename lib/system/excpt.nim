@@ -307,7 +307,7 @@ when not defined(noSignalHandler):
         action("SIGBUS: Illegal storage access. (Attempt to read from nil?)\n")
       else:
         block platformSpecificSignal:
-          when defined(SIGPIPE):
+          when declared(SIGPIPE):
             if s == SIGPIPE:
               action("SIGPIPE: Pipe closed.\n")
               break platformSpecificSignal
@@ -336,7 +336,7 @@ when not defined(noSignalHandler):
     c_signal(SIGFPE, signalHandler)
     c_signal(SIGILL, signalHandler)
     c_signal(SIGBUS, signalHandler)
-    when defined(SIGPIPE):
+    when declared(SIGPIPE):
       c_signal(SIGPIPE, signalHandler)
 
   registerSignalHandler() # call it in initialization section

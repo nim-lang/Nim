@@ -315,6 +315,9 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   of "undef", "u": 
     expectArg(switch, arg, pass, info)
     undefSymbol(arg)
+  of "symbol":
+    expectArg(switch, arg, pass, info)
+    declareSymbol(arg)  
   of "compile": 
     expectArg(switch, arg, pass, info)
     if pass in {passCmd2, passPP}: processCompile(arg)

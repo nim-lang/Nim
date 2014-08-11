@@ -98,16 +98,8 @@ type
 
 proc defined*(x: expr): bool {.magic: "Defined", noSideEffect.}
   ## Special compile-time procedure that checks whether `x` is
-  ## defined. `x` has to be an identifier or a qualified identifier.
-  ## This can be used to check whether a library provides a certain
-  ## feature or not:
-  ##
-  ## .. code-block:: Nimrod
-  ##   when not defined(strutils.toUpper):
-  ##     # provide our own toUpper proc here, because strutils is
-  ##     # missing it.
-  ##
-  ## You can also check external symbols introduced through the compiler's
+  ## defined.
+  ## `x` is an external symbol introduced through the compiler's
   ## `-d:x switch <nimrodc.html#compile-time-symbols>`_ to enable build time
   ## conditionals:
   ##
@@ -116,13 +108,28 @@ proc defined*(x: expr): bool {.magic: "Defined", noSideEffect.}
   ##     # Do here programmer friendly expensive sanity checks.
   ##   # Put here the normal code
 
+proc declared*(x: expr): bool {.magic: "Defined", noSideEffect.}
+  ## Special compile-time procedure that checks whether `x` is
+  ## declared. `x` has to be an identifier or a qualified identifier.
+  ## This can be used to check whether a library provides a certain
+  ## feature or not:
+  ##
+  ## .. code-block:: Nimrod
+  ##   when not defined(strutils.toUpper):
+  ##     # provide our own toUpper proc here, because strutils is
+  ##     # missing it.
+
 when defined(useNimRtl):
   {.deadCodeElim: on.}
 
 proc definedInScope*(x: expr): bool {.
-  magic: "DefinedInScope", noSideEffect.}
+  magic: "DefinedInScope", noSideEffect, deprecated.}
+  ## **Deprecated since version 0.9.6**: Use ``declaredInScope`` instead.
+
+proc declaredInScope*(x: expr): bool {.
+  magic: "DefinedInScope", noSideEffect, deprecated.}
   ## Special compile-time procedure that checks whether `x` is
-  ## defined in the current scope. `x` has to be an identifier.
+  ## declared in the current scope. `x` has to be an identifier.
 
 proc `not` *(x: bool): bool {.magic: "Not", noSideEffect.}
   ## Boolean not; returns true iff ``x == false``.
@@ -2118,7 +2125,7 @@ template newException*(exceptn: typedesc, message: string): expr =
 when hostOS == "standalone":
   include panicoverride
 
-when not defined(sysFatal):
+when not declared(sysFatal):
   template sysFatal(exceptn: typedesc, message: string) =
     when hostOS == "standalone":
       panic(message)
@@ -2170,7 +2177,7 @@ when not defined(JS): #and not defined(NimrodVM):
       # WARNING: This is very fragile! An array size of 8 does not work on my
       # Linux 64bit system. -- That's because the stack direction is the other
       # way round.
-      when defined(setStackBottom):
+      when declared(setStackBottom):
         var locals {.volatile.}: pointer
         locals = addr(locals)
         setStackBottom(locals)
@@ -2443,7 +2450,7 @@ when not defined(JS): #and not defined(NimrodVM):
       hasRaiseAction: bool
       raiseAction: proc (e: ref E_Base): bool {.closure.}
   
-  when defined(initAllocator):
+  when declared(initAllocator):
     initAllocator()
   when hasThreadSupport:
     include "system/syslocks"
@@ -3016,7 +3023,7 @@ proc compiles*(x): bool {.magic: "Compiles", noSideEffect.} =
   ##     echo "'+' for integers is available"
   discard
 
-when defined(initDebugger):
+when declared(initDebugger):
   initDebugger()
 
 when hostOS != "standalone":

@@ -39,7 +39,7 @@
 ##    createThread(thr[i], threadFunc, (i*10, i*10+5))
 ##  joinThreads(thr)
   
-when not defined(NimString): 
+when not declared(NimString): 
   {.error: "You must not import this module explicitly".}
 
 const
@@ -267,7 +267,7 @@ when not defined(boehmgc) and not hasSharedHeap:
   proc deallocOsPages()
 
 template threadProcWrapperBody(closure: expr) {.immediate.} =
-  when defined(globalsSlot): ThreadVarSetValue(globalsSlot, closure)
+  when declared(globalsSlot): ThreadVarSetValue(globalsSlot, closure)
   var t = cast[ptr TThread[TArg]](closure)
   when useStackMaskHack:
     var tls: TThreadLocalStorage
@@ -275,13 +275,13 @@ template threadProcWrapperBody(closure: expr) {.immediate.} =
     # init the GC for this thread:
     setStackBottom(addr(t))
     initGC()
-  when defined(registerThread):
+  when declared(registerThread):
     t.stackBottom = addr(t)
     registerThread(t)
   when TArg is void: t.dataFn()
   else: t.dataFn(t.data)
-  when defined(registerThread): unregisterThread(t)
-  when defined(deallocOsPages): deallocOsPages()
+  when declared(registerThread): unregisterThread(t)
+  when declared(deallocOsPages): deallocOsPages()
   # Since an unhandled exception terminates the whole process (!), there is
   # no need for a ``try finally`` here, nor would it be correct: The current
   # exception is tried to be re-raised by the code-gen after the ``finally``!
@@ -332,7 +332,7 @@ when false:
       discard TerminateThread(t.sys, 1'i32)
     else:
       discard pthread_cancel(t.sys)
-    when defined(registerThread): unregisterThread(addr(t))
+    when declared(registerThread): unregisterThread(addr(t))
     t.dataFn = nil
 
 proc createThread*[TArg](t: var TThread[TArg], 
