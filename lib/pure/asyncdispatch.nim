@@ -524,7 +524,10 @@ when defined(windows) or defined(nimdoc):
           if errcode == TOSErrorCode(-1):
             retFuture.complete()
           else:
-            retFuture.fail(newException(EOS, osErrorMsg(errcode)))
+            if flags.isDisconnectionError(errcode):
+              retFuture.complete()
+            else:
+              retFuture.fail(newException(EOS, osErrorMsg(errcode)))
     )
 
     let ret = WSASend(socket.TSocketHandle, addr dataBuf, 1, addr bytesReceived,
@@ -544,13 +547,19 @@ when defined(windows) or defined(nimdoc):
       # free ``ol``.
     return retFuture
 
-  proc acceptAddr*(socket: TAsyncFD): 
+  proc acceptAddr*(socket: TAsyncFD, flags = {TSocketFlags.SafeDisconn}):
       PFuture[tuple[address: string, client: TAsyncFD]] =
     ## Accepts a new connection. Returns a future containing the client socket
     ## corresponding to that connection and the remote address of the client.
     ## The future will complete when the connection is successfully accepted.
     ##
-    ## The resulting client socket is automatically registered to dispatcher.
+    ## The resulting client socket is automatically registered to the
+    ## dispatcher.
+    ##
+    ## The ``accept`` call may result in an error if the connecting socket
+    ## disconnects during the duration of the ``accept``. If the ``SafeDisconn``
+    ## flag is specified then this error will not be raised and instead
+    ## accept will be called again.
     verifyPresence(socket)
     var retFuture = newFuture[tuple[address: string, client: TAsyncFD]]("acceptAddr")
 
@@ -584,6 +593,18 @@ when defined(windows) or defined(nimdoc):
          client: clientSock.TAsyncFD)
       )
 
+    template failAccept(errcode): stmt =
+      if flags.isDisconnectionError(errcode):
+        var newAcceptFut = acceptAddr(socket, flags)
+        newAcceptFut.callback =
+          proc () =
+            if newAcceptFut.failed:
+              retFuture.fail(newAcceptFut.readError)
+            else:
+              retFuture.complete(newAcceptFut.read)
+      else:
+        retFuture.fail(newException(EOS, osErrorMsg(errcode)))
+
     var ol = PCustomOverlapped()
     GC_ref(ol)
     ol.data = TCompletionData(sock: socket, cb:
@@ -592,7 +613,7 @@ when defined(windows) or defined(nimdoc):
           if errcode == TOSErrorCode(-1):
             completeAccept()
           else:
-            retFuture.fail(newException(EOS, osErrorMsg(errcode)))
+            failAccept(errcode)
     )
 
     # http://msdn.microsoft.com/en-us/library/windows/desktop/ms737524%28v=vs.85%29.aspx
@@ -605,7 +626,7 @@ when defined(windows) or defined(nimdoc):
     if not ret:
       let err = osLastError()
       if err.int32 != ERROR_IO_PENDING:
-        retFuture.fail(newException(EOS, osErrorMsg(err)))
+        failAccept(err)
         GC_unref(ol)
     else:
       completeAccept()
@@ -749,7 +770,7 @@ else:
   
   proc connect*(socket: TAsyncFD, address: string, port: TPort,
     af = AF_INET): PFuture[void] =
-    var retFuture = newFuture[void]()
+    var retFuture = newFuture[void]("connect")
     
     proc cb(sock: TAsyncFD): bool =
       # We have connected.
@@ -784,7 +805,7 @@ else:
 
   proc recv*(socket: TAsyncFD, size: int,
              flags = {TSocketFlags.SafeDisconn}): PFuture[string] =
-    var retFuture = newFuture[string]()
+    var retFuture = newFuture[string]("recv")
     
     var readBuffer = newString(size)
 
@@ -815,7 +836,7 @@ else:
 
   proc send*(socket: TAsyncFD, data: string,
              flags = {TSocketFlags.SafeDisconn}): PFuture[void] =
-    var retFuture = newFuture[void]()
+    var retFuture = newFuture[void]("send")
     
     var written = 0
     
@@ -845,9 +866,10 @@ else:
     addWrite(socket, cb)
     return retFuture
 
-  proc acceptAddr*(socket: TAsyncFD): 
+  proc acceptAddr*(socket: TAsyncFD, flags = {TSocketFlags.SafeDisconn}):
       PFuture[tuple[address: string, client: TAsyncFD]] =
-    var retFuture = newFuture[tuple[address: string, client: TAsyncFD]]()
+    var retFuture = newFuture[tuple[address: string,
+        client: TAsyncFD]]("acceptAddr")
     proc cb(sock: TAsyncFD): bool =
       result = true
       var sockAddress: Tsockaddr_in
@@ -860,7 +882,10 @@ else:
         if lastError.int32 == EINTR:
           return false
         else:
-          retFuture.fail(newException(EOS, osErrorMsg(lastError)))
+          if flags.isDisconnectionError(lastError):
+            return false
+          else:
+            retFuture.fail(newException(EOS, osErrorMsg(lastError)))
       else:
         register(client.TAsyncFD)
         retFuture.complete(($inet_ntoa(sockAddress.sin_addr), client.TAsyncFD))
@@ -875,12 +900,13 @@ proc sleepAsync*(ms: int): PFuture[void] =
   p.timers.add((epochTime() + (ms / 1000), retFuture))
   return retFuture
 
-proc accept*(socket: TAsyncFD): PFuture[TAsyncFD] =
+proc accept*(socket: TAsyncFD,
+    flags = {TSocketFlags.SafeDisconn}): PFuture[TAsyncFD] =
   ## Accepts a new connection. Returns a future containing the client socket
   ## corresponding to that connection.
   ## The future will complete when the connection is successfully accepted.
   var retFut = newFuture[TAsyncFD]("accept")
-  var fut = acceptAddr(socket)
+  var fut = acceptAddr(socket, flags)
   fut.callback =
     proc (future: PFuture[tuple[address: string, client: TAsyncFD]]) =
       assert future.finished
