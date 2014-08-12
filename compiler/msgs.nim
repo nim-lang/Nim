@@ -391,8 +391,8 @@ const
     warnUninit: "'$1' might not have been initialized [Uninit]",
     warnGcMem: "'$1' uses GC'ed memory [GcMem]",
     warnUser: "$1 [User]", 
-    hintSuccess: "operation successful [Success]", 
-    hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#) [SuccessX]", 
+    hintSuccess: when defined(useColors): "\e[1;32moperation successful\e[0m [Success]" else: "operation successful [Success]", 
+    hintSuccessX: when defined(useColors): "\e[1;32moperation successful\e[0m ($# lines compiled; $# sec total; $#) [SuccessX]" else: "operation successful ($# lines compiled; $# sec total; $#) [SuccessX]", 
     hintLineTooLong: "line too long [LineTooLong]", 
     hintXDeclaredButNotUsed: "\'$1\' is declared but not used [XDeclaredButNotUsed]", 
     hintConvToBaseNotNeeded: "conversion to base object is not needed [ConvToBaseNotNeeded]", 
@@ -609,14 +609,24 @@ proc suggestQuit*() =
 
 # this format is understood by many text editors: it is the same that
 # Borland and Freepascal use
-const
-  PosErrorFormat* = "$1($2, $3) Error: $4"
-  PosWarningFormat* = "$1($2, $3) Warning: $4"
-  PosHintFormat* = "$1($2, $3) Hint: $4"
-  PosContextFormat = "$1($2, $3) Info: $4"
-  RawErrorFormat* = "Error: $1"
-  RawWarningFormat* = "Warning: $1"
-  RawHintFormat* = "Hint: $1"
+when defined(useColors):
+  const
+    PosErrorFormat* = "\e[1;31mError\e[0m: $4 \e[0;36m$1($2, $3)\e[0m"
+    PosWarningFormat* = "\e[1;33mWarning\e[0m: $4 \e[0;36m$1($2, $3)\e[0m"
+    PosHintFormat* = "\e[0;32mHint\e[0m: $4 \e[0;36m$1($2, $3)\e[0m"
+    PosContextFormat = "\e[1;34mInfo\e[0m: $4 \e[0;36m$1($2, $3)\e[0m"
+    RawErrorFormat* = "\e[1;31mError\e[0m: $1"
+    RawWarningFormat* = "\e[1;33mWarning\e[0m: $1"
+    RawHintFormat* = "\e[0;32mHint\e[0m: $1"
+else:
+  const
+    PosErrorFormat* = "$1($2, $3) Error: $4"
+    PosWarningFormat* = "$1($2, $3) Warning: $4"
+    PosHintFormat* = "$1($2, $3) Hint: $4"
+    PosContextFormat = "$1($2, $3) Info: $4"
+    RawErrorFormat* = "Error: $1"
+    RawWarningFormat* = "Warning: $1"
+    RawHintFormat* = "Hint: $1"
 
 proc getInfoContextLen*(): int = return msgContext.len
 proc setInfoContextLen*(L: int) = setLen(msgContext, L)
