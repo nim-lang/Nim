@@ -1,5 +1,5 @@
 discard """
-  errormsg: "'y' might not have been initialized"
+  msg: "Warning: 'y' might not have been initialized [Uninit]"
   line:34
 """
 
