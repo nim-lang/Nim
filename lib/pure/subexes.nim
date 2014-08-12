@@ -84,7 +84,8 @@ proc getFormatArg(p: var TFormatParser, a: openArray[string]): int =
   if result >=% a.len: raiseInvalidFormat("index out of bounds: " & $result)
   p.i = i
 
-proc scanDollar(p: var TFormatParser, a: openarray[string], s: var string)
+proc scanDollar(p: var TFormatParser, a: openarray[string], s: var string) {.
+  noSideEffect.}
 
 proc emitChar(p: var TFormatParser, x: var string, ch: char) {.inline.} =
   x.add(ch)

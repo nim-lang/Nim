@@ -2567,11 +2567,11 @@ when not defined(JS): #and not defined(NimrodVM):
     include "system/assign"
     include "system/repr"
 
-    proc getCurrentException*(): ref E_Base {.compilerRtl, inl.} =
+    proc getCurrentException*(): ref E_Base {.compilerRtl, inl, gcsafe.} =
       ## retrieves the current exception; if there is none, nil is returned.
       result = currException
 
-    proc getCurrentExceptionMsg*(): string {.inline.} =
+    proc getCurrentExceptionMsg*(): string {.inline, gcsafe.} =
       ## retrieves the error message that was attached to the current
       ## exception; if there is none, "" is returned.
       var e = getCurrentException()
