@@ -184,7 +184,7 @@ proc processClient(client: PAsyncSocket, address: string,
       break
 
 proc serve*(server: PAsyncHttpServer, port: TPort,
-            callback: proc (request: TRequest): PFuture[void],
+            callback: proc (request: TRequest): PFuture[void] {.gcsafe.},
             address = "") {.async.} =
   ## Starts the process of listening for incoming HTTP connections on the
   ## specified address and port.
@@ -207,13 +207,15 @@ proc close*(server: PAsyncHttpServer) =
   server.socket.close()
 
 when isMainModule:
-  var server = newAsyncHttpServer()
-  proc cb(req: TRequest) {.async.} =
-    #echo(req.reqMethod, " ", req.url)
-    #echo(req.headers)
-    let headers = {"Date": "Tue, 29 Apr 2014 23:40:08 GMT",
-        "Content-type": "text/plain; charset=utf-8"}
-    await req.respond(Http200, "Hello World", headers.newStringTable())
+  proc main =
+    var server = newAsyncHttpServer()
+    proc cb(req: TRequest) {.async.} =
+      #echo(req.reqMethod, " ", req.url)
+      #echo(req.headers)
+      let headers = {"Date": "Tue, 29 Apr 2014 23:40:08 GMT",
+          "Content-type": "text/plain; charset=utf-8"}
+      await req.respond(Http200, "Hello World", headers.newStringTable())
 
-  asyncCheck server.serve(TPort(5555), cb)
-  runForever()
+    asyncCheck server.serve(TPort(5555), cb)
+    runForever()
+  main()
