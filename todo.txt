@@ -2,13 +2,11 @@ version 0.9.6
 =============
 
 - scopes are still broken for generic instantiation!
-- start experimental branch
 - implicit deref for parameter matching
 
 Concurrency
 -----------
 
-- 'gcsafe' inference needs to be fixed
 - 'deepCopy' needs to be instantiated for
   generics *when the type is constructed*
 - test 'deepCopy'

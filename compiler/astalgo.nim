@@ -124,6 +124,17 @@ proc skipConv*(n: PNode): PNode =
     result = n.sons[1]
   else: result = n
 
+proc skipConvAndClosure*(n: PNode): PNode =
+  result = n
+  while true:
+    case result.kind
+    of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64,
+       nkClosure:
+      result = result.sons[0]
+    of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+      result = result.sons[1]
+    else: break
+
 proc skipConvTakeType*(n: PNode): PNode =
   result = n.skipConv
   result.typ = n.typ

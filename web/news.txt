@@ -26,6 +26,10 @@ News
   - **system.defined has been split into system.defined and system.declared**.
     You have to use ``--symbol`` to declare new conditional symbols that can be
     set via ``--define``.
+  - ``--threadanalysis:on`` is now the default. To make your program compile
+    you can disable it but this is only a temporary solution as this option
+    will disappear soon!
+  
 
   Language Additions
   ------------------

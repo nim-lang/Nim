@@ -1997,16 +1997,16 @@ when not defined(nimrodVM) and hostOS != "standalone":
     ## returns an informative string about the GC's activity. This may be useful
     ## for tweaking.
     
-  proc GC_ref*[T](x: ref T) {.magic: "GCref".}
-  proc GC_ref*[T](x: seq[T]) {.magic: "GCref".}
-  proc GC_ref*(x: string) {.magic: "GCref".}
+  proc GC_ref*[T](x: ref T) {.magic: "GCref", gcsafe.}
+  proc GC_ref*[T](x: seq[T]) {.magic: "GCref", gcsafe.}
+  proc GC_ref*(x: string) {.magic: "GCref", gcsafe.}
     ## marks the object `x` as referenced, so that it will not be freed until
     ## it is unmarked via `GC_unref`. If called n-times for the same object `x`,
     ## n calls to `GC_unref` are needed to unmark `x`. 
     
-  proc GC_unref*[T](x: ref T) {.magic: "GCunref".}
-  proc GC_unref*[T](x: seq[T]) {.magic: "GCunref".}
-  proc GC_unref*(x: string) {.magic: "GCunref".}
+  proc GC_unref*[T](x: ref T) {.magic: "GCunref", gcsafe.}
+  proc GC_unref*[T](x: seq[T]) {.magic: "GCunref", gcsafe.}
+  proc GC_unref*(x: string) {.magic: "GCunref", gcsafe.}
     ## see the documentation of `GC_ref`.
 
 template accumulateResult*(iter: expr) =
