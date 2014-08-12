@@ -38,11 +38,11 @@ proc chckRangeF(x, a, b: float): float {.inline, compilerproc, gcsafe.}
 proc chckNil(p: pointer) {.noinline, compilerproc, gcsafe.}
 
 var
-  framePtr {.rtlThreadVar.}: PFrame
-  excHandler {.rtlThreadVar.}: PSafePoint
+  framePtr {.threadvar.}: PFrame
+  excHandler {.threadvar.}: PSafePoint
     # list of exception handlers
     # a global variable for the root of all try blocks
-  currException {.rtlThreadVar.}: ref E_Base
+  currException {.threadvar.}: ref E_Base
 
 proc popFrame {.compilerRtl, inl.} =
   framePtr = framePtr.prev

@@ -588,39 +588,40 @@ proc register*(d: PDispatcher, ftp: PAsyncFTPClient): PDelegate {.discardable.} 
   return ftp.disp.register(ftp.asyncCSock)
 
 when isMainModule:
-  var d = newDispatcher()
-  let hev =
-    proc (ftp: PAsyncFTPClient, event: TFTPEvent) =
-      case event.typ
-      of EvStore:
-        echo("Upload finished!")
-        ftp.retrFile("payload.JPG", "payload2.JPG", async = true)
-      of EvTransferProgress:
-        var time: int64 = -1
-        if event.speed != 0:
-          time = (event.bytesTotal - event.bytesFinished) div event.speed
-        echo(event.currentJob)
-        echo(event.speed div 1000, " kb/s. - ",
-             event.bytesFinished, "/", event.bytesTotal,
-             " - ", time, " seconds")
-        echo(d.len)
-      of EvRetr:
-        echo("Download finished!")
-        ftp.close()
-        echo d.len
-      else: assert(false)
-  var ftp = asyncFTPClient("picheta.me", user = "test", pass = "asf", handleEvent = hev)
-  
-  d.register(ftp)
-  d.len.echo()
-  ftp.connect()
-  echo "connected"
-  ftp.store("payload.JPG", "payload.JPG", async = true)
-  d.len.echo()
-  echo "uploading..."
-  while true:
-    if not d.poll(): break
-
+  proc main =
+    var d = newDispatcher()
+    let hev =
+      proc (ftp: PAsyncFTPClient, event: TFTPEvent) =
+        case event.typ
+        of EvStore:
+          echo("Upload finished!")
+          ftp.retrFile("payload.JPG", "payload2.JPG", async = true)
+        of EvTransferProgress:
+          var time: int64 = -1
+          if event.speed != 0:
+            time = (event.bytesTotal - event.bytesFinished) div event.speed
+          echo(event.currentJob)
+          echo(event.speed div 1000, " kb/s. - ",
+               event.bytesFinished, "/", event.bytesTotal,
+               " - ", time, " seconds")
+          echo(d.len)
+        of EvRetr:
+          echo("Download finished!")
+          ftp.close()
+          echo d.len
+        else: assert(false)
+    var ftp = asyncFTPClient("picheta.me", user = "test", pass = "asf", handleEvent = hev)
+    
+    d.register(ftp)
+    d.len.echo()
+    ftp.connect()
+    echo "connected"
+    ftp.store("payload.JPG", "payload.JPG", async = true)
+    d.len.echo()
+    echo "uploading..."
+    while true:
+      if not d.poll(): break
+  main()
 
 when isMainModule and false:
   var ftp = ftpClient("picheta.me", user = "asdasd", pass = "asfwq")

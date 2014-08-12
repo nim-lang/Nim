@@ -28,11 +28,13 @@ proc serve() {.async.} =
     await processClient(fut)
 
 when isMainModule:
-  var fut = serve()
-  fut.callback =
-    proc () =
-      if fut.failed:
-        # This test ensures that this exception crashes the application
-        # as it is not handled.
-        raise fut.error
-  runForever()
+  proc main =
+    var fut = serve()
+    fut.callback =
+      proc () =
+        if fut.failed:
+          # This test ensures that this exception crashes the application
+          # as it is not handled.
+          raise fut.error
+    runForever()
+  main()
