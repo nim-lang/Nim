@@ -409,6 +409,23 @@ template mapIt*(varSeq, pred: expr) =
     let it {.inject.} = varSeq[i]
     varSeq[i] = pred
 
+template newSeqWith*(len: int, init: expr): expr =
+  ## creates a new sequence, calling `init` to initialize each value. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var seq2D = newSeqWith(20, newSeq[bool](10))
+  ##   seq2D[0][0] = true
+  ##   seq2D[1][0] = true
+  ##   seq2D[0][1] = true
+  ##
+  ##   import math
+  ##   var seqRand = newSeqWith(20, random(10))
+  ##   echo seqRand
+  var result {.gensym.} = newSeq[type(init)](len)
+  for i in 0 .. <len:
+    result[i] = init
+  result
+
 when isMainModule:
   import strutils
   block: # concat test
@@ -556,5 +573,12 @@ when isMainModule:
     for f in 1 .. 25: b.add(f)
     doAssert b.distribute(5, true)[4].len == 5
     doAssert b.distribute(5, false)[4].len == 2
+
+  block: # newSeqWith tests
+    var seq2D = newSeqWith(4, newSeq[bool](2))
+    seq2D[0][0] = true
+    seq2D[1][0] = true
+    seq2D[0][1] = true
+    doAssert seq2D == @[@[true, true], @[true, false], @[false, false], @[false, false]]
 
   echo "Finished doc tests"
