@@ -56,7 +56,7 @@ when defined(posix):
     RTLD_GLOBAL {.importc: "RTLD_GLOBAL", header: "<dlfcn.h>".}: int
 
   proc dlclose(lib: TLibHandle) {.importc, header: "<dlfcn.h>".}
-  proc dlopen(path: CString, mode: int): TLibHandle {.
+  proc dlopen(path: cstring, mode: int): TLibHandle {.
       importc, header: "<dlfcn.h>".}
   proc dlsym(lib: TLibHandle, name: cstring): pointer {.
       importc, header: "<dlfcn.h>".}
