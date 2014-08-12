@@ -54,7 +54,7 @@ proc mapMem*(m: var TMemFile, mode: TFileMode = fmRead,
       nil,
       mappedSize,
       if readonly: PROT_READ else: PROT_READ or PROT_WRITE,
-      if readonly: MAP_PRIVATE else: MAP_SHARED,
+      if readonly: (MAP_PRIVATE or MAP_POPULATE) else: (MAP_SHARED or MAP_POPULATE),
       m.handle, offset)
     if result == cast[pointer](MAP_FAILED):
       osError(osLastError())
@@ -207,7 +207,7 @@ proc open*(filename: string, mode: TFileMode = fmRead,
       nil,
       result.size,
       if readonly: PROT_READ else: PROT_READ or PROT_WRITE,
-      if readonly: MAP_PRIVATE else: MAP_SHARED,
+      if readonly: (MAP_PRIVATE or MAP_POPULATE) else: (MAP_SHARED or MAP_POPULATE),
       result.handle,
       offset)
 
