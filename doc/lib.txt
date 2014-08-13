@@ -466,8 +466,6 @@ Windows specific
 
 * `windows <windows.html>`_
   Contains a wrapper for the Win32 API.
-* `ole2 <ole2.html>`_
-  Contains GUIDs for OLE2 automation support.
 * `shellapi <shellapi.html>`_
   Contains a wrapper for the ``shellapi.h`` header.
 * `shfolder <shfolder.html>`_
