@@ -713,6 +713,24 @@ proc `$`*[A](s: TOrderedSet[A]): string =
   assert s.isValid, "The set needs to be initialized."
   dollarImpl()
 
+proc `==`*[A](s, t: TOrderedSet[A]): bool =
+  ## Equality for ordered sets.
+  if s.counter != t.counter: return false
+  var h = s.first
+  var g = s.first
+  var compared = 0
+  while h >= 0 and g >= 0:
+    var nxh = s.data[h].next
+    var nxg = t.data[g].next
+    if s.data[h].slot == seFilled and s.data[g].slot == seFilled:
+      if s.data[h].key == s.data[g].key:
+        inc compared
+      else:
+        return false
+    h = nxh
+    g = nxg
+  result = compared == s.counter
+
 proc testModule() =
   ## Internal micro test to validate docstrings and such.
   block isValidTest:
@@ -858,7 +876,7 @@ proc testModule() =
     var b = initOrderedSet[int]()
     for x in [2, 4, 5]: b.incl(x)
     assert($a == $b)
-    # assert(a == b) # https://github.com/Araq/Nimrod/issues/1413
+    assert(a == b) # https://github.com/Araq/Nimrod/issues/1413
 
   block initBlocks:
     var a: TOrderedSet[int]
