@@ -399,7 +399,7 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
     if not immediateAsgn:
       constructLoc(p, v.loc)
 
-proc getTemp(p: BProc, t: PType, result: var TLoc) = 
+proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) = 
   inc(p.labels)
   if gCmd == cmdCompileToLLVM: 
     result.r = con("%LOC", toRope(p.labels))
@@ -411,7 +411,7 @@ proc getTemp(p: BProc, t: PType, result: var TLoc) =
   result.t = getUniqueType(t)
   result.s = OnStack
   result.flags = {}
-  constructLoc(p, result, isTemp=true)
+  constructLoc(p, result, not needsInit)
 
 proc keepAlive(p: BProc, toKeepAlive: TLoc) =
   when false:

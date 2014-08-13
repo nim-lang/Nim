@@ -1,7 +1,6 @@
 discard """
   file: "tstrange.nim"
-  output: '''hallo4
-0
+  output: '''hallo40
 1
 2'''
 """
