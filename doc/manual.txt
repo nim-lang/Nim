@@ -5321,7 +5321,7 @@ See `Ordinary vs immediate templates`_.
 compilation option pragmas
 --------------------------
 The listed pragmas here can be used to override the code generation options
-for a section of code.
+for a proc/method/converter.
 
 The implementation currently provides the following possible options (various
 others may be added later).
