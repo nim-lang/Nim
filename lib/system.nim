@@ -2185,7 +2185,7 @@ when not defined(JS): #and not defined(NimrodVM):
     proc initStackBottomWith(locals: pointer) {.inline, compilerproc.} =
       # We need to keep initStackBottom around for now to avoid
       # bootstrapping problems.
-      when defined(setStackBottom):
+      when declared(setStackBottom):
         setStackBottom(locals)
 
     var
