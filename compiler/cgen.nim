@@ -967,11 +967,11 @@ proc genMainProc(m: BModule) =
     # functions, which might otherwise merge their stack frames.
     NimMainBody =
       "N_CDECL(void, NimMainInner)(void) {$N" &
-        "\tPreMain();$N" &
         "$1" &
       "}$N$N" &
       "N_CDECL(void, NimMain)(void) {$N" &
         "\tvoid (*volatile inner)();$N" &
+        "\tPreMain();$N" &
         "\tinner = NimMainInner;$N" &
         "$2" &
         "\t(*inner)();$N" &
