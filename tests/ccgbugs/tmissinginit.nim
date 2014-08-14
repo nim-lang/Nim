@@ -4,7 +4,7 @@ discard """
 0
 0
 [[a = nil,
-b = nil]]
+b = nil]]'''
 """
 
 # bug #1475

@@ -127,7 +127,7 @@ proc definedInScope*(x: expr): bool {.
   ## **Deprecated since version 0.9.6**: Use ``declaredInScope`` instead.
 
 proc declaredInScope*(x: expr): bool {.
-  magic: "DefinedInScope", noSideEffect, deprecated.}
+  magic: "DefinedInScope", noSideEffect.}
   ## Special compile-time procedure that checks whether `x` is
   ## declared in the current scope. `x` has to be an identifier.
 
