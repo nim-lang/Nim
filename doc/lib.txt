@@ -450,10 +450,6 @@ Other
   This module contains code for reading from `stdin`:idx:. On UNIX the GNU
   readline library is wrapped and set up.
 
-* `zmq <zmq.html>`_
-  Nimrod 0mq wrapper. This file contains the low level C wrappers as well as
-  some higher level constructs.
-
 
 Wrappers
 ========

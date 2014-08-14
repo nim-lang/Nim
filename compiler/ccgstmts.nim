@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -160,7 +160,6 @@ proc genSingleVar(p: BProc, a: PNode) =
   var v = a.sons[0].sym
   if sfCompileTime in v.flags: return
   var targetProc = p
-  var immediateAsgn = isAssignedImmediately(a.sons[2])
   if sfGlobal in v.flags:
     if sfPure in v.flags:
       # v.owner.kind != skModule:
@@ -180,14 +179,14 @@ proc genSingleVar(p: BProc, a: PNode) =
     registerGcRoot(p, v)
   else:
     assignLocalVar(p, v)
-    initLocalVar(p, v, immediateAsgn)
+    initLocalVar(p, v, isAssignedImmediately(a.sons[2]))
 
-  if immediateAsgn:
+  if a.sons[2].kind != nkEmpty:
     genLineDir(targetProc, a)
     loadInto(targetProc, a.sons[0], a.sons[2], v.loc)
 
 proc genClosureVar(p: BProc, a: PNode) =
-  var immediateAsgn = isAssignedImmediately(a.sons[2])
+  var immediateAsgn = a.sons[2].kind != nkEmpty
   if immediateAsgn:
     var v: TLoc
     initLocExpr(p, a.sons[0], v)
