@@ -116,9 +116,9 @@ proc cmpIgnoreCase*(a, b: string): int {.noSideEffect,
   rtl, extern: "nsuCmpIgnoreCase", procvar, operator: 4.} =
   ## Compares two strings in a case insensitive manner. Returns:
   ##
-  ## | 0 iff a == b
-  ## | < 0 iff a < b
-  ## | > 0 iff a > b
+  ## | 0 if a == b
+  ## | < 0 if a < b
+  ## | > 0 if a > b
   var i = 0
   var m = min(a.len, b.len)
   while i < m:
@@ -135,9 +135,9 @@ proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
   ## Compares two strings normalized (i.e. case and
   ## underscores do not matter). Returns:
   ##
-  ## | 0 iff a == b
-  ## | < 0 iff a < b
-  ## | > 0 iff a > b
+  ## | 0 if a == b
+  ## | < 0 if a < b
+  ## | > 0 if a > b
   var i = 0
   var j = 0
   while true:
@@ -585,7 +585,7 @@ proc unindent*(s: string, eatAllIndent = false): string {.
 
 proc startsWith*(s, prefix: string): bool {.noSideEffect,
   rtl, extern: "nsuStartsWith".} =
-  ## Returns true iff ``s`` starts with ``prefix``.
+  ## Returns true if ``s`` starts with ``prefix``.
   ## If ``prefix == ""`` true is returned.
   var i = 0
   while true:
@@ -595,7 +595,7 @@ proc startsWith*(s, prefix: string): bool {.noSideEffect,
 
 proc endsWith*(s, suffix: string): bool {.noSideEffect,
   rtl, extern: "nsuEndsWith".} =
-  ## Returns true iff ``s`` ends with ``suffix``.
+  ## Returns true if ``s`` ends with ``suffix``.
   ## If ``suffix == ""`` true is returned.
   var i = 0
   var j = len(s) - len(suffix)
@@ -606,7 +606,7 @@ proc endsWith*(s, suffix: string): bool {.noSideEffect,
 
 proc continuesWith*(s, substr: string, start: int): bool {.noSideEffect,
   rtl, extern: "nsuContinuesWith".} =
-  ## Returns true iff ``s`` continues with ``substr`` at position ``start``.
+  ## Returns true if ``s`` continues with ``substr`` at position ``start``.
   ## If ``substr == ""`` true is returned.
   var i = 0
   while true:
@@ -635,7 +635,7 @@ proc addSep*(dest: var string, sep = ", ", startLen = 0) {.noSideEffect,
   if dest.len > startLen: add(dest, sep)
 
 proc allCharsInSet*(s: string, theSet: TCharSet): bool =
-  ## returns true iff each character of `s` is in the set `theSet`.
+  ## returns true if each character of `s` is in the set `theSet`.
   for c in items(s):
     if c notin theSet: return false
   return true
