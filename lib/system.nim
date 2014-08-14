@@ -3079,12 +3079,3 @@ when hostOS != "standalone" and not defined(NimrodVM) and not defined(JS):
   include "system/deepcopy"
 
 {.pop.} #{.push warning[GcMem]: off.}
-
-when not defined(booting):
-  type
-    semistatic*[T] = static[T] | T
-    # indicates a param of proc specialized for each static value,
-    # but also accepting run-time values
-
-  template isStatic*(x): expr = compiles(static(x))
-    # checks whether `x` is a value known at compile-time
