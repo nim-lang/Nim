@@ -949,12 +949,23 @@ proc genFilenames(m: BModule): PRope =
 
 proc genMainProc(m: BModule) =
   const 
+    # The use of a volatile function pointer to call Pre/NimMainInner
+    # prevents inlining of the NimMainInner function and dependent
+    # functions, which might otherwise merge their stack frames.
     PreMainBody =
-      "\tsystemDatInit();$N" &
+      "void PreMainInner() {$N" &
       "\tsystemInit();$N" &
       "$1" &
       "$2" &
-      "$3"
+      "$3" &
+      "}$N$N" &
+      "void PreMain() {$N" &
+      "\tvoid (*volatile inner)();$N" &
+      "\tsystemDatInit();$N" &
+      "\tinner = PreMainInner;$N" &
+      "$4" &
+      "\t(*inner)();$N" &
+      "}$N$N"
 
     MainProcs =
       "\tNimMain();$N"
@@ -962,9 +973,6 @@ proc genMainProc(m: BModule) =
     MainProcsWithResult =
       MainProcs & "\treturn nim_program_result;$N"
 
-    # The use of a volatile function pointer to call NimMainInner
-    # prevents inlining of the NimMainInner function and dependent
-    # functions, which might otherwise merge their stack frames.
     NimMainBody =
       "N_CDECL(void, NimMainInner)(void) {$N" &
         "$1" &
@@ -1047,8 +1055,8 @@ proc genMainProc(m: BModule) =
       platform.targetOS == osStandalone: "".toRope
     else: ropecg(m, "\t#initStackBottomWith((void *)&inner);$N")
   inc(m.labels)
-  appcg(m, m.s[cfsProcs], "void PreMain() {$N" & PreMainBody & "}$N$N", [
-    mainDatInit, gBreakpoints, otherModsInit])
+  appcg(m, m.s[cfsProcs], PreMainBody, [
+    mainDatInit, gBreakpoints, otherModsInit, initStackBottomCall])
 
   appcg(m, m.s[cfsProcs], nimMain, [mainModInit, initStackBottomCall, toRope(m.labels)])
   if optNoMain notin gGlobalOptions:

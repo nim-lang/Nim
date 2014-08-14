@@ -27,7 +27,6 @@ export TPort, TSocketFlags
 ## **Note:** This module is still largely experimental.
 
 
-# TODO: Discarded void PFutures need to be checked for exception.
 # TODO: ``except`` statement (without `try`) does not work.
 # TODO: Multiple exception names in a ``except`` don't work.
 # TODO: The effect system (raises: []) has trouble with my try transformation.
@@ -1003,7 +1002,7 @@ proc processBody(node, retFutureSym: PNimrodNode,
       of nnkIdent:
         # await x
         result = newNimNode(nnkYieldStmt, node).add(node[1]) # -> yield x
-      of nnkCall:
+      of nnkCall, nnkCommand:
         # await foo(p, x)
         var futureValue: PNimrodNode
         result.createVar("future" & $node[1][0].toStrLit, node[1], futureValue,
@@ -1020,7 +1019,7 @@ proc processBody(node, retFutureSym: PNimrodNode,
   of nnkVarSection, nnkLetSection:
     case node[0][2].kind
     of nnkCommand:
-      if node[0][2][0].ident == !"await":
+      if node[0][2][0].kind == nnkIdent and node[0][2][0].ident == !"await":
         # var x = await y
         var newVarSection = node # TODO: Should this use copyNimNode?
         result.createVar("future" & $node[0][0].ident, node[0][2][1],
