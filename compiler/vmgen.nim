@@ -1118,10 +1118,9 @@ proc checkCanEval(c: PCtx; n: PNode) =
   # we need to ensure that we don't evaluate 'x' here:
   # proc foo() = var x ...
   let s = n.sym
-  if s.position == 0:
-    if s.kind in {skVar, skTemp, skLet, skParam, skResult} and 
-        not s.isOwnedBy(c.prc.sym) and s.owner != c.module:
-      cannotEval(n)
+  if s.kind in {skVar, skTemp, skLet, skParam, skResult} and 
+      not s.isOwnedBy(c.prc.sym) and s.owner != c.module:
+    cannotEval(n)
 
 proc isTemp(c: PCtx; dest: TDest): bool =
   result = dest >= 0 and c.prc.slots[dest].kind >= slotTempUnknown
