@@ -833,8 +833,8 @@ proc genSwap(p: PProc, n: PNode) =
                  "local $1 = $2; $2 = $3; $3 = $1;$n", [
                  tmp, a.address, b.address])
     tmp = tmp2
-  appf(p.body, "var $1 = $2; $2 = $3; $3 = $1" | 
-               "local $1 = $2; $2 = $3; $3 = $1", [tmp, a.res, b.res])
+  appf(p.body, "var $1 = $2; $2 = $3; $3 = $1;" |
+               "local $1 = $2; $2 = $3; $3 = $1;", [tmp, a.res, b.res])
 
 proc getFieldPosition(f: PNode): int =
   case f.kind
