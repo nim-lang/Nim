@@ -881,14 +881,15 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
     a, b: TCompRes
     first: BiggestInt
   r.typ = etyBaseIndex
-  gen(p, n.sons[0], a)
-  gen(p, n.sons[1], b)
+  let m = if n.kind == nkHiddenAddr: n.sons[0] else: n
+  gen(p, m.sons[0], a)
+  gen(p, m.sons[1], b)
   internalAssert a.typ != etyBaseIndex and b.typ != etyBaseIndex
   r.address = a.res
-  var typ = skipTypes(n.sons[0].typ, abstractPtrs)
+  var typ = skipTypes(m.sons[0].typ, abstractPtrs)
   if typ.kind in {tyArray, tyArrayConstr}: first = firstOrd(typ.sons[0])
   else: first = 0
-  if optBoundsCheck in p.options and not isConstExpr(n.sons[1]): 
+  if optBoundsCheck in p.options and not isConstExpr(m.sons[1]):
     useMagic(p, "chckIndx")
     r.res = ropef("chckIndx($1, $2, $3.length)-$2", 
                   [b.res, toRope(first), a.res])
