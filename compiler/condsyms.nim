@@ -57,7 +57,7 @@ const
     endb profiler
     executable guiapp consoleapp library dll staticlib
 
-    quick nimbabel
+    quick
     release debug
     useWinAnsi useFork useNimRtl useMalloc useRealtimeGC ssl memProfiler
     nodejs kwin
