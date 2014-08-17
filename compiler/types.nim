@@ -582,7 +582,10 @@ proc firstOrd(t: PType): BiggestInt =
   of tyGenericInst, tyDistinct, tyConst, tyMutable,
      tyTypeDesc, tyFieldAccessor:
     result = firstOrd(lastSon(t))
-  else: 
+  of tyOrdinal:
+    if t.len > 0: result = firstOrd(lastSon(t))
+    else: internalError("invalid kind for first(" & $t.kind & ')')
+  else:
     internalError("invalid kind for first(" & $t.kind & ')')
     result = 0
 
@@ -617,7 +620,10 @@ proc lastOrd(t: PType): BiggestInt =
      tyTypeDesc, tyFieldAccessor:
     result = lastOrd(lastSon(t))
   of tyProxy: result = 0
-  else: 
+  of tyOrdinal:
+    if t.len > 0: result = lastOrd(lastSon(t))
+    else: internalError("invalid kind for last(" & $t.kind & ')')
+  else:
     internalError("invalid kind for last(" & $t.kind & ')')
     result = 0
 

@@ -22,7 +22,7 @@ DEST_NIMBASE=build/nimcache/nimbase.h
 if [ -d src ]
 then
 	$PATH_TO_NIMROD objc --noMain  --app:lib \
-		--nimcache:build/nimcache --compileOnly \
+		--nimcache:./build/nimcache --compileOnly \
 		--header --cpu:i386 ../nimrod_backend/backend.nim
 	if [ "${PATH_TO_NIMBASE}" -nt "${DEST_NIMBASE}" ]
 	then

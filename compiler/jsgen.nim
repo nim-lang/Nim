@@ -833,8 +833,8 @@ proc genSwap(p: PProc, n: PNode) =
                  "local $1 = $2; $2 = $3; $3 = $1;$n", [
                  tmp, a.address, b.address])
     tmp = tmp2
-  appf(p.body, "var $1 = $2; $2 = $3; $3 = $1" | 
-               "local $1 = $2; $2 = $3; $3 = $1", [tmp, a.res, b.res])
+  appf(p.body, "var $1 = $2; $2 = $3; $3 = $1;" |
+               "local $1 = $2; $2 = $3; $3 = $1;", [tmp, a.res, b.res])
 
 proc getFieldPosition(f: PNode): int =
   case f.kind
@@ -881,14 +881,15 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
     a, b: TCompRes
     first: BiggestInt
   r.typ = etyBaseIndex
-  gen(p, n.sons[0], a)
-  gen(p, n.sons[1], b)
+  let m = if n.kind == nkHiddenAddr: n.sons[0] else: n
+  gen(p, m.sons[0], a)
+  gen(p, m.sons[1], b)
   internalAssert a.typ != etyBaseIndex and b.typ != etyBaseIndex
   r.address = a.res
-  var typ = skipTypes(n.sons[0].typ, abstractPtrs)
+  var typ = skipTypes(m.sons[0].typ, abstractPtrs)
   if typ.kind in {tyArray, tyArrayConstr}: first = firstOrd(typ.sons[0])
   else: first = 0
-  if optBoundsCheck in p.options and not isConstExpr(n.sons[1]): 
+  if optBoundsCheck in p.options and not isConstExpr(m.sons[1]):
     useMagic(p, "chckIndx")
     r.res = ropef("chckIndx($1, $2, $3.length)-$2", 
                   [b.res, toRope(first), a.res])
@@ -1351,7 +1352,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mEcho: genEcho(p, n, r)
   of mSlurp, mStaticExec:
     localError(n.info, errXMustBeCompileTime, n.sons[0].sym.name.s)
-  of mCopyStr: binaryExpr(p, n, r, "", "($1.slice($2,-1))")
+  of mCopyStr: binaryExpr(p, n, r, "", "($1.slice($2))")
   of mCopyStrLast: ternaryExpr(p, n, r, "", "($1.slice($2, ($3)+1).concat(0))")
   of mNewString: unaryExpr(p, n, r, "mnewString", "mnewString($1)")
   of mNewStringOfCap: unaryExpr(p, n, r, "mnewString", "mnewString(0)")    

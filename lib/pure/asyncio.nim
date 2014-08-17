@@ -671,25 +671,26 @@ when isMainModule:
         testRead(s, 2)
     disp.register(client)
 
-  var d = newDispatcher()
-  
-  var s = AsyncSocket()
-  s.connect("amber.tenthbit.net", TPort(6667))
-  s.handleConnect = 
-    proc (s: PAsyncSocket) =
-      testConnect(s, 1)
-  s.handleRead = 
-    proc (s: PAsyncSocket) =
-      testRead(s, 1)
-  d.register(s)
-  
-  var server = AsyncSocket()
-  server.handleAccept =
-    proc (s: PAsyncSocket) = 
-      testAccept(s, d, 78)
-  server.bindAddr(TPort(5555))
-  server.listen()
-  d.register(server)
-  
-  while d.poll(-1): discard
+  proc main =
+    var d = newDispatcher()
     
+    var s = AsyncSocket()
+    s.connect("amber.tenthbit.net", TPort(6667))
+    s.handleConnect = 
+      proc (s: PAsyncSocket) =
+        testConnect(s, 1)
+    s.handleRead = 
+      proc (s: PAsyncSocket) =
+        testRead(s, 1)
+    d.register(s)
+    
+    var server = AsyncSocket()
+    server.handleAccept =
+      proc (s: PAsyncSocket) = 
+        testAccept(s, d, 78)
+    server.bindAddr(TPort(5555))
+    server.listen()
+    d.register(server)
+    
+    while d.poll(-1): discard
+  main()

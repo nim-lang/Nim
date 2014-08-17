@@ -127,7 +127,7 @@ proc definedInScope*(x: expr): bool {.
   ## **Deprecated since version 0.9.6**: Use ``declaredInScope`` instead.
 
 proc declaredInScope*(x: expr): bool {.
-  magic: "DefinedInScope", noSideEffect, deprecated.}
+  magic: "DefinedInScope", noSideEffect.}
   ## Special compile-time procedure that checks whether `x` is
   ## declared in the current scope. `x` has to be an identifier.
 
@@ -2182,6 +2182,12 @@ when not defined(JS): #and not defined(NimrodVM):
         locals = addr(locals)
         setStackBottom(locals)
 
+    proc initStackBottomWith(locals: pointer) {.inline, compilerproc.} =
+      # We need to keep initStackBottom around for now to avoid
+      # bootstrapping problems.
+      when declared(setStackBottom):
+        setStackBottom(locals)
+
     var
       strDesc: TNimType
 
@@ -3073,12 +3079,3 @@ when hostOS != "standalone" and not defined(NimrodVM) and not defined(JS):
   include "system/deepcopy"
 
 {.pop.} #{.push warning[GcMem]: off.}
-
-when not defined(booting):
-  type
-    semistatic*[T] = static[T] | T
-    # indicates a param of proc specialized for each static value,
-    # but also accepting run-time values
-
-  template isStatic*(x): expr = compiles(static(x))
-    # checks whether `x` is a value known at compile-time

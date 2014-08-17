@@ -221,7 +221,7 @@ when not defined(useNimRtl):
     dec(cl.recdepth)
     case typ.kind
     of tySet: reprSetAux(result, p, typ)
-    of tyArray: reprArray(result, p, typ, cl)
+    of tyArray, tyArrayConstr: reprArray(result, p, typ, cl)
     of tyTuple: reprRecord(result, p, typ, cl)
     of tyObject: 
       var t = cast[ptr PNimType](p)[]
@@ -275,7 +275,7 @@ when not defined(useNimRtl):
       cl: TReprClosure
     initReprClosure(cl)
     result = ""
-    if typ.kind in {tyObject, tyTuple, tyArray, tySet}:
+    if typ.kind in {tyObject, tyTuple, tyArray, tyArrayConstr, tySet}:
       reprAux(result, p, typ, cl)
     else:
       var p = p

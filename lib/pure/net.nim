@@ -11,7 +11,7 @@
 
 {.deadCodeElim: on.}
 import rawsockets, os, strutils, unsigned, parseutils, times
-export TPort, `$`
+export TPort, `$`, `==`
 
 const useWinVersion = defined(Windows) or defined(nimdoc)
 

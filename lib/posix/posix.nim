@@ -1579,6 +1579,16 @@ var
   MSG_OOB* {.importc, header: "<sys/socket.h>".}: cint
     ## Out-of-band data.
 
+
+when defined(linux):
+  var
+    MAP_POPULATE* {.importc, header: "<sys/mman.h>".}: cint
+      ## Populate (prefault) page tables for a mapping.
+else:
+  var
+    MAP_POPULATE*: cint = 0
+
+
 when defined(macosx):
   var
     MSG_HAVEMORE* {.importc, header: "<sys/socket.h>".}: cint

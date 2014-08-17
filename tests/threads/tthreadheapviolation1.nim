@@ -1,6 +1,6 @@
 discard """
-  line: 12
-  errormsg: "write to foreign heap"
+  line: 11
+  errormsg: "'horrible' is not GC-safe"
   cmd: "nimrod $target --hints:on --threads:on $options $file"
 """
 

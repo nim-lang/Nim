@@ -1093,6 +1093,8 @@ proc setSlot(c: PCtx; v: PSym) =
   # XXX generate type initialization here?
   if v.position == 0:
     if c.prc.maxSlots == 0: c.prc.maxSlots = 1
+    if c.prc.maxSlots >= high(TRegister):
+      internalError(v.info, "cannot generate code; too many registers required")
     v.position = c.prc.maxSlots
     c.prc.slots[v.position] = (inUse: true,
         kind: if v.kind == skLet: slotFixedLet else: slotFixedVar)
@@ -1116,10 +1118,9 @@ proc checkCanEval(c: PCtx; n: PNode) =
   # we need to ensure that we don't evaluate 'x' here:
   # proc foo() = var x ...
   let s = n.sym
-  if s.position == 0:
-    if s.kind in {skVar, skTemp, skLet, skParam, skResult} and 
-        not s.isOwnedBy(c.prc.sym) and s.owner != c.module:
-      cannotEval(n)
+  if s.kind in {skVar, skTemp, skLet, skParam, skResult} and 
+      not s.isOwnedBy(c.prc.sym) and s.owner != c.module:
+    cannotEval(n)
 
 proc isTemp(c: PCtx; dest: TDest): bool =
   result = dest >= 0 and c.prc.slots[dest].kind >= slotTempUnknown

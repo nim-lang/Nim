@@ -13,7 +13,7 @@
 		D531424D15BC87B6005EFF20 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = D531424A15BC87B6005EFF20 /* AppDelegate.m */; };
 		D531424E15BC87B6005EFF20 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = D531424B15BC87B6005EFF20 /* main.m */; };
 		D531427215BC94B1005EFF20 /* backend.m in Sources */ = {isa = PBXBuildFile; fileRef = D531426F15BC94B1005EFF20 /* backend.m */; };
-		D531427415BC94B1005EFF20 /* system.m in Sources */ = {isa = PBXBuildFile; fileRef = D531427115BC94B1005EFF20 /* system.m */; };
+		D531427415BC94B1005EFF20 /* stdlib_system.m in Sources */ = {isa = PBXBuildFile; fileRef = D531427115BC94B1005EFF20 /* stdlib_system.m */; };
 		D5B6F94815FA8D4C0084A85B /* NRViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = D5B6F94615FA8D4C0084A85B /* NRViewController.m */; };
 /* End PBXBuildFile section */
 
@@ -30,7 +30,7 @@
 		D531426715BC91EF005EFF20 /* tags.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; name = tags.sh; path = scripts/tags.sh; sourceTree = "<group>"; };
 		D531426815BC91EF005EFF20 /* xcode_prebuild.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; name = xcode_prebuild.sh; path = scripts/xcode_prebuild.sh; sourceTree = "<group>"; };
 		D531426F15BC94B1005EFF20 /* backend.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = backend.m; path = build/nimcache/backend.m; sourceTree = "<group>"; };
-		D531427115BC94B1005EFF20 /* system.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = system.m; path = build/nimcache/system.m; sourceTree = "<group>"; };
+		D531427115BC94B1005EFF20 /* stdlib_system.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = stdlib_system.m; path = build/nimcache/stdlib_system.m; sourceTree = "<group>"; };
 		D592E19015C7120F005258EA /* backend.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = backend.h; path = build/nimcache/backend.h; sourceTree = "<group>"; };
 		D592E19115C71415005258EA /* nimbase.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = nimbase.h; path = build/nimcache/nimbase.h; sourceTree = "<group>"; };
 		D5B6F94515FA8D4C0084A85B /* NRViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = NRViewController.h; path = src/NRViewController.h; sourceTree = "<group>"; };
@@ -135,7 +135,7 @@
 				D592E19015C7120F005258EA /* backend.h */,
 				D531426F15BC94B1005EFF20 /* backend.m */,
 				D592E19115C71415005258EA /* nimbase.h */,
-				D531427115BC94B1005EFF20 /* system.m */,
+				D531427115BC94B1005EFF20 /* stdlib_system.m */,
 			);
 			name = nimrod;
 			sourceTree = "<group>";
@@ -229,7 +229,7 @@
 				D531424D15BC87B6005EFF20 /* AppDelegate.m in Sources */,
 				D531424E15BC87B6005EFF20 /* main.m in Sources */,
 				D531427215BC94B1005EFF20 /* backend.m in Sources */,
-				D531427415BC94B1005EFF20 /* system.m in Sources */,
+				D531427415BC94B1005EFF20 /* stdlib_system.m in Sources */,
 				D5B6F94815FA8D4C0084A85B /* NRViewController.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -259,11 +259,7 @@
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 3.0;
-				OTHER_LDFLAGS = (
-					"-weak_library",
-					/usr/lib/libSystem.B.dylib,
-				);
+				IPHONEOS_DEPLOYMENT_TARGET = 4.3;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -284,12 +280,8 @@
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 3.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 4.3;
 				OTHER_CFLAGS = "-DNS_BLOCK_ASSERTIONS=1";
-				OTHER_LDFLAGS = (
-					"-weak_library",
-					/usr/lib/libSystem.B.dylib,
-				);
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALIDATE_PRODUCT = YES;
