@@ -99,7 +99,7 @@ proc isPureObject(typ: PType): bool =
 
 proc getOrdValue(n: PNode): BiggestInt = 
   case n.kind
-  of nkCharLit..nkInt64Lit: result = n.intVal
+  of nkCharLit..nkUInt64Lit: result = n.intVal
   of nkNilLit: result = 0
   of nkHiddenStdConv: result = getOrdValue(n.sons[1])
   else:
