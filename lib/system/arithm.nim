@@ -114,63 +114,69 @@ when asmVersion and not defined(gcc) and not defined(llvm_gcc):
   proc addInt(a, b: int): int {.compilerProc, asmNoStackFrame.} =
     # a in eax, and b in edx
     asm """
-        mov eax, `a`
-        add eax, `b`
+        mov eax, ecx
+        add eax, edx
         jno theEnd
         call `raiseOverflow`
       theEnd:
+        ret
     """
 
   proc subInt(a, b: int): int {.compilerProc, asmNoStackFrame.} =
     asm """
-        mov eax, `a`
-        sub eax, `b`
+        mov eax, ecx
+        sub eax, edx
         jno theEnd
         call `raiseOverflow`
       theEnd:
+        ret
     """
 
   proc negInt(a: int): int {.compilerProc, asmNoStackFrame.} =
     asm """
-        mov eax, `a`
+        mov eax, ecx
         neg eax
         jno theEnd
         call `raiseOverflow`
       theEnd:
+        ret
     """
 
   proc divInt(a, b: int): int {.compilerProc, asmNoStackFrame.} =
     asm """
-        mov eax, `a`
-        mov ecx, `b`
+        mov eax, ecx
+        mov ecx, edx
         xor edx, edx
         idiv ecx
         jno  theEnd
         call `raiseOverflow`
       theEnd:
+        ret
     """
 
   proc modInt(a, b: int): int {.compilerProc, asmNoStackFrame.} =
     asm """
-        mov eax, `a`
-        mov ecx, `b`
+        mov eax, ecx
+        mov ecx, edx
         xor edx, edx
         idiv ecx
         jno theEnd
         call `raiseOverflow`
       theEnd:
         mov eax, edx
+        ret
     """
 
   proc mulInt(a, b: int): int {.compilerProc, asmNoStackFrame.} =
     asm """
-        mov eax, `a`
-        mov ecx, `b`
+        mov eax, ecx
+        mov ecx, edx
         xor edx, edx
         imul ecx
         jno theEnd
         call `raiseOverflow`
       theEnd:
+        ret
     """
 
 elif false: # asmVersion and (defined(gcc) or defined(llvm_gcc)):
