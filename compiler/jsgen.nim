@@ -10,6 +10,25 @@
 # This is the JavaScript code generator.
 # Soon also a Luajit code generator. ;-)
 
+discard """
+The JS code generator contains only 2 tricks:
+
+Trick 1
+-------
+Some locations (for example 'var int') require "fat pointers" (``etyBaseIndex``)
+which are pairs (array, index). The derefence operation is then 'array[index]'.
+Check ``mapType`` for the details.
+
+Trick 2
+-------
+It is preferable to generate '||' and '&&' if possible since that is more
+idiomatic and hence should be friendlier for the JS JIT implementation. However
+code like ``foo and (let bar = baz())`` cannot be translated this way. Instead
+the expressions need to be transformed into statements. ``isSimpleExpr``
+implements the required case distinction.
+"""
+
+
 import
   ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp,
   options, nversion, nimsets, msgs, crc, bitsets, idents, lists, types, os,
