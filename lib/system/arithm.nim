@@ -111,7 +111,7 @@ const
 when asmVersion and not defined(gcc) and not defined(llvm_gcc):
   # assembler optimized versions for compilers that
   # have an intel syntax assembler:
-  proc addInt(a, b: int): int {.compilerProc, asmNoStackFrame.} =
+  proc addInt(a, b: int): int {.compilerProc.} =
     # a in eax, and b in edx
     asm """
         mov eax, `a`
@@ -119,27 +119,30 @@ when asmVersion and not defined(gcc) and not defined(llvm_gcc):
         jno theEnd
         call `raiseOverflow`
       theEnd:
+        mov `result`, eax
     """
 
-  proc subInt(a, b: int): int {.compilerProc, asmNoStackFrame.} =
+  proc subInt(a, b: int): int {.compilerProc.} =
     asm """
         mov eax, `a`
         sub eax, `b`
         jno theEnd
         call `raiseOverflow`
       theEnd:
+        mov `result`, eax
     """
 
-  proc negInt(a: int): int {.compilerProc, asmNoStackFrame.} =
+  proc negInt(a: int): int {.compilerProc.} =
     asm """
         mov eax, `a`
         neg eax
         jno theEnd
         call `raiseOverflow`
       theEnd:
+        mov `result`, eax
     """
 
-  proc divInt(a, b: int): int {.compilerProc, asmNoStackFrame.} =
+  proc divInt(a, b: int): int {.compilerProc.} =
     asm """
         mov eax, `a`
         mov ecx, `b`
@@ -148,9 +151,10 @@ when asmVersion and not defined(gcc) and not defined(llvm_gcc):
         jno  theEnd
         call `raiseOverflow`
       theEnd:
+        mov `result`, eax
     """
 
-  proc modInt(a, b: int): int {.compilerProc, asmNoStackFrame.} =
+  proc modInt(a, b: int): int {.compilerProc.} =
     asm """
         mov eax, `a`
         mov ecx, `b`
@@ -160,9 +164,10 @@ when asmVersion and not defined(gcc) and not defined(llvm_gcc):
         call `raiseOverflow`
       theEnd:
         mov eax, edx
+        mov `result`, eax
     """
 
-  proc mulInt(a, b: int): int {.compilerProc, asmNoStackFrame.} =
+  proc mulInt(a, b: int): int {.compilerProc.} =
     asm """
         mov eax, `a`
         mov ecx, `b`
@@ -171,6 +176,7 @@ when asmVersion and not defined(gcc) and not defined(llvm_gcc):
         jno theEnd
         call `raiseOverflow`
       theEnd:
+        mov `result`, eax
     """
 
 elif false: # asmVersion and (defined(gcc) or defined(llvm_gcc)):
