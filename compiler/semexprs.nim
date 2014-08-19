@@ -1374,20 +1374,19 @@ proc lookUpForDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
     if onlyCurrentScope: return 
     checkSonsLen(n, 2)
     var m = lookUpForDefined(c, n.sons[0], onlyCurrentScope)
-    if (m != nil) and (m.kind == skModule): 
-      if (n.sons[1].kind == nkIdent): 
-        var ident = n.sons[1].ident
-        if m == c.module: 
-          result = strTableGet(c.topLevelScope.symbols, ident)
-        else: 
-          result = strTableGet(m.tab, ident)
+    if m != nil and m.kind == skModule:
+      let ident = considerQuotedIdent(n[1])
+      if m == c.module:
+        result = strTableGet(c.topLevelScope.symbols, ident)
       else: 
-        localError(n.sons[1].info, errIdentifierExpected, "")
+        result = strTableGet(m.tab, ident)
   of nkAccQuoted:
     result = lookUpForDefined(c, considerQuotedIdent(n), onlyCurrentScope)
   of nkSym:
     result = n.sym
-  else: 
+  of nkOpenSymChoice, nkClosedSymChoice:
+    result = n.sons[0].sym
+  else:
     localError(n.info, errIdentifierExpected, renderTree(n))
     result = nil
 
