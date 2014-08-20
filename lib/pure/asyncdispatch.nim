@@ -180,6 +180,27 @@ proc asyncCheck*[T](future: PFuture[T]) =
         echoOriginalStackTrace(future)
         raise future.error
 
+proc `and`*[T, Y](fut1: PFuture[T], fut2: PFuture[Y]): PFuture[void] =
+  ## Returns a future which will complete once both ``fut1`` and ``fut2``
+  ## complete.
+  var retFuture = newFuture[void]()
+  fut1.callback =
+    proc () =
+      if fut2.finished: retFuture.complete()
+  fut2.callback =
+    proc () =
+      if fut1.finished: retFuture.complete()
+  return retFuture
+
+proc `or`*[T, Y](fut1: PFuture[T], fut2: PFuture[Y]): PFuture[void] =
+  ## Returns a future which will complete once either ``fut1`` or ``fut2``
+  ## complete.
+  var retFuture = newFuture[void]()
+  proc cb() =
+    if not retFuture.finished: retFuture.complete()
+  fut1.callback = cb
+  fut2.callback = cb
+
 type
   PDispatcherBase = ref object of PObject
     timers: seq[tuple[finishAt: float, fut: PFuture[void]]]
