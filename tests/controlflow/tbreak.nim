@@ -1,5 +1,9 @@
 discard """
-  output: '''10'''
+  output: '''10
+true true
+true false
+false true
+false false'''
 """
 
 var
@@ -31,3 +35,10 @@ iterator permutations: int =
 for p in permutations():
   break
 
+# regression:
+proc main =
+  for x in [true, false]:
+    for y in [true, false]:
+      echo x, " ", y
+
+main()
