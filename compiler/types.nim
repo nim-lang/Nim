@@ -1390,7 +1390,7 @@ proc skipConv*(n: PNode): PNode =
   case n.kind
   of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
     # only skip the conversion if it doesn't lose too important information
-    # (see bug #
+    # (see bug #1334)
     if n.sons[0].typ.classify == n.typ.classify:
       result = n.sons[0]
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
