@@ -10,8 +10,8 @@
 proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) {.gcsafe.}
 proc genericDeepCopyAux(dest, src: pointer, n: ptr TNimNode) {.gcsafe.} =
   var
-    d = cast[TAddress](dest)
-    s = cast[TAddress](src)
+    d = cast[ByteAddress](dest)
+    s = cast[ByteAddress](src)
   case n.kind
   of nkSlot:
     genericDeepCopyAux(cast[pointer](d +% n.offset), 
@@ -40,8 +40,8 @@ proc copyDeepString(src: NimString): NimString {.inline.} =
 
 proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) =
   var
-    d = cast[TAddress](dest)
-    s = cast[TAddress](src)
+    d = cast[ByteAddress](dest)
+    s = cast[ByteAddress](src)
   sysAssert(mt != nil, "genericDeepCopyAux 2")
   case mt.kind
   of tyString:
@@ -60,11 +60,11 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) =
       return
     sysAssert(dest != nil, "genericDeepCopyAux 3")
     unsureAsgnRef(x, newSeq(mt, seq.len))
-    var dst = cast[TAddress](cast[PPointer](dest)[])
+    var dst = cast[ByteAddress](cast[PPointer](dest)[])
     for i in 0..seq.len-1:
       genericDeepCopyAux(
         cast[pointer](dst +% i*% mt.base.size +% GenericSeqSize),
-        cast[pointer](cast[TAddress](s2) +% i *% mt.base.size +%
+        cast[pointer](cast[ByteAddress](s2) +% i *% mt.base.size +%
                      GenericSeqSize),
         mt.base)
   of tyObject:
@@ -82,8 +82,8 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) =
       genericDeepCopyAux(cast[pointer](d +% i*% mt.base.size),
                          cast[pointer](s +% i*% mt.base.size), mt.base)
   of tyRef:
-    if mt.base.deepCopy != nil:
-      let z = mt.base.deepCopy(cast[PPointer](src)[])
+    if mt.base.deepcopy != nil:
+      let z = mt.base.deepcopy(cast[PPointer](src)[])
       unsureAsgnRef(cast[PPointer](dest), z)
     else:
       # we modify the header of the cell temporarily; instead of the type
@@ -116,8 +116,8 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) =
         genericDeepCopyAux(z, s2, realType.base)        
   of tyPtr:
     # no cycle check here, but also not really required
-    if mt.base.deepCopy != nil:
-      cast[PPointer](dest)[] = mt.base.deepCopy(cast[PPointer](s)[])
+    if mt.base.deepcopy != nil:
+      cast[PPointer](dest)[] = mt.base.deepcopy(cast[PPointer](s)[])
     else:
       cast[PPointer](dest)[] = cast[PPointer](s)[]
   else:
@@ -134,8 +134,8 @@ proc genericSeqDeepCopy(dest, src: pointer, mt: PNimType) {.compilerProc.} =
 proc genericDeepCopyOpenArray(dest, src: pointer, len: int,
                             mt: PNimType) {.compilerproc.} =
   var
-    d = cast[TAddress](dest)
-    s = cast[TAddress](src)
+    d = cast[ByteAddress](dest)
+    s = cast[ByteAddress](src)
   for i in 0..len-1:
     genericDeepCopy(cast[pointer](d +% i*% mt.base.size),
                     cast[pointer](s +% i*% mt.base.size), mt.base)

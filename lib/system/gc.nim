@@ -111,11 +111,11 @@ proc addZCT(s: var TCellSeq, c: PCell) {.noinline.} =
 
 proc cellToUsr(cell: PCell): pointer {.inline.} =
   # convert object (=pointer to refcount) to pointer to userdata
-  result = cast[pointer](cast[TAddress](cell)+%TAddress(sizeof(TCell)))
+  result = cast[pointer](cast[ByteAddress](cell)+%TAddress(sizeof(TCell)))
 
 proc usrToCell(usr: pointer): PCell {.inline.} =
   # convert pointer to userdata to object (=pointer to refcount)
-  result = cast[PCell](cast[TAddress](usr)-%TAddress(sizeof(TCell)))
+  result = cast[PCell](cast[ByteAddress](usr)-%TAddress(sizeof(TCell)))
 
 proc canbeCycleRoot(c: PCell): bool {.inline.} =
   result = ntfAcyclic notin c.typ.flags
@@ -312,7 +312,7 @@ proc cellsetReset(s: var TCellSet) =
   init(s)
 
 proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: TWalkOp) {.gcsafe.} =
-  var d = cast[TAddress](dest)
+  var d = cast[ByteAddress](dest)
   case n.kind
   of nkSlot: forAllChildrenAux(cast[pointer](d +% n.offset), n.typ, op)
   of nkList:
@@ -332,7 +332,7 @@ proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: TWalkOp) {.gcsafe.} =
   of nkNone: sysAssert(false, "forAllSlotsAux")
 
 proc forAllChildrenAux(dest: pointer, mt: PNimType, op: TWalkOp) =
-  var d = cast[TAddress](dest)
+  var d = cast[ByteAddress](dest)
   if dest == nil: return # nothing to do
   if ntfNoRefs notin mt.flags:
     case mt.kind
@@ -358,7 +358,7 @@ proc forAllChildren(cell: PCell, op: TWalkOp) =
     of tyRef: # common case
       forAllChildrenAux(cellToUsr(cell), cell.typ.base, op)
     of tySequence:
-      var d = cast[TAddress](cellToUsr(cell))
+      var d = cast[ByteAddress](cellToUsr(cell))
       var s = cast[PGenericSeq](d)
       if s != nil:
         for i in 0..s.len-1:
@@ -424,7 +424,7 @@ proc rawNewObj(typ: PNimType, size: int, gch: var TGcHeap): pointer =
   gcAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
   collectCT(gch)
   var res = cast[PCell](rawAlloc(gch.region, size + sizeof(TCell)))
-  gcAssert((cast[TAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
+  gcAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
   res.typ = typ
   when leakDetector and not hasThreadSupport:
@@ -470,7 +470,7 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   
   var res = cast[PCell](rawAlloc(gch.region, size + sizeof(TCell)))
   sysAssert(allocInv(gch.region), "newObjRC1 after rawAlloc")
-  sysAssert((cast[TAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
+  sysAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
   res.typ = typ
   when leakDetector and not hasThreadSupport:
@@ -511,9 +511,9 @@ proc growObj(old: pointer, newsize: int, gch: var TGcHeap): pointer =
   
   var oldsize = cast[PGenericSeq](old).len*elemSize + GenericSeqSize
   copyMem(res, ol, oldsize + sizeof(TCell))
-  zeroMem(cast[pointer](cast[TAddress](res)+% oldsize +% sizeof(TCell)),
+  zeroMem(cast[pointer](cast[ByteAddress](res)+% oldsize +% sizeof(TCell)),
           newsize-oldsize)
-  sysAssert((cast[TAddress](res) and (MemAlign-1)) == 0, "growObj: 3")
+  sysAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "growObj: 3")
   sysAssert(res.refcount shr rcShift <=% 1, "growObj: 4")
   #if res.refcount <% rcIncrement:
   #  add(gch.zct, res)
@@ -728,7 +728,7 @@ proc gcMark(gch: var TGcHeap, p: pointer) {.inline.} =
   # the addresses are not as cells on the stack, so turn them to cells:
   sysAssert(allocInv(gch.region), "gcMark begin")
   var cell = usrToCell(p)
-  var c = cast[TAddress](cell)
+  var c = cast[ByteAddress](cell)
   if c >% PageSize:
     # fast check: does it look like a cell?
     var objStart = cast[PCell](interiorAllocatedPtr(gch.region, cell))
@@ -778,8 +778,8 @@ when not defined(useNimRtl):
     # the first init must be the one that defines the stack bottom:
     if gch.stackBottom == nil: gch.stackBottom = theStackBottom
     else:
-      var a = cast[TAddress](theStackBottom) # and not PageMask - PageSize*2
-      var b = cast[TAddress](gch.stackBottom)
+      var a = cast[ByteAddress](theStackBottom) # and not PageMask - PageSize*2
+      var b = cast[ByteAddress](gch.stackBottom)
       #c_fprintf(c_stdout, "old: %p new: %p;\n",gch.stackBottom,theStackBottom)
       when stackIncreases:
         gch.stackBottom = cast[pointer](min(a, b))
@@ -854,9 +854,9 @@ else:
   proc isOnStack(p: pointer): bool =
     var stackTop {.volatile.}: pointer
     stackTop = addr(stackTop)
-    var b = cast[TAddress](gch.stackBottom)
-    var a = cast[TAddress](stackTop)
-    var x = cast[TAddress](p)
+    var b = cast[ByteAddress](gch.stackBottom)
+    var a = cast[ByteAddress](stackTop)
+    var x = cast[ByteAddress](p)
     result = a <=% x and x <=% b
 
   template forEachStackSlot(gch, gcMark: expr) {.immediate, dirty.} =
@@ -866,8 +866,8 @@ else:
     type PStackSlice = ptr array [0..7, pointer]
     var registers {.noinit.}: C_JmpBuf
     if c_setjmp(registers) == 0'i32: # To fill the C stack with registers.
-      var max = cast[TAddress](gch.stackBottom)
-      var sp = cast[TAddress](addr(registers))
+      var max = cast[ByteAddress](gch.stackBottom)
+      var sp = cast[ByteAddress](addr(registers))
       # loop unrolled:
       while sp <% max - 8*sizeof(pointer):
         gcMark(gch, cast[PStackSlice](sp)[0])
@@ -1040,7 +1040,7 @@ when not defined(useNimRtl):
       else:
         dec(gch.recGcLock)
 
-  proc GC_setStrategy(strategy: TGC_Strategy) =
+  proc GC_setStrategy(strategy: GC_Strategy) =
     discard
 
   proc GC_enableMarkAndSweep() =

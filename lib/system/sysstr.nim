@@ -217,7 +217,7 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
           gch.tempStack.len = len0
       else:
         for i in newLen..result.len-1:
-          forAllChildrenAux(cast[pointer](cast[TAddress](result) +%
+          forAllChildrenAux(cast[pointer](cast[ByteAddress](result) +%
                             GenericSeqSize +% (i*%elemSize)),
                             extGetCellType(result).base, waZctDecRef)
       
@@ -227,7 +227,7 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
     # presense of user defined destructors, the user will expect the cell to be
     # "destroyed" thus creating the same problem. We can destoy the cell in the
     # finalizer of the sequence, but this makes destruction non-deterministic.
-    zeroMem(cast[pointer](cast[TAddress](result) +% GenericSeqSize +%
+    zeroMem(cast[pointer](cast[ByteAddress](result) +% GenericSeqSize +%
            (newLen*%elemSize)), (result.len-%newLen) *% elemSize)
   result.len = newLen
 

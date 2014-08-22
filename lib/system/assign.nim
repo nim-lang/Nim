@@ -13,8 +13,8 @@ proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) {.gcsafe.
 proc genericAssignAux(dest, src: pointer, n: ptr TNimNode,
                       shallow: bool) {.gcsafe.} =
   var
-    d = cast[TAddress](dest)
-    s = cast[TAddress](src)
+    d = cast[ByteAddress](dest)
+    s = cast[ByteAddress](src)
   case n.kind
   of nkSlot:
     genericAssignAux(cast[pointer](d +% n.offset), 
@@ -40,8 +40,8 @@ proc genericAssignAux(dest, src: pointer, n: ptr TNimNode,
 
 proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) =
   var
-    d = cast[TAddress](dest)
-    s = cast[TAddress](src)
+    d = cast[ByteAddress](dest)
+    s = cast[ByteAddress](src)
   sysAssert(mt != nil, "genericAssignAux 2")
   case mt.kind
   of tyString:
@@ -62,11 +62,11 @@ proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) =
       return
     sysAssert(dest != nil, "genericAssignAux 3")
     unsureAsgnRef(x, newSeq(mt, seq.len))
-    var dst = cast[TAddress](cast[PPointer](dest)[])
+    var dst = cast[ByteAddress](cast[PPointer](dest)[])
     for i in 0..seq.len-1:
       genericAssignAux(
         cast[pointer](dst +% i*% mt.base.size +% GenericSeqSize),
-        cast[pointer](cast[TAddress](s2) +% i *% mt.base.size +%
+        cast[pointer](cast[ByteAddress](s2) +% i *% mt.base.size +%
                      GenericSeqSize),
         mt.base, shallow)
   of tyObject:
@@ -130,15 +130,15 @@ proc genericSeqAssign(dest, src: pointer, mt: PNimType) {.compilerProc.} =
 proc genericAssignOpenArray(dest, src: pointer, len: int,
                             mt: PNimType) {.compilerproc.} =
   var
-    d = cast[TAddress](dest)
-    s = cast[TAddress](src)
+    d = cast[ByteAddress](dest)
+    s = cast[ByteAddress](src)
   for i in 0..len-1:
     genericAssign(cast[pointer](d +% i*% mt.base.size),
                   cast[pointer](s +% i*% mt.base.size), mt.base)
 
 proc objectInit(dest: pointer, typ: PNimType) {.compilerProc, gcsafe.}
 proc objectInitAux(dest: pointer, n: ptr TNimNode) {.gcsafe.} =
-  var d = cast[TAddress](dest)
+  var d = cast[ByteAddress](dest)
   case n.kind
   of nkNone: sysAssert(false, "objectInitAux")
   of nkSlot: objectInit(cast[pointer](d +% n.offset), n.typ)
@@ -152,7 +152,7 @@ proc objectInitAux(dest: pointer, n: ptr TNimNode) {.gcsafe.} =
 proc objectInit(dest: pointer, typ: PNimType) =
   # the generic init proc that takes care of initialization of complex
   # objects on the stack or heap
-  var d = cast[TAddress](dest)
+  var d = cast[ByteAddress](dest)
   case typ.kind
   of tyObject:
     # iterate over any structural type
@@ -184,7 +184,7 @@ else:
 
 proc genericReset(dest: pointer, mt: PNimType) {.compilerProc, gcsafe.}
 proc genericResetAux(dest: pointer, n: ptr TNimNode) =
-  var d = cast[TAddress](dest)
+  var d = cast[ByteAddress](dest)
   case n.kind
   of nkNone: sysAssert(false, "genericResetAux")
   of nkSlot: genericReset(cast[pointer](d +% n.offset), n.typ)
@@ -196,7 +196,7 @@ proc genericResetAux(dest: pointer, n: ptr TNimNode) =
     zeroMem(cast[pointer](d +% n.offset), n.typ.size)
   
 proc genericReset(dest: pointer, mt: PNimType) =
-  var d = cast[TAddress](dest)
+  var d = cast[ByteAddress](dest)
   sysAssert(mt != nil, "genericReset 2")
   case mt.kind
   of tyString, tyRef, tySequence:
@@ -223,4 +223,4 @@ proc FieldDiscriminantCheck(oldDiscVal, newDiscVal: int,
   var oldBranch = selectBranch(oldDiscVal, L, a)
   var newBranch = selectBranch(newDiscVal, L, a)
   if newBranch != oldBranch and oldDiscVal != 0:
-    sysFatal(EInvalidField, "assignment to discriminant changes object branch")
+    sysFatal(FieldError, "assignment to discriminant changes object branch")
