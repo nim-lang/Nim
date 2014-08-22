@@ -431,7 +431,7 @@ proc getNumber(L: var TLexer): TToken =
         lexMessage(L, errNumberOutOfRange, result.literal)
   except ValueError:
     lexMessage(L, errInvalidNumber, result.literal)
-  except OverflowError, EOutOfRange:
+  except OverflowError, RangeError:
     lexMessage(L, errNumberOutOfRange, result.literal)
   L.bufpos = endpos
 

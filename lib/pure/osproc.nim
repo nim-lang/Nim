@@ -30,7 +30,7 @@ type
       inHandle, outHandle, errHandle: FileHandle
       id: THandle
     else:
-      inHandle, outHandle, errHandle: TFileHandle
+      inHandle, outHandle, errHandle: FileHandle
       inStream, outStream, errStream: PStream
       id: TPid
     exitCode: cint
@@ -109,7 +109,7 @@ proc execProcess*(command: string,
                                                   poUsePath,
                                                   poEvalCommand}): TaintedString {.
                                                   rtl, extern: "nosp$1",
-                                                  tags: [ExecIOEffect, FReadIO].}
+                                                  tags: [ExecIOEffect, ReadIOEffect].}
   ## A convenience procedure that executes ``command`` with ``startProcess``
   ## and returns its output as a string.
   ## WARNING: this function uses poEvalCommand by default for backward compatibility.
@@ -233,7 +233,7 @@ proc countProcessors*(): int {.rtl, extern: "nosp$1".} =
 proc execProcesses*(cmds: openArray[string],
                     options = {poStdErrToStdOut, poParentStreams},
                     n = countProcessors()): int {.rtl, extern: "nosp$1",
-                    tags: [ExecIOEffect, FTime, FReadEnv]} =
+                    tags: [ExecIOEffect, TimeEffect, FReadEnv]} =
   ## executes the commands `cmds` in parallel. Creates `n` processes
   ## that execute in parallel. The highest return value of all processes
   ## is returned.
@@ -584,12 +584,12 @@ elif not defined(useNimRtl):
 
   when not defined(useFork):
     proc startProcessAuxSpawn(data: TStartProcessData): TPid {.
-      tags: [FExecIO, FReadEnv], gcsafe.}
+      tags: [ExecIOEffect, FReadEnv], gcsafe.}
   proc startProcessAuxFork(data: TStartProcessData): TPid {.
-    tags: [FExecIO, FReadEnv], gcsafe.}
+    tags: [ExecIOEffect, FReadEnv], gcsafe.}
   {.push stacktrace: off, profiler: off.}
   proc startProcessAfterFork(data: ptr TStartProcessData) {.
-    tags: [FExecIO, FReadEnv], cdecl, gcsafe.}
+    tags: [ExecIOEffect, FReadEnv], cdecl, gcsafe.}
   {.pop.}
 
   proc startProcess(command: string,
@@ -850,9 +850,9 @@ elif not defined(useNimRtl):
     if p.exitCode == -3: result = -1
     else: result = p.exitCode.int shr 8
 
-  proc createStream(stream: var PStream, handle: var TFileHandle,
-                    fileMode: TFileMode) =
-    var f: TFile
+  proc createStream(stream: var PStream, handle: var FileHandle,
+                    fileMode: FileMode) =
+    var f: File
     if not open(f, handle, fileMode): osError(osLastError())
     stream = newFileStream(f)
 
@@ -897,7 +897,7 @@ elif not defined(useNimRtl):
     setLen(s, L)
 
   proc select(readfds: var seq[PProcess], timeout = 500): int =
-    var tv: TTimeVal
+    var tv: Ttimeval
     tv.tv_sec = 0
     tv.tv_usec = timeout * 1000
 
@@ -916,7 +916,7 @@ elif not defined(useNimRtl):
 proc execCmdEx*(command: string, options: set[TProcessOption] = {
                 poStdErrToStdOut, poUsePath}): tuple[
                 output: TaintedString,
-                exitCode: int] {.tags: [ExecIOEffect, FReadIO], gcsafe.} =
+                exitCode: int] {.tags: [ExecIOEffect, ReadIOEffect], gcsafe.} =
   ## a convenience proc that runs the `command`, grabs all its output and
   ## exit code and returns both.
   var p = startCmd(command, options)

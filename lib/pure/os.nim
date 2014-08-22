@@ -951,7 +951,7 @@ proc setFilePermissions*(filename: string, permissions: set[TFilePermission]) {.
     if res2 == - 1'i32: osError(osLastError())
 
 proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
-  tags: [ReadIOEffect, FWriteIO].} =
+  tags: [ReadIOEffect, WriteIOEffect].} =
   ## Copies a file from `source` to `dest`.
   ##
   ## If this fails, `EOS` is raised. On the Windows platform this proc will
@@ -972,7 +972,7 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
   else:
     # generic version of copyFile which works for any platform:
     const bufSize = 8000 # better for memory manager
-    var d, s: TFile
+    var d, s: File
     if not open(s, source): osError(osLastError())
     if not open(d, dest, fmWrite):
       close(s)
@@ -993,7 +993,7 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
     close(d)
 
 proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
-  tags: [ReadIOEffect, FWriteIO].} =
+  tags: [ReadIOEffect, WriteIOEffect].} =
   ## Moves a file from `source` to `dest`. If this fails, `EOS` is raised.
   if c_rename(source, dest) != 0'i32:
     raise newException(OSError, $strerror(errno))
@@ -1031,7 +1031,7 @@ proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [FWriteDir].} =
           osError(osLastError())
   else:
     if c_remove(file) != 0'i32 and errno != ENOENT:
-      raise newException(EOS, $strerror(errno))
+      raise newException(OSError, $strerror(errno))
 
 proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   tags: [ExecIOEffect].} =
@@ -1364,7 +1364,7 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1", tags: [FWriteDir].} =
   rawCreateDir(dir)
 
 proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
-  tags: [WriteIOEffect, FReadIO].} =
+  tags: [WriteIOEffect, ReadIOEffect].} =
   ## Copies a directory from `source` to `dest`.
   ##
   ## If this fails, `EOS` is raised. On the Windows platform this proc will
@@ -1537,7 +1537,7 @@ proc copyFileWithPermissions*(source, dest: string,
 
 proc copyDirWithPermissions*(source, dest: string,
     ignorePermissionErrors = true) {.rtl, extern: "nos$1",
-    tags: [WriteIOEffect, FReadIO].} =
+    tags: [WriteIOEffect, ReadIOEffect].} =
   ## Copies a directory from `source` to `dest` preserving file permissions.
   ##
   ## If this fails, `EOS` is raised. This is a wrapper proc around `copyDir()
@@ -1674,12 +1674,12 @@ elif not defined(createNimRtl):
     cmdCount {.importc: "cmdCount".}: cint
     cmdLine {.importc: "cmdLine".}: cstringArray
 
-  proc paramStr*(i: int): TaintedString {.tags: [FReadIO].} =
+  proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
     # Docstring in nimdoc block.
     if i < cmdCount and i >= 0: return TaintedString($cmdLine[i])
-    raise newException(EInvalidIndex, "invalid index")
+    raise newException(IndexError, "invalid index")
 
-  proc paramCount*(): int {.tags: [FReadIO].} =
+  proc paramCount*(): int {.tags: [ReadIOEffect].} =
     # Docstring in nimdoc block.
     result = cmdCount-1
 
@@ -1820,7 +1820,7 @@ proc getFileSize*(file: string): BiggestInt {.rtl, extern: "nos$1",
     result = rdFileSize(a)
     findClose(resA)
   else:
-    var f: TFile
+    var f: File
     if open(f, file):
       result = getFileSize(f)
       close(f)
@@ -1867,7 +1867,7 @@ when defined(Windows):
 else:
   type
     DeviceId* = TDev
-    FileId* = TIno
+    FileId* = Tino
 
 type
   FileInfo* = object

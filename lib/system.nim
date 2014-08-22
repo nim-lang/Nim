@@ -384,11 +384,11 @@ type
     ##
     ## This happens for calculations whose results are too large to fit in the
     ## provided bits.  See the full `exception hierarchy`_.
-  AccessViolationError* {.compilerproc.} = object of Exception ## \
+  AccessViolationError* = object of Exception ## \
     ## Raised for invalid memory access errors
     ##
     ## See the full `exception hierarchy`_.
-  AssertionError* {.compilerproc.} = object of Exception ## \
+  AssertionError* = object of Exception ## \
     ## Raised when assertion is proved wrong.
     ##
     ## Usually the result of using the `assert() template <#assert>`_.  See the
@@ -496,7 +496,8 @@ type
   EFloatingPoint: FloatingPointError,
   EFloatInvalidOp: FloatInvalidOpError,
   EFloatDivByZero: FloatDivByZeroError,
-  EFloatOverflow: FloatOverflowError
+  EFloatOverflow: FloatOverflowError,
+  ESynch: Exception
 ].}
 
 proc sizeof*[T](x: T): Natural {.magic: "SizeOf", noSideEffect.}
