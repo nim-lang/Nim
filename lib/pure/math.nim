@@ -40,46 +40,6 @@ const
                                            ## after the decimal point 
                                            ## for Nimrod's ``float`` type.
 
-var
-  FE_DIVBYZERO* {.importc, header: "<fenv.h>".}: cint
-  FE_INEXACT* {.importc, header: "<fenv.h>".}: cint
-  FE_INVALID* {.importc, header: "<fenv.h>".}: cint
-  FE_OVERFLOW* {.importc, header: "<fenv.h>".}: cint
-  FE_UNDERFLOW* {.importc, header: "<fenv.h>".}: cint
-  FE_ALL_EXCEPT* {.importc, header: "<fenv.h>".}: cint
-  FE_DOWNWARD* {.importc, header: "<fenv.h>".}: cint
-  FE_TONEAREST* {.importc, header: "<fenv.h>".}: cint
-  FE_TOWARDZERO* {.importc, header: "<fenv.h>".}: cint
-  FE_UPWARD* {.importc, header: "<fenv.h>".}: cint
-  FE_DFL_ENV* {.importc, header: "<fenv.h>".}: cint
-
-type
-  TFloatClass* = enum ## describes the class a floating point value belongs to.
-                      ## This is the type that is returned by `classify`.
-    fcNormal,    ## value is an ordinary nonzero floating point value
-    fcSubnormal, ## value is a subnormal (a very small) floating point value
-    fcZero,      ## value is zero
-    fcNegZero,   ## value is the negative zero
-    fcNan,       ## value is Not-A-Number (NAN)
-    fcInf,       ## value is positive infinity
-    fcNegInf     ## value is negative infinity
-
-  Tfenv* {.importc: "fenv_t", header: "<fenv.h>", final, pure.} =
-    object ## Represents the entire floating-point environment. The
-           ## floating-point environment refers collectively to any
-           ## floating-point status flags and control modes supported
-           ## by the implementation.
-  Tfexcept* {.importc: "fexcept_t", header: "<fenv.h>", final, pure.} =
-    object ## Represents the floating-point status flags collectively,
-           ## including any status the implementation associates with the
-           ## flags. A floating-point status flag is a system variable
-           ## whose value is set (but never cleared) when a floating-point
-           ## exception is raised, which occurs as a side effect of
-           ## exceptional floating-point arithmetic to provide auxiliary
-           ## information. A floating-point control mode is a system variable
-           ## whose value may be set by the user to affect the subsequent
-           ## behavior of floating-point arithmetic.
-
 proc classify*(x: float): TFloatClass = 
   ## classifies a floating point value. Returns `x`'s class as specified by
   ## `TFloatClass`.
@@ -349,20 +309,6 @@ proc variance*(s: TRunningStat): float =
 proc standardDeviation*(s: TRunningStat): float = 
   ## computes the current standard deviation of `s`
   result = sqrt(variance(s))
-
-proc feclearexcept*(a1: cint): cint {.importc, header: "<fenv.h>".}
-proc fegetexceptflag*(a1: ptr Tfexcept, a2: cint): cint {.
-  importc, header: "<fenv.h>".}
-proc feraiseexcept*(a1: cint): cint {.importc, header: "<fenv.h>".}
-proc fesetexceptflag*(a1: ptr Tfexcept, a2: cint): cint {.
-  importc, header: "<fenv.h>".}
-proc fetestexcept*(a1: cint): cint {.importc, header: "<fenv.h>".}
-proc fegetround*(): cint {.importc, header: "<fenv.h>".}
-proc fesetround*(a1: cint): cint {.importc, header: "<fenv.h>".}
-proc fegetenv*(a1: ptr Tfenv): cint {.importc, header: "<fenv.h>".}
-proc feholdexcept*(a1: ptr Tfenv): cint {.importc, header: "<fenv.h>".}
-proc fesetenv*(a1: ptr Tfenv): cint {.importc, header: "<fenv.h>".}
-proc feupdateenv*(a1: ptr Tfenv): cint {.importc, header: "<fenv.h>".}
 
 {.pop.}
 {.pop.}
