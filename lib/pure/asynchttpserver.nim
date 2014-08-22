@@ -97,7 +97,8 @@ proc sendStatus(client: PAsyncSocket, status: string): PFuture[void] =
   client.send("HTTP/1.1 " & status & "\c\L")
 
 proc processClient(client: PAsyncSocket, address: string,
-                 callback: proc (request: TRequest): PFuture[void]) {.async.} =
+                   callback: proc (request: TRequest):
+                      PFuture[void] {.closure, gcsafe.}) {.async.} =
   while true:
     # GET /path HTTP/1.1
     # Header: val
@@ -184,7 +185,7 @@ proc processClient(client: PAsyncSocket, address: string,
       break
 
 proc serve*(server: PAsyncHttpServer, port: TPort,
-            callback: proc (request: TRequest): PFuture[void] {.gcsafe.},
+            callback: proc (request: TRequest): PFuture[void] {.closure,gcsafe.},
             address = "") {.async.} =
   ## Starts the process of listening for incoming HTTP connections on the
   ## specified address and port.

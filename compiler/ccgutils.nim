@@ -94,6 +94,10 @@ proc getUniqueType*(key: PType): PType =
     else: result = getUniqueType(lastSon(key))
   of tyGenericInst, tyOrdinal, tyMutable, tyConst, tyIter, tyStatic:
     result = getUniqueType(lastSon(key))
+    #let obj = lastSon(key)
+    #if obj.sym != nil and obj.sym.name.s == "TOption":
+    #  echo "for ", typeToString(key), " I returned "
+    #  debug result
   of tyArrayConstr, tyGenericInvokation, tyGenericBody,
      tyOpenArray, tyArray, tySet, tyRange, tyTuple,
      tyPtr, tyRef, tySequence, tyForward, tyVarargs, tyProxy, tyVar:
@@ -126,7 +130,7 @@ proc getUniqueType*(key: PType): PType =
         if t != nil and sameType(t, key): 
           return t
       idTablePut(gTypeTable[k], key, key)
-      result = key
+      result = key    
   of tyEnum:
     result = PType(idTableGet(gTypeTable[k], key))
     if result == nil: 

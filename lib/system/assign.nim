@@ -89,14 +89,10 @@ proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) =
     copyMem(dest, src, mt.size) # copy raw bits
 
 proc genericAssign(dest, src: pointer, mt: PNimType) {.compilerProc.} =
-  GC_disable()
   genericAssignAux(dest, src, mt, false)
-  GC_enable()
 
 proc genericShallowAssign(dest, src: pointer, mt: PNimType) {.compilerProc.} =
-  GC_disable()
   genericAssignAux(dest, src, mt, true)
-  GC_enable()
 
 when false:
   proc debugNimType(t: PNimType) =
