@@ -1,17 +1,17 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-## Thread support for Nimrod. **Note**: This is part of the system module.
+## Thread support for Nim. **Note**: This is part of the system module.
 ## Do not import it directly. To activate thread support you need to compile
 ## with the ``--threads:on`` command line switch.
 ##
-## Nimrod's memory model for threads is quite different from other common 
+## Nim's memory model for threads is quite different from other common 
 ## programming languages (C, Pascal): Each thread has its own
 ## (garbage collected) heap and sharing of memory is restricted. This helps
 ## to prevent race conditions and improves efficiency. See `the manual for
@@ -19,7 +19,7 @@
 ##
 ## Example:
 ##
-## .. code-block:: nimrod
+## .. code-block:: Nim
 ##
 ##  import locks
 ##
@@ -245,14 +245,14 @@ when not defined(useNimRtl):
     # the GC can examine the stacks?
     proc stopTheWord() = discard
     
-# We jump through some hops here to ensure that Nimrod thread procs can have
-# the Nimrod calling convention. This is needed because thread procs are 
+# We jump through some hops here to ensure that Nim thread procs can have
+# the Nim calling convention. This is needed because thread procs are 
 # ``stdcall`` on Windows and ``noconv`` on UNIX. Alternative would be to just
 # use ``stdcall`` since it is mapped to ``noconv`` on UNIX anyway.
 
 type
   TThread* {.pure, final.}[TArg] =
-      object of TGcThread ## Nimrod thread. A thread is a heavy object (~14K)
+      object of TGcThread ## Nim thread. A thread is a heavy object (~14K)
                           ## that **must not** be part of a message! Use
                           ## a ``TThreadId`` for that.
     when TArg is void:

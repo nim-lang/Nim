@@ -130,20 +130,27 @@ proc addToIntersection(inter: var TIntersection, s: int) =
 
 proc throws(tracked, n: PNode) =
   if n.typ == nil or n.typ.kind != tyError: tracked.add n
-  
+
+proc getEbase(): PType =
+  result = if getCompilerProc("Exception") != nil: sysTypeFromName"Exception"
+           else: sysTypeFromName"E_Base"
+
 proc excType(n: PNode): PType =
   # reraise is like raising E_Base:
-  let t = if n.kind == nkEmpty: sysTypeFromName"E_Base" else: n.typ
+  let t = if n.kind == nkEmpty: getEbase() else: n.typ
   result = skipTypes(t, skipPtrs)
 
 proc createRaise(n: PNode): PNode =
   result = newNode(nkType)
-  result.typ = sysTypeFromName"E_Base"
+  result.typ = getEbase()
   if not n.isNil: result.info = n.info
 
 proc createTag(n: PNode): PNode =
   result = newNode(nkType)
-  result.typ = sysTypeFromName"TEffect"
+  if getCompilerProc("RootEffect") != nil:
+    result.typ = sysTypeFromName"RootEffect"
+  else:
+    result.typ = sysTypeFromName"TEffect"
   if not n.isNil: result.info = n.info
 
 proc createAnyGlobal(n: PNode): PNode =

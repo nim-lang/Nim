@@ -489,6 +489,8 @@ proc genBreakStmt(p: BProc, t: PNode) =
 proc getRaiseFrmt(p: BProc): string = 
   if gCmd == cmdCompileToCpp: 
     result = "throw NimException($1, $2);$n"
+  elif getCompilerProc("Exception") != nil:
+    result = "#raiseException((#Exception*)$1, $2);$n"
   else:
     result = "#raiseException((#E_Base*)$1, $2);$n"
 
@@ -733,7 +735,10 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
     i, length, blen: int
   genLineDir(p, t)
   exc = getTempName()
-  discard cgsym(p.module, "E_Base")
+  if getCompilerProc("Exception") != nil:
+    discard cgsym(p.module, "Exception")
+  else:
+    discard cgsym(p.module, "E_Base")
   add(p.nestedTryStmts, t)
   startBlock(p, "try {$n")
   expr(p, t.sons[0], d)
@@ -815,7 +820,10 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
   discard lists.includeStr(p.module.headerFiles, "<setjmp.h>")
   genLineDir(p, t)
   var safePoint = getTempName()
-  discard cgsym(p.module, "E_Base")
+  if getCompilerProc("Exception") != nil:
+    discard cgsym(p.module, "Exception")
+  else:
+    discard cgsym(p.module, "E_Base")
   linefmt(p, cpsLocals, "#TSafePoint $1;$n", safePoint)
   linefmt(p, cpsStmts, "#pushSafePoint(&$1);$n", safePoint)
   linefmt(p, cpsStmts, "$1.status = setjmp($1.context);$n", safePoint)

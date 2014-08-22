@@ -2015,7 +2015,7 @@ template accumulateResult*(iter: expr) =
   for x in iter: add(result, x)
 
 # we have to compute this here before turning it off in except.nim anyway ...
-const nimrodStackTrace = compileOption("stacktrace")
+const NimStackTrace = compileOption("stacktrace")
 
 {.push checks: off.}
 # obviously we cannot generate checking operations here :-)

@@ -1,9 +1,9 @@
-=============
-Nimrod Manual
-=============
+==========
+Nim Manual
+==========
 
 :Authors: Andreas Rumpf, Zahary Karadjov
-:Version: |nimrodversion|
+:Version: |nimversion|
 
 .. contents::
 
@@ -17,11 +17,11 @@ Nimrod Manual
 About this document
 ===================
 
-**Note**: This document is a draft! Several of Nimrod's features need more
+**Note**: This document is a draft! Several of Nim's features need more
 precise wording. This manual will evolve into a proper specification some
 day.
 
-This document describes the lexis, the syntax, and the semantics of Nimrod.
+This document describes the lexis, the syntax, and the semantics of Nim.
 
 The language constructs are explained using an extended BNF, in
 which ``(a)*`` means 0 or more ``a``'s, ``a+`` means 1 or more ``a``'s, and
@@ -48,14 +48,14 @@ and ``a ^* b`` is short for ``(a (b a)*)?``. Example::
 
   arrayConstructor = '[' expr ^* ',' ']'
 
-Other parts of Nimrod - like scoping rules or runtime semantics are only
+Other parts of Nim - like scoping rules or runtime semantics are only
 described in an informal manner for now.
 
 
 Definitions
 ===========
 
-A Nimrod program specifies a computation that acts on a memory consisting of
+A Nim program specifies a computation that acts on a memory consisting of
 components called `locations`:idx:. A variable is basically a name for a
 location. Each variable and location is of a certain `type`:idx:. The
 variable's type is called `static type`:idx:, the location's type is called
@@ -107,7 +107,7 @@ Lexical Analysis
 Encoding
 --------
 
-All Nimrod source files are in the UTF-8 encoding (or its ASCII subset). Other
+All Nim source files are in the UTF-8 encoding (or its ASCII subset). Other
 encodings are not supported. Any of the standard platform line termination
 sequences can be used - the Unix form using ASCII LF (linefeed), the Windows
 form using the ASCII sequence CR LF (return followed by linefeed), or the old
@@ -118,13 +118,13 @@ used equally, regardless of platform.
 Indentation
 -----------
 
-Nimrod's standard grammar describes an `indentation sensitive`:idx: language.
+Nim's standard grammar describes an `indentation sensitive`:idx: language.
 This means that all the control structures are recognized by indentation.
 Indentation consists only of spaces; tabulators are not allowed.
 
 The indentation handling is implemented as follows: The lexer annotates the
 following token with the preceding number of spaces; indentation is not
-a separate token. This trick allows parsing of Nimrod with only 1 token of
+a separate token. This trick allows parsing of Nim with only 1 token of
 lookahead.
 
 The parser uses a stack of indentation levels: the stack consists of integers
@@ -188,7 +188,7 @@ which code snippet the comment refers to.
 Identifiers & Keywords
 ----------------------
 
-Identifiers in Nimrod can be any string of letters, digits
+Identifiers in Nim can be any string of letters, digits
 and underscores, beginning with a letter. Two immediate following
 underscores ``__`` are not allowed::
 
@@ -209,12 +209,12 @@ The following keywords are reserved and cannot be used as identifiers:
 Some keywords are unused; they are reserved for future developments of the
 language.
 
-Nimrod is a `style-insensitive`:idx: language. This means that it is not
+Nim is a `style-insensitive`:idx: language. This means that it is not
 case-sensitive and even underscores are ignored:
 **type** is a reserved word, and so is **TYPE** or **T_Y_P_E**. The idea behind
 this is that this allows programmers to use their own preferred spelling style
 and libraries written by different programmers cannot use incompatible
-conventions. A Nimrod-aware editor or IDE can show the identifiers as
+conventions. A Nim-aware editor or IDE can show the identifiers as
 preferred. Another advantage is that it frees the programmer from remembering
 the exact spelling of an identifier.
 
@@ -250,7 +250,7 @@ contain the following `escape sequences`:idx:\ :
 ==================         ===================================================
 
 
-Strings in Nimrod may contain any 8-bit value, even embedded zeros. However 
+Strings in Nim may contain any 8-bit value, even embedded zeros. However 
 some operations may interpret the first binary zero as a terminator.
 
 
@@ -317,7 +317,7 @@ identifier and the opening quotation mark) is a
 generalized raw string literal. It is a shortcut for the construct
 ``identifier(r"string literal")``, so it denotes a procedure call with a
 raw string literal as its only argument. Generalized raw string literals
-are especially convenient for embedding mini languages directly into Nimrod
+are especially convenient for embedding mini languages directly into Nim
 (for example regular expressions).
 
 The construct ``identifier"""string literal"""`` exists too. It is a shortcut
@@ -357,7 +357,7 @@ literals:
 A character is not an Unicode character but a single byte. The reason for this
 is efficiency: for the overwhelming majority of use-cases, the resulting
 programs will still handle UTF-8 properly as UTF-8 was specially designed for
-this. Another reason is that Nimrod can thus support ``array[char, int]`` or
+this. Another reason is that Nim can thus support ``array[char, int]`` or
 ``set[char]`` efficiently as many algorithms rely on this feature.  The `TRune`
 type is used for Unicode characters, it can represent any Unicode character.
 ``TRune`` is declared in the `unicode module <unicode.html>`_.
@@ -441,7 +441,7 @@ is approximately 1.72826e35 according to the IEEE floating point standard.
 Operators
 ---------
 
-In Nimrod one can define his own operators. An operator is any
+In Nim one can define his own operators. An operator is any
 combination of the following characters::
 
        =     +     -     *     /     <     >
@@ -474,10 +474,10 @@ and not the two tokens `{.`:tok:, `.}`:tok:.
 Syntax
 ======
 
-This section lists Nimrod's standard syntax. How the parser handles
+This section lists Nim's standard syntax. How the parser handles
 the indentation is already described in the `Lexical Analysis`_ section.
 
-Nimrod allows user-definable operators.
+Nim allows user-definable operators.
 Binary operators have 10 different levels of precedence.
 
 Relevant character
@@ -588,7 +588,7 @@ The grammar's start symbol is ``module``.
 Types
 =====
 
-All expressions have a type which is known at compile time. Nimrod
+All expressions have a type which is known at compile time. Nim
 is statically typed. One can declare new types, which is in essence defining
 an identifier that can be used to denote this custom type.
 
@@ -686,7 +686,7 @@ kinds of integer types are used: the smaller type is converted to the larger.
 
 A `narrowing type conversion`:idx: converts a larger to a smaller type (for
 example ``int32 -> int16``. A `widening type conversion`:idx: converts a 
-smaller type to a larger type (for example ``int16 -> int32``). In Nimrod only
+smaller type to a larger type (for example ``int16 -> int32``). In Nim only
 widening type conversions are *implicit*:
 
 .. code-block:: nimrod
@@ -723,7 +723,7 @@ determined). Assignments from the base type to one of its subrange types
 
 A subrange type has the same size as its base type (``int`` in the example).
 
-Nimrod requires `interval arithmetic`:idx: for subrange types over a set
+Nim requires `interval arithmetic`:idx: for subrange types over a set
 of built-in operators that involve constants: ``x %% 3`` is of 
 type ``range[0..2]``. The following built-in operators for integers are 
 affected by this rule: ``-``, ``+``, ``*``, ``min``, ``max``, ``succ``,
@@ -781,12 +781,12 @@ The IEEE standard defines five types of floating-point exceptions:
   precision, for example, 2.0 / 3.0, log(1.1) and 0.1 in input.
 
 The IEEE exceptions are either ignored at runtime or mapped to the 
-Nimrod exceptions: `EFloatInvalidOp`:idx:, `EFloatDivByZero`:idx:,
+Nim exceptions: `EFloatInvalidOp`:idx:, `EFloatDivByZero`:idx:,
 `EFloatOverflow`:idx:, `EFloatUnderflow`:idx:, and `EFloatInexact`:idx:. 
 These exceptions inherit from the `EFloatingPoint`:idx: base class.
 
-Nimrod provides the pragmas `NaNChecks`:idx: and `InfChecks`:idx: to control
-whether the IEEE exceptions are ignored or trap a Nimrod exception:
+Nim provides the pragmas `NaNChecks`:idx: and `InfChecks`:idx: to control
+whether the IEEE exceptions are ignored or trap a Nim exception:
 
 .. code-block:: nimrod
   {.NanChecks: on, InfChecks: on.}
@@ -807,7 +807,7 @@ the ``+``, ``-``, ``*``, ``/`` operators for floating point types.
 
 Boolean type
 ------------
-The boolean type is named `bool`:idx: in Nimrod and can be one of the two
+The boolean type is named `bool`:idx: in Nim and can be one of the two
 pre-defined values ``true`` and ``false``. Conditions in while,
 if, elif, when statements need to be of type bool.
 
@@ -831,12 +831,12 @@ The size of the bool type is one byte.
 
 Character type
 --------------
-The character type is named ``char`` in Nimrod. Its size is one byte.
+The character type is named ``char`` in Nim. Its size is one byte.
 Thus it cannot represent an UTF-8 character, but a part of it.
 The reason for this is efficiency: for the overwhelming majority of use-cases,
 the resulting programs will still handle UTF-8 properly as UTF-8 was specially
 designed for this.
-Another reason is that Nimrod can support ``array[char, int]`` or
+Another reason is that Nim can support ``array[char, int]`` or
 ``set[char]`` efficiently as many algorithms rely on this feature. The
 `TRune` type is used for Unicode characters, it can represent any Unicode
 character. ``TRune`` is declared in the `unicode module <unicode.html>`_.
@@ -916,8 +916,8 @@ via ``TMyEnum.value``:
 
 String type
 -----------
-All string literals are of the type ``string``. A string in Nimrod is very
-similar to a sequence of characters. However, strings in Nimrod are both
+All string literals are of the type ``string``. A string in Nim is very
+similar to a sequence of characters. However, strings in Nim are both
 zero-terminated and have a length field. One can retrieve the length with the
 builtin ``len`` procedure; the length never counts the terminating zero.
 The assignment operator for strings always copies the string.
@@ -949,8 +949,8 @@ interfacing with C. The index operation ``s[i]`` means the i-th *char* of
 ``s``; however no bounds checking for ``cstring`` is performed making the
 index operation unsafe.
 
-A Nimrod ``string`` is implicitly convertible 
-to ``cstring`` for convenience. If a Nimrod string is passed to a C-style
+A Nim ``string`` is implicitly convertible 
+to ``cstring`` for convenience. If a Nim string is passed to a C-style
 variadic proc, it is implicitly converted to ``cstring`` too:
 
 .. code-block:: nimrod
@@ -1169,7 +1169,7 @@ An example:
 
 .. code-block:: nimrod
 
-  # This is an example how an abstract syntax tree could be modelled in Nimrod
+  # This is an example how an abstract syntax tree could be modelled in Nim
   type
     TNodeKind = enum  # the different node types
       nkInt,          # a leaf with an integer value
@@ -1230,7 +1230,7 @@ References (similar to pointers in other programming languages) are a
 way to introduce many-to-one relationships. This means different references can
 point to and modify the same location in memory (also called `aliasing`:idx:).
 
-Nimrod distinguishes between `traced`:idx: and `untraced`:idx: references.
+Nim distinguishes between `traced`:idx: and `untraced`:idx: references.
 Untraced references are also called *pointers*. Traced references point to
 objects of a garbage collected heap, untraced references point to
 manually allocated objects or to objects somewhere else in memory. Thus
@@ -1409,7 +1409,7 @@ Future directions:
 Procedural type
 ---------------
 A procedural type is internally a pointer to a procedure. ``nil`` is
-an allowed value for variables of a procedural type. Nimrod uses procedural
+an allowed value for variables of a procedural type. Nim uses procedural
 types to achieve `functional`:idx: programming techniques.
 
 Examples:
@@ -1446,10 +1446,10 @@ compatible if they have the same calling convention. As a special extension,
 a procedure of the calling convention ``nimcall`` can be passed to a parameter
 that expects a proc of the calling convention ``closure``.
 
-Nimrod supports these `calling conventions`:idx:\:
+Nim supports these `calling conventions`:idx:\:
 
 `nimcall`:idx:
-    is the default convention used for a Nimrod **proc**. It is the
+    is the default convention used for a Nim **proc**. It is the
     same as ``fastcall``, but only for C compilers that support ``fastcall``.
 
 `closure`:idx:
@@ -1476,7 +1476,7 @@ Nimrod supports these `calling conventions`:idx:\:
 
 `inline`:idx:
     The inline convention means the the caller should not call the procedure,
-    but inline its code directly. Note that Nimrod does not inline, but leaves
+    but inline its code directly. Note that Nim does not inline, but leaves
     this to the C compiler; it generates ``__inline`` procedures. This is
     only a hint for the compiler: it may completely ignore it and
     it may inline procedures that are not marked as ``inline``.
@@ -1492,7 +1492,7 @@ Nimrod supports these `calling conventions`:idx:\:
 `noconv`:idx:
     The generated C code will not have any explicit calling convention and thus
     use the C compiler's default calling convention. This is needed because
-    Nimrod's default calling convention for procedures is ``fastcall`` to
+    Nim's default calling convention for procedures is ``fastcall`` to
     improve speed.
 
 Most calling conventions exist only for the Windows 32-bit platform.
@@ -1636,7 +1636,7 @@ Currently only the dot accessor can be borrowed in this way.
 Avoiding SQL injection attacks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-An SQL statement that is passed from Nimrod to an SQL database might be
+An SQL statement that is passed from Nim to an SQL database might be
 modelled as a string. However, using string templates and filling in the
 values is vulnerable to the famous `SQL injection attack`:idx:\:
 
@@ -1745,7 +1745,7 @@ describe the type checking done by the compiler.
 
 Type equality
 -------------
-Nimrod uses structural type equivalence for most types. Only for objects,
+Nim uses structural type equivalence for most types. Only for objects,
 enumerations and distinct types name equivalence is used. The following
 algorithm (in pseudo-code) determines type equality:
 
@@ -1932,7 +1932,7 @@ To be written.
 Statements and expressions
 ==========================
 
-Nimrod uses the common statement/expression paradigm: Statements do not
+Nim uses the common statement/expression paradigm: Statements do not
 produce a value in contrast to expressions. However, some expressions are 
 statements.
 
@@ -2079,7 +2079,7 @@ Const section
 cannot change. The compiler must be able to evaluate the expression in a
 constant declaration at compile time.
 
-Nimrod contains a sophisticated compile-time evaluator, so procedures which
+Nim contains a sophisticated compile-time evaluator, so procedures which
 have no side-effect can be used in constant expressions too:
 
 .. code-block:: nimrod
@@ -2119,7 +2119,7 @@ time.
 
 The current implementation poses some restrictions for compile time
 evaluation: Code which contains ``cast`` or makes use of the foreign function
-interface cannot be evaluated at compile time. Later versions of Nimrod will
+interface cannot be evaluated at compile time. Later versions of Nim will
 support the FFI at compile time.
 
 
@@ -2374,9 +2374,9 @@ Is equivalent to:
 Assembler statement
 -------------------
 
-The direct embedding of assembler code into Nimrod code is supported
+The direct embedding of assembler code into Nim code is supported
 by the unsafe ``asm`` statement. Identifiers in the assembler code that refer to
-Nimrod identifiers shall be enclosed in a special character which can be
+Nim identifiers shall be enclosed in a special character which can be
 specified in the statement's pragmas. The default special character is ``'`'``:
 
 .. code-block:: nimrod
@@ -2425,7 +2425,7 @@ Using statement
 
 The using statement provides syntactic convenience for procs that
 heavily use a single contextual parameter. When applied to a variable or a
-constant, it will instruct Nimrod to automatically consider the used symbol as
+constant, it will instruct Nim to automatically consider the used symbol as
 a hidden leading parameter for any procedure calls, following the using
 statement in the current scope. Thus, it behaves much like the hidden `this`
 parameter available in some object-oriented programming languages.
@@ -2502,7 +2502,7 @@ The `case expression` is again very similar to the case statement:
       "ice cream"
 
 As seen in the above example, the case expression can also introduce side
-effects. When multiple statements are given for a branch, Nimrod will use
+effects. When multiple statements are given for a branch, Nim will use
 the last expression as the result value, much like in an `expr` template.
 
 Table constructor
@@ -2582,7 +2582,7 @@ Procedures
 ==========
 
 What most programming languages call `methods`:idx: or `functions`:idx: are
-called `procedures`:idx: in Nimrod (which is the correct terminology). A
+called `procedures`:idx: in Nim (which is the correct terminology). A
 procedure declaration defines an identifier and associates it with a block
 of code. 
 A procedure may call itself recursively. A parameter may be given a default
@@ -2672,7 +2672,7 @@ postfix notation.
 
 Properties
 ----------
-Nimrod has no need for *get-properties*: Ordinary get-procedures that are called
+Nim has no need for *get-properties*: Ordinary get-procedures that are called
 with the *method call syntax* achieve the same. But setting a value is 
 different; for this a special setter syntax is needed:
 
@@ -2961,7 +2961,7 @@ Invocation of a multi-method cannot be ambiguous: collide 2 is preferred over
 collide 1 because the resolution works from left to right. 
 In the example ``TUnit, TThing`` is preferred over ``TThing, TUnit``.
 
-**Performance note**: Nimrod does not produce a virtual method table, but
+**Performance note**: Nim does not produce a virtual method table, but
 generates dispatch trees. This avoids the expensive indirect branch for method
 calls and enables inlining. However, other optimizations like compile time
 evaluation or dead code elimination do not work with methods.
@@ -3033,7 +3033,7 @@ into account.
 First class iterators
 ---------------------
 
-There are 2 kinds of iterators in Nimrod: *inline* and *closure* iterators.
+There are 2 kinds of iterators in Nim: *inline* and *closure* iterators.
 An `inline iterator`:idx: is an iterator that's always inlined by the compiler 
 leading to zero overhead for the abstraction, but may result in a heavy
 increase in code size. Inline iterators are second class citizens;
@@ -3290,7 +3290,7 @@ Effect system
 Exception tracking
 ------------------
 
-Nimrod supports exception tracking. The `raises`:idx: pragma can be used
+Nim supports exception tracking. The `raises`:idx: pragma can be used
 to explicitly define which exceptions a proc/iterator/method/converter is 
 allowed to raise. The compiler verifies this:
 
@@ -3367,7 +3367,7 @@ conservative in its effect analysis.
 Tag tracking
 ------------
 
-The exception tracking is part of Nimrod's `effect system`:idx:. Raising an
+The exception tracking is part of Nim's `effect system`:idx:. Raising an
 exception is an *effect*. Other effects can also be defined. A user defined 
 effect is a means to *tag* a routine and to perform checks against this tag:
 
@@ -3467,7 +3467,7 @@ Example:
   for str in inorder(root):
     writeln(stdout, str)
 
-Generics are Nimrod's means to parametrize procs, iterators or types with
+Generics are Nim's means to parametrize procs, iterators or types with
 `type parameters`:idx:. Depending on context, the brackets are used either to
 introduce type parameters or to instantiate a generic proc, iterator or type.
 
@@ -3515,7 +3515,7 @@ Type Classes
 
 A type class is a special pseudo-type that can be used to match against
 types in the context of overload resolution or the ``is`` operator. 
-Nimrod supports the following built-in type classes:
+Nim supports the following built-in type classes:
 
 ==================   ===================================================
 type class           matches
@@ -3553,7 +3553,7 @@ Procedures utilizing type classes in such manner are considered to be
 `implicitly generic`:idx:. They will be instantiated once for each unique 
 combination of param types used within the program.
 
-Nimrod also allows for type classes and regular types to be specified
+Nim also allows for type classes and regular types to be specified
 as `type constraints`:idx: of the generic type parameter:
 
 .. code-block:: nimrod
@@ -3579,7 +3579,7 @@ module to illustrate this:
 Alternatively, the ``distinct`` type modifier can be applied to the type class 
 to allow each param matching the type class to bind to a different type. 
 
-If a proc param doesn't have a type specified, Nimrod will use the
+If a proc param doesn't have a type specified, Nim will use the
 ``distinct auto`` type class (also known as ``any``):
 
 .. code-block:: nimrod
@@ -3675,7 +3675,7 @@ Return Type Inference
 ---------------------
 
 If a type class is used as the return type of a proc and it won't be bound to
-a concrete type by some of the proc params, Nimrod will infer the return type
+a concrete type by some of the proc params, Nim will infer the return type
 from the proc body. This is usually used with the ``auto`` type class:
 
 .. code-block:: nimrod
@@ -3684,7 +3684,7 @@ from the proc body. This is usually used with the ``auto`` type class:
 The return type will be treated as additional generic param and can be
 explicitly specified at call sites as any other generic param.
 
-Future versions of Nimrod may also support overloading based on the return type
+Future versions of Nim may also support overloading based on the return type
 of the overloads. In such settings, the expected result type at call sites may 
 also influence the inferred return type.
 
@@ -3760,7 +3760,7 @@ Templates
 =========
 
 A template is a simple form of a macro: It is a simple substitution
-mechanism that operates on Nimrod's abstract syntax trees. It is processed in
+mechanism that operates on Nim's abstract syntax trees. It is processed in
 the semantic pass of the compiler.
 
 The syntax to *invoke* a template is the same as calling a procedure.
@@ -3991,10 +3991,10 @@ to implement `domain specific languages`:idx:. Like templates, macros come in
 the 2 flavors *immediate* and *ordinary*.
 
 While macros enable advanced compile-time code transformations, they
-cannot change Nimrod's syntax. However, this is no real restriction because
-Nimrod's syntax is flexible enough anyway.
+cannot change Nim's syntax. However, this is no real restriction because
+Nim's syntax is flexible enough anyway.
 
-To write macros, one needs to know how the Nimrod concrete syntax is converted
+To write macros, one needs to know how the Nim concrete syntax is converted
 to an abstract syntax tree.
 
 There are two ways to invoke a macro:
@@ -4009,12 +4009,12 @@ The following example implements a powerful ``debug`` command that accepts a
 variable number of arguments:
 
 .. code-block:: nimrod
-  # to work with Nimrod syntax trees, we need an API that is defined in the
+  # to work with Nim syntax trees, we need an API that is defined in the
   # ``macros`` module:
   import macros
 
   macro debug(n: varargs[expr]): stmt =
-    # `n` is a Nimrod AST that contains the whole macro invocation
+    # `n` is a Nim AST that contains the whole macro invocation
     # this macro returns a list of statements:
     result = newNimNode(nnkStmtList, n)
     # iterate over any argument that is passed to this macro:
@@ -4313,14 +4313,14 @@ Special Operators
 dot operators
 -------------
 
-Nimrod offers a special family of dot operators that can be used to
+Nim offers a special family of dot operators that can be used to
 intercept and rewrite proc call and field access attempts, referring
 to previously undeclared symbol names. They can be used to provide a
 fluent interface to objects lying outside the static confines of the
 type system such as values from dynamic scripting languages
 or dynamic file formats such as JSON or XML.
 
-When Nimrod encounters an expression that cannot be resolved by the
+When Nim encounters an expression that cannot be resolved by the
 standard overload resolution rules, the current scope will be searched
 for a dot operator that can be matched against a re-written form of
 the expression, where the unknown field or proc name is converted to
@@ -4504,7 +4504,7 @@ is **wrong**:
   echo f() * 2
 
 We cannot duplicate 'a' if it denotes an expression that has a side effect!
-Fortunately Nimrod supports side effect analysis:
+Fortunately Nim supports side effect analysis:
 
 .. code-block:: nimrod
   template optMul{`*`(a, 2)}(a: int{noSideEffect}): int = a+a
@@ -4835,7 +4835,7 @@ optimization for types that have copying semantics:
 
 Modules
 =======
-Nimrod supports splitting a program into pieces by a module concept.
+Nim supports splitting a program into pieces by a module concept.
 Each module needs to be in its own file and has its own `namespace`:idx:.
 Modules enable `information hiding`:idx: and `separate compilation`:idx:.
 A module may gain access to symbols of another module by the `import`:idx:
@@ -5023,7 +5023,7 @@ iterator in which case the overloading resolution takes place:
 Compiler Messages
 =================
 
-The Nimrod compiler emits different kinds of messages: `hint`:idx:,
+The Nim compiler emits different kinds of messages: `hint`:idx:,
 `warning`:idx:, and `error`:idx: messages. An *error* message is emitted if
 the compiler encounters any static error.
 
@@ -5031,7 +5031,7 @@ the compiler encounters any static error.
 Pragmas
 =======
 
-Pragmas are Nimrod's method to give the compiler additional information /
+Pragmas are Nim's method to give the compiler additional information /
 commands without introducing a massive number of new keywords. Pragmas are
 processed on the fly during semantic checking. Pragmas are enclosed in the
 special ``{.`` and ``.}`` curly brackets. Pragmas are also often used as a
@@ -5133,7 +5133,7 @@ shallow pragma
 The ``shallow`` pragma affects the semantics of a type: The compiler is
 allowed to make a shallow copy. This can cause serious semantic issues and
 break memory safety! However, it can speed up assignments considerably, 
-because the semantics of Nimrod require deep copying of sequences and strings. 
+because the semantics of Nim require deep copying of sequences and strings. 
 This can be expensive, especially if sequences are used to build a tree
 structure: 
 
@@ -5223,7 +5223,7 @@ If the ``line`` pragma is used with a parameter, the parameter needs be a
 linearScanEnd pragma
 --------------------
 The ``linearScanEnd`` pragma can be used to tell the compiler how to 
-compile a Nimrod `case`:idx: statement. Syntactically it has to be used as a
+compile a Nim `case`:idx: statement. Syntactically it has to be used as a
 statement:
 
 .. code-block:: nimrod
@@ -5251,7 +5251,7 @@ whole ``case`` statement, the whole ``case`` statement uses linear scanning.
 computedGoto pragma
 -------------------
 The ``computedGoto`` pragma can be used to tell the compiler how to 
-compile a Nimrod `case`:idx: in a ``while true`` statement. 
+compile a Nim `case`:idx: in a ``while true`` statement. 
 Syntactically it has to be used as a statement inside the loop:
 
 .. code-block:: nimrod
@@ -5469,7 +5469,7 @@ Pragma pragma
 -------------
 
 The ``pragma`` pragma can be used to declare user defined pragmas. This is 
-useful because Nimrod's templates and macros do not affect pragmas. User 
+useful because Nim's templates and macros do not affect pragmas. User 
 defined pragmas are in a different module-wide scope than all other symbols. 
 They cannot be imported from a module.
 
@@ -5491,12 +5491,12 @@ generation.
 
 Disabling certain messages
 --------------------------
-Nimrod generates some warnings and hints ("line too long") that may annoy the
+Nim generates some warnings and hints ("line too long") that may annoy the
 user. A mechanism for disabling certain messages is provided: Each hint
 and warning message contains a symbol in brackets. This is the message's
 identifier that can be used to enable or disable it:
 
-.. code-block:: Nimrod
+.. code-block:: Nim
   {.hint[LineTooLong]: off.} # turn off the hint about too long lines
 
 This is often better than disabling all warnings at once.
@@ -5505,7 +5505,7 @@ This is often better than disabling all warnings at once.
 Foreign function interface
 ==========================
 
-Nimrod's `FFI`:idx: (foreign function interface) is extensive and only the
+Nim's `FFI`:idx: (foreign function interface) is extensive and only the
 parts that scale to other future backends (like the LLVM/JavaScript backends)
 are documented here.
 
@@ -5514,7 +5514,7 @@ Importc pragma
 --------------
 The ``importc`` pragma provides a means to import a proc or a variable
 from C. The optional argument is a string containing the C identifier. If
-the argument is missing, the C name is the Nimrod identifier *exactly as
+the argument is missing, the C name is the Nim identifier *exactly as
 spelled*:
 
 .. code-block::
@@ -5532,9 +5532,9 @@ Exportc pragma
 The ``exportc`` pragma provides a means to export a type, a variable, or a
 procedure to C. Enums and constants can't be exported. The optional argument
 is a string containing the C identifier.  If the argument is missing, the C
-name is the Nimrod identifier *exactly as spelled*:
+name is the Nim identifier *exactly as spelled*:
 
-.. code-block:: Nimrod
+.. code-block:: Nim
   proc callme(formatstr: cstring) {.exportc: "callMe", varargs.}
 
 Note that this pragma is somewhat of a misnomer: Other backends will provide
@@ -5546,7 +5546,7 @@ Extern pragma
 Like ``exportc`` or ``importc``, the ``extern`` pragma affects name
 mangling. The string literal passed to ``extern`` can be a format string:
 
-.. code-block:: Nimrod
+.. code-block:: Nim
   proc p(s: string) {.extern: "prefix$1".} =
     echo s
 
@@ -5575,11 +5575,11 @@ the compiler to pass the type by reference (hidden pointer) to procs.
 Varargs pragma
 --------------
 The ``varargs`` pragma can be applied to procedures only (and procedure 
-types). It tells Nimrod that the proc can take a variable number of parameters 
-after the last specified parameter. Nimrod string values will be converted to C
+types). It tells Nim that the proc can take a variable number of parameters 
+after the last specified parameter. Nim string values will be converted to C
 strings automatically:
 
-.. code-block:: Nimrod
+.. code-block:: Nim
   proc printf(formatstr: cstring) {.nodecl, varargs.}
 
   printf("hallo %s", "world") # "world" will be passed as C string
@@ -5648,7 +5648,7 @@ With the ``dynlib`` pragma a procedure or a variable can be imported from
 a dynamic library (``.dll`` files for Windows, ``lib*.so`` files for UNIX). 
 The non-optional argument has to be the name of the dynamic library:
 
-.. code-block:: Nimrod
+.. code-block:: Nim
   proc gtk_image_new(): PGtkWidget
     {.cdecl, dynlib: "libgtk-x11-2.0.so", importc.}
 
@@ -5706,7 +5706,7 @@ With the ``dynlib`` pragma a procedure can also be exported to
 a dynamic library. The pragma then has no argument and has to be used in
 conjunction with the ``exportc`` pragma:
 
-.. code-block:: Nimrod
+.. code-block:: Nim
   proc exportme(): int {.cdecl, exportc, dynlib.}
 
 This is only useful if the program is compiled as a dynamic library via the
@@ -5721,7 +5721,7 @@ be used. The ``system`` module then contains several threading primitives.
 See the `threads <threads.html>`_ and `channels <channels.html>`_ modules 
 for the thread API.
 
-Nimrod's memory model for threads is quite different than that of other common
+Nim's memory model for threads is quite different than that of other common
 programming languages (C, Pascal, Java): Each thread has its own (garbage 
 collected) heap and sharing of memory is restricted to global variables. This 
 helps to prevent race conditions. GC efficiency is improved quite a lot, 
@@ -5797,7 +5797,7 @@ exception in one thread terminates the whole *process*!
 Spawn
 -----
 
-Nimrod has a builtin thread pool that can be used for CPU intensive tasks. For
+Nim has a builtin thread pool that can be used for CPU intensive tasks. For
 IO intensive tasks the upcoming ``async`` and ``await`` features should be
 used instead. `spawn`:idx: is used to pass a task to the thread pool:
 
@@ -5828,7 +5828,7 @@ Currently the expression that ``spawn`` takes is however quite restricted:
 Taint mode
 ==========
 
-The Nimrod compiler and most parts of the standard library support 
+The Nim compiler and most parts of the standard library support 
 a taint mode. Input strings are declared with the `TaintedString`:idx: 
 string type declared in the ``system`` module.
 

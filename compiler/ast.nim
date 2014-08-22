@@ -501,7 +501,8 @@ type
     skStub,               # symbol is a stub and not yet loaded from the ROD
                           # file (it is loaded on demand, which may
                           # mean: never)
-    skPackage             # symbol is a package (used for canonicalization)
+    skPackage,            # symbol is a package (used for canonicalization)
+    skAlias               # an alias (needs to be resolved immediately)
   TSymKinds* = set[TSymKind]
 
 const
@@ -872,7 +873,7 @@ const
     tyProc, tyString, tyError}
   ExportableSymKinds* = {skVar, skConst, skProc, skMethod, skType,
     skIterator, skClosureIterator,
-    skMacro, skTemplate, skConverter, skEnumField, skLet, skStub}
+    skMacro, skTemplate, skConverter, skEnumField, skLet, skStub, skAlias}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
                                       nfDotSetter, nfDotField,
                                       nfIsRef}

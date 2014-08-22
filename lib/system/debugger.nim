@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -293,7 +293,7 @@ proc checkWatchpoints =
       Watchpoints[i].oldValue = newHash
 
 proc endb(line: int, file: cstring) {.compilerproc, noinline.} =
-  # This proc is called before every Nimrod code line!
+  # This proc is called before every Nim code line!
   if framePtr == nil: return
   if dbgWatchpointHook != nil: checkWatchpoints()
   framePtr.line = line # this is done here for smaller code size!

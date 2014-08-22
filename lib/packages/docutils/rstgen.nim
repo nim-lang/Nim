@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -103,7 +103,7 @@ proc initRstGenerator*(g: var TRstGenerator, target: TOutputTarget,
   ##
   ## Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##
   ##   import packages/docutils/rstgen
   ##
@@ -231,7 +231,7 @@ proc renderRstToOut*(d: var TRstGenerator, n: PRstNode, result: var string)
   ## ``initRstGenerator`` and parse a rst file with ``rstParse`` from the
   ## `packages/docutils/rst module <rst.html>`_. Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##
   ##   # ...configure gen and rst vars...
   ##   var generatedHTML = ""
@@ -597,7 +597,7 @@ proc mergeIndexes*(dir: string): string =
   ## Merges all index files in `dir` and returns the generated index as HTML.
   ##
   ## This proc will first scan `dir` for index files with the ``.idx``
-  ## extension previously created by commands like ``nimrod doc|rst2html``
+  ## extension previously created by commands like ``nim doc|rst2html``
   ## which use the ``--index:on`` switch. These index files are the result of
   ## calls to `setIndexTerm() <#setIndexTerm>`_ and `writeIndexFile()
   ## <#writeIndexFile>`_, so they are simple tab separated files.
@@ -768,7 +768,7 @@ proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
   var langstr = strip(getArgument(n))
   var lang: TSourceLanguage
   if langstr == "":
-    lang = langNimrod         # default language
+    lang = langNim         # default language
   else:
     lang = getSourceLanguage(langstr)
   
@@ -1123,7 +1123,7 @@ proc rstToHtml*(s: string, options: TRstParseOptions,
   ## work. For an explanation of the ``config`` parameter see the
   ## ``initRstGenerator`` proc. Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   import packages/docutils/rstgen, strtabs
   ##
   ##   echo rstToHtml("*Hello* **world**!", {},

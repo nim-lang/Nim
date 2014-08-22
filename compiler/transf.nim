@@ -782,8 +782,8 @@ proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
     #  result = lambdalifting.liftIterator(prc, result)
     incl(result.flags, nfTransf)
     when useEffectSystem: trackProc(prc, result)
-    if prc.name.s == "testbody":
-      echo renderTree(result)
+    #if prc.name.s == "testbody":
+    #  echo renderTree(result)
 
 proc transformStmt*(module: PSym, n: PNode): PNode =
   if nfTransf in n.flags:

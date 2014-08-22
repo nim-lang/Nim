@@ -368,7 +368,7 @@ const
     warnOctalEscape: "octal escape sequences do not exist; leading zero is ignored [OctalEscape]", 
     warnXIsNeverRead: "\'$1\' is never read [XIsNeverRead]", 
     warnXmightNotBeenInit: "\'$1\' might not have been initialized [XmightNotBeenInit]", 
-    warnDeprecated: "\'$1\' is deprecated [Deprecated]", 
+    warnDeprecated: "$1 is deprecated [Deprecated]", 
     warnConfigDeprecated: "config file '$1' is deprecated [ConfigDeprecated]",
     warnSmallLshouldNotBeUsed: "\'l\' should not be used as an identifier; may look like \'1\' (one) [SmallLshouldNotBeUsed]", 
     warnUnknownMagic: "unknown magic \'$1\' might crash the compiler [UnknownMagic]", 

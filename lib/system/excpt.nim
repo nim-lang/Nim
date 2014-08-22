@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -68,8 +68,8 @@ proc popCurrentException {.compilerRtl, inl.} =
 # some platforms have native support for stack traces:
 const
   nativeStackTraceSupported* = (defined(macosx) or defined(linux)) and
-                              not nimrodStackTrace
-  hasSomeStackTrace = nimrodStackTrace or 
+                              not NimStackTrace
+  hasSomeStackTrace = NimStackTrace or 
     defined(nativeStackTrace) and nativeStackTraceSupported
 
 when defined(nativeStacktrace) and nativeStackTraceSupported:
@@ -177,7 +177,7 @@ proc auxWriteStackTrace(f: PFrame, s: var string) =
 
 when hasSomeStackTrace:
   proc rawWriteStackTrace(s: var string) =
-    when nimrodStackTrace:
+    when NimStackTrace:
       if framePtr == nil:
         add(s, "No stack traceback available\n")
       else:
@@ -318,7 +318,7 @@ when not defined(noSignalHandler):
       GC_disable()
       var buf = newStringOfCap(2000)
       rawWriteStackTrace(buf)
-      processSignal(sig, buf.add) # nice hu? currying a la nimrod :-)
+      processSignal(sig, buf.add) # nice hu? currying a la Nim :-)
       showErrorMessage(buf)
       GC_enable()
     else:

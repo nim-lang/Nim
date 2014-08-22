@@ -1,13 +1,13 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-# A simple mark&sweep garbage collector for Nimrod. Define the 
+# A simple mark&sweep garbage collector for Nim. Define the 
 # symbol ``gcUseBitvectors`` to generate a variant of this GC.
 {.push profiler:off.}
 

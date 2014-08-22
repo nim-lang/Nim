@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -119,7 +119,7 @@ proc addChar(s: NimString, c: char): NimString =
   inc(result.len)
 
 # These routines should be used like following:
-#   <Nimrod code>
+#   <Nim code>
 #   s &= "Hello " & name & ", how do you feel?"
 #
 #   <generated C code>
@@ -130,7 +130,7 @@ proc addChar(s: NimString, c: char): NimString =
 #     appendString(s, strLit3);
 #   }
 #
-#   <Nimrod code>
+#   <Nim code>
 #   s = "Hello " & name & ", how do you feel?"
 #
 #   <generated C code>
@@ -143,7 +143,7 @@ proc addChar(s: NimString, c: char): NimString =
 #     s = tmp0;
 #   }
 #
-#   <Nimrod code>
+#   <Nim code>
 #   s = ""
 #
 #   <generated C code>

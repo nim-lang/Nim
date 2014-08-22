@@ -29,6 +29,8 @@ News
   - ``--threadanalysis:on`` is now the default. To make your program compile
     you can disable it but this is only a temporary solution as this option
     will disappear soon!
+  - ``system.fileHandle`` has been renamed to ``system.getFileHandle`` to
+    prevent name conflicts with the new type ``FileHandle``.
   
 
   Language Additions

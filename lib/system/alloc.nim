@@ -1,13 +1,13 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-# Low level allocator for Nimrod. Has been designed to support the GC.
+# Low level allocator for Nim. Has been designed to support the GC.
 # TODO: 
 # - eliminate "used" field
 # - make searching for block O(1)

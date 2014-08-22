@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -31,10 +31,10 @@ type
     state: TTokenClass
 
   TSourceLanguage* = enum 
-    langNone, langNimrod, langCpp, langCsharp, langC, langJava
+    langNone, langNim, langCpp, langCsharp, langC, langJava
 
 const 
-  sourceLanguageToStr*: array[TSourceLanguage, string] = ["none", "Nimrod", 
+  sourceLanguageToStr*: array[TSourceLanguage, string] = ["none", "Nim", 
     "C++", "C#", "C", "Java"]
   tokenClassToStr*: array[TTokenClass, string] = ["Eof", "None", "Whitespace", 
     "DecNumber", "BinNumber", "HexNumber", "OctNumber", "FloatNumber", 
@@ -46,7 +46,7 @@ const
 
   # The following list comes from doc/keywords.txt, make sure it is
   # synchronized with this array by running the module itself as a test case.
-  nimrodKeywords = ["addr", "and", "as", "asm", "atomic", "bind", "block",
+  nimKeywords = ["addr", "and", "as", "asm", "atomic", "bind", "block",
     "break", "case", "cast", "const", "continue", "converter", "discard",
     "distinct", "div", "do", "elif", "else", "end", "enum", "except", "export",
     "finally", "for", "from", "generic", "if", "import", "in", "include",
@@ -79,7 +79,7 @@ proc deinitGeneralTokenizer*(g: var TGeneralTokenizer) =
   discard
 
 proc nimGetKeyword(id: string): TTokenClass = 
-  for k in nimrodKeywords:
+  for k in nimKeywords:
     if cmpIgnoreStyle(id, k) == 0: return gtKeyword
   result = gtIdentifier
   when false:
@@ -542,7 +542,7 @@ proc javaNextToken(g: var TGeneralTokenizer) =
 proc getNextToken*(g: var TGeneralTokenizer, lang: TSourceLanguage) = 
   case lang
   of langNone: assert false
-  of langNimrod: nimNextToken(g)
+  of langNim: nimNextToken(g)
   of langCpp: cppNextToken(g)
   of langCsharp: csharpNextToken(g)
   of langC: cNextToken(g)
@@ -557,7 +557,7 @@ when isMainModule:
     keywords = input.split()
     break
   doAssert(not keywords.isNil, "Couldn't read any keywords.txt file!")
-  doAssert keywords.len == nimrodKeywords.len, "No matching lengths"
+  doAssert keywords.len == nimKeywords.len, "No matching lengths"
   for i in 0..keywords.len-1:
-    #echo keywords[i], " == ", nimrodKeywords[i]
-    doAssert keywords[i] == nimrodKeywords[i], "Unexpected keyword"
+    #echo keywords[i], " == ", nimKeywords[i]
+    doAssert keywords[i] == nimKeywords[i], "Unexpected keyword"

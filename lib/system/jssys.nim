@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -103,7 +103,7 @@ proc raiseException(e: ref E_Base, ename: cstring) {.
   if excHandler != nil:
     excHandler.exc = e
   else:
-    when nimrodStackTrace:
+    when NimStackTrace:
       var buf = rawWriteStackTrace()
     else:
       var buf = ""

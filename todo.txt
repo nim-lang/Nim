@@ -1,6 +1,11 @@
 version 0.9.6
 =============
 
+- fix bug #1320
+- fix tflowvar codegen test
+- split idetools into separate tool
+- split docgen into separate tool
+- .benign pragma
 - scopes are still broken for generic instantiation!
 - implicit deref for parameter matching
 

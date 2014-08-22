@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -8,41 +8,19 @@
 #
 
 ## This module implements the code "prettifier". This is part of the toolchain
-## to convert Nimrod code into a consistent style.
+## to convert Nim code into a consistent style.
 
 import 
   strutils, os, options, ast, astalgo, msgs, ropes, idents, passes,
-  intsets, strtabs, semdata
-  
-const
-  removeTP = false # when true, "nimrod pretty" converts TTyp to Typ.
+  intsets, strtabs, semdata, prettybase
 
 type
   TGen = object of TPassContext
     module*: PSym
   PGen = ref TGen
-  
-  TSourceFile = object
-    lines: seq[string]
-    dirty: bool
-    fullpath: string
 
 var
-  gSourceFiles: seq[TSourceFile] = @[]
   gCheckExtern: bool
-  rules: PStringTable
-
-proc loadFile(info: TLineInfo) =
-  let i = info.fileIndex
-  if i >= gSourceFiles.len:
-    gSourceFiles.setLen(i+1)
-  if gSourceFiles[i].lines.isNil:
-    gSourceFiles[i].lines = @[]
-    let path = info.toFullPath
-    gSourceFiles[i].fullpath = path
-    # we want to die here for EIO:
-    for line in lines(path):
-      gSourceFiles[i].lines.add(line)
 
 proc overwriteFiles*() =
   let overWrite = options.getConfigVar("pretty.overwrite").normalize == "on"
@@ -78,9 +56,6 @@ proc beautifyName(s: string, k: TSymKind): string =
   case k
   of skType, skGenericParam:
     # Types should start with a capital unless builtins like 'int' etc.:
-    when removeTP:
-      if s[0] == 'T' and s[1] in {'A'..'Z'}:
-        i = 1
     if s =~ ["int", "uint", "cint", "cuint", "clong", "cstring", "string",
              "char", "byte", "bool", "openArray", "seq", "array", "void",
              "pointer", "float", "csize", "cdouble", "cchar", "cschar",
@@ -120,26 +95,10 @@ proc checkStyle*(info: TLineInfo, s: string, k: TSymKind) =
   if s != beau:
     message(info, errGenerated, "name should be: " & beau)
 
-const
-  Letters = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF', '_'}
-
-proc identLen(line: string, start: int): int =
-  while start+result < line.len and line[start+result] in Letters:
-    inc result
-
-proc differ(line: string, a, b: int, x: string): bool =
-  let y = line[a..b]
-  result = cmpIgnoreStyle(y, x) == 0 and y != x
-  when false:
-    var j = 0
-    for i in a..b:
-      if line[i] != x[j]: return true
-      inc j
-    return false
-
 proc checkDef*(n: PNode; s: PSym) =
   # operators stay as they are:
-  if s.kind in {skResult, skTemp} or s.name.s[0] notin Letters: return
+  if s.kind in {skResult, skTemp} or s.name.s[0] notin prettybase.Letters:
+    return
   if s.kind in {skType, skGenericParam} and sfAnon in s.flags: return
 
   if {sfImportc, sfExportc} * s.flags == {} or gCheckExtern:
@@ -155,7 +114,8 @@ proc checkUse*(info: TLineInfo; s: PSym) =
   # for consistency
   
   # operators stay as they are:
-  if s.kind in {skResult, skTemp} or s.name.s[0] notin Letters: return
+  if s.kind in {skResult, skTemp} or s.name.s[0] notin prettybase.Letters:
+    return
   if s.kind in {skType, skGenericParam} and sfAnon in s.flags: return
   let newName = s.name.s
   
@@ -165,60 +125,16 @@ proc checkUse*(info: TLineInfo; s: PSym) =
   var first = min(info.col.int, line.len)
   if first < 0: return
   #inc first, skipIgnoreCase(line, "proc ", first)
-  while first > 0 and line[first-1] in Letters: dec first
+  while first > 0 and line[first-1] in prettybase.Letters: dec first
   if first < 0: return
   if line[first] == '`': inc first
   
   let last = first+identLen(line, first)-1
   if differ(line, first, last, newName):
     # last-first+1 != newName.len or 
-    var x = line.substr(0, first-1) & newName & line.substr(last+1)
-    when removeTP:
-      # the WinAPI module is full of 'TX = X' which after the substitution
-      # becomes 'X = X'. We remove those lines:
-      if x.match(peg"\s* {\ident} \s* '=' \s* y$1 ('#' .*)?"):
-        x = ""
-    
+    var x = line.substr(0, first-1) & newName & line.substr(last+1)    
     system.shallowCopy(gSourceFiles[info.fileIndex].lines[info.line-1], x)
     gSourceFiles[info.fileIndex].dirty = true
-
-when false:
-  var cannotRename = initIntSet()
-
-  proc beautifyName(s: string, k: TSymKind): string =
-    let allUpper = allCharsInSet(s, {'A'..'Z', '0'..'9', '_'})
-    result = newStringOfCap(s.len)
-    var i = 0
-    case k
-    of skType, skGenericParam:
-      # skip leading 'T'
-      when removeTP:
-        if s[0] == 'T' and s[1] in {'A'..'Z'}:
-          i = 1
-      if s =~ ["int", "uint", "cint", "cuint", "clong", "cstring", "string",
-               "char", "byte", "bool", "openArray", "seq", "array", "void",
-               "pointer", "float", "csize", "cdouble", "cchar", "cschar",
-               "cshort", "cu"]:
-        result.add s[i]
-      else:
-        result.add toUpper(s[i])
-    of skConst, skEnumField:
-      # for 'const' we keep how it's spelt; either upper case or lower case:
-      result.add s[0]
-    else:
-      # as a special rule, don't transform 'L' to 'l'
-      if s.len == 1 and s[0] == 'L': result.add 'L'
-      else: result.add toLower(s[0])
-    inc i
-    while i < s.len:
-      if s[i] == '_':
-        inc i
-        result.add toUpper(s[i])
-      elif allUpper:
-        result.add toLower(s[i])
-      else:
-        result.add s[i]
-      inc i
 
 proc check(c: PGen, n: PNode) =
   case n.kind
@@ -264,18 +180,6 @@ proc myOpen(module: PSym): PPassContext =
   g.module = module
   gCheckExtern = options.getConfigVar("pretty.checkextern").normalize == "on"
   result = g
-  if rules.isNil:
-    rules = newStringTable(modeStyleInsensitive)
-    when removeTP:
-      # XXX activate when the T/P stuff is deprecated
-      let path = joinPath([getPrefixDir(), "config", "rename.rules.cfg"])
-      for line in lines(path):
-        if line.len > 0:
-          let colon = line.find(':')
-          if colon > 0:
-            rules[line.substr(0, colon-1)] = line.substr(colon+1)
-          else:
-            rules[line] = line
 
 const prettyPass* = makePass(open = myOpen, process = processSym)
 

@@ -1,13 +1,13 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-## Implements Nimrod's 'spawn'.
+## Implements Nim's 'spawn'.
 
 when not declared(NimString): 
   {.error: "You must not import this module explicitly".}

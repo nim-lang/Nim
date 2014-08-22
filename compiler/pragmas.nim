@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -45,7 +45,7 @@ const
     wBreakpoint, wWatchPoint, wPassl, wPassc, wDeadCodeElim, wDeprecated,
     wFloatchecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
     wLinearScanEnd, wPatterns, wEffects, wNoForward, wComputedGoto,
-    wInjectStmt}
+    wInjectStmt, wDeprecated}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wNosideeffect, wSideeffect, wNoreturn, wDynlib, wHeader, 
     wDeprecated, wExtern, wThread, wImportCpp, wImportObjC, wAsmNoStackFrame,
@@ -542,6 +542,27 @@ proc typeBorrow(sym: PSym, n: PNode) =
       localError(n.info, "a type can only borrow `.` for now")
   incl(sym.typ.flags, tfBorrowDot)
 
+proc markCompilerProc(s: PSym) =
+  makeExternExport(s, "$1", s.info)
+  incl(s.flags, sfCompilerProc)
+  incl(s.flags, sfUsed)
+  registerCompilerProc(s)
+
+proc deprecatedStmt(c: PContext; pragma: PNode) =
+  let pragma = pragma[1]
+  if pragma.kind != nkBracket:
+    localError(pragma.info, "list of key:value pairs expected"); return
+  for n in pragma:
+    if n.kind in {nkExprColonExpr, nkExprEqExpr}:
+      let dest = qualifiedLookUp(c, n[1])
+      let src = considerQuotedIdent(n[0])
+      let alias = newSym(skAlias, src, dest, n[0].info)
+      incl(alias.flags, sfExported)
+      if sfCompilerProc in dest.flags: markCompilerProc(alias)
+      addInterfaceDecl(c, alias)
+    else:
+      localError(n.info, "key:value pair expected")
+
 proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
                   validPragmas: TSpecialWords): bool =
   var it = n.sons[i]
@@ -648,17 +669,13 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           processDynLib(c, it, sym)
         of wCompilerproc:
           noVal(it)           # compilerproc may not get a string!
-          if sfFromGeneric notin sym.flags:
-            makeExternExport(sym, "$1", it.info)
-            incl(sym.flags, sfCompilerProc)
-            incl(sym.flags, sfUsed) # suppress all those stupid warnings
-            registerCompilerProc(sym)
-        of wProcVar: 
+          if sfFromGeneric notin sym.flags: markCompilerProc(sym)
+        of wProcVar:
           noVal(it)
           incl(sym.flags, sfProcvar)
-        of wDeprecated: 
-          noVal(it)
-          if sym != nil: incl(sym.flags, sfDeprecated)
+        of wDeprecated:
+          if it.kind == nkExprColonExpr: deprecatedStmt(c, it)
+          elif sym != nil: incl(sym.flags, sfDeprecated)
           else: incl(c.module.flags, sfDeprecated)
         of wVarargs: 
           noVal(it)

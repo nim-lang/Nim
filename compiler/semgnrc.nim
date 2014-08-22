@@ -70,7 +70,7 @@ proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags,
             ctx: var TIntSet): PNode =
   result = n
   let ident = considerQuotedIdent(n)
-  var s = searchInScopes(c, ident)
+  var s = searchInScopes(c, ident).skipAlias(n)
   if s == nil:
     if ident.id notin ctx and withinMixin notin flags:
       localError(n.info, errUndeclaredIdentifier, ident.s)
@@ -100,7 +100,7 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
     result = n
     let n = n[1]
     let ident = considerQuotedIdent(n)
-    var s = searchInScopes(c, ident)
+    var s = searchInScopes(c, ident).skipAlias(n)
     if s != nil and s.kind in routineKinds:
       if withinBind in flags:
         result = newDot(result, symChoice(c, n, s, scClosed))

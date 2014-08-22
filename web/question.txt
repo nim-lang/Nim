@@ -31,8 +31,8 @@ runtime or interpreter.
 What have been the major influences in the language's design?
 -------------------------------------------------------------
 
-The language borrows heavily from: Modula 3, Delphi, Ada, C++, Python, Lisp,
-Oberon. As far as possible the list is sorted by the impact of influence.
+The language borrows heavily from (in order of impact): Modula 3, Delphi, Ada,
+C++, Python, Lisp, Oberon.
 
 
 
