@@ -97,7 +97,7 @@ type
   TNimSymKinds* = set[TNimrodSymKind]
 
 type
-  TNimrodIdent* = object of TObject
+  TNimrodIdent* = object of RootObj
     ## represents a Nimrod identifier in the AST
 
   TNimrodSymbol {.final.} = object # hidden
@@ -596,7 +596,7 @@ proc `pragma=`*(someProc: PNimrodNode; val: PNimrodNode){.compileTime.}=
   someProc[4] = val
 
 
-template badnodekind(k; f): stmt{.immediate.} =
+template badNodeKind(k; f): stmt{.immediate.} =
   assert false, "Invalid node kind $# for macros.`$2`".format(k, f)
 
 proc body*(someProc: PNimrodNode): PNimrodNode {.compileTime.} =
@@ -608,7 +608,7 @@ proc body*(someProc: PNimrodNode): PNimrodNode {.compileTime.} =
   of nnkForStmt:
     return someProc.last
   else: 
-    badNodeKind someproc.kind, "body"
+    badNodeKind someProc.kind, "body"
 
 proc `body=`*(someProc: PNimrodNode, val: PNimrodNode) {.compileTime.} =
   case someProc.kind 

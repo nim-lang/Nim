@@ -422,7 +422,7 @@ proc addStmt(w: PRodWriter, n: PNode) =
 
 proc writeRod(w: PRodWriter) = 
   processStacks(w, true)
-  var f: TFile
+  var f: File
   if not open(f, completeGeneratedFilePath(changeFileExt(
                       w.filename.withPackageName, RodExt)),
               fmWrite):

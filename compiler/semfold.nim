@@ -683,9 +683,9 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
           result = evalIs(n, a)
       else:
         result = magicCall(m, n)
-    except EOverflow: 
+    except OverflowError: 
       localError(n.info, errOverOrUnderflow)
-    except EDivByZero: 
+    except DivByZeroError: 
       localError(n.info, errConstantDivisionByZero)
   of nkAddr: 
     var a = getConstExpr(m, n.sons[0])

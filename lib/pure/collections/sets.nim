@@ -129,7 +129,7 @@ proc mget*[A](s: var TSet[A], key: A): var A =
   assert s.isValid, "The set needs to be initialized."
   var index = rawGet(s, key)
   if index >= 0: result = t.data[index].key
-  else: raise newException(EInvalidKey, "key not found: " & $key)
+  else: raise newException(KeyError, "key not found: " & $key)
 
 proc contains*[A](s: TSet[A], key: A): bool =
   ## Returns true iff `key` is in `s`.

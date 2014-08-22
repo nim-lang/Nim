@@ -38,7 +38,7 @@ proc overwriteFiles*() =
           f.write line
         f.write("\L")
       f.close
-    except EIO:
+    except IOError:
       rawMessage(errCannotOpenFile, newFile)
 
 proc `=~`(s: string, a: openArray[string]): bool =

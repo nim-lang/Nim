@@ -260,7 +260,7 @@ proc createWrapperProc(f: PNode; threadParam, argsParam: PSym;
     threadLocalBarrier = addLocalVar(varSection2, nil, argsParam.owner, 
                                      barrier.typ, barrier)
     body.add varSection2
-    body.add callCodeGenProc("barrierEnter", threadLocalBarrier.newSymNode)
+    body.add callCodegenProc("barrierEnter", threadLocalBarrier.newSymNode)
   var threadLocalProm: PSym
   if spawnKind == srByVar:
     threadLocalProm = addLocalVar(varSection, nil, argsParam.owner, fv.typ, fv)
@@ -275,7 +275,7 @@ proc createWrapperProc(f: PNode; threadParam, argsParam: PSym;
     body.add newAsgnStmt(indirectAccess(threadLocalProm.newSymNode,
       "owner", fv.info), threadParam.newSymNode)
 
-  body.add callCodeGenProc("nimArgsPassingDone", threadParam.newSymNode)
+  body.add callCodegenProc("nimArgsPassingDone", threadParam.newSymNode)
   if spawnKind == srByVar:
     body.add newAsgnStmt(genDeref(threadLocalProm.newSymNode), call)
   elif fv != nil:
@@ -288,11 +288,11 @@ proc createWrapperProc(f: PNode; threadParam, argsParam: PSym;
     if barrier == nil:
       # by now 'fv' is shared and thus might have beeen overwritten! we need
       # to use the thread-local view instead:
-      body.add callCodeGenProc("nimFlowVarSignal", threadLocalProm.newSymNode)
+      body.add callCodegenProc("nimFlowVarSignal", threadLocalProm.newSymNode)
   else:
     body.add call
   if barrier != nil:
-    body.add callCodeGenProc("barrierLeave", threadLocalBarrier.newSymNode)
+    body.add callCodegenProc("barrierLeave", threadLocalBarrier.newSymNode)
 
   var params = newNodeI(nkFormalParams, f.info)
   params.add emptyNode
@@ -542,7 +542,7 @@ proc wrapProcForSpawn*(owner: PSym; spawnExpr: PNode; retType: PType;
     # create flowVar:
     result.add newFastAsgnStmt(fvField, callProc(spawnExpr[2]))
     if barrier == nil:
-      result.add callCodeGenProc("nimFlowVarCreateCondVar", fvField)
+      result.add callCodegenProc("nimFlowVarCreateCondVar", fvField)
 
   elif spawnKind == srByVar:
     var field = newSym(skField, getIdent"fv", owner, n.info)
@@ -555,7 +555,7 @@ proc wrapProcForSpawn*(owner: PSym; spawnExpr: PNode; retType: PType;
   let wrapper = createWrapperProc(fn, threadParam, argsParam, 
                                   varSection, varInit, call,
                                   barrierAsExpr, fvAsExpr, spawnKind)
-  result.add callCodeGenProc("nimSpawn", wrapper.newSymNode,
+  result.add callCodegenProc("nimSpawn", wrapper.newSymNode,
                              genAddrOf(scratchObj.newSymNode))
 
   if spawnKind == srFlowVar: result.add fvField

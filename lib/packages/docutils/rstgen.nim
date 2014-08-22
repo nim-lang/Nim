@@ -42,7 +42,7 @@ type
   TMetaEnum* = enum 
     metaNone, metaTitle, metaSubtitle, metaAuthor, metaVersion
     
-  TRstGenerator* = object of TObject
+  TRstGenerator* = object of RootObj
     target*: TOutputTarget
     config*: PStringTable
     splitAfter*: int          # split too long entries in the TOC
@@ -1011,7 +1011,7 @@ proc formatNamedVars*(frmt: string, varnames: openArray[string],
           inc(i)
           if i > L-1 or frmt[i] notin {'0'..'9'}: break 
         if j > high(varvalues) + 1:
-          raise newException(EInvalidValue, "invalid index: " & $j)
+          raise newException(ValueError, "invalid index: " & $j)
         num = j
         add(result, varvalues[j - 1])
       of 'A'..'Z', 'a'..'z', '\x80'..'\xFF': 
@@ -1024,13 +1024,13 @@ proc formatNamedVars*(frmt: string, varnames: openArray[string],
         if idx >= 0: 
           add(result, varvalues[idx])
         else:
-          raise newException(EInvalidValue, "unknown substitution var: " & id)
+          raise newException(ValueError, "unknown substitution var: " & id)
       of '{': 
         var id = ""
         inc(i)
         while frmt[i] != '}': 
           if frmt[i] == '\0': 
-            raise newException(EInvalidValue, "'}' expected")
+            raise newException(ValueError, "'}' expected")
           add(id, frmt[i])
           inc(i)
         inc(i)                # skip }
@@ -1038,9 +1038,9 @@ proc formatNamedVars*(frmt: string, varnames: openArray[string],
         var idx = getVarIdx(varnames, id)
         if idx >= 0: add(result, varvalues[idx])
         else: 
-          raise newException(EInvalidValue, "unknown substitution var: " & id)
+          raise newException(ValueError, "unknown substitution var: " & id)
       else:
-        raise newException(EInvalidValue, "unknown substitution: $" & $frmt[i])
+        raise newException(ValueError, "unknown substitution: $" & $frmt[i])
     var start = i
     while i < L: 
       if frmt[i] != '$': inc(i)

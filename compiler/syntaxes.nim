@@ -44,7 +44,7 @@ proc parseTopLevelStmt*(p: var TParsers): PNode
 proc parseFile(fileIdx: int32): PNode =
   var 
     p: TParsers
-    f: TFile
+    f: File
   let filename = fileIdx.toFullPath
   if not open(f, filename):
     rawMessage(errCannotOpenFile, filename)

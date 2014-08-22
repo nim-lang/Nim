@@ -218,7 +218,7 @@ proc add*(result: var string, n: PXmlNode, indent = 0, indWidth = 2) =
     result.add("<!-- ")
     result.addEscaped(n.fText)
     result.add(" -->")
-  of xnCDATA:
+  of xnCData:
     result.add("<![CDATA[")
     result.add(n.fText)
     result.add("]]>")

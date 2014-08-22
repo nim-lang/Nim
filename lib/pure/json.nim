@@ -529,7 +529,7 @@ type
     of JArray:
       elems*: seq[PJsonNode]
 
-  EJsonParsingError* = object of EInvalidValue ## is raised for a JSON error
+  EJsonParsingError* = object of ValueError ## is raised for a JSON error
 
 proc raiseParseErr*(p: TJsonParser, msg: string) {.noinline, noreturn.} =
   ## raises an `EJsonParsingError` exception.
@@ -741,7 +741,7 @@ proc delete*(obj: PJsonNode, key: string) =
     if obj.fields[i].key == key:
       obj.fields.delete(i)
       return
-  raise newException(EInvalidIndex, "key not in object")
+  raise newException(IndexError, "key not in object")
 
 proc copy*(p: PJsonNode): PJsonNode =
   ## Performs a deep copy of `a`.
@@ -942,7 +942,7 @@ when not defined(js):
     ## Parses `file` into a `PJsonNode`.
     var stream = newFileStream(filename, fmRead)
     if stream == nil:
-      raise newException(EIO, "cannot read from file: " & filename)
+      raise newException(IOError, "cannot read from file: " & filename)
     result = parseJson(stream, filename)
 else:
   from math import `mod`

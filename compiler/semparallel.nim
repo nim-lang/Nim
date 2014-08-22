@@ -320,7 +320,7 @@ proc analyse(c: var AnalysisCtx; n: PNode) =
       # since we already ensure sfAddrTaken is not in s.flags, we only need to
       # prevent direct assignments to the monotonic variable:
       let slot = c.getSlot(n[0].sym)
-      slot.blackListed = true
+      slot.blacklisted = true
     invalidateFacts(c.guards, n[0])
     analyseSons(c, n)
     addAsgnFact(c.guards, n[0], n[1])
@@ -464,6 +464,6 @@ proc liftParallel*(owner: PSym; n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   generateAliasChecks(a, result)
   result.add varSection
-  result.add callCodeGenProc("openBarrier", barrier)
+  result.add callCodegenProc("openBarrier", barrier)
   result.add transformSpawn(owner, body, barrier)
-  result.add callCodeGenProc("closeBarrier", barrier)
+  result.add callCodegenProc("closeBarrier", barrier)

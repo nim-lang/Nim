@@ -33,6 +33,6 @@ proc opSlurp*(file: string, info: TLineInfo, module: PSym): string =
     # the module dependencies are accurate:
     appendToModule(module, newNode(nkIncludeStmt, info, @[
       newStrNode(nkStrLit, filename)]))
-  except EIO:
+  except IOError:
     localError(info, errCannotOpenFile, file)
     result = ""

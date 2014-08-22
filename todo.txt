@@ -1,7 +1,6 @@
 version 0.9.6
 =============
 
-- fix bug #1320
 - fix tflowvar codegen test
 - split idetools into separate tool
 - split docgen into separate tool

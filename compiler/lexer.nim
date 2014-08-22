@@ -429,9 +429,9 @@ proc getNumber(L: var TLexer): TToken =
       elif result.tokType == tkInt16Lit and
           (result.iNumber < int16.low or result.iNumber > int16.high):
         lexMessage(L, errNumberOutOfRange, result.literal)
-  except EInvalidValue:
+  except ValueError:
     lexMessage(L, errInvalidNumber, result.literal)
-  except EOverflow, EOutOfRange:
+  except OverflowError, EOutOfRange:
     lexMessage(L, errNumberOutOfRange, result.literal)
   L.bufpos = endpos
 
@@ -519,7 +519,7 @@ proc handleCRLF(L: var TLexer, pos: int): int =
       lexMessagePos(L, hintLineTooLong, pos)
 
     if optEmbedOrigSrc in gGlobalOptions:
-      let lineStart = cast[TAddress](L.buf) + L.lineStart
+      let lineStart = cast[ByteAddress](L.buf) + L.lineStart
       let line = newString(cast[cstring](lineStart), col)
       addSourceLine(L.fileIdx, line)
   

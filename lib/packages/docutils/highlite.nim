@@ -23,7 +23,7 @@ type
     gtTagStart, gtTagEnd, gtKey, gtValue, gtRawData, gtAssembler, 
     gtPreprocessor, gtDirective, gtCommand, gtRule, gtHyperlink, gtLabel, 
     gtReference, gtOther
-  TGeneralTokenizer* = object of TObject
+  TGeneralTokenizer* = object of RootObj
     kind*: TTokenClass
     start*, length*: int
     buf: cstring

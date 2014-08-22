@@ -644,7 +644,7 @@ type
     InternalHigh*: PULONG
     Offset*: DWORD
     OffsetHigh*: DWORD
-    hEvent*: THANDLE
+    hEvent*: THandle
 
   POVERLAPPED* = ptr TOVERLAPPED
 
@@ -666,14 +666,14 @@ const
   WSAETIMEDOUT* = 10060
   ERROR_NETNAME_DELETED* = 64
 
-proc CreateIoCompletionPort*(FileHandle: THANDLE, ExistingCompletionPort: THANDLE,
+proc CreateIoCompletionPort*(FileHandle: THandle, ExistingCompletionPort: THandle,
                              CompletionKey: DWORD,
-                             NumberOfConcurrentThreads: DWORD): THANDLE{.stdcall,
+                             NumberOfConcurrentThreads: DWORD): THandle{.stdcall,
     dynlib: "kernel32", importc: "CreateIoCompletionPort".}
 
 proc GetQueuedCompletionStatus*(CompletionPort: THandle,
     lpNumberOfBytesTransferred: PDWORD, lpCompletionKey: PULONG,
-                                lpOverlapped: ptr POverlapped,
+                                lpOverlapped: ptr POVERLAPPED,
                                 dwMilliseconds: DWORD): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetQueuedCompletionStatus".}
 
@@ -699,7 +699,7 @@ var
 
 proc WSAIoctl*(s: TSocketHandle, dwIoControlCode: DWORD, lpvInBuffer: pointer,
   cbInBuffer: DWORD, lpvOutBuffer: pointer, cbOutBuffer: DWORD,
-  lpcbBytesReturned: PDword, lpOverlapped: POVERLAPPED,
+  lpcbBytesReturned: PDWORD, lpOverlapped: POVERLAPPED,
   lpCompletionRoutine: POVERLAPPED_COMPLETION_ROUTINE): cint 
   {.stdcall, importc: "WSAIoctl", dynlib: "Ws2_32.dll".}
 
@@ -709,16 +709,16 @@ type
     buf*: cstring
 
 proc WSARecv*(s: TSocketHandle, buf: ptr TWSABuf, bufCount: DWORD,
-  bytesReceived, flags: PDWORD, lpOverlapped: POverlapped,
+  bytesReceived, flags: PDWORD, lpOverlapped: POVERLAPPED,
   completionProc: POVERLAPPED_COMPLETION_ROUTINE): cint {.
   stdcall, importc: "WSARecv", dynlib: "Ws2_32.dll".}
 
 proc WSASend*(s: TSocketHandle, buf: ptr TWSABuf, bufCount: DWORD,
-  bytesSent: PDWord, flags: DWORD, lpOverlapped: POverlapped,
+  bytesSent: PDWORD, flags: DWORD, lpOverlapped: POVERLAPPED,
   completionProc: POVERLAPPED_COMPLETION_ROUTINE): cint {.
   stdcall, importc: "WSASend", dynlib: "Ws2_32.dll".}
 
-proc get_osfhandle*(fd:TFileHandle): THandle {.
+proc get_osfhandle*(fd:FileHandle): THandle {.
   importc: "_get_osfhandle", header:"<io.h>".}
 
 proc getSystemTimes*(lpIdleTime, lpKernelTime, 

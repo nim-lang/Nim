@@ -35,7 +35,7 @@ type
       handle: cint
 
 
-proc mapMem*(m: var TMemFile, mode: TFileMode = fmRead,
+proc mapMem*(m: var TMemFile, mode: FileMode = fmRead,
              mappedSize = -1, offset = 0): pointer =
   var readonly = mode == fmRead
   when defined(windows):
@@ -71,7 +71,7 @@ proc unmapMem*(f: var TMemFile, p: pointer, size: int) =
     if munmap(p, size) != 0: osError(osLastError())
 
 
-proc open*(filename: string, mode: TFileMode = fmRead,
+proc open*(filename: string, mode: FileMode = fmRead,
            mappedSize = -1, offset = 0, newFileSize = -1): TMemFile =
   ## opens a memory mapped file. If this fails, ``EOS`` is raised.
   ## `newFileSize` can only be set if the file does not exist and is opened

@@ -28,7 +28,7 @@ type
     cmdLongoption,            ## a long option ``--option`` detected
     cmdShortOption            ## a short option ``-c`` detected
   TOptParser* = 
-      object of TObject ## this object implements the command line parser  
+      object of RootObj ## this object implements the command line parser  
     cmd: string
     pos: int
     inShortState: bool

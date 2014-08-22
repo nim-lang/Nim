@@ -144,7 +144,7 @@ proc mget*[A, B](t: var TTable[A, B], key: A): var B =
   ## If `key` is not in `t`, the ``EInvalidKey`` exception is raised.
   var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
-  else: raise newException(EInvalidKey, "key not found: " & $key)
+  else: raise newException(KeyError, "key not found: " & $key)
 
 iterator allValues*[A, B](t: TTable[A, B]; key: A): B =
   ## iterates over any value in the table `t` that belongs to the given `key`.
@@ -411,7 +411,7 @@ proc mget*[A, B](t: var TOrderedTable[A, B], key: A): var B =
   ## If `key` is not in `t`, the ``EInvalidKey`` exception is raised.
   var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
-  else: raise newException(EInvalidKey, "key not found: " & $key)
+  else: raise newException(KeyError, "key not found: " & $key)
 
 proc hasKey*[A, B](t: TOrderedTable[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
@@ -663,7 +663,7 @@ proc mget*[A](t: var TCountTable[A], key: A): var int =
   ## If `key` is not in `t`, the ``EInvalidKey`` exception is raised.
   var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
-  else: raise newException(EInvalidKey, "key not found: " & $key)
+  else: raise newException(KeyError, "key not found: " & $key)
 
 proc hasKey*[A](t: TCountTable[A], key: A): bool =
   ## returns true iff `key` is in the table `t`.

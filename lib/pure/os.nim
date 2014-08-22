@@ -29,14 +29,14 @@ else:
 include "system/ansi_c"
 
 type
-  FReadEnv* = object of FReadIO   ## effect that denotes a read
+  FReadEnv* = object of ReadIOEffect   ## effect that denotes a read
                                   ## from an environment variable
-  FWriteEnv* = object of FWriteIO ## effect that denotes a write
+  FWriteEnv* = object of WriteIOEffect ## effect that denotes a write
                                   ## to an environment variable
 
-  FReadDir* = object of FReadIO   ## effect that denotes a write operation to
+  FReadDir* = object of ReadIOEffect   ## effect that denotes a write operation to
                                   ## the directory structure
-  FWriteDir* = object of FWriteIO ## effect that denotes a write operation to
+  FWriteDir* = object of WriteIOEffect ## effect that denotes a write operation to
                                   ## the directory structure
 
   TOSErrorCode* = distinct int32 ## Specifies an OS Error Code.
@@ -214,9 +214,9 @@ proc osError*(msg: string = "") {.noinline, rtl, extern: "nos$1", deprecated.} =
   ## **Deprecated since version 0.9.4**: use the other ``OSError`` proc.
   if len(msg) == 0:
     var m = osErrorMsg()
-    raise newException(EOS, if m.len > 0: m else: "unknown OS error")
+    raise newException(OSError, if m.len > 0: m else: "unknown OS error")
   else:
-    raise newException(EOS, msg)
+    raise newException(OSError, msg)
 {.pop.}
 
 proc `==`*(err1, err2: TOSErrorCode): bool {.borrow.}
@@ -260,7 +260,7 @@ proc osError*(errorCode: TOSErrorCode) =
   ##
   ## If the error code is ``0`` or an error message could not be retrieved,
   ## the message ``unknown OS error`` will be used.
-  var e: ref EOS; new(e)
+  var e: ref OSError; new(e)
   e.errorCode = errorCode.int32
   e.msg = osErrorMsg(errorCode)
   if e.msg == "":
@@ -840,13 +840,13 @@ proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
       result = a.st_dev == b.st_dev and a.st_ino == b.st_ino
 
 proc sameFileContent*(path1, path2: string): bool {.rtl, extern: "nos$1",
-  tags: [FReadIO].} =
+  tags: [ReadIOEffect].} =
   ## Returns True if both pathname arguments refer to files with identical
   ## binary content.
   const
     bufSize = 8192 # 8K buffer
   var
-    a, b: TFile
+    a, b: File
   if not open(a, path1): return false
   if not open(b, path2):
     close(a)
@@ -951,7 +951,7 @@ proc setFilePermissions*(filename: string, permissions: set[TFilePermission]) {.
     if res2 == - 1'i32: osError(osLastError())
 
 proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
-  tags: [FReadIO, FWriteIO].} =
+  tags: [ReadIOEffect, FWriteIO].} =
   ## Copies a file from `source` to `dest`.
   ##
   ## If this fails, `EOS` is raised. On the Windows platform this proc will
@@ -993,10 +993,10 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
     close(d)
 
 proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
-  tags: [FReadIO, FWriteIO].} =
+  tags: [ReadIOEffect, FWriteIO].} =
   ## Moves a file from `source` to `dest`. If this fails, `EOS` is raised.
   if c_rename(source, dest) != 0'i32:
-    raise newException(EOS, $strerror(errno))
+    raise newException(OSError, $strerror(errno))
 
 when not declared(ENOENT) and not defined(Windows):
   when NoFakeVars:
@@ -1034,7 +1034,7 @@ proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [FWriteDir].} =
       raise newException(EOS, $strerror(errno))
 
 proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
-  tags: [FExecIO].} =
+  tags: [ExecIOEffect].} =
   ## Executes a `shell command`:idx:.
   ##
   ## Command has the form 'program args' where args are the command
@@ -1076,7 +1076,7 @@ when defined(windows):
         while true:
           var eend = strEnd(e)
           add(environment, $e)
-          e = cast[WideCString](cast[TAddress](eend)+2)
+          e = cast[WideCString](cast[ByteAddress](eend)+2)
           if eend[1].int == 0: break
         discard freeEnvironmentStringsW(env)
       else:
@@ -1364,7 +1364,7 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1", tags: [FWriteDir].} =
   rawCreateDir(dir)
 
 proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
-  tags: [FWriteIO, FReadIO].} =
+  tags: [WriteIOEffect, FReadIO].} =
   ## Copies a directory from `source` to `dest`.
   ##
   ## If this fails, `EOS` is raised. On the Windows platform this proc will
@@ -1537,7 +1537,7 @@ proc copyFileWithPermissions*(source, dest: string,
 
 proc copyDirWithPermissions*(source, dest: string,
     ignorePermissionErrors = true) {.rtl, extern: "nos$1",
-    tags: [FWriteIO, FReadIO].} =
+    tags: [WriteIOEffect, FReadIO].} =
   ## Copies a directory from `source` to `dest` preserving file permissions.
   ##
   ## If this fails, `EOS` is raised. This is a wrapper proc around `copyDir()
@@ -1657,13 +1657,13 @@ elif defined(windows):
   var
     ownArgv {.threadvar.}: seq[string]
 
-  proc paramCount*(): int {.rtl, extern: "nos$1", tags: [FReadIO].} =
+  proc paramCount*(): int {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
     # Docstring in nimdoc block.
     if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLine())
     result = ownArgv.len-1
 
   proc paramStr*(i: int): TaintedString {.rtl, extern: "nos$1",
-    tags: [FReadIO].} =
+    tags: [ReadIOEffect].} =
     # Docstring in nimdoc block.
     if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLine())
     return TaintedString(ownArgv[i])
@@ -1739,7 +1739,7 @@ when defined(macosx):
   proc getExecPath2(c: cstring, size: var cuint32): bool {.
     importc: "_NSGetExecutablePath", header: "<mach-o/dyld.h>".}
 
-proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [FReadIO].} =
+proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
   ## Returns the filename of the application's executable.
   ##
   ## This procedure will resolve symlinks.
@@ -1795,12 +1795,12 @@ proc getApplicationDir*(): string {.rtl, extern: "nos$1", deprecated.} =
   ## instead.
   result = splitFile(getAppFilename()).dir
 
-proc getAppDir*(): string {.rtl, extern: "nos$1", tags: [FReadIO].} =
+proc getAppDir*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
   ## Returns the directory of the application's executable.
   ## **Note**: This does not work reliably on BSD.
   result = splitFile(getAppFilename()).dir
 
-proc sleep*(milsecs: int) {.rtl, extern: "nos$1", tags: [FTime].} =
+proc sleep*(milsecs: int) {.rtl, extern: "nos$1", tags: [TimeEffect].} =
   ## sleeps `milsecs` milliseconds.
   when defined(windows):
     winlean.sleep(int32(milsecs))
@@ -1811,7 +1811,7 @@ proc sleep*(milsecs: int) {.rtl, extern: "nos$1", tags: [FTime].} =
     discard posix.nanosleep(a, b)
 
 proc getFileSize*(file: string): BiggestInt {.rtl, extern: "nos$1",
-  tags: [FReadIO].} =
+  tags: [ReadIOEffect].} =
   ## returns the file size of `file`. Can raise ``EOS``.
   when defined(windows):
     var a: TWIN32_FIND_DATA
@@ -1939,7 +1939,7 @@ template rawToFormalFileInfo(rawInfo, formalInfo): expr =
     if S_ISDIR(rawInfo.st_mode): formalInfo.kind = pcDir
     if S_ISLNK(rawInfo.st_mode): formalInfo.kind.inc()
 
-proc getFileInfo*(handle: TFileHandle): FileInfo =
+proc getFileInfo*(handle: FileHandle): FileInfo =
   ## Retrieves file information for the file object represented by the given
   ## handle.
   ##
@@ -1960,7 +1960,7 @@ proc getFileInfo*(handle: TFileHandle): FileInfo =
       osError(osLastError())
     rawToFormalFileInfo(rawInfo, result)
 
-proc getFileInfo*(file: TFile): FileInfo =
+proc getFileInfo*(file: File): FileInfo =
   result = getFileInfo(file.fileHandle())
 
 proc getFileInfo*(path: string, followSymlink = true): FileInfo =

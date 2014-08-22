@@ -799,7 +799,7 @@ type
     loc*: TLoc
 
   TPair*{.final.} = object 
-    key*, val*: PObject
+    key*, val*: RootRef
 
   TPairSeq* = seq[TPair]
   TTable*{.final.} = object   # the same as table[PObject] of PObject
@@ -808,7 +808,7 @@ type
 
   TIdPair*{.final.} = object 
     key*: PIdObj
-    val*: PObject
+    val*: RootRef
 
   TIdPairSeq* = seq[TIdPair]
   TIdTable*{.final.} = object # the same as table[PIdent] of PObject
@@ -835,7 +835,7 @@ type
     counter*: int
     data*: TNodePairSeq
 
-  TObjectSeq* = seq[PObject]
+  TObjectSeq* = seq[RootRef]
   TObjectSet*{.final.} = object 
     counter*: int
     data*: TObjectSeq

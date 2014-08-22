@@ -24,13 +24,13 @@ proc getProcHeader*(sym: PSym): string
 proc base*(t: PType): PType
   # ------------------- type iterator: ----------------------------------------
 type 
-  TTypeIter* = proc (t: PType, closure: PObject): bool {.nimcall.} # true if iteration should stop
-  TTypeMutator* = proc (t: PType, closure: PObject): PType {.nimcall.} # copy t and mutate it
+  TTypeIter* = proc (t: PType, closure: RootRef): bool {.nimcall.} # true if iteration should stop
+  TTypeMutator* = proc (t: PType, closure: RootRef): PType {.nimcall.} # copy t and mutate it
   TTypePredicate* = proc (t: PType): bool {.nimcall.}
 
-proc iterOverType*(t: PType, iter: TTypeIter, closure: PObject): bool
+proc iterOverType*(t: PType, iter: TTypeIter, closure: RootRef): bool
   # Returns result of `iter`.
-proc mutateType*(t: PType, iter: TTypeMutator, closure: PObject): PType
+proc mutateType*(t: PType, iter: TTypeMutator, closure: RootRef): PType
   # Returns result of `iter`.
 
 type 
@@ -161,9 +161,9 @@ proc enumHasHoles(t: PType): bool =
   result = b.kind == tyEnum and tfEnumHasHoles in b.flags
 
 proc iterOverTypeAux(marker: var TIntSet, t: PType, iter: TTypeIter, 
-                     closure: PObject): bool
+                     closure: RootRef): bool
 proc iterOverNode(marker: var TIntSet, n: PNode, iter: TTypeIter, 
-                  closure: PObject): bool = 
+                  closure: RootRef): bool = 
   if n != nil: 
     case n.kind
     of nkNone..nkNilLit: 
@@ -175,7 +175,7 @@ proc iterOverNode(marker: var TIntSet, n: PNode, iter: TTypeIter,
         if result: return 
   
 proc iterOverTypeAux(marker: var TIntSet, t: PType, iter: TTypeIter, 
-                     closure: PObject): bool = 
+                     closure: RootRef): bool = 
   result = false
   if t == nil: return 
   result = iter(t, closure)
@@ -190,7 +190,7 @@ proc iterOverTypeAux(marker: var TIntSet, t: PType, iter: TTypeIter,
         if result: return 
       if t.n != nil: result = iterOverNode(marker, t.n, iter, closure)
   
-proc iterOverType(t: PType, iter: TTypeIter, closure: PObject): bool = 
+proc iterOverType(t: PType, iter: TTypeIter, closure: RootRef): bool = 
   var marker = initIntSet()
   result = iterOverTypeAux(marker, t, iter, closure)
 
@@ -354,9 +354,9 @@ proc canFormAcycle(typ: PType): bool =
   result = canFormAcycleAux(marker, typ, typ.id)
 
 proc mutateTypeAux(marker: var TIntSet, t: PType, iter: TTypeMutator, 
-                   closure: PObject): PType
+                   closure: RootRef): PType
 proc mutateNode(marker: var TIntSet, n: PNode, iter: TTypeMutator, 
-                closure: PObject): PNode = 
+                closure: RootRef): PNode = 
   result = nil
   if n != nil: 
     result = copyNode(n)
@@ -370,7 +370,7 @@ proc mutateNode(marker: var TIntSet, n: PNode, iter: TTypeMutator,
         addSon(result, mutateNode(marker, n.sons[i], iter, closure))
   
 proc mutateTypeAux(marker: var TIntSet, t: PType, iter: TTypeMutator, 
-                   closure: PObject): PType = 
+                   closure: RootRef): PType = 
   result = nil
   if t == nil: return 
   result = iter(t, closure)
@@ -380,7 +380,7 @@ proc mutateTypeAux(marker: var TIntSet, t: PType, iter: TTypeMutator,
     if t.n != nil: result.n = mutateNode(marker, t.n, iter, closure)
   assert(result != nil)
 
-proc mutateType(t: PType, iter: TTypeMutator, closure: PObject): PType =
+proc mutateType(t: PType, iter: TTypeMutator, closure: RootRef): PType =
   var marker = initIntSet()
   result = mutateTypeAux(marker, t, iter, closure)
 
@@ -1283,7 +1283,7 @@ proc getSize(typ: PType): BiggestInt =
   result = computeSize(typ)
   if result < 0: internalError("getSize: " & $typ.kind)
 
-proc containsGenericTypeIter(t: PType, closure: PObject): bool =
+proc containsGenericTypeIter(t: PType, closure: RootRef): bool =
   if t.kind == tyStatic:
     return t.n == nil
 

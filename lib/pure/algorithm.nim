@@ -69,7 +69,7 @@ proc smartBinarySearch*[T](a: openArray[T], key: T): int =
 const
   onlySafeCode = true
 
-proc lowerBound*[T](a: openarray[T], key: T, cmp: proc(x,y: T): int {.closure.}): int =
+proc lowerBound*[T](a: openArray[T], key: T, cmp: proc(x,y: T): int {.closure.}): int =
   ## same as binarySearch except that if key is not in `a` then this 
   ## returns the location where `key` would be if it were. In other
   ## words if you have a sorted sequence and you call insert(thing, elm, lowerBound(thing, elm))
@@ -98,7 +98,7 @@ proc lowerBound*[T](a: openarray[T], key: T, cmp: proc(x,y: T): int {.closure.})
     else:
       count = step
 
-proc lowerBound*[T](a: openarray[T], key: T): int = lowerBound(a, key, cmp[T])
+proc lowerBound*[T](a: openArray[T], key: T): int = lowerBound(a, key, cmp[T])
 proc merge[T](a, b: var openArray[T], lo, m, hi: int, 
               cmp: proc (x, y: T): int {.closure.}, order: TSortOrder) =
   template `<-` (a, b: expr) = 
@@ -184,7 +184,7 @@ proc sort*[T](a: var openArray[T],
       dec(m, s*2)
     s = s*2
 
-proc product*[T](x: openarray[seq[T]]): seq[seq[T]] =
+proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
   ## produces the Cartesian product of the array. Warning: complexity
   ## may explode.
   result = @[]

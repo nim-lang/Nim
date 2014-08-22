@@ -374,11 +374,11 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     cleanPlainSymbol = renderPlainSymbolName(nameNode)
     complexSymbol = complexName(k, n, cleanPlainSymbol)
     plainSymbolRope = toRope(cleanPlainSymbol)
-    plainSymbolEncRope = toRope(URLEncode(cleanPlainSymbol))
+    plainSymbolEncRope = toRope(URLencode(cleanPlainSymbol))
     itemIDRope = toRope(d.id)
     symbolOrId = d.newUniquePlainSymbol(complexSymbol)
     symbolOrIdRope = symbolOrId.toRope
-    symbolOrIdEncRope = URLEncode(symbolOrId).toRope
+    symbolOrIdEncRope = URLencode(symbolOrId).toRope
 
   var seeSrcRope: PRope = nil
   let docItemSeeSrc = getConfigVar("doc.item.seesrc")

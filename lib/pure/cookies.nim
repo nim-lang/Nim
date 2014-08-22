@@ -47,7 +47,7 @@ proc setCookie*(key, value: string, expires: TTimeInfo,
   ## **Note:** UTC is assumed as the timezone for ``expires``.
   
   return setCookie(key, value, domain, path,
-            format(expires, "ddd',' dd MMM yyyy HH:mm:ss 'UTC'"), noname)
+            format(expires, "ddd',' dd MMM yyyy HH:mm:ss 'UTC'"), noName)
   
 when isMainModule:
   var tim = TTime(int(getTime()) + 76 * (60 * 60 * 24))

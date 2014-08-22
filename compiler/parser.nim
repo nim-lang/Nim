@@ -84,7 +84,7 @@ proc openParser*(p: var TParser, fileIdx: int32, inputStream: PLLStream,
 
 proc openParser*(p: var TParser, filename: string, inputStream: PLLStream,
                  strongSpaces=false) =
-  openParser(p, filename.fileInfoIdx, inputstream, strongSpaces)
+  openParser(p, filename.fileInfoIdx, inputStream, strongSpaces)
 
 proc closeParser(p: var TParser) =
   ## Close a parser, freeing up its resources.

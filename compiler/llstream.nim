@@ -21,9 +21,9 @@ type
     llsString,                # stream encapsulates a string
     llsFile,                  # stream encapsulates a file
     llsStdIn                  # stream encapsulates stdin
-  TLLStream* = object of TObject
+  TLLStream* = object of RootObj
     kind*: TLLStreamKind # accessible for low-level access (lexbase uses this)
-    f*: TFile
+    f*: File
     s*: string
     rd*, wr*: int             # for string streams
     lineOffset*: int          # for fake stdin line numbers
@@ -31,8 +31,8 @@ type
   PLLStream* = ref TLLStream
 
 proc llStreamOpen*(data: string): PLLStream
-proc llStreamOpen*(f: var TFile): PLLStream
-proc llStreamOpen*(filename: string, mode: TFileMode): PLLStream
+proc llStreamOpen*(f: var File): PLLStream
+proc llStreamOpen*(filename: string, mode: FileMode): PLLStream
 proc llStreamOpen*(): PLLStream
 proc llStreamOpenStdIn*(): PLLStream
 proc llStreamClose*(s: PLLStream)
@@ -50,12 +50,12 @@ proc llStreamOpen(data: string): PLLStream =
   result.s = data
   result.kind = llsString
 
-proc llStreamOpen(f: var TFile): PLLStream = 
+proc llStreamOpen(f: var File): PLLStream = 
   new(result)
   result.f = f
   result.kind = llsFile
 
-proc llStreamOpen(filename: string, mode: TFileMode): PLLStream = 
+proc llStreamOpen(filename: string, mode: FileMode): PLLStream = 
   new(result)
   result.kind = llsFile
   if not open(result.f, filename, mode): result = nil

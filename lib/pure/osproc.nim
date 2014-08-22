@@ -24,10 +24,10 @@ when defined(linux):
   import linux
 
 type
-  TProcess = object of TObject
+  TProcess = object of RootObj
     when defined(windows):
       fProcessHandle: THandle
-      inHandle, outHandle, errHandle: TFileHandle
+      inHandle, outHandle, errHandle: FileHandle
       id: THandle
     else:
       inHandle, outHandle, errHandle: TFileHandle
@@ -103,19 +103,19 @@ proc quoteShell*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
     {.error:"quoteShell is not supported on your system".}
 
 proc execProcess*(command: string,
-                  args: openarray[string] = [],
+                  args: openArray[string] = [],
                   env: PStringTable = nil,
                   options: set[TProcessOption] = {poStdErrToStdOut,
                                                   poUsePath,
                                                   poEvalCommand}): TaintedString {.
                                                   rtl, extern: "nosp$1",
-                                                  tags: [FExecIO, FReadIO].}
+                                                  tags: [ExecIOEffect, FReadIO].}
   ## A convenience procedure that executes ``command`` with ``startProcess``
   ## and returns its output as a string.
   ## WARNING: this function uses poEvalCommand by default for backward compatibility.
   ## Make sure to pass options explicitly.
 
-proc execCmd*(command: string): int {.rtl, extern: "nosp$1", tags: [FExecIO].}
+proc execCmd*(command: string): int {.rtl, extern: "nosp$1", tags: [ExecIOEffect].}
   ## Executes ``command`` and returns its error code. Standard input, output,
   ## error streams are inherited from the calling process. This operation
   ## is also often called `system`:idx:.
@@ -125,7 +125,7 @@ proc startProcess*(command: string,
                    args: openArray[string] = [],
                    env: PStringTable = nil,
                    options: set[TProcessOption] = {poStdErrToStdOut}):
-              PProcess {.rtl, extern: "nosp$1", tags: [FExecIO, FReadEnv].}
+              PProcess {.rtl, extern: "nosp$1", tags: [ExecIOEffect, FReadEnv].}
   ## Starts a process. `Command` is the executable file, `workingDir` is the
   ## process's working directory. If ``workingDir == ""`` the current directory
   ## is used. `args` are the command line arguments that are passed to the
@@ -150,7 +150,7 @@ proc startProcess*(command: string,
 
 proc startCmd*(command: string, options: set[TProcessOption] = {
                poStdErrToStdOut, poUsePath}): PProcess {.
-               tags: [FExecIO, FReadEnv], deprecated.} =
+               tags: [ExecIOEffect, FReadEnv], deprecated.} =
   ## Deprecated - use `startProcess` directly.
   result = startProcess(command=command, options=options + {poEvalCommand})
 
@@ -201,7 +201,7 @@ proc errorStream*(p: PProcess): PStream {.rtl, extern: "nosp$1", tags: [].}
   ## **Warning**: The returned `PStream` should not be closed manually as it
   ## is closed when closing the PProcess ``p``.
 
-proc inputHandle*(p: PProcess): TFileHandle {.rtl, extern: "nosp$1",
+proc inputHandle*(p: PProcess): FileHandle {.rtl, extern: "nosp$1",
   tags: [].} =
   ## returns ``p``'s input file handle for writing to.
   ##
@@ -209,7 +209,7 @@ proc inputHandle*(p: PProcess): TFileHandle {.rtl, extern: "nosp$1",
   ## it is closed when closing the PProcess ``p``.
   result = p.inHandle
 
-proc outputHandle*(p: PProcess): TFileHandle {.rtl, extern: "nosp$1",
+proc outputHandle*(p: PProcess): FileHandle {.rtl, extern: "nosp$1",
   tags: [].} =
   ## returns ``p``'s output file handle for reading from.
   ##
@@ -217,7 +217,7 @@ proc outputHandle*(p: PProcess): TFileHandle {.rtl, extern: "nosp$1",
   ## it is closed when closing the PProcess ``p``.
   result = p.outHandle
 
-proc errorHandle*(p: PProcess): TFileHandle {.rtl, extern: "nosp$1",
+proc errorHandle*(p: PProcess): FileHandle {.rtl, extern: "nosp$1",
   tags: [].} =
   ## returns ``p``'s error file handle for reading from.
   ##
@@ -233,7 +233,7 @@ proc countProcessors*(): int {.rtl, extern: "nosp$1".} =
 proc execProcesses*(cmds: openArray[string],
                     options = {poStdErrToStdOut, poParentStreams},
                     n = countProcessors()): int {.rtl, extern: "nosp$1",
-                    tags: [FExecIO, FTime, FReadEnv]} =
+                    tags: [ExecIOEffect, FTime, FReadEnv]} =
   ## executes the commands `cmds` in parallel. Creates `n` processes
   ## that execute in parallel. The highest return value of all processes
   ## is returned.
@@ -294,7 +294,7 @@ proc select*(readfds: var seq[PProcess], timeout = 500): int
 
 when not defined(useNimRtl):
   proc execProcess(command: string,
-                   args: openarray[string] = [],
+                   args: openArray[string] = [],
                    env: PStringTable = nil,
                    options: set[TProcessOption] = {poStdErrToStdOut,
                                                    poUsePath,
@@ -406,16 +406,16 @@ when defined(Windows) and not defined(useNimRtl):
         he = ho
       else:
         createPipeHandles(he, si.hStdError)
-      result.inHandle = TFileHandle(hi)
-      result.outHandle = TFileHandle(ho)
-      result.errHandle = TFileHandle(he)
+      result.inHandle = FileHandle(hi)
+      result.outHandle = FileHandle(ho)
+      result.errHandle = FileHandle(he)
     else:
       si.hStdError = getStdHandle(STD_ERROR_HANDLE)
       si.hStdInput = getStdHandle(STD_INPUT_HANDLE)
       si.hStdOutput = getStdHandle(STD_OUTPUT_HANDLE)
-      result.inHandle = TFileHandle(si.hStdInput)
-      result.outHandle = TFileHandle(si.hStdOutput)
-      result.errHandle = TFileHandle(si.hStdError)
+      result.inHandle = FileHandle(si.hStdInput)
+      result.outHandle = FileHandle(si.hStdOutput)
+      result.errHandle = FileHandle(si.hStdError)
 
     var cmdl: cstring
     if poEvalCommand in options:
@@ -916,7 +916,7 @@ elif not defined(useNimRtl):
 proc execCmdEx*(command: string, options: set[TProcessOption] = {
                 poStdErrToStdOut, poUsePath}): tuple[
                 output: TaintedString,
-                exitCode: int] {.tags: [FExecIO, FReadIO], gcsafe.} =
+                exitCode: int] {.tags: [ExecIOEffect, FReadIO], gcsafe.} =
   ## a convenience proc that runs the `command`, grabs all its output and
   ## exit code and returns both.
   var p = startCmd(command, options)

@@ -12,7 +12,7 @@
 import os
 type 
   PListEntry* = ref TListEntry
-  TListEntry* = object of TObject
+  TListEntry* = object of RootObj
     prev*, next*: PListEntry
 
   TStrEntry* = object of TListEntry

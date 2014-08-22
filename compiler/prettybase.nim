@@ -41,7 +41,7 @@ proc differ*(line: string, a, b: int, x: string): bool =
   let y = line[a..b]
   result = cmpIgnoreStyle(y, x) == 0 and y != x
 
-proc replaceDeprecated*(info: TlineInfo; oldSym, newSym: PSym) =
+proc replaceDeprecated*(info: TLineInfo; oldSym, newSym: PSym) =
   loadFile(info)
 
   let line = gSourceFiles[info.fileIndex].lines[info.line-1]

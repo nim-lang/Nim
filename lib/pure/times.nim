@@ -103,7 +103,7 @@ elif defined(JS):
       toLocaleString: proc (): cstring {.tags: [], raises: [], gcsafe.}
 
 type
-  TTimeInfo* = object of TObject ## represents a time in different parts
+  TTimeInfo* = object of RootObj ## represents a time in different parts
     second*: range[0..61]     ## The number of seconds after the minute,
                               ## normally in the range 0 to 59, but can
                               ## be up to 61 to allow for leap seconds.
@@ -136,14 +136,14 @@ type
     months*: int      ## The number of months
     years*: int       ## The number of years
 
-proc getTime*(): TTime {.tags: [FTime], gcsafe.}
+proc getTime*(): TTime {.tags: [TimeEffect], gcsafe.}
   ## gets the current calendar time as a UNIX epoch value (number of seconds
   ## elapsed since 1970) with integer precission. Use epochTime for higher
   ## resolution.
-proc getLocalTime*(t: TTime): TTimeInfo {.tags: [FTime], raises: [], gcsafe.}
+proc getLocalTime*(t: TTime): TTimeInfo {.tags: [TimeEffect], raises: [], gcsafe.}
   ## converts the calendar time `t` to broken-time representation,
   ## expressed relative to the user's specified time zone.
-proc getGMTime*(t: TTime): TTimeInfo {.tags: [FTime], raises: [], gcsafe.}
+proc getGMTime*(t: TTime): TTimeInfo {.tags: [TimeEffect], raises: [], gcsafe.}
   ## converts the calendar time `t` to broken-down time representation,
   ## expressed in Coordinated Universal Time (UTC).
 
@@ -190,15 +190,15 @@ proc `==`*(a, b: TTime): bool {.
   result = a - b == 0
 
 when not defined(JS):
-  proc getTzname*(): tuple[nonDST, DST: string] {.tags: [FTime], raises: [],
+  proc getTzname*(): tuple[nonDST, DST: string] {.tags: [TimeEffect], raises: [],
     gcsafe.}
     ## returns the local timezone; ``nonDST`` is the name of the local non-DST
     ## timezone, ``DST`` is the name of the local DST timezone.
 
-proc getTimezone*(): int {.tags: [FTime], raises: [], gcsafe.}
+proc getTimezone*(): int {.tags: [TimeEffect], raises: [], gcsafe.}
   ## returns the offset of the local (non-DST) timezone in seconds west of UTC.
 
-proc getStartMilsecs*(): int {.deprecated, tags: [FTime], gcsafe.}
+proc getStartMilsecs*(): int {.deprecated, tags: [TimeEffect], gcsafe.}
   ## get the miliseconds from the start of the program. **Deprecated since
   ## version 0.8.10.** Use ``epochTime`` or ``cpuTime`` instead.
 
@@ -282,12 +282,12 @@ proc `-`*(a: TTimeInfo, interval: TTimeInterval): TTimeInfo =
     result = getLocalTime(fromSeconds(t - secs))
 
 when not defined(JS):  
-  proc epochTime*(): float {.rtl, extern: "nt$1", tags: [FTime].}
+  proc epochTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].}
     ## gets time after the UNIX epoch (1970) in seconds. It is a float
     ## because sub-second resolution is likely to be supported (depending 
     ## on the hardware/OS).
 
-  proc cpuTime*(): float {.rtl, extern: "nt$1", tags: [FTime].}
+  proc cpuTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].}
     ## gets time spent that the CPU spent to run the current process in
     ## seconds. This may be more useful for benchmarking than ``epochTime``.
     ## However, it may measure the real time instead (depending on the OS).
@@ -333,7 +333,7 @@ when not defined(JS):
     importc: "ctime", header: "<time.h>", tags: [].}
   #  strftime(s: CString, maxsize: int, fmt: CString, t: tm): int {.
   #    importc: "strftime", header: "<time.h>".}
-  proc clock(): TClock {.importc: "clock", header: "<time.h>", tags: [FTime].}
+  proc clock(): TClock {.importc: "clock", header: "<time.h>", tags: [TimeEffect].}
   proc difftime(a, b: TTime): float {.importc: "difftime", header: "<time.h>", 
     tags: [].}
   
@@ -458,7 +458,7 @@ when not defined(JS):
         posix_gettimeofday(a)
         result = toFloat(a.tv_sec) + toFloat(a.tv_usec)*0.00_0001
       elif defined(windows):
-        var f: winlean.TFiletime
+        var f: winlean.TFILETIME
         getSystemTimeAsFileTime(f)
         var i64 = rdFileTime(f) - epochDiff
         var secs = i64 div rateDiff
@@ -534,13 +534,13 @@ elif defined(JS):
 
   proc getTimezone(): int = result = newDate().getTimezoneOffset()
 
-proc getDateStr*(): string {.rtl, extern: "nt$1", tags: [FTime].} =
+proc getDateStr*(): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
   ## gets the current date as a string of the format ``YYYY-MM-DD``.
   var ti = getLocalTime(getTime())
   result = $ti.year & '-' & intToStr(ord(ti.month)+1, 2) &
     '-' & intToStr(ti.monthday, 2)
 
-proc getClockStr*(): string {.rtl, extern: "nt$1", tags: [FTime].} =
+proc getClockStr*(): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
   ## gets the current clock time as a string of the format ``HH:MM:SS``.
   var ti = getLocalTime(getTime())
   result = intToStr(ti.hour, 2) & ':' & intToStr(ti.minute, 2) &
@@ -669,7 +669,7 @@ proc format_token(info: TTimeInfo, token: string, buf: var string) =
   of "":
     discard
   else:
-    raise newException(EInvalidValue, "Invalid format string: " & token)
+    raise newException(ValueError, "Invalid format string: " & token)
 
 
 proc format*(info: TTimeInfo, f: string): string =

@@ -16,7 +16,7 @@ import
   nimsets, syntaxes, times, rodread, idgen
 
 type  
-  TPassContext* = object of TObject # the pass's context
+  TPassContext* = object of RootObj # the pass's context
     fromCache*: bool  # true if created by "openCached"
    
   PPassContext* = ref TPassContext

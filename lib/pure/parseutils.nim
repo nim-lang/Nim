@@ -227,7 +227,7 @@ proc parseInt*(s: string, number: var int, start = 0): int {.
   result = parseBiggestInt(s, res, start)
   if (sizeof(int) <= 4) and
       ((res < low(int)) or (res > high(int))):
-    raise newException(EOverflow, "overflow")
+    raise newException(OverflowError, "overflow")
   else:
     number = int(res)
 
@@ -376,7 +376,7 @@ iterator interpolatedFragments*(s: string): tuple[kind: TInterpolatedKind,
               break
             dec nesting
           of '\0':
-            raise newException(EInvalidValue, 
+            raise newException(ValueError, 
               "Expected closing '}': " & s[i..s.len])
           else: discard
           inc j
@@ -392,7 +392,7 @@ iterator interpolatedFragments*(s: string): tuple[kind: TInterpolatedKind,
         inc i # skip $
         kind = ikDollar
       else:
-        raise newException(EInvalidValue, 
+        raise newException(ValueError, 
           "Unable to parse a varible name at " & s[i..s.len])
     else:
       while j < s.len and s[j] != '$': inc j

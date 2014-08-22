@@ -295,7 +295,7 @@ proc completeGeneratedFilePath*(f: string, createSubDir: bool = true): string =
       createDir(subdir)
       when noTimeMachine:
        excludeDirFromTimeMachine(subdir)
-    except EOS: 
+    except OSError: 
       writeln(stdout, "cannot create directory: " & subdir)
       quit(1)
   result = joinPath(subdir, tail)

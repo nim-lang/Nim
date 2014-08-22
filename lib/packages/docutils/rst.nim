@@ -118,7 +118,7 @@ type
     line*, col*: int          # line and column of the token
   
   TTokenSeq = seq[TToken]
-  TLexer = object of TObject
+  TLexer = object of RootObj
     buf*: cstring
     bufpos*: int
     line*, col*, baseIndent*: int
@@ -273,7 +273,7 @@ type
     findFile: TFindFileHandler  # How to find files.
   
   PSharedState = ref TSharedState
-  TRstParser = object of TObject
+  TRstParser = object of RootObj
     idx*: int
     tok*: TTokenSeq
     s*: PSharedState
@@ -282,7 +282,7 @@ type
     line*, col*: int
     hasToc*: bool
 
-  EParseError* = object of EInvalidValue
+  EParseError* = object of ValueError
 
 proc whichMsgClass*(k: TMsgKind): TMsgClass =
   ## returns which message class `k` belongs to.

@@ -25,7 +25,7 @@ const
 #
 
 type
-  TBaseLexer* = object of TObject ## the base lexer. Inherit your lexer from
+  TBaseLexer* = object of RootObj ## the base lexer. Inherit your lexer from
                                   ## this object.
     bufpos*: int              ## the current position within the buffer
     buf*: cstring             ## the buffer itself

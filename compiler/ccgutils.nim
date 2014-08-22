@@ -149,7 +149,7 @@ proc getUniqueType*(key: PType): PType =
       idTablePut(gTypeTable[k], key, key)
       result = key
       
-proc tableGetType*(tab: TIdTable, key: PType): PObject = 
+proc tableGetType*(tab: TIdTable, key: PType): RootRef = 
   # returns nil if we need to declare this type
   result = idTableGet(tab, key)
   if (result == nil) and (tab.counter > 0): 

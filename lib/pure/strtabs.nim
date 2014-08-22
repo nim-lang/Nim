@@ -24,7 +24,7 @@ type
     modeStyleInsensitive      ## the table is style insensitive
   TKeyValuePair = tuple[key, val: string]
   TKeyValuePairSeq = seq[TKeyValuePair]
-  TStringTable* = object of TObject
+  TStringTable* = object of RootObj
     counter: int
     data: TKeyValuePairSeq
     mode: TStringTableMode
@@ -110,7 +110,7 @@ proc mget*(t: PStringTable, key: string): var string {.
   ## ``EInvalidKey`` exception is raised.
   var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
-  else: raise newException(EInvalidKey, "key does not exist: " & key)
+  else: raise newException(KeyError, "key does not exist: " & key)
 
 proc hasKey*(t: PStringTable, key: string): bool {.rtl, extern: "nst$1".} =
   ## returns true iff `key` is in the table `t`.
@@ -141,7 +141,7 @@ proc `[]=`*(t: PStringTable, key, val: string) {.rtl, extern: "nstPut".} =
     inc(t.counter)
 
 proc raiseFormatException(s: string) =
-  var e: ref EInvalidValue
+  var e: ref ValueError
   new(e)
   e.msg = "format string: key not found: " & s
   raise e

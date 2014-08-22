@@ -121,7 +121,7 @@ type
     r*: string                # writers use this
     offset*: int              # readers use this
   
-  TRodReader* = object of TObject
+  TRodReader* = object of RootObj
     pos: int                 # position; used for parsing
     s: cstring               # mmap'ed file contents
     options: TOptions
@@ -503,7 +503,7 @@ proc processCompilerProcs(r: PRodReader, module: PSym) =
       idTablePut(r.syms, s, s)
     strTableAdd(rodCompilerprocs, s)
 
-proc processIndex(r: PRodReader; idx: var TIndex; outf: TFile = nil) = 
+proc processIndex(r: PRodReader; idx: var TIndex; outf: File = nil) = 
   var key, val, tmp: int
   inc(r.pos, 2)               # skip "(\10"
   inc(r.line)
@@ -659,7 +659,7 @@ proc newRodReader(modfilename: string, crc: TCrc32,
   new(result)
   try:
     result.memfile = memfiles.open(modfilename)
-  except EOS:
+  except OSError:
     return nil
   result.files = @[]
   result.modDeps = @[]
@@ -916,7 +916,7 @@ initIdTable(gTypeTable)
 initStrTable(rodCompilerprocs)
 
 # viewer:
-proc writeNode(f: TFile; n: PNode) =
+proc writeNode(f: File; n: PNode) =
   f.write("(")
   if n != nil:
     f.write($n.kind)
@@ -947,7 +947,7 @@ proc writeNode(f: TFile; n: PNode) =
         writeNode(f, n.sons[i])
   f.write(")")
 
-proc writeSym(f: TFile; s: PSym) =
+proc writeSym(f: File; s: PSym) =
   if s == nil:
     f.write("{}\n")
     return
@@ -985,7 +985,7 @@ proc writeSym(f: TFile; s: PSym) =
     f.writeNode(s.ast)
   f.write("}\n")
 
-proc writeType(f: TFile; t: PType) =
+proc writeType(f: File; t: PType) =
   if t == nil:
     f.write("[]\n")
     return

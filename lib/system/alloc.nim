@@ -596,7 +596,7 @@ proc rawAlloc(a: var TMemRegion, requestedSize: int): pointer =
     result = addr(c.data)
     sysAssert((cast[ByteAddress](result) and (MemAlign-1)) == 0, "rawAlloc 13")
     if a.root == nil: a.root = bottom
-    add(a, a.root, cast[ByteAddress](result), cast[TAddress](result)+%size)
+    add(a, a.root, cast[ByteAddress](result), cast[ByteAddress](result)+%size)
   sysAssert(isAccessible(a, result), "rawAlloc 14")
   sysAssert(allocInv(a), "rawAlloc: end")
   when logAlloc: cprintf("rawAlloc: %ld %p\n", requestedSize, result)
@@ -769,7 +769,7 @@ template instantiateForRegion(allocator: expr) =
       result = interiorAllocatedPtr(allocator, p)
 
     proc isAllocatedPtr*(p: pointer): bool =
-      let p = cast[pointer](cast[ByteAddress](p)-%TAddress(sizeof(TCell)))
+      let p = cast[pointer](cast[ByteAddress](p)-%ByteAddress(sizeof(TCell)))
       result = isAllocatedPtr(allocator, p)
 
   proc deallocOsPages = deallocOsPages(allocator)

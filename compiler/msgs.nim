@@ -468,8 +468,8 @@ type
 
   TErrorOutputs* = set[TErrorOutput]
 
-  ERecoverableError* = object of EInvalidValue
-  ESuggestDone* = object of E_Base
+  ERecoverableError* = object of ValueError
+  ESuggestDone* = object of Exception
 
 const
   InvalidFileIDX* = int32(-1)
@@ -858,7 +858,7 @@ proc sourceLine*(i: TLineInfo): PRope =
     try:
       for line in lines(i.toFullPath):
         addSourceLine i.fileIndex, line.string
-    except EIO:
+    except IOError:
       discard
   internalAssert i.fileIndex < fileInfos.len
   # can happen if the error points to EOF:

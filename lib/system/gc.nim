@@ -111,11 +111,11 @@ proc addZCT(s: var TCellSeq, c: PCell) {.noinline.} =
 
 proc cellToUsr(cell: PCell): pointer {.inline.} =
   # convert object (=pointer to refcount) to pointer to userdata
-  result = cast[pointer](cast[ByteAddress](cell)+%TAddress(sizeof(TCell)))
+  result = cast[pointer](cast[ByteAddress](cell)+%ByteAddress(sizeof(TCell)))
 
 proc usrToCell(usr: pointer): PCell {.inline.} =
   # convert pointer to userdata to object (=pointer to refcount)
-  result = cast[PCell](cast[ByteAddress](usr)-%TAddress(sizeof(TCell)))
+  result = cast[PCell](cast[ByteAddress](usr)-%ByteAddress(sizeof(TCell)))
 
 proc canbeCycleRoot(c: PCell): bool {.inline.} =
   result = ntfAcyclic notin c.typ.flags

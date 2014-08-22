@@ -1306,7 +1306,7 @@ proc renderTree(n: PNode, renderFlags: TRenderFlags = {}): string =
 proc renderModule(n: PNode, filename: string, 
                   renderFlags: TRenderFlags = {}) =
   var
-    f: TFile
+    f: File
     g: TSrcGen
   initSrcGen(g, renderFlags)
   for i in countup(0, sonsLen(n) - 1):

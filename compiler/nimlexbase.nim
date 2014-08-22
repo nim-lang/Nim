@@ -37,7 +37,7 @@ const
   NewLines* = {CR, LF}
 
 type 
-  TBaseLexer* = object of TObject
+  TBaseLexer* = object of RootObj
     bufpos*: int
     buf*: cstring
     bufLen*: int              # length of buffer in characters

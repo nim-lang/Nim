@@ -428,10 +428,10 @@ proc getRecordDesc(m: BModule, typ: PType, name: PRope,
   var hasField = false
 
   var attribute: PRope =
-    if tfPacked in typ.flags: toRope(CC[ccompiler].packedPragma)
+    if tfPacked in typ.flags: toRope(CC[cCompiler].packedPragma)
     else: nil
 
-  result = ropecg(m, CC[ccompiler].structStmtFmt, 
+  result = ropecg(m, CC[cCompiler].structStmtFmt, 
     [structOrUnion(typ), name, attribute])
 
   if typ.kind == tyObject: 

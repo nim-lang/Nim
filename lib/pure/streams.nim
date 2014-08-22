@@ -14,13 +14,13 @@
 
 include "system/inclrtl"
 
-proc newEIO(msg: string): ref EIO =
+proc newEIO(msg: string): ref IOError =
   new(result)
   result.msg = msg
 
 type
   PStream* = ref TStream
-  TStream* = object of TObject ## Stream interface that supports
+  TStream* = object of RootObj ## Stream interface that supports
                                ## writing or reading. Note that these fields
                                ## here shouldn't be used directly. They are
                                ## accessible so that a stream implementation
@@ -30,10 +30,10 @@ type
     setPositionImpl*: proc (s: PStream, pos: int) {.nimcall, tags: [], gcsafe.}
     getPositionImpl*: proc (s: PStream): int {.nimcall, tags: [], gcsafe.}
     readDataImpl*: proc (s: PStream, buffer: pointer,
-                         bufLen: int): int {.nimcall, tags: [FReadIO], gcsafe.}
+                         bufLen: int): int {.nimcall, tags: [ReadIOEffect], gcsafe.}
     writeDataImpl*: proc (s: PStream, buffer: pointer, bufLen: int) {.nimcall,
-      tags: [FWriteIO], gcsafe.}
-    flushImpl*: proc (s: PStream) {.nimcall, tags: [FWriteIO], gcsafe.}
+      tags: [WriteIOEffect], gcsafe.}
+    flushImpl*: proc (s: PStream) {.nimcall, tags: [WriteIOEffect], gcsafe.}
 
 proc flush*(s: PStream) =
   ## flushes the buffers that the stream `s` might use.
@@ -246,7 +246,7 @@ when not defined(js):
   type
     PFileStream* = ref TFileStream ## a stream that encapsulates a `TFile`
     TFileStream* = object of TStream
-      f: TFile
+      f: File
 
   proc fsClose(s: PStream) =
     if PFileStream(s).f != nil:
@@ -264,7 +264,7 @@ when not defined(js):
     if writeBuffer(PFileStream(s).f, buffer, bufLen) != bufLen:
       raise newEIO("cannot write to stream")
 
-  proc newFileStream*(f: TFile): PFileStream =
+  proc newFileStream*(f: File): PFileStream =
     ## creates a new stream from the file `f`.
     new(result)
     result.f = f
@@ -276,11 +276,11 @@ when not defined(js):
     result.writeDataImpl = fsWriteData
     result.flushImpl = fsFlush
 
-  proc newFileStream*(filename: string, mode: TFileMode): PFileStream =
+  proc newFileStream*(filename: string, mode: FileMode): PFileStream =
     ## creates a new stream from the file named `filename` with the mode `mode`.
     ## If the file cannot be opened, nil is returned. See the `system
     ## <system.html>`_ module for a list of available TFileMode enums.
-    var f: TFile
+    var f: File
     if open(f, filename, mode): result = newFileStream(f)
 
 

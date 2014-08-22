@@ -128,7 +128,7 @@ type
     obj: PType
     
   PEnv = ref TEnv
-  TEnv {.final.} = object of TObject
+  TEnv {.final.} = object of RootObj
     attachedNode, replacementNode: PNode
     createdVar: PNode        # if != nil it is a used environment; for closure
                              # iterators this can be 'envParam.env'

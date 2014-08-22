@@ -102,7 +102,7 @@ proc crcFromFile(filename: string): TCrc32 =
   const 
     bufSize = 8000 # don't use 8K for the memory allocator!
   var 
-    bin: TFile
+    bin: File
   result = InitCrc32
   if not open(bin, filename): 
     return                    # not equal if file does not exist

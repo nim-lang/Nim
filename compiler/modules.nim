@@ -177,7 +177,7 @@ proc includeModule*(s: PSym, fileIdx: int32): PNode {.procvar.} =
 proc `==^`(a, b: string): bool =
   try:
     result = sameFile(a, b)
-  except EOS:
+  except OSError:
     result = false
 
 proc compileSystemModule* =

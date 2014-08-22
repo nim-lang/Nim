@@ -551,7 +551,7 @@ proc footprint(filename: string): TCrc32 =
 proc externalFileChanged(filename: string): bool = 
   var crcFile = toGeneratedFile(filename.withPackageName, "crc")
   var currentCrc = int(footprint(filename))
-  var f: TFile
+  var f: File
   if open(f, crcFile, fmRead): 
     var line = newStringOfCap(40)
     if not f.readLine(line): line = "0"

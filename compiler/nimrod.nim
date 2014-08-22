@@ -40,7 +40,7 @@ proc handleCmdLine() =
     if gProjectName != "":
       try:
         gProjectFull = canonicalizePath(gProjectName)
-      except EOS:
+      except OSError:
         gProjectFull = gProjectName
       var p = splitFile(gProjectFull)
       gProjectPath = p.dir

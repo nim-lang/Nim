@@ -93,7 +93,7 @@ proc XMLencode*(s: string): string =
   for i in 0..len(s)-1: addXmlChar(result, s[i])
 
 type
-  ECgi* = object of EIO  ## the exception that is raised, if a CGI error occurs
+  ECgi* = object of IOError  ## the exception that is raised, if a CGI error occurs
   TRequestMethod* = enum ## the used request method
     methodNone,          ## no REQUEST_METHOD environment variable
     methodPost,          ## query uses the POST method
@@ -107,18 +107,18 @@ proc cgiError*(msg: string) {.noreturn.} =
   raise e
 
 proc getEncodedData(allowedMethods: set[TRequestMethod]): string =
-  case getenv("REQUEST_METHOD").string
+  case getEnv("REQUEST_METHOD").string
   of "POST":
     if methodPost notin allowedMethods:
       cgiError("'REQUEST_METHOD' 'POST' is not supported")
-    var L = parseInt(getenv("CONTENT_LENGTH").string)
+    var L = parseInt(getEnv("CONTENT_LENGTH").string)
     result = newString(L)
     if readBuffer(stdin, addr(result[0]), L) != L:
       cgiError("cannot read from stdin")
   of "GET":
     if methodGet notin allowedMethods:
       cgiError("'REQUEST_METHOD' 'GET' is not supported")
-    result = getenv("QUERY_STRING").string
+    result = getEnv("QUERY_STRING").string
   else:
     if methodNone notin allowedMethods:
       cgiError("'REQUEST_METHOD' must be 'POST' or 'GET'")
@@ -192,131 +192,131 @@ proc validateData*(data: PStringTable, validKeys: varargs[string]) =
 
 proc getContentLength*(): string =
   ## returns contents of the ``CONTENT_LENGTH`` environment variable
-  return getenv("CONTENT_LENGTH").string
+  return getEnv("CONTENT_LENGTH").string
 
 proc getContentType*(): string =
   ## returns contents of the ``CONTENT_TYPE`` environment variable
-  return getenv("CONTENT_Type").string
+  return getEnv("CONTENT_Type").string
 
 proc getDocumentRoot*(): string =
   ## returns contents of the ``DOCUMENT_ROOT`` environment variable
-  return getenv("DOCUMENT_ROOT").string
+  return getEnv("DOCUMENT_ROOT").string
 
 proc getGatewayInterface*(): string =
   ## returns contents of the ``GATEWAY_INTERFACE`` environment variable
-  return getenv("GATEWAY_INTERFACE").string
+  return getEnv("GATEWAY_INTERFACE").string
 
 proc getHttpAccept*(): string =
   ## returns contents of the ``HTTP_ACCEPT`` environment variable
-  return getenv("HTTP_ACCEPT").string
+  return getEnv("HTTP_ACCEPT").string
 
 proc getHttpAcceptCharset*(): string =
   ## returns contents of the ``HTTP_ACCEPT_CHARSET`` environment variable
-  return getenv("HTTP_ACCEPT_CHARSET").string
+  return getEnv("HTTP_ACCEPT_CHARSET").string
 
 proc getHttpAcceptEncoding*(): string =
   ## returns contents of the ``HTTP_ACCEPT_ENCODING`` environment variable
-  return getenv("HTTP_ACCEPT_ENCODING").string
+  return getEnv("HTTP_ACCEPT_ENCODING").string
 
 proc getHttpAcceptLanguage*(): string =
   ## returns contents of the ``HTTP_ACCEPT_LANGUAGE`` environment variable
-  return getenv("HTTP_ACCEPT_LANGUAGE").string
+  return getEnv("HTTP_ACCEPT_LANGUAGE").string
 
 proc getHttpConnection*(): string =
   ## returns contents of the ``HTTP_CONNECTION`` environment variable
-  return getenv("HTTP_CONNECTION").string
+  return getEnv("HTTP_CONNECTION").string
 
 proc getHttpCookie*(): string =
   ## returns contents of the ``HTTP_COOKIE`` environment variable
-  return getenv("HTTP_COOKIE").string
+  return getEnv("HTTP_COOKIE").string
 
 proc getHttpHost*(): string =
   ## returns contents of the ``HTTP_HOST`` environment variable
-  return getenv("HTTP_HOST").string
+  return getEnv("HTTP_HOST").string
 
 proc getHttpReferer*(): string =
   ## returns contents of the ``HTTP_REFERER`` environment variable
-  return getenv("HTTP_REFERER").string
+  return getEnv("HTTP_REFERER").string
 
 proc getHttpUserAgent*(): string =
   ## returns contents of the ``HTTP_USER_AGENT`` environment variable
-  return getenv("HTTP_USER_AGENT").string
+  return getEnv("HTTP_USER_AGENT").string
 
 proc getPathInfo*(): string =
   ## returns contents of the ``PATH_INFO`` environment variable
-  return getenv("PATH_INFO").string
+  return getEnv("PATH_INFO").string
 
 proc getPathTranslated*(): string =
   ## returns contents of the ``PATH_TRANSLATED`` environment variable
-  return getenv("PATH_TRANSLATED").string
+  return getEnv("PATH_TRANSLATED").string
 
 proc getQueryString*(): string =
   ## returns contents of the ``QUERY_STRING`` environment variable
-  return getenv("QUERY_STRING").string
+  return getEnv("QUERY_STRING").string
 
 proc getRemoteAddr*(): string =
   ## returns contents of the ``REMOTE_ADDR`` environment variable
-  return getenv("REMOTE_ADDR").string
+  return getEnv("REMOTE_ADDR").string
 
 proc getRemoteHost*(): string =
   ## returns contents of the ``REMOTE_HOST`` environment variable
-  return getenv("REMOTE_HOST").string
+  return getEnv("REMOTE_HOST").string
 
 proc getRemoteIdent*(): string =
   ## returns contents of the ``REMOTE_IDENT`` environment variable
-  return getenv("REMOTE_IDENT").string
+  return getEnv("REMOTE_IDENT").string
 
 proc getRemotePort*(): string =
   ## returns contents of the ``REMOTE_PORT`` environment variable
-  return getenv("REMOTE_PORT").string
+  return getEnv("REMOTE_PORT").string
 
 proc getRemoteUser*(): string =
   ## returns contents of the ``REMOTE_USER`` environment variable
-  return getenv("REMOTE_USER").string
+  return getEnv("REMOTE_USER").string
 
 proc getRequestMethod*(): string =
   ## returns contents of the ``REQUEST_METHOD`` environment variable
-  return getenv("REQUEST_METHOD").string
+  return getEnv("REQUEST_METHOD").string
 
 proc getRequestURI*(): string =
   ## returns contents of the ``REQUEST_URI`` environment variable
-  return getenv("REQUEST_URI").string
+  return getEnv("REQUEST_URI").string
 
 proc getScriptFilename*(): string =
   ## returns contents of the ``SCRIPT_FILENAME`` environment variable
-  return getenv("SCRIPT_FILENAME").string
+  return getEnv("SCRIPT_FILENAME").string
 
 proc getScriptName*(): string =
   ## returns contents of the ``SCRIPT_NAME`` environment variable
-  return getenv("SCRIPT_NAME").string
+  return getEnv("SCRIPT_NAME").string
 
 proc getServerAddr*(): string =
   ## returns contents of the ``SERVER_ADDR`` environment variable
-  return getenv("SERVER_ADDR").string
+  return getEnv("SERVER_ADDR").string
 
 proc getServerAdmin*(): string =
   ## returns contents of the ``SERVER_ADMIN`` environment variable
-  return getenv("SERVER_ADMIN").string
+  return getEnv("SERVER_ADMIN").string
 
 proc getServerName*(): string =
   ## returns contents of the ``SERVER_NAME`` environment variable
-  return getenv("SERVER_NAME").string
+  return getEnv("SERVER_NAME").string
 
 proc getServerPort*(): string =
   ## returns contents of the ``SERVER_PORT`` environment variable
-  return getenv("SERVER_PORT").string
+  return getEnv("SERVER_PORT").string
 
 proc getServerProtocol*(): string =
   ## returns contents of the ``SERVER_PROTOCOL`` environment variable
-  return getenv("SERVER_PROTOCOL").string
+  return getEnv("SERVER_PROTOCOL").string
 
 proc getServerSignature*(): string =
   ## returns contents of the ``SERVER_SIGNATURE`` environment variable
-  return getenv("SERVER_SIGNATURE").string
+  return getEnv("SERVER_SIGNATURE").string
 
 proc getServerSoftware*(): string =
   ## returns contents of the ``SERVER_SOFTWARE`` environment variable
-  return getenv("SERVER_SOFTWARE").string
+  return getEnv("SERVER_SOFTWARE").string
 
 proc setTestData*(keysvalues: varargs[string]) =
   ## fills the appropriate environment variables to test your CGI application.
@@ -325,7 +325,7 @@ proc setTestData*(keysvalues: varargs[string]) =
   ##
   ## .. code-block:: Nimrod
   ##    setTestData("name", "Hanz", "password", "12345")
-  putenv("REQUEST_METHOD", "GET")
+  putEnv("REQUEST_METHOD", "GET")
   var i = 0
   var query = ""
   while i < keysvalues.len:
@@ -334,7 +334,7 @@ proc setTestData*(keysvalues: varargs[string]) =
     add(query, URLencode(keysvalues[i+1]))
     add(query, '&')
     inc(i, 2)
-  putenv("QUERY_STRING", query)
+  putEnv("QUERY_STRING", query)
 
 proc writeContentType*() =
   ## call this before starting to send your HTML data to `stdout`. This

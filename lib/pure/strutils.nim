@@ -420,7 +420,7 @@ proc parseInt*(s: string): int {.noSideEffect, procvar,
   ## If `s` is not a valid integer, `EInvalidValue` is raised.
   var L = parseutils.parseInt(s, result, 0)
   if L != s.len or L == 0:
-    raise newException(EInvalidValue, "invalid integer: " & s)
+    raise newException(ValueError, "invalid integer: " & s)
 
 proc parseBiggestInt*(s: string): BiggestInt {.noSideEffect, procvar,
   rtl, extern: "nsuParseBiggestInt".} =
@@ -429,7 +429,7 @@ proc parseBiggestInt*(s: string): BiggestInt {.noSideEffect, procvar,
   ## If `s` is not a valid integer, `EInvalidValue` is raised.
   var L = parseutils.parseBiggestInt(s, result, 0)
   if L != s.len or L == 0:
-    raise newException(EInvalidValue, "invalid integer: " & s)
+    raise newException(ValueError, "invalid integer: " & s)
 
 proc parseFloat*(s: string): float {.noSideEffect, procvar,
   rtl, extern: "nsuParseFloat".} =
@@ -438,7 +438,7 @@ proc parseFloat*(s: string): float {.noSideEffect, procvar,
   ## ``INF``, ``-INF`` are also supported (case insensitive comparison).
   var L = parseutils.parseFloat(s, result, 0)
   if L != s.len or L == 0:
-    raise newException(EInvalidValue, "invalid float: " & s)
+    raise newException(ValueError, "invalid float: " & s)
 
 proc parseHexInt*(s: string): int {.noSideEffect, procvar,
   rtl, extern: "nsuParseHexInt".} =
@@ -463,7 +463,7 @@ proc parseHexInt*(s: string): int {.noSideEffect, procvar,
       result = result shl 4 or (ord(s[i]) - ord('A') + 10)
       inc(i)
     of '\0': break
-    else: raise newException(EInvalidValue, "invalid integer: " & s)
+    else: raise newException(ValueError, "invalid integer: " & s)
 
 proc parseBool*(s: string): bool =
   ## Parses a value into a `bool`.
@@ -475,7 +475,7 @@ proc parseBool*(s: string): bool =
   case normalize(s)
   of "y", "yes", "true", "1", "on": result = true
   of "n", "no", "false", "0", "off": result = false
-  else: raise newException(EInvalidValue, "cannot interpret as a bool: " & s)
+  else: raise newException(ValueError, "cannot interpret as a bool: " & s)
 
 proc parseEnum*[T: enum](s: string): T =
   ## Parses an enum ``T``.
@@ -485,7 +485,7 @@ proc parseEnum*[T: enum](s: string): T =
   for e in low(T)..high(T):
     if cmpIgnoreStyle(s, $e) == 0:
       return e
-  raise newException(EInvalidValue, "invalid enum value: " & s)
+  raise newException(ValueError, "invalid enum value: " & s)
 
 proc parseEnum*[T: enum](s: string, default: T): T =
   ## Parses an enum ``T``.
@@ -911,7 +911,7 @@ proc parseOctInt*(s: string): int {.noSideEffect,
       result = result shl 3 or (ord(s[i]) - ord('0'))
       inc(i)
     of '\0': break
-    else: raise newException(EInvalidValue, "invalid integer: " & s)
+    else: raise newException(ValueError, "invalid integer: " & s)
 
 proc toOct*(x: BiggestInt, len: int): string {.noSideEffect,
   rtl, extern: "nsuToOct".} =
@@ -1003,7 +1003,7 @@ proc unescape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
   result = newStringOfCap(s.len)
   var i = 0
   if s[0 .. prefix.len-1] != prefix:
-    raise newException(EInvalidValue,
+    raise newException(ValueError,
                        "String does not start with a prefix of: " & prefix)
   i.inc()
   while true:
@@ -1028,7 +1028,7 @@ proc unescape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
       result.add(s[i])
     i.inc()
   if s[i .. -1] != suffix:
-    raise newException(EInvalidValue,
+    raise newException(ValueError,
                        "String does not end with a suffix of: " & suffix)
 
 proc validIdentifier*(s: string): bool {.noSideEffect,
@@ -1219,7 +1219,7 @@ proc findNormalized(x: string, inArray: openArray[string]): int =
   return -1
 
 proc invalidFormatString() {.noinline.} =
-  raise newException(EInvalidValue, "invalid format string")  
+  raise newException(ValueError, "invalid format string")  
 
 proc addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.
   noSideEffect, rtl, extern: "nsuAddf".} =
