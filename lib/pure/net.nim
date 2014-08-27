@@ -625,7 +625,7 @@ proc waitFor(socket: Socket, waited: var float, timeout, size: int,
     waited += (epochTime() - startTime)
 
 proc recv*(socket: Socket, data: pointer, size: int, timeout: int): int {.
-  tags: [ReadIOEffect, FTime].} =
+  tags: [ReadIOEffect, TimeEffect].} =
   ## overload with a ``timeout`` parameter in miliseconds.
   var waited = 0.0 # number of seconds already waited  
   
@@ -688,7 +688,7 @@ proc peekChar(socket: Socket, c: var char): int {.tags: [ReadIOEffect].} =
 
 proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
                flags = {SocketFlag.SafeDisconn}) {.
-  tags: [ReadIOEffect, FTime].} =
+  tags: [ReadIOEffect, TimeEffect].} =
   ## Reads a line of data from ``socket``.
   ##
   ## If a full line is read ``\r\L`` is not
@@ -886,7 +886,7 @@ proc connectAsync(socket: Socket, name: string, port = Port(0),
   if not success: raiseOSError(lastError)
 
 proc connect*(socket: Socket, address: string, port = Port(0), timeout: int,
-             af: Domain = AF_INET) {.tags: [ReadIOEffect, FWriteIO].} =
+             af: Domain = AF_INET) {.tags: [ReadIOEffect, WriteIOEffect].} =
   ## Connects to server as specified by ``address`` on port specified by ``port``.
   ##
   ## The ``timeout`` paremeter specifies the time in miliseconds to allow for

@@ -188,7 +188,7 @@ proc incl*[A](s: var HashSet[A], key: A) =
   assert s.isValid, "The set needs to be initialized."
   inclImpl()
 
-proc incl*[A](s: var HashSet[A], other: TSet[A]) =
+proc incl*[A](s: var HashSet[A], other: HashSet[A]) =
   ## Includes all elements from `other` into `s`.
   ##
   ## Example:
@@ -219,7 +219,7 @@ proc excl*[A](s: var HashSet[A], key: A) =
     s.data[index].slot = seDeleted
     dec(s.counter)
 
-proc excl*[A](s: var HashSet[A], other: TSet[A]) =
+proc excl*[A](s: var HashSet[A], other: HashSet[A]) =
   ## Excludes everything in `other` from `s`.
   ##
   ## Example:
@@ -320,7 +320,7 @@ proc `$`*[A](s: HashSet[A]): string =
   assert s.isValid, "The set needs to be initialized."
   dollarImpl()
 
-proc union*[A](s1, s2: HashSet[A]): TSet[A] =
+proc union*[A](s1, s2: HashSet[A]): HashSet[A] =
   ## Returns the union of the sets `s1` and `s2`.
   ##
   ## The union of two sets is represented mathematically as *A ∪ B* and is the
@@ -337,7 +337,7 @@ proc union*[A](s1, s2: HashSet[A]): TSet[A] =
   result = s1
   incl(result, s2)
 
-proc intersection*[A](s1, s2: HashSet[A]): TSet[A] =
+proc intersection*[A](s1, s2: HashSet[A]): HashSet[A] =
   ## Returns the intersection of the sets `s1` and `s2`.
   ##
   ## The intersection of two sets is represented mathematically as *A ∩ B* and
@@ -356,7 +356,7 @@ proc intersection*[A](s1, s2: HashSet[A]): TSet[A] =
   for item in s1:
     if item in s2: incl(result, item)
 
-proc difference*[A](s1, s2: HashSet[A]): TSet[A] =
+proc difference*[A](s1, s2: HashSet[A]): HashSet[A] =
   ## Returns the difference of the sets `s1` and `s2`.
   ##
   ## The difference of two sets is represented mathematically as *A \ B* and is
@@ -376,7 +376,7 @@ proc difference*[A](s1, s2: HashSet[A]): TSet[A] =
     if not contains(s2, item):
       incl(result, item)
 
-proc symmetricDifference*[A](s1, s2: HashSet[A]): TSet[A] =
+proc symmetricDifference*[A](s1, s2: HashSet[A]): HashSet[A] =
   ## Returns the symmetric difference of the sets `s1` and `s2`.
   ##
   ## The symmetric difference of two sets is represented mathematically as *A △
@@ -395,19 +395,19 @@ proc symmetricDifference*[A](s1, s2: HashSet[A]): TSet[A] =
   for item in s2:
     if containsOrIncl(result, item): excl(result, item)
 
-proc `+`*[A](s1, s2: HashSet[A]): TSet[A] {.inline.} =
+proc `+`*[A](s1, s2: HashSet[A]): HashSet[A] {.inline.} =
   ## Alias for `union(s1, s2) <#union>`_.
   result = union(s1, s2)
 
-proc `*`*[A](s1, s2: HashSet[A]): TSet[A] {.inline.} =
+proc `*`*[A](s1, s2: HashSet[A]): HashSet[A] {.inline.} =
   ## Alias for `intersection(s1, s2) <#intersection>`_.
   result = intersection(s1, s2)
 
-proc `-`*[A](s1, s2: HashSet[A]): TSet[A] {.inline.} =
+proc `-`*[A](s1, s2: HashSet[A]): HashSet[A] {.inline.} =
   ## Alias for `difference(s1, s2) <#difference>`_.
   result = difference(s1, s2)
 
-proc `-+-`*[A](s1, s2: HashSet[A]): TSet[A] {.inline.} =
+proc `-+-`*[A](s1, s2: HashSet[A]): HashSet[A] {.inline.} =
   ## Alias for `symmetricDifference(s1, s2) <#symmetricDifference>`_.
   result = symmetricDifference(s1, s2)
 
@@ -477,7 +477,7 @@ proc `==`*[A](s, t: HashSet[A]): bool =
   ##   assert a == b
   s.counter == t.counter and s <= t
 
-proc map*[A, B](data: HashSet[A], op: proc (x: A): B {.closure.}): TSet[B] =
+proc map*[A, B](data: HashSet[A], op: proc (x: A): B {.closure.}): HashSet[B] =
   ## Returns a new set after applying `op` on each of the elements of `data`.
   ##
   ## You can use this proc to transform the elements from a set. Example:
@@ -621,7 +621,7 @@ proc incl*[A](s: var OrderedSet[A], key: A) =
   assert s.isValid, "The set needs to be initialized."
   inclImpl()
 
-proc incl*[A](s: var HashSet[A], other: TOrderedSet[A]) =
+proc incl*[A](s: var HashSet[A], other: OrderedSet[A]) =
   ## Includes all elements from `other` into `s`.
   ##
   ## Example:
