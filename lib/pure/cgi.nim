@@ -103,12 +103,12 @@ type
 
 proc cgiError*(msg: string) {.noreturn.} =
   ## raises an ECgi exception with message `msg`.
-  var e: ref ECgi
+  var e: ref CgiError
   new(e)
   e.msg = msg
   raise e
 
-proc getEncodedData(allowedMethods: set[TRequestMethod]): string =
+proc getEncodedData(allowedMethods: set[RequestMethod]): string =
   case getEnv("REQUEST_METHOD").string
   of "POST":
     if methodPost notin allowedMethods:
@@ -167,7 +167,7 @@ iterator decodeData*(data: string): tuple[key, value: TaintedString] =
     elif data[i] == '\0': break
     else: cgiError("'&' expected")
 
-iterator decodeData*(allowedMethods: set[TRequestMethod] =
+iterator decodeData*(allowedMethods: set[RequestMethod] =
        {methodNone, methodPost, methodGet}): tuple[key, value: TaintedString] =
   ## Reads and decodes CGI data and yields the (name, value) pairs the
   ## data consists of. If the client does not use a method listed in the
@@ -177,15 +177,15 @@ iterator decodeData*(allowedMethods: set[TRequestMethod] =
     for key, value in decodeData(data):
       yield (key, value)
 
-proc readData*(allowedMethods: set[TRequestMethod] =
-               {methodNone, methodPost, methodGet}): PStringTable =
+proc readData*(allowedMethods: set[RequestMethod] =
+               {methodNone, methodPost, methodGet}): StringTableRef =
   ## Read CGI data. If the client does not use a method listed in the
   ## `allowedMethods` set, an `ECgi` exception is raised.
   result = newStringTable()
   for name, value in decodeData(allowedMethods):
     result[name.string] = value.string
 
-proc validateData*(data: PStringTable, validKeys: varargs[string]) =
+proc validateData*(data: StringTableRef, validKeys: varargs[string]) =
   ## validates data; raises `ECgi` if this fails. This checks that each variable
   ## name of the CGI `data` occurs in the `validKeys` array.
   for key, val in pairs(data):
@@ -393,5 +393,5 @@ proc existsCookie*(name: string): bool =
 
 when isMainModule:
   const test1 = "abc\L+def xyz"
-  assert UrlEncode(test1) == "abc%0A%2Bdef+xyz"
-  assert UrlDecode(UrlEncode(test1)) == test1
+  assert URLencode(test1) == "abc%0A%2Bdef+xyz"
+  assert URLdecode(URLencode(test1)) == test1

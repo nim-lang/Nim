@@ -30,50 +30,50 @@ type
 
 {.deprecated: [TComplex: Complex].}
 
-proc `==` *(x, y: TComplex): bool =
+proc `==` *(x, y: Complex): bool =
   ## Compare two complex numbers `x` and `y` for equality.
   result = x.re == y.re and x.im == y.im
 
-proc `=~` *(x, y: TComplex): bool =
+proc `=~` *(x, y: Complex): bool =
   ## Compare two complex numbers `x` and `y` approximately.
   result = abs(x.re-y.re)<EPS and abs(x.im-y.im)<EPS
 
-proc `+` *(x, y: TComplex): TComplex =
+proc `+` *(x, y: Complex): Complex =
   ## Add two complex numbers.
   result.re = x.re + y.re
   result.im = x.im + y.im
 
-proc `+` *(x: TComplex, y: float): TComplex =
+proc `+` *(x: Complex, y: float): Complex =
   ## Add complex `x` to float `y`.
   result.re = x.re + y
   result.im = x.im
 
-proc `+` *(x: float, y: TComplex): TComplex =
+proc `+` *(x: float, y: Complex): Complex =
   ## Add float `x` to complex `y`.
   result.re = x + y.re
   result.im = y.im
 
 
-proc `-` *(z: TComplex): TComplex =
+proc `-` *(z: Complex): Complex =
   ## Unary minus for complex numbers.
   result.re = -z.re
   result.im = -z.im
 
-proc `-` *(x, y: TComplex): TComplex =
+proc `-` *(x, y: Complex): Complex =
   ## Subtract two complex numbers.
   result.re = x.re - y.re
   result.im = x.im - y.im
 
-proc `-` *(x: TComplex, y: float): TComplex =
+proc `-` *(x: Complex, y: float): Complex =
   ## Subtracts float `y` from complex `x`.
   result = x + (-y)
 
-proc `-` *(x: float, y: TComplex): TComplex =
+proc `-` *(x: float, y: Complex): Complex =
   ## Subtracts complex `y` from float `x`.
   result = x + (-y)
 
 
-proc `/` *(x, y: TComplex): TComplex =
+proc `/` *(x, y: Complex): Complex =
   ## Divide `x` by `y`.
   var
     r, den: float
@@ -88,73 +88,73 @@ proc `/` *(x, y: TComplex): TComplex =
     result.re = (x.re + r * x.im) / den
     result.im = (x.im - r * x.re) / den
 
-proc `/` *(x : TComplex, y: float ): TComplex =
+proc `/` *(x : Complex, y: float ): Complex =
   ## Divide complex `x` by float `y`.
   result.re = x.re/y
   result.im = x.im/y
 
-proc `/` *(x : float, y: TComplex ): TComplex =
+proc `/` *(x : float, y: Complex ): Complex =
   ## Divide float `x` by complex `y`.
-  var num : TComplex = (x, 0.0)
+  var num : Complex = (x, 0.0)
   result = num/y
 
 
-proc `*` *(x, y: TComplex): TComplex =
+proc `*` *(x, y: Complex): Complex =
   ## Multiply `x` with `y`.
   result.re = x.re * y.re - x.im * y.im
   result.im = x.im * y.re + x.re * y.im
 
-proc `*` *(x: float, y: TComplex): TComplex =
+proc `*` *(x: float, y: Complex): Complex =
   ## Multiply float `x` with complex `y`.
   result.re = x * y.re
   result.im = x * y.im
 
-proc `*` *(x: TComplex, y: float): TComplex =
+proc `*` *(x: Complex, y: float): Complex =
   ## Multiply complex `x` with float `y`.
   result.re = x.re * y
   result.im = x.im * y
 
 
-proc `+=` *(x: var TComplex, y: TComplex) =
+proc `+=` *(x: var Complex, y: Complex) =
   ## Add `y` to `x`.
   x.re += y.re
   x.im += y.im
 
-proc `+=` *(x: var TComplex, y: float) =
+proc `+=` *(x: var Complex, y: float) =
   ## Add `y` to the complex number `x`.
   x.re += y
 
-proc `-=` *(x: var TComplex, y: TComplex) =
+proc `-=` *(x: var Complex, y: Complex) =
   ## Subtract `y` from `x`.
   x.re -= y.re
   x.im -= y.im
 
-proc `-=` *(x: var TComplex, y: float) =
+proc `-=` *(x: var Complex, y: float) =
   ## Subtract `y` from the complex number `x`.
   x.re -= y
 
-proc `*=` *(x: var TComplex, y: TComplex) =
+proc `*=` *(x: var Complex, y: Complex) =
   ## Multiply `y` to `x`.
   let im = x.im * y.re + x.re * y.im
   x.re = x.re * y.re - x.im * y.im
   x.im = im
 
-proc `*=` *(x: var TComplex, y: float) =
+proc `*=` *(x: var Complex, y: float) =
   ## Multiply `y` to the complex number `x`.
   x.re *= y
   x.im *= y
 
-proc `/=` *(x: var TComplex, y: TComplex) =
+proc `/=` *(x: var Complex, y: Complex) =
   ## Divide `x` by `y` in place.
   x = x / y
 
-proc `/=` *(x : var TComplex, y: float) =
+proc `/=` *(x : var Complex, y: float) =
   ## Divide complex `x` by float `y` in place.
   x.re /= y
   x.im /= y
 
 
-proc abs*(z: TComplex): float =
+proc abs*(z: Complex): float =
   ## Return the distance from (0,0) to `z`.
 
   # optimized by checking special cases (sqrt is expensive)
@@ -174,7 +174,7 @@ proc abs*(z: TComplex): float =
     result = y * sqrt(1.0 + temp * temp)
 
 
-proc sqrt*(z: TComplex): TComplex =
+proc sqrt*(z: Complex): Complex =
   ## Square root for a complex number `z`.
   var x, y, w, r: float
 
@@ -198,7 +198,7 @@ proc sqrt*(z: TComplex): TComplex =
       result.re = z.im / (result.im + result.im)
 
 
-proc exp*(z: TComplex): TComplex =
+proc exp*(z: Complex): Complex =
   ## e raised to the power `z`.
   var rho   = exp(z.re)
   var theta = z.im
@@ -206,21 +206,21 @@ proc exp*(z: TComplex): TComplex =
   result.im = rho*sin(theta)
 
 
-proc ln*(z: TComplex): TComplex =
+proc ln*(z: Complex): Complex =
   ## Returns the natural log of `z`.
   result.re = ln(abs(z))
   result.im = arctan2(z.im,z.re)
 
-proc log10*(z: TComplex): TComplex =
+proc log10*(z: Complex): Complex =
   ## Returns the log base 10 of `z`.
   result = ln(z)/ln(10.0)
 
-proc log2*(z: TComplex): TComplex =
+proc log2*(z: Complex): Complex =
   ## Returns the log base 2 of `z`.
   result = ln(z)/ln(2.0)
 
 
-proc pow*(x, y: TComplex): TComplex =
+proc pow*(x, y: Complex): Complex =
   ## `x` raised to the power `y`.
   if x.re == 0.0  and  x.im == 0.0:
     if y.re == 0.0  and  y.im == 0.0:
@@ -242,53 +242,53 @@ proc pow*(x, y: TComplex): TComplex =
     result.im = s*sin(r)
            
 
-proc sin*(z: TComplex): TComplex =
+proc sin*(z: Complex): Complex =
   ## Returns the sine of `z`.
   result.re = sin(z.re)*cosh(z.im)
   result.im = cos(z.re)*sinh(z.im)
 
-proc arcsin*(z: TComplex): TComplex =
+proc arcsin*(z: Complex): Complex =
   ## Returns the inverse sine of `z`.
-  var i: TComplex = (0.0,1.0)
+  var i: Complex = (0.0,1.0)
   result = -i*ln(i*z + sqrt(1.0-z*z))
 
-proc cos*(z: TComplex): TComplex =
+proc cos*(z: Complex): Complex =
   ## Returns the cosine of `z`.
   result.re = cos(z.re)*cosh(z.im)
   result.im = -sin(z.re)*sinh(z.im)
 
-proc arccos*(z: TComplex): TComplex =
+proc arccos*(z: Complex): Complex =
   ## Returns the inverse cosine of `z`.
-  var i: TComplex = (0.0,1.0)
+  var i: Complex = (0.0,1.0)
   result = -i*ln(z + sqrt(z*z-1.0))
 
-proc tan*(z: TComplex): TComplex =
+proc tan*(z: Complex): Complex =
   ## Returns the tangent of `z`.
   result = sin(z)/cos(z)
 
-proc cot*(z: TComplex): TComplex =
+proc cot*(z: Complex): Complex =
   ## Returns the cotangent of `z`.
   result = cos(z)/sin(z)
 
-proc sec*(z: TComplex): TComplex =
+proc sec*(z: Complex): Complex =
   ## Returns the secant of `z`.
   result = 1.0/cos(z)
 
-proc csc*(z: TComplex): TComplex =
+proc csc*(z: Complex): Complex =
   ## Returns the cosecant of `z`.
   result = 1.0/sin(z)
 
 
-proc sinh*(z: TComplex): TComplex =
+proc sinh*(z: Complex): Complex =
   ## Returns the hyperbolic sine of `z`.
   result = 0.5*(exp(z)-exp(-z))
 
-proc cosh*(z: TComplex): TComplex =
+proc cosh*(z: Complex): Complex =
   ## Returns the hyperbolic cosine of `z`.
   result = 0.5*(exp(z)+exp(-z))
 
 
-proc `$`*(z: TComplex): string =
+proc `$`*(z: Complex): string =
   ## Returns `z`'s string representation as ``"(re, im)"``.
   result = "(" & $z.re & ", " & $z.im & ")"
 
