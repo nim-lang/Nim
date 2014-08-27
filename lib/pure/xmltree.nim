@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -12,33 +12,36 @@
 import macros, strtabs
 
 type
-  PXmlNode* = ref TXmlNode ## an XML tree consists of ``PXmlNode``'s. 
+  XmlNode* = ref TXmlNode ## an XML tree consists of ``PXmlNode``'s. 
   
-  TXmlNodeKind* = enum  ## different kinds of ``PXmlNode``'s
+  XmlNodeKind* = enum  ## different kinds of ``PXmlNode``'s
     xnText,             ## a text element
     xnElement,          ## an element with 0 or more children
     xnCData,            ## a CDATA node
     xnEntity,           ## an entity (like ``&thing;``)
     xnComment           ## an XML comment
   
-  PXmlAttributes* = PStringTable ## an alias for a string to string mapping
+  XmlAttributes* = StringTableRef ## an alias for a string to string mapping
   
-  TXmlNode {.pure, final, acyclic.} = object 
-    case k: TXmlNodeKind # private, use the kind() proc to read this field.
+  XmlNodeObj {.acyclic.} = object 
+    case k: XmlNodeKind # private, use the kind() proc to read this field.
     of xnText, xnComment, xnCData, xnEntity: 
       fText: string
     of xnElement:
       fTag: string
-      s: seq[PXmlNode]
-      fAttr: PXmlAttributes
+      s: seq[XmlNode]
+      fAttr: XmlAttributes
     fClientData: int              ## for other clients
-  
-proc newXmlNode(kind: TXmlNodeKind): PXmlNode = 
-  ## creates a new ``PXmlNode``.
+
+{.deprecated: [PXmlNode: XmlNode, TXmlNodeKind: XmlNodeKind, PXmlAttributes:
+    XmlAttributes, TXmlNode: XmlNodeObj].}
+
+proc newXmlNode(kind: XmlNodeKind): XmlNode =
+  ## creates a new ``XmlNode``.
   new(result)
   result.k = kind
 
-proc newElement*(tag: string): PXmlNode = 
+proc newElement*(tag: string): XmlNode = 
   ## creates a new ``PXmlNode`` of kind ``xnText`` with the given `tag`.
   result = newXmlNode(xnElement)
   result.fTag = tag
@@ -304,10 +307,10 @@ proc findAll*(n: PXmlNode, tag: string, result: var seq[PXmlNode]) =
   ## Found nodes satisfying the condition will be appended to the `result`
   ## sequence, which can't be nil or the proc will crash. Usage example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block::
   ##   var
-  ##     html: PXmlNode
-  ##     tags: seq[PXmlNode] = @[]
+  ##     html: XmlNode
+  ##     tags: seq[XmlNode] = @[]
   ##
   ##   html = buildHtml()
   ##   findAll(html, "img", tags)
@@ -326,8 +329,8 @@ proc findAll*(n: PXmlNode, tag: string, result: var seq[PXmlNode]) =
 proc findAll*(n: PXmlNode, tag: string): seq[PXmlNode] =
   ## Shortcut version to assign in let blocks. Example:
   ##
-  ## .. code-block:: nimrod
-  ##   var html: PXmlNode
+  ## .. code-block::
+  ##   var html: XmlNode
   ##
   ##   html = buildHtml(html)
   ##   for imgTag in html.findAll("img"):

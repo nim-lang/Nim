@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2009 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -13,16 +13,16 @@
 ## Example: How to use the parser
 ## ==============================
 ##
-## .. code-block:: nimrod
+## .. code-block:: nim
 ##   import os, parsecsv, streams
-##   var s = newFileStream(ParamStr(1), fmRead)
-##   if s == nil: quit("cannot open the file" & ParamStr(1))
-##   var x: TCsvParser
-##   open(x, s, ParamStr(1))
+##   var s = newFileStream(paramStr(1), fmRead)
+##   if s == nil: quit("cannot open the file" & paramStr(1))
+##   var x: CsvParser
+##   open(x, s, paramStr(1))
 ##   while readRow(x):
-##     Echo "new row: "
+##     echo "new row: "
 ##     for val in items(x.row):
-##       Echo "##", val, "##"
+##       echo "##", val, "##"
 ##   close(x)
 ##
 
@@ -30,28 +30,30 @@ import
   lexbase, streams
 
 type
-  TCsvRow* = seq[string] ## a row in a CSV file
-  TCsvParser* = object of TBaseLexer ## the parser object.
-    row*: TCsvRow                    ## the current row
+  CsvRow* = seq[string] ## a row in a CSV file
+  CsvParser* = object of BaseLexer ## the parser object.
+    row*: CsvRow                    ## the current row
     filename: string
     sep, quote, esc: char
     skipWhite: bool
     currRow: int
 
-  EInvalidCsv* = object of EIO ## exception that is raised if
-                               ## a parsing error occurs
+  CsvError* = object of IOError ## exception that is raised if
+                                ## a parsing error occurs
+
+{.deprecated: [TCsvRow: CsvRow, TCsvParser: CsvParser, EInvalidCsv: CsvError].}
 
 proc raiseEInvalidCsv(filename: string, line, col: int, 
                       msg: string) {.noreturn.} =
-  var e: ref EInvalidCsv
+  var e: ref CsvError
   new(e)
   e.msg = filename & "(" & $line & ", " & $col & ") Error: " & msg
   raise e
 
-proc error(my: TCsvParser, pos: int, msg: string) = 
+proc error(my: CsvParser, pos: int, msg: string) =
   raiseEInvalidCsv(my.filename, my.LineNumber, getColNumber(my, pos), msg)
 
-proc open*(my: var TCsvParser, input: PStream, filename: string,
+proc open*(my: var CsvParser, input: Stream, filename: string,
            separator = ',', quote = '"', escape = '\0',
            skipInitialSpace = false) =
   ## initializes the parser with an input stream. `Filename` is only used
@@ -75,7 +77,7 @@ proc open*(my: var TCsvParser, input: PStream, filename: string,
   my.row = @[]
   my.currRow = 0
 
-proc parseField(my: var TCsvParser, a: var string) = 
+proc parseField(my: var CsvParser, a: var string) = 
   var pos = my.bufpos
   var buf = my.buf
   if my.skipWhite:
@@ -83,7 +85,7 @@ proc parseField(my: var TCsvParser, a: var string) =
   setLen(a, 0) # reuse memory
   if buf[pos] == my.quote and my.quote != '\0': 
     inc(pos)
-    while true: 
+    while true:
       var c = buf[pos]
       if c == '\0':
         my.bufpos = pos # can continue after exception?
@@ -121,11 +123,11 @@ proc parseField(my: var TCsvParser, a: var string) =
       inc(pos)
   my.bufpos = pos
 
-proc processedRows*(my: var TCsvParser): int = 
+proc processedRows*(my: var CsvParser): int = 
   ## returns number of the processed rows
   return my.currRow
 
-proc readRow*(my: var TCsvParser, columns = 0): bool = 
+proc readRow*(my: var CsvParser, columns = 0): bool = 
   ## reads the next row; if `columns` > 0, it expects the row to have
   ## exactly this many columns. Returns false if the end of the file
   ## has been encountered else true.
@@ -160,19 +162,19 @@ proc readRow*(my: var TCsvParser, columns = 0): bool =
           $col & " columns")
   inc(my.currRow)
   
-proc close*(my: var TCsvParser) {.inline.} = 
+proc close*(my: var CsvParser) {.inline.} = 
   ## closes the parser `my` and its associated input stream.
   lexbase.close(my)
 
 when isMainModule:
   import os
-  var s = newFileStream(ParamStr(1), fmRead)
-  if s == nil: quit("cannot open the file" & ParamStr(1))
-  var x: TCsvParser
-  open(x, s, ParamStr(1))
+  var s = newFileStream(paramStr(1), fmRead)
+  if s == nil: quit("cannot open the file" & paramStr(1))
+  var x: CsvParser
+  open(x, s, paramStr(1))
   while readRow(x):
-    Echo "new row: "
+    echo "new row: "
     for val in items(x.row):
-      Echo "##", val, "##"
+      echo "##", val, "##"
   close(x)
 

@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -9,7 +9,7 @@
 
 ## The ``intsets`` module implements an efficient int set implemented as a
 ## sparse bit set.
-## **Note**: Since Nimrod currently does not allow the assignment operator to
+## **Note**: Since Nim currently does not allow the assignment operator to
 ## be overloaded, ``=`` for int sets performs some rather meaningless shallow
 ## copy; use ``assign`` to get a deep copy.
 
@@ -17,7 +17,7 @@ import
   os, hashes, math
 
 type
-  TBitScalar = int
+  BitScalar = int
 
 const 
   InitIntSetSize = 8         # must be a power of two!
@@ -25,8 +25,8 @@ const
   BitsPerTrunk = 1 shl TrunkShift # needs to be a power of 2 and
                                   # divisible by 64
   TrunkMask = BitsPerTrunk - 1
-  IntsPerTrunk = BitsPerTrunk div (sizeof(TBitScalar) * 8)
-  IntShift = 5 + ord(sizeof(TBitScalar) == 8) # 5 or 6, depending on int width
+  IntsPerTrunk = BitsPerTrunk div (sizeof(BitScalar) * 8)
+  IntShift = 5 + ord(sizeof(BitScalar) == 8) # 5 or 6, depending on int width
   IntMask = 1 shl IntShift - 1
 
 type
@@ -34,14 +34,15 @@ type
   TTrunk {.final.} = object 
     next: PTrunk             # all nodes are connected with this pointer
     key: int                 # start address at bit 0
-    bits: array[0..IntsPerTrunk - 1, TBitScalar] # a bit vector
+    bits: array[0..IntsPerTrunk - 1, BitScalar] # a bit vector
   
   TTrunkSeq = seq[PTrunk]
-  TIntSet* {.final.} = object ## an efficient set of 'int' implemented as a
-                              ## sparse bit set
+  IntSet* = object ## an efficient set of 'int' implemented as a sparse bit set
     counter, max: int
     head: PTrunk
     data: TTrunkSeq
+
+{.deprecated: [TIntSet: IntSet].}
 
 proc mustRehash(length, counter: int): bool {.inline.} = 
   assert(length > counter)

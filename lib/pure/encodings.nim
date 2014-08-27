@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -14,18 +14,20 @@ import os, parseutils, strutils
 
 when not defined(windows):
   type
-    TConverter = object
-    PConverter* = ptr TConverter ## can convert between two character sets
+    ConverterObj = object
+    EncodingConverter* = ptr ConverterObj ## can convert between two character sets
 
 else:
   type
-    TCodePage = distinct int32
-    PConverter* = object
-      dest, src: TCodePage
+    CodePage = distinct int32
+    EncodingConverter* = object
+      dest, src: CodePage
 
 type
-  EInvalidEncoding* = object of EInvalidValue ## exception that is raised
-                                              ## for encoding errors
+  EncodingError* = object of ValueError ## exception that is raised
+                                        ## for encoding errors
+
+{.deprecated: [EInvalidEncoding: EncodingError, PConverter: EncodingConverter].}
 
 when defined(windows):
   proc eqEncodingNames(a, b: string): bool =
@@ -214,26 +216,26 @@ when defined(windows):
         defaultChar: array[0..1, char]
         leadByte: array[0..12-1, char]
 
-    proc getCPInfo(codePage: TCodePage, lpCPInfo: var TCpInfo): int32 {.
+    proc getCPInfo(codePage: CodePage, lpCPInfo: var TCpInfo): int32 {.
       stdcall, importc: "GetCPInfo", dynlib: "kernel32".}
   
-  proc nameToCodePage(name: string): TCodePage =
+  proc nameToCodePage(name: string): CodePage =
     var nameAsInt: int
     if parseInt(name, nameAsInt) == 0: nameAsInt = -1
     for no, na in items(winEncodings):
-      if no == nameAsInt or eqEncodingNames(na, name): return TCodePage(no)
-    result = TCodePage(-1)
+      if no == nameAsInt or eqEncodingNames(na, name): return CodePage(no)
+    result = CodePage(-1)
     
-  proc codePageToName(c: TCodePage): string =
+  proc codePageToName(c: CodePage): string =
     for no, na in items(winEncodings):
       if no == int(c):
         return if na.len != 0: na else: $no
     result = ""
   
-  proc getACP(): TCodePage {.stdcall, importc: "GetACP", dynlib: "kernel32".}
+  proc getACP(): CodePage {.stdcall, importc: "GetACP", dynlib: "kernel32".}
   
   proc multiByteToWideChar(
-    codePage: TCodePage,
+    codePage: CodePage,
     dwFlags: int32,
     lpMultiByteStr: cstring,
     cbMultiByte: cint,
@@ -242,7 +244,7 @@ when defined(windows):
       stdcall, importc: "MultiByteToWideChar", dynlib: "kernel32".}
 
   proc wideCharToMultiByte(
-    codePage: TCodePage,
+    codePage: CodePage,
     dwFlags: int32,
     lpWideCharStr: cstring,
     cchWideChar: cint,

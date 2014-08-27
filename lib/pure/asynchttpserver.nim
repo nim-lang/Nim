@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2014 Dominik Picheta
 #
 #    See the file "copying.txt", included in this
@@ -13,7 +13,7 @@
 
 import strtabs, asyncnet, asyncdispatch, parseutils, uri, strutils
 type
-  TRequest* = object
+  Request* = object
     client*: PAsyncSocket # TODO: Separate this into a Response object?
     reqMethod*: string
     headers*: PStringTable
@@ -22,10 +22,10 @@ type
     hostname*: string ## The hostname of the client that made the request.
     body*: string
 
-  PAsyncHttpServer* = ref object
+  AsyncHttpServer* = ref object
     socket: PAsyncSocket
 
-  THttpCode* = enum
+  HttpCode* = enum
     Http200 = "200 OK",
     Http303 = "303 Moved",
     Http400 = "400 Bad Request",
@@ -33,9 +33,12 @@ type
     Http500 = "500 Internal Server Error",
     Http502 = "502 Bad Gateway"
 
-  THttpVersion* = enum
+  HttpVersion* = enum
     HttpVer11,
     HttpVer10
+
+{.deprecated: [TRequest: Request, PAsyncHttpServer: AsyncHttpServer,
+  THttpCode: HttpCode, THttpVersion: HttpVersion].}
 
 proc `==`*(protocol: tuple[orig: string, major, minor: int],
            ver: THttpVersion): bool =

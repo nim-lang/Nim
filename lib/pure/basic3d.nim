@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2013 Robert Persson
 #
 #    See the file "copying.txt", included in this

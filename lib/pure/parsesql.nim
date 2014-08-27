@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2009 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -10,13 +10,13 @@
 ## The ``parsesql`` module implements a high performance SQL file 
 ## parser. It parses PostgreSQL syntax and the SQL ANSI standard.
 
-import 
+import
   hashes, strutils, lexbase, streams
 
 # ------------------- scanner -------------------------------------------------
 
 type
-  TTokKind = enum       ## enumeration of all SQL tokens
+  TokKind = enum       ## enumeration of all SQL tokens
     tkInvalid,          ## invalid token
     tkEof,              ## end of file reached
     tkIdentifier,       ## abc
@@ -38,33 +38,35 @@ type
     tkBracketRi,            ## ']'
     tkDot                   ## '.'
   
-  TToken {.final.} = object  # a token
-    kind: TTokKind           # the type of the token
+  Token = object  # a token
+    kind: TokKind           # the type of the token
     literal: string          # the parsed (string) literal
   
-  TSqlLexer* = object of TBaseLexer ## the parser object.
+  SqlLexer* = object of BaseLexer ## the parser object.
     filename: string
 
+{.deprecated: [TToken: Token, TSqlLexer: SqlLexer].}
+
 const
-  tokKindToStr: array[TTokKind, string] = [
+  tokKindToStr: array[TokKind, string] = [
     "invalid", "[EOF]", "identifier", "quoted identifier", "string constant",
     "escape string constant", "dollar quoted constant", "bit string constant",
     "hex string constant", "integer constant", "numeric constant", "operator",
     ";", ":", ",", "(", ")", "[", "]", "."
   ]
 
-proc open(L: var TSqlLexer, input: PStream, filename: string) = 
+proc open(L: var SqlLexer, input: Stream, filename: string) = 
   lexbase.open(L, input)
   L.filename = filename
   
-proc close(L: var TSqlLexer) = 
+proc close(L: var SqlLexer) = 
   lexbase.close(L)
 
-proc getColumn(L: TSqlLexer): int = 
+proc getColumn(L: SqlLexer): int = 
   ## get the current column the parser has arrived at.
   result = getColNumber(L, L.bufPos)
 
-proc getLine(L: TSqlLexer): int = 
+proc getLine(L: SqlLexer): int = 
   result = L.linenumber
 
 proc handleHexChar(c: var TSqlLexer, xi: var int) = 
@@ -137,10 +139,10 @@ proc getEscapedChar(c: var TSqlLexer, tok: var TToken) =
     else: tok.kind = tkInvalid
   else: tok.kind = tkInvalid
   
-proc HandleCRLF(c: var TSqlLexer, pos: int): int = 
+proc handleCRLF(c: var TSqlLexer, pos: int): int = 
   case c.buf[pos]
-  of '\c': result = lexbase.HandleCR(c, pos)
-  of '\L': result = lexbase.HandleLF(c, pos)
+  of '\c': result = lexbase.handleCR(c, pos)
+  of '\L': result = lexbase.handleLF(c, pos)
   else: result = pos
 
 proc skip(c: var TSqlLexer) = 
@@ -163,7 +165,7 @@ proc skip(c: var TSqlLexer) =
           case buf[pos]
           of '\0': break
           of '\c', '\L': 
-            pos = HandleCRLF(c, pos)
+            pos = handleCRLF(c, pos)
             buf = c.buf
           of '*':
             if buf[pos+1] == '/':
@@ -181,13 +183,13 @@ proc skip(c: var TSqlLexer) =
           else: inc(pos)
       else: break
     of '\c', '\L': 
-      pos = HandleCRLF(c, pos)
+      pos = handleCRLF(c, pos)
       buf = c.buf
     else: 
       break                   # EndOfFile also leaves the loop
   c.bufpos = pos
   
-proc getString(c: var TSqlLexer, tok: var TToken, kind: TTokKind) = 
+proc getString(c: var TSqlLexer, tok: var TToken, kind: TokKind) = 
   var pos = c.bufPos + 1
   var buf = c.buf
   tok.kind = kind
@@ -465,7 +467,7 @@ proc errorStr(L: TSqlLexer, msg: string): string =
 # ::            	left	        PostgreSQL-style typecast
 # [ ]	                left    	array element selection
 # -	                right	        unary minus
-# ^             	left	        exponentiation
+# ^                     left	        exponentiation
 # * / %	                left	        multiplication, division, modulo
 # + -	                left	        addition, subtraction
 # IS	 	IS TRUE, IS FALSE, IS UNKNOWN, IS NULL
@@ -483,7 +485,7 @@ proc errorStr(L: TSqlLexer, msg: string): string =
 # OR              	left	        logical disjunction
 
 type
-  TSqlNodeKind* = enum ## kind of SQL abstract syntax tree
+  SqlNodeKind* = enum ## kind of SQL abstract syntax tree
     nkNone,
     nkIdent,
     nkStringLit,
@@ -536,79 +538,82 @@ type
     nkEnumDef
     
 type
-  EInvalidSql* = object of EInvalidValue ## Invalid SQL encountered
-  PSqlNode* = ref TSqlNode        ## an SQL abstract syntax tree node
-  TSqlNode* = object              ## an SQL abstract syntax tree node
-    case kind*: TSqlNodeKind      ## kind of syntax tree
+  SqlParseError* = object of ValueError ## Invalid SQL encountered
+  SqlNode* = ref SqlNodeObj        ## an SQL abstract syntax tree node
+  SqlNodeObj* = object              ## an SQL abstract syntax tree node
+    case kind*: SqlNodeKind      ## kind of syntax tree
     of nkIdent, nkStringLit, nkBitStringLit, nkHexStringLit,
                 nkIntegerLit, nkNumericLit:
       strVal*: string             ## AST leaf: the identifier, numeric literal
                                   ## string literal, etc.
     else:
-      sons*: seq[PSqlNode]        ## the node's children
+      sons*: seq[SqlNode]        ## the node's children
 
-  TSqlParser* = object of TSqlLexer ## SQL parser object
-    tok: TToken
+  SqlParser* = object of SqlLexer ## SQL parser object
+    tok: Token
 
-proc newNode(k: TSqlNodeKind): PSqlNode =
+{.deprecated: [EInvalidSql: SqlParseError, PSqlNode: SqlNode,
+    TSqlNode: SqlNodeObj, TSqlParser: SqlParser, TSqlNodeKind: SqlNodeKind].}
+
+proc newNode(k: SqlNodeKind): SqlNode =
   new(result)
   result.kind = k
 
-proc newNode(k: TSqlNodeKind, s: string): PSqlNode =
+proc newNode(k: SqlNodeKind, s: string): SqlNode =
   new(result)
   result.kind = k
   result.strVal = s
   
-proc len*(n: PSqlNode): int =
+proc len*(n: SqlNode): int =
   if isNil(n.sons): result = 0
   else: result = n.sons.len
   
-proc add*(father, n: PSqlNode) =
+proc add*(father, n: SqlNode) =
   if isNil(father.sons): father.sons = @[]
   add(father.sons, n)
 
-proc getTok(p: var TSqlParser) =
+proc getTok(p: var SqlParser) =
   getTok(p, p.tok)
 
-proc sqlError(p: TSqlParser, msg: string) =
-  var e: ref EInvalidSql
+proc sqlError(p: SqlParser, msg: string) =
+  var e: ref SqlParseError
   new(e)
   e.msg = errorStr(p, msg)
   raise e
 
-proc isKeyw(p: TSqlParser, keyw: string): bool =
+proc isKeyw(p: SqlParser, keyw: string): bool =
   result = p.tok.kind == tkIdentifier and
            cmpIgnoreCase(p.tok.literal, keyw) == 0
 
-proc isOpr(p: TSqlParser, opr: string): bool =
+proc isOpr(p: SqlParser, opr: string): bool =
   result = p.tok.kind == tkOperator and
            cmpIgnoreCase(p.tok.literal, opr) == 0
 
-proc optKeyw(p: var TSqlParser, keyw: string) =
+proc optKeyw(p: var SqlParser, keyw: string) =
   if p.tok.kind == tkIdentifier and cmpIgnoreCase(p.tok.literal, keyw) == 0:
     getTok(p)
 
-proc expectIdent(p: TSqlParser) =
+proc expectIdent(p: SqlParser) =
   if p.tok.kind != tkIdentifier and p.tok.kind != tkQuotedIdentifier:
     sqlError(p, "identifier expected")
 
-proc expect(p: TSqlParser, kind: TTokKind) =
+proc expect(p: SqlParser, kind: TokKind) =
   if p.tok.kind != kind:
     sqlError(p, tokKindToStr[kind] & " expected")
 
-proc eat(p: var TSqlParser, kind: TTokKind) =
+proc eat(p: var SqlParser, kind: TokKind) =
   if p.tok.kind == kind:
     getTok(p)
   else:
     sqlError(p, tokKindToStr[kind] & " expected")
 
-proc eat(p: var TSqlParser, keyw: string) =
+proc eat(p: var SqlParser, keyw: string) =
   if isKeyw(p, keyw):
     getTok(p)
   else:
     sqlError(p, keyw.toUpper() & " expected")
 
-proc parseDataType(p: var TSqlParser): PSqlNode =
+proc parseDataType(p: var SqlParser): SqlNode =
   if isKeyw(p, "enum"):
     result = newNode(nkEnumDef)
     getTok(p)
@@ -636,7 +641,7 @@ proc parseDataType(p: var TSqlParser): PSqlNode =
         getTok(p)
       eat(p, tkParRi)
 
-proc getPrecedence(p: TSqlParser): int = 
+proc getPrecedence(p: SqlParser): int = 
   if isOpr(p, "*") or isOpr(p, "/") or isOpr(p, "%"):
     result = 6
   elif isOpr(p, "+") or isOpr(p, "-"):
@@ -655,9 +660,9 @@ proc getPrecedence(p: TSqlParser): int =
   else:
     result = - 1
 
-proc parseExpr(p: var TSqlParser): PSqlNode
+proc parseExpr(p: var SqlParser): SqlNode
 
-proc identOrLiteral(p: var TSqlParser): PSqlNode = 
+proc identOrLiteral(p: var SqlParser): SqlNode =
   case p.tok.kind
   of tkIdentifier, tkQuotedIdentifier: 
     result = newNode(nkIdent, p.tok.literal)
@@ -685,7 +690,7 @@ proc identOrLiteral(p: var TSqlParser): PSqlNode =
     sqlError(p, "expression expected")
     getTok(p) # we must consume a token here to prevend endless loops!
 
-proc primary(p: var TSqlParser): PSqlNode = 
+proc primary(p: var SqlParser): SqlNode = 
   if p.tok.kind == tkOperator or isKeyw(p, "not"): 
     result = newNode(nkPrefix)
     result.add(newNode(nkIdent, p.tok.literal))
@@ -723,9 +728,9 @@ proc primary(p: var TSqlParser): PSqlNode =
       getTok(p)
     else: break
   
-proc lowestExprAux(p: var TSqlParser, v: var PSqlNode, limit: int): int = 
+proc lowestExprAux(p: var SqlParser, v: var SqlNode, limit: int): int = 
   var
-    v2, node, opNode: PSqlNode
+    v2, node, opNode: SqlNode
   v = primary(p) # expand while operators have priorities higher than 'limit'
   var opPred = getPrecedence(p)
   result = opPred
@@ -740,14 +745,14 @@ proc lowestExprAux(p: var TSqlParser, v: var PSqlNode, limit: int): int =
     v = node
     opPred = getPrecedence(p)
   
-proc parseExpr(p: var TSqlParser): PSqlNode = 
+proc parseExpr(p: var SqlParser): SqlNode = 
   discard lowestExprAux(p, result, - 1)
 
-proc parseTableName(p: var TSqlParser): PSqlNode =
+proc parseTableName(p: var SqlParser): SqlNode =
   expectIdent(p)
   result = primary(p)
 
-proc parseColumnReference(p: var TSqlParser): PSqlNode =
+proc parseColumnReference(p: var SqlParser): SqlNode =
   result = parseTableName(p)
   if p.tok.kind == tkParLe:
     getTok(p)
@@ -760,12 +765,12 @@ proc parseColumnReference(p: var TSqlParser): PSqlNode =
       result.add(parseTableName(p))
     eat(p, tkParRi)
 
-proc parseCheck(p: var TSqlParser): PSqlNode = 
+proc parseCheck(p: var SqlParser): SqlNode = 
   getTok(p)
   result = newNode(nkCheck)
   result.add(parseExpr(p))
 
-proc parseConstraint(p: var TSqlParser): PSqlNode =
+proc parseConstraint(p: var SqlParser): SqlNode =
   getTok(p)
   result = newNode(nkConstraint)
   expectIdent(p)
@@ -774,7 +779,7 @@ proc parseConstraint(p: var TSqlParser): PSqlNode =
   eat(p, "check")
   result.add(parseExpr(p))
 
-proc parseColumnConstraints(p: var TSqlParser, result: PSqlNode) =
+proc parseColumnConstraints(p: var SqlParser, result: SqlNode) =
   while true:
     if isKeyw(p, "default"):
       getTok(p)
@@ -806,7 +811,7 @@ proc parseColumnConstraints(p: var TSqlParser, result: PSqlNode) =
     else:
       break
 
-proc parseColumnDef(p: var TSqlParser): PSqlNode =
+proc parseColumnDef(p: var SqlParser): SqlNode =
   expectIdent(p)
   result = newNode(nkColumnDef)
   result.add(newNode(nkIdent, p.tok.literal))
@@ -814,7 +819,7 @@ proc parseColumnDef(p: var TSqlParser): PSqlNode =
   result.add(parseDataType(p))
   parseColumnConstraints(p, result)  
 
-proc parseIfNotExists(p: var TSqlParser, k: TSqlNodeKind): PSqlNode = 
+proc parseIfNotExists(p: var SqlParser, k: TSqlNodeKind): SqlNode = 
   getTok(p)
   if isKeyw(p, "if"):
     getTok(p)
@@ -824,7 +829,7 @@ proc parseIfNotExists(p: var TSqlParser, k: TSqlNodeKind): PSqlNode =
   else:
     result = newNode(k)
 
-proc parseParIdentList(p: var TSqlParser, father: PSqlNode) =
+proc parseParIdentList(p: var SqlParser, father: SqlNode) =
   eat(p, tkParLe)
   while true:
     expectIdent(p)
@@ -834,7 +839,7 @@ proc parseParIdentList(p: var TSqlParser, father: PSqlNode) =
     getTok(p)
   eat(p, tkParRi)
 
-proc parseTableConstraint(p: var TSqlParser): PSqlNode =
+proc parseTableConstraint(p: var SqlParser): SqlNode =
   if isKeyw(p, "primary"):
     getTok(p)
     eat(p, "key")
@@ -861,7 +866,7 @@ proc parseTableConstraint(p: var TSqlParser): PSqlNode =
   else:
     sqlError(p, "column definition expected")
 
-proc parseTableDef(p: var TSqlParser): PSqlNode =
+proc parseTableDef(p: var SqlParser): SqlNode =
   result = parseIfNotExists(p, nkCreateTable)
   expectIdent(p)
   result.add(newNode(nkIdent, p.tok.literal))
@@ -876,7 +881,7 @@ proc parseTableDef(p: var TSqlParser): PSqlNode =
       if p.tok.kind != tkComma: break
     eat(p, tkParRi)
   
-proc parseTypeDef(p: var TSqlParser): PSqlNode =
+proc parseTypeDef(p: var SqlParser): SqlNode =
   result = parseIfNotExists(p, nkCreateType)
   expectIdent(p)
   result.add(newNode(nkIdent, p.tok.literal))
@@ -884,12 +889,12 @@ proc parseTypeDef(p: var TSqlParser): PSqlNode =
   eat(p, "as")
   result.add(parseDataType(p))
 
-proc parseWhere(p: var TSqlParser): PSqlNode =
+proc parseWhere(p: var SqlParser): SqlNode =
   getTok(p)
   result = newNode(nkWhere)
   result.add(parseExpr(p))
 
-proc parseIndexDef(p: var TSqlParser): PSqlNode =
+proc parseIndexDef(p: var SqlParser): SqlNode =
   result = parseIfNotExists(p, nkCreateIndex)
   if isKeyw(p, "primary"):
     getTok(p)
@@ -914,7 +919,7 @@ proc parseIndexDef(p: var TSqlParser): PSqlNode =
     getTok(p)
   eat(p, tkParRi)
 
-proc parseInsert(p: var TSqlParser): PSqlNode =
+proc parseInsert(p: var SqlParser): SqlNode =
   getTok(p)
   eat(p, "into")
   expectIdent(p)
@@ -941,7 +946,7 @@ proc parseInsert(p: var TSqlParser): PSqlNode =
     result.add(n)
     eat(p, tkParRi)
 
-proc parseUpdate(p: var TSqlParser): PSqlNode =
+proc parseUpdate(p: var SqlParser): SqlNode =
   getTok(p)
   result = newNode(nkUpdate)
   result.add(primary(p))
@@ -962,7 +967,7 @@ proc parseUpdate(p: var TSqlParser): PSqlNode =
   else:
     result.add(nil)
     
-proc parseDelete(p: var TSqlParser): PSqlNode =
+proc parseDelete(p: var SqlParser): SqlNode =
   getTok(p)
   result = newNode(nkDelete)
   eat(p, "from")
@@ -972,7 +977,7 @@ proc parseDelete(p: var TSqlParser): PSqlNode =
   else:
     result.add(nil)
 
-proc parseSelect(p: var TSqlParser): PSqlNode =
+proc parseSelect(p: var SqlParser): SqlNode =
   getTok(p)
   if isKeyw(p, "distinct"):
     getTok(p)
@@ -1041,7 +1046,7 @@ proc parseSelect(p: var TSqlParser): PSqlNode =
       getTok(p)
     result.add(n)
 
-proc parseStmt(p: var TSqlParser): PSqlNode =
+proc parseStmt(p: var SqlParser): SqlNode =
   if isKeyw(p, "create"):
     getTok(p)
     optKeyw(p, "cached")
@@ -1071,7 +1076,7 @@ proc parseStmt(p: var TSqlParser): PSqlNode =
   else:
     sqlError(p, "CREATE expected")
 
-proc open(p: var TSqlParser, input: PStream, filename: string) =
+proc open(p: var SqlParser, input: PStream, filename: string) =
   ## opens the parser `p` and assigns the input stream `input` to it.
   ## `filename` is only used for error messages.
   open(TSqlLexer(p), input, filename)
@@ -1079,7 +1084,7 @@ proc open(p: var TSqlParser, input: PStream, filename: string) =
   p.tok.literal = ""
   getTok(p)
   
-proc parse(p: var TSqlParser): PSqlNode =
+proc parse(p: var SqlParser): SqlNode =
   ## parses the content of `p`'s input stream and returns the SQL AST.
   ## Syntax errors raise an `EInvalidSql` exception.
   result = newNode(nkStmtList)
@@ -1090,24 +1095,24 @@ proc parse(p: var TSqlParser): PSqlNode =
   if result.len == 1:
     result = result.sons[0]
   
-proc close(p: var TSqlParser) =
+proc close(p: var SqlParser) =
   ## closes the parser `p`. The associated input stream is closed too.
   close(TSqlLexer(p))
 
-proc parseSQL*(input: PStream, filename: string): PSqlNode =
+proc parseSQL*(input: PStream, filename: string): SqlNode =
   ## parses the SQL from `input` into an AST and returns the AST. 
   ## `filename` is only used for error messages.
   ## Syntax errors raise an `EInvalidSql` exception.
-  var p: TSqlParser
+  var p: SqlParser
   open(p, input, filename)
   try:
     result = parse(p)
   finally:
     close(p)
 
-proc ra(n: PSqlNode, s: var string, indent: int)
+proc ra(n: SqlNode, s: var string, indent: int)
 
-proc rs(n: PSqlNode, s: var string, indent: int,
+proc rs(n: SqlNode, s: var string, indent: int,
         prefix = "(", suffix = ")",
         sep = ", ") = 
   if n.len > 0:
@@ -1117,7 +1122,7 @@ proc rs(n: PSqlNode, s: var string, indent: int,
       ra(n.sons[i], s, indent)
     s.add(suffix)
 
-proc ra(n: PSqlNode, s: var string, indent: int) =
+proc ra(n: SqlNode, s: var string, indent: int) =
   if n == nil: return
   case n.kind
   of nkNone: discard
@@ -1320,7 +1325,7 @@ proc ra(n: PSqlNode, s: var string, indent: int) =
 #for x, y, z in db.select(fromm = a, b where = a.name == b.name): 
 #  writeln x, y, z
 
-proc renderSQL*(n: PSqlNode): string =
+proc renderSQL*(n: SqlNode): string =
   ## Converts an SQL abstract syntax tree to its string representation.
   result = ""
   ra(n, result, 0)

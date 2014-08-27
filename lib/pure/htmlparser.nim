@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -13,7 +13,7 @@
 ## It can be used to parse a wild HTML document and output it as valid XHTML
 ## document (well, if you are lucky):
 ##
-## .. code-block:: nimrod
+## .. code-block:: Nim
 ##
 ##   echo loadHtml("mydirty.html")
 ##
@@ -29,7 +29,7 @@
 ## and write back the modified version. In this case we look for hyperlinks
 ## ending with the extension ``.rst`` and convert them to ``.html``.
 ##
-## .. code-block:: nimrod
+## .. code-block:: Nim
 ##
 ##   import htmlparser
 ##   import xmltree  # To use '$' for PXmlNode

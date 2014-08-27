@@ -10,7 +10,7 @@ if paramCount() < 1:
 var filename = addFileExt(paramStr(1), "html")
 var s = newFileStream(filename, fmRead)
 if s == nil: quit("cannot open the file " & filename)
-var x: TXmlParser
+var x: XmlParser
 open(x, s, filename)
 while true:
   x.next()

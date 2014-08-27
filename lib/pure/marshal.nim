@@ -1,20 +1,20 @@
 #
 #
-#            Nimrod's Runtime Library
-#        (c) Copyright 2013 Andreas Rumpf
+#            Nim's Runtime Library
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
 ## This module contains procs for serialization and deseralization of 
-## arbitrary Nimrod data structures. The serialization format uses JSON.
+## arbitrary Nim data structures. The serialization format uses JSON.
 ##
 ## **Restriction**: For objects their type is **not** serialized. This means
 ## essentially that it does not work if the object has some other runtime
 ## type than its compiletime type:
 ##
-## .. code-block:: nimrod
+## .. code-block:: nim
 ## 
 ##   type 
 ##     TA = object
@@ -211,7 +211,7 @@ proc loadAny(p: var TJsonParser, a: TAny, t: var TTable[biggestInt, pointer]) =
     raiseParseErr(p, "float expected")
   of akRange: loadAny(p, a.skipRange, t)
 
-proc loadAny(s: PStream, a: TAny, t: var TTable[biggestInt, pointer]) =
+proc loadAny(s: PStream, a: TAny, t: var TTable[BiggestInt, pointer]) =
   var p: TJsonParser
   open(p, s, "unknown file")
   next(p)

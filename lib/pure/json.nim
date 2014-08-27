@@ -1,7 +1,7 @@
 #
 #
-#            Nimrod's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf, Dominik Picheta
+#            Nim's Runtime Library
+#        (c) Copyright 2014 Andreas Rumpf, Dominik Picheta
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -35,7 +35,7 @@ import
   hashes, strutils, lexbase, streams, unicode
 
 type 
-  TJsonEventKind* = enum ## enumeration of all events that may occur when parsing
+  JsonEventKind* = enum  ## enumeration of all events that may occur when parsing
     jsonError,           ## an error ocurred during parsing
     jsonEof,             ## end of file reached
     jsonString,          ## a string literal
@@ -65,7 +65,7 @@ type
     tkColon,
     tkComma
     
-  TJsonError* = enum       ## enumeration that lists all errors that can occur
+  JsonError* = enum        ## enumeration that lists all errors that can occur
     errNone,               ## no error
     errInvalidToken,       ## invalid token
     errStringExpected,     ## string expected
@@ -78,20 +78,23 @@ type
     errEofExpected,        ## EOF expected
     errExprExpected        ## expr expected
     
-  TParserState = enum 
+  ParserState = enum 
     stateEof, stateStart, stateObject, stateArray, stateExpectArrayComma,
     stateExpectObjectComma, stateExpectColon, stateExpectValue
 
-  TJsonParser* = object of TBaseLexer ## the parser object.
+  JsonParser* = object of TBaseLexer ## the parser object.
     a: string
     tok: TTokKind
-    kind: TJsonEventKind
-    err: TJsonError
-    state: seq[TParserState]
+    kind: JsonEventKind
+    err: JsonError
+    state: seq[ParserState]
     filename: string
+
+{.deprecated: [TJsonEventKind: JsonEventKind, TJsonError: JsonError,
+  TJsonParser: JsonParser].}
  
 const
-  errorMessages: array [TJsonError, string] = [
+  errorMessages: array [JsonError, string] = [
     "no error",
     "invalid token",
     "string expected",
@@ -116,7 +119,7 @@ const
     "{", "}", "[", "]", ":", ","
   ]
 
-proc open*(my: var TJsonParser, input: PStream, filename: string) =
+proc open*(my: var JsonParser, input: PStream, filename: string) =
   ## initializes the parser with an input stream. `Filename` is only used
   ## for nice error messages.
   lexbase.open(my, input)
@@ -125,49 +128,49 @@ proc open*(my: var TJsonParser, input: PStream, filename: string) =
   my.kind = jsonError
   my.a = ""
   
-proc close*(my: var TJsonParser) {.inline.} = 
+proc close*(my: var JsonParser) {.inline.} = 
   ## closes the parser `my` and its associated input stream.
   lexbase.close(my)
 
-proc str*(my: TJsonParser): string {.inline.} = 
+proc str*(my: JsonParser): string {.inline.} = 
   ## returns the character data for the events: ``jsonInt``, ``jsonFloat``, 
   ## ``jsonString``
   assert(my.kind in {jsonInt, jsonFloat, jsonString})
   return my.a
 
-proc getInt*(my: TJsonParser): BiggestInt {.inline.} = 
+proc getInt*(my: JsonParser): BiggestInt {.inline.} = 
   ## returns the number for the event: ``jsonInt``
   assert(my.kind == jsonInt)
   return parseBiggestInt(my.a)
 
-proc getFloat*(my: TJsonParser): float {.inline.} = 
+proc getFloat*(my: JsonParser): float {.inline.} = 
   ## returns the number for the event: ``jsonFloat``
   assert(my.kind == jsonFloat)
   return parseFloat(my.a)
 
-proc kind*(my: TJsonParser): TJsonEventKind {.inline.} = 
+proc kind*(my: JsonParser): JsonEventKind {.inline.} = 
   ## returns the current event type for the JSON parser
   return my.kind
   
-proc getColumn*(my: TJsonParser): int {.inline.} = 
+proc getColumn*(my: JsonParser): int {.inline.} = 
   ## get the current column the parser has arrived at.
   result = getColNumber(my, my.bufpos)
 
-proc getLine*(my: TJsonParser): int {.inline.} = 
+proc getLine*(my: JsonParser): int {.inline.} = 
   ## get the current line the parser has arrived at.
   result = my.lineNumber
 
-proc getFilename*(my: TJsonParser): string {.inline.} = 
+proc getFilename*(my: JsonParser): string {.inline.} = 
   ## get the filename of the file that the parser processes.
   result = my.filename
   
-proc errorMsg*(my: TJsonParser): string = 
+proc errorMsg*(my: JsonParser): string = 
   ## returns a helpful error message for the event ``jsonError``
   assert(my.kind == jsonError)
   result = "$1($2, $3) Error: $4" % [
     my.filename, $getLine(my), $getColumn(my), errorMessages[my.err]]
 
-proc errorMsgExpected*(my: TJsonParser, e: string): string = 
+proc errorMsgExpected*(my: JsonParser, e: string): string = 
   ## returns an error message "`e` expected" in the same format as the
   ## other error messages 
   result = "$1($2, $3) Error: $4" % [
@@ -181,7 +184,7 @@ proc handleHexChar(c: char, x: var int): bool =
   of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
   else: result = false # error
 
-proc parseString(my: var TJsonParser): TTokKind =
+proc parseString(my: var JsonParser): TTokKind =
   result = tkString
   var pos = my.bufpos + 1
   var buf = my.buf
@@ -239,7 +242,7 @@ proc parseString(my: var TJsonParser): TTokKind =
       inc(pos)
   my.bufpos = pos # store back
   
-proc skip(my: var TJsonParser) = 
+proc skip(my: var JsonParser) = 
   var pos = my.bufpos
   var buf = my.buf
   while true: 
@@ -297,7 +300,7 @@ proc skip(my: var TJsonParser) =
       break
   my.bufpos = pos
 
-proc parseNumber(my: var TJsonParser) = 
+proc parseNumber(my: var JsonParser) = 
   var pos = my.bufpos
   var buf = my.buf
   if buf[pos] == '-': 
@@ -328,7 +331,7 @@ proc parseNumber(my: var TJsonParser) =
       inc(pos)
   my.bufpos = pos
 
-proc parseName(my: var TJsonParser) = 
+proc parseName(my: var JsonParser) = 
   var pos = my.bufpos
   var buf = my.buf
   if buf[pos] in IdentStartChars:
@@ -337,7 +340,7 @@ proc parseName(my: var TJsonParser) =
       inc(pos)
   my.bufpos = pos
 
-proc getTok(my: var TJsonParser): TTokKind = 
+proc getTok(my: var JsonParser): TTokKind = 
   setLen(my.a, 0)
   skip(my) # skip whitespace, comments
   case my.buf[my.bufpos]
@@ -381,7 +384,7 @@ proc getTok(my: var TJsonParser): TTokKind =
     result = tkError
   my.tok = result
 
-proc next*(my: var TJsonParser) = 
+proc next*(my: var JsonParser) = 
   ## retrieves the first/next event. This controls the parser.
   var tk = getTok(my)
   var i = my.state.len-1
@@ -529,7 +532,10 @@ type
     of JArray:
       elems*: seq[PJsonNode]
 
-  EJsonParsingError* = object of ValueError ## is raised for a JSON error
+  JsonParsingError* = object of ValueError ## is raised for a JSON error
+
+{.deprecated: [EJsonParsingError: JsonParsingError, TJsonNode: JsonNodeObj,
+    PJsonNode: JsonNode, TJsonNodeKind: JsonNodeKind].}
 
 proc raiseParseErr*(p: TJsonParser, msg: string) {.noinline, noreturn.} =
   ## raises an `EJsonParsingError` exception.

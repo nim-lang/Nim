@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf, Dominik Picheta
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -10,8 +10,8 @@ include "system/inclrtl"
 
 import sockets, os
 
-## This module implements an asynchronous event loop together with asynchronous sockets
-## which use this event loop.
+## This module implements an asynchronous event loop together with asynchronous
+## sockets which use this event loop.
 ## It is akin to Python's asyncore module. Many modules that use sockets
 ## have an implementation for this module, those modules should all have a 
 ## ``register`` function which you should use to add the desired objects to a 
@@ -31,10 +31,10 @@ import sockets, os
 ## 
 ## Most (if not all) modules that use asyncio provide a userArg which is passed
 ## on with the events. The type that you set userArg to must be inheriting from
-## TObject!
+## ``RootObj``!
 ##
 ## **Note:** If you want to provide async ability to your module please do not 
-## use the ``TDelegate`` object, instead use ``PAsyncSocket``. It is possible 
+## use the ``Delegate`` object, instead use ``AsyncSocket``. It is possible 
 ## that in the future this type's fields will not be exported therefore breaking
 ## your code.
 ##
@@ -44,10 +44,10 @@ import sockets, os
 ## Asynchronous sockets
 ## ====================
 ##
-## For most purposes you do not need to worry about the ``TDelegate`` type. The
-## ``PAsyncSocket`` is what you are after. It's a reference to the ``TAsyncSocket``
-## object. This object defines events which you should overwrite by your own
-## procedures.
+## For most purposes you do not need to worry about the ``Delegate`` type. The
+## ``AsyncSocket`` is what you are after. It's a reference to
+## the ``AsyncSocketObj`` object. This object defines events which you should
+## overwrite by your own procedures.
 ##
 ## For server sockets the only event you need to worry about is the ``handleAccept``
 ## event, in your handleAccept proc you should call ``accept`` on the server
@@ -57,13 +57,13 @@ import sockets, os
 ## 
 ## An example ``handleAccept`` follows:
 ## 
-## .. code-block:: nimrod
+## .. code-block:: nim
 ##   
-##    var disp: PDispatcher = newDispatcher()
+##    var disp = newDispatcher()
 ##    ...
-##    proc handleAccept(s: PAsyncSocket) =
+##    proc handleAccept(s: AsyncSocket) =
 ##      echo("Accepted client.")
-##      var client: PAsyncSocket
+##      var client: AsyncSocket
 ##      new(client)
 ##      s.accept(client)
 ##      client.handleRead = ...
@@ -76,29 +76,29 @@ import sockets, os
 ## the socket has established a connection to a server socket; from that point
 ## it can be safely written to.
 ##
-## Getting a blocking client from a PAsyncSocket
+## Getting a blocking client from an AsyncSocket
 ## =============================================
 ## 
 ## If you need a asynchronous server socket but you wish to process the clients
-## synchronously then you can use the ``getSocket`` converter to get a TSocket
-## object from the PAsyncSocket object, this can then be combined with ``accept``
-## like so:
+## synchronously then you can use the ``getSocket`` converter to get
+## a ``Socket`` from the ``AsyncSocket`` object, this can then be combined
+## with ``accept`` like so:
 ##
-## .. code-block:: nimrod
+## .. code-block:: nim
 ##    
-##    proc handleAccept(s: PAsyncSocket) =
-##      var client: TSocket
+##    proc handleAccept(s: AsyncSocket) =
+##      var client: Socket
 ##      getSocket(s).accept(client)
 
 when defined(windows):
-  from winlean import TTimeVal, TSocketHandle, TFdSet, FD_ZERO, FD_SET, FD_ISSET, select
+  from winlean import TimeVal, SocketHandle, FdSet, FD_ZERO, FD_SET, FD_ISSET, select
 else:
-  from posix import TTimeVal, TSocketHandle, TFdSet, FD_ZERO, FD_SET, FD_ISSET, select
+  from posix import TimeVal, SocketHandle, FdSet, FD_ZERO, FD_SET, FD_ISSET, select
 
 type
-  TDelegate* = object
-    fd*: TSocketHandle
-    deleVal*: PObject
+  DelegateObj* = object
+    fd*: SocketHandle
+    deleVal*: RootRef
 
     handleRead*: proc (h: PObject) {.nimcall, gcsafe.}
     handleWrite*: proc (h: PObject) {.nimcall, gcsafe.}
@@ -107,18 +107,18 @@ type
     
     open*: bool
     task*: proc (h: PObject) {.nimcall, gcsafe.}
-    mode*: TFileMode
+    mode*: FileMode
     
-  PDelegate* = ref TDelegate
+  Delegate* = ref DelegateObj
 
-  PDispatcher* = ref TDispatcher
-  TDispatcher = object
+  Dispatcher* = ref DispatcherObj
+  DispatcherObj = object
     delegates: seq[PDelegate]
 
-  PAsyncSocket* = ref TAsyncSocket
-  TAsyncSocket* = object of TObject
-    socket: TSocket
-    info: TInfo
+  AsyncSocket* = ref AsyncSocketObj
+  AsyncSocketObj* = object of RootObj
+    socket: Socket
+    info: SocketStatus
 
     handleRead*: proc (s: PAsyncSocket) {.closure, gcsafe.}
     handleWrite: proc (s: PAsyncSocket) {.closure, gcsafe.}
@@ -134,9 +134,16 @@ type
     proto: TProtocol
     deleg: PDelegate
 
-  TInfo* = enum
+  SocketStatus* = enum
     SockIdle, SockConnecting, SockConnected, SockListening, SockClosed, 
     SockUDPBound
+
+{.deprecated: [TDelegate: DelegateObj, PDelegate: Delegate,
+  TProcessOption: ProcessOption,
+  TInfo: SocketStatus, PAsyncSocket: AsyncSocket, TAsyncSocket: AsyncSocketObj,
+  TDispatcher: DispatcherObj, PDispatcher: Dispatcher,
+  ].}
+
 
 proc newDelegate*(): PDelegate =
   ## Creates a new delegate.

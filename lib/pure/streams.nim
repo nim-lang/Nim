@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -8,8 +8,8 @@
 #
 
 ## This module provides a stream interface and two implementations thereof:
-## the `PFileStream` and the `PStringStream` which implement the stream
-## interface for Nimrod file objects (`TFile`) and strings. Other modules
+## the `FileStream` and the `StringStream` which implement the stream
+## interface for Nimrod file objects (`File`) and strings. Other modules
 ## may provide other implementations for this standard stream interface.
 
 include "system/inclrtl"
@@ -19,81 +19,83 @@ proc newEIO(msg: string): ref IOError =
   result.msg = msg
 
 type
-  PStream* = ref TStream
-  TStream* = object of RootObj ## Stream interface that supports
-                               ## writing or reading. Note that these fields
-                               ## here shouldn't be used directly. They are
-                               ## accessible so that a stream implementation
-                               ## can override them.
-    closeImpl*: proc (s: PStream) {.nimcall, tags: [], gcsafe.}
-    atEndImpl*: proc (s: PStream): bool {.nimcall, tags: [], gcsafe.}
-    setPositionImpl*: proc (s: PStream, pos: int) {.nimcall, tags: [], gcsafe.}
-    getPositionImpl*: proc (s: PStream): int {.nimcall, tags: [], gcsafe.}
-    readDataImpl*: proc (s: PStream, buffer: pointer,
+  Stream* = ref StreamObj
+  StreamObj* = object of RootObj ## Stream interface that supports
+                                 ## writing or reading. Note that these fields
+                                 ## here shouldn't be used directly. They are
+                                 ## accessible so that a stream implementation
+                                 ## can override them.
+    closeImpl*: proc (s: Stream) {.nimcall, tags: [], gcsafe.}
+    atEndImpl*: proc (s: Stream): bool {.nimcall, tags: [], gcsafe.}
+    setPositionImpl*: proc (s: Stream, pos: int) {.nimcall, tags: [], gcsafe.}
+    getPositionImpl*: proc (s: Stream): int {.nimcall, tags: [], gcsafe.}
+    readDataImpl*: proc (s: Stream, buffer: pointer,
                          bufLen: int): int {.nimcall, tags: [ReadIOEffect], gcsafe.}
-    writeDataImpl*: proc (s: PStream, buffer: pointer, bufLen: int) {.nimcall,
+    writeDataImpl*: proc (s: Stream, buffer: pointer, bufLen: int) {.nimcall,
       tags: [WriteIOEffect], gcsafe.}
-    flushImpl*: proc (s: PStream) {.nimcall, tags: [WriteIOEffect], gcsafe.}
+    flushImpl*: proc (s: Stream) {.nimcall, tags: [WriteIOEffect], gcsafe.}
 
-proc flush*(s: PStream) =
+{.deprecated: [PStream: Stream, TStream: StreamObj].}
+
+proc flush*(s: Stream) =
   ## flushes the buffers that the stream `s` might use.
   if not isNil(s.flushImpl): s.flushImpl(s)
 
-proc close*(s: PStream) =
+proc close*(s: Stream) =
   ## closes the stream `s`.
   if not isNil(s.closeImpl): s.closeImpl(s)
 
-proc close*(s, unused: PStream) {.deprecated.} =
+proc close*(s, unused: Stream) {.deprecated.} =
   ## closes the stream `s`.
   s.closeImpl(s)
 
-proc atEnd*(s: PStream): bool =
+proc atEnd*(s: Stream): bool =
   ## checks if more data can be read from `f`. Returns true if all data has
   ## been read.
   result = s.atEndImpl(s)
 
-proc atEnd*(s, unused: PStream): bool {.deprecated.} =
+proc atEnd*(s, unused: Stream): bool {.deprecated.} =
   ## checks if more data can be read from `f`. Returns true if all data has
   ## been read.
   result = s.atEndImpl(s)
 
-proc setPosition*(s: PStream, pos: int) =
+proc setPosition*(s: Stream, pos: int) =
   ## sets the position `pos` of the stream `s`.
   s.setPositionImpl(s, pos)
 
-proc setPosition*(s, unused: PStream, pos: int) {.deprecated.} =
+proc setPosition*(s, unused: Stream, pos: int) {.deprecated.} =
   ## sets the position `pos` of the stream `s`.
   s.setPositionImpl(s, pos)
 
-proc getPosition*(s: PStream): int =
+proc getPosition*(s: Stream): int =
   ## retrieves the current position in the stream `s`.
   result = s.getPositionImpl(s)
 
-proc getPosition*(s, unused: PStream): int {.deprecated.} =
+proc getPosition*(s, unused: Stream): int {.deprecated.} =
   ## retrieves the current position in the stream `s`.
   result = s.getPositionImpl(s)
 
-proc readData*(s: PStream, buffer: pointer, bufLen: int): int =
+proc readData*(s: Stream, buffer: pointer, bufLen: int): int =
   ## low level proc that reads data into an untyped `buffer` of `bufLen` size.
   result = s.readDataImpl(s, buffer, bufLen)
 
-proc readData*(s, unused: PStream, buffer: pointer, 
+proc readData*(s, unused: Stream, buffer: pointer, 
                bufLen: int): int {.deprecated.} =
   ## low level proc that reads data into an untyped `buffer` of `bufLen` size.
   result = s.readDataImpl(s, buffer, bufLen)
 
-proc writeData*(s: PStream, buffer: pointer, bufLen: int) =
+proc writeData*(s: Stream, buffer: pointer, bufLen: int) =
   ## low level proc that writes an untyped `buffer` of `bufLen` size
   ## to the stream `s`.
   s.writeDataImpl(s, buffer, bufLen)
 
-proc writeData*(s, unused: PStream, buffer: pointer, 
+proc writeData*(s, unused: Stream, buffer: pointer, 
                 bufLen: int) {.deprecated.} =
   ## low level proc that writes an untyped `buffer` of `bufLen` size
   ## to the stream `s`.
   s.writeDataImpl(s, buffer, bufLen)
 
-proc write*[T](s: PStream, x: T) = 
+proc write*[T](s: Stream, x: T) = 
   ## generic write procedure. Writes `x` to the stream `s`. Implementation:
   ##
   ## .. code-block:: Nimrod
@@ -103,63 +105,63 @@ proc write*[T](s: PStream, x: T) =
   shallowCopy(y, x)
   writeData(s, addr(y), sizeof(y))
 
-proc write*(s: PStream, x: string) = 
+proc write*(s: Stream, x: string) = 
   ## writes the string `x` to the the stream `s`. No length field or 
   ## terminating zero is written.
   writeData(s, cstring(x), x.len)
 
-proc writeln*(s: PStream, args: varargs[string, `$`]) =
+proc writeln*(s: Stream, args: varargs[string, `$`]) =
   ## writes one or more strings to the the stream `s` followed
   ## by a new line. No length field or terminating zero is written.
   for str in args: write(s, str)
   write(s, "\n")
 
-proc read[T](s: PStream, result: var T) = 
+proc read[T](s: Stream, result: var T) = 
   ## generic read procedure. Reads `result` from the stream `s`.
   if readData(s, addr(result), sizeof(T)) != sizeof(T):
     raise newEIO("cannot read from stream")
 
-proc readChar*(s: PStream): char =
+proc readChar*(s: Stream): char =
   ## reads a char from the stream `s`. Raises `EIO` if an error occured.
   ## Returns '\0' as an EOF marker.
   if readData(s, addr(result), sizeof(result)) != 1: result = '\0'
 
-proc readBool*(s: PStream): bool = 
+proc readBool*(s: Stream): bool = 
   ## reads a bool from the stream `s`. Raises `EIO` if an error occured.
   read(s, result)
 
-proc readInt8*(s: PStream): int8 = 
+proc readInt8*(s: Stream): int8 = 
   ## reads an int8 from the stream `s`. Raises `EIO` if an error occured.
   read(s, result)
 
-proc readInt16*(s: PStream): int16 = 
+proc readInt16*(s: Stream): int16 = 
   ## reads an int16 from the stream `s`. Raises `EIO` if an error occured.
   read(s, result)
 
-proc readInt32*(s: PStream): int32 = 
+proc readInt32*(s: Stream): int32 = 
   ## reads an int32 from the stream `s`. Raises `EIO` if an error occured.
   read(s, result)
 
-proc readInt64*(s: PStream): int64 = 
+proc readInt64*(s: Stream): int64 = 
   ## reads an int64 from the stream `s`. Raises `EIO` if an error occured.
   read(s, result)
 
-proc readFloat32*(s: PStream): float32 = 
+proc readFloat32*(s: Stream): float32 = 
   ## reads a float32 from the stream `s`. Raises `EIO` if an error occured.
   read(s, result)
 
-proc readFloat64*(s: PStream): float64 = 
+proc readFloat64*(s: Stream): float64 = 
   ## reads a float64 from the stream `s`. Raises `EIO` if an error occured.
   read(s, result)
 
-proc readStr*(s: PStream, length: int): TaintedString = 
+proc readStr*(s: Stream, length: int): TaintedString = 
   ## reads a string of length `length` from the stream `s`. Raises `EIO` if 
   ## an error occured.
   result = newString(length).TaintedString
   var L = readData(s, addr(string(result)[0]), length)
   if L != length: setLen(result.string, L)
 
-proc readLine*(s: PStream, line: var TaintedString): bool =
+proc readLine*(s: Stream, line: var TaintedString): bool =
   ## reads a line of text from the stream `s` into `line`. `line` must not be
   ## ``nil``! May throw an IO exception.
   ## A line of text may be delimited by ``CR``, ``LF`` or
@@ -179,7 +181,7 @@ proc readLine*(s: PStream, line: var TaintedString): bool =
     line.string.add(c)
   result = true
 
-proc readLine*(s: PStream): TaintedString =
+proc readLine*(s: Stream): TaintedString =
   ## Reads a line from a stream `s`. Note: This is not very efficient. Raises 
   ## `EIO` if an error occured.
   result = TaintedString""
@@ -194,42 +196,44 @@ proc readLine*(s: PStream): TaintedString =
       result.string.add(c)
 
 type
-  PStringStream* = ref TStringStream ## a stream that encapsulates a string
-  TStringStream* = object of TStream
+  StringStream* = ref StringStreamObj ## a stream that encapsulates a string
+  StringStreamObj* = object of StreamObj
     data*: string
     pos: int
-    
-proc ssAtEnd(s: PStream): bool = 
-  var s = PStringStream(s)
+
+{.deprecated: [PStringStream: StringStream, TStringStream: StringStreamObj].}
+
+proc ssAtEnd(s: Stream): bool =
+  var s = StringStream(s)
   return s.pos >= s.data.len
     
-proc ssSetPosition(s: PStream, pos: int) = 
-  var s = PStringStream(s)
+proc ssSetPosition(s: Stream, pos: int) = 
+  var s = StringStream(s)
   s.pos = clamp(pos, 0, s.data.high)
 
-proc ssGetPosition(s: PStream): int =
-  var s = PStringStream(s)
+proc ssGetPosition(s: Stream): int =
+  var s = StringStream(s)
   return s.pos
 
-proc ssReadData(s: PStream, buffer: pointer, bufLen: int): int =
-  var s = PStringStream(s)
+proc ssReadData(s: Stream, buffer: pointer, bufLen: int): int =
+  var s = StringStream(s)
   result = min(bufLen, s.data.len - s.pos)
   if result > 0: 
     copyMem(buffer, addr(s.data[s.pos]), result)
     inc(s.pos, result)
 
-proc ssWriteData(s: PStream, buffer: pointer, bufLen: int) = 
-  var s = PStringStream(s)
+proc ssWriteData(s: Stream, buffer: pointer, bufLen: int) = 
+  var s = StringStream(s)
   if bufLen > 0: 
     setLen(s.data, s.data.len + bufLen)
     copyMem(addr(s.data[s.pos]), buffer, bufLen)
     inc(s.pos, bufLen)
 
-proc ssClose(s: PStream) =
-  var s = PStringStream(s)
+proc ssClose(s: Stream) =
+  var s = StringStream(s)
   s.data = nil
 
-proc newStringStream*(s: string = ""): PStringStream = 
+proc newStringStream*(s: string = ""): StringStream = 
   ## creates a new stream from the string `s`.
   new(result)
   result.data = s
@@ -244,27 +248,28 @@ proc newStringStream*(s: string = ""): PStringStream =
 when not defined(js):
 
   type
-    PFileStream* = ref TFileStream ## a stream that encapsulates a `TFile`
-    TFileStream* = object of TStream
+    FileStream* = ref FileStreamObj ## a stream that encapsulates a `TFile`
+    FileStreamObj* = object of Stream
       f: File
+  {.deprecated: [PFileStream: FileStream, TFileStream: FileStreamObj].}
 
-  proc fsClose(s: PStream) =
-    if PFileStream(s).f != nil:
-      close(PFileStream(s).f)
-      PFileStream(s).f = nil
-  proc fsFlush(s: PStream) = flushFile(PFileStream(s).f)
-  proc fsAtEnd(s: PStream): bool = return endOfFile(PFileStream(s).f)
-  proc fsSetPosition(s: PStream, pos: int) = setFilePos(PFileStream(s).f, pos)
-  proc fsGetPosition(s: PStream): int = return int(getFilePos(PFileStream(s).f))
+  proc fsClose(s: Stream) =
+    if FileStream(s).f != nil:
+      close(FileStream(s).f)
+      FileStream(s).f = nil
+  proc fsFlush(s: Stream) = flushFile(FileStream(s).f)
+  proc fsAtEnd(s: Stream): bool = return endOfFile(FileStream(s).f)
+  proc fsSetPosition(s: Stream, pos: int) = setFilePos(FileStream(s).f, pos)
+  proc fsGetPosition(s: Stream): int = return int(getFilePos(FileStream(s).f))
 
-  proc fsReadData(s: PStream, buffer: pointer, bufLen: int): int =
-    result = readBuffer(PFileStream(s).f, buffer, bufLen)
+  proc fsReadData(s: Stream, buffer: pointer, bufLen: int): int =
+    result = readBuffer(FileStream(s).f, buffer, bufLen)
 
-  proc fsWriteData(s: PStream, buffer: pointer, bufLen: int) =
-    if writeBuffer(PFileStream(s).f, buffer, bufLen) != bufLen:
+  proc fsWriteData(s: Stream, buffer: pointer, bufLen: int) =
+    if writeBuffer(FileStream(s).f, buffer, bufLen) != bufLen:
       raise newEIO("cannot write to stream")
 
-  proc newFileStream*(f: File): PFileStream =
+  proc newFileStream*(f: File): FileStream =
     ## creates a new stream from the file `f`.
     new(result)
     result.f = f
@@ -276,7 +281,7 @@ when not defined(js):
     result.writeDataImpl = fsWriteData
     result.flushImpl = fsFlush
 
-  proc newFileStream*(filename: string, mode: FileMode): PFileStream =
+  proc newFileStream*(filename: string, mode: FileMode): FileStream =
     ## creates a new stream from the file named `filename` with the mode `mode`.
     ## If the file cannot be opened, nil is returned. See the `system
     ## <system.html>`_ module for a list of available TFileMode enums.
@@ -288,45 +293,47 @@ when true:
   discard
 else:
   type
-    TFileHandle* = cint ## Operating system file handle
-    PFileHandleStream* = ref TFileHandleStream
-    TFileHandleStream* = object of TStream
-      handle*: TFileHandle
+    FileHandleStream* = ref FileHandleStreamObj
+    FileHandleStreamObj* = object of Stream
+      handle*: FileHandle
       pos: int
 
-  proc newEOS(msg: string): ref EOS =
+  {.deprecated: [PFileHandleStream: FileHandleStream, 
+     TFileHandleStream: FileHandleStreamObj].}
+
+  proc newEOS(msg: string): ref OSError =
     new(result)
     result.msg = msg
 
-  proc hsGetPosition(s: PFileHandleStream): int = 
+  proc hsGetPosition(s: FileHandleStream): int = 
     return s.pos
 
   when defined(windows):
     # do not import windows as this increases compile times:
-    nil
+    discard
   else:
     import posix
     
-    proc hsSetPosition(s: PFileHandleStream, pos: int) = 
+    proc hsSetPosition(s: FileHandleStream, pos: int) = 
       discard lseek(s.handle, pos, SEEK_SET)
 
-    proc hsClose(s: PFileHandleStream) = discard close(s.handle)
-    proc hsAtEnd(s: PFileHandleStream): bool = 
+    proc hsClose(s: FileHandleStream) = discard close(s.handle)
+    proc hsAtEnd(s: FileHandleStream): bool = 
       var pos = hsGetPosition(s)
       var theEnd = lseek(s.handle, 0, SEEK_END)
       result = pos >= theEnd
       hsSetPosition(s, pos) # set position back
 
-    proc hsReadData(s: PFileHandleStream, buffer: pointer, bufLen: int): int = 
+    proc hsReadData(s: FileHandleStream, buffer: pointer, bufLen: int): int = 
       result = posix.read(s.handle, buffer, bufLen)
       inc(s.pos, result)
       
-    proc hsWriteData(s: PFileHandleStream, buffer: pointer, bufLen: int) = 
+    proc hsWriteData(s: FileHandleStream, buffer: pointer, bufLen: int) = 
       if posix.write(s.handle, buffer, bufLen) != bufLen: 
         raise newEIO("cannot write to stream")
       inc(s.pos, bufLen)
 
-  proc newFileHandleStream*(handle: TFileHandle): PFileHandleStream = 
+  proc newFileHandleStream*(handle: FileHandle): FileHandleStream = 
     new(result)
     result.handle = handle
     result.pos = 0
@@ -338,9 +345,9 @@ else:
     result.writeData = hsWriteData
 
   proc newFileHandleStream*(filename: string, 
-                            mode: TFileMode): PFileHandleStream = 
-    when defined(windows): 
-      nil
+                            mode: FileMode): FileHandleStream = 
+    when defined(windows):
+      discard
     else:
       var flags: cint
       case mode

@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -11,6 +11,8 @@
 ## key-value mapping. The keys are required to be strings, but the values
 ## may be any Nimrod or user defined type. This module supports matching 
 ## of keys in case-sensitive, case-insensitive and style-insensitive modes.
+
+{.deprecated.}
 
 import
   os, hashes, strutils

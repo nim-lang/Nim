@@ -1,13 +1,13 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-## Profiling support for Nimrod. This is an embedded profiler that requires
+## Profiling support for Nim. This is an embedded profiler that requires
 ## ``--profiler:on``. You only need to import this module to get a profiling
 ## report at program exit.
 
@@ -64,7 +64,7 @@ when withThreads:
   var
     profilingLock: TLock
 
-  InitLock profilingLock
+  initLock profilingLock
 
 proc hookAux(st: TStackTrace, costs: int) =
   # this is quite performance sensitive!

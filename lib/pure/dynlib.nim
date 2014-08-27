@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -12,7 +12,9 @@
 ## Windows ``LoadLibrary``. 
 
 type
-  TLibHandle* = pointer ## a handle to a dynamically loaded library
+  LibHandle* = pointer ## a handle to a dynamically loaded library
+
+{.deprecated: [TLibHandle: LibHandle].}
 
 proc loadLib*(path: string, global_symbols=false): TLibHandle
   ## loads a library from `path`. Returns nil if the library could not 

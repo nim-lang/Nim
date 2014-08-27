@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2010 Dominik Picheta
 #
 #    See the file "copying.txt", included in this
@@ -156,7 +156,7 @@ proc loadXMLFile*(path: string): PDocument =
 
 
 when isMainModule:
-  var xml = loadXMLFile(r"C:\Users\Dominik\Desktop\Code\Nimrod\xmldom\test.xml")
+  var xml = loadXMLFile("nim/xmldom/test.xml")
   #echo(xml.getElementsByTagName("m:test2")[0].namespaceURI)
   #echo(xml.getElementsByTagName("bla:test")[0].namespaceURI)
   #echo(xml.getElementsByTagName("test")[0].namespaceURI)

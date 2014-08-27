@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2009 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -35,6 +35,8 @@ type
     sentinel: int
     lineStart: int            # index of last line start in buffer
     fileOpened: bool
+
+{.deprecated: [TBaseLexer: BaseLexer].}
 
 proc open*(L: var TBaseLexer, input: PStream, bufLen: int = 8192)
   ## inits the TBaseLexer with a stream to read from

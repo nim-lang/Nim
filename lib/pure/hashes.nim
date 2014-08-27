@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -8,13 +8,13 @@
 #
 
 ## This module implements efficient computations of hash values for diverse
-## Nimrod types. All the procs are based on these two building blocks: the `!&
+## Nim types. All the procs are based on these two building blocks: the `!&
 ## proc <#!&>`_ used to start or mix a hash value, and the `!$ proc <#!$>`_
 ## used to *finish* the hash value.  If you want to implement hash procs for
 ## your custom types you will end up writing the following kind of skeleton of
 ## code:
 ##
-## .. code-block:: nimrod
+## .. code-block:: Nim
 ##  proc hash(x: Something): THash =
 ##    ## Computes a THash from `x`.
 ##    var h: THash = 0
@@ -29,7 +29,7 @@
 ## like for example objects made up of ``strings``, you can simply hash
 ## together the hash value of the individual fields:
 ##
-## .. code-block:: nimrod
+## .. code-block:: Nim
 ##  proc hash(x: Something): THash =
 ##    ## Computes a THash from `x`.
 ##    var h: THash = 0

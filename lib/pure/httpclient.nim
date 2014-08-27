@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2010 Dominik Picheta, Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -21,7 +21,7 @@
 ## This example uses HTTP GET to retrieve
 ## ``http://google.com``
 ## 
-## .. code-block:: nimrod
+## .. code-block:: Nim
 ##   echo(getContent("http://google.com"))
 ## 
 ## Using HTTP POST
@@ -31,7 +31,7 @@
 ## uses ``multipart/form-data`` as the ``Content-Type`` to send the HTML to
 ## the server. 
 ## 
-## .. code-block:: nimrod
+## .. code-block:: Nim
 ##   var headers: string = "Content-Type: multipart/form-data; boundary=xyz\c\L"
 ##   var body: string = "--xyz\c\L"
 ##   # soap 1.2 output
@@ -54,7 +54,7 @@
 ## on many operating systems. httpclient will use SSL automatically if you give
 ## any of the functions a url with the ``https`` schema, for example:
 ## ``https://github.com/``, you also have to compile with ``ssl`` defined like so:
-## ``nimrod c -d:ssl ...``.
+## ``nim c -d:ssl ...``.
 ##
 ## Timeouts
 ## ========
@@ -80,34 +80,38 @@ import asyncnet, asyncdispatch
 import rawsockets
 
 type
-  TResponse* = tuple[
+  Response* = tuple[
     version: string, 
     status: string, 
-    headers: PStringTable,
+    headers: StringTableRef,
     body: string]
 
-  PProxy* = ref object
+  Proxy* = ref object
     url*: TUrl
     auth*: string
 
-  EInvalidProtocol* = object of ESynch ## exception that is raised when server
+  ProtocolError* = object of IOError   ## exception that is raised when server
                                        ## does not conform to the implemented
                                        ## protocol
 
-  EHttpRequestErr* = object of ESynch ## Thrown in the ``getContent`` proc 
-                                      ## and ``postContent`` proc,
-                                      ## when the server returns an error
+  HttpRequestError* = object of IOError ## Thrown in the ``getContent`` proc 
+                                        ## and ``postContent`` proc,
+                                        ## when the server returns an error
 
-const defUserAgent* = "Nimrod httpclient/0.1"
+{.deprecated: [TResponse: Response, PProxy: Proxy,
+  EInvalidProtocol: ProtocolError, EHttpRequestErr: HttpRequestError
+].}
+
+const defUserAgent* = "Nim httpclient/0.1"
 
 proc httpError(msg: string) =
-  var e: ref EInvalidProtocol
+  var e: ref ProtocolError
   new(e)
   e.msg = msg
   raise e
   
 proc fileError(msg: string) =
-  var e: ref EIO
+  var e: ref IOError
   new(e)
   e.msg = msg
   raise e
@@ -232,7 +236,7 @@ proc parseResponse(s: TSocket, getBody: bool, timeout: int): TResponse =
     result.body = ""
 
 type
-  THttpMethod* = enum ## the requested HttpMethod
+  HttpMethod* = enum  ## the requested HttpMethod
     httpHEAD,         ## Asks for the response identical to the one that would
                       ## correspond to a GET request, but without the response
                       ## body.
@@ -249,6 +253,8 @@ type
                       ## for specified address.
     httpCONNECT       ## Converts the request connection to a transparent 
                       ## TCP/IP tunnel, usually used for proxies.
+
+{.deprecated: [THttpMethod: HttpMethod].}
 
 when not defined(ssl):
   type PSSLContext = ref object
@@ -288,7 +294,7 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
   add(headers, "\c\L")
   
   var s = socket()
-  if s == InvalidSocket: osError(osLastError())
+  if s == InvalidSocket: raiseOSError(osLastError())
   var port = sockets.TPort(80)
   if r.scheme == "https":
     when defined(ssl):
@@ -431,16 +437,18 @@ proc generateHeaders(r: TURL, httpMethod: THttpMethod,
   add(result, "\c\L")
 
 type
-  PAsyncHttpClient* = ref object
-    socket: PAsyncSocket
+  AsyncHttpClient* = ref object
+    socket: AsyncSocket
     connected: bool
     currentURL: TURL ## Where we are currently connected.
-    headers: PStringTable
+    headers: StringTableRef
     maxRedirects: int
     userAgent: string
 
+{.deprecated: [PAsyncHttpClient: AsyncHttpClient].}
+
 proc newAsyncHttpClient*(userAgent = defUserAgent,
-    maxRedirects = 5): PAsyncHttpClient =
+    maxRedirects = 5): AsyncHttpClient =
   ## Creates a new PAsyncHttpClient instance.
   ##
   ## ``userAgent`` specifies the user agent that will be used when making
@@ -453,7 +461,7 @@ proc newAsyncHttpClient*(userAgent = defUserAgent,
   result.userAgent = defUserAgent
   result.maxRedirects = maxRedirects
 
-proc close*(client: PAsyncHttpClient) =
+proc close*(client: AsyncHttpClient) =
   ## Closes any connections held by the HTTP client.
   if client.connected:
     client.socket.close()

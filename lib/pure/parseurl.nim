@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2014 Dominik Picheta
 #
 #    See the file "copying.txt", included in this
@@ -15,12 +15,14 @@
 import strutils
 
 type
-  TUrl* = tuple[      ## represents a *Uniform Resource Locator* (URL)
-                      ## any optional component is "" if it does not exist
+  Url* = tuple[      ## represents a *Uniform Resource Locator* (URL)
+                     ## any optional component is "" if it does not exist
     scheme, username, password, 
     hostname, port, path, query, anchor: string]
-    
-proc parseUrl*(url: string): TUrl {.deprecated.} =
+
+{.deprecated: [TUrl: Url].}
+
+proc parseUrl*(url: string): Url {.deprecated.} =
   var i = 0
 
   var scheme, username, password: string = ""
@@ -86,7 +88,7 @@ proc parseUrl*(url: string): TUrl {.deprecated.} =
     
   return (scheme, username, password, hostname, port, path, query, anchor)
 
-proc `$`*(u: TUrl): string {.deprecated.} =
+proc `$`*(u: Url): string {.deprecated.} =
   ## turns the URL `u` into its string representation.
   result = ""
   if u.scheme.len > 0:

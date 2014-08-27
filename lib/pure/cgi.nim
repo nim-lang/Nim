@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -9,7 +9,7 @@
 
 ## This module implements helper procs for CGI applications. Example:
 ##
-## .. code-block:: Nimrod
+## .. code-block:: Nim
 ##
 ##    import strtabs, cgi
 ##
@@ -93,11 +93,13 @@ proc XMLencode*(s: string): string =
   for i in 0..len(s)-1: addXmlChar(result, s[i])
 
 type
-  ECgi* = object of IOError  ## the exception that is raised, if a CGI error occurs
-  TRequestMethod* = enum ## the used request method
+  CgiError* = object of IOError  ## exception that is raised if a CGI error occurs
+  RequestMethod* = enum  ## the used request method
     methodNone,          ## no REQUEST_METHOD environment variable
     methodPost,          ## query uses the POST method
     methodGet            ## query uses the GET method
+
+{.deprecated: [TRequestMethod: RequestMethod, ECgi: CgiError].}
 
 proc cgiError*(msg: string) {.noreturn.} =
   ## raises an ECgi exception with message `msg`.
@@ -377,7 +379,7 @@ proc setCookie*(name, value: string) =
   write(stdout, "Set-Cookie: ", name, "=", value, "\n")
 
 var
-  gcookies {.threadvar.}: PStringTable
+  gcookies {.threadvar.}: StringTableRef
 
 proc getCookie*(name: string): TaintedString =
   ## Gets a cookie. If no cookie of `name` exists, "" is returned.

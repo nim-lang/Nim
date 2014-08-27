@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2013 Robert Persson
 #
 #    See the file "copying.txt", included in this
@@ -12,10 +12,11 @@ import strutils
 import numeric
 
 type 
-    TPoly* = object
-        cofs:seq[float]
+  Poly* = object
+      cofs:seq[float]
 
-  
+{.deprecated: [TPoly: Poly].}
+
 proc degree*(p:TPoly):int=
   ## Returns the degree of the polynomial,
   ## that is the number of coefficients-1
@@ -104,7 +105,7 @@ proc `$` *(p:TPoly):string =
       result="0"
           
 
-proc derivative*(p:TPoly):TPoly=
+proc derivative*(p: TPoly): TPoly=
   ## Returns a new polynomial, which is the derivative of `p`
   newSeq[float](result.cofs,p.degree)
   for idx in 0..high(result.cofs):
@@ -310,10 +311,10 @@ proc getRangeForRoots(p:TPoly):tuple[xmin,xmax:float]=
   var bound1,bound2:float
   
   for i in countup(0,deg):
-      var c=abs(p.cofs[i]/d)
-      bound1=max(bound1,c+1.0)
-      bound2=bound2+c
-      
+    var c=abs(p.cofs[i]/d)
+    bound1=max(bound1,c+1.0)
+    bound2=bound2+c
+    
   bound2=max(1.0,bound2)
   result.xmax=min(bound1,bound2)
   result.xmin= -result.xmax

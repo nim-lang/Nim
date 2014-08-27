@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -28,7 +28,7 @@
 ## you add such a proc for your custom type everything will work. See this
 ## example:
 ##
-## .. code-block:: nimrod
+## .. code-block::
 ##   type
 ##     Person = object
 ##       firstName, lastName: string
@@ -61,13 +61,15 @@ import
 {.pragma: myShallow.}
 
 type
-  TSlotEnum = enum seEmpty, seFilled, seDeleted
-  TKeyValuePair[A, B] = tuple[slot: TSlotEnum, key: A, val: B]
-  TKeyValuePairSeq[A, B] = seq[TKeyValuePair[A, B]]
-  TTable* {.final, myShallow.}[A, B] = object ## generic hash table
-    data: TKeyValuePairSeq[A, B]
+  SlotEnum = enum seEmpty, seFilled, seDeleted
+  KeyValuePair[A, B] = tuple[slot: SlotEnum, key: A, val: B]
+  KeyValuePairSeq[A, B] = seq[KeyValuePair[A, B]]
+  Table* {.myShallow.}[A, B] = object ## generic hash table
+    data: KeyValuePairSeq[A, B]
     counter: int
-  PTable*[A,B] = ref TTable[A, B]
+  TableRef*[A,B] = ref Table[A, B]
+
+{.deprecated: [TTable: Table, PTable: TableRef].}
 
 when not defined(nimhygiene):
   {.pragma: dirty.}
@@ -158,12 +160,12 @@ proc hasKey*[A, B](t: TTable[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   result = rawGet(t, key) >= 0
 
-proc rawInsert[A, B](t: var TTable[A, B], data: var TKeyValuePairSeq[A, B],
+proc rawInsert[A, B](t: var TTable[A, B], data: var KeyValuePairSeq[A, B],
                      key: A, val: B) =
   rawInsertImpl()
 
 proc enlarge[A, B](t: var TTable[A, B]) =
-  var n: TKeyValuePairSeq[A, B]
+  var n: KeyValuePairSeq[A, B]
   newSeq(n, len(t.data) * growthFactor)
   for i in countup(0, high(t.data)):
     if t.data[i].slot == seFilled: rawInsert(t, n, t.data[i].key, t.data[i].val)
@@ -347,14 +349,16 @@ proc newTableFrom*[A, B, C](collection: A, index: proc(x: B): C): PTable[C, B] =
 # ------------------------------ ordered table ------------------------------
 
 type
-  TOrderedKeyValuePair[A, B] = tuple[
-    slot: TSlotEnum, next: int, key: A, val: B]
-  TOrderedKeyValuePairSeq[A, B] = seq[TOrderedKeyValuePair[A, B]]
-  TOrderedTable* {.
-      final, myShallow.}[A, B] = object ## table that remembers insertion order
-    data: TOrderedKeyValuePairSeq[A, B]
+  OrderedKeyValuePair[A, B] = tuple[
+    slot: SlotEnum, next: int, key: A, val: B]
+  OrderedKeyValuePairSeq[A, B] = seq[OrderedKeyValuePair[A, B]]
+  OrderedTable* {.
+      myShallow.}[A, B] = object ## table that remembers insertion order
+    data: OrderedKeyValuePairSeq[A, B]
     counter, first, last: int
-  POrderedTable*[A, B] = ref TOrderedTable[A, B]
+  OrderedTableRef*[A, B] = ref OrderedTable[A, B]
+
+{.deprecated: [TOrderedTable: OrderedTable, POrderedTable: OrderedTableRef].}
 
 proc len*[A, B](t: TOrderedTable[A, B]): int {.inline.} =
   ## returns the number of keys in `t`.
@@ -608,11 +612,13 @@ proc sort*[A, B](t: POrderedTable[A, B],
 # ------------------------------ count tables -------------------------------
 
 type
-  TCountTable* {.final, myShallow.}[
+  CountTable* {.myShallow.}[
       A] = object ## table that counts the number of each key
     data: seq[tuple[key: A, val: int]]
     counter: int
-  PCountTable*[A] = ref TCountTable[A]
+  CountTableRef*[A] = ref CountTable[A]
+
+{.deprecated: [TCountTable: CountTable, PCountTable: CountTableRef].}
 
 proc len*[A](t: TCountTable[A]): int =
   ## returns the number of keys in `t`.

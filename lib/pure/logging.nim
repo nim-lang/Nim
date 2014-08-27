@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2014 Andreas Rumpf, Dominik Picheta
 #
 #    See the file "copying.txt", included in this
@@ -26,7 +26,7 @@
 ## The following example demonstrates logging to three different handlers
 ## simultaneously:
 ##
-## .. code-block:: nimrod
+## .. code-block:: nim
 ##     
 ##    var L = newConsoleLogger()
 ##    var fL = newFileLogger("test.log", fmtStr = verboseFmtStr)
@@ -42,7 +42,7 @@
 import strutils, os, times
 
 type
-  TLevel* = enum  ## logging level
+  Level* = enum  ## logging level
     lvlAll,       ## all levels active
     lvlDebug,     ## debug level (and any above) active
     lvlInfo,      ## info level (and any above) active
@@ -52,7 +52,7 @@ type
     lvlNone       ## no levels active
 
 const
-  LevelNames*: array [TLevel, string] = [
+  LevelNames*: array [Level, string] = [
     "DEBUG", "DEBUG", "INFO", "WARN", "ERROR", "FATAL", "NONE"
   ]
 
@@ -60,25 +60,28 @@ const
   verboseFmtStr* = "$date $time "
 
 type
-  PLogger* = ref object of PObject ## abstract logger; the base type of all loggers
-    levelThreshold*: TLevel    ## only messages of level >= levelThreshold 
+  Logger* = ref object of RootObj ## abstract logger; the base type of all loggers
+    levelThreshold*: Leve l    ## only messages of level >= levelThreshold 
                                ## should be processed
     fmtStr: string ## = defaultFmtStr by default, see substituteLog for $date etc.
     
-  PConsoleLogger* = ref object of PLogger ## logger that writes the messages to the
-                                      ## console
+  ConsoleLogger* = ref object of Logger ## logger that writes the messages to the
+                                        ## console
   
-  PFileLogger* = ref object of PLogger ## logger that writes the messages to a file
+  FileLogger* = ref object of Logger ## logger that writes the messages to a file
     f: TFile
   
-  PRollingFileLogger* = ref object of PFileLogger ## logger that writes the 
-                                                  ## messages to a file and
-                                                  ## performs log rotation
+  RollingFileLogger* = ref object of FileLogger ## logger that writes the 
+                                                ## messages to a file and
+                                                ## performs log rotation
     maxLines: int # maximum number of lines    
     curLine : int
     baseName: string # initial filename
-    baseMode: TFileMode # initial file mode
+    baseMode: FileMode # initial file mode
     logFiles: int # how many log files already created, e.g. basename.1, basename.2...
+
+{.deprecated: [TLevel: Level, PLogger: Logger, PConsoleLogger: ConsoleLogger,
+    PFileLogger: FileLogger, PRollingFileLogger: RollingFileLogger].}
 
 proc substituteLog(frmt: string): string = 
   ## converts $date to the current date
@@ -105,7 +108,7 @@ proc substituteLog(frmt: string): string =
       of "appdir": result.add(app.splitFile.dir)
       of "appname": result.add(app.splitFile.name)
 
-method log*(logger: PLogger, level: TLevel,
+method log*(logger: Logger, level: Level,
             frmt: string, args: varargs[string, `$`]) {.raises: [EBase], tags: [FTime, FWriteIO, FReadIO].} =
   ## Override this method in custom loggers. Default implementation does
   ## nothing.

@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2014 Dominik Picheta
 #
 #    See the file "copying.txt", included in this
@@ -11,7 +11,7 @@
 
 {.deadCodeElim: on.}
 import rawsockets, os, strutils, unsigned, parseutils, times
-export TPort, `$`, `==`
+export Port, `$`, `==`
 
 const useWinVersion = defined(Windows) or defined(nimdoc)
 
@@ -22,25 +22,25 @@ when defined(ssl):
 
 when defined(ssl):
   type
-    ESSL* = object of ESynch
+    SSLError* = object of Exception
 
-    TSSLCVerifyMode* = enum
+    SSLCVerifyMode* = enum
       CVerifyNone, CVerifyPeer
     
-    TSSLProtVersion* = enum
+    SSLProtVersion* = enum
       protSSLv2, protSSLv3, protTLSv1, protSSLv23
     
-    PSSLContext* = distinct PSSLCTX
+    SSLContext* = distinct PSSLCTX
 
-    TSSLAcceptResult* = enum
+    SSLAcceptResult* = enum
       AcceptNoClient = 0, AcceptNoHandshake, AcceptSuccess
 
 const
   BufferSize*: int = 4000 ## size of a buffered socket's buffer
 
 type
-  TSocketImpl* = object ## socket type
-    fd*: TSocketHandle
+  SocketImpl* = object ## socket type
+    fd*: SocketHandle
     case isBuffered*: bool # determines whether this socket is buffered.
     of true:
       buffer*: array[0..BufferSize, char]
@@ -57,34 +57,40 @@ type
         sslPeekChar*: char
       of false: nil
   
-  PSocket* = ref TSocketImpl
+  Socket* = ref SocketImpl
 
-  TSOBool* = enum ## Boolean socket options.
+  SOBool* = enum ## Boolean socket options.
     OptAcceptConn, OptBroadcast, OptDebug, OptDontRoute, OptKeepAlive,
     OptOOBInline, OptReuseAddr
 
-  TReadLineResult* = enum ## result for readLineAsync
+  ReadLineResult* = enum ## result for readLineAsync
     ReadFullLine, ReadPartialLine, ReadDisconnected, ReadNone
 
-  ETimeout* = object of ESynch
+  TimeoutError* = object of Exception
 
-  TSocketFlags* {.pure.} = enum
+  SocketFlag* {.pure.} = enum
     Peek,
     SafeDisconn ## Ensures disconnection exceptions (ECONNRESET, EPIPE etc) are not thrown.
 
-proc isDisconnectionError*(flags: set[TSocketFlags],
-    lastError: TOSErrorCode): bool =
+{.deprecated: [TSocketFlags: SocketFlag, ETimeout: TimeoutError,
+    TReadLineResult: ReadLineResult, TSOBool: SOBool, PSocket: Socket,
+    TSocketImpl: SocketImpl, ESSL: SSLError, TSSLCVerifyMode: SSLCVerifyMode,
+    TSSLProtVersion: SSLProtVersion, PSSLContext: SSLContext,
+    TSSLAcceptResult: SSLAcceptResult].}
+
+proc isDisconnectionError*(flags: set[SocketFlag],
+    lastError: OSErrorCode): bool =
   ## Determines whether ``lastError`` is a disconnection error. Only does this
   ## if flags contains ``SafeDisconn``.
   when useWinVersion:
-    TSocketFlags.SafeDisconn in flags and
+    SocketFlag.SafeDisconn in flags and
       lastError.int32 in {WSAECONNRESET, WSAECONNABORTED, WSAENETRESET,
                           WSAEDISCON, ERROR_NETNAME_DELETED}
   else:
-    TSocketFlags.SafeDisconn in flags and
+    SocketFlag.SafeDisconn in flags and
       lastError.int32 in {ECONNRESET, EPIPE, ENETRESET} 
 
-proc toOSFlags*(socketFlags: set[TSocketFlags]): cint =
+proc toOSFlags*(socketFlags: set[SocketFlag]): cint =
   ## Converts the flags into the underlying OS representation.
   for f in socketFlags:
     case f

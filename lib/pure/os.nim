@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -29,18 +29,23 @@ else:
 include "system/ansi_c"
 
 type
-  FReadEnv* = object of ReadIOEffect   ## effect that denotes a read
-                                  ## from an environment variable
-  FWriteEnv* = object of WriteIOEffect ## effect that denotes a write
-                                  ## to an environment variable
+  ReadEnvEffect* = object of ReadIOEffect   ## effect that denotes a read
+                                            ## from an environment variable
+  WriteEnvEffect* = object of WriteIOEffect ## effect that denotes a write
+                                            ## to an environment variable
 
-  FReadDir* = object of ReadIOEffect   ## effect that denotes a write operation to
-                                  ## the directory structure
-  FWriteDir* = object of WriteIOEffect ## effect that denotes a write operation to
-                                  ## the directory structure
+  ReadDirEffect* = object of ReadIOEffect   ## effect that denotes a write
+                                            ## operation to the directory structure
+  WriteDirEffect* = object of WriteIOEffect ## effect that denotes a write operation to
+                                            ## the directory structure
 
-  TOSErrorCode* = distinct int32 ## Specifies an OS Error Code.
+  OSErrorCode* = distinct int32 ## Specifies an OS Error Code.
 
+{.deprecated: [FReadEnv: ReadEnvEffect, FWriteEnv: WriteEnvEffect, 
+    FReadDir: ReadDirEffect,
+    FWriteDir: WriteDirEffect,
+    TOSErrorCode: OSErrorCode
+].}
 const
   doslike = defined(windows) or defined(OS2) or defined(DOS)
     # DOS-like filesystem
@@ -204,7 +209,8 @@ proc osErrorMsg*(): string {.rtl, extern: "nos$1", deprecated.} =
     result = $os.strerror(errno)
 
 {.push warning[deprecated]: off.}
-proc osError*(msg: string = "") {.noinline, rtl, extern: "nos$1", deprecated.} =
+proc raiseOSError*(msg: string = "") {.noinline, rtl, extern: "nos$1",
+                                       deprecated.} =
   ## raises an EOS exception with the given message ``msg``.
   ## If ``msg == ""``, the operating system's error flag
   ## (``errno``) is converted to a readable error message. On Windows
@@ -219,10 +225,12 @@ proc osError*(msg: string = "") {.noinline, rtl, extern: "nos$1", deprecated.} =
     raise newException(OSError, msg)
 {.pop.}
 
-proc `==`*(err1, err2: TOSErrorCode): bool {.borrow.}
-proc `$`*(err: TOSErrorCode): string {.borrow.}
+{.deprecated: [osError: raiseOSError].}
 
-proc osErrorMsg*(errorCode: TOSErrorCode): string =
+proc `==`*(err1, err2: OSErrorCode): bool {.borrow.}
+proc `$`*(err: OSErrorCode): string {.borrow.}
+
+proc osErrorMsg*(errorCode: OSErrorCode): string =
   ## Converts an OS error code into a human readable string.
   ##
   ## The error code can be retrieved using the ``OSLastError`` proc.
@@ -249,10 +257,10 @@ proc osErrorMsg*(errorCode: TOSErrorCode): string =
           result = $msgbuf
           if msgbuf != nil: localFree(msgbuf)
   else:
-    if errorCode != TOSErrorCode(0'i32):
+    if errorCode != OSErrorCode(0'i32):
       result = $os.strerror(errorCode.int32)
 
-proc osError*(errorCode: TOSErrorCode) =
+proc raiseOSError*(errorCode: OSErrorCode) =
   ## Raises an ``EOS`` exception. The ``errorCode`` will determine the
   ## message, ``OSErrorMsg`` will be used to get this message.
   ##
@@ -268,7 +276,7 @@ proc osError*(errorCode: TOSErrorCode) =
   raise e
 
 {.push stackTrace:off.}
-proc osLastError*(): TOSErrorCode =
+proc osLastError*(): OSErrorCode =
   ## Retrieves the last operating system error code.
   ##
   ## This procedure is useful in the event when an OS call fails. In that case
@@ -285,7 +293,7 @@ proc osLastError*(): TOSErrorCode =
   when defined(windows):
     result = TOSErrorCode(getLastError())
   else:
-    result = TOSErrorCode(errno)
+    result = OSErrorCode(errno)
 {.pop.}
 
 proc unixToNativePath*(path: string, drive=""): string {.
@@ -371,7 +379,7 @@ when defined(windows):
              f.cFileName[1].int == dot and f.cFileName[2].int == 0)
 
 proc existsFile*(filename: string): bool {.rtl, extern: "nos$1",
-                                          tags: [FReadDir].} =
+                                          tags: [ReadDirEffect].} =
   ## Returns true if the file exists, false otherwise.
   when defined(windows):
     when useWinUnicode:
@@ -384,7 +392,7 @@ proc existsFile*(filename: string): bool {.rtl, extern: "nos$1",
     var res: TStat
     return stat(filename, res) >= 0'i32 and S_ISREG(res.st_mode)
 
-proc existsDir*(dir: string): bool {.rtl, extern: "nos$1", tags: [FReadDir].} =
+proc existsDir*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect].} =
   ## Returns true iff the directory `dir` exists. If `dir` is a file, false
   ## is returned.
   when defined(windows):
@@ -399,7 +407,7 @@ proc existsDir*(dir: string): bool {.rtl, extern: "nos$1", tags: [FReadDir].} =
     return stat(dir, res) >= 0'i32 and S_ISDIR(res.st_mode)
 
 proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
-                                          tags: [FReadDir].} =
+                                          tags: [ReadDirEffect].} =
   ## Returns true iff the symlink `link` exists. Will return true
   ## regardless of whether the link points to a directory or file.
   when defined(windows):
@@ -701,7 +709,7 @@ proc extractFilename*(path: string): string {.
     result = splitPath(path).tail
 
 proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
-  tags: [FReadDir].} =
+  tags: [ReadDirEffect].} =
   ## Returns the full path of `filename`, raises EOS in case of an error.
   when defined(windows):
     const bufsize = 3072'i32
@@ -800,7 +808,7 @@ when defined(Windows):
         )
 
 proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
-  tags: [FReadDir].} =
+  tags: [ReadDirEffect].} =
   ## Returns True if both pathname arguments refer to the same physical
   ## file or directory. Raises an exception if any of the files does not
   ## exist or information about it can not be obtained.
@@ -883,7 +891,7 @@ type
     fpOthersRead           ## read access for others
 
 proc getFilePermissions*(filename: string): set[TFilePermission] {.
-  rtl, extern: "nos$1", tags: [FReadDir].} =
+  rtl, extern: "nos$1", tags: [ReadDirEffect].} =
   ## retrieves file permissions for `filename`. `OSError` is raised in case of
   ## an error. On Windows, only the ``readonly`` flag is checked, every other
   ## permission is available in any case.
@@ -915,7 +923,7 @@ proc getFilePermissions*(filename: string): set[TFilePermission] {.
       result = {fpUserExec..fpOthersRead}
   
 proc setFilePermissions*(filename: string, permissions: set[TFilePermission]) {.
-  rtl, extern: "nos$1", tags: [FWriteDir].} =
+  rtl, extern: "nos$1", tags: [WriteDirEffect].} =
   ## sets the file permissions for `filename`. `OSError` is raised in case of
   ## an error. On Windows, only the ``readonly`` flag is changed, depending on
   ## ``fpUserWrite``.
@@ -1014,7 +1022,7 @@ when defined(Windows):
     template setFileAttributes(file, attrs: expr): expr {.immediate.} = 
       setFileAttributesA(file, attrs)
 
-proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [FWriteDir].} =
+proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect].} =
   ## Removes the `file`. If this fails, `EOS` is raised. This does not fail
   ## if the file never existed in the first place.
   ## On Windows, ignores the read-only attribute.
@@ -1076,7 +1084,7 @@ when defined(windows):
         while true:
           var eend = strEnd(e)
           add(environment, $e)
-          e = cast[WideCString](cast[ByteAddress](eend)+2)
+          e = cast[WideCString](cast[TAddress](eend)+2)
           if eend[1].int == 0: break
         discard freeEnvironmentStringsW(env)
       else:
@@ -1130,7 +1138,7 @@ proc findEnvVar(key: string): int =
     if startsWith(environment[i], temp): return i
   return -1
 
-proc getEnv*(key: string): TaintedString {.tags: [FReadEnv].} =
+proc getEnv*(key: string): TaintedString {.tags: [ReadEnvEffect].} =
   ## Returns the value of the `environment variable`:idx: named `key`.
   ##
   ## If the variable does not exist, "" is returned. To distinguish
@@ -1144,13 +1152,13 @@ proc getEnv*(key: string): TaintedString {.tags: [FReadEnv].} =
     if env == nil: return TaintedString("")
     result = TaintedString($env)
 
-proc existsEnv*(key: string): bool {.tags: [FReadEnv].} =
+proc existsEnv*(key: string): bool {.tags: [ReadEnvEffect].} =
   ## Checks whether the environment variable named `key` exists.
   ## Returns true if it exists, false otherwise.
   if c_getenv(key) != nil: return true
   else: return findEnvVar(key) >= 0
 
-proc putEnv*(key, val: string) {.tags: [FWriteEnv].} =
+proc putEnv*(key, val: string) {.tags: [WriteEnvEffect].} =
   ## Sets the value of the `environment variable`:idx: named `key` to `val`.
   ## If an error occurs, `EInvalidEnvVar` is raised.
 
@@ -1175,7 +1183,7 @@ proc putEnv*(key, val: string) {.tags: [FWriteEnv].} =
     else:
       if setEnvironmentVariableA(key, val) == 0'i32: osError(osLastError())
 
-iterator envPairs*(): tuple[key, value: TaintedString] {.tags: [FReadEnv].} =
+iterator envPairs*(): tuple[key, value: TaintedString] {.tags: [ReadEnvEffect].} =
   ## Iterate over all `environments variables`:idx:. In the first component
   ## of the tuple is the name of the current variable stored, in the second
   ## its value.
@@ -1185,7 +1193,7 @@ iterator envPairs*(): tuple[key, value: TaintedString] {.tags: [FReadEnv].} =
     yield (TaintedString(substr(environment[i], 0, p-1)),
            TaintedString(substr(environment[i], p+1)))
 
-iterator walkFiles*(pattern: string): string {.tags: [FReadDir].} =
+iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect].} =
   ## Iterate over all the files that match the `pattern`. On POSIX this uses
   ## the `glob`:idx: call.
   ##
@@ -1225,7 +1233,7 @@ type
     pcLinkToDir           ## path refers to a symbolic link to a directory
 
 iterator walkDir*(dir: string): tuple[kind: TPathComponent, path: string] {.
-  tags: [FReadDir].} =
+  tags: [ReadDirEffect].} =
   ## walks over the directory `dir` and yields for each directory or file in
   ## `dir`. The component type and full path for each item is returned.
   ## Walking is not recursive.
@@ -1278,7 +1286,7 @@ iterator walkDir*(dir: string): tuple[kind: TPathComponent, path: string] {.
       discard closedir(d)
 
 iterator walkDirRec*(dir: string, filter={pcFile, pcDir}): string {.
-  tags: [FReadDir].} =
+  tags: [ReadDirEffect].} =
   ## walks over the directory `dir` and yields for each file in `dir`. The
   ## full path for each file is returned.
   ## **Warning**:
@@ -1318,7 +1326,7 @@ proc rawRemoveDir(dir: string) =
     if rmdir(dir) != 0'i32 and errno != ENOENT: osError(osLastError())
 
 proc removeDir*(dir: string) {.rtl, extern: "nos$1", tags: [
-  FWriteDir, FReadDir].} =
+  WriteDirEffect, ReadDirEffect].} =
   ## Removes the directory `dir` including all subdirectories and files
   ## in `dir` (recursively).
   ##
@@ -1345,7 +1353,7 @@ proc rawCreateDir(dir: string) =
     if res == 0'i32 and getLastError() != 183'i32:
       osError(osLastError())
 
-proc createDir*(dir: string) {.rtl, extern: "nos$1", tags: [FWriteDir].} =
+proc createDir*(dir: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect].} =
   ## Creates the `directory`:idx: `dir`.
   ##
   ## The directory may contain several subdirectories that do not exist yet.
@@ -1568,7 +1576,7 @@ proc copyDirWithPermissions*(source, dest: string,
 
 proc inclFilePermissions*(filename: string,
                           permissions: set[TFilePermission]) {.
-  rtl, extern: "nos$1", tags: [FReadDir, FWriteDir].} =
+  rtl, extern: "nos$1", tags: [ReadDirEffect, WriteDirEffect].} =
   ## a convenience procedure for:
   ##
   ## .. code-block:: nimrod
@@ -1577,14 +1585,14 @@ proc inclFilePermissions*(filename: string,
 
 proc exclFilePermissions*(filename: string,
                           permissions: set[TFilePermission]) {.
-  rtl, extern: "nos$1", tags: [FReadDir, FWriteDir].} =
+  rtl, extern: "nos$1", tags: [ReadDirEffect, WriteDirEffect].} =
   ## a convenience procedure for:
   ##
   ## .. code-block:: nimrod
   ##   setFilePermissions(filename, getFilePermissions(filename)-permissions)
   setFilePermissions(filename, getFilePermissions(filename)-permissions)
 
-proc getHomeDir*(): string {.rtl, extern: "nos$1", tags: [FReadEnv].} =
+proc getHomeDir*(): string {.rtl, extern: "nos$1", tags: [ReadEnvEffect].} =
   ## Returns the home directory of the current user.
   ##
   ## This proc is wrapped by the expandTilde proc for the convenience of
@@ -1592,12 +1600,12 @@ proc getHomeDir*(): string {.rtl, extern: "nos$1", tags: [FReadEnv].} =
   when defined(windows): return string(getEnv("USERPROFILE")) & "\\"
   else: return string(getEnv("HOME")) & "/"
 
-proc getConfigDir*(): string {.rtl, extern: "nos$1", tags: [FReadEnv].} =
+proc getConfigDir*(): string {.rtl, extern: "nos$1", tags: [ReadEnvEffect].} =
   ## Returns the config directory of the current user for applications.
   when defined(windows): return string(getEnv("APPDATA")) & "\\"
   else: return string(getEnv("HOME")) & "/.config/"
 
-proc getTempDir*(): string {.rtl, extern: "nos$1", tags: [FReadEnv].} =
+proc getTempDir*(): string {.rtl, extern: "nos$1", tags: [ReadEnvEffect].} =
   ## Returns the temporary directory of the current user for applications to
   ## save temporary files in.
   when defined(windows): return string(getEnv("TEMP")) & "\\"
@@ -1605,7 +1613,7 @@ proc getTempDir*(): string {.rtl, extern: "nos$1", tags: [FReadEnv].} =
 
 when defined(nimdoc):
   # Common forward declaration docstring block for parameter retrieval procs.
-  proc paramCount*(): int {.tags: [FReadIO].} =
+  proc paramCount*(): int {.tags: [ReadIOEffect].} =
     ## Returns the number of `command line arguments`:idx: given to the
     ## application.
     ##
@@ -1625,7 +1633,7 @@ when defined(nimdoc):
     ##   else:
     ##     # Do something else!
 
-  proc paramStr*(i: int): TaintedString {.tags: [FReadIO].} =
+  proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
     ## Returns the `i`-th `command line argument`:idx: given to the application.
     ##
     ## `i` should be in the range `1..paramCount()`, the `EInvalidIndex`
@@ -1826,7 +1834,7 @@ proc getFileSize*(file: string): BiggestInt {.rtl, extern: "nos$1",
       close(f)
     else: osError(osLastError())
 
-proc findExe*(exe: string): string {.tags: [FReadDir, FReadEnv].} =
+proc findExe*(exe: string): string {.tags: [ReadDirEffect, ReadEnvEffect].} =
   ## Searches for `exe` in the current working directory and then
   ## in directories listed in the ``PATH`` environment variable.
   ## Returns "" if the `exe` cannot be found. On DOS-like platforms, `exe`
@@ -1854,7 +1862,6 @@ proc expandTilde*(path: string): string =
   ##   let configFile = expandTilde("~" / "appname.cfg")
   ##   echo configFile
   ##   # --> C:\Users\amber\appname.cfg
-
   if len(path) > 1 and path[0] == '~' and (path[1] == '/' or path[1] == '\\'):
     result = getHomeDir() / path[2..len(path)-1]
   else:
@@ -1961,7 +1968,7 @@ proc getFileInfo*(handle: FileHandle): FileInfo =
     rawToFormalFileInfo(rawInfo, result)
 
 proc getFileInfo*(file: File): FileInfo =
-  result = getFileInfo(file.fileHandle())
+  result = getFileInfo(file.getFileHandle())
 
 proc getFileInfo*(path: string, followSymlink = true): FileInfo =
   ## Retrieves file information for the file object pointed to by `path`.

@@ -180,7 +180,7 @@ So it is not necessary to write ``peg" 'abc' "`` in the above example.
 Examples
 --------
 
-Check if `s` matches Nimrod's "while" keyword:
+Check if `s` matches Nim's "while" keyword:
 
 .. code-block:: nimrod
   s =~ peg" y'while'"
@@ -212,7 +212,7 @@ example ``*`` should not be greedy, so ``\[.*?\]`` should be used instead.
 
 PEG construction
 ----------------
-There are two ways to construct a PEG in Nimrod code:
+There are two ways to construct a PEG in Nim code:
 (1) Parsing a string into an AST which consists of `TPeg` nodes with the
     `peg` proc.
 (2) Constructing the AST directly with proc calls. This method does not

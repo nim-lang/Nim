@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2013 Andreas Rumpf, Dominik Picheta
 #
 #    See the file "copying.txt", included in this
@@ -14,8 +14,8 @@
 ## the ``socket`` function to `false`. Be aware that some functions may not yet
 ## support buffered sockets (mainly the recvFrom function).
 ##
-## Most procedures raise EOS on error, but some may return ``-1`` or a boolean
-## ``false``.
+## Most procedures raise OSError on error, but some may return ``-1`` or a
+## boolean ``false``.
 ##
 ## SSL is supported through the OpenSSL library. This support can be activated
 ## by compiling with the ``-d:ssl`` switch. When an SSL socket is used it will
@@ -47,25 +47,29 @@ else:
 
 when defined(ssl):
   type
-    ESSL* = object of ESynch
+    SSLError* = object of Exception
 
-    TSSLCVerifyMode* = enum
+    SSLCVerifyMode* = enum
       CVerifyNone, CVerifyPeer
     
-    TSSLProtVersion* = enum
+    SSLProtVersion* = enum
       protSSLv2, protSSLv3, protTLSv1, protSSLv23
     
-    PSSLContext* = distinct PSSLCTX
+    SSLContext* = distinct PSSLCTX
 
-    TSSLAcceptResult* = enum
+    SSLAcceptResult* = enum
       AcceptNoClient = 0, AcceptNoHandshake, AcceptSuccess
+
+  {.deprecated: [ESSL: SSLError, TSSLCVerifyMode: SSLCVerifyMode,
+     TSSLProtVersion: SSLProtVersion, PSSLContext: SSLContext,
+     TSSLAcceptResult: SSLAcceptResult].}
 
 const
   BufferSize*: int = 4000 ## size of a buffered socket's buffer
 
 type
   TSocketImpl = object ## socket type
-    fd: TSocketHandle
+    fd: SocketHandle
     case isBuffered: bool # determines whether this socket is buffered.
     of true:
       buffer: array[0..BufferSize, char]
@@ -76,31 +80,31 @@ type
       case isSsl: bool
       of true:
         sslHandle: PSSL
-        sslContext: PSSLContext
+        sslContext: SSLContext
         sslNoHandshake: bool # True if needs handshake.
         sslHasPeekChar: bool
         sslPeekChar: char
       of false: nil
     nonblocking: bool
   
-  TSocket* = ref TSocketImpl
+  Socket* = ref TSocketImpl
   
-  TPort* = distinct uint16  ## port type
+  Port* = distinct uint16  ## port type
   
-  TDomain* = enum   ## domain, which specifies the protocol family of the
+  Domain* = enum    ## domain, which specifies the protocol family of the
                     ## created socket. Other domains than those that are listed
                     ## here are unsupported.
     AF_UNIX,        ## for local socket (using a file). Unsupported on Windows.
     AF_INET = 2,    ## for network protocol IPv4 or
     AF_INET6 = 23   ## for network protocol IPv6.
 
-  TType* = enum        ## second argument to `socket` proc
+  SockType* = enum     ## second argument to `socket` proc
     SOCK_STREAM = 1,   ## reliable stream-oriented service or Stream Sockets
     SOCK_DGRAM = 2,    ## datagram service or Datagram Sockets
     SOCK_RAW = 3,      ## raw protocols atop the network layer.
     SOCK_SEQPACKET = 5 ## reliable sequenced packet service
 
-  TProtocol* = enum     ## third argument to `socket` proc
+  Protocol* = enum      ## third argument to `socket` proc
     IPPROTO_TCP = 6,    ## Transmission control protocol. 
     IPPROTO_UDP = 17,   ## User datagram protocol.
     IPPROTO_IP,         ## Internet protocol. Unsupported on Windows.
@@ -108,33 +112,39 @@ type
     IPPROTO_RAW,        ## Raw IP Packets Protocol. Unsupported on Windows.
     IPPROTO_ICMP        ## Control message protocol. Unsupported on Windows.
 
-  TServent* {.pure, final.} = object ## information about a service
+  Servent* = object ## information about a service
     name*: string
     aliases*: seq[string]
-    port*: TPort
+    port*: Port
     proto*: string
 
-  Thostent* {.pure, final.} = object ## information about a given host
+  Hostent* = object ## information about a given host
     name*: string
     aliases*: seq[string]
-    addrtype*: TDomain
+    addrtype*: Domain
     length*: int
     addrList*: seq[string]
 
-  TSOBool* = enum ## Boolean socket options.
+  SOBool* = enum ## Boolean socket options.
     OptAcceptConn, OptBroadcast, OptDebug, OptDontRoute, OptKeepAlive,
     OptOOBInline, OptReuseAddr
 
-  TRecvLineResult* = enum ## result for recvLineAsync
+  RecvLineResult* = enum ## result for recvLineAsync
     RecvFullLine, RecvPartialLine, RecvDisconnected, RecvFail
 
-  TReadLineResult* = enum ## result for readLineAsync
+  ReadLineResult* = enum ## result for readLineAsync
     ReadFullLine, ReadPartialLine, ReadDisconnected, ReadNone
 
-  ETimeout* = object of Exception
+  TimeoutError* = object of Exception
+
+{.deprecated: [TSocket: Socket, TType: SockType, TPort: Port, TDomain: Domain,
+    TProtocol: Protocol, TServent: Servent, THostent: Hostent,
+    TSOBool: SOBool, TRecvLineResult: RecvLineResult, 
+    TReadLineResult: ReadLineResult, ETimeout: TimeoutError].}
+
 
 let
-  invalidSocket*: TSocket = nil ## invalid socket
+  invalidSocket*: Socket = nil ## invalid socket
 
 when defined(windows):
   let
@@ -143,7 +153,7 @@ else:
   let
     osInvalidSocket = posix.INVALID_SOCKET
 
-proc newTSocket(fd: TSocketHandle, isBuff: bool): TSocket =
+proc newTSocket(fd: SocketHandle, isBuff: bool): Socket =
   if fd == osInvalidSocket:
     return nil
   new(result)
@@ -153,10 +163,10 @@ proc newTSocket(fd: TSocketHandle, isBuff: bool): TSocket =
     result.currPos = 0
   result.nonblocking = false
 
-proc `==`*(a, b: TPort): bool {.borrow.}
+proc `==`*(a, b: Port): bool {.borrow.}
   ## ``==`` for ports.
 
-proc `$`*(p: TPort): string {.borrow.}
+proc `$`*(p: Port): string {.borrow.}
   ## returns the port number as a string
 
 proc ntohl*(x: int32): int32 = 
@@ -189,14 +199,14 @@ proc htons*(x: int16): int16 =
   result = sockets.ntohs(x)
   
 when defined(Posix):
-  proc toInt(domain: TDomain): cint =
+  proc toInt(domain: Domain): cint =
     case domain
     of AF_UNIX:        result = posix.AF_UNIX
     of AF_INET:        result = posix.AF_INET
     of AF_INET6:       result = posix.AF_INET6
     else: discard
 
-  proc toInt(typ: TType): cint =
+  proc toInt(typ: SockType): cint =
     case typ
     of SOCK_STREAM:    result = posix.SOCK_STREAM
     of SOCK_DGRAM:     result = posix.SOCK_DGRAM
@@ -204,7 +214,7 @@ when defined(Posix):
     of SOCK_RAW:       result = posix.SOCK_RAW
     else: discard
 
-  proc toInt(p: TProtocol): cint =
+  proc toInt(p: Protocol): cint =
     case p
     of IPPROTO_TCP:    result = posix.IPPROTO_TCP
     of IPPROTO_UDP:    result = posix.IPPROTO_UDP
@@ -215,13 +225,13 @@ when defined(Posix):
     else: discard
 
 else:
-  proc toInt(domain: TDomain): cint = 
+  proc toInt(domain: Domain): cint = 
     result = toU16(ord(domain))
 
-  proc toInt(typ: TType): cint =
+  proc toInt(typ: SockType): cint =
     result = cint(ord(typ))
   
-  proc toInt(p: TProtocol): cint =
+  proc toInt(p: Protocol): cint =
     result = cint(ord(p))
 
 proc socket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM,
@@ -336,7 +346,7 @@ when defined(ssl):
     if SSLSetFd(socket.sslHandle, socket.fd) != 1:
       SSLError()
 
-proc socketError*(socket: TSocket, err: int = -1, async = false) =
+proc raiseSocketError*(socket: TSocket, err: int = -1, async = false) =
   ## Raises proper errors based on return values of ``recv`` functions.
   ##
   ## If ``async`` is ``True`` no error will be thrown in the case when the
@@ -370,18 +380,18 @@ proc socketError*(socket: TSocket, err: int = -1, async = false) =
       when defined(windows):
         if lastError.int32 == WSAEWOULDBLOCK:
           return
-        else: osError(lastError)
+        else: raiseOSError(lastError)
       else:
         if lastError.int32 == EAGAIN or lastError.int32 == EWOULDBLOCK:
           return
-        else: osError(lastError)
-    else: osError(lastError)
+        else: raiseOSError(lastError)
+    else: raiseOSError(lastError)
 
 proc listen*(socket: TSocket, backlog = SOMAXCONN) {.tags: [ReadIOEffect].} =
   ## Marks ``socket`` as accepting connections. 
   ## ``Backlog`` specifies the maximum length of the 
   ## queue of pending connections.
-  if listen(socket.fd, cint(backlog)) < 0'i32: osError(osLastError())
+  if listen(socket.fd, cint(backlog)) < 0'i32: raiseOSError(osLastError())
 
 proc invalidIp4(s: string) {.noreturn, noinline.} =
   raise newException(ValueError, "invalid ip4 address: " & s)
@@ -420,7 +430,7 @@ template gaiNim(a, p, h, list: expr): stmt =
     var gaiResult = getaddrinfo(a, $p, addr(h), list)
     if gaiResult != 0'i32:
       when defined(windows):
-        osError(osLastError())
+        raiseOSError(osLastError())
       else:
         raise newException(OSError, $gai_strerror(gaiResult))
 
@@ -440,7 +450,7 @@ proc bindAddr*(socket: TSocket, port = TPort(0), address = "") {.
     name.sin_addr.s_addr = sockets.htonl(INADDR_ANY)
     if bindSocket(socket.fd, cast[ptr TSockAddr](addr(name)),
                   sizeof(name).TSocklen) < 0'i32:
-      osError(osLastError())
+      raiseOSError(osLastError())
   else:
     var hints: Taddrinfo
     var aiList: ptr Taddrinfo = nil
@@ -449,7 +459,7 @@ proc bindAddr*(socket: TSocket, port = TPort(0), address = "") {.
     hints.ai_protocol = toInt(IPPROTO_TCP)
     gaiNim(address, port, hints, aiList)
     if bindSocket(socket.fd, aiList.ai_addr, aiList.ai_addrlen.TSocklen) < 0'i32:
-      osError(osLastError())
+      raiseOSError(osLastError())
   
 proc getSockName*(socket: TSocket): TPort = 
   ## returns the socket's associated port number.
@@ -463,7 +473,7 @@ proc getSockName*(socket: TSocket): TPort =
   var namelen = sizeof(name).TSocklen
   if getsockname(socket.fd, cast[ptr TSockAddr](addr(name)),
                  addr(namelen)) == -1'i32:
-    osError(osLastError())
+    raiseOSError(osLastError())
   result = TPort(sockets.ntohs(name.sin_port))
 
 template acceptAddrPlain(noClientRet, successRet: expr, 
@@ -484,7 +494,7 @@ template acceptAddrPlain(noClientRet, successRet: expr,
           return
         else:
           return noClientRet
-      else: osError(err)
+      else: raiseOSError(err)
     else:
       if err.int32 == EAGAIN or err.int32 == EWOULDBLOCK:
         client = invalidSocket
@@ -493,7 +503,7 @@ template acceptAddrPlain(noClientRet, successRet: expr,
           return
         else:
           return noClientRet
-      else: osError(err)
+      else: raiseOSError(err)
   else:
     client.fd = sock
     client.isBuffered = server.isBuffered
@@ -680,7 +690,7 @@ proc getHostByAddr*(ip: string): Thostent {.tags: [ReadIOEffect].} =
   when defined(windows):
     var s = winlean.gethostbyaddr(addr(myaddr), sizeof(myaddr).cuint,
                                   cint(sockets.AF_INET))
-    if s == nil: osError(osLastError())
+    if s == nil: raiseOSError(osLastError())
   else:
     var s = posix.gethostbyaddr(addr(myaddr), sizeof(myaddr).TSocklen, 
                                 cint(posix.AF_INET))
@@ -707,7 +717,7 @@ proc getHostByName*(name: string): Thostent {.tags: [ReadIOEffect].} =
     var s = winlean.gethostbyname(name)
   else:
     var s = posix.gethostbyname(name)
-  if s == nil: osError(osLastError())
+  if s == nil: raiseOSError(osLastError())
   result.name = $s.h_name
   result.aliases = cstringArrayToSeq(s.h_aliases)
   when defined(windows): 
@@ -729,7 +739,7 @@ proc getSockOptInt*(socket: TSocket, level, optname: int): int {.
   var size = sizeof(res).TSocklen
   if getsockopt(socket.fd, cint(level), cint(optname), 
                 addr(res), addr(size)) < 0'i32:
-    osError(osLastError())
+    raiseOSError(osLastError())
   result = int(res)
 
 proc setSockOptInt*(socket: TSocket, level, optname, optval: int) {.
@@ -738,7 +748,7 @@ proc setSockOptInt*(socket: TSocket, level, optname, optval: int) {.
   var value = cint(optval)
   if setsockopt(socket.fd, cint(level), cint(optname), addr(value),  
                 sizeof(value).TSocklen) < 0'i32:
-    osError(osLastError())
+    raiseOSError(osLastError())
 
 proc toCInt(opt: TSOBool): cint =
   case opt
@@ -757,7 +767,7 @@ proc getSockOpt*(socket: TSocket, opt: TSOBool, level = SOL_SOCKET): bool {.
   var size = sizeof(res).TSocklen
   if getsockopt(socket.fd, cint(level), toCInt(opt), 
                 addr(res), addr(size)) < 0'i32:
-    osError(osLastError())
+    raiseOSError(osLastError())
   result = res != 0
 
 proc setSockOpt*(socket: TSocket, opt: TSOBool, value: bool, level = SOL_SOCKET) {.
@@ -766,7 +776,7 @@ proc setSockOpt*(socket: TSocket, opt: TSOBool, value: bool, level = SOL_SOCKET)
   var valuei = cint(if value: 1 else: 0)
   if setsockopt(socket.fd, cint(level), toCInt(opt), addr(valuei),  
                 sizeof(valuei).TSocklen) < 0'i32:
-    osError(osLastError())
+    raiseOSError(osLastError())
 
 proc connect*(socket: TSocket, address: string, port = TPort(0), 
               af: TDomain = AF_INET) {.tags: [ReadIOEffect].} =
@@ -784,7 +794,7 @@ proc connect*(socket: TSocket, address: string, port = TPort(0),
   gaiNim(address, port, hints, aiList)
   # try all possibilities:
   var success = false
-  var lastError: TOSErrorCode
+  var lastError: OSErrorCode
   var it = aiList
   while it != nil:
     if connect(socket.fd, it.ai_addr, it.ai_addrlen.TSocklen) == 0'i32:
@@ -794,7 +804,7 @@ proc connect*(socket: TSocket, address: string, port = TPort(0),
     it = it.ai_next
 
   freeaddrinfo(aiList)
-  if not success: osError(lastError)
+  if not success: raiseOSError(lastError)
   
   when defined(ssl):
     if socket.isSSL:
@@ -847,7 +857,7 @@ proc connectAsync*(socket: TSocket, name: string, port = TPort(0),
   gaiNim(name, port, hints, aiList)
   # try all possibilities:
   var success = false
-  var lastError: TOSErrorCode
+  var lastError: OSErrorCode
   var it = aiList
   while it != nil:
     var ret = connect(socket.fd, it.ai_addr, it.ai_addrlen.TSocklen)
@@ -869,7 +879,7 @@ proc connectAsync*(socket: TSocket, name: string, port = TPort(0),
     it = it.ai_next
 
   freeaddrinfo(aiList)
-  if not success: osError(lastError)
+  if not success: raiseOSError(lastError)
   when defined(ssl):
     if socket.isSSL:
       socket.sslNoHandshake = true
@@ -1133,7 +1143,7 @@ proc waitFor(socket: TSocket, waited: var float, timeout, size: int,
     result = min(result, size)
   else:
     if timeout - int(waited * 1000.0) < 1:
-      raise newException(ETimeout, "Call to '" & funcName & "' timed out.")
+      raise newException(TimeoutError, "Call to '" & funcName & "' timed out.")
     
     when defined(ssl):
       if socket.isSSL:
@@ -1147,9 +1157,9 @@ proc waitFor(socket: TSocket, waited: var float, timeout, size: int,
     var s = @[socket]
     var startTime = epochTime()
     let selRet = select(s, timeout - int(waited * 1000.0))
-    if selRet < 0: osError(osLastError())
+    if selRet < 0: raiseOSError(osLastError())
     if selRet != 1:
-      raise newException(ETimeout, "Call to '" & funcName & "' timed out.")
+      raise newException(TimeoutError, "Call to '" & funcName & "' timed out.")
     waited += (epochTime() - startTime)
 
 proc recv*(socket: TSocket, data: pointer, size: int, timeout: int): int {.
@@ -1185,7 +1195,7 @@ proc recv*(socket: TSocket, data: var string, size: int, timeout = -1): int =
   result = recv(socket, cstring(data), size, timeout)
   if result < 0:
     data.setLen(0)
-    socket.socketError(result)
+    socket.raiseSocketError(result)
   data.setLen(result)
 
 proc recvAsync*(socket: TSocket, data: var string, size: int): int =
@@ -1199,7 +1209,7 @@ proc recvAsync*(socket: TSocket, data: var string, size: int): int =
   result = recv(socket, cstring(data), size)
   if result < 0:
     data.setLen(0)
-    socket.socketError(async = true)
+    socket.raiseSocketError(async = true)
     result = -1
   data.setLen(result)
 
@@ -1296,14 +1306,14 @@ proc readLine*(socket: TSocket, line: var TaintedString, timeout = -1) {.
     var c: char
     discard waitFor(socket, waited, timeout, 1, "readLine")
     var n = recv(socket, addr(c), 1)
-    if n < 0: socket.socketError()
+    if n < 0: socket.raiseSocketError()
     elif n == 0: return
     if c == '\r':
       discard waitFor(socket, waited, timeout, 1, "readLine")
       n = peekChar(socket, c)
       if n > 0 and c == '\L':
         discard recv(socket, addr(c), 1)
-      elif n <= 0: socket.socketError()
+      elif n <= 0: socket.raiseSocketError()
       addNLIfEmpty()
       return
     elif c == '\L': 
@@ -1357,7 +1367,7 @@ proc readLineAsync*(socket: TSocket,
   setLen(line.string, 0)
   
   template errorOrNone =
-    socket.socketError(async = true)
+    socket.raiseSocketError(async = true)
     return ReadNone
   
   while true:
@@ -1390,7 +1400,7 @@ proc recv*(socket: TSocket): TaintedString {.tags: [ReadIOEffect], deprecated.} 
   var pos = 0
   while true:
     var bytesRead = recv(socket, addr(string(result)[pos]), bufSize-1)
-    if bytesRead == -1: osError(osLastError())
+    if bytesRead == -1: raiseOSError(osLastError())
     setLen(result.string, pos + bytesRead)
     if bytesRead != bufSize-1: break
     # increase capacity:
@@ -1463,11 +1473,11 @@ proc recvAsync*(socket: TSocket, s: var TaintedString): bool {.
       when defined(windows):
         if err.int32 == WSAEWOULDBLOCK:
           return false
-        else: osError(err)
+        else: raiseOSError(err)
       else:
         if err.int32 == EAGAIN or err.int32 == EWOULDBLOCK:
           return false
-        else: osError(err)
+        else: raiseOSError(err)
 
     setLen(s.string, pos + bytesRead)
     if bytesRead != bufSize-1: break
@@ -1516,11 +1526,11 @@ proc recvFromAsync*(socket: TSocket, data: var string, length: int,
     when defined(windows):
       if err.int32 == WSAEWOULDBLOCK:
         return false
-      else: osError(err)
+      else: raiseOSError(err)
     else:
       if err.int32 == EAGAIN or err.int32 == EWOULDBLOCK:
         return false
-      else: osError(err)
+      else: raiseOSError(err)
 
 proc skip*(socket: TSocket) {.tags: [ReadIOEffect], deprecated.} =
   ## skips all the data that is pending for the socket
@@ -1570,7 +1580,7 @@ proc send*(socket: TSocket, data: string) {.tags: [WriteIOEffect].} =
       if socket.isSSL:
         SSLError()
     
-    osError(osLastError())
+    raiseOSError(osLastError())
 
   if sent != data.len:
     raise newException(OSError, "Could not send all data.")
@@ -1607,11 +1617,11 @@ proc sendAsync*(socket: TSocket, data: string): int {.tags: [WriteIOEffect].} =
     when defined(windows):
       if err.int32 == WSAEINPROGRESS:
         return 0
-      else: osError(err)
+      else: raiseOSError(err)
     else:
       if err.int32 == EAGAIN or err.int32 == EWOULDBLOCK:
         return 0
-      else: osError(err)
+      else: raiseOSError(err)
   
 
 proc trySend*(socket: TSocket, data: string): bool {.tags: [WriteIOEffect].} =
@@ -1667,15 +1677,15 @@ proc setBlocking(s: TSocket, blocking: bool) =
   when defined(Windows):
     var mode = clong(ord(not blocking)) # 1 for non-blocking, 0 for blocking
     if ioctlsocket(s.fd, FIONBIO, addr(mode)) == -1:
-      osError(osLastError())
+      raiseOSError(osLastError())
   else: # BSD sockets
     var x: int = fcntl(s.fd, F_GETFL, 0)
     if x == -1:
-      osError(osLastError())
+      raiseOSError(osLastError())
     else:
       var mode = if blocking: x and not O_NONBLOCK else: x or O_NONBLOCK
       if fcntl(s.fd, F_SETFL, mode) == -1:
-        osError(osLastError())
+        raiseOSError(osLastError())
   s.nonblocking = not blocking
 
 discard """ proc setReuseAddr*(s: TSocket) =
@@ -1715,6 +1725,6 @@ proc isBlocking*(socket: TSocket): bool = not socket.nonblocking
 
 when defined(Windows):
   var wsa: TWSAData
-  if wsaStartup(0x0101'i16, addr wsa) != 0: osError(osLastError())
+  if wsaStartup(0x0101'i16, addr wsa) != 0: raiseOSError(osLastError())
 
 

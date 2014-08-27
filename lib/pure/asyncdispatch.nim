@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2014 Dominik Picheta
 #
 #    See the file "copying.txt", included in this
@@ -13,7 +13,7 @@ import os, oids, tables, strutils, macros, times
 
 import rawsockets, net
 
-export TPort, TSocketFlags
+export Port, SocketFlags
 
 #{.injectStmt: newGcInvariant().}
 
@@ -36,21 +36,24 @@ export TPort, TSocketFlags
 # -- Futures
 
 type
-  PFutureBase* = ref object of PObject
+  FutureBase* = ref object of RootObj
     cb: proc () {.closure,gcsafe.}
     finished: bool
-    error*: ref EBase
+    error*: ref Exception
     errorStackTrace*: string
     when not defined(release):
       stackTrace: string ## For debugging purposes only.
       id: int
       fromProc: string
 
-  PFuture*[T] = ref object of PFutureBase
+  Future*[T] = ref object of FutureBase
     value: T
 
+{.deprecated: [PFutureBase: FutureBase, PFuture: Future].}
+
+
 var currentID* = 0
-proc newFuture*[T](fromProc: string = "unspecified"): PFuture[T] =
+proc newFuture*[T](fromProc: string = "unspecified"): Future[T] =
   ## Creates a new future.
   ##
   ## Specifying ``fromProc``, which is a string specifying the name of the proc
@@ -63,7 +66,7 @@ proc newFuture*[T](fromProc: string = "unspecified"): PFuture[T] =
     result.fromProc = fromProc
     currentID.inc()
 
-proc checkFinished[T](future: PFuture[T]) =
+proc checkFinished[T](future: Future[T]) =
   when not defined(release):
     if future.finished:
       echo("<-----> ", future.id, " ", future.fromProc)
@@ -76,7 +79,7 @@ proc checkFinished[T](future: PFuture[T]) =
       echo getStackTrace()
       assert false
 
-proc complete*[T](future: PFuture[T], val: T) =
+proc complete*[T](future: Future[T], val: T) =
   ## Completes ``future`` with value ``val``.
   #assert(not future.finished, "Future already finished, cannot finish twice.")
   checkFinished(future)
@@ -86,7 +89,7 @@ proc complete*[T](future: PFuture[T], val: T) =
   if future.cb != nil:
     future.cb()
 
-proc complete*(future: PFuture[void]) =
+proc complete*(future: Future[void]) =
   ## Completes a void ``future``.
   #assert(not future.finished, "Future already finished, cannot finish twice.")
   checkFinished(future)
@@ -95,7 +98,7 @@ proc complete*(future: PFuture[void]) =
   if future.cb != nil:
     future.cb()
 
-proc fail*[T](future: PFuture[T], error: ref EBase) =
+proc fail*[T](future: Future[T], error: ref Exception) =
   ## Completes ``future`` with ``error``.
   #assert(not future.finished, "Future already finished, cannot finish twice.")
   checkFinished(future)
@@ -111,8 +114,9 @@ proc fail*[T](future: PFuture[T], error: ref EBase) =
     # TODO: This may turn out to be a bad idea.
     # Turns out this is a bad idea.
     #raise error
+    discard
 
-proc `callback=`*(future: PFutureBase, cb: proc () {.closure,gcsafe.}) =
+proc `callback=`*(future: FutureBase, cb: proc () {.closure,gcsafe.}) =
   ## Sets the callback proc to be called when the future completes.
   ##
   ## If future has already completed then ``cb`` will be called immediately.
@@ -123,23 +127,23 @@ proc `callback=`*(future: PFutureBase, cb: proc () {.closure,gcsafe.}) =
   if future.finished:
     future.cb()
 
-proc `callback=`*[T](future: PFuture[T],
-    cb: proc (future: PFuture[T]) {.closure,gcsafe.}) =
+proc `callback=`*[T](future: Future[T],
+    cb: proc (future: Future[T]) {.closure,gcsafe.}) =
   ## Sets the callback proc to be called when the future completes.
   ##
   ## If future has already completed then ``cb`` will be called immediately.
   future.callback = proc () = cb(future)
 
-proc echoOriginalStackTrace[T](future: PFuture[T]) =
+proc echoOriginalStackTrace[T](future: Future[T]) =
   # TODO: Come up with something better.
   when not defined(release):
     echo("Original stack trace in ", future.fromProc, ":")
-    if not future.errorStackTrace.isNil() and future.errorStackTrace != "":
+    if not future.errorStackTrace.isNil and future.errorStackTrace != "":
       echo(future.errorStackTrace)
     else:
       echo("Empty or nil stack trace.")
 
-proc read*[T](future: PFuture[T]): T =
+proc read*[T](future: Future[T]): T =
   ## Retrieves the value of ``future``. Future must be finished otherwise
   ## this function will fail with a ``EInvalidValue`` exception.
   ##
@@ -154,22 +158,22 @@ proc read*[T](future: PFuture[T]): T =
     # TODO: Make a custom exception type for this?
     raise newException(EInvalidValue, "Future still in progress.")
 
-proc readError*[T](future: PFuture[T]): ref EBase =
+proc readError*[T](future: Future[T]): ref EBase =
   if future.error != nil: return future.error
   else:
     raise newException(EInvalidValue, "No error in future.")
 
-proc finished*[T](future: PFuture[T]): bool =
+proc finished*[T](future: Future[T]): bool =
   ## Determines whether ``future`` has completed.
   ##
   ## ``True`` may indicate an error or a value. Use ``failed`` to distinguish.
   future.finished
 
-proc failed*(future: PFutureBase): bool =
+proc failed*(future: FutureBase): bool =
   ## Determines whether ``future`` completed with an error.
   future.error != nil
 
-proc asyncCheck*[T](future: PFuture[T]) =
+proc asyncCheck*[T](future: Future[T]) =
   ## Sets a callback on ``future`` which raises an exception if the future
   ## finished with an error.
   ##
@@ -180,7 +184,7 @@ proc asyncCheck*[T](future: PFuture[T]) =
         echoOriginalStackTrace(future)
         raise future.error
 
-proc `and`*[T, Y](fut1: PFuture[T], fut2: PFuture[Y]): PFuture[void] =
+proc `and`*[T, Y](fut1: Future[T], fut2: Future[Y]): Future[void] =
   ## Returns a future which will complete once both ``fut1`` and ``fut2``
   ## complete.
   var retFuture = newFuture[void]()
@@ -192,7 +196,7 @@ proc `and`*[T, Y](fut1: PFuture[T], fut2: PFuture[Y]): PFuture[void] =
       if fut1.finished: retFuture.complete()
   return retFuture
 
-proc `or`*[T, Y](fut1: PFuture[T], fut2: PFuture[Y]): PFuture[void] =
+proc `or`*[T, Y](fut1: Future[T], fut2: Future[Y]): Future[void] =
   ## Returns a future which will complete once either ``fut1`` or ``fut2``
   ## complete.
   var retFuture = newFuture[void]()
@@ -203,7 +207,7 @@ proc `or`*[T, Y](fut1: PFuture[T], fut2: PFuture[Y]): PFuture[void] =
 
 type
   PDispatcherBase = ref object of PObject
-    timers: seq[tuple[finishAt: float, fut: PFuture[void]]]
+    timers: seq[tuple[finishAt: float, fut: Future[void]]]
 
 proc processTimers(p: PDispatcherBase) =
   var oldTimers = p.timers
@@ -375,10 +379,10 @@ when defined(windows) or defined(nimdoc):
                   RemoteSockaddr, RemoteSockaddrLength)
 
   proc connect*(socket: TAsyncFD, address: string, port: TPort,
-    af = AF_INET): PFuture[void] =
+    af = AF_INET): Future[void] =
     ## Connects ``socket`` to server at ``address:port``.
     ##
-    ## Returns a ``PFuture`` which will complete when the connection succeeds
+    ## Returns a ``Future`` which will complete when the connection succeeds
     ## or an error occurs.
     verifyPresence(socket)
     var retFuture = newFuture[void]("connect")
@@ -437,7 +441,7 @@ when defined(windows) or defined(nimdoc):
     return retFuture
 
   proc recv*(socket: TAsyncFD, size: int,
-             flags = {TSocketFlags.SafeDisconn}): PFuture[string] =
+             flags = {TSocketFlags.SafeDisconn}): Future[string] =
     ## Reads **up to** ``size`` bytes from ``socket``. Returned future will
     ## complete once all the data requested is read, a part of the data has been
     ## read, or the socket has disconnected in which case the future will
@@ -525,7 +529,7 @@ when defined(windows) or defined(nimdoc):
     return retFuture
 
   proc send*(socket: TAsyncFD, data: string,
-             flags = {TSocketFlags.SafeDisconn}): PFuture[void] =
+             flags = {TSocketFlags.SafeDisconn}): Future[void] =
     ## Sends ``data`` to ``socket``. The returned future will complete once all
     ## data has been sent.
     verifyPresence(socket)
@@ -568,7 +572,7 @@ when defined(windows) or defined(nimdoc):
     return retFuture
 
   proc acceptAddr*(socket: TAsyncFD, flags = {TSocketFlags.SafeDisconn}):
-      PFuture[tuple[address: string, client: TAsyncFD]] =
+      Future[tuple[address: string, client: TAsyncFD]] =
     ## Accepts a new connection. Returns a future containing the client socket
     ## corresponding to that connection and the remote address of the client.
     ## The future will complete when the connection is successfully accepted.
@@ -789,7 +793,7 @@ else:
     processTimers(p)
   
   proc connect*(socket: TAsyncFD, address: string, port: TPort,
-    af = AF_INET): PFuture[void] =
+    af = AF_INET): Future[void] =
     var retFuture = newFuture[void]("connect")
     
     proc cb(sock: TAsyncFD): bool =
@@ -824,7 +828,7 @@ else:
     return retFuture
 
   proc recv*(socket: TAsyncFD, size: int,
-             flags = {TSocketFlags.SafeDisconn}): PFuture[string] =
+             flags = {TSocketFlags.SafeDisconn}): Future[string] =
     var retFuture = newFuture[string]("recv")
     
     var readBuffer = newString(size)
@@ -855,7 +859,7 @@ else:
     return retFuture
 
   proc send*(socket: TAsyncFD, data: string,
-             flags = {TSocketFlags.SafeDisconn}): PFuture[void] =
+             flags = {TSocketFlags.SafeDisconn}): Future[void] =
     var retFuture = newFuture[void]("send")
     
     var written = 0
@@ -887,7 +891,7 @@ else:
     return retFuture
 
   proc acceptAddr*(socket: TAsyncFD, flags = {TSocketFlags.SafeDisconn}):
-      PFuture[tuple[address: string, client: TAsyncFD]] =
+      Future[tuple[address: string, client: TAsyncFD]] =
     var retFuture = newFuture[tuple[address: string,
         client: TAsyncFD]]("acceptAddr")
     proc cb(sock: TAsyncFD): bool =
@@ -912,7 +916,7 @@ else:
     addRead(socket, cb)
     return retFuture
 
-proc sleepAsync*(ms: int): PFuture[void] =
+proc sleepAsync*(ms: int): Future[void] =
   ## Suspends the execution of the current async procedure for the next
   ## ``ms`` miliseconds.
   var retFuture = newFuture[void]("sleepAsync")
@@ -921,14 +925,14 @@ proc sleepAsync*(ms: int): PFuture[void] =
   return retFuture
 
 proc accept*(socket: TAsyncFD,
-    flags = {TSocketFlags.SafeDisconn}): PFuture[TAsyncFD] =
+    flags = {TSocketFlags.SafeDisconn}): Future[TAsyncFD] =
   ## Accepts a new connection. Returns a future containing the client socket
   ## corresponding to that connection.
   ## The future will complete when the connection is successfully accepted.
   var retFut = newFuture[TAsyncFD]("accept")
   var fut = acceptAddr(socket, flags)
   fut.callback =
-    proc (future: PFuture[tuple[address: string, client: TAsyncFD]]) =
+    proc (future: Future[tuple[address: string, client: TAsyncFD]]) =
       assert future.finished
       if future.failed:
         retFut.fail(future.error)
@@ -1111,12 +1115,12 @@ macro async*(prc: stmt): stmt {.immediate.} =
   hint("Processing " & prc[0].getName & " as an async proc.")
 
   let returnType = prc[3][0]
-  # Verify that the return type is a PFuture[T]
+  # Verify that the return type is a Future[T]
   if returnType.kind == nnkIdent:
-    error("Expected return type of 'PFuture' got '" & $returnType & "'")
+    error("Expected return type of 'Future' got '" & $returnType & "'")
   elif returnType.kind == nnkBracketExpr:
-    if $returnType[0] != "PFuture":
-      error("Expected return type of 'PFuture' got '" & $returnType[0] & "'")
+    if $returnType[0] != "Future":
+      error("Expected return type of 'Future' got '" & $returnType[0] & "'")
 
   let subtypeIsVoid = returnType.kind == nnkEmpty or
         (returnType.kind == nnkBracketExpr and
@@ -1137,7 +1141,7 @@ macro async*(prc: stmt): stmt {.immediate.} =
           subRetType),
       newLit(prc[0].getName)))) # Get type from return type of this proc
   
-  # -> iterator nameIter(): PFutureBase {.closure.} = 
+  # -> iterator nameIter(): FutureBase {.closure.} = 
   # ->   var result: T
   # ->   <proc_body>
   # ->   complete(retFuture, result)
@@ -1153,7 +1157,7 @@ macro async*(prc: stmt): stmt {.immediate.} =
     # -> complete(retFuture)
     procBody.add(newCall(newIdentNode("complete"), retFutureSym))
   
-  var closureIterator = newProc(iteratorNameSym, [newIdentNode("PFutureBase")],
+  var closureIterator = newProc(iteratorNameSym, [newIdentNode("FutureBase")],
                                 procBody, nnkIteratorDef)
   closureIterator[4] = newNimNode(nnkPragma, prc[6]).add(newIdentNode("closure"))
   outerProcBody.add(closureIterator)
@@ -1176,8 +1180,8 @@ macro async*(prc: stmt): stmt {.immediate.} =
   if subtypeIsVoid:
     # Add discardable pragma.
     if returnType.kind == nnkEmpty:
-      # Add PFuture[void]
-      result[3][0] = parseExpr("PFuture[void]")
+      # Add Future[void]
+      result[3][0] = parseExpr("Future[void]")
 
   result[6] = outerProcBody
 
@@ -1185,7 +1189,7 @@ macro async*(prc: stmt): stmt {.immediate.} =
   #if prc[0].getName == "processClient":
   #  echo(toStrLit(result))
 
-proc recvLine*(socket: TAsyncFD): PFuture[string] {.async.} =
+proc recvLine*(socket: TAsyncFD): Future[string] {.async.} =
   ## Reads a line of data from ``socket``. Returned future will complete once
   ## a full line is read or an error occurs.
   ##

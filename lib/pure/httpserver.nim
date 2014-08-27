@@ -145,7 +145,7 @@ when false:
       var buf = alloc(contentLength)
       if recv(client, buf, contentLength) != contentLength: 
         dealloc(buf)
-        OSError()
+        raiseOSError()
       var inp = process.inputStream
       inp.writeData(buf, contentLength)
       dealloc(buf)

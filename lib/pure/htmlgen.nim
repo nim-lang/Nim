@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -18,13 +18,13 @@
 ##
 ## Example:
 ##
-## .. code-block:: nimrod
-##   var nim = "Nimrod"
-##   echo h1(a(href="http://nimrod-lang.org", nim))
+## .. code-block:: Nim
+##   var nim = "Nim"
+##   echo h1(a(href="http://nim-lang.org", nim))
 ##  
 ## Writes the string::
 ##   
-##   <h1><a href="http://nimrod-lang.org">Nimrod</a></h1>
+##   <h1><a href="http://nim-lang.org">Nim</a></h1>
 ##
 
 import
@@ -53,8 +53,7 @@ proc delete[T](s: var seq[T], attr: T): bool =
     setLen(s, L-1)
     result = true
 
-proc xmlCheckedTag*(e: PNimrodNode, tag: string,
-    optAttr = "", reqAttr = "",
+proc xmlCheckedTag*(e: PNimrodNode, tag: string, optAttr = "", reqAttr = "",
     isLeaf = false): PNimrodNode {.compileTime.} =
   ## use this procedure to define a new XML tag
   
@@ -484,7 +483,7 @@ macro `var`*(e: expr): expr {.immediate.} =
   result = xmlCheckedTag(e, "var", commonAttr)
 
 when isMainModule:
-  var nim = "Nimrod"
-  echo h1(a(href="http://nimrod-code.org", nim))
+  var nim = "Nim"
+  echo h1(a(href="http://nim-lang.org", nim))
   echo form(action="test", `accept-charset` = "Content-Type")
 

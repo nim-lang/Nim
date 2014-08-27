@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Dominik Picheta
 #
 #    See the file "copying.txt", included in this
@@ -25,13 +25,13 @@ else:
 import inotify, os, asyncio, tables
 
 type
-  PFSMonitor* = ref TFSMonitor
-  TFSMonitor = object of TObject
+  FSMonitor* = ref FSMonitorObj
+  FSMonitorObj = object of RootObj
     fd: cint
-    handleEvent: proc (m: PFSMonitor, ev: TMonitorEvent) {.closure.}
+    handleEvent: proc (m: FSMonitor, ev: MonitorEvent) {.closure.}
     targets: TTable[cint, string]
   
-  TMonitorEventType* = enum ## Monitor event type
+  MonitorEventType* = enum ## Monitor event type
     MonitorAccess,       ## File was accessed.
     MonitorAttrib,       ## Metadata changed.
     MonitorCloseWrite,   ## Writtable file was closed.
@@ -45,8 +45,8 @@ type
     MonitorOpen,         ## File was opened.
     MonitorAll           ## Filter for all event types.
   
-  TMonitorEvent* = object
-    case kind*: TMonitorEventType  ## Type of the event.
+  MonitorEvent* = object
+    case kind*: MonitorEventType  ## Type of the event.
     of MonitorMoveSelf, MonitorMoved:
       oldPath*: string          ## Old absolute location
       newPath*: string          ## New absolute location
@@ -58,6 +58,9 @@ type
                               ## watched.
     wd*: cint                 ## Watch descriptor.
 
+{.deprecated: [PFSMonitor: FSMonitor, TFSMonitor: FSMonitorObj,
+  TMonitorEventType: MonitorEventType, TMonitorEvent: MonitorEvent].}
+
 const
   MaxEvents = 100
 
@@ -67,7 +70,7 @@ proc newMonitor*(): PFSMonitor =
   result.targets = initTable[cint, string]()
   result.fd = inotifyInit()
   if result.fd < 0:
-    OSError(OSLastError())
+    raiseOSError(osLastError())
 
 proc add*(monitor: PFSMonitor, target: string,
                filters = {MonitorAll}): cint {.discardable.} =
@@ -101,7 +104,7 @@ proc del*(monitor: PFSMonitor, wd: cint) =
   ##
   ## If ``wd`` is not a part of ``monitor`` an EOS error is raised.
   if inotifyRmWatch(monitor.fd, wd) < 0:
-    OSError(OSLastError())
+    raiseOSError(osLastError())
 
 proc getEvent(m: PFSMonitor, fd: cint): seq[TMonitorEvent] =
   result = @[]
@@ -197,18 +200,19 @@ proc register*(d: PDispatcher, monitor: PFSMonitor,
   d.register(deleg)
 
 when isMainModule:
-  var disp = newDispatcher()
-  var monitor = newMonitor()
-  echo monitor.add("/home/dom/inotifytests/")
-  disp.register(monitor,
-    proc (m: PFSMonitor, ev: TMonitorEvent) =
-      echo("Got event: ", ev.kind)
-      if ev.kind == MonitorMoved:
-        echo("From ", ev.oldPath, " to ", ev.newPath)
-        echo("Name is ", ev.name)
-      else:
-        echo("Name ", ev.name, " fullname ", ev.fullName))
-      
-  while true:
-    if not disp.poll(): break
-  
+  proc main =
+    var disp = newDispatcher()
+    var monitor = newMonitor()
+    echo monitor.add("/home/dom/inotifytests/")
+    disp.register(monitor,
+      proc (m: PFSMonitor, ev: TMonitorEvent) =
+        echo("Got event: ", ev.kind)
+        if ev.kind == MonitorMoved:
+          echo("From ", ev.oldPath, " to ", ev.newPath)
+          echo("Name is ", ev.name)
+        else:
+          echo("Name ", ev.name, " fullname ", ev.fullName))
+        
+    while true:
+      if not disp.poll(): break
+  main()

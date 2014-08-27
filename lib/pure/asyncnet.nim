@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2014 Dominik Picheta
 #
 #    See the file "copying.txt", included in this
@@ -19,9 +19,9 @@
 ##
 ##   import asyncnet, asyncdispatch
 ##
-##   var clients: seq[PAsyncSocket] = @[]
+##   var clients: seq[AsyncSocket] = @[]
 ##
-##   proc processClient(client: PAsyncSocket) {.async.} =
+##   proc processClient(client: AsyncSocket) {.async.} =
 ##     while true:
 ##       let line = await client.recvLine()
 ##       for c in clients:
@@ -29,7 +29,7 @@
 ##
 ##   proc serve() {.async.} =
 ##     var server = newAsyncSocket()
-##     server.bindAddr(TPort(12345))
+##     server.bindAddr(Port(12345))
 ##     server.listen()
 ##
 ##     while true:
@@ -54,8 +54,10 @@ when defined(ssl):
 type
   # TODO: I would prefer to just do:
   # PAsyncSocket* {.borrow: `.`.} = distinct PSocket. But that doesn't work.
-  TAsyncSocket {.borrow: `.`.} = distinct TSocketImpl
-  PAsyncSocket* = ref TAsyncSocket
+  AsyncSocketDesc {.borrow: `.`.} = distinct TSocketImpl
+  AsyncSocket* = ref AsyncSocketDesc
+
+{.deprecated: [PAsyncSocket: AsyncSocket].}
 
 # TODO: Save AF, domain etc info and reuse it in procs which need it like connect.
 

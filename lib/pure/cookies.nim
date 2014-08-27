@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -11,7 +11,7 @@
 
 import strtabs, times
 
-proc parseCookies*(s: string): PStringTable = 
+proc parseCookies*(s: string): StringTableRef = 
   ## parses cookies into a string table.
   result = newStringTable(modeCaseInsensitive)
   var i = 0
@@ -39,7 +39,7 @@ proc setCookie*(key, value: string, domain = "", path = "",
   if path != "": result.add("; Path=" & path)
   if expires != "": result.add("; Expires=" & expires)
 
-proc setCookie*(key, value: string, expires: TTimeInfo,
+proc setCookie*(key, value: string, expires: TimeInfo,
                 domain = "", path = "", noName = false): string =
   ## Creates a command in the format of 
   ## ``Set-Cookie: key=value; Domain=...; ...``
@@ -50,7 +50,7 @@ proc setCookie*(key, value: string, expires: TTimeInfo,
             format(expires, "ddd',' dd MMM yyyy HH:mm:ss 'UTC'"), noName)
   
 when isMainModule:
-  var tim = TTime(int(getTime()) + 76 * (60 * 60 * 24))
+  var tim = Time(int(getTime()) + 76 * (60 * 60 * 24))
 
   echo(setCookie("test", "value", tim.getGMTime()))
   

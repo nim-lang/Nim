@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -24,16 +24,18 @@ when not defined(nimhygiene):
   {.pragma: dirty.}
 
 type
-  TSlotEnum = enum seEmpty, seFilled, seDeleted
-  TKeyValuePair[A] = tuple[slot: TSlotEnum, key: A]
-  TKeyValuePairSeq[A] = seq[TKeyValuePair[A]]
-  TSet* {.final, myShallow.}[A] = object ## \
+  SlotEnum = enum seEmpty, seFilled, seDeleted
+  KeyValuePair[A] = tuple[slot: SlotEnum, key: A]
+  KeyValuePairSeq[A] = seq[KeyValuePair[A]]
+  HashSet* {.myShallow.}[A] = object ## \
     ## A generic hash set.
     ##
-    ## Use `init() <#init,TSet[A],int>`_ or `initSet[type]() <#initSet>`_
+    ## Use `init() <#init,HashSet[A],int>`_ or `initSet[type]() <#initSet>`_
     ## before calling other procs on it.
-    data: TKeyValuePairSeq[A]
+    data: KeyValuePairSeq[A]
     counter: int
+
+{.deprecated: [TSet: HashSet].}
 
 proc isValid*[A](s: TSet[A]): bool =
   ## Returns `true` if the set has been initialized with `initSet <#initSet>`_.
@@ -43,7 +45,7 @@ proc isValid*[A](s: TSet[A]): bool =
   ## your own procs to verify that sets passed to your procs are correctly
   ## initialized. Example:
   ##
-  ## .. code-block :: nimrod
+  ## .. code-block ::
   ##   proc savePreferences(options: TSet[string]) =
   ##     assert options.isValid, "Pass an initialized set!"
   ##     # Do stuff here, may crash in release builds!
@@ -490,19 +492,20 @@ proc map*[A, B](data: TSet[A], op: proc (x: A): B {.closure.}): TSet[B] =
 # ------------------------------ ordered set ------------------------------
 
 type
-  TOrderedKeyValuePair[A] = tuple[
-    slot: TSlotEnum, next: int, key: A]
-  TOrderedKeyValuePairSeq[A] = seq[TOrderedKeyValuePair[A]]
-  TOrderedSet* {.
-      final, myShallow.}[A] = object ## \
+  OrderedKeyValuePair[A] = tuple[
+    slot: SlotEnum, next: int, key: A]
+  OrderedKeyValuePairSeq[A] = seq[OrderedKeyValuePair[A]]
+  OrderedSet* {.myShallow.}[A] = object ## \
     ## A generic hash set that remembers insertion order.
     ##
-    ## Use `init() <#init,TOrderedSet[A],int>`_ or `initOrderedSet[type]()
+    ## Use `init() <#init,OrderedSet[A],int>`_ or `initOrderedSet[type]()
     ## <#initOrderedSet>`_ before calling other procs on it.
     data: TOrderedKeyValuePairSeq[A]
     counter, first, last: int
 
-proc isValid*[A](s: TOrderedSet[A]): bool =
+{.deprecated: [TOrderedSet: OrderedSet].}
+
+proc isValid*[A](s: OrderedSet[A]): bool =
   ## Returns `true` if the ordered set has been initialized with `initSet
   ## <#initOrderedSet>`_.
   ##
@@ -511,13 +514,13 @@ proc isValid*[A](s: TOrderedSet[A]): bool =
   ## in your own procs to verify that ordered sets passed to your procs are
   ## correctly initialized. Example:
   ##
-  ## .. code-block :: nimrod
+  ## .. code-block::
   ##   proc saveTarotCards(cards: TOrderedSet[int]) =
   ##     assert cards.isValid, "Pass an initialized set!"
   ##     # Do stuff here, may crash in release builds!
   result = not s.data.isNil
 
-proc len*[A](s: TOrderedSet[A]): int {.inline.} =
+proc len*[A](s: OrderedSet[A]): int {.inline.} =
   ## Returns the number of keys in `s`.
   ##
   ## Due to an implementation detail you can call this proc on variables which
@@ -734,14 +737,14 @@ proc `==`*[A](s, t: TOrderedSet[A]): bool =
 proc testModule() =
   ## Internal micro test to validate docstrings and such.
   block isValidTest:
-    var options: TSet[string]
+    var options: HashSet[string]
     proc savePreferences(options: TSet[string]) =
       assert options.isValid, "Pass an initialized set!"
     options = initSet[string]()
     options.savePreferences
 
   block lenTest:
-    var values: TSet[int]
+    var values: HashSet[int]
     assert(not values.isValid)
     assert values.len == 0
     assert values.card == 0
@@ -835,14 +838,14 @@ proc testModule() =
     assert b == toSet(["1", "2", "3"])
 
   block isValidTest:
-    var cards: TOrderedSet[string]
+    var cards: OrderedSet[string]
     proc saveTarotCards(cards: TOrderedSet[string]) =
       assert cards.isValid, "Pass an initialized set!"
     cards = initOrderedSet[string]()
     cards.saveTarotCards
 
   block lenTest:
-    var values: TOrderedSet[int]
+    var values: OrderedSet[int]
     assert(not values.isValid)
     assert values.len == 0
     assert values.card == 0
@@ -879,7 +882,7 @@ proc testModule() =
     assert(a == b) # https://github.com/Araq/Nimrod/issues/1413
 
   block initBlocks:
-    var a: TOrderedSet[int]
+    var a: OrderedSet[int]
     a.init(4)
     a.incl(2)
     a.init

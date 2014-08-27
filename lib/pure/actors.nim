@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -21,6 +21,11 @@
 ##      for i in 0 .. < 300:
 ##        a.spawn(i, proc (x: int) {.thread.} = echo x)
 ##      a.join()
+##
+## **Note**: This whole module is deprecated. Use `threadpool` and ``spawn``
+## instead.
+
+{.deprecated.}
 
 from os import sleep
 

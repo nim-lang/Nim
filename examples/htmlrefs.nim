@@ -15,7 +15,7 @@ var links = 0 # count the number of links
 var filename = addFileExt(ParamStr(1), "html")
 var s = newFileStream(filename, fmRead)
 if s == nil: quit("cannot open the file " & filename)
-var x: TXmlParser
+var x: XmlParser
 open(x, s, filename)
 next(x) # get first event
 block mainLoop:

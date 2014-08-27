@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2014 Dominik Picheta
 #
 #    See the file "copying.txt", included in this
@@ -11,11 +11,13 @@
 
 import strutils, parseutils
 type
-  TUrl* = distinct string
+  Url* = distinct string
 
-  TUri* = object
+  Uri* = object
     scheme*, username*, password*: string 
     hostname*, port*, path*, query*, anchor*: string
+
+{.deprecated: [TUrl: Url, TUri: Uri].}
 
 proc `$`*(url: TUrl): string {.deprecated.} =
   ## **Deprecated since 0.9.6**: Use ``TUri`` instead.
@@ -172,7 +174,7 @@ proc combine*(base: TUri, reference: TUri): TUri =
   ##
   ## Examples:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block::
   ##   let foo = combine(parseUri("http://example.com/foo/bar"), parseUri("/baz"))
   ##   assert foo.path == "/baz"
   ##
@@ -229,7 +231,7 @@ proc `/`*(x: TUri, path: string): TUri =
   ##
   ## Examples:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block::
   ##   let foo = parseUri("http://example.com/foo/bar") / parseUri("/baz")
   ##   assert foo.path == "/foo/bar/baz"
   ##

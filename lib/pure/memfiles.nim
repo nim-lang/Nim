@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2014 Nimrod Contributors
 #
 #    See the file "copying.txt", included in this
@@ -22,7 +22,7 @@ else:
 import os
 
 type
-  TMemFile* = object {.pure.} ## represents a memory mapped file
+  MemFile* = object  ## represents a memory mapped file
     mem*: pointer    ## a pointer to the memory mapped file. The pointer
                      ## can be used directly to change the contents of the
                      ## file, if it was opened with write access.
@@ -34,8 +34,9 @@ type
     else:
       handle: cint
 
+{.deprecated: [TMemFile: MemFile].}
 
-proc mapMem*(m: var TMemFile, mode: FileMode = fmRead,
+proc mapMem*(m: var MemFile, mode: FileMode = fmRead,
              mappedSize = -1, offset = 0): pointer =
   var readonly = mode == fmRead
   when defined(windows):
@@ -60,27 +61,27 @@ proc mapMem*(m: var TMemFile, mode: FileMode = fmRead,
       osError(osLastError())
 
 
-proc unmapMem*(f: var TMemFile, p: pointer, size: int) =
+proc unmapMem*(f: var MemFile, p: pointer, size: int) =
   ## unmaps the memory region ``(p, <p+size)`` of the mapped file `f`.
   ## All changes are written back to the file system, if `f` was opened
   ## with write access. ``size`` must be of exactly the size that was requested
   ## via ``mapMem``.
   when defined(windows):
-    if unmapViewOfFile(p) == 0: osError(osLastError())
+    if unmapViewOfFile(p) == 0: raiseOSError(osLastError())
   else:
-    if munmap(p, size) != 0: osError(osLastError())
+    if munmap(p, size) != 0: raiseOSError(osLastError())
 
 
 proc open*(filename: string, mode: FileMode = fmRead,
-           mappedSize = -1, offset = 0, newFileSize = -1): TMemFile =
+           mappedSize = -1, offset = 0, newFileSize = -1): MemFile =
   ## opens a memory mapped file. If this fails, ``EOS`` is raised.
   ## `newFileSize` can only be set if the file does not exist and is opened
   ## with write access (e.g., with fmReadWrite). `mappedSize` and `offset`
   ## can be used to map only a slice of the file. Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   var
-  ##     mm, mm_full, mm_half: TMemFile
+  ##     mm, mm_full, mm_half: MemFile
   ##
   ##   mm = memfiles.open("/tmp/test.mmap", mode = fmWrite, newFileSize = 1024)    # Create a new file
   ##   mm.close()
@@ -100,11 +101,11 @@ proc open*(filename: string, mode: FileMode = fmRead,
     result.size = 0
 
   when defined(windows):
-    template fail(errCode: TOSErrorCode, msg: expr) =
+    template fail(errCode: OSErrorCode, msg: expr) =
       rollback()
       if result.fHandle != 0: discard closeHandle(result.fHandle)
       if result.mapHandle != 0: discard closeHandle(result.mapHandle)
-      osError(errCode)
+      raiseOSError(errCode)
       # return false
       #raise newException(EIO, msg)
 
@@ -169,10 +170,10 @@ proc open*(filename: string, mode: FileMode = fmRead,
       else: result.size = fileSize.int
 
   else:
-    template fail(errCode: TOSErrorCode, msg: expr) =
+    template fail(errCode: OSErrorCode, msg: expr) =
       rollback()
       if result.handle != 0: discard close(result.handle)
-      osError(errCode)
+      raiseOSError(errCode)
   
     var flags = if readonly: O_RDONLY else: O_RDWR
 
@@ -214,12 +215,12 @@ proc open*(filename: string, mode: FileMode = fmRead,
     if result.mem == cast[pointer](MAP_FAILED):
       fail(osLastError(), "file mapping failed")
 
-proc close*(f: var TMemFile) =
+proc close*(f: var MemFile) =
   ## closes the memory mapped file `f`. All changes are written back to the
   ## file system, if `f` was opened with write access.
   
   var error = false
-  var lastErr: TOSErrorCode
+  var lastErr: OSErrorCode
 
   when defined(windows):
     if f.fHandle != INVALID_HANDLE_VALUE:
@@ -242,5 +243,5 @@ proc close*(f: var TMemFile) =
   else:
     f.handle = 0
   
-  if error: osError(lastErr)
+  if error: raiseOSError(lastErr)
 

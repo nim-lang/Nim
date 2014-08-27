@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Dominik Picheta
 #
 #    See the file "copying.txt", included in this
@@ -16,11 +16,11 @@
 ## Example gmail use:
 ## 
 ## 
-## .. code-block:: Nimrod
-##   var msg = createMessage("Hello from Nimrod's SMTP", 
+## .. code-block:: Nim
+##   var msg = createMessage("Hello from Nim's SMTP", 
 ##                           "Hello!.\n Is this awesome or what?", 
 ##                           @["foo@gmail.com"])
-##   var smtp = connect("smtp.gmail.com", 465, True, True)
+##   var smtp = connect("smtp.gmail.com", 465, true, true)
 ##   smtp.auth("username", "password")
 ##   smtp.sendmail("username@gmail.com", @["foo@gmail.com"], $msg)
 ##   
@@ -31,18 +31,20 @@
 import sockets, strutils, strtabs, base64, os
 
 type
-  TSMTP* {.final.} = object
-    sock: TSocket
-    debug: Bool
+  Smtp* = object
+    sock: Socket
+    debug: bool
   
-  TMessage* {.final.} = object
+  Message* = object
     msgTo: seq[string]
     msgCc: seq[string]
     msgSubject: string
-    msgOtherHeaders: PStringTable
+    msgOtherHeaders: StringTableRef
     msgBody: string
   
-  EInvalidReply* = object of EIO
+  ReplyError* = object of IOError
+
+{.deprecated: [EInvalidReply: ReplyError, TMessage: Message, TSMTP: Smtp].}
   
 proc debugSend(smtp: TSMTP, cmd: string) =
   if smtp.debug:
@@ -170,7 +172,7 @@ when isMainModule:
   #smtp.sendmail("root@localhost", @["dominik@localhost"], $msg)
   
   #echo(decode("a17sm3701420wbe.12"))
-  var msg = createMessage("Hello from Nimrod's SMTP!", 
+  var msg = createMessage("Hello from Nim's SMTP!", 
                           "Hello!!!!.\n Is this awesome or what?", 
                           @["someone@yahoo.com", "someone@gmail.com"])
   echo(msg)

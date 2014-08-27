@@ -1,9 +1,9 @@
-=========================
-Nimrod Tutorial (Part II)
-=========================
+======================
+Nim Tutorial (Part II)
+======================
 
 :Author: Andreas Rumpf
-:Version: |nimrodversion|
+:Version: |nimversion|
 
 .. contents::
 
@@ -15,7 +15,7 @@ Introduction
   only have originated in California." --Edsger Dijkstra
 
 
-This document is a tutorial for the advanced constructs of the *Nimrod*
+This document is a tutorial for the advanced constructs of the *Nim*
 programming language. **Note that this document is somewhat obsolete as the**
 `manual <manual.html>`_ **contains many more examples of the advanced language
 features.**
@@ -24,18 +24,18 @@ features.**
 Pragmas
 =======
 
-Pragmas are Nimrod's method to give the compiler additional information/
+Pragmas are Nim's method to give the compiler additional information/
 commands without introducing a massive number of new keywords. Pragmas are
 enclosed in the special ``{.`` and ``.}`` curly dot brackets. This tutorial
 does not cover pragmas. See the `manual <manual.html#pragmas>`_ or `user guide
-<nimrodc.html#additional-features>`_ for a description of the available
+<nimc.html#additional-features>`_ for a description of the available
 pragmas.
 
 
 Object Oriented Programming
 ===========================
 
-While Nimrod's support for object oriented programming (OOP) is minimalistic,
+While Nim's support for object oriented programming (OOP) is minimalistic,
 powerful OOP technics can be used. OOP is seen as *one* way to design a
 program, not *the only* way. Often a procedural approach leads to simpler
 and more efficient code. In particular, prefering composition over inheritance
@@ -55,7 +55,7 @@ a *constructor*).
 Objects have access to their type at runtime. There is an
 ``of`` operator that can be used to check the object's type:
 
-.. code-block:: nimrod
+.. code-block:: nim
   type
     TPerson = object of TObject
       name*: string  # the * means that `name` is accessible from other modules
@@ -86,20 +86,20 @@ in the GTK wrapper for instance.)
 
 **Note**: Composition (*has-a* relation) is often preferable to inheritance
 (*is-a* relation) for simple code reuse. Since objects are value types in
-Nimrod, composition is as efficient as inheritance.
+Nim, composition is as efficient as inheritance.
 
 
 Mutually recursive types
 ------------------------
 
 Objects, tuples and references can model quite complex data structures which
-depend on each other; they are *mutually recursive*. In Nimrod
+depend on each other; they are *mutually recursive*. In Nim
 these types can only be declared within a single type section. (Anything else
 would require arbitrary symbol lookahead which slows down compilation.)
 
 Example:
 
-.. code-block:: nimrod
+.. code-block:: nim
   type
     PNode = ref TNode # a traced reference to a TNode
     TNode = object
@@ -114,7 +114,7 @@ Example:
 
 Type conversions
 ----------------
-Nimrod distinguishes between `type casts`:idx: and `type conversions`:idx:.
+Nim distinguishes between `type casts`:idx: and `type conversions`:idx:.
 Casts are done with the ``cast`` operator and force the compiler to
 interpret a bit pattern to be of another type.
 
@@ -126,7 +126,7 @@ raised.
 The syntax for type conversions is ``destination_type(expression_to_convert)``
 (like an ordinary call):
 
-.. code-block:: nimrod
+.. code-block:: nim
   proc getID(x: TPerson): int =
     TStudent(x).id
 
@@ -141,9 +141,9 @@ variant types are needed.
 
 An example:
 
-.. code-block:: nimrod
+.. code-block:: nim
 
-  # This is an example how an abstract syntax tree could be modeled in Nimrod
+  # This is an example how an abstract syntax tree could be modeled in Nim
   type
     TNodeKind = enum  # the different node types
       nkInt,          # a leaf with an integer value
@@ -183,8 +183,8 @@ bound to a class. This has disadvantages:
 * Often it is unclear where the method should belong to: is
   ``join`` a string method or an array method?
 
-Nimrod avoids these problems by not assigning methods to a class. All methods
-in Nimrod are multi-methods. As we will see later, multi-methods are
+Nim avoids these problems by not assigning methods to a class. All methods
+in Nim are multi-methods. As we will see later, multi-methods are
 distinguished from procs only for dynamic binding purposes.
 
 
@@ -199,7 +199,7 @@ If there are no remaining arguments, the parentheses can be omitted:
 This method call syntax is not restricted to objects, it can be used
 for any type:
 
-.. code-block:: nimrod
+.. code-block:: nim
   
   echo("abc".len) # is the same as echo(len("abc"))
   echo("abc".toUpper())
@@ -211,7 +211,7 @@ postfix notation.)
 
 So "pure object oriented" code is easy to write:
 
-.. code-block:: nimrod
+.. code-block:: nim
   import strutils
   
   stdout.writeln("Give a list of numbers (separated by spaces): ")
@@ -221,12 +221,12 @@ So "pure object oriented" code is easy to write:
 
 Properties
 ----------
-As the above example shows, Nimrod has no need for *get-properties*:
+As the above example shows, Nim has no need for *get-properties*:
 Ordinary get-procedures that are called with the *method call syntax* achieve
 the same. But setting a value is different; for this a special setter syntax
 is needed:
 
-.. code-block:: nimrod
+.. code-block:: nim
   
   type
     TSocket* = object of TObject
@@ -252,7 +252,7 @@ is needed:
 The ``[]`` array access operator can be overloaded to provide
 `array properties`:idx:\ :
 
-.. code-block:: nimrod
+.. code-block:: nim
   type
     TVector* = object
       x, y, z: float
@@ -283,7 +283,7 @@ Dynamic dispatch
 Procedures always use static dispatch. For dynamic dispatch replace the
 ``proc`` keyword by ``method``:
 
-.. code-block:: nimrod
+.. code-block:: nim
   type
     PExpr = ref object of TObject ## abstract base class for an expression
     PLiteral = ref object of PExpr
@@ -311,7 +311,7 @@ requires dynamic binding.
 In a multi-method all parameters that have an object type are used for the
 dispatching:
 
-.. code-block:: nimrod
+.. code-block:: nim
 
   type
     TThing = object of TObject
@@ -336,7 +336,7 @@ As the example demonstrates, invocation of a multi-method cannot be ambiguous:
 Collide 2 is preferred over collide 1 because the resolution works from left to
 right. Thus ``TUnit, TThing`` is preferred over ``TThing, TUnit``.
 
-**Perfomance note**: Nimrod does not produce a virtual method table, but
+**Perfomance note**: Nim does not produce a virtual method table, but
 generates dispatch trees. This avoids the expensive indirect branch for method
 calls and enables inlining. However, other optimizations like compile time
 evaluation or dead code elimination do not work with methods.
@@ -345,7 +345,7 @@ evaluation or dead code elimination do not work with methods.
 Exceptions
 ==========
 
-In Nimrod exceptions are objects. By convention, exception types are
+In Nim exceptions are objects. By convention, exception types are
 prefixed with an 'E', not 'T'. The `system <system.html>`_ module defines an
 exception hierarchy that you might want to stick to. Exceptions derive from
 E_Base, which provides the common interface.
@@ -364,7 +364,7 @@ Raise statement
 ---------------
 Raising an exception is done with the ``raise`` statement:
 
-.. code-block:: nimrod
+.. code-block:: nim
   var
     e: ref EOS
   new(e)
@@ -375,7 +375,7 @@ If the ``raise`` keyword is not followed by an expression, the last exception
 is *re-raised*. For the purpose of avoiding repeating this common code pattern,
 the template ``newException`` in the ``system`` module can be used:
 
-.. code-block:: nimrod
+.. code-block:: nim
   raise newException(EOS, "the request to the OS failed")
 
 
@@ -384,7 +384,7 @@ Try statement
 
 The ``try`` statement handles exceptions:
 
-.. code-block:: nimrod
+.. code-block:: nim
   # read the first two lines of a text file that should contain numbers
   # and tries to add them
   var
@@ -428,7 +428,7 @@ If you need to *access* the actual exception object or message inside an
 <system.html#getCurrentExceptionMsg>`_ procs from the `system <system.html>`_
 module.  Example:
 
-.. code-block:: nimrod
+.. code-block:: nim
   try:
     doSomethingHere()
   except:
@@ -460,7 +460,7 @@ instance, if you specify that a proc raises ``EIO``, and at some point it (or
 one of the procs it calls) starts raising a new exception the compiler will
 prevent that proc from compiling. Usage example:
 
-.. code-block:: nimrod
+.. code-block:: nim
   proc complexProc() {.raises: [EIO, EArithmetic].} =
     ...
 
@@ -476,21 +476,21 @@ help you locate the offending code which has changed.
 If you want to add the ``{.raises.}`` pragma to existing code, the compiler can
 also help you. You can add the ``{.effects.}`` pragma statement to your proc and
 the compiler will output all inferred effects up to that point (exception
-tracking is part of Nimrod's effect system). Another more roundabout way to
-find out the list of exceptions raised by a proc is to use the Nimrod ``doc2``
+tracking is part of Nim's effect system). Another more roundabout way to
+find out the list of exceptions raised by a proc is to use the Nim ``doc2``
 command which generates documentation for a whole module and decorates all
-procs with the list of raised exceptions. You can read more about Nimrod's
+procs with the list of raised exceptions. You can read more about Nim's
 `effect system and related pragmas in the manual <manual.html#effect-system>`_.
 
 
 Generics
 ========
 
-Generics are Nimrod's means to parametrize procs, iterators or types
+Generics are Nim's means to parametrize procs, iterators or types
 with `type parameters`:idx:. They are most useful for efficient type safe
 containers:
 
-.. code-block:: nimrod
+.. code-block:: nim
   type
     TBinaryTree[T] = object      # TBinaryTree is a generic type with
                                  # with generic param ``T``
@@ -557,7 +557,7 @@ is not hidden and is used in the ``preorder`` iterator.
 Templates
 =========
 
-Templates are a simple substitution mechanism that operates on Nimrod's
+Templates are a simple substitution mechanism that operates on Nim's
 abstract syntax trees. Templates are processed in the semantic pass of the
 compiler. They integrate well with the rest of the language and share none
 of C's preprocessor macros flaws.
@@ -566,7 +566,7 @@ To *invoke* a template, call it like a procedure.
 
 Example:
 
-.. code-block:: nimrod
+.. code-block:: nim
   template `!=` (a, b: expr): expr =
     # this definition exists in the System module
     not (a == b)
@@ -585,7 +585,7 @@ for IEEE floating point numbers - NaN breaks basic boolean logic.)
 Templates are especially useful for lazy evaluation purposes. Consider a
 simple proc for logging:
 
-.. code-block:: nimrod
+.. code-block:: nim
   const
     debug = true
 
@@ -602,7 +602,7 @@ evaluation for procedures is *eager*).
 
 Turning the ``log`` proc into a template solves this problem:
 
-.. code-block:: nimrod
+.. code-block:: nim
   const
     debug = true
 
@@ -618,32 +618,11 @@ The parameters' types can be ordinary types or the meta types ``expr``
 (stands for *type description*). If the template has no explicit return type,
 ``stmt`` is used for consistency with procs and methods.
 
-The template body does not open a new scope. To open a new scope use a ``block``
-statement:
-
-.. code-block:: nimrod
-  template declareInScope(x: expr, t: typeDesc): stmt {.immediate.} =
-    var x: t
-
-  template declareInNewScope(x: expr, t: typeDesc): stmt {.immediate.} =
-    # open a new scope:
-    block:
-      var x: t
-
-  declareInScope(a, int)
-  a = 42  # works, `a` is known here
-  
-  declareInNewScope(b, int)
-  b = 42  # does not work, `b` is unknown
-
-(The `manual explains <manual.html#ordinary-vs-immediate-templates>`_  why the
-``immediate`` pragma is needed for these templates.)
-
 If there is a ``stmt`` parameter it should be the last in the template
 declaration. The reason is that statements can be passed to a template
 via a special ``:`` syntax:
 
-.. code-block:: nimrod
+.. code-block:: nim
 
   template withFile(f: expr, filename: string, mode: TFileMode,
                     body: stmt): stmt {.immediate.} =
@@ -672,18 +651,18 @@ Macros
 ======
 
 Macros enable advanced compile-time code transformations, but they cannot
-change Nimrod's syntax. However, this is no real restriction because Nimrod's
-syntax is flexible enough anyway. Macros have to be implemented in pure Nimrod
+change Nim's syntax. However, this is no real restriction because Nim's
+syntax is flexible enough anyway. Macros have to be implemented in pure Nim
 code if `foreign function interface (FFI)
 <manual.html#foreign-function-interface>`_ is not enabled in the compiler, but
 other than that restriction (which at some point in the future will go away)
-you can write any kind of Nimrod code and the compiler will run it at compile
+you can write any kind of Nim code and the compiler will run it at compile
 time.
 
-There are two ways to write a macro, either *generating* Nimrod source code and
+There are two ways to write a macro, either *generating* Nim source code and
 letting the compiler parse it, or creating manually an abstract syntax tree
 (AST) which you feed to the compiler. In order to build the AST one needs to
-know how the Nimrod concrete syntax is converted to an abstract syntax tree
+know how the Nim concrete syntax is converted to an abstract syntax tree
 (AST). The AST is documented in the `macros <macros.html>`_ module.
 
 Once your macro is finished, there are two ways to invoke it:
@@ -698,13 +677,13 @@ Expression Macros
 The following example implements a powerful ``debug`` command that accepts a
 variable number of arguments:
 
-.. code-block:: nimrod
-  # to work with Nimrod syntax trees, we need an API that is defined in the
+.. code-block:: nim
+  # to work with Nim syntax trees, we need an API that is defined in the
   # ``macros`` module:
   import macros
 
   macro debug(n: varargs[expr]): stmt =
-    # `n` is a Nimrod AST that contains a list of expressions;
+    # `n` is a Nim AST that contains a list of expressions;
     # this macro returns a list of statements:
     result = newNimNode(nnkStmtList, n)
     # iterate over any argument that is passed to this macro:
@@ -727,7 +706,7 @@ variable number of arguments:
 
 The macro call expands to:
 
-.. code-block:: nimrod
+.. code-block:: nim
   write(stdout, "a[0]")
   write(stdout, ": ")
   writeln(stdout, a[0])
@@ -751,7 +730,7 @@ invoked by an expression following a colon.
 The following example outlines a macro that generates a lexical analyzer from
 regular expressions:
 
-.. code-block:: nimrod
+.. code-block:: nim
 
   macro case_token(n: stmt): stmt =
     # creates a lexical analyzer from regular expressions
@@ -784,7 +763,7 @@ To give a footstart to writing macros we will show now how to turn your typical
 dynamic code into something that compiles statically. For the exercise we will
 use the following snippet of code as the starting point:
 
-.. code-block:: nimrod
+.. code-block:: nim
 
   import strutils, tables
 
@@ -848,7 +827,7 @@ time string with the *generated source code*, which we then pass to the
 ``parseStmt`` proc from the `macros module <macros.html>`_. Here is the
 modified source code implementing the macro:
 
-.. code-block:: nimrod
+.. code-block:: nim
   import macros, strutils
 
   macro readCfgAndBuildSource(cfgFilename: string): stmt =
@@ -893,13 +872,13 @@ this limitation by using the ``slurp`` proc from the `system module
 ``gorge`` which executes an external program and captures its output).
 
 The interesting thing is that our macro does not return a runtime ``TTable``
-object. Instead, it builds up Nimrod source code into the ``source`` variable.
+object. Instead, it builds up Nim source code into the ``source`` variable.
 For each line of the configuration file a ``const`` variable will be generated.
 To avoid conflicts we prefix these variables with ``cfg``. In essence, what the
 compiler is doing is replacing the line calling the macro with the following
 snippet of code:
 
-.. code-block:: nimrod
+.. code-block:: nim
   const cfgversion= "1.1"
   const cfglicenseOwner= "Hyori Lee"
   const cfglicenseKey= "M1Tl3PjBWO2CC48m"
@@ -919,14 +898,14 @@ Generating AST by hand
 ++++++++++++++++++++++
 
 To generate an AST we would need to intimately know the structures used by the
-Nimrod compiler exposed in the `macros module <macros.html>`_, which at first
+Nim compiler exposed in the `macros module <macros.html>`_, which at first
 look seems a daunting task. But we can use as helper shortcut the ``dumpTree``
 macro, which is used as a statement macro instead of an expression macro.
 Since we know that we want to generate a bunch of ``const`` symbols we can
 create the following source file and compile it to see what the compiler
 *expects* from us:
 
-.. code-block:: nimrod
+.. code-block:: nim
   import macros
 
   dumpTree:
@@ -969,7 +948,7 @@ identifier, optionally a type (can be an *empty* node) and the value. Armed
 with this knowledge, let's look at the finished version of the AST building
 macro:
 
-.. code-block:: nimrod
+.. code-block:: nim
   import macros, strutils
 
   macro readCfgAndBuildAST(cfgFilename: string): stmt =

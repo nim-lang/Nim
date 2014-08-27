@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -55,7 +55,7 @@ proc unidecode*(s: string): string =
   ##
   ## Example: 
   ## 
-  ## ..code-block:: nimrod
+  ## ..code-block:: nim
   ##
   ##   unidecode("\x53\x17\x4E\xB0")
   ##

@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Dominik Picheta
 #
 #    See the file "copying.txt", included in this
@@ -20,36 +20,40 @@ const
   redisNil* = "\0\0"
 
 type 
-  PPipeline = ref object
+  Pipeline = ref object
     enabled: bool
     buffer: string
     expected: int ## number of replies expected if pipelined
 
 type
-  TSendMode = enum
+  SendMode = enum
     normal, pipelined, multiple
 
 type
-  TRedis* {.pure, final.} = object
+  Redis* = object
     socket: TSocket
     connected: bool
-    pipeline: PPipeline
+    pipeline: Pipeline
   
-  TRedisStatus* = string
-  TRedisInteger* = biggestInt
-  TRedisString* = string ## Bulk reply
-  TRedisList* = seq[TRedisString] ## Multi-bulk reply
+  RedisStatus* = string
+  RedisInteger* = BiggestInt
+  RedisString* = string ## Bulk reply
+  RedisList* = seq[RedisString] ## Multi-bulk reply
 
-  EInvalidReply* = object of ESynch ## Invalid reply from redis
-  ERedis* = object of ESynch        ## Error in redis
+  ReplyError* = object of IOError ## Invalid reply from redis
+  RedisError* = object of IOError        ## Error in redis
 
-proc newPipeline(): PPipeline =
+{.deprecated: [TSendMode: SendMode, TRedis: Redis, TRedisStatus: RedisStatus,
+     TRedisInteger: RedisInteger, TRedisString: RedisString,
+     TRedisList: RedistList, EInvalidReply: ReplyError, ERedis: RedisError].}
+
+proc newPipeline(): Pipeline =
   new(result)
   result.buffer = ""
   result.enabled = false
   result.expected = 0
 
-proc open*(host = "localhost", port = 6379.TPort): TRedis =
+proc open*(host = "localhost", port = 6379.Port): Redis =
   ## Opens a connection to the redis server.
   result.socket = socket(buffered = false)
   if result.socket == InvalidSocket:
@@ -58,24 +62,24 @@ proc open*(host = "localhost", port = 6379.TPort): TRedis =
   result.pipeline = newPipeline()  
 
 proc raiseInvalidReply(expected, got: char) =
-  raise newException(EInvalidReply, 
+  raise newException(ReplyError, 
           "Expected '$1' at the beginning of a status reply got '$2'" %
           [$expected, $got])
 
-proc raiseNoOK(status: string, pipelineEnabled:bool) =
+proc raiseNoOK(status: string, pipelineEnabled: bool) =
   if pipelineEnabled and not (status == "QUEUED" or status == "PIPELINED"):
     raise newException(EInvalidReply, "Expected \"QUEUED\" or \"PIPELINED\" got \"$1\"" % status)
   elif not pipelineEnabled and status != "OK":
     raise newException(EInvalidReply, "Expected \"OK\" got \"$1\"" % status)
 
-template readSocket(r: TRedis, dummyVal:expr): stmt =
-  var line {.inject.} :TaintedString = ""
+template readSocket(r: Redis, dummyVal:expr): stmt =
+  var line {.inject.}: TaintedString = ""
   if r.pipeline.enabled:
     return dummyVal
   else:
     readLine(r.socket, line)
 
-proc parseStatus(r: TRedis, line: string = ""): TRedisStatus =
+proc parseStatus(r: Redis, line: string = ""): RedisStatus =
   if r.pipeline.enabled:
     return "PIPELINED"
 

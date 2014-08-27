@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Dominik Picheta
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -14,8 +14,8 @@ import sockets, strutils, parseutils, times, os, asyncio
 ## by `RFC 959 <http://tools.ietf.org/html/rfc959>`_. 
 ## 
 ## This module provides both a synchronous and asynchronous implementation.
-## The asynchronous implementation requires you to use the ``AsyncFTPClient``
-## function. You are then required to register the ``PAsyncFTPClient`` with a
+## The asynchronous implementation requires you to use the ``asyncFTPClient``
+## function. You are then required to register the ``AsyncFTPClient`` with a
 ## asyncio dispatcher using the ``register`` function. Take a look at the
 ## asyncio module documentation for more information.
 ##
@@ -24,64 +24,63 @@ import sockets, strutils, parseutils, times, os, asyncio
 ##
 ## Here is some example usage of this module:
 ## 
-## .. code-block:: Nimrod
-##    var ftp = FTPClient("example.org", user = "user", pass = "pass")
+## .. code-block:: Nim
+##    var ftp = ftpClient("example.org", user = "user", pass = "pass")
 ##    ftp.connect()
 ##    ftp.retrFile("file.ext", "file.ext")
 ##
 ## **Warning:** The API of this module is unstable, and therefore is subject
 ## to change.
 
-
 type
-  TFTPClient* = object of TObject
+  FTPClientObj* = object of RootObj
     case isAsync: bool
     of false:
-      csock: TSocket # Command connection socket
-      dsock: TSocket # Data connection socket
+      csock: Socket # Command connection socket
+      dsock: Socket # Data connection socket
     else:
       dummyA, dummyB: pointer # workaround a Nimrod API issue
-      asyncCSock: PAsyncSocket
-      asyncDSock: PAsyncSocket
-      handleEvent*: proc (ftp: PAsyncFTPClient, ev: TFTPEvent){.closure,gcsafe.}
-      disp: PDispatcher
-      asyncDSockID: PDelegate
+      asyncCSock: AsyncSocket
+      asyncDSock: AsyncSocket
+      handleEvent*: proc (ftp: AsyncFTPClient, ev: FTPEvent){.closure,gcsafe.}
+      disp: Dispatcher
+      asyncDSockID: Delegate
     user, pass: string
     address: string
-    port: TPort
+    port: Port
     
     jobInProgress: bool
-    job: ref TFTPJob
+    job: ref FTPJob
 
     dsockConnected: bool
 
-  PFTPClient* = ref TFTPClient
+  FTPClient* = ref FTPClientObj
 
   FTPJobType* = enum
     JRetrText, JRetr, JStore
 
-  TFTPJob = object
+  FTPJob = object
     prc: proc (ftp: PFTPClient, async: bool): bool {.nimcall, gcsafe.}
     case typ*: FTPJobType
     of JRetrText:
       lines: string
     of JRetr, JStore:
-      file: TFile
+      file: File
       filename: string
-      total: biggestInt # In bytes.
-      progress: biggestInt # In bytes.
-      oneSecond: biggestInt # Bytes transferred in one second.
+      total: BiggestInt # In bytes.
+      progress: BiggestInt # In bytes.
+      oneSecond: BiggestInt # Bytes transferred in one second.
       lastProgressReport: float # Time
       toStore: string # Data left to upload (Only used with async)
     else: nil
 
-  PAsyncFTPClient* = ref TAsyncFTPClient ## Async alternative to TFTPClient.
-  TAsyncFTPClient* = object of TFTPClient
+  AsyncFTPClient* = ref AsyncFTPClientObj ## Async alternative to TFTPClient.
+  AsyncFTPClientObj* = object of FTPClientObj
 
   FTPEventType* = enum
     EvTransferProgress, EvLines, EvRetr, EvStore
 
-  TFTPEvent* = object ## Event
+  FTPEvent* = object ## Event
     filename*: string
     case typ*: FTPEventType
     of EvLines:
@@ -89,13 +88,19 @@ type
     of EvRetr, EvStore: ## Retr/Store operation finished.
       nil 
     of EvTransferProgress:
-      bytesTotal*: biggestInt     ## Bytes total.
-      bytesFinished*: biggestInt  ## Bytes transferred.
-      speed*: biggestInt          ## Speed in bytes/s
+      bytesTotal*: BiggestInt     ## Bytes total.
+      bytesFinished*: BiggestInt  ## Bytes transferred.
+      speed*: BiggestInt          ## Speed in bytes/s
       currentJob*: FTPJobType     ## The current job being performed.
 
-  EInvalidReply* = object of ESynch
-  EFTP* = object of ESynch
+  ReplyError* = object of IOError
+  FTPError* = object of IOError
+
+{.deprecated: [
+  TFTPClient: FTPClientObj, TFTPJob: FTPJob, PAsyncFTPClient: AsyncFTPClient,
+  TAsyncFTPClient: AsyncFTPClientObj, TFTPEvent: FTPEvent,
+  EInvalidReply: ReplyError, EFTP: FTPError
+].}
 
 proc ftpClient*(address: string, port = TPort(21),
                 user, pass = ""): PFTPClient =

@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -56,7 +56,7 @@ import
 #  xmlElementCloseEnd, ## ``/>`` 
 
 type 
-  TXmlEventKind* = enum ## enumation of all events that may occur when parsing
+  XmlEventKind* = enum ## enumation of all events that may occur when parsing
     xmlError,           ## an error ocurred during parsing
     xmlEof,             ## end of file reached
     xmlCharData,        ## character data
@@ -72,7 +72,7 @@ type
     xmlEntity,          ## &entity;
     xmlSpecial          ## ``<! ... data ... >``
     
-  TXmlError* = enum          ## enumeration that lists all errors that can occur
+  XmlErrorKind* = enum       ## enumeration that lists all errors that can occur
     errNone,                 ## no error
     errEndOfCDataExpected,   ## ``]]>`` expected
     errNameExpected,         ## name expected
@@ -83,23 +83,26 @@ type
     errQuoteExpected,        ## ``"`` or ``'`` expected
     errEndOfCommentExpected  ## ``-->`` expected
     
-  TParserState = enum 
+  ParserState = enum 
     stateStart, stateNormal, stateAttr, stateEmptyElementTag, stateError
 
-  TXmlParseOption* = enum  ## options for the XML parser
+  XmlParseOption* = enum  ## options for the XML parser
     reportWhitespace,      ## report whitespace
     reportComments         ## report comments
 
-  TXmlParser* = object of TBaseLexer ## the parser object.
+  XmlParser* = object of TBaseLexer ## the parser object.
     a, b, c: string
-    kind: TXmlEventKind
-    err: TXmlError
-    state: TParserState
+    kind: XmlEventKind
+    err: XmlErrorKind
+    state: ParserState
     filename: string
-    options: set[TXmlParseOption]
- 
+    options: set[XmlParseOption]
+
+{.deprecated: [TXmlParser: XmlParser, TXmlParseOptions: XmlParseOptions,
+    TXmlError: XmlErrorKind, TXmlEventKind: XmlEventKind].}
+
 const
-  errorMessages: array [TXmlError, string] = [
+  errorMessages: array[XmlError, string] = [
     "no error",
     "']]>' expected",
     "name expected",
@@ -111,8 +114,8 @@ const
     "'-->' expected"
   ]
 
-proc open*(my: var TXmlParser, input: PStream, filename: string,
-           options: set[TXmlParseOption] = {}) =
+proc open*(my: var XmlParser, input: Stream, filename: string,
+           options: set[XmlParseOption] = {}) =
   ## initializes the parser with an input stream. `Filename` is only used
   ## for nice error messages. The parser's behaviour can be controlled by
   ## the `options` parameter: If `options` contains ``reportWhitespace``
@@ -127,7 +130,7 @@ proc open*(my: var TXmlParser, input: PStream, filename: string,
   my.b = ""
   my.options = options
   
-proc close*(my: var TXmlParser) {.inline.} = 
+proc close*(my: var XmlParser) {.inline.} = 
   ## closes the parser `my` and its associated input stream.
   lexbase.close(my)
 

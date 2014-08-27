@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2010 Dominik Picheta
 #
 #    See the file "copying.txt", included in this
@@ -9,7 +9,8 @@
 
 
 import strutils
-## This module implements XML DOM Level 2 Core specification(http://www.w3.org/TR/2000/REC-DOM-Level-2-Core-20001113/core.html)
+## This module implements XML DOM Level 2 Core
+## specification (http://www.w3.org/TR/2000/REC-DOM-Level-2-Core-20001113/core.html)
 
 
 #http://www.w3.org/TR/2000/REC-DOM-Level-2-Core-20001113/core.html

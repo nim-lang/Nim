@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -18,20 +18,23 @@ import
 include "system/inclrtl"
 
 type
-  TStringTableMode* = enum    ## describes the tables operation mode
+  StringTableMode* = enum     ## describes the tables operation mode
     modeCaseSensitive,        ## the table is case sensitive
     modeCaseInsensitive,      ## the table is case insensitive
     modeStyleInsensitive      ## the table is style insensitive
-  TKeyValuePair = tuple[key, val: string]
-  TKeyValuePairSeq = seq[TKeyValuePair]
-  TStringTable* = object of RootObj
+  KeyValuePair = tuple[key, val: string]
+  KeyValuePairSeq = seq[KeyValuePair]
+  StringTableObj* = object of RootObj
     counter: int
-    data: TKeyValuePairSeq
-    mode: TStringTableMode
+    data: KeyValuePairSeq
+    mode: StringTableMode
 
-  PStringTable* = ref TStringTable ## use this type to declare string tables
+  StringTableRef* = ref StringTableObj ## use this type to declare string tables
 
-proc len*(t: PStringTable): int {.rtl, extern: "nst$1".} =
+{.deprecated: [TStringTableMode: StringTableMode,
+  TStringTable: StringTableObj, PStringTable: StringTableRef].}
+
+proc len*(t: StringTableRef): int {.rtl, extern: "nst$1".} =
   ## returns the number of keys in `t`.
   result = t.counter
 
@@ -54,7 +57,7 @@ iterator values*(t: PStringTable): string =
       yield t.data[h].val
 
 type
-  TFormatFlag* = enum         ## flags for the `%` operator
+  FormatFlag* = enum          ## flags for the `%` operator
     useEnvironment,           ## use environment variable if the ``$key``
                               ## is not found in the table
     useEmpty,                 ## use the empty string as a default, thus it
@@ -62,6 +65,8 @@ type
                               ## in the table
     useKey                    ## do not replace ``$key`` if it is not found
                               ## in the table (or in the environment)
+
+{.deprecated: [TFormatFlag: FormatFlag].}
 
 # implementation
 

@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -10,8 +10,11 @@
 ## This module implements some common generic algorithms.
 
 type
-  TSortOrder* = enum   ## sort order
+  SortOrder* = enum   ## sort order
     Descending, Ascending 
+
+{.deprecated: [TSortOrder: SortOrder].}
+
 
 proc `*`*(x: int, order: TSortOrder): int {.inline.} = 
   ## flips `x` if ``order == Descending``;

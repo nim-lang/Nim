@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -25,8 +25,10 @@ const
 
 
 type
-  TComplex* = tuple[re, im: float]
+  Complex* = tuple[re, im: float]
     ## a complex number, consisting of a real and an imaginary part
+
+{.deprecated: [TComplex: Complex].}
 
 proc `==` *(x, y: TComplex): bool =
   ## Compare two complex numbers `x` and `y` for equality.

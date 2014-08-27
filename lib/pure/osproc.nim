@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -24,7 +24,7 @@ when defined(linux):
   import linux
 
 type
-  TProcess = object of RootObj
+  ProcessObj = object of RootObj
     when defined(windows):
       fProcessHandle: THandle
       inHandle, outHandle, errHandle: FileHandle
@@ -35,9 +35,9 @@ type
       id: TPid
     exitCode: cint
 
-  PProcess* = ref TProcess ## represents an operating system process
+  Process* = ref ProcessObj ## represents an operating system process
 
-  TProcessOption* = enum ## options that can be passed `startProcess`
+  ProcessOption* = enum ## options that can be passed `startProcess`
     poEchoCmd,           ## echo the command before execution
     poUsePath,           ## Asks system to search for executable using PATH environment
                          ## variable.
@@ -46,6 +46,9 @@ type
                          ## Use it only if `command` comes from trused source.
     poStdErrToStdOut,    ## merge stdout and stderr to the stdout stream
     poParentStreams      ## use the parent's streams
+
+{.deprecated: [TProcess: ProcessObj, PProcess: Process,
+  TProcessOption: ProcessOption].}
 
 const poUseShell* {.deprecated.} = poUsePath
   ## Deprecated alias for poUsePath.
@@ -125,7 +128,7 @@ proc startProcess*(command: string,
                    args: openArray[string] = [],
                    env: PStringTable = nil,
                    options: set[TProcessOption] = {poStdErrToStdOut}):
-              PProcess {.rtl, extern: "nosp$1", tags: [ExecIOEffect, FReadEnv].}
+              PProcess {.rtl, extern: "nosp$1", tags: [ExecIOEffect, ReadEnvEffect].}
   ## Starts a process. `Command` is the executable file, `workingDir` is the
   ## process's working directory. If ``workingDir == ""`` the current directory
   ## is used. `args` are the command line arguments that are passed to the
@@ -150,7 +153,7 @@ proc startProcess*(command: string,
 
 proc startCmd*(command: string, options: set[TProcessOption] = {
                poStdErrToStdOut, poUsePath}): PProcess {.
-               tags: [ExecIOEffect, FReadEnv], deprecated.} =
+               tags: [ExecIOEffect, ReadEnvEffect], deprecated.} =
   ## Deprecated - use `startProcess` directly.
   result = startProcess(command=command, options=options + {poEvalCommand})
 
@@ -233,7 +236,7 @@ proc countProcessors*(): int {.rtl, extern: "nosp$1".} =
 proc execProcesses*(cmds: openArray[string],
                     options = {poStdErrToStdOut, poParentStreams},
                     n = countProcessors()): int {.rtl, extern: "nosp$1",
-                    tags: [ExecIOEffect, TimeEffect, FReadEnv]} =
+                    tags: [ExecIOEffect, TimeEffect, ReadEnvEffect]} =
   ## executes the commands `cmds` in parallel. Creates `n` processes
   ## that execute in parallel. The highest return value of all processes
   ## is returned.
@@ -584,12 +587,12 @@ elif not defined(useNimRtl):
 
   when not defined(useFork):
     proc startProcessAuxSpawn(data: TStartProcessData): TPid {.
-      tags: [ExecIOEffect, FReadEnv], gcsafe.}
+      tags: [ExecIOEffect, ReadEnvEffect], gcsafe.}
   proc startProcessAuxFork(data: TStartProcessData): TPid {.
-    tags: [ExecIOEffect, FReadEnv], gcsafe.}
+    tags: [ExecIOEffect, ReadEnvEffect], gcsafe.}
   {.push stacktrace: off, profiler: off.}
   proc startProcessAfterFork(data: ptr TStartProcessData) {.
-    tags: [ExecIOEffect, FReadEnv], cdecl, gcsafe.}
+    tags: [ExecIOEffect, ReadEnvEffect], cdecl, gcsafe.}
   {.pop.}
 
   proc startProcess(command: string,

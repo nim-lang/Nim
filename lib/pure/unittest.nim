@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Nimrod Contributors
 #
 #    See the file "copying.txt", included in this
@@ -26,16 +26,19 @@ when not defined(ECMAScript):
   import terminal
 
 type
-  TTestStatus* = enum OK, FAILED
-  TOutputLevel* = enum PRINT_ALL, PRINT_FAILURES, PRINT_NONE
+  TestStatus* = enum OK, FAILED
+  OutputLevel* = enum PRINT_ALL, PRINT_FAILURES, PRINT_NONE
+
+{.deprecated: [TTestStatus: TestStatus, TOutputLevel: OutputLevel]}
 
 var 
-  # XXX: These better be thread-local
-  AbortOnError*: bool
-  OutputLevel*: TOutputLevel
-  ColorOutput*: bool
+  abortOnError* {.threadvar.}: bool
+  outputLevel* {.threadvar.}: OutputLevel
+  colorOutput* {.threadvar.}: bool
   
-  checkpoints: seq[string] = @[]
+  checkpoints {.threadvar.}: seq[string]
+
+checkpoints = @[]
 
 template TestSetupIMPL*: stmt {.immediate, dirty.} = discard
 template TestTeardownIMPL*: stmt {.immediate, dirty.} = discard
@@ -53,7 +56,7 @@ template suite*(name: expr, body: stmt): stmt {.immediate, dirty.} =
 
     body
 
-proc testDone(name: string, s: TTestStatus) =
+proc testDone(name: string, s: TestStatus) =
   if s == FAILED:
     program_result += 1
 
@@ -192,15 +195,15 @@ when declared(stdout):
   ## Reading settings
   var envOutLvl = os.getEnv("NIMTEST_OUTPUT_LVL").string
 
-  AbortOnError = existsEnv("NIMTEST_ABORT_ON_ERROR")
-  ColorOutput  = not existsEnv("NIMTEST_NO_COLOR")
+  abortOnError = existsEnv("NIMTEST_ABORT_ON_ERROR")
+  colorOutput  = not existsEnv("NIMTEST_NO_COLOR")
 
 else:
   var envOutLvl = "" # TODO
-  ColorOutput  = false
+  colorOutput  = false
 
 if envOutLvl.len > 0:
-  for opt in countup(low(TOutputLevel), high(TOutputLevel)):
+  for opt in countup(low(OutputLevel), high(OutputLevel)):
     if $opt == envOutLvl:
-      OutputLevel = opt
+      outputLevel = opt
       break

@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -35,7 +35,7 @@ proc parseHex*(s: string, number: var int, start = 0): int {.
   ## can use this feature to *chain* calls, though the result int will quickly
   ## overflow. Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   var value = 0
   ##   discard parseHex("0x38", value)
   ##   assert value == 56
@@ -332,7 +332,7 @@ proc parseFloat*(s: string, number: var float, start = 0): int {.
   number = bf
   
 type
-  TInterpolatedKind* = enum  ## describes for `interpolatedFragments`
+  InterpolatedKind* = enum   ## describes for `interpolatedFragments`
                              ## which part of the interpolated string is
                              ## yielded; for example in "str$$$var${expr}"
     ikStr,                   ## ``str`` part of the interpolated string
@@ -340,7 +340,9 @@ type
     ikVar,                   ## ``var`` part of the interpolated string
     ikExpr                   ## ``expr`` part of the interpolated string
 
-iterator interpolatedFragments*(s: string): tuple[kind: TInterpolatedKind,
+{.deprecated: [TInterpolatedKind: InterpolatedKind].}
+
+iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
   value: string] =
   ## Tokenizes the string `s` into substrings for interpolation purposes.
   ##
@@ -360,7 +362,7 @@ iterator interpolatedFragments*(s: string): tuple[kind: TInterpolatedKind,
   ##   (ikString, "  ")
   ##   (ikDollar, "$")
   var i = 0
-  var kind: TInterpolatedKind
+  var kind: InterpolatedKind
   while true:
     var j = i
     if s[j] == '$':

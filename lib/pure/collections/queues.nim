@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -12,13 +12,15 @@
 import math
 
 type
-  TQueue* {.pure, final.}[T] = object ## a queue
+  Queue*[T] = object ## a queue
     data: seq[T]
     rd, wr, count, mask: int
-    
+
+{.deprecated: [TQueue: Queue].}
+
 proc initQueue*[T](initialSize=4): TQueue[T] =
   ## creates a new queue. `initialSize` needs to be a power of 2.
-  assert IsPowerOfTwo(initialSize)
+  assert isPowerOfTwo(initialSize)
   result.mask = initialSize-1
   newSeq(result.data, initialSize)
 

@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2011 Alex Mitchell
 #
 #    See the file "copying.txt", included in this
@@ -14,10 +14,10 @@
 ## it was inspired by Python's PyEE module. There are two ways you can use
 ## events: one is a python-inspired way; the other is more of a C-style way.
 ##
-## .. code-block:: Nimrod
+## .. code-block:: Nim
 ##    var ee = initEventEmitter()
-##    var genericargs: TEventArgs
-##    proc handleevent(e: TEventArgs) =
+##    var genericargs: EventArgs
+##    proc handleevent(e: EventArgs) =
 ##        echo("Handled!")
 ##
 ##    # Python way
@@ -27,21 +27,24 @@
 ##    # C/Java way
 ##    # Declare a type
 ##    type
-##        TSomeObject = object of TObject
-##            SomeEvent: TEventHandler
-##    var myobj: TSomeObject
+##        SomeObject = object of RootObj
+##            SomeEvent: EventHandler
+##    var myobj: SomeObject
 ##    myobj.SomeEvent = initEventHandler("SomeEvent")
 ##    myobj.SomeEvent.addHandler(handleevent)
 ##    ee.emit(myobj.SomeEvent, genericargs)
 
 type
-  TEventArgs* = object of TObject ## Base object for event arguments that are passed to callback functions.
-  TEventHandler* = tuple[name: string, handlers: seq[proc(e:TEventArgs) {.closure.}]] ## An eventhandler for an event.
+  EventArgs* = object of RootObj ## Base object for event arguments that are passed to callback functions.
+  EventHandler* = tuple[name: string, handlers: seq[proc(e: EventArgs) {.closure.}]] ## An eventhandler for an event.
 
 type
-  TEventEmitter* = object {.pure, final.} ## An object that fires events and holds event handlers for an object.
-    s: seq[TEventHandler]
-  EInvalidEvent* = object of EInvalidValue
+  EventEmitter* = object ## An object that fires events and holds event handlers for an object.
+    s: seq[EventHandler]
+  EventError* = object of ValueError
+
+{.deprecated: [TEventArgs: EventArgs, TEventHandler: EventHandler,
+  TEventEmitter: EventEmitter, EInvalidEvent: EventError].}
     
 proc initEventHandler*(name: string): TEventHandler =
   ## Initializes an EventHandler with the specified name and returns it.
