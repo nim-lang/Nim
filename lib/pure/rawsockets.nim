@@ -162,7 +162,7 @@ proc close*(socket: SocketHandle) =
   # TODO: These values should not be discarded. An EOS should be raised.
   # http://stackoverflow.com/questions/12463473/what-happens-if-you-call-close-on-a-bsd-socket-multiple-times
 
-proc bindAddr*(socket: SocketHandle, name: ptr SockAddr, namelen: SockLen): cint =
+proc bindAddr*(socket: SocketHandle, name: ptr SockAddr, namelen: Socklen): cint =
   result = bindSocket(socket, name, namelen)
 
 proc listen*(socket: SocketHandle, backlog = SOMAXCONN): cint {.tags: [ReadIOEffect].} =
@@ -184,12 +184,12 @@ proc getAddrInfo*(address: string, port: Port, af: Domain = AF_INET, typ: SockTy
   hints.ai_family = toInt(af)
   hints.ai_socktype = toInt(typ)
   hints.ai_protocol = toInt(prot)
-  var gaiResult = getAddrInfo(address, $port, addr(hints), result)
+  var gaiResult = getaddrinfo(address, $port, addr(hints), result)
   if gaiResult != 0'i32:
     when useWinVersion:
       raiseOSError(osLastError())
     else:
-      raise newException(EOS, $gai_strerror(gaiResult))
+      raise newException(OSError, $gai_strerror(gaiResult))
 
 proc dealloc*(ai: ptr AddrInfo) =
   freeaddrinfo(ai)
@@ -268,7 +268,7 @@ proc getHostByAddr*(ip: string): Hostent {.tags: [ReadIOEffect].} =
     var s = posix.gethostbyaddr(addr(myaddr), sizeof(myaddr).Socklen, 
                                 cint(posix.AF_INET))
     if s == nil:
-      raise newException(EOS, $hstrerror(h_errno))
+      raise newException(OSError, $hstrerror(h_errno))
   
   result.name = $s.h_name
   result.aliases = cstringArrayToSeq(s.h_aliases)
@@ -280,7 +280,7 @@ proc getHostByAddr*(ip: string): Hostent {.tags: [ReadIOEffect].} =
     elif s.h_addrtype == posix.AF_INET6:
       result.addrtype = AF_INET6
     else:
-      raise newException(EOS, "unknown h_addrtype")
+      raise newException(OSError, "unknown h_addrtype")
   result.addrList = cstringArrayToSeq(s.h_addr_list)
   result.length = int(s.h_length)
 
@@ -301,7 +301,7 @@ proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} =
     elif s.h_addrtype == posix.AF_INET6:
       result.addrtype = AF_INET6
     else:
-      raise newException(EOS, "unknown h_addrtype")
+      raise newException(OSError, "unknown h_addrtype")
   result.addrList = cstringArrayToSeq(s.h_addr_list)
   result.length = int(s.h_length)
 
@@ -314,7 +314,7 @@ proc getSockName*(socket: SocketHandle): Port =
     name.sin_family = posix.AF_INET
   #name.sin_port = htons(cint16(port))
   #name.sin_addr.s_addr = htonl(INADDR_ANY)
-  var namelen = sizeof(name).SockLen
+  var namelen = sizeof(name).Socklen
   if getsockname(socket, cast[ptr SockAddr](addr(name)),
                  addr(namelen)) == -1'i32:
     raiseOSError(osLastError())
@@ -324,7 +324,7 @@ proc getSockOptInt*(socket: SocketHandle, level, optname: int): int {.
   tags: [ReadIOEffect].} = 
   ## getsockopt for integer options.
   var res: cint
-  var size = sizeof(res).SockLen
+  var size = sizeof(res).Socklen
   if getsockopt(socket, cint(level), cint(optname), 
                 addr(res), addr(size)) < 0'i32:
     raiseOSError(osLastError())
@@ -335,7 +335,7 @@ proc setSockOptInt*(socket: SocketHandle, level, optname, optval: int) {.
   ## setsockopt for integer options.
   var value = cint(optval)
   if setsockopt(socket, cint(level), cint(optname), addr(value),  
-                sizeof(value).SockLen) < 0'i32:
+                sizeof(value).Socklen) < 0'i32:
     raiseOSError(osLastError())
 
 proc setBlocking*(s: SocketHandle, blocking: bool) =
@@ -361,13 +361,13 @@ proc timeValFromMilliseconds(timeout = 500): Timeval =
     result.tv_sec = seconds.int32
     result.tv_usec = ((timeout - seconds * 1000) * 1000).int32
 
-proc createFdSet(fd: var FD_SET, s: seq[SocketHandle], m: var int) = 
+proc createFdSet(fd: var FdSet, s: seq[SocketHandle], m: var int) = 
   FD_ZERO(fd)
   for i in items(s): 
     m = max(m, int(i))
-    FD_SET(i, fd)
+    fdSet(i, fd)
    
-proc pruneSocketSet(s: var seq[SocketHandle], fd: var FD_SET) = 
+proc pruneSocketSet(s: var seq[SocketHandle], fd: var FdSet) = 
   var i = 0
   var L = s.len
   while i < L:
@@ -386,9 +386,9 @@ proc select*(readfds: var seq[SocketHandle], timeout = 500): int =
   ## 
   ## A socket is removed from the specific ``seq`` when it has data waiting to
   ## be read/written to or has errors (``exceptfds``).
-  var tv {.noInit.}: TTimeval = timeValFromMilliseconds(timeout)
+  var tv {.noInit.}: Timeval = timeValFromMilliseconds(timeout)
   
-  var rd: TFdSet
+  var rd: FdSet
   var m = 0
   createFdSet((rd), readfds, m)
   
@@ -410,7 +410,7 @@ proc selectWrite*(writefds: var seq[SocketHandle],
   ## an unlimited time.
   var tv {.noInit.}: Timeval = timeValFromMilliseconds(timeout)
   
-  var wr: TFdSet
+  var wr: FdSet
   var m = 0
   createFdSet((wr), writefds, m)
   
@@ -422,5 +422,5 @@ proc selectWrite*(writefds: var seq[SocketHandle],
   pruneSocketSet(writefds, (wr))
 
 when defined(Windows):
-  var wsa: WSADATA
-  if WSAStartup(0x0101'i16, addr wsa) != 0: raiseOSError(osLastError())
+  var wsa: WSAData
+  if wsaStartup(0x0101'i16, addr wsa) != 0: raiseOSError(osLastError())

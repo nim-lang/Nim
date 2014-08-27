@@ -70,7 +70,7 @@ proc parsePath(uri: string, i: var int, result: var TUri) =
   i.inc parseUntil(uri, result.path, {'?', '#'}, i)
 
   # The 'mailto' scheme's PATH actually contains the hostname/username
-  if result.scheme.ToLower() == "mailto":
+  if result.scheme.toLower == "mailto":
     parseAuthority(result.path, result)
     result.path = ""
 
