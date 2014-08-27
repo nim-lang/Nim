@@ -82,7 +82,7 @@ type
     stateEof, stateStart, stateObject, stateArray, stateExpectArrayComma,
     stateExpectObjectComma, stateExpectColon, stateExpectValue
 
-  JsonParser* = object of TBaseLexer ## the parser object.
+  JsonParser* = object of BaseLexer ## the parser object.
     a: string
     tok: TTokKind
     kind: JsonEventKind
@@ -119,7 +119,7 @@ const
     "{", "}", "[", "]", ":", ","
   ]
 
-proc open*(my: var JsonParser, input: PStream, filename: string) =
+proc open*(my: var JsonParser, input: Stream, filename: string) =
   ## initializes the parser with an input stream. `Filename` is only used
   ## for nice error messages.
   lexbase.open(my, input)
@@ -224,7 +224,7 @@ proc parseString(my: var JsonParser): TTokKind =
         if handleHexChar(buf[pos], r): inc(pos)
         if handleHexChar(buf[pos], r): inc(pos)
         if handleHexChar(buf[pos], r): inc(pos)
-        add(my.a, toUTF8(TRune(r)))
+        add(my.a, toUTF8(Rune(r)))
       else: 
         # don't bother with the error
         add(my.a, buf[pos])
@@ -402,7 +402,7 @@ proc next*(my: var JsonParser) =
     case tk
     of tkString, tkInt, tkFloat, tkTrue, tkFalse, tkNull:
       my.state[i] = stateEof # expect EOF next!
-      my.kind = TJsonEventKind(ord(tk))
+      my.kind = JsonEventKind(ord(tk))
     of tkBracketLe: 
       my.state.add(stateArray) # we expect any
       my.kind = jsonArrayStart
@@ -418,7 +418,7 @@ proc next*(my: var JsonParser) =
     case tk
     of tkString, tkInt, tkFloat, tkTrue, tkFalse, tkNull:
       my.state.add(stateExpectColon)
-      my.kind = TJsonEventKind(ord(tk))
+      my.kind = JsonEventKind(ord(tk))
     of tkBracketLe: 
       my.state.add(stateExpectColon)
       my.state.add(stateArray)
@@ -437,7 +437,7 @@ proc next*(my: var JsonParser) =
     case tk
     of tkString, tkInt, tkFloat, tkTrue, tkFalse, tkNull:
       my.state.add(stateExpectArrayComma) # expect value next!
-      my.kind = TJsonEventKind(ord(tk))
+      my.kind = JsonEventKind(ord(tk))
     of tkBracketLe: 
       my.state.add(stateExpectArrayComma)
       my.state.add(stateArray)
@@ -488,7 +488,7 @@ proc next*(my: var JsonParser) =
     case tk
     of tkString, tkInt, tkFloat, tkTrue, tkFalse, tkNull:
       my.state[i] = stateExpectObjectComma
-      my.kind = TJsonEventKind(ord(tk))
+      my.kind = JsonEventKind(ord(tk))
     of tkBracketLe: 
       my.state[i] = stateExpectObjectComma
       my.state.add(stateArray)
@@ -505,7 +505,7 @@ proc next*(my: var JsonParser) =
 # ------------- higher level interface ---------------------------------------
 
 type
-  TJsonNodeKind* = enum ## possible JSON node types
+  JsonNodeKind* = enum ## possible JSON node types
     JNull,
     JBool,
     JInt,
@@ -514,9 +514,9 @@ type
     JObject,
     JArray
     
-  PJsonNode* = ref TJsonNode ## JSON node 
-  TJsonNode* {.final, pure, acyclic.} = object
-    case kind*: TJsonNodeKind
+  JsonNode* = ref JsonNodeObj ## JSON node 
+  JsonNodeObj* {.acyclic.} = object
+    case kind*: JsonNodeKind
     of JString:
       str*: string
     of JInt:
@@ -528,104 +528,104 @@ type
     of JNull:
       nil
     of JObject:
-      fields*: seq[tuple[key: string, val: PJsonNode]]
+      fields*: seq[tuple[key: string, val: JsonNode]]
     of JArray:
-      elems*: seq[PJsonNode]
+      elems*: seq[JsonNode]
 
   JsonParsingError* = object of ValueError ## is raised for a JSON error
 
 {.deprecated: [EJsonParsingError: JsonParsingError, TJsonNode: JsonNodeObj,
     PJsonNode: JsonNode, TJsonNodeKind: JsonNodeKind].}
 
-proc raiseParseErr*(p: TJsonParser, msg: string) {.noinline, noreturn.} =
+proc raiseParseErr*(p: JsonParser, msg: string) {.noinline, noreturn.} =
   ## raises an `EJsonParsingError` exception.
-  raise newException(EJsonParsingError, errorMsgExpected(p, msg))
+  raise newException(JsonParsingError, errorMsgExpected(p, msg))
 
-proc newJString*(s: string): PJsonNode =
+proc newJString*(s: string): JsonNode =
   ## Creates a new `JString PJsonNode`.
   new(result)
   result.kind = JString
   result.str = s
 
-proc newJStringMove(s: string): PJsonNode =
+proc newJStringMove(s: string): JsonNode =
   new(result)
   result.kind = JString
   shallowCopy(result.str, s)
 
-proc newJInt*(n: BiggestInt): PJsonNode =
+proc newJInt*(n: BiggestInt): JsonNode =
   ## Creates a new `JInt PJsonNode`.
   new(result)
   result.kind = JInt
   result.num  = n
 
-proc newJFloat*(n: float): PJsonNode =
+proc newJFloat*(n: float): JsonNode =
   ## Creates a new `JFloat PJsonNode`.
   new(result)
   result.kind = JFloat
   result.fnum  = n
 
-proc newJBool*(b: bool): PJsonNode =
+proc newJBool*(b: bool): JsonNode =
   ## Creates a new `JBool PJsonNode`.
   new(result)
   result.kind = JBool
   result.bval = b
 
-proc newJNull*(): PJsonNode =
+proc newJNull*(): JsonNode =
   ## Creates a new `JNull PJsonNode`.
   new(result)
 
-proc newJObject*(): PJsonNode =
+proc newJObject*(): JsonNode =
   ## Creates a new `JObject PJsonNode`
   new(result)
   result.kind = JObject
   result.fields = @[]
 
-proc newJArray*(): PJsonNode =
+proc newJArray*(): JsonNode =
   ## Creates a new `JArray PJsonNode`
   new(result)
   result.kind = JArray
   result.elems = @[]
 
 
-proc `%`*(s: string): PJsonNode =
+proc `%`*(s: string): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JString PJsonNode`.
   new(result)
   result.kind = JString
   result.str = s
 
-proc `%`*(n: BiggestInt): PJsonNode =
+proc `%`*(n: BiggestInt): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JInt PJsonNode`.
   new(result)
   result.kind = JInt
   result.num  = n
 
-proc `%`*(n: float): PJsonNode =
+proc `%`*(n: float): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JFloat PJsonNode`.
   new(result)
   result.kind = JFloat
   result.fnum  = n
 
-proc `%`*(b: bool): PJsonNode =
+proc `%`*(b: bool): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JBool PJsonNode`.
   new(result)
   result.kind = JBool
   result.bval = b
 
-proc `%`*(keyVals: openArray[tuple[key: string, val: PJsonNode]]): PJsonNode =
+proc `%`*(keyVals: openArray[tuple[key: string, val: JsonNode]]): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JObject PJsonNode`
   new(result)
   result.kind = JObject
   newSeq(result.fields, keyVals.len)
   for i, p in pairs(keyVals): result.fields[i] = p
 
-proc `%`*(elements: openArray[PJsonNode]): PJsonNode =
+proc `%`*(elements: openArray[JsonNode]): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JArray PJsonNode`
   new(result)
   result.kind = JArray
   newSeq(result.elems, elements.len)
   for i, p in pairs(elements): result.elems[i] = p
 
-proc `==`* (a,b: PJsonNode): bool =
+proc `==`* (a,b: JsonNode): bool =
   ## Check two nodes for equality
   if a.isNil:
     if b.isNil: return true
@@ -649,7 +649,7 @@ proc `==`* (a,b: PJsonNode): bool =
     of JObject:
       a.fields == b.fields
 
-proc hash* (n:PJsonNode): THash =
+proc hash* (n:JsonNode): THash =
   ## Compute the hash for a JSON node
   case n.kind
   of JArray:
@@ -667,7 +667,7 @@ proc hash* (n:PJsonNode): THash =
   of JNull:
     result = hash(0)
 
-proc len*(n: PJsonNode): int = 
+proc len*(n: JsonNode): int = 
   ## If `n` is a `JArray`, it returns the number of elements.
   ## If `n` is a `JObject`, it returns the number of pairs.
   ## Else it returns 0.
@@ -676,7 +676,7 @@ proc len*(n: PJsonNode): int =
   of JObject: result = n.fields.len
   else: discard
 
-proc `[]`*(node: PJsonNode, name: string): PJsonNode =
+proc `[]`*(node: JsonNode, name: string): JsonNode =
   ## Gets a field from a `JObject`, which must not be nil.
   ## If the value at `name` does not exist, returns nil
   assert(not isNil(node))
@@ -686,35 +686,35 @@ proc `[]`*(node: PJsonNode, name: string): PJsonNode =
       return item
   return nil
   
-proc `[]`*(node: PJsonNode, index: int): PJsonNode =
+proc `[]`*(node: JsonNode, index: int): JsonNode =
   ## Gets the node at `index` in an Array. Result is undefined if `index`
   ## is out of bounds
   assert(not isNil(node))
   assert(node.kind == JArray)
   return node.elems[index]
 
-proc hasKey*(node: PJsonNode, key: string): bool =
+proc hasKey*(node: JsonNode, key: string): bool =
   ## Checks if `key` exists in `node`.
   assert(node.kind == JObject)
   for k, item in items(node.fields):
     if k == key: return true
 
-proc existsKey*(node: PJsonNode, key: string): bool {.deprecated.} = node.hasKey(key)
+proc existsKey*(node: JsonNode, key: string): bool {.deprecated.} = node.hasKey(key)
   ## Deprecated for `hasKey`
 
-proc add*(father, child: PJsonNode) = 
+proc add*(father, child: JsonNode) = 
   ## Adds `child` to a JArray node `father`. 
   assert father.kind == JArray
   father.elems.add(child)
 
-proc add*(obj: PJsonNode, key: string, val: PJsonNode) = 
+proc add*(obj: JsonNode, key: string, val: JsonNode) = 
   ## Adds ``(key, val)`` pair to the JObject node `obj`. For speed
   ## reasons no check for duplicate keys is performed!
   ## But ``[]=`` performs the check.
   assert obj.kind == JObject
   obj.fields.add((key, val))
 
-proc `[]=`*(obj: PJsonNode, key: string, val: PJsonNode) =
+proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) =
   ## Sets a field from a `JObject`. Performs a check for duplicate keys.
   assert(obj.kind == JObject)
   for i in 0..obj.fields.len-1:
@@ -723,14 +723,14 @@ proc `[]=`*(obj: PJsonNode, key: string, val: PJsonNode) =
       return
   obj.fields.add((key, val))
 
-proc `{}`*(node: PJsonNode, key: string): PJsonNode =
+proc `{}`*(node: JsonNode, key: string): JsonNode =
   ## Transverses the node and gets the given value. If any of the
   ## names does not exist, returns nil
   result = node
   if isNil(node): return nil
   result = result[key]
 
-proc `{}=`*(node: PJsonNode, names: varargs[string], value: PJsonNode) =
+proc `{}=`*(node: JsonNode, names: varargs[string], value: JsonNode) =
   ## Transverses the node and tries to set the value at the given location
   ## to `value` If any of the names are missing, they are added
   var node = node
@@ -740,7 +740,7 @@ proc `{}=`*(node: PJsonNode, names: varargs[string], value: PJsonNode) =
     node = node[names[i]]
   node[names[names.len-1]] = value
 
-proc delete*(obj: PJsonNode, key: string) =
+proc delete*(obj: JsonNode, key: string) =
   ## Deletes ``obj[key]`` preserving the order of the other (key, value)-pairs.
   assert(obj.kind == JObject)
   for i in 0..obj.fields.len-1:
@@ -749,7 +749,7 @@ proc delete*(obj: PJsonNode, key: string) =
       return
   raise newException(IndexError, "key not in object")
 
-proc copy*(p: PJsonNode): PJsonNode =
+proc copy*(p: JsonNode): JsonNode =
   ## Performs a deep copy of `a`.
   case p.kind
   of JString:
@@ -800,7 +800,7 @@ proc escapeJson*(s: string): string =
       result.add(toHex(r, 4))
   result.add("\"")
 
-proc toPretty(result: var string, node: PJsonNode, indent = 2, ml = true, 
+proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true, 
               lstArr = false, currIndent = 0) =
   case node.kind
   of JObject:
@@ -855,34 +855,34 @@ proc toPretty(result: var string, node: PJsonNode, indent = 2, ml = true,
     if lstArr: result.indent(currIndent)
     result.add("null")
 
-proc pretty*(node: PJsonNode, indent = 2): string =
+proc pretty*(node: JsonNode, indent = 2): string =
   ## Converts `node` to its JSON Representation, with indentation and
   ## on multiple lines.
   result = ""
   toPretty(result, node, indent)
 
-proc `$`*(node: PJsonNode): string =
+proc `$`*(node: JsonNode): string =
   ## Converts `node` to its JSON Representation on one line.
   result = ""
   toPretty(result, node, 1, false)
 
-iterator items*(node: PJsonNode): PJsonNode =
+iterator items*(node: JsonNode): JsonNode =
   ## Iterator for the items of `node`. `node` has to be a JArray.
   assert node.kind == JArray
   for i in items(node.elems):
     yield i
 
-iterator pairs*(node: PJsonNode): tuple[key: string, val: PJsonNode] =
+iterator pairs*(node: JsonNode): tuple[key: string, val: JsonNode] =
   ## Iterator for the child elements of `node`. `node` has to be a JObject.
   assert node.kind == JObject
   for key, val in items(node.fields):
     yield (key, val)
 
-proc eat(p: var TJsonParser, tok: TTokKind) = 
+proc eat(p: var JsonParser, tok: TTokKind) = 
   if p.tok == tok: discard getTok(p)
   else: raiseParseErr(p, tokToStr[tok])
 
-proc parseJson(p: var TJsonParser): PJsonNode = 
+proc parseJson(p: var JsonParser): JsonNode = 
   ## Parses JSON from a JSON Parser `p`.
   case p.tok
   of tkString:
@@ -931,20 +931,20 @@ proc parseJson(p: var TJsonParser): PJsonNode =
     raiseParseErr(p, "{")
 
 when not defined(js):
-  proc parseJson*(s: PStream, filename: string): PJsonNode =
+  proc parseJson*(s: Stream, filename: string): JsonNode =
     ## Parses from a stream `s` into a `PJsonNode`. `filename` is only needed
     ## for nice error messages.
-    var p: TJsonParser
+    var p: JsonParser
     p.open(s, filename)
     discard getTok(p) # read first token
     result = p.parseJson()
     p.close()
 
-  proc parseJson*(buffer: string): PJsonNode =
+  proc parseJson*(buffer: string): JsonNode =
     ## Parses JSON from `buffer`.
     result = parseJson(newStringStream(buffer), "input")
 
-  proc parseFile*(filename: string): PJsonNode =
+  proc parseFile*(filename: string): JsonNode =
     ## Parses `file` into a `PJsonNode`.
     var stream = newFileStream(filename, fmRead)
     if stream == nil:
@@ -1062,8 +1062,8 @@ when isMainModule:
   echo(pretty(parsed2))
   try:
     echo(parsed["key2"][12123])
-    raise newException(EInvalidValue, "That line was expected to fail")
-  except EInvalidIndex: echo()
+    raise newException(ValueError, "That line was expected to fail")
+  except IndexError: echo()
 
   let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd" }"""
   # nil passthrough
@@ -1075,12 +1075,12 @@ when isMainModule:
   try:
     let a = testJson["a"][9]
     assert(false, "EInvalidIndex not thrown")
-  except EInvalidIndex:
+  except IndexError:
     discard
   try:
     let a = testJson["a"][-1]
     assert(false, "EInvalidIndex not thrown")
-  except EInvalidIndex:
+  except IndexError:
     discard
   try:
     assert(testJson["a"][0].num == 1, "Index doesn't correspond to its value")

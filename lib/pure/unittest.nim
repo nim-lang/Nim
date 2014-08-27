@@ -58,7 +58,7 @@ template suite*(name: expr, body: stmt): stmt {.immediate, dirty.} =
 
 proc testDone(name: string, s: TestStatus) =
   if s == FAILED:
-    program_result += 1
+    programResult += 1
 
   if OutputLevel != PRINT_NONE and (OutputLevel == PRINT_ALL or s == FAILED):
     template rawPrint() = echo("[", $s, "] ", name, "\n")
@@ -105,7 +105,7 @@ template fail* =
   when declared(TestStatusIMPL):
     TestStatusIMPL = FAILED
   else:
-    program_result += 1
+    programResult += 1
 
   checkpoints = @[]
 

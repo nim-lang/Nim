@@ -216,7 +216,7 @@ when not defined(windows):
     gFG = 0
     gBG = 0
 
-proc setStyle*(style: set[TStyle]) =
+proc setStyle*(style: set[Style]) =
   ## sets the terminal style
   when defined(windows):
     var a = 0'i16
@@ -229,7 +229,7 @@ proc setStyle*(style: set[TStyle]) =
     for s in items(style):
       stdout.write("\e[" & $ord(s) & 'm')
 
-proc writeStyled*(txt: string, style: set[TStyle] = {styleBright}) =
+proc writeStyled*(txt: string, style: set[Style] = {styleBright}) =
   ## writes the text `txt` in a given `style`.
   when defined(windows):
     var old = getAttributes()
