@@ -156,12 +156,12 @@ proc read*[T](future: Future[T]): T =
       return future.value
   else:
     # TODO: Make a custom exception type for this?
-    raise newException(EInvalidValue, "Future still in progress.")
+    raise newException(ValueError, "Future still in progress.")
 
-proc readError*[T](future: Future[T]): ref EBase =
+proc readError*[T](future: Future[T]): ref Exception =
   if future.error != nil: return future.error
   else:
-    raise newException(EInvalidValue, "No error in future.")
+    raise newException(ValueError, "No error in future.")
 
 proc finished*[T](future: Future[T]): bool =
   ## Determines whether ``future`` has completed.
@@ -206,7 +206,7 @@ proc `or`*[T, Y](fut1: Future[T], fut2: Future[Y]): Future[void] =
   fut2.callback = cb
 
 type
-  PDispatcherBase = ref object of PObject
+  PDispatcherBase = ref object of RootRef
     timers: seq[tuple[finishAt: float, fut: Future[void]]]
 
 proc processTimers(p: PDispatcherBase) =
@@ -226,11 +226,11 @@ when defined(windows) or defined(nimdoc):
     TCompletionData* = object
       sock: TAsyncFD
       cb: proc (sock: TAsyncFD, bytesTransferred: DWORD,
-                errcode: TOSErrorCode) {.closure,gcsafe.}
+                errcode: OSErrorCode) {.closure,gcsafe.}
 
     PDispatcher* = ref object of PDispatcherBase
       ioPort: THandle
-      handles: TSet[TAsyncFD]
+      handles: HashSet[TAsyncFD]
 
     TCustomOverlapped = object of TOVERLAPPED
       data*: TCompletionData
@@ -245,7 +245,7 @@ when defined(windows) or defined(nimdoc):
   proc newDispatcher*(): PDispatcher =
     ## Creates a new Dispatcher instance.
     new result
-    result.ioPort = CreateIOCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)
+    result.ioPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)
     result.handles = initSet[TAsyncFD]()
     result.timers = @[]
 
@@ -258,16 +258,16 @@ when defined(windows) or defined(nimdoc):
   proc register*(sock: TAsyncFD) =
     ## Registers ``sock`` with the dispatcher.
     let p = getGlobalDispatcher()
-    if CreateIOCompletionPort(sock.THandle, p.ioPort,
+    if CreateIoCompletionPort(sock.THandle, p.ioPort,
                               cast[TCompletionKey](sock), 1) == 0:
-      osError(osLastError())
+      raiseOSError(osLastError())
     p.handles.incl(sock)
 
   proc verifyPresence(sock: TAsyncFD) =
     ## Ensures that socket has been registered with the dispatcher.
     let p = getGlobalDispatcher()
     if sock notin p.handles:
-      raise newException(EInvalidValue,
+      raise newException(ValueError,
         "Operation performed on a socket which has not been registered with" &
         " the dispatcher yet.")
 
@@ -275,7 +275,7 @@ when defined(windows) or defined(nimdoc):
     ## Waits for completion events and processes them.
     let p = getGlobalDispatcher()
     if p.handles.len == 0 and p.timers.len == 0:
-      raise newException(EInvalidValue,
+      raise newException(ValueError,
         "No handles or timers registered in dispatcher.")
     
     let llTimeout =
@@ -286,7 +286,7 @@ when defined(windows) or defined(nimdoc):
     var customOverlapped: PCustomOverlapped
     let res = GetQueuedCompletionStatus(p.ioPort,
         addr lpNumberOfBytesTransferred, addr lpCompletionKey,
-        cast[ptr POverlapped](addr customOverlapped), llTimeout).bool
+        cast[ptr POVERLAPPED](addr customOverlapped), llTimeout).bool
 
     # http://stackoverflow.com/a/12277264/492186
     # TODO: http://www.serverframework.com/handling-multiple-pending-socket-read-and-write-operations.html
@@ -295,7 +295,7 @@ when defined(windows) or defined(nimdoc):
       assert customOverlapped.data.sock == lpCompletionKey.TAsyncFD
 
       customOverlapped.data.cb(customOverlapped.data.sock,
-          lpNumberOfBytesTransferred, TOSErrorCode(-1))
+          lpNumberOfBytesTransferred, OSErrorCode(-1))
       GC_unref(customOverlapped)
     else:
       let errCode = osLastError()
@@ -308,7 +308,7 @@ when defined(windows) or defined(nimdoc):
         if errCode.int32 == WAIT_TIMEOUT:
           # Timed out
           discard
-        else: osError(errCode)
+        else: raiseOSError(errCode)
 
     # Timer processing.
     processTimers(p)
@@ -317,9 +317,9 @@ when defined(windows) or defined(nimdoc):
   var acceptExPtr: pointer = nil
   var getAcceptExSockAddrsPtr: pointer = nil
 
-  proc initPointer(s: TSocketHandle, func: var pointer, guid: var TGUID): bool =
+  proc initPointer(s: SocketHandle, func: var pointer, guid: var TGUID): bool =
     # Ref: https://github.com/powdahound/twisted/blob/master/twisted/internet/iocpreactor/iocpsupport/winsock_pointers.c
-    var bytesRet: DWord
+    var bytesRet: DWORD
     func = nil
     result = WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER, addr guid,
                       sizeof(TGUID).dword, addr func, sizeof(pointer).DWORD,
@@ -328,34 +328,34 @@ when defined(windows) or defined(nimdoc):
   proc initAll() =
     let dummySock = newRawSocket()
     if not initPointer(dummySock, connectExPtr, WSAID_CONNECTEX):
-      osError(osLastError())
+      raiseOSError(osLastError())
     if not initPointer(dummySock, acceptExPtr, WSAID_ACCEPTEX):
-      osError(osLastError())
+      raiseOSError(osLastError())
     if not initPointer(dummySock, getAcceptExSockAddrsPtr, WSAID_GETACCEPTEXSOCKADDRS):
-      osError(osLastError())
+      raiseOSError(osLastError())
 
-  proc connectEx(s: TSocketHandle, name: ptr TSockAddr, namelen: cint, 
+  proc connectEx(s: SocketHandle, name: ptr TSockAddr, namelen: cint, 
                   lpSendBuffer: pointer, dwSendDataLength: dword,
-                  lpdwBytesSent: PDWORD, lpOverlapped: POverlapped): bool =
-    if connectExPtr.isNil: raise newException(EInvalidValue, "Need to initialise ConnectEx().")
+                  lpdwBytesSent: PDWORD, lpOverlapped: POVERLAPPED): bool =
+    if connectExPtr.isNil: raise newException(ValueError, "Need to initialise ConnectEx().")
     let func =
-      cast[proc (s: TSocketHandle, name: ptr TSockAddr, namelen: cint, 
+      cast[proc (s: SocketHandle, name: ptr TSockAddr, namelen: cint, 
          lpSendBuffer: pointer, dwSendDataLength: dword,
-         lpdwBytesSent: PDWORD, lpOverlapped: POverlapped): bool {.stdcall,gcsafe.}](connectExPtr)
+         lpdwBytesSent: PDWORD, lpOverlapped: POVERLAPPED): bool {.stdcall,gcsafe.}](connectExPtr)
 
     result = func(s, name, namelen, lpSendBuffer, dwSendDataLength, lpdwBytesSent,
          lpOverlapped)
 
-  proc acceptEx(listenSock, acceptSock: TSocketHandle, lpOutputBuffer: pointer,
+  proc acceptEx(listenSock, acceptSock: SocketHandle, lpOutputBuffer: pointer,
                  dwReceiveDataLength, dwLocalAddressLength,
                  dwRemoteAddressLength: DWORD, lpdwBytesReceived: PDWORD,
-                 lpOverlapped: POverlapped): bool =
-    if acceptExPtr.isNil: raise newException(EInvalidValue, "Need to initialise AcceptEx().")
+                 lpOverlapped: POVERLAPPED): bool =
+    if acceptExPtr.isNil: raise newException(ValueError, "Need to initialise AcceptEx().")
     let func =
-      cast[proc (listenSock, acceptSock: TSocketHandle, lpOutputBuffer: pointer,
+      cast[proc (listenSock, acceptSock: SocketHandle, lpOutputBuffer: pointer,
                  dwReceiveDataLength, dwLocalAddressLength,
                  dwRemoteAddressLength: DWORD, lpdwBytesReceived: PDWORD,
-                 lpOverlapped: POverlapped): bool {.stdcall,gcsafe.}](acceptExPtr)
+                 lpOverlapped: POVERLAPPED): bool {.stdcall,gcsafe.}](acceptExPtr)
     result = func(listenSock, acceptSock, lpOutputBuffer, dwReceiveDataLength,
         dwLocalAddressLength, dwRemoteAddressLength, lpdwBytesReceived,
         lpOverlapped)
@@ -365,7 +365,7 @@ when defined(windows) or defined(nimdoc):
       LocalSockaddr: ptr ptr TSockAddr, LocalSockaddrLength: lpint,
       RemoteSockaddr: ptr ptr TSockAddr, RemoteSockaddrLength: lpint) =
     if getAcceptExSockAddrsPtr.isNil:
-      raise newException(EInvalidValue, "Need to initialise getAcceptExSockAddrs().")
+      raise newException(ValueError, "Need to initialise getAcceptExSockAddrs().")
 
     let func =
       cast[proc (lpOutputBuffer: pointer,
@@ -378,7 +378,7 @@ when defined(windows) or defined(nimdoc):
                   dwRemoteAddressLength, LocalSockaddr, LocalSockaddrLength,
                   RemoteSockaddr, RemoteSockaddrLength)
 
-  proc connect*(socket: TAsyncFD, address: string, port: TPort,
+  proc connect*(socket: TAsyncFD, address: string, port: Port,
     af = AF_INET): Future[void] =
     ## Connects ``socket`` to server at ``address:port``.
     ##
@@ -391,13 +391,13 @@ when defined(windows) or defined(nimdoc):
     saddr.sin_family = int16(toInt(af))
     saddr.sin_port = 0
     saddr.sin_addr.s_addr = INADDR_ANY
-    if bindAddr(socket.TSocketHandle, cast[ptr TSockAddr](addr(saddr)),
+    if bindAddr(socket.SocketHandle, cast[ptr TSockAddr](addr(saddr)),
                   sizeof(saddr).TSockLen) < 0'i32:
-      osError(osLastError())
+      raiseOSError(osLastError())
 
     var aiList = getAddrInfo(address, port, af)
     var success = false
-    var lastError: TOSErrorCode
+    var lastError: OSErrorCode
     var it = aiList
     while it != nil:
       # "the OVERLAPPED structure must remain valid until the I/O completes"
@@ -405,17 +405,17 @@ when defined(windows) or defined(nimdoc):
       var ol = PCustomOverlapped()
       GC_ref(ol)
       ol.data = TCompletionData(sock: socket, cb:
-        proc (sock: TAsyncFD, bytesCount: DWord, errcode: TOSErrorCode) =
+        proc (sock: TAsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
           if not retFuture.finished:
-            if errcode == TOSErrorCode(-1):
+            if errcode == OSErrorCode(-1):
               retFuture.complete()
             else:
-              retFuture.fail(newException(EOS, osErrorMsg(errcode)))
+              retFuture.fail(newException(OSError, osErrorMsg(errcode)))
       )
       
-      var ret = connectEx(socket.TSocketHandle, it.ai_addr,
-                          sizeof(TSockAddrIn).cint, nil, 0, nil,
-                          cast[POverlapped](ol))
+      var ret = connectEx(socket.SocketHandle, it.ai_addr,
+                          sizeof(Tsockaddr_in).cint, nil, 0, nil,
+                          cast[POVERLAPPED](ol))
       if ret:
         # Request to connect completed immediately.
         success = true
@@ -437,11 +437,11 @@ when defined(windows) or defined(nimdoc):
 
     dealloc(aiList)
     if not success:
-      retFuture.fail(newException(EOS, osErrorMsg(lastError)))
+      retFuture.fail(newException(OSError, osErrorMsg(lastError)))
     return retFuture
 
   proc recv*(socket: TAsyncFD, size: int,
-             flags = {TSocketFlags.SafeDisconn}): Future[string] =
+             flags = {SocketFlag.SafeDisconn}): Future[string] =
     ## Reads **up to** ``size`` bytes from ``socket``. Returned future will
     ## complete once all the data requested is read, a part of the data has been
     ## read, or the socket has disconnected in which case the future will
@@ -460,14 +460,14 @@ when defined(windows) or defined(nimdoc):
     dataBuf.buf = cast[cstring](alloc0(size))
     dataBuf.len = size
     
-    var bytesReceived: DWord
-    var flagsio = flags.toOSFlags().DWord
+    var bytesReceived: DWORD
+    var flagsio = flags.toOSFlags().DWORD
     var ol = PCustomOverlapped()
     GC_ref(ol)
     ol.data = TCompletionData(sock: socket, cb:
-      proc (sock: TAsyncFD, bytesCount: DWord, errcode: TOSErrorCode) =
+      proc (sock: TAsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
-          if errcode == TOSErrorCode(-1):
+          if errcode == OSErrorCode(-1):
             if bytesCount == 0 and dataBuf.buf[0] == '\0':
               retFuture.complete("")
             else:
@@ -479,14 +479,14 @@ when defined(windows) or defined(nimdoc):
             if flags.isDisconnectionError(errcode):
               retFuture.complete("")
             else:
-              retFuture.fail(newException(EOS, osErrorMsg(errcode)))
+              retFuture.fail(newException(OSError, osErrorMsg(errcode)))
         if dataBuf.buf != nil:
           dealloc dataBuf.buf
           dataBuf.buf = nil
     )
 
-    let ret = WSARecv(socket.TSocketHandle, addr dataBuf, 1, addr bytesReceived,
-                      addr flagsio, cast[POverlapped](ol), nil)
+    let ret = WSARecv(socket.SocketHandle, addr dataBuf, 1, addr bytesReceived,
+                      addr flagsio, cast[POVERLAPPED](ol), nil)
     if ret == -1:
       let err = osLastError()
       if err.int32 != ERROR_IO_PENDING:
@@ -497,7 +497,7 @@ when defined(windows) or defined(nimdoc):
         if flags.isDisconnectionError(err):
           retFuture.complete("")
         else:
-          retFuture.fail(newException(EOS, osErrorMsg(err)))
+          retFuture.fail(newException(OSError, osErrorMsg(err)))
     elif ret == 0 and bytesReceived == 0 and dataBuf.buf[0] == '\0':
       # We have to ensure that the buffer is empty because WSARecv will tell
       # us immediatelly when it was disconnected, even when there is still
@@ -529,7 +529,7 @@ when defined(windows) or defined(nimdoc):
     return retFuture
 
   proc send*(socket: TAsyncFD, data: string,
-             flags = {TSocketFlags.SafeDisconn}): Future[void] =
+             flags = {SocketFlag.SafeDisconn}): Future[void] =
     ## Sends ``data`` to ``socket``. The returned future will complete once all
     ## data has been sent.
     verifyPresence(socket)
@@ -539,23 +539,23 @@ when defined(windows) or defined(nimdoc):
     dataBuf.buf = data # since this is not used in a callback, this is fine
     dataBuf.len = data.len
 
-    var bytesReceived, lowFlags: DWord
+    var bytesReceived, lowFlags: DWORD
     var ol = PCustomOverlapped()
     GC_ref(ol)
     ol.data = TCompletionData(sock: socket, cb:
-      proc (sock: TAsyncFD, bytesCount: DWord, errcode: TOSErrorCode) =
+      proc (sock: TAsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
-          if errcode == TOSErrorCode(-1):
+          if errcode == OSErrorCode(-1):
             retFuture.complete()
           else:
             if flags.isDisconnectionError(errcode):
               retFuture.complete()
             else:
-              retFuture.fail(newException(EOS, osErrorMsg(errcode)))
+              retFuture.fail(newException(OSError, osErrorMsg(errcode)))
     )
 
-    let ret = WSASend(socket.TSocketHandle, addr dataBuf, 1, addr bytesReceived,
-                      lowFlags, cast[POverlapped](ol), nil)
+    let ret = WSASend(socket.SocketHandle, addr dataBuf, 1, addr bytesReceived,
+                      lowFlags, cast[POVERLAPPED](ol), nil)
     if ret == -1:
       let err = osLastError()
       if err.int32 != ERROR_IO_PENDING:
@@ -563,7 +563,7 @@ when defined(windows) or defined(nimdoc):
         if flags.isDisconnectionError(err):
           retFuture.complete()
         else:
-          retFuture.fail(newException(EOS, osErrorMsg(err)))
+          retFuture.fail(newException(OSError, osErrorMsg(err)))
     else:
       retFuture.complete()
       # We don't deallocate ``ol`` here because even though this completed
@@ -571,7 +571,7 @@ when defined(windows) or defined(nimdoc):
       # free ``ol``.
     return retFuture
 
-  proc acceptAddr*(socket: TAsyncFD, flags = {TSocketFlags.SafeDisconn}):
+  proc acceptAddr*(socket: TAsyncFD, flags = {SocketFlag.SafeDisconn}):
       Future[tuple[address: string, client: TAsyncFD]] =
     ## Accepts a new connection. Returns a future containing the client socket
     ## corresponding to that connection and the remote address of the client.
@@ -588,21 +588,21 @@ when defined(windows) or defined(nimdoc):
     var retFuture = newFuture[tuple[address: string, client: TAsyncFD]]("acceptAddr")
 
     var clientSock = newRawSocket()
-    if clientSock == osInvalidSocket: osError(osLastError())
+    if clientSock == osInvalidSocket: raiseOSError(osLastError())
 
     const lpOutputLen = 1024
     var lpOutputBuf = newString(lpOutputLen)
     var dwBytesReceived: DWORD
     let dwReceiveDataLength = 0.DWORD # We don't want any data to be read.
-    let dwLocalAddressLength = DWORD(sizeof (TSockaddr_in) + 16)
-    let dwRemoteAddressLength = DWORD(sizeof(TSockaddr_in) + 16)
+    let dwLocalAddressLength = DWORD(sizeof (Tsockaddr_in) + 16)
+    let dwRemoteAddressLength = DWORD(sizeof(Tsockaddr_in) + 16)
 
     template completeAccept(): stmt {.immediate, dirty.} =
       var listenSock = socket
       let setoptRet = setsockopt(clientSock, SOL_SOCKET,
           SO_UPDATE_ACCEPT_CONTEXT, addr listenSock,
           sizeof(listenSock).TSockLen)
-      if setoptRet != 0: osError(osLastError())
+      if setoptRet != 0: raiseOSError(osLastError())
 
       var LocalSockaddr, RemoteSockaddr: ptr TSockAddr
       var localLen, remoteLen: int32
@@ -627,25 +627,25 @@ when defined(windows) or defined(nimdoc):
             else:
               retFuture.complete(newAcceptFut.read)
       else:
-        retFuture.fail(newException(EOS, osErrorMsg(errcode)))
+        retFuture.fail(newException(OSError, osErrorMsg(errcode)))
 
     var ol = PCustomOverlapped()
     GC_ref(ol)
     ol.data = TCompletionData(sock: socket, cb:
-      proc (sock: TAsyncFD, bytesCount: DWord, errcode: TOSErrorCode) =
+      proc (sock: TAsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
-          if errcode == TOSErrorCode(-1):
+          if errcode == OSErrorCode(-1):
             completeAccept()
           else:
             failAccept(errcode)
     )
 
     # http://msdn.microsoft.com/en-us/library/windows/desktop/ms737524%28v=vs.85%29.aspx
-    let ret = acceptEx(socket.TSocketHandle, clientSock, addr lpOutputBuf[0],
+    let ret = acceptEx(socket.SocketHandle, clientSock, addr lpOutputBuf[0],
                        dwReceiveDataLength, 
                        dwLocalAddressLength,
                        dwRemoteAddressLength,
-                       addr dwBytesReceived, cast[POverlapped](ol))
+                       addr dwBytesReceived, cast[POVERLAPPED](ol))
 
     if not ret:
       let err = osLastError()
@@ -660,17 +660,17 @@ when defined(windows) or defined(nimdoc):
 
     return retFuture
 
-  proc newAsyncRawSocket*(domain: TDomain = AF_INET,
-               typ: TType = SOCK_STREAM,
-               protocol: TProtocol = IPPROTO_TCP): TAsyncFD =
+  proc newAsyncRawSocket*(domain: Domain = AF_INET,
+               typ: SockType = SOCK_STREAM,
+               protocol: Protocol = IPPROTO_TCP): TAsyncFD =
     ## Creates a new socket and registers it with the dispatcher implicitly.
     result = newRawSocket(domain, typ, protocol).TAsyncFD
-    result.TSocketHandle.setBlocking(false)
+    result.SocketHandle.setBlocking(false)
     register(result)
 
   proc closeSocket*(socket: TAsyncFD) =
     ## Closes a socket and ensures that it is unregistered.
-    socket.TSocketHandle.close()
+    socket.SocketHandle.close()
     getGlobalDispatcher().handles.excl(socket)
 
   proc unregister*(fd: TAsyncFD) =
@@ -925,7 +925,7 @@ proc sleepAsync*(ms: int): Future[void] =
   return retFuture
 
 proc accept*(socket: TAsyncFD,
-    flags = {TSocketFlags.SafeDisconn}): Future[TAsyncFD] =
+    flags = {SocketFlag.SafeDisconn}): Future[TAsyncFD] =
   ## Accepts a new connection. Returns a future containing the client socket
   ## corresponding to that connection.
   ## The future will complete when the connection is successfully accepted.
@@ -1010,14 +1010,14 @@ proc processBody(node, retFutureSym: PNimrodNode,
   of nnkReturnStmt:
     result = newNimNode(nnkStmtList, node)
     if node[0].kind == nnkEmpty:
-      if not subtypeIsVoid:
+      if not subTypeIsVoid:
         result.add newCall(newIdentNode("complete"), retFutureSym,
             newIdentNode("result"))
       else:
         result.add newCall(newIdentNode("complete"), retFutureSym)
     else:
       result.add newCall(newIdentNode("complete"), retFutureSym,
-        node[0].processBody(retFutureSym, subtypeIsVoid, exceptBranch))
+        node[0].processBody(retFutureSym, subTypeIsVoid, exceptBranch))
 
     result.add newNimNode(nnkReturnStmt, node).add(newNilLit())
     return # Don't process the children of this return stmt
@@ -1072,7 +1072,7 @@ proc processBody(node, retFutureSym: PNimrodNode,
                        res: PNimrodNode): bool {.compileTime.} =
       result = false
       while i < n[0].len:
-        var processed = processBody(n[0][i], retFutureSym, subtypeIsVoid, n[1])
+        var processed = processBody(n[0][i], retFutureSym, subTypeIsVoid, n[1])
         if processed.kind != n[0][i].kind or processed.len != n[0][i].len:
           expectKind(processed, nnkStmtList)
           expectKind(processed[2][1], nnkElse)
@@ -1092,7 +1092,7 @@ proc processBody(node, retFutureSym: PNimrodNode,
   else: discard
 
   for i in 0 .. <result.len:
-    result[i] = processBody(result[i], retFutureSym, subtypeIsVoid, exceptBranch)
+    result[i] = processBody(result[i], retFutureSym, subTypeIsVoid, exceptBranch)
 
 proc getName(node: PNimrodNode): string {.compileTime.} =
   case node.kind
@@ -1214,7 +1214,7 @@ proc recvLine*(socket: TAsyncFD): Future[string] {.async.} =
     if c.len == 0:
       return ""
     if c == "\r":
-      c = await recv(socket, 1, {TSocketFlags.SafeDisconn, TSocketFlags.Peek})
+      c = await recv(socket, 1, {SocketFlag.SafeDisconn, SocketFlag.Peek})
       if c.len > 0 and c == "\L":
         discard await recv(socket, 1)
       addNLIfEmpty()

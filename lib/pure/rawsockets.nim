@@ -14,7 +14,7 @@
 
 import unsigned, os
 
-when hostos == "solaris":
+when hostOS == "solaris":
   {.passl: "-lsocket -lnsl".}
 
 const useWinVersion = defined(Windows) or defined(nimdoc)
@@ -156,7 +156,7 @@ proc newRawSocket*(domain: Domain = AF_INET, typ: SockType = SOCK_STREAM,
 proc close*(socket: SocketHandle) =
   ## closes a socket.
   when useWinVersion:
-    discard winlean.closeSocket(socket)
+    discard winlean.closesocket(socket)
   else:
     discard posix.close(socket)
   # TODO: These values should not be discarded. An EOS should be raised.
@@ -165,7 +165,7 @@ proc close*(socket: SocketHandle) =
 proc bindAddr*(socket: SocketHandle, name: ptr SockAddr, namelen: SockLen): cint =
   result = bindSocket(socket, name, namelen)
 
-proc listen*(socket: SocketHandle, backlog = SOMAXCONN): cint {.tags: [FReadIO].} =
+proc listen*(socket: SocketHandle, backlog = SOMAXCONN): cint {.tags: [ReadIOEffect].} =
   ## Marks ``socket`` as accepting connections. 
   ## ``Backlog`` specifies the maximum length of the 
   ## queue of pending connections.
@@ -223,7 +223,7 @@ proc htons*(x: int16): int16 =
   ## order, this is a no-op; otherwise, it performs a 2-byte swap operation.
   result = rawsockets.ntohs(x)
 
-proc getServByName*(name, proto: string): Servent {.tags: [FReadIO].} =
+proc getServByName*(name, proto: string): Servent {.tags: [ReadIOEffect].} =
   ## Searches the database from the beginning and finds the first entry for 
   ## which the service name specified by ``name`` matches the s_name member
   ## and the protocol name specified by ``proto`` matches the s_proto member.
@@ -233,13 +233,13 @@ proc getServByName*(name, proto: string): Servent {.tags: [FReadIO].} =
     var s = winlean.getservbyname(name, proto)
   else:
     var s = posix.getservbyname(name, proto)
-  if s == nil: raise newException(EOS, "Service not found.")
+  if s == nil: raise newException(OSError, "Service not found.")
   result.name = $s.s_name
   result.aliases = cstringArrayToSeq(s.s_aliases)
   result.port = Port(s.s_port)
   result.proto = $s.s_proto
   
-proc getServByPort*(port: Port, proto: string): Servent {.tags: [FReadIO].} = 
+proc getServByPort*(port: Port, proto: string): Servent {.tags: [ReadIOEffect].} = 
   ## Searches the database from the beginning and finds the first entry for 
   ## which the port specified by ``port`` matches the s_port member and the 
   ## protocol name specified by ``proto`` matches the s_proto member.
@@ -249,13 +249,13 @@ proc getServByPort*(port: Port, proto: string): Servent {.tags: [FReadIO].} =
     var s = winlean.getservbyport(ze(int16(port)).cint, proto)
   else:
     var s = posix.getservbyport(ze(int16(port)).cint, proto)
-  if s == nil: raise newException(EOS, "Service not found.")
+  if s == nil: raise newException(OSError, "Service not found.")
   result.name = $s.s_name
   result.aliases = cstringArrayToSeq(s.s_aliases)
   result.port = Port(s.s_port)
   result.proto = $s.s_proto
 
-proc getHostByAddr*(ip: string): Hostent {.tags: [FReadIO].} =
+proc getHostByAddr*(ip: string): Hostent {.tags: [ReadIOEffect].} =
   ## This function will lookup the hostname of an IP Address.
   var myaddr: InAddr
   myaddr.s_addr = inet_addr(ip)
@@ -284,7 +284,7 @@ proc getHostByAddr*(ip: string): Hostent {.tags: [FReadIO].} =
   result.addrList = cstringArrayToSeq(s.h_addr_list)
   result.length = int(s.h_length)
 
-proc getHostByName*(name: string): Hostent {.tags: [FReadIO].} = 
+proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} = 
   ## This function will lookup the IP address of a hostname.
   when useWinVersion:
     var s = winlean.gethostbyname(name)
@@ -314,28 +314,28 @@ proc getSockName*(socket: SocketHandle): Port =
     name.sin_family = posix.AF_INET
   #name.sin_port = htons(cint16(port))
   #name.sin_addr.s_addr = htonl(INADDR_ANY)
-  var namelen = sizeof(name).Socklen
+  var namelen = sizeof(name).SockLen
   if getsockname(socket, cast[ptr SockAddr](addr(name)),
                  addr(namelen)) == -1'i32:
     raiseOSError(osLastError())
   result = Port(rawsockets.ntohs(name.sin_port))
 
 proc getSockOptInt*(socket: SocketHandle, level, optname: int): int {.
-  tags: [FReadIO].} = 
+  tags: [ReadIOEffect].} = 
   ## getsockopt for integer options.
   var res: cint
-  var size = sizeof(res).Socklen
+  var size = sizeof(res).SockLen
   if getsockopt(socket, cint(level), cint(optname), 
                 addr(res), addr(size)) < 0'i32:
     raiseOSError(osLastError())
   result = int(res)
 
 proc setSockOptInt*(socket: SocketHandle, level, optname, optval: int) {.
-  tags: [FWriteIO].} =
+  tags: [WriteIOEffect].} =
   ## setsockopt for integer options.
   var value = cint(optval)
   if setsockopt(socket, cint(level), cint(optname), addr(value),  
-                sizeof(value).Socklen) < 0'i32:
+                sizeof(value).SockLen) < 0'i32:
     raiseOSError(osLastError())
 
 proc setBlocking*(s: SocketHandle, blocking: bool) =
@@ -361,13 +361,13 @@ proc timeValFromMilliseconds(timeout = 500): Timeval =
     result.tv_sec = seconds.int32
     result.tv_usec = ((timeout - seconds * 1000) * 1000).int32
 
-proc createFdSet(fd: var FdSet, s: seq[SocketHandle], m: var int) = 
+proc createFdSet(fd: var FD_SET, s: seq[SocketHandle], m: var int) = 
   FD_ZERO(fd)
   for i in items(s): 
     m = max(m, int(i))
     FD_SET(i, fd)
    
-proc pruneSocketSet(s: var seq[SocketHandle], fd: var FdSet) = 
+proc pruneSocketSet(s: var seq[SocketHandle], fd: var FD_SET) = 
   var i = 0
   var L = s.len
   while i < L:
@@ -386,7 +386,7 @@ proc select*(readfds: var seq[SocketHandle], timeout = 500): int =
   ## 
   ## A socket is removed from the specific ``seq`` when it has data waiting to
   ## be read/written to or has errors (``exceptfds``).
-  var tv {.noInit.}: Ttimeval = timeValFromMilliseconds(timeout)
+  var tv {.noInit.}: TTimeval = timeValFromMilliseconds(timeout)
   
   var rd: TFdSet
   var m = 0
@@ -400,7 +400,7 @@ proc select*(readfds: var seq[SocketHandle], timeout = 500): int =
   pruneSocketSet(readfds, (rd))
 
 proc selectWrite*(writefds: var seq[SocketHandle],
-                  timeout = 500): int {.tags: [FReadIO].} =
+                  timeout = 500): int {.tags: [ReadIOEffect].} =
   ## When a socket in ``writefds`` is ready to be written to then a non-zero
   ## value will be returned specifying the count of the sockets which can be
   ## written to. The sockets which can be written to will also be removed

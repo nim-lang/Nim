@@ -16,7 +16,7 @@ type
 {.deprecated: [TSortOrder: SortOrder].}
 
 
-proc `*`*(x: int, order: TSortOrder): int {.inline.} = 
+proc `*`*(x: int, order: SortOrder): int {.inline.} = 
   ## flips `x` if ``order == Descending``;
   ## if ``order == Ascending`` then `x` is returned.
   ## `x` is supposed to be the result of a comparator, ie ``< 0`` for 
@@ -103,7 +103,7 @@ proc lowerBound*[T](a: openArray[T], key: T, cmp: proc(x,y: T): int {.closure.})
 
 proc lowerBound*[T](a: openArray[T], key: T): int = lowerBound(a, key, cmp[T])
 proc merge[T](a, b: var openArray[T], lo, m, hi: int, 
-              cmp: proc (x, y: T): int {.closure.}, order: TSortOrder) =
+              cmp: proc (x, y: T): int {.closure.}, order: SortOrder) =
   template `<-` (a, b: expr) = 
     when false:
       a = b
@@ -150,7 +150,7 @@ proc merge[T](a, b: var openArray[T], lo, m, hi: int,
 
 proc sort*[T](a: var openArray[T],
               cmp: proc (x, y: T): int {.closure.},
-              order = TSortOrder.Ascending) =
+              order = SortOrder.Ascending) =
   ## Default Nimrod sort. The sorting is guaranteed to be stable and 
   ## the worst case is guaranteed to be O(n log n).
   ## The current implementation uses an iterative
