@@ -92,7 +92,7 @@ proc point2d*(x,y:float):TPoint2d {.noInit,inline.}
 let
   IDMATRIX*:TMatrix2d=matrix2d(1.0,0.0,0.0,1.0,0.0,0.0)
     ## Quick access to an identity matrix
-  ORIGO*:TPoint2d=Point2d(0.0,0.0)
+  ORIGO*:TPoint2d=point2d(0.0,0.0)
     ## Quick acces to point (0,0)
   XAXIS*:TVector2d=vector2d(1.0,0.0)
     ## Quick acces to an 2d x-axis unit vector
@@ -212,7 +212,7 @@ proc mirror*(v:TVector2d):TMatrix2d {.noInit.} =
     xy2=v.x*v.y*2.0*nd
     sqd=nd*(sqx-sqy)
     
-  if nd==inf or nd==neginf:
+  if nd==Inf or nd==NegInf:
     return IDMATRIX #mirroring around a zero vector is arbitrary=>just use identity
 
   result.setElements(
@@ -231,7 +231,7 @@ proc mirror*(org:TPoint2d,v:TVector2d):TMatrix2d {.noInit.} =
     xy2=v.x*v.y*2.0*nd
     sqd=nd*(sqx-sqy)
     
-  if nd==inf or nd==neginf:
+  if nd==Inf or nd==NegInf:
     return IDMATRIX #mirroring around a zero vector is arbitrary=>just use identity
 
   result.setElements(
@@ -285,7 +285,7 @@ proc inverse*(m:TMatrix2d):TMatrix2d {.noInit.} =
   ## will be raised.
   let d=m.determinant
   if d==0.0:
-    raise newException(EDivByZero,"Cannot invert a zero determinant matrix")
+    raise newException(DivByZeroError,"Cannot invert a zero determinant matrix")
     
   result.setElements(
     m.by/d,-m.ay/d,
@@ -360,7 +360,7 @@ proc `len=`*(v:var TVector2d,newlen:float) {.noInit.} =
     v.y=0.0
     return
   
-  if fac==inf or fac==neginf:
+  if fac==Inf or fac==NegInf:
     #to short for float accuracy
     #do as good as possible:
     v.x=newlen
@@ -431,7 +431,7 @@ proc normalize*(v:var TVector2d) {.inline.}=
   ## Modifies `v` to have a length of 1.0, keeping its angle.
   ## If  `v` has zero length, an EDivByZero will be raised.
   if not tryNormalize(v):
-    raise newException(EDivByZero,"Cannot normalize zero length vector")
+    raise newException(DivByZeroError,"Cannot normalize zero length vector")
   
 proc transformNorm*(v:var TVector2d,t:TMatrix2d)=
   ## Applies a normal direction transformation `t` onto `v` in place.
@@ -447,7 +447,7 @@ proc transformNorm*(v:var TVector2d,t:TMatrix2d)=
   #             | | 0  0  1 |    |
   let d=t.determinant
   if(d==0.0):
-    raise newException(EDivByZero,"Matrix is not invertible")
+    raise newException(DivByZeroError,"Matrix is not invertible")
   let newx = (t.by*v.x-t.ay*v.y)/d
   v.y = (t.ax*v.y-t.bx*v.x)/d
   v.x = newx
@@ -461,7 +461,7 @@ proc transformInv*(v:var TVector2d,t:TMatrix2d)=
   let d=t.determinant
 
   if(d==0.0):
-    raise newException(EDivByZero,"Matrix is not invertible")
+    raise newException(DivByZeroError,"Matrix is not invertible")
 
   let newx=(t.by*v.x-t.bx*v.y)/d
   v.y = (t.ax*v.y-t.ay*v.x)/d
@@ -531,7 +531,7 @@ proc mirror*(v:var TVector2d,mirrvec:TVector2d)=
     xy2=mirrvec.x*mirrvec.y*2.0*nd
     sqd=nd*(sqx-sqy)
     
-  if nd==inf or nd==neginf:
+  if nd==Inf or nd==NegInf:
     return #mirroring around a zero vector is arbitrary=>keep as is is fastest
   
   let newx=xy2*v.y+sqd*v.x
@@ -703,7 +703,7 @@ proc transformInv*(p:var TPoint2d,t:TMatrix2d){.inline.}=
   #             | TX TY 1 |
   let d=t.determinant
   if d==0.0:
-    raise newException(EDivByZero,"Cannot invert a zero determinant matrix")
+    raise newException(DivByZeroError,"Cannot invert a zero determinant matrix")
   let 
     newx= (t.bx*t.ty-t.by*t.tx+p.x*t.by-p.y*t.bx)/d
   p.y = -(t.ax*t.ty-t.ay*t.tx+p.x*t.ay-p.y*t.ax)/d
@@ -820,11 +820,11 @@ proc closestPoint*(p:TPoint2d,pts:varargs[TPoint2d]):TPoint2d=
   
   var 
     bestidx=0
-    bestdist=p.sqrdist(pts[0])
+    bestdist=p.sqrDist(pts[0])
     curdist:float
     
   for idx in 1..high(pts):
-    curdist=p.sqrdist(pts[idx])
+    curdist=p.sqrDist(pts[idx])
     if curdist<bestdist:
       bestidx=idx
       bestdist=curdist
