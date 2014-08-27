@@ -25,7 +25,7 @@ type
     
   TGenKeyValuePair[T] = tuple[key: string, val: T]
   TGenKeyValuePairSeq[T] = seq[TGenKeyValuePair[T]]
-  TGenTable*[T] = object of TObject
+  TGenTable*[T] = object of RootObj
     counter: int
     data: TGenKeyValuePairSeq[T]
     mode: TGenTableMode
@@ -78,7 +78,7 @@ proc RawGet[T](tbl: PGenTable[T], key: string): int =
   var h: THash
   h = myhash(tbl, key) and high(tbl.data) # start with real hash value
   while not isNil(tbl.data[h].key):
-    if mycmp(tbl, tbl.data[h].key, key):
+    if myCmp(tbl, tbl.data[h].key, key):
       return h
     h = nextTry(h, high(tbl.data))
   result = - 1

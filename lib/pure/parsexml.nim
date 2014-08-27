@@ -98,11 +98,11 @@ type
     filename: string
     options: set[XmlParseOption]
 
-{.deprecated: [TXmlParser: XmlParser, TXmlParseOptions: XmlParseOptions,
+{.deprecated: [TXmlParser: XmlParser, TXmlParseOptions: XmlParseOption,
     TXmlError: XmlErrorKind, TXmlEventKind: XmlEventKind].}
 
 const
-  errorMessages: array[XmlError, string] = [
+  errorMessages: array[XmlErrorKind, string] = [
     "no error",
     "']]>' expected",
     "name expected",
@@ -235,11 +235,11 @@ proc parseCDATA(my: var TXMLParser) =
       markError(my, errEndOfCDataExpected)
       break
     of '\c': 
-      pos = lexbase.HandleCR(my, pos)
+      pos = lexbase.handleCR(my, pos)
       buf = my.buf
       add(my.a, '\L')
     of '\L': 
-      pos = lexbase.HandleLF(my, pos)
+      pos = lexbase.handleLF(my, pos)
       buf = my.buf
       add(my.a, '\L')
     else:
@@ -263,11 +263,11 @@ proc parseComment(my: var TXMLParser) =
       markError(my, errEndOfCommentExpected)
       break
     of '\c': 
-      pos = lexbase.HandleCR(my, pos)
+      pos = lexbase.handleCR(my, pos)
       buf = my.buf
       if my.options.contains(reportComments): add(my.a, '\L')
     of '\L': 
-      pos = lexbase.HandleLF(my, pos)
+      pos = lexbase.handleLF(my, pos)
       buf = my.buf
       if my.options.contains(reportComments): add(my.a, '\L')
     else:
@@ -286,11 +286,11 @@ proc parseWhitespace(my: var TXmlParser, skip=False) =
       Inc(pos)
     of '\c':  
       # the specification says that CR-LF, CR are to be transformed to LF
-      pos = lexbase.HandleCR(my, pos)
+      pos = lexbase.handleCR(my, pos)
       buf = my.buf
       if not skip: add(my.a, '\L')
     of '\L': 
-      pos = lexbase.HandleLF(my, pos)
+      pos = lexbase.handleLF(my, pos)
       buf = my.buf
       if not skip: add(my.a, '\L')
     else:

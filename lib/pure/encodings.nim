@@ -36,7 +36,7 @@ when defined(windows):
     while i < a.len and j < b.len:
       if a[i] in {'-', '_'}: inc i
       if b[j] in {'-', '_'}: inc j
-      if a[i].tolower != b[j].tolower: return false
+      if a[i].toLower != b[j].toLower: return false
       inc i
       inc j
     result = i == a.len and j == b.len
@@ -295,11 +295,11 @@ else:
 proc getCurrentEncoding*(): string =
   ## retrieves the current encoding. On Unix, always "UTF-8" is returned.
   when defined(windows):
-    result = codePageToName(GetACP())
+    result = codePageToName(getACP())
   else:
     result = "UTF-8"
   
-proc open*(destEncoding = "UTF-8", srcEncoding = "CP1252"): PConverter =
+proc open*(destEncoding = "UTF-8", srcEncoding = "CP1252"): EncodingConverter =
   ## opens a converter that can convert from `srcEncoding` to `destEncoding`.
   ## Raises `EIO` if it cannot fullfill the request.
   when not defined(windows):
@@ -312,19 +312,19 @@ proc open*(destEncoding = "UTF-8", srcEncoding = "CP1252"): PConverter =
     result.dest = nameToCodePage(destEncoding)
     result.src = nameToCodePage(srcEncoding)
     if int(result.dest) == -1:
-      raise newException(EInvalidEncoding, 
+      raise newException(EncodingError, 
         "cannot find encoding " & destEncoding)
     if int(result.src) == -1:
-      raise newException(EInvalidEncoding, 
+      raise newException(EncodingError, 
         "cannot find encoding " & srcEncoding)
 
-proc close*(c: PConverter) =
+proc close*(c: EncodingConverter) =
   ## frees the resources the converter `c` holds.
   when not defined(windows):
     iconvClose(c)
 
 when defined(windows):
-  proc convert*(c: PConverter, s: string): string =
+  proc convert*(c: EncodingConverter, s: string): string =
     ## converts `s` to `destEncoding` that was given to the converter `c`. It
     ## assumed that `s` is in `srcEncoding`.
     
@@ -354,7 +354,7 @@ when defined(windows):
                               cbMultiByte = cint(s.len),
                               lpWideCharStr = cstring(result),
                               cchWideChar = cint(cap))
-      if m == 0: osError(osLastError())
+      if m == 0: raiseOSError(osLastError())
       setLen(result, m*2)
     elif m <= cap:
       setLen(result, m*2)
@@ -391,7 +391,7 @@ when defined(windows):
         cchWideChar = cint(result.len div 2),
         lpMultiByteStr = cstring(res),
         cbMultiByte = cap.cint)
-      if m == 0: osError(osLastError())
+      if m == 0: raiseOSError(osLastError())
       setLen(res, m)
       result = res
     elif m <= cap:
