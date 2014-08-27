@@ -60,7 +60,7 @@ template encodeInternal(s: expr, lineLen: int, newLine: string): stmt {.immediat
   else:
     #assert(r == result.len)
 
-proc encode*[T:TInteger|char](s: openarray[T], lineLen = 75, newLine="\13\10"): string = 
+proc encode*[T:SomeInteger|char](s: openarray[T], lineLen = 75, newLine="\13\10"): string = 
   ## encodes `s` into base64 representation. After `lineLen` characters, a 
   ## `newline` is added.
   encodeInternal(s, lineLen, newLine)
