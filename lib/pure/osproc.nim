@@ -334,7 +334,7 @@ when defined(Windows) and not defined(useNimRtl):
     # TRUE and zero bytes returned (EOF).
     # TRUE and n (>0) bytes returned (good data).
     # FALSE and bytes returned undefined (system error).
-    if a == 0 and br != 0: osError(osLastError())
+    if a == 0 and br != 0: raiseOSError(osLastError())
     s.atTheEnd = br < bufLen
     result = br
 
@@ -342,7 +342,7 @@ when defined(Windows) and not defined(useNimRtl):
     var s = PFileHandleStream(s)
     var bytesWritten: int32
     var a = winlean.writeFile(s.handle, buffer, bufLen.cint, bytesWritten, nil)
-    if a == 0: osError(osLastError())
+    if a == 0: raiseOSError(osLastError())
 
   proc newFileHandleStream(handle: THandle): PFileHandleStream =
     new(result)
@@ -383,7 +383,7 @@ when defined(Windows) and not defined(useNimRtl):
     piInheritablePipe.lpSecurityDescriptor = nil
     piInheritablePipe.bInheritHandle = 1
     if createPipe(rdHandle, wrHandle, piInheritablePipe, 1024) == 0'i32:
-      osError(osLastError())
+      raiseOSError(osLastError())
 
   proc fileClose(h: THandle) {.inline.} =
     if h > 4: discard closeHandle(h)
@@ -450,7 +450,7 @@ when defined(Windows) and not defined(useNimRtl):
         fileClose(si.hStdError)
 
     if e != nil: dealloc(e)
-    if success == 0: osError(lastError)
+    if success == 0: raiseOSError(lastError)
     # Close the handle now so anyone waiting is woken:
     discard closeHandle(procInfo.hThread)
     result.fProcessHandle = procInfo.hProcess
@@ -521,7 +521,7 @@ when defined(Windows) and not defined(useNimRtl):
       var res = winlean.createProcessA(nil, command, nil, nil, 0,
         NORMAL_PRIORITY_CLASS, nil, nil, si, procInfo)
     if res == 0:
-      osError(osLastError())
+      raiseOSError(osLastError())
     else:
       process = procInfo.hProcess
       discard closeHandle(procInfo.hThread)
@@ -544,7 +544,7 @@ when defined(Windows) and not defined(useNimRtl):
     of WAIT_TIMEOUT:
       return 0
     of WAIT_FAILED:
-      osError(osLastError())
+      raiseOSError(osLastError())
     else:
       var i = ret - WAIT_OBJECT_0
       readfds.del(i)
@@ -607,7 +607,7 @@ elif not defined(useNimRtl):
     if poParentStreams notin options:
       if pipe(pStdin) != 0'i32 or pipe(pStdout) != 0'i32 or
          pipe(pStderr) != 0'i32:
-        osError(osLastError())
+        raiseOSError(osLastError())
 
     var sysCommand: string
     var sysArgsRaw: seq[string]
@@ -683,7 +683,7 @@ elif not defined(useNimRtl):
       var fops: Tposix_spawn_file_actions
 
       template chck(e: expr) =
-        if e != 0'i32: osError(osLastError())
+        if e != 0'i32: raiseOSError(osLastError())
 
       chck posix_spawn_file_actions_init(fops)
       chck posix_spawnattr_init(attr)
@@ -726,7 +726,7 @@ elif not defined(useNimRtl):
 
   proc startProcessAuxFork(data: TStartProcessData): TPid =
     if pipe(data.pErrorPipe) != 0:
-      osError(osLastError())
+      raiseOSError(osLastError())
 
     finally:
       discard close(data.pErrorPipe[readIdx])
@@ -751,12 +751,12 @@ elif not defined(useNimRtl):
         exitnow(1)
 
     discard close(data.pErrorPipe[writeIdx])
-    if pid < 0: osError(osLastError())
+    if pid < 0: raiseOSError(osLastError())
 
     var error: cint
     let sizeRead = read(data.pErrorPipe[readIdx], addr error, sizeof(error))
     if sizeRead == sizeof(error):
-      osError($strerror(error))
+      raiseOSError($strerror(error))
 
     return pid
 
@@ -818,10 +818,10 @@ elif not defined(useNimRtl):
     discard close(p.errHandle)
 
   proc suspend(p: PProcess) =
-    if kill(-p.id, SIGSTOP) != 0'i32: osError(osLastError())
+    if kill(-p.id, SIGSTOP) != 0'i32: raiseOSError(osLastError())
 
   proc resume(p: PProcess) =
-    if kill(-p.id, SIGCONT) != 0'i32: osError(osLastError())
+    if kill(-p.id, SIGCONT) != 0'i32: raiseOSError(osLastError())
 
   proc running(p: PProcess): bool =
     var ret = waitpid(p.id, p.exitCode, WNOHANG)
@@ -831,8 +831,8 @@ elif not defined(useNimRtl):
   proc terminate(p: PProcess) =
     if kill(-p.id, SIGTERM) == 0'i32:
       if p.running():
-        if kill(-p.id, SIGKILL) != 0'i32: osError(osLastError())
-    else: osError(osLastError())
+        if kill(-p.id, SIGKILL) != 0'i32: raiseOSError(osLastError())
+    else: raiseOSError(osLastError())
 
   proc waitForExit(p: PProcess, timeout: int = -1): int =
     #if waitPid(p.id, p.exitCode, 0) == int(p.id):
@@ -842,7 +842,7 @@ elif not defined(useNimRtl):
     if p.exitCode != -3: return p.exitCode
     if waitpid(p.id, p.exitCode, 0) < 0:
       p.exitCode = -3
-      osError(osLastError())
+      raiseOSError(osLastError())
     result = int(p.exitCode) shr 8
 
   proc peekExitCode(p: PProcess): int =
@@ -856,7 +856,7 @@ elif not defined(useNimRtl):
   proc createStream(stream: var PStream, handle: var FileHandle,
                     fileMode: FileMode) =
     var f: File
-    if not open(f, handle, fileMode): osError(osLastError())
+    if not open(f, handle, fileMode): raiseOSError(osLastError())
     stream = newFileStream(f)
 
   proc inputStream(p: PProcess): PStream =

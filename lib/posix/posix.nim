@@ -29,7 +29,7 @@
 
 {.deadCodeElim:on.}
 
-from times import TTime
+from times import Time
 
 const
   hasSpawnH = not defined(haiku) # should exist for every Posix system nowadays
@@ -83,8 +83,11 @@ else:
       ## A type representing a directory stream.
 
 type
-  TSocketHandle* = distinct cint # The type used to represent socket descriptors
+  SocketHandle* = distinct cint # The type used to represent socket descriptors
 
+{.deprecated: [TSocketHandle: SocketHandle].}
+
+type
   Tdirent* {.importc: "struct dirent",
              header: "<dirent.h>", final, pure.} = object ## dirent_t struct
     d_ino*: Tino  ## File serial number.

@@ -363,7 +363,9 @@ const
 proc wsaGetLastError*(): cint {.importc: "WSAGetLastError", dynlib: ws2dll.}
 
 type
-  TSocketHandle* = distinct int
+  SocketHandle* = distinct int
+
+{.deprecated: [TSocketHandle: SocketHandle].}
 
 type
   TWSAData* {.pure, final, importc: "WSADATA", header: "Winsock2.h".} = object 

@@ -422,7 +422,7 @@ proc hasKey*[A, B](t: TOrderedTable[A, B], key: A): bool =
   result = rawGet(t, key) >= 0
 
 proc rawInsert[A, B](t: var TOrderedTable[A, B], 
-                     data: var TOrderedKeyValuePairSeq[A, B],
+                     data: var OrderedKeyValuePairSeq[A, B],
                      key: A, val: B) =
   rawInsertImpl()
   data[h].next = -1
@@ -431,7 +431,7 @@ proc rawInsert[A, B](t: var TOrderedTable[A, B],
   t.last = h
 
 proc enlarge[A, B](t: var TOrderedTable[A, B]) =
-  var n: TOrderedKeyValuePairSeq[A, B]
+  var n: OrderedKeyValuePairSeq[A, B]
   newSeq(n, len(t.data) * growthFactor)
   var h = t.first
   t.first = -1

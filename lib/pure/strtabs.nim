@@ -121,7 +121,7 @@ proc hasKey*(t: PStringTable, key: string): bool {.rtl, extern: "nst$1".} =
   ## returns true iff `key` is in the table `t`.
   result = rawGet(t, key) >= 0
 
-proc rawInsert(t: PStringTable, data: var TKeyValuePairSeq, key, val: string) =
+proc rawInsert(t: PStringTable, data: var KeyValuePairSeq, key, val: string) =
   var h: THash = myhash(t, key) and high(data)
   while not isNil(data[h].key):
     h = nextTry(h, high(data))
@@ -129,7 +129,7 @@ proc rawInsert(t: PStringTable, data: var TKeyValuePairSeq, key, val: string) =
   data[h].val = val
 
 proc enlarge(t: PStringTable) =
-  var n: TKeyValuePairSeq
+  var n: KeyValuePairSeq
   newSeq(n, len(t.data) * growthFactor)
   for i in countup(0, high(t.data)):
     if not isNil(t.data[i].key): rawInsert(t, n, t.data[i].key, t.data[i].val)
@@ -182,7 +182,7 @@ proc newStringTable*(keyValuePairs: varargs[string],
     inc(i, 2)
 
 proc newStringTable*(keyValuePairs: varargs[tuple[key, val: string]],
-                     mode: TStringTableMode = modeCaseSensitive): PStringTable {.
+                     mode: StringTableMode = modeCaseSensitive): PStringTable {.
   rtl, extern: "nst$1WithTableConstr".} =
   ## creates a new string table with given key value pairs.
   ## Example::

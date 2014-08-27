@@ -48,7 +48,7 @@ proc mapMem*(m: var MemFile, mode: FileMode = fmRead,
       if mappedSize == -1: 0 else: mappedSize,
       nil)
     if result == nil:
-      osError(osLastError())
+      raiseOSError(osLastError())
   else:
     assert mappedSize > 0
     result = mmap(
@@ -58,7 +58,7 @@ proc mapMem*(m: var MemFile, mode: FileMode = fmRead,
       if readonly: (MAP_PRIVATE or MAP_POPULATE) else: (MAP_SHARED or MAP_POPULATE),
       m.handle, offset)
     if result == cast[pointer](MAP_FAILED):
-      osError(osLastError())
+      raiseOSError(osLastError())
 
 
 proc unmapMem*(f: var MemFile, p: pointer, size: int) =

@@ -136,7 +136,7 @@ type
     months*: int      ## The number of months
     years*: int       ## The number of years
 
-{.deprecated: [TMonth: Month, TWeekDay: WeekDay, TTime: Time, TTimeval: Timeval,
+{.deprecated: [TMonth: Month, TWeekDay: WeekDay, TTime: Time,
     TTimeInterval: TimeInterval, TTimeInfo: TimeInfo].}
 
 proc getTime*(): Time {.tags: [TimeEffect], gcsafe.}
@@ -228,7 +228,7 @@ proc isLeapYear*(year: int): bool =
   else:
     return false
 
-proc getDaysInMonth*(month: TMonth, year: int): int =
+proc getDaysInMonth*(month: Month, year: int): int =
   ## gets the amount of days in a ``month`` of a ``year``
 
   # http://www.dispersiondesign.com/articles/time/number_of_days_in_a_month
@@ -350,7 +350,7 @@ when not defined(JS):
       minute: int(tm.minute),
       hour: int(tm.hour),
       monthday: int(tm.monthday),
-      month: TMonth(tm.month),
+      month: Month(tm.month),
       year: tm.year + 1900'i32,
       weekday: weekDays[int(tm.weekday)],
       yearday: int(tm.yearday),
@@ -455,7 +455,7 @@ when not defined(JS):
   when not defined(useNimRtl):
     proc epochTime(): float = 
       when defined(posix):
-        var a: Ttimeval
+        var a: Timeval
         posix_gettimeofday(a)
         result = toFloat(a.tv_sec) + toFloat(a.tv_usec)*0.00_0001
       elif defined(windows):

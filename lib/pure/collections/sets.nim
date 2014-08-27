@@ -149,11 +149,11 @@ proc contains*[A](s: TSet[A], key: A): bool =
   var index = rawGet(s, key)
   result = index >= 0
 
-proc rawInsert[A](s: var TSet[A], data: var TKeyValuePairSeq[A], key: A) =
+proc rawInsert[A](s: var TSet[A], data: var KeyValuePairSeq[A], key: A) =
   rawInsertImpl()
 
 proc enlarge[A](s: var TSet[A]) =
-  var n: TKeyValuePairSeq[A]
+  var n: KeyValuePairSeq[A]
   newSeq(n, len(s.data) * growthFactor)
   for i in countup(0, high(s.data)):
     if s.data[i].slot == seFilled: rawInsert(s, n, s.data[i].key)
@@ -500,7 +500,7 @@ type
     ##
     ## Use `init() <#init,OrderedSet[A],int>`_ or `initOrderedSet[type]()
     ## <#initOrderedSet>`_ before calling other procs on it.
-    data: TOrderedKeyValuePairSeq[A]
+    data: OrderedKeyValuePairSeq[A]
     counter, first, last: int
 
 {.deprecated: [TOrderedSet: OrderedSet].}
@@ -588,7 +588,7 @@ proc contains*[A](s: TOrderedSet[A], key: A): bool =
   result = index >= 0
 
 proc rawInsert[A](s: var TOrderedSet[A], 
-                  data: var TOrderedKeyValuePairSeq[A], key: A) =
+                  data: var OrderedKeyValuePairSeq[A], key: A) =
   rawInsertImpl()
   data[h].next = -1
   if s.first < 0: s.first = h
@@ -596,7 +596,7 @@ proc rawInsert[A](s: var TOrderedSet[A],
   s.last = h
 
 proc enlarge[A](s: var TOrderedSet[A]) =
-  var n: TOrderedKeyValuePairSeq[A]
+  var n: OrderedKeyValuePairSeq[A]
   newSeq(n, len(s.data) * growthFactor)
   var h = s.first
   s.first = -1

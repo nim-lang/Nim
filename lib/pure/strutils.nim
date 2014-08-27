@@ -766,7 +766,7 @@ proc find*(s, sub: string, start: int = 0): int {.noSideEffect,
   ## Searches for `sub` in `s` starting at position `start`.
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
-  var a {.noinit.}: TSkipTable
+  var a {.noinit.}: SkipTable
   preprocessSub(sub, a)
   result = findAux(s, sub, start, a)
 
@@ -1158,7 +1158,7 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
   ## after the decimal point for Nimrod's ``biggestFloat`` type.
   ## 
   ## If ``precision == 0``, it tries to format it nicely.
-  const floatFormatToChar: array[TFloatFormat, char] = ['g', 'f', 'e']
+  const floatFormatToChar: array[FloatFormatMode, char] = ['g', 'f', 'e']
   var
     frmtstr {.noinit.}: array[0..5, char]
     buf {.noinit.}: array[0..2500, char]
