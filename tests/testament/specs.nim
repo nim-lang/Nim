@@ -59,7 +59,7 @@ when not declared(parseCfgBool):
     case normalize(s)
     of "y", "yes", "true", "1", "on": result = true
     of "n", "no", "false", "0", "off": result = false
-    else: raise newException(EInvalidValue, "cannot interpret as a bool: " & s)
+    else: raise newException(ValueError, "cannot interpret as a bool: " & s)
 
 proc extractSpec(filename: string): string =
   const tripleQuote = "\"\"\""
@@ -78,7 +78,7 @@ when not defined(nimhygiene):
 
 template parseSpecAux(fillResult: stmt) {.immediate.} =
   var ss = newStringStream(extractSpec(filename))
-  var p {.inject.}: TCfgParser
+  var p {.inject.}: CfgParser
   open(p, ss, filename, 1)
   while true:
     var e {.inject.} = next(p)
