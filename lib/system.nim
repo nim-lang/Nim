@@ -100,7 +100,7 @@ proc defined*(x: expr): bool {.magic: "Defined", noSideEffect.}
   ## Special compile-time procedure that checks whether `x` is
   ## defined.
   ## `x` is an external symbol introduced through the compiler's
-  ## `-d:x switch <nimrodc.html#compile-time-symbols>`_ to enable build time
+  ## `-d:x switch <nimc.html#compile-time-symbols>`_ to enable build time
   ## conditionals:
   ##
   ## .. code-block:: Nim
@@ -509,7 +509,7 @@ proc sizeof*[T](x: T): Natural {.magic: "SizeOf", noSideEffect.}
 proc `<`*[T](x: Ordinal[T]): T {.magic: "UnaryLt", noSideEffect.}
   ## unary ``<`` that can be used for nice looking excluding ranges:
   ## 
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   for i in 0 .. <10: echo i
   ##
   ## Semantically this is the same as ``pred``. 
@@ -544,7 +544,7 @@ proc newSeq*[T](s: var seq[T], len: int) {.magic: "NewSeq", noSideEffect.}
   ## ``nil``. After the creation of the sequence you should assign entries to
   ## the sequence instead of adding them. Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   var inputStrings : seq[string]
   ##   newSeq(inputStrings, 3)
   ##   inputStrings[0] = "The fourth"
@@ -560,7 +560,7 @@ proc newSeq*[T](len = 0): seq[T] =
   ## ``nil``. After the creation of the sequence you should assign entries to
   ## the sequence instead of adding them. Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   var inputStrings = newSeq[string](3)
   ##   inputStrings[0] = "The fourth"
   ##   inputStrings[1] = "assignment"
@@ -1058,7 +1058,7 @@ proc compileOption*(option: string): bool {.
   magic: "CompileOption", noSideEffect.}
   ## can be used to determine an on|off compile-time option. Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   when compileOption("floatchecks"): 
   ##     echo "compiled with floating point NaN and Inf checks"
   
@@ -1066,7 +1066,7 @@ proc compileOption*(option, arg: string): bool {.
   magic: "CompileOptionArg", noSideEffect.}
   ## can be used to determine an enum compile-time option. Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   when compileOption("opt", "size") and compileOption("gc", "boehm"): 
   ##     echo "compiled with optimization for size and uses Boehm's GC"
 
@@ -1123,7 +1123,7 @@ proc quit*(errorcode: int = QuitSuccess) {.
   ## procedures.  It does *not* call the garbage collector to free all the
   ## memory, unless a quit procedure calls ``GC_collect``.
   ##
-  ## The proc ``quit(QuitSuccess)`` is called implicitly when your nimrod
+  ## The proc ``quit(QuitSuccess)`` is called implicitly when your nim
   ## program finishes without incident. A raised unhandled exception is
   ## equivalent to calling ``quit(QuitFailure)``.
   ##
@@ -1840,7 +1840,7 @@ proc map*[T, S](data: openArray[T], op: proc (x: T): S {.closure.}): seq[S] =
   ## Since the input is not modified you can use this version of ``map`` to
   ## transform the type of the elements in the input sequence. Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   let
   ##     a = @[1, 2, 3, 4]
   ##     b = map(a, proc(x: int): string = $x)
@@ -1854,7 +1854,7 @@ proc map*[T](data: var openArray[T], op: proc (x: var T) {.closure.}) =
   ## Note that this version of ``map`` requires your input and output types to
   ## be the same, since they are modified in-place. Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   var a = @["1", "2", "3", "4"]
   ##   echo repr(a)
   ##   # --> ["1", "2", "3", "4"]
@@ -1945,7 +1945,7 @@ proc `$`*[T: tuple|object](x: T): string =
   ## generic ``$`` operator for tuples that is lifted from the components
   ## of `x`. Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   $(23, 45) == "(23, 45)"
   ##   $() == "()"
   result = "("
@@ -1971,7 +1971,7 @@ proc `$`*[T](x: set[T]): string =
   ## generic ``$`` operator for sets that is lifted from the components
   ## of `x`. Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   ${23, 45} == "{23, 45}"
   collectionToString(x, "{", "}")
 
@@ -1979,7 +1979,7 @@ proc `$`*[T](x: seq[T]): string =
   ## generic ``$`` operator for seqs that is lifted from the components
   ## of `x`. Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   $(@[23, 45]) == "@[23, 45]"
   collectionToString(x, "@[", "]")
 
@@ -2078,7 +2078,7 @@ var
     ## writes an error message and terminates the program. `outOfMemHook` can
     ## be used to raise an exception in case of OOM like so:
     ## 
-    ## .. code-block:: nimrod
+    ## .. code-block:: nim
     ##
     ##   var gOutOfMem: ref EOutOfMemory
     ##   new(gOutOfMem) # need to be allocated *before* OOM really happened!
@@ -2576,7 +2576,7 @@ when not defined(JS): #and not defined(NimrodVM):
       ## If the file does not exist `EIO` is raised. The trailing newline
       ## character(s) are removed from the iterated lines. Example:
       ##
-      ## .. code-block:: nimrod
+      ## .. code-block:: nim
       ##   import strutils
       ##
       ##   proc transformLetters(filename: string) =
@@ -2595,7 +2595,7 @@ when not defined(JS): #and not defined(NimrodVM):
       ## The trailing newline character(s) are removed from the iterated lines.
       ## Example:
       ##
-      ## .. code-block:: nimrod
+      ## .. code-block:: nim
       ##   proc countZeros(filename: File): tuple[lines, zeros: int] =
       ##     for line in filename.lines:
       ##       for letter in line:
@@ -2645,7 +2645,7 @@ when not defined(JS): #and not defined(NimrodVM):
       ## platforms this can help the processor predict better which branch is
       ## going to be run. Example:
       ##
-      ## .. code-block:: nimrod
+      ## .. code-block:: nim
       ##   for value in inputValues:
       ##     if likely(value <= 100):
       ##       process(value)
@@ -2659,7 +2659,7 @@ when not defined(JS): #and not defined(NimrodVM):
       ## platforms this can help the processor predict better which branch is
       ## going to be run. Example:
       ##
-      ## .. code-block:: nimrod
+      ## .. code-block:: nim
       ##   for value in inputValues:
       ##     if unlikely(value > 100):
       ##       echo "Value too big!"
@@ -2766,7 +2766,7 @@ when hostOS != "standalone":
     ## ``b.len`` is not exactly the number of elements that are referred to
     ## by `x`, a `splice`:idx: is performed:
     ##
-    ## .. code-block:: nimrod
+    ## .. code-block:: nim
     ##   var s = "abcdef"
     ##   s[1 .. -2] = "xyz"
     ##   assert s == "axyzf"
@@ -2843,7 +2843,7 @@ proc slurp*(filename: string): string {.magic: "Slurp".}
 proc staticRead*(filename: string): string {.magic: "Slurp".}
   ## Compile-time ``readFile`` proc for easy `resource`:idx: embedding:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##     const myResource = staticRead"mydatafile.bin"
   ##
   ## ``slurp`` is an alias for ``staticRead``.
@@ -2858,13 +2858,13 @@ proc staticExec*(command: string, input = ""): string {.
   ## if `input` is not an empty string, it will be passed as a standard input
   ## to the executed program.
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##     const buildInfo = "Revision " & staticExec("git rev-parse HEAD") & 
   ##                       "\nCompiled on " & staticExec("uname -v")
   ##
   ## ``gorge`` is an alias for ``staticExec``. Note that you can use this proc
-  ## inside a pragma like `passC <nimrodc.html#passc-pragma>`_ or `passL
-  ## <nimrodc.html#passl-pragma>`_.
+  ## inside a pragma like `passC <nimc.html#passc-pragma>`_ or `passL
+  ## <nimc.html#passl-pragma>`_.
 
 proc `+=`*[T: SomeOrdinal|uint|uint64](x: var T, y: T) {.magic: "Inc", noSideEffect.}
   ## Increments an ordinal
@@ -2906,7 +2906,7 @@ proc instantiationInfo*(index = -1, fullPaths = false): tuple[
   ## to retrieve information about the current filename and line number.
   ## Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   import strutils
   ##
   ##   template testException(exception, code: expr): stmt =
@@ -2951,7 +2951,7 @@ template assert*(cond: bool, msg = "") =
   ## raises an ``EAssertionFailure`` exception. However, the compiler may not
   ## generate any code at all for ``assert`` if it is advised to do so through
   ## the ``-d:release`` or ``--assertions:off`` `command line switches
-  ## <nimrodc.html#command-line-switches>`_.
+  ## <nimc.html#command-line-switches>`_.
   ##
   ## Use ``assert`` for debugging purposes only.
   bind instantiationInfo
@@ -2994,7 +2994,7 @@ template onFailedAssert*(msg: expr, code: stmt): stmt {.dirty, immediate.} =
   ## statements following `onFailedAssert` in the current lexical scope.
   ## Can be defined multiple times in a single function.
   ##  
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##
   ##   proc example(x: int): TErrorCode =
   ##     onFailedAssert(msg):
@@ -3089,7 +3089,7 @@ proc locals*(): RootObj {.magic: "Locals", noSideEffect.} =
   ## the official signature says, the return type is not ``TObject`` but a
   ## tuple of a structure that depends on the current scope. Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   proc testLocals() =
   ##     var
   ##       a = "something"

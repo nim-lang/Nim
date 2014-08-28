@@ -33,7 +33,7 @@
 ## XML parser to accomplish a simple task: To determine the title of an HTML
 ## document.
 ##
-## .. code-block:: nimrod
+## .. code-block:: nim
 ##     :file: examples/htmltitle.nim
 ##
 ##
@@ -44,7 +44,7 @@
 ## XML parser to accomplish another simple task: To determine all the links 
 ## an HTML document contains.
 ##
-## .. code-block:: nimrod
+## .. code-block:: nim
 ##     :file: examples/htmlrefs.nim
 ##
 

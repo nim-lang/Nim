@@ -348,13 +348,13 @@ iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
   ##
   ## Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   for k, v in interpolatedFragments("  $this is ${an  example}  $$"):
   ##     echo "(", k, ", \"", v, "\")"
   ##
   ## Results in:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   (ikString, "  ")
   ##   (ikExpr, "this")
   ##   (ikString, " is ")

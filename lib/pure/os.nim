@@ -514,12 +514,12 @@ proc joinPath*(head, tail: string): string {.
   ##
   ## For example on Unix:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   joinPath("usr", "lib")
   ##
   ## results in:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   "usr/lib"
   ##
   ## If head is the empty string, tail is returned. If tail is the empty
@@ -528,7 +528,7 @@ proc joinPath*(head, tail: string): string {.
   ## path separators not located on boundaries won't be modified. More
   ## examples on Unix:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   assert joinPath("usr", "") == "usr/"
   ##   assert joinPath("", "lib") == "lib"
   ##   assert joinPath("", "/lib") == "/lib"
@@ -560,7 +560,7 @@ proc `/` * (head, tail: string): string {.noSideEffect.} =
   ##
   ## Here are some examples for Unix:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   assert "usr" / "" == "usr/"
   ##   assert "" / "lib" == "lib"
   ##   assert "" / "/lib" == "/lib"
@@ -574,7 +574,7 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
   ##
   ## Examples:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   splitPath("usr/local/bin") -> ("usr/local", "bin")
   ##   splitPath("usr/local/bin/") -> ("usr/local/bin", "")
   ##   splitPath("bin") -> ("", "bin")
@@ -674,10 +674,10 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
   ##
   ## Example:
   ##
-  ## .. code-block:: nimrod
-  ##   var (dir, name, ext) = splitFile("usr/local/nimrodc.html")
+  ## .. code-block:: nim
+  ##   var (dir, name, ext) = splitFile("usr/local/nimc.html")
   ##   assert dir == "usr/local"
-  ##   assert name == "nimrodc"
+  ##   assert name == "nimc"
   ##   assert ext == ".html"
   ##
   ## If `path` has no extension, `ext` is the empty string.
@@ -1579,7 +1579,7 @@ proc inclFilePermissions*(filename: string,
   rtl, extern: "nos$1", tags: [ReadDirEffect, WriteDirEffect].} =
   ## a convenience procedure for:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   setFilePermissions(filename, getFilePermissions(filename)+permissions)
   setFilePermissions(filename, getFilePermissions(filename)+permissions)
 
@@ -1588,7 +1588,7 @@ proc exclFilePermissions*(filename: string,
   rtl, extern: "nos$1", tags: [ReadDirEffect, WriteDirEffect].} =
   ## a convenience procedure for:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   setFilePermissions(filename, getFilePermissions(filename)-permissions)
   setFilePermissions(filename, getFilePermissions(filename)-permissions)
 
@@ -1627,7 +1627,7 @@ when defined(nimdoc):
     ## can test for its availability with `declared() <system.html#declared>`_.
     ## Example:
     ##
-    ## .. code-block:: nimrod
+    ## .. code-block:: nim
     ##   when declared(paramCount):
     ##     # Use paramCount() here
     ##   else:
@@ -1650,7 +1650,7 @@ when defined(nimdoc):
     ## can test for its availability with `declared() <system.html#declared>`_.
     ## Example:
     ##
-    ## .. code-block:: nimrod
+    ## .. code-block:: nim
     ##   when declared(paramStr):
     ##     # Use paramStr() here
     ##   else:
@@ -1703,7 +1703,7 @@ when declared(paramCount) or defined(nimdoc):
     ## can test for its availability with `declared() <system.html#declared>`_.
     ## Example:
     ##
-    ## .. code-block:: nimrod
+    ## .. code-block:: nim
     ##   when declared(commandLineParams):
     ##     # Use commandLineParams() here
     ##   else:
@@ -1858,7 +1858,7 @@ proc expandTilde*(path: string): string =
   ## The behaviour of this proc is the same on the Windows platform despite not
   ## having this convention. Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   let configFile = expandTilde("~" / "appname.cfg")
   ##   echo configFile
   ##   # --> C:\Users\amber\appname.cfg
@@ -1889,7 +1889,7 @@ type
     creationTime*: Time # Time file was created. Not supported on all systems!
 
 template rawToFormalFileInfo(rawInfo, formalInfo): expr =
-  ## Transforms the native file info structure into the one nimrod uses.
+  ## Transforms the native file info structure into the one nim uses.
   ## 'rawInfo' is either a 'TBY_HANDLE_FILE_INFORMATION' structure on Windows,
   ## or a 'TStat' structure on posix
   when defined(Windows):

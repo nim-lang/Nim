@@ -159,7 +159,7 @@ proc sort*[T](a: var openArray[T],
   ## sensible default argument for ``cmp``, so you have to provide one
   ## of your own. However, the ``system.cmp`` procs can be used:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##
   ##    sort(myIntArray, system.cmp[int])
   ##
@@ -170,7 +170,7 @@ proc sort*[T](a: var openArray[T],
   ## You can inline adhoc comparison procs with the `do notation
   ## <manual.html#do-notation>`_. Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##
   ##   people.sort do (x, y: Person) -> int:
   ##     result = cmp(x.surname, y.surname)

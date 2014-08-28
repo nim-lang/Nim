@@ -11,7 +11,7 @@
 ##
 ## Example:
 ##
-## .. code-block:: nimrod
+## .. code-block:: nim
 ##  import strutils, sockets, httpserver
 ##
 ##  var counter = 0

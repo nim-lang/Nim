@@ -50,7 +50,7 @@ type
     akUInt32 = 43,      ## any represents an unsigned int32
     akUInt64 = 44,      ## any represents an unsigned int64
     
-  TAny* = object {.pure.} ## can represent any nimrod value; NOTE: the wrapped
+  TAny* = object {.pure.} ## can represent any nim value; NOTE: the wrapped
                           ## value can be modified with its wrapper! This means
                           ## that ``TAny`` keeps a non-traced pointer to its
                           ## wrapped value and **must not** live longer than

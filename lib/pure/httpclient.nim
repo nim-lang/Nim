@@ -656,17 +656,17 @@ when isMainModule:
       resp = await client.request("http://picheta.me/aboutme.html")
       echo("Got response: ", resp.status)
 
-      resp = await client.request("http://nimrod-lang.org/")
+      resp = await client.request("http://nim-lang.org/")
       echo("Got response: ", resp.status)
 
-      resp = await client.request("http://nimrod-lang.org/download.html")
+      resp = await client.request("http://nim-lang.org/download.html")
       echo("Got response: ", resp.status)
 
     asyncCheck main()
     runForever()
 
   else:
-    #downloadFile("http://force7.de/nimrod/index.html", "nimrodindex.html")
+    #downloadFile("http://force7.de/nim/index.html", "nimindex.html")
     #downloadFile("http://www.httpwatch.com/", "ChunkTest.html")
     #downloadFile("http://validator.w3.org/check?uri=http%3A%2F%2Fgoogle.com",
     # "validator.html")

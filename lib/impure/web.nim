@@ -59,5 +59,5 @@ proc URLretrieveString*(url: string): TaintedString =
   result = stream.data.TaintedString
 
 when isMainModule:
-  echo URLretrieveString("http://nimrod-code.org/")
+  echo URLretrieveString("http://nim-code.org/")
 

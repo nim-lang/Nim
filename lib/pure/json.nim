@@ -16,7 +16,7 @@
 ##
 ## Usage example:
 ##
-## .. code-block:: nimrod
+## .. code-block:: nim
 ##  let
 ##    small_json = """{"test": 1.3, "key2": true}"""
 ##    jobj = parseJson(small_json)
@@ -26,7 +26,7 @@
 ##
 ## Results in:
 ##
-## .. code-block:: nimrod
+## .. code-block:: nim
 ##
 ##   1.3000000000000000e+00
 ##   true

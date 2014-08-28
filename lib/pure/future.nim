@@ -53,7 +53,7 @@ proc createProcType(p, b: PNimrodNode): PNimrodNode {.compileTime.} =
 macro `=>`*(p, b: expr): expr {.immediate.} =
   ## Syntax sugar for anonymous procedures.
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##
   ##   proc passTwoAndTwo(f: (int, int) -> int): int =
   ##     f(2, 2)
@@ -104,7 +104,7 @@ macro `=>`*(p, b: expr): expr {.immediate.} =
 macro `->`*(p, b: expr): expr {.immediate.} =
   ## Syntax sugar for procedure types.
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##
   ##   proc pass2(f: (float, float) -> float): float =
   ##     f(2, 2)

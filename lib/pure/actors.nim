@@ -13,7 +13,7 @@
 ##
 ## Example:
 ##
-## .. code-block:: nimrod
+## .. code-block:: nim
 ##
 ##      var
 ##        a: TActorPool[int, void]

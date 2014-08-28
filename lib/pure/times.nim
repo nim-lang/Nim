@@ -298,7 +298,7 @@ when not defined(JS):
     ## To generate useful timing values, take the difference between 
     ## the results of two ``cpuTime`` calls:
     ##
-    ## .. code-block:: nimrod
+    ## .. code-block:: nim
     ##   var t0 = cpuTime()
     ##   doWork()
     ##   echo "CPU time [s] ", cpuTime() - t0

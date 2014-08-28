@@ -186,7 +186,7 @@ proc open*(connection, user, password, database: string): TDbConn {.
   ##
   ## Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##
   ##      con = Open("", "", "", "host=localhost port=5432 dbname=mydb")
   ##
@@ -194,7 +194,7 @@ proc open*(connection, user, password, database: string): TDbConn {.
   ## for more information.
   ##
   ## Note that the connection parameter is not used but exists to maintain
-  ## the nimrod db api.
+  ## the nim db api.
   result = PQsetdbLogin(nil, nil, nil, nil, database, user, password)
   if PQStatus(result) != CONNECTION_OK: dbError(result) # result = nil
 

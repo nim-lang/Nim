@@ -132,7 +132,7 @@ when declared(initOptParser):
     ## This is an convenience iterator for iterating over the command line.
     ## This uses the TOptParser object. Example:
     ##
-    ## .. code-block:: nimrod
+    ## .. code-block:: nim
     ##   var
     ##     filename = ""
     ##   for kind, key, val in getopt():

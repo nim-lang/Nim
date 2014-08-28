@@ -771,7 +771,7 @@ elif not defined(useNimRtl):
 
   proc startProcessAfterFork(data: ptr TStartProcessData) =
     # Warning: no GC here!
-    # Or anything that touches global structures - all called nimrod procs
+    # Or anything that touches global structures - all called nim procs
     # must be marked with stackTrace:off. Inspect C code after making changes.
     if not data.optionPoParentStreams:
       discard close(data.pStdin[writeIdx])

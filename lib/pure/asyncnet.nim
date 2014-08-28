@@ -15,7 +15,7 @@
 ## 
 ## The following example demonstrates a simple chat server.
 ##
-## .. code-block::nimrod
+## .. code-block::nim
 ##
 ##   import asyncnet, asyncdispatch
 ##

@@ -8,7 +8,7 @@
 #
 
 ## This module provides an easy to use sockets-style 
-## nimrod interface to the OpenSSL library.
+## nim interface to the OpenSSL library.
 
 {.deprecated.}
 

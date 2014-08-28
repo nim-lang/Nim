@@ -228,7 +228,7 @@ template `=~` *(s: string, pattern: TRegex): expr =
   ## This calls ``match`` with an implicit declared ``matches`` array that 
   ## can be used in the scope of the ``=~`` call: 
   ## 
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##
   ##   if line =~ re"\s*(\w+)\s*\=\s*(\w+)": 
   ##     # matches a key=value pair:
@@ -271,12 +271,12 @@ proc replace*(s: string, sub: TRegex, by = ""): string =
   ## Replaces `sub` in `s` by the string `by`. Captures cannot be 
   ## accessed in `by`. Examples:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   "var1=key; var2=key2".replace(re"(\w+)'='(\w+)")
   ##
   ## Results in:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##
   ##   "; "
   result = ""
@@ -293,12 +293,12 @@ proc replacef*(s: string, sub: TRegex, by: string): string =
   ## Replaces `sub` in `s` by the string `by`. Captures can be accessed in `by`
   ## with the notation ``$i`` and ``$#`` (see strutils.`%`). Examples:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ## "var1=key; var2=key2".replacef(re"(\w+)'='(\w+)", "$1<-$2$2")
   ##
   ## Results in:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##
   ## "var1<-keykey; val2<-key2key2"
   result = ""
@@ -360,13 +360,13 @@ iterator split*(s: string, sep: TRegex): string =
   ## Substrings are separated by the regular expression `sep`.
   ## Examples:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   for word in split("00232this02939is39an22example111", re"\d+"):
   ##     writeln(stdout, word)
   ##
   ## Results in:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   "this"
   ##   "is"
   ##   "an"
