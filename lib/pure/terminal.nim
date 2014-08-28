@@ -33,7 +33,7 @@ when defined(windows):
     var c: TCONSOLESCREENBUFFERINFO
     if GetConsoleScreenBufferInfo(conHandle, addr(c)) == 0:
       raiseOSError(osLastError())
-    return (int(c.dwCursorPosition.x), int(c.dwCursorPosition.y))
+    return (int(c.dwCursorPosition.X), int(c.dwCursorPosition.Y))
 
   proc getAttributes(): int16 =
     var c: TCONSOLESCREENBUFFERINFO
@@ -50,8 +50,8 @@ proc setCursorPos*(x, y: int) =
   ## upper left of the screen.
   when defined(windows):
     var c: TCOORD
-    c.x = int16(x)
-    c.y = int16(y)
+    c.X = int16(x)
+    c.Y = int16(y)
     if SetConsoleCursorPosition(conHandle, c) == 0: raiseOSError(osLastError())
   else:
     stdout.write("\e[" & $y & ';' & $x & 'f')
@@ -65,7 +65,7 @@ proc setCursorXPos*(x: int) =
     if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0:
       raiseOSError(osLastError())
     var origin = scrbuf.dwCursorPosition
-    origin.x = int16(x)
+    origin.X = int16(x)
     if SetConsoleCursorPosition(conHandle, origin) == 0:
       raiseOSError(osLastError())
   else:
@@ -81,7 +81,7 @@ when defined(windows):
       if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0:
         raiseOSError(osLastError())
       var origin = scrbuf.dwCursorPosition
-      origin.y = int16(y)
+      origin.Y = int16(y)
       if SetConsoleCursorPosition(conHandle, origin) == 0:
         raiseOSError(osLastError())
     else:
@@ -163,7 +163,7 @@ proc eraseLine* =
     if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0:
       raiseOSError(osLastError())
     var origin = scrbuf.dwCursorPosition
-    origin.x = 0'i16
+    origin.X = 0'i16
     if SetConsoleCursorPosition(conHandle, origin) == 0:
       raiseOSError(osLastError())
     var ht = scrbuf.dwSize.Y - origin.Y
