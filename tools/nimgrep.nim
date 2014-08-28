@@ -1,6 +1,6 @@
 #
 #
-#           Nimrod Grep Utility
+#           Nim Grep Utility
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -12,7 +12,7 @@ import
 
 const
   Version = "0.9"
-  Usage = "nimgrep - Nimrod Grep Utility Version " & version & """
+  Usage = "nimgrep - Nim Grep Utility Version " & version & """
 
   (c) 2012 Andreas Rumpf
 Usage:
@@ -194,7 +194,7 @@ proc processFile(filename: string) =
     i = t.last+1
   if optReplace in options:
     result.add(substr(buffer, i))
-    var f: TFile
+    var f: File
     if open(f, filename, fmWrite):
       f.write(result)
       f.close()

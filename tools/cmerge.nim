@@ -3,10 +3,10 @@
 import os, sets, pegs
 
 type
-  TProcessResult = enum prSkipIncludeDir, prAddIncludeDir
+  ProcessResult = enum prSkipIncludeDir, prAddIncludeDir
 
-proc process(dir, infile: string, outfile: TFile, 
-             processed: var TSet[string]): TProcessResult =
+proc process(dir, infile: string, outfile: File, 
+             processed: var HashSet[string]): ProcessResult =
   if processed.containsOrIncl(infile): return prSkipIncludeDir
   let toProcess = dir / infile
   if not existsFile(toProcess):
@@ -24,7 +24,7 @@ proc process(dir, infile: string, outfile: TFile,
       writeln(outfile, line)
 
 proc main(dir, outfile: string) =
-  var o: TFile
+  var o: File
   if open(o, outfile, fmWrite):
     var processed = initSet[string]()
     processed.incl(outfile)

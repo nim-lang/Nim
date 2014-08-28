@@ -1,6 +1,6 @@
 #
 #
-#           Nimrod Website Generator
+#           Nim Website Generator
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -54,7 +54,7 @@ include "website.tmpl"
 
 const
   Version = "0.7"
-  Usage = "nimweb - Nimrod Website Generator Version " & version & """
+  Usage = "nimweb - Nim Website Generator Version " & version & """
 
   (c) 2012 Andreas Rumpf
 Usage:

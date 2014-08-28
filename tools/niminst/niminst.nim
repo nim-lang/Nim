@@ -1,7 +1,7 @@
 #
 #
-#        The Nimrod Installation Generator
-#        (c) Copyright 2013 Andreas Rumpf
+#        The Nim Installation Generator
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -60,7 +60,7 @@ type
     explicitPlatforms: bool
     vars: PStringTable
     app: TAppType
-    nimrodArgs: string
+    nimArgs: string
     debOpts: TDebOptions
 
 const
@@ -85,7 +85,7 @@ proc initConfigData(c: var TConfigData) =
   c.license = ""
   c.infile = ""
   c.outdir = ""
-  c.nimrodArgs = ""
+  c.nimArgs = ""
   c.libpath = ""
   c.innoSetupFlag = false
   c.installScript = false
@@ -126,7 +126,7 @@ include "deinstall.tmpl"
 
 const
   Version = "0.9"
-  Usage = "niminst - Nimrod Installation Generator Version " & Version & """
+  Usage = "niminst - Nim Installation Generator Version " & Version & """
 
   (c) 2013 Andreas Rumpf
 Usage:
@@ -166,7 +166,7 @@ proc parseCmdLine(c: var TConfigData) =
           else: quit(Usage)
       else:
         c.infile = addFileExt(key.string, "ini")
-        c.nimrodArgs = cmdLineRest(p).string
+        c.nimArgs = cmdLineRest(p).string
         break
     of cmdLongoption, cmdShortOption:
       case normalize(key.string)
@@ -451,14 +451,14 @@ proc srcdist(c: var TConfigData) =
       var dir = getOutputDir(c) / buildDir(osA, cpuA)
       if existsDir(dir): removeDir(dir)
       createDir(dir)
-      var cmd = ("nimrod compile -f --symbolfiles:off --compileonly " &
+      var cmd = ("nim compile -f --symbolfiles:off --compileonly " &
                  "--gen_mapping --cc:gcc --skipUserCfg" &
                  " --os:$# --cpu:$# $# $#") %
-                 [osname, cpuname, c.nimrodArgs,
+                 [osname, cpuname, c.nimArgs,
                  changeFileExt(c.infile, "nim")]
       echo(cmd)
       if execShellCmd(cmd) != 0:
-        quit("Error: call to nimrod compiler failed")
+        quit("Error: call to nim compiler failed")
       readCFiles(c, osA, cpuA)
       for i in 0 .. c.cfiles[osA][cpuA].len-1:
         let dest = dir / extractFilename(c.cfiles[osA][cpuA][i])

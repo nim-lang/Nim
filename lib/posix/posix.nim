@@ -267,9 +267,9 @@ type
                            ## For a typed memory object, the length in bytes.
                            ## For other file types, the use of this field is
                            ## unspecified.
-    st_atime*: TTime       ## Time of last access.
-    st_mtime*: TTime       ## Time of last data modification.
-    st_ctime*: TTime       ## Time of last status change.
+    st_atime*: Time        ## Time of last access.
+    st_mtime*: Time        ## Time of last data modification.
+    st_ctime*: Time        ## Time of last status change.
     st_blksize*: Tblksize  ## A file system-specific preferred I/O block size
                            ## for this object. In some file system types, this
                            ## may vary from file to file.
@@ -310,7 +310,7 @@ type
     tm_isdst*: cint ## Daylight Savings flag.
   Ttimespec* {.importc: "struct timespec",
                header: "<time.h>", final, pure.} = object ## struct timespec
-    tv_sec*: TTime ## Seconds.
+    tv_sec*: Time  ## Seconds.
     tv_nsec*: int  ## Nanoseconds.
   titimerspec* {.importc: "struct itimerspec", header: "<time.h>",
                  final, pure.} = object ## struct itimerspec
@@ -449,17 +449,17 @@ type
   Tmsghdr* {.importc: "struct msghdr", pure, final,
              header: "<sys/socket.h>".} = object  ## struct msghdr
     msg_name*: pointer  ## Optional address.
-    msg_namelen*: TSocklen  ## Size of address.
+    msg_namelen*: Socklen  ## Size of address.
     msg_iov*: ptr TIOVec    ## Scatter/gather array.
     msg_iovlen*: cint   ## Members in msg_iov.
     msg_control*: pointer  ## Ancillary data; see below.
-    msg_controllen*: TSocklen ## Ancillary data buffer len.
+    msg_controllen*: Socklen ## Ancillary data buffer len.
     msg_flags*: cint ## Flags on received message.
 
 
   Tcmsghdr* {.importc: "struct cmsghdr", pure, final,
               header: "<sys/socket.h>".} = object ## struct cmsghdr
-    cmsg_len*: TSocklen ## Data byte count, including the cmsghdr.
+    cmsg_len*: Socklen ## Data byte count, including the cmsghdr.
     cmsg_level*: cint   ## Originating protocol.
     cmsg_type*: cint    ## Protocol-specific type.
 
@@ -564,7 +564,7 @@ type
 {.deprecated: [TSockaddr_in: Sockaddr_in, TAddrinfo: AddrInfo,
     TSockAddr: SockAddr, TSockLen: SockLen, TTimeval: Timeval,
     TFdSet: FdSet, Thostent: Hostent, TServent: Servent,
-    TInAddr: InAddr, Tin6_addr: In6_addr, Tsockaddr_in6: Sockaddr_in6].}
+    TInAddr: InAddr].}
 
 var
   errno* {.importc, header: "<errno.h>".}: cint ## error variable
@@ -1799,11 +1799,11 @@ proc inet_pton*(a1: cint, a2: cstring, a3: pointer): cint {.
   importc, header: "<arpa/inet.h>".}
 
 var
-  in6addr_any* {.importc, header: "<netinet/in.h>".}: In6_addr
-  in6addr_loopback* {.importc, header: "<netinet/in.h>".}: In6_addr
+  in6addr_any* {.importc, header: "<netinet/in.h>".}: TIn6_addr
+  in6addr_loopback* {.importc, header: "<netinet/in.h>".}: TIn6_addr
 
-proc IN6ADDR_ANY_INIT* (): In6_addr {.importc, header: "<netinet/in.h>".}
-proc IN6ADDR_LOOPBACK_INIT* (): In6_addr {.importc, header: "<netinet/in.h>".}
+proc IN6ADDR_ANY_INIT* (): TIn6_addr {.importc, header: "<netinet/in.h>".}
+proc IN6ADDR_LOOPBACK_INIT* (): TIn6_addr {.importc, header: "<netinet/in.h>".}
 
 # dirent.h
 proc closedir*(a1: ptr TDIR): cint  {.importc, header: "<dirent.h>".}
@@ -2285,22 +2285,22 @@ proc clock_nanosleep*(a1: TClockId, a2: cint, a3: var Ttimespec,
 proc clock_settime*(a1: TClockId, a2: var Ttimespec): cint {.
   importc, header: "<time.h>".}
 
-proc ctime*(a1: var TTime): cstring {.importc, header: "<time.h>".}
-proc ctime_r*(a1: var TTime, a2: cstring): cstring {.importc, header: "<time.h>".}
-proc difftime*(a1, a2: TTime): cdouble {.importc, header: "<time.h>".}
+proc ctime*(a1: var Time): cstring {.importc, header: "<time.h>".}
+proc ctime_r*(a1: var Time, a2: cstring): cstring {.importc, header: "<time.h>".}
+proc difftime*(a1, a2: Time): cdouble {.importc, header: "<time.h>".}
 proc getdate*(a1: cstring): ptr Ttm {.importc, header: "<time.h>".}
 
-proc gmtime*(a1: var TTime): ptr Ttm {.importc, header: "<time.h>".}
-proc gmtime_r*(a1: var TTime, a2: var Ttm): ptr Ttm {.importc, header: "<time.h>".}
-proc localtime*(a1: var TTime): ptr Ttm {.importc, header: "<time.h>".}
-proc localtime_r*(a1: var TTime, a2: var Ttm): ptr Ttm {.importc, header: "<time.h>".}
-proc mktime*(a1: var Ttm): TTime  {.importc, header: "<time.h>".}
-proc timegm*(a1: var Ttm): TTime  {.importc, header: "<time.h>".}
+proc gmtime*(a1: var Time): ptr Ttm {.importc, header: "<time.h>".}
+proc gmtime_r*(a1: var Time, a2: var Ttm): ptr Ttm {.importc, header: "<time.h>".}
+proc localtime*(a1: var Time): ptr Ttm {.importc, header: "<time.h>".}
+proc localtime_r*(a1: var Time, a2: var Ttm): ptr Ttm {.importc, header: "<time.h>".}
+proc mktime*(a1: var Ttm): Time  {.importc, header: "<time.h>".}
+proc timegm*(a1: var Ttm): Time  {.importc, header: "<time.h>".}
 proc nanosleep*(a1, a2: var Ttimespec): cint {.importc, header: "<time.h>".}
 proc strftime*(a1: cstring, a2: int, a3: cstring,
            a4: var Ttm): int {.importc, header: "<time.h>".}
 proc strptime*(a1, a2: cstring, a3: var Ttm): cstring {.importc, header: "<time.h>".}
-proc time*(a1: var TTime): TTime {.importc, header: "<time.h>".}
+proc time*(a1: var Time): Time {.importc, header: "<time.h>".}
 proc timer_create*(a1: var TClockId, a2: var TsigEvent,
                a3: var Ttimer): cint {.importc, header: "<time.h>".}
 proc timer_delete*(a1: var Ttimer): cint {.importc, header: "<time.h>".}
@@ -2517,40 +2517,40 @@ proc if_indextoname*(a1: cint, a2: cstring): cstring {.
 proc if_nameindex*(): ptr Tif_nameindex {.importc, header: "<net/if.h>".}
 proc if_freenameindex*(a1: ptr Tif_nameindex) {.importc, header: "<net/if.h>".}
 
-proc IN6_IS_ADDR_UNSPECIFIED* (a1: ptr In6_addr): cint {.
+proc IN6_IS_ADDR_UNSPECIFIED* (a1: ptr TIn6_addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Unspecified address.
-proc IN6_IS_ADDR_LOOPBACK* (a1: ptr In6_addr): cint {.
+proc IN6_IS_ADDR_LOOPBACK* (a1: ptr TIn6_addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Loopback address.
-proc IN6_IS_ADDR_MULTICAST* (a1: ptr In6_addr): cint {.
+proc IN6_IS_ADDR_MULTICAST* (a1: ptr TIn6_addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Multicast address.
-proc IN6_IS_ADDR_LINKLOCAL* (a1: ptr In6_addr): cint {.
+proc IN6_IS_ADDR_LINKLOCAL* (a1: ptr TIn6_addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Unicast link-local address.
-proc IN6_IS_ADDR_SITELOCAL* (a1: ptr In6_addr): cint {.
+proc IN6_IS_ADDR_SITELOCAL* (a1: ptr TIn6_addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Unicast site-local address.
-proc IN6_IS_ADDR_V4MAPPED* (a1: ptr In6_addr): cint {.
+proc IN6_IS_ADDR_V4MAPPED* (a1: ptr TIn6_addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## IPv4 mapped address.
-proc IN6_IS_ADDR_V4COMPAT* (a1: ptr In6_addr): cint {.
+proc IN6_IS_ADDR_V4COMPAT* (a1: ptr TIn6_addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## IPv4-compatible address.
-proc IN6_IS_ADDR_MC_NODELOCAL* (a1: ptr In6_addr): cint {.
+proc IN6_IS_ADDR_MC_NODELOCAL* (a1: ptr TIn6_addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Multicast node-local address.
-proc IN6_IS_ADDR_MC_LINKLOCAL* (a1: ptr In6_addr): cint {.
+proc IN6_IS_ADDR_MC_LINKLOCAL* (a1: ptr TIn6_addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Multicast link-local address.
-proc IN6_IS_ADDR_MC_SITELOCAL* (a1: ptr In6_addr): cint {.
+proc IN6_IS_ADDR_MC_SITELOCAL* (a1: ptr TIn6_addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Multicast site-local address.
-proc IN6_IS_ADDR_MC_ORGLOCAL* (a1: ptr In6_addr): cint {.
+proc IN6_IS_ADDR_MC_ORGLOCAL* (a1: ptr TIn6_addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Multicast organization-local address.
-proc IN6_IS_ADDR_MC_GLOBAL* (a1: ptr In6_addr): cint {.
+proc IN6_IS_ADDR_MC_GLOBAL* (a1: ptr TIn6_addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Multicast global address.
 
