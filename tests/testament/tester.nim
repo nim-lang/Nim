@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod Tester
+#            Nim Tester
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -146,9 +146,9 @@ proc codegenCheck(test: TTest, check: string, given: var TSpec) =
       let contents = readFile(genFile).string
       if contents.find(check.peg) < 0:
         given.err = reCodegenFailure
-    except EInvalidValue:
+    except ValueError:
       given.err = reInvalidPeg
-    except EIO:
+    except IOError:
       given.err = reCodeNotFound
 
 proc makeDeterministic(s: string): string =
@@ -193,7 +193,7 @@ proc testSpec(r: var TResults, test: TTest) =
             return
           var (buf, exitCode) = execCmdEx(
             (if test.target == targetJS: "nodejs " else: "") & exeFile)
-          if exitCode != expected.ExitCode:
+          if exitCode != expected.exitCode:
             r.addResult(test, "exitcode: " & $expected.exitCode,
                               "exitcode: " & $exitCode, reExitCodesDiffer)
           else:
@@ -246,15 +246,15 @@ proc main() =
   if p.kind == cmdLongoption:
     case p.key.string.normalize
     of "print", "verbose": optPrintResults = true
-    else: quit usage
+    else: quit Usage
     p.next()
-  if p.kind != cmdArgument: quit usage
+  if p.kind != cmdArgument: quit Usage
   var action = p.key.string.normalize
   p.next()
   var r = initResults()
   case action
   of "all":
-    let testsDir = "tests" & dirSep
+    let testsDir = "tests" & DirSep
     for kind, dir in walkDir(testsDir):
       assert testsDir.startsWith(testsDir)
       let cat = dir[testsDir.len .. -1]
@@ -272,7 +272,7 @@ proc main() =
     generateHtml(resultsFile, commit)
     generateJson(jsonFile, commit)
   else:
-    quit usage
+    quit Usage
 
   if optPrintResults:
     if action == "html": openDefaultBrowser(resultsFile)
@@ -280,6 +280,6 @@ proc main() =
   backend.close()
 
 if paramCount() == 0:
-  quit usage
+  quit Usage
 main()
 
