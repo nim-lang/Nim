@@ -1,20 +1,20 @@
 ===========================
-Tools available with Nimrod
+Tools available with Nim
 ===========================
 
 The standard distribution ships with the following tools:
 
-- | `Nimrod Installation Generator <niminst.html>`_
-  | How to generate a nice installer for your Nimrod program.
+- | `Nim Installation Generator <niminst.html>`_
+  | How to generate a nice installer for your Nim program.
 
 - | `C2nim <c2nim.html>`_
-  | C to Nimrod source converter. Translates C header files to Nimrod.
+  | C to Nim source converter. Translates C header files to Nim.
 
 - | `nimgrep <nimgrep.html>`_
-  | Nimrod search and replace utility.
+  | Nim search and replace utility.
 
 - | `endb <endb.html>`_
-  | Nimrod's slow platform independent embedded debugger.
+  | Nim's slow platform independent embedded debugger.
 
 - | `estp <estp.html>`_
-  | Nimrod's slow platform independent embedded stack trace profiler.
+  | Nim's slow platform independent embedded stack trace profiler.

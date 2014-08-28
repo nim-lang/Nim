@@ -1,5 +1,5 @@
 =====================================================================
-               Side effects in Nimrod
+               Side effects in Nim
 =====================================================================
 
 Note: Side effects are implicit produced values! Maybe they should be
@@ -13,7 +13,7 @@ difficult is the ``newString`` proc: If it is simply wrapped, it
 should not be evaluated at compile time! On other occasions it can
 and should be evaluted:
 
-.. code-block:: nimrod
+.. code-block:: nim
   proc toUpper(s: string): string =
     result = newString(len(s))
     for i in 0..len(s) - 1:

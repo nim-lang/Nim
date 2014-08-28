@@ -2,7 +2,7 @@
                   Parallel & Spawn
 ==========================================================
 
-Nimrod has two flavors of parallelism: 
+Nim has two flavors of parallelism: 
 1) `Structured`:idx parallelism via the ``parallel`` statement.
 2) `Unstructured`:idx: parallelism via the standalone ``spawn`` statement.
 
@@ -24,7 +24,7 @@ Parallel statement
 
 Example:
 
-.. code-block:: nimrod
+.. code-block:: nim
   # Compute PI in an inefficient way
   import strutils, math, threadpool
 
@@ -42,7 +42,7 @@ Example:
 
 
 The parallel statement is the preferred mechanism to introduce parallelism
-in a Nimrod program. A subset of the Nimrod language is valid within a
+in a Nim program. A subset of the Nim language is valid within a
 ``parallel`` section. This subset is checked to be free of data races at
 compile time. A sophisticated `disjoint checker`:idx: ensures that no data
 races are possible even though shared memory is extensively supported!
@@ -77,7 +77,7 @@ the passed expression on the thread pool and returns a `data flow variable`:idx:
 **blocking**. However, one can use ``awaitAny`` to wait on multiple flow
 variables at the same time:
 
-.. code-block:: nimrod
+.. code-block:: nim
   import threadpool, ...
   
   # wait until 2 out of 3 servers received the update:

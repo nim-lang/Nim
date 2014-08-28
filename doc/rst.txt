@@ -1,9 +1,9 @@
 ===========================================================================
-       Nimrod's implementation of |rst|
+       Nim's implementation of |rst|
 ===========================================================================
 
 :Author: Andreas Rumpf
-:Version: |nimrodversion|
+:Version: |nimversion|
 
 .. contents::
 
@@ -11,15 +11,15 @@ Introduction
 ============
 
 This document describes the subset of `Docutils`_' `reStructuredText`_ as it
-has been implemented in the Nimrod compiler for generating documentation.
+has been implemented in the Nim compiler for generating documentation.
 Elements of |rst| that are not listed here have not been implemented.
-Unfortunately, the specification of |rst| is quite vague, so Nimrod is not as
+Unfortunately, the specification of |rst| is quite vague, so Nim is not as
 compatible to the original implementation as one would like.
 
-Even though Nimrod's |rst| parser does not parse all constructs, it is pretty
+Even though Nim's |rst| parser does not parse all constructs, it is pretty
 usable. The missing features can easily be circumvented. An indication of this
-fact is that Nimrod's *whole* documentation itself (including this document) is
-processed by Nimrod's |rst| parser. (Which is an order of magnitude faster than
+fact is that Nim's *whole* documentation itself (including this document) is
+processed by Nim's |rst| parser. (Which is an order of magnitude faster than
 Docutils' parser.)
 
 
@@ -65,19 +65,19 @@ Definition lists
 
 Save this code to the file "greeting.nim". Now compile and run it:
 
-  ``nimrod run greeting.nim``
+  ``nim run greeting.nim``
 
-As you see, with the ``run`` command Nimrod executes the file automatically
+As you see, with the ``run`` command Nim executes the file automatically
 after compilation. You can even give your program command line arguments by
 appending them after the filename that is to be compiled and run:
 
-  ``nimrod run greeting.nim arg1 arg2``
+  ``nim run greeting.nim arg1 arg2``
 
 
 Tables
 ======
 
-Nimrod only implements simple tables of the form::
+Nim only implements simple tables of the form::
 
   ==================      ===============       ===================
   header 1                header 2              header n

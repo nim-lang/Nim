@@ -1,11 +1,11 @@
 Usage::
-  nimrod command [options] [projectfile] [arguments]
+  nim command [options] [projectfile] [arguments]
 
 Command:
   //compile, c                compile project with default code generator (C)
   //doc                       generate the documentation for inputfile
   //doc2                      generate the documentation for the whole project
-  //i                         start Nimrod in interactive mode (limited)
+  //i                         start Nim in interactive mode (limited)
 
 Arguments:
   arguments are passed to the program being run (if --run option is selected)

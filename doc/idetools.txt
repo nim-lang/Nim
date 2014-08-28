@@ -1,9 +1,9 @@
 ================================
-  Nimrod IDE Integration Guide
+  Nim IDE Integration Guide
 ================================
 
 :Author: Britney Spears
-:Version: |nimrodversion|
+:Version: |nimversion|
 
 .. contents::
 
@@ -13,17 +13,17 @@
   "yes, I'm the creator" -- Araq, 2013-07-26 19:28:32.
   </p></blockquote>
 
-Nimrod differs from many other compilers in that it is really fast,
+Nim differs from many other compilers in that it is really fast,
 and being so fast makes it suited to provide external queries for
 text editors about the source code being written. Through the
-``idetools`` command of `the compiler <nimrodc.html>`_, any IDE
+``idetools`` command of `the compiler <nimc.html>`_, any IDE
 can query a ``.nim`` source file and obtain useful information like
 definition of symbols or suggestions for completion.
 
 This document will guide you through the available options. If you
 want to look at practical examples of idetools support you can look
 at the test files found in the `Test suite`_ or `various editor
-integrations <https://github.com/Araq/Nimrod/wiki/Editor-Support>`_
+integrations <https://github.com/Araq/Nim/wiki/Editor-Support>`_
 already available.
 
 
@@ -37,11 +37,11 @@ All of the available idetools commands require you to specify a
 query location through the ``--track`` or ``--trackDirty`` switches.
 The general idetools invokations are::
 
-    nimrod idetools --track:FILE,LINE,COL <switches> proj.nim
+    nim idetools --track:FILE,LINE,COL <switches> proj.nim
 
 Or::
 
-    nimrod idetools --trackDirty:DIRTY_FILE,FILE,LINE,COL <switches> proj.nim
+    nim idetools --trackDirty:DIRTY_FILE,FILE,LINE,COL <switches> proj.nim
 
 ``proj.nim``
     This is the main *project* filename. Most of the time you will
@@ -97,7 +97,7 @@ provide the typical *Jump to definition* where a user puts the
 cursor on a symbol or uses the mouse to select it and is redirected
 to the place where the symbol is located.
 
-Since Nimrod is implemented in Nimrod, one of the nice things of
+Since Nim is implemented in Nim, one of the nice things of
 this feature is that any user with an IDE supporting it can quickly
 jump around the standard library implementation and see exactly
 what a proc does, learning about the language and seeing real life
@@ -118,7 +118,7 @@ includes/imports) and when the user starts typing something a
 completion box with different options appears.
 
 However such features are not context sensitive and work simply on
-string matching, which can be problematic in Nimrod especially due
+string matching, which can be problematic in Nim especially due
 to the case insensitiveness of the language (plus underscores as
 separators!).
 
@@ -179,16 +179,16 @@ in the millisecond range, thus being responsive enough for IDEs.
 If you want to start the server using stdin/stdout as communication
 you need to type::
 
-    nimrod serve --server.type:stdin proj.nim
+    nim serve --server.type:stdin proj.nim
 
 If you want to start the server using tcp and a port, you need to type::
 
-    nimrod serve --server.type:tcp --server.port:6000 \
+    nim serve --server.type:tcp --server.port:6000 \
       --server.address:hostname proj.nim
 
 In both cases the server will start up and await further commands.
 The syntax of the commands you can now send to the server is
-practically the same as running the nimrod compiler on the commandline,
+practically the same as running the nim compiler on the commandline,
 you only need to remove the name of the compiler since you are
 already talking to it. The server will answer with as many lines
 of text it thinks necessary plus an empty line to indicate the end
@@ -242,7 +242,7 @@ skConst
 | **Fourth column**: the type of the const value.
 | **Docstring**: always the empty string.
 
-.. code-block:: nimrod
+.. code-block:: nim
     const SOME_SEQUENCE = @[1, 2]
     --> col 2: $MODULE.SOME_SEQUENCE
         col 3: seq[int]
@@ -256,7 +256,7 @@ skEnumField
 | **Fourth column**: enum type grouping other enum fields.
 | **Docstring**: always the empty string.
 
-.. code-block:: nimrod
+.. code-block:: nim
     Open(filename, fmWrite)
     --> col 2: system.TFileMode.fmWrite
         col 3: TFileMode
@@ -270,7 +270,7 @@ skForVar
 | **Fourth column**: type of the var.
 | **Docstring**: always the empty string.
 
-.. code-block:: nimrod
+.. code-block:: nim
     proc looper(filename = "tests.nim") =
       for letter in filename:
         echo letter
@@ -291,7 +291,7 @@ posterior instances of the iterator.
 | **Fourth column**: signature of the iterator including return type.
 | **Docstring**: docstring if available.
 
-.. code-block:: nimrod
+.. code-block:: nim
     let
       text = "some text"
       letters = toSeq(runes(text))
@@ -307,7 +307,7 @@ skLabel
 | **Fourth column**: always the empty string.
 | **Docstring**: always the empty string.
 
-.. code-block:: nimrod
+.. code-block:: nim
     proc test(text: string) =
       var found = -1
       block loops:
@@ -323,7 +323,7 @@ skLet
 | **Fourth column**: the type of the let variable.
 | **Docstring**: always the empty string.
 
-.. code-block:: nimrod
+.. code-block:: nim
     let
       text = "some text"
     --> col 2: $MODULE.text
@@ -343,7 +343,7 @@ posterior instances of the macro.
 | **Fourth column**: signature of the macro including return type.
 | **Docstring**: docstring if available.
 
-.. code-block:: nimrod
+.. code-block:: nim
     proc testMacro() =
       expect(EArithmetic):
     --> col 2: idetools_api.expect
@@ -379,7 +379,7 @@ This may change in the future.
 | **Fourth column**: signature of the method including return type.
 | **Docstring**: docstring if available.
 
-.. code-block:: nimrod
+.. code-block:: nim
     method eval(e: PExpr): int = quit "to override!"
     method eval(e: PLiteral): int = e.x
     method eval(e: PPlusExpr): int = eval(e.a) + eval(e.b)
@@ -396,7 +396,7 @@ skParam
 | **Fourth column**: the type of the parameter.
 | **Docstring**: always the empty string.
 
-.. code-block:: nimrod
+.. code-block:: nim
     proc reader(filename = "tests.nim") =
       let text = readFile(filename)
     --> col 2: $MODULE.reader.filename
@@ -420,7 +420,7 @@ returned by idetools returns also the pragmas for the proc.
 | **Fourth column**: signature of the proc including return type.
 | **Docstring**: docstring if available.
 
-.. code-block:: nimrod
+.. code-block:: nim
     Open(filename, fmWrite)
     --> col 2: system.Open
         col 3: proc (var TFile, string, TFileMode, int): bool
@@ -438,7 +438,7 @@ skResult
 | **Fourth column**: the type of the result.
 | **Docstring**: always the empty string.
 
-.. code-block:: nimrod
+.. code-block:: nim
     proc getRandomValue() : int =
       return 4
     --> col 2: $MODULE.getRandomValue.result
@@ -458,7 +458,7 @@ posterior instances of the template.
 | **Fourth column**: signature of the template including return type.
 | **Docstring**: docstring if available.
 
-.. code-block:: nimrod
+.. code-block:: nim
     let
       text = "some text"
       letters = toSeq(runes(text))
@@ -469,7 +469,7 @@ posterior instances of the template.
 
      Example:
 
-     .. code-block:: nimrod
+     .. code-block:: nim
        let
          numeric = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
          odd_numbers = toSeq(filter(numeric) do (x: int) -> bool:
@@ -485,7 +485,7 @@ skType
 | **Fourth column**: the type.
 | **Docstring**: always the empty string.
 
-.. code-block:: nimrod
+.. code-block:: nim
     proc writeTempFile() =
       var output: TFile
     --> col 2: system.TFile
@@ -500,7 +500,7 @@ skVar
 | **Fourth column**: the type of the var.
 | **Docstring**: always the empty string.
 
-.. code-block:: nimrod
+.. code-block:: nim
     proc writeTempFile() =
       var output: TFile
       output.open("/tmp/somefile", fmWrite)
@@ -527,8 +527,8 @@ At the moment idetools support is still in development so the test
 suite is not integrated with the main test suite and you have to
 run it manually. First you have to compile the tester::
 
-	$ cd my/nimrod/checkout/tests
-	$ nimrod c testament/caasdriver.nim
+	$ cd my/nim/checkout/tests
+	$ nim c testament/caasdriver.nim
 
 Running the ``caasdriver`` without parameters will attempt to process
 all the test cases in all three operation modes. If a test succeeds
@@ -540,7 +540,7 @@ parameter ``verbose`` to force all output even on successfull tests.
 
 The normal operation mode is called ``ProcRun`` and it involves
 starting a process for each command or query, similar to running
-manually the Nimrod compiler from the commandline. The ``CaasRun``
+manually the Nim compiler from the commandline. The ``CaasRun``
 mode starts a server process to answer all queries. The ``SymbolProcRun``
 mode is used by compiler developers.  This means that running all
 tests involves processing all ``*.txt`` files three times, which

@@ -45,7 +45,7 @@ Notation                meaning
 Examples
 ========
 
-.. code-block:: nimrod
+.. code-block:: nim
 
   subex"$1($', '{2..})" % ["f", "a", "b", "c"] == "f(a, b, c)"
   

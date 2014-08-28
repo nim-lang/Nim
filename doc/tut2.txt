@@ -858,7 +858,7 @@ The good news is not much has changed! First, we need to change the handling of
 the input parameter. In the dynamic version the ``readCfgAtRuntime`` proc
 receives a string parameter. However, in the macro version it is also declared
 as string, but this is the *outside* interface of the macro.  When the macro is
-run, it actually gets a ``PNimrodNode`` object instead of a string, and we have
+run, it actually gets a ``PNimNode`` object instead of a string, and we have
 to call the ``strVal`` proc from the `macros module <macros.html>`_ to obtain
 the string being passed in to the macro.
 

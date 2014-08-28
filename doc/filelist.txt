@@ -1,10 +1,10 @@
-Short description of Nimrod's modules
+Short description of Nim's modules
 -------------------------------------
 
 ==============  ==========================================================
 Module          Description
 ==============  ==========================================================
-nimrod          main module: parses the command line and calls
+nim          main module: parses the command line and calls
                 ``main.MainCommand``
 main            implements the top-level command dispatching
 nimconf         implements the config file reader
@@ -12,8 +12,8 @@ syntaxes        dispatcher for the different parsers and filters
 filter_tmpl     standard template filter (``#! stdtempl``)
 lexbase         buffer handling of the lexical analyser
 lexer           lexical analyser
-parser          Nimrod's parser
-renderer        Nimrod code renderer (AST back to its textual form)
+parser          Nim's parser
+renderer        Nim code renderer (AST back to its textual form)
 options         contains global and local compiler options
 ast             type definitions of the abstract syntax tree (AST) and
                 node constructors
@@ -37,7 +37,7 @@ pragmas         semantic checking of pragmas
 
 idents          implements a general mapping from identifiers to an internal
                 representation (``PIdent``) that is used so that a simple
-                id-comparison suffices to say whether two Nimrod identifiers
+                id-comparison suffices to say whether two Nim identifiers
                 are equivalent
 ropes           implements long strings represented as trees for
                 lazy evaluation; used mainly by the code generators
