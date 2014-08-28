@@ -9,7 +9,7 @@
 
 import ast, types, msgs, osproc, streams, options
 
-proc readOutput(p: PProcess): string =
+proc readOutput(p: Process): string =
   result = ""
   var output = p.outputStream
   discard p.waitForExit

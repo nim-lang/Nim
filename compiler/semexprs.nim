@@ -1816,7 +1816,7 @@ proc semTuplePositionsConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
     addSonSkipIntLit(typ, n.sons[i].typ)
   result.typ = typ
 
-proc checkInitialized(n: PNode, ids: TIntSet, info: TLineInfo) =
+proc checkInitialized(n: PNode, ids: IntSet, info: TLineInfo) =
   case n.kind
   of nkRecList:
     for i in countup(0, sonsLen(n) - 1):

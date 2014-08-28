@@ -115,7 +115,7 @@ proc relevantCol(methods: TSymSeq, col: int): bool =
       if not sameType(t2, t):
         return true
   
-proc cmpSignatures(a, b: PSym, relevantCols: TIntSet): int = 
+proc cmpSignatures(a, b: PSym, relevantCols: IntSet): int = 
   for col in countup(1, sonsLen(a.typ) - 1): 
     if contains(relevantCols, col): 
       var aa = skipTypes(a.typ.sons[col], skipPtrs)
@@ -124,7 +124,7 @@ proc cmpSignatures(a, b: PSym, relevantCols: TIntSet): int =
       if (d != high(int)): 
         return d
   
-proc sortBucket(a: var TSymSeq, relevantCols: TIntSet) = 
+proc sortBucket(a: var TSymSeq, relevantCols: IntSet) = 
   # we use shellsort here; fast and simple
   var n = len(a)
   var h = 1
@@ -143,7 +143,7 @@ proc sortBucket(a: var TSymSeq, relevantCols: TIntSet) =
       a[j] = v
     if h == 1: break 
   
-proc genDispatcher(methods: TSymSeq, relevantCols: TIntSet): PSym =
+proc genDispatcher(methods: TSymSeq, relevantCols: IntSet): PSym =
   var base = lastSon(methods[0].ast).sym
   result = base
   var paramLen = sonsLen(base.typ)

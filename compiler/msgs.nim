@@ -567,7 +567,7 @@ var
   gErrorMax*: int = 1         # stop after gErrorMax errors
 
 when useCaas:
-  var stdoutSocket*: TSocket
+  var stdoutSocket*: Socket
 
 proc unknownLineInfo*(): TLineInfo =
   result.line = int16(-1)

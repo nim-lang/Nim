@@ -71,7 +71,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule): PNode =
       addSon(result, newSymNode(a, n.info))
       a = nextOverloadIter(o, c, n)
 
-proc semBindStmt(c: PContext, n: PNode, toBind: var TIntSet): PNode =
+proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
   for i in 0 .. < n.len:
     var a = n.sons[i]
     # If 'a' is an overloaded symbol, we used to use the first symbol
@@ -91,7 +91,7 @@ proc semBindStmt(c: PContext, n: PNode, toBind: var TIntSet): PNode =
       illFormedAst(a)
   result = newNodeI(nkEmpty, n.info)
 
-proc semMixinStmt(c: PContext, n: PNode, toMixin: var TIntSet): PNode =
+proc semMixinStmt(c: PContext, n: PNode, toMixin: var IntSet): PNode =
   for i in 0 .. < n.len:
     toMixin.incl(considerQuotedIdent(n.sons[i]).id)
   result = newNodeI(nkEmpty, n.info)
@@ -106,7 +106,7 @@ proc replaceIdentBySym(n: var PNode, s: PNode) =
 type
   TemplCtx {.pure, final.} = object
     c: PContext
-    toBind, toMixin, toInject: TIntSet
+    toBind, toMixin, toInject: IntSet
     owner: PSym
 
 proc getIdentNode(c: var TemplCtx, n: PNode): PNode =

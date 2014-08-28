@@ -137,7 +137,7 @@ type
     line: int            # only used for debugging, but is always in the code
     moduleID: int
     syms: TIdTable       # already processed symbols
-    memfile: TMemFile    # unfortunately there is no point in time where we
+    memfile: MemFile     # unfortunately there is no point in time where we
                          # can close this! XXX
     methods*: TSymSeq
     origFile: string

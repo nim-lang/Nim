@@ -83,7 +83,7 @@ proc writeTypeCache(a: TIdTable, s: var string) =
     inc i
   s.add('}')
 
-proc writeIntSet(a: TIntSet, s: var string) =
+proc writeIntSet(a: IntSet, s: var string) =
   var i = 0
   for x in items(a):
     if i == 10:
@@ -200,7 +200,7 @@ proc readTypeCache(L: var TBaseLexer, result: var TIdTable) =
     idTablePut(result, newFakeType(key), value.toRope)
   inc L.bufpos
 
-proc readIntSet(L: var TBaseLexer, result: var TIntSet) =
+proc readIntSet(L: var TBaseLexer, result: var IntSet) =
   if ^L.bufpos != '{': internalError("ccgmerge: '{' expected")
   inc L.bufpos
   while ^L.bufpos != '}':

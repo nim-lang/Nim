@@ -101,10 +101,10 @@ type
                               # without extension)
     typeCache*: TIdTable      # cache the generated types
     forwTypeCache*: TIdTable  # cache for forward declarations of types
-    declaredThings*: TIntSet  # things we have declared in this .c file
-    declaredProtos*: TIntSet  # prototypes we have declared in this .c file
+    declaredThings*: IntSet  # things we have declared in this .c file
+    declaredProtos*: IntSet  # prototypes we have declared in this .c file
     headerFiles*: TLinkedList # needed headers to include
-    typeInfoMarker*: TIntSet  # needed for generating type information
+    typeInfoMarker*: IntSet  # needed for generating type information
     initProc*: BProc          # code for init procedure
     postInitProc*: BProc      # code to be executed after the init proc
     preInitProc*: BProc       # code executed before the init proc

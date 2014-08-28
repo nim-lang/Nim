@@ -40,11 +40,8 @@ proc considerQuotedIdent*(n: PNode): PIdent =
 template addSym*(scope: PScope, s: PSym) =
   strTableAdd(scope.symbols, s)
 
-proc addUniqueSym*(scope: PScope, s: PSym): TResult =
-  if strTableIncl(scope.symbols, s):
-    result = Failure
-  else:
-    result = Success
+proc addUniqueSym*(scope: PScope, s: PSym): bool =
+  result = not strTableIncl(scope.symbols, s)
 
 proc openScope*(c: PContext): PScope {.discardable.} =
   result = PScope(parent: c.currentScope,
@@ -117,7 +114,7 @@ type
     mode*: TOverloadIterMode
     symChoiceIndex*: int
     scope*: PScope
-    inSymChoice: TIntSet
+    inSymChoice: IntSet
 
 proc getSymRepr*(s: PSym): string = 
   case s.kind
@@ -150,14 +147,14 @@ proc wrongRedefinition*(info: TLineInfo, s: string) =
     localError(info, errAttemptToRedefine, s)
   
 proc addDecl*(c: PContext, sym: PSym) =
-  if c.currentScope.addUniqueSym(sym) == Failure:
+  if not c.currentScope.addUniqueSym(sym):
     wrongRedefinition(sym.info, sym.name.s)
 
 proc addPrelimDecl*(c: PContext, sym: PSym) =
   discard c.currentScope.addUniqueSym(sym)
 
 proc addDeclAt*(scope: PScope, sym: PSym) =
-  if scope.addUniqueSym(sym) == Failure:
+  if not scope.addUniqueSym(sym):
     wrongRedefinition(sym.info, sym.name.s)
 
 proc addInterfaceDeclAux(c: PContext, sym: PSym) = 

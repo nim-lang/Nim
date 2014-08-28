@@ -16,9 +16,9 @@ type
   TAnalysisResult* = enum
     arNo, arMaybe, arYes
 
-proc isPartOfAux(a, b: PType, marker: var TIntSet): TAnalysisResult
+proc isPartOfAux(a, b: PType, marker: var IntSet): TAnalysisResult
 
-proc isPartOfAux(n: PNode, b: PType, marker: var TIntSet): TAnalysisResult =
+proc isPartOfAux(n: PNode, b: PType, marker: var IntSet): TAnalysisResult =
   result = arNo
   case n.kind
   of nkRecList: 
@@ -39,7 +39,7 @@ proc isPartOfAux(n: PNode, b: PType, marker: var TIntSet): TAnalysisResult =
     result = isPartOfAux(n.sym.typ, b, marker)
   else: internalError(n.info, "isPartOfAux()")
   
-proc isPartOfAux(a, b: PType, marker: var TIntSet): TAnalysisResult = 
+proc isPartOfAux(a, b: PType, marker: var IntSet): TAnalysisResult = 
   result = arNo
   if a == nil or b == nil: return 
   if containsOrIncl(marker, a.id): return 

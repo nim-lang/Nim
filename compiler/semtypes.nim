@@ -461,9 +461,9 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
           swap(branch.sons[L-2], branch.sons[L-1])
     checkForOverlap(c, t, i, branchIndex)
     
-proc semRecordNodeAux(c: PContext, n: PNode, check: var TIntSet, pos: var int,
+proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
                       father: PNode, rectype: PType)
-proc semRecordCase(c: PContext, n: PNode, check: var TIntSet, pos: var int,
+proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
                    father: PNode, rectype: PType) =
   var a = copyNode(n)
   checkMinSonsLen(n, 2)
@@ -498,7 +498,7 @@ proc semRecordCase(c: PContext, n: PNode, check: var TIntSet, pos: var int,
     localError(a.info, errNotAllCasesCovered)
   addSon(father, a)
 
-proc semRecordNodeAux(c: PContext, n: PNode, check: var TIntSet, pos: var int, 
+proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int, 
                       father: PNode, rectype: PType) =
   if n == nil: return
   case n.kind
@@ -524,7 +524,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var TIntSet, pos: var int,
       else: illFormedAst(n)
       if c.inGenericContext > 0:
         # use a new check intset here for each branch:
-        var newCheck: TIntSet
+        var newCheck: IntSet
         assign(newCheck, check)
         var newPos = pos
         var newf = newNodeI(nkRecList, n.info)
@@ -578,7 +578,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var TIntSet, pos: var int,
   of nkEmpty: discard
   else: illFormedAst(n)
   
-proc addInheritedFieldsAux(c: PContext, check: var TIntSet, pos: var int, 
+proc addInheritedFieldsAux(c: PContext, check: var IntSet, pos: var int, 
                            n: PNode) =
   case n.kind
   of nkRecCase:
@@ -597,7 +597,7 @@ proc addInheritedFieldsAux(c: PContext, check: var TIntSet, pos: var int,
     inc(pos)
   else: internalError(n.info, "addInheritedFieldsAux()")
   
-proc addInheritedFields(c: PContext, check: var TIntSet, pos: var int, 
+proc addInheritedFields(c: PContext, check: var IntSet, pos: var int, 
                         obj: PType) = 
   if (sonsLen(obj) > 0) and (obj.sons[0] != nil): 
     addInheritedFields(c, check, pos, obj.sons[0])
@@ -847,7 +847,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
                      prev: PType, kind: TSymKind): PType =
   var
     res: PNode
-    cl: TIntSet
+    cl: IntSet
   checkMinSonsLen(n, 1)
   result = newOrPrevType(tyProc, prev, c)
   result.callConv = lastOptionEntry(c).defaultCC

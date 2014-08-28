@@ -57,7 +57,7 @@ type
                                # can access private object fields
     instCounter*: int          # to prevent endless instantiations
    
-    ambiguousSymbols*: TIntSet # ids of all ambiguous symbols (cannot
+    ambiguousSymbols*: IntSet  # ids of all ambiguous symbols (cannot
                                # store this info in the syms themselves!)
     inTypeClass*: int          # > 0 if we are in a user-defined type class
     inGenericContext*: int     # > 0 if we are in a generic type
@@ -83,10 +83,10 @@ type
     semInferredLambda*: proc(c: PContext, pt: TIdTable, n: PNode): PNode
     semGenerateInstance*: proc (c: PContext, fn: PSym, pt: TIdTable,
                                 info: TLineInfo): PSym
-    includedFiles*: TIntSet    # used to detect recursive include files
+    includedFiles*: IntSet    # used to detect recursive include files
     userPragmas*: TStrTable
     evalContext*: PEvalContext
-    unknownIdents*: TIntSet    # ids of all unknown identifiers to prevent
+    unknownIdents*: IntSet     # ids of all unknown identifiers to prevent
                                # naming it multiple times
     generics*: seq[TInstantiationPair] # pending list of instantiated generics to compile
     lastGenericIdx*: int      # used for the generics stack

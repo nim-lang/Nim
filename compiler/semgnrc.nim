@@ -28,7 +28,7 @@ proc getIdentNode(n: PNode): PNode =
   
 proc semGenericStmtScope(c: PContext, n: PNode, 
                          flags: TSemGenericFlags,
-                         ctx: var TIntSet): PNode = 
+                         ctx: var IntSet): PNode = 
   openScope(c)
   result = semGenericStmt(c, n, flags, ctx)
   closeScope(c)
@@ -67,7 +67,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym): PNode =
   else: result = newSymNode(s, n.info)
 
 proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags, 
-            ctx: var TIntSet): PNode =
+            ctx: var IntSet): PNode =
   result = n
   let ident = considerQuotedIdent(n)
   var s = searchInScopes(c, ident).skipAlias(n)
@@ -89,7 +89,7 @@ proc newDot(n, b: PNode): PNode =
   result.add(b)
 
 proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags, 
-                 ctx: var TIntSet): PNode =
+                 ctx: var IntSet): PNode =
   assert n.kind == nkDotExpr
   let luf = if withinMixin notin flags: {checkUndeclared} else: {}
   
@@ -114,7 +114,7 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
           result = newDot(result, sym)
 
 proc semGenericStmt(c: PContext, n: PNode, 
-                    flags: TSemGenericFlags, ctx: var TIntSet): PNode =
+                    flags: TSemGenericFlags, ctx: var IntSet): PNode =
   result = n
   if gCmd == cmdIdeTools: suggestStmt(c, n)
   case n.kind

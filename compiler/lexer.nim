@@ -21,10 +21,10 @@ import
 
 const 
   MaxLineLength* = 80         # lines longer than this lead to a warning
-  numChars*: TCharSet = {'0'..'9', 'a'..'z', 'A'..'Z'}
-  SymChars*: TCharSet = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF'}
-  SymStartChars*: TCharSet = {'a'..'z', 'A'..'Z', '\x80'..'\xFF'}
-  OpChars*: TCharSet = {'+', '-', '*', '/', '\\', '<', '>', '!', '?', '^', '.', 
+  numChars*: set[char] = {'0'..'9', 'a'..'z', 'A'..'Z'}
+  SymChars*: set[char] = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF'}
+  SymStartChars*: set[char] = {'a'..'z', 'A'..'Z', '\x80'..'\xFF'}
+  OpChars*: set[char] = {'+', '-', '*', '/', '\\', '<', '>', '!', '?', '^', '.', 
     '|', '=', '%', '&', '$', '@', '~', ':', '\x80'..'\xFF'}
 
 # don't forget to update the 'highlite' module if these charsets should change
@@ -229,7 +229,7 @@ proc lexMessagePos(L: var TLexer, msg: TMsgKind, pos: int, arg = "") =
   var info = newLineInfo(L.fileIdx, L.lineNumber, pos - L.lineStart)
   msgs.message(info, msg, arg)
 
-proc matchUnderscoreChars(L: var TLexer, tok: var TToken, chars: TCharSet) = 
+proc matchUnderscoreChars(L: var TLexer, tok: var TToken, chars: set[char]) = 
   var pos = L.bufpos              # use registers for pos, buf
   var buf = L.buf
   while true: 
@@ -246,7 +246,7 @@ proc matchUnderscoreChars(L: var TLexer, tok: var TToken, chars: TCharSet) =
       inc(pos)
   L.bufpos = pos
 
-proc matchTwoChars(L: TLexer, first: char, second: TCharSet): bool = 
+proc matchTwoChars(L: TLexer, first: char, second: set[char]): bool = 
   result = (L.buf[L.bufpos] == first) and (L.buf[L.bufpos + 1] in second)
 
 proc isFloatLiteral(s: string): bool =

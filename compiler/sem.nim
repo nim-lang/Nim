@@ -340,7 +340,7 @@ type
   TSemGenericFlags = set[TSemGenericFlag]
 
 proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags,
-                    ctx: var TIntSet): PNode
+                    ctx: var IntSet): PNode
 
 include semtypes, semtempl, semgnrc, semstmts, semexprs
 

@@ -35,7 +35,7 @@ type
     outHtml,            # output is HTML
     outLatex            # output is Latex
   
-  TTocEntry{.final.} = object 
+  TTocEntry = object 
     n*: PRstNode
     refname*, header*: string
 
@@ -44,7 +44,7 @@ type
     
   TRstGenerator* = object of RootObj
     target*: TOutputTarget
-    config*: PStringTable
+    config*: StringTableRef
     splitAfter*: int          # split too long entries in the TOC
     tocPart*: seq[TTocEntry]
     hasToc*: bool
@@ -57,21 +57,21 @@ type
     currentSection: string ## \
     ## Stores the empty string or the last headline/overline found in the rst
     ## document, so it can be used as a prettier name for term index generation.
-    seenIndexTerms: TTable[string, int] ## \
+    seenIndexTerms: Table[string, int] ## \
     ## Keeps count of same text index terms to generate different identifiers
     ## for hyperlinks. See renderIndexTerm proc for details.
   
   PDoc = var TRstGenerator ## Alias to type less.
 
 proc initRstGenerator*(g: var TRstGenerator, target: TOutputTarget,
-                       config: PStringTable, filename: string,
+                       config: StringTableRef, filename: string,
                        options: TRstParseOptions,
                        findFile: TFindFileHandler,
                        msgHandler: TMsgHandler) =
   ## Initializes a ``TRstGenerator``.
   ##
   ## You need to call this before using a ``TRstGenerator`` with any other
-  ## procs in this module. Pass a non ``nil`` ``PStringTable`` value as
+  ## procs in this module. Pass a non ``nil`` ``StringTableRef`` value as
   ## `config` with parameters used by the HTML output generator.  If you don't
   ## know what to use, pass the results of the `defaultConfig()
   ## <#defaultConfig>_` proc.
@@ -341,13 +341,13 @@ proc renderIndexTerm*(d: PDoc, n: PRstNode, result: var string) =
         [id, term])
 
 type
-  TIndexEntry {.pure, final.} = object
+  TIndexEntry = object
     keyword: string
     link: string
     linkTitle: string ## If not nil, contains a prettier text for the href
     linkDesc: string ## If not nil, the title attribute of the final href
 
-  TIndexedDocs {.pure, final.} = TTable[TIndexEntry, seq[TIndexEntry]] ## \
+  TIndexedDocs = Table[TIndexEntry, seq[TIndexEntry]] ## \
     ## Contains the index sequences for doc types.
     ##
     ## The key is a *fake* TIndexEntry which will contain the title of the
@@ -1048,10 +1048,10 @@ proc formatNamedVars*(frmt: string, varnames: openArray[string],
     if i-1 >= start: add(result, substr(frmt, start, i - 1))
 
 
-proc defaultConfig*(): PStringTable =
+proc defaultConfig*(): StringTableRef =
   ## Returns a default configuration for embedded HTML generation.
   ##
-  ## The returned ``PStringTable`` contains the paramters used by the HTML
+  ## The returned ``StringTableRef`` contains the paramters used by the HTML
   ## engine to build the final output. For information on what these parameters
   ## are and their purpose, please look up the file ``config/nimdoc.cfg``
   ## bundled with the compiler.
@@ -1113,7 +1113,7 @@ $content
 # ---------- forum ---------------------------------------------------------
 
 proc rstToHtml*(s: string, options: TRstParseOptions, 
-                config: PStringTable): string =
+                config: StringTableRef): string =
   ## Converts an input rst string into embeddable HTML.
   ##
   ## This convenience proc parses any input string using rst markup (it doesn't

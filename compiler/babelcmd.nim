@@ -43,7 +43,7 @@ proc `<.`(a, b: string): bool =
     if a[i] == '.': inc i
     if b[j] == '.': inc j
 
-proc addPackage(packages: PStringTable, p: string) =
+proc addPackage(packages: StringTableRef, p: string) =
   let x = versionSplitPos(p)
   let name = p.substr(0, x-1)
   if x < p.len:
@@ -53,7 +53,7 @@ proc addPackage(packages: PStringTable, p: string) =
   else:
     packages[name] = latest
 
-iterator chosen(packages: PStringTable): string =
+iterator chosen(packages: StringTableRef): string =
   for key, val in pairs(packages):
     let res = if val == latest: key else: key & '-' & val
     yield res

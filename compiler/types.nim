@@ -160,9 +160,9 @@ proc enumHasHoles(t: PType): bool =
   while b.kind in {tyConst, tyMutable, tyRange, tyGenericInst}: b = b.sons[0]
   result = b.kind == tyEnum and tfEnumHasHoles in b.flags
 
-proc iterOverTypeAux(marker: var TIntSet, t: PType, iter: TTypeIter, 
+proc iterOverTypeAux(marker: var IntSet, t: PType, iter: TTypeIter, 
                      closure: RootRef): bool
-proc iterOverNode(marker: var TIntSet, n: PNode, iter: TTypeIter, 
+proc iterOverNode(marker: var IntSet, n: PNode, iter: TTypeIter, 
                   closure: RootRef): bool = 
   if n != nil: 
     case n.kind
@@ -174,7 +174,7 @@ proc iterOverNode(marker: var TIntSet, n: PNode, iter: TTypeIter,
         result = iterOverNode(marker, n.sons[i], iter, closure)
         if result: return 
   
-proc iterOverTypeAux(marker: var TIntSet, t: PType, iter: TTypeIter, 
+proc iterOverTypeAux(marker: var IntSet, t: PType, iter: TTypeIter, 
                      closure: RootRef): bool = 
   result = false
   if t == nil: return 
@@ -195,10 +195,10 @@ proc iterOverType(t: PType, iter: TTypeIter, closure: RootRef): bool =
   result = iterOverTypeAux(marker, t, iter, closure)
 
 proc searchTypeForAux(t: PType, predicate: TTypePredicate, 
-                      marker: var TIntSet): bool
+                      marker: var IntSet): bool
 
 proc searchTypeNodeForAux(n: PNode, p: TTypePredicate, 
-                          marker: var TIntSet): bool = 
+                          marker: var IntSet): bool = 
   result = false
   case n.kind
   of nkRecList: 
@@ -220,7 +220,7 @@ proc searchTypeNodeForAux(n: PNode, p: TTypePredicate,
   else: internalError(n.info, "searchTypeNodeForAux()")
   
 proc searchTypeForAux(t: PType, predicate: TTypePredicate, 
-                      marker: var TIntSet): bool = 
+                      marker: var IntSet): bool = 
   # iterates over VALUE types!
   result = false
   if t == nil: return 
@@ -256,7 +256,7 @@ proc isObjectWithTypeFieldPredicate(t: PType): bool =
       tfFinal notin t.flags
 
 proc analyseObjectWithTypeFieldAux(t: PType, 
-                                   marker: var TIntSet): TTypeFieldResult = 
+                                   marker: var IntSet): TTypeFieldResult = 
   var res: TTypeFieldResult
   result = frNone
   if t == nil: return 
@@ -310,8 +310,8 @@ proc containsHiddenPointer(typ: PType): bool =
   # that need to be copied deeply)
   result = searchTypeFor(typ, isHiddenPointer)
 
-proc canFormAcycleAux(marker: var TIntSet, typ: PType, startId: int): bool
-proc canFormAcycleNode(marker: var TIntSet, n: PNode, startId: int): bool = 
+proc canFormAcycleAux(marker: var IntSet, typ: PType, startId: int): bool
+proc canFormAcycleNode(marker: var IntSet, n: PNode, startId: int): bool = 
   result = false
   if n != nil: 
     result = canFormAcycleAux(marker, n.typ, startId)
@@ -324,7 +324,7 @@ proc canFormAcycleNode(marker: var TIntSet, n: PNode, startId: int): bool =
           result = canFormAcycleNode(marker, n.sons[i], startId)
           if result: return 
   
-proc canFormAcycleAux(marker: var TIntSet, typ: PType, startId: int): bool = 
+proc canFormAcycleAux(marker: var IntSet, typ: PType, startId: int): bool = 
   result = false
   if typ == nil: return 
   if tfAcyclic in typ.flags: return 
@@ -353,9 +353,9 @@ proc canFormAcycle(typ: PType): bool =
   var marker = initIntSet()
   result = canFormAcycleAux(marker, typ, typ.id)
 
-proc mutateTypeAux(marker: var TIntSet, t: PType, iter: TTypeMutator, 
+proc mutateTypeAux(marker: var IntSet, t: PType, iter: TTypeMutator, 
                    closure: RootRef): PType
-proc mutateNode(marker: var TIntSet, n: PNode, iter: TTypeMutator, 
+proc mutateNode(marker: var IntSet, n: PNode, iter: TTypeMutator, 
                 closure: RootRef): PNode = 
   result = nil
   if n != nil: 
@@ -369,7 +369,7 @@ proc mutateNode(marker: var TIntSet, n: PNode, iter: TTypeMutator,
       for i in countup(0, sonsLen(n) - 1): 
         addSon(result, mutateNode(marker, n.sons[i], iter, closure))
   
-proc mutateTypeAux(marker: var TIntSet, t: PType, iter: TTypeMutator, 
+proc mutateTypeAux(marker: var IntSet, t: PType, iter: TTypeMutator, 
                    closure: RootRef): PType = 
   result = nil
   if t == nil: return 
@@ -1012,10 +1012,10 @@ type
 
   TTypeAllowedFlags = set[TTypeAllowedFlag]
 
-proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind,
+proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
                     flags: TTypeAllowedFlags = {}): bool
 
-proc typeAllowedNode(marker: var TIntSet, n: PNode, kind: TSymKind,
+proc typeAllowedNode(marker: var IntSet, n: PNode, kind: TSymKind,
                      flags: TTypeAllowedFlags = {}): bool =
   result = true
   if n != nil: 
@@ -1039,7 +1039,7 @@ proc matchType*(a: PType, pattern: openArray[tuple[k:TTypeKind, i:int]],
     a = a.sons[i]
   result = a.kind == last
 
-proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind,
+proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
                     flags: TTypeAllowedFlags = {}): bool =
   assert(kind in {skVar, skLet, skConst, skParam, skResult})
   # if we have already checked the type, return true, because we stop the

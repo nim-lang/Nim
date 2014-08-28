@@ -162,7 +162,7 @@ proc mapReturnType(typ: PType): TCTypeKind =
   if skipTypes(typ, typedescInst).kind == tyArray: result = ctPtr
   else: result = mapType(typ)
   
-proc getTypeDescAux(m: BModule, typ: PType, check: var TIntSet): PRope
+proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): PRope
 proc needsComplexAssignment(typ: PType): bool = 
   result = containsGarbageCollectedRef(typ)
 
@@ -228,7 +228,7 @@ proc fillResult(param: PSym) =
     incl(param.loc.flags, lfIndirect)
     param.loc.s = OnUnknown
 
-proc getParamTypeDesc(m: BModule, t: PType, check: var TIntSet): PRope =
+proc getParamTypeDesc(m: BModule, t: PType, check: var IntSet): PRope =
   when false:
     if t.Kind in {tyRef, tyPtr, tyVar}:
       var b = skipTypes(t.lastson, typedescInst)
@@ -243,7 +243,7 @@ proc paramStorageLoc(param: PSym): TStorageLoc =
     result = OnUnknown
 
 proc genProcParams(m: BModule, t: PType, rettype, params: var PRope, 
-                   check: var TIntSet, declareEnvironment=true) = 
+                   check: var IntSet, declareEnvironment=true) = 
   params = nil
   if (t.sons[0] == nil) or isInvalidReturnType(t.sons[0]): 
     rettype = ~"void"
@@ -370,7 +370,7 @@ proc mangleRecFieldName(field: PSym, rectype: PType): PRope =
   
 proc genRecordFieldsAux(m: BModule, n: PNode, 
                         accessExpr: PRope, rectype: PType, 
-                        check: var TIntSet): PRope = 
+                        check: var IntSet): PRope = 
   var 
     ae, uname, sname, a: PRope
     k: PNode
@@ -419,11 +419,11 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
       appf(result, "$1 $2;$n", [getTypeDescAux(m, fieldType, check), sname])
   else: internalError(n.info, "genRecordFieldsAux()")
   
-proc getRecordFields(m: BModule, typ: PType, check: var TIntSet): PRope = 
+proc getRecordFields(m: BModule, typ: PType, check: var IntSet): PRope = 
   result = genRecordFieldsAux(m, typ.n, nil, typ, check)
 
 proc getRecordDesc(m: BModule, typ: PType, name: PRope, 
-                   check: var TIntSet): PRope = 
+                   check: var IntSet): PRope = 
   # declare the record:
   var hasField = false
 
@@ -461,7 +461,7 @@ proc getRecordDesc(m: BModule, typ: PType, name: PRope,
   app(result, "};" & tnl)
 
 proc getTupleDesc(m: BModule, typ: PType, name: PRope, 
-                  check: var TIntSet): PRope =
+                  check: var IntSet): PRope =
   result = ropef("$1 $2 {$n", [structOrUnion(typ), name])
   var desc: PRope = nil
   for i in countup(0, sonsLen(typ) - 1): 
@@ -474,7 +474,7 @@ proc getTupleDesc(m: BModule, typ: PType, name: PRope,
 proc pushType(m: BModule, typ: PType) = 
   add(m.typeStack, typ)
 
-proc getTypeDescAux(m: BModule, typ: PType, check: var TIntSet): PRope = 
+proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): PRope = 
   # returns only the type's name
   var 
     name, rettype, desc, recdesc: PRope

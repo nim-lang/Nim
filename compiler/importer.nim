@@ -113,7 +113,7 @@ proc importSymbol(c: PContext, n: PNode, fromMod: PSym) =
         e = nextIdentIter(it, fromMod.tab)
     else: rawImportSymbol(c, s)
 
-proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: TIntSet) =
+proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
   var i: TTabIter
   var s = initTabIter(i, fromMod.tab)
   while s != nil:
@@ -126,10 +126,10 @@ proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: TIntSet) =
     s = nextIter(i, fromMod.tab)
 
 proc importAllSymbols*(c: PContext, fromMod: PSym) =
-  var exceptSet: TIntSet
+  var exceptSet: IntSet
   importAllSymbolsExcept(c, fromMod, exceptSet)
 
-proc importForwarded(c: PContext, n: PNode, exceptSet: TIntSet) =
+proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet) =
   if n.isNil: return
   case n.kind
   of nkExportStmt:
@@ -164,7 +164,7 @@ proc myImportModule(c: PContext, n: PNode): PSym =
 
 proc evalImport(c: PContext, n: PNode): PNode = 
   result = n
-  var emptySet: TIntSet
+  var emptySet: IntSet
   for i in countup(0, sonsLen(n) - 1): 
     var m = myImportModule(c, n.sons[i])
     if m != nil:

@@ -140,12 +140,12 @@ type
     fn: PSym                # function that belongs to this scope;
                             # if up.fn != fn then we cross function boundaries.
                             # This is an important case to consider.
-    vars: TIntSet           # variables belonging to this environment
+    vars: IntSet           # variables belonging to this environment
     
   TOuterContext = object
     fn: PSym # may also be a module!
     head: PEnv
-    capturedVars, processed: TIntSet
+    capturedVars, processed: IntSet
     localsToAccess: TIdNodeTable
     lambdasToEnv: TIdTable # PSym->PEnv mapping
 

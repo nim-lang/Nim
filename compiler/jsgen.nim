@@ -71,8 +71,8 @@ type
   TGlobals = object 
     typeInfo, code: PRope
     forwarded: seq[PSym]
-    generatedSyms: TIntSet
-    typeInfoGenerated: TIntSet
+    generatedSyms: IntSet
+    typeInfoGenerated: IntSet
 
   PGlobals = ref TGlobals
   PProc = ref TProc

@@ -84,9 +84,9 @@ proc serve*(action: proc (){.nimcall.}) =
   of "tcp", "":
     when useCaas:
       var server = socket()
-      if server == invalidSocket: osError(osLastError())
+      if server == invalidSocket: raiseOSError(osLastError())
       let p = getConfigVar("server.port")
-      let port = if p.len > 0: parseInt(p).TPort else: 6000.TPort
+      let port = if p.len > 0: parseInt(p).Port else: 6000.Port
       server.bindAddr(port, getConfigVar("server.address"))
       var inp = "".TaintedString
       server.listen()

@@ -66,8 +66,8 @@ proc getArgument*(n: PRstNode): string
 # ----------------------------- scanner part --------------------------------
 
 const 
-  SymChars: TCharSet = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF'}
-  SmileyStartChars: TCharSet = {':', ';', '8'}
+  SymChars: set[char] = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF'}
+  SmileyStartChars: set[char] = {':', ';', '8'}
   Smilies = {
     ":D": "icon_e_biggrin",
     ":-D": "icon_e_biggrin",
@@ -111,7 +111,7 @@ const
 type
   TTokType = enum 
     tkEof, tkIndent, tkWhite, tkWord, tkAdornment, tkPunct, tkOther
-  TToken{.final.} = object    # a RST token
+  TToken = object             # a RST token
     kind*: TTokType           # the type of the token
     ival*: int                # the indentation or parsed integer value
     symbol*: string           # the parsed symbol as string
@@ -125,7 +125,7 @@ type
     skipPounds*: bool
 
 
-proc getThing(L: var TLexer, tok: var TToken, s: TCharSet) = 
+proc getThing(L: var TLexer, tok: var TToken, s: set[char]) = 
   tok.kind = tkWord
   tok.line = L.line
   tok.col = L.col

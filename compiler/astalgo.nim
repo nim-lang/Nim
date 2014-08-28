@@ -245,13 +245,13 @@ proc lineInfoToStr(info: TLineInfo): PRope =
                                   toRope(toLinenumber(info)), 
                                   toRope(toColumn(info))])
 
-proc treeToYamlAux(n: PNode, marker: var TIntSet, 
+proc treeToYamlAux(n: PNode, marker: var IntSet, 
                    indent, maxRecDepth: int): PRope
-proc symToYamlAux(n: PSym, marker: var TIntSet, 
+proc symToYamlAux(n: PSym, marker: var IntSet, 
                   indent, maxRecDepth: int): PRope
-proc typeToYamlAux(n: PType, marker: var TIntSet, 
+proc typeToYamlAux(n: PType, marker: var IntSet, 
                    indent, maxRecDepth: int): PRope
-proc strTableToYaml(n: TStrTable, marker: var TIntSet, indent: int, 
+proc strTableToYaml(n: TStrTable, marker: var IntSet, indent: int, 
                     maxRecDepth: int): PRope = 
   var istr = spaces(indent + 2)
   result = toRope("[")
@@ -277,7 +277,7 @@ proc ropeConstr(indent: int, c: openArray[PRope]): PRope =
     inc(i, 2)
   appf(result, "$N$1}", [spaces(indent)])
 
-proc symToYamlAux(n: PSym, marker: var TIntSet, indent: int, 
+proc symToYamlAux(n: PSym, marker: var IntSet, indent: int, 
                   maxRecDepth: int): PRope = 
   if n == nil: 
     result = toRope("null")
@@ -298,7 +298,7 @@ proc symToYamlAux(n: PSym, marker: var TIntSet, indent: int,
                                  flagsToStr(n.options), toRope("position"), 
                                  toRope(n.position)])
 
-proc typeToYamlAux(n: PType, marker: var TIntSet, indent: int, 
+proc typeToYamlAux(n: PType, marker: var IntSet, indent: int, 
                    maxRecDepth: int): PRope = 
   if n == nil: 
     result = toRope("null")
@@ -326,7 +326,7 @@ proc typeToYamlAux(n: PType, marker: var TIntSet, indent: int,
                                  toRope("align"), toRope(n.align), 
                                  toRope("sons"), result])
 
-proc treeToYamlAux(n: PNode, marker: var TIntSet, indent: int, 
+proc treeToYamlAux(n: PNode, marker: var IntSet, indent: int, 
                    maxRecDepth: int): PRope = 
   if n == nil: 
     result = toRope("null")
@@ -677,7 +677,7 @@ proc nextIdentIter(ti: var TIdentIter, tab: TStrTable): PSym =
   ti.h = nextTry(h, high(tab.data))
   
 proc nextIdentExcluding*(ti: var TIdentIter, tab: TStrTable, 
-                         excluding: TIntSet): PSym =
+                         excluding: IntSet): PSym =
   var h: THash = ti.h and high(tab.data)
   var start = h
   result = tab.data[h]
@@ -693,7 +693,7 @@ proc nextIdentExcluding*(ti: var TIdentIter, tab: TStrTable,
   if result != nil and contains(excluding, result.id): result = nil
 
 proc firstIdentExcluding*(ti: var TIdentIter, tab: TStrTable, s: PIdent,
-                          excluding: TIntSet): PSym = 
+                          excluding: IntSet): PSym = 
   ti.h = s.h
   ti.name = s
   if tab.counter == 0: result = nil
