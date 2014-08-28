@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -62,7 +62,7 @@ type
     frameLen*: int16
   
   TCProc{.final.} = object    # represents C proc that is currently generated
-    prc*: PSym                # the Nimrod proc that this C proc belongs to
+    prc*: PSym                # the Nim proc that this C proc belongs to
     beforeRetNeeded*: bool    # true iff 'BeforeRet' label for proc is needed
     threadVarAccessed*: bool  # true if the proc already accessed some threadvar
     nestedTryStmts*: seq[PNode]   # in how many nested try statements we are

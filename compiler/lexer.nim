@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -102,7 +102,7 @@ type
                               # so that it is the correct default value
     base2, base8, base16
 
-  TToken* = object            # a Nimrod token
+  TToken* = object            # a Nim token
     tokType*: TTokType        # the type of the token
     indent*: int              # the indentation; != -1 if the token has been
                               # preceeded with indentation
@@ -148,7 +148,7 @@ proc lexMessage*(L: TLexer, msg: TMsgKind, arg = "")
 proc isKeyword(kind: TTokType): bool = 
   result = (kind >= tokKeywordLow) and (kind <= tokKeywordHigh)
 
-proc isNimrodIdentifier*(s: string): bool =
+proc isNimIdentifier*(s: string): bool =
   if s[0] in SymStartChars:
     var i = 1
     while i < s.len:

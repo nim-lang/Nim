@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -117,7 +117,7 @@ proc newModule(fileIdx: int32): PSym =
   result.kind = skModule
   let filename = fileIdx.toFullPath
   result.name = getIdent(splitFile(filename).name)
-  if not isNimrodIdentifier(result.name.s):
+  if not isNimIdentifier(result.name.s):
     rawMessage(errInvalidModuleName, result.name.s)
   
   result.info = newLineInfo(fileIdx, 1, 1)

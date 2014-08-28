@@ -1,13 +1,13 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-## This file implements the FFI part of the evaluator for Nimrod code.
+## This file implements the FFI part of the evaluator for Nim code.
 
 import ast, astalgo, ropes, types, options, tables, dynlib, libffi, msgs, os
 

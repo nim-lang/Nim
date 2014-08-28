@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -12,7 +12,7 @@
 #  Ropes are a data structure that represents a very long string
 #  efficiently; especially concatenation is done in O(1) instead of O(N).
 #  Ropes make use a lazy evaluation: They are essentially concatenation
-#  trees that are only flattened when converting to a native Nimrod
+#  trees that are only flattened when converting to a native Nim
 #  string or when written to disk. The empty string is represented by a
 #  nil pointer.
 #  A little picture makes everything clear:

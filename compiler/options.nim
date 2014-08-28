@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -68,7 +68,7 @@ type                          # please make sure we have under 32 options
                               # also: generate header file
    
   TGlobalOptions* = set[TGlobalOption]
-  TCommands* = enum           # Nimrod's commands
+  TCommands* = enum           # Nim's commands
                               # **keep binary compatible**
     cmdNone, cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, 
     cmdCompileToJS, cmdCompileToLLVM, cmdInterpret, cmdPretty, cmdDoc, 

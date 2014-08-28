@@ -1,14 +1,14 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-# this unit handles Nimrod sets; it implements bit sets
-# the code here should be reused in the Nimrod standard library
+# this unit handles Nim sets; it implements bit sets
+# the code here should be reused in the Nim standard library
 
 type 
   TBitSet* = seq[int8]        # we use byte here to avoid issues with

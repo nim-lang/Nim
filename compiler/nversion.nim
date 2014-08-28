@@ -1,13 +1,13 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-# This module contains Nimrod's version. It is the only place where it needs
+# This module contains Nim's version. It is the only place where it needs
 # to be changed.
 
 const 

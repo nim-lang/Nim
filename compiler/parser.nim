@@ -1,13 +1,13 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-# This module implements the parser of the standard Nimrod syntax.
+# This module implements the parser of the standard Nim syntax.
 # The parser strictly reflects the grammar ("doc/grammar.txt"); however
 # it uses several helper routines to keep the parser small. A special
 # efficient algorithm is used for the precedence levels. The parser here can

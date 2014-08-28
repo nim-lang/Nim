@@ -476,7 +476,7 @@ type
                           # and first phase symbol lookup in generics
     skConditional,        # symbol for the preprocessor (may become obsolete)
     skDynLib,             # symbol represents a dynamic library; this is used
-                          # internally; it does not exist in Nimrod code
+                          # internally; it does not exist in Nim code
     skParam,              # a parameter
     skGenericParam,       # a generic parameter; eq in ``proc x[eq=`==`]()``
     skTemp,               # a temporary variable (introduced by compiler)

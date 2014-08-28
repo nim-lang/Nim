@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -547,7 +547,7 @@ proc genCaseSecondPass(p: BProc, t: PNode, d: var TLoc,
 proc genIfForCaseUntil(p: BProc, t: PNode, d: var TLoc,
                        rangeFormat, eqFormat: TFormatStr,
                        until: int, a: TLoc): TLabel =
-  # generate a C-if statement for a Nimrod case statement
+  # generate a C-if statement for a Nim case statement
   var labId = p.labels
   for i in 1..until:
     inc(p.labels)

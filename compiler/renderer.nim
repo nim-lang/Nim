@@ -1,13 +1,13 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-# This module implements the renderer of the standard Nimrod representation.
+# This module implements the renderer of the standard Nim representation.
 
 import 
   lexer, options, idents, strutils, ast, msgs, lists

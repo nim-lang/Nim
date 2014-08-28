@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -15,7 +15,7 @@ proc intLiteral(i: BiggestInt): PRope =
   if (i > low(int32)) and (i <= high(int32)):
     result = toRope(i)
   elif i == low(int32):
-    # Nimrod has the same bug for the same reasons :-)
+    # Nim has the same bug for the same reasons :-)
     result = ~"(-2147483647 -1)"
   elif i > low(int64):
     result = rfmt(nil, "IL64($1)", toRope(i))
@@ -908,7 +908,7 @@ proc gcUsage(n: PNode) =
   if gSelectedGC == gcNone: message(n.info, warnGcMem, n.renderTree)
 
 proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
-  #   <Nimrod code>
+  #   <Nim code>
   #   s = 'Hello ' & name & ', how do you feel?' & 'z'
   #
   #   <generated C code>
@@ -951,7 +951,7 @@ proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
   gcUsage(e)
 
 proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
-  #  <Nimrod code>
+  #  <Nim code>
   #  s &= 'Hello ' & name & ', how do you feel?' & 'z'
   #  // BUG: what if s is on the left side too?
   #  <generated C code>

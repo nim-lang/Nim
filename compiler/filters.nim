@@ -1,13 +1,13 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-# This module implements Nimrod's simple filters and helpers for filters.
+# This module implements Nim's simple filters and helpers for filters.
 
 import
   llstream, os, wordrecg, idents, strutils, ast, astalgo, msgs, options, 

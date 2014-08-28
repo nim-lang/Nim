@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -51,7 +51,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo)
 # implementation
 
 const
-  HelpMessage = "Nimrod Compiler Version $1 (" & CompileDate & ") [$2: $3]\n" &
+  HelpMessage = "Nim Compiler Version $1 (" & CompileDate & ") [$2: $3]\n" &
       "Copyright (c) 2006-2014 by Andreas Rumpf\n"
 
 const 

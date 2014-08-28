@@ -1,13 +1,13 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-## Implements some helper procs for Babel (Nimrod's package manager) support.
+## Implements some helper procs for Babel (Nim's package manager) support.
 
 import parseutils, strutils, strtabs, os, options, msgs, lists
 

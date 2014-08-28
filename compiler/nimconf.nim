@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -14,7 +14,7 @@ import
   options, idents, wordrecg
 
 # ---------------- configuration file parser -----------------------------
-# we use Nimrod's scanner here to safe space and work
+# we use Nim's scanner here to safe space and work
 
 proc ppGetTok(L: var TLexer, tok: var TToken) = 
   # simple filter

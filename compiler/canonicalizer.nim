@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -370,7 +370,7 @@ proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
   # the last entry of a symbol:
   if s.ast != nil:
     # we used to attempt to save space here by only storing a dummy AST if
-    # it is not necessary, but Nimrod's heavy compile-time evaluation features
+    # it is not necessary, but Nim's heavy compile-time evaluation features
     # make that unfeasible nowadays:
     encodeNode(w, s.info, s.ast, result)
 
