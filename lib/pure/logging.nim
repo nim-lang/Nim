@@ -61,15 +61,15 @@ const
 
 type
   Logger* = ref object of RootObj ## abstract logger; the base type of all loggers
-    levelThreshold*: Leve l    ## only messages of level >= levelThreshold 
-                               ## should be processed
+    levelThreshold*: Level    ## only messages of level >= levelThreshold 
+                              ## should be processed
     fmtStr: string ## = defaultFmtStr by default, see substituteLog for $date etc.
     
   ConsoleLogger* = ref object of Logger ## logger that writes the messages to the
                                         ## console
   
   FileLogger* = ref object of Logger ## logger that writes the messages to a file
-    f: TFile
+    f: File
   
   RollingFileLogger* = ref object of FileLogger ## logger that writes the 
                                                 ## messages to a file and
@@ -109,19 +109,19 @@ proc substituteLog(frmt: string): string =
       of "appname": result.add(app.splitFile.name)
 
 method log*(logger: Logger, level: Level,
-            frmt: string, args: varargs[string, `$`]) {.raises: [EBase], tags: [FTime, FWriteIO, FReadIO].} =
+            frmt: string, args: varargs[string, `$`]) {.raises: [Exception], tags: [FTime, FWriteIO, FReadIO].} =
   ## Override this method in custom loggers. Default implementation does
   ## nothing.
   discard
   
-method log*(logger: PConsoleLogger, level: TLevel,
+method log*(logger: ConsoleLogger, level: Level,
             frmt: string, args: varargs[string, `$`]) =
   ## Logs to the console using ``logger`` only.
   if level >= logger.levelThreshold:
     writeln(stdout, LevelNames[level], " ", substituteLog(logger.fmtStr),
             frmt % args)
 
-method log*(logger: PFileLogger, level: TLevel, 
+method log*(logger: FileLogger, level: Level, 
             frmt: string, args: varargs[string, `$`]) =
   ## Logs to a file using ``logger`` only.
   if level >= logger.levelThreshold:
@@ -133,16 +133,16 @@ proc defaultFilename*(): string =
   var (path, name, ext) = splitFile(getAppFilename())
   result = changeFileExt(path / name, "log")
 
-proc newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr): PConsoleLogger =
+proc newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr): ConsoleLogger =
   ## Creates a new console logger. This logger logs to the console.
   new result
   result.fmtStr = fmtStr
   result.levelThreshold = levelThreshold
 
 proc newFileLogger*(filename = defaultFilename(), 
-                    mode: TFileMode = fmAppend,
+                    mode: FileMode = fmAppend,
                     levelThreshold = lvlAll,
-                    fmtStr = defaultFmtStr): PFileLogger = 
+                    fmtStr = defaultFmtStr): FileLogger = 
   ## Creates a new file logger. This logger logs to a file.
   new(result)
   result.levelThreshold = levelThreshold
@@ -151,7 +151,7 @@ proc newFileLogger*(filename = defaultFilename(),
 
 # ------
 
-proc countLogLines(logger: PRollingFileLogger): int =
+proc countLogLines(logger: RollingFileLogger): int =
   result = 0
   for line in logger.f.lines():
     result.inc()
@@ -169,13 +169,13 @@ proc countFiles(filename: string): int =
           let num = parseInt(numS)
           if num > result:
             result = num
-        except EInvalidValue: discard
+        except ValueError: discard
 
 proc newRollingFileLogger*(filename = defaultFilename(), 
-                           mode: TFileMode = fmReadWrite,
+                           mode: FileMode = fmReadWrite,
                            levelThreshold = lvlAll,
                            fmtStr = defaultFmtStr,
-                           maxLines = 1000): PRollingFileLogger =
+                           maxLines = 1000): RollingFileLogger =
   ## Creates a new rolling file logger. Once a file reaches ``maxLines`` lines
   ## a new log file will be started and the old will be renamed.
   new(result)
@@ -193,14 +193,14 @@ proc newRollingFileLogger*(filename = defaultFilename(),
     # We need to get a line count because we will be appending to the file.
     result.curLine = countLogLines(result)
 
-proc rotate(logger: PRollingFileLogger) =
+proc rotate(logger: RollingFileLogger) =
   let (dir, name, ext) = splitFile(logger.baseName)
   for i in countdown(logger.logFiles, 0):
     let srcSuff = if i != 0: ExtSep & $i else: ""
     moveFile(dir / (name & ext & srcSuff),
              dir / (name & ext & ExtSep & $(i+1)))
 
-method log*(logger: PRollingFileLogger, level: TLevel, 
+method log*(logger: RollingFileLogger, level: Level, 
             frmt: string, args: varargs[string, `$`]) =
   ## Logs to a file using rolling ``logger`` only.
   if level >= logger.levelThreshold:
@@ -218,20 +218,20 @@ method log*(logger: PRollingFileLogger, level: TLevel,
 
 var
   level* = lvlAll  ## global log filter
-  handlers*: seq[PLogger] = @[] ## handlers with their own log levels
+  handlers*: seq[Logger] = @[] ## handlers with their own log levels
 
-proc logLoop(level: TLevel, frmt: string, args: varargs[string, `$`]) =
+proc logLoop(level: Level, frmt: string, args: varargs[string, `$`]) =
   for logger in items(handlers): 
     if level >= logger.levelThreshold:
       log(logger, level, frmt, args)
 
-template log*(level: TLevel, frmt: string, args: varargs[string, `$`]) =
+template log*(level: Level, frmt: string, args: varargs[string, `$`]) =
   ## Logs a message to all registered handlers at the given level.
   bind logLoop
   bind `%`
-  bind logging.Level
+  bind logging.level
   
-  if level >= logging.Level:
+  if level >= logging.level:
     logLoop(level, frmt, args)
 
 template debug*(frmt: string, args: varargs[string, `$`]) =

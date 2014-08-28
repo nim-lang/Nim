@@ -34,7 +34,7 @@ import streams, typeinfo, json, intsets, tables
 proc ptrToInt(x: pointer): int {.inline.} =
   result = cast[int](x) # don't skip alignment
 
-proc storeAny(s: PStream, a: TAny, stored: var TIntSet) =
+proc storeAny(s: Stream, a: TAny, stored: var IntSet) =
   case a.kind
   of akNone: assert false
   of akBool: s.write($getBool(a))
@@ -84,12 +84,12 @@ proc storeAny(s: PStream, a: TAny, stored: var TIntSet) =
   of akProc, akPointer, akCString: s.write($a.getPointer.ptrToInt)
   of akString:
     var x = getString(a)
-    if IsNil(x): s.write("null")
+    if isNil(x): s.write("null")
     else: s.write(escapeJson(x))
   of akInt..akInt64, akUInt..akUInt64: s.write($getBiggestInt(a))
   of akFloat..akFloat128: s.write($getBiggestFloat(a))
 
-proc loadAny(p: var TJsonParser, a: TAny, t: var TTable[biggestInt, pointer]) =
+proc loadAny(p: var JsonParser, a: TAny, t: var Table[BiggestInt, pointer]) =
   case a.kind
   of akNone: assert false
   of akBool: 
@@ -211,19 +211,19 @@ proc loadAny(p: var TJsonParser, a: TAny, t: var TTable[biggestInt, pointer]) =
     raiseParseErr(p, "float expected")
   of akRange: loadAny(p, a.skipRange, t)
 
-proc loadAny(s: PStream, a: TAny, t: var TTable[BiggestInt, pointer]) =
-  var p: TJsonParser
+proc loadAny(s: Stream, a: TAny, t: var Table[BiggestInt, pointer]) =
+  var p: JsonParser
   open(p, s, "unknown file")
   next(p)
   loadAny(p, a, t)
   close(p)
 
-proc load*[T](s: PStream, data: var T) =
+proc load*[T](s: Stream, data: var T) =
   ## loads `data` from the stream `s`. Raises `EIO` in case of an error.
-  var tab = initTable[biggestInt, pointer]()
+  var tab = initTable[BiggestInt, pointer]()
   loadAny(s, toAny(data), tab)
 
-proc store*[T](s: PStream, data: T) =
+proc store*[T](s: Stream, data: T) =
   ## stores `data` into the stream `s`. Raises `EIO` in case of an error.
   var stored = initIntSet()
   var d: T
@@ -241,7 +241,7 @@ proc `$$`*[T](x: T): string =
 
 proc to*[T](data: string): T =
   ## reads data and transforms it to a ``T``.
-  var tab = initTable[biggestInt, pointer]()
+  var tab = initTable[BiggestInt, pointer]()
   loadAny(newStringStream(data), toAny(result), tab)
   
 when isMainModule:
