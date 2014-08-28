@@ -178,15 +178,15 @@ proc errcode*(db: PSqlite3): int32{.cdecl, dynlib: Lib, importc: "sqlite3_errcod
 proc errmsg*(para1: PSqlite3): cstring{.cdecl, dynlib: Lib, importc: "sqlite3_errmsg".}
 proc errmsg16*(para1: PSqlite3): pointer{.cdecl, dynlib: Lib, 
                                    importc: "sqlite3_errmsg16".}
-proc prepare*(db: PSqlite3, zSql: cstring, nBytes: int32, ppStmt: var PStmt, 
+proc prepare*(db: PSqlite3, zSql: cstring, nBytes: int32, ppStmt: var Pstmt, 
               pzTail: ptr cstring): int32{.cdecl, dynlib: Lib, 
     importc: "sqlite3_prepare".}
     
-proc prepare_v2*(db: PSqlite3, zSql: cstring, nByte: cint, ppStmt: var PStmt,
+proc prepare_v2*(db: PSqlite3, zSql: cstring, nByte: cint, ppStmt: var Pstmt,
                 pzTail: ptr cstring): cint {.
                 importc: "sqlite3_prepare_v2", cdecl, dynlib: Lib.}
     
-proc prepare16*(db: PSqlite3, zSql: pointer, nBytes: int32, ppStmt: var PStmt, 
+proc prepare16*(db: PSqlite3, zSql: pointer, nBytes: int32, ppStmt: var Pstmt, 
                 pzTail: var pointer): int32{.cdecl, dynlib: Lib, 
     importc: "sqlite3_prepare16".}
 proc bind_blob*(para1: Pstmt, para2: int32, para3: pointer, n: int32, 
