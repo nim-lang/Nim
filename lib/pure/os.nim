@@ -1245,7 +1245,7 @@ iterator walkDir*(dir: string): tuple[kind: TPathComponent, path: string] {.
   ##
   ## and this code:
   ##
-  ## .. code-block:: Nimrod
+  ## .. code-block:: Nim
   ##     for kind, path in walkDir("dirA"):
   ##       echo(path)
   ##
@@ -1657,7 +1657,7 @@ when defined(nimdoc):
     ##     # Do something else!
 
 elif defined(windows):
-  # Since we support GUI applications with Nimrod, we sometimes generate
+  # Since we support GUI applications with Nim, we sometimes generate
   # a WinMain entry proc. But a WinMain proc has no access to the parsed
   # command line arguments. The way to get them differs. Thus we parse them
   # ourselves. This has the additional benefit that the program's behaviour

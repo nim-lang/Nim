@@ -13,14 +13,14 @@
 # net/if, sys/socket, sys/uio, netinet/in, netinet/tcp, netdb
 
 ## This is a raw POSIX interface module. It does not not provide any
-## convenience: cstrings are used instead of proper Nimrod strings and
+## convenience: cstrings are used instead of proper Nim strings and
 ## return codes indicate errors. If you want exceptions
-## and a proper Nimrod-like interface, use the OS module or write a wrapper.
+## and a proper Nim-like interface, use the OS module or write a wrapper.
 
 ## Coding conventions:
 ## ALL types are named the same as in the POSIX standard except that they start
 ## with 'T' or 'P' (if they are pointers) and without the '_t' suffix to be
-## consistent with Nimrod conventions. If an identifier is a Nimrod keyword
+## consistent with Nim conventions. If an identifier is a Nim keyword
 ## the \`identifier\` notation is used.
 ##
 ## This library relies on the header files of your C compiler. The

@@ -9,7 +9,7 @@
 
 ## The ``gentabs`` module implements an efficient hash table that is a
 ## key-value mapping. The keys are required to be strings, but the values
-## may be any Nimrod or user defined type. This module supports matching 
+## may be any Nim or user defined type. This module supports matching 
 ## of keys in case-sensitive, case-insensitive and style-insensitive modes.
 
 {.deprecated.}

@@ -1,13 +1,13 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-## This module contains Nimrod's support for locks and condition vars.
+## This module contains Nim's support for locks and condition vars.
 ## If the symbol ``preventDeadlocks`` is defined
 ## (compiled with ``-d:preventDeadlocks``) special logic is added to
 ## every ``acquire``, ``tryAcquire`` and ``release`` action that ensures at
@@ -18,10 +18,10 @@
 include "system/syslocks"
 
 type
-  TLock* = TSysLock ## Nimrod lock; whether this is re-entrant
+  TLock* = TSysLock ## Nim lock; whether this is re-entrant
                     ## or not is unspecified! However, compilation
                     ## in preventDeadlocks-mode guarantees re-entrancy.
-  TCond* = TSysCond ## Nimrod condition variable
+  TCond* = TSysCond ## Nim condition variable
   
   FLock* = object of TEffect ## effect that denotes that some lock operation
                              ## is performed

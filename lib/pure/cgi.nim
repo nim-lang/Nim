@@ -325,7 +325,7 @@ proc setTestData*(keysvalues: varargs[string]) =
   ## This can only simulate the 'GET' request method. `keysvalues` should
   ## provide embedded (name, value)-pairs. Example:
   ##
-  ## .. code-block:: Nimrod
+  ## .. code-block:: Nim
   ##    setTestData("name", "Hanz", "password", "12345")
   putEnv("REQUEST_METHOD", "GET")
   var i = 0
@@ -342,7 +342,7 @@ proc writeContentType*() =
   ## call this before starting to send your HTML data to `stdout`. This
   ## implements this part of the CGI protocol:
   ##
-  ## .. code-block:: Nimrod
+  ## .. code-block:: Nim
   ##     write(stdout, "Content-type: text/html\n\n")
   write(stdout, "Content-type: text/html\n\n")
 
@@ -366,11 +366,11 @@ proc writeErrorMessage*(data: string) =
   stdout.write(data)
 
 proc setStackTraceStdout*() =
-  ## Makes Nimrod output stacktraces to stdout, instead of server log.
+  ## Makes Nim output stacktraces to stdout, instead of server log.
   errorMessageWriter = writeErrorMessage
 
 proc setStackTraceNewLine*() {.deprecated.} =
-  ## Makes Nimrod output stacktraces to stdout, instead of server log.
+  ## Makes Nim output stacktraces to stdout, instead of server log.
   ## Depracated alias for setStackTraceStdout.
   setStackTraceStdout()
 

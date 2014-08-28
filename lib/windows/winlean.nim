@@ -8,7 +8,7 @@
 #
 
 ## This module implements a small wrapper for some needed Win API procedures,
-## so that the Nimrod compiler does not depend on the huge Windows module.
+## so that the Nim compiler does not depend on the huge Windows module.
 
 const
   useWinUnicode* = not defined(useWinAnsi)

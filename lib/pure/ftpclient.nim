@@ -39,7 +39,7 @@ type
       csock: Socket # Command connection socket
       dsock: Socket # Data connection socket
     else:
-      dummyA, dummyB: pointer # workaround a Nimrod API issue
+      dummyA, dummyB: pointer # workaround a Nim API issue
       asyncCSock: AsyncSocket
       asyncDSock: AsyncSocket
       handleEvent*: proc (ftp: AsyncFTPClient, ev: FTPEvent){.closure,gcsafe.}

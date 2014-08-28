@@ -10,7 +10,7 @@
 ## This module contains support for a `rope`:idx: data type.
 ## Ropes can represent very long strings efficiently; especially concatenation
 ## is done in O(1) instead of O(n). They are essentially concatenation
-## trees that are only flattened when converting to a native Nimrod
+## trees that are only flattened when converting to a native Nim
 ## string. The empty string is represented by ``nil``. Ropes are immutable and
 ## subtrees can be shared without copying.
 ## Leaves can be cached for better memory efficiency at the cost of

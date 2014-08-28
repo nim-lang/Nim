@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## `Actor`:idx: support for Nimrod. An actor is implemented as a thread with
+## `Actor`:idx: support for Nim. An actor is implemented as a thread with
 ## a channel as its inbox. This module requires the ``--threads:on``
 ## command line switch.
 ##

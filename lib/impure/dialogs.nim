@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -8,7 +8,7 @@
 #
 
 
-## This module implements portable dialogs for Nimrod; the implementation
+## This module implements portable dialogs for Nim; the implementation
 ## builds on the GTK interface. On Windows, native dialogs are shown instead.
 
 import

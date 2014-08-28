@@ -103,7 +103,7 @@ proc defined*(x: expr): bool {.magic: "Defined", noSideEffect.}
   ## `-d:x switch <nimrodc.html#compile-time-symbols>`_ to enable build time
   ## conditionals:
   ##
-  ## .. code-block:: Nimrod
+  ## .. code-block:: Nim
   ##   when not defined(release):
   ##     # Do here programmer friendly expensive sanity checks.
   ##   # Put here the normal code
@@ -123,7 +123,7 @@ proc declared*(x: expr): bool {.magic: "Defined", noSideEffect.}
   ## This can be used to check whether a library provides a certain
   ## feature or not:
   ##
-  ## .. code-block:: Nimrod
+  ## .. code-block:: Nim
   ##   when not defined(strutils.toUpper):
   ##     # provide our own toUpper proc here, because strutils is
   ##     # missing it.
@@ -320,7 +320,7 @@ type
     ## of an int. This type is often useful for documentation and debugging.
 
   RootObj* {.exportc: "TNimObject", inheritable.} =
-    object ## the root of Nimrod's object hierarchy. Objects should
+    object ## the root of Nim's object hierarchy. Objects should
            ## inherit from TObject or one of its descendants. However,
            ## objects that have no ancestor are allowed.
   RootRef* = ref RootObj ## reference to RootObj
@@ -465,7 +465,7 @@ type
     ## The operation produced a result that cannot be represented with infinite
     ## precision -- for example: ``2.0 / 3.0, log(1.1)``
     ##
-    ## **NOTE**: Nimrod currently does not detect these!  See the full
+    ## **NOTE**: Nim currently does not detect these!  See the full
     ## `exception hierarchy`_.
   DeadThreadError* = object of Exception ## \
     ## Raised if it is attempted to send a message to a dead thread.
@@ -691,7 +691,7 @@ proc `div` *(x, y: int32): int32 {.magic: "DivI", noSideEffect.}
 proc `div` *(x, y: int64): int64 {.magic: "DivI64", noSideEffect.}
   ## computes the integer division. This is roughly the same as
   ## ``floor(x/y)``.
-  ## .. code-block:: Nimrod
+  ## .. code-block:: Nim
   ##   1 div 2 == 0
   ##   2 div 2 == 1
   ##   3 div 2 == 1
@@ -710,7 +710,7 @@ proc `shr` *(x, y: int16): int16 {.magic: "ShrI", noSideEffect.}
 proc `shr` *(x, y: int32): int32 {.magic: "ShrI", noSideEffect.}
 proc `shr` *(x, y: int64): int64 {.magic: "ShrI64", noSideEffect.}
   ## computes the `shift right` operation of `x` and `y`.
-  ## .. code-block:: Nimrod
+  ## .. code-block:: Nim
   ##   0b0001_0000'i8 shr 2 == 0b0100_0000'i8
   ##   0b1000_0000'i8 shr 2 == 0b0000_0000'i8
   ##   0b0000_0001'i8 shr 9 == 0b0000_0000'i8
@@ -849,12 +849,12 @@ proc contains*[T](x: set[T], y: T): bool {.magic: "InSet", noSideEffect.}
   ## One should overload this proc if one wants to overload the ``in`` operator.
   ## The parameters are in reverse order! ``a in b`` is a template for
   ## ``contains(b, a)``.
-  ## This is because the unification algorithm that Nimrod uses for overload
+  ## This is because the unification algorithm that Nim uses for overload
   ## resolution works from left to right.
   ## But for the ``in`` operator that would be the wrong direction for this
   ## piece of code:
   ##
-  ## .. code-block:: Nimrod
+  ## .. code-block:: Nim
   ##   var s: set[range['a'..'z']] = {'a'..'c'}
   ##   writeln(stdout, 'b' in s)
   ##
@@ -868,7 +868,7 @@ proc contains*[T](s: Slice[T], value: T): bool {.noSideEffect, inline.} =
   ## Checks if `value` is withing the range of `s`; returns true iff
   ## `value >= s.a and value <= s.b`
   ##
-  ## .. code-block:: Nimrod
+  ## .. code-block:: Nim
   ##   assert((1..3).contains(1) == true)
   ##   assert((1..3).contains(2) == true)
   ##   assert((1..3).contains(4) == false)
@@ -877,20 +877,20 @@ proc contains*[T](s: Slice[T], value: T): bool {.noSideEffect, inline.} =
 template `in` * (x, y: expr): expr {.immediate.} = contains(y, x)
   ## Sugar for contains
   ##
-  ## .. code-block:: Nimrod
+  ## .. code-block:: Nim
   ##   assert(1 in (1..3) == true)
   ##   assert(5 in (1..3) == false)
 template `notin` * (x, y: expr): expr {.immediate.} = not contains(y, x)
   ## Sugar for not containing
   ##
-  ## .. code-block:: Nimrod
+  ## .. code-block:: Nim
   ##   assert(1 notin (1..3) == false)
   ##   assert(5 notin (1..3) == true)
 
 proc `is` *[T, S](x: T, y: S): bool {.magic: "Is", noSideEffect.}
   ## Checks if T is of the same type as S
   ## 
-  ## .. code-block:: Nimrod
+  ## .. code-block:: Nim
   ##   proc test[T](a: T): int =
   ##     when (T is int):
   ##       return a
@@ -905,7 +905,7 @@ template `isnot` *(x, y: expr): expr {.immediate.} = not (x is y)
 proc `of` *[T, S](x: T, y: S): bool {.magic: "Of", noSideEffect.}
   ## Checks if `x` has a type of `y`
   ##
-  ## .. code-block:: Nimrod
+  ## .. code-block:: Nim
   ##   assert(EFloatingPoint of EBase)
   ##   assert(EIO of ESystem)
   ##   assert(EDivByZero of EBase)
@@ -961,25 +961,25 @@ proc `&` * (x: string, y: char): string {.
   magic: "ConStrStr", noSideEffect, merge.}
   ## Concatenates `x` with `y`
   ##
-  ## .. code-block:: Nimrod
+  ## .. code-block:: Nim
   ##   assert("ab" & 'c' == "abc")
 proc `&` * (x: char, y: char): string {.
   magic: "ConStrStr", noSideEffect, merge.}
   ## Concatenates `x` and `y` into a string
   ##
-  ## .. code-block:: Nimrod
+  ## .. code-block:: Nim
   ##   assert('a' & 'b' == "ab")
 proc `&` * (x, y: string): string {.
   magic: "ConStrStr", noSideEffect, merge.}
   ## Concatenates `x` and `y`
   ##
-  ## .. code-block:: Nimrod
+  ## .. code-block:: Nim
   ##   assert("ab" & "cd" == "abcd")
 proc `&` * (x: char, y: string): string {.
   magic: "ConStrStr", noSideEffect, merge.}
   ## Concatenates `x` with `y`
   ##
-  ## .. code-block:: Nimrod
+  ## .. code-block:: Nim
   ##   assert('a' & "bc" == "abc")
 
 # implementation note: These must all have the same magic value "ConStrStr" so
@@ -988,7 +988,7 @@ proc `&` * (x: char, y: string): string {.
 proc add*(x: var string, y: char) {.magic: "AppendStrCh", noSideEffect.}
   ## Appends `y` to `x` in place
   ##
-  ## .. code-block:: Nimrod
+  ## .. code-block:: Nim
   ##   var tmp = ""
   ##   tmp.add('a')
   ##   tmp.add('b')
@@ -996,7 +996,7 @@ proc add*(x: var string, y: char) {.magic: "AppendStrCh", noSideEffect.}
 proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
   ## Concatenates `x` and `y` in place
   ##
-  ## .. code-block:: Nimrod
+  ## .. code-block:: Nim
   ##   var tmp = ""
   ##   tmp.add("ab")
   ##   tmp.add("cd")
@@ -1020,19 +1020,19 @@ const
     ## ``HH:MM:SS``. This works thanks to compiler magic.
 
   NimVersion* {.magic: "NimrodVersion"}: string = "0.0.0"
-    ## is the version of Nimrod as a string.
+    ## is the version of Nim as a string.
     ## This works thanks to compiler magic.
 
   NimMajor* {.magic: "NimrodMajor"}: int = 0
-    ## is the major number of Nimrod's version.
+    ## is the major number of Nim's version.
     ## This works thanks to compiler magic.
 
   NimMinor* {.magic: "NimrodMinor"}: int = 0
-    ## is the minor number of Nimrod's version.
+    ## is the minor number of Nim's version.
     ## This works thanks to compiler magic.
 
   NimPatch* {.magic: "NimrodPatch"}: int = 0
-    ## is the patch number of Nimrod's version.
+    ## is the patch number of Nim's version.
     ## This works thanks to compiler magic.
 
   cpuEndian* {.magic: "CpuEndian"}: Endianness = littleEndian
@@ -1145,7 +1145,7 @@ proc add *[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
   ## Generic proc for adding a data item `y` to a container `x`.
   ## For containers that have an order, `add` means *append*. New generic
   ## containers should also call their adding proc `add` for consistency.
-  ## Generic code becomes much easier to write if the Nimrod naming scheme is
+  ## Generic code becomes much easier to write if the Nim naming scheme is
   ## respected.
   let xl = x.len
   setLen(x, xl + y.len)
@@ -1183,7 +1183,7 @@ proc insert*[T](x: var seq[T], item: T, i = 0) {.noSideEffect.} =
   x[i] = item
 
 proc repr*[T](x: T): string {.magic: "Repr", noSideEffect.}
-  ## takes any Nimrod variable and returns its string representation. It
+  ## takes any Nim variable and returns its string representation. It
   ## works even for complex data graphs with cycles. This is a great
   ## debugging tool.
 
@@ -1193,12 +1193,12 @@ type
     ## pointers to integer addresses for readability.
 
   BiggestInt* = int64
-    ## is an alias for the biggest signed integer type the Nimrod compiler
+    ## is an alias for the biggest signed integer type the Nim compiler
     ## supports. Currently this is ``int64``, but it is platform-dependant
     ## in general.
 
   BiggestFloat* = float64
-    ## is an alias for the biggest floating point type the Nimrod
+    ## is an alias for the biggest floating point type the Nim
     ## compiler supports. Currently this is ``float64``, but it is
     ## platform-dependant in general.
 
@@ -1236,7 +1236,7 @@ type # these work for most platforms:
     ## This is the same as the type ``double`` in *C*.
   clongdouble* {.importc: "long double", nodecl.} = BiggestFloat
     ## This is the same as the type ``long double`` in *C*.
-    ## This C type is not supported by Nimrod's code generator
+    ## This C type is not supported by Nim's code generator
 
   cuchar* {.importc: "unsigned char", nodecl.} = char
     ## This is the same as the type ``unsigned char`` in *C*.
@@ -1590,7 +1590,7 @@ iterator `||`*[S, T](a: S, b: T, annotation=""): T {.
   ## Note that the compiler maps that to
   ## the ``#pragma omp parallel for`` construct of `OpenMP`:idx: and as
   ## such isn't aware of the parallelism in your code! Be careful! Later
-  ## versions of ``||`` will get proper support by Nimrod's code generator
+  ## versions of ``||`` will get proper support by Nim's code generator
   ## and GC.
   discard
 
@@ -1642,7 +1642,7 @@ proc max*(x, y: float): float {.magic: "MaxF64", noSideEffect.} =
 proc clamp*[T](x, a, b: T): T =
   ## limits the value ``x`` within the interval [a, b]
   ##
-  ## .. code-block:: Nimrod
+  ## .. code-block:: Nim
   ##   assert((1.4).clamp(0.0, 1.0) == 1.0)
   ##   assert((0.5).clamp(0.0, 1.0) == 0.5)
   if x < a: return a
@@ -1746,7 +1746,7 @@ proc `&` *[T](x, y: seq[T]): seq[T] {.noSideEffect.} =
   ## Concatenates two sequences.
   ## Requires copying of the sequences.
   ##
-  ## .. code-block:: Nimrod
+  ## .. code-block:: Nim
   ##   assert(@[1, 2, 3, 4] & @[5, 6] == @[1, 2, 3, 4, 5, 6])
   newSeq(result, x.len + y.len)
   for i in 0..x.len-1:
@@ -1758,7 +1758,7 @@ proc `&` *[T](x: seq[T], y: T): seq[T] {.noSideEffect.} =
   ## Appends element y to the end of the sequence.
   ## Requires copying of the sequence
   ##
-  ## .. code-block:: Nimrod
+  ## .. code-block:: Nim
   ##   assert(@[1, 2, 3] & 4 == @[1, 2, 3, 4])
   newSeq(result, x.len + 1)
   for i in 0..x.len-1:
@@ -1769,7 +1769,7 @@ proc `&` *[T](x: T, y: seq[T]): seq[T] {.noSideEffect.} =
   ## Prepends the element x to the beginning of the sequence.
   ## Requires copying of the sequence
   ##
-  ## .. code-block:: Nimrod
+  ## .. code-block:: Nim
   ##   assert(1 & @[2, 3, 4] == @[1, 2, 3, 4])
   newSeq(result, y.len + 1)
   result[0] = x
@@ -1883,7 +1883,7 @@ iterator fieldPairs*[T: tuple|object](x: T): RootObj {.
   ## you want to run for each type. To perform the comparison use the `is
   ## operator <manual.html#is-operator>`_. Example:
   ##
-  ## .. code-block:: Nimrod
+  ## .. code-block:: Nim
   ##
   ##   type
   ##     Custom = object
@@ -2946,7 +2946,7 @@ when true:
 template assert*(cond: bool, msg = "") =
   ## Raises ``EAssertionFailure`` with `msg` if `cond` is false.
   ##
-  ## Provides a means to implement `programming by contracts`:idx: in Nimrod.
+  ## Provides a means to implement `programming by contracts`:idx: in Nim.
   ## ``assert`` evaluates expression ``cond`` and if ``cond`` is false, it
   ## raises an ``EAssertionFailure`` exception. However, the compiler may not
   ## generate any code at all for ``assert`` if it is advised to do so through
@@ -3031,7 +3031,7 @@ proc shallow*(s: var string) {.noSideEffect, inline.} =
 type
   TNimrodNode {.final.} = object
   PNimrodNode* {.magic: "PNimrodNode".} = ref TNimrodNode
-    ## represents a Nimrod AST node. Macros operate on this type.
+    ## represents a Nim AST node. Macros operate on this type.
 
 when false:
   template eval*(blk: stmt): stmt =
@@ -3060,7 +3060,7 @@ proc compiles*(x): bool {.magic: "Compiles", noSideEffect.} =
   ## without any semantic error.
   ## This can be used to check whether a type supports some operation:
   ##
-  ## .. code-block:: Nimrod
+  ## .. code-block:: Nim
   ##   when not compiles(3 + 4):
   ##     echo "'+' for integers is available"
   discard

@@ -30,15 +30,15 @@ const
   E* = 2.71828182845904523536028747 ## Euler's number
 
   MaxFloat64Precision* = 16 ## maximum number of meaningful digits
-                            ## after the decimal point for Nimrod's
+                            ## after the decimal point for Nim's
                             ## ``float64`` type.
   MaxFloat32Precision* = 8  ## maximum number of meaningful digits
-                            ## after the decimal point for Nimrod's
+                            ## after the decimal point for Nim's
                             ## ``float32`` type.
   MaxFloatPrecision* = MaxFloat64Precision ## maximum number of 
                                            ## meaningful digits
                                            ## after the decimal point 
-                                           ## for Nimrod's ``float`` type.
+                                           ## for Nim's ``float`` type.
 
 type
   FloatClass* = enum ## describes the class a floating point value belongs to.

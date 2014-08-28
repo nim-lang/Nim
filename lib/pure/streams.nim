@@ -9,7 +9,7 @@
 
 ## This module provides a stream interface and two implementations thereof:
 ## the `FileStream` and the `StringStream` which implement the stream
-## interface for Nimrod file objects (`File`) and strings. Other modules
+## interface for Nim file objects (`File`) and strings. Other modules
 ## may provide other implementations for this standard stream interface.
 
 include "system/inclrtl"
@@ -98,7 +98,7 @@ proc writeData*(s, unused: Stream, buffer: pointer,
 proc write*[T](s: Stream, x: T) = 
   ## generic write procedure. Writes `x` to the stream `s`. Implementation:
   ##
-  ## .. code-block:: Nimrod
+  ## .. code-block:: Nim
   ##
   ##     s.writeData(s, addr(x), sizeof(x))
   var y: T

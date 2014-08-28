@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -17,7 +17,7 @@ import
 type
   TRstParseOption* = enum     ## options for the RST parser 
     roSkipPounds,             ## skip ``#`` at line beginning (documentation
-                              ## embedded in Nimrod comments)
+                              ## embedded in Nim comments)
     roSupportSmilies,         ## make the RST parser support smilies like ``:)``
     roSupportRawDirective,    ## support the ``raw`` directive (don't support
                               ## it for sandboxing)

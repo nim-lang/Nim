@@ -189,7 +189,7 @@ proc nimFlowVarSignal(fv: FlowVarBase) {.compilerProc.} =
 
 proc awaitAndThen*[T](fv: FlowVar[T]; action: proc (x: T) {.closure.}) =
   ## blocks until the ``fv`` is available and then passes its value
-  ## to ``action``. Note that due to Nimrod's parameter passing semantics this
+  ## to ``action``. Note that due to Nim's parameter passing semantics this
   ## means that ``T`` doesn't need to be copied and so ``awaitAndThen`` can
   ## sometimes be more efficient than ``^``.
   await(fv)

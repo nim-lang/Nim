@@ -1,13 +1,13 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf, Dominik Picheta
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-## This module implements graphical output for Nimrod; the current
+## This module implements graphical output for Nim; the current
 ## implementation uses SDL but the interface is meant to support multiple
 ## backends some day. There is no need to init SDL as this module does that 
 ## implicitly.

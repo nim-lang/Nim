@@ -117,7 +117,7 @@ proc normalize*(s: string): string {.noSideEffect, procvar,
   ## Normalizes the string `s`.
   ##
   ## That means to convert it to lower case and remove any '_'. This is needed
-  ## for Nimrod identifiers for example.
+  ## for Nim identifiers for example.
   result = newString(s.len)
   var j = 0
   for i in 0..len(s) - 1:
@@ -1155,7 +1155,7 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
   ## If ``format == ffScientific`` then precision is the maximum number
   ## of significant digits to be printed.
   ## `precision`'s default value is the maximum number of meaningful digits
-  ## after the decimal point for Nimrod's ``biggestFloat`` type.
+  ## after the decimal point for Nim's ``biggestFloat`` type.
   ## 
   ## If ``precision == 0``, it tries to format it nicely.
   const floatFormatToChar: array[FloatFormatMode, char] = ['g', 'f', 'e']
@@ -1186,7 +1186,7 @@ proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
   ## If ``format == ffScientific`` then precision is the maximum number
   ## of significant digits to be printed.
   ## `precision`'s default value is the maximum number of meaningful digits
-  ## after the decimal point for Nimrod's ``float`` type.
+  ## after the decimal point for Nim's ``float`` type.
   result = formatBiggestFloat(f, format, precision)
 
 proc formatSize*(bytes: BiggestInt, decimalSep = '.'): string =

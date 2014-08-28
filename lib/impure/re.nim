@@ -1,13 +1,13 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-## Regular expression support for Nimrod. Consider using the pegs module
+## Regular expression support for Nim. Consider using the pegs module
 ## instead.
 ## This module is implemented by providing a wrapper around the
 ## `PRCE (Perl-Compatible Regular Expressions) <http://www.pcre.org>`_
@@ -68,7 +68,7 @@ proc finalizeRegEx(x: TRegex) =
     pcre.free_substring(cast[cstring](x.e))
 
 proc re*(s: string, flags = {reExtended, reStudy}): TRegex =
-  ## Constructor of regular expressions. Note that Nimrod's
+  ## Constructor of regular expressions. Note that Nim's
   ## extended raw string literals support this syntax ``re"[abc]"`` as
   ## a short form for ``re(r"[abc]")``.
   new(result, finalizeRegEx)

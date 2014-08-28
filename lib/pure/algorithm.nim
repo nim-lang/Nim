@@ -151,11 +151,11 @@ proc merge[T](a, b: var openArray[T], lo, m, hi: int,
 proc sort*[T](a: var openArray[T],
               cmp: proc (x, y: T): int {.closure.},
               order = SortOrder.Ascending) =
-  ## Default Nimrod sort. The sorting is guaranteed to be stable and 
+  ## Default Nim sort. The sorting is guaranteed to be stable and 
   ## the worst case is guaranteed to be O(n log n).
   ## The current implementation uses an iterative
   ## mergesort to achieve this. It uses a temporary sequence of 
-  ## length ``a.len div 2``. Currently Nimrod does not support a
+  ## length ``a.len div 2``. Currently Nim does not support a
   ## sensible default argument for ``cmp``, so you have to provide one
   ## of your own. However, the ``system.cmp`` procs can be used:
   ##

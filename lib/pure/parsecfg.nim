@@ -11,7 +11,7 @@
 ## parser. The configuration file's syntax is similar to the Windows ``.ini`` 
 ## format, but much more powerful, as it is not a line based parser. String 
 ## literals, raw string literals and triple quoted string literals are supported 
-## as in the Nimrod programming language.
+## as in the Nim programming language.
 
 ## This is an example of how a configuration file may look like:
 ##

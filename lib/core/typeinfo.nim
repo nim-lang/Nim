@@ -585,7 +585,7 @@ proc assign*(x, y: TAny) =
   genericAssign(x.value, y.value, y.rawType)
 
 iterator elements*(x: TAny): int =
-  ## iterates over every element of `x` that represents a Nimrod bitset.
+  ## iterates over every element of `x` that represents a Nim bitset.
   assert x.rawType.kind == tySet
   var typ = x.rawType
   var p = x.value
@@ -607,7 +607,7 @@ iterator elements*(x: TAny): int =
         yield i+typ.node.len
 
 proc inclSetElement*(x: TAny, elem: int) =
-  ## includes an element `elem` in `x`. `x` needs to represent a Nimrod bitset.
+  ## includes an element `elem` in `x`. `x` needs to represent a Nim bitset.
   assert x.rawType.kind == tySet
   var typ = x.rawType
   var p = x.value
