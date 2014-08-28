@@ -308,7 +308,7 @@ when not defined(JS) and not defined(NimrodVM):
   include "system/hti"
 
 type
-  Byte* = uint8 ## this is an alias for ``uint8``, that is an unsigned
+  byte* = uint8 ## this is an alias for ``uint8``, that is an unsigned
                 ## int 8 bits wide.
 
   Natural* = range[0..high(int)]

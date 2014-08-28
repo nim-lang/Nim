@@ -34,7 +34,7 @@ const
 
 type
   PPointer = ptr pointer
-  TByteArray = array[0..1000_0000, Byte]
+  TByteArray = array[0..1000_0000, byte]
   PByte = ptr TByteArray
   PString = ptr string
 
