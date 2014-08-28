@@ -89,5 +89,5 @@ proc generatedTime*(oid: Oid): Time =
   result = Time(tmp)
 
 when isMainModule:
-  let xo = genOID()
+  let xo = genOid()
   echo xo.generatedTime

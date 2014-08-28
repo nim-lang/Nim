@@ -31,7 +31,7 @@ type
     cmdLongOption,            ## a long option ``--option`` detected
     cmdShortOption            ## a short option ``-c`` detected
   OptParser* =
-      object of TObject ## this object implements the command line parser
+      object of RootObj ## this object implements the command line parser
     cmd: seq[string]
     pos: int
     remainingShortOptions: string
@@ -102,10 +102,10 @@ proc next(p: var OptParser) =
   let token = p.cmd[p.pos]
   p.pos += 1
 
-  if token.startswith("--"):
+  if token.startsWith("--"):
     p.kind = cmdLongOption
     nextOption(p, token[2..token.len-1], allowEmpty=true)
-  elif token.startswith("-"):
+  elif token.startsWith("-"):
     p.kind = cmdShortOption
     nextOption(p, token[1..token.len-1], allowEmpty=true)
   else:

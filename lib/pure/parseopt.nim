@@ -59,7 +59,7 @@ when declared(os.paramCount):
     result.val = TaintedString""
 
 proc parseWord(s: string, i: int, w: var string, 
-               delim: CharSet = {'\x09', ' ', '\0'}): int = 
+               delim: set[char] = {'\x09', ' ', '\0'}): int = 
   result = i
   if s[result] == '\"': 
     inc(result)

@@ -31,12 +31,12 @@ proc parseUrl*(url: string): Url {.deprecated.} =
   var temp = ""
   
   if url[i] != '/': # url isn't a relative path
-    while True:
+    while true:
       # Scheme
       if url[i] == ':':
         if url[i+1] == '/' and url[i+2] == '/':
           scheme = temp
-          temp.setlen(0)
+          temp.setLen(0)
           inc(i, 3) # Skip the //
       # Authority(username, password)
       if url[i] == '@':
@@ -45,7 +45,7 @@ proc parseUrl*(url: string): Url {.deprecated.} =
         if colon >= 0:
           password = username.substr(colon+1)
           username = username.substr(0, colon-1)
-        temp.setlen(0)
+        temp.setLen(0)
         inc(i) #Skip the @ 
       # hostname(subdomain, domain, port)
       if url[i] == '/' or url[i] == '\0':
@@ -55,7 +55,7 @@ proc parseUrl*(url: string): Url {.deprecated.} =
           port = hostname.substr(colon+1)
           hostname = hostname.substr(0, colon-1)
         
-        temp.setlen(0)
+        temp.setLen(0)
         break
       
       temp.add(url[i])
@@ -63,16 +63,16 @@ proc parseUrl*(url: string): Url {.deprecated.} =
 
   if url[i] == '/': inc(i) # Skip the '/'
   # Path
-  while True:
+  while true:
     if url[i] == '?':
       path = temp
-      temp.setlen(0)
+      temp.setLen(0)
     if url[i] == '#':
       if temp[0] == '?':
         query = temp
       else:
         path = temp
-      temp.setlen(0)
+      temp.setLen(0)
       
     if url[i] == '\0':
       if temp[0] == '?':

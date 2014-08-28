@@ -38,7 +38,7 @@ type
     cfgError            ## an error ocurred during parsing
     
   CfgEvent* = object of RootObj ## describes a parsing event
-    case kind*: TCfgEventKind    ## the kind of the event
+    case kind*: CfgEventKind    ## the kind of the event
     of cfgEof: nil
     of cfgSectionStart: 
       section*: string           ## `section` contains the name of the 
@@ -70,12 +70,11 @@ type
 # implementation
 
 const 
-  SymChars: CharSet = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\x80'..'\xFF', '.',
-                       '/', '\\'} 
+  SymChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\x80'..'\xFF', '.', '/', '\\'} 
   
 proc rawGetTok(c: var CfgParser, tok: var Token) {.gcsafe.}
 
-proc open*(c: var CfgParser, input: PStream, filename: string, 
+proc open*(c: var CfgParser, input: Stream, filename: string, 
            lineOffset = 0) {.rtl, extern: "npc$1".} =
   ## initializes the parser with an input stream. `Filename` is only used
   ## for nice error messages. `lineOffset` can be used to influence the line
@@ -122,7 +121,7 @@ proc handleDecChars(c: var CfgParser, xi: var int) =
     xi = (xi * 10) + (ord(c.buf[c.bufpos]) - ord('0'))
     inc(c.bufpos)
 
-proc getEscapedChar(c: var CfgParser, tok: var TToken) = 
+proc getEscapedChar(c: var CfgParser, tok: var Token) = 
   inc(c.bufpos)               # skip '\'
   case c.buf[c.bufpos]
   of 'n', 'N': 

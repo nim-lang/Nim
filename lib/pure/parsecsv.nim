@@ -155,7 +155,7 @@ proc readRow*(my: var CsvParser, columns = 0): bool =
       else: error(my, my.bufpos, my.sep & " expected")
       break
   
-  setlen(my.row, col)
+  setLen(my.row, col)
   result = col > 0
   if result and col != columns and columns > 0: 
     error(my, oldpos+1, $columns & " columns expected, but found " & 

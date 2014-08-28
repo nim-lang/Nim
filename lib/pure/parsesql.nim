@@ -64,12 +64,12 @@ proc close(L: var SqlLexer) =
 
 proc getColumn(L: SqlLexer): int = 
   ## get the current column the parser has arrived at.
-  result = getColNumber(L, L.bufPos)
+  result = getColNumber(L, L.bufpos)
 
 proc getLine(L: SqlLexer): int = 
-  result = L.linenumber
+  result = L.lineNumber
 
-proc handleHexChar(c: var TSqlLexer, xi: var int) = 
+proc handleHexChar(c: var SqlLexer, xi: var int) = 
   case c.buf[c.bufpos]
   of '0'..'9': 
     xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('0'))
@@ -83,76 +83,76 @@ proc handleHexChar(c: var TSqlLexer, xi: var int) =
   else: 
     discard
 
-proc handleOctChar(c: var TSqlLexer, xi: var int) = 
+proc handleOctChar(c: var SqlLexer, xi: var int) = 
   if c.buf[c.bufpos] in {'0'..'7'}:
     xi = (xi shl 3) or (ord(c.buf[c.bufpos]) - ord('0'))
     inc(c.bufpos)
 
-proc getEscapedChar(c: var TSqlLexer, tok: var TToken) = 
+proc getEscapedChar(c: var SqlLexer, tok: var Token) = 
   inc(c.bufpos)
   case c.buf[c.bufpos]
   of 'n', 'N': 
     add(tok.literal, '\L')
-    Inc(c.bufpos)
+    inc(c.bufpos)
   of 'r', 'R', 'c', 'C': 
     add(tok.literal, '\c')
-    Inc(c.bufpos)
+    inc(c.bufpos)
   of 'l', 'L': 
     add(tok.literal, '\L')
-    Inc(c.bufpos)
+    inc(c.bufpos)
   of 'f', 'F': 
     add(tok.literal, '\f')
     inc(c.bufpos)
   of 'e', 'E': 
     add(tok.literal, '\e')
-    Inc(c.bufpos)
+    inc(c.bufpos)
   of 'a', 'A': 
     add(tok.literal, '\a')
-    Inc(c.bufpos)
+    inc(c.bufpos)
   of 'b', 'B': 
     add(tok.literal, '\b')
-    Inc(c.bufpos)
+    inc(c.bufpos)
   of 'v', 'V': 
     add(tok.literal, '\v')
-    Inc(c.bufpos)
+    inc(c.bufpos)
   of 't', 'T': 
     add(tok.literal, '\t')
-    Inc(c.bufpos)
+    inc(c.bufpos)
   of '\'', '\"': 
     add(tok.literal, c.buf[c.bufpos])
-    Inc(c.bufpos)
+    inc(c.bufpos)
   of '\\': 
     add(tok.literal, '\\')
-    Inc(c.bufpos)
+    inc(c.bufpos)
   of 'x', 'X': 
     inc(c.bufpos)
     var xi = 0
     handleHexChar(c, xi)
     handleHexChar(c, xi)
-    add(tok.literal, Chr(xi))
+    add(tok.literal, chr(xi))
   of '0'..'7': 
     var xi = 0
     handleOctChar(c, xi)
     handleOctChar(c, xi)
     handleOctChar(c, xi)
-    if (xi <= 255): add(tok.literal, Chr(xi))
+    if (xi <= 255): add(tok.literal, chr(xi))
     else: tok.kind = tkInvalid
   else: tok.kind = tkInvalid
   
-proc handleCRLF(c: var TSqlLexer, pos: int): int = 
+proc handleCRLF(c: var SqlLexer, pos: int): int = 
   case c.buf[pos]
   of '\c': result = lexbase.handleCR(c, pos)
   of '\L': result = lexbase.handleLF(c, pos)
   else: result = pos
 
-proc skip(c: var TSqlLexer) = 
+proc skip(c: var SqlLexer) = 
   var pos = c.bufpos
   var buf = c.buf
   var nested = 0
   while true: 
     case buf[pos]
     of ' ', '\t': 
-      Inc(pos)
+      inc(pos)
     of '-':
       if buf[pos+1] == '-':
         while not (buf[pos] in {'\c', '\L', lexbase.EndOfFile}): inc(pos)
@@ -189,8 +189,8 @@ proc skip(c: var TSqlLexer) =
       break                   # EndOfFile also leaves the loop
   c.bufpos = pos
   
-proc getString(c: var TSqlLexer, tok: var TToken, kind: TokKind) = 
-  var pos = c.bufPos + 1
+proc getString(c: var SqlLexer, tok: var Token, kind: TokKind) = 
+  var pos = c.bufpos + 1
   var buf = c.buf
   tok.kind = kind
   block parseLoop:
@@ -208,16 +208,16 @@ proc getString(c: var TSqlLexer, tok: var TToken, kind: TokKind) =
           tok.kind = tkInvalid
           break parseLoop
         elif (ch == '\\') and kind == tkEscapeConstant: 
-          c.bufPos = pos
+          c.bufpos = pos
           getEscapedChar(c, tok)
-          pos = c.bufPos
+          pos = c.bufpos
         else: 
           add(tok.literal, ch)
-          Inc(pos)
+          inc(pos)
       c.bufpos = pos
-      var line = c.linenumber
+      var line = c.lineNumber
       skip(c)
-      if c.linenumber > line:
+      if c.lineNumber > line:
         # a new line whitespace has been parsed, so we check if the string
         # continues after the whitespace:
         buf = c.buf # may have been reallocated
@@ -227,8 +227,8 @@ proc getString(c: var TSqlLexer, tok: var TToken, kind: TokKind) =
       else: break parseLoop
   c.bufpos = pos
 
-proc getDollarString(c: var TSqlLexer, tok: var TToken) = 
-  var pos = c.bufPos + 1
+proc getDollarString(c: var SqlLexer, tok: var Token) = 
+  var pos = c.bufpos + 1
   var buf = c.buf
   tok.kind = tkDollarQuotedConstant
   var tag = "$"
@@ -242,7 +242,7 @@ proc getDollarString(c: var TSqlLexer, tok: var TToken) =
   while true:
     case buf[pos]
     of '\c', '\L': 
-      pos = HandleCRLF(c, pos)
+      pos = handleCRLF(c, pos)
       buf = c.buf
       add(tok.literal, "\L")
     of '\0':
@@ -263,19 +263,19 @@ proc getDollarString(c: var TSqlLexer, tok: var TToken) =
       inc(pos)
   c.bufpos = pos
 
-proc getSymbol(c: var TSqlLexer, tok: var TToken) = 
+proc getSymbol(c: var SqlLexer, tok: var Token) = 
   var pos = c.bufpos
   var buf = c.buf
   while true: 
     add(tok.literal, buf[pos])
-    Inc(pos)
+    inc(pos)
     if buf[pos] notin {'a'..'z','A'..'Z','0'..'9','_','$', '\128'..'\255'}:
       break
   c.bufpos = pos
   tok.kind = tkIdentifier
 
-proc getQuotedIdentifier(c: var TSqlLexer, tok: var TToken) = 
-  var pos = c.bufPos + 1
+proc getQuotedIdentifier(c: var SqlLexer, tok: var Token) = 
+  var pos = c.bufpos + 1
   var buf = c.buf
   tok.kind = tkQuotedIdentifier
   while true:
@@ -292,11 +292,11 @@ proc getQuotedIdentifier(c: var TSqlLexer, tok: var TToken) =
       break
     else:
       add(tok.literal, ch)
-      Inc(pos)
+      inc(pos)
   c.bufpos = pos
 
-proc getBitHexString(c: var TSqlLexer, tok: var TToken, validChars: TCharSet) =
-  var pos = c.bufPos + 1
+proc getBitHexString(c: var SqlLexer, tok: var Token, validChars: set[char]) =
+  var pos = c.bufpos + 1
   var buf = c.buf
   block parseLoop:
     while true:
@@ -304,7 +304,7 @@ proc getBitHexString(c: var TSqlLexer, tok: var TToken, validChars: TCharSet) =
         var ch = buf[pos]
         if ch in validChars:
           add(tok.literal, ch)
-          Inc(pos)          
+          inc(pos)          
         elif ch == '\'':
           inc(pos)
           break
@@ -312,9 +312,9 @@ proc getBitHexString(c: var TSqlLexer, tok: var TToken, validChars: TCharSet) =
           tok.kind = tkInvalid
           break parseLoop
       c.bufpos = pos
-      var line = c.linenumber
+      var line = c.lineNumber
       skip(c)
-      if c.linenumber > line:
+      if c.lineNumber > line:
         # a new line whitespace has been parsed, so we check if the string
         # continues after the whitespace:
         buf = c.buf # may have been reallocated
@@ -324,9 +324,9 @@ proc getBitHexString(c: var TSqlLexer, tok: var TToken, validChars: TCharSet) =
       else: break parseLoop
   c.bufpos = pos
 
-proc getNumeric(c: var TSqlLexer, tok: var TToken) =
+proc getNumeric(c: var SqlLexer, tok: var Token) =
   tok.kind = tkInteger
-  var pos = c.bufPos
+  var pos = c.bufpos
   var buf = c.buf
   while buf[pos] in Digits:
     add(tok.literal, buf[pos])
@@ -355,11 +355,11 @@ proc getNumeric(c: var TSqlLexer, tok: var TToken) =
       tok.kind = tkInvalid
   c.bufpos = pos  
 
-proc getOperator(c: var TSqlLexer, tok: var TToken) =
+proc getOperator(c: var SqlLexer, tok: var Token) =
   const operators = {'+', '-', '*', '/', '<', '>', '=', '~', '!', '@', '#', '%',
                      '^', '&', '|', '`', '?'}
   tok.kind = tkOperator
-  var pos = c.bufPos
+  var pos = c.bufpos
   var buf = c.buf
   var trailingPlusMinus = false
   while true:
@@ -381,14 +381,14 @@ proc getOperator(c: var TSqlLexer, tok: var TToken) =
     inc(pos)
   c.bufpos = pos
 
-proc getTok(c: var TSqlLexer, tok: var TToken) = 
+proc getTok(c: var SqlLexer, tok: var Token) = 
   tok.kind = tkInvalid
-  setlen(tok.literal, 0)
+  setLen(tok.literal, 0)
   skip(c)
   case c.buf[c.bufpos]
   of ';': 
-    tok.kind = tkSemiColon
-    inc(c.bufPos)
+    tok.kind = tkSemicolon
+    inc(c.bufpos)
     add(tok.literal, ';')
   of ',':
     tok.kind = tkComma
@@ -399,19 +399,19 @@ proc getTok(c: var TSqlLexer, tok: var TToken) =
     inc(c.bufpos)
     add(tok.literal, ':')
   of 'e', 'E': 
-    if c.buf[c.bufPos + 1] == '\'': 
-      Inc(c.bufPos)
+    if c.buf[c.bufpos + 1] == '\'': 
+      inc(c.bufpos)
       getString(c, tok, tkEscapeConstant)
     else: 
       getSymbol(c, tok)
   of 'b', 'B':
-    if c.buf[c.bufPos + 1] == '\'':
+    if c.buf[c.bufpos + 1] == '\'':
       tok.kind = tkBitStringConstant
       getBitHexString(c, tok, {'0'..'1'})
     else:
       getSymbol(c, tok)
   of 'x', 'X':
-    if c.buf[c.bufPos + 1] == '\'':
+    if c.buf[c.bufpos + 1] == '\'':
       tok.kind = tkHexStringConstant
       getBitHexString(c, tok, {'a'..'f','A'..'F','0'..'9'})
     else:
@@ -423,18 +423,18 @@ proc getTok(c: var TSqlLexer, tok: var TToken) =
     add(tok.literal, '[')
   of ']': 
     tok.kind = tkBracketRi
-    Inc(c.bufpos)
+    inc(c.bufpos)
     add(tok.literal, ']')
   of '(':
     tok.kind = tkParLe
-    Inc(c.bufpos)
+    inc(c.bufpos)
     add(tok.literal, '(')
   of ')':
     tok.kind = tkParRi
-    Inc(c.bufpos)
+    inc(c.bufpos)
     add(tok.literal, ')')
   of '.': 
-    if c.buf[c.bufPos + 1] in Digits:
+    if c.buf[c.bufpos + 1] in Digits:
       getNumeric(c, tok)
     else:
       tok.kind = tkDot
@@ -456,7 +456,7 @@ proc getTok(c: var TSqlLexer, tok: var TToken) =
     add(tok.literal, c.buf[c.bufpos])
     inc(c.bufpos)
   
-proc errorStr(L: TSqlLexer, msg: string): string = 
+proc errorStr(L: SqlLexer, msg: string): string = 
   result = "$1($2, $3) Error: $4" % [L.filename, $getLine(L), $getColumn(L), msg]
 
 
@@ -819,7 +819,7 @@ proc parseColumnDef(p: var SqlParser): SqlNode =
   result.add(parseDataType(p))
   parseColumnConstraints(p, result)  
 
-proc parseIfNotExists(p: var SqlParser, k: TSqlNodeKind): SqlNode = 
+proc parseIfNotExists(p: var SqlParser, k: SqlNodeKind): SqlNode = 
   getTok(p)
   if isKeyw(p, "if"):
     getTok(p)
@@ -1076,10 +1076,10 @@ proc parseStmt(p: var SqlParser): SqlNode =
   else:
     sqlError(p, "CREATE expected")
 
-proc open(p: var SqlParser, input: PStream, filename: string) =
+proc open(p: var SqlParser, input: Stream, filename: string) =
   ## opens the parser `p` and assigns the input stream `input` to it.
   ## `filename` is only used for error messages.
-  open(TSqlLexer(p), input, filename)
+  open(SqlLexer(p), input, filename)
   p.tok.kind = tkInvalid
   p.tok.literal = ""
   getTok(p)
@@ -1090,16 +1090,16 @@ proc parse(p: var SqlParser): SqlNode =
   result = newNode(nkStmtList)
   while p.tok.kind != tkEof:
     var s = parseStmt(p)
-    eat(p, tkSemiColon)
+    eat(p, tkSemicolon)
     result.add(s)
   if result.len == 1:
     result = result.sons[0]
   
 proc close(p: var SqlParser) =
   ## closes the parser `p`. The associated input stream is closed too.
-  close(TSqlLexer(p))
+  close(SqlLexer(p))
 
-proc parseSQL*(input: PStream, filename: string): SqlNode =
+proc parseSQL*(input: Stream, filename: string): SqlNode =
   ## parses the SQL from `input` into an AST and returns the AST. 
   ## `filename` is only used for error messages.
   ## Syntax errors raise an `EInvalidSql` exception.
