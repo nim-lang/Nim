@@ -31,8 +31,8 @@ proc validEmailAddress*(s: string): bool {.noSideEffect,
     inc(i)
   if s[i] != '@': return false
   var j = len(s)-1
-  if s[j] notin letters: return false
-  while j >= i and s[j] in letters: dec(j)
+  if s[j] notin Letters: return false
+  while j >= i and s[j] in Letters: dec(j)
   inc(i) # skip '@'
   while s[i] in {'0'..'9', 'a'..'z', '-', '.'}: inc(i) 
   if s[i] != '\0': return false

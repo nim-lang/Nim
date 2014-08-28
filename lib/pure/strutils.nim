@@ -130,7 +130,7 @@ proc normalize*(s: string): string {.noSideEffect, procvar,
   if j != s.len: setLen(result, j)
 
 proc cmpIgnoreCase*(a, b: string): int {.noSideEffect,
-  rtl, extern: "nsuCmpIgnoreCase", procvar, operator: 4.} =
+  rtl, extern: "nsuCmpIgnoreCase", procvar.} =
   ## Compares two strings in a case insensitive manner. Returns:
   ##
   ## | 0 iff a == b
@@ -148,7 +148,7 @@ proc cmpIgnoreCase*(a, b: string): int {.noSideEffect,
                                        # thus we compile without checks here
 
 proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
-  rtl, extern: "nsuCmpIgnoreStyle", procvar, operator: 3.} =
+  rtl, extern: "nsuCmpIgnoreStyle", procvar.} =
   ## Compares two strings normalized (i.e. case and
   ## underscores do not matter). Returns:
   ##
@@ -170,7 +170,7 @@ proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
 {.pop.}
 
 proc strip*(s: string, leading = true, trailing = true): string {.noSideEffect,
-  rtl, extern: "nsuStrip", operator: 5.} =
+  rtl, extern: "nsuStrip".} =
   ## Strips whitespace from `s` and returns the resulting string.
   ##
   ## If `leading` is true, leading whitespace is stripped.
@@ -1147,7 +1147,7 @@ type
 
 proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
                          precision: range[0..32] = 16): string {.
-                         noSideEffect, operator: 2, rtl, extern: "nsu$1".} =
+                         noSideEffect, rtl, extern: "nsu$1".} =
   ## Converts a floating point value `f` to a string.
   ##
   ## If ``format == ffDecimal`` then precision is the number of digits to
@@ -1178,7 +1178,7 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
 
 proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
                   precision: range[0..32] = 16): string {.
-                  noSideEffect, operator: 2, rtl, extern: "nsu$1".} =
+                  noSideEffect, rtl, extern: "nsu$1".} =
   ## Converts a floating point value `f` to a string.
   ##
   ## If ``format == ffDecimal`` then precision is the number of digits to
