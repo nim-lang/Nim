@@ -132,9 +132,9 @@ else:
   proc hook(st: TStackTrace) {.nimcall.} =
     if interval == 0:
       hookAux(st, 1)
-    elif getticks() - t0 > interval:
+    elif getTicks() - t0 > interval:
       hookAux(st, 1)
-      t0 = getticks()
+      t0 = getTicks()
 
 proc getTotal(x: ptr TProfileEntry): int =
   result = if isNil(x): 0 else: x.total
@@ -150,7 +150,7 @@ proc writeProfile() {.noconv.} =
     system.profilerHook = nil
   const filename = "profile_results.txt"
   echo "writing " & filename & "..."
-  var f: TFile
+  var f: File
   if open(f, filename, fmWrite):
     sort(profileData, cmpEntries)
     writeln(f, "total executions of each stack trace:")
