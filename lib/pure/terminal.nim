@@ -31,7 +31,8 @@ when defined(windows):
 
   proc getCursorPos(): tuple [x,y: int] =
     var c: TCONSOLESCREENBUFFERINFO
-    if GetConsoleScreenBufferInfo(conHandle, addr(c)) == 0: raiseOSError(osLastError())
+    if GetConsoleScreenBufferInfo(conHandle, addr(c)) == 0:
+      raiseOSError(osLastError())
     return (int(c.dwCursorPosition.x), int(c.dwCursorPosition.y))
 
   proc getAttributes(): int16 =
@@ -61,10 +62,12 @@ proc setCursorXPos*(x: int) =
   when defined(windows):
     var scrbuf: TCONSOLESCREENBUFFERINFO
     var hStdout = conHandle
-    if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0: raiseOSError(osLastError())
+    if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0:
+      raiseOSError(osLastError())
     var origin = scrbuf.dwCursorPosition
     origin.x = int16(x)
-    if SetConsoleCursorPosition(conHandle, origin) == 0: raiseOSError(osLastError())
+    if SetConsoleCursorPosition(conHandle, origin) == 0:
+      raiseOSError(osLastError())
   else:
     stdout.write("\e[" & $x & 'G')
 
@@ -75,10 +78,12 @@ when defined(windows):
     when defined(windows):
       var scrbuf: TCONSOLESCREENBUFFERINFO
       var hStdout = conHandle
-      if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0: raiseOSError(osLastError())
+      if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0:
+        raiseOSError(osLastError())
       var origin = scrbuf.dwCursorPosition
       origin.y = int16(y)
-      if SetConsoleCursorPosition(conHandle, origin) == 0: raiseOSError(osLastError())
+      if SetConsoleCursorPosition(conHandle, origin) == 0:
+        raiseOSError(osLastError())
     else:
       discard
 
@@ -155,10 +160,12 @@ proc eraseLine* =
     var scrbuf: TCONSOLESCREENBUFFERINFO
     var numwrote: DWORD
     var hStdout = conHandle
-    if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0: raiseOSError(osLastError())
+    if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0:
+      raiseOSError(osLastError())
     var origin = scrbuf.dwCursorPosition
     origin.x = 0'i16
-    if SetConsoleCursorPosition(conHandle, origin) == 0: raiseOSError(osLastError())
+    if SetConsoleCursorPosition(conHandle, origin) == 0:
+      raiseOSError(osLastError())
     var ht = scrbuf.dwSize.Y - origin.Y
     var wt = scrbuf.dwSize.X - origin.X
     if FillConsoleOutputCharacter(hStdout,' ', ht*wt,
@@ -178,7 +185,8 @@ proc eraseScreen* =
     var numwrote: DWORD
     var origin: TCOORD # is inititalized to 0, 0
     var hStdout = conHandle
-    if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0: raiseOSError(osLastError())
+    if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0:
+      raiseOSError(osLastError())
     if FillConsoleOutputCharacter(hStdout, ' ', scrbuf.dwSize.X*scrbuf.dwSize.Y,
                                   origin, addr(numwrote)) == 0:
       raiseOSError(osLastError())
