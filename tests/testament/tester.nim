@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## This program verifies Nimrod against the testcases.
+## This program verifies Nim against the testcases.
 
 import
   parseutils, strutils, pegs, os, osproc, streams, parsecfg, json,

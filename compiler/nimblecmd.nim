@@ -58,7 +58,7 @@ iterator chosen(packages: StringTableRef): string =
     let res = if val == latest: key else: key & '-' & val
     yield res
 
-proc addBabelPath(p: string, info: TLineInfo) =
+proc addNimblePath(p: string, info: TLineInfo) =
   if not contains(options.searchPaths, p):
     if gVerbosity >= 1: message(info, hintPath, p)
     lists.prependStr(options.lazyPaths, p)
@@ -70,10 +70,10 @@ proc addPathWithNimFiles(p: string, info: TLineInfo) =
         result = true
         break
   if hasNimFile(p):
-    addBabelPath(p, info)
+    addNimblePath(p, info)
   else:
     for kind, p2 in walkDir(p):
-      if hasNimFile(p2): addBabelPath(p2, info)
+      if hasNimFile(p2): addNimblePath(p2, info)
 
 proc addPathRec(dir: string, info: TLineInfo) =
   var packages = newStringTable(modeStyleInsensitive)
@@ -83,8 +83,8 @@ proc addPathRec(dir: string, info: TLineInfo) =
     if k == pcDir and p[pos] != '.':
       addPackage(packages, p)
   for p in packages.chosen:
-    addBabelPath(p, info)
+    addNimblePath(p, info)
 
-proc babelPath*(path: string, info: TLineInfo) =
+proc nimblePath*(path: string, info: TLineInfo) =
   addPathRec(path, info)
-  addBabelPath(path, info)
+  addNimblePath(path, info)

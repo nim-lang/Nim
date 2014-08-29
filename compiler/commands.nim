@@ -26,7 +26,7 @@ bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 
 import 
   os, msgs, options, nversion, condsyms, strutils, extccomp, platform, lists, 
-  wordrecg, parseutils, babelcmd, idents
+  wordrecg, parseutils, nimblecmd, idents
 
 # but some have deps to imported modules. Yay.
 bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
@@ -280,14 +280,15 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   of "path", "p": 
     expectArg(switch, arg, pass, info)
     addPath(processPath(arg), info)
-  of "babelpath":
-    if pass in {passCmd2, passPP} and not options.gNoBabelPath:
+  of "nimblepath", "babelpath":
+    # keep the old name for compat
+    if pass in {passCmd2, passPP} and not options.gNoNimblePath:
       expectArg(switch, arg, pass, info)
       let path = processPath(arg, notRelativeToProj=true)
-      babelPath(path, info)
-  of "nobabelpath":
+      nimblePath(path, info)
+  of "nonimblepath", "nobabelpath":
     expectNoArg(switch, arg, pass, info)
-    options.gNoBabelPath = true
+    options.gNoNimblePath = true
   of "excludepath":
     expectArg(switch, arg, pass, info)
     let path = processPath(arg)

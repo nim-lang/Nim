@@ -79,7 +79,8 @@ Advanced options:
                             select the GC to use; default is 'refc'
   --index:on|off            turn index file generation on|off
   --putenv:key=value        set an environment variable
-  --babelPath:PATH          add a path for Babel support
+  --NimblePath:PATH         add a path for Nimble support
+  --noNimblePath            deactivate the Nimble path
   --excludePath:PATH        exclude a path from the list of search paths
   --dynlibOverride:SYMBOL   marks SYMBOL so that dynlib:SYMBOL
                             has no effect and can be statically linked instead;

@@ -192,9 +192,9 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
 #    testSpec(r, t, options)
 
 proc findMainFile(dir: string): string =
-  # finds the file belonging to ".nimrod.cfg"; if there is no such file
+  # finds the file belonging to ".nim.cfg"; if there is no such file
   # it returns the some ".nim" file if there is only one: 
-  const cfgExt = ".nimrod.cfg"
+  const cfgExt = ".nim.cfg"
   result = ""
   var nimFiles = 0
   for kind, file in os.walkDir(dir):

@@ -114,7 +114,7 @@ var
   gDirtyBufferIdx* = 0'i32    # indicates the fileIdx of the dirty version of
                               # the tracked source X, saved by the CAAS client.
   gDirtyOriginalIdx* = 0'i32  # the original source file of the dirtified buffer.
-  gNoBabelPath* = false
+  gNoNimblePath* = false
 
 proc importantComments*(): bool {.inline.} = gCmd in {cmdDoc, cmdIdeTools}
 proc usesNativeGC*(): bool {.inline.} = gSelectedGC >= gcRefc
@@ -139,7 +139,7 @@ const
   JsonExt* = "json"
   TexExt* = "tex"
   IniExt* = "ini"
-  DefaultConfig* = "nimrod.cfg"
+  DefaultConfig* = "nim.cfg"
   DocConfig* = "nimdoc.cfg"
   DocTexConfig* = "nimdoc.tex.cfg"
 
