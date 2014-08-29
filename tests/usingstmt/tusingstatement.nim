@@ -9,7 +9,7 @@ import
 # This macro mimics the using statement from C#
 #
 # It's kept only as a test for the macro system
-# Nimrod's destructors offer a mechanism for automatic 
+# Nim's destructors offer a mechanism for automatic 
 # disposal of resources.
 #
 macro autoClose(e: expr): stmt {.immediate.} =

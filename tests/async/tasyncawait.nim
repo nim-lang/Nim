@@ -25,7 +25,7 @@ proc launchSwarm(port: TPort) {.async.} =
       await sendMessages(sock)
       closeSocket(sock)
     else:
-      # Issue #932: https://github.com/Araq/Nimrod/issues/932
+      # Issue #932: https://github.com/Araq/Nim/issues/932
       var msgFut = sendMessages(sock)
       msgFut.callback =
         proc () =

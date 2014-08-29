@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod Tester
+#            Nim Tester
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this

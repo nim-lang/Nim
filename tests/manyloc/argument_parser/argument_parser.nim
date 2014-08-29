@@ -1,7 +1,7 @@
 ## Command line parsing module for Nimrod.
 ##
-## `Nimrod <http://nimrod-code.org>`_ provides the `parseopt module
-## <http://nimrod-code.org/parseopt.html>`_ to parse options from the
+## `Nim <http://nim-code.org>`_ provides the `parseopt module
+## <http://nim-code.org/parseopt.html>`_ to parse options from the
 ## commandline. This module tries to provide functionality to prevent you from
 ## writing commandline parsing and let you concentrate on providing the best
 ## possible experience for your users.
@@ -169,7 +169,7 @@ template new_parsed_parameter*(tkind: Tparam_kind, expr): Tparsed_parameter =
   ## assign the variable to, and thus you reduce code clutter and may use this
   ## to initialise single assignments variables in `let` blocks. Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   let
   ##     parsed_param1 = new_parsed_parameter(PK_FLOAT, 3.41)
   ##     parsed_param2 = new_parsed_parameter(PK_BIGGEST_INT, 2358123 * 23123)

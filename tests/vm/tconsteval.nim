@@ -6,7 +6,7 @@ import strutils
 const
   HelpText = """
 +-----------------------------------------------------------------+
-|         Maintenance program for Nimrod                          |
+|         Maintenance program for Nim                          |
 |             Version $1|
 |             (c) 2012 Andreas Rumpf                              |
 +-----------------------------------------------------------------+
@@ -19,12 +19,12 @@ Options:
   --help, -h               shows this help and quits
 Possible Commands:
   boot [options]           bootstraps with given command line options
-  clean                    cleans Nimrod project; removes generated files
+  clean                    cleans Nim project; removes generated files
   web                      generates the website
   csource [options]        builds the C sources for installation
   zip                      builds the installation ZIP package
   inno                     builds the Inno Setup installer
-""" % [NimrodVersion & repeatChar(44-len(NimrodVersion)), 
+""" % [NimVersion & repeatChar(44-len(NimVersion)), 
        CompileDate, CompileTime]
 
 echo helpText

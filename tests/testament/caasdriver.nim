@@ -33,7 +33,7 @@ proc replaceVars(session: var NimSession, text: string): string =
   result = result.replace(moduleReplaceVar, session.modname)
   result = result.replace(silentReplaceVar, silentReplaceText)
 
-proc startNimrodSession(project, script: string, mode: TRunMode):
+proc startNimSession(project, script: string, mode: TRunMode):
                         NimSession =
   let (dir, name, ext) = project.splitFile
   result.mode = mode
@@ -114,7 +114,7 @@ proc doScenario(script: string, output: PStream, mode: TRunMode, verbose: bool):
 
   if f.readLine(project):
     var
-      s = startNimrodSession(script.parentDir / project.string, script, mode)
+      s = startNimSession(script.parentDir / project.string, script, mode)
       tline = TaintedString("")
       ln = 1
 

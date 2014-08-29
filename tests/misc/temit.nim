@@ -10,8 +10,8 @@ static int cvariable = 420;
 """.}
 
 proc embedsC() = 
-  var nimrodVar = 89
-  {.emit: """printf("%d\n", cvariable + (int)`nimrodVar`);""".}
+  var nimVar = 89
+  {.emit: """printf("%d\n", cvariable + (int)`nimVar`);""".}
 
 embedsC()
 

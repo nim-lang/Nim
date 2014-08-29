@@ -51,7 +51,7 @@ proc `$`*(status: TStatusEnum): string =
     return "unknown"
     
 proc makeCommitPath*(platform, hash: string): string =
-  return platform / "nimrod_" & hash.substr(0, 11) # 11 Chars.
+  return platform / "nim_" & hash.substr(0, 11) # 11 Chars.
 
 type
   TFlag = enum

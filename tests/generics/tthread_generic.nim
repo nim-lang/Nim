@@ -1,5 +1,5 @@
 discard """
-  cmd: "nimrod $target --hints:on --threads:on $options $file"
+  cmd: "nim $target --hints:on --threads:on $options $file"
 """
 
 type

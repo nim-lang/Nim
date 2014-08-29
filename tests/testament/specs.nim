@@ -18,7 +18,7 @@ type
     actionRun = "run"
     actionReject = "reject"
   TResultEnum* = enum
-    reNimrodcCrash,     # nim compiler seems to have crashed
+    reNimcCrash,     # nim compiler seems to have crashed
     reMsgsDiffer,       # error messages differ
     reFilesDiffer,      # expected and given filenames differ
     reLinesDiffer,      # expected and given line numbers differ

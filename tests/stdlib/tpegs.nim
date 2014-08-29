@@ -851,7 +851,7 @@ template `=~`*(s: string, pattern: TPeg): expr =
   ## This calls ``match`` with an implicit declared ``matches`` array that 
   ## can be used in the scope of the ``=~`` call: 
   ## 
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##
   ##   if line =~ peg"\s* {\w+} \s* '=' \s* {\w+}": 
   ##     # matches a key=value pair:
@@ -897,12 +897,12 @@ proc replacef*(s: string, sub: TPeg, by: string): string {.
   ## Replaces `sub` in `s` by the string `by`. Captures can be accessed in `by`
   ## with the notation ``$i`` and ``$#`` (see strutils.`%`). Examples:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   "var1=key; var2=key2".replace(peg"{\ident}'='{\ident}", "$1<-$2$2")
   ##
   ## Results in:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##
   ##   "var1<-keykey; val2<-key2key2"
   result = ""
@@ -979,13 +979,13 @@ iterator split*(s: string, sep: TPeg): string =
   ## Substrings are separated by the PEG `sep`.
   ## Examples:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   for word in split("00232this02939is39an22example111", peg"\d+"):
   ##     writeln(stdout, word)
   ##
   ## Results in:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   "this"
   ##   "is"
   ##   "an"

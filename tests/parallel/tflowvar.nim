@@ -2,7 +2,7 @@ discard """
   output: '''foobarfoobar
 bazbearbazbear
 1'''
-  cmd: "nimrod $target --threads:on $options $file"
+  cmd: "nim $target --threads:on $options $file"
 """
 
 import threadpool

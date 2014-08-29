@@ -2,7 +2,7 @@ discard """
   file: "toverflw.nim"
   output: "the computation overflowed"
 """
-# Tests nimrod's ability to detect overflows
+# Tests nim's ability to detect overflows
 
 {.push overflowChecks: on.}
 

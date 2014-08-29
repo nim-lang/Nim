@@ -58,7 +58,7 @@ when isMainModule:
   for i in 1..paramCount():
     args.add paramStr(i)
     args.add " "
-  quit(shell("nimrod", "c", "-r", "nakefile.nim", args))
+  quit(shell("nim", "c", "-r", "nakefile.nim", args))
 else:
   addQuitProc(proc() {.noconv.} =
     var 
