@@ -87,7 +87,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
   else:
     # posix relies on crappy LD_LIBRARY_PATH (ugh!):
     var libpath = getenv"LD_LIBRARY_PATH".string
-    if peg"\i '/nimrod' (!'/')* '/lib'" notin libpath:
+    if peg"\i '/nim' (!'/')* '/lib'" notin libpath:
       echo "[Warning] insufficient LD_LIBRARY_PATH"
     var serverDll = DynlibFormat % "server"
     safeCopyFile("tests/dll" / serverDll, "lib" / serverDll)

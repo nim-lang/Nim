@@ -10,7 +10,7 @@
 import parseutils, strutils, os, osproc, streams, parsecfg
 
 const
-  cmdTemplate* = r"nimrod $target --hints:on $options $file"
+  cmdTemplate* = r"nim $target --hints:on $options $file"
 
 type
   TTestAction* = enum
@@ -18,7 +18,7 @@ type
     actionRun = "run"
     actionReject = "reject"
   TResultEnum* = enum
-    reNimrodcCrash,     # nimrod compiler seems to have crashed
+    reNimrodcCrash,     # nim compiler seems to have crashed
     reMsgsDiffer,       # error messages differ
     reFilesDiffer,      # expected and given filenames differ
     reLinesDiffer,      # expected and given line numbers differ

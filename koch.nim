@@ -1,6 +1,6 @@
 #
 #
-#         Maintenance program for Nimrod  
+#         Maintenance program for Nim
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -26,7 +26,7 @@ when defined(haveZipLib):
 const
   HelpText = """
 +-----------------------------------------------------------------+
-|         Maintenance program for Nimrod                          |
+|         Maintenance program for Nim                             |
 |             Version $1|
 |             (c) 2014 Andreas Rumpf                              |
 +-----------------------------------------------------------------+
@@ -45,7 +45,7 @@ Possible Commands:
   zip                      builds the installation ZIP package
   inno [options]           builds the Inno Setup installer (for Windows)
   tests [options]          run the testsuite
-  update                   updates nimrod to the latest version from github
+  update                   updates nim to the latest version from github
                            (compile koch with -d:withUpdate to enable)
   temp options             creates a temporary compiler for testing
 Boot options:
@@ -61,13 +61,13 @@ Boot options:
 proc exe(f: string): string = return addFileExt(f, ExeExt)
 
 proc findNim(): string =
-  var nimrod = "nimrod".exe
-  result = "bin" / nimrod
+  var nim = "nim".exe
+  result = "bin" / nim
   if existsFile(result): return
   for dir in split(getEnv("PATH"), PathSep):
-    if existsFile(dir / nimrod): return dir / nimrod
+    if existsFile(dir / nim): return dir / nim
   # assume there is a symlink to the exe or something:
-  return nimrod
+  return nim
 
 proc exec(cmd: string) =
   echo(cmd)
@@ -81,12 +81,12 @@ const
   compileNimInst = "-d:useLibzipSrc tools/niminst/niminst"
 
 proc csource(args: string) = 
-  exec("$4 cc $1 -r $3 --var:version=$2 csource compiler/nimrod.ini $1" %
-       [args, NimrodVersion, compileNimInst, findNim()])
+  exec("$4 cc $1 -r $3 --var:version=$2 csource compiler/nim.ini $1" %
+       [args, NimVersion, compileNimInst, findNim()])
 
 proc zip(args: string) = 
-  exec("$3 cc -r $2 --var:version=$1 zip compiler/nimrod.ini" %
-       [NimrodVersion, compileNimInst, findNim()])
+  exec("$3 cc -r $2 --var:version=$1 zip compiler/nim.ini" %
+       [NimVersion, compileNimInst, findNim()])
   
 proc buildTool(toolname, args: string) = 
   exec("$# cc $# $#" % [findNim(), args, toolname])
@@ -96,50 +96,60 @@ proc inno(args: string) =
   # make sure we have generated the niminst executables:
   buildTool("tools/niminst/niminst", args)
   buildTool("tools/nimgrep", args)
-  exec("tools" / "niminst" / "niminst --var:version=$# inno compiler/nimrod" % 
-       NimrodVersion)
+  exec("tools" / "niminst" / "niminst --var:version=$# inno compiler/nim" % 
+       NimVersion)
 
 proc install(args: string) = 
-  exec("$# cc -r $# --var:version=$# scripts compiler/nimrod.ini" %
-       [findNim(), compileNimInst, NimrodVersion])
+  exec("$# cc -r $# --var:version=$# scripts compiler/nim.ini" %
+       [findNim(), compileNimInst, NimVersion])
   exec("sh ./install.sh $#" % args)
 
 proc web(args: string) =
-  exec("$# cc -r tools/nimweb.nim web/nimrod --putenv:nimrodversion=$#" % 
-       [findNim(), NimrodVersion])
+  exec("$# cc -r tools/nimweb.nim web/nim --putenv:nimversion=$#" % 
+       [findNim(), NimVersion])
 
 # -------------- boot ---------------------------------------------------------
 
 const
   bootOptions = "" # options to pass to the bootstrap process
 
-proc findStartNimrod: string = 
+proc findStartNim: string = 
   # we try several things before giving up:
+  # * bin/nim
+  # * $PATH/nim
   # * bin/nimrod
   # * $PATH/nimrod
-  # If these fail, we try to build nimrod with the "build.(sh|bat)" script.
+  # If these fail, we try to build nim with the "build.(sh|bat)" script.
+  var nim = "nim".exe
+  result = "bin" / nim
+  if existsFile(result): return
+  for dir in split(getEnv("PATH"), PathSep):
+    if existsFile(dir / nim): return dir / nim
+
+  # try the old "nimrod.exe":
   var nimrod = "nimrod".exe
   result = "bin" / nimrod
   if existsFile(result): return
   for dir in split(getEnv("PATH"), PathSep):
-    if existsFile(dir / nimrod): return dir / nimrod
+    if existsFile(dir / nim): return dir / nimrod
+
   when defined(Posix):
     const buildScript = "build.sh"
     if existsFile(buildScript): 
-      if tryExec("./" & buildScript): return "bin" / nimrod
+      if tryExec("./" & buildScript): return "bin" / nim
   else:
     const buildScript = "build.bat"
     if existsFile(buildScript): 
-      if tryExec(buildScript): return "bin" / nimrod
-  
-  echo("Found no nimrod compiler and every attempt to build one failed!")
+      if tryExec(buildScript): return "bin" / nim
+
+  echo("Found no nim compiler and every attempt to build one failed!")
   quit("FAILURE")
 
 proc safeRemove(filename: string) = 
   if existsFile(filename): removeFile(filename)
 
 proc thVersion(i: int): string = 
-  result = ("compiler" / "nimrod" & $i).exe
+  result = ("compiler" / "nim" & $i).exe
 
 proc copyExe(source, dest: string) =
   safeRemove(dest)
@@ -147,13 +157,13 @@ proc copyExe(source, dest: string) =
   inclFilePermissions(dest, {fpUserExec})
   
 proc boot(args: string) =
-  var output = "compiler" / "nimrod".exe
-  var finalDest = "bin" / "nimrod".exe
+  var output = "compiler" / "nim".exe
+  var finalDest = "bin" / "nim".exe
   
-  copyExe(findStartNimrod(), 0.thVersion)
+  copyExe(findStartNim(), 0.thVersion)
   for i in 0..2:
     echo "iteration: ", i+1
-    exec i.thVersion & " c $# $# compiler" / "nimrod.nim" % [bootOptions, args]
+    exec i.thVersion & " c $# $# compiler" / "nim.nim" % [bootOptions, args]
     if sameFileContent(output, i.thVersion):
       copyExe(output, finalDest)
       echo "executables are equal: SUCCESS!"
@@ -171,7 +181,7 @@ const
     ".idx", ".ilk"
   ]
   ignore = [
-    ".bzrignore", "nimrod", "nimrod.exe", "koch", "koch.exe", ".gitignore"
+    ".bzrignore", "nim", "nim.exe", "koch", "koch.exe", ".gitignore"
   ]
 
 proc cleanAux(dir: string) = 
@@ -275,15 +285,15 @@ template `|`(a, b): expr = (if a.len > 0: a else: b)
 proc tests(args: string) =
   # we compile the tester with taintMode:on to have a basic
   # taint mode test :-)
-  exec "nimrod cc --taintMode:on tests/testament/tester"
+  exec "nim cc --taintMode:on tests/testament/tester"
   let tester = quoteShell(getCurrentDir() / "tests/testament/tester".exe)
   exec tester & " " & (args|"all")
   exec tester & " html"
 
 proc temp(args: string) =
-  var output = "compiler" / "nimrod".exe
-  var finalDest = "bin" / "nimrod_temp".exe
-  exec("nimrod c compiler" / "nimrod")
+  var output = "compiler" / "nim".exe
+  var finalDest = "bin" / "nim_temp".exe
+  exec("nim c compiler" / "nim")
   copyExe(output, finalDest)
   if args.len > 0: exec(finalDest & " " & args)
 
