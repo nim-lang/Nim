@@ -10,6 +10,10 @@ include "system/inclrtl"
 
 import sockets, strutils, parseutils, times, os, asyncio
 
+from asyncnet import nil
+from rawsockets import nil
+from asyncdispatch import PFuture
+
 ## This module **partially** implements an FTP client as specified
 ## by `RFC 959 <http://tools.ietf.org/html/rfc959>`_. 
 ## 
@@ -36,20 +40,23 @@ import sockets, strutils, parseutils, times, os, asyncio
 type
   PFtpBase*[SockType] = ref TFtpBase[SockType]
   TFtpBase*[SockType] = object
-    csock: SockType
-    dsock: SockType
-    when SockType is PAsyncSocket:
+    csock*: SockType
+    dsock*: SockType
+    when SockType is asyncio.PAsyncSocket:
       handleEvent*: proc (ftp: PAsyncFTPClient, ev: TFTPEvent){.closure,gcsafe.}
       disp: PDispatcher
       asyncDSockID: PDelegate
-    user, pass: string
-    address: string
-    port: TPort
+    user*, pass*: string
+    address*: string
+    when SockType is asyncnet.PAsyncSocket:
+      port*: rawsockets.TPort
+    else:
+      port*: TPort
     
-    jobInProgress: bool
-    job: PFTPJob[SockType]
+    jobInProgress*: bool
+    job*: PFTPJob[SockType]
 
-    dsockConnected: bool
+    dsockConnected*: bool
 
   FTPJobType* = enum
     JRetrText, JRetr, JStore
@@ -74,7 +81,7 @@ type
   PFtpClient* = ref TFTPClient
 
   PAsyncFTPClient* = ref TAsyncFTPClient ## Async alternative to TFTPClient.
-  TAsyncFTPClient* = TFtpBase[PAsyncSocket]
+  TAsyncFTPClient* = TFtpBase[asyncio.PAsyncSocket]
 
   FTPEventType* = enum
     EvTransferProgress, EvLines, EvRetr, EvStore
@@ -117,7 +124,7 @@ proc getCSock[T](ftp: PFTPBase[T]): TSocket =
 template blockingOperation(sock: TSocket, body: stmt) {.immediate.} =
   body
 
-template blockingOperation(sock: PAsyncSocket, body: stmt) {.immediate.} =
+template blockingOperation(sock: asyncio.PAsyncSocket, body: stmt) {.immediate.} =
   sock.setBlocking(true)
   body
   sock.setBlocking(false)
@@ -619,7 +626,7 @@ when isMainModule:
       if not d.poll(): break
   main()
 
-when not isMainModule:
+when isMainModule and false:
   var ftp = ftpClient("example.com", user = "foo", pass = "bar")
   ftp.connect()
   echo ftp.pwd()
