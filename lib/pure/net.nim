@@ -260,7 +260,7 @@ proc socketError*(socket: Socket, err: int = -1, async = false,
       else:
         if lastE.int32 == EAGAIN or lastE.int32 == EWOULDBLOCK:
           return
-        else: osError(lastE)
+        else: raiseOSError(lastE)
     else: raiseOSError(lastE)
 
 proc listen*(socket: Socket, backlog = SOMAXCONN) {.tags: [ReadIOEffect].} =
