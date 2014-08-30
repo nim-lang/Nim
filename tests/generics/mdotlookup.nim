@@ -6,3 +6,11 @@ type MyObj = object
 proc foo*(b: any) =
   var o: MyObj
   echo b.baz, " ", o.x.baz, " ", b.baz()
+
+import sets
+
+var intset = initSet[int]()
+
+proc func*[T](a: T) =
+  if a in intset: echo("true")
+  else: echo("false")

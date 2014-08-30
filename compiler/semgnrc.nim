@@ -36,10 +36,11 @@ proc semGenericStmtScope(c: PContext, n: PNode,
 template macroToExpand(s: expr): expr =
   s.kind in {skMacro, skTemplate} and (s.typ.len == 1 or sfImmediate in s.flags)
 
-proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym): PNode = 
+proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
+                          ctx: var IntSet): PNode =
   incl(s.flags, sfUsed)
   case s.kind
-  of skUnknown: 
+  of skUnknown:
     # Introduced in this pass! Leave it as an identifier.
     result = n
   of skProc, skMethod, skIterators, skConverter:
@@ -48,11 +49,13 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym): PNode =
     if macroToExpand(s):
       let n = fixImmediateParams(n)
       result = semTemplateExpr(c, n, s, {efNoSemCheck})
+      result = semGenericStmt(c, result, {}, ctx)
     else:
       result = symChoice(c, n, s, scOpen)
-  of skMacro: 
+  of skMacro:
     if macroToExpand(s):
       result = semMacroExpr(c, n, n, s, {efNoSemCheck})
+      result = semGenericStmt(c, result, {}, ctx)
     else:
       result = symChoice(c, n, s, scOpen)
   of skGenericParam: 
@@ -80,7 +83,7 @@ proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags,
     elif s.name.id in ctx:
       result = symChoice(c, n, s, scForceOpen)
     else:
-      result = semGenericStmtSymbol(c, n, s)
+      result = semGenericStmtSymbol(c, n, s, ctx)
   # else: leave as nkIdent
 
 proc newDot(n, b: PNode): PNode =
@@ -95,8 +98,9 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
   
   var s = qualifiedLookUp(c, n, luf)
   if s != nil:
-    result = semGenericStmtSymbol(c, n, s)
+    result = semGenericStmtSymbol(c, n, s, ctx)
   else:
+    n.sons[0] = semGenericStmt(c, n.sons[0], flags, ctx)
     result = n
     let n = n[1]
     let ident = considerQuotedIdent(n)
@@ -107,7 +111,7 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
       elif s.name.id in ctx:
         result = newDot(result, symChoice(c, n, s, scForceOpen))
       else:
-        let sym = semGenericStmtSymbol(c, n, s)
+        let sym = semGenericStmtSymbol(c, n, s, ctx)
         if sym.kind == nkSym:
           result = newDot(result, symChoice(c, n, s, scForceOpen))
         else:
@@ -158,13 +162,15 @@ proc semGenericStmt(c: PContext, n: PNode,
       of skMacro:
         if macroToExpand(s):
           result = semMacroExpr(c, n, n, s, {efNoSemCheck})
+          result = semGenericStmt(c, result, {}, ctx)
         else:
           n.sons[0] = symChoice(c, n.sons[0], s, scOption)
           result = n
-      of skTemplate: 
+      of skTemplate:
         if macroToExpand(s):
           let n = fixImmediateParams(n)
           result = semTemplateExpr(c, n, s, {efNoSemCheck})
+          result = semGenericStmt(c, result, {}, ctx)
         else:
           n.sons[0] = symChoice(c, n.sons[0], s, scOption)
           result = n
