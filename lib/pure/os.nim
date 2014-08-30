@@ -2013,7 +2013,10 @@ proc isHidden*(path: string): bool =
   ## On Unix-like systems, a file is hidden if it starts with a '.' (period)
   ## and is not *just* '.' or '..' ' ."
   when defined(Windows):
-    wrapUnary(attributes, getFileAttributesW, path)
+    when useWinUnicode:
+      wrapUnary(attributes, getFileAttributesW, path)
+    else:
+      var attributes = getFileAttributesA(path)
     if attributes != -1'i32:
       result = (attributes and FILE_ATTRIBUTE_HIDDEN) != 0'i32
   else:

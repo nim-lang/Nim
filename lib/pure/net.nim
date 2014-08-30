@@ -35,6 +35,10 @@ when defined(ssl):
     SSLAcceptResult* = enum
       AcceptNoClient = 0, AcceptNoHandshake, AcceptSuccess
 
+  {.deprecated: [ESSL: SSLError, TSSLCVerifyMode: SSLCVerifyMode,
+    TSSLProtVersion: SSLProtVersion, PSSLContext: SSLContext,
+    TSSLAcceptResult: SSLAcceptResult].}
+
 const
   BufferSize*: int = 4000 ## size of a buffered socket's buffer
 
@@ -74,9 +78,7 @@ type
 
 {.deprecated: [TSocketFlags: SocketFlag, ETimeout: TimeoutError,
     TReadLineResult: ReadLineResult, TSOBool: SOBool, PSocket: Socket,
-    TSocketImpl: SocketImpl, ESSL: SSLError, TSSLCVerifyMode: SSLCVerifyMode,
-    TSSLProtVersion: SSLProtVersion, PSSLContext: SSLContext,
-    TSSLAcceptResult: SSLAcceptResult].}
+    TSocketImpl: SocketImpl].}
 
 proc isDisconnectionError*(flags: set[SocketFlag],
     lastError: OSErrorCode): bool =
@@ -98,7 +100,7 @@ proc toOSFlags*(socketFlags: set[SocketFlag]): cint =
       result = result or MSG_PEEK
     of SocketFlag.SafeDisconn: continue
 
-proc createSocket(fd: TSocketHandle, isBuff: bool): Socket =
+proc createSocket(fd: SocketHandle, isBuff: bool): Socket =
   assert fd != osInvalidSocket
   new(result)
   result.fd = fd
@@ -276,19 +278,19 @@ proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
   ## If ``address`` is "" then ADDR_ANY will be bound.
 
   if address == "":
-    var name: TSockaddr_in
+    var name: Sockaddr_in
     when useWinVersion:
       name.sin_family = toInt(AF_INET).int16
     else:
       name.sin_family = toInt(AF_INET)
     name.sin_port = htons(int16(port))
     name.sin_addr.s_addr = htonl(INADDR_ANY)
-    if bindAddr(socket.fd, cast[ptr TSockAddr](addr(name)),
-                  sizeof(name).TSocklen) < 0'i32:
+    if bindAddr(socket.fd, cast[ptr SockAddr](addr(name)),
+                  sizeof(name).Socklen) < 0'i32:
       raiseOSError(osLastError())
   else:
     var aiList = getAddrInfo(address, port, AF_INET)
-    if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.TSocklen) < 0'i32:
+    if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.Socklen) < 0'i32:
       dealloc(aiList)
       raiseOSError(osLastError())
     dealloc(aiList)
@@ -311,9 +313,9 @@ proc acceptAddr*(server: Socket, client: var Socket, address: var string,
   ## flag is specified then this error will not be raised and instead
   ## accept will be called again.
   assert(client != nil)
-  var sockAddress: TSockaddr_in
-  var addrLen = sizeof(sockAddress).TSocklen
-  var sock = accept(server.fd, cast[ptr TSockAddr](addr(sockAddress)),
+  var sockAddress: Sockaddr_in
+  var addrLen = sizeof(sockAddress).Socklen
+  var sock = accept(server.fd, cast[ptr SockAddr](addr(sockAddress)),
                     addr(addrLen))
   
   if sock == osInvalidSocket:
@@ -452,7 +454,7 @@ proc connect*(socket: Socket, address: string, port = Port(0),
   var lastError: OSErrorCode
   var it = aiList
   while it != nil:
-    if connect(socket.fd, it.ai_addr, it.ai_addrlen.TSocklen) == 0'i32:
+    if connect(socket.fd, it.ai_addr, it.ai_addrlen.SockLen) == 0'i32:
       success = true
       break
     else: lastError = osLastError()
@@ -751,10 +753,10 @@ proc recvFrom*(socket: Socket, data: var string, length: int,
   
   # TODO: Buffered sockets
   data.setLen(length)
-  var sockAddress: TSockaddr_in
-  var addrLen = sizeof(sockAddress).TSocklen
+  var sockAddress: SockAddrIn
+  var addrLen = sizeof(sockAddress).SockLen
   result = recvfrom(socket.fd, cstring(data), length.cint, flags.cint,
-                    cast[ptr TSockAddr](addr(sockAddress)), addr(addrLen))
+                    cast[ptr SockAddr](addr(sockAddress)), addr(addrLen))
 
   if result != -1:
     data.setLen(result)
@@ -831,7 +833,7 @@ proc sendTo*(socket: Socket, address: string, port: Port, data: pointer,
   var it = aiList
   while it != nil:
     result = sendto(socket.fd, data, size.cint, flags.cint, it.ai_addr,
-                    it.ai_addrlen.TSocklen)
+                    it.ai_addrlen.SockLen)
     if result != -1'i32:
       success = true
       break
@@ -864,7 +866,7 @@ proc connectAsync(socket: Socket, name: string, port = Port(0),
   var lastError: OSErrorCode
   var it = aiList
   while it != nil:
-    var ret = connect(socket.fd, it.ai_addr, it.ai_addrlen.TSocklen)
+    var ret = connect(socket.fd, it.ai_addr, it.ai_addrlen.SockLen)
     if ret == 0'i32:
       success = true
       break
@@ -907,7 +909,7 @@ proc connect*(socket: Socket, address: string, port = Port(0), timeout: int,
 proc isSSL*(socket: Socket): bool = return socket.isSSL
   ## Determines whether ``socket`` is a SSL socket.
 
-proc getFD*(socket: Socket): TSocketHandle = return socket.fd
+proc getFD*(socket: Socket): SocketHandle = return socket.fd
   ## Returns the socket's file descriptor
 
 type

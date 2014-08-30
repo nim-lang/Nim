@@ -64,7 +64,7 @@ type
 proc newSocket(fd: TAsyncFD, isBuff: bool): PAsyncSocket =
   assert fd != osInvalidSocket.TAsyncFD
   new(result.PSocket)
-  result.fd = fd.TSocketHandle
+  result.fd = fd.SocketHandle
   result.isBuffered = isBuff
   if isBuff:
     result.currPos = 0
@@ -75,15 +75,15 @@ proc newAsyncSocket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM,
   result = newSocket(newAsyncRawSocket(domain, typ, protocol), buffered)
 
 proc connect*(socket: PAsyncSocket, address: string, port: TPort,
-    af = AF_INET): PFuture[void] =
+    af = AF_INET): Future[void] =
   ## Connects ``socket`` to server at ``address:port``.
   ##
-  ## Returns a ``PFuture`` which will complete when the connection succeeds
+  ## Returns a ``Future`` which will complete when the connection succeeds
   ## or an error occurs.
   result = connect(socket.fd.TAsyncFD, address, port, af)
 
 proc readIntoBuf(socket: PAsyncSocket,
-    flags: set[TSocketFlags]): PFuture[int] {.async.} =
+    flags: set[TSocketFlags]): Future[int] {.async.} =
   var data = await recv(socket.fd.TAsyncFD, BufferSize, flags)
   if data.len != 0:
     copyMem(addr socket.buffer[0], addr data[0], data.len)
@@ -92,7 +92,7 @@ proc readIntoBuf(socket: PAsyncSocket,
   result = data.len
 
 proc recv*(socket: PAsyncSocket, size: int,
-           flags = {TSocketFlags.SafeDisconn}): PFuture[string] {.async.} =
+           flags = {TSocketFlags.SafeDisconn}): Future[string] {.async.} =
   ## Reads ``size`` bytes from ``socket``. Returned future will complete once
   ## all of the requested data is read. If socket is disconnected during the
   ## recv operation then the future may complete with only a part of the
@@ -131,21 +131,21 @@ proc recv*(socket: PAsyncSocket, size: int,
     result = await recv(socket.fd.TAsyncFD, size, flags)
 
 proc send*(socket: PAsyncSocket, data: string,
-           flags = {TSocketFlags.SafeDisconn}): PFuture[void] =
+           flags = {TSocketFlags.SafeDisconn}): Future[void] =
   ## Sends ``data`` to ``socket``. The returned future will complete once all
   ## data has been sent.
   assert socket != nil
   result = send(socket.fd.TAsyncFD, data, flags)
 
 proc acceptAddr*(socket: PAsyncSocket, flags = {TSocketFlags.SafeDisconn}):
-      PFuture[tuple[address: string, client: PAsyncSocket]] =
+      Future[tuple[address: string, client: PAsyncSocket]] =
   ## Accepts a new connection. Returns a future containing the client socket
   ## corresponding to that connection and the remote address of the client.
   ## The future will complete when the connection is successfully accepted.
   var retFuture = newFuture[tuple[address: string, client: PAsyncSocket]]("asyncnet.acceptAddr")
   var fut = acceptAddr(socket.fd.TAsyncFD, flags)
   fut.callback =
-    proc (future: PFuture[tuple[address: string, client: TAsyncFD]]) =
+    proc (future: Future[tuple[address: string, client: TAsyncFD]]) =
       assert future.finished
       if future.failed:
         retFuture.fail(future.readError)
@@ -156,14 +156,14 @@ proc acceptAddr*(socket: PAsyncSocket, flags = {TSocketFlags.SafeDisconn}):
   return retFuture
 
 proc accept*(socket: PAsyncSocket,
-    flags = {TSocketFlags.SafeDisconn}): PFuture[PAsyncSocket] =
+    flags = {TSocketFlags.SafeDisconn}): Future[PAsyncSocket] =
   ## Accepts a new connection. Returns a future containing the client socket
   ## corresponding to that connection.
   ## The future will complete when the connection is successfully accepted.
   var retFut = newFuture[PAsyncSocket]("asyncnet.accept")
   var fut = acceptAddr(socket, flags)
   fut.callback =
-    proc (future: PFuture[tuple[address: string, client: PAsyncSocket]]) =
+    proc (future: Future[tuple[address: string, client: PAsyncSocket]]) =
       assert future.finished
       if future.failed:
         retFut.fail(future.readError)
@@ -172,7 +172,7 @@ proc accept*(socket: PAsyncSocket,
   return retFut
 
 proc recvLine*(socket: PAsyncSocket,
-    flags = {TSocketFlags.SafeDisconn}): PFuture[string] {.async.} =
+    flags = {TSocketFlags.SafeDisconn}): Future[string] {.async.} =
   ## Reads a line of data from ``socket``. Returned future will complete once
   ## a full line is read or an error occurs.
   ##
@@ -282,23 +282,23 @@ when isMainModule:
     var sock = newAsyncSocket()
     var f = connect(sock, "irc.freenode.net", TPort(6667))
     f.callback =
-      proc (future: PFuture[void]) =
+      proc (future: Future[void]) =
         echo("Connected in future!")
         for i in 0 .. 50:
           var recvF = recv(sock, 10)
           recvF.callback =
-            proc (future: PFuture[string]) =
+            proc (future: Future[string]) =
               echo("Read ", future.read.len, ": ", future.read.repr)
   elif test == LowServer:
     var sock = newAsyncSocket()
     sock.bindAddr(TPort(6667))
     sock.listen()
-    proc onAccept(future: PFuture[PAsyncSocket]) =
+    proc onAccept(future: Future[PAsyncSocket]) =
       let client = future.read
       echo "Accepted ", client.fd.cint
       var t = send(client, "test\c\L")
       t.callback =
-        proc (future: PFuture[void]) =
+        proc (future: Future[void]) =
           echo("Send")
           client.close()
       

@@ -662,8 +662,7 @@ when isMainModule:
       resp = await client.request("http://nim-lang.org/download.html")
       echo("Got response: ", resp.status)
 
-    asyncCheck main()
-    runForever()
+    waitFor main()
 
   else:
     #downloadFile("http://force7.de/nim/index.html", "nimindex.html")
