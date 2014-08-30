@@ -91,9 +91,11 @@ import sockets, os
 ##      getSocket(s).accept(client)
 
 when defined(windows):
-  from winlean import TimeVal, SocketHandle, FdSet, FD_ZERO, FD_SET, FD_ISSET, select
+  from winlean import TimeVal, SocketHandle, FdSet, FD_ZERO, FD_SET,
+    fdSet, FD_ISSET, select
 else:
-  from posix import TimeVal, SocketHandle, FdSet, FD_ZERO, FD_SET, FD_ISSET, select
+  from posix import TimeVal, SocketHandle, FdSet, FD_ZERO, FD_SET,
+    fdSet, FD_ISSET, select
 
 type
   DelegateObj* = object
@@ -113,33 +115,32 @@ type
 
   Dispatcher* = ref DispatcherObj
   DispatcherObj = object
-    delegates: seq[PDelegate]
+    delegates: seq[Delegate]
 
   AsyncSocket* = ref AsyncSocketObj
   AsyncSocketObj* = object of RootObj
     socket: Socket
     info: SocketStatus
 
-    handleRead*: proc (s: PAsyncSocket) {.closure, gcsafe.}
-    handleWrite: proc (s: PAsyncSocket) {.closure, gcsafe.}
-    handleConnect*: proc (s:  PAsyncSocket) {.closure, gcsafe.}
+    handleRead*: proc (s: AsyncSocket) {.closure, gcsafe.}
+    handleWrite: proc (s: AsyncSocket) {.closure, gcsafe.}
+    handleConnect*: proc (s:  AsyncSocket) {.closure, gcsafe.}
 
-    handleAccept*: proc (s:  PAsyncSocket) {.closure, gcsafe.}
+    handleAccept*: proc (s:  AsyncSocket) {.closure, gcsafe.}
 
-    handleTask*: proc (s: PAsyncSocket) {.closure, gcsafe.}
+    handleTask*: proc (s: AsyncSocket) {.closure, gcsafe.}
 
     lineBuffer: TaintedString ## Temporary storage for ``readLine``
     sendBuffer: string ## Temporary storage for ``send``
     sslNeedAccept: bool
-    proto: TProtocol
-    deleg: PDelegate
+    proto: Protocol
+    deleg: Delegate
 
   SocketStatus* = enum
     SockIdle, SockConnecting, SockConnected, SockListening, SockClosed, 
     SockUDPBound
 
 {.deprecated: [TDelegate: DelegateObj, PDelegate: Delegate,
-  TProcessOption: ProcessOption,
   TInfo: SocketStatus, PAsyncSocket: AsyncSocket, TAsyncSocket: AsyncSocketObj,
   TDispatcher: DispatcherObj, PDispatcher: Dispatcher,
   ].}
@@ -176,7 +177,7 @@ proc asyncSocket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM,
   result = newAsyncSocket()
   result.socket = socket(domain, typ, protocol, buffered)
   result.proto = protocol
-  if result.socket == invalidSocket: osError(osLastError())
+  if result.socket == invalidSocket: raiseOSError(osLastError())
   result.socket.setBlocking(false)
 
 proc toAsyncSocket*(sock: TSocket, state: TInfo = SockConnected): PAsyncSocket =
@@ -366,7 +367,7 @@ proc acceptAddr*(server: PAsyncSocket, client: var PAsyncSocket,
     client.sslNeedAccept = false
     client.info = SockConnected
 
-  if c == invalidSocket: socketError(server.socket)
+  if c == invalidSocket: raiseSocketError(server.socket)
   c.setBlocking(false) # TODO: Needs to be tested.
   
   # deleg.open is set in ``toDelegate``.
@@ -490,7 +491,7 @@ proc recvLine*(s: PAsyncSocket, line: var TaintedString): bool {.deprecated.} =
   of RecvDisconnected:
     result = true
   of RecvFail:
-    s.socketError(async = true)
+    s.raiseSocketError(async = true)
     result = false
 {.pop.}
 
@@ -544,19 +545,19 @@ proc send*(sock: PAsyncSocket, data: string) =
     sock.sendBuffer.add(data[bytesSent .. -1])
     sock.deleg.mode = fmReadWrite
 
-proc timeValFromMilliseconds(timeout = 500): TTimeVal =
+proc timeValFromMilliseconds(timeout = 500): TimeVal =
   if timeout != -1:
     var seconds = timeout div 1000
     result.tv_sec = seconds.int32
     result.tv_usec = ((timeout - seconds * 1000) * 1000).int32
 
-proc createFdSet(fd: var TFdSet, s: seq[PDelegate], m: var int) =
+proc createFdSet(fd: var FdSet, s: seq[Delegate], m: var int) =
   FD_ZERO(fd)
   for i in items(s): 
     m = max(m, int(i.fd))
-    FD_SET(i.fd, fd)
+    fdSet(i.fd, fd)
    
-proc pruneSocketSet(s: var seq[PDelegate], fd: var TFdSet) =
+proc pruneSocketSet(s: var seq[Delegate], fd: var FdSet) =
   var i = 0
   var L = s.len
   while i < L:
@@ -569,9 +570,9 @@ proc pruneSocketSet(s: var seq[PDelegate], fd: var TFdSet) =
 
 proc select(readfds, writefds, exceptfds: var seq[PDelegate], 
              timeout = 500): int =
-  var tv {.noInit.}: TTimeVal = timeValFromMilliseconds(timeout)
+  var tv {.noInit.}: TimeVal = timeValFromMilliseconds(timeout)
   
-  var rd, wr, ex: TFdSet
+  var rd, wr, ex: FdSet
   var m = 0
   createFdSet(rd, readfds, m)
   createFdSet(wr, writefds, m)
@@ -681,7 +682,7 @@ when isMainModule:
   proc main =
     var d = newDispatcher()
     
-    var s = AsyncSocket()
+    var s = asyncSocket()
     s.connect("amber.tenthbit.net", TPort(6667))
     s.handleConnect = 
       proc (s: PAsyncSocket) =
@@ -691,7 +692,7 @@ when isMainModule:
         testRead(s, 1)
     d.register(s)
     
-    var server = AsyncSocket()
+    var server = asyncSocket()
     server.handleAccept =
       proc (s: PAsyncSocket) = 
         testAccept(s, d, 78)

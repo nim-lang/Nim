@@ -13,7 +13,7 @@ import os, oids, tables, strutils, macros, times
 
 import rawsockets, net
 
-export Port, SocketFlags
+export Port, SocketFlag
 
 #{.injectStmt: newGcInvariant().}
 
@@ -223,11 +223,11 @@ proc processTimers(p: PDispatcherBase) =
 when defined(windows) or defined(nimdoc):
   import winlean, sets, hashes
   type
-    TCompletionKey = dword
+    TCompletionKey = Dword
 
     TCompletionData* = object
       sock: TAsyncFD
-      cb: proc (sock: TAsyncFD, bytesTransferred: DWORD,
+      cb: proc (sock: TAsyncFD, bytesTransferred: Dword,
                 errcode: OSErrorCode) {.closure,gcsafe.}
 
     PDispatcher* = ref object of PDispatcherBase
@@ -283,7 +283,7 @@ when defined(windows) or defined(nimdoc):
     let llTimeout =
       if timeout ==  -1: winlean.INFINITE
       else: timeout.int32
-    var lpNumberOfBytesTransferred: DWORD
+    var lpNumberOfBytesTransferred: Dword
     var lpCompletionKey: ULONG
     var customOverlapped: PCustomOverlapped
     let res = GetQueuedCompletionStatus(p.ioPort,
@@ -321,10 +321,10 @@ when defined(windows) or defined(nimdoc):
 
   proc initPointer(s: SocketHandle, func: var pointer, guid: var TGUID): bool =
     # Ref: https://github.com/powdahound/twisted/blob/master/twisted/internet/iocpreactor/iocpsupport/winsock_pointers.c
-    var bytesRet: DWORD
+    var bytesRet: Dword
     func = nil
     result = WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER, addr guid,
-                      sizeof(TGUID).dword, addr func, sizeof(pointer).DWORD,
+                      sizeof(TGUID).Dword, addr func, sizeof(pointer).Dword,
                       addr bytesRet, nil, nil) == 0
 
   proc initAll() =
@@ -337,44 +337,44 @@ when defined(windows) or defined(nimdoc):
       raiseOSError(osLastError())
 
   proc connectEx(s: SocketHandle, name: ptr TSockAddr, namelen: cint, 
-                  lpSendBuffer: pointer, dwSendDataLength: dword,
-                  lpdwBytesSent: PDWORD, lpOverlapped: POVERLAPPED): bool =
+                  lpSendBuffer: pointer, dwSendDataLength: Dword,
+                  lpdwBytesSent: PDword, lpOverlapped: POVERLAPPED): bool =
     if connectExPtr.isNil: raise newException(ValueError, "Need to initialise ConnectEx().")
     let func =
       cast[proc (s: SocketHandle, name: ptr TSockAddr, namelen: cint, 
-         lpSendBuffer: pointer, dwSendDataLength: dword,
-         lpdwBytesSent: PDWORD, lpOverlapped: POVERLAPPED): bool {.stdcall,gcsafe.}](connectExPtr)
+         lpSendBuffer: pointer, dwSendDataLength: Dword,
+         lpdwBytesSent: PDword, lpOverlapped: POVERLAPPED): bool {.stdcall,gcsafe.}](connectExPtr)
 
     result = func(s, name, namelen, lpSendBuffer, dwSendDataLength, lpdwBytesSent,
          lpOverlapped)
 
   proc acceptEx(listenSock, acceptSock: SocketHandle, lpOutputBuffer: pointer,
                  dwReceiveDataLength, dwLocalAddressLength,
-                 dwRemoteAddressLength: DWORD, lpdwBytesReceived: PDWORD,
+                 dwRemoteAddressLength: Dword, lpdwBytesReceived: PDword,
                  lpOverlapped: POVERLAPPED): bool =
     if acceptExPtr.isNil: raise newException(ValueError, "Need to initialise AcceptEx().")
     let func =
       cast[proc (listenSock, acceptSock: SocketHandle, lpOutputBuffer: pointer,
                  dwReceiveDataLength, dwLocalAddressLength,
-                 dwRemoteAddressLength: DWORD, lpdwBytesReceived: PDWORD,
+                 dwRemoteAddressLength: Dword, lpdwBytesReceived: PDword,
                  lpOverlapped: POVERLAPPED): bool {.stdcall,gcsafe.}](acceptExPtr)
     result = func(listenSock, acceptSock, lpOutputBuffer, dwReceiveDataLength,
         dwLocalAddressLength, dwRemoteAddressLength, lpdwBytesReceived,
         lpOverlapped)
 
   proc getAcceptExSockaddrs(lpOutputBuffer: pointer,
-      dwReceiveDataLength, dwLocalAddressLength, dwRemoteAddressLength: DWORD,
-      LocalSockaddr: ptr ptr TSockAddr, LocalSockaddrLength: lpint,
-      RemoteSockaddr: ptr ptr TSockAddr, RemoteSockaddrLength: lpint) =
+      dwReceiveDataLength, dwLocalAddressLength, dwRemoteAddressLength: Dword,
+      LocalSockaddr: ptr ptr TSockAddr, LocalSockaddrLength: LPInt,
+      RemoteSockaddr: ptr ptr TSockAddr, RemoteSockaddrLength: LPInt) =
     if getAcceptExSockAddrsPtr.isNil:
       raise newException(ValueError, "Need to initialise getAcceptExSockAddrs().")
 
     let func =
       cast[proc (lpOutputBuffer: pointer,
                  dwReceiveDataLength, dwLocalAddressLength,
-                 dwRemoteAddressLength: DWORD, LocalSockaddr: ptr ptr TSockAddr,
-                 LocalSockaddrLength: lpint, RemoteSockaddr: ptr ptr TSockAddr,
-                RemoteSockaddrLength: lpint) {.stdcall,gcsafe.}](getAcceptExSockAddrsPtr)
+                 dwRemoteAddressLength: Dword, LocalSockaddr: ptr ptr TSockAddr,
+                 LocalSockaddrLength: LPInt, RemoteSockaddr: ptr ptr TSockAddr,
+                RemoteSockaddrLength: LPInt) {.stdcall,gcsafe.}](getAcceptExSockAddrsPtr)
     
     func(lpOutputBuffer, dwReceiveDataLength, dwLocalAddressLength,
                   dwRemoteAddressLength, LocalSockaddr, LocalSockaddrLength,
@@ -407,7 +407,7 @@ when defined(windows) or defined(nimdoc):
       var ol = PCustomOverlapped()
       GC_ref(ol)
       ol.data = TCompletionData(sock: socket, cb:
-        proc (sock: TAsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+        proc (sock: TAsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
           if not retFuture.finished:
             if errcode == OSErrorCode(-1):
               retFuture.complete()
@@ -462,12 +462,12 @@ when defined(windows) or defined(nimdoc):
     dataBuf.buf = cast[cstring](alloc0(size))
     dataBuf.len = size
     
-    var bytesReceived: DWORD
-    var flagsio = flags.toOSFlags().DWORD
+    var bytesReceived: Dword
+    var flagsio = flags.toOSFlags().Dword
     var ol = PCustomOverlapped()
     GC_ref(ol)
     ol.data = TCompletionData(sock: socket, cb:
-      proc (sock: TAsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+      proc (sock: TAsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             if bytesCount == 0 and dataBuf.buf[0] == '\0':
@@ -541,11 +541,11 @@ when defined(windows) or defined(nimdoc):
     dataBuf.buf = data # since this is not used in a callback, this is fine
     dataBuf.len = data.len
 
-    var bytesReceived, lowFlags: DWORD
+    var bytesReceived, lowFlags: Dword
     var ol = PCustomOverlapped()
     GC_ref(ol)
     ol.data = TCompletionData(sock: socket, cb:
-      proc (sock: TAsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+      proc (sock: TAsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             retFuture.complete()
@@ -594,10 +594,10 @@ when defined(windows) or defined(nimdoc):
 
     const lpOutputLen = 1024
     var lpOutputBuf = newString(lpOutputLen)
-    var dwBytesReceived: DWORD
-    let dwReceiveDataLength = 0.DWORD # We don't want any data to be read.
-    let dwLocalAddressLength = DWORD(sizeof (Tsockaddr_in) + 16)
-    let dwRemoteAddressLength = DWORD(sizeof(Tsockaddr_in) + 16)
+    var dwBytesReceived: Dword
+    let dwReceiveDataLength = 0.Dword # We don't want any data to be read.
+    let dwLocalAddressLength = Dword(sizeof (Tsockaddr_in) + 16)
+    let dwRemoteAddressLength = Dword(sizeof(Tsockaddr_in) + 16)
 
     template completeAccept(): stmt {.immediate, dirty.} =
       var listenSock = socket
@@ -606,12 +606,12 @@ when defined(windows) or defined(nimdoc):
           sizeof(listenSock).TSockLen)
       if setoptRet != 0: raiseOSError(osLastError())
 
-      var LocalSockaddr, RemoteSockaddr: ptr TSockAddr
+      var localSockaddr, remoteSockaddr: ptr TSockAddr
       var localLen, remoteLen: int32
       getAcceptExSockaddrs(addr lpOutputBuf[0], dwReceiveDataLength,
                            dwLocalAddressLength, dwRemoteAddressLength,
-                           addr LocalSockaddr, addr localLen,
-                           addr RemoteSockaddr, addr remoteLen)
+                           addr localSockaddr, addr localLen,
+                           addr remoteSockaddr, addr remoteLen)
       register(clientSock.TAsyncFD)
       # TODO: IPv6. Check ``sa_family``. http://stackoverflow.com/a/9212542/492186
       retFuture.complete(
@@ -634,7 +634,7 @@ when defined(windows) or defined(nimdoc):
     var ol = PCustomOverlapped()
     GC_ref(ol)
     ol.data = TCompletionData(sock: socket, cb:
-      proc (sock: TAsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+      proc (sock: TAsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             completeAccept()
