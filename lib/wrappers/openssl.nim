@@ -246,7 +246,7 @@ proc BIO_get_ssl*(bio: PBIO, ssl: ptr PSSL): int =
 proc BIO_set_conn_hostname*(bio: PBIO, name: cstring): int =
   return BIO_ctrl(bio, BIO_C_SET_CONNECT, 0, name)
 proc BIO_do_handshake*(bio: PBIO): int =
-  return BIO_ctrl(bio, BIO_C_DO_STATE_MACHINE, 0, NIL)
+  return BIO_ctrl(bio, BIO_C_DO_STATE_MACHINE, 0, nil)
 proc BIO_do_connect*(bio: PBIO): int =
   return BIO_do_handshake(bio)
 
@@ -448,11 +448,11 @@ type
 
 {.pragma: ic, importc: "$1".}
 {.push callconv:cdecl, dynlib:DLLUtilName.}
-proc MD5_Init*(c: var MD5_CTX): cint{.ic.}
-proc MD5_Update*(c: var MD5_CTX; data: pointer; len: csize): cint{.ic.}
-proc MD5_Final*(md: cstring; c: var MD5_CTX): cint{.ic.}
-proc MD5*(d: ptr cuchar; n: csize; md: ptr cuchar): ptr cuchar{.ic.}
-proc MD5_Transform*(c: var MD5_CTX; b: ptr cuchar){.ic.}
+proc md5_Init*(c: var MD5_CTX): cint{.ic.}
+proc md5_Update*(c: var MD5_CTX; data: pointer; len: csize): cint{.ic.}
+proc md5_Final*(md: cstring; c: var MD5_CTX): cint{.ic.}
+proc md5*(d: ptr cuchar; n: csize; md: ptr cuchar): ptr cuchar{.ic.}
+proc md5_Transform*(c: var MD5_CTX; b: ptr cuchar){.ic.}
 {.pop.}
 
 from strutils import toHex,toLower
@@ -463,7 +463,7 @@ proc hexStr (buf:cstring): string =
   for i in 0 .. <16:
     result.add toHex(buf[i].ord, 2).toLower
 
-proc MD5_File* (file: string): string {.raises:[EIO,Ebase].} =
+proc md5_File* (file: string): string {.raises:[EIO,Ebase].} =
   ## Generate MD5 hash for a file. Result is a 32 character
   # hex string with lowercase characters (like the output
   # of `md5sum`
@@ -483,7 +483,7 @@ proc MD5_File* (file: string): string {.raises:[EIO,Ebase].} =
   
   result = hexStr(buf)
 
-proc MD5_Str* (str:string): string {.raises:[EIO].} =
+proc md5_Str* (str:string): string {.raises:[EIO].} =
   ##Generate MD5 hash for a string. Result is a 32 character
   #hex string with lowercase characters
   var 
