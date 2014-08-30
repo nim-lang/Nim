@@ -125,16 +125,16 @@ when defined(ssl):
   ErrLoadBioStrings()
   OpenSSL_add_all_algorithms()
 
-  proc SSLError(s = "") =
+  proc raiseSSLError(s = "") =
     if s != "":
-      raise newException(ESSL, s)
+      raise newException(SSLError, s)
     let err = ErrPeekLastError()
     if err == 0:
-      raise newException(ESSL, "No error reported.")
+      raise newException(SSLError, "No error reported.")
     if err == -1:
-      OSError(OSLastError())
+      raiseOSError(osLastError())
     var errStr = ErrErrorString(err, nil)
-    raise newException(ESSL, $errStr)
+    raise newException(SSLError, $errStr)
 
   # http://simplestcodings.blogspot.co.uk/2010/08/secure-server-client-using-openssl-in-c.html
   proc loadCertificates(ctx: PSSL_CTX, certFile, keyFile: string) =
@@ -146,23 +146,23 @@ when defined(ssl):
     if certFile != "":
       var ret = SSLCTXUseCertificateChainFile(ctx, certFile)
       if ret != 1:
-        SSLError()
+        raiseSSLError()
     
     # TODO: Password? www.rtfm.com/openssl-examples/part1.pdf
     if keyFile != "":
       if SSL_CTX_use_PrivateKey_file(ctx, keyFile,
                                      SSL_FILETYPE_PEM) != 1:
-        SSLError()
+        raiseSSLError()
         
       if SSL_CTX_check_private_key(ctx) != 1:
-        SSLError("Verification of private key file failed.")
+        raiseSSLError("Verification of private key file failed.")
 
-  proc newContext*(protVersion = ProtSSLv23, verifyMode = CVerifyPeer,
+  proc newContext*(protVersion = protSSLv23, verifyMode = CVerifyPeer,
                    certFile = "", keyFile = ""): PSSLContext =
     ## Creates an SSL context.
     ## 
     ## Protocol version specifies the protocol to use. SSLv2, SSLv3, TLSv1 are 
-    ## are available with the addition of ``ProtSSLv23`` which allows for 
+    ## are available with the addition of ``protSSLv23`` which allows for 
     ## compatibility with all of them.
     ##
     ## There are currently only two options for verify mode;
@@ -189,14 +189,14 @@ when defined(ssl):
       newCTX = SSL_CTX_new(TLSv1_method())
     
     if newCTX.SSLCTXSetCipherList("ALL") != 1:
-      SSLError()
+      raiseSSLError()
     case verifyMode
     of CVerifyPeer:
       newCTX.SSLCTXSetVerify(SSLVerifyPeer, nil)
     of CVerifyNone:
       newCTX.SSLCTXSetVerify(SSLVerifyNone, nil)
     if newCTX == nil:
-      SSLError()
+      raiseSSLError()
 
     discard newCTX.SSLCTXSetMode(SSL_MODE_AUTO_RETRY)
     newCTX.loadCertificates(certFile, keyFile)
@@ -215,10 +215,10 @@ when defined(ssl):
     socket.sslNoHandshake = false
     socket.sslHasPeekChar = false
     if socket.sslHandle == nil:
-      SSLError()
+      raiseSSLError()
     
     if SSLSetFd(socket.sslHandle, socket.fd) != 1:
-      SSLError()
+      raiseSSLError()
 
 proc socketError*(socket: Socket, err: int = -1, async = false,
                   lastError = (-1).OSErrorCode) =
@@ -235,20 +235,20 @@ proc socketError*(socket: Socket, err: int = -1, async = false,
         var ret = SSLGetError(socket.sslHandle, err.cint)
         case ret
         of SSL_ERROR_ZERO_RETURN:
-          SSLError("TLS/SSL connection failed to initiate, socket closed prematurely.")
+          raiseSSLError("TLS/SSL connection failed to initiate, socket closed prematurely.")
         of SSL_ERROR_WANT_CONNECT, SSL_ERROR_WANT_ACCEPT:
           if async:
             return
-          else: SSLError("Not enough data on socket.")
+          else: raiseSSLError("Not enough data on socket.")
         of SSL_ERROR_WANT_WRITE, SSL_ERROR_WANT_READ:
           if async:
             return
-          else: SSLError("Not enough data on socket.")
+          else: raiseSSLError("Not enough data on socket.")
         of SSL_ERROR_WANT_X509_LOOKUP:
-          SSLError("Function for x509 lookup has been called.")
+          raiseSSLError("Function for x509 lookup has been called.")
         of SSL_ERROR_SYSCALL, SSL_ERROR_SSL:
-          SSLError()
-        else: SSLError("Unknown Error")
+          raiseSSLError()
+        else: raiseSSLError("Unknown Error")
   
   if err == -1 and not (when defined(ssl): socket.isSSL else: false):
     let lastE = if lastError.int == -1: osLastError() else: lastError
@@ -260,7 +260,7 @@ proc socketError*(socket: Socket, err: int = -1, async = false,
       else:
         if lastE.int32 == EAGAIN or lastE.int32 == EWOULDBLOCK:
           return
-        else: osError(lastE)
+        else: raiseOSError(lastE)
     else: raiseOSError(lastE)
 
 proc listen*(socket: Socket, backlog = SOMAXCONN) {.tags: [ReadIOEffect].} =
@@ -371,17 +371,17 @@ when false: #defined(ssl):
             if err != SSL_ERROR_WANT_ACCEPT:
               case err
               of SSL_ERROR_ZERO_RETURN:
-                SSLError("TLS/SSL connection failed to initiate, socket closed prematurely.")
+                raiseSSLError("TLS/SSL connection failed to initiate, socket closed prematurely.")
               of SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE,
                  SSL_ERROR_WANT_CONNECT, SSL_ERROR_WANT_ACCEPT:
                 client.sslNoHandshake = true
                 return AcceptNoHandshake
               of SSL_ERROR_WANT_X509_LOOKUP:
-                SSLError("Function for x509 lookup has been called.")
+                raiseSSLError("Function for x509 lookup has been called.")
               of SSL_ERROR_SYSCALL, SSL_ERROR_SSL:
-                SSLError()
+                raiseSSLError()
               else:
-                SSLError("Unknown error")
+                raiseSSLError("Unknown error")
           client.sslNoHandshake = false
 
     if client.isSSL and client.sslNoHandshake:
@@ -485,19 +485,19 @@ when defined(ssl):
         var errret = SSLGetError(socket.sslHandle, ret)
         case errret
         of SSL_ERROR_ZERO_RETURN:
-          SSLError("TLS/SSL connection failed to initiate, socket closed prematurely.")
+          raiseSSLError("TLS/SSL connection failed to initiate, socket closed prematurely.")
         of SSL_ERROR_WANT_CONNECT, SSL_ERROR_WANT_ACCEPT,
           SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE:
           return false
         of SSL_ERROR_WANT_X509_LOOKUP:
-          SSLError("Function for x509 lookup has been called.")
+          raiseSSLError("Function for x509 lookup has been called.")
         of SSL_ERROR_SYSCALL, SSL_ERROR_SSL:
-          SSLError()
+          raiseSSLError()
         else:
-          SSLError("Unknown Error")
+          raiseSSLError("Unknown Error")
       socket.sslNoHandshake = false
     else:
-      SSLError("Socket is not an SSL socket.")
+      raiseSSLError("Socket is not an SSL socket.")
 
   proc gotHandshake*(socket: PSocket): bool =
     ## Determines whether a handshake has occurred between a client (``socket``)
@@ -507,7 +507,7 @@ when defined(ssl):
     if socket.isSSL:
       return not socket.sslNoHandshake
     else:
-      SSLError("Socket is not an SSL socket.")
+      raiseSSLError("Socket is not an SSL socket.")
 
 proc hasDataBuffered*(s: Socket): bool =
   ## Determines whether a socket has data buffered.

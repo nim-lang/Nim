@@ -720,42 +720,42 @@ else:
 
   proc update(sock: TAsyncFD, events: set[TEvent]) =
     let p = getGlobalDispatcher()
-    assert sock.TSocketHandle in p.selector
-    discard p.selector.update(sock.TSocketHandle, events)
+    assert sock.SocketHandle in p.selector
+    discard p.selector.update(sock.SocketHandle, events)
 
   proc register(sock: TAsyncFD) =
     let p = getGlobalDispatcher()
     var data = PData(sock: sock, readCBs: @[], writeCBs: @[])
-    p.selector.register(sock.TSocketHandle, {}, data.PObject)
+    p.selector.register(sock.SocketHandle, {}, data.PObject)
 
   proc newAsyncRawSocket*(domain: TDomain = AF_INET,
                typ: TType = SOCK_STREAM,
                protocol: TProtocol = IPPROTO_TCP): TAsyncFD =
     result = newRawSocket(domain, typ, protocol).TAsyncFD
-    result.TSocketHandle.setBlocking(false)
+    result.SocketHandle.setBlocking(false)
     register(result)
   
   proc closeSocket*(sock: TAsyncFD) =
     let disp = getGlobalDispatcher()
-    sock.TSocketHandle.close()
-    disp.selector.unregister(sock.TSocketHandle)
+    sock.SocketHandle.close()
+    disp.selector.unregister(sock.SocketHandle)
 
   proc unregister*(fd: TAsyncFD) =
-    getGlobalDispatcher().selector.unregister(fd.TSocketHandle)
+    getGlobalDispatcher().selector.unregister(fd.SocketHandle)
 
   proc addRead(sock: TAsyncFD, cb: TCallback) =
     let p = getGlobalDispatcher()
-    if sock.TSocketHandle notin p.selector:
+    if sock.SocketHandle notin p.selector:
       raise newException(EInvalidValue, "File descriptor not registered.")
-    p.selector[sock.TSocketHandle].data.PData.readCBs.add(cb)
-    update(sock, p.selector[sock.TSocketHandle].events + {EvRead})
+    p.selector[sock.SocketHandle].data.PData.readCBs.add(cb)
+    update(sock, p.selector[sock.SocketHandle].events + {EvRead})
   
   proc addWrite(sock: TAsyncFD, cb: TCallback) =
     let p = getGlobalDispatcher()
-    if sock.TSocketHandle notin p.selector:
+    if sock.SocketHandle notin p.selector:
       raise newException(EInvalidValue, "File descriptor not registered.")
-    p.selector[sock.TSocketHandle].data.PData.writeCBs.add(cb)
-    update(sock, p.selector[sock.TSocketHandle].events + {EvWrite})
+    p.selector[sock.SocketHandle].data.PData.writeCBs.add(cb)
+    update(sock, p.selector[sock.SocketHandle].events + {EvWrite})
   
   proc poll*(timeout = 500) =
     let p = getGlobalDispatcher()
@@ -808,7 +808,7 @@ else:
     var lastError: TOSErrorCode
     var it = aiList
     while it != nil:
-      var ret = connect(socket.TSocketHandle, it.ai_addr, it.ai_addrlen.TSocklen)
+      var ret = connect(socket.SocketHandle, it.ai_addr, it.ai_addrlen.Socklen)
       if ret == 0:
         # Request to connect completed immediately.
         success = true
@@ -837,7 +837,7 @@ else:
 
     proc cb(sock: TAsyncFD): bool =
       result = true
-      let res = recv(sock.TSocketHandle, addr readBuffer[0], size.cint,
+      let res = recv(sock.SocketHandle, addr readBuffer[0], size.cint,
                      flags.toOSFlags())
       #echo("recv cb res: ", res)
       if res < 0:
@@ -870,7 +870,7 @@ else:
       result = true
       let netSize = data.len-written
       var d = data.cstring
-      let res = send(sock.TSocketHandle, addr d[written], netSize.cint,
+      let res = send(sock.SocketHandle, addr d[written], netSize.cint,
                      MSG_NOSIGNAL)
       if res < 0:
         let lastError = osLastError()
@@ -898,10 +898,10 @@ else:
         client: TAsyncFD]]("acceptAddr")
     proc cb(sock: TAsyncFD): bool =
       result = true
-      var sockAddress: Tsockaddr_in
-      var addrLen = sizeof(sockAddress).TSocklen
-      var client = accept(sock.TSocketHandle,
-                          cast[ptr TSockAddr](addr(sockAddress)), addr(addrLen))
+      var sockAddress: SockAddr_in
+      var addrLen = sizeof(sockAddress).Socklen
+      var client = accept(sock.SocketHandle,
+                          cast[ptr SockAddr](addr(sockAddress)), addr(addrLen))
       if client == osInvalidSocket:
         let lastError = osLastError()
         assert lastError.int32 notin {EWOULDBLOCK, EAGAIN}
