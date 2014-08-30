@@ -2382,7 +2382,8 @@ proc hstrerror*(herrnum: cint): cstring {.importc, header: "<netdb.h>".}
 proc FD_CLR*(a1: cint, a2: var FdSet) {.importc, header: "<sys/select.h>".}
 proc FD_ISSET*(a1: cint | SocketHandle, a2: var FdSet): cint {.
   importc, header: "<sys/select.h>".}
-proc fdSet*(a1: cint | SocketHandle, a2: var FdSet) {.importc, header: "<sys/select.h>".}
+proc fdSet*(a1: cint | SocketHandle, a2: var FdSet) {.
+  importc: "FD_SET", header: "<sys/select.h>".}
 proc FD_ZERO*(a1: var FdSet) {.importc, header: "<sys/select.h>".}
 
 proc pselect*(a1: cint, a2, a3, a4: ptr FdSet, a5: ptr Ttimespec,
