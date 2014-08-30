@@ -120,12 +120,6 @@ proc ftpClient*(address: string, port = TPort(21),
   result.csock = socket()
   if result.csock == invalidSocket: raiseOSError(osLastError())
 
-proc getDSock[T](ftp: FtpBase[T]): TSocket =
-  return ftp.dsock
-
-proc getCSock[T](ftp: FtpBase[T]): TSocket =
-  return ftp.csock
-
 template blockingOperation(sock: TSocket, body: stmt) {.immediate.} =
   body
 
@@ -136,14 +130,17 @@ template blockingOperation(sock: asyncio.PAsyncSocket, body: stmt) {.immediate.}
 
 proc expectReply[T](ftp: FtpBase[T]): TaintedString =
   result = TaintedString""
-  blockingOperation(ftp.getCSock()):
-    ftp.getCSock().readLine(result)
+  blockingOperation(ftp.csock):
+    when T is Socket:
+      ftp.csock.readLine(result)
+    else:
+      discard ftp.csock.readLine(result)
 
 proc send*[T](ftp: FtpBase[T], m: string): TaintedString =
   ## Send a message to the server, and wait for a primary reply.
   ## ``\c\L`` is added for you.
-  blockingOperation(ftp.getCSock()):
-    ftp.getCSock().send(m & "\c\L")
+  blockingOperation(ftp.csock):
+    ftp.csock.send(m & "\c\L")
   return ftp.expectReply()
 
 proc assertReply(received: TaintedString, expected: string) =
@@ -275,17 +272,17 @@ proc connect*[T](ftp: FtpBase[T]) =
   if ftp.pass != "":
     assertReply ftp.send("PASS " & ftp.pass), "230"
 
-proc pwd*(ftp: FtpClient): string =
+proc pwd*[T](ftp: FtpBase[T]): string =
   ## Returns the current working directory.
   var wd = ftp.send("PWD")
   assertReply wd, "257"
   return wd.string.captureBetween('"') # "
 
-proc cd*(ftp: FtpClient, dir: string) =
+proc cd*[T](ftp: FtpBase[T], dir: string) =
   ## Changes the current directory on the remote FTP server to ``dir``.
   assertReply ftp.send("CWD " & dir.normalizePathSep), "250"
 
-proc cdup*(ftp: FtpClient) =
+proc cdup*[T](ftp: FtpBase[T]) =
   ## Changes the current directory to the parent of the current directory.
   assertReply ftp.send("CDUP"), "200"
 
@@ -312,10 +309,10 @@ proc getLines[T](ftp: FtpBase[T], async: bool = false): bool =
       {.fatal: "Incorrect socket instantiation".}
   
   if not async:
-    var readSocks: seq[TSocket] = @[ftp.getCSock()]
+    var readSocks: seq[TSocket] = @[ftp.csock]
     # This is only needed here. Asyncio gets this socket...
-    blockingOperation(ftp.getCSock()):
-      if readSocks.select(1) != 0 and ftp.getCSock() in readSocks:
+    blockingOperation(ftp.csock):
+      if readSocks.select(1) != 0 and ftp.csock in readSocks:
         assertReply ftp.expectReply(), "226"
         return true
 
@@ -357,7 +354,7 @@ proc existsFile*(ftp: FtpClient, file: string): bool =
   for f in items(files):
     if f.normalizePathSep == file.normalizePathSep: return true
 
-proc createDir*(ftp: FtpClient, dir: string, recursive: bool = false) =
+proc createDir*[T](ftp: FtpBase[T], dir: string, recursive: bool = false) =
   ## Creates a directory ``dir``. If ``recursive`` is true, the topmost
   ## subdirectory of ``dir`` will be created first, following the secondmost...
   ## etc. this allows you to give a full path as the ``dir`` without worrying
@@ -374,7 +371,7 @@ proc createDir*(ftp: FtpClient, dir: string, recursive: bool = false) =
         previousDirs.add('/')
     assertReply reply, "257"
 
-proc chmod*(ftp: FtpClient, path: string,
+proc chmod*[T](ftp: FtpBase[T], path: string,
             permissions: set[TFilePermission]) =
   ## Changes permission of ``path`` to ``permissions``.
   var userOctal = 0
@@ -440,7 +437,7 @@ proc getFile[T](ftp: FtpBase[T], async = false): bool =
         bytesRead = ftp.dsock.recvAsync(r, BufferSize)
         returned = bytesRead != -1
     else: 
-      bytesRead = getDSock(ftp).recv(r, BufferSize)
+      bytesRead = ftp.dsock.recv(r, BufferSize)
       returned = true
     let r2 = r.string
     if r2 != "":
@@ -451,9 +448,9 @@ proc getFile[T](ftp: FtpBase[T], async = false): bool =
       ftp.dsockConnected = false
   
   if not async:
-    var readSocks: seq[TSocket] = @[ftp.getCSock()]
-    blockingOperation(ftp.getCSock()):
-      if readSocks.select(1) != 0 and ftp.getCSock() in readSocks:
+    var readSocks: seq[TSocket] = @[ftp.csock]
+    blockingOperation(ftp.csock):
+      if readSocks.select(1) != 0 and ftp.csock in readSocks:
         assertReply ftp.expectReply(), "226"
         return true
 
@@ -508,7 +505,7 @@ proc doUpload[T](ftp: FtpBase[T], async = false): bool =
         return false
     
       if not async:
-        getDSock(ftp).send(s)
+        ftp.dsock.send(s)
       else:
         let bytesSent = ftp.dsock.sendAsync(s)
         if bytesSent == 0:
