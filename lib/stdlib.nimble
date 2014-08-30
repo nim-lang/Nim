@@ -2,5 +2,5 @@
 name          = "stdlib"
 version       = "0.9.0"
 author        = "Dominik Picheta"
-description   = "Nimrod's standard library."
+description   = "Nim's standard library."
 license       = "MIT"

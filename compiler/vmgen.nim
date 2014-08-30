@@ -1489,6 +1489,26 @@ proc genTupleConstr(c: PCtx, n: PNode, dest: var TDest) =
 
 proc genProc*(c: PCtx; s: PSym): int
 
+proc matches(s: PSym; x: string): bool =
+  let y = x.split('.')
+  var s = s
+  var L = y.len-1
+  while L >= 0:
+    if s == nil or y[L].cmpIgnoreStyle(s.name.s) != 0: return false
+    s = s.owner
+    dec L
+  result = true
+
+proc procIsCallback(c: PCtx; s: PSym): bool =
+  if s.offset < -1: return true
+  var i = -2
+  for key, value in items(c.callbacks):
+    if s.matches(key): 
+      doAssert s.offset == -1
+      s.offset = i
+      return true
+    dec i
+
 proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
   case n.kind
   of nkSym:
@@ -1499,7 +1519,8 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       genRdVar(c, n, dest, flags)
     of skProc, skConverter, skMacro, skTemplate, skMethod, skIterators:
       # 'skTemplate' is only allowed for 'getAst' support:
-      if sfImportc in s.flags: c.importcSym(n.info, s)
+      if procIsCallback(c, s): discard
+      elif sfImportc in s.flags: c.importcSym(n.info, s)
       genLit(c, n, dest)
     of skConst:
       gen(c, s.ast, dest)

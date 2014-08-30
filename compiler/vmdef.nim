@@ -170,7 +170,12 @@ type
     sym*: PSym
     slots*: array[TRegister, tuple[inUse: bool, kind: TSlotKind]]
     maxSlots*: int
-    
+
+  VmArgs* = object
+    ra*, rb*, rc*: Natural
+    slots*: pointer
+  VmCallback* = proc (args: VmArgs) {.closure.}
+  
   PCtx* = ref TCtx
   TCtx* = object of passes.TPassContext # code gen context
     code*: seq[TInstr]
@@ -189,6 +194,7 @@ type
     traceActive*: bool
     loopIterations*: int
     comesFromHeuristic*: TLineInfo # Heuristic for better macro stack traces
+    callbacks*: seq[tuple[key: string, value: VmCallback]]
 
   TPosition* = distinct int
 
@@ -198,11 +204,14 @@ proc newCtx*(module: PSym): PCtx =
   PCtx(code: @[], debug: @[],
     globals: newNode(nkStmtListExpr), constants: newNode(nkStmtList), types: @[],
     prc: PProc(blocks: @[]), module: module, loopIterations: MaxLoopIterations,
-    comesFromHeuristic: unknownLineInfo())
+    comesFromHeuristic: unknownLineInfo(), callbacks: @[])
 
 proc refresh*(c: PCtx, module: PSym) =
   c.module = module
   c.prc = PProc(blocks: @[])
+
+proc registerCallback*(c: PCtx; name: string; callback: VmCallback) =
+  c.callbacks.add((name, callback))
 
 const
   firstABxInstr* = opcTJmp

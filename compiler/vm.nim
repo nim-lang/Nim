@@ -133,6 +133,8 @@ proc createStrKeepNode(x: var TFullReg) =
     # cause of bugs like these is that the VM does not properly distinguish
     # between variable defintions (var foo = e) and variable updates (foo = e).
 
+include vmhooks
+
 template createStr(x) =
   x.node = newNode(nkStrLit)
 
@@ -801,7 +803,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let bb = regs[rb].node
       let isClosure = bb.kind == nkPar
       let prc = if not isClosure: bb.sym else: bb.sons[0].sym
-      if sfImportc in prc.flags:
+      if prc.offset < -1:
+        # it's a callback:
+        c.callbacks[-prc.offset-2].value(
+          VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[pointer](regs)))
+      elif sfImportc in prc.flags:
         if allowFFI notin c.features:
           globalError(c.debug[pc], errGenerated, "VM not allowed to do FFI")
         # we pass 'tos.slots' instead of 'regs' so that the compiler can keep
@@ -832,9 +838,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         if isClosure:
           newFrame.slots[rc].kind = rkNode
           newFrame.slots[rc].node = regs[rb].node.sons[1]
-        # allocate the temporaries:
-        #for i in rc+ord(isClosure) .. <prc.offset:
-        #  newFrame.slots[i] = newNode(nkEmpty)
         tos = newFrame
         move(regs, newFrame.slots)
         # -1 for the following 'inc pc'
@@ -1316,6 +1319,8 @@ proc evalExpr*(c: PCtx, n: PNode): PNode =
   assert c.code[start].opcode != opcEof
   result = execute(c, start)
 
+include vmops
+
 # for now we share the 'globals' environment. XXX Coming soon: An API for
 # storing&loading the 'globals' environment to get what a component system
 # requires.
@@ -1325,6 +1330,7 @@ var
 proc setupGlobalCtx(module: PSym) =
   if globalCtx.isNil: globalCtx = newCtx(module)
   else: refresh(globalCtx, module)
+  registerAdditionalOps(globalCtx)
 
 proc myOpen(module: PSym): PPassContext =
   #var c = newEvalContext(module, emRepl)

@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Implements some helper procs for Babel (Nim's package manager) support.
+## Implements some helper procs for Nimble (Nim's package manager) support.
 
 import parseutils, strutils, strtabs, os, options, msgs, lists
 

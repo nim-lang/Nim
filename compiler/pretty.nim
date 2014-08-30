@@ -160,7 +160,7 @@ proc check(c: PGen, n: PNode) =
     check(c, a.sons[L-2])
     check(c, a.sons[L-1])
   of nkTypeSection, nkConstSection:
-    for i in countup(0, sonsLen(n) - 1): 
+    for i in countup(0, sonsLen(n) - 1):
       let a = n.sons[i]
       if a.kind == nkCommentStmt: continue 
       checkSonsLen(a, 3)
