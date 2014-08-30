@@ -238,6 +238,9 @@ proc getPackageName*(path: string): string =
         #echo "from cache ", d, " |", packageCache[d], "|", path.splitFile.name
         return packageCache[d]
       inc parents
+      for file in walkFiles(d / "*.nimble"):
+        result = file.splitFile.name
+        break packageSearch
       for file in walkFiles(d / "*.babel"):
         result = file.splitFile.name
         break packageSearch
