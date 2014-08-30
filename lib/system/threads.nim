@@ -190,7 +190,7 @@ var globalsSlot = threadVarAlloc()
 
 when emulatedThreadVars:
   proc GetThreadLocalVars(): pointer {.compilerRtl, inl.} =
-    result = addr(cast[PGcThread](ThreadVarGetValue(globalsSlot)).tls)
+    result = addr(cast[PGcThread](threadVarGetValue(globalsSlot)).tls)
 
 when useStackMaskHack:
   proc maskStackPointer(offset: int): pointer {.compilerRtl, inl.} =
@@ -210,7 +210,7 @@ when not defined(useNimRtl):
     initGC()
     
   when emulatedThreadVars:
-    if NimThreadVarsSize() > sizeof(TThreadLocalStorage):
+    if nimThreadVarsSize() > sizeof(TThreadLocalStorage):
       echo "too large thread local storage size requested"
       quit 1
   
@@ -267,7 +267,7 @@ when not defined(boehmgc) and not hasSharedHeap:
   proc deallocOsPages()
 
 template threadProcWrapperBody(closure: expr) {.immediate.} =
-  when declared(globalsSlot): ThreadVarSetValue(globalsSlot, closure)
+  when declared(globalsSlot): threadVarSetValue(globalsSlot, closure)
   var t = cast[ptr TThread[TArg]](closure)
   when useStackMaskHack:
     var tls: TThreadLocalStorage
@@ -364,7 +364,7 @@ proc threadId*[TArg](t: var TThread[TArg]): TThreadId[TArg] {.inline.} =
 proc myThreadId*[TArg](): TThreadId[TArg] =
   ## returns the thread ID of the thread that calls this proc. This is unsafe
   ## because the type ``TArg`` is not checked for consistency!
-  result = cast[TThreadId[TArg]](ThreadVarGetValue(globalsSlot))
+  result = cast[TThreadId[TArg]](threadVarGetValue(globalsSlot))
 
 when false:
   proc mainThreadId*[TArg](): TThreadId[TArg] =
