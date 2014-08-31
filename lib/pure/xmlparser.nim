@@ -19,7 +19,7 @@ type
 {.deprecated: [EInvalidXml: XmlError].}
 
 proc raiseInvalidXml(errors: seq[string]) = 
-  var e: ref EInvalidXml
+  var e: ref XmlError
   new(e)
   e.msg = errors[0]
   e.errors = errors
@@ -125,14 +125,14 @@ proc parseXml*(s: Stream): XmlNode =
   ## errors are turned into an ``EInvalidXML`` exception.
   var errors: seq[string] = @[]
   result = parseXml(s, "unknown_html_doc", errors)
-  if errors.len > 0: raiseInvalidXMl(errors)
+  if errors.len > 0: raiseInvalidXml(errors)
 
 proc loadXml*(path: string, errors: var seq[string]): XmlNode =
   ## Loads and parses XML from file specified by ``path``, and returns 
   ## a ``PXmlNode``. Every occured parsing error is added to the `errors`
   ## sequence.
   var s = newFileStream(path, fmRead)
-  if s == nil: raise newException(EIO, "Unable to read file: " & path)
+  if s == nil: raise newException(IOError, "Unable to read file: " & path)
   result = parseXml(s, path, errors)
 
 proc loadXml*(path: string): XmlNode =
@@ -141,7 +141,7 @@ proc loadXml*(path: string): XmlNode =
   ## exception.  
   var errors: seq[string] = @[]
   result = loadXml(path, errors)
-  if errors.len > 0: raiseInvalidXMl(errors)
+  if errors.len > 0: raiseInvalidXml(errors)
 
 when isMainModule:
   import os

@@ -262,7 +262,7 @@ else:
   else:
     const iconvDll = "(libc.so.6|libiconv.so)"
 
-  when defined(macosx) and defined(powerpc32):
+  when defined(macosx) and defined(powerpc):
     const prefix = "lib"
   else:
     const prefix = ""
@@ -281,14 +281,14 @@ else:
 
   var errno {.importc, header: "<errno.h>".}: cint
 
-  proc iconvOpen(tocode, fromcode: cstring): PConverter {.
+  proc iconvOpen(tocode, fromcode: cstring): EncodingConverter {.
     importc: prefix & "iconv_open", cdecl, dynlib: iconvDll.}
-  proc iconvClose(c: PConverter) {.
+  proc iconvClose(c: EncodingConverter) {.
     importc: prefix & "iconv_close", cdecl, dynlib: iconvDll.}
-  proc iconv(c: PConverter, inbuf: var cstring, inbytesLeft: var int,
+  proc iconv(c: EncodingConverter, inbuf: var cstring, inbytesLeft: var int,
              outbuf: var cstring, outbytesLeft: var int): int {.
     importc: prefix & "iconv", cdecl, dynlib: iconvDll.}
-  proc iconv(c: PConverter, inbuf: pointer, inbytesLeft: pointer,
+  proc iconv(c: EncodingConverter, inbuf: pointer, inbytesLeft: pointer,
              outbuf: var cstring, outbytesLeft: var int): int {.
     importc: prefix & "iconv", cdecl, dynlib: iconvDll.}
   
@@ -305,7 +305,7 @@ proc open*(destEncoding = "UTF-8", srcEncoding = "CP1252"): EncodingConverter =
   when not defined(windows):
     result = iconvOpen(destEncoding, srcEncoding)
     if result == nil:
-      raise newException(EInvalidEncoding, 
+      raise newException(EncodingError, 
         "cannot create encoding converter from " & 
         srcEncoding & " to " & destEncoding)
   else:
@@ -401,7 +401,7 @@ when defined(windows):
       assert(false) # cannot happen
 
 else:
-  proc convert*(c: PConverter, s: string): string =
+  proc convert*(c: EncodingConverter, s: string): string =
     result = newString(s.len)
     var inLen = len(s)
     var outLen = len(result)
@@ -414,7 +414,7 @@ else:
         var lerr = errno
         if lerr == EILSEQ or lerr == EINVAL:
           # unknown char, skip
-          Dst[0] = Src[0]
+          dst[0] = src[0]
           src = cast[cstring](cast[int](src) + 1)
           dst = cast[cstring](cast[int](dst) + 1)
           dec(inLen)
@@ -426,19 +426,19 @@ else:
           dst = cast[cstring](cast[int](cstring(result)) + offset)
           outLen = len(result) - offset
         else:
-          osError(lerr.TOSErrorCode)
+          raiseOSError(lerr.OSErrorCode)
     # iconv has a buffer that needs flushing, specially if the last char is 
     # not '\0'
-    discard iconv(c, nil, nil, dst, outlen)
+    discard iconv(c, nil, nil, dst, outLen)
     if iconvres == cint(-1) and errno == E2BIG:
       var offset = cast[int](dst) - cast[int](cstring(result))
       setLen(result, len(result)+inLen*2+5)
       # 5 is minimally one utf-8 char
       dst = cast[cstring](cast[int](cstring(result)) + offset)
       outLen = len(result) - offset
-      discard iconv(c, nil, nil, dst, outlen)
+      discard iconv(c, nil, nil, dst, outLen)
     # trim output buffer
-    setLen(result, len(result) - outlen)
+    setLen(result, len(result) - outLen)
 
 proc convert*(s: string, destEncoding = "UTF-8", 
                          srcEncoding = "CP1252"): string =

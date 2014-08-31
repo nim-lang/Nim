@@ -1799,11 +1799,11 @@ proc inet_pton*(a1: cint, a2: cstring, a3: pointer): cint {.
   importc, header: "<arpa/inet.h>".}
 
 var
-  in6addr_any* {.importc, header: "<netinet/in.h>".}: TIn6_addr
-  in6addr_loopback* {.importc, header: "<netinet/in.h>".}: TIn6_addr
+  in6addr_any* {.importc, header: "<netinet/in.h>".}: TIn6Addr
+  in6addr_loopback* {.importc, header: "<netinet/in.h>".}: TIn6Addr
 
-proc IN6ADDR_ANY_INIT* (): TIn6_addr {.importc, header: "<netinet/in.h>".}
-proc IN6ADDR_LOOPBACK_INIT* (): TIn6_addr {.importc, header: "<netinet/in.h>".}
+proc IN6ADDR_ANY_INIT* (): TIn6Addr {.importc, header: "<netinet/in.h>".}
+proc IN6ADDR_LOOPBACK_INIT* (): TIn6Addr {.importc, header: "<netinet/in.h>".}
 
 # dirent.h
 proc closedir*(a1: ptr TDIR): cint  {.importc, header: "<dirent.h>".}
@@ -2518,40 +2518,40 @@ proc if_indextoname*(a1: cint, a2: cstring): cstring {.
 proc if_nameindex*(): ptr Tif_nameindex {.importc, header: "<net/if.h>".}
 proc if_freenameindex*(a1: ptr Tif_nameindex) {.importc, header: "<net/if.h>".}
 
-proc IN6_IS_ADDR_UNSPECIFIED* (a1: ptr TIn6_addr): cint {.
+proc IN6_IS_ADDR_UNSPECIFIED* (a1: ptr TIn6Addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Unspecified address.
-proc IN6_IS_ADDR_LOOPBACK* (a1: ptr TIn6_addr): cint {.
+proc IN6_IS_ADDR_LOOPBACK* (a1: ptr TIn6Addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Loopback address.
-proc IN6_IS_ADDR_MULTICAST* (a1: ptr TIn6_addr): cint {.
+proc IN6_IS_ADDR_MULTICAST* (a1: ptr TIn6Addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Multicast address.
-proc IN6_IS_ADDR_LINKLOCAL* (a1: ptr TIn6_addr): cint {.
+proc IN6_IS_ADDR_LINKLOCAL* (a1: ptr TIn6Addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Unicast link-local address.
-proc IN6_IS_ADDR_SITELOCAL* (a1: ptr TIn6_addr): cint {.
+proc IN6_IS_ADDR_SITELOCAL* (a1: ptr TIn6Addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Unicast site-local address.
-proc IN6_IS_ADDR_V4MAPPED* (a1: ptr TIn6_addr): cint {.
+proc IN6_IS_ADDR_V4MAPPED* (a1: ptr TIn6Addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## IPv4 mapped address.
-proc IN6_IS_ADDR_V4COMPAT* (a1: ptr TIn6_addr): cint {.
+proc IN6_IS_ADDR_V4COMPAT* (a1: ptr TIn6Addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## IPv4-compatible address.
-proc IN6_IS_ADDR_MC_NODELOCAL* (a1: ptr TIn6_addr): cint {.
+proc IN6_IS_ADDR_MC_NODELOCAL* (a1: ptr TIn6Addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Multicast node-local address.
-proc IN6_IS_ADDR_MC_LINKLOCAL* (a1: ptr TIn6_addr): cint {.
+proc IN6_IS_ADDR_MC_LINKLOCAL* (a1: ptr TIn6Addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Multicast link-local address.
-proc IN6_IS_ADDR_MC_SITELOCAL* (a1: ptr TIn6_addr): cint {.
+proc IN6_IS_ADDR_MC_SITELOCAL* (a1: ptr TIn6Addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Multicast site-local address.
-proc IN6_IS_ADDR_MC_ORGLOCAL* (a1: ptr TIn6_addr): cint {.
+proc IN6_IS_ADDR_MC_ORGLOCAL* (a1: ptr TIn6Addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Multicast organization-local address.
-proc IN6_IS_ADDR_MC_GLOBAL* (a1: ptr TIn6_addr): cint {.
+proc IN6_IS_ADDR_MC_GLOBAL* (a1: ptr TIn6Addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Multicast global address.
 

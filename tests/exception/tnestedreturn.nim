@@ -10,8 +10,8 @@ proc test1() =
   finally: echo "A"
 
   try:
-    raise newException(EOS, "Problem")
-  except EOS:
+    raise newException(OSError, "Problem")
+  except OSError:
     return
 
 test1()
@@ -23,7 +23,7 @@ proc test2() =
 
   try:
     return
-  except EOS:
+  except OSError:
     discard
 
 test2()
@@ -31,8 +31,8 @@ test2()
 proc test3() =
   try:
     try:
-      raise newException(EOS, "Problem")
-    except EOS:
+      raise newException(OSError, "Problem")
+    except OSError:
       return
   finally:
     echo "C"

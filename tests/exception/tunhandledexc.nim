@@ -4,8 +4,8 @@ discard """
   exitcode: "1"
 """
 type
-  ESomething = object of E_Base
-  ESomeOtherErr = object of E_Base
+  ESomething = object of Exception
+  ESomeOtherErr = object of Exception
 
 proc genErrors(s: string) =
   if s == "error!":
@@ -13,7 +13,7 @@ proc genErrors(s: string) =
   else:
     raise newException(EsomeotherErr, "bla")
 
-when True:
+when true:
   try:
     genErrors("errssor!")
   except ESomething:

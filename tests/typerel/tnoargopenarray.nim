@@ -1,7 +1,7 @@
 
 import db_sqlite
 
-var db: TDbConn
-Exec(db, sql"create table blabla()")
+var db: DbConn
+exec(db, sql"create table blabla()")
 
 

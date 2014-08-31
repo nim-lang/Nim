@@ -1,7 +1,7 @@
 discard """
   line: 2136
   file: "system.nim"
-  errormsg: "can raise an unlisted exception: ref EIO"
+  errormsg: "can raise an unlisted exception: ref IOError"
 """
 
 type
@@ -9,13 +9,13 @@ type
   TObjB = object of TObj
     a, b, c: string
   
-  EIO2 = ref object of EIO
+  IO2Error = ref object of IOError
   
 proc forw: int {. .}
   
-proc lier(): int {.raises: [EIO2].} =
+proc lier(): int {.raises: [IO2Error].} =
   writeln stdout, "arg"
 
 proc forw: int =
-  raise newException(EIO, "arg")
+  raise newException(IOError, "arg")
 

@@ -1,11 +1,11 @@
 discard """
   file: "twrongexc.nim"
-  outputsub: "Error: unhandled exception:  [EInvalidValue]"
+  outputsub: "Error: unhandled exception:  [ValueError]"
   exitcode: "1"
 """
 try:
-  raise newException(EInvalidValue, "")
-except EOverflow:
+  raise newException(ValueError, "")
+except OverflowError:
   echo("Error caught")
   
 

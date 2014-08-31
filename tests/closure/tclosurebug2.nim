@@ -38,17 +38,17 @@ template rawInsertImpl() {.dirty.} =
   data[h].val = val
   data[h].slot = seFilled
 
-template AddImpl() {.dirty.} =
-  if mustRehash(len(t.data), t.counter): Enlarge(t)
-  RawInsert(t, t.data, key, val)
+template addImpl() {.dirty.} =
+  if mustRehash(len(t.data), t.counter): enlarge(t)
+  rawInsert(t, t.data, key, val)
   inc(t.counter)
 
-template PutImpl() {.dirty.} =
-  var index = RawGet(t, key)
+template putImpl() {.dirty.} =
+  var index = rawGet(t, key)
   if index >= 0:
     t.data[index].val = val
   else:
-    AddImpl()
+    addImpl()
 
 proc len*[A, B](t: TOrderedTable[A, B]): int {.inline.} =
   ## returns the number of keys in `t`.
@@ -89,7 +89,7 @@ iterator mvalues*[A, B](t: var TOrderedTable[A, B]): var B =
   forAllOrderedPairs:
     yield t.data[h].val
 
-proc RawGet[A, B](t: TOrderedTable[A, B], key: A): int =
+proc rawGet[A, B](t: TOrderedTable[A, B], key: A): int =
   rawGetImpl()
 
 proc `[]`*[A, B](t: TOrderedTable[A, B], key: A): B =
@@ -97,21 +97,21 @@ proc `[]`*[A, B](t: TOrderedTable[A, B], key: A): B =
   ## default empty value for the type `B` is returned
   ## and no exception is raised. One can check with ``hasKey`` whether the key
   ## exists.
-  var index = RawGet(t, key)
+  var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
 
 proc mget*[A, B](t: var TOrderedTable[A, B], key: A): var B =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``EInvalidKey`` exception is raised.
-  var index = RawGet(t, key)
+  var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
-  else: raise newException(EInvalidKey, "key not found: " & $key)
+  else: raise newException(KeyError, "key not found: " & $key)
 
 proc hasKey*[A, B](t: TOrderedTable[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   result = rawGet(t, key) >= 0
 
-proc RawInsert[A, B](t: var TOrderedTable[A, B], 
+proc rawInsert[A, B](t: var TOrderedTable[A, B], 
                      data: var TOrderedKeyValuePairSeq[A, B],
                      key: A, val: B) =
   rawInsertImpl()
@@ -120,7 +120,7 @@ proc RawInsert[A, B](t: var TOrderedTable[A, B],
   if t.last >= 0: data[t.last].next = h
   t.last = h
 
-proc Enlarge[A, B](t: var TOrderedTable[A, B]) =
+proc enlarge[A, B](t: var TOrderedTable[A, B]) =
   var n: TOrderedKeyValuePairSeq[A, B]
   newSeq(n, len(t.data) * growthFactor)
   var h = t.first
@@ -129,7 +129,7 @@ proc Enlarge[A, B](t: var TOrderedTable[A, B]) =
   while h >= 0:
     var nxt = t.data[h].next
     if t.data[h].slot == seFilled: 
-      RawInsert(t, n, t.data[h].key, t.data[h].val)
+      rawInsert(t, n, t.data[h].key, t.data[h].val)
     h = nxt
   swap(t.data, n)
 
@@ -139,7 +139,7 @@ proc `[]=`*[A, B](t: var TOrderedTable[A, B], key: A, val: B) =
 
 proc add*[A, B](t: var TOrderedTable[A, B], key: A, val: B) =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
-  AddImpl()
+  addImpl()
 
 proc initOrderedTable*[A, B](initialSize=64): TOrderedTable[A, B] =
   ## creates a new ordered hash table that is empty. `initialSize` needs to be

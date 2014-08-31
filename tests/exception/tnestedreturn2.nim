@@ -1,14 +1,14 @@
 discard """
-  file: "tnestedreturn.nim"
-  outputsub: "Error: unhandled exception: Problem [EOS]"
+  file: "tnestedreturn2.nim"
+  outputsub: "Error: unhandled exception: Problem [OSError]"
   exitcode: "1"
 """
 
 proc test4() =
   try:
     try:
-      raise newException(EOS, "Problem")
-    except EOS:
+      raise newException(OSError, "Problem")
+    except OSError:
       return
   finally:
     discard
@@ -17,4 +17,4 @@ proc test4() =
 # but could cause segmentation fault if 
 # exceptions are not handled properly.
 test4()
-raise newException(EOS, "Problem")
+raise newException(OSError, "Problem")
