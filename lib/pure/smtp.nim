@@ -28,7 +28,8 @@
 ## For SSL support this module relies on OpenSSL. If you want to 
 ## enable SSL, compile with ``-d:ssl``.
 
-import sockets, strutils, strtabs, base64, os
+import net, strutils, strtabs, base64, os
+import asyncnet, asyncdispatch
 
 type
   Smtp* = object
@@ -46,6 +47,10 @@ type
 
   AsyncSmtp* = ref object
     sock: AsyncSocket
+    address: string
+    port: Port
+    useSsl: bool
+    debug: bool
 
 {.deprecated: [EInvalidReply: ReplyError, TMessage: Message, TSMTP: Smtp].}
 
@@ -73,19 +78,25 @@ proc checkReply(smtp: var TSMTP, reply: string) =
 
 const compiledWithSsl = defined(ssl)
 
-proc connect*(address: string, port = 25, 
-              ssl = false, debug = false): TSMTP =
+when not defined(ssl):
+  type PSSLContext = ref object
+  let defaultSSLContext: PSSLContext = nil
+else:
+  let defaultSSLContext = newContext(verifyMode = CVerifyNone)
+
+proc connect*(address: string, port = Port(25), 
+              ssl = false, debug = false,
+              sslContext = defaultSSLContext): TSMTP =
   ## Establishes a connection with a SMTP server.
   ## May fail with EInvalidReply or with a socket error.
-  result.sock = socket()
+  result.sock = newSocket()
   if ssl:
     when compiledWithSsl:
-      let ctx = newContext(verifyMode = CVerifyNone)
-      ctx.wrapSocket(result.sock)
+      sslContext.wrapSocket(result.sock)
     else:
       raise newException(ESystem, 
                          "SMTP module compiled without SSL support")
-  result.sock.connect(address, TPort(port))
+  result.sock.connect(address, port)
   result.debug = debug
   
   result.checkReply("220")
@@ -165,6 +176,82 @@ proc `$`*(msg: TMessage): string =
   result.add("\c\L")
   result.add(msg.msgBody)
   
+proc newAsyncSmtp*(address: string, port: Port, useSsl = false,
+                   sslContext = defaultSslContext): AsyncSmtp =
+  ## Creates a new ``AsyncSmtp`` instance.
+  new result
+  result.address = address
+  result.port = port
+  result.useSsl = useSsl
+
+  result.sock = newAsyncSocket()
+  if useSsl:
+    when compiledWithSsl:
+      sslContext.wrapSocket(result.sock)
+    else:
+      raise newException(ESystem, 
+                         "SMTP module compiled without SSL support")
+
+proc quitExcpt(smtp: AsyncSmtp, msg: string): PFuture[void] =
+  var retFuture = newFuture[void]()
+  var sendFut = smtp.sock.send("QUIT")
+  sendFut.callback =
+    proc () =
+      # TODO: Fix this in async procs.
+      raise newException(ReplyError, msg)
+  return retFuture
+
+proc checkReply(smtp: AsyncSmtp, reply: string) {.async.} =
+  var line = await smtp.sock.recvLine()
+  if not line.string.startswith(reply):
+    await quitExcpt(smtp, "Expected " & reply & " reply, got: " & line.string)
+
+proc connect*(smtp: AsyncSmtp) {.async.} =
+  ## Establishes a connection with a SMTP server.
+  ## May fail with EInvalidReply or with a socket error.
+  await smtp.sock.connect(smtp.address, smtp.port)
+
+  await smtp.checkReply("220")
+  await smtp.sock.send("HELO " & smtp.address & "\c\L")
+  await smtp.checkReply("250")
+
+proc auth*(smtp: AsyncSmtp, username, password: string) {.async.} =
+  ## Sends an AUTH command to the server to login as the `username` 
+  ## using `password`.
+  ## May fail with EInvalidReply.
+
+  await smtp.sock.send("AUTH LOGIN\c\L")
+  await smtp.checkReply("334") # TODO: Check whether it's asking for the "Username:"
+                               # i.e "334 VXNlcm5hbWU6"
+  await smtp.sock.send(encode(username) & "\c\L")
+  await smtp.checkReply("334") # TODO: Same as above, only "Password:" (I think?)
+  
+  await smtp.sock.send(encode(password) & "\c\L")
+  await smtp.checkReply("235") # Check whether the authentification was successful.
+
+proc sendMail*(smtp: AsyncSmtp, fromAddr: string,
+               toAddrs: seq[string], msg: string) {.async.} =
+  ## Sends ``msg`` from ``fromAddr`` to the addresses specified in ``toAddrs``.
+  ## Messages may be formed using ``createMessage`` by converting the
+  ## TMessage into a string.
+
+  await smtp.sock.send("MAIL FROM:<" & fromAddr & ">\c\L")
+  await smtp.checkReply("250")
+  for address in items(toAddrs):
+    await smtp.sock.send("RCPT TO:<" & smtp.address & ">\c\L")
+    await smtp.checkReply("250")
+  
+  # Send the message
+  await smtp.sock.send("DATA " & "\c\L")
+  await smtp.checkReply("354")
+  await smtp.sock.send(msg & "\c\L")
+  await smtp.sock.send(".\c\L")
+  await smtp.checkReply("250")
+
+proc close*(smtp: AsyncSmtp) {.async.} =
+  ## Disconnects from the SMTP server and closes the socket.
+  await smtp.sock.send("QUIT\c\L")
+  smtp.sock.close()
 
 when isMainModule:
   #var msg = createMessage("Test subject!", 
@@ -175,15 +262,16 @@ when isMainModule:
   #smtp.sendmail("root@localhost", @["dominik@localhost"], $msg)
   
   #echo(decode("a17sm3701420wbe.12"))
-  var msg = createMessage("Hello from Nim's SMTP!", 
-                          "Hello!!!!.\n Is this awesome or what?", 
-                          @["someone@yahoo.com", "someone@gmail.com"])
-  echo(msg)
+  proc main() {.async.} =
+    var client = newAsyncSmtp("smtp.gmail.com", Port(465), true)
+    await client.connect()
+    await client.auth("johndoe", "foo")
+    var msg = createMessage("Hello from Nim's SMTP!", 
+                            "Hello!!!!.\n Is this awesome or what?", 
+                            @["blah@gmail.com"])
+    echo(msg)
+    await client.sendMail("blah@gmail.com", @["blah@gmail.com"], $msg)
 
-  var smtp = connect("smtp.gmail.com", 465, True, True)
-  smtp.auth("someone", "password")
-  smtp.sendmail("someone@gmail.com", 
-                @["someone@yahoo.com", "someone@gmail.com"], $msg)
-  smtp.close()
+    await client.close()
   
-
+  waitFor main()
