@@ -28,14 +28,14 @@
 #    Copyright (c) Microsoft Corporation. All rights reserved.
 
 import
-  Windows
+  windows
 
 type
   HDROP* = THandle
-  UINT_PTR* = ptr UINT
+  UINT_PTR* = ptr uint32
   DWORD_PTR* = ptr DWORD
-  pHICON* = ptr HICON
-  pBool* = ptr BOOL
+  PHICON* = ptr HICON
+  PBool* = ptr bool
   STARTUPINFOW* {.final.} = object # a guess. Omission should get fixed in Windows.
     cb*: DWORD
     lpReserved*: LPTSTR
@@ -60,27 +60,27 @@ type
   TSTARTUPINFOW* = STARTUPINFOW
   PSTARTUPINFOW* = ptr STARTUPINFOW #unicode
 
-proc DragQueryFileA*(arg1: HDROP, arg2: UINT, arg3: LPSTR, arg4: UINT): UINT{.
+proc DragQueryFileA*(arg1: HDROP, arg2: uint32, arg3: LPSTR, arg4: uint32): uint32{.
     stdcall, dynlib: "shell32.dll", importc: "DragQueryFileA".}
-proc DragQueryFileW*(arg1: HDROP, arg2: UINT, arg3: LPWSTR, arg4: UINT): UINT{.
+proc DragQueryFileW*(arg1: HDROP, arg2: uint32, arg3: LPWSTR, arg4: uint32): uint32{.
     stdcall, dynlib: "shell32.dll", importc: "DragQueryFileW".}
-proc DragQueryFile*(arg1: HDROP, arg2: UINT, arg3: LPSTR, arg4: UINT): UINT{.
+proc DragQueryFile*(arg1: HDROP, arg2: uint32, arg3: LPSTR, arg4: uint32): uint32{.
     stdcall, dynlib: "shell32.dll", importc: "DragQueryFileA".}
-proc DragQueryFile*(arg1: HDROP, arg2: UINT, arg3: LPWSTR, arg4: UINT): UINT{.
+proc DragQueryFile*(arg1: HDROP, arg2: uint32, arg3: LPWSTR, arg4: uint32): uint32{.
     stdcall, dynlib: "shell32.dll", importc: "DragQueryFileW".}
-proc DragQueryPoint*(arg1: HDROP, arg2: LPPOINT): BOOL{.stdcall,
+proc DragQueryPoint*(arg1: HDROP, arg2: LPPOINT): bool{.stdcall,
     dynlib: "shell32.dll", importc: "DragQueryPoint".}
 proc DragFinish*(arg1: HDROP){.stdcall, dynlib: "shell32.dll",
                                importc: "DragFinish".}
-proc DragAcceptFiles*(hwnd: HWND, arg2: BOOL){.stdcall, dynlib: "shell32.dll",
+proc DragAcceptFiles*(hwnd: HWND, arg2: bool){.stdcall, dynlib: "shell32.dll",
     importc: "DragAcceptFiles".}
-proc ShellExecuteA*(HWND: hwnd, lpOperation: LPCSTR, lpFile: LPCSTR,
+proc ShellExecuteA*(hwnd: HWND, lpOperation: LPCSTR, lpFile: LPCSTR,
                     lpParameters: LPCSTR, lpDirectory: LPCSTR, nShowCmd: int32): HInst{.
     stdcall, dynlib: "shell32.dll", importc: "ShellExecuteA".}
 proc ShellExecuteW*(hwnd: HWND, lpOperation: LPCWSTR, lpFile: LPCWSTR,
                     lpParameters: LPCWSTR, lpDirectory: LPCWSTR, nShowCmd: int32): HInst{.
     stdcall, dynlib: "shell32.dll", importc: "ShellExecuteW".}
-proc ShellExecute*(HWND: hwnd, lpOperation: LPCSTR, lpFile: LPCSTR,
+proc ShellExecute*(hwnd: HWND, lpOperation: LPCSTR, lpFile: LPCSTR,
                    lpParameters: LPCSTR, lpDirectory: LPCSTR, nShowCmd: int32): HInst{.
     stdcall, dynlib: "shell32.dll", importc: "ShellExecuteA".}
 proc ShellExecute*(hwnd: HWND, lpOperation: LPCWSTR, lpFile: LPCWSTR,
@@ -94,16 +94,16 @@ proc FindExecutable*(lpFile: LPCSTR, lpDirectory: LPCSTR, lpResult: LPSTR): HIns
     stdcall, dynlib: "shell32.dll", importc: "FindExecutableA".}
 proc FindExecutable*(lpFile: LPCWSTR, lpDirectory: LPCWSTR, lpResult: LPWSTR): HInst{.
     stdcall, dynlib: "shell32.dll", importc: "FindExecutableW".}
-proc CommandLineToArgvW*(lpCmdLine: LPCWSTR, pNumArgs: ptr int32): pLPWSTR{.
+proc CommandLineToArgvW*(lpCmdLine: LPCWSTR, pNumArgs: ptr int32): PLPWSTR{.
     stdcall, dynlib: "shell32.dll", importc: "CommandLineToArgvW".}
-proc ShellAboutA*(HWND: hWnd, szApp: LPCSTR, szOtherStuff: LPCSTR, HICON: hIcon): int32{.
+proc ShellAboutA*(hwnd: HWND, szApp: LPCSTR, szOtherStuff: LPCSTR, hIcon: HICON): int32{.
     stdcall, dynlib: "shell32.dll", importc: "ShellAboutA".}
-proc ShellAboutW*(HWND: hWnd, szApp: LPCWSTR, szOtherStuff: LPCWSTR,
-                  HICON: hIcon): int32{.stdcall, dynlib: "shell32.dll",
+proc ShellAboutW*(hwnd: HWND, szApp: LPCWSTR, szOtherStuff: LPCWSTR,
+                  hIcon: HICON): int32{.stdcall, dynlib: "shell32.dll",
                                         importc: "ShellAboutW".}
-proc ShellAbout*(HWND: hWnd, szApp: LPCSTR, szOtherStuff: LPCSTR, HICON: hIcon): int32{.
+proc ShellAbout*(hwnd: HWND, szApp: LPCSTR, szOtherStuff: LPCSTR, hIcon: HICON): int32{.
     stdcall, dynlib: "shell32.dll", importc: "ShellAboutA".}
-proc ShellAbout*(HWND: hWnd, szApp: LPCWSTR, szOtherStuff: LPCWSTR, HICON: hIcon): int32{.
+proc ShellAbout*(hwnd: HWND, szApp: LPCWSTR, szOtherStuff: LPCWSTR, hIcon: HICON): int32{.
     stdcall, dynlib: "shell32.dll", importc: "ShellAboutW".}
 proc DuplicateIcon*(inst: HINST, icon: HICON): HIcon{.stdcall,
     dynlib: "shell32.dll", importc: "DuplicateIcon".}
@@ -115,29 +115,29 @@ proc ExtractAssociatedIcon*(hInst: HINST, lpIconPath: LPSTR, lpiIcon: LPWORD): H
     stdcall, dynlib: "shell32.dll", importc: "ExtractAssociatedIconA".}
 proc ExtractAssociatedIcon*(hInst: HINST, lpIconPath: LPWSTR, lpiIcon: LPWORD): HICON{.
     stdcall, dynlib: "shell32.dll", importc: "ExtractAssociatedIconW".}
-proc ExtractIconA*(hInst: HINST, lpszExeFileName: LPCSTR, nIconIndex: UINT): HICON{.
+proc ExtractIconA*(hInst: HINST, lpszExeFileName: LPCSTR, nIconIndex: uint32): HICON{.
     stdcall, dynlib: "shell32.dll", importc: "ExtractIconA".}
-proc ExtractIconW*(hInst: HINST, lpszExeFileName: LPCWSTR, nIconIndex: UINT): HICON{.
+proc ExtractIconW*(hInst: HINST, lpszExeFileName: LPCWSTR, nIconIndex: uint32): HICON{.
     stdcall, dynlib: "shell32.dll", importc: "ExtractIconW".}
-proc ExtractIcon*(hInst: HINST, lpszExeFileName: LPCSTR, nIconIndex: UINT): HICON{.
+proc ExtractIcon*(hInst: HINST, lpszExeFileName: LPCSTR, nIconIndex: uint32): HICON{.
     stdcall, dynlib: "shell32.dll", importc: "ExtractIconA".}
-proc ExtractIcon*(hInst: HINST, lpszExeFileName: LPCWSTR, nIconIndex: UINT): HICON{.
+proc ExtractIcon*(hInst: HINST, lpszExeFileName: LPCWSTR, nIconIndex: uint32): HICON{.
     stdcall, dynlib: "shell32.dll", importc: "ExtractIconW".}
   # if(WINVER >= 0x0400)
 type                          # init with sizeof(DRAGINFO)
   DRAGINFOA* {.final.} = object
-    uSize*: UINT
+    uSize*: uint32
     pt*: POINT
-    fNC*: BOOL
+    fNC*: bool
     lpFileList*: LPSTR
     grfKeyState*: DWORD
 
   TDRAGINFOA* = DRAGINFOA
   LPDRAGINFOA* = ptr DRAGINFOA # init with sizeof(DRAGINFO)
   DRAGINFOW* {.final.} = object
-    uSize*: UINT
+    uSize*: uint32
     pt*: POINT
-    fNC*: BOOL
+    fNC*: bool
     lpFileList*: LPWSTR
     grfKeyState*: DWORD
 
@@ -184,8 +184,8 @@ type
   AppBarData* {.final.} = object
     cbSize*: DWORD
     hWnd*: HWND
-    uCallbackMessage*: UINT
-    uEdge*: UINT
+    uCallbackMessage*: uint32
+    uEdge*: uint32
     rc*: RECT
     lParam*: LPARAM           # message specific
 
@@ -197,41 +197,41 @@ proc SHAppBarMessage*(dwMessage: DWORD, pData: APPBARDATA): UINT_PTR{.stdcall,
   #
   #  EndAppBar
   #
-proc DoEnvironmentSubstA*(szString: LPSTR, cchString: UINT): DWORD{.stdcall,
+proc DoEnvironmentSubstA*(szString: LPSTR, cchString: uint32): DWORD{.stdcall,
     dynlib: "shell32.dll", importc: "DoEnvironmentSubstA".}
-proc DoEnvironmentSubstW*(szString: LPWSTR, cchString: UINT): DWORD{.stdcall,
+proc DoEnvironmentSubstW*(szString: LPWSTR, cchString: uint32): DWORD{.stdcall,
     dynlib: "shell32.dll", importc: "DoEnvironmentSubstW".}
-proc DoEnvironmentSubst*(szString: LPSTR, cchString: UINT): DWORD{.stdcall,
+proc DoEnvironmentSubst*(szString: LPSTR, cchString: uint32): DWORD{.stdcall,
     dynlib: "shell32.dll", importc: "DoEnvironmentSubstA".}
-proc DoEnvironmentSubst*(szString: LPWSTR, cchString: UINT): DWORD{.stdcall,
+proc DoEnvironmentSubst*(szString: LPWSTR, cchString: uint32): DWORD{.stdcall,
     dynlib: "shell32.dll", importc: "DoEnvironmentSubstW".}
   #Macro
 proc EIRESID*(x: int32): int32
-proc ExtractIconExA*(lpszFile: LPCSTR, nIconIndex: int32, phiconLarge: pHICON,
-                     phiconSmall: pHIcon, nIcons: UINT): UINT{.stdcall,
+proc ExtractIconExA*(lpszFile: LPCSTR, nIconIndex: int32, phiconLarge: PHICON,
+                     phiconSmall: PHICON, nIcons: uint32): uint32{.stdcall,
     dynlib: "shell32.dll", importc: "ExtractIconExA".}
-proc ExtractIconExW*(lpszFile: LPCWSTR, nIconIndex: int32, phiconLarge: pHICON,
-                     phiconSmall: pHIcon, nIcons: UINT): UINT{.stdcall,
+proc ExtractIconExW*(lpszFile: LPCWSTR, nIconIndex: int32, phiconLarge: PHICON,
+                     phiconSmall: PHICON, nIcons: uint32): uint32{.stdcall,
     dynlib: "shell32.dll", importc: "ExtractIconExW".}
 proc ExtractIconExA*(lpszFile: LPCSTR, nIconIndex: int32,
                      phiconLarge: var HICON, phiconSmall: var HIcon,
-                     nIcons: UINT): UINT{.stdcall, dynlib: "shell32.dll",
+                     nIcons: uint32): uint32{.stdcall, dynlib: "shell32.dll",
     importc: "ExtractIconExA".}
 proc ExtractIconExW*(lpszFile: LPCWSTR, nIconIndex: int32,
                      phiconLarge: var HICON, phiconSmall: var HIcon,
-                     nIcons: UINT): UINT{.stdcall, dynlib: "shell32.dll",
+                     nIcons: uint32): uint32{.stdcall, dynlib: "shell32.dll",
     importc: "ExtractIconExW".}
-proc ExtractIconEx*(lpszFile: LPCSTR, nIconIndex: int32, phiconLarge: pHICON,
-                    phiconSmall: pHIcon, nIcons: UINT): UINT{.stdcall,
+proc ExtractIconEx*(lpszFile: LPCSTR, nIconIndex: int32, phiconLarge: PHICON,
+                    phiconSmall: PHICON, nIcons: uint32): uint32{.stdcall,
     dynlib: "shell32.dll", importc: "ExtractIconExA".}
-proc ExtractIconEx*(lpszFile: LPCWSTR, nIconIndex: int32, phiconLarge: pHICON,
-                    phiconSmall: pHIcon, nIcons: UINT): UINT{.stdcall,
+proc ExtractIconEx*(lpszFile: LPCWSTR, nIconIndex: int32, phiconLarge: PHICON,
+                    phiconSmall: PHICON, nIcons: uint32): uint32{.stdcall,
     dynlib: "shell32.dll", importc: "ExtractIconExW".}
 proc ExtractIconEx*(lpszFile: LPCSTR, nIconIndex: int32, phiconLarge: var HICON,
-                    phiconSmall: var HIcon, nIcons: UINT): UINT{.stdcall,
+                    phiconSmall: var HIcon, nIcons: uint32): uint32{.stdcall,
     dynlib: "shell32.dll", importc: "ExtractIconExA".}
 proc ExtractIconEx*(lpszFile: LPCWSTR, nIconIndex: int32,
-                    phiconLarge: var HICON, phiconSmall: var HIcon, nIcons: UINT): UINT{.
+                    phiconLarge: var HICON, phiconSmall: var HIcon, nIcons: uint32): uint32{.
     stdcall, dynlib: "shell32.dll", importc: "ExtractIconExW".}
   #
   # Shell File Operations
@@ -291,11 +291,11 @@ type
 type
   SHFILEOPSTRUCTA* {.final.} = object
     hwnd*: HWND
-    wFunc*: UINT
+    wFunc*: uint32
     pFrom*: LPCSTR
     pTo*: LPCSTR
     fFlags*: FILEOP_FLAGS
-    fAnyOperationsAborted*: BOOL
+    fAnyOperationsAborted*: bool
     hNameMappings*: LPVOID
     lpszProgressTitle*: LPCSTR # only used if FOF_SIMPLEPROGRESS
 
@@ -303,11 +303,11 @@ type
   LPSHFILEOPSTRUCTA* = ptr SHFILEOPSTRUCTA
   SHFILEOPSTRUCTW* {.final.} = object
     hwnd*: HWND
-    wFunc*: UINT
+    wFunc*: uint32
     pFrom*: LPCWSTR
     pTo*: LPCWSTR
     fFlags*: FILEOP_FLAGS
-    fAnyOperationsAborted*: BOOL
+    fAnyOperationsAborted*: bool
     hNameMappings*: LPVOID
     lpszProgressTitle*: LPCWSTR
 
@@ -430,10 +430,10 @@ type
     cbSize*: DWORD
     fMask*: ULONG
     hwnd*: HWND
-    lpVerb*: lpcwstr
-    lpFile*: lpcwstr
-    lpParameters*: lpcwstr
-    lpDirectory*: lpcwstr
+    lpVerb*: LPCWSTR
+    lpFile*: LPCWSTR
+    lpParameters*: LPCWSTR
+    lpDirectory*: LPCWSTR
     nShow*: int32
     hInstApp*: HINST
     lpIDList*: LPVOID
@@ -456,24 +456,24 @@ else:
     SHELLEXECUTEINFO* = SHELLEXECUTEINFOA
     TSHELLEXECUTEINFO* = SHELLEXECUTEINFOA
     LPSHELLEXECUTEINFO* = LPSHELLEXECUTEINFOA
-proc ShellExecuteExA*(lpExecInfo: LPSHELLEXECUTEINFOA): Bool{.stdcall,
+proc ShellExecuteExA*(lpExecInfo: LPSHELLEXECUTEINFOA): bool{.stdcall,
     dynlib: "shell32.dll", importc: "ShellExecuteExA".}
-proc ShellExecuteExW*(lpExecInfo: LPSHELLEXECUTEINFOW): Bool{.stdcall,
+proc ShellExecuteExW*(lpExecInfo: LPSHELLEXECUTEINFOW): bool{.stdcall,
     dynlib: "shell32.dll", importc: "ShellExecuteExW".}
-proc ShellExecuteEx*(lpExecInfo: LPSHELLEXECUTEINFOA): Bool{.stdcall,
+proc ShellExecuteEx*(lpExecInfo: LPSHELLEXECUTEINFOA): bool{.stdcall,
     dynlib: "shell32.dll", importc: "ShellExecuteExA".}
-proc ShellExecuteEx*(lpExecInfo: LPSHELLEXECUTEINFOW): Bool{.stdcall,
+proc ShellExecuteEx*(lpExecInfo: LPSHELLEXECUTEINFOW): bool{.stdcall,
     dynlib: "shell32.dll", importc: "ShellExecuteExW".}
-proc WinExecErrorA*(HWND: hwnd, error: int32, lpstrFileName: LPCSTR,
+proc WinExecErrorA*(hwnd: HWND, error: int32, lpstrFileName: LPCSTR,
                     lpstrTitle: LPCSTR){.stdcall, dynlib: "shell32.dll",
     importc: "WinExecErrorA".}
-proc WinExecErrorW*(HWND: hwnd, error: int32, lpstrFileName: LPCWSTR,
+proc WinExecErrorW*(hwnd: HWND, error: int32, lpstrFileName: LPCWSTR,
                     lpstrTitle: LPCWSTR){.stdcall, dynlib: "shell32.dll",
     importc: "WinExecErrorW".}
-proc WinExecError*(HWND: hwnd, error: int32, lpstrFileName: LPCSTR,
+proc WinExecError*(hwnd: HWND, error: int32, lpstrFileName: LPCSTR,
                    lpstrTitle: LPCSTR){.stdcall, dynlib: "shell32.dll",
                                         importc: "WinExecErrorA".}
-proc WinExecError*(HWND: hwnd, error: int32, lpstrFileName: LPCWSTR,
+proc WinExecError*(hwnd: HWND, error: int32, lpstrFileName: LPCWSTR,
                    lpstrTitle: LPCWSTR){.stdcall, dynlib: "shell32.dll",
     importc: "WinExecErrorW".}
 type
@@ -487,7 +487,7 @@ type
     hUserToken*: HANDLE
     lpProcessAttributes*: LPSECURITY_ATTRIBUTES
     lpThreadAttributes*: LPSECURITY_ATTRIBUTES
-    bInheritHandles*: BOOL
+    bInheritHandles*: bool
     dwCreationFlags*: DWORD
     lpStartupInfo*: LPSTARTUPINFOW
     lpProcessInformation*: LPPROCESS_INFORMATION
@@ -495,7 +495,7 @@ type
   TSHCREATEPROCESSINFOW* = SHCREATEPROCESSINFOW
   PSHCREATEPROCESSINFOW* = ptr SHCREATEPROCESSINFOW
 
-proc SHCreateProcessAsUserW*(pscpi: PSHCREATEPROCESSINFOW): Bool{.stdcall,
+proc SHCreateProcessAsUserW*(pscpi: PSHCREATEPROCESSINFOW): bool{.stdcall,
     dynlib: "shell32.dll", importc: "SHCreateProcessAsUserW".}
   #
   #  End ShellExecuteEx and family }
@@ -544,16 +544,16 @@ type
   NOTIFYICONDATAA* {.final.} = object
     cbSize*: DWORD
     hWnd*: HWND
-    uID*: UINT
-    uFlags*: UINT
-    uCallbackMessage*: UINT
+    uID*: uint32
+    uFlags*: uint32
+    uCallbackMessage*: uint32
     hIcon*: HICON
-    szTip*: array[0..127, CHAR]
+    szTip*: array[0..127, char]
     dwState*: DWORD
     dwStateMask*: DWORD
-    szInfo*: array[0..255, CHAR]
-    uTimeout*: UINT           # also: uVersion
-    szInfoTitle*: array[0..63, CHAR]
+    szInfo*: array[0..255, char]
+    uTimeout*: uint32           # also: uVersion
+    szInfoTitle*: array[0..63, char]
     dwInfoFlags*: DWORD
     guidItem*: TGUID
 
@@ -562,16 +562,16 @@ type
   NOTIFYICONDATAW* {.final.} = object
     cbSize*: DWORD
     hWnd*: HWND
-    uID*: UINT
-    uFlags*: UINT
-    uCallbackMessage*: UINT
+    uID*: uint32
+    uFlags*: uint32
+    uCallbackMessage*: uint32
     hIcon*: HICON
-    szTip*: array[0..127, WCHAR]
+    szTip*: array[0..127, Wchar]
     dwState*: DWORD
     dwStateMask*: DWORD
-    szInfo*: array[0..255, WCHAR]
-    uTimeout*: UINT           # also uVersion : UINT
-    szInfoTitle*: array[0..63, CHAR]
+    szInfo*: array[0..255, Wchar]
+    uTimeout*: uint32           # also uVersion : UINT
+    szInfoTitle*: array[0..63, char]
     dwInfoFlags*: DWORD
     guidItem*: TGUID
 
@@ -619,13 +619,13 @@ const
   NIIF_ICON_MASK* = 0x0000000F
   NIIF_NOSOUND* = 0x00000010
 
-proc Shell_NotifyIconA*(dwMessage: Dword, lpData: PNOTIFYICONDATAA): Bool{.
+proc Shell_NotifyIconA*(dwMessage: Dword, lpData: PNOTIFYICONDATAA): bool{.
     stdcall, dynlib: "shell32.dll", importc: "Shell_NotifyIconA".}
-proc Shell_NotifyIconW*(dwMessage: Dword, lpData: PNOTIFYICONDATAW): Bool{.
+proc Shell_NotifyIconW*(dwMessage: Dword, lpData: PNOTIFYICONDATAW): bool{.
     stdcall, dynlib: "shell32.dll", importc: "Shell_NotifyIconW".}
-proc Shell_NotifyIcon*(dwMessage: Dword, lpData: PNOTIFYICONDATAA): Bool{.
+proc Shell_NotifyIcon*(dwMessage: Dword, lpData: PNOTIFYICONDATAA): bool{.
     stdcall, dynlib: "shell32.dll", importc: "Shell_NotifyIconA".}
-proc Shell_NotifyIcon*(dwMessage: Dword, lpData: PNOTIFYICONDATAW): Bool{.
+proc Shell_NotifyIcon*(dwMessage: Dword, lpData: PNOTIFYICONDATAW): bool{.
     stdcall, dynlib: "shell32.dll", importc: "Shell_NotifyIconW".}
   #
   #       The SHGetFileInfo API provides an easy way to get attributes
@@ -652,20 +652,20 @@ type
     hIcon*: HICON             # out: icon
     iIcon*: int32             # out: icon index
     dwAttributes*: DWORD      # out: SFGAO_ flags
-    szDisplayName*: array[0..(MAX_PATH) - 1, CHAR] # out: display name (or path)
-    szTypeName*: array[0..79, CHAR] # out: type name
+    szDisplayName*: array[0..(MAX_PATH) - 1, char] # out: display name (or path)
+    szTypeName*: array[0..79, char] # out: type name
 
   TSHFILEINFOA* = SHFILEINFOA
-  pSHFILEINFOA* = ptr SHFILEINFOA
+  PSHFILEINFOA* = ptr SHFILEINFOA
   SHFILEINFOW* {.final.} = object
     hIcon*: HICON             # out: icon
     iIcon*: int32             # out: icon index
     dwAttributes*: DWORD      # out: SFGAO_ flags
-    szDisplayName*: array[0..(MAX_PATH) - 1, WCHAR] # out: display name (or path)
-    szTypeName*: array[0..79, WCHAR] # out: type name
+    szDisplayName*: array[0..(MAX_PATH) - 1, Wchar] # out: display name (or path)
+    szTypeName*: array[0..79, Wchar] # out: type name
 
   TSHFILEINFOW* = SHFILEINFOW
-  pSHFILEINFOW* = ptr SHFILEINFOW
+  PSHFILEINFOW* = ptr SHFILEINFOW
 
 when defined(UNICODE):
   type
@@ -701,67 +701,67 @@ const
                                    # in the upper 8 bits of the iIcon
 
 proc SHGetFileInfoA*(pszPath: LPCSTR, dwFileAttributes: DWORD,
-                     psfi: pSHFILEINFOA, cbFileInfo, UFlags: UINT): DWORD{.
+                     psfi: PSHFILEINFOA, cbFileInfo, UFlags: uint32): DWORD{.
     stdcall, dynlib: "shell32.dll", importc: "SHGetFileInfoA".}
 proc SHGetFileInfoW*(pszPath: LPCWSTR, dwFileAttributes: DWORD,
-                     psfi: pSHFILEINFOW, cbFileInfo, UFlags: UINT): DWORD{.
+                     psfi: PSHFILEINFOW, cbFileInfo, UFlags: uint32): DWORD{.
     stdcall, dynlib: "shell32.dll", importc: "SHGetFileInfoW".}
 proc SHGetFileInfo*(pszPath: LPCSTR, dwFileAttributes: DWORD,
-                    psfi: pSHFILEINFOA, cbFileInfo, UFlags: UINT): DWORD{.
+                    psfi: PSHFILEINFOA, cbFileInfo, UFlags: uint32): DWORD{.
     stdcall, dynlib: "shell32.dll", importc: "SHGetFileInfoA".}
 proc SHGetFileInfoA*(pszPath: LPCSTR, dwFileAttributes: DWORD,
-                     psfi: var TSHFILEINFOA, cbFileInfo, UFlags: UINT): DWORD{.
+                     psfi: var TSHFILEINFOA, cbFileInfo, UFlags: uint32): DWORD{.
     stdcall, dynlib: "shell32.dll", importc: "SHGetFileInfoA".}
 proc SHGetFileInfoW*(pszPath: LPCWSTR, dwFileAttributes: DWORD,
-                     psfi: var TSHFILEINFOW, cbFileInfo, UFlags: UINT): DWORD{.
+                     psfi: var TSHFILEINFOW, cbFileInfo, UFlags: uint32): DWORD{.
     stdcall, dynlib: "shell32.dll", importc: "SHGetFileInfoW".}
 proc SHGetFileInfo*(pszPath: LPCSTR, dwFileAttributes: DWORD,
-                    psfi: var TSHFILEINFOA, cbFileInfo, UFlags: UINT): DWORD{.
+                    psfi: var TSHFILEINFOA, cbFileInfo, UFlags: uint32): DWORD{.
     stdcall, dynlib: "shell32.dll", importc: "SHGetFileInfoA".}
 proc SHGetFileInfo*(pszPath: LPCWSTR, dwFileAttributes: DWORD,
-                    psfi: var TSHFILEINFOW, cbFileInfo, UFlags: UINT): DWORD{.
+                    psfi: var TSHFILEINFOW, cbFileInfo, UFlags: uint32): DWORD{.
     stdcall, dynlib: "shell32.dll", importc: "SHGetFileInfoW".}
 proc SHGetDiskFreeSpaceExA*(pszDirectoryName: LPCSTR,
-                            pulFreeBytesAvailableToCaller: pULARGE_INTEGER,
-                            pulTotalNumberOfBytes: pULARGE_INTEGER,
-                            pulTotalNumberOfFreeBytes: pULARGE_INTEGER): Bool{.
+                            pulFreeBytesAvailableToCaller: PULARGE_INTEGER,
+                            pulTotalNumberOfBytes: PULARGE_INTEGER,
+                            pulTotalNumberOfFreeBytes: PULARGE_INTEGER): bool{.
     stdcall, dynlib: "shell32.dll", importc: "SHGetDiskFreeSpaceExA".}
 proc SHGetDiskFreeSpaceExW*(pszDirectoryName: LPCWSTR,
-                            pulFreeBytesAvailableToCaller: pULARGE_INTEGER,
-                            pulTotalNumberOfBytes: pULARGE_INTEGER,
-                            pulTotalNumberOfFreeBytes: pULARGE_INTEGER): Bool{.
+                            pulFreeBytesAvailableToCaller: PULARGE_INTEGER,
+                            pulTotalNumberOfBytes: PULARGE_INTEGER,
+                            pulTotalNumberOfFreeBytes: PULARGE_INTEGER): bool{.
     stdcall, dynlib: "shell32.dll", importc: "SHGetDiskFreeSpaceExW".}
 proc SHGetDiskFreeSpaceEx*(pszDirectoryName: LPCSTR,
-                           pulFreeBytesAvailableToCaller: pULARGE_INTEGER,
-                           pulTotalNumberOfBytes: pULARGE_INTEGER,
-                           pulTotalNumberOfFreeBytes: pULARGE_INTEGER): Bool{.
+                           pulFreeBytesAvailableToCaller: PULARGE_INTEGER,
+                           pulTotalNumberOfBytes: PULARGE_INTEGER,
+                           pulTotalNumberOfFreeBytes: PULARGE_INTEGER): bool{.
     stdcall, dynlib: "shell32.dll", importc: "SHGetDiskFreeSpaceExA".}
 proc SHGetDiskFreeSpace*(pszDirectoryName: LPCSTR,
-                         pulFreeBytesAvailableToCaller: pULARGE_INTEGER,
-                         pulTotalNumberOfBytes: pULARGE_INTEGER,
-                         pulTotalNumberOfFreeBytes: pULARGE_INTEGER): Bool{.
+                         pulFreeBytesAvailableToCaller: PULARGE_INTEGER,
+                         pulTotalNumberOfBytes: PULARGE_INTEGER,
+                         pulTotalNumberOfFreeBytes: PULARGE_INTEGER): bool{.
     stdcall, dynlib: "shell32.dll", importc: "SHGetDiskFreeSpaceExA".}
 proc SHGetDiskFreeSpaceEx*(pszDirectoryName: LPCWSTR,
-                           pulFreeBytesAvailableToCaller: pULARGE_INTEGER,
-                           pulTotalNumberOfBytes: pULARGE_INTEGER,
-                           pulTotalNumberOfFreeBytes: pULARGE_INTEGER): Bool{.
+                           pulFreeBytesAvailableToCaller: PULARGE_INTEGER,
+                           pulTotalNumberOfBytes: PULARGE_INTEGER,
+                           pulTotalNumberOfFreeBytes: PULARGE_INTEGER): bool{.
     stdcall, dynlib: "shell32.dll", importc: "SHGetDiskFreeSpaceExW".}
 proc SHGetDiskFreeSpace*(pszDirectoryName: LPCWSTR,
-                         pulFreeBytesAvailableToCaller: pULARGE_INTEGER,
-                         pulTotalNumberOfBytes: pULARGE_INTEGER,
-                         pulTotalNumberOfFreeBytes: pULARGE_INTEGER): Bool{.
+                         pulFreeBytesAvailableToCaller: PULARGE_INTEGER,
+                         pulTotalNumberOfBytes: PULARGE_INTEGER,
+                         pulTotalNumberOfFreeBytes: PULARGE_INTEGER): bool{.
     stdcall, dynlib: "shell32.dll", importc: "SHGetDiskFreeSpaceExW".}
 proc SHGetNewLinkInfoA*(pszLinkTo: LPCSTR, pszDir: LPCSTR, pszName: LPSTR,
-                        pfMustCopy: pBool, uFlags: UINT): Bool{.stdcall,
+                        pfMustCopy: PBool, uFlags: uint32): bool{.stdcall,
     dynlib: "shell32.dll", importc: "SHGetNewLinkInfoA".}
 proc SHGetNewLinkInfoW*(pszLinkTo: LPCWSTR, pszDir: LPCWSTR, pszName: LPWSTR,
-                        pfMustCopy: pBool, uFlags: UINT): Bool{.stdcall,
+                        pfMustCopy: PBool, uFlags: uint32): bool{.stdcall,
     dynlib: "shell32.dll", importc: "SHGetNewLinkInfoW".}
 proc SHGetNewLinkInfo*(pszLinkTo: LPCSTR, pszDir: LPCSTR, pszName: LPSTR,
-                       pfMustCopy: pBool, uFlags: UINT): Bool{.stdcall,
+                       pfMustCopy: PBool, uFlags: uint32): bool{.stdcall,
     dynlib: "shell32.dll", importc: "SHGetNewLinkInfoA".}
 proc SHGetNewLinkInfo*(pszLinkTo: LPCWSTR, pszDir: LPCWSTR, pszName: LPWSTR,
-                       pfMustCopy: pBool, uFlags: UINT): Bool{.stdcall,
+                       pfMustCopy: PBool, uFlags: uint32): bool{.stdcall,
     dynlib: "shell32.dll", importc: "SHGetNewLinkInfoW".}
 const
   SHGNLI_PIDL* = 0x00000001   # pszLinkTo is a pidl
@@ -777,17 +777,17 @@ const
   PRINTACTION_DOCUMENTDEFAULTS* = 6
   PRINTACTION_SERVERPROPERTIES* = 7
 
-proc SHInvokePrinterCommandA*(HWND: hwnd, uAction: UINT, lpBuf1: LPCSTR,
-                              lpBuf2: LPCSTR, fModal: Bool): Bool{.stdcall,
+proc SHInvokePrinterCommandA*(hwnd: HWND, uAction: uint32, lpBuf1: LPCSTR,
+                              lpBuf2: LPCSTR, fModal: bool): bool{.stdcall,
     dynlib: "shell32.dll", importc: "SHInvokePrinterCommandA".}
-proc SHInvokePrinterCommandW*(HWND: hwnd, uAction: UINT, lpBuf1: LPCWSTR,
-                              lpBuf2: LPCWSTR, fModal: Bool): Bool{.stdcall,
+proc SHInvokePrinterCommandW*(hwnd: HWND, uAction: uint32, lpBuf1: LPCWSTR,
+                              lpBuf2: LPCWSTR, fModal: bool): bool{.stdcall,
     dynlib: "shell32.dll", importc: "SHInvokePrinterCommandW".}
-proc SHInvokePrinterCommand*(HWND: hwnd, uAction: UINT, lpBuf1: LPCSTR,
-                             lpBuf2: LPCSTR, fModal: Bool): Bool{.stdcall,
+proc SHInvokePrinterCommand*(hwnd: HWND, uAction: uint32, lpBuf1: LPCSTR,
+                             lpBuf2: LPCSTR, fModal: bool): bool{.stdcall,
     dynlib: "shell32.dll", importc: "SHInvokePrinterCommandA".}
-proc SHInvokePrinterCommand*(HWND: hwnd, uAction: UINT, lpBuf1: LPCWSTR,
-                             lpBuf2: LPCWSTR, fModal: Bool): Bool{.stdcall,
+proc SHInvokePrinterCommand*(hwnd: HWND, uAction: uint32, lpBuf1: LPCWSTR,
+                             lpBuf2: LPCWSTR, fModal: bool): bool{.stdcall,
     dynlib: "shell32.dll", importc: "SHInvokePrinterCommandW".}
 proc SHLoadNonloadedIconOverlayIdentifiers*(): HResult{.stdcall,
     dynlib: "shell32.dll", importc: "SHInvokePrinterCommandW".}

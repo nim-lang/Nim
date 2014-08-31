@@ -27,15 +27,15 @@ import
   windows
 
 type
-  MMRESULT* = UINT
-  MMVERSION* = UINT
+  MMRESULT* = uint32
+  MMVERSION* = uint32
   HWAVEOUT* = THandle
   LPHWAVEOUT* = ptr HWAVEOUT
   HWAVEIN* = THandle
   LPHWAVEIN* = ptr HWAVEOUT
   HWAVE* = THandle
   LPHWAVE* = ptr THandle
-  LPUINT* = ptr UINT
+  LPUINT* = ptr uint32
 
 const
   MAXPNAMELEN* = 32
@@ -178,18 +178,18 @@ const
   DRV_MCI_LAST* = (DRV_RESERVED + 0x00000FFF)
 
 type
-  PDRVCALLBACK* = proc (hdrvr: tHandle, uMsg: UINT, dwUser, dw1, dw2: DWORD){.
+  PDRVCALLBACK* = proc (hdrvr: THandle, uMsg: uint32, dwUser, dw1, dw2: DWORD){.
       stdcall.}
 
-proc sndPlaySoundA*(Name: LPCSTR, flags: UINT): BOOL{.stdcall,
+proc sndPlaySoundA*(Name: LPCSTR, flags: uint32): bool{.stdcall,
     dynlib: "winmm.dll", importc: "sndPlaySoundA".}
-proc sndPlaySoundW*(Name: LPCWSTR, flags: UINT): BOOL{.stdcall,
+proc sndPlaySoundW*(Name: LPCWSTR, flags: uint32): bool{.stdcall,
     dynlib: "winmm.dll", importc: "sndPlaySoundW".}
 when defined(winUNICODE):
-  proc sndPlaySound*(Name: cstring, flags: UINT): BOOL{.stdcall,
+  proc sndPlaySound*(Name: cstring, flags: uint32): bool{.stdcall,
       dynlib: "winmm.dll", importc: "sndPlaySoundW".}
 else:
-  proc sndPlaySound*(Name: cstring, flags: UINT): BOOL{.stdcall,
+  proc sndPlaySound*(Name: cstring, flags: uint32): bool{.stdcall,
       dynlib: "winmm.dll", importc: "sndPlaySoundA".}
 const
   SND_NODEFAULT* = 2
@@ -225,12 +225,12 @@ const
   WIM_OPEN* = MM_WIM_OPEN
   WIM_CLOSE* = MM_WIM_CLOSE
   WIM_DATA* = MM_WIM_DATA
-  WAVE_MAPPER* = UINT(- 1)
+  WAVE_MAPPER* = uint32(- 1)
   WAVE_FORMAT_QUERY* = 1
   WAVE_ALLOWSYNC* = 2
   WAVE_MAPPED* = 4
   WAVE_FORMAT_DIRECT* = 8
-  WAVE_FORMAT_DIRECT_QUERY* = (WAVE_FORMAT_QUERY Or WAVE_FORMAT_DIRECT)
+  WAVE_FORMAT_DIRECT_QUERY* = (WAVE_FORMAT_QUERY or WAVE_FORMAT_DIRECT)
   MIM_OPEN* = MM_MIM_OPEN
   MIM_CLOSE* = MM_MIM_CLOSE
   MIM_DATA* = MM_MIM_DATA
@@ -242,7 +242,7 @@ const
   MOM_DONE* = MM_MOM_DONE
   MIM_MOREDATA* = MM_MIM_MOREDATA
   MOM_POSITIONCB* = MM_MOM_POSITIONCB
-  MIDIMAPPER* = UINT(- 1)
+  MIDIMAPPER* = uint32(- 1)
   MIDI_IO_STATUS* = 32
   MIDI_CACHE_ALL* = 1
   MIDI_CACHE_BESTFIT* = 2
@@ -364,53 +364,53 @@ const
   MIXERCONTROL_CT_UNITS_DECIBELS* = 0x00040000
   MIXERCONTROL_CT_UNITS_PERCENT* = 0x00050000
   MIXERCONTROL_CONTROLTYPE_CUSTOM* = (
-    MIXERCONTROL_CT_CLASS_CUSTOM Or MIXERCONTROL_CT_UNITS_CUSTOM)
-  MIXERCONTROL_CONTROLTYPE_BOOLEANMETER* = (MIXERCONTROL_CT_CLASS_METER Or
-      MIXERCONTROL_CT_SC_METER_POLLED Or MIXERCONTROL_CT_UNITS_BOOLEAN)
-  MIXERCONTROL_CONTROLTYPE_SIGNEDMETER* = (MIXERCONTROL_CT_CLASS_METER Or
-      MIXERCONTROL_CT_SC_METER_POLLED Or MIXERCONTROL_CT_UNITS_SIGNED)
+    MIXERCONTROL_CT_CLASS_CUSTOM or MIXERCONTROL_CT_UNITS_CUSTOM)
+  MIXERCONTROL_CONTROLTYPE_BOOLEANMETER* = (MIXERCONTROL_CT_CLASS_METER or
+      MIXERCONTROL_CT_SC_METER_POLLED or MIXERCONTROL_CT_UNITS_BOOLEAN)
+  MIXERCONTROL_CONTROLTYPE_SIGNEDMETER* = (MIXERCONTROL_CT_CLASS_METER or
+      MIXERCONTROL_CT_SC_METER_POLLED or MIXERCONTROL_CT_UNITS_SIGNED)
   MIXERCONTROL_CONTROLTYPE_PEAKMETER* = (
     MIXERCONTROL_CONTROLTYPE_SIGNEDMETER + 1)
-  MIXERCONTROL_CONTROLTYPE_UNSIGNEDMETER* = (MIXERCONTROL_CT_CLASS_METER Or
-      MIXERCONTROL_CT_SC_METER_POLLED Or MIXERCONTROL_CT_UNITS_UNSIGNED)
-  MIXERCONTROL_CONTROLTYPE_BOOLEAN* = (MIXERCONTROL_CT_CLASS_SWITCH Or
-      MIXERCONTROL_CT_SC_SWITCH_BOOLEAN Or MIXERCONTROL_CT_UNITS_BOOLEAN)
+  MIXERCONTROL_CONTROLTYPE_UNSIGNEDMETER* = (MIXERCONTROL_CT_CLASS_METER or
+      MIXERCONTROL_CT_SC_METER_POLLED or MIXERCONTROL_CT_UNITS_UNSIGNED)
+  MIXERCONTROL_CONTROLTYPE_BOOLEAN* = (MIXERCONTROL_CT_CLASS_SWITCH or
+      MIXERCONTROL_CT_SC_SWITCH_BOOLEAN or MIXERCONTROL_CT_UNITS_BOOLEAN)
   MIXERCONTROL_CONTROLTYPE_ONOFF* = (MIXERCONTROL_CONTROLTYPE_BOOLEAN + 1)
   MIXERCONTROL_CONTROLTYPE_MUTE* = (MIXERCONTROL_CONTROLTYPE_BOOLEAN + 2)
   MIXERCONTROL_CONTROLTYPE_MONO* = (MIXERCONTROL_CONTROLTYPE_BOOLEAN + 3)
   MIXERCONTROL_CONTROLTYPE_LOUDNESS* = (MIXERCONTROL_CONTROLTYPE_BOOLEAN + 4)
   MIXERCONTROL_CONTROLTYPE_STEREOENH* = (MIXERCONTROL_CONTROLTYPE_BOOLEAN + 5)
-  MIXERCONTROL_CONTROLTYPE_BUTTON* = (MIXERCONTROL_CT_CLASS_SWITCH Or
-      MIXERCONTROL_CT_SC_SWITCH_BUTTON Or MIXERCONTROL_CT_UNITS_BOOLEAN)
+  MIXERCONTROL_CONTROLTYPE_BUTTON* = (MIXERCONTROL_CT_CLASS_SWITCH or
+      MIXERCONTROL_CT_SC_SWITCH_BUTTON or MIXERCONTROL_CT_UNITS_BOOLEAN)
   MIXERCONTROL_CONTROLTYPE_DECIBELS* = (
-    MIXERCONTROL_CT_CLASS_NUMBER Or MIXERCONTROL_CT_UNITS_DECIBELS)
+    MIXERCONTROL_CT_CLASS_NUMBER or MIXERCONTROL_CT_UNITS_DECIBELS)
   MIXERCONTROL_CONTROLTYPE_SIGNED* = (
-    MIXERCONTROL_CT_CLASS_NUMBER Or MIXERCONTROL_CT_UNITS_SIGNED)
+    MIXERCONTROL_CT_CLASS_NUMBER or MIXERCONTROL_CT_UNITS_SIGNED)
   MIXERCONTROL_CONTROLTYPE_UNSIGNED* = (
-    MIXERCONTROL_CT_CLASS_NUMBER Or MIXERCONTROL_CT_UNITS_UNSIGNED)
+    MIXERCONTROL_CT_CLASS_NUMBER or MIXERCONTROL_CT_UNITS_UNSIGNED)
   MIXERCONTROL_CONTROLTYPE_PERCENT* = (
-    MIXERCONTROL_CT_CLASS_NUMBER Or MIXERCONTROL_CT_UNITS_PERCENT)
+    MIXERCONTROL_CT_CLASS_NUMBER or MIXERCONTROL_CT_UNITS_PERCENT)
   MIXERCONTROL_CONTROLTYPE_SLIDER* = (
-    MIXERCONTROL_CT_CLASS_SLIDER Or MIXERCONTROL_CT_UNITS_SIGNED)
+    MIXERCONTROL_CT_CLASS_SLIDER or MIXERCONTROL_CT_UNITS_SIGNED)
   MIXERCONTROL_CONTROLTYPE_PAN* = (MIXERCONTROL_CONTROLTYPE_SLIDER + 1)
   MIXERCONTROL_CONTROLTYPE_QSOUNDPAN* = (MIXERCONTROL_CONTROLTYPE_SLIDER + 2)
   MIXERCONTROL_CONTROLTYPE_FADER* = (
-    MIXERCONTROL_CT_CLASS_FADER Or MIXERCONTROL_CT_UNITS_UNSIGNED)
+    MIXERCONTROL_CT_CLASS_FADER or MIXERCONTROL_CT_UNITS_UNSIGNED)
   MIXERCONTROL_CONTROLTYPE_VOLUME* = (MIXERCONTROL_CONTROLTYPE_FADER + 1)
   MIXERCONTROL_CONTROLTYPE_BASS* = (MIXERCONTROL_CONTROLTYPE_FADER + 2)
   MIXERCONTROL_CONTROLTYPE_TREBLE* = (MIXERCONTROL_CONTROLTYPE_FADER + 3)
   MIXERCONTROL_CONTROLTYPE_EQUALIZER* = (MIXERCONTROL_CONTROLTYPE_FADER + 4)
-  MIXERCONTROL_CONTROLTYPE_SINGLESELECT* = (MIXERCONTROL_CT_CLASS_LIST Or
-      MIXERCONTROL_CT_SC_LIST_SINGLE Or MIXERCONTROL_CT_UNITS_BOOLEAN)
+  MIXERCONTROL_CONTROLTYPE_SINGLESELECT* = (MIXERCONTROL_CT_CLASS_LIST or
+      MIXERCONTROL_CT_SC_LIST_SINGLE or MIXERCONTROL_CT_UNITS_BOOLEAN)
   MIXERCONTROL_CONTROLTYPE_MUX* = (MIXERCONTROL_CONTROLTYPE_SINGLESELECT + 1)
-  MIXERCONTROL_CONTROLTYPE_MULTIPLESELECT* = (MIXERCONTROL_CT_CLASS_LIST Or
-      MIXERCONTROL_CT_SC_LIST_MULTIPLE Or MIXERCONTROL_CT_UNITS_BOOLEAN)
+  MIXERCONTROL_CONTROLTYPE_MULTIPLESELECT* = (MIXERCONTROL_CT_CLASS_LIST or
+      MIXERCONTROL_CT_SC_LIST_MULTIPLE or MIXERCONTROL_CT_UNITS_BOOLEAN)
   MIXERCONTROL_CONTROLTYPE_MIXER* = (MIXERCONTROL_CONTROLTYPE_MULTIPLESELECT +
       1)
-  MIXERCONTROL_CONTROLTYPE_MICROTIME* = (MIXERCONTROL_CT_CLASS_TIME Or
-      MIXERCONTROL_CT_SC_TIME_MICROSECS Or MIXERCONTROL_CT_UNITS_UNSIGNED)
-  MIXERCONTROL_CONTROLTYPE_MILLITIME* = (MIXERCONTROL_CT_CLASS_TIME Or
-      MIXERCONTROL_CT_SC_TIME_MILLISECS Or MIXERCONTROL_CT_UNITS_UNSIGNED)
+  MIXERCONTROL_CONTROLTYPE_MICROTIME* = (MIXERCONTROL_CT_CLASS_TIME or
+      MIXERCONTROL_CT_SC_TIME_MICROSECS or MIXERCONTROL_CT_UNITS_UNSIGNED)
+  MIXERCONTROL_CONTROLTYPE_MILLITIME* = (MIXERCONTROL_CT_CLASS_TIME or
+      MIXERCONTROL_CT_SC_TIME_MILLISECS or MIXERCONTROL_CT_UNITS_UNSIGNED)
   MIXER_SHORT_NAME_CHARS* = 16
   MIXER_LONG_NAME_CHARS* = 64
   MIXERR_INVALLINE* = (MIXERR_BASE + 0)
@@ -419,15 +419,15 @@ const
   MIXERR_LASTERROR* = (MIXERR_BASE + 2)
   MIXER_OBJECTF_HANDLE* = 0x80000000
   MIXER_OBJECTF_MIXER* = 0
-  MIXER_OBJECTF_HMIXER* = (MIXER_OBJECTF_HANDLE Or MIXER_OBJECTF_MIXER)
+  MIXER_OBJECTF_HMIXER* = (MIXER_OBJECTF_HANDLE or MIXER_OBJECTF_MIXER)
   MIXER_OBJECTF_WAVEOUT* = 0x10000000
-  MIXER_OBJECTF_HWAVEOUT* = (MIXER_OBJECTF_HANDLE Or MIXER_OBJECTF_WAVEOUT)
+  MIXER_OBJECTF_HWAVEOUT* = (MIXER_OBJECTF_HANDLE or MIXER_OBJECTF_WAVEOUT)
   MIXER_OBJECTF_WAVEIN* = 0x20000000
-  MIXER_OBJECTF_HWAVEIN* = (MIXER_OBJECTF_HANDLE Or MIXER_OBJECTF_WAVEIN)
+  MIXER_OBJECTF_HWAVEIN* = (MIXER_OBJECTF_HANDLE or MIXER_OBJECTF_WAVEIN)
   MIXER_OBJECTF_MIDIOUT* = 0x30000000
-  MIXER_OBJECTF_HMIDIOUT* = (MIXER_OBJECTF_HANDLE Or MIXER_OBJECTF_MIDIOUT)
+  MIXER_OBJECTF_HMIDIOUT* = (MIXER_OBJECTF_HANDLE or MIXER_OBJECTF_MIDIOUT)
   MIXER_OBJECTF_MIDIIN* = 0x40000000
-  MIXER_OBJECTF_HMIDIIN* = (MIXER_OBJECTF_HANDLE Or MIXER_OBJECTF_MIDIIN)
+  MIXER_OBJECTF_HMIDIIN* = (MIXER_OBJECTF_HANDLE or MIXER_OBJECTF_MIDIIN)
   MIXER_OBJECTF_AUX* = 0x50000000
   MIXER_GETCONTROLDETAILSF_VALUE* = 0
   MIXER_GETCONTROLDETAILSF_LISTTEXT* = 1
@@ -492,8 +492,8 @@ const
   JOY_RETURNPOVCTS* = 512
   JOY_RETURNCENTERED* = 0x00000400
   JOY_USEDEADZONE* = 0x00000800
-  JOY_RETURNALL* = (JOY_RETURNX Or JOY_RETURNY Or JOY_RETURNZ Or JOY_RETURNR Or
-      JOY_RETURNU Or JOY_RETURNV Or JOY_RETURNPOV Or JOY_RETURNBUTTONS)
+  JOY_RETURNALL* = (JOY_RETURNX or JOY_RETURNY or JOY_RETURNZ or JOY_RETURNR or
+      JOY_RETURNU or JOY_RETURNV or JOY_RETURNPOV or JOY_RETURNBUTTONS)
   JOY_CAL_READALWAYS* = 0x00010000
   JOY_CAL_READXYONLY* = 0x00020000
   JOY_CAL_READ3* = 0x00040000
@@ -982,17 +982,17 @@ const
                         #/////////////////////////////////////////////////////////
 
 type
-  mmtime* {.final.} = object
-    wType*: UINT
+  MMTIME* {.final.} = object
+    wType*: uint32
     hour*, min*, sec*, frame*, fps*, dummy*: int8
     pad*: array[0..1, int8]
 
-  PMMTIME* = ptr mmtime
-  NPMMTIME* = ptr mmtime
-  LPMMTIME* = ptr mmtime
-  PWAVEHDR* = ptr wavehdr
-  TMMTime* = mmtime
-  wavehdr* {.final.} = object
+  PMMTIME* = ptr MMTIME
+  NPMMTIME* = ptr MMTIME
+  LPMMTIME* = ptr MMTIME
+  PWAVEHDR* = ptr WAVEHDR
+  TMMTime* = MMTIME
+  WAVEHDR* {.final.} = object
     lpData*: cstring
     dwBufferLength*: DWORD
     dwBytesRecorded*: DWORD
@@ -1003,13 +1003,13 @@ type
     reserved*: DWORD
 
   TWAVEHDR* = WAVEHDR
-  NPWAVEHDR* = ptr wavehdr
-  LPWAVEHDR* = ptr wavehdr
+  NPWAVEHDR* = ptr WAVEHDR
+  LPWAVEHDR* = ptr WAVEHDR
   WAVEOUTCAPSA* {.final.} = object
     wMid*: int16
     wPid*: int16
     vDriverVersion*: MMVERSION
-    szPname*: array[0..Pred(MAXPNAMELEN), CHAR]
+    szPname*: array[0..pred(MAXPNAMELEN), char]
     dwFormats*: DWORD
     wChannels*: int16
     wReserved1*: int16
@@ -1023,7 +1023,7 @@ type
     wMid*: int16
     wPid*: int16
     vDriverVersion*: MMVERSION
-    szPname*: array[0..Pred(MAXPNAMELEN), WCHAR]
+    szPname*: array[0..pred(MAXPNAMELEN), WCHAR]
     dwFormats*: DWORD
     wChannels*: int16
     wReserved1*: int16
@@ -1052,7 +1052,7 @@ type
     wMid*: int16
     wPid*: int16
     vDriverVersion*: MMVERSION
-    szPname*: array[0..Pred(MAXPNAMELEN), CHAR]
+    szPname*: array[0..pred(MAXPNAMELEN), char]
     dwFormats*: DWORD
     wChannels*: int16
     wReserved1*: int16
@@ -1065,7 +1065,7 @@ type
     wMid*: int16
     wPid*: int16
     vDriverVersion*: MMVERSION
-    szPname*: array[0..Pred(MAXPNAMELEN), WCHAR]
+    szPname*: array[0..pred(MAXPNAMELEN), WCHAR]
     dwFormats*: DWORD
     wChannels*: int16
     wReserved1*: int16
@@ -1089,29 +1089,29 @@ else:
     LPWAVEINCAPS* = LPWAVEINCAPSA
 type
   TWAVEINCAPS* = WAVEINCAPS
-  waveformat* {.final.} = object
+  WAVEFORMAT* {.final.} = object
     wFormatTag*: int16
     nChannels*: int16
     nSamplesPerSec*: DWORD
     nAvgBytesPerSec*: DWORD
     nBlockAlign*: int16
 
-  PWAVEFORMAT* = ptr waveformat
-  NPWAVEFORMAT* = ptr waveformat
-  LPWAVEFORMAT* = ptr waveformat
-  TWAVEFORMAT* = waveformat
+  PWAVEFORMAT* = ptr WAVEFORMAT
+  NPWAVEFORMAT* = ptr WAVEFORMAT
+  LPWAVEFORMAT* = ptr WAVEFORMAT
+  TWAVEFORMAT* = WAVEFORMAT
 
 const
   WAVE_FORMAT_PCM* = 1
 
 type
-  pcmwaveformat* {.final.} = object
+  PCMWAVEFORMAT* {.final.} = object
     wf*: WAVEFORMAT
     wBitsPerSample*: int16
 
-  PPCMWAVEFORMAT* = ptr pcmwaveformat
-  NPPCMWAVEFORMAT* = ptr pcmwaveformat
-  LPPCMWAVEFORMAT* = ptr pcmwaveformat
+  PPCMWAVEFORMAT* = ptr PCMWAVEFORMAT
+  NPPCMWAVEFORMAT* = ptr PCMWAVEFORMAT
+  LPPCMWAVEFORMAT* = ptr PCMWAVEFORMAT
   TPCMWAVEFORMAT* = PCMWAVEFORMAT
   WAVEFORMATEX* {.final.} = object
     wFormatTag*: int16
@@ -1141,15 +1141,15 @@ const
   MIDIPATCHSIZE* = 128
 
 type
-  PATCHARRAY* = array[0..Pred(MIDIPATCHSIZE), int16]
+  PATCHARRAY* = array[0..pred(MIDIPATCHSIZE), int16]
   LPPATCHARRAY* = ptr int16
-  KEYARRAY* = array[0..Pred(MIDIPATCHSIZE), int16]
+  KEYARRAY* = array[0..pred(MIDIPATCHSIZE), int16]
   LPKEYARRAY* = ptr int16
   MIDIOUTCAPSA* {.final.} = object
     wMid*: int16
     wPid*: int16
     vDriverVersion*: MMVERSION
-    szPname*: array[0..Pred(MAXPNAMELEN), CHAR]
+    szPname*: array[0..pred(MAXPNAMELEN), char]
     wTechnology*: int16
     wVoices*: int16
     wNotes*: int16
@@ -1164,7 +1164,7 @@ type
     wMid*: int16
     wPid*: int16
     vDriverVersion*: MMVERSION
-    szPname*: array[0..Pred(MAXPNAMELEN), WCHAR]
+    szPname*: array[0..pred(MAXPNAMELEN), Wchar]
     wTechnology*: int16
     wVoices*: int16
     wNotes*: int16
@@ -1179,7 +1179,7 @@ type
     wMid*: int16
     wPid*: int16
     vDriverVersion*: MMVERSION
-    szPname*: array[0..Pred(MAXPNAMELEN), CHAR]
+    szPname*: array[0..pred(MAXPNAMELEN), char]
     dwSupport*: DWORD
 
   PMIDIINCAPSA* = ptr MIDIINCAPSA
@@ -1190,7 +1190,7 @@ type
     wMid*: int16
     wPid*: int16
     vDriverVersion*: MMVERSION
-    szPname*: array[0..Pred(MAXPNAMELEN), WCHAR]
+    szPname*: array[0..pred(MAXPNAMELEN), Wchar]
     dwSupport*: DWORD
 
   PMIDIINCAPSW* = ptr MIDIINCAPSW
@@ -1220,8 +1220,8 @@ else:
     LPMIDIINCAPS* = LPMIDIINCAPSA
 type
   TMIDIINCAPS* = MIDIINCAPS
-  PMIDIHDR* = ptr midihdr
-  midihdr* {.final.} = object
+  PMIDIHDR* = ptr MIDIHDR
+  MIDIHDR* {.final.} = object
     lpData*: cstring
     dwBufferLength*: DWORD
     dwBytesRecorded*: DWORD
@@ -1230,19 +1230,19 @@ type
     lpNext*: PMIDIHDR
     reserved*: DWORD
     dwOffset*: DWORD
-    dwReserved*: array[0..Pred(8), DWORD]
+    dwReserved*: array[0..pred(8), DWORD]
 
-  NPMIDIHDR* = ptr midihdr
-  LPMIDIHDR* = ptr midihdr
+  NPMIDIHDR* = ptr MIDIHDR
+  LPMIDIHDR* = ptr MIDIHDR
   TMIDIHDR* = MIDIHDR
-  midievent* {.final.} = object
+  MIDIEVENT* {.final.} = object
     dwDeltaTime*: DWORD
     dwStreamID*: DWORD
     dwEvent*: DWORD
-    dwParms*: array[0..Pred(1), DWORD]
+    dwParms*: array[0..pred(1), DWORD]
 
   TMIDIEVENT* = MIDIEVENT
-  midistrmbuffver* {.final.} = object
+  MIDISTRMBUFFVER* {.final.} = object
     dwVersion*: DWORD
     dwMid*: DWORD
     dwOEMVersion*: DWORD
@@ -1262,7 +1262,7 @@ type
     wMid*: int16
     wPid*: int16
     vDriverVersion*: MMVERSION
-    szPname*: array[0..Pred(MAXPNAMELEN), CHAR]
+    szPname*: array[0..pred(MAXPNAMELEN), char]
     wTechnology*: int16
     wReserved1*: int16
     dwSupport*: DWORD
@@ -1275,7 +1275,7 @@ type
     wMid*: int16
     wPid*: int16
     vDriverVersion*: MMVERSION
-    szPname*: array[0..Pred(MAXPNAMELEN), WCHAR]
+    szPname*: array[0..pred(MAXPNAMELEN), Wchar]
     wTechnology*: int16
     wReserved1*: int16
     dwSupport*: DWORD
@@ -1304,14 +1304,14 @@ type
   HMIXER* = THandle
   LPHMIXER* = ptr HMIXER
 
-proc mixerGetNumDevs*(): UINT{.stdcall, dynlib: "winmm.dll",
+proc mixerGetNumDevs*(): uint32{.stdcall, dynlib: "winmm.dll",
                                importc: "mixerGetNumDevs".}
 type
   MIXERCAPSA* {.final.} = object
     wMid*: int16
     wPid*: int16
     vDriverVersion*: MMVERSION
-    szPname*: array[0..Pred(MAXPNAMELEN), CHAR]
+    szPname*: array[0..pred(MAXPNAMELEN), char]
     fdwSupport*: DWORD
     cDestinations*: DWORD
 
@@ -1322,7 +1322,7 @@ type
     wMid*: int16
     wPid*: int16
     vDriverVersion*: MMVERSION
-    szPname*: array[0..Pred(MAXPNAMELEN), WCHAR]
+    szPname*: array[0..pred(MAXPNAMELEN), Wchar]
     fdwSupport*: DWORD
     cDestinations*: DWORD
 
@@ -1353,12 +1353,12 @@ type
     cChannels*: DWORD
     cConnections*: DWORD
     cControls*: DWORD
-    szShortName*: array[0..Pred(MIXER_SHORT_NAME_CHARS), CHAR]
-    szName*: array[0..Pred(MIXER_LONG_NAME_CHARS), CHAR]
+    szShortName*: array[0..pred(MIXER_SHORT_NAME_CHARS), char]
+    szName*: array[0..pred(MIXER_LONG_NAME_CHARS), char]
     dwType*, dwDeviceID*: DWORD
     wMid*, wPid*: int16
     vDriverVersion*: MMVERSION
-    szPname*: array[0..pred(MAXPNAMELEN), Char]
+    szPname*: array[0..pred(MAXPNAMELEN), char]
 
   PMIXERLINEA* = ptr MIXERLINEA
   LPMIXERLINEA* = ptr MIXERLINEA
@@ -1374,8 +1374,8 @@ type
     cChannels*: DWORD
     cConnections*: DWORD
     cControls*: DWORD
-    szShortName*: array[0..Pred(MIXER_SHORT_NAME_CHARS), WCHAR]
-    szName*: array[0..Pred(MIXER_LONG_NAME_CHARS), WCHAR]
+    szShortName*: array[0..pred(MIXER_SHORT_NAME_CHARS), WCHAR]
+    szName*: array[0..pred(MIXER_LONG_NAME_CHARS), WCHAR]
     dwType*, dwDeviceID*: DWORD
     wMid*, wPid*: int16
     vDriverVersion*: MMVERSION
@@ -1403,8 +1403,8 @@ type
     dwControlType*: DWORD
     fdwControl*: DWORD
     cMultipleItems*: DWORD
-    szShortName*: array[0..Pred(MIXER_SHORT_NAME_CHARS), CHAR]
-    szName*: array[0..Pred(MIXER_LONG_NAME_CHARS), CHAR]
+    szShortName*: array[0..pred(MIXER_SHORT_NAME_CHARS), char]
+    szName*: array[0..pred(MIXER_LONG_NAME_CHARS), char]
     dwMinimum*, dwMaximum*: DWORD
     dwReserved*: array[0..3, DWORD]
     cSteps*: DWORD
@@ -1419,8 +1419,8 @@ type
     dwControlType*: DWORD
     fdwControl*: DWORD
     cMultipleItems*: DWORD
-    szShortName*: array[0..Pred(MIXER_SHORT_NAME_CHARS), WCHAR]
-    szName*: array[0..Pred(MIXER_LONG_NAME_CHARS), WCHAR]
+    szShortName*: array[0..pred(MIXER_SHORT_NAME_CHARS), WCHAR]
+    szName*: array[0..pred(MIXER_LONG_NAME_CHARS), WCHAR]
     dwMinimum*, dwMaximum*: DWORD
     dwReserved*: array[0..3, DWORD]
     cSteps*: DWORD
@@ -1478,15 +1478,15 @@ type
     dwControlID*: DWORD
     cChannels*: DWORD
     cMultipleItems*, cbDetails*: DWORD
-    paDetails*: Pointer
+    paDetails*: pointer
 
-  MIXERCONTROLDETAILS* = tMIXERCONTROLDETAILS
-  PMIXERCONTROLDETAILS* = ptr tMIXERCONTROLDETAILS
-  LPMIXERCONTROLDETAILS* = ptr tMIXERCONTROLDETAILS
+  MIXERCONTROLDETAILS* = TMIXERCONTROLDETAILS
+  PMIXERCONTROLDETAILS* = ptr TMIXERCONTROLDETAILS
+  LPMIXERCONTROLDETAILS* = ptr TMIXERCONTROLDETAILS
   MIXERCONTROLDETAILS_LISTTEXTA* {.final.} = object
     dwParam1*: DWORD
     dwParam2*: DWORD
-    szName*: array[0..Pred(MIXER_LONG_NAME_CHARS), CHAR]
+    szName*: array[0..pred(MIXER_LONG_NAME_CHARS), char]
 
   PMIXERCONTROLDETAILS_LISTTEXTA* = ptr MIXERCONTROLDETAILS_LISTTEXTA
   LPMIXERCONTROLDETAILS_LISTTEXTA* = ptr MIXERCONTROLDETAILS_LISTTEXTA
@@ -1494,7 +1494,7 @@ type
   MIXERCONTROLDETAILS_LISTTEXTW* {.final.} = object
     dwParam1*: DWORD
     dwParam2*: DWORD
-    szName*: array[0..Pred(MIXER_LONG_NAME_CHARS), WCHAR]
+    szName*: array[0..pred(MIXER_LONG_NAME_CHARS), WCHAR]
 
   PMIXERCONTROLDETAILS_LISTTEXTW* = ptr MIXERCONTROLDETAILS_LISTTEXTW
   LPMIXERCONTROLDETAILS_LISTTEXTW* = ptr MIXERCONTROLDETAILS_LISTTEXTW
@@ -1530,42 +1530,42 @@ type
   PMIXERCONTROLDETAILS_UNSIGNED* = ptr MIXERCONTROLDETAILS_UNSIGNED
   LPMIXERCONTROLDETAILS_UNSIGNED* = ptr MIXERCONTROLDETAILS_UNSIGNED
   TMIXERCONTROLDETAILS_UNSIGNED* = MIXERCONTROLDETAILS_UNSIGNED
-  LPTIMECALLBACK* = proc (uTimerID, uMsg: UINT, dwUser, dw1, dw2: DWORD){.
+  LPTIMECALLBACK* = proc (uTimerID, uMsg: uint32, dwUser, dw1, dw2: DWORD){.
       stdcall.}
   TTIMECALLBACK* = LPTIMECALLBACK
-  timecaps* {.final.} = object
-    wPeriodMin*: UINT
-    wPeriodMax*: UINT
+  TIMECAPS* {.final.} = object
+    wPeriodMin*: uint32
+    wPeriodMax*: uint32
 
-  PTIMECAPS* = ptr timecaps
-  NPTIMECAPS* = ptr timecaps
-  LPTIMECAPS* = ptr timecaps
+  PTIMECAPS* = ptr TIMECAPS
+  NPTIMECAPS* = ptr TIMECAPS
+  LPTIMECAPS* = ptr TIMECAPS
   TTIMECAS* = TIMECAPS
   JOYCAPSA* {.final.} = object
     wMid*: int16
     wPid*: int16
-    szPname*: array[0..Pred(MAXPNAMELEN), CHAR]
-    wXmin*: UINT
-    wXmax*: UINT
-    wYmin*: UINT
-    wYmax*: UINT
-    wZmin*: UINT
-    wZmax*: UINT
-    wNumButtons*: UINT
-    wPeriodMin*: UINT
-    wPeriodMax*: UINT
-    wRmin*: UINT
-    wRmax*: UINT
-    wUmin*: UINT
-    wUmax*: UINT
-    wVmin*: UINT
-    wVmax*: UINT
-    wCaps*: UINT
-    wMaxAxes*: UINT
-    wNumAxes*: UINT
-    wMaxButtons*: UINT
-    szRegKey*: array[0..Pred(MAXPNAMELEN), CHAR]
-    szOEMVxD*: array[0..Pred(MAX_JOYSTICKOEMVXDNAME), CHAR]
+    szPname*: array[0..pred(MAXPNAMELEN), char]
+    wXmin*: uint32
+    wXmax*: uint32
+    wYmin*: uint32
+    wYmax*: uint32
+    wZmin*: uint32
+    wZmax*: uint32
+    wNumButtons*: uint32
+    wPeriodMin*: uint32
+    wPeriodMax*: uint32
+    wRmin*: uint32
+    wRmax*: uint32
+    wUmin*: uint32
+    wUmax*: uint32
+    wVmin*: uint32
+    wVmax*: uint32
+    wCaps*: uint32
+    wMaxAxes*: uint32
+    wNumAxes*: uint32
+    wMaxButtons*: uint32
+    szRegKey*: array[0..pred(MAXPNAMELEN), char]
+    szOEMVxD*: array[0..pred(MAX_JOYSTICKOEMVXDNAME), char]
 
   PJOYCAPSA* = ptr JOYCAPSA
   NPJOYCAPSA* = ptr JOYCAPSA
@@ -1574,28 +1574,28 @@ type
   JOYCAPSW* {.final.} = object
     wMid*: int16
     wPid*: int16
-    szPname*: array[0..Pred(MAXPNAMELEN), WCHAR]
-    wXmin*: UINT
-    wXmax*: UINT
-    wYmin*: UINT
-    wYmax*: UINT
-    wZmin*: UINT
-    wZmax*: UINT
-    wNumButtons*: UINT
-    wPeriodMin*: UINT
-    wPeriodMax*: UINT
-    wRmin*: UINT
-    wRmax*: UINT
-    wUmin*: UINT
-    wUmax*: UINT
-    wVmin*: UINT
-    wVmax*: UINT
-    wCaps*: UINT
-    wMaxAxes*: UINT
-    wNumAxes*: UINT
-    wMaxButtons*: UINT
-    szRegKey*: array[0..Pred(MAXPNAMELEN), WCHAR]
-    szOEMVxD*: array[0..Pred(MAX_JOYSTICKOEMVXDNAME), WCHAR]
+    szPname*: array[0..pred(MAXPNAMELEN), WCHAR]
+    wXmin*: uint32
+    wXmax*: uint32
+    wYmin*: uint32
+    wYmax*: uint32
+    wZmin*: uint32
+    wZmax*: uint32
+    wNumButtons*: uint32
+    wPeriodMin*: uint32
+    wPeriodMax*: uint32
+    wRmin*: uint32
+    wRmax*: uint32
+    wUmin*: uint32
+    wUmax*: uint32
+    wVmin*: uint32
+    wVmax*: uint32
+    wCaps*: uint32
+    wMaxAxes*: uint32
+    wNumAxes*: uint32
+    wMaxButtons*: uint32
+    szRegKey*: array[0..pred(MAXPNAMELEN), WCHAR]
+    szOEMVxD*: array[0..pred(MAX_JOYSTICKOEMVXDNAME), WCHAR]
 
   PJOYCAPSW* = ptr JOYCAPSW
   NPJOYCAPSW* = ptr JOYCAPSW
@@ -1616,45 +1616,45 @@ else:
     LPJOYCAPS* = LPJOYCAPSA
 type
   TJOYCAPS* = JOYCAPS
-  joyinfo* {.final.} = object
-    wXpos*: UINT
-    wYpos*: UINT
-    wZpos*: UINT
-    wButtons*: UINT
+  JOYINFO* {.final.} = object
+    wXpos*: uint32
+    wYpos*: uint32
+    wZpos*: uint32
+    wButtons*: uint32
 
-  PJOYINFO* = ptr joyinfo
-  NPJOYINFO* = ptr joyinfo
-  LPJOYINFO* = ptr joyinfo
+  PJOYINFO* = ptr JOYINFO
+  NPJOYINFO* = ptr JOYINFO
+  LPJOYINFO* = ptr JOYINFO
   TJOYINFO* = JOYINFO
-  joyinfoex* {.final.} = object
+  JOYINFOEX* {.final.} = object
     dwSize*: DWORD
     dwFlags*: DWORD
-    wXpos*: UINT
-    wYpos*: UINT
-    wZpos*: UINT
+    wXpos*: uint32
+    wYpos*: uint32
+    wZpos*: uint32
     dwRpos*: DWORD
     dwUpos*: DWORD
     dwVpos*: DWORD
-    wButtons*: UINT
+    wButtons*: uint32
     dwButtonNumber*: DWORD
     dwPOV*: DWORD
     dwReserved1*: DWORD
     dwReserved2*: DWORD
 
-  PJOYINFOEX* = ptr joyinfoex
-  NPJOYINFOEX* = ptr joyinfoex
-  LPJOYINFOEX* = ptr joyinfoex
+  PJOYINFOEX* = ptr JOYINFOEX
+  NPJOYINFOEX* = ptr JOYINFOEX
+  LPJOYINFOEX* = ptr JOYINFOEX
   TJOYINFOEX* = JOYINFOEX
   FOURCC* = DWORD
   HPSTR* = cstring
   HMMIO* = THandle
-  LPMMIOPROC* = proc (x1: LPSTR, x2: UINT, x3, x4: LPARAM): LRESULT{.stdcall.}
+  LPMMIOPROC* = proc (x1: LPSTR, x2: uint32, x3, x4: LPARAM): LRESULT{.stdcall.}
   TMMIOPROC* = LPMMIOPROC
   MMIOINFO* {.final.} = object
     dwFlags*: DWORD
     fccIOProc*: FOURCC
     pIOProc*: LPMMIOPROC
-    wErrorRet*: UINT
+    wErrorRet*: uint32
     htask*: HTASK
     cchBuffer*: int32
     pchBuffer*: HPSTR
@@ -1663,7 +1663,7 @@ type
     pchEndWrite*: HPSTR
     lBufOffset*: int32
     lDiskOffset*: int32
-    adwInfo*: array[0..Pred(3), DWORD]
+    adwInfo*: array[0..pred(3), DWORD]
     dwReserved1*: DWORD
     dwReserved2*: DWORD
     hmmio*: HMMIO
@@ -1686,8 +1686,8 @@ type
   LPCMMCKINFO* = ptr MMCKINFO
   TMMCKINFO* = MMCKINFO
   MCIERROR* = DWORD
-  MCIDEVICEID* = UINT
-  YIELDPROC* = proc (mciId: MCIDEVICEID, dwYieldData: DWORD): UINT{.stdcall.}
+  MCIDEVICEID* = uint32
+  YIELDPROC* = proc (mciId: MCIDEVICEID, dwYieldData: DWORD): uint32{.stdcall.}
   TYIELDPROC* = YIELDPROC
   MCI_GENERIC_PARMS* {.final.} = object
     dwCallback*: DWORD
@@ -1790,7 +1790,7 @@ type
     lpstrReturn*: cstring
     dwRetSize*: DWORD
     dwNumber*: DWORD
-    wDeviceType*: UINT
+    wDeviceType*: uint32
 
   PMCI_SYSINFO_PARMSA* = ptr MCI_SYSINFO_PARMSA
   LPMCI_SYSINFO_PARMSA* = ptr MCI_SYSINFO_PARMSA
@@ -1800,7 +1800,7 @@ type
     lpstrReturn*: LPWSTR
     dwRetSize*: DWORD
     dwNumber*: DWORD
-    wDeviceType*: UINT
+    wDeviceType*: uint32
 
   PMCI_SYSINFO_PARMSW* = ptr MCI_SYSINFO_PARMSW
   LPMCI_SYSINFO_PARMSW* = ptr MCI_SYSINFO_PARMSW
@@ -1984,8 +1984,8 @@ type
     dwCallback*: DWORD
     dwTimeFormat*: DWORD
     dwAudio*: DWORD
-    wInput*: UINT
-    wOutput*: UINT
+    wInput*: uint32
+    wOutput*: uint32
     wFormatTag*: int16
     wReserved2*: int16
     nChannels*: int16
@@ -2052,7 +2052,7 @@ type
   MCI_ANIM_WINDOW_PARMSW* {.final.} = object
     dwCallback*: DWORD
     hWnd*: HWND
-    nCmdShow*: UINT
+    nCmdShow*: uint32
     lpstrText*: LPCWSTR
 
   PMCI_ANIM_WINDOW_PARMSW* = ptr MCI_ANIM_WINDOW_PARMSW
@@ -2068,7 +2068,7 @@ type
   MCI_ANIM_WINDOW_PARMSA* {.final.} = object
     dwCallback*: DWORD
     hWnd*: HWND
-    nCmdShow*: UINT
+    nCmdShow*: uint32
     lpstrText*: LPCSTR
 
   PMCI_ANIM_WINDOW_PARMSA* = ptr MCI_ANIM_WINDOW_PARMSA
@@ -2149,7 +2149,7 @@ type
   MCI_OVLY_WINDOW_PARMSA* {.final.} = object
     dwCallback*: DWORD
     hWnd*: HWND
-    nCmdShow*: UINT
+    nCmdShow*: uint32
     lpstrText*: LPCSTR
 
   PMCI_OVLY_WINDOW_PARMSA* = ptr MCI_OVLY_WINDOW_PARMSA
@@ -2158,7 +2158,7 @@ type
   MCI_OVLY_WINDOW_PARMSW* {.final.} = object
     dwCallback*: DWORD
     hWnd*: HWND
-    nCmdShow*: UINT
+    nCmdShow*: uint32
     lpstrText*: LPCWSTR
 
   PMCI_OVLY_WINDOW_PARMSW* = ptr MCI_OVLY_WINDOW_PARMSW
@@ -2243,14 +2243,11 @@ else:
 type
   TMCI_OVLY_LOAD_PARMS* = MCI_OVLY_LOAD_PARMS
 
-type
-  pcmwaveformat_tag* = PCMWAVEFORMAT
-
-proc mmioStringToFOURCCA*(x1: LPCSTR, x2: UINT): FOURCC{.stdcall,
+proc mmioStringToFOURCCA*(x1: LPCSTR, x2: uint32): FOURCC{.stdcall,
     dynlib: "winmm.dll", importc: "mmioStringToFOURCCA".}
-proc mmioStringToFOURCCW*(x1: LPCWSTR, x2: UINT): FOURCC{.stdcall,
+proc mmioStringToFOURCCW*(x1: LPCWSTR, x2: uint32): FOURCC{.stdcall,
     dynlib: "winmm.dll", importc: "mmioStringToFOURCCW".}
-proc mmioStringToFOURCC*(x1: cstring, x2: UINT): FOURCC{.stdcall,
+proc mmioStringToFOURCC*(x1: cstring, x2: uint32): FOURCC{.stdcall,
     dynlib: "winmm.dll", importc: "mmioStringToFOURCCA".}
 proc mmioInstallIOProcA*(x1: FOURCC, x2: LPMMIOPROC, x3: DWORD): LPMMIOPROC{.
     stdcall, dynlib: "winmm.dll", importc: "mmioInstallIOProcA".}
@@ -2270,7 +2267,7 @@ proc mmioRenameW*(x1: LPCWSTR, x2: LPCWSTR, x3: LPCMMIOINFO, x4: DWORD): MMRESUL
     stdcall, dynlib: "winmm.dll", importc: "mmioRenameW".}
 proc mmioRename*(x1: cstring, x2: cstring, x3: LPCMMIOINFO, x4: DWORD): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "mmioRenameA".}
-proc mmioClose*(x1: HMMIO, x2: UINT): MMRESULT{.stdcall, dynlib: "winmm.dll",
+proc mmioClose*(x1: HMMIO, x2: uint32): MMRESULT{.stdcall, dynlib: "winmm.dll",
     importc: "mmioClose".}
 proc mmioRead*(x1: HMMIO, x2: HPSTR, x3: LONG): LONG{.stdcall,
     dynlib: "winmm.dll", importc: "mmioRead".}
@@ -2278,35 +2275,35 @@ proc mmioWrite*(x1: HMMIO, x2: cstring, x3: LONG): LONG{.stdcall,
     dynlib: "winmm.dll", importc: "mmioWrite".}
 proc mmioSeek*(x1: HMMIO, x2: LONG, x3: WINT): LONG{.stdcall,
     dynlib: "winmm.dll", importc: "mmioSeek".}
-proc mmioGetInfo*(x1: HMMIO, x2: LPMMIOINFO, x3: UINT): MMRESULT{.stdcall,
+proc mmioGetInfo*(x1: HMMIO, x2: LPMMIOINFO, x3: uint32): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "mmioGetInfo".}
-proc mmioSetInfo*(x1: HMMIO, x2: LPCMMIOINFO, x3: UINT): MMRESULT{.stdcall,
+proc mmioSetInfo*(x1: HMMIO, x2: LPCMMIOINFO, x3: uint32): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "mmioSetInfo".}
-proc mmioSetBuffer*(x1: HMMIO, x2: LPSTR, x3: LONG, x4: UINT): MMRESULT{.
+proc mmioSetBuffer*(x1: HMMIO, x2: LPSTR, x3: LONG, x4: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "mmioSetBuffer".}
-proc mmioFlush*(x1: HMMIO, x2: UINT): MMRESULT{.stdcall, dynlib: "winmm.dll",
+proc mmioFlush*(x1: HMMIO, x2: uint32): MMRESULT{.stdcall, dynlib: "winmm.dll",
     importc: "mmioFlush".}
-proc mmioAdvance*(x1: HMMIO, x2: LPMMIOINFO, x3: UINT): MMRESULT{.stdcall,
+proc mmioAdvance*(x1: HMMIO, x2: LPMMIOINFO, x3: uint32): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "mmioAdvance".}
-proc mmioSendMessage*(x1: HMMIO, x2: UINT, x3: LPARAM, x4: LPARAM): LRESULT{.
+proc mmioSendMessage*(x1: HMMIO, x2: uint32, x3: LPARAM, x4: LPARAM): LRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "mmioSendMessage".}
-proc mmioDescend*(x1: HMMIO, x2: LPMMCKINFO, x3: PMMCKINFO, x4: UINT): MMRESULT{.
+proc mmioDescend*(x1: HMMIO, x2: LPMMCKINFO, x3: PMMCKINFO, x4: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "mmioDescend".}
-proc mmioAscend*(x1: HMMIO, x2: LPMMCKINFO, x3: UINT): MMRESULT{.stdcall,
+proc mmioAscend*(x1: HMMIO, x2: LPMMCKINFO, x3: uint32): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "mmioAscend".}
-proc mmioCreateChunk*(x1: HMMIO, x2: LPMMCKINFO, x3: UINT): MMRESULT{.stdcall,
+proc mmioCreateChunk*(x1: HMMIO, x2: LPMMCKINFO, x3: uint32): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "mmioCreateChunk".}
-proc mciSendCommandA*(x1: MCIDEVICEID, x2: UINT, x3: DWORD, x4: DWORD): MCIERROR{.
+proc mciSendCommandA*(x1: MCIDEVICEID, x2: uint32, x3: DWORD, x4: DWORD): MCIERROR{.
     stdcall, dynlib: "winmm.dll", importc: "mciSendCommandA".}
-proc mciSendCommandW*(x1: MCIDEVICEID, x2: UINT, x3: DWORD, x4: DWORD): MCIERROR{.
+proc mciSendCommandW*(x1: MCIDEVICEID, x2: uint32, x3: DWORD, x4: DWORD): MCIERROR{.
     stdcall, dynlib: "winmm.dll", importc: "mciSendCommandW".}
-proc mciSendCommand*(x1: MCIDEVICEID, x2: UINT, x3: DWORD, x4: DWORD): MCIERROR{.
+proc mciSendCommand*(x1: MCIDEVICEID, x2: uint32, x3: DWORD, x4: DWORD): MCIERROR{.
     stdcall, dynlib: "winmm.dll", importc: "mciSendCommandA".}
-proc mciSendStringA*(x1: LPCSTR, x2: LPSTR, x3: UINT, x4: HWND): MCIERROR{.
+proc mciSendStringA*(x1: LPCSTR, x2: LPSTR, x3: uint32, x4: HWND): MCIERROR{.
     stdcall, dynlib: "winmm.dll", importc: "mciSendStringA".}
-proc mciSendStringW*(x1: LPCWSTR, x2: LPWSTR, x3: UINT, x4: HWND): MCIERROR{.
+proc mciSendStringW*(x1: LPCWSTR, x2: LPWSTR, x3: uint32, x4: HWND): MCIERROR{.
     stdcall, dynlib: "winmm.dll", importc: "mciSendStringW".}
-proc mciSendString*(x1: cstring, x2: cstring, x3: UINT, x4: HWND): MCIERROR{.
+proc mciSendString*(x1: cstring, x2: cstring, x3: uint32, x4: HWND): MCIERROR{.
     stdcall, dynlib: "winmm.dll", importc: "mciSendStringA".}
 proc mciGetDeviceIDA*(x1: LPCSTR): MCIDEVICEID{.stdcall, dynlib: "winmm.dll",
     importc: "mciGetDeviceIDA".}
@@ -2320,60 +2317,60 @@ proc mciGetDeviceIDFromElementIDW*(x1: DWORD, x2: LPCWSTR): MCIDEVICEID{.
     stdcall, dynlib: "winmm.dll", importc: "mciGetDeviceIDFromElementIDW".}
 proc mciGetDeviceIDFromElementID*(x1: DWORD, x2: cstring): MCIDEVICEID{.stdcall,
     dynlib: "winmm.dll", importc: "mciGetDeviceIDFromElementIDA".}
-proc mciGetErrorStringA*(x1: MCIERROR, x2: LPSTR, x3: UINT): BOOL{.stdcall,
+proc mciGetErrorStringA*(x1: MCIERROR, x2: LPSTR, x3: uint32): bool{.stdcall,
     dynlib: "winmm.dll", importc: "mciGetErrorStringA".}
-proc mciGetErrorStringW*(x1: MCIERROR, x2: LPWSTR, x3: UINT): BOOL{.stdcall,
+proc mciGetErrorStringW*(x1: MCIERROR, x2: LPWSTR, x3: uint32): bool{.stdcall,
     dynlib: "winmm.dll", importc: "mciGetErrorStringW".}
-proc mciGetErrorString*(x1: MCIERROR, x2: cstring, x3: UINT): BOOL{.stdcall,
+proc mciGetErrorString*(x1: MCIERROR, x2: cstring, x3: uint32): bool{.stdcall,
     dynlib: "winmm.dll", importc: "mciGetErrorStringA".}
-proc mciSetYieldProc*(x1: MCIDEVICEID, x2: YIELDPROC, x3: DWORD): BOOL{.stdcall,
+proc mciSetYieldProc*(x1: MCIDEVICEID, x2: YIELDPROC, x3: DWORD): bool{.stdcall,
     dynlib: "winmm.dll", importc: "mciSetYieldProc".}
 proc mciGetCreatorTask*(x1: MCIDEVICEID): HTASK{.stdcall, dynlib: "winmm.dll",
     importc: "mciGetCreatorTask".}
 proc mciGetYieldProc*(x1: MCIDEVICEID, x2: LPDWORD): YIELDPROC{.stdcall,
     dynlib: "winmm.dll", importc: "mciGetYieldProc".}
-proc mciExecute*(x1: LPCSTR): BOOL{.stdcall, dynlib: "winmm.dll",
+proc mciExecute*(x1: LPCSTR): bool{.stdcall, dynlib: "winmm.dll",
                                     importc: "mciExecute".}
-proc joyGetPos*(x1: UINT, x2: LPJOYINFO): MMRESULT{.stdcall,
+proc joyGetPos*(x1: uint32, x2: LPJOYINFO): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "joyGetPos".}
-proc joyGetPosEx*(x1: UINT, x2: LPJOYINFOEX): MMRESULT{.stdcall,
+proc joyGetPosEx*(x1: uint32, x2: LPJOYINFOEX): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "joyGetPosEx".}
-proc joyGetThreshold*(x1: UINT, x2: LPUINT): MMRESULT{.stdcall,
+proc joyGetThreshold*(x1: uint32, x2: LPUINT): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "joyGetThreshold".}
-proc joyReleaseCapture*(x1: UINT): MMRESULT{.stdcall, dynlib: "winmm.dll",
+proc joyReleaseCapture*(x1: uint32): MMRESULT{.stdcall, dynlib: "winmm.dll",
     importc: "joyReleaseCapture".}
-proc joySetCapture*(x1: HWND, x2: UINT, x3: UINT, x4: BOOL): MMRESULT{.stdcall,
+proc joySetCapture*(x1: HWND, x2: uint32, x3: uint32, x4: bool): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "joySetCapture".}
-proc joySetThreshold*(x1: UINT, x2: UINT): MMRESULT{.stdcall,
+proc joySetThreshold*(x1: uint32, x2: uint32): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "joySetThreshold".}
-proc waveOutGetNumDevs*(): UINT{.stdcall, dynlib: "winmm.dll",
+proc waveOutGetNumDevs*(): uint32{.stdcall, dynlib: "winmm.dll",
                                  importc: "waveOutGetNumDevs".}
-proc waveOutGetDevCapsA*(x1: UINT, x2: LPWAVEOUTCAPSA, x3: UINT): MMRESULT{.
+proc waveOutGetDevCapsA*(x1: uint32, x2: LPWAVEOUTCAPSA, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "waveOutGetDevCapsA".}
-proc waveOutGetDevCapsW*(x1: UINT, x2: LPWAVEOUTCAPSW, x3: UINT): MMRESULT{.
+proc waveOutGetDevCapsW*(x1: uint32, x2: LPWAVEOUTCAPSW, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "waveOutGetDevCapsW".}
-proc waveOutGetDevCaps*(x1: UINT, x2: LPWAVEOUTCAPS, x3: UINT): MMRESULT{.
+proc waveOutGetDevCaps*(x1: uint32, x2: LPWAVEOUTCAPS, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "waveOutGetDevCapsA".}
 proc waveOutGetVolume*(x1: HWAVEOUT, x2: LPDWORD): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "waveOutGetVolume".}
 proc waveOutSetVolume*(x1: HWAVEOUT, x2: DWORD): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "waveOutSetVolume".}
-proc waveOutGetErrorTextA*(x1: MMRESULT, x2: LPSTR, x3: UINT): MMRESULT{.
+proc waveOutGetErrorTextA*(x1: MMRESULT, x2: LPSTR, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "waveOutGetErrorTextA".}
-proc waveOutGetErrorTextW*(x1: MMRESULT, x2: LPWSTR, x3: UINT): MMRESULT{.
+proc waveOutGetErrorTextW*(x1: MMRESULT, x2: LPWSTR, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "waveOutGetErrorTextW".}
-proc waveOutGetErrorText*(x1: MMRESULT, x2: cstring, x3: UINT): MMRESULT{.
+proc waveOutGetErrorText*(x1: MMRESULT, x2: cstring, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "waveOutGetErrorTextA".}
-proc waveOutOpen*(x1: LPHWAVEOUT, x2: UINT, x3: LPCWAVEFORMATEX, x4: DWORD,
+proc waveOutOpen*(x1: LPHWAVEOUT, x2: uint32, x3: LPCWAVEFORMATEX, x4: DWORD,
                   x5: DWORD, x6: DWORD): MMRESULT{.stdcall, dynlib: "winmm.dll",
     importc: "waveOutOpen".}
 proc waveOutClose*(x1: HWAVEOUT): MMRESULT{.stdcall, dynlib: "winmm.dll",
     importc: "waveOutClose".}
-proc waveOutPrepareHeader*(x1: HWAVEOUT, x2: LPWAVEHDR, x3: UINT): MMRESULT{.
+proc waveOutPrepareHeader*(x1: HWAVEOUT, x2: LPWAVEHDR, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "waveOutPrepareHeader".}
-proc waveOutUnprepareHeader*(x1: HWAVEOUT, x2: LPWAVEHDR, x3: UINT): MMRESULT{.
+proc waveOutUnprepareHeader*(x1: HWAVEOUT, x2: LPWAVEHDR, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "waveOutUnprepareHeader".}
-proc waveOutWrite*(x1: HWAVEOUT, x2: LPWAVEHDR, x3: UINT): MMRESULT{.stdcall,
+proc waveOutWrite*(x1: HWAVEOUT, x2: LPWAVEHDR, x3: uint32): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "waveOutWrite".}
 proc waveOutPause*(x1: HWAVEOUT): MMRESULT{.stdcall, dynlib: "winmm.dll",
     importc: "waveOutPause".}
@@ -2383,7 +2380,7 @@ proc waveOutReset*(x1: HWAVEOUT): MMRESULT{.stdcall, dynlib: "winmm.dll",
     importc: "waveOutReset".}
 proc waveOutBreakLoop*(x1: HWAVEOUT): MMRESULT{.stdcall, dynlib: "winmm.dll",
     importc: "waveOutBreakLoop".}
-proc waveOutGetPosition*(x1: HWAVEOUT, x2: LPMMTIME, x3: UINT): MMRESULT{.
+proc waveOutGetPosition*(x1: HWAVEOUT, x2: LPMMTIME, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "waveOutGetPosition".}
 proc waveOutGetPitch*(x1: HWAVEOUT, x2: LPDWORD): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "waveOutGetPitch".}
@@ -2395,32 +2392,32 @@ proc waveOutSetPlaybackRate*(x1: HWAVEOUT, x2: DWORD): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "waveOutSetPlaybackRate".}
 proc waveOutGetID*(x1: HWAVEOUT, x2: LPUINT): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "waveOutGetID".}
-proc waveOutMessage*(x1: HWAVEOUT, x2: UINT, x3: DWORD, x4: DWORD): MMRESULT{.
+proc waveOutMessage*(x1: HWAVEOUT, x2: uint32, x3: DWORD, x4: DWORD): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "waveOutMessage".}
-proc waveInGetNumDevs*(): UINT{.stdcall, dynlib: "winmm.dll",
+proc waveInGetNumDevs*(): uint32{.stdcall, dynlib: "winmm.dll",
                                 importc: "waveInGetNumDevs".}
-proc waveInGetDevCapsA*(x1: UINT, x2: LPWAVEINCAPSA, x3: UINT): MMRESULT{.
+proc waveInGetDevCapsA*(x1: uint32, x2: LPWAVEINCAPSA, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "waveInGetDevCapsA".}
-proc waveInGetDevCapsW*(x1: UINT, x2: LPWAVEINCAPSW, x3: UINT): MMRESULT{.
+proc waveInGetDevCapsW*(x1: uint32, x2: LPWAVEINCAPSW, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "waveInGetDevCapsW".}
-proc waveInGetDevCaps*(x1: UINT, x2: LPWAVEINCAPS, x3: UINT): MMRESULT{.stdcall,
+proc waveInGetDevCaps*(x1: uint32, x2: LPWAVEINCAPS, x3: uint32): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "waveInGetDevCapsA".}
-proc waveInGetErrorTextA*(x1: MMRESULT, x2: LPSTR, x3: UINT): MMRESULT{.stdcall,
+proc waveInGetErrorTextA*(x1: MMRESULT, x2: LPSTR, x3: uint32): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "waveInGetErrorTextA".}
-proc waveInGetErrorTextW*(x1: MMRESULT, x2: LPWSTR, x3: UINT): MMRESULT{.
+proc waveInGetErrorTextW*(x1: MMRESULT, x2: LPWSTR, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "waveInGetErrorTextW".}
-proc waveInGetErrorText*(x1: MMRESULT, x2: cstring, x3: UINT): MMRESULT{.
+proc waveInGetErrorText*(x1: MMRESULT, x2: cstring, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "waveInGetErrorTextA".}
-proc waveInOpen*(x1: LPHWAVEIN, x2: UINT, x3: LPCWAVEFORMATEX, x4: DWORD,
+proc waveInOpen*(x1: LPHWAVEIN, x2: uint32, x3: LPCWAVEFORMATEX, x4: DWORD,
                  x5: DWORD, x6: DWORD): MMRESULT{.stdcall, dynlib: "winmm.dll",
     importc: "waveInOpen".}
 proc waveInClose*(x1: HWAVEIN): MMRESULT{.stdcall, dynlib: "winmm.dll",
     importc: "waveInClose".}
-proc waveInPrepareHeader*(x1: HWAVEIN, x2: LPWAVEHDR, x3: UINT): MMRESULT{.
+proc waveInPrepareHeader*(x1: HWAVEIN, x2: LPWAVEHDR, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "waveInPrepareHeader".}
-proc waveInUnprepareHeader*(x1: HWAVEIN, x2: LPWAVEHDR, x3: UINT): MMRESULT{.
+proc waveInUnprepareHeader*(x1: HWAVEIN, x2: LPWAVEHDR, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "waveInUnprepareHeader".}
-proc waveInAddBuffer*(x1: HWAVEIN, x2: LPWAVEHDR, x3: UINT): MMRESULT{.stdcall,
+proc waveInAddBuffer*(x1: HWAVEIN, x2: LPWAVEHDR, x3: uint32): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "waveInAddBuffer".}
 proc waveInStart*(x1: HWAVEIN): MMRESULT{.stdcall, dynlib: "winmm.dll",
     importc: "waveInStart".}
@@ -2428,11 +2425,11 @@ proc waveInStop*(x1: HWAVEIN): MMRESULT{.stdcall, dynlib: "winmm.dll",
     importc: "waveInStop".}
 proc waveInReset*(x1: HWAVEIN): MMRESULT{.stdcall, dynlib: "winmm.dll",
     importc: "waveInReset".}
-proc waveInGetPosition*(x1: HWAVEIN, x2: LPMMTIME, x3: UINT): MMRESULT{.stdcall,
+proc waveInGetPosition*(x1: HWAVEIN, x2: LPMMTIME, x3: uint32): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "waveInGetPosition".}
 proc waveInGetID*(x1: HWAVEIN, x2: LPUINT): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "waveInGetID".}
-proc waveInMessage*(x1: HWAVEIN, x2: UINT, x3: DWORD, x4: DWORD): MMRESULT{.
+proc waveInMessage*(x1: HWAVEIN, x2: uint32, x3: DWORD, x4: DWORD): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "waveInMessage".}
 proc mixerGetLineControlsA*(x1: HMIXEROBJ, x2: LPMIXERLINECONTROLSA, x3: DWORD): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "mixerGetLineControlsA".}
@@ -2440,13 +2437,13 @@ proc mixerGetLineControlsW*(x1: HMIXEROBJ, x2: LPMIXERLINECONTROLSW, x3: DWORD):
     stdcall, dynlib: "winmm.dll", importc: "mixerGetLineControlsW".}
 proc mixerGetLineControls*(x1: HMIXEROBJ, x2: LPMIXERLINECONTROLS, x3: DWORD): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "mixerGetLineControlsA".}
-proc joyGetNumDevs*(): UINT{.stdcall, dynlib: "winmm.dll",
+proc joyGetNumDevs*(): uint32{.stdcall, dynlib: "winmm.dll",
                              importc: "joyGetNumDevs".}
-proc joyGetDevCapsA*(x1: UINT, x2: LPJOYCAPSA, x3: UINT): MMRESULT{.stdcall,
+proc joyGetDevCapsA*(x1: uint32, x2: LPJOYCAPSA, x3: uint32): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "joyGetDevCapsA".}
-proc joyGetDevCapsW*(x1: UINT, x2: LPJOYCAPSW, x3: UINT): MMRESULT{.stdcall,
+proc joyGetDevCapsW*(x1: uint32, x2: LPJOYCAPSW, x3: uint32): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "joyGetDevCapsW".}
-proc joyGetDevCaps*(x1: UINT, x2: LPJOYCAPS, x3: UINT): MMRESULT{.stdcall,
+proc joyGetDevCaps*(x1: uint32, x2: LPJOYCAPS, x3: uint32): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "joyGetDevCapsA".}
 proc mixerGetControlDetailsA*(x1: HMIXEROBJ, x2: LPMIXERCONTROLDETAILS,
                               x3: DWORD): MMRESULT{.stdcall,
@@ -2456,46 +2453,46 @@ proc mixerGetControlDetailsW*(x1: HMIXEROBJ, x2: LPMIXERCONTROLDETAILS,
     dynlib: "winmm.dll", importc: "mixerGetControlDetailsW".}
 proc mixerGetControlDetails*(x1: HMIXEROBJ, x2: LPMIXERCONTROLDETAILS, x3: DWORD): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "mixerGetControlDetailsA".}
-proc timeGetSystemTime*(x1: LPMMTIME, x2: UINT): MMRESULT{.stdcall,
+proc timeGetSystemTime*(x1: LPMMTIME, x2: uint32): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "timeGetSystemTime".}
 proc timeGetTime*(): DWORD{.stdcall, dynlib: "winmm.dll", importc: "timeGetTime".}
-proc timeSetEvent*(x1: UINT, x2: UINT, x3: LPTIMECALLBACK, x4: DWORD, x5: UINT): MMRESULT{.
+proc timeSetEvent*(x1: uint32, x2: uint32, x3: LPTIMECALLBACK, x4: DWORD, x5: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "timeSetEvent".}
-proc timeKillEvent*(x1: UINT): MMRESULT{.stdcall, dynlib: "winmm.dll",
+proc timeKillEvent*(x1: uint32): MMRESULT{.stdcall, dynlib: "winmm.dll",
     importc: "timeKillEvent".}
-proc timeGetDevCaps*(x1: LPTIMECAPS, x2: UINT): MMRESULT{.stdcall,
+proc timeGetDevCaps*(x1: LPTIMECAPS, x2: uint32): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "timeGetDevCaps".}
-proc timeBeginPeriod*(x1: UINT): MMRESULT{.stdcall, dynlib: "winmm.dll",
+proc timeBeginPeriod*(x1: uint32): MMRESULT{.stdcall, dynlib: "winmm.dll",
     importc: "timeBeginPeriod".}
-proc timeEndPeriod*(x1: UINT): MMRESULT{.stdcall, dynlib: "winmm.dll",
+proc timeEndPeriod*(x1: uint32): MMRESULT{.stdcall, dynlib: "winmm.dll",
     importc: "timeEndPeriod".}
-proc mixerGetDevCapsA*(x1: UINT, x2: LPMIXERCAPSA, x3: UINT): MMRESULT{.stdcall,
+proc mixerGetDevCapsA*(x1: uint32, x2: LPMIXERCAPSA, x3: uint32): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "mixerGetDevCapsA".}
-proc mixerGetDevCapsW*(x1: UINT, x2: LPMIXERCAPSW, x3: UINT): MMRESULT{.stdcall,
+proc mixerGetDevCapsW*(x1: uint32, x2: LPMIXERCAPSW, x3: uint32): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "mixerGetDevCapsW".}
-proc mixerGetDevCaps*(x1: UINT, x2: LPMIXERCAPS, x3: UINT): MMRESULT{.stdcall,
+proc mixerGetDevCaps*(x1: uint32, x2: LPMIXERCAPS, x3: uint32): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "mixerGetDevCapsA".}
-proc mixerOpen*(x1: LPHMIXER, x2: UINT, x3: DWORD, x4: DWORD, x5: DWORD): MMRESULT{.
+proc mixerOpen*(x1: LPHMIXER, x2: uint32, x3: DWORD, x4: DWORD, x5: DWORD): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "mixerOpen".}
 proc mixerClose*(x1: HMIXER): MMRESULT{.stdcall, dynlib: "winmm.dll",
                                         importc: "mixerClose".}
-proc mixerMessage*(x1: HMIXER, x2: UINT, x3: DWORD, x4: DWORD): DWORD{.stdcall,
+proc mixerMessage*(x1: HMIXER, x2: uint32, x3: DWORD, x4: DWORD): DWORD{.stdcall,
     dynlib: "winmm.dll", importc: "mixerMessage".}
-proc auxGetNumDevs*(): UINT{.stdcall, dynlib: "winmm.dll",
+proc auxGetNumDevs*(): uint32{.stdcall, dynlib: "winmm.dll",
                              importc: "auxGetNumDevs".}
-proc auxGetDevCapsA*(x1: UINT, x2: LPAUXCAPSA, x3: UINT): MMRESULT{.stdcall,
+proc auxGetDevCapsA*(x1: uint32, x2: LPAUXCAPSA, x3: uint32): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "auxGetDevCapsA".}
-proc auxGetDevCapsW*(x1: UINT, x2: LPAUXCAPSW, x3: UINT): MMRESULT{.stdcall,
+proc auxGetDevCapsW*(x1: uint32, x2: LPAUXCAPSW, x3: uint32): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "auxGetDevCapsW".}
-proc auxGetDevCaps*(x1: UINT, x2: LPAUXCAPS, x3: UINT): MMRESULT{.stdcall,
+proc auxGetDevCaps*(x1: uint32, x2: LPAUXCAPS, x3: uint32): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "auxGetDevCapsA".}
-proc auxSetVolume*(x1: UINT, x2: DWORD): MMRESULT{.stdcall, dynlib: "winmm.dll",
+proc auxSetVolume*(x1: uint32, x2: DWORD): MMRESULT{.stdcall, dynlib: "winmm.dll",
     importc: "auxSetVolume".}
-proc auxGetVolume*(x1: UINT, x2: LPDWORD): MMRESULT{.stdcall,
+proc auxGetVolume*(x1: uint32, x2: LPDWORD): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "auxGetVolume".}
-proc auxOutMessage*(x1: UINT, x2: UINT, x3: DWORD, x4: DWORD): MMRESULT{.
+proc auxOutMessage*(x1: uint32, x2: uint32, x3: DWORD, x4: DWORD): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "auxOutMessage".}
-proc midiOutGetNumDevs*(): UINT{.stdcall, dynlib: "winmm.dll",
+proc midiOutGetNumDevs*(): uint32{.stdcall, dynlib: "winmm.dll",
                                  importc: "midiOutGetNumDevs".}
 proc midiStreamOpen*(x1: LPHMIDISTRM, x2: LPUINT, x3: DWORD, x4: DWORD,
                      x5: DWORD, x6: DWORD): MMRESULT{.stdcall,
@@ -2504,9 +2501,9 @@ proc midiStreamClose*(x1: HMIDISTRM): MMRESULT{.stdcall, dynlib: "winmm.dll",
     importc: "midiStreamClose".}
 proc midiStreamProperty*(x1: HMIDISTRM, x2: LPBYTE, x3: DWORD): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "midiStreamProperty".}
-proc midiStreamPosition*(x1: HMIDISTRM, x2: LPMMTIME, x3: UINT): MMRESULT{.
+proc midiStreamPosition*(x1: HMIDISTRM, x2: LPMMTIME, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "midiStreamPosition".}
-proc midiStreamOut*(x1: HMIDISTRM, x2: LPMIDIHDR, x3: UINT): MMRESULT{.stdcall,
+proc midiStreamOut*(x1: HMIDISTRM, x2: LPMIDIHDR, x3: uint32): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "midiStreamOut".}
 proc midiStreamPause*(x1: HMIDISTRM): MMRESULT{.stdcall, dynlib: "winmm.dll",
     importc: "midiStreamPause".}
@@ -2518,67 +2515,67 @@ proc midiConnect*(x1: HMIDI, x2: HMIDIOUT, x3: pointer): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "midiConnect".}
 proc midiDisconnect*(x1: HMIDI, x2: HMIDIOUT, x3: pointer): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "midiDisconnect".}
-proc midiOutGetDevCapsA*(x1: UINT, x2: LPMIDIOUTCAPSA, x3: UINT): MMRESULT{.
+proc midiOutGetDevCapsA*(x1: uint32, x2: LPMIDIOUTCAPSA, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "midiOutGetDevCapsA".}
-proc midiOutGetDevCapsW*(x1: UINT, x2: LPMIDIOUTCAPSW, x3: UINT): MMRESULT{.
+proc midiOutGetDevCapsW*(x1: uint32, x2: LPMIDIOUTCAPSW, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "midiOutGetDevCapsW".}
-proc midiOutGetDevCaps*(x1: UINT, x2: LPMIDIOUTCAPS, x3: UINT): MMRESULT{.
+proc midiOutGetDevCaps*(x1: uint32, x2: LPMIDIOUTCAPS, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "midiOutGetDevCapsA".}
 proc midiOutGetVolume*(x1: HMIDIOUT, x2: LPDWORD): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "midiOutGetVolume".}
 proc midiOutSetVolume*(x1: HMIDIOUT, x2: DWORD): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "midiOutSetVolume".}
-proc midiOutGetErrorTextA*(x1: MMRESULT, x2: LPSTR, x3: UINT): MMRESULT{.
+proc midiOutGetErrorTextA*(x1: MMRESULT, x2: LPSTR, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "midiOutGetErrorTextA".}
-proc midiOutGetErrorTextW*(x1: MMRESULT, x2: LPWSTR, x3: UINT): MMRESULT{.
+proc midiOutGetErrorTextW*(x1: MMRESULT, x2: LPWSTR, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "midiOutGetErrorTextW".}
-proc midiOutGetErrorText*(x1: MMRESULT, x2: cstring, x3: UINT): MMRESULT{.
+proc midiOutGetErrorText*(x1: MMRESULT, x2: cstring, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "midiOutGetErrorTextA".}
-proc midiOutOpen*(x1: LPHMIDIOUT, x2: UINT, x3: DWORD, x4: DWORD, x5: DWORD): MMRESULT{.
+proc midiOutOpen*(x1: LPHMIDIOUT, x2: uint32, x3: DWORD, x4: DWORD, x5: DWORD): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "midiOutOpen".}
 proc midiOutClose*(x1: HMIDIOUT): MMRESULT{.stdcall, dynlib: "winmm.dll",
     importc: "midiOutClose".}
-proc midiOutPrepareHeader*(x1: HMIDIOUT, x2: LPMIDIHDR, x3: UINT): MMRESULT{.
+proc midiOutPrepareHeader*(x1: HMIDIOUT, x2: LPMIDIHDR, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "midiOutPrepareHeader".}
-proc midiOutUnprepareHeader*(x1: HMIDIOUT, x2: LPMIDIHDR, x3: UINT): MMRESULT{.
+proc midiOutUnprepareHeader*(x1: HMIDIOUT, x2: LPMIDIHDR, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "midiOutUnprepareHeader".}
 proc midiOutShortMsg*(x1: HMIDIOUT, x2: DWORD): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "midiOutShortMsg".}
-proc midiOutLongMsg*(x1: HMIDIOUT, x2: LPMIDIHDR, x3: UINT): MMRESULT{.stdcall,
+proc midiOutLongMsg*(x1: HMIDIOUT, x2: LPMIDIHDR, x3: uint32): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "midiOutLongMsg".}
 proc midiOutReset*(x1: HMIDIOUT): MMRESULT{.stdcall, dynlib: "winmm.dll",
     importc: "midiOutReset".}
-proc midiOutCachePatches*(x1: HMIDIOUT, x2: UINT, x3: LPWORD, x4: UINT): MMRESULT{.
+proc midiOutCachePatches*(x1: HMIDIOUT, x2: uint32, x3: LPWORD, x4: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "midiOutCachePatches".}
-proc midiOutCacheDrumPatches*(x1: HMIDIOUT, x2: UINT, x3: LPWORD, x4: UINT): MMRESULT{.
+proc midiOutCacheDrumPatches*(x1: HMIDIOUT, x2: uint32, x3: LPWORD, x4: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "midiOutCacheDrumPatches".}
 proc midiOutGetID*(x1: HMIDIOUT, x2: LPUINT): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "midiOutGetID".}
-proc midiOutMessage*(x1: HMIDIOUT, x2: UINT, x3: DWORD, x4: DWORD): MMRESULT{.
+proc midiOutMessage*(x1: HMIDIOUT, x2: uint32, x3: DWORD, x4: DWORD): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "midiOutMessage".}
-proc midiInGetNumDevs*(): UINT{.stdcall, dynlib: "winmm.dll",
+proc midiInGetNumDevs*(): uint32{.stdcall, dynlib: "winmm.dll",
                                 importc: "midiInGetNumDevs".}
-proc midiInGetDevCapsA*(x1: UINT, x2: LPMIDIINCAPSA, x3: UINT): MMRESULT{.
+proc midiInGetDevCapsA*(x1: uint32, x2: LPMIDIINCAPSA, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "midiInGetDevCapsA".}
-proc midiInGetDevCapsW*(x1: UINT, x2: LPMIDIINCAPSW, x3: UINT): MMRESULT{.
+proc midiInGetDevCapsW*(x1: uint32, x2: LPMIDIINCAPSW, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "midiInGetDevCapsW".}
-proc midiInGetDevCaps*(x1: UINT, x2: LPMIDIINCAPS, x3: UINT): MMRESULT{.stdcall,
+proc midiInGetDevCaps*(x1: uint32, x2: LPMIDIINCAPS, x3: uint32): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "midiInGetDevCapsA".}
-proc midiInGetErrorTextA*(x1: MMRESULT, x2: LPSTR, x3: UINT): MMRESULT{.stdcall,
+proc midiInGetErrorTextA*(x1: MMRESULT, x2: LPSTR, x3: uint32): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "midiInGetErrorTextA".}
-proc midiInGetErrorTextW*(x1: MMRESULT, x2: LPWSTR, x3: UINT): MMRESULT{.
+proc midiInGetErrorTextW*(x1: MMRESULT, x2: LPWSTR, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "midiInGetErrorTextW".}
-proc midiInGetErrorText*(x1: MMRESULT, x2: cstring, x3: UINT): MMRESULT{.
+proc midiInGetErrorText*(x1: MMRESULT, x2: cstring, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "midiInGetErrorTextA".}
-proc midiInOpen*(x1: LPHMIDIIN, x2: UINT, x3: DWORD, x4: DWORD, x5: DWORD): MMRESULT{.
+proc midiInOpen*(x1: LPHMIDIIN, x2: uint32, x3: DWORD, x4: DWORD, x5: DWORD): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "midiInOpen".}
 proc midiInClose*(x1: HMIDIIN): MMRESULT{.stdcall, dynlib: "winmm.dll",
     importc: "midiInClose".}
-proc midiInPrepareHeader*(x1: HMIDIIN, x2: LPMIDIHDR, x3: UINT): MMRESULT{.
+proc midiInPrepareHeader*(x1: HMIDIIN, x2: LPMIDIHDR, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "midiInPrepareHeader".}
-proc midiInUnprepareHeader*(x1: HMIDIIN, x2: LPMIDIHDR, x3: UINT): MMRESULT{.
+proc midiInUnprepareHeader*(x1: HMIDIIN, x2: LPMIDIHDR, x3: uint32): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "midiInUnprepareHeader".}
-proc midiInAddBuffer*(x1: HMIDIIN, x2: LPMIDIHDR, x3: UINT): MMRESULT{.stdcall,
+proc midiInAddBuffer*(x1: HMIDIIN, x2: LPMIDIHDR, x3: uint32): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "midiInAddBuffer".}
 proc midiInStart*(x1: HMIDIIN): MMRESULT{.stdcall, dynlib: "winmm.dll",
     importc: "midiInStart".}
@@ -2588,7 +2585,7 @@ proc midiInReset*(x1: HMIDIIN): MMRESULT{.stdcall, dynlib: "winmm.dll",
     importc: "midiInReset".}
 proc midiInGetID*(x1: HMIDIIN, x2: LPUINT): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "midiInGetID".}
-proc midiInMessage*(x1: HMIDIIN, x2: UINT, x3: DWORD, x4: DWORD): MMRESULT{.
+proc midiInMessage*(x1: HMIDIIN, x2: uint32, x3: DWORD, x4: DWORD): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "midiInMessage".}
 proc mixerGetLineInfoA*(x1: HMIXEROBJ, x2: LPMIXERLINEA, x3: DWORD): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "mixerGetLineInfoA".}
@@ -2596,13 +2593,13 @@ proc mixerGetLineInfoW*(x1: HMIXEROBJ, x2: LPMIXERLINEW, x3: DWORD): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "mixerGetLineInfoW".}
 proc mixerGetLineInfo*(x1: HMIXEROBJ, x2: LPMIXERLINE, x3: DWORD): MMRESULT{.
     stdcall, dynlib: "winmm.dll", importc: "mixerGetLineInfoA".}
-proc mixerGetID*(x1: HMIXEROBJ, x2: var UINT, x3: DWORD): MMRESULT{.stdcall,
+proc mixerGetID*(x1: HMIXEROBJ, x2: var uint32, x3: DWORD): MMRESULT{.stdcall,
     dynlib: "winmm.dll", importc: "mixerGetID".}
-proc PlaySoundA*(x1: LPCSTR, x2: HMODULE, x3: DWORD): BOOL{.stdcall,
+proc PlaySoundA*(x1: LPCSTR, x2: HMODULE, x3: DWORD): bool{.stdcall,
     dynlib: "winmm.dll", importc: "PlaySoundA".}
-proc PlaySoundW*(x1: LPCWSTR, x2: HMODULE, x3: DWORD): BOOL{.stdcall,
+proc PlaySoundW*(x1: LPCWSTR, x2: HMODULE, x3: DWORD): bool{.stdcall,
     dynlib: "winmm.dll", importc: "PlaySoundW".}
-proc PlaySound*(x1: cstring, x2: HMODULE, x3: DWORD): BOOL{.stdcall,
+proc PlaySound*(x1: cstring, x2: HMODULE, x3: DWORD): bool{.stdcall,
     dynlib: "winmm.dll", importc: "PlaySoundA".}
 # implementation
 
@@ -2610,7 +2607,7 @@ proc MEVT_EVENTTYPE(x: int8): int8 =
   result = toU8(x shr 24)
 
 proc MEVT_EVENTPARM(x: DWORD): DWORD =
-  result = x And 0x00FFFFFF
+  result = x and 0x00FFFFFF
 
 proc MCI_MSF_MINUTE(msf: int32): int8 =
   result = toU8(msf and 0xff)
@@ -2648,8 +2645,8 @@ proc MCI_MAKE_HMS(h, m, s: int8): int32 =
 proc MCI_TMSF_FRAME(tmsf: int32): int8 =
   result = toU8(tmsf shr 24)
 
-proc mci_Make_TMSF(t, m, s, f: int8): int32 =
+proc MCI_MAKE_TMSF(t, m, s, f: int8): int32 =
   result = (ze(t) or ze(m) shl 8 or ze(s) shl 16 or ze(f) shl 24).int32
 
 proc DIBINDEX(n: int32): int32 =
-  result = n Or 0x000010FF'i32 shl 16'i32
+  result = n or 0x000010FF'i32 shl 16'i32
