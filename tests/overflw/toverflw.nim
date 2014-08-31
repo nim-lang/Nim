@@ -12,7 +12,7 @@ a = high(int)
 b = -2
 try:
   writeln(stdout, b - a)
-except EOverflow:
+except OverflowError:
   writeln(stdout, "the computation overflowed")
 
 {.pop.} # overflow check

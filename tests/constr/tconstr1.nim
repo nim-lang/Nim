@@ -10,7 +10,7 @@ type
     s: string,
     x, y: int,
     z: float,
-    chars: set[Char]]
+    chars: set[char]]
 
 proc testSem =
   var

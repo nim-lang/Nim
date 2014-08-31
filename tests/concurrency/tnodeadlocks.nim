@@ -20,46 +20,46 @@ proc threadFunc(interval: tuple[a, b: int]) {.thread.} =
     when nodeadlocks:
       case i mod 6
       of 0:
-        Acquire(L) # lock stdout
-        Acquire(M)
-        Acquire(N)
+        acquire(L) # lock stdout
+        acquire(M)
+        acquire(N)
       of 1:
-        Acquire(L)
-        Acquire(N) # lock stdout
-        Acquire(M)
+        acquire(L)
+        acquire(N) # lock stdout
+        acquire(M)
       of 2:
-        Acquire(M)
-        Acquire(L)
-        Acquire(N)
+        acquire(M)
+        acquire(L)
+        acquire(N)
       of 3:
-        Acquire(M)
-        Acquire(N)
-        Acquire(L)
+        acquire(M)
+        acquire(N)
+        acquire(L)
       of 4:
-        Acquire(N)
-        Acquire(M)
-        Acquire(L)
+        acquire(N)
+        acquire(M)
+        acquire(L)
       of 5:
-        Acquire(N)
-        Acquire(L)
-        Acquire(M)
+        acquire(N)
+        acquire(L)
+        acquire(M)
       else: assert false
     else:
-      Acquire(L) # lock stdout
-      Acquire(M)
+      acquire(L) # lock stdout
+      acquire(M)
       
     echo i
     os.sleep(10)
     when nodeadlocks:
       echo "deadlocks prevented: ", deadlocksPrevented
     when nodeadlocks:
-      Release(N)
-    Release(M)
-    Release(L)
+      release(N)
+    release(M)
+    release(L)
 
-InitLock(L)
-InitLock(M)
-InitLock(N)
+initLock(L)
+initLock(M)
+initLock(N)
 
 proc main =
   for i in 0..high(thr):

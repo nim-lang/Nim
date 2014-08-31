@@ -13,7 +13,7 @@ void printFloats(void) {
 }
 """.}
 
-proc c_printf(frmt: CString) {.importc: "printf", header: "<stdio.h>", varargs.}
+proc c_printf(frmt: cstring) {.importc: "printf", header: "<stdio.h>", varargs.}
 proc printFloats {.importc, nodecl.}
 
 var x: float = 1.234567890123456789

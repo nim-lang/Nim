@@ -47,7 +47,7 @@ iterator count3(): int {.closure.} =
   yield 2
   yield 3
 
-for word, isSep in tokenize2("ta da", whiteSpace):
+for word, isSep in tokenize2("ta da", WhiteSpace):
   if not isSep:
     stdout.write(word)
 echo ""
@@ -56,7 +56,7 @@ proc inProc() =
   for c in count3():
     echo c
   
-  for word, isSep in tokenize2("ta da", whiteSpace):
+  for word, isSep in tokenize2("ta da", WhiteSpace):
     stdout.write(word)
 
   for c in count3():

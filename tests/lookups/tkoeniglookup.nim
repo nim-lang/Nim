@@ -2,7 +2,7 @@ discard """
   output: '''x: 0 y: 0'''
 """
 
-proc ToString*[T](x: T): string = return $x
+proc toString*[T](x: T): string = return $x
 
 
 type

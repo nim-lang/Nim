@@ -1,6 +1,6 @@
 discard """
   file: "tfloat2.nim"
-  outputsub: "Error: unhandled exception: FPU operation caused a NaN result [EFloatInvalidOp]"
+  outputsub: "Error: unhandled exception: FPU operation caused a NaN result [FloatInvalidOpError]"
   exitcode: "1"
 """
 # Test new floating point exceptions
@@ -10,6 +10,6 @@ discard """
 var x = 0.0
 var y = 0.0
 
-echo x / y #OUT Error: unhandled exception: FPU operation caused a NaN result [EFloatInvalidOp]
+echo x / y #OUT Error: unhandled exception: FPU operation caused a NaN result
 
 

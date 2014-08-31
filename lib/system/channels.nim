@@ -53,8 +53,8 @@ proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
 proc storeAux(dest, src: pointer, n: ptr TNimNode, t: PRawChannel,
               mode: TLoadStoreMode) {.gcsafe.} =
   var
-    d = cast[TAddress](dest)
-    s = cast[TAddress](src)
+    d = cast[ByteAddress](dest)
+    s = cast[ByteAddress](src)
   case n.kind
   of nkSlot: storeAux(cast[pointer](d +% n.offset), 
                       cast[pointer](s +% n.offset), n.typ, t, mode)
@@ -70,8 +70,8 @@ proc storeAux(dest, src: pointer, n: ptr TNimNode, t: PRawChannel,
 proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel, 
               mode: TLoadStoreMode) =
   var
-    d = cast[TAddress](dest)
-    s = cast[TAddress](src)
+    d = cast[ByteAddress](dest)
+    s = cast[ByteAddress](src)
   sysAssert(mt != nil, "mt == nil")
   case mt.kind
   of tyString:
@@ -108,11 +108,11 @@ proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
         x[] = alloc(t.region, seq.len *% mt.base.size +% GenericSeqSize)
       else:
         unsureAsgnRef(x, newObj(mt, seq.len * mt.base.size + GenericSeqSize))
-      var dst = cast[TAddress](cast[PPointer](dest)[])
+      var dst = cast[ByteAddress](cast[PPointer](dest)[])
       for i in 0..seq.len-1:
         storeAux(
           cast[pointer](dst +% i*% mt.base.size +% GenericSeqSize),
-          cast[pointer](cast[TAddress](s2) +% i *% mt.base.size +%
+          cast[pointer](cast[ByteAddress](s2) +% i *% mt.base.size +%
                         GenericSeqSize),
           mt.base, t, mode)
       var dstseq = cast[PGenericSeq](dst)
@@ -192,7 +192,7 @@ template lockChannel(q: expr, action: stmt) {.immediate.} =
 
 template sendImpl(q: expr) {.immediate.} =  
   if q.mask == ChannelDeadMask:
-    sysFatal(EDeadThread, "cannot send message; thread died")
+    sysFatal(DeadThreadError, "cannot send message; thread died")
   acquireSys(q.lock)
   var m: TMsg
   shallowCopy(m, msg)
@@ -215,7 +215,7 @@ proc llRecv(q: PRawChannel, res: pointer, typ: PNimType) =
   q.ready = false
   if typ != q.elemType:
     releaseSys(q.lock)
-    sysFatal(EInvalidValue, "cannot receive message of wrong type")
+    sysFatal(ValueError, "cannot receive message of wrong type")
   rawRecv(q, res, typ)
 
 proc recv*[TMsg](c: var TChannel[TMsg]): TMsg =

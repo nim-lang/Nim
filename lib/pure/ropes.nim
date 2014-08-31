@@ -186,7 +186,7 @@ proc `&`*(a: string, b: Rope): Rope {.rtl, extern: "nroConcStrRope".} =
   ## the concatenation operator for ropes.
   result = rope(a) & b
   
-proc `&`*(a: openarray[Rope]): Rope {.rtl, extern: "nroConcOpenArray".} = 
+proc `&`*(a: openArray[Rope]): Rope {.rtl, extern: "nroConcOpenArray".} = 
   ## the concatenation operator for an openarray of ropes.
   for i in countup(0, high(a)): result = result & a[i]
 
@@ -233,7 +233,7 @@ iterator items*(r: Rope): char =
   for s in leaves(r):
     for c in items(s): yield c
 
-proc write*(f: TFile, r: Rope) {.rtl, extern: "nro$1".} =
+proc write*(f: File, r: Rope) {.rtl, extern: "nro$1".} =
   ## writes a rope to a file.
   for s in leaves(r): write(f, s)
 
@@ -291,7 +291,7 @@ when false:
       if i - 1 >= start: 
         add(result, substr(frmt, start, i-1))
   
-proc `%`*(frmt: string, args: openarray[Rope]): Rope {. 
+proc `%`*(frmt: string, args: openArray[Rope]): Rope {. 
   rtl, extern: "nroFormat".} =
   ## `%` substitution operator for ropes. Does not support the ``$identifier``
   ## nor ``${identifier}`` notations.
@@ -324,9 +324,9 @@ proc `%`*(frmt: string, args: openarray[Rope]): Rope {.
           j = j * 10 + ord(frmt[i]) - ord('0')
           inc(i)
         if frmt[i] == '}': inc(i)
-        else: raise newException(EInvalidValue, "invalid format string")
+        else: raise newException(ValueError, "invalid format string")
         add(result, args[j-1])
-      else: raise newException(EInvalidValue, "invalid format string")
+      else: raise newException(ValueError, "invalid format string")
     var start = i
     while i < length: 
       if frmt[i] != '$': inc(i)
@@ -334,15 +334,15 @@ proc `%`*(frmt: string, args: openarray[Rope]): Rope {.
     if i - 1 >= start: 
       add(result, substr(frmt, start, i - 1))
 
-proc addf*(c: var Rope, frmt: string, args: openarray[Rope]) {.
+proc addf*(c: var Rope, frmt: string, args: openArray[Rope]) {.
   rtl, extern: "nro$1".} =
   ## shortcut for ``add(c, frmt % args)``.
   add(c, frmt % args)
 
-proc equalsFile*(r: Rope, f: TFile): bool {.rtl, extern: "nro$1File".} =
+proc equalsFile*(r: Rope, f: File): bool {.rtl, extern: "nro$1File".} =
   ## returns true if the contents of the file `f` equal `r`.
   var bufSize = 1024 # reasonable start value
-  var buf = alloc(BufSize)
+  var buf = alloc(bufSize)
   for s in leaves(r):
     if s.len > bufSize:
       bufSize = max(bufSize * 2, s.len)
@@ -357,7 +357,7 @@ proc equalsFile*(r: Rope, f: TFile): bool {.rtl, extern: "nro$1File".} =
 proc equalsFile*(r: Rope, f: string): bool {.rtl, extern: "nro$1Str".} =
   ## returns true if the contents of the file `f` equal `r`. If `f` does not
   ## exist, false is returned.
-  var bin: TFile
+  var bin: File
   result = open(bin, f)
   if result:
     result = equalsFile(r, bin)

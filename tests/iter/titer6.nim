@@ -21,13 +21,13 @@ iterator tokenize2(s: string, seps: set[char] = Whitespace): tuple[
         yield (substr(s, i, j-1), false)
     i = j
 
-for word, isSep in tokenize2("ta da", whiteSpace):
+for word, isSep in tokenize2("ta da", WhiteSpace):
   var titer2TestVar = 0 
   stdout.write(titer2TestVar)
 
 proc wordWrap2(s: string, maxLineWidth = 80, 
                splitLongWords = true,
-               seps: set[char] = whitespace,
+               seps: set[char] = Whitespace,
                newLine = "\n"): string  = 
   result = ""
   for word, isSep in tokenize2(s, seps):

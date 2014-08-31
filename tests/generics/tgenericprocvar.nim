@@ -25,7 +25,7 @@ proc filter[T,D](data: seq[T], env:D, pred: TFilterProc[T,D]): seq[T] =
   for e in data:
     if pred(e, env): result.add(e)
 
-proc predTest(item: int, value: int): Bool =
+proc predTest(item: int, value: int): bool =
   return item <= value
 
 proc test(data: seq[int], value: int): seq[int] =

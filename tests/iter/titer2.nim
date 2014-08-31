@@ -44,8 +44,8 @@ block Test1:
   # a non-generic iterator!
 
   var t = initTable[int, string]()
-  for k, v in t.pairs: nil
-  for k, v in t.pairs: nil
+  for k, v in t.pairs: discard
+  for k, v in t.pairs: discard
 
 echo "true"
 

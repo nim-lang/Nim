@@ -24,7 +24,7 @@ else:
 
 var
   s: string
-write(stdout, "compiled at " & system.compileDate &
-              " " & compileTime & "\n")
+write(stdout, "compiled at " & system.CompileDate &
+              " " & CompileTime & "\n")
 echo getDateStr()
 echo getClockStr()

@@ -5,7 +5,7 @@ discard """
 # Test the case statement
 
 type
-  tenum = enum eA, eB, eC
+  Tenum = enum eA, eB, eC
 
 var
   x: string = "yyy"

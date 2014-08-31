@@ -31,7 +31,7 @@ when someGcc and hasThreadSupport:
                        ## with acquire loads 
                        ## and release stores in all threads.
 
-    TAtomType* = TNumber|pointer|ptr|char
+    TAtomType* = SomeNumber|pointer|ptr|char
       ## Type Class representing valid types for use with atomic procs
 
   proc atomicLoadN*[T: TAtomType](p: ptr T, mem: AtomMemModel): T {.

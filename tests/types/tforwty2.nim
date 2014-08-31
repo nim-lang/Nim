@@ -6,7 +6,7 @@
 type
   PSDL_semaphore = ptr TSDL_semaphore
   TSDL_semaphore {.final.} = object
-    sem: Pointer             #PSem_t;
+    sem: pointer             #PSem_t;
     when not defined(USE_NAMED_SEMAPHORES):
       sem_data: int
     when defined(BROKEN_SEMGETVALUE):

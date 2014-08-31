@@ -276,14 +276,14 @@ proc parseComment(my: var XmlParser) =
   my.bufpos = pos
   my.kind = xmlComment
 
-proc parseWhitespace(my: var XmlParser, skip=False) = 
+proc parseWhitespace(my: var XmlParser, skip=false) = 
   var pos = my.bufpos
   var buf = my.buf
   while true: 
     case buf[pos]
     of ' ', '\t': 
       if not skip: add(my.a, buf[pos])
-      Inc(pos)
+      inc(pos)
     of '\c':  
       # the specification says that CR-LF, CR are to be transformed to LF
       pos = lexbase.handleCR(my, pos)
@@ -304,7 +304,7 @@ const
 proc parseName(my: var XmlParser, dest: var string) = 
   var pos = my.bufpos
   var buf = my.buf
-  if buf[pos] in nameStartChar: 
+  if buf[pos] in NameStartChar: 
     while true:
       add(dest, buf[pos])
       inc(pos)
@@ -385,11 +385,11 @@ proc parsePI(my: var XmlParser) =
       inc(pos)
     of '\c':
       # the specification says that CR-LF, CR are to be transformed to LF
-      pos = lexbase.HandleCR(my, pos)
+      pos = lexbase.handleCR(my, pos)
       buf = my.buf      
       add(my.b, '\L')
     of '\L': 
-      pos = lexbase.HandleLF(my, pos)
+      pos = lexbase.handleLF(my, pos)
       buf = my.buf
       add(my.b, '\L')
     else:
@@ -420,11 +420,11 @@ proc parseSpecial(my: var XmlParser) =
       inc(pos)
       add(my.a, '>')
     of '\c':  
-      pos = lexbase.HandleCR(my, pos)
+      pos = lexbase.handleCR(my, pos)
       buf = my.buf
       add(my.a, '\L')
     of '\L': 
-      pos = lexbase.HandleLF(my, pos)
+      pos = lexbase.handleLF(my, pos)
       buf = my.buf
       add(my.a, '\L')
     else:
@@ -441,7 +441,7 @@ proc parseTag(my: var XmlParser) =
     my.kind = xmlCharData
     add(my.a, '<')
     return
-  parseWhitespace(my, skip=True)
+  parseWhitespace(my, skip=true)
   if my.buf[my.bufpos] in NameStartChar: 
     # an attribute follows:
     my.kind = xmlElementOpen
@@ -461,7 +461,7 @@ proc parseTag(my: var XmlParser) =
 proc parseEndTag(my: var XmlParser) = 
   inc(my.bufpos, 2)
   parseName(my, my.a)
-  parseWhitespace(my, skip=True)
+  parseWhitespace(my, skip=true)
   if my.buf[my.bufpos] == '>':
     inc(my.bufpos)
   else:
@@ -477,12 +477,12 @@ proc parseAttribute(my: var XmlParser) =
   if my.a.len == 0: 
     markError(my, errGtExpected)
     return
-  parseWhitespace(my, skip=True)
+  parseWhitespace(my, skip=true)
   if my.buf[my.bufpos] != '=':
     markError(my, errEqExpected)
     return
   inc(my.bufpos)
-  parseWhitespace(my, skip=True)
+  parseWhitespace(my, skip=true)
 
   var pos = my.bufpos
   var buf = my.buf
@@ -507,11 +507,11 @@ proc parseAttribute(my: var XmlParser) =
         pendingSpace = true
         inc(pos)
       of '\c':  
-        pos = lexbase.HandleCR(my, pos)
+        pos = lexbase.handleCR(my, pos)
         buf = my.buf
         pendingSpace = true
       of '\L': 
-        pos = lexbase.HandleLF(my, pos)
+        pos = lexbase.handleLF(my, pos)
         buf = my.buf
         pendingSpace = true
       else:
@@ -527,7 +527,7 @@ proc parseAttribute(my: var XmlParser) =
   else:
     markError(my, errQuoteExpected)  
   my.bufpos = pos
-  parseWhitespace(my, skip=True)
+  parseWhitespace(my, skip=true)
   
 proc parseCharData(my: var XmlParser) = 
   var pos = my.bufpos
@@ -537,11 +537,11 @@ proc parseCharData(my: var XmlParser) =
     of '\0', '<', '&': break
     of '\c':  
       # the specification says that CR-LF, CR are to be transformed to LF
-      pos = lexbase.HandleCR(my, pos)
+      pos = lexbase.handleCR(my, pos)
       buf = my.buf
       add(my.a, '\L')
     of '\L': 
-      pos = lexbase.HandleLF(my, pos)
+      pos = lexbase.handleLF(my, pos)
       buf = my.buf
       add(my.a, '\L')
     else:

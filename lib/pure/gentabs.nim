@@ -74,7 +74,7 @@ proc newGenTable*[T](mode: TGenTableMode): PGenTable[T] =
 proc nextTry(h, maxHash: THash): THash {.inline.} =
   result = ((5 * h) + 1) and maxHash
 
-proc RawGet[T](tbl: PGenTable[T], key: string): int =
+proc rawGet[T](tbl: PGenTable[T], key: string): int =
   var h: THash
   h = myhash(tbl, key) and high(tbl.data) # start with real hash value
   while not isNil(tbl.data[h].key):
@@ -83,7 +83,7 @@ proc RawGet[T](tbl: PGenTable[T], key: string): int =
     h = nextTry(h, high(tbl.data))
   result = - 1
 
-proc RawInsert[T](tbl: PGenTable[T], data: var TGenKeyValuePairSeq[T], 
+proc rawInsert[T](tbl: PGenTable[T], data: var TGenKeyValuePairSeq[T], 
                   key: string, val: T) =
   var h: THash
   h = myhash(tbl, key) and high(data)
@@ -92,12 +92,12 @@ proc RawInsert[T](tbl: PGenTable[T], data: var TGenKeyValuePairSeq[T],
   data[h].key = key
   data[h].val = val
 
-proc Enlarge[T](tbl: PGenTable[T]) =
+proc enlarge[T](tbl: PGenTable[T]) =
   var n: TGenKeyValuePairSeq[T]
   newSeq(n, len(tbl.data) * growthFactor)
   for i in countup(0, high(tbl.data)):
     if not isNil(tbl.data[i].key): 
-      RawInsert[T](tbl, n, tbl.data[i].key, tbl.data[i].val)
+      rawInsert[T](tbl, n, tbl.data[i].key, tbl.data[i].val)
   swap(tbl.data, n)
 
 proc hasKey*[T](tbl: PGenTable[T], key: string): bool =
@@ -108,17 +108,17 @@ proc `[]`*[T](tbl: PGenTable[T], key: string): T =
   ## retrieves the value at ``tbl[key]``. If `key` is not in `tbl`,
   ## default(T) is returned and no exception is raised. One can check
   ## with ``hasKey`` whether the key exists.
-  var index = RawGet(tbl, key)
+  var index = rawGet(tbl, key)
   if index >= 0: result = tbl.data[index].val
 
 proc `[]=`*[T](tbl: PGenTable[T], key: string, val: T) =
   ## puts a (key, value)-pair into `tbl`.
-  var index = RawGet(tbl, key)
+  var index = rawGet(tbl, key)
   if index >= 0:
     tbl.data[index].val = val
   else:
-    if mustRehash(len(tbl.data), tbl.counter): Enlarge(tbl)
-    RawInsert(tbl, tbl.data, key, val)
+    if mustRehash(len(tbl.data), tbl.counter): enlarge(tbl)
+    rawInsert(tbl, tbl.data, key, val)
     inc(tbl.counter)
 
 

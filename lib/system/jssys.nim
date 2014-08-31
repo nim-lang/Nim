@@ -18,7 +18,7 @@ type
   PSafePoint = ptr TSafePoint
   TSafePoint {.compilerproc, final.} = object
     prev: PSafePoint # points to next safe point
-    exc: ref E_Base
+    exc: ref Exception
 
   PCallFrame = ptr TCallFrame
   TCallFrame {.importc, nodecl, final.} = object
@@ -97,7 +97,7 @@ proc rawWriteStackTrace(): string =
   else:
     result = "No stack traceback available\n"
 
-proc raiseException(e: ref E_Base, ename: cstring) {.
+proc raiseException(e: ref Exception, ename: cstring) {.
     compilerproc, asmNoStackFrame.} =
   e.name = ename
   if excHandler != nil:
@@ -120,24 +120,24 @@ proc raiseException(e: ref E_Base, ename: cstring) {.
 
 proc reraiseException() {.compilerproc, asmNoStackFrame.} =
   if excHandler == nil:
-    raise newException(ENoExceptionToReraise, "no exception to reraise")
+    raise newException(ReraiseError, "no exception to reraise")
   else:
     asm """throw excHandler.exc;"""
 
 proc raiseOverflow {.exportc: "raiseOverflow", noreturn.} =
-  raise newException(EOverflow, "over- or underflow")
+  raise newException(OverflowError, "over- or underflow")
 
 proc raiseDivByZero {.exportc: "raiseDivByZero", noreturn.} =
-  raise newException(EDivByZero, "divison by zero")
+  raise newException(DivByZeroError, "divison by zero")
 
 proc raiseRangeError() {.compilerproc, noreturn.} =
-  raise newException(EOutOfRange, "value out of range")
+  raise newException(RangeError, "value out of range")
 
 proc raiseIndexError() {.compilerproc, noreturn.} =
-  raise newException(EInvalidIndex, "index out of bounds")
+  raise newException(IndexError, "index out of bounds")
 
 proc raiseFieldError(f: string) {.compilerproc, noreturn.} =
-  raise newException(EInvalidField, f & " is not accessible")
+  raise newException(FieldError, f & " is not accessible")
 
 proc SetConstr() {.varargs, asmNoStackFrame, compilerproc.} =
   asm """
@@ -260,7 +260,7 @@ proc eqStrings(a, b: string): bool {.asmNoStackFrame, compilerProc.} =
   """
 
 type
-  TDocument {.importc.} = object of TObject
+  TDocument {.importc.} = object of RootObj
     write: proc (text: cstring) {.nimcall.}
     writeln: proc (text: cstring) {.nimcall.}
     createAttribute: proc (identifier: cstring): ref TNode {.nimcall.}
@@ -283,7 +283,7 @@ type
     DocumentTypeNode,
     DocumentFragmentNode,
     NotationNode
-  TNode* {.importc.} = object of TObject
+  TNode* {.importc.} = object of RootObj
     attributes*: seq[ref TNode]
     childNodes*: seq[ref TNode]
     data*: cstring
@@ -515,7 +515,7 @@ proc isFatPointer(ti: PNimType): bool =
 
 proc nimCopy(x: pointer, ti: PNimType): pointer {.compilerproc.}
 
-proc nimCopyAux(dest, src: Pointer, n: ptr TNimNode) {.compilerproc.} =
+proc nimCopyAux(dest, src: pointer, n: ptr TNimNode) {.compilerproc.} =
   case n.kind
   of nkNone: sysAssert(false, "nimCopyAux")
   of nkSlot:
@@ -566,7 +566,7 @@ proc nimCopy(x: pointer, ti: PNimType): pointer =
   else:
     result = x
 
-proc genericReset(x: Pointer, ti: PNimType): pointer {.compilerproc.} =
+proc genericReset(x: pointer, ti: PNimType): pointer {.compilerproc.} =
   case ti.kind
   of tyPtr, tyRef, tyVar, tyNil:
     if not isFatPointer(ti):
@@ -621,7 +621,7 @@ proc chckObj(obj, subclass: PNimType) {.compilerproc.} =
   if x == subclass: return # optimized fast path
   while x != subclass:
     if x == nil:
-      raise newException(EInvalidObjectConversion, "invalid object conversion")
+      raise newException(ObjectConversionError, "invalid object conversion")
     x = x.base
 
 proc isObj(obj, subclass: PNimType): bool {.compilerproc.} =

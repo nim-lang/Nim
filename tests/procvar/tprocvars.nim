@@ -1,6 +1,6 @@
-proc doSomething(v: Int, x: proc(v:Int):Int): Int = return x(v)
-proc doSomething(v: Int, x: proc(v:Int)) = x(v)
+proc doSomething(v: int, x: proc(v:int):int): int = return x(v)
+proc doSomething(v: int, x: proc(v:int)) = x(v)
 
 
-echo doSomething(10, proc(v: Int): Int = return v div 2)
+echo doSomething(10, proc(v: int): int = return v div 2)
 

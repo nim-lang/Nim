@@ -305,22 +305,26 @@ proc running*[TArg](t: TThread[TArg]): bool {.inline.} =
   ## returns true if `t` is running.
   result = t.dataFn != nil
 
-proc joinThread*[TArg](t: TThread[TArg]) {.inline.} = 
-  ## waits for the thread `t` to finish.
-  when hostOS == "windows":
+when hostOS == "windows":
+  proc joinThread*[TArg](t: TThread[TArg]) {.inline.} = 
+    ## waits for the thread `t` to finish.
     discard waitForSingleObject(t.sys, -1'i32)
-  else:
-    discard pthread_join(t.sys, nil)
 
-proc joinThreads*[TArg](t: varargs[TThread[TArg]]) = 
-  ## waits for every thread in `t` to finish.
-  when hostOS == "windows":
+  proc joinThreads*[TArg](t: varargs[TThread[TArg]]) = 
+    ## waits for every thread in `t` to finish.
     var a: array[0..255, TSysThread]
     sysAssert a.len >= t.len, "a.len >= t.len"
     for i in 0..t.high: a[i] = t[i].sys
-    discard waitForMultipleObjects(t.len.int32, 
+    discard waitForMultipleObjects(t.len.int32,
                                    cast[ptr TSysThread](addr(a)), 1, -1)
-  else:
+
+else:
+  proc joinThread*[TArg](t: TThread[TArg]) {.inline.} =
+    ## waits for the thread `t` to finish.
+    discard pthread_join(t.sys, nil)
+
+  proc joinThreads*[TArg](t: varargs[TThread[TArg]]) =
+    ## waits for every thread in `t` to finish.
     for i in 0..t.high: joinThread(t[i])
 
 when false:
@@ -335,27 +339,37 @@ when false:
     when declared(registerThread): unregisterThread(addr(t))
     t.dataFn = nil
 
-proc createThread*[TArg](t: var TThread[TArg], 
-                         tp: proc (arg: TArg) {.thread.}, 
-                         param: TArg) =
-  ## creates a new thread `t` and starts its execution. Entry point is the
-  ## proc `tp`. `param` is passed to `tp`. `TArg` can be ``void`` if you
-  ## don't need to pass any data to the thread.
-  when TArg isnot void: t.data = param
-  t.dataFn = tp
-  when hasSharedHeap: t.stackSize = ThreadStackSize
-  when hostOS == "windows":
+when hostOS == "windows":
+  proc createThread*[TArg](t: var TThread[TArg],
+                           tp: proc (arg: TArg) {.thread.}, 
+                           param: TArg) =
+    ## creates a new thread `t` and starts its execution. Entry point is the
+    ## proc `tp`. `param` is passed to `tp`. `TArg` can be ``void`` if you
+    ## don't need to pass any data to the thread.
+    when TArg isnot void: t.data = param
+    t.dataFn = tp
+    when hasSharedHeap: t.stackSize = ThreadStackSize
     var dummyThreadId: int32
     t.sys = createThread(nil, ThreadStackSize, threadProcWrapper[TArg],
                          addr(t), 0'i32, dummyThreadId)
     if t.sys <= 0:
-      raise newException(EResourceExhausted, "cannot create thread")
-  else:
+      raise newException(ResourceExhaustedError, "cannot create thread")
+
+else:
+  proc createThread*[TArg](t: var TThread[TArg], 
+                           tp: proc (arg: TArg) {.thread.}, 
+                           param: TArg) =
+    ## creates a new thread `t` and starts its execution. Entry point is the
+    ## proc `tp`. `param` is passed to `tp`. `TArg` can be ``void`` if you
+    ## don't need to pass any data to the thread.
+    when TArg isnot void: t.data = param
+    t.dataFn = tp
+    when hasSharedHeap: t.stackSize = ThreadStackSize
     var a {.noinit.}: Tpthread_attr
     pthread_attr_init(a)
     pthread_attr_setstacksize(a, ThreadStackSize)
     if pthread_create(t.sys, a, threadProcWrapper[TArg], addr(t)) != 0:
-      raise newException(EResourceExhausted, "cannot create thread")
+      raise newException(ResourceExhaustedError, "cannot create thread")
 
 proc threadId*[TArg](t: var TThread[TArg]): TThreadId[TArg] {.inline.} =
   ## returns the thread ID of `t`.

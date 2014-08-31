@@ -7,17 +7,17 @@ type
         value: D
         node: PNode[T,D]
         when not (D is string):
-          val_set: Bool
+          val_set: bool
 
   TItems[T,D] = seq[ref TItem[T,D]]
   TNode {.acyclic, pure, final, shallow.} [T,D] = object
         slots: TItems[T,D]
         left: PNode[T,D]
-        count: Int32
+        count: int32
 
 
   RPath[T,D] = tuple[
-    Xi: Int,
+    Xi: int,
     Nd: PNode[T,D] ]
 
 const
@@ -29,41 +29,41 @@ const
   cLenMax = 128
   cCenter = cLenMax div 2
 
-proc len[T,D] (n:PNode[T,D]): Int {.inline.} =
-  return n.Count
+proc len[T,D] (n:PNode[T,D]): int {.inline.} =
+  return n.count
 
-proc clean[T: TOrdinal|TNumber](o: var T) {.inline.} = discard
+proc clean[T: SomeOrdinal|SomeNumber](o: var T) {.inline.} = discard
 
 proc clean[T: string|seq](o: var T) {.inline.} =
   o = nil
 
 proc clean[T,D] (o: ref TItem[T,D]) {.inline.} = 
   when (D is string) :
-    o.Value = nil
+    o.value = nil
   else :
     o.val_set = false
 
-proc isClean[T,D] (it: ref TItem[T,D]): Bool {.inline.} = 
+proc isClean[T,D] (it: ref TItem[T,D]): bool {.inline.} = 
   when (D is string) :
-    return it.Value == nil
+    return it.value == nil
   else :
     return not it.val_set
 
-proc isClean[T,D] (n: PNode[T,D], x: Int): Bool {.inline.} = 
-  when (D is string) :
-    return n.slots[x].Value == nil
-  else :
+proc isClean[T,D](n: PNode[T,D], x: int): bool {.inline.} = 
+  when (D is string):
+    return n.slots[x].value == nil
+  else:
     return not n.slots[x].val_set
 
-proc setItem[T,D] (AKey: T, AValue: D, ANode: PNode[T,D]): ref TItem[T,D] {.inline.} = 
-  new(Result)
-  Result.Key = AKey
-  Result.Value = AValue
-  Result.Node = ANode
+proc setItem[T,D](Akey: T, Avalue: D, ANode: PNode[T,D]): ref TItem[T,D] {.inline.} = 
+  new(result)
+  result.key = Akey
+  result.value = Avalue
+  result.node = ANode
   when not (D is string) :
-    Result.val_set = true
+    result.val_set = true
 
-proc cmp[T:Int8|Int16|Int32|Int64|Int] (a,b: T): T {.inline.} =
+proc cmp[T:int8|int16|int32|int64|int] (a,b: T): T {.inline.} =
   return a-b
 
 template binSearchImpl *(docmp: expr) {.immediate.} =
@@ -76,41 +76,41 @@ template binSearchImpl *(docmp: expr) {.immediate.} =
     if SW < 0: result = I + 1 
     else:
       H = I - 1
-      if SW == 0 : bFound = True
+      if SW == 0 : bFound = true
   if bFound: inc(result)
   else: result = - result
 
-proc bSearch[T,D] (haystack: PNode[T,D], needle:T): Int {.inline.} =
+proc bSearch[T,D] (haystack: PNode[T,D], needle:T): int {.inline.} =
   binSearchImpl(haystack.slots[I].key.cmp(needle))
 
-proc DeleteItem[T,D] (n: PNode[T,D], x: Int): PNode[T,D] {.inline.} =
+proc DeleteItem[T,D] (n: PNode[T,D], x: int): PNode[T,D] {.inline.} =
   var w = n.slots[x]
-  if w.Node != nil : 
+  if w.node != nil : 
     clean(w)
     return n
-  dec(n.Count)
-  if n.Count > 0 :
-    for i in countup(x, n.Count -1) : n.slots[i] = n.slots[i + 1]
-    n.slots[n.Count] = nil
-    case n.Count 
+  dec(n.count)
+  if n.count > 0 :
+    for i in countup(x, n.count -1) : n.slots[i] = n.slots[i + 1]
+    n.slots[n.count] = nil
+    case n.count 
     of cLen1 : setLen(n.slots, cLen1)
     of cLen2 : setLen(n.slots, cLen2)
     of cLen3 : setLen(n.slots, cLen3)
     of cLenCenter : setLen(n.slots, cLenCenter)
     of cLen4 : setLen(n.slots, cLen4)
     else: discard
-    Result = n
+    result = n
 
   else :
-    Result = n.Left
+    result = n.left
     n.slots = nil
-    n.Left = nil
+    n.left = nil
 
-proc InternalDelete[T,D] (ANode: PNode[T,D], key: T, AValue: var D): PNode[T,D] = 
+proc internalDelete[T,D] (ANode: PNode[T,D], key: T, Avalue: var D): PNode[T,D] = 
   var Path: array[0..20, RPath[T,D]]
   var n = ANode
-  Result = n
-  clean(AValue)
+  result = n
+  clean(Avalue)
   var h = 0
   while n != nil:
     var x = bSearch(n, key)
@@ -119,17 +119,17 @@ proc InternalDelete[T,D] (ANode: PNode[T,D], key: T, AValue: var D): PNode[T,D] 
       Path[h].Xi = - x
       inc(h)
       if x == 0 :
-        n = n.Left
+        n = n.left
       else :
         x = (-x) -1
-        if x < n.Count :
-          n = n.slots[x].Node
+        if x < n.count :
+          n = n.slots[x].node
         else :
           n = nil
     else : 
       dec(x)
       if isClean(n, x) : return
-      AValue = n.slots[x].Value
+      Avalue = n.slots[x].value
       var n2 = DeleteItem(n, x)
       dec(h)
       while (n2 != n) and (h >=0) :
@@ -139,30 +139,30 @@ proc InternalDelete[T,D] (ANode: PNode[T,D], key: T, AValue: var D): PNode[T,D] 
         if x >= 0 :
           if (n == nil) and isClean(w.Nd, x) :
             n = w.Nd
-            n.slots[x].Node = nil 
+            n.slots[x].node = nil 
             n2 = DeleteItem(n, x)
           else :
-            w.Nd.slots[x].Node = n
+            w.Nd.slots[x].node = n
             return
         else :
-          w.Nd.Left = n
+          w.Nd.left = n
           return
         dec(h)
       if h < 0:
-        Result = n2
+        result = n2
       return
 
-proc InternalFind[T,D] (n: PNode[T,D], key: T): ref TItem[T,D] {.inline.} =
+proc internalFind[T,D] (n: PNode[T,D], key: T): ref TItem[T,D] {.inline.} =
   var wn = n
   while wn != nil :
     var x = bSearch(wn, key)
     if x <= 0 :
       if x == 0 :
-        wn = wn.Left
+        wn = wn.left
       else :
         x = (-x) -1
-        if x < wn.Count : 
-          wn = wn.slots[x].Node
+        if x < wn.count : 
+          wn = wn.slots[x].node
         else :
           return nil
 
@@ -171,32 +171,32 @@ proc InternalFind[T,D] (n: PNode[T,D], key: T): ref TItem[T,D] {.inline.} =
   return nil
 
 proc traceTree[T,D](root: PNode[T,D]) =
-  proc traceX(x: Int) = 
+  proc traceX(x: int) = 
     write stdout, "("
     write stdout, x
     write stdout, ") "
 
   proc traceEl(el: ref TItem[T,D]) =
     write stdout, " key: "
-    write stdout, el.Key
+    write stdout, el.key
     write stdout, " value: "
-    write stdout, el.Value
+    write stdout, el.value
 
 
   proc traceln(space: string) =
     writeln stdout, ""
     write stdout, space
 
-  proc doTrace(n: PNode[T,D], level: Int) =
+  proc doTrace(n: PNode[T,D], level: int) =
     var space = repeatChar(2 * level)
     traceln(space)
     write stdout, "node: "
     if n == nil:
       writeln stdout, "is empty"
       return
-    write stdout, n.Count
+    write stdout, n.count
     write stdout, " elements: "
-    if n.Left != nil:
+    if n.left != nil:
       traceln(space)
       write stdout, "left: "
       doTrace(n.left, level +1)
@@ -204,188 +204,188 @@ proc traceTree[T,D](root: PNode[T,D]) =
       if el != nil and not isClean(el):
         traceln(space)
         traceX(i)
-        if i >= n.Count: 
+        if i >= n.count: 
           write stdout, "error "
         else:
           traceEl(el)
-          if el.Node != nil: doTrace(el.Node, level +1)
+          if el.node != nil: doTrace(el.node, level +1)
           else : write stdout, " empty "
-      elif i < n.Count :
+      elif i < n.count :
         traceln(space)
         traceX(i)
         write stdout, "clean: "
         when T is string :
-          if el.Key != nil: write stdout, el.Key
-        else : write stdout, el.Key
-        if el.Node != nil: doTrace(el.Node, level +1)
+          if el.key != nil: write stdout, el.key
+        else : write stdout, el.key
+        if el.node != nil: doTrace(el.node, level +1)
         else : write stdout, " empty "
     writeln stdout,""
 
   doTrace(root, 0)
 
-proc InsertItem[T,D](APath: RPath[T,D], ANode:PNode[T,D], AKey: T, AValue: D) =
+proc InsertItem[T,D](APath: RPath[T,D], ANode:PNode[T,D], Akey: T, Avalue: D) =
   var x = - APath.Xi
-  inc(APath.Nd.Count)
-  case APath.Nd.Count 
+  inc(APath.Nd.count)
+  case APath.Nd.count 
   of cLen1: setLen(APath.Nd.slots, cLen2)
   of cLen2: setLen(APath.Nd.slots, cLen3)
   of cLen3: setLen(APath.Nd.slots, cLenCenter)
   of cLenCenter: setLen(APath.Nd.slots, cLen4)
   of cLen4: setLen(APath.Nd.slots, cLenMax)
   else: discard
-  for i in countdown(APath.Nd.Count.int - 1, x + 1): shallowCopy(APath.Nd.slots[i], APath.Nd.slots[i - 1])
-  APath.Nd.slots[x] = setItem(AKey, AValue, ANode)
+  for i in countdown(APath.Nd.count.int - 1, x + 1): shallowCopy(APath.Nd.slots[i], APath.Nd.slots[i - 1])
+  APath.Nd.slots[x] = setItem(Akey, Avalue, ANode)
 
 
-proc SplitPage[T,D](n, left: PNode[T,D], xi: Int, AKey:var T, AValue:var D): PNode[T,D] =
-  var x = -Xi
+proc SplitPage[T,D](n, left: PNode[T,D], xi: int, Akey:var T, Avalue:var D): PNode[T,D] =
+  var x = -xi
   var it1: TItems[T,D]
   it1.newSeq(cLenCenter)
-  new(Result)
-  Result.slots.newSeq(cLenCenter)
-  Result.Count = cCenter
+  new(result)
+  result.slots.newSeq(cLenCenter)
+  result.count = cCenter
   if x == cCenter:
     for i in 0..cCenter -1: shallowCopy(it1[i], left.slots[i])
-    for i in 0..cCenter -1: shallowCopy(Result.slots[i], left.slots[cCenter + i])
-    Result.Left = n
+    for i in 0..cCenter -1: shallowCopy(result.slots[i], left.slots[cCenter + i])
+    result.left = n
   else :
     if x < cCenter :
       for i in 0..x-1: shallowCopy(it1[i], left.slots[i])
-      it1[x] = setItem(AKey, AValue, n)
+      it1[x] = setItem(Akey, Avalue, n)
       for i in x+1 .. cCenter -1: shallowCopy(it1[i], left.slots[i-1])
       var w = left.slots[cCenter -1]
-      AKey = w.Key
-      AValue = w.Value
-      Result.Left = w.Node
-      for i in 0..cCenter -1: shallowCopy(Result.slots[i], left.slots[cCenter + i])
+      Akey = w.key
+      Avalue = w.value
+      result.left = w.node
+      for i in 0..cCenter -1: shallowCopy(result.slots[i], left.slots[cCenter + i])
     else :
       for i in 0..cCenter -1: shallowCopy(it1[i], left.slots[i])
       x = x - (cCenter + 1)
-      for i in 0..x-1: shallowCopy(Result.slots[i], left.slots[cCenter + i + 1])
-      Result.slots[x] = setItem(AKey, AValue, n)
-      for i in x+1 .. cCenter -1: shallowCopy(Result.slots[i], left.slots[cCenter + i])
+      for i in 0..x-1: shallowCopy(result.slots[i], left.slots[cCenter + i + 1])
+      result.slots[x] = setItem(Akey, Avalue, n)
+      for i in x+1 .. cCenter -1: shallowCopy(result.slots[i], left.slots[cCenter + i])
       var w = left.slots[cCenter]
-      AKey = w.Key
-      AValue = w.Value
-      Result.Left = w.Node
-  left.Count = cCenter
+      Akey = w.key
+      Avalue = w.value
+      result.left = w.node
+  left.count = cCenter
   shallowCopy(left.slots, it1)
 
 
-proc InternalPut[T,D](ANode: ref TNode[T,D], AKey: T, AValue: D, OldValue: var D): ref TNode[T,D] =
-  var h: Int
+proc internalPut[T,D](ANode: ref TNode[T,D], Akey: T, Avalue: D, Oldvalue: var D): ref TNode[T,D] =
+  var h: int
   var Path: array[0..30, RPath[T,D]]
   var left: PNode[T,D]
   var n = ANode
 
 
-  Result = ANode
+  result = ANode
   h = 0
   while n != nil:
-    var x = bSearch[T,D](n, AKey)
+    var x = bSearch[T,D](n, Akey)
     if x <= 0 :
       Path[h].Nd = n
       Path[h].Xi = x
       inc(h) 
       if x == 0 :
-        n = n.Left
+        n = n.left
       else :
         x = (-x) -1
-        if x < n.Count :
-          n = n.slots[x].Node
+        if x < n.count :
+          n = n.slots[x].node
         else :
           n = nil
     else :
       var w = n.slots[x - 1]
-      OldValue = w.Value
-      w.Value = AValue
+      Oldvalue = w.value
+      w.value = Avalue
       return
 
   dec(h)
   left = nil
-  var lKey = AKey
-  var lValue = AValue
+  var lkey = Akey
+  var lvalue = Avalue
   while h >= 0 :
-    if Path[h].Nd.Count < cLenMax :
-      InsertItem(Path[h], n, lKey, lValue)
+    if Path[h].Nd.count < cLenMax :
+      InsertItem(Path[h], n, lkey, lvalue)
       return
     else :
       left = Path[h].Nd
-      n = SplitPage(n, left, Path[h].Xi, lKey, lValue)
+      n = SplitPage(n, left, Path[h].Xi, lkey, lvalue)
     dec(h)
 
-  new(Result)
-  Result.slots.newSeq(cLen1)
-  Result.Count = 1
-  Result.Left = left
-  Result.slots[0] = setItem(lKey, lValue, n)
+  new(result)
+  result.slots.newSeq(cLen1)
+  result.count = 1
+  result.left = left
+  result.slots[0] = setItem(lkey, lvalue, n)
 
 
 proc CleanTree[T,D](n: PNode[T,D]): PNode[T,D] =
-  if n.Left != nil :
-    n.Left = CleanTree(n.Left)
-  for i in 0 .. n.Count - 1 :
+  if n.left != nil :
+    n.left = CleanTree(n.left)
+  for i in 0 .. n.count - 1 :
     var w = n.slots[i]
-    if w.Node != nil :
-        w.Node = CleanTree(w.Node)
-    clean(w.Value)
-    clean(w.Key)
+    if w.node != nil :
+        w.node = CleanTree(w.node)
+    clean(w.value)
+    clean(w.key)
   n.slots = nil
   return nil
 
 
 proc VisitAllNodes[T,D](n: PNode[T,D], visit: proc(n: PNode[T,D]): PNode[T,D] {.closure.} ): PNode[T,D] =
   if n != nil :
-    if n.Left != nil :
-      n.Left = VisitAllNodes(n.Left, visit)    
-    for i in 0 .. n.Count - 1 :
+    if n.left != nil :
+      n.left = VisitAllNodes(n.left, visit)    
+    for i in 0 .. n.count - 1 :
       var w = n.slots[i]
-      if w.Node != nil :
-        w.Node = VisitAllNodes(w.Node, visit)    
+      if w.node != nil :
+        w.node = VisitAllNodes(w.node, visit)    
     return visit(n)
   return nil
 
 proc VisitAllNodes[T,D](n: PNode[T,D], visit: proc(n: PNode[T,D]) {.closure.} ) =
   if n != nil:
-    if n.Left != nil :
-      VisitAllNodes(n.Left, visit)    
-    for i in 0 .. n.Count - 1 :
+    if n.left != nil :
+      VisitAllNodes(n.left, visit)    
+    for i in 0 .. n.count - 1 :
       var w = n.slots[i]
-      if w.Node != nil :
-        VisitAllNodes(w.Node, visit)    
+      if w.node != nil :
+        VisitAllNodes(w.node, visit)    
     visit(n)
 
-proc VisitAll[T,D](n: PNode[T,D], visit: proc(AKey: T, AValue: D) {.closure.} ) =
+proc VisitAll[T,D](n: PNode[T,D], visit: proc(Akey: T, Avalue: D) {.closure.} ) =
   if n != nil:
-    if n.Left != nil :
-      VisitAll(n.Left, visit) 
-    for i in 0 .. n.Count - 1 :
+    if n.left != nil :
+      VisitAll(n.left, visit) 
+    for i in 0 .. n.count - 1 :
       var w = n.slots[i]
       if not w.isClean :
-        visit(w.Key, w.Value)   
-      if w.Node != nil :
-        VisitAll(w.Node, visit)    
+        visit(w.key, w.value)   
+      if w.node != nil :
+        VisitAll(w.node, visit)    
 
-proc VisitAll[T,D](n: PNode[T,D], visit: proc(AKey: T, AValue: var D):Bool {.closure.} ): PNode[T,D] =
+proc VisitAll[T,D](n: PNode[T,D], visit: proc(Akey: T, Avalue: var D):bool {.closure.} ): PNode[T,D] =
   if n != nil:
-    var n1 = n.Left
+    var n1 = n.left
     if n1 != nil :
       var n2 = VisitAll(n1, visit) 
       if n1 != n2 :
-        n.Left = n2
+        n.left = n2
     var i = 0
-    while i < n.Count :
+    while i < n.count :
       var w = n.slots[i]
       if not w.isClean :
-        if visit(w.Key, w.Value) :
-          Result = DeleteItem(n, i)
-          if Result == nil : return
+        if visit(w.key, w.value) :
+          result = DeleteItem(n, i)
+          if result == nil : return
           dec(i)
-      n1 = w.Node
+      n1 = w.node
       if n1 != nil :
         var n2 = VisitAll(n1, visit)
         if n1 != n2 :
-          w.Node = n2
+          w.node = n2
       inc(i)
   return n
 
@@ -396,20 +396,20 @@ iterator keys* [T,D] (n: PNode[T,D]): T =
     var nd = n
     var i = -1
     while true : 
-      if i < nd.Count :
+      if i < nd.count :
         Path[level].Nd = nd
         Path[level].Xi = i
         if i < 0 :
-          if nd.Left != nil :
-            nd = nd.Left
+          if nd.left != nil :
+            nd = nd.left
             inc(level)
           else : inc(i)
         else :
           var w = nd.slots[i]
           if not w.isClean() :
-            yield w.Key
-          if w.Node != nil :
-            nd = w.Node
+            yield w.key
+          if w.node != nil :
+            nd = w.node
             i = -1
             inc(level)
           else : inc(i)
@@ -424,22 +424,22 @@ iterator keys* [T,D] (n: PNode[T,D]): T =
 when isMainModule:
 
   proc test() =
-    var oldValue: Int
-    var root = InternalPut[int, int](nil, 312, 312, oldValue)
-    var someOtherRoot = InternalPut[string, int](nil, "312", 312, oldValue)
-    var it1 = InternalFind(root, 312)
-    echo it1.Value
+    var oldvalue: int
+    var root = internalPut[int, int](nil, 312, 312, oldvalue)
+    var someOtherRoot = internalPut[string, int](nil, "312", 312, oldvalue)
+    var it1 = internalFind(root, 312)
+    echo it1.value
 
     for i in 1..1_000_000:
-      root = InternalPut(root, i, i, oldValue)
+      root = internalPut(root, i, i, oldvalue)
 
     var cnt = 0
-    oldValue = -1
+    oldvalue = -1
     when true : # code compiles, when this or the other when is switched to false
       for k in root.keys :
-        if k <= oldValue :
+        if k <= oldvalue :
           echo k
-        oldValue = k
+        oldvalue = k
         inc(cnt)
       echo cnt
     when true :
@@ -450,21 +450,21 @@ when isMainModule:
         root = VisitAll(root, proc(key: int, value: var int): bool =
           return key mod 2 == 0 )
       cnt = 0
-      oldValue = -1
+      oldvalue = -1
       VisitAll(root, proc(key: int, value: int) {.closure.} =
-        if key <= oldValue :
+        if key <= oldvalue :
           echo key
-        oldValue = key
+        oldvalue = key
         inc(cnt) )
       echo cnt
       root = VisitAll(root, proc(key: int, value: var int): bool =
         return key mod 2 != 0 )
       cnt = 0
-      oldValue = -1
+      oldvalue = -1
       VisitAll(root, proc(key: int, value: int) {.closure.} =
-        if key <= oldValue :
+        if key <= oldvalue :
           echo "error ", key
-        oldValue = key
+        oldvalue = key
         inc(cnt) )
       echo cnt
       #traceTree(root)

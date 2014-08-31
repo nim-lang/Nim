@@ -6,7 +6,7 @@ import strutils
 const
   HelpText = """
 +-----------------------------------------------------------------+
-|         Maintenance program for Nim                          |
+|         Maintenance program for Nim                             |
 |             Version $1|
 |             (c) 2012 Andreas Rumpf                              |
 +-----------------------------------------------------------------+
@@ -27,5 +27,5 @@ Possible Commands:
 """ % [NimVersion & repeatChar(44-len(NimVersion)), 
        CompileDate, CompileTime]
 
-echo helpText
+echo HelpText
 

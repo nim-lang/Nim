@@ -1,7 +1,7 @@
 import tables
 
 type
-  TX = TTable[string, int]
+  TX = Table[string, int]
 
 proc foo(models: seq[TX]): seq[int] =
   result = @[]
@@ -9,7 +9,7 @@ proc foo(models: seq[TX]): seq[int] =
     result.add model["foobar"]
 
 type
-  obj = object
-    field: TTable[string, string]
+  Obj = object
+    field: Table[string, string]
 var t: Obj
 discard initTable[type(t.field), string]()
