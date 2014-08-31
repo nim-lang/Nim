@@ -7,6 +7,8 @@
 
 .. contents::
 
+**WARNING**: ENDB is not maintained anymore! Please help if you're interested
+in this tool.
 
 Nim comes with a platform independent debugger -
 the Embedded Nim Debugger (ENDB). The debugger is
