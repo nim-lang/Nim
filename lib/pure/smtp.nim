@@ -44,8 +44,11 @@ type
   
   ReplyError* = object of IOError
 
+  AsyncSmtp* = ref object
+    sock: AsyncSocket
+
 {.deprecated: [EInvalidReply: ReplyError, TMessage: Message, TSMTP: Smtp].}
-  
+
 proc debugSend(smtp: TSMTP, cmd: string) =
   if smtp.debug:
     echo("C:" & cmd)

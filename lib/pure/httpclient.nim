@@ -78,6 +78,7 @@
 import sockets, strutils, parseurl, parseutils, strtabs, base64, os
 import asyncnet, asyncdispatch
 import rawsockets
+from net import nil
 
 type
   Response* = tuple[
@@ -164,16 +165,17 @@ proc parseBody(s: TSocket, headers: PStringTable, timeout: int): string =
     var contentLengthHeader = headers["Content-Length"]
     if contentLengthHeader != "":
       var length = contentLengthHeader.parseint()
-      result = newString(length)
-      var received = 0
-      while true:
-        if received >= length: break
-        let r = s.recv(addr(result[received]), length-received, timeout)
-        if r == 0: break
-        received += r
-      if received != length:
-        httpError("Got invalid content length. Expected: " & $length &
-                  " got: " & $received)
+      if length > 0:
+        result = newString(length)
+        var received = 0
+        while true:
+          if received >= length: break
+          let r = s.recv(addr(result[received]), length-received, timeout)
+          if r == 0: break
+          received += r
+        if received != length:
+          httpError("Got invalid content length. Expected: " & $length &
+                    " got: " & $received)
     else:
       # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.4 TODO
       
@@ -444,11 +446,13 @@ type
     headers: StringTableRef
     maxRedirects: int
     userAgent: string
+    when defined(ssl):
+      sslContext: net.SslContext
 
 {.deprecated: [PAsyncHttpClient: AsyncHttpClient].}
 
 proc newAsyncHttpClient*(userAgent = defUserAgent,
-    maxRedirects = 5): AsyncHttpClient =
+    maxRedirects = 5, sslContext = defaultSslContext): AsyncHttpClient =
   ## Creates a new PAsyncHttpClient instance.
   ##
   ## ``userAgent`` specifies the user agent that will be used when making
@@ -456,10 +460,13 @@ proc newAsyncHttpClient*(userAgent = defUserAgent,
   ##
   ## ``maxRedirects`` specifies the maximum amount of redirects to follow,
   ## default is 5.
+  ##
+  ## ``sslContext`` specifies the SSL context to use for HTTPS requests.
   new result
   result.headers = newStringTable(modeCaseInsensitive)
   result.userAgent = defUserAgent
   result.maxRedirects = maxRedirects
+  result.sslContext = net.SslContext(sslContext)
 
 proc close*(client: AsyncHttpClient) =
   ## Closes any connections held by the HTTP client.
@@ -519,12 +526,13 @@ proc parseBody(client: PAsyncHttpClient,
     var contentLengthHeader = headers["Content-Length"]
     if contentLengthHeader != "":
       var length = contentLengthHeader.parseint()
-      result = await client.socket.recvFull(length)
-      if result == "":
-        httpError("Got disconnected while trying to read body.")
-      if result.len != length:
-        httpError("Received length doesn't match expected length. Wanted " &
-                  $length & " got " & $result.len)
+      if length > 0:
+        result = await client.socket.recvFull(length)
+        if result == "":
+          httpError("Got disconnected while trying to read body.")
+        if result.len != length:
+          httpError("Received length doesn't match expected length. Wanted " &
+                    $length & " got " & $result.len)
     else:
       # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.4 TODO
       
@@ -590,13 +598,22 @@ proc newConnection(client: PAsyncHttpClient, url: TURL) {.async.} =
       client.currentURL.scheme != url.scheme:
     if client.connected: client.close()
     client.socket = newAsyncSocket()
-    if url.scheme == "https":
-      assert false, "TODO SSL"
 
     # TODO: I should be able to write 'net.TPort' here...
     let port =
-      if url.port == "": rawsockets.TPort(80)
+      if url.port == "":
+        if url.scheme.toLower() == "https":
+          rawsockets.TPort(443)
+        else:
+          rawsockets.TPort(80)
       else: rawsockets.TPort(url.port.parseInt)
+    
+    if url.scheme.toLower() == "https":
+      when defined(ssl):
+        client.sslContext.wrapSocket(client.socket)
+      else:
+        raise newException(EHttpRequestErr,
+                  "SSL support is not available. Cannot connect over SSL.")
     
     await client.socket.connect(url.hostname, port)
     client.currentURL = url
