@@ -79,7 +79,7 @@ type
     c: AsyncSocket
     mode: ClientMode
     dataLen: int
-    headers: PStringTable ## the parsed headers
+    headers: StringTableRef ## the parsed headers
     input: string  ## the input buffer
   
   AsyncScgiStateObj = object
@@ -105,7 +105,7 @@ proc open*(s: var ScgiState, port = Port(4000), address = "127.0.0.1",
            reuseAddr = false) = 
   ## opens a connection.
   s.bufLen = 4000
-  s.input = newString(s.buflen) # will be reused
+  s.input = newString(s.bufLen) # will be reused
   
   s.server = socket()
   if s.server == invalidSocket: raiseOSError(osLastError())
@@ -262,7 +262,7 @@ proc open*(handleRequest: proc (client: AsyncSocket,
   ## automatically unless it has already been closed.
   var cres: AsyncScgiState
   new(cres)
-  cres.asyncServer = AsyncSocket()
+  cres.asyncServer = asyncSocket()
   cres.asyncServer.handleAccept = proc (s: AsyncSocket) = handleAccept(s, cres)
   if reuseAddr:
     cres.asyncServer.setSockOpt(OptReuseAddr, true)
