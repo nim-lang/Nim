@@ -183,7 +183,7 @@ when defined(ssl):
       when not defined(linux):
         newCTX = SSL_CTX_new(SSLv2_method())
       else:
-        SSLError()
+        raiseSslError()
     of protSSLv3:
       newCTX = SSL_CTX_new(SSLv3_method())
     of protTLSv1:
