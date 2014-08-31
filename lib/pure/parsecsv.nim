@@ -51,7 +51,7 @@ proc raiseEInvalidCsv(filename: string, line, col: int,
   raise e
 
 proc error(my: CsvParser, pos: int, msg: string) =
-  raiseEInvalidCsv(my.filename, my.LineNumber, getColNumber(my, pos), msg)
+  raiseEInvalidCsv(my.filename, my.lineNumber, getColNumber(my, pos), msg)
 
 proc open*(my: var CsvParser, input: Stream, filename: string,
            separator = ',', quote = '"', escape = '\0',

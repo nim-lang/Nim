@@ -6,20 +6,20 @@ discard """
 
 #bug #1009
 type
-  TAggRgba8* = array[4, Byte]
+  TAggRgba8* = array[4, byte]
 
-template R*(self: TAggRgba8): Byte = self[0]   
-template G*(self: TAggRgba8): Byte = self[1]   
-template B*(self: TAggRgba8): Byte = self[2]   
-template A*(self: TAggRgba8): Byte = self[3]   
+template R*(self: TAggRgba8): byte = self[0]   
+template G*(self: TAggRgba8): byte = self[1]   
+template B*(self: TAggRgba8): byte = self[2]   
+template A*(self: TAggRgba8): byte = self[3]   
 
-template `R=`*(self: TAggRgba8, val: Byte) = 
+template `R=`*(self: TAggRgba8, val: byte) = 
   self[0] = val   
-template `G=`*(self: TAggRgba8, val: Byte) =   
+template `G=`*(self: TAggRgba8, val: byte) =   
   self[1] = val   
-template `B=`*(self: TAggRgba8, val: Byte) =   
+template `B=`*(self: TAggRgba8, val: byte) =   
   self[2] = val   
-template `A=`*(self: TAggRgba8, val: Byte) =   
+template `A=`*(self: TAggRgba8, val: byte) =   
   self[3] = val   
 
 proc ABGR* (val: int| int64): TAggRgba8 =
