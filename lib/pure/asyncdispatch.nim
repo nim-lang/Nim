@@ -32,6 +32,7 @@ export TPort, TSocketFlags
 # TODO: The effect system (raises: []) has trouble with my try transformation.
 # TODO: Can't await in a 'except' body
 # TODO: getCurrentException(Msg) don't work
+# TODO: Check if yielded future is nil and throw a more meaningful exception
 
 # -- Futures
 
@@ -183,7 +184,7 @@ proc asyncCheck*[T](future: PFuture[T]) =
 proc `and`*[T, Y](fut1: PFuture[T], fut2: PFuture[Y]): PFuture[void] =
   ## Returns a future which will complete once both ``fut1`` and ``fut2``
   ## complete.
-  var retFuture = newFuture[void]()
+  var retFuture = newFuture[void]("asyncdispatch.`and`")
   fut1.callback =
     proc () =
       if fut2.finished: retFuture.complete()
@@ -195,11 +196,12 @@ proc `and`*[T, Y](fut1: PFuture[T], fut2: PFuture[Y]): PFuture[void] =
 proc `or`*[T, Y](fut1: PFuture[T], fut2: PFuture[Y]): PFuture[void] =
   ## Returns a future which will complete once either ``fut1`` or ``fut2``
   ## complete.
-  var retFuture = newFuture[void]()
+  var retFuture = newFuture[void]("asyncdispatch.`or`")
   proc cb() =
     if not retFuture.finished: retFuture.complete()
   fut1.callback = cb
   fut2.callback = cb
+  return retFuture
 
 type
   PDispatcherBase = ref object of PObject
@@ -1017,10 +1019,10 @@ proc processBody(node, retFutureSym: PNimrodNode,
 
     result.add newNimNode(nnkReturnStmt, node).add(newNilLit())
     return # Don't process the children of this return stmt
-  of nnkCommand:
+  of nnkCommand, nnkCall:
     if node[0].kind == nnkIdent and node[0].ident == !"await":
       case node[1].kind
-      of nnkIdent:
+      of nnkIdent, nnkInfix:
         # await x
         result = newNimNode(nnkYieldStmt, node).add(node[1]) # -> yield x
       of nnkCall, nnkCommand:
@@ -1030,8 +1032,8 @@ proc processBody(node, retFutureSym: PNimrodNode,
                   futureValue, node)
       else:
         error("Invalid node kind in 'await', got: " & $node[1].kind)
-    elif node[1].kind == nnkCommand and node[1][0].kind == nnkIdent and
-         node[1][0].ident == !"await":
+    elif node.len > 1 and node[1].kind == nnkCommand and
+         node[1][0].kind == nnkIdent and node[1][0].ident == !"await":
       # foo await x
       var newCommand = node
       result.createVar("future" & $node[0].toStrLit, node[1][1], newCommand[1],
@@ -1182,7 +1184,7 @@ macro async*(prc: stmt): stmt {.immediate.} =
   result[6] = outerProcBody
 
   #echo(treeRepr(result))
-  #if prc[0].getName == "processClient":
+  #if prc[0].getName == "getFile":
   #  echo(toStrLit(result))
 
 proc recvLine*(socket: TAsyncFD): PFuture[string] {.async.} =
@@ -1224,3 +1226,11 @@ proc runForever*() =
   ## Begins a never ending global dispatcher poll loop.
   while true:
     poll()
+
+proc waitFor*[T](fut: PFuture[T]) =
+  ## **Blocks** the current thread until the specified future completes.
+  while not fut.finished:
+    poll()
+
+  if fut.failed:
+    raise fut.error
