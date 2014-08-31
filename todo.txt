@@ -1,3 +1,9 @@
+version 0.10
+============
+
+- Test nim pretty on various babel packages
+
+
 version 0.9.6
 =============
 

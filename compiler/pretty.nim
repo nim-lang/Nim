@@ -90,10 +90,10 @@ proc beautifyName(s: string, k: TSymKind): string =
       result.add s[i]
     inc i
 
-proc checkStyle*(info: TLineInfo, s: string, k: TSymKind) =
+proc checkStyle(info: TLineInfo, s: string, k: TSymKind) =
   let beau = beautifyName(s, k)
   if s != beau:
-    message(info, errGenerated, "name should be: " & beau)
+    message(info, hintName, beau)
 
 proc checkDef*(n: PNode; s: PSym) =
   # operators stay as they are:

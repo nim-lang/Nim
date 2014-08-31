@@ -124,7 +124,7 @@ type
     hintLineTooLong, hintXDeclaredButNotUsed, hintConvToBaseNotNeeded,
     hintConvFromXtoItselfNotNeeded, hintExprAlwaysX, hintQuitCalled,
     hintProcessing, hintCodeBegin, hintCodeEnd, hintConf, hintPath,
-    hintConditionAlwaysTrue, hintPattern,
+    hintConditionAlwaysTrue, hintName, hintPattern,
     hintUser
 
 const 
@@ -405,6 +405,7 @@ const
     hintConf: "used config file \'$1\' [Conf]", 
     hintPath: "added path: '$1' [Path]",
     hintConditionAlwaysTrue: "condition is always true: '$1' [CondTrue]",
+    hintName: "name should be: '$1' [Name]",
     hintPattern: "$1 [Pattern]",
     hintUser: "$1 [User]"]
 
@@ -420,10 +421,10 @@ const
     "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
     "GcMem", "User"]
 
-  HintsToStr*: array[0..15, string] = ["Success", "SuccessX", "LineTooLong", 
+  HintsToStr*: array[0..16, string] = ["Success", "SuccessX", "LineTooLong", 
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded", 
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf", 
-    "Path", "CondTrue", "Pattern",
+    "Path", "CondTrue", "Name", "Pattern",
     "User"]
 
 const 
