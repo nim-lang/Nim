@@ -181,7 +181,7 @@ proc parseBody(s: TSocket, headers: PStringTable, timeout: int): string =
       # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.5
       if headers["Connection"] == "close":
         var buf = ""
-        while True:
+        while true:
           buf = newString(4000)
           let r = s.recv(addr(buf[0]), 4000, timeout)
           if r == 0: break
@@ -194,7 +194,7 @@ proc parseResponse(s: TSocket, getBody: bool, timeout: int): TResponse =
   var fullyRead = false
   var line = ""
   result.headers = newStringTable(modeCaseInsensitive)
-  while True:
+  while true:
     line = ""
     linei = 0
     s.readLine(line, timeout)
@@ -294,7 +294,7 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
   add(headers, "\c\L")
   
   var s = socket()
-  if s == InvalidSocket: raiseOSError(osLastError())
+  if s == invalidSocket: raiseOSError(osLastError())
   var port = sockets.TPort(80)
   if r.scheme == "https":
     when defined(ssl):
@@ -321,7 +321,7 @@ proc redirection(status: string): bool =
   const redirectionNRs = ["301", "302", "303", "307"]
   for i in items(redirectionNRs):
     if status.startsWith(i):
-      return True
+      return true
 
 proc getNewLocation(lastUrl: string, headers: PStringTable): string =
   result = headers["Location"]
@@ -467,7 +467,7 @@ proc close*(client: AsyncHttpClient) =
     client.socket.close()
     client.connected = false
 
-proc recvFull(socket: PAsyncSocket, size: int): PFuture[string] {.async.} =
+proc recvFull(socket: PAsyncSocket, size: int): Future[string] {.async.} =
   ## Ensures that all the data requested is read and returned.
   result = ""
   while true:
@@ -476,7 +476,7 @@ proc recvFull(socket: PAsyncSocket, size: int): PFuture[string] {.async.} =
     if data == "": break # We've been disconnected.
     result.add data
 
-proc parseChunks(client: PAsyncHttpClient): PFuture[string] {.async.} =
+proc parseChunks(client: PAsyncHttpClient): Future[string] {.async.} =
   result = ""
   var ri = 0
   while true:
@@ -509,7 +509,7 @@ proc parseChunks(client: PAsyncHttpClient): PFuture[string] {.async.} =
     # them: http://tools.ietf.org/html/rfc2616#section-3.6.1
   
 proc parseBody(client: PAsyncHttpClient,
-               headers: PStringTable): PFuture[string] {.async.} =
+               headers: PStringTable): Future[string] {.async.} =
   result = ""
   if headers["Transfer-Encoding"] == "chunked":
     result = await parseChunks(client)
@@ -532,19 +532,19 @@ proc parseBody(client: PAsyncHttpClient,
       # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.5
       if headers["Connection"] == "close":
         var buf = ""
-        while True:
+        while true:
           buf = await client.socket.recvFull(4000)
           if buf == "": break
           result.add(buf)
 
 proc parseResponse(client: PAsyncHttpClient,
-                   getBody: bool): PFuture[TResponse] {.async.} =
+                   getBody: bool): Future[TResponse] {.async.} =
   var parsedStatus = false
   var linei = 0
   var fullyRead = false
   var line = ""
   result.headers = newStringTable(modeCaseInsensitive)
-  while True:
+  while true:
     linei = 0
     line = await client.socket.recvLine()
     if line == "": break # We've been disconnected.
@@ -603,7 +603,7 @@ proc newConnection(client: PAsyncHttpClient, url: TURL) {.async.} =
     client.connected = true
 
 proc request*(client: PAsyncHttpClient, url: string, httpMethod = httpGET,
-              body = ""): PFuture[TResponse] {.async.} =
+              body = ""): Future[TResponse] {.async.} =
   ## Connects to the hostname specified by the URL and performs a request
   ## using the method specified.
   ##
@@ -626,7 +626,7 @@ proc request*(client: PAsyncHttpClient, url: string, httpMethod = httpGET,
   
   result = await parseResponse(client, httpMethod != httpHEAD)
 
-proc get*(client: PAsyncHttpClient, url: string): PFuture[TResponse] {.async.} =
+proc get*(client: PAsyncHttpClient, url: string): Future[TResponse] {.async.} =
   ## Connects to the hostname specified by the URL and performs a GET request.
   ##
   ## This procedure will follow redirects up to a maximum number of redirects
