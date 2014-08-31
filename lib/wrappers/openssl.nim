@@ -63,14 +63,13 @@ type
   SslStruct {.final, pure.} = object
   SslPtr* = ptr SslStruct
   PSslPtr* = ptr SslPtr
-  PSSL_CTX* = SslPtr
-  PSSL* = SslPtr
+  SslCtx* = SslPtr
   PSSL_METHOD* = SslPtr
   PX509* = SslPtr
   PX509_NAME* = SslPtr
   PEVP_MD* = SslPtr
   PBIO_METHOD* = SslPtr
-  PBIO* = SslPtr
+  BIO* = SslPtr
   EVP_PKEY* = SslPtr
   PRSA* = SslPtr
   PASN1_UTCTIME* = SslPtr
@@ -84,6 +83,8 @@ type
     weak_key*: cInt
 
   des_key_schedule* = array[1..16, des_ks_struct]
+
+{.deprecated: [PSSL: SslPtr, PSSL_CTX: SslCtx, PBIO: BIO].}
 
 const 
   EVP_MAX_MD_SIZE* = 16 + 20
@@ -282,6 +283,34 @@ proc SSL_CTX_ctrl*(ctx: PSSL_CTX, cmd: cInt, larg: int, parg: pointer): int{.
 proc SSLCTXSetMode*(ctx: PSSL_CTX, mode: int): int =
   result = SSL_CTX_ctrl(ctx, SSL_CTRL_MODE, mode, nil)
 
+proc bioNew*(b: PBIO_METHOD): PBIO{.cdecl, dynlib: DLLUtilName, importc: "BIO_new".}
+proc bioFreeAll*(b: PBIO){.cdecl, dynlib: DLLUtilName, importc: "BIO_free_all".}
+proc bioSMem*(): PBIO_METHOD{.cdecl, dynlib: DLLUtilName, importc: "BIO_s_mem".}
+proc bioCtrlPending*(b: PBIO): cInt{.cdecl, dynlib: DLLUtilName, importc: "BIO_ctrl_pending".}
+proc bioRead*(b: PBIO, Buf: cstring, length: cInt): cInt{.cdecl,
+    dynlib: DLLUtilName, importc: "BIO_read".}
+proc bioWrite*(b: PBIO, Buf: cstring, length: cInt): cInt{.cdecl,
+    dynlib: DLLUtilName, importc: "BIO_write".}
+
+proc sslSetConnectState*(s: SslPtr) {.cdecl,
+    dynlib: DLLSSLName, importc: "SSL_set_connect_state".}
+proc sslSetAcceptState*(s: SslPtr) {.cdecl,
+    dynlib: DLLSSLName, importc: "SSL_set_accept_state".}
+
+proc sslRead*(ssl: SslPtr, buf: cstring, num: cInt): cInt{.cdecl,
+      dynlib: DLLSSLName, importc: "SSL_read".}
+proc sslPeek*(ssl: SslPtr, buf: cstring, num: cInt): cInt{.cdecl,
+    dynlib: DLLSSLName, importc: "SSL_peek".}
+proc sslWrite*(ssl: SslPtr, buf: cstring, num: cInt): cInt{.cdecl,
+    dynlib: DLLSSLName, importc: "SSL_write".}
+
+proc sslSetBio*(ssl: SslPtr, rbio, wbio: BIO) {.cdecl,
+    dynlib: DLLSSLName, importc: "SSL_set_bio".}
+
+proc sslDoHandshake*(ssl: SslPtr): cint {.cdecl,
+    dynlib: DLLSSLName, importc: "SSL_do_handshake".}
+
+
 when true:
   discard
 else:
@@ -328,12 +357,7 @@ else:
 
   proc SslConnect*(ssl: PSSL): cInt{.cdecl, dynlib: DLLSSLName, importc.}
 
-  proc SslRead*(ssl: PSSL, buf: SslPtr, num: cInt): cInt{.cdecl, 
-      dynlib: DLLSSLName, importc.}
-  proc SslPeek*(ssl: PSSL, buf: SslPtr, num: cInt): cInt{.cdecl, 
-      dynlib: DLLSSLName, importc.}
-  proc SslWrite*(ssl: PSSL, buf: SslPtr, num: cInt): cInt{.cdecl, 
-      dynlib: DLLSSLName, importc.}
+  
   proc SslGetVersion*(ssl: PSSL): cstring{.cdecl, dynlib: DLLSSLName, importc.}
   proc SslGetPeerCertificate*(ssl: PSSL): PX509{.cdecl, dynlib: DLLSSLName, 
       importc.}
@@ -393,14 +417,7 @@ else:
   proc OPENSSLaddallalgorithms*(){.cdecl, dynlib: DLLUtilName, importc.}
   proc CRYPTOcleanupAllExData*(){.cdecl, dynlib: DLLUtilName, importc.}
   proc RandScreen*(){.cdecl, dynlib: DLLUtilName, importc.}
-  proc BioNew*(b: PBIO_METHOD): PBIO{.cdecl, dynlib: DLLUtilName, importc.}
-  proc BioFreeAll*(b: PBIO){.cdecl, dynlib: DLLUtilName, importc.}
-  proc BioSMem*(): PBIO_METHOD{.cdecl, dynlib: DLLUtilName, importc.}
-  proc BioCtrlPending*(b: PBIO): cInt{.cdecl, dynlib: DLLUtilName, importc.}
-  proc BioRead*(b: PBIO, Buf: cstring, length: cInt): cInt{.cdecl, 
-      dynlib: DLLUtilName, importc.}
-  proc BioWrite*(b: PBIO, Buf: cstring, length: cInt): cInt{.cdecl, 
-      dynlib: DLLUtilName, importc.}
+
   proc d2iPKCS12bio*(b: PBIO, Pkcs12: SslPtr): SslPtr{.cdecl, dynlib: DLLUtilName, 
       importc.}
   proc PKCS12parse*(p12: SslPtr, pass: cstring, pkey, cert, ca: var SslPtr): cint{.

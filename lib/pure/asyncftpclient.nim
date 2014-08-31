@@ -255,7 +255,7 @@ proc doUpload(ftp: AsyncFtpClient, file: TFile,
 
     await countdownFut or sendFut
 
-proc storeFile*(ftp: AsyncFtpClient, file, dest: string,
+proc store*(ftp: AsyncFtpClient, file, dest: string,
             onProgressChanged = defaultOnProgressChanged) {.async.} =
   ## Uploads ``file`` to ``dest`` on the remote FTP server. Usage of this
   ## function asynchronously is recommended to view the progress of
@@ -288,7 +288,7 @@ when isMainModule:
     await ftp.connect()
     echo await ftp.pwd()
     echo await ftp.listDirs()
-    await ftp.storeFile("payload.jpg", "payload.jpg")
+    await ftp.store("payload.jpg", "payload.jpg")
     await ftp.retrFile("payload.jpg", "payload2.jpg")
     echo("Finished")
 

@@ -22,17 +22,17 @@ when defined(ssl):
 
 when defined(ssl):
   type
-    SSLError* = object of Exception
+    SslError* = object of Exception
 
-    SSLCVerifyMode* = enum
+    SslCVerifyMode* = enum
       CVerifyNone, CVerifyPeer
     
-    SSLProtVersion* = enum
+    SslProtVersion* = enum
       protSSLv2, protSSLv3, protTLSv1, protSSLv23
     
-    SSLContext* = distinct PSSLCTX
+    SslContext* = distinct SslCtx
 
-    SSLAcceptResult* = enum
+    SslAcceptResult* = enum
       AcceptNoClient = 0, AcceptNoHandshake, AcceptSuccess
 
   {.deprecated: [ESSL: SSLError, TSSLCVerifyMode: SSLCVerifyMode,
@@ -125,7 +125,8 @@ when defined(ssl):
   ErrLoadBioStrings()
   OpenSSL_add_all_algorithms()
 
-  proc raiseSSLError(s = "") =
+  proc raiseSSLError*(s = "") =
+    ## Raises a new SSL error.
     if s != "":
       raise newException(SSLError, s)
     let err = ErrPeekLastError()
@@ -161,7 +162,7 @@ when defined(ssl):
                    certFile = "", keyFile = ""): PSSLContext =
     ## Creates an SSL context.
     ## 
-    ## Protocol version specifies the protocol to use. SSLv2, SSLv3, TLSv1 are 
+    ## Protocol version specifies the protocol to use. SSLv2, SSLv3, TLSv1 
     ## are available with the addition of ``protSSLv23`` which allows for 
     ## compatibility with all of them.
     ##
