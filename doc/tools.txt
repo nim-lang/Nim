@@ -1,6 +1,6 @@
-===========================
+========================
 Tools available with Nim
-===========================
+========================
 
 The standard distribution ships with the following tools:
 

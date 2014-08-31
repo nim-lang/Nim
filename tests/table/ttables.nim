@@ -84,7 +84,7 @@ block orderedTableTest1:
 block countTableTest1:
   var s = data.toTable
   var t = initCountTable[string]()
-  for k in s.Keys: t.inc(k)
+  for k in s.keys: t.inc(k)
   for k in t.keys: assert t[k] == 1
   t.inc("90", 3)
   t.inc("12", 2)

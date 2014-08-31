@@ -90,7 +90,7 @@ type
     disp: Dispatcher
   AsyncScgiState* = ref AsyncScgiStateObj
 
-{.deprected: [EScgi: ScgiError, TScgiState: ScgiState,
+{.deprecated: [EScgi: ScgiError, TScgiState: ScgiState,
    PAsyncScgiState: AsyncScgiState, scgiError: raiseScgiError].}
 
 proc recvBuffer(s: var ScgiState, L: int) =
@@ -108,12 +108,12 @@ proc open*(s: var ScgiState, port = Port(4000), address = "127.0.0.1",
   s.input = newString(s.buflen) # will be reused
   
   s.server = socket()
-  if s.server == InvalidSocket: raiseOSError(osLastError())
+  if s.server == invalidSocket: raiseOSError(osLastError())
   new(s.client) # Initialise s.client for `next`
-  if s.server == InvalidSocket: raiseScgiError("could not open socket")
+  if s.server == invalidSocket: raiseScgiError("could not open socket")
   #s.server.connect(connectionName, port)
   if reuseAddr:
-    s.server.setSockOpt(OptReuseAddr, True)
+    s.server.setSockOpt(OptReuseAddr, true)
   bindAddr(s.server, port, address)
   listen(s.server)
   
@@ -135,7 +135,7 @@ proc next*(s: var ScgiState, timeout: int = -1): bool =
       if d == '\0':
         s.client.close()
         return false
-      if d notin strutils.digits: 
+      if d notin strutils.Digits: 
         if d != ':': raiseScgiError("':' after length expected")
         break
       L = L * 10 + ord(d) - ord('0')  
@@ -144,7 +144,7 @@ proc next*(s: var ScgiState, timeout: int = -1): bool =
     if s.headers["SCGI"] != "1": raiseScgiError("SCGI Version 1 expected")
     L = parseInt(s.headers["CONTENT_LENGTH"])
     recvBuffer(s, L)
-    return True
+    return true
   
 proc writeStatusOkTextContent*(c: Socket, contentType = "text/html") = 
   ## sends the following string to the socket `c`::
@@ -206,7 +206,7 @@ proc handleClientRead(client: AsyncClient, s: AsyncScgiState) =
         return
       if ret == -1:
         return # No more data available
-      if d[0] notin strutils.digits:
+      if d[0] notin strutils.Digits:
         if d[0] != ':': raiseScgiError("':' after length expected")
         break
       client.dataLen = client.dataLen * 10 + ord(d[0]) - ord('0')
