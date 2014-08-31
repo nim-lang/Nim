@@ -3,7 +3,7 @@ discard """
 """
 
 proc f(x: varargs[string, `$`]) = discard
-template optF{f(X)}(x: varargs[expr]) = 
+template optF{f(x)}(x: varargs[expr]) = 
   writeln(stdout, x)
 
 f 1, 2, false, 3, "ha"

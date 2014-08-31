@@ -5,29 +5,29 @@ discard """
 import tables, lists
 
 type
-  TEventArgs = object of TObject
-  TEventEmitter = object of TObject
-    events*: TTable[string, TDoublyLinkedList[proc(e: TEventArgs) {.nimcall.}]]
+  EventArgs = object of RootObj
+  EventEmitter = object of RootObj
+    events*: Table[string, DoublyLinkedList[proc(e: EventArgs) {.nimcall.}]]
 
-proc emit*(emitter: TEventEmitter, event: string, args: TEventArgs) =
+proc emit*(emitter: EventEmitter, event: string, args: EventArgs) =
   for func in nodes(emitter.events[event]):
     func.value(args) #call function with args.
 
-proc on*(emitter: var TEventEmitter, event: string, 
-         func: proc(e: TEventArgs) {.nimcall.}) =
+proc on*(emitter: var EventEmitter, event: string, 
+         func: proc(e: EventArgs) {.nimcall.}) =
   if not hasKey(emitter.events, event):
-    var list: TDoublyLinkedList[proc(e: TEventArgs) {.nimcall.}]
+    var list: DoublyLinkedList[proc(e: EventArgs) {.nimcall.}]
     add(emitter.events, event, list) #if not, add it.
   append(emitter.events.mget(event), func)
 
-proc initEmitter(emitter: var TEventEmitter) =
+proc initEmitter(emitter: var EventEmitter) =
   emitter.events = initTable[string, 
-    TDoublyLinkedList[proc(e: TEventArgs) {.nimcall.}]]()
+    DoublyLinkedList[proc(e: EventArgs) {.nimcall.}]]()
 
 var 
-  ee: TEventEmitter
-  args: TEventArgs
+  ee: EventEmitter
+  args: EventArgs
 initEmitter(ee)
-ee.on("print", proc(e: TEventArgs) = echo("pie"))
+ee.on("print", proc(e: EventArgs) = echo("pie"))
 ee.emit("print", args)
 

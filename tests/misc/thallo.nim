@@ -37,7 +37,7 @@ macrotest(stdout)
 
 #GC_disable()
 
-echo("This was compiled by Nim version " & system.nimVersion)
+echo("This was compiled by Nim version " & system.NimVersion)
 writeln(stdout, "Hello", " World", "!")
 
 echo(["a", "b", "c", "d"].len)
