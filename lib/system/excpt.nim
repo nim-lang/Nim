@@ -326,7 +326,7 @@ when not defined(noSignalHandler):
       template asgn(y: expr) = msg = y
       processSignal(sig, asgn)
       showErrorMessage(msg)
-    when defined(endb): dbgAborting = True
+    when defined(endb): dbgAborting = true
     quit(1) # always quit when SIGABRT
 
   proc registerSignalHandler() =

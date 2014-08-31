@@ -152,7 +152,7 @@ proc debugOut(msg: cstring) =
 
 proc dbgFatal(msg: cstring) =
   debugOut(msg)
-  dbgAborting = True # the debugger wants to abort
+  dbgAborting = true # the debugger wants to abort
   quit(1)
 
 proc dbgShowCurrentProc(dbgFramePointer: PFrame) =
@@ -176,7 +176,7 @@ proc scanAndAppendWord(src: cstring, a: var TStaticStr, start: int): int =
   result = start
   # skip whitespace:
   while src[result] in {'\t', ' '}: inc(result)
-  while True:
+  while true:
     case src[result]
     of 'a'..'z', '0'..'9': add(a, src[result])
     of '_': discard # just skip it
@@ -280,7 +280,7 @@ proc breakpointToggle(s: cstring, start: int) =
     else: debugOut("[Warning] unknown breakpoint ")
 
 proc dbgEvaluate(stream: TFile, s: cstring, start: int, f: PFrame) =
-  var dbgTemp: tstaticstr
+  var dbgTemp: TStaticStr
   var i = scanWord(s, dbgTemp, start)
   while s[i] in {' ', '\t'}: inc(i)
   var v: TVarSlot
@@ -299,10 +299,10 @@ proc dbgEvaluate(stream: TFile, s: cstring, start: int, f: PFrame) =
         writeVariable(stream, v)  
 
 proc dbgOut(s: cstring, start: int, currFrame: PFrame) =
-  var dbgTemp: tstaticstr
+  var dbgTemp: TStaticStr
   var i = scanFilename(s, dbgTemp, start)
   if dbgTemp.len == 0:
-    InvalidCommand()
+    invalidCommand()
     return
   var stream = openAppend(dbgTemp.data)
   if stream == nil:
@@ -326,7 +326,7 @@ proc dbgStackFrame(s: cstring, start: int, currFrame: PFrame) =
     close(stream)
 
 proc readLine(f: TFile, line: var TStaticStr): bool =
-  while True:
+  while true:
     var c = fgetc(f)
     if c < 0'i32:
       if line.len > 0: break
@@ -355,7 +355,7 @@ proc dbgWriteStackTrace(f: PFrame)
 proc commandPrompt() =
   # if we return from this routine, user code executes again
   var
-    again = True
+    again = true
     dbgFramePtr = framePtr # for going down and up the stack
     dbgDown = 0 # how often we did go down
     dbgTemp: TStaticStr
@@ -390,7 +390,7 @@ proc commandPrompt() =
       dbgHelp()
     elif ?"q" or ?"quit":
       dbgState = dbQuiting
-      dbgAborting = True
+      dbgAborting = true
       again = false
       quit(1) # BUGFIX: quit with error code > 0
     elif ?"e" or ?"eval":
@@ -402,9 +402,9 @@ proc commandPrompt() =
     elif ?"w" or ?"where":
       dbgShowExecutionPoint()
     elif ?"l" or ?"locals":
-      ListLocals(stdout, dbgFramePtr)
+      listLocals(stdout, dbgFramePtr)
     elif ?"g" or ?"globals":
-      ListGlobals(stdout)
+      listGlobals(stdout)
     elif ?"u" or ?"up":
       if dbgDown <= 0:
         debugOut("[Warning] cannot go up any further ")
