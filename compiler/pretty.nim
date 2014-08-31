@@ -23,7 +23,7 @@ var
   gCheckExtern: bool
 
 proc overwriteFiles*() =
-  let overWrite = options.getConfigVar("pretty.overwrite").normalize == "on"
+  let overWrite = options.getConfigVar("pretty.overwrite").normalize != "off"
   let doStrip = options.getConfigVar("pretty.strip").normalize == "on"
   for i in 0 .. high(gSourceFiles):
     if not gSourceFiles[i].dirty: continue
