@@ -515,7 +515,7 @@ proc isFatPointer(ti: PNimType): bool =
 
 proc nimCopy(x: pointer, ti: PNimType): pointer {.compilerproc.}
 
-proc nimCopyAux(dest, src: Pointer, n: ptr TNimNode) {.compilerproc.} =
+proc nimCopyAux(dest, src: pointer, n: ptr TNimNode) {.compilerproc.} =
   case n.kind
   of nkNone: sysAssert(false, "nimCopyAux")
   of nkSlot:
@@ -566,7 +566,7 @@ proc nimCopy(x: pointer, ti: PNimType): pointer =
   else:
     result = x
 
-proc genericReset(x: Pointer, ti: PNimType): pointer {.compilerproc.} =
+proc genericReset(x: pointer, ti: PNimType): pointer {.compilerproc.} =
   case ti.kind
   of tyPtr, tyRef, tyVar, tyNil:
     if not isFatPointer(ti):
