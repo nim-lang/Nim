@@ -58,7 +58,7 @@ proc handleCmdLine() =
     if msgs.gErrorCounter == 0:
       when hasTinyCBackend:
         if gCmd == cmdRun:
-          tccgen.run(service.arguments)
+          tccgen.run(commands.arguments)
       if optRun in gGlobalOptions:
         if gCmd == cmdCompileToJS:
           var ex: string
@@ -67,7 +67,7 @@ proc handleCmdLine() =
           else:
             ex = quoteShell(
               completeCFilePath(changeFileExt(gProjectFull, "js").prependCurDir))
-          execExternalProgram("node " & ex & ' ' & service.arguments)
+          execExternalProgram("node " & ex & ' ' & commands.arguments)
         else:
           var binPath: string
           if options.outFile.len > 0:
@@ -77,7 +77,7 @@ proc handleCmdLine() =
             # Figure out ourselves a valid binary name.
             binPath = changeFileExt(gProjectFull, ExeExt).prependCurDir
           var ex = quoteShell(binPath)
-          execExternalProgram(ex & ' ' & service.arguments)
+          execExternalProgram(ex & ' ' & commands.arguments)
 
 when declared(GC_setMaxPause):
   GC_setMaxPause 2_000

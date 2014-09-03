@@ -1,7 +1,9 @@
 version 0.10
 ============
 
-- Test nim pretty on various babel packages
+- Write new nimfix tool
+- Test nimfix on various babel packages
+- Pegs do not work at compile-time
 
 
 version 0.9.6

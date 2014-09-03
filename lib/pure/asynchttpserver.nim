@@ -187,7 +187,7 @@ proc processClient(client: PAsyncSocket, address: string,
       request.client.close()
       break
 
-proc serve*(server: PAsyncHttpServer, port: TPort,
+proc serve*(server: PAsyncHttpServer, port: Port,
             callback: proc (request: TRequest): PFuture[void] {.closure,gcsafe.},
             address = "") {.async.} =
   ## Starts the process of listening for incoming HTTP connections on the

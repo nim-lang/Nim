@@ -14,13 +14,19 @@ import
   strutils, os, options, ast, astalgo, msgs, ropes, idents, passes,
   intsets, strtabs, semdata, prettybase
 
+
+type
+  StyleCheck* {.pure.} = enum None, Confirm, Auto
+
+var
+  gOverWrite* = true
+  gStyleCheck*: StyleCheck
+  gCheckExtern*: bool
+
 type
   TGen = object of TPassContext
     module*: PSym
   PGen = ref TGen
-
-var
-  gCheckExtern: bool
 
 proc overwriteFiles*() =
   let overWrite = options.getConfigVar("pretty.overwrite").normalize != "off"

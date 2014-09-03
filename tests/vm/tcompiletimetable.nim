@@ -2,18 +2,19 @@ discard """
   msg: '''2
 3
 4:2
-  '''
+Got Hi
+Got Hey'''
 """
 
 # bug #404
 
-import macros, tables
+import macros, tables, strtabs
 
 var ZOOT{.compileTime.} = initTable[int, int](2)
 var iii {.compiletime.} = 1
 
 macro zoo:stmt=
-  zoot[iii] = iii*2
+  ZOOT[iii] = iii*2
   inc iii
   echo iii
 
@@ -29,9 +30,7 @@ tupleUnpack
 
 # bug #903
 
-import strtabs
-
-var x {.compileTime.}: PStringTable
+var x {.compileTime.}: StringTableRef
 
 macro addStuff(stuff, body: expr): stmt {.immediate.} =
   result = newNimNode(nnkStmtList)

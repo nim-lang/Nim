@@ -164,12 +164,6 @@ proc commandEval(exp: string) =
   var echoExp = "echo \"eval\\t\", " & "repr(" & exp & ")"
   evalNim(echoExp.parseString, makeStdinModule())
 
-proc commandPrettyOld =
-  var projectFile = addFileExt(mainCommandArg(), NimExt)
-  var module = parseFile(projectFile.fileInfoIdx)
-  if module != nil:
-    renderModule(module, getOutFile(mainCommandArg(), "pretty." & NimExt))
-
 proc commandPretty =
   msgs.gErrorMax = high(int)  # do not stop after first error
   semanticPasses()

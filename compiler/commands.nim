@@ -26,7 +26,7 @@ bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 
 import 
   os, msgs, options, nversion, condsyms, strutils, extccomp, platform, lists, 
-  wordrecg, parseutils, nimblecmd, idents
+  wordrecg, parseutils, nimblecmd, idents, parseopt
 
 # but some have deps to imported modules. Yay.
 bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
@@ -43,7 +43,7 @@ type
   TCmdLinePass* = enum 
     passCmd1,                 # first pass over the command line
     passCmd2,                 # second pass over the command line
-    passPP                    # preprocessor called ProcessCommand()
+    passPP                    # preprocessor called processCommand()
 
 proc processCommand*(switch: string, pass: TCmdLinePass)
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo)
@@ -573,3 +573,33 @@ proc processCommand(switch: string, pass: TCmdLinePass) =
   var cmd, arg: string
   splitSwitch(switch, cmd, arg, pass, gCmdLineInfo)
   processSwitch(cmd, arg, pass, gCmdLineInfo)
+
+
+var
+  arguments* = ""
+    # the arguments to be passed to the program that
+    # should be run
+
+proc processSwitch*(pass: TCmdLinePass; p: OptParser) =
+  # hint[X]:off is parsed as (p.key = "hint[X]", p.val = "off")
+  # we fix this here
+  var bracketLe = strutils.find(p.key, '[')
+  if bracketLe >= 0: 
+    var key = substr(p.key, 0, bracketLe - 1)
+    var val = substr(p.key, bracketLe + 1) & ':' & p.val
+    processSwitch(key, val, pass, gCmdLineInfo)
+  else: 
+    processSwitch(p.key, p.val, pass, gCmdLineInfo)
+
+proc processArgument*(pass: TCmdLinePass; p: OptParser; 
+                      argsCount: var int): bool =
+  if argsCount == 0:
+    options.command = p.key
+  else:
+    if pass == passCmd1: options.commandArgs.add p.key
+    if argsCount == 1:
+      # support UNIX style filenames anywhere for portable build scripts:
+      options.gProjectName = unixToNativePath(p.key)
+      arguments = cmdLineRest(p)
+      result = true
+  inc argsCount
