@@ -1057,7 +1057,7 @@ proc genAddrDeref(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
   # nkAddr we must not use 'unneededIndirection', but for deref we use it.
   if not isAddr and unneededIndirection(n.sons[0]):
     gen(c, n.sons[0], dest, newflags)
-  elif isGlobal(n.sons[0]):
+  elif isAddr and isGlobal(n.sons[0]):
     gen(c, n.sons[0], dest, flags+{gfAddrOf})
   else:
     let tmp = c.genx(n.sons[0], newflags)
@@ -1136,6 +1136,9 @@ proc isTemp(c: PCtx; dest: TDest): bool =
 
 template needsAdditionalCopy(n): expr =
   not c.isTemp(dest) and not fitsRegister(n.typ)
+
+proc skipDeref(n: PNode): PNode =
+  result = if n.kind in {nkDerefExpr, nkHiddenDeref}: n.sons[0] else n
 
 proc preventFalseAlias(c: PCtx; n: PNode; opc: TOpcode;
                        dest, idx, value: TRegister) =
