@@ -22,21 +22,24 @@ proc semDiscard(c: PContext, n: PNode): PNode =
 proc semBreakOrContinue(c: PContext, n: PNode): PNode =
   result = n
   checkSonsLen(n, 1)
-  if n.sons[0].kind != nkEmpty: 
-    var s: PSym
-    case n.sons[0].kind
-    of nkIdent: s = lookUp(c, n.sons[0])
-    of nkSym: s = n.sons[0].sym
-    else: illFormedAst(n)
-    if s.kind == skLabel and s.owner.id == c.p.owner.id: 
-      var x = newSymNode(s)
-      x.info = n.info
-      incl(s.flags, sfUsed)
-      n.sons[0] = x
-      suggestSym(x.info, s)
+  if n.sons[0].kind != nkEmpty:
+    if n.kind != nkContinueStmt:
+      var s: PSym
+      case n.sons[0].kind
+      of nkIdent: s = lookUp(c, n.sons[0])
+      of nkSym: s = n.sons[0].sym
+      else: illFormedAst(n)
+      if s.kind == skLabel and s.owner.id == c.p.owner.id: 
+        var x = newSymNode(s)
+        x.info = n.info
+        incl(s.flags, sfUsed)
+        n.sons[0] = x
+        suggestSym(x.info, s)
+      else:
+        localError(n.info, errInvalidControlFlowX, s.name.s)
     else:
-      localError(n.info, errInvalidControlFlowX, s.name.s)
-  elif (c.p.nestedLoopCounter <= 0) and (c.p.nestedBlockCounter <= 0): 
+      localError(n.info, errGenerated, "'continue' cannot have a label")
+  elif (c.p.nestedLoopCounter <= 0) and (c.p.nestedBlockCounter <= 0):
     localError(n.info, errInvalidControlFlowX, 
                renderTree(n, {renderNoComments}))
 
