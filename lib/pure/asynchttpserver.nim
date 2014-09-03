@@ -58,7 +58,7 @@ proc addHeaders(msg: var string, headers: PStringTable) =
   for k, v in headers:
     msg.add(k & ": " & v & "\c\L")
 
-proc sendHeaders*(req: TRequest, headers: PStringTable): PFuture[void] =
+proc sendHeaders*(req: TRequest, headers: PStringTable): Future[void] =
   ## Sends the specified headers to the requesting client.
   var msg = ""
   addHeaders(msg, headers)
@@ -96,12 +96,12 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
   i.inc # Skip .
   i.inc protocol.parseInt(result.minor, i)
 
-proc sendStatus(client: PAsyncSocket, status: string): PFuture[void] =
+proc sendStatus(client: PAsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L")
 
 proc processClient(client: PAsyncSocket, address: string,
                    callback: proc (request: TRequest):
-                      PFuture[void] {.closure, gcsafe.}) {.async.} =
+                      Future[void] {.closure, gcsafe.}) {.async.} =
   while true:
     # GET /path HTTP/1.1
     # Header: val
@@ -188,7 +188,7 @@ proc processClient(client: PAsyncSocket, address: string,
       break
 
 proc serve*(server: PAsyncHttpServer, port: Port,
-            callback: proc (request: TRequest): PFuture[void] {.closure,gcsafe.},
+            callback: proc (request: TRequest): Future[void] {.closure,gcsafe.},
             address = "") {.async.} =
   ## Starts the process of listening for incoming HTTP connections on the
   ## specified address and port.
@@ -220,6 +220,6 @@ when isMainModule:
           "Content-type": "text/plain; charset=utf-8"}
       await req.respond(Http200, "Hello World", headers.newStringTable())
 
-    asyncCheck server.serve(TPort(5555), cb)
+    asyncCheck server.serve(Port(5555), cb)
     runForever()
   main()

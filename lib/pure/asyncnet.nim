@@ -335,7 +335,7 @@ proc recvLine*(socket: PAsyncSocket,
         return
       add(result.string, c)
 
-proc listen*(socket: Socket, backlog = SOMAXCONN) {.tags: [ReadIOEffect].} =
+proc listen*(socket: PAsyncSocket, backlog = SOMAXCONN) {.tags: [ReadIOEffect].} =
   ## Marks ``socket`` as accepting connections.
   ## ``Backlog`` specifies the maximum length of the
   ## queue of pending connections.
@@ -343,7 +343,7 @@ proc listen*(socket: Socket, backlog = SOMAXCONN) {.tags: [ReadIOEffect].} =
   ## Raises an EOS error upon failure.
   if listen(socket.fd, backlog) < 0'i32: raiseOSError(osLastError())
 
-proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
+proc bindAddr*(socket: PAsyncSocket, port = Port(0), address = "") {.
   tags: [ReadIOEffect].} =
   ## Binds ``address``:``port`` to the socket.
   ##
