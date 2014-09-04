@@ -913,9 +913,11 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
           result = sameTypeAux(a.sons[0], b.sons[0], c)     
     else: 
       result = sameTypeAux(a.sons[0], b.sons[0], c) and sameFlags(a, b)
-  of tyEnum, tyForward, tyProxy:
+  of tyEnum, tyForward:
     # XXX generic enums do not make much sense, but require structural checking
     result = a.id == b.id and sameFlags(a, b)
+  of tyError:
+    result = b.kind == tyError
   of tyTuple:
     cycleCheck()
     result = sameTuple(a, b, c) and sameFlags(a, b)
