@@ -216,12 +216,16 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
     result.typ = replaceTypeVarsT(cl, s.typ)
     result.ast = replaceTypeVarsN(cl, s.ast)
     
-proc lookupTypeVar(cl: TReplTypeVars, t: PType): PType = 
+proc lookupTypeVar(cl: var TReplTypeVars, t: PType): PType =
   result = PType(idTableGet(cl.typeMap, t))
   if result == nil:
     if cl.allowMetaTypes or tfRetType in t.flags: return
     localError(t.sym.info, errCannotInstantiateX, typeToString(t))
     result = errorType(cl.c)
+    # In order to prevent endless recursions, we must remember
+    # this bad lookup and replace it with errorType everywhere.
+    # These code paths are only active in nimrod check
+    idTablePut(cl.typeMap, t, result)
   elif result.kind == tyGenericParam and not cl.allowMetaTypes:
     internalError(cl.info, "substitution with generic parameter")
 
@@ -353,7 +357,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
 
   of tyGenericBody:
     localError(cl.info, errCannotInstantiateX, typeToString(t))
-    result = t
+    result = errorType(cl.c)
     #result = replaceTypeVarsT(cl, lastSon(t))
 
   of tyFromExpr:

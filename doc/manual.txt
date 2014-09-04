@@ -3671,8 +3671,8 @@ once for each tested type and any static code included within them will also be
 executed once.
 
 
-Return Type Inference
----------------------
+Type inference with type classes
+--------------------------------
 
 If a type class is used as the return type of a proc and it won't be bound to
 a concrete type by some of the proc params, Nim will infer the return type
@@ -3681,12 +3681,17 @@ from the proc body. This is usually used with the ``auto`` type class:
 .. code-block:: nim
   proc makePair(a, b): auto = (first: a, second: b)
 
-The return type will be treated as additional generic param and can be
+The return type will be treated as an additional generic param and can be
 explicitly specified at call sites as any other generic param.
 
 Future versions of Nim may also support overloading based on the return type
 of the overloads. In such settings, the expected result type at call sites may 
 also influence the inferred return type.
+
+Likewise, if a type class is used in another position where Nim expects a
+concrete type (e.g. a variable declaration or a type coercion), Nim will try to
+infer the concrete type by applying the sane matching algorithm also used in
+overload resolution.
 
 
 Symbol lookup in generics
