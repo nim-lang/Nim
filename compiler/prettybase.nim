@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, msgs, strutils
+import ast, msgs, strutils, idents
 
 type
   TSourceFile* = object
@@ -41,7 +41,7 @@ proc differ*(line: string, a, b: int, x: string): bool =
   let y = line[a..b]
   result = cmpIgnoreStyle(y, x) == 0 and y != x
 
-proc replaceDeprecated*(info: TLineInfo; oldSym, newSym: PSym) =
+proc replaceDeprecated*(info: TLineInfo; oldSym, newSym: PIdent) =
   loadFile(info)
 
   let line = gSourceFiles[info.fileIndex].lines[info.line-1]
@@ -53,7 +53,10 @@ proc replaceDeprecated*(info: TLineInfo; oldSym, newSym: PSym) =
   if line[first] == '`': inc first
   
   let last = first+identLen(line, first)-1
-  if cmpIgnoreStyle(line[first..last], oldSym.name.s) == 0:
-    var x = line.substr(0, first-1) & newSym.name.s & line.substr(last+1)    
+  if cmpIgnoreStyle(line[first..last], oldSym.s) == 0:
+    var x = line.substr(0, first-1) & newSym.s & line.substr(last+1)    
     system.shallowCopy(gSourceFiles[info.fileIndex].lines[info.line-1], x)
     gSourceFiles[info.fileIndex].dirty = true
+
+proc replaceDeprecated*(info: TLineInfo; oldSym, newSym: PSym) =
+  replaceDeprecated(info, oldSym.name, newSym.name)

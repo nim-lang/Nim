@@ -1138,7 +1138,7 @@ template needsAdditionalCopy(n): expr =
   not c.isTemp(dest) and not fitsRegister(n.typ)
 
 proc skipDeref(n: PNode): PNode =
-  result = if n.kind in {nkDerefExpr, nkHiddenDeref}: n.sons[0] else n
+  result = if n.kind in {nkDerefExpr, nkHiddenDeref}: n.sons[0] else: n
 
 proc preventFalseAlias(c: PCtx; n: PNode; opc: TOpcode;
                        dest, idx, value: TRegister) =

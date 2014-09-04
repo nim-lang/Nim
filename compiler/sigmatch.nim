@@ -1482,6 +1482,9 @@ proc argtypeMatches*(c: PContext, f, a: PType): bool =
 
 include suggest
 
+when not declared(tests):
+  template tests(s: stmt) {.immediate.} = discard
+
 tests:
   var dummyOwner = newSym(skModule, getIdent("test_module"), nil, UnknownLineInfo())
   

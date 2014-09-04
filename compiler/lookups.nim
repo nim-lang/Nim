@@ -171,7 +171,7 @@ proc addOverloadableSymAt*(scope: PScope, fn: PSym) =
   if fn.kind notin OverloadableSyms: 
     internalError(fn.info, "addOverloadableSymAt")
     return
-  var check = strTableGet(scope.symbols, fn.name)
+  let check = strTableGet(scope.symbols, fn.name)
   if check != nil and check.kind notin OverloadableSyms: 
     wrongRedefinition(fn.info, fn.name.s)
   else:
@@ -187,12 +187,32 @@ proc addInterfaceOverloadableSymAt*(c: PContext, scope: PScope, sym: PSym) =
   addOverloadableSymAt(scope, sym)
   addInterfaceDeclAux(c, sym)
 
+when defined(nimfix):
+  import strutils
+
+  # when we cannot find the identifier, retry with a changed identifer:
+  proc altSpelling(x: PIdent): PIdent =
+    case x.s[0]
+    of 'A'..'Z': result = getIdent(toLower(x.s[0]) & x.s.substr(1))
+    of 'a'..'z': result = getIdent(toLower(x.s[0]) & x.s.substr(1))
+    else: result = x
+
+  template fixSpelling(n: PNode; ident: PIdent; op: expr) =
+    let alt = ident.altSpelling
+    result = op(c, alt).skipAlias(n)
+    if result != nil:
+      prettybase.replaceDeprecated(n.info, ident, alt)
+      return result
+else:
+  template fixSpelling(n: PNode; ident: PIdent; op: expr) = discard
+
 proc lookUp*(c: PContext, n: PNode): PSym = 
   # Looks up a symbol. Generates an error in case of nil.
   case n.kind
   of nkIdent:
     result = searchInScopes(c, n.ident).skipAlias(n)
     if result == nil:
+      fixSpelling(n, n.ident, searchInScopes)
       localError(n.info, errUndeclaredIdentifier, n.ident.s)
       result = errorSym(c, n)
   of nkSym:
@@ -201,6 +221,7 @@ proc lookUp*(c: PContext, n: PNode): PSym =
     var ident = considerQuotedIdent(n)
     result = searchInScopes(c, ident).skipAlias(n)
     if result == nil:
+      fixSpelling(n, ident, searchInScopes)
       localError(n.info, errUndeclaredIdentifier, ident.s)
       result = errorSym(c, n)
   else:
@@ -214,12 +235,13 @@ type
   TLookupFlag* = enum 
     checkAmbiguity, checkUndeclared
 
-proc qualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym = 
+proc qualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym =
   case n.kind
   of nkIdent, nkAccQuoted:
     var ident = considerQuotedIdent(n)
     result = searchInScopes(c, ident).skipAlias(n)
     if result == nil and checkUndeclared in flags:
+      fixSpelling(n, ident, searchInScopes)
       localError(n.info, errUndeclaredIdentifier, ident.s)
       result = errorSym(c, n)
     elif checkAmbiguity in flags and result != nil and
@@ -244,6 +266,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym =
         else:
           result = strTableGet(m.tab, ident).skipAlias(n)
         if result == nil and checkUndeclared in flags:
+          fixSpelling(n.sons[1], ident, searchInScopes)
           localError(n.sons[1].info, errUndeclaredIdentifier, ident.s)
           result = errorSym(c, n.sons[1])
       elif n.sons[1].kind == nkSym:

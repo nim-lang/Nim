@@ -139,7 +139,7 @@ proc ropecg(m: BModule, frmt: TFormatStr, args: varargs[PRope]): PRope =
     if i - 1 >= start: 
       app(result, substr(frmt, start, i - 1))
 
-const compileTimeRopeFmt = not defined(booting)
+const compileTimeRopeFmt = false
 
 when compileTimeRopeFmt:
   import macros
@@ -186,7 +186,7 @@ when compileTimeRopeFmt:
         while s[i] in IdentChars: inc i
         yield (kind: ffSym, value: substr(s, j, i-1), intValue: 0)
         start = i
-      else: nil
+      else: discard
 
       while i < length:
         if s[i] != '$' and s[i] != '#': inc i
@@ -201,7 +201,7 @@ when compileTimeRopeFmt:
     ## the compilation of nimrod itself or will the macro execution time
     ## offset the gains?
     result = newCall(bindSym"ropeConcat")
-    for frag in fmtStringFragments(fmt.strVal):
+    for frag in fmtStringFragments(fmt):
       case frag.kind
       of ffSym:
         result.add(newCall(bindSym"cgsym", m, newStrLitNode(frag.value)))
