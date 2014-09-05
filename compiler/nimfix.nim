@@ -11,7 +11,7 @@
 
 import strutils, os, parseopt
 import options, commands, modules, sem, passes, passaux, pretty, msgs, nimconf,
-  extccomp, condsyms
+  extccomp, condsyms, lists
 
 const Usage = """
 Nimfix - Tool to patch Nim code
@@ -36,6 +36,11 @@ proc mainCommand =
   registerPass semPass
   registerPass prettyPass
   gCmd = cmdPretty
+  appendStr(searchPaths, options.libpath)
+  if gProjectFull.len != 0:
+    # current path is always looked first for modules
+    prependStr(searchPaths, gProjectPath)
+
   compileProject()
   pretty.overwriteFiles()
 
@@ -68,7 +73,8 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
       else:
         processSwitch(pass, p)
     of cmdArgument:
-      if processArgument(pass, p, argsCount): break
+      options.gProjectName = unixToNativePath(p.key)
+      # if processArgument(pass, p, argsCount): break
 
 proc handleCmdLine() =
   if paramCount() == 0:

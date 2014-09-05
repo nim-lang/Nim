@@ -308,8 +308,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     expectArg(switch, arg, pass, info)
     options.docSeeSrcUrl = arg
   of "mainmodule", "m":
-    expectArg(switch, arg, pass, info)
-    optMainModule = arg
+    discard "allow for backwards compatibility, but don't do anything"
   of "define", "d": 
     expectArg(switch, arg, pass, info)
     defineSymbol(arg)

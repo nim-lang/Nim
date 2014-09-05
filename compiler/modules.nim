@@ -185,8 +185,17 @@ proc compileSystemModule* =
     systemFileIdx = fileInfoIdx(options.libpath/"system.nim")
     discard compileModule(systemFileIdx, {sfSystemModule})
 
-proc compileProject*(projectFile = gProjectMainIdx) =
+proc wantMainModule* =
+  if gProjectFull.len == 0:
+    fatal(gCmdLineInfo, errCommandExpectsFilename)
+  gProjectMainIdx = addFileExt(gProjectFull, NimExt).fileInfoIdx
+
+proc compileProject*(projectFileIdx = -1'i32) =
+  wantMainModule()
+  passes.gIncludeFile = includeModule
+  passes.gImportModule = importModule
   let systemFileIdx = fileInfoIdx(options.libpath / "system.nim")
+  let projectFile = if projectFileIdx < 0: gProjectMainIdx else: projectFileIdx
   if projectFile == systemFileIdx:
     discard compileModule(projectFile, {sfMainModule, sfSystemModule})
   else:

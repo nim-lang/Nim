@@ -152,7 +152,6 @@ var
   gProjectPath* = "" # holds a path like /home/alice/projects/nimrod/compiler/
   gProjectFull* = "" # projectPath/projectName
   gProjectMainIdx*: int32 # the canonical path id of the main module
-  optMainModule* = "" # the main module that should be used for idetools commands
   nimcacheDir* = ""
   command* = "" # the main command (e.g. cc, check, scan, etc)
   commandArgs*: seq[string] = @[] # any arguments after the main command

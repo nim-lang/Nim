@@ -626,6 +626,12 @@ proc strTableAdd(t: var TStrTable, n: PSym) =
   strTableRawInsert(t.data, n)
   inc(t.counter)
 
+proc reallySameIdent(a, b: string): bool {.inline.} =
+  when defined(nimfix):
+    result = a[0] == b[0]
+  else:
+    result = true
+
 proc strTableIncl*(t: var TStrTable, n: PSym): bool {.discardable.} =
   # returns true if n is already in the string table:
   # It is essential that `n` is written nevertheless!
@@ -635,7 +641,7 @@ proc strTableIncl*(t: var TStrTable, n: PSym): bool {.discardable.} =
   while true:
     var it = t.data[h]
     if it == nil: break
-    if it.name.id == n.name.id:
+    if it.name.id == n.name.id and reallySameIdent(it.name.s, n.name.s):
       t.data[h] = n           # overwrite it with newer definition!
       return true             # found it
     h = nextTry(h, high(t.data))

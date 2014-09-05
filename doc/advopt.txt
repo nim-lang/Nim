@@ -28,7 +28,6 @@ Advanced commands:
     --server.address:HOST   binds to that address, by default ""
 
 Advanced options:
-  -m, --mainmodule:FILE     set the project main module
   -o, --out:FILE            set the output filename
   --stdout                  output to stdout
   --listFullPaths           list full paths in messages
