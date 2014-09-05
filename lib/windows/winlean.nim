@@ -104,11 +104,11 @@ proc closeHandle*(hObject: THandle): WINBOOL {.stdcall, dynlib: "kernel32",
     importc: "CloseHandle".}
     
 proc readFile*(hFile: THandle, Buffer: pointer, nNumberOfBytesToRead: int32,
-               lpNumberOfBytesRead: var int32, lpOverlapped: pointer): WINBOOL{.
+               lpNumberOfBytesRead: ptr int32, lpOverlapped: pointer): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "ReadFile".}
     
 proc writeFile*(hFile: THandle, Buffer: pointer, nNumberOfBytesToWrite: int32,
-                lpNumberOfBytesWritten: var int32, 
+                lpNumberOfBytesWritten: ptr int32, 
                 lpOverlapped: pointer): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "WriteFile".}
 
@@ -573,12 +573,14 @@ proc waitForMultipleObjects*(nCount: DWORD, lpHandles: PWOHandleArray,
 
 const
   GENERIC_READ* = 0x80000000'i32
+  GENERIC_WRITE* = 0x40000000'i32
   GENERIC_ALL* = 0x10000000'i32
   FILE_SHARE_READ* = 1'i32
   FILE_SHARE_DELETE* = 4'i32
   FILE_SHARE_WRITE* = 2'i32
  
   CREATE_ALWAYS* = 2'i32
+  CREATE_NEW* = 1'i32
   OPEN_EXISTING* = 3'i32
   FILE_BEGIN* = 0'i32
   INVALID_SET_FILE_POINTER* = -1'i32
@@ -595,6 +597,7 @@ const
 # Error Constants
 const
   ERROR_ACCESS_DENIED* = 5
+  ERROR_HANDLE_EOF* = 38
 
 when useWinUnicode:
   proc createFileW*(lpFileName: WideCString, dwDesiredAccess, dwShareMode: DWORD,
@@ -649,10 +652,10 @@ proc unmapViewOfFile*(lpBaseAddress: pointer): WINBOOL {.stdcall,
 
 type
   TOVERLAPPED* {.pure, inheritable.} = object
-    Internal*: PULONG
-    InternalHigh*: PULONG
-    Offset*: DWORD
-    OffsetHigh*: DWORD
+    internal*: PULONG
+    internalHigh*: PULONG
+    offset*: DWORD
+    offsetHigh*: DWORD
     hEvent*: THandle
 
   POVERLAPPED* = ptr TOVERLAPPED
@@ -668,6 +671,7 @@ type
 
 const
   ERROR_IO_PENDING* = 997 # a.k.a WSA_IO_PENDING
+  FILE_FLAG_OVERLAPPED* = 1073741824
   WSAECONNABORTED* = 10053
   WSAECONNRESET* = 10054
   WSAEDISCON* = 10101
@@ -675,16 +679,20 @@ const
   WSAETIMEDOUT* = 10060
   ERROR_NETNAME_DELETED* = 64
 
-proc CreateIoCompletionPort*(FileHandle: THandle, ExistingCompletionPort: THandle,
+proc createIoCompletionPort*(FileHandle: THandle, ExistingCompletionPort: THandle,
                              CompletionKey: DWORD,
                              NumberOfConcurrentThreads: DWORD): THandle{.stdcall,
     dynlib: "kernel32", importc: "CreateIoCompletionPort".}
 
-proc GetQueuedCompletionStatus*(CompletionPort: THandle,
+proc getQueuedCompletionStatus*(CompletionPort: THandle,
     lpNumberOfBytesTransferred: PDWORD, lpCompletionKey: PULONG,
                                 lpOverlapped: ptr POVERLAPPED,
                                 dwMilliseconds: DWORD): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetQueuedCompletionStatus".}
+
+proc getOverlappedResult*(hFile: THandle, lpOverlapped: TOverlapped,
+              lpNumberOfBytesTransferred: var DWORD, bWait: WINBOOL): WINBOOL{.
+    stdcall, dynlib: "kernel32", importc: "GetOverlappedResult".}
 
 const 
  IOC_OUT* = 0x40000000

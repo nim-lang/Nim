@@ -226,8 +226,8 @@ when defined(windows) or defined(nimdoc):
     TCompletionKey = Dword
 
     TCompletionData* = object
-      sock: TAsyncFD
-      cb: proc (sock: TAsyncFD, bytesTransferred: Dword,
+      sock*: TAsyncFD # TODO: Rename this.
+      cb*: proc (sock: TAsyncFD, bytesTransferred: Dword,
                 errcode: OSErrorCode) {.closure,gcsafe.}
 
     PDispatcher* = ref object of PDispatcherBase
@@ -237,7 +237,7 @@ when defined(windows) or defined(nimdoc):
     TCustomOverlapped = object of TOVERLAPPED
       data*: TCompletionData
 
-    PCustomOverlapped = ref TCustomOverlapped
+    PCustomOverlapped* = ref TCustomOverlapped
 
     TAsyncFD* = distinct int
 
@@ -247,7 +247,7 @@ when defined(windows) or defined(nimdoc):
   proc newDispatcher*(): PDispatcher =
     ## Creates a new Dispatcher instance.
     new result
-    result.ioPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)
+    result.ioPort = createIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)
     result.handles = initSet[TAsyncFD]()
     result.timers = @[]
 
@@ -260,7 +260,7 @@ when defined(windows) or defined(nimdoc):
   proc register*(sock: TAsyncFD) =
     ## Registers ``sock`` with the dispatcher.
     let p = getGlobalDispatcher()
-    if CreateIoCompletionPort(sock.THandle, p.ioPort,
+    if createIoCompletionPort(sock.THandle, p.ioPort,
                               cast[TCompletionKey](sock), 1) == 0:
       raiseOSError(osLastError())
     p.handles.incl(sock)
@@ -286,7 +286,7 @@ when defined(windows) or defined(nimdoc):
     var lpNumberOfBytesTransferred: Dword
     var lpCompletionKey: ULONG
     var customOverlapped: PCustomOverlapped
-    let res = GetQueuedCompletionStatus(p.ioPort,
+    let res = getQueuedCompletionStatus(p.ioPort,
         addr lpNumberOfBytesTransferred, addr lpCompletionKey,
         cast[ptr POVERLAPPED](addr customOverlapped), llTimeout).bool
 
@@ -1231,10 +1231,9 @@ proc runForever*() =
   while true:
     poll()
 
-proc waitFor*[T](fut: PFuture[T]) =
+proc waitFor*[T](fut: PFuture[T]): T =
   ## **Blocks** the current thread until the specified future completes.
   while not fut.finished:
     poll()
 
-  if fut.failed:
-    raise fut.error
+  fut.read
