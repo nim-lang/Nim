@@ -28,7 +28,6 @@ when defined(windows):
   import winlean
 else:
   import posix
-  {.fatal: "Posix not yet supported".}
 
 type
   AsyncFile = ref object
@@ -59,12 +58,15 @@ else:
     case mode
     of fmRead:
       result = O_RDONLY
-    of fmWrite, fmAppend:
+    of fmWrite:
       result = O_WRONLY or O_CREAT
+    of fmAppend:
+      result = O_WRONLY or O_CREAT or O_APPEND
     of fmReadWrite:
       result = O_RDWR or O_CREAT
     of fmReadWriteExisting:
       result = O_RDWR
+    result = result or O_NONBLOCK
 
 proc getFileSize*(f: AsyncFile): int64 =
   ## Retrieves the specified file's size.
@@ -102,6 +104,13 @@ proc openAsync*(filename: string, mode = fmRead): AsyncFile =
 
   else:
     let flags = getPosixFlags(mode)
+    # RW (Owner), RW (Group), R (Other)
+    let perm = S_IRUSR or S_IWUSR or S_IRGRP or S_IWGRP or S_IROTH
+    result.fd = open(filename, flags, perm).TAsyncFD
+    if result.fd.cint == -1:
+      raiseOSError()
+
+    register(result.fd)
 
 proc read*(f: AsyncFile, size: int): Future[string] =
   ## Read ``size`` bytes from the specified file asynchronously starting at
@@ -167,6 +176,29 @@ proc read*(f: AsyncFile, size: int): Future[string] =
         copyMem(addr data[0], buffer, bytesRead)
         f.offset.inc bytesRead
         retFuture.complete($data)
+  else:
+    var readBuffer = newString(size)
+
+    proc cb(fd: TAsyncFD): bool =
+      result = true
+      let res = read(fd.cint, addr readBuffer[0], size.cint)
+      if res < 0:
+        let lastError = osLastError()
+        if lastError.int32 != EAGAIN:
+          retFuture.fail(newException(EOS, osErrorMsg(lastError)))
+        else:
+          result = false # We still want this callback to be called.
+      elif res == 0:
+        # EOF
+        retFuture.complete("")
+      else:
+        readBuffer.setLen(res)
+        f.offset.inc(res)
+        retFuture.complete(readBuffer)
+    
+    if not cb(f.fd):
+      addRead(f.fd, cb)
+  
   return retFuture
 
 proc getFilePos*(f: AsyncFile): int64 =
@@ -179,6 +211,10 @@ proc setFilePos*(f: AsyncFile, pos: int64) =
   ## Sets the position of the file pointer that is used for read/write
   ## operations. The file's first byte has the index zero. 
   f.offset = pos
+  when not defined(windows):
+    let ret = lseek(f.fd.cint, pos, SEEK_SET)
+    if ret == -1:
+      raiseOSError()
 
 proc readAll*(f: AsyncFile): Future[string] {.async.} =
   ## Reads all data from the specified file.
@@ -240,6 +276,29 @@ proc write*(f: AsyncFile, data: string): Future[void] =
         assert bytesWritten == data.len.int32
         f.offset.inc(data.len)
         retFuture.complete()
+  else:
+    var written = 0
+    
+    proc cb(fd: TAsyncFD): bool =
+      result = true
+      let remainderSize = data.len-written
+      let res = write(fd.cint, addr copy[written], remainderSize.cint)
+      if res < 0:
+        let lastError = osLastError()
+        if lastError.int32 != EAGAIN:
+          retFuture.fail(newException(EOS, osErrorMsg(lastError)))
+        else:
+          result = false # We still want this callback to be called.
+      else:
+        written.inc res
+        f.offset.inc res
+        if res != remainderSize:
+          result = false # We still have data to write.
+        else:
+          retFuture.complete()
+    
+    if not cb(f.fd):
+      addWrite(f.fd, cb)
   return retFuture
 
 proc close*(f: AsyncFile) =
@@ -247,10 +306,7 @@ proc close*(f: AsyncFile) =
   when defined(windows):
     if not closeHandle(f.fd.THandle).bool:
       raiseOSError()
-
-
-
-
-
-
+  else:
+    if close(f.fd.cint) == -1:
+      raiseOSError()
 

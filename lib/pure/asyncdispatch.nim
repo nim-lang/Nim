@@ -143,6 +143,7 @@ proc echoOriginalStackTrace[T](future: Future[T]) =
       echo(future.errorStackTrace)
     else:
       echo("Empty or nil stack trace.")
+    echo("Continuing...")
 
 proc read*[T](future: Future[T]): T =
   ## Retrieves the value of ``future``. Future must be finished otherwise
@@ -723,7 +724,7 @@ else:
     assert sock.SocketHandle in p.selector
     discard p.selector.update(sock.SocketHandle, events)
 
-  proc register(sock: TAsyncFD) =
+  proc register*(sock: TAsyncFD) =
     let p = getGlobalDispatcher()
     var data = PData(sock: sock, readCBs: @[], writeCBs: @[])
     p.selector.register(sock.SocketHandle, {}, data.PObject)
@@ -743,14 +744,14 @@ else:
   proc unregister*(fd: TAsyncFD) =
     getGlobalDispatcher().selector.unregister(fd.SocketHandle)
 
-  proc addRead(sock: TAsyncFD, cb: TCallback) =
+  proc addRead*(sock: TAsyncFD, cb: TCallback) =
     let p = getGlobalDispatcher()
     if sock.SocketHandle notin p.selector:
       raise newException(EInvalidValue, "File descriptor not registered.")
     p.selector[sock.SocketHandle].data.PData.readCBs.add(cb)
     update(sock, p.selector[sock.SocketHandle].events + {EvRead})
   
-  proc addWrite(sock: TAsyncFD, cb: TCallback) =
+  proc addWrite*(sock: TAsyncFD, cb: TCallback) =
     let p = getGlobalDispatcher()
     if sock.SocketHandle notin p.selector:
       raise newException(EInvalidValue, "File descriptor not registered.")
