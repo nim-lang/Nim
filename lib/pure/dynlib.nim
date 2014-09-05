@@ -57,19 +57,19 @@ when defined(posix):
     RTLD_NOW {.importc: "RTLD_NOW", header: "<dlfcn.h>".}: int
     RTLD_GLOBAL {.importc: "RTLD_GLOBAL", header: "<dlfcn.h>".}: int
 
-  proc dlclose(lib: TLibHandle) {.importc, header: "<dlfcn.h>".}
-  proc dlopen(path: CString, mode: int): TLibHandle {.
+  proc dlclose(lib: LibHandle) {.importc, header: "<dlfcn.h>".}
+  proc dlopen(path: cstring, mode: int): LibHandle {.
       importc, header: "<dlfcn.h>".}
-  proc dlsym(lib: TLibHandle, name: cstring): pointer {.
+  proc dlsym(lib: LibHandle, name: cstring): pointer {.
       importc, header: "<dlfcn.h>".}
 
-  proc loadLib(path: string, global_symbols=false): TLibHandle = 
+  proc loadLib(path: string, global_symbols=false): LibHandle = 
     var flags = RTLD_NOW
     if global_symbols: flags = flags or RTLD_GLOBAL
     return dlopen(path, flags)
-  proc loadLib(): TLibHandle = return dlopen(nil, RTLD_NOW)
-  proc unloadLib(lib: TLibHandle) = dlclose(lib)
-  proc symAddr(lib: TLibHandle, name: cstring): pointer = 
+  proc loadLib(): LibHandle = return dlopen(nil, RTLD_NOW)
+  proc unloadLib(lib: LibHandle) = dlclose(lib)
+  proc symAddr(lib: LibHandle, name: cstring): pointer = 
     return dlsym(lib, name)
 
 elif defined(windows) or defined(dos):
