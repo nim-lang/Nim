@@ -143,6 +143,7 @@ proc echoOriginalStackTrace[T](future: Future[T]) =
       echo(future.errorStackTrace)
     else:
       echo("Empty or nil stack trace.")
+    echo("Continuing...")
 
 proc read*[T](future: Future[T]): T =
   ## Retrieves the value of ``future``. Future must be finished otherwise
@@ -226,8 +227,8 @@ when defined(windows) or defined(nimdoc):
     TCompletionKey = Dword
 
     TCompletionData* = object
-      sock: TAsyncFD
-      cb: proc (sock: TAsyncFD, bytesTransferred: Dword,
+      sock*: TAsyncFD # TODO: Rename this.
+      cb*: proc (sock: TAsyncFD, bytesTransferred: Dword,
                 errcode: OSErrorCode) {.closure,gcsafe.}
 
     PDispatcher* = ref object of PDispatcherBase
@@ -237,7 +238,7 @@ when defined(windows) or defined(nimdoc):
     TCustomOverlapped = object of TOVERLAPPED
       data*: TCompletionData
 
-    PCustomOverlapped = ref TCustomOverlapped
+    PCustomOverlapped* = ref TCustomOverlapped
 
     TAsyncFD* = distinct int
 
@@ -247,7 +248,7 @@ when defined(windows) or defined(nimdoc):
   proc newDispatcher*(): PDispatcher =
     ## Creates a new Dispatcher instance.
     new result
-    result.ioPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)
+    result.ioPort = createIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)
     result.handles = initSet[TAsyncFD]()
     result.timers = @[]
 
@@ -260,7 +261,7 @@ when defined(windows) or defined(nimdoc):
   proc register*(sock: TAsyncFD) =
     ## Registers ``sock`` with the dispatcher.
     let p = getGlobalDispatcher()
-    if CreateIoCompletionPort(sock.THandle, p.ioPort,
+    if createIoCompletionPort(sock.THandle, p.ioPort,
                               cast[TCompletionKey](sock), 1) == 0:
       raiseOSError(osLastError())
     p.handles.incl(sock)
@@ -286,7 +287,7 @@ when defined(windows) or defined(nimdoc):
     var lpNumberOfBytesTransferred: Dword
     var lpCompletionKey: ULONG
     var customOverlapped: PCustomOverlapped
-    let res = GetQueuedCompletionStatus(p.ioPort,
+    let res = getQueuedCompletionStatus(p.ioPort,
         addr lpNumberOfBytesTransferred, addr lpCompletionKey,
         cast[ptr POVERLAPPED](addr customOverlapped), llTimeout).bool
 
@@ -723,7 +724,7 @@ else:
     assert sock.SocketHandle in p.selector
     discard p.selector.update(sock.SocketHandle, events)
 
-  proc register(sock: TAsyncFD) =
+  proc register*(sock: TAsyncFD) =
     let p = getGlobalDispatcher()
     var data = PData(sock: sock, readCBs: @[], writeCBs: @[])
     p.selector.register(sock.SocketHandle, {}, data.PObject)
@@ -743,14 +744,14 @@ else:
   proc unregister*(fd: TAsyncFD) =
     getGlobalDispatcher().selector.unregister(fd.SocketHandle)
 
-  proc addRead(sock: TAsyncFD, cb: TCallback) =
+  proc addRead*(sock: TAsyncFD, cb: TCallback) =
     let p = getGlobalDispatcher()
     if sock.SocketHandle notin p.selector:
       raise newException(EInvalidValue, "File descriptor not registered.")
     p.selector[sock.SocketHandle].data.PData.readCBs.add(cb)
     update(sock, p.selector[sock.SocketHandle].events + {EvRead})
   
-  proc addWrite(sock: TAsyncFD, cb: TCallback) =
+  proc addWrite*(sock: TAsyncFD, cb: TCallback) =
     let p = getGlobalDispatcher()
     if sock.SocketHandle notin p.selector:
       raise newException(EInvalidValue, "File descriptor not registered.")
@@ -1231,10 +1232,9 @@ proc runForever*() =
   while true:
     poll()
 
-proc waitFor*[T](fut: PFuture[T]) =
+proc waitFor*[T](fut: PFuture[T]): T =
   ## **Blocks** the current thread until the specified future completes.
   while not fut.finished:
     poll()
 
-  if fut.failed:
-    raise fut.error
+  fut.read
