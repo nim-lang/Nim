@@ -157,34 +157,43 @@ proc connect*(socket: PAsyncSocket, address: string, port: TPort,
       sslSetConnectState(socket.sslHandle)
       sslLoop(socket, flags, sslDoHandshake(socket.sslHandle))
 
-proc readIntoBuf(socket: PAsyncSocket,
-    flags: set[TSocketFlags]): Future[int] {.async.} =
-  var data = await recv(socket.fd.TAsyncFD, BufferSize, flags)
-  if data.len != 0:
-    copyMem(addr socket.buffer[0], addr data[0], data.len)
+proc readInto(buf: cstring, size: int, socket: PAsyncSocket,
+              flags: set[TSocketFlags]): Future[int] {.async.} =
   if socket.isSsl:
     when defined(ssl):
       # SSL mode.
-      let ret = bioWrite(socket.bioIn, addr socket.buffer[0], data.len.cint)
-      if ret < 0:
-        raiseSSLError()
       sslLoop(socket, flags,
-        sslRead(socket.sslHandle, addr socket.buffer[0], BufferSize.cint))
-      socket.currPos = 0
-      socket.bufLen = opResult # Injected from sslLoop template.
+        sslRead(socket.sslHandle, buf, size.cint))
       result = opResult
   else:
+    var data = await recv(socket.fd.TAsyncFD, size, flags)
+    if data.len != 0:
+      copyMem(buf, addr data[0], data.len)
     # Not in SSL mode.
-    socket.bufLen = data.len
-    socket.currPos = 0
     result = data.len
+
+proc readIntoBuf(socket: PAsyncSocket,
+    flags: set[TSocketFlags]): Future[int] {.async.} =
+  result = await readInto(addr socket.buffer[0], BufferSize, socket, flags)
+  socket.currPos = 0
+  socket.bufLen = result
 
 proc recv*(socket: PAsyncSocket, size: int,
            flags = {TSocketFlags.SafeDisconn}): Future[string] {.async.} =
-  ## Reads ``size`` bytes from ``socket``. Returned future will complete once
-  ## all of the requested data is read. If socket is disconnected during the
+  ## Reads **up to** ``size`` bytes from ``socket``.
+  ##
+  ## For buffered sockets this function will attempt to read all the requested
+  ## data. It will read this data in ``BufferSize`` chunks.
+  ##
+  ## For unbuffered sockets this function makes no effort to read
+  ## all the data requested. It will return as much data as the operating system
+  ## gives it.
+  ##
+  ## If socket is disconnected during the
   ## recv operation then the future may complete with only a part of the
-  ## requested data read. If socket is disconnected and no data is available
+  ## requested data.
+  ##
+  ## If socket is disconnected and no data is available
   ## to be read then the future will complete with a value of ``""``.
   if socket.isBuffered:
     result = newString(size)
@@ -216,7 +225,9 @@ proc recv*(socket: PAsyncSocket, size: int,
       socket.currPos = originalBufPos
     result.setLen(read)
   else:
-    result = await recv(socket.fd.TAsyncFD, size, flags)
+    result = newString(size)
+    let read = await readInto(addr result[0], size, socket, flags)
+    result.setLen(read)
 
 proc send*(socket: PAsyncSocket, data: string,
            flags = {TSocketFlags.SafeDisconn}) {.async.} =
@@ -282,6 +293,9 @@ proc recvLine*(socket: PAsyncSocket,
   ## The partial line **will be lost**.
   ##
   ## **Warning**: The ``Peek`` flag is not yet implemented.
+  ## 
+  ## **Warning**: ``recvLine`` on unbuffered sockets assumes that the protocol
+  ## uses ``\r\L`` to delimit a new line.
   template addNLIfEmpty(): stmt =
     if result.len == 0:
       result.add("\c\L")
@@ -324,10 +338,8 @@ proc recvLine*(socket: PAsyncSocket,
       if c.len == 0:
         return ""
       if c == "\r":
-        c = await recv(socket, 1, flags + {TSocketFlags.Peek})
-        if c.len > 0 and c == "\L":
-          let dummy = await recv(socket, 1, flags)
-          assert dummy == "\L"
+        c = await recv(socket, 1, flags) # Skip \L
+        assert c == "\L"
         addNLIfEmpty()
         return
       elif c == "\L":

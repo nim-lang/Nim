@@ -449,6 +449,8 @@ when defined(windows) or defined(nimdoc):
     ## complete once all the data requested is read, a part of the data has been
     ## read, or the socket has disconnected in which case the future will
     ## complete with a value of ``""``.
+    ##
+    ## **Warning**: The ``Peek`` socket flag is not supported on Windows.
 
 
     # Things to note:
@@ -458,6 +460,8 @@ when defined(windows) or defined(nimdoc):
     #     '\0' in the message currently signifies a socket disconnect. Who
     #     knows what will happen when someone sends that to our socket.
     verifyPresence(socket)
+    assert SocketFlag.Peek notin flags, "Peek not supported on Windows."
+
     var retFuture = newFuture[string]("recv")
     var dataBuf: TWSABuf
     dataBuf.buf = cast[cstring](alloc0(size))

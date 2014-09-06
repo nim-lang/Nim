@@ -466,7 +466,8 @@ proc newAsyncHttpClient*(userAgent = defUserAgent,
   result.headers = newStringTable(modeCaseInsensitive)
   result.userAgent = defUserAgent
   result.maxRedirects = maxRedirects
-  result.sslContext = net.SslContext(sslContext)
+  when defined(ssl):
+    result.sslContext = net.SslContext(sslContext)
 
 proc close*(client: AsyncHttpClient) =
   ## Closes any connections held by the HTTP client.

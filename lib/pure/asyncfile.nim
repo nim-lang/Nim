@@ -34,7 +34,26 @@ type
     fd: TAsyncFd
     offset: int64
 
+# TODO: These will be nil in other threads?
+var
+  asyncStdin* {.threadvar.}: AsyncFile ## Asynchronous stdin handle
+  asyncStdout* {.threadvar.}: AsyncFile ## Asynchronous stdout handle
+  asyncStderr* {.threadvar.}: AsyncFile ## Asynchronous stderr handle
+
 when defined(windows):
+  asyncStdin = AsyncFile(
+      fd: getStdHandle(STD_INPUT_HANDLE).TAsyncFd,
+      offset: 0
+    )
+  asyncStdout = AsyncFile(
+      fd: getStdHandle(STD_OUTPUT_HANDLE).TAsyncFd,
+      offset: 0
+    )
+  asyncStderr = AsyncFile(
+      fd: getStdHandle(STD_ERROR_HANDLE).TAsyncFd,
+      offset: 0
+    )
+
   proc getDesiredAccess(mode: TFileMode): int32 =
     case mode
     of fmRead:
@@ -54,6 +73,19 @@ when defined(windows):
       else:
         CREATE_NEW
 else:
+  asyncStdin = AsyncFile(
+      fd: STDIN_FILENO.TAsyncFd,
+      offset: 0
+    )
+  asyncStdout = AsyncFile(
+      fd: STDOUT_FILENO.TAsyncFd,
+      offset: 0
+    )
+  asyncStderr = AsyncFile(
+      fd: STDERR_FILENO.TAsyncFd,
+      offset: 0
+    )
+
   proc getPosixFlags(mode: TFileMode): cint =
     case mode
     of fmRead:
@@ -200,6 +232,19 @@ proc read*(f: AsyncFile, size: int): Future[string] =
       addRead(f.fd, cb)
   
   return retFuture
+
+proc readLine*(f: AsyncFile): Future[string] {.async.} =
+  ## Reads a single line from the specified file asynchronously.
+  result = ""
+  while true:
+    var c = await read(f, 1)
+    if c[0] == '\c':
+      c = await read(f, 1)
+      break
+    if c[0] == '\L' or c == "":
+      break
+    else:
+      result.add(c)
 
 proc getFilePos*(f: AsyncFile): int64 =
   ## Retrieves the current position of the file pointer that is

@@ -330,7 +330,7 @@ when defined(Windows) and not defined(useNimRtl):
     var s = PFileHandleStream(s)
     if s.atTheEnd: return 0
     var br: int32
-    var a = winlean.readFile(s.handle, buffer, bufLen.cint, br, nil)
+    var a = winlean.readFile(s.handle, buffer, bufLen.cint, addr br, nil)
     # TRUE and zero bytes returned (EOF).
     # TRUE and n (>0) bytes returned (good data).
     # FALSE and bytes returned undefined (system error).
@@ -341,7 +341,8 @@ when defined(Windows) and not defined(useNimRtl):
   proc hsWriteData(s: Stream, buffer: pointer, bufLen: int) =
     var s = PFileHandleStream(s)
     var bytesWritten: int32
-    var a = winlean.writeFile(s.handle, buffer, bufLen.cint, bytesWritten, nil)
+    var a = winlean.writeFile(s.handle, buffer, bufLen.cint,
+                              addr bytesWritten, nil)
     if a == 0: raiseOSError(osLastError())
 
   proc newFileHandleStream(handle: THandle): PFileHandleStream =
