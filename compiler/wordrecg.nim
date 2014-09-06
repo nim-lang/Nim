@@ -27,7 +27,7 @@ type
     wContinue, wConverter, wDiscard, wDistinct, wDiv, wDo, 
     wElif, wElse, wEnd, wEnum, wExcept, wExport,
     wFinally, wFor, wFrom, wGeneric, wIf, wImport, wIn, 
-    wInclude, wInterface, wIs, wIsnot, wIterator, wLambda, wLet,
+    wInclude, wInterface, wIs, wIsnot, wIterator, wLet,
     wMacro, wMethod, wMixin, wMod, wNil, 
     wNot, wNotin, wObject, wOf, wOr, wOut, wProc, wPtr, wRaise, wRef, wReturn, 
     wShl, wShr, wStatic, wTemplate, wTry, wTuple, wType, wUsing, wVar, 
@@ -39,7 +39,7 @@ type
 
     wDestroy,
     
-    wImmediate, wDestructor, wDelegator,
+    wImmediate, wDestructor, wDelegator, wOverride,
     wImportCpp, wImportObjC,
     wImportCompilerProc,
     wImportc, wExportc, wIncompleteStruct, wRequiresInit,
@@ -107,7 +107,7 @@ const
     "elif", "else", "end", "enum", "except", "export", 
     "finally", "for", "from", "generic", "if", 
     "import", "in", "include", "interface", "is", "isnot", "iterator",
-    "lambda", "let",
+    "let",
     "macro", "method", "mixin", "mod", "nil", "not", "notin",
     "object", "of", "or", 
     "out", "proc", "ptr", "raise", "ref", "return",
@@ -122,7 +122,7 @@ const
 
     "destroy",
     
-    "immediate", "destructor", "delegator",
+    "immediate", "destructor", "delegator", "override",
     "importcpp", "importobjc",
     "importcompilerproc", "importc", "exportc", "incompletestruct",
     "requiresinit", "align", "nodecl", "pure", "sideeffect",

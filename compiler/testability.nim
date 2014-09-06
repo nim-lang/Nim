@@ -1,5 +1,5 @@
 template tests*(body: stmt) {.immediate.} =
   when defined(selftest):
-    when not defined(unittest): import unittest
+    when not declared(unittest): import unittest
     body
 

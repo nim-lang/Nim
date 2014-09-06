@@ -39,7 +39,7 @@ var
   c_stderr {.importc: "stderr", nodecl.}: C_TextFileStar
 
 # constants faked as variables:
-when not defined(SIGINT):
+when not declared(SIGINT):
   when NoFakeVars:
     when defined(windows):
       const
@@ -106,7 +106,7 @@ proc c_fopen(filename, mode: cstring): C_TextFileStar {.
   importc: "fopen", header: "<stdio.h>".}
 proc c_fclose(f: C_TextFileStar) {.importc: "fclose", header: "<stdio.h>".}
 
-proc c_sprintf(buf, frmt: cstring) {.header: "<stdio.h>", 
+proc c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>", 
   importc: "sprintf", varargs, noSideEffect.}
   # we use it only in a way that cannot lead to security issues
 
@@ -132,7 +132,7 @@ proc c_realloc(p: pointer, newsize: int): pointer {.
   importc: "realloc", header: "<stdlib.h>".}
 
 when hostOS != "standalone":
-  when not defined(errno):
+  when not declared(errno):
     when defined(NimrodVM):
       var vmErrnoWrapper {.importc.}: ptr cint
       template errno: expr = 

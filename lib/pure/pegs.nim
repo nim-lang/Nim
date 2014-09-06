@@ -870,7 +870,7 @@ template `=~`*(s: string, pattern: TPeg): bool =
   ##     echo("syntax error")
   ##  
   bind maxSubpatterns
-  when not definedInScope(matches):
+  when not declaredInScope(matches):
     var matches {.inject.}: array[0..MaxSubpatterns-1, string]
   match(s, pattern, matches)
 

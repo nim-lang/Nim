@@ -55,14 +55,14 @@ type
         q: TMyGeneric3[TMyObj, int, int]
       r: string
 
-proc destruct(o: var TMyObj) {.destructor.} =
+proc destroy(o: var TMyObj) {.override.} =
   if o.p != nil: dealloc o.p
   echo "myobj destroyed"
 
-proc destroy(o: var TMyGeneric1) {.destructor.} =
+proc destroy(o: var TMyGeneric1) {.override.} =
   echo "mygeneric1 destroyed"
 
-proc destroy[A, B](o: var TMyGeneric2[A, B]) {.destructor.} =
+proc destroy[A, B](o: var TMyGeneric2[A, B]) {.override.} =
   echo "mygeneric2 destroyed"
 
 proc open: TMyObj =

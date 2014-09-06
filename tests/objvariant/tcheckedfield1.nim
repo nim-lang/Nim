@@ -1,5 +1,5 @@
 discard """
-  errormsg: "cannot prove that field 'x.s' is accessible"
+  msg: "Warning: cannot prove that field 'x.s' is accessible [ProveField]"
   line:51
 """
 

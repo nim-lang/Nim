@@ -11,14 +11,14 @@
 ##
 ## **Note:** This module is still largely experimental.
 
-import strtabs, asyncnet, asyncdispatch, parseutils, parseurl, strutils
+import strtabs, asyncnet, asyncdispatch, parseutils, uri, strutils
 type
   TRequest* = object
     client*: PAsyncSocket # TODO: Separate this into a Response object?
     reqMethod*: string
     headers*: PStringTable
     protocol*: tuple[orig: string, major, minor: int]
-    url*: TURL
+    url*: TUri
     hostname*: string ## The hostname of the client that made the request.
     body*: string
 
@@ -97,7 +97,8 @@ proc sendStatus(client: PAsyncSocket, status: string): PFuture[void] =
   client.send("HTTP/1.1 " & status & "\c\L")
 
 proc processClient(client: PAsyncSocket, address: string,
-                 callback: proc (request: TRequest): PFuture[void]) {.async.} =
+                   callback: proc (request: TRequest):
+                      PFuture[void] {.closure, gcsafe.}) {.async.} =
   while true:
     # GET /path HTTP/1.1
     # Header: val
@@ -135,7 +136,7 @@ proc processClient(client: PAsyncSocket, address: string,
       request.headers[kv.key] = kv.value
 
     request.reqMethod = reqMethod
-    request.url = parseUrl(path)
+    request.url = parseUri(path)
     try:
       request.protocol = protocol.parseProtocol()
     except EInvalidValue:
@@ -184,7 +185,7 @@ proc processClient(client: PAsyncSocket, address: string,
       break
 
 proc serve*(server: PAsyncHttpServer, port: TPort,
-            callback: proc (request: TRequest): PFuture[void],
+            callback: proc (request: TRequest): PFuture[void] {.closure,gcsafe.},
             address = "") {.async.} =
   ## Starts the process of listening for incoming HTTP connections on the
   ## specified address and port.
@@ -199,19 +200,23 @@ proc serve*(server: PAsyncHttpServer, port: TPort,
     #var (address, client) = await server.socket.acceptAddr()
     var fut = await server.socket.acceptAddr()
     asyncCheck processClient(fut.client, fut.address, callback)
+    #echo(f.isNil)
+    #echo(f.repr)
 
 proc close*(server: PAsyncHttpServer) =
   ## Terminates the async http server instance.
   server.socket.close()
 
 when isMainModule:
-  var server = newAsyncHttpServer()
-  proc cb(req: TRequest) {.async.} =
-    #echo(req.reqMethod, " ", req.url)
-    #echo(req.headers)
-    let headers = {"Date": "Tue, 29 Apr 2014 23:40:08 GMT",
-        "Content-type": "text/plain; charset=utf-8"}
-    await req.respond(Http200, "Hello World", headers.newStringTable())
+  proc main =
+    var server = newAsyncHttpServer()
+    proc cb(req: TRequest) {.async.} =
+      #echo(req.reqMethod, " ", req.url)
+      #echo(req.headers)
+      let headers = {"Date": "Tue, 29 Apr 2014 23:40:08 GMT",
+          "Content-type": "text/plain; charset=utf-8"}
+      await req.respond(Http200, "Hello World", headers.newStringTable())
 
-  asyncCheck server.serve(TPort(5555), cb)
-  runForever()
+    asyncCheck server.serve(TPort(5555), cb)
+    runForever()
+  main()

@@ -33,7 +33,8 @@ proc instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable,
         localError(a.info, errCannotInstantiateX, s.name.s)
         t = errorType(c)
     elif t.kind == tyGenericParam: 
-      internalError(a.info, "instantiateGenericParamList: " & q.name.s)
+      localError(a.info, errCannotInstantiateX, q.name.s)
+      t = errorType(c)
     elif t.kind == tyGenericInvokation:
       #t = instGenericContainer(c, a, t)
       t = generateTypeInstance(c, pt, a, t)

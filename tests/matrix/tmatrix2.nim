@@ -1,5 +1,5 @@
 discard """
-  output: "5.0000000000000000e+00"
+  output: "5.0"
 """
 
 type

@@ -263,7 +263,7 @@ type
     sfNamedParamCall, # symbol needs named parameter call syntax in target
                       # language; for interfacing with Objective C
     sfDiscardable,    # returned value may be discarded implicitly
-    sfDestructor,     # proc is destructor
+    sfOverriden,      # proc is overriden
     sfGenSym          # symbol is 'gensym'ed; do not add to symbol table
 
   TSymFlags* = set[TSymFlag]
@@ -417,6 +417,7 @@ type
                 # efficiency
     nfTransf,   # node has been transformed
     nfSem       # node has been checked for semantics
+    nfLL        # node has gone through lambda lifting
     nfDotField  # the call can use a dot operator
     nfDotSetter # the call can use a setter dot operarator
     nfExplicitCall # x.y() was used instead of x.y
@@ -552,7 +553,7 @@ type
     mInRange, mInSet, mRepr, mExit, mSetLengthStr, mSetLengthSeq,
     mIsPartOf, mAstToStr, mParallel,
     mSwap, mIsNil, mArrToSeq, mCopyStr, mCopyStrLast,
-    mNewString, mNewStringOfCap,
+    mNewString, mNewStringOfCap, mParseBiggestFloat,
     mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
     mOrdinal,
@@ -784,12 +785,13 @@ type
                               # the body of the user-defined type class
                               # formal param list
                               # else: unused
-    destructor*: PSym         # destructor. warning: nil here may not necessary
-                              # mean that there is no destructor.
-                              # see instantiateDestructor in types.nim
     owner*: PSym              # the 'owner' of the type
     sym*: PSym                # types have the sym associated with them
                               # it is used for converting types to strings
+    destructor*: PSym         # destructor. warning: nil here may not necessary
+                              # mean that there is no destructor.
+                              # see instantiateDestructor in semdestruct.nim
+    deepCopy*: PSym           # overriden 'deepCopy' operation
     size*: BiggestInt         # the size of the type in bytes
                               # -1 means that the size is unkwown
     align*: int               # the type's alignment requirements
@@ -1189,6 +1191,7 @@ proc assignType(dest, src: PType) =
   dest.size = src.size
   dest.align = src.align
   dest.destructor = src.destructor
+  dest.deepCopy = src.deepCopy
   # this fixes 'type TLock = TSysLock':
   if src.sym != nil:
     if dest.sym != nil:
@@ -1310,6 +1313,10 @@ proc newSons(father: PNode, length: int) =
     setLen(father.sons, length)
 
 proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
+  ## Used throughout the compiler code to test whether a type tree contains or
+  ## doesn't contain a specific type/types - it is often the case that only the
+  ## last child nodes of a type tree need to be searched. This is a really hot
+  ## path within the compiler!
   result = t
   while result.kind in kinds: result = lastSon(result)
 
@@ -1505,7 +1512,7 @@ proc isGenericRoutine*(s: PSym): bool =
 proc skipGenericOwner*(s: PSym): PSym =
   internalAssert s.kind in skProcKinds
   ## Generic instantiations are owned by their originating generic
-  ## symbol. This proc skips such owners and goes straigh to the owner
+  ## symbol. This proc skips such owners and goes straight to the owner
   ## of the generic itself (the module or the enclosing proc).
   result = if sfFromGeneric in s.flags: s.owner.owner
            else: s.owner

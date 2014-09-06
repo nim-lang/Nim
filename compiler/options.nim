@@ -95,7 +95,7 @@ var
                          optBoundsCheck, optOverflowCheck, optAssert, optWarns, 
                          optHints, optStackTrace, optLineTrace,
                          optPatterns, optNilCheck}
-  gGlobalOptions*: TGlobalOptions = {}
+  gGlobalOptions*: TGlobalOptions = {optThreadAnalysis}
   gExitcode*: int8
   gCmd*: TCommands = cmdNone  # the command
   gSelectedGC* = gcRefc       # the selected GC

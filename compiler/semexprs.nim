@@ -82,7 +82,8 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     case skipTypes(s.typ, abstractInst-{tyTypeDesc}).kind
     of  tyNil, tyChar, tyInt..tyInt64, tyFloat..tyFloat128, 
         tyTuple, tySet, tyUInt..tyUInt64:
-      result = inlineConst(n, s)
+      if s.magic == mNone: result = inlineConst(n, s)
+      else: result = newSymNode(s, n.info)
     of tyArrayConstr, tySequence:
       # Consider::
       #     const x = []
@@ -184,13 +185,15 @@ proc isCastable(dst, src: PType): bool =
   #  castableTypeKinds = {tyInt, tyPtr, tyRef, tyCstring, tyString, 
   #                       tySequence, tyPointer, tyNil, tyOpenArray,
   #                       tyProc, tySet, tyEnum, tyBool, tyChar}
+  if skipTypes(dst, abstractInst-{tyOpenArray}).kind == tyOpenArray:
+    return false
   var dstSize, srcSize: BiggestInt
 
   dstSize = computeSize(dst)
   srcSize = computeSize(src)
   if dstSize < 0: 
     result = false
-  elif srcSize < 0: 
+  elif srcSize < 0:
     result = false
   elif not typeAllowed(dst, skParam):
     result = false
@@ -198,6 +201,8 @@ proc isCastable(dst, src: PType): bool =
     result = (dstSize >= srcSize) or
         (skipTypes(dst, abstractInst).kind in IntegralTypes) or
         (skipTypes(src, abstractInst-{tyTypeDesc}).kind in IntegralTypes)
+  if result and src.kind == tyNil:
+    result = dst.size <= platform.ptrSize
   
 proc isSymChoice(n: PNode): bool {.inline.} =
   result = n.kind in nkSymChoices
@@ -591,7 +596,7 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
   const 
     FakeVarParams = {mNew, mNewFinalize, mInc, ast.mDec, mIncl, mExcl, 
       mSetLengthStr, mSetLengthSeq, mAppendStrCh, mAppendStrStr, mSwap, 
-      mAppendSeqElem, mNewSeq, mReset, mShallowCopy}
+      mAppendSeqElem, mNewSeq, mReset, mShallowCopy, mDeepCopy}
   
   # get the real type of the callee
   # it may be a proc var with a generic alias type, so we skip over them
@@ -1369,20 +1374,19 @@ proc lookUpForDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
     if onlyCurrentScope: return 
     checkSonsLen(n, 2)
     var m = lookUpForDefined(c, n.sons[0], onlyCurrentScope)
-    if (m != nil) and (m.kind == skModule): 
-      if (n.sons[1].kind == nkIdent): 
-        var ident = n.sons[1].ident
-        if m == c.module: 
-          result = strTableGet(c.topLevelScope.symbols, ident)
-        else: 
-          result = strTableGet(m.tab, ident)
+    if m != nil and m.kind == skModule:
+      let ident = considerQuotedIdent(n[1])
+      if m == c.module:
+        result = strTableGet(c.topLevelScope.symbols, ident)
       else: 
-        localError(n.sons[1].info, errIdentifierExpected, "")
+        result = strTableGet(m.tab, ident)
   of nkAccQuoted:
     result = lookUpForDefined(c, considerQuotedIdent(n), onlyCurrentScope)
   of nkSym:
     result = n.sym
-  else: 
+  of nkOpenSymChoice, nkClosedSymChoice:
+    result = n.sons[0].sym
+  else:
     localError(n.info, errIdentifierExpected, renderTree(n))
     result = nil
 
@@ -1390,10 +1394,16 @@ proc semDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PNode =
   checkSonsLen(n, 2)
   # we replace this node by a 'true' or 'false' node:
   result = newIntNode(nkIntLit, 0)
-  if lookUpForDefined(c, n.sons[1], onlyCurrentScope) != nil: 
-    result.intVal = 1
-  elif not onlyCurrentScope and (n.sons[1].kind == nkIdent) and
-      condsyms.isDefined(n.sons[1].ident): 
+  if not onlyCurrentScope and considerQuotedIdent(n[0]).s == "defined":
+    if n.sons[1].kind != nkIdent:
+      localError(n.info, "obsolete usage of 'defined', use 'declared' instead")
+    elif condsyms.isDefined(n.sons[1].ident):
+      result.intVal = 1
+    elif not condsyms.isDeclared(n.sons[1].ident):
+      message(n.info, warnUser,
+        "undeclared conditional symbol; use --symbol to declare it: " &
+        n[1].ident.s)
+  elif lookUpForDefined(c, n.sons[1], onlyCurrentScope) != nil: 
     result.intVal = 1
   result.info = n.info
   result.typ = getSysType(tyBool)
@@ -1642,10 +1652,10 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     result = setMs(n, s)
     result.sons[1] = semExpr(c, n.sons[1])
     if not result[1].typ.isEmptyType:
-      if c.inParallelStmt > 0:
-        result.typ = result[1].typ
-      else:
+      if spawnResult(result[1].typ, c.inParallelStmt > 0) == srFlowVar:
         result.typ = createFlowVar(c, result[1].typ, n.info)
+      else:
+        result.typ = result[1].typ
       result.add instantiateCreateFlowVarCall(c, result[1].typ, n.info).newSymNode
   else: result = semDirectOp(c, n, flags)
 
@@ -1757,8 +1767,9 @@ proc checkPar(n: PNode): TParKind =
   var length = sonsLen(n)
   if length == 0: 
     result = paTuplePositions # ()
-  elif length == 1: 
-    result = paSingle         # (expr)
+  elif length == 1:
+    if n.sons[0].kind == nkExprColonExpr: result = paTupleFields
+    else: result = paSingle         # (expr)
   else:
     if n.sons[0].kind == nkExprColonExpr: result = paTupleFields
     else: result = paTuplePositions

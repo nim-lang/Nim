@@ -1,7 +1,6 @@
 discard """
   output: ''''''
 """
-import unittest
 import sets
 
 doAssert(toSet(@[1,2,3]) <= toSet(@[1,2,3,4]), "equivalent or subset")

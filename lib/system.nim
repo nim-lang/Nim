@@ -13,6 +13,21 @@
 ## Each module implicitly imports the System module; it must not be listed
 ## explicitly. Because of this there cannot be a user-defined module named
 ## ``system``.
+##
+## Exception hierarchy
+## ===================
+##
+## For visual convenience here is the exception inheritance hierarchy
+## represented as a tree:
+##
+## .. include:: ../doc/exception_hierarchy_fragment.txt
+##
+## Module system
+## =============
+##
+
+# That lonesome header above is to prevent :idx: entries from being mentioned
+# in the global index as part of the previous header (Exception hierarchy).
 
 type
   int* {.magic: Int.} ## default integer type; bitwidth depends on
@@ -83,16 +98,8 @@ type
 
 proc defined*(x: expr): bool {.magic: "Defined", noSideEffect.}
   ## Special compile-time procedure that checks whether `x` is
-  ## defined. `x` has to be an identifier or a qualified identifier.
-  ## This can be used to check whether a library provides a certain
-  ## feature or not:
-  ##
-  ## .. code-block:: Nimrod
-  ##   when not defined(strutils.toUpper):
-  ##     # provide our own toUpper proc here, because strutils is
-  ##     # missing it.
-  ##
-  ## You can also check external symbols introduced through the compiler's
+  ## defined.
+  ## `x` is an external symbol introduced through the compiler's
   ## `-d:x switch <nimrodc.html#compile-time-symbols>`_ to enable build time
   ## conditionals:
   ##
@@ -101,13 +108,28 @@ proc defined*(x: expr): bool {.magic: "Defined", noSideEffect.}
   ##     # Do here programmer friendly expensive sanity checks.
   ##   # Put here the normal code
 
+proc declared*(x: expr): bool {.magic: "Defined", noSideEffect.}
+  ## Special compile-time procedure that checks whether `x` is
+  ## declared. `x` has to be an identifier or a qualified identifier.
+  ## This can be used to check whether a library provides a certain
+  ## feature or not:
+  ##
+  ## .. code-block:: Nimrod
+  ##   when not defined(strutils.toUpper):
+  ##     # provide our own toUpper proc here, because strutils is
+  ##     # missing it.
+
 when defined(useNimRtl):
   {.deadCodeElim: on.}
 
 proc definedInScope*(x: expr): bool {.
+  magic: "DefinedInScope", noSideEffect, deprecated.}
+  ## **Deprecated since version 0.9.6**: Use ``declaredInScope`` instead.
+
+proc declaredInScope*(x: expr): bool {.
   magic: "DefinedInScope", noSideEffect.}
   ## Special compile-time procedure that checks whether `x` is
-  ## defined in the current scope. `x` has to be an identifier.
+  ## declared in the current scope. `x` has to be an identifier.
 
 proc `not` *(x: bool): bool {.magic: "Not", noSideEffect.}
   ## Boolean not; returns true iff ``x == false``.
@@ -301,9 +323,11 @@ type
   FWriteIO* = object of FIO    ## Effect describing a write IO operation.
   FExecIO* = object of FIO     ## Effect describing an executing IO operation.
 
-  E_Base* {.compilerproc.} = object of TObject ## base exception class;
-                                               ## each exception has to
-                                               ## inherit from `E_Base`.
+  E_Base* {.compilerproc.} = object of TObject ## \
+    ## Base exception class.
+    ##
+    ## Each exception has to inherit from `E_Base`. See the full `exception
+    ## hierarchy`_.
     parent: ref E_Base        ## parent exception (can be used as a stack)
     name: cstring             ## The exception's name is its Nimrod identifier.
                               ## This field is filled automatically in the
@@ -313,99 +337,142 @@ type
                                         ## is bad style.
     trace: string
 
-  EAsynch* = object of E_Base ## Abstract exception class for
-                              ## *asynchronous exceptions* (interrupts).
-                              ## This is rarely needed: Most
-                              ## exception types inherit from `ESynch`
-  ESynch* = object of E_Base  ## Abstract exception class for
-                              ## *synchronous exceptions*. Most exceptions
-                              ## should be inherited (directly or indirectly)
-                              ## from ESynch.
-  ESystem* = object of ESynch ## Abstract class for exceptions that the runtime
-                              ## system raises.
-  EIO* = object of ESystem    ## raised if an IO error occured.
-  EOS* = object of ESystem    ## raised if an operating system service failed.
+  EAsynch* = object of E_Base ## \
+    ## Abstract exception class for *asynchronous exceptions* (interrupts).
+    ##
+    ## This is rarely needed: most exception types inherit from `ESynch
+    ## <#ESynch>`_. See the full `exception hierarchy`_.
+  EControlC* = object of EAsynch ## \
+    ## Raised for Ctrl+C key presses in console applications.
+    ##
+    ## See the full `exception hierarchy`_.
+  ESynch* = object of E_Base ## \
+    ## Abstract exception class for *synchronous exceptions*.
+    ##
+    ## Most exceptions should be inherited (directly or indirectly) from
+    ## `ESynch` instead of from `EAsynch <#EAsynch>`_. See the full `exception
+    ## hierarchy`_.
+  ESystem* = object of ESynch ## \
+    ## Abstract class for exceptions that the runtime system raises.
+    ##
+    ## See the full `exception hierarchy`_.
+  EIO* = object of ESystem ## \
+    ## Raised if an IO error occured.
+    ##
+    ## See the full `exception hierarchy`_.
+  EOS* = object of ESystem ## \
+    ## Raised if an operating system service failed.
+    ##
+    ## See the full `exception hierarchy`_.
     errorCode*: int32 ## OS-defined error code describing this error.
-  EInvalidLibrary* = object of EOS ## raised if a dynamic library
-                                   ## could not be loaded.
-  EResourceExhausted* = object of ESystem ## raised if a resource request
-                                          ## could not be fullfilled.
-  EArithmetic* = object of ESynch       ## raised if any kind of arithmetic
-                                        ## error occured.
-  EDivByZero* {.compilerproc.} =
-    object of EArithmetic ## is the exception class for integer divide-by-zero
-                          ## errors.
-  EOverflow* {.compilerproc.} =
-    object of EArithmetic  ## is the exception class for integer calculations
-                           ## whose results are too large to fit in the
-                           ## provided bits.
+  EInvalidLibrary* = object of EOS ## \
+    ## Raised if a dynamic library could not be loaded.
+    ##
+    ## See the full `exception hierarchy`_.
+  EResourceExhausted* = object of ESystem ## \
+    ## Raised if a resource request could not be fullfilled.
+    ##
+    ## See the full `exception hierarchy`_.
+  EArithmetic* = object of ESynch ## \
+    ## Raised if any kind of arithmetic error occured.
+    ##
+    ## See the full `exception hierarchy`_.
+  EDivByZero* {.compilerproc.} = object of EArithmetic ## \
+    ## Raised for runtime integer divide-by-zero errors.
+    ##
+    ## See the full `exception hierarchy`_.
+  EOverflow* {.compilerproc.} = object of EArithmetic ## \
+    ## Raised for runtime integer overflows.
+    ##
+    ## This happens for calculations whose results are too large to fit in the
+    ## provided bits.  See the full `exception hierarchy`_.
+  EAccessViolation* {.compilerproc.} = object of ESynch ## \
+    ## Raised for invalid memory access errors
+    ##
+    ## See the full `exception hierarchy`_.
+  EAssertionFailed* {.compilerproc.} = object of ESynch ## \
+    ## Raised when assertion is proved wrong.
+    ##
+    ## Usually the result of using the `assert() template <#assert>`_.  See the
+    ## full `exception hierarchy`_.
+  EInvalidValue* = object of ESynch ## \
+    ## Raised for string and object conversion errors.
+  EInvalidKey* = object of EInvalidValue ## \
+    ## Raised if a key cannot be found in a table.
+    ##
+    ## Mostly used by the `tables <tables.html>`_ module, it can also be raised
+    ## by other collection modules like `sets <sets.html>`_ or `strtabs
+    ## <strtabs.html>`_. See the full `exception hierarchy`_.
+  EOutOfMemory* = object of ESystem ## \
+    ## Raised for unsuccessful attempts to allocate memory.
+    ##
+    ## See the full `exception hierarchy`_.
+  EInvalidIndex* = object of ESynch ## \
+    ## Raised if an array index is out of bounds.
+    ##
+    ## See the full `exception hierarchy`_.
+  EInvalidField* = object of ESynch ## \
+    ## Raised if a record field is not accessible because its dicriminant's
+    ## value does not fit.
+    ##
+    ## See the full `exception hierarchy`_.
+  EOutOfRange* = object of ESynch ## \
+    ## Raised if a range check error occurred.
+    ##
+    ## See the full `exception hierarchy`_.
+  EStackOverflow* = object of ESystem ## \
+    ## Raised if the hardware stack used for subroutine calls overflowed.
+    ##
+    ## See the full `exception hierarchy`_.
+  ENoExceptionToReraise* = object of ESynch ## \
+    ## Raised if there is no exception to reraise.
+    ##
+    ## See the full `exception hierarchy`_.
+  EInvalidObjectAssignment* = object of ESynch ## \
+    ## Raised if an object gets assigned to its parent's object.
+    ##
+    ## See the full `exception hierarchy`_.
+  EInvalidObjectConversion* = object of ESynch ## \
+    ## Raised if an object is converted to an incompatible object type.
+    ##
+    ## See the full `exception hierarchy`_.
+  EFloatingPoint* = object of ESynch ## \
+    ## Base class for floating point exceptions.
+    ##
+    ## See the full `exception hierarchy`_.
+  EFloatInvalidOp* {.compilerproc.} = object of EFloatingPoint ## \
+    ## Raised by invalid operations according to IEEE.
+    ##
+    ## Raised by ``0.0/0.0``, for example.  See the full `exception
+    ## hierarchy`_.
+  EFloatDivByZero* {.compilerproc.} = object of EFloatingPoint ## \
+    ## Raised by division by zero.
+    ##
+    ## Divisor is zero and dividend is a finite nonzero number.  See the full
+    ## `exception hierarchy`_.
+  EFloatOverflow* {.compilerproc.} = object of EFloatingPoint ## \
+    ## Raised for overflows.
+    ##
+    ## The operation produced a result that exceeds the range of the exponent.
+    ## See the full `exception hierarchy`_.
+  EFloatUnderflow* {.compilerproc.} = object of EFloatingPoint ## \
+    ## Raised for underflows.
+    ##
+    ## The operation produced a result that is too small to be represented as a
+    ## normal number. See the full `exception hierarchy`_.
+  EFloatInexact* {.compilerproc.} = object of EFloatingPoint ## \
+    ## Raised for inexact results.
+    ##
+    ## The operation produced a result that cannot be represented with infinite
+    ## precision -- for example: ``2.0 / 3.0, log(1.1)``
+    ##
+    ## **NOTE**: Nimrod currently does not detect these!  See the full
+    ## `exception hierarchy`_.
+  EDeadThread* = object of ESynch ## \
+    ## Raised if it is attempted to send a message to a dead thread.
+    ##
+    ## See the full `exception hierarchy`_.
 
-  EAccessViolation* {.compilerproc.} =
-    object of ESynch ## the exception class for invalid memory access errors
-
-  EAssertionFailed* {.compilerproc.} =
-    object of ESynch  ## is the exception class for Assert
-                      ## procedures that is raised if the
-                      ## assertion proves wrong
-
-  EControlC* = object of EAsynch        ## is the exception class for Ctrl+C
-                                        ## key presses in console applications.
-
-  EInvalidValue* = object of ESynch     ## is the exception class for string
-                                        ## and object conversion errors.
-  EInvalidKey* = object of EInvalidValue ## is the exception class if a key
-                                         ## cannot be found in a table.
-
-  EOutOfMemory* = object of ESystem     ## is the exception class for
-                                        ## unsuccessful attempts to allocate
-                                        ## memory.
-
-  EInvalidIndex* = object of ESynch     ## is raised if an array index is out
-                                        ## of bounds.
-  EInvalidField* = object of ESynch     ## is raised if a record field is not
-                                        ## accessible because its dicriminant's
-                                        ## value does not fit.
-
-  EOutOfRange* = object of ESynch       ## is raised if a range check error
-                                        ## occurred.
-
-  EStackOverflow* = object of ESystem   ## is raised if the hardware stack
-                                        ## used for subroutine calls overflowed.
-
-  ENoExceptionToReraise* = object of ESynch ## is raised if there is no
-                                            ## exception to reraise.
-
-  EInvalidObjectAssignment* =
-    object of ESynch ## is raised if an object gets assigned to its
-                     ## parent's object.
-
-  EInvalidObjectConversion* =
-    object of ESynch ## is raised if an object is converted to an incompatible
-                     ## object type.
-
-  EFloatingPoint* = object of ESynch ## base class for floating point exceptions
-  EFloatInvalidOp* {.compilerproc.} = 
-    object of EFloatingPoint ## Invalid operation according to IEEE: Raised by 
-                             ## 0.0/0.0, for example.
-  EFloatDivByZero* {.compilerproc.} = 
-    object of EFloatingPoint ## Division by zero. Divisor is zero and dividend 
-                             ## is a finite nonzero number.
-  EFloatOverflow* {.compilerproc.} = 
-    object of EFloatingPoint ## Overflow. Operation produces a result 
-                             ## that exceeds the range of the exponent
-  EFloatUnderflow* {.compilerproc.} = 
-    object of EFloatingPoint ## Underflow. Operation produces a result 
-                             ## that is too small to be represented as 
-                             ## a normal number
-  EFloatInexact* {.compilerproc.} = 
-    object of EFloatingPoint ## Inexact. Operation produces a result
-                             ## that cannot be represented with infinite
-                             ## precision -- for example, 2.0 / 3.0, log(1.1) 
-                             ## NOTE: Nimrod currently does not detect these!
-  EDeadThread* =
-    object of ESynch ## is raised if it is attempted to send a message to a
-                     ## dead thread.
-                     
   TResult* = enum Failure, Success
 
 proc sizeof*[T](x: T): Natural {.magic: "SizeOf", noSideEffect.}
@@ -783,7 +850,7 @@ proc contains*[T](s: TSlice[T], value: T): bool {.noSideEffect, inline.} =
   result = s.a <= value and value <= s.b
 
 template `in` * (x, y: expr): expr {.immediate.} = contains(y, x)
-  ## Suger for contains
+  ## Sugar for contains
   ##
   ## .. code-block:: Nimrod
   ##   assert(1 in (1..3) == true)
@@ -814,9 +881,9 @@ proc `of` *[T, S](x: T, y: S): bool {.magic: "Of", noSideEffect.}
   ## Checks if `x` has a type of `y`
   ##
   ## .. code-block:: Nimrod
-  ##   assert(EFloatingPoint is EBase)
-  ##   assert(EIO is ESystem)
-  ##   assert(EDivByZero is EBase)
+  ##   assert(EFloatingPoint of EBase)
+  ##   assert(EIO of ESystem)
+  ##   assert(EDivByZero of EBase)
 
 proc cmp*[T](x, y: T): int {.procvar.} =
   ## Generic compare proc. Returns a value < 0 iff x < y, a value > 0 iff x > y
@@ -1052,7 +1119,7 @@ proc add *[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
   ## containers should also call their adding proc `add` for consistency.
   ## Generic code becomes much easier to write if the Nimrod naming scheme is
   ## respected.
-  var xl = x.len
+  let xl = x.len
   setLen(x, xl + y.len)
   for i in 0..high(y): x[xl+i] = y[i]
 
@@ -1066,20 +1133,20 @@ proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
 proc del*[T](x: var seq[T], i: int) {.noSideEffect.} = 
   ## deletes the item at index `i` by putting ``x[high(x)]`` into position `i`.
   ## This is an O(1) operation.
-  var xl = x.len
+  let xl = x.len
   shallowCopy(x[i], x[xl-1])
   setLen(x, xl-1)
   
 proc delete*[T](x: var seq[T], i: int) {.noSideEffect.} = 
   ## deletes the item at index `i` by moving ``x[i+1..]`` by one position.
   ## This is an O(n) operation.
-  var xl = x.len
+  let xl = x.len
   for j in i..xl-2: shallowCopy(x[j], x[j+1]) 
   setLen(x, xl-1)
   
 proc insert*[T](x: var seq[T], item: T, i = 0) {.noSideEffect.} = 
   ## inserts `item` into `x` at position `i`.
-  var xl = x.len
+  let xl = x.len
   setLen(x, xl+1)
   var j = xl-1
   while j >= i:
@@ -1930,16 +1997,16 @@ when not defined(nimrodVM) and hostOS != "standalone":
     ## returns an informative string about the GC's activity. This may be useful
     ## for tweaking.
     
-  proc GC_ref*[T](x: ref T) {.magic: "GCref".}
-  proc GC_ref*[T](x: seq[T]) {.magic: "GCref".}
-  proc GC_ref*(x: string) {.magic: "GCref".}
+  proc GC_ref*[T](x: ref T) {.magic: "GCref", gcsafe.}
+  proc GC_ref*[T](x: seq[T]) {.magic: "GCref", gcsafe.}
+  proc GC_ref*(x: string) {.magic: "GCref", gcsafe.}
     ## marks the object `x` as referenced, so that it will not be freed until
     ## it is unmarked via `GC_unref`. If called n-times for the same object `x`,
     ## n calls to `GC_unref` are needed to unmark `x`. 
     
-  proc GC_unref*[T](x: ref T) {.magic: "GCunref".}
-  proc GC_unref*[T](x: seq[T]) {.magic: "GCunref".}
-  proc GC_unref*(x: string) {.magic: "GCunref".}
+  proc GC_unref*[T](x: ref T) {.magic: "GCunref", gcsafe.}
+  proc GC_unref*[T](x: seq[T]) {.magic: "GCunref", gcsafe.}
+  proc GC_unref*(x: string) {.magic: "GCunref", gcsafe.}
     ## see the documentation of `GC_ref`.
 
 template accumulateResult*(iter: expr) =
@@ -2001,7 +2068,8 @@ type
     procname*: cstring  ## name of the proc that is currently executing
     line*: int          ## line number of the proc that is currently executing
     filename*: cstring  ## filename of the proc that is currently executing
-    len*: int           ## length of the inspectable slots
+    len*: int16         ## length of the inspectable slots
+    calldepth*: int16   ## used for max call depth checking
 
 when defined(JS):
   proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
@@ -2025,19 +2093,25 @@ elif hostOS != "standalone":
   {.pop.}
 
 proc echo*[T](x: varargs[T, `$`]) {.magic: "Echo", tags: [FWriteIO], gcsafe.}
-  ## special built-in that takes a variable number of arguments. Each argument
+  ## Writes and flushes the parameters to the standard output.
+  ##
+  ## Special built-in that takes a variable number of arguments. Each argument
   ## is converted to a string via ``$``, so it works for user-defined
   ## types that have an overloaded ``$`` operator.
-  ## It is roughly equivalent to ``writeln(stdout, x); flush(stdout)``, but
+  ## It is roughly equivalent to ``writeln(stdout, x); flushFile(stdout)``, but
   ## available for the JavaScript target too.
+  ##
   ## Unlike other IO operations this is guaranteed to be thread-safe as
-  ## ``echo`` is very often used for debugging convenience.
+  ## ``echo`` is very often used for debugging convenience. If you want to use
+  ## ``echo`` inside a `proc without side effects
+  ## <manual.html#nosideeffect-pragma>`_ you can use `debugEcho <#debugEcho>`_
+  ## instead.
 
 proc debugEcho*[T](x: varargs[T, `$`]) {.magic: "Echo", noSideEffect, 
                                          tags: [], raises: [].}
-  ## Same as ``echo``, but as a special semantic rule, ``debugEcho`` pretends
-  ## to be free of side effects, so that it can be used for debugging routines
-  ## marked as ``noSideEffect``.
+  ## Same as `echo <#echo>`_, but as a special semantic rule, ``debugEcho``
+  ## pretends to be free of side effects, so that it can be used for debugging
+  ## routines marked as `noSideEffect <manual.html#nosideeffect-pragma>`_.
 
 template newException*(exceptn: typedesc, message: string): expr =
   ## creates an exception object of type ``exceptn`` and sets its ``msg`` field
@@ -2051,7 +2125,7 @@ template newException*(exceptn: typedesc, message: string): expr =
 when hostOS == "standalone":
   include panicoverride
 
-when not defined(sysFatal):
+when not declared(sysFatal):
   template sysFatal(exceptn: typedesc, message: string) =
     when hostOS == "standalone":
       panic(message)
@@ -2103,9 +2177,15 @@ when not defined(JS): #and not defined(NimrodVM):
       # WARNING: This is very fragile! An array size of 8 does not work on my
       # Linux 64bit system. -- That's because the stack direction is the other
       # way round.
-      when defined(setStackBottom):
+      when declared(setStackBottom):
         var locals {.volatile.}: pointer
         locals = addr(locals)
+        setStackBottom(locals)
+
+    proc initStackBottomWith(locals: pointer) {.inline, compilerproc.} =
+      # We need to keep initStackBottom around for now to avoid
+      # bootstrapping problems.
+      when declared(setStackBottom):
         setStackBottom(locals)
 
     var
@@ -2376,7 +2456,7 @@ when not defined(JS): #and not defined(NimrodVM):
       hasRaiseAction: bool
       raiseAction: proc (e: ref E_Base): bool {.closure.}
   
-  when defined(initAllocator):
+  when declared(initAllocator):
     initAllocator()
   when hasThreadSupport:
     include "system/syslocks"
@@ -2493,11 +2573,11 @@ when not defined(JS): #and not defined(NimrodVM):
     include "system/assign"
     include "system/repr"
 
-    proc getCurrentException*(): ref E_Base {.compilerRtl, inl.} =
+    proc getCurrentException*(): ref E_Base {.compilerRtl, inl, gcsafe.} =
       ## retrieves the current exception; if there is none, nil is returned.
       result = currException
 
-    proc getCurrentExceptionMsg*(): string {.inline.} =
+    proc getCurrentExceptionMsg*(): string {.inline, gcsafe.} =
       ## retrieves the error message that was attached to the current
       ## exception; if there is none, "" is returned.
       var e = getCurrentException()
@@ -2949,7 +3029,7 @@ proc compiles*(x): bool {.magic: "Compiles", noSideEffect.} =
   ##     echo "'+' for integers is available"
   discard
 
-when defined(initDebugger):
+when declared(initDebugger):
   initDebugger()
 
 when hostOS != "standalone":
@@ -2990,17 +3070,12 @@ proc locals*(): TObject {.magic: "Locals", noSideEffect.} =
   ##   # -> B is 1
   discard
 
-proc deepCopy*[T](x: T): T {.magic: "DeepCopy", noSideEffect.} = discard
-  ## performs a deep copy of `x`. This is also used by the code generator
-  ## for the implementation of ``spawn``.
+when hostOS != "standalone" and not defined(NimrodVM) and not defined(JS):
+  proc deepCopy*[T](x: var T, y: T) {.noSideEffect, magic: "DeepCopy".} =
+    ## performs a deep copy of `x`. This is also used by the code generator
+    ## for the implementation of ``spawn``.
+    discard
+
+  include "system/deepcopy"
 
 {.pop.} #{.push warning[GcMem]: off.}
-
-when not defined(booting):
-  type
-    semistatic*[T] = static[T] | T
-    # indicates a param of proc specialized for each static value,
-    # but also accepting run-time values
-
-  template isStatic*(x): expr = compiles(static(x))
-    # checks whether `x` is a value known at compile-time

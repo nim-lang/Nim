@@ -243,7 +243,7 @@ template `=~` *(s: string, pattern: TRegex): expr =
   ##     echo("syntax error")
   ##
   bind maxSubPatterns
-  when not definedInScope(matches):
+  when not declaredInScope(matches):
     var matches {.inject.}: array[0..MaxSubpatterns-1, string]
   match(s, pattern, matches)
 

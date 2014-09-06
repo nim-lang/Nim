@@ -20,7 +20,7 @@ type
     scheme, username, password, 
     hostname, port, path, query, anchor: string]
     
-proc parseUrl*(url: string): TUrl =
+proc parseUrl*(url: string): TUrl {.deprecated.} =
   var i = 0
 
   var scheme, username, password: string = ""
@@ -86,7 +86,7 @@ proc parseUrl*(url: string): TUrl =
     
   return (scheme, username, password, hostname, port, path, query, anchor)
 
-proc `$`*(u: TUrl): string =
+proc `$`*(u: TUrl): string {.deprecated.} =
   ## turns the URL `u` into its string representation.
   result = ""
   if u.scheme.len > 0:

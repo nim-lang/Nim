@@ -66,7 +66,7 @@ type
     opcMulSet, opcPlusSet, opcMinusSet, opcSymdiffSet, opcConcatStr,
     opcContainsSet, opcRepr, opcSetLenStr, opcSetLenSeq,
     opcSwap, opcIsNil, opcOf, opcIs,
-    opcSubStr, opcConv, opcCast, opcQuit, opcReset,
+    opcSubStr, opcParseFloat, opcConv, opcCast, opcQuit, opcReset,
     opcNarrowS, opcNarrowU,
     
     opcAddStrCh,
@@ -188,6 +188,7 @@ type
     features*: TSandboxFlags
     traceActive*: bool
     loopIterations*: int
+    comesFromHeuristic*: TLineInfo # Heuristic for better macro stack traces
 
   TPosition* = distinct int
 
@@ -196,7 +197,8 @@ type
 proc newCtx*(module: PSym): PCtx =
   PCtx(code: @[], debug: @[],
     globals: newNode(nkStmtListExpr), constants: newNode(nkStmtList), types: @[],
-    prc: PProc(blocks: @[]), module: module, loopIterations: MaxLoopIterations)
+    prc: PProc(blocks: @[]), module: module, loopIterations: MaxLoopIterations,
+    comesFromHeuristic: unknownLineInfo())
 
 proc refresh*(c: PCtx, module: PSym) =
   c.module = module

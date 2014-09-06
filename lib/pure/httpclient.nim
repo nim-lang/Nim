@@ -654,8 +654,7 @@ when isMainModule:
       resp = await client.request("http://nimrod-lang.org/download.html")
       echo("Got response: ", resp.status)
 
-    asyncCheck main()
-    runForever()
+    waitFor main()
 
   else:
     #downloadFile("http://force7.de/nimrod/index.html", "nimrodindex.html")

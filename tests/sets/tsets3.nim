@@ -74,6 +74,25 @@ block symmetricDifference:
   assert((s3 -+- s3) == initSet[int]())
   assert((s3 -+- s1) == s1_s3)
 
+block difference:
+  let
+    s1_s2 = difference(s1, s2)
+    s1_s3 = difference(s1, s3)
+    s2_s3 = s2 - s3
+
+  assert s1_s2.len == 2
+  assert s1_s3.len == 5
+  assert s2_s3.len == 3
+
+  for i in s1:
+    assert i in s1_s2 xor i in s2
+    assert i in s1_s3 xor i in s3
+  for i in s2:
+    assert i in s2_s3 xor i in s3
+
+  assert((s2 - s2) == initSet[int]())
+  assert((s1 - s3 - s1) == s1 -+- s3)
+
 block disjoint:
   assert(not disjoint(s1, s2))
   assert disjoint(s1, s3)

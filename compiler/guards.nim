@@ -758,7 +758,7 @@ proc pleViaModelRec(m: var TModel; a, b: PNode): TImplication =
       result = impliesLe(fact, a, b)
       if result != impUnknown: return result
       if sameTree(y, a):
-        result = ple(m, x, b)
+        result = ple(m, b, x)
         if result != impUnknown: return result
 
 proc pleViaModel(model: TModel; aa, bb: PNode): TImplication =

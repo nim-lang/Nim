@@ -99,7 +99,7 @@ proc isPureObject(typ: PType): bool =
 
 proc getOrdValue(n: PNode): BiggestInt = 
   case n.kind
-  of nkCharLit..nkInt64Lit: result = n.intVal
+  of nkCharLit..nkUInt64Lit: result = n.intVal
   of nkNilLit: result = 0
   of nkHiddenStdConv: result = getOrdValue(n.sons[1])
   else:
@@ -582,7 +582,10 @@ proc firstOrd(t: PType): BiggestInt =
   of tyGenericInst, tyDistinct, tyConst, tyMutable,
      tyTypeDesc, tyFieldAccessor:
     result = firstOrd(lastSon(t))
-  else: 
+  of tyOrdinal:
+    if t.len > 0: result = firstOrd(lastSon(t))
+    else: internalError("invalid kind for first(" & $t.kind & ')')
+  else:
     internalError("invalid kind for first(" & $t.kind & ')')
     result = 0
 
@@ -617,7 +620,10 @@ proc lastOrd(t: PType): BiggestInt =
      tyTypeDesc, tyFieldAccessor:
     result = lastOrd(lastSon(t))
   of tyProxy: result = 0
-  else: 
+  of tyOrdinal:
+    if t.len > 0: result = lastOrd(lastSon(t))
+    else: internalError("invalid kind for last(" & $t.kind & ')')
+  else:
     internalError("invalid kind for last(" & $t.kind & ')')
     result = 0
 
@@ -1363,3 +1369,35 @@ proc containsCompileTimeOnly*(t: PType): bool =
       if t.sons[i] != nil and isCompileTimeOnly(t.sons[i]):
         return true
   return false
+
+type
+  OrdinalType* = enum
+    NoneLike, IntLike, FloatLike
+
+proc classify*(t: PType): OrdinalType =
+  ## for convenient type checking:
+  if t == nil:
+    result = NoneLike
+  else:
+    case skipTypes(t, abstractVarRange).kind
+    of tyFloat..tyFloat128: result = FloatLike
+    of tyInt..tyInt64, tyUInt..tyUInt64, tyBool, tyChar, tyEnum:
+      result = IntLike
+    else: result = NoneLike
+
+proc skipConv*(n: PNode): PNode =
+  result = n
+  case n.kind
+  of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
+    # only skip the conversion if it doesn't lose too important information
+    # (see bug #1334)
+    if n.sons[0].typ.classify == n.typ.classify:
+      result = n.sons[0]
+  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+    if n.sons[1].typ.classify == n.typ.classify:
+      result = n.sons[1]
+  else: discard
+
+proc skipConvTakeType*(n: PNode): PNode =
+  result = n.skipConv
+  result.typ = n.typ

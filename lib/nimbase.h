@@ -328,7 +328,8 @@ struct TFrame {
   NCSTRING procname;
   NI line;
   NCSTRING filename;
-  NI len;
+  NI16 len;
+  NI16 calldepth;
 };
 
 #define nimfr(proc, file) \

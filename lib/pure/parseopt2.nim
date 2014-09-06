@@ -119,7 +119,7 @@ proc cmdLineRest*(p: TOptParser): TaintedString {.rtl, extern: "npo$1", deprecat
 type
   TGetoptResult* = tuple[kind: TCmdLineKind, key, val: TaintedString]
 
-when defined(paramCount):
+when declared(paramCount):
   iterator getopt*(): TGetoptResult =
     ## This is an convenience iterator for iterating over the command line.
     ## This uses the TOptParser object. Example:
