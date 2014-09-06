@@ -156,33 +156,20 @@ Comments start anywhere outside a string or character literal with the
 hash character ``#``.
 Comments consist of a concatenation of `comment pieces`:idx:. A comment piece
 starts with ``#`` and runs until the end of the line. The end of line characters
-belong to the piece. If the next line only consists of a comment piece which is
-aligned to the preceding one, it does not start a new comment:
+belong to the piece. If the next line only consists of a comment piece with
+no other tokens between it and the preceding one, it does not start a new
+comment:
+
 
 .. code-block:: nim
-
-  i = 0     # This is a single comment over multiple lines belonging to the
-            # assignment statement. The scanner merges these two pieces.
-  # This is a new comment belonging to the current block, but to no particular
-  # statement.
-  i = i + 1 # This a new comment that is NOT
-  echo(i)   # continued here, because this comment refers to the echo statement
+  i = 0     # This is a single comment over multiple lines.
+    # The scanner merges these two pieces.
+    # The comment continues here.
 
 
-The alignment requirement does not hold if the preceding comment piece ends in
-a backslash (followed by optional whitespace): 
-
-.. code-block:: nim
-  type
-    TMyObject {.final, pure, acyclic.} = object  # comment continues: \
-      # we have lots of space here to comment 'TMyObject'.
-      # This line belongs to the comment as it's properly aligned.
-
-Comments are tokens; they are only allowed at certain places in the input file
-as they belong to the syntax tree! This feature enables perfect source-to-source
-transformations (such as pretty-printing) and superior documentation generators.
-A nice side-effect is that the human reader of the code always knows exactly
-which code snippet the comment refers to.
+`Documentation comments`:idx: are comments that start with two ``##``.
+Documentation comments are tokens; they are only allowed at certain places in
+the input file as they belong to the syntax tree!
 
 
 Identifiers & Keywords
@@ -5804,7 +5791,7 @@ Spawn
 
 Nim has a builtin thread pool that can be used for CPU intensive tasks. For
 IO intensive tasks the upcoming ``async`` and ``await`` features should be
-used instead. `spawn`:idx: is used to pass a task to the thread pool:
+used. `spawn`:idx: is used to pass a task to the thread pool:
 
 .. code-block:: nim
   proc processLine(line: string) =

@@ -482,7 +482,7 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
     add(tok.literal, VT)
     inc(L.bufpos)
   of 't', 'T': 
-    add(tok.literal, Tabulator)
+    add(tok.literal, '\t')
     inc(L.bufpos)
   of '\'', '\"': 
     add(tok.literal, L.buf[L.bufpos])
@@ -659,28 +659,29 @@ proc getOperator(L: var TLexer, tok: var TToken) =
   if buf[pos] in {CR, LF, nimlexbase.EndOfFile}:
     tok.strongSpaceB = -1
 
-proc scanComment(L: var TLexer, tok: var TToken) = 
+proc scanComment(L: var TLexer, tok: var TToken) =
   var pos = L.bufpos
-  var buf = L.buf 
-  # a comment ends if the next line does not start with the # on the same
-  # column after only whitespace
+  when not defined(nimfix): assert buf[pos+1] == '#'
+  var buf = L.buf
   tok.tokType = tkComment
   # iNumber contains the number of '\n' in the token
   tok.iNumber = 0
-  var col = getColNumber(L, pos)
+  when defined(nimfix):
+    var col = getColNumber(L, pos)
   while true:
     var lastBackslash = -1
     while buf[pos] notin {CR, LF, nimlexbase.EndOfFile}:
       if buf[pos] == '\\': lastBackslash = pos+1
       add(tok.literal, buf[pos])
       inc(pos)
-    if lastBackslash > 0:
-      # a backslash is a continuation character if only followed by spaces
-      # plus a newline:
-      while buf[lastBackslash] == ' ': inc(lastBackslash)
-      if buf[lastBackslash] notin {CR, LF, nimlexbase.EndOfFile}:
-        # false positive:
-        lastBackslash = -1
+    when defined(nimfix):
+      if lastBackslash > 0:
+        # a backslash is a continuation character if only followed by spaces
+        # plus a newline:
+        while buf[lastBackslash] == ' ': inc(lastBackslash)
+        if buf[lastBackslash] notin {CR, LF, nimlexbase.EndOfFile}:
+          # false positive:
+          lastBackslash = -1
 
     pos = handleCRLF(L, pos)
     buf = L.buf
@@ -688,9 +689,16 @@ proc scanComment(L: var TLexer, tok: var TToken) =
     while buf[pos] == ' ': 
       inc(pos)
       inc(indent)
-    if buf[pos] == '#' and (col == indent or lastBackslash > 0):
+
+    when defined(nimfix):
+      template doContinue(): expr =
+        buf[pos] == '#' and (col == indent or lastBackslash > 0)
+    else:
+      template doContinue(): expr =
+        buf[pos] == '#' and buf[pos+1] == '#'
+    if doContinue():
       tok.literal.add "\n"
-      col = indent
+      when defined(nimfix): col = indent
       inc tok.iNumber
     else:
       if buf[pos] > ' ': 
@@ -707,7 +715,7 @@ proc skip(L: var TLexer, tok: var TToken) =
     of ' ':
       inc(pos)
       inc(tok.strongSpaceA)
-    of Tabulator:
+    of '\t':
       lexMessagePos(L, errTabulatorsAreNotAllowed, pos)
       inc(pos)
     of CR, LF:
@@ -718,7 +726,12 @@ proc skip(L: var TLexer, tok: var TToken) =
         inc(pos)
         inc(indent)
       tok.strongSpaceA = 0
-      if buf[pos] > ' ':
+      when defined(nimfix):
+        template doBreak(): expr = buf[pos] > ' '
+      else:
+        template doBreak(): expr =
+          buf[pos] > ' ' and (buf[pos] != '#' or buf[pos+1] == '#')
+      if doBreak():
         tok.indent = indent
         L.currLineIndent = indent
         break

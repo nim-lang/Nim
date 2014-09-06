@@ -112,50 +112,19 @@ Comments
 --------
 
 Comments start anywhere outside a string or character literal with the
-hash character ``#``. Documentation comments start with ``##``. Multiline
-comments need to be aligned at the same column:
+hash character ``#``. Documentation comments start with ``##``:
 
 .. code-block:: nim
-
-  i = 0     # This is a single comment over multiple lines belonging to the
-            # assignment statement.
-  # This is a new comment belonging to the current block, but to no particular
-  # statement.
-  i = i + 1 # This a new comment that is NOT
-  echo(i)   # continued here, because this comment refers to the echo statement
+  # A comment.
+ 
+  var myVariable: int ## a documentation comment
 
 
-The alignment requirement does not hold if the preceding comment piece ends in
-a backslash:
+Documentation comments are tokens; they are only allowed at certain places in
+the input file as they belong to the syntax tree! This feature enables simpler
+documentation generators.
 
-.. code-block:: nim
-  type
-    TMyObject {.final, pure, acyclic.} = object  # comment continues: \
-      # we have lots of space here to comment 'TMyObject'.
-      # This line belongs to the comment as it's properly aligned.
-
-
-Comments are tokens; they are only allowed at certain places in the input file
-as they belong to the syntax tree! This feature enables perfect source-to-source
-transformations (such as pretty-printing) and simpler documentation generators.
-A nice side-effect is that the human reader of the code always knows exactly
-which code snippet the comment refers to. Since comments are a proper part of
-the syntax, watch their indentation:
-
-.. code-block::
-  echo("Hello!")
-  # comment has the same indentation as above statement -> fine
-  echo("Hi!")
-    # comment has not the correct indentation level -> syntax error!
-
-**Note**: To comment out a large piece of code, it is often better to use a
-``when false:`` statement.
-
-.. code-block:: nim
-  when false:
-    brokenCode()
-
-Another option is to use the `discard statement`_ together with *long string
+You can also use the `discard statement`_ together with *long string
 literals* to create block comments:
 
 .. code-block:: nim
