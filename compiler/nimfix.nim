@@ -98,6 +98,9 @@ proc handleCmdLine() =
     processCmdLine(passCmd2, "")
     mainCommand()
 
+when compileOption("gc", "v2") or compileOption("gc", "refc"):
+  GC_disableMarkAndSweep()
+
 condsyms.initDefines()
 defineSymbol "nimfix"
 handleCmdline()
