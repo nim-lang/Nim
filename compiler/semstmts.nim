@@ -1398,6 +1398,11 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
       else: discard
   if result.len == 1:
     result = result.sons[0]
+  when defined(nimfix):
+    if result.kind == nkCommentStmt and not result.comment.isNil and
+        not (result.comment[0] == '#' and result.comment[1] == '#'):
+      # it is an old-style comment statement: we replace it with 'discard ""':
+      prettybase.replaceComment(result.info)
   when false:
     # a statement list (s; e) has the type 'e':
     if result.kind == nkStmtList and result.len > 0:

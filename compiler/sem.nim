@@ -18,6 +18,9 @@ import
   evaltempl, patterns, parampatterns, sempass2, pretty, semmacrosanity,
   semparallel, lowerings
 
+when defined(nimfix):
+  import prettybase
+
 # implementation
 
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.procvar.}

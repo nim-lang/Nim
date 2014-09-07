@@ -54,9 +54,20 @@ proc replaceDeprecated*(info: TLineInfo; oldSym, newSym: PIdent) =
   
   let last = first+identLen(line, first)-1
   if cmpIgnoreStyle(line[first..last], oldSym.s) == 0:
-    var x = line.substr(0, first-1) & newSym.s & line.substr(last+1)    
+    var x = line.substr(0, first-1) & newSym.s & line.substr(last+1)
     system.shallowCopy(gSourceFiles[info.fileIndex].lines[info.line-1], x)
     gSourceFiles[info.fileIndex].dirty = true
 
 proc replaceDeprecated*(info: TLineInfo; oldSym, newSym: PSym) =
   replaceDeprecated(info, oldSym.name, newSym.name)
+
+proc replaceComment*(info: TLineInfo) =
+  loadFile(info)
+
+  let line = gSourceFiles[info.fileIndex].lines[info.line-1]
+  var first = info.col.int
+  if line[first] != '#': inc first
+
+  var x = line.substr(0, first-1) & "discard " & line.substr(first+1).escape
+  system.shallowCopy(gSourceFiles[info.fileIndex].lines[info.line-1], x)
+  gSourceFiles[info.fileIndex].dirty = true
