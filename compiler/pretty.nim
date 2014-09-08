@@ -31,20 +31,20 @@ type
 proc overwriteFiles*() =
   let doStrip = options.getConfigVar("pretty.strip").normalize == "on"
   for i in 0 .. high(gSourceFiles):
-    if not gSourceFiles[i].dirty: continue
-    let newFile = if gOverWrite: gSourceFiles[i].fullpath
-                  else: gSourceFiles[i].fullpath.changeFileExt(".pretty.nim")
-    try:
-      var f = open(newFile, fmWrite)
-      for line in gSourceFiles[i].lines:
-        if doStrip:
-          f.write line.strip(leading = false, trailing = true)
-        else:
-          f.write line
-        f.write("\L")
-      f.close
-    except IOError:
-      rawMessage(errCannotOpenFile, newFile)
+    if gSourceFiles[i].dirty and not gSourceFiles[i].isNimfixFile:
+      let newFile = if gOverWrite: gSourceFiles[i].fullpath
+                    else: gSourceFiles[i].fullpath.changeFileExt(".pretty.nim")
+      try:
+        var f = open(newFile, fmWrite)
+        for line in gSourceFiles[i].lines:
+          if doStrip:
+            f.write line.strip(leading = false, trailing = true)
+          else:
+            f.write line
+          f.write("\L")
+        f.close
+      except IOError:
+        rawMessage(errCannotOpenFile, newFile)
 
 proc `=~`(s: string, a: openArray[string]): bool =
   for x in a:

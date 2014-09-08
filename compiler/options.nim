@@ -337,6 +337,16 @@ proc findFile*(f: string): string {.procvar.} =
 
 proc findModule*(modulename, currentModule: string): string =
   # returns path to module
+  when defined(nimfix):
+    # '.nimfix' modules are preferred over '.nim' modules so that specialized
+    # versions can be kept for 'nimfix'.
+    block:
+      let m = addFileExt(modulename, "nimfix")
+      let currentPath = currentModule.splitFile.dir
+      result = currentPath / m
+      if not existsFile(result):
+        result = findFile(m)
+        if existsFile(result): return result
   let m = addFileExt(modulename, NimExt)
   let currentPath = currentModule.splitFile.dir
   result = currentPath / m

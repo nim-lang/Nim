@@ -8,11 +8,12 @@
 #
 
 import ast, msgs, strutils, idents
+from os import splitFile
 
 type
   TSourceFile* = object
     lines*: seq[string]
-    dirty*: bool
+    dirty*, isNimfixFile*: bool
     fullpath*: string
 
 var
@@ -26,7 +27,8 @@ proc loadFile*(info: TLineInfo) =
     gSourceFiles[i].lines = @[]
     let path = info.toFullPath
     gSourceFiles[i].fullpath = path
-    # we want to die here for EIO:
+    gSourceFiles[i].isNimfixFile = path.splitFile.ext == "nimfix"
+    # we want to die here for IOError:
     for line in lines(path):
       gSourceFiles[i].lines.add(line)
 

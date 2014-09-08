@@ -187,7 +187,7 @@ proc osErrorMsg*(): string {.rtl, extern: "nos$1", deprecated.} =
   ## On Windows ``GetLastError`` is checked before ``errno``.
   ## Returns "" if no error occured.
   ##
-  ## **Deprecated since version 0.9.4**: use the other ``OSErrorMsg`` proc.
+  ## **Deprecated since version 0.9.4**: use the other ``osErrorMsg`` proc.
 
   result = ""
   when defined(Windows):
@@ -225,7 +225,8 @@ proc raiseOSError*(msg: string = "") {.noinline, rtl, extern: "nos$1",
     raise newException(OSError, msg)
 {.pop.}
 
-{.deprecated: [osError: raiseOSError].}
+when not defined(nimfix):
+  {.deprecated: [osError: raiseOSError].}
 
 proc `==`*(err1, err2: OSErrorCode): bool {.borrow.}
 proc `$`*(err: OSErrorCode): string {.borrow.}
