@@ -972,29 +972,44 @@ template createCb*(retFutureSym, iteratorNameSym,
   cb()
   #{.pop.}
 proc generateExceptionCheck(futSym,
-    exceptBranch, rootReceiver, fromNode: PNimrodNode): PNimrodNode {.compileTime.} =
-  if exceptBranch == nil:
+    tryStmt, rootReceiver, fromNode: PNimrodNode): PNimrodNode {.compileTime.} =
+  if tryStmt.len == 1:
     result = rootReceiver
   else:
-    if exceptBranch[0].kind == nnkStmtList:
-      result = newIfStmt(
-        (newDotExpr(futSym, newIdentNode("failed")),
-           exceptBranch[0]
-         )
-      )
-    else:
-      expectKind(exceptBranch[1], nnkStmtList)
-      result = newIfStmt(
-        (newDotExpr(futSym, newIdentNode("failed")),
-           newIfStmt(
-             (infix(newDotExpr(futSym, newIdentNode("error")), "of", exceptBranch[0]),
-              exceptBranch[1])
-           )
-         )
-      )
+    var exceptionChecks: seq[tuple[cond, body: PNimrodNode]] = @[]
+    let errorNode = newDotExpr(futSym, newIdentNode("error"))
+    for i in 1 .. <tryStmt.len:
+      let exceptBranch = tryStmt[i]
+      if exceptBranch[0].kind == nnkStmtList:
+        exceptionChecks.add((newIdentNode("true"), exceptBranch[0]))
+      else:
+        var exceptIdentCount = 0
+        var ifCond: PNimrodNode
+        for i in 0 .. <exceptBranch.len:
+          let child = exceptBranch[i]
+          if child.kind == nnkIdent:
+            let cond = infix(errorNode, "of", child)
+            if exceptIdentCount == 0:
+              ifCond = cond
+            else:
+              ifCond = infix(ifCond, "or", cond)
+          else:
+            break
+          exceptIdentCount.inc
+
+        expectKind(exceptBranch[exceptIdentCount], nnkStmtList)
+        exceptionChecks.add((ifCond, exceptBranch[exceptIdentCount]))
+    # -> -> else: raise futSym.error
+    exceptionChecks.add((newIdentNode("true"),
+        newNimNode(nnkRaiseStmt).add(errorNode)))
+    # Read the future if there is no error.
+    # -> else: futSym.read
     let elseNode = newNimNode(nnkElse, fromNode)
     elseNode.add newNimNode(nnkStmtList, fromNode)
     elseNode[0].add rootReceiver
+    result = newIfStmt(
+      (newDotExpr(futSym, newIdentNode("failed")), newIfStmt(exceptionChecks))
+    )
     result.add elseNode
 
 template createVar(result: var PNimrodNode, futSymName: string,
@@ -1006,11 +1021,11 @@ template createVar(result: var PNimrodNode, futSymName: string,
   result.add newVarStmt(futSym, asyncProc) # -> var future<x> = y
   result.add newNimNode(nnkYieldStmt, fromNode).add(futSym) # -> yield future<x>
   valueReceiver = newDotExpr(futSym, newIdentNode("read")) # -> future<x>.read
-  result.add generateExceptionCheck(futSym, exceptBranch, rootReceiver, fromNode)
+  result.add generateExceptionCheck(futSym, tryStmt, rootReceiver, fromNode)
 
 proc processBody(node, retFutureSym: PNimrodNode,
                  subTypeIsVoid: bool,
-                 exceptBranch: PNimrodNode): PNimrodNode {.compileTime.} =
+                 tryStmt: PNimrodNode): PNimrodNode {.compileTime.} =
   #echo(node.treeRepr)
   result = node
   case node.kind
@@ -1024,7 +1039,7 @@ proc processBody(node, retFutureSym: PNimrodNode,
         result.add newCall(newIdentNode("complete"), retFutureSym)
     else:
       result.add newCall(newIdentNode("complete"), retFutureSym,
-        node[0].processBody(retFutureSym, subTypeIsVoid, exceptBranch))
+        node[0].processBody(retFutureSym, subTypeIsVoid, tryStmt))
 
     result.add newNimNode(nnkReturnStmt, node).add(newNilLit())
     return # Don't process the children of this return stmt
@@ -1079,7 +1094,7 @@ proc processBody(node, retFutureSym: PNimrodNode,
                        res: PNimrodNode): bool {.compileTime.} =
       result = false
       while i < n[0].len:
-        var processed = processBody(n[0][i], retFutureSym, subTypeIsVoid, n[1])
+        var processed = processBody(n[0][i], retFutureSym, subTypeIsVoid, n)
         if processed.kind != n[0][i].kind or processed.len != n[0][i].len:
           expectKind(processed, nnkStmtList)
           expectKind(processed[2][1], nnkElse)
@@ -1099,7 +1114,7 @@ proc processBody(node, retFutureSym: PNimrodNode,
   else: discard
 
   for i in 0 .. <result.len:
-    result[i] = processBody(result[i], retFutureSym, subTypeIsVoid, exceptBranch)
+    result[i] = processBody(result[i], retFutureSym, subTypeIsVoid, tryStmt)
 
 proc getName(node: PNimrodNode): string {.compileTime.} =
   case node.kind
@@ -1193,7 +1208,7 @@ macro async*(prc: stmt): stmt {.immediate.} =
   result[6] = outerProcBody
 
   #echo(treeRepr(result))
-  #if prc[0].getName == "getFile":
+  #if prc[0].getName == "catch":
   #  echo(toStrLit(result))
 
 proc recvLine*(socket: TAsyncFD): Future[string] {.async.} =
