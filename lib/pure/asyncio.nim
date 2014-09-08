@@ -91,10 +91,10 @@ import sockets, os
 ##      getSocket(s).accept(client)
 
 when defined(windows):
-  from winlean import TimeVal, SocketHandle, FdSet, FD_ZERO, FD_SET,
+  from winlean import TimeVal, SocketHandle, TFdSet, FD_ZERO, FD_SET,
     fdSet, FD_ISSET, select
 else:
-  from posix import TimeVal, SocketHandle, FdSet, FD_ZERO, FD_SET,
+  from posix import TimeVal, SocketHandle, TFdSet, FD_ZERO, FD_SET,
     fdSet, FD_ISSET, select
 
 type
@@ -551,13 +551,13 @@ proc timeValFromMilliseconds(timeout = 500): Timeval =
     result.tv_sec = seconds.int32
     result.tv_usec = ((timeout - seconds * 1000) * 1000).int32
 
-proc createFdSet(fd: var FdSet, s: seq[Delegate], m: var int) =
+proc createFdSet(fd: var TFdSet, s: seq[Delegate], m: var int) =
   FD_ZERO(fd)
   for i in items(s): 
     m = max(m, int(i.fd))
     fdSet(i.fd, fd)
    
-proc pruneSocketSet(s: var seq[Delegate], fd: var FdSet) =
+proc pruneSocketSet(s: var seq[Delegate], fd: var TFdSet) =
   var i = 0
   var L = s.len
   while i < L:
@@ -572,7 +572,7 @@ proc select(readfds, writefds, exceptfds: var seq[Delegate],
              timeout = 500): int =
   var tv {.noInit.}: Timeval = timeValFromMilliseconds(timeout)
   
-  var rd, wr, ex: FdSet
+  var rd, wr, ex: TFdSet
   var m = 0
   createFdSet(rd, readfds, m)
   createFdSet(wr, writefds, m)

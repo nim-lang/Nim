@@ -29,11 +29,10 @@ type
   PGen = ref TGen
 
 proc overwriteFiles*() =
-  let overWrite = options.getConfigVar("pretty.overwrite").normalize != "off"
   let doStrip = options.getConfigVar("pretty.strip").normalize == "on"
   for i in 0 .. high(gSourceFiles):
     if not gSourceFiles[i].dirty: continue
-    let newFile = if overWrite: gSourceFiles[i].fullpath
+    let newFile = if gOverWrite: gSourceFiles[i].fullpath
                   else: gSourceFiles[i].fullpath.changeFileExt(".pretty.nim")
     try:
       var f = open(newFile, fmWrite)
@@ -102,6 +101,7 @@ proc checkStyle(info: TLineInfo, s: string, k: TSymKind) =
     message(info, hintName, beau)
 
 proc checkDef*(n: PNode; s: PSym) =
+  if gStyleCheck == StyleCheck.None: return
   # operators stay as they are:
   if s.kind in {skResult, skTemp} or s.name.s[0] notin prettybase.Letters:
     return
@@ -184,7 +184,6 @@ proc myOpen(module: PSym): PPassContext =
   var g: PGen
   new(g)
   g.module = module
-  gCheckExtern = options.getConfigVar("pretty.checkextern").normalize == "on"
   result = g
 
 const prettyPass* = makePass(open = myOpen, process = processSym)

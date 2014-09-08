@@ -388,7 +388,7 @@ type
              final, pure.} = object ## struct timeval
     tv_sec*: int       ## Seconds.
     tv_usec*: int ## Microseconds.
-  FdSet* {.importc: "fd_set", header: "<sys/select.h>",
+  TFdSet* {.importc: "fd_set", header: "<sys/select.h>",
            final, pure.} = object
   Tmcontext* {.importc: "mcontext_t", header: "<ucontext.h>",
                final, pure.} = object
@@ -563,7 +563,7 @@ type
 
 {.deprecated: [TSockaddr_in: Sockaddr_in, TAddrinfo: AddrInfo,
     TSockAddr: SockAddr, TSockLen: SockLen, TTimeval: Timeval,
-    TFdSet: FdSet, Thostent: Hostent, TServent: Servent,
+    Thostent: Hostent, TServent: Servent,
     TInAddr: InAddr].}
 
 var
@@ -2379,16 +2379,16 @@ proc sched_yield*(): cint {.importc, header: "<sched.h>".}
 proc strerror*(errnum: cint): cstring {.importc, header: "<string.h>".}
 proc hstrerror*(herrnum: cint): cstring {.importc, header: "<netdb.h>".}
 
-proc FD_CLR*(a1: cint, a2: var FdSet) {.importc, header: "<sys/select.h>".}
-proc FD_ISSET*(a1: cint | SocketHandle, a2: var FdSet): cint {.
+proc FD_CLR*(a1: cint, a2: var TFdSet) {.importc, header: "<sys/select.h>".}
+proc FD_ISSET*(a1: cint | SocketHandle, a2: var TFdSet): cint {.
   importc, header: "<sys/select.h>".}
-proc fdSet*(a1: cint | SocketHandle, a2: var FdSet) {.
+proc fdSet*(a1: cint | SocketHandle, a2: var TFdSet) {.
   importc: "FD_SET", header: "<sys/select.h>".}
-proc FD_ZERO*(a1: var FdSet) {.importc, header: "<sys/select.h>".}
+proc FD_ZERO*(a1: var TFdSet) {.importc, header: "<sys/select.h>".}
 
-proc pselect*(a1: cint, a2, a3, a4: ptr FdSet, a5: ptr Ttimespec,
+proc pselect*(a1: cint, a2, a3, a4: ptr TFdSet, a5: ptr Ttimespec,
          a6: var Tsigset): cint  {.importc, header: "<sys/select.h>".}
-proc select*(a1: cint | SocketHandle, a2, a3, a4: ptr FdSet, a5: ptr Timeval): cint {.
+proc select*(a1: cint | SocketHandle, a2, a3, a4: ptr TFdSet, a5: ptr Timeval): cint {.
              importc, header: "<sys/select.h>".}
 
 when hasSpawnH:

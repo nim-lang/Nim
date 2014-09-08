@@ -218,7 +218,7 @@ elif not defined(nimdoc):
       result.tv_sec = seconds.int32
       result.tv_usec = ((timeout - seconds * 1000) * 1000).int32
 
-  proc createFdSet(rd, wr: var FdSet, fds: Table[SocketHandle, SelectorKey],
+  proc createFdSet(rd, wr: var TFdSet, fds: Table[SocketHandle, SelectorKey],
       m: var int) =
     FD_ZERO(rd); FD_ZERO(wr)
     for k, v in pairs(fds):
@@ -229,7 +229,7 @@ elif not defined(nimdoc):
         m = max(m, int(k))
         FD_SET(k, wr)
      
-  proc getReadyFDs(rd, wr: var FdSet, fds: Table[SocketHandle, SelectorKey]):
+  proc getReadyFDs(rd, wr: var TFdSet, fds: Table[SocketHandle, SelectorKey]):
       seq[ReadyInfo] =
     result = @[]
     for k, v in pairs(fds):
@@ -244,7 +244,7 @@ elif not defined(nimdoc):
     seq[ReadyInfo] =
     var tv {.noInit.}: TimeVal = timeValFromMilliseconds(timeout)
     
-    var rd, wr: FdSet
+    var rd, wr: TFdSet
     var m = 0
     createFdSet(rd, wr, fds, m)
     

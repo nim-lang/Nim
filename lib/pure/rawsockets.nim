@@ -361,13 +361,13 @@ proc timeValFromMilliseconds(timeout = 500): Timeval =
     result.tv_sec = seconds.int32
     result.tv_usec = ((timeout - seconds * 1000) * 1000).int32
 
-proc createFdSet(fd: var FdSet, s: seq[SocketHandle], m: var int) = 
+proc createFdSet(fd: var TFdSet, s: seq[SocketHandle], m: var int) = 
   FD_ZERO(fd)
   for i in items(s): 
     m = max(m, int(i))
     fdSet(i, fd)
    
-proc pruneSocketSet(s: var seq[SocketHandle], fd: var FdSet) = 
+proc pruneSocketSet(s: var seq[SocketHandle], fd: var TFdSet) = 
   var i = 0
   var L = s.len
   while i < L:
@@ -388,7 +388,7 @@ proc select*(readfds: var seq[SocketHandle], timeout = 500): int =
   ## be read/written to or has errors (``exceptfds``).
   var tv {.noInit.}: Timeval = timeValFromMilliseconds(timeout)
   
-  var rd: FdSet
+  var rd: TFdSet
   var m = 0
   createFdSet((rd), readfds, m)
   
@@ -410,7 +410,7 @@ proc selectWrite*(writefds: var seq[SocketHandle],
   ## an unlimited time.
   var tv {.noInit.}: Timeval = timeValFromMilliseconds(timeout)
   
-  var wr: FdSet
+  var wr: TFdSet
   var m = 0
   createFdSet((wr), writefds, m)
   

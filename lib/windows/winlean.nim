@@ -423,7 +423,7 @@ type
     h_length*: int16
     h_addr_list*: cstringArray
   
-  FdSet* = object
+  TFdSet* = object
     fd_count*: cint # unsigned
     fd_array*: array[0..FD_SETSIZE-1, SocketHandle]
     
@@ -444,7 +444,7 @@ type
 
 {.deprecated: [TSockaddr_in: Sockaddr_in, TAddrinfo: AddrInfo,
     TSockAddr: SockAddr, TSockLen: SockLen, TTimeval: Timeval,
-    TWSADATA: WSADATA, TFdSet: FdSet, Thostent: Hostent, TServent: Servent,
+    TWSADATA: WSADATA, Thostent: Hostent, TServent: Servent,
     TInAddr: InAddr, Tin6_addr: In6_addr, Tsockaddr_in6: Sockaddr_in6,
     Tsockaddr_in6_old: Sockaddr_in6_old].}
 
@@ -510,7 +510,7 @@ proc recv*(s: SocketHandle, buf: pointer, len, flags: cint): cint {.
 proc recvfrom*(s: SocketHandle, buf: cstring, len, flags: cint, 
                fromm: ptr SockAddr, fromlen: ptr SockLen): cint {.
   stdcall, importc: "recvfrom", dynlib: ws2dll.}
-proc select*(nfds: cint, readfds, writefds, exceptfds: ptr FdSet,
+proc select*(nfds: cint, readfds, writefds, exceptfds: ptr TFdSet,
              timeout: ptr Timeval): cint {.
   stdcall, importc: "select", dynlib: ws2dll.}
 proc send*(s: SocketHandle, buf: pointer, len, flags: cint): cint {.
@@ -530,18 +530,18 @@ proc getnameinfo*(a1: ptr SockAddr, a2: SockLen,
 proc inet_addr*(cp: cstring): int32 {.
   stdcall, importc: "inet_addr", dynlib: ws2dll.} 
 
-proc WSAFDIsSet(s: SocketHandle, set: var FdSet): bool {.
+proc WSAFDIsSet(s: SocketHandle, set: var TFdSet): bool {.
   stdcall, importc: "__WSAFDIsSet", dynlib: ws2dll, noSideEffect.}
 
-proc FD_ISSET*(Socket: SocketHandle, set: var FdSet): cint = 
-  result = if WSAFDIsSet(Socket, set): 1'i32 else: 0'i32
+proc FD_ISSET*(socket: SocketHandle, set: var TFdSet): cint = 
+  result = if WSAFDIsSet(socket, set): 1'i32 else: 0'i32
 
-proc fdSet*(socket: SocketHandle, s: var FdSet) = 
+proc fdSet*(socket: SocketHandle, s: var TFdSet) = 
   if s.fd_count < FD_SETSIZE:
     s.fd_array[int(s.fd_count)] = socket
     inc(s.fd_count)
 
-proc FD_ZERO*(s: var FdSet) =
+proc FD_ZERO*(s: var TFdSet) =
   s.fd_count = 0
 
 proc wsaStartup*(wVersionRequired: int16, WSData: ptr WSAData): cint {.
