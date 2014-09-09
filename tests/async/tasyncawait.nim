@@ -47,18 +47,18 @@ proc readMessages(client: TAsyncFD) {.async.} =
 proc createServer(port: TPort) {.async.} =
   var server = newAsyncRawSocket()
   block:
-    var name: TSockaddr_in
+    var name: Sockaddr_in
     when defined(windows):
       name.sin_family = toInt(AF_INET).int16
     else:
       name.sin_family = toInt(AF_INET)
     name.sin_port = htons(int16(port))
     name.sin_addr.s_addr = htonl(INADDR_ANY)
-    if bindAddr(server.TSocketHandle, cast[ptr TSockAddr](addr(name)),
-                sizeof(name).TSocklen) < 0'i32:
-      osError(osLastError())
+    if bindAddr(server.SocketHandle, cast[ptr SockAddr](addr(name)),
+                sizeof(name).Socklen) < 0'i32:
+      raiseOSError(osLastError())
   
-  discard server.TSocketHandle.listen()
+  discard server.SocketHandle.listen()
   while true:
     var client = await accept(server)
     asyncCheck readMessages(client)
