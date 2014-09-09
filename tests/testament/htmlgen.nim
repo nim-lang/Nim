@@ -107,7 +107,7 @@ div.tabContent.hide { display: none; }
   HtmlEnd = "</body></html>"
 
 proc td(s: string): string =
-  result = "<td>" & s.substr(0, 200).XMLEncode & "</td>"
+  result = "<td>" & s.substr(0, 200).xmlEncode & "</td>"
 
 proc getCommit(db: TDbConn, c: int): string =
   var commit = c
