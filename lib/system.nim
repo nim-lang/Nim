@@ -2438,7 +2438,8 @@ when not defined(JS): #and not defined(NimrodVM):
       ## returns the OS file handle of the file ``f``. This is only useful for
       ## platform specific programming.
 
-    {.deprecated: [fileHandle: getFileHandle].}
+    when not defined(nimfix):
+      {.deprecated: [fileHandle: getFileHandle].}
 
     proc cstringArrayToSeq*(a: cstringArray, len: int): seq[string] =
       ## converts a ``cstringArray`` to a ``seq[string]``. `a` is supposed to be
