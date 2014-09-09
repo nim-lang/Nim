@@ -306,9 +306,6 @@ proc mainCommand* =
       CommandCompileToLLVM()
     else:
       rawMessage(errInvalidCommandX, command)
-  of "pretty":
-    gCmd = cmdPretty
-    commandPretty()
   of "doc":
     gCmd = cmdDoc
     loadConfigs(DocConfig)

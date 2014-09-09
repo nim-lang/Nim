@@ -12,7 +12,6 @@ Advanced commands:
                             module dependency graph
   //dump                    dump all defined conditionals and search paths
   //check                   checks the project for syntax and semantic
-  //pretty                  homogenizes source code style
   //idetools                compiler support for IDEs: possible options:
     --track:FILE,LINE,COL   track a file/cursor position
     --trackDirty:DIRTY_FILE,ORIG_FILE,LINE,COL

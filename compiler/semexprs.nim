@@ -2014,9 +2014,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     checkMinSonsLen(n, 1)
     let mode = if nfDotField in n.flags: {} else: {checkUndeclared}
     var s = qualifiedLookUp(c, n.sons[0], mode)
-    if s != nil: 
-      if gCmd == cmdPretty and n.sons[0].kind == nkDotExpr:
-        pretty.checkUse(n.sons[0].sons[1].info, s)
+    if s != nil:
+      #if gCmd == cmdPretty and n.sons[0].kind == nkDotExpr:
+      #  pretty.checkUse(n.sons[0].sons[1].info, s)
       case s.kind
       of skMacro:
         if sfImmediate notin s.flags:

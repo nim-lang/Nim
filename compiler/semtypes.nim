@@ -279,7 +279,12 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
   if n.kind == nkSym: 
     result = n.sym
   else:
-    result = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared})
+    when defined(nimfix):
+      result = pickSym(c, n, skType)
+      if result.isNil:
+        result = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared})
+    else:
+      result = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared})
     if result != nil:
       markUsed(n.info, result)
       if result.kind == skParam and result.typ.kind == tyTypeDesc:

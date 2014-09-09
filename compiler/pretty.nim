@@ -41,7 +41,7 @@ proc overwriteFiles*() =
             f.write line.strip(leading = false, trailing = true)
           else:
             f.write line
-          f.write("\L")
+          f.write(gSourceFiles[i].newline)
         f.close
       except IOError:
         rawMessage(errCannotOpenFile, newFile)

@@ -690,7 +690,7 @@ proc getQueuedCompletionStatus*(CompletionPort: THandle,
                                 dwMilliseconds: DWORD): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetQueuedCompletionStatus".}
 
-proc getOverlappedResult*(hFile: THandle, lpOverlapped: TOverlapped,
+proc getOverlappedResult*(hFile: THandle, lpOverlapped: TOVERLAPPED,
               lpNumberOfBytesTransferred: var DWORD, bWait: WINBOOL): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetOverlappedResult".}
 

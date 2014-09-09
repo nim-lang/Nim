@@ -7,14 +7,14 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, msgs, strutils, idents
+import ast, msgs, strutils, idents, lexbase, streams
 from os import splitFile
 
 type
   TSourceFile* = object
     lines*: seq[string]
     dirty*, isNimfixFile*: bool
-    fullpath*: string
+    fullpath*, newline*: string
 
 var
   gSourceFiles*: seq[TSourceFile] = @[]
@@ -27,10 +27,24 @@ proc loadFile*(info: TLineInfo) =
     gSourceFiles[i].lines = @[]
     let path = info.toFullPath
     gSourceFiles[i].fullpath = path
-    gSourceFiles[i].isNimfixFile = path.splitFile.ext == "nimfix"
+    gSourceFiles[i].isNimfixFile = path.splitFile.ext == ".nimfix"
     # we want to die here for IOError:
     for line in lines(path):
       gSourceFiles[i].lines.add(line)
+    # extract line ending of the file:
+    var lex: BaseLexer
+    open(lex, newFileStream(path))
+    var pos = lex.bufpos
+    while true:
+      case lex.buf[pos]
+      of '\c': 
+        gSourceFiles[i].newline = "\c\L"
+        break
+      of '\L', '\0':
+        gSourceFiles[i].newline = "\L"
+        break
+      inc pos
+    close(lex)
 
 const
   Letters* = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF', '_'}

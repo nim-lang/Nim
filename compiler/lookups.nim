@@ -376,3 +376,13 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
                                    n.sons[0].sym.name, o.inSymChoice).skipAlias(n)
   
   if result != nil and result.kind == skStub: loadStub(result)
+
+proc pickSym*(c: PContext, n: PNode; kind: TSymKind;
+              flags: TSymFlags = {}): PSym =
+  var o: TOverloadIter
+  var a = initOverloadIter(o, c, n)
+  while a != nil:
+    if a.kind == kind and flags <= a.flags:
+      incl(a.flags, sfUsed)
+      return a
+    a = nextOverloadIter(o, c, n)
