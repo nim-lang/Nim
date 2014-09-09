@@ -247,6 +247,7 @@ proc asyncSockHandleWrite(h: RootRef) =
           # Apparently the socket cannot be written to. Even though select
           # just told us that it can be... This used to be an assert. Just
           # do nothing instead.
+          discard
         elif bytesSent != sock.sendBuffer.len:
           sock.sendBuffer = sock.sendBuffer[bytesSent .. -1]
         elif bytesSent == sock.sendBuffer.len:

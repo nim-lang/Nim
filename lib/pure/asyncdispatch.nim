@@ -796,6 +796,7 @@ else:
       else:
         # FD no longer a part of the selector. Likely been closed
         # (e.g. socket disconnected).
+        discard
 
     processTimers(p)
   
