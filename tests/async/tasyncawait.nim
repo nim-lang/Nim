@@ -21,15 +21,8 @@ proc launchSwarm(port: TPort) {.async.} =
     var sock = newAsyncRawSocket()
 
     await connect(sock, "localhost", port)
-    when true:
-      await sendMessages(sock)
-      closeSocket(sock)
-    else:
-      # Issue #932: https://github.com/Araq/Nim/issues/932
-      var msgFut = sendMessages(sock)
-      msgFut.callback =
-        proc () =
-          closeSocket(sock)
+    await sendMessages(sock)
+    closeSocket(sock)
 
 proc readMessages(client: TAsyncFD) {.async.} =
   while true:
