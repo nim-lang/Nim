@@ -973,7 +973,7 @@ template createCb*(retFutureSym, iteratorNameSym,
   #{.pop.}
 proc generateExceptionCheck(futSym,
     tryStmt, rootReceiver, fromNode: PNimrodNode): PNimrodNode {.compileTime.} =
-  if tryStmt.len == 1:
+  if tryStmt.kind == nnkNilLit:
     result = rootReceiver
   else:
     var exceptionChecks: seq[tuple[cond, body: PNimrodNode]] = @[]
@@ -1007,8 +1007,14 @@ proc generateExceptionCheck(futSym,
     let elseNode = newNimNode(nnkElse, fromNode)
     elseNode.add newNimNode(nnkStmtList, fromNode)
     elseNode[0].add rootReceiver
+
+    let ifBody = newStmtList()
+    ifBody.add newCall(newIdentNode("setCurrentException"), errorNode)
+    ifBody.add newIfStmt(exceptionChecks)
+    ifBody.add newCall(newIdentNode("setCurrentException"), newNilLit())
+
     result = newIfStmt(
-      (newDotExpr(futSym, newIdentNode("failed")), newIfStmt(exceptionChecks))
+      (newDotExpr(futSym, newIdentNode("failed")), ifBody)
     )
     result.add elseNode
 
@@ -1224,6 +1230,8 @@ proc recvLine*(socket: TAsyncFD): Future[string] {.async.} =
   ## If the socket is disconnected in the middle of a line (before ``\r\L``
   ## is read) then line will be set to ``""``.
   ## The partial line **will be lost**.
+  ##
+  ## **Warning**: This assumes that lines are delimited by ``\r\l``.
   
   template addNLIfEmpty(): stmt =
     if result.len == 0:
@@ -1236,9 +1244,8 @@ proc recvLine*(socket: TAsyncFD): Future[string] {.async.} =
     if c.len == 0:
       return ""
     if c == "\r":
-      c = await recv(socket, 1, {SocketFlag.SafeDisconn, SocketFlag.Peek})
-      if c.len > 0 and c == "\L":
-        discard await recv(socket, 1)
+      c = await recv(socket, 1)
+      assert c == "\l"
       addNLIfEmpty()
       return
     elif c == "\L":

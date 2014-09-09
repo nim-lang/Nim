@@ -2,7 +2,7 @@ discard """
   file: "tasynctry.nim"
   exitcode: 0
   output: '''
-Generic except
+Generic except: Test
 Specific except
 Multiple idents in except
 Multiple except branches
@@ -22,7 +22,7 @@ proc catch() {.async.} =
   try:
     await foobar()
   except:
-    echo("Generic except")
+    echo("Generic except: ", getCurrentExceptionMsg())
 
   try:
     await foobar()

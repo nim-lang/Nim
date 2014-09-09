@@ -2630,6 +2630,12 @@ when not defined(JS): #and not defined(NimrodVM):
         excHandler.hasRaiseAction = true
         excHandler.raiseAction = action
 
+    proc setCurrentException*(exc: ref Exception) {.inline, gcsafe.} =
+      ## sets the current exception.
+      ##
+      ## **Warning**: Only use this if you know what you are doing.
+      currException = exc
+
   {.push stack_trace: off, profiler:off.}
   when defined(endb) and not defined(NimrodVM):
     include "system/debugger"
