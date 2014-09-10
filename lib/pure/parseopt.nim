@@ -25,7 +25,7 @@ type
   CmdLineKind* = enum         ## the detected command line token
     cmdEnd,                   ## end of command line reached
     cmdArgument,              ## argument detected
-    cmdLongoption,            ## a long option ``--option`` detected
+    cmdLongOption,            ## a long option ``--option`` detected
     cmdShortOption            ## a short option ``-c`` detected
   OptParser* = 
       object of RootObj ## this object implements the command line parser  

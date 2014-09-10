@@ -81,14 +81,14 @@ proc countLines(s: string, first, last: int): int =
 proc beforePattern(s: string, first: int): int = 
   result = first-1
   while result >= 0:
-    if s[result] in Newlines: break
+    if s[result] in NewLines: break
     dec(result)
   inc(result)
 
 proc afterPattern(s: string, last: int): int = 
   result = last+1
   while result < s.len:
-    if s[result] in Newlines: break
+    if s[result] in NewLines: break
     inc(result)
   dec(result)
 
@@ -125,12 +125,12 @@ proc processFile(filename: string) =
   var buffer: string
   try:
     buffer = system.readFile(filename)
-  except EIO: 
+  except IOError: 
     echo "cannot open file: ", filename
     return
   if optVerbose in options: stdout.writeln(filename)
   var pegp: TPeg
-  var rep: TRegex
+  var rep: Regex
   var result: string
 
   if optRegex in options:
@@ -267,7 +267,7 @@ proc checkOptions(subset: TOptions, a, b: string) =
 for kind, key, val in getopt():
   case kind
   of cmdArgument:
-    if options.contains(optStdIn): 
+    if options.contains(optStdin): 
       filenames.add(key)
     elif pattern.len == 0: 
       pattern = key
@@ -275,7 +275,7 @@ for kind, key, val in getopt():
       replacement = key
     else:
       filenames.add(key)
-  of cmdLongOption, cmdShortOption:
+  of cmdLongoption, cmdShortOption:
     case normalize(key)
     of "find", "f": incl(options, optFind)
     of "replace", "r": incl(options, optReplace)
