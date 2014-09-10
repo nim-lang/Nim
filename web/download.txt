@@ -121,8 +121,8 @@ Bleeding edge binaries are available from the `Nimrod build farm <http://build.n
 Source
 ======
 
-Starting with 0.9.4 we now advise people to build directly from the
-github `master <https://github.com/Araq/Nimrod#compiling>`_ branch::
+Use the following commands to build the compiler from source.
+Change the branch to suit your needs::
 
   git clone -b master git://github.com/Araq/Nimrod.git
   cd Nimrod

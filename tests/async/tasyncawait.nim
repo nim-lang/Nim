@@ -21,15 +21,8 @@ proc launchSwarm(port: TPort) {.async.} =
     var sock = newAsyncRawSocket()
 
     await connect(sock, "localhost", port)
-    when true:
-      await sendMessages(sock)
-      closeSocket(sock)
-    else:
-      # Issue #932: https://github.com/Araq/Nim/issues/932
-      var msgFut = sendMessages(sock)
-      msgFut.callback =
-        proc () =
-          closeSocket(sock)
+    await sendMessages(sock)
+    closeSocket(sock)
 
 proc readMessages(client: TAsyncFD) {.async.} =
   while true:
@@ -47,18 +40,18 @@ proc readMessages(client: TAsyncFD) {.async.} =
 proc createServer(port: TPort) {.async.} =
   var server = newAsyncRawSocket()
   block:
-    var name: TSockaddr_in
+    var name: Sockaddr_in
     when defined(windows):
       name.sin_family = toInt(AF_INET).int16
     else:
       name.sin_family = toInt(AF_INET)
     name.sin_port = htons(int16(port))
     name.sin_addr.s_addr = htonl(INADDR_ANY)
-    if bindAddr(server.TSocketHandle, cast[ptr TSockAddr](addr(name)),
-                sizeof(name).TSocklen) < 0'i32:
-      osError(osLastError())
+    if bindAddr(server.SocketHandle, cast[ptr SockAddr](addr(name)),
+                sizeof(name).Socklen) < 0'i32:
+      raiseOSError(osLastError())
   
-  discard server.TSocketHandle.listen()
+  discard server.SocketHandle.listen()
   while true:
     var client = await accept(server)
     asyncCheck readMessages(client)

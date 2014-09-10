@@ -14,8 +14,12 @@ News
     ``threadpool``.
   - The symbol binding rules in generics changed: ``bar`` in ``foo.bar`` is
     now considered for implicit early binding.
-  - ``c2nim`` moved into its own repository and is now a Babel package.
-  - ``pas2nim`` moved into its own repository and is now a Babel package.
+  - ``c2nim`` moved into its own
+    `repository <https://github.com/nimrod-code/c2nim>`_
+    and is now a Nimble package.
+  - ``pas2nim`` moved into its own
+    `repository <https://github.com/nimrod-code/pas2nim>`_
+    and is now a Nimble package.
   - ``system.$`` for floating point types now produces a human friendly string
     representation.
   - ``uri.TUrl`` as well as the ``parseurl`` module are now deprecated in favour
@@ -31,7 +35,15 @@ News
     will disappear soon!
   - ``system.fileHandle`` has been renamed to ``system.getFileHandle`` to
     prevent name conflicts with the new type ``FileHandle``.
-  
+  - Comments are now not part of the AST, as such you cannot use them in place
+    of ``discard``.
+  - The ``irc`` module has been moved into its own
+    `repository <https://github.com/nimrod-code/irc>`_
+    and is now a Nimble package.
+  - Many wrappers have been moved into their own repositories and are now
+    Nimble packages including ``lua``, ``opengl``, ``x11``, ``nim-zmq``,
+    ``gtk2``, ``mongo``, ``cairo``, ``tcl`` and ``python``. They can be
+    found under the `nim-code <https://github.com/nimrod-code>`_ organisation.
 
   Language Additions
   ------------------

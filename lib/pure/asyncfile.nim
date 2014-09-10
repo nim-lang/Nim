@@ -34,26 +34,7 @@ type
     fd: TAsyncFd
     offset: int64
 
-# TODO: These will be nil in other threads?
-var
-  asyncStdin* {.threadvar.}: AsyncFile ## Asynchronous stdin handle
-  asyncStdout* {.threadvar.}: AsyncFile ## Asynchronous stdout handle
-  asyncStderr* {.threadvar.}: AsyncFile ## Asynchronous stderr handle
-
 when defined(windows):
-  asyncStdin = AsyncFile(
-      fd: getStdHandle(STD_INPUT_HANDLE).TAsyncFd,
-      offset: 0
-    )
-  asyncStdout = AsyncFile(
-      fd: getStdHandle(STD_OUTPUT_HANDLE).TAsyncFd,
-      offset: 0
-    )
-  asyncStderr = AsyncFile(
-      fd: getStdHandle(STD_ERROR_HANDLE).TAsyncFd,
-      offset: 0
-    )
-
   proc getDesiredAccess(mode: TFileMode): int32 =
     case mode
     of fmRead:
@@ -73,19 +54,6 @@ when defined(windows):
       else:
         CREATE_NEW
 else:
-  asyncStdin = AsyncFile(
-      fd: STDIN_FILENO.TAsyncFd,
-      offset: 0
-    )
-  asyncStdout = AsyncFile(
-      fd: STDOUT_FILENO.TAsyncFd,
-      offset: 0
-    )
-  asyncStderr = AsyncFile(
-      fd: STDERR_FILENO.TAsyncFd,
-      offset: 0
-    )
-
   proc getPosixFlags(mode: TFileMode): cint =
     case mode
     of fmRead:
@@ -100,7 +68,7 @@ else:
       result = O_RDWR
     result = result or O_NONBLOCK
 
-proc getFileSize*(f: AsyncFile): int64 =
+proc getFileSize(f: AsyncFile): int64 =
   ## Retrieves the specified file's size.
   when defined(windows):
     var high: DWord

@@ -37,7 +37,7 @@ proc asmx64 () {.compileTime} =
 
 
   proc abortAsmParse (err:string) =
-    #
+    discard
 
   let codeLen = code.len
   #let codeEnd = codeLen-1

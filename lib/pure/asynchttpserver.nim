@@ -183,6 +183,7 @@ proc processClient(client: PAsyncSocket, address: string,
       # header states otherwise.
       # In HTTP 1.0 we assume that the connection should not be persistent.
       # Unless the connection header states otherwise.
+      discard
     else:
       request.client.close()
       break
