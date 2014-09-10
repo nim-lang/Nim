@@ -849,13 +849,13 @@ proc contains*[T](s: TSlice[T], value: T): bool {.noSideEffect, inline.} =
   ##   assert((1..3).contains(4) == false)
   result = s.a <= value and value <= s.b
 
-template `in` * (x, y: expr): expr {.immediate.} = contains(y, x)
+template `in` * (x, y: expr): expr {.immediate, dirty.} = contains(y, x)
   ## Sugar for contains
   ##
   ## .. code-block:: Nimrod
   ##   assert(1 in (1..3) == true)
   ##   assert(5 in (1..3) == false)
-template `notin` * (x, y: expr): expr {.immediate.} = not contains(y, x)
+template `notin` * (x, y: expr): expr {.immediate, dirty.} = not contains(y, x)
   ## Sugar for not containing
   ##
   ## .. code-block:: Nimrod
