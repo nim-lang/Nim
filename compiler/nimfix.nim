@@ -32,7 +32,6 @@ proc mainCommand =
   #msgs.gErrorMax = high(int)  # do not stop after first error
   registerPass verbosePass
   registerPass semPass
-  registerPass prettyPass
   gCmd = cmdPretty
   appendStr(searchPaths, options.libpath)
   if gProjectFull.len != 0:

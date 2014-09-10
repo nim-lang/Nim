@@ -82,6 +82,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       incl(e.flags, sfExported)
       if not isPure: strTableAdd(c.module.tab, e)
     addSon(result.n, newSymNode(e))
+    styleCheckDef(e)
     if sfGenSym notin e.flags and not isPure: addDecl(c, e)
     inc(counter)
   if not hasNull: incl(result.flags, tfNeedsInit)
@@ -92,7 +93,7 @@ proc semSet(c: PContext, n: PNode, prev: PType): PType =
     var base = semTypeNode(c, n.sons[1], nil)
     addSonSkipIntLit(result, base)
     if base.kind == tyGenericInst: base = lastSon(base)
-    if base.kind != tyGenericParam: 
+    if base.kind != tyGenericParam:
       if not isOrdinalType(base): 
         localError(n.info, errOrdinalTypeExpected)
       elif lengthOrd(base) > MaxSetElements: 
@@ -363,7 +364,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
       else:
         addSon(result.n, newSymNode(field))
         addSonSkipIntLit(result, typ)
-      if gCmd == cmdPretty: checkDef(a.sons[j], field)
+      if gCmd == cmdPretty: styleCheckDef(a.sons[j].info, field)
 
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode, 
                  allowed: TSymFlags): PSym = 
@@ -399,7 +400,7 @@ proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
     else: discard
   else:
     result = semIdentVis(c, kind, n, allowed)
-  if gCmd == cmdPretty: checkDef(n, result)
+  if gCmd == cmdPretty: styleCheckDef(n.info, result)
   
 proc checkForOverlap(c: PContext, t: PNode, currentEx, branchIndex: int) =
   let ex = t[branchIndex][currentEx].skipConv
@@ -579,6 +580,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
         localError(n.sons[i].info, errAttemptToRedefine, f.name.s)
       if a.kind == nkEmpty: addSon(father, newSymNode(f))
       else: addSon(a, newSymNode(f))
+      styleCheckDef(f)
     if a.kind != nkEmpty: addSon(father, a)
   of nkEmpty: discard
   else: illFormedAst(n)
@@ -918,7 +920,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       addSon(result.n, newSymNode(arg))
       rawAddSon(result, finalType)
       addParamOrResult(c, arg, kind)
-      if gCmd == cmdPretty: checkDef(a.sons[j], arg)
+      if gCmd == cmdPretty: styleCheckDef(a.sons[j].info, arg)
 
   var r: PType
   if n.sons[0].kind != nkEmpty:

@@ -15,8 +15,7 @@ import
   wordrecg, sem, semdata, idents, passes, docgen, extccomp,
   cgen, jsgen, json, nversion,
   platform, nimconf, importer, passaux, depends, vm, vmdef, types, idgen,
-  tables, docgen2, service, parser, modules, ccgutils, sigmatch, ropes, lists,
-  pretty
+  tables, docgen2, service, parser, modules, ccgutils, sigmatch, ropes, lists
 
 from magicsys import systemModule, resetSysTypes
 
@@ -163,13 +162,6 @@ proc commandEval(exp: string) =
     compileSystemModule()
   var echoExp = "echo \"eval\\t\", " & "repr(" & exp & ")"
   evalNim(echoExp.parseString, makeStdinModule())
-
-proc commandPretty =
-  msgs.gErrorMax = high(int)  # do not stop after first error
-  semanticPasses()
-  registerPass(prettyPass)
-  compileProject()
-  pretty.overwriteFiles()
 
 proc commandScan =
   var f = addFileExt(mainCommandArg(), NimExt)

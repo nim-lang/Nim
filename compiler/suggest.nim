@@ -331,7 +331,7 @@ proc markUsed(info: TLineInfo; s: PSym) =
     if sfDeprecated in s.flags: message(info, warnDeprecated, s.name.s)
     if sfError in s.flags: localError(info, errWrongSymbolX, s.name.s)
   suggestSym(info, s)
-  if gCmd == cmdPretty: checkUse(info, s)
+  if gCmd == cmdPretty: styleCheckUse(info, s)
 
 proc useSym*(sym: PSym): PNode =
   result = newSymNode(sym)

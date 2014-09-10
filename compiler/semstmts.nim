@@ -35,6 +35,7 @@ proc semBreakOrContinue(c: PContext, n: PNode): PNode =
         incl(s.flags, sfUsed)
         n.sons[0] = x
         suggestSym(x.info, s)
+        styleCheckUse(x.info, s)
       else:
         localError(n.info, errInvalidControlFlowX, s.name.s)
     else:
@@ -323,6 +324,7 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
   else:
     result = semIdentWithPragma(c, kind, n, {})
   suggestSym(n.info, result)
+  styleCheckDef(result)
 
 proc checkNilable(v: PSym) =
   if sfGlobal in v.flags and {tfNotNil, tfNeedsInit} * v.typ.flags != {}:
@@ -619,6 +621,7 @@ proc addForVarDecl(c: PContext, v: PSym) =
 proc symForVar(c: PContext, n: PNode): PSym =
   let m = if n.kind == nkPragmaExpr: n.sons[0] else: n
   result = newSymG(skForVar, m, c)
+  styleCheckDef(result)
 
 proc semForVars(c: PContext, n: PNode): PNode =
   result = n

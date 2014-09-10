@@ -11,9 +11,8 @@
 ## to convert Nim code into a consistent style.
 
 import 
-  strutils, os, options, ast, astalgo, msgs, ropes, idents, passes,
+  strutils, os, options, ast, astalgo, msgs, ropes, idents,
   intsets, strtabs, semdata, prettybase
-
 
 type
   StyleCheck* {.pure.} = enum None, Confirm, Auto
@@ -22,11 +21,6 @@ var
   gOverWrite* = true
   gStyleCheck*: StyleCheck
   gCheckExtern*: bool
-
-type
-  TGen = object of TPassContext
-    module*: PSym
-  PGen = ref TGen
 
 proc overwriteFiles*() =
   let doStrip = options.getConfigVar("pretty.strip").normalize == "on"
@@ -100,21 +94,20 @@ proc checkStyle(info: TLineInfo, s: string, k: TSymKind) =
   if s != beau:
     message(info, hintName, beau)
 
-proc checkDef*(n: PNode; s: PSym) =
+proc styleCheckDef*(info: TLineInfo; s: PSym; k: TSymKind) =
   if gStyleCheck == StyleCheck.None: return
   # operators stay as they are:
-  if s.kind in {skResult, skTemp} or s.name.s[0] notin prettybase.Letters:
+  if k in {skResult, skTemp} or s.name.s[0] notin prettybase.Letters:
     return
-  if s.kind in {skType, skGenericParam} and sfAnon in s.flags: return
+  if k in {skType, skGenericParam} and sfAnon in s.flags: return
 
   if {sfImportc, sfExportc} * s.flags == {} or gCheckExtern:
-    checkStyle(n.info, s.name.s, s.kind)
+    checkStyle(info, s.name.s, k)
 
-proc checkDef(c: PGen; n: PNode) =
-  if n.kind != nkSym: return
-  checkDef(n, n.sym)
+proc styleCheckDef*(info: TLineInfo; s: PSym) = styleCheckDef(info, s, s.kind)
+proc styleCheckDef*(s: PSym) = styleCheckDef(s.info, s, s.kind)
 
-proc checkUse*(info: TLineInfo; s: PSym) =
+proc styleCheckUse*(info: TLineInfo; s: PSym) =
   if info.fileIndex < 0: return
   # we simply convert it to what it looks like in the definition
   # for consistency
@@ -141,50 +134,3 @@ proc checkUse*(info: TLineInfo; s: PSym) =
     var x = line.substr(0, first-1) & newName & line.substr(last+1)    
     system.shallowCopy(gSourceFiles[info.fileIndex].lines[info.line-1], x)
     gSourceFiles[info.fileIndex].dirty = true
-
-proc check(c: PGen, n: PNode) =
-  case n.kind
-  of nkSym: checkUse(n.info, n.sym)
-  of nkBlockStmt, nkBlockExpr, nkBlockType:
-    checkDef(c, n[0])
-    check(c, n.sons[1])
-  of nkForStmt, nkParForStmt:
-    let L = n.len
-    for i in countup(0, L-3):
-      checkDef(c, n[i])
-    check(c, n[L-2])
-    check(c, n[L-1])
-  of nkProcDef, nkLambdaKinds, nkMethodDef, nkIteratorDef, nkTemplateDef,
-      nkMacroDef, nkConverterDef:
-    checkDef(c, n[namePos])
-    for i in namePos+1 .. <n.len: check(c, n.sons[i])
-  of nkIdentDefs, nkVarTuple:
-    let a = n
-    checkMinSonsLen(a, 3)
-    let L = len(a)
-    for j in countup(0, L-3): checkDef(c, a.sons[j])
-    check(c, a.sons[L-2])
-    check(c, a.sons[L-1])
-  of nkTypeSection, nkConstSection:
-    for i in countup(0, sonsLen(n) - 1):
-      let a = n.sons[i]
-      if a.kind == nkCommentStmt: continue 
-      checkSonsLen(a, 3)
-      checkDef(c, a.sons[0])
-      check(c, a.sons[1])
-      check(c, a.sons[2])
-  else:
-    for i in 0 .. <n.safeLen: check(c, n.sons[i])
-
-proc processSym(c: PPassContext, n: PNode): PNode = 
-  result = n
-  check(PGen(c), n)
-
-proc myOpen(module: PSym): PPassContext =
-  var g: PGen
-  new(g)
-  g.module = module
-  result = g
-
-const prettyPass* = makePass(open = myOpen, process = processSym)
-

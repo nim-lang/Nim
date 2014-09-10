@@ -33,7 +33,7 @@ proc loadFile*(info: TLineInfo) =
       gSourceFiles[i].lines.add(line)
     # extract line ending of the file:
     var lex: BaseLexer
-    open(lex, newFileStream(path))
+    open(lex, newFileStream(path, fmRead))
     var pos = lex.bufpos
     while true:
       case lex.buf[pos]
@@ -43,6 +43,7 @@ proc loadFile*(info: TLineInfo) =
       of '\L', '\0':
         gSourceFiles[i].newline = "\L"
         break
+      else: discard
       inc pos
     close(lex)
 

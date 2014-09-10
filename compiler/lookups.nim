@@ -383,6 +383,5 @@ proc pickSym*(c: PContext, n: PNode; kind: TSymKind;
   var a = initOverloadIter(o, c, n)
   while a != nil:
     if a.kind == kind and flags <= a.flags:
-      incl(a.flags, sfUsed)
       return a
     a = nextOverloadIter(o, c, n)
