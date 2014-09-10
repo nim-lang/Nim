@@ -3,7 +3,6 @@ version 0.10
 
 - Test nimfix on various babel packages
 - Pegs do not work at compile-time
-- rename cgi.URLencode to encodeUrl
 
 
 version 0.9.6

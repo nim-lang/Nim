@@ -31,7 +31,7 @@
 
 import strutils, os, strtabs, cookies
 
-proc urlEncode*(s: string): string =
+proc encodeUrl*(s: string): string =
   ## Encodes a value to be HTTP safe: This means that characters in the set
   ## ``{'A'..'Z', 'a'..'z', '0'..'9', '_'}`` are carried over to the result,
   ## a space is converted to ``'+'`` and every other character is encoded as
@@ -52,7 +52,7 @@ proc handleHexChar(c: char, x: var int) {.inline.} =
   of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
   else: assert(false)
 
-proc urlDecode*(s: string): string =
+proc decodeUrl*(s: string): string =
   ## Decodes a value from its HTTP representation: This means that a ``'+'``
   ## is converted to a space, ``'%xx'`` (where ``xx`` denotes a hexadecimal
   ## value) is converted to the character with ordinal number ``xx``, and
@@ -73,6 +73,8 @@ proc urlDecode*(s: string): string =
     inc(i)
     inc(j)
   setLen(result, j)
+
+{.deprecated: [URLDecode: decodeUrl, URLEncode: encodeUrl].}
 
 proc addXmlChar(dest: var string, c: char) {.inline.} =
   case c
@@ -100,7 +102,7 @@ type
     methodGet            ## query uses the GET method
 
 {.deprecated: [TRequestMethod: RequestMethod, ECgi: CgiError,
-  URLencode: urlEncode, XMLencode: xmlEncode, URLdecode: urlDecode].}
+  XMLencode: xmlEncode].}
 
 proc cgiError*(msg: string) {.noreturn.} =
   ## raises an ECgi exception with message `msg`.
@@ -332,9 +334,9 @@ proc setTestData*(keysvalues: varargs[string]) =
   var i = 0
   var query = ""
   while i < keysvalues.len:
-    add(query, urlEncode(keysvalues[i]))
+    add(query, encodeUrl(keysvalues[i]))
     add(query, '=')
-    add(query, urlEncode(keysvalues[i+1]))
+    add(query, encodeUrl(keysvalues[i+1]))
     add(query, '&')
     inc(i, 2)
   putEnv("QUERY_STRING", query)
@@ -394,5 +396,5 @@ proc existsCookie*(name: string): bool =
 
 when isMainModule:
   const test1 = "abc\L+def xyz"
-  assert URLencode(test1) == "abc%0A%2Bdef+xyz"
-  assert URLdecode(URLencode(test1)) == test1
+  assert encodeUrl(test1) == "abc%0A%2Bdef+xyz"
+  assert decodeUrl(encodeUrl(test1)) == test1
