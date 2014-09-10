@@ -126,6 +126,7 @@ proc considerOverloadedOp(c: TLiftCtx; t: PType; x, y: PNode): bool =
   let op = t.attachedOps[c.kind]
   if op != nil:
     markUsed(c.info, op)
+    styleCheckUse(c.info, op)
     case c.kind
     of attachedDestructor:
       c.result.add newDestructorCall(op, x)

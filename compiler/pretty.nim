@@ -94,18 +94,21 @@ proc checkStyle(info: TLineInfo, s: string, k: TSymKind) =
   if s != beau:
     message(info, hintName, beau)
 
-proc styleCheckDef*(info: TLineInfo; s: PSym; k: TSymKind) =
-  if gStyleCheck == StyleCheck.None: return
+proc styleCheckDefImpl(info: TLineInfo; s: PSym; k: TSymKind) =
   # operators stay as they are:
-  if k in {skResult, skTemp} or s.name.s[0] notin prettybase.Letters:
-    return
+  if k in {skResult, skTemp} or s.name.s[0] notin prettybase.Letters: return
   if k in {skType, skGenericParam} and sfAnon in s.flags: return
-
   if {sfImportc, sfExportc} * s.flags == {} or gCheckExtern:
     checkStyle(info, s.name.s, k)
 
-proc styleCheckDef*(info: TLineInfo; s: PSym) = styleCheckDef(info, s, s.kind)
-proc styleCheckDef*(s: PSym) = styleCheckDef(s.info, s, s.kind)
+template styleCheckDef*(info: TLineInfo; s: PSym; k: TSymKind) =
+  when defined(nimfix):
+    if gStyleCheck != StyleCheck.None: styleCheckDefImpl(info, s, k)
+
+template styleCheckDef*(info: TLineInfo; s: PSym) =
+  styleCheckDef(info, s, s.kind)
+template styleCheckDef*(s: PSym) =
+  styleCheckDef(s.info, s, s.kind)
 
 proc styleCheckUse*(info: TLineInfo; s: PSym) =
   if info.fileIndex < 0: return
@@ -134,3 +137,4 @@ proc styleCheckUse*(info: TLineInfo; s: PSym) =
     var x = line.substr(0, first-1) & newName & line.substr(last+1)    
     system.shallowCopy(gSourceFiles[info.fileIndex].lines[info.line-1], x)
     gSourceFiles[info.fileIndex].dirty = true
+    if newName == "File": writeStackTrace()

@@ -12,7 +12,8 @@
 
 import 
   intsets, ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst,
-  magicsys, condsyms, idents, lexer, options, parampatterns, strutils, trees
+  magicsys, condsyms, idents, lexer, options, parampatterns, strutils, trees,
+  pretty
 
 when not defined(noDocgen):
   import docgen
@@ -1272,6 +1273,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     else: 
       # only one valid interpretation found:
       markUsed(arg.info, arg.sons[best].sym)
+      styleCheckUse(arg.info, arg.sons[best].sym)
       result = paramTypesMatchAux(m, f, arg.sons[best].typ, arg.sons[best],
                                   argOrig)
 

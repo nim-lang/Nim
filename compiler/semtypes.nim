@@ -288,6 +288,7 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
       result = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared})
     if result != nil:
       markUsed(n.info, result)
+      styleCheckUse(n.info, result)
       if result.kind == skParam and result.typ.kind == tyTypeDesc:
         # This is a typedesc param. is it already bound?
         # it's not bound when it's used multiple times in the
@@ -835,6 +836,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
   
   of tyGenericParam:
     markUsed(info, paramType.sym)
+    styleCheckUse(info, paramType.sym)
     if tfWildcard in paramType.flags:
       paramType.flags.excl tfWildcard
       paramType.sym.kind = skType
@@ -1195,6 +1197,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         assignType(prev, t)
         result = prev
       markUsed(n.info, n.sym)
+      styleCheckUse(n.info, n.sym)
     else:
       if n.sym.kind != skError: localError(n.info, errTypeExpected)
       result = newOrPrevType(tyError, prev, c)

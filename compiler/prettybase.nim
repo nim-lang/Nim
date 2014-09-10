@@ -74,6 +74,7 @@ proc replaceDeprecated*(info: TLineInfo; oldSym, newSym: PIdent) =
     var x = line.substr(0, first-1) & newSym.s & line.substr(last+1)
     system.shallowCopy(gSourceFiles[info.fileIndex].lines[info.line-1], x)
     gSourceFiles[info.fileIndex].dirty = true
+    if newSym.s == "File": writeStackTrace()
 
 proc replaceDeprecated*(info: TLineInfo; oldSym, newSym: PSym) =
   replaceDeprecated(info, oldSym.name, newSym.name)
