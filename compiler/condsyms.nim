@@ -60,7 +60,7 @@ const
     quick
     release debug
     useWinAnsi useFork useNimRtl useMalloc useRealtimeGC ssl memProfiler
-    nodejs kwin
+    nodejs kwin nimfix
 
     usesysassert usegcassert tinyC useFFI
     useStdoutAsStdmsg createNimRtl

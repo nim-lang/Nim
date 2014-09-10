@@ -1059,7 +1059,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     f = getSymFromList(ty.n, i)
     if f != nil:
       markUsed(n.sons[1].info, f)
-      styleCheckUse(n.sons[1].info, s)
+      styleCheckUse(n.sons[1].info, f)
       n.sons[0] = makeDeref(n.sons[0])
       n.sons[1] = newSymNode(f)
       n.typ = f.typ

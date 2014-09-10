@@ -191,6 +191,8 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
 
 proc semTemplSymbol(c: PContext, n: PNode, s: PSym): PNode = 
   incl(s.flags, sfUsed)
+  # we do not call styleCheckUse here, as the identifier is not really
+  # resolved here. We will fixup the used identifiers later.
   case s.kind
   of skUnknown: 
     # Introduced in this pass! Leave it as an identifier.
@@ -199,19 +201,15 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym): PNode =
     result = symChoice(c, n, s, scOpen)
   of skGenericParam: 
     result = newSymNodeTypeDesc(s, n.info)
-    styleCheckUse(n.info, s)
   of skParam: 
     result = n
-    styleCheckUse(n.info, s)
   of skType: 
     if (s.typ != nil) and (s.typ.kind != tyGenericParam): 
       result = newSymNodeTypeDesc(s, n.info)
     else: 
       result = n
-    styleCheckUse(n.info, s)
   else:
     result = newSymNode(s, n.info)
-    styleCheckUse(n.info, s)
 
 proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
   result = n

@@ -137,4 +137,4 @@ proc styleCheckUse*(info: TLineInfo; s: PSym) =
     var x = line.substr(0, first-1) & newName & line.substr(last+1)    
     system.shallowCopy(gSourceFiles[info.fileIndex].lines[info.line-1], x)
     gSourceFiles[info.fileIndex].dirty = true
-    if newName == "File": writeStackTrace()
+    #if newName == "File": writeStackTrace()
