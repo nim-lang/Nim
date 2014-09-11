@@ -104,6 +104,15 @@ block countTableTest1:
 block SyntaxTest:
   var x = newTable[int, string]({:})
 
+block nilTest:
+  var i, j: PTable[int, int] = nil
+  assert i == j
+  j = newTable[int, int]()
+  assert i != j
+  assert j != i
+  i = newTable[int, int]()
+  assert i == j
+
 proc orderedTableSortTest() =
   var t = newOrderedTable[string, int](2)
   for key, val in items(data): t[key] = val

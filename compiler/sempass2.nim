@@ -115,7 +115,7 @@ proc useVar(a: PEffects, n: PNode) =
       a.addUse(copyNode(n))
     if (tfHasGCedMem in s.typ.flags or s.typ.isGCedMem) and 
         tfGcSafe notin s.typ.flags:
-      message(n.info, warnGcUnsafe, renderTree(n))
+      if warnGcUnsafe in gNotes: message(n.info, warnGcUnsafe, renderTree(n))
       a.gcUnsafe = true
 
 type
@@ -332,7 +332,7 @@ proc propagateEffects(tracked: PEffects, n: PNode, s: PSym) =
   mergeTags(tracked, tagSpec, n)
 
   if notGcSafe(s.typ) and sfImportc notin s.flags:
-    message(n.info, warnGcUnsafe, renderTree(n))
+    if warnGcUnsafe in gNotes: message(n.info, warnGcUnsafe, renderTree(n))
     tracked.gcUnsafe = true
 
   when trackGlobals:
@@ -358,7 +358,7 @@ proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
     of impYes: discard
 
 proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
-  let op = n.typ
+  let op = skipConvAndClosure(n).typ
   if op != nil and op.kind == tyProc and n.kind != nkNilLit:
     internalAssert op.n.sons[0].kind == nkEffectList
     var effectList = op.n.sons[0]
@@ -367,21 +367,24 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
       propagateEffects(tracked, n, s.sym)
     elif effectList.len == 0:
       if isForwardedProc(n):
+        # we have no explicit effects but it's a forward declaration and so it's
+        # stated there are no additional effects, so simply propagate them:
         propagateEffects(tracked, n, n.sym)
       else:
+        # we have no explicit effects so assume the worst:
         addEffect(tracked, createRaise(n))
         addTag(tracked, createTag(n))
         when trackGlobals: addUse(tracked, createAnyGlobal(n))
-      # assume GcUnsafe unless in its type:
-      if notGcSafe(op): 
-        message(n.info, warnGcUnsafe, renderTree(n))
+      # assume GcUnsafe unless in its type; 'forward' does not matter:
+      if notGcSafe(op):
+        if warnGcUnsafe in gNotes: message(n.info, warnGcUnsafe, renderTree(n))
         tracked.gcUnsafe = true
     else:
       mergeEffects(tracked, effectList.sons[exceptionEffects], n)
       mergeTags(tracked, effectList.sons[tagEffects], n)
       when trackGlobals: mergeUses(tracked, effectList.sons[usesEffects], n)
       if notGcSafe(op):
-        message(n.info, warnGcUnsafe, renderTree(n))
+        if warnGcUnsafe in gNotes: message(n.info, warnGcUnsafe, renderTree(n))
         tracked.gcUnsafe = true
   notNilCheck(tracked, n, paramType)
 
@@ -510,9 +513,6 @@ proc track(tracked: PEffects, n: PNode) =
     if op != nil and op.kind == tyProc and op.n.sons[0].kind == nkEffectList:
       if a.kind == nkSym and a.sym == tracked.owner:
         tracked.isRecursive = true
-      elif notGcSafe(op) and not importedFromC(a):
-        message(n.info, warnGcUnsafe, renderTree(n))
-        tracked.gcUnsafe = true
       var effectList = op.n.sons[0]
       if a.kind == nkSym and a.sym.kind == skMethod:
         propagateEffects(tracked, n, a.sym)
@@ -528,6 +528,11 @@ proc track(tracked: PEffects, n: PNode) =
         mergeEffects(tracked, effectList.sons[exceptionEffects], n)
         mergeTags(tracked, effectList.sons[tagEffects], n)
         when trackGlobals: mergeUses(tracked, effectList.sons[usesEffects], n)
+        if notGcSafe(op) and not importedFromC(a):
+          # and it's not a recursive call:
+          if not (a.kind == nkSym and a.sym == tracked.owner):
+            message(n.info, warnGcUnsafe, renderTree(n))
+            tracked.gcUnsafe = true
     for i in 1 .. <len(n): trackOperand(tracked, n.sons[i], paramType(op, i))
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
       # may not look like an assignment, but it is:
@@ -713,8 +718,8 @@ proc trackProc*(s: PSym, body: PNode) =
       effects.sons[usesEffects] = usesSpec
   if optThreadAnalysis in gGlobalOptions:
     if sfThread in s.flags and t.gcUnsafe:
-      localError(s.info, warnGcUnsafe2, s.name.s)
-      #localError(s.info, "'$1' is not GC-safe" % s.name.s)
+      #localError(s.info, warnGcUnsafe2, s.name.s)
+      localError(s.info, "'$1' is not GC-safe" % s.name.s)
     if not t.gcUnsafe: s.typ.flags.incl tfGcSafe
 
 proc trackTopLevelStmt*(module: PSym; n: PNode) =

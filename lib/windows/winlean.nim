@@ -664,6 +664,7 @@ const
   WSAEDISCON* = 10101
   WSAENETRESET* = 10052
   WSAETIMEDOUT* = 10060
+  ERROR_NETNAME_DELETED* = 64
 
 proc CreateIoCompletionPort*(FileHandle: THANDLE, ExistingCompletionPort: THANDLE,
                              CompletionKey: DWORD,

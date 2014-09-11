@@ -359,6 +359,32 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   else: internalError("genAssignment: " & $ty.kind)
 
+proc genDeepCopy(p: BProc; dest, src: TLoc) =
+  var ty = skipTypes(dest.t, abstractVarRange)
+  case ty.kind
+  of tyPtr, tyRef, tyProc, tyTuple, tyObject, tyArray, tyArrayConstr:
+    # XXX optimize this
+    linefmt(p, cpsStmts, "#genericDeepCopy((void*)$1, (void*)$2, $3);$n",
+            addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t))
+  of tySequence, tyString:
+    linefmt(p, cpsStmts, "#genericSeqDeepCopy($1, $2, $3);$n",
+            addrLoc(dest), rdLoc(src), genTypeInfo(p.module, dest.t))
+  of tyOpenArray, tyVarargs:
+    linefmt(p, cpsStmts,
+         "#genericDeepCopyOpenArray((void*)$1, (void*)$2, $1Len0, $3);$n",
+         addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t))
+  of tySet:
+    if mapType(ty) == ctArray:
+      useStringh(p.module)
+      linefmt(p, cpsStmts, "memcpy((void*)$1, (NIM_CONST void*)$2, $3);$n",
+              rdLoc(dest), rdLoc(src), toRope(getSize(dest.t)))
+    else:
+      linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
+  of tyPointer, tyChar, tyBool, tyEnum, tyCString,
+     tyInt..tyUInt64, tyRange, tyVar:
+    linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
+  else: internalError("genDeepCopy: " & $ty.kind)
+
 proc getDestLoc(p: BProc, d: var TLoc, typ: PType) =
   if d.k == locNone: getTemp(p, typ, d)
 
@@ -1191,7 +1217,6 @@ proc genOf(p: BProc, n: PNode, d: var TLoc) =
   genOf(p, n.sons[1], n.sons[2].typ, d)
 
 proc genRepr(p: BProc, e: PNode, d: var TLoc) =
-  # XXX we don't generate keep alive info for now here
   var a: TLoc
   initLocExpr(p, e.sons[1], a)
   var t = skipTypes(e.sons[1].typ, abstractVarRange)
@@ -1260,6 +1285,7 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     if op == mHigh: unaryExpr(p, e, d, "($1Len0-1)")
     else: unaryExpr(p, e, d, "$1Len0")
   of tyCString:
+    useStringh(p.module)
     if op == mHigh: unaryExpr(p, e, d, "(strlen($1)-1)")
     else: unaryExpr(p, e, d, "strlen($1)")
   of tyString, tySequence:
@@ -1578,25 +1604,25 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mGetTypeInfo: genGetTypeInfo(p, e, d)
   of mSwap: genSwap(p, e, d)
   of mUnaryLt: 
-    if not (optOverflowCheck in p.options): unaryExpr(p, e, d, "$1 - 1")
+    if optOverflowCheck notin p.options: unaryExpr(p, e, d, "($1 - 1)")
     else: unaryExpr(p, e, d, "#subInt($1, 1)")
   of mPred:
     # XXX: range checking?
-    if not (optOverflowCheck in p.options): binaryExpr(p, e, d, "$1 - $2")
+    if optOverflowCheck notin p.options: binaryExpr(p, e, d, "($1 - $2)")
     else: binaryExpr(p, e, d, "#subInt($1, $2)")
   of mSucc:
     # XXX: range checking?
-    if not (optOverflowCheck in p.options): binaryExpr(p, e, d, "$1 + $2")
+    if optOverflowCheck notin p.options: binaryExpr(p, e, d, "($1 + $2)")
     else: binaryExpr(p, e, d, "#addInt($1, $2)")
   of mInc:
-    if not (optOverflowCheck in p.options):
+    if optOverflowCheck notin p.options:
       binaryStmt(p, e, d, "$1 += $2;$n")
     elif skipTypes(e.sons[1].typ, abstractVar).kind == tyInt64:
       binaryStmt(p, e, d, "$1 = #addInt64($1, $2);$n")
     else:
       binaryStmt(p, e, d, "$1 = #addInt($1, $2);$n")
   of ast.mDec:
-    if not (optOverflowCheck in p.options):
+    if optOverflowCheck notin p.options:
       binaryStmt(p, e, d, "$1 -= $2;$n")
     elif skipTypes(e.sons[1].typ, abstractVar).kind == tyInt64:
       binaryStmt(p, e, d, "$1 = #subInt64($1, $2);$n")
@@ -1659,6 +1685,12 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mParallel:
     let n = semparallel.liftParallel(p.module.module, e)
     expr(p, n, d)
+  of mDeepCopy:
+    var a, b: TLoc
+    let x = if e[1].kind in {nkAddr, nkHiddenAddr}: e[1][0] else: e[1]
+    initLocExpr(p, x, a)
+    initLocExpr(p, e.sons[2], b)
+    genDeepCopy(p, a, b)
   else: internalError(e.info, "genMagicExpr: " & $op)
 
 proc genConstExpr(p: BProc, n: PNode): PRope
@@ -1878,7 +1910,8 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     of skVar, skForVar, skResult, skLet:
       if sfGlobal in sym.flags: genVarPrototype(p.module, sym)
       if sym.loc.r == nil or sym.loc.t == nil:
-        internalError(n.info, "expr: var not init " & sym.name.s)
+        #echo "FAILED FOR PRCO ", p.prc.name.s
+        internalError n.info, "expr: var not init " & sym.name.s & "_" & $sym.id
       if sfThread in sym.flags:
         accessThreadLocalVar(p, sym)
         if emulatedThreadVars(): 
@@ -1889,11 +1922,14 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         putLocIntoDest(p, d, sym.loc)
     of skTemp:
       if sym.loc.r == nil or sym.loc.t == nil:
-        internalError(n.info, "expr: temp not init " & sym.name.s)
+        #echo "FAILED FOR PRCO ", p.prc.name.s
+        #echo renderTree(p.prc.ast, {renderIds})
+        internalError(n.info, "expr: temp not init " & sym.name.s & "_" & $sym.id)
       putLocIntoDest(p, d, sym.loc)
     of skParam:
       if sym.loc.r == nil or sym.loc.t == nil:
-        internalError(n.info, "expr: param not init " & sym.name.s)
+        #echo "FAILED FOR PRCO ", p.prc.name.s
+        internalError(n.info, "expr: param not init " & sym.name.s & "_" & $sym.id)
       putLocIntoDest(p, d, sym.loc)
     else: internalError(n.info, "expr(" & $sym.kind & "); unknown symbol")
   of nkNilLit:

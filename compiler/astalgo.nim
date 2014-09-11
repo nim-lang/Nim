@@ -116,17 +116,16 @@ proc iiTablePut*(t: var TIITable, key, val: int)
 
 # implementation
 
-proc skipConv*(n: PNode): PNode = 
-  case n.kind
-  of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
-    result = n.sons[0]
-  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
-    result = n.sons[1]
-  else: result = n
-
-proc skipConvTakeType*(n: PNode): PNode =
-  result = n.skipConv
-  result.typ = n.typ
+proc skipConvAndClosure*(n: PNode): PNode =
+  result = n
+  while true:
+    case result.kind
+    of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64,
+       nkClosure:
+      result = result.sons[0]
+    of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+      result = result.sons[1]
+    else: break
 
 proc sameValue*(a, b: PNode): bool = 
   result = false
@@ -379,29 +378,30 @@ proc symToYaml(n: PSym, indent: int = 0, maxRecDepth: int = - 1): PRope =
   var marker = initIntSet()
   result = symToYamlAux(n, marker, indent, maxRecDepth)
 
-proc debugTree(n: PNode, indent: int, maxRecDepth: int): PRope
-proc debugType(n: PType): PRope = 
+proc debugTree(n: PNode, indent: int, maxRecDepth: int; renderType=false): PRope
+proc debugType(n: PType, maxRecDepth=100): PRope = 
   if n == nil: 
     result = toRope("null")
-  else: 
+  else:
     result = toRope($n.kind)
     if n.sym != nil: 
       app(result, " ")
       app(result, n.sym.name.s)
-    if (n.kind != tyString) and (sonsLen(n) > 0): 
+    if (n.kind != tyString) and (sonsLen(n) > 0) and maxRecDepth != 0:
       app(result, "(")
-      for i in countup(0, sonsLen(n) - 1): 
+      for i in countup(0, sonsLen(n) - 1):
         if i > 0: app(result, ", ")
-        if n.sons[i] == nil: 
+        if n.sons[i] == nil:
           app(result, "null")
-        else: 
-          app(result, debugType(n.sons[i])) 
-      if n.kind == tyObject and n.n != nil: 
+        else:
+          app(result, debugType(n.sons[i], maxRecDepth-1))
+      if n.kind == tyObject and n.n != nil:
         app(result, ", node: ")
-        app(result, debugTree(n.n, 2, 100))
+        app(result, debugTree(n.n, 2, maxRecDepth-1, renderType=true))
       app(result, ")")
 
-proc debugTree(n: PNode, indent: int, maxRecDepth: int): PRope = 
+proc debugTree(n: PNode, indent: int, maxRecDepth: int;
+               renderType=false): PRope = 
   if n == nil: 
     result = toRope("null")
   else: 
@@ -425,6 +425,8 @@ proc debugTree(n: PNode, indent: int, maxRecDepth: int): PRope =
             [istr, toRope(n.sym.name.s), toRope(n.sym.id)])
         #     [istr, symToYaml(n.sym, indent, maxRecDepth), 
         #     toRope(n.sym.id)])
+        if renderType and n.sym.typ != nil:
+          appf(result, ",$N$1\"typ\": $2", [istr, debugType(n.sym.typ, 2)])
       of nkIdent: 
         if n.ident != nil: 
           appf(result, ",$N$1\"ident\": $2", [istr, makeYamlString(n.ident.s)])
@@ -436,7 +438,7 @@ proc debugTree(n: PNode, indent: int, maxRecDepth: int): PRope =
           for i in countup(0, sonsLen(n) - 1): 
             if i > 0: app(result, ",")
             appf(result, "$N$1$2", [spaces(indent + 4), debugTree(n.sons[i], 
-                indent + 4, maxRecDepth - 1)])
+                indent + 4, maxRecDepth - 1, renderType)])
           appf(result, "$N$1]", [istr])
     appf(result, ",$N$1\"info\": $2", [istr, lineInfoToStr(n.info)])
     appf(result, "$N$1}", [spaces(indent)])

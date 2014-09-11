@@ -10,6 +10,25 @@
 # This is the JavaScript code generator.
 # Soon also a Luajit code generator. ;-)
 
+discard """
+The JS code generator contains only 2 tricks:
+
+Trick 1
+-------
+Some locations (for example 'var int') require "fat pointers" (``etyBaseIndex``)
+which are pairs (array, index). The derefence operation is then 'array[index]'.
+Check ``mapType`` for the details.
+
+Trick 2
+-------
+It is preferable to generate '||' and '&&' if possible since that is more
+idiomatic and hence should be friendlier for the JS JIT implementation. However
+code like ``foo and (let bar = baz())`` cannot be translated this way. Instead
+the expressions need to be transformed into statements. ``isSimpleExpr``
+implements the required case distinction.
+"""
+
+
 import
   ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp,
   options, nversion, nimsets, msgs, crc, bitsets, idents, lists, types, os,
@@ -833,8 +852,8 @@ proc genSwap(p: PProc, n: PNode) =
                  "local $1 = $2; $2 = $3; $3 = $1;$n", [
                  tmp, a.address, b.address])
     tmp = tmp2
-  appf(p.body, "var $1 = $2; $2 = $3; $3 = $1" | 
-               "local $1 = $2; $2 = $3; $3 = $1", [tmp, a.res, b.res])
+  appf(p.body, "var $1 = $2; $2 = $3; $3 = $1;" |
+               "local $1 = $2; $2 = $3; $3 = $1;", [tmp, a.res, b.res])
 
 proc getFieldPosition(f: PNode): int =
   case f.kind
@@ -881,14 +900,15 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
     a, b: TCompRes
     first: BiggestInt
   r.typ = etyBaseIndex
-  gen(p, n.sons[0], a)
-  gen(p, n.sons[1], b)
+  let m = if n.kind == nkHiddenAddr: n.sons[0] else: n
+  gen(p, m.sons[0], a)
+  gen(p, m.sons[1], b)
   internalAssert a.typ != etyBaseIndex and b.typ != etyBaseIndex
   r.address = a.res
-  var typ = skipTypes(n.sons[0].typ, abstractPtrs)
+  var typ = skipTypes(m.sons[0].typ, abstractPtrs)
   if typ.kind in {tyArray, tyArrayConstr}: first = firstOrd(typ.sons[0])
   else: first = 0
-  if optBoundsCheck in p.options and not isConstExpr(n.sons[1]): 
+  if optBoundsCheck in p.options and not isConstExpr(m.sons[1]):
     useMagic(p, "chckIndx")
     r.res = ropef("chckIndx($1, $2, $3.length)-$2", 
                   [b.res, toRope(first), a.res])
@@ -1321,7 +1341,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mLengthSeq, mLengthOpenArray, mLengthArray:
     unaryExpr(p, n, r, "", "$1.length")
   of mHigh:
-    if skipTypes(n.sons[0].typ, abstractVar).kind == tyString:
+    if skipTypes(n.sons[1].typ, abstractVar).kind == tyString:
       unaryExpr(p, n, r, "", "($1.length-2)")
     else:
       unaryExpr(p, n, r, "", "($1.length-1)")
@@ -1351,7 +1371,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mEcho: genEcho(p, n, r)
   of mSlurp, mStaticExec:
     localError(n.info, errXMustBeCompileTime, n.sons[0].sym.name.s)
-  of mCopyStr: binaryExpr(p, n, r, "", "($1.slice($2,-1))")
+  of mCopyStr: binaryExpr(p, n, r, "", "($1.slice($2))")
   of mCopyStrLast: ternaryExpr(p, n, r, "", "($1.slice($2, ($3)+1).concat(0))")
   of mNewString: unaryExpr(p, n, r, "mnewString", "mnewString($1)")
   of mNewStringOfCap: unaryExpr(p, n, r, "mnewString", "mnewString(0)")    
@@ -1532,6 +1552,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     genSym(p, n, r)
   of nkCharLit..nkInt64Lit:
     r.res = toRope(n.intVal)
+    r.kind = resExpr
   of nkNilLit:
     if isEmptyType(n.typ):
       discard
@@ -1539,8 +1560,10 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       r.typ = etyBaseIndex
       r.address = toRope"null" | toRope"nil"
       r.res = toRope"0"
+      r.kind = resExpr
     else:
       r.res = toRope"null" | toRope"nil"
+      r.kind = resExpr
   of nkStrLit..nkTripleStrLit:
     if skipTypes(n.typ, abstractVarRange).kind == tyString: 
       useMagic(p, "cstrToNimstr")
@@ -1556,6 +1579,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       if f > 0.0: r.res = toRope"Infinity"
       else: r.res = toRope"-Infinity"
     else: r.res = toRope(f.toStrMaxPrecision)
+    r.kind = resExpr
   of nkCallKinds:
     if (n.sons[0].kind == nkSym) and (n.sons[0].sym.magic != mNone): 
       genMagic(p, n, r)

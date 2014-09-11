@@ -81,6 +81,8 @@ proc notFoundError*(c: PContext, n: PNode, errors: seq[string]) =
   if c.inCompilesContext > 0: 
     # fail fast:
     globalError(n.info, errTypeMismatch, "")
+  if errors.len == 0:
+    localError(n.info, errExprXCannotBeCalled, n[0].renderTree)
   var result = msgKindToString(errTypeMismatch)
   add(result, describeArgs(c, n, 1))
   add(result, ')')

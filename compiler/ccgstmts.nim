@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -24,10 +24,29 @@ proc registerGcRoot(p: BProc, v: PSym) =
     linefmt(p.module.initProc, cpsStmts,
       "#nimRegisterGlobalMarker($1);$n", prc)
 
+proc isAssignedImmediately(n: PNode): bool {.inline.} =
+  if n.kind == nkEmpty: return false
+  if isInvalidReturnType(n.typ):
+    # var v = f()
+    # is transformed into: var v;  f(addr v)
+    # where 'f' **does not** initialize the result!
+    return false
+  result = true
+
 proc genVarTuple(p: BProc, n: PNode) = 
   var tup, field: TLoc
   if n.kind != nkVarTuple: internalError(n.info, "genVarTuple")
   var L = sonsLen(n)
+
+  # if we have a something that's been captured, use the lowering instead:
+  var useLowering = false
+  for i in countup(0, L-3):
+    if n[i].kind != nkSym:
+      useLowering = true; break
+  if useLowering:
+    genStmts(p, lowerTupleUnpacking(n, p.prc))
+    return
+
   genLineDir(p, n)
   initLocExpr(p, n.sons[L-1], tup)
   var t = tup.t
@@ -40,7 +59,7 @@ proc genVarTuple(p: BProc, n: PNode) =
       registerGcRoot(p, v)
     else:
       assignLocalVar(p, v)
-      initLocalVar(p, v, immediateAsgn=true)
+      initLocalVar(p, v, immediateAsgn=isAssignedImmediately(n[L-1]))
     initLoc(field, locExpr, t.sons[i], tup.s)
     if t.kind == tyTuple: 
       field.r = ropef("$1.Field$2", [rdLoc(tup), toRope(i)])
@@ -146,11 +165,11 @@ proc genBreakState(p: BProc, n: PNode) =
   #  lineF(p, cpsStmts, "if (($1) < 0) break;$n", [rdLoc(a)])
 
 proc genVarPrototypeAux(m: BModule, sym: PSym)
+
 proc genSingleVar(p: BProc, a: PNode) =
   var v = a.sons[0].sym
   if sfCompileTime in v.flags: return
   var targetProc = p
-  var immediateAsgn = a.sons[2].kind != nkEmpty
   if sfGlobal in v.flags:
     if sfPure in v.flags:
       # v.owner.kind != skModule:
@@ -170,9 +189,9 @@ proc genSingleVar(p: BProc, a: PNode) =
     registerGcRoot(p, v)
   else:
     assignLocalVar(p, v)
-    initLocalVar(p, v, immediateAsgn)
+    initLocalVar(p, v, isAssignedImmediately(a.sons[2]))
 
-  if immediateAsgn:
+  if a.sons[2].kind != nkEmpty:
     genLineDir(targetProc, a)
     loadInto(targetProc, a.sons[0], a.sons[2], v.loc)
 

@@ -9,7 +9,7 @@
 
 ## Implements Nimrod's 'spawn'.
 
-when not defined(NimString): 
+when not declared(NimString): 
   {.error: "You must not import this module explicitly".}
 
 {.push stackTrace:off.}

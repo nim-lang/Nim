@@ -8,7 +8,7 @@ type
     x, y: int
     p: pointer
     
-proc destruct(o: var TMyObj) {.destructor.} =
+proc destroy(o: var TMyObj) {.override.} =
   if o.p != nil: dealloc o.p
   
 proc open: TMyObj =

@@ -333,11 +333,5 @@ proc VERSION*(X: var sdl.Tversion) =
   X.patch = PATCHLEVEL
 
 
-when not (defined(Workaround_RenderText_Solid)): 
-  proc RenderText_Solid*(font: PFont, text: cstring, fg: TColor): PSurface{.
-      cdecl, importc: "TTF_RenderText_Solid", dynlib: ttfLibName.}
-else: 
-  proc RenderText_Solid(font: PFont, text: cstring, fg: TColor): PSurface = 
-    var Black: TColor         # initialized to zero
-    result = RenderText_Shaded(font, text, fg, Black)
-
+proc RenderText_Solid*(font: PFont, text: cstring, fg: TColor): PSurface{.
+    cdecl, importc: "TTF_RenderText_Solid", dynlib: ttfLibName.}

@@ -58,8 +58,8 @@ proc newRope(data: string): PRope =
   result.data = data
 
 var 
-  cache: PRope                # the root of the cache tree
-  N: PRope                    # dummy rope needed for splay algorithm
+  cache {.threadvar.}: PRope     # the root of the cache tree
+  N {.threadvar.}: PRope         # dummy rope needed for splay algorithm
 
 when countCacheMisses:
   var misses, hits: int

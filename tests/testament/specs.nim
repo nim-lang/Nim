@@ -53,7 +53,7 @@ const
   targetToExt*: array[TTarget, string] = ["c", "cpp", "m", "js"]
   targetToCmd*: array[TTarget, string] = ["c", "cpp", "objc", "js"]
 
-when not defined(parseCfgBool):
+when not declared(parseCfgBool):
   # candidate for the stdlib:
   proc parseCfgBool(s: string): bool =
     case normalize(s)

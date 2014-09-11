@@ -18,6 +18,24 @@ News
   - ``pas2nim`` moved into its own repository and is now a Babel package.
   - ``system.$`` for floating point types now produces a human friendly string
     representation.
+  - ``uri.TUrl`` as well as the ``parseurl`` module are now deprecated in favour
+    of the new ``TUri`` type in the ``uri`` module.
+  - The ``destructor`` pragma has been deprecated. Use the ``override`` pragma
+    instead. The destructor's name has to be ``destroy`` now.
+  - ``lambda`` is not a keyword anymore.
+  - **system.defined has been split into system.defined and system.declared**.
+    You have to use ``--symbol`` to declare new conditional symbols that can be
+    set via ``--define``.
+  - ``--threadanalysis:on`` is now the default. To make your program compile
+    you can disable it but this is only a temporary solution as this option
+    will disappear soon!
+  
+
+  Language Additions
+  ------------------
+
+  - There is a new ``parallel`` statement for safe fork&join parallel computing.
+  
 
   Library Additions
   -----------------
@@ -26,6 +44,9 @@ News
   - Added module ``threadpool``.
   - ``sequtils.distnct`` has been renamed to ``sequtils.deduplicate``.
   - Added ``algorithm.reversed``
+  - Added ``uri.combine`` and ``uri.parseUri``.
+  - Some sockets procedures now support a ``SafeDisconn`` flag which causes 
+    them to handle disconnection errors and not raise them.
 
 
 2014-04-21 Version 0.9.4 released

@@ -2,21 +2,25 @@ version 0.9.6
 =============
 
 - scopes are still broken for generic instantiation!
-- start experimental branch
-- overloading of '='; general lift mechanism
+- implicit deref for parameter matching
 
 Concurrency
 -----------
 
-- 'gcsafe' inferrence needs to be fixed
+- 'deepCopy' needs to be instantiated for
+  generics *when the type is constructed*
+- test 'deepCopy'
+- overloading of '='; general lift mechanism
+
 - the disjoint checker needs to deal with 'a = spawn f(); g = spawn f()'
-- implement 'deepCopy' builtin
 - implement 'foo[1..4] = spawn(f[4..7])'
-- support for exception propagation
-- Minor: The copying of the 'ref Promise' into the thead local storage only
+- document the new 'spawn' and 'parallel' statements
+
+Low priority:
+- support for exception propagation? (hard to implement)
+- the copying of the 'ref Promise' into the thead local storage only
   happens to work due to the write barrier's implementation
 - implement lock levels --> first without the more complex race avoidance
-- document the new 'spawn' and 'parallel' statements
 
 
 Misc
@@ -27,8 +31,6 @@ Misc
 - fix the tuple unpacking in lambda bug
 - make tuple unpacking work in a non-var/let context
 - special rule for ``[]=``
-- ``=`` should be overloadable; requires specialization for ``=``; general
-  lift mechanism in the compiler is already implemented for 'fields'
 - built-in 'getImpl'
 - type API for macros; make 'spawn' a macro
 - markAndSweepGC should expose an API for fibers
@@ -57,13 +59,9 @@ version 0.9.x
 - implement 'bits' pragmas
 - we need a magic thisModule symbol
 - provide --nilChecks:on|off
-- fix closures/lambdalifting
 - ensure (ref T)(a, b) works as a type conversion and type constructor
 - optimize 'genericReset'; 'newException' leads to code bloat
 - stack-less GC
-- implicit deref for parameter matching
-
-- VM: optimize opcAsgnStr
 
 
 version 0.9.X

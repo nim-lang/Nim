@@ -5,7 +5,8 @@ discard """
 """
 import sockets, asyncio, strutils, times
 
-var disp = newDispatcher()
+var disp {.threadvar.}: PDispatcher
+disp = newDispatcher()
 var msgCount = 0
 
 when defined(ssl):

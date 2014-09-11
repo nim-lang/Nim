@@ -39,7 +39,7 @@ var
   c_stderr {.importc: "stderr", nodecl.}: C_TextFileStar
 
 # constants faked as variables:
-when not defined(SIGINT):
+when not declared(SIGINT):
   when NoFakeVars:
     when defined(windows):
       const
@@ -132,7 +132,7 @@ proc c_realloc(p: pointer, newsize: int): pointer {.
   importc: "realloc", header: "<stdlib.h>".}
 
 when hostOS != "standalone":
-  when not defined(errno):
+  when not declared(errno):
     when defined(NimrodVM):
       var vmErrnoWrapper {.importc.}: ptr cint
       template errno: expr = 

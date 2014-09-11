@@ -68,11 +68,9 @@ proc compileCCode*(ccode: string) =
     setupEnvironment()
   discard compileString(gTinyC, ccode)
   
-proc run*() =
-  var a: array[0..1, cstring]
-  a[0] = ""
-  a[1] = ""
-  var err = tinyc.run(gTinyC, 0'i32, cast[cstringArray](addr(a))) != 0'i32
+proc run*(args: string) =
+  var s = @[cstring(gProjectName)] & map(split(args), proc(x: string): cstring = cstring(x))
+  var err = tinyc.run(gTinyC, cint(len(s)), cast[cstringArray](addr(s[0]))) != 0'i32
   closeCCState(gTinyC)
   if err: rawMessage(errExecutionOfProgramFailed, "")
 

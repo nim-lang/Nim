@@ -24,7 +24,7 @@ proc execCode(code: string): string =
     f.close()
     result = osproc.execProcess(
       "$# $# --verbosity:0 --hint[Conf]:off temp.nim" % [nimExe, runCmd],
-      {poStdErrToStdOut})
+      options = {poStdErrToStdOut})
   else:
     result = "cannot open file 'temp.nim'"
 

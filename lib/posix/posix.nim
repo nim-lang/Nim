@@ -90,7 +90,7 @@ type
     d_ino*: Tino  ## File serial number.
     d_name*: array [0..255, char] ## Name of entry.
 
-  Tflock* {.importc: "flock", final, pure,
+  Tflock* {.importc: "struct flock", final, pure,
             header: "<fcntl.h>".} = object ## flock type
     l_type*: cshort   ## Type of lock; F_RDLCK, F_WRLCK, F_UNLCK.
     l_whence*: cshort ## Flag for starting offset.
@@ -1578,6 +1578,16 @@ var
     ## Terminates a record (if supported by the protocol).
   MSG_OOB* {.importc, header: "<sys/socket.h>".}: cint
     ## Out-of-band data.
+
+
+when defined(linux):
+  var
+    MAP_POPULATE* {.importc, header: "<sys/mman.h>".}: cint
+      ## Populate (prefault) page tables for a mapping.
+else:
+  var
+    MAP_POPULATE*: cint = 0
+
 
 when defined(macosx):
   var

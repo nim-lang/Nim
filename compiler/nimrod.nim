@@ -58,7 +58,7 @@ proc handleCmdLine() =
     if msgs.gErrorCounter == 0:
       when hasTinyCBackend:
         if gCmd == cmdRun:
-          tccgen.run()
+          tccgen.run(service.arguments)
       if optRun in gGlobalOptions:
         if gCmd == cmdCompileToJS:
           var ex: string
@@ -79,7 +79,7 @@ proc handleCmdLine() =
           var ex = quoteShell(binPath)
           execExternalProgram(ex & ' ' & service.arguments)
 
-when defined(GC_setMaxPause):
+when declared(GC_setMaxPause):
   GC_setMaxPause 2_000
 
 when compileOption("gc", "v2") or compileOption("gc", "refc"):

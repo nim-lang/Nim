@@ -38,11 +38,11 @@ proc chckRangeF(x, a, b: float): float {.inline, compilerproc, gcsafe.}
 proc chckNil(p: pointer) {.noinline, compilerproc, gcsafe.}
 
 var
-  framePtr {.rtlThreadVar.}: PFrame
-  excHandler {.rtlThreadVar.}: PSafePoint
+  framePtr {.threadvar.}: PFrame
+  excHandler {.threadvar.}: PSafePoint
     # list of exception handlers
     # a global variable for the root of all try blocks
-  currException {.rtlThreadVar.}: ref E_Base
+  currException {.threadvar.}: ref E_Base
 
 proc popFrame {.compilerRtl, inl.} =
   framePtr = framePtr.prev
@@ -307,7 +307,7 @@ when not defined(noSignalHandler):
         action("SIGBUS: Illegal storage access. (Attempt to read from nil?)\n")
       else:
         block platformSpecificSignal:
-          when defined(SIGPIPE):
+          when declared(SIGPIPE):
             if s == SIGPIPE:
               action("SIGPIPE: Pipe closed.\n")
               break platformSpecificSignal
@@ -336,7 +336,7 @@ when not defined(noSignalHandler):
     c_signal(SIGFPE, signalHandler)
     c_signal(SIGILL, signalHandler)
     c_signal(SIGBUS, signalHandler)
-    when defined(SIGPIPE):
+    when declared(SIGPIPE):
       c_signal(SIGPIPE, signalHandler)
 
   registerSignalHandler() # call it in initialization section
