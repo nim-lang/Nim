@@ -354,7 +354,6 @@ when hostOS == "windows":
                          addr(t), 0'i32, dummyThreadId)
     if t.sys <= 0:
       raise newException(ResourceExhaustedError, "cannot create thread")
-
 else:
   proc createThread*[TArg](t: var TThread[TArg], 
                            tp: proc (arg: TArg) {.thread.}, 

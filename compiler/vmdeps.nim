@@ -12,11 +12,11 @@ import ast, types, msgs, osproc, streams, options
 proc readOutput(p: Process): string =
   result = ""
   var output = p.outputStream
-  discard p.waitForExit
   while not output.atEnd:
     result.add(output.readLine)
     result.add("\n")
   result.setLen(result.len - "\n".len)
+  discard p.waitForExit
 
 proc opGorge*(cmd, input: string): string =
   var p = startCmd(cmd)

@@ -949,7 +949,7 @@ proc liftLambdas*(fn: PSym, body: PNode): PNode =
       discard transformOuterProcBody(o, body, initIter(fn))
       result = ex
     finishEnvironments(o)
-    #if fn.name.s == "cbOuter":
+    #if fn.name.s == "parseLong":
     #  echo rendertree(result, {renderIds})
 
 proc liftLambdasForTopLevel*(module: PSym, body: PNode): PNode =
