@@ -91,10 +91,10 @@ import sockets, os
 ##      getSocket(s).accept(client)
 
 when defined(windows):
-  from winlean import TimeVal, SocketHandle, TFdSet, FD_ZERO, FD_SET,
+  from winlean import TimeVal, SocketHandle, fdSet, FD_ZERO, TFdSet,
     fdSet, FD_ISSET, select
 else:
-  from posix import TimeVal, SocketHandle, TFdSet, FD_ZERO, FD_SET,
+  from posix import TimeVal, SocketHandle, fdSet, FD_ZERO, TFdSet,
     fdSet, FD_ISSET, select
 
 type
