@@ -80,7 +80,7 @@ when defined(Nimdoc): # only for proper documentation:
       ## search patch components (as in PATH), such as ':' for POSIX or ';' for
       ## Windows.
 
-    FileSystemCaseSensitive* = True
+    FileSystemCaseSensitive* = true
       ## True if the file system is case sensitive, false otherwise. Used by
       ## `cmpPaths` to compare filenames properly.
 

@@ -6,6 +6,24 @@
 #    distribution, for details about the copyright.
 #
 
+## This module implement an asynchronous FTP client.
+##
+## Examples
+## --------
+##
+## .. code-block::nim
+##
+##      var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
+##      proc main(ftp: AsyncFtpClient) {.async.} =
+##        await ftp.connect()
+##        echo await ftp.pwd()
+##        echo await ftp.listDirs()
+##        await ftp.store("payload.jpg", "payload.jpg")
+##        await ftp.retrFile("payload.jpg", "payload2.jpg")
+##        echo("Finished")
+##
+##      waitFor main(ftp)
+
 import asyncdispatch, asyncnet, strutils, parseutils, os, times
 
 from ftpclient import FtpBaseObj, ReplyError, FtpEvent

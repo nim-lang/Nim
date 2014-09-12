@@ -48,6 +48,19 @@
 ##    
 ##   echo(postContent("http://validator.w3.org/check", headers, body))
 ##
+## Asynchronous HTTP requests
+## ==========================
+##
+## You simply have to create a new instance of the ``AsyncHttpClient`` object.
+## You may then use ``await`` on the functions defined for that object.
+## Keep in mind that the following code needs to be inside an asynchronous
+## procedure.
+##
+## .. code-block::nim
+##
+##    var client = newAsyncHttpClient()
+##    var resp = await client.request("http://google.com")
+##
 ## SSL/TLS support
 ## ===============
 ## This requires the OpenSSL library, fortunately it's widely used and installed
