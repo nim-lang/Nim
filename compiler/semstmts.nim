@@ -354,7 +354,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       def = semExprWithType(c, a.sons[length-1], {efAllowDestructor})
       if typ != nil:
         if typ.isMetaType:
-          def = inferWithMetaType(c, typ, def)
+          def = inferWithMetatype(c, typ, def)
           typ = def.typ
         else:
           # BUGFIX: ``fitNode`` is needed here!
