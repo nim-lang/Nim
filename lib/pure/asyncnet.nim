@@ -10,8 +10,20 @@
 ## This module implements a high-level asynchronous sockets API based on the
 ## asynchronous dispatcher defined in the ``asyncdispatch`` module.
 ##
-## Example
-## =======
+## SSL
+## ---
+##
+## SSL can be enabled by compiling with the ``-d:ssl`` flag.
+##
+## You must create a new SSL context with the ``newContext`` function defined
+## in the ``net`` module. You may then call ``wrapSocket`` on your socket using
+## the newly created SSL context to get an SSL socket.
+##
+## Examples
+## --------
+##
+## Chat server
+## ^^^^^^^^^^^
 ## 
 ## The following example demonstrates a simple chat server.
 ##
@@ -41,8 +53,6 @@
 ##   asyncCheck serve()
 ##   runForever()
 ##
-##
-## **Note:** This module is still largely experimental.
 
 import asyncdispatch
 import rawsockets

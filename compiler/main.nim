@@ -299,6 +299,7 @@ proc mainCommand* =
     else:
       rawMessage(errInvalidCommandX, command)
   of "doc":
+    wantMainModule()
     gCmd = cmdDoc
     loadConfigs(DocConfig)
     commandDoc()
@@ -316,6 +317,7 @@ proc mainCommand* =
     loadConfigs(DocTexConfig)
     commandRst2TeX()
   of "jsondoc":
+    wantMainModule()
     gCmd = cmdDoc
     loadConfigs(DocConfig)
     wantMainModule()

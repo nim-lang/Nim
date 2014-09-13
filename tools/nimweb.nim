@@ -55,8 +55,8 @@ include "website.tmpl"
 # ------------------------- configuration file -------------------------------
 
 const
-  Version = "0.7"
-  Usage = "nimweb - Nim Website Generator Version " & version & """
+  version = "0.7"
+  usage = "nimweb - Nim Website Generator Version " & version & """
 
   (c) 2012 Andreas Rumpf
 Usage:
@@ -117,10 +117,10 @@ proc parseCmdLine(c: var TConfigData) =
     of cmdLongOption, cmdShortOption:
       case normalize(key)
       of "help", "h": 
-        stdout.write(Usage)
+        stdout.write(usage)
         quit(0)
       of "version", "v": 
-        stdout.write(Version & "\n")
+        stdout.write(version & "\n")
         quit(0)
       of "o", "output": c.outdir = val
       of "parallelbuild":
@@ -133,9 +133,9 @@ proc parseCmdLine(c: var TConfigData) =
         var idx = val.find('=')
         if idx < 0: quit("invalid command line")
         c.vars[substr(val, 0, idx-1)] = substr(val, idx+1)
-      else: quit(Usage)
+      else: quit(usage)
     of cmdEnd: break
-  if c.infile.len == 0: quit(Usage)
+  if c.infile.len == 0: quit(usage)
 
 proc walkDirRecursively(s: var seq[string], root, ext: string) =
   for k, f in walkDir(root):
@@ -250,9 +250,9 @@ proc buildDocSamples(c: var TConfigData, destPath: string) =
   ## it didn't make much sense to integrate into the existing generic
   ## documentation builders.
   const src = "doc"/"docgen_sample.nim"
-  exec("nimrod doc $# -o:$# $#" %
+  exec("nim doc $# -o:$# $#" %
     [c.nimrodArgs, destPath / "docgen_sample.html", src])
-  exec("nimrod doc2 $# -o:$# $#" %
+  exec("nim doc2 $# -o:$# $#" %
     [c.nimrodArgs, destPath / "docgen_sample2.html", src])
 
 proc buildDoc(c: var TConfigData, destPath: string) =
@@ -261,30 +261,30 @@ proc buildDoc(c: var TConfigData, destPath: string) =
     commands = newSeq[string](len(c.doc) + len(c.srcdoc) + len(c.srcdoc2))
     i = 0
   for d in items(c.doc):
-    commands[i] = "nimrod rst2html $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
+    commands[i] = "nim rst2html $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
       [c.nimrodArgs, c.gitCommit,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
   for d in items(c.srcdoc):
-    commands[i] = "nimrod doc $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
+    commands[i] = "nim doc $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
       [c.nimrodArgs, c.gitCommit,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
   for d in items(c.srcdoc2):
-    commands[i] = "nimrod doc2 $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
+    commands[i] = "nim doc2 $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
       [c.nimrodArgs, c.gitCommit,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
 
   mexec(commands, c.numProcessors)
-  exec("nimrod buildIndex -o:$1/theindex.html $1" % [destPath])
+  exec("nim buildIndex -o:$1/theindex.html $1" % [destPath])
 
 proc buildPdfDoc(c: var TConfigData, destPath: string) =
   if os.execShellCmd("pdflatex -version") != 0:
     echo "pdflatex not found; no PDF documentation generated"
   else:
     for d in items(c.pdf):
-      exec("nimrod rst2tex $# $#" % [c.nimrodArgs, d])
+      exec("nim rst2tex $# $#" % [c.nimrodArgs, d])
       # call LaTeX twice to get cross references right:
       exec("pdflatex " & changeFileExt(d, "tex"))
       exec("pdflatex " & changeFileExt(d, "tex"))
@@ -300,9 +300,14 @@ proc buildPdfDoc(c: var TConfigData, destPath: string) =
 
 proc buildAddDoc(c: var TConfigData, destPath: string) =
   # build additional documentation (without the index):
+<<<<<<< HEAD
   var commands = newSeq[string](c.webdoc.len)
   for i, doc in pairs(c.webdoc):
     commands[i] = "nimrod doc $# --docSeeSrcUrl:$# -o:$# $#" %
+=======
+  for d in items(c.webdoc):
+    exec("nim doc $# --docSeeSrcUrl:$# -o:$# $#" %
+>>>>>>> 0047172274a73c681f619f5cd60aaad7109f694d
       [c.nimrodArgs, c.gitCommit,
       destPath / changeFileExt(splitFile(doc).name, "html"), doc]
   mexec(commands, c.numProcessors)
@@ -387,12 +392,12 @@ proc buildNewsRss(c: var TConfigData, destPath: string) =
   generateRss(destFilename, parseNewsTitles(srcFilename))
 
 proc buildJS(destPath: string) =
-  exec("nimrod js -d:release --out:$1 web/babelpkglist.nim" %
+  exec("nim js -d:release --out:$1 web/babelpkglist.nim" %
       [destPath / "babelpkglist.js"])
 
 proc main(c: var TConfigData) =
   const
-    cmd = "nimrod rst2html --compileonly $1 -o:web/$2.temp web/$2.txt"
+    cmd = "nim rst2html --compileonly $1 -o:web/$2.temp web/$2.txt"
   if c.ticker.len > 0:
     try:
       c.ticker = readFile("web" / c.ticker)

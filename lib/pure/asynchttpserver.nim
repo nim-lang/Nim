@@ -9,7 +9,20 @@
 
 ## This module implements a high performance asynchronous HTTP server.
 ##
-## **Note:** This module is still largely experimental.
+## Examples
+## --------
+##
+## This example will create an HTTP server on port 8080. The server will
+## respond to all requests with a ``200 OK`` response code and "Hello World"
+## as the response body.
+##
+## .. code-block::nim
+##    var server = newAsyncHttpServer()
+##    proc cb(req: TRequest) {.async.} =
+##      await req.respond(Http200, "Hello World")
+##
+##    asyncCheck server.serve(Port(8080), cb)
+##    runForever()
 
 import strtabs, asyncnet, asyncdispatch, parseutils, uri, strutils
 type
@@ -52,6 +65,7 @@ proc `==`*(protocol: tuple[orig: string, major, minor: int],
   result = protocol.major == major and protocol.minor == minor
 
 proc newAsyncHttpServer*(): PAsyncHttpServer =
+  ## Creates a new ``AsyncHttpServer`` instance.
   new result
 
 proc addHeaders(msg: var string, headers: PStringTable) =

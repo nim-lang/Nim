@@ -22,8 +22,6 @@
 ##
 ##  run(handleRequest, TPort(80))
 ##
-## **Warning:** The API of this module is unstable, and therefore is subject
-## to change.
 
 import parseutils, strutils, os, osproc, strtabs, streams, sockets, asyncio
 
@@ -90,14 +88,14 @@ proc serveFile*(client: TSocket, filename: string) =
     headers(client, filename)
     const bufSize = 8000 # != 8K might be good for memory manager
     var buf = alloc(bufsize)
-    while True:
+    while true:
       var bytesread = readBuffer(f, buf, bufsize)
       if bytesread > 0:
         var byteswritten = send(client, buf, bytesread)
         if bytesread != bytesWritten:
           dealloc(buf)
           close(f)
-          OSError(OSLastError())
+          raiseOSError(osLastError())
       if bytesread != bufSize: break
     dealloc(buf)
     close(f)
@@ -228,9 +226,9 @@ proc open*(s: var TServer, port = TPort(80), reuseAddr = false) =
   ## creates a new server at port `port`. If ``port == 0`` a free port is
   ## acquired that can be accessed later by the ``port`` proc.
   s.socket = socket(AF_INET)
-  if s.socket == InvalidSocket: OSError(OSLastError())
+  if s.socket == invalidSocket: raiseOSError(osLastError())
   if reuseAddr:
-    s.socket.setSockOpt(OptReuseAddr, True)
+    s.socket.setSockOpt(OptReuseAddr, true)
   bindAddr(s.socket, port)
   listen(s.socket)
 
@@ -238,7 +236,7 @@ proc open*(s: var TServer, port = TPort(80), reuseAddr = false) =
     s.port = getSockName(s.socket)
   else:
     s.port = port
-  s.client = InvalidSocket
+  s.client = invalidSocket
   s.reqMethod = ""
   s.body = ""
   s.path = ""
@@ -346,7 +344,7 @@ proc next*(s: var TServer) =
   # XXX we ignore "HTTP/1.1" etc. for now here
   var query = 0
   var last = i
-  while last < data.len and data[last] notin whitespace: 
+  while last < data.len and data[last] notin Whitespace: 
     if data[last] == '?' and query == 0: query = last
     inc(last)
   if query > 0:
@@ -466,7 +464,7 @@ proc nextAsync(s: PAsyncHTTPServer) =
   # XXX we ignore "HTTP/1.1" etc. for now here
   var query = 0
   var last = i
-  while last < data.len and data[last] notin whitespace: 
+  while last < data.len and data[last] notin Whitespace: 
     if data[last] == '?' and query == 0: query = last
     inc(last)
   if query > 0:
@@ -483,7 +481,7 @@ proc asyncHTTPServer*(handleRequest: proc (server: PAsyncHTTPServer, client: TSo
   ## Creates an Asynchronous HTTP server at ``port``.
   var capturedRet: PAsyncHTTPServer
   new(capturedRet)
-  capturedRet.asyncSocket = AsyncSocket()
+  capturedRet.asyncSocket = asyncSocket()
   capturedRet.asyncSocket.handleAccept =
     proc (s: PAsyncSocket) =
       nextAsync(capturedRet)
@@ -491,7 +489,7 @@ proc asyncHTTPServer*(handleRequest: proc (server: PAsyncHTTPServer, client: TSo
                                capturedRet.query)
       if quit: capturedRet.asyncSocket.close()
   if reuseAddr:
-    capturedRet.asyncSocket.setSockOpt(OptReuseAddr, True)
+    capturedRet.asyncSocket.setSockOpt(OptReuseAddr, true)
   
   capturedRet.asyncSocket.bindAddr(port, address)
   capturedRet.asyncSocket.listen()
@@ -500,7 +498,7 @@ proc asyncHTTPServer*(handleRequest: proc (server: PAsyncHTTPServer, client: TSo
   else:
     capturedRet.port = port
   
-  capturedRet.client = InvalidSocket
+  capturedRet.client = invalidSocket
   capturedRet.reqMethod = ""
   capturedRet.body = ""
   capturedRet.path = ""

@@ -42,8 +42,11 @@ News
     and is now a Nimble package.
   - Many wrappers have been moved into their own repositories and are now
     Nimble packages including ``lua``, ``opengl``, ``x11``, ``nim-zmq``,
-    ``gtk2``, ``mongo``, ``cairo``, ``tcl`` and ``python``. They can be
+    ``gtk2``, ``mongo``, ``cairo``, ``tcl``, ``python`` and 
+    `more <https://github.com/Araq/Nimrod/issues/623>`_. They can be
     found under the `nim-code <https://github.com/nimrod-code>`_ organisation.
+  - Removed the deprecated ``web`` module, the ``httpclient`` module should
+    be used instead.
 
   Language Additions
   ------------------
