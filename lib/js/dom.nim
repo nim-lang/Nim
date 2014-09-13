@@ -446,7 +446,7 @@ proc unescape*(uri: cstring): cstring {.importc, nodecl.}
 
 proc decodeURIComponent*(uri: cstring): cstring {.importc, nodecl.}
 proc encodeURIComponent*(uri: cstring): cstring {.importc, nodecl.}
-proc isFinite*(x: biggestFloat): bool {.importc, nodecl.}
-proc isNaN*(x: biggestFloat): bool {.importc, nodecl.}
-proc parseFloat*(s: cstring): biggestFloat {.importc, nodecl.}
+proc isFinite*(x: BiggestFloat): bool {.importc, nodecl.}
+proc isNaN*(x: BiggestFloat): bool {.importc, nodecl.}
+proc parseFloat*(s: cstring): BiggestFloat {.importc, nodecl.}
 proc parseInt*(s: cstring): int {.importc, nodecl.}
