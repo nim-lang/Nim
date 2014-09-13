@@ -145,182 +145,182 @@ type
     p*: pointer
 
 
-proc PQconnectStart*(conninfo: cstring): PPGconn{.cdecl, dynlib: dllName, 
+proc pqconnectStart*(conninfo: cstring): PPGconn{.cdecl, dynlib: dllName, 
     importc: "PQconnectStart".}
-proc PQconnectPoll*(conn: PPGconn): PostgresPollingStatusType{.cdecl, 
+proc pqconnectPoll*(conn: PPGconn): PostgresPollingStatusType{.cdecl, 
     dynlib: dllName, importc: "PQconnectPoll".}
-proc PQconnectdb*(conninfo: cstring): PPGconn{.cdecl, dynlib: dllName, 
+proc pqconnectdb*(conninfo: cstring): PPGconn{.cdecl, dynlib: dllName, 
     importc: "PQconnectdb".}
-proc PQsetdbLogin*(pghost: cstring, pgport: cstring, pgoptions: cstring, 
+proc pqsetdbLogin*(pghost: cstring, pgport: cstring, pgoptions: cstring, 
                    pgtty: cstring, dbName: cstring, login: cstring, pwd: cstring): PPGconn{.
     cdecl, dynlib: dllName, importc: "PQsetdbLogin".}
-proc PQsetdb*(M_PGHOST, M_PGPORT, M_PGOPT, M_PGTTY, M_DBNAME: cstring): ppgconn
-proc PQfinish*(conn: PPGconn){.cdecl, dynlib: dllName, importc: "PQfinish".}
-proc PQconndefaults*(): PPQconninfoOption{.cdecl, dynlib: dllName, 
+proc pqsetdb*(M_PGHOST, M_PGPORT, M_PGOPT, M_PGTTY, M_DBNAME: cstring): Ppgconn
+proc pqfinish*(conn: PPGconn){.cdecl, dynlib: dllName, importc: "PQfinish".}
+proc pqconndefaults*(): PPQconninfoOption{.cdecl, dynlib: dllName, 
     importc: "PQconndefaults".}
-proc PQconninfoFree*(connOptions: PPQconninfoOption){.cdecl, dynlib: dllName, 
+proc pqconninfoFree*(connOptions: PPQconninfoOption){.cdecl, dynlib: dllName, 
     importc: "PQconninfoFree".}
-proc PQresetStart*(conn: PPGconn): int32{.cdecl, dynlib: dllName, 
+proc pqresetStart*(conn: PPGconn): int32{.cdecl, dynlib: dllName, 
     importc: "PQresetStart".}
-proc PQresetPoll*(conn: PPGconn): PostgresPollingStatusType{.cdecl, 
+proc pqresetPoll*(conn: PPGconn): PostgresPollingStatusType{.cdecl, 
     dynlib: dllName, importc: "PQresetPoll".}
-proc PQreset*(conn: PPGconn){.cdecl, dynlib: dllName, importc: "PQreset".}
-proc PQrequestCancel*(conn: PPGconn): int32{.cdecl, dynlib: dllName, 
+proc pqreset*(conn: PPGconn){.cdecl, dynlib: dllName, importc: "PQreset".}
+proc pqrequestCancel*(conn: PPGconn): int32{.cdecl, dynlib: dllName, 
     importc: "PQrequestCancel".}
-proc PQdb*(conn: PPGconn): cstring{.cdecl, dynlib: dllName, importc: "PQdb".}
-proc PQuser*(conn: PPGconn): cstring{.cdecl, dynlib: dllName, importc: "PQuser".}
-proc PQpass*(conn: PPGconn): cstring{.cdecl, dynlib: dllName, importc: "PQpass".}
-proc PQhost*(conn: PPGconn): cstring{.cdecl, dynlib: dllName, importc: "PQhost".}
-proc PQport*(conn: PPGconn): cstring{.cdecl, dynlib: dllName, importc: "PQport".}
-proc PQtty*(conn: PPGconn): cstring{.cdecl, dynlib: dllName, importc: "PQtty".}
-proc PQoptions*(conn: PPGconn): cstring{.cdecl, dynlib: dllName, 
+proc pqdb*(conn: PPGconn): cstring{.cdecl, dynlib: dllName, importc: "PQdb".}
+proc pquser*(conn: PPGconn): cstring{.cdecl, dynlib: dllName, importc: "PQuser".}
+proc pqpass*(conn: PPGconn): cstring{.cdecl, dynlib: dllName, importc: "PQpass".}
+proc pqhost*(conn: PPGconn): cstring{.cdecl, dynlib: dllName, importc: "PQhost".}
+proc pqport*(conn: PPGconn): cstring{.cdecl, dynlib: dllName, importc: "PQport".}
+proc pqtty*(conn: PPGconn): cstring{.cdecl, dynlib: dllName, importc: "PQtty".}
+proc pqoptions*(conn: PPGconn): cstring{.cdecl, dynlib: dllName, 
     importc: "PQoptions".}
-proc PQstatus*(conn: PPGconn): TConnStatusType{.cdecl, dynlib: dllName, 
+proc pqstatus*(conn: PPGconn): TConnStatusType{.cdecl, dynlib: dllName, 
     importc: "PQstatus".}
-proc PQtransactionStatus*(conn: PPGconn): PGTransactionStatusType{.cdecl, 
+proc pqtransactionStatus*(conn: PPGconn): PGTransactionStatusType{.cdecl, 
     dynlib: dllName, importc: "PQtransactionStatus".}
-proc PQparameterStatus*(conn: PPGconn, paramName: cstring): cstring{.cdecl, 
+proc pqparameterStatus*(conn: PPGconn, paramName: cstring): cstring{.cdecl, 
     dynlib: dllName, importc: "PQparameterStatus".}
-proc PQprotocolVersion*(conn: PPGconn): int32{.cdecl, dynlib: dllName, 
+proc pqprotocolVersion*(conn: PPGconn): int32{.cdecl, dynlib: dllName, 
     importc: "PQprotocolVersion".}
-proc PQerrorMessage*(conn: PPGconn): cstring{.cdecl, dynlib: dllName, 
+proc pqerrorMessage*(conn: PPGconn): cstring{.cdecl, dynlib: dllName, 
     importc: "PQerrorMessage".}
-proc PQsocket*(conn: PPGconn): int32{.cdecl, dynlib: dllName, 
+proc pqsocket*(conn: PPGconn): int32{.cdecl, dynlib: dllName, 
                                       importc: "PQsocket".}
-proc PQbackendPID*(conn: PPGconn): int32{.cdecl, dynlib: dllName, 
+proc pqbackendPID*(conn: PPGconn): int32{.cdecl, dynlib: dllName, 
     importc: "PQbackendPID".}
-proc PQclientEncoding*(conn: PPGconn): int32{.cdecl, dynlib: dllName, 
+proc pqclientEncoding*(conn: PPGconn): int32{.cdecl, dynlib: dllName, 
     importc: "PQclientEncoding".}
-proc PQsetClientEncoding*(conn: PPGconn, encoding: cstring): int32{.cdecl, 
+proc pqsetClientEncoding*(conn: PPGconn, encoding: cstring): int32{.cdecl, 
     dynlib: dllName, importc: "PQsetClientEncoding".}
 when defined(USE_SSL): 
   # Get the SSL structure associated with a connection  
-  proc PQgetssl*(conn: PPGconn): PSSL{.cdecl, dynlib: dllName, 
+  proc pqgetssl*(conn: PPGconn): PSSL{.cdecl, dynlib: dllName, 
                                        importc: "PQgetssl".}
-proc PQsetErrorVerbosity*(conn: PPGconn, verbosity: PGVerbosity): PGVerbosity{.
+proc pqsetErrorVerbosity*(conn: PPGconn, verbosity: PGVerbosity): PGVerbosity{.
     cdecl, dynlib: dllName, importc: "PQsetErrorVerbosity".}
-proc PQtrace*(conn: PPGconn, debug_port: TFile){.cdecl, dynlib: dllName, 
+proc pqtrace*(conn: PPGconn, debug_port: TFile){.cdecl, dynlib: dllName, 
     importc: "PQtrace".}
-proc PQuntrace*(conn: PPGconn){.cdecl, dynlib: dllName, importc: "PQuntrace".}
-proc PQsetNoticeReceiver*(conn: PPGconn, theProc: PQnoticeReceiver, arg: pointer): PQnoticeReceiver{.
+proc pquntrace*(conn: PPGconn){.cdecl, dynlib: dllName, importc: "PQuntrace".}
+proc pqsetNoticeReceiver*(conn: PPGconn, theProc: PQnoticeReceiver, arg: pointer): PQnoticeReceiver{.
     cdecl, dynlib: dllName, importc: "PQsetNoticeReceiver".}
-proc PQsetNoticeProcessor*(conn: PPGconn, theProc: PQnoticeProcessor, 
+proc pqsetNoticeProcessor*(conn: PPGconn, theProc: PQnoticeProcessor, 
                            arg: pointer): PQnoticeProcessor{.cdecl, 
     dynlib: dllName, importc: "PQsetNoticeProcessor".}
-proc PQexec*(conn: PPGconn, query: cstring): PPGresult{.cdecl, dynlib: dllName, 
+proc pqexec*(conn: PPGconn, query: cstring): PPGresult{.cdecl, dynlib: dllName, 
     importc: "PQexec".}
-proc PQexecParams*(conn: PPGconn, command: cstring, nParams: int32, 
+proc pqexecParams*(conn: PPGconn, command: cstring, nParams: int32, 
                    paramTypes: POid, paramValues: cstringArray, 
                    paramLengths, paramFormats: ptr int32, resultFormat: int32): PPGresult{.
     cdecl, dynlib: dllName, importc: "PQexecParams".}
-proc PQexecPrepared*(conn: PPGconn, stmtName: cstring, nParams: int32, 
+proc pqexecPrepared*(conn: PPGconn, stmtName: cstring, nParams: int32, 
                      paramValues: cstringArray, 
                      paramLengths, paramFormats: ptr int32, resultFormat: int32): PPGresult{.
     cdecl, dynlib: dllName, importc: "PQexecPrepared".}
-proc PQsendQuery*(conn: PPGconn, query: cstring): int32{.cdecl, dynlib: dllName, 
+proc pqsendQuery*(conn: PPGconn, query: cstring): int32{.cdecl, dynlib: dllName, 
     importc: "PQsendQuery".}
-proc PQsendQueryParams*(conn: PPGconn, command: cstring, nParams: int32, 
+proc pqsendQueryParams*(conn: PPGconn, command: cstring, nParams: int32, 
                         paramTypes: POid, paramValues: cstringArray, 
                         paramLengths, paramFormats: ptr int32, 
                         resultFormat: int32): int32{.cdecl, dynlib: dllName, 
     importc: "PQsendQueryParams".}
-proc PQsendQueryPrepared*(conn: PPGconn, stmtName: cstring, nParams: int32, 
+proc pqsendQueryPrepared*(conn: PPGconn, stmtName: cstring, nParams: int32, 
                           paramValues: cstringArray, 
                           paramLengths, paramFormats: ptr int32, 
                           resultFormat: int32): int32{.cdecl, dynlib: dllName, 
     importc: "PQsendQueryPrepared".}
-proc PQgetResult*(conn: PPGconn): PPGresult{.cdecl, dynlib: dllName, 
+proc pqgetResult*(conn: PPGconn): PPGresult{.cdecl, dynlib: dllName, 
     importc: "PQgetResult".}
-proc PQisBusy*(conn: PPGconn): int32{.cdecl, dynlib: dllName, 
+proc pqisBusy*(conn: PPGconn): int32{.cdecl, dynlib: dllName, 
                                       importc: "PQisBusy".}
-proc PQconsumeInput*(conn: PPGconn): int32{.cdecl, dynlib: dllName, 
+proc pqconsumeInput*(conn: PPGconn): int32{.cdecl, dynlib: dllName, 
     importc: "PQconsumeInput".}
-proc PQnotifies*(conn: PPGconn): PPGnotify{.cdecl, dynlib: dllName, 
+proc pqnotifies*(conn: PPGconn): PPGnotify{.cdecl, dynlib: dllName, 
     importc: "PQnotifies".}
-proc PQputCopyData*(conn: PPGconn, buffer: cstring, nbytes: int32): int32{.
+proc pqputCopyData*(conn: PPGconn, buffer: cstring, nbytes: int32): int32{.
     cdecl, dynlib: dllName, importc: "PQputCopyData".}
-proc PQputCopyEnd*(conn: PPGconn, errormsg: cstring): int32{.cdecl, 
+proc pqputCopyEnd*(conn: PPGconn, errormsg: cstring): int32{.cdecl, 
     dynlib: dllName, importc: "PQputCopyEnd".}
-proc PQgetCopyData*(conn: PPGconn, buffer: cstringArray, async: int32): int32{.
+proc pqgetCopyData*(conn: PPGconn, buffer: cstringArray, async: int32): int32{.
     cdecl, dynlib: dllName, importc: "PQgetCopyData".}
-proc PQgetline*(conn: PPGconn, str: cstring, len: int32): int32{.cdecl, 
+proc pqgetline*(conn: PPGconn, str: cstring, len: int32): int32{.cdecl, 
     dynlib: dllName, importc: "PQgetline".}
-proc PQputline*(conn: PPGconn, str: cstring): int32{.cdecl, dynlib: dllName, 
+proc pqputline*(conn: PPGconn, str: cstring): int32{.cdecl, dynlib: dllName, 
     importc: "PQputline".}
-proc PQgetlineAsync*(conn: PPGconn, buffer: cstring, bufsize: int32): int32{.
+proc pqgetlineAsync*(conn: PPGconn, buffer: cstring, bufsize: int32): int32{.
     cdecl, dynlib: dllName, importc: "PQgetlineAsync".}
-proc PQputnbytes*(conn: PPGconn, buffer: cstring, nbytes: int32): int32{.cdecl, 
+proc pqputnbytes*(conn: PPGconn, buffer: cstring, nbytes: int32): int32{.cdecl, 
     dynlib: dllName, importc: "PQputnbytes".}
-proc PQendcopy*(conn: PPGconn): int32{.cdecl, dynlib: dllName, 
+proc pqendcopy*(conn: PPGconn): int32{.cdecl, dynlib: dllName, 
                                        importc: "PQendcopy".}
-proc PQsetnonblocking*(conn: PPGconn, arg: int32): int32{.cdecl, 
+proc pqsetnonblocking*(conn: PPGconn, arg: int32): int32{.cdecl, 
     dynlib: dllName, importc: "PQsetnonblocking".}
-proc PQisnonblocking*(conn: PPGconn): int32{.cdecl, dynlib: dllName, 
+proc pqisnonblocking*(conn: PPGconn): int32{.cdecl, dynlib: dllName, 
     importc: "PQisnonblocking".}
-proc PQflush*(conn: PPGconn): int32{.cdecl, dynlib: dllName, importc: "PQflush".}
-proc PQfn*(conn: PPGconn, fnid: int32, result_buf, result_len: ptr int32, 
+proc pqflush*(conn: PPGconn): int32{.cdecl, dynlib: dllName, importc: "PQflush".}
+proc pqfn*(conn: PPGconn, fnid: int32, result_buf, result_len: ptr int32, 
            result_is_int: int32, args: PPQArgBlock, nargs: int32): PPGresult{.
     cdecl, dynlib: dllName, importc: "PQfn".}
-proc PQresultStatus*(res: PPGresult): TExecStatusType{.cdecl, dynlib: dllName, 
+proc pqresultStatus*(res: PPGresult): TExecStatusType{.cdecl, dynlib: dllName, 
     importc: "PQresultStatus".}
-proc PQresStatus*(status: TExecStatusType): cstring{.cdecl, dynlib: dllName, 
+proc pqresStatus*(status: TExecStatusType): cstring{.cdecl, dynlib: dllName, 
     importc: "PQresStatus".}
-proc PQresultErrorMessage*(res: PPGresult): cstring{.cdecl, dynlib: dllName, 
+proc pqresultErrorMessage*(res: PPGresult): cstring{.cdecl, dynlib: dllName, 
     importc: "PQresultErrorMessage".}
-proc PQresultErrorField*(res: PPGresult, fieldcode: int32): cstring{.cdecl, 
+proc pqresultErrorField*(res: PPGresult, fieldcode: int32): cstring{.cdecl, 
     dynlib: dllName, importc: "PQresultErrorField".}
-proc PQntuples*(res: PPGresult): int32{.cdecl, dynlib: dllName, 
+proc pqntuples*(res: PPGresult): int32{.cdecl, dynlib: dllName, 
                                         importc: "PQntuples".}
-proc PQnfields*(res: PPGresult): int32{.cdecl, dynlib: dllName, 
+proc pqnfields*(res: PPGresult): int32{.cdecl, dynlib: dllName, 
                                         importc: "PQnfields".}
-proc PQbinaryTuples*(res: PPGresult): int32{.cdecl, dynlib: dllName, 
+proc pqbinaryTuples*(res: PPGresult): int32{.cdecl, dynlib: dllName, 
     importc: "PQbinaryTuples".}
-proc PQfname*(res: PPGresult, field_num: int32): cstring{.cdecl, 
+proc pqfname*(res: PPGresult, field_num: int32): cstring{.cdecl, 
     dynlib: dllName, importc: "PQfname".}
-proc PQfnumber*(res: PPGresult, field_name: cstring): int32{.cdecl, 
+proc pqfnumber*(res: PPGresult, field_name: cstring): int32{.cdecl, 
     dynlib: dllName, importc: "PQfnumber".}
-proc PQftable*(res: PPGresult, field_num: int32): Oid{.cdecl, dynlib: dllName, 
+proc pqftable*(res: PPGresult, field_num: int32): Oid{.cdecl, dynlib: dllName, 
     importc: "PQftable".}
-proc PQftablecol*(res: PPGresult, field_num: int32): int32{.cdecl, 
+proc pqftablecol*(res: PPGresult, field_num: int32): int32{.cdecl, 
     dynlib: dllName, importc: "PQftablecol".}
-proc PQfformat*(res: PPGresult, field_num: int32): int32{.cdecl, 
+proc pqfformat*(res: PPGresult, field_num: int32): int32{.cdecl, 
     dynlib: dllName, importc: "PQfformat".}
-proc PQftype*(res: PPGresult, field_num: int32): Oid{.cdecl, dynlib: dllName, 
+proc pqftype*(res: PPGresult, field_num: int32): Oid{.cdecl, dynlib: dllName, 
     importc: "PQftype".}
-proc PQfsize*(res: PPGresult, field_num: int32): int32{.cdecl, dynlib: dllName, 
+proc pqfsize*(res: PPGresult, field_num: int32): int32{.cdecl, dynlib: dllName, 
     importc: "PQfsize".}
-proc PQfmod*(res: PPGresult, field_num: int32): int32{.cdecl, dynlib: dllName, 
+proc pqfmod*(res: PPGresult, field_num: int32): int32{.cdecl, dynlib: dllName, 
     importc: "PQfmod".}
-proc PQcmdStatus*(res: PPGresult): cstring{.cdecl, dynlib: dllName, 
+proc pqcmdStatus*(res: PPGresult): cstring{.cdecl, dynlib: dllName, 
     importc: "PQcmdStatus".}
-proc PQoidStatus*(res: PPGresult): cstring{.cdecl, dynlib: dllName, 
+proc pqoidStatus*(res: PPGresult): cstring{.cdecl, dynlib: dllName, 
     importc: "PQoidStatus".}
-proc PQoidValue*(res: PPGresult): Oid{.cdecl, dynlib: dllName, 
+proc pqoidValue*(res: PPGresult): Oid{.cdecl, dynlib: dllName, 
                                        importc: "PQoidValue".}
-proc PQcmdTuples*(res: PPGresult): cstring{.cdecl, dynlib: dllName, 
+proc pqcmdTuples*(res: PPGresult): cstring{.cdecl, dynlib: dllName, 
     importc: "PQcmdTuples".}
-proc PQgetvalue*(res: PPGresult, tup_num: int32, field_num: int32): cstring{.
+proc pqgetvalue*(res: PPGresult, tup_num: int32, field_num: int32): cstring{.
     cdecl, dynlib: dllName, importc: "PQgetvalue".}
-proc PQgetlength*(res: PPGresult, tup_num: int32, field_num: int32): int32{.
+proc pqgetlength*(res: PPGresult, tup_num: int32, field_num: int32): int32{.
     cdecl, dynlib: dllName, importc: "PQgetlength".}
-proc PQgetisnull*(res: PPGresult, tup_num: int32, field_num: int32): int32{.
+proc pqgetisnull*(res: PPGresult, tup_num: int32, field_num: int32): int32{.
     cdecl, dynlib: dllName, importc: "PQgetisnull".}
-proc PQclear*(res: PPGresult){.cdecl, dynlib: dllName, importc: "PQclear".}
-proc PQfreemem*(p: pointer){.cdecl, dynlib: dllName, importc: "PQfreemem".}
-proc PQmakeEmptyPGresult*(conn: PPGconn, status: TExecStatusType): PPGresult{.
+proc pqclear*(res: PPGresult){.cdecl, dynlib: dllName, importc: "PQclear".}
+proc pqfreemem*(p: pointer){.cdecl, dynlib: dllName, importc: "PQfreemem".}
+proc pqmakeEmptyPGresult*(conn: PPGconn, status: TExecStatusType): PPGresult{.
     cdecl, dynlib: dllName, importc: "PQmakeEmptyPGresult".}
-proc PQescapeString*(till, `from`: cstring, len: int): int{.cdecl, 
+proc pqescapeString*(till, `from`: cstring, len: int): int{.cdecl, 
     dynlib: dllName, importc: "PQescapeString".}
-proc PQescapeBytea*(bintext: cstring, binlen: int, bytealen: var int): cstring{.
+proc pqescapeBytea*(bintext: cstring, binlen: int, bytealen: var int): cstring{.
     cdecl, dynlib: dllName, importc: "PQescapeBytea".}
-proc PQunescapeBytea*(strtext: cstring, retbuflen: var int): cstring{.cdecl, 
+proc pqunescapeBytea*(strtext: cstring, retbuflen: var int): cstring{.cdecl, 
     dynlib: dllName, importc: "PQunescapeBytea".}
-proc PQprint*(fout: TFile, res: PPGresult, ps: PPQprintOpt){.cdecl, 
+proc pqprint*(fout: TFile, res: PPGresult, ps: PPQprintOpt){.cdecl, 
     dynlib: dllName, importc: "PQprint".}
-proc PQdisplayTuples*(res: PPGresult, fp: TFile, fillAlign: int32, 
+proc pqdisplayTuples*(res: PPGresult, fp: TFile, fillAlign: int32, 
                       fieldSep: cstring, printHeader: int32, quiet: int32){.
     cdecl, dynlib: dllName, importc: "PQdisplayTuples".}
-proc PQprintTuples*(res: PPGresult, fout: TFile, printAttName: int32, 
+proc pqprintTuples*(res: PPGresult, fout: TFile, printAttName: int32, 
                     terseOutput: int32, width: int32){.cdecl, dynlib: dllName, 
     importc: "PQprintTuples".}
 proc lo_open*(conn: PPGconn, lobjId: Oid, mode: int32): int32{.cdecl, 
@@ -343,8 +343,8 @@ proc lo_import*(conn: PPGconn, filename: cstring): Oid{.cdecl, dynlib: dllName,
     importc: "lo_import".}
 proc lo_export*(conn: PPGconn, lobjId: Oid, filename: cstring): int32{.cdecl, 
     dynlib: dllName, importc: "lo_export".}
-proc PQmblen*(s: cstring, encoding: int32): int32{.cdecl, dynlib: dllName, 
+proc pqmblen*(s: cstring, encoding: int32): int32{.cdecl, dynlib: dllName, 
     importc: "PQmblen".}
-proc PQenv2encoding*(): int32{.cdecl, dynlib: dllName, importc: "PQenv2encoding".}
-proc PQsetdb(M_PGHOST, M_PGPORT, M_PGOPT, M_PGTTY, M_DBNAME: cstring): ppgconn = 
-  result = PQsetdbLogin(M_PGHOST, M_PGPORT, M_PGOPT, M_PGTTY, M_DBNAME, "", "")
+proc pqenv2encoding*(): int32{.cdecl, dynlib: dllName, importc: "PQenv2encoding".}
+proc pqsetdb(M_PGHOST, M_PGPORT, M_PGOPT, M_PGTTY, M_DBNAME: cstring): PPgConn = 
+  result = pqSetdbLogin(M_PGHOST, M_PGPORT, M_PGOPT, M_PGTTY, M_DBNAME, "", "")
