@@ -300,14 +300,9 @@ proc buildPdfDoc(c: var TConfigData, destPath: string) =
 
 proc buildAddDoc(c: var TConfigData, destPath: string) =
   # build additional documentation (without the index):
-<<<<<<< HEAD
   var commands = newSeq[string](c.webdoc.len)
   for i, doc in pairs(c.webdoc):
-    commands[i] = "nimrod doc $# --docSeeSrcUrl:$# -o:$# $#" %
-=======
-  for d in items(c.webdoc):
-    exec("nim doc $# --docSeeSrcUrl:$# -o:$# $#" %
->>>>>>> 0047172274a73c681f619f5cd60aaad7109f694d
+    commands[i] = "nim doc $# --docSeeSrcUrl:$# -o:$# $#" %
       [c.nimrodArgs, c.gitCommit,
       destPath / changeFileExt(splitFile(doc).name, "html"), doc]
   mexec(commands, c.numProcessors)
