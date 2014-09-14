@@ -154,6 +154,8 @@ proc addEscaped*(result: var string, s: string) =
     of '>': result.add("&gt;")
     of '&': result.add("&amp;")
     of '"': result.add("&quot;")
+    of '\'': result.add("&#x27;")
+    of '/': result.add("&#x2F;")
     else: result.add(c)
 
 proc escape*(s: string): string = 
@@ -167,6 +169,8 @@ proc escape*(s: string): string =
   ##  ``>``          ``&gt;``
   ##  ``&``          ``&amp;``
   ##  ``"``          ``&quot;``
+  ##  ``'``          ``&#x27;``
+  ##  ``/``          ``&#x2F;``
   ## ------------    -------------------
   result = newStringOfCap(s.len)
   addEscaped(result, s)

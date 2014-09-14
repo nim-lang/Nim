@@ -215,13 +215,13 @@ proc open(f: var File, filename: string,
           mode: FileMode = fmRead,
           bufSize: int = -1): bool =
   var p: pointer = fopen(filename, FormatOpen[mode])
-  result = (p != nil)
-  f = cast[File](p)
-  if bufSize > 0 and bufSize <= high(cint).int:
-    if setvbuf(f, nil, IOFBF, bufSize.cint) != 0'i32:
-      sysFatal(OutOfMemError, "out of memory")
-  elif bufSize == 0:
-    discard setvbuf(f, nil, IONBF, 0)
+  if p != nil:
+    result = true
+    f = cast[File](p)
+    if bufSize > 0 and bufSize <= high(cint).int:
+      discard setvbuf(f, nil, IOFBF, bufSize.cint)
+    elif bufSize == 0:
+      discard setvbuf(f, nil, IONBF, 0)
 
 proc reopen(f: File, filename: string, mode: FileMode = fmRead): bool = 
   var p: pointer = freopen(filename, FormatOpen[mode], f)

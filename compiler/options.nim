@@ -188,8 +188,9 @@ proc getPrefixDir*(): string =
   result = splitPath(getAppDir()).head
 
 proc canonicalizePath*(path: string): string =
-  result = path.expandFilename
-  when not FileSystemCaseSensitive: result = result.toLower
+  #result = path.expandFilename
+  when not FileSystemCaseSensitive: result = path.toLower
+  else: result = path
 
 proc shortenDir*(dir: string): string = 
   ## returns the interesting part of a dir

@@ -514,7 +514,7 @@ elif defined(JS):
     result.setFullYear(timeInfo.year)
     result.setDate(timeInfo.monthday)
   
-  proc `$`(timeInfo: TimeInfo): string = return $(TimeInfoToTIme(timeInfo))
+  proc `$`(timeInfo: TimeInfo): string = return $(timeInfoToTime(timeInfo))
   proc `$`(time: Time): string = return $time.toLocaleString()
     
   proc `-` (a, b: Time): int64 = 

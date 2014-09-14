@@ -28,8 +28,9 @@ proc parseCookies*(s: string): StringTableRef =
     if s[i] == '\0': break
     inc(i) # skip ';'
 
-proc setCookie*(key, value: string, domain = "", path = "", 
-                expires = "", noName = false): string =
+proc setCookie*(key, value: string, domain = "", path = "",
+                expires = "", noName = false,
+                secure = false, httpOnly = false): string =
   ## Creates a command in the format of 
   ## ``Set-Cookie: key=value; Domain=...; ...``
   result = ""
@@ -38,22 +39,23 @@ proc setCookie*(key, value: string, domain = "", path = "",
   if domain != "": result.add("; Domain=" & domain)
   if path != "": result.add("; Path=" & path)
   if expires != "": result.add("; Expires=" & expires)
+  if secure: result.add("; secure")
+  if httpOnly: result.add("; HttpOnly")
 
 proc setCookie*(key, value: string, expires: TimeInfo,
-                domain = "", path = "", noName = false): string =
+                domain = "", path = "", noName = false,
+                secure = false, httpOnly = false): string =
   ## Creates a command in the format of 
   ## ``Set-Cookie: key=value; Domain=...; ...``
   ##
-  ## **Note:** UTC is assumed as the timezone for ``expires``.
-  
+  ## **Note:** UTC is assumed as the timezone for ``expires``.  
   return setCookie(key, value, domain, path,
-            format(expires, "ddd',' dd MMM yyyy HH:mm:ss 'UTC'"), noName)
-  
+                   format(expires, "ddd',' dd MMM yyyy HH:mm:ss 'UTC'"),
+                   noname, secure, httpOnly)
+
 when isMainModule:
   var tim = Time(int(getTime()) + 76 * (60 * 60 * 24))
 
   echo(setCookie("test", "value", tim.getGMTime()))
   
   echo parseCookies("uid=1; kp=2")
-  
-                

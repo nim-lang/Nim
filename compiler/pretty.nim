@@ -110,7 +110,7 @@ template styleCheckDef*(info: TLineInfo; s: PSym) =
 template styleCheckDef*(s: PSym) =
   styleCheckDef(s.info, s, s.kind)
 
-proc styleCheckUse*(info: TLineInfo; s: PSym) =
+proc styleCheckUseImpl(info: TLineInfo; s: PSym) =
   if info.fileIndex < 0: return
   # we simply convert it to what it looks like in the definition
   # for consistency
@@ -138,3 +138,7 @@ proc styleCheckUse*(info: TLineInfo; s: PSym) =
     system.shallowCopy(gSourceFiles[info.fileIndex].lines[info.line-1], x)
     gSourceFiles[info.fileIndex].dirty = true
     #if newName == "File": writeStackTrace()
+
+template styleCheckUse*(info: TLineInfo; s: PSym) =
+  when defined(nimfix):
+    if gStyleCheck != StyleCheck.None: styleCheckUseImpl(info, s)

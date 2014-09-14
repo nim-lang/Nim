@@ -1135,14 +1135,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcParseExprToAst:
       decodeB(rkNode)
       # c.debug[pc].line.int - countLines(regs[rb].strVal) ?
-      let ast = parseString(regs[rb].node.strVal, c.debug[pc].toFilename,
+      let ast = parseString(regs[rb].node.strVal, c.debug[pc].toFullPath,
                             c.debug[pc].line.int)
       if sonsLen(ast) != 1:
         globalError(c.debug[pc], errExprExpected, "multiple statements")
       regs[ra].node = ast.sons[0]
     of opcParseStmtToAst:
       decodeB(rkNode)
-      let ast = parseString(regs[rb].node.strVal, c.debug[pc].toFilename,
+      let ast = parseString(regs[rb].node.strVal, c.debug[pc].toFullPath,
                             c.debug[pc].line.int)
       regs[ra].node = ast
     of opcCallSite:

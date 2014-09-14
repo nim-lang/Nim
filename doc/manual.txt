@@ -596,7 +596,7 @@ Ordinal types
 Ordinal types have the following characteristics:
 
 - Ordinal types are countable and ordered. This property allows
-  the operation of functions as ``Inc``, ``Ord``, ``Dec`` on ordinal types to
+  the operation of functions as ``inc``, ``ord``, ``dec`` on ordinal types to
   be defined.
 - Ordinal values have a smallest possible value. Trying to count further
   down than the smallest value gives a checked runtime or static error.
@@ -699,11 +699,11 @@ lowest and highest value of the type:
 
 .. code-block:: nim
   type
-    TSubrange = range[0..5]
+    Subrange = range[0..5]
 
 
-``TSubrange`` is a subrange of an integer which can only hold the values 0
-to 5. Assigning any other value to a variable of type ``TSubrange`` is a
+``Subrange`` is a subrange of an integer which can only hold the values 0
+to 5. Assigning any other value to a variable of type ``Subrange`` is a
 checked runtime error (or static error if it can be statically
 determined). Assignments from the base type to one of its subrange types
 (and vice versa) are allowed.
@@ -790,6 +790,10 @@ turned off as default.
 
 The only operations that are affected by the ``floatChecks`` pragma are
 the ``+``, ``-``, ``*``, ``/`` operators for floating point types.
+
+An implementation should always use the maximum precision available to evaluate
+floating pointer values at compile time; this means expressions like
+``0.09'f32 + 0.01'f32 == 0.09'f64 + 0.01'f64`` are true.
 
 
 Boolean type
@@ -3675,10 +3679,11 @@ Future versions of Nim may also support overloading based on the return type
 of the overloads. In such settings, the expected result type at call sites may 
 also influence the inferred return type.
 
-Likewise, if a type class is used in another position where Nim expects a
-concrete type (e.g. a variable declaration or a type coercion), Nim will try to
-infer the concrete type by applying the sane matching algorithm also used in
-overload resolution.
+..
+  Likewise, if a type class is used in another position where Nim expects a
+  concrete type (e.g. a variable declaration or a type coercion), Nim will try
+  to infer the concrete type by applying the matching algorithm that also used
+  in overload resolution.
 
 
 Symbol lookup in generics

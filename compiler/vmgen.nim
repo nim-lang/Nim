@@ -46,7 +46,6 @@ proc debugInfo(info: TLineInfo): string =
 proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
   # first iteration: compute all necessary labels:
   var jumpTargets = initIntSet()
-
   let last = if last < 0: c.code.len-1 else: min(last, c.code.len-1)
   for i in start..last:
     let x = c.code[i]

@@ -56,6 +56,7 @@ proc lowerTupleUnpacking*(n: PNode; owner: PSym): PNode =
   
   result.add newAsgnStmt(newSymNode(temp), value)
   for i in 0 .. n.len-3:
+    if n.sons[i].kind == nkSym: v.addVar(n.sons[i])
     result.add newAsgnStmt(n.sons[i], newTupleAccess(value, i))
 
 proc createObj*(owner: PSym, info: TLineInfo): PType =
