@@ -819,13 +819,14 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       result.shouldHaveMeta
  
   of tyGenericInvokation:
-    for i in 1 .. <paramType.sonsLen:
-      let lifted = liftingWalk(paramType.sons[i])
-      if lifted != nil: paramType.sons[i] = lifted
+    when false:
+      for i in 1 .. <paramType.sonsLen:
+        let lifted = liftingWalk(paramType.sons[i])
+        if lifted != nil: paramType.sons[i] = lifted
 
-    let expanded = instGenericContainer(c, info, paramType,
-                                        allowMetaTypes = true)
-    result = liftingWalk(expanded, true)
+      let expanded = instGenericContainer(c, info, paramType,
+                                          allowMetaTypes = true)
+      result = liftingWalk(expanded, true)
 
   of tyUserTypeClass, tyBuiltInTypeClass, tyAnd, tyOr, tyNot:
     result = addImplicitGeneric(copyType(paramType, getCurrOwner(), true))
