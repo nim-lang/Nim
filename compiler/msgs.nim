@@ -442,7 +442,7 @@ type
   TNoteKinds* = set[TNoteKind]
 
   TFileInfo*{.final.} = object 
-    fullPath*: string          # This is a canonical full filesystem path
+    fullPath: string           # This is a canonical full filesystem path
     projPath*: string          # This is relative to the project's root
     shortName*: string         # short name of the module
     quotedName*: PRope         # cached quoted short name for codegen
