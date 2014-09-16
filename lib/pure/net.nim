@@ -287,11 +287,11 @@ proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
     name.sin_port = htons(int16(port))
     name.sin_addr.s_addr = htonl(INADDR_ANY)
     if bindAddr(socket.fd, cast[ptr SockAddr](addr(name)),
-                  sizeof(name).Socklen) < 0'i32:
+                  sizeof(name).SockLen) < 0'i32:
       raiseOSError(osLastError())
   else:
     var aiList = getAddrInfo(address, port, AF_INET)
-    if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.Socklen) < 0'i32:
+    if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.SockLen) < 0'i32:
       dealloc(aiList)
       raiseOSError(osLastError())
     dealloc(aiList)
@@ -315,7 +315,7 @@ proc acceptAddr*(server: Socket, client: var Socket, address: var string,
   ## accept will be called again.
   assert(client != nil)
   var sockAddress: Sockaddr_in
-  var addrLen = sizeof(sockAddress).Socklen
+  var addrLen = sizeof(sockAddress).SockLen
   var sock = accept(server.fd, cast[ptr SockAddr](addr(sockAddress)),
                     addr(addrLen))
   
@@ -754,7 +754,7 @@ proc recvFrom*(socket: Socket, data: var string, length: int,
   
   # TODO: Buffered sockets
   data.setLen(length)
-  var sockAddress: SockAddrIn
+  var sockAddress: Sockaddr_in
   var addrLen = sizeof(sockAddress).SockLen
   result = recvfrom(socket.fd, cstring(data), length.cint, flags.cint,
                     cast[ptr SockAddr](addr(sockAddress)), addr(addrLen))

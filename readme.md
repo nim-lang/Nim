@@ -30,9 +30,9 @@ To build from source you will need:
 If you are on a fairly modern *nix system, the following steps should work:
 
 ```
-$ git clone git://github.com/Araq/Nim.git
-$ cd Nim
-$ git clone --depth 1 git://github.com/nim-code/csources
+$ git clone git://github.com/Araq/Nimrod.git
+$ cd Nimrod
+$ git clone --depth 1 git://github.com/nimrod-code/csources
 $ cd csources && sh build.sh
 $ cd ..
 $ bin/nim c koch

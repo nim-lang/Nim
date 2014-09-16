@@ -67,7 +67,8 @@ type
   # PAsyncSocket* {.borrow: `.`.} = distinct PSocket. But that doesn't work.
   AsyncSocketDesc  = object
     fd*: SocketHandle
-    case isBuffered*: bool # determines whether this socket is buffered.
+    closed*: bool ## determines whether this socket has been closed
+    case isBuffered*: bool ## determines whether this socket is buffered.
     of true:
       buffer*: array[0..BufferSize, char]
       currPos*: int # current index in buffer
@@ -400,6 +401,7 @@ proc close*(socket: PAsyncSocket) =
           raiseSslError()
       elif res != 1:
         raiseSslError()
+  socket.closed = true # TODO: Add extra debugging checks for this.
 
 when defined(ssl):
   proc wrapSocket*(ctx: SslContext, socket: AsyncSocket) =

@@ -162,7 +162,7 @@ proc close*(socket: SocketHandle) =
   # TODO: These values should not be discarded. An EOS should be raised.
   # http://stackoverflow.com/questions/12463473/what-happens-if-you-call-close-on-a-bsd-socket-multiple-times
 
-proc bindAddr*(socket: SocketHandle, name: ptr SockAddr, namelen: Socklen): cint =
+proc bindAddr*(socket: SocketHandle, name: ptr SockAddr, namelen: SockLen): cint =
   result = bindSocket(socket, name, namelen)
 
 proc listen*(socket: SocketHandle, backlog = SOMAXCONN): cint {.tags: [ReadIOEffect].} =
@@ -314,7 +314,7 @@ proc getSockName*(socket: SocketHandle): Port =
     name.sin_family = posix.AF_INET
   #name.sin_port = htons(cint16(port))
   #name.sin_addr.s_addr = htonl(INADDR_ANY)
-  var namelen = sizeof(name).Socklen
+  var namelen = sizeof(name).SockLen
   if getsockname(socket, cast[ptr SockAddr](addr(name)),
                  addr(namelen)) == -1'i32:
     raiseOSError(osLastError())
@@ -324,7 +324,7 @@ proc getSockOptInt*(socket: SocketHandle, level, optname: int): int {.
   tags: [ReadIOEffect].} = 
   ## getsockopt for integer options.
   var res: cint
-  var size = sizeof(res).Socklen
+  var size = sizeof(res).SockLen
   if getsockopt(socket, cint(level), cint(optname), 
                 addr(res), addr(size)) < 0'i32:
     raiseOSError(osLastError())
@@ -335,7 +335,7 @@ proc setSockOptInt*(socket: SocketHandle, level, optname, optval: int) {.
   ## setsockopt for integer options.
   var value = cint(optval)
   if setsockopt(socket, cint(level), cint(optname), addr(value),  
-                sizeof(value).Socklen) < 0'i32:
+                sizeof(value).SockLen) < 0'i32:
     raiseOSError(osLastError())
 
 proc setBlocking*(s: SocketHandle, blocking: bool) =
