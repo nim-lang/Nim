@@ -15,6 +15,7 @@ type
     lines*: seq[string]
     dirty*, isNimfixFile*: bool
     fullpath*, newline*: string
+    fileIdx*: int32
 
 var
   gSourceFiles*: seq[TSourceFile] = @[]
@@ -24,6 +25,7 @@ proc loadFile*(info: TLineInfo) =
   if i >= gSourceFiles.len:
     gSourceFiles.setLen(i+1)
   if gSourceFiles[i].lines.isNil:
+    gSourceFiles[i].fileIdx = info.fileIndex
     gSourceFiles[i].lines = @[]
     let path = info.toFullPath
     gSourceFiles[i].fullpath = path

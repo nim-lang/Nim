@@ -15,17 +15,18 @@ import
   intsets, strtabs, semdata, prettybase
 
 type
-  StyleCheck* {.pure.} = enum None, Confirm, Auto
+  StyleCheck* {.pure.} = enum None, Warn, Auto
 
 var
   gOverWrite* = true
   gStyleCheck*: StyleCheck
-  gCheckExtern*: bool
+  gCheckExtern*, gOnlyMainfile*: bool
 
 proc overwriteFiles*() =
   let doStrip = options.getConfigVar("pretty.strip").normalize == "on"
   for i in 0 .. high(gSourceFiles):
-    if gSourceFiles[i].dirty and not gSourceFiles[i].isNimfixFile:
+    if gSourceFiles[i].dirty and not gSourceFiles[i].isNimfixFile and
+        (not gOnlyMainfile or gSourceFiles[i].fileIdx == gProjectMainIdx):
       let newFile = if gOverWrite: gSourceFiles[i].fullpath
                     else: gSourceFiles[i].fullpath.changeFileExt(".pretty.nim")
       try:
@@ -89,17 +90,39 @@ proc beautifyName(s: string, k: TSymKind): string =
       result.add s[i]
     inc i
 
-proc checkStyle(info: TLineInfo, s: string, k: TSymKind) =
+proc replaceInFile(info: TLineInfo; newName: string) =
+  loadFile(info)
+  
+  let line = gSourceFiles[info.fileIndex].lines[info.line-1]
+  var first = min(info.col.int, line.len)
+  if first < 0: return
+  #inc first, skipIgnoreCase(line, "proc ", first)
+  while first > 0 and line[first-1] in prettybase.Letters: dec first
+  if first < 0: return
+  if line[first] == '`': inc first
+  
+  let last = first+identLen(line, first)-1
+  if differ(line, first, last, newName):
+    # last-first+1 != newName.len or 
+    var x = line.substr(0, first-1) & newName & line.substr(last+1)    
+    system.shallowCopy(gSourceFiles[info.fileIndex].lines[info.line-1], x)
+    gSourceFiles[info.fileIndex].dirty = true
+
+proc checkStyle(info: TLineInfo, s: string, k: TSymKind; sym: PSym) =
   let beau = beautifyName(s, k)
   if s != beau:
-    message(info, hintName, beau)
+    if gStyleCheck == StyleCheck.Auto: 
+      sym.name = getIdent(beau)
+      replaceInFile(info, beau)
+    else:
+      message(info, hintName, beau)
 
 proc styleCheckDefImpl(info: TLineInfo; s: PSym; k: TSymKind) =
   # operators stay as they are:
   if k in {skResult, skTemp} or s.name.s[0] notin prettybase.Letters: return
   if k in {skType, skGenericParam} and sfAnon in s.flags: return
   if {sfImportc, sfExportc} * s.flags == {} or gCheckExtern:
-    checkStyle(info, s.name.s, k)
+    checkStyle(info, s.name.s, k, s)
 
 template styleCheckDef*(info: TLineInfo; s: PSym; k: TSymKind) =
   when defined(nimfix):
@@ -120,24 +143,9 @@ proc styleCheckUseImpl(info: TLineInfo; s: PSym) =
     return
   if s.kind in {skType, skGenericParam} and sfAnon in s.flags: return
   let newName = s.name.s
-  
-  loadFile(info)
-  
-  let line = gSourceFiles[info.fileIndex].lines[info.line-1]
-  var first = min(info.col.int, line.len)
-  if first < 0: return
-  #inc first, skipIgnoreCase(line, "proc ", first)
-  while first > 0 and line[first-1] in prettybase.Letters: dec first
-  if first < 0: return
-  if line[first] == '`': inc first
-  
-  let last = first+identLen(line, first)-1
-  if differ(line, first, last, newName):
-    # last-first+1 != newName.len or 
-    var x = line.substr(0, first-1) & newName & line.substr(last+1)    
-    system.shallowCopy(gSourceFiles[info.fileIndex].lines[info.line-1], x)
-    gSourceFiles[info.fileIndex].dirty = true
-    #if newName == "File": writeStackTrace()
+
+  replaceInFile(info, newName)
+  #if newName == "File": writeStackTrace()
 
 template styleCheckUse*(info: TLineInfo; s: PSym) =
   when defined(nimfix):

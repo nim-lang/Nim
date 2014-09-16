@@ -21,9 +21,11 @@ Usage:
 Options:
   --overwriteFiles:on|off          overwrite the original nim files.
                                    DEFAULT is ON!
+  --onlyMainfile                   overwrite only the main file.
   --checkExtern:on|off             style check also extern names
-  --styleCheck:on|off              performs style checking for identifiers
-                                   and suggests an alternative spelling.
+  --styleCheck:on|off|auto         performs style checking for identifiers
+                                   and suggests an alternative spelling; 
+                                   'auto' corrects the spelling.
 
 In addition, all command line options of Nim are supported.
 """
@@ -63,8 +65,10 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
       of "stylecheck": 
         case p.val.normalize
         of "off": gStyleCheck = StyleCheck.None
-        of "on": gStyleCheck = StyleCheck.Auto
+        of "on": gStyleCheck = StyleCheck.Warn
+        of "auto": gStyleCheck = StyleCheck.Auto
         else: localError(gCmdLineInfo, errOnOrOffExpected)
+      of "onlymainfile": gOnlyMainfile = true
       else:
         processSwitch(pass, p)
     of cmdArgument:
