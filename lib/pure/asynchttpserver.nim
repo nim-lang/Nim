@@ -116,7 +116,7 @@ proc sendStatus(client: PAsyncSocket, status: string): Future[void] =
 proc processClient(client: PAsyncSocket, address: string,
                    callback: proc (request: TRequest):
                       Future[void] {.closure, gcsafe.}) {.async.} =
-  while true:
+  while not client.closed:
     # GET /path HTTP/1.1
     # Header: val
     # \n
