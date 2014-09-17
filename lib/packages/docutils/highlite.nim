@@ -31,11 +31,11 @@ type
     state: TTokenClass
 
   TSourceLanguage* = enum 
-    langNone, langNim, langCpp, langCsharp, langC, langJava
+    langNone, langNim, langNimrod, langCpp, langCsharp, langC, langJava
 
 const 
-  sourceLanguageToStr*: array[TSourceLanguage, string] = ["none", "Nim", 
-    "C++", "C#", "C", "Java"]
+  sourceLanguageToStr*: array[TSourceLanguage, string] = ["none",
+    "Nim", "Nimrod", "C++", "C#", "C", "Java"]
   tokenClassToStr*: array[TTokenClass, string] = ["Eof", "None", "Whitespace", 
     "DecNumber", "BinNumber", "HexNumber", "OctNumber", "FloatNumber", 
     "Identifier", "Keyword", "StringLit", "LongStringLit", "CharLit", 
@@ -542,7 +542,7 @@ proc javaNextToken(g: var TGeneralTokenizer) =
 proc getNextToken*(g: var TGeneralTokenizer, lang: TSourceLanguage) = 
   case lang
   of langNone: assert false
-  of langNim: nimNextToken(g)
+  of langNim, langNimrod: nimNextToken(g)
   of langCpp: cppNextToken(g)
   of langCsharp: csharpNextToken(g)
   of langC: cNextToken(g)
