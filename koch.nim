@@ -40,7 +40,7 @@ Possible Commands:
   boot [options]           bootstraps with given command line options
   install [dir]            installs to given directory
   clean                    cleans Nimrod project; removes generated files
-  web                      generates the website
+  web [options]            generates the website
   csource [options]        builds the C sources for installation
   zip                      builds the installation ZIP package
   inno [options]           builds the Inno Setup installer (for Windows)
@@ -105,8 +105,8 @@ proc install(args: string) =
   exec("sh ./install.sh $#" % args)
 
 proc web(args: string) =
-  exec("$# cc -r tools/nimweb.nim web/nim --putenv:nimversion=$#" % 
-       [findNim(), NimVersion])
+  exec("$# cc -r tools/nimweb.nim $# web/nim --putenv:nimversion=$#" %
+       [findNim(), args, NimVersion])
 
 # -------------- boot ---------------------------------------------------------
 
@@ -298,7 +298,7 @@ proc temp(args: string) =
   if args.len > 0: exec(finalDest & " " & args)
 
 proc showHelp() = 
-  quit(HelpText % [NimrodVersion & repeatChar(44-len(NimrodVersion)), 
+  quit(HelpText % [NimVersion & repeatChar(44-len(NimVersion)), 
                    CompileDate, CompileTime])
 
 var op = initOptParser()
@@ -306,7 +306,7 @@ op.next()
 case op.kind
 of cmdLongOption, cmdShortOption: showHelp()
 of cmdArgument:
-  case normalize(op.key) 
+  case normalize(op.key)
   of "boot": boot(op.cmdLineRest)
   of "clean": clean(op.cmdLineRest)
   of "web": web(op.cmdLineRest)
@@ -315,7 +315,7 @@ of cmdArgument:
   of "inno": inno(op.cmdLineRest)
   of "install": install(op.cmdLineRest)
   of "test", "tests": tests(op.cmdLineRest)
-  of "update": 
+  of "update":
     when defined(withUpdate):
       update(op.cmdLineRest)
     else:
@@ -323,4 +323,3 @@ of cmdArgument:
   of "temp": temp(op.cmdLineRest)
   else: showHelp()
 of cmdEnd: showHelp()
-

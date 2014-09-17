@@ -104,7 +104,7 @@ the use of an ``await`` macro which behaves similar to C#'s await. The
 following is a very simple chat server demonstrating Nimrod's new async
 capabilities.
 
-.. code-block::nimrod
+.. code-block::nim
   import asyncnet, asyncdispatch
 
   var clients: seq[PAsyncSocket] = @[]
@@ -137,7 +137,7 @@ Syntactic sugar for anonymous procedures has also been introduced. It too has
 been implemented as a macro. The following shows some simple usage of the new
 syntax:
  
-.. code-block::nimrod
+.. code-block::nim
   import future
   
   var s = @[1, 2, 3, 4, 5]
