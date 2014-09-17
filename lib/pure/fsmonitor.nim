@@ -96,7 +96,7 @@ proc add*(monitor: PFSMonitor, target: string,
   
   result = inotifyAddWatch(monitor.fd, target, INFilter.uint32)
   if result < 0:
-    OSError(OSLastError())
+    raiseOSError(osLastError())
   monitor.targets.add(result, target)
 
 proc del*(monitor: PFSMonitor, wd: cint) =
@@ -113,8 +113,7 @@ proc getEvent(m: PFSMonitor, fd: cint): seq[TMonitorEvent] =
 
   let le = read(fd, addr(buffer[0]), size)
 
-  var movedFrom: TTable[cint, tuple[wd: cint, old: string]] = 
-            initTable[cint, tuple[wd: cint, old: string]]()
+  var movedFrom = initTable[cint, tuple[wd: cint, old: string]]()
 
   var i = 0
   while i < le:
