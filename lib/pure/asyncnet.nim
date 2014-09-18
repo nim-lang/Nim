@@ -31,7 +31,7 @@
 ##
 ##   import asyncnet, asyncdispatch
 ##
-##   var clients: seq[AsyncSocket] = @[]
+##   var clients {.threadvar.}: seq[AsyncSocket]
 ##
 ##   proc processClient(client: AsyncSocket) {.async.} =
 ##     while true:
@@ -40,6 +40,7 @@
 ##         await c.send(line & "\c\L")
 ##
 ##   proc serve() {.async.} =
+##     clients = @[]
 ##     var server = newAsyncSocket()
 ##     server.bindAddr(Port(12345))
 ##     server.listen()
