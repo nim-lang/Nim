@@ -766,6 +766,12 @@ when defined(windows) or defined(nimdoc):
 
     return retFuture
 
+  proc newAsyncRawSocket*(domain, typ, protocol: cint): TAsyncFD =
+    ## Creates a new socket and registers it with the dispatcher implicitly.
+    result = newRawSocket(domain, typ, protocol).TAsyncFD
+    result.SocketHandle.setBlocking(false)
+    register(result)
+
   proc newAsyncRawSocket*(domain: Domain = AF_INET,
                typ: SockType = SOCK_STREAM,
                protocol: Protocol = IPPROTO_TCP): TAsyncFD =
@@ -831,6 +837,11 @@ else:
     let p = getGlobalDispatcher()
     var data = PData(sock: sock, readCBs: @[], writeCBs: @[])
     p.selector.register(sock.SocketHandle, {}, data.PObject)
+
+  proc newAsyncRawSocket*(domain: cint, typ: cint, protocol: cint): TAsyncFD =
+    result = newRawSocket(domain, typ, protocol).TAsyncFD
+    result.SocketHandle.setBlocking(false)
+    register(result)
 
   proc newAsyncRawSocket*(domain: TDomain = AF_INET,
                typ: TType = SOCK_STREAM,

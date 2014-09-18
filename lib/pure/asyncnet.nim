@@ -101,6 +101,10 @@ proc newAsyncSocket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM,
   ## Creates a new asynchronous socket.
   result = newSocket(newAsyncRawSocket(domain, typ, protocol), buffered)
 
+proc newAsyncSocket*(domain, typ, protocol: cint, buffered = true): PAsyncSocket =
+  ## Creates a new asynchronous socket.
+  result = newSocket(newAsyncRawSocket(domain, typ, protocol), buffered)
+
 when defined(ssl):
   proc getSslError(handle: SslPtr, err: cint): cint =
     assert err < 0
