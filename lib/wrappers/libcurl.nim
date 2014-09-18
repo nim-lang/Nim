@@ -43,10 +43,10 @@ type
   Pinfotype* = ptr Tinfotype
   Plock_access* = ptr Tlock_access
   Plock_data* = ptr Tlock_data
-  Pmalloc_callback* = ptr tmalloc_callback
+  Pmalloc_callback* = ptr Tmalloc_callback
   PNETRC_OPTION* = ptr TNETRC_OPTION
   Pproxytype* = ptr Tproxytype
-  Prealloc_callback* = ptr trealloc_callback
+  Prealloc_callback* = ptr Trealloc_callback
   Pslist* = ptr Tslist
   Psocket* = ptr Tsocket
   PSSL_VERSION* = ptr TSSL_VERSION
@@ -309,7 +309,7 @@ type
   TMsg*{.pure, final.} = object 
     msg*: TMSGEnum
     easy_handle*: PCurl
-    whatever*: Pointer        #data : record
+    whatever*: pointer        #data : record
                               #      case longint of
                               #        0 : ( whatever : pointer );
                               #        1 : ( result : CURLcode );
@@ -442,7 +442,7 @@ proc slist_append*(slist: Pslist, p: cstring): Pslist{.cdecl, dynlib: libname,
     importc: "curl_slist_append".}
 proc slist_free_all*(para1: Pslist){.cdecl, dynlib: libname, 
                                      importc: "curl_slist_free_all".}
-proc getdate*(p: cstring, unused: ptr TTime): TTime{.cdecl, dynlib: libname, 
+proc getdate*(p: cstring, unused: ptr Time): Time{.cdecl, dynlib: libname, 
     importc: "curl_getdate".}
 proc share_init*(): PSH{.cdecl, dynlib: libname, importc: "curl_share_init".}
 proc share_setopt*(para1: PSH, option: TSHoption): TSHcode{.cdecl, varargs, 
