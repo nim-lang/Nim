@@ -196,7 +196,7 @@ type                          #music_cmd.h types
 
   PWAVStream* = ptr TWAVStream
   TWAVStream*{.final.} = object  #playmidi.h types
-    wavefp*: Pointer
+    wavefp*: pointer
     start*: int32
     stop*: int32
     cvt*: TAudioCVT
@@ -223,8 +223,8 @@ type                          #music_cmd.h types
     volume*: int32              #vf: OggVorbis_File;
     section*: int32
     cvt*: TAudioCVT
-    len_available*: int32
-    snd_available*: pointer
+    lenAvailable*: int32
+    sndAvailable*: pointer
 
   TErrorEnum* = enum 
     MMERR_OPENING_FILE, MMERR_OUT_OF_MEMORY, MMERR_DYNAMIC_LINKING, 
@@ -255,7 +255,7 @@ type                          #music_cmd.h types
   TChunk*{.final.} = object 
     allocated*: cint
     abuf*: pointer
-    alen*: Uint32
+    alen*: uint32
     volume*: byte            # Per-sample volume, 0-128
   
   TFading* = enum 
@@ -272,18 +272,18 @@ type                          #music_cmd.h types
                               #    fade_steps : integer;
                               #    error : integer;
   
-  TMixFunction* = proc (udata, stream: pointer, length: cint): Pointer{.
+  TMixFunction* = proc (udata, stream: pointer, length: cint): pointer{.
       cdecl.} # This macro can be used to fill a version structure with the compile-time
               #  version of the SDL_mixer library.
 
-proc VERSION*(X: var sdl.TVersion)
+proc version*(x: var sdl.Tversion)
   # This function gets the version of the dynamically linked SDL_mixer library.
   #     It should NOT be used to fill a version structure, instead you should use the
   #     SDL_MIXER_VERSION() macro.
-proc Linked_Version*(): sdl.Pversion{.cdecl, importc: "Mix_Linked_Version", 
+proc linkedVersion*(): sdl.Pversion{.cdecl, importc: "Mix_Linked_Version", 
                                       dynlib: MixerLibName.}
   # Open the mixer with a certain audio format
-proc OpenAudio*(frequency: cint, format: Uint16, channels: cint, 
+proc openAudio*(frequency: cint, format: uint16, channels: cint, 
                     chunksize: cint): cint{.cdecl, importc: "Mix_OpenAudio", 
     dynlib: MixerLibName.}
   # Dynamically change the number of channels managed by the mixer.
@@ -291,194 +291,194 @@ proc OpenAudio*(frequency: cint, format: Uint16, channels: cint,
   #   stopped.
   #   This function returns the new number of allocated channels.
   #
-proc AllocateChannels*(numchannels: cint): cint{.cdecl, 
+proc allocateChannels*(numchannels: cint): cint{.cdecl, 
     importc: "Mix_AllocateChannels", dynlib: MixerLibName.}
   # Find out what the actual audio device parameters are.
   #   This function returns 1 if the audio has been opened, 0 otherwise.
   #
-proc QuerySpec*(frequency: var cint, format: var Uint16, channels: var cint): cint{.
+proc querySpec*(frequency: var cint, format: var uint16, channels: var cint): cint{.
     cdecl, importc: "Mix_QuerySpec", dynlib: MixerLibName.}
   # Load a wave file or a music (.mod .s3m .it .xm) file
-proc LoadWAV_RW*(src: PRWops, freesrc: cint): PChunk{.cdecl, 
+proc loadWAV_RW*(src: PRWops, freesrc: cint): PChunk{.cdecl, 
     importc: "Mix_LoadWAV_RW", dynlib: MixerLibName.}
-proc LoadWAV*(filename: cstring): PChunk
-proc LoadMUS*(filename: cstring): PMusic{.cdecl, importc: "Mix_LoadMUS", 
+proc loadWAV*(filename: cstring): PChunk
+proc loadMUS*(filename: cstring): PMusic{.cdecl, importc: "Mix_LoadMUS", 
     dynlib: MixerLibName.}
   # Load a wave file of the mixer format from a memory buffer
-proc QuickLoad_WAV*(mem: pointer): PChunk{.cdecl, 
+proc quickLoadWAV*(mem: pointer): PChunk{.cdecl, 
     importc: "Mix_QuickLoad_WAV", dynlib: MixerLibName.}
   # Free an audio chunk previously loaded
-proc FreeChunk*(chunk: PChunk){.cdecl, importc: "Mix_FreeChunk", 
+proc freeChunk*(chunk: PChunk){.cdecl, importc: "Mix_FreeChunk", 
                                         dynlib: MixerLibName.}
-proc FreeMusic*(music: PMusic){.cdecl, importc: "Mix_FreeMusic", 
+proc freeMusic*(music: PMusic){.cdecl, importc: "Mix_FreeMusic", 
                                         dynlib: MixerLibName.}
   # Find out the music format of a mixer music, or the currently playing
   #   music, if 'music' is NULL.
-proc GetMusicType*(music: PMusic): TMusicType{.cdecl, 
+proc getMusicType*(music: PMusic): TMusicType{.cdecl, 
     importc: "Mix_GetMusicType", dynlib: MixerLibName.}
   # Set a function that is called after all mixing is performed.
   #   This can be used to provide real-time visual display of the audio stream
   #   or add a custom mixer filter for the stream data.
   #
-proc SetPostMix*(mix_func: TMixFunction, arg: Pointer){.cdecl, 
+proc setPostMix*(mixFunc: TMixFunction, arg: pointer){.cdecl, 
     importc: "Mix_SetPostMix", dynlib: MixerLibName.}
   # Add your own music player or additional mixer function.
   #   If 'mix_func' is NULL, the default music player is re-enabled.
   #
-proc HookMusic*(mix_func: TMixFunction, arg: Pointer){.cdecl, 
+proc hookMusic*(mixFunc: TMixFunction, arg: pointer){.cdecl, 
     importc: "Mix_HookMusic", dynlib: MixerLibName.}
   # Add your own callback when the music has finished playing.
   #
-proc HookMusicFinished*(music_finished: Pointer){.cdecl, 
+proc hookMusicFinished*(musicFinished: pointer){.cdecl, 
     importc: "Mix_HookMusicFinished", dynlib: MixerLibName.}
   # Get a pointer to the user data for the current music hook
-proc GetMusicHookData*(): Pointer{.cdecl, importc: "Mix_GetMusicHookData", 
+proc getMusicHookData*(): pointer{.cdecl, importc: "Mix_GetMusicHookData", 
                                        dynlib: MixerLibName.}
   #* Add your own callback when a channel has finished playing. NULL
   # * to disable callback.*
 type 
-  TChannel_finished* = proc (channel: cint){.cdecl.}
+  TChannelFinished* = proc (channel: cint){.cdecl.}
 
-proc ChannelFinished*(channel_finished: TChannel_finished){.cdecl, 
+proc channelFinished*(channelFinished: TChannelFinished){.cdecl, 
     importc: "Mix_ChannelFinished", dynlib: MixerLibName.}
 const 
   CHANNEL_POST* = - 2     
 
 type 
-  TEffectFunc* = proc (chan: cint, stream: Pointer, length: cint, 
-                       udata: Pointer): Pointer{.cdecl.}     
-  TEffectDone* = proc (chan: cint, udata: Pointer): Pointer{.cdecl.} 
-proc RegisterEffect*(chan: cint, f: TEffectFunc, d: TEffectDone, 
-                         arg: Pointer): cint{.cdecl, 
+  TEffectFunc* = proc (chan: cint, stream: pointer, length: cint, 
+                       udata: pointer): pointer{.cdecl.}     
+  TEffectDone* = proc (chan: cint, udata: pointer): pointer{.cdecl.} 
+proc registerEffect*(chan: cint, f: TEffectFunc, d: TEffectDone, 
+                         arg: pointer): cint{.cdecl, 
     importc: "Mix_RegisterEffect", dynlib: MixerLibName.}
 
-proc UnregisterEffect*(channel: cint, f: TEffectFunc): cint{.cdecl, 
+proc unregisterEffect*(channel: cint, f: TEffectFunc): cint{.cdecl, 
     importc: "Mix_UnregisterEffect", dynlib: MixerLibName.}
 
-proc UnregisterAllEffects*(channel: cint): cint{.cdecl, 
+proc unregisterAllEffects*(channel: cint): cint{.cdecl, 
     importc: "Mix_UnregisterAllEffects", dynlib: MixerLibName.}
 const 
   EFFECTSMAXSPEED* = "MIX_EFFECTSMAXSPEED"
   
-proc SetPanning*(channel: cint, left: byte, right: byte): cint{.cdecl, 
+proc setPanning*(channel: cint, left: byte, right: byte): cint{.cdecl, 
     importc: "Mix_SetPanning", dynlib: MixerLibName.}
 
-proc SetPosition*(channel: cint, angle: int16, distance: byte): cint{.cdecl, 
+proc setPosition*(channel: cint, angle: int16, distance: byte): cint{.cdecl, 
     importc: "Mix_SetPosition", dynlib: MixerLibName.}
 
-proc SetDistance*(channel: cint, distance: byte): cint{.cdecl, 
+proc setDistance*(channel: cint, distance: byte): cint{.cdecl, 
     importc: "Mix_SetDistance", dynlib: MixerLibName.}
 
-proc SetReverseStereo*(channel: cint, flip: cint): cint{.cdecl, 
+proc setReverseStereo*(channel: cint, flip: cint): cint{.cdecl, 
     importc: "Mix_SetReverseStereo", dynlib: MixerLibName.}
 
-proc ReserveChannels*(num: cint): cint{.cdecl, importc: "Mix_ReserveChannels", 
+proc reserveChannels*(num: cint): cint{.cdecl, importc: "Mix_ReserveChannels", 
     dynlib: MixerLibName.}
 
-proc GroupChannel*(which: cint, tag: cint): cint{.cdecl, 
+proc groupChannel*(which: cint, tag: cint): cint{.cdecl, 
     importc: "Mix_GroupChannel", dynlib: MixerLibName.}
-proc GroupChannels*(`from`: cint, `to`: cint, tag: cint): cint{.cdecl, 
+proc groupChannels*(`from`: cint, `to`: cint, tag: cint): cint{.cdecl, 
     importc: "Mix_GroupChannels", dynlib: MixerLibName.}
-proc GroupAvailable*(tag: cint): cint{.cdecl, importc: "Mix_GroupAvailable", 
+proc groupAvailable*(tag: cint): cint{.cdecl, importc: "Mix_GroupAvailable", 
     dynlib: MixerLibName.}
-proc GroupCount*(tag: cint): cint{.cdecl, importc: "Mix_GroupCount", 
+proc groupCount*(tag: cint): cint{.cdecl, importc: "Mix_GroupCount", 
                                      dynlib: MixerLibName.}
-proc GroupOldest*(tag: cint): cint{.cdecl, importc: "Mix_GroupOldest", 
+proc groupOldest*(tag: cint): cint{.cdecl, importc: "Mix_GroupOldest", 
                                       dynlib: MixerLibName.}
-proc GroupNewer*(tag: cint): cint{.cdecl, importc: "Mix_GroupNewer", 
+proc groupNewer*(tag: cint): cint{.cdecl, importc: "Mix_GroupNewer", 
                                      dynlib: MixerLibName.}
-proc PlayChannelTimed*(channel: cint, chunk: PChunk, loops: cint, 
+proc playChannelTimed*(channel: cint, chunk: PChunk, loops: cint, 
                            ticks: cint): cint{.cdecl, 
     importc: "Mix_PlayChannelTimed", dynlib: MixerLibName.}
-proc PlayChannel*(channel: cint, chunk: PChunk, loops: cint): cint
-proc PlayMusic*(music: PMusic, loops: cint): cint{.cdecl, 
+proc playChannel*(channel: cint, chunk: PChunk, loops: cint): cint
+proc playMusic*(music: PMusic, loops: cint): cint{.cdecl, 
     importc: "Mix_PlayMusic", dynlib: MixerLibName.}
-proc FadeInMusic*(music: PMusic, loops: cint, ms: cint): cint{.cdecl, 
+proc fadeInMusic*(music: PMusic, loops: cint, ms: cint): cint{.cdecl, 
     importc: "Mix_FadeInMusic", dynlib: MixerLibName.}
-proc FadeInChannelTimed*(channel: cint, chunk: PChunk, loops: cint, 
+proc fadeInChannelTimed*(channel: cint, chunk: PChunk, loops: cint, 
                              ms: cint, ticks: cint): cint{.cdecl, 
     importc: "Mix_FadeInChannelTimed", dynlib: MixerLibName.}
-proc FadeInChannel*(channel: cint, chunk: PChunk, loops: cint, ms: cint): cint
+proc fadeInChannel*(channel: cint, chunk: PChunk, loops: cint, ms: cint): cint
 
-proc Volume*(channel: cint, volume: cint): cint{.cdecl, importc: "Mix_Volume", 
+proc volume*(channel: cint, volume: cint): cint{.cdecl, importc: "Mix_Volume", 
     dynlib: MixerLibName.}
-proc VolumeChunk*(chunk: PChunk, volume: cint): cint{.cdecl, 
+proc volumeChunk*(chunk: PChunk, volume: cint): cint{.cdecl, 
     importc: "Mix_VolumeChunk", dynlib: MixerLibName.}
-proc VolumeMusic*(volume: cint): cint{.cdecl, importc: "Mix_VolumeMusic", 
+proc volumeMusic*(volume: cint): cint{.cdecl, importc: "Mix_VolumeMusic", 
     dynlib: MixerLibName.}
 
-proc HaltChannel*(channel: cint): cint{.cdecl, importc: "Mix_HaltChannel", 
+proc haltChannel*(channel: cint): cint{.cdecl, importc: "Mix_HaltChannel", 
     dynlib: MixerLibName.}
-proc HaltGroup*(tag: cint): cint{.cdecl, importc: "Mix_HaltGroup", 
+proc haltGroup*(tag: cint): cint{.cdecl, importc: "Mix_HaltGroup", 
                                     dynlib: MixerLibName.}
-proc HaltMusic*(): cint{.cdecl, importc: "Mix_HaltMusic", 
+proc haltMusic*(): cint{.cdecl, importc: "Mix_HaltMusic", 
                             dynlib: MixerLibName.}
   # Change the expiration delay for a particular channel.
   #   The sample will stop playing after the 'ticks' milliseconds have elapsed,
   #   or remove the expiration if 'ticks' is -1
   #
-proc ExpireChannel*(channel: cint, ticks: cint): cint{.cdecl, 
+proc expireChannel*(channel: cint, ticks: cint): cint{.cdecl, 
     importc: "Mix_ExpireChannel", dynlib: MixerLibName.}
   # Halt a channel, fading it out progressively till it's silent
   #   The ms parameter indicates the number of milliseconds the fading
   #   will take.
   #
-proc FadeOutChannel*(which: cint, ms: cint): cint{.cdecl, 
+proc fadeOutChannel*(which: cint, ms: cint): cint{.cdecl, 
     importc: "Mix_FadeOutChannel", dynlib: MixerLibName.}
-proc FadeOutGroup*(tag: cint, ms: cint): cint{.cdecl, 
+proc fadeOutGroup*(tag: cint, ms: cint): cint{.cdecl, 
     importc: "Mix_FadeOutGroup", dynlib: MixerLibName.}
-proc FadeOutMusic*(ms: cint): cint{.cdecl, importc: "Mix_FadeOutMusic", 
+proc fadeOutMusic*(ms: cint): cint{.cdecl, importc: "Mix_FadeOutMusic", 
                                       dynlib: MixerLibName.}
   # Query the fading status of a channel
-proc FadingMusic*(): TFading{.cdecl, importc: "Mix_FadingMusic", 
+proc fadingMusic*(): TFading{.cdecl, importc: "Mix_FadingMusic", 
                                       dynlib: MixerLibName.}
-proc FadingChannel*(which: cint): TFading{.cdecl, 
+proc fadingChannel*(which: cint): TFading{.cdecl, 
     importc: "Mix_FadingChannel", dynlib: MixerLibName.}
 
-proc Pause*(channel: cint){.cdecl, importc: "Mix_Pause", dynlib: MixerLibName.}
-proc Resume*(channel: cint){.cdecl, importc: "Mix_Resume", 
+proc pause*(channel: cint){.cdecl, importc: "Mix_Pause", dynlib: MixerLibName.}
+proc resume*(channel: cint){.cdecl, importc: "Mix_Resume", 
                                 dynlib: MixerLibName.}
-proc Paused*(channel: cint): cint{.cdecl, importc: "Mix_Paused", 
+proc paused*(channel: cint): cint{.cdecl, importc: "Mix_Paused", 
                                      dynlib: MixerLibName.}
 
-proc PauseMusic*(){.cdecl, importc: "Mix_PauseMusic", dynlib: MixerLibName.}
-proc ResumeMusic*(){.cdecl, importc: "Mix_ResumeMusic", dynlib: MixerLibName.}
-proc RewindMusic*(){.cdecl, importc: "Mix_RewindMusic", dynlib: MixerLibName.}
-proc PausedMusic*(): cint{.cdecl, importc: "Mix_PausedMusic", 
+proc pauseMusic*(){.cdecl, importc: "Mix_PauseMusic", dynlib: MixerLibName.}
+proc resumeMusic*(){.cdecl, importc: "Mix_ResumeMusic", dynlib: MixerLibName.}
+proc rewindMusic*(){.cdecl, importc: "Mix_RewindMusic", dynlib: MixerLibName.}
+proc pausedMusic*(): cint{.cdecl, importc: "Mix_PausedMusic", 
                               dynlib: MixerLibName.}
 
-proc SetMusicPosition*(position: float64): cint{.cdecl, 
+proc setMusicPosition*(position: float64): cint{.cdecl, 
     importc: "Mix_SetMusicPosition", dynlib: MixerLibName.}
 
-proc Playing*(channel: cint): cint{.cdecl, importc: "Mix_Playing", 
+proc playing*(channel: cint): cint{.cdecl, importc: "Mix_Playing", 
                                       dynlib: MixerLibName.}
-proc PlayingMusic*(): cint{.cdecl, importc: "Mix_PlayingMusic", 
+proc playingMusic*(): cint{.cdecl, importc: "Mix_PlayingMusic", 
                                dynlib: MixerLibName.}
 
-proc SetMusicCMD*(command: cstring): cint{.cdecl, importc: "Mix_SetMusicCMD", 
+proc setMusicCMD*(command: cstring): cint{.cdecl, importc: "Mix_SetMusicCMD", 
     dynlib: MixerLibName.}
 
-proc SetSynchroValue*(value: cint): cint{.cdecl, 
+proc setSynchroValue*(value: cint): cint{.cdecl, 
     importc: "Mix_SetSynchroValue", dynlib: MixerLibName.}
-proc GetSynchroValue*(): cint{.cdecl, importc: "Mix_GetSynchroValue", 
+proc getSynchroValue*(): cint{.cdecl, importc: "Mix_GetSynchroValue", 
                                   dynlib: MixerLibName.}
 
-proc GetChunk*(channel: cint): PChunk{.cdecl, importc: "Mix_GetChunk", 
+proc getChunk*(channel: cint): PChunk{.cdecl, importc: "Mix_GetChunk", 
     dynlib: MixerLibName.}
 
-proc CloseAudio*(){.cdecl, importc: "Mix_CloseAudio", dynlib: MixerLibName.}
+proc closeAudio*(){.cdecl, importc: "Mix_CloseAudio", dynlib: MixerLibName.}
 
-proc VERSION(X: var sdl.Tversion) = 
-  X.major = MAJOR_VERSION
-  X.minor = MINOR_VERSION
-  X.patch = PATCHLEVEL
+proc version(x: var sdl.Tversion) = 
+  x.major = MAJOR_VERSION
+  x.minor = MINOR_VERSION
+  x.patch = PATCHLEVEL
 
-proc LoadWAV(filename: cstring): PChunk = 
-  result = LoadWAV_RW(RWFromFile(filename, "rb"), 1)
+proc loadWAV(filename: cstring): PChunk = 
+  result = loadWAV_RW(rWFromFile(filename, "rb"), 1)
 
-proc PlayChannel(channel: cint, chunk: PChunk, loops: cint): cint = 
-  result = PlayChannelTimed(channel, chunk, loops, - 1)
+proc playChannel(channel: cint, chunk: PChunk, loops: cint): cint = 
+  result = playChannelTimed(channel, chunk, loops, - 1)
 
-proc FadeInChannel(channel: cint, chunk: PChunk, loops: cint, ms: cint): cint = 
-  result = FadeInChannelTimed(channel, chunk, loops, ms, - 1)
+proc fadeInChannel(channel: cint, chunk: PChunk, loops: cint, ms: cint): cint = 
+  result = fadeInChannelTimed(channel, chunk, loops, ms, - 1)
 
