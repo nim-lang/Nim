@@ -142,7 +142,7 @@ proc history_get*(a2: cint): ptr THIST_ENTRY{.cdecl, importc: "history_get",
 # Return the timestamp associated with the HIST_ENTRY * passed as an
 #   argument 
 
-proc history_get_time*(a2: ptr THIST_ENTRY): TTime{.cdecl, 
+proc history_get_time*(a2: ptr THIST_ENTRY): Time{.cdecl, 
     importc: "history_get_time", dynlib: historyDll.}
 # Return the number of bytes that the primary history entries are using.
 #   This just adds up the lengths of the_history->lines. 

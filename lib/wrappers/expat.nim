@@ -176,7 +176,7 @@ proc ParserCreate_MM*(encoding: cstring, memsuite: ptr TMemory_Handling_Suite,
 #   Added in Expat 1.95.3.
 #
 
-proc ParserReset*(parser: PParser, encoding: cstring): Bool{.cdecl, 
+proc ParserReset*(parser: PParser, encoding: cstring): bool{.cdecl, 
     importc: "XML_ParserReset", dynlib: expatDll.}
 # atts is array of name/value pairs, terminated by 0;
 #   names and values are 0 terminated.
@@ -601,7 +601,7 @@ proc UseParserAsHandlerArg*(parser: PParser){.cdecl,
 #     XML_ERROR_FEATURE_REQUIRES_XML_DTD.
 #
 
-proc UseForeignDTD*(parser: PParser, useDTD: Bool): TError{.cdecl, 
+proc UseForeignDTD*(parser: PParser, useDTD: bool): TError{.cdecl, 
     importc: "XML_UseForeignDTD", dynlib: expatDll.}
 # Sets the base to be used for resolving relative URIs in system
 #   identifiers in declarations.  Resolving relative identifiers is
@@ -681,7 +681,7 @@ proc ParseBuffer*(parser: PParser, len: cint, isFinal: cint): TStatus{.cdecl,
 #   When suspended, parsing can be resumed by calling XML_ResumeParser(). 
 #
 
-proc StopParser*(parser: PParser, resumable: Bool): TStatus{.cdecl, 
+proc StopParser*(parser: PParser, resumable: bool): TStatus{.cdecl, 
     importc: "XML_StopParser", dynlib: expatDll.}
 # Resumes parsing after it has been suspended with XML_StopParser().
 #   Must not be called from within a handler call-back. Returns same
@@ -703,7 +703,7 @@ type
     INITIALIZED, PARSING, FINISHED, SUSPENDED
   TParsingStatus*{.pure, final.} = object 
     parsing*: TParsing
-    finalBuffer*: Bool
+    finalBuffer*: bool
 
 
 # Returns status of parser with respect to being initialized, parsing,

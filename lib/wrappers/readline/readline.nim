@@ -776,7 +776,7 @@ proc execute_next*(a2: cint): cint{.cdecl, importc: "rl_execute_next",
 proc clear_pending_input*(): cint{.cdecl, importc: "rl_clear_pending_input", 
                                    dynlib: readlineDll.}
 proc read_key*(): cint{.cdecl, importc: "rl_read_key", dynlib: readlineDll.}
-proc getc*(a2: TFile): cint{.cdecl, importc: "rl_getc", dynlib: readlineDll.}
+proc getc*(a2: File): cint{.cdecl, importc: "rl_getc", dynlib: readlineDll.}
 proc set_keyboard_input_timeout*(a2: cint): cint{.cdecl, 
     importc: "rl_set_keyboard_input_timeout", dynlib: readlineDll.}
 # `Public' utility functions . 
@@ -881,8 +881,8 @@ when false:
   # The name of the terminal to use. 
   var terminal_name*{.importc: "rl_terminal_name", dynlib: readlineDll.}: cstring
   # The input and output streams. 
-  var instream*{.importc: "rl_instream", dynlib: readlineDll.}: TFile
-  var outstream*{.importc: "rl_outstream", dynlib: readlineDll.}: TFile
+  var instream*{.importc: "rl_instream", dynlib: readlineDll.}: File
+  var outstream*{.importc: "rl_outstream", dynlib: readlineDll.}: File
   # If non-zero, Readline gives values of LINES and COLUMNS from the environment
   #   greater precedence than values fetched from the kernel when computing the
   #   screen dimensions. 
@@ -1184,8 +1184,8 @@ type
     insmode*: cint
     edmode*: cint
     kseqlen*: cint
-    inf*: TFile
-    outf*: TFile
+    inf*: File
+    outf*: File
     pendingin*: cint
     theMacro*: cstring        # signal state 
     catchsigs*: cint
