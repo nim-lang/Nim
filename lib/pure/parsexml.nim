@@ -166,12 +166,12 @@ proc attrValue*(my: XmlParser): string {.inline.} =
   assert(my.kind == xmlAttribute)
   return my.b
 
-proc PIName*(my: XmlParser): string {.inline.} = 
+proc piName*(my: XmlParser): string {.inline.} = 
   ## returns the processing instruction name for the event ``xmlPI``
   assert(my.kind == xmlPI)
   return my.a
 
-proc PIRest*(my: XmlParser): string {.inline.} = 
+proc piRest*(my: XmlParser): string {.inline.} = 
   ## returns the rest of the processing instruction for the event ``xmlPI``
   assert(my.kind == xmlPI)
   return my.b
@@ -641,7 +641,7 @@ when isMainModule:
     of xmlCharData: echo(x.charData)
     of xmlWhitespace: echo("|$1|" % x.charData)
     of xmlComment: echo("<!-- $1 -->" % x.charData)
-    of xmlPI: echo("<? $1 ## $2 ?>" % [x.PIName, x.PIRest])
+    of xmlPI: echo("<? $1 ## $2 ?>" % [x.piName, x.piRest])
     of xmlElementStart: echo("<$1>" % x.elementName)
     of xmlElementEnd: echo("</$1>" % x.elementName)
     
