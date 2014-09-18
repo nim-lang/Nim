@@ -68,7 +68,7 @@ proc alarm*(title, msg, b1, b2, b3: cstring): cint {.
 proc scanf*(format: cstring): cint {.
   importc: "IupScanf", dynlib: dllname, cdecl, varargs.}
 proc listDialog*(theType: cint, title: cstring, size: cint, 
-                 list: cstringArray, op, max_col, max_lin: cint, 
+                 list: cstringArray, op, maxCol, maxLin: cint, 
                  marks: ptr cint): cint {.
                  importc: "IupListDialog", dynlib: dllname, cdecl.}
 proc getText*(title, text: cstring): cint {.
@@ -77,15 +77,15 @@ proc getColor*(x, y: cint, r, g, b: var byte): cint {.
   importc: "IupGetColor", dynlib: dllname, cdecl.}
 
 type
-  Iparamcb* = proc (dialog: PIhandle, param_index: cint, 
-                    user_data: pointer): cint {.cdecl.}
+  Iparamcb* = proc (dialog: PIhandle, paramIndex: cint, 
+                    userData: pointer): cint {.cdecl.}
 
-proc getParam*(title: cstring, action: Iparamcb, user_data: pointer, 
+proc getParam*(title: cstring, action: Iparamcb, userData: pointer, 
                format: cstring): cint {.
                importc: "IupGetParam", cdecl, varargs, dynlib: dllname.}
-proc getParamv*(title: cstring, action: Iparamcb, user_data: pointer, 
-                format: cstring, param_count, param_extra: cint, 
-                param_data: pointer): cint {.
+proc getParamv*(title: cstring, action: Iparamcb, userData: pointer, 
+                format: cstring, paramCount, paramExtra: cint, 
+                paramData: pointer): cint {.
                 importc: "IupGetParamv", cdecl, dynlib: dllname.}
 
 
@@ -125,7 +125,7 @@ proc destroy*(ih: PIhandle) {.importc: "IupDestroy", cdecl, dynlib: dllname.}
 proc detach*(child: PIhandle) {.importc: "IupDetach", cdecl, dynlib: dllname.}
 proc append*(ih, child: PIhandle): PIhandle {.
   importc: "IupAppend", cdecl, dynlib: dllname, discardable.}
-proc insert*(ih, ref_child, child: PIhandle): PIhandle {.
+proc insert*(ih, refChild, child: PIhandle): PIhandle {.
   importc: "IupInsert", cdecl, dynlib: dllname, discardable.}
 proc getChild*(ih: PIhandle, pos: cint): PIhandle {.
   importc: "IupGetChild", cdecl, dynlib: dllname.}
@@ -143,7 +143,7 @@ proc getDialog*(ih: PIhandle): PIhandle {.
   importc: "IupGetDialog", cdecl, dynlib: dllname.}
 proc getDialogChild*(ih: PIhandle, name: cstring): PIhandle {.
   importc: "IupGetDialogChild", cdecl, dynlib: dllname.}
-proc reparent*(ih, new_parent: PIhandle): cint {.
+proc reparent*(ih, newParent: PIhandle): cint {.
   importc: "IupReparent", cdecl, dynlib: dllname.}
 
 proc popup*(ih: PIhandle, x, y: cint): cint {.
@@ -181,7 +181,7 @@ proc setfAttribute*(ih: PIhandle, name, format: cstring) {.
   importc: "IupSetfAttribute", cdecl, dynlib: dllname, varargs.}
 proc getAllAttributes*(ih: PIhandle, names: cstringArray, n: cint): cint {.
   importc: "IupGetAllAttributes", cdecl, dynlib: dllname.}
-proc setAtt*(handle_name: cstring, ih: PIhandle, name: cstring): PIhandle {.
+proc setAtt*(handleName: cstring, ih: PIhandle, name: cstring): PIhandle {.
   importc: "IupSetAtt", cdecl, dynlib: dllname, varargs, discardable.}
 
 proc setGlobal*(name, value: cstring) {.
@@ -226,7 +226,7 @@ proc getAllDialogs*(names: cstringArray, n: cint): cint {.
 proc getName*(ih: PIhandle): cstring {.
   importc: "IupGetName", cdecl, dynlib: dllname.}
 
-proc setAttributeHandle*(ih: PIhandle, name: cstring, ih_named: PIhandle) {.
+proc setAttributeHandle*(ih: PIhandle, name: cstring, ihNamed: PIhandle) {.
   importc: "IupSetAttributeHandle", cdecl, dynlib: dllname.}
 proc getAttributeHandle*(ih: PIhandle, name: cstring): PIhandle {.
   importc: "IupGetAttributeHandle", cdecl, dynlib: dllname.}
@@ -266,9 +266,9 @@ proc hbox*(child: PIhandle): PIhandle {.
 proc hboxv*(children: ptr PIhandle): PIhandle {.
   importc: "IupHboxv", cdecl, dynlib: dllname.}
 
-proc normalizer*(ih_first: PIhandle): PIhandle {.
+proc normalizer*(ihFirst: PIhandle): PIhandle {.
   importc: "IupNormalizer", cdecl, dynlib: dllname, varargs.}
-proc normalizerv*(ih_list: ptr PIhandle): PIhandle {.
+proc normalizerv*(ihList: ptr PIhandle): PIhandle {.
   importc: "IupNormalizerv", cdecl, dynlib: dllname.}
 
 proc cbox*(child: PIhandle): PIhandle {.
@@ -565,36 +565,36 @@ proc iUPyxCODE*(c: cint): cint = return c + cint(1024) # Sys (Win or Apple)
 const
   IUP_NUMMAXCODES* = 1280 ## 5*256=1280  Normal+Shift+Ctrl+Alt+Sys
 
-  K_HOME* = iupxCODE(1)                
-  K_UP* = iupxCODE(2)
-  K_PGUP* = iupxCODE(3)
-  K_LEFT* = iupxCODE(4)
-  K_MIDDLE* = iupxCODE(5)
-  K_RIGHT* = iupxCODE(6)
-  K_END* = iupxCODE(7)
-  K_DOWN* = iupxCODE(8)
-  K_PGDN* = iupxCODE(9)
-  K_INS* = iupxCODE(10)    
-  K_DEL* = iupxCODE(11)    
-  K_PAUSE* = iupxCODE(12)
-  K_ESC* = iupxCODE(13)
-  K_ccedilla* = iupxCODE(14)
-  K_F1* = iupxCODE(15)
-  K_F2* = iupxCODE(16)
-  K_F3* = iupxCODE(17)
-  K_F4* = iupxCODE(18)
-  K_F5* = iupxCODE(19)
-  K_F6* = iupxCODE(20)
-  K_F7* = iupxCODE(21)
-  K_F8* = iupxCODE(22)
-  K_F9* = iupxCODE(23)
-  K_F10* = iupxCODE(24)
-  K_F11* = iupxCODE(25)
-  K_F12* = iupxCODE(26)
-  K_Print* = iupxCODE(27)
-  K_Menu* = iupxCODE(28)
+  K_HOME* = iUPxCODE(1)                
+  K_UP* = iUPxCODE(2)
+  K_PGUP* = iUPxCODE(3)
+  K_LEFT* = iUPxCODE(4)
+  K_MIDDLE* = iUPxCODE(5)
+  K_RIGHT* = iUPxCODE(6)
+  K_END* = iUPxCODE(7)
+  K_DOWN* = iUPxCODE(8)
+  K_PGDN* = iUPxCODE(9)
+  K_INS* = iUPxCODE(10)    
+  K_DEL* = iUPxCODE(11)    
+  K_PAUSE* = iUPxCODE(12)
+  K_ESC* = iUPxCODE(13)
+  K_ccedilla* = iUPxCODE(14)
+  K_F1* = iUPxCODE(15)
+  K_F2* = iUPxCODE(16)
+  K_F3* = iUPxCODE(17)
+  K_F4* = iUPxCODE(18)
+  K_F5* = iUPxCODE(19)
+  K_F6* = iUPxCODE(20)
+  K_F7* = iUPxCODE(21)
+  K_F8* = iUPxCODE(22)
+  K_F9* = iUPxCODE(23)
+  K_F10* = iUPxCODE(24)
+  K_F11* = iUPxCODE(25)
+  K_F12* = iUPxCODE(26)
+  K_Print* = iUPxCODE(27)
+  K_Menu* = iUPxCODE(28)
 
-  K_acute* = iupxCODE(29) # no Shift/Ctrl/Alt
+  K_acute* = iUPxCODE(29) # no Shift/Ctrl/Alt
 
   K_sHOME* = iUPsxCODE(K_HOME)
   K_sUP* = iUPsxCODE(K_UP)
@@ -931,10 +931,10 @@ proc pPlotAddStr*(ih: PIhandle, x: cstring, y: cfloat) {.
 proc pPlotEnd*(ih: PIhandle): cint {.
   cdecl, importc: "IupPPlotEnd", dynlib: dllname.}
 
-proc pPlotInsertStr*(ih: PIhandle, index, sample_index: cint, x: cstring, 
+proc pPlotInsertStr*(ih: PIhandle, index, sampleIndex: cint, x: cstring, 
                      y: cfloat) {.cdecl, importc: "IupPPlotInsertStr", 
                      dynlib: dllname.}
-proc pPlotInsert*(ih: PIhandle, index, sample_index: cint, 
+proc pPlotInsert*(ih: PIhandle, index, sampleIndex: cint, 
                   x, y: cfloat) {.
                   cdecl, importc: "IupPPlotInsert", dynlib: dllname.}
 
