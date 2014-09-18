@@ -77,8 +77,8 @@ type
 
 type 
   TContent*{.pure, final.} = object 
-    typ*: TContent_Type
-    quant*: TContent_Quant
+    typ*: TContentType
+    quant*: TContentQuant
     name*: cstring
     numchildren*: cint
     children*: ptr TContent
@@ -93,7 +93,7 @@ type
   TElementDeclHandler* = proc (userData: pointer, name: cstring, 
                                model: ptr TContent){.cdecl.}
 
-proc SetElementDeclHandler*(parser: PParser, eldecl: TElementDeclHandler){.
+proc setElementDeclHandler*(parser: PParser, eldecl: TElementDeclHandler){.
     cdecl, importc: "XML_SetElementDeclHandler", dynlib: expatDll.}
 # The Attlist declaration handler is called for *each* attribute. So
 #   a single Attlist declaration with multiple attributes declared will
@@ -106,10 +106,10 @@ proc SetElementDeclHandler*(parser: PParser, eldecl: TElementDeclHandler){.
 
 type 
   TAttlistDeclHandler* = proc (userData: pointer, elname: cstring, 
-                               attname: cstring, att_type: cstring, 
+                               attname: cstring, attType: cstring, 
                                dflt: cstring, isrequired: cint){.cdecl.}
 
-proc SetAttlistDeclHandler*(parser: PParser, attdecl: TAttlistDeclHandler){.
+proc setAttlistDeclHandler*(parser: PParser, attdecl: TAttlistDeclHandler){.
     cdecl, importc: "XML_SetAttlistDeclHandler", dynlib: expatDll.}
 # The XML declaration handler is called for *both* XML declarations
 #   and text declarations. The way to distinguish is that the version
@@ -124,20 +124,20 @@ type
   TXmlDeclHandler* = proc (userData: pointer, version: cstring, 
                            encoding: cstring, standalone: cint){.cdecl.}
 
-proc SetXmlDeclHandler*(parser: PParser, xmldecl: TXmlDeclHandler){.cdecl, 
+proc setXmlDeclHandler*(parser: PParser, xmldecl: TXmlDeclHandler){.cdecl, 
     importc: "XML_SetXmlDeclHandler", dynlib: expatDll.}
 type 
   TMemory_Handling_Suite*{.pure, final.} = object 
-    malloc_fcn*: proc (size: int): pointer{.cdecl.}
-    realloc_fcn*: proc (p: pointer, size: int): pointer{.cdecl.}
-    free_fcn*: proc (p: pointer){.cdecl.}
+    mallocFcn*: proc (size: int): pointer{.cdecl.}
+    reallocFcn*: proc (p: pointer, size: int): pointer{.cdecl.}
+    freeFcn*: proc (p: pointer){.cdecl.}
 
 
 # Constructs a new parser; encoding is the encoding specified by the
 #   external protocol or NULL if there is none specified.
 #
 
-proc ParserCreate*(encoding: cstring): PParser{.cdecl, 
+proc parserCreate*(encoding: cstring): PParser{.cdecl, 
     importc: "XML_ParserCreate", dynlib: expatDll.}
 # Constructs a new parser and namespace processor.  Element type
 #   names and attribute names that belong to a namespace will be
@@ -151,7 +151,7 @@ proc ParserCreate*(encoding: cstring): PParser{.cdecl,
 #   triplets (see XML_SetReturnNSTriplet).
 #
 
-proc ParserCreateNS*(encoding: cstring, namespaceSeparator: char): PParser{.
+proc parserCreateNS*(encoding: cstring, namespaceSeparator: char): PParser{.
     cdecl, importc: "XML_ParserCreateNS", dynlib: expatDll.}
 # Constructs a new parser using the memory management suite referred to
 #   by memsuite. If memsuite is NULL, then use the standard library memory
@@ -163,7 +163,7 @@ proc ParserCreateNS*(encoding: cstring, namespaceSeparator: char): PParser{.
 #   the given suite.
 #
 
-proc ParserCreate_MM*(encoding: cstring, memsuite: ptr TMemory_Handling_Suite, 
+proc parserCreateMM*(encoding: cstring, memsuite: ptr TMemoryHandlingSuite, 
                       namespaceSeparator: cstring): PParser{.cdecl, 
     importc: "XML_ParserCreate_MM", dynlib: expatDll.}
 # Prepare a parser object to be re-used.  This is particularly
@@ -176,7 +176,7 @@ proc ParserCreate_MM*(encoding: cstring, memsuite: ptr TMemory_Handling_Suite,
 #   Added in Expat 1.95.3.
 #
 
-proc ParserReset*(parser: PParser, encoding: cstring): bool{.cdecl, 
+proc parserReset*(parser: PParser, encoding: cstring): bool{.cdecl, 
     importc: "XML_ParserReset", dynlib: expatDll.}
 # atts is array of name/value pairs, terminated by 0;
 #   names and values are 0 terminated.
@@ -230,7 +230,7 @@ type
 type 
   TStartDoctypeDeclHandler* = proc (userData: pointer, doctypeName: cstring, 
                                     sysid: cstring, pubid: cstring, 
-                                    has_internal_subset: cint){.cdecl.}
+                                    hasInternalSubset: cint){.cdecl.}
 
 # This is called for the start of the DOCTYPE declaration when the
 #   closing > is encountered, but after processing any external
@@ -261,12 +261,12 @@ type
 
 type 
   TEntityDeclHandler* = proc (userData: pointer, entityName: cstring, 
-                              is_parameter_entity: cint, value: cstring, 
-                              value_length: cint, base: cstring, 
+                              isParameterEntity: cint, value: cstring, 
+                              valueLength: cint, base: cstring, 
                               systemId: cstring, publicId: cstring, 
                               notationName: cstring){.cdecl.}
 
-proc SetEntityDeclHandler*(parser: PParser, handler: TEntityDeclHandler){.cdecl, 
+proc setEntityDeclHandler*(parser: PParser, handler: TEntityDeclHandler){.cdecl, 
     importc: "XML_SetEntityDeclHandler", dynlib: expatDll.}
 # OBSOLETE -- OBSOLETE -- OBSOLETE
 #   This handler has been superceded by the EntityDeclHandler above.
@@ -372,7 +372,7 @@ type
 
 type 
   TSkippedEntityHandler* = proc (userData: pointer, entityName: cstring, 
-                                 is_parameter_entity: cint){.cdecl.}
+                                 isParameterEntity: cint){.cdecl.}
 
 # This structure is filled in by the XML_UnknownEncodingHandler to
 #   provide information to the parser about encodings that are unknown
@@ -455,27 +455,27 @@ type
   TUnknownEncodingHandler* = proc (encodingHandlerData: pointer, name: cstring, 
                                    info: ptr TEncoding): cint{.cdecl.}
 
-proc SetElementHandler*(parser: PParser, start: TStartElementHandler, 
+proc setElementHandler*(parser: PParser, start: TStartElementHandler, 
                         endHandler: TEndElementHandler){.cdecl, 
     importc: "XML_SetElementHandler", dynlib: expatDll.}
-proc SetStartElementHandler*(parser: PParser, handler: TStartElementHandler){.
+proc setStartElementHandler*(parser: PParser, handler: TStartElementHandler){.
     cdecl, importc: "XML_SetStartElementHandler", dynlib: expatDll.}
-proc SetEndElementHandler*(parser: PParser, handler: TEndElementHandler){.cdecl, 
+proc setEndElementHandler*(parser: PParser, handler: TEndElementHandler){.cdecl, 
     importc: "XML_SetEndElementHandler", dynlib: expatDll.}
-proc SetCharacterDataHandler*(parser: PParser, handler: TCharacterDataHandler){.
+proc setCharacterDataHandler*(parser: PParser, handler: TCharacterDataHandler){.
     cdecl, importc: "XML_SetCharacterDataHandler", dynlib: expatDll.}
-proc SetProcessingInstructionHandler*(parser: PParser, 
+proc setProcessingInstructionHandler*(parser: PParser, 
                                       handler: TProcessingInstructionHandler){.
     cdecl, importc: "XML_SetProcessingInstructionHandler", dynlib: expatDll.}
-proc SetCommentHandler*(parser: PParser, handler: TCommentHandler){.cdecl, 
+proc setCommentHandler*(parser: PParser, handler: TCommentHandler){.cdecl, 
     importc: "XML_SetCommentHandler", dynlib: expatDll.}
-proc SetCdataSectionHandler*(parser: PParser, start: TStartCdataSectionHandler, 
+proc setCdataSectionHandler*(parser: PParser, start: TStartCdataSectionHandler, 
                              endHandler: TEndCdataSectionHandler){.cdecl, 
     importc: "XML_SetCdataSectionHandler", dynlib: expatDll.}
-proc SetStartCdataSectionHandler*(parser: PParser, 
+proc setStartCdataSectionHandler*(parser: PParser, 
                                   start: TStartCdataSectionHandler){.cdecl, 
     importc: "XML_SetStartCdataSectionHandler", dynlib: expatDll.}
-proc SetEndCdataSectionHandler*(parser: PParser, 
+proc setEndCdataSectionHandler*(parser: PParser, 
                                 endHandler: TEndCdataSectionHandler){.cdecl, 
     importc: "XML_SetEndCdataSectionHandler", dynlib: expatDll.}
 # This sets the default handler and also inhibits expansion of
@@ -483,42 +483,42 @@ proc SetEndCdataSectionHandler*(parser: PParser,
 #   default handler, or to the skipped entity handler, if one is set.
 #
 
-proc SetDefaultHandler*(parser: PParser, handler: TDefaultHandler){.cdecl, 
+proc setDefaultHandler*(parser: PParser, handler: TDefaultHandler){.cdecl, 
     importc: "XML_SetDefaultHandler", dynlib: expatDll.}
 # This sets the default handler but does not inhibit expansion of
 #   internal entities.  The entity reference will not be passed to the
 #   default handler.
 #
 
-proc SetDefaultHandlerExpand*(parser: PParser, handler: TDefaultHandler){.cdecl, 
+proc setDefaultHandlerExpand*(parser: PParser, handler: TDefaultHandler){.cdecl, 
     importc: "XML_SetDefaultHandlerExpand", dynlib: expatDll.}
-proc SetDoctypeDeclHandler*(parser: PParser, start: TStartDoctypeDeclHandler, 
+proc setDoctypeDeclHandler*(parser: PParser, start: TStartDoctypeDeclHandler, 
                             endHandler: TEndDoctypeDeclHandler){.cdecl, 
     importc: "XML_SetDoctypeDeclHandler", dynlib: expatDll.}
-proc SetStartDoctypeDeclHandler*(parser: PParser, 
+proc setStartDoctypeDeclHandler*(parser: PParser, 
                                  start: TStartDoctypeDeclHandler){.cdecl, 
     importc: "XML_SetStartDoctypeDeclHandler", dynlib: expatDll.}
-proc SetEndDoctypeDeclHandler*(parser: PParser, 
+proc setEndDoctypeDeclHandler*(parser: PParser, 
                                endHandler: TEndDoctypeDeclHandler){.cdecl, 
     importc: "XML_SetEndDoctypeDeclHandler", dynlib: expatDll.}
-proc SetUnparsedEntityDeclHandler*(parser: PParser, 
+proc setUnparsedEntityDeclHandler*(parser: PParser, 
                                    handler: TUnparsedEntityDeclHandler){.cdecl, 
     importc: "XML_SetUnparsedEntityDeclHandler", dynlib: expatDll.}
-proc SetNotationDeclHandler*(parser: PParser, handler: TNotationDeclHandler){.
+proc setNotationDeclHandler*(parser: PParser, handler: TNotationDeclHandler){.
     cdecl, importc: "XML_SetNotationDeclHandler", dynlib: expatDll.}
-proc SetNamespaceDeclHandler*(parser: PParser, 
+proc setNamespaceDeclHandler*(parser: PParser, 
                               start: TStartNamespaceDeclHandler, 
                               endHandler: TEndNamespaceDeclHandler){.cdecl, 
     importc: "XML_SetNamespaceDeclHandler", dynlib: expatDll.}
-proc SetStartNamespaceDeclHandler*(parser: PParser, 
+proc setStartNamespaceDeclHandler*(parser: PParser, 
                                    start: TStartNamespaceDeclHandler){.cdecl, 
     importc: "XML_SetStartNamespaceDeclHandler", dynlib: expatDll.}
-proc SetEndNamespaceDeclHandler*(parser: PParser, 
+proc setEndNamespaceDeclHandler*(parser: PParser, 
                                  endHandler: TEndNamespaceDeclHandler){.cdecl, 
     importc: "XML_SetEndNamespaceDeclHandler", dynlib: expatDll.}
-proc SetNotStandaloneHandler*(parser: PParser, handler: TNotStandaloneHandler){.
+proc setNotStandaloneHandler*(parser: PParser, handler: TNotStandaloneHandler){.
     cdecl, importc: "XML_SetNotStandaloneHandler", dynlib: expatDll.}
-proc SetExternalEntityRefHandler*(parser: PParser, 
+proc setExternalEntityRefHandler*(parser: PParser, 
                                   handler: TExternalEntityRefHandler){.cdecl, 
     importc: "XML_SetExternalEntityRefHandler", dynlib: expatDll.}
 # If a non-NULL value for arg is specified here, then it will be
@@ -526,11 +526,11 @@ proc SetExternalEntityRefHandler*(parser: PParser,
 #   instead of the parser object.
 #
 
-proc SetExternalEntityRefHandlerArg*(parser: PParser, arg: pointer){.cdecl, 
+proc setExternalEntityRefHandlerArg*(parser: PParser, arg: pointer){.cdecl, 
     importc: "XML_SetExternalEntityRefHandlerArg", dynlib: expatDll.}
-proc SetSkippedEntityHandler*(parser: PParser, handler: TSkippedEntityHandler){.
+proc setSkippedEntityHandler*(parser: PParser, handler: TSkippedEntityHandler){.
     cdecl, importc: "XML_SetSkippedEntityHandler", dynlib: expatDll.}
-proc SetUnknownEncodingHandler*(parser: PParser, 
+proc setUnknownEncodingHandler*(parser: PParser, 
                                 handler: TUnknownEncodingHandler, 
                                 encodingHandlerData: pointer){.cdecl, 
     importc: "XML_SetUnknownEncodingHandler", dynlib: expatDll.}
@@ -539,7 +539,7 @@ proc SetUnknownEncodingHandler*(parser: PParser,
 #   corresponding markup to be passed to the default handler.
 #
 
-proc DefaultCurrent*(parser: PParser){.cdecl, importc: "XML_DefaultCurrent", 
+proc defaultCurrent*(parser: PParser){.cdecl, importc: "XML_DefaultCurrent", 
                                        dynlib: expatDll.}
 # If do_nst is non-zero, and namespace processing is in effect, and
 #   a name has a prefix (i.e. an explicit namespace qualifier) then
@@ -555,15 +555,15 @@ proc DefaultCurrent*(parser: PParser){.cdecl, importc: "XML_DefaultCurrent",
 #     XML_ParseBuffer has no effect.
 #
 
-proc SetReturnNSTriplet*(parser: PParser, do_nst: cint){.cdecl, 
+proc setReturnNSTriplet*(parser: PParser, doNst: cint){.cdecl, 
     importc: "XML_SetReturnNSTriplet", dynlib: expatDll.}
 # This value is passed as the userData argument to callbacks. 
 
-proc SetUserData*(parser: PParser, userData: pointer){.cdecl, 
+proc setUserData*(parser: PParser, userData: pointer){.cdecl, 
     importc: "XML_SetUserData", dynlib: expatDll.}
 # Returns the last value set by XML_SetUserData or NULL. 
 
-template GetUserData*(parser: expr): expr = 
+template getUserData*(parser: expr): expr = 
   (cast[ptr pointer]((parser))[] )
 
 # This is equivalent to supplying an encoding argument to
@@ -573,14 +573,14 @@ template GetUserData*(parser: expr): expr =
 #     has no effect and returns XML_STATUS_ERROR.
 #
 
-proc SetEncoding*(parser: PParser, encoding: cstring): TStatus{.cdecl, 
+proc setEncoding*(parser: PParser, encoding: cstring): TStatus{.cdecl, 
     importc: "XML_SetEncoding", dynlib: expatDll.}
 # If this function is called, then the parser will be passed as the
 #   first argument to callbacks instead of userData.  The userData will
 #   still be accessible using XML_GetUserData.
 #
 
-proc UseParserAsHandlerArg*(parser: PParser){.cdecl, 
+proc useParserAsHandlerArg*(parser: PParser){.cdecl, 
     importc: "XML_UseParserAsHandlerArg", dynlib: expatDll.}
 # If useDTD == XML_TRUE is passed to this function, then the parser
 #   will assume that there is an external subset, even if none is
@@ -601,7 +601,7 @@ proc UseParserAsHandlerArg*(parser: PParser){.cdecl,
 #     XML_ERROR_FEATURE_REQUIRES_XML_DTD.
 #
 
-proc UseForeignDTD*(parser: PParser, useDTD: bool): TError{.cdecl, 
+proc useForeignDTD*(parser: PParser, useDTD: bool): TError{.cdecl, 
     importc: "XML_UseForeignDTD", dynlib: expatDll.}
 # Sets the base to be used for resolving relative URIs in system
 #   identifiers in declarations.  Resolving relative identifiers is
@@ -612,9 +612,9 @@ proc UseForeignDTD*(parser: PParser, useDTD: bool): TError{.cdecl,
 #   XML_STATUS_OK otherwise.
 #
 
-proc SetBase*(parser: PParser, base: cstring): TStatus{.cdecl, 
+proc setBase*(parser: PParser, base: cstring): TStatus{.cdecl, 
     importc: "XML_SetBase", dynlib: expatDll.}
-proc GetBase*(parser: PParser): cstring{.cdecl, importc: "XML_GetBase", 
+proc getBase*(parser: PParser): cstring{.cdecl, importc: "XML_GetBase", 
     dynlib: expatDll.}
 # Returns the number of the attribute/value pairs passed in last call
 #   to the XML_StartElementHandler that were specified in the start-tag
@@ -623,7 +623,7 @@ proc GetBase*(parser: PParser): cstring{.cdecl, importc: "XML_GetBase",
 #   XML_StartElementHandler.
 #
 
-proc GetSpecifiedAttributeCount*(parser: PParser): cint{.cdecl, 
+proc getSpecifiedAttributeCount*(parser: PParser): cint{.cdecl, 
     importc: "XML_GetSpecifiedAttributeCount", dynlib: expatDll.}
 # Returns the index of the ID attribute passed in the last call to
 #   XML_StartElementHandler, or -1 if there is no ID attribute.  Each
@@ -631,7 +631,7 @@ proc GetSpecifiedAttributeCount*(parser: PParser): cint{.cdecl,
 #   index into the atts array passed to the XML_StartElementHandler.
 #
 
-proc GetIdAttributeIndex*(parser: PParser): cint{.cdecl, 
+proc getIdAttributeIndex*(parser: PParser): cint{.cdecl, 
     importc: "XML_GetIdAttributeIndex", dynlib: expatDll.}
 # Parses some input. Returns XML_STATUS_ERROR if a fatal error is
 #   detected.  The last call to XML_Parse must have isFinal true; len
@@ -643,11 +643,11 @@ proc GetIdAttributeIndex*(parser: PParser): cint{.cdecl,
 #   values.
 #
 
-proc Parse*(parser: PParser, s: cstring, len: cint, isFinal: cint): TStatus{.
+proc parse*(parser: PParser, s: cstring, len: cint, isFinal: cint): TStatus{.
     cdecl, importc: "XML_Parse", dynlib: expatDll.}
-proc GetBuffer*(parser: PParser, len: cint): pointer{.cdecl, 
+proc getBuffer*(parser: PParser, len: cint): pointer{.cdecl, 
     importc: "XML_GetBuffer", dynlib: expatDll.}
-proc ParseBuffer*(parser: PParser, len: cint, isFinal: cint): TStatus{.cdecl, 
+proc parseBuffer*(parser: PParser, len: cint, isFinal: cint): TStatus{.cdecl, 
     importc: "XML_ParseBuffer", dynlib: expatDll.}
 # Stops parsing, causing XML_Parse() or XML_ParseBuffer() to return.
 #   Must be called from within a call-back handler, except when aborting
@@ -681,7 +681,7 @@ proc ParseBuffer*(parser: PParser, len: cint, isFinal: cint): TStatus{.cdecl,
 #   When suspended, parsing can be resumed by calling XML_ResumeParser(). 
 #
 
-proc StopParser*(parser: PParser, resumable: bool): TStatus{.cdecl, 
+proc stopParser*(parser: PParser, resumable: bool): TStatus{.cdecl, 
     importc: "XML_StopParser", dynlib: expatDll.}
 # Resumes parsing after it has been suspended with XML_StopParser().
 #   Must not be called from within a handler call-back. Returns same
@@ -696,7 +696,7 @@ proc StopParser*(parser: PParser, resumable: bool): TStatus{.cdecl,
 #   application to call XML_ResumeParser() on it at the appropriate moment.
 #
 
-proc ResumeParser*(parser: PParser): TStatus{.cdecl, 
+proc resumeParser*(parser: PParser): TStatus{.cdecl, 
     importc: "XML_ResumeParser", dynlib: expatDll.}
 type 
   TParsing* = enum 
@@ -712,7 +712,7 @@ type
 #   XXX with XML_FINISHED_OK or XML_FINISHED_ERROR replacing XML_FINISHED
 #
 
-proc GetParsingStatus*(parser: PParser, status: ptr TParsingStatus){.cdecl, 
+proc getParsingStatus*(parser: PParser, status: ptr TParsingStatus){.cdecl, 
     importc: "XML_GetParsingStatus", dynlib: expatDll.}
 # Creates an XML_Parser object that can parse an external general
 #   entity; context is a '\0'-terminated string specifying the parse
@@ -731,7 +731,7 @@ proc GetParsingStatus*(parser: PParser, status: ptr TParsingStatus){.cdecl,
 #   Otherwise returns a new XML_Parser object.
 #
 
-proc ExternalEntityParserCreate*(parser: PParser, context: cstring, 
+proc externalEntityParserCreate*(parser: PParser, context: cstring, 
                                  encoding: cstring): PParser{.cdecl, 
     importc: "XML_ExternalEntityParserCreate", dynlib: expatDll.}
 type 
@@ -763,13 +763,13 @@ type
 #      XML_ParseBuffer, then it has no effect and will always return 0.
 #
 
-proc SetParamEntityParsing*(parser: PParser, parsing: TParamEntityParsing): cint{.
+proc setParamEntityParsing*(parser: PParser, parsing: TParamEntityParsing): cint{.
     cdecl, importc: "XML_SetParamEntityParsing", dynlib: expatDll.}
 # If XML_Parse or XML_ParseBuffer have returned XML_STATUS_ERROR, then
 #   XML_GetErrorCode returns information about the error.
 #
 
-proc GetErrorCode*(parser: PParser): TError{.cdecl, importc: "XML_GetErrorCode", 
+proc getErrorCode*(parser: PParser): TError{.cdecl, importc: "XML_GetErrorCode", 
     dynlib: expatDll.}
 # These functions return information about the current parse
 #   location.  They may be called from any callback called to report
@@ -788,17 +788,17 @@ proc GetErrorCode*(parser: PParser): TError{.cdecl, importc: "XML_GetErrorCode",
 #   parse event, as described above.
 #
 
-proc GetCurrentLineNumber*(parser: PParser): int{.cdecl, 
+proc getCurrentLineNumber*(parser: PParser): int{.cdecl, 
     importc: "XML_GetCurrentLineNumber", dynlib: expatDll.}
-proc GetCurrentColumnNumber*(parser: PParser): int{.cdecl, 
+proc getCurrentColumnNumber*(parser: PParser): int{.cdecl, 
     importc: "XML_GetCurrentColumnNumber", dynlib: expatDll.}
-proc GetCurrentByteIndex*(parser: PParser): int{.cdecl, 
+proc getCurrentByteIndex*(parser: PParser): int{.cdecl, 
     importc: "XML_GetCurrentByteIndex", dynlib: expatDll.}
 # Return the number of bytes in the current event.
 #   Returns 0 if the event is in an internal entity.
 #
 
-proc GetCurrentByteCount*(parser: PParser): cint{.cdecl, 
+proc getCurrentByteCount*(parser: PParser): cint{.cdecl, 
     importc: "XML_GetCurrentByteCount", dynlib: expatDll.}
 # If XML_CONTEXT_BYTES is defined, returns the input buffer, sets
 #   the integer pointed to by offset to the offset within this buffer
@@ -811,31 +811,31 @@ proc GetCurrentByteCount*(parser: PParser): cint{.cdecl,
 #   the handler that makes the call.
 #
 
-proc GetInputContext*(parser: PParser, offset: ptr cint, size: ptr cint): cstring{.
+proc getInputContext*(parser: PParser, offset: ptr cint, size: ptr cint): cstring{.
     cdecl, importc: "XML_GetInputContext", dynlib: expatDll.}
 # Frees the content model passed to the element declaration handler 
 
-proc FreeContentModel*(parser: PParser, model: ptr TContent){.cdecl, 
+proc freeContentModel*(parser: PParser, model: ptr TContent){.cdecl, 
     importc: "XML_FreeContentModel", dynlib: expatDll.}
 # Exposing the memory handling functions used in Expat 
 
-proc MemMalloc*(parser: PParser, size: int): pointer{.cdecl, 
+proc memMalloc*(parser: PParser, size: int): pointer{.cdecl, 
     importc: "XML_MemMalloc", dynlib: expatDll.}
-proc MemRealloc*(parser: PParser, p: pointer, size: int): pointer{.cdecl, 
+proc memRealloc*(parser: PParser, p: pointer, size: int): pointer{.cdecl, 
     importc: "XML_MemRealloc", dynlib: expatDll.}
-proc MemFree*(parser: PParser, p: pointer){.cdecl, importc: "XML_MemFree", 
+proc memFree*(parser: PParser, p: pointer){.cdecl, importc: "XML_MemFree", 
     dynlib: expatDll.}
 # Frees memory used by the parser. 
 
-proc ParserFree*(parser: PParser){.cdecl, importc: "XML_ParserFree", 
+proc parserFree*(parser: PParser){.cdecl, importc: "XML_ParserFree", 
                                    dynlib: expatDll.}
 # Returns a string describing the error. 
 
-proc ErrorString*(code: TError): cstring{.cdecl, importc: "XML_ErrorString", 
+proc errorString*(code: TError): cstring{.cdecl, importc: "XML_ErrorString", 
     dynlib: expatDll.}
 # Return a string containing the version number of this expat 
 
-proc ExpatVersion*(): cstring{.cdecl, importc: "XML_ExpatVersion", 
+proc expatVersion*(): cstring{.cdecl, importc: "XML_ExpatVersion", 
                                dynlib: expatDll.}
 type 
   TExpat_Version*{.pure, final.} = object 
@@ -848,7 +848,7 @@ type
 #   number information for this version of expat.
 #
 
-proc ExpatVersionInfo*(): TExpat_Version{.cdecl, 
+proc expatVersionInfo*(): TExpatVersion{.cdecl, 
     importc: "XML_ExpatVersionInfo", dynlib: expatDll.}
 # Added in Expat 1.95.5. 
 
@@ -863,7 +863,7 @@ type
     value*: int
 
 
-proc GetFeatureList*(): ptr TFeature{.cdecl, importc: "XML_GetFeatureList", 
+proc getFeatureList*(): ptr TFeature{.cdecl, importc: "XML_GetFeatureList", 
                                       dynlib: expatDll.}
 # Expat follows the GNU/Linux convention of odd number minor version for
 #   beta/development releases and even number minor version for stable
