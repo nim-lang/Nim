@@ -31,7 +31,7 @@
 ##
 ##   import asyncnet, asyncdispatch
 ##
-##   var clients: seq[AsyncSocket] = @[]
+##   var clients {.threadvar.}: seq[AsyncSocket]
 ##
 ##   proc processClient(client: AsyncSocket) {.async.} =
 ##     while true:
@@ -40,6 +40,7 @@
 ##         await c.send(line & "\c\L")
 ##
 ##   proc serve() {.async.} =
+##     clients = @[]
 ##     var server = newAsyncSocket()
 ##     server.bindAddr(Port(12345))
 ##     server.listen()
@@ -98,6 +99,10 @@ proc newSocket(fd: TAsyncFD, isBuff: bool): PAsyncSocket =
 
 proc newAsyncSocket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM,
     protocol: TProtocol = IPPROTO_TCP, buffered = true): PAsyncSocket =
+  ## Creates a new asynchronous socket.
+  result = newSocket(newAsyncRawSocket(domain, typ, protocol), buffered)
+
+proc newAsyncSocket*(domain, typ, protocol: cint, buffered = true): PAsyncSocket =
   ## Creates a new asynchronous socket.
   result = newSocket(newAsyncRawSocket(domain, typ, protocol), buffered)
 

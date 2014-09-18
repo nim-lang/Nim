@@ -108,6 +108,15 @@ proc createSocket(fd: SocketHandle, isBuff: bool): Socket =
   if isBuff:
     result.currPos = 0
 
+proc newSocket*(domain, typ, protocol: cint, buffered = true): Socket =
+  ## Creates a new socket.
+  ##
+  ## If an error occurs EOS will be raised.
+  let fd = newRawSocket(domain, typ, protocol)
+  if fd == osInvalidSocket:
+    raiseOSError(osLastError())
+  result = createSocket(fd, buffered)
+
 proc newSocket*(domain: Domain = AF_INET, typ: SockType = SOCK_STREAM,
              protocol: Protocol = IPPROTO_TCP, buffered = true): Socket =
   ## Creates a new socket.

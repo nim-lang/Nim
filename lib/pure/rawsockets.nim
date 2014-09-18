@@ -153,6 +153,13 @@ proc newRawSocket*(domain: Domain = AF_INET, typ: SockType = SOCK_STREAM,
   ## Creates a new socket; returns `InvalidSocket` if an error occurs.
   socket(toInt(domain), toInt(typ), toInt(protocol))
 
+proc newRawSocket*(domain: cint, typ: cint, protocol: cint): SocketHandle =
+  ## Creates a new socket; returns `InvalidSocket` if an error occurs.
+  ##
+  ## Use this overload if one of the enums specified above does
+  ## not contain what you need.
+  socket(domain, typ, protocol)
+
 proc close*(socket: SocketHandle) =
   ## closes a socket.
   when useWinVersion:
