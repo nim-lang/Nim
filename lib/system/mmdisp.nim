@@ -131,6 +131,14 @@ when defined(boehmgc):
       if result == nil: raiseOutOfMem()
     proc deallocShared(p: pointer) = boehmDealloc(p)
 
+    when hasThreadSupport:
+      proc getFreeSharedMem(): int =
+        boehmGetFreeBytes()
+      proc getTotalSharedMem(): int =
+        boehmGetHeapSize()
+      proc getOccupiedSharedMem(): int =
+        getTotalSharedMem() - getFreeSharedMem()
+
     #boehmGCincremental()
 
     proc GC_disable() = boehmGC_disable()
@@ -164,11 +172,11 @@ when defined(boehmgc):
   proc nimGCref(p: pointer) {.compilerproc, inline.} = discard
   proc nimGCunref(p: pointer) {.compilerproc, inline.} = discard
   
-  proc unsureAsgnRef(dest: ppointer, src: pointer) {.compilerproc, inline.} =
+  proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
     dest[] = src
-  proc asgnRef(dest: ppointer, src: pointer) {.compilerproc, inline.} =
+  proc asgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
     dest[] = src
-  proc asgnRefNoCycle(dest: ppointer, src: pointer) {.compilerproc, inline.} =
+  proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline.} =
     dest[] = src
 
   type
@@ -180,7 +188,7 @@ when defined(boehmgc):
   proc alloc0(r: var TMemRegion, size: int): pointer =
     result = alloc(size)
     zeroMem(result, size)
-  proc dealloc(r: var TMemRegion, p: Pointer) = boehmDealloc(p)  
+  proc dealloc(r: var TMemRegion, p: pointer) = boehmDealloc(p)  
   proc deallocOsPages(r: var TMemRegion) {.inline.} = discard
   proc deallocOsPages() {.inline.} = discard
 
@@ -239,11 +247,11 @@ elif defined(nogc) and defined(useMalloc):
   proc nimGCref(p: pointer) {.compilerproc, inline.} = discard
   proc nimGCunref(p: pointer) {.compilerproc, inline.} = discard
   
-  proc unsureAsgnRef(dest: ppointer, src: pointer) {.compilerproc, inline.} =
+  proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
     dest[] = src
-  proc asgnRef(dest: ppointer, src: pointer) {.compilerproc, inline.} =
+  proc asgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
     dest[] = src
-  proc asgnRefNoCycle(dest: ppointer, src: pointer) {.compilerproc, inline.} =
+  proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline.} =
     dest[] = src
 
   type
@@ -292,11 +300,11 @@ elif defined(nogc):
   proc nimGCref(p: pointer) {.compilerproc, inline.} = discard
   proc nimGCunref(p: pointer) {.compilerproc, inline.} = discard
   
-  proc unsureAsgnRef(dest: ppointer, src: pointer) {.compilerproc, inline.} =
+  proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
     dest[] = src
-  proc asgnRef(dest: ppointer, src: pointer) {.compilerproc, inline.} =
+  proc asgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
     dest[] = src
-  proc asgnRefNoCycle(dest: ppointer, src: pointer) {.compilerproc, inline.} =
+  proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline.} =
     dest[] = src
 
   var allocator {.rtlThreadVar.}: TMemRegion
