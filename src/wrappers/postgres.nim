@@ -68,9 +68,9 @@ type
     dbName*: cstring
     status*: TConnStatusType
     errorMessage*: array[0..(ERROR_MSG_LENGTH) - 1, char]
-    Pfin*: TFile
-    Pfout*: TFile
-    Pfdebug*: TFile
+    Pfin*: File
+    Pfout*: File
+    Pfdebug*: File
     sock*: int32
     laddr*: TSockAddr
     raddr*: TSockAddr
@@ -199,7 +199,7 @@ when defined(USE_SSL):
                                        importc: "PQgetssl".}
 proc pqsetErrorVerbosity*(conn: PPGconn, verbosity: PGVerbosity): PGVerbosity{.
     cdecl, dynlib: dllName, importc: "PQsetErrorVerbosity".}
-proc pqtrace*(conn: PPGconn, debug_port: TFile){.cdecl, dynlib: dllName, 
+proc pqtrace*(conn: PPGconn, debug_port: File){.cdecl, dynlib: dllName, 
     importc: "PQtrace".}
 proc pquntrace*(conn: PPGconn){.cdecl, dynlib: dllName, importc: "PQuntrace".}
 proc pqsetNoticeReceiver*(conn: PPGconn, theProc: PQnoticeReceiver, arg: pointer): PQnoticeReceiver{.
@@ -315,12 +315,12 @@ proc pqescapeBytea*(bintext: cstring, binlen: int, bytealen: var int): cstring{.
     cdecl, dynlib: dllName, importc: "PQescapeBytea".}
 proc pqunescapeBytea*(strtext: cstring, retbuflen: var int): cstring{.cdecl, 
     dynlib: dllName, importc: "PQunescapeBytea".}
-proc pqprint*(fout: TFile, res: PPGresult, ps: PPQprintOpt){.cdecl, 
+proc pqprint*(fout: File, res: PPGresult, ps: PPQprintOpt){.cdecl, 
     dynlib: dllName, importc: "PQprint".}
-proc pqdisplayTuples*(res: PPGresult, fp: TFile, fillAlign: int32, 
+proc pqdisplayTuples*(res: PPGresult, fp: File, fillAlign: int32, 
                       fieldSep: cstring, printHeader: int32, quiet: int32){.
     cdecl, dynlib: dllName, importc: "PQdisplayTuples".}
-proc pqprintTuples*(res: PPGresult, fout: TFile, printAttName: int32, 
+proc pqprintTuples*(res: PPGresult, fout: File, printAttName: int32, 
                     terseOutput: int32, width: int32){.cdecl, dynlib: dllName, 
     importc: "PQprintTuples".}
 proc lo_open*(conn: PPGconn, lobjId: Oid, mode: int32): int32{.cdecl, 
