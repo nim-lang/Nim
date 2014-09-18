@@ -190,10 +190,11 @@ proc wantMainModule* =
     fatal(gCmdLineInfo, errCommandExpectsFilename)
   gProjectMainIdx = addFileExt(gProjectFull, NimExt).fileInfoIdx
 
+passes.gIncludeFile = includeModule
+passes.gImportModule = importModule
+
 proc compileProject*(projectFileIdx = -1'i32) =
   wantMainModule()
-  passes.gIncludeFile = includeModule
-  passes.gImportModule = importModule
   let systemFileIdx = fileInfoIdx(options.libpath / "system.nim")
   let projectFile = if projectFileIdx < 0: gProjectMainIdx else: projectFileIdx
   if projectFile == systemFileIdx:
