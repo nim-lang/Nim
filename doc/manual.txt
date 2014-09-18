@@ -1449,7 +1449,7 @@ Examples:
   proc forEach(c: proc (x: int) {.cdecl.}) =
     ...
 
-  forEach(printItem)  # this will NOT work because calling conventions differ
+  forEach(printItem)  # this will NOT compile because calling conventions differ
 
   
 .. code-block:: nimrod
