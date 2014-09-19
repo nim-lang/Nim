@@ -213,6 +213,8 @@ proc PQexecParams*(conn: PPGconn, command: cstring, nParams: int32,
                    paramTypes: POid, paramValues: cstringArray, 
                    paramLengths, paramFormats: ptr int32, resultFormat: int32): PPGresult{.
     cdecl, dynlib: dllName, importc: "PQexecParams".}
+proc PQprepare*(conn: PPGconn, stmtName, query: cstring, nParams: int32,
+    paramTypes: POid): PPGresult{.cdecl, dynlib: dllName, importc: "PQprepare".}
 proc PQexecPrepared*(conn: PPGconn, stmtName: cstring, nParams: int32, 
                      paramValues: cstringArray, 
                      paramLengths, paramFormats: ptr int32, resultFormat: int32): PPGresult{.
