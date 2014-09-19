@@ -200,6 +200,18 @@ proc newLabel(c: PTransf, n: PNode): PSym =
   result = newSym(skLabel, nil, getCurrOwner(c), n.info)
   result.name = getIdent(genPrefix & $result.id)
 
+proc freshLabels(c: PTransf, n: PNode; symMap: var TIdTable) =
+  if n.kind in {nkBlockStmt, nkBlockExpr}:
+    if n.sons[0].kind == nkSym:
+      let x = newLabel(c, n[0])
+      idTablePut(symMap, n[0].sym, x)
+      n.sons[0].sym = x
+  if n.kind == nkSym and n.sym.kind == skLabel:
+    let x = PSym(idTableGet(symMap, n.sym))
+    if x != nil: n.sym = x
+  else:
+    for i in 0 .. <safeLen(n): freshLabels(c, n.sons[i], symMap)
+
 proc transformBlock(c: PTransf, n: PNode): PTransNode =
   var labl: PSym
   if n.sons[0].kind != nkEmpty:
@@ -231,21 +243,31 @@ proc transformLoopBody(c: PTransf, n: PNode): PTransNode =
     result = transform(c, n)
 
 proc transformWhile(c: PTransf; n: PNode): PTransNode =
-  let labl = newLabel(c, n)
-  c.breakSyms.add(labl)
-  result = newTransNode(nkBlockStmt, n.info, 2)
-  result[0] = newSymNode(labl).PTransNode
+  if c.inlining > 0:
+    result = transformSons(c, n)
+  else:
+    let labl = newLabel(c, n)
+    c.breakSyms.add(labl)
+    result = newTransNode(nkBlockStmt, n.info, 2)
+    result[0] = newSymNode(labl).PTransNode
 
-  var body = newTransNode(n)
-  for i in 0..n.len-2:
-    body[i] = transform(c, n.sons[i])
-  body[<n.len] = transformLoopBody(c, n.sons[<n.len])
-  result[1] = body
-  discard c.breakSyms.pop
+    var body = newTransNode(n)
+    for i in 0..n.len-2:
+      body[i] = transform(c, n.sons[i])
+    body[<n.len] = transformLoopBody(c, n.sons[<n.len])
+    result[1] = body
+    discard c.breakSyms.pop
 
 proc transformBreak(c: PTransf, n: PNode): PTransNode =
-  if n.sons[0].kind != nkEmpty:
+  if n.sons[0].kind != nkEmpty or c.inlining > 0:
     result = n.PTransNode
+    when false:
+      let lablCopy = idNodeTableGet(c.transCon.mapping, n.sons[0].sym)
+      if lablCopy.isNil:
+        result = n.PTransNode
+      else:
+        result = newTransNode(n.kind, n.info, 1)
+        result[0] = lablCopy.PTransNode
   else:
     let labl = c.breakSyms[c.breakSyms.high]
     result = transformSons(c, n)
@@ -477,9 +499,9 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
     var formal = skipTypes(iter.typ, abstractInst).n.sons[i].sym 
     if arg.typ.kind == tyIter: continue
     case putArgInto(arg, formal.typ)
-    of paDirectMapping: 
+    of paDirectMapping:
       idNodeTablePut(newC.mapping, formal, arg)
-    of paFastAsgn: 
+    of paFastAsgn:
       # generate a temporary and produce an assignment statement:
       var temp = newTemp(c, formal.typ, formal.info)
       addVar(v, newSymNode(temp))
@@ -489,8 +511,13 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
       assert(skipTypes(formal.typ, abstractInst).kind == tyVar)
       idNodeTablePut(newC.mapping, formal, arg)
       # XXX BUG still not correct if the arg has a side effect!
-  var body = iter.getBody
+  var body = iter.getBody.copyTree
   pushInfoContext(n.info)
+  # XXX optimize this somehow. But the check "c.inlining" is not correct:
+  var symMap: TIdTable
+  initIdTable symMap
+  freshLabels(c, body, symMap)
+
   inc(c.inlining)
   add(stmtList, transform(c, body))
   #findWrongOwners(c, stmtList.pnode)
@@ -755,6 +782,8 @@ proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
     #  result = lambdalifting.liftIterator(prc, result)
     incl(result.flags, nfTransf)
     when useEffectSystem: trackProc(prc, result)
+    if prc.name.s == "testbody":
+      echo renderTree(result)
 
 proc transformStmt*(module: PSym, n: PNode): PNode =
   if nfTransf in n.flags:

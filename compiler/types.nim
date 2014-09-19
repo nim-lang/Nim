@@ -913,9 +913,11 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
           result = sameTypeAux(a.sons[0], b.sons[0], c)     
     else: 
       result = sameTypeAux(a.sons[0], b.sons[0], c) and sameFlags(a, b)
-  of tyEnum, tyForward, tyProxy:
+  of tyEnum, tyForward:
     # XXX generic enums do not make much sense, but require structural checking
     result = a.id == b.id and sameFlags(a, b)
+  of tyError:
+    result = b.kind == tyError
   of tyTuple:
     cycleCheck()
     result = sameTuple(a, b, c) and sameFlags(a, b)
@@ -1390,7 +1392,7 @@ proc skipConv*(n: PNode): PNode =
   case n.kind
   of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
     # only skip the conversion if it doesn't lose too important information
-    # (see bug #
+    # (see bug #1334)
     if n.sons[0].typ.classify == n.typ.classify:
       result = n.sons[0]
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:

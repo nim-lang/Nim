@@ -662,7 +662,7 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
 
   # optimization pass: not necessary for correctness of the semantic pass
   if {sfNoSideEffect, sfCompileTime} * callee.flags != {} and
-     {sfForward, sfImportc} * callee.flags == {}:
+     {sfForward, sfImportc} * callee.flags == {} and n.typ != nil:
     if sfCompileTime notin callee.flags and 
         optImplicitStatic notin gOptions: return
 
