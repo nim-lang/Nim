@@ -1626,6 +1626,10 @@ proc instantiateCreateFlowVarCall(c: PContext; t: PType;
   initIdTable(bindings)
   bindings.idTablePut(sym.ast[genericParamsPos].sons[0].typ, t)
   result = c.semGenerateInstance(c, sym, bindings, info)
+  # since it's an instantiation, we unmark it as a compilerproc. Otherwise
+  # codegen would fail:
+  result.flags = result.flags - {sfCompilerProc, sfExportC, sfImportC}
+  result.loc.r = nil
 
 proc setMs(n: PNode, s: PSym): PNode = 
   result = n

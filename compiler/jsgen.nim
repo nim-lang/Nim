@@ -724,7 +724,7 @@ proc genBlock(p: PProc, n: PNode, r: var TCompRes) =
     if (n.sons[0].kind != nkSym): internalError(n.info, "genBlock")
     var sym = n.sons[0].sym
     sym.loc.k = locOther
-    sym.loc.a = idx
+    sym.position = idx+1
   setLen(p.blocks, idx + 1)
   p.blocks[idx].id = - p.unique # negative because it isn't used yet
   let labl = p.unique
@@ -741,7 +741,7 @@ proc genBreakStmt(p: PProc, n: PNode) =
     assert(n.sons[0].kind == nkSym)
     let sym = n.sons[0].sym
     assert(sym.loc.k == locOther)
-    idx = sym.loc.a
+    idx = sym.position-1
   else:
     # an unnamed 'break' can only break a loop after 'transf' pass:
     idx = len(p.blocks) - 1
@@ -1654,6 +1654,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       r.res = nil
   of nkGotoState, nkState:
     internalError(n.info, "first class iterators not implemented")
+  of nkPragmaBlock: gen(p, n.lastSon, r)
   else: internalError(n.info, "gen: unknown node type: " & $n.kind)
   
 var globals: PGlobals

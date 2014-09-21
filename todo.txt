@@ -3,7 +3,7 @@ version 0.10
 
 - Test nimfix on various babel packages
 - Pegs do not work at compile-time
-
+- # echo type.int
 
 version 0.9.6
 =============
@@ -15,7 +15,6 @@ version 0.9.6
 - split docgen into separate tool
 - .benign pragma
 - scopes are still broken for generic instantiation!
-- implicit deref for parameter matching
 
 Concurrency
 -----------
@@ -23,7 +22,6 @@ Concurrency
 - 'deepCopy' needs to be instantiated for
   generics *when the type is constructed*
 - test 'deepCopy'
-- overloading of '='; general lift mechanism
 
 - the disjoint checker needs to deal with 'a = spawn f(); g = spawn f()'
 - implement 'foo[1..4] = spawn(f[4..7])'
@@ -63,6 +61,9 @@ Bugs
 version 0.9.x
 =============
 
+
+- implicit deref for parameter matching
+- overloading of '='; general lift mechanism
 - pragmas need 'bindSym' support
 - pragmas need re-work: 'push' is dangerous, 'hasPragma' does not work
   reliably with user-defined pragmas

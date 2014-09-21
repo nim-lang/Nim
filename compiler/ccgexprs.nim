@@ -409,7 +409,6 @@ proc putDataIntoDest(p: BProc, d: var TLoc, t: PType, r: PRope) =
     d.k = locData
     d.t = getUniqueType(t)
     d.r = r
-    d.a = -1
 
 proc putIntoDest(p: BProc, d: var TLoc, t: PType, r: PRope) =
   var a: TLoc
@@ -425,7 +424,6 @@ proc putIntoDest(p: BProc, d: var TLoc, t: PType, r: PRope) =
     d.k = locExpr
     d.t = getUniqueType(t)
     d.r = r
-    d.a = -1
 
 proc binaryStmt(p: BProc, e: PNode, d: var TLoc, frmt: string) =
   var a, b: TLoc
@@ -1508,7 +1506,6 @@ proc genCast(p: BProc, e: PNode, d: var TLoc) =
     linefmt(p, cpsLocals, "union { $1 source; $2 dest; } LOC$3;$n",
       getTypeDesc(p.module, srct), getTypeDesc(p.module, destt), lbl)
     tmp.k = locExpr
-    tmp.a = -1
     tmp.t = srct
     tmp.s = OnStack
     tmp.flags = {}
@@ -2043,6 +2040,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
      nkFromStmt, nkTemplateDef, nkMacroDef: 
     discard
   of nkPragma: genPragma(p, n)
+  of nkPragmaBlock: expr(p, n.lastSon, d)
   of nkProcDef, nkMethodDef, nkConverterDef: 
     if (n.sons[genericParamsPos].kind == nkEmpty):
       var prc = n.sons[namePos].sym

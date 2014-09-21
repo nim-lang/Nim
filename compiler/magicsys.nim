@@ -35,7 +35,7 @@ proc registerSysType(t: PType) =
 proc newSysType(kind: TTypeKind, size: int): PType = 
   result = newType(kind, systemModule)
   result.size = size
-  result.align = size
+  result.align = size.int16
 
 proc getSysSym(name: string): PSym = 
   result = strTableGet(systemModule.tab, getIdent(name))

@@ -679,7 +679,7 @@ type
     heapRoot*: PRope          # keeps track of the enclosing heap object that
                               # owns this location (required by GC algorithms
                               # employing heap snapshots or sliding views)
-    a*: int                   # location's "address", i.e. slot for temporaries
+    #a*: int                   # location's "address", i.e. slot for temporaries
 
   # ---------------- end of backend information ------------------------------
 
@@ -732,8 +732,9 @@ type
       # check for the owner when touching 'usedGenerics'.
       usedGenerics*: seq[PInstantiation]
       tab*: TStrTable         # interface table for modules
+    of skLet, skVar, skField:
+      guard*: PSym
     else: nil
-
     magic*: TMagic
     typ*: PType
     name*: PIdent
@@ -795,7 +796,8 @@ type
     deepCopy*: PSym           # overriden 'deepCopy' operation
     size*: BiggestInt         # the size of the type in bytes
                               # -1 means that the size is unkwown
-    align*: int               # the type's alignment requirements
+    align*: int16             # the type's alignment requirements
+    lockLevel*: int16         # lock level as required for deadlock checking
     loc*: TLoc
 
   TPair*{.final.} = object 
@@ -1173,8 +1175,8 @@ proc newType(kind: TTypeKind, owner: PSym): PType =
   result.id = getID()
   when debugIds:
     registerId(result)
-  #if result.id < 2000 then
-  #  MessageOut(typeKindToStr[kind] & ' has id: ' & toString(result.id))
+  #if result.id < 2000:
+  #  messageOut(typeKindToStr[kind] & ' has id: ' & toString(result.id))
   
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(a.k): a.k = b.k
@@ -1182,7 +1184,7 @@ proc mergeLoc(a: var TLoc, b: TLoc) =
   a.flags = a.flags + b.flags
   if a.t == nil: a.t = b.t
   if a.r == nil: a.r = b.r
-  if a.a == 0: a.a = b.a
+  #if a.a == 0: a.a = b.a
   
 proc assignType(dest, src: PType) = 
   dest.kind = src.kind
@@ -1230,6 +1232,8 @@ proc copySym(s: PSym, keepId: bool = false): PSym =
   result.position = s.position
   result.loc = s.loc
   result.annex = s.annex      # BUGFIX
+  if result.kind in {skVar, skLet, skField}:
+    result.guard = s.guard
 
 proc createModuleAlias*(s: PSym, newIdent: PIdent, info: TLineInfo): PSym =
   result = newSym(s.kind, newIdent, s.owner, info)

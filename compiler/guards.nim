@@ -838,6 +838,22 @@ proc addAsgnFact*(m: var TModel, key, value: PNode) =
   fact.sons[2] = value
   m.add fact
 
+proc sameSubexprs*(m: TModel; a, b: PNode): bool =
+  # This should be used to check whether two *path expressions* refer to the
+  # same memory location according to 'm'. This is tricky:
+  # lock a[i].guard:
+  #   ...
+  #   access a[i].guarded
+  #
+  # Here a[i] is the same as a[i] iff 'i' and 'a' are not changed via '...'.
+  # However, nil checking requires exactly the same mechanism! But for now
+  # we simply use sameTree and live with the unsoundness of the analysis.
+  var check = newNodeI(nkCall, a.info, 3)
+  check.sons[0] = newSymNode(opEq)
+  check.sons[1] = a
+  check.sons[2] = b
+  result = m.doesImply(check) == impYes
+
 proc addCaseBranchFacts*(m: var TModel, n: PNode, i: int) =
   let branch = n.sons[i]
   if branch.kind == nkOfBranch:

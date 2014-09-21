@@ -443,7 +443,7 @@ proc genBlock(p: BProc, t: PNode, d: var TLoc) =
       assert(t.sons[0].kind == nkSym)
       var sym = t.sons[0].sym
       sym.loc.k = locOther
-      sym.loc.a = p.breakIdx
+      sym.position = p.breakIdx+1
     expr(p, t.sons[1], d)
     endBlock(p)
 
@@ -482,7 +482,7 @@ proc genBreakStmt(p: BProc, t: PNode) =
     assert(t.sons[0].kind == nkSym)
     var sym = t.sons[0].sym
     assert(sym.loc.k == locOther)
-    idx = sym.loc.a
+    idx = sym.position-1
   else:
     # an unnamed 'break' can only break a loop after 'transf' pass:
     while idx >= 0 and not p.blocks[idx].isLoop: dec idx

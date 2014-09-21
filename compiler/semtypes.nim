@@ -1244,7 +1244,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   
 proc setMagicType(m: PSym, kind: TTypeKind, size: int) = 
   m.typ.kind = kind
-  m.typ.align = size
+  m.typ.align = size.int16
   m.typ.size = size
   
 proc processMagicType(c: PContext, m: PSym) = 

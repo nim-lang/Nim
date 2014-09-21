@@ -1271,7 +1271,7 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
     #internalError("computeSizeAux()")
     result = szUnknownSize
   typ.size = result
-  typ.align = int(a)
+  typ.align = int16(a)
 
 proc computeSize(typ: PType): BiggestInt = 
   var a: BiggestInt = 1

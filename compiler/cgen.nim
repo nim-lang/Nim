@@ -55,7 +55,7 @@ proc initLoc(result: var TLoc, k: TLocKind, typ: PType, s: TStorageLoc) =
   result.s = s
   result.t = getUniqueType(typ)
   result.r = nil
-  result.a = - 1
+  #result.a = - 1
   result.flags = {}
 
 proc fillLoc(a: var TLoc, k: TLocKind, typ: PType, r: PRope, s: TStorageLoc) = 
@@ -63,7 +63,7 @@ proc fillLoc(a: var TLoc, k: TLocKind, typ: PType, r: PRope, s: TStorageLoc) =
   if a.k == locNone: 
     a.k = k
     a.t = getUniqueType(typ)
-    a.a = - 1
+    #a.a = - 1
     a.s = s
     if a.r == nil: a.r = r
   
@@ -407,7 +407,7 @@ proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
     result.r = con("LOC", toRope(p.labels))
     linefmt(p, cpsLocals, "$1 $2;$n", getTypeDesc(p.module, t), result.r)
   result.k = locTemp
-  result.a = - 1
+  #result.a = - 1
   result.t = getUniqueType(t)
   result.s = OnStack
   result.flags = {}
@@ -425,7 +425,7 @@ proc keepAlive(p: BProc, toKeepAlive: TLoc) =
         [getTypeDesc(p.module, toKeepAlive.t), fid])
     inc(p.gcFrameId)
     result.k = locTemp
-    result.a = -1
+    #result.a = -1
     result.t = toKeepAlive.t
     result.s = OnStack
     result.flags = {}

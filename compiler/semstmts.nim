@@ -1300,9 +1300,14 @@ proc semPragmaBlock(c: PContext, n: PNode): PNode =
   let pragmaList = n.sons[0]
   pragma(c, nil, pragmaList, exprPragmas)
   result = semExpr(c, n.sons[1])
+  n.sons[1] = result
   for i in 0 .. <pragmaList.len:
-    if whichPragma(pragmaList.sons[i]) == wLine:
-      setLine(result, pragmaList.sons[i].info)
+    case whichPragma(pragmaList.sons[i])
+    of wLine: setLine(result, pragmaList.sons[i].info)
+    of wLocks: 
+      result = n
+      result.typ = n.sons[1].typ
+    else: discard
 
 proc semStaticStmt(c: PContext, n: PNode): PNode =
   let a = semStmt(c, n.sons[0])

@@ -280,11 +280,6 @@ proc decodeLoc(r: PRodReader, loc: var TLoc, info: TLineInfo) =
       loc.r = toRope(decodeStr(r.s, r.pos))
     else: 
       loc.r = nil
-    if r.s[r.pos] == '?': 
-      inc(r.pos)
-      loc.a = decodeVInt(r.s, r.pos)
-    else: 
-      loc.a = 0
     if r.s[r.pos] == '>': inc(r.pos)
     else: internalError(info, "decodeLoc " & r.s[r.pos])
   
@@ -326,7 +321,7 @@ proc decodeType(r: PRodReader, info: TLineInfo): PType =
     result.size = - 1
   if r.s[r.pos] == '=': 
     inc(r.pos)
-    result.align = decodeVInt(r.s, r.pos)
+    result.align = decodeVInt(r.s, r.pos).int16
   else: 
     result.align = 2
   decodeLoc(r, result.loc, info)

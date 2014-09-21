@@ -187,9 +187,6 @@ proc encodeLoc(w: PRodWriter, loc: TLoc, result: var string) =
   if loc.r != nil: 
     add(result, '!')
     encodeStr(ropeToStr(loc.r), result)
-  if loc.a != 0: 
-    add(result, '?')
-    encodeVInt(loc.a, result)
   if oldLen + 1 == result.len:
     # no data was necessary, so remove the '<' again:
     setLen(result, oldLen)
