@@ -308,7 +308,7 @@ elif defined(nogc):
     dest[] = src
 
   var allocator {.rtlThreadVar.}: TMemRegion
-  InstantiateForRegion(allocator)
+  instantiateForRegion(allocator)
 
   include "system/cellsets"
 
