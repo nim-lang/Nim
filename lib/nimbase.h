@@ -175,9 +175,9 @@ __clang__
 #  define NIM_NIL 0
 struct NimException
 {
-  NimException(struct E_Base* exp, const char* msg): exp(exp), msg(msg) {}
+  NimException(struct Exception* exp, const char* msg): exp(exp), msg(msg) {}
 
-  struct E_Base* exp;
+  struct Exception* exp;
   const char* msg;
 };
 #else
