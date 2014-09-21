@@ -3,13 +3,13 @@ version 0.10
 
 - Test nimfix on various babel packages
 - Pegs do not work at compile-time
+- deprecate recursive tuples; tuple needs laxer type checking
+- string case should require an 'else'
 - # echo type.int
 
 version 0.9.6
 =============
 
-- allow simple read accesses to global variables --> difficult to ensure that
-  no data races happen
 - split idetools into separate tool
 - split docgen into separate tool
 - .benign pragma
@@ -63,6 +63,8 @@ version 0.9.x
 
 - implicit deref for parameter matching
 - overloading of '='; general lift mechanism
+- allow simple read accesses to global variables --> difficult to ensure that
+  no data races happen
 - pragmas need 'bindSym' support
 - pragmas need re-work: 'push' is dangerous, 'hasPragma' does not work
   reliably with user-defined pragmas

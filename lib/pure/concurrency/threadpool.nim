@@ -94,7 +94,7 @@ type
     idx: int
 
   FlowVarBase* = ref FlowVarBaseObj ## untyped base class for 'FlowVar[T]'
-  FlowVarBaseObj = object of TObject
+  FlowVarBaseObj = object of RootObj
     ready, usesCondVar: bool
     cv: CondVar #\
     # for 'awaitAny' support
@@ -164,7 +164,7 @@ proc cleanFlowVars(w: ptr Worker) =
   let q = addr(w.q)
   acquire(q.lock)
   for i in 0 .. <q.len:
-    GC_unref(cast[PObject](q.data[i]))
+    GC_unref(cast[RootRef](q.data[i]))
   q.len = 0
   release(q.lock)
   signal(q.empty)

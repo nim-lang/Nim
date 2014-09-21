@@ -7,19 +7,19 @@ const
 type
   TRequestMethod = enum reqGet, reqPost
   TServer* = object       ## contains the current server state
-    socket: TSocket
+    s: Socket
     job: seq[TJob]
   TJob* = object
-    client: TSocket
-    process: PProcess
+    client: Socket
+    process: Process
 
 # --------------- output messages --------------------------------------------
 
-proc sendTextContentType(client: TSocket) =
+proc sendTextContentType(client: Socket) =
   send(client, "Content-type: text/html" & wwwNL)
   send(client, wwwNL)
 
-proc badRequest(client: TSocket) =
+proc badRequest(client: Socket) =
   # Inform the client that a request it has made has a problem.
   send(client, "HTTP/1.0 400 BAD REQUEST" & wwwNL)
   sendTextContentType(client)
@@ -27,19 +27,19 @@ proc badRequest(client: TSocket) =
                "such as a POST without a Content-Length.</p>" & wwwNL)
 
 
-proc cannotExec(client: TSocket) =
+proc cannotExec(client: Socket) =
   send(client, "HTTP/1.0 500 Internal Server Error" & wwwNL)
   sendTextContentType(client)
   send(client, "<P>Error prohibited CGI execution.</p>" & wwwNL)
 
 
-proc headers(client: TSocket, filename: string) =
+proc headers(client: Socket, filename: string) =
   # XXX could use filename to determine file type
   send(client, "HTTP/1.0 200 OK" & wwwNL)
   send(client, ServerSig)
   sendTextContentType(client)
 
-proc notFound(client: TSocket, path: string) =
+proc notFound(client: Socket, path: string) =
   send(client, "HTTP/1.0 404 NOT FOUND" & wwwNL)
   send(client, ServerSig)
   sendTextContentType(client)
@@ -50,7 +50,7 @@ proc notFound(client: TSocket, path: string) =
   send(client, "</body></html>" & wwwNL)
 
 
-proc unimplemented(client: TSocket) =
+proc unimplemented(client: Socket) =
   send(client, "HTTP/1.0 501 Method Not Implemented" & wwwNL)
   send(client, ServerSig)
   sendTextContentType(client)
@@ -62,24 +62,25 @@ proc unimplemented(client: TSocket) =
 
 # ----------------- file serving ---------------------------------------------
 
-proc discardHeaders(client: TSocket) = skip(client)
+proc discardHeaders(client: Socket) = skip(client)
 
-proc serveFile(client: TSocket, filename: string) =
+proc serveFile(client: Socket, filename: string) =
   discardHeaders(client)
 
-  var f: TFile
+  var f: File
   if open(f, filename):
     headers(client, filename)
     const bufSize = 8000 # != 8K might be good for memory manager
     var buf = alloc(bufsize)
-    while True:
+    while true:
       var bytesread = readBuffer(f, buf, bufsize)
       if bytesread > 0:
         var byteswritten = send(client, buf, bytesread)
         if bytesread != bytesWritten:
+          let err = osLastError()
           dealloc(buf)
           close(f)
-          OSError()
+          raiseOSError(err)
       if bytesread != bufSize: break
     dealloc(buf)
     close(f)
@@ -89,7 +90,7 @@ proc serveFile(client: TSocket, filename: string) =
 
 # ------------------ CGI execution -------------------------------------------
 
-proc executeCgi(server: var TServer, client: TSocket, path, query: string, 
+proc executeCgi(server: var TServer, client: Socket, path, query: string, 
                 meth: TRequestMethod) =
   var env = newStringTable(modeCaseInsensitive)
   var contentLength = -1
@@ -131,9 +132,10 @@ proc executeCgi(server: var TServer, client: TSocket, path, query: string,
   if meth == reqPost:
     # get from client and post to CGI program:
     var buf = alloc(contentLength)
-    if recv(client, buf, contentLength) != contentLength: 
+    if recv(client, buf, contentLength) != contentLength:
+      let err = osLastError()
       dealloc(buf)
-      OSError()
+      raiseOSError(err)
     var inp = process.inputStream
     inp.writeData(buf, contentLength)
     dealloc(buf)
@@ -163,7 +165,7 @@ proc animate(server: var TServer) =
 
 # --------------- Server Setup -----------------------------------------------
 
-proc acceptRequest(server: var TServer, client: TSocket) =
+proc acceptRequest(server: var TServer, client: Socket) =
   var cgi = false
   var query = ""
   var buf = ""
@@ -197,7 +199,7 @@ proc acceptRequest(server: var TServer, client: TSocket) =
   if path[path.len-1] == '/' or existsDir(path):
     path = path / "index.html"
 
-  if not ExistsFile(path):
+  if not existsFile(path):
     discardHeaders(client)
     notFound(client, path)
     client.close()
@@ -215,26 +217,24 @@ proc acceptRequest(server: var TServer, client: TSocket) =
     else:
       executeCgi(server, client, path, query, meth)
 
-
-
 when isMainModule:
   var port = 80
 
   var server: TServer
   server.job = @[]
-  server.socket = socket(AF_INET)
-  if server.socket == InvalidSocket: OSError()
-  server.socket.bindAddr(port=TPort(port))
-  listen(server.socket)
+  server.s = socket(AF_INET)
+  if server.s == invalidSocket: raiseOSError(osLastError())
+  server.s.bindAddr(port=Port(port))
+  listen(server.s)
   echo("server up on port " & $port)
 
   while true:
     # check for new new connection & handle it
-    var list: seq[TSocket] = @[server.socket]
+    var list: seq[Socket] = @[server.s]
     if select(list, 10) > 0:
-      var client: TSocket
+      var client: Socket
       new(client)
-      accept(server.socket, client)
+      accept(server.s, client)
       try:
         acceptRequest(server, client)
       except:
@@ -244,4 +244,4 @@ when isMainModule:
     animate(server)
     # some slack for CPU
     sleep(10)
-  server.socket.close()
+  server.s.close()
