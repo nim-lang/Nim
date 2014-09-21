@@ -1,6 +1,7 @@
 discard """
   output: '''foobarfoobar
 bazbearbazbear
+
 1'''
   cmd: "nim $target --threads:on $options $file"
 """

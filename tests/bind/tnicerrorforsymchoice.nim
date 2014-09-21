@@ -5,13 +5,13 @@ discard """
 
 #bug #442
 import scgi, sockets, asyncio, strtabs
-proc handleSCGIRequest[TScgi: TScgiState | PAsyncScgiState](s: TScgi) =
+proc handleSCGIRequest[TScgi: ScgiState | AsyncScgiState](s: TScgi) =
   discard
-proc handleSCGIRequest(client: PAsyncSocket, headers: PStringTable, 
+proc handleSCGIRequest(client: AsyncSocket, headers: StringTableRef, 
                        input: string) =
   discard
 
-proc test(handle: proc (client: PAsyncSocket, headers: PStringTable, 
+proc test(handle: proc (client: AsyncSocket, headers: StringTableRef, 
                         input: string), b: int) =
   discard
 

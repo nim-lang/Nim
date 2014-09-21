@@ -104,7 +104,7 @@ proc guardGlobal(a: PEffects; n: PNode; guard: PSym) =
 # (var x{.guard: y.}: int)
 proc guardDotAccess(a: PEffects; n: PNode) =
   let ri = n.sons[1]
-  internalAssert ri.kind == nkSym and ri.sym.kind == skField
+  if ri.kind != nkSym or ri.sym.kind != skField: return
   var g = ri.sym.guard
   if g.isNil or a.isTopLevel: return
   # fixup guard:

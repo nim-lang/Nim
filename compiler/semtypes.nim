@@ -1342,6 +1342,9 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
         if def.typ.kind != tyTypeDesc:
           typ = newTypeWithSons(c, tyStatic, @[def.typ])
       else:
+        # the following line fixes ``TV2*[T:SomeNumber=TR] = array[0..1, T]``
+        # from manyloc/named_argument_bug/triengine:
+        def.typ = def.typ.skipTypes({tyTypeDesc})
         if not containsGenericType(def.typ):
           def = fitNode(c, typ, def)
     

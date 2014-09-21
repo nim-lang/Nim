@@ -76,14 +76,14 @@ type
     case kind*: Tparam_kind
     of PK_EMPTY: nil
     of PK_INT: int_val*: int
-    of PK_BIGGEST_INT: big_int_val*: biggestInt
+    of PK_BIGGEST_INT: big_int_val*: BiggestInt
     of PK_FLOAT: float_val*: float
-    of PK_BIGGEST_FLOAT: big_float_val*: biggestFloat
+    of PK_BIGGEST_FLOAT: big_float_val*: BiggestFloat
     of PK_STRING: str_val*: string
     of PK_BOOL: bool_val*: bool
     of PK_HELP: nil
 
-  Tcommandline_results* = object of TObject ## \
+  Tcommandline_results* = object of RootObj ## \
     ## Contains the results of the parsing.
     ##
     ## Usually this is the result of the parse() call, but you can inherit from
@@ -97,7 +97,7 @@ type
     ## the first name variant for all options to avoid you repeating the test
     ## with different keys.
     positional_parameters*: seq[Tparsed_parameter]
-    options*: TOrderedTable[string, Tparsed_parameter]
+    options*: OrderedTable[string, Tparsed_parameter]
 
 
 # - Tparam_kind procs
@@ -193,7 +193,7 @@ template new_parsed_parameter*(tkind: Tparam_kind, expr): Tparsed_parameter =
 
 proc init*(param: var Tcommandline_results;
     positional_parameters: seq[Tparsed_parameter] = @[];
-    options: TOrderedTable[string, Tparsed_parameter] =
+    options: OrderedTable[string, Tparsed_parameter] =
       initOrderedTable[string, Tparsed_parameter](4)) =
   ## Initialization helper with default parameters.
   param.positional_parameters = positional_parameters
@@ -231,12 +231,12 @@ template run_custom_proc(parsed_parameter: Tparsed_parameter,
   ## Pass in the string of the parameter triggering the call. If the
   if not custom_validator.isNil:
     except:
-      raise_or_quit(EInvalidValue, ("Couldn't run custom proc for " &
+      raise_or_quit(ValueError, ("Couldn't run custom proc for " &
         "parameter $1:\n$2" % [escape(parameter),
         getCurrentExceptionMsg()]))
     let message = custom_validator(parameter, parsed_parameter)
     if not message.isNil and message.len > 0:
-      raise_or_quit(EInvalidValue, ("Failed to validate value for " &
+      raise_or_quit(ValueError, ("Failed to validate value for " &
         "parameter $1:\n$2" % [escape(parameter), message]))
 
 
@@ -246,50 +246,50 @@ proc parse_parameter(quit_on_failure: bool, param, value: string,
   ##
   ## Pass the parameter string which requires a value and the text the user
   ## passed in for it. It will be parsed according to the param_kind. This proc
-  ## will raise (EInvalidValue, EOverflow) if something can't be parsed.
+  ## will raise (ValueError, EOverflow) if something can't be parsed.
   result.kind = param_kind
   case param_kind:
   of PK_INT:
     try: result.int_val = value.parseInt
-    except EOverflow:
-      raise_or_quit(EOverflow, ("parameter $1 requires an " &
+    except OverflowError:
+      raise_or_quit(OverflowError, ("parameter $1 requires an " &
         "integer, but $2 is too large to fit into one") % [param,
         escape(value)])
-    except EInvalidValue:
-      raise_or_quit(EInvalidValue, ("parameter $1 requires an " &
+    except ValueError:
+      raise_or_quit(ValueError, ("parameter $1 requires an " &
         "integer, but $2 can't be parsed into one") % [param, escape(value)])
   of PK_STRING:
     result.str_val = value
   of PK_FLOAT:
     try: result.float_val = value.parseFloat
-    except EInvalidValue:
-      raise_or_quit(EInvalidValue, ("parameter $1 requires a " &
+    except ValueError:
+      raise_or_quit(ValueError, ("parameter $1 requires a " &
         "float, but $2 can't be parsed into one") % [param, escape(value)])
   of PK_BOOL:
     try: result.bool_val = value.parseBool
-    except EInvalidValue:
-      raise_or_quit(EInvalidValue, ("parameter $1 requires a " &
+    except ValueError:
+      raise_or_quit(ValueError, ("parameter $1 requires a " &
         "boolean, but $2 can't be parsed into one. Valid values are: " &
         "y, yes, true, 1, on, n, no, false, 0, off") % [param, escape(value)])
   of PK_BIGGEST_INT:
     try:
       let parsed_len = parseBiggestInt(value, result.big_int_val)
       if value.len != parsed_len or parsed_len < 1:
-        raise_or_quit(EInvalidValue, ("parameter $1 requires an " &
+        raise_or_quit(ValueError, ("parameter $1 requires an " &
           "integer, but $2 can't be parsed completely into one") % [
           param, escape(value)])
-    except EInvalidValue:
-      raise_or_quit(EInvalidValue, ("parameter $1 requires an " &
+    except ValueError:
+      raise_or_quit(ValueError, ("parameter $1 requires an " &
         "integer, but $2 can't be parsed into one") % [param, escape(value)])
   of PK_BIGGEST_FLOAT:
     try:
       let parsed_len = parseBiggestFloat(value, result.big_float_val)
       if value.len != parsed_len or parsed_len < 1:
-        raise_or_quit(EInvalidValue, ("parameter $1 requires a " &
+        raise_or_quit(ValueError, ("parameter $1 requires a " &
           "float, but $2 can't be parsed completely into one") % [
           param, escape(value)])
-    except EInvalidValue:
-      raise_or_quit(EInvalidValue, ("parameter $1 requires a " &
+    except ValueError:
+      raise_or_quit(ValueError, ("parameter $1 requires a " &
         "float, but $2 can't be parsed into one") % [param, escape(value)])
   of PK_EMPTY:
     discard
@@ -298,15 +298,15 @@ proc parse_parameter(quit_on_failure: bool, param, value: string,
 
 
 template build_specification_lookup():
-    TOrderedTable[string, ptr Tparameter_specification] =
+    OrderedTable[string, ptr Tparameter_specification] =
   ## Returns the table used to keep pointers to all of the specifications.
-  var result {.gensym.}: TOrderedTable[string, ptr Tparameter_specification]
+  var result {.gensym.}: OrderedTable[string, ptr Tparameter_specification]
   result = initOrderedTable[string, ptr Tparameter_specification](
     nextPowerOfTwo(expected.len))
   for i in 0..expected.len-1:
     for param_to_detect in expected[i].names:
       if result.hasKey(param_to_detect):
-        raise_or_quit(EInvalidKey,
+        raise_or_quit(KeyError,
           "Parameter $1 repeated in input specification" % param_to_detect)
       else:
         result[param_to_detect] = addr(expected[i])
@@ -344,7 +344,7 @@ proc parse*(expected: seq[Tparameter_specification] = @[],
   ##
   ## If there is any kind of error and quit_on_failure is true, the quit proc
   ## will be called with a user error message. If quit_on_failure is false
-  ## errors will raise exceptions (usually EInvalidValue or EOverflow) instead
+  ## errors will raise exceptions (usually ValueError or EOverflow) instead
   ## for you to catch and handle.
 
   assert type_of_positional_parameters != PK_EMPTY and
@@ -359,7 +359,7 @@ proc parse*(expected: seq[Tparameter_specification] = @[],
   # Prepare the input parameter list, maybe get it from the OS if not available.
   var args = args
   if args == nil:
-    let total_params = ParamCount()
+    let total_params = paramCount()
     #echo "Got no explicit args, retrieving from OS. Count: ", total_params
     newSeq(args, total_params)
     for i in 0..total_params - 1:
@@ -387,7 +387,7 @@ proc parse*(expected: seq[Tparameter_specification] = @[],
           if param.consumes == PK_HELP:
             echo_help(expected, type_of_positional_parameters,
               bad_prefixes, end_of_options)
-            raise_or_quit(EInvalidKey, "")
+            raise_or_quit(KeyError, "")
 
           if param.consumes != PK_EMPTY:
             if i + 1 < args.len:
@@ -396,14 +396,14 @@ proc parse*(expected: seq[Tparameter_specification] = @[],
               run_custom_proc(parsed, param.custom_validator, arg)
               i += 1
             else:
-              raise_or_quit(EInvalidValue, ("parameter $1 requires a " &
+              raise_or_quit(ValueError, ("parameter $1 requires a " &
                 "value, but none was provided") % [arg])
           result.options[param.names[0]] = parsed
           break adding_positional_parameter
         else:
           for bad_prefix in bad_prefixes:
             if arg.startsWith(bad_prefix):
-              raise_or_quit(EInvalidValue, ("Found ambiguos parameter '$1' " &
+              raise_or_quit(ValueError, ("Found ambiguos parameter '$1' " &
                 "starting with '$2', put '$3' as the previous parameter " &
                 "if you want to force it as positional parameter.") % [arg,
                 bad_prefix, end_of_options])
@@ -415,7 +415,7 @@ proc parse*(expected: seq[Tparameter_specification] = @[],
     i += 1
 
 
-proc toString(runes: seq[TRune]): string =
+proc toString(runes: seq[Rune]): string =
   result = ""
   for rune in runes: result.add(rune.toUTF8)
 
@@ -424,7 +424,7 @@ proc ascii_cmp(a, b: string): int =
   ## Comparison ignoring non ascii characters, for better switch sorting.
   let a = filterIt(toSeq(runes(a)), it.isAlpha())
   # Can't use filterIt twice, github bug #351.
-  let b = filter(toSeq(runes(b)), proc(x: TRune): bool = x.isAlpha())
+  let b = filter(toSeq(runes(b)), proc(x: Rune): bool = x.isAlpha())
   return system.cmp(toString(a), toString(b))
 
 

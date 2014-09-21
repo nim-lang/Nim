@@ -18,5 +18,5 @@ type
   PSDL_Sem = ptr TSDL_Sem
   TSDL_Sem = TSDL_Semaphore
 
-proc SDL_CreateSemaphore(initial_value: Int32): PSDL_Sem {.
+proc SDL_CreateSemaphore(initial_value: int32): PSDL_Sem {.
   importc: "SDL_CreateSemaphore".}

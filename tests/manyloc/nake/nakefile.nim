@@ -84,7 +84,7 @@ task "download", "download game assets":
     skipAssets = false
     path = expandFilename("data")
   path.add DirSep
-  path.add(extractFilename(gameAssets))
+  path.add(extractFilename(GameAssets))
   if existsFile(path):
     echo "The file already exists\n",
       "[R]emove  [M]ove  [Q]uit  [S]kip    Source: ", GameAssets
@@ -92,7 +92,7 @@ task "download", "download game assets":
     of "r":
       removeFile path
     of "m":
-      moveFile path, path/../(extractFilename(gameAssets)&"-old")
+      moveFile path, path/../(extractFilename(GameAssets)&"-old")
     of "s":
       skipAssets = true
     else:
@@ -101,7 +101,7 @@ task "download", "download game assets":
     echo "Downloading from ", GameAssets
   if not skipAssets:
     echo "Downloading to ", path
-    downloadFile gameAssets, path
+    downloadFile GameAssets, path
     echo "Download finished"
   
     let targetDir = parentDir(parentDir(path))

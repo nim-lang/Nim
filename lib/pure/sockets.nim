@@ -142,9 +142,10 @@ type
     TSOBool: SOBool, TRecvLineResult: RecvLineResult, 
     TReadLineResult: ReadLineResult, ETimeout: TimeoutError].}
 
-
-let
-  invalidSocket*: Socket = nil ## invalid socket
+when defined(booting):
+  let invalidSocket*: Socket = nil ## invalid socket
+else:
+  const invalidSocket*: Socket = nil ## invalid socket
 
 when defined(windows):
   let

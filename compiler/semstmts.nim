@@ -448,7 +448,7 @@ proc semConst(c: PContext, n: PNode): PNode =
     if typ == nil:
       localError(a.sons[2].info, errConstExprExpected)
       continue
-    if not typeAllowed(typ, skConst):
+    if not typeAllowed(typ, skConst) and def.kind != nkNilLit:
       localError(a.info, errXisNoType, typeToString(typ))
       continue
     v.typ = typ
