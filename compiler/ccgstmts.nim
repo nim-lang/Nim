@@ -832,7 +832,9 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
   discard cgsym(p.module, "E_Base")
   linefmt(p, cpsLocals, "#TSafePoint $1;$n", safePoint)
   linefmt(p, cpsStmts, "#pushSafePoint(&$1);$n", safePoint)
-  if isDefined("useSigsetjmp"):
+  if isDefined("useAnsiCsetjmp"):
+    linefmt(p, cpsStmts, "$1.status = setjmp($1.context);$n", safePoint)
+  elif isDefined("useSigsetjmp"):
     linefmt(p, cpsStmts, "$1.status = sigsetjmp($1.context, 0);$n", safePoint)
   elif isDefined("useRawsetjmp"):
     linefmt(p, cpsStmts, "$1.status = _setjmp($1.context);$n", safePoint)

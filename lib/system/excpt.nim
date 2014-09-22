@@ -196,7 +196,9 @@ proc quitOrDebug() {.inline.} =
     endbStep() # call the debugger
 
 proc raiseExceptionAux(e: ref E_Base) =
-  when defined(useSigsetjmp):
+  when defined(useAnsiCsetjmp):
+    # use the definition from ansi_c.nim
+  elif defined(useSigsetjmp):
     proc c_longjmp(buf: C_JmpBuf, val: cint) {.importc: "siglongjmp",
                                                header: "<setjmp.h>".}
   elif defined(useRawsetjmp):
