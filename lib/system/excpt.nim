@@ -196,6 +196,12 @@ proc quitOrDebug() {.inline.} =
     endbStep() # call the debugger
 
 proc raiseExceptionAux(e: ref E_Base) =
+  when defined(useSigsetjmp):
+    proc c_longjmp(buf: C_JmpBuf, val: cint) {.importc: "siglongjmp",
+                                               header: "<setjmp.h>".}
+  elif defined(useRawsetjmp):
+    proc c_longjmp(buf: C_JmpBuf, val: cint) {.importc: "_longjmp",
+                                               header: "<setjmp.h>".}
   if localRaiseHook != nil:
     if not localRaiseHook(e): return
   if globalRaiseHook != nil:
