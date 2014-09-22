@@ -335,7 +335,7 @@ proc analyse(c: var AnalysisCtx; n: PNode) =
     localError(n.info, "invalid control flow for 'parallel'")
     # 'break' that leaves the 'parallel' section is not valid either
     # or maybe we should generate a 'try' XXX
-  of nkVarSection:
+  of nkVarSection, nkLetSection:
     for it in n:
       let value = it.lastSon
       if value.kind != nkEmpty:
@@ -396,7 +396,7 @@ proc transformSpawnSons(owner: PSym; n, barrier: PNode): PNode =
 
 proc transformSpawn(owner: PSym; n, barrier: PNode): PNode =
   case n.kind
-  of nkVarSection:
+  of nkVarSection, nkLetSection:
     result = nil
     for it in n:
       let b = it.lastSon

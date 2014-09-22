@@ -599,7 +599,7 @@ proc track(tracked: PEffects, n: PNode) =
     addAsgnFact(tracked.guards, n.sons[0], n.sons[1])
     notNilCheck(tracked, n.sons[1], n.sons[0].typ)
     when false: cstringCheck(tracked, n)
-  of nkVarSection:
+  of nkVarSection, nkLetSection:
     for child in n:
       let last = lastSon(child)
       if child.kind == nkIdentDefs and last.kind != nkEmpty:
