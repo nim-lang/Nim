@@ -57,6 +57,7 @@ type
   cstring* {.magic: Cstring.} ## built-in cstring (*compatible string*) type
   pointer* {.magic: Pointer.} ## built-in pointer type, use the ``addr``
                               ## operator to get a pointer to a variable
+
 const
   on* = true    ## alias for ``true``
   off* = false  ## alias for ``false``
@@ -3069,6 +3070,20 @@ proc locals*(): TObject {.magic: "Locals", noSideEffect.} =
   ##   # -> name b with value 4
   ##   # -> B is 1
   discard
+
+when defined(cpp):
+  # C++ requires explicit casts from "const char *" to "char *.
+  # We therefore introduce a separate type "cconststring" to
+  # represent a "const char *" and create a converter in order
+  # to insert the necessary casts where required.
+  type cconststring* {.importc: "const char *", nodecl.} = object
+    ## Represents the type ``const char *`` in C/C++.
+  converter `cconststring->cstring`*(s: cconststring): cstring {.inline.} =
+    ## Implicit conversion from ``cconststring`` to ``cstring``.
+    cast[cstring](s)
+else:
+  type cconststring* = cstring
+    ## Represents the type ``const char *`` in C/C++.
 
 when hostOS != "standalone" and not defined(NimrodVM) and not defined(JS):
   proc deepCopy*[T](x: var T, y: T) {.noSideEffect, magic: "DeepCopy".} =

@@ -2369,7 +2369,7 @@ proc sched_setscheduler*(a1: TPid, a2: cint, a3: var Tsched_param): cint {.
 proc sched_yield*(): cint {.importc, header: "<sched.h>".}
 
 proc strerror*(errnum: cint): cstring {.importc, header: "<string.h>".}
-proc hstrerror*(herrnum: cint): cstring {.importc, header: "<netdb.h>".}
+proc hstrerror*(herrnum: cint): cconststring {.importc, header: "<netdb.h>".}
 
 proc FD_CLR*(a1: cint, a2: var TFdSet) {.importc, header: "<sys/select.h>".}
 proc FD_ISSET*(a1: cint | TSocketHandle, a2: var TFdSet): cint {.
@@ -2552,7 +2552,7 @@ proc endprotoent*() {.importc, header: "<netdb.h>".}
 proc endservent*() {.importc, header: "<netdb.h>".}
 proc freeaddrinfo*(a1: ptr Taddrinfo) {.importc, header: "<netdb.h>".}
 
-proc gai_strerror*(a1: cint): cstring {.importc, header: "<netdb.h>".}
+proc gai_strerror*(a1: cint): cconststring {.importc, header: "<netdb.h>".}
 
 proc getaddrinfo*(a1, a2: cstring, a3: ptr Taddrinfo,
                   a4: var ptr Taddrinfo): cint {.importc, header: "<netdb.h>".}
