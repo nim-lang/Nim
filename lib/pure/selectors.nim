@@ -11,7 +11,7 @@
 
 import tables, os, unsigned, hashes
 
-when defined(linux): 
+when defined(linux) or defined(macosx):
   import posix, epoll
 elif defined(windows): 
   import winlean
@@ -61,7 +61,7 @@ when defined(nimdoc):
     ## Retrieves the selector key for ``fd``.
 
 
-elif defined(linux):
+elif defined(linux) or defined(macosx):
   type
     Selector* = ref object
       epollFD: cint
