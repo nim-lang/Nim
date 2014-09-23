@@ -171,6 +171,10 @@ proc genSingleVar(p: BProc, a: PNode) =
   if sfCompileTime in v.flags: return
   var targetProc = p
   if sfGlobal in v.flags:
+    if v.flags * {sfImportc, sfExportc} == {sfImportc} and
+        a.sons[2].kind == nkEmpty and
+        v.loc.flags * {lfHeader, lfNoDecl} != {}:
+      return
     if sfPure in v.flags:
       # v.owner.kind != skModule:
       targetProc = p.module.preInitProc
