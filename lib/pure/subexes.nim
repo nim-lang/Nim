@@ -196,6 +196,9 @@ proc scanDollar(p: var TFormatParser, a: openarray[string], s: var string) =
   of '$': 
     emitChar p, s, '$'
     inc i
+  of '*':
+    for j in 0..a.high: emitStr p, s, a[j]
+    inc i
   of '{':
     call:
       let (x, y) = scanSlice(p, a)
