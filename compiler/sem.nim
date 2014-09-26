@@ -371,6 +371,8 @@ proc myOpen(module: PSym): PPassContext =
   c.semInferredLambda = semInferredLambda
   c.semGenerateInstance = generateInstance
   c.semTypeNode = semTypeNode
+  c.instDeepCopy = sigmatch.instDeepCopy
+
   pushProcCon(c, module)
   pushOwner(c.module)
   c.importTable = openScope(c)

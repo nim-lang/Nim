@@ -92,6 +92,9 @@ type
     lastGenericIdx*: int      # used for the generics stack
     hloLoopDetector*: int     # used to prevent endless loops in the HLO
     inParallelStmt*: int
+    instDeepCopy*: proc (c: PContext; dc: PSym; t: PType;
+                         info: TLineInfo): PSym {.nimcall.}
+
    
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
   result.genericSym = s

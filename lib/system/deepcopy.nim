@@ -82,17 +82,16 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) =
       genericDeepCopyAux(cast[pointer](d +% i*% mt.base.size),
                          cast[pointer](s +% i*% mt.base.size), mt.base)
   of tyRef:
-    if mt.base.deepcopy != nil:
-      let z = mt.base.deepcopy(cast[PPointer](src)[])
+    let s2 = cast[PPointer](src)[]
+    if s2 == nil:
+      unsureAsgnRef(cast[PPointer](dest), s2)
+    elif mt.base.deepcopy != nil:
+      let z = mt.base.deepcopy(s2)
       unsureAsgnRef(cast[PPointer](dest), z)
     else:
       # we modify the header of the cell temporarily; instead of the type
       # field we store a forwarding pointer. XXX This is bad when the cloning
       # fails due to OOM etc.
-      let s2 = cast[PPointer](src)[]
-      if s2 == nil:
-        unsureAsgnRef(cast[PPointer](dest), s2)
-        return
       when declared(usrToCell):
         # unfortunately we only have cycle detection for our native GCs.
         let x = usrToCell(s2)
@@ -116,10 +115,11 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) =
         genericDeepCopyAux(z, s2, realType.base)        
   of tyPtr:
     # no cycle check here, but also not really required
-    if mt.base.deepcopy != nil:
-      cast[PPointer](dest)[] = mt.base.deepcopy(cast[PPointer](s)[])
+    let s2 = cast[PPointer](src)[]
+    if s2 != nil and mt.base.deepcopy != nil:
+      cast[PPointer](dest)[] = mt.base.deepcopy(s2)
     else:
-      cast[PPointer](dest)[] = cast[PPointer](s)[]
+      cast[PPointer](dest)[] = s2
   else:
     copyMem(dest, src, mt.size)
 

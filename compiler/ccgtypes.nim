@@ -898,7 +898,7 @@ include ccgtrav
 
 proc genDeepCopyProc(m: BModule; s: PSym; result: PRope) =
   genProc(m, s)
-  appf(m.s[cfsTypeInit3], "$1.deepcopy = (N_NIMCALL_PTR(void*, void*)) $2;$n",
+  appf(m.s[cfsTypeInit3], "$1.deepcopy =(N_NIMCALL_PTR(void*,)(void*))$2;$n",
      [result, s.loc.r])
 
 proc genTypeInfo(m: BModule, t: PType): PRope =

@@ -1,6 +1,7 @@
 version 0.10
 ============
 
+- use the effect system for static deadlock prevention
 - Test nimfix on various babel packages
 - deprecate recursive tuples; tuple needs laxer type checking
 - string case should require an 'else'
@@ -20,9 +21,7 @@ version 0.9.6
 Concurrency
 -----------
 
-- 'deepCopy' needs to be instantiated for
-  generics *when the type is constructed*
-- test 'deepCopy'
+- test 'deepCopy' for closures
 
 - implement 'foo[1..4] = spawn(f[4..7])'
 - document the new 'spawn' and 'parallel' statements
@@ -117,7 +116,6 @@ Concurrency/Effect system
   provide a ``syncgc`` pragma to trigger compiler injection --> more general:
   an ``injectLoop`` pragma
 - 'writes: []' effect; track reads/writes for shared types
-- use the effect system for static deadlock prevention and race detection
 - ``~`` operator for effects
 - introduce 'noaddr' pragma to prevent taking the address of a location; this
   is very handy to prevent aliasing of global data

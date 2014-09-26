@@ -1029,7 +1029,11 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         sameType(s.typ.sons[1], s.typ.sons[0]):
       # Note: we store the deepCopy in the base of the pointer to mitigate
       # the problem that pointers are structural types:
-      let t = s.typ.sons[1].skipTypes(abstractInst).lastSon.skipTypes(abstractInst)
+      var t = s.typ.sons[1].skipTypes(abstractInst).lastSon.skipTypes(abstractInst)
+      while true:
+        if t.kind == tyGenericBody: t = t.lastSon
+        elif t.kind == tyGenericInvokation: t = t.sons[0]
+        else: break
       if t.kind in {tyObject, tyDistinct, tyEnum}:
         if t.deepCopy.isNil: t.deepCopy = s
         else: 
@@ -1044,6 +1048,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
   of "=": discard
   else: localError(n.info, errGenerated,
                    "'destroy' or 'deepCopy' expected for 'override'")
+  incl(s.flags, sfUsed)
 
 type
   TProcCompilationSteps = enum

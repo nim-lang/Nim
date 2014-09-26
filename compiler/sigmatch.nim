@@ -1482,6 +1482,18 @@ proc argtypeMatches*(c: PContext, f, a: PType): bool =
   # instantiate generic converters for that
   result = res != nil
 
+proc instDeepCopy*(c: PContext; dc: PSym; t: PType; info: TLineInfo): PSym {.
+                    procvar.} =
+  var m: TCandidate
+  initCandidate(c, m, dc.typ)
+  var f = dc.typ.sons[1]
+  if f.kind in {tyRef, tyPtr}: f = f.lastSon
+  if typeRel(m, f, t) == isNone:
+    localError(info, errGenerated, "cannot instantiate 'deepCopy'")
+  else:
+    result = c.semGenerateInstance(c, dc, m.bindings, info)
+    assert sfFromGeneric in result.flags
+
 include suggest
 
 when not declared(tests):
