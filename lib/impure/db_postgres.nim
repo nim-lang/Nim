@@ -60,7 +60,10 @@ proc dbFormat(formatstr: TSqlQuery, args: varargs[string]): string =
   var a = 0
   for c in items(string(formatstr)):
     if c == '?':
-      add(result, dbQuote(args[a]))
+      if args[a] == nil:
+        add(result, "NULL")
+      else:
+        add(result, dbQuote(args[a]))
       inc(a)
     else:
       add(result, c)
@@ -124,7 +127,10 @@ proc setRow(res: PPGresult, r: var TRow, line, cols: int32) =
   for col in 0..cols-1:
     setLen(r[col], 0)
     var x = PQgetvalue(res, line, col)
-    add(r[col], x)
+    if x == nil:
+      r[col] = nil
+    else:
+      add(r[col], x)
 
 iterator fastRows*(db: TDbConn, query: TSqlQuery,
                    args: varargs[string, `$`]): TRow {.tags: [FReadDB].} =
