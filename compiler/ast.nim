@@ -1165,6 +1165,7 @@ proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
   result.sons = @[name, pattern, genericParams, params,
                   pragmas, exceptions, body]
 
+const UnspecifiedLockLevel* = -1
 
 proc newType(kind: TTypeKind, owner: PSym): PType = 
   new(result)
@@ -1173,6 +1174,7 @@ proc newType(kind: TTypeKind, owner: PSym): PType =
   result.size = - 1
   result.align = 2            # default alignment
   result.id = getID()
+  result.lockLevel = UnspecifiedLockLevel
   when debugIds:
     registerId(result)
   #if result.id < 2000:
@@ -1195,6 +1197,7 @@ proc assignType(dest, src: PType) =
   dest.align = src.align
   dest.destructor = src.destructor
   dest.deepCopy = src.deepCopy
+  dest.lockLevel = src.lockLevel
   # this fixes 'type TLock = TSysLock':
   if src.sym != nil:
     if dest.sym != nil:

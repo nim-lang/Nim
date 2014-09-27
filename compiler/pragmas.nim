@@ -529,12 +529,12 @@ proc pragmaLocks(c: PContext, it: PNode): int16 =
   if it.kind != nkExprColonExpr:
     invalidPragma(it)
   else:
-    let n = it[1]
-    let x = expectIntLit(c, n)
-    if x < low(int16) or x > high(int16):
-      localError(n.info, "integer must be in the valid range of int16")
-    else:
-      result = int16(x)
+    if it[1].kind != nkNilLit:
+      let x = expectIntLit(c, it)
+      if x < 0 or x > high(int16):
+        localError(it[1].info, "integer must be within 0..high(int16)")
+      else:
+        result = int16(x)
 
 proc typeBorrow(sym: PSym, n: PNode) =
   if n.kind == nkExprColonExpr:

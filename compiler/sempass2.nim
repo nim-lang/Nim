@@ -69,24 +69,44 @@ type
   TEffects = object
     exc: PNode  # stack of exceptions
     tags: PNode # list of tags
-    uses: PNode # list of used global variables
     bottom: int
     owner: PSym
     init: seq[int] # list of initialized variables
     guards: TModel # nested guards
     locked: seq[PNode] # locked locations
     gcUnsafe, isRecursive, isToplevel: bool
+    maxLockLevel, currLockLevel: int16
   PEffects = var TEffects
 
 proc isLocalVar(a: PEffects, s: PSym): bool =
   s.kind in {skVar, skResult} and sfGlobal notin s.flags and s.owner == a.owner
 
+proc getLockLevel(t: PType): int16 =
+  var t = t
+  # tyGenericInst(TLock {tyGenericBody}, tyStatic, tyObject):
+  if t.kind == tyGenericInst and t.len == 3: t = t.sons[1]
+  if t.kind == tyStatic and t.n != nil and t.n.kind in {nkCharLit..nkInt64Lit}:
+    result = t.n.intVal.int16
+
 proc lockLocations(a: PEffects; pragma: PNode) =
   if pragma.kind != nkExprColonExpr:
     internalError(pragma.info, "no colon")
     return
+  var firstLL = -1'i16
   for x in pragma[1]:
+    let thisLL = getLockLevel(x.typ)
+    if thisLL != 0:
+      if firstLL < 0: firstLL = thisLL
+      elif firstLL != thisLL:
+        localError(x.info, errGenerated,
+          "multi-lock requires the same static lock level for every operand")
+      a.maxLockLevel = max(a.maxLockLevel, firstLL)
     a.locked.add x
+  if firstLL >= 0 and firstLL != a.currLockLevel:
+    if a.currLockLevel > 0 and a.currLockLevel < firstLL:
+      localError(pragma.info, errGenerated,
+        "invalid nested locking")
+    a.currLockLevel = firstLL
 
 proc guardGlobal(a: PEffects; n: PNode; guard: PSym) =
   # check whether the corresponding lock is held:
@@ -242,7 +262,8 @@ proc mergeTags(a: PEffects, b, comesFrom: PNode) =
 proc listEffects(a: PEffects) =
   for e in items(a.exc):  message(e.info, hintUser, typeToString(e.typ))
   for e in items(a.tags): message(e.info, hintUser, typeToString(e.typ))
-  for e in items(a.uses): message(e.info, hintUser, e.sym.name.s)
+  #if a.maxLockLevel != 0:
+  #  message(e.info, hintUser, "lockLevel: " & a.maxLockLevel)
 
 proc catches(tracked: PEffects, e: PType) =
   let e = skipTypes(e, skipPtrs)
@@ -368,13 +389,21 @@ proc documentRaises*(n: PNode) =
   if n.sons[namePos].kind != nkSym: return
   documentEffect(n, n.sons[pragmasPos], wRaises, exceptionEffects)
   documentEffect(n, n.sons[pragmasPos], wTags, tagEffects)
-  #documentEffect(n, n.sons[pragmasPos], wUses, usesEffects)
 
 template notGcSafe(t): expr = {tfGcSafe, tfNoSideEffect} * t.flags == {}
 
 proc importedFromC(n: PNode): bool =
   # when imported from C, we assume GC-safety.
   result = n.kind == nkSym and sfImportc in n.sym.flags
+
+proc mergeLockLevels(tracked: PEffects, n: PNode, t: PType) =
+  if t.lockLevel > tracked.currLockLevel:
+    # if in lock section:
+    if tracked.currLockLevel > 0:
+      localError n.info, errGenerated,
+        "expected lock level <= " & $tracked.currLockLevel &
+        " but got lock level " & $t.lockLevel
+    tracked.maxLockLevel = max(tracked.maxLockLevel, t.lockLevel)
 
 proc propagateEffects(tracked: PEffects, n: PNode, s: PSym) =
   let pragma = s.ast.sons[pragmasPos]
@@ -387,6 +416,7 @@ proc propagateEffects(tracked: PEffects, n: PNode, s: PSym) =
   if notGcSafe(s.typ) and sfImportc notin s.flags:
     if warnGcUnsafe in gNotes: message(n.info, warnGcUnsafe, renderTree(n))
     tracked.gcUnsafe = true
+  mergeLockLevels(tracked, n, s.typ)
 
 proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
   let n = n.skipConv
@@ -577,6 +607,7 @@ proc track(tracked: PEffects, n: PNode) =
           if not (a.kind == nkSym and a.sym == tracked.owner):
             message(n.info, warnGcUnsafe, renderTree(n))
             tracked.gcUnsafe = true
+        mergeLockLevels(tracked, n, op)
     for i in 1 .. <len(n): trackOperand(tracked, n.sons[i], paramType(op, i))
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
       # may not look like an assignment, but it is:
@@ -644,11 +675,13 @@ proc track(tracked: PEffects, n: PNode) =
   of nkPragmaBlock:
     let pragmaList = n.sons[0]
     let oldLocked = tracked.locked.len
+    let oldLockLevel = tracked.currLockLevel
     for i in 0 .. <pragmaList.len:
       if whichPragma(pragmaList.sons[i]) == wLocks:
         lockLocations(tracked, pragmaList.sons[i])
     track(tracked, n.lastSon)
     setLen(tracked.locked, oldLocked)
+    tracked.currLockLevel = oldLockLevel
   of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,
       nkMacroDef, nkTemplateDef:
     discard
@@ -699,6 +732,10 @@ proc checkMethodEffects*(disp, branch: PSym) =
   if sfThread in disp.flags and notGcSafe(branch.typ):
     localError(branch.info, "base method is GC-safe, but '$1' is not" % 
                                 branch.name.s)
+  if branch.typ.lockLevel > disp.typ.lockLevel:
+    localError(branch.info,
+      "base method has lock level $1, but dispatcher has $2" %
+        [$branch.typ.lockLevel, $disp.typ.lockLevel])
 
 proc setEffectsForProcType*(t: PType, n: PNode) =
   var effects = t.n.sons[0]
@@ -764,6 +801,12 @@ proc trackProc*(s: PSym, body: PNode) =
       else:
         localError(s.info, warnGcUnsafe2, s.name.s)
     if not t.gcUnsafe: s.typ.flags.incl tfGcSafe
+    if s.typ.lockLevel == UnspecifiedLockLevel:
+      s.typ.lockLevel = t.maxLockLevel
+    elif t.maxLockLevel > s.typ.lockLevel:
+      localError(s.info,
+        "declared lock level is $1, but real lock level is $2" %
+          [$s.typ.lockLevel, $t.maxLockLevel])
 
 proc trackTopLevelStmt*(module: PSym; n: PNode) =
   if n.kind in {nkPragma, nkMacroDef, nkTemplateDef, nkProcDef,

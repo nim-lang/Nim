@@ -1,7 +1,6 @@
 version 0.10
 ============
 
-- use the effect system for static deadlock prevention
 - Test nimfix on various babel packages
 - deprecate recursive tuples; tuple needs laxer type checking
 - string case should require an 'else'
@@ -30,7 +29,6 @@ Low priority:
 - support for exception propagation? (hard to implement)
 - the copying of the 'ref Promise' into the thead local storage only
   happens to work due to the write barrier's implementation
-- implement lock levels
 
 
 Misc

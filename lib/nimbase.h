@@ -141,9 +141,11 @@ __clang__
 /* these compilers have a fastcall so use it: */
 #  define N_NIMCALL(rettype, name) rettype __fastcall name
 #  define N_NIMCALL_PTR(rettype, name) rettype (__fastcall *name)
+#  define N_RAW_NIMCALL __fastcall
 #else
 #  define N_NIMCALL(rettype, name) rettype name /* no modifier */
 #  define N_NIMCALL_PTR(rettype, name) rettype (*name)
+#  define N_RAW_NIMCALL
 #endif
 
 #define N_CLOSURE(rettype, name) N_NIMCALL(rettype, name)

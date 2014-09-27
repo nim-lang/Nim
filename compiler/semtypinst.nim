@@ -304,13 +304,6 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
     # 'deepCopy' needs to be instantiated for
     # generics *when the type is constructed*:
     newbody.deepCopy = cl.c.instDeepCopy(cl.c, dc, result, cl.info)
-    when false:
-      var bindings: TIdTable
-      initIdTable(bindings)
-      debug newbody
-      bindings.idTablePut(dc.ast[genericParamsPos].sons[0].typ, newbody)
-      newbody.deepCopy = cl.c.semGenerateInstance(cl.c, dc, bindings, cl.info)
-      assert sfFromGeneric in newbody.deepCopy.flags
 
 proc eraseVoidParams*(t: PType) =
   if t.sons[0] != nil and t.sons[0].kind == tyEmpty:
