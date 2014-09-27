@@ -125,7 +125,7 @@ proc read*(f: AsyncFile, size: int): Future[string] =
 
     var ol = PCustomOverlapped()
     GC_ref(ol)
-    ol.data = TCompletionData(sock: f.fd, cb:
+    ol.data = TCompletionData(fd: f.fd, cb:
       proc (fd: TAsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
@@ -251,7 +251,7 @@ proc write*(f: AsyncFile, data: string): Future[void] =
 
     var ol = PCustomOverlapped()
     GC_ref(ol)
-    ol.data = TCompletionData(sock: f.fd, cb:
+    ol.data = TCompletionData(fd: f.fd, cb:
       proc (fd: TAsyncFD, bytesCount: DWord, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
