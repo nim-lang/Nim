@@ -662,7 +662,10 @@ proc getOperator(L: var TLexer, tok: var TToken) =
 proc scanComment(L: var TLexer, tok: var TToken) =
   var pos = L.bufpos
   var buf = L.buf
-  when not defined(nimfix): assert buf[pos+1] == '#'
+  when not defined(nimfix):
+    assert buf[pos+1] == '#'
+    if buf[pos+2] == '[':
+      lexMessagePos(L, warnDeprecated, pos, "use '## [' instead; '##['")
   tok.tokType = tkComment
   # iNumber contains the number of '\n' in the token
   tok.iNumber = 0
@@ -741,6 +744,8 @@ proc skip(L: var TLexer, tok: var TToken) =
       else:
         # do not skip documentation comment:
         if buf[pos+1] == '#': break
+        if buf[pos+1] == '[':
+          lexMessagePos(L, warnDeprecated, pos, "use '# [' instead; '#['")
         while buf[pos] notin {CR, LF, nimlexbase.EndOfFile}: inc(pos)
     else:
       break                   # EndOfFile also leaves the loop
