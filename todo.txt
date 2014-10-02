@@ -1,10 +1,8 @@
 version 0.10
 ============
 
-- document the new concurrency system
 - Test nimfix on various babel packages
 - deprecate recursive tuples; tuple needs laxer type checking
-- string case should require an 'else'
 - # echo type.int
 - VM: try does not work at all
 - VM: Pegs do not work at compile-time

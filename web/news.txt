@@ -57,7 +57,7 @@ News
   - There is a new ``parallel`` statement for safe fork&join parallel computing.
   - ``guard`` and ``lock`` pragmas have been implemented to support safer
     concurrent programming.
-  
+  - ``system.writeFile`` can be used at compile-time.
 
   Library Additions
   -----------------

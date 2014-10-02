@@ -21,6 +21,9 @@ template mathop(op) {.immediate, dirty.} =
 template osop(op) {.immediate, dirty.} =
   registerCallback(c, "stdlib.os." & astToStr(op), `op Wrapper`)
 
+template systemop(op) {.immediate, dirty.} =
+  registerCallback(c, "stdlib.system." & astToStr(op), `op Wrapper`)
+
 template wrap1f(op) {.immediate, dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
     setResult(a, op(getFloat(a, 0)))
@@ -35,6 +38,11 @@ template wrap1s(op) {.immediate, dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
     setResult(a, op(getString(a, 0)))
   osop op
+
+template wrap2svoid(op) {.immediate, dirty.} =
+  proc `op Wrapper`(a: VmArgs) {.nimcall.} =
+    op(getString(a, 0), getString(a, 1))
+  systemop op
 
 proc registerAdditionalOps*(c: PCtx) =
   wrap1f(sqrt)
@@ -64,3 +72,4 @@ proc registerAdditionalOps*(c: PCtx) =
   wrap1s(existsEnv)
   wrap1s(dirExists)
   wrap1s(fileExists)
+  wrap2svoid(writeFile)
