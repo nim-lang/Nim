@@ -194,9 +194,10 @@ The IEEE standard defines five types of floating-point exceptions:
   precision, for example, 2.0 / 3.0, log(1.1) and 0.1 in input.
 
 The IEEE exceptions are either ignored at runtime or mapped to the 
-Nim exceptions: `EFloatInvalidOp`:idx:, `EFloatDivByZero`:idx:,
-`EFloatOverflow`:idx:, `EFloatUnderflow`:idx:, and `EFloatInexact`:idx:. 
-These exceptions inherit from the `EFloatingPoint`:idx: base class.
+Nim exceptions: `FloatInvalidOpError`:idx:, `FloatDivByZeroError`:idx:,
+`FloatOverflowError`:idx:, `FloatUnderflowError`:idx:,
+and `FloatInexactError`:idx:. 
+These exceptions inherit from the `FloatingPointError`:idx: base class.
 
 Nim provides the pragmas `NaNChecks`:idx: and `InfChecks`:idx: to control
 whether the IEEE exceptions are ignored or trap a Nim exception:
@@ -205,11 +206,12 @@ whether the IEEE exceptions are ignored or trap a Nim exception:
   {.NanChecks: on, InfChecks: on.}
   var a = 1.0
   var b = 0.0
-  echo b / b # raises EFloatInvalidOp
-  echo a / b # raises EFloatOverflow
+  echo b / b # raises FloatInvalidOpError
+  echo a / b # raises FloatOverflowError
 
-In the current implementation ``EFloatDivByZero`` and ``EFloatInexact`` are 
-never raised. ``EFloatOverflow`` is raised instead of ``EFloatDivByZero``.
+In the current implementation ``FloatDivByZeroError`` and ``FloatInexactError``
+are never raised. ``FloatOverflowError`` is raised instead of
+``FloatDivByZeroError``.
 There is also a `floatChecks`:idx: pragma that is a short-cut for the 
 combination of ``NaNChecks`` and ``InfChecks`` pragmas. ``floatChecks`` are
 turned off as default.
@@ -269,7 +271,7 @@ specified. The values are ordered. Example:
 .. code-block:: nim
 
   type
-    TDirection = enum
+    Direction = enum
       north, east, south, west
 
 
@@ -292,7 +294,7 @@ An explicit ordered enum can have *holes*:
 
 .. code-block:: nim
   type
-    TTokenType = enum
+    TokenType = enum
       a = 2, b = 4, c = 89 # holes are valid
 
 However, it is then not an ordinal anymore, so it is not possible to use these
@@ -307,7 +309,7 @@ values to use:
 .. code-block:: nim
 
   type
-    TMyEnum = enum
+    MyEnum = enum
       valueA = (0, "my value A"),
       valueB = "value B",
       valueC = 2,
@@ -319,16 +321,16 @@ possible to only specify one of them.
 
 An enum can be marked with the ``pure`` pragma so that it's fields are not
 added to the current scope, so they always need to be accessed 
-via ``TMyEnum.value``:
+via ``MyEnum.value``:
 
 .. code-block:: nim
 
   type
-    TMyEnum {.pure.} = enum
+    MyEnum {.pure.} = enum
       valueA, valueB, valueC, valueD
   
   echo valueA # error: Unknown identifier
-  echo TMyEnum.valueA # works
+  echo MyEnum.valueA # works
 
 
 String type
@@ -358,7 +360,7 @@ i-th *unichar*. The iterator ``runes`` from the `unicode module
 <unicode.html>`_ can be used for iteration over all Unicode characters.
 
 
-CString type
+cstring type
 ------------
 The ``cstring`` type represents a pointer to a zero-terminated char array
 compatible to the type ``char*`` in Ansi C. Its primary purpose lies in easy
@@ -422,11 +424,11 @@ Example:
 .. code-block:: nim
 
   type
-    TIntArray = array[0..5, int] # an array that is indexed with 0..5
-    TIntSeq = seq[int] # a sequence of integers
+    IntArray = array[0..5, int] # an array that is indexed with 0..5
+    IntSeq = seq[int] # a sequence of integers
   var
-    x: TIntArray
-    y: TIntSeq
+    x: IntArray
+    y: IntSeq
   x = [1, 2, 3, 4, 5, 6]  # [] is the array constructor
   y = @[1, 2, 3, 4, 5, 6] # the @ turns the array into a sequence
 
@@ -469,7 +471,7 @@ allows to pass a variable number of arguments to a procedure. The compiler
 converts the list of arguments to an array implicitly:
 
 .. code-block:: nim
-  proc myWriteln(f: TFile, a: varargs[string]) =
+  proc myWriteln(f: File, a: varargs[string]) =
     for s in items(a):
       write(f, s)
     write(f, "\n")
@@ -483,7 +485,7 @@ last parameter in the procedure header. It is also possible to perform
 type conversions in this context:
 
 .. code-block:: nim
-  proc myWriteln(f: TFile, a: varargs[string, `$`]) =
+  proc myWriteln(f: File, a: varargs[string, `$`]) =
     for s in items(a):
       write(f, s)
     write(f, "\n")
@@ -518,11 +520,11 @@ in future versions of the compiler.
 .. code-block:: nim
 
   type
-    TPerson = tuple[name: string, age: int] # type representing a person:
-                                            # a person consists of a name
-                                            # and an age
+    Person = tuple[name: string, age: int] # type representing a person:
+                                           # a person consists of a name
+                                           # and an age
   var
-    person: TPerson
+    person: Person
   person = (name: "Peter", age: 30)
   # the same, but less readable:
   person = ("Peter", 30)
@@ -535,9 +537,9 @@ can also be defined with indentation instead of ``[]``:
 
 .. code-block:: nim
   type
-    TPerson = tuple   # type representing a person
-      name: string    # a person consists of a name
-      age: natural    # and an age
+    Person = tuple   # type representing a person
+      name: string   # a person consists of a name
+      age: natural   # and an age
 
 Objects provide many features that tuples do not. Object provide inheritance
 and information hiding. Objects have access to their type at runtime, so that
@@ -545,23 +547,23 @@ the ``of`` operator can be used to determine the object's type.
 
 .. code-block:: nim
   type
-    TPerson {.inheritable.} = object
+    Person {.inheritable.} = object
       name*: string   # the * means that `name` is accessible from other modules
       age: int        # no * means that the field is hidden
 
-    TStudent = object of TPerson # a student is a person
-      id: int                    # with an id field
+    Student = object of Person # a student is a person
+      id: int                  # with an id field
 
   var
-    student: TStudent
-    person: TPerson
-  assert(student of TStudent) # is true
+    student: Student
+    person: Person
+  assert(student of Student) # is true
 
 Object fields that should be visible from outside the defining module, have to
 be marked by ``*``. In contrast to tuples, different object types are
 never *equivalent*. Objects that have no ancestor are implicitly ``final``
 and thus have no hidden type field. One can use the ``inheritable`` pragma to
-introduce new object roots apart from ``system.TObject``.
+introduce new object roots apart from ``system.RootObj``.
 
 
 Object construction
@@ -572,7 +574,7 @@ has the syntax ``T(fieldA: valueA, fieldB: valueB, ...)`` where ``T`` is
 an ``object`` type or a ``ref object`` type:
 
 .. code-block:: nim
-  var student = TStudent(name: "Anton", age: 5, id: 3)
+  var student = Student(name: "Anton", age: 5, id: 3)
 
 For a ``ref object`` type ``system.new`` is invoked implicitly.
 
@@ -679,6 +681,14 @@ dereferencing operations for reference types:
   new(n)
   n.data = 9 
   # no need to write n[].data; in fact n[].data is highly discouraged!
+
+In order to simplify structural type checking, recursive tuples are not valid:
+
+.. code-block:: nim
+  # invalid recursion
+  type MyTuple = tuple[a: ref MyTuple]
+
+Likewise ``T = ref T`` is an invalid type.
 
 As a syntactical extension ``object`` types can be anonymous if
 declared in a type section via the ``ref object`` or ``ptr object`` notations.

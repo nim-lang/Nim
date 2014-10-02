@@ -61,6 +61,8 @@ proc deduplicate*[T](seq1: seq[T]): seq[T] =
   result = @[]
   for itm in items(seq1):
     if not result.contains(itm): result.add(itm)
+
+{.deprecated: [distnct: deduplicate].}
     
 proc zip*[S, T](seq1: seq[S], seq2: seq[T]): seq[tuple[a: S, b: T]] =
   ## Returns a new sequence with a combination of the two input sequences.

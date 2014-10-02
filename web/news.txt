@@ -49,7 +49,7 @@ News
     be used instead.
   - String case (or any non-ordinal case) statements 
     without 'else' are deprecated.
-  - Recursive tuple types are deprecated. Use ``object`` instead.
+  - Recursive tuple types are not allowed anymore. Use ``object`` instead.
 
 
   Language Additions

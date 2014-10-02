@@ -3,9 +3,6 @@ version 0.10
 
 - Test nimfix on various babel packages
 
-- bug: 'type T = ref T' not recognized as illegal recursion
-- deprecate recursive tuples; tuple needs laxer type checking
-
 - VM: Pegs do not work at compile-time
 - VM: ptr/ref T cannot work in general
 
@@ -37,8 +34,6 @@ Misc
 - make tuple unpacking work in a non-var/let context
 - special rule for ``[]=``, items, pairs
 - built-in 'getImpl'
-- type API for macros; make 'spawn' a macro
-- markAndSweepGC should expose an API for fibers
 - prevent 'alloc(TypeWithGCedMemory)'
 - some table related tests are wrong (memory usage checks)
 
