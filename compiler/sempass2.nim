@@ -75,35 +75,42 @@ type
     guards: TModel # nested guards
     locked: seq[PNode] # locked locations
     gcUnsafe, isRecursive, isToplevel: bool
-    maxLockLevel, currLockLevel: int16
+    maxLockLevel, currLockLevel: TLockLevel
   PEffects = var TEffects
+
+proc `<`(a, b: TLockLevel): bool {.borrow.}
+proc `<=`(a, b: TLockLevel): bool {.borrow.}
+proc `==`(a, b: TLockLevel): bool {.borrow.}
+proc max(a, b: TLockLevel): TLockLevel {.borrow.}
 
 proc isLocalVar(a: PEffects, s: PSym): bool =
   s.kind in {skVar, skResult} and sfGlobal notin s.flags and s.owner == a.owner
 
-proc getLockLevel(t: PType): int16 =
+proc getLockLevel(t: PType): TLockLevel =
   var t = t
   # tyGenericInst(TLock {tyGenericBody}, tyStatic, tyObject):
   if t.kind == tyGenericInst and t.len == 3: t = t.sons[1]
   if t.kind == tyStatic and t.n != nil and t.n.kind in {nkCharLit..nkInt64Lit}:
-    result = t.n.intVal.int16
+    result = t.n.intVal.TLockLevel
 
 proc lockLocations(a: PEffects; pragma: PNode) =
   if pragma.kind != nkExprColonExpr:
-    internalError(pragma.info, "no colon")
+    localError(pragma.info, errGenerated, "locks pragma without argument")
     return
-  var firstLL = -1'i16
+  var firstLL = TLockLevel(-1'i16)
   for x in pragma[1]:
     let thisLL = getLockLevel(x.typ)
-    if thisLL != 0:
-      if firstLL < 0: firstLL = thisLL
+    if thisLL != 0.TLockLevel:
+      if thisLL < 0.TLockLevel or thisLL > MaxLockLevel.TLockLevel:
+        localError(x.info, "invalid lock level: " & $thisLL)
+      elif firstLL < 0.TLockLevel: firstLL = thisLL
       elif firstLL != thisLL:
         localError(x.info, errGenerated,
           "multi-lock requires the same static lock level for every operand")
       a.maxLockLevel = max(a.maxLockLevel, firstLL)
     a.locked.add x
-  if firstLL >= 0 and firstLL != a.currLockLevel:
-    if a.currLockLevel > 0 and a.currLockLevel < firstLL:
+  if firstLL >= 0.TLockLevel and firstLL != a.currLockLevel:
+    if a.currLockLevel > 0.TLockLevel and a.currLockLevel <= firstLL:
       localError(pragma.info, errGenerated,
         "invalid nested locking")
     a.currLockLevel = firstLL
@@ -396,14 +403,23 @@ proc importedFromC(n: PNode): bool =
   # when imported from C, we assume GC-safety.
   result = n.kind == nkSym and sfImportc in n.sym.flags
 
-proc mergeLockLevels(tracked: PEffects, n: PNode, t: PType) =
-  if t.lockLevel > tracked.currLockLevel:
+proc getLockLevel(s: PSym): TLockLevel =
+  result = s.typ.lockLevel
+  if result == UnspecifiedLockLevel:
+    if {sfImportc, sfNoSideEffect} * s.flags != {} or
+       tfNoSideEffect in s.typ.flags:
+      result = 0.TLockLevel
+    else:
+      result = UnknownLockLevel
+
+proc mergeLockLevels(tracked: PEffects, n: PNode, lockLevel: TLockLevel) =
+  if lockLevel >= tracked.currLockLevel:
     # if in lock section:
-    if tracked.currLockLevel > 0:
+    if tracked.currLockLevel > 0.TLockLevel:
       localError n.info, errGenerated,
-        "expected lock level <= " & $tracked.currLockLevel &
-        " but got lock level " & $t.lockLevel
-    tracked.maxLockLevel = max(tracked.maxLockLevel, t.lockLevel)
+        "expected lock level < " & $tracked.currLockLevel &
+        " but got lock level " & $lockLevel
+    tracked.maxLockLevel = max(tracked.maxLockLevel, lockLevel)
 
 proc propagateEffects(tracked: PEffects, n: PNode, s: PSym) =
   let pragma = s.ast.sons[pragmasPos]
@@ -416,7 +432,7 @@ proc propagateEffects(tracked: PEffects, n: PNode, s: PSym) =
   if notGcSafe(s.typ) and sfImportc notin s.flags:
     if warnGcUnsafe in gNotes: message(n.info, warnGcUnsafe, renderTree(n))
     tracked.gcUnsafe = true
-  mergeLockLevels(tracked, n, s.typ)
+  mergeLockLevels(tracked, n, s.getLockLevel)
 
 proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
   let n = n.skipConv
@@ -436,6 +452,13 @@ proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
       message(n.info, errGenerated, "'$1' is provably nil" % n.renderTree)
     of impYes: discard
 
+proc assumeTheWorst(tracked: PEffects; n: PNode; op: PType) =
+  addEffect(tracked, createRaise(n))
+  addTag(tracked, createTag(n))
+  let lockLevel = if op.lockLevel == UnspecifiedLockLevel: UnknownLockLevel
+                  else: op.lockLevel
+  mergeLockLevels(tracked, n, lockLevel)
+
 proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
   let op = skipConvAndClosure(n).typ
   if op != nil and op.kind == tyProc and n.kind != nkNilLit:
@@ -451,8 +474,7 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
         propagateEffects(tracked, n, n.sym)
       else:
         # we have no explicit effects so assume the worst:
-        addEffect(tracked, createRaise(n))
-        addTag(tracked, createTag(n))
+        assumeTheWorst(tracked, n, op)
       # assume GcUnsafe unless in its type; 'forward' does not matter:
       if notGcSafe(op):
         if warnGcUnsafe in gNotes: message(n.info, warnGcUnsafe, renderTree(n))
@@ -588,8 +610,12 @@ proc track(tracked: PEffects, n: PNode) =
     # are indistinguishable from normal procs (both have tyProc type) and
     # we can detect them only by checking for attached nkEffectList.
     if op != nil and op.kind == tyProc and op.n.sons[0].kind == nkEffectList:
-      if a.kind == nkSym and a.sym == tracked.owner:
-        tracked.isRecursive = true
+      if a.kind == nkSym:
+        if a.sym == tracked.owner: tracked.isRecursive = true
+        # even for recursive calls we need to check the lock levels (!):
+        mergeLockLevels(tracked, n, a.sym.getLockLevel)
+      else:
+        mergeLockLevels(tracked, n, op.lockLevel)
       var effectList = op.n.sons[0]
       if a.kind == nkSym and a.sym.kind == skMethod:
         propagateEffects(tracked, n, a.sym)
@@ -597,8 +623,7 @@ proc track(tracked: PEffects, n: PNode) =
         if isForwardedProc(a):
           propagateEffects(tracked, n, a.sym)
         elif isIndirectCall(a, tracked.owner):
-          addEffect(tracked, createRaise(n))
-          addTag(tracked, createTag(n))
+          assumeTheWorst(tracked, n, op)
       else:
         mergeEffects(tracked, effectList.sons[exceptionEffects], n)
         mergeTags(tracked, effectList.sons[tagEffects], n)
@@ -607,7 +632,6 @@ proc track(tracked: PEffects, n: PNode) =
           if not (a.kind == nkSym and a.sym == tracked.owner):
             message(n.info, warnGcUnsafe, renderTree(n))
             tracked.gcUnsafe = true
-        mergeLockLevels(tracked, n, op)
     for i in 1 .. <len(n): trackOperand(tracked, n.sons[i], paramType(op, i))
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
       # may not look like an assignment, but it is:

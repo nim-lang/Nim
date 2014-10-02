@@ -770,6 +770,7 @@ type
                               # it won't cause problems
   
   TTypeSeq* = seq[PType]
+  TLockLevel* = distinct int16
   TType* {.acyclic.} = object of TIdObj # \
                               # types are identical iff they have the
                               # same id; there may be multiple copies of a type
@@ -797,7 +798,7 @@ type
     size*: BiggestInt         # the size of the type in bytes
                               # -1 means that the size is unkwown
     align*: int16             # the type's alignment requirements
-    lockLevel*: int16         # lock level as required for deadlock checking
+    lockLevel*: TLockLevel    # lock level as required for deadlock checking
     loc*: TLoc
 
   TPair*{.final.} = object 
@@ -1165,7 +1166,15 @@ proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
   result.sons = @[name, pattern, genericParams, params,
                   pragmas, exceptions, body]
 
-const UnspecifiedLockLevel* = -1
+const
+  UnspecifiedLockLevel* = TLockLevel(-1'i16)
+  MaxLockLevel* = 1000'i16
+  UnknownLockLevel* = TLockLevel(1001'i16)
+
+proc `$`*(x: TLockLevel): string =
+  if x.ord == UnspecifiedLockLevel.ord: result = "<unspecified>"
+  elif x.ord == UnknownLockLevel.ord: result = "<unknown>"
+  else: result = $int16(x)
 
 proc newType(kind: TTypeKind, owner: PSym): PType = 
   new(result)

@@ -530,15 +530,16 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       if i < sonsLen(t) - 1: add(result, ", ")
     add(result, ')')
     if t.sons[0] != nil: add(result, ": " & typeToString(t.sons[0]))
-    var prag: string
-    if t.callConv != ccDefault: prag = CallingConvToStr[t.callConv]
-    else: prag = ""
-    if tfNoSideEffect in t.flags: 
+    var prag = if t.callConv == ccDefault: "" else: CallingConvToStr[t.callConv]
+    if tfNoSideEffect in t.flags:
       addSep(prag)
       add(prag, "noSideEffect")
     if tfThread in t.flags:
       addSep(prag)
       add(prag, "gcsafe")
+    if t.lockLevel.ord != UnspecifiedLockLevel.ord:
+      addSep(prag)
+      add(prag, "locks: " & $t.lockLevel)
     if len(prag) != 0: add(result, "{." & prag & ".}")
   of tyVarargs, tyIter:
     result = typeToStr[t.kind] % typeToString(t.sons[0])
@@ -579,8 +580,7 @@ proc firstOrd(t: PType): BiggestInt =
     else: 
       assert(t.n.sons[0].kind == nkSym)
       result = t.n.sons[0].sym.position
-  of tyGenericInst, tyDistinct, tyConst, tyMutable,
-     tyTypeDesc, tyFieldAccessor:
+  of tyGenericInst, tyDistinct, tyConst, tyMutable, tyTypeDesc, tyFieldAccessor:
     result = firstOrd(lastSon(t))
   of tyOrdinal:
     if t.len > 0: result = firstOrd(lastSon(t))
@@ -1360,7 +1360,8 @@ proc compatibleEffects*(formal, actual: PType): bool =
       if real.len == 0: return false
       result = compatibleEffectsAux(st, real.sons[tagEffects])
       if not result: return
-  result = true
+  result = formal.lockLevel.ord < 0 or
+      actual.lockLevel.ord <= formal.lockLevel.ord
 
 proc isCompileTimeOnly*(t: PType): bool {.inline.} =
   result = t.kind in {tyTypeDesc, tyStatic}

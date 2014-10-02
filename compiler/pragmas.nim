@@ -525,16 +525,16 @@ proc pragmaLockStmt(c: PContext; it: PNode) =
       for i in 0 .. <n.len:
         n.sons[i] = c.semExpr(c, n.sons[i])
 
-proc pragmaLocks(c: PContext, it: PNode): int16 =
+proc pragmaLocks(c: PContext, it: PNode): TLockLevel =
   if it.kind != nkExprColonExpr:
     invalidPragma(it)
   else:
     if it[1].kind != nkNilLit:
       let x = expectIntLit(c, it)
-      if x < 0 or x > high(int16):
-        localError(it[1].info, "integer must be within 0..high(int16)")
+      if x < 0 or x > MaxLockLevel:
+        localError(it[1].info, "integer must be within 0.." & $MaxLockLevel)
       else:
-        result = int16(x)
+        result = TLockLevel(x)
 
 proc typeBorrow(sym: PSym, n: PNode) =
   if n.kind == nkExprColonExpr:
@@ -571,10 +571,14 @@ proc pragmaGuard(c: PContext; it: PNode; kind: TSymKind): PSym =
   if n.kind == nkSym:
     result = n.sym
   elif kind == skField:
-    # we return a dummy symbol; later passes over the type will repair it. Note
-    # that generic instantiation needs to know about this too. But we're lazy
-    # and perform the lookup on demand instead.
-    result = newSym(skUnknown, considerQuotedIdent(n), nil, n.info)
+    # First check if the guard is a global variable:
+    result = qualifiedLookUp(c, n, {})
+    if result.isNil or result.kind notin {skLet, skVar} or
+        sfGlobal notin result.flags:
+      # We return a dummy symbol; later passes over the type will repair it.
+      # Generic instantiation needs to know about this too. But we're lazy
+      # and perform the lookup on demand instead.
+      result = newSym(skUnknown, considerQuotedIdent(n), nil, n.info)
   else:
     result = qualifiedLookUp(c, n)
 
