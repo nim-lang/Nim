@@ -1009,9 +1009,9 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkElse, " else")
     putWithSpace(g, tkColon, ":")
     gsub(g, n.sons[0])
-  of nkTypeOfExpr: 
+  of nkTypeOfExpr:
     putWithSpace(g, tkType, "type")
-    gsub(g, n.sons[0])
+    if n.len > 0: gsub(g, n.sons[0])
   of nkRefTy: 
     if sonsLen(n) > 0:
       putWithSpace(g, tkRef, "ref")
