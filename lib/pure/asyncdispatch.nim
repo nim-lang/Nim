@@ -326,8 +326,8 @@ when defined(windows) or defined(nimdoc):
     TCompletionKey = Dword
 
     TCompletionData* = object
-      sock*: TAsyncFD # TODO: Rename this.
-      cb*: proc (sock: TAsyncFD, bytesTransferred: Dword,
+      fd*: TAsyncFD # TODO: Rename this.
+      cb*: proc (fd: TAsyncFD, bytesTransferred: Dword,
                 errcode: OSErrorCode) {.closure,gcsafe.}
 
     PDispatcher* = ref object of PDispatcherBase
@@ -357,18 +357,18 @@ when defined(windows) or defined(nimdoc):
     if gDisp.isNil: gDisp = newDispatcher()
     result = gDisp
 
-  proc register*(sock: TAsyncFD) =
-    ## Registers ``sock`` with the dispatcher.
+  proc register*(fd: TAsyncFD) =
+    ## Registers ``fd`` with the dispatcher.
     let p = getGlobalDispatcher()
-    if createIoCompletionPort(sock.THandle, p.ioPort,
-                              cast[TCompletionKey](sock), 1) == 0:
+    if createIoCompletionPort(fd.THandle, p.ioPort,
+                              cast[TCompletionKey](fd), 1) == 0:
       raiseOSError(osLastError())
-    p.handles.incl(sock)
+    p.handles.incl(fd)
 
-  proc verifyPresence(sock: TAsyncFD) =
-    ## Ensures that socket has been registered with the dispatcher.
+  proc verifyPresence(fd: TAsyncFD) =
+    ## Ensures that file descriptor has been registered with the dispatcher.
     let p = getGlobalDispatcher()
-    if sock notin p.handles:
+    if fd notin p.handles:
       raise newException(ValueError,
         "Operation performed on a socket which has not been registered with" &
         " the dispatcher yet.")
@@ -394,16 +394,16 @@ when defined(windows) or defined(nimdoc):
     # TODO: http://www.serverframework.com/handling-multiple-pending-socket-read-and-write-operations.html
     if res:
       # This is useful for ensuring the reliability of the overlapped struct.
-      assert customOverlapped.data.sock == lpCompletionKey.TAsyncFD
+      assert customOverlapped.data.fd == lpCompletionKey.TAsyncFD
 
-      customOverlapped.data.cb(customOverlapped.data.sock,
+      customOverlapped.data.cb(customOverlapped.data.fd,
           lpNumberOfBytesTransferred, OSErrorCode(-1))
       GC_unref(customOverlapped)
     else:
       let errCode = osLastError()
       if customOverlapped != nil:
-        assert customOverlapped.data.sock == lpCompletionKey.TAsyncFD
-        customOverlapped.data.cb(customOverlapped.data.sock,
+        assert customOverlapped.data.fd == lpCompletionKey.TAsyncFD
+        customOverlapped.data.cb(customOverlapped.data.fd,
             lpNumberOfBytesTransferred, errCode)
         GC_unref(customOverlapped)
       else:
@@ -506,8 +506,8 @@ when defined(windows) or defined(nimdoc):
       # http://blogs.msdn.com/b/oldnewthing/archive/2011/02/02/10123392.aspx
       var ol = PCustomOverlapped()
       GC_ref(ol)
-      ol.data = TCompletionData(sock: socket, cb:
-        proc (sock: TAsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+      ol.data = TCompletionData(fd: socket, cb:
+        proc (fd: TAsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
           if not retFuture.finished:
             if errcode == OSErrorCode(-1):
               retFuture.complete()
@@ -570,8 +570,8 @@ when defined(windows) or defined(nimdoc):
     var flagsio = flags.toOSFlags().Dword
     var ol = PCustomOverlapped()
     GC_ref(ol)
-    ol.data = TCompletionData(sock: socket, cb:
-      proc (sock: TAsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+    ol.data = TCompletionData(fd: socket, cb:
+      proc (fd: TAsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             if bytesCount == 0 and dataBuf.buf[0] == '\0':
@@ -648,8 +648,8 @@ when defined(windows) or defined(nimdoc):
     var bytesReceived, lowFlags: Dword
     var ol = PCustomOverlapped()
     GC_ref(ol)
-    ol.data = TCompletionData(sock: socket, cb:
-      proc (sock: TAsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+    ol.data = TCompletionData(fd: socket, cb:
+      proc (fd: TAsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             retFuture.complete()
@@ -737,8 +737,8 @@ when defined(windows) or defined(nimdoc):
 
     var ol = PCustomOverlapped()
     GC_ref(ol)
-    ol.data = TCompletionData(sock: socket, cb:
-      proc (sock: TAsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+    ol.data = TCompletionData(fd: socket, cb:
+      proc (fd: TAsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             completeAccept()
@@ -806,10 +806,10 @@ else:
   
   type
     TAsyncFD* = distinct cint
-    TCallback = proc (sock: TAsyncFD): bool {.closure,gcsafe.}
+    TCallback = proc (fd: TAsyncFD): bool {.closure,gcsafe.}
 
     PData* = ref object of PObject
-      sock: TAsyncFD
+      fd: TAsyncFD
       readCBs: seq[TCallback]
       writeCBs: seq[TCallback]
 
@@ -828,15 +828,15 @@ else:
     if gDisp.isNil: gDisp = newDispatcher()
     result = gDisp
 
-  proc update(sock: TAsyncFD, events: set[TEvent]) =
+  proc update(fd: TAsyncFD, events: set[TEvent]) =
     let p = getGlobalDispatcher()
-    assert sock.SocketHandle in p.selector
-    discard p.selector.update(sock.SocketHandle, events)
+    assert fd.SocketHandle in p.selector
+    discard p.selector.update(fd.SocketHandle, events)
 
-  proc register*(sock: TAsyncFD) =
+  proc register*(fd: TAsyncFD) =
     let p = getGlobalDispatcher()
-    var data = PData(sock: sock, readCBs: @[], writeCBs: @[])
-    p.selector.register(sock.SocketHandle, {}, data.PObject)
+    var data = PData(fd: fd, readCBs: @[], writeCBs: @[])
+    p.selector.register(fd.SocketHandle, {}, data.PObject)
 
   proc newAsyncRawSocket*(domain: cint, typ: cint, protocol: cint): TAsyncFD =
     result = newRawSocket(domain, typ, protocol).TAsyncFD
@@ -858,26 +858,26 @@ else:
   proc unregister*(fd: TAsyncFD) =
     getGlobalDispatcher().selector.unregister(fd.SocketHandle)
 
-  proc addRead*(sock: TAsyncFD, cb: TCallback) =
+  proc addRead*(fd: TAsyncFD, cb: TCallback) =
     let p = getGlobalDispatcher()
-    if sock.SocketHandle notin p.selector:
+    if fd.SocketHandle notin p.selector:
       raise newException(EInvalidValue, "File descriptor not registered.")
-    p.selector[sock.SocketHandle].data.PData.readCBs.add(cb)
-    update(sock, p.selector[sock.SocketHandle].events + {EvRead})
+    p.selector[fd.SocketHandle].data.PData.readCBs.add(cb)
+    update(fd, p.selector[fd.SocketHandle].events + {EvRead})
   
-  proc addWrite*(sock: TAsyncFD, cb: TCallback) =
+  proc addWrite*(fd: TAsyncFD, cb: TCallback) =
     let p = getGlobalDispatcher()
-    if sock.SocketHandle notin p.selector:
+    if fd.SocketHandle notin p.selector:
       raise newException(EInvalidValue, "File descriptor not registered.")
-    p.selector[sock.SocketHandle].data.PData.writeCBs.add(cb)
-    update(sock, p.selector[sock.SocketHandle].events + {EvWrite})
+    p.selector[fd.SocketHandle].data.PData.writeCBs.add(cb)
+    update(fd, p.selector[fd.SocketHandle].events + {EvWrite})
   
   proc poll*(timeout = 500) =
     let p = getGlobalDispatcher()
     for info in p.selector.select(timeout):
       let data = PData(info.key.data)
-      assert data.sock == info.key.fd.TAsyncFD
-      #echo("In poll ", data.sock.cint)
+      assert data.fd == info.key.fd.TAsyncFD
+      #echo("In poll ", data.fd.cint)
       if EvRead in info.events:
         # Callback may add items to ``data.readCBs`` which causes issues if
         # we are iterating over ``data.readCBs`` at the same time. We therefore
@@ -885,7 +885,7 @@ else:
         let currentCBs = data.readCBs
         data.readCBs = @[]
         for cb in currentCBs:
-          if not cb(data.sock):
+          if not cb(data.fd):
             # Callback wants to be called again.
             data.readCBs.add(cb)
       
@@ -893,7 +893,7 @@ else:
         let currentCBs = data.writeCBs
         data.writeCBs = @[]
         for cb in currentCBs:
-          if not cb(data.sock):
+          if not cb(data.fd):
             # Callback wants to be called again.
             data.writeCBs.add(cb)
       
@@ -902,7 +902,7 @@ else:
         if data.readCBs.len != 0: newEvents = {EvRead}
         if data.writeCBs.len != 0: newEvents = newEvents + {EvWrite}
         if newEvents != info.key.events:
-          update(data.sock, newEvents)
+          update(data.fd, newEvents)
       else:
         # FD no longer a part of the selector. Likely been closed
         # (e.g. socket disconnected).
@@ -914,7 +914,7 @@ else:
     af = AF_INET): Future[void] =
     var retFuture = newFuture[void]("connect")
     
-    proc cb(sock: TAsyncFD): bool =
+    proc cb(fd: TAsyncFD): bool =
       # We have connected.
       retFuture.complete()
       return true
