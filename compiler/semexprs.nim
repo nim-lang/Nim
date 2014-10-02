@@ -367,6 +367,7 @@ proc isOpImpl(c: PContext, n: PNode): PNode =
       result = newIntNode(nkIntLit, ord(t.kind == tyProc and
                                         t.callConv == ccClosure and 
                                         tfIterator notin t.flags))
+    else: discard
   else:
     var t2 = n[2].typ.skipTypes({tyTypeDesc})
     maybeLiftType(t2, c, n.info)

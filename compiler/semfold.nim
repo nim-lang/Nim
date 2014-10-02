@@ -255,6 +255,7 @@ proc evalIs(n, a: PNode): PNode =
       result = newIntNode(nkIntLit, ord(t.kind == tyProc and
                                         t.callConv == ccClosure and 
                                         tfIterator in t.flags))
+    else: discard
   else:
     # XXX semexprs.isOpImpl is slightly different and requires a context. yay.
     let t2 = n[2].typ

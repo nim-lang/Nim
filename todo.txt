@@ -2,7 +2,10 @@ version 0.10
 ============
 
 - Test nimfix on various babel packages
+
+- bug: 'type T = ref T' not recognized as illegal recursion
 - deprecate recursive tuples; tuple needs laxer type checking
+
 - VM: Pegs do not work at compile-time
 - VM: ptr/ref T cannot work in general
 
@@ -44,7 +47,6 @@ Bugs
 ====
 
 - scopes are still broken for generic instantiation!
-- bug: 'type T = ref T' not recognized as illegal recursion
 - bug: type conversions concerning proc types are weird
 - compilation of niminst takes way too long. looks like a regression
 - docgen: sometimes effects are listed twice

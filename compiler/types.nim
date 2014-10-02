@@ -1208,8 +1208,9 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
     else: result = ptrSize
     a = ptrSize
   of tyNil, tyCString, tyString, tySequence, tyPtr, tyRef, tyVar, tyOpenArray,
-     tyBigNum: 
-    result = ptrSize
+     tyBigNum:
+    if typ.lastSon == typ: result = szIllegalRecursion
+    else: result = ptrSize
     a = result
   of tyArray, tyArrayConstr:
     let elemSize = computeSizeAux(typ.sons[1], a)
