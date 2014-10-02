@@ -262,13 +262,11 @@ given *slicelist* the ``else`` part is executed. If there is no ``else``
 part and not all possible values that ``expr`` can hold occur in a 
 ``slicelist``, a static error occurs. This holds only for expressions of 
 ordinal types. "All possible values" of ``expr`` are determined by ``expr``'s
-type. 
+type. To suppress the static error an ``else`` part with an
+empty ``discard`` statement should be used.
 
-If the expression is not of an ordinal type, and no ``else`` part is
-given, control passes after the ``case`` statement.
-
-To suppress the static error in the ordinal case an ``else`` part with an
-empty ``discard`` statement can be used.
+For non ordinal types it is not possible to list every possible value and so
+these always require an ``else`` part.
 
 As a special semantic extension, an expression in an ``of`` branch of a case
 statement may evaluate to a set or array constructor; the set or array is then

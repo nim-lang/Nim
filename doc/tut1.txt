@@ -312,7 +312,7 @@ the compiler that for every other value nothing should be done:
 The empty `discard statement`_ is a *do nothing* statement. The compiler knows
 that a case statement with an else part cannot fail and thus the error 
 disappears. Note that it is impossible to cover all possible string values: 
-that is why there is no such check for string cases.
+that is why string cases always need an ``else`` branch.
 
 In general the case statement is used for subrange types or enumerations where
 it is of great help that the compiler checks that you covered any possible

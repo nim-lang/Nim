@@ -47,11 +47,16 @@ News
     found under the `nim-code <https://github.com/nimrod-code>`_ organisation.
   - Removed the deprecated ``web`` module, the ``httpclient`` module should
     be used instead.
+  - String case (or any non-ordinal case) statements 
+    without 'else' are deprecated.
+
 
   Language Additions
   ------------------
 
   - There is a new ``parallel`` statement for safe fork&join parallel computing.
+  - ``guard`` and ``lock`` pragmas have been implemented to support safer
+    concurrent programming.
   
 
   Library Additions

@@ -199,11 +199,12 @@ proc semCase(c: PContext, n: PNode): PNode =
   var covered: BiggestInt = 0
   var typ = commonTypeBegin
   var hasElse = false
+  var notOrdinal = false
   case skipTypes(n.sons[0].typ, abstractVarRange-{tyTypeDesc}).kind
   of tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32, tyBool:
     chckCovered = true
   of tyFloat..tyFloat128, tyString, tyError:
-    discard
+    notOrdinal = true
   else:
     localError(n.info, errSelectorMustBeOfCertainTypes)
     return
@@ -233,6 +234,9 @@ proc semCase(c: PContext, n: PNode): PNode =
       hasElse = true
     else:
       illFormedAst(x)
+  if notOrdinal and not hasElse:
+    message(n.info, warnDeprecated,
+            "use 'else: discard'; non-ordinal case without 'else'")
   if chckCovered:
     if covered == toCover(n.sons[0].typ):
       hasElse = true
