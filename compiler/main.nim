@@ -272,13 +272,11 @@ proc mainCommand* =
     gCmd = cmdCompileToC
     commandCompileToC()
   of "cpp", "compiletocpp":
-    extccomp.cExt = ".cpp"
     gCmd = cmdCompileToCpp
     if cCompiler == ccGcc: setCC("gcc")
     defineSymbol("cpp")
     commandCompileToC()
   of "objc", "compiletooc":
-    extccomp.cExt = ".m"
     gCmd = cmdCompileToOC
     defineSymbol("objc")
     commandCompileToC()

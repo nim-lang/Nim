@@ -1,7 +1,7 @@
 /*
 
-            Nimrod's Runtime Library
-        (c) Copyright 2013 Andreas Rumpf
+            Nim's Runtime Library
+        (c) Copyright 2014 Andreas Rumpf
 
     See the file "copying.txt", included in this
     distribution, for details about the copyright.
@@ -383,4 +383,10 @@ static inline void GCGuard (void *ptr) { asm volatile ("" :: "X" (ptr)); }
    On disagreement, your C compiler will say something like: 
    "error: 'assert_numbits' declared as an array with a negative size" */
 typedef int assert_numbits[sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8 ? 1 : -1];
+#endif
+
+#ifdef  __cplusplus
+#  define NIM_EXTERNC extern "C"
+#else
+#  define NIM_EXTERNC
 #endif

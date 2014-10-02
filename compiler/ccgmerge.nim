@@ -249,7 +249,7 @@ proc readMergeInfo*(cfilename: string, m: BModule) =
       break
 
 type
-  TMergeSections = object {.pure.}
+  TMergeSections = object
     f: TCFileSections
     p: TCProcSections
 

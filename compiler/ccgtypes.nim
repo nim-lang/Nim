@@ -342,8 +342,8 @@ proc getTypePre(m: BModule, typ: PType): PRope =
 proc structOrUnion(t: PType): PRope =
   (if tfUnion in t.flags: toRope("union") else: toRope("struct"))
 
-proc getForwardStructFormat(): string = 
-  if gCmd == cmdCompileToCpp: result = "$1 $2;$n"
+proc getForwardStructFormat(m: BModule): string = 
+  if m.compileToCpp: result = "$1 $2;$n"
   else: result = "typedef $1 $2 $2;$n"
   
 proc getTypeForward(m: BModule, typ: PType): PRope = 
@@ -355,7 +355,7 @@ proc getTypeForward(m: BModule, typ: PType): PRope =
   of tySequence, tyTuple, tyObject: 
     result = getTypeName(typ)
     if not isImportedType(typ): 
-      appf(m.s[cfsForwardTypes], getForwardStructFormat(),
+      appf(m.s[cfsForwardTypes], getForwardStructFormat(m),
           [structOrUnion(typ), result])
     idTablePut(m.forwTypeCache, typ, result)
   else: internalError("getTypeForward(" & $typ.kind & ')')
@@ -442,7 +442,7 @@ proc getRecordDesc(m: BModule, typ: PType, name: PRope,
       else: 
         appcg(m, result, " {$n#TNimType* m_type;$n", [name, attribute])
         hasField = true
-    elif gCmd == cmdCompileToCpp: 
+    elif m.compileToCpp:
       appcg(m, result, " : public $1 {$n", 
                       [getTypeDescAux(m, typ.sons[0], check)])
       hasField = true
@@ -538,7 +538,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): PRope =
     if result == nil: 
       result = getTypeName(t)
       if not isImportedType(t): 
-        appf(m.s[cfsForwardTypes], getForwardStructFormat(),
+        appf(m.s[cfsForwardTypes], getForwardStructFormat(m),
             [structOrUnion(t), result])
       idTablePut(m.forwTypeCache, t, result)
     assert(cacheGetType(m.typeCache, t) == nil)
@@ -550,7 +550,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): PRope =
           cSeq = "struct $2 {$n" &
                  "  #TGenericSeq Sup;$n"
         appcg(m, m.s[cfsSeqTypes],
-            (if gCmd == cmdCompileToCpp: cppSeq else: cSeq) &
+            (if m.compileToCpp: cppSeq else: cSeq) &
             "  $1 data[SEQ_DECL_SIZE];$n" & 
             "};$n", [getTypeDescAux(m, t.sons[0], check), result])
       else: 
@@ -570,7 +570,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): PRope =
     if result == nil: 
       result = getTypeName(t)
       if not isImportedType(t): 
-        appf(m.s[cfsForwardTypes], getForwardStructFormat(),
+        appf(m.s[cfsForwardTypes], getForwardStructFormat(m),
            [structOrUnion(t), result])
       idTablePut(m.forwTypeCache, t, result)
     idTablePut(m.typeCache, t, result) # always call for sideeffects:

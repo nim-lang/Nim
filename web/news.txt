@@ -52,13 +52,30 @@ News
   - Recursive tuple types are not allowed anymore. Use ``object`` instead.
 
 
+  Compiler Additions
+  ------------------
+
+  - The compiler now supports *mixed* Objective C / C++ / C code generation:
+    The modules that use ``importCpp`` or ``importObjc`` are compiled to C++
+    or Objective C code, any other module is compiled to C code. This
+    improves interoperability.
+
+
   Language Additions
   ------------------
 
   - There is a new ``parallel`` statement for safe fork&join parallel computing.
   - ``guard`` and ``lock`` pragmas have been implemented to support safer
     concurrent programming.
-  - ``system.writeFile`` can be used at compile-time.
+  - The following procs are now available at compile-time::
+
+      math.sqrt, math.ln, math.log10, math.log2, math.exp, math.round,
+      math.arccos, math.arcsin, math.arctan, math.arctan2, math.cos, math.cosh,
+      math.hypot, math.sinh, math.sin, math.tan, math.tanh, math.pow,
+      math.trunc, math.floor, math.ceil, math.fmod,
+      os.getEnv, os.existsEnv, os.dirExists, os.fileExists,
+      system.writeFile
+
 
   Library Additions
   -----------------

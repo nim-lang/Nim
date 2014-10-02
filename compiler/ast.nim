@@ -291,6 +291,8 @@ const
 
   sfNoRoot* = sfBorrow # a local variable is provably no root so it doesn't
                        # require RC ops
+  sfCompileToCpp* = sfInfixCall       # compile the module as C++ code
+  sfCompileToObjc* = sfNamedParamCall # compile the module as Objective-C code
 
 const
   # getting ready for the future expr/stmt merge

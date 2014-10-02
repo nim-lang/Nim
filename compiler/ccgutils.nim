@@ -171,7 +171,7 @@ proc mangle*(name: string): string =
   ## Lowercases the given name and manges any non-alphanumeric characters
   ## so they are represented as `HEX____`. If the name starts with a number,
   ## `N` is prepended
-  result = ""
+  result = newStringOfCap(name.len)
   case name[0]
   of Letters:
     result.add(name[0].toLower)

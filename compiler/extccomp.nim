@@ -323,10 +323,7 @@ const
 
 var
   cCompiler* = ccGcc # the used compiler
-
-  cExt* = ".c" # extension of generated C/C++ files
-               # (can be changed to .cpp later)
-  
+  gMixedMode*: bool  # true if some module triggered C++ codegen
   cIncludes*: seq[string] = @[]   # directories to search for included files
   cLibs*: seq[string] = @[]       # directories to search for lib files
   cLinkedLibs*: seq[string] = @[] # libraries to link
@@ -387,8 +384,6 @@ proc initVars*() =
   # we need to define the symbol here, because ``CC`` may have never been set!
   for i in countup(low(CC), high(CC)): undefSymbol(CC[i].name)
   defineSymbol(CC[cCompiler].name)
-  if gCmd == cmdCompileToCpp: cExt = ".cpp"
-  elif gCmd == cmdCompileToOC: cExt = ".m"
   addCompileOption(getConfigVar(cCompiler, ".options.always"))
   addLinkOption(getConfigVar(cCompiler, ".options.linker"))
   if len(ccompilerpath) == 0:
@@ -397,9 +392,9 @@ proc initVars*() =
 proc completeCFilePath*(cfile: string, createSubDir: bool = true): string = 
   result = completeGeneratedFilePath(cfile, createSubDir)
 
-proc toObjFile*(filenameWithoutExt: string): string = 
+proc toObjFile*(filename: string): string = 
   # Object file for compilation
-  result = changeFileExt(filenameWithoutExt, CC[cCompiler].objExt)
+  result = changeFileExt(filename, CC[cCompiler].objExt)
 
 proc addFileToCompile*(filename: string) =
   appendStr(toCompile, filename)
@@ -497,6 +492,7 @@ proc getCompilerExe(compiler: TSystemCC): string =
 
 proc getLinkerExe(compiler: TSystemCC): string =
   result = if CC[compiler].linkerExe.len > 0: CC[compiler].linkerExe
+           elif gMixedMode and gCmd != cmdCompileToCpp: CC[compiler].cppCompiler
            else: compiler.getCompilerExe
 
 proc getCompileCFileCmd*(cfilename: string, isExternal = false): string = 
@@ -507,11 +503,11 @@ proc getCompileCFileCmd*(cfilename: string, isExternal = false): string =
   
   if needsExeExt(): exe = addFileExt(exe, "exe")
   if optGenDynLib in gGlobalOptions and
-      ospNeedsPIC in platform.OS[targetOS].props: 
+      ospNeedsPIC in platform.OS[targetOS].props:
     add(options, ' ' & CC[c].pic)
   
   var includeCmd, compilePattern: string
-  if not noAbsolutePaths(): 
+  if not noAbsolutePaths():
     # compute include paths:
     includeCmd = CC[c].includeCmd & quoteShell(libpath)
 
@@ -519,26 +515,27 @@ proc getCompileCFileCmd*(cfilename: string, isExternal = false): string =
       includeCmd.add([CC[c].includeCmd, includeDir.quoteShell])
 
     compilePattern = joinPath(ccompilerpath, exe)
-  else: 
+  else:
     includeCmd = ""
     compilePattern = c.getCompilerExe
   
-  var cfile = if noAbsolutePaths(): extractFilename(cfilename) 
+  var cfile = if noAbsolutePaths(): extractFilename(cfilename)
               else: cfilename
-  var objfile = if not isExternal or noAbsolutePaths(): 
-                  toObjFile(cfile) 
-                else: 
+  var objfile = if not isExternal or noAbsolutePaths():
+                  toObjFile(cfile)
+                else:
                   completeCFilePath(toObjFile(cfile))
-  cfile = quoteShell(addFileExt(cfile, cExt))
   objfile = quoteShell(objfile)
   result = quoteShell(compilePattern % [
-    "file", cfile, "objfile", objfile, "options", options, 
-    "include", includeCmd, "nimrod", getPrefixDir(), "lib", libpath])
+    "file", cfile, "objfile", objfile, "options", options,
+    "include", includeCmd, "nimrod", getPrefixDir(),
+    "nim", getPrefixDir(), "lib", libpath])
   add(result, ' ')
   addf(result, CC[c].compileTmpl, [
-    "file", cfile, "objfile", objfile, 
-    "options", options, "include", includeCmd, 
-    "nimrod", quoteShell(getPrefixDir()), 
+    "file", cfile, "objfile", objfile,
+    "options", options, "include", includeCmd,
+    "nimrod", quoteShell(getPrefixDir()),
+    "nim", quoteShell(getPrefixDir()),
     "lib", quoteShell(libpath)])
 
 proc footprint(filename: string): TCrc32 =
@@ -668,7 +665,7 @@ proc callCCompiler*(projectfile: string) =
 proc genMappingFiles(list: TLinkedList): PRope = 
   var it = PStrEntry(list.head)
   while it != nil: 
-    appf(result, "--file:r\"$1\"$N", [toRope(addFileExt(it.data, cExt))])
+    appf(result, "--file:r\"$1\"$N", [toRope(it.data)])
     it = PStrEntry(it.next)
 
 proc writeMapping*(gSymbolMapping: PRope) = 
