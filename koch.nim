@@ -38,7 +38,7 @@ Options:
   --help, -h               shows this help and quits
 Possible Commands:
   boot [options]           bootstraps with given command line options
-  install [dir]            installs to given directory
+  install [bindir]         installs to given directory
   clean                    cleans Nimrod project; removes generated files
   web [options]            generates the website
   csource [options]        builds the C sources for installation

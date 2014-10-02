@@ -1,6 +1,7 @@
 version 0.10
 ============
 
+- document the new concurrency system
 - Test nimfix on various babel packages
 - deprecate recursive tuples; tuple needs laxer type checking
 - string case should require an 'else'
@@ -14,7 +15,6 @@ version 0.9.6
 
 - split idetools into separate tool
 - split docgen into separate tool
-- .benign pragma
 - scopes are still broken for generic instantiation!
 
 Concurrency

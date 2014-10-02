@@ -103,7 +103,7 @@ component?).
 
 
 Nim code calling the backend
---------------------------------
+----------------------------
 
 Nim code can interface with the backend through the `Foreign function
 interface <manual.html#foreign-function-interface>`_ mainly through the
@@ -211,7 +211,7 @@ javascript, you should see the value ``10``. In JavaScript the `echo proc
 
 
 Backend code calling Nim
----------------------------
+------------------------
 
 Backend code can interface with Nim code exposed through the `exportc
 pragma <manual.html#exportc-pragma>`_. The ``exportc`` pragma is the *generic*
@@ -235,7 +235,7 @@ Nim code.
 
 
 Nim invocation example from C
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Create a ``fib.nim`` file with the following content:
 
@@ -291,7 +291,7 @@ use ``-ldl`` too to link in required dlopen functionality.
 
 
 Nim invocation example from JavaScript
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Create a ``mhost.html`` file with the following content:
 

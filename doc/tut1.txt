@@ -65,8 +65,8 @@ done with spaces only, tabulators are not allowed.
 
 String literals are enclosed in double quotes. The ``var`` statement declares
 a new variable named ``name`` of type ``string`` with the value that is
-returned by the `readLine <system.html#readLine,TFile>`_ procedure. Since the
-compiler knows that `readLine <system.html#readLine,TFile>`_ returns a string,
+returned by the `readLine <system.html#readLine,File>`_ procedure. Since the
+compiler knows that `readLine <system.html#readLine,File>`_ returns a string,
 you can leave out the type in the declaration (this is called `local type
 inference`:idx:). So this will work too:
 
@@ -77,7 +77,7 @@ Note that this is basically the only form of type inference that exists in
 Nim: it is a good compromise between brevity and readability.
 
 The "hello world" program contains several identifiers that are already known
-to the compiler: ``echo``, `readLine <system.html#readLine,TFile>`_, etc.
+to the compiler: ``echo``, `readLine <system.html#readLine,File>`_, etc.
 These built-ins are declared in the system_ module which is implicitly
 imported by any other module.
 
@@ -526,7 +526,7 @@ Procedures
 ==========
 
 To define new commands like `echo <system.html#echo>`_ and `readLine
-<system.html#readLine,TFile>`_ in the examples, the concept of a `procedure`
+<system.html#readLine,File>`_ in the examples, the concept of a `procedure`
 is needed. (Some languages call them *methods* or *functions*.) In Nim new
 procedures are defined with the ``proc`` keyword:
 
@@ -1269,7 +1269,7 @@ arguments to a procedure. The compiler converts the list of arguments
 to an array automatically:
 
 .. code-block:: nim
-  proc myWriteln(f: TFile, a: varargs[string]) =
+  proc myWriteln(f: File, a: varargs[string]) =
     for s in items(a):
       write(f, s)
     write(f, "\n")
@@ -1283,7 +1283,7 @@ last parameter in the procedure header. It is also possible to perform
 type conversions in this context:
 
 .. code-block:: nim
-  proc myWriteln(f: TFile, a: varargs[string, `$`]) =
+  proc myWriteln(f: File, a: varargs[string, `$`]) =
     for s in items(a):
       write(f, s)
     write(f, "\n")

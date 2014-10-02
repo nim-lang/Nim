@@ -1,0 +1,477 @@
+Pragmas
+=======
+
+Pragmas are Nim's method to give the compiler additional information /
+commands without introducing a massive number of new keywords. Pragmas are
+processed on the fly during semantic checking. Pragmas are enclosed in the
+special ``{.`` and ``.}`` curly brackets. Pragmas are also often used as a
+first implementation to play with a language feature before a nicer syntax
+to access the feature becomes available.
+
+
+noSideEffect pragma
+-------------------
+The ``noSideEffect`` pragma is used to mark a proc/iterator to have no side
+effects. This means that the proc/iterator only changes locations that are
+reachable from its parameters and the return value only depends on the
+arguments. If none of its parameters have the type ``var T``
+or ``ref T`` or ``ptr T`` this means no locations are modified. It is a static
+error to mark a proc/iterator to have no side effect if the compiler cannot
+verify this.
+
+As a special semantic rule, the built-in `debugEcho <system.html#debugEcho>`_
+pretends to be free of side effects, so that it can be used for debugging
+routines marked as ``noSideEffect``.
+
+**Future directions**: ``func`` may become a keyword and syntactic sugar for a
+proc with no side effects:
+
+.. code-block:: nim
+  func `+` (x, y: int): int
+
+
+destructor pragma
+-----------------
+
+The ``destructor`` pragma is used to mark a proc to act as a type destructor.
+Its usage is deprecated, use the ``override`` pragma instead.
+See `type bound operations`_.
+
+
+override pragma
+---------------
+
+See `type bound operations`_ instead.
+
+procvar pragma
+--------------
+The ``procvar`` pragma is used to mark a proc that it can be passed to a
+procedural variable.
+
+
+compileTime pragma
+------------------
+The ``compileTime`` pragma is used to mark a proc to be used at compile
+time only. No code will be generated for it. Compile time procs are useful
+as helpers for macros.
+
+
+noReturn pragma
+---------------
+The ``noreturn`` pragma is used to mark a proc that never returns. 
+
+
+acyclic pragma
+--------------
+The ``acyclic`` pragma can be used for object types to mark them as acyclic
+even though they seem to be cyclic. This is an **optimization** for the garbage
+collector to not consider objects of this type as part of a cycle:
+
+.. code-block:: nim
+  type
+    PNode = ref TNode
+    TNode {.acyclic, final.} = object
+      left, right: PNode
+      data: string
+
+In the example a tree structure is declared with the ``TNode`` type. Note that
+the type definition is recursive and the GC has to assume that objects of
+this type may form a cyclic graph. The ``acyclic`` pragma passes the
+information that this cannot happen to the GC. If the programmer uses the
+``acyclic`` pragma for data types that are in reality cyclic, the GC may leak
+memory, but nothing worse happens.
+
+**Future directions**: The ``acyclic`` pragma may become a property of a
+``ref`` type:
+
+.. code-block:: nim
+  type
+    PNode = acyclic ref TNode
+    TNode = object
+      left, right: PNode
+      data: string
+
+
+final pragma
+------------
+The ``final`` pragma can be used for an object type to specify that it
+cannot be inherited from.
+
+
+shallow pragma
+--------------
+The ``shallow`` pragma affects the semantics of a type: The compiler is
+allowed to make a shallow copy. This can cause serious semantic issues and
+break memory safety! However, it can speed up assignments considerably, 
+because the semantics of Nim require deep copying of sequences and strings. 
+This can be expensive, especially if sequences are used to build a tree
+structure: 
+
+.. code-block:: nim
+  type
+    TNodeKind = enum nkLeaf, nkInner
+    TNode {.final, shallow.} = object
+      case kind: TNodeKind
+      of nkLeaf: 
+        strVal: string
+      of nkInner: 
+        children: seq[TNode]
+
+
+pure pragma
+-----------
+An object type can be marked with the ``pure`` pragma so that its type 
+field which is used for runtime type identification is omitted. This used to be
+necessary for binary compatibility with other compiled languages.
+
+An enum type can be marked as ``pure``. Then access of its fields always
+requires full qualification.
+
+
+asmNoStackFrame pragma
+----------------------
+A proc can be marked with the ``AsmNoStackFrame`` pragma to tell the compiler
+it should not generate a stack frame for the proc. There are also no exit
+statements like ``return result;`` generated and the generated C function is
+declared as ``__declspec(naked)`` or ``__attribute__((naked))`` (depending on
+the used C compiler).
+
+**Note**: This pragma should only be used by procs which consist solely of
+assembler statements.
+
+error pragma
+------------
+The ``error`` pragma is used to make the compiler output an error message
+with the given content. Compilation does not necessarily abort after an error
+though. 
+
+The ``error`` pragma can also be used to
+annotate a symbol (like an iterator or proc). The *usage* of the symbol then
+triggers a compile-time error. This is especially useful to rule out that some
+operation is valid due to overloading and type conversions: 
+
+.. code-block:: nim
+  ## check that underlying int values are compared and not the pointers:
+  proc `==`(x, y: ptr int): bool {.error.}
+
+
+fatal pragma
+------------
+The ``fatal`` pragma is used to make the compiler output an error message
+with the given content. In contrast to the ``error`` pragma, compilation
+is guaranteed to be aborted by this pragma. Example:
+
+.. code-block:: nim
+  when not defined(objc):
+    {.fatal: "Compile this program with the objc command!".}
+
+warning pragma
+--------------
+The ``warning`` pragma is used to make the compiler output a warning message
+with the given content. Compilation continues after the warning.
+
+hint pragma
+-----------
+The ``hint`` pragma is used to make the compiler output a hint message with
+the given content. Compilation continues after the hint.
+
+line pragma
+-----------
+The ``line`` pragma can be used to affect line information of the annotated
+statement as seen in stack backtraces:
+
+.. code-block:: nim
+  
+  template myassert*(cond: expr, msg = "") =
+    if not cond:
+      # change run-time line information of the 'raise' statement:
+      {.line: InstantiationInfo().}:
+        raise newException(EAssertionFailed, msg)
+
+If the ``line`` pragma is used with a parameter, the parameter needs be a
+``tuple[filename: string, line: int]``. If it is used without a parameter,
+``system.InstantiationInfo()`` is used.
+
+
+linearScanEnd pragma
+--------------------
+The ``linearScanEnd`` pragma can be used to tell the compiler how to 
+compile a Nim `case`:idx: statement. Syntactically it has to be used as a
+statement:
+
+.. code-block:: nim
+  case myInt
+  of 0: 
+    echo "most common case"
+  of 1: 
+    {.linearScanEnd.}
+    echo "second most common case"
+  of 2: echo "unlikely: use branch table"
+  else: echo "unlikely too: use branch table for ", myInt
+
+In the example, the case branches ``0`` and ``1`` are much more common than 
+the other cases. Therefore the generated assembler code should test for these 
+values first, so that the CPU's branch predictor has a good chance to succeed 
+(avoiding an expensive CPU pipeline stall). The other cases might be put into a
+jump table for O(1) overhead, but at the cost of a (very likely) pipeline
+stall. 
+
+The ``linearScanEnd`` pragma should be put into the last branch that should be
+tested against via linear scanning. If put into the last branch of the
+whole ``case`` statement, the whole ``case`` statement uses linear scanning.
+
+
+computedGoto pragma
+-------------------
+The ``computedGoto`` pragma can be used to tell the compiler how to 
+compile a Nim `case`:idx: in a ``while true`` statement. 
+Syntactically it has to be used as a statement inside the loop:
+
+.. code-block:: nim
+
+  type
+    MyEnum = enum
+      enumA, enumB, enumC, enumD, enumE
+
+  proc vm() =
+    var instructions: array [0..100, MyEnum]
+    instructions[2] = enumC
+    instructions[3] = enumD
+    instructions[4] = enumA
+    instructions[5] = enumD
+    instructions[6] = enumC
+    instructions[7] = enumA
+    instructions[8] = enumB
+
+    instructions[12] = enumE
+    var pc = 0
+    while true:
+      {.computedGoto.}
+      let instr = instructions[pc]
+      case instr
+      of enumA:
+        echo "yeah A"
+      of enumC, enumD:
+        echo "yeah CD"
+      of enumB:
+        echo "yeah B"
+      of enumE:
+        break
+      inc(pc)
+    
+  vm()
+
+As the example shows ``computedGoto`` is mostly useful for interpreters. If
+the underlying backend (C compiler) does not support the computed goto 
+extension the pragma is simply ignored.
+
+
+unroll pragma
+-------------
+The ``unroll`` pragma can be used to tell the compiler that it should unroll
+a `for`:idx: or `while`:idx: loop for runtime efficiency: 
+
+.. code-block:: nim
+  proc searchChar(s: string, c: char): int = 
+    for i in 0 .. s.high:
+      {.unroll: 4.}
+      if s[i] == c: return i
+    result = -1
+
+In the above example, the search loop is unrolled by a factor 4. The unroll
+factor can be left out too; the compiler then chooses an appropriate unroll
+factor.
+
+**Note**: Currently the compiler recognizes but ignores this pragma.
+
+
+immediate pragma
+----------------
+
+See `Ordinary vs immediate templates`_.
+
+
+compilation option pragmas
+--------------------------
+The listed pragmas here can be used to override the code generation options
+for a proc/method/converter.
+
+The implementation currently provides the following possible options (various
+others may be added later).
+
+===============  ===============  ============================================
+pragma           allowed values   description
+===============  ===============  ============================================
+checks           on|off           Turns the code generation for all runtime
+                                  checks on or off.
+boundChecks      on|off           Turns the code generation for array bound
+                                  checks on or off.
+overflowChecks   on|off           Turns the code generation for over- or
+                                  underflow checks on or off.
+nilChecks        on|off           Turns the code generation for nil pointer
+                                  checks on or off.
+assertions       on|off           Turns the code generation for assertions
+                                  on or off.
+warnings         on|off           Turns the warning messages of the compiler
+                                  on or off.
+hints            on|off           Turns the hint messages of the compiler
+                                  on or off.
+optimization     none|speed|size  Optimize the code for speed or size, or
+                                  disable optimization.
+patterns         on|off           Turns the term rewriting templates/macros
+                                  on or off.
+callconv         cdecl|...        Specifies the default calling convention for
+                                  all procedures (and procedure types) that
+                                  follow.
+===============  ===============  ============================================
+
+Example:
+
+.. code-block:: nim
+  {.checks: off, optimization: speed.}
+  # compile without runtime checks and optimize for speed
+
+
+push and pop pragmas
+--------------------
+The `push/pop`:idx: pragmas are very similar to the option directive,
+but are used to override the settings temporarily. Example:
+
+.. code-block:: nim
+  {.push checks: off.}
+  # compile this section without runtime checks as it is
+  # speed critical
+  # ... some code ...
+  {.pop.} # restore old settings
+
+
+register pragma
+---------------
+The ``register`` pragma is for variables only. It declares the variable as
+``register``, giving the compiler a hint that the variable should be placed
+in a hardware register for faster access. C compilers usually ignore this
+though and for good reasons: Often they do a better job without it anyway.
+
+In highly specific cases (a dispatch loop of an bytecode interpreter for
+example) it may provide benefits, though.
+
+
+global pragma
+-------------
+The ``global`` pragma can be applied to a variable within a proc to instruct
+the compiler to store it in a global location and initialize it once at program
+startup.
+
+.. code-block:: nim
+  proc isHexNumber(s: string): bool =
+    var pattern {.global.} = re"[0-9a-fA-F]+"
+    result = s.match(pattern)
+
+When used within a generic proc, a separate unique global variable will be
+created for each instantiation of the proc. The order of initialization of
+the created global variables within a module is not defined, but all of them
+will be initialized after any top-level variables in their originating module
+and before any variable in a module that imports it.
+
+deadCodeElim pragma
+-------------------
+The ``deadCodeElim`` pragma only applies to whole modules: It tells the
+compiler to activate (or deactivate) dead code elimination for the module the
+pragma appears in.
+
+The ``--deadCodeElim:on`` command line switch has the same effect as marking
+every module with ``{.deadCodeElim:on}``. However, for some modules such as
+the GTK wrapper it makes sense to *always* turn on dead code elimination -
+no matter if it is globally active or not.
+
+Example:
+
+.. code-block:: nim
+  {.deadCodeElim: on.}
+
+
+..
+  NoForward pragma
+  ----------------
+  The ``noforward`` pragma can be used to turn on and off a special compilation
+  mode that to large extent eliminates the need for forward declarations. In this
+  mode, the proc definitions may appear out of order and the compiler will postpone
+  their semantic analysis and compilation until it actually needs to generate code
+  using the definitions. In this regard, this mode is similar to the modus operandi
+  of dynamic scripting languages, where the function calls are not resolved until
+  the code is executed. Here is the detailed algorithm taken by the compiler:
+
+  1. When a callable symbol is first encountered, the compiler will only note the
+  symbol callable name and it will add it to the appropriate overload set in the
+  current scope. At this step, it won't try to resolve any of the type expressions
+  used in the signature of the symbol (so they can refer to other not yet defined
+  symbols).
+
+  2. When a top level call is encountered (usually at the very end of the module),
+  the compiler will try to determine the actual types of all of the symbols in the
+  matching overload set. This is a potentially recursive process as the signatures
+  of the symbols may include other call expressions, whoose types will be resolved
+  at this point too.
+
+  3. Finally, after the best overload is picked, the compiler will start compiling
+  the body of the respective symbol. This in turn will lead the compiler to discover
+  more call expresions that need to be resolved and steps 2 and 3 will be repeated
+  as necessary.
+
+  Please note that if a callable symbol is never used in this scenario, its body
+  will never be compiled. This is the default behavior leading to best compilation
+  times, but if exhaustive compilation of all definitions is required, using 
+  ``nim check`` provides this option as well.
+
+  Example:
+
+  .. code-block:: nim
+
+    {.noforward: on.}
+
+    proc foo(x: int) =
+      bar x
+
+    proc bar(x: int) =
+      echo x
+
+    foo(10)
+
+
+pragma pragma
+-------------
+
+The ``pragma`` pragma can be used to declare user defined pragmas. This is 
+useful because Nim's templates and macros do not affect pragmas. User 
+defined pragmas are in a different module-wide scope than all other symbols. 
+They cannot be imported from a module.
+
+Example:
+
+.. code-block:: nim
+  when appType == "lib":
+    {.pragma: rtl, exportc, dynlib, cdecl.}
+  else:
+    {.pragma: rtl, importc, dynlib: "client.dll", cdecl.}
+    
+  proc p*(a, b: int): int {.rtl.} = 
+    result = a+b
+
+In the example a new pragma named ``rtl`` is introduced that either imports
+a symbol from a dynamic library or exports the symbol for dynamic library
+generation.
+
+
+Disabling certain messages
+--------------------------
+Nim generates some warnings and hints ("line too long") that may annoy the
+user. A mechanism for disabling certain messages is provided: Each hint
+and warning message contains a symbol in brackets. This is the message's
+identifier that can be used to enable or disable it:
+
+.. code-block:: Nim
+  {.hint[LineTooLong]: off.} # turn off the hint about too long lines
+
+This is often better than disabling all warnings at once.
+
+

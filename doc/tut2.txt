@@ -130,7 +130,7 @@ The syntax for type conversions is ``destination_type(expression_to_convert)``
   proc getID(x: TPerson): int =
     TStudent(x).id
 
-The ``EInvalidObjectConversion`` exception is raised if ``x`` is not a
+The ``InvalidObjectConversionError`` exception is raised if ``x`` is not a
 ``TStudent``.
 
 
@@ -164,7 +164,7 @@ An example:
         condition, thenPart, elsePart: PNode
 
   var n = PNode(kind: nkFloat, floatVal: 1.0)
-  # the following statement raises an `EInvalidField` exception, because
+  # the following statement raises an `FieldError` exception, because
   # n.kind's value does not fit:
   n.strVal = ""
 
@@ -346,9 +346,9 @@ Exceptions
 ==========
 
 In Nim exceptions are objects. By convention, exception types are
-prefixed with an 'E', not 'T'. The `system <system.html>`_ module defines an
+suffixed with 'Error'. The `system <system.html>`_ module defines an
 exception hierarchy that you might want to stick to. Exceptions derive from
-E_Base, which provides the common interface.
+``system.Exception``, which provides the common interface.
 
 Exceptions have to be allocated on the heap because their lifetime is unknown.
 The compiler will prevent you from raising an exception created on the stack.
@@ -366,7 +366,7 @@ Raising an exception is done with the ``raise`` statement:
 
 .. code-block:: nim
   var
-    e: ref EOS
+    e: ref OSError
   new(e)
   e.msg = "the request to the OS failed"
   raise e
@@ -376,7 +376,7 @@ is *re-raised*. For the purpose of avoiding repeating this common code pattern,
 the template ``newException`` in the ``system`` module can be used:
 
 .. code-block:: nim
-  raise newException(EOS, "the request to the OS failed")
+  raise newException(OSError, "the request to the OS failed")
 
 
 Try statement
@@ -388,17 +388,17 @@ The ``try`` statement handles exceptions:
   # read the first two lines of a text file that should contain numbers
   # and tries to add them
   var
-    f: TFile
+    f: File
   if open(f, "numbers.txt"):
     try:
       let a = readLine(f)
       let b = readLine(f)
       echo "sum: ", parseInt(a) + parseInt(b)
-    except EOverflow:
+    except OverflowError:
       echo "overflow!"
-    except EInvalidValue:
+    except ValueError:
       echo "could not convert string to integer"
-    except EIO:
+    except IOError:
       echo "IO error!"
     except:
       echo "Unknown exception!"
@@ -426,7 +426,7 @@ If you need to *access* the actual exception object or message inside an
 ``except`` branch you can use the `getCurrentException()
 <system.html#getCurrentException>`_ and `getCurrentExceptionMsg()
 <system.html#getCurrentExceptionMsg>`_ procs from the `system <system.html>`_
-module.  Example:
+module. Example:
 
 .. code-block:: nim
   try:
@@ -441,9 +441,9 @@ module.  Example:
 Exception hierarchy
 -------------------
 
-If you want to create your own exceptions you can inherit from E_Base, but you
-can also inherit from one of the existing exceptions if they fit your purpose.
-The exception tree is:
+If you want to create your own exceptions you can inherit from ``system.Exception``,
+but you can also inherit from one of the existing exceptions if they fit your
+purpose. The exception tree is:
 
 .. include:: exception_hierarchy_fragment.txt
 
@@ -456,12 +456,12 @@ Annotating procs with raised exceptions
 Through the use of the optional ``{.raises.}`` pragma you can specify that a
 proc is meant to raise a specific set of exceptions, or none at all. If the
 ``{.raises.}`` pragma is used, the compiler will verify that this is true. For
-instance, if you specify that a proc raises ``EIO``, and at some point it (or
-one of the procs it calls) starts raising a new exception the compiler will
+instance, if you specify that a proc raises ``IOError``, and at some point it
+(or one of the procs it calls) starts raising a new exception the compiler will
 prevent that proc from compiling. Usage example:
 
 .. code-block:: nim
-  proc complexProc() {.raises: [EIO, EArithmetic].} =
+  proc complexProc() {.raises: [IOError, ArithmeticError].} =
     ...
 
   proc simpleProc() {.raises: [].} =
@@ -624,10 +624,10 @@ via a special ``:`` syntax:
 
 .. code-block:: nim
 
-  template withFile(f: expr, filename: string, mode: TFileMode,
+  template withFile(f: expr, filename: string, mode: FileMode,
                     body: stmt): stmt {.immediate.} =
     let fn = filename
-    var f: TFile
+    var f: File
     if open(f, fn, mode):
       try:
         body
@@ -767,7 +767,7 @@ use the following snippet of code as the starting point:
 
   import strutils, tables
 
-  proc readCfgAtRuntime(cfgFilename: string): TTable[string, string] =
+  proc readCfgAtRuntime(cfgFilename: string): Table[string, string] =
     let
       inputString = readFile(cfgFilename)
     var
@@ -801,7 +801,7 @@ to be included along the program containing the license information::
   licenseKey,M1Tl3PjBWO2CC48m
 
 The ``readCfgAtRuntime`` proc will open the given filename and return a
-``TTable`` from the `tables module <tables.html>`_. The parsing of the file is
+``Table`` from the `tables module <tables.html>`_. The parsing of the file is
 done (without much care for handling invalid data or corner cases) using the
 ``splitLines`` proc from the `strutils module <strutils.html>`_. There are many
 things which can fail; mind the purpose is explaining how to make this run at
@@ -871,7 +871,7 @@ this limitation by using the ``slurp`` proc from the `system module
 <system.html>`_, which was precisely made for compilation time (just like
 ``gorge`` which executes an external program and captures its output).
 
-The interesting thing is that our macro does not return a runtime ``TTable``
+The interesting thing is that our macro does not return a runtime ``Table``
 object. Instead, it builds up Nim source code into the ``source`` variable.
 For each line of the configuration file a ``const`` variable will be generated.
 To avoid conflicts we prefix these variables with ``cfg``. In essence, what the
