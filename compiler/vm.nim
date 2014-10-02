@@ -258,8 +258,16 @@ proc cleanUpOnException(c: PCtx; tos: PStackFrame):
         c.currentExceptionB = c.currentExceptionA
         c.currentExceptionA = nil
         # execute the corresponding handler:
+        while c.code[pc2].opcode == opcExcept: inc pc2
         return (pc2, f)
       inc pc2
+      if c.code[pc2].opcode != opcExcept and nextExceptOrFinally >= 0:
+        # we're at the end of the *except list*, but maybe there is another
+        # *except branch*?
+        pc2 = nextExceptOrFinally+1
+        if c.code[pc2].opcode == opcExcept:
+          nextExceptOrFinally = pc2 + c.code[pc2].regBx - wordExcess
+
     if nextExceptOrFinally >= 0:
       pc2 = nextExceptOrFinally
     if c.code[pc2].opcode == opcFinally:
@@ -891,10 +899,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcTry:
       let rbx = instr.regBx - wordExcess
       tos.pushSafePoint(pc + rbx)
+      assert c.code[pc+rbx].opcode in {opcExcept, opcFinally}
     of opcExcept:
       # just skip it; it's followed by a jump;
       # we'll execute in the 'raise' handler
-      discard
+      let rbx = instr.regBx - wordExcess - 1 # -1 for the following 'inc pc'
+      inc pc, rbx
+      assert c.code[pc+1].opcode in {opcExcept, opcFinally}
     of opcFinally:
       # just skip it; it's followed by the code we need to execute anyway
       tos.popSafePoint()

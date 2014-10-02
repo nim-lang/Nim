@@ -3,8 +3,6 @@ version 0.10
 
 - Test nimfix on various babel packages
 - deprecate recursive tuples; tuple needs laxer type checking
-- # echo type.int
-- VM: try does not work at all
 - VM: Pegs do not work at compile-time
 - VM: ptr/ref T cannot work in general
 
@@ -13,7 +11,6 @@ version 0.9.6
 
 - split idetools into separate tool
 - split docgen into separate tool
-- scopes are still broken for generic instantiation!
 
 Concurrency
 -----------
@@ -46,6 +43,7 @@ Misc
 Bugs
 ====
 
+- scopes are still broken for generic instantiation!
 - bug: 'type T = ref T' not recognized as illegal recursion
 - bug: type conversions concerning proc types are weird
 - compilation of niminst takes way too long. looks like a regression
@@ -58,7 +56,7 @@ version 0.9.x
 
 
 - implicit deref for parameter matching
-- overloading of '='; general lift mechanism
+- overloading of '='
 - allow simple read accesses to global variables --> difficult to ensure that
   no data races happen
 - pragmas need 'bindSym' support
@@ -70,81 +68,22 @@ version 0.9.x
 - provide --nilChecks:on|off
 - ensure (ref T)(a, b) works as a type conversion and type constructor
 - optimize 'genericReset'; 'newException' leads to code bloat
-- stack-less GC
 
 
 version 0.9.X
 =============
 
 - macros as type pragmas
+- implement type API for macros
 - lazy overloading resolution:
   * special case ``tyStmt``
-- FFI:
-  * test: times.format with the FFI
 - document NimMain and check whether it works for threading
-- 'quote' without 'do' doesn't work: parser/grammar issue; could be supported
-
-
-version 0.9.X
-=============
-
-- implement the missing features wrt inheritance
-- better support for macros that rewrite procs
-- macros need access to types and symbols (partially implemented)
-- enforce 'simpleExpr' more often --> doesn't work; tkProc is
-  part of primary!
-- the typeDesc/expr unification is weird and only necessary because of
-  the ambiguous a[T] construct: It would be easy to support a[expr] for
-  generics but require a[.typeDesc] if that's required; this would also
-  allow [.ref T.](x) for a more general type conversion construct; for
-  templates that would work too: T([.ref int])
-
-
-Concurrency/Effect system
-=========================
-
-- shared memory heap: ``shared ref`` etc. The only hard part in the GC is to
-  "stop the world". However, it may be worthwhile to generate explicit 
-  (or implicit) syncGC() calls in loops. Automatic loop injection seems
-  troublesome, but maybe we can come up with a simple heuristic. (All procs
-  that `new` shared memory are syncGC() candidates... But then 'new' itself
-  calls syncGC() so that's pointless.) Hm instead of an heuristic simply
-  provide a ``syncgc`` pragma to trigger compiler injection --> more general:
-  an ``injectLoop`` pragma
-- 'writes: []' effect; track reads/writes for shared types
-- ``~`` operator for effects
-- introduce 'noaddr' pragma to prevent taking the address of a location; this
-  is very handy to prevent aliasing of global data
-
-
-version 0.9.XX
-==============
-
-- make 'clamp' a magic for the range stuff
-- better type syntax for functions and tuples: tuple(int, int); (int,int)->int
-
-
-Memory safety
-=============
-
-- object branch transitions from low(selector) are unsafe! ---> Needs a 
-  deprecation path
-- object branch transitions can't work with the current 'reset'; add a 'reset'
-  with an additional parameter --> simple:
-  provide a 'reset(x, TObj(k: nkValue))' instead? why bother? '=' does the
-  same.
-- returning 'var T' is unsafe and needs some static analysis
-
 
 GC
 ==
 
-- precise stack marking; embrace C++ code generation for that
-- marker procs for Boehm GC
 - hybrid GC
-- acyclic vs prunable; introduce GC hints
 - use big blocks in the allocator
-- object pooling support for *hard* realtime systems
 - provide tool/API to track leaks/object counts
 - resizing of strings/sequences could take into account the memory that
   is allocated
@@ -155,31 +94,3 @@ CGEN
 - codegen should use "NIM_CAST" macro and respect aliasing rules for GCC
 - ``restrict`` pragma + backend support
 - 'const' objects including case objects
-
-
-Not essential for 1.0.0
-=======================
-
-- allow implicit forward declarations of procs via a pragma (so that the
-  wrappers can deactivate it): better solution: introduce the notion of a 
-  'proc section' that is similar to a type section.
-- implement the "snoopResult" pragma; no, make a strutils with string append
-  semantics instead ...
-- implement "closure tuple consists of a single 'ref'" optimization
-- new feature: ``distinct T with operations``
-- arglist as a type (iterator chaining); variable length type lists for generics
-- object constructors: static check for fields if discriminator is known at 
-  compile time
-- prove array accesses
-
-
-Optimizations
-=============
-
-- optimize 'if' with a constant condition --> necessary in frontend for better
-  dead code elimination; also necessary to prevent  ``if c > 0: 1 div c``
-- escape analysis for string/seq seems to be easy to do too;
-  even further write barrier specialization
-- inlining of first class functions
-- proc specialization in the code gen for write barrier specialization
-- VM/optimizer: implement on the fly CSE
