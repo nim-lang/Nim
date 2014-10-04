@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -19,6 +19,7 @@ type
   EDb* = object of IOError ## exception that is raised if a database error occurs
   
   TSqlQuery* = distinct string ## an SQL query string
+  TSqlPrepared* = distinct string ## a identifier for the prepared queries
 
   FDb* = object of IOEffect ## effect that denotes a database operation
   FReadDb* = object of FDb   ## effect that denotes a read operation
@@ -33,14 +34,14 @@ proc sql*(query: string): TSqlQuery {.noSideEffect, inline.} =
   ## on, later versions will check the string for valid syntax.
   result = TSqlQuery(query)
  
-proc dbError(db: TDbConn) {.noreturn.} = 
+proc dbError*(db: TDbConn) {.noreturn.} =
   ## raises an EDb exception.
   var e: ref EDb
   new(e)
   e.msg = $pqErrorMessage(db)
   raise e
 
-proc dbError*(msg: string) {.noreturn.} = 
+proc dbError*(msg: string) {.noreturn.} =
   ## raises an EDb exception with message `msg`.
   var e: ref EDb
   new(e)
@@ -61,41 +62,70 @@ proc dbFormat(formatstr: TSqlQuery, args: varargs[string]): string =
     if c == '?':
       add(result, dbQuote(args[a]))
       inc(a)
-    else: 
+    else:
       add(result, c)
   
-proc tryExec*(db: TDbConn, query: TSqlQuery, 
+proc tryExec*(db: TDbConn, query: TSqlQuery,
               args: varargs[string, `$`]): bool {.tags: [FReadDB, FWriteDb].} =
   ## tries to execute the query and returns true if successful, false otherwise.
-  var q = dbFormat(query, args)
-  var res = pqExec(db, q)
+  var arr = allocCStringArray(args)
+  var res = pqexecParams(db, query.string, int32(args.len), nil, arr,
+                        nil, nil, 0)
+  deallocCStringArray(arr)
   result = pqresultStatus(res) == PGRES_COMMAND_OK
   pqclear(res)
 
 proc exec*(db: TDbConn, query: TSqlQuery, args: varargs[string, `$`]) {.
   tags: [FReadDB, FWriteDb].} =
   ## executes the query and raises EDB if not successful.
-  var q = dbFormat(query, args)
-  var res = pqExec(db, q)
+  var arr = allocCStringArray(args)
+  var res = pqexecParams(db, query.string, int32(args.len), nil, arr,
+                        nil, nil, 0)
+  deallocCStringArray(arr)
   if pqresultStatus(res) != PGRES_COMMAND_OK: dbError(db)
   pqclear(res)
-  
+
+proc exec*(db: TDbConn, stmtName: TSqlPrepared,
+          args: varargs[string]) {.tags: [FReadDB, FWriteDb].} =
+  var arr = allocCStringArray(args)
+  var res = pqexecPrepared(db, stmtName.string, int32(args.len), arr,
+                           nil, nil, 0)
+  deallocCStringArray(arr)
+  if pqResultStatus(res) != PGRES_COMMAND_OK: dbError(db)
+  pqclear(res)
+
 proc newRow(L: int): TRow =
   newSeq(result, L)
   for i in 0..L-1: result[i] = ""
   
-proc setupQuery(db: TDbConn, query: TSqlQuery, 
-                args: varargs[string]): PPGresult = 
-  var q = dbFormat(query, args)
-  result = pqExec(db, q)
-  if pqresultStatus(result) != PGRES_TUPLES_OK: dbError(db)
-  
+proc setupQuery(db: TDbConn, query: TSqlQuery,
+                args: varargs[string]): PPGresult =
+  var arr = allocCStringArray(args)
+  result = pqexecParams(db, query.string, int32(args.len), nil, arr,
+                        nil, nil, 0)
+  deallocCStringArray(arr)
+  if pqResultStatus(result) != PGRES_TUPLES_OK: dbError(db)
+
+proc setupQuery(db: TDbConn, stmtName: TSqlPrepared,
+                 args: varargs[string]): PPGresult =
+  var arr = allocCStringArray(args)
+  result = pqexecPrepared(db, stmtName.string, int32(args.len), arr,
+                          nil, nil, 0)
+  deallocCStringArray(arr)
+  if pqResultStatus(result) != PGRES_TUPLES_OK: dbError(db)
+
+proc prepare*(db: TDbConn; stmtName: string, query: TSqlQuery;
+              nParams: int): TSqlPrepared =
+  var res = pqprepare(db, stmtName, query.string, int32(nParams), nil)
+  if pqResultStatus(res) != PGRES_COMMAND_OK: dbError(db)
+  return TSqlPrepared(stmtName)
+   
 proc setRow(res: PPGresult, r: var TRow, line, cols: int32) =
   for col in 0..cols-1:
     setLen(r[col], 0)
     var x = pqgetvalue(res, line, col)
     add(r[col], x)
-  
+
 iterator fastRows*(db: TDbConn, query: TSqlQuery,
                    args: varargs[string, `$`]): TRow {.tags: [FReadDB].} =
   ## executes the query and iterates over the result dataset. This is very 
@@ -109,6 +139,17 @@ iterator fastRows*(db: TDbConn, query: TSqlQuery,
     yield result
   pqclear(res)
 
+iterator fastRows*(db: TDbConn, stmtName: TSqlPrepared,
+                   args: varargs[string, `$`]): TRow {.tags: [FReadDB].} =
+  ## executes the prepared query and iterates over the result dataset.
+  var res = setupQuery(db, stmtName, args)
+  var L = PQnfields(res)
+  var result = newRow(L)
+  for i in 0..PQntuples(res)-1:
+    setRow(res, result, i, L)
+    yield result
+  PQclear(res)
+
 proc getRow*(db: TDbConn, query: TSqlQuery,
              args: varargs[string, `$`]): TRow {.tags: [FReadDB].} =
   ## retrieves a single row. If the query doesn't return any rows, this proc
@@ -119,27 +160,42 @@ proc getRow*(db: TDbConn, query: TSqlQuery,
   setRow(res, result, 0, L)
   pqclear(res)
 
-proc getAllRows*(db: TDbConn, query: TSqlQuery, 
+proc getRow*(db: TDbConn, stmtName: TSqlPrepared,
+             args: varargs[string, `$`]): TRow {.tags: [FReadDB].} =
+  var res = setupQuery(db, stmtName, args)
+  var L = PQnfields(res)
+  result = newRow(L)
+  setRow(res, result, 0, L)
+  PQclear(res)
+
+proc getAllRows*(db: TDbConn, query: TSqlQuery,
                  args: varargs[string, `$`]): seq[TRow] {.tags: [FReadDB].} =
   ## executes the query and returns the whole result dataset.
   result = @[]
   for r in fastRows(db, query, args):
     result.add(r)
 
-iterator rows*(db: TDbConn, query: TSqlQuery, 
+proc getAllRows*(db: TDbConn, stmtName: TSqlPrepared,
+                 args: varargs[string, `$`]): seq[TRow] {.tags: [FReadDB].} =
+  ## executes the prepared query and returns the whole result dataset.
+  result = @[]
+  for r in FastRows(db, stmtName, args):
+    result.add(r)
+
+iterator rows*(db: TDbConn, query: TSqlQuery,
                args: varargs[string, `$`]): TRow {.tags: [FReadDB].} =
   ## same as `fastRows`, but slower and safe.
   for r in items(getAllRows(db, query, args)): yield r
 
-proc getValue*(db: TDbConn, query: TSqlQuery, 
-               args: varargs[string, `$`]): string {.tags: [FReadDB].} = 
+proc getValue*(db: TDbConn, query: TSqlQuery,
+               args: varargs[string, `$`]): string {.tags: [FReadDB].} =
   ## executes the query and returns the first column of the first row of the
   ## result dataset. Returns "" if the dataset contains no rows or the database
   ## value is NULL.
   var x = pqgetvalue(setupQuery(db, query, args), 0, 0)
   result = if isNil(x): "" else: $x
   
-proc tryInsertID*(db: TDbConn, query: TSqlQuery, 
+proc tryInsertID*(db: TDbConn, query: TSqlQuery,
                   args: varargs[string, `$`]): int64  {.tags: [FWriteDb].}=
   ## executes the query (typically "INSERT") and returns the 
   ## generated ID for the row or -1 in case of an error. For Postgre this adds
@@ -152,7 +208,7 @@ proc tryInsertID*(db: TDbConn, query: TSqlQuery,
   else:
     result = -1
 
-proc insertID*(db: TDbConn, query: TSqlQuery, 
+proc insertID*(db: TDbConn, query: TSqlQuery,
                args: varargs[string, `$`]): int64 {.tags: [FWriteDb].} =
   ## executes the query (typically "INSERT") and returns the 
   ## generated ID for the row. For Postgre this adds
@@ -161,9 +217,9 @@ proc insertID*(db: TDbConn, query: TSqlQuery,
   result = tryInsertID(db, query, args)
   if result < 0: dbError(db)
   
-proc execAffectedRows*(db: TDbConn, query: TSqlQuery, 
+proc execAffectedRows*(db: TDbConn, query: TSqlQuery,
                        args: varargs[string, `$`]): int64 {.tags: [
-                       FReadDB, FWriteDb].} = 
+                       FReadDB, FWriteDb].} =
   ## executes the query (typically "UPDATE") and returns the
   ## number of affected rows.
   var q = dbFormat(query, args)
@@ -172,7 +228,7 @@ proc execAffectedRows*(db: TDbConn, query: TSqlQuery,
   result = parseBiggestInt($pqcmdTuples(res))
   pqclear(res)
 
-proc close*(db: TDbConn) {.tags: [FDb].} = 
+proc close*(db: TDbConn) {.tags: [FDb].} =
   ## closes the database connection.
   if db != nil: pqfinish(db)
 
@@ -188,7 +244,7 @@ proc open*(connection, user, password, database: string): TDbConn {.
   ##
   ## .. code-block:: nim
   ##
-  ##      con = Open("", "", "", "host=localhost port=5432 dbname=mydb")
+  ##      con = open("", "", "", "host=localhost port=5432 dbname=mydb")
   ##
   ## See http://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING
   ## for more information.
@@ -197,5 +253,3 @@ proc open*(connection, user, password, database: string): TDbConn {.
   ## the nim db api.
   result = pqsetdbLogin(nil, nil, nil, nil, database, user, password)
   if pqStatus(result) != CONNECTION_OK: dbError(result) # result = nil
-
-
