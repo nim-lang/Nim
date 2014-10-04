@@ -89,7 +89,7 @@ type
     tkColon,
     tkComma
     
-  TJsonError* = enum       ## enumeration that lists all errors that can occur
+  TJsonError = enum        ## enumeration that lists all errors that can occur
     errNone,               ## no error
     errInvalidToken,       ## invalid token
     errStringExpected,     ## string expected
