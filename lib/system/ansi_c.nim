@@ -78,10 +78,23 @@ when defined(macosx):
 else:
   template SIGBUS: expr = SIGSEGV
 
-proc c_longjmp(jmpb: C_JmpBuf, retval: cint) {.
-  header: "<setjmp.h>", importc: "longjmp".}
-proc c_setjmp(jmpb: C_JmpBuf): cint {.
-  header: "<setjmp.h>", importc: "setjmp".}
+when defined(nimSigSetjmp) and not defined(nimStdSetjmp):
+  proc c_longjmp(jmpb: C_JmpBuf, retval: cint) {.
+    header: "<setjmp.h>", importc: "siglongjmp".}
+  template c_setjmp(jmpb: C_JmpBuf): cint =
+    proc c_sigsetjmp(jmpb: C_JmpBuf, savemask: cint): cint {.
+      header: "<setjmp.h>", importc: "sigsetjmp".}
+    c_sigsetjmp(jmpb, 0)
+elif defined(nimRawSetjmp) and not defined(nimStdSetjmp):
+  proc c_longjmp(jmpb: C_JmpBuf, retval: cint) {.
+    header: "<setjmp.h>", importc: "_longjmp".}
+  proc c_setjmp(jmpb: C_JmpBuf): cint {.
+    header: "<setjmp.h>", importc: "_setjmp".}
+else:
+  proc c_longjmp(jmpb: C_JmpBuf, retval: cint) {.
+    header: "<setjmp.h>", importc: "longjmp".}
+  proc c_setjmp(jmpb: C_JmpBuf): cint {.
+    header: "<setjmp.h>", importc: "setjmp".}
 
 proc c_signal(sig: cint, handler: proc (a: cint) {.noconv.}) {.
   importc: "signal", header: "<signal.h>".}

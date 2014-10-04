@@ -1341,10 +1341,10 @@ proc removeDir*(dir: string) {.rtl, extern: "nos$1", tags: [
 
 proc rawCreateDir(dir: string) =
   when defined(solaris):
-    if mkdir(dir, 0o711) != 0'i32 and errno != EEXIST and errno != ENOSYS:
+    if mkdir(dir, 0o777) != 0'i32 and errno != EEXIST and errno != ENOSYS:
       raiseOSError(osLastError())
   elif defined(unix):
-    if mkdir(dir, 0o711) != 0'i32 and errno != EEXIST:
+    if mkdir(dir, 0o777) != 0'i32 and errno != EEXIST:
       raiseOSError(osLastError())
   else:
     when useWinUnicode:

@@ -137,3 +137,7 @@ proc initDefines*() =
   declareSymbol("emulatedthreadvars")
   if platform.OS[targetOS].props.contains(ospLacksThreadVars):
     defineSymbol("emulatedthreadvars")
+  case targetOS
+  of osSolaris, osNetbsd, osFreebsd, osOpenbsd, osMacosx:
+    defineSymbol("nimRawSetjmp")
+  else: discard

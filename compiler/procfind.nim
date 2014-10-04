@@ -70,8 +70,15 @@ proc searchForProcNew(c: PContext, scope: PScope, fn: PSym): PSym =
   var it: TIdentIter
   result = initIdentIter(it, scope.symbols, fn.name)
   while result != nil:
-    if result.kind in skProcKinds and
-       sameType(result.typ, fn.typ, flags): return
+    if result.kind in skProcKinds and sameType(result.typ, fn.typ, flags):
+      case equalParams(result.typ.n, fn.typ.n)
+      of paramsEqual:
+        return
+      of paramsIncompatible:
+        localError(fn.info, errNotOverloadable, fn.name.s)
+        return
+      of paramsNotEqual:
+        discard
 
     result = nextIdentIter(it, scope.symbols)
   

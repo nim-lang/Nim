@@ -170,6 +170,10 @@ proc genSingleVar(p: BProc, a: PNode) =
   if sfCompileTime in v.flags: return
   var targetProc = p
   if sfGlobal in v.flags:
+    if v.flags * {sfImportc, sfExportc} == {sfImportc} and
+        a.sons[2].kind == nkEmpty and
+        v.loc.flags * {lfHeader, lfNoDecl} != {}:
+      return
     if sfPure in v.flags:
       # v.owner.kind != skModule:
       targetProc = p.module.preInitProc
@@ -834,7 +838,14 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
     discard cgsym(p.module, "E_Base")
   linefmt(p, cpsLocals, "#TSafePoint $1;$n", safePoint)
   linefmt(p, cpsStmts, "#pushSafePoint(&$1);$n", safePoint)
-  linefmt(p, cpsStmts, "$1.status = setjmp($1.context);$n", safePoint)
+  if isDefined("nimStdSetjmp"):
+    linefmt(p, cpsStmts, "$1.status = setjmp($1.context);$n", safePoint)
+  elif isDefined("nimSigSetjmp"):
+    linefmt(p, cpsStmts, "$1.status = sigsetjmp($1.context, 0);$n", safePoint)
+  elif isDefined("nimRawSetjmp"):
+    linefmt(p, cpsStmts, "$1.status = _setjmp($1.context);$n", safePoint)
+  else:
+    linefmt(p, cpsStmts, "$1.status = setjmp($1.context);$n", safePoint)
   startBlock(p, "if ($1.status == 0) {$n", [safePoint])
   var length = sonsLen(t)
   add(p.nestedTryStmts, t)
