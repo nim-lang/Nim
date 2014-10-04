@@ -1,3 +1,7 @@
+discard """
+  errormsg: "illegal recursion in type 'TNode'"
+  line: 8
+"""
 
 type
     PNode = ref TNode

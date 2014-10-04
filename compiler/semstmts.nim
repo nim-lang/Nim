@@ -268,7 +268,7 @@ proc semTry(c: PContext, n: PNode): PNode =
     checkMinSonsLen(a, 1)
     var length = sonsLen(a)
     if a.kind == nkExceptBranch:
-      # XXX what does this do? so that ``except [a, b, c]`` is supported?
+      # so that ``except [a, b, c]`` is supported:
       if length == 2 and a.sons[0].kind == nkBracket:
         a.sons[0..0] = a.sons[0].sons
         length = a.sonsLen

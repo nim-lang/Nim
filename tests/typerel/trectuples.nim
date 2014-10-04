@@ -1,3 +1,7 @@
+discard """
+  errormsg: "illegal recursion in type 'Node'"
+  line: 6
+"""
 
 type Node = tuple[left: ref Node]
 

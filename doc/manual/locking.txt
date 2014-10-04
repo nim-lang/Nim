@@ -19,7 +19,7 @@ Guards and the locks section
 Protecting global variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Global variables and object fields can be annotated via an ``guard`` pragma: 
+Object fields and global variables can be annotated via a ``guard`` pragma:
 
 .. code-block:: nim
   var glock: TLock
@@ -161,7 +161,9 @@ single ``locks`` section:
     ...
 
 
-So here is how a typical multilock statement can be implemented in Nim:
+Here is how a typical multilock statement can be implemented in Nim. Note how
+the runtime check is required to ensure a global ordering for two locks ``a``
+and ``b`` of the same lock level:
 
 .. code-block:: nim
   template multilock(a, b: ptr TLock; body: stmt) =
