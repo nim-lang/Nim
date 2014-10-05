@@ -10725,7 +10725,7 @@ type
     nMaxFileTitle*: DWORD
     lpstrInitialDir*: LPCTSTR
     lpstrTitle*: LPCTSTR
-    Flags*: DWORD
+    flags*: DWORD
     nFileOffset*: int16
     nFileExtension*: int16
     lpstrDefExt*: LPCTSTR
