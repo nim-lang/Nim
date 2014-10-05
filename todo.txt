@@ -15,9 +15,7 @@ Concurrency
 -----------
 
 - test 'deepCopy' for closures
-
 - implement 'foo[1..4] = spawn(f[4..7])'
-- document the new 'spawn' and 'parallel' statements
 
 Low priority:
 - support for exception propagation? (hard to implement)
