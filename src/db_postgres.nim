@@ -143,12 +143,12 @@ iterator fastRows*(db: TDbConn, stmtName: TSqlPrepared,
                    args: varargs[string, `$`]): TRow {.tags: [FReadDB].} =
   ## executes the prepared query and iterates over the result dataset.
   var res = setupQuery(db, stmtName, args)
-  var L = PQnfields(res)
+  var L = pqNfields(res)
   var result = newRow(L)
-  for i in 0..PQntuples(res)-1:
+  for i in 0..pqNtuples(res)-1:
     setRow(res, result, i, L)
     yield result
-  PQclear(res)
+  pqClear(res)
 
 proc getRow*(db: TDbConn, query: TSqlQuery,
              args: varargs[string, `$`]): TRow {.tags: [FReadDB].} =
@@ -163,10 +163,10 @@ proc getRow*(db: TDbConn, query: TSqlQuery,
 proc getRow*(db: TDbConn, stmtName: TSqlPrepared,
              args: varargs[string, `$`]): TRow {.tags: [FReadDB].} =
   var res = setupQuery(db, stmtName, args)
-  var L = PQnfields(res)
+  var L = pqNfields(res)
   result = newRow(L)
   setRow(res, result, 0, L)
-  PQclear(res)
+  pqClear(res)
 
 proc getAllRows*(db: TDbConn, query: TSqlQuery,
                  args: varargs[string, `$`]): seq[TRow] {.tags: [FReadDB].} =
@@ -179,7 +179,7 @@ proc getAllRows*(db: TDbConn, stmtName: TSqlPrepared,
                  args: varargs[string, `$`]): seq[TRow] {.tags: [FReadDB].} =
   ## executes the prepared query and returns the whole result dataset.
   result = @[]
-  for r in FastRows(db, stmtName, args):
+  for r in fastRows(db, stmtName, args):
     result.add(r)
 
 iterator rows*(db: TDbConn, query: TSqlQuery,
