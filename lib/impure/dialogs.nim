@@ -200,14 +200,14 @@ proc chooseDir*(window: PWindow, root: string = ""): string =
       BrowseInfo: TBrowseInfo
       DisplayName: array [0..MAX_PATH, char]
       TempPath: array [0..MAX_PATH, char]
-    Result = ""
+    result = ""
     #BrowseInfo.hwndOwner = Application.Handle
     BrowseInfo.pszDisplayName = DisplayName
     BrowseInfo.ulFlags = 1 #BIF_RETURNONLYFSDIRS
     lpItemID = SHBrowseForFolder(cast[LPBrowseInfo](addr(BrowseInfo)))
     if lpItemId != nil:
       discard SHGetPathFromIDList(lpItemID, TempPath)
-      Result = $TempPath
+      result = $TempPath
       discard GlobalFreePtr(lpItemID)
   else:
     var chooser = file_chooser_dialog_new("Select Directory", window,
