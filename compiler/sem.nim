@@ -15,11 +15,11 @@ import
   magicsys, parser, nversion, nimsets, semfold, importer,
   procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
-  evaltempl, patterns, parampatterns, sempass2, pretty, semmacrosanity,
+  evaltempl, patterns, parampatterns, sempass2, nimfix.pretty, semmacrosanity,
   semparallel, lowerings
 
 when defined(nimfix):
-  import prettybase
+  import nimfix.prettybase
 
 # implementation
 

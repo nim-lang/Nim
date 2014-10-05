@@ -234,7 +234,9 @@ proc processPath(path: string, notRelativeToProj = false): string =
             path 
           else:
             options.gProjectPath / path
-  result = unixToNativePath(p % ["nimrod", getPrefixDir(), "lib", libpath,
+  result = unixToNativePath(p % ["nimrod", getPrefixDir(),
+    "nim", getPrefixDir(),
+    "lib", libpath,
     "home", removeTrailingDirSep(os.getHomeDir()),
     "projectname", options.gProjectName,
     "projectpath", options.gProjectPath])

@@ -13,7 +13,7 @@
 import 
   intsets, ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst,
   magicsys, condsyms, idents, lexer, options, parampatterns, strutils, trees,
-  pretty
+  nimfix.pretty
 
 when not defined(noDocgen):
   import docgen

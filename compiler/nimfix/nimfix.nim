@@ -21,7 +21,7 @@ Usage:
 Options:
   --overwriteFiles:on|off          overwrite the original nim files.
                                    DEFAULT is ON!
-  --onlyMainfile                   overwrite only the main file.
+  --wholeProject                   overwrite every processed file.
   --checkExtern:on|off             style check also extern names
   --styleCheck:on|off|auto         performs style checking for identifiers
                                    and suggests an alternative spelling; 
@@ -46,6 +46,7 @@ proc mainCommand =
 proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
   var p = parseopt.initOptParser(cmd)
   var argsCount = 0
+  gOnlyMainfile = true
   while true: 
     parseopt.next(p)
     case p.kind
@@ -68,7 +69,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
         of "on": gStyleCheck = StyleCheck.Warn
         of "auto": gStyleCheck = StyleCheck.Auto
         else: localError(gCmdLineInfo, errOnOrOffExpected)
-      of "onlymainfile": gOnlyMainfile = true
+      of "wholeproject": gOnlyMainfile = false
       else:
         processSwitch(pass, p)
     of cmdArgument:

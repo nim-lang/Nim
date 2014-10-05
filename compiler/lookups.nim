@@ -11,7 +11,7 @@
 
 import 
   intsets, ast, astalgo, idents, semdata, types, msgs, options, rodread, 
-  renderer, wordrecg, idgen, prettybase
+  renderer, wordrecg, idgen, nimfix.prettybase
 
 proc ensureNoMissingOrUnusedSymbols(scope: PScope)
 
