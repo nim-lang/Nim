@@ -542,7 +542,7 @@ proc raiseParseErr*(p: JsonParser, msg: string) {.noinline, noreturn.} =
   raise newException(JsonParsingError, errorMsgExpected(p, msg))
 
 proc newJString*(s: string): JsonNode =
-  ## Creates a new `JString PJsonNode`.
+  ## Creates a new `JString JsonNode`.
   new(result)
   result.kind = JString
   result.str = s
@@ -553,73 +553,73 @@ proc newJStringMove(s: string): JsonNode =
   shallowCopy(result.str, s)
 
 proc newJInt*(n: BiggestInt): JsonNode =
-  ## Creates a new `JInt PJsonNode`.
+  ## Creates a new `JInt JsonNode`.
   new(result)
   result.kind = JInt
   result.num  = n
 
 proc newJFloat*(n: float): JsonNode =
-  ## Creates a new `JFloat PJsonNode`.
+  ## Creates a new `JFloat JsonNode`.
   new(result)
   result.kind = JFloat
   result.fnum  = n
 
 proc newJBool*(b: bool): JsonNode =
-  ## Creates a new `JBool PJsonNode`.
+  ## Creates a new `JBool JsonNode`.
   new(result)
   result.kind = JBool
   result.bval = b
 
 proc newJNull*(): JsonNode =
-  ## Creates a new `JNull PJsonNode`.
+  ## Creates a new `JNull JsonNode`.
   new(result)
 
 proc newJObject*(): JsonNode =
-  ## Creates a new `JObject PJsonNode`
+  ## Creates a new `JObject JsonNode`
   new(result)
   result.kind = JObject
   result.fields = @[]
 
 proc newJArray*(): JsonNode =
-  ## Creates a new `JArray PJsonNode`
+  ## Creates a new `JArray JsonNode`
   new(result)
   result.kind = JArray
   result.elems = @[]
 
 
 proc `%`*(s: string): JsonNode =
-  ## Generic constructor for JSON data. Creates a new `JString PJsonNode`.
+  ## Generic constructor for JSON data. Creates a new `JString JsonNode`.
   new(result)
   result.kind = JString
   result.str = s
 
 proc `%`*(n: BiggestInt): JsonNode =
-  ## Generic constructor for JSON data. Creates a new `JInt PJsonNode`.
+  ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
   new(result)
   result.kind = JInt
   result.num  = n
 
 proc `%`*(n: float): JsonNode =
-  ## Generic constructor for JSON data. Creates a new `JFloat PJsonNode`.
+  ## Generic constructor for JSON data. Creates a new `JFloat JsonNode`.
   new(result)
   result.kind = JFloat
   result.fnum  = n
 
 proc `%`*(b: bool): JsonNode =
-  ## Generic constructor for JSON data. Creates a new `JBool PJsonNode`.
+  ## Generic constructor for JSON data. Creates a new `JBool JsonNode`.
   new(result)
   result.kind = JBool
   result.bval = b
 
 proc `%`*(keyVals: openArray[tuple[key: string, val: JsonNode]]): JsonNode =
-  ## Generic constructor for JSON data. Creates a new `JObject PJsonNode`
+  ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
   new(result)
   result.kind = JObject
   newSeq(result.fields, keyVals.len)
   for i, p in pairs(keyVals): result.fields[i] = p
 
 proc `%`*(elements: openArray[JsonNode]): JsonNode =
-  ## Generic constructor for JSON data. Creates a new `JArray PJsonNode`
+  ## Generic constructor for JSON data. Creates a new `JArray JsonNode`
   new(result)
   result.kind = JArray
   newSeq(result.elems, elements.len)
@@ -932,7 +932,7 @@ proc parseJson(p: var JsonParser): JsonNode =
 
 when not defined(js):
   proc parseJson*(s: Stream, filename: string): JsonNode =
-    ## Parses from a stream `s` into a `PJsonNode`. `filename` is only needed
+    ## Parses from a stream `s` into a `JsonNode`. `filename` is only needed
     ## for nice error messages.
     var p: JsonParser
     p.open(s, filename)
@@ -945,7 +945,7 @@ when not defined(js):
     result = parseJson(newStringStream(buffer), "input")
 
   proc parseFile*(filename: string): JsonNode =
-    ## Parses `file` into a `PJsonNode`.
+    ## Parses `file` into a `JsonNode`.
     var stream = newFileStream(filename, fmRead)
     if stream == nil:
       raise newException(IOError, "cannot read from file: " & filename)
@@ -956,7 +956,7 @@ else:
     TJSObject = object
   proc parseNativeJson(x: cstring): TJSObject {.importc: "JSON.parse".}
 
-  proc getVarType(x): TJsonNodeKind =
+  proc getVarType(x): JsonNodeKind =
     result = JNull
     proc getProtoName(y): cstring
       {.importc: "Object.prototype.toString.call".}
@@ -991,7 +991,7 @@ else:
       return `x`[`y`];
     """
 
-  proc convertObject(x: TJSObject): PJsonNode =
+  proc convertObject(x: TJSObject): JsonNode =
     case getVarType(x)
     of JArray:
       result = newJArray()
@@ -1018,15 +1018,15 @@ else:
     of JNull:
       result = newJNull()
 
-  proc parseJson*(buffer: string): PJsonNode =
+  proc parseJson*(buffer: string): JsonNode =
     return parseNativeJson(buffer).convertObject()
 
 when false:
   import os
-  var s = newFileStream(ParamStr(1), fmRead)
-  if s == nil: quit("cannot open the file" & ParamStr(1))
-  var x: TJsonParser
-  open(x, s, ParamStr(1))
+  var s = newFileStream(paramStr(1), fmRead)
+  if s == nil: quit("cannot open the file" & paramStr(1))
+  var x: JsonParser
+  open(x, s, paramStr(1))
   while true:
     next(x)
     case x.kind
@@ -1035,13 +1035,13 @@ when false:
       break
     of jsonEof: break
     of jsonString, jsonInt, jsonFloat: echo(x.str)
-    of jsonTrue: Echo("!TRUE")
-    of jsonFalse: Echo("!FALSE")
-    of jsonNull: Echo("!NULL")
-    of jsonObjectStart: Echo("{")
-    of jsonObjectEnd: Echo("}")
-    of jsonArrayStart: Echo("[")
-    of jsonArrayEnd: Echo("]")
+    of jsonTrue: echo("!TRUE")
+    of jsonFalse: echo("!FALSE")
+    of jsonNull: echo("!NULL")
+    of jsonObjectStart: echo("{")
+    of jsonObjectEnd: echo("}")
+    of jsonArrayStart: echo("[")
+    of jsonArrayEnd: echo("]")
     
   close(x)
 

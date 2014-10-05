@@ -446,13 +446,14 @@ proc getFile[T](ftp: FtpBase[T], async = false): bool =
       ftp.job.file.write(r2)
     elif returned and r2 == "":
       ftp.dsockConnected = false
-  
-  if not async:
-    var readSocks: seq[TSocket] = @[ftp.csock]
-    blockingOperation(ftp.csock):
-      if readSocks.select(1) != 0 and ftp.csock in readSocks:
-        assertReply ftp.expectReply(), "226"
-        return true
+
+  when T is TSocket:
+    if not async:
+      var readSocks: seq[TSocket] = @[ftp.csock]
+      blockingOperation(ftp.csock):
+        if readSocks.select(1) != 0 and ftp.csock in readSocks:
+          assertReply ftp.expectReply(), "226"
+          return true
 
 proc retrFile*[T](ftp: FtpBase[T], file, dest: string, async = false) =
   ## Downloads ``file`` and saves it to ``dest``. Usage of this function

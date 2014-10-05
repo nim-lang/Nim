@@ -69,6 +69,8 @@ const
     reportMissedDeadlines avoidTimeMachine useClone ignoreAllocationSize
     debugExecProcesses pcreDll useLipzipSrc
     preventDeadlocks UNICODE winUnicode trackGcHeaders posixRealtime
+
+    nimStdSetjmp nimRawSetjmp nimSigSetjmp
   """.split
 
 proc initDefines*() = 

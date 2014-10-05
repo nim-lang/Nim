@@ -10,7 +10,7 @@ proc decodeContent(content: string): string =
     if line != "":
       result.add decode(line)
 
-proc contains(x: seq[PJSonNode], s: string): bool =
+proc contains(x: seq[JSonNode], s: string): bool =
   for i in x:
     assert i.kind == JString
     if i.str == s: return true
@@ -20,7 +20,7 @@ proc processContent(content: string) =
   assert jsonDoc.kind == JArray
   var jsonArr = jsonDoc.elems
 
-  jsonArr.sort do (x, y: PJsonNode) -> int:
+  jsonArr.sort do (x, y: JsonNode) -> int:
     strutils.cmpIgnoreCase(x["name"].str, y["name"].str)
 
   var

@@ -345,11 +345,12 @@ else:
       node.appendChild(document.createTextNode(x))
       node.appendChild(document.createElement("br"))
     else: 
-      raise newException(EInvalidValue, "<body> element does not exist yet!")
+      raise newException(ValueError, "<body> element does not exist yet!")
 
   proc rawEcho {.compilerproc.} =
     var node = document.getElementsByTagName("body")[0]
-    if node == nil: raise newException(EIO, "<body> element does not exist yet!")
+    if node == nil:
+      raise newException(IOError, "<body> element does not exist yet!")
     asm """
       for (var i = 0; i < arguments.length; ++i) {
         var x = `toJSStr`(arguments[i]);

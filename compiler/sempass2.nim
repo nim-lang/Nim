@@ -411,6 +411,7 @@ proc getLockLevel(s: PSym): TLockLevel =
       result = 0.TLockLevel
     else:
       result = UnknownLockLevel
+      #message(s.info, warnUser, "FOR THIS " & s.name.s)
 
 proc mergeLockLevels(tracked: PEffects, n: PNode, lockLevel: TLockLevel) =
   if lockLevel >= tracked.currLockLevel:
@@ -757,9 +758,15 @@ proc checkMethodEffects*(disp, branch: PSym) =
     localError(branch.info, "base method is GC-safe, but '$1' is not" % 
                                 branch.name.s)
   if branch.typ.lockLevel > disp.typ.lockLevel:
-    localError(branch.info,
-      "base method has lock level $1, but dispatcher has $2" %
-        [$branch.typ.lockLevel, $disp.typ.lockLevel])
+    when true:
+      message(branch.info, warnLockLevel,
+        "base method has lock level $1, but dispatcher has $2" %
+          [$branch.typ.lockLevel, $disp.typ.lockLevel])
+    else:
+      # XXX make this an error after bigbreak has been released:
+      localError(branch.info,
+        "base method has lock level $1, but dispatcher has $2" %
+          [$branch.typ.lockLevel, $disp.typ.lockLevel])
 
 proc setEffectsForProcType*(t: PType, n: PNode) =
   var effects = t.n.sons[0]

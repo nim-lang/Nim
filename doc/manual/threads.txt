@@ -101,7 +101,7 @@ The compiler can ensure the location in ``location = spawn f(...)`` is not
 read prematurely within a ``parallel`` section and so there is no need for
 the overhead of an indirection via ``FlowVar[T]`` to ensure correctness.
 
-**Note**: Currently exceptions are not propagated between ``spawn``ed tasks!
+**Note**: Currently exceptions are not propagated between ``spawn``'ed tasks!
 
 
 Spawn statement

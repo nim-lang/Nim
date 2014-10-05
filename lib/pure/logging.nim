@@ -107,9 +107,12 @@ proc substituteLog(frmt: string): string =
       of "app":  result.add(app)
       of "appdir": result.add(app.splitFile.dir)
       of "appname": result.add(app.splitFile.name)
+      else: discard
 
 method log*(logger: Logger, level: Level,
-            frmt: string, args: varargs[string, `$`]) {.raises: [Exception], tags: [FTime, FWriteIO, FReadIO].} =
+            frmt: string, args: varargs[string, `$`]) {.
+            raises: [Exception], 
+            tags: [TimeEffect, WriteIOEffect, ReadIOEffect].} =
   ## Override this method in custom loggers. Default implementation does
   ## nothing.
   discard
