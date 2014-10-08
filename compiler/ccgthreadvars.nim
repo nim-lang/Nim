@@ -57,6 +57,9 @@ proc generateThreadLocalStorage(m: BModule) =
 
 proc generateThreadVarsSize(m: BModule) =
   if nimtv != nil:
-    app(m.s[cfsProcs], 
-      "NI NimThreadVarsSize(){return (NI)sizeof(NimThreadVars);}" & tnl)
-
+    let externc = if gCmd != cmdCompileToCpp and
+                       sfCompileToCpp in m.module.flags: "extern \"C\""
+                  else: ""
+    appf(m.s[cfsProcs],
+      "$#NI NimThreadVarsSize(){return (NI)sizeof(NimThreadVars);}$n",
+      [externc.toRope])
