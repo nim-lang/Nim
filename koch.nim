@@ -48,6 +48,7 @@ Possible Commands:
   update                   updates nim to the latest version from github
                            (compile koch with -d:withUpdate to enable)
   temp options             creates a temporary compiler for testing
+  winrelease               creates a release (for coredevs only)
 Boot options:
   -d:release               produce a release version of the compiler
   -d:tinyc                 include the Tiny C backend (not supported on Windows)
@@ -278,6 +279,33 @@ when defined(withUpdate):
     boot(args)
     echo("Update complete!")
 
+# -------------- builds a release ---------------------------------------------
+
+proc run7z(platform: string, patterns: varargs[string]) =
+  const tmpDir = "nim-" & NimVersion
+  createDir tmpDir
+  try:
+    for pattern in patterns:
+      for f in walkFiles(pattern):
+        if "nimcache" notin f:
+          copyFile(f, tmpDir / f)
+    exec("7z a -tzip $1-$2.zip $1" % [tmpDir, platform])
+  finally:
+    removeDir tmpDir
+
+proc winRelease() =
+  boot(" -d:release")
+  #buildTool("tools/niminst/niminst", " -d:release")
+  buildTool("tools/nimgrep", " -d:release")
+  buildTool("compiler/nimfix/nimfix", " -d:release")
+
+  run7z("win32", "bin/nim.exe", "bin/c2nim.exe", "bin/nimgrep.exe",
+        "bin/nimfix.exe",
+        "bin/babel.exe", "bin/*.dll",
+        "config", "dist/*.dll", "examples", "lib",
+        "readme.txt", "contributors.txt", "copying.txt")
+  # second step: XXX build 64 bit version
+
 # -------------- tests --------------------------------------------------------
 
 template `|`(a, b): expr = (if a.len > 0: a else: b)
@@ -321,5 +349,6 @@ of cmdArgument:
     else:
       quit "this Koch has not been compiled with -d:withUpdate"
   of "temp": temp(op.cmdLineRest)
+  of "winrelease": winRelease()
   else: showHelp()
 of cmdEnd: showHelp()
