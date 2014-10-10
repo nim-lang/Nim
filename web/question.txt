@@ -6,11 +6,12 @@
 General
 =======
 
-What is Nimrod?
----------------
+What is Nim?
+------------
 
-Nimrod is a statically typed, imperative programming language that tries to
-give the programmer ultimate power without compromises on runtime efficiency. 
+Nim (formerly known as "Nimrod") is a statically typed, imperative programming
+language that tries to give the programmer ultimate power without compromises
+on runtime efficiency.
 This means it focuses on compile-time mechanisms in all their
 various forms. Beneath a nice infix/indentation based syntax with a 
 powerful (AST based, hygienic) macro system lies a semantic model that supports 
@@ -23,7 +24,7 @@ from that model.
 Why yet another programming language?
 -------------------------------------
 
-Nimrod is one of the very few *programmable* statically typed languages, and 
+Nim is one of the very few *programmable* statically typed languages, and 
 one of the even fewer that produces native binaries that require no 
 runtime or interpreter.
 
@@ -36,29 +37,29 @@ C++, Python, Lisp, Oberon.
 
 
 
-What is Nimrod's take on concurrency?
--------------------------------------
+What is Nim's take on concurrency?
+----------------------------------
 
-Nimrod primarily focusses on thread local (and garbage collected) heaps and 
-asynchronous message passing between threads. Each thread has its own GC, so no 
+Nim primarily focusses on thread local (and garbage collected) heaps and 
+message passing between threads. Each thread has its own GC, so no 
 "stop the world" mechanism is necessary. An unsafe shared memory heap is also
-provided. 
+provided.
 
 Future versions will additionally include a GC "per thread group" 
-and Nimrod's type system will be enhanced to accurately model this shared
+and Nim's type system will be enhanced to accurately model this shared
 memory heap.
 
 
-How is Nimrod licensed?
------------------------
+How is Nim licensed?
+--------------------
 
-The Nimrod compiler and the library are MIT licensed.
+The Nim compiler and the library are MIT licensed.
 This means that you can use any license for your own programs developed with
-Nimrod.
+Nim.
 
 
-How stable is Nimrod?
----------------------
+How stable is Nim?
+------------------
 
 The compiler is in development and some important features are still missing.
 However, the compiler is quite stable already: It is able to compile itself 
@@ -66,11 +67,11 @@ and a substantial body of other code. Until version 1.0.0 is released,
 minor incompatibilities with older versions of the compiler will be introduced.
 
 
-How fast is Nimrod?
--------------------
+How fast is Nim?
+----------------
 Benchmarks show it to be comparable to C. Some language features (methods, 
 closures, message passing) are not yet as optimized as they could and will be.
-The only overhead Nimrod has over C is the GC which has been tuned 
+The only overhead Nim has over C is the GC which has been tuned 
 for years but still needs some work.
 
 
@@ -84,7 +85,7 @@ but would require much work.
 What about editor support?
 --------------------------
 
-- Nimrod IDE: https://github.com/nimrod-code/Aporia
+- Nim IDE: https://github.com/nimrod-code/Aporia
 - Emacs: https://github.com/Tass/nimrod-mode
 - Vim: https://github.com/zah/nimrod.vim/
 - Scite: Included

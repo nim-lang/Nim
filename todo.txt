@@ -1,7 +1,6 @@
 version 0.10
 ============
 
-- fix the bug that keeps 'defer' template from working
 - Test nimfix on various babel packages
 
 
@@ -37,6 +36,7 @@ Misc
 Bugs
 ====
 
+- fix the bug that keeps 'defer' template from working
 - VM: Pegs do not work at compile-time
 - VM: ptr/ref T cannot work in general
 - scopes are still broken for generic instantiation!

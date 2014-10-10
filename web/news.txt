@@ -3,8 +3,8 @@ News
 ====
 
 ..
-  2014-06-29 Version 0.9.6 released
-  =================================
+  2014-10-11 Version 0.10.0 released
+  ==================================
 
   Changes affecting backwards compatibility
   -----------------------------------------
@@ -47,6 +47,10 @@ News
     found under the `nim-code <https://github.com/nimrod-code>`_ organisation.
   - Removed the deprecated ``web`` module, the ``httpclient`` module should
     be used instead.
+  - Large parts of the stdlib got rid of the T/P type prefixes. Instead most
+    types now simply start with an uppercased letter. The
+    so called "partial case sensitivity" is now active allowing code 
+    like ``var foo: Foo``.
   - String case (or any non-ordinal case) statements 
     without 'else' are deprecated.
   - Recursive tuple types are not allowed anymore. Use ``object`` instead.

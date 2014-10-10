@@ -93,14 +93,33 @@ The following keywords are reserved and cannot be used as identifiers:
 Some keywords are unused; they are reserved for future developments of the
 language.
 
-Nim is a `style-insensitive`:idx: language. This means that it is not
-case-sensitive and even underscores are ignored:
-**type** is a reserved word, and so is **TYPE** or **T_Y_P_E**. The idea behind
-this is that this allows programmers to use their own preferred spelling style
-and libraries written by different programmers cannot use incompatible
-conventions. A Nim-aware editor or IDE can show the identifiers as
+
+Identifier equality
+-------------------
+
+Two identifiers are considered equal if the following algorithm returns true:
+
+.. code-block:: nim
+  proc sameIdentifier(a, b: string): bool =
+    a[0] == b[0] and a.replace("_", "").toLower == b.replace("_", "").toLower
+
+That means only the first letters are compared in a case sensitive manner. Other
+letters are compared case insensitively and underscores are ignored.
+
+This rather strange way to do identifier comparisons is called
+`partial case insensitivity`:idx: and has some advantages over the conventional
+case sensitivity:
+
+It allows programmers to mostly use their own preferred
+spelling style and libraries written by different programmers cannot use
+incompatible conventions. A Nim-aware editor or IDE can show the identifiers as
 preferred. Another advantage is that it frees the programmer from remembering
-the exact spelling of an identifier.
+the exact spelling of an identifier. The exception with respect to the first
+letter allows common code like ``var foo: Foo`` to be parsed unambiguously.
+
+Historically, Nim was a `style-insensitive`:idx: language. This means that it
+was not case-sensitive and underscores were ignored and there was no distinction
+between ``foo`` and ``Foo``.
 
 
 String literals
