@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -60,7 +60,7 @@ const
     quick
     release debug
     useWinAnsi useFork useNimRtl useMalloc useRealtimeGC ssl memProfiler
-    nodejs kwin
+    nodejs kwin nimfix
 
     usesysassert usegcassert tinyC useFFI
     useStdoutAsStdmsg createNimRtl
@@ -70,7 +70,7 @@ const
     debugExecProcesses pcreDll useLipzipSrc
     preventDeadlocks UNICODE winUnicode trackGcHeaders posixRealtime
 
-    nimSigSetjmp nimStdSetjmp nimRawSetjmp
+    nimStdSetjmp nimRawSetjmp nimSigSetjmp
   """.split
 
 proc initDefines*() = 
@@ -87,6 +87,7 @@ proc initDefines*() =
   defineSymbol("nimnewshared")
   defineSymbol("nimrequiresnimframe")
   defineSymbol("nimparsebiggestfloatmagic")
+  defineSymbol("nimalias")
   
   # add platform specific symbols:
   for c in low(CPU)..high(CPU):

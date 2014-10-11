@@ -315,7 +315,6 @@ proc documentRaises*(n: PNode) =
   if n.sons[namePos].kind != nkSym: return
   documentEffect(n, n.sons[pragmasPos], wRaises, exceptionEffects)
   documentEffect(n, n.sons[pragmasPos], wTags, tagEffects)
-  documentEffect(n, n.sons[pragmasPos], wUses, usesEffects)
 
 template notGcSafe(t): expr = {tfGcSafe, tfNoSideEffect} * t.flags == {}
 
@@ -334,10 +333,6 @@ proc propagateEffects(tracked: PEffects, n: PNode, s: PSym) =
   if notGcSafe(s.typ) and sfImportc notin s.flags:
     if warnGcUnsafe in gNotes: message(n.info, warnGcUnsafe, renderTree(n))
     tracked.gcUnsafe = true
-
-  when trackGlobals:
-    let usesSpec = effectSpec(pragma, wUses)
-    mergeUses(tracked, usesSpec, n)
 
 proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
   let n = n.skipConv
@@ -641,10 +636,6 @@ proc checkMethodEffects*(disp, branch: PSym) =
   if not isNil(tagsSpec):
     checkRaisesSpec(tagsSpec, actual.sons[tagEffects],
       "can have an unlisted effect: ", hints=off, subtypeRelation)
-  let usesSpec = effectSpec(p, wUses)
-  if not isNil(usesSpec):
-    checkRaisesSpec(usesSpec, actual.sons[usesEffects],
-      "may use an unlisted global variable: ", hints=off, symbolPredicate)
   if sfThread in disp.flags and notGcSafe(branch.typ):
     localError(branch.info, "base method is GC-safe, but '$1' is not" % 
                                 branch.name.s)
@@ -656,16 +647,13 @@ proc setEffectsForProcType*(t: PType, n: PNode) =
   let
     raisesSpec = effectSpec(n, wRaises)
     tagsSpec = effectSpec(n, wTags)
-    usesSpec = effectSpec(n, wUses)
-  if not isNil(raisesSpec) or not isNil(tagsSpec) or not isNil(usesSpec):
+  if not isNil(raisesSpec) or not isNil(tagsSpec):
     internalAssert effects.len == 0
     newSeq(effects.sons, effectListLen)
     if not isNil(raisesSpec):
       effects.sons[exceptionEffects] = raisesSpec
     if not isNil(tagsSpec):
       effects.sons[tagEffects] = tagsSpec
-    if not isNil(usesSpec):
-      effects.sons[usesEffects] = usesSpec
 
 proc initEffects(effects: PNode; s: PSym; t: var TEffects) =
   newSeq(effects.sons, effectListLen)
@@ -710,12 +698,6 @@ proc trackProc*(s: PSym, body: PNode) =
     # after the check, use the formal spec:
     effects.sons[tagEffects] = tagsSpec
 
-  when trackGlobals:
-    let usesSpec = effectSpec(p, wUses)
-    if not isNil(usesSpec):
-      checkRaisesSpec(usesSpec, t.uses,
-        "uses an unlisted global variable: ", hints=on, symbolPredicate)
-      effects.sons[usesEffects] = usesSpec
   if optThreadAnalysis in gGlobalOptions:
     if sfThread in s.flags and t.gcUnsafe:
       #localError(s.info, warnGcUnsafe2, s.name.s)
