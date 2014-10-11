@@ -95,7 +95,7 @@ type
 
   FlowVarBase* = ref FlowVarBaseObj ## untyped base class for 'FlowVar[T]'
   FlowVarBaseObj = object of TObject
-    ready, usesCondVar: bool
+    ready, usesCondVar, awaited: bool
     cv: CondVar #\
     # for 'awaitAny' support
     ai: ptr AwaitInfo
@@ -129,8 +129,8 @@ type
 proc await*(fv: FlowVarBase) =
   ## waits until the value for the flowVar arrives. Usually it is not necessary
   ## to call this explicitly.
-  if fv.usesCondVar:
-    fv.usesCondVar = false
+  if fv.usesCondVar and not fv.awaited:
+    fv.awaited = true
     await(fv.cv)
     destroyCondVar(fv.cv)
 
