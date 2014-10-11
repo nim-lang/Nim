@@ -5039,6 +5039,27 @@ first implementation to play with a language feature before a nicer syntax
 to access the feature becomes available.
 
 
+deprecated pragma
+-----------------
+
+The deprecated pragma is used to mark a symbol as deprecated:
+
+.. code-block:: nimrod
+  proc p() {.deprecated.}
+  var x {.deprecated.}: char
+
+It can also be used as a statement. Then it takes a list of *renamings*. The
+upcoming ``nimfix`` tool can automatically update the code and perform these
+renamings:
+
+.. code-block:: nimrod
+  type
+    File = object
+    Stream = ref object
+  {.deprecated: [TFile: File, PStream: Stream].}
+
+
+
 noSideEffect pragma
 -------------------
 The ``noSideEffect`` pragma is used to mark a proc/iterator to have no side
