@@ -26,14 +26,13 @@ when defined(openbsd) or defined(netbsd):
   {.emit:"#include <sys/param.h>".}
 
 when defined(macosx) or defined(bsd):
-  {.emit:"#include <sys/sysctl.h>".}
   const
     CTL_HW = 6
     HW_AVAILCPU = 25
     HW_NCPU = 3
   proc sysctl(x: ptr array[0..3, cint], y: cint, z: pointer,
               a: var csize, b: pointer, c: int): cint {.
-             importc: "sysctl".}
+              importc: "sysctl", header: "<sys/sysctl.h>".}
 
 proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
   ## returns the numer of the processors/cores the machine has.
