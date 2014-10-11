@@ -124,15 +124,31 @@ Source
 Starting with 0.9.4 we now advise people to build directly from the
 github `master <https://github.com/Araq/Nimrod#compiling>`_ branch::
 
-  git clone -b master git://github.com/Araq/Nimrod.git
-  cd Nimrod
-  git clone --depth 1 git://github.com/nimrod-code/csources
-  cd csources && sh build.sh
-  cd ..
-  bin/nimrod c koch
+1. Obtain the sources:
+  - tarball from https://github.com/Araq/Nimrod/tarball/master
+  - zip file from https://github.com/Araq/Nimrod/archive/master.zip
+  - `$ git clone --depth 1  -b master git://github.com/Araq/Nimrod.git`
+2. Obtain the C sources for bootstrapping
+  - tarball from https://github.com/nimrod-code/csources/tarball/master
+  - zip file from https://github.com/nimrod-code/csources/archive/master.zip
+  - `$ git clone --depth 1  -b master git://github.com/nimrod-code/csources.git`
+3. Place the C sources into `Nimrod/csources/`
+4. Enter the `Nimrod/csources` directory, and run either `build.sh` or `build.bat`
+5. Enter the `Nimrod` directory and run `bin/nimrod c koch`
+6. Run `koch boot`
+7. The executable will be located in `Nimrod/bin`, which you can add to your PATH or otherwise make accesable.
+
+Super copypaste command line:
+
+  git clone --depth 1 -b master git://github.com/Araq/Nimrod.git && \
+  cd Nimrod && \
+  git clone --depth 1 -b master git://github.com/nimrod-code/csources && \
+  cd csources && \
+  sh build.sh && \
+  cd .. && \
+  bin/nimrod c koch && \
   ./koch boot -d:release
 
 The ``master`` branch always contains the latest stable version of the compiler.
 If you want bleeding edge then switch to the ``devel`` branch and follow
 the same instructions outlined above.
-
