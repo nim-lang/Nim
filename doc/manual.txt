@@ -1421,7 +1421,7 @@ Examples:
   proc forEach(c: proc (x: int) {.cdecl.}) =
     ...
 
-  forEach(printItem)  # this will NOT work because calling conventions differ
+  forEach(printItem)  # this will NOT compile because calling conventions differ
 
   
 .. code-block:: nimrod
@@ -5037,6 +5037,27 @@ processed on the fly during semantic checking. Pragmas are enclosed in the
 special ``{.`` and ``.}`` curly brackets. Pragmas are also often used as a
 first implementation to play with a language feature before a nicer syntax
 to access the feature becomes available.
+
+
+deprecated pragma
+-----------------
+
+The deprecated pragma is used to mark a symbol as deprecated:
+
+.. code-block:: nimrod
+  proc p() {.deprecated.}
+  var x {.deprecated.}: char
+
+It can also be used as a statement. Then it takes a list of *renamings*. The
+upcoming ``nimfix`` tool can automatically update the code and perform these
+renamings:
+
+.. code-block:: nimrod
+  type
+    File = object
+    Stream = ref object
+  {.deprecated: [TFile: File, PStream: Stream].}
+
 
 
 noSideEffect pragma

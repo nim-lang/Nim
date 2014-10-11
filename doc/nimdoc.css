@@ -16,6 +16,11 @@ customize this style sheet.
    Andreas Rumpf
 */
 
+body {
+  color: black;
+  background: white;
+}
+
 /* used to remove borders from tables and images */
 .borderless, table.borderless td, table.borderless th {
   border: 0 }
