@@ -2,13 +2,13 @@
 News
 ====
 
-2014-10-11 Version 0.9.6 released
+2014-10-12 Version 0.9.6 released
 =================================
 
 **Note: This is the last release of Nimrod. The language has been renamed to
 Nim. Nim slightly breaks compatibility.**
 
-This is a maintenance release. The upcoming 0.10.0 release has all
+This is a maintenance release. The upcoming 0.10.0 release has
 the new features and exciting developments.
 
 
