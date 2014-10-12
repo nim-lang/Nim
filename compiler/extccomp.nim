@@ -412,8 +412,12 @@ proc addFileToLink*(filename: string) =
   prependStr(toLink, filename)
   # BUGFIX: was ``appendStr``
 
-proc execExternalProgram*(cmd: string) = 
-  if optListCmd in gGlobalOptions or gVerbosity > 0: msgWriteln(cmd)
+proc execExternalProgram*(cmd: string, prettyCmd = "") =
+  if optListCmd in gGlobalOptions or gVerbosity > 0:
+    if prettyCmd != "":
+      msgWriteln(prettyCmd)
+    else:
+      msgWriteln(cmd)
   if execCmd(cmd) != 0: rawMessage(errExecutionOfProgramFailed, "")
 
 proc generateScript(projectFile: string, script: PRope) = 
@@ -566,14 +570,16 @@ proc addExternalFileToCompile*(filename: string) =
   if optForceFullMake in gGlobalOptions or externalFileChanged(filename):
     appendStr(externalToCompile, filename)
 
-proc compileCFile(list: TLinkedList, script: var PRope, cmds: var TStringSeq, 
-                  isExternal: bool) = 
+proc compileCFile(list: TLinkedList, script: var PRope, cmds: var TStringSeq,
+                  prettyCmds: var TStringSeq, isExternal: bool) =
   var it = PStrEntry(list.head)
   while it != nil: 
     inc(fileCounter)          # call the C compiler for the .c file:
     var compileCmd = getCompileCFileCmd(it.data, isExternal)
     if optCompileOnly notin gGlobalOptions: 
       add(cmds, compileCmd)
+      let (dir, name, ext) = splitFile(it.data)
+      add(prettyCmds, "CC: " & name)
     if optGenScript in gGlobalOptions: 
       app(script, compileCmd)
       app(script, tnl)
@@ -589,19 +595,22 @@ proc callCCompiler*(projectfile: string) =
   var c = cCompiler
   var script: PRope = nil
   var cmds: TStringSeq = @[]
-  compileCFile(toCompile, script, cmds, false)
-  compileCFile(externalToCompile, script, cmds, true)
+  var prettyCmds: TStringSeq = @[]
+  compileCFile(toCompile, script, cmds, prettyCmds, false)
+  compileCFile(externalToCompile, script, cmds, prettyCmds, true)
+  if gVerbosity != 1:
+      prettyCmds = @[]
   if optCompileOnly notin gGlobalOptions: 
     if gNumberOfProcessors == 0: gNumberOfProcessors = countProcessors()
     var res = 0
     if gNumberOfProcessors <= 1: 
       for i in countup(0, high(cmds)): res = max(execCmd(cmds[i]), res)
     elif optListCmd in gGlobalOptions or gVerbosity > 0: 
-      res = execProcesses(cmds, {poEchoCmd, poUseShell, poParentStreams}, 
-                          gNumberOfProcessors)
+      res = execProcesses(cmds, {poEchoCmd, poUseShell, poParentStreams},
+                          gNumberOfProcessors, prettyCmds)
     else: 
-      res = execProcesses(cmds, {poUseShell, poParentStreams}, 
-                          gNumberOfProcessors)
+      res = execProcesses(cmds, {poUseShell, poParentStreams},
+                          gNumberOfProcessors, prettyCmds)
     if res != 0:
       if gNumberOfProcessors <= 1:
         rawMessage(errExecutionOfProgramFailed, [])
@@ -622,7 +631,6 @@ proc callCCompiler*(projectfile: string) =
     if optGenStaticLib in gGlobalOptions:
       linkCmd = CC[c].buildLib % ["libfile", (libNameTmpl() % gProjectName),
                                   "objfiles", objfiles]
-      if optCompileOnly notin gGlobalOptions: execExternalProgram(linkCmd)
     else:
       var linkerExe = getConfigVar(c, ".linkerexe")
       if len(linkerExe) == 0: linkerExe = c.getLinkerExe
@@ -654,7 +662,11 @@ proc callCCompiler*(projectfile: string) =
           "objfiles", objfiles, "exefile", exefile,
           "nimrod", quoteShell(getPrefixDir()),
           "lib", quoteShell(libpath)])
-      if optCompileOnly notin gGlobalOptions: execExternalProgram(linkCmd)
+    if optCompileOnly notin gGlobalOptions:
+      if gVerbosity == 1:
+        execExternalProgram(linkCmd, "[Linking]")
+      else:
+        execExternalProgram(linkCmd)
   else:
     linkCmd = ""
   if optGenScript in gGlobalOptions:

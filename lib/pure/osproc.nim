@@ -235,22 +235,32 @@ proc countProcessors*(): int {.rtl, extern: "nosp$1".} =
 
 proc execProcesses*(cmds: openArray[string],
                     options = {poStdErrToStdOut, poParentStreams},
-                    n = countProcessors()): int {.rtl, extern: "nosp$1",
+                    n = countProcessors(),
+                    prettyCmds: openArray[string] = @[]): int
+                    {.rtl, extern: "nosp$1",
                     tags: [ExecIOEffect, TimeEffect, ReadEnvEffect]} =
   ## executes the commands `cmds` in parallel. Creates `n` processes
   ## that execute in parallel. The highest return value of all processes
-  ## is returned.
+  ## is returned. If `prettyCmds` are provided, prints them on the console
+  ## instead of the real commands (for prettier output).
+  var options = options
   when defined(posix):
     # poParentStreams causes problems on Posix, so we simply disable it:
-    var options = options - {poParentStreams}
+    options = options - {poParentStreams}
 
   assert n > 0
+  var usePrettyPrintouts = false
+  if prettyCmds.len == cmds.len:
+    options = options - {poEchoCmd}
+    usePrettyPrintouts = true
   if n > 1:
     var q: seq[Process]
     newSeq(q, n)
     var m = min(n, cmds.len)
     for i in 0..m-1:
       q[i] = startCmd(cmds[i], options=options)
+      if usePrettyPrintouts:
+        echo prettyCmds[i]
     when defined(noBusyWaiting):
       var r = 0
       for i in m..high(cmds):
@@ -264,6 +274,8 @@ proc execProcesses*(cmds: openArray[string],
         result = max(waitForExit(q[r]), result)
         if q[r] != nil: close(q[r])
         q[r] = startCmd(cmds[i], options=options)
+        if usePrettyPrintouts:
+          echo prettyCmds[i]
         r = (r + 1) mod n
     else:
       var i = m
@@ -275,6 +287,8 @@ proc execProcesses*(cmds: openArray[string],
             result = max(waitForExit(q[r]), result)
             if q[r] != nil: close(q[r])
             q[r] = startCmd(cmds[i], options=options)
+            if usePrettyPrintouts:
+              echo prettyCmds[i]
             inc(i)
             if i > high(cmds): break
     for j in 0..m-1:
@@ -283,6 +297,8 @@ proc execProcesses*(cmds: openArray[string],
   else:
     for i in 0..high(cmds):
       var p = startCmd(cmds[i], options=options)
+      if usePrettyPrintouts:
+        echo prettyCmds[i]
       result = max(waitForExit(p), result)
       close(p)
 
