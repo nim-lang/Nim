@@ -596,21 +596,24 @@ proc callCCompiler*(projectfile: string) =
   var script: PRope = nil
   var cmds: TStringSeq = @[]
   var prettyCmds: TStringSeq = @[]
+  let prettyCb = proc (idx: int) =
+    echo prettyCmds[idx]
   compileCFile(toCompile, script, cmds, prettyCmds, false)
   compileCFile(externalToCompile, script, cmds, prettyCmds, true)
-  if gVerbosity != 1:
-      prettyCmds = @[]
   if optCompileOnly notin gGlobalOptions: 
     if gNumberOfProcessors == 0: gNumberOfProcessors = countProcessors()
     var res = 0
     if gNumberOfProcessors <= 1: 
       for i in countup(0, high(cmds)): res = max(execCmd(cmds[i]), res)
-    elif optListCmd in gGlobalOptions or gVerbosity > 0: 
+    elif optListCmd in gGlobalOptions or gVerbosity > 1:
       res = execProcesses(cmds, {poEchoCmd, poUseShell, poParentStreams},
-                          gNumberOfProcessors, prettyCmds)
-    else: 
+                          gNumberOfProcessors)
+    elif gVerbosity == 1:
       res = execProcesses(cmds, {poUseShell, poParentStreams},
-                          gNumberOfProcessors, prettyCmds)
+                          gNumberOfProcessors, prettyCb)
+    else:
+      res = execProcesses(cmds, {poUseShell, poParentStreams},
+                          gNumberOfProcessors)
     if res != 0:
       if gNumberOfProcessors <= 1:
         rawMessage(errExecutionOfProgramFailed, [])
