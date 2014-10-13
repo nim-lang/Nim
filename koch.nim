@@ -85,9 +85,11 @@ proc csource(args: string) =
   exec("$4 cc $1 -r $3 --var:version=$2 csource compiler/nim.ini $1" %
        [args, NimVersion, compileNimInst, findNim()])
 
-proc zip(args: string) = 
-  exec("$3 cc -r $2 --var:version=$1 zip compiler/nim.ini" %
+proc zip(args: string) =
+  exec("$3 cc -r $2 --var:version=$1 scripts compiler/nim.ini" %
        [NimVersion, compileNimInst, findNim()])
+  exec("$# --var:version=$# zip compiler/nim.ini" %
+       ["tools/niminst/niminst".exe, NimVersion])
   
 proc buildTool(toolname, args: string) = 
   exec("$# cc $# $#" % [findNim(), args, toolname])

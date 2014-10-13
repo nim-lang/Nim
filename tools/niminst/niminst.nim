@@ -503,9 +503,9 @@ when haveZipLib:
     else: n = c.outdir / n
     var z: TZipArchive
     if open(z, n, fmWrite):
-      addFile(z, proj / buildBatFile32, buildBatFile32)
-      addFile(z, proj / buildBatFile64, buildBatFile64)
-      addFile(z, proj / buildShFile, buildShFile)
+      addFile(z, proj / buildBatFile32, "build" / buildBatFile32)
+      addFile(z, proj / buildBatFile64, "build" / buildBatFile64)
+      addFile(z, proj / buildShFile, "build" / buildShFile)
       addFile(z, proj / installShFile, installShFile)
       addFile(z, proj / deinstallShFile, deinstallShFile)
       for f in walkFiles(c.libpath / "lib/*.h"):
@@ -513,7 +513,7 @@ when haveZipLib:
       for osA in 1..c.oses.len:
         for cpuA in 1..c.cpus.len:
           var dir = buildDir(osA, cpuA)
-          for k, f in walkDir(dir):
+          for k, f in walkDir("build" / dir):
             if k == pcFile: addFile(z, proj / dir / extractFilename(f), f)
 
       for cat in items({fcConfig..fcOther, fcUnix}):

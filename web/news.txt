@@ -63,11 +63,6 @@ News
     The modules that use ``importCpp`` or ``importObjc`` are compiled to C++
     or Objective C code, any other module is compiled to C code. This
     improves interoperability.
-
-
-  Language Additions
-  ------------------
-
   - There is a new ``parallel`` statement for safe fork&join parallel computing.
   - ``guard`` and ``lock`` pragmas have been implemented to support safer
     concurrent programming.
@@ -81,16 +76,23 @@ News
       system.writeFile
 
 
-  Library Additions
-  -----------------
+Language Additions
+------------------
 
-  - Added module ``cpuinfo``.
-  - Added module ``threadpool``.
-  - ``sequtils.distnct`` has been renamed to ``sequtils.deduplicate``.
-  - Added ``algorithm.reversed``
-  - Added ``uri.combine`` and ``uri.parseUri``.
-  - Some sockets procedures now support a ``SafeDisconn`` flag which causes 
-    them to handle disconnection errors and not raise them.
+- This version introduces the new ``deprecated`` pragma statement that is used
+  to handle the upcoming massive amount of symbol renames.
+
+
+Library Additions
+-----------------
+
+- Added module ``cpuinfo``.
+- Added module ``threadpool``.
+- ``sequtils.distnct`` has been renamed to ``sequtils.deduplicate``.
+- Added ``algorithm.reversed``
+- Added ``uri.combine`` and ``uri.parseUri``.
+- Some sockets procedures now support a ``SafeDisconn`` flag which causes 
+  them to handle disconnection errors and not raise them.
 
 
 2014-04-21 Version 0.9.4 released
