@@ -94,8 +94,8 @@ SectionEnd
 #for download in c.downloads:
 #  inc i
 #  let d = download.split('|')
-#  if d.len != 5:
-#    quit("download string needs 5 parts: " & download)
+#  if d.len != 5 and d.len != 6:
+#    quit("download string needs 5..6 parts: " & download)
 #  end if
 #  let sectionName = d[0]
 #  let dir = d[1]
@@ -114,6 +114,12 @@ SectionEnd
   ${Else}
     MessageBox mb_iconstop "Error: $0" ;Show cancel/error message
   ${EndIf}
+
+#  if d.len >= 6:
+#    let startMenuEntry = d[5]
+#    let e = splitFile(startMenuEntry).name.capitalize
+    CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\?{e}.lnk" "$INSTDIR\?dir\?{startMenuEntry.toWin}"
+#  end if
 
 ; Shortcuts
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
@@ -149,8 +155,8 @@ FunctionEnd
 
 Function un.onInit
   MessageBox MB_ICONQUESTION|MB_YESNO|MB_DEFBUTTON2 "Remove $(^Name) from your computer." IDYES +2
-  !insertmacro MULTIUSER_UNINIT
   Abort
+  !insertmacro MULTIUSER_UNINIT
 FunctionEnd
 
 Section Uninstall
