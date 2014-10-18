@@ -534,7 +534,7 @@ when haveZipLib:
       addFile(z, proj / installShFile, installShFile)
       addFile(z, proj / deinstallShFile, deinstallShFile)
       for f in walkFiles(c.libpath / "lib/*.h"):
-        addFile(z, proj / "build" / extractFilename(f), f)
+        addFile(z, proj / "c_code" / extractFilename(f), f)
       for osA in 1..c.oses.len:
         for cpuA in 1..c.cpus.len:
           var dir = buildDir(osA, cpuA)
