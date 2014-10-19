@@ -113,7 +113,7 @@ proc nsis(args: string) =
         " nsis compiler/nimrod") % NimrodVersion)
 
 proc install(args: string) = 
-  exec("$# cc -r $# --var:version=$# scripts compiler/nimrod.ini" %
+  exec("$# cc -r $# --var:version=$# --var:mingw=mingw32 scripts compiler/nimrod.ini" %
        [findNim(), compileNimInst, NimrodVersion])
   exec("sh ./install.sh $#" % args)
 
