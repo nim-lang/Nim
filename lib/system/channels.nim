@@ -234,7 +234,7 @@ proc tryRecv*[TMsg](c: var TChannel[TMsg]): tuple[dataAvailable: bool,
   if q.mask != ChannelDeadMask:
     if tryAcquireSys(q.lock):
       llRecv(q, addr(result.msg), cast[PNimType](getTypeInfo(result.msg)))
-      result.dataAvaliable = true
+      result.dataAvailable = true
       releaseSys(q.lock)
 
 proc peek*[TMsg](c: var TChannel[TMsg]): int =
