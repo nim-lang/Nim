@@ -29,7 +29,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
       # beware of 'result = p(result)'. We may need to allocate a temporary:
       if d.k in {locTemp, locNone} or not leftAppearsOnRightSide(le, ri):
         # Great, we can use 'd':
-        if d.k == locNone: getTemp(p, typ.sons[0], d)
+        if d.k == locNone: getTemp(p, typ.sons[0], d, needsInit=true)
         elif d.k notin {locExpr, locTemp} and not hasNoInit(ri):
           # reset before pass as 'result' var:
           resetLoc(p, d)
@@ -38,7 +38,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         line(p, cpsStmts, pl)
       else:
         var tmp: TLoc
-        getTemp(p, typ.sons[0], tmp)
+        getTemp(p, typ.sons[0], tmp, needsInit=true)
         app(pl, addrLoc(tmp))
         app(pl, ~");$n")
         line(p, cpsStmts, pl)
@@ -195,7 +195,8 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
       # beware of 'result = p(result)'. We may need to allocate a temporary:
       if d.k in {locTemp, locNone} or not leftAppearsOnRightSide(le, ri):
         # Great, we can use 'd':
-        if d.k == locNone: getTemp(p, typ.sons[0], d)
+        if d.k == locNone:
+          getTemp(p, typ.sons[0], d, needsInit=true)
         elif d.k notin {locExpr, locTemp} and not hasNoInit(ri):
           # reset before pass as 'result' var:
           resetLoc(p, d)
@@ -203,7 +204,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
         genCallPattern()
       else:
         var tmp: TLoc
-        getTemp(p, typ.sons[0], tmp)
+        getTemp(p, typ.sons[0], tmp, needsInit=true)
         app(pl, addrLoc(tmp))
         genCallPattern()
         genAssignment(p, d, tmp, {}) # no need for deep copying
@@ -278,14 +279,14 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
       # beware of 'result = p(result)'. We always allocate a temporary:
       if d.k in {locTemp, locNone}:
         # We already got a temp. Great, special case it:
-        if d.k == locNone: getTemp(p, typ.sons[0], d)
+        if d.k == locNone: getTemp(p, typ.sons[0], d, needsInit=true)
         app(pl, ~"Result: ")
         app(pl, addrLoc(d))
         app(pl, ~"];$n")
         line(p, cpsStmts, pl)
       else:
         var tmp: TLoc
-        getTemp(p, typ.sons[0], tmp)
+        getTemp(p, typ.sons[0], tmp, needsInit=true)
         app(pl, addrLoc(tmp))
         app(pl, ~"];$n")
         line(p, cpsStmts, pl)

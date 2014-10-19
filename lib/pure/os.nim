@@ -365,8 +365,9 @@ when defined(windows):
     template getFilename(f: expr): expr = $f.cFilename
 
   proc skipFindData(f: TWIN32_FIND_DATA): bool {.inline.} =
+    # Note - takes advantage of null delimiter in the cstring
     const dot = ord('.')
-    result = f.cFileName[0].int == dot and(f.cFileName[1].int == 0 or
+    result = f.cFileName[0].int == dot and (f.cFileName[1].int == 0 or
              f.cFileName[1].int == dot and f.cFileName[2].int == 0)
 
 proc existsFile*(filename: string): bool {.rtl, extern: "nos$1",
@@ -955,11 +956,12 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
   ##
   ## If this fails, `EOS` is raised. On the Windows platform this proc will
   ## copy the source file's attributes into dest. On other platforms you need
-  ## to use getFilePermissions and setFilePermissions to copy them by hand (or
-  ## use the convenience copyFileWithPermissions() proc), otherwise `dest` will
-  ## inherit the default permissions of a newly created file for the user. If
-  ## `dest` already exists, the file attributes will be preserved and the
-  ## content overwritten.
+  ## to use `getFilePermissions() <#getFilePermissions>`_ and
+  ## `setFilePermissions() <#setFilePermissions>`_ to copy them by hand (or use
+  ## the convenience `copyFileWithPermissions() <#copyFileWithPermissions>`_
+  ## proc), otherwise `dest` will inherit the default permissions of a newly
+  ## created file for the user. If `dest` already exists, the file attributes
+  ## will be preserved and the content overwritten.
   when defined(Windows):
     when useWinUnicode:
       let s = newWideCString(source)
@@ -996,7 +998,7 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
   if c_rename(source, dest) != 0'i32:
     raise newException(EOS, $strerror(errno))
 
-when not defined(ENOENT) and not defined(Windows):
+when not declared(ENOENT) and not defined(Windows):
   when NoFakeVars:
     const ENOENT = cint(2) # 2 on most systems including Solaris
   else:
@@ -1330,10 +1332,10 @@ proc removeDir*(dir: string) {.rtl, extern: "nos$1", tags: [
 
 proc rawCreateDir(dir: string) =
   when defined(solaris):
-    if mkdir(dir, 0o711) != 0'i32 and errno != EEXIST and errno != ENOSYS:
+    if mkdir(dir, 0o777) != 0'i32 and errno != EEXIST and errno != ENOSYS:
       osError(osLastError())
   elif defined(unix):
-    if mkdir(dir, 0o711) != 0'i32 and errno != EEXIST:
+    if mkdir(dir, 0o777) != 0'i32 and errno != EEXIST:
       osError(osLastError())
   else:
     when useWinUnicode:
@@ -1363,7 +1365,13 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1", tags: [FWriteDir].} =
 
 proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [FWriteIO, FReadIO].} =
-  ## Copies a directory from `source` to `dest`. If this fails, `EOS` is raised.
+  ## Copies a directory from `source` to `dest`.
+  ##
+  ## If this fails, `EOS` is raised. On the Windows platform this proc will
+  ## copy the attributes from `source` into `dest`. On other platforms created
+  ## files and directories will inherit the default permissions of a newly
+  ## created file/directory for the user. To preserve attributes recursively on
+  ## these platforms use `copyDirWithPermissions() <#copyDirWithPermissions>`_.
   createDir(dest)
   for kind, path in walkDir(source):
     var noSource = path.substr(source.len()+1)
@@ -1450,7 +1458,8 @@ proc parseCmdLine*(c: string): seq[string] {.
   var a = ""
   while true:
     setLen(a, 0)
-    while c[i] == ' ' or c[i] == '\t': inc(i)
+    # eat all delimiting whitespace
+    while c[i] == ' ' or c[i] == '\t' or c [i] == '\l' or c [i] == '\r' : inc(i)
     when defined(windows):
       # parse a single argument according to the above rules:
       if c[i] == '\0': break
@@ -1507,14 +1516,17 @@ proc copyFileWithPermissions*(source, dest: string,
                               ignorePermissionErrors = true) =
   ## Copies a file from `source` to `dest` preserving file permissions.
   ##
-  ## This is a wrapper proc around copyFile, getFilePermissions and
-  ## setFilePermissions on non Windows platform. On windows this proc is just a
-  ## wrapper for copyFile since that proc already copies attributes.
+  ## This is a wrapper proc around `copyFile() <#copyFile>`_,
+  ## `getFilePermissions() <#getFilePermissions>`_ and `setFilePermissions()
+  ## <#setFilePermissions>`_ on non Windows platform. On Windows this proc is
+  ## just a wrapper for `copyFile() <#copyFile>`_ since that proc already
+  ## copies attributes.
   ##
-  ## On non windows systems permissions are copied after the file itself has
+  ## On non Windows systems permissions are copied after the file itself has
   ## been copied, which won't happen atomically and could lead to a race
-  ## condition. If ignorePermissionErrors is true, errors while reading/setting
-  ## file attributes will be ignored, otherwise will raise `OSError`.
+  ## condition. If `ignorePermissionErrors` is true, errors while
+  ## reading/setting file attributes will be ignored, otherwise will raise
+  ## `OSError`.
   copyFile(source, dest)
   when not defined(Windows):
     try:
@@ -1522,6 +1534,37 @@ proc copyFileWithPermissions*(source, dest: string,
     except:
       if not ignorePermissionErrors:
         raise
+
+proc copyDirWithPermissions*(source, dest: string,
+    ignorePermissionErrors = true) {.rtl, extern: "nos$1",
+    tags: [FWriteIO, FReadIO].} =
+  ## Copies a directory from `source` to `dest` preserving file permissions.
+  ##
+  ## If this fails, `EOS` is raised. This is a wrapper proc around `copyDir()
+  ## <#copyDir>`_ and `copyFileWithPermissions() <#copyFileWithPermissions>`_
+  ## on non Windows platforms. On Windows this proc is just a wrapper for
+  ## `copyDir() <#copyDir>`_ since that proc already copies attributes.
+  ##
+  ## On non Windows systems permissions are copied after the file or directory
+  ## itself has been copied, which won't happen atomically and could lead to a
+  ## race condition. If `ignorePermissionErrors` is true, errors while
+  ## reading/setting file attributes will be ignored, otherwise will raise
+  ## `OSError`.
+  createDir(dest)
+  when not defined(Windows):
+    try:
+      setFilePermissions(dest, getFilePermissions(source))
+    except:
+      if not ignorePermissionErrors:
+        raise
+  for kind, path in walkDir(source):
+    var noSource = path.substr(source.len()+1)
+    case kind
+    of pcFile:
+      copyFileWithPermissions(path, dest / noSource, ignorePermissionErrors)
+    of pcDir:
+      copyDirWithPermissions(path, dest / noSource, ignorePermissionErrors)
+    else: discard
 
 proc inclFilePermissions*(filename: string,
                           permissions: set[TFilePermission]) {.
@@ -1560,7 +1603,52 @@ proc getTempDir*(): string {.rtl, extern: "nos$1", tags: [FReadEnv].} =
   when defined(windows): return string(getEnv("TEMP")) & "\\"
   else: return "/tmp/"
 
-when defined(windows):
+when defined(nimdoc):
+  # Common forward declaration docstring block for parameter retrieval procs.
+  proc paramCount*(): int {.tags: [FReadIO].} =
+    ## Returns the number of `command line arguments`:idx: given to the
+    ## application.
+    ##
+    ## If your binary was called without parameters this will return zero.  You
+    ## can later query each individual paramater with `paramStr() <#paramStr>`_
+    ## or retrieve all of them in one go with `commandLineParams()
+    ## <#commandLineParams>`_.
+    ##
+    ## **Availability**: On Posix there is no portable way to get the command
+    ## line from a DLL and thus the proc isn't defined in this environment. You
+    ## can test for its availability with `declared() <system.html#declared>`_.
+    ## Example:
+    ##
+    ## .. code-block:: nimrod
+    ##   when declared(paramCount):
+    ##     # Use paramCount() here
+    ##   else:
+    ##     # Do something else!
+
+  proc paramStr*(i: int): TaintedString {.tags: [FReadIO].} =
+    ## Returns the `i`-th `command line argument`:idx: given to the application.
+    ##
+    ## `i` should be in the range `1..paramCount()`, the `EInvalidIndex`
+    ## exception will be raised for invalid values.  Instead of iterating over
+    ## `paramCount() <#paramCount>`_ with this proc you can call the
+    ## convenience `commandLineParams() <#commandLineParams>`_.
+    ##
+    ## It is possible to call ``paramStr(0)`` but this will return OS specific
+    ## contents (usually the name of the invoked executable). You should avoid
+    ## this and call `getAppFilename() <#getAppFilename>`_ instead.
+    ##
+    ## **Availability**: On Posix there is no portable way to get the command
+    ## line from a DLL and thus the proc isn't defined in this environment. You
+    ## can test for its availability with `declared() <system.html#declared>`_.
+    ## Example:
+    ##
+    ## .. code-block:: nimrod
+    ##   when declared(paramStr):
+    ##     # Use paramStr() here
+    ##   else:
+    ##     # Do something else!
+
+elif defined(windows):
   # Since we support GUI applications with Nimrod, we sometimes generate
   # a WinMain entry proc. But a WinMain proc has no access to the parsed
   # command line arguments. The way to get them differs. Thus we parse them
@@ -1570,18 +1658,13 @@ when defined(windows):
     ownArgv {.threadvar.}: seq[string]
 
   proc paramCount*(): int {.rtl, extern: "nos$1", tags: [FReadIO].} =
-    ## Returns the number of `command line arguments`:idx: given to the
-    ## application.
+    # Docstring in nimdoc block.
     if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLine())
     result = ownArgv.len-1
 
   proc paramStr*(i: int): TaintedString {.rtl, extern: "nos$1",
     tags: [FReadIO].} =
-    ## Returns the `i`-th `command line argument`:idx: given to the
-    ## application.
-    ##
-    ## `i` should be in the range `1..paramCount()`, else
-    ## the `EOutOfIndex` exception is raised.
+    # Docstring in nimdoc block.
     if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLine())
     return TaintedString(ownArgv[i])
 
@@ -1592,13 +1675,31 @@ elif not defined(createNimRtl):
     cmdLine {.importc: "cmdLine".}: cstringArray
 
   proc paramStr*(i: int): TaintedString {.tags: [FReadIO].} =
+    # Docstring in nimdoc block.
     if i < cmdCount and i >= 0: return TaintedString($cmdLine[i])
     raise newException(EInvalidIndex, "invalid index")
 
-  proc paramCount*(): int {.tags: [FReadIO].} = return cmdCount-1
+  proc paramCount*(): int {.tags: [FReadIO].} =
+    # Docstring in nimdoc block.
+    result = cmdCount-1
 
-when defined(paramCount):
+when declared(paramCount) or defined(nimdoc):
   proc commandLineParams*(): seq[TaintedString] =
+    ## Convenience proc which returns the command line parameters.
+    ##
+    ## This returns **only** the parameters. If you want to get the application
+    ## executable filename, call `getAppFilename() <#getAppFilename>`_.
+    ##
+    ## **Availability**: On Posix there is no portable way to get the command
+    ## line from a DLL and thus the proc isn't defined in this environment. You
+    ## can test for its availability with `declared() <system.html#declared>`_.
+    ## Example:
+    ##
+    ## .. code-block:: nimrod
+    ##   when declared(commandLineParams):
+    ##     # Use commandLineParams() here
+    ##   else:
+    ##     # Do something else!
     result = @[]
     for i in 1..paramCount():
       result.add(paramStr(i))
@@ -1614,7 +1715,7 @@ when defined(linux) or defined(solaris) or defined(bsd) or defined(aix):
 
 when not (defined(windows) or defined(macosx)):
   proc getApplHeuristic(): string =
-    when defined(paramStr):
+    when declared(paramStr):
       result = string(paramStr(0))
       # POSIX guaranties that this contains the executable
       # as it has been executed by the calling process
@@ -1761,12 +1862,12 @@ proc expandTilde*(path: string): string =
 
 when defined(Windows):
   type
-    DeviceId = int32
-    FileId = int64
+    DeviceId* = int32
+    FileId* = int64
 else:
   type
-    DeviceId = TDev
-    FileId = TIno
+    DeviceId* = TDev
+    FileId* = TIno
 
 type
   FileInfo* = object
@@ -1808,6 +1909,7 @@ template rawToFormalFileInfo(rawInfo, formalInfo): expr =
       formalInfo.kind = pcDir
     if (rawInfo.dwFileAttributes and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32:
       formalInfo.kind = succ(result.kind)
+
 
   else:
     template checkAndIncludeMode(rawMode, formalMode: expr) = 
@@ -1894,5 +1996,27 @@ proc getFileInfo*(path: string, followSymlink = true): FileInfo =
       if stat(path, rawInfo) < 0'i32:
         osError(osLastError())
     rawToFormalFileInfo(rawInfo, result)
+
+proc isHidden*(path: string): bool =
+  ## Determines whether a given path is hidden or not. Returns false if the
+  ## file doesn't exist. The given path must be accessible from the current
+  ## working directory of the program.
+  ## 
+  ## On Windows, a file is hidden if the file's 'hidden' attribute is set.
+  ## On Unix-like systems, a file is hidden if it starts with a '.' (period)
+  ## and is not *just* '.' or '..' ' ."
+  when defined(Windows):
+    wrapUnary(attributes, getFileAttributesW, path)
+    if attributes != -1'i32:
+      result = (attributes and FILE_ATTRIBUTE_HIDDEN) != 0'i32
+  else:
+    if fileExists(path):
+      let
+        fileName = extractFilename(path)
+        nameLen = len(fileName)
+      if nameLen == 2:
+        result = (fileName[0] == '.') and (fileName[1] != '.')
+      elif nameLen > 2:
+        result = (fileName[0] == '.') and (fileName[3] != '.')
 
 {.pop.}

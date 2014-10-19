@@ -30,7 +30,7 @@ const
                                           # cycles instead of the complex
                                           # algorithm
 
-when withRealTime and not defined(getTicks):
+when withRealTime and not declared(getTicks):
   include "system/timers"
 when defined(memProfiler):
   proc nimProfile(requestedSize: int)
@@ -413,7 +413,7 @@ proc addNewObjToZCT(res: PCell, gch: var TGcHeap) {.inline.} =
 {.push stackTrace: off, profiler:off.}
 proc gcInvariant*() =
   sysAssert(allocInv(gch.region), "injected")
-  when defined(markForDebug):
+  when declared(markForDebug):
     markForDebug(gch)
 {.pop.}
 

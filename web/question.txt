@@ -28,6 +28,14 @@ one of the even fewer that produces native binaries that require no
 runtime or interpreter.
 
 
+What have been the major influences in the language's design?
+-------------------------------------------------------------
+
+The language borrows heavily from: Modula 3, Delphi, Ada, C++, Python, Lisp,
+Oberon. As far as possible the list is sorted by the impact of influence.
+
+
+
 What is Nimrod's take on concurrency?
 -------------------------------------
 
@@ -89,8 +97,8 @@ Why is it named ``proc``?
 
 *Procedure* used to be the common term as opposed to a *function* which is a
 mathematical entity that has no side effects. It was planned to have ``func``
-as syntactic sugar for ``proc {.noSideEffect.}`` but the more fine-grained
-effect system makes that unimportant.
+as syntactic sugar for ``proc {.noSideEffect.}`` but with the more fine-grained
+effect system it is not yet clear what ``func`` should be a shortcut for.
 
 
 Compilation
@@ -117,14 +125,15 @@ Change the value of the ``cc`` variable to one of the following:
 ==============  ============================================
 Abbreviation    C/C++ Compiler
 ==============  ============================================
-``dmc``         Digital Mars C++
 ``vcc``         Microsoft's Visual C++
 ``gcc``         Gnu C
-``tcc``         Tiny C
 ``llvm_gcc``    LLVM-GCC compiler
 ``icc``         Intel C++ compiler
+``clang``       Clang compiler
 ``ucc``         Generic UNIX C compiler
 ==============  ============================================
+
+Other C compilers are not officially supported, but might work too.
 
 If your C compiler is not in the above list, try using the
 *generic UNIX C compiler* (``ucc``). If the C compiler needs

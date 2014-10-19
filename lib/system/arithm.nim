@@ -114,63 +114,69 @@ when asmVersion and not defined(gcc) and not defined(llvm_gcc):
   proc addInt(a, b: int): int {.compilerProc, asmNoStackFrame.} =
     # a in eax, and b in edx
     asm """
-        mov eax, `a`
-        add eax, `b`
+        mov eax, ecx
+        add eax, edx
         jno theEnd
         call `raiseOverflow`
       theEnd:
+        ret
     """
 
   proc subInt(a, b: int): int {.compilerProc, asmNoStackFrame.} =
     asm """
-        mov eax, `a`
-        sub eax, `b`
+        mov eax, ecx
+        sub eax, edx
         jno theEnd
         call `raiseOverflow`
       theEnd:
+        ret
     """
 
   proc negInt(a: int): int {.compilerProc, asmNoStackFrame.} =
     asm """
-        mov eax, `a`
+        mov eax, ecx
         neg eax
         jno theEnd
         call `raiseOverflow`
       theEnd:
+        ret
     """
 
   proc divInt(a, b: int): int {.compilerProc, asmNoStackFrame.} =
     asm """
-        mov eax, `a`
-        mov ecx, `b`
+        mov eax, ecx
+        mov ecx, edx
         xor edx, edx
         idiv ecx
         jno  theEnd
         call `raiseOverflow`
       theEnd:
+        ret
     """
 
   proc modInt(a, b: int): int {.compilerProc, asmNoStackFrame.} =
     asm """
-        mov eax, `a`
-        mov ecx, `b`
+        mov eax, ecx
+        mov ecx, edx
         xor edx, edx
         idiv ecx
         jno theEnd
         call `raiseOverflow`
       theEnd:
         mov eax, edx
+        ret
     """
 
   proc mulInt(a, b: int): int {.compilerProc, asmNoStackFrame.} =
     asm """
-        mov eax, `a`
-        mov ecx, `b`
+        mov eax, ecx
+        mov ecx, edx
         xor edx, edx
         imul ecx
         jno theEnd
         call `raiseOverflow`
       theEnd:
+        ret
     """
 
 elif false: # asmVersion and (defined(gcc) or defined(llvm_gcc)):
@@ -241,26 +247,26 @@ elif false: # asmVersion and (defined(gcc) or defined(llvm_gcc)):
     """
 
 # Platform independent versions of the above (slower!)
-when not defined(addInt):
+when not declared(addInt):
   proc addInt(a, b: int): int {.compilerProc, inline.} =
     result = a +% b
     if (result xor a) >= 0 or (result xor b) >= 0:
       return result
     raiseOverflow()
 
-when not defined(subInt):
+when not declared(subInt):
   proc subInt(a, b: int): int {.compilerProc, inline.} =
     result = a -% b
     if (result xor a) >= 0 or (result xor not b) >= 0:
       return result
     raiseOverflow()
 
-when not defined(negInt):
+when not declared(negInt):
   proc negInt(a: int): int {.compilerProc, inline.} =
     if a != low(int): return -a
     raiseOverflow()
 
-when not defined(divInt):
+when not declared(divInt):
   proc divInt(a, b: int): int {.compilerProc, inline.} =
     if b == 0:
       raiseDivByZero()
@@ -268,13 +274,13 @@ when not defined(divInt):
       raiseOverflow()
     return a div b
 
-when not defined(modInt):
+when not declared(modInt):
   proc modInt(a, b: int): int {.compilerProc, inline.} =
     if b == 0:
       raiseDivByZero()
     return a mod b
 
-when not defined(mulInt):
+when not declared(mulInt):
   #
   # This code has been inspired by Python's source code.
   # The native int product x*y is either exactly right or *way* off, being

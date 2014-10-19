@@ -11,7 +11,26 @@
 ## working with types
 
 proc name*(t: typedesc): string {.magic: "TypeTrait".}
-  ## Returns the name of the given type
+  ## Returns the name of the given type.
+  ##
+  ## Example:
+  ##
+  ## .. code-block::
+  ##
+  ##   import typetraits
+  ##
+  ##   proc `$`*[T](some:typedesc[T]): string = name(T)
+  ##
+  ##   template test(x): stmt =
+  ##     echo "type: ", type(x), ", value: ", x
+  ##
+  ##   test 42
+  ##   # --> type: int, value: 42
+  ##   test "Foo"
+  ##   # --> type: string, value: Foo
+  ##   test(@['A','B'])
+  ##   # --> type: seq[char], value: @[A, B]
+
 
 proc arity*(t: typedesc): int {.magic: "TypeTrait".}
   ## Returns the arity of the given type

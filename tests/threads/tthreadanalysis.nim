@@ -1,7 +1,7 @@
 discard """
   outputsub: "101"
-  msg: "Warning: write to foreign heap"
-  line: 37
+  errormsg: "'threadFunc' is not GC-safe"
+  line: 39
   cmd: "nimrod $target --hints:on --threads:on $options $file"
 """
 

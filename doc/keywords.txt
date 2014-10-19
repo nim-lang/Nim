@@ -6,7 +6,7 @@ elif else end enum except export
 finally for from
 generic
 if import in include interface is isnot iterator
-lambda let
+let
 macro method mixin mod
 nil not notin
 object of or out

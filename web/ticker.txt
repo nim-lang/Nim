@@ -1,3 +1,8 @@
+<a class="news" href="news.html#Z2014-10-19-version-0-9-6-released">
+  <h3>Oct 19, 2014</h3>
+  <p>Nimrod version 0.9.6 has been released!</p>
+</a>
+
 <a class="news" href="news.html#Z2014-04-21-version-0-9-4-released">
   <h3>Apr 21, 2014</h3>
   <p>Nimrod version 0.9.4 has been released!</p>

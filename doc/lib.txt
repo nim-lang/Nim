@@ -56,7 +56,10 @@ Core
 
 * `typeinfo <typeinfo.html>`_
   Provides (unsafe) access to Nimrod's run time type information. 
-  
+
+* `typetraits <typetraits.html>`_
+  This module defines compile-time reflection procs for working with types.
+
 * `actors <actors.html>`_
   Actor support for Nimrod; implemented as a layer on top of the threads and
   channels modules.
@@ -447,10 +450,6 @@ Other
   This module contains code for reading from `stdin`:idx:. On UNIX the GNU
   readline library is wrapped and set up.
 
-* `zmq <zmq.html>`_
-  Nimrod 0mq wrapper. This file contains the low level C wrappers as well as
-  some higher level constructs.
-
 
 Wrappers
 ========
@@ -463,8 +462,6 @@ Windows specific
 
 * `windows <windows.html>`_
   Contains a wrapper for the Win32 API.
-* `ole2 <ole2.html>`_
-  Contains GUIDs for OLE2 automation support.
 * `shellapi <shellapi.html>`_
   Contains a wrapper for the ``shellapi.h`` header.
 * `shfolder <shfolder.html>`_
@@ -594,7 +591,8 @@ compiler.
 
 .. raw:: html
 
-  <div id="officialPkgList"></div>
+  <div id="officialPkgList"><b>If you are reading this you are missing
+  babelpkglist.js or have javascript disabled in your browser.</b></div>
 
 Unofficial packages
 -------------------
@@ -605,7 +603,8 @@ Nimrod programming language.
 
 .. raw:: html
 
-  <div id="unofficialPkgList"></div>
+  <div id="unofficialPkgList"><b>If you are reading this you are missing
+  babelpkglist.js or have javascript disabled in your browser.</b></div>
 
   <script type="text/javascript" src="babelpkglist.js"></script>
   <script type="text/javascript" src="http://build.nimrod-lang.org/packages?callback=gotPackageList"></script>

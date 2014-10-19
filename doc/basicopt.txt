@@ -13,6 +13,7 @@ Options:
   -p, --path:PATH           add path to search paths
   -d, --define:SYMBOL       define a conditional symbol
   -u, --undef:SYMBOL        undefine a conditional symbol
+  --symbol:SYMBOL           declare a conditional symbol
   -f, --forceBuild          force rebuilding of all modules
   --stackTrace:on|off       turn stack tracing on|off
   --lineTrace:on|off        turn line tracing on|off
@@ -34,3 +35,5 @@ Options:
   -r, --run                 run the compiled program with given arguments
   --advanced                show advanced command line switches
   -h, --help                show this help
+
+Note: Even single letter options require the colon: -p:PATH.

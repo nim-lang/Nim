@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -38,21 +38,11 @@ proc chckRangeF(x, a, b: float): float {.inline, compilerproc, gcsafe.}
 proc chckNil(p: pointer) {.noinline, compilerproc, gcsafe.}
 
 var
-  framePtr {.rtlThreadVar.}: PFrame
-  excHandler {.rtlThreadVar.}: PSafePoint
+  framePtr {.threadvar.}: PFrame
+  excHandler {.threadvar.}: PSafePoint
     # list of exception handlers
     # a global variable for the root of all try blocks
-  currException {.rtlThreadVar.}: ref E_Base
-
-when defined(nimRequiresNimFrame):
-  proc nimFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} =
-    s.prev = framePtr
-    framePtr = s
-else:
-  proc pushFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} =
-    # XXX only for backwards compatibility
-    s.prev = framePtr
-    framePtr = s
+  currException {.threadvar.}: ref E_Base
 
 proc popFrame {.compilerRtl, inl.} =
   framePtr = framePtr.prev
@@ -280,6 +270,23 @@ proc getStackTrace(e: ref E_Base): string =
   else:
     result = ""
 
+when defined(nimRequiresNimFrame):
+  proc stackOverflow() {.noinline.} =
+    writeStackTrace()
+    showErrorMessage("Stack overflow\n")
+    quitOrDebug()
+
+  proc nimFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} =
+    s.calldepth = if framePtr == nil: 0 else: framePtr.calldepth+1
+    s.prev = framePtr
+    framePtr = s
+    if s.calldepth == 2000: stackOverflow()
+else:
+  proc pushFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} =
+    # XXX only for backwards compatibility
+    s.prev = framePtr
+    framePtr = s
+
 when defined(endb):
   var
     dbgAborting: bool # whether the debugger wants to abort
@@ -300,7 +307,7 @@ when not defined(noSignalHandler):
         action("SIGBUS: Illegal storage access. (Attempt to read from nil?)\n")
       else:
         block platformSpecificSignal:
-          when defined(SIGPIPE):
+          when declared(SIGPIPE):
             if s == SIGPIPE:
               action("SIGPIPE: Pipe closed.\n")
               break platformSpecificSignal
@@ -329,7 +336,7 @@ when not defined(noSignalHandler):
     c_signal(SIGFPE, signalHandler)
     c_signal(SIGILL, signalHandler)
     c_signal(SIGBUS, signalHandler)
-    when defined(SIGPIPE):
+    when declared(SIGPIPE):
       c_signal(SIGPIPE, signalHandler)
 
   registerSignalHandler() # call it in initialization section

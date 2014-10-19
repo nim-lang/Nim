@@ -19,7 +19,7 @@
 import
   macros
 
-when defined(stdout):
+when declared(stdout):
   import os
 
 when not defined(ECMAScript):
@@ -99,7 +99,7 @@ template fail* =
   when not defined(ECMAScript):
     if AbortOnError: quit(1)
  
-  when defined(TestStatusIMPL):
+  when declared(TestStatusIMPL):
     TestStatusIMPL = FAILED
   else:
     program_result += 1
@@ -188,7 +188,7 @@ macro expect*(exceptions: varargs[expr], body: stmt): stmt {.immediate.} =
   result = getAst(expectBody(errorTypes, exp.lineinfo, body))
 
 
-when defined(stdout):
+when declared(stdout):
   ## Reading settings
   var envOutLvl = os.getEnv("NIMTEST_OUTPUT_LVL").string
 

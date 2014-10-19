@@ -16,7 +16,7 @@ import ast except getstr
 
 import
   strutils, astalgo, msgs, vmdef, vmgen, nimsets, types, passes, unsigned,
-  parser, vmdeps, idents, trees, renderer, options, transf
+  parser, vmdeps, idents, trees, renderer, options, transf, parseutils
 
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
@@ -87,9 +87,7 @@ proc bailOut(c: PCtx; tos: PStackFrame) =
 when not defined(nimComputedGoto):
   {.pragma: computedGoto.}
 
-proc myreset(n: var TFullReg) =
-  when defined(system.reset): 
-    reset(n)
+proc myreset(n: var TFullReg) = reset(n)
 
 template ensureKind(k: expr) {.immediate, dirty.} =
   if regs[ra].kind != k:
@@ -776,6 +774,18 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       createStr regs[ra]
       regs[ra].node.strVal = substr(regs[rb].node.strVal, 
                                     regs[rc].intVal.int, regs[rd].intVal.int)
+    of opcParseFloat:
+      decodeBC(rkInt)
+      inc pc
+      assert c.code[pc].opcode == opcParseFloat
+      let rd = c.code[pc].regA
+      var rcAddr = addr(regs[rc])
+      if rcAddr.kind == rkRegisterAddr: rcAddr = rcAddr.regAddr
+      elif regs[rc].kind != rkFloat:
+        myreset(regs[rc])
+        regs[rc].kind = rkFloat
+      regs[ra].intVal = parseBiggestFloat(regs[rb].node.strVal,
+                                          rcAddr.floatVal, regs[rd].intVal.int)
     of opcRangeChck:
       let rb = instr.regB
       let rc = instr.regC
@@ -1068,6 +1078,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNKind:
       decodeB(rkInt)
       regs[ra].intVal = ord(regs[rb].node.kind)
+      c.comesFromHeuristic = regs[rb].node.info
     of opcNIntVal:
       decodeB(rkInt)
       let a = regs[rb].node
@@ -1243,8 +1254,16 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         internalError(c.debug[pc],
           "request to create a NimNode of invalid kind")
       let cc = regs[rc].node
+
       regs[ra].node = newNodeI(TNodeKind(int(k)),
-        if cc.kind == nkNilLit: c.debug[pc] else: cc.info)
+        if cc.kind != nkNilLit:
+          cc.info
+        elif c.comesFromHeuristic.line > -1:
+          c.comesFromHeuristic
+        elif c.callsite != nil and c.callsite.safeLen > 1:
+          c.callsite[1].info
+        else:
+          c.debug[pc])
       regs[ra].node.flags.incl nfIsRef
     of opcNCopyNimNode:
       decodeB(rkNode)

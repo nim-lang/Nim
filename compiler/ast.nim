@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -263,7 +263,7 @@ type
     sfNamedParamCall, # symbol needs named parameter call syntax in target
                       # language; for interfacing with Objective C
     sfDiscardable,    # returned value may be discarded implicitly
-    sfDestructor,     # proc is destructor
+    sfOverriden,      # proc is overriden
     sfGenSym          # symbol is 'gensym'ed; do not add to symbol table
 
   TSymFlags* = set[TSymFlag]
@@ -291,6 +291,8 @@ const
 
   sfNoRoot* = sfBorrow # a local variable is provably no root so it doesn't
                        # require RC ops
+  sfCompileToCpp* = sfInfixCall       # compile the module as C++ code
+  sfCompileToObjc* = sfNamedParamCall # compile the module as Objective-C code
 
 const
   # getting ready for the future expr/stmt merge
@@ -417,6 +419,7 @@ type
                 # efficiency
     nfTransf,   # node has been transformed
     nfSem       # node has been checked for semantics
+    nfLL        # node has gone through lambda lifting
     nfDotField  # the call can use a dot operator
     nfDotSetter # the call can use a setter dot operarator
     nfExplicitCall # x.y() was used instead of x.y
@@ -475,7 +478,7 @@ type
                           # and first phase symbol lookup in generics
     skConditional,        # symbol for the preprocessor (may become obsolete)
     skDynLib,             # symbol represents a dynamic library; this is used
-                          # internally; it does not exist in Nimrod code
+                          # internally; it does not exist in Nim code
     skParam,              # a parameter
     skGenericParam,       # a generic parameter; eq in ``proc x[eq=`==`]()``
     skTemp,               # a temporary variable (introduced by compiler)
@@ -500,7 +503,8 @@ type
     skStub,               # symbol is a stub and not yet loaded from the ROD
                           # file (it is loaded on demand, which may
                           # mean: never)
-    skPackage             # symbol is a package (used for canonicalization)
+    skPackage,            # symbol is a package (used for canonicalization)
+    skAlias               # an alias (needs to be resolved immediately)
   TSymKinds* = set[TSymKind]
 
 const
@@ -552,7 +556,7 @@ type
     mInRange, mInSet, mRepr, mExit, mSetLengthStr, mSetLengthSeq,
     mIsPartOf, mAstToStr, mParallel,
     mSwap, mIsNil, mArrToSeq, mCopyStr, mCopyStrLast,
-    mNewString, mNewStringOfCap,
+    mNewString, mNewStringOfCap, mParseBiggestFloat,
     mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
     mOrdinal,
@@ -677,7 +681,7 @@ type
     heapRoot*: PRope          # keeps track of the enclosing heap object that
                               # owns this location (required by GC algorithms
                               # employing heap snapshots or sliding views)
-    a*: int                   # location's "address", i.e. slot for temporaries
+    a*: int
 
   # ---------------- end of backend information ------------------------------
 
@@ -730,8 +734,9 @@ type
       # check for the owner when touching 'usedGenerics'.
       usedGenerics*: seq[PInstantiation]
       tab*: TStrTable         # interface table for modules
+    of skLet, skVar, skField:
+      guard*: PSym
     else: nil
-
     magic*: TMagic
     typ*: PType
     name*: PIdent
@@ -784,12 +789,13 @@ type
                               # the body of the user-defined type class
                               # formal param list
                               # else: unused
-    destructor*: PSym         # destructor. warning: nil here may not necessary
-                              # mean that there is no destructor.
-                              # see instantiateDestructor in types.nim
     owner*: PSym              # the 'owner' of the type
     sym*: PSym                # types have the sym associated with them
                               # it is used for converting types to strings
+    destructor*: PSym         # destructor. warning: nil here may not necessary
+                              # mean that there is no destructor.
+                              # see instantiateDestructor in semdestruct.nim
+    deepCopy*: PSym           # overriden 'deepCopy' operation
     size*: BiggestInt         # the size of the type in bytes
                               # -1 means that the size is unkwown
     align*: int               # the type's alignment requirements
@@ -870,7 +876,7 @@ const
     tyProc, tyString, tyError}
   ExportableSymKinds* = {skVar, skConst, skProc, skMethod, skType,
     skIterator, skClosureIterator,
-    skMacro, skTemplate, skConverter, skEnumField, skLet, skStub}
+    skMacro, skTemplate, skConverter, skEnumField, skLet, skStub, skAlias}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
                                       nfDotSetter, nfDotField,
                                       nfIsRef}
@@ -1160,7 +1166,6 @@ proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
   result.sons = @[name, pattern, genericParams, params,
                   pragmas, exceptions, body]
 
-
 proc newType(kind: TTypeKind, owner: PSym): PType = 
   new(result)
   result.kind = kind
@@ -1170,8 +1175,8 @@ proc newType(kind: TTypeKind, owner: PSym): PType =
   result.id = getID()
   when debugIds:
     registerId(result)
-  #if result.id < 2000 then
-  #  MessageOut(typeKindToStr[kind] & ' has id: ' & toString(result.id))
+  #if result.id < 2000:
+  #  messageOut(typeKindToStr[kind] & ' has id: ' & toString(result.id))
   
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(a.k): a.k = b.k
@@ -1189,6 +1194,7 @@ proc assignType(dest, src: PType) =
   dest.size = src.size
   dest.align = src.align
   dest.destructor = src.destructor
+  dest.deepCopy = src.deepCopy
   # this fixes 'type TLock = TSysLock':
   if src.sym != nil:
     if dest.sym != nil:
@@ -1226,6 +1232,8 @@ proc copySym(s: PSym, keepId: bool = false): PSym =
   result.position = s.position
   result.loc = s.loc
   result.annex = s.annex      # BUGFIX
+  if result.kind in {skVar, skLet, skField}:
+    result.guard = s.guard
 
 proc createModuleAlias*(s: PSym, newIdent: PIdent, info: TLineInfo): PSym =
   result = newSym(s.kind, newIdent, s.owner, info)
@@ -1310,6 +1318,10 @@ proc newSons(father: PNode, length: int) =
     setLen(father.sons, length)
 
 proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
+  ## Used throughout the compiler code to test whether a type tree contains or
+  ## doesn't contain a specific type/types - it is often the case that only the
+  ## last child nodes of a type tree need to be searched. This is a really hot
+  ## path within the compiler!
   result = t
   while result.kind in kinds: result = lastSon(result)
 
@@ -1505,7 +1517,7 @@ proc isGenericRoutine*(s: PSym): bool =
 proc skipGenericOwner*(s: PSym): PSym =
   internalAssert s.kind in skProcKinds
   ## Generic instantiations are owned by their originating generic
-  ## symbol. This proc skips such owners and goes straigh to the owner
+  ## symbol. This proc skips such owners and goes straight to the owner
   ## of the generic itself (the module or the enclosing proc).
   result = if sfFromGeneric in s.flags: s.owner.owner
            else: s.owner

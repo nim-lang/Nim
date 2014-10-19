@@ -131,7 +131,7 @@ proc `[]=`*[T](c: var TCritBitTree[T], key: string, val: T) =
   var n = rawInsert(c, key)
   n.val = val
 
-proc `[]`*[T](c: var TCritBitTree[T], key: string): T {.inline.} =
+proc `[]`*[T](c: TCritBitTree[T], key: string): T {.inline.} =
   ## retrieves the value at ``c[key]``. If `key` is not in `t`,
   ## default empty value for the type `B` is returned
   ## and no exception is raised. One can check with ``hasKey`` whether the key

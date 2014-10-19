@@ -21,6 +21,7 @@ type
     nimrodArgs: string
     gitCommit: string
     quotations: TTable[string, tuple[quote, author: string]]
+    numProcessors: int # Set by parallelBuild:n, only works for values > 0.
   TRssItem = object
     year, month, day, title: string
 
@@ -42,6 +43,7 @@ proc initConfigData(c: var TConfigData) =
   c.ticker = ""
   c.vars = newStringTable(modeStyleInsensitive)
   c.gitCommit = "master"
+  c.numProcessors = countProcessors()
   # Attempts to obtain the git current commit.
   let (output, code) = execCmdEx("git log -n 1 --format=%H")
   if code == 0 and output.strip.len == 40:
@@ -121,6 +123,12 @@ proc parseCmdLine(c: var TConfigData) =
         stdout.write(Version & "\n")
         quit(0)
       of "o", "output": c.outdir = val
+      of "parallelbuild":
+        try:
+          let num = parseInt(val)
+          if num != 0: c.numProcessors = num
+        except EInvalidValue:
+          quit("invalid numeric value for --parallelBuild")
       of "var":
         var idx = val.find('=')
         if idx < 0: quit("invalid command line")
@@ -187,6 +195,12 @@ proc parseIniFile(c: var TConfigData) =
           of "srcdoc": addFiles(c.srcdoc, "lib", ".nim", split(v, {';'}))
           of "srcdoc2": addFiles(c.srcdoc2, "lib", ".nim", split(v, {';'}))
           of "webdoc": addFiles(c.webdoc, "lib", ".nim", split(v, {';'}))
+          of "parallelbuild":
+            try:
+              let num = parseInt(v)
+              if num != 0: c.numProcessors = num
+            except EInvalidValue:
+              quit("invalid numeric value for --parallelBuild in config")
           else: quit(errorStr(p, "unknown variable: " & k.key))
         of "quotations":
           let vSplit = v.split('-')
@@ -215,6 +229,20 @@ proc exec(cmd: string) =
   echo(cmd)
   if os.execShellCmd(cmd) != 0: quit("external program failed")
 
+proc sexec(cmds: openarray[string]) =
+  ## Serial queue wrapper around exec.
+  for cmd in cmds: exec(cmd)
+
+proc mexec(cmds: openarray[string], processors: int) =
+  ## Multiprocessor version of exec
+  if processors < 2:
+    sexec(cmds)
+    return
+
+  if execProcesses(cmds, {poStdErrToStdOut, poParentStreams, poEchoCmd}) != 0:
+    echo "external program failed, retrying serial work queue for logs!"
+    sexec(cmds)
+
 proc buildDocSamples(c: var TConfigData, destPath: string) =
   ## Special case documentation sample proc.
   ##
@@ -229,18 +257,26 @@ proc buildDocSamples(c: var TConfigData, destPath: string) =
 
 proc buildDoc(c: var TConfigData, destPath: string) =
   # call nim for the documentation:
+  var
+    commands = newSeq[string](len(c.doc) + len(c.srcdoc) + len(c.srcdoc2))
+    i = 0
   for d in items(c.doc):
-    exec("nimrod rst2html $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
+    commands[i] = "nimrod rst2html $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
       [c.nimrodArgs, c.gitCommit,
-      destPath / changeFileExt(splitFile(d).name, "html"), d])
+      destPath / changeFileExt(splitFile(d).name, "html"), d]
+    i.inc
   for d in items(c.srcdoc):
-    exec("nimrod doc $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
+    commands[i] = "nimrod doc $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
       [c.nimrodArgs, c.gitCommit,
-      destPath / changeFileExt(splitFile(d).name, "html"), d])
+      destPath / changeFileExt(splitFile(d).name, "html"), d]
+    i.inc
   for d in items(c.srcdoc2):
-    exec("nimrod doc2 $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
+    commands[i] = "nimrod doc2 $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
       [c.nimrodArgs, c.gitCommit,
-      destPath / changeFileExt(splitFile(d).name, "html"), d])
+      destPath / changeFileExt(splitFile(d).name, "html"), d]
+    i.inc
+
+  mexec(commands, c.numProcessors)
   exec("nimrod buildIndex -o:$1/theindex.html $1" % [destPath])
 
 proc buildPdfDoc(c: var TConfigData, destPath: string) =
@@ -253,8 +289,10 @@ proc buildPdfDoc(c: var TConfigData, destPath: string) =
       exec("pdflatex " & changeFileExt(d, "tex"))
       exec("pdflatex " & changeFileExt(d, "tex"))
       # delete all the crappy temporary files:
-      var pdf = splitFile(d).name & ".pdf"
-      moveFile(dest=destPath / pdf, source=pdf)
+      let pdf = splitFile(d).name & ".pdf"
+      let dest = destPath / pdf
+      removeFile(dest)
+      moveFile(dest=dest, source=pdf)
       removeFile(changeFileExt(pdf, "aux"))
       if existsFile(changeFileExt(pdf, "toc")):
         removeFile(changeFileExt(pdf, "toc"))
@@ -264,10 +302,12 @@ proc buildPdfDoc(c: var TConfigData, destPath: string) =
 
 proc buildAddDoc(c: var TConfigData, destPath: string) =
   # build additional documentation (without the index):
-  for d in items(c.webdoc):
-    exec("nimrod doc $# --docSeeSrcUrl:$# -o:$# $#" %
+  var commands = newSeq[string](c.webdoc.len)
+  for i, doc in pairs(c.webdoc):
+    commands[i] = "nimrod doc $# --docSeeSrcUrl:$# -o:$# $#" %
       [c.nimrodArgs, c.gitCommit,
-      destPath / changeFileExt(splitFile(d).name, "html"), d])
+      destPath / changeFileExt(splitFile(doc).name, "html"), doc]
+  mexec(commands, c.numProcessors)
 
 proc parseNewsTitles(inputFilename: string): seq[TRssItem] =
   # parses the file for titles and returns them as TRssItem blocks.
@@ -394,4 +434,7 @@ var c: TConfigData
 initConfigData(c)
 parseCmdLine(c)
 parseIniFile(c)
-main(c)
+when false:
+  buildPdfDoc(c, "doc")
+else:
+  main(c)

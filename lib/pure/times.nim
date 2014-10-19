@@ -63,44 +63,44 @@ elif defined(windows):
 elif defined(JS):
   type
     TTime* {.final, importc.} = object
-      getDay: proc (): int {.tags: [], raises: [].}
-      getFullYear: proc (): int {.tags: [], raises: [].}
-      getHours: proc (): int {.tags: [], raises: [].}
-      getMilliseconds: proc (): int {.tags: [], raises: [].}
-      getMinutes: proc (): int {.tags: [], raises: [].}
-      getMonth: proc (): int {.tags: [], raises: [].}
-      getSeconds: proc (): int {.tags: [], raises: [].}
-      getTime: proc (): int {.tags: [], raises: [].}
-      getTimezoneOffset: proc (): int {.tags: [], raises: [].}
-      getDate: proc (): int {.tags: [], raises: [].}
-      getUTCDate: proc (): int {.tags: [], raises: [].}
-      getUTCFullYear: proc (): int {.tags: [], raises: [].}
-      getUTCHours: proc (): int {.tags: [], raises: [].}
-      getUTCMilliseconds: proc (): int {.tags: [], raises: [].}
-      getUTCMinutes: proc (): int {.tags: [], raises: [].}
-      getUTCMonth: proc (): int {.tags: [], raises: [].}
-      getUTCSeconds: proc (): int {.tags: [], raises: [].}
-      getUTCDay: proc (): int {.tags: [], raises: [].}
-      getYear: proc (): int {.tags: [], raises: [].}
-      parse: proc (s: cstring): TTime {.tags: [], raises: [].}
-      setDate: proc (x: int) {.tags: [], raises: [].}
-      setFullYear: proc (x: int) {.tags: [], raises: [].}
-      setHours: proc (x: int) {.tags: [], raises: [].}
-      setMilliseconds: proc (x: int) {.tags: [], raises: [].}
-      setMinutes: proc (x: int) {.tags: [], raises: [].}
-      setMonth: proc (x: int) {.tags: [], raises: [].}
-      setSeconds: proc (x: int) {.tags: [], raises: [].}
-      setTime: proc (x: int) {.tags: [], raises: [].}
-      setUTCDate: proc (x: int) {.tags: [], raises: [].}
-      setUTCFullYear: proc (x: int) {.tags: [], raises: [].}
-      setUTCHours: proc (x: int) {.tags: [], raises: [].}
-      setUTCMilliseconds: proc (x: int) {.tags: [], raises: [].}
-      setUTCMinutes: proc (x: int) {.tags: [], raises: [].}
-      setUTCMonth: proc (x: int) {.tags: [], raises: [].}
-      setUTCSeconds: proc (x: int) {.tags: [], raises: [].}
-      setYear: proc (x: int) {.tags: [], raises: [].}
-      toGMTString: proc (): cstring {.tags: [], raises: [].}
-      toLocaleString: proc (): cstring {.tags: [], raises: [].}
+      getDay: proc (): int {.tags: [], raises: [], gcsafe.}
+      getFullYear: proc (): int {.tags: [], raises: [], gcsafe.}
+      getHours: proc (): int {.tags: [], raises: [], gcsafe.}
+      getMilliseconds: proc (): int {.tags: [], raises: [], gcsafe.}
+      getMinutes: proc (): int {.tags: [], raises: [], gcsafe.}
+      getMonth: proc (): int {.tags: [], raises: [], gcsafe.}
+      getSeconds: proc (): int {.tags: [], raises: [], gcsafe.}
+      getTime: proc (): int {.tags: [], raises: [], gcsafe.}
+      getTimezoneOffset: proc (): int {.tags: [], raises: [], gcsafe.}
+      getDate: proc (): int {.tags: [], raises: [], gcsafe.}
+      getUTCDate: proc (): int {.tags: [], raises: [], gcsafe.}
+      getUTCFullYear: proc (): int {.tags: [], raises: [], gcsafe.}
+      getUTCHours: proc (): int {.tags: [], raises: [], gcsafe.}
+      getUTCMilliseconds: proc (): int {.tags: [], raises: [], gcsafe.}
+      getUTCMinutes: proc (): int {.tags: [], raises: [], gcsafe.}
+      getUTCMonth: proc (): int {.tags: [], raises: [], gcsafe.}
+      getUTCSeconds: proc (): int {.tags: [], raises: [], gcsafe.}
+      getUTCDay: proc (): int {.tags: [], raises: [], gcsafe.}
+      getYear: proc (): int {.tags: [], raises: [], gcsafe.}
+      parse: proc (s: cstring): TTime {.tags: [], raises: [], gcsafe.}
+      setDate: proc (x: int) {.tags: [], raises: [], gcsafe.}
+      setFullYear: proc (x: int) {.tags: [], raises: [], gcsafe.}
+      setHours: proc (x: int) {.tags: [], raises: [], gcsafe.}
+      setMilliseconds: proc (x: int) {.tags: [], raises: [], gcsafe.}
+      setMinutes: proc (x: int) {.tags: [], raises: [], gcsafe.}
+      setMonth: proc (x: int) {.tags: [], raises: [], gcsafe.}
+      setSeconds: proc (x: int) {.tags: [], raises: [], gcsafe.}
+      setTime: proc (x: int) {.tags: [], raises: [], gcsafe.}
+      setUTCDate: proc (x: int) {.tags: [], raises: [], gcsafe.}
+      setUTCFullYear: proc (x: int) {.tags: [], raises: [], gcsafe.}
+      setUTCHours: proc (x: int) {.tags: [], raises: [], gcsafe.}
+      setUTCMilliseconds: proc (x: int) {.tags: [], raises: [], gcsafe.}
+      setUTCMinutes: proc (x: int) {.tags: [], raises: [], gcsafe.}
+      setUTCMonth: proc (x: int) {.tags: [], raises: [], gcsafe.}
+      setUTCSeconds: proc (x: int) {.tags: [], raises: [], gcsafe.}
+      setYear: proc (x: int) {.tags: [], raises: [], gcsafe.}
+      toGMTString: proc (): cstring {.tags: [], raises: [], gcsafe.}
+      toLocaleString: proc (): cstring {.tags: [], raises: [], gcsafe.}
 
 type
   TTimeInfo* = object of TObject ## represents a time in different parts
@@ -513,7 +513,7 @@ elif defined(JS):
     result.setFullYear(timeInfo.year)
     result.setDate(timeInfo.monthday)
   
-  proc `$`(timeInfo: TTimeInfo): string = return $(TimeInfoToTIme(timeInfo))
+  proc `$`(timeInfo: TTimeInfo): string = return $(timeInfoToTime(timeInfo))
   proc `$`(time: TTime): string = return $time.toLocaleString()
     
   proc `-` (a, b: TTime): int64 = 

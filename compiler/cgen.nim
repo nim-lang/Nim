@@ -13,7 +13,7 @@ import
   ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp,
   options, intsets,
   nversion, nimsets, msgs, crc, bitsets, idents, lists, types, ccgutils, os,
-  times, ropes, math, passes, rodread, wordrecg, treetab, cgmeth,
+  times, ropes, math, passes, rodread, wordrecg, treetab, cgmeth, condsyms,
   rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases, lowerings,
   semparallel
 
@@ -295,6 +295,7 @@ proc postStmtActions(p: BProc) {.inline.} =
 
 proc accessThreadLocalVar(p: BProc, s: PSym)
 proc emulatedThreadVars(): bool {.inline.}
+proc genProc(m: BModule, prc: PSym)
 
 include "ccgtypes.nim"
 
@@ -398,7 +399,7 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
     if not immediateAsgn:
       constructLoc(p, v.loc)
 
-proc getTemp(p: BProc, t: PType, result: var TLoc) = 
+proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) = 
   inc(p.labels)
   if gCmd == cmdCompileToLLVM: 
     result.r = con("%LOC", toRope(p.labels))
@@ -410,7 +411,7 @@ proc getTemp(p: BProc, t: PType, result: var TLoc) =
   result.t = getUniqueType(t)
   result.s = OnStack
   result.flags = {}
-  constructLoc(p, result, isTemp=true)
+  constructLoc(p, result, not needsInit)
 
 proc keepAlive(p: BProc, toKeepAlive: TLoc) =
   when false:
@@ -574,7 +575,6 @@ proc fixLabel(p: BProc, labl: TLabel) =
 
 proc genVarPrototype(m: BModule, sym: PSym)
 proc requestConstImpl(p: BProc, sym: PSym)
-proc genProc(m: BModule, prc: PSym)
 proc genStmts(p: BProc, t: PNode)
 proc expr(p: BProc, n: PNode, d: var TLoc)
 proc genProcPrototype(m: BModule, sym: PSym)
@@ -949,13 +949,23 @@ proc genFilenames(m: BModule): PRope =
 
 proc genMainProc(m: BModule) =
   const 
+    # The use of a volatile function pointer to call Pre/NimMainInner
+    # prevents inlining of the NimMainInner function and dependent
+    # functions, which might otherwise merge their stack frames.
     PreMainBody =
-      "\tsystemDatInit();$N" &
+      "void PreMainInner() {$N" &
       "\tsystemInit();$N" &
       "$1" &
       "$2" &
       "$3" &
-      "$4"
+      "}$N$N" &
+      "void PreMain() {$N" &
+      "\tvoid (*volatile inner)();$N" &
+      "\tsystemDatInit();$N" &
+      "\tinner = PreMainInner;$N" &
+      "$4" &
+      "\t(*inner)();$N" &
+      "}$N$N"
 
     MainProcs =
       "\tNimMain();$N"
@@ -964,9 +974,15 @@ proc genMainProc(m: BModule) =
       MainProcs & "\treturn nim_program_result;$N"
 
     NimMainBody =
-      "N_CDECL(void, NimMain)(void) {$N" &
-        "\tPreMain();$N" &
+      "N_CDECL(void, NimMainInner)(void) {$N" &
         "$1" &
+      "}$N$N" &
+      "N_CDECL(void, NimMain)(void) {$N" &
+        "\tvoid (*volatile inner)();$N" &
+        "\tPreMain();$N" &
+        "\tinner = NimMainInner;$N" &
+        "$2" &
+        "\t(*inner)();$N" &
       "}$N$N"
 
     PosixNimMain =
@@ -1034,14 +1050,15 @@ proc genMainProc(m: BModule) =
   if optEndb in gOptions:
     gBreakpoints.app(m.genFilenames)
   
-  let initStackBottomCall = if emulatedThreadVars() or
-                              platform.targetOS == osStandalone: "".toRope
-                            else: ropecg(m, "\t#initStackBottom();$N")
+  let initStackBottomCall =
+    if emulatedThreadVars() or
+      platform.targetOS == osStandalone: "".toRope
+    else: ropecg(m, "\t#initStackBottomWith((void *)&inner);$N")
   inc(m.labels)
-  appcg(m, m.s[cfsProcs], "void PreMain() {$N" & PreMainBody & "}$N$N", [
-    mainDatInit, initStackBottomCall, gBreakpoints, otherModsInit])
+  appcg(m, m.s[cfsProcs], PreMainBody, [
+    mainDatInit, gBreakpoints, otherModsInit, initStackBottomCall])
 
-  appcg(m, m.s[cfsProcs], nimMain, [mainModInit, toRope(m.labels)])
+  appcg(m, m.s[cfsProcs], nimMain, [mainModInit, initStackBottomCall, toRope(m.labels)])
   if optNoMain notin gGlobalOptions:
     appcg(m, m.s[cfsProcs], otherMain, [])
 

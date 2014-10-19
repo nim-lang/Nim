@@ -39,7 +39,7 @@ var
   c_stderr {.importc: "stderr", nodecl.}: C_TextFileStar
 
 # constants faked as variables:
-when not defined(SIGINT):
+when not declared(SIGINT):
   when NoFakeVars:
     when defined(windows):
       const
@@ -78,10 +78,23 @@ when defined(macosx):
 else:
   template SIGBUS: expr = SIGSEGV
 
-proc c_longjmp(jmpb: C_JmpBuf, retval: cint) {.
-  header: "<setjmp.h>", importc: "longjmp".}
-proc c_setjmp(jmpb: C_JmpBuf): cint {.
-  header: "<setjmp.h>", importc: "setjmp".}
+when defined(nimSigSetjmp) and not defined(nimStdSetjmp):
+  proc c_longjmp(jmpb: C_JmpBuf, retval: cint) {.
+    header: "<setjmp.h>", importc: "siglongjmp".}
+  template c_setjmp(jmpb: C_JmpBuf): cint =
+    proc c_sigsetjmp(jmpb: C_JmpBuf, savemask: cint): cint {.
+      header: "<setjmp.h>", importc: "sigsetjmp".}
+    c_sigsetjmp(jmpb, 0)
+elif defined(nimRawSetjmp) and not defined(nimStdSetjmp):
+  proc c_longjmp(jmpb: C_JmpBuf, retval: cint) {.
+    header: "<setjmp.h>", importc: "_longjmp".}
+  proc c_setjmp(jmpb: C_JmpBuf): cint {.
+    header: "<setjmp.h>", importc: "_setjmp".}
+else:
+  proc c_longjmp(jmpb: C_JmpBuf, retval: cint) {.
+    header: "<setjmp.h>", importc: "longjmp".}
+  proc c_setjmp(jmpb: C_JmpBuf): cint {.
+    header: "<setjmp.h>", importc: "setjmp".}
 
 proc c_signal(sig: cint, handler: proc (a: cint) {.noconv.}) {.
   importc: "signal", header: "<signal.h>".}
@@ -106,7 +119,7 @@ proc c_fopen(filename, mode: cstring): C_TextFileStar {.
   importc: "fopen", header: "<stdio.h>".}
 proc c_fclose(f: C_TextFileStar) {.importc: "fclose", header: "<stdio.h>".}
 
-proc c_sprintf(buf, frmt: cstring) {.header: "<stdio.h>", 
+proc c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>", 
   importc: "sprintf", varargs, noSideEffect.}
   # we use it only in a way that cannot lead to security issues
 
@@ -132,7 +145,7 @@ proc c_realloc(p: pointer, newsize: int): pointer {.
   importc: "realloc", header: "<stdlib.h>".}
 
 when hostOS != "standalone":
-  when not defined(errno):
+  when not declared(errno):
     when defined(NimrodVM):
       var vmErrnoWrapper {.importc.}: ptr cint
       template errno: expr = 

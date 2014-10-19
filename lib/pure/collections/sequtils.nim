@@ -186,7 +186,7 @@ proc keepIf*[T](seq1: var seq[T], pred: proc(item: T): bool {.closure.}) =
   ##
   ## .. code-block:: nimrod
   ##   var floats = @[13.0, 12.5, 5.8, 2.0, 6.1, 9.9, 10.1]
-  ##   filter(floats, proc(x: float): bool = x > 10)
+  ##   keepIf(floats, proc(x: float): bool = x > 10)
   ##   assert floats == @[13.0, 12.5, 10.1]
   var pos = 0
   for i in 0 .. <len(seq1):
@@ -388,6 +388,7 @@ template mapIt*(seq1, typ, pred: expr): expr =
   ##   let
   ##     nums = @[1, 2, 3, 4]
   ##     strings = nums.mapIt(string, $(4 * it))
+  ##   assert strings == @["4", "8", "12", "16"]
   var result {.gensym.}: seq[typ] = @[]
   for it {.inject.} in items(seq1):
     result.add(pred)
@@ -407,6 +408,23 @@ template mapIt*(varSeq, pred: expr) =
   for i in 0 .. <len(varSeq):
     let it {.inject.} = varSeq[i]
     varSeq[i] = pred
+
+template newSeqWith*(len: int, init: expr): expr =
+  ## creates a new sequence, calling `init` to initialize each value. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var seq2D = newSeqWith(20, newSeq[bool](10))
+  ##   seq2D[0][0] = true
+  ##   seq2D[1][0] = true
+  ##   seq2D[0][1] = true
+  ##
+  ##   import math
+  ##   var seqRand = newSeqWith(20, random(10))
+  ##   echo seqRand
+  var result {.gensym.} = newSeq[type(init)](len)
+  for i in 0 .. <len:
+    result[i] = init
+  result
 
 when isMainModule:
   import strutils
@@ -555,5 +573,12 @@ when isMainModule:
     for f in 1 .. 25: b.add(f)
     doAssert b.distribute(5, true)[4].len == 5
     doAssert b.distribute(5, false)[4].len == 2
+
+  block: # newSeqWith tests
+    var seq2D = newSeqWith(4, newSeq[bool](2))
+    seq2D[0][0] = true
+    seq2D[1][0] = true
+    seq2D[0][1] = true
+    doAssert seq2D == @[@[true, true], @[true, false], @[false, false], @[false, false]]
 
   echo "Finished doc tests"

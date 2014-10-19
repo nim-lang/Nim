@@ -16,7 +16,7 @@ import
   procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, pretty, semmacrosanity,
-  semparallel
+  semparallel, lowerings
 
 # implementation
 

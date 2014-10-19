@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Atomic operations for Nimrod.
+# Atomic operations for Nimrod.
 {.push stackTrace:off.}
 
 const someGcc = defined(gcc) or defined(llvm_gcc) or defined(clang)
@@ -174,7 +174,7 @@ proc atomicInc*(memLoc: var int, x: int = 1): int =
   
 proc atomicDec*(memLoc: var int, x: int = 1): int =
   when defined(gcc) and hasThreadSupport:
-    when defined(atomic_sub_fetch):
+    when declared(atomic_sub_fetch):
       result = atomic_sub_fetch(memLoc.addr, x, ATOMIC_RELAXED)
     else:
       result = atomic_add_fetch(memLoc.addr, -x, ATOMIC_RELAXED)
@@ -201,14 +201,14 @@ when (defined(x86) or defined(amd64)) and (defined(gcc) or defined(llvm_gcc)):
     {.emit: """asm volatile("pause" ::: "memory");""".}
 elif (defined(x86) or defined(amd64)) and defined(vcc):
   proc cpuRelax {.importc: "YieldProcessor", header: "<windows.h>".}
-elif defined(intelc):
+elif defined(icl):
   proc cpuRelax {.importc: "_mm_pause", header: "xmmintrin.h".}
 elif false:
   from os import sleep
 
   proc cpuRelax {.inline.} = os.sleep(1)
 
-when not defined(fence) and hasThreadSupport:
+when not declared(fence) and hasThreadSupport:
   # XXX fixme
   proc fence*() {.inline.} =
     var dummy: bool

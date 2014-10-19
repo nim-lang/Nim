@@ -58,8 +58,6 @@ Currently, the following C compilers are supported under Windows:
   | http://www.mingw.org/download.shtml
 - | LLVM with Clang or GNU C/C++ frontend
   | http://llvm.org/releases/download.html
-- | Digital Mars C++
-  | http://www.digitalmars.com/download/freecompiler.html
 
 However, most testing is done with GCC.
 

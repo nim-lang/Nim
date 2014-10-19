@@ -43,18 +43,19 @@ type
 proc debugInfo(info: TLineInfo): string =
   result = info.toFilename.splitFile.name & ":" & $info.line
 
-proc codeListing(c: PCtx, result: var string, start=0) =
+proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
   # first iteration: compute all necessary labels:
   var jumpTargets = initIntSet()
   
-  for i in start.. < c.code.len:
+  let last = if last < 0: c.code.len-1 else: min(last, c.code.len-1)
+  for i in start..last:
     let x = c.code[i]
     if x.opcode in relativeJumps:
       jumpTargets.incl(i+x.regBx-wordExcess)
 
   # for debugging purposes
   var i = start
-  while i < c.code.len:
+  while i <= last:
     if i in jumpTargets: result.addf("L$1:\n", i)
     let x = c.code[i]
 
@@ -82,9 +83,9 @@ proc codeListing(c: PCtx, result: var string, start=0) =
     result.add("\n")
     inc i
 
-proc echoCode*(c: PCtx, start=0) {.deprecated.} =
+proc echoCode*(c: PCtx, start=0; last = -1) {.deprecated.} =
   var buf = ""
-  codeListing(c, buf, start)
+  codeListing(c, buf, start, last)
   echo buf
 
 proc gABC(ctx: PCtx; n: PNode; opc: TOpcode; a, b, c: TRegister = 0) =
@@ -495,6 +496,7 @@ proc genCall(c: PCtx; n: PNode; dest: var TDest) =
   c.freeTempRange(x, n.len)
 
 template isGlobal(s: PSym): bool = sfGlobal in s.flags and s.kind != skForVar
+proc isGlobal(n: PNode): bool = n.kind == nkSym and isGlobal(n.sym)
 
 proc needsAsgnPatch(n: PNode): bool = 
   n.kind in {nkBracketExpr, nkDotExpr, nkCheckedFieldExpr,
@@ -637,8 +639,10 @@ proc genBinaryStmt(c: PCtx; n: PNode; opc: TOpcode) =
   c.freeTemp(tmp)
 
 proc genBinaryStmtVar(c: PCtx; n: PNode; opc: TOpcode) =
+  var x = n.sons[1]
+  if x.kind in {nkAddr, nkHiddenAddr}: x = x.sons[0]
   let
-    dest = c.genx(n.sons[1], {gfAddrOf})
+    dest = c.genx(x)
     tmp = c.genx(n.sons[2])
   c.gABC(n, opc, dest, tmp, 0)
   #c.genAsgnPatch(n.sons[1], dest)
@@ -852,6 +856,24 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     c.freeTemp(tmp1)
     c.freeTemp(tmp2)
     c.freeTemp(tmp3)
+  of mParseBiggestFloat:
+    if dest < 0: dest = c.getTemp(n.typ)
+    var d2: TRegister
+    # skip 'nkHiddenAddr':
+    let d2AsNode = n.sons[2].sons[0]
+    if needsAsgnPatch(d2AsNode):
+      d2 = c.getTemp(getSysType(tyFloat))
+    else:
+      d2 = c.genx(d2AsNode)
+    var
+      tmp1 = c.genx(n.sons[1])
+      tmp3 = c.genx(n.sons[3])
+    c.gABC(n, opcParseFloat, dest, tmp1, d2)
+    c.gABC(n, opcParseFloat, tmp3)
+    c.freeTemp(tmp1)
+    c.freeTemp(tmp3)
+    c.genAsgnPatch(d2AsNode, d2)
+    c.freeTemp(d2)    
   of mReset:
     unused(n, dest)
     var d = c.genx(n.sons[1])
@@ -1035,6 +1057,8 @@ proc genAddrDeref(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
   # nkAddr we must not use 'unneededIndirection', but for deref we use it.
   if not isAddr and unneededIndirection(n.sons[0]):
     gen(c, n.sons[0], dest, newflags)
+  elif isAddr and isGlobal(n.sons[0]):
+    gen(c, n.sons[0], dest, flags+{gfAddrOf})
   else:
     let tmp = c.genx(n.sons[0], newflags)
     if dest < 0: dest = c.getTemp(n.typ)
@@ -1075,6 +1099,8 @@ proc setSlot(c: PCtx; v: PSym) =
   # XXX generate type initialization here?
   if v.position == 0:
     if c.prc.maxSlots == 0: c.prc.maxSlots = 1
+    if c.prc.maxSlots >= high(TRegister):
+      internalError(v.info, "cannot generate code; too many registers required")
     v.position = c.prc.maxSlots
     c.prc.slots[v.position] = (inUse: true,
         kind: if v.kind == skLet: slotFixedLet else: slotFixedVar)
@@ -1098,10 +1124,9 @@ proc checkCanEval(c: PCtx; n: PNode) =
   # we need to ensure that we don't evaluate 'x' here:
   # proc foo() = var x ...
   let s = n.sym
-  if s.position == 0:
-    if s.kind in {skVar, skTemp, skLet, skParam, skResult} and 
-        not s.isOwnedBy(c.prc.sym) and s.owner != c.module:
-      cannotEval(n)
+  if s.kind in {skVar, skTemp, skLet, skParam, skResult} and 
+      not s.isOwnedBy(c.prc.sym) and s.owner != c.module:
+    cannotEval(n)
 
 proc isTemp(c: PCtx; dest: TDest): bool =
   result = dest >= 0 and c.prc.slots[dest].kind >= slotTempUnknown
@@ -1228,6 +1253,8 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
       c.gABx(n, opcLdGlobal, cc, s.position)
       c.gABC(n, opcNodeToReg, dest, cc)
       c.freeTemp(cc)
+    elif gfAddrOf in flags:
+      c.gABx(n, opcLdGlobalAddr, dest, s.position)
     else:
       c.gABx(n, opcLdGlobal, dest, s.position)
   else:
