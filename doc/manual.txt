@@ -4384,6 +4384,8 @@ helper distinct or object type has to be used for one pointer type.
 operator `=`
 ------------
 
+**Note**: Overriding the assignment operator has not yet been implemented.
+
 This operator is the assignment operator. Note that in the contexts 
 like ``let v = expr``, ``var v = expr``, ``parameter = defaultValue`` or for
 parameter passing no assignment is performed. The ``override`` pragma is

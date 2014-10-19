@@ -239,7 +239,7 @@ proc mexec(cmds: openarray[string], processors: int) =
     sexec(cmds)
     return
 
-  if 0 != execProcesses(cmds, {poStdErrToStdOut, poParentStreams, poEchoCmd}):
+  if execProcesses(cmds, {poStdErrToStdOut, poParentStreams, poEchoCmd}) != 0:
     echo "external program failed, retrying serial work queue for logs!"
     sexec(cmds)
 
@@ -289,8 +289,10 @@ proc buildPdfDoc(c: var TConfigData, destPath: string) =
       exec("pdflatex " & changeFileExt(d, "tex"))
       exec("pdflatex " & changeFileExt(d, "tex"))
       # delete all the crappy temporary files:
-      var pdf = splitFile(d).name & ".pdf"
-      moveFile(dest=destPath / pdf, source=pdf)
+      let pdf = splitFile(d).name & ".pdf"
+      let dest = destPath / pdf
+      removeFile(dest)
+      moveFile(dest=dest, source=pdf)
       removeFile(changeFileExt(pdf, "aux"))
       if existsFile(changeFileExt(pdf, "toc")):
         removeFile(changeFileExt(pdf, "toc"))
@@ -432,4 +434,7 @@ var c: TConfigData
 initConfigData(c)
 parseCmdLine(c)
 parseIniFile(c)
-main(c)
+when false:
+  buildPdfDoc(c, "doc")
+else:
+  main(c)
