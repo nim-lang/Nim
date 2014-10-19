@@ -9,8 +9,10 @@ and clang on Mac OS X.
 Binaries
 ========
 
-Unfortunately for now we only provide 32 bit builds for
-Windows: `nimrod_0.9.6.exe <download/nimrod_0.9.6.exe>`_
+Unfortunately for now we only provide builds for Windows.
+
+* 32 bit: `nimrod_0.9.6.exe <download/nimrod_0.9.6.exe>`_
+* 64 bit: `nimrod_0.9.6_x64.exe <download/nimrod_0.9.6_x64.exe>`_
 
 
 Installation based on generated C code
