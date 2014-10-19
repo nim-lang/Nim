@@ -93,9 +93,9 @@ proc csource(args: string) =
        [args, NimrodVersion, compileNimInst, findNim()])
 
 proc zip(args: string) =
-  exec("$3 cc -r $2 --var:version=$1 scripts compiler/nimrod.ini" %
+  exec("$3 cc -r $2 --var:version=$1 --var:mingw=mingw32 scripts compiler/nimrod.ini" %
        [NimrodVersion, compileNimInst, findNim()])
-  exec("$# --var:version=$# zip compiler/nimrod.ini" %
+  exec("$# --var:version=$# --var:mingw=mingw32 zip compiler/nimrod.ini" %
        ["tools/niminst/niminst".exe, NimrodVersion])
   
 proc buildTool(toolname, args: string) = 
