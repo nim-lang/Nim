@@ -43,7 +43,7 @@ Possible Commands:
   web                      generates the website
   csource [options]        builds the C sources for installation
   zip                      builds the installation ZIP package
-  inno [options]           builds the Inno Setup installer (for Windows)
+  nsis [options]           builds the NSIS Setup installer (for Windows)
   tests [options]          run the testsuite
   update                   updates nimrod to the latest version from github
                            (compile koch with -d:withUpdate to enable)
@@ -77,6 +77,14 @@ proc tryExec(cmd: string): bool =
   echo(cmd)
   result = execShellCmd(cmd) == 0
 
+proc safeRemove(filename: string) =
+  if existsFile(filename): removeFile(filename)
+
+proc copyExe(source, dest: string) =
+  safeRemove(dest)
+  copyFile(dest=dest, source=source)
+  inclFilePermissions(dest, {fpUserExec})
+
 const
   compileNimInst = "-d:useLibzipSrc tools/niminst/niminst"
 
@@ -94,12 +102,15 @@ proc buildTool(toolname, args: string) =
   exec("$# cc $# $#" % [findNim(), args, toolname])
   copyFile(dest="bin"/ splitFile(toolname).name.exe, source=toolname.exe)
 
-proc inno(args: string) =
+proc nsis(args: string) =
   # make sure we have generated the niminst executables:
   buildTool("tools/niminst/niminst", args)
   buildTool("tools/nimgrep", args)
-  exec("tools" / "niminst" / "niminst --var:version=$# inno compiler/nimrod" % 
-       NimrodVersion)
+  # produce 'nimrod_debug.exe':
+  exec "nimrod c compiler" / "nimrod.nim"
+  copyExe("compiler/nimrod".exe, "bin/nimrod_debug".exe)
+  exec(("tools" / "niminst" / "niminst --var:version=$# --var:mingw=mingw32" &
+        " nsis compiler/nimrod") % NimrodVersion)
 
 proc install(args: string) = 
   exec("$# cc -r $# --var:version=$# scripts compiler/nimrod.ini" %
@@ -137,16 +148,8 @@ proc findStartNimrod: string =
   echo("Found no nimrod compiler and every attempt to build one failed!")
   quit("FAILURE")
 
-proc safeRemove(filename: string) = 
-  if existsFile(filename): removeFile(filename)
-
 proc thVersion(i: int): string = 
   result = ("compiler" / "nimrod" & $i).exe
-
-proc copyExe(source, dest: string) =
-  safeRemove(dest)
-  copyFile(dest=dest, source=source)
-  inclFilePermissions(dest, {fpUserExec})
   
 proc boot(args: string) =
   var output = "compiler" / "nimrod".exe
@@ -304,7 +307,7 @@ of cmdArgument:
   of "web": web(op.cmdLineRest)
   of "csource", "csources": csource(op.cmdLineRest)
   of "zip": zip(op.cmdLineRest)
-  of "inno": inno(op.cmdLineRest)
+  of "nsis": nsis(op.cmdLineRest)
   of "install": install(op.cmdLineRest)
   of "test", "tests": tests(op.cmdLineRest)
   of "update": 

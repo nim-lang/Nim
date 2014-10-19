@@ -2,10 +2,10 @@
 News
 ====
 
-2014-10-12 Version 0.9.6 released
-=================================
+2014-10-19 Nimrod version 0.9.6 released
+========================================
 
-**Note: This is the last release of Nimrod. The language has been renamed to
+**Note: 0.9.6 is the last release of Nimrod. The language has been renamed to
 Nim. Nim slightly breaks compatibility.**
 
 This is a maintenance release. The upcoming 0.10.0 release has
@@ -42,6 +42,8 @@ Language Additions
 
 - This version introduces the new ``deprecated`` pragma statement that is used
   to handle the upcoming massive amount of symbol renames.
+- ``spawn`` can now wrap proc that have a return value. It then returns a flow
+  variable of the wrapped return type.
 
 
 Library Additions
