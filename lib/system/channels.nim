@@ -226,15 +226,16 @@ proc recv*[TMsg](c: var TChannel[TMsg]): TMsg =
   llRecv(q, addr(result), cast[PNimType](getTypeInfo(result)))
   releaseSys(q.lock)
 
-proc tryRecv*[TMsg](c: var TChannel[TMsg]): tuple[dataAvaliable: bool,
+proc tryRecv*[TMsg](c: var TChannel[TMsg]): tuple[dataAvailable: bool,
                                                   msg: TMsg] =
   ## try to receives a message from the channel `c` if available. Otherwise
   ## it returns ``(false, default(msg))``.
   var q = cast[PRawChannel](addr(c))
   if q.mask != ChannelDeadMask:
-    lockChannel(q):
+    if tryAcquireSys(q.lock):
       llRecv(q, addr(result.msg), cast[PNimType](getTypeInfo(result.msg)))
       result.dataAvaliable = true
+      releaseSys(q.lock)
 
 proc peek*[TMsg](c: var TChannel[TMsg]): int =
   ## returns the current number of messages in the channel `c`. Returns -1
