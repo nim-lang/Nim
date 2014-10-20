@@ -43,7 +43,7 @@ Possible Commands:
   web [options]            generates the website
   csource [options]        builds the C sources for installation
   zip                      builds the installation ZIP package
-  inno [options]           builds the Inno Setup installer (for Windows)
+  nsis [options]           builds the NSIS Setup installer (for Windows)
   tests [options]          run the testsuite
   update                   updates nim to the latest version from github
                            (compile koch with -d:withUpdate to enable)
@@ -78,6 +78,14 @@ proc tryExec(cmd: string): bool =
   echo(cmd)
   result = execShellCmd(cmd) == 0
 
+proc safeRemove(filename: string) =
+  if existsFile(filename): removeFile(filename)
+
+proc copyExe(source, dest: string) =
+  safeRemove(dest)
+  copyFile(dest=dest, source=source)
+  inclFilePermissions(dest, {fpUserExec})
+
 const
   compileNimInst = "-d:useLibzipSrc tools/niminst/niminst"
 
@@ -86,24 +94,27 @@ proc csource(args: string) =
        [args, NimVersion, compileNimInst, findNim()])
 
 proc zip(args: string) =
-  exec("$3 cc -r $2 --var:version=$1 scripts compiler/nim.ini" %
+  exec("$3 cc -r $2 --var:version=$1 --var:mingw=mingw32 scripts compiler/nim.ini" %
        [NimVersion, compileNimInst, findNim()])
-  exec("$# --var:version=$# zip compiler/nim.ini" %
+  exec("$# --var:version=$# --var:mingw=mingw32 zip compiler/nim.ini" %
        ["tools/niminst/niminst".exe, NimVersion])
   
 proc buildTool(toolname, args: string) = 
   exec("$# cc $# $#" % [findNim(), args, toolname])
   copyFile(dest="bin"/ splitFile(toolname).name.exe, source=toolname.exe)
 
-proc inno(args: string) =
+proc nsis(args: string) =
   # make sure we have generated the niminst executables:
   buildTool("tools/niminst/niminst", args)
   buildTool("tools/nimgrep", args)
-  exec("tools" / "niminst" / "niminst --var:version=$# inno compiler/nim" % 
-       NimVersion)
+  # produce 'nimrod_debug.exe':
+  exec "nim c compiler" / "nim.nim"
+  copyExe("compiler/nim".exe, "bin/nim_debug".exe)
+  exec(("tools" / "niminst" / "niminst --var:version=$# --var:mingw=mingw32" &
+        " nsis compiler/nim") % NimVersion)
 
 proc install(args: string) = 
-  exec("$# cc -r $# --var:version=$# scripts compiler/nim.ini" %
+  exec("$# cc -r $# --var:version=$# --var:mingw=mingw32 scripts compiler/nim.ini" %
        [findNim(), compileNimInst, NimVersion])
   exec("sh ./install.sh $#" % args)
 
@@ -148,16 +159,8 @@ proc findStartNim: string =
   echo("Found no nim compiler and every attempt to build one failed!")
   quit("FAILURE")
 
-proc safeRemove(filename: string) = 
-  if existsFile(filename): removeFile(filename)
-
 proc thVersion(i: int): string = 
   result = ("compiler" / "nim" & $i).exe
-
-proc copyExe(source, dest: string) =
-  safeRemove(dest)
-  copyFile(dest=dest, source=source)
-  inclFilePermissions(dest, {fpUserExec})
   
 proc boot(args: string) =
   var output = "compiler" / "nim".exe
@@ -342,7 +345,7 @@ of cmdArgument:
   of "web": web(op.cmdLineRest)
   of "csource", "csources": csource(op.cmdLineRest)
   of "zip": zip(op.cmdLineRest)
-  of "inno": inno(op.cmdLineRest)
+  of "nsis": nsis(op.cmdLineRest)
   of "install": install(op.cmdLineRest)
   of "test", "tests": tests(op.cmdLineRest)
   of "update":

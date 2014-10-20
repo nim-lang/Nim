@@ -438,18 +438,6 @@ module. Example:
     echo "Got exception ", repr(e), " with message ", msg
 
 
-Exception hierarchy
--------------------
-
-If you want to create your own exceptions you can inherit from ``system.Exception``,
-but you can also inherit from one of the existing exceptions if they fit your
-purpose. The exception tree is:
-
-.. include:: exception_hierarchy_fragment.txt
-
-See the `system <system.html>`_ module for a description of each exception.
-
-
 Annotating procs with raised exceptions
 ---------------------------------------
 

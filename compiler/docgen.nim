@@ -383,6 +383,8 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   var seeSrcRope: PRope = nil
   let docItemSeeSrc = getConfigVar("doc.item.seesrc")
   if docItemSeeSrc.len > 0 and options.docSeeSrcUrl.len > 0:
+    # XXX toFilename doesn't really work. We need to ensure that this keeps
+    # returning a relative path.
     let urlRope = ropeFormatNamedVars(options.docSeeSrcUrl,
       ["path", "line"], [n.info.toFilename.toRope, toRope($n.info.line)])
     dispA(seeSrcRope, "$1", "", [ropeFormatNamedVars(docItemSeeSrc,

@@ -12,6 +12,7 @@ Nim Manual
   user to one/some of the other players, but the total amount seems to remain
   pretty much constant for a given task. -- Ran
 
+
 .. include:: manual/about.txt
 .. include:: manual/definitions.txt
 .. include:: manual/lexing.txt

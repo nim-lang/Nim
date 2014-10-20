@@ -92,7 +92,7 @@ proc rawImportSymbol(c: PContext, s: PSym) =
     if s.kind == skConverter: addConverter(c, s)
     if hasPattern(s): addPattern(c, s)
 
-proc importSymbol(c: PContext, n: PNode, fromMod: PSym) = 
+proc importSymbol(c: PContext, n: PNode, fromMod: PSym) =        
   let ident = lookups.considerQuotedIdent(n)
   let s = strTableGet(fromMod.tab, ident)
   if s == nil:
@@ -155,10 +155,12 @@ proc importModuleAs(n: PNode, realModule: PSym): PSym =
     # some misguided guy will write 'import abc.foo as foo' ...
     result = createModuleAlias(realModule, n.sons[1].ident, n.sons[1].info)
 
-proc myImportModule(c: PContext, n: PNode): PSym =
+proc myImportModule(c: PContext, n: PNode): PSym = 
   var f = checkModuleName(n)
   if f != InvalidFileIDX:
     result = importModuleAs(n, gImportModule(c.module, f))
+    if result.info.fileIndex == n.info.fileIndex:
+      localError(n.info, errGenerated, "A module cannot import itself")
     if sfDeprecated in result.flags:
       message(n.info, warnDeprecated, result.name.s)
 

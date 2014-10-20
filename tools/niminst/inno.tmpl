@@ -44,9 +44,9 @@ Name: modifypath; Description: &Add $c.displayName to your system path (if not i
 [Code]
 function GiveMeAPath(const DefaultPathName: string): string;
 begin
-  if IsAdminLoggedOn then Result := ExpandConstant('{pf}')
-  else Result := ExpandConstant('{userdocs}');
-  Result := Result + '\' + DefaultPathName;
+  if IsAdminLoggedOn then result := ExpandConstant('{pf}')
+  else result := ExpandConstant('{userdocs}');
+  result := result + '\' + DefaultPathName;
 end;
 
   #if c.binPaths.len > 0:

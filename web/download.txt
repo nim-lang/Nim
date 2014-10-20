@@ -1,125 +1,39 @@
-You can download the latest version of the Nimrod compiler here. You can
-use the binaries provided or build from source.
-
-Binaries
-========
-
-All installers and archives contain the html documentation and tools
-(nimgrep, c2nim and babel).
+You can download the latest version of the Nimrod compiler here.
 
 **Note:** The Nimrod compiler requires a C compiler to compile software. On
 Windows we recommend that you use
 `Mingw-w64 <http://mingw-w64.sourceforge.net/>`_. GCC is recommended on Linux
 and clang on Mac OS X.
 
-Installers
-----------
 
-The "full" version includes a full mingw distribution which includes a C
-compiler. The "slim" version lacks this.
+Binaries
+========
 
-* Full (i386, 32bit): `<download/nimrod_0.9.4_windows_i386_full.exe>`_
+Unfortunately for now we only provide builds for Windows.
 
-  .. raw:: html
-    <p style="font-size: 8pt; margin-top: 0;">
-    SHA256: dca7c63d0c1861d2d7c51b2e7a29fa98371750a10ab282d5df9de22a07719c24
-    </p>
+* 32 bit: `nimrod_0.9.6.exe <download/nimrod_0.9.6.exe>`_
+* 64 bit: `nimrod_0.9.6_x64.exe <download/nimrod_0.9.6_x64.exe>`_
 
-* Slim (i386, 32bit): `<download/nimrod_0.9.4_windows_i386_slim.exe>`_
 
-  .. raw:: html
-      <p style="font-size: 8pt; margin-top: 0;">
-      SHA256: c0fcd1201bd20fad1e14b9d2cc2529494057068de1dd01f871cf129f088a8242
-      </p>
+Installation based on generated C code
+======================================
 
-* Full (amd64, 64bit): `<download/nimrod_0.9.4_windows_amd64_full.exe>`_
+This installation method is the preferred way for Linux, Mac OS X, and other Unix
+like systems. Binary packages may be provided later.
 
-  .. raw:: html
-    <p style="font-size: 8pt; margin-top: 0;">
-    SHA256: af9d478c2f3361e0f238fcb07fa8e7ae5821938c0f9063c6670e925c9ae9d16e
-    </p>
 
-* Slim (amd64, 64bit): `<download/nimrod_0.9.4_windows_amd64_slim.exe>`_
+Download `nimrod_0.9.6.zip <download/nimrod_0.9.6.zip>`_, extract it and follow
+these instructions:
 
-  .. raw:: html
-      <p style="font-size: 8pt; margin-top: 0;">
-      SHA256: 90c380721a46be2b9b8d5437187f701940aefc2e1fb9722dbc543f5c5a3bb85e
-      </p>
+* sh build.sh
+* Add ``$your_install_dir/bin`` to your PATH.
 
-Archives
---------
+There are other ways to install Nimrod (like using the ``install.sh`` script),
+but these tend to cause more problems.
 
-Windows
-~~~~~~~
 
-The "full" version includes a full mingw distribution which includes a C
-compiler. The "slim" version lacks this.
-
-* Full (i386, 32bit): `<download/nimrod_0.9.4_windows_i386_full.zip>`_
-
-  .. raw:: html
-    <p style="font-size: 8pt; margin-top: 0;">
-    SHA256: 8ee18faaa3a3d5df482c7abd6aa7ea87a350d7328b80ce1e2d486b59a7a93956
-    </p>
-
-* Slim (i386, 32bit): `<download/nimrod_0.9.4_windows_i386_slim.zip>`_
-
-  .. raw:: html
-      <p style="font-size: 8pt; margin-top: 0;">
-      SHA256: 7024fb8ad8f98c0bd4949ae36ed11b52b4e401754bbd62a11199d6dc8628d857 
-      </p>
-
-* Full (amd64, 64bit): `<download/nimrod_0.9.4_windows_amd64_full.zip>`_
-
-  .. raw:: html
-    <p style="font-size: 8pt; margin-top: 0;">
-    SHA256: cb33cacc1a84fec771323d24cb6d9795f4803882466a9f417b424990aa49e18a
-    </p>
-
-* Slim (amd64, 64bit): `<download/nimrod_0.9.4_windows_amd64_slim.zip>`_
-
-  .. raw:: html
-      <p style="font-size: 8pt; margin-top: 0;">
-      SHA256: fcf877e4bd1ebfa214749af6e4811cd8539af19f1d7b23017e4bd7f6cbfb3eba
-      </p>
-
-Linux
-~~~~~
-
-* Linux (i386, 32bit): `<download/nimrod_0.9.4_linux_i386.tar.gz>`_
-
-  .. raw:: html
-      <p style="font-size: 8pt; margin-top: 0;">
-      SHA256: 79DD337A77AC4313A75F2C5EED8252F00BBBDEB1E0C3504660D4A52EA63DBA92
-      </p>
-* Linux (amd64, 64bit): `<download/nimrod_0.9.4_linux_amd64.tar.gz>`_
-
-  .. raw:: html
-    <p style="font-size: 8pt; margin-top: 0;">
-    SHA256: 6F6CB3C727BA8059B7605C02942AE7910C20C2A3DC6A8A600D90D50FE61F0D8C
-    </p>
-* Linux (ppc64, 64bit): `<download/nimrod_0.9.4_linux_ppc64.tar.gz>`_
-
-  .. raw:: html
-      <p style="font-size: 8pt; margin-top: 0;">
-      SHA256: 5DAC2D9F7F545929E04540E6E2594C68FC3126A3B2F7B1FA7DBA5E295B4A7D31
-      </p>
-
-Mac OS X
-~~~~~~~~
-
-* Mac OS X (amd64, 64bit): `<download/nimrod_0.9.4_macosx_amd64.zip>`_
-
-  .. raw:: html
-      <p style="font-size: 8pt; margin-top: 0;">
-      SHA256: E6F3A8E434DF3E89686F043954C6DFC09ABEBC0FC09D3B9A6B35C2B3102F7C3C
-      </p>
-
-If a binary for your platform is not available then you must build from source.
-Bleeding edge binaries are available from the `Nimrod build farm <http://build.nimrod-lang.org/>`_.
-
-Source
-======
+Installation from github
+========================
 
 Use the following commands to build the compiler from source.
 Change the branch to suit your needs::
@@ -135,4 +49,3 @@ Change the branch to suit your needs::
 The ``master`` branch always contains the latest stable version of the compiler.
 If you want bleeding edge then switch to the ``devel`` branch and follow
 the same instructions outlined above.
-

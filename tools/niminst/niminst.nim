@@ -31,6 +31,7 @@ type
     actionNone,   # action not yet known
     actionCSource # action: create C sources
     actionInno,   # action: create Inno Setup installer
+    actionNsis,   # action: create NSIS installer
     actionScripts # action: create install and deinstall scripts
     actionZip,    # action: create zip file
     actionDeb     # action: prepare deb package
@@ -50,10 +51,10 @@ type
   TConfigData = object of TObject
     actions: set[TAction]
     cat: array[TFileCategory, seq[string]]
-    binPaths, authors, oses, cpus: seq[string]
+    binPaths, authors, oses, cpus, downloads: seq[string]
     cfiles: array[1..maxOS, array[1..maxCPU, seq[string]]]
     platforms: array[1..maxOS, array[1..maxCPU, bool]]
-    ccompiler, linker, innosetup: tuple[path, flags: string]
+    ccompiler, linker, innosetup, nsisSetup: tuple[path, flags: string]
     name, displayName, version, description, license, infile, outdir: string
     libpath: string
     innoSetupFlag, installScript, uninstallScript: bool
@@ -75,9 +76,11 @@ proc initConfigData(c: var TConfigData) =
   c.authors = @[]
   c.oses = @[]
   c.cpus = @[]
+  c.downloads = @[]
   c.ccompiler = ("", "")
   c.linker = ("", "")
   c.innosetup = ("", "")
+  c.nsisSetup = ("", "")
   c.name = ""
   c.displayName = ""
   c.version = ""
@@ -117,6 +120,7 @@ proc skipRoot(f: string): string =
   if result.len == 0: result = f
 
 include "inno.tmpl"
+include "nsis.tmpl"
 include "buildsh.tmpl"
 include "buildbat.tmpl"
 include "install.tmpl"
@@ -125,10 +129,10 @@ include "deinstall.tmpl"
 # ------------------------- configuration file -------------------------------
 
 const
-  Version = "0.9"
+  Version = "1.0"
   Usage = "niminst - Nim Installation Generator Version " & Version & """
 
-  (c) 2013 Andreas Rumpf
+  (c) 2014 Andreas Rumpf
 Usage:
   niminst [options] command[;command2...] ini-file[.ini] [compile_options]
 Command:
@@ -136,6 +140,7 @@ Command:
   scripts             build install and deinstall scripts
   zip                 build the ZIP file
   inno                build the Inno Setup installer
+  nsis                build the NSIS Setup installer
   deb                 create files for debhelper
 Options:
   -o, --output:dir    set the output directory
@@ -162,6 +167,7 @@ proc parseCmdLine(c: var TConfigData) =
           of "scripts": incl(c.actions, actionScripts)
           of "zip": incl(c.actions, actionZip)
           of "inno": incl(c.actions, actionInno)
+          of "nsis": incl(c.actions, actionNsis)
           of "deb": incl(c.actions, actionDeb)
           else: quit(Usage)
       else:
@@ -190,7 +196,7 @@ proc walkDirRecursively(s: var seq[string], root: string) =
     case k
     of pcFile, pcLinkToFile: add(s, unixToNativePath(f))
     of pcDir: walkDirRecursively(s, f)
-    of pcLinkToDir: nil
+    of pcLinkToDir: discard
 
 proc addFiles(s: var seq[string], patterns: seq[string]) =
   for p in items(patterns):
@@ -288,7 +294,7 @@ proc parseIniFile(c: var TConfigData) =
             else: quit(errorStr(p, "expected: console or gui"))
           of "license": c.license = unixToNativePath(k.value)
           else: quit(errorStr(p, "unknown variable: " & k.key))
-        of "var": nil
+        of "var": discard
         of "winbin": filesOnly(p, k.key, v, c.cat[fcWinBin])
         of "config": filesOnly(p, k.key, v, c.cat[fcConfig])
         of "data": filesOnly(p, k.key, v, c.cat[fcData])
@@ -304,6 +310,7 @@ proc parseIniFile(c: var TConfigData) =
           of "files": addFiles(c.cat[fcWindows], split(v, {';'}))
           of "binpath": c.binPaths = split(v, {';'})
           of "innosetup": c.innoSetupFlag = yesno(p, v)
+          of "download": c.downloads.add(v)
           else: quit(errorStr(p, "unknown variable: " & k.key))
         of "unix":
           case normalize(k.key)
@@ -313,6 +320,7 @@ proc parseIniFile(c: var TConfigData) =
           else: quit(errorStr(p, "unknown variable: " & k.key))
         of "unixbin": filesOnly(p, k.key, v, c.cat[fcUnixBin])
         of "innosetup": pathFlags(p, k.key, v, c.innosetup)
+        of "nsis": pathFlags(p, k.key, v, c.nsisSetup)
         of "ccompiler": pathFlags(p, k.key, v, c.ccompiler)
         of "linker": pathFlags(p, k.key, v, c.linker)
         of "deb":
@@ -479,15 +487,32 @@ proc srcdist(c: var TConfigData) =
 
 # --------------------- generate inno setup -----------------------------------
 proc setupDist(c: var TConfigData) =
-  var scrpt = generateInnoSetup(c)
-  var n = "build" / "install_$#_$#.iss" % [toLower(c.name), c.version]
+  let scrpt = generateInnoSetup(c)
+  let n = "build" / "install_$#_$#.iss" % [toLower(c.name), c.version]
   writeFile(n, scrpt, "\13\10")
   when defined(windows):
     if c.innosetup.path.len == 0:
       c.innosetup.path = "iscc.exe"
-    var outcmd = if c.outdir.len == 0: "build" else: c.outdir
-    var cmd = "$# $# /O$# $#" % [quoteShell(c.innosetup.path),
+    let outcmd = if c.outdir.len == 0: "build" else: c.outdir
+    let cmd = "$# $# /O$# $#" % [quoteShell(c.innosetup.path),
                                  c.innosetup.flags, outcmd, n]
+    echo(cmd)
+    if execShellCmd(cmd) == 0:
+      removeFile(n)
+    else:
+      quit("External program failed")
+
+# --------------------- generate NSIS setup -----------------------------------
+proc setupDist2(c: var TConfigData) =
+  let scrpt = generateNsisSetup(c)
+  let n = "build" / "install_$#_$#.nsi" % [toLower(c.name), c.version]
+  writeFile(n, scrpt, "\13\10")
+  when defined(windows):
+    if c.nsisSetup.path.len == 0:
+      c.nsisSetup.path = "makensis.exe"
+    let outcmd = if c.outdir.len == 0: "build" else: c.outdir
+    let cmd = "$# $# /O$# $#" % [quoteShell(c.nsisSetup.path),
+                                 c.nsisSetup.flags, outcmd, n]
     echo(cmd)
     if execShellCmd(cmd) == 0:
       removeFile(n)
@@ -509,7 +534,7 @@ when haveZipLib:
       addFile(z, proj / installShFile, installShFile)
       addFile(z, proj / deinstallShFile, deinstallShFile)
       for f in walkFiles(c.libpath / "lib/*.h"):
-        addFile(z, proj / "build" / extractFilename(f), f)
+        addFile(z, proj / "c_code" / extractFilename(f), f)
       for osA in 1..c.oses.len:
         for cpuA in 1..c.cpus.len:
           var dir = buildDir(osA, cpuA)
@@ -576,6 +601,8 @@ parseCmdLine(c)
 parseIniFile(c)
 if actionInno in c.actions:
   setupDist(c)
+if actionNsis in c.actions:
+  setupDist2(c)
 if actionCSource in c.actions:
   srcdist(c)
 if actionScripts in c.actions:
