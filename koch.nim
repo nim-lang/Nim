@@ -332,7 +332,7 @@ proc temp(args: string) =
 
 proc showHelp() = 
   quit(HelpText % [NimVersion & repeatChar(44-len(NimVersion)), 
-                   CompileDate, CompileTime])
+                   CompileDate, CompileTime], QuitSuccess)
 
 var op = initOptParser()
 op.next()

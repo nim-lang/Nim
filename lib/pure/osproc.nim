@@ -887,7 +887,7 @@ elif not defined(useNimRtl):
     FD_ZERO(fd)
     for i in items(s):
       m = max(m, int(i.outHandle))
-      fdSet(cint(i.outHandle), fd)
+      FD_SET(cint(i.outHandle), fd)
 
   proc pruneProcessSet(s: var seq[Process], fd: var TFdSet) =
     var i = 0

@@ -536,7 +536,7 @@ proc WSAFDIsSet(s: SocketHandle, set: var TFdSet): bool {.
 proc FD_ISSET*(socket: SocketHandle, set: var TFdSet): cint = 
   result = if WSAFDIsSet(socket, set): 1'i32 else: 0'i32
 
-proc fdSet*(socket: SocketHandle, s: var TFdSet) = 
+proc FD_SET*(socket: SocketHandle, s: var TFdSet) = 
   if s.fd_count < FD_SETSIZE:
     s.fd_array[int(s.fd_count)] = socket
     inc(s.fd_count)
