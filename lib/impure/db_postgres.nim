@@ -48,7 +48,8 @@ proc dbError*(msg: string) {.noreturn.} =
   e.msg = msg
   raise e
 
-proc dbQuote(s: string): string =
+proc dbQuote*(s: string): string =
+  ## DB quotes the string.
   result = "'"
   for c in items(s):
     if c == '\'': add(result, "''")
