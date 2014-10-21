@@ -20,6 +20,8 @@ News
   - String case (or any non-ordinal case) statements
     without 'else' are deprecated.
   - Recursive tuple types are not allowed anymore. Use ``object`` instead.
+  - The PEGS module returns ``nil`` instead of ``""`` when an optional capture
+    fails to match
 
   Language Additions
   ------------------
