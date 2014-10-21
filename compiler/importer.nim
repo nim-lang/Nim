@@ -153,7 +153,7 @@ proc importModuleAs(n: PNode, realModule: PSym): PSym =
     localError(n.info, errGenerated, "module alias must be an identifier")
   elif n.sons[1].ident.id != realModule.name.id:
     # some misguided guy will write 'import abc.foo as foo' ...
-    result = createModuleAlias(realModule, n.sons[1].ident, n.sons[1].info)
+    result = createModuleAlias(realModule, n.sons[1].ident, realModule.info)
 
 proc myImportModule(c: PContext, n: PNode): PSym = 
   var f = checkModuleName(n)
