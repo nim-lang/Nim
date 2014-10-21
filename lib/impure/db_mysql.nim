@@ -58,6 +58,7 @@ when false:
     discard mysql_stmt_close(stmt)
 
 proc dbQuote*(s: string): string =
+  ## DB quotes the string.
   result = "'"
   for c in items(s):
     if c == '\'': add(result, "''")
