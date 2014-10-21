@@ -2382,7 +2382,7 @@ proc hstrerror*(herrnum: cint): cstring {.importc, header: "<netdb.h>".}
 proc FD_CLR*(a1: cint, a2: var TFdSet) {.importc, header: "<sys/select.h>".}
 proc FD_ISSET*(a1: cint | SocketHandle, a2: var TFdSet): cint {.
   importc, header: "<sys/select.h>".}
-proc fdSet*(a1: cint | SocketHandle, a2: var TFdSet) {.
+proc FD_SET*(a1: cint | SocketHandle, a2: var TFdSet) {.
   importc: "FD_SET", header: "<sys/select.h>".}
 proc FD_ZERO*(a1: var TFdSet) {.importc, header: "<sys/select.h>".}
 

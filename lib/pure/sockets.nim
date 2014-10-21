@@ -936,7 +936,7 @@ proc createFdSet(fd: var TFdSet, s: seq[Socket], m: var int) =
   FD_ZERO(fd)
   for i in items(s): 
     m = max(m, int(i.fd))
-    fdSet(i.fd, fd)
+    FD_SET(i.fd, fd)
    
 proc pruneSocketSet(s: var seq[Socket], fd: var TFdSet) =
   var i = 0

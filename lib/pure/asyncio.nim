@@ -91,11 +91,11 @@ import sockets, os
 ##      getSocket(s).accept(client)
 
 when defined(windows):
-  from winlean import TimeVal, SocketHandle, fdSet, FD_ZERO, TFdSet,
-    fdSet, FD_ISSET, select
+  from winlean import TimeVal, SocketHandle, FD_SET, FD_ZERO, TFdSet,
+    FD_ISSET, select
 else:
-  from posix import TimeVal, SocketHandle, fdSet, FD_ZERO, TFdSet,
-    fdSet, FD_ISSET, select
+  from posix import TimeVal, SocketHandle, FD_SET, FD_ZERO, TFdSet,
+    FD_ISSET, select
 
 type
   DelegateObj* = object
@@ -556,7 +556,7 @@ proc createFdSet(fd: var TFdSet, s: seq[Delegate], m: var int) =
   FD_ZERO(fd)
   for i in items(s): 
     m = max(m, int(i.fd))
-    fdSet(i.fd, fd)
+    FD_SET(i.fd, fd)
    
 proc pruneSocketSet(s: var seq[Delegate], fd: var TFdSet) =
   var i = 0
