@@ -4384,6 +4384,8 @@ helper distinct or object type has to be used for one pointer type.
 operator `=`
 ------------
 
+**Note**: Overriding the assignment operator has not yet been implemented.
+
 This operator is the assignment operator. Note that in the contexts 
 like ``let v = expr``, ``var v = expr``, ``parameter = defaultValue`` or for
 parameter passing no assignment is performed. The ``override`` pragma is
@@ -5037,6 +5039,27 @@ processed on the fly during semantic checking. Pragmas are enclosed in the
 special ``{.`` and ``.}`` curly brackets. Pragmas are also often used as a
 first implementation to play with a language feature before a nicer syntax
 to access the feature becomes available.
+
+
+deprecated pragma
+-----------------
+
+The deprecated pragma is used to mark a symbol as deprecated:
+
+.. code-block:: nimrod
+  proc p() {.deprecated.}
+  var x {.deprecated.}: char
+
+It can also be used as a statement. Then it takes a list of *renamings*. The
+upcoming ``nimfix`` tool can automatically update the code and perform these
+renamings:
+
+.. code-block:: nimrod
+  type
+    File = object
+    Stream = ref object
+  {.deprecated: [TFile: File, PStream: Stream].}
+
 
 
 noSideEffect pragma

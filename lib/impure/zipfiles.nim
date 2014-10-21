@@ -56,6 +56,8 @@ proc addFile*(z: var TZipArchive, dest, src: string) =
   ## Adds the file `src` to the archive `z` with the name `dest`. `dest`
   ## may contain a path that will be created. 
   assert(z.mode != fmRead) 
+  if not fileExists(src):
+    raise newException(EIO, "File '" & src & "' does not exist")
   var zipsrc = zip_source_file(z.w, src, 0, -1)
   if zipsrc == nil:
     #echo("Dest: " & dest)

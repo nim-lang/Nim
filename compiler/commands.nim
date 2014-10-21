@@ -80,9 +80,9 @@ proc writeVersionInfo(pass: TCmdLinePass) =
                                  platform.OS[platform.hostOS].name, 
                                  CPU[platform.hostCPU].name]))
 
-    const gitHash = gorge("git log -n 1 --format=%H")
+    discard """const gitHash = gorge("git log -n 1 --format=%H")
     if gitHash.strip.len == 40:
-      msgWriteln("git hash: " & gitHash)
+      msgWriteln("git hash: " & gitHash)"""
 
     msgWriteln("active boot switches:" & usedRelease & usedAvoidTimeMachine &
       usedTinyC & usedGnuReadline & usedNativeStacktrace & usedNoCaas &
@@ -393,7 +393,9 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   of "linedir": processOnOffSwitch({optLineDir}, arg, pass, info)
   of "assertions", "a": processOnOffSwitch({optAssert}, arg, pass, info)
   of "deadcodeelim": processOnOffSwitchG({optDeadCodeElim}, arg, pass, info)
-  of "threads": processOnOffSwitchG({optThreads}, arg, pass, info)
+  of "threads":
+    processOnOffSwitchG({optThreads}, arg, pass, info)
+    if optThreads in gGlobalOptions: incl(gNotes, warnGcUnsafe)
   of "tlsemulation": processOnOffSwitchG({optTlsEmulation}, arg, pass, info)
   of "taintmode": processOnOffSwitchG({optTaintMode}, arg, pass, info)
   of "implicitstatic":

@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -291,6 +291,8 @@ const
 
   sfNoRoot* = sfBorrow # a local variable is provably no root so it doesn't
                        # require RC ops
+  sfCompileToCpp* = sfInfixCall       # compile the module as C++ code
+  sfCompileToObjc* = sfNamedParamCall # compile the module as Objective-C code
 
 const
   # getting ready for the future expr/stmt merge
@@ -476,7 +478,7 @@ type
                           # and first phase symbol lookup in generics
     skConditional,        # symbol for the preprocessor (may become obsolete)
     skDynLib,             # symbol represents a dynamic library; this is used
-                          # internally; it does not exist in Nimrod code
+                          # internally; it does not exist in Nim code
     skParam,              # a parameter
     skGenericParam,       # a generic parameter; eq in ``proc x[eq=`==`]()``
     skTemp,               # a temporary variable (introduced by compiler)
@@ -501,7 +503,8 @@ type
     skStub,               # symbol is a stub and not yet loaded from the ROD
                           # file (it is loaded on demand, which may
                           # mean: never)
-    skPackage             # symbol is a package (used for canonicalization)
+    skPackage,            # symbol is a package (used for canonicalization)
+    skAlias               # an alias (needs to be resolved immediately)
   TSymKinds* = set[TSymKind]
 
 const
@@ -678,7 +681,7 @@ type
     heapRoot*: PRope          # keeps track of the enclosing heap object that
                               # owns this location (required by GC algorithms
                               # employing heap snapshots or sliding views)
-    a*: int                   # location's "address", i.e. slot for temporaries
+    a*: int
 
   # ---------------- end of backend information ------------------------------
 
@@ -731,8 +734,9 @@ type
       # check for the owner when touching 'usedGenerics'.
       usedGenerics*: seq[PInstantiation]
       tab*: TStrTable         # interface table for modules
+    of skLet, skVar, skField:
+      guard*: PSym
     else: nil
-
     magic*: TMagic
     typ*: PType
     name*: PIdent
@@ -872,7 +876,7 @@ const
     tyProc, tyString, tyError}
   ExportableSymKinds* = {skVar, skConst, skProc, skMethod, skType,
     skIterator, skClosureIterator,
-    skMacro, skTemplate, skConverter, skEnumField, skLet, skStub}
+    skMacro, skTemplate, skConverter, skEnumField, skLet, skStub, skAlias}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
                                       nfDotSetter, nfDotField,
                                       nfIsRef}
@@ -1162,7 +1166,6 @@ proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
   result.sons = @[name, pattern, genericParams, params,
                   pragmas, exceptions, body]
 
-
 proc newType(kind: TTypeKind, owner: PSym): PType = 
   new(result)
   result.kind = kind
@@ -1172,8 +1175,8 @@ proc newType(kind: TTypeKind, owner: PSym): PType =
   result.id = getID()
   when debugIds:
     registerId(result)
-  #if result.id < 2000 then
-  #  MessageOut(typeKindToStr[kind] & ' has id: ' & toString(result.id))
+  #if result.id < 2000:
+  #  messageOut(typeKindToStr[kind] & ' has id: ' & toString(result.id))
   
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(a.k): a.k = b.k
@@ -1229,6 +1232,8 @@ proc copySym(s: PSym, keepId: bool = false): PSym =
   result.position = s.position
   result.loc = s.loc
   result.annex = s.annex      # BUGFIX
+  if result.kind in {skVar, skLet, skField}:
+    result.guard = s.guard
 
 proc createModuleAlias*(s: PSym, newIdent: PIdent, info: TLineInfo): PSym =
   result = newSym(s.kind, newIdent, s.owner, info)

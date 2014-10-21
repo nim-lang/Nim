@@ -45,9 +45,10 @@ proc initConfigData(c: var TConfigData) =
   c.gitCommit = "master"
   c.numProcessors = countProcessors()
   # Attempts to obtain the git current commit.
-  let (output, code) = execCmdEx("git log -n 1 --format=%H")
-  if code == 0 and output.strip.len == 40:
-    c.gitCommit = output.strip
+  when false:
+    let (output, code) = execCmdEx("git log -n 1 --format=%H")
+    if code == 0 and output.strip.len == 40:
+      c.gitCommit = output.strip
   c.quotations = initTable[string, tuple[quote, author: string]]()
 
 include "website.tmpl"
@@ -239,7 +240,7 @@ proc mexec(cmds: openarray[string], processors: int) =
     sexec(cmds)
     return
 
-  if 0 != execProcesses(cmds, {poStdErrToStdOut, poParentStreams, poEchoCmd}):
+  if execProcesses(cmds, {poStdErrToStdOut, poParentStreams, poEchoCmd}) != 0:
     echo "external program failed, retrying serial work queue for logs!"
     sexec(cmds)
 
@@ -289,8 +290,10 @@ proc buildPdfDoc(c: var TConfigData, destPath: string) =
       exec("pdflatex " & changeFileExt(d, "tex"))
       exec("pdflatex " & changeFileExt(d, "tex"))
       # delete all the crappy temporary files:
-      var pdf = splitFile(d).name & ".pdf"
-      moveFile(dest=destPath / pdf, source=pdf)
+      let pdf = splitFile(d).name & ".pdf"
+      let dest = destPath / pdf
+      removeFile(dest)
+      moveFile(dest=dest, source=pdf)
       removeFile(changeFileExt(pdf, "aux"))
       if existsFile(changeFileExt(pdf, "toc")):
         removeFile(changeFileExt(pdf, "toc"))
@@ -432,4 +435,7 @@ var c: TConfigData
 initConfigData(c)
 parseCmdLine(c)
 parseIniFile(c)
-main(c)
+when false:
+  buildPdfDoc(c, "doc")
+else:
+  main(c)
