@@ -173,7 +173,7 @@ proc evalImport(c: PContext, n: PNode): PNode =
       # ``addDecl`` needs to be done before ``importAllSymbols``!
       addDecl(c, m)             # add symbol to symbol table of module
       importAllSymbolsExcept(c, m, emptySet)
-      importForwarded(c, m.ast, emptySet)
+      #importForwarded(c, m.ast, emptySet)
 
 proc evalFrom(c: PContext, n: PNode): PNode = 
   result = n
@@ -198,4 +198,4 @@ proc evalImportExcept*(c: PContext, n: PNode): PNode =
       let ident = lookups.considerQuotedIdent(n.sons[i])
       exceptSet.incl(ident.id)
     importAllSymbolsExcept(c, m, exceptSet)
-    importForwarded(c, m.ast, exceptSet)
+    #importForwarded(c, m.ast, exceptSet)
