@@ -192,8 +192,14 @@
     ${If} $0 == "success"
       ZipDLL::extractall "$TEMP\?zipName" "$INSTDIR\?dir"
       Delete "$TEMP\?zipName"
+    ${ElseIf} $0 == "cancel"
+      MessageBox MB_ICONQUESTION|MB_YESNO|MB_TOPMOST \
+                 "Download of component '?sectionName' cancelled. Continue installation process??" \
+                 IDYES ignore
+      abort
     ${Else}
-      MessageBox MB_ICONSTOP|MB_ABORTRETRYIGNORE "Error: $0" IDRETRY retry IDIGNORE ignore
+      MessageBox MB_ICONSTOP|MB_ABORTRETRYIGNORE|MB_TOPMOST "Error: $0" \
+                 IDRETRY retry IDIGNORE ignore
       abort
     ${EndIf}
 
