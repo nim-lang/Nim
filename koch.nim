@@ -18,6 +18,8 @@ when defined(gcc) and defined(windows):
 import
   os, strutils, parseopt, osproc, streams
 
+import "compiler/nversion.nim"
+
 when defined(withUpdate):
   import httpclient
 when defined(haveZipLib):
@@ -91,13 +93,13 @@ const
 
 proc csource(args: string) = 
   exec("$4 cc $1 -r $3 --var:version=$2 csource compiler/nim.ini $1" %
-       [args, NimVersion, compileNimInst, findNim()])
+       [args, VersionAsString, compileNimInst, findNim()])
 
 proc zip(args: string) =
   exec("$3 cc -r $2 --var:version=$1 --var:mingw=mingw32 scripts compiler/nim.ini" %
-       [NimVersion, compileNimInst, findNim()])
+       [VersionAsString, compileNimInst, findNim()])
   exec("$# --var:version=$# --var:mingw=mingw32 zip compiler/nim.ini" %
-       ["tools/niminst/niminst".exe, NimVersion])
+       ["tools/niminst/niminst".exe, VersionAsString])
   
 proc buildTool(toolname, args: string) = 
   exec("$# cc $# $#" % [findNim(), args, toolname])
@@ -111,16 +113,16 @@ proc nsis(args: string) =
   exec "nim c compiler" / "nim.nim"
   copyExe("compiler/nim".exe, "bin/nim_debug".exe)
   exec(("tools" / "niminst" / "niminst --var:version=$# --var:mingw=mingw32" &
-        " nsis compiler/nim") % NimVersion)
+        " nsis compiler/nim") % VersionAsString)
 
 proc install(args: string) = 
   exec("$# cc -r $# --var:version=$# --var:mingw=mingw32 scripts compiler/nim.ini" %
-       [findNim(), compileNimInst, NimVersion])
+       [findNim(), compileNimInst, VersionAsString])
   exec("sh ./install.sh $#" % args)
 
 proc web(args: string) =
   exec("$# cc -r tools/nimweb.nim $# web/nim --putenv:nimversion=$#" %
-       [findNim(), args, NimVersion])
+       [findNim(), args, VersionAsString])
 
 # -------------- boot ---------------------------------------------------------
 
@@ -287,7 +289,7 @@ when defined(withUpdate):
 # -------------- builds a release ---------------------------------------------
 
 proc run7z(platform: string, patterns: varargs[string]) =
-  const tmpDir = "nim-" & NimVersion
+  const tmpDir = "nim-" & VersionAsString
   createDir tmpDir
   try:
     for pattern in patterns:
@@ -331,7 +333,7 @@ proc temp(args: string) =
   if args.len > 0: exec(finalDest & " " & args)
 
 proc showHelp() = 
-  quit(HelpText % [NimVersion & repeatChar(44-len(NimVersion)), 
+  quit(HelpText % [VersionAsString & repeatChar(44-len(VersionAsString)), 
                    CompileDate, CompileTime], QuitSuccess)
 
 var op = initOptParser()
