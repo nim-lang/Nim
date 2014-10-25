@@ -458,6 +458,8 @@ proc assumeTheWorst(tracked: PEffects; n: PNode; op: PType) =
   addTag(tracked, createTag(n))
   let lockLevel = if op.lockLevel == UnspecifiedLockLevel: UnknownLockLevel
                   else: op.lockLevel
+  #if lockLevel == UnknownLockLevel:
+  #  message(n.info, warnUser, "had to assume the worst here")
   mergeLockLevels(tracked, n, lockLevel)
 
 proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =

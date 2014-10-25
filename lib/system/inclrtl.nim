@@ -46,3 +46,8 @@ else:
 
 when not defined(nimsuperops):
   {.pragma: operator.}
+
+when defined(nimlocks):
+  {.pragma: benign, gcsafe, locks: 0.}
+else:
+  {.pragma: benign, gcsafe.}

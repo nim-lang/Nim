@@ -51,7 +51,7 @@ type
     waZctDecRef, waPush, waCycleDecRef, waMarkGray, waScan, waScanBlack, 
     waCollectWhite,
 
-  TFinalizer {.compilerproc.} = proc (self: pointer) {.nimcall, gcsafe.}
+  TFinalizer {.compilerproc.} = proc (self: pointer) {.nimcall, benign.}
     # A ref type can have a finalizer that is called before the object's
     # storage is freed.
 
@@ -152,11 +152,11 @@ template gcTrace(cell, state: expr): stmt {.immediate.} =
   when traceGC: traceCell(cell, state)
 
 # forward declarations:
-proc collectCT(gch: var TGcHeap) {.gcsafe.}
-proc isOnStack*(p: pointer): bool {.noinline, gcsafe.}
-proc forAllChildren(cell: PCell, op: TWalkOp) {.gcsafe.}
-proc doOperation(p: pointer, op: TWalkOp) {.gcsafe.}
-proc forAllChildrenAux(dest: pointer, mt: PNimType, op: TWalkOp) {.gcsafe.}
+proc collectCT(gch: var TGcHeap) {.benign.}
+proc isOnStack*(p: pointer): bool {.noinline, benign.}
+proc forAllChildren(cell: PCell, op: TWalkOp) {.benign.}
+proc doOperation(p: pointer, op: TWalkOp) {.benign.}
+proc forAllChildrenAux(dest: pointer, mt: PNimType, op: TWalkOp) {.benign.}
 # we need the prototype here for debugging purposes
 
 when hasThreadSupport and hasSharedHeap:
@@ -294,7 +294,7 @@ proc initGC() =
 
 when useMarkForDebug or useBackupGc:
   type
-    TGlobalMarkerProc = proc () {.nimcall, gcsafe.}
+    TGlobalMarkerProc = proc () {.nimcall, benign.}
   var
     globalMarkersLen: int
     globalMarkers: array[0.. 7_000, TGlobalMarkerProc]
@@ -311,7 +311,7 @@ proc cellsetReset(s: var TCellSet) =
   deinit(s)
   init(s)
 
-proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: TWalkOp) {.gcsafe.} =
+proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: TWalkOp) {.benign.} =
   var d = cast[ByteAddress](dest)
   case n.kind
   of nkSlot: forAllChildrenAux(cast[pointer](d +% n.offset), n.typ, op)
@@ -680,11 +680,11 @@ proc doOperation(p: pointer, op: TWalkOp) =
 proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} =
   doOperation(d, TWalkOp(op))
 
-proc collectZCT(gch: var TGcHeap): bool {.gcsafe.}
+proc collectZCT(gch: var TGcHeap): bool {.benign.}
 
 when useMarkForDebug or useBackupGc:
   proc markStackAndRegistersForSweep(gch: var TGcHeap) {.noinline, cdecl,
-                                                         gcsafe.}
+                                                         benign.}
 
 proc collectRoots(gch: var TGcHeap) =
   for s in elements(gch.cycleRoots):

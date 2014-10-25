@@ -7,11 +7,11 @@
 #    distribution, for details about the copyright.
 #
 
-proc genericResetAux(dest: pointer, n: ptr TNimNode) {.gcsafe.}
+proc genericResetAux(dest: pointer, n: ptr TNimNode) {.benign.}
 
-proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) {.gcsafe.}
+proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) {.benign.}
 proc genericAssignAux(dest, src: pointer, n: ptr TNimNode,
-                      shallow: bool) {.gcsafe.} =
+                      shallow: bool) {.benign.} =
   var
     d = cast[ByteAddress](dest)
     s = cast[ByteAddress](src)
@@ -136,8 +136,8 @@ proc genericAssignOpenArray(dest, src: pointer, len: int,
     genericAssign(cast[pointer](d +% i*% mt.base.size),
                   cast[pointer](s +% i*% mt.base.size), mt.base)
 
-proc objectInit(dest: pointer, typ: PNimType) {.compilerProc, gcsafe.}
-proc objectInitAux(dest: pointer, n: ptr TNimNode) {.gcsafe.} =
+proc objectInit(dest: pointer, typ: PNimType) {.compilerProc, benign.}
+proc objectInitAux(dest: pointer, n: ptr TNimNode) {.benign.} =
   var d = cast[ByteAddress](dest)
   case n.kind
   of nkNone: sysAssert(false, "objectInitAux")
@@ -182,7 +182,7 @@ else:
     mixin destroy
     for i in countup(0, r.len - 1): destroy(r[i])
 
-proc genericReset(dest: pointer, mt: PNimType) {.compilerProc, gcsafe.}
+proc genericReset(dest: pointer, mt: PNimType) {.compilerProc, benign.}
 proc genericResetAux(dest: pointer, n: ptr TNimNode) =
   var d = cast[ByteAddress](dest)
   case n.kind

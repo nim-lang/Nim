@@ -49,9 +49,9 @@ proc deinitRawChannel(p: pointer) =
   deinitSysCond(c.cond)
 
 proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel, 
-              mode: TLoadStoreMode) {.gcsafe.}
+              mode: TLoadStoreMode) {.benign.}
 proc storeAux(dest, src: pointer, n: ptr TNimNode, t: PRawChannel,
-              mode: TLoadStoreMode) {.gcsafe.} =
+              mode: TLoadStoreMode) {.benign.} =
   var
     d = cast[ByteAddress](dest)
     s = cast[ByteAddress](src)

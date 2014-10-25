@@ -41,7 +41,7 @@ proc countDefinedSymbols*(): int =
   for key, val in pairs(gSymbols):
     if val == "true": inc(result)
 
-# For ease of bootstrapping, we keep there here and not in the global config
+# For ease of bootstrapping, we keep them here and not in the global config
 # file for now:
 const
   additionalSymbols = """
@@ -88,6 +88,7 @@ proc initDefines*() =
   defineSymbol("nimrequiresnimframe")
   defineSymbol("nimparsebiggestfloatmagic")
   defineSymbol("nimalias")
+  defineSymbol("nimlocks")
   
   # add platform specific symbols:
   for c in low(CPU)..high(CPU):

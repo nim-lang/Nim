@@ -514,7 +514,7 @@ proc getSmallChunk(a: var TMemRegion): PSmallChunk =
   result = cast[PSmallChunk](res)
 
 # -----------------------------------------------------------------------------
-proc isAllocatedPtr(a: TMemRegion, p: pointer): bool
+proc isAllocatedPtr(a: TMemRegion, p: pointer): bool {.benign.}
 
 proc allocInv(a: TMemRegion): bool =
   ## checks some (not all yet) invariants of the allocator's data structures.

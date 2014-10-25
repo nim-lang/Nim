@@ -1318,20 +1318,20 @@ proc substr*(s: string, first, last: int): string {.
   ## or `limit`:idx: a string's length.
 
 when not defined(nimrodVM):
-  proc zeroMem*(p: pointer, size: int) {.importc, noDecl, gcsafe.}
+  proc zeroMem*(p: pointer, size: int) {.importc, noDecl, benign.}
     ## overwrites the contents of the memory at ``p`` with the value 0.
     ## Exactly ``size`` bytes will be overwritten. Like any procedure
     ## dealing with raw memory this is *unsafe*.
 
   proc copyMem*(dest, source: pointer, size: int) {.
-    importc: "memcpy", header: "<string.h>", gcsafe.}
+    importc: "memcpy", header: "<string.h>", benign.}
     ## copies the contents from the memory at ``source`` to the memory
     ## at ``dest``. Exactly ``size`` bytes will be copied. The memory
     ## regions may not overlap. Like any procedure dealing with raw
     ## memory this is *unsafe*.
 
   proc moveMem*(dest, source: pointer, size: int) {.
-    importc: "memmove", header: "<string.h>", gcsafe.}
+    importc: "memmove", header: "<string.h>", benign.}
     ## copies the contents from the memory at ``source`` to the memory
     ## at ``dest``. Exactly ``size`` bytes will be copied. The memory
     ## regions may overlap, ``moveMem`` handles this case appropriately
@@ -1346,14 +1346,14 @@ when not defined(nimrodVM):
     ## *unsafe*.
 
   when hostOS != "standalone":
-    proc alloc*(size: int): pointer {.noconv, rtl, tags: [], gcsafe.}
+    proc alloc*(size: int): pointer {.noconv, rtl, tags: [], benign.}
       ## allocates a new memory block with at least ``size`` bytes. The
       ## block has to be freed with ``realloc(block, 0)`` or
       ## ``dealloc(block)``. The block is not initialized, so reading
       ## from it before writing to it is undefined behaviour!
       ## The allocated memory belongs to its allocating thread!
       ## Use `allocShared` to allocate from a shared heap.
-    proc createU*(T: typedesc, size = 1.Positive): ptr T {.inline, gcsafe.} =
+    proc createU*(T: typedesc, size = 1.Positive): ptr T {.inline, benign.} =
       ## allocates a new memory block with at least ``T.sizeof * size``
       ## bytes. The block has to be freed with ``resize(block, 0)`` or
       ## ``free(block)``. The block is not initialized, so reading
@@ -1361,14 +1361,14 @@ when not defined(nimrodVM):
       ## The allocated memory belongs to its allocating thread!
       ## Use `createSharedU` to allocate from a shared heap.
       cast[ptr T](alloc(T.sizeof * size))
-    proc alloc0*(size: int): pointer {.noconv, rtl, tags: [], gcsafe.}
+    proc alloc0*(size: int): pointer {.noconv, rtl, tags: [], benign.}
       ## allocates a new memory block with at least ``size`` bytes. The
       ## block has to be freed with ``realloc(block, 0)`` or
       ## ``dealloc(block)``. The block is initialized with all bytes
       ## containing zero, so it is somewhat safer than ``alloc``.
       ## The allocated memory belongs to its allocating thread!
       ## Use `allocShared0` to allocate from a shared heap.
-    proc create*(T: typedesc, size = 1.Positive): ptr T {.inline, gcsafe.} =
+    proc create*(T: typedesc, size = 1.Positive): ptr T {.inline, benign.} =
       ## allocates a new memory block with at least ``T.sizeof * size``
       ## bytes. The block has to be freed with ``resize(block, 0)`` or
       ## ``free(block)``. The block is initialized with all bytes
@@ -1377,7 +1377,7 @@ when not defined(nimrodVM):
       ## Use `createShared` to allocate from a shared heap.
       cast[ptr T](alloc0(T.sizeof * size))
     proc realloc*(p: pointer, newSize: int): pointer {.noconv, rtl, tags: [], 
-                                                       gcsafe.}
+                                                       benign.}
       ## grows or shrinks a given memory block. If p is **nil** then a new
       ## memory block is returned. In either way the block has at least
       ## ``newSize`` bytes. If ``newSize == 0`` and p is not **nil**
@@ -1385,7 +1385,7 @@ when not defined(nimrodVM):
       ## be freed with ``dealloc``.
       ## The allocated memory belongs to its allocating thread!
       ## Use `reallocShared` to reallocate from a shared heap.
-    proc resize*[T](p: ptr T, newSize: Natural): ptr T {.inline, gcsafe.} =
+    proc resize*[T](p: ptr T, newSize: Natural): ptr T {.inline, benign.} =
       ## grows or shrinks a given memory block. If p is **nil** then a new
       ## memory block is returned. In either way the block has at least
       ## ``T.sizeof * newSize`` bytes. If ``newSize == 0`` and p is not
@@ -1394,7 +1394,7 @@ when not defined(nimrodVM):
       ## its allocating thread!
       ## Use `resizeShared` to reallocate from a shared heap.
       cast[ptr T](realloc(p, T.sizeof * newSize))
-    proc dealloc*(p: pointer) {.noconv, rtl, tags: [], gcsafe.}
+    proc dealloc*(p: pointer) {.noconv, rtl, tags: [], benign.}
       ## frees the memory allocated with ``alloc``, ``alloc0`` or
       ## ``realloc``. This procedure is dangerous! If one forgets to
       ## free the memory a leak occurs; if one tries to access freed
@@ -1402,23 +1402,23 @@ when not defined(nimrodVM):
       ## or other memory may be corrupted. 
       ## The freed memory must belong to its allocating thread!
       ## Use `deallocShared` to deallocate from a shared heap.
-    proc free*[T](p: ptr T) {.inline, gcsafe.} =
+    proc free*[T](p: ptr T) {.inline, benign.} =
       dealloc(p)
-    proc allocShared*(size: int): pointer {.noconv, rtl, gcsafe.}
+    proc allocShared*(size: int): pointer {.noconv, rtl, benign.}
       ## allocates a new memory block on the shared heap with at
       ## least ``size`` bytes. The block has to be freed with
       ## ``reallocShared(block, 0)`` or ``deallocShared(block)``. The block
       ## is not initialized, so reading from it before writing to it is 
       ## undefined behaviour!
     proc createSharedU*(T: typedesc, size = 1.Positive): ptr T {.inline, 
-                                                                 gcsafe.} =
+                                                                 benign.} =
       ## allocates a new memory block on the shared heap with at
       ## least ``T.sizeof * size`` bytes. The block has to be freed with
       ## ``resizeShared(block, 0)`` or ``freeShared(block)``. The block
       ## is not initialized, so reading from it before writing to it is 
       ## undefined behaviour!
       cast[ptr T](allocShared(T.sizeof * size))
-    proc allocShared0*(size: int): pointer {.noconv, rtl, gcsafe.}
+    proc allocShared0*(size: int): pointer {.noconv, rtl, benign.}
       ## allocates a new memory block on the shared heap with at 
       ## least ``size`` bytes. The block has to be freed with
       ## ``reallocShared(block, 0)`` or ``deallocShared(block)``.
@@ -1432,7 +1432,7 @@ when not defined(nimrodVM):
       ## containing zero, so it is somewhat safer than ``createSharedU``.
       cast[ptr T](allocShared0(T.sizeof * size))
     proc reallocShared*(p: pointer, newSize: int): pointer {.noconv, rtl, 
-                                                             gcsafe.}
+                                                             benign.}
       ## grows or shrinks a given memory block on the heap. If p is **nil**
       ## then a new memory block is returned. In either way the block has at
       ## least ``newSize`` bytes. If ``newSize == 0`` and p is not **nil**
@@ -1445,13 +1445,13 @@ when not defined(nimrodVM):
       ## not **nil** ``resizeShared`` calls ``freeShared(p)``. In other
       ## cases the block has to be freed with ``freeShared``.
       cast[ptr T](reallocShared(p, T.sizeof * newSize))
-    proc deallocShared*(p: pointer) {.noconv, rtl, gcsafe.}
+    proc deallocShared*(p: pointer) {.noconv, rtl, benign.}
       ## frees the memory allocated with ``allocShared``, ``allocShared0`` or
       ## ``reallocShared``. This procedure is dangerous! If one forgets to
       ## free the memory a leak occurs; if one tries to access freed
       ## memory (or just freeing it twice!) a core dump may happen
       ## or other memory may be corrupted.
-    proc freeShared*[T](p: ptr T) {.inline, gcsafe.} =
+    proc freeShared*[T](p: ptr T) {.inline, benign.} =
       ## frees the memory allocated with ``createShared``, ``createSharedU`` or
       ## ``resizeShared``. This procedure is dangerous! If one forgets to
       ## free the memory a leak occurs; if one tries to access freed
@@ -1993,15 +1993,15 @@ when false:
 # ----------------- GC interface ---------------------------------------------
 
 when not defined(nimrodVM) and hostOS != "standalone":
-  proc GC_disable*() {.rtl, inl.}
+  proc GC_disable*() {.rtl, inl, benign.}
     ## disables the GC. If called n-times, n calls to `GC_enable` are needed to
     ## reactivate the GC. Note that in most circumstances one should only disable
     ## the mark and sweep phase with `GC_disableMarkAndSweep`.
 
-  proc GC_enable*() {.rtl, inl.}
+  proc GC_enable*() {.rtl, inl, benign.}
     ## enables the GC again.
 
-  proc GC_fullCollect*() {.rtl.}
+  proc GC_fullCollect*() {.rtl, benign.}
     ## forces a full garbage collection pass.
     ## Ordinary code does not need to call this (and should not).
 
@@ -2014,32 +2014,32 @@ when not defined(nimrodVM) and hostOS != "standalone":
 
   {.deprecated: [TGC_Strategy: GC_Strategy].}
 
-  proc GC_setStrategy*(strategy: GC_Strategy) {.rtl, deprecated.}
+  proc GC_setStrategy*(strategy: GC_Strategy) {.rtl, deprecated, benign.}
     ## tells the GC the desired strategy for the application.
     ## **Deprecated** since version 0.8.14. This has always been a nop.
 
-  proc GC_enableMarkAndSweep*() {.rtl.}
-  proc GC_disableMarkAndSweep*() {.rtl.}
+  proc GC_enableMarkAndSweep*() {.rtl, benign.}
+  proc GC_disableMarkAndSweep*() {.rtl, benign.}
     ## the current implementation uses a reference counting garbage collector
     ## with a seldomly run mark and sweep phase to free cycles. The mark and
     ## sweep phase may take a long time and is not needed if the application
     ## does not create cycles. Thus the mark and sweep phase can be deactivated
     ## and activated separately from the rest of the GC.
 
-  proc GC_getStatistics*(): string {.rtl.}
+  proc GC_getStatistics*(): string {.rtl, benign.}
     ## returns an informative string about the GC's activity. This may be useful
     ## for tweaking.
     
-  proc GC_ref*[T](x: ref T) {.magic: "GCref", gcsafe.}
-  proc GC_ref*[T](x: seq[T]) {.magic: "GCref", gcsafe.}
-  proc GC_ref*(x: string) {.magic: "GCref", gcsafe.}
+  proc GC_ref*[T](x: ref T) {.magic: "GCref", benign.}
+  proc GC_ref*[T](x: seq[T]) {.magic: "GCref", benign.}
+  proc GC_ref*(x: string) {.magic: "GCref", benign.}
     ## marks the object `x` as referenced, so that it will not be freed until
     ## it is unmarked via `GC_unref`. If called n-times for the same object `x`,
     ## n calls to `GC_unref` are needed to unmark `x`. 
     
-  proc GC_unref*[T](x: ref T) {.magic: "GCunref", gcsafe.}
-  proc GC_unref*[T](x: seq[T]) {.magic: "GCunref", gcsafe.}
-  proc GC_unref*(x: string) {.magic: "GCunref", gcsafe.}
+  proc GC_unref*[T](x: ref T) {.magic: "GCunref", benign.}
+  proc GC_unref*[T](x: seq[T]) {.magic: "GCunref", benign.}
+  proc GC_unref*(x: string) {.magic: "GCunref", benign.}
     ## see the documentation of `GC_ref`.
 
 template accumulateResult*(iter: expr) =
@@ -2057,7 +2057,7 @@ const NimStackTrace = compileOption("stacktrace")
 # of the code
 
 var
-  globalRaiseHook*: proc (e: ref Exception): bool {.nimcall, gcsafe.}
+  globalRaiseHook*: proc (e: ref Exception): bool {.nimcall, benign.}
     ## with this hook you can influence exception handling on a global level.
     ## If not nil, every 'raise' statement ends up calling this hook. Ordinary
     ## application code should never set this hook! You better know what you
@@ -2065,7 +2065,7 @@ var
     ## exception is caught and does not propagate further through the call
     ## stack.
 
-  localRaiseHook* {.threadvar.}: proc (e: ref Exception): bool {.nimcall, gcsafe.}
+  localRaiseHook* {.threadvar.}: proc (e: ref Exception): bool {.nimcall, benign.}
     ## with this hook you can influence exception handling on a
     ## thread local level.
     ## If not nil, every 'raise' statement ends up calling this hook. Ordinary
@@ -2073,7 +2073,7 @@ var
     ## do when setting this. If ``localRaiseHook`` returns false, the exception
     ## is caught and does not propagate further through the call stack.
     
-  outOfMemHook*: proc () {.nimcall, tags: [], gcsafe.}
+  outOfMemHook*: proc () {.nimcall, tags: [], benign.}
     ## set this variable to provide a procedure that should be called 
     ## in case of an `out of memory`:idx: event. The standard handler
     ## writes an error message and terminates the program. `outOfMemHook` can
@@ -2125,7 +2125,7 @@ elif hostOS != "standalone":
       inc(i)
   {.pop.}
 
-proc echo*[T](x: varargs[T, `$`]) {.magic: "Echo", tags: [WriteIOEffect], gcsafe.}
+proc echo*[T](x: varargs[T, `$`]) {.magic: "Echo", tags: [WriteIOEffect], benign.}
   ## Writes and flushes the parameters to the standard output.
   ##
   ## Special built-in that takes a variable number of arguments. Each argument
@@ -2178,7 +2178,7 @@ when not declared(sysFatal):
       e.msg = message & arg
       raise e
 
-proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo", gcsafe.}
+proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo", benign.}
   ## get type information for `x`. Ordinary code should not use this, but
   ## the `typeinfo` module instead.
 
@@ -2294,14 +2294,14 @@ when not defined(JS): #and not defined(NimrodVM):
 
     proc open*(f: var File, filename: string,
                mode: FileMode = fmRead, bufSize: int = -1): bool {.tags: [],
-               gcsafe.}
+               benign.}
       ## Opens a file named `filename` with given `mode`.
       ##
       ## Default mode is readonly. Returns true iff the file could be opened.
       ## This throws no exception if the file could not be opened.
 
     proc open*(f: var File, filehandle: FileHandle,
-               mode: FileMode = fmRead): bool {.tags: [], gcsafe.}
+               mode: FileMode = fmRead): bool {.tags: [], benign.}
       ## Creates a ``TFile`` from a `filehandle` with given `mode`.
       ##
       ## Default mode is readonly. Returns true iff the file could be opened.
@@ -2316,7 +2316,7 @@ when not defined(JS): #and not defined(NimrodVM):
         sysFatal(IOError, "cannot open: ", filename)
 
     proc reopen*(f: File, filename: string, mode: FileMode = fmRead): bool {.
-      tags: [], gcsafe.}
+      tags: [], benign.}
       ## reopens the file `f` with given `filename` and `mode`. This 
       ## is often used to redirect the `stdin`, `stdout` or `stderr`
       ## file variables.
@@ -2326,7 +2326,7 @@ when not defined(JS): #and not defined(NimrodVM):
     proc close*(f: File) {.importc: "fclose", header: "<stdio.h>", tags: [].}
       ## Closes the file.
 
-    proc endOfFile*(f: File): bool {.tags: [], gcsafe.}
+    proc endOfFile*(f: File): bool {.tags: [], benign.}
       ## Returns true iff `f` is at the end.
       
     proc readChar*(f: File): char {.
@@ -2336,40 +2336,40 @@ when not defined(JS): #and not defined(NimrodVM):
       importc: "fflush", header: "<stdio.h>", tags: [WriteIOEffect].}
       ## Flushes `f`'s buffer.
 
-    proc readAll*(file: File): TaintedString {.tags: [ReadIOEffect], gcsafe.}
+    proc readAll*(file: File): TaintedString {.tags: [ReadIOEffect], benign.}
       ## Reads all data from the stream `file`.
       ##
       ## Raises an IO exception in case of an error. It is an error if the
       ## current file position is not at the beginning of the file.
     
-    proc readFile*(filename: string): TaintedString {.tags: [ReadIOEffect], gcsafe.}
+    proc readFile*(filename: string): TaintedString {.tags: [ReadIOEffect], benign.}
       ## Opens a file named `filename` for reading. Then calls `readAll`
       ## and closes the file afterwards. Returns the string. 
       ## Raises an IO exception in case of an error.
 
-    proc writeFile*(filename, content: string) {.tags: [WriteIOEffect], gcsafe.}
+    proc writeFile*(filename, content: string) {.tags: [WriteIOEffect], benign.}
       ## Opens a file named `filename` for writing. Then writes the
       ## `content` completely to the file and closes the file afterwards.
       ## Raises an IO exception in case of an error.
 
-    proc write*(f: File, r: float32) {.tags: [WriteIOEffect], gcsafe.}
-    proc write*(f: File, i: int) {.tags: [WriteIOEffect], gcsafe.}
-    proc write*(f: File, i: BiggestInt) {.tags: [WriteIOEffect], gcsafe.}
-    proc write*(f: File, r: BiggestFloat) {.tags: [WriteIOEffect], gcsafe.}
-    proc write*(f: File, s: string) {.tags: [WriteIOEffect], gcsafe.}
-    proc write*(f: File, b: bool) {.tags: [WriteIOEffect], gcsafe.}
-    proc write*(f: File, c: char) {.tags: [WriteIOEffect], gcsafe.}
-    proc write*(f: File, c: cstring) {.tags: [WriteIOEffect], gcsafe.}
-    proc write*(f: File, a: varargs[string, `$`]) {.tags: [WriteIOEffect], gcsafe.}
+    proc write*(f: File, r: float32) {.tags: [WriteIOEffect], benign.}
+    proc write*(f: File, i: int) {.tags: [WriteIOEffect], benign.}
+    proc write*(f: File, i: BiggestInt) {.tags: [WriteIOEffect], benign.}
+    proc write*(f: File, r: BiggestFloat) {.tags: [WriteIOEffect], benign.}
+    proc write*(f: File, s: string) {.tags: [WriteIOEffect], benign.}
+    proc write*(f: File, b: bool) {.tags: [WriteIOEffect], benign.}
+    proc write*(f: File, c: char) {.tags: [WriteIOEffect], benign.}
+    proc write*(f: File, c: cstring) {.tags: [WriteIOEffect], benign.}
+    proc write*(f: File, a: varargs[string, `$`]) {.tags: [WriteIOEffect], benign.}
       ## Writes a value to the file `f`. May throw an IO exception.
 
-    proc readLine*(f: File): TaintedString  {.tags: [ReadIOEffect], gcsafe.}
+    proc readLine*(f: File): TaintedString  {.tags: [ReadIOEffect], benign.}
       ## reads a line of text from the file `f`. May throw an IO exception.
       ## A line of text may be delimited by ``CR``, ``LF`` or
       ## ``CRLF``. The newline character(s) are not part of the returned string.
     
     proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect], 
-                  gcsafe.}
+                  benign.}
       ## reads a line of text from the file `f` into `line`. `line` must not be
       ## ``nil``! May throw an IO exception.
       ## A line of text may be delimited by ``CR``, ``LF`` or
@@ -2379,57 +2379,57 @@ when not defined(JS): #and not defined(NimrodVM):
 
     when not defined(booting):
       proc writeln*[Ty](f: File, x: varargs[Ty, `$`]) {.inline, 
-                               tags: [WriteIOEffect], gcsafe.}
+                               tags: [WriteIOEffect], benign.}
         ## writes the values `x` to `f` and then writes "\n".
         ## May throw an IO exception.
     else:
       proc writeln*[Ty](f: File, x: varargs[Ty, `$`]) {.inline, 
                                tags: [WriteIOEffect].}
 
-    proc getFileSize*(f: File): int64 {.tags: [ReadIOEffect], gcsafe.}
+    proc getFileSize*(f: File): int64 {.tags: [ReadIOEffect], benign.}
       ## retrieves the file size (in bytes) of `f`.
 
     proc readBytes*(f: File, a: var openArray[int8], start, len: int): int {.
-      tags: [ReadIOEffect], gcsafe.}
+      tags: [ReadIOEffect], benign.}
       ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
       ## the actual number of bytes that have been read which may be less than
       ## `len` (if not as many bytes are remaining), but not greater.
 
     proc readChars*(f: File, a: var openArray[char], start, len: int): int {.
-      tags: [ReadIOEffect], gcsafe.}
+      tags: [ReadIOEffect], benign.}
       ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
       ## the actual number of bytes that have been read which may be less than
       ## `len` (if not as many bytes are remaining), but not greater.
 
     proc readBuffer*(f: File, buffer: pointer, len: int): int {.
-      tags: [ReadIOEffect], gcsafe.}
+      tags: [ReadIOEffect], benign.}
       ## reads `len` bytes into the buffer pointed to by `buffer`. Returns
       ## the actual number of bytes that have been read which may be less than
       ## `len` (if not as many bytes are remaining), but not greater.
 
     proc writeBytes*(f: File, a: openArray[int8], start, len: int): int {.
-      tags: [WriteIOEffect], gcsafe.}
+      tags: [WriteIOEffect], benign.}
       ## writes the bytes of ``a[start..start+len-1]`` to the file `f`. Returns
       ## the number of actual written bytes, which may be less than `len` in case
       ## of an error.
 
     proc writeChars*(f: File, a: openArray[char], start, len: int): int {.
-      tags: [WriteIOEffect], gcsafe.}
+      tags: [WriteIOEffect], benign.}
       ## writes the bytes of ``a[start..start+len-1]`` to the file `f`. Returns
       ## the number of actual written bytes, which may be less than `len` in case
       ## of an error.
 
     proc writeBuffer*(f: File, buffer: pointer, len: int): int {.
-      tags: [WriteIOEffect], gcsafe.}
+      tags: [WriteIOEffect], benign.}
       ## writes the bytes of buffer pointed to by the parameter `buffer` to the
       ## file `f`. Returns the number of actual written bytes, which may be less
       ## than `len` in case of an error.
 
-    proc setFilePos*(f: File, pos: int64) {.gcsafe.}
+    proc setFilePos*(f: File, pos: int64) {.benign.}
       ## sets the position of the file pointer that is used for read/write
       ## operations. The file's first byte has the index zero.
 
-    proc getFilePos*(f: File): int64 {.gcsafe.}
+    proc getFilePos*(f: File): int64 {.benign.}
       ## retrieves the current position of the file pointer that is used to
       ## read from the file `f`. The file's first byte has the index zero.
 
@@ -2476,11 +2476,11 @@ when not defined(JS): #and not defined(NimrodVM):
 
   when not defined(NimrodVM):
     proc atomicInc*(memLoc: var int, x: int = 1): int {.inline, 
-      discardable, gcsafe.}
+      discardable, benign.}
       ## atomic increment of `memLoc`. Returns the value after the operation.
     
     proc atomicDec*(memLoc: var int, x: int = 1): int {.inline, 
-      discardable, gcsafe.}
+      discardable, benign.}
       ## atomic decrement of `memLoc`. Returns the value after the operation.
 
     include "system/atomics"
@@ -2611,11 +2611,11 @@ when not defined(JS): #and not defined(NimrodVM):
     include "system/assign"
     include "system/repr"
 
-    proc getCurrentException*(): ref Exception {.compilerRtl, inl, gcsafe.} =
+    proc getCurrentException*(): ref Exception {.compilerRtl, inl, benign.} =
       ## retrieves the current exception; if there is none, nil is returned.
       result = currException
 
-    proc getCurrentExceptionMsg*(): string {.inline, gcsafe.} =
+    proc getCurrentExceptionMsg*(): string {.inline, benign.} =
       ## retrieves the error message that was attached to the current
       ## exception; if there is none, "" is returned.
       var e = getCurrentException()
@@ -2631,7 +2631,7 @@ when not defined(JS): #and not defined(NimrodVM):
         excHandler.hasRaiseAction = true
         excHandler.raiseAction = action
 
-    proc setCurrentException*(exc: ref Exception) {.inline, gcsafe.} =
+    proc setCurrentException*(exc: ref Exception) {.inline, benign.} =
       ## sets the current exception.
       ##
       ## **Warning**: Only use this if you know what you are doing.

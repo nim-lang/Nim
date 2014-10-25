@@ -7,8 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) {.gcsafe.}
-proc genericDeepCopyAux(dest, src: pointer, n: ptr TNimNode) {.gcsafe.} =
+proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) {.benign.}
+proc genericDeepCopyAux(dest, src: pointer, n: ptr TNimNode) {.benign.} =
   var
     d = cast[ByteAddress](dest)
     s = cast[ByteAddress](src)
