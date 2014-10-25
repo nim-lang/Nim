@@ -162,6 +162,7 @@
   ; Section for adding tools to the PATH variable
   Section "Setup Path Environment" PathSection
      ${EnvVarUpdate} $R0 "PATH" "A" "HKCU" "$INSTDIR\dist\mingw"
+     ${EnvVarUpdate} $R0 "PATH" "A" "HKCU" "$INSTDIR\dist\mingw\bin"
      ${EnvVarUpdate} $R0 "PATH" "A" "HKCU" "$INSTDIR\bin"
      ${EnvVarUpdate} $R0 "PATH" "A" "HKCU" "$INSTDIR\dist\babel"
   SectionEnd
@@ -248,6 +249,7 @@
 
     ; Remove entries from the PATH environment variable
     ${un.EnvVarUpdate} $R0 "PATH" "R" "HKCU" "$INSTDIR\dist\mingw"
+    ${un.EnvVarUpdate} $R0 "PATH" "R" "HKCU" "$INSTDIR\dist\mingw\bin"
     ${un.EnvVarUpdate} $R0 "PATH" "R" "HKCU" "$INSTDIR\bin"
     ${un.EnvVarUpdate} $R0 "PATH" "R" "HKCU" "$INSTDIR\dist\babel"
   SectionEnd
