@@ -927,6 +927,7 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): PRope =
         app(result, x)
         app(result, "\\n\"\n")
   else:
+    res.add(tnl)
     result = res.toRope
 
 proc genAsmStmt(p: BProc, t: PNode) = 
