@@ -818,10 +818,16 @@ elif not defined(useNimRtl):
     discard close(p.errHandle)
 
   proc suspend(p: PProcess) =
-    if kill(-p.id, SIGSTOP) != 0'i32: osError(osLastError())
+    var idToUse = p.id
+    if getpgid(idToUse) == idToUse:
+      idToUse = -idToUse
+    if kill(idToUse, SIGSTOP) != 0'i32: osError(osLastError())
 
   proc resume(p: PProcess) =
-    if kill(-p.id, SIGCONT) != 0'i32: osError(osLastError())
+    var idToUse = p.id
+    if getpgid(idToUse) == idToUse:
+      idToUse = -idToUse
+    if kill(idToUse, SIGCONT) != 0'i32: osError(osLastError())
 
   proc running(p: PProcess): bool =
     var ret = waitpid(p.id, p.exitCode, WNOHANG)
@@ -829,16 +835,16 @@ elif not defined(useNimRtl):
     result = ret == int(p.id)
 
   proc terminate(p: PProcess, milliSecsToWait = terminateDefaultMilliSecsToWait) =
-    var idToKill = p.id
-    if getpgid(idToKill) == idToKill:
-      idToKill = -idToKill
-    if kill(idToKill, SIGTERM) == 0'i32:
+    var idToUse = p.id
+    if getpgid(idToUse) == idToUse:
+      idToUse = -idToUse
+    if kill(idToUse, SIGTERM) == 0'i32:
       var timeToWait = milliSecsToWait
       while p.running() and timeToWait > 0:
         sleep(terminateMilliSecsPerLoop)
         timeToWait = timeToWait - terminateMilliSecsPerLoop
       if p.running():
-        if kill(idToKill, SIGKILL) != 0'i32: osError(osLastError())
+        if kill(idToUse, SIGKILL) != 0'i32: osError(osLastError())
     else: osError(osLastError())
 
   proc waitForExit(p: PProcess, timeout: int = -1): int =
