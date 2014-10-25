@@ -45,7 +45,8 @@ type
     poEvalCommand,       ## Pass `command` directly to the shell, without quoting.
                          ## Use it only if `command` comes from trused source.
     poStdErrToStdOut,    ## merge stdout and stderr to the stdout stream
-    poParentStreams      ## use the parent's streams
+    poParentStreams,     ## use the parent's streams
+    poCreateNewGroup     ## move new process to a new process group
 
 const poUseShell* {.deprecated.} = poUsePath
   ## Deprecated alias for poUsePath.
@@ -584,6 +585,7 @@ elif not defined(useNimRtl):
     optionPoUsePath: bool
     optionPoParentStreams: bool
     optionPoStdErrToStdOut: bool
+    optionPoCreateNewGroup: bool
 
   when not defined(useFork):
     proc startProcessAuxSpawn(data: TStartProcessData): TPid {.
@@ -643,6 +645,7 @@ elif not defined(useNimRtl):
     data.optionPoParentStreams = poParentStreams in options
     data.optionPoUsePath = poUsePath in options
     data.optionPoStdErrToStdOut = poStdErrToStdOut in options
+    data.optionPoCreateNewGroup = poCreateNewGroup in options
     data.workingDir = workingDir
 
 
@@ -746,6 +749,9 @@ elif not defined(useNimRtl):
       dealloc(stack)
     else:
       pid = fork()
+      if pid != 0 and data.optionPoCreateNewGroup:
+        if setpgid(pid, pid) != 0:
+          osError(osLastError())
       if pid == 0:
         startProcessAfterFork(addr(dataCopy))
         exitnow(1)
