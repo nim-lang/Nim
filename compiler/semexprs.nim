@@ -1551,8 +1551,7 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
     newNode(nkCall, n.info, quotes)])
   result = semExpandToAst(c, result)
 
-proc tryExpr(c: PContext, n: PNode,
-             flags: TExprFlags = {}, bufferErrors = false): PNode =
+proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   # watch out, hacks ahead:
   let oldErrorCount = msgs.gErrorCounter
   let oldErrorMax = msgs.gErrorMax
@@ -1566,7 +1565,7 @@ proc tryExpr(c: PContext, n: PNode,
   let oldOwnerLen = len(gOwners)
   let oldGenerics = c.generics
   let oldErrorOutputs = errorOutputs
-  errorOutputs = if bufferErrors: {eInMemory} else: {}
+  #errorOutputs = if bufferErrors: {eInMemory} else: {}
   let oldContextLen = msgs.getInfoContextLen()
   
   let oldInGenericContext = c.inGenericContext

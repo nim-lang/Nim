@@ -39,7 +39,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
                        initialBinding: PNode,
                        filter: TSymKinds,
                        best, alt: var TCandidate,
-                       errors: var seq[string]) =
+                       errors: var CandidateErrors) =
   var o: TOverloadIter
   var sym = initOverloadIter(o, c, headSymbol)
   var symScope = o.lastOverloadScope
@@ -58,10 +58,10 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
       z.calleeSym = sym
       matches(c, n, orig, z)
       if errors != nil:
-        errors.safeAdd(getProcHeader(sym))
+        errors.safeAdd(sym)
         if z.errors != nil:
           for err in z.errors:
-            errors[errors.len - 1].add("\n  " & err)
+            errors.add(err)
       if z.state == csMatch:
         # little hack so that iterators are preferred over everything else:
         if sym.kind in skIterators: inc(z.exactMatches, 200)
@@ -74,7 +74,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
           else: discard
     sym = nextOverloadIter(o, c, headSymbol)
 
-proc notFoundError*(c: PContext, n: PNode, errors: seq[string]) =
+proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   # Gives a detailed error message; this is separated from semOverloadedCall,
   # as semOverlodedCall is already pretty slow (and we need this information
   # only in case of an error).
@@ -83,18 +83,39 @@ proc notFoundError*(c: PContext, n: PNode, errors: seq[string]) =
     globalError(n.info, errTypeMismatch, "")
   if errors.len == 0:
     localError(n.info, errExprXCannotBeCalled, n[0].renderTree)
-  var result = msgKindToString(errTypeMismatch)
-  add(result, describeArgs(c, n, 1))
-  add(result, ')')
+
+  # to avoid confusing errors like: 
+  #   got (SslPtr, SocketHandle)
+  #   but expected one of: 
+  #   openssl.SSL_set_fd(ssl: SslPtr, fd: SocketHandle): cint
+  # we do a pre-analysis. If all types produce the same string, we will add
+  # module information.
+  let proto = describeArgs(c, n, 1, preferName)
   
+  var prefer = preferName
+  for err in errors:
+    var errProto = "("
+    let n = err.typ.n
+    for i in countup(1, n.len - 1): 
+      var p = n.sons[i]
+      if p.kind == nkSym:
+        add(errProto, typeToString(p.sym.typ, prefer))
+        if i != n.len-1: add(errProto, ", ")
+      # else: ignore internal error as we're already in error handling mode
+    add(errProto, ')')
+    if errProto == proto:
+      prefer = preferModuleInfo
+      break
+  # now use the information stored in 'prefer' to produce a nice error message:
+  var result = msgKindToString(errTypeMismatch)
+  add(result, describeArgs(c, n, 1, prefer))
+  add(result, ')')
   var candidates = ""
   for err in errors:
-    add(candidates, err)
+    add(candidates, err.getProcHeader(prefer))
     add(candidates, "\n")
-
   if candidates != "":
     add(result, "\n" & msgKindToString(errButExpected) & "\n" & candidates)
-
   localError(n.info, errGenerated, result)
 
 proc gatherUsedSyms(c: PContext, usedSyms: var seq[PNode]) =
@@ -114,7 +135,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
   else:
     initialBinding = nil
 
-  var errors: seq[string]
+  var errors: CandidateErrors
   var usedSyms: seq[PNode]
 
   template pickBest(headSymbol: expr) =

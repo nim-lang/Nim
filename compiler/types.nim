@@ -16,11 +16,10 @@ proc firstOrd*(t: PType): BiggestInt
 proc lastOrd*(t: PType): BiggestInt
 proc lengthOrd*(t: PType): BiggestInt
 type 
-  TPreferedDesc* = enum 
-    preferName, preferDesc, preferExported
+  TPreferedDesc* = enum
+    preferName, preferDesc, preferExported, preferModuleInfo
 
-proc typeToString*(typ: PType, prefer: TPreferedDesc = preferName): string
-proc getProcHeader*(sym: PSym): string
+proc typeToString*(typ: PType; prefer: TPreferedDesc = preferName): string
 proc base*(t: PType): PType
   # ------------------- type iterator: ----------------------------------------
 type 
@@ -121,7 +120,7 @@ proc isCompatibleToCString(a: PType): bool =
         (a.sons[1].kind == tyChar): 
       result = true
   
-proc getProcHeader(sym: PSym): string = 
+proc getProcHeader*(sym: PSym; prefer: TPreferedDesc = preferName): string = 
   result = sym.owner.name.s & '.' & sym.name.s & '('
   var n = sym.typ.n
   for i in countup(1, sonsLen(n) - 1): 
@@ -129,13 +128,14 @@ proc getProcHeader(sym: PSym): string =
     if p.kind == nkSym: 
       add(result, p.sym.name.s)
       add(result, ": ")
-      add(result, typeToString(p.sym.typ))
+      add(result, typeToString(p.sym.typ, prefer))
       if i != sonsLen(n)-1: add(result, ", ")
     else:
       internalError("getProcHeader")
   add(result, ')')
-  if n.sons[0].typ != nil: result.add(": " & typeToString(n.sons[0].typ))
-  
+  if n.sons[0].typ != nil:
+    result.add(": " & typeToString(n.sons[0].typ, prefer))
+
 proc elemType*(t: PType): PType = 
   assert(t != nil)
   case t.kind
@@ -415,10 +415,14 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   var t = typ
   result = ""
   if t == nil: return 
-  if prefer == preferName and t.sym != nil and sfAnon notin t.sym.flags:
+  if prefer in {preferName, preferModuleInfo} and t.sym != nil and
+       sfAnon notin t.sym.flags:
     if t.kind == tyInt and isIntLit(t):
       return t.sym.name.s & " literal(" & $t.n.intVal & ")"
-    return t.sym.name.s
+    if prefer == preferName:
+      return t.sym.name.s
+    else:
+      return t.sym.skipGenericOwner.name.s & '.' & t.sym.name.s
   case t.kind
   of tyInt:
     if not isIntLit(t) or prefer == preferExported:
@@ -492,8 +496,9 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     result = "set[" & typeToString(t.sons[0]) & ']'
   of tyOpenArray: 
     result = "openarray[" & typeToString(t.sons[0]) & ']'
-  of tyDistinct: 
-    result = "distinct " & typeToString(t.sons[0], preferName)
+  of tyDistinct:
+    result = "distinct " & typeToString(t.sons[0],
+      if prefer == preferModuleInfo: preferModuleInfo else: preferName)
   of tyTuple: 
     # we iterate over t.sons here, because t.n may be nil
     result = "tuple["
