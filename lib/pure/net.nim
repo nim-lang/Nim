@@ -232,10 +232,10 @@ when defined(ssl):
 
 proc socketError*(socket: Socket, err: int = -1, async = false,
                   lastError = (-1).OSErrorCode) =
-  ## Raises an EOS error based on the error code returned by ``SSLGetError``
+  ## Raises an OSError based on the error code returned by ``SSLGetError``
   ## (for SSL sockets) and ``osLastError`` otherwise.
   ##
-  ## If ``async`` is ``True`` no error will be thrown in the case when the
+  ## If ``async`` is ``true`` no error will be thrown in the case when the
   ## error was caused by no data being available to be read.
   ##
   ## If ``err`` is not lower than 0 no exception will be raised.

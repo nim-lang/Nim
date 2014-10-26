@@ -41,7 +41,9 @@
 
 {.deadCodeElim: on.}
 
-when defined(WINDOWS): 
+const useWinVersion = defined(Windows) or defined(nimdoc)
+
+when useWinVersion: 
   const 
     DLLSSLName = "(ssleay32|libssl32).dll"
     DLLUtilName = "libeay32.dll"
@@ -270,12 +272,12 @@ proc OpenSSL_add_all_algorithms*(){.cdecl, dynlib: DLLUtilName, importc: "OPENSS
 
 proc OPENSSL_config*(configName: cstring){.cdecl, dynlib: DLLSSLName, importc.}
 
-when not defined(windows):
+when not useWinVersion:
   proc CRYPTO_set_mem_functions(a,b,c: pointer){.cdecl, 
     dynlib: DLLUtilName, importc.}
 
 proc CRYPTO_malloc_init*() =
-  when not defined(windows):
+  when not useWinVersion:
     CRYPTO_set_mem_functions(alloc, realloc, dealloc)
 
 proc SSL_CTX_ctrl*(ctx: SslCtx, cmd: cInt, larg: int, parg: pointer): int{.
