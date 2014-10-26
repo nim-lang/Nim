@@ -94,7 +94,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   
   var prefer = preferName
   for err in errors:
-    var errProto = "("
+    var errProto = ""
     let n = err.typ.n
     for i in countup(1, n.len - 1): 
       var p = n.sons[i]
@@ -102,7 +102,6 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
         add(errProto, typeToString(p.sym.typ, prefer))
         if i != n.len-1: add(errProto, ", ")
       # else: ignore internal error as we're already in error handling mode
-    add(errProto, ')')
     if errProto == proto:
       prefer = preferModuleInfo
       break

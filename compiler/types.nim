@@ -419,10 +419,10 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
        sfAnon notin t.sym.flags:
     if t.kind == tyInt and isIntLit(t):
       return t.sym.name.s & " literal(" & $t.n.intVal & ")"
-    if prefer == preferName:
+    if prefer == preferName or t.sym.owner.isNil:
       return t.sym.name.s
     else:
-      return t.sym.skipGenericOwner.name.s & '.' & t.sym.name.s
+      return t.sym.owner.name.s & '.' & t.sym.name.s
   case t.kind
   of tyInt:
     if not isIntLit(t) or prefer == preferExported:
