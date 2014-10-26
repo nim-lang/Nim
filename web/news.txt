@@ -49,6 +49,9 @@ News
       os.getEnv, os.existsEnv, os.dirExists, os.fileExists,
       system.writeFile
 
+  - Two backticks now produce a single backtick within an ``emit`` or ``asm``
+    statement.
+    
 
 2014-10-19 Nimrod version 0.9.6 released
 ========================================

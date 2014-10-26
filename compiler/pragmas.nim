@@ -448,6 +448,9 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
           addSon(result, newSymNode(e))
         else: 
           addSon(result, newStrNode(nkStrLit, sub))
+      else:
+        # an empty '``' produces a single '`'
+        addSon(result, newStrNode(nkStrLit, $marker))
       if c < 0: break 
       a = c + 1
   else: illFormedAst(n)

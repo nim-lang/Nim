@@ -383,6 +383,9 @@ Example:
 
   embedsC()
 
+As can be seen from the example, to Nim symbols can be referred via backticks.
+Use two backticks to produce a single verbatim backtick.
+
 
 ImportCpp pragma
 ----------------
