@@ -22,6 +22,8 @@ News
   - Recursive tuple types are not allowed anymore. Use ``object`` instead.
   - The PEGS module returns ``nil`` instead of ``""`` when an optional capture
     fails to match
+  - The re module returns ``nil`` instead of ``""`` when an optional capture
+    fails to match
 
   Language Additions
   ------------------
