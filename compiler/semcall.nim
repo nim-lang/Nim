@@ -99,7 +99,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
     for i in countup(1, n.len - 1): 
       var p = n.sons[i]
       if p.kind == nkSym:
-        add(errProto, typeToString(p.sym.typ, prefer))
+        add(errProto, typeToString(p.sym.typ, preferName))
         if i != n.len-1: add(errProto, ", ")
       # else: ignore internal error as we're already in error handling mode
     if errProto == proto:
@@ -327,7 +327,7 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
     result = explicitGenericSym(c, n, s)
   elif a.kind in {nkClosedSymChoice, nkOpenSymChoice}:
     # choose the generic proc with the proper number of type parameters.
-    # XXX I think this could be improved by reusing sigmatch.ParamTypesMatch.
+    # XXX I think this could be improved by reusing sigmatch.paramTypesMatch.
     # It's good enough for now.
     result = newNodeI(a.kind, n.info)
     for i in countup(0, len(a)-1): 
