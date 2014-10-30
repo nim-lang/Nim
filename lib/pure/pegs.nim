@@ -737,7 +737,12 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int {.
 
 template fillMatches(s, caps, c: expr) =
   for k in 0..c.ml-1:
-    caps[k] = substr(s, c.matches[k][0], c.matches[k][1])
+    let startIdx = c.matches[k][0]
+    let endIdx = c.matches[k][1]
+    if startIdx != -1:
+      caps[k] = substr(s, startIdx, endIdx)
+    else:
+      caps[k] = nil
 
 proc match*(s: string, pattern: Peg, matches: var openArray[string],
             start = 0): bool {.nosideEffect, rtl, extern: "npegs$1Capture".} =
@@ -1767,3 +1772,14 @@ when isMainModule:
 
   assert match("prefix/start", peg"^start$", 7)
 
+  if "foo" =~ peg"{'a'}?.*":
+    assert matches[0] == nil
+  else: assert false
+
+  if "foo" =~ peg"{''}.*":
+    assert matches[0] == ""
+  else: assert false
+
+  if "foo" =~ peg"{'foo'}":
+    assert matches[0] == "foo"
+  else: assert false

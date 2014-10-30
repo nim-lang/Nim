@@ -92,7 +92,7 @@ proc matchOrFind(s: string, pattern: Regex, matches: var openArray[string],
     var a = rawMatches[i * 2]
     var b = rawMatches[i * 2 + 1]
     if a >= 0'i32: matches[i-1] = substr(s, int(a), int(b)-1)
-    else: matches[i-1] = ""
+    else: matches[i-1] = nil
   return rawMatches[1] - rawMatches[0]
   
 proc findBounds*(s: string, pattern: Regex, matches: var openArray[string],
@@ -110,7 +110,7 @@ proc findBounds*(s: string, pattern: Regex, matches: var openArray[string],
     var a = rawMatches[i * 2]
     var b = rawMatches[i * 2 + 1]
     if a >= 0'i32: matches[i-1] = substr(s, int(a), int(b)-1)
-    else: matches[i-1] = ""
+    else: matches[i-1] = nil
   return (rawMatches[0].int, rawMatches[1].int - 1)
   
 proc findBounds*(s: string, pattern: Regex, 
@@ -190,7 +190,7 @@ proc find*(s: string, pattern: Regex, matches: var openArray[string],
     var a = rawMatches[i * 2]
     var b = rawMatches[i * 2 + 1]
     if a >= 0'i32: matches[i-1] = substr(s, int(a), int(b)-1)
-    else: matches[i-1] = ""
+    else: matches[i-1] = nil
   return rawMatches[0]
 
 proc find*(s: string, pattern: Regex, start = 0): int =
@@ -310,6 +310,8 @@ proc replacef*(s: string, sub: Regex, by: string): string =
   while true:
     var match = findBounds(s, sub, caps, prev)
     if match.first < 0: break
+    assert result != nil
+    assert s != nil
     add(result, substr(s, prev, match.first-1))
     addf(result, by, caps)
     prev = match.last + 1
@@ -450,6 +452,14 @@ when isMainModule:
     assert matches[1] == "abc"
   else:
     assert false
+  
+  if "abc" =~ re"(cba)?.*":
+    assert matches[0] == nil
+  else: assert false
+
+  if "abc" =~ re"().*":
+    assert matches[0] == ""
+  else: assert false
     
   assert "var1=key; var2=key2".endsWith(re"\w+=\w+")
   assert("var1=key; var2=key2".replacef(re"(\w+)=(\w+)", "$1<-$2$2") ==
