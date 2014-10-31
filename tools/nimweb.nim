@@ -68,12 +68,12 @@ Options:
   -h, --help          shows this help
   -v, --version       shows the version
 Compile_options:
-  will be passed to the Nimrod compiler
+  will be passed to the Nim compiler
 """
 
   rYearMonthDayTitle = r"(\d{4})-(\d{2})-(\d{2})\s+(.*)"
-  rssUrl = "http://nimrod-code.org/news.xml"
-  rssNewsUrl = "http://nimrod-code.org/news.html"
+  rssUrl = "http://nim-lang.org/news.xml"
+  rssNewsUrl = "http://nim-lang.org/news.html"
   validAnchorCharacters = Letters + Digits
 
 
@@ -355,7 +355,7 @@ proc generateRss(outputFilename: string, news: seq[TRssItem]) =
   output.write("""<?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
 """)
-  output.write(title("Nimrod website news"))
+  output.write(title("Nim website news"))
   output.write(link(href = rssUrl, rel = "self"))
   output.write(link(href = rssNewsUrl))
   output.write(id(rssNewsUrl))
@@ -371,7 +371,7 @@ proc generateRss(outputFilename: string, news: seq[TRssItem]) =
         link(`type` = "text/html", rel = "alternate",
           href = genNewsLink(joinedTitle)),
         updatedDate(rss.year, rss.month, rss.day),
-        "<author><name>Nimrod</name></author>",
+        "<author><name>Nim</name></author>",
         content(joinedTitle, `type` = "text"),
       ))
 
