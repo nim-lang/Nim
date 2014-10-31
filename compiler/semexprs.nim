@@ -1945,11 +1945,22 @@ proc semExport(c: PContext, n: PNode): PNode =
     if s == nil:
       localError(a.info, errGenerated, "invalid expr for 'export': " &
           renderTree(a))
-    while s != nil:
-      if s.kind in ExportableSymKinds+{skModule}:
-        x.add(newSymNode(s, a.info))
-        strTableAdd(c.module.tab, s)
-      s = nextOverloadIter(o, c, a)
+    elif s.kind == skModule:
+      # forward everything from that module:
+      strTableAdd(c.module.tab, s)
+      x.add(newSymNode(s, a.info))
+      var ti: TTabIter
+      var it = initTabIter(ti, s.tab)
+      while it != nil:
+        if it.kind in ExportableSymKinds+{skModule}:
+          strTableAdd(c.module.tab, it)
+        it = nextIter(ti, s.tab)
+    else:
+      while s != nil:
+        if s.kind in ExportableSymKinds+{skModule}:
+          x.add(newSymNode(s, a.info))
+          strTableAdd(c.module.tab, s)
+        s = nextOverloadIter(o, c, a)
   when false:
     if c.module.ast.isNil:
       c.module.ast = newNodeI(nkStmtList, n.info)
