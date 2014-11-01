@@ -100,6 +100,7 @@ proc methodDef*(s: PSym, fromCache: bool) =
     if disp.typ.callConv == ccInline: disp.typ.callConv = ccDefault
     disp.ast = copyTree(s.ast)
     disp.ast.sons[bodyPos] = ast.emptyNode
+    disp.loc.r = nil
     if s.typ.sons[0] != nil: 
       disp.ast.sons[resultPos].sym = copySym(s.ast.sons[resultPos].sym)
     attachDispatcher(s, newSymNode(disp))
