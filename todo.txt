@@ -1,8 +1,9 @@
 version 0.10
 ============
 
-- Test nimfix on various babel packages
-
+- Declare nimfix as beta-quality.
+- make nimble part of the distribution
+- fix babelpackagelist bug
 
 version 0.9.6
 =============
@@ -49,8 +50,8 @@ Bugs
 version 0.9.x
 =============
 
-
-- implicit deref for parameter matching
+- implicit deref for parameter matching; but only for  x.f(a, b) --> looks like
+  a nice compromise
 - overloading of '='
 - allow simple read accesses to global variables --> difficult to ensure that
   no data races happen

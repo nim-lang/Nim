@@ -74,8 +74,8 @@ Threads and exceptions
 ----------------------
 
 The interaction between threads and exceptions is simple: A *handled* exception 
-in one thread cannot affect any other thread. However, an *unhandled* 
-exception in one thread terminates the whole *process*!
+in one thread cannot affect any other thread. However, an *unhandled* exception
+in one thread terminates the whole *process*!
 
 
 
@@ -94,9 +94,10 @@ module to work.
 Somewhat confusingly, ``spawn`` is also used in the ``parallel`` statement
 with slightly different semantics. ``spawn`` always takes a call expression of
 the form ``f(a, ...)``. Let ``T`` be ``f``'s return type. If ``T`` is ``void``
-then ``spawn``'s return type is also ``void``. Within a ``parallel`` section
-``spawn``'s return type is ``T``, otherwise it is ``FlowVar[T]``.
+then ``spawn``'s return type is also ``void`` otherwise it is ``FlowVar[T]``.
 
+Within a ``parallel`` section sometimes the ``FlowVar[T]`` is eliminated
+to ``T``. This happens when ``T`` does not contain any GC'ed memory.
 The compiler can ensure the location in ``location = spawn f(...)`` is not
 read prematurely within a ``parallel`` section and so there is no need for
 the overhead of an indirection via ``FlowVar[T]`` to ensure correctness.
@@ -133,7 +134,7 @@ that ``spawn`` takes is restricted:
   is performed via ``system.deepCopy`` and so can be overriden.
 * For *safe* data exchange between ``f`` and the caller a global ``TChannel``
   needs to be used. However, since spawn can return a result, often no further
-  communication is required. 
+  communication is required.
 
 
 ``spawn`` executes the passed expression on the thread pool and returns
@@ -158,7 +159,7 @@ Data flow variables ensure that no data races
 are possible. Due to technical limitations not every type ``T`` is possible in
 a data flow variable: ``T`` has to be of the type ``ref``, ``string``, ``seq``
 or of a type that doesn't contain a type that is garbage collected. This
-restriction will be removed in the future.
+restriction is not hard to work-around in practice.
 
 
 
