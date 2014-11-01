@@ -52,10 +52,9 @@ proc oidToString*(oid: Oid, str: cstring) =
     str[2 * i] = hex[(b and 0xF0) shr 4]
     str[2 * i + 1] = hex[b and 0xF]
     inc(i)
-  str[24] = '\0'
 
 proc `$`*(oid: Oid): string =
-  result = newString(25)
+  result = newString(24)
   oidToString(oid, result)
 
 var
