@@ -149,11 +149,6 @@
         CreateShortCut "$DESKTOP\?{c.displayName}.lnk" "$INSTDIR\?{c.name}.exe"
       #end if
 
-      ; Add shortcuts for the documentation
-      #for f in items(c.cat[fcDocStart]):
-        CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\?{splitFile(f).name}.lnk" "$INSTDIR\?{f.toWin}"
-      #end for
-
       ; Write the shortcut to the uninstaller
       CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\Uninstall.lnk" "$INSTDIR\uninstaller.exe"
     !insertmacro MUI_STARTMENU_WRITE_END
