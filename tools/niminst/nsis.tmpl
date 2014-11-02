@@ -212,6 +212,7 @@
 
     ; Shortcuts
       !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
+        CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\?{e}.lnk" "$INSTDIR\?dir\?{startMenuEntry.toWin}"
       !insertmacro MUI_STARTMENU_WRITE_END
     ignore:
   SectionEnd
