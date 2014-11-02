@@ -204,16 +204,15 @@
       abort
     ${EndIf}
 
+    ; Shortcuts
     #  if d.len >= 6:
     #    let startMenuEntry = d[5]
     #    let e = splitFile(startMenuEntry).name.capitalize
-      CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\?{e}.lnk" "$INSTDIR\?dir\?{startMenuEntry.toWin}"
-    #  end if
-
-    ; Shortcuts
       !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
         CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\?{e}.lnk" "$INSTDIR\?dir\?{startMenuEntry.toWin}"
       !insertmacro MUI_STARTMENU_WRITE_END
+    #  end if
+    
     ignore:
   SectionEnd
   #end
