@@ -45,10 +45,14 @@ type
     poEvalCommand,       ## Pass `command` directly to the shell, without quoting.
                          ## Use it only if `command` comes from trused source.
     poStdErrToStdOut,    ## merge stdout and stderr to the stdout stream
-    poParentStreams      ## use the parent's streams
+    poParentStreams,     ## use the parent's streams
+    poCreateNewGroup     ## move new process to a new process group
 
 const poUseShell* {.deprecated.} = poUsePath
   ## Deprecated alias for poUsePath.
+  
+const terminateDefaultMilliSecsToWait = 100
+const terminateMilliSecsPerLoop       = 10
 
 proc quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
   ## Quote s, so it can be safely passed to Windows API.
@@ -163,7 +167,7 @@ proc suspend*(p: PProcess) {.rtl, extern: "nosp$1", tags: [].}
 proc resume*(p: PProcess) {.rtl, extern: "nosp$1", tags: [].}
   ## Resumes the process `p`.
 
-proc terminate*(p: PProcess) {.rtl, extern: "nosp$1", tags: [].}
+proc terminate*(p: PProcess, milliSecsToWait = terminateDefaultMilliSecsToWait) {.rtl, extern: "nosp$1", tags: [FTime].}
   ## Terminates the process `p`.
 
 proc running*(p: PProcess): bool {.rtl, extern: "nosp$1", tags: [].}
@@ -471,7 +475,7 @@ when defined(Windows) and not defined(useNimRtl):
     var x = waitForSingleObject(p.fProcessHandle, 50)
     return x == WAIT_TIMEOUT
 
-  proc terminate(p: PProcess) =
+  proc terminate(p: PProcess, milliSecsToWait = terminateDefaultMilliSecsToWait) =
     if running(p):
       discard terminateProcess(p.fProcessHandle, 0)
 
@@ -581,6 +585,7 @@ elif not defined(useNimRtl):
     optionPoUsePath: bool
     optionPoParentStreams: bool
     optionPoStdErrToStdOut: bool
+    optionPoCreateNewGroup: bool
 
   when not defined(useFork):
     proc startProcessAuxSpawn(data: TStartProcessData): TPid {.
@@ -640,6 +645,7 @@ elif not defined(useNimRtl):
     data.optionPoParentStreams = poParentStreams in options
     data.optionPoUsePath = poUsePath in options
     data.optionPoStdErrToStdOut = poStdErrToStdOut in options
+    data.optionPoCreateNewGroup = poCreateNewGroup in options
     data.workingDir = workingDir
 
 
@@ -743,6 +749,9 @@ elif not defined(useNimRtl):
       dealloc(stack)
     else:
       pid = fork()
+      if pid != 0 and data.optionPoCreateNewGroup:
+        if setpgid(pid, pid) != 0:
+          osError(osLastError())
       if pid == 0:
         startProcessAfterFork(addr(dataCopy))
         exitnow(1)
@@ -825,10 +834,17 @@ elif not defined(useNimRtl):
     if ret == 0: return true # Can't establish status. Assume running.
     result = ret == int(p.id)
 
-  proc terminate(p: PProcess) =
-    if kill(-p.id, SIGTERM) == 0'i32:
+  proc terminate(p: PProcess, milliSecsToWait = terminateDefaultMilliSecsToWait) =
+    var idToKill = p.id
+    if getpgid(idToKill) == idToKill:
+      idToKill = -idToKill
+    if kill(idToKill, SIGTERM) == 0'i32:
+      var timeToWait = milliSecsToWait
+      while p.running() and timeToWait > 0:
+        sleep(terminateMilliSecsPerLoop)
+        timeToWait = timeToWait - terminateMilliSecsPerLoop
       if p.running():
-        if kill(-p.id, SIGKILL) != 0'i32: osError(osLastError())
+        if kill(idToKill, SIGKILL) != 0'i32: osError(osLastError())
     else: osError(osLastError())
 
   proc waitForExit(p: PProcess, timeout: int = -1): int =
