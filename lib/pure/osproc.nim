@@ -49,6 +49,9 @@ type
 
 const poUseShell* {.deprecated.} = poUsePath
   ## Deprecated alias for poUsePath.
+  
+const terminateDefaultMilliSecsToWait = 100
+const terminateMilliSecsPerLoop       = 10
 
 proc quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
   ## Quote s, so it can be safely passed to Windows API.
@@ -163,7 +166,7 @@ proc suspend*(p: PProcess) {.rtl, extern: "nosp$1", tags: [].}
 proc resume*(p: PProcess) {.rtl, extern: "nosp$1", tags: [].}
   ## Resumes the process `p`.
 
-proc terminate*(p: PProcess) {.rtl, extern: "nosp$1", tags: [].}
+proc terminate*(p: PProcess, milliSecsToWait = terminateDefaultMilliSecsToWait) {.rtl, extern: "nosp$1", tags: [FTime].}
   ## Terminates the process `p`.
 
 proc running*(p: PProcess): bool {.rtl, extern: "nosp$1", tags: [].}
@@ -471,7 +474,7 @@ when defined(Windows) and not defined(useNimRtl):
     var x = waitForSingleObject(p.fProcessHandle, 50)
     return x == WAIT_TIMEOUT
 
-  proc terminate(p: PProcess) =
+  proc terminate(p: PProcess, milliSecsToWait = terminateDefaultMilliSecsToWait) =
     if running(p):
       discard terminateProcess(p.fProcessHandle, 0)
 
@@ -815,20 +818,33 @@ elif not defined(useNimRtl):
     discard close(p.errHandle)
 
   proc suspend(p: PProcess) =
-    if kill(-p.id, SIGSTOP) != 0'i32: osError(osLastError())
+    var idToUse = p.id
+    if getpgid(idToUse) == idToUse:
+      idToUse = -idToUse
+    if kill(idToUse, SIGSTOP) != 0'i32: osError(osLastError())
 
   proc resume(p: PProcess) =
-    if kill(-p.id, SIGCONT) != 0'i32: osError(osLastError())
+    var idToUse = p.id
+    if getpgid(idToUse) == idToUse:
+      idToUse = -idToUse
+    if kill(idToUse, SIGCONT) != 0'i32: osError(osLastError())
 
   proc running(p: PProcess): bool =
     var ret = waitpid(p.id, p.exitCode, WNOHANG)
     if ret == 0: return true # Can't establish status. Assume running.
     result = ret == int(p.id)
 
-  proc terminate(p: PProcess) =
-    if kill(-p.id, SIGTERM) == 0'i32:
+  proc terminate(p: PProcess, milliSecsToWait = terminateDefaultMilliSecsToWait) =
+    var idToUse = p.id
+    if getpgid(idToUse) == idToUse:
+      idToUse = -idToUse
+    if kill(idToUse, SIGTERM) == 0'i32:
+      var timeToWait = milliSecsToWait
+      while p.running() and timeToWait > 0:
+        sleep(terminateMilliSecsPerLoop)
+        timeToWait = timeToWait - terminateMilliSecsPerLoop
       if p.running():
-        if kill(-p.id, SIGKILL) != 0'i32: osError(osLastError())
+        if kill(idToUse, SIGKILL) != 0'i32: osError(osLastError())
     else: osError(osLastError())
 
   proc waitForExit(p: PProcess, timeout: int = -1): int =
