@@ -1,5 +1,5 @@
 discard """
-  line: 2169
+  line: 2170
   file: "system.nim"
   errormsg: "can raise an unlisted exception: ref IOError"
 """

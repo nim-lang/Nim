@@ -181,6 +181,10 @@ proc initVarViaNew(a: PEffects, n: PNode) =
     # are initialized:
     initVar(a, n)
 
+proc warnAboutGcUnsafe(n: PNode) =
+  #assert false
+  message(n.info, warnGcUnsafe, renderTree(n))
+
 proc useVar(a: PEffects, n: PNode) =
   let s = n.sym
   if isLocalVar(a, s):
@@ -195,7 +199,7 @@ proc useVar(a: PEffects, n: PNode) =
     if s.guard != nil: guardGlobal(a, n, s.guard)
     if (tfHasGCedMem in s.typ.flags or s.typ.isGCedMem) and 
         tfGcSafe notin s.typ.flags:
-      if warnGcUnsafe in gNotes: message(n.info, warnGcUnsafe, renderTree(n))
+      if warnGcUnsafe in gNotes: warnAboutGcUnsafe(n)
       a.gcUnsafe = true
 
 type
@@ -431,7 +435,7 @@ proc propagateEffects(tracked: PEffects, n: PNode, s: PSym) =
   mergeTags(tracked, tagSpec, n)
 
   if notGcSafe(s.typ) and sfImportc notin s.flags:
-    if warnGcUnsafe in gNotes: message(n.info, warnGcUnsafe, renderTree(n))
+    if warnGcUnsafe in gNotes: warnAboutGcUnsafe(n)
     tracked.gcUnsafe = true
   mergeLockLevels(tracked, n, s.getLockLevel)
 
@@ -462,8 +466,13 @@ proc assumeTheWorst(tracked: PEffects; n: PNode; op: PType) =
   #  message(n.info, warnUser, "had to assume the worst here")
   mergeLockLevels(tracked, n, lockLevel)
 
+proc isOwnedProcVar(n: PNode; owner: PSym): bool =
+  # XXX prove the soundness of this effect system rule
+  result = n.kind == nkSym and n.sym.kind == skParam and owner == n.sym.owner
+
 proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
-  let op = skipConvAndClosure(n).typ
+  let a = skipConvAndClosure(n)
+  let op = a.typ
   if op != nil and op.kind == tyProc and n.kind != nkNilLit:
     internalAssert op.n.sons[0].kind == nkEffectList
     var effectList = op.n.sons[0]
@@ -475,18 +484,18 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
         # we have no explicit effects but it's a forward declaration and so it's
         # stated there are no additional effects, so simply propagate them:
         propagateEffects(tracked, n, n.sym)
-      else:
+      elif not isOwnedProcVar(a, tracked.owner):
         # we have no explicit effects so assume the worst:
         assumeTheWorst(tracked, n, op)
       # assume GcUnsafe unless in its type; 'forward' does not matter:
-      if notGcSafe(op):
-        if warnGcUnsafe in gNotes: message(n.info, warnGcUnsafe, renderTree(n))
+      if notGcSafe(op) and not isOwnedProcVar(a, tracked.owner):
+        if warnGcUnsafe in gNotes: warnAboutGcUnsafe(n)
         tracked.gcUnsafe = true
     else:
       mergeEffects(tracked, effectList.sons[exceptionEffects], n)
       mergeTags(tracked, effectList.sons[tagEffects], n)
       if notGcSafe(op):
-        if warnGcUnsafe in gNotes: message(n.info, warnGcUnsafe, renderTree(n))
+        if warnGcUnsafe in gNotes: warnAboutGcUnsafe(n)
         tracked.gcUnsafe = true
   notNilCheck(tracked, n, paramType)
 
@@ -633,7 +642,7 @@ proc track(tracked: PEffects, n: PNode) =
         if notGcSafe(op) and not importedFromC(a):
           # and it's not a recursive call:
           if not (a.kind == nkSym and a.sym == tracked.owner):
-            message(n.info, warnGcUnsafe, renderTree(n))
+            warnAboutGcUnsafe(n)
             tracked.gcUnsafe = true
     for i in 1 .. <len(n): trackOperand(tracked, n.sons[i], paramType(op, i))
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
