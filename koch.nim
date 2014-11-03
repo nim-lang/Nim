@@ -92,7 +92,7 @@ const
   compileNimInst = "-d:useLibzipSrc tools/niminst/niminst"
 
 proc csource(args: string) = 
-  exec("$4 cc $1 -r $3 --var:version=$2 csource compiler/nim.ini $1" %
+  exec("$4 cc $1 -r $3 --var:version=$2 --var:mingw=mingw32 csource compiler/nim.ini $1" %
        [args, VersionAsString, compileNimInst, findNim()])
 
 proc zip(args: string) =

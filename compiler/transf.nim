@@ -624,6 +624,9 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
     # bugfix: check after 'transformSons' if it's still a method call:
     # use the dispatcher for the call:
     if s.sons[0].kind == nkSym and s.sons[0].sym.kind == skMethod:
+      let t = lastSon(s.sons[0].sym.ast)
+      if t.kind != nkSym or sfDispatcher notin t.sym.flags:
+        methodDef(s.sons[0].sym, false)
       result = methodCall(s).PTransNode
     else:
       result = s.PTransNode

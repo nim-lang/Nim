@@ -167,8 +167,14 @@ proc resume*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
   ## Resumes the process `p`.
 
 proc terminate*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
-  ## Terminates the process `p`.
+  ## Stop the process `p`. On Posix OSes the procedure sends ``SIGTERM``
+  ## to the process. On Windows the Win32 API function ``TerminateProcess()``
+  ## is called to stop the process.
 
+proc kill*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
+  ## Kill the process `p`. On Posix OSes the procedure sends ``SIGKILL`` to
+  ## the process. On Windows ``kill()`` is simply an alias for ``terminate()``.
+  
 proc running*(p: Process): bool {.rtl, extern: "nosp$1", tags: [].}
   ## Returns true iff the process `p` is still running. Returns immediately.
 
@@ -489,7 +495,10 @@ when defined(Windows) and not defined(useNimRtl):
     if running(p):
       discard terminateProcess(p.fProcessHandle, 0)
 
-  proc waitForExit(p: Process, timeout: int = -1): int =
+  proc kill(p: PProcess) =
+    terminate(p)
+      
+  proc waitForExit(p: PProcess, timeout: int = -1): int =
     discard waitForSingleObject(p.fProcessHandle, timeout.int32)
 
     var res: int32
@@ -829,10 +838,10 @@ elif not defined(useNimRtl):
     discard close(p.errHandle)
 
   proc suspend(p: Process) =
-    if kill(-p.id, SIGSTOP) != 0'i32: raiseOSError(osLastError())
+    if kill(p.id, SIGSTOP) != 0'i32: raiseOsError(osLastError())
 
   proc resume(p: Process) =
-    if kill(-p.id, SIGCONT) != 0'i32: raiseOSError(osLastError())
+    if kill(p.id, SIGCONT) != 0'i32: raiseOsError(osLastError())
 
   proc running(p: Process): bool =
     var ret = waitpid(p.id, p.exitCode, WNOHANG)
@@ -840,11 +849,13 @@ elif not defined(useNimRtl):
     result = ret == int(p.id)
 
   proc terminate(p: Process) =
-    if kill(-p.id, SIGTERM) == 0'i32:
-      if p.running():
-        if kill(-p.id, SIGKILL) != 0'i32: raiseOSError(osLastError())
-    else: raiseOSError(osLastError())
+    if kill(p.id, SIGTERM) != 0'i32:
+      raiseOsError(osLastError())
 
+  proc kill(p: Process) =
+    if kill(p.id, SIGKILL) != 0'i32: 
+      raiseOsError(osLastError())
+    
   proc waitForExit(p: Process, timeout: int = -1): int =
     #if waitPid(p.id, p.exitCode, 0) == int(p.id):
     # ``waitPid`` fails if the process is not running anymore. But then
@@ -885,7 +896,8 @@ elif not defined(useNimRtl):
       createStream(p.errStream, p.errHandle, fmRead)
     return p.errStream
 
-  proc csystem(cmd: cstring): cint {.nodecl, importc: "system", header: "<stdlib.h>".}
+  proc csystem(cmd: cstring): cint {.nodecl, importc: "system", 
+                                     header: "<stdlib.h>".}
 
   proc execCmd(command: string): int =
     when defined(linux):
