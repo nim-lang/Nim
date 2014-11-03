@@ -39,9 +39,7 @@ $ bin/nimrod c koch
 $ ./koch boot -d:release
 ```
 
-``koch install [dir]`` may then be used to install Nimrod, or you can simply
-add it to your PATH. More ``koch`` related options are documented in
-[doc/koch.txt](doc/koch.txt).
+Add Nimrod to your PATH afterwards.
 
 The above steps can be performed on Windows in a similar fashion, the
 ``build.bat`` and ``build64.bat`` (for x86_64 systems) are provided to be used
@@ -62,5 +60,5 @@ allowing you to create commercial applications.
 
 Read copying.txt for more details.
 
-Copyright (c) 2004-2014 Andreas Rumpf.
+Copyright (c) 2006-2014 Andreas Rumpf.
 All rights reserved.

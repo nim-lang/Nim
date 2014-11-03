@@ -14,7 +14,7 @@
 ## <backends.html#the-javascript-target>`_.
 
 include "system/inclrtl"
-
+import "impure/fenv"
 {.push debugger:off .} # the user does not want to trace a part
                        # of the standard library!
 
@@ -39,17 +39,6 @@ const
                                            ## meaningful digits
                                            ## after the decimal point 
                                            ## for Nimrod's ``float`` type.
-
-type
-  TFloatClass* = enum ## describes the class a floating point value belongs to.
-                      ## This is the type that is returned by `classify`.
-    fcNormal,    ## value is an ordinary nonzero floating point value
-    fcSubnormal, ## value is a subnormal (a very small) floating point value
-    fcZero,      ## value is zero
-    fcNegZero,   ## value is the negative zero
-    fcNan,       ## value is Not-A-Number (NAN)
-    fcInf,       ## value is positive infinity
-    fcNegInf     ## value is negative infinity
 
 proc classify*(x: float): TFloatClass = 
   ## classifies a floating point value. Returns `x`'s class as specified by

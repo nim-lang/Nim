@@ -7,47 +7,71 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements a simple high performance `JSON`:idx:
-## parser. JSON (JavaScript Object Notation) is a lightweight 
-## data-interchange format that is easy for humans to read and write 
-## (unlike XML). It is easy for machines to parse and generate.
-## JSON is based on a subset of the JavaScript Programming Language,
-## Standard ECMA-262 3rd Edition - December 1999.
+## This module implements a simple high performance `JSON`:idx: parser. `JSON
+## (JavaScript Object Notation) <http://www.json.org>`_ is a lightweight
+## data-interchange format that is easy for humans to read and write (unlike
+## XML). It is easy for machines to parse and generate.  JSON is based on a
+## subset of the JavaScript Programming Language, `Standard ECMA-262 3rd
+## Edition - December 1999
+## <http://www.ecma-international.org/publications/files/ECMA-ST/Ecma-262.pdf>`_.
 ##
-## Usage example:
+## Parsing small values quickly can be done with the convenience `parseJson()
+## <#parseJson,string>`_ proc which returns the whole JSON tree.  If you are
+## parsing very big JSON inputs or want to skip most of the items in them you
+## can initialize your own `TJsonParser <#TJsonParser>`_ with the `open()
+## <#open>`_ proc and call `next() <#next>`_ in a loop to process the
+## individual parsing events.
+##
+## If you need to create JSON objects from your Nimrod types you can call procs
+## like `newJObject() <#newJObject>`_ (or their equivalent `%()
+## <#%,openArray[tuple[string,PJsonNode]]>`_ generic constructor). For
+## consistency you can provide your own ``%`` operators for custom object
+## types:
 ##
 ## .. code-block:: nimrod
-##  let
-##    small_json = """{"test": 1.3, "key2": true}"""
-##    jobj = parseJson(small_json)
-##  assert (jobj.kind == JObject)
-##  echo($jobj["test"].fnum)
-##  echo($jobj["key2"].bval)
+##   type
+##     Person = object ## Generic person record.
+##       age: int      ## The age of the person.
+##       name: string  ## The name of the person.
 ##
-## Results in:
+##   proc `%`(p: Person): PJsonNode =
+##     ## Converts a Person into a PJsonNode.
+##     result = %[("age", %p.age), ("name", %p.name)]
 ##
-## .. code-block:: nimrod
+##   proc test() =
+##     # Tests making some jsons.
+##     var p: Person
+##     p.age = 24
+##     p.name = "Minah"
+##     echo(%p) # { "age": 24,  "name": "Minah"}
 ##
-##   1.3000000000000000e+00
-##   true
+##     p.age = 33
+##     p.name = "Sojin"
+##     echo(%p) # { "age": 33,  "name": "Sojin"}
+##
+## If you don't need special logic in your Nimrod objects' serialization code
+## you can also use the `marshal module <marshal.html>`_ which converts objects
+## directly to JSON.
 
 import 
   hashes, strutils, lexbase, streams, unicode
 
 type 
-  TJsonEventKind* = enum ## enumeration of all events that may occur when parsing
-    jsonError,           ## an error ocurred during parsing
-    jsonEof,             ## end of file reached
-    jsonString,          ## a string literal
-    jsonInt,             ## an integer literal
-    jsonFloat,           ## a float literal
-    jsonTrue,            ## the value ``true``
-    jsonFalse,           ## the value ``false``
-    jsonNull,            ## the value ``null``
-    jsonObjectStart,     ## start of an object: the ``{`` token
-    jsonObjectEnd,       ## end of an object: the ``}`` token
-    jsonArrayStart,      ## start of an array: the ``[`` token
-    jsonArrayEnd         ## start of an array: the ``]`` token
+  TJsonEventKind* = enum ## Events that may occur when parsing. \
+    ##
+    ## You compare these values agains the result of the `kind() proc <#kind>`_.
+    jsonError,           ## An error ocurred during parsing.
+    jsonEof,             ## End of file reached.
+    jsonString,          ## A string literal.
+    jsonInt,             ## An integer literal.
+    jsonFloat,           ## A float literal.
+    jsonTrue,            ## The value ``true``.
+    jsonFalse,           ## The value ``false``.
+    jsonNull,            ## The value ``null``.
+    jsonObjectStart,     ## Start of an object: the ``{`` token.
+    jsonObjectEnd,       ## End of an object: the ``}`` token.
+    jsonArrayStart,      ## Start of an array: the ``[`` token.
+    jsonArrayEnd         ## Start of an array: the ``]`` token.
     
   TTokKind = enum        # must be synchronized with TJsonEventKind!
     tkError,
@@ -65,7 +89,7 @@ type
     tkColon,
     tkComma
     
-  TJsonError* = enum       ## enumeration that lists all errors that can occur
+  TJsonError = enum        ## enumeration that lists all errors that can occur
     errNone,               ## no error
     errInvalidToken,       ## invalid token
     errStringExpected,     ## string expected
@@ -82,7 +106,9 @@ type
     stateEof, stateStart, stateObject, stateArray, stateExpectArrayComma,
     stateExpectObjectComma, stateExpectColon, stateExpectValue
 
-  TJsonParser* = object of TBaseLexer ## the parser object.
+  TJsonParser* = object of TBaseLexer ## The JSON parser object. \
+    ##
+    ## Create a variable of this type and use `open() <#open>`_ on it.
     a: string
     tok: TTokKind
     kind: TJsonEventKind
@@ -117,59 +143,129 @@ const
   ]
 
 proc open*(my: var TJsonParser, input: PStream, filename: string) =
-  ## initializes the parser with an input stream. `Filename` is only used
-  ## for nice error messages.
-  lexbase.open(my, input)
+  ## Initializes the JSON parser with an `input stream <streams.html>`_.
+  ##
+  ## The `filename` parameter is not strictly required and is used only for
+  ## nice error messages. You can pass ``nil`` as long as you never use procs
+  ## like `errorMsg() <#errorMsg>`_ or `errorMsgExpected()
+  ## <#errorMsgExpected>`_ but passing a dummy filename like ``<input string>``
+  ## is safer and more user friendly. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   import json, streams
+  ##
+  ##   var
+  ##     s = newStringStream("some valid json")
+  ##     p: TJsonParser
+  ##   p.open(s, "<input string>")
+  ##
+  ## Once opened, you can process JSON parsing events with the `next()
+  ## <#next>`_ proc.
   my.filename = filename
   my.state = @[stateStart]
   my.kind = jsonError
   my.a = ""
   
-proc close*(my: var TJsonParser) {.inline.} = 
-  ## closes the parser `my` and its associated input stream.
+proc close*(my: var TJsonParser) {.inline.} =
+  ## Closes the parser `my` and its associated input stream.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var
+  ##     s = newStringStream("some valid json")
+  ##     p: TJsonParser
+  ##   p.open(s, "<input string>")
+  ##   finally: p.close
+  ##   # write here parsing of input
   lexbase.close(my)
 
 proc str*(my: TJsonParser): string {.inline.} = 
-  ## returns the character data for the events: ``jsonInt``, ``jsonFloat``, 
-  ## ``jsonString``
+  ## Returns the character data for the `events <#TJsonEventKind>`_
+  ## ``jsonInt``, ``jsonFloat`` and ``jsonString``.
+  ##
+  ## This proc will `assert <system.html#assert>`_ in debug builds when used
+  ## with other event types. See `next() <#next>`_ for an usage example.
   assert(my.kind in {jsonInt, jsonFloat, jsonString})
   return my.a
 
 proc getInt*(my: TJsonParser): BiggestInt {.inline.} = 
-  ## returns the number for the event: ``jsonInt``
+  ## Returns the number for the `jsonInt <#TJsonEventKind>`_ event.
+  ##
+  ## This proc will `assert <system.html#assert>`_ in debug builds when used
+  ## with other event types. See `next() <#next>`_ for an usage example.
   assert(my.kind == jsonInt)
   return parseBiggestInt(my.a)
 
 proc getFloat*(my: TJsonParser): float {.inline.} = 
-  ## returns the number for the event: ``jsonFloat``
+  ## Returns the number for the `jsonFloat <#TJsonEventKind>`_ event.
+  ##
+  ## This proc will `assert <system.html#assert>`_ in debug builds when used
+  ## with other event types. See `next() <#next>`_ for an usage example.
   assert(my.kind == jsonFloat)
   return parseFloat(my.a)
 
 proc kind*(my: TJsonParser): TJsonEventKind {.inline.} = 
-  ## returns the current event type for the JSON parser
+  ## Returns the current event type for the `JSON parser <#TJsonParser>`_.
+  ##
+  ## Call this proc just after `next() <#next>`_ to act on the new event.
   return my.kind
   
 proc getColumn*(my: TJsonParser): int {.inline.} = 
-  ## get the current column the parser has arrived at.
+  ## Get the current column the parser has arrived at.
+  ##
+  ## While this is mostly used by procs like `errorMsg() <#errorMsg>`_ you can
+  ## use it as well to show user warnings if you are validating JSON values
+  ## during parsing. See `next() <#next>`_ for the full example:
+  ##
+  ## .. code-block:: nimrod
+  ##   case parser.kind
+  ##   ...
+  ##   of jsonString:
+  ##     let inputValue = parser.str
+  ##     if previousValues.contains(inputValue):
+  ##       echo "$1($2, $3) Warning: repeated value '$4'" % [
+  ##         parser.getFilename, $parser.getLine, $parser.getColumn,
+  ##          inputValue]
+  ##   ...
   result = getColNumber(my, my.bufpos)
 
 proc getLine*(my: TJsonParser): int {.inline.} = 
-  ## get the current line the parser has arrived at.
+  ## Get the current line the parser has arrived at.
+  ##
+  ## While this is mostly used by procs like `errorMsg() <#errorMsg>`_ you can
+  ## use it as well to indicate user warnings if you are validating JSON values
+  ## during parsing. See `next() <#next>`_ and `getColumn() <#getColumn>`_ for
+  ## examples.
   result = my.lineNumber
 
 proc getFilename*(my: TJsonParser): string {.inline.} = 
-  ## get the filename of the file that the parser processes.
+  ## Get the filename of the file that the parser is processing.
+  ##
+  ## This is the value you pass to the `open() <#open>`_ proc.  While this is
+  ## mostly used by procs like `errorMsg() <#errorMsg>`_ you can use it as well
+  ## to indicate user warnings if you are validating JSON values during
+  ## parsing. See `next() <#next>`_ and `getColumn() <#getColumn>`_ for
+  ## examples.
   result = my.filename
   
 proc errorMsg*(my: TJsonParser): string = 
-  ## returns a helpful error message for the event ``jsonError``
+  ## Returns a helpful error message for the `jsonError <#TJsonEventKind>`_
+  ## event.
+  ##
+  ## This proc will `assert <system.html#assert>`_ in debug builds when used
+  ## with other event types. See `next() <#next>`_ for an usage example.
   assert(my.kind == jsonError)
   result = "$1($2, $3) Error: $4" % [
     my.filename, $getLine(my), $getColumn(my), errorMessages[my.err]]
 
 proc errorMsgExpected*(my: TJsonParser, e: string): string = 
-  ## returns an error message "`e` expected" in the same format as the
-  ## other error messages 
+  ## Returns an error message "`e` expected".
+  ##
+  ## The message is in the same format as the other error messages which
+  ## include the parser filename, line and column values. This is used by
+  ## `raiseParseErr() <#raiseParseErr>`_ to raise  an `EJsonParsingError
+  ## <#EJsonParsingError>`_.
   result = "$1($2, $3) Error: $4" % [
     my.filename, $getLine(my), $getColumn(my), e & " expected"]
 
@@ -382,7 +478,32 @@ proc getTok(my: var TJsonParser): TTokKind =
   my.tok = result
 
 proc next*(my: var TJsonParser) = 
-  ## retrieves the first/next event. This controls the parser.
+  ## Retrieves the first/next event for the `JSON parser <#TJsonParser>`_.
+  ##
+  ## You are meant to call this method inside an infinite loop. After each
+  ## call, check the result of the `kind() <#kind>`_ proc to know what has to
+  ## be done next (eg. break out due to end of file). Here is a basic example
+  ## which simply echoes all found elements by the parser:
+  ##
+  ## .. code-block:: nimrod
+  ##   parser.open(stream, "<input string>")
+  ##   while true:
+  ##     parser.next
+  ##     case parser.kind
+  ##     of jsonError:
+  ##       echo parser.errorMsg
+  ##       break
+  ##     of jsonEof: break
+  ##     of jsonString: echo parser.str
+  ##     of jsonInt: echo parser.getInt
+  ##     of jsonFloat: echo parser.getFloat
+  ##     of jsonTrue: echo "true"
+  ##     of jsonFalse: echo "false"
+  ##     of jsonNull: echo "null"
+  ##     of jsonObjectStart: echo "{"
+  ##     of jsonObjectEnd: echo "}"
+  ##     of jsonArrayStart: echo "["
+  ##     of jsonArrayEnd: echo "]"
   var tk = getTok(my)
   var i = my.state.len-1
   # the following code is a state machine. If we had proper coroutines,
@@ -502,7 +623,16 @@ proc next*(my: var TJsonParser) =
 # ------------- higher level interface ---------------------------------------
 
 type
-  TJsonNodeKind* = enum ## possible JSON node types
+  TJsonNodeKind* = enum ## Possible `JSON node <#TJsonNodeKind>`_ types. \
+    ##
+    ## To build nodes use the helper procs
+    ## `newJNull() <#newJNull>`_,
+    ## `newJBool() <#newJBool>`_,
+    ## `newJInt() <#newJInt>`_,
+    ## `newJFloat() <#newJFloat>`_,
+    ## `newJString() <#newJString>`_,
+    ## `newJObject() <#newJObject>`_ and
+    ## `newJArray() <#newJArray>`_.
     JNull,
     JBool,
     JInt,
@@ -511,8 +641,9 @@ type
     JObject,
     JArray
     
-  PJsonNode* = ref TJsonNode ## JSON node 
-  TJsonNode* {.final, pure, acyclic.} = object
+  PJsonNode* = ref TJsonNode ## Reference to a `JSON node <#TJsonNode>`_.
+  TJsonNode* {.final, pure, acyclic.} = object ## `Object variant \
+    ## <manual.html#object-variants>`_ wrapping all possible JSON types.
     case kind*: TJsonNodeKind
     of JString:
       str*: string
@@ -529,14 +660,36 @@ type
     of JArray:
       elems*: seq[PJsonNode]
 
-  EJsonParsingError* = object of EInvalidValue ## is raised for a JSON error
+  EJsonParsingError* = object of EInvalidValue ## Raised during JSON parsing. \
+    ##
+    ## Example:
+    ##
+    ## .. code-block:: nimrod
+    ##   let smallJson = """{"test: 1.3, "key2": true}"""
+    ##   try:
+    ##     discard parseJson(smallJson)
+    ##     # --> Bad JSON! input(1, 18) Error: : expected
+    ##   except EJsonParsingError:
+    ##     echo "Bad JSON! " & getCurrentExceptionMsg()
 
 proc raiseParseErr*(p: TJsonParser, msg: string) {.noinline, noreturn.} =
-  ## raises an `EJsonParsingError` exception.
+  ## Raises an `EJsonParsingError <#EJsonParsingError>`_ exception.
+  ##
+  ## The message for the exception will be built passing the `msg` parameter to
+  ## the `errorMsgExpected() <#errorMsgExpected>`_ proc.
   raise newException(EJsonParsingError, errorMsgExpected(p, msg))
 
 proc newJString*(s: string): PJsonNode =
-  ## Creates a new `JString PJsonNode`.
+  ## Creates a new `JString PJsonNode <#TJsonNodeKind>`_.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var node = newJString("A string")
+  ##   echo node
+  ##   # --> "A string"
+  ##
+  ## Or you can use the shorter `%() proc <#%,string>`_.
   new(result)
   result.kind = JString
   result.str = s
@@ -547,80 +700,206 @@ proc newJStringMove(s: string): PJsonNode =
   shallowCopy(result.str, s)
 
 proc newJInt*(n: BiggestInt): PJsonNode =
-  ## Creates a new `JInt PJsonNode`.
+  ## Creates a new `JInt PJsonNode <#TJsonNodeKind>`_.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var node = newJInt(900_100_200_300)
+  ##   echo node
+  ##   # --> 900100200300
+  ##
+  ## Or you can use the shorter `%() proc <#%,BiggestInt>`_.
   new(result)
   result.kind = JInt
   result.num  = n
 
 proc newJFloat*(n: float): PJsonNode =
-  ## Creates a new `JFloat PJsonNode`.
+  ## Creates a new `JFloat PJsonNode <#TJsonNodeKind>`_.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var node = newJFloat(3.14)
+  ##   echo node
+  ##   # --> 3.14
+  ##
+  ## Or you can use the shorter `%() proc <#%,float>`_.
   new(result)
   result.kind = JFloat
   result.fnum  = n
 
 proc newJBool*(b: bool): PJsonNode =
-  ## Creates a new `JBool PJsonNode`.
+  ## Creates a new `JBool PJsonNode <#TJsonNodeKind>`_.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var node = newJBool(true)
+  ##   echo node
+  ##   # --> true
+  ##
+  ## Or you can use the shorter `%() proc <#%,bool>`_.
   new(result)
   result.kind = JBool
   result.bval = b
 
 proc newJNull*(): PJsonNode =
-  ## Creates a new `JNull PJsonNode`.
+  ## Creates a new `JNull PJsonNode <#TJsonNodeKind>`_.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var node = newJNull()
+  ##   echo node
+  ##   # --> null
   new(result)
 
 proc newJObject*(): PJsonNode =
-  ## Creates a new `JObject PJsonNode`
+  ## Creates a new `JObject PJsonNode <#TJsonNodeKind>`_.
+  ##
+  ## The `PJsonNode <#PJsonNode>`_ will be initialized with an empty ``fields``
+  ## sequence to which you can add new elements. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var node = newJObject()
+  ##   node.add("age", newJInt(24))
+  ##   node.add("name", newJString("Minah"))
+  ##   echo node
+  ##   # --> { "age": 24,  "name": "Minah"}
+  ##
+  ## Or you can use the shorter `%() proc
+  ## <#%,openArray[tuple[string,PJsonNode]]>`_.
   new(result)
   result.kind = JObject
   result.fields = @[]
 
 proc newJArray*(): PJsonNode =
-  ## Creates a new `JArray PJsonNode`
+  ## Creates a new `JArray PJsonNode <#TJsonNodeKind>`_.
+  ##
+  ## The `PJsonNode <#PJsonNode>`_ will be initialized with an empty ``elems``
+  ## sequence to which you can add new elements. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var node = newJArray()
+  ##   node.add(newJString("Mixing types"))
+  ##   node.add(newJInt(42))
+  ##   node.add(newJString("is madness"))
+  ##   node.add(newJFloat(3.14))
+  ##   echo node
+  ##   # --> [ "Mixing types",  42,  "is madness",  3.14]
+  ##
+  ## Or you can use the shorter `%() proc <#%,openArray[PJsonNode]>`_.
   new(result)
   result.kind = JArray
   result.elems = @[]
 
 
 proc `%`*(s: string): PJsonNode =
-  ## Generic constructor for JSON data. Creates a new `JString PJsonNode`.
+  ## Creates a new `JString PJsonNode <#TJsonNodeKind>`_.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var node = %"A string"
+  ##   echo node
+  ##   # --> "A string"
+  ##
+  ## This generic constructor is equivalent to the `newJString()
+  ## <#newJString>`_ proc.
   new(result)
   result.kind = JString
   result.str = s
 
 proc `%`*(n: BiggestInt): PJsonNode =
-  ## Generic constructor for JSON data. Creates a new `JInt PJsonNode`.
+  ## Creates a new `JInt PJsonNode <#TJsonNodeKind>`_.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var node = %900_100_200_300
+  ##   echo node
+  ##   # --> 900100200300
+  ##
+  ## This generic constructor is equivalent to the `newJInt() <#newJInt>`_
+  ## proc.
   new(result)
   result.kind = JInt
   result.num  = n
 
 proc `%`*(n: float): PJsonNode =
-  ## Generic constructor for JSON data. Creates a new `JFloat PJsonNode`.
+  ## Creates a new `JFloat PJsonNode <#TJsonNodeKind>`_.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var node = %3.14
+  ##   echo node
+  ##   # --> 3.14
+  ##
+  ## This generic constructor is equivalent to the `newJFloat() <#newJFloat>`_
+  ## proc.
   new(result)
   result.kind = JFloat
   result.fnum  = n
 
 proc `%`*(b: bool): PJsonNode =
-  ## Generic constructor for JSON data. Creates a new `JBool PJsonNode`.
+  ## Creates a new `JBool PJsonNode <#TJsonNodeKind>`_.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var node = %true
+  ##   echo node
+  ##   # --> true
+  ##
+  ## This generic constructor is equivalent to the `newJBool() <#newJBool>`_
+  ## proc.
   new(result)
   result.kind = JBool
   result.bval = b
 
 proc `%`*(keyVals: openArray[tuple[key: string, val: PJsonNode]]): PJsonNode =
-  ## Generic constructor for JSON data. Creates a new `JObject PJsonNode`
+  ## Creates a new `JObject PJsonNode <#TJsonNodeKind>`_.
+  ##
+  ## Unlike the `newJObject() <#newJObject>`_ proc, which returns an object
+  ## that has to be further manipulated, you can use this generic constructor
+  ## to create JSON objects with all their fields in one go. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   let node = %[("age", %24), ("name", %"Minah")]
+  ##   echo node
+  ##   # --> { "age": 24,  "name": "Minah"}
   new(result)
   result.kind = JObject
   newSeq(result.fields, keyVals.len)
   for i, p in pairs(keyVals): result.fields[i] = p
 
 proc `%`*(elements: openArray[PJsonNode]): PJsonNode =
-  ## Generic constructor for JSON data. Creates a new `JArray PJsonNode`
+  ## Creates a new `JArray PJsonNode <#TJsonNodeKind>`_.
+  ##
+  ## Unlike the `newJArray() <#newJArray>`_ proc, which returns an object
+  ## that has to be further manipulated, you can use this generic constructor
+  ## to create JSON arrays with all their values in one go. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   let node = %[%"Mixing types", %42,
+  ##     %"is madness", %3.14,]
+  ##   echo node
+  ##   # --> [ "Mixing types",  42,  "is madness",  3.14]
   new(result)
   result.kind = JArray
   newSeq(result.elems, elements.len)
   for i, p in pairs(elements): result.elems[i] = p
 
 proc `==`* (a,b: PJsonNode): bool =
-  ## Check two nodes for equality
+  ## Check two `PJsonNode <#PJsonNode>`_ nodes for equality.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   assert(%1 == %1)
+  ##   assert(%1 != %2)
   if a.isNil:
     if b.isNil: return true
     return false
@@ -644,7 +923,21 @@ proc `==`* (a,b: PJsonNode): bool =
       a.fields == b.fields
 
 proc hash* (n:PJsonNode): THash =
-  ## Compute the hash for a JSON node
+  ## Computes the hash for a JSON node.
+  ##
+  ## The `THash <hashes.html#THash>`_ allows JSON nodes to be used as keys for
+  ## `sets <sets.html>`_ or `tables <tables.html>`_. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   import json, sets
+  ##
+  ##   var
+  ##     uniqueValues = initSet[PJsonNode]()
+  ##     values = %[%1, %2, %1, %2, %3]
+  ##   for value in values.elems:
+  ##     discard uniqueValues.containsOrIncl(value)
+  ##   echo uniqueValues
+  ##   # --> {1, 2, 3}
   case n.kind
   of JArray:
     result = hash(n.elems)
@@ -662,17 +955,40 @@ proc hash* (n:PJsonNode): THash =
     result = hash(0)
 
 proc len*(n: PJsonNode): int = 
-  ## If `n` is a `JArray`, it returns the number of elements.
-  ## If `n` is a `JObject`, it returns the number of pairs.
-  ## Else it returns 0.
+  ## Returns the number of children items for this `PJsonNode <#PJsonNode>`_.
+  ##
+  ## If `n` is a `JArray <#TJsonNodeKind>`_, it will return the number of
+  ## elements.  If `n` is a `JObject <#TJsonNodeKind>`_, it will return the
+  ## number of key-value pairs. For all other types this proc returns zero.
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   let
+  ##     n1 = %[("age", %33), ("name", %"Sojin")]
+  ##     n2 = %[%1, %2, %3, %4, %5, %6, %7]
+  ##     n3 = %"Some odd string we have here"
+  ##   echo n1.len # --> 2
+  ##   echo n2.len # --> 7
+  ##   echo n3.len # --> 0
+  ##
   case n.kind
   of JArray: result = n.elems.len
   of JObject: result = n.fields.len
   else: discard
 
 proc `[]`*(node: PJsonNode, name: string): PJsonNode =
-  ## Gets a field from a `JObject`, which must not be nil.
-  ## If the value at `name` does not exist, returns nil
+  ## Gets a named field from a `JObject <#TJsonNodeKind>`_ `PJsonNode
+  ## <#PJsonNode>`_.
+  ##
+  ## Returns the value for `name` or nil if `node` doesn't contain such a
+  ## field.  This proc will `assert <system.html#assert>`_ in debug builds if
+  ## `name` is ``nil`` or `node` is not a ``JObject``. On release builds it
+  ## will likely crash. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   let node = %[("age", %40), ("name", %"Britney")]
+  ##   echo node["name"]
+  ##   # --> "Britney"
   assert(not isNil(node))
   assert(node.kind == JObject)
   for key, item in items(node.fields):
@@ -681,35 +997,92 @@ proc `[]`*(node: PJsonNode, name: string): PJsonNode =
   return nil
   
 proc `[]`*(node: PJsonNode, index: int): PJsonNode =
-  ## Gets the node at `index` in an Array. Result is undefined if `index`
-  ## is out of bounds
+  ## Gets the `index` item from a `JArray <#TJsonNodeKind>`_ `PJsonNode
+  ## <#PJsonNode>`_.
+  ##
+  ## Returns the specified item. Result is undefined if `index` is out of
+  ## bounds.  This proc will `assert <system.html#assert>`_ in debug builds if
+  ## `node` is ``nil`` or not a ``JArray``. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   let node = %[%"Mixing types", %42,
+  ##     %"is madness", %3.14,]
+  ##   echo node[2]
+  ##   # --> "is madness"
   assert(not isNil(node))
   assert(node.kind == JArray)
   return node.elems[index]
 
 proc hasKey*(node: PJsonNode, key: string): bool =
-  ## Checks if `key` exists in `node`.
+  ## Returns `true` if `key` exists in a `JObject <#TJsonNodeKind>`_ `PJsonNode
+  ## <#PJsonNode>`_.
+  ##
+  ## This proc will `assert <system.html#assert>`_ in debug builds if `node` is
+  ## not a ``JObject``. On release builds it will likely crash. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   let node = %[("age", %40), ("name", %"Britney")]
+  ##   echo node.hasKey("email")
+  ##   # --> false
   assert(node.kind == JObject)
   for k, item in items(node.fields):
     if k == key: return true
 
 proc existsKey*(node: PJsonNode, key: string): bool {.deprecated.} = node.hasKey(key)
-  ## Deprecated for `hasKey`
+  ## Deprecated for `hasKey() <#hasKey>`_.
 
 proc add*(father, child: PJsonNode) = 
-  ## Adds `child` to a JArray node `father`. 
+  ## Adds `child` to a `JArray <#TJsonNodeKind>`_ `PJsonNode <#PJsonNode>`_
+  ## `father` node.
+  ##
+  ## This proc will `assert <system.html#assert>`_ in debug builds if `node` is
+  ## not a ``JArray``. On release builds it will likely crash. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var node = %[%"Mixing types", %42]
+  ##   node.add(%"is madness")
+  ##   echo node
+  ##   # --> false
   assert father.kind == JArray
   father.elems.add(child)
 
 proc add*(obj: PJsonNode, key: string, val: PJsonNode) = 
-  ## Adds ``(key, val)`` pair to the JObject node `obj`. For speed
-  ## reasons no check for duplicate keys is performed!
-  ## But ``[]=`` performs the check.
+  ## Adds ``(key, val)`` pair to a `JObject <#TJsonNodeKind>`_ `PJsonNode
+  ## <#PJsonNode>`_ `obj` node.
+  ##
+  ## For speed reasons no check for duplicate keys is performed!  But ``[]=``
+  ## performs the check.
+  ##
+  ## This proc will `assert <system.html#assert>`_ in debug builds if `node` is
+  ## not a ``JObject``. On release builds it will likely crash. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var node = newJObject()
+  ##   node.add("age", newJInt(12))
+  ##   # This is wrong! But we need speed…
+  ##   node.add("age", newJInt(24))
+  ##   echo node
+  ##   # --> { "age": 12,  "age": 24}
   assert obj.kind == JObject
   obj.fields.add((key, val))
 
 proc `[]=`*(obj: PJsonNode, key: string, val: PJsonNode) =
-  ## Sets a field from a `JObject`. Performs a check for duplicate keys.
+  ## Sets a field from a `JObject <#TJsonNodeKind>`_ `PJsonNode
+  ## <#PJsonNode>`_ `obj` node.
+  ##
+  ## Unlike the `add() <#add,PJsonNode,string,PJsonNode>`_ proc this will
+  ## perform a check for duplicate keys and replace existing values.
+  ##
+  ## This proc will `assert <system.html#assert>`_ in debug builds if `node` is
+  ## not a ``JObject``. On release builds it will likely crash. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var node = newJObject()
+  ##   node["age"] = %12
+  ##   # The new value replaces the previous one.
+  ##   node["age"] = %24
+  ##   echo node
+  ##   # --> { "age": 24}
   assert(obj.kind == JObject)
   for i in 0..obj.fields.len-1:
     if obj.fields[i].key == key: 
@@ -736,6 +1109,18 @@ proc `{}=`*(node: PJsonNode, names: varargs[string], value: PJsonNode) =
 
 proc delete*(obj: PJsonNode, key: string) =
   ## Deletes ``obj[key]`` preserving the order of the other (key, value)-pairs.
+  ##
+  ## If `key` doesn't exist in `obj` ``EInvalidIndex`` will be raised.  This
+  ## proc will `assert <system.html#assert>`_ in debug builds if `node` is not
+  ## a ``JObject``. On release builds it will likely crash. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var node = %[("age", %37), ("name", %"Chris"), ("male", %false)]
+  ##   echo node
+  ##   # --> { "age": 37,  "name": "Chris",  "male": false}
+  ##   node.delete("age")
+  ##   echo node
+  ##   # --> { "name": "Chris",  "male": false}
   assert(obj.kind == JObject)
   for i in 0..obj.fields.len-1:
     if obj.fields[i].key == key:
@@ -744,7 +1129,9 @@ proc delete*(obj: PJsonNode, key: string) =
   raise newException(EInvalidIndex, "key not in object")
 
 proc copy*(p: PJsonNode): PJsonNode =
-  ## Performs a deep copy of `a`.
+  ## Performs a deep copy of `p`.
+  ##
+  ## Modifications to the copy won't affect the original.
   case p.kind
   of JString:
     result = newJString(p.str)
@@ -779,6 +1166,12 @@ proc nl(s: var string, ml: bool) =
 
 proc escapeJson*(s: string): string = 
   ## Converts a string `s` to its JSON representation.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   echo """name: "Torbjørn"""".escapeJson
+  ##   # --> "name: \"Torbj\u00F8rn\""
   result = newStringOfCap(s.len + s.len shr 3)
   result.add("\"")
   for x in runes(s):
@@ -850,24 +1243,58 @@ proc toPretty(result: var string, node: PJsonNode, indent = 2, ml = true,
     result.add("null")
 
 proc pretty*(node: PJsonNode, indent = 2): string =
-  ## Converts `node` to its JSON Representation, with indentation and
-  ## on multiple lines.
+  ## Converts `node` to a pretty JSON representation.
+  ##
+  ## The representation will have indentation use multiple lines. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   let node = %[("age", %33), ("name", %"Sojin")]
+  ##   echo node
+  ##   # --> { "age": 33,  "name": "Sojin"}
+  ##   echo node.pretty
+  ##   # --> {
+  ##   #       "age": 33,
+  ##   #       "name": "Sojin"
+  ##   #     }
   result = ""
   toPretty(result, node, indent)
 
 proc `$`*(node: PJsonNode): string =
-  ## Converts `node` to its JSON Representation on one line.
+  ## Converts `node` to its JSON representation on one line.
   result = ""
   toPretty(result, node, 1, false)
 
 iterator items*(node: PJsonNode): PJsonNode =
-  ## Iterator for the items of `node`. `node` has to be a JArray.
+  ## Iterator for the items of `node`.
+  ##
+  ## This proc will `assert <system.html#assert>`_ in debug builds if `node` is
+  ## not a `JArray <#TJsonNodeKind>`_. On release builds it will likely crash.
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   let numbers = %[%1, %2, %3]
+  ##   for n in numbers.items:
+  ##     echo "Number ", n
+  ##   ## --> Number 1
+  ##   ##     Number 2
+  ##   ##     Number 3
   assert node.kind == JArray
   for i in items(node.elems):
     yield i
 
 iterator pairs*(node: PJsonNode): tuple[key: string, val: PJsonNode] =
-  ## Iterator for the child elements of `node`. `node` has to be a JObject.
+  ## Iterator for the child elements of `node`.
+  ##
+  ## This proc will `assert <system.html#assert>`_ in debug builds if `node` is
+  ## not a `JObject <#TJsonNodeKind>`_. On release builds it will likely crash.
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var node = %[("age", %37), ("name", %"Chris")]
+  ##   for key, value in node.pairs:
+  ##     echo "Key: ", key, ", value: ", value
+  ##   # --> Key: age, value: 37
+  ##   #     Key: name, value: "Chris"
   assert node.kind == JObject
   for key, val in items(node.fields):
     yield (key, val)
@@ -926,8 +1353,12 @@ proc parseJson(p: var TJsonParser): PJsonNode =
 
 when not defined(js):
   proc parseJson*(s: PStream, filename: string): PJsonNode =
-    ## Parses from a stream `s` into a `PJsonNode`. `filename` is only needed
-    ## for nice error messages.
+    ## Generic convenience proc to parse stream `s` into a `PJsonNode`.
+    ##
+    ## This wraps around `open() <#open>`_ and `next() <#next>`_ to return the
+    ## full JSON DOM. Errors will be raised as exceptions, this requires the
+    ## `filename` parameter to not be ``nil`` to avoid crashes.
+    assert(not isNil(filename))
     var p: TJsonParser
     p.open(s, filename)
     discard getTok(p) # read first token
@@ -936,10 +1367,28 @@ when not defined(js):
 
   proc parseJson*(buffer: string): PJsonNode =
     ## Parses JSON from `buffer`.
+    ##
+    ## Specialized version around `parseJson(PStream, string)
+    ## <#parseJson,PStream,string>`_. Example:
+    ##
+    ## .. code-block:: nimrod
+    ##  let
+    ##    smallJson = """{"test": 1.3, "key2": true}"""
+    ##    jobj = parseJson(smallJson)
+    ##  assert jobj.kind == JObject
+    ##
+    ##  assert jobj["test"].kind == JFloat
+    ##  echo jobj["test"].fnum # --> 1.3
+    ##
+    ##  assert jobj["key2"].kind == JBool
+    ##  echo jobj["key2"].bval # --> true
     result = parseJson(newStringStream(buffer), "input")
 
   proc parseFile*(filename: string): PJsonNode =
     ## Parses `file` into a `PJsonNode`.
+    ##
+    ## Specialized version around `parseJson(PStream, string)
+    ## <#parseJson,PStream,string>`_.
     var stream = newFileStream(filename, fmRead)
     if stream == nil:
       raise newException(EIO, "cannot read from file: " & filename)

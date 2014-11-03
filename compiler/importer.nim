@@ -92,7 +92,7 @@ proc rawImportSymbol(c: PContext, s: PSym) =
     if s.kind == skConverter: addConverter(c, s)
     if hasPattern(s): addPattern(c, s)
 
-proc importSymbol(c: PContext, n: PNode, fromMod: PSym) = 
+proc importSymbol(c: PContext, n: PNode, fromMod: PSym) =        
   let ident = lookups.considerQuotedIdent(n)
   let s = strTableGet(fromMod.tab, ident)
   if s == nil:
@@ -153,12 +153,14 @@ proc importModuleAs(n: PNode, realModule: PSym): PSym =
     localError(n.info, errGenerated, "module alias must be an identifier")
   elif n.sons[1].ident.id != realModule.name.id:
     # some misguided guy will write 'import abc.foo as foo' ...
-    result = createModuleAlias(realModule, n.sons[1].ident, n.sons[1].info)
+    result = createModuleAlias(realModule, n.sons[1].ident, realModule.info)
 
-proc myImportModule(c: PContext, n: PNode): PSym =
+proc myImportModule(c: PContext, n: PNode): PSym = 
   var f = checkModuleName(n)
   if f != InvalidFileIDX:
     result = importModuleAs(n, gImportModule(c.module, f))
+    if result.info.fileIndex == n.info.fileIndex:
+      localError(n.info, errGenerated, "A module cannot import itself")
     if sfDeprecated in result.flags:
       message(n.info, warnDeprecated, result.name.s)
 
@@ -171,7 +173,7 @@ proc evalImport(c: PContext, n: PNode): PNode =
       # ``addDecl`` needs to be done before ``importAllSymbols``!
       addDecl(c, m)             # add symbol to symbol table of module
       importAllSymbolsExcept(c, m, emptySet)
-      importForwarded(c, m.ast, emptySet)
+      #importForwarded(c, m.ast, emptySet)
 
 proc evalFrom(c: PContext, n: PNode): PNode = 
   result = n
@@ -196,4 +198,4 @@ proc evalImportExcept*(c: PContext, n: PNode): PNode =
       let ident = lookups.considerQuotedIdent(n.sons[i])
       exceptSet.incl(ident.id)
     importAllSymbolsExcept(c, m, exceptSet)
-    importForwarded(c, m.ast, exceptSet)
+    #importForwarded(c, m.ast, exceptSet)
