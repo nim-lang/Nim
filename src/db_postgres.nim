@@ -48,7 +48,8 @@ proc dbError*(msg: string) {.noreturn.} =
   e.msg = msg
   raise e
 
-proc dbQuote(s: string): string =
+proc dbQuote*(s: string): string =
+  ## DB quotes the string.
   result = "'"
   for c in items(s):
     if c == '\'': add(result, "''")
@@ -60,7 +61,10 @@ proc dbFormat(formatstr: TSqlQuery, args: varargs[string]): string =
   var a = 0
   for c in items(string(formatstr)):
     if c == '?':
-      add(result, dbQuote(args[a]))
+      if args[a] == nil:
+        add(result, "NULL")
+      else:
+        add(result, dbQuote(args[a]))
       inc(a)
     else:
       add(result, c)
@@ -123,8 +127,11 @@ proc prepare*(db: TDbConn; stmtName: string, query: TSqlQuery;
 proc setRow(res: PPGresult, r: var TRow, line, cols: int32) =
   for col in 0..cols-1:
     setLen(r[col], 0)
-    var x = pqgetvalue(res, line, col)
-    add(r[col], x)
+    let x = pqgetvalue(res, line, col)
+    if x.isNil:
+      r[col] = nil
+    else:
+      add(r[col], x)
 
 iterator fastRows*(db: TDbConn, query: TSqlQuery,
                    args: varargs[string, `$`]): TRow {.tags: [FReadDB].} =
