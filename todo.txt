@@ -2,6 +2,7 @@ version 0.10
 ============
 
 - Declare nimfix as beta-quality.
+- implement 'static_call'
 - make nimble part of the distribution
 - fix babelpackagelist bug
 
