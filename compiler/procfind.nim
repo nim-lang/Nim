@@ -11,7 +11,7 @@
 # This is needed for proper handling of forward declarations.
 
 import
-  ast, astalgo, msgs, semdata, types, trees
+  ast, astalgo, msgs, semdata, types, trees, strutils
 
 proc equalGenericParams(procA, procB: PNode): bool =
   if sonsLen(procA) != sonsLen(procB): return
@@ -68,11 +68,17 @@ proc searchForProcNew(c: PContext, scope: PScope, fn: PSym): PSym =
                  ExactConstraints, IgnoreCC}
 
   var it: TIdentIter
+
   result = initIdentIter(it, scope.symbols, fn.name)
   while result != nil:
     if result.kind in skProcKinds and sameType(result.typ, fn.typ, flags):
       case equalParams(result.typ.n, fn.typ.n)
       of paramsEqual:
+        if (sfExported notin result.flags) and (sfExported in fn.flags):
+          let message = ("public implementation '$1' has non-public " &
+                         "forward declaration in $2") %
+                        [getProcHeader(result), $result.info]
+          localError(fn.info, errGenerated, message)
         return
       of paramsIncompatible:
         localError(fn.info, errNotOverloadable, fn.name.s)

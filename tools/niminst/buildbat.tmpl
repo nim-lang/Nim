@@ -20,6 +20,7 @@ REM call the compiler:
 ECHO %CC% %COMP_FLAGS% -Ic_code -c ?{f} -o ?{changeFileExt(f, "o")}
 %CC% %COMP_FLAGS% -Ic_code -c ?{f} -o ?{changeFileExt(f, "o")}
 #      linkCmd.add(" " & changeFileExt(f, "o"))
+IF ERRORLEVEL 1 (GOTO:END)
 #    end for
 
 ECHO %LINKER% -o ?{"%BIN_DIR%"\toLower(c.name)}.exe ?linkCmd %LINK_FLAGS%
@@ -27,4 +28,14 @@ ECHO %LINKER% -o ?{"%BIN_DIR%"\toLower(c.name)}.exe ?linkCmd %LINK_FLAGS%
 
 #  end block
 
-ECHO SUCCESS
+:END
+IF ERRORLEVEL 1 (
+    ECHO FAILURE
+    ECHO.
+    ECHO CSource compilation failed. Please check that the gcc compiler is in
+    ECHO the PATH environment variable, and that you are calling the batch script
+    ECHO that matches the target architecture of the compiler.
+) ELSE (
+    ECHO SUCCESS
+)
+exit /b %ERRORLEVEL%

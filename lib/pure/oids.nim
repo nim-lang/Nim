@@ -55,7 +55,7 @@ proc oidToString*(oid: Oid, str: cstring) =
   str[24] = '\0'
 
 proc `$`*(oid: Oid): string =
-  result = newString(25)
+  result = newString(24)
   oidToString(oid, result)
 
 var
