@@ -14,7 +14,7 @@
 ## <backends.html#the-javascript-target>`_.
 
 include "system/inclrtl"
-
+import "impure/fenv"
 {.push debugger:off .} # the user does not want to trace a part
                        # of the standard library!
 
