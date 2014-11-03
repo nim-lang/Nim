@@ -198,6 +198,18 @@ proc keepIf*[T](seq1: var seq[T], pred: proc(item: T): bool {.closure.}) =
       inc(pos)
   setLen(seq1, pos)
 
+proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} = 
+  ## returns the last item of `s` and decreases ``s.len`` by one. This treats
+  ## `s` as a stack and implements the common *pop* operation.
+  var L = s.len-1
+  result = s[L]
+  setLen(s, L)
+
+proc pop*[T](s: var seq[T], i: int): T {.inline, noSideEffect.} =
+  ## returns the item of `s` at `i` and removes the item with `delete`
+  result = s[i]
+  delete(s, i)
+
 proc delete*[T](s: var seq[T], first=0, last=0) =
   ## Deletes in `s` the items at position `first` .. `last`. This modifies
   ## `s` itself, it does not return a copy.
