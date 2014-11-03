@@ -13,25 +13,31 @@
 const someGcc = defined(gcc) or defined(llvm_gcc) or defined(clang)
 
 when someGcc and hasThreadSupport:
-  type 
-    AtomMemModel* = enum
-      ATOMIC_RELAXED,  ## No barriers or synchronization. 
-      ATOMIC_CONSUME,  ## Data dependency only for both barrier and
-                       ## synchronization with another thread.
-      ATOMIC_ACQUIRE,  ## Barrier to hoisting of code and synchronizes with
-                       ## release (or stronger) 
-                       ## semantic stores from another thread.
-      ATOMIC_RELEASE,  ## Barrier to sinking of code and synchronizes with
-                       ## acquire (or stronger) 
-                       ## semantic loads from another thread. 
-      ATOMIC_ACQ_REL,  ## Full barrier in both directions and synchronizes
-                       ## with acquire loads 
-                       ## and release stores in another thread.
-      ATOMIC_SEQ_CST   ## Full barrier in both directions and synchronizes
-                       ## with acquire loads 
-                       ## and release stores in all threads.
+  type AtomMemModel* = distinct cint
+  var ATOMIC_RELAXED* {.importc: "__ATOMIC_RELAXED", nodecl.}: AtomMemModel
+    ## No barriers or synchronization.
+  var ATOMIC_CONSUME* {.importc: "__ATOMIC_CONSUME", nodecl.}: AtomMemModel
+    ## Data dependency only for both barrier and
+    ## synchronization with another thread.
+  var ATOMIC_ACQUIRE* {.importc: "__ATOMIC_ACQUIRE", nodecl.}: AtomMemModel
+    ## Barrier to hoisting of code and synchronizes with
+    ## release (or stronger) 
+    ## semantic stores from another thread.
+  var ATOMIC_RELEASE* {.importc: "__ATOMIC_RELEASE", nodecl.}: AtomMemModel
+    ## Barrier to sinking of code and synchronizes with
+    ## acquire (or stronger) 
+    ## semantic loads from another thread. 
+  var ATOMIC_ACQ_REL* {.importc: "__ATOMIC_ACQ_REL", nodecl.}: AtomMemModel
+    ## Full barrier in both directions and synchronizes
+    ## with acquire loads 
+    ## and release stores in another thread.
+  var ATOMIC_SEQ_CST* {.importc: "__ATOMIC_SEQ_CST", nodecl.}: AtomMemModel
+    ## Full barrier in both directions and synchronizes
+    ## with acquire loads 
+    ## and release stores in all threads.
 
-    TAtomType* = SomeNumber|pointer|ptr|char
+  type
+    TAtomType* = TNumber|pointer|ptr|char
       ## Type Class representing valid types for use with atomic procs
 
   proc atomicLoadN*[T: TAtomType](p: ptr T, mem: AtomMemModel): T {.
@@ -167,14 +173,14 @@ else:
     result = p[]
 
 proc atomicInc*(memLoc: var int, x: int = 1): int =
-  when defined(gcc) and hasThreadSupport:
+  when someGcc and hasThreadSupport:
     result = atomic_add_fetch(memLoc.addr, x, ATOMIC_RELAXED)
   else:
     inc(memLoc, x)
     result = memLoc
   
 proc atomicDec*(memLoc: var int, x: int = 1): int =
-  when defined(gcc) and hasThreadSupport:
+  when someGcc and hasThreadSupport:
     when declared(atomic_sub_fetch):
       result = atomic_sub_fetch(memLoc.addr, x, ATOMIC_RELAXED)
     else:
@@ -197,7 +203,7 @@ else:
   # XXX is this valid for 'int'?
 
 
-when (defined(x86) or defined(amd64)) and (defined(gcc) or defined(llvm_gcc)):
+when (defined(x86) or defined(amd64)) and someGcc:
   proc cpuRelax {.inline.} =
     {.emit: """asm volatile("pause" ::: "memory");""".}
 elif (defined(x86) or defined(amd64)) and defined(vcc):

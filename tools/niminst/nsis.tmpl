@@ -149,11 +149,6 @@
         CreateShortCut "$DESKTOP\?{c.displayName}.lnk" "$INSTDIR\?{c.name}.exe"
       #end if
 
-      ; Add shortcuts for the documentation
-      #for f in items(c.cat[fcDocStart]):
-        CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\?{splitFile(f).name}.lnk" "$INSTDIR\?{f.toWin}"
-      #end for
-
       ; Write the shortcut to the uninstaller
       CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\Uninstall.lnk" "$INSTDIR\uninstaller.exe"
     !insertmacro MUI_STARTMENU_WRITE_END
@@ -162,6 +157,7 @@
   ; Section for adding tools to the PATH variable
   Section "Setup Path Environment" PathSection
      ${EnvVarUpdate} $R0 "PATH" "A" "HKCU" "$INSTDIR\dist\mingw"
+     ${EnvVarUpdate} $R0 "PATH" "A" "HKCU" "$INSTDIR\dist\mingw\bin"
      ${EnvVarUpdate} $R0 "PATH" "A" "HKCU" "$INSTDIR\bin"
      ${EnvVarUpdate} $R0 "PATH" "A" "HKCU" "$INSTDIR\dist\babel"
   SectionEnd
@@ -203,15 +199,15 @@
       abort
     ${EndIf}
 
+    ; Shortcuts
     #  if d.len >= 6:
     #    let startMenuEntry = d[5]
     #    let e = splitFile(startMenuEntry).name.capitalize
-      CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\?{e}.lnk" "$INSTDIR\?dir\?{startMenuEntry.toWin}"
-    #  end if
-
-    ; Shortcuts
       !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
+        CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\?{e}.lnk" "$INSTDIR\?dir\?{startMenuEntry.toWin}"
       !insertmacro MUI_STARTMENU_WRITE_END
+    #  end if
+    
     ignore:
   SectionEnd
   #end
@@ -248,6 +244,7 @@
 
     ; Remove entries from the PATH environment variable
     ${un.EnvVarUpdate} $R0 "PATH" "R" "HKCU" "$INSTDIR\dist\mingw"
+    ${un.EnvVarUpdate} $R0 "PATH" "R" "HKCU" "$INSTDIR\dist\mingw\bin"
     ${un.EnvVarUpdate} $R0 "PATH" "R" "HKCU" "$INSTDIR\bin"
     ${un.EnvVarUpdate} $R0 "PATH" "R" "HKCU" "$INSTDIR\dist\babel"
   SectionEnd
