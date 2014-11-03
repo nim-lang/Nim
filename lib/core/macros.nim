@@ -620,6 +620,8 @@ proc `body=`*(someProc: PNimrodNode, val: PNimrodNode) {.compileTime.} =
     someProc[high(someProc)] = val
   else:
     badNodeKind someProc.kind, "body=" 
+
+proc basename*(a: PNimrodNode): PNimrodNode {.compiletime.}
   
 
 proc `$`*(node: PNimrodNode): string {.compileTime.} =
@@ -627,6 +629,8 @@ proc `$`*(node: PNimrodNode): string {.compileTime.} =
   case node.kind
   of nnkIdent:
     result = $node.ident
+  of nnkPostfix:
+    result = $node.basename.ident & "*"
   of nnkStrLit..nnkTripleStrLit:
     result = node.strVal
   else: 
@@ -669,7 +673,7 @@ proc insert*(a: PNimrodNode; pos: int; b: PNimrodNode) {.compileTime.} =
       a[i + 1] = a[i]
     a[pos] = b
 
-proc basename*(a: PNimrodNode): PNimrodNode {.compiletime.} =
+proc basename*(a: PNimrodNode): PNimrodNode =
   ## Pull an identifier from prefix/postfix expressions
   case a.kind
   of nnkIdent: return a
