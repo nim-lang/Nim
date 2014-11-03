@@ -235,11 +235,13 @@ proc countProcessors*(): int {.rtl, extern: "nosp$1".} =
 
 proc execProcesses*(cmds: openArray[string],
                     options = {poStdErrToStdOut, poParentStreams},
-                    n = countProcessors()): int {.rtl, extern: "nosp$1",
-                    tags: [ExecIOEffect, TimeEffect, ReadEnvEffect]} =
+                    n = countProcessors(),
+                    beforeRunEvent: proc(idx: int) = nil): int
+                    {.rtl, extern: "nosp$1",
+                    tags: [ExecIOEffect, TimeEffect, ReadEnvEffect, RootEffect]} =
   ## executes the commands `cmds` in parallel. Creates `n` processes
   ## that execute in parallel. The highest return value of all processes
-  ## is returned.
+  ## is returned. Runs `beforeRunEvent` before running each command.
   when defined(posix):
     # poParentStreams causes problems on Posix, so we simply disable it:
     var options = options - {poParentStreams}
@@ -250,6 +252,8 @@ proc execProcesses*(cmds: openArray[string],
     newSeq(q, n)
     var m = min(n, cmds.len)
     for i in 0..m-1:
+      if beforeRunEvent != nil:
+        beforeRunEvent(i)
       q[i] = startCmd(cmds[i], options=options)
     when defined(noBusyWaiting):
       var r = 0
@@ -263,6 +267,8 @@ proc execProcesses*(cmds: openArray[string],
           echo(err)
         result = max(waitForExit(q[r]), result)
         if q[r] != nil: close(q[r])
+        if beforeRunEvent != nil:
+          beforeRunEvent(i)
         q[r] = startCmd(cmds[i], options=options)
         r = (r + 1) mod n
     else:
@@ -274,6 +280,8 @@ proc execProcesses*(cmds: openArray[string],
             #echo(outputStream(q[r]).readLine())
             result = max(waitForExit(q[r]), result)
             if q[r] != nil: close(q[r])
+            if beforeRunEvent != nil:
+              beforeRunEvent(i)
             q[r] = startCmd(cmds[i], options=options)
             inc(i)
             if i > high(cmds): break
@@ -282,6 +290,8 @@ proc execProcesses*(cmds: openArray[string],
       if q[j] != nil: close(q[j])
   else:
     for i in 0..high(cmds):
+      if beforeRunEvent != nil:
+        beforeRunEvent(i)
       var p = startCmd(cmds[i], options=options)
       result = max(waitForExit(p), result)
       close(p)
