@@ -60,9 +60,11 @@ Core
 * `typetraits <typetraits.html>`_
   This module defines compile-time reflection procs for working with types.
 
-* `actors <actors.html>`_
-  Actor support for Nim; implemented as a layer on top of the threads and
-  channels modules.
+* `threadpool <threadpool.html>`_
+  Implements Nim's `spawn <manual.html#spawn>`_.
+
+* `cpuinfo <cpuinfo.html>`_
+  This module implements procs to determine the number of CPUs / cores.
 
 
 Collections and algorithms
