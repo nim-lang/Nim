@@ -175,6 +175,7 @@ Generic Operating System Services
   This module implements the ability to monitor a directory/file for changes
   using Posix's inotify API.
 
+
 Math libraries
 --------------
 
@@ -184,6 +185,9 @@ Math libraries
 * `complex <complex.html>`_
   This module implements complex numbers and their mathematical operations.
 
+* `fenv <fenv.html>`_
+  Floating-point environment. Handling of floating-point rounding and
+  exceptions (overflow, zero-devide, etc.).
 
 
 Internet Protocols and Support

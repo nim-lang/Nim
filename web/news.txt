@@ -57,6 +57,13 @@ News
     statement.
     
 
+  Library Additions
+  -----------------
+
+  - Added module ``fenv`` to control the handling of floating-point rounding and
+    exceptions (overflow, zero-devide, etc.).
+
+
 2014-10-19 Nimrod version 0.9.6 released
 ========================================
 
