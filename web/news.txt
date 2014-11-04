@@ -21,9 +21,9 @@ News
     without 'else' are deprecated.
   - Recursive tuple types are not allowed anymore. Use ``object`` instead.
   - The PEGS module returns ``nil`` instead of ``""`` when an optional capture
-    fails to match
+    fails to match.
   - The re module returns ``nil`` instead of ``""`` when an optional capture
-    fails to match
+    fails to match.
 
   Language Additions
   ------------------
@@ -55,7 +55,9 @@ News
 
   - Two backticks now produce a single backtick within an ``emit`` or ``asm``
     statement.
-    
+  - There is a new tool, `nimfix <nimfix.html>`_ to help you in updating your
+    code from Nimrod to Nim.
+  
 
   Library Additions
   -----------------

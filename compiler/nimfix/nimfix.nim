@@ -16,7 +16,7 @@ import options, commands, modules, sem, passes, passaux, pretty, msgs, nimconf,
 const Usage = """
 Nimfix - Tool to patch Nim code
 Usage:
-  nimfix [options] projectflie.nim
+  nimfix [options] projectfile.nim
 
 Options:
   --overwriteFiles:on|off          overwrite the original nim files.

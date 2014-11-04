@@ -1,10 +1,11 @@
 version 0.10
 ============
 
-- Declare nimfix as beta-quality.
+- fix deepCopy bug in parallel section
+- fix missing GC_ref bug for flow variables
 - implement 'static_call'
 - make nimble part of the distribution
-- fix babelpackagelist bug
+
 
 version 0.9.6
 =============
