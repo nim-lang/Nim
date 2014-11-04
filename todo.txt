@@ -1,17 +1,13 @@
 version 0.10
 ============
 
-- fix deepCopy bug in parallel section
 - fix missing GC_ref bug for flow variables
+- fix deepCopy bug in parallel section
 - implement 'static_call'
 - make nimble part of the distribution
-
-
-version 0.9.6
-=============
-
 - split idetools into separate tool
 - split docgen into separate tool
+
 
 Concurrency
 -----------
