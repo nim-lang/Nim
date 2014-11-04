@@ -124,7 +124,7 @@ type
 {.deprecated: [TGetoptResult: GetoptResult].}
 
 when declared(paramCount):
-  iterator getopt*(): GetoptResult =
+  iterator getopt*(s: seq[string] = nil): GetoptResult =
     ## This is an convenience iterator for iterating over the command line.
     ## This uses the OptParser object. Example:
     ##
@@ -143,7 +143,7 @@ when declared(paramCount):
     ##   if filename == "":
     ##     # no filename has been given, so we show the help:
     ##     writeHelp()
-    var p = initOptParser()
+    var p = initOptParser(s)
     while true:
       next(p)
       if p.kind == cmdEnd: break

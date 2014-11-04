@@ -16,7 +16,7 @@ when defined(gcc) and defined(windows):
     {.link: "icons/koch_icon.o".}
 
 import
-  os, strutils, parseopt, osproc, streams
+  os, strutils, parseopt2, osproc, streams
 
 import "compiler/nversion.nim"
 
@@ -165,9 +165,19 @@ proc thVersion(i: int): string =
   result = ("compiler" / "nim" & $i).exe
   
 proc boot(args: string) =
-  var output = "compiler" / "nim".exe
-  var finalDest = "bin" / "nim".exe
-  
+  # Look for the -o: or --output
+  var
+    output = "compiler" / "nim".exe
+    finalDest = "bin" / "nim".exe
+  let commandLine = commandLineParams()
+
+  for kind, key, val in getOpt(commandLine[1..commandLine.high()]):
+    if len(val) != 0:
+      let k = key.toLower()
+      if k == "out" or k == "o":
+        output = "compiler" / val
+        finalDest = "bin" / val
+
   copyExe(findStartNim(), 0.thVersion)
   for i in 0..2:
     echo "iteration: ", i+1
