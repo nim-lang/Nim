@@ -71,7 +71,7 @@ const
 proc pragma*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords)
 # implementation
 
-proc invalidPragma(n: PNode) = 
+proc invalidPragma(n: PNode) =
   localError(n.info, errInvalidPragmaX, renderTree(n, {renderNoComments}))
 
 proc pragmaAsm*(c: PContext, n: PNode): char = 
@@ -601,6 +601,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
       if c.instCounter > 100: 
         globalError(it.info, errRecursiveDependencyX, userPragma.name.s)
       pragma(c, sym, userPragma.ast, validPragmas)
+      # ensure the pragma is also remember for generic instantiations in other
+      # modules:
+      n.sons[i] = userPragma.ast
       dec c.instCounter
     else:
       var k = whichKeyword(key.ident)
@@ -883,8 +886,13 @@ proc hasPragma*(n: PNode, pragma: TSpecialWord): bool =
   
   return false
 
-proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
+proc pragmaRec(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
   if n == nil: return
   for i in countup(0, sonsLen(n) - 1):
-    if singlePragma(c, sym, n, i, validPragmas): break
+    if n.sons[i].kind == nkPragma: pragmaRec(c, sym, n.sons[i], validPragmas)
+    elif singlePragma(c, sym, n, i, validPragmas): break
+
+proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
+  if n == nil: return
+  pragmaRec(c, sym, n, validPragmas)
   implicitPragmas(c, sym, n, validPragmas)
