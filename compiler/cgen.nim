@@ -1061,8 +1061,7 @@ proc genMainProc(m: BModule) =
     gBreakpoints.app(m.genFilenames)
   
   let initStackBottomCall =
-    if emulatedThreadVars() or
-      platform.targetOS == osStandalone: "".toRope
+    if platform.targetOS == osStandalone: "".toRope
     else: ropecg(m, "\t#initStackBottomWith((void *)&inner);$N")
   inc(m.labels)
   appcg(m, m.s[cfsProcs], PreMainBody, [
