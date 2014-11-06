@@ -1943,8 +1943,7 @@ proc semExport(c: PContext, n: PNode): PNode =
     var o: TOverloadIter
     var s = initOverloadIter(o, c, a)
     if s == nil:
-      localError(a.info, errGenerated, "invalid expr for 'export': " &
-          renderTree(a))
+      localError(a.info, errGenerated, "cannot export: " & renderTree(a))
     elif s.kind == skModule:
       # forward everything from that module:
       strTableAdd(c.module.tab, s)

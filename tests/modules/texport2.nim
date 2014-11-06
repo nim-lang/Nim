@@ -1,4 +1,4 @@
-# bug #1595
+# bug #1595, #1612
 
 import mexport2a
 
@@ -8,3 +8,4 @@ proc main() =
   printXyz()
 
 main()
+foo(3)
