@@ -286,6 +286,12 @@ proc createWrapperProc(f: PNode; threadParam, argsParam: PSym;
         typeToString(fv.typ.sons[1]))
     body.add newAsgnStmt(indirectAccess(threadLocalProm.newSymNode,
       if fk == fvGC: "data" else: "blob", fv.info), call)
+    if fk == fvGC:
+      let incRefCall = newNodeI(nkCall, fv.info, 2)
+      incRefCall.sons[0] = newSymNode(createMagic("GCref", mGCref))
+      incRefCall.sons[1] = indirectAccess(threadLocalProm.newSymNode,
+                                          "data", fv.info)
+      body.add incRefCall
     if barrier == nil:
       # by now 'fv' is shared and thus might have beeen overwritten! we need
       # to use the thread-local view instead:

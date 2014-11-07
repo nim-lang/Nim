@@ -100,7 +100,8 @@ type
     # for 'awaitAny' support
     ai: ptr AwaitInfo
     idx: int
-    data: RootRef  # we incRef and unref it to keep it alive
+    data: pointer  # we incRef and unref it to keep it alive; note this MUST NOT
+                   # be RootRef here otherwise the wrong GC keeps track of it!
     owner: pointer # ptr Worker
 
   FlowVarObj[T] = object of FlowVarBaseObj
@@ -162,10 +163,8 @@ proc finished(fv: FlowVarBase) =
   var waited = false
   acquire(q.lock)
   while not (q.len < q.data.len):
-    echo "EXHAUSTED!"
-    release(q.lock)
+    #echo "EXHAUSTED!"
     wakeupWorkerToProcessQueue(owner)
-    acquire(q.lock)
     wait(q.empty, q.lock)
     waited = true
   q.data[q.len] = cast[pointer](fv.data)
@@ -180,7 +179,7 @@ proc cleanFlowVars(w: ptr Worker) =
   acquire(q.lock)
   for i in 0 .. <q.len:
     GC_unref(cast[RootRef](q.data[i]))
-    echo "GC_unref"
+    #echo "GC_unref"
   q.len = 0
   release(q.lock)
   signal(q.empty)
