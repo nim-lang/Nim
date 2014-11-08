@@ -428,7 +428,8 @@ proc close*(socket: Socket) =
       elif res != 1:
         socketError(socket)
 
-proc toCInt(opt: SOBool): cint =
+proc toCInt*(opt: SOBool): cint =
+  ## Converts a ``SOBool`` into its Socket Option cint representation.
   case opt
   of OptAcceptConn: SO_ACCEPTCONN
   of OptBroadcast: SO_BROADCAST

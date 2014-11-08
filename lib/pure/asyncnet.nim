@@ -60,6 +60,8 @@ import rawsockets
 import net
 import os
 
+export SOBool
+
 when defined(ssl):
   import openssl
 
@@ -425,6 +427,17 @@ when defined(ssl):
     socket.bioOut = bioNew(bio_s_mem())
     sslSetBio(socket.sslHandle, socket.bioIn, socket.bioOut)
 
+proc getSockOpt*(socket: AsyncSocket, opt: SOBool, level = SOL_SOCKET): bool {.
+  tags: [ReadIOEffect].} =
+  ## Retrieves option ``opt`` as a boolean value.
+  var res = getSockOptInt(socket.fd, cint(level), toCInt(opt))
+  result = res != 0
+
+proc setSockOpt*(socket: AsyncSocket, opt: SOBool, value: bool,
+    level = SOL_SOCKET) {.tags: [WriteIOEffect].} =
+  ## Sets option ``opt`` to a boolean value specified by ``value``.
+  var valuei = cint(if value: 1 else: 0)
+  setSockOptInt(socket.fd, cint(level), toCInt(opt), valuei)
 
 when isMainModule:
   type

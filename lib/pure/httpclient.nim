@@ -17,27 +17,27 @@
 ##
 ## Retrieving a website
 ## ====================
-## 
+##
 ## This example uses HTTP GET to retrieve
 ## ``http://google.com``
-## 
+##
 ## .. code-block:: Nim
 ##   echo(getContent("http://google.com"))
-## 
+##
 ## Using HTTP POST
 ## ===============
-## 
-## This example demonstrates the usage of the W3 HTML Validator, it 
+##
+## This example demonstrates the usage of the W3 HTML Validator, it
 ## uses ``multipart/form-data`` as the ``Content-Type`` to send the HTML to
-## the server. 
-## 
+## the server.
+##
 ## .. code-block:: Nim
 ##   var headers: string = "Content-Type: multipart/form-data; boundary=xyz\c\L"
 ##   var body: string = "--xyz\c\L"
 ##   # soap 1.2 output
 ##   body.add("Content-Disposition: form-data; name=\"output\"\c\L")
 ##   body.add("\c\Lsoap12\c\L")
-##    
+##
 ##   # html
 ##   body.add("--xyz\c\L")
 ##   body.add("Content-Disposition: form-data; name=\"uploaded_file\";" &
@@ -45,7 +45,7 @@
 ##   body.add("Content-Type: text/html\c\L")
 ##   body.add("\c\L<html><head></head><body><p>test</p></body></html>\c\L")
 ##   body.add("--xyz--")
-##    
+##
 ##   echo(postContent("http://validator.w3.org/check", headers, body))
 ##
 ## Asynchronous HTTP requests
@@ -95,8 +95,8 @@ from net import nil
 
 type
   Response* = tuple[
-    version: string, 
-    status: string, 
+    version: string,
+    status: string,
     headers: StringTableRef,
     body: string]
 
@@ -108,7 +108,7 @@ type
                                        ## does not conform to the implemented
                                        ## protocol
 
-  HttpRequestError* = object of IOError ## Thrown in the ``getContent`` proc 
+  HttpRequestError* = object of IOError ## Thrown in the ``getContent`` proc
                                         ## and ``postContent`` proc,
                                         ## when the server returns an error
 
@@ -123,7 +123,7 @@ proc httpError(msg: string) =
   new(e)
   e.msg = msg
   raise e
-  
+
 proc fileError(msg: string) =
   var e: ref IOError
   new(e)
@@ -167,7 +167,7 @@ proc parseChunks(s: TSocket, timeout: int): string =
     s.skip(2, timeout) # Skip \c\L
     # Trailer headers will only be sent if the request specifies that we want
     # them: http://tools.ietf.org/html/rfc2616#section-3.6.1
-  
+
 proc parseBody(s: TSocket, headers: PStringTable, timeout: int): string =
   result = ""
   if headers["Transfer-Encoding"] == "chunked":
@@ -191,7 +191,7 @@ proc parseBody(s: TSocket, headers: PStringTable, timeout: int): string =
                     " got: " & $received)
     else:
       # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.4 TODO
-      
+
       # -REGION- Connection: Close
       # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.5
       if headers["Connection"] == "close":
@@ -241,7 +241,7 @@ proc parseResponse(s: TSocket, getBody: bool, timeout: int): TResponse =
       inc(linei, le)
       if line[linei] != ':': httpError("invalid headers")
       inc(linei) # Skip :
-      
+
       result.headers[name] = line[linei.. -1].strip()
   if not fullyRead:
     httpError("Connection was closed before full request has been made")
@@ -256,17 +256,17 @@ type
                       ## correspond to a GET request, but without the response
                       ## body.
     httpGET,          ## Retrieves the specified resource.
-    httpPOST,         ## Submits data to be processed to the identified 
-                      ## resource. The data is included in the body of the 
+    httpPOST,         ## Submits data to be processed to the identified
+                      ## resource. The data is included in the body of the
                       ## request.
     httpPUT,          ## Uploads a representation of the specified resource.
     httpDELETE,       ## Deletes the specified resource.
-    httpTRACE,        ## Echoes back the received request, so that a client 
+    httpTRACE,        ## Echoes back the received request, so that a client
                       ## can see what intermediate servers are adding or
                       ## changing in the request.
-    httpOPTIONS,      ## Returns the HTTP methods that the server supports 
+    httpOPTIONS,      ## Returns the HTTP methods that the server supports
                       ## for specified address.
-    httpCONNECT       ## Converts the request connection to a transparent 
+    httpCONNECT       ## Converts the request connection to a transparent
                       ## TCP/IP tunnel, usually used for proxies.
 
 {.deprecated: [THttpMethod: HttpMethod].}
@@ -281,7 +281,7 @@ proc newProxy*(url: string, auth = ""): PProxy =
   ## Constructs a new ``TProxy`` object.
   result = PProxy(url: parseUrl(url), auth: auth)
 
-proc request*(url: string, httpMethod = httpGET, extraHeaders = "", 
+proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
               body = "",
               sslContext: PSSLContext = defaultSSLContext,
               timeout = -1, userAgent = defUserAgent,
@@ -298,7 +298,7 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
     headers.add(" " & url)
 
   headers.add(" HTTP/1.1\c\L")
-  
+
   add(headers, "Host: " & r.hostname & "\c\L")
   if userAgent != "":
     add(headers, "User-Agent: " & userAgent & "\c\L")
@@ -307,7 +307,7 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
     add(headers, "Proxy-Authorization: basic " & auth & "\c\L")
   add(headers, extraHeaders)
   add(headers, "\c\L")
-  
+
   var s = socket()
   if s == invalidSocket: raiseOSError(osLastError())
   var port = sockets.TPort(80)
@@ -320,7 +320,7 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
                 "SSL support is not available. Cannot connect over SSL.")
   if r.port != "":
     port = sockets.TPort(r.port.parseInt)
-  
+
   if timeout == -1:
     s.connect(r.hostname, port)
   else:
@@ -328,10 +328,10 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
   s.send(headers)
   if body != "":
     s.send(body)
-  
+
   result = parseResponse(s, httpMethod != httpHEAD, timeout)
   s.close()
-  
+
 proc redirection(status: string): bool =
   const redirectionNRs = ["301", "302", "303", "307"]
   for i in items(redirectionNRs):
@@ -346,7 +346,7 @@ proc getNewLocation(lastUrl: string, headers: PStringTable): string =
   if r.hostname == "" and r.path != "":
     let origParsed = parseURL(lastUrl)
     result = origParsed.hostname & "/" & r.path
-  
+
 proc get*(url: string, extraHeaders = "", maxRedirects = 5,
           sslContext: PSSLContext = defaultSSLContext,
           timeout = -1, userAgent = defUserAgent,
@@ -365,7 +365,7 @@ proc get*(url: string, extraHeaders = "", maxRedirects = 5,
       result = request(redirectTo, httpGET, extraHeaders, "", sslContext,
                        timeout, userAgent, proxy)
       lastUrl = redirectTo
-      
+
 proc getContent*(url: string, extraHeaders = "", maxRedirects = 5,
                  sslContext: PSSLContext = defaultSSLContext,
                  timeout = -1, userAgent = defUserAgent,
@@ -381,7 +381,7 @@ proc getContent*(url: string, extraHeaders = "", maxRedirects = 5,
     raise newException(EHTTPRequestErr, r.status)
   else:
     return r.body
-  
+
 proc post*(url: string, extraHeaders = "", body = "",
            maxRedirects = 5,
            sslContext: PSSLContext = defaultSSLContext,
@@ -404,7 +404,7 @@ proc post*(url: string, extraHeaders = "", body = "",
       result = request(redirectTo, meth, xh, body, sslContext, timeout,
                        userAgent, proxy)
       lastUrl = redirectTo
-  
+
 proc postContent*(url: string, extraHeaders = "", body = "",
                   maxRedirects = 5,
                   sslContext: PSSLContext = defaultSSLContext,
@@ -421,7 +421,7 @@ proc postContent*(url: string, extraHeaders = "", body = "",
     raise newException(EHTTPRequestErr, r.status)
   else:
     return r.body
-  
+
 proc downloadFile*(url: string, outputFilename: string,
                    sslContext: PSSLContext = defaultSSLContext,
                    timeout = -1, userAgent = defUserAgent,
@@ -456,7 +456,7 @@ type
     socket: AsyncSocket
     connected: bool
     currentURL: TURL ## Where we are currently connected.
-    headers: StringTableRef
+    headers*: StringTableRef
     maxRedirects: int
     userAgent: string
     when defined(ssl):
@@ -528,7 +528,7 @@ proc parseChunks(client: PAsyncHttpClient): Future[string] {.async.} =
     discard await recvFull(client.socket, 2) # Skip \c\L
     # Trailer headers will only be sent if the request specifies that we want
     # them: http://tools.ietf.org/html/rfc2616#section-3.6.1
-  
+
 proc parseBody(client: PAsyncHttpClient,
                headers: PStringTable): Future[string] {.async.} =
   result = ""
@@ -549,7 +549,7 @@ proc parseBody(client: PAsyncHttpClient,
                     $length & " got " & $result.len)
     else:
       # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.4 TODO
-      
+
       # -REGION- Connection: Close
       # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.5
       if headers["Connection"] == "close":
@@ -598,7 +598,7 @@ proc parseResponse(client: PAsyncHttpClient,
       inc(linei, le)
       if line[linei] != ':': httpError("invalid headers")
       inc(linei) # Skip :
-      
+
       result.headers[name] = line[linei.. -1].strip()
   if not fullyRead:
     httpError("Connection was closed before full request has been made")
@@ -621,14 +621,14 @@ proc newConnection(client: PAsyncHttpClient, url: TURL) {.async.} =
         else:
           rawsockets.TPort(80)
       else: rawsockets.TPort(url.port.parseInt)
-    
+
     if url.scheme.toLower() == "https":
       when defined(ssl):
         client.sslContext.wrapSocket(client.socket)
       else:
         raise newException(EHttpRequestErr,
                   "SSL support is not available. Cannot connect over SSL.")
-    
+
     await client.socket.connect(url.hostname, port)
     client.currentURL = url
     client.connected = true
@@ -648,13 +648,13 @@ proc request*(client: PAsyncHttpClient, url: string, httpMethod = httpGET,
 
   if not client.headers.hasKey("user-agent") and client.userAgent != "":
     client.headers["User-Agent"] = client.userAgent
-  
+
   var headers = generateHeaders(r, httpMethod, client.headers)
-  
+
   await client.socket.send(headers)
   if body != "":
     await client.socket.send(body)
-  
+
   result = await parseResponse(client, httpMethod != httpHEAD)
 
 proc get*(client: PAsyncHttpClient, url: string): Future[TResponse] {.async.} =
@@ -676,7 +676,7 @@ when isMainModule:
     proc main() {.async.} =
       var client = newAsyncHttpClient()
       var resp = await client.request("http://picheta.me")
-      
+
       echo("Got response: ", resp.status)
       echo("Body:\n")
       echo(resp.body)
@@ -703,13 +703,13 @@ when isMainModule:
 
     #var r = get("http://validator.w3.org/check?uri=http%3A%2F%2Fgoogle.com&
     #  charset=%28detect+automatically%29&doctype=Inline&group=0")
-    
+
     var headers: string = "Content-Type: multipart/form-data; boundary=xyz\c\L"
     var body: string = "--xyz\c\L"
     # soap 1.2 output
     body.add("Content-Disposition: form-data; name=\"output\"\c\L")
     body.add("\c\Lsoap12\c\L")
-    
+
     # html
     body.add("--xyz\c\L")
     body.add("Content-Disposition: form-data; name=\"uploaded_file\";" &

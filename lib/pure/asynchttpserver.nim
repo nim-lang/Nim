@@ -37,6 +37,7 @@ type
 
   AsyncHttpServer* = ref object
     socket: PAsyncSocket
+    reuseAddr: bool
 
   HttpCode* = enum
     Http200 = "200 OK",
@@ -64,9 +65,10 @@ proc `==`*(protocol: tuple[orig: string, major, minor: int],
     of HttpVer10: 0
   result = protocol.major == major and protocol.minor == minor
 
-proc newAsyncHttpServer*(): PAsyncHttpServer =
+proc newAsyncHttpServer*(reuseAddr = true): PAsyncHttpServer =
   ## Creates a new ``AsyncHttpServer`` instance.
   new result
+  result.reuseAddr = reuseAddr
 
 proc addHeaders(msg: var string, headers: PStringTable) =
   for k, v in headers:
@@ -210,6 +212,8 @@ proc serve*(server: PAsyncHttpServer, port: Port,
   ##
   ## When a request is made by a client the specified callback will be called.
   server.socket = newAsyncSocket()
+  if server.reuseAddr:
+    server.socket.setSockOpt(OptReuseAddr, true)
   server.socket.bindAddr(port, address)
   server.socket.listen()
   
