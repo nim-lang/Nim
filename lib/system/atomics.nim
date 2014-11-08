@@ -37,7 +37,7 @@ when someGcc and hasThreadSupport:
     ## and release stores in all threads.
 
   type
-    TAtomType* = TNumber|pointer|ptr|char
+    TAtomType* = SomeNumber|pointer|ptr|char|bool
       ## Type Class representing valid types for use with atomic procs
 
   proc atomicLoadN*[T: TAtomType](p: ptr T, mem: AtomMemModel): T {.
@@ -204,16 +204,16 @@ else:
 
 
 when (defined(x86) or defined(amd64)) and someGcc:
-  proc cpuRelax {.inline.} =
+  proc cpuRelax* {.inline.} =
     {.emit: """asm volatile("pause" ::: "memory");""".}
 elif (defined(x86) or defined(amd64)) and defined(vcc):
-  proc cpuRelax {.importc: "YieldProcessor", header: "<windows.h>".}
+  proc cpuRelax* {.importc: "YieldProcessor", header: "<windows.h>".}
 elif defined(icl):
-  proc cpuRelax {.importc: "_mm_pause", header: "xmmintrin.h".}
+  proc cpuRelax* {.importc: "_mm_pause", header: "xmmintrin.h".}
 elif false:
   from os import sleep
 
-  proc cpuRelax {.inline.} = os.sleep(1)
+  proc cpuRelax* {.inline.} = os.sleep(1)
 
 when not declared(fence) and hasThreadSupport:
   # XXX fixme
