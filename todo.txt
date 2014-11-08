@@ -1,9 +1,8 @@
 version 0.10
 ============
 
-- fix missing GC_ref bug for flow variables
-- fix deepCopy bug in parallel section
-- implement 'static_call'
+- find out why global installations end up using the wrong stdlib
+- implement 'procCall'
 - make nimble part of the distribution
 - split idetools into separate tool
 - split docgen into separate tool

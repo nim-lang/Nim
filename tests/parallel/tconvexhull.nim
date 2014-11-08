@@ -5,6 +5,8 @@ true
 true
 true
 true'''
+
+ccodeCheck: "!'deepcopy('"
 """
 
 # parallel convex hull for Nim bigbreak

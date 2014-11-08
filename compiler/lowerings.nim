@@ -204,7 +204,7 @@ proc flowVarKind(t: PType): TFlowVarKind =
   else: fvBlob
 
 proc addLocalVar(varSection, varInit: PNode; owner: PSym; typ: PType;
-                 v: PNode): PSym =
+                 v: PNode; useShallowCopy=false): PSym =
   result = newSym(skTemp, getIdent(genPrefix), owner, varSection.info)
   result.typ = typ
   incl(result.flags, sfFromGeneric)
@@ -215,11 +215,14 @@ proc addLocalVar(varSection, varInit: PNode; owner: PSym; typ: PType;
   vpart.sons[2] = if varInit.isNil: v else: ast.emptyNode
   varSection.add vpart
   if varInit != nil:
-    let deepCopyCall = newNodeI(nkCall, varInit.info, 3)
-    deepCopyCall.sons[0] = newSymNode(createMagic("deepCopy", mDeepCopy))
-    deepCopyCall.sons[1] = newSymNode(result)
-    deepCopyCall.sons[2] = v
-    varInit.add deepCopyCall
+    if useShallowCopy:
+      varInit.add newFastAsgnStmt(newSymNode(result), v)
+    else:
+      let deepCopyCall = newNodeI(nkCall, varInit.info, 3)
+      deepCopyCall.sons[0] = newSymNode(createMagic("deepCopy", mDeepCopy))
+      deepCopyCall.sons[1] = newSymNode(result)
+      deepCopyCall.sons[2] = v
+      varInit.add deepCopyCall
 
 discard """
 We generate roughly this:
@@ -420,7 +423,8 @@ proc setupArgsForParallelism(n: PNode; objType: PType; scratchObj: PSym;
         result.add newFastAsgnStmt(newDotExpr(scratchObj, fieldB), n[3])
 
         let threadLocal = addLocalVar(varSection,nil, objType.owner, fieldA.typ,
-                                      indirectAccess(castExpr, fieldA, n.info))
+                                      indirectAccess(castExpr, fieldA, n.info),
+                                      useShallowCopy=true)
         slice.sons[2] = threadLocal.newSymNode
       else:
         let a = genAddrOf(n)
@@ -434,7 +438,8 @@ proc setupArgsForParallelism(n: PNode; objType: PType; scratchObj: PSym;
       slice.sons[1] = genDeref(indirectAccess(castExpr, field, n.info))
 
       let threadLocal = addLocalVar(varSection,nil, objType.owner, fieldB.typ,
-                                    indirectAccess(castExpr, fieldB, n.info))
+                                    indirectAccess(castExpr, fieldB, n.info),
+                                    useShallowCopy=true)
       slice.sons[3] = threadLocal.newSymNode
       call.add slice
     elif (let size = computeSize(argType); size < 0 or size > 16) and
@@ -445,7 +450,8 @@ proc setupArgsForParallelism(n: PNode; objType: PType; scratchObj: PSym;
       objType.addField(field)
       result.add newFastAsgnStmt(newDotExpr(scratchObj, field), a)
       let threadLocal = addLocalVar(varSection,nil, objType.owner, field.typ,
-                                    indirectAccess(castExpr, field, n.info))
+                                    indirectAccess(castExpr, field, n.info),
+                                    useShallowCopy=true)
       call.add(genDeref(threadLocal.newSymNode))
     else:
       # boring case
@@ -454,7 +460,8 @@ proc setupArgsForParallelism(n: PNode; objType: PType; scratchObj: PSym;
       result.add newFastAsgnStmt(newDotExpr(scratchObj, field), n)
       let threadLocal = addLocalVar(varSection, varInit,
                                     objType.owner, field.typ,
-                                    indirectAccess(castExpr, field, n.info))
+                                    indirectAccess(castExpr, field, n.info),
+                                    useShallowCopy=true)
       call.add(threadLocal.newSymNode)
 
 proc wrapProcForSpawn*(owner: PSym; spawnExpr: PNode; retType: PType; 

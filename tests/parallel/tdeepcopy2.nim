@@ -27,9 +27,9 @@ proc main =
   var dummy: ref Bar[int]
   new(dummy)
   dummy.x = 44
-  parallel:
-    let f = spawn foo(dummy)
-    let b = spawn foo(dummy)
-  echo "done", f, " ", b
+  #parallel:
+  let f = spawn foo(dummy)
+  let b = spawn foo(dummy)
+  echo "done", ^f, " ", ^b
 
 main()

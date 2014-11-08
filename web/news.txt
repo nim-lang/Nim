@@ -9,6 +9,8 @@ News
   Changes affecting backwards compatibility
   -----------------------------------------
 
+  - **The language has been renamed from Nimrod to Nim.** The name of the
+    compiler changed from ``nimrod`` to ``nim`` too.
   - ``system.fileHandle`` has been renamed to ``system.getFileHandle`` to
     prevent name conflicts with the new type ``FileHandle``.
   - Comments are now not part of the AST, as such you cannot use them in place
