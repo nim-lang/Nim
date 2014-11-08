@@ -45,7 +45,7 @@ var
 when noDeadlocks:
   var
     locksLen {.threadvar.}: int
-    locks {.threadvar.}: array [0..MaxLocksPerThread-1, pointer]
+    locks {.threadvar.}: array [0..maxLocksPerThread-1, pointer]
 
   proc orderedLocks(): bool = 
     for i in 0 .. locksLen-2:
