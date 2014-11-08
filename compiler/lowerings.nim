@@ -261,7 +261,6 @@ proc createWrapperProc(f: PNode; threadParam, argsParam: PSym;
     threadLocalBarrier = addLocalVar(varSection2, nil, argsParam.owner, 
                                      barrier.typ, barrier)
     body.add varSection2
-    body.add callCodegenProc("barrierEnter", threadLocalBarrier.newSymNode)
   var threadLocalProm: PSym
   if spawnKind == srByVar:
     threadLocalProm = addLocalVar(varSection, nil, argsParam.owner, fv.typ, fv)
@@ -549,7 +548,7 @@ proc wrapProcForSpawn*(owner: PSym; spawnExpr: PNode; retType: PType;
     # create flowVar:
     result.add newFastAsgnStmt(fvField, callProc(spawnExpr[2]))
     if barrier == nil:
-      result.add callCodegenProc("nimFlowVarCreateCondVar", fvField)
+      result.add callCodegenProc("nimFlowVarCreateSemaphore", fvField)
 
   elif spawnKind == srByVar:
     var field = newSym(skField, getIdent"fv", owner, n.info)
@@ -562,6 +561,8 @@ proc wrapProcForSpawn*(owner: PSym; spawnExpr: PNode; retType: PType;
   let wrapper = createWrapperProc(fn, threadParam, argsParam, 
                                   varSection, varInit, call,
                                   barrierAsExpr, fvAsExpr, spawnKind)
+  if barrier != nil:
+    result.add callCodegenProc("barrierEnter", barrier)
   result.add callCodegenProc("nimSpawn", wrapper.newSymNode,
                              genAddrOf(scratchObj.newSymNode))
 
