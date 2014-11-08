@@ -116,16 +116,6 @@ else:
   proc pthread_cancel(a1: TSysThread): cint {.
     importc: "pthread_cancel", header: "<pthread.h>".}
 
-  proc acquireSysTimeoutAux(L: var TSysLock, timeout: var Ttimespec): cint {.
-    importc: "pthread_mutex_timedlock", header: "<time.h>".}
-
-  proc acquireSysTimeout(L: var TSysLock, msTimeout: int) {.inline.} =
-    var a: Ttimespec
-    a.tv_sec = msTimeout div 1000
-    a.tv_nsec = (msTimeout mod 1000) * 1000
-    var res = acquireSysTimeoutAux(L, a)
-    if res != 0'i32: raise newException(EResourceExhausted, $strerror(res))
-
   type
     TThreadVarSlot {.importc: "pthread_key_t", pure, final,
                    header: "<sys/types.h>".} = object
