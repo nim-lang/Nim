@@ -54,8 +54,8 @@ type
     when defined(ssl):
       case isSsl*: bool
       of true:
-        sslHandle*: PSSL
-        sslContext*: PSSLContext
+        sslHandle*: SSLPtr
+        sslContext*: SSLContext
         sslNoHandshake*: bool # True if needs handshake.
         sslHasPeekChar*: bool
         sslPeekChar*: char
@@ -147,11 +147,11 @@ when defined(ssl):
     raise newException(SSLError, $errStr)
 
   # http://simplestcodings.blogspot.co.uk/2010/08/secure-server-client-using-openssl-in-c.html
-  proc loadCertificates(ctx: PSSL_CTX, certFile, keyFile: string) =
+  proc loadCertificates(ctx: SSL_CTX, certFile, keyFile: string) =
     if certFile != "" and not existsFile(certFile):
-      raise newException(system.EIO, "Certificate file could not be found: " & certFile)
+      raise newException(system.IOError, "Certificate file could not be found: " & certFile)
     if keyFile != "" and not existsFile(keyFile):
-      raise newException(system.EIO, "Key file could not be found: " & keyFile)
+      raise newException(system.IOError, "Key file could not be found: " & keyFile)
     
     if certFile != "":
       var ret = SSLCTXUseCertificateChainFile(ctx, certFile)
@@ -168,7 +168,7 @@ when defined(ssl):
         raiseSSLError("Verification of private key file failed.")
 
   proc newContext*(protVersion = protSSLv23, verifyMode = CVerifyPeer,
-                   certFile = "", keyFile = ""): PSSLContext =
+                   certFile = "", keyFile = ""): SSLContext =
     ## Creates an SSL context.
     ## 
     ## Protocol version specifies the protocol to use. SSLv2, SSLv3, TLSv1 
@@ -184,7 +184,7 @@ when defined(ssl):
     ## path, a server socket will most likely not work without these.
     ## Certificates can be generated using the following command:
     ## ``openssl req -x509 -nodes -days 365 -newkey rsa:1024 -keyout mycert.pem -out mycert.pem``.
-    var newCTX: PSSL_CTX
+    var newCTX: SSL_CTX
     case protVersion
     of protSSLv23:
       newCTX = SSL_CTX_new(SSLv23_method()) # SSlv2,3 and TLS1 support.
@@ -210,9 +210,9 @@ when defined(ssl):
 
     discard newCTX.SSLCTXSetMode(SSL_MODE_AUTO_RETRY)
     newCTX.loadCertificates(certFile, keyFile)
-    return PSSLContext(newCTX)
+    return SSLContext(newCTX)
 
-  proc wrapSocket*(ctx: PSSLContext, socket: PSocket) =
+  proc wrapSocket*(ctx: SSLContext, socket: Socket) =
     ## Wraps a socket in an SSL context. This function effectively turns
     ## ``socket`` into an SSL socket.
     ##
@@ -221,7 +221,7 @@ when defined(ssl):
     
     socket.isSSL = true
     socket.sslContext = ctx
-    socket.sslHandle = SSLNew(PSSLCTX(socket.sslContext))
+    socket.sslHandle = SSLNew(SSLCTX(socket.sslContext))
     socket.sslNoHandshake = false
     socket.sslHasPeekChar = false
     if socket.sslHandle == nil:
@@ -350,9 +350,9 @@ proc acceptAddr*(server: Socket, client: var Socket, address: var string,
     address = $inet_ntoa(sockAddress.sin_addr)
 
 when false: #defined(ssl):
-  proc acceptAddrSSL*(server: PSocket, client: var PSocket,
+  proc acceptAddrSSL*(server: Socket, client: var Socket,
                       address: var string): TSSLAcceptResult {.
-                      tags: [FReadIO].} =
+                      tags: [ReadIOEffect].} =
     ## This procedure should only be used for non-blocking **SSL** sockets. 
     ## It will immediately return with one of the following values:
     ## 
@@ -480,7 +480,7 @@ proc connect*(socket: Socket, address: string, port = Port(0),
       socketError(socket, ret)
 
 when defined(ssl):
-  proc handshake*(socket: PSocket): bool {.tags: [FReadIO, FWriteIO].} =
+  proc handshake*(socket: Socket): bool {.tags: [ReadIOEffect, WriteIOEffect].} =
     ## This proc needs to be called on a socket after it connects. This is
     ## only applicable when using ``connectAsync``.
     ## This proc performs the SSL handshake.
@@ -510,7 +510,7 @@ when defined(ssl):
     else:
       raiseSSLError("Socket is not an SSL socket.")
 
-  proc gotHandshake*(socket: PSocket): bool =
+  proc gotHandshake*(socket: Socket): bool =
     ## Determines whether a handshake has occurred between a client (``socket``)
     ## and the server that ``socket`` is connected to.
     ##

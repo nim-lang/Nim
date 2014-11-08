@@ -18,17 +18,17 @@ type
 
 {.deprecated: [TQueue: Queue].}
 
-proc initQueue*[T](initialSize=4): TQueue[T] =
+proc initQueue*[T](initialSize=4): Queue[T] =
   ## creates a new queue. `initialSize` needs to be a power of 2.
   assert isPowerOfTwo(initialSize)
   result.mask = initialSize-1
   newSeq(result.data, initialSize)
 
-proc len*[T](q: TQueue[T]): int =
+proc len*[T](q: Queue[T]): int =
   ## returns the number of elements of `q`.
   result = q.count
 
-iterator items*[T](q: TQueue[T]): T =
+iterator items*[T](q: Queue[T]): T =
   ## yields every element of `q`.
   var i = q.rd
   var c = q.count
@@ -37,7 +37,7 @@ iterator items*[T](q: TQueue[T]): T =
     yield q.data[i]
     i = (i + 1) and q.mask
 
-proc add*[T](q: var TQueue[T], item: T) =
+proc add*[T](q: var Queue[T], item: T) =
   ## adds an `item` to the end of the queue `q`.
   var cap = q.mask+1
   if q.count >= cap:
@@ -55,18 +55,18 @@ proc add*[T](q: var TQueue[T], item: T) =
   q.data[q.wr] = item
   q.wr = (q.wr + 1) and q.mask
 
-proc enqueue*[T](q: var TQueue[T], item: T) =
+proc enqueue*[T](q: var Queue[T], item: T) =
   ## alias for the ``add`` operation.
   add(q, item)
 
-proc dequeue*[T](q: var TQueue[T]): T =
+proc dequeue*[T](q: var Queue[T]): T =
   ## removes and returns the first element of the queue `q`.
   assert q.count > 0
   dec q.count
   result = q.data[q.rd]
   q.rd = (q.rd + 1) and q.mask
 
-proc `$`*[T](q: TQueue[T]): string = 
+proc `$`*[T](q: Queue[T]): string = 
   ## turns a queue into its string representation.
   result = "["
   for x in items(q):

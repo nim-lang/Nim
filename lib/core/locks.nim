@@ -69,7 +69,7 @@ proc tryAcquire*(lock: var TLock): bool {.tags: [AquireEffect].} =
     # there is no space in the array left ...
     if locksLen >= len(locks):
       releaseSys(lock)
-      raise newException(EResourceExhausted, "cannot acquire additional lock")
+      raise newException(ResourceExhaustedErro, "cannot acquire additional lock")
     # find the position to add:
     var p = addr(lock)
     var L = locksLen-1
@@ -105,7 +105,7 @@ proc acquire*(lock: var TLock) {.tags: [AquireEffect].} =
       else:
         # do the crazy stuff here:
         if locksLen >= len(locks):
-          raise newException(EResourceExhausted, 
+          raise newException(ResourceExhaustedError,
               "cannot acquire additional lock")
         while L >= i:
           releaseSys(cast[ptr TSysLock](locks[L])[])
@@ -129,7 +129,7 @@ proc acquire*(lock: var TLock) {.tags: [AquireEffect].} =
         
     # simply add to the end:
     if locksLen >= len(locks):
-      raise newException(EResourceExhausted, "cannot acquire additional lock")
+      raise newException(ResourceExhaustedError, "cannot acquire additional lock")
     acquireSys(lock)
     locks[locksLen] = p
     inc(locksLen)

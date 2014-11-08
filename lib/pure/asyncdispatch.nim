@@ -242,7 +242,7 @@ proc echoOriginalStackTrace[T](future: Future[T]) =
 
 proc read*[T](future: Future[T]): T =
   ## Retrieves the value of ``future``. Future must be finished otherwise
-  ## this function will fail with a ``EInvalidValue`` exception.
+  ## this function will fail with a ``ValueError`` exception.
   ##
   ## If the result of the future is an error then that error will be raised.
   if future.finished:
@@ -808,13 +808,13 @@ else:
     TAsyncFD* = distinct cint
     TCallback = proc (fd: TAsyncFD): bool {.closure,gcsafe.}
 
-    PData* = ref object of PObject
+    PData* = ref object of RootRef
       fd: TAsyncFD
       readCBs: seq[TCallback]
       writeCBs: seq[TCallback]
 
     PDispatcher* = ref object of PDispatcherBase
-      selector: PSelector
+      selector: Selector
 
   proc `==`*(x, y: TAsyncFD): bool {.borrow.}
 
@@ -828,7 +828,7 @@ else:
     if gDisp.isNil: gDisp = newDispatcher()
     result = gDisp
 
-  proc update(fd: TAsyncFD, events: set[TEvent]) =
+  proc update(fd: TAsyncFD, events: set[Event]) =
     let p = getGlobalDispatcher()
     assert fd.SocketHandle in p.selector
     discard p.selector.update(fd.SocketHandle, events)
@@ -836,16 +836,16 @@ else:
   proc register*(fd: TAsyncFD) =
     let p = getGlobalDispatcher()
     var data = PData(fd: fd, readCBs: @[], writeCBs: @[])
-    p.selector.register(fd.SocketHandle, {}, data.PObject)
+    p.selector.register(fd.SocketHandle, {}, data.RootRef)
 
   proc newAsyncRawSocket*(domain: cint, typ: cint, protocol: cint): TAsyncFD =
     result = newRawSocket(domain, typ, protocol).TAsyncFD
     result.SocketHandle.setBlocking(false)
     register(result)
 
-  proc newAsyncRawSocket*(domain: TDomain = AF_INET,
-               typ: TType = SOCK_STREAM,
-               protocol: TProtocol = IPPROTO_TCP): TAsyncFD =
+  proc newAsyncRawSocket*(domain: Domain = AF_INET,
+               typ: SockType = SOCK_STREAM,
+               protocol: Protocol = IPPROTO_TCP): TAsyncFD =
     result = newRawSocket(domain, typ, protocol).TAsyncFD
     result.SocketHandle.setBlocking(false)
     register(result)
@@ -861,14 +861,14 @@ else:
   proc addRead*(fd: TAsyncFD, cb: TCallback) =
     let p = getGlobalDispatcher()
     if fd.SocketHandle notin p.selector:
-      raise newException(EInvalidValue, "File descriptor not registered.")
+      raise newException(ValueError, "File descriptor not registered.")
     p.selector[fd.SocketHandle].data.PData.readCBs.add(cb)
     update(fd, p.selector[fd.SocketHandle].events + {EvRead})
   
   proc addWrite*(fd: TAsyncFD, cb: TCallback) =
     let p = getGlobalDispatcher()
     if fd.SocketHandle notin p.selector:
-      raise newException(EInvalidValue, "File descriptor not registered.")
+      raise newException(ValueError, "File descriptor not registered.")
     p.selector[fd.SocketHandle].data.PData.writeCBs.add(cb)
     update(fd, p.selector[fd.SocketHandle].events + {EvWrite})
   
@@ -898,7 +898,7 @@ else:
             data.writeCBs.add(cb)
       
       if info.key in p.selector:
-        var newEvents: set[TEvent]
+        var newEvents: set[Event]
         if data.readCBs.len != 0: newEvents = {EvRead}
         if data.writeCBs.len != 0: newEvents = newEvents + {EvWrite}
         if newEvents != info.key.events:
@@ -910,7 +910,7 @@ else:
 
     processTimers(p)
   
-  proc connect*(socket: TAsyncFD, address: string, port: TPort,
+  proc connect*(socket: TAsyncFD, address: string, port: Port,
     af = AF_INET): Future[void] =
     var retFuture = newFuture[void]("connect")
     
@@ -921,7 +921,7 @@ else:
     
     var aiList = getAddrInfo(address, port, af)
     var success = false
-    var lastError: TOSErrorCode
+    var lastError: OSErrorCode
     var it = aiList
     while it != nil:
       var ret = connect(socket.SocketHandle, it.ai_addr, it.ai_addrlen.Socklen)
@@ -942,11 +942,11 @@ else:
 
     dealloc(aiList)
     if not success:
-      retFuture.fail(newException(EOS, osErrorMsg(lastError)))
+      retFuture.fail(newException(OSError, osErrorMsg(lastError)))
     return retFuture
 
   proc recv*(socket: TAsyncFD, size: int,
-             flags = {TSocketFlags.SafeDisconn}): Future[string] =
+             flags = {SocketFlag.SafeDisconn}): Future[string] =
     var retFuture = newFuture[string]("recv")
     
     var readBuffer = newString(size)
@@ -962,7 +962,7 @@ else:
           if flags.isDisconnectionError(lastError):
             retFuture.complete("")
           else:
-            retFuture.fail(newException(EOS, osErrorMsg(lastError)))
+            retFuture.fail(newException(OSError, osErrorMsg(lastError)))
         else:
           result = false # We still want this callback to be called.
       elif res == 0:
@@ -977,7 +977,7 @@ else:
     return retFuture
 
   proc send*(socket: TAsyncFD, data: string,
-             flags = {TSocketFlags.SafeDisconn}): Future[void] =
+             flags = {SocketFlag.SafeDisconn}): Future[void] =
     var retFuture = newFuture[void]("send")
     
     var written = 0
@@ -994,7 +994,7 @@ else:
           if flags.isDisconnectionError(lastError):
             retFuture.complete()
           else:
-            retFuture.fail(newException(EOS, osErrorMsg(lastError)))
+            retFuture.fail(newException(OSError, osErrorMsg(lastError)))
         else:
           result = false # We still want this callback to be called.
       else:
@@ -1008,7 +1008,7 @@ else:
     addWrite(socket, cb)
     return retFuture
 
-  proc acceptAddr*(socket: TAsyncFD, flags = {TSocketFlags.SafeDisconn}):
+  proc acceptAddr*(socket: TAsyncFD, flags = {SocketFlag.SafeDisconn}):
       Future[tuple[address: string, client: TAsyncFD]] =
     var retFuture = newFuture[tuple[address: string,
         client: TAsyncFD]]("acceptAddr")
@@ -1027,7 +1027,7 @@ else:
           if flags.isDisconnectionError(lastError):
             return false
           else:
-            retFuture.fail(newException(EOS, osErrorMsg(lastError)))
+            retFuture.fail(newException(OSError, osErrorMsg(lastError)))
       else:
         register(client.TAsyncFD)
         retFuture.complete(($inet_ntoa(sockAddress.sin_addr), client.TAsyncFD))
@@ -1302,7 +1302,7 @@ macro async*(prc: stmt): stmt {.immediate.} =
   outerProcBody.add(closureIterator)
 
   # -> createCb(retFuture)
-  var cbName = newIdentNode("cb")
+  #var cbName = newIdentNode("cb")
   var procCb = newCall(bindSym"createCb", retFutureSym, iteratorNameSym,
                        newStrLitNode(prc[0].getName))
   outerProcBody.add procCb
@@ -1372,7 +1372,7 @@ proc runForever*() =
   while true:
     poll()
 
-proc waitFor*[T](fut: PFuture[T]): T =
+proc waitFor*[T](fut: Future[T]): T =
   ## **Blocks** the current thread until the specified future completes.
   while not fut.finished:
     poll()

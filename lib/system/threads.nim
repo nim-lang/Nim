@@ -124,7 +124,7 @@ else:
     a.tv_sec = msTimeout div 1000
     a.tv_nsec = (msTimeout mod 1000) * 1000
     var res = acquireSysTimeoutAux(L, a)
-    if res != 0'i32: raise newException(EResourceExhausted, $strerror(res))
+    if res != 0'i32: raise newException(ResourceExhaustedError, $strerror(res))
 
   type
     TThreadVarSlot {.importc: "pthread_key_t", pure, final,
