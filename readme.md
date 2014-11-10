@@ -6,7 +6,7 @@ documentation.
 Compiling the Nim compiler is quite straightforward. Because
 the Nim compiler itself is written in the Nim programming language
 the C source of an older version of the compiler are needed to bootstrap the
-latest version. The C sources are available in a separate repo [here](http://github.com/nim-code/csources).
+latest version. The C sources are available in a separate repo [here](http://github.com/nim-lang/csources).
 
 Pre-compiled snapshots of the compiler are also available on
 [Nimbuild](http://build.nim-lang.org/). Your platform however may not 
@@ -32,7 +32,7 @@ If you are on a fairly modern *nix system, the following steps should work:
 ```
 $ git clone git://github.com/Araq/Nim.git
 $ cd Nim
-$ git clone --depth 1 git://github.com/nim-code/csources
+$ git clone --depth 1 git://github.com/nim-lang/csources
 $ cd csources && sh build.sh
 $ cd ..
 $ bin/nim c koch

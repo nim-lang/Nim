@@ -148,7 +148,7 @@ Options:
   -h, --help          shows this help
   -v, --version       shows the version
 Compile_options:
-  will be passed to the Nimrod compiler
+  will be passed to the Nim compiler
 """
 
 proc parseCmdLine(c: var TConfigData) =
