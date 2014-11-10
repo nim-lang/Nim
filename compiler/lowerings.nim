@@ -556,7 +556,7 @@ proc wrapProcForSpawn*(owner: PSym; spawnExpr: PNode; retType: PType;
     # create flowVar:
     result.add newFastAsgnStmt(fvField, callProc(spawnExpr[2]))
     if barrier == nil:
-      result.add callCodegenProc("nimFlowVarCreateCondVar", fvField)
+      result.add callCodegenProc("nimFlowVarCreateSemaphore", fvField)
 
   elif spawnKind == srByVar:
     var field = newSym(skField, getIdent"fv", owner, n.info)

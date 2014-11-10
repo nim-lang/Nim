@@ -17,27 +17,27 @@ import cpuinfo, cpuload, locks
 {.push stackTrace:off.}
 
 type
-  CondVar = object
+  Semaphore = object
     c: TCond
     L: TLock
     counter: int
 
-proc createCondVar(): CondVar =
+proc createSemaphore(): Semaphore =
   initCond(result.c)
   initLock(result.L)
 
-proc destroyCondVar(cv: var CondVar) {.inline.} =
+proc destroySemaphore(cv: var Semaphore) {.inline.} =
   deinitCond(cv.c)
   deinitLock(cv.L)
 
-proc await(cv: var CondVar) =
+proc await(cv: var Semaphore) =
   acquire(cv.L)
   while cv.counter <= 0:
     wait(cv.c, cv.L)
   dec cv.counter
   release(cv.L)
 
-proc signal(cv: var CondVar) =
+proc signal(cv: var Semaphore) =
   acquire(cv.L)
   inc cv.counter
   release(cv.L)
@@ -48,7 +48,7 @@ const CacheLineSize = 32 # true for most archs
 type
   Barrier {.compilerProc.} = object
     entered: int
-    cv: CondVar # condvar takes 3 words at least
+    cv: Semaphore # Semaphore takes 3 words at least
     when sizeof(int) < 8:
       cacheAlign: array[CacheLineSize-4*sizeof(int), byte]
     left: int
@@ -75,12 +75,12 @@ proc openBarrier(b: ptr Barrier) {.compilerProc, inline.} =
 proc closeBarrier(b: ptr Barrier) {.compilerProc.} =
   fence()
   if b.left != b.entered:
-    b.cv = createCondVar()
+    b.cv = createSemaphore()
     fence()
     b.interest = true
     fence()
     while b.left != b.entered: await(b.cv)
-    destroyCondVar(b.cv)
+    destroySemaphore(b.cv)
 
 {.pop.}
 
@@ -90,13 +90,13 @@ type
   foreign* = object ## a region that indicates the pointer comes from a
                     ## foreign thread heap.
   AwaitInfo = object
-    cv: CondVar
+    cv: Semaphore
     idx: int
 
   FlowVarBase* = ref FlowVarBaseObj ## untyped base class for 'FlowVar[T]'
   FlowVarBaseObj = object of RootObj
-    ready, usesCondVar, awaited: bool
-    cv: CondVar #\
+    ready, usesSemaphore, awaited: bool
+    cv: Semaphore #\
     # for 'awaitAny' support
     ai: ptr AwaitInfo
     idx: int
@@ -112,13 +112,13 @@ type
   ToFreeQueue = object
     len: int
     lock: TLock
-    empty: CondVar
+    empty: Semaphore
     data: array[128, pointer]
 
   WorkerProc = proc (thread, args: pointer) {.nimcall, gcsafe.}
   Worker = object
-    taskArrived: CondVar
-    taskStarted: CondVar #\
+    taskArrived: Semaphore
+    taskStarted: Semaphore #\
     # task data:
     f: WorkerProc
     data: pointer
@@ -130,10 +130,10 @@ type
 proc await*(fv: FlowVarBase) =
   ## waits until the value for the flowVar arrives. Usually it is not necessary
   ## to call this explicitly.
-  if fv.usesCondVar and not fv.awaited:
+  if fv.usesSemaphore and not fv.awaited:
     fv.awaited = true
     await(fv.cv)
-    destroyCondVar(fv.cv)
+    destroySemaphore(fv.cv)
 
 proc selectWorker(w: ptr Worker; fn: WorkerProc; data: pointer): bool =
   if cas(addr w.ready, true, false):
@@ -191,9 +191,9 @@ proc fvFinalizer[T](fv: FlowVar[T]) = finished(fv)
 proc nimCreateFlowVar[T](): FlowVar[T] {.compilerProc.} =
   new(result, fvFinalizer)
 
-proc nimFlowVarCreateCondVar(fv: FlowVarBase) {.compilerProc.} =
-  fv.cv = createCondVar()
-  fv.usesCondVar = true
+proc nimFlowVarCreateSemaphore(fv: FlowVarBase) {.compilerProc.} =
+  fv.cv = createSemaphore()
+  fv.usesSemaphore = true
 
 proc nimFlowVarSignal(fv: FlowVarBase) {.compilerProc.} =
   if fv.ai != nil:
@@ -202,7 +202,7 @@ proc nimFlowVarSignal(fv: FlowVarBase) {.compilerProc.} =
     inc fv.ai.cv.counter
     release(fv.ai.cv.L)
     signal(fv.ai.cv.c)
-  if fv.usesCondVar: 
+  if fv.usesSemaphore: 
     signal(fv.cv)
 
 proc awaitAndThen*[T](fv: FlowVar[T]; action: proc (x: T) {.closure.}) =
@@ -242,7 +242,7 @@ proc awaitAny*(flowVars: openArray[FlowVarBase]): int =
   ## **Note**: This results in non-deterministic behaviour and so should be
   ## avoided.
   var ai: AwaitInfo
-  ai.cv = createCondVar()
+  ai.cv = createSemaphore()
   var conflicts = 0
   for i in 0 .. flowVars.high:
     if cas(addr flowVars[i].ai, nil, addr ai):
@@ -256,7 +256,7 @@ proc awaitAny*(flowVars: openArray[FlowVarBase]): int =
       discard cas(addr flowVars[i].ai, addr ai, nil)
   else:
     result = -1
-  destroyCondVar(ai.cv)
+  destroySemaphore(ai.cv)
 
 proc nimArgsPassingDone(p: pointer) {.compilerProc.} =
   let w = cast[ptr Worker](p)
@@ -270,7 +270,7 @@ var
   currentPoolSize: int
   maxPoolSize = MaxThreadPoolSize
   minPoolSize = 4
-  gSomeReady = createCondVar()
+  gSomeReady = createSemaphore()
   readyWorker: ptr Worker
 
 proc slave(w: ptr Worker) {.thread.} =
@@ -307,10 +307,10 @@ proc setMaxPoolSize*(size: range[1..MaxThreadPoolSize]) =
       w.shutdown = true
 
 proc activateThread(i: int) {.noinline.} =
-  workersData[i].taskArrived = createCondVar()
-  workersData[i].taskStarted = createCondVar()
+  workersData[i].taskArrived = createSemaphore()
+  workersData[i].taskStarted = createSemaphore()
   workersData[i].initialized = true
-  workersData[i].q.empty = createCondVar()
+  workersData[i].q.empty = createSemaphore()
   initLock(workersData[i].q.lock)
   createThread(workers[i], slave, addr(workersData[i]))
 
