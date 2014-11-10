@@ -17,70 +17,77 @@ import cpuinfo, cpuload, locks
 {.push stackTrace:off.}
 
 type
-  CondVar = object
-    c: TCond
-    L: TLock
+  Semaphore = object
+    lock: TLock
+    cond: TCond
     counter: int
 
-proc createCondVar(): CondVar =
-  initCond(result.c)
-  initLock(result.L)
+proc createSemaphore(): Semaphore =
+  initCond(result.cond)
+  initLock(result.lock)
 
-proc destroyCondVar(cv: var CondVar) {.inline.} =
-  deinitCond(cv.c)
-  deinitLock(cv.L)
+proc destroySemaphore(sem: var Semaphore) {.inline.} =
+  deinitCond(sem.cond)
+  deinitLock(sem.lock)
 
-proc await(cv: var CondVar) =
-  acquire(cv.L)
-  while cv.counter <= 0:
-    wait(cv.c, cv.L)
-  dec cv.counter
-  release(cv.L)
+proc await(sem: var Semaphore) =
+  acquire(sem.lock)
+  while sem.counter <= 0:
+    wait(sem.cond, sem.lock)
+  dec sem.counter
+  release(sem.lock)
 
-proc signal(cv: var CondVar) =
-  acquire(cv.L)
-  inc cv.counter
-  release(cv.L)
-  signal(cv.c)
+proc signal(sem: var Semaphore) =
+  acquire(sem.lock)
+  inc sem.counter
+  release(sem.lock)
+  signal(sem.cond)
 
 const CacheLineSize = 32 # true for most archs
 
 type
   Barrier {.compilerProc.} = object
     entered: int
-    cv: CondVar # condvar takes 3 words at least
+    left: int
+    lock: TLock
+    cond: TCond
+    # sem: Semaphore # condvar takes 3 words at least
     when sizeof(int) < 8:
       cacheAlign: array[CacheLineSize-4*sizeof(int), byte]
-    left: int
     cacheAlign2: array[CacheLineSize-sizeof(int), byte]
     interest: bool ## wether the master is interested in the "all done" event
 
 proc barrierEnter(b: ptr Barrier) {.compilerProc, inline.} =
-  # due to the signaling between threads, it is ensured we are the only
-  # one with access to 'entered' so we don't need 'atomicInc' here:
+  # b.entered will only ever be accessed from one thread
   inc b.entered
-  # also we need no 'fence' instructions here as soon 'nimArgsPassingDone'
-  # will be called which already will perform a fence for us.
 
 proc barrierLeave(b: ptr Barrier) {.compilerProc, inline.} =
   atomicInc b.left
-  when not defined(x86): fence()
-  if b.interest and b.left == b.entered: signal(b.cv)
+  # We may not have seen the final value of b.entered yet,
+  # so we need to check for >= instead of ==.
+  if b.left >= b.entered:
+    acquire b.lock
+    if b.left >= b.entered and b.interest:
+      signal b.cond
+    release b.lock
 
 proc openBarrier(b: ptr Barrier) {.compilerProc, inline.} =
   b.entered = 0
   b.left = 0
   b.interest = false
+  initLock b.lock
+  initCond b.cond
 
 proc closeBarrier(b: ptr Barrier) {.compilerProc.} =
-  fence()
   if b.left != b.entered:
-    b.cv = createCondVar()
-    fence()
+    acquire b.lock
     b.interest = true
-    fence()
-    while b.left != b.entered: await(b.cv)
-    destroyCondVar(b.cv)
+    while b.left != b.entered:
+      wait b.cond, b.lock
+    release b.lock
+  deinitLock b.lock
+  deinitCond b.cond
+
 
 {.pop.}
 
@@ -90,13 +97,13 @@ type
   foreign* = object ## a region that indicates the pointer comes from a
                     ## foreign thread heap.
   AwaitInfo = object
-    cv: CondVar
+    sem: Semaphore
     idx: int
 
   FlowVarBase* = ref FlowVarBaseObj ## untyped base class for 'FlowVar[T]'
   FlowVarBaseObj = object of RootObj
-    ready, usesCondVar, awaited: bool
-    cv: CondVar #\
+    ready, usesSemaphore, awaited: bool
+    sem: Semaphore #\
     # for 'awaitAny' support
     ai: ptr AwaitInfo
     idx: int
@@ -109,61 +116,122 @@ type
 
   FlowVar*{.compilerProc.}[T] = ref FlowVarObj[T] ## a data flow variable
 
+  FlowVarCleanupPtr = ptr FlowVarCleanupObj
+  FlowVarCleanupObj = object
+    data: pointer
+    next: FlowVarCleanupPtr
+
   ToFreeQueue = object
-    len: int
     lock: TLock
-    empty: CondVar
-    data: array[128, pointer]
+    list, free: FlowVarCleanupPtr
 
   WorkerProc = proc (thread, args: pointer) {.nimcall, gcsafe.}
   Worker = object
-    taskArrived: CondVar
-    taskStarted: CondVar #\
-    # task data:
     f: WorkerProc
     data: pointer
-    ready: bool # put it here for correct alignment!
     initialized: bool # whether it has even been initialized
-    shutdown: bool # the pool requests to shut down this worker thread
+    idle: bool # whether the worker should pause
+    idleSem: Semaphore
     q: ToFreeQueue
+
+  TaskObj = object
+    next: TaskPtr
+    sem: ptr Semaphore
+    func: WorkerProc
+    data: pointer
+  TaskPtr = ptr TaskObj
+  TaskQueue = object
+    lock: TLock
+    cond, sync: TCond
+    running: int
+    waiting: int
+    head, tail: TaskPtr
+    free: TaskPtr
+
+const
+  MaxThreadPoolSize* = 256 ## maximal size of the thread pool. 256 threads
+                           ## should be good enough for anybody ;-)
+
+var
+  state: ThreadpoolState
+  currentPoolSize: int
+  maxPoolSize = MaxThreadPoolSize
+  minPoolSize = 4
+  targetPoolSize = minPoolSize
+  pending: TaskQueue
+
+proc scheduleTask(func: WorkerProc, data: pointer, sem: ptr Semaphore = nil) = 
+  var task: TaskPtr
+  acquire pending.lock
+  if pending.free == nil:
+    task = createShared(TaskObj)
+  else:
+    task = pending.free
+    pending.free = task.next
+    task.next = nil
+  task.func = func
+  task.data = data
+  task.sem = sem
+  if pending.head == nil:
+    pending.head = task
+    pending.tail = task
+  else:
+    # Because spawn blocks, we process those tasks in LIFO order
+    if sem != nil:
+      task.next = pending.head
+      pending.head = task
+    else:
+      pending.tail.next = task
+      pending.tail = task
+  signal pending.cond
+  release pending.lock
+
+proc waitTask(): TaskObj =
+  acquire pending.lock
+  inc pending.waiting
+  while pending.head == nil or pending.running >= targetPoolSize:
+    wait(pending.cond, pending.lock)
+  var task = pending.head
+  result = task[]
+  pending.head = task.next
+  if pending.head == nil:
+    pending.tail = nil
+  task.next = pending.free
+  pending.free = task
+  inc pending.running
+  dec pending.waiting
+  release pending.lock
+
+proc finishTask() =
+  acquire pending.lock
+  dec pending.running
+  if pending.running == 0 and pending.waiting == 0:
+    # All tasks are done
+    signal pending.sync
+  elif pending.waiting != 0:
+    targetPoolSize = minPoolSize
+    if pending.running >= minPoolSize and pending.running < maxPoolSize:
+      var counter {.global.} = 0
+      if counter < maxPoolSize or (counter and 127) == 0:
+        # Account for the fact that running has already been decremented
+        case advice(state)
+        of doNothing:
+          targetPoolSize = pending.running + 1
+        of doShutdownThread:
+          targetPoolSize = pending.running
+        of doCreateThread:
+          targetPoolSize = pending.running + 2
+    if pending.running < targetPoolSize:
+      signal pending.cond
+  release pending.lock
 
 proc await*(fv: FlowVarBase) =
   ## waits until the value for the flowVar arrives. Usually it is not necessary
   ## to call this explicitly.
-  if fv.usesCondVar and not fv.awaited:
+  if fv.usesSemaphore and not fv.awaited:
     fv.awaited = true
-    await(fv.cv)
-    destroyCondVar(fv.cv)
-
-proc selectWorker(w: ptr Worker; fn: WorkerProc; data: pointer): bool =
-  if cas(addr w.ready, true, false):
-    w.data = data
-    w.f = fn
-    signal(w.taskArrived)
-    await(w.taskStarted)
-    result = true
-
-proc cleanFlowVars(w: ptr Worker) =
-  let q = addr(w.q)
-  acquire(q.lock)
-  for i in 0 .. <q.len:
-    GC_unref(cast[RootRef](q.data[i]))
-    #echo "GC_unref"
-  q.len = 0
-  release(q.lock)
-
-proc wakeupWorkerToProcessQueue(w: ptr Worker) =
-  # we have to ensure it's us who wakes up the owning thread.
-  # This is quite horrible code, but it runs so rarely that it doesn't matter:
-  while not cas(addr w.ready, true, false):
-    cpuRelax()
-    discard
-  w.data = nil
-  w.f = proc (w, a: pointer) {.nimcall.} =
-    let w = cast[ptr Worker](w)
-    cleanFlowVars(w)
-    signal(w.q.empty)
-  signal(w.taskArrived)
+    await(fv.sem)
+    destroySemaphore(fv.sem)
 
 proc finished(fv: FlowVarBase) =
   doAssert fv.ai.isNil, "flowVar is still attached to an 'awaitAny'"
@@ -175,35 +243,47 @@ proc finished(fv: FlowVarBase) =
   let owner = cast[ptr Worker](fv.owner)
   let q = addr(owner.q)
   acquire(q.lock)
-  while not (q.len < q.data.len):
-    #echo "EXHAUSTED!"
-    release(q.lock)
-    wakeupWorkerToProcessQueue(owner)
-    await(q.empty)
-    acquire(q.lock)
-  q.data[q.len] = cast[pointer](fv.data)
-  inc q.len
-  release(q.lock)
+  var cleanup: FlowVarCleanupPtr
+  if q.free == nil:
+    cleanup = createShared(FlowVarCleanupObj)
+  else:
+    cleanup = q.free
+    q.free = q.free.next
+  cleanup.data = fv.data
+  cleanup.next = q.list
+  q.list = cleanup
   fv.data = nil
+  release(q.lock)
+
+proc cleanFlowVars(w: ptr Worker) =
+  let q = addr(w.q)
+  acquire(q.lock)
+  while q.list != nil:
+    var cleanup = q.list
+    q.list = cleanup.next
+    cleanup.next = q.free
+    q.free = cleanup
+    GC_unref(cast[RootRef](cleanup.data))
+  release(q.lock)
 
 proc fvFinalizer[T](fv: FlowVar[T]) = finished(fv)
 
 proc nimCreateFlowVar[T](): FlowVar[T] {.compilerProc.} =
   new(result, fvFinalizer)
 
-proc nimFlowVarCreateCondVar(fv: FlowVarBase) {.compilerProc.} =
-  fv.cv = createCondVar()
-  fv.usesCondVar = true
+proc nimFlowVarCreateSemaphore(fv: FlowVarBase) {.compilerProc.} =
+  fv.sem = createSemaphore()
+  fv.usesSemaphore = true
 
 proc nimFlowVarSignal(fv: FlowVarBase) {.compilerProc.} =
   if fv.ai != nil:
-    acquire(fv.ai.cv.L)
+    acquire(fv.ai.sem.lock)
     fv.ai.idx = fv.idx
-    inc fv.ai.cv.counter
-    release(fv.ai.cv.L)
-    signal(fv.ai.cv.c)
-  if fv.usesCondVar: 
-    signal(fv.cv)
+    inc fv.ai.sem.counter
+    release(fv.ai.sem.lock)
+    signal(fv.ai.sem.cond)
+  if fv.usesSemaphore: 
+    signal(fv.sem)
 
 proc awaitAndThen*[T](fv: FlowVar[T]; action: proc (x: T) {.closure.}) =
   ## blocks until the ``fv`` is available and then passes its value
@@ -242,7 +322,7 @@ proc awaitAny*(flowVars: openArray[FlowVarBase]): int =
   ## **Note**: This results in non-deterministic behaviour and so should be
   ## avoided.
   var ai: AwaitInfo
-  ai.cv = createCondVar()
+  ai.sem = createSemaphore()
   var conflicts = 0
   for i in 0 .. flowVars.high:
     if cas(addr flowVars[i].ai, nil, addr ai):
@@ -250,44 +330,38 @@ proc awaitAny*(flowVars: openArray[FlowVarBase]): int =
     else:
       inc conflicts
   if conflicts < flowVars.len:
-    await(ai.cv)
+    await(ai.sem)
     result = ai.idx
     for i in 0 .. flowVars.high:
       discard cas(addr flowVars[i].ai, addr ai, nil)
   else:
     result = -1
-  destroyCondVar(ai.cv)
+  destroySemaphore(ai.sem)
+
+var notifyCallerSem {.threadvar.}: ptr Semaphore
 
 proc nimArgsPassingDone(p: pointer) {.compilerProc.} =
-  let w = cast[ptr Worker](p)
-  signal(w.taskStarted)
-
-const
-  MaxThreadPoolSize* = 256 ## maximal size of the thread pool. 256 threads
-                           ## should be good enough for anybody ;-)
-
-var
-  currentPoolSize: int
-  maxPoolSize = MaxThreadPoolSize
-  minPoolSize = 4
-  gSomeReady = createCondVar()
-  readyWorker: ptr Worker
+  if notifyCallerSem != nil:
+    signal notifyCallerSem[]
 
 proc slave(w: ptr Worker) {.thread.} =
   while true:
-    when declared(atomicStoreN):
-      atomicStoreN(addr(w.ready), true, ATOMIC_SEQ_CST)
-    else:
-      w.ready = true
-    readyWorker = w
-    signal(gSomeReady)
-    await(w.taskArrived)
-    assert(not w.ready)
-    w.f(w, w.data)
-    if w.q.len != 0: w.cleanFlowVars
-    if w.shutdown:
-      w.shutdown = false
-      atomicDec currentPoolSize
+    let task = waitTask()
+    notifyCallerSem = task.sem
+    task.func(w, task.data)
+    finishTask()
+    # Dirty read, we're going to properly check the value
+    # in cleanFlowVars.
+    if w.q.list != nil: w.cleanFlowVars
+    # Dirty read again, we may miss a shutdown request the
+    # first time around, but we should get it the next time.
+    # Better than to introduce overhead each time for a
+    # rare occurrence.
+    if w.idle:
+      acquire w.idleSem.lock
+      while w.idle:
+        wait w.idleSem.cond, w.idleSem.lock
+      release w.idleSem.lock
 
 var
   workers: array[MaxThreadPoolSize, TThread[ptr Worker]]
@@ -296,6 +370,14 @@ var
 proc setMinPoolSize*(size: range[1..MaxThreadPoolSize]) =
   ## sets the minimal thread pool size. The default value of this is 4.
   minPoolSize = size
+  targetPoolSize = size
+
+proc activateThread(i: int) {.noinline.} =
+  workersData[i].initialized = true
+  workersData[i].idle = false
+  workersData[i].idleSem = createSemaphore()
+  initLock(workersData[i].q.lock)
+  createThread(workers[i], slave, addr(workersData[i]))
 
 proc setMaxPoolSize*(size: range[1..MaxThreadPoolSize]) =
   ## sets the minimal thread pool size. The default value of this
@@ -304,26 +386,34 @@ proc setMaxPoolSize*(size: range[1..MaxThreadPoolSize]) =
   if currentPoolSize > maxPoolSize:
     for i in maxPoolSize..currentPoolSize-1:
       let w = addr(workersData[i])
-      w.shutdown = true
-
-proc activateThread(i: int) {.noinline.} =
-  workersData[i].taskArrived = createCondVar()
-  workersData[i].taskStarted = createCondVar()
-  workersData[i].initialized = true
-  workersData[i].q.empty = createCondVar()
-  initLock(workersData[i].q.lock)
-  createThread(workers[i], slave, addr(workersData[i]))
+      acquire w.idleSem.lock
+      w.idle = true
+      release w.idleSem.lock
+  elif currentPoolSize < maxPoolSize:
+    for i in currentPoolSize+1..maxPoolSize:
+      let w = addr(workersData[i])
+      if w.initialized:
+        acquire w.idleSem.lock
+        w.idle = false
+        signal w.idleSem.cond
+        release w.idleSem.lock
+      else:
+        activateThread(i)
 
 proc setup() =
+  initLock pending.lock
+  initCond pending.cond
+  initCond pending.sync
   currentPoolSize = min(countProcessors(), MaxThreadPoolSize)
-  readyWorker = addr(workersData[0])
   for i in 0.. <currentPoolSize: activateThread(i)
 
 proc preferSpawn*(): bool =
   ## Use this proc to determine quickly if a 'spawn' or a direct call is
   ## preferable. If it returns 'true' a 'spawn' may make sense. In general
   ## it is not necessary to call this directly; use 'spawnX' instead.
-  result = gSomeReady.counter > 0
+  acquire pending.lock
+  result = pending.running < currentPoolSize
+  release pending.lock
 
 proc spawn*(call: expr): expr {.magic: "Spawn".}
   ## always spawns a new task, so that the 'call' is never executed on
@@ -346,54 +436,23 @@ proc parallel*(body: stmt) {.magic: "Parallel".}
   ## refer to the manual for further information.
 
 var
-  state: ThreadPoolState
-  stateLock: TLock
-
-initLock stateLock
+  taskStarted {.threadvar.}: Semaphore
+  taskStartedSemInit {.threadvar.}: bool
 
 proc nimSpawn(fn: WorkerProc; data: pointer) {.compilerProc.} =
   # implementation of 'spawn' that is used by the code generator.
-  while true:
-    if selectWorker(readyWorker, fn, data): return
-    for i in 0.. <currentPoolSize:
-      if selectWorker(addr(workersData[i]), fn, data): return
-    # determine what to do, but keep in mind this is expensive too:
-    # state.calls < maxPoolSize: warmup phase
-    # (state.calls and 127) == 0: periodic check
-    if state.calls < maxPoolSize or (state.calls and 127) == 0:
-      # ensure the call to 'advice' is atomic:
-      if tryAcquire(stateLock):
-        case advice(state)
-        of doNothing: discard
-        of doCreateThread:
-          if currentPoolSize < maxPoolSize:
-            if not workersData[currentPoolSize].initialized:
-              activateThread(currentPoolSize)
-            let w = addr(workersData[currentPoolSize])
-            atomicInc currentPoolSize
-            if selectWorker(w, fn, data):
-              release(stateLock)
-              return
-            # else we didn't succeed but some other thread, so do nothing.
-        of doShutdownThread:
-          if currentPoolSize > minPoolSize:
-            let w = addr(workersData[currentPoolSize-1])
-            w.shutdown = true
-          # we don't free anything here. Too dangerous.
-        release(stateLock)
-      # else the acquire failed, but this means some
-      # other thread succeeded, so we don't need to do anything here.
-    await(gSomeReady)
+  if not taskStartedSemInit:
+    taskStarted = createSemaphore()
+    taskStartedSemInit = true
+  scheduleTask(fn, data, addr(taskStarted))
+  await(taskStarted)
 
 proc sync*() =
   ## a simple barrier to wait for all spawn'ed tasks. If you need more elaborate
   ## waiting, you have to use an explicit barrier.
-  while true:
-    var allReady = true
-    for i in 0 .. <currentPoolSize:
-      if not allReady: break
-      allReady = allReady and workersData[i].ready
-    if allReady: break
-    await(gSomeReady)
+  acquire pending.lock
+  while pending.running != 0 and pending.head != nil:
+    wait(pending.sync, pending.lock)
+  release pending.lock
 
 setup()
