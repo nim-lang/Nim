@@ -11,6 +11,14 @@
 
 # -------------------------- constant expressions ------------------------
 
+proc int64Literal(i: BiggestInt): PRope =
+  if i > low(int64):
+    result = rfmt(nil, "IL64($1)", toRope(i))
+  else:
+    result = ~"(IL64(-9223372036854775807) - IL64(1))"
+
+proc uint64Literal(i: uint64): PRope = toRope($i & "ULL")
+
 proc intLiteral(i: BiggestInt): PRope =
   if (i > low(int32)) and (i <= high(int32)):
     result = toRope(i)
@@ -46,16 +54,18 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): PRope =
   case n.kind
   of nkCharLit..nkUInt64Lit:
     case skipTypes(ty, abstractVarRange).kind
-    of tyChar, tyInt64, tyNil:
+    of tyChar, tyNil:
       result = intLiteral(n.intVal)
     of tyInt:
-      if (n.intVal >= low(int32)) and (n.intVal <= high(int32)):
+      if n.intVal >= low(int32) and n.intVal <= high(int32):
         result = int32Literal(int32(n.intVal))
       else:
         result = intLiteral(n.intVal)
     of tyBool:
       if n.intVal != 0: result = ~"NIM_TRUE"
       else: result = ~"NIM_FALSE"
+    of tyInt64: result = int64Literal(n.intVal)
+    of tyUInt64: result = uint64Literal(uint64(n.intVal))
     else:
       result = ropef("(($1) $2)", [getTypeDesc(p.module,
           skipTypes(ty, abstractVarRange)), intLiteral(n.intVal)])
