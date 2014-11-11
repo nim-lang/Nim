@@ -973,7 +973,7 @@ proc genMainProc(m: BModule) =
       "\tvoid (*volatile inner)();$N" &
       "\tsystemDatInit();$N" &
       "\tinner = PreMainInner;$N" &
-      "$4" &
+      "$4$5" &
       "\t(*inner)();$N" &
       "}$N$N"
 
@@ -1065,7 +1065,12 @@ proc genMainProc(m: BModule) =
     else: ropecg(m, "\t#initStackBottomWith((void *)&inner);$N")
   inc(m.labels)
   appcg(m, m.s[cfsProcs], PreMainBody, [
-    mainDatInit, gBreakpoints, otherModsInit, initStackBottomCall])
+    mainDatInit, gBreakpoints, otherModsInit,
+     if emulatedThreadVars() and platform.targetOS != osStandalone:
+       ropecg(m, "\t#initThreadVarsEmulation();$N")
+     else:
+       "".toRope,
+     initStackBottomCall])
 
   appcg(m, m.s[cfsProcs], nimMain, [mainModInit, initStackBottomCall, toRope(m.labels)])
   if optNoMain notin gGlobalOptions:

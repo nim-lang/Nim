@@ -1,6 +1,7 @@
 version 0.10
 ============
 
+showstopper: Nim does not boot with --threads:on!
 - make nimble part of the distribution
 - implement 'procCall'
 - split idetools into separate tool

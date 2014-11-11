@@ -79,12 +79,20 @@ when defined(windows):
   type
     TThreadVarSlot = distinct int32
 
-  proc threadVarAlloc(): TThreadVarSlot {.
-    importc: "TlsAlloc", stdcall, dynlib: "kernel32".}
-  proc threadVarSetValue(dwTlsIndex: TThreadVarSlot, lpTlsValue: pointer) {.
-    importc: "TlsSetValue", stdcall, dynlib: "kernel32".}
-  proc threadVarGetValue(dwTlsIndex: TThreadVarSlot): pointer {.
-    importc: "TlsGetValue", stdcall, dynlib: "kernel32".}
+  when true:
+    proc threadVarAlloc(): TThreadVarSlot {.
+      importc: "TlsAlloc", stdcall, header: "<windows.h>".}
+    proc threadVarSetValue(dwTlsIndex: TThreadVarSlot, lpTlsValue: pointer) {.
+      importc: "TlsSetValue", stdcall, header: "<windows.h>".}
+    proc threadVarGetValue(dwTlsIndex: TThreadVarSlot): pointer {.
+      importc: "TlsGetValue", stdcall, header: "<windows.h>".}
+  else:
+    proc threadVarAlloc(): TThreadVarSlot {.
+      importc: "TlsAlloc", stdcall, dynlib: "kernel32".}
+    proc threadVarSetValue(dwTlsIndex: TThreadVarSlot, lpTlsValue: pointer) {.
+      importc: "TlsSetValue", stdcall, dynlib: "kernel32".}
+    proc threadVarGetValue(dwTlsIndex: TThreadVarSlot): pointer {.
+      importc: "TlsGetValue", stdcall, dynlib: "kernel32".}
   
 else:
   {.passL: "-pthread".}
@@ -174,7 +182,18 @@ type
 # XXX it'd be more efficient to not use a global variable for the 
 # thread storage slot, but to rely on the implementation to assign slot X
 # for us... ;-)
-var globalsSlot = threadVarAlloc()
+var globalsSlot: TThreadVarSlot
+
+when not defined(useNimRtl):
+  when not useStackMaskHack:
+    var mainThread: TGcThread
+
+proc initThreadVarsEmulation() {.compilerProc, inline.} =
+  when not defined(useNimRtl):
+    globalsSlot = threadVarAlloc()
+    when declared(mainThread):
+      threadVarSetValue(globalsSlot, addr(mainThread))
+
 #const globalsSlot = TThreadVarSlot(0)
 #sysAssert checkSlot.int == globalsSlot.int
 
@@ -192,11 +211,8 @@ when useStackMaskHack:
 # create for the main thread. Note: do not insert this data into the list
 # of all threads; it's not to be stopped etc.
 when not defined(useNimRtl):
-  
   when not useStackMaskHack:
-    var mainThread: TGcThread
-    threadVarSetValue(globalsSlot, addr(mainThread))
-    when not defined(createNimRtl): initStackBottom()
+    #when not defined(createNimRtl): initStackBottom()
     initGC()
     
   when emulatedThreadVars:
