@@ -1,5 +1,8 @@
 discard """
-  output: '''true'''
+  output: '''true
+3
+4
+5'''
   cmd: "nim $target --gc:none --hints:on --warnings:off $options $file"
 """
 
@@ -49,3 +52,6 @@ block Test1:
 
 echo "true"
 
+# bug #1560
+for i in @[3, 4, 5]:
+  echo($i)
