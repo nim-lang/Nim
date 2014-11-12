@@ -116,7 +116,8 @@ type
     literal*: string          # the parsed (string) literal; and
                               # documentation comments are here too
     line*, col*: int
-  
+
+  TErrorHandler* = proc (info: TLineInfo; msg: TMsgKind; arg: string)
   TLexer* = object of TBaseLexer
     fileIdx*: int32
     indentAhead*: int         # if > 0 an indendation has already been read
@@ -124,7 +125,7 @@ type
                               # needs so much look-ahead
     currLineIndent*: int
     strongSpaces*: bool
-
+    errorHandler*: TErrorHandler
 
 var gLinesCompiled*: int  # all lines that have been compiled
 
@@ -222,12 +223,18 @@ proc getColumn(L: TLexer): int =
 proc getLineInfo(L: TLexer): TLineInfo = 
   result = newLineInfo(L.fileIdx, L.lineNumber, getColNumber(L, L.bufpos))
 
-proc lexMessage(L: TLexer, msg: TMsgKind, arg = "") = 
-  msgs.message(getLineInfo(L), msg, arg)
+proc dispMessage(L: TLexer; info: TLineInfo; msg: TMsgKind; arg: string) =
+  if L.errorHandler.isNil:
+    msgs.message(info, msg, arg)
+  else:
+    L.errorHandler(info, msg, arg)
 
-proc lexMessagePos(L: var TLexer, msg: TMsgKind, pos: int, arg = "") = 
+proc lexMessage(L: TLexer, msg: TMsgKind, arg = "") =
+  L.dispMessage(getLineInfo(L), msg, arg)
+
+proc lexMessagePos(L: var TLexer, msg: TMsgKind, pos: int, arg = "") =
   var info = newLineInfo(L.fileIdx, L.lineNumber, pos - L.lineStart)
-  msgs.message(info, msg, arg)
+  L.dispMessage(info, msg, arg)
 
 proc matchUnderscoreChars(L: var TLexer, tok: var TToken, chars: set[char]) = 
   var pos = L.bufpos              # use registers for pos, buf

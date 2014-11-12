@@ -450,7 +450,7 @@ type
     projPath*: string          # This is relative to the project's root
     shortName*: string         # short name of the module
     quotedName*: PRope         # cached quoted short name for codegen
-                               # purpoes
+                               # purposes
     
     lines*: seq[PRope]         # the source code of the module
                                #   used for better error messages and
@@ -788,6 +788,14 @@ proc writeSurroundingSrc(info: TLineInfo) =
   const indent = "  "
   msgWriteln(indent & info.sourceLine.ropeToStr)
   msgWriteln(indent & repeatChar(info.col, ' ') & '^')
+
+proc formatMsg*(info: TLineInfo, msg: TMsgKind, arg: string): string =
+  let frmt = case msg
+             of warnMin..warnMax: PosWarningFormat
+             of hintMin..hintMax: PosHintFormat
+             else: PosErrorFormat
+  result = frmt % [toMsgFilename(info), coordToStr(info.line),
+                   coordToStr(info.col), getMessageStr(msg, arg)]
 
 proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string, 
                eh: TErrorHandling) =

@@ -249,13 +249,29 @@ proc lineinfo*(n: PNimrodNode): string {.magic: "NLineInfo", noSideEffect.}
   ## returns the position the node appears in the original source file
   ## in the form filename(line, col)
 
-proc parseExpr*(s: string): PNimrodNode {.magic: "ParseExprToAst", noSideEffect.}
-  ## Compiles the passed string to its AST representation.
-  ## Expects a single expression.
+proc internalParseExpr(s: string): PNimrodNode {.
+  magic: "ParseExprToAst", noSideEffect.}
 
-proc parseStmt*(s: string): PNimrodNode {.magic: "ParseStmtToAst", noSideEffect.}
+proc internalParseStmt(s: string): PNimrodNode {.
+  magic: "ParseStmtToAst", noSideEffect.}
+
+proc internalErrorFlag*(): string {.magic: "NError", noSideEffect.}
+  ## Some builtins set an error flag. This is then turned into a proper
+  ## exception. **Note**: Ordinary application code should not call this.
+
+proc parseExpr*(s: string): PNimrodNode {.noSideEffect, compileTime.} =
   ## Compiles the passed string to its AST representation.
-  ## Expects one or more statements.
+  ## Expects a single expression. Raises ``ValueError`` for parsing errors.
+  result = internalParseExpr(s)
+  let x = internalErrorFlag()
+  if x.len > 0: raise newException(ValueError, x)
+
+proc parseStmt*(s: string): PNimrodNode {.noSideEffect, compileTime.} =
+  ## Compiles the passed string to its AST representation.
+  ## Expects one or more statements. Raises ``ValueError`` for parsing errors.
+  result = internalParseStmt(s)
+  let x = internalErrorFlag()
+  if x.len > 0: raise newException(ValueError, x)
 
 proc getAst*(macroOrTemplate: expr): PNimrodNode {.magic: "ExpandToAst", noSideEffect.}
   ## Obtains the AST nodes returned from a macro or template invocation.

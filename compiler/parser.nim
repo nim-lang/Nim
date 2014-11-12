@@ -41,8 +41,7 @@ type
 proc parseAll*(p: var TParser): PNode
 proc closeParser*(p: var TParser)
 proc parseTopLevelStmt*(p: var TParser): PNode
-proc parseString*(s: string, filename: string = "", line: int = 0): PNode
-  
+
 # helpers for the other parsers
 proc isOperator*(tok: TToken): bool
 proc getTok*(p: var TParser)
@@ -96,7 +95,7 @@ proc parMessage(p: TParser, msg: TMsgKind, arg = "") =
 
 proc parMessage(p: TParser, msg: TMsgKind, tok: TToken) =
   ## Produce and emit a parser message to output about the token `tok`
-  lexMessage(p.lex, msg, prettyTok(tok))
+  parMessage(p, msg, prettyTok(tok))
 
 template withInd(p: expr, body: stmt) {.immediate.} =
   let oldInd = p.currInd
@@ -1995,7 +1994,8 @@ proc parseTopLevelStmt(p: var TParser): PNode =
       if result.kind == nkEmpty: parMessage(p, errExprExpected, p.tok)
       break
 
-proc parseString(s: string, filename: string = "", line: int = 0): PNode =
+proc parseString*(s: string; filename: string = ""; line: int = 0;
+                  errorHandler: TErrorHandler = nil): PNode =
   ## Parses a string into an AST, returning the top node.
   ## `filename` and `line`, although optional, provide info so that the
   ## compiler can generate correct error messages referring to the original
@@ -2007,6 +2007,7 @@ proc parseString(s: string, filename: string = "", line: int = 0): PNode =
   # XXX for now the builtin 'parseStmt/Expr' functions do not know about strong
   # spaces...
   openParser(parser, filename, stream, false)
+  parser.lex.errorHandler = errorHandler
 
   result = parser.parseAll
   closeParser(parser)

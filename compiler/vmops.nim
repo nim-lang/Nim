@@ -44,6 +44,10 @@ template wrap2svoid(op) {.immediate, dirty.} =
     op(getString(a, 0), getString(a, 1))
   systemop op
 
+proc getCurrentExceptionMsgWrapper(a: VmArgs) {.nimcall.} =
+  setResult(a, if a.currentException.isNil: ""
+               else: a.currentException.sons[2].strVal)
+
 proc registerAdditionalOps*(c: PCtx) =
   wrap1f(sqrt)
   wrap1f(ln)
@@ -73,3 +77,4 @@ proc registerAdditionalOps*(c: PCtx) =
   wrap1s(dirExists)
   wrap1s(fileExists)
   wrap2svoid(writeFile)
+  systemop getCurrentExceptionMsg

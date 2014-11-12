@@ -814,7 +814,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if prc.offset < -1:
         # it's a callback:
         c.callbacks[-prc.offset-2].value(
-          VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[pointer](regs)))
+          VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[pointer](regs),
+                 currentException: c.currentExceptionB))
       elif sfImportc in prc.flags:
         if allowFFI notin c.features:
           globalError(c.debug[pc], errGenerated, "VM not allowed to do FFI")
@@ -1146,16 +1147,31 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcParseExprToAst:
       decodeB(rkNode)
       # c.debug[pc].line.int - countLines(regs[rb].strVal) ?
+      var error: string
       let ast = parseString(regs[rb].node.strVal, c.debug[pc].toFullPath,
-                            c.debug[pc].line.int)
-      if sonsLen(ast) != 1:
-        globalError(c.debug[pc], errExprExpected, "multiple statements")
-      regs[ra].node = ast.sons[0]
+                            c.debug[pc].line.int,
+                            proc (info: TLineInfo; msg: TMsgKind; arg: string) =
+                              if error.isNil: error = formatMsg(info, msg, arg))
+      if not error.isNil:
+        c.errorFlag = error
+      elif sonsLen(ast) != 1:
+        c.errorFlag = formatMsg(c.debug[pc], errExprExpected, "multiple statements")
+      else:
+        regs[ra].node = ast.sons[0]
     of opcParseStmtToAst:
       decodeB(rkNode)
+      var error: string
       let ast = parseString(regs[rb].node.strVal, c.debug[pc].toFullPath,
-                            c.debug[pc].line.int)
-      regs[ra].node = ast
+                            c.debug[pc].line.int,
+                            proc (info: TLineInfo; msg: TMsgKind; arg: string) =
+                              if error.isNil: error = formatMsg(info, msg, arg))
+      if not error.isNil:
+        c.errorFlag = error
+      else:
+        regs[ra].node = ast
+    of opcQueryErrorFlag:
+      createStr regs[ra]
+      regs[ra].node.strVal = c.errorFlag
     of opcCallSite:
       ensureKind(rkNode)
       if c.callsite != nil: regs[ra].node = c.callsite

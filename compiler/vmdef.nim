@@ -92,6 +92,7 @@ type
     opcGorge,
     opcParseExprToAst,
     opcParseStmtToAst,
+    opcQueryErrorFlag,
     opcNError,
     opcNWarning,
     opcNHint,
@@ -174,6 +175,7 @@ type
   VmArgs* = object
     ra*, rb*, rc*: Natural
     slots*: pointer
+    currentException*: PNode
   VmCallback* = proc (args: VmArgs) {.closure.}
   
   PCtx* = ref TCtx
@@ -195,6 +197,7 @@ type
     loopIterations*: int
     comesFromHeuristic*: TLineInfo # Heuristic for better macro stack traces
     callbacks*: seq[tuple[key: string, value: VmCallback]]
+    errorFlag*: string
 
   TPosition* = distinct int
 
@@ -204,7 +207,7 @@ proc newCtx*(module: PSym): PCtx =
   PCtx(code: @[], debug: @[],
     globals: newNode(nkStmtListExpr), constants: newNode(nkStmtList), types: @[],
     prc: PProc(blocks: @[]), module: module, loopIterations: MaxLoopIterations,
-    comesFromHeuristic: unknownLineInfo(), callbacks: @[])
+    comesFromHeuristic: unknownLineInfo(), callbacks: @[], errorFlag: "")
 
 proc refresh*(c: PCtx, module: PSym) =
   c.module = module
