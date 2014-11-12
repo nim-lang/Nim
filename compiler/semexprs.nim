@@ -1565,7 +1565,7 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   let oldOwnerLen = len(gOwners)
   let oldGenerics = c.generics
   let oldErrorOutputs = errorOutputs
-  #errorOutputs = if bufferErrors: {eInMemory} else: {}
+  errorOutputs = {}
   let oldContextLen = msgs.getInfoContextLen()
   
   let oldInGenericContext = c.inGenericContext
