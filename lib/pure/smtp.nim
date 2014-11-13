@@ -54,12 +54,12 @@ type
 
 {.deprecated: [EInvalidReply: ReplyError, TMessage: Message, TSMTP: Smtp].}
 
-proc debugSend(smtp: TSMTP, cmd: string) =
+proc debugSend(smtp: Smtp, cmd: string) =
   if smtp.debug:
     echo("C:" & cmd)
   smtp.sock.send(cmd)
 
-proc debugRecv(smtp: var TSMTP): TaintedString =
+proc debugRecv(smtp: var Smtp): TaintedString =
   var line = TaintedString""
   smtp.sock.readLine(line)
 
@@ -67,11 +67,11 @@ proc debugRecv(smtp: var TSMTP): TaintedString =
     echo("S:" & line.string)
   return line
 
-proc quitExcpt(smtp: TSMTP, msg: string) =
+proc quitExcpt(smtp: Smtp, msg: string) =
   smtp.debugSend("QUIT")
-  raise newException(EInvalidReply, msg)
+  raise newException(ReplyError, msg)
 
-proc checkReply(smtp: var TSMTP, reply: string) =
+proc checkReply(smtp: var Smtp, reply: string) =
   var line = smtp.debugRecv()
   if not line.string.startswith(reply):
     quitExcpt(smtp, "Expected " & reply & " reply, got: " & line.string)
@@ -86,9 +86,9 @@ else:
 
 proc connect*(address: string, port = Port(25), 
               ssl = false, debug = false,
-              sslContext = defaultSSLContext): TSMTP =
+              sslContext = defaultSSLContext): Smtp =
   ## Establishes a connection with a SMTP server.
-  ## May fail with EInvalidReply or with a socket error.
+  ## May fail with ReplyError or with a socket error.
   result.sock = newSocket()
   if ssl:
     when compiledWithSsl:
@@ -103,10 +103,10 @@ proc connect*(address: string, port = Port(25),
   result.debugSend("HELO " & address & "\c\L")
   result.checkReply("250")
 
-proc auth*(smtp: var TSMTP, username, password: string) =
+proc auth*(smtp: var Smtp, username, password: string) =
   ## Sends an AUTH command to the server to login as the `username` 
   ## using `password`.
-  ## May fail with EInvalidReply.
+  ## May fail with ReplyError.
 
   smtp.debugSend("AUTH LOGIN\c\L")
   smtp.checkReply("334") # TODO: Check whether it's asking for the "Username:"
@@ -117,11 +117,11 @@ proc auth*(smtp: var TSMTP, username, password: string) =
   smtp.debugSend(encode(password) & "\c\L")
   smtp.checkReply("235") # Check whether the authentification was successful.
 
-proc sendmail*(smtp: var TSMTP, fromaddr: string,
+proc sendmail*(smtp: var Smtp, fromaddr: string,
                toaddrs: seq[string], msg: string) =
   ## Sends `msg` from `fromaddr` to `toaddr`. 
   ## Messages may be formed using ``createMessage`` by converting the
-  ## TMessage into a string.
+  ## Message into a string.
 
   smtp.debugSend("MAIL FROM:<" & fromaddr & ">\c\L")
   smtp.checkReply("250")
@@ -136,13 +136,13 @@ proc sendmail*(smtp: var TSMTP, fromaddr: string,
   smtp.debugSend(".\c\L")
   smtp.checkReply("250")
 
-proc close*(smtp: TSMTP) =
+proc close*(smtp: Smtp) =
   ## Disconnects from the SMTP server and closes the socket.
   smtp.debugSend("QUIT\c\L")
   smtp.sock.close()
 
 proc createMessage*(mSubject, mBody: string, mTo, mCc: seq[string],
-                otherHeaders: openarray[tuple[name, value: string]]): TMessage =
+                otherHeaders: openarray[tuple[name, value: string]]): Message =
   ## Creates a new MIME compliant message.
   result.msgTo = mTo
   result.msgCc = mCc
@@ -153,7 +153,7 @@ proc createMessage*(mSubject, mBody: string, mTo, mCc: seq[string],
     result.msgOtherHeaders[n] = v
 
 proc createMessage*(mSubject, mBody: string, mTo,
-                    mCc: seq[string] = @[]): TMessage =
+                    mCc: seq[string] = @[]): Message =
   ## Alternate version of the above.
   result.msgTo = mTo
   result.msgCc = mCc
@@ -161,8 +161,8 @@ proc createMessage*(mSubject, mBody: string, mTo,
   result.msgBody = mBody
   result.msgOtherHeaders = newStringTable()
 
-proc `$`*(msg: TMessage): string =
-  ## stringify for ``TMessage``.
+proc `$`*(msg: Message): string =
+  ## stringify for ``Message``.
   result = ""
   if msg.msgTo.len() > 0:
     result = "TO: " & msg.msgTo.join(", ") & "\c\L"
@@ -192,7 +192,7 @@ proc newAsyncSmtp*(address: string, port: Port, useSsl = false,
       raise newException(ESystem, 
                          "SMTP module compiled without SSL support")
 
-proc quitExcpt(smtp: AsyncSmtp, msg: string): PFuture[void] =
+proc quitExcpt(smtp: AsyncSmtp, msg: string): Future[void] =
   var retFuture = newFuture[void]()
   var sendFut = smtp.sock.send("QUIT")
   sendFut.callback =
@@ -208,7 +208,7 @@ proc checkReply(smtp: AsyncSmtp, reply: string) {.async.} =
 
 proc connect*(smtp: AsyncSmtp) {.async.} =
   ## Establishes a connection with a SMTP server.
-  ## May fail with EInvalidReply or with a socket error.
+  ## May fail with ReplyError or with a socket error.
   await smtp.sock.connect(smtp.address, smtp.port)
 
   await smtp.checkReply("220")
@@ -218,7 +218,7 @@ proc connect*(smtp: AsyncSmtp) {.async.} =
 proc auth*(smtp: AsyncSmtp, username, password: string) {.async.} =
   ## Sends an AUTH command to the server to login as the `username` 
   ## using `password`.
-  ## May fail with EInvalidReply.
+  ## May fail with ReplyError.
 
   await smtp.sock.send("AUTH LOGIN\c\L")
   await smtp.checkReply("334") # TODO: Check whether it's asking for the "Username:"
@@ -233,7 +233,7 @@ proc sendMail*(smtp: AsyncSmtp, fromAddr: string,
                toAddrs: seq[string], msg: string) {.async.} =
   ## Sends ``msg`` from ``fromAddr`` to the addresses specified in ``toAddrs``.
   ## Messages may be formed using ``createMessage`` by converting the
-  ## TMessage into a string.
+  ## Message into a string.
 
   await smtp.sock.send("MAIL FROM:<" & fromAddr & ">\c\L")
   await smtp.checkReply("250")

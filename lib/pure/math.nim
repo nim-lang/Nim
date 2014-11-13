@@ -196,7 +196,6 @@ when not defined(JS):
     ## computes x to power raised of y.
     
   # C procs:
-  proc gettime(dummy: ptr cint): cint {.importc: "time", header: "<time.h>".}
   proc srand(seed: cint) {.importc: "srand", header: "<stdlib.h>".}
   proc rand(): cint {.importc: "rand", header: "<stdlib.h>".}
   
@@ -331,6 +330,8 @@ proc standardDeviation*(s: RunningStat): float =
 {.pop.}
 
 when isMainModule and not defined(JS):
+  proc gettime(dummy: ptr cint): cint {.importc: "time", header: "<time.h>".}
+
   # Verifies random seed initialization.
   let seed = gettime(nil)
   randomize(seed)

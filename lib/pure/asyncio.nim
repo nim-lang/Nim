@@ -180,10 +180,10 @@ proc asyncSocket*(domain: Domain = AF_INET, typ: SockType = SOCK_STREAM,
   if result.socket == invalidSocket: raiseOSError(osLastError())
   result.socket.setBlocking(false)
 
-proc toAsyncSocket*(sock: Socket, state: SocketStatus = SockConnected): PAsyncSocket =
-  ## Wraps an already initialized ``TSocket`` into a PAsyncSocket.
+proc toAsyncSocket*(sock: Socket, state: SocketStatus = SockConnected): AsyncSocket =
+  ## Wraps an already initialized ``TSocket`` into a AsyncSocket.
   ## This is useful if you want to use an already connected TSocket as an
-  ## asynchronous PAsyncSocket in asyncio's event loop.
+  ## asynchronous AsyncSocket in asyncio's event loop.
   ##
   ## ``state`` may be overriden, i.e. if ``sock`` is not connected it should be
   ## adjusted properly. By default it will be assumed that the socket is
@@ -201,7 +201,7 @@ proc toAsyncSocket*(sock: Socket, state: SocketStatus = SockConnected): PAsyncSo
   ##  SockUDPBound      Socket is a UDP socket which is listening for data.
   ## ================  ================================================================
   ##
-  ## **Warning**: If ``state`` is set incorrectly the resulting ``PAsyncSocket``
+  ## **Warning**: If ``state`` is set incorrectly the resulting ``AsyncSocket``
   ## object may not work properly.
   ##
   ## **Note**: This will set ``sock`` to be non-blocking.
@@ -213,8 +213,8 @@ proc toAsyncSocket*(sock: Socket, state: SocketStatus = SockConnected): PAsyncSo
 
 proc asyncSockHandleRead(h: RootRef) =
   when defined(ssl):
-    if PAsyncSocket(h).socket.isSSL and not
-         PAsyncSocket(h).socket.gotHandshake:
+    if AsyncSocket(h).socket.isSSL and not
+         AsyncSocket(h).socket.gotHandshake:
       return
 
   if AsyncSocket(h).info != SockListening:
@@ -226,8 +226,8 @@ proc asyncSockHandleRead(h: RootRef) =
 proc close*(sock: AsyncSocket) {.gcsafe.}
 proc asyncSockHandleWrite(h: RootRef) =
   when defined(ssl):
-    if PAsyncSocket(h).socket.isSSL and not
-         PAsyncSocket(h).socket.gotHandshake:
+    if AsyncSocket(h).socket.isSSL and not
+         AsyncSocket(h).socket.gotHandshake:
       return
   
   if AsyncSocket(h).info == SockConnecting:
@@ -266,17 +266,17 @@ proc asyncSockHandleWrite(h: RootRef) =
 
 when defined(ssl):
   proc asyncSockDoHandshake(h: PObject) {.gcsafe.} =
-    if PAsyncSocket(h).socket.isSSL and not
-         PAsyncSocket(h).socket.gotHandshake:
-      if PAsyncSocket(h).sslNeedAccept:
+    if AsyncSocket(h).socket.isSSL and not
+         AsyncSocket(h).socket.gotHandshake:
+      if AsyncSocket(h).sslNeedAccept:
         var d = ""
-        let ret = PAsyncSocket(h).socket.acceptAddrSSL(PAsyncSocket(h).socket, d)
+        let ret = AsyncSocket(h).socket.acceptAddrSSL(AsyncSocket(h).socket, d)
         assert ret != AcceptNoClient
         if ret == AcceptSuccess:
-          PAsyncSocket(h).info = SockConnected
+          AsyncSocket(h).info = SockConnected
       else:
         # handshake will set socket's ``sslNoHandshake`` field.
-        discard PAsyncSocket(h).socket.handshake()
+        discard AsyncSocket(h).socket.handshake()
         
 
 proc asyncSockTask(h: RootRef) =
@@ -453,7 +453,7 @@ proc setHandleWrite*(s: AsyncSocket,
   ##
   ## To remove this event you should use the ``delHandleWrite`` function.
   ## It is advised to use that function instead of just setting the event to
-  ## ``proc (s: PAsyncSocket) = nil`` as that would mean that that function
+  ## ``proc (s: AsyncSocket) = nil`` as that would mean that that function
   ## would be called constantly.
   s.deleg.mode = fmReadWrite
   s.handleWrite = handleWrite
@@ -655,10 +655,10 @@ proc len*(disp: Dispatcher): int =
 
 when isMainModule:
 
-  proc testConnect(s: PAsyncSocket, no: int) =
+  proc testConnect(s: AsyncSocket, no: int) =
     echo("Connected! " & $no)
   
-  proc testRead(s: PAsyncSocket, no: int) =
+  proc testRead(s: AsyncSocket, no: int) =
     echo("Reading! " & $no)
     var data = ""
     if not s.readLine(data): return
@@ -668,15 +668,15 @@ when isMainModule:
     echo(data)
     echo("Finished reading! " & $no)
 
-  proc testAccept(s: PAsyncSocket, disp: PDispatcher, no: int) =
+  proc testAccept(s: AsyncSocket, disp: PDispatcher, no: int) =
     echo("Accepting client! " & $no)
-    var client: PAsyncSocket
+    var client: AsyncSocket
     new(client)
     var address = ""
     s.acceptAddr(client, address)
     echo("Accepted ", address)
     client.handleRead = 
-      proc (s: PAsyncSocket) =
+      proc (s: AsyncSocket) =
         testRead(s, 2)
     disp.register(client)
 
@@ -686,16 +686,16 @@ when isMainModule:
     var s = asyncSocket()
     s.connect("amber.tenthbit.net", TPort(6667))
     s.handleConnect = 
-      proc (s: PAsyncSocket) =
+      proc (s: AsyncSocket) =
         testConnect(s, 1)
     s.handleRead = 
-      proc (s: PAsyncSocket) =
+      proc (s: AsyncSocket) =
         testRead(s, 1)
     d.register(s)
     
     var server = asyncSocket()
     server.handleAccept =
-      proc (s: PAsyncSocket) = 
+      proc (s: AsyncSocket) = 
         testAccept(s, d, 78)
     server.bindAddr(TPort(5555))
     server.listen()
