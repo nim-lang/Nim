@@ -9,7 +9,7 @@
 
 {.deadCodeElim:on.}
 
-from posix import TSocketHandle
+from posix import SocketHandle
 
 const
   EPOLLIN* = 0x00000001
@@ -58,7 +58,7 @@ proc epoll_create1*(flags: cint): cint {.importc: "epoll_create1",
   ## Same as epoll_create but with an FLAGS parameter.  The unused SIZE
   ##   parameter has been dropped.  
 
-proc epoll_ctl*(epfd: cint; op: cint; fd: cint | TSocketHandle; event: ptr epoll_event): cint {.
+proc epoll_ctl*(epfd: cint; op: cint; fd: cint | SocketHandle; event: ptr epoll_event): cint {.
     importc: "epoll_ctl", header: "<sys/epoll.h>".}
   ## Manipulate an epoll instance "epfd". Returns 0 in case of success,
   ##   -1 in case of error ( the "errno" variable will contain the

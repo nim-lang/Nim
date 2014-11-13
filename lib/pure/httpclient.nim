@@ -101,7 +101,7 @@ type
     body: string]
 
   Proxy* = ref object
-    url*: TUrl
+    url*: Url
     auth*: string
 
   ProtocolError* = object of IOError   ## exception that is raised when server
@@ -130,7 +130,7 @@ proc fileError(msg: string) =
   e.msg = msg
   raise e
 
-proc parseChunks(s: TSocket, timeout: int): string =
+proc parseChunks(s: Socket, timeout: int): string =
   result = ""
   var ri = 0
   while true:
@@ -168,7 +168,7 @@ proc parseChunks(s: TSocket, timeout: int): string =
     # Trailer headers will only be sent if the request specifies that we want
     # them: http://tools.ietf.org/html/rfc2616#section-3.6.1
 
-proc parseBody(s: TSocket, headers: PStringTable, timeout: int): string =
+proc parseBody(s: Socket, headers: StringTableRef, timeout: int): string =
   result = ""
   if headers["Transfer-Encoding"] == "chunked":
     result = parseChunks(s, timeout)
@@ -203,7 +203,7 @@ proc parseBody(s: TSocket, headers: PStringTable, timeout: int): string =
           buf.setLen(r)
           result.add(buf)
 
-proc parseResponse(s: TSocket, getBody: bool, timeout: int): TResponse =
+proc parseResponse(s: Socket, getBody: bool, timeout: int): Response =
   var parsedStatus = false
   var linei = 0
   var fullyRead = false
@@ -272,20 +272,20 @@ type
 {.deprecated: [THttpMethod: HttpMethod].}
 
 when not defined(ssl):
-  type PSSLContext = ref object
-  let defaultSSLContext: PSSLContext = nil
+  type SSLContext = ref object
+  let defaultSSLContext: SSLContext = nil
 else:
   let defaultSSLContext = newContext(verifyMode = CVerifyNone)
 
-proc newProxy*(url: string, auth = ""): PProxy =
+proc newProxy*(url: string, auth = ""): Proxy =
   ## Constructs a new ``TProxy`` object.
-  result = PProxy(url: parseUrl(url), auth: auth)
+  result = Proxy(url: parseUrl(url), auth: auth)
 
 proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
               body = "",
-              sslContext: PSSLContext = defaultSSLContext,
+              sslContext: SSLContext = defaultSSLContext,
               timeout = -1, userAgent = defUserAgent,
-              proxy: PProxy = nil): TResponse =
+              proxy: Proxy = nil): Response =
   ## | Requests ``url`` with the specified ``httpMethod``.
   ## | Extra headers can be specified and must be seperated by ``\c\L``
   ## | An optional timeout can be specified in miliseconds, if reading from the
@@ -310,16 +310,16 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
 
   var s = socket()
   if s == invalidSocket: raiseOSError(osLastError())
-  var port = sockets.TPort(80)
+  var port = sockets.Port(80)
   if r.scheme == "https":
     when defined(ssl):
       sslContext.wrapSocket(s)
-      port = sockets.TPort(443)
+      port = sockets.Port(443)
     else:
-      raise newException(EHttpRequestErr,
+      raise newException(HttpRequestError,
                 "SSL support is not available. Cannot connect over SSL.")
   if r.port != "":
-    port = sockets.TPort(r.port.parseInt)
+    port = sockets.Port(r.port.parseInt)
 
   if timeout == -1:
     s.connect(r.hostname, port)
@@ -338,7 +338,7 @@ proc redirection(status: string): bool =
     if status.startsWith(i):
       return true
 
-proc getNewLocation(lastUrl: string, headers: PStringTable): string =
+proc getNewLocation(lastUrl: string, headers: StringTableRef): string =
   result = headers["Location"]
   if result == "": httpError("location header expected")
   # Relative URLs. (Not part of the spec, but soon will be.)
@@ -348,10 +348,10 @@ proc getNewLocation(lastUrl: string, headers: PStringTable): string =
     result = origParsed.hostname & "/" & r.path
 
 proc get*(url: string, extraHeaders = "", maxRedirects = 5,
-          sslContext: PSSLContext = defaultSSLContext,
+          sslContext: SSLContext = defaultSSLContext,
           timeout = -1, userAgent = defUserAgent,
-          proxy: PProxy = nil): TResponse =
-  ## | GETs the ``url`` and returns a ``TResponse`` object
+          proxy: Proxy = nil): Response =
+  ## | GETs the ``url`` and returns a ``Response`` object
   ## | This proc also handles redirection
   ## | Extra headers can be specified and must be separated by ``\c\L``.
   ## | An optional timeout can be specified in miliseconds, if reading from the
@@ -367,9 +367,9 @@ proc get*(url: string, extraHeaders = "", maxRedirects = 5,
       lastUrl = redirectTo
 
 proc getContent*(url: string, extraHeaders = "", maxRedirects = 5,
-                 sslContext: PSSLContext = defaultSSLContext,
+                 sslContext: SSLContext = defaultSSLContext,
                  timeout = -1, userAgent = defUserAgent,
-                 proxy: PProxy = nil): string =
+                 proxy: Proxy = nil): string =
   ## | GETs the body and returns it as a string.
   ## | Raises exceptions for the status codes ``4xx`` and ``5xx``
   ## | Extra headers can be specified and must be separated by ``\c\L``.
@@ -378,16 +378,16 @@ proc getContent*(url: string, extraHeaders = "", maxRedirects = 5,
   var r = get(url, extraHeaders, maxRedirects, sslContext, timeout, userAgent,
               proxy)
   if r.status[0] in {'4','5'}:
-    raise newException(EHTTPRequestErr, r.status)
+    raise newException(HttpRequestError, r.status)
   else:
     return r.body
 
 proc post*(url: string, extraHeaders = "", body = "",
            maxRedirects = 5,
-           sslContext: PSSLContext = defaultSSLContext,
+           sslContext: SSLContext = defaultSSLContext,
            timeout = -1, userAgent = defUserAgent,
-           proxy: PProxy = nil): TResponse =
-  ## | POSTs ``body`` to the ``url`` and returns a ``TResponse`` object.
+           proxy: Proxy = nil): Response =
+  ## | POSTs ``body`` to the ``url`` and returns a ``Response`` object.
   ## | This proc adds the necessary Content-Length header.
   ## | This proc also handles redirection.
   ## | Extra headers can be specified and must be separated by ``\c\L``.
@@ -407,9 +407,9 @@ proc post*(url: string, extraHeaders = "", body = "",
 
 proc postContent*(url: string, extraHeaders = "", body = "",
                   maxRedirects = 5,
-                  sslContext: PSSLContext = defaultSSLContext,
+                  sslContext: SSLContext = defaultSSLContext,
                   timeout = -1, userAgent = defUserAgent,
-                  proxy: PProxy = nil): string =
+                  proxy: Proxy = nil): string =
   ## | POSTs ``body`` to ``url`` and returns the response's body as a string
   ## | Raises exceptions for the status codes ``4xx`` and ``5xx``
   ## | Extra headers can be specified and must be separated by ``\c\L``.
@@ -418,18 +418,18 @@ proc postContent*(url: string, extraHeaders = "", body = "",
   var r = post(url, extraHeaders, body, maxRedirects, sslContext, timeout,
                userAgent, proxy)
   if r.status[0] in {'4','5'}:
-    raise newException(EHTTPRequestErr, r.status)
+    raise newException(HttpRequestError, r.status)
   else:
     return r.body
 
 proc downloadFile*(url: string, outputFilename: string,
-                   sslContext: PSSLContext = defaultSSLContext,
+                   sslContext: SSLContext = defaultSSLContext,
                    timeout = -1, userAgent = defUserAgent,
-                   proxy: PProxy = nil) =
+                   proxy: Proxy = nil) =
   ## | Downloads ``url`` and saves it to ``outputFilename``
   ## | An optional timeout can be specified in miliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
-  var f: TFile
+  var f: File
   if open(f, outputFilename, fmWrite):
     f.write(getContent(url, sslContext = sslContext, timeout = timeout,
             userAgent = userAgent, proxy = proxy))
@@ -437,8 +437,8 @@ proc downloadFile*(url: string, outputFilename: string,
   else:
     fileError("Unable to open file")
 
-proc generateHeaders(r: TURL, httpMethod: THttpMethod,
-                     headers: PStringTable): string =
+proc generateHeaders(r: Url, httpMethod: HttpMethod,
+                     headers: StringTableRef): string =
   result = substr($httpMethod, len("http"))
   # TODO: Proxies
   result.add(" /" & r.path & r.query)
@@ -455,7 +455,7 @@ type
   AsyncHttpClient* = ref object
     socket: AsyncSocket
     connected: bool
-    currentURL: TURL ## Where we are currently connected.
+    currentURL: Url ## Where we are currently connected.
     headers*: StringTableRef
     maxRedirects: int
     userAgent: string
@@ -466,7 +466,7 @@ type
 
 proc newAsyncHttpClient*(userAgent = defUserAgent,
     maxRedirects = 5, sslContext = defaultSslContext): AsyncHttpClient =
-  ## Creates a new PAsyncHttpClient instance.
+  ## Creates a new AsyncHttpClient instance.
   ##
   ## ``userAgent`` specifies the user agent that will be used when making
   ## requests.
@@ -488,7 +488,7 @@ proc close*(client: AsyncHttpClient) =
     client.socket.close()
     client.connected = false
 
-proc recvFull(socket: PAsyncSocket, size: int): Future[string] {.async.} =
+proc recvFull(socket: AsyncSocket, size: int): Future[string] {.async.} =
   ## Ensures that all the data requested is read and returned.
   result = ""
   while true:
@@ -497,7 +497,7 @@ proc recvFull(socket: PAsyncSocket, size: int): Future[string] {.async.} =
     if data == "": break # We've been disconnected.
     result.add data
 
-proc parseChunks(client: PAsyncHttpClient): Future[string] {.async.} =
+proc parseChunks(client: AsyncHttpClient): Future[string] {.async.} =
   result = ""
   var ri = 0
   while true:
@@ -529,8 +529,8 @@ proc parseChunks(client: PAsyncHttpClient): Future[string] {.async.} =
     # Trailer headers will only be sent if the request specifies that we want
     # them: http://tools.ietf.org/html/rfc2616#section-3.6.1
 
-proc parseBody(client: PAsyncHttpClient,
-               headers: PStringTable): Future[string] {.async.} =
+proc parseBody(client: AsyncHttpClient,
+               headers: StringTableRef): Future[string] {.async.} =
   result = ""
   if headers["Transfer-Encoding"] == "chunked":
     result = await parseChunks(client)
@@ -559,8 +559,8 @@ proc parseBody(client: PAsyncHttpClient,
           if buf == "": break
           result.add(buf)
 
-proc parseResponse(client: PAsyncHttpClient,
-                   getBody: bool): Future[TResponse] {.async.} =
+proc parseResponse(client: AsyncHttpClient,
+                   getBody: bool): Future[Response] {.async.} =
   var parsedStatus = false
   var linei = 0
   var fullyRead = false
@@ -607,34 +607,34 @@ proc parseResponse(client: PAsyncHttpClient,
   else:
     result.body = ""
 
-proc newConnection(client: PAsyncHttpClient, url: TURL) {.async.} =
+proc newConnection(client: AsyncHttpClient, url: Url) {.async.} =
   if client.currentURL.hostname != url.hostname or
       client.currentURL.scheme != url.scheme:
     if client.connected: client.close()
     client.socket = newAsyncSocket()
 
-    # TODO: I should be able to write 'net.TPort' here...
+    # TODO: I should be able to write 'net.Port' here...
     let port =
       if url.port == "":
         if url.scheme.toLower() == "https":
-          rawsockets.TPort(443)
+          rawsockets.Port(443)
         else:
-          rawsockets.TPort(80)
-      else: rawsockets.TPort(url.port.parseInt)
+          rawsockets.Port(80)
+      else: rawsockets.Port(url.port.parseInt)
 
     if url.scheme.toLower() == "https":
       when defined(ssl):
         client.sslContext.wrapSocket(client.socket)
       else:
-        raise newException(EHttpRequestErr,
+        raise newException(HttpRequestError,
                   "SSL support is not available. Cannot connect over SSL.")
 
     await client.socket.connect(url.hostname, port)
     client.currentURL = url
     client.connected = true
 
-proc request*(client: PAsyncHttpClient, url: string, httpMethod = httpGET,
-              body = ""): Future[TResponse] {.async.} =
+proc request*(client: AsyncHttpClient, url: string, httpMethod = httpGET,
+              body = ""): Future[Response] {.async.} =
   ## Connects to the hostname specified by the URL and performs a request
   ## using the method specified.
   ##
@@ -657,7 +657,7 @@ proc request*(client: PAsyncHttpClient, url: string, httpMethod = httpGET,
 
   result = await parseResponse(client, httpMethod != httpHEAD)
 
-proc get*(client: PAsyncHttpClient, url: string): Future[TResponse] {.async.} =
+proc get*(client: AsyncHttpClient, url: string): Future[Response] {.async.} =
   ## Connects to the hostname specified by the URL and performs a GET request.
   ##
   ## This procedure will follow redirects up to a maximum number of redirects
