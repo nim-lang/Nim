@@ -55,7 +55,6 @@ proc initLoc(result: var TLoc, k: TLocKind, typ: PType, s: TStorageLoc) =
   result.s = s
   result.t = getUniqueType(typ)
   result.r = nil
-  #result.a = - 1
   result.flags = {}
 
 proc fillLoc(a: var TLoc, k: TLocKind, typ: PType, r: PRope, s: TStorageLoc) = 
@@ -63,7 +62,6 @@ proc fillLoc(a: var TLoc, k: TLocKind, typ: PType, r: PRope, s: TStorageLoc) =
   if a.k == locNone: 
     a.k = k
     a.t = getUniqueType(typ)
-    #a.a = - 1
     a.s = s
     if a.r == nil: a.r = r
   

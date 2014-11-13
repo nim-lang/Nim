@@ -68,10 +68,21 @@ proc genVarTuple(p: BProc, n: PNode) =
                       [rdLoc(tup), mangleRecFieldName(t.n.sons[i].sym, t)])
     putLocIntoDest(p, v.loc, field)
 
+proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false)
+
 proc loadInto(p: BProc, le, ri: PNode, a: var TLoc) {.inline.} =
   if ri.kind in nkCallKinds and (ri.sons[0].kind != nkSym or
                                  ri.sons[0].sym.magic == mNone):
     genAsgnCall(p, le, ri, a)
+  elif ri.kind in {nkDerefExpr, nkHiddenDeref}:
+    # this is a hacky way to fix #1181 (tmissingderef)::
+    #
+    #  var arr1 = cast[ptr array[4, int8]](addr foo)[]
+    #
+    # However, fixing this properly really requires modelling 'array' as
+    # a 'struct' in C to preserve dereferencing semantics completely. Not
+    # worth the effort until version 1.0 is out.
+    genDeref(p, ri, a, enforceDeref=true)
   else:
     expr(p, ri, a)
 

@@ -655,13 +655,15 @@ proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
               ropef(unArithTab[op], [rdLoc(a), toRope(getSize(t) * 8),
                     getSimpleTypeDesc(p.module, e.typ)]))
 
-proc genDeref(p: BProc, e: PNode, d: var TLoc) =
-  var a: TLoc
-  if mapType(e.sons[0].typ) in {ctArray, ctPtrToArray}:
+proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
+  if mapType(e.sons[0].typ) in {ctArray, ctPtrToArray} and not enforceDeref:
     # XXX the amount of hacks for C's arrays is incredible, maybe we should
     # simply wrap them in a struct? --> Losing auto vectorization then?
+    #if e[0].kind != nkBracketExpr:
+    #  message(e.info, warnUser, "CAME HERE " & renderTree(e))
     expr(p, e.sons[0], d)
   else:
+    var a: TLoc
     initLocExpr(p, e.sons[0], a)
     case skipTypes(a.t, abstractInst).kind
     of tyRef:
@@ -794,15 +796,15 @@ proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
   else:
     genRecordField(p, e.sons[0], d)
 
-proc genArrayElem(p: BProc, e: PNode, d: var TLoc) =
+proc genArrayElem(p: BProc, x, y: PNode, d: var TLoc) =
   var a, b: TLoc
-  initLocExpr(p, e.sons[0], a)
-  initLocExpr(p, e.sons[1], b)
+  initLocExpr(p, x, a)
+  initLocExpr(p, y, b)
   var ty = skipTypes(skipTypes(a.t, abstractVarRange), abstractPtrs)
   var first = intLiteral(firstOrd(ty))
   # emit range check:
   if optBoundsCheck in p.options and tfUncheckedArray notin ty.flags:
-    if not isConstExpr(e.sons[1]):
+    if not isConstExpr(y):
       # semantic pass has already checked for const index expressions
       if firstOrd(ty) == 0:
         if (firstOrd(b.t) < firstOrd(ty)) or (lastOrd(b.t) > lastOrd(ty)):
@@ -812,26 +814,26 @@ proc genArrayElem(p: BProc, e: PNode, d: var TLoc) =
         linefmt(p, cpsStmts, "if ($1 < $2 || $1 > $3) #raiseIndexError();$n",
                 rdCharLoc(b), first, intLiteral(lastOrd(ty)))
     else:
-      let idx = getOrdValue(e.sons[1])
+      let idx = getOrdValue(y)
       if idx < firstOrd(ty) or idx > lastOrd(ty):
-        localError(e.info, errIndexOutOfBounds)
+        localError(x.info, errIndexOutOfBounds)
   d.inheritLocation(a)
   putIntoDest(p, d, elemType(skipTypes(ty, abstractVar)),
               rfmt(nil, "$1[($2)- $3]", rdLoc(a), rdCharLoc(b), first))
 
-proc genCStringElem(p: BProc, e: PNode, d: var TLoc) =
+proc genCStringElem(p: BProc, x, y: PNode, d: var TLoc) =
   var a, b: TLoc
-  initLocExpr(p, e.sons[0], a)
-  initLocExpr(p, e.sons[1], b)
+  initLocExpr(p, x, a)
+  initLocExpr(p, y, b)
   var ty = skipTypes(a.t, abstractVarRange)
   if d.k == locNone: d.s = a.s
   putIntoDest(p, d, elemType(skipTypes(ty, abstractVar)),
               rfmt(nil, "$1[$2]", rdLoc(a), rdCharLoc(b)))
 
-proc genOpenArrayElem(p: BProc, e: PNode, d: var TLoc) =
+proc genOpenArrayElem(p: BProc, x, y: PNode, d: var TLoc) =
   var a, b: TLoc
-  initLocExpr(p, e.sons[0], a)
-  initLocExpr(p, e.sons[1], b) # emit range check:
+  initLocExpr(p, x, a)
+  initLocExpr(p, y, b) # emit range check:
   if optBoundsCheck in p.options:
     linefmt(p, cpsStmts, "if ((NU)($1) >= (NU)($2Len0)) #raiseIndexError();$n",
             rdLoc(b), rdLoc(a)) # BUGFIX: ``>=`` and not ``>``!
@@ -839,10 +841,10 @@ proc genOpenArrayElem(p: BProc, e: PNode, d: var TLoc) =
   putIntoDest(p, d, elemType(skipTypes(a.t, abstractVar)),
               rfmt(nil, "$1[$2]", rdLoc(a), rdCharLoc(b)))
 
-proc genSeqElem(p: BProc, e: PNode, d: var TLoc) =
+proc genSeqElem(p: BProc, x, y: PNode, d: var TLoc) =
   var a, b: TLoc
-  initLocExpr(p, e.sons[0], a)
-  initLocExpr(p, e.sons[1], b)
+  initLocExpr(p, x, a)
+  initLocExpr(p, y, b)
   var ty = skipTypes(a.t, abstractVarRange)
   if ty.kind in {tyRef, tyPtr}:
     ty = skipTypes(ty.lastSon, abstractVarRange) # emit range check:
@@ -861,6 +863,17 @@ proc genSeqElem(p: BProc, e: PNode, d: var TLoc) =
     a.r = rfmt(nil, "(*$1)", a.r)
   putIntoDest(p, d, elemType(skipTypes(a.t, abstractVar)),
               rfmt(nil, "$1->data[$2]", rdLoc(a), rdCharLoc(b)))
+
+proc genBracketExpr(p: BProc; n: PNode; d: var TLoc) =
+  var ty = skipTypes(n.sons[0].typ, abstractVarRange)
+  if ty.kind in {tyRef, tyPtr}: ty = skipTypes(ty.lastSon, abstractVarRange)
+  case ty.kind
+  of tyArray, tyArrayConstr: genArrayElem(p, n.sons[0], n.sons[1], d)
+  of tyOpenArray, tyVarargs: genOpenArrayElem(p, n.sons[0], n.sons[1], d)
+  of tySequence, tyString: genSeqElem(p, n.sons[0], n.sons[1], d)
+  of tyCString: genCStringElem(p, n.sons[0], n.sons[1], d)
+  of tyTuple: genTupleElem(p, n, d)
+  else: internalError(n.info, "expr(nkBracketExpr, " & $ty.kind & ')')
 
 proc genAndOr(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   # how to generate code?
@@ -1985,16 +1998,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkCast: genCast(p, n, d)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv: genConv(p, n, d)
   of nkHiddenAddr, nkAddr: genAddr(p, n, d)
-  of nkBracketExpr:
-    var ty = skipTypes(n.sons[0].typ, abstractVarRange)
-    if ty.kind in {tyRef, tyPtr}: ty = skipTypes(ty.lastSon, abstractVarRange)
-    case ty.kind
-    of tyArray, tyArrayConstr: genArrayElem(p, n, d)
-    of tyOpenArray, tyVarargs: genOpenArrayElem(p, n, d)
-    of tySequence, tyString: genSeqElem(p, n, d)
-    of tyCString: genCStringElem(p, n, d)
-    of tyTuple: genTupleElem(p, n, d)
-    else: internalError(n.info, "expr(nkBracketExpr, " & $ty.kind & ')')
+  of nkBracketExpr: genBracketExpr(p, n, d)
   of nkDerefExpr, nkHiddenDeref: genDeref(p, n, d)
   of nkDotExpr: genRecordField(p, n, d)
   of nkCheckedFieldExpr: genCheckedRecordField(p, n, d)

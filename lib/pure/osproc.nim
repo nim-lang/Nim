@@ -495,10 +495,10 @@ when defined(Windows) and not defined(useNimRtl):
     if running(p):
       discard terminateProcess(p.fProcessHandle, 0)
 
-  proc kill(p: PProcess) =
+  proc kill(p: Process) =
     terminate(p)
-      
-  proc waitForExit(p: PProcess, timeout: int = -1): int =
+
+  proc waitForExit(p: Process, timeout: int = -1): int =
     discard waitForSingleObject(p.fProcessHandle, timeout.int32)
 
     var res: int32
