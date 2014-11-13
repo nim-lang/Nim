@@ -1172,6 +1172,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcQueryErrorFlag:
       createStr regs[ra]
       regs[ra].node.strVal = c.errorFlag
+      c.errorFlag.setLen 0
     of opcCallSite:
       ensureKind(rkNode)
       if c.callsite != nil: regs[ra].node = c.callsite
