@@ -842,9 +842,6 @@ proc `+` *[T](x, y: set[T]): set[T] {.magic: "PlusSet", noSideEffect.}
   ## This operator computes the union of two sets.
 proc `-` *[T](x, y: set[T]): set[T] {.magic: "MinusSet", noSideEffect.}
   ## This operator computes the difference of two sets.
-proc `-+-` *[T](x, y: set[T]): set[T] {.magic: "SymDiffSet", noSideEffect.}
-  ## computes the symmetric set difference. This is the same as
-  ## ``(A - B) + (B - A)``, but more efficient.
 
 proc contains*[T](x: set[T], y: T): bool {.magic: "InSet", noSideEffect.}
   ## One should overload this proc if one wants to overload the ``in`` operator.

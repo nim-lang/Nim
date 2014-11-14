@@ -29,7 +29,6 @@ operation             meaning
 ``e in A``            set membership (A contains element e)
 ``e notin A``         A does not contain element e
 ``contains(A, e)``    A contains element e
-``A -+- B``           symmetric set difference (= (A - B) + (B - A))
 ``card(A)``           the cardinality of A (number of elements in A)
 ``incl(A, elem)``     same as ``A = A + {elem}``
 ``excl(A, elem)``     same as ``A = A - {elem}``

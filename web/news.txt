@@ -3,7 +3,7 @@ News
 ====
 
 ..
-  2014-10-21 Version 0.10.0 released
+  2014-10-21 Version 0.10.2 released
   ==================================
 
   Changes affecting backwards compatibility
@@ -26,6 +26,8 @@ News
     fails to match.
   - The re module returns ``nil`` instead of ``""`` when an optional capture
     fails to match.
+  - The "symmetric set difference" operator (``-+-``) never worked and has been
+    removed.
 
   Language Additions
   ------------------
