@@ -225,6 +225,23 @@ a template. ``inject`` and ``gensym`` have no effect in ``dirty`` templates.
 
 
 
+Limitations of the method invokation syntax
+-------------------------------------------
+
+The expression ``x`` in ``x.f`` needs to be semantically checked (that means
+symbol lookup and type checking) before it can be decided that it needs to be
+rewritten to ``f(x)``. Therefore the dot syntax has some limiations when it
+is used to invoke templates/macros:
+
+.. code-block:: nim
+  template declareVar(name: expr): stmt =
+    const name {.inject.} = 45
+
+  # Doesn't compile:
+  unknownIdentifier.declareVar
+
+
+
 Macros
 ======
 
