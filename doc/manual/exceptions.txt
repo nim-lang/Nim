@@ -47,8 +47,8 @@ the rest of the procedure - that is not within a ``finally`` clause -
 is not executed (if an exception occurs).
 
 
-Except and finally statements
------------------------------
+Standalone except and finally statements
+----------------------------------------
 
 ``except`` and ``finally`` can also be used as a stand-alone statements.
 Any statements following them in the current block will be considered to be 
@@ -75,6 +75,9 @@ statements. Example:
     test()
     echo "4. Post exception"
   # --> 1, 2, 3 is printed, 4 is never reached
+
+Top level standalone ``finally`` or ``except`` statements are not supported
+since it's unclear what such a statement should refer to.
 
 
 Raise statement
