@@ -6,7 +6,8 @@ Modules enable `information hiding`:idx: and `separate compilation`:idx:.
 A module may gain access to symbols of another module by the `import`:idx:
 statement. `Recursive module dependencies`:idx: are allowed, but slightly
 subtle. Only top-level symbols that are marked with an asterisk (``*``) are
-exported.
+exported. A valid module name can only be a valid Nim identifier (and thus its
+filename is ``identifier.nim``).
 
 The algorithm for compiling modules is:
 
@@ -51,6 +52,17 @@ module name followed by an ``except`` to prevent some symbols to be imported:
 
   # doesn't work then:
   echo "$1" % "abc"
+
+
+Include statement
+~~~~~~~~~~~~~~~~~
+The ``include`` statement does something fundamentally different than
+importing a module: it merely includes the contents of a file. The ``include``
+statement is useful to split up a large module into several files:
+
+.. code-block:: nim
+  include fileA, fileB, fileC
+
 
 
 Module names in imports
