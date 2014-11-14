@@ -15,12 +15,12 @@
 ##  import strutils, sockets, httpserver
 ##
 ##  var counter = 0
-##  proc handleRequest(client: TSocket, path, query: string): bool {.procvar.} =
+##  proc handleRequest(client: Socket, path, query: string): bool {.procvar.} =
 ##    inc(counter)
 ##    client.send("Hello for the $#th time." % $counter & wwwNL)
 ##    return false # do not stop processing
 ##
-##  run(handleRequest, TPort(80))
+##  run(handleRequest, Port(80))
 ##
 
 import parseutils, strutils, os, osproc, strtabs, streams, sockets, asyncio
@@ -31,14 +31,14 @@ const
 
 # --------------- output messages --------------------------------------------
 
-proc sendTextContentType(client: TSocket) =
+proc sendTextContentType(client: Socket) =
   send(client, "Content-type: text/html" & wwwNL)
   send(client, wwwNL)
 
-proc sendStatus(client: TSocket, status: string) =
+proc sendStatus(client: Socket, status: string) =
   send(client, "HTTP/1.1 " & status & wwwNL)
 
-proc badRequest(client: TSocket) =
+proc badRequest(client: Socket) =
   # Inform the client that a request it has made has a problem.
   send(client, "HTTP/1.1 400 Bad Request" & wwwNL)
   sendTextContentType(client)
@@ -46,18 +46,18 @@ proc badRequest(client: TSocket) =
                "such as a POST without a Content-Length.</p>" & wwwNL)
 
 when false:
-  proc cannotExec(client: TSocket) =
+  proc cannotExec(client: Socket) =
     send(client, "HTTP/1.1 500 Internal Server Error" & wwwNL)
     sendTextContentType(client)
     send(client, "<P>Error prohibited CGI execution." & wwwNL)
 
-proc headers(client: TSocket, filename: string) =
+proc headers(client: Socket, filename: string) =
   # XXX could use filename to determine file type
   send(client, "HTTP/1.1 200 OK" & wwwNL)
   send(client, ServerSig)
   sendTextContentType(client)
 
-proc notFound(client: TSocket) =
+proc notFound(client: Socket) =
   send(client, "HTTP/1.1 404 NOT FOUND" & wwwNL)
   send(client, ServerSig)
   sendTextContentType(client)
@@ -67,7 +67,7 @@ proc notFound(client: TSocket) =
   send(client, "is unavailable or nonexistent.</p>" & wwwNL)
   send(client, "</body></html>" & wwwNL)
 
-proc unimplemented(client: TSocket) =
+proc unimplemented(client: Socket) =
   send(client, "HTTP/1.1 501 Method Not Implemented" & wwwNL)
   send(client, ServerSig)
   sendTextContentType(client)
@@ -79,11 +79,11 @@ proc unimplemented(client: TSocket) =
 # ----------------- file serving ---------------------------------------------
 
 when false:
-  proc discardHeaders(client: TSocket) = skip(client)
+  proc discardHeaders(client: Socket) = skip(client)
 
-proc serveFile*(client: TSocket, filename: string) =
+proc serveFile*(client: Socket, filename: string) =
   ## serves a file to the client.
-  var f: TFile
+  var f: File
   if open(f, filename):
     headers(client, filename)
     const bufSize = 8000 # != 8K might be good for memory manager
@@ -108,7 +108,7 @@ when false:
   type
     TRequestMethod = enum reqGet, reqPost
 
-  proc executeCgi(client: TSocket, path, query: string, meth: TRequestMethod) =
+  proc executeCgi(client: Socket, path, query: string, meth: TRequestMethod) =
     var env = newStringTable(modeCaseInsensitive)
     var contentLength = -1
     case meth
@@ -158,7 +158,7 @@ when false:
 
   # --------------- Server Setup -----------------------------------------------
 
-  proc acceptRequest(client: TSocket) =
+  proc acceptRequest(client: Socket) =
     var cgi = false
     var query = ""
     var buf = TaintedString""
@@ -208,21 +208,21 @@ when false:
         executeCgi(client, path, query, meth)
 
 type
-  TServer* = object of TObject  ## contains the current server state
-    socket: TSocket
-    port: TPort
-    client*: TSocket      ## the socket to write the file data to
-    reqMethod*: string    ## Request method. GET or POST.
-    path*, query*: string ## path and query the client requested
-    headers*: PStringTable ## headers with which the client made the request
-    body*: string          ## only set with POST requests
-    ip*: string            ## ip address of the requesting client
+  TServer* = object of RootObj  ## contains the current server state
+    socket: Socket
+    port: Port
+    client*: Socket          ## the socket to write the file data to
+    reqMethod*: string       ## Request method. GET or POST.
+    path*, query*: string    ## path and query the client requested
+    headers*: StringTableRef ## headers with which the client made the request
+    body*: string            ## only set with POST requests
+    ip*: string              ## ip address of the requesting client
   
   PAsyncHTTPServer* = ref TAsyncHTTPServer
   TAsyncHTTPServer = object of TServer
-    asyncSocket: PAsyncSocket
+    asyncSocket: AsyncSocket
   
-proc open*(s: var TServer, port = TPort(80), reuseAddr = false) =
+proc open*(s: var TServer, port = Port(80), reuseAddr = false) =
   ## creates a new server at port `port`. If ``port == 0`` a free port is
   ## acquired that can be accessed later by the ``port`` proc.
   s.socket = socket(AF_INET)
@@ -232,7 +232,7 @@ proc open*(s: var TServer, port = TPort(80), reuseAddr = false) =
   bindAddr(s.socket, port)
   listen(s.socket)
 
-  if port == TPort(0):
+  if port == Port(0):
     s.port = getSockName(s.socket)
   else:
     s.port = port
@@ -243,13 +243,13 @@ proc open*(s: var TServer, port = TPort(80), reuseAddr = false) =
   s.query = ""
   s.headers = {:}.newStringTable()
 
-proc port*(s: var TServer): TPort =
+proc port*(s: var TServer): Port =
   ## get the port number the server has acquired.
   result = s.port
 
 proc next*(s: var TServer) =
   ## proceed to the first/next request.
-  var client: TSocket
+  var client: Socket
   new(client)
   var ip: string
   acceptAddr(s.socket, client, ip)
@@ -358,9 +358,9 @@ proc close*(s: TServer) =
   ## closes the server (and the socket the server uses).
   close(s.socket)
 
-proc run*(handleRequest: proc (client: TSocket, 
+proc run*(handleRequest: proc (client: Socket, 
                                path, query: string): bool {.closure.},
-          port = TPort(80)) =
+          port = Port(80)) =
   ## encapsulates the server object and main loop
   var s: TServer
   open(s, port)
@@ -375,7 +375,7 @@ proc run*(handleRequest: proc (client: TSocket,
 
 proc nextAsync(s: PAsyncHTTPServer) =
   ## proceed to the first/next request.
-  var client: TSocket
+  var client: Socket
   new(client)
   var ip: string
   acceptAddr(getSocket(s.asyncSocket), client, ip)
@@ -474,16 +474,16 @@ proc nextAsync(s: PAsyncHTTPServer) =
     s.query = ""
     s.path = data.substr(i, last-1)
 
-proc asyncHTTPServer*(handleRequest: proc (server: PAsyncHTTPServer, client: TSocket, 
+proc asyncHTTPServer*(handleRequest: proc (server: PAsyncHTTPServer, client: Socket, 
                         path, query: string): bool {.closure, gcsafe.},
-                     port = TPort(80), address = "",
+                     port = Port(80), address = "",
                      reuseAddr = false): PAsyncHTTPServer =
   ## Creates an Asynchronous HTTP server at ``port``.
   var capturedRet: PAsyncHTTPServer
   new(capturedRet)
   capturedRet.asyncSocket = asyncSocket()
   capturedRet.asyncSocket.handleAccept =
-    proc (s: PAsyncSocket) =
+    proc (s: AsyncSocket) =
       nextAsync(capturedRet)
       let quit = handleRequest(capturedRet, capturedRet.client, capturedRet.path,
                                capturedRet.query)
@@ -493,7 +493,7 @@ proc asyncHTTPServer*(handleRequest: proc (server: PAsyncHTTPServer, client: TSo
   
   capturedRet.asyncSocket.bindAddr(port, address)
   capturedRet.asyncSocket.listen()
-  if port == TPort(0):
+  if port == Port(0):
     capturedRet.port = getSockName(capturedRet.asyncSocket)
   else:
     capturedRet.port = port
@@ -506,8 +506,8 @@ proc asyncHTTPServer*(handleRequest: proc (server: PAsyncHTTPServer, client: TSo
   capturedRet.headers = {:}.newStringTable()
   result = capturedRet
 
-proc register*(d: PDispatcher, s: PAsyncHTTPServer) =
-  ## Registers a ``PAsyncHTTPServer`` with a ``PDispatcher``.
+proc register*(d: Dispatcher, s: PAsyncHTTPServer) =
+  ## Registers a ``PAsyncHTTPServer`` with a ``Dispatcher``.
   d.register(s.asyncSocket)
 
 proc close*(h: PAsyncHTTPServer) =
@@ -518,7 +518,7 @@ when isMainModule:
   var counter = 0
 
   var s: TServer
-  open(s, TPort(0))
+  open(s, Port(0))
   echo("httpserver running on port ", s.port)
   while true:
     next(s)

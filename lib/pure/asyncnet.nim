@@ -67,7 +67,7 @@ when defined(ssl):
 
 type
   # TODO: I would prefer to just do:
-  # PAsyncSocket* {.borrow: `.`.} = distinct PSocket. But that doesn't work.
+  # AsyncSocket* {.borrow: `.`.} = distinct Socket. But that doesn't work.
   AsyncSocketDesc  = object
     fd*: SocketHandle
     closed*: bool ## determines whether this socket has been closed
@@ -91,7 +91,7 @@ type
 
 # TODO: Save AF, domain etc info and reuse it in procs which need it like connect.
 
-proc newSocket(fd: TAsyncFD, isBuff: bool): PAsyncSocket =
+proc newSocket(fd: TAsyncFD, isBuff: bool): AsyncSocket =
   assert fd != osInvalidSocket.TAsyncFD
   new(result)
   result.fd = fd.SocketHandle
@@ -99,12 +99,12 @@ proc newSocket(fd: TAsyncFD, isBuff: bool): PAsyncSocket =
   if isBuff:
     result.currPos = 0
 
-proc newAsyncSocket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM,
-    protocol: TProtocol = IPPROTO_TCP, buffered = true): PAsyncSocket =
+proc newAsyncSocket*(domain: Domain = AF_INET, typ: SockType = SOCK_STREAM,
+    protocol: Protocol = IPPROTO_TCP, buffered = true): AsyncSocket =
   ## Creates a new asynchronous socket.
   result = newSocket(newAsyncRawSocket(domain, typ, protocol), buffered)
 
-proc newAsyncSocket*(domain, typ, protocol: cint, buffered = true): PAsyncSocket =
+proc newAsyncSocket*(domain, typ, protocol: cint, buffered = true): AsyncSocket =
   ## Creates a new asynchronous socket.
   result = newSocket(newAsyncRawSocket(domain, typ, protocol), buffered)
 
@@ -126,7 +126,7 @@ when defined(ssl):
     else: raiseSSLError("Unknown Error")
 
   proc sendPendingSslData(socket: AsyncSocket,
-      flags: set[TSocketFlags]) {.async.} =
+      flags: set[SocketFlag]) {.async.} =
     let len = bioCtrlPending(socket.bioOut)
     if len > 0:
       var data = newStringOfCap(len)
@@ -137,7 +137,7 @@ when defined(ssl):
       data.setLen(read)
       await socket.fd.TAsyncFd.send(data, flags)
 
-  proc appeaseSsl(socket: AsyncSocket, flags: set[TSocketFlags],
+  proc appeaseSsl(socket: AsyncSocket, flags: set[SocketFlag],
                   sslError: cint) {.async.} =
     case sslError
     of SSL_ERROR_WANT_WRITE:
@@ -150,7 +150,7 @@ when defined(ssl):
     else:
       raiseSSLError("Cannot appease SSL.")
 
-  template sslLoop(socket: AsyncSocket, flags: set[TSocketFlags],
+  template sslLoop(socket: AsyncSocket, flags: set[SocketFlag],
                    op: expr) =
     var opResult {.inject.} = -1.cint
     while opResult < 0:
@@ -162,21 +162,21 @@ when defined(ssl):
         let err = getSslError(socket.sslHandle, opResult.cint)
         yield appeaseSsl(socket, flags, err.cint)
 
-proc connect*(socket: PAsyncSocket, address: string, port: TPort,
+proc connect*(socket: AsyncSocket, address: string, port: Port,
     af = AF_INET) {.async.} =
   ## Connects ``socket`` to server at ``address:port``.
   ##
   ## Returns a ``Future`` which will complete when the connection succeeds
   ## or an error occurs.
   await connect(socket.fd.TAsyncFD, address, port, af)
-  let flags = {TSocketFlags.SafeDisconn}
   if socket.isSsl:
     when defined(ssl):
+      let flags = {SocketFlag.SafeDisconn}
       sslSetConnectState(socket.sslHandle)
       sslLoop(socket, flags, sslDoHandshake(socket.sslHandle))
 
-proc readInto(buf: cstring, size: int, socket: PAsyncSocket,
-              flags: set[TSocketFlags]): Future[int] {.async.} =
+proc readInto(buf: cstring, size: int, socket: AsyncSocket,
+              flags: set[SocketFlag]): Future[int] {.async.} =
   if socket.isSsl:
     when defined(ssl):
       # SSL mode.
@@ -190,14 +190,14 @@ proc readInto(buf: cstring, size: int, socket: PAsyncSocket,
     # Not in SSL mode.
     result = data.len
 
-proc readIntoBuf(socket: PAsyncSocket,
-    flags: set[TSocketFlags]): Future[int] {.async.} =
+proc readIntoBuf(socket: AsyncSocket,
+    flags: set[SocketFlag]): Future[int] {.async.} =
   result = await readInto(addr socket.buffer[0], BufferSize, socket, flags)
   socket.currPos = 0
   socket.bufLen = result
 
-proc recv*(socket: PAsyncSocket, size: int,
-           flags = {TSocketFlags.SafeDisconn}): Future[string] {.async.} =
+proc recv*(socket: AsyncSocket, size: int,
+           flags = {SocketFlag.SafeDisconn}): Future[string] {.async.} =
   ## Reads **up to** ``size`` bytes from ``socket``.
   ##
   ## For buffered sockets this function will attempt to read all the requested
@@ -218,7 +218,7 @@ proc recv*(socket: PAsyncSocket, size: int,
     let originalBufPos = socket.currPos
 
     if socket.bufLen == 0:
-      let res = await socket.readIntoBuf(flags - {TSocketFlags.Peek})
+      let res = await socket.readIntoBuf(flags - {SocketFlag.Peek})
       if res == 0:
         result.setLen(0)
         return
@@ -226,10 +226,10 @@ proc recv*(socket: PAsyncSocket, size: int,
     var read = 0
     while read < size:
       if socket.currPos >= socket.bufLen:
-        if TSocketFlags.Peek in flags:
+        if SocketFlag.Peek in flags:
           # We don't want to get another buffer if we're peeking.
           break
-        let res = await socket.readIntoBuf(flags - {TSocketFlags.Peek})
+        let res = await socket.readIntoBuf(flags - {SocketFlag.Peek})
         if res == 0:
           break
 
@@ -238,7 +238,7 @@ proc recv*(socket: PAsyncSocket, size: int,
       read.inc(chunk)
       socket.currPos.inc(chunk)
 
-    if TSocketFlags.Peek in flags:
+    if SocketFlag.Peek in flags:
       # Restore old buffer cursor position.
       socket.currPos = originalBufPos
     result.setLen(read)
@@ -247,8 +247,8 @@ proc recv*(socket: PAsyncSocket, size: int,
     let read = await readInto(addr result[0], size, socket, flags)
     result.setLen(read)
 
-proc send*(socket: PAsyncSocket, data: string,
-           flags = {TSocketFlags.SafeDisconn}) {.async.} =
+proc send*(socket: AsyncSocket, data: string,
+           flags = {SocketFlag.SafeDisconn}) {.async.} =
   ## Sends ``data`` to ``socket``. The returned future will complete once all
   ## data has been sent.
   assert socket != nil
@@ -261,12 +261,12 @@ proc send*(socket: PAsyncSocket, data: string,
   else:
     await send(socket.fd.TAsyncFD, data, flags)
 
-proc acceptAddr*(socket: PAsyncSocket, flags = {TSocketFlags.SafeDisconn}):
-      Future[tuple[address: string, client: PAsyncSocket]] =
+proc acceptAddr*(socket: AsyncSocket, flags = {SocketFlag.SafeDisconn}):
+      Future[tuple[address: string, client: AsyncSocket]] =
   ## Accepts a new connection. Returns a future containing the client socket
   ## corresponding to that connection and the remote address of the client.
   ## The future will complete when the connection is successfully accepted.
-  var retFuture = newFuture[tuple[address: string, client: PAsyncSocket]]("asyncnet.acceptAddr")
+  var retFuture = newFuture[tuple[address: string, client: AsyncSocket]]("asyncnet.acceptAddr")
   var fut = acceptAddr(socket.fd.TAsyncFD, flags)
   fut.callback =
     proc (future: Future[tuple[address: string, client: TAsyncFD]]) =
@@ -279,15 +279,15 @@ proc acceptAddr*(socket: PAsyncSocket, flags = {TSocketFlags.SafeDisconn}):
         retFuture.complete(resultTup)
   return retFuture
 
-proc accept*(socket: PAsyncSocket,
-    flags = {TSocketFlags.SafeDisconn}): Future[PAsyncSocket] =
+proc accept*(socket: AsyncSocket,
+    flags = {SocketFlag.SafeDisconn}): Future[AsyncSocket] =
   ## Accepts a new connection. Returns a future containing the client socket
   ## corresponding to that connection.
   ## The future will complete when the connection is successfully accepted.
-  var retFut = newFuture[PAsyncSocket]("asyncnet.accept")
+  var retFut = newFuture[AsyncSocket]("asyncnet.accept")
   var fut = acceptAddr(socket, flags)
   fut.callback =
-    proc (future: Future[tuple[address: string, client: PAsyncSocket]]) =
+    proc (future: Future[tuple[address: string, client: AsyncSocket]]) =
       assert future.finished
       if future.failed:
         retFut.fail(future.readError)
@@ -295,8 +295,8 @@ proc accept*(socket: PAsyncSocket,
         retFut.complete(future.read.client)
   return retFut
 
-proc recvLine*(socket: PAsyncSocket,
-    flags = {TSocketFlags.SafeDisconn}): Future[string] {.async.} =
+proc recvLine*(socket: AsyncSocket,
+    flags = {SocketFlag.SafeDisconn}): Future[string] {.async.} =
   ## Reads a line of data from ``socket``. Returned future will complete once
   ## a full line is read or an error occurs.
   ##
@@ -317,7 +317,7 @@ proc recvLine*(socket: PAsyncSocket,
   template addNLIfEmpty(): stmt =
     if result.len == 0:
       result.add("\c\L")
-  assert TSocketFlags.Peek notin flags ## TODO:
+  assert SocketFlag.Peek notin flags ## TODO:
   if socket.isBuffered:
     result = ""
     if socket.bufLen == 0:
@@ -365,7 +365,7 @@ proc recvLine*(socket: PAsyncSocket,
         return
       add(result.string, c)
 
-proc listen*(socket: PAsyncSocket, backlog = SOMAXCONN) {.tags: [ReadIOEffect].} =
+proc listen*(socket: AsyncSocket, backlog = SOMAXCONN) {.tags: [ReadIOEffect].} =
   ## Marks ``socket`` as accepting connections.
   ## ``Backlog`` specifies the maximum length of the
   ## queue of pending connections.
@@ -373,7 +373,7 @@ proc listen*(socket: PAsyncSocket, backlog = SOMAXCONN) {.tags: [ReadIOEffect].}
   ## Raises an EOS error upon failure.
   if listen(socket.fd, backlog) < 0'i32: raiseOSError(osLastError())
 
-proc bindAddr*(socket: PAsyncSocket, port = Port(0), address = "") {.
+proc bindAddr*(socket: AsyncSocket, port = Port(0), address = "") {.
   tags: [ReadIOEffect].} =
   ## Binds ``address``:``port`` to the socket.
   ##
@@ -397,7 +397,7 @@ proc bindAddr*(socket: PAsyncSocket, port = Port(0), address = "") {.
       raiseOSError(osLastError())
     dealloc(aiList)
 
-proc close*(socket: PAsyncSocket) =
+proc close*(socket: AsyncSocket) =
   ## Closes the socket.
   socket.fd.TAsyncFD.closeSocket()
   when defined(ssl):
@@ -419,7 +419,7 @@ when defined(ssl):
     ## prone to security vulnerabilities.
     socket.isSsl = true
     socket.sslContext = ctx
-    socket.sslHandle = SSLNew(PSSLCTX(socket.sslContext))
+    socket.sslHandle = SSLNew(SSLCTX(socket.sslContext))
     if socket.sslHandle == nil:
       raiseSslError()
 
@@ -449,7 +449,7 @@ when isMainModule:
   when test == HighClient:
     proc main() {.async.} =
       var sock = newAsyncSocket()
-      await sock.connect("irc.freenode.net", TPort(6667))
+      await sock.connect("irc.freenode.net", Port(6667))
       while true:
         let line = await sock.recvLine()
         if line == "":
@@ -460,7 +460,7 @@ when isMainModule:
     asyncCheck main()
   elif test == LowClient:
     var sock = newAsyncSocket()
-    var f = connect(sock, "irc.freenode.net", TPort(6667))
+    var f = connect(sock, "irc.freenode.net", Port(6667))
     f.callback =
       proc (future: Future[void]) =
         echo("Connected in future!")
@@ -471,9 +471,9 @@ when isMainModule:
               echo("Read ", future.read.len, ": ", future.read.repr)
   elif test == LowServer:
     var sock = newAsyncSocket()
-    sock.bindAddr(TPort(6667))
+    sock.bindAddr(Port(6667))
     sock.listen()
-    proc onAccept(future: Future[PAsyncSocket]) =
+    proc onAccept(future: Future[AsyncSocket]) =
       let client = future.read
       echo "Accepted ", client.fd.cint
       var t = send(client, "test\c\L")
