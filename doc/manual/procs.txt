@@ -214,12 +214,16 @@ Nonoverloadable builtins
 The following builtin procs cannot be overloaded for reasons of implementation
 simplicity (they require specialized semantic checking)::
 
-  defined, definedInScope, compiles, low, high, sizeOf, 
-  is, of, echo, shallowCopy, getAst, spawn
+  declared, defined, definedInScope, compiles, low, high, sizeOf, 
+  is, of, echo, shallowCopy, getAst, astToStr, spawn
 
 Thus they act more like keywords than like ordinary identifiers; unlike a 
 keyword however, a redefinition may `shadow`:idx: the definition in 
-the ``system`` module.
+the ``system`` module. From this list the following should be written in dot
+notation ``x.f`` since ``x`` cannot be type checked before it gets passed
+to ``f``::
+
+  declared, defined, definedInScope, compiles, getAst, astToStr
 
 
 Var parameters
@@ -323,27 +327,27 @@ dispatch.
 
 .. code-block:: nim
   type
-    TExpr = object ## abstract base class for an expression
-    TLiteral = object of TExpr
+    Expression = object ## abstract base class for an expression
+    Literal = object of Expression
       x: int
-    TPlusExpr = object of TExpr
-      a, b: ref TExpr
+    PlusExpr = object of Expression
+      a, b: ref Expression
       
-  method eval(e: ref TExpr): int =
+  method eval(e: ref Expression): int =
     # override this base method
     quit "to override!"
   
-  method eval(e: ref TLiteral): int = return e.x
+  method eval(e: ref Literal): int = return e.x
 
-  method eval(e: ref TPlusExpr): int =
+  method eval(e: ref PlusExpr): int =
     # watch out: relies on dynamic binding
     result = eval(e.a) + eval(e.b)
   
-  proc newLit(x: int): ref TLiteral =
+  proc newLit(x: int): ref Literal =
     new(result)
     result.x = x
     
-  proc newPlus(a, b: ref TExpr): ref TPlusExpr =
+  proc newPlus(a, b: ref Expression): ref PlusExpr =
     new(result)
     result.a = a
     result.b = b
@@ -359,27 +363,27 @@ dispatching:
 
 .. code-block:: nim
   type
-    TThing = object
-    TUnit = object of TThing
+    Thing = object
+    Unit = object of Thing
       x: int
       
-  method collide(a, b: TThing) {.inline.} =
+  method collide(a, b: Thing) {.inline.} =
     quit "to override!"
     
-  method collide(a: TThing, b: TUnit) {.inline.} =
+  method collide(a: Thing, b: Unit) {.inline.} =
     echo "1"
   
-  method collide(a: TUnit, b: TThing) {.inline.} =
+  method collide(a: Unit, b: Thing) {.inline.} =
     echo "2"
   
   var
-    a, b: TUnit
+    a, b: Unit
   collide(a, b) # output: 2
 
 
 Invocation of a multi-method cannot be ambiguous: collide 2 is preferred over 
 collide 1 because the resolution works from left to right. 
-In the example ``TUnit, TThing`` is preferred over ``TThing, TUnit``.
+In the example ``Unit, Thing`` is preferred over ``Thing, Unit``.
 
 **Performance note**: Nim does not produce a virtual method table, but
 generates dispatch trees. This avoids the expensive indirect branch for method
@@ -496,7 +500,7 @@ a `collaborative tasking`:idx: system:
 .. code-block:: nim
   # simple tasking:
   type
-    TTask = iterator (ticker: int)
+    Task = iterator (ticker: int)
 
   iterator a1(ticker: int) {.closure.} =
     echo "a1: A"
@@ -514,7 +518,7 @@ a `collaborative tasking`:idx: system:
     yield
     echo "a2: C"
 
-  proc runTasks(t: varargs[TTask]) =
+  proc runTasks(t: varargs[Task]) =
     var ticker = 0
     while true:
       let x = t[ticker mod t.len]
@@ -545,10 +549,11 @@ parameters of an outer factory proc:
   for f in foo():
     echo f
 
-Implicit return type
---------------------
+..
+  Implicit return type
+  --------------------
 
-Since inline interators must always produce values that will be consumed in
-a for loop, the compiler will implicity use the ``auto`` return type if no
-type is given by the user. In contrast, since closure iterators can be used
-as a collaborative tasking system, ``void`` is a valid return type for them.
+  Since inline interators must always produce values that will be consumed in
+  a for loop, the compiler will implicity use the ``auto`` return type if no
+  type is given by the user. In contrast, since closure iterators can be used
+  as a collaborative tasking system, ``void`` is a valid return type for them.
