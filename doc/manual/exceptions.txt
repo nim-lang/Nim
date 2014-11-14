@@ -99,34 +99,6 @@ re-raise. It follows that the ``raise`` statement *always* raises an
 exception (unless a raise hook has been provided).
 
 
-onRaise builtin
----------------
-
-`system.onRaise() <system.html#onRaise>`_ can be used to override the
-behaviour of ``raise`` for a single ``try`` statement. ``onRaise`` has to be
-called within the ``try`` statement that should be affected.
-
-This allows for a Lisp-like `condition system`:idx:\:
-
-.. code-block:: nim
-  var myFile = open("broken.txt", fmWrite)
-  try:
-    onRaise do (e: ref Exception)-> bool:
-      if e of IOError:
-        stdout.writeln "ok, writing to stdout instead"
-      else:
-        # do raise other exceptions:
-        result = true
-    myFile.writeln "writing to broken file"
-  finally:
-    myFile.close()
-
-``onRaise`` can only *filter* raised exceptions, it cannot transform one
-exception into another. (Nor should ``onRaise`` raise an exception though 
-this is currently not enforced.) This restriction keeps the exception tracking
-analysis sound.
-
-
 Exception hierarchy
 -------------------
 
