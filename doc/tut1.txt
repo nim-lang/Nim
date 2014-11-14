@@ -1644,9 +1644,6 @@ statement is useful to split up a large module into several files:
 .. code-block:: nim
   include fileA, fileB, fileC
 
-**Note**: The documentation generator currently does not follow ``include``
-statements, so exported symbols in an include file will not show up in the
-generated documentation.
 
 
 Part 2
