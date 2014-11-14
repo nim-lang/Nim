@@ -607,6 +607,10 @@ type name replaces the procedure name. A type conversion is always
 safe in the sense that a failure to convert a type to another
 results in an exception (if it cannot be determined statically).
 
+Ordinary procs are often preferred over type conversions in Nim: For instance,
+``$`` is the ``toString`` operator by convention and ``toFloat`` and ``toInt``
+can be used to convert from floating point to integer or vice versa.
+
 
 Type casts
 ----------
