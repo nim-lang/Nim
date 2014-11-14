@@ -69,6 +69,24 @@ notation. (Thus an operator can have more than two parameters):
   assert `*+`(3, 4, 6) == `*`(a, `+`(b, c))
 
 
+Export marker
+-------------
+
+If a declared symbol is marked with an `asterisk`:idx: it is exported from the
+current module:
+
+.. code-block:: nim
+
+  proc exportedEcho*(s: string) = echo s
+  proc `*`*(a: string; b: int): string =
+    result = newStringOfCap(a.len * b)
+    for i in 1..b: result.add a
+
+  var exportedVar*: int
+  const exportedConst* = 78
+  type ExportedType* = distinct int
+
+
 Method call syntax
 ------------------
 
