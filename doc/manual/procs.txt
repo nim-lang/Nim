@@ -297,6 +297,11 @@ One can use `tuple unpacking`:idx: to access the tuple's fields:
   assert y == 3
 
 
+**Note**: ``var`` parameters are never necessary for efficient parameter
+passing. Since non-var parameters cannot be modified the compiler is always
+free to pass arguments by reference if it considers it can speed up execution.
+
+
 Var return type
 ---------------
 
