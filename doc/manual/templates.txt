@@ -225,8 +225,8 @@ a template. ``inject`` and ``gensym`` have no effect in ``dirty`` templates.
 
 
 
-Limitations of the method invokation syntax
--------------------------------------------
+Limitations of the method call syntax
+-------------------------------------
 
 The expression ``x`` in ``x.f`` needs to be semantically checked (that means
 symbol lookup and type checking) before it can be decided that it needs to be
@@ -240,6 +240,21 @@ is used to invoke templates/macros:
   # Doesn't compile:
   unknownIdentifier.declareVar
 
+
+Another common example is this:
+
+.. code-block:: nim
+  from sequtils import toSeq
+
+  iterator something: string =
+    yield "Hello"
+    yield "World"
+
+  var info = something().toSeq()
+
+The problem here is that the compiler already decided that ``something()`` as
+an iterator is not callable in this context before ``toSeq`` gets its
+chance to convert it into a sequence.
 
 
 Macros

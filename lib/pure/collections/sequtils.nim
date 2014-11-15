@@ -302,6 +302,10 @@ template toSeq*(iter: expr): expr {.immediate.} =
   ##         result = true)
   ##   assert odd_numbers == @[1, 3, 5, 7, 9]
   ##
+  ## **Note**: Since this is an immediate macro, you cannot always invoke this
+  ## as ``x.toSeq``, depending on the ``x``.
+  ## See `this <manual.html#limitations-of-the-method-call-syntax>`_
+  ## for an explanation.
   var result {.gensym.}: seq[type(iter)] = @[]
   for x in iter: add(result, x)
   result

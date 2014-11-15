@@ -8,7 +8,7 @@
 #
 
 ## Floating-point environment. Handling of floating-point rounding and
-## exceptions (overflow, zero-devide, etc.).
+## exceptions (overflow, division by zero, etc.).
 
 {.deadCodeElim:on.}
 

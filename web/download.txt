@@ -40,7 +40,7 @@ Change the branch to suit your needs::
 
   git clone -b master git://github.com/Araq/Nimrod.git
   cd Nimrod
-  git clone --depth 1 git://github.com/nimrod-code/csources
+  git clone -b master --depth 1 git://github.com/nimrod-code/csources
   cd csources && sh build.sh
   cd ..
   bin/nimrod c koch

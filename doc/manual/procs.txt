@@ -84,7 +84,9 @@ current module:
 
   var exportedVar*: int
   const exportedConst* = 78
-  type ExportedType* = distinct int
+  type
+    ExportedType* = object
+      exportedField*: int
 
 
 Method call syntax
@@ -106,6 +108,8 @@ to supply any type of first argument for procedures:
 
 Another way to look at the method call syntax is that it provides the missing
 postfix notation.
+
+See also: `Limitations of the method call syntax`_.
 
 
 Properties
