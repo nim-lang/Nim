@@ -728,9 +728,9 @@ proc renderTocEntry(d: PDoc, e: TTocEntry, result: var string) =
     "\\item\\label{$1_toc} $2\\ref{$1}\n", [e.refname, e.header])
 
 proc renderTocEntries*(d: var TRstGenerator, j: var int, lvl: int,
-    result: var string) =
+                       result: var string) =
   var tmp = ""
-  while j <= high(d.tocPart): 
+  while j <= high(d.tocPart):
     var a = abs(d.tocPart[j].n.level)
     if a == lvl:
       renderTocEntry(d, d.tocPart[j], tmp)
@@ -740,11 +740,11 @@ proc renderTocEntries*(d: var TRstGenerator, j: var int, lvl: int,
     else:
       break
   if lvl > 1:
-    dispA(d.target, result, "<ul class=\"simple\">$1</ul>", 
+    dispA(d.target, result, "<ul class=\"simple\">$1</ul>",
                             "\\begin{enumerate}$1\\end{enumerate}", [tmp])
   else:
     result.add(tmp)
-  
+
 proc renderImage(d: PDoc, n: PRstNode, result: var string) = 
   var options = ""
   var s = getFieldValue(n, "scale")

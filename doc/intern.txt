@@ -118,6 +118,34 @@ Thus we need to serialize this graph as RTTI for C code generation.
 Look at the file ``lib/system/hti.nim`` for more information.
 
 
+Debugging the compiler
+======================
+
+You can of course use GDB or Visual Studio to debug the 
+compiler (via ``--debuginfo --lineDir:on``). However, there
+are also lots of procs that aid in debugging:
+
+
+.. code-block:: nim
+  # pretty prints the Nim AST
+  echo renderTree(someNode)
+  # outputs some JSON representation
+  debug(someNode)
+  # pretty prints some type
+  echo typeToString(someType)
+  debug(someType)
+  echo symbol.name.s
+  debug(symbol)
+  # pretty prints the nimrod ast, but annotates symbol IDs:
+  echo renderTree(someNode, {renderIds})
+  if n.info ?? "temp.nim":
+    # only output when it comes from "temp.nim"
+    echo renderTree(n)
+  if n.info ?? "temp.nim":
+    # why does it process temp.nim here?
+    writeStackTrace()
+
+
 The compiler's architecture
 ===========================
 
@@ -255,16 +283,14 @@ turned on".
 
 
 Debugging Nim's memory management
-====================================
+=================================
 
 The following paragraphs are mostly a reminder for myself. Things to keep
 in mind:
 
-* Segmentation faults can have multiple reasons: One that is frequently
-  forgotten is that *stack overflow* can trigger one!
 * If an assertion in Nim's memory manager or GC fails, the stack trace
   keeps allocating memory! Thus a stack overflow may happen, hiding the
-  real issue. 
+  real issue.
 * What seem to be C code generation problems is often a bug resulting from
   not producing prototypes, so that some types default to ``cint``. Testing
   without the ``-w`` option helps!
@@ -304,8 +330,8 @@ modifying a ``TCellSet`` during traversation leads to undefined behaviour.
   type
     TCellSet # hidden
 
-  proc CellSetInit(s: var TCellSet) # initialize a new set
-  proc CellSetDeinit(s: var TCellSet) # empty the set and free its memory
+  proc cellSetInit(s: var TCellSet) # initialize a new set
+  proc cellSetDeinit(s: var TCellSet) # empty the set and free its memory
   proc incl(s: var TCellSet, elem: PCell) # include an element
   proc excl(s: var TCellSet, elem: PCell) # exclude an element
 
@@ -493,7 +519,7 @@ Accumulator
 -----------
 
 .. code-block:: nim
-  proc GetAccumulator(start: int): proc (): int {.closure} = 
+  proc getAccumulator(start: int): proc (): int {.closure} = 
     var i = start
     return lambda: int = 
       inc i
