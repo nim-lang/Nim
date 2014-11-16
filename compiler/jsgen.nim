@@ -1669,7 +1669,8 @@ proc genHeader(): PRope =
                  "/*   (c) 2014 Andreas Rumpf */$n$n" & 
                  "$nvar Globals = this;$n" &
                  "var framePtr = null;$n" & 
-                 "var excHandler = null;$n", 
+                 "var excHandler = null;$n" &
+                 "var lastJSError = null;$n", 
                  [toRope(VersionAsString)])
 
 proc genModule(p: PProc, n: PNode) = 
