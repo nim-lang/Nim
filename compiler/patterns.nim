@@ -260,7 +260,7 @@ proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
     # couldn't bind parameter:
     if isNil(x): return nil
     result.add(x)
-    if requiresAA: addToArgList(args, n)
+    if requiresAA: addToArgList(args, x)
   # perform alias analysis here:
   if requiresAA:
     for i in 1 .. < params.len:
