@@ -251,6 +251,7 @@ Define               Effect
 ``nodejs``           The JS target is actually ``node.js``.
 ``ssl``              Enables OpenSSL support for the sockets module.
 ``memProfiler``      Enables memory profiling for the native GC.
+``uClibc``           Use uClibc instead of libc. (Relevant for Unix-like OSes)
 ==================   =========================================================
 
 
