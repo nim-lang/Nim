@@ -822,7 +822,11 @@ elif not defined(useNimRtl):
         environ = data.sysEnv
         discard execvp(data.sysCommand, data.sysArgs)
       else:
-        discard execvpe(data.sysCommand, data.sysArgs, data.sysEnv)
+        when defined(uClibc):
+          # uClibc environment (OpenWrt included) doesn't have the full execvpe 
+          discard execve(data.sysCommand, data.sysArgs, data.sysEnv)
+        else:
+          discard execvpe(data.sysCommand, data.sysArgs, data.sysEnv)
     else:
       discard execve(data.sysCommand, data.sysArgs, data.sysEnv)
 
