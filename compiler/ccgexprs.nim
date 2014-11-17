@@ -916,14 +916,15 @@ proc genAndOr(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
 proc genEcho(p: BProc, n: PNode) =
   # this unusal way of implementing it ensures that e.g. ``echo("hallo", 45)``
   # is threadsafe.
+  internalAssert n.kind == nkBracket
   discard lists.includeStr(p.module.headerFiles, "<stdio.h>")
   var args: PRope = nil
   var a: TLoc
-  for i in countup(1, n.len-1):
+  for i in countup(0, n.len-1):
     initLocExpr(p, n.sons[i], a)
     appf(args, ", ($1)->data", [rdLoc(a)])
   linefmt(p, cpsStmts, "printf($1$2);$n",
-          makeCString(repeatStr(n.len-1, "%s") & tnl), args)
+          makeCString(repeatStr(n.len, "%s") & tnl), args)
 
 proc gcUsage(n: PNode) =
   if gSelectedGC == gcNone: message(n.info, warnGcMem, n.renderTree)
@@ -1693,7 +1694,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       discard cgsym(p.module, opr.loc.r.ropeToStr)
     genCall(p, e, d)
   of mReset: genReset(p, e)
-  of mEcho: genEcho(p, e)
+  of mEcho: genEcho(p, e[1].skipConv)
   of mArrToSeq: genArrToSeq(p, e, d)
   of mNLen..mNError:
     localError(e.info, errCannotGenerateCodeForX, e.sons[0].sym.name.s)

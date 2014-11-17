@@ -840,45 +840,17 @@ proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if result != nil: result = afterCallActions(c, result, nOrig, flags)
   else: result = errorNode(c, n)
 
-proc buildStringify(c: PContext, arg: PNode): PNode = 
-  if arg.typ != nil and 
-      skipTypes(arg.typ, abstractInst-{tyTypeDesc}).kind == tyString:
-    result = arg
-  else:
-    result = newNodeI(nkCall, arg.info)
-    addSon(result, newIdentNode(getIdent"$", arg.info))
-    addSon(result, arg)
-
-proc semEcho(c: PContext, n: PNode): PNode = 
-  # this really is a macro
-  checkMinSonsLen(n, 1)
-  for i in countup(1, sonsLen(n) - 1): 
-    var arg = semExprWithType(c, n.sons[i])
-    arg = semExprWithType(c, buildStringify(c, arg))
-    n.sons[i] = arg
-    let t = arg.typ
-    if (t == nil or t.skipTypes(abstractInst).kind != tyString) and 
-        arg.kind != nkEmpty:
-      localError(n.info, errGenerated,
-                 "implicitly invoked '$' does not return string")
-  let t = n.sons[0].typ
-  if tfNoSideEffect notin t.flags: incl(c.p.owner.flags, sfSideEffect)
-  result = n
-  
 proc buildEchoStmt(c: PContext, n: PNode): PNode = 
-  # we MUST not check 'n' for semantics again here!
+  # we MUST not check 'n' for semantics again here! But for now we give up:
   result = newNodeI(nkCall, n.info)
   var e = strTableGet(magicsys.systemModule.tab, getIdent"echo")
   if e != nil:
-    addSon(result, newSymNode(e))
+    add(result, newSymNode(e))
   else:
     localError(n.info, errSystemNeeds, "echo")
-    addSon(result, errorNode(c, n))
-  var arg = buildStringify(c, n)
-  # problem is: implicit '$' is not checked for semantics yet. So we give up
-  # and check 'arg' for semantics again:
-  arg = semExpr(c, arg)
-  if arg != nil: addSon(result, arg)
+    add(result, errorNode(c, n))
+  add(result, n)
+  result = semExpr(c, result)
 
 proc semExprNoType(c: PContext, n: PNode): PNode =
   result = semExpr(c, n, {efWantStmt})
@@ -1650,7 +1622,6 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mSizeOf: result = semSizeof(c, setMs(n, s))
   of mIs: result = semIs(c, setMs(n, s))
   of mOf: result = semOf(c, setMs(n, s))
-  of mEcho: result = semEcho(c, setMs(n, s))
   of mShallowCopy: result = semShallowCopy(c, n, flags)
   of mExpandToAst: result = semExpandToAst(c, n, s, flags)
   of mQuoteAst: result = semQuoteAst(c, n)

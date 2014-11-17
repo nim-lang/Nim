@@ -1078,8 +1078,16 @@ proc genInfixCall(p: PProc, n: PNode, r: var TCompRes) =
 
 proc genEcho(p: PProc, n: PNode, r: var TCompRes) =
   useMagic(p, "rawEcho")
-  app(r.res, "rawEcho")
-  genArgs(p, n, r)
+  app(r.res, "rawEcho(")
+  let n = n[1].skipConv
+  internalAssert n.kind == nkBracket
+  for i in countup(0, sonsLen(n) - 1):
+    let it = n.sons[i]
+    if it.typ.isCompileTimeOnly: continue  
+    if i > 0: app(r.res, ", ")
+    genArg(p, it, r)
+  app(r.res, ")")
+  r.kind = resExpr
 
 proc putToSeq(s: string, indirect: bool): PRope = 
   result = toRope(s)

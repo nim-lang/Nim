@@ -899,12 +899,14 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     c.freeTemp(tmp)
   of mEcho:
     unused(n, dest)
-    let x = c.getTempRange(n.len-1, slotTempUnknown)
-    for i in 1.. <n.len:
-      var r: TRegister = x+i-1
+    let n = n[1].skipConv
+    let x = c.getTempRange(n.len, slotTempUnknown)
+    internalAssert n.kind == nkBracket
+    for i in 0.. <n.len:
+      var r: TRegister = x+i
       c.gen(n.sons[i], r)
-    c.gABC(n, opcEcho, x, n.len-1)
-    c.freeTempRange(x, n.len-1)
+    c.gABC(n, opcEcho, x, n.len)
+    c.freeTempRange(x, n.len)
   of mAppendStrCh:
     unused(n, dest)
     genBinaryStmtVar(c, n, opcAddStrCh)
