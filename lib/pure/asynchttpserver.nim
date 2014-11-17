@@ -94,6 +94,8 @@ proc respond*(req: TRequest, code: THttpCode,
 
 proc newRequest(): TRequest =
   result.headers = newStringTable(modeCaseInsensitive)
+  result.hostname = ""
+  result.body = ""
 
 proc parseHeader(line: string): tuple[key, value: string] =
   var i = 0
