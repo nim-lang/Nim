@@ -166,7 +166,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     
     var first = 0
     var isDefinedMagic = false
-    if s != nil: 
+    if s != nil:
       incl(s.flags, sfUsed)
       isDefinedMagic = s.magic in {mDefined, mDefinedInScope, mCompiles}
       let scOption = if s.name.id in ctx: scForceOpen else: scOpen

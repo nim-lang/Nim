@@ -894,8 +894,15 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkParLe, "(")
     for i in countup(0, sonsLen(n) - 1): 
       if i > 0: put(g, tkOpr, "|")
-      gsub(g, n.sons[i], c)
-    put(g, tkParRi, ")")
+      if n.sons[i].kind == nkSym:
+        let s = n[i].sym
+        if s.owner != nil:
+          put g, tkSymbol, n[i].sym.owner.name.s
+          put g, tkOpr, "."
+        put g, tkSymbol, n[i].sym.name.s
+      else:
+        gsub(g, n.sons[i], c)
+    put(g, tkParRi, if n.kind == nkOpenSymChoice: "|...)" else: ")")
   of nkPar, nkClosure: 
     put(g, tkParLe, "(")
     gcomma(g, n, c)

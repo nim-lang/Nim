@@ -23,7 +23,7 @@ type
     csEmpty, csMatch, csNoMatch
 
   CandidateErrors* = seq[PSym]
-  TCandidate* {.final.} = object
+  TCandidate* = object
     c*: PContext
     exactMatches*: int       # also misused to prefer iters over procs
     genericMatches: int      # also misused to prefer constraints

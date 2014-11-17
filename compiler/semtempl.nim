@@ -63,7 +63,8 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule): PNode =
   else:
     # semantic checking requires a type; ``fitNode`` deals with it
     # appropriately
-    let kind = if r == scClosed: nkClosedSymChoice else: nkOpenSymChoice
+    let kind = if r == scClosed or n.kind == nkDotExpr: nkClosedSymChoice
+               else: nkOpenSymChoice
     result = newNodeIT(kind, n.info, newTypeS(tyNone, c))
     a = initOverloadIter(o, c, n)
     while a != nil:
