@@ -1125,7 +1125,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
       ty = getUniqueType(ty.sons[0])
     if field == nil or field.loc.r == nil: internalError(e.info, "genObjConstr")
     if it.len == 3 and optFieldCheck in p.options:
-      genFieldCheck(p, it.sons[2], r, field)
+      genFieldCheck(p, it.sons[2], tmp2.r, field)
     app(tmp2.r, ".")
     app(tmp2.r, field.loc.r)
     tmp2.k = locTemp
