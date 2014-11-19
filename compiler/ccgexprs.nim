@@ -20,7 +20,7 @@ proc int64Literal(i: BiggestInt): PRope =
 proc uint64Literal(i: uint64): PRope = toRope($i & "ULL")
 
 proc intLiteral(i: BiggestInt): PRope =
-  if (i > low(int32)) and (i <= high(int32)):
+  if i > low(int32) and i <= high(int32):
     result = toRope(i)
   elif i == low(int32):
     # Nim has the same bug for the same reasons :-)
@@ -39,7 +39,7 @@ proc int32Literal(i: int): PRope =
 proc genHexLiteral(v: PNode): PRope =
   # hex literals are unsigned in C
   # so we don't generate hex literals any longer.
-  if not (v.kind in {nkIntLit..nkUInt64Lit}):
+  if v.kind notin {nkIntLit..nkUInt64Lit}:
     internalError(v.info, "genHexLiteral")
   result = intLiteral(v.intVal)
 
@@ -224,9 +224,9 @@ proc optAsgnLoc(a: TLoc, t: PType, field: PRope): TLoc =
 proc genOptAsgnTuple(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   let newflags =
     if src.k == locData:
-      flags + { needToCopy }
+      flags + {needToCopy}
     elif tfShallow in dest.t.flags:
-      flags - { needToCopy }
+      flags - {needToCopy}
     else:
       flags
   for i in 0 .. <dest.t.len:
@@ -240,9 +240,9 @@ proc genOptAsgnObject(p: BProc, dest, src: TLoc, flags: TAssignmentFlags,
   if t == nil: return
   let newflags =
     if src.k == locData:
-      flags + { needToCopy }
+      flags + {needToCopy}
     elif tfShallow in dest.t.flags:
-      flags - { needToCopy }
+      flags - {needToCopy}
     else:
       flags
   case t.kind
@@ -328,7 +328,9 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
       linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   of tyObject:
     # XXX: check for subtyping?
-    if needsComplexAssignment(ty):
+    if not isObjLackingTypeField(ty):
+      genGenericAsgn(p, dest, src, flags)
+    elif needsComplexAssignment(ty):
       if ty.sons[0].isNil and asgnComplexity(ty.n) <= 4:
         discard getTypeDesc(p.module, ty)
         internalAssert ty.n != nil

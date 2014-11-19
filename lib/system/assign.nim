@@ -70,13 +70,17 @@ proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) =
                      GenericSeqSize),
         mt.base, shallow)
   of tyObject:
-    # we need to copy m_type field for tyObject, as it could be empty for
-    # sequence reallocations:
-    var pint = cast[ptr PNimType](dest)
-    pint[] = cast[ptr PNimType](src)[]
     if mt.base != nil:
       genericAssignAux(dest, src, mt.base, shallow)
     genericAssignAux(dest, src, mt.node, shallow)
+    # we need to copy m_type field for tyObject, as it could be empty for
+    # sequence reallocations:
+    var pint = cast[ptr PNimType](dest)
+    # We need to copy the *static* type not the dynamic type:
+    #   if p of TB:
+    #     var tbObj = TB(p)
+    #     tbObj of TC # needs to be false!
+    pint[] = mt # cast[ptr PNimType](src)[]
   of tyTuple:
     genericAssignAux(dest, src, mt.node, shallow)
   of tyArray, tyArrayConstr:
