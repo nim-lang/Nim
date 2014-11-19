@@ -242,6 +242,9 @@ proc concreteType(c: TCandidate, t: PType): PType =
     addSonSkipIntLit(result, t.sons[1]) # XXX: semantic checking for the type?
   of tyNil:
     result = nil              # what should it be?
+  of tySequence, tySet:
+    if t.sons[0].kind == tyEmpty: result = nil
+    else: result = t
   of tyGenericParam, tyAnything:
     result = t
     while true: 
