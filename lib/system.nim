@@ -2125,7 +2125,7 @@ elif hostOS != "standalone":
       inc(i)
   {.pop.}
 
-proc echo*[T](x: varargs[T, `$`]) {.magic: "Echo", tags: [WriteIOEffect], benign.}
+proc echo*(x: varargs[string, `$`]) {.magic: "Echo", tags: [WriteIOEffect], benign.}
   ## Writes and flushes the parameters to the standard output.
   ##
   ## Special built-in that takes a variable number of arguments. Each argument
@@ -2140,8 +2140,8 @@ proc echo*[T](x: varargs[T, `$`]) {.magic: "Echo", tags: [WriteIOEffect], benign
   ## <manual.html#nosideeffect-pragma>`_ you can use `debugEcho <#debugEcho>`_
   ## instead.
 
-proc debugEcho*[T](x: varargs[T, `$`]) {.magic: "Echo", noSideEffect, 
-                                         tags: [], raises: [].}
+proc debugEcho*(x: varargs[string, `$`]) {.magic: "Echo", noSideEffect, 
+                                           tags: [], raises: [].}
   ## Same as `echo <#echo>`_, but as a special semantic rule, ``debugEcho``
   ## pretends to be free of side effects, so that it can be used for debugging
   ## routines marked as `noSideEffect <manual.html#nosideeffect-pragma>`_.
