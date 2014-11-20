@@ -319,8 +319,14 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
     of tyInt64, tyInt, tyUInt..tyUInt64:
       result = newIntNodeT(`shr`(getInt(a), getInt(b)), n)
     else: internalError(n.info, "constant folding for shr")
-  of mDivI, mDivI64: result = newIntNodeT(getInt(a) div getInt(b), n)
-  of mModI, mModI64: result = newIntNodeT(getInt(a) mod getInt(b), n)
+  of mDivI, mDivI64:
+    let y = getInt(b)
+    if y != 0:
+      result = newIntNodeT(getInt(a) div y, n)
+  of mModI, mModI64:
+    let y = getInt(b)
+    if y != 0:
+      result = newIntNodeT(getInt(a) mod y, n)
   of mAddF64: result = newFloatNodeT(getFloat(a) + getFloat(b), n)
   of mSubF64: result = newFloatNodeT(getFloat(a) - getFloat(b), n)
   of mMulF64: result = newFloatNodeT(getFloat(a) * getFloat(b), n)
@@ -359,8 +365,14 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mAddU: result = newIntNodeT(`+%`(getInt(a), getInt(b)), n)
   of mSubU: result = newIntNodeT(`-%`(getInt(a), getInt(b)), n)
   of mMulU: result = newIntNodeT(`*%`(getInt(a), getInt(b)), n)
-  of mModU: result = newIntNodeT(`%%`(getInt(a), getInt(b)), n)
-  of mDivU: result = newIntNodeT(`/%`(getInt(a), getInt(b)), n)
+  of mModU:
+    let y = getInt(b)
+    if y != 0:
+      result = newIntNodeT(`%%`(getInt(a), y), n)
+  of mDivU:
+    let y = getInt(b)
+    if y != 0:
+      result = newIntNodeT(`/%`(getInt(a), y), n)
   of mLeSet: result = newIntNodeT(ord(containsSets(a, b)), n)
   of mEqSet: result = newIntNodeT(ord(equalSets(a, b)), n)
   of mLtSet: 
