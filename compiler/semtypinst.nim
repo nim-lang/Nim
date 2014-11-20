@@ -306,6 +306,8 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
     newbody.deepCopy = cl.c.instDeepCopy(cl.c, dc, result, cl.info)
 
 proc eraseVoidParams*(t: PType) =
+  # transform '(): void' into '()' because old parts of the compiler really
+  # doesn't deal with '(): void':
   if t.sons[0] != nil and t.sons[0].kind == tyEmpty:
     t.sons[0] = nil
   

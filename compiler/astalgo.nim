@@ -638,14 +638,22 @@ proc strTableIncl*(t: var TStrTable, n: PSym): bool {.discardable.} =
   # This way the newest redefinition is picked by the semantic analyses!
   assert n.name != nil
   var h: THash = n.name.h and high(t.data)
+  var replaceSlot = -1
   while true:
     var it = t.data[h]
     if it == nil: break
+    # Semantic checking can happen multiple times thanks to templates
+    # and overloading: (var x=@[]; x).mapIt(it).
+    # So it is possible the very same sym is added multiple
+    # times to the symbol table which we allow here with the 'it == n' check.
     if it.name.id == n.name.id and reallySameIdent(it.name.s, n.name.s):
-      t.data[h] = n           # overwrite it with newer definition!
-      return true             # found it
+      if it == n: return false
+      replaceSlot = h
     h = nextTry(h, high(t.data))
-  if mustRehash(len(t.data), t.counter):
+  if replaceSlot >= 0:
+    t.data[replaceSlot] = n # overwrite it with newer definition!
+    return true             # found it
+  elif mustRehash(len(t.data), t.counter):
     strTableEnlarge(t)
     strTableRawInsert(t.data, n)
   else:

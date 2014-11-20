@@ -2905,7 +2905,11 @@ proc `*=`*[T: float|float32|float64] (x: var T, y: T) {.inline, noSideEffect.} =
   ## Multiplies in place a floating point number
   x = x * y
 
-proc `/=`*[T: float|float32|float64] (x: var T, y: T) {.inline, noSideEffect.} =
+proc `/=`*(x: var float64, y: float64) {.inline, noSideEffect.} =
+  ## Divides in place a floating point number
+  x = x / y
+
+proc `/=`*[T: float|float32](x: var T, y: T) {.inline, noSideEffect.} =
   ## Divides in place a floating point number
   x = x / y
 

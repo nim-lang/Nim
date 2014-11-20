@@ -142,8 +142,8 @@ proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym =
 proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
   # like newSymS, but considers gensym'ed symbols
   if n.kind == nkSym:
+    # and sfGenSym in n.sym.flags:
     result = n.sym
-    internalAssert sfGenSym in result.flags
     internalAssert result.kind == kind
     # when there is a nested proc inside a template, semtmpl
     # will assign a wrong owner during the first pass over the
