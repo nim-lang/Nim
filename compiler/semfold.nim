@@ -502,7 +502,7 @@ proc foldConv*(n, a: PNode; check = false): PNode =
   of tyInt..tyInt64: 
     case skipTypes(a.typ, abstractRange).kind
     of tyFloat..tyFloat64:
-      result = newIntNodeT(system.toInt(getFloat(a)), n)
+      result = newIntNodeT(int(getFloat(a)), n)
     of tyChar: result = newIntNodeT(getOrdValue(a), n)
     else: 
       result = a

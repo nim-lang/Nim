@@ -1,6 +1,8 @@
 discard """
-  file: "tints.nim"
-  output: "Success"
+  output: '''
+0 0
+0 0
+Success'''
 """
 # Test the different integer operations
 
@@ -40,6 +42,13 @@ test(`shl`, 0xff'i8, 0x4'i8, 0xf0'i8)
 
 test(`shl`, 0xffffffff'i64, 0x4'i64, 0xffffffff0'i64)
 test(`shl`, 0xffffffff'i32, 0x4'i32, 0xfffffff0'i32)
+
+# bug #916
+proc unc(a: float): float =
+  return a
+
+echo int(unc(0.5)), " ", int(unc(-0.5))
+echo int(0.5), " ", int(-0.5)
 
 echo("Success") #OUT Success
 

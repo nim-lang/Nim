@@ -328,7 +328,7 @@ proc opConv*(dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType): bool =
         myreset(dest); dest.kind = rkInt
       case skipTypes(srctyp, abstractRange).kind
       of tyFloat..tyFloat64:
-        dest.intVal = system.toInt(src.floatVal)
+        dest.intVal = int(src.floatVal)
       else:
         dest.intVal = src.intVal
       if dest.intVal < firstOrd(desttyp) or dest.intVal > lastOrd(desttyp):
@@ -338,7 +338,7 @@ proc opConv*(dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType): bool =
         myreset(dest); dest.kind = rkInt
       case skipTypes(srctyp, abstractRange).kind
       of tyFloat..tyFloat64:
-        dest.intVal = system.toInt(src.floatVal)
+        dest.intVal = int(src.floatVal)
       else:
         dest.intVal = src.intVal and ((1 shl (desttyp.size*8))-1)
     of tyFloat..tyFloat64:
