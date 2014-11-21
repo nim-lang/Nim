@@ -310,7 +310,7 @@ proc rdLoc(a: TLoc): PRope =
 proc addrLoc(a: TLoc): PRope =
   result = a.r
   if lfIndirect notin a.flags and mapType(a.t) != ctArray:
-    result = con("&", result)
+    result = con("(&", result).con(")")
 
 proc rdCharLoc(a: TLoc): PRope =
   # read a location that may need a char-cast:

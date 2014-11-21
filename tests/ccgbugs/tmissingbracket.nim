@@ -34,7 +34,7 @@ proc newInstance(T: typedesc): T =
 var o = TObj.newInstance()
 
 type
-    TestObj* = object of TObject
+    TestObj* = object of RootObj
         t:int
     SubObject* = object of TestObj
 

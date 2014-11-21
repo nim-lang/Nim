@@ -1872,18 +1872,34 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
     expr(p, n.sons[0], d)     # downcast does C++ for us
   else:
     var dest = skipTypes(n.typ, abstractPtrs)
-    var src = skipTypes(n.sons[0].typ, abstractPtrs)
+
+    var arg = n.sons[0]
+    while arg.kind == nkObjDownConv: arg = arg.sons[0]
+
+    var src = skipTypes(arg.typ, abstractPtrs)
     var a: TLoc
-    initLocExpr(p, n.sons[0], a)
+    initLocExpr(p, arg, a)
     var r = rdLoc(a)
-    if skipTypes(n.sons[0].typ, abstractInst).kind in {tyRef, tyPtr, tyVar} and
-        n.sons[0].kind notin {nkHiddenAddr, nkAddr, nkObjDownConv}:
+    let isRef = skipTypes(arg.typ, abstractInst).kind in {tyRef, tyPtr, tyVar}
+    if isRef:
       app(r, "->Sup")
-      for i in countup(2, abs(inheritanceDiff(dest, src))): app(r, ".Sup")
-      r = con("&", r)
     else:
-      for i in countup(1, abs(inheritanceDiff(dest, src))): app(r, ".Sup")
-    putIntoDest(p, d, n.typ, r)
+      app(r, ".Sup")
+    for i in countup(2, abs(inheritanceDiff(dest, src))): app(r, ".Sup")
+    if isRef:
+      # it can happen that we end up generating '&&x->Sup' here, so we pack
+      # the '&x->Sup' into a temporary and then those address is taken
+      # (see bug #837). However sometimes using a temporary is not correct: 
+      # init(TFigure(my)) # where it is passed to a 'var TFigure'. We test
+      # this by ensuring the destination is also a pointer:
+      if d.k == locNone and skipTypes(n.typ, abstractInst).kind in {tyRef, tyPtr, tyVar}:
+        getTemp(p, n.typ, d)
+        linefmt(p, cpsStmts, "$1 = &$2;$n", rdLoc(d), r)
+      else:
+        r = con("&", r)
+        putIntoDest(p, d, n.typ, r)
+    else:
+      putIntoDest(p, d, n.typ, r)
 
 proc exprComplexConst(p: BProc, n: PNode, d: var TLoc) =
   var t = getUniqueType(n.typ)

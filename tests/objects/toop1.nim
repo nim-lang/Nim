@@ -6,7 +6,7 @@ discard """
 import macros
 
 type
-  TFigure = object of TObject    # abstract base class:
+  TFigure = object of RootObj    # abstract base class:
     draw: proc (my: var TFigure) {.nimcall.} # concrete classes implement this
   
 proc init(f: var TFigure) = 
@@ -56,7 +56,7 @@ macro `!` (n: expr): stmt {.immediate.} =
     result.add(n[1]) # obj
 
 type
-  TSocket* = object of TObject
+  TSocket* = object of RootObj
     FHost: int # cannot be accessed from the outside of the module
                # the `F` prefix is a convention to avoid clashes since
                # the accessors are named `host`
@@ -84,6 +84,3 @@ r!draw
 c!draw() 
 
 #OUT 34[]o 5
-
-
-
