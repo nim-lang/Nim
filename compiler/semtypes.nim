@@ -170,9 +170,10 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
   range[1] = semExprWithType(c, n[2], {efDetermineType})
   
   var rangeT: array[2, PType]
-  for i in 0..1: rangeT[i] = range[i].typ.skipTypes({tyStatic}).skipIntLit
+  for i in 0..1:
+    rangeT[i] = range[i].typ.skipTypes({tyStatic}).skipIntLit
 
-  if not sameType(rangeT[0], rangeT[1]):
+  if not sameType(rangeT[0].skipTypes({tyRange}), rangeT[1].skipTypes({tyRange})):
     localError(n.info, errPureTypeMismatch)
   elif not rangeT[0].isOrdinalType:
     localError(n.info, errOrdinalTypeExpected)
