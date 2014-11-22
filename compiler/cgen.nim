@@ -284,7 +284,7 @@ proc genLineDir(p: BProc, t: PNode) =
             line.toRope, makeCString(toFilename(t.info)))
   elif ({optLineTrace, optStackTrace} * p.options ==
       {optLineTrace, optStackTrace}) and
-      (p.prc == nil or sfPure notin p.prc.flags):
+      (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex >= 0:
     linefmt(p, cpsStmts, "nimln($1, $2);$n",
             line.toRope, t.info.quotedFilename)
 
