@@ -13,7 +13,7 @@
 # A problem is that it cannot be detected if the symbol is introduced
 # as in ``var x = ...`` or used because macros/templates can hide this!
 # So we have to eval templates/macros right here so that symbol
-# lookup can be accurate. XXX But this can only be done for immediate macros!
+# lookup can be accurate.
 
 # included from sem.nim
 
@@ -99,7 +99,7 @@ proc newDot(n, b: PNode): PNode =
   result.add(b)
 
 proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags, 
-                 ctx: var IntSet): PNode =
+                 ctx: var IntSet; isMacro: var bool): PNode =
   assert n.kind == nkDotExpr
   let luf = if withinMixin notin flags: {checkUndeclared} else: {}
   
@@ -113,6 +113,7 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
     let ident = considerQuotedIdent(n)
     var s = searchInScopes(c, ident).skipAlias(n)
     if s != nil and s.kind in routineKinds:
+      isMacro = s.kind in {skTemplate, skMacro}
       if withinBind in flags:
         result = newDot(result, symChoice(c, n, s, scClosed))
       elif s.name.id in ctx:
@@ -141,7 +142,8 @@ proc semGenericStmt(c: PContext, n: PNode,
     #var s = qualifiedLookUp(c, n, luf)
     #if s != nil: result = semGenericStmtSymbol(c, n, s)
     # XXX for example: ``result.add`` -- ``add`` needs to be looked up here...
-    result = fuzzyLookup(c, n, flags, ctx)
+    var dummy: bool
+    result = fuzzyLookup(c, n, flags, ctx, dummy)
   of nkEmpty, nkSym..nkNilLit:
     # see tests/compile/tgensymgeneric.nim:
     # We need to open the gensym'ed symbol again so that the instantiation
@@ -165,10 +167,10 @@ proc semGenericStmt(c: PContext, n: PNode,
       localError(n.info, errUndeclaredIdentifier, fn.renderTree)
     
     var first = 0
-    var isDefinedMagic = false
+    var mixinContext = false
     if s != nil:
       incl(s.flags, sfUsed)
-      isDefinedMagic = s.magic in {mDefined, mDefinedInScope, mCompiles}
+      mixinContext = s.magic in {mDefined, mDefinedInScope, mCompiles}
       let scOption = if s.name.id in ctx: scForceOpen else: scOpen
       case s.kind
       of skMacro:
@@ -177,8 +179,9 @@ proc semGenericStmt(c: PContext, n: PNode,
           result = semMacroExpr(c, n, n, s, {efNoSemCheck})
           result = semGenericStmt(c, result, {}, ctx)
         else:
-          n.sons[0] = symChoice(c, n.sons[0], s, scOption)
+          n.sons[0] = symChoice(c, fn, s, scOption)
           result = n
+        mixinContext = true
       of skTemplate:
         if macroToExpand(s):
           styleCheckUse(fn.info, s)
@@ -186,34 +189,40 @@ proc semGenericStmt(c: PContext, n: PNode,
           result = semTemplateExpr(c, n, s, {efNoSemCheck})
           result = semGenericStmt(c, result, {}, ctx)
         else:
-          n.sons[0] = symChoice(c, n.sons[0], s, scOption)
+          n.sons[0] = symChoice(c, fn, s, scOption)
           result = n
         # BUGFIX: we must not return here, we need to do first phase of
-        # symbol lookup ...
+        # symbol lookup. Also since templates and macros can do scope injections
+        # we need to put the ``c`` in ``t(c)`` in a mixin context to prevent
+        # the famous "undeclared identifier: it" bug:
+        mixinContext = true
       of skUnknown, skParam: 
         # Leave it as an identifier.
         discard
       of skProc, skMethod, skIterators, skConverter:
-        result.sons[0] = symChoice(c, n.sons[0], s, scOption)
+        result.sons[0] = symChoice(c, fn, s, scOption)
         first = 1
       of skGenericParam:
-        result.sons[0] = newSymNodeTypeDesc(s, n.sons[0].info)
+        result.sons[0] = newSymNodeTypeDesc(s, fn.info)
         styleCheckUse(fn.info, s)
         first = 1
       of skType: 
         # bad hack for generics:
         if (s.typ != nil) and (s.typ.kind != tyGenericParam): 
-          result.sons[0] = newSymNodeTypeDesc(s, n.sons[0].info)
+          result.sons[0] = newSymNodeTypeDesc(s, fn.info)
           styleCheckUse(fn.info, s)
           first = 1
       else:
-        result.sons[0] = newSymNode(s, n.sons[0].info)
+        result.sons[0] = newSymNode(s, fn.info)
         styleCheckUse(fn.info, s)
         first = 1
+    elif fn.kind == nkDotExpr:
+      result.sons[0] = fuzzyLookup(c, fn, flags, ctx, mixinContext)
+      first = 1
     # Consider 'when defined(globalsSlot): ThreadVarSetValue(globalsSlot, ...)'
     # in threads.nim: the subtle preprocessing here binds 'globalsSlot' which 
     # is not exported and yet the generic 'threadProcWrapper' works correctly.
-    let flags = if isDefinedMagic: flags+{withinMixin} else: flags
+    let flags = if mixinContext: flags+{withinMixin} else: flags
     for i in countup(first, sonsLen(result) - 1):
       result.sons[i] = semGenericStmt(c, result.sons[i], flags, ctx)
   of nkIfStmt: 
