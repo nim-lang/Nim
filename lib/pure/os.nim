@@ -474,7 +474,11 @@ proc getCreationTime*(file: string): Time {.rtl, extern: "nos$1".} =
 proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1".} =
   ## Returns true if the file `a` is newer than file `b`, i.e. if `a`'s
   ## modification time is later than `b`'s.
-  result = getLastModificationTime(a) - getLastModificationTime(b) > 0
+  when defined(posix):
+    result = getLastModificationTime(a) - getLastModificationTime(b) >= 0
+    # Posix's resolution sucks so, we use '>=' for posix.
+  else:
+    result = getLastModificationTime(a) - getLastModificationTime(b) > 0
 
 proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [].} =
   ## Returns the `current working directory`:idx:.
