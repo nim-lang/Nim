@@ -2958,7 +2958,7 @@ proc raiseAssert*(msg: string) {.noinline.} =
 
 when true:
   proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
-    # trick the compiler to not list ``EAssertionFailed`` when called
+    # trick the compiler to not list ``AssertionFailed`` when called
     # by ``assert``.
     type THide = proc (msg: string) {.noinline, raises: [], noSideEffect,
                                       tags: [].}
@@ -2969,7 +2969,7 @@ template assert*(cond: bool, msg = "") =
   ##
   ## Provides a means to implement `programming by contracts`:idx: in Nim.
   ## ``assert`` evaluates expression ``cond`` and if ``cond`` is false, it
-  ## raises an ``EAssertionFailure`` exception. However, the compiler may not
+  ## raises an ``AssertionFailure`` exception. However, the compiler will not
   ## generate any code at all for ``assert`` if it is advised to do so through
   ## the ``-d:release`` or ``--assertions:off`` `command line switches
   ## <nimc.html#command-line-switches>`_.
