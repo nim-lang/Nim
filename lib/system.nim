@@ -2965,16 +2965,13 @@ when true:
     THide(raiseAssert)(msg)
 
 template assert*(cond: bool, msg = "") =
-  ## Raises ``EAssertionFailure`` with `msg` if `cond` is false.
-  ##
-  ## Provides a means to implement `programming by contracts`:idx: in Nim.
-  ## ``assert`` evaluates expression ``cond`` and if ``cond`` is false, it
-  ## raises an ``EAssertionFailure`` exception. However, the compiler may not
-  ## generate any code at all for ``assert`` if it is advised to do so through
-  ## the ``-d:release`` or ``--assertions:off`` `command line switches
-  ## <nimc.html#command-line-switches>`_.
-  ##
-  ## Use ``assert`` for debugging purposes only.
+  ## Raises ``AssertionError`` with `msg` if `cond` is false. Note
+  ## that ``AssertionError`` is hidden from the effect system, so it doesn't
+  ## produce ``{.raises: [AssertionError].}``. This exception is only supposed
+  ## to be caught by unit testing frameworks.
+  ## The compiler may not generate any code at all for ``assert`` if it is
+  ## advised to do so through the ``-d:release`` or ``--assertions:off``
+  ## `command line switches <nimc.html#command-line-switches>`_.
   bind instantiationInfo
   mixin failedAssertImpl
   when compileOption("assertions"):
