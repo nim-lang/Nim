@@ -960,9 +960,13 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
   var s = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared})
   if s != nil:
-    markUsed(n.sons[1].info, s)
+    if s.kind in OverloadableSyms:
+      result = symChoice(c, n, s, scClosed)
+    else:
+      markUsed(n.sons[1].info, s)
+      result = semSym(c, n, s, flags)
     styleCheckUse(n.sons[1].info, s)
-    return semSym(c, n, s, flags)
+    return
 
   n.sons[0] = semExprWithType(c, n.sons[0], flags+{efDetermineType})
   #restoreOldStyleType(n.sons[0])
