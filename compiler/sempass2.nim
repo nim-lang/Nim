@@ -69,7 +69,7 @@ type
   TEffects = object
     exc: PNode  # stack of exceptions
     tags: PNode # list of tags
-    bottom: int
+    bottom, inTryStmt: int
     owner: PSym
     init: seq[int] # list of initialized variables
     guards: TModel # nested guards
@@ -165,10 +165,17 @@ proc guardDotAccess(a: PEffects; n: PNode) =
   else:
     guardGlobal(a, n, g)
 
-proc initVar(a: PEffects, n: PNode) =
+proc makeVolatile(a: PEffects; s: PSym) {.inline.} =
+  template compileToCpp(a): expr =
+    gCmd == cmdCompileToCpp or sfCompileToCpp in getModule(a.owner).flags
+  if a.inTryStmt > 0 and not compileToCpp(a):
+    incl(s.flags, sfVolatile)
+
+proc initVar(a: PEffects, n: PNode; volatileCheck: bool) =
   if n.kind != nkSym: return
   let s = n.sym
   if isLocalVar(a, s):
+    if volatileCheck: makeVolatile(a, s)
     for x in a.init:
       if x == s.id: return
     a.init.add s.id
@@ -179,7 +186,9 @@ proc initVarViaNew(a: PEffects, n: PNode) =
   if {tfNeedsInit, tfNotNil} * s.typ.flags <= {tfNotNil}:
     # 'x' is not nil, but that doesn't mean its "not nil" children
     # are initialized:
-    initVar(a, n)
+    initVar(a, n, volatileCheck=true)
+  elif isLocalVar(a, s):
+    makeVolatile(a, s)
 
 proc warnAboutGcUnsafe(n: PNode) =
   #assert false
@@ -304,7 +313,9 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
   let oldState = tracked.init.len
   var inter: TIntersection = @[]
 
-  track(tracked, n.sons[0])  
+  inc tracked.inTryStmt
+  track(tracked, n.sons[0])
+  dec tracked.inTryStmt
   for i in oldState.. <tracked.init.len:
     addToIntersection(inter, tracked.init[i])
   
@@ -660,7 +671,7 @@ proc track(tracked: PEffects, n: PNode) =
   of nkPragma: trackPragmaStmt(tracked, n)
   of nkAsgn, nkFastAsgn:
     track(tracked, n.sons[1])
-    initVar(tracked, n.sons[0])
+    initVar(tracked, n.sons[0], volatileCheck=true)
     invalidateFacts(tracked.guards, n.sons[0])
     track(tracked, n.sons[0])
     addAsgnFact(tracked.guards, n.sons[0], n.sons[1])
@@ -672,7 +683,7 @@ proc track(tracked: PEffects, n: PNode) =
       if child.kind == nkIdentDefs and last.kind != nkEmpty:
         track(tracked, last)
         for i in 0 .. child.len-3:
-          initVar(tracked, child.sons[i])
+          initVar(tracked, child.sons[i], volatileCheck=false)
           addAsgnFact(tracked.guards, child.sons[i], last)
           notNilCheck(tracked, last, child.sons[i].typ)
       # since 'var (a, b): T = ()' is not even allowed, there is always type
