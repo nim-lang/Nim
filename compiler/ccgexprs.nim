@@ -1718,7 +1718,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
 
 proc genConstExpr(p: BProc, n: PNode): PRope
 proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
-  if (nfAllConst in n.flags) and (d.k == locNone) and (sonsLen(n) > 0):
+  if nfAllConst in n.flags and d.k == locNone and n.len > 0 and n.isDeepConstExpr:
     var t = getUniqueType(n.typ)
     discard getTypeDesc(p.module, t) # so that any fields are initialized
     var id = nodeTableTestOrSet(p.module.dataCache, n, gBackendId)
