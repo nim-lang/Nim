@@ -7,8 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-## This module contains procs for serialization and deseralization of 
-## arbitrary Nim data structures. The serialization format uses JSON.
+## This module contains procs for `serialization`:idx: and `deseralization`:idx:
+## of arbitrary Nim data structures. The serialization format uses `JSON`:idx:.
 ##
 ## **Restriction**: For objects their type is **not** serialized. This means
 ## essentially that it does not work if the object has some other runtime

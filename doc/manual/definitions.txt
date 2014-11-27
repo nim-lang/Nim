@@ -39,7 +39,7 @@ invalid:
   let i = 5
   try:
     a[i] = 'N'
-  except EInvalidIndex:
+  except IndexError:
     echo "invalid index"
 
 An `unchecked runtime error`:idx: is an error that is not guaranteed to be
