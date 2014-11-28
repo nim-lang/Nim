@@ -1649,6 +1649,10 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       else:
         result.typ = result[1].typ
       result.add instantiateCreateFlowVarCall(c, result[1].typ, n.info).newSymNode
+  of mProcCall:
+    result = setMs(n, s)
+    result.sons[1] = semExpr(c, n.sons[1])
+    result.typ = n[1].typ
   else: result = semDirectOp(c, n, flags)
 
 proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =

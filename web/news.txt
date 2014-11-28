@@ -36,6 +36,8 @@ News
     lock levels and object field ``guards``.
   - The ``parallel`` statement has been implemented.
   - ``deepCopy`` has been added to the language.
+  - The builtin ``procCall`` can be used to get ``super``-like functionality
+    for multi methods.
 
 
   Compiler Additions

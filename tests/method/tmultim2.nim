@@ -1,6 +1,9 @@
 discard """
   file: "tmultim2.nim"
-  output: "collide: unit, thing collide: unit, thing collide: thing, unit"
+  output: '''collide: unit, thing
+collide: unit, thing
+collide: thing, unit
+collide: thing, thing'''
 """
 # Test multi methods
 
@@ -12,16 +15,20 @@ type
     a, b: int
     
 method collide(a, b: TThing) {.inline.} =
-  quit "to override!"
+  echo "collide: thing, thing"
   
 method collide(a: TThing, b: TUnit) {.inline.} =
-  write stdout, "collide: thing, unit "
+  echo "collide: thing, unit"
 
 method collide(a: TUnit, b: TThing) {.inline.} =
-  write stdout, "collide: unit, thing "
+  echo "collide: unit, thing"
 
 proc test(a, b: TThing) {.inline.} =
   collide(a, b)
+
+proc staticCollide(a, b: TThing) {.inline.} =
+  procCall collide(a, b)
+
 
 var
   a: TThing
@@ -29,8 +36,4 @@ var
 collide(b, c) # ambiguous (unit, thing) or (thing, unit)? -> prefer unit, thing!
 test(b, c)
 collide(a, b)
-#OUT collide: unit, thing collide: unit, thing collide: thing, unit
-
-
-
-
+staticCollide(a, b)

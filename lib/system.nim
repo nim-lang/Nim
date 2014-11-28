@@ -1016,22 +1016,6 @@ const
     ## is the time of compilation as a string of the form
     ## ``HH:MM:SS``. This works thanks to compiler magic.
 
-  NimVersion* {.magic: "NimrodVersion"}: string = "0.0.0"
-    ## is the version of Nim as a string.
-    ## This works thanks to compiler magic.
-
-  NimMajor* {.magic: "NimrodMajor"}: int = 0
-    ## is the major number of Nim's version.
-    ## This works thanks to compiler magic.
-
-  NimMinor* {.magic: "NimrodMinor"}: int = 0
-    ## is the minor number of Nim's version.
-    ## This works thanks to compiler magic.
-
-  NimPatch* {.magic: "NimrodPatch"}: int = 0
-    ## is the patch number of Nim's version.
-    ## This works thanks to compiler magic.
-
   cpuEndian* {.magic: "CpuEndian"}: Endianness = littleEndian
     ## is the endianness of the target CPU. This is a valuable piece of
     ## information for low-level code only. This works thanks to compiler
@@ -1047,9 +1031,6 @@ const
     ## "i386", "alpha", "powerpc", "sparc", "amd64", "mips", "arm".
   
   seqShallowFlag = low(int)
-
-{.deprecated: [TEndian: Endianness, NimrodVersion: NimVersion, 
-    NimrodMajor: NimMajor, NimrodMinor: NimMinor, NimrodPatch: NimPatch].}
 
 proc compileOption*(option: string): bool {.
   magic: "CompileOption", noSideEffect.}
@@ -1470,11 +1451,11 @@ template `>%` *(x, y: expr): expr {.immediate.} = y <% x
   ## treats `x` and `y` as unsigned and compares them.
   ## Returns true iff ``unsigned(x) > unsigned(y)``.
 
-proc `$` *(x: int): string {.magic: "IntToStr", noSideEffect.}
+proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
   ## The stringify operator for an integer argument. Returns `x`
   ## converted to a decimal string.
 
-proc `$` *(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
+proc `$`*(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
   ## The stringify operator for an integer argument. Returns `x`
   ## converted to a decimal string.
 
@@ -1529,6 +1510,20 @@ const
     ## that you cannot compare a floating point value to this value
     ## and expect a reasonable result - use the `classify` procedure
     ## in the module ``math`` for checking for NaN.
+  NimMajor*: int = 0
+    ## is the major number of Nim's version.
+
+  NimMinor*: int = 10
+    ## is the minor number of Nim's version.
+
+  NimPatch*: int = 1
+    ## is the patch number of Nim's version.
+
+  NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
+    ## is the version of Nim as a string.
+
+{.deprecated: [TEndian: Endianness, NimrodVersion: NimVersion, 
+    NimrodMajor: NimMajor, NimrodMinor: NimMinor, NimrodPatch: NimPatch].}
 
 # GC interface:
 
@@ -3104,7 +3099,7 @@ proc locals*(): RootObj {.magic: "Locals", noSideEffect.} =
   ## generates a tuple constructor expression listing all the local variables
   ## in the current scope. This is quite fast as it does not rely
   ## on any debug or runtime information. Note that in constrast to what
-  ## the official signature says, the return type is not ``TObject`` but a
+  ## the official signature says, the return type is not ``RootObj`` but a
   ## tuple of a structure that depends on the current scope. Example:
   ##
   ## .. code-block:: nim
@@ -3131,5 +3126,14 @@ when hostOS != "standalone" and not defined(NimrodVM) and not defined(JS):
     discard
 
   include "system/deepcopy"
+
+proc procCall*(x: expr) {.magic: "ProcCall".} =
+  ## special magic to prohibit dynamic binding for `method`:idx: calls.
+  ## This is similar to `super`:idx: in ordinary OO languages.
+  ##
+  ## .. code-block:: nim
+  ##   # 'someMethod' will be resolved fully statically:
+  ##   procCall someMethod(a, b)
+  discard
 
 {.pop.} #{.push warning[GcMem]: off.}

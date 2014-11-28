@@ -12,10 +12,6 @@
 
 const 
   MaxSetElements* = 1 shl 16  # (2^16) to support unicode character sets?
-  VersionMajor* = 0
-  VersionMinor* = 10
-  VersionPatch* = 1
-  VersionAsString* = $VersionMajor & "." & $VersionMinor & "." & $VersionPatch
-
+  VersionAsString* = system.NimVersion
   RodFileVersion* = "1215"       # modify this if the rod-format changes!
 

@@ -16,7 +16,7 @@ the best match for the arguments. Example:
 
 .. code-block:: nim
 
-  proc toLower(c: Char): Char = # toLower for characters
+  proc toLower(c: char): char = # toLower for characters
     if c in {'A'..'Z'}:
       result = chr(ord(c) + (ord('a') - ord('A')))
     else:
@@ -150,8 +150,8 @@ means ``echo f 1, f 2`` is parsed as ``echo(f(1), f(2))`` and not as
 more argument in this case:
 
 .. code-block:: nim
-  proc optarg(x:int, y:int = 0):int = x + y
-  proc singlearg(x:int):int = 20*x
+  proc optarg(x: int, y: int = 0): int = x + y
+  proc singlearg(x: int): int = 20*x
   
   echo optarg 1, " ", singlearg 2  # prints "1 40"
   
@@ -237,7 +237,7 @@ The following builtin procs cannot be overloaded for reasons of implementation
 simplicity (they require specialized semantic checking)::
 
   declared, defined, definedInScope, compiles, low, high, sizeOf, 
-  is, of, shallowCopy, getAst, astToStr, spawn
+  is, of, shallowCopy, getAst, astToStr, spawn, procCall
 
 Thus they act more like keywords than like ordinary identifiers; unlike a 
 keyword however, a redefinition may `shadow`:idx: the definition in 
