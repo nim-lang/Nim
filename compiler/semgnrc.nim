@@ -350,7 +350,7 @@ proc semGenericStmt(c: PContext, n: PNode,
   of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef, nkTemplateDef, 
      nkIteratorDef, nkLambdaKinds: 
     checkSonsLen(n, bodyPos + 1)
-    if n.kind notin nkLambdaKinds:
+    if n.sons[namePos].kind != nkEmpty:
       addTempDecl(c, getIdentNode(n.sons[0]), skProc)
     openScope(c)
     n.sons[genericParamsPos] = semGenericStmt(c, n.sons[genericParamsPos], 
