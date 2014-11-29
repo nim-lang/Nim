@@ -962,6 +962,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if s != nil:
     if s.kind in OverloadableSyms:
       result = symChoice(c, n, s, scClosed)
+      if result.kind == nkSym: result = semSym(c, n, s, flags)
     else:
       markUsed(n.sons[1].info, s)
       result = semSym(c, n, s, flags)
