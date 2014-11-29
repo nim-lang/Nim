@@ -254,11 +254,11 @@ proc getTokens(buffer: string, skipPounds: bool, tokens: var TTokenSeq): int =
 
 type
   TLevelMap = array[char, int]
-  TSubstitution{.final.} = object 
+  TSubstitution = object 
     key*: string
     value*: PRstNode
 
-  TSharedState {.final.} = object 
+  TSharedState = object 
     options: TRstParseOptions   # parsing options
     uLevel, oLevel: int         # counters for the section levels
     subs: seq[TSubstitution]    # substitutions
@@ -273,7 +273,7 @@ type
                                 # This is for over-underline adornments.
     msgHandler: TMsgHandler     # How to handle errors.
     findFile: TFindFileHandler  # How to find files.
-  
+
   PSharedState = ref TSharedState
   TRstParser = object of RootObj
     idx*: int

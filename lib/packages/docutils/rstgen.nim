@@ -60,6 +60,7 @@ type
     seenIndexTerms: Table[string, int] ## \
     ## Keeps count of same text index terms to generate different identifiers
     ## for hyperlinks. See renderIndexTerm proc for details.
+    smileyFrmt: string   ## How to massage the smiley filename.
   
   PDoc = var TRstGenerator ## Alias to type less.
 
@@ -79,8 +80,9 @@ proc init(p: var CodeBlockParams) =
 proc initRstGenerator*(g: var TRstGenerator, target: TOutputTarget,
                        config: StringTableRef, filename: string,
                        options: TRstParseOptions,
-                       findFile: TFindFileHandler,
-                       msgHandler: TMsgHandler) =
+                       findFile: TFindFileHandler=nil,
+                       msgHandler: TMsgHandler=nil,
+                       smileyFrmt = "/images/smilies/$1.gif") =
   ## Initializes a ``TRstGenerator``.
   ##
   ## You need to call this before using a ``TRstGenerator`` with any other
@@ -121,10 +123,7 @@ proc initRstGenerator*(g: var TRstGenerator, target: TOutputTarget,
   ##   import packages/docutils/rstgen
   ##
   ##   var gen: TRstGenerator
-  ##
-  ##   gen.initRstGenerator(outHtml, defaultConfig(),
-  ##     "filename", {}, nil, nil)
-
+  ##   gen.initRstGenerator(outHtml, defaultConfig(), "filename", {})
   g.config = config
   g.target = target
   g.tocPart = @[]
@@ -143,6 +142,7 @@ proc initRstGenerator*(g: var TRstGenerator, target: TOutputTarget,
   let s = config["split.item.toc"]
   if s != "": g.splitAfter = parseInt(s)
   for i in low(g.meta)..high(g.meta): g.meta[i] = ""
+  g.smileyFrmt = smileyFrmt
 
 proc writeIndexFile*(g: var TRstGenerator, outfile: string) =
   ## Writes the current index buffer to the specified output file.
@@ -745,34 +745,40 @@ proc renderTocEntries*(d: var TRstGenerator, j: var int, lvl: int,
   else:
     result.add(tmp)
 
-proc renderImage(d: PDoc, n: PRstNode, result: var string) = 
+proc renderImage(d: PDoc, n: PRstNode, result: var string) =
+  template valid(s): expr =
+    s.len > 0 and allCharsInSet(s, {'/',':','%','_','\\','\128'..'\xFF'} +
+                                   Digits + Letters + WhiteSpace)
+
   var options = ""
   var s = getFieldValue(n, "scale")
-  if s != "": dispA(d.target, options, " scale=\"$1\"", " scale=$1", [strip(s)])
+  if s.valid: dispA(d.target, options, " scale=\"$1\"", " scale=$1", [strip(s)])
   
   s = getFieldValue(n, "height")
-  if s != "": dispA(d.target, options, " height=\"$1\"", " height=$1", [strip(s)])
+  if s.valid: dispA(d.target, options, " height=\"$1\"", " height=$1", [strip(s)])
   
   s = getFieldValue(n, "width")
-  if s != "": dispA(d.target, options, " width=\"$1\"", " width=$1", [strip(s)])
+  if s.valid: dispA(d.target, options, " width=\"$1\"", " width=$1", [strip(s)])
   
   s = getFieldValue(n, "alt")
-  if s != "": dispA(d.target, options, " alt=\"$1\"", "", [strip(s)])
+  if s.valid: dispA(d.target, options, " alt=\"$1\"", "", [strip(s)])
   
   s = getFieldValue(n, "align")
-  if s != "": dispA(d.target, options, " align=\"$1\"", "", [strip(s)])
+  if s.valid: dispA(d.target, options, " align=\"$1\"", "", [strip(s)])
   
   if options.len > 0: options = dispF(d.target, "$1", "[$1]", [options])
-  
-  dispA(d.target, result, "<img src=\"$1\"$2 />", "\\includegraphics$2{$1}", 
-                 [getArgument(n), options])
+
+  let arg = getArgument(n)
+  if arg.valid:
+    dispA(d.target, result, "<img src=\"$1\"$2 />", "\\includegraphics$2{$1}", 
+          [arg, options])
   if len(n) >= 3: renderRstToOut(d, n.sons[2], result)
   
 proc renderSmiley(d: PDoc, n: PRstNode, result: var string) =
   dispA(d.target, result,
-    """<img src="/images/smilies/$1.gif" width="15" 
-        height="17" hspace="2" vspace="2" />""",
-    "\\includegraphics{$1}", [n.text])
+    """<img src="$1" width="15" 
+        height="17" hspace="2" vspace="2" class="smiley" />""",
+    "\\includegraphics{$1}", [d.smileyFrmt % n.text])
   
 proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
   ## Parses useful fields which can appear before a code block.

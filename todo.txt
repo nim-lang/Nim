@@ -1,6 +1,7 @@
 version 0.10
 ============
 
+- introduce ``--experimental`` switch
 - make nimble part of the distribution
 - split idetools into separate tool
 - split docgen into separate tool
