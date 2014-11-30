@@ -291,7 +291,7 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
 
   var newbody = replaceTypeVarsT(cl, lastSon(body))
   newbody.flags = newbody.flags + (t.flags + body.flags - tfInstClearedFlags)
-  result.flags = result.flags + newbody.flags
+  result.flags = result.flags + newbody.flags - tfInstClearedFlags
   newbody.callConv = body.callConv
   # This type may be a generic alias and we want to resolve it here.
   # One step is enough, because the recursive nature of
