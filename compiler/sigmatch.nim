@@ -936,6 +936,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       else:
         if f.sonsLen > 0 and f.sons[0].kind != tyNone:
           result = typeRel(c, f.lastSon, a)
+          if doBind and result notin {isNone, isGeneric}:
+            let concrete = concreteType(c, a)
+            if concrete == nil: return isNone
+            put(c.bindings, f, concrete)
         else:
           result = isGeneric
 
