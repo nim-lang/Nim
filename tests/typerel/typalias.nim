@@ -1,7 +1,7 @@
 
 type
   TMyObj = TYourObj
-  TYourObj = object of TObject
+  TYourObj = object of RootObj
     x, y: int
   
 proc init: TYourObj =

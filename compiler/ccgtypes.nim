@@ -166,6 +166,10 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): PRope
 proc needsComplexAssignment(typ: PType): bool = 
   result = containsGarbageCollectedRef(typ)
 
+proc isObjLackingTypeField(typ: PType): bool {.inline.} =
+  result = (typ.kind == tyObject) and ((tfFinal in typ.flags) and
+      (typ.sons[0] == nil) or isPureObject(typ))
+
 proc isInvalidReturnType(rettype: PType): bool = 
   # Arrays and sets cannot be returned by a C procedure, because C is
   # such a poor programming language.
@@ -177,10 +181,12 @@ proc isInvalidReturnType(rettype: PType): bool =
     of ctArray: 
       result = not (skipTypes(rettype, typedescInst).kind in
           {tyVar, tyRef, tyPtr})
-    of ctStruct: 
-      result = needsComplexAssignment(skipTypes(rettype, typedescInst))
+    of ctStruct:
+      let t = skipTypes(rettype, typedescInst)
+      result = needsComplexAssignment(t) or
+          (t.kind == tyObject and not isObjLackingTypeField(t))
     else: result = false
-  
+
 const 
   CallingConvToStr: array[TCallingConvention, string] = ["N_NIMCALL", 
     "N_STDCALL", "N_CDECL", "N_SAFECALL", 
@@ -677,10 +683,6 @@ when false:
   proc allocMemTI(m: BModule, typ: PType, name: PRope) = 
     var tmp = getNimType(m)
     appf(m.s[cfsTypeInit2], "$2 = &$1;$n", [tmp, name])
-
-proc isObjLackingTypeField(typ: PType): bool {.inline.} =
-  result = (typ.kind == tyObject) and ((tfFinal in typ.flags) and
-      (typ.sons[0] == nil) or isPureObject(typ))
 
 proc genTypeInfoAuxBase(m: BModule, typ: PType, name, base: PRope) =
   var nimtypeKind: int
