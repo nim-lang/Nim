@@ -45,7 +45,8 @@ else:
 
 # Note: The enumerations are mapped to Window's constants.
 
-when defined(ssl):
+when defined(ssl):  
+
   type
     SSLError* = object of Exception
 
