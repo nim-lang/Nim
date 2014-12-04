@@ -163,7 +163,7 @@ elif defined(macosx):
     ttfLibName = "libSDL_ttf-2.0.0.dylib"
 else: 
   const 
-    ttfLibName = "libSDL_ttf.so(|.1|.0)"
+    ttfLibName = "libSDL_ttf(|-2.0).so(|.1|.0)"
 const 
   MAJOR_VERSION* = 2
   MINOR_VERSION* = 0
