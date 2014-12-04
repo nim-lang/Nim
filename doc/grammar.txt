@@ -142,6 +142,7 @@ exceptBlock = 'except' colcom stmt
 forStmt = 'for' (identWithPragma ^+ comma) 'in' expr colcom stmt
 blockStmt = 'block' symbol? colcom stmt
 staticStmt = 'static' colcom stmt
+deferStmt = 'defer' colcom stmt
 asmStmt = 'asm' pragma? (STR_LIT | RSTR_LIT | TRIPLE_STR_LIT)
 genericParam = symbol (comma symbol)* (colon expr)? ('=' optInd expr)?
 genericParamList = '[' optInd
@@ -182,7 +183,7 @@ simpleStmt = ((returnStmt | raiseStmt | yieldStmt | discardStmt | breakStmt
            | includeStmt | commentStmt) / exprStmt) COMMENT?
 complexOrSimpleStmt = (ifStmt | whenStmt | whileStmt
                     | tryStmt | finallyStmt | exceptStmt | forStmt
-                    | blockStmt | staticStmt | asmStmt
+                    | blockStmt | staticStmt | deferStmt | asmStmt
                     | 'proc' routine
                     | 'method' routine
                     | 'iterator' routine

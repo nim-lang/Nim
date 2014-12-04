@@ -160,6 +160,7 @@ type
     nkConstDef,           # a const definition
     nkTypeDef,            # a type definition
     nkYieldStmt,          # the yield statement as a tree
+    nkDefer,              # the 'defer' statement
     nkTryStmt,            # a try statement
     nkFinally,            # a finally section
     nkRaiseStmt,          # a raise statement
@@ -566,7 +567,7 @@ type
     mBool, mChar, mString, mCstring,
     mPointer, mEmptySet, mIntSetBaseType, mNil, mExpr, mStmt, mTypeDesc,
     mVoidType, mPNimrodNode, mShared, mGuarded, mLock, mSpawn, mDeepCopy,
-    mIsMainModule, mCompileDate, mCompileTime, mProcCall, 
+    mIsMainModule, mCompileDate, mCompileTime, mProcCall,
     mCpuEndian, mHostOS, mHostCPU, mAppType,
     mNaN, mInf, mNegInf,
     mCompileOption, mCompileOptionArg,

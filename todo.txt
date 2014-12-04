@@ -1,10 +1,14 @@
 version 0.10
 ============
 
+  Repetition renders the ridiculous reasonable.
+
 - introduce ``--experimental`` switch
+- c2nim depends on the compiler
 - make nimble part of the distribution
 - split idetools into separate tool
 - split docgen into separate tool
+
 
 
 Concurrency
@@ -33,7 +37,6 @@ Misc
 Bugs
 ====
 
-- fix the bug that keeps 'defer' template from working
 - VM: Pegs do not work at compile-time
 - VM: ptr/ref T cannot work in general
 - scopes are still broken for generic instantiation!

@@ -47,7 +47,8 @@ Realtime support
 ================
 
 To enable realtime support, the symbol `useRealtimeGC`:idx: needs to be
-defined. With this switch the GC supports the following operations:
+defined via ``--define:useRealtimeGC`` (you can put this into your config 
+file as well). With this switch the GC supports the following operations:
 
 .. code-block:: nim
   proc GC_setMaxPause*(MaxPauseInUs: int)

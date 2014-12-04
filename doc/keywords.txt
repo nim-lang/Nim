@@ -1,7 +1,7 @@
 addr and as asm atomic
 bind block break
 case cast const continue converter
-discard distinct div do
+defer discard distinct div do
 elif else end enum except export
 finally for from
 generic

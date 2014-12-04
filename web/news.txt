@@ -28,6 +28,7 @@ News
     fails to match.
   - The "symmetric set difference" operator (``-+-``) never worked and has been
     removed.
+  - ``defer`` is a keyword now.
 
   Language Additions
   ------------------

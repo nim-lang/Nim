@@ -1423,9 +1423,10 @@ proc parseBlock(p: var TParser): PNode =
   colcom(p, result)
   addSon(result, parseStmt(p))
 
-proc parseStatic(p: var TParser): PNode =
+proc parseStaticOrDefer(p: var TParser; k: TNodeKind): PNode =
   #| staticStmt = 'static' colcom stmt
-  result = newNodeP(nkStaticStmt, p)
+  #| deferStmt = 'defer' colcom stmt
+  result = newNodeP(k, p)
   getTokNoInd(p)
   colcom(p, result)
   addSon(result, parseStmt(p))
@@ -1863,7 +1864,7 @@ proc simpleStmt(p: var TParser): PNode =
 proc complexOrSimpleStmt(p: var TParser): PNode =
   #| complexOrSimpleStmt = (ifStmt | whenStmt | whileStmt
   #|                     | tryStmt | finallyStmt | exceptStmt | forStmt
-  #|                     | blockStmt | staticStmt | asmStmt
+  #|                     | blockStmt | staticStmt | deferStmt | asmStmt
   #|                     | 'proc' routine
   #|                     | 'method' routine
   #|                     | 'iterator' routine
@@ -1884,7 +1885,8 @@ proc complexOrSimpleStmt(p: var TParser): PNode =
   of tkExcept: result = parseExceptBlock(p, nkExceptBranch)
   of tkFor: result = parseFor(p)
   of tkBlock: result = parseBlock(p)
-  of tkStatic: result = parseStatic(p)
+  of tkStatic: result = parseStaticOrDefer(p, nkStaticStmt)
+  of tkDefer: result = parseStaticOrDefer(p, nkDefer)
   of tkAsm: result = parseAsm(p)
   of tkProc: result = parseRoutine(p, nkProcDef)
   of tkMethod: result = parseRoutine(p, nkMethodDef)

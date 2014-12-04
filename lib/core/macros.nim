@@ -46,7 +46,7 @@ type
     nnkForStmt, nnkParForStmt, nnkWhileStmt, nnkCaseStmt,
     nnkTypeSection, nnkVarSection, nnkLetSection, nnkConstSection,
     nnkConstDef, nnkTypeDef,
-    nnkYieldStmt, nnkTryStmt, nnkFinally, nnkRaiseStmt,
+    nnkYieldStmt, nnkDefer, nnkTryStmt, nnkFinally, nnkRaiseStmt,
     nnkReturnStmt, nnkBreakStmt, nnkContinueStmt, nnkBlockStmt, nnkStaticStmt,
     nnkDiscardStmt, nnkStmtList, 
     nnkImportStmt,

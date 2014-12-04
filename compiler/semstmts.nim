@@ -1362,8 +1362,9 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
   #                                         nkNilLit, nkEmpty}:
   #  dec last
   for i in countup(0, length - 1):
-    case n.sons[i].kind
-    of nkFinally, nkExceptBranch:
+    let k = n.sons[i].kind
+    case k
+    of nkFinally, nkExceptBranch, nkDefer:
       # stand-alone finally and except blocks are
       # transformed into regular try blocks:
       #
@@ -1372,12 +1373,24 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
       # ...                       |   ...
       #                           | finally:
       #                           |   fclose(f)
+      var deferPart: PNode
+      if k == nkDefer:
+        deferPart = newNodeI(nkFinally, n.sons[i].info)
+        deferPart.add n.sons[i].sons[0]
+      elif k == nkFinally:
+        message(n.info, warnDeprecated,
+                "use 'defer'; standalone 'finally'")
+        deferPart = n.sons[i]
+      else:
+        message(n.info, warnDeprecated,
+                "use an explicit 'try'; standalone 'except'")
+        deferPart = n.sons[i]
       var tryStmt = newNodeI(nkTryStmt, n.sons[i].info)
       var body = newNodeI(nkStmtList, n.sons[i].info)
       if i < n.sonsLen - 1:
         body.sons = n.sons[(i+1)..(-1)]
       tryStmt.addSon(body)
-      tryStmt.addSon(n.sons[i])
+      tryStmt.addSon(deferPart)
       n.sons[i] = semTry(c, tryStmt)
       n.sons.setLen(i+1)
       return
@@ -1424,7 +1437,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # a statement list (s; e) has the type 'e':
     if result.kind == nkStmtList and result.len > 0:
       var lastStmt = lastSon(result)
-      if lastStmt.kind != nkNilLit and not ImplicitlyDiscardable(lastStmt):
+      if lastStmt.kind != nkNilLit and not implicitlyDiscardable(lastStmt):
         result.typ = lastStmt.typ
         #localError(lastStmt.info, errGenerated,
         #  "Last expression must be explicitly returned if it " &
