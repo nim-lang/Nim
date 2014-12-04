@@ -60,7 +60,6 @@ type
     seenIndexTerms: Table[string, int] ## \
     ## Keeps count of same text index terms to generate different identifiers
     ## for hyperlinks. See renderIndexTerm proc for details.
-    smileyFrmt: string   ## How to massage the smiley filename.
   
   PDoc = var TRstGenerator ## Alias to type less.
 
@@ -81,8 +80,7 @@ proc initRstGenerator*(g: var TRstGenerator, target: TOutputTarget,
                        config: StringTableRef, filename: string,
                        options: TRstParseOptions,
                        findFile: TFindFileHandler=nil,
-                       msgHandler: TMsgHandler=nil,
-                       smileyFrmt = "/images/smilies/$1.gif") =
+                       msgHandler: TMsgHandler=nil) =
   ## Initializes a ``TRstGenerator``.
   ##
   ## You need to call this before using a ``TRstGenerator`` with any other
@@ -142,7 +140,6 @@ proc initRstGenerator*(g: var TRstGenerator, target: TOutputTarget,
   let s = config["split.item.toc"]
   if s != "": g.splitAfter = parseInt(s)
   for i in low(g.meta)..high(g.meta): g.meta[i] = ""
-  g.smileyFrmt = smileyFrmt
 
 proc writeIndexFile*(g: var TRstGenerator, outfile: string) =
   ## Writes the current index buffer to the specified output file.
@@ -778,7 +775,7 @@ proc renderSmiley(d: PDoc, n: PRstNode, result: var string) =
   dispA(d.target, result,
     """<img src="$1" width="15" 
         height="17" hspace="2" vspace="2" class="smiley" />""",
-    "\\includegraphics{$1}", [d.smileyFrmt % n.text])
+    "\\includegraphics{$1}", [d.config["doc.smiley_format"] % n.text])
   
 proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
   ## Parses useful fields which can appear before a code block.
@@ -1204,6 +1201,7 @@ $content
 """)
   setConfigVar("doc.body_no_toc", "$moduledesc $content")
   setConfigVar("doc.file", "$content")
+  setConfigVar("doc.smiley_format", "/images/smilies/$1.gif")
 
 # ---------- forum ---------------------------------------------------------
 
