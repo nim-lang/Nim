@@ -6743,13 +6743,13 @@ const
   EXCEPTION_READ_FAULT* = 0   # Access violation was caused by a read
   EXCEPTION_WRITE_FAULT* = 1  # Access violation was caused by a write
 
-when defined(cpuia64):
+when hostCPU == "ia64":
   const
     EXCEPTION_EXECUTE_FAULT* = 2 # Access violation was caused by an instruction fetch
 else:
   const
     EXCEPTION_EXECUTE_FAULT* = 8
-when defined(cpupowerpc32):
+when hostCPU == "powerpc":
   # ppc
   const
     CONTEXT_CONTROL* = 1
@@ -6758,7 +6758,7 @@ when defined(cpupowerpc32):
     CONTEXT_DEBUG_REGISTERS* = 8
     CONTEXT_FULL* = CONTEXT_CONTROL or CONTEXT_FLOATING_POINT or CONTEXT_INTEGER
     CONTEXT_DEBUGGER* = CONTEXT_FULL
-when defined(cpui386):
+when hostCPU == "i386":
   # x86
   # The doc refered me to winnt.h, so I had to look...
   const
@@ -6776,7 +6776,7 @@ when defined(cpui386):
         CONTEXT_DEBUG_REGISTERS or CONTEXT_EXTENDED_REGISTERS # our own invention
     FLAG_TRACE_BIT* = 0x00000100
     CONTEXT_DEBUGGER* = CONTEXT_FULL or CONTEXT_FLOATING_POINT
-when defined(cpux86_64):
+when hostCPU == "amd64":
   const
     INITIAL_MXCSR* = 0x00001F80 # initial MXCSR value
     INITIAL_FPCSR* = 0x0000027F # initial FPCSR value
@@ -7778,7 +7778,7 @@ elif defined(x86_64):
       LastExceptionToRip*: DWORD64
       LastExceptionFromRip*: DWORD64
 
-elif defined(powerpc32):
+elif hostCPU == "powerpc":
   # ppc
   # Floating point registers returned when CONTEXT_FLOATING_POINT is set
   # Integer registers returned when CONTEXT_INTEGER is set.
