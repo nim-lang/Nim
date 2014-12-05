@@ -133,9 +133,6 @@ proc commonType*(x, y: PType): PType =
         result = newType(k, r.owner)
         result.addSonSkipIntLit(r)
 
-proc isTopLevel(c: PContext): bool {.inline.} = 
-  result = c.currentScope.depthLevel <= 2
-
 proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym = 
   result = newSym(kind, considerQuotedIdent(n), getCurrOwner(), n.info)
 

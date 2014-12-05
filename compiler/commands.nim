@@ -226,6 +226,7 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
   of "tlsemulation": result = contains(gGlobalOptions, optTlsEmulation)
   of "implicitstatic": result = contains(gOptions, optImplicitStatic)
   of "patterns": result = contains(gOptions, optPatterns)
+  of "experimental": result = gExperimentalMode
   else: invalidCmdLineOption(passCmd1, switch, info)
   
 proc processPath(path: string, notRelativeToProj = false): string =
@@ -568,6 +569,9 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     of "none": idents.firstCharIsCS = false
     else: localError(info, errGenerated,
       "'partial' or 'none' expected, but found " & arg)
+  of "experimental":
+    expectNoArg(switch, arg, pass, info)
+    gExperimentalMode = true
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(switch, arg)
     else: invalidCmdLineOption(pass, switch, info)

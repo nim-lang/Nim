@@ -29,6 +29,8 @@ News
   - The "symmetric set difference" operator (``-+-``) never worked and has been
     removed.
   - ``defer`` is a keyword now.
+  - The ``using`` language feature now needs to be activated via the new
+    ``{.experimental.}`` pragma that enables experimental language features.
 
   Language Additions
   ------------------
@@ -39,6 +41,9 @@ News
   - ``deepCopy`` has been added to the language.
   - The builtin ``procCall`` can be used to get ``super``-like functionality
     for multi methods.
+  - There is a new pragma ``{.experimental.}`` that enables experimental
+    language features per module, or you can enable this features on a global
+    level with the ``--experimental`` command line option.
 
 
   Compiler Additions

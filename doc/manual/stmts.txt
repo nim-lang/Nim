@@ -488,7 +488,8 @@ Instead of:
 Using statement
 ---------------
 
-**Warning**: The ``using`` statement is highly experimental!
+**Warning**: The ``using`` statement is highly experimental and has to be
+explicitly enabled with the `experimental`:idx: pragma or command line option!
 
 The using statement provides syntactic convenience for procs that
 heavily use a single contextual parameter. When applied to a variable or a

@@ -115,6 +115,7 @@ var
                               # the tracked source X, saved by the CAAS client.
   gDirtyOriginalIdx* = 0'i32  # the original source file of the dirtified buffer.
   gNoNimblePath* = false
+  gExperimentalMode*: bool
 
 proc importantComments*(): bool {.inline.} = gCmd in {cmdDoc, cmdIdeTools}
 proc usesNativeGC*(): bool {.inline.} = gSelectedGC >= gcRefc

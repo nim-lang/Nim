@@ -1433,6 +1433,8 @@ proc newAnonSym(kind: TSymKind, info: TLineInfo,
 
 proc semUsing(c: PContext, n: PNode): PNode =
   result = newNodeI(nkEmpty, n.info)
+  if not experimentalMode(c):
+    localError(n.info, "use the {.experimental.} pragma to enable 'using'")
   for e in n.sons:
     let usedSym = semExpr(c, e)
     if usedSym.kind == nkSym:

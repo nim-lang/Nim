@@ -91,4 +91,5 @@ Advanced options:
   --verbosity:0|1|2|3       set Nim's verbosity level (1 is default)
   --cs:none|partial         set case sensitivity level (default: none);
                             do not use! this setting affects the whole language
+  --experimental            enable experimental language features
   -v, --version             show detailed version information

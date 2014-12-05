@@ -495,3 +495,21 @@ identifier that can be used to enable or disable it:
 This is often better than disabling all warnings at once.
 
 
+experimental pragma
+-------------------
+
+The ``experimental`` pragma enables experimental language features. Depending
+on the concrete feature this means that the feature is either considered
+too unstable for an otherwise stable release or that the future of the feature
+is uncertain (it may be removed any time).
+
+Example:
+
+.. code-block:: nim
+  {.experimental.}
+
+  proc useUsing(dest: var string) =
+    using dest
+    add "foo"
+    add "bar"
+

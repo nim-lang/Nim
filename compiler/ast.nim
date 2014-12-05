@@ -294,6 +294,7 @@ const
                        # require RC ops
   sfCompileToCpp* = sfInfixCall       # compile the module as C++ code
   sfCompileToObjc* = sfNamedParamCall # compile the module as Objective-C code
+  sfExperimental* = sfOverriden       # module uses the .experimental switch
 
 const
   # getting ready for the future expr/stmt merge

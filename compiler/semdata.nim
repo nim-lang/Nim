@@ -312,3 +312,8 @@ proc checkSonsLen*(n: PNode, length: int) =
 proc checkMinSonsLen*(n: PNode, length: int) = 
   if sonsLen(n) < length: illFormedAst(n)
 
+proc isTopLevel*(c: PContext): bool {.inline.} = 
+  result = c.currentScope.depthLevel <= 2
+
+proc experimentalMode*(c: PContext): bool {.inline.} =
+  result = gExperimentalMode or sfExperimental in c.module.flags

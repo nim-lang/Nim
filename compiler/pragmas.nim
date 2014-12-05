@@ -45,7 +45,7 @@ const
     wBreakpoint, wWatchPoint, wPassl, wPassc, wDeadCodeElim, wDeprecated,
     wFloatchecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
     wLinearScanEnd, wPatterns, wEffects, wNoForward, wComputedGoto,
-    wInjectStmt, wDeprecated}
+    wInjectStmt, wDeprecated, wExperimental}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wNosideeffect, wSideeffect, wNoreturn, wDynlib, wHeader, 
     wDeprecated, wExtern, wThread, wImportCpp, wImportObjC, wAsmNoStackFrame,
@@ -850,6 +850,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
             localError(it.info, errExprExpected)
           else: 
             it.sons[1] = c.semExpr(c, it.sons[1])
+        of wExperimental:
+          noVal(it)
+          if isTopLevel(c):
+            c.module.flags.incl sfExperimental
+          else:
+            localError(it.info, "'experimental' pragma only valid as toplevel statement") 
         else: invalidPragma(it)
       else: invalidPragma(it)
   else: processNote(c, it)
