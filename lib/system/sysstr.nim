@@ -251,7 +251,7 @@ proc nimIntToStr(x: int): string {.compilerRtl.} =
     swap(result[j], result[i-j-1])
 
 proc nimFloatToStr(f: float): string {.compilerproc.} =
-  var buf: array [0..64, char]
+  var buf: array[0..64, char]
   var n: int = c_sprintf(buf, "%.16g", f)
   var hasDot = false
   for i in 0..n-1:
@@ -292,7 +292,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   var
     i = start
     sign = 1.0
-    t: array[128, char]
+    t: array[500, char] # flaviu says: 325 is the longest reasonable literal
     ti = 0
     hasdigits = false
 
