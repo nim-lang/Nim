@@ -5,24 +5,21 @@ This section lists Nim's standard syntax. How the parser handles
 the indentation is already described in the `Lexical Analysis`_ section.
 
 Nim allows user-definable operators.
-Binary operators have 10 different levels of precedence.
+Binary operators have 11 different levels of precedence.
 
-Relevant character
-------------------
-
-An operator symbol's *relevant character* is its first
-character unless the first character is ``\`` and its length is greater than 1
-then it is the second character.
-
-This rule allows to escape operator symbols with ``\`` and keeps the operator's
-precedence and associativity; this is useful for meta programming.
 
 
 Associativity
 -------------
 
-Binary operators whose relevant character is ``^`` are right-associative, all
-other binary operators are left-associative.
+Binary operators whose first character is ``^`` or its last character
+is ``>`` are right-associative, all other binary operators are left-associative.
+
+Exception: The single "greater than" ``>`` operator is left-associative too.
+
+Operators ending in ``>`` but longer than a single character are 
+called `arrow like`:idx:.
+
 
 Precedence
 ----------
@@ -30,7 +27,7 @@ Precedence
 Unary operators always bind stronger than any binary 
 operator: ``$a + b`` is ``($a) + b`` and not ``$(a + b)``.
 
-If an unary operator's relevant character is ``@`` it is a `sigil-like`:idx: 
+If an unary operator's first character is ``@`` it is a `sigil-like`:idx: 
 operator which binds stronger than a ``primarySuffix``: ``@x.abc`` is parsed
 as ``(@x).abc`` whereas ``$x.abc`` is parsed as ``$(x.abc)``.
 
@@ -38,25 +35,26 @@ as ``(@x).abc`` whereas ``$x.abc`` is parsed as ``$(x.abc)``.
 For binary operators that are not keywords the precedence is determined by the
 following rules:
 
-If the operator ends with ``=`` and its relevant character is none of 
+If the operator ends with ``=`` and its first character is none of 
 ``<``, ``>``, ``!``, ``=``, ``~``, ``?``, it is an *assignment operator* which
 has the lowest precedence.
 
-Otherwise precedence is determined by the relevant character.
+Otherwise precedence is determined by the first character.
 
 ================  ===============================================  ==================  ===============
-Precedence level    Operators                                      Relevant character  Terminal symbol
+Precedence level    Operators                                      First character     Terminal symbol
 ================  ===============================================  ==================  ===============
-  9 (highest)                                                      ``$  ^``            OP9
-  8               ``*    /    div   mod   shl  shr  %``            ``* % \  /``        OP8
-  7               ``+    -``                                       ``+  ~  |``         OP7
-  6               ``&``                                            ``&``               OP6
-  5               ``..``                                           ``.``               OP5
-  4               ``==  <= < >= > !=  in notin is isnot not of``   ``= <  > !``        OP4
-  3               ``and``                                                              OP3
-  2               ``or xor``                                                           OP2
-  1                                                                ``@  : ?``          OP1
-  0 (lowest)      *assignment operator* (like ``+=``, ``*=``)                          OP0
+ 10 (highest)                                                      ``$  ^``            OP10
+  9               ``*    /    div   mod   shl  shr  %``            ``* % \  /``        OP9
+  8               ``+    -``                                       ``+  ~  |``         OP8
+  7               ``&``                                            ``&``               OP7
+  6               ``..``                                           ``.``               OP6
+  5               ``==  <= < >= > !=  in notin is isnot not of``   ``= <  > !``        OP5
+  4               ``and``                                                              OP4
+  3               ``or xor``                                                           OP3
+  2                                                                ``@  : ?``          OP2
+  1               *assignment operator* (like ``+=``, ``*=``)                          OP1
+  0 (lowest)      *arrow like operator* (like ``->``, ``=>``)                          OP0
 ================  ===============================================  ==================  ===============
 
 
