@@ -188,18 +188,13 @@ proc parseTypeDesc(p: var TParser): PNode
 proc parseDoBlocks(p: var TParser, call: PNode)
 proc parseParamList(p: var TParser, retColon = true): PNode
 
-proc relevantOprChar(ident: PIdent): char {.inline.} =
-  result = ident.s[0]
-  var L = ident.s.len
-  if result == '\\' and L > 1:
-    result = ident.s[1]
-
 proc isSigilLike(tok: TToken): bool {.inline.} =
-  result = tok.tokType == tkOpr and relevantOprChar(tok.ident) == '@'
+  result = tok.tokType == tkOpr and tok.ident.s[0] == '@'
 
-proc isLeftAssociative(tok: TToken): bool {.inline.} =
-  ## Determines whether the token is left assocative.
-  result = tok.tokType != tkOpr or relevantOprChar(tok.ident) != '^'
+proc isRightAssociative(tok: TToken): bool {.inline.} =
+  ## Determines whether the token is right assocative.
+  result = tok.tokType == tkOpr and (tok.ident.s[0] == '^' or
+    (let L = tok.ident.s.len; L > 1 and tok.ident.s[L-1] == '>'))
 
 proc getPrecedence(tok: TToken, strongSpaces: bool): int =
   ## Calculates the precedence of the given token.
@@ -209,7 +204,10 @@ proc getPrecedence(tok: TToken, strongSpaces: bool): int =
   case tok.tokType
   of tkOpr:
     let L = tok.ident.s.len
-    let relevantChar = relevantOprChar(tok.ident)
+    let relevantChar = tok.ident.s[0]
+
+    # arrow like?
+    if L > 1 and tok.ident.s[L-1] == '>': return considerStrongSpaces(1)
     
     template considerAsgn(value: expr) =
       result = if tok.ident.s[L-1] == '=': 1 else: considerStrongSpaces(value)
@@ -269,17 +267,18 @@ proc checkBinary(p: TParser) {.inline.} =
 #| 
 #| optInd = COMMENT?
 #| optPar = (IND{>} | IND{=})?
-#| 
-#| simpleExpr = assignExpr (OP0 optInd assignExpr)*
-#| assignExpr = orExpr (OP1 optInd orExpr)*
-#| orExpr = andExpr (OP2 optInd andExpr)*
-#| andExpr = cmpExpr (OP3 optInd cmpExpr)*
-#| cmpExpr = sliceExpr (OP4 optInd sliceExpr)*
-#| sliceExpr = ampExpr (OP5 optInd ampExpr)*
-#| ampExpr = plusExpr (OP6 optInd plusExpr)*
-#| plusExpr = mulExpr (OP7 optInd mulExpr)*
-#| mulExpr = dollarExpr (OP8 optInd dollarExpr)*
-#| dollarExpr = primary (OP9 optInd primary)*
+#|
+#| simpleExpr = arrowExpr (OP0 optInd arrowExpr)*
+#| arrowExpr = assignExpr (OP1 optInd assignExpr)*
+#| assignExpr = orExpr (OP2 optInd orExpr)*
+#| orExpr = andExpr (OP3 optInd andExpr)*
+#| andExpr = cmpExpr (OP4 optInd cmpExpr)*
+#| cmpExpr = sliceExpr (OP5 optInd sliceExpr)*
+#| sliceExpr = ampExpr (OP6 optInd ampExpr)*
+#| ampExpr = plusExpr (OP7 optInd plusExpr)*
+#| plusExpr = mulExpr (OP8 optInd mulExpr)*
+#| mulExpr = dollarExpr (OP9 optInd dollarExpr)*
+#| dollarExpr = primary (OP10 optInd primary)*
 
 proc colcom(p: var TParser, n: PNode) =
   eat(p, tkColon)
@@ -734,7 +733,7 @@ proc parseOperators(p: var TParser, headNode: PNode,
   # the operator itself must not start on a new line:
   while opPrec >= limit and p.tok.indent < 0 and not isUnary(p):
     checkBinary(p)
-    var leftAssoc = ord(isLeftAssociative(p.tok))
+    var leftAssoc = 1-ord(isRightAssociative(p.tok))
     var a = newNodeP(nkInfix, p)
     var opNode = newIdentNodeP(p.tok.ident, p) # skip operator:
     getTok(p)
