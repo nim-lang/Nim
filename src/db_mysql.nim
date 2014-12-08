@@ -220,13 +220,12 @@ proc open*(connection, user, password, database: string): TDbConn {.
   if result == nil: dbError("could not open database connection") 
   let
     colonPos = connection.find(':')
-    host =        if colonPos < 0: connection
-                  else:            substr(connection, 0, colonPos-1)
+    host = if colonPos < 0: connection
+           else: substr(connection, 0, colonPos-1)
     port: int32 = if colonPos < 0: 0'i32
-                  else:            substr(connection, colonPos+1).parseInt.int32
+                  else: substr(connection, colonPos+1).parseInt.int32
   if mysql.realConnect(result, host, user, password, database, 
                        port, nil, 0) == nil:
     var errmsg = $mysql.error(result)
     db_mysql.close(result)
     dbError(errmsg)
-
