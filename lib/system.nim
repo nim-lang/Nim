@@ -1020,16 +1020,16 @@ const
     ## is the endianness of the target CPU. This is a valuable piece of
     ## information for low-level code only. This works thanks to compiler
     ## magic.
-    
-  hostOS* {.magic: "HostOS"}: string = ""
+
+  hostOS* {.magic: "HostOS".}: string = ""
     ## a string that describes the host operating system. Possible values:
     ## "windows", "macosx", "linux", "netbsd", "freebsd", "openbsd", "solaris",
     ## "aix", "standalone".
-        
-  hostCPU* {.magic: "HostCPU"}: string = ""
+
+  hostCPU* {.magic: "HostCPU".}: string = ""
     ## a string that describes the host CPU. Possible values:
-    ## "i386", "alpha", "powerpc", "sparc", "amd64", "mips", "arm".
-  
+    ## "i386", "alpha", "powerpc", "powerpc64", "sparc", "amd64", "mips", "arm".
+
   seqShallowFlag = low(int)
 
 proc compileOption*(option: string): bool {.
@@ -2120,7 +2120,7 @@ elif hostOS != "standalone":
       inc(i)
   {.pop.}
 
-proc echo*(x: varargs[string, `$`]) {.magic: "Echo", tags: [WriteIOEffect], benign.}
+proc echo*(x: varargs[expr, `$`]) {.magic: "Echo", tags: [WriteIOEffect], benign.}
   ## Writes and flushes the parameters to the standard output.
   ##
   ## Special built-in that takes a variable number of arguments. Each argument
@@ -2135,7 +2135,7 @@ proc echo*(x: varargs[string, `$`]) {.magic: "Echo", tags: [WriteIOEffect], beni
   ## <manual.html#nosideeffect-pragma>`_ you can use `debugEcho <#debugEcho>`_
   ## instead.
 
-proc debugEcho*(x: varargs[string, `$`]) {.magic: "Echo", noSideEffect, 
+proc debugEcho*(x: varargs[expr, `$`]) {.magic: "Echo", noSideEffect, 
                                            tags: [], raises: [].}
   ## Same as `echo <#echo>`_, but as a special semantic rule, ``debugEcho``
   ## pretends to be free of side effects, so that it can be used for debugging
