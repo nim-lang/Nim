@@ -3,7 +3,10 @@ version 0.10
 
   Repetition renders the ridiculous reasonable.
 
-- introduce ``--experimental`` switch
+- document 'converter'
+- document the tables module better
+
+
 - c2nim depends on the compiler
 - make nimble part of the distribution
 - split idetools into separate tool

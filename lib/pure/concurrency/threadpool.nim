@@ -65,7 +65,9 @@ proc barrierEnter(b: ptr Barrier) {.compilerProc, inline.} =
 proc barrierLeave(b: ptr Barrier) {.compilerProc, inline.} =
   atomicInc b.left
   when not defined(x86): fence()
-  if b.interest and b.left == b.entered: signal(b.cv)
+  # We may not have seen the final value of b.entered yet,
+  # so we need to check for >= instead of ==.
+  if b.interest and b.left >= b.entered: signal(b.cv)
 
 proc openBarrier(b: ptr Barrier) {.compilerProc, inline.} =
   b.entered = 0
