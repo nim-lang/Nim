@@ -18,22 +18,6 @@ shared memory heap is also provided for the increased efficiency that results
 from that model.
 
 
-Nim looks like this:
-====================
-
-.. code-block:: nim
-  # compute average line length
-  var count = 0
-  var sum = 0
-   
-  for line in stdin.lines:
-    count += 1
-    sum += line.len
-   
-  echo "Average line length: ",
-    if count > 0: sum / count else: 0
-
-
 Nim is efficient
 ================
 

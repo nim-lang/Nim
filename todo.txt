@@ -1,8 +1,6 @@
 version 0.10
 ============
 
-  Repetition renders the ridiculous reasonable.
-
 - document 'converter'
 - document the tables module better
 

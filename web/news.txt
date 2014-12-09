@@ -78,8 +78,20 @@ News
     exceptions (overflow, division by zero, etc.).
 
 
-2014-10-19 Nimrod version 0.9.6 released
-========================================
+2014-12-09 New website design!
+==============================
+
+A brand new website including an improved forum is now live. 
+All thanks go to Philip Witte and 
+Dominik Picheta, Philip Witte for the design of the website (together with
+the logo) as well as the HTML and CSS code for his template, and Dominik Picheta
+for integrating Philip's design with Nim's forum. We're sure you will
+agree that Philip's design is beautiful.
+
+
+
+2014-10-19 Version 0.9.6 released
+=================================
 
 **Note: 0.9.6 is the last release of Nimrod. The language is being renamed to
 Nim. Nim slightly breaks compatibility.**

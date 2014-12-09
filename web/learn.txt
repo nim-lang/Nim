@@ -1,0 +1,44 @@
+Nim's Learning Resources
+========================
+
+.. container:: standout
+
+  Tutorials
+  ---------
+
+  - | `Tutorial (part I) <tut1.html>`_
+    | Learn the basics of Nim's types, variables, procedures, control flow, etc...
+
+  - | `Tutorial (part II) <tut2.html>`_
+    | Learn Nim's more advanced features such as OOP, generics, macros, etc...
+
+
+.. container:: standout
+
+  Examples
+  --------
+
+  - | `Nim by Example <http://nimrod-by-example.github.io/>`_
+    | Nim by Example is an excellent starting place for beginners.
+
+  - | `Nim on Rosetta Code <http://rosettacode.org/wiki/Category:Nimrod>`_
+    | Many different Nim code examples comparible to other langues for reference.
+
+  - | `Nim for C/C++ Programmers <https://github.com/Araq/Nimrod/wiki/Nimrod-for-C-programmers>`_
+    | A useful cheat-sheet for those most familiar with C/C++ languages.
+
+
+.. container:: standout
+
+  Articles
+  --------
+
+  - `Dr Dobbs Nimrod Publication <http://www.drdobbs.com/open-source/nimrod-a-new-systems-programming-languag/240165321>`_
+  - `Bootstrapping Nim <http://goran.krampe.se/2014/10/15/bootstrapping-nim/>`_
+
+
+Documentation
+-------------
+
+More examples of Nim code can be found in the `Nim Language Documenation <manual.html>`_.
+

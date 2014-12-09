@@ -1,27 +1,24 @@
 #! stdtmpl | standard
 #proc generateHTMLPage(c: var TConfigData, currentTab, content, rss: string): string = 
 #  result = ""
-<!doctype html>
+<!DOCTYPE html>
 <html>
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <title>$c.projectTitle</title>
+    <link rel="stylesheet" type="text/css" href="assets/style.css" />
 
-<head>
-  <title>$c.projectTitle</title>
-  <meta http-equiv="content-type" content="text/html; charset=utf-8" />
-  <link rel="stylesheet" type="text/css" href="assets/style.css" />
+    <link rel="shortcut icon" href="http://reign-studios.net/philipwitte/nim/favicon.ico">
   #if len(rss) > 0:
-  <link href="$rss" title="Recent changes" type="application/atom+xml" rel="alternate">
-  #end fi
-</head>
-
-<body>
-  <div id="site">
-    <!-- site_head -->
-    <div id="site_head">
-      <div id="logo"></div>
-    </div>
-
-    <!-- site_neck -->
-    <div id="site_neck">
+    <link href="$rss" title="Recent changes" type="application/atom+xml" rel="alternate">
+  #end if
+  </head>
+  <body>
+    <header id="head">
+      <div class="page-layout tall">
+        <div id="head-logo"></div>
+        <a id="head-logo-link" href="http://reign-studios.net/philipwitte/nim/home.htm"></a>
+        <nav id="head-links">
       #for i in 0.. c.tabs.len-1:
       #  var name = c.tabs[i].key
       #  var t = c.tabs[i].val
@@ -32,48 +29,124 @@
         #end if
         href="${t}.html" title = "$c.projectName - $name">$name</a>
       #end for
-    </div>
+        </nav>
+      </div>
+    </header>
 
-    <!-- site_body -->
-    <div id="site_body">
+#  if currentTab == "index":
+    <section id="neck" class="home">
+#  else:
+    <section id="neck">
+#  end
+      <div class="page-layout tall">
+        <div id="glow-arrow"></div>
 
-      <!-- sidebar_wrapper -->
-      <div id="sidebar_wrap">
-        <div id="sidebar">
-          <div id="sidebar_head"></div>
-          <h2>Latest News</h2>
+#  if currentTab == "index":
+        <div id="slideshow">
+          <!-- slides -->
+          <div id="slide0" class="">
+            <div>
+              <h2>nim looks like this..</h2>
+<pre><span class="cmt"># compute average line length</span>
+<span class="kwd">var</span>
+<span class="tab">  </span>sum = <span class="val">0</span>
+<span class="tab end">  </span>count = <span class="val">0</span>
+
+<span class="kwd">for</span> line <span class="kwd">in</span> stdin.lines:
+<span class="tab">  </span>sum += line.len
+<span class="tab end">  </span>count += <span class="val">1</span>
+
+echo(<span class="val">"Average line length: "</span>,
+  <span class="kwd">if</span> count: sum / count <span class="kwd">else</span>: <span class="val">0</span>)
+</pre>
+            </div>
+            <div>
+               <h2>..and this...</h2>
+<pre><span class="cmt"># create and greet someone</span>
+<span class="kwd">type</span> <span class="def">Person</span> = <span class="typ">object</span>
+<span class="tab">  </span>name: <span class="typ">string</span>
+<span class="tab end">  </span>age: <span class="typ">int</span>
+
+<span class="kwd">proc</span> <span class="def">greet</span>(p:<span class="typ">Person</span>) =
+<span class="tab">  </span>echo <span class="val">"Hi, I'm "</span>, p.name, <span class="val">"."</span>
+<span class="tab end">  </span>echo <span class="val">"I am "</span>, p.age, <span class="val">" years old."</span>
+
+<span class="kwd">var</span> p = <span class="typ">Person</span>(name:<span class="val">"Jon"</span>, age:<span class="val">18</span>)
+p.greet() <span class="cmt"># or greet(p)</span>
+</pre>
+             </div>
+           </div>  <!-- slide0 -->
+           <div id="slide1" class="active">
+        #let quoteIdx = if c.quotations.hasKey(currentTab): currentTab else: "index"
+             <div class="quote-image"></div>
+               <p class="quote">
+                 ${c.quotations[quoteIdx].quote}
+                 <br>
+                 <b style="float: right">-- ${c.quotations[quoteIdx].author}</b>
+               </p>
+               <br/>
+             </div>
+           </div>
+        <div id="slideshow-nav">
+          <div id="slideControl0" onclick="slideshow_click(0)"></div>
+          <div id="slideControl1" onclick="slideshow_click(1)" class="active"></div>
+        </div>
+#  end
+        <aside id="sidebar">
+
+#  if len(c.links) > 0:
+          <h3>More Links</h3>
+          <div id="sidebar-links">
+#         for i in 0..c.links.len-1:
+          <a href="${c.links[i].val}" id="${c.links[i].id}">${c.links[i].key}</a>
+#         end for
+          </div>
+#  end if
+					<h3 class="blue">Latest News</h3>
+					<div id="sidebar-news">
 #  if len(c.ticker) > 0:
           $c.ticker
 #  end if
+					</div>
+				</aside>
+			</div>
+		</section>
 
-#  if len(c.links) > 0:
-          <h2>More Links</h2>
-#         for i in 0..c.links.len-1:
-          <a class="link" href="${c.links[i].val}" id="${c.links[i].id}">${c.links[i].key}</a>
-#         end for
-#  end if
-        </div>
-      </div>
-      <!-- page -->
-      <div id="page">
-        #if c.quotations.hasKey(currentTab):
-          <div class="quote-image"></div>
-          <p class="quote">
-            ${c.quotations[currentTab].quote}
-            <br>
-            <b style="float: right">-- ${c.quotations[currentTab].author}</b>
-          </p>
-          <br/>
-        #end if
-      
-        $content
-      </div>
-    </div>
-    <!-- site_foot -->
-    <div id="site_foot">
-       <div id="legal">Copyright &copy; 2014 - Andreas Rumpf &amp; Contributors - All rights reserved - <a href="http://reign-studios.com/philipwitte/">Design by Philip Witte</a></div>
-    </div>
-  </div>
+		<section id="body">
+			<div id="body-border"></div>
+			<div id="glow-line"></div>
+			<div class="page-layout">
+				<article id="content" class="page">
+				$content
+				</article>
+			</div>
+		</section>
+
+		<!--- #foot --->
+		<footer id="foot" class="home">
+			<div class="page-layout tall">
+				<div id="foot-links">
+					<div>
+						<h4>Documentation</h4>
+						<a href="documentation.html">Stable Documentation</a>
+					<!--	<a href="">Development Documentation</a> -->
+						<a href="https://github.com/Araq/Nimrod">Github Issues &amp; Requests</a>
+					</div>
+					<div>
+						<h4>Community</h4>
+						<a href="http://forum.nim-lang.org">User Forum</a>
+            <a href="http://webchat.freenode.net/?channels=nimlang">Online IRC</a>
+            <a href="http://irclogs.nim-lang.org/">IRC Logs</a>
+					</div>
+				</div>
+				<div id="foot-legal">
+					<h4>Written in Nim - Powered by <a href="#">Jester</a></h4>
+					Web Design by <a href="#">Philip Witte</a> &amp; <a href="#">Dominik Picheta</a><br>
+					Copyright © 2014 - <a href="#">Andreas Rumpf</a> &amp; <a href="#">Contributors</a>
+				</div>
+			</div>
+		</footer>
+
   <script>
     (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
     (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
@@ -83,6 +156,40 @@
     ga('create', 'UA-48159761-1', 'nim-lang.org');
     ga('send', 'pageview');
 
+var timer;
+var prevIndex = 0;
+
+function setSlideShow(index, short) {
+  if (index > 1) index = 0;
+  for (var i = 0; i < 10; ++i) {
+    var x = document.getElementById("slide"+i);
+    if (!x) break;
+    x.className = "";
+    document.getElementById("slideControl"+i).className = "";
+  }
+  document.getElementById("slide"+index).className = "active";
+  document.getElementById("slideControl"+index).className = "active";
+  prevIndex = index;
+  startTimer(short ? 8000 : 32000);
+}
+
+function nextSlide() { setSlideShow(prevIndex + 1, true); }
+function startTimer(t) { timer = setTimeout(nextSlide, t); }
+
+function slideshow_enter() { clearTimeout(timer); }
+function slideshow_exit () { startTimer(16000); }
+
+function slideshow_click(index) {
+  clearTimeout(timer);
+  setSlideShow(index, false);
+}
+
+window.onload = function() {
+  var slideshow = document.getElementById("slideshow");
+  slideshow.onmouseenter = slideshow_enter;
+  slideshow.onmouseleave = slideshow_exit;
+  startTimer(8000);
+};
   </script>
 </body>
 </html>
