@@ -954,7 +954,9 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
         r.address = s.loc.r
         r.res = toRope("0")
       else:
-        internalError(n.info, "genAddr: 4")
+        # 'var openArray' for instance produces an 'addr' but this is harmless:
+        gen(p, n.sons[0], r)
+        #internalError(n.info, "genAddr: 4 " & renderTree(n))
     else: internalError(n.info, "genAddr: 2")
   of nkCheckedFieldExpr:
     genCheckedFieldAddr(p, n, r)

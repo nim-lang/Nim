@@ -400,6 +400,7 @@ proc main(c: var TConfigData) =
   for i in 0..c.tabs.len-1:
     var file = c.tabs[i].val
     let rss = if file in ["news", "index"]: extractFilename(rssUrl) else: ""
+    if '.' in file: continue
     exec(cmd % [c.nimArgs, file])
     var temp = "web" / changeFileExt(file, "temp")
     var content: string

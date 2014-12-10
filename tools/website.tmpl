@@ -24,10 +24,16 @@
       #  var t = c.tabs[i].val
         #if currentTab == t:
           <a class="active" 
+        #elif t == "community" or t == "news":
+        #  continue
         #else:
           <a
         #end if
-        href="${t}.html" title = "$c.projectName - $name">$name</a>
+        #if t.contains('.'):
+          href="${t}" title = "$c.projectName - $name">$name</a>
+        #else:
+          href="${t}.html" title = "$c.projectName - $name">$name</a>
+        #end if
       #end for
         </nav>
       </div>
