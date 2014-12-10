@@ -1,5 +1,5 @@
-Nim's Learning Resources
-========================
+Learning Nim
+============
 
 .. container:: standout
 
@@ -22,7 +22,7 @@ Nim's Learning Resources
     | Nim by Example is an excellent starting place for beginners.
 
   - | `Nim on Rosetta Code <http://rosettacode.org/wiki/Category:Nimrod>`_
-    | Many different Nim code examples comparible to other langues for reference.
+    | Many different Nim code examples comparable to other languages for reference.
 
   - | `Nim for C/C++ Programmers <https://github.com/Araq/Nimrod/wiki/Nimrod-for-C-programmers>`_
     | A useful cheat-sheet for those most familiar with C/C++ languages.
@@ -40,5 +40,5 @@ Nim's Learning Resources
 Documentation
 -------------
 
-More examples of Nim code can be found in the `Nim Language Documenation <manual.html>`_.
+More examples of Nim code can be found in the `Nim Language Documentation <manual.html>`_.
 
