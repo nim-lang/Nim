@@ -389,7 +389,7 @@ proc buildJS(destPath: string) =
   exec("nim js -d:release --out:$1 web/babelpkglist.nim" %
       [destPath / "babelpkglist.js"])
 
-proc main(c: var TConfigData) =
+proc buildWebsite(c: var TConfigData) =
   const
     cmd = "nim rst2html --compileonly $1 -o:web/$2.temp web/$2.txt"
   if c.ticker.len > 0:
@@ -419,13 +419,16 @@ proc main(c: var TConfigData) =
       quit("[Error] cannot write file: " & outfile)
     removeFile(temp)
   copyDir("web/assets", "web/upload/assets")
-  buildJS("web/upload")
   buildNewsRss(c, "web/upload")
-  #buildAddDoc(c, "web/upload")
-  #buildDocSamples(c, "web/upload")
-  #buildDoc(c, "web/upload")
-  #buildDocSamples(c, "doc")
-  #buildDoc(c, "doc")
+
+proc main(c: var TConfigData) =
+  buildWebsite(c)
+  buildJS("web/upload")
+  buildAddDoc(c, "web/upload")
+  buildDocSamples(c, "web/upload")
+  buildDoc(c, "web/upload")
+  buildDocSamples(c, "doc")
+  buildDoc(c, "doc")
   #buildPdfDoc(c, "doc")
 
 var c: TConfigData
@@ -434,5 +437,6 @@ parseCmdLine(c)
 parseIniFile(c)
 when false:
   buildPdfDoc(c, "doc")
+  buildWebsite(c)
 else:
   main(c)
