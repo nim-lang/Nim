@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## This file implements the new evaluation engine for Nimrod code.
+## This file implements the new evaluation engine for Nim code.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
 const debugEchoCode = false
@@ -1151,7 +1151,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let ast = parseString(regs[rb].node.strVal, c.debug[pc].toFullPath,
                             c.debug[pc].line.int,
                             proc (info: TLineInfo; msg: TMsgKind; arg: string) =
-                              if error.isNil: error = formatMsg(info, msg, arg))
+                              if error.isNil and msg <= msgs.errMax:
+                                error = formatMsg(info, msg, arg))
       if not error.isNil:
         c.errorFlag = error
       elif sonsLen(ast) != 1:
@@ -1164,7 +1165,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let ast = parseString(regs[rb].node.strVal, c.debug[pc].toFullPath,
                             c.debug[pc].line.int,
                             proc (info: TLineInfo; msg: TMsgKind; arg: string) =
-                              if error.isNil: error = formatMsg(info, msg, arg))
+                              if error.isNil and msg <= msgs.errMax:
+                                error = formatMsg(info, msg, arg))
       if not error.isNil:
         c.errorFlag = error
       else:
