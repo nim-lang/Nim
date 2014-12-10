@@ -1026,7 +1026,10 @@ proc maybeAddResult(c: PContext, s: PSym, n: PNode) =
 
 proc semOverride(c: PContext, s: PSym, n: PNode) =
   case s.name.s.normalize
-  of "destroy": doDestructorStuff(c, s, n)
+  of "destroy":
+    doDestructorStuff(c, s, n)
+    if not experimentalMode(c):
+      localError n.info, "use the {.experimental.} pragma to enable destructors"
   of "deepcopy":
     if s.typ.len == 2 and
         s.typ.sons[1].skipTypes(abstractInst).kind in {tyRef, tyPtr} and

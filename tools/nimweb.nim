@@ -418,7 +418,7 @@ proc main(c: var TConfigData) =
       quit("[Error] cannot write file: " & outfile)
     removeFile(temp)
   copyDir("web/assets", "web/upload/assets")
-  #buildJS("web/upload")
+  buildJS("web/upload")
   buildNewsRss(c, "web/upload")
   #buildAddDoc(c, "web/upload")
   #buildDocSamples(c, "web/upload")

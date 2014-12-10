@@ -29,8 +29,11 @@ News
   - The "symmetric set difference" operator (``-+-``) never worked and has been
     removed.
   - ``defer`` is a keyword now.
+  - ``func`` is a keyword now.
   - The ``using`` language feature now needs to be activated via the new
     ``{.experimental.}`` pragma that enables experimental language features.
+  - Destructors are now officially *experimental*.
+
 
   Language Additions
   ------------------

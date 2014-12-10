@@ -22,6 +22,8 @@ myobj destroyed
 '''
 """
 
+{.experimental.}
+
 type
   TMyObj = object
     x, y: int
