@@ -4,6 +4,11 @@ version 0.10
 - document 'converter'
 - document the tables module better
 
+- The bitwise 'not' operator will be renamed to 'bnot' to
+  prevent 'not 4 == 5' from compiling. -> requires 'mixin' annotation for procs!
+- A named tuple will be compatible to a tuple with different names.
+- The 'do' notation might be trimmed so that its only purpose is to pass
+  multiple multi line constructs to a macro.
 
 - c2nim depends on the compiler
 - make nimble part of the distribution

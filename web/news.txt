@@ -33,6 +33,13 @@ News
   - The ``using`` language feature now needs to be activated via the new
     ``{.experimental.}`` pragma that enables experimental language features.
   - Destructors are now officially *experimental*.
+  - Standalone ``except`` and ``finally`` statements are deprecated now.
+    The standalone ``finally`` can be replaced with ``defer``,
+    standalone ``except`` requires an explicit ``try``.
+  - Operators ending in ``>`` are considered as "arrow like" and have their
+    own priority level and are right associative. This means that
+    the ``=>`` and ``->`` operators from the `future <future.html>`_ module
+    work better.
 
 
   Language Additions

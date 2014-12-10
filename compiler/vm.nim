@@ -1426,6 +1426,12 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
   inc(evalMacroCounter)
   if evalMacroCounter > 100:
     globalError(n.info, errTemplateInstantiationTooNested)
+
+  # immediate macros can bypass any type and arity checking so we check the
+  # arity here too:
+  if sym.typ.len > n.safeLen and sym.typ.len > 1:
+    globalError(n.info, "got $#, but expected $# argument(s)" % [$ <n.safeLen, $ <sym.typ.len])
+
   setupGlobalCtx(module)
   var c = globalCtx
 
@@ -1441,6 +1447,7 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
   # This is wrong for tests/reject/tind1.nim where the passed 'else' part
   # doesn't end up in the parameter:
   #InternalAssert tos.slots.len >= L
+
   # return value:
   tos.slots[0].kind = rkNode
   tos.slots[0].node = newNodeIT(nkEmpty, n.info, sym.typ.sons[0])
