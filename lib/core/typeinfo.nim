@@ -7,10 +7,11 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements an interface to Nim's runtime type information.
+## This module implements an interface to Nim's `runtime type information`:idx:
+## (`RTTI`:idx:).
 ## Note that even though ``TAny`` and its operations hide the nasty low level
 ## details from its clients, it remains inherently unsafe!
-## 
+##
 ## See the `marshal <marshal.html>`_ module for what this module allows you
 ## to do. 
 
