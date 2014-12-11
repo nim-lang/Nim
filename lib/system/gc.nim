@@ -292,6 +292,20 @@ proc initGC() =
     when useMarkForDebug or useBackupGc:
       init(gch.marked)
 
+var
+  localGcInitialized {.rtlThreadVar.}: bool
+
+proc setupForeignThreadGc*() =
+  ## call this if you registered a callback that will be run from a thread not
+  ## under your control. This has a cheap thread-local guard, so the GC for
+  ## this thread will only be initialized once per thread, no matter how often
+  ## it is called.
+  if not localGcInitialized:
+    localGcInitialized = true
+    var stackTop {.volatile.}: pointer
+    setStackBottom(addr(stackTop))
+    initGC()
+
 when useMarkForDebug or useBackupGc:
   type
     TGlobalMarkerProc = proc () {.nimcall, benign.}
