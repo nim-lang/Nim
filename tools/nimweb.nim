@@ -436,7 +436,7 @@ initConfigData(c)
 parseCmdLine(c)
 parseIniFile(c)
 when false:
-  buildPdfDoc(c, "doc")
+  #buildPdfDoc(c, "doc")
   buildWebsite(c)
 else:
   main(c)

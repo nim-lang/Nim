@@ -117,9 +117,9 @@ General
   -------------------------
 
   *Procedure* used to be the common term as opposed to a *function* which is a
-  mathematical entity that has no side effects. It was planned to have ``func``
-  as syntactic sugar for ``proc {.noSideEffect.}`` but with the more fine-grained
-  effect system it is not yet clear what ``func`` should be a shortcut for.
+  mathematical entity that has no side effects. It is planned to have ``func``
+  as syntactic sugar for ``proc {.noSideEffect.}`` and ``func`` is already a
+  keyword.
 
 
 Compilation

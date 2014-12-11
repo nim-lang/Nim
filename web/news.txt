@@ -373,8 +373,6 @@ We are pleased to announce that version 0.9.2 of the Nimrod compiler has been
 released. This release has attracted by far the most contributions in comparison
 to any other release.
 
-This release can be downloaded from `here <download.html>`_.
-
 This release brings with it many new features and bug fixes, a list of which
 can be seen later. One of the major new features is the effect system together
 with exception tracking which allows for checked exceptions and more, 
