@@ -258,14 +258,18 @@ proc min(a, b: PNode): PNode =
 
 proc fromSystem(op: PSym): bool = sfSystemModule in getModule(op).flags
 
+template pushSpawnId(c: expr, body: stmt) {.immediate, dirty.} =
+  inc c.spawns
+  let oldSpawnId = c.currentSpawnId
+  c.currentSpawnId = c.spawns
+  body
+  c.currentSpawnId = oldSpawnId
+
 proc analyseCall(c: var AnalysisCtx; n: PNode; op: PSym) =
   if op.magic == mSpawn:
-    inc c.spawns
-    let oldSpawnId = c.currentSpawnId
-    c.currentSpawnId = c.spawns
-    gatherArgs(c, n[1])
-    analyseSons(c, n)
-    c.currentSpawnId = oldSpawnId
+    pushSpawnId(c):
+      gatherArgs(c, n[1])
+      analyseSons(c, n)
   elif op.magic == mInc or (op.name.s == "+=" and op.fromSystem):
     if n[1].isLocal:
       let incr = n[2].skipConv
@@ -322,7 +326,14 @@ proc analyse(c: var AnalysisCtx; n: PNode) =
       let slot = c.getSlot(n[0].sym)
       slot.blacklisted = true
     invalidateFacts(c.guards, n[0])
-    analyseSons(c, n)
+    let value = n[1]
+    if getMagic(value) == mSpawn:
+      pushSpawnId(c):
+        gatherArgs(c, value[1])
+        analyseSons(c, value[1])
+        analyse(c, n[0])
+    else:
+      analyseSons(c, n)
     addAsgnFact(c.guards, n[0], n[1])
   of nkCallKinds:
     # direct call:
@@ -338,13 +349,18 @@ proc analyse(c: var AnalysisCtx; n: PNode) =
   of nkVarSection, nkLetSection:
     for it in n:
       let value = it.lastSon
+      let isSpawned = getMagic(value) == mSpawn
+      if isSpawned:
+        pushSpawnId(c):
+          gatherArgs(c, value[1])
+          analyseSons(c, value[1])
       if value.kind != nkEmpty:
         for j in 0 .. it.len-3:
           if it[j].isLocal:
             let slot = c.getSlot(it[j].sym)
             if slot.lower.isNil: slot.lower = value
             else: internalError(it.info, "slot already has a lower bound")
-        analyse(c, value)
+        if not isSpawned: analyse(c, value)
   of nkCaseStmt: analyseCase(c, n)
   of nkIfStmt, nkIfExpr: analyseIf(c, n)
   of nkWhileStmt:
