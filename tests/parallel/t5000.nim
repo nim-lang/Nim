@@ -1,6 +1,9 @@
 discard """
   output: '''50005000'''
+  disabled: "true"
 """
+
+# XXX this seems to deadlock certain Linux machines
 
 import threadpool, strutils
 
