@@ -42,7 +42,8 @@ Possible Commands:
   boot [options]           bootstraps with given command line options
   install [bindir]         installs to given directory
   clean                    cleans Nimrod project; removes generated files
-  web [options]            generates the website
+  web [options]            generates the website and the full documentation
+  website [options]        generates only the website
   csource [options]        builds the C sources for installation
   zip                      builds the installation ZIP package
   nsis [options]           builds the NSIS Setup installer (for Windows)
@@ -122,6 +123,10 @@ proc install(args: string) =
 
 proc web(args: string) =
   exec("$# cc -r tools/nimweb.nim $# web/nim --putenv:nimversion=$#" %
+       [findNim(), args, VersionAsString])
+
+proc website(args: string) =
+  exec("$# cc -r tools/nimweb.nim $# --website web/nim --putenv:nimversion=$#" %
        [findNim(), args, VersionAsString])
 
 # -------------- boot ---------------------------------------------------------
@@ -345,6 +350,7 @@ of cmdArgument:
   of "boot": boot(op.cmdLineRest)
   of "clean": clean(op.cmdLineRest)
   of "web": web(op.cmdLineRest)
+  of "website": website(op.cmdLineRest)
   of "csource", "csources": csource(op.cmdLineRest)
   of "zip": zip(op.cmdLineRest)
   of "nsis": nsis(op.cmdLineRest)

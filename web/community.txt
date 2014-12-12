@@ -34,13 +34,13 @@ Nim's Community
   Github
   ------
 
-  Nim's `source code <http://github.com/Araq/Nim>`_ is hosted on Github.
-  Together with the `wiki <http://github.com/Araq/Nim/wiki>`_ and
-  `issue tracker <http://github.com/Araq/Nim/issues>`_.
+  Nim's `source code <http://github.com/Araq/Nimrod>`_ is hosted on Github.
+  Together with the `wiki <http://github.com/Araq/Nimrod/wiki>`_ and
+  `issue tracker <http://github.com/Araq/Nimrod/issues>`_.
 
   Github also hosts other projects relating to Nim. These projects are a part
   of the `nim-lang organisation <http://github.com/nim-lang>`_.
-  This includes the `Babel package manager <http://github.com/nim-lang/babel>`_
+  This includes the `Nimble package manager <https://github.com/nim-lang/nimble>`_
   and its `package repository <http://github.com/nim-lang/packages>`_. 
 
 

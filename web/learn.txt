@@ -18,7 +18,7 @@ Learning Nim
   Examples
   --------
 
-  - | `Nim by Example <http://nimrod-by-example.github.io/>`_
+  - | `Nim by Example <http://nim-by-example.github.io/>`_
     | Nim by Example is an excellent starting place for beginners.
 
   - | `Nim on Rosetta Code <http://rosettacode.org/wiki/Category:Nimrod>`_

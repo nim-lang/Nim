@@ -25,6 +25,8 @@ type
   TRssItem = object
     year, month, day, title: string
 
+var onlyWebsite: bool
+
 proc initConfigData(c: var TConfigData) =
   c.tabs = @[]
   c.links = @[]
@@ -67,6 +69,7 @@ Options:
   --var:name=value    set the value of a variable
   -h, --help          shows this help
   -v, --version       shows the version
+  --website           only build the website, not the full documentation
 Compile_options:
   will be passed to the Nim compiler
 """
@@ -134,6 +137,8 @@ proc parseCmdLine(c: var TConfigData) =
         var idx = val.find('=')
         if idx < 0: quit("invalid command line")
         c.vars[substr(val, 0, idx-1)] = substr(val, idx+1)
+      of "website":
+        onlyWebsite = true
       else: quit(usage)
     of cmdEnd: break
   if c.infile.len == 0: quit(usage)
@@ -435,8 +440,8 @@ var c: TConfigData
 initConfigData(c)
 parseCmdLine(c)
 parseIniFile(c)
-when false:
-  #buildPdfDoc(c, "doc")
+if onlyWebsite:
   buildWebsite(c)
+  #buildPdfDoc(c, "doc")
 else:
   main(c)
