@@ -1,7 +1,6 @@
 version 0.10
 ============
 
-- document 'converter'
 - document the tables module better
 
 - The bitwise 'not' operator will be renamed to 'bnot' to

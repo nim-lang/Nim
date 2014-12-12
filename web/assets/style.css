@@ -111,7 +111,7 @@ pre .end { background:url("images/tabEnd.png") no-repeat left bottom; }
 		#slide0 { margin:30px 0 0 10px; }
 		#slide0 > div { float:left; width:320px; font:10pt monospace; }
 		#slide0 > div:first-child { margin:0 40px 0 0; }
-		#slide0 > div > h2 { margin:0 0 5px 0; color:rgba(162,198,223,.78); }
+		#slide0 h2 { margin:0 0 5px 0; color:rgba(162,198,223,.78); }
 		#slide0 > div > pre {
 			margin:0;
 			padding:15px 10px;
@@ -119,7 +119,21 @@ pre .end { background:url("images/tabEnd.png") no-repeat left bottom; }
 			background:rgba(0,0,0,.4);
 			border-left:8px solid rgba(0,0,0,.3);
 			box-shadow:1px 2px 16px rgba(28,180,236,.4); }
-		
+
+		#slide1 { margin:30px 0 0 10px; }
+		#slide1 { float:left; width:680px; font:10pt monospace; }
+		#slide1 > div:first-child { margin:0 40px 0 0; }
+		#slide1 h2 { margin:0 0 5px 0; color:rgba(162,198,223,.78); }
+		#slide1 .desc { margin:0 0 5px 0; color:rgba(162,198,223,.78);
+		                font:13pt "arial"; }
+		#slide1 pre {
+			padding:7px 10px;
+			line-height:14pt;
+			background:rgba(0,0,0,.4);
+			border-left:8px solid rgba(0,0,0,.3);
+			box-shadow:1px 2px 16px rgba(28,180,236,.4); }
+
+		/* back when slide1 was the quote:
 		#slide1 { margin-top:50px; }
 		#slide1 > p {
 			padding:40px 20px 0 20px;
@@ -134,7 +148,7 @@ pre .end { background:url("images/tabEnd.png") no-repeat left bottom; }
 			font-style:italic;
 			font-weight:bold;
 			color:rgba(93,155,199,.44); }
-	
+	       */
 	#sidebar {
 		z-index:2;
 		position:absolute;

@@ -8,7 +8,7 @@
     <title>$c.projectTitle</title>
     <link rel="stylesheet" type="text/css" href="assets/style.css" />
 
-    <link rel="shortcut icon" href="http://reign-studios.net/philipwitte/nim/favicon.ico">
+    <link rel="shortcut icon" href="assets/images/favicon.ico">
   #if len(rss) > 0:
     <link href="$rss" title="Recent changes" type="application/atom+xml" rel="alternate">
   #end if
@@ -17,7 +17,7 @@
     <header id="head">
       <div class="page-layout tall">
         <div id="head-logo"></div>
-        <a id="head-logo-link" href="http://reign-studios.net/philipwitte/nim/home.htm"></a>
+        <a id="head-logo-link" href="http://nim-lang.org/index.html"></a>
         <nav id="head-links">
       #for i in 0.. c.tabs.len-1:
       #  var name = c.tabs[i].key
@@ -73,7 +73,7 @@ echo(<span class="val">"Average line length: "</span>,
 <span class="tab">  </span>name: <span class="typ">string</span>
 <span class="tab end">  </span>age: <span class="typ">int</span>
 
-<span class="kwd">proc</span> <span class="def">greet</span>(p:<span class="typ">Person</span>) =
+<span class="kwd">proc</span> <span class="def">greet</span>(p: <span class="typ">Person</span>) =
 <span class="tab">  </span>echo <span class="val">"Hi, I'm "</span>, p.name, <span class="val">"."</span>
 <span class="tab end">  </span>echo <span class="val">"I am "</span>, p.age, <span class="val">" years old."</span>
 
@@ -83,16 +83,24 @@ p.greet() <span class="cmt"># or greet(p)</span>
              </div>
            </div>  <!-- slide0 -->
            <div id="slide1" class="active">
-        #let quoteIdx = if c.quotations.hasKey(currentTab): currentTab else: "index"
-             <div class="quote-image"></div>
-               <p class="quote">
-                 ${c.quotations[quoteIdx].quote}
-                 <br>
-                 <b style="float: right">-- ${c.quotations[quoteIdx].author}</b>
-               </p>
-               <br/>
-             </div>
-           </div>
+             <h2><a name="why-should-i-be-excited">Why should I be excited?</a></h2>
+             <span class="desc">
+               Nim the only language that leverages automated proof technology
+               to perform a <i>disjoint check</i> for your parallel
+               code. Working on disjoint data means no locking is
+               required and yet data races are impossible:</span>
+             <pre>
+<span class="kwd">parallel</span>:
+<span class="tab">  </span><span class="kwd">var</span> i = 0
+<span class="tab">  </span><span class="kwd">while</span> i <= a.high:
+<span class="tab">    </span>spawn f(a[i])
+<span class="tab">    </span>spawn f(a[i+<span class="val">1</span>])
+<span class="tab">    </span><span class="cmt"># ERROR: cannot prove a[i] is disjoint from a[i+1]</span>
+<span class="tab">    </span><span class="cmt"># BUT: replace 'i += 1' with 'i += 2' and the code compiles!</span>
+<span class="tab end">    </span>i += <span class="val">1</span>
+            </pre>
+          </div>
+        </div>
         <div id="slideshow-nav">
           <div id="slideControl0" onclick="slideshow_click(0)"></div>
           <div id="slideControl1" onclick="slideshow_click(1)" class="active"></div>

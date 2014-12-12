@@ -18,7 +18,7 @@ Nim's Community
   ----
 
   Many Nim developers are a part of the
-  `#nim IRC channel <http://webchat.freenode.net/?channels=nim>`_ on
+  `#nim IRC channel <http://webchat.freenode.net/?channels=nimrod>`_ on
   Freenode. That is the place where the rest of the discussion relating to Nim
   occurs. Be sure to join us there if you wish to discuss Nim in real-time.
   IRC is the perfect place for people just starting to learn Nim and we

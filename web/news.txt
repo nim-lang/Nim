@@ -86,6 +86,9 @@ News
 
   - Added module ``fenv`` to control the handling of floating-point rounding and
     exceptions (overflow, division by zero, etc.).
+  - ``system.setupForeignThreadGc`` can be used for better interaction with
+    foreign libraries that create threads and run a Nim callback from these
+    foreign threads.
 
 
 2014-12-09 New website design!
