@@ -8,7 +8,8 @@ body {
 	min-width:1030px;
 	margin:0;
 	font:13pt "arial";
-	background:#152534 url("images/bg.jpg") no-repeat fixed center top; }
+	background:#152534 url("images/bg.jpg") no-repeat fixed center top; 
+	color:rgba(0,0,0,.8); }
 
 pre { color:#5997AF;}
 pre, pre * { cursor:text; }
@@ -300,7 +301,7 @@ pre .end { background:url("images/tabEnd.png") no-repeat left bottom; }
 	#content.page { width:680px; min-height:800px; padding-left:20px; }
 	#content h1 { font-size:20pt; letter-spacing:1px; color:rgba(0,0,0,.75); }
 	#content h2 { font-size:16pt; letter-spacing:1px; color:rgba(0,0,0,.7); margin-top:40px; }
-	#content p { text-align:justify; color:rgba(0,0,0,.8); }
+	#content p { text-align:justify; }
 	#content a { color:#CEDAE9; text-decoration:none; }
 	#content a:hover { color:#fff;  }
 	#content ul { padding-left:20px; }
