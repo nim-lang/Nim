@@ -584,3 +584,23 @@ parameters of an outer factory proc:
   a for loop, the compiler will implicity use the ``auto`` return type if no
   type is given by the user. In contrast, since closure iterators can be used
   as a collaborative tasking system, ``void`` is a valid return type for them.
+
+
+Converters
+==========
+
+A converter is like an ordinary proc except that it enhances 
+the "implicitly convertible" type relation (see `Convertible relation`_):
+
+.. code-block:: nim
+  # bad style ahead: Nim is not C.
+  converter toBool(x: int): bool = x != 0
+
+  if 4:
+    echo "compiles"
+
+
+A converter can also be explicitly invoked for improved readability. Note that
+implicit converter chaining is not supported: If there is a converter from
+type A to type B and from type B to type C the implicit conversion from A to C
+is not provided.
