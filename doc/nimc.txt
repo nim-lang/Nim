@@ -42,7 +42,7 @@ List of warnings
 ----------------
 
 Each warning can be activated individually with ``--warning[NAME]:on|off`` or
-in a ``push`` pragma. 
+in a ``push`` pragma.
 
 ==========================       ============================================
 Name                             Description

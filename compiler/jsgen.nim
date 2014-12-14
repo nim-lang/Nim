@@ -33,7 +33,7 @@ import
   ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp,
   options, nversion, nimsets, msgs, crc, bitsets, idents, lists, types, os,
   times, ropes, math, passes, ccgutils, wordrecg, renderer, rodread, rodutils,
-  intsets, cgmeth
+  intsets, cgmeth, lowerings
 
 type
   TTarget = enum
@@ -1211,13 +1211,17 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
 proc genVarStmt(p: PProc, n: PNode) = 
   for i in countup(0, sonsLen(n) - 1): 
     var a = n.sons[i]
-    if a.kind == nkCommentStmt: continue 
-    assert(a.kind == nkIdentDefs)
-    assert(a.sons[0].kind == nkSym)
-    var v = a.sons[0].sym
-    if lfNoDecl in v.loc.flags: continue 
-    genLineDir(p, a)
-    genVarInit(p, v, a.sons[2])
+    if a.kind != nkCommentStmt:
+      if a.kind == nkVarTuple:
+        let unpacked = lowerTupleUnpacking(a, p.prc)
+        genStmt(p, unpacked)
+      else:
+        assert(a.kind == nkIdentDefs)
+        assert(a.sons[0].kind == nkSym)
+        var v = a.sons[0].sym
+        if lfNoDecl notin v.loc.flags:
+          genLineDir(p, a)
+          genVarInit(p, v, a.sons[2])
 
 proc genConstant(p: PProc, c: PSym) =
   if lfNoDecl notin c.loc.flags and not p.g.generatedSyms.containsOrIncl(c.id):

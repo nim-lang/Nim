@@ -1013,17 +1013,16 @@ at runtime by 0, the second by 1 and so on. Example:
 .. code-block:: nim
 
   type
-    TDirection = enum
+    Direction = enum
       north, east, south, west
 
-  var x = south      # `x` is of type `TDirection`; its value is `south`
+  var x = south      # `x` is of type `Direction`; its value is `south`
   echo($x)           # writes "south" to `stdout`
 
-(To prefix a new type with the letter ``T`` is a convention in Nim.)
 All comparison operators can be used with enumeration types.
 
 An enumeration's symbol can be qualified to avoid ambiguities:
-``TDirection.south``.
+``Direction.south``.
 
 The ``$`` operator can convert any enumeration value to its name, the ``ord``
 proc to its underlying integer value.
@@ -1037,7 +1036,7 @@ An explicit ordered enum can have *holes*:
 
 .. code-block:: nim
   type
-    TMyEnum = enum
+    MyEnum = enum
       a = 2, b = 4, c = 89
 
 
@@ -1075,11 +1074,11 @@ A subrange type is a range of values from an integer or enumeration type
 
 .. code-block:: nim
   type
-    TSubrange = range[0..5]
+    Subrange = range[0..5]
 
 
-``TSubrange`` is a subrange of ``int`` which can only hold the values 0
-to 5. Assigning any other value to a variable of type ``TSubrange`` is a
+``Subrange`` is a subrange of ``int`` which can only hold the values 0
+to 5. Assigning any other value to a variable of type ``Subrange`` is a
 compile-time or runtime error. Assignments from the base type to one of its
 subrange types (and vice versa) are allowed.
 
@@ -1106,9 +1105,9 @@ Arrays can be constructed via ``[]``:
 .. code-block:: nim
 
   type
-    TIntArray = array[0..5, int] # an array that is indexed with 0..5
+    IntArray = array[0..5, int] # an array that is indexed with 0..5
   var
-    x: TIntArray
+    x: IntArray
   x = [1, 2, 3, 4, 5, 6]
   for i in low(x)..high(x):
     echo(x[i])
@@ -1127,13 +1126,13 @@ array `a` and `high(a) <system.html#high>`_ the highest valid index.
 
 .. code-block:: nim
   type
-    TDirection = enum
+    Direction = enum
       north, east, south, west
-    TBlinkLights = enum
+    BlinkLights = enum
       off, on, slowBlink, mediumBlink, fastBlink
-    TLevelSetting = array[north..west, TBlinkLights]
+    LevelSetting = array[north..west, BlinkLights]
   var
-    level : TLevelSetting
+    level: LevelSetting
   level[north] = on
   level[south] = slowBlink
   level[east] = fastBlink
@@ -1152,9 +1151,9 @@ subdivided in height levels accessed through their integer index:
 
 .. code-block:: nim
   type
-    TLightTower = array[1..10, TLevelSetting]
+    LightTower = array[1..10, LevelSetting]
   var
-    tower: TLightTower
+    tower: LightTower
   tower[1][north] = slowBlink
   tower[1][east] = mediumBlink
   echo len(tower)     # --> 10
@@ -1165,24 +1164,24 @@ subdivided in height levels accessed through their integer index:
   #tower[0][1] = on
 
 Note how the built-in ``len`` proc returns only the array's first dimension
-length.  Another way of defining the ``TLightTower`` to show better its
-nested nature would be to omit the previous definition of the ``TLevelSetting``
+length.  Another way of defining the ``LightTower`` to show better its
+nested nature would be to omit the previous definition of the ``LevelSetting``
 type and instead write it embedded directly as the type of the first dimension:
 
 .. code-block:: nim
   type
-    TLightTower = array[1..10, array[north..west, TBlinkLights]]
+    LightTower = array[1..10, array[north..west, BlinkLights]]
 
 It is quite frequent to have arrays start at zero, so there's a shortcut syntax
 to specify a range from zero to the specified index minus one:
 
 .. code-block:: nim
   type
-    TIntArray = array[0..5, int] # an array that is indexed with 0..5
-    TQuickArray = array[6, int]  # an array that is indexed with 0..5
+    IntArray = array[0..5, int] # an array that is indexed with 0..5
+    QuickArray = array[6, int]  # an array that is indexed with 0..5
   var
-    x: TIntArray
-    y: TQuickArray
+    x: IntArray
+    y: QuickArray
   x = [1, 2, 3, 4, 5, 6]
   y = x
   for i in low(x)..high(x):
@@ -1436,15 +1435,15 @@ operators perform implicit dereferencing operations for reference types:
 .. code-block:: nim
 
   type
-    PNode = ref TNode
-    TNode = tuple[le, ri: PNode, data: int]
+    Node = ref NodeObj
+    NodeObj = object 
+      le, ri: PNode
+      data: int
   var
-    n: PNode
+    n: Node
   new(n)
   n.data = 9 
   # no need to write n[].data; in fact n[].data is highly discouraged!
-
-(As a convention, reference types use a 'P' prefix.)
 
 To allocate a new traced object, the built-in procedure ``new`` has to be used.
 To deal with untraced memory, the procedures ``alloc``, ``dealloc`` and
@@ -1573,11 +1572,11 @@ rules apply:
 
 .. code-block:: nim
   # Module A
-  proc x*(a: int): string = result = $a
+  proc x*(a: int): string = $a
 
 .. code-block:: nim
   # Module B
-  proc x*(a: string): string = result = $a
+  proc x*(a: string): string = $a
 
 .. code-block:: nim
   # Module C

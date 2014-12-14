@@ -51,20 +51,20 @@ proc initEventHandler*(name: string): EventHandler =
   result.handlers = @[]
   result.name = name
 
-proc addHandler*(handler: var EventHandler, func: proc(e: EventArgs) {.closure.}) =
+proc addHandler*(handler: var EventHandler, fn: proc(e: EventArgs) {.closure.}) =
   ## Adds the callback to the specified event handler.
-  handler.handlers.add(func)
+  handler.handlers.add(fn)
 
-proc removeHandler*(handler: var EventHandler, func: proc(e: EventArgs) {.closure.}) =
+proc removeHandler*(handler: var EventHandler, fn: proc(e: EventArgs) {.closure.}) =
   ## Removes the callback from the specified event handler.
   for i in countup(0, len(handler.handlers) -1):
-    if func == handler.handlers[i]:
+    if fn == handler.handlers[i]:
       handler.handlers.del(i)
       break
     
-proc containsHandler*(handler: var EventHandler, func: proc(e: EventArgs) {.closure.}): bool =
+proc containsHandler*(handler: var EventHandler, fn: proc(e: EventArgs) {.closure.}): bool =
   ## Checks if a callback is registered to this event handler.
-  return handler.handlers.contains(func)
+  return handler.handlers.contains(fn)
 
 
 proc clearHandlers*(handler: var EventHandler) =
@@ -76,21 +76,21 @@ proc getEventHandler(emitter: var EventEmitter, event: string): int =
     if emitter.s[k].name == event: return k
   return -1
 
-proc on*(emitter: var EventEmitter, event: string, func: proc(e: EventArgs) {.closure.}) =
+proc on*(emitter: var EventEmitter, event: string, fn: proc(e: EventArgs) {.closure.}) =
   ## Assigns a event handler with the specified callback. If the event
   ## doesn't exist, it will be created.
   var i = getEventHandler(emitter, event)
   if i < 0:
     var eh = initEventHandler(event)
-    addHandler(eh, func)
+    addHandler(eh, fn)
     emitter.s.add(eh)
   else:
-    addHandler(emitter.s[i], func)
+    addHandler(emitter.s[i], fn)
   
 proc emit*(emitter: var EventEmitter, eventhandler: var EventHandler, 
            args: EventArgs) =
   ## Fires an event handler with specified event arguments.
-  for func in items(eventhandler.handlers): func(args)
+  for fn in items(eventhandler.handlers): fn(args)
 
 proc emit*(emitter: var EventEmitter, event: string, args: EventArgs) =
   ## Fires an event handler with specified event arguments.

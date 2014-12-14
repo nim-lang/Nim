@@ -250,7 +250,7 @@ Another common example is this:
     yield "Hello"
     yield "World"
 
-  var info = something().toSeq()
+  var info = toSeq(something())
 
 The problem here is that the compiler already decided that ``something()`` as
 an iterator is not callable in this context before ``toSeq`` gets its
