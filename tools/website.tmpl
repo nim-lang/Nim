@@ -52,7 +52,7 @@
           <!-- slides -->
           <div id="slide0" class="">
             <div>
-              <h2>nim looks like this..</h2>
+              <h2>Nim looks like this..</h2>
 <pre><span class="cmt"># compute average line length</span>
 <span class="kwd">var</span>
 <span class="tab">  </span>sum = <span class="val">0</span>
@@ -81,17 +81,17 @@ echo(<span class="val">"Average line length: "</span>,
 p.greet() <span class="cmt"># or greet(p)</span>
 </pre>
              </div>
-           </div>  <!-- slide0 -->
-           <div id="slide1" class="active">
+          </div>  <!-- slide0 -->
+          <div id="slide1" class="active">
              <h2><a name="why-should-i-be-excited">Why should I be excited?</a></h2>
              <span class="desc">
-               Nim the only language that leverages automated proof technology
+               Nim is the only language that leverages automated proof technology
                to perform a <i>disjoint check</i> for your parallel
                code. Working on disjoint data means no locking is
                required and yet data races are impossible:</span>
              <pre>
 <span class="kwd">parallel</span>:
-<span class="tab">  </span><span class="kwd">var</span> i = 0
+<span class="tab">  </span><span class="kwd">var</span> i = <span class="val">0</span>
 <span class="tab">  </span><span class="kwd">while</span> i <= a.high:
 <span class="tab">    </span>spawn f(a[i])
 <span class="tab">    </span>spawn f(a[i+<span class="val">1</span>])
@@ -100,10 +100,40 @@ p.greet() <span class="cmt"># or greet(p)</span>
 <span class="tab end">    </span>i += <span class="val">1</span>
             </pre>
           </div>
+          <div id="slide2" class="">
+            <div>
+            <h2>interfacing with C..</h2>
+            <pre>
+<span class="kwd">proc</span> <span class="def">unsafeScanf</span>(f: <span class="typ">File</span>; s: <span class="typ">cstring</span>)
+<span class="tab">  </span>{.importc: <span class="val">"fscanf"</span>, 
+<span class="tab end">    </span>header: <span class="val">"&lt;stdio.h&gt;"</span>, varargs.}
+
+<span class="kwd">var</span> x: cint
+unsafeScanf(stdin, <span class="val">"%d"</span>, <span class="kwd">addr</span> x)
+            </pre></div>
+
+            <div>
+              <h2>..and DSLs made easy</h2>
+<pre>
+<span class="kwd">import</span> jester, asyncdispatch, htmlgen
+
+routes:
+<span class="tab">  </span>get <span class="val">"/"</span>:
+<span class="tab end">    </span>resp h1(<span class="val">"Hello world"</span>)
+
+runForever()
+</pre><p><span class="desc">
+Compile and run with:<br />
+nim c -r example.nim<br />
+View at: localhost:5000
+</span></p>
+            </div>
+          </div>
         </div>
         <div id="slideshow-nav">
           <div id="slideControl0" onclick="slideshow_click(0)"></div>
           <div id="slideControl1" onclick="slideshow_click(1)" class="active"></div>
+          <div id="slideControl2" onclick="slideshow_click(2)"></div>
         </div>
 #  end
         <aside id="sidebar">
@@ -174,7 +204,7 @@ var timer;
 var prevIndex = 0;
 
 function setSlideShow(index, short) {
-  if (index > 1) index = 0;
+  if (index > 2) index = 0;
   for (var i = 0; i < 10; ++i) {
     var x = document.getElementById("slide"+i);
     if (!x) break;

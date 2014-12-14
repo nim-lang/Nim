@@ -134,6 +134,22 @@ pre .end { background:url("images/tabEnd.png") no-repeat left bottom; }
 			border-left:8px solid rgba(0,0,0,.3);
 			box-shadow:1px 2px 16px rgba(28,180,236,.4); }
 
+
+		#slide2 { margin:30px 0 0 10px; }
+		#slide2 > div { float:left; width:320px; font:10pt monospace; }
+		#slide2 > div:first-child { margin:0 40px 0 0; }
+		#slide2 h2 { margin:0 0 5px 0; color:rgba(162,198,223,.78); }
+		#slide2 > div > pre {
+			margin:0;
+			padding:15px 10px;
+			line-height:14pt;
+			background:rgba(0,0,0,.4);
+			border-left:8px solid rgba(0,0,0,.3);
+			box-shadow:1px 2px 16px rgba(28,180,236,.4); }
+
+		#slide2 .desc { margin:0 0 5px 0; color:rgba(162,198,223,.78);
+		                font:13pt "arial"; }
+
 		/* back when slide1 was the quote:
 		#slide1 { margin-top:50px; }
 		#slide1 > p {
