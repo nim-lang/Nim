@@ -957,6 +957,19 @@ versa. The `toInt <system.html#toInt>`_ and `toFloat <system.html#toFloat>`_
 procs can be used for these conversions.
 
 
+Type Conversion
+---------------
+Conversion between basic types in nim is performed by using the
+type as a function:
+
+.. code-block:: nim
+  var
+    x: int32 = 1.int32   # same as calling int32(1)
+    y: int8  = int8('a') # 'a' == 97'i8
+    z: float = 2.5       # int(2.5) rounds down to 2
+    sum: int = int(x) + int(y) + int(z) # sum == 100
+
+
 Internal type representation
 ============================
 
