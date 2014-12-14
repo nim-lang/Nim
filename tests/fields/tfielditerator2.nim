@@ -5,16 +5,19 @@ a char: false
 an int: 5
 an int: 6
 a string: abc
-false
-true
-true
-false
-true
+a string: I'm root!
+CMP false
+CMP true
+CMP true
+CMP false
+CMP true
+CMP true
 a: a
 b: b
 x: 5
 y: 6
 z: abc
+thaRootMan: I'm root!
 myDisc: enC
 c: Z
 enC
@@ -23,7 +26,9 @@ Z
 """
 
 type
-  TMyObj = object
+  SomeRootObj = object of RootObj
+    thaRootMan: string
+  TMyObj = object of SomeRootObj
     a, b: char
     x, y: int
     z: string
@@ -41,6 +46,7 @@ proc p(x: string) = echo "a string: ", x
 
 proc myobj(a, b: char, x, y: int, z: string): TMyObj =
   result.a = a; result.b = b; result.x = x; result.y = y; result.z = z
+  result.thaRootMan = "I'm root!"
 
 var x = myobj('a', 'b', 5, 6, "abc")
 var y = myobj('A', 'b', 5, 9, "abc")
@@ -49,7 +55,7 @@ for f in fields(x):
   p f
 
 for a, b in fields(x, y):
-  echo a == b
+  echo "CMP ", a == b
 
 for key, val in fieldPairs(x):
   echo key, ": ", val

@@ -147,7 +147,11 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
     var fc: TFieldsCtx
     fc.m = m
     fc.c = c
-    semForObjectFields(fc, tupleTypeA.n, n, stmts)
+    var t = tupleTypeA
+    while t.kind == tyObject:
+      semForObjectFields(fc, t.n, n, stmts)
+      if t.sons[0] == nil: break
+      t = skipTypes(t.sons[0], abstractPtrs)
   dec(c.p.nestedLoopCounter)
   # for TR macros this 'while true: ...; break' loop is pretty bad, so
   # we avoid it now if we can:

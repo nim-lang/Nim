@@ -269,9 +269,14 @@ iterator fields*(x: TAny): tuple[name: string, any: TAny] =
   # XXX BUG: does not work yet, however is questionable anyway
   when false:
     if x.rawType.kind == tyObject: t = cast[ptr PNimType](x.value)[]
-  var n = t.node
   var ret: seq[tuple[name: cstring, any: TAny]] = @[]
-  fieldsAux(p, n, ret)
+  if t.kind == tyObject:
+    while true:
+      fieldsAux(p, t.node, ret)
+      t = t.base
+      if t.isNil: break
+  else:
+    fieldsAux(p, t.node, ret)
   for name, any in items(ret):
     yield ($name, any)
 
