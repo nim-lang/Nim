@@ -57,7 +57,7 @@ imported:
 
 It is not checked that the ``except`` list is really exported from the module.
 This feature allows to compile against an older version of the module that
-lacks does not export these identifiers.
+does not export these identifiers.
 
 
 Include statement
