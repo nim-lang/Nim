@@ -46,7 +46,7 @@ proc countDefinedSymbols*(): int =
 const
   additionalSymbols = """
     x86 itanium x8664
-    msdos mswindows win32 unix posix sunos bsd macintosh RISCOS doslike hpux
+    msdos mswindows win32 unix posix sunos bsd macintosh RISCOS hpux
     mac
 
     hppa hp9000 hp9000s300 hp9000s700 hp9000s800 hp9000s820 ELATE sparcv9

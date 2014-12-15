@@ -211,7 +211,7 @@ proc osErrorMsg*(): string {.rtl, extern: "nos$1", deprecated.} =
 {.push warning[deprecated]: off.}
 proc raiseOSError*(msg: string = "") {.noinline, rtl, extern: "nos$1",
                                        deprecated.} =
-  ## raises an EOS exception with the given message ``msg``.
+  ## raises an OSError exception with the given message ``msg``.
   ## If ``msg == ""``, the operating system's error flag
   ## (``errno``) is converted to a readable error message. On Windows
   ## ``GetLastError`` is checked before ``errno``.
@@ -262,8 +262,8 @@ proc osErrorMsg*(errorCode: OSErrorCode): string =
       result = $os.strerror(errorCode.int32)
 
 proc raiseOSError*(errorCode: OSErrorCode) =
-  ## Raises an ``EOS`` exception. The ``errorCode`` will determine the
-  ## message, ``OSErrorMsg`` will be used to get this message.
+  ## Raises an ``OSError`` exception. The ``errorCode`` will determine the
+  ## message, ``osErrorMsg`` will be used to get this message.
   ##
   ## The error code can be retrieved using the ``OSLastError`` proc.
   ##
@@ -502,7 +502,7 @@ proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [].} =
       raiseOSError(osLastError())
 
 proc setCurrentDir*(newDir: string) {.inline, tags: [].} =
-  ## Sets the `current working directory`:idx:; `EOS` is raised if
+  ## Sets the `current working directory`:idx:; `OSError` is raised if
   ## `newDir` cannot been set.
   when defined(Windows):
     when useWinUnicode:
@@ -715,7 +715,7 @@ proc extractFilename*(path: string): string {.
 
 proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
   tags: [ReadDirEffect].} =
-  ## Returns the full path of `filename`, raises EOS in case of an error.
+  ## Returns the full path of `filename`, raises OSError in case of an error.
   when defined(windows):
     const bufsize = 3072'i32
     when useWinUnicode:
@@ -967,7 +967,7 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [ReadIOEffect, WriteIOEffect].} =
   ## Copies a file from `source` to `dest`.
   ##
-  ## If this fails, `EOS` is raised. On the Windows platform this proc will
+  ## If this fails, `OSError` is raised. On the Windows platform this proc will
   ## copy the source file's attributes into dest. On other platforms you need
   ## to use `getFilePermissions() <#getFilePermissions>`_ and
   ## `setFilePermissions() <#setFilePermissions>`_ to copy them by hand (or use
@@ -1007,7 +1007,7 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
 
 proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [ReadIOEffect, WriteIOEffect].} =
-  ## Moves a file from `source` to `dest`. If this fails, `EOS` is raised.
+  ## Moves a file from `source` to `dest`. If this fails, `OSError` is raised.
   if c_rename(source, dest) != 0'i32:
     raise newException(OSError, $strerror(errno))
 
@@ -1028,7 +1028,7 @@ when defined(Windows):
       setFileAttributesA(file, attrs)
 
 proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect].} =
-  ## Removes the `file`. If this fails, `EOS` is raised. This does not fail
+  ## Removes the `file`. If this fails, `OSError` is raised. This does not fail
   ## if the file never existed in the first place.
   ## On Windows, ignores the read-only attribute.
   when defined(Windows):
@@ -1335,7 +1335,7 @@ proc removeDir*(dir: string) {.rtl, extern: "nos$1", tags: [
   ## Removes the directory `dir` including all subdirectories and files
   ## in `dir` (recursively).
   ##
-  ## If this fails, `EOS` is raised. This does not fail if the directory never
+  ## If this fails, `OSError` is raised. This does not fail if the directory never
   ## existed in the first place.
   for kind, path in walkDir(dir):
     case kind
@@ -1362,11 +1362,11 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect].} =
   ## Creates the `directory`:idx: `dir`.
   ##
   ## The directory may contain several subdirectories that do not exist yet.
-  ## The full path is created. If this fails, `EOS` is raised. It does **not**
+  ## The full path is created. If this fails, `OSError` is raised. It does **not**
   ## fail if the path already exists because for most usages this does not
   ## indicate an error.
   var omitNext = false
-  when defined(doslike):
+  when doslike:
     omitNext = isAbsolute(dir)
   for i in 1.. dir.len-1:
     if dir[i] in {DirSep, AltSep}:
@@ -1380,7 +1380,7 @@ proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [WriteIOEffect, ReadIOEffect].} =
   ## Copies a directory from `source` to `dest`.
   ##
-  ## If this fails, `EOS` is raised. On the Windows platform this proc will
+  ## If this fails, `OSError` is raised. On the Windows platform this proc will
   ## copy the attributes from `source` into `dest`. On other platforms created
   ## files and directories will inherit the default permissions of a newly
   ## created file/directory for the user. To preserve attributes recursively on
@@ -1553,7 +1553,7 @@ proc copyDirWithPermissions*(source, dest: string,
     tags: [WriteIOEffect, ReadIOEffect].} =
   ## Copies a directory from `source` to `dest` preserving file permissions.
   ##
-  ## If this fails, `EOS` is raised. This is a wrapper proc around `copyDir()
+  ## If this fails, `OSError` is raised. This is a wrapper proc around `copyDir()
   ## <#copyDir>`_ and `copyFileWithPermissions() <#copyFileWithPermissions>`_
   ## on non Windows platforms. On Windows this proc is just a wrapper for
   ## `copyDir() <#copyDir>`_ since that proc already copies attributes.
@@ -1825,7 +1825,7 @@ proc sleep*(milsecs: int) {.rtl, extern: "nos$1", tags: [TimeEffect].} =
 
 proc getFileSize*(file: string): BiggestInt {.rtl, extern: "nos$1",
   tags: [ReadIOEffect].} =
-  ## returns the file size of `file`. Can raise ``EOS``.
+  ## returns the file size of `file`. Can raise ``OSError``.
   when defined(windows):
     var a: TWIN32_FIND_DATA
     var resA = findFirstFile(file, a)
