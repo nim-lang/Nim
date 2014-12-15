@@ -28,7 +28,7 @@ iterator foo[T](x: iterator: T{.inline.}): T =
 
 var s = @[1, 2, 3]
 
-# pass an interator several levels deep:
+# pass an iterator several levels deep:
 for x in s.items.foo:
   echo x
 

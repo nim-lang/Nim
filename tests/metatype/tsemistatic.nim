@@ -1,6 +1,7 @@
 discard """
   msg: "static 10\ndynamic\nstatic 20\n"
   output: "s\nd\nd\ns"
+  disabled: "true"
 """
 
 proc foo(x: semistatic[int]) =

@@ -854,7 +854,9 @@ proc semParamType(c: PContext, n: PNode, constraint: var PNode): PType =
     result = semTypeNode(c, n, nil)
 
 proc semProcTypeNode(c: PContext, n, genericParams: PNode,
-                     prev: PType, kind: TSymKind): PType =
+                     prev: PType, kind: TSymKind; isType=false): PType =
+  # for historical reasons (code grows) this is invoked for parameter
+  # lists too and then 'isType' is false.
   var
     res: PNode
     cl: IntSet
@@ -903,7 +905,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         # proc sort[T](cmp: proc(a, b: T): int = cmp)
         if not containsGenericType(typ):
           def = fitNode(c, typ, def)
-    if not (hasType or hasDefault):
+    if not hasType and not hasDefault:
+      if isType: localError(a.info, "':' expected")
       let tdef = if kind in {skTemplate, skMacro}: tyExpr else: tyAnything
       typ = newTypeS(tdef, c)
 
@@ -929,6 +932,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
   if n.sons[0].kind != nkEmpty:
     r = semTypeNode(c, n.sons[0], nil)
   elif kind == skIterator:
+    # XXX This is special magic we should likely get rid of
     r = newTypeS(tyAnything, c)
   
   if r != nil:
@@ -1069,7 +1073,7 @@ proc semProcTypeWithScope(c: PContext, n: PNode,
                         prev: PType, kind: TSymKind): PType =
   checkSonsLen(n, 2)
   openScope(c)
-  result = semProcTypeNode(c, n.sons[0], nil, prev, kind)
+  result = semProcTypeNode(c, n.sons[0], nil, prev, kind, isType=true)
   # dummy symbol for `pragma`:
   var s = newSymS(kind, newIdentNode(getIdent("dummy"), n.info), c)
   s.typ = result
