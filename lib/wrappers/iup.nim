@@ -202,15 +202,15 @@ proc nextField*(ih: PIhandle): PIhandle {.
 
 proc getCallback*(ih: PIhandle, name: cstring): Icallback {.
   importc: "IupGetCallback", cdecl, dynlib: dllname.}
-proc setCallback*(ih: PIhandle, name: cstring, func: Icallback): Icallback {.
+proc setCallback*(ih: PIhandle, name: cstring, fn: Icallback): Icallback {.
   importc: "IupSetCallback", cdecl, dynlib: dllname, discardable.}
   
-proc setCallbacks*(ih: PIhandle, name: cstring, func: Icallback): PIhandle {.
+proc setCallbacks*(ih: PIhandle, name: cstring, fn: Icallback): PIhandle {.
   importc: "IupSetCallbacks", cdecl, dynlib: dllname, varargs, discardable.}
 
 proc getFunction*(name: cstring): Icallback {.
   importc: "IupGetFunction", cdecl, dynlib: dllname.}
-proc setFunction*(name: cstring, func: Icallback): Icallback {.
+proc setFunction*(name: cstring, fn: Icallback): Icallback {.
   importc: "IupSetFunction", cdecl, dynlib: dllname, discardable.}
 proc getActionName*(): cstring {.
   importc: "IupGetActionName", cdecl, dynlib: dllname.}
