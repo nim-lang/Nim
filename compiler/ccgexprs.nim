@@ -658,7 +658,8 @@ proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
                     getSimpleTypeDesc(p.module, e.typ)]))
 
 proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
-  if mapType(e.sons[0].typ) in {ctArray, ctPtrToArray} and not enforceDeref:
+  let mt = mapType(e.sons[0].typ)
+  if mt in {ctArray, ctPtrToArray} and not enforceDeref:
     # XXX the amount of hacks for C's arrays is incredible, maybe we should
     # simply wrap them in a struct? --> Losing auto vectorization then?
     #if e[0].kind != nkBracketExpr:
@@ -675,7 +676,15 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
     of tyPtr:
       d.s = OnUnknown         # BUGFIX!
     else: internalError(e.info, "genDeref " & $a.t.kind)
-    putIntoDest(p, d, a.t.sons[0], ropef("(*$1)", [rdLoc(a)]))
+    if enforceDeref and mt == ctPtrToArray:
+      # we lie about the type for better C interop: 'ptr array[3,T]' is
+      # translated to 'ptr T', but for deref'ing this produces wrong code.
+      # See tmissingderef. So we get rid of the deref instead. The codegen
+      # ends up using 'memcpy' for the array assignment,
+      # so the '&' and '*' cancel out:
+      putIntoDest(p, d, a.t.sons[0], rdLoc(a))
+    else:
+      putIntoDest(p, d, a.t.sons[0], ropef("(*$1)", [rdLoc(a)]))
 
 proc genAddr(p: BProc, e: PNode, d: var TLoc) =
   # careful  'addr(myptrToArray)' needs to get the ampersand:
