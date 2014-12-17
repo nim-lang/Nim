@@ -10,15 +10,15 @@ type
     events*: Table[string, DoublyLinkedList[proc(e: EventArgs) {.nimcall.}]]
 
 proc emit*(emitter: EventEmitter, event: string, args: EventArgs) =
-  for func in nodes(emitter.events[event]):
-    func.value(args) #call function with args.
+  for fn in nodes(emitter.events[event]):
+    fn.value(args) #call function with args.
 
 proc on*(emitter: var EventEmitter, event: string, 
-         func: proc(e: EventArgs) {.nimcall.}) =
+         fn: proc(e: EventArgs) {.nimcall.}) =
   if not hasKey(emitter.events, event):
     var list: DoublyLinkedList[proc(e: EventArgs) {.nimcall.}]
     add(emitter.events, event, list) #if not, add it.
-  append(emitter.events.mget(event), func)
+  append(emitter.events.mget(event), fn)
 
 proc initEmitter(emitter: var EventEmitter) =
   emitter.events = initTable[string, 

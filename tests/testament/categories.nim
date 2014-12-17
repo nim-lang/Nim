@@ -312,7 +312,7 @@ proc testBabelPackages(r: var TResults, cat: Category, filter: PackageFilter) =
 
 # ----------------------------------------------------------------------------
 
-const AdditionalCategories = ["debugger", "examples", "stdlib", "babel-core"]
+const AdditionalCategories = ["debugger", "examples", "lib", "babel-core"]
 
 proc `&.?`(a, b: string): string =
   # candidate for the stdlib?
@@ -342,7 +342,7 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
     threadTests r, cat, options & " --threads:on"
   of "io":
     ioTests r, cat, options
-  of "stdlib":
+  of "lib":
     testStdlib(r, "lib/pure/*.nim", options, cat)
     testStdlib(r, "lib/packages/docutils/highlite", options, cat)
   of "examples":

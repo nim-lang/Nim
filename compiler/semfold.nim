@@ -197,18 +197,20 @@ proc getIntervalType*(m: TMagic, n: PNode): PType =
   of mSubI, mSubI64, mSubU:
     binaryOp(`|-|`)
   of mBitandI, mBitandI64:
+    # since uint64 is still not even valid for 'range' (since it's no ordinal
+    # yet), we exclude it from the list (see bug #1638) for now:
     var a = n.sons[1]
     var b = n.sons[2]
     # symmetrical:
-    if b.kind notin {nkIntLit..nkUInt64Lit}: swap(a, b)
-    if b.kind in {nkIntLit..nkUInt64Lit}:
+    if b.kind notin {nkIntLit..nkUInt32Lit}: swap(a, b)
+    if b.kind in {nkIntLit..nkUInt32Lit}:
       let x = b.intVal|+|1
       if (x and -x) == x and x >= 0:
         result = makeRange(a.typ, 0, b.intVal)
   of mModU:
     let a = n.sons[1]
     let b = n.sons[2]
-    if b.kind in {nkIntLit..nkUInt64Lit}:
+    if b.kind in {nkIntLit..nkUInt32Lit}:
       if b.intVal >= 0:
         result = makeRange(a.typ, 0, b.intVal-1)
       else:
