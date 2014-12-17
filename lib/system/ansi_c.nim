@@ -33,10 +33,11 @@ type
 
   C_JmpBuf {.importc: "jmp_buf", header: "<setjmp.h>".} = object
 
-var
-  c_stdin {.importc: "stdin", nodecl.}: C_TextFileStar
-  c_stdout {.importc: "stdout", nodecl.}: C_TextFileStar
-  c_stderr {.importc: "stderr", nodecl.}: C_TextFileStar
+when not defined(vm):
+  var
+    c_stdin {.importc: "stdin", nodecl.}: C_TextFileStar
+    c_stdout {.importc: "stdout", nodecl.}: C_TextFileStar
+    c_stderr {.importc: "stderr", nodecl.}: C_TextFileStar
 
 # constants faked as variables:
 when not declared(SIGINT):

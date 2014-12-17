@@ -370,8 +370,8 @@ proc sameConstant*(a, b: PNode): bool =
     of nkCharLit..nkInt64Lit: result = a.intVal == b.intVal
     of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
-    of nkType: result = a.typ == b.typ
-    of nkEmpty, nkNilLit: result = true
+    of nkType, nkNilLit: result = a.typ == b.typ
+    of nkEmpty: result = true
     else:
       if sonsLen(a) == sonsLen(b):
         for i in countup(0, sonsLen(a) - 1):
@@ -1350,7 +1350,9 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
     result = newNodeIT(nkUIntLit, info, t)
   of tyFloat..tyFloat128: 
     result = newNodeIT(nkFloatLit, info, t)
-  of tyVar, tyPointer, tyPtr, tyCString, tySequence, tyString, tyExpr,
+  of tyCString, tyString:
+    result = newNodeIT(nkStrLit, info, t)
+  of tyVar, tyPointer, tyPtr, tySequence, tyExpr,
      tyStmt, tyTypeDesc, tyStatic, tyRef:
     result = newNodeIT(nkNilLit, info, t)
   of tyProc:
@@ -1570,7 +1572,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       genLit(c, n, dest)
   of nkUIntLit..pred(nkNilLit): genLit(c, n, dest)
   of nkNilLit:
-    if not n.typ.isEmptyType: genLit(c, n, dest)
+    if not n.typ.isEmptyType: genLit(c, getNullValue(n.typ, n.info), dest)
     else: unused(n, dest)
   of nkAsgn, nkFastAsgn: 
     unused(n, dest)
@@ -1647,7 +1649,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     if allowCast in c.features:
       genConv(c, n, n.sons[1], dest, opcCast)
     else:
-      localError(n.info, errGenerated, "VM is not allowed to 'cast'")
+      globalError(n.info, errGenerated, "VM is not allowed to 'cast'")
   else:
     internalError n.info, "cannot generate VM code for " & n.renderTree
 

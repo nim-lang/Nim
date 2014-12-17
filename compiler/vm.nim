@@ -454,8 +454,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcLdStrIdx:
       decodeBC(rkInt)
       let idx = regs[rc].intVal.int
-      if idx <=% regs[rb].node.strVal.len:
-        regs[ra].intVal = regs[rb].node.strVal[idx].ord
+      let s = regs[rb].node.strVal
+      if s.isNil:
+        stackTrace(c, tos, pc, errNilAccess)
+      elif idx <=% s.len:
+        regs[ra].intVal = s[idx].ord
       else:
         stackTrace(c, tos, pc, errIndexOutOfBounds)
     of opcWrArr:
@@ -1058,7 +1061,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].intVal = regs[ra].intVal and ((1'i64 shl rb)-1)
     of opcIsNil:
       decodeB(rkInt)
-      regs[ra].intVal = ord(regs[rb].node.kind == nkNilLit)
+      let node = regs[rb].node
+      regs[ra].intVal = ord(node.kind == nkNilLit or
+        (node.kind in {nkStrLit..nkTripleStrLit} and node.strVal.isNil))
     of opcNBindSym:
       decodeBx(rkNode)
       regs[ra].node = copyTree(c.constants.sons[rbx])
