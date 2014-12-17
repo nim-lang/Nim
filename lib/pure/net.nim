@@ -256,7 +256,21 @@ proc socketError*(socket: Socket, err: int = -1, async = false,
           else: raiseSSLError("Not enough data on socket.")
         of SSL_ERROR_WANT_X509_LOOKUP:
           raiseSSLError("Function for x509 lookup has been called.")
-        of SSL_ERROR_SYSCALL, SSL_ERROR_SSL:
+        of SSL_ERROR_SYSCALL:
+          var errStr = "IO error has occured "
+          let sslErr = ErrPeekLastError()
+          if sslErr == 0 and err == 0:
+            errStr.add "because an EOF was observed that violates the protocol"
+          elif sslErr == 0 and err == -1:
+            errStr.add "in the BIO layer"
+          else:
+            let errStr = $ErrErrorString(sslErr, nil)
+            raiseSSLError(errStr & ": " & errStr)
+          let osMsg = osErrorMsg osLastError()
+          if osMsg != "":
+            errStr.add ". The OS reports: " & osMsg
+          raise newException(OSError, errStr)
+        of SSL_ERROR_SSL:
           raiseSSLError()
         else: raiseSSLError("Unknown Error")
   
@@ -416,17 +430,27 @@ proc accept*(server: Socket, client: var Socket,
   var addrDummy = ""
   acceptAddr(server, client, addrDummy, flags)
 
-proc close*(socket: Socket) =
+proc close*(socket: Socket, twoWay = true) =
   ## Closes a socket.
-  socket.fd.close()
+  ##
+  ## When used with a **SSL** socket, `twoWay` can be set to mandate a two-way
+  ## cryptographically secure shutdown, otherwise, a  "close notify" shutdown
+  ## alert is sent and the underlying socket is closed without waiting for a response.
+  ## This is acceptable under the TLS standard when the underlying connection is not
+  ## going to be use for further communications.
   when defined(ssl):
     if socket.isSSL:
-      let res = SSLShutdown(socket.sslHandle)
-      if res == 0:
-        if SSLShutdown(socket.sslHandle) != 1:
-          socketError(socket)
+      ErrClearError()
+      var res = SSLShutdown(socket.sslHandle)
+      if res == 0 and twoWay:
+        res = SSLShutdown(socket.sslHandle)
+        if res != 1:
+          socketError(socket, res)
+      elif res == 0:
+        discard
       elif res != 1:
-        socketError(socket)
+        socketError(socket, res)
+  socket.fd.close()
 
 proc toCInt*(opt: SOBool): cint =
   ## Converts a ``SOBool`` into its Socket Option cint representation.
