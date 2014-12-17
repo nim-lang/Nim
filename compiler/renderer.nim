@@ -620,7 +620,7 @@ proc gpattern(g: var TSrcGen, n: PNode) =
   if longMode(n) or (lsub(n.sons[0]) + g.lineLen > MaxLineLen):
     incl(c.flags, rfLongMode)
   gcoms(g)                    # a good place for comments
-  gstmts(g, n.sons[0], c)
+  gstmts(g, n, c)
   put(g, tkCurlyRi, "}")
 
 proc gpragmaBlock(g: var TSrcGen, n: PNode) = 
