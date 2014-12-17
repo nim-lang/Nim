@@ -430,23 +430,17 @@ proc accept*(server: Socket, client: var Socket,
   var addrDummy = ""
   acceptAddr(server, client, addrDummy, flags)
 
-proc close*(socket: Socket, twoWay = true) =
+proc close*(socket: Socket) =
   ## Closes a socket.
-  ##
-  ## When used with a **SSL** socket, `twoWay` can be set to mandate a two-way
-  ## cryptographically secure shutdown, otherwise, a  "close notify" shutdown
-  ## alert is sent and the underlying socket is closed without waiting for a response.
-  ## This is acceptable under the TLS standard when the underlying connection is not
-  ## going to be use for further communications.
   when defined(ssl):
     if socket.isSSL:
       ErrClearError()
-      var res = SSLShutdown(socket.sslHandle)
-      if res == 0 and twoWay:
-        res = SSLShutdown(socket.sslHandle)
-        if res != 1:
-          socketError(socket, res)
-      elif res == 0:
+      # As we are closing the underlying socket immediately afterwards,
+      # it is valid, under the TLS standard, to perform a unidirectional
+      # shutdown i.e not wait for the peers "close notify" alert with a second
+      # call to SSLShutdown
+      let res = SSLShutdown(socket.sslHandle)
+      if res == 0:
         discard
       elif res != 1:
         socketError(socket, res)
