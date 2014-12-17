@@ -939,17 +939,19 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     # turn explicit 'void' return type into 'nil' because the rest of the 
     # compiler only checks for 'nil':
     if skipTypes(r, {tyGenericInst}).kind != tyEmpty:
-      if r.sym == nil or sfAnon notin r.sym.flags:
-        let lifted = liftParamType(c, kind, genericParams, r, "result",
-                                   n.sons[0].info)
-        if lifted != nil: r = lifted
-        r.flags.incl tfRetType
-      r = skipIntLit(r)
-      if kind == skIterator:
-        # see tchainediterators
-        # in cases like iterator foo(it: iterator): type(it)
-        # we don't need to change the return type to iter[T]
-        if not r.isInlineIterator: r = newTypeWithSons(c, tyIter, @[r])
+      # 'auto' as a return type does not imply a generic:
+      if r.kind != tyExpr:
+        if r.sym == nil or sfAnon notin r.sym.flags:
+          let lifted = liftParamType(c, kind, genericParams, r, "result",
+                                     n.sons[0].info)
+          if lifted != nil: r = lifted
+          r.flags.incl tfRetType
+        r = skipIntLit(r)
+        if kind == skIterator:
+          # see tchainediterators
+          # in cases like iterator foo(it: iterator): type(it)
+          # we don't need to change the return type to iter[T]
+          if not r.isInlineIterator: r = newTypeWithSons(c, tyIter, @[r])
       result.sons[0] = r
       res.typ = r
 

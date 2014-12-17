@@ -1249,8 +1249,8 @@ proc semAsgn(c: PContext, n: PNode): PNode =
 proc semReturn(c: PContext, n: PNode): PNode =
   result = n
   checkSonsLen(n, 1)
-  if c.p.owner.kind in {skConverter, skMethod, skProc, skMacro} or
-     c.p.owner.kind == skClosureIterator:
+  if c.p.owner.kind in {skConverter, skMethod, skProc, skMacro,
+                        skClosureIterator}:
     if n.sons[0].kind != nkEmpty:
       # transform ``return expr`` to ``result = expr; return``
       if c.p.resultSym != nil: 
