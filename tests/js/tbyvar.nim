@@ -4,12 +4,13 @@ bar 12
 2
 foo 12
 bar 12
-2'''
+2
+'''
 """
 
 # bug #1489
-proc foo(x: int) = echo "foo: ", x
-proc bar(y: var int) = echo "bar: ", y
+proc foo(x: int) = echo "foo ", x
+proc bar(y: var int) = echo "bar ", y
 
 var x = 12
 foo(x)
