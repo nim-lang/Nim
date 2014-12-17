@@ -38,7 +38,11 @@ proc raiseInvalidFormat(msg: string) {.noinline.} =
 
 type
   TFormatParser = object {.pure, final.}
-    f: cstring
+    when defined(js):
+      f: string # we rely on the '\0' terminator
+                # which JS's native string doesn't have
+    else:
+      f: cstring
     num, i, lineLen: int
 
 template call(x: stmt) {.immediate.} =
