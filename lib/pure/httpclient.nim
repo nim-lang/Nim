@@ -498,7 +498,6 @@ proc recvFull(socket: AsyncSocket, size: int): Future[string] {.async.} =
 
 proc parseChunks(client: AsyncHttpClient): Future[string] {.async.} =
   result = ""
-  var ri = 0
   while true:
     var chunkSize = 0
     var chunkSizeStr = await client.socket.recvLine()
