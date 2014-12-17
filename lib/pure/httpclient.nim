@@ -88,10 +88,9 @@
 ## constructor should be used for this purpose. However,
 ## currently only basic authentication is supported.
 
-import sockets, strutils, parseurl, parseutils, strtabs, base64, os
+import net, strutils, parseurl, parseutils, strtabs, base64, os
 import asyncnet, asyncdispatch
 import rawsockets
-from net import nil
 
 type
   Response* = tuple[
@@ -308,18 +307,18 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
   add(headers, extraHeaders)
   add(headers, "\c\L")
 
-  var s = socket()
-  if s == invalidSocket: raiseOSError(osLastError())
-  var port = sockets.Port(80)
+  var s = newSocket()
+  if s == nil: raiseOSError(osLastError())
+  var port = net.Port(80)
   if r.scheme == "https":
     when defined(ssl):
       sslContext.wrapSocket(s)
-      port = sockets.Port(443)
+      port = net.Port(443)
     else:
       raise newException(HttpRequestError,
                 "SSL support is not available. Cannot connect over SSL.")
   if r.port != "":
-    port = sockets.Port(r.port.parseInt)
+    port = net.Port(r.port.parseInt)
 
   if timeout == -1:
     s.connect(r.hostname, port)
