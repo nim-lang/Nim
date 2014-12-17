@@ -23,6 +23,11 @@
 ##
 ## Asynchronous sockets are supported, however a better alternative is to use
 ## the `asyncio <asyncio.html>`_ module.
+##
+## Since version 0.10.2 this module is deprecated. Use the `net <net.html>`_
+## or the ``rawsockets <rawsockets.html>`_ module instead.
+
+{.deprecated.}
 
 include "system/inclrtl"
 
