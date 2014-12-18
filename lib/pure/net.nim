@@ -256,7 +256,21 @@ proc socketError*(socket: Socket, err: int = -1, async = false,
           else: raiseSSLError("Not enough data on socket.")
         of SSL_ERROR_WANT_X509_LOOKUP:
           raiseSSLError("Function for x509 lookup has been called.")
-        of SSL_ERROR_SYSCALL, SSL_ERROR_SSL:
+        of SSL_ERROR_SYSCALL:
+          var errStr = "IO error has occured "
+          let sslErr = ErrPeekLastError()
+          if sslErr == 0 and err == 0:
+            errStr.add "because an EOF was observed that violates the protocol"
+          elif sslErr == 0 and err == -1:
+            errStr.add "in the BIO layer"
+          else:
+            let errStr = $ErrErrorString(sslErr, nil)
+            raiseSSLError(errStr & ": " & errStr)
+          let osMsg = osErrorMsg osLastError()
+          if osMsg != "":
+            errStr.add ". The OS reports: " & osMsg
+          raise newException(OSError, errStr)
+        of SSL_ERROR_SSL:
           raiseSSLError()
         else: raiseSSLError("Unknown Error")
   
@@ -418,15 +432,21 @@ proc accept*(server: Socket, client: var Socket,
 
 proc close*(socket: Socket) =
   ## Closes a socket.
-  socket.fd.close()
-  when defined(ssl):
-    if socket.isSSL:
-      let res = SSLShutdown(socket.sslHandle)
-      if res == 0:
-        if SSLShutdown(socket.sslHandle) != 1:
-          socketError(socket)
-      elif res != 1:
-        socketError(socket)
+  try:
+    when defined(ssl):
+      if socket.isSSL:
+        ErrClearError()
+        # As we are closing the underlying socket immediately afterwards,
+        # it is valid, under the TLS standard, to perform a unidirectional
+        # shutdown i.e not wait for the peers "close notify" alert with a second
+        # call to SSLShutdown
+        let res = SSLShutdown(socket.sslHandle)
+        if res == 0:
+          discard
+        elif res != 1:
+          socketError(socket, res)
+  finally:
+    socket.fd.close()
 
 proc toCInt*(opt: SOBool): cint =
   ## Converts a ``SOBool`` into its Socket Option cint representation.

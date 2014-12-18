@@ -89,6 +89,8 @@ type
 {.deprecated: [PSSL: SslPtr, PSSL_CTX: SslCtx, PBIO: BIO].}
 
 const 
+  SSL_SENT_SHUTDOWN* = 1
+  SSL_RECEIVED_SHUTDOWN* = 2
   EVP_MAX_MD_SIZE* = 16 + 20
   SSL_ERROR_NONE* = 0
   SSL_ERROR_SSL* = 1
@@ -233,6 +235,8 @@ proc SSL_CTX_check_private_key*(ctx: SslCtx): cInt{.cdecl, dynlib: DLLSSLName,
 proc SSL_set_fd*(ssl: SslPtr, fd: SocketHandle): cint{.cdecl, dynlib: DLLSSLName, importc.}
 
 proc SSL_shutdown*(ssl: SslPtr): cInt{.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_set_shutdown*(ssl: SslPtr, mode: cint) {.cdecl, dynlib: DLLSSLName, importc: "SSL_set_shutdown".}
+proc SSL_get_shutdown*(ssl: SslPtr): cint {.cdecl, dynlib: DLLSSLName, importc: "SSL_get_shutdown".}
 proc SSL_connect*(ssl: SslPtr): cint{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_read*(ssl: SslPtr, buf: pointer, num: int): cint{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_write*(ssl: SslPtr, buf: cstring, num: int): cint{.cdecl, dynlib: DLLSSLName, importc.}
@@ -313,6 +317,11 @@ proc sslSetBio*(ssl: SslPtr, rbio, wbio: BIO) {.cdecl,
 proc sslDoHandshake*(ssl: SslPtr): cint {.cdecl,
     dynlib: DLLSSLName, importc: "SSL_do_handshake".}
 
+
+
+proc ErrClearError*(){.cdecl, dynlib: DLLUtilName, importc: "ERR_clear_error".}
+proc ErrFreeStrings*(){.cdecl, dynlib: DLLUtilName, importc: "ERR_free_strings".}
+proc ErrRemoveState*(pid: cInt){.cdecl, dynlib: DLLUtilName, importc: "ERR_remove_state".}
 
 when true:
   discard
@@ -414,9 +423,7 @@ else:
     #  function ErrErrorString(e: cInt; buf: PChar): PChar;
   proc SSLeayversion*(t: cInt): cstring{.cdecl, dynlib: DLLUtilName, importc.}
 
-  proc ErrClearError*(){.cdecl, dynlib: DLLUtilName, importc.}
-  proc ErrFreeStrings*(){.cdecl, dynlib: DLLUtilName, importc.}
-  proc ErrRemoveState*(pid: cInt){.cdecl, dynlib: DLLUtilName, importc.}
+
   proc OPENSSLaddallalgorithms*(){.cdecl, dynlib: DLLUtilName, importc.}
   proc CRYPTOcleanupAllExData*(){.cdecl, dynlib: DLLUtilName, importc.}
   proc RandScreen*(){.cdecl, dynlib: DLLUtilName, importc.}
