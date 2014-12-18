@@ -735,7 +735,7 @@ type
       # check for the owner when touching 'usedGenerics'.
       usedGenerics*: seq[PInstantiation]
       tab*: TStrTable         # interface table for modules
-    of skLet, skVar, skField:
+    of skLet, skVar, skField, skForVar:
       guard*: PSym
     else: nil
     magic*: TMagic
