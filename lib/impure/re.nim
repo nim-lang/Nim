@@ -20,12 +20,12 @@
 ##
 
 import
-  pcre, strutils
+  pcre, strutils, rtarrays
 
 const
-  MaxSubpatterns* = 10
+  MaxSubpatterns* = 20
     ## defines the maximum number of subpatterns that can be captured.
-    ## More subpatterns cannot be captured!
+    ## This limit still exists for ``replacef`` and ``parallelReplace``.
 
 type
   RegexFlag* = enum     ## options for regular expressions
@@ -53,7 +53,7 @@ proc raiseInvalidRegex(msg: string) {.noinline, noreturn.} =
   new(e)
   e.msg = msg
   raise e
-  
+
 proc rawCompile(pattern: string, flags: cint): PPcre =
   var
     msg: cstring
@@ -84,9 +84,10 @@ proc re*(s: string, flags = {reExtended, reStudy}): Regex =
 proc matchOrFind(s: string, pattern: Regex, matches: var openArray[string],
                  start, flags: cint): cint =
   var
-    rawMatches: array[0..MaxSubpatterns * 3 - 1, cint]
+    rtarray = initRtArray[cint]((matches.len+1)*3)
+    rawMatches = rtarray.getRawData
     res = pcre.exec(pattern.h, pattern.e, s, len(s).cint, start, flags,
-      cast[ptr cint](addr(rawMatches)), MaxSubpatterns * 3)
+      cast[ptr cint](rawMatches), (matches.len+1).cint*3)
   if res < 0'i32: return res
   for i in 1..int(res)-1:
     var a = rawMatches[i * 2]
@@ -102,9 +103,10 @@ proc findBounds*(s: string, pattern: Regex, matches: var openArray[string],
   ## substrings in the array `matches`. If it does not match, nothing
   ## is written into `matches` and ``(-1,0)`` is returned.
   var
-    rawMatches: array[0..MaxSubpatterns * 3 - 1, cint]
+    rtarray = initRtArray[cint]((matches.len+1)*3)
+    rawMatches = rtarray.getRawData
     res = pcre.exec(pattern.h, pattern.e, s, len(s).cint, start.cint, 0'i32,
-      cast[ptr cint](addr(rawMatches)), MaxSubpatterns * 3)
+      cast[ptr cint](rawMatches), (matches.len+1).cint*3)
   if res < 0'i32: return (-1, 0)
   for i in 1..int(res)-1:
     var a = rawMatches[i * 2]
@@ -121,9 +123,10 @@ proc findBounds*(s: string, pattern: Regex,
   ## If it does not match, nothing is written into `matches` and
   ## ``(-1,0)`` is returned.
   var
-    rawMatches: array[0..MaxSubpatterns * 3 - 1, cint]
+    rtarray = initRtArray[cint]((matches.len+1)*3)
+    rawMatches = rtarray.getRawData
     res = pcre.exec(pattern.h, pattern.e, s, len(s).cint, start.cint, 0'i32,
-      cast[ptr cint](addr(rawMatches)), MaxSubpatterns * 3)
+      cast[ptr cint](rawMatches), (matches.len+1).cint*3)
   if res < 0'i32: return (-1, 0)
   for i in 1..int(res)-1:
     var a = rawMatches[i * 2]
@@ -137,16 +140,19 @@ proc findBounds*(s: string, pattern: Regex,
   ## returns the starting position of `pattern` in `s`. If it does not
   ## match, ``(-1,0)`` is returned.
   var
-    rawMatches: array[0..3 - 1, cint]
+    rtarray = initRtArray[cint](3)
+    rawMatches = rtarray.getRawData
     res = pcre.exec(pattern.h, nil, s, len(s).cint, start.cint, 0'i32,
-      cast[ptr cint](addr(rawMatches)), 3)
+      cast[ptr cint](rawMatches), 3)
   if res < 0'i32: return (int(res), 0)
   return (int(rawMatches[0]), int(rawMatches[1]-1))
   
 proc matchOrFind(s: string, pattern: Regex, start, flags: cint): cint =
-  var rawMatches: array [0..MaxSubpatterns * 3 - 1, cint]
+  var
+    rtarray = initRtArray[cint](3)
+    rawMatches = rtarray.getRawData
   result = pcre.exec(pattern.h, pattern.e, s, len(s).cint, start, flags,
-                    cast[ptr cint](addr(rawMatches)), MaxSubpatterns * 3)
+                    cast[ptr cint](rawMatches), 3)
   if result >= 0'i32:
     result = rawMatches[1] - rawMatches[0]
 
@@ -182,9 +188,10 @@ proc find*(s: string, pattern: Regex, matches: var openArray[string],
   ## substrings in the array ``matches``. If it does not match, nothing
   ## is written into ``matches`` and -1 is returned.
   var
-    rawMatches: array[0..MaxSubpatterns * 3 - 1, cint]
+    rtarray = initRtArray[cint]((matches.len+1)*3)
+    rawMatches = rtarray.getRawData
     res = pcre.exec(pattern.h, pattern.e, s, len(s).cint, start.cint, 0'i32,
-      cast[ptr cint](addr(rawMatches)), MaxSubpatterns * 3)
+      cast[ptr cint](rawMatches), (matches.len+1).cint*3)
   if res < 0'i32: return res
   for i in 1..int(res)-1:
     var a = rawMatches[i * 2]
@@ -197,22 +204,25 @@ proc find*(s: string, pattern: Regex, start = 0): int =
   ## returns the starting position of ``pattern`` in ``s``. If it does not
   ## match, -1 is returned.
   var
-    rawMatches: array[0..3 - 1, cint]
+    rtarray = initRtArray[cint](3)
+    rawMatches = rtarray.getRawData
     res = pcre.exec(pattern.h, nil, s, len(s).cint, start.cint, 0'i32,
-      cast[ptr cint](addr(rawMatches)), 3)
+      cast[ptr cint](rawMatches), 3)
   if res < 0'i32: return res
   return rawMatches[0]
-  
+
 iterator findAll*(s: string, pattern: Regex, start = 0): string = 
   ## Yields all matching *substrings* of `s` that match `pattern`.
   ##
   ## Note that since this is an iterator you should not modify the string you
   ## are iterating over: bad things could happen.
-  var i = int32(start)
-  var rawMatches: array[0..MaxSubpatterns * 3 - 1, cint]
+  var
+    i = int32(start)
+    rtarray = initRtArray[cint](3)
+    rawMatches = rtarray.getRawData
   while true:
     let res = pcre.exec(pattern.h, pattern.e, s, len(s).cint, i, 0'i32,
-      cast[ptr cint](addr(rawMatches)), MaxSubpatterns * 3)
+      cast[ptr cint](rawMatches), 3)
     if res < 0'i32: break
     let a = rawMatches[0]
     let b = rawMatches[1]
@@ -316,23 +326,9 @@ proc replacef*(s: string, sub: Regex, by: string): string =
     addf(result, by, caps)
     prev = match.last + 1
   add(result, substr(s, prev))
-  when false:
-    result = ""
-    var i = 0
-    var caps: array[0..MaxSubpatterns-1, string]
-    while i < s.len:
-      var x = matchLen(s, sub, caps, i)
-      if x <= 0:
-        add(result, s[i])
-        inc(i)
-      else:
-        addf(result, by, caps)
-        inc(i, x)
-    # substr the rest:
-    add(result, substr(s, i))
-  
+
 proc parallelReplace*(s: string, subs: openArray[
-                      tuple[pattern: Regex, repl: string]]): string = 
+                      tuple[pattern: Regex, repl: string]]): string =
   ## Returns a modified copy of `s` with the substitutions in `subs`
   ## applied in parallel.
   result = ""
@@ -349,8 +345,8 @@ proc parallelReplace*(s: string, subs: openArray[
       add(result, s[i])
       inc(i)
   # copy the rest:
-  add(result, substr(s, i))  
-  
+  add(result, substr(s, i))
+
 proc transformFile*(infile, outfile: string,
                     subs: openArray[tuple[pattern: Regex, repl: string]]) =
   ## reads in the file `infile`, performs a parallel replacement (calls
@@ -474,3 +470,11 @@ when isMainModule:
     assert x == "d"
   for x in findAll("abcdef", re".", 3):
     echo x
+
+  block:
+    var matches: array[0..15, string]
+    if match("abcdefghijklmnop", re"(a)(b)(c)(d)(e)(f)(g)(h)(i)(j)(k)(l)(m)(n)(o)(p)", matches):
+      for i in 0..matches.high:
+        assert matches[i] == $chr(i + 'a'.ord)
+    else:
+      assert false

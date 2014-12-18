@@ -28,7 +28,7 @@ when useUnicode:
 
 const
   InlineThreshold = 5  ## number of leaves; -1 to disable inlining
-  MaxSubpatterns* = 10 ## defines the maximum number of subpatterns that
+  MaxSubpatterns* = 20 ## defines the maximum number of subpatterns that
                        ## can be captured. More subpatterns cannot be captured! 
 
 type
