@@ -241,7 +241,7 @@ simplicity (they require specialized semantic checking)::
 
 Thus they act more like keywords than like ordinary identifiers; unlike a 
 keyword however, a redefinition may `shadow`:idx: the definition in 
-the ``system`` module. From this list the following should be written in dot
+the ``system`` module. From this list the following should not be written in dot
 notation ``x.f`` since ``x`` cannot be type checked before it gets passed
 to ``f``::
 
