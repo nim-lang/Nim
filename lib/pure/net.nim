@@ -432,19 +432,21 @@ proc accept*(server: Socket, client: var Socket,
 
 proc close*(socket: Socket) =
   ## Closes a socket.
-  when defined(ssl):
-    if socket.isSSL:
-      ErrClearError()
-      # As we are closing the underlying socket immediately afterwards,
-      # it is valid, under the TLS standard, to perform a unidirectional
-      # shutdown i.e not wait for the peers "close notify" alert with a second
-      # call to SSLShutdown
-      let res = SSLShutdown(socket.sslHandle)
-      if res == 0:
-        discard
-      elif res != 1:
-        socketError(socket, res)
-  socket.fd.close()
+  try:
+    when defined(ssl):
+      if socket.isSSL:
+        ErrClearError()
+        # As we are closing the underlying socket immediately afterwards,
+        # it is valid, under the TLS standard, to perform a unidirectional
+        # shutdown i.e not wait for the peers "close notify" alert with a second
+        # call to SSLShutdown
+        let res = SSLShutdown(socket.sslHandle)
+        if res == 0:
+          discard
+        elif res != 1:
+          socketError(socket, res)
+  finally:
+    socket.fd.close()
 
 proc toCInt*(opt: SOBool): cint =
   ## Converts a ``SOBool`` into its Socket Option cint representation.
