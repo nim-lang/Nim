@@ -688,7 +688,7 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
     d.tocPart[length].header = tmp
 
     dispA(d.target, result, "\n<h$1><a class=\"toc-backref\" " &
-      "id=\"$2\" href=\"#$2_toc\">$3</a></h$1>", "\\rsth$4{$3}\\label{$2}\n",
+      "id=\"$2\" href=\"#$2\">$3</a></h$1>", "\\rsth$4{$3}\\label{$2}\n",
       [$n.level, d.tocPart[length].refname, tmp, $chr(n.level - 1 + ord('A'))])
   else:
     dispA(d.target, result, "\n<h$1 id=\"$2\">$3</h$1>", 
@@ -836,7 +836,7 @@ proc buildLinesHTMLTable(params: CodeBlockParams, code: string):
 
   var codeLines = 1 + code.strip.countLines
   assert codeLines > 0
-  result.beginTable = """<table><tbody><tr><td class="blob-line-nums"><pre>"""
+  result.beginTable = """<table class="line-nums-table"><tbody><tr><td class="blob-line-nums"><pre>"""
   var line = params.startLine
   while codeLines > 0:
     result.beginTable.add($line & "\n")
