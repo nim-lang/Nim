@@ -88,10 +88,9 @@
 ## constructor should be used for this purpose. However,
 ## currently only basic authentication is supported.
 
-import sockets, strutils, parseurl, parseutils, strtabs, base64, os
+import net, strutils, uri, parseutils, strtabs, base64, os
 import asyncnet, asyncdispatch
 import rawsockets
-from net import nil
 
 type
   Response* = tuple[
@@ -101,7 +100,7 @@ type
     body: string]
 
   Proxy* = ref object
-    url*: Url
+    url*: Uri
     auth*: string
 
   ProtocolError* = object of IOError   ## exception that is raised when server
@@ -279,7 +278,7 @@ else:
 
 proc newProxy*(url: string, auth = ""): Proxy =
   ## Constructs a new ``TProxy`` object.
-  result = Proxy(url: parseUrl(url), auth: auth)
+  result = Proxy(url: parseUri(url), auth: auth)
 
 proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
               body = "",
@@ -290,7 +289,7 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
   ## | Extra headers can be specified and must be seperated by ``\c\L``
   ## | An optional timeout can be specified in miliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
-  var r = if proxy == nil: parseUrl(url) else: proxy.url
+  var r = if proxy == nil: parseUri(url) else: proxy.url
   var headers = substr($httpMethod, len("http"))
   if proxy == nil:
     headers.add(" /" & r.path & r.query)
@@ -308,18 +307,18 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
   add(headers, extraHeaders)
   add(headers, "\c\L")
 
-  var s = socket()
-  if s == invalidSocket: raiseOSError(osLastError())
-  var port = sockets.Port(80)
+  var s = newSocket()
+  if s == nil: raiseOSError(osLastError())
+  var port = net.Port(80)
   if r.scheme == "https":
     when defined(ssl):
       sslContext.wrapSocket(s)
-      port = sockets.Port(443)
+      port = net.Port(443)
     else:
       raise newException(HttpRequestError,
                 "SSL support is not available. Cannot connect over SSL.")
   if r.port != "":
-    port = sockets.Port(r.port.parseInt)
+    port = net.Port(r.port.parseInt)
 
   if timeout == -1:
     s.connect(r.hostname, port)
@@ -342,9 +341,9 @@ proc getNewLocation(lastUrl: string, headers: StringTableRef): string =
   result = headers["Location"]
   if result == "": httpError("location header expected")
   # Relative URLs. (Not part of the spec, but soon will be.)
-  let r = parseURL(result)
+  let r = parseUri(result)
   if r.hostname == "" and r.path != "":
-    let origParsed = parseURL(lastUrl)
+    let origParsed = parseUri(lastUrl)
     result = origParsed.hostname & "/" & r.path
 
 proc get*(url: string, extraHeaders = "", maxRedirects = 5,
@@ -437,7 +436,7 @@ proc downloadFile*(url: string, outputFilename: string,
   else:
     fileError("Unable to open file")
 
-proc generateHeaders(r: Url, httpMethod: HttpMethod,
+proc generateHeaders(r: Uri, httpMethod: HttpMethod,
                      headers: StringTableRef): string =
   result = substr($httpMethod, len("http"))
   # TODO: Proxies
@@ -455,7 +454,7 @@ type
   AsyncHttpClient* = ref object
     socket: AsyncSocket
     connected: bool
-    currentURL: Url ## Where we are currently connected.
+    currentURL: Uri ## Where we are currently connected.
     headers*: StringTableRef
     maxRedirects: int
     userAgent: string
@@ -499,7 +498,6 @@ proc recvFull(socket: AsyncSocket, size: int): Future[string] {.async.} =
 
 proc parseChunks(client: AsyncHttpClient): Future[string] {.async.} =
   result = ""
-  var ri = 0
   while true:
     var chunkSize = 0
     var chunkSizeStr = await client.socket.recvLine()
@@ -607,7 +605,7 @@ proc parseResponse(client: AsyncHttpClient,
   else:
     result.body = ""
 
-proc newConnection(client: AsyncHttpClient, url: Url) {.async.} =
+proc newConnection(client: AsyncHttpClient, url: Uri) {.async.} =
   if client.currentURL.hostname != url.hostname or
       client.currentURL.scheme != url.scheme:
     if client.connected: client.close()
@@ -643,7 +641,7 @@ proc request*(client: AsyncHttpClient, url: string, httpMethod = httpGET,
   ## connection can be closed by using the ``close`` procedure.
   ##
   ## The returned future will complete once the request is completed.
-  let r = parseUrl(url)
+  let r = parseUri(url)
   await newConnection(client, r)
 
   if not client.headers.hasKey("user-agent") and client.userAgent != "":
