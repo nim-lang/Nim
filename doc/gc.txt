@@ -19,7 +19,7 @@ code generation). The GC **never** scans the whole heap but it may scan the
 delta-subgraph of the heap that changed since its last run.
 
 
-The GC is only triggered in a memory allocation operation. It it not triggered
+The GC is only triggered in a memory allocation operation. It is not triggered
 by some timer and does not run in a background thread.
 
 To force a full collection call ``GC_fullCollect``. Note that it is generally
