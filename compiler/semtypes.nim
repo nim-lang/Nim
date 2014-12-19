@@ -386,13 +386,13 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
   else:
     result = newSymG(kind, n, c)
   
-proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode, 
-                        allowed: TSymFlags): PSym = 
-  if n.kind == nkPragmaExpr: 
+proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
+                        allowed: TSymFlags): PSym =
+  if n.kind == nkPragmaExpr:
     checkSonsLen(n, 2)
     result = semIdentVis(c, kind, n.sons[0], allowed)
     case kind
-    of skType: 
+    of skType:
       # process pragmas later, because result.typ has not been set yet
       discard
     of skField: pragma(c, result, n.sons[1], fieldPragmas)
@@ -403,7 +403,7 @@ proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
   else:
     result = semIdentVis(c, kind, n, allowed)
   if gCmd == cmdPretty: styleCheckDef(n.info, result)
-  
+
 proc checkForOverlap(c: PContext, t: PNode, currentEx, branchIndex: int) =
   let ex = t[branchIndex][currentEx].skipConv
   for i in countup(1, branchIndex):

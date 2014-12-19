@@ -947,10 +947,10 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkConstDef, nkIdentDefs:
     gcomma(g, n, 0, -3)
     var L = sonsLen(n)
-    if n.sons[L - 2].kind != nkEmpty: 
+    if L >= 2 and n.sons[L - 2].kind != nkEmpty: 
       putWithSpace(g, tkColon, ":")
       gsub(g, n.sons[L - 2])
-    if n.sons[L - 1].kind != nkEmpty: 
+    if L >= 1 and n.sons[L - 1].kind != nkEmpty: 
       put(g, tkSpaces, Space)
       putWithSpace(g, tkEquals, "=")
       gsub(g, n.sons[L - 1], c)

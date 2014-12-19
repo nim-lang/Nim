@@ -292,7 +292,8 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
   var newbody = replaceTypeVarsT(cl, lastSon(body))
   newbody.flags = newbody.flags + (t.flags + body.flags - tfInstClearedFlags)
   result.flags = result.flags + newbody.flags - tfInstClearedFlags
-  newbody.callConv = body.callConv
+  # This is actually wrong: tgeneric_closure fails with this line:
+  #newbody.callConv = body.callConv
   # This type may be a generic alias and we want to resolve it here.
   # One step is enough, because the recursive nature of
   # handleGenericInvokation will handle the alias-to-alias-to-alias case
@@ -307,7 +308,7 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
 
 proc eraseVoidParams*(t: PType) =
   # transform '(): void' into '()' because old parts of the compiler really
-  # doesn't deal with '(): void':
+  # don't deal with '(): void':
   if t.sons[0] != nil and t.sons[0].kind == tyEmpty:
     t.sons[0] = nil
   
