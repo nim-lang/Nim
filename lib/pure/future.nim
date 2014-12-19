@@ -77,7 +77,17 @@ macro `=>`*(p, b: expr): expr {.immediate.} =
         identDefs.add(c)
         identDefs.add(newEmptyNode())
         identDefs.add(newEmptyNode())
+      of nnkInfix:
+        if c[0].kind == nnkIdent and c[0].ident == !"->":
+          var procTy = createProcType(c[1], c[2])
+          params[0] = procTy[0][0]
+          for i in 1 .. <procTy[0].len:
+            params.add(procTy[0][i])
+        else:
+          error("Expected proc type (->) got (" & $c[0].ident & ").")
+        break
       else:
+        echo treeRepr c
         error("Incorrect procedure parameter list.")
       params.add(identDefs)
   of nnkIdent:
