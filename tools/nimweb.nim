@@ -24,8 +24,10 @@ type
     numProcessors: int # Set by parallelBuild:n, only works for values > 0.
   TRssItem = object
     year, month, day, title: string
+  TAction = enum
+    actAll, actOnlyWebsite, actPdf
 
-var onlyWebsite: bool
+var action: TAction
 
 proc initConfigData(c: var TConfigData) =
   c.tabs = @[]
@@ -70,6 +72,7 @@ Options:
   -h, --help          shows this help
   -v, --version       shows the version
   --website           only build the website, not the full documentation
+  --pdf               build the PDF version of the documentation
 Compile_options:
   will be passed to the Nim compiler
 """
@@ -137,8 +140,8 @@ proc parseCmdLine(c: var TConfigData) =
         var idx = val.find('=')
         if idx < 0: quit("invalid command line")
         c.vars[substr(val, 0, idx-1)] = substr(val, idx+1)
-      of "website":
-        onlyWebsite = true
+      of "website": action = actOnlyWebsite
+      of "pdf": action = actPdf
       else: quit(usage)
     of cmdEnd: break
   if c.infile.len == 0: quit(usage)
@@ -434,14 +437,12 @@ proc main(c: var TConfigData) =
   buildDoc(c, "web/upload")
   buildDocSamples(c, "doc")
   buildDoc(c, "doc")
-  #buildPdfDoc(c, "doc")
 
 var c: TConfigData
 initConfigData(c)
 parseCmdLine(c)
 parseIniFile(c)
-if onlyWebsite:
-  buildWebsite(c)
-  #buildPdfDoc(c, "doc")
-else:
-  main(c)
+case action
+of actOnlyWebsite: buildWebsite(c)
+of actPdf: buildPdfDoc(c, "doc")
+of actAll: main(c)

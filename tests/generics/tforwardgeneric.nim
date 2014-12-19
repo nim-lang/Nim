@@ -1,6 +1,7 @@
 discard """
   output: "1.1000000000000001e+00 11"
   ccodecheck: "!@'ClEnv'"
+  disabled: "true"
 """
 
 proc p[T](a, b: T): T

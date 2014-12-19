@@ -35,9 +35,9 @@ echo noParams(() => 3)
 
 echo doWithOneAndTwo((x, y) => x + y)
 
-noReturn(() -> void => echo("noReturn"))
+noReturn((() -> void) => echo("noReturn"))
 
 proc pass2(f: (int, int) -> int): (int) -> int =
-  (x: int) -> int => f(2, x)
+  ((x: int) -> int) => f(2, x)
 
 echo pass2((x, y) => x + y)(4)
