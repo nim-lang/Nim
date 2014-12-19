@@ -229,7 +229,7 @@ proc `>-<`(val: int, s: PSurface): int {.inline.} =
 proc `>|<`(val: int, s: PSurface): int {.inline.} = 
   return if val < 0: 0 elif val >= s.h: s.h-1 else: val
 
-proc drawLine*(sur: PSurface, p1, p2: TPoint, color: Color) =
+proc drawLine*(sur: PSurface, p1, p2: TPoint, color: Color, stipple=1) =
   ## draws a line between the two points `p1` and `p2` with the given color
   ## onto the surface `sur`.
   var stepx, stepy: int = 0
@@ -251,6 +251,7 @@ proc drawLine*(sur: PSurface, p1, p2: TPoint, color: Color) =
     stepx = 1
   dy = dy * 2 
   dx = dx * 2
+  var stip = 0
   var video = cast[PPixels](sur.s.pixels)
   var pitch = sur.s.pitch.int div ColSize
   setPix(video, pitch, x0, y0, color)
@@ -262,7 +263,9 @@ proc drawLine*(sur: PSurface, p1, p2: TPoint, color: Color) =
         fraction = fraction - dx
       x0 = x0 + stepx
       fraction = fraction + dy
-      setPix(video, pitch, x0, y0, color)
+      if stip mod stipple == 0:
+        setPix(video, pitch, x0, y0, color)
+      stip += 1
   else:
     var fraction = dx - (dy div 2)
     while y0 != y1:
@@ -271,25 +274,33 @@ proc drawLine*(sur: PSurface, p1, p2: TPoint, color: Color) =
         fraction = fraction - dy
       y0 = y0 + stepy
       fraction = fraction + dx
-      setPix(video, pitch, x0, y0, color)
+      if stip mod stipple == 0:
+        setPix(video, pitch, x0, y0, color)
+      stip += 1
 
-proc drawHorLine*(sur: PSurface, x, y, w: Natural, color: Color) =
+proc drawHorLine*(sur: PSurface, x, y, w: Natural, color: Color, stipple=1) =
   ## draws a horizontal line from (x,y) to (x+w-1, y).
   var video = cast[PPixels](sur.s.pixels)
   var pitch = sur.s.pitch.int div ColSize
+  var stip = 0
 
   if y >= 0 and y <= sur.s.h:
     for i in 0 .. min(sur.s.w-x, w)-1:
-      setPix(video, pitch, x + i, y, color)
+      if stip mod stipple == 0:
+        setPix(video, pitch, x + i, y, color)
+      stip += 1
 
-proc drawVerLine*(sur: PSurface, x, y, h: Natural, color: Color) =
+proc drawVerLine*(sur: PSurface, x, y, h: Natural, color: Color, stipple=1) =
   ## draws a vertical line from (x,y) to (x, y+h-1).
   var video = cast[PPixels](sur.s.pixels)
   var pitch = sur.s.pitch.int div ColSize
+  var stip = 0
 
   if x >= 0 and x <= sur.s.w:
     for i in 0 .. min(sur.s.h-y, h)-1:
-      setPix(video, pitch, x, y + i, color)
+      if stip mod stipple == 0:
+        setPix(video, pitch, x, y + i, color)
+      stip +=1
 
 proc fillCircle*(s: PSurface, p: TPoint, r: Natural, color: Color) =
   ## draws a circle with center `p` and radius `r` with the given color
