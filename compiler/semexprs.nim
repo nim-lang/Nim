@@ -729,7 +729,7 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
     case callee.kind
     of skMacro, skTemplate: discard
     else:
-      if (callee.kind in skIterators) and (callee.id == c.p.owner.id): 
+      if callee.kind in skIterators and callee.id == c.p.owner.id:
         localError(n.info, errRecursiveDependencyX, callee.name.s)
       if sfNoSideEffect notin callee.flags: 
         if {sfImportc, sfSideEffect} * callee.flags != {}:
