@@ -803,6 +803,16 @@ proc rfind*(s, sub: string, start: int = -1): int {.noSideEffect.} =
     if result != -1: return
   return -1
 
+proc rfind*(s: string, sub: char, start: int = -1): int {.noSideEffect,
+  rtl.} =
+  ## Searches for `sub` in `s` in reverse starting at position `start`.
+  ##
+  ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
+  let realStart = if start == -1: s.len-1 else: start
+  for i in countdown(realStart, 0):
+    if sub == s[i]: return i
+  return -1
+
 proc count*(s: string, sub: string, overlapping: bool = false): int {.noSideEffect,
   rtl, extern: "nsuCountString".} =
   ## Count the occurences of a substring `sub` in the string `s`.
