@@ -370,7 +370,7 @@ proc trackPragmaStmt(tracked: PEffects, n: PNode) =
       # list the computed effects up to here:
       listEffects(tracked)
       
-proc effectSpec(n: PNode, effectType = wRaises): PNode =
+proc effectSpec(n: PNode, effectType: TSpecialWord): PNode =
   for i in countup(0, sonsLen(n) - 1):
     var it = n.sons[i]
     if it.kind == nkExprColonExpr and whichPragma(it) == effectType:
@@ -380,8 +380,7 @@ proc effectSpec(n: PNode, effectType = wRaises): PNode =
         result.add(it.sons[1])
       return
 
-proc documentEffect(n, x: PNode, effectType: TSpecialWord, idx: int) =
-  var x = x
+proc documentEffect(n, x: PNode, effectType: TSpecialWord, idx: int): PNode =
   let spec = effectSpec(x, effectType)
   if isNil(spec):
     let s = n.sons[namePos].sym
@@ -399,18 +398,20 @@ proc documentEffect(n, x: PNode, effectType: TSpecialWord, idx: int) =
       # set the type so that the following analysis doesn't screw up:
       effects.sons[i].typ = real[i].typ
 
-    var pair = newNode(nkExprColonExpr, n.info, @[
+    result = newNode(nkExprColonExpr, n.info, @[
       newIdentNode(getIdent(specialWords[effectType]), n.info), effects])
-    
-    if x.kind == nkEmpty:
-      x = newNodeI(nkPragma, n.info)
-      n.sons[pragmasPos] = x
-    x.add(pair)
 
 proc documentRaises*(n: PNode) =
   if n.sons[namePos].kind != nkSym: return
-  documentEffect(n, n.sons[pragmasPos], wRaises, exceptionEffects)
-  documentEffect(n, n.sons[pragmasPos], wTags, tagEffects)
+  let pragmas = n.sons[pragmasPos]
+  let p1 = documentEffect(n, pragmas, wRaises, exceptionEffects)
+  let p2 = documentEffect(n, pragmas, wTags, tagEffects)
+  
+  if p1 != nil or p2 != nil:
+    if pragmas.kind == nkEmpty:
+      n.sons[pragmasPos] = newNodeI(nkPragma, n.info)
+    if p1 != nil: n.sons[pragmasPos].add p1
+    if p2 != nil: n.sons[pragmasPos].add p2
 
 template notGcSafe(t): expr = {tfGcSafe, tfNoSideEffect} * t.flags == {}
 
@@ -621,7 +622,8 @@ proc track(tracked: PEffects, n: PNode) =
     useVar(tracked, n)
   of nkRaiseStmt:
     n.sons[0].info = n.info
-    throws(tracked.exc, n.sons[0])
+    #throws(tracked.exc, n.sons[0])
+    addEffect(tracked, n.sons[0], useLineInfo=false)
     for i in 0 .. <safeLen(n):
       track(tracked, n.sons[i])
   of nkCallKinds:

@@ -217,7 +217,7 @@ proc raiseOSError*(msg: string = "") {.noinline, rtl, extern: "nos$1",
   ## ``GetLastError`` is checked before ``errno``.
   ## If no error flag is set, the message ``unknown OS error`` is used.
   ##
-  ## **Deprecated since version 0.9.4**: use the other ``OSError`` proc.
+  ## **Deprecated since version 0.9.4**: use the other ``raiseOSError`` proc.
   if len(msg) == 0:
     var m = osErrorMsg()
     raise newException(OSError, if m.len > 0: m else: "unknown OS error")
@@ -234,7 +234,7 @@ proc `$`*(err: OSErrorCode): string {.borrow.}
 proc osErrorMsg*(errorCode: OSErrorCode): string =
   ## Converts an OS error code into a human readable string.
   ##
-  ## The error code can be retrieved using the ``OSLastError`` proc.
+  ## The error code can be retrieved using the ``osLastError`` proc.
   ##
   ## If conversion fails, or ``errorCode`` is ``0`` then ``""`` will be
   ## returned.
@@ -265,7 +265,7 @@ proc raiseOSError*(errorCode: OSErrorCode) =
   ## Raises an ``OSError`` exception. The ``errorCode`` will determine the
   ## message, ``osErrorMsg`` will be used to get this message.
   ##
-  ## The error code can be retrieved using the ``OSLastError`` proc.
+  ## The error code can be retrieved using the ``osLastError`` proc.
   ##
   ## If the error code is ``0`` or an error message could not be retrieved,
   ## the message ``unknown OS error`` will be used.
@@ -884,7 +884,7 @@ proc sameFileContent*(path1, path2: string): bool {.rtl, extern: "nos$1",
   close(b)
 
 type
-  TFilePermission* = enum  ## file access permission; modelled after UNIX
+  FilePermission* = enum   ## file access permission; modelled after UNIX
     fpUserExec,            ## execute access for the file owner
     fpUserWrite,           ## write access for the file owner
     fpUserRead,            ## read access for the file owner
@@ -895,7 +895,9 @@ type
     fpOthersWrite,         ## write access for others
     fpOthersRead           ## read access for others
 
-proc getFilePermissions*(filename: string): set[TFilePermission] {.
+{.deprecated: [TFilePermission: FilePermission].}
+
+proc getFilePermissions*(filename: string): set[FilePermission] {.
   rtl, extern: "nos$1", tags: [ReadDirEffect].} =
   ## retrieves file permissions for `filename`. `OSError` is raised in case of
   ## an error. On Windows, only the ``readonly`` flag is checked, every other
@@ -927,7 +929,7 @@ proc getFilePermissions*(filename: string): set[TFilePermission] {.
     else:
       result = {fpUserExec..fpOthersRead}
   
-proc setFilePermissions*(filename: string, permissions: set[TFilePermission]) {.
+proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
   rtl, extern: "nos$1", tags: [WriteDirEffect].} =
   ## sets the file permissions for `filename`. `OSError` is raised in case of
   ## an error. On Windows, only the ``readonly`` flag is changed, depending on
@@ -1231,13 +1233,15 @@ iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect].} =
     globfree(addr(f))
 
 type
-  TPathComponent* = enum  ## Enumeration specifying a path component.
+  PathComponent* = enum   ## Enumeration specifying a path component.
     pcFile,               ## path refers to a file
     pcLinkToFile,         ## path refers to a symbolic link to a file
     pcDir,                ## path refers to a directory
     pcLinkToDir           ## path refers to a symbolic link to a directory
 
-iterator walkDir*(dir: string): tuple[kind: TPathComponent, path: string] {.
+{.deprecated: [TPathComponent: PathComponent].}
+
+iterator walkDir*(dir: string): tuple[kind: PathComponent, path: string] {.
   tags: [ReadDirEffect].} =
   ## walks over the directory `dir` and yields for each directory or file in
   ## `dir`. The component type and full path for each item is returned.
@@ -1580,7 +1584,7 @@ proc copyDirWithPermissions*(source, dest: string,
     else: discard
 
 proc inclFilePermissions*(filename: string,
-                          permissions: set[TFilePermission]) {.
+                          permissions: set[FilePermission]) {.
   rtl, extern: "nos$1", tags: [ReadDirEffect, WriteDirEffect].} =
   ## a convenience procedure for:
   ##
@@ -1589,7 +1593,7 @@ proc inclFilePermissions*(filename: string,
   setFilePermissions(filename, getFilePermissions(filename)+permissions)
 
 proc exclFilePermissions*(filename: string,
-                          permissions: set[TFilePermission]) {.
+                          permissions: set[FilePermission]) {.
   rtl, extern: "nos$1", tags: [ReadDirEffect, WriteDirEffect].} =
   ## a convenience procedure for:
   ##
@@ -1885,9 +1889,9 @@ type
   FileInfo* = object
     ## Contains information associated with a file object.
     id*: tuple[device: DeviceId, file: FileId] # Device and file id.
-    kind*: TPathComponent # Kind of file object - directory, symlink, etc.
+    kind*: PathComponent # Kind of file object - directory, symlink, etc.
     size*: BiggestInt # Size of file.
-    permissions*: set[TFilePermission] # File permissions
+    permissions*: set[FilePermission] # File permissions
     linkCount*: BiggestInt # Number of hard links the file object has.
     lastAccessTime*: Time # Time file was last accessed.
     lastWriteTime*: Time # Time file was last modified/written to.

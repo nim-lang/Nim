@@ -46,7 +46,6 @@ Bugs
 - VM: ptr/ref T cannot work in general
 - scopes are still broken for generic instantiation!
 - compilation of niminst takes way too long. looks like a regression
-- docgen: sometimes effects are listed twice
 - blocks can "export" an identifier but the CCG generates {} for them ...
 
 

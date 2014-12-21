@@ -357,11 +357,11 @@ proc processPush(c: PContext, n: PNode, start: int) =
   append(c.optionStack, x)
   for i in countup(start, sonsLen(n) - 1): 
     if processOption(c, n.sons[i]):
-      # simply store it somehwere:
+      # simply store it somewhere:
       if x.otherPragmas.isNil:
         x.otherPragmas = newNodeI(nkPragma, n.info)
       x.otherPragmas.add n.sons[i]
-    #LocalError(n.info, errOptionExpected)
+    #localError(n.info, errOptionExpected)
   
 proc processPop(c: PContext, n: PNode) = 
   if c.optionStack.counter <= 1: 

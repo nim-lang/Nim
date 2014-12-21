@@ -34,6 +34,7 @@ type
     comStack*: seq[PNode]  # comment stack
     flags*: TRenderFlags
     checkAnon: bool        # we're in a context that can contain sfAnon
+    inPragma: int
 
 
 proc renderModule*(n: PNode, filename: string, renderFlags: TRenderFlags = {})
@@ -1184,12 +1185,17 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkContinueStmt: 
     putWithSpace(g, tkContinue, "continue")
     gsub(g, n.sons[0])
-  of nkPragma: 
+  of nkPragma:
     if renderNoPragmas notin g.flags:
-      put(g, tkSpaces, Space)
-      put(g, tkCurlyDotLe, "{.")
-      gcomma(g, n, emptyContext)
-      put(g, tkCurlyDotRi, ".}")
+      if g.inPragma <= 0:
+        inc g.inPragma
+        put(g, tkSpaces, Space)
+        put(g, tkCurlyDotLe, "{.")
+        gcomma(g, n, emptyContext)
+        put(g, tkCurlyDotRi, ".}")
+        dec g.inPragma
+      else:
+        gcomma(g, n, emptyContext)
   of nkImportStmt, nkExportStmt:
     if n.kind == nkImportStmt:
       putWithSpace(g, tkImport, "import")
