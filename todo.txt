@@ -1,8 +1,6 @@
 version 0.10
 ============
 
-- document the tables module better
-
 - The bitwise 'not' operator will be renamed to 'bnot' to
   prevent 'not 4 == 5' from compiling. -> requires 'mixin' annotation for procs!
 - A named tuple will be compatible to a tuple with different names.

@@ -1,14 +1,20 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-## The ``tables`` module implements an efficient hash table that is
-## a mapping from keys to values.
+## The ``tables`` module implements variants of an efficient hash table that is
+## a mapping from keys to values. ``Table`` is the usual hash table,
+## ``OrderedTable`` is like ``Table`` but remembers insertion order
+## and ``CountTable`` is a mapping from a key to its number of occurances.
+## For consistency with every other data type in Nim these have **value**
+## semantics, this means that ``=`` performs a copy of the hash table.
+## For **reference** semantics use the ``Ref`` variant: ``TableRef``,
+## ``OrderedTableRef``, ``CountTableRef``.
 ##
 ## If you are using simple standard types like ``int`` or ``string`` for the
 ## keys of the table you won't have any problems, but as soon as you try to use
@@ -24,9 +30,15 @@
 ##
 ## What is happening here is that the types used for table keys require to have
 ## a ``hash()`` proc which will convert them to a `THash <hashes.html#THash>`_
-## value, and the compiler is listing all the hash functions it knows. After
-## you add such a proc for your custom type everything will work. See this
-## example:
+## value, and the compiler is listing all the hash functions it knows.
+## Additionally there has to be a ``==`` operator that provides the same
+## semantics as its corresponding ``hash`` proc.
+##
+## After you add ``hash`` and ``==`` for your custom type everything will work.
+## Currently however ``hash`` for objects is not defined, whereas
+## ``system.==`` for objects does exist and performs a "deep" comparison (every
+## field is compared) which is usually what you want. So in the following
+## example implementing only ``hash`` suffices:
 ##
 ## .. code-block::
 ##   type
@@ -51,9 +63,6 @@
 ##   p2.firstName = "소진"
 ##   p2.lastName = "박"
 ##   salaries[p2] = 45_000
-##
-## **Note:** The data types declared here have *value semantics*: This means
-## that ``=`` performs a copy of the hash table.
 
 import
   hashes, math
