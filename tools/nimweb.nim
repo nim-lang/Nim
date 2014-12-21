@@ -19,6 +19,7 @@ type
     authors, projectName, projectTitle, logo, infile, outdir, ticker: string
     vars: StringTableRef
     nimArgs: string
+    gitRepo: string
     gitCommit: string
     quotations: Table[string, tuple[quote, author: string]]
     numProcessors: int # Set by parallelBuild:n, only works for values > 0.
@@ -46,6 +47,7 @@ proc initConfigData(c: var TConfigData) =
   c.logo = ""
   c.ticker = ""
   c.vars = newStringTable(modeStyleInsensitive)
+  c.gitRepo = "https://github.com/Araq/Nimrod/tree"
   c.gitCommit = "master"
   c.numProcessors = countProcessors()
   # Attempts to obtain the git current commit.
@@ -266,18 +268,18 @@ proc buildDoc(c: var TConfigData, destPath: string) =
     commands = newSeq[string](len(c.doc) + len(c.srcdoc) + len(c.srcdoc2))
     i = 0
   for d in items(c.doc):
-    commands[i] = "nim rst2html $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
-      [c.nimArgs, c.gitCommit,
+    commands[i] = "nim rst2html $# --docSeeSrcUrl:$#/$#/$# -o:$# --index:on $#" %
+      [c.nimArgs, c.gitRepo, c.gitCommit, splitFile(d).dir,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
   for d in items(c.srcdoc):
-    commands[i] = "nim doc $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
-      [c.nimArgs, c.gitCommit,
+    commands[i] = "nim doc $# --docSeeSrcUrl:$#/$#/$# -o:$# --index:on $#" %
+      [c.nimArgs, c.gitRepo, c.gitCommit, splitFile(d).dir,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
   for d in items(c.srcdoc2):
-    commands[i] = "nim doc2 $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
-      [c.nimArgs, c.gitCommit,
+    commands[i] = "nim doc2 $# --docSeeSrcUrl:$#/$#/$# -o:$# --index:on $#" %
+      [c.nimArgs, c.gitRepo, c.gitCommit, splitFile(d).dir,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
 
@@ -309,8 +311,8 @@ proc buildAddDoc(c: var TConfigData, destPath: string) =
   # build additional documentation (without the index):
   var commands = newSeq[string](c.webdoc.len)
   for i, doc in pairs(c.webdoc):
-    commands[i] = "nim doc $# --docSeeSrcUrl:$# -o:$# $#" %
-      [c.nimArgs, c.gitCommit,
+    commands[i] = "nim doc $# --docSeeSrcUrl:$#/$#/$# -o:$# $#" %
+      [c.nimArgs, c.gitRepo, c.gitCommit, splitFile(doc).dir,
       destPath / changeFileExt(splitFile(doc).name, "html"), doc]
   mexec(commands, c.numProcessors)
 
