@@ -156,7 +156,9 @@ proc parseChunks(s: Socket, timeout: int): string =
       else:
         httpError("Invalid chunk size: " & chunkSizeStr)
       inc(i)
-    if chunkSize <= 0: break
+    if chunkSize <= 0:
+      s.skip(2, timeout) # Skip \c\L
+      break
     result.setLen(ri+chunkSize)
     var bytesRead = 0
     while bytesRead != chunkSize:
@@ -521,7 +523,9 @@ proc parseChunks(client: AsyncHttpClient): Future[string] {.async.} =
       else:
         httpError("Invalid chunk size: " & chunkSizeStr)
       inc(i)
-    if chunkSize <= 0: break
+    if chunkSize <= 0:
+      discard await recvFull(client.socket, 2) # Skip \c\L
+      break
     result.add await recvFull(client.socket, chunkSize)
     discard await recvFull(client.socket, 2) # Skip \c\L
     # Trailer headers will only be sent if the request specifies that we want
