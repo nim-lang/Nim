@@ -5,7 +5,11 @@ Nim's Garbage Collector
 :Author: Andreas Rumpf
 :Version: |nimversion|
 
+.. contents::
+
+
   "The road to hell is paved with good intentions."
+
 
 Introduction
 ============
