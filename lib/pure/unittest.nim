@@ -35,7 +35,7 @@ var
   abortOnError* {.threadvar.}: bool
   outputLevel* {.threadvar.}: OutputLevel
   colorOutput* {.threadvar.}: bool
-  
+
   checkpoints {.threadvar.}: seq[string]
 
 checkpoints = @[]
@@ -61,23 +61,23 @@ proc testDone(name: string, s: TestStatus) =
     programResult += 1
 
   if outputLevel != PRINT_NONE and (outputLevel == PRINT_ALL or s == FAILED):
-    template rawPrint() = echo("[", $s, "] ", name, "\n")
+    template rawPrint() = echo("[", $s, "] ", name)
     when not defined(ECMAScript):
       if colorOutput and not defined(ECMAScript):
         var color = (if s == OK: fgGreen else: fgRed)
-        styledEcho styleBright, color, "[", $s, "] ", fgWhite, name, "\n"
+        styledEcho styleBright, color, "[", $s, "] ", fgWhite, name
       else:
         rawPrint()
     else:
       rawPrint()
-  
+
 template test*(name: expr, body: stmt): stmt {.immediate, dirty.} =
   bind shouldRun, checkpoints, testDone
 
   if shouldRun(name):
     checkpoints = @[]
     var testStatusIMPL {.inject.} = OK
-    
+
     try:
       testSetupIMPL()
       body
@@ -101,7 +101,7 @@ template fail* =
 
   when not defined(ECMAScript):
     if abortOnError: quit(1)
- 
+
   when declared(testStatusIMPL):
     testStatusIMPL = FAILED
   else:
@@ -111,7 +111,7 @@ template fail* =
 
 macro check*(conditions: stmt): stmt {.immediate.} =
   let checked = callsite()[1]
-  
+
   var
     argsAsgns = newNimNode(nnkStmtList)
     argsPrintOuts = newNimNode(nnkStmtList)
@@ -120,7 +120,7 @@ macro check*(conditions: stmt): stmt {.immediate.} =
   template asgn(a, value: expr): stmt =
     var a = value # XXX: we need "var: var" here in order to
                   # preserve the semantics of var params
-  
+
   template print(name, value: expr): stmt =
     when compiles(string($value)):
       checkpoint(name & " was " & $value)
@@ -146,7 +146,7 @@ macro check*(conditions: stmt): stmt {.immediate.} =
           checkpoint(lineInfoLit & ": Check failed: " & callLit)
           argPrintOuts
           fail()
-      
+
     var checkedStr = checked.toStrLit
     inspectArgs(checked)
     result = getAst(rewrite(checked, checked.lineinfo, checkedStr,
