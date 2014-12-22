@@ -1,5 +1,6 @@
-Usage::
-  nim command [options] [projectfile] [arguments]
+::
+
+    nim command [options] [projectfile] [arguments]
 
 Command:
   //compile, c                compile project with default code generator (C)

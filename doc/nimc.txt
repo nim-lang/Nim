@@ -28,9 +28,13 @@ Compiler Usage
 
 Command line switches
 ---------------------
-Basic command line switches are:
+Basic command line switches are: 
+
+Usage:
 
 .. include:: basicopt.txt
+
+----
 
 Advanced command line switches are:
 
