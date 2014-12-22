@@ -10,7 +10,7 @@
 ## This module implements a high-level cross-platform sockets interface.
 
 {.deadCodeElim: on.}
-import rawsockets, os, strutils, unsigned, parseutils, times
+import rawsockets, os, strutils, unsigned, parseutils, times, netcommon
 export Port, `$`, `==`
 
 const useWinVersion = defined(Windows) or defined(nimdoc)
@@ -134,7 +134,7 @@ when defined(ssl):
   ErrLoadBioStrings()
   OpenSSL_add_all_algorithms()
 
-  proc raiseSSLError*(s = "") =
+  proc raiseSSLError*(s = "") {.procVar.} =
     ## Raises a new SSL error.
     if s != "":
       raise newException(SSLError, s)
@@ -239,41 +239,16 @@ proc socketError*(socket: Socket, err: int = -1, async = false,
   ## error was caused by no data being available to be read.
   ##
   ## If ``err`` is not lower than 0 no exception will be raised.
-  when defined(ssl):
-    if socket.isSSL:
-      if err <= 0:
-        var ret = SSLGetError(socket.sslHandle, err.cint)
-        case ret
-        of SSL_ERROR_ZERO_RETURN:
-          raiseSSLError("TLS/SSL connection failed to initiate, socket closed prematurely.")
-        of SSL_ERROR_WANT_CONNECT, SSL_ERROR_WANT_ACCEPT:
-          if async:
-            return
-          else: raiseSSLError("Not enough data on socket.")
-        of SSL_ERROR_WANT_WRITE, SSL_ERROR_WANT_READ:
-          if async:
-            return
-          else: raiseSSLError("Not enough data on socket.")
-        of SSL_ERROR_WANT_X509_LOOKUP:
-          raiseSSLError("Function for x509 lookup has been called.")
-        of SSL_ERROR_SYSCALL:
-          var errStr = "IO error has occured "
-          let sslErr = ErrPeekLastError()
-          if sslErr == 0 and err == 0:
-            errStr.add "because an EOF was observed that violates the protocol"
-          elif sslErr == 0 and err == -1:
-            errStr.add "in the BIO layer"
-          else:
-            let errStr = $ErrErrorString(sslErr, nil)
-            raiseSSLError(errStr & ": " & errStr)
-          let osMsg = osErrorMsg osLastError()
-          if osMsg != "":
-            errStr.add ". The OS reports: " & osMsg
-          raise newException(OSError, errStr)
-        of SSL_ERROR_SSL:
-          raiseSSLError()
-        else: raiseSSLError("Unknown Error")
-  
+  ifSSLEnabledOn socket:
+    if err <= 0:
+      let ret = SSLGetError(socket.sslHandle, err.cint)
+      case ret:
+      of SSL_ERROR_WANT_WRITE, SSL_ERROR_WANT_READ,
+          SSL_ERROR_WANT_CONNECT, SSL_ERROR_WANT_ACCEPT:
+        if async: return else: defaultSSLErrorHandler(err, ret, raiseSSLError)
+      else:
+        defaultSSLErrorHandler(err, ret, raiseSSLError)
+
   if err == -1 and not (when defined(ssl): socket.isSSL else: false):
     let lastE = if lastError.int == -1: osLastError() else: lastError
     if async:
@@ -393,19 +368,12 @@ when false: #defined(ssl):
           while ret <= 0:
             let err = SSLGetError(client.sslHandle, ret)
             if err != SSL_ERROR_WANT_ACCEPT:
-              case err
-              of SSL_ERROR_ZERO_RETURN:
-                raiseSSLError("TLS/SSL connection failed to initiate, socket closed prematurely.")
+              case err:
               of SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE,
                  SSL_ERROR_WANT_CONNECT, SSL_ERROR_WANT_ACCEPT:
                 client.sslNoHandshake = true
                 return AcceptNoHandshake
-              of SSL_ERROR_WANT_X509_LOOKUP:
-                raiseSSLError("Function for x509 lookup has been called.")
-              of SSL_ERROR_SYSCALL, SSL_ERROR_SSL:
-                raiseSSLError()
-              else:
-                raiseSSLError("Unknown error")
+              else: defaultSSLErrorHandler(ret,err)
           client.sslNoHandshake = false
 
     if client.isSSL and client.sslNoHandshake:
@@ -432,21 +400,12 @@ proc accept*(server: Socket, client: var Socket,
 
 proc close*(socket: Socket) =
   ## Closes a socket.
-  try:
-    when defined(ssl):
-      if socket.isSSL:
-        ErrClearError()
-        # As we are closing the underlying socket immediately afterwards,
-        # it is valid, under the TLS standard, to perform a unidirectional
-        # shutdown i.e not wait for the peers "close notify" alert with a second
-        # call to SSLShutdown
-        let res = SSLShutdown(socket.sslHandle)
-        if res == 0:
-          discard
-        elif res != 1:
-          socketError(socket, res)
-  finally:
+  defer:
     socket.fd.close()
+  ifSSLEnabledOn socket:
+    let errHandler = proc(res: cint) =
+      socketError(socket, res)
+    shutdownSSL(socket.sslHandle, errHandler)
 
 proc toCInt*(opt: SOBool): cint =
   ## Converts a ``SOBool`` into its Socket Option cint representation.
@@ -511,21 +470,15 @@ when defined(ssl):
     ## A ESSL error is raised on any other errors.
     result = true
     if socket.isSSL:
-      var ret = SSLConnect(socket.sslHandle)
+      let ret = SSLConnect(socket.sslHandle)
       if ret <= 0:
-        var errret = SSLGetError(socket.sslHandle, ret)
-        case errret
-        of SSL_ERROR_ZERO_RETURN:
-          raiseSSLError("TLS/SSL connection failed to initiate, socket closed prematurely.")
+        let errRet = SSLGetError(socket.sslHandle, ret)
+        case errRet:
         of SSL_ERROR_WANT_CONNECT, SSL_ERROR_WANT_ACCEPT,
-          SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE:
+            SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE:
           return false
-        of SSL_ERROR_WANT_X509_LOOKUP:
-          raiseSSLError("Function for x509 lookup has been called.")
-        of SSL_ERROR_SYSCALL, SSL_ERROR_SSL:
-          raiseSSLError()
         else:
-          raiseSSLError("Unknown Error")
+          defaultSSLErrorHandler(ret,errRet,raiseSSLError)
       socket.sslNoHandshake = false
     else:
       raiseSSLError("Socket is not an SSL socket.")

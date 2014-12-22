@@ -57,6 +57,7 @@
 
 import asyncdispatch
 import rawsockets
+import netcommon
 import net
 import os
 
@@ -111,19 +112,13 @@ proc newAsyncSocket*(domain, typ, protocol: cint, buffered = true): AsyncSocket 
 when defined(ssl):
   proc getSslError(handle: SslPtr, err: cint): cint =
     assert err < 0
-    var ret = SSLGetError(handle, err.cint)
-    case ret
-    of SSL_ERROR_ZERO_RETURN:
-      raiseSSLError("TLS/SSL connection failed to initiate, socket closed prematurely.")
-    of SSL_ERROR_WANT_CONNECT, SSL_ERROR_WANT_ACCEPT:
-      return ret
-    of SSL_ERROR_WANT_WRITE, SSL_ERROR_WANT_READ:
-      return ret
-    of SSL_ERROR_WANT_X509_LOOKUP:
-      raiseSSLError("Function for x509 lookup has been called.")
-    of SSL_ERROR_SYSCALL, SSL_ERROR_SSL:
-      raiseSSLError()
-    else: raiseSSLError("Unknown Error")
+    result = SSLGetError(handle, err.cint)
+    case result:
+    of SSL_ERROR_WANT_CONNECT, SSL_ERROR_WANT_ACCEPT,
+        SSL_ERROR_WANT_WRITE, SSL_ERROR_WANT_READ:
+      discard
+    else:
+      defaultSSLErrorHandler(err,result,raiseSSLError)
 
   proc sendPendingSslData(socket: AsyncSocket,
       flags: set[SocketFlag]) {.async.} =
@@ -399,15 +394,13 @@ proc bindAddr*(socket: AsyncSocket, port = Port(0), address = "") {.
 
 proc close*(socket: AsyncSocket) =
   ## Closes the socket.
-  socket.fd.TAsyncFD.closeSocket()
-  when defined(ssl):
-    if socket.isSSL:
-      let res = SslShutdown(socket.sslHandle)
-      if res == 0:
-        if SslShutdown(socket.sslHandle) != 1:
-          raiseSslError()
-      elif res != 1:
-        raiseSslError()
+  defer:
+    socket.fd.TAsyncFD.closeSocket()
+  ifSSLEnabledOn socket:
+    let errHandler = proc(ret: cint) =
+      let sslErr = SSLGetError(socket.sslHandle, ret)
+      defaultSSLErrorHandler(ret, sslErr, raiseSSLError)
+    shutdownSSL(socket.sslHandle, errHandler)
   socket.closed = true # TODO: Add extra debugging checks for this.
 
 when defined(ssl):
