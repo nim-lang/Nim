@@ -40,10 +40,10 @@ Change the branch to suit your needs::
 
   git clone -b master git://github.com/Araq/Nimrod.git
   cd Nimrod
-  git clone -b master --depth 1 git://github.com/nimrod-code/csources
+  git clone -b master --depth 1 git://github.com/nim-lang/csources
   cd csources && sh build.sh
   cd ..
-  bin/nimrod c koch
+  bin/nim c koch
   ./koch boot -d:release
 
 The ``master`` branch always contains the latest stable version of the compiler.
