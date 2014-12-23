@@ -11,15 +11,15 @@ body {
 	background:#152534 url("images/bg.jpg") no-repeat fixed center top; 
 	color:rgba(0,0,0,.8); }
 
-pre { color:#5997AF;}
+pre { color:#fff;}
 pre, pre * { cursor:text; }
-pre .cmt { color:#6D6D6D; font-style:italic; }
+pre .cmt { color:rgb(255,229,106); }
 pre .kwd { color:#43A8CF; font-weight:bold; }
 pre .typ { color:#128B7D; font-weight:bold; }
 pre .atr { color:#128B7D; font-weight:bold; font-style:italic; }
-pre .def { color:#CAD6E4; font-weight:bold; font-style:italic; }
+pre .def { color:#CAD6E4; font-weight:bold; }
 pre .prg { color:#854D6A; font-weight:bold; font-style:italic; }
-pre .val { color:#8AB647; font-style:italic; }
+pre .val { color:#8AB647; }
 pre .tab { border-left:1px dotted rgba(67,168,207,0.4); }
 pre .end { background:url("images/tabEnd.png") no-repeat left bottom; }
 
@@ -259,7 +259,7 @@ pre .end { background:url("images/tabEnd.png") no-repeat left bottom; }
 		padding:5px 5px;
 		letter-spacing:1px; }
 
-#body { z-index:1; position:relative; background:rgba(220,231,248,.6); }
+#body { z-index:1; position:relative; background:rgba(220,231,248,0.8); }
 #body.docs { margin:0 40px 20px 320px; }
 #body.forum { margin:0 40px 20px 40px; }
 	
@@ -318,8 +318,8 @@ pre .end { background:url("images/tabEnd.png") no-repeat left bottom; }
 	#content h1 { font-size:20pt; letter-spacing:1px; color:rgba(0,0,0,.75); }
 	#content h2 { font-size:16pt; letter-spacing:1px; color:rgba(0,0,0,.7); margin-top:40px; }
 	#content p { text-align:justify; }
-	#content a { color:#CEDAE9; text-decoration:none; }
-	#content a:hover { color:#fff;  }
+	#content a { color:#0E65D1; text-decoration:none; }
+	#content a:hover { text-decoration:underline; }
 	#content ul { padding-left:20px; }
 	#content li { margin-bottom:10px; text-align:justify; }
 	
@@ -573,7 +573,7 @@ pre .end { background:url("images/tabEnd.png") no-repeat left bottom; }
 }
 
 #body span.pre {
-  background-color: #8396A4; /* #E6EDF2; */
+  background-color: #96A9B7;
   padding: 1pt 3pt;
   border-radius: 2pt;
   -moz-border-radius: 2pt;

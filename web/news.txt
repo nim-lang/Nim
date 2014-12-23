@@ -6,6 +6,15 @@ News
   2014-10-21 Version 0.10.2 released
   ==================================
 
+  This release is the latest release before the release canditates for version
+  1.0 roll in. Starting with version 0.10.2 the rename of the language to Nim
+  is officially complete. As the list of language changes is quite long it's
+  much more work to update the average Nim project than used to be the case.
+  However there is a new tool, `nimfix <nimfix.html>`_ to help you
+  in updating your code from Nimrod to Nim. This tool is unfortunately not
+  perfect but has been used to update thousands of lines of code successfully.
+
+
   Changes affecting backwards compatibility
   -----------------------------------------
 
@@ -17,7 +26,7 @@ News
     of ``discard``.
   - Large parts of the stdlib got rid of the T/P type prefixes. Instead most
     types now simply start with an uppercased letter. The
-    so called "partial case sensitivity" is now active allowing for code
+    so called "partial case sensitivity" rule is now active allowing for code
     like ``var foo: Foo`` in more contexts.
   - String case (or any non-ordinal case) statements
     without 'else' are deprecated.
@@ -40,6 +49,8 @@ News
     own priority level and are right associative. This means that
     the ``=>`` and ``->`` operators from the `future <future.html>`_ module
     work better.
+  - Field names in tuples are now ignored for type comparisons. This allows
+    for greater interoperability between different modules.
 
 
   Language Additions
