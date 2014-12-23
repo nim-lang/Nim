@@ -508,9 +508,8 @@ defines an *order* of the fields. Tuples are meant for heterogeneous storage
 types with no overhead and few abstraction possibilities. The constructor ``()``
 can be used to construct tuples. The order of the fields in the constructor
 must match the order of the tuple's definition. Different tuple-types are
-*equivalent* if they specify the same fields of the same type in the same
-order. The *names* of the fields also have to be identical but this might
-change in a future version of the language.
+*equivalent* if they specify the same types in the same
+order. The *names* of the fields are ignored.
 
 The assignment operator for tuples copies each component.
 The default assignment operator for objects copies each component. Overloading
@@ -528,6 +527,8 @@ in future versions of the compiler.
   person = (name: "Peter", age: 30)
   # the same, but less readable:
   person = ("Peter", 30)
+  # the same, but with confusing tuple field names:
+  person = (creditCard: "Peter", id: 20)
 
 The implementation aligns the fields for best access performance. The alignment
 is compatible with the way the C compiler does it. 

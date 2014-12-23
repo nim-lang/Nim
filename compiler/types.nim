@@ -762,7 +762,7 @@ proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool =
   # two tuples are equivalent iff the names, types and positions are the same;
   # however, both types may not have any field names (t.n may be nil) which
   # complicates the matter a bit.
-  if sonsLen(a) == sonsLen(b): 
+  if sonsLen(a) == sonsLen(b):
     result = true
     for i in countup(0, sonsLen(a) - 1): 
       var x = a.sons[i]
@@ -773,17 +773,6 @@ proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool =
       
       result = sameTypeAux(x, y, c)
       if not result: return 
-    if a.n != nil and b.n != nil and IgnoreTupleFields notin c.flags:
-      for i in countup(0, sonsLen(a.n) - 1): 
-        # check field names: 
-        if a.n.sons[i].kind == nkSym and b.n.sons[i].kind == nkSym:
-          var x = a.n.sons[i].sym
-          var y = b.n.sons[i].sym
-          result = x.name.id == y.name.id
-          if not result: break 
-        else: internalError(a.n.info, "sameTuple")
-  else:
-    result = false
 
 template ifFastObjectTypeCheckFailed(a, b: PType, body: stmt) {.immediate.} =
   if tfFromGeneric notin a.flags + b.flags:

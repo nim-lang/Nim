@@ -31,6 +31,7 @@ algorithm (in pseudo-code) determines type equality:
         result = typeEqualsAux(a.baseType, b.baseType, s) and
                  typeEqualsAux(a.indexType, b.indexType, s)
       of tuple:
+        # Note: tuple field names are ignored
         if a.tupleLen == b.tupleLen:
           for i in 0..a.tupleLen-1:
             if not typeEqualsAux(a[i], b[i], s): return false
