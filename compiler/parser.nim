@@ -1980,15 +1980,17 @@ proc parseTopLevelStmt(p: var TParser): PNode =
   ## top-level statement or emptyNode if end of stream.
   result = ast.emptyNode
   while true:
-    if p.tok.indent != 0: 
+    if p.tok.indent != 0:
       if p.firstTok and p.tok.indent < 0: discard
-      else: parMessage(p, errInvalidIndentation)
+      elif p.tok.tokType != tkSemiColon:
+        parMessage(p, errInvalidIndentation)
     p.firstTok = false
     case p.tok.tokType
     of tkSemiColon:
       getTok(p)
       if p.tok.indent <= 0: discard
       else: parMessage(p, errInvalidIndentation)
+      p.firstTok = true
     of tkEof: break
     else:
       result = complexOrSimpleStmt(p)
