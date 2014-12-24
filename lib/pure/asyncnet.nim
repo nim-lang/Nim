@@ -399,13 +399,13 @@ proc bindAddr*(socket: AsyncSocket, port = Port(0), address = "") {.
 
 proc close*(socket: AsyncSocket) =
   ## Closes the socket.
-  socket.fd.TAsyncFD.closeSocket()
+  defer:
+    socket.fd.TAsyncFD.closeSocket()
   when defined(ssl):
     if socket.isSSL:
       let res = SslShutdown(socket.sslHandle)
       if res == 0:
-        if SslShutdown(socket.sslHandle) != 1:
-          raiseSslError()
+        discard
       elif res != 1:
         raiseSslError()
   socket.closed = true # TODO: Add extra debugging checks for this.
