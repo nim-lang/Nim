@@ -47,6 +47,27 @@ the rest of the procedure - that is not within a ``finally`` clause -
 is not executed (if an exception occurs).
 
 
+Try expression
+--------------
+
+Try can also be used as an expression; the type of the ``try`` branch then
+needs to fit the types of ``except`` branches, but the type of the ``finally``
+branch always has to be ``void``:
+
+.. code-block:: nim
+  let x = try: parseInt("133a")
+          except: -1
+          finally: echo "hi"
+
+
+To prevent confusing code there is a parsing limitation; if the ``try``
+follows a ``(`` it has to be written as a one liner:
+
+.. code-block:: nim
+  let x = (try: parseInt("133a") except: -1)
+
+
+
 Defer statement
 ---------------
 

@@ -505,7 +505,7 @@ proc parsePar(p: var TParser): PNode =
   getTok(p)
   optInd(p, result)
   if p.tok.tokType in {tkDiscard, tkInclude, tkIf, tkWhile, tkCase, 
-                       tkTry, tkFinally, tkExcept, tkFor, tkBlock, 
+                       tkTry, tkDefer, tkFinally, tkExcept, tkFor, tkBlock, 
                        tkConst, tkLet, tkWhen, tkVar,
                        tkMixin}:
     # XXX 'bind' used to be an expression, so we exclude it here;

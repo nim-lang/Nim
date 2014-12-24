@@ -463,7 +463,7 @@ proc genTry(c: PCtx; n: PNode; dest: var TDest) =
   # from the stack
   c.gABx(fin, opcFinally, 0, 0)
   if fin.kind == nkFinally:
-    c.gen(fin.sons[0], dest)
+    c.gen(fin.sons[0])
     c.clearDest(n, dest)
   c.gABx(fin, opcFinallyEnd, 0, 0)
 
