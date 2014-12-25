@@ -1505,11 +1505,11 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
   
   doBlk.sons[namePos] = newAnonSym(skTemplate, n.info).newSymNode
   if ids.len > 0:
-    doBlk[paramsPos].sons.setLen(2)
-    doBlk[paramsPos].sons[0] = getSysSym("stmt").newSymNode # return type
+    doBlk.sons[paramsPos] = newNodeI(nkFormalParams, n.info)
+    doBlk[paramsPos].add getSysSym("stmt").newSymNode # return type
     ids.add getSysSym("expr").newSymNode # params type
     ids.add emptyNode # no default value
-    doBlk[paramsPos].sons[1] = newNode(nkIdentDefs, n.info, ids)
+    doBlk[paramsPos].add newNode(nkIdentDefs, n.info, ids)
   
   var tmpl = semTemplateDef(c, doBlk)
   quotes[0] = tmpl[namePos]
@@ -1892,19 +1892,6 @@ proc semBlock(c: PContext, n: PNode): PNode =
   closeScope(c)
   dec(c.p.nestedBlockCounter)
 
-proc doBlockIsStmtList(n: PNode): bool =
-  result = n.kind == nkDo and
-           n[paramsPos].sonsLen == 1 and
-           n[paramsPos][0].kind == nkEmpty
-
-proc fixImmediateParams(n: PNode): PNode =
-  # XXX: Temporary work-around until we carry out
-  # the planned overload resolution reforms
-  for i in 1 .. <safeLen(n):
-    if doBlockIsStmtList(n[i]):
-      n.sons[i] = n[i][bodyPos]
-  result = n
-
 proc semExport(c: PContext, n: PNode): PNode =
   var x = newNodeI(n.kind, n.info)
   #let L = if n.kind == nkExportExceptStmt: L = 1 else: n.len
@@ -2022,14 +2009,12 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         if sfImmediate notin s.flags:
           result = semDirectOp(c, n, flags)
         else:
-          var p = fixImmediateParams(n)
-          result = semMacroExpr(c, p, p, s, flags)
+          result = semMacroExpr(c, n, n, s, flags)
       of skTemplate:
         if sfImmediate notin s.flags:
           result = semDirectOp(c, n, flags)
         else:
-          var p = fixImmediateParams(n)
-          result = semTemplateExpr(c, p, s, flags)
+          result = semTemplateExpr(c, n, s, flags)
       of skType:
         # XXX think about this more (``set`` procs)
         if n.len == 2:

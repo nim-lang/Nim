@@ -48,7 +48,6 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
   of skTemplate:
     if macroToExpand(s):
       styleCheckUse(n.info, s)
-      let n = fixImmediateParams(n)
       result = semTemplateExpr(c, n, s, {efNoSemCheck})
       result = semGenericStmt(c, result, {}, ctx)
     else:
@@ -185,7 +184,6 @@ proc semGenericStmt(c: PContext, n: PNode,
       of skTemplate:
         if macroToExpand(s):
           styleCheckUse(fn.info, s)
-          let n = fixImmediateParams(n)
           result = semTemplateExpr(c, n, s, {efNoSemCheck})
           result = semGenericStmt(c, result, {}, ctx)
         else:

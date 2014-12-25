@@ -894,7 +894,8 @@ proc parseParamList(p: var TParser, retColon = true): PNode =
   var a: PNode
   result = newNodeP(nkFormalParams, p)
   addSon(result, ast.emptyNode) # return type
-  if p.tok.tokType == tkParLe and p.tok.indent < 0:
+  let hasParLe = p.tok.tokType == tkParLe and p.tok.indent < 0
+  if hasParLe:
     getTok(p)
     optInd(p, result)
     while true:
@@ -918,6 +919,9 @@ proc parseParamList(p: var TParser, retColon = true): PNode =
     getTok(p)
     optInd(p, result)
     result.sons[0] = parseTypeDesc(p)
+  elif not retColon and not hasParle:
+    # Mark as "not there" in order to mark for deprecation in the semantic pass:
+    result = ast.emptyNode
 
 proc optPragmas(p: var TParser): PNode =
   if p.tok.tokType == tkCurlyDotLe and (p.tok.indent < 0 or realInd(p)):
@@ -1130,7 +1134,7 @@ proc parseMacroColon(p: var TParser, x: PNode): PNode =
     skipComment(p, result)
     if p.tok.tokType notin {tkOf, tkElif, tkElse, tkExcept}:
       let body = parseStmt(p)
-      addSon(result, newProcNode(nkDo, body.info, body))
+      addSon(result, makeStmtList(body))
     while sameInd(p):
       var b: PNode
       case p.tok.tokType

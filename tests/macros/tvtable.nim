@@ -11,8 +11,8 @@ OBJ 2 bar
 
 type
   # these are the signatures of the virtual procs for each type
-  fooProc[T] = proc (o: var T): int
-  barProc[T] = proc (o: var T)
+  fooProc[T] = proc (o: var T): int {.nimcall.}
+  barProc[T] = proc (o: var T) {.nimcall.}
 
   # an untyped table to store the proc pointers
   # it's also possible to use a strongly typed tuple here

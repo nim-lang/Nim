@@ -22,8 +22,8 @@ News
     compiler changed from ``nimrod`` to ``nim`` too.
   - ``system.fileHandle`` has been renamed to ``system.getFileHandle`` to
     prevent name conflicts with the new type ``FileHandle``.
-  - Comments are now not part of the AST, as such you cannot use them in place
-    of ``discard``.
+  - Comments are now not part of the AST anymore, as such you cannot use them
+    in place of ``discard``.
   - Large parts of the stdlib got rid of the T/P type prefixes. Instead most
     types now simply start with an uppercased letter. The
     so called "partial case sensitivity" rule is now active allowing for code
@@ -51,6 +51,9 @@ News
     work better.
   - Field names in tuples are now ignored for type comparisons. This allows
     for greater interoperability between different modules.
+  - Statement lists are not converted to an implicit ``do`` block anymore. This
+    means the confusing ``nnkDo`` nodes when working with macros are gone for
+    good.
 
 
   Language Additions

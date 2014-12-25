@@ -776,7 +776,7 @@ proc semProcAnnotation(c: PContext, prc: PNode): PNode =
     if it.kind == nkExprColonExpr:
       # pass pragma argument to the macro too:
       x.add(it.sons[1])
-    x.add(newProcNode(nkDo, prc.info, prc))
+    x.add(prc)
     # recursion assures that this works for multiple macro annotations too:
     return semStmt(c, x)
 
@@ -804,6 +804,9 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
     gp = newNodeI(nkGenericParams, n.info)
 
   if n.sons[paramsPos].kind != nkEmpty:
+    #if n.kind == nkDo and not experimentalMode(c):
+    #  localError(n.sons[paramsPos].info,
+    #      "use the {.experimental.} pragma to enable 'do' with parameters")
     semParamList(c, n.sons[paramsPos], gp, s)
     # paramsTypeCheck(c, s.typ)
     if sonsLen(gp) > 0 and n.sons[genericParamsPos].kind == nkEmpty:

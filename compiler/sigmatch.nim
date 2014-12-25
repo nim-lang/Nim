@@ -1153,8 +1153,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
     of isEqual: inc(m.exactMatches)
     of isNone: discard
 
-    if f.kind == tyStmt and argOrig.kind == nkDo:
-      return argOrig[bodyPos]
+    if f.kind == tyStmt:
+      return arg
     elif f.kind == tyTypeDesc:
       return arg
     elif f.kind == tyStatic:

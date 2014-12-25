@@ -200,6 +200,8 @@ executable code.
 Do notation
 -----------
 
+**Note:** The future of the ``do`` notation is uncertain.
+
 As a special more convenient notation, proc expressions involved in procedure
 calls can use the ``do`` keyword:
 
@@ -223,11 +225,6 @@ More than one ``do`` block can appear in a single call:
     # to perform the task
   do:
     # code to undo it
-
-For compatibility with ``stmt`` templates and macros, the ``do`` keyword can be
-omitted if the supplied proc doesn't have any parameters and return value. 
-The compatibility works in the other direction too as the ``do`` syntax can be
-used with macros and templates expecting ``stmt`` blocks.
 
 
 Nonoverloadable builtins
