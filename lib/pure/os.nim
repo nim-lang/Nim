@@ -575,7 +575,7 @@ proc `/` * (head, tail: string): string {.noSideEffect.} =
 proc splitPath*(path: string): tuple[head, tail: string] {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Splits a directory into (head, tail), so that
-  ## ``joinPath(head, tail) == path``.
+  ## ``head / tail == path`` (except for edge cases like "/usr").
   ##
   ## Examples:
   ##
