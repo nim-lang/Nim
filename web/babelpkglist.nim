@@ -41,6 +41,7 @@ proc processContent(content: string) =
       dot = if desc.high > 0 and desc[desc.high] in endings: "" else: "."
       listItem = li(a(href=pkgWeb, pkg["name"].str), " ", desc & dot)
     if pkg["url"].str.startsWith("git://github.com/nimrod-code") or
+       pkg["url"].str.startsWith("git://github.com/nim-lang") or
        "official" in pkg["tags"].elems:
       officialCount.inc
       officialList.add listItem & "\n"
@@ -52,14 +53,14 @@ proc processContent(content: string) =
 
   officialPkgListDiv.innerHTML =
     p("There are currently " & $officialCount &
-      " official packages in the Babel package repository.") &
+      " official packages in the Nimble package repository.") &
     ul(officialList)
 
   var unofficialPkgListDiv = document.getElementById("unofficialPkgList")
 
   unofficialPkgListDiv.innerHTML =
     p("There are currently " & $unofficialCount &
-      " unofficial packages in the Babel package repository.") &
+      " unofficial packages in the Nimble package repository.") &
     ul(unofficialList)
 
 proc gotPackageList(apiReply: TData) {.exportc.} =
