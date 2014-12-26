@@ -10,6 +10,11 @@ include "system/inclrtl"
 
 import sockets, os
 
+##
+## **Warning:** This module is deprecated since version 0.10.2.
+## Use the brand new `asyncdispatch <asyncdispatch.html>`_ module together
+## with the `asyncnet <asyncnet.html>`_ module.
+
 ## This module implements an asynchronous event loop together with asynchronous
 ## sockets which use this event loop.
 ## It is akin to Python's asyncore module. Many modules that use sockets
@@ -89,6 +94,8 @@ import sockets, os
 ##    proc handleAccept(s: AsyncSocket) =
 ##      var client: Socket
 ##      getSocket(s).accept(client)
+
+{.deprecated.}
 
 when defined(windows):
   from winlean import TimeVal, SocketHandle, FD_SET, FD_ZERO, TFdSet,
