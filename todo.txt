@@ -21,6 +21,7 @@ Low priority:
 - support for exception propagation? (hard to implement)
 - the copying of the 'ref Promise' into the thead local storage only
   happens to work due to the write barrier's implementation
+- clean up the C code generator. Full of cruft.
 
 
 Misc
