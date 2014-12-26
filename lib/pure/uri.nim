@@ -113,7 +113,7 @@ proc parseUri*(uri: string): Uri =
     var authority = ""
     i.inc parseUntil(uri, authority, {'/', '?', '#'}, i)
     if authority == "":
-      raise newException(EInvalidValue, "Expected authority got nothing.")
+      raise newException(ValueError, "Expected authority got nothing.")
     parseAuthority(authority, result)
 
   # Path
