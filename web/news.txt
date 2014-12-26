@@ -93,7 +93,7 @@ News
     statement.
   - There is a new tool, `nimfix <nimfix.html>`_ to help you in updating your
     code from Nimrod to Nim.
-  
+  - The compiler's output has been prettified.
 
   Library Additions
   -----------------
@@ -103,7 +103,41 @@ News
   - ``system.setupForeignThreadGc`` can be used for better interaction with
     foreign libraries that create threads and run a Nim callback from these
     foreign threads.
+  - List comprehensions have been implemented as a macro in the ``future``
+    module.
+  - The new Async module (``asyncnet``) now supports SSL.
+  - The ``smtp`` module now has an async implementation.
+  - Added module ``asyncfile`` which implements asynchronous file reading
+    and writing.
+  - ``osproc.kill`` has been added.
+  - ``asyncnet`` and ``asynchttpserver`` now support ``SO_REUSEADDR``.
 
+  Bugfixes
+  --------
+
+  - ``nil`` and ``NULL`` are now preserved between Nim and databases in the
+    ``db_*`` modules.
+  - Fixed issue with OS module in non-unicode mode on Windows.
+  - Fixed issue with ``x.low``
+    (`#1366 <https://github.com/Araq/Nim/issues/1366>`_).
+  - Fixed tuple unpacking issue inside closure iterators
+    (`#1067 <https://github.com/Araq/Nim/issues/1067>`_).
+  - Fixed ENDB compilation issues.
+  - Many ``asynchttpserver`` fixes.
+  - Macros can now keep global state across macro calls
+    (`#903 <https://github.com/Araq/Nim/issues/903>`_).
+  - ``osproc`` fixes on Windows.
+  - ``osproc.terminate`` fixed.
+  - Improvements to exception handling in async procedures.
+    (`#1487 <https://github.com/Araq/Nim/issues/1487>`_).
+  - ``try`` now works at compile-time.
+  - Fixes ``T = ref T`` to be an illegal recursive type.
+  - Self imports are now disallowed.
+  - Improved effect inference.
+  - Fixes for the ``math`` module on Windows.
+  - User defined pragmas will now work for generics that have
+    been instantiated in different modules.
+  - Fixed queue exhaustion bug.
 
 2014-12-09 New website design!
 ==============================
