@@ -25,6 +25,10 @@
 ##
 ## **Warning:** The API of this module is unstable, and therefore is subject
 ## to change.
+##
+## **Warning:** This module only supports the old asynchronous interface.
+## You may wish to use the `asynchttpserver <asynchttpserver.html>`_
+## instead for web applications.
 
 include "system/inclrtl"
 
