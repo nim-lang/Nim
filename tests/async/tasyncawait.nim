@@ -53,9 +53,7 @@ proc createServer(port: TPort) {.async.} =
   
   discard server.SocketHandle.listen()
   while true:
-    var client = await accept(server)
-    asyncCheck readMessages(client)
-    # TODO: Test: readMessages(disp, await disp.accept(server))
+    asyncCheck readMessages(await accept(server))
 
 asyncCheck createServer(TPort(10335))
 asyncCheck launchSwarm(TPort(10335))
