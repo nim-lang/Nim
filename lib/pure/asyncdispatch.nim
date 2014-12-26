@@ -436,12 +436,12 @@ when defined(windows) or defined(nimdoc):
     if not initPointer(dummySock, getAcceptExSockAddrsPtr, WSAID_GETACCEPTEXSOCKADDRS):
       raiseOSError(osLastError())
 
-  proc connectEx(s: SocketHandle, name: ptr TSockAddr, namelen: cint, 
+  proc connectEx(s: SocketHandle, name: ptr SockAddr, namelen: cint, 
                   lpSendBuffer: pointer, dwSendDataLength: Dword,
                   lpdwBytesSent: PDword, lpOverlapped: POVERLAPPED): bool =
     if connectExPtr.isNil: raise newException(ValueError, "Need to initialise ConnectEx().")
     let fun =
-      cast[proc (s: SocketHandle, name: ptr TSockAddr, namelen: cint, 
+      cast[proc (s: SocketHandle, name: ptr SockAddr, namelen: cint, 
          lpSendBuffer: pointer, dwSendDataLength: Dword,
          lpdwBytesSent: PDword, lpOverlapped: POVERLAPPED): bool {.stdcall,gcsafe.}](connectExPtr)
 
@@ -464,16 +464,16 @@ when defined(windows) or defined(nimdoc):
 
   proc getAcceptExSockaddrs(lpOutputBuffer: pointer,
       dwReceiveDataLength, dwLocalAddressLength, dwRemoteAddressLength: Dword,
-      LocalSockaddr: ptr ptr TSockAddr, LocalSockaddrLength: LPInt,
-      RemoteSockaddr: ptr ptr TSockAddr, RemoteSockaddrLength: LPInt) =
+      LocalSockaddr: ptr ptr SockAddr, LocalSockaddrLength: LPInt,
+      RemoteSockaddr: ptr ptr SockAddr, RemoteSockaddrLength: LPInt) =
     if getAcceptExSockAddrsPtr.isNil:
       raise newException(ValueError, "Need to initialise getAcceptExSockAddrs().")
 
     let fun =
       cast[proc (lpOutputBuffer: pointer,
                  dwReceiveDataLength, dwLocalAddressLength,
-                 dwRemoteAddressLength: Dword, LocalSockaddr: ptr ptr TSockAddr,
-                 LocalSockaddrLength: LPInt, RemoteSockaddr: ptr ptr TSockAddr,
+                 dwRemoteAddressLength: Dword, LocalSockaddr: ptr ptr SockAddr,
+                 LocalSockaddrLength: LPInt, RemoteSockaddr: ptr ptr SockAddr,
                 RemoteSockaddrLength: LPInt) {.stdcall,gcsafe.}](getAcceptExSockAddrsPtr)
     
     fun(lpOutputBuffer, dwReceiveDataLength, dwLocalAddressLength,
@@ -489,12 +489,12 @@ when defined(windows) or defined(nimdoc):
     verifyPresence(socket)
     var retFuture = newFuture[void]("connect")
     # Apparently ``ConnectEx`` expects the socket to be initially bound:
-    var saddr: Tsockaddr_in
+    var saddr: Sockaddr_in
     saddr.sin_family = int16(toInt(af))
     saddr.sin_port = 0
     saddr.sin_addr.s_addr = INADDR_ANY
-    if bindAddr(socket.SocketHandle, cast[ptr TSockAddr](addr(saddr)),
-                  sizeof(saddr).TSockLen) < 0'i32:
+    if bindAddr(socket.SocketHandle, cast[ptr SockAddr](addr(saddr)),
+                  sizeof(saddr).SockLen) < 0'i32:
       raiseOSError(osLastError())
 
     var aiList = getAddrInfo(address, port, af)
@@ -516,7 +516,7 @@ when defined(windows) or defined(nimdoc):
       )
       
       var ret = connectEx(socket.SocketHandle, it.ai_addr,
-                          sizeof(Tsockaddr_in).cint, nil, 0, nil,
+                          sizeof(Sockaddr_in).cint, nil, 0, nil,
                           cast[POVERLAPPED](ol))
       if ret:
         # Request to connect completed immediately.
@@ -700,17 +700,17 @@ when defined(windows) or defined(nimdoc):
     var lpOutputBuf = newString(lpOutputLen)
     var dwBytesReceived: Dword
     let dwReceiveDataLength = 0.Dword # We don't want any data to be read.
-    let dwLocalAddressLength = Dword(sizeof (Tsockaddr_in) + 16)
-    let dwRemoteAddressLength = Dword(sizeof(Tsockaddr_in) + 16)
+    let dwLocalAddressLength = Dword(sizeof (Sockaddr_in) + 16)
+    let dwRemoteAddressLength = Dword(sizeof(Sockaddr_in) + 16)
 
     template completeAccept(): stmt {.immediate, dirty.} =
       var listenSock = socket
       let setoptRet = setsockopt(clientSock, SOL_SOCKET,
           SO_UPDATE_ACCEPT_CONTEXT, addr listenSock,
-          sizeof(listenSock).TSockLen)
+          sizeof(listenSock).SockLen)
       if setoptRet != 0: raiseOSError(osLastError())
 
-      var localSockaddr, remoteSockaddr: ptr TSockAddr
+      var localSockaddr, remoteSockaddr: ptr SockAddr
       var localLen, remoteLen: int32
       getAcceptExSockaddrs(addr lpOutputBuf[0], dwReceiveDataLength,
                            dwLocalAddressLength, dwRemoteAddressLength,
@@ -719,7 +719,7 @@ when defined(windows) or defined(nimdoc):
       register(clientSock.TAsyncFD)
       # TODO: IPv6. Check ``sa_family``. http://stackoverflow.com/a/9212542/492186
       retFuture.complete(
-        (address: $inet_ntoa(cast[ptr Tsockaddr_in](remoteSockAddr).sin_addr),
+        (address: $inet_ntoa(cast[ptr Sockaddr_in](remoteSockAddr).sin_addr),
          client: clientSock.TAsyncFD)
       )
 

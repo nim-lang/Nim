@@ -6,14 +6,67 @@ News
   2014-10-21 Version 0.10.2 released
   ==================================
 
-  This release is the latest release before the release canditates for version
-  1.0 roll in. Starting with version 0.10.2 the rename of the language to Nim
-  is officially complete. As the list of language changes is quite long it's
-  much more work to update the average Nim project than used to be the case.
-  However there is a new tool, `nimfix <nimfix.html>`_ to help you
-  in updating your code from Nimrod to Nim. This tool is unfortunately not
-  perfect but has been used to update thousands of lines of code successfully.
+  This release marks the completion of a very important change to the project:
+  the official renaming from Nimrod to Nim. Version 0.10.2 contains many language
+  changes, some of which may break your existing code. For your convenience, we
+  added a new tool called `nimfix <nimfix.html>`_ that will help you convert your
+  existing projects so that it works with the latest version of the compiler.
 
+  Progress towards version 1.0
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  Although Nim is still pre-1.0, we were able to keep the number of breaking
+  changes to a minimum so far. Starting with version 1.0, we will not introduce
+  any breaking changes between major release versions.
+  One of Nim's goals is to ensure that the compiler is as efficient as possible.
+  Take a look at the
+  `latest benchmarks <https://github.com/logicchains/LPATHBench/blob/master/writeup.md>`_,
+  which show that Nim is consistently near
+  the top and already nearly as fast as C and C++. Recent developments, such as
+  the new ``asyncdispatch`` module will allow you to write efficient web server
+  applications using non-blocking code. Nim now also has a built-in thread pool
+  for lightweight threading through the use of ``spawn``.
+
+  The unpopular "T" and "P" prefixes on types have been deprecated. Nim also
+  became more expressive by weakening the distinction between statements and
+  epxressions. We also added new and searchable forums, a new website, and our
+  documentation generator ``docgen`` has seen major improvements.
+
+  What's left to be done
+  ~~~~~~~~~~~~~~~~~~~~~~
+
+  The 1.0 release is actually very close. There are only a couple of last
+  things that need to be done:
+
+  * Implementing static[T] properly
+  * Support for the overloading of the assignment operator
+
+  Of course, the 1.0 release is not an end to the development of Nim.
+  It is very much the beginning and we will be fleshing out the then
+  stable language.
+
+  Nimble and other Nim tools
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  Outside of the language and the compiler itself many Nim tools have seen
+  considerable improvements.
+
+  Babel the Nim package manager has been renamed to Nimble. Nimble's purpose
+  is the installation of packages containing libraries and/or applications
+  written in Nim.
+  Even though Nimble is still very young it already is very
+  functional. It can install packages by name, it does so by accessing a
+  packages repository which is hosted on a Github repo. Packages can also be
+  installed via a Git repo URL or Mercurial repo URL. The package repository
+  is searchable through Nimble. Anyone is free to add their own packages to
+  the package repository by forking the
+  `nim-lang/packages <https://github.com/nim-lang/packages>`_ repo and creating
+  a pull request. Nimble is fully cross-platform and should be fully functional
+  on all major operating systems.
+  It is of course completely written in Nim.
+
+  Changelog
+  ~~~~~~~~~
 
   Changes affecting backwards compatibility
   -----------------------------------------
@@ -93,7 +146,7 @@ News
     statement.
   - There is a new tool, `nimfix <nimfix.html>`_ to help you in updating your
     code from Nimrod to Nim.
-  
+  - The compiler's output has been prettified.
 
   Library Additions
   -----------------
@@ -103,7 +156,41 @@ News
   - ``system.setupForeignThreadGc`` can be used for better interaction with
     foreign libraries that create threads and run a Nim callback from these
     foreign threads.
+  - List comprehensions have been implemented as a macro in the ``future``
+    module.
+  - The new Async module (``asyncnet``) now supports SSL.
+  - The ``smtp`` module now has an async implementation.
+  - Added module ``asyncfile`` which implements asynchronous file reading
+    and writing.
+  - ``osproc.kill`` has been added.
+  - ``asyncnet`` and ``asynchttpserver`` now support ``SO_REUSEADDR``.
 
+  Bugfixes
+  --------
+
+  - ``nil`` and ``NULL`` are now preserved between Nim and databases in the
+    ``db_*`` modules.
+  - Fixed issue with OS module in non-unicode mode on Windows.
+  - Fixed issue with ``x.low``
+    (`#1366 <https://github.com/Araq/Nim/issues/1366>`_).
+  - Fixed tuple unpacking issue inside closure iterators
+    (`#1067 <https://github.com/Araq/Nim/issues/1067>`_).
+  - Fixed ENDB compilation issues.
+  - Many ``asynchttpserver`` fixes.
+  - Macros can now keep global state across macro calls
+    (`#903 <https://github.com/Araq/Nim/issues/903>`_).
+  - ``osproc`` fixes on Windows.
+  - ``osproc.terminate`` fixed.
+  - Improvements to exception handling in async procedures.
+    (`#1487 <https://github.com/Araq/Nim/issues/1487>`_).
+  - ``try`` now works at compile-time.
+  - Fixes ``T = ref T`` to be an illegal recursive type.
+  - Self imports are now disallowed.
+  - Improved effect inference.
+  - Fixes for the ``math`` module on Windows.
+  - User defined pragmas will now work for generics that have
+    been instantiated in different modules.
+  - Fixed queue exhaustion bug.
 
 2014-12-09 New website design!
 ==============================

@@ -396,8 +396,8 @@ proc buildNewsRss(c: var TConfigData, destPath: string) =
   generateRss(destFilename, parseNewsTitles(srcFilename))
 
 proc buildJS(destPath: string) =
-  exec("nim js -d:release --out:$1 web/babelpkglist.nim" %
-      [destPath / "babelpkglist.js"])
+  exec("nim js -d:release --out:$1 web/nimblepkglist.nim" %
+      [destPath / "nimblepkglist.js"])
 
 proc buildWebsite(c: var TConfigData) =
   const
