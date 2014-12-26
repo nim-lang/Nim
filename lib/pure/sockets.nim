@@ -7,6 +7,10 @@
 #    distribution, for details about the copyright.
 #
 
+## **Warning:** Since version 0.10.2 this module is deprecated.
+## Use the `net <net.html>`_ or the
+## `rawsockets <rawsockets.html>`_ module instead.
+##
 ## This module implements portable sockets, it supports a mix of different types
 ## of sockets. Sockets are buffered by default meaning that data will be
 ## received in ``BufferSize`` (4000) sized chunks, buffering
@@ -23,9 +27,6 @@
 ##
 ## Asynchronous sockets are supported, however a better alternative is to use
 ## the `asyncio <asyncio.html>`_ module.
-##
-## Since version 0.10.2 this module is deprecated. Use the `net <net.html>`_
-## or the `rawsockets <rawsockets.html>`_ module instead.
 
 {.deprecated.}
 
