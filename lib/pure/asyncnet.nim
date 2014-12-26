@@ -69,13 +69,13 @@ type
   # TODO: I would prefer to just do:
   # AsyncSocket* {.borrow: `.`.} = distinct Socket. But that doesn't work.
   AsyncSocketDesc  = object
-    fd*: SocketHandle
-    closed*: bool ## determines whether this socket has been closed
-    case isBuffered*: bool ## determines whether this socket is buffered.
+    fd: SocketHandle
+    closed: bool ## determines whether this socket has been closed
+    case isBuffered: bool ## determines whether this socket is buffered.
     of true:
-      buffer*: array[0..BufferSize, char]
-      currPos*: int # current index in buffer
-      bufLen*: int # current length of buffer
+      buffer: array[0..BufferSize, char]
+      currPos: int # current index in buffer
+      bufLen: int # current length of buffer
     of false: nil
     case isSsl: bool
     of true:
@@ -91,7 +91,8 @@ type
 
 # TODO: Save AF, domain etc info and reuse it in procs which need it like connect.
 
-proc newSocket(fd: TAsyncFD, isBuff: bool): AsyncSocket =
+proc newAsyncSocket*(fd: TAsyncFD, isBuff: bool): AsyncSocket =
+  ## Creates a new ``AsyncSocket`` based on the supplied params.
   assert fd != osInvalidSocket.TAsyncFD
   new(result)
   result.fd = fd.SocketHandle
@@ -102,11 +103,17 @@ proc newSocket(fd: TAsyncFD, isBuff: bool): AsyncSocket =
 proc newAsyncSocket*(domain: Domain = AF_INET, typ: SockType = SOCK_STREAM,
     protocol: Protocol = IPPROTO_TCP, buffered = true): AsyncSocket =
   ## Creates a new asynchronous socket.
-  result = newSocket(newAsyncRawSocket(domain, typ, protocol), buffered)
+  ##
+  ## This procedure will also create a brand new file descriptor for
+  ## this socket.
+  result = newAsyncSocket(newAsyncRawSocket(domain, typ, protocol), buffered)
 
 proc newAsyncSocket*(domain, typ, protocol: cint, buffered = true): AsyncSocket =
   ## Creates a new asynchronous socket.
-  result = newSocket(newAsyncRawSocket(domain, typ, protocol), buffered)
+  ##
+  ## This procedure will also create a brand new file descriptor for
+  ## this socket.
+  result = newAsyncSocket(newAsyncRawSocket(domain, typ, protocol), buffered)
 
 when defined(ssl):
   proc getSslError(handle: SslPtr, err: cint): cint =
@@ -275,7 +282,7 @@ proc acceptAddr*(socket: AsyncSocket, flags = {SocketFlag.SafeDisconn}):
         retFuture.fail(future.readError)
       else:
         let resultTup = (future.read.address,
-                         newSocket(future.read.client, socket.isBuffered))
+                         newAsyncSocket(future.read.client, socket.isBuffered))
         retFuture.complete(resultTup)
   return retFuture
 
@@ -438,6 +445,14 @@ proc setSockOpt*(socket: AsyncSocket, opt: SOBool, value: bool,
   ## Sets option ``opt`` to a boolean value specified by ``value``.
   var valuei = cint(if value: 1 else: 0)
   setSockOptInt(socket.fd, cint(level), toCInt(opt), valuei)
+
+proc isSsl*(socket: AsyncSocket): bool =
+  ## Determines whether ``socket`` is a SSL socket.
+  socket.isSsl
+
+proc getFd*(socket: AsyncSocket): SocketHandle =
+  ## Returns the socket's file descriptor.
+  return socket.fd
 
 when isMainModule:
   type

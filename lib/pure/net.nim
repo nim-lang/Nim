@@ -44,21 +44,21 @@ const
 
 type
   SocketImpl* = object ## socket type
-    fd*: SocketHandle
-    case isBuffered*: bool # determines whether this socket is buffered.
+    fd: SocketHandle
+    case isBuffered: bool # determines whether this socket is buffered.
     of true:
-      buffer*: array[0..BufferSize, char]
-      currPos*: int # current index in buffer
-      bufLen*: int # current length of buffer
+      buffer: array[0..BufferSize, char]
+      currPos: int # current index in buffer
+      bufLen: int # current length of buffer
     of false: nil
     when defined(ssl):
-      case isSsl*: bool
+      case isSsl: bool
       of true:
-        sslHandle*: SSLPtr
-        sslContext*: SSLContext
-        sslNoHandshake*: bool # True if needs handshake.
-        sslHasPeekChar*: bool
-        sslPeekChar*: char
+        sslHandle: SSLPtr
+        sslContext: SSLContext
+        sslNoHandshake: bool # True if needs handshake.
+        sslHasPeekChar: bool
+        sslPeekChar: char
       of false: nil
   
   Socket* = ref SocketImpl
@@ -100,7 +100,8 @@ proc toOSFlags*(socketFlags: set[SocketFlag]): cint =
       result = result or MSG_PEEK
     of SocketFlag.SafeDisconn: continue
 
-proc createSocket(fd: SocketHandle, isBuff: bool): Socket =
+proc newSocket(fd: SocketHandle, isBuff: bool): Socket =
+  ## Creates a new socket as specified by the params.
   assert fd != osInvalidSocket
   new(result)
   result.fd = fd
@@ -115,7 +116,7 @@ proc newSocket*(domain, typ, protocol: cint, buffered = true): Socket =
   let fd = newRawSocket(domain, typ, protocol)
   if fd == osInvalidSocket:
     raiseOSError(osLastError())
-  result = createSocket(fd, buffered)
+  result = newSocket(fd, buffered)
 
 proc newSocket*(domain: Domain = AF_INET, typ: SockType = SOCK_STREAM,
              protocol: Protocol = IPPROTO_TCP, buffered = true): Socket =
@@ -125,7 +126,7 @@ proc newSocket*(domain: Domain = AF_INET, typ: SockType = SOCK_STREAM,
   let fd = newRawSocket(domain, typ, protocol)
   if fd == osInvalidSocket:
     raiseOSError(osLastError())
-  result = createSocket(fd, buffered)
+  result = newSocket(fd, buffered)
 
 when defined(ssl):
   CRYPTO_malloc_init()
@@ -937,10 +938,10 @@ proc connect*(socket: Socket, address: string, port = Port(0), timeout: int,
         doAssert socket.handshake()
   socket.fd.setBlocking(true)
 
-proc isSSL*(socket: Socket): bool = return socket.isSSL
+proc isSsl*(socket: Socket): bool = return socket.isSSL
   ## Determines whether ``socket`` is a SSL socket.
 
-proc getFD*(socket: Socket): SocketHandle = return socket.fd
+proc getFd*(socket: Socket): SocketHandle = return socket.fd
   ## Returns the socket's file descriptor
 
 type
