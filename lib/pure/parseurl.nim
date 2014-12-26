@@ -7,10 +7,12 @@
 #    distribution, for details about the copyright.
 #
 
-## Parses & constructs URLs.
+## **Warnings:** This module is deprecated since version 0.10.2.
+## Use the `uri <uri.html>`_ module instead.
 ##
-## **Note**: This module will be deprecated in the future and merged into a
-## new ``url`` module.
+## Parses & constructs URLs.
+
+{.deprecated.}
 
 import strutils
 
