@@ -23,7 +23,7 @@ type
     id: int                  # for generating IDs
     toc, section: TSections
     indexValFilename: string
-    gaId: string  # Google Analytics ID, null if doesn't exist
+    analytics: string  # Google Analytics javascript, "" if doesn't exist
     seenSymbols: StringTableRef # avoids duplicate symbol generation for HTML.
 
   PDoc* = ref TDocumentor ## Alias to type less.
@@ -62,8 +62,23 @@ proc newDocumentor*(filename: string, config: StringTableRef): PDoc =
   initRstGenerator(result[], (if gCmd != cmdRst2tex: outHtml else: outLatex),
                    options.gConfigVars, filename, {roSupportRawDirective},
                    docgenFindFile, compilerMsgHandler)
+
   if config.hasKey("doc.googleAnalytics"):
-    result.gaId = config["doc.googleAnalytics"]
+    result.analytics = """
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '$1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+    """ % [config["doc.googleAnalytics"]]
+  else:
+    result.analytics = ""
+
   result.seenSymbols = newStringTable(modeCaseInsensitive)
   result.id = 100
 
@@ -537,7 +552,6 @@ proc genOutFile(d: PDoc): PRope =
   var
     code, content: PRope
     title = ""
-    analytics = ""
   var j = 0
   var tmp = ""
   renderTocEntries(d[], j, 1, tmp)
@@ -557,21 +571,6 @@ proc genOutFile(d: PDoc): PRope =
     # Modules get an automatic title for the HTML, but no entry in the index.
     title = "Module " & extractFilename(changeFileExt(d.filename, ""))
 
-  # if there exists an analytics id, use it
-  if d.gaId != nil:
-    analytics = """
-<script>
-  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-
-  ga('create', '$1', 'auto');
-  ga('send', 'pageview');
-
-</script>
-    """ % [d.gaId]
-
   let bodyname = if d.hasToc: "doc.body_toc" else: "doc.body_no_toc"
   content = ropeFormatNamedVars(getConfigVar(bodyname), ["title",
       "tableofcontents", "moduledesc", "date", "time", "content"],
@@ -584,7 +583,7 @@ proc genOutFile(d: PDoc): PRope =
         "content", "author", "version", "analytics"],
         [title.toRope, toc, d.modDesc, toRope(getDateStr()),
                      toRope(getClockStr()), content, d.meta[metaAuthor].toRope,
-                     d.meta[metaVersion].toRope, analytics.toRope])
+                     d.meta[metaVersion].toRope, d.analytics.toRope])
   else:
     code = content
   result = code
@@ -649,7 +648,8 @@ proc commandBuildIndex*() =
 
   let code = ropeFormatNamedVars(getConfigVar("doc.file"), ["title",
       "tableofcontents", "moduledesc", "date", "time",
-      "content", "author", "version"],
+      "content", "author", "version", "analytics"],
       ["Index".toRope, nil, nil, toRope(getDateStr()),
-                   toRope(getClockStr()), content, nil, nil])
+                   toRope(getClockStr()), content, nil, nil, nil])
+  # no analytics because context is not available
   writeRope(code, getOutFile("theindex", HtmlExt))
