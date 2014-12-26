@@ -40,12 +40,39 @@ type
     reuseAddr: bool
 
   HttpCode* = enum
+    Http100 = "100 Continue",
+    Http101 = "101 Switching Protocols",
     Http200 = "200 OK",
-    Http303 = "303 Moved",
+    Http201 = "201 Created",
+    Http202 = "202 Accepted",
+    Http204 = "204 No Content",
+    Http205 = "205 Reset Content",
+    Http206 = "206 Partial Content",
+    Http300 = "300 Multiple Choices",
+    Http301 = "301 Moved Permanently",
+    Http302 = "302 Found",
+    Http303 = "303 See Other",
+    Http304 = "304 Not Modified",
+    Http305 = "305 Use Proxy",
+    Http307 = "307 Temporary Redirect",
     Http400 = "400 Bad Request",
+    Http401 = "401 Unauthorized",
+    Http403 = "403 Forbidden",
     Http404 = "404 Not Found",
+    Http405 = "405 Method Not Allowed",
+    Http406 = "406 Not Acceptable",
+    Http407 = "407 Proxy Authentication Required",
+    Http408 = "408 Request Timeout",
+    Http409 = "409 Conflict",
+    Http410 = "410 Gone",
+    Http411 = "411 Length Required",
+    Http418 = "418 I'm a teapot",
     Http500 = "500 Internal Server Error",
-    Http502 = "502 Bad Gateway"
+    Http501 = "501 Not Implemented",
+    Http502 = "502 Bad Gateway",
+    Http503 = "503 Service Unavailable",
+    Http504 = "504 Gateway Timeout",
+    Http505 = "505 HTTP Version Not Supported"
 
   HttpVersion* = enum
     HttpVer11,
