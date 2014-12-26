@@ -147,7 +147,7 @@ proc sendStatus(client: AsyncSocket, status: string): Future[void] =
 proc processClient(client: AsyncSocket, address: string,
                    callback: proc (request: Request):
                       Future[void] {.closure, gcsafe.}) {.async.} =
-  while not client.closed:
+  while not client.isClosed:
     # GET /path HTTP/1.1
     # Header: val
     # \n

@@ -454,6 +454,10 @@ proc getFd*(socket: AsyncSocket): SocketHandle =
   ## Returns the socket's file descriptor.
   return socket.fd
 
+proc isClosed*(socket: AsyncSocket): bool =
+  ## Determines whether the socket has been closed.
+  return socket.closed
+
 when isMainModule:
   type
     TestCases = enum
