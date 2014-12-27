@@ -16,7 +16,7 @@
 #   types that use the 'node' field; the reason is that slots are
 #   re-used in a register based VM. Example:
 # 
-# .. code-block:: nimrod
+# .. code-block:: nim
 #   let s = a & b  # no matter what, create fresh node
 #   s = a & b  # no matter what, keep the node
 #
@@ -28,7 +28,7 @@
 # this copy depends on the involved types.
 
 import
-  unsigned, strutils, ast, astalgo, types, msgs, renderer, vmdef, 
+  unsigned, strutils, ast, astalgo, types, msgs, renderer, vmdef,
   trees, intsets, rodread, magicsys, options, lowerings
 
 from os import splitFile
@@ -58,6 +58,7 @@ proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
     if i in jumpTargets: result.addf("L$1:\n", i)
     let x = c.code[i]
 
+    result.add($i)
     let opc = opcode(x)
     if opc in {opcConv, opcCast}:
       let y = c.code[i+1]
@@ -188,7 +189,7 @@ proc getTemp(c: PCtx; typ: PType): TRegister =
 
 proc freeTemp(c: PCtx; r: TRegister) =
   let c = c.prc
-  if c.slots[r].kind >= slotSomeTemp: c.slots[r].inUse = false
+  if c.slots[r].kind in {slotSomeTemp..slotTempComplex}: c.slots[r].inUse = false
 
 proc getTempRange(c: PCtx; n: int; kind: TSlotKind): TRegister =
   # if register pressure is high, we re-use more aggressively:
@@ -1074,8 +1075,10 @@ proc genAddrDeref(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
         c.gABC(n, opcNodeToReg, dest, dest)
     elif c.prc.slots[tmp].kind >= slotTempUnknown:
       gABC(c, n, opcAddrNode, dest, tmp)
-      # XXX this can still be wrong sometimes; hopefully it's only generated
-      # in call contexts, where it is safe
+      # hack ahead; in order to fix bug #1781 we mark the temporary as
+      # permanent, so that it's not used for anything else:
+      c.prc.slots[tmp].kind = slotTempPerm
+      # XXX this is still a hack
       #message(n.info, warnUser, "suspicious opcode used")
     else:
       gABC(c, n, opcAddrReg, dest, tmp)
