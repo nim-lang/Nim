@@ -296,15 +296,15 @@ when not defined(noSignalHandler):
     template processSignal(s, action: expr) {.immediate,  dirty.} =
       if s == SIGINT: action("SIGINT: Interrupted by Ctrl-C.\n")
       elif s == SIGSEGV: 
-        action("SIGSEGV: Illegal storage access. (Attempt to read from nil?)\n")
+        action("SIGSEGV: Illegal storage access. (Try to compile with -d:useSysAssert -d:useGcAssert for details.)\n")
       elif s == SIGABRT:
         when defined(endb):
           if dbgAborting: return # the debugger wants to abort
         action("SIGABRT: Abnormal termination.\n")
       elif s == SIGFPE: action("SIGFPE: Arithmetic error.\n")
       elif s == SIGILL: action("SIGILL: Illegal operation.\n")
-      elif s == SIGBUS: 
-        action("SIGBUS: Illegal storage access. (Attempt to read from nil?)\n")
+      elif s == SIGBUS:
+        action("SIGBUS: Illegal storage access.  (Try to compile with -d:useSysAssert -d:useGcAssert for details.)\n")
       else:
         block platformSpecificSignal:
           when declared(SIGPIPE):
