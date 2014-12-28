@@ -429,7 +429,8 @@ proc changeType(n: PNode, newType: PType, check: bool) =
     for i in countup(0, sonsLen(n) - 1):
       changeType(n.sons[i], elemType(newType), check)
   of nkPar:
-    if newType.kind != tyTuple:
+    let tup = newType.skipTypes({tyGenericInst})
+    if tup.kind != tyTuple:
       internalError(n.info, "changeType: no tuple type for constructor")
     else:
       for i in countup(0, sonsLen(n) - 1):
@@ -437,7 +438,7 @@ proc changeType(n: PNode, newType: PType, check: bool) =
         if m.kind == nkExprColonExpr:
           m = m.sons[1]
           n.sons[i] = m
-        changeType(m, newType.sons[i], check)
+        changeType(m, tup.sons[i], check)
   of nkCharLit..nkUInt64Lit:
     if check:
       let value = n.intVal

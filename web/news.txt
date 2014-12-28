@@ -35,15 +35,17 @@ News
   What's left to be done
   ~~~~~~~~~~~~~~~~~~~~~~
 
-  The 1.0 release is actually very close. There are only a couple of last
-  things that need to be done:
+  The 1.0 release is actually very close. Apart from bug fixes, there are
+  two major features missing or incomplete:
 
-  * Implementing static[T] properly
-  * Support for the overloading of the assignment operator
+  * ``static[T]`` needs to be defined precisely and the bugs in the
+    implementation need to be fixed.
+  * Overloading of the assignment operator is required for some generic
+    containers and needs to be implemented.
 
-  Of course, the 1.0 release is not an end to the development of Nim.
-  It is very much the beginning and we will be fleshing out the then
-  stable language.
+  This means that fancy matrix libraries will finally start to work, which used
+  to be a major point of pain in the language.
+
 
   Nimble and other Nim tools
   ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -191,6 +193,8 @@ News
   - User defined pragmas will now work for generics that have
     been instantiated in different modules.
   - Fixed queue exhaustion bug.
+  - Many, many more.
+
 
 2014-12-09 New website design!
 ==============================

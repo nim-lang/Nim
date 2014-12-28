@@ -32,7 +32,7 @@ proc buildSuiteContents(suiteName, suiteDesc, suiteBloc: PNimrodNode): tuple[tes
         testObj.testDesc = nil
       else:
         testObj.testDesc = child[2].strVal
-      testObj.testBlock = child[3][6]
+      testObj.testBlock = child[1]
 
       tests.add(testObj)
 
