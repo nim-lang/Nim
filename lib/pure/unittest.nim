@@ -97,7 +97,9 @@ proc checkpoint*(msg: string) =
 template fail* =
   bind checkpoints
   for msg in items(checkpoints):
-    echo msg
+    # this used to be 'echo' which now breaks due to a bug. XXX will revisit
+    # this issue later.
+    stdout.writeln msg
 
   when not defined(ECMAScript):
     if abortOnError: quit(1)
