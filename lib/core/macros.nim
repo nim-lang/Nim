@@ -649,6 +649,8 @@ proc `$`*(node: PNimrodNode): string {.compileTime.} =
     result = $node.basename.ident & "*"
   of nnkStrLit..nnkTripleStrLit:
     result = node.strVal
+  of nnkSym:
+    result = $node.symbol
   else: 
     badNodeKind node.kind, "$"
 
