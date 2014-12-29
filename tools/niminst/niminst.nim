@@ -522,8 +522,8 @@ proc setupDist2(c: var TConfigData) =
 # ------------------ generate ZIP file ---------------------------------------
 when haveZipLib:
   proc zipDist(c: var TConfigData) =
-    var proj = toLower(c.name)
-    var n = "$#_$#.zip" % [proj, c.version]
+    var proj = toLower(c.name) & "-" & c.version
+    var n = "$#.zip" % proj
     if c.outdir.len == 0: n = "build" / n
     else: n = c.outdir / n
     var z: TZipArchive
