@@ -12,7 +12,6 @@ Advanced commands:
                             module dependency graph
   //dump                    dump all defined conditionals and search paths
   //check                   checks the project for syntax and semantic
-  //pretty                  homogenizes source code style
   //idetools                compiler support for IDEs: possible options:
     --track:FILE,LINE,COL   track a file/cursor position
     --trackDirty:DIRTY_FILE,ORIG_FILE,LINE,COL
@@ -28,7 +27,6 @@ Advanced commands:
     --server.address:HOST   binds to that address, by default ""
 
 Advanced options:
-  -m, --mainmodule:FILE     set the project main module
   -o, --out:FILE            set the output filename
   --stdout                  output to stdout
   --listFullPaths           list full paths in messages
@@ -50,7 +48,7 @@ Advanced options:
   --os:SYMBOL               set the target operating system (cross-compilation)
   --cpu:SYMBOL              set the target processor (cross-compilation)
   --debuginfo               enables debug information
-  --debugger:on|off         turn Embedded Nimrod Debugger on|off
+  --debugger:on|off         turn Embedded Nim Debugger on|off
   -t, --passC:OPTION        pass an option to the C compiler
   -l, --passL:OPTION        pass an option to the linker
   --cincludes:DIR           modify the C compiler header search path
@@ -58,7 +56,7 @@ Advanced options:
   --clib:LIBNAME            link an additional C library
                             (you should omit platform-specific extensions)
   --genMapping              generate a mapping file containing
-                            (Nimrod, mangled) identifier pairs
+                            (Nim, mangled) identifier pairs
   --project                 document the whole project (doc2)
   --docSeeSrcUrl:url        activate 'see source' for doc and doc2 commands
                             (see doc.item.seesrc in config/nimdoc.cfg)
@@ -79,7 +77,8 @@ Advanced options:
                             select the GC to use; default is 'refc'
   --index:on|off            turn index file generation on|off
   --putenv:key=value        set an environment variable
-  --babelPath:PATH          add a path for Babel support
+  --NimblePath:PATH         add a path for Nimble support
+  --noNimblePath            deactivate the Nimble path
   --excludePath:PATH        exclude a path from the list of search paths
   --dynlibOverride:SYMBOL   marks SYMBOL so that dynlib:SYMBOL
                             has no effect and can be statically linked instead;
@@ -89,7 +88,8 @@ Advanced options:
   --listCmd                 list the commands used to execute external programs
   --parallelBuild=0|1|...   perform a parallel build
                             value = number of processors (0 for auto-detect)
-  --verbosity:0|1|2|3       set Nimrod's verbosity level (1 is default)
+  --verbosity:0|1|2|3       set Nim's verbosity level (1 is default)
   --cs:none|partial         set case sensitivity level (default: none);
                             do not use! this setting affects the whole language
+  --experimental            enable experimental language features
   -v, --version             show detailed version information

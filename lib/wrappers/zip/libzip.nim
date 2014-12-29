@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -64,15 +64,15 @@ type
   TZipSourceCallback* = proc (state: pointer, data: pointer, length: int, 
                               cmd: TZipSourceCmd): int {.cdecl.}
   PZipStat* = ptr TZipStat
-  TZipStat* = object ## the 'zip_stat' struct
+  TZipStat* = object          ## the 'zip_stat' struct
     name*: cstring            ## name of the file  
     index*: int32             ## index within archive  
     crc*: int32               ## crc of file data  
-    mtime*: TTime             ## modification time  
+    mtime*: Time              ## modification time  
     size*: int                ## size of file (uncompressed)  
-    compSize*: int           ## size of file (compressed)  
-    compMethod*: int16       ## compression method used  
-    encryptionMethod*: int16 ## encryption method used  
+    compSize*: int            ## size of file (compressed)  
+    compMethod*: int16        ## compression method used  
+    encryptionMethod*: int16  ## encryption method used  
   
   TZip = object
   TZipSource = object 
@@ -225,7 +225,7 @@ proc zip_source_buffer*(para1: PZip, para2: pointer, para3: int, para4: int32): 
     cdecl, mydll, importc: "zip_source_buffer".}
 proc zip_source_file*(para1: PZip, para2: cstring, para3: int, para4: int): PZipSource {.
     cdecl, mydll, importc: "zip_source_file".}
-proc zip_source_filep*(para1: PZip, para2: TFile, para3: int, para4: int): PZipSource {.
+proc zip_source_filep*(para1: PZip, para2: File, para3: int, para4: int): PZipSource {.
     cdecl, mydll, importc: "zip_source_filep".}
 proc zip_source_free*(para1: PZipSource) {.cdecl, mydll,
     importc: "zip_source_free".}

@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -9,7 +9,7 @@
 
 ## The ``intsets`` module implements an efficient int set implemented as a
 ## sparse bit set.
-## **Note**: Since Nimrod currently does not allow the assignment operator to
+## **Note**: Since Nim currently does not allow the assignment operator to
 ## be overloaded, ``=`` for int sets performs some rather meaningless shallow
 ## copy; use ``assign`` to get a deep copy.
 
@@ -17,7 +17,7 @@ import
   os, hashes, math
 
 type
-  TBitScalar = int
+  BitScalar = int
 
 const 
   InitIntSetSize = 8         # must be a power of two!
@@ -25,8 +25,8 @@ const
   BitsPerTrunk = 1 shl TrunkShift # needs to be a power of 2 and
                                   # divisible by 64
   TrunkMask = BitsPerTrunk - 1
-  IntsPerTrunk = BitsPerTrunk div (sizeof(TBitScalar) * 8)
-  IntShift = 5 + ord(sizeof(TBitScalar) == 8) # 5 or 6, depending on int width
+  IntsPerTrunk = BitsPerTrunk div (sizeof(BitScalar) * 8)
+  IntShift = 5 + ord(sizeof(BitScalar) == 8) # 5 or 6, depending on int width
   IntMask = 1 shl IntShift - 1
 
 type
@@ -34,14 +34,15 @@ type
   TTrunk {.final.} = object 
     next: PTrunk             # all nodes are connected with this pointer
     key: int                 # start address at bit 0
-    bits: array[0..IntsPerTrunk - 1, TBitScalar] # a bit vector
+    bits: array[0..IntsPerTrunk - 1, BitScalar] # a bit vector
   
   TTrunkSeq = seq[PTrunk]
-  TIntSet* {.final.} = object ## an efficient set of 'int' implemented as a
-                              ## sparse bit set
+  IntSet* = object ## an efficient set of 'int' implemented as a sparse bit set
     counter, max: int
     head: PTrunk
     data: TTrunkSeq
+
+{.deprecated: [TIntSet: IntSet].}
 
 proc mustRehash(length, counter: int): bool {.inline.} = 
   assert(length > counter)
@@ -50,7 +51,7 @@ proc mustRehash(length, counter: int): bool {.inline.} =
 proc nextTry(h, maxHash: THash): THash {.inline.} = 
   result = ((5 * h) + 1) and maxHash 
 
-proc intSetGet(t: TIntSet, key: int): PTrunk = 
+proc intSetGet(t: IntSet, key: int): PTrunk = 
   var h = key and t.max
   while t.data[h] != nil: 
     if t.data[h].key == key: 
@@ -58,7 +59,7 @@ proc intSetGet(t: TIntSet, key: int): PTrunk =
     h = nextTry(h, t.max)
   result = nil
 
-proc intSetRawInsert(t: TIntSet, data: var TTrunkSeq, desc: PTrunk) = 
+proc intSetRawInsert(t: IntSet, data: var TTrunkSeq, desc: PTrunk) = 
   var h = desc.key and t.max
   while data[h] != nil: 
     assert(data[h] != desc)
@@ -66,7 +67,7 @@ proc intSetRawInsert(t: TIntSet, data: var TTrunkSeq, desc: PTrunk) =
   assert(data[h] == nil)
   data[h] = desc
 
-proc intSetEnlarge(t: var TIntSet) = 
+proc intSetEnlarge(t: var IntSet) = 
   var n: TTrunkSeq
   var oldMax = t.max
   t.max = ((t.max + 1) * 2) - 1
@@ -75,7 +76,7 @@ proc intSetEnlarge(t: var TIntSet) =
     if t.data[i] != nil: intSetRawInsert(t, n, t.data[i])
   swap(t.data, n)
 
-proc intSetPut(t: var TIntSet, key: int): PTrunk = 
+proc intSetPut(t: var IntSet, key: int): PTrunk = 
   var h = key and t.max
   while t.data[h] != nil: 
     if t.data[h].key == key: 
@@ -92,7 +93,7 @@ proc intSetPut(t: var TIntSet, key: int): PTrunk =
   t.head = result
   t.data[h] = result
 
-proc contains*(s: TIntSet, key: int): bool =
+proc contains*(s: IntSet, key: int): bool =
   ## returns true iff `key` is in `s`.  
   var t = intSetGet(s, `shr`(key, TrunkShift))
   if t != nil: 
@@ -101,14 +102,14 @@ proc contains*(s: TIntSet, key: int): bool =
   else: 
     result = false
   
-proc incl*(s: var TIntSet, key: int) = 
+proc incl*(s: var IntSet, key: int) = 
   ## includes an element `key` in `s`.
   var t = intSetPut(s, `shr`(key, TrunkShift))
   var u = key and TrunkMask
   t.bits[`shr`(u, IntShift)] = t.bits[`shr`(u, IntShift)] or
       `shl`(1, u and IntMask)
 
-proc excl*(s: var TIntSet, key: int) = 
+proc excl*(s: var IntSet, key: int) = 
   ## excludes `key` from the set `s`.
   var t = intSetGet(s, `shr`(key, TrunkShift))
   if t != nil: 
@@ -116,7 +117,7 @@ proc excl*(s: var TIntSet, key: int) =
     t.bits[`shr`(u, IntShift)] = t.bits[`shr`(u, IntShift)] and
         not `shl`(1, u and IntMask)
 
-proc containsOrIncl*(s: var TIntSet, key: int): bool = 
+proc containsOrIncl*(s: var IntSet, key: int): bool = 
   ## returns true if `s` contains `key`, otherwise `key` is included in `s`
   ## and false is returned.
   var t = intSetGet(s, `shr`(key, TrunkShift))
@@ -130,14 +131,14 @@ proc containsOrIncl*(s: var TIntSet, key: int): bool =
     incl(s, key)
     result = false
     
-proc initIntSet*: TIntSet =
+proc initIntSet*: IntSet =
   ## creates a new int set that is empty.
   newSeq(result.data, InitIntSetSize)
   result.max = InitIntSetSize-1
   result.counter = 0
   result.head = nil
 
-proc assign*(dest: var TIntSet, src: TIntSet) =
+proc assign*(dest: var IntSet, src: IntSet) =
   ## copies `src` to `dest`. `dest` does not need to be initialized by
   ## `initIntSet`. 
   dest.counter = src.counter
@@ -161,7 +162,7 @@ proc assign*(dest: var TIntSet, src: TIntSet) =
 
     it = it.next
 
-iterator items*(s: TIntSet): int {.inline.} =
+iterator items*(s: IntSet): int {.inline.} =
   ## iterates over any included element of `s`.
   var r = s.head
   while r != nil:
@@ -186,11 +187,11 @@ template dollarImpl(): stmt =
     result.add($key)
   result.add("}")
 
-proc `$`*(s: TIntSet): string =
+proc `$`*(s: IntSet): string =
   ## The `$` operator for int sets.
   dollarImpl()
 
-proc empty*(s: TIntSet): bool {.inline.} =
+proc empty*(s: IntSet): bool {.inline.} =
   ## returns true if `s` is empty. This is safe to call even before
   ## the set has been initialized with `initIntSet`.
   result = s.counter == 0

@@ -1,6 +1,6 @@
-You can download the latest version of the Nimrod compiler here.
+You can download the latest version of the Nim compiler here.
 
-**Note:** The Nimrod compiler requires a C compiler to compile software. On
+**Note:** The Nim compiler requires a C compiler to compile software. On
 Windows we recommend that you use
 `Mingw-w64 <http://mingw-w64.sourceforge.net/>`_. GCC is recommended on Linux
 and clang on Mac OS X.
@@ -9,10 +9,12 @@ and clang on Mac OS X.
 Binaries
 ========
 
-Unfortunately for now we only provide builds for Windows.
+Unfortunately for now we provide no binary builds.
 
-* 32 bit: `nimrod_0.9.6.exe <download/nimrod_0.9.6.exe>`_
-* 64 bit: `nimrod_0.9.6_x64.exe <download/nimrod_0.9.6_x64.exe>`_
+..
+  Unfortunately for now we only provide builds for Windows.
+  * 32 bit: `nim_0.10.2.exe <download/nim-0.10.2.exe>`_
+  * 64 bit: `nim_0.10.2_x64.exe <download/nim-0.10.2_x64.exe>`_
 
 
 Installation based on generated C code
@@ -22,28 +24,28 @@ This installation method is the preferred way for Linux, Mac OS X, and other Uni
 like systems. Binary packages may be provided later.
 
 
-Download `nimrod_0.9.6.zip <download/nimrod_0.9.6.zip>`_, extract it and follow
+Download `nim-0.10.2.zip <download/nim-0.10.2.zip>`_, extract it and follow
 these instructions:
 
 * sh build.sh
 * Add ``$your_install_dir/bin`` to your PATH.
 
-There are other ways to install Nimrod (like using the ``install.sh`` script),
+There are other ways to install Nim (like using the ``install.sh`` script),
 but these tend to cause more problems.
 
 
 Installation from github
 ========================
 
-It is also possible to build directly from the
-github `master <https://github.com/Araq/Nimrod#compiling>`_ branch::
+Use the following commands to build the compiler from source.
+Change the branch to suit your needs::
 
-  git clone -b master git://github.com/Araq/Nimrod.git
-  cd Nimrod
-  git clone --depth 1 git://github.com/nimrod-code/csources
+  git clone -b master git://github.com/Araq/Nim.git
+  cd Nim
+  git clone -b master --depth 1 git://github.com/nim-lang/csources
   cd csources && sh build.sh
   cd ..
-  bin/nimrod c koch
+  bin/nim c koch
   ./koch boot -d:release
 
 The ``master`` branch always contains the latest stable version of the compiler.

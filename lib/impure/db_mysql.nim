@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -82,17 +82,17 @@ proc tryExec*(db: TDbConn, query: TSqlQuery, args: varargs[string, `$`]): bool {
   tags: [FReadDB, FWriteDb].} =
   ## tries to execute the query and returns true if successful, false otherwise.
   var q = dbFormat(query, args)
-  return mysql.RealQuery(db, q, q.len) == 0'i32
+  return mysql.realQuery(db, q, q.len) == 0'i32
 
 proc rawExec(db: TDbConn, query: TSqlQuery, args: varargs[string, `$`]) =
   var q = dbFormat(query, args)
-  if mysql.RealQuery(db, q, q.len) != 0'i32: dbError(db)
+  if mysql.realQuery(db, q, q.len) != 0'i32: dbError(db)
 
 proc exec*(db: TDbConn, query: TSqlQuery, args: varargs[string, `$`]) {.
   tags: [FReadDB, FWriteDb].} =
   ## executes the query and raises EDB if not successful.
   var q = dbFormat(query, args)
-  if mysql.RealQuery(db, q, q.len) != 0'i32: dbError(db)
+  if mysql.realQuery(db, q, q.len) != 0'i32: dbError(db)
     
 proc newRow(L: int): TRow = 
   newSeq(result, L)
@@ -100,8 +100,8 @@ proc newRow(L: int): TRow =
   
 proc properFreeResult(sqlres: mysql.PRES, row: cstringArray) =  
   if row != nil:
-    while mysql.FetchRow(sqlres) != nil: discard
-  mysql.FreeResult(sqlres)
+    while mysql.fetchRow(sqlres) != nil: discard
+  mysql.freeResult(sqlres)
   
 iterator fastRows*(db: TDbConn, query: TSqlQuery,
                    args: varargs[string, `$`]): TRow {.tags: [FReadDB].} =
@@ -109,13 +109,13 @@ iterator fastRows*(db: TDbConn, query: TSqlQuery,
   ## fast, but potenially dangerous: If the for-loop-body executes another
   ## query, the results can be undefined. For MySQL this is the case!.
   rawExec(db, query, args)
-  var sqlres = mysql.UseResult(db)
+  var sqlres = mysql.useResult(db)
   if sqlres != nil:
-    var L = int(mysql.NumFields(sqlres))
+    var L = int(mysql.numFields(sqlres))
     var result = newRow(L)
     var row: cstringArray
     while true:
-      row = mysql.FetchRow(sqlres)
+      row = mysql.fetchRow(sqlres)
       if row == nil: break
       for i in 0..L-1: 
         setLen(result[i], 0)
@@ -131,11 +131,11 @@ proc getRow*(db: TDbConn, query: TSqlQuery,
   ## retrieves a single row. If the query doesn't return any rows, this proc
   ## will return a TRow with empty strings for each column.
   rawExec(db, query, args)
-  var sqlres = mysql.UseResult(db)
+  var sqlres = mysql.useResult(db)
   if sqlres != nil:
-    var L = int(mysql.NumFields(sqlres))
+    var L = int(mysql.numFields(sqlres))
     result = newRow(L)
-    var row = mysql.FetchRow(sqlres)
+    var row = mysql.fetchRow(sqlres)
     if row != nil: 
       for i in 0..L-1: 
         setLen(result[i], 0)
@@ -150,13 +150,13 @@ proc getAllRows*(db: TDbConn, query: TSqlQuery,
   ## executes the query and returns the whole result dataset.
   result = @[]
   rawExec(db, query, args)
-  var sqlres = mysql.UseResult(db)
+  var sqlres = mysql.useResult(db)
   if sqlres != nil:
-    var L = int(mysql.NumFields(sqlres))
+    var L = int(mysql.numFields(sqlres))
     var row: cstringArray
     var j = 0
     while true:
-      row = mysql.FetchRow(sqlres)
+      row = mysql.fetchRow(sqlres)
       if row == nil: break
       setLen(result, j+1)
       newSeq(result[j], L)
@@ -166,12 +166,12 @@ proc getAllRows*(db: TDbConn, query: TSqlQuery,
         else:
           result[j][i] = $row[i]
       inc(j)
-    mysql.FreeResult(sqlres)
+    mysql.freeResult(sqlres)
 
 iterator rows*(db: TDbConn, query: TSqlQuery, 
                args: varargs[string, `$`]): TRow {.tags: [FReadDB].} =
-  ## same as `FastRows`, but slower and safe.
-  for r in items(GetAllRows(db, query, args)): yield r
+  ## same as `fastRows`, but slower and safe.
+  for r in items(getAllRows(db, query, args)): yield r
 
 proc getValue*(db: TDbConn, query: TSqlQuery, 
                args: varargs[string, `$`]): string {.tags: [FReadDB].} = 
@@ -179,7 +179,7 @@ proc getValue*(db: TDbConn, query: TSqlQuery,
   ## result dataset. Returns "" if the dataset contains no rows or the database
   ## value is NULL.
   result = ""
-  for row in FastRows(db, query, args): 
+  for row in fastRows(db, query, args): 
     result = row[0]
     break
 
@@ -188,16 +188,16 @@ proc tryInsertId*(db: TDbConn, query: TSqlQuery,
   ## executes the query (typically "INSERT") and returns the 
   ## generated ID for the row or -1 in case of an error.
   var q = dbFormat(query, args)
-  if mysql.RealQuery(db, q, q.len) != 0'i32: 
+  if mysql.realQuery(db, q, q.len) != 0'i32: 
     result = -1'i64
   else:
-    result = mysql.InsertId(db)
+    result = mysql.insertId(db)
   
 proc insertId*(db: TDbConn, query: TSqlQuery, 
                args: varargs[string, `$`]): int64 {.tags: [FWriteDb].} = 
   ## executes the query (typically "INSERT") and returns the 
   ## generated ID for the row.
-  result = TryInsertID(db, query, args)
+  result = tryInsertID(db, query, args)
   if result < 0: dbError(db)
 
 proc execAffectedRows*(db: TDbConn, query: TSqlQuery, 
@@ -206,7 +206,7 @@ proc execAffectedRows*(db: TDbConn, query: TSqlQuery,
   ## runs the query (typically "UPDATE") and returns the
   ## number of affected rows
   rawExec(db, query, args)
-  result = mysql.AffectedRows(db)
+  result = mysql.affectedRows(db)
 
 proc close*(db: TDbConn) {.tags: [FDb].} = 
   ## closes the database connection.
@@ -216,17 +216,16 @@ proc open*(connection, user, password, database: string): TDbConn {.
   tags: [FDb].} =
   ## opens a database connection. Raises `EDb` if the connection could not
   ## be established.
-  result = mysql.Init(nil)
+  result = mysql.init(nil)
   if result == nil: dbError("could not open database connection") 
   let
     colonPos = connection.find(':')
-    host =        if colonPos < 0: connection
-                  else:            substr(connection, 0, colonPos-1)
+    host = if colonPos < 0: connection
+           else: substr(connection, 0, colonPos-1)
     port: int32 = if colonPos < 0: 0'i32
-                  else:            substr(connection, colonPos+1).parseInt.int32
-  if mysql.RealConnect(result, host, user, password, database, 
+                  else: substr(connection, colonPos+1).parseInt.int32
+  if mysql.realConnect(result, host, user, password, database, 
                        port, nil, 0) == nil:
     var errmsg = $mysql.error(result)
-    db_mysql.Close(result)
+    db_mysql.close(result)
     dbError(errmsg)
-

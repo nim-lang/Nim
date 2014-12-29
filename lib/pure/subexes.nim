@@ -1,13 +1,13 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-## Nimrod support for `substitution expressions`:idx: (`subex`:idx:).
+## Nim support for `substitution expressions`:idx: (`subex`:idx:).
 ##
 ## .. include:: ../doc/subexes.txt
 ##
@@ -28,15 +28,21 @@ proc findNormalized(x: string, inArray: openarray[string]): int =
   return -1
 
 type
-  EInvalidSubex* = object of EInvalidValue ## exception that is raised for
-                                           ## an invalid subex
+  SubexError* = object of ValueError ## exception that is raised for
+                                     ## an invalid subex
+
+{.deprecated: [EInvalidSubex: SubexError].}
 
 proc raiseInvalidFormat(msg: string) {.noinline.} =
-  raise newException(EInvalidSubex, "invalid format string: " & msg)
+  raise newException(SubexError, "invalid format string: " & msg)
 
 type
   TFormatParser = object {.pure, final.}
-    f: cstring
+    when defined(js):
+      f: string # we rely on the '\0' terminator
+                # which JS's native string doesn't have
+    else:
+      f: cstring
     num, i, lineLen: int
 
 template call(x: stmt) {.immediate.} =
@@ -194,6 +200,9 @@ proc scanDollar(p: var TFormatParser, a: openarray[string], s: var string) =
   of '$': 
     emitChar p, s, '$'
     inc i
+  of '*':
+    for j in 0..a.high: emitStr p, s, a[j]
+    inc i
   of '{':
     call:
       let (x, y) = scanSlice(p, a)
@@ -291,14 +300,16 @@ proc scanDollar(p: var TFormatParser, a: openarray[string], s: var string) =
 
 
 type
-  TSubex* = distinct string ## string that contains a substitution expression
+  Subex* = distinct string ## string that contains a substitution expression
 
-proc subex*(s: string): TSubex =
+{.deprecated: [TSubex: Subex].}
+
+proc subex*(s: string): Subex =
   ## constructs a *substitution expression* from `s`. Currently this performs
   ## no syntax checking but this may change in later versions.
-  result = TSubex(s)
+  result = Subex(s)
 
-proc addf*(s: var string, formatstr: TSubex, a: varargs[string, `$`]) {.
+proc addf*(s: var string, formatstr: Subex, a: varargs[string, `$`]) {.
            noSideEffect, rtl, extern: "nfrmtAddf".} =
   ## The same as ``add(s, formatstr % a)``, but more efficient.
   var p: TFormatParser
@@ -312,7 +323,7 @@ proc addf*(s: var string, formatstr: TSubex, a: varargs[string, `$`]) {.
       emitChar(p, s, p.f[i])
       inc(i)
 
-proc `%` *(formatstr: TSubex, a: openarray[string]): string {.noSideEffect,
+proc `%` *(formatstr: Subex, a: openarray[string]): string {.noSideEffect,
   rtl, extern: "nfrmtFormatOpenArray".} =
   ## The `substitution`:idx: operator performs string substitutions in
   ## `formatstr` and returns a modified `formatstr`. This is often called
@@ -321,13 +332,13 @@ proc `%` *(formatstr: TSubex, a: openarray[string]): string {.noSideEffect,
   result = newStringOfCap(formatstr.string.len + a.len shl 4)
   addf(result, formatstr, a)
 
-proc `%` *(formatstr: TSubex, a: string): string {.noSideEffect,
+proc `%` *(formatstr: Subex, a: string): string {.noSideEffect,
   rtl, extern: "nfrmtFormatSingleElem".} =
   ## This is the same as ``formatstr % [a]``.
   result = newStringOfCap(formatstr.string.len + a.len)
   addf(result, formatstr, [a])
 
-proc format*(formatstr: TSubex, a: varargs[string, `$`]): string {.noSideEffect,
+proc format*(formatstr: Subex, a: varargs[string, `$`]): string {.noSideEffect,
   rtl, extern: "nfrmtFormatVarargs".} =
   ## The `substitution`:idx: operator performs string substitutions in
   ## `formatstr` and returns a modified `formatstr`. This is often called

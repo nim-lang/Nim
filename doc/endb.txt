@@ -1,15 +1,17 @@
 ==============================================
-  Embedded Nimrod Debugger (ENDB) User Guide
+  Embedded Nim Debugger (ENDB) User Guide
 ==============================================
 
 :Author: Andreas Rumpf
-:Version: |nimrodversion|
+:Version: |nimversion|
 
 .. contents::
 
+**WARNING**: ENDB is not maintained anymore! Please help if you're interested
+in this tool.
 
-Nimrod comes with a platform independent debugger -
-the Embedded Nimrod Debugger (ENDB). The debugger is
+Nim comes with a platform independent debugger -
+the Embedded Nim Debugger (ENDB). The debugger is
 *embedded* into your executable if it has been
 compiled with the ``--debugger:on`` command line option.
 This also defines the conditional symbol ``ENDB`` for you.
@@ -20,7 +22,7 @@ available for the debugger.
 
 If you start your program the debugger will immediately show
 a prompt on the console. You can now enter a command. The next sections
-deal with the possible commands. As usual in Nimrod in all commands
+deal with the possible commands. As usual in Nim in all commands
 underscores and case do not matter. Optional components of a command
 are listed in brackets ``[...]`` here.
 
@@ -105,7 +107,7 @@ The ``breakpoint`` pragma
 The ``breakpoint`` pragma is syntactically a statement. It can be used
 to mark the *following line* as a breakpoint:
 
-.. code-block:: Nimrod
+.. code-block:: Nim
   write("1")
   {.breakpoint: "before_write_2".}
   write("2")
@@ -125,7 +127,7 @@ The ``watchpoint`` pragma
 The ``watchpoint`` pragma is syntactically a statement. It can be used
 to mark a location as a watchpoint:
 
-.. code-block:: Nimrod
+.. code-block:: Nim
   var a: array [0..20, int]
   
   {.watchpoint: a[3].}
@@ -141,7 +143,7 @@ is turned on, so you don't need to remove it from your source code after
 debugging.
 
 Due to the primitive implementation watchpoints are even slower than
-breakpoints: After *every* executed Nimrod code line it is checked whether the
+breakpoints: After *every* executed Nim code line it is checked whether the
 location changed.
 
 
@@ -159,7 +161,7 @@ Data Display Commands
       in the current stack frame, use the ``up`` or ``down`` command.
 
     Unfortunately, only inspecting variables is possible at the moment. Maybe
-    a future version will implement a full-blown Nimrod expression evaluator,
+    a future version will implement a full-blown Nim expression evaluator,
     but this is not easy to do and would bloat the debugger's code.
 
     Since displaying the whole data structures is often not needed and

@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -102,7 +102,7 @@ proc crcFromFile(filename: string): TCrc32 =
   const 
     bufSize = 8000 # don't use 8K for the memory allocator!
   var 
-    bin: TFile
+    bin: File
   result = InitCrc32
   if not open(bin, filename): 
     return                    # not equal if file does not exist

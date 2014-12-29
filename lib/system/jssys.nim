@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -18,7 +18,7 @@ type
   PSafePoint = ptr TSafePoint
   TSafePoint {.compilerproc, final.} = object
     prev: PSafePoint # points to next safe point
-    exc: ref E_Base
+    exc: ref Exception
 
   PCallFrame = ptr TCallFrame
   TCallFrame {.importc, nodecl, final.} = object
@@ -97,13 +97,13 @@ proc rawWriteStackTrace(): string =
   else:
     result = "No stack traceback available\n"
 
-proc raiseException(e: ref E_Base, ename: cstring) {.
+proc raiseException(e: ref Exception, ename: cstring) {.
     compilerproc, asmNoStackFrame.} =
   e.name = ename
   if excHandler != nil:
     excHandler.exc = e
   else:
-    when nimrodStackTrace:
+    when NimStackTrace:
       var buf = rawWriteStackTrace()
     else:
       var buf = ""
@@ -120,24 +120,24 @@ proc raiseException(e: ref E_Base, ename: cstring) {.
 
 proc reraiseException() {.compilerproc, asmNoStackFrame.} =
   if excHandler == nil:
-    raise newException(ENoExceptionToReraise, "no exception to reraise")
+    raise newException(ReraiseError, "no exception to reraise")
   else:
     asm """throw excHandler.exc;"""
 
 proc raiseOverflow {.exportc: "raiseOverflow", noreturn.} =
-  raise newException(EOverflow, "over- or underflow")
+  raise newException(OverflowError, "over- or underflow")
 
 proc raiseDivByZero {.exportc: "raiseDivByZero", noreturn.} =
-  raise newException(EDivByZero, "divison by zero")
+  raise newException(DivByZeroError, "divison by zero")
 
 proc raiseRangeError() {.compilerproc, noreturn.} =
-  raise newException(EOutOfRange, "value out of range")
+  raise newException(RangeError, "value out of range")
 
 proc raiseIndexError() {.compilerproc, noreturn.} =
-  raise newException(EInvalidIndex, "index out of bounds")
+  raise newException(IndexError, "index out of bounds")
 
 proc raiseFieldError(f: string) {.compilerproc, noreturn.} =
-  raise newException(EInvalidField, f & " is not accessible")
+  raise newException(FieldError, f & " is not accessible")
 
 proc SetConstr() {.varargs, asmNoStackFrame, compilerproc.} =
   asm """
@@ -260,7 +260,7 @@ proc eqStrings(a, b: string): bool {.asmNoStackFrame, compilerProc.} =
   """
 
 type
-  TDocument {.importc.} = object of TObject
+  TDocument {.importc.} = object of RootObj
     write: proc (text: cstring) {.nimcall.}
     writeln: proc (text: cstring) {.nimcall.}
     createAttribute: proc (identifier: cstring): ref TNode {.nimcall.}
@@ -283,7 +283,7 @@ type
     DocumentTypeNode,
     DocumentFragmentNode,
     NotationNode
-  TNode* {.importc.} = object of TObject
+  TNode* {.importc.} = object of RootObj
     attributes*: seq[ref TNode]
     childNodes*: seq[ref TNode]
     data*: cstring
@@ -345,11 +345,12 @@ else:
       node.appendChild(document.createTextNode(x))
       node.appendChild(document.createElement("br"))
     else: 
-      raise newException(EInvalidValue, "<body> element does not exist yet!")
+      raise newException(ValueError, "<body> element does not exist yet!")
 
   proc rawEcho {.compilerproc.} =
     var node = document.getElementsByTagName("body")[0]
-    if node == nil: raise newException(EIO, "<body> element does not exist yet!")
+    if node == nil:
+      raise newException(IOError, "<body> element does not exist yet!")
     asm """
       for (var i = 0; i < arguments.length; ++i) {
         var x = `toJSStr`(arguments[i]);
@@ -621,7 +622,7 @@ proc chckObj(obj, subclass: PNimType) {.compilerproc.} =
   if x == subclass: return # optimized fast path
   while x != subclass:
     if x == nil:
-      raise newException(EInvalidObjectConversion, "invalid object conversion")
+      raise newException(ObjectConversionError, "invalid object conversion")
     x = x.base
 
 proc isObj(obj, subclass: PNimType): bool {.compilerproc.} =

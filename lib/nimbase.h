@@ -1,7 +1,7 @@
 /*
 
-            Nimrod's Runtime Library
-        (c) Copyright 2013 Andreas Rumpf
+            Nim's Runtime Library
+        (c) Copyright 2014 Andreas Rumpf
 
     See the file "copying.txt", included in this
     distribution, for details about the copyright.
@@ -141,9 +141,11 @@ __clang__
 /* these compilers have a fastcall so use it: */
 #  define N_NIMCALL(rettype, name) rettype __fastcall name
 #  define N_NIMCALL_PTR(rettype, name) rettype (__fastcall *name)
+#  define N_RAW_NIMCALL __fastcall
 #else
 #  define N_NIMCALL(rettype, name) rettype name /* no modifier */
 #  define N_NIMCALL_PTR(rettype, name) rettype (*name)
+#  define N_RAW_NIMCALL
 #endif
 
 #define N_CLOSURE(rettype, name) N_NIMCALL(rettype, name)
@@ -175,9 +177,9 @@ __clang__
 #  define NIM_NIL 0
 struct NimException
 {
-  NimException(struct E_Base* exp, const char* msg): exp(exp), msg(msg) {}
+  NimException(struct Exception* exp, const char* msg): exp(exp), msg(msg) {}
 
-  struct E_Base* exp;
+  struct Exception* exp;
   const char* msg;
 };
 #else
@@ -381,4 +383,10 @@ static inline void GCGuard (void *ptr) { asm volatile ("" :: "X" (ptr)); }
    On disagreement, your C compiler will say something like: 
    "error: 'assert_numbits' declared as an array with a negative size" */
 typedef int assert_numbits[sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8 ? 1 : -1];
+#endif
+
+#ifdef  __cplusplus
+#  define NIM_EXTERNC extern "C"
+#else
+#  define NIM_EXTERNC
 #endif

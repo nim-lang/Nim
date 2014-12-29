@@ -1,5 +1,5 @@
 discard """
-  cmd: "nimrod $target --threads:on $options $file"
+  cmd: "nim $target --threads:on $options $file"
   errormsg: "illegal recursion in type 'TIRC'"
   line: 16
 """
@@ -62,5 +62,5 @@ proc Connect*(irc: var TIRC, nick: string, host: string, port: int = 6667) =
 when isMainModule:
     var irc = initIRC()
     irc.Connect("AmryBot[Nim]","irc.freenode.net",6667)
-    irc.sendRaw("JOIN #nimrod")
+    irc.sendRaw("JOIN #nim")
     os.Sleep(4000)

@@ -1,6 +1,6 @@
 #
 #
-#              The Nimrod Tester
+#              The Nim Tester
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    Look at license.txt for more info.

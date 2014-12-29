@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -23,7 +23,7 @@ type
     id: int                  # for generating IDs
     toc, section: TSections
     indexValFilename: string
-    seenSymbols: PStringTable # avoids duplicate symbol generation for HTML.
+    seenSymbols: StringTableRef # avoids duplicate symbol generation for HTML.
 
   PDoc* = ref TDocumentor ## Alias to type less.
 
@@ -41,6 +41,7 @@ proc compilerMsgHandler(filename: string, line, col: int,
   of mwRedefinitionOfLabel: k = warnRedefinitionOfLabel
   of mwUnknownSubstitution: k = warnUnknownSubstitutionX
   of mwUnsupportedLanguage: k = warnLanguageXNotSupported
+  of mwUnsupportedField: k = warnFieldXNotSupported
   globalError(newLineInfo(filename, line, col), k, arg)
 
 proc docgenFindFile(s: string): string {.procvar.} =
@@ -55,7 +56,7 @@ proc parseRst(text, filename: string,
   result = rstParse(text, filename, line, column, hasToc, rstOptions,
                     docgenFindFile, compilerMsgHandler)
 
-proc newDocumentor*(filename: string, config: PStringTable): PDoc =
+proc newDocumentor*(filename: string, config: StringTableRef): PDoc =
   new(result)
   initRstGenerator(result[], (if gCmd != cmdRst2tex: outHtml else: outLatex),
                    options.gConfigVars, filename, {roSupportRawDirective},
@@ -374,11 +375,11 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     cleanPlainSymbol = renderPlainSymbolName(nameNode)
     complexSymbol = complexName(k, n, cleanPlainSymbol)
     plainSymbolRope = toRope(cleanPlainSymbol)
-    plainSymbolEncRope = toRope(URLEncode(cleanPlainSymbol))
+    plainSymbolEncRope = toRope(encodeUrl(cleanPlainSymbol))
     itemIDRope = toRope(d.id)
     symbolOrId = d.newUniquePlainSymbol(complexSymbol)
     symbolOrIdRope = symbolOrId.toRope
-    symbolOrIdEncRope = URLEncode(symbolOrId).toRope
+    symbolOrIdEncRope = encodeUrl(symbolOrId).toRope
 
   var seeSrcRope: PRope = nil
   let docItemSeeSrc = getConfigVar("doc.item.seesrc")
@@ -413,7 +414,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   setIndexTerm(d[], symbolOrId, name, linkTitle,
     xmltree.escape(plainDocstring.docstringSummary))
 
-proc genJSONItem(d: PDoc, n, nameNode: PNode, k: TSymKind): PJsonNode =
+proc genJSONItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonNode =
   if not isVisible(nameNode): return
   var
     name = getName(d, nameNode)
@@ -473,7 +474,7 @@ proc generateDoc*(d: PDoc, n: PNode) =
   of nkFromStmt, nkImportExceptStmt: traceDeps(d, n.sons[0])
   else: discard
 
-proc generateJson(d: PDoc, n: PNode, jArray: PJsonNode = nil): PJsonNode =
+proc generateJson(d: PDoc, n: PNode, jArray: JsonNode = nil): JsonNode =
   case n.kind
   of nkCommentStmt:
     if n.comment != nil and startsWith(n.comment, "##"):

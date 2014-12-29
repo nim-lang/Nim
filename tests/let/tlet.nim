@@ -3,9 +3,9 @@ discard """
   errormsg: "'name' cannot be assigned to"
 """
 
-Echo("What's your name? ")
+echo("What's your name? ")
 let name = readLine(stdin)
 while name == "":
-  Echo("Please tell me your name: ")
+  echo("Please tell me your name: ")
   name = readLine(stdin)
 

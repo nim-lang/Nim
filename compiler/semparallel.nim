@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -258,14 +258,18 @@ proc min(a, b: PNode): PNode =
 
 proc fromSystem(op: PSym): bool = sfSystemModule in getModule(op).flags
 
+template pushSpawnId(c: expr, body: stmt) {.immediate, dirty.} =
+  inc c.spawns
+  let oldSpawnId = c.currentSpawnId
+  c.currentSpawnId = c.spawns
+  body
+  c.currentSpawnId = oldSpawnId
+
 proc analyseCall(c: var AnalysisCtx; n: PNode; op: PSym) =
   if op.magic == mSpawn:
-    inc c.spawns
-    let oldSpawnId = c.currentSpawnId
-    c.currentSpawnId = c.spawns
-    gatherArgs(c, n[1])
-    analyseSons(c, n)
-    c.currentSpawnId = oldSpawnId
+    pushSpawnId(c):
+      gatherArgs(c, n[1])
+      analyseSons(c, n)
   elif op.magic == mInc or (op.name.s == "+=" and op.fromSystem):
     if n[1].isLocal:
       let incr = n[2].skipConv
@@ -320,9 +324,16 @@ proc analyse(c: var AnalysisCtx; n: PNode) =
       # since we already ensure sfAddrTaken is not in s.flags, we only need to
       # prevent direct assignments to the monotonic variable:
       let slot = c.getSlot(n[0].sym)
-      slot.blackListed = true
+      slot.blacklisted = true
     invalidateFacts(c.guards, n[0])
-    analyseSons(c, n)
+    let value = n[1]
+    if getMagic(value) == mSpawn:
+      pushSpawnId(c):
+        gatherArgs(c, value[1])
+        analyseSons(c, value[1])
+        analyse(c, n[0])
+    else:
+      analyseSons(c, n)
     addAsgnFact(c.guards, n[0], n[1])
   of nkCallKinds:
     # direct call:
@@ -335,16 +346,21 @@ proc analyse(c: var AnalysisCtx; n: PNode) =
     localError(n.info, "invalid control flow for 'parallel'")
     # 'break' that leaves the 'parallel' section is not valid either
     # or maybe we should generate a 'try' XXX
-  of nkVarSection:
+  of nkVarSection, nkLetSection:
     for it in n:
       let value = it.lastSon
+      let isSpawned = getMagic(value) == mSpawn
+      if isSpawned:
+        pushSpawnId(c):
+          gatherArgs(c, value[1])
+          analyseSons(c, value[1])
       if value.kind != nkEmpty:
         for j in 0 .. it.len-3:
           if it[j].isLocal:
             let slot = c.getSlot(it[j].sym)
             if slot.lower.isNil: slot.lower = value
             else: internalError(it.info, "slot already has a lower bound")
-        analyse(c, value)
+        if not isSpawned: analyse(c, value)
   of nkCaseStmt: analyseCase(c, n)
   of nkIfStmt, nkIfExpr: analyseIf(c, n)
   of nkWhileStmt:
@@ -396,7 +412,7 @@ proc transformSpawnSons(owner: PSym; n, barrier: PNode): PNode =
 
 proc transformSpawn(owner: PSym; n, barrier: PNode): PNode =
   case n.kind
-  of nkVarSection:
+  of nkVarSection, nkLetSection:
     result = nil
     for it in n:
       let b = it.lastSon
@@ -464,6 +480,6 @@ proc liftParallel*(owner: PSym; n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   generateAliasChecks(a, result)
   result.add varSection
-  result.add callCodeGenProc("openBarrier", barrier)
+  result.add callCodegenProc("openBarrier", barrier)
   result.add transformSpawn(owner, body, barrier)
-  result.add callCodeGenProc("closeBarrier", barrier)
+  result.add callCodegenProc("closeBarrier", barrier)

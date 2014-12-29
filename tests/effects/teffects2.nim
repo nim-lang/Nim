@@ -1,6 +1,6 @@
 discard """
   line: 19
-  errormsg: "can raise an unlisted exception: ref EIO"
+  errormsg: "can raise an unlisted exception: ref IOError"
 """
 
 type
@@ -8,13 +8,13 @@ type
   TObjB = object of TObj
     a, b, c: string
   
-  EIO2 = ref object of EIO
+  EIO2 = ref object of IOError
   
 proc forw: int {.raises: [].}
 
-proc lier(): int {.raises: [EIO].} =
+proc lier(): int {.raises: [IOError].} =
   writeln stdout, "arg"
 
 proc forw: int =
-  raise newException(EIO, "arg")
+  raise newException(IOError, "arg")
 

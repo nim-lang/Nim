@@ -1,6 +1,6 @@
 #
 #
-#           Nimrod Grep Utility
+#           Nim Grep Utility
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -12,7 +12,7 @@ import
 
 const
   Version = "0.9"
-  Usage = "nimgrep - Nimrod Grep Utility Version " & version & """
+  Usage = "nimgrep - Nim Grep Utility Version " & Version & """
 
   (c) 2012 Andreas Rumpf
 Usage:
@@ -58,7 +58,7 @@ proc ask(msg: string): string =
   stdout.write(msg)
   result = stdin.readLine()
 
-proc Confirm: TConfirmEnum = 
+proc confirm: TConfirmEnum = 
   while true:
     case normalize(ask("     [a]bort; [y]es, a[l]l, [n]o, non[e]: "))
     of "a", "abort": return ceAbort 
@@ -81,20 +81,20 @@ proc countLines(s: string, first, last: int): int =
 proc beforePattern(s: string, first: int): int = 
   result = first-1
   while result >= 0:
-    if s[result] in newlines: break
+    if s[result] in NewLines: break
     dec(result)
   inc(result)
 
 proc afterPattern(s: string, last: int): int = 
   result = last+1
   while result < s.len:
-    if s[result] in newlines: break
+    if s[result] in NewLines: break
     inc(result)
   dec(result)
 
 proc writeColored(s: string) =
   if useWriteStyled:
-    terminal.WriteStyled(s, {styleUnderscore, styleBright})
+    terminal.writeStyled(s, {styleUnderscore, styleBright})
   else:
     stdout.write(s)
 
@@ -125,12 +125,12 @@ proc processFile(filename: string) =
   var buffer: string
   try:
     buffer = system.readFile(filename)
-  except EIO: 
+  except IOError: 
     echo "cannot open file: ", filename
     return
   if optVerbose in options: stdout.writeln(filename)
   var pegp: TPeg
-  var rep: TRegex
+  var rep: Regex
   var result: string
 
   if optRegex in options:
@@ -171,7 +171,7 @@ proc processFile(filename: string) =
         r = replace(wholeMatch, rep, replacement % matches)
       if optConfirm in options: 
         highlight(buffer, wholeMatch, r, t, line, showRepl=true)
-        case Confirm()
+        case confirm()
         of ceAbort: quit(0)
         of ceYes: reallyReplace = true 
         of ceAll: 
@@ -194,7 +194,7 @@ proc processFile(filename: string) =
     i = t.last+1
   if optReplace in options:
     result.add(substr(buffer, i))
-    var f: TFile
+    var f: File
     if open(f, filename, fmWrite):
       f.write(result)
       f.close()
@@ -234,8 +234,8 @@ proc styleInsensitive(s: string): string =
         while s[i] != '>' and s[i] != '\0': addx()
     of '\\':
       addx()
-      if s[i] in strutils.digits: 
-        while s[i] in strutils.digits: addx()
+      if s[i] in strutils.Digits: 
+        while s[i] in strutils.Digits: addx()
       else:
         addx()
     else: addx()
@@ -267,7 +267,7 @@ proc checkOptions(subset: TOptions, a, b: string) =
 for kind, key, val in getopt():
   case kind
   of cmdArgument:
-    if options.contains(optStdIn): 
+    if options.contains(optStdin): 
       filenames.add(key)
     elif pattern.len == 0: 
       pattern = key
@@ -275,7 +275,7 @@ for kind, key, val in getopt():
       replacement = key
     else:
       filenames.add(key)
-  of cmdLongOption, cmdShortOption:
+  of cmdLongoption, cmdShortOption:
     case normalize(key)
     of "find", "f": incl(options, optFind)
     of "replace", "r": incl(options, optReplace)

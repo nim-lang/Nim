@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -12,31 +12,33 @@
 ## Windows ``LoadLibrary``. 
 
 type
-  TLibHandle* = pointer ## a handle to a dynamically loaded library
+  LibHandle* = pointer ## a handle to a dynamically loaded library
 
-proc loadLib*(path: string, global_symbols=false): TLibHandle
+{.deprecated: [TLibHandle: LibHandle].}
+
+proc loadLib*(path: string, global_symbols=false): LibHandle
   ## loads a library from `path`. Returns nil if the library could not 
   ## be loaded.
 
-proc loadLib*(): TLibHandle
+proc loadLib*(): LibHandle
   ## gets the handle from the current executable. Returns nil if the 
   ## library could not be loaded.
 
-proc unloadLib*(lib: TLibHandle)
+proc unloadLib*(lib: LibHandle)
   ## unloads the library `lib`
 
 proc raiseInvalidLibrary*(name: cstring) {.noinline, noreturn.} =
   ## raises an `EInvalidLibrary` exception.
-  var e: ref EInvalidLibrary
+  var e: ref LibraryError
   new(e)
   e.msg = "could not find symbol: " & $name
   raise e
 
-proc symAddr*(lib: TLibHandle, name: cstring): pointer
+proc symAddr*(lib: LibHandle, name: cstring): pointer
   ## retrieves the address of a procedure/variable from `lib`. Returns nil
   ## if the symbol could not be found.
 
-proc checkedSymAddr*(lib: TLibHandle, name: cstring): pointer =
+proc checkedSymAddr*(lib: LibHandle, name: cstring): pointer =
   ## retrieves the address of a procedure/variable from `lib`. Raises
   ## `EInvalidLibrary` if the symbol could not be found.
   result = symAddr(lib, name)
@@ -55,19 +57,19 @@ when defined(posix):
     RTLD_NOW {.importc: "RTLD_NOW", header: "<dlfcn.h>".}: int
     RTLD_GLOBAL {.importc: "RTLD_GLOBAL", header: "<dlfcn.h>".}: int
 
-  proc dlclose(lib: TLibHandle) {.importc, header: "<dlfcn.h>".}
-  proc dlopen(path: CString, mode: int): TLibHandle {.
+  proc dlclose(lib: LibHandle) {.importc, header: "<dlfcn.h>".}
+  proc dlopen(path: cstring, mode: int): LibHandle {.
       importc, header: "<dlfcn.h>".}
-  proc dlsym(lib: TLibHandle, name: cstring): pointer {.
+  proc dlsym(lib: LibHandle, name: cstring): pointer {.
       importc, header: "<dlfcn.h>".}
 
-  proc loadLib(path: string, global_symbols=false): TLibHandle = 
+  proc loadLib(path: string, global_symbols=false): LibHandle = 
     var flags = RTLD_NOW
     if global_symbols: flags = flags or RTLD_GLOBAL
     return dlopen(path, flags)
-  proc loadLib(): TLibHandle = return dlopen(nil, RTLD_NOW)
-  proc unloadLib(lib: TLibHandle) = dlclose(lib)
-  proc symAddr(lib: TLibHandle, name: cstring): pointer = 
+  proc loadLib(): LibHandle = return dlopen(nil, RTLD_NOW)
+  proc unloadLib(lib: LibHandle) = dlclose(lib)
+  proc symAddr(lib: LibHandle, name: cstring): pointer = 
     return dlsym(lib, name)
 
 elif defined(windows) or defined(dos):
@@ -85,13 +87,13 @@ elif defined(windows) or defined(dos):
   proc getProcAddress(lib: THINSTANCE, name: cstring): pointer {.
       importc: "GetProcAddress", header: "<windows.h>", stdcall.}
 
-  proc loadLib(path: string, global_symbols=false): TLibHandle =
-    result = cast[TLibHandle](winLoadLibrary(path))
-  proc loadLib(): TLibHandle =
-    result = cast[TLibHandle](winLoadLibrary(nil))
-  proc unloadLib(lib: TLibHandle) = FreeLibrary(cast[THINSTANCE](lib))
+  proc loadLib(path: string, global_symbols=false): LibHandle =
+    result = cast[LibHandle](winLoadLibrary(path))
+  proc loadLib(): LibHandle =
+    result = cast[LibHandle](winLoadLibrary(nil))
+  proc unloadLib(lib: LibHandle) = FreeLibrary(cast[THINSTANCE](lib))
 
-  proc symAddr(lib: TLibHandle, name: cstring): pointer =
+  proc symAddr(lib: LibHandle, name: cstring): pointer =
     result = getProcAddress(cast[THINSTANCE](lib), name)
 
 else:

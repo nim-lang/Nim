@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -13,7 +13,7 @@
 ## It can be used to parse a wild HTML document and output it as valid XHTML
 ## document (well, if you are lucky):
 ##
-## .. code-block:: nimrod
+## .. code-block:: Nim
 ##
 ##   echo loadHtml("mydirty.html")
 ##
@@ -29,7 +29,7 @@
 ## and write back the modified version. In this case we look for hyperlinks
 ## ending with the extension ``.rst`` and convert them to ``.html``.
 ##
-## .. code-block:: nimrod
+## .. code-block:: Nim
 ##
 ##   import htmlparser
 ##   import xmltree  # To use '$' for PXmlNode
@@ -422,7 +422,7 @@ proc toHtmlTag(s: string): THtmlTag =
   of "wbr": tagWbr
   else: tagUnknown
 
-proc htmlTag*(n: PXmlNode): THtmlTag = 
+proc htmlTag*(n: XmlNode): THtmlTag = 
   ## gets `n`'s tag as a ``THtmlTag``.
   if n.clientData == 0:
     n.clientData = toHtmlTag(n.tag).ord
@@ -438,24 +438,24 @@ proc entityToUtf8*(entity: string): string =
   ## converts an HTML entity name like ``&Uuml;`` to its UTF-8 equivalent.
   ## "" is returned if the entity name is unknown. The HTML parser
   ## already converts entities to UTF-8.
-  for name, val in items(entities):
-    if name == entity: return toUTF8(TRune(val))
+  for name, val in items(Entities):
+    if name == entity: return toUTF8(Rune(val))
   result = ""
 
-proc addNode(father, son: PXmlNode) = 
+proc addNode(father, son: XmlNode) = 
   if son != nil: add(father, son)
 
-proc parse(x: var TXmlParser, errors: var seq[string]): PXmlNode
+proc parse(x: var XmlParser, errors: var seq[string]): XmlNode
 
-proc expected(x: var TXmlParser, n: PXmlNode): string =
+proc expected(x: var XmlParser, n: XmlNode): string =
   result = errorMsg(x, "</" & n.tag & "> expected")
 
 template elemName(x: expr): expr = rawData(x)
 
-proc untilElementEnd(x: var TXmlParser, result: PXmlNode, 
+proc untilElementEnd(x: var XmlParser, result: XmlNode, 
                      errors: var seq[string]) =
   # we parsed e.g. ``<br>`` and don't really expect a ``</br>``: 
-  if result.htmlTag in singleTags:
+  if result.htmlTag in SingleTags:
     if x.kind != xmlElementEnd or cmpIgnoreCase(x.elemName, result.tag) != 0:
       return
   while true:
@@ -496,7 +496,7 @@ proc untilElementEnd(x: var TXmlParser, result: PXmlNode,
     else:
       result.addNode(parse(x, errors))
 
-proc parse(x: var TXmlParser, errors: var seq[string]): PXmlNode =
+proc parse(x: var XmlParser, errors: var seq[string]): XmlNode =
   case x.kind
   of xmlComment: 
     result = newComment(x.rawData)
@@ -549,11 +549,11 @@ proc parse(x: var TXmlParser, errors: var seq[string]): PXmlNode =
     next(x)
   of xmlEof: discard
 
-proc parseHtml*(s: PStream, filename: string, 
-                errors: var seq[string]): PXmlNode = 
+proc parseHtml*(s: Stream, filename: string, 
+                errors: var seq[string]): XmlNode = 
   ## parses the XML from stream `s` and returns a ``PXmlNode``. Every
   ## occured parsing error is added to the `errors` sequence.
-  var x: TXmlParser
+  var x: XmlParser
   open(x, s, filename, {reportComments, reportWhitespace})
   next(x)
   # skip the DOCTYPE:
@@ -573,21 +573,21 @@ proc parseHtml*(s: PStream, filename: string,
   if result.len == 1:
     result = result[0]
 
-proc parseHtml*(s: PStream): PXmlNode = 
+proc parseHtml*(s: Stream): XmlNode = 
   ## parses the XTML from stream `s` and returns a ``PXmlNode``. All parsing
   ## errors are ignored.
   var errors: seq[string] = @[]
   result = parseHtml(s, "unknown_html_doc", errors)
 
-proc loadHtml*(path: string, errors: var seq[string]): PXmlNode = 
+proc loadHtml*(path: string, errors: var seq[string]): XmlNode = 
   ## Loads and parses HTML from file specified by ``path``, and returns 
   ## a ``PXmlNode``.  Every occured parsing error is added to
   ## the `errors` sequence.
   var s = newFileStream(path, fmRead)
-  if s == nil: raise newException(EIO, "Unable to read file: " & path)
+  if s == nil: raise newException(IOError, "Unable to read file: " & path)
   result = parseHtml(s, path, errors)
 
-proc loadHtml*(path: string): PXmlNode = 
+proc loadHtml*(path: string): XmlNode = 
   ## Loads and parses HTML from file specified by ``path``, and returns 
   ## a ``PXmlNode``. All parsing errors are ignored.
   var errors: seq[string] = @[]
@@ -600,7 +600,7 @@ when isMainModule:
   var x = loadHtml(paramStr(1), errors)
   for e in items(errors): echo e
   
-  var f: TFile
+  var f: File
   if open(f, "test.txt", fmWrite):
     f.write($x)
     f.close()

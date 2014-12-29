@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf, Dominik Picheta
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -10,8 +10,13 @@ include "system/inclrtl"
 
 import sockets, os
 
-## This module implements an asynchronous event loop together with asynchronous sockets
-## which use this event loop.
+##
+## **Warning:** This module is deprecated since version 0.10.2.
+## Use the brand new `asyncdispatch <asyncdispatch.html>`_ module together
+## with the `asyncnet <asyncnet.html>`_ module.
+
+## This module implements an asynchronous event loop together with asynchronous
+## sockets which use this event loop.
 ## It is akin to Python's asyncore module. Many modules that use sockets
 ## have an implementation for this module, those modules should all have a 
 ## ``register`` function which you should use to add the desired objects to a 
@@ -31,10 +36,10 @@ import sockets, os
 ## 
 ## Most (if not all) modules that use asyncio provide a userArg which is passed
 ## on with the events. The type that you set userArg to must be inheriting from
-## TObject!
+## ``RootObj``!
 ##
 ## **Note:** If you want to provide async ability to your module please do not 
-## use the ``TDelegate`` object, instead use ``PAsyncSocket``. It is possible 
+## use the ``Delegate`` object, instead use ``AsyncSocket``. It is possible 
 ## that in the future this type's fields will not be exported therefore breaking
 ## your code.
 ##
@@ -44,10 +49,10 @@ import sockets, os
 ## Asynchronous sockets
 ## ====================
 ##
-## For most purposes you do not need to worry about the ``TDelegate`` type. The
-## ``PAsyncSocket`` is what you are after. It's a reference to the ``TAsyncSocket``
-## object. This object defines events which you should overwrite by your own
-## procedures.
+## For most purposes you do not need to worry about the ``Delegate`` type. The
+## ``AsyncSocket`` is what you are after. It's a reference to
+## the ``AsyncSocketObj`` object. This object defines events which you should
+## overwrite by your own procedures.
 ##
 ## For server sockets the only event you need to worry about is the ``handleAccept``
 ## event, in your handleAccept proc you should call ``accept`` on the server
@@ -57,13 +62,13 @@ import sockets, os
 ## 
 ## An example ``handleAccept`` follows:
 ## 
-## .. code-block:: nimrod
+## .. code-block:: nim
 ##   
-##    var disp: PDispatcher = newDispatcher()
+##    var disp = newDispatcher()
 ##    ...
-##    proc handleAccept(s: PAsyncSocket) =
+##    proc handleAccept(s: AsyncSocket) =
 ##      echo("Accepted client.")
-##      var client: PAsyncSocket
+##      var client: AsyncSocket
 ##      new(client)
 ##      s.accept(client)
 ##      client.handleRead = ...
@@ -76,106 +81,116 @@ import sockets, os
 ## the socket has established a connection to a server socket; from that point
 ## it can be safely written to.
 ##
-## Getting a blocking client from a PAsyncSocket
+## Getting a blocking client from an AsyncSocket
 ## =============================================
 ## 
 ## If you need a asynchronous server socket but you wish to process the clients
-## synchronously then you can use the ``getSocket`` converter to get a TSocket
-## object from the PAsyncSocket object, this can then be combined with ``accept``
-## like so:
+## synchronously then you can use the ``getSocket`` converter to get
+## a ``Socket`` from the ``AsyncSocket`` object, this can then be combined
+## with ``accept`` like so:
 ##
-## .. code-block:: nimrod
+## .. code-block:: nim
 ##    
-##    proc handleAccept(s: PAsyncSocket) =
-##      var client: TSocket
+##    proc handleAccept(s: AsyncSocket) =
+##      var client: Socket
 ##      getSocket(s).accept(client)
 
+{.deprecated.}
+
 when defined(windows):
-  from winlean import TTimeVal, TSocketHandle, TFdSet, FD_ZERO, FD_SET, FD_ISSET, select
+  from winlean import TimeVal, SocketHandle, FD_SET, FD_ZERO, TFdSet,
+    FD_ISSET, select
 else:
-  from posix import TTimeVal, TSocketHandle, TFdSet, FD_ZERO, FD_SET, FD_ISSET, select
+  from posix import TimeVal, SocketHandle, FD_SET, FD_ZERO, TFdSet,
+    FD_ISSET, select
 
 type
-  TDelegate* = object
-    fd*: TSocketHandle
-    deleVal*: PObject
+  DelegateObj* = object
+    fd*: SocketHandle
+    deleVal*: RootRef
 
-    handleRead*: proc (h: PObject) {.nimcall, gcsafe.}
-    handleWrite*: proc (h: PObject) {.nimcall, gcsafe.}
-    handleError*: proc (h: PObject) {.nimcall, gcsafe.}
-    hasDataBuffered*: proc (h: PObject): bool {.nimcall, gcsafe.}
+    handleRead*: proc (h: RootRef) {.nimcall, gcsafe.}
+    handleWrite*: proc (h: RootRef) {.nimcall, gcsafe.}
+    handleError*: proc (h: RootRef) {.nimcall, gcsafe.}
+    hasDataBuffered*: proc (h: RootRef): bool {.nimcall, gcsafe.}
     
     open*: bool
-    task*: proc (h: PObject) {.nimcall, gcsafe.}
-    mode*: TFileMode
+    task*: proc (h: RootRef) {.nimcall, gcsafe.}
+    mode*: FileMode
     
-  PDelegate* = ref TDelegate
+  Delegate* = ref DelegateObj
 
-  PDispatcher* = ref TDispatcher
-  TDispatcher = object
-    delegates: seq[PDelegate]
+  Dispatcher* = ref DispatcherObj
+  DispatcherObj = object
+    delegates: seq[Delegate]
 
-  PAsyncSocket* = ref TAsyncSocket
-  TAsyncSocket* = object of TObject
-    socket: TSocket
-    info: TInfo
+  AsyncSocket* = ref AsyncSocketObj
+  AsyncSocketObj* = object of RootObj
+    socket: Socket
+    info: SocketStatus
 
-    handleRead*: proc (s: PAsyncSocket) {.closure, gcsafe.}
-    handleWrite: proc (s: PAsyncSocket) {.closure, gcsafe.}
-    handleConnect*: proc (s:  PAsyncSocket) {.closure, gcsafe.}
+    handleRead*: proc (s: AsyncSocket) {.closure, gcsafe.}
+    handleWrite: proc (s: AsyncSocket) {.closure, gcsafe.}
+    handleConnect*: proc (s:  AsyncSocket) {.closure, gcsafe.}
 
-    handleAccept*: proc (s:  PAsyncSocket) {.closure, gcsafe.}
+    handleAccept*: proc (s:  AsyncSocket) {.closure, gcsafe.}
 
-    handleTask*: proc (s: PAsyncSocket) {.closure, gcsafe.}
+    handleTask*: proc (s: AsyncSocket) {.closure, gcsafe.}
 
     lineBuffer: TaintedString ## Temporary storage for ``readLine``
     sendBuffer: string ## Temporary storage for ``send``
     sslNeedAccept: bool
-    proto: TProtocol
-    deleg: PDelegate
+    proto: Protocol
+    deleg: Delegate
 
-  TInfo* = enum
+  SocketStatus* = enum
     SockIdle, SockConnecting, SockConnected, SockListening, SockClosed, 
     SockUDPBound
 
-proc newDelegate*(): PDelegate =
+{.deprecated: [TDelegate: DelegateObj, PDelegate: Delegate,
+  TInfo: SocketStatus, PAsyncSocket: AsyncSocket, TAsyncSocket: AsyncSocketObj,
+  TDispatcher: DispatcherObj, PDispatcher: Dispatcher,
+  ].}
+
+
+proc newDelegate*(): Delegate =
   ## Creates a new delegate.
   new(result)
-  result.handleRead = (proc (h: PObject) = discard)
-  result.handleWrite = (proc (h: PObject) = discard)
-  result.handleError = (proc (h: PObject) = discard)
-  result.hasDataBuffered = (proc (h: PObject): bool = return false)
-  result.task = (proc (h: PObject) = discard)
+  result.handleRead = (proc (h: RootRef) = discard)
+  result.handleWrite = (proc (h: RootRef) = discard)
+  result.handleError = (proc (h: RootRef) = discard)
+  result.hasDataBuffered = (proc (h: RootRef): bool = return false)
+  result.task = (proc (h: RootRef) = discard)
   result.mode = fmRead
 
-proc newAsyncSocket(): PAsyncSocket =
+proc newAsyncSocket(): AsyncSocket =
   new(result)
   result.info = SockIdle
 
-  result.handleRead = (proc (s: PAsyncSocket) = discard)
+  result.handleRead = (proc (s: AsyncSocket) = discard)
   result.handleWrite = nil
-  result.handleConnect = (proc (s: PAsyncSocket) = discard)
-  result.handleAccept = (proc (s: PAsyncSocket) = discard)
-  result.handleTask = (proc (s: PAsyncSocket) = discard)
+  result.handleConnect = (proc (s: AsyncSocket) = discard)
+  result.handleAccept = (proc (s: AsyncSocket) = discard)
+  result.handleTask = (proc (s: AsyncSocket) = discard)
 
   result.lineBuffer = "".TaintedString
   result.sendBuffer = ""
 
-proc asyncSocket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM, 
-                  protocol: TProtocol = IPPROTO_TCP, 
-                  buffered = true): PAsyncSocket =
+proc asyncSocket*(domain: Domain = AF_INET, typ: SockType = SOCK_STREAM, 
+                  protocol: Protocol = IPPROTO_TCP, 
+                  buffered = true): AsyncSocket =
   ## Initialises an AsyncSocket object. If a socket cannot be initialised
   ## EOS is raised.
   result = newAsyncSocket()
   result.socket = socket(domain, typ, protocol, buffered)
   result.proto = protocol
-  if result.socket == invalidSocket: osError(osLastError())
+  if result.socket == invalidSocket: raiseOSError(osLastError())
   result.socket.setBlocking(false)
 
-proc toAsyncSocket*(sock: TSocket, state: TInfo = SockConnected): PAsyncSocket =
-  ## Wraps an already initialized ``TSocket`` into a PAsyncSocket.
+proc toAsyncSocket*(sock: Socket, state: SocketStatus = SockConnected): AsyncSocket =
+  ## Wraps an already initialized ``TSocket`` into a AsyncSocket.
   ## This is useful if you want to use an already connected TSocket as an
-  ## asynchronous PAsyncSocket in asyncio's event loop.
+  ## asynchronous AsyncSocket in asyncio's event loop.
   ##
   ## ``state`` may be overriden, i.e. if ``sock`` is not connected it should be
   ## adjusted properly. By default it will be assumed that the socket is
@@ -193,7 +208,7 @@ proc toAsyncSocket*(sock: TSocket, state: TInfo = SockConnected): PAsyncSocket =
   ##  SockUDPBound      Socket is a UDP socket which is listening for data.
   ## ================  ================================================================
   ##
-  ## **Warning**: If ``state`` is set incorrectly the resulting ``PAsyncSocket``
+  ## **Warning**: If ``state`` is set incorrectly the resulting ``AsyncSocket``
   ## object may not work properly.
   ##
   ## **Note**: This will set ``sock`` to be non-blocking.
@@ -203,80 +218,81 @@ proc toAsyncSocket*(sock: TSocket, state: TInfo = SockConnected): PAsyncSocket =
   result.socket.setBlocking(false)
   result.info = state
 
-proc asyncSockHandleRead(h: PObject) =
+proc asyncSockHandleRead(h: RootRef) =
   when defined(ssl):
-    if PAsyncSocket(h).socket.isSSL and not
-         PAsyncSocket(h).socket.gotHandshake:
+    if AsyncSocket(h).socket.isSSL and not
+         AsyncSocket(h).socket.gotHandshake:
       return
 
-  if PAsyncSocket(h).info != SockListening:
-    if PAsyncSocket(h).info != SockConnecting:
-      PAsyncSocket(h).handleRead(PAsyncSocket(h))
+  if AsyncSocket(h).info != SockListening:
+    if AsyncSocket(h).info != SockConnecting:
+      AsyncSocket(h).handleRead(AsyncSocket(h))
   else:
-    PAsyncSocket(h).handleAccept(PAsyncSocket(h))
+    AsyncSocket(h).handleAccept(AsyncSocket(h))
 
-proc close*(sock: PAsyncSocket) {.gcsafe.}
-proc asyncSockHandleWrite(h: PObject) =
+proc close*(sock: AsyncSocket) {.gcsafe.}
+proc asyncSockHandleWrite(h: RootRef) =
   when defined(ssl):
-    if PAsyncSocket(h).socket.isSSL and not
-         PAsyncSocket(h).socket.gotHandshake:
+    if AsyncSocket(h).socket.isSSL and not
+         AsyncSocket(h).socket.gotHandshake:
       return
   
-  if PAsyncSocket(h).info == SockConnecting:
-    PAsyncSocket(h).handleConnect(PAsyncSocket(h))
-    PAsyncSocket(h).info = SockConnected
+  if AsyncSocket(h).info == SockConnecting:
+    AsyncSocket(h).handleConnect(AsyncSocket(h))
+    AsyncSocket(h).info = SockConnected
     # Stop receiving write events if there is no handleWrite event.
-    if PAsyncSocket(h).handleWrite == nil:
-      PAsyncSocket(h).deleg.mode = fmRead
+    if AsyncSocket(h).handleWrite == nil:
+      AsyncSocket(h).deleg.mode = fmRead
     else:
-      PAsyncSocket(h).deleg.mode = fmReadWrite
+      AsyncSocket(h).deleg.mode = fmReadWrite
   else:
-    if PAsyncSocket(h).sendBuffer != "":
-      let sock = PAsyncSocket(h)
+    if AsyncSocket(h).sendBuffer != "":
+      let sock = AsyncSocket(h)
       try:
         let bytesSent = sock.socket.sendAsync(sock.sendBuffer)
         if bytesSent == 0:
           # Apparently the socket cannot be written to. Even though select
           # just told us that it can be... This used to be an assert. Just
           # do nothing instead.
+          discard
         elif bytesSent != sock.sendBuffer.len:
           sock.sendBuffer = sock.sendBuffer[bytesSent .. -1]
         elif bytesSent == sock.sendBuffer.len:
           sock.sendBuffer = ""
         
-        if PAsyncSocket(h).handleWrite != nil:
-          PAsyncSocket(h).handleWrite(PAsyncSocket(h))
-      except EOS:
+        if AsyncSocket(h).handleWrite != nil:
+          AsyncSocket(h).handleWrite(AsyncSocket(h))
+      except OSError:
         # Most likely the socket closed before the full buffer could be sent to it.
         sock.close() # TODO: Provide a handleError for users?
     else:
-      if PAsyncSocket(h).handleWrite != nil:
-        PAsyncSocket(h).handleWrite(PAsyncSocket(h))
+      if AsyncSocket(h).handleWrite != nil:
+        AsyncSocket(h).handleWrite(AsyncSocket(h))
       else:
-        PAsyncSocket(h).deleg.mode = fmRead
+        AsyncSocket(h).deleg.mode = fmRead
 
 when defined(ssl):
   proc asyncSockDoHandshake(h: PObject) {.gcsafe.} =
-    if PAsyncSocket(h).socket.isSSL and not
-         PAsyncSocket(h).socket.gotHandshake:
-      if PAsyncSocket(h).sslNeedAccept:
+    if AsyncSocket(h).socket.isSSL and not
+         AsyncSocket(h).socket.gotHandshake:
+      if AsyncSocket(h).sslNeedAccept:
         var d = ""
-        let ret = PAsyncSocket(h).socket.acceptAddrSSL(PAsyncSocket(h).socket, d)
+        let ret = AsyncSocket(h).socket.acceptAddrSSL(AsyncSocket(h).socket, d)
         assert ret != AcceptNoClient
         if ret == AcceptSuccess:
-          PAsyncSocket(h).info = SockConnected
+          AsyncSocket(h).info = SockConnected
       else:
         # handshake will set socket's ``sslNoHandshake`` field.
-        discard PAsyncSocket(h).socket.handshake()
+        discard AsyncSocket(h).socket.handshake()
         
 
-proc asyncSockTask(h: PObject) =
+proc asyncSockTask(h: RootRef) =
   when defined(ssl):
     h.asyncSockDoHandshake()
 
-  PAsyncSocket(h).handleTask(PAsyncSocket(h))
+  AsyncSocket(h).handleTask(AsyncSocket(h))
 
-proc toDelegate(sock: PAsyncSocket): PDelegate =
+proc toDelegate(sock: AsyncSocket): Delegate =
   result = newDelegate()
   result.deleVal = sock
   result.fd = getFD(sock.socket)
@@ -289,8 +305,8 @@ proc toDelegate(sock: PAsyncSocket): PDelegate =
   #result.handleError = (proc (h: PObject) = assert(false))
 
   result.hasDataBuffered =
-    proc (h: PObject): bool {.nimcall.} =
-      return PAsyncSocket(h).socket.hasDataBuffered()
+    proc (h: RootRef): bool {.nimcall.} =
+      return AsyncSocket(h).socket.hasDataBuffered()
 
   sock.deleg = result
   if sock.info notin {SockIdle, SockClosed}:
@@ -298,22 +314,22 @@ proc toDelegate(sock: PAsyncSocket): PDelegate =
   else:
     sock.deleg.open = false
 
-proc connect*(sock: PAsyncSocket, name: string, port = TPort(0),
-                   af: TDomain = AF_INET) =
+proc connect*(sock: AsyncSocket, name: string, port = Port(0),
+                   af: Domain = AF_INET) =
   ## Begins connecting ``sock`` to ``name``:``port``.
   sock.socket.connectAsync(name, port, af)
   sock.info = SockConnecting
   if sock.deleg != nil:
     sock.deleg.open = true
 
-proc close*(sock: PAsyncSocket) =
+proc close*(sock: AsyncSocket) =
   ## Closes ``sock``. Terminates any current connections.
   sock.socket.close()
   sock.info = SockClosed
   if sock.deleg != nil:
     sock.deleg.open = false
 
-proc bindAddr*(sock: PAsyncSocket, port = TPort(0), address = "") =
+proc bindAddr*(sock: AsyncSocket, port = Port(0), address = "") =
   ## Equivalent to ``sockets.bindAddr``.
   sock.socket.bindAddr(port, address)
   if sock.proto == IPPROTO_UDP:
@@ -321,14 +337,14 @@ proc bindAddr*(sock: PAsyncSocket, port = TPort(0), address = "") =
     if sock.deleg != nil:
       sock.deleg.open = true
 
-proc listen*(sock: PAsyncSocket) =
+proc listen*(sock: AsyncSocket) =
   ## Equivalent to ``sockets.listen``.
   sock.socket.listen()
   sock.info = SockListening
   if sock.deleg != nil:
     sock.deleg.open = true
 
-proc acceptAddr*(server: PAsyncSocket, client: var PAsyncSocket,
+proc acceptAddr*(server: AsyncSocket, client: var AsyncSocket,
                  address: var string) =
   ## Equivalent to ``sockets.acceptAddr``. This procedure should be called in
   ## a ``handleAccept`` event handler **only** once.
@@ -336,7 +352,7 @@ proc acceptAddr*(server: PAsyncSocket, client: var PAsyncSocket,
   ## **Note**: ``client`` needs to be initialised.
   assert(client != nil)
   client = newAsyncSocket()
-  var c: TSocket
+  var c: Socket
   new(c)
   when defined(ssl):
     if server.socket.isSSL:
@@ -359,7 +375,7 @@ proc acceptAddr*(server: PAsyncSocket, client: var PAsyncSocket,
     client.sslNeedAccept = false
     client.info = SockConnected
 
-  if c == invalidSocket: socketError(server.socket)
+  if c == invalidSocket: raiseSocketError(server.socket)
   c.setBlocking(false) # TODO: Needs to be tested.
   
   # deleg.open is set in ``toDelegate``.
@@ -369,12 +385,12 @@ proc acceptAddr*(server: PAsyncSocket, client: var PAsyncSocket,
   client.sendBuffer = ""
   client.info = SockConnected
 
-proc accept*(server: PAsyncSocket, client: var PAsyncSocket) =
+proc accept*(server: AsyncSocket, client: var AsyncSocket) =
   ## Equivalent to ``sockets.accept``.
   var dummyAddr = ""
   server.acceptAddr(client, dummyAddr)
 
-proc acceptAddr*(server: PAsyncSocket): tuple[sock: PAsyncSocket,
+proc acceptAddr*(server: AsyncSocket): tuple[sock: AsyncSocket,
                                               address: string] {.deprecated.} =
   ## Equivalent to ``sockets.acceptAddr``.
   ## 
@@ -384,7 +400,7 @@ proc acceptAddr*(server: PAsyncSocket): tuple[sock: PAsyncSocket,
   acceptAddr(server, client, address)
   return (client, address)
 
-proc accept*(server: PAsyncSocket): PAsyncSocket {.deprecated.} =
+proc accept*(server: AsyncSocket): AsyncSocket {.deprecated.} =
   ## Equivalent to ``sockets.accept``.
   ##
   ## **Deprecated since version 0.9.0:** Please use the function above.
@@ -392,69 +408,69 @@ proc accept*(server: PAsyncSocket): PAsyncSocket {.deprecated.} =
   var address = ""
   server.acceptAddr(result, address)
 
-proc newDispatcher*(): PDispatcher =
+proc newDispatcher*(): Dispatcher =
   new(result)
   result.delegates = @[]
 
-proc register*(d: PDispatcher, deleg: PDelegate) =
+proc register*(d: Dispatcher, deleg: Delegate) =
   ## Registers delegate ``deleg`` with dispatcher ``d``.
   d.delegates.add(deleg)
 
-proc register*(d: PDispatcher, sock: PAsyncSocket): PDelegate {.discardable.} =
+proc register*(d: Dispatcher, sock: AsyncSocket): Delegate {.discardable.} =
   ## Registers async socket ``sock`` with dispatcher ``d``.
   result = sock.toDelegate()
   d.register(result)
 
-proc unregister*(d: PDispatcher, deleg: PDelegate) =
+proc unregister*(d: Dispatcher, deleg: Delegate) =
   ## Unregisters deleg ``deleg`` from dispatcher ``d``.
   for i in 0..len(d.delegates)-1:
     if d.delegates[i] == deleg:
       d.delegates.del(i)
       return
-  raise newException(EInvalidIndex, "Could not find delegate.")
+  raise newException(IndexError, "Could not find delegate.")
 
-proc isWriteable*(s: PAsyncSocket): bool =
+proc isWriteable*(s: AsyncSocket): bool =
   ## Determines whether socket ``s`` is ready to be written to.
   var writeSock = @[s.socket]
   return selectWrite(writeSock, 1) != 0 and s.socket notin writeSock
 
-converter getSocket*(s: PAsyncSocket): TSocket =
+converter getSocket*(s: AsyncSocket): Socket =
   return s.socket
 
-proc isConnected*(s: PAsyncSocket): bool =
+proc isConnected*(s: AsyncSocket): bool =
   ## Determines whether ``s`` is connected.
   return s.info == SockConnected
-proc isListening*(s: PAsyncSocket): bool =
+proc isListening*(s: AsyncSocket): bool =
   ## Determines whether ``s`` is listening for incoming connections.  
   return s.info == SockListening
-proc isConnecting*(s: PAsyncSocket): bool =
+proc isConnecting*(s: AsyncSocket): bool =
   ## Determines whether ``s`` is connecting.  
   return s.info == SockConnecting
-proc isClosed*(s: PAsyncSocket): bool =
+proc isClosed*(s: AsyncSocket): bool =
   ## Determines whether ``s`` has been closed.
   return s.info == SockClosed
-proc isSendDataBuffered*(s: PAsyncSocket): bool =
+proc isSendDataBuffered*(s: AsyncSocket): bool =
   ## Determines whether ``s`` has data waiting to be sent, i.e. whether this
   ## socket's sendBuffer contains data. 
   return s.sendBuffer.len != 0
 
-proc setHandleWrite*(s: PAsyncSocket,
-    handleWrite: proc (s: PAsyncSocket) {.closure, gcsafe.}) =
+proc setHandleWrite*(s: AsyncSocket,
+    handleWrite: proc (s: AsyncSocket) {.closure, gcsafe.}) =
   ## Setter for the ``handleWrite`` event.
   ##
   ## To remove this event you should use the ``delHandleWrite`` function.
   ## It is advised to use that function instead of just setting the event to
-  ## ``proc (s: PAsyncSocket) = nil`` as that would mean that that function
+  ## ``proc (s: AsyncSocket) = nil`` as that would mean that that function
   ## would be called constantly.
   s.deleg.mode = fmReadWrite
   s.handleWrite = handleWrite
 
-proc delHandleWrite*(s: PAsyncSocket) =
+proc delHandleWrite*(s: AsyncSocket) =
   ## Removes the ``handleWrite`` event handler on ``s``.
   s.handleWrite = nil
 
 {.push warning[deprecated]: off.}
-proc recvLine*(s: PAsyncSocket, line: var TaintedString): bool {.deprecated.} =
+proc recvLine*(s: AsyncSocket, line: var TaintedString): bool {.deprecated.} =
   ## Behaves similar to ``sockets.recvLine``, however it handles non-blocking
   ## sockets properly. This function guarantees that ``line`` is a full line,
   ## if this function can only retrieve some data; it will save this data and
@@ -483,11 +499,11 @@ proc recvLine*(s: PAsyncSocket, line: var TaintedString): bool {.deprecated.} =
   of RecvDisconnected:
     result = true
   of RecvFail:
-    s.socketError(async = true)
+    s.raiseSocketError(async = true)
     result = false
 {.pop.}
 
-proc readLine*(s: PAsyncSocket, line: var TaintedString): bool =
+proc readLine*(s: AsyncSocket, line: var TaintedString): bool =
   ## Behaves similar to ``sockets.readLine``, however it handles non-blocking
   ## sockets properly. This function guarantees that ``line`` is a full line,
   ## if this function can only retrieve some data; it will save this data and
@@ -517,7 +533,7 @@ proc readLine*(s: PAsyncSocket, line: var TaintedString): bool =
   of ReadDisconnected:
     result = true
 
-proc send*(sock: PAsyncSocket, data: string) =
+proc send*(sock: AsyncSocket, data: string) =
   ## Sends ``data`` to socket ``sock``. This is basically a nicer implementation
   ## of ``sockets.sendAsync``.
   ##
@@ -537,19 +553,19 @@ proc send*(sock: PAsyncSocket, data: string) =
     sock.sendBuffer.add(data[bytesSent .. -1])
     sock.deleg.mode = fmReadWrite
 
-proc timeValFromMilliseconds(timeout = 500): TTimeVal =
+proc timeValFromMilliseconds(timeout = 500): Timeval =
   if timeout != -1:
     var seconds = timeout div 1000
     result.tv_sec = seconds.int32
     result.tv_usec = ((timeout - seconds * 1000) * 1000).int32
 
-proc createFdSet(fd: var TFdSet, s: seq[PDelegate], m: var int) =
+proc createFdSet(fd: var TFdSet, s: seq[Delegate], m: var int) =
   FD_ZERO(fd)
   for i in items(s): 
     m = max(m, int(i.fd))
     FD_SET(i.fd, fd)
    
-proc pruneSocketSet(s: var seq[PDelegate], fd: var TFdSet) =
+proc pruneSocketSet(s: var seq[Delegate], fd: var TFdSet) =
   var i = 0
   var L = s.len
   while i < L:
@@ -560,9 +576,9 @@ proc pruneSocketSet(s: var seq[PDelegate], fd: var TFdSet) =
       inc(i)
   setLen(s, L)
 
-proc select(readfds, writefds, exceptfds: var seq[PDelegate], 
+proc select(readfds, writefds, exceptfds: var seq[Delegate], 
              timeout = 500): int =
-  var tv {.noInit.}: TTimeVal = timeValFromMilliseconds(timeout)
+  var tv {.noInit.}: Timeval = timeValFromMilliseconds(timeout)
   
   var rd, wr, ex: TFdSet
   var m = 0
@@ -579,7 +595,7 @@ proc select(readfds, writefds, exceptfds: var seq[PDelegate],
   pruneSocketSet(writefds, (wr))
   pruneSocketSet(exceptfds, (ex))
 
-proc poll*(d: PDispatcher, timeout: int = 500): bool =
+proc poll*(d: Dispatcher, timeout: int = 500): bool =
   ## This function checks for events on all the delegates in the `PDispatcher`.
   ## It then proceeds to call the correct event handler.
   ##
@@ -592,7 +608,7 @@ proc poll*(d: PDispatcher, timeout: int = 500): bool =
   ## only be executed after one or more file descriptors becomes readable or
   ## writeable.
   result = true
-  var readDg, writeDg, errorDg: seq[PDelegate] = @[]
+  var readDg, writeDg, errorDg: seq[Delegate] = @[]
   var len = d.delegates.len
   var dc = 0
   
@@ -640,16 +656,16 @@ proc poll*(d: PDispatcher, timeout: int = 500): bool =
   for i in items(d.delegates):
     i.task(i.deleVal)
 
-proc len*(disp: PDispatcher): int =
+proc len*(disp: Dispatcher): int =
   ## Retrieves the amount of delegates in ``disp``.
   return disp.delegates.len
 
 when isMainModule:
 
-  proc testConnect(s: PAsyncSocket, no: int) =
+  proc testConnect(s: AsyncSocket, no: int) =
     echo("Connected! " & $no)
   
-  proc testRead(s: PAsyncSocket, no: int) =
+  proc testRead(s: AsyncSocket, no: int) =
     echo("Reading! " & $no)
     var data = ""
     if not s.readLine(data): return
@@ -659,34 +675,34 @@ when isMainModule:
     echo(data)
     echo("Finished reading! " & $no)
 
-  proc testAccept(s: PAsyncSocket, disp: PDispatcher, no: int) =
+  proc testAccept(s: AsyncSocket, disp: PDispatcher, no: int) =
     echo("Accepting client! " & $no)
-    var client: PAsyncSocket
+    var client: AsyncSocket
     new(client)
     var address = ""
     s.acceptAddr(client, address)
     echo("Accepted ", address)
     client.handleRead = 
-      proc (s: PAsyncSocket) =
+      proc (s: AsyncSocket) =
         testRead(s, 2)
     disp.register(client)
 
   proc main =
     var d = newDispatcher()
     
-    var s = AsyncSocket()
+    var s = asyncSocket()
     s.connect("amber.tenthbit.net", TPort(6667))
     s.handleConnect = 
-      proc (s: PAsyncSocket) =
+      proc (s: AsyncSocket) =
         testConnect(s, 1)
     s.handleRead = 
-      proc (s: PAsyncSocket) =
+      proc (s: AsyncSocket) =
         testRead(s, 1)
     d.register(s)
     
-    var server = AsyncSocket()
+    var server = asyncSocket()
     server.handleAccept =
-      proc (s: PAsyncSocket) = 
+      proc (s: AsyncSocket) = 
         testAccept(s, d, 78)
     server.bindAddr(TPort(5555))
     server.listen()

@@ -1,8 +1,40 @@
-#nimrod c -t:-march=i686 --cpu:amd64 --threads:on -d:release lockfreehash.nim
+#nim c -t:-march=i686 --cpu:amd64 --threads:on -d:release lockfreehash.nim
 
-import baseutils, unsigned, math, hashes
+import unsigned, math, hashes
 
+#------------------------------------------------------------------------------
+## Memory Utility Functions
 
+proc newHeap*[T](): ptr T =
+  result = cast[ptr T](alloc0(sizeof(T))) 
+
+proc copyNew*[T](x: var T): ptr T =
+  var 
+    size = sizeof(T)    
+    mem = alloc(size)  
+  copyMem(mem, x.addr, size)  
+  return cast[ptr T](mem)
+
+proc copyTo*[T](val: var T, dest: int) = 
+  copyMem(pointer(dest), val.addr, sizeof(T))    
+
+proc allocType*[T](): pointer = alloc(sizeof(T)) 
+
+proc newShared*[T](): ptr T =
+  result = cast[ptr T](allocShared0(sizeof(T))) 
+
+proc copyShared*[T](x: var T): ptr T =
+  var 
+    size = sizeof(T)    
+    mem = allocShared(size)  
+  copyMem(mem, x.addr, size)  
+  return cast[ptr T](mem)
+
+#------------------------------------------------------------------------------
+## Pointer arithmetic 
+
+proc `+`*(p: pointer, i: int): pointer {.inline.} =
+  cast[pointer](cast[int](p) + i)
 
 const
   minTableSize = 8
@@ -194,7 +226,7 @@ proc copySlot[K,V](idx: int, oldTbl: var PConcTable[K,V], newTbl: var PConcTable
   #Prevent new values from appearing in the old table by priming 
   oldVal = atomic_load_n(oldTbl[idx].value.addr, ATOMIC_RELAXED)
   while not isPrime(oldVal):
-    var box = if oldVal == NULL or isTomb(oldVal) : oldVal.setTomb.setPrime 
+    var box = if oldVal == 0 or isTomb(oldVal) : oldVal.setTomb.setPrime 
       else: oldVal.setPrime 
     if atomic_compare_exchange_n(oldTbl[idx].value.addr, oldVal.addr, 
       box, false, ATOMIC_RELAXED, ATOMIC_RELAXED):
@@ -209,8 +241,8 @@ proc copySlot[K,V](idx: int, oldTbl: var PConcTable[K,V], newTbl: var PConcTable
     return false
   if isTomb(oldVal): 
     echo("oldVal is Tomb!!!, should not happen")
-  if pop(oldVal) != NULL:  
-    result = setVal(newTbl, pop(oldKey), pop(oldVal), NULL, true) == NULL
+  if pop(oldVal) != 0:  
+    result = setVal(newTbl, pop(oldKey), pop(oldVal), 0, true) == 0
   if result: 
     #echo("Copied a Slot! idx= " & $idx & " key= " & $oldKey & " val= " & $oldVal)    
   else: 
@@ -323,7 +355,7 @@ proc setVal[K,V](table: var PConcTable[K,V], key: int, val: int,
     idx = idx and (table.len - 1) 
     #echo("try set idx = " & $idx & "for" & $key)
     var
-      probedKey = NULL     
+      probedKey = 0     
       openKey = atomic_compare_exchange_n(table[idx].key.addr, probedKey.addr, 
         key, false, ATOMIC_RELAXED, ATOMIC_RELAXED) 
     if openKey:
@@ -339,7 +371,7 @@ proc setVal[K,V](table: var PConcTable[K,V], key: int, val: int,
     if keyEQ[K](probedKey, key):
       #echo("we found the matching slot")    
       break # We found a matching slot      
-    if (not(expVal != NULL and match)) and (probes >= reProbeLimit or key.isTomb):
+    if (not(expVal != 0 and match)) and (probes >= reProbeLimit or key.isTomb):
       if key.isTomb: echo("Key is Tombstone")
       #if probes >= reProbeLimit: echo("Too much probing " & $probes)
       #echo("try to resize")
@@ -361,7 +393,7 @@ proc setVal[K,V](table: var PConcTable[K,V], key: int, val: int,
     return oldVal
   nextTable = atomic_load_n(table.next.addr, ATOMIC_SEQ_CST)  
   if nextTable == nil and 
-    ((oldVal == NULL and 
+    ((oldVal == 0 and 
     (probes >= reProbeLimit or table.used / table.len > 0.8)) or
     (isPrime(oldVal))):
     if table.used / table.len > 0.8: echo("resize because usage ratio = " &
@@ -380,12 +412,12 @@ proc setVal[K,V](table: var PConcTable[K,V], key: int, val: int,
     if atomic_compare_exchange_n(table[idx].value.addr, oldVal.addr, 
         val, false, ATOMIC_RELEASE, ATOMIC_RELAXED):
       #echo("val set at table " & $cast[int](table))
-      if expVal != NULL:
-        if (oldVal == NULL or isTomb(oldVal)) and not isTomb(val):
+      if expVal != 0:
+        if (oldVal == 0 or isTomb(oldVal)) and not isTomb(val):
           discard atomic_add_fetch(table.active.addr, 1, ATOMIC_RELAXED)
-        elif not (oldVal == NULL or isTomb(oldVal)) and isTomb(val):
+        elif not (oldVal == 0 or isTomb(oldVal)) and isTomb(val):
           discard atomic_add_fetch(table.active.addr, -1, ATOMIC_RELAXED)
-      if oldVal == NULL and expVal != NULL:
+      if oldVal == 0 and expVal != 0:
         return setTomb(oldVal)
       else: return oldVal
     if isPrime(oldVal):
@@ -415,7 +447,7 @@ proc getVal[K,V](table: var PConcTable[K,V], key: int): int =
       if not isPrime(val):
         if isTomb(val):
           #echo("val was tomb but not prime") 
-          return NULL
+          return 0
         else:
           #echo("-GotIt- idx = ", idx, " key = ", key, " val ", val ) 
           return val
@@ -427,7 +459,7 @@ proc getVal[K,V](table: var PConcTable[K,V], key: int): int =
       if probes >= reProbeLimit*4 or key.isTomb:
         if newTable == nil:
           #echo("too many probes and no new table ", key, "  ", idx )
-          return NULL
+          return 0
         else: 
           newTable = helpCopy(table)
           return getVal(newTable, key)
@@ -437,10 +469,10 @@ proc getVal[K,V](table: var PConcTable[K,V], key: int): int =
 #------------------------------------------------------------------------------
    
 #proc set*(table: var PConcTable[TRaw,TRaw], key: TRaw, val: TRaw) =
-#  discard setVal(table, pack(key), pack(key), NULL, false)
+#  discard setVal(table, pack(key), pack(key), 0, false)
 
 #proc set*[V](table: var PConcTable[TRaw,V], key: TRaw, val: ptr V) =
-#  discard setVal(table, pack(key), cast[int](val), NULL, false)
+#  discard setVal(table, pack(key), cast[int](val), 0, false)
 
 proc set*[K,V](table: var PConcTable[K,V], key: var K, val: var V) =
   when not (K is TRaw): 
@@ -451,10 +483,10 @@ proc set*[K,V](table: var PConcTable[K,V], key: var K, val: var V) =
     var newVal = cast[int](copyShared(val))
   else: 
     var newVal = pack(val)
-  var oldPtr = pop(setVal(table, newKey, newVal, NULL, false))
+  var oldPtr = pop(setVal(table, newKey, newVal, 0, false))
     #echo("oldPtr = ", cast[int](oldPtr), " newPtr = ", cast[int](newPtr))
   when not (V is TRaw): 
-    if newVal != oldPtr and oldPtr != NULL: 
+    if newVal != oldPtr and oldPtr != 0: 
       deallocShared(cast[ptr V](oldPtr))
   
  
@@ -573,10 +605,3 @@ when isMainModule:
   #  echo(i, " = ", hashInt(i) and 8191)
 
   deleteConcTable(table)
-
-
-
-
-
-
-

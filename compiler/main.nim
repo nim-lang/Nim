@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -15,8 +15,7 @@ import
   wordrecg, sem, semdata, idents, passes, docgen, extccomp,
   cgen, jsgen, json, nversion,
   platform, nimconf, importer, passaux, depends, vm, vmdef, types, idgen,
-  tables, docgen2, service, parser, modules, ccgutils, sigmatch, ropes, lists,
-  pretty
+  tables, docgen2, service, parser, modules, ccgutils, sigmatch, ropes, lists
 
 from magicsys import systemModule, resetSysTypes
 
@@ -164,19 +163,6 @@ proc commandEval(exp: string) =
   var echoExp = "echo \"eval\\t\", " & "repr(" & exp & ")"
   evalNim(echoExp.parseString, makeStdinModule())
 
-proc commandPrettyOld =
-  var projectFile = addFileExt(mainCommandArg(), NimExt)
-  var module = parseFile(projectFile.fileInfoIdx)
-  if module != nil:
-    renderModule(module, getOutFile(mainCommandArg(), "pretty." & NimExt))
-
-proc commandPretty =
-  msgs.gErrorMax = high(int)  # do not stop after first error
-  semanticPasses()
-  registerPass(prettyPass)
-  compileProject()
-  pretty.overwriteFiles()
-
 proc commandScan =
   var f = addFileExt(mainCommandArg(), NimExt)
   var stream = llStreamOpen(f, fmRead)
@@ -216,25 +202,6 @@ proc commandSuggest =
     var projFile = if gProjectMainIdx == gDirtyOriginalIdx: gDirtyBufferIdx
                    else: gProjectMainIdx
     compileProject(projFile)
-
-proc wantMainModule =
-  if gProjectFull.len == 0:
-    if optMainModule.len == 0:
-      fatal(gCmdLineInfo, errCommandExpectsFilename)
-    else:
-      gProjectName = optMainModule
-      gProjectFull = gProjectPath / gProjectName
-
-  gProjectMainIdx = addFileExt(gProjectFull, NimExt).fileInfoIdx
-
-proc requireMainModuleOption =
-  if optMainModule.len == 0:
-    fatal(gCmdLineInfo, errMainModuleMustBeSpecified)
-  else:
-    gProjectName = optMainModule
-    gProjectFull = gProjectPath / gProjectName
-
-  gProjectMainIdx = addFileExt(gProjectFull, NimExt).fileInfoIdx
 
 proc resetMemory =
   resetCompilationLists()
@@ -299,30 +266,22 @@ proc mainCommand* =
     # current path is always looked first for modules
     prependStr(searchPaths, gProjectPath)
   setId(100)
-  passes.gIncludeFile = includeModule
-  passes.gImportModule = importModule
   case command.normalize
   of "c", "cc", "compile", "compiletoc":
     # compile means compileToC currently
     gCmd = cmdCompileToC
-    wantMainModule()
     commandCompileToC()
   of "cpp", "compiletocpp":
-    extccomp.cExt = ".cpp"
     gCmd = cmdCompileToCpp
     if cCompiler == ccGcc: setCC("gcc")
-    wantMainModule()
     defineSymbol("cpp")
     commandCompileToC()
   of "objc", "compiletooc":
-    extccomp.cExt = ".m"
     gCmd = cmdCompileToOC
-    wantMainModule()
     defineSymbol("objc")
     commandCompileToC()
   of "run":
     gCmd = cmdRun
-    wantMainModule()
     when hasTinyCBackend:
       extccomp.setCC("tcc")
       commandCompileToC()
@@ -330,41 +289,33 @@ proc mainCommand* =
       rawMessage(errInvalidCommandX, command)
   of "js", "compiletojs":
     gCmd = cmdCompileToJS
-    wantMainModule()
     commandCompileToJS()
   of "compiletollvm":
     gCmd = cmdCompileToLLVM
-    wantMainModule()
     when hasLLVM_Backend:
       CommandCompileToLLVM()
     else:
       rawMessage(errInvalidCommandX, command)
-  of "pretty":
-    gCmd = cmdPretty
-    wantMainModule()
-    commandPretty()
   of "doc":
+    wantMainModule()
     gCmd = cmdDoc
     loadConfigs(DocConfig)
-    wantMainModule()
     commandDoc()
   of "doc2":
     gCmd = cmdDoc
     loadConfigs(DocConfig)
-    wantMainModule()
     defineSymbol("nimdoc")
     commandDoc2()
   of "rst2html":
     gCmd = cmdRst2html
     loadConfigs(DocConfig)
-    wantMainModule()
     commandRst2Html()
   of "rst2tex":
     gCmd = cmdRst2tex
     loadConfigs(DocTexConfig)
-    wantMainModule()
     commandRst2TeX()
   of "jsondoc":
+    wantMainModule()
     gCmd = cmdDoc
     loadConfigs(DocConfig)
     wantMainModule()
@@ -376,12 +327,11 @@ proc mainCommand* =
     commandBuildIndex()
   of "gendepend":
     gCmd = cmdGenDepend
-    wantMainModule()
     commandGenDepend()
   of "dump":
     gCmd = cmdDump
     if getConfigVar("dump.format") == "json":
-      requireMainModuleOption()
+      wantMainModule()
 
       var definedSymbols = newJArray()
       for s in definedSymbolNames(): definedSymbols.elems.add(%s)
@@ -405,7 +355,6 @@ proc mainCommand* =
       for it in iterSearchPath(searchPaths): msgWriteln(it)
   of "check":
     gCmd = cmdCheck
-    wantMainModule()
     commandCheck()
   of "parse":
     gCmd = cmdParse
@@ -429,7 +378,6 @@ proc mainCommand* =
     if gEvalExpr != "":
       commandEval(gEvalExpr)
     else:
-      wantMainModule()
       commandSuggest()
   of "serve":
     isServing = true

@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -13,14 +13,14 @@
 # net/if, sys/socket, sys/uio, netinet/in, netinet/tcp, netdb
 
 ## This is a raw POSIX interface module. It does not not provide any
-## convenience: cstrings are used instead of proper Nimrod strings and
+## convenience: cstrings are used instead of proper Nim strings and
 ## return codes indicate errors. If you want exceptions
-## and a proper Nimrod-like interface, use the OS module or write a wrapper.
+## and a proper Nim-like interface, use the OS module or write a wrapper.
 
 ## Coding conventions:
 ## ALL types are named the same as in the POSIX standard except that they start
 ## with 'T' or 'P' (if they are pointers) and without the '_t' suffix to be
-## consistent with Nimrod conventions. If an identifier is a Nimrod keyword
+## consistent with Nim conventions. If an identifier is a Nim keyword
 ## the \`identifier\` notation is used.
 ##
 ## This library relies on the header files of your C compiler. The
@@ -29,7 +29,7 @@
 
 {.deadCodeElim:on.}
 
-from times import TTime
+from times import Time
 
 const
   hasSpawnH = not defined(haiku) # should exist for every Posix system nowadays
@@ -83,8 +83,11 @@ else:
       ## A type representing a directory stream.
 
 type
-  TSocketHandle* = distinct cint # The type used to represent socket descriptors
+  SocketHandle* = distinct cint # The type used to represent socket descriptors
 
+{.deprecated: [TSocketHandle: SocketHandle].}
+
+type
   Tdirent* {.importc: "struct dirent",
              header: "<dirent.h>", final, pure.} = object ## dirent_t struct
     d_ino*: Tino  ## File serial number.
@@ -248,9 +251,9 @@ type
                            ## For a typed memory object, the length in bytes.
                            ## For other file types, the use of this field is
                            ## unspecified.
-    st_atime*: TTime       ## Time of last access.
-    st_mtime*: TTime       ## Time of last data modification.
-    st_ctime*: TTime       ## Time of last status change.
+    st_atime*: Time        ## Time of last access.
+    st_mtime*: Time        ## Time of last data modification.
+    st_ctime*: Time        ## Time of last status change.
     st_blksize*: Tblksize  ## A file system-specific preferred I/O block size
                            ## for this object. In some file system types, this
                            ## may vary from file to file.
@@ -291,7 +294,7 @@ type
     tm_isdst*: cint ## Daylight Savings flag.
   Ttimespec* {.importc: "struct timespec",
                header: "<time.h>", final, pure.} = object ## struct timespec
-    tv_sec*: TTime ## Seconds.
+    tv_sec*: Time  ## Seconds.
     tv_nsec*: int  ## Nanoseconds.
   titimerspec* {.importc: "struct itimerspec", header: "<time.h>",
                  final, pure.} = object ## struct itimerspec
@@ -365,12 +368,12 @@ type
     sched_ss_max_repl*: cint         ## Maximum pending replenishments for
                                      ## sporadic server.
 
-  Ttimeval* {.importc: "struct timeval", header: "<sys/select.h>",
-              final, pure.} = object ## struct timeval
+  Timeval* {.importc: "struct timeval", header: "<sys/select.h>",
+             final, pure.} = object ## struct timeval
     tv_sec*: int       ## Seconds.
     tv_usec*: int ## Microseconds.
   TFdSet* {.importc: "fd_set", header: "<sys/select.h>",
-            final, pure.} = object
+           final, pure.} = object
   Tmcontext* {.importc: "mcontext_t", header: "<ucontext.h>",
                final, pure.} = object
   Tucontext* {.importc: "ucontext_t", header: "<ucontext.h>",
@@ -403,11 +406,11 @@ when hasSpawnH:
                                  header: "<spawn.h>", final, pure.} = object
 
 type
-  TSocklen* {.importc: "socklen_t", header: "<sys/socket.h>".} = cuint
+  Socklen* {.importc: "socklen_t", header: "<sys/socket.h>".} = cuint
   TSa_Family* {.importc: "sa_family_t", header: "<sys/socket.h>".} = cint
 
-  TSockAddr* {.importc: "struct sockaddr", header: "<sys/socket.h>",
-               pure, final.} = object ## struct sockaddr
+  SockAddr* {.importc: "struct sockaddr", header: "<sys/socket.h>",
+              pure, final.} = object ## struct sockaddr
     sa_family*: TSa_Family         ## Address family.
     sa_data*: array [0..255, char] ## Socket address (variable-length data).
 
@@ -430,17 +433,17 @@ type
   Tmsghdr* {.importc: "struct msghdr", pure, final,
              header: "<sys/socket.h>".} = object  ## struct msghdr
     msg_name*: pointer  ## Optional address.
-    msg_namelen*: TSocklen  ## Size of address.
+    msg_namelen*: Socklen  ## Size of address.
     msg_iov*: ptr TIOVec    ## Scatter/gather array.
     msg_iovlen*: cint   ## Members in msg_iov.
     msg_control*: pointer  ## Ancillary data; see below.
-    msg_controllen*: TSocklen ## Ancillary data buffer len.
+    msg_controllen*: Socklen ## Ancillary data buffer len.
     msg_flags*: cint ## Flags on received message.
 
 
   Tcmsghdr* {.importc: "struct cmsghdr", pure, final,
               header: "<sys/socket.h>".} = object ## struct cmsghdr
-    cmsg_len*: TSocklen ## Data byte count, including the cmsghdr.
+    cmsg_len*: Socklen ## Data byte count, including the cmsghdr.
     cmsg_level*: cint   ## Originating protocol.
     cmsg_type*: cint    ## Protocol-specific type.
 
@@ -455,15 +458,15 @@ type
   TInAddrT* {.importc: "in_addr_t", pure, final,
              header: "<netinet/in.h>".} = int32 ## unsigned!
 
-  TInAddr* {.importc: "struct in_addr", pure, final,
+  InAddr* {.importc: "struct in_addr", pure, final,
              header: "<netinet/in.h>".} = object ## struct in_addr
     s_addr*: TInAddrScalar
 
-  Tsockaddr_in* {.importc: "struct sockaddr_in", pure, final,
+  Sockaddr_in* {.importc: "struct sockaddr_in", pure, final,
                   header: "<netinet/in.h>".} = object ## struct sockaddr_in
     sin_family*: TSa_Family ## AF_INET.
     sin_port*: TInPort      ## Port number.
-    sin_addr*: TInAddr      ## IP address.
+    sin_addr*: InAddr      ## IP address.
 
   TIn6Addr* {.importc: "struct in6_addr", pure, final,
               header: "<netinet/in.h>".} = object ## struct in6_addr
@@ -482,7 +485,7 @@ type
     ipv6mr_multiaddr*: TIn6Addr ## IPv6 multicast address.
     ipv6mr_interface*: cint     ## Interface index.
 
-  Thostent* {.importc: "struct hostent", pure, final,
+  Hostent* {.importc: "struct hostent", pure, final,
               header: "<netdb.h>".} = object ## struct hostent
     h_name*: cstring           ## Official name of the host.
     h_aliases*: cstringArray   ## A pointer to an array of pointers to
@@ -512,8 +515,8 @@ type
                              ## a null pointer.
     p_proto*: cint           ## The protocol number.
 
-  TServent* {.importc: "struct servent", pure, final,
-              header: "<netdb.h>".} = object ## struct servent
+  Servent* {.importc: "struct servent", pure, final,
+             header: "<netdb.h>".} = object ## struct servent
     s_name*: cstring         ## Official name of the service.
     s_aliases*: cstringArray ## A pointer to an array of pointers to
                              ## alternative service names, terminated by
@@ -523,16 +526,16 @@ type
     s_proto*: cstring        ## The name of the protocol to use when
                              ## contacting the service.
 
-  Taddrinfo* {.importc: "struct addrinfo", pure, final,
+  AddrInfo* {.importc: "struct addrinfo", pure, final,
               header: "<netdb.h>".} = object ## struct addrinfo
     ai_flags*: cint         ## Input flags.
     ai_family*: cint        ## Address family of socket.
     ai_socktype*: cint      ## Socket type.
     ai_protocol*: cint      ## Protocol of socket.
-    ai_addrlen*: TSocklen   ## Length of socket address.
-    ai_addr*: ptr TSockAddr ## Socket address of socket.
+    ai_addrlen*: Socklen   ## Length of socket address.
+    ai_addr*: ptr SockAddr ## Socket address of socket.
     ai_canonname*: cstring  ## Canonical name of service location.
-    ai_next*: ptr Taddrinfo ## Pointer to next in list.
+    ai_next*: ptr AddrInfo ## Pointer to next in list.
 
   TPollfd* {.importc: "struct pollfd", pure, final,
              header: "<poll.h>".} = object ## struct pollfd
@@ -541,6 +544,11 @@ type
     revents*: cshort ## The output event flags (see below).
 
   Tnfds* {.importc: "nfds_t", header: "<poll.h>".} = cint
+
+{.deprecated: [TSockaddr_in: Sockaddr_in, TAddrinfo: AddrInfo,
+    TSockAddr: SockAddr, TSockLen: SockLen, TTimeval: Timeval,
+    Thostent: Hostent, TServent: Servent,
+    TInAddr: InAddr].}
 
 var
   errno* {.importc, header: "<errno.h>".}: cint ## error variable
@@ -1756,7 +1764,7 @@ proc ntohl*(a1: int32): int32 {.importc, header: "<arpa/inet.h>".}
 proc ntohs*(a1: int16): int16 {.importc, header: "<arpa/inet.h>".}
 
 proc inet_addr*(a1: cstring): TInAddrT {.importc, header: "<arpa/inet.h>".}
-proc inet_ntoa*(a1: TInAddr): cstring {.importc, header: "<arpa/inet.h>".}
+proc inet_ntoa*(a1: InAddr): cstring {.importc, header: "<arpa/inet.h>".}
 proc inet_ntop*(a1: cint, a2: pointer, a3: cstring, a4: int32): cstring {.
   importc, header: "<arpa/inet.h>".}
 proc inet_pton*(a1: cint, a2: cstring, a3: pointer): cint {.
@@ -1786,7 +1794,7 @@ proc dlopen*(a1: cstring, a2: cint): pointer {.importc, header: "<dlfcn.h>".}
 proc dlsym*(a1: pointer, a2: cstring): pointer {.importc, header: "<dlfcn.h>".}
 
 proc creat*(a1: cstring, a2: TMode): cint {.importc, header: "<fcntl.h>".}
-proc fcntl*(a1: cint | TSocketHandle, a2: cint): cint {.varargs, importc, header: "<fcntl.h>".}
+proc fcntl*(a1: cint | SocketHandle, a2: cint): cint {.varargs, importc, header: "<fcntl.h>".}
 proc open*(a1: cstring, a2: cint): cint {.varargs, importc, header: "<fcntl.h>".}
 proc posix_fadvise*(a1: cint, a2, a3: TOff, a4: cint): cint {.
   importc, header: "<fcntl.h>".}
@@ -2050,7 +2058,7 @@ proc access*(a1: cstring, a2: cint): cint {.importc, header: "<unistd.h>".}
 proc alarm*(a1: cint): cint {.importc, header: "<unistd.h>".}
 proc chdir*(a1: cstring): cint {.importc, header: "<unistd.h>".}
 proc chown*(a1: cstring, a2: Tuid, a3: TGid): cint {.importc, header: "<unistd.h>".}
-proc close*(a1: cint | TSocketHandle): cint {.importc, header: "<unistd.h>".}
+proc close*(a1: cint | SocketHandle): cint {.importc, header: "<unistd.h>".}
 proc confstr*(a1: cint, a2: cstring, a3: int): int {.importc, header: "<unistd.h>".}
 proc crypt*(a1, a2: cstring): cstring {.importc, header: "<unistd.h>".}
 proc ctermid*(a1: cstring): cstring {.importc, header: "<unistd.h>".}
@@ -2235,22 +2243,22 @@ proc clock_nanosleep*(a1: TClockId, a2: cint, a3: var Ttimespec,
 proc clock_settime*(a1: TClockId, a2: var Ttimespec): cint {.
   importc, header: "<time.h>".}
 
-proc ctime*(a1: var TTime): cstring {.importc, header: "<time.h>".}
-proc ctime_r*(a1: var TTime, a2: cstring): cstring {.importc, header: "<time.h>".}
-proc difftime*(a1, a2: TTime): cdouble {.importc, header: "<time.h>".}
+proc ctime*(a1: var Time): cstring {.importc, header: "<time.h>".}
+proc ctime_r*(a1: var Time, a2: cstring): cstring {.importc, header: "<time.h>".}
+proc difftime*(a1, a2: Time): cdouble {.importc, header: "<time.h>".}
 proc getdate*(a1: cstring): ptr Ttm {.importc, header: "<time.h>".}
 
-proc gmtime*(a1: var TTime): ptr Ttm {.importc, header: "<time.h>".}
-proc gmtime_r*(a1: var TTime, a2: var Ttm): ptr Ttm {.importc, header: "<time.h>".}
-proc localtime*(a1: var TTime): ptr Ttm {.importc, header: "<time.h>".}
-proc localtime_r*(a1: var TTime, a2: var Ttm): ptr Ttm {.importc, header: "<time.h>".}
-proc mktime*(a1: var Ttm): TTime  {.importc, header: "<time.h>".}
-proc timegm*(a1: var Ttm): TTime  {.importc, header: "<time.h>".}
+proc gmtime*(a1: var Time): ptr Ttm {.importc, header: "<time.h>".}
+proc gmtime_r*(a1: var Time, a2: var Ttm): ptr Ttm {.importc, header: "<time.h>".}
+proc localtime*(a1: var Time): ptr Ttm {.importc, header: "<time.h>".}
+proc localtime_r*(a1: var Time, a2: var Ttm): ptr Ttm {.importc, header: "<time.h>".}
+proc mktime*(a1: var Ttm): Time  {.importc, header: "<time.h>".}
+proc timegm*(a1: var Ttm): Time  {.importc, header: "<time.h>".}
 proc nanosleep*(a1, a2: var Ttimespec): cint {.importc, header: "<time.h>".}
 proc strftime*(a1: cstring, a2: int, a3: cstring,
            a4: var Ttm): int {.importc, header: "<time.h>".}
 proc strptime*(a1, a2: cstring, a3: var Ttm): cstring {.importc, header: "<time.h>".}
-proc time*(a1: var TTime): TTime {.importc, header: "<time.h>".}
+proc time*(a1: var Time): Time {.importc, header: "<time.h>".}
 proc timer_create*(a1: var TClockId, a2: var TsigEvent,
                a3: var Ttimer): cint {.importc, header: "<time.h>".}
 proc timer_delete*(a1: var Ttimer): cint {.importc, header: "<time.h>".}
@@ -2330,14 +2338,15 @@ proc strerror*(errnum: cint): cstring {.importc, header: "<string.h>".}
 proc hstrerror*(herrnum: cint): cstring {.importc, header: "<netdb.h>".}
 
 proc FD_CLR*(a1: cint, a2: var TFdSet) {.importc, header: "<sys/select.h>".}
-proc FD_ISSET*(a1: cint | TSocketHandle, a2: var TFdSet): cint {.
+proc FD_ISSET*(a1: cint | SocketHandle, a2: var TFdSet): cint {.
   importc, header: "<sys/select.h>".}
-proc FD_SET*(a1: cint | TSocketHandle, a2: var TFdSet) {.importc, header: "<sys/select.h>".}
+proc FD_SET*(a1: cint | SocketHandle, a2: var TFdSet) {.
+  importc: "FD_SET", header: "<sys/select.h>".}
 proc FD_ZERO*(a1: var TFdSet) {.importc, header: "<sys/select.h>".}
 
 proc pselect*(a1: cint, a2, a3, a4: ptr TFdSet, a5: ptr Ttimespec,
          a6: var Tsigset): cint  {.importc, header: "<sys/select.h>".}
-proc select*(a1: cint | TSocketHandle, a2, a3, a4: ptr TFdSet, a5: ptr Ttimeval): cint {.
+proc select*(a1: cint | SocketHandle, a2, a3, a4: ptr TFdSet, a5: ptr Timeval): cint {.
              importc, header: "<sys/select.h>".}
 
 when hasSpawnH:
@@ -2413,48 +2422,48 @@ proc CMSG_FIRSTHDR*(mhdr: ptr Tmsghdr): ptr Tcmsghdr {.
   importc, header: "<sys/socket.h>".}
 
 const
-  INVALID_SOCKET* = TSocketHandle(-1)
+  INVALID_SOCKET* = SocketHandle(-1)
 
-proc `==`*(x, y: TSocketHandle): bool {.borrow.}
+proc `==`*(x, y: SocketHandle): bool {.borrow.}
 
-proc accept*(a1: TSocketHandle, a2: ptr TSockAddr, a3: ptr TSocklen): TSocketHandle {.
+proc accept*(a1: SocketHandle, a2: ptr SockAddr, a3: ptr Socklen): SocketHandle {.
   importc, header: "<sys/socket.h>".}
 
-proc bindSocket*(a1: TSocketHandle, a2: ptr TSockAddr, a3: TSocklen): cint {.
+proc bindSocket*(a1: SocketHandle, a2: ptr SockAddr, a3: Socklen): cint {.
   importc: "bind", header: "<sys/socket.h>".}
   ## is Posix's ``bind``, because ``bind`` is a reserved word
 
-proc connect*(a1: TSocketHandle, a2: ptr TSockAddr, a3: TSocklen): cint {.
+proc connect*(a1: SocketHandle, a2: ptr SockAddr, a3: Socklen): cint {.
   importc, header: "<sys/socket.h>".}
-proc getpeername*(a1: TSocketHandle, a2: ptr TSockAddr, a3: ptr TSocklen): cint {.
+proc getpeername*(a1: SocketHandle, a2: ptr SockAddr, a3: ptr Socklen): cint {.
   importc, header: "<sys/socket.h>".}
-proc getsockname*(a1: TSocketHandle, a2: ptr TSockAddr, a3: ptr TSocklen): cint {.
-  importc, header: "<sys/socket.h>".}
-
-proc getsockopt*(a1: TSocketHandle, a2, a3: cint, a4: pointer, a5: ptr TSocklen): cint {.
+proc getsockname*(a1: SocketHandle, a2: ptr SockAddr, a3: ptr Socklen): cint {.
   importc, header: "<sys/socket.h>".}
 
-proc listen*(a1: TSocketHandle, a2: cint): cint {.
+proc getsockopt*(a1: SocketHandle, a2, a3: cint, a4: pointer, a5: ptr Socklen): cint {.
   importc, header: "<sys/socket.h>".}
-proc recv*(a1: TSocketHandle, a2: pointer, a3: int, a4: cint): int {.
+
+proc listen*(a1: SocketHandle, a2: cint): cint {.
   importc, header: "<sys/socket.h>".}
-proc recvfrom*(a1: TSocketHandle, a2: pointer, a3: int, a4: cint,
-        a5: ptr TSockAddr, a6: ptr TSocklen): int {.
+proc recv*(a1: SocketHandle, a2: pointer, a3: int, a4: cint): int {.
   importc, header: "<sys/socket.h>".}
-proc recvmsg*(a1: TSocketHandle, a2: ptr Tmsghdr, a3: cint): int {.
+proc recvfrom*(a1: SocketHandle, a2: pointer, a3: int, a4: cint,
+        a5: ptr SockAddr, a6: ptr Socklen): int {.
   importc, header: "<sys/socket.h>".}
-proc send*(a1: TSocketHandle, a2: pointer, a3: int, a4: cint): int {.
+proc recvmsg*(a1: SocketHandle, a2: ptr Tmsghdr, a3: cint): int {.
   importc, header: "<sys/socket.h>".}
-proc sendmsg*(a1: TSocketHandle, a2: ptr Tmsghdr, a3: cint): int {.
+proc send*(a1: SocketHandle, a2: pointer, a3: int, a4: cint): int {.
   importc, header: "<sys/socket.h>".}
-proc sendto*(a1: TSocketHandle, a2: pointer, a3: int, a4: cint, a5: ptr TSockAddr,
-             a6: TSocklen): int {.
+proc sendmsg*(a1: SocketHandle, a2: ptr Tmsghdr, a3: cint): int {.
   importc, header: "<sys/socket.h>".}
-proc setsockopt*(a1: TSocketHandle, a2, a3: cint, a4: pointer, a5: TSocklen): cint {.
+proc sendto*(a1: SocketHandle, a2: pointer, a3: int, a4: cint, a5: ptr SockAddr,
+             a6: Socklen): int {.
   importc, header: "<sys/socket.h>".}
-proc shutdown*(a1: TSocketHandle, a2: cint): cint {.
+proc setsockopt*(a1: SocketHandle, a2, a3: cint, a4: pointer, a5: Socklen): cint {.
   importc, header: "<sys/socket.h>".}
-proc socket*(a1, a2, a3: cint): TSocketHandle {.
+proc shutdown*(a1: SocketHandle, a2: cint): cint {.
+  importc, header: "<sys/socket.h>".}
+proc socket*(a1, a2, a3: cint): SocketHandle {.
   importc, header: "<sys/socket.h>".}
 proc sockatmark*(a1: cint): cint {.
   importc, header: "<sys/socket.h>".}
@@ -2508,21 +2517,21 @@ proc endhostent*() {.importc, header: "<netdb.h>".}
 proc endnetent*() {.importc, header: "<netdb.h>".}
 proc endprotoent*() {.importc, header: "<netdb.h>".}
 proc endservent*() {.importc, header: "<netdb.h>".}
-proc freeaddrinfo*(a1: ptr Taddrinfo) {.importc, header: "<netdb.h>".}
+proc freeaddrinfo*(a1: ptr AddrInfo) {.importc, header: "<netdb.h>".}
 
 proc gai_strerror*(a1: cint): cstring {.importc, header: "<netdb.h>".}
 
-proc getaddrinfo*(a1, a2: cstring, a3: ptr Taddrinfo,
-                  a4: var ptr Taddrinfo): cint {.importc, header: "<netdb.h>".}
+proc getaddrinfo*(a1, a2: cstring, a3: ptr AddrInfo,
+                  a4: var ptr AddrInfo): cint {.importc, header: "<netdb.h>".}
 
-proc gethostbyaddr*(a1: pointer, a2: TSocklen, a3: cint): ptr Thostent {.
+proc gethostbyaddr*(a1: pointer, a2: Socklen, a3: cint): ptr Hostent {.
                     importc, header: "<netdb.h>".}
-proc gethostbyname*(a1: cstring): ptr Thostent {.importc, header: "<netdb.h>".}
-proc gethostent*(): ptr Thostent {.importc, header: "<netdb.h>".}
+proc gethostbyname*(a1: cstring): ptr Hostent {.importc, header: "<netdb.h>".}
+proc gethostent*(): ptr Hostent {.importc, header: "<netdb.h>".}
 
-proc getnameinfo*(a1: ptr TSockAddr, a2: TSocklen,
-                  a3: cstring, a4: TSocklen, a5: cstring,
-                  a6: TSocklen, a7: cint): cint {.importc, header: "<netdb.h>".}
+proc getnameinfo*(a1: ptr SockAddr, a2: Socklen,
+                  a3: cstring, a4: Socklen, a5: cstring,
+                  a6: Socklen, a7: cint): cint {.importc, header: "<netdb.h>".}
 
 proc getnetbyaddr*(a1: int32, a2: cint): ptr Tnetent {.importc, header: "<netdb.h>".}
 proc getnetbyname*(a1: cstring): ptr Tnetent {.importc, header: "<netdb.h>".}
@@ -2532,10 +2541,10 @@ proc getprotobyname*(a1: cstring): ptr TProtoent {.importc, header: "<netdb.h>".
 proc getprotobynumber*(a1: cint): ptr TProtoent {.importc, header: "<netdb.h>".}
 proc getprotoent*(): ptr TProtoent {.importc, header: "<netdb.h>".}
 
-proc getservbyname*(a1, a2: cstring): ptr TServent {.importc, header: "<netdb.h>".}
-proc getservbyport*(a1: cint, a2: cstring): ptr TServent {.
+proc getservbyname*(a1, a2: cstring): ptr Servent {.importc, header: "<netdb.h>".}
+proc getservbyport*(a1: cint, a2: cstring): ptr Servent {.
   importc, header: "<netdb.h>".}
-proc getservent*(): ptr TServent {.importc, header: "<netdb.h>".}
+proc getservent*(): ptr Servent {.importc, header: "<netdb.h>".}
 
 proc sethostent*(a1: cint) {.importc, header: "<netdb.h>".}
 proc setnetent*(a1: cint) {.importc, header: "<netdb.h>".}
@@ -2548,7 +2557,7 @@ proc poll*(a1: ptr TPollfd, a2: Tnfds, a3: int): cint {.
 proc realpath*(name, resolved: cstring): cstring {.
   importc: "realpath", header: "<stdlib.h>".}
 
-proc utimes*(path: cstring, times: ptr array [2, Ttimeval]): int {.
+proc utimes*(path: cstring, times: ptr array [2, Timeval]): int {.
   importc: "utimes", header: "<sys/time.h>".}
   ## Sets file access and modification times.
   ##

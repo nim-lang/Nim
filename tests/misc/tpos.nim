@@ -14,10 +14,10 @@ proc mypos(sub, s: string, start: int = 0): int =
   if i >= N:
     result = -1
   else:
-    while True:
+    while true:
       if s[i] == sub[j]:
-        Inc(i)
-        Inc(j)
+        inc(i)
+        inc(j)
       else:
         i = i - j + 1
         j = 0

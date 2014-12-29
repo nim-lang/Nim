@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -57,7 +57,7 @@ proc advice*(s: var ThreadPoolState): ThreadPoolAdvice =
     s.prevProcKernel = procKernel
     s.prevProcUser = procUser
   elif defined(linux):
-    proc fscanf(c: TFile, frmt: cstring) {.varargs, importc, 
+    proc fscanf(c: File, frmt: cstring) {.varargs, importc, 
       header: "<stdio.h>".}
 
     var f = open("/proc/loadavg")

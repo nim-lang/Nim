@@ -1,15 +1,15 @@
 discard """
   file: "tasyncexceptions.nim"
   exitcode: 1
-  outputsub: "Error: unhandled exception: foobar [E_Base]"
+  outputsub: "Error: unhandled exception: foobar [Exception]"
 """
 import asyncdispatch
 
-proc accept(): PFuture[int] {.async.} =
+proc accept(): Future[int] {.async.} =
   await sleepAsync(100)
   result = 4
 
-proc recvLine(fd: int): PFuture[string] {.async.} =
+proc recvLine(fd: int): Future[string] {.async.} =
   await sleepAsync(100)
   return "get"
 

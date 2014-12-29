@@ -36,7 +36,7 @@ myData.each do (x: int):
 
 type
   ITest = tuple[
-    setter: proc(v: Int),
+    setter: proc(v: int),
     getter: proc(): int]
 
 proc getInterf(): ITest =

@@ -9,16 +9,16 @@ const
   BinLibs = "http://dl.dropbox.com/u/37533467/libs-2012-09-12.zip"
   ExeName = "keineschweine"
   ServerDefines = "-d:NoSFML -d:NoChipmunk"
-  TestBuildDefines = "-d:escapeMenuTest -d:debugWeps -d:showFPS -d:moreNimrod -d:debugKeys -d:foo -d:recordMode --forceBuild"
+  TestBuildDefines = "-d:escapeMenuTest -d:debugWeps -d:showFPS -d:moreNim -d:debugKeys -d:foo -d:recordMode --forceBuild"
   ReleaseDefines = "-d:release --deadCodeElim:on"
   ReleaseTestDefines = "-d:debugWeps -d:debugKeys --forceBuild"
 
 task "testprofile", "..":
-  if shell("nimrod", TestBuildDefines, "--profiler:on", "--stacktrace:on", "compile", ExeName) == 0:
+  if shell("nim", TestBuildDefines, "--profiler:on", "--stacktrace:on", "compile", ExeName) == 0:
     shell "."/ExeName, "offline"
 
 task "test", "Build with test defines":
-  if shell("nimrod", TestBuildDefines, "compile", ExeName) != 0:
+  if shell("nim", TestBuildDefines, "compile", ExeName) != 0:
     quit "The build failed."
 
 task "testrun", "Build with test defines and run":
@@ -26,22 +26,22 @@ task "testrun", "Build with test defines and run":
   shell "."/ExeName
 
 task "test2", "Build release test build test release build":
-  if shell("nimrod", ReleaseDefines, ReleaseTestDefines, "compile", ExeName) == 0:
+  if shell("nim", ReleaseDefines, ReleaseTestDefines, "compile", ExeName) == 0:
     shell "."/ExeName
 
 discard """task "dirserver", "build the directory server":
   withDir "server":
-    if shell("nimrod", ServerDefines, "compile", "dirserver") != 0:
+    if shell("nim", ServerDefines, "compile", "dirserver") != 0:
       echo "Failed to build the dirserver"
       quit 1"""
 
 task "zoneserver", "build the zone server":
   withDir "enet_server":
-    if shell("nimrod", ServerDefines, "compile", "enet_server") != 0:
+    if shell("nim", ServerDefines, "compile", "enet_server") != 0:
       quit "Failed to build the zoneserver"
 task "zoneserver-gui", "build the zone server, with gui!":
   withDir "enet_server":
-    if shell("nimrod", ServerDefines, "--app:gui", "compile", "enet_server") != 0:
+    if shell("nim", ServerDefines, "--app:gui", "compile", "enet_server") != 0:
       quit "Failed to build the zoneserver"
 
 task "servers", "build the server and directory server":
@@ -54,7 +54,7 @@ task "all", "run SERVERS and TEST tasks":
   runTask "test"
 
 task "release", "release build":
-  let res = shell("nimrod", ReleaseDefines, "compile", ExeName)
+  let res = shell("nim", ReleaseDefines, "compile", ExeName)
   if res != 0:
     echo "The build failed."
     quit 1
@@ -84,7 +84,7 @@ task "download", "download game assets":
     skipAssets = false
     path = expandFilename("data")
   path.add DirSep
-  path.add(extractFilename(gameAssets))
+  path.add(extractFilename(GameAssets))
   if existsFile(path):
     echo "The file already exists\n",
       "[R]emove  [M]ove  [Q]uit  [S]kip    Source: ", GameAssets
@@ -92,7 +92,7 @@ task "download", "download game assets":
     of "r":
       removeFile path
     of "m":
-      moveFile path, path/../(extractFilename(gameAssets)&"-old")
+      moveFile path, path/../(extractFilename(GameAssets)&"-old")
     of "s":
       skipAssets = true
     else:
@@ -101,7 +101,7 @@ task "download", "download game assets":
     echo "Downloading from ", GameAssets
   if not skipAssets:
     echo "Downloading to ", path
-    downloadFile gameAssets, path
+    downloadFile GameAssets, path
     echo "Download finished"
   
     let targetDir = parentDir(parentDir(path))

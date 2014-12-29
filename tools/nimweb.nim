@@ -1,7 +1,7 @@
 #
 #
-#           Nimrod Website Generator
-#        (c) Copyright 2012 Andreas Rumpf
+#           Nim Website Generator
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -13,17 +13,22 @@ import
 
 type
   TKeyValPair = tuple[key, id, val: string]
-  TConfigData = object of TObject
+  TConfigData = object of RootObj
     tabs, links: seq[TKeyValPair]
     doc, srcdoc, srcdoc2, webdoc, pdf: seq[string]
     authors, projectName, projectTitle, logo, infile, outdir, ticker: string
-    vars: PStringTable
-    nimrodArgs: string
+    vars: StringTableRef
+    nimArgs: string
+    gitRepo: string
     gitCommit: string
-    quotations: TTable[string, tuple[quote, author: string]]
+    quotations: Table[string, tuple[quote, author: string]]
     numProcessors: int # Set by parallelBuild:n, only works for values > 0.
   TRssItem = object
     year, month, day, title: string
+  TAction = enum
+    actAll, actOnlyWebsite, actPdf
+
+var action: TAction
 
 proc initConfigData(c: var TConfigData) =
   c.tabs = @[]
@@ -35,13 +40,14 @@ proc initConfigData(c: var TConfigData) =
   c.pdf = @[]
   c.infile = ""
   c.outdir = ""
-  c.nimrodArgs = "--hint[Conf]:off "
+  c.nimArgs = "--hint[Conf]:off --hint[Path]:off --hint[Processing]:off "
   c.authors = ""
   c.projectTitle = ""
   c.projectName = ""
   c.logo = ""
   c.ticker = ""
   c.vars = newStringTable(modeStyleInsensitive)
+  c.gitRepo = "https://github.com/Araq/Nimrod/tree"
   c.gitCommit = "master"
   c.numProcessors = countProcessors()
   # Attempts to obtain the git current commit.
@@ -56,10 +62,10 @@ include "website.tmpl"
 # ------------------------- configuration file -------------------------------
 
 const
-  Version = "0.7"
-  Usage = "nimweb - Nimrod Website Generator Version " & version & """
+  version = "0.7"
+  usage = "nimweb - Nim Website Generator Version " & version & """
 
-  (c) 2012 Andreas Rumpf
+  (c) 2014 Andreas Rumpf
 Usage:
   nimweb [options] ini-file[.ini] [compile_options]
 Options:
@@ -67,13 +73,15 @@ Options:
   --var:name=value    set the value of a variable
   -h, --help          shows this help
   -v, --version       shows the version
+  --website           only build the website, not the full documentation
+  --pdf               build the PDF version of the documentation
 Compile_options:
-  will be passed to the Nimrod compiler
+  will be passed to the Nim compiler
 """
 
   rYearMonthDayTitle = r"(\d{4})-(\d{2})-(\d{2})\s+(.*)"
-  rssUrl = "http://nimrod-code.org/news.xml"
-  rssNewsUrl = "http://nimrod-code.org/news.html"
+  rssUrl = "http://nim-lang.org/news.xml"
+  rssNewsUrl = "http://nim-lang.org/news.html"
   validAnchorCharacters = Letters + Digits
 
 
@@ -113,30 +121,32 @@ proc parseCmdLine(c: var TConfigData) =
     case kind
     of cmdArgument:
       c.infile = addFileExt(key, "ini")
-      c.nimrodArgs.add(cmdLineRest(p))
+      c.nimArgs.add(cmdLineRest(p))
       break
     of cmdLongOption, cmdShortOption:
       case normalize(key)
       of "help", "h": 
-        stdout.write(Usage)
+        stdout.write(usage)
         quit(0)
       of "version", "v": 
-        stdout.write(Version & "\n")
+        stdout.write(version & "\n")
         quit(0)
       of "o", "output": c.outdir = val
       of "parallelbuild":
         try:
           let num = parseInt(val)
           if num != 0: c.numProcessors = num
-        except EInvalidValue:
+        except ValueError:
           quit("invalid numeric value for --parallelBuild")
       of "var":
         var idx = val.find('=')
         if idx < 0: quit("invalid command line")
         c.vars[substr(val, 0, idx-1)] = substr(val, idx+1)
-      else: quit(Usage)
+      of "website": action = actOnlyWebsite
+      of "pdf": action = actPdf
+      else: quit(usage)
     of cmdEnd: break
-  if c.infile.len == 0: quit(Usage)
+  if c.infile.len == 0: quit(usage)
 
 proc walkDirRecursively(s: var seq[string], root, ext: string) =
   for k, f in walkDir(root):
@@ -156,68 +166,65 @@ proc addFiles(s: var seq[string], dir, ext: string, patterns: seq[string]) =
 
 proc parseIniFile(c: var TConfigData) =
   var
-    p: TCfgParser
+    p: CfgParser
     section: string # current section
   var input = newFileStream(c.infile, fmRead)
-  if input != nil:
-    open(p, input, c.infile)
-    while true:
-      var k = next(p)
-      case k.kind
-      of cfgEof: break
-      of cfgSectionStart:
-        section = normalize(k.section)
-        case section
-        of "project", "links", "tabs", "ticker", "documentation", "var": discard
-        else: echo("[Warning] Skipping unknown section: " & section)
+  if input == nil: quit("cannot open: " & c.infile)
+  open(p, input, c.infile)
+  while true:
+    var k = next(p)
+    case k.kind
+    of cfgEof: break
+    of cfgSectionStart:
+      section = normalize(k.section)
+      case section
+      of "project", "links", "tabs", "ticker", "documentation", "var": discard
+      else: echo("[Warning] Skipping unknown section: " & section)
 
-      of cfgKeyValuePair:
-        var v = k.value % c.vars
-        c.vars[k.key] = v
+    of cfgKeyValuePair:
+      var v = k.value % c.vars
+      c.vars[k.key] = v
 
-        case section
-        of "project":
-          case normalize(k.key)
-          of "name": c.projectName = v
-          of "title": c.projectTitle = v
-          of "logo": c.logo = v
-          of "authors": c.authors = v
-          else: quit(errorStr(p, "unknown variable: " & k.key))
-        of "var": discard
-        of "links":
-          let valID = v.split(';')
-          add(c.links, (k.key.replace('_', ' '), valID[1], valID[0]))
-        of "tabs": add(c.tabs, (k.key, "", v))
-        of "ticker": c.ticker = v
-        of "documentation":
-          case normalize(k.key)
-          of "doc": addFiles(c.doc, "doc", ".txt", split(v, {';'}))
-          of "pdf": addFiles(c.pdf, "doc", ".txt", split(v, {';'}))
-          of "srcdoc": addFiles(c.srcdoc, "lib", ".nim", split(v, {';'}))
-          of "srcdoc2": addFiles(c.srcdoc2, "lib", ".nim", split(v, {';'}))
-          of "webdoc": addFiles(c.webdoc, "lib", ".nim", split(v, {';'}))
-          of "parallelbuild":
-            try:
-              let num = parseInt(v)
-              if num != 0: c.numProcessors = num
-            except EInvalidValue:
-              quit("invalid numeric value for --parallelBuild in config")
-          else: quit(errorStr(p, "unknown variable: " & k.key))
-        of "quotations":
-          let vSplit = v.split('-')
-          doAssert vSplit.len == 2
-          c.quotations[k.key.normalize] = (vSplit[0], vSplit[1])
-        else: discard
-
-      of cfgOption: quit(errorStr(p, "syntax error"))
-      of cfgError: quit(errorStr(p, k.msg))
-    close(p)
-    if c.projectName.len == 0:
-      c.projectName = changeFileExt(extractFilename(c.infile), "")
-    if c.outdir.len == 0:
-      c.outdir = splitFile(c.infile).dir
-  else:
-    quit("cannot open: " & c.infile)
+      case section
+      of "project":
+        case normalize(k.key)
+        of "name": c.projectName = v
+        of "title": c.projectTitle = v
+        of "logo": c.logo = v
+        of "authors": c.authors = v
+        else: quit(errorStr(p, "unknown variable: " & k.key))
+      of "var": discard
+      of "links":
+        let valID = v.split(';')
+        add(c.links, (k.key.replace('_', ' '), valID[1], valID[0]))
+      of "tabs": add(c.tabs, (k.key, "", v))
+      of "ticker": c.ticker = v
+      of "documentation":
+        case normalize(k.key)
+        of "doc": addFiles(c.doc, "doc", ".txt", split(v, {';'}))
+        of "pdf": addFiles(c.pdf, "doc", ".txt", split(v, {';'}))
+        of "srcdoc": addFiles(c.srcdoc, "lib", ".nim", split(v, {';'}))
+        of "srcdoc2": addFiles(c.srcdoc2, "lib", ".nim", split(v, {';'}))
+        of "webdoc": addFiles(c.webdoc, "lib", ".nim", split(v, {';'}))
+        of "parallelbuild":
+          try:
+            let num = parseInt(v)
+            if num != 0: c.numProcessors = num
+          except ValueError:
+            quit("invalid numeric value for --parallelBuild in config")
+        else: quit(errorStr(p, "unknown variable: " & k.key))
+      of "quotations":
+        let vSplit = v.split('-')
+        doAssert vSplit.len == 2
+        c.quotations[k.key.normalize] = (vSplit[0], vSplit[1])
+      else: discard
+    of cfgOption: quit(errorStr(p, "syntax error"))
+    of cfgError: quit(errorStr(p, k.msg))
+  close(p)
+  if c.projectName.len == 0:
+    c.projectName = changeFileExt(extractFilename(c.infile), "")
+  if c.outdir.len == 0:
+    c.outdir = splitFile(c.infile).dir
   # Ugly hack to override git command output when building private repo.
   if c.vars.hasKey("githash"):
     let githash = c.vars["githash"].strip
@@ -239,7 +246,6 @@ proc mexec(cmds: openarray[string], processors: int) =
   if processors < 2:
     sexec(cmds)
     return
-
   if execProcesses(cmds, {poStdErrToStdOut, poParentStreams, poEchoCmd}) != 0:
     echo "external program failed, retrying serial work queue for logs!"
     sexec(cmds)
@@ -251,10 +257,10 @@ proc buildDocSamples(c: var TConfigData, destPath: string) =
   ## it didn't make much sense to integrate into the existing generic
   ## documentation builders.
   const src = "doc"/"docgen_sample.nim"
-  exec("nimrod doc $# -o:$# $#" %
-    [c.nimrodArgs, destPath / "docgen_sample.html", src])
-  exec("nimrod doc2 $# -o:$# $#" %
-    [c.nimrodArgs, destPath / "docgen_sample2.html", src])
+  exec("nim doc $# -o:$# $#" %
+    [c.nimArgs, destPath / "docgen_sample.html", src])
+  exec("nim doc2 $# -o:$# $#" %
+    [c.nimArgs, destPath / "docgen_sample2.html", src])
 
 proc buildDoc(c: var TConfigData, destPath: string) =
   # call nim for the documentation:
@@ -262,30 +268,30 @@ proc buildDoc(c: var TConfigData, destPath: string) =
     commands = newSeq[string](len(c.doc) + len(c.srcdoc) + len(c.srcdoc2))
     i = 0
   for d in items(c.doc):
-    commands[i] = "nimrod rst2html $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
-      [c.nimrodArgs, c.gitCommit,
+    commands[i] = "nim rst2html $# --docSeeSrcUrl:$#/$# -o:$# --index:on $#" %
+      [c.nimArgs, c.gitRepo, c.gitCommit,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
   for d in items(c.srcdoc):
-    commands[i] = "nimrod doc $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
-      [c.nimrodArgs, c.gitCommit,
+    commands[i] = "nim doc $# --docSeeSrcUrl:$#/$# -o:$# --index:on $#" %
+      [c.nimArgs, c.gitRepo, c.gitCommit,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
   for d in items(c.srcdoc2):
-    commands[i] = "nimrod doc2 $# --docSeeSrcUrl:$# -o:$# --index:on $#" %
-      [c.nimrodArgs, c.gitCommit,
+    commands[i] = "nim doc2 $# --docSeeSrcUrl:$#/$# -o:$# --index:on $#" %
+      [c.nimArgs, c.gitRepo, c.gitCommit,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
 
   mexec(commands, c.numProcessors)
-  exec("nimrod buildIndex -o:$1/theindex.html $1" % [destPath])
+  exec("nim buildIndex -o:$1/theindex.html $1" % [destPath])
 
 proc buildPdfDoc(c: var TConfigData, destPath: string) =
   if os.execShellCmd("pdflatex -version") != 0:
     echo "pdflatex not found; no PDF documentation generated"
   else:
     for d in items(c.pdf):
-      exec("nimrod rst2tex $# $#" % [c.nimrodArgs, d])
+      exec("nim rst2tex $# $#" % [c.nimArgs, d])
       # call LaTeX twice to get cross references right:
       exec("pdflatex " & changeFileExt(d, "tex"))
       exec("pdflatex " & changeFileExt(d, "tex"))
@@ -305,8 +311,8 @@ proc buildAddDoc(c: var TConfigData, destPath: string) =
   # build additional documentation (without the index):
   var commands = newSeq[string](c.webdoc.len)
   for i, doc in pairs(c.webdoc):
-    commands[i] = "nimrod doc $# --docSeeSrcUrl:$# -o:$# $#" %
-      [c.nimrodArgs, c.gitCommit,
+    commands[i] = "nim doc $# --docSeeSrcUrl:$#/$# -o:$# $#" %
+      [c.nimArgs, c.gitRepo, c.gitCommit,
       destPath / changeFileExt(splitFile(doc).name, "html"), doc]
   mexec(commands, c.numProcessors)
 
@@ -314,7 +320,7 @@ proc parseNewsTitles(inputFilename: string): seq[TRssItem] =
   # parses the file for titles and returns them as TRssItem blocks.
   let reYearMonthDayTitle = re(rYearMonthDayTitle)
   var
-    input: TFile
+    input: File
     line = ""
 
   result = @[]
@@ -350,7 +356,7 @@ proc genNewsLink(title: string): string =
 proc generateRss(outputFilename: string, news: seq[TRssItem]) =
   # Given a list of rss items generates an rss overwriting destination.
   var
-    output: TFile
+    output: File
 
   if not open(output, outputFilename, mode = fmWrite):
     quit("Could not write to $1 for rss generation" % [outputFilename])
@@ -359,7 +365,7 @@ proc generateRss(outputFilename: string, news: seq[TRssItem]) =
   output.write("""<?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
 """)
-  output.write(title("Nimrod website news"))
+  output.write(title("Nim website news"))
   output.write(link(href = rssUrl, rel = "self"))
   output.write(link(href = rssNewsUrl))
   output.write(id(rssNewsUrl))
@@ -375,7 +381,7 @@ proc generateRss(outputFilename: string, news: seq[TRssItem]) =
         link(`type` = "text/html", rel = "alternate",
           href = genNewsLink(joinedTitle)),
         updatedDate(rss.year, rss.month, rss.day),
-        "<author><name>Nimrod</name></author>",
+        "<author><name>Nim</name></author>",
         content(joinedTitle, `type` = "text"),
       ))
 
@@ -390,28 +396,29 @@ proc buildNewsRss(c: var TConfigData, destPath: string) =
   generateRss(destFilename, parseNewsTitles(srcFilename))
 
 proc buildJS(destPath: string) =
-  exec("nimrod js -d:release --out:$1 web/babelpkglist.nim" %
-      [destPath / "babelpkglist.js"])
+  exec("nim js -d:release --out:$1 web/nimblepkglist.nim" %
+      [destPath / "nimblepkglist.js"])
 
-proc main(c: var TConfigData) =
+proc buildWebsite(c: var TConfigData) =
   const
-    cmd = "nimrod rst2html --compileonly $1 -o:web/$2.temp web/$2.txt"
+    cmd = "nim rst2html --compileonly $1 -o:web/$2.temp web/$2.txt"
   if c.ticker.len > 0:
     try:
       c.ticker = readFile("web" / c.ticker)
-    except EIO:
+    except IOError:
       quit("[Error] cannot open: " & c.ticker)
   for i in 0..c.tabs.len-1:
     var file = c.tabs[i].val
     let rss = if file in ["news", "index"]: extractFilename(rssUrl) else: ""
-    exec(cmd % [c.nimrodArgs, file])
+    if '.' in file: continue
+    exec(cmd % [c.nimArgs, file])
     var temp = "web" / changeFileExt(file, "temp")
     var content: string
     try:
       content = readFile(temp)
-    except EIO:
+    except IOError:
       quit("[Error] cannot open: " & temp)
-    var f: TFile
+    var f: File
     var outfile = "web/upload/$#.html" % file
     if not existsDir("web/upload"):
       createDir("web/upload")
@@ -422,20 +429,22 @@ proc main(c: var TConfigData) =
       quit("[Error] cannot write file: " & outfile)
     removeFile(temp)
   copyDir("web/assets", "web/upload/assets")
-  buildJS("web/upload")
   buildNewsRss(c, "web/upload")
+
+proc main(c: var TConfigData) =
+  buildWebsite(c)
+  buildJS("web/upload")
   buildAddDoc(c, "web/upload")
   buildDocSamples(c, "web/upload")
   buildDoc(c, "web/upload")
   buildDocSamples(c, "doc")
   buildDoc(c, "doc")
-  buildPdfDoc(c, "doc")
 
 var c: TConfigData
 initConfigData(c)
 parseCmdLine(c)
 parseIniFile(c)
-when false:
-  buildPdfDoc(c, "doc")
-else:
-  main(c)
+case action
+of actOnlyWebsite: buildWebsite(c)
+of actPdf: buildPdfDoc(c, "doc")
+of actAll: main(c)

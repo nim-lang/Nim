@@ -160,6 +160,7 @@ type
     nkConstDef,           # a const definition
     nkTypeDef,            # a type definition
     nkYieldStmt,          # the yield statement as a tree
+    nkDefer,              # the 'defer' statement
     nkTryStmt,            # a try statement
     nkFinally,            # a finally section
     nkRaiseStmt,          # a raise statement
@@ -293,6 +294,7 @@ const
                        # require RC ops
   sfCompileToCpp* = sfInfixCall       # compile the module as C++ code
   sfCompileToObjc* = sfNamedParamCall # compile the module as Objective-C code
+  sfExperimental* = sfOverriden       # module uses the .experimental switch
 
 const
   # getting ready for the future expr/stmt merge
@@ -566,8 +568,8 @@ type
     mBool, mChar, mString, mCstring,
     mPointer, mEmptySet, mIntSetBaseType, mNil, mExpr, mStmt, mTypeDesc,
     mVoidType, mPNimrodNode, mShared, mGuarded, mLock, mSpawn, mDeepCopy,
-    mIsMainModule, mCompileDate, mCompileTime, mNimrodVersion, mNimrodMajor,
-    mNimrodMinor, mNimrodPatch, mCpuEndian, mHostOS, mHostCPU, mAppType,
+    mIsMainModule, mCompileDate, mCompileTime, mProcCall,
+    mCpuEndian, mHostOS, mHostCPU, mAppType,
     mNaN, mInf, mNegInf,
     mCompileOption, mCompileOptionArg,
     mNLen, mNChild, mNSetChild, mNAdd, mNAddMultiple, mNDel, mNKind,
@@ -610,7 +612,7 @@ const
   # thus cannot be overloaded (also documented in the spec!):
   SpecialSemMagics* = {
     mDefined, mDefinedInScope, mCompiles, mLow, mHigh, mSizeOf, mIs, mOf, 
-    mEcho, mShallowCopy, mExpandToAst, mParallel, mSpawn}
+    mEcho, mShallowCopy, mExpandToAst, mParallel, mSpawn, mAstToStr}
 
 type
   PNode* = ref TNode
@@ -681,7 +683,6 @@ type
     heapRoot*: PRope          # keeps track of the enclosing heap object that
                               # owns this location (required by GC algorithms
                               # employing heap snapshots or sliding views)
-    a*: int
 
   # ---------------- end of backend information ------------------------------
 
@@ -734,7 +735,7 @@ type
       # check for the owner when touching 'usedGenerics'.
       usedGenerics*: seq[PInstantiation]
       tab*: TStrTable         # interface table for modules
-    of skLet, skVar, skField:
+    of skLet, skVar, skField, skForVar:
       guard*: PSym
     else: nil
     magic*: TMagic
@@ -772,6 +773,7 @@ type
                               # it won't cause problems
   
   TTypeSeq* = seq[PType]
+  TLockLevel* = distinct int16
   TType* {.acyclic.} = object of TIdObj # \
                               # types are identical iff they have the
                               # same id; there may be multiple copies of a type
@@ -798,11 +800,12 @@ type
     deepCopy*: PSym           # overriden 'deepCopy' operation
     size*: BiggestInt         # the size of the type in bytes
                               # -1 means that the size is unkwown
-    align*: int               # the type's alignment requirements
+    align*: int16             # the type's alignment requirements
+    lockLevel*: TLockLevel    # lock level as required for deadlock checking
     loc*: TLoc
 
   TPair*{.final.} = object 
-    key*, val*: PObject
+    key*, val*: RootRef
 
   TPairSeq* = seq[TPair]
   TTable*{.final.} = object   # the same as table[PObject] of PObject
@@ -811,7 +814,7 @@ type
 
   TIdPair*{.final.} = object 
     key*: PIdObj
-    val*: PObject
+    val*: RootRef
 
   TIdPairSeq* = seq[TIdPair]
   TIdTable*{.final.} = object # the same as table[PIdent] of PObject
@@ -838,7 +841,7 @@ type
     counter*: int
     data*: TNodePairSeq
 
-  TObjectSeq* = seq[PObject]
+  TObjectSeq* = seq[RootRef]
   TObjectSet*{.final.} = object 
     counter*: int
     data*: TObjectSeq
@@ -1054,7 +1057,7 @@ proc discardSons(father: PNode) =
   father.sons = nil
 
 when defined(useNodeIds):
-  const nodeIdToDebug* = 310841 # 612794
+  const nodeIdToDebug* = -1 # 884953 # 612794
   #612840 # 612905 # 614635 # 614637 # 614641
   # 423408
   #429107 # 430443 # 441048 # 441090 # 441153
@@ -1166,6 +1169,16 @@ proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
   result.sons = @[name, pattern, genericParams, params,
                   pragmas, exceptions, body]
 
+const
+  UnspecifiedLockLevel* = TLockLevel(-1'i16)
+  MaxLockLevel* = 1000'i16
+  UnknownLockLevel* = TLockLevel(1001'i16)
+
+proc `$`*(x: TLockLevel): string =
+  if x.ord == UnspecifiedLockLevel.ord: result = "<unspecified>"
+  elif x.ord == UnknownLockLevel.ord: result = "<unknown>"
+  else: result = $int16(x)
+
 proc newType(kind: TTypeKind, owner: PSym): PType = 
   new(result)
   result.kind = kind
@@ -1173,6 +1186,7 @@ proc newType(kind: TTypeKind, owner: PSym): PType =
   result.size = - 1
   result.align = 2            # default alignment
   result.id = getID()
+  result.lockLevel = UnspecifiedLockLevel
   when debugIds:
     registerId(result)
   #if result.id < 2000:
@@ -1184,7 +1198,7 @@ proc mergeLoc(a: var TLoc, b: TLoc) =
   a.flags = a.flags + b.flags
   if a.t == nil: a.t = b.t
   if a.r == nil: a.r = b.r
-  if a.a == 0: a.a = b.a
+  #if a.a == 0: a.a = b.a
   
 proc assignType(dest, src: PType) = 
   dest.kind = src.kind
@@ -1195,6 +1209,7 @@ proc assignType(dest, src: PType) =
   dest.align = src.align
   dest.destructor = src.destructor
   dest.deepCopy = src.deepCopy
+  dest.lockLevel = src.lockLevel
   # this fixes 'type TLock = TSysLock':
   if src.sym != nil:
     if dest.sym != nil:
@@ -1545,3 +1560,9 @@ proc isEmptyType*(t: PType): bool {.inline.} =
   ## 'void' and 'stmt' types are often equivalent to 'nil' these days:
   result = t == nil or t.kind in {tyEmpty, tyStmt}
 
+proc makeStmtList*(n: PNode): PNode =
+  if n.kind == nkStmtList:
+    result = n
+  else:
+    result = newNodeI(nkStmtList, n.info)
+    result.add n

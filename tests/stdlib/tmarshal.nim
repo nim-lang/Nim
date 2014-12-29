@@ -1,10 +1,10 @@
 discard """
-  output: ""
+  output: '''{"age": 12, "name": "Cletus"}'''
 """
 
 import marshal
 
-template testit(x: expr) = echo($$to[type(x)]($$x))
+template testit(x: expr) = discard $$to[type(x)]($$x)
 
 var x: array[0..4, array[0..4, string]] = [
   ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"], 
@@ -63,3 +63,15 @@ testit(test7)
 var test6: set[char] = {'A'..'Z', '_'}
 testit(test6)
 
+
+# bug #1352
+
+type
+  Entity = object of RootObj
+    name: string
+
+  Person = object of Entity
+    age: int
+
+var instance1 = Person(name: "Cletus", age: 12)
+echo($$instance1)

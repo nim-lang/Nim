@@ -44,9 +44,9 @@ As the regular expressions supported by this module are enormous,
 the reader is referred to http://perldoc.perl.org/perlre.html for the
 full documentation of Perl's regular expressions.
 
-Because the backslash ``\`` is a meta character both in the Nimrod
+Because the backslash ``\`` is a meta character both in the Nim
 programming language and in regular expressions, it is strongly
-recommended that one uses the *raw* strings of Nimrod, so that
+recommended that one uses the *raw* strings of Nim, so that
 backslashes are interpreted by the regular expression engine::
 
   r"\S"  # matches any character that is not whitespace

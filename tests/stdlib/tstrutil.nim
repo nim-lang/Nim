@@ -39,6 +39,10 @@ assert(editDistance("prefix__hallo_suffix", "prefix") == 14)
 assert(editDistance("prefix__hallo_suffix", "suffix") == 14)
 assert(editDistance("prefix__hallo_suffix", "prefix__hao_suffix") == 2)
 
+assert "/1/2/3".rfind('/') == 4
+assert "/1/2/3".rfind('/', 1) == 0
+assert "/1/2/3".rfind('0') == -1
+
 main()
 #OUT ha/home/a1xyz/usr/bin
 

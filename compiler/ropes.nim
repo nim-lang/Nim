@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -12,7 +12,7 @@
 #  Ropes are a data structure that represents a very long string
 #  efficiently; especially concatenation is done in O(1) instead of O(N).
 #  Ropes make use a lazy evaluation: They are essentially concatenation
-#  trees that are only flattened when converting to a native Nimrod
+#  trees that are only flattened when converting to a native Nim
 #  string or when written to disk. The empty string is represented by a
 #  nil pointer.
 #  A little picture makes everything clear:
@@ -64,7 +64,7 @@ type
                        # copy the format strings
                        # though it is not necessary)
   PRope* = ref TRope
-  TRope*{.acyclic.} = object of TObject # the empty rope is represented 
+  TRope*{.acyclic.} = object of RootObj # the empty rope is represented 
                                         # by nil to safe space
     left*, right*: PRope
     length*: int
@@ -216,7 +216,7 @@ proc app(a: var PRope, b: PRope) = a = con(a, b)
 proc app(a: var PRope, b: string) = a = con(a, b)
 proc prepend(a: var PRope, b: PRope) = a = con(b, a)
 
-proc writeRope*(f: TFile, c: PRope) = 
+proc writeRope*(f: File, c: PRope) = 
   var stack = @[c]
   while len(stack) > 0: 
     var it = pop(stack)
@@ -228,7 +228,7 @@ proc writeRope*(f: TFile, c: PRope) =
     write(f, it.data)
 
 proc writeRope*(head: PRope, filename: string, useWarning = false) =
-  var f: TFile
+  var f: File
   if open(f, filename, fmWrite):
     if head != nil: writeRope(f, head)
     close(f)
@@ -299,7 +299,7 @@ proc appf(c: var PRope, frmt: TFormatStr, args: varargs[PRope]) =
 const 
   bufSize = 1024              # 1 KB is reasonable
 
-proc auxRopeEqualsFile(r: PRope, bin: var TFile, buf: pointer): bool = 
+proc auxRopeEqualsFile(r: PRope, bin: var File, buf: pointer): bool = 
   if r.data != nil:
     if r.length > bufSize:
       errorHandler(rTokenTooLong, r.data)
@@ -312,7 +312,7 @@ proc auxRopeEqualsFile(r: PRope, bin: var TFile, buf: pointer): bool =
     if result: result = auxRopeEqualsFile(r.right, bin, buf)
   
 proc ropeEqualsFile(r: PRope, f: string): bool = 
-  var bin: TFile
+  var bin: File
   result = open(bin, f)
   if not result: 
     return                    # not equal if file does not exist

@@ -1,6 +1,7 @@
 discard """
-  line: 15
+  line: 16
   errormsg: "'mainUnsafe' is not GC-safe"
+  cmd: "nim $target --hints:on --threads:on $options $file"
 """
 
 proc mymap(x: proc ()) =

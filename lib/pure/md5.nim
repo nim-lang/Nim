@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -84,14 +84,14 @@ proc decode(dest: var openArray[int8], src: openArray[int32]) =
     dest[i+3] = toU8(src[j] shr 24'i32 and 0xff'i32)
     inc(i, 4)
 
-proc transform(Buffer: pointer, State: var MD5State) = 
+proc transform(buffer: pointer, state: var MD5State) = 
   var
     myBlock: MD5Block
-  encode(myBlock, cast[cstring](Buffer))
-  var a = State[0]
-  var b = State[1]
-  var c = State[2]
-  var d = State[3]
+  encode(myBlock, cast[cstring](buffer))
+  var a = state[0]
+  var b = state[1]
+  var c = state[2]
+  var d = state[3]
   FF(a, b, c, d, myBlock[0], 7'i8, 0xD76AA478'i32)
   FF(d, a, b, c, myBlock[1], 12'i8, 0xE8C7B756'i32)
   FF(c, d, a, b, myBlock[2], 17'i8, 0x242070DB'i32)
@@ -156,52 +156,52 @@ proc transform(Buffer: pointer, State: var MD5State) =
   II(d, a, b, c, myBlock[11], 10'i8, 0xBD3AF235'i32)
   II(c, d, a, b, myBlock[2], 15'i8, 0x2AD7D2BB'i32)
   II(b, c, d, a, myBlock[9], 21'i8, 0xEB86D391'i32)
-  State[0] = State[0] +% a
-  State[1] = State[1] +% b
-  State[2] = State[2] +% c
-  State[3] = State[3] +% d
+  state[0] = state[0] +% a
+  state[1] = state[1] +% b
+  state[2] = state[2] +% c
+  state[3] = state[3] +% d
   
 proc md5Init*(c: var MD5Context) = 
   ## initializes a MD5Context  
-  c.State[0] = 0x67452301'i32
-  c.State[1] = 0xEFCDAB89'i32
-  c.State[2] = 0x98BADCFE'i32
-  c.State[3] = 0x10325476'i32
-  c.Count[0] = 0'i32
-  c.Count[1] = 0'i32
-  zeroMem(addr(c.Buffer), sizeof(MD5Buffer))
+  c.state[0] = 0x67452301'i32
+  c.state[1] = 0xEFCDAB89'i32
+  c.state[2] = 0x98BADCFE'i32
+  c.state[3] = 0x10325476'i32
+  c.count[0] = 0'i32
+  c.count[1] = 0'i32
+  zeroMem(addr(c.buffer), sizeof(MD5buffer))
 
 proc md5Update*(c: var MD5Context, input: cstring, len: int) = 
   ## updates the MD5Context with the `input` data of length `len`
   var input = input
   var Index = (c.count[0] shr 3) and 0x3F
-  c.Count[0] = c.count[0] +% toU32(len shl 3)
-  if c.Count[0] < (len shl 3): c.Count[1] = c.count[1] +% 1'i32
-  c.Count[1] = c.count[1] +% toU32(len shr 29)
+  c.count[0] = c.count[0] +% toU32(len shl 3)
+  if c.count[0] < (len shl 3): c.count[1] = c.count[1] +% 1'i32
+  c.count[1] = c.count[1] +% toU32(len shr 29)
   var PartLen = 64 - Index
   if len >= PartLen: 
-    copyMem(addr(c.Buffer[Index]), input, PartLen)
-    transform(addr(c.Buffer), c.State)
+    copyMem(addr(c.buffer[Index]), input, PartLen)
+    transform(addr(c.buffer), c.state)
     var i = PartLen
     while i + 63 < len: 
-      transform(addr(input[i]), c.State)
+      transform(addr(input[i]), c.state)
       inc(i, 64)
-    copyMem(addr(c.Buffer[0]), addr(input[i]), len-i)
+    copyMem(addr(c.buffer[0]), addr(input[i]), len-i)
   else:
-    copyMem(addr(c.Buffer[Index]), addr(input[0]), len)
+    copyMem(addr(c.buffer[Index]), addr(input[0]), len)
 
 proc md5Final*(c: var MD5Context, digest: var MD5Digest) = 
   ## finishes the MD5Context and stores the result in `digest`
   var
     Bits: MD5CBits
     PadLen: int
-  decode(Bits, c.Count)
-  var Index = (c.Count[0] shr 3) and 0x3F
+  decode(Bits, c.count)
+  var Index = (c.count[0] shr 3) and 0x3F
   if Index < 56: PadLen = 56 - Index
   else: PadLen = 120 - Index
   md5Update(c, padding, PadLen)
   md5Update(c, cast[cstring](addr(Bits)), 8)
-  decode(digest, c.State)
+  decode(digest, c.state)
   zeroMem(addr(c), sizeof(MD5Context))
 
 proc toMD5*(s: string): MD5Digest = 
@@ -216,8 +216,8 @@ proc `$`*(D: MD5Digest): string =
   const digits = "0123456789abcdef"
   result = ""
   for i in 0..15: 
-    add(result, Digits[(D[i] shr 4) and 0xF])
-    add(result, Digits[D[i] and 0xF])
+    add(result, digits[(D[i] shr 4) and 0xF])
+    add(result, digits[D[i] and 0xF])
 
 proc getMD5*(s: string): string =  
   ## computes an MD5 value of `s` and returns its string representation

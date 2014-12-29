@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Dominik Picheta
 #
 #    See the file "copying.txt", included in this
@@ -10,8 +10,10 @@
 ## This module implements a mimetypes database
 import strtabs
 type
-  TMimeDB* = object
-    mimes: PStringTable
+  MimeDB* = object
+    mimes: StringTableRef
+
+{.deprecated: [TMimeDB: MimeDB].}
 
 const mimes* = {
     "ez": "application/andrew-inset",
@@ -489,20 +491,19 @@ const mimes* = {
     "vrml": "x-world/x-vrml",
     "wrl": "x-world/x-vrml"}
 
-proc newMimetypes*(): TMimeDB =
+proc newMimetypes*(): MimeDB =
   ## Creates a new Mimetypes database. The database will contain the most
   ## common mimetypes.
-
   result.mimes = mimes.newStringTable()
 
-proc getMimetype*(mimedb: TMimeDB, ext: string, default = "text/plain"): string =
+proc getMimetype*(mimedb: MimeDB, ext: string, default = "text/plain"): string =
   ## Gets mimetype which corresponds to ``ext``. Returns ``default`` if ``ext``
   ## could not be found.
   result = mimedb.mimes[ext]
   if result == "":
     return default
 
-proc getExt*(mimedb: TMimeDB, mimetype: string, default = "txt"): string =
+proc getExt*(mimedb: MimeDB, mimetype: string, default = "txt"): string =
   ## Gets extension which corresponds to ``mimetype``. Returns ``default`` if
   ## ``mimetype`` could not be found. Extensions are returned without the
   ## leading dot.
@@ -511,7 +512,7 @@ proc getExt*(mimedb: TMimeDB, mimetype: string, default = "txt"): string =
     if m == mimetype:
       result = e
 
-proc register*(mimedb: var TMimeDB, ext: string, mimetype: string) =
+proc register*(mimedb: var MimeDB, ext: string, mimetype: string) =
   ## Adds ``mimetype`` to the ``mimedb``.
   mimedb.mimes[ext] = mimetype
 

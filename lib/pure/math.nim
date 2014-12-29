@@ -1,7 +1,7 @@
 #
 #
-#            Nimrod's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#            Nim's Runtime Library
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -9,12 +9,11 @@
 
 ##   Constructive mathematics is naturally typed. -- Simon Thompson
 ## 
-## Basic math routines for Nimrod.
+## Basic math routines for Nim.
 ## This module is available for the `JavaScript target
 ## <backends.html#the-javascript-target>`_.
 
 include "system/inclrtl"
-import "impure/fenv"
 {.push debugger:off .} # the user does not want to trace a part
                        # of the standard library!
 
@@ -30,20 +29,31 @@ const
   E* = 2.71828182845904523536028747 ## Euler's number
 
   MaxFloat64Precision* = 16 ## maximum number of meaningful digits
-                            ## after the decimal point for Nimrod's
+                            ## after the decimal point for Nim's
                             ## ``float64`` type.
   MaxFloat32Precision* = 8  ## maximum number of meaningful digits
-                            ## after the decimal point for Nimrod's
+                            ## after the decimal point for Nim's
                             ## ``float32`` type.
   MaxFloatPrecision* = MaxFloat64Precision ## maximum number of 
                                            ## meaningful digits
                                            ## after the decimal point 
-                                           ## for Nimrod's ``float`` type.
+                                           ## for Nim's ``float`` type.
 
-proc classify*(x: float): TFloatClass = 
+type
+  FloatClass* = enum ## describes the class a floating point value belongs to.
+                     ## This is the type that is returned by `classify`.
+    fcNormal,    ## value is an ordinary nonzero floating point value
+    fcSubnormal, ## value is a subnormal (a very small) floating point value
+    fcZero,      ## value is zero
+    fcNegZero,   ## value is the negative zero
+    fcNan,       ## value is Not-A-Number (NAN)
+    fcInf,       ## value is positive infinity
+    fcNegInf     ## value is negative infinity
+
+proc classify*(x: float): FloatClass = 
   ## classifies a floating point value. Returns `x`'s class as specified by
-  ## `TFloatClass`.
-    
+  ## `FloatClass`.
+  
   # JavaScript and most C compilers have no classify:
   if x == 0.0:
     if 1.0/x == Inf:
@@ -186,7 +196,6 @@ when not defined(JS):
     ## computes x to power raised of y.
     
   # C procs:
-  proc gettime(dummy: ptr cint): cint {.importc: "time", header: "<time.h>".}
   proc srand(seed: cint) {.importc: "srand", header: "<stdlib.h>".}
   proc rand(): cint {.importc: "rand", header: "<stdlib.h>".}
   
@@ -267,21 +276,23 @@ else:
 proc `mod`*(x, y: float): float =
   result = if y == 0.0: x else: x - y * (x/y).floor
 
-proc random*[T](x: TSlice[T]): T =
+proc random*[T](x: Slice[T]): T =
   ## For a slice `a .. b` returns a value in the range `a .. b-1`.
   result = random(x.b - x.a) + x.a
 
-proc random[T](a: openarray[T]): T =
+proc random[T](a: openArray[T]): T =
   ## returns a random element from the openarray `a`.
   result = a[random(a.low..a.len)]
 
 type
-  TRunningStat* {.pure,final.} = object  ## an accumulator for statistical data
-    n*: int                              ## number of pushed data
-    sum*, min*, max*, mean*: float       ## self-explaining
+  RunningStat* = object                 ## an accumulator for statistical data
+    n*: int                             ## number of pushed data
+    sum*, min*, max*, mean*: float      ## self-explaining
     oldM, oldS, newS: float
 
-proc push*(s: var TRunningStat, x: float) = 
+{.deprecated: [TFloatClass: FloatClass, TRunningStat: RunningStat].}
+
+proc push*(s: var RunningStat, x: float) = 
   ## pushes a value `x` for processing
   inc(s.n)
   # See Knuth TAOCP vol 2, 3rd edition, page 232
@@ -302,16 +313,16 @@ proc push*(s: var TRunningStat, x: float) =
     s.oldS = s.newS
   s.sum = s.sum + x
   
-proc push*(s: var TRunningStat, x: int) = 
+proc push*(s: var RunningStat, x: int) = 
   ## pushes a value `x` for processing. `x` is simply converted to ``float``
   ## and the other push operation is called.
   push(s, toFloat(x))
   
-proc variance*(s: TRunningStat): float = 
+proc variance*(s: RunningStat): float = 
   ## computes the current variance of `s`
   if s.n > 1: result = s.newS / (toFloat(s.n - 1))
 
-proc standardDeviation*(s: TRunningStat): float = 
+proc standardDeviation*(s: RunningStat): float = 
   ## computes the current standard deviation of `s`
   result = sqrt(variance(s))
 
@@ -319,6 +330,8 @@ proc standardDeviation*(s: TRunningStat): float =
 {.pop.}
 
 when isMainModule and not defined(JS):
+  proc gettime(dummy: ptr cint): cint {.importc: "time", header: "<time.h>".}
+
   # Verifies random seed initialization.
   let seed = gettime(nil)
   randomize(seed)

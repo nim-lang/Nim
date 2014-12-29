@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -8,7 +8,7 @@
 #
 
 # This include file contains headers of Ansi C procs
-# and definitions of Ansi C types in Nimrod syntax
+# and definitions of Ansi C types in Nim syntax
 # All symbols are prefixed with 'c_' to avoid ambiguities
 
 {.push hints:off}
@@ -33,10 +33,11 @@ type
 
   C_JmpBuf {.importc: "jmp_buf", header: "<setjmp.h>".} = object
 
-var
-  c_stdin {.importc: "stdin", nodecl.}: C_TextFileStar
-  c_stdout {.importc: "stdout", nodecl.}: C_TextFileStar
-  c_stderr {.importc: "stderr", nodecl.}: C_TextFileStar
+when not defined(vm):
+  var
+    c_stdin {.importc: "stdin", nodecl.}: C_TextFileStar
+    c_stdout {.importc: "stdout", nodecl.}: C_TextFileStar
+    c_stderr {.importc: "stderr", nodecl.}: C_TextFileStar
 
 # constants faked as variables:
 when not declared(SIGINT):

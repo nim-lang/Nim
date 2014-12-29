@@ -3,8 +3,8 @@ discard """
 """
 
 # Ref:
-# http://nimrod-lang.org/macros.html
-# http://nimrod-lang.org/parseutils.html
+# http://nim-lang.org/macros.html
+# http://nim-lang.org/parseutils.html
 
 
 # Imports
@@ -313,7 +313,7 @@ proc parse_until_symbol(node: PNimrodNode, value: string, index: var int): bool 
 
 proc parse_template(node: PNimrodNode, value: string) =
     ## Parses through entire template, outputing valid
-    ## Nimrod code into the input `node` AST.
+    ## Nim code into the input `node` AST.
     var index = 0
     while index < value.len and
           parse_until_symbol(node, value, index): nil

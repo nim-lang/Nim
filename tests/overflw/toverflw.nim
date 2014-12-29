@@ -2,7 +2,7 @@ discard """
   file: "toverflw.nim"
   output: "the computation overflowed"
 """
-# Tests nimrod's ability to detect overflows
+# Tests nim's ability to detect overflows
 
 {.push overflowChecks: on.}
 
@@ -12,7 +12,7 @@ a = high(int)
 b = -2
 try:
   writeln(stdout, b - a)
-except EOverflow:
+except OverflowError:
   writeln(stdout, "the computation overflowed")
 
 {.pop.} # overflow check

@@ -4,7 +4,7 @@ import
   
 var f = newFileStream(paramStr(1), fmRead)
 if f != nil:
-  var p: TCfgParser
+  var p: CfgParser
   open(p, f, paramStr(1))
   while true:
     var e = next(p)

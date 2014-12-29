@@ -21,8 +21,8 @@
 
 const Lib = "libchipmunk.so.6.1.1"
 
-when defined(MoreNimrod):
-  {.hint: "MoreNimrod defined; some Chipmunk functions replaced in Nimrod".}
+when defined(MoreNim):
+  {.hint: "MoreNim defined; some Chipmunk functions replaced in Nim".}
 {.deadCodeElim: on.}
 from math import sqrt, sin, cos, arctan2
 when defined(CpUseFloat):
@@ -729,7 +729,7 @@ proc isRogue*(body: PBody): Bool {.inline.} =
 
 defGetter(PBody, CpFloat, m, Mass)
 #/ Set the mass of a body.
-when defined(MoreNimrod):
+when defined(MoreNim):
   defSetter(PBody, CpFloat, m, Mass)
 else:
   proc setMass*(body: PBody; m: CpFloat){.
@@ -738,7 +738,7 @@ else:
 #/ Get the moment of a body.
 defGetter(PBody, CpFloat, i, Moment)
 #/ Set the moment of a body.
-when defined(MoreNimrod):
+when defined(MoreNim):
   defSetter(PBody, CpFloat, i, Moment)
 else: 
   proc SetMoment*(body: PBody; i: CpFloat) {.
@@ -747,7 +747,7 @@ else:
 #/ Get the position of a body.
 defGetter(PBody, TVector, p, Pos)
 #/ Set the position of a body.
-when defined(MoreNimrod):
+when defined(MoreNim):
   defSetter(PBody, TVector, p, Pos)
 else:
   proc setPos*(body: PBody; pos: TVector) {.
@@ -1088,7 +1088,7 @@ proc getSegmentRadius*(shape: PShape): CpFloat {.
 #var VersionString*{.importc: "cpVersionString", dynlib: Lib.}: cstring
 #/ Calculate the moment of inertia for a circle.
 #/ @c r1 and @c r2 are the inner and outer diameters. A solid circle has an inner diameter of 0.
-when defined(MoreNimrod):
+when defined(MoreNim):
   proc momentForCircle*(m, r1, r2: CpFloat; offset: TVector): CpFloat {.cdecl.} =
     result = m * (0.5 * (r1 * r1 + r2 * r2) + lenSq(offset))
 else:

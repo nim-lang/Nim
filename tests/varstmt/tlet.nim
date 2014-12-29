@@ -10,7 +10,7 @@ proc main =
   elif name == "name":
     echo("Very funny, your name is name.")
   else:
-    Echo("Hi, ", name, "!")
+    echo("Hi, ", name, "!")
     
   let (x, y) = ("abc", name)
   echo y, x

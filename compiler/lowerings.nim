@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -51,13 +51,14 @@ proc lowerTupleUnpacking*(n: PNode; owner: PSym): PNode =
   incl(temp.flags, sfFromGeneric)
 
   var v = newNodeI(nkVarSection, value.info)
-  v.addVar(newSymNode(temp))
+  let tempAsNode = newSymNode(temp)
+  v.addVar(tempAsNode)
   result.add(v)
   
-  result.add newAsgnStmt(newSymNode(temp), value)
+  result.add newAsgnStmt(tempAsNode, value)
   for i in 0 .. n.len-3:
     if n.sons[i].kind == nkSym: v.addVar(n.sons[i])
-    result.add newAsgnStmt(n.sons[i], newTupleAccess(value, i))
+    result.add newAsgnStmt(n.sons[i], newTupleAccess(tempAsNode, i))
 
 proc createObj*(owner: PSym, info: TLineInfo): PType =
   result = newType(tyObject, owner)
@@ -204,7 +205,7 @@ proc flowVarKind(t: PType): TFlowVarKind =
   else: fvBlob
 
 proc addLocalVar(varSection, varInit: PNode; owner: PSym; typ: PType;
-                 v: PNode): PSym =
+                 v: PNode; useShallowCopy=false): PSym =
   result = newSym(skTemp, getIdent(genPrefix), owner, varSection.info)
   result.typ = typ
   incl(result.flags, sfFromGeneric)
@@ -215,11 +216,14 @@ proc addLocalVar(varSection, varInit: PNode; owner: PSym; typ: PType;
   vpart.sons[2] = if varInit.isNil: v else: ast.emptyNode
   varSection.add vpart
   if varInit != nil:
-    let deepCopyCall = newNodeI(nkCall, varInit.info, 3)
-    deepCopyCall.sons[0] = newSymNode(createMagic("deepCopy", mDeepCopy))
-    deepCopyCall.sons[1] = newSymNode(result)
-    deepCopyCall.sons[2] = v
-    varInit.add deepCopyCall
+    if useShallowCopy:
+      varInit.add newFastAsgnStmt(newSymNode(result), v)
+    else:
+      let deepCopyCall = newNodeI(nkCall, varInit.info, 3)
+      deepCopyCall.sons[0] = newSymNode(createMagic("deepCopy", mDeepCopy))
+      deepCopyCall.sons[1] = newSymNode(result)
+      deepCopyCall.sons[2] = v
+      varInit.add deepCopyCall
 
 discard """
 We generate roughly this:
@@ -261,7 +265,7 @@ proc createWrapperProc(f: PNode; threadParam, argsParam: PSym;
     threadLocalBarrier = addLocalVar(varSection2, nil, argsParam.owner, 
                                      barrier.typ, barrier)
     body.add varSection2
-    body.add callCodeGenProc("barrierEnter", threadLocalBarrier.newSymNode)
+    body.add callCodegenProc("barrierEnter", threadLocalBarrier.newSymNode)
   var threadLocalProm: PSym
   if spawnKind == srByVar:
     threadLocalProm = addLocalVar(varSection, nil, argsParam.owner, fv.typ, fv)
@@ -276,7 +280,7 @@ proc createWrapperProc(f: PNode; threadParam, argsParam: PSym;
     body.add newAsgnStmt(indirectAccess(threadLocalProm.newSymNode,
       "owner", fv.info), threadParam.newSymNode)
 
-  body.add callCodeGenProc("nimArgsPassingDone", threadParam.newSymNode)
+  body.add callCodegenProc("nimArgsPassingDone", threadParam.newSymNode)
   if spawnKind == srByVar:
     body.add newAsgnStmt(genDeref(threadLocalProm.newSymNode), call)
   elif fv != nil:
@@ -286,14 +290,20 @@ proc createWrapperProc(f: PNode; threadParam, argsParam: PSym;
         typeToString(fv.typ.sons[1]))
     body.add newAsgnStmt(indirectAccess(threadLocalProm.newSymNode,
       if fk == fvGC: "data" else: "blob", fv.info), call)
+    if fk == fvGC:
+      let incRefCall = newNodeI(nkCall, fv.info, 2)
+      incRefCall.sons[0] = newSymNode(createMagic("GCref", mGCref))
+      incRefCall.sons[1] = indirectAccess(threadLocalProm.newSymNode,
+                                          "data", fv.info)
+      body.add incRefCall
     if barrier == nil:
       # by now 'fv' is shared and thus might have beeen overwritten! we need
       # to use the thread-local view instead:
-      body.add callCodeGenProc("nimFlowVarSignal", threadLocalProm.newSymNode)
+      body.add callCodegenProc("nimFlowVarSignal", threadLocalProm.newSymNode)
   else:
     body.add call
   if barrier != nil:
-    body.add callCodeGenProc("barrierLeave", threadLocalBarrier.newSymNode)
+    body.add callCodegenProc("barrierLeave", threadLocalBarrier.newSymNode)
 
   var params = newNodeI(nkFormalParams, f.info)
   params.add emptyNode
@@ -414,7 +424,8 @@ proc setupArgsForParallelism(n: PNode; objType: PType; scratchObj: PSym;
         result.add newFastAsgnStmt(newDotExpr(scratchObj, fieldB), n[3])
 
         let threadLocal = addLocalVar(varSection,nil, objType.owner, fieldA.typ,
-                                      indirectAccess(castExpr, fieldA, n.info))
+                                      indirectAccess(castExpr, fieldA, n.info),
+                                      useShallowCopy=true)
         slice.sons[2] = threadLocal.newSymNode
       else:
         let a = genAddrOf(n)
@@ -428,7 +439,8 @@ proc setupArgsForParallelism(n: PNode; objType: PType; scratchObj: PSym;
       slice.sons[1] = genDeref(indirectAccess(castExpr, field, n.info))
 
       let threadLocal = addLocalVar(varSection,nil, objType.owner, fieldB.typ,
-                                    indirectAccess(castExpr, fieldB, n.info))
+                                    indirectAccess(castExpr, fieldB, n.info),
+                                    useShallowCopy=true)
       slice.sons[3] = threadLocal.newSymNode
       call.add slice
     elif (let size = computeSize(argType); size < 0 or size > 16) and
@@ -439,7 +451,8 @@ proc setupArgsForParallelism(n: PNode; objType: PType; scratchObj: PSym;
       objType.addField(field)
       result.add newFastAsgnStmt(newDotExpr(scratchObj, field), a)
       let threadLocal = addLocalVar(varSection,nil, objType.owner, field.typ,
-                                    indirectAccess(castExpr, field, n.info))
+                                    indirectAccess(castExpr, field, n.info),
+                                    useShallowCopy=true)
       call.add(genDeref(threadLocal.newSymNode))
     else:
       # boring case
@@ -448,7 +461,8 @@ proc setupArgsForParallelism(n: PNode; objType: PType; scratchObj: PSym;
       result.add newFastAsgnStmt(newDotExpr(scratchObj, field), n)
       let threadLocal = addLocalVar(varSection, varInit,
                                     objType.owner, field.typ,
-                                    indirectAccess(castExpr, field, n.info))
+                                    indirectAccess(castExpr, field, n.info),
+                                    useShallowCopy=true)
       call.add(threadLocal.newSymNode)
 
 proc wrapProcForSpawn*(owner: PSym; spawnExpr: PNode; retType: PType; 
@@ -543,7 +557,7 @@ proc wrapProcForSpawn*(owner: PSym; spawnExpr: PNode; retType: PType;
     # create flowVar:
     result.add newFastAsgnStmt(fvField, callProc(spawnExpr[2]))
     if barrier == nil:
-      result.add callCodeGenProc("nimFlowVarCreateCondVar", fvField)
+      result.add callCodegenProc("nimFlowVarCreateSemaphore", fvField)
 
   elif spawnKind == srByVar:
     var field = newSym(skField, getIdent"fv", owner, n.info)
@@ -556,7 +570,7 @@ proc wrapProcForSpawn*(owner: PSym; spawnExpr: PNode; retType: PType;
   let wrapper = createWrapperProc(fn, threadParam, argsParam, 
                                   varSection, varInit, call,
                                   barrierAsExpr, fvAsExpr, spawnKind)
-  result.add callCodeGenProc("nimSpawn", wrapper.newSymNode,
+  result.add callCodegenProc("nimSpawn", wrapper.newSymNode,
                              genAddrOf(scratchObj.newSymNode))
 
   if spawnKind == srFlowVar: result.add fvField

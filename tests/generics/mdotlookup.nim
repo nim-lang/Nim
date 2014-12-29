@@ -11,6 +11,6 @@ import sets
 
 var intset = initSet[int]()
 
-proc func*[T](a: T) =
+proc fn*[T](a: T) =
   if a in intset: echo("true")
   else: echo("false")

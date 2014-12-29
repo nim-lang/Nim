@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -14,7 +14,7 @@ when not defined(js) and not defined(Nimdoc):
   {.error: "This module only works on the JavaScript platform".}
 
 type
-  TEventHandlers* {.importc.} = object of TObject
+  TEventHandlers* {.importc.} = object of RootObj
     onabort*: proc (event: ref TEvent) {.nimcall.}
     onblur*: proc (event: ref TEvent) {.nimcall.}
     onchange*: proc (event: ref TEvent) {.nimcall.}
@@ -124,14 +124,14 @@ type
     embeds*: seq[ref TEmbed]
     links*: seq[ref TLink]
 
-  TLink* {.importc.} = object of TObject
+  TLink* {.importc.} = object of RootObj
     name*: cstring
     target*: cstring
     text*: cstring
     x*: int
     y*: int
 
-  TEmbed* {.importc.} = object of TObject
+  TEmbed* {.importc.} = object of RootObj
     height*: int
     hspace*: int
     name*: cstring
@@ -142,12 +142,12 @@ type
     play*: proc () {.nimcall.}
     stop*: proc () {.nimcall.}
 
-  TAnchor* {.importc.} = object of TObject
+  TAnchor* {.importc.} = object of RootObj
     name*: cstring
     text*: cstring
     x*, y*: int
 
-  TApplet* {.importc.} = object of TObject
+  TApplet* {.importc.} = object of RootObj
 
   TElement* {.importc.} = object of TEventHandlers
     checked*: bool
@@ -166,7 +166,7 @@ type
     select*: proc () {.nimcall.}
     options*: seq[ref TOption]
 
-  TOption* {.importc.} = object of TObject
+  TOption* {.importc.} = object of RootObj
     defaultSelected*: bool
     selected*: bool
     selectedIndex*: int
@@ -209,7 +209,7 @@ type
     DocumentTypeNode,
     DocumentFragmentNode,
     NotationNode
-  TNode* {.importc.} = object of TObject
+  TNode* {.importc.} = object of RootObj
     attributes*: seq[ref TNode]
     childNodes*: seq[ref TNode]
     data*: cstring
@@ -241,7 +241,7 @@ type
     setAttributeNode*: proc (attr: ref TNode) {.nimcall.}
     style*: ref TStyle
 
-  TStyle* {.importc.} = object of TObject
+  TStyle* {.importc.} = object of RootObj
     background*: cstring
     backgroundAttachment*: cstring
     backgroundColor*: cstring
@@ -335,7 +335,7 @@ type
     removeAttribute*: proc (attr: cstring, caseSensitive=false) {.nimcall.}
     setAttribute*: proc (attr, value: cstring, caseSensitive=false) {.nimcall.}
 
-  TEvent* {.importc.} = object of TObject
+  TEvent* {.importc.} = object of RootObj
     altKey*, ctrlKey*, shiftKey*: bool
     button*: int
     clientX*, clientY*: int
@@ -373,7 +373,7 @@ type
     SUBMIT*: int
     UNLOAD*: int
 
-  TLocation* {.importc.} = object of TObject
+  TLocation* {.importc.} = object of RootObj
     hash*: cstring
     host*: cstring
     hostname*: cstring
@@ -385,13 +385,13 @@ type
     reload*: proc () {.nimcall.}
     replace*: proc (s: cstring) {.nimcall.}
 
-  THistory* {.importc.} = object of TObject
+  THistory* {.importc.} = object of RootObj
     length*: int
     back*: proc () {.nimcall.}
     forward*: proc () {.nimcall.}
     go*: proc (pagesToJump: int) {.nimcall.}
 
-  TNavigator* {.importc.} = object of TObject
+  TNavigator* {.importc.} = object of RootObj
     appCodeName*: cstring
     appName*: cstring
     appVersion*: cstring
@@ -402,18 +402,18 @@ type
     javaEnabled*: proc (): bool {.nimcall.}
     mimeTypes*: seq[ref TMimeType]
 
-  TPlugin* {.importc.} = object of TObject
+  TPlugin* {.importc.} = object of RootObj
     description*: cstring
     filename*: cstring
     name*: cstring
 
-  TMimeType* {.importc.} = object of TObject
+  TMimeType* {.importc.} = object of RootObj
     description*: cstring
     enabledPlugin*: ref TPlugin
     suffixes*: seq[cstring]
     `type`*: cstring
 
-  TLocationBar* {.importc.} = object of TObject
+  TLocationBar* {.importc.} = object of RootObj
     visible*: bool
   TMenuBar* = TLocationBar
   TPersonalBar* = TLocationBar
@@ -421,7 +421,7 @@ type
   TToolBar* = TLocationBar
   TStatusBar* = TLocationBar
 
-  TScreen* {.importc.} = object of TObject
+  TScreen* {.importc.} = object of RootObj
     availHeight*: int
     availWidth*: int
     colorDepth*: int
@@ -429,8 +429,8 @@ type
     pixelDepth*: int
     width*: int
 
-  TTimeOut* {.importc.} = object of TObject
-  TInterval* {.importc.} = object of TObject
+  TTimeOut* {.importc.} = object of RootObj
+  TInterval* {.importc.} = object of RootObj
 
 var
   window* {.importc, nodecl.}: ref TWindow
@@ -446,7 +446,7 @@ proc unescape*(uri: cstring): cstring {.importc, nodecl.}
 
 proc decodeURIComponent*(uri: cstring): cstring {.importc, nodecl.}
 proc encodeURIComponent*(uri: cstring): cstring {.importc, nodecl.}
-proc isFinite*(x: biggestFloat): bool {.importc, nodecl.}
-proc isNaN*(x: biggestFloat): bool {.importc, nodecl.}
-proc parseFloat*(s: cstring): biggestFloat {.importc, nodecl.}
+proc isFinite*(x: BiggestFloat): bool {.importc, nodecl.}
+proc isNaN*(x: BiggestFloat): bool {.importc, nodecl.}
+proc parseFloat*(s: cstring): BiggestFloat {.importc, nodecl.}
 proc parseInt*(s: cstring): int {.importc, nodecl.}

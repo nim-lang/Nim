@@ -1,8 +1,8 @@
 import asyncdispatch, asyncnet
 
 proc main {.async.} =
-  proc f: PFuture[seq[int]] {.async.} =
-    await newAsyncSocket().connect("www.google.com", TPort(80))
+  proc f: Future[seq[int]] {.async.} =
+    await newAsyncSocket().connect("www.google.com", Port(80))
   let x = await f()
 
 asyncCheck main()

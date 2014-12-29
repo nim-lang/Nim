@@ -1,7 +1,7 @@
 discard """
   line: 9
   errormsg: "'spawn' takes a call expression"
-  cmd: "nimrod $target --threads:on $options $file"
+  cmd: "nim $target --threads:on $options $file"
 """
 
 import threadpool

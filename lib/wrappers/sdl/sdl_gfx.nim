@@ -39,10 +39,10 @@ const                         # Some rates in Hz
 type 
   PFPSmanager* = ptr TFPSmanager
   TFPSmanager*{.final.} = object  # ---- Structures
-    framecount*: Uint32
+    framecount*: uint32
     rateticks*: float32
-    lastticks*: Uint32
-    rate*: Uint32
+    lastticks*: uint32
+    rate*: uint32
 
   PColorRGBA* = ptr TColorRGBA
   TColorRGBA*{.final.} = object 
@@ -79,102 +79,102 @@ proc framerateDelay*(manager: PFPSmanager){.cdecl,
   #
   # Note: all ___Color routines expect the color to be in format 0xRRGGBBAA 
   # Pixel 
-proc pixelColor*(dst: PSurface, x: int16, y: int16, color: Uint32): cint{.
+proc pixelColor*(dst: PSurface, x: int16, y: int16, color: uint32): cint{.
     cdecl, importc: "pixelColor", dynlib: gfxLibName.}
 proc pixelRGBA*(dst: PSurface, x: int16, y: int16, r: byte, g: byte, 
                 b: byte, a: byte): cint{.cdecl, importc: "pixelRGBA", 
     dynlib: gfxLibName.}
   # Horizontal line 
-proc hlineColor*(dst: PSurface, x1: int16, x2: int16, y: int16, color: Uint32): cint{.
+proc hlineColor*(dst: PSurface, x1: int16, x2: int16, y: int16, color: uint32): cint{.
     cdecl, importc: "hlineColor", dynlib: gfxLibName.}
 proc hlineRGBA*(dst: PSurface, x1: int16, x2: int16, y: int16, r: byte, 
                 g: byte, b: byte, a: byte): cint{.cdecl, importc: "hlineRGBA", 
     dynlib: gfxLibName.}
   # Vertical line 
-proc vlineColor*(dst: PSurface, x: int16, y1: int16, y2: int16, color: Uint32): cint{.
+proc vlineColor*(dst: PSurface, x: int16, y1: int16, y2: int16, color: uint32): cint{.
     cdecl, importc: "vlineColor", dynlib: gfxLibName.}
 proc vlineRGBA*(dst: PSurface, x: int16, y1: int16, y2: int16, r: byte, 
                 g: byte, b: byte, a: byte): cint{.cdecl, importc: "vlineRGBA", 
     dynlib: gfxLibName.}
   # Rectangle 
 proc rectangleColor*(dst: PSurface, x1: int16, y1: int16, x2: int16, 
-                     y2: int16, color: Uint32): cint{.cdecl, 
+                     y2: int16, color: uint32): cint{.cdecl, 
     importc: "rectangleColor", dynlib: gfxLibName.}
 proc rectangleRGBA*(dst: PSurface, x1: int16, y1: int16, x2: int16, 
                     y2: int16, r: byte, g: byte, b: byte, a: byte): cint{.
     cdecl, importc: "rectangleRGBA", dynlib: gfxLibName.}
   # Filled rectangle (Box) 
 proc boxColor*(dst: PSurface, x1: int16, y1: int16, x2: int16, y2: int16, 
-               color: Uint32): cint{.cdecl, importc: "boxColor", 
+               color: uint32): cint{.cdecl, importc: "boxColor", 
                                     dynlib: gfxLibName.}
 proc boxRGBA*(dst: PSurface, x1: int16, y1: int16, x2: int16, y2: int16, 
               r: byte, g: byte, b: byte, a: byte): cint{.cdecl, 
     importc: "boxRGBA", dynlib: gfxLibName.}
   # Line 
 proc lineColor*(dst: PSurface, x1: int16, y1: int16, x2: int16, y2: int16, 
-                color: Uint32): cint{.cdecl, importc: "lineColor", 
+                color: uint32): cint{.cdecl, importc: "lineColor", 
                                      dynlib: gfxLibName.}
 proc lineRGBA*(dst: PSurface, x1: int16, y1: int16, x2: int16, y2: int16, 
                r: byte, g: byte, b: byte, a: byte): cint{.cdecl, 
     importc: "lineRGBA", dynlib: gfxLibName.}
   # AA Line 
 proc aalineColor*(dst: PSurface, x1: int16, y1: int16, x2: int16, y2: int16, 
-                  color: Uint32): cint{.cdecl, importc: "aalineColor", 
+                  color: uint32): cint{.cdecl, importc: "aalineColor", 
                                        dynlib: gfxLibName.}
 proc aalineRGBA*(dst: PSurface, x1: int16, y1: int16, x2: int16, y2: int16, 
                  r: byte, g: byte, b: byte, a: byte): cint{.cdecl, 
     importc: "aalineRGBA", dynlib: gfxLibName.}
   # Circle 
-proc circleColor*(dst: PSurface, x: int16, y: int16, r: int16, color: Uint32): cint{.
+proc circleColor*(dst: PSurface, x: int16, y: int16, r: int16, color: uint32): cint{.
     cdecl, importc: "circleColor", dynlib: gfxLibName.}
 proc circleRGBA*(dst: PSurface, x: int16, y: int16, rad: int16, r: byte, 
                  g: byte, b: byte, a: byte): cint{.cdecl, 
     importc: "circleRGBA", dynlib: gfxLibName.}
   # AA Circle 
 proc aacircleColor*(dst: PSurface, x: int16, y: int16, r: int16, 
-                    color: Uint32): cint{.cdecl, importc: "aacircleColor", 
+                    color: uint32): cint{.cdecl, importc: "aacircleColor", 
     dynlib: gfxLibName.}
 proc aacircleRGBA*(dst: PSurface, x: int16, y: int16, rad: int16, r: byte, 
                    g: byte, b: byte, a: byte): cint{.cdecl, 
     importc: "aacircleRGBA", dynlib: gfxLibName.}
   # Filled Circle 
 proc filledCircleColor*(dst: PSurface, x: int16, y: int16, r: int16, 
-                        color: Uint32): cint{.cdecl, 
+                        color: uint32): cint{.cdecl, 
     importc: "filledCircleColor", dynlib: gfxLibName.}
 proc filledCircleRGBA*(dst: PSurface, x: int16, y: int16, rad: int16, 
                        r: byte, g: byte, b: byte, a: byte): cint{.cdecl, 
     importc: "filledCircleRGBA", dynlib: gfxLibName.}
   # Ellipse 
 proc ellipseColor*(dst: PSurface, x: int16, y: int16, rx: int16, ry: int16, 
-                   color: Uint32): cint{.cdecl, importc: "ellipseColor", 
+                   color: uint32): cint{.cdecl, importc: "ellipseColor", 
                                         dynlib: gfxLibName.}
 proc ellipseRGBA*(dst: PSurface, x: int16, y: int16, rx: int16, ry: int16, 
                   r: byte, g: byte, b: byte, a: byte): cint{.cdecl, 
     importc: "ellipseRGBA", dynlib: gfxLibName.}
   # AA Ellipse 
 proc aaellipseColor*(dst: PSurface, xc: int16, yc: int16, rx: int16, 
-                     ry: int16, color: Uint32): cint{.cdecl, 
+                     ry: int16, color: uint32): cint{.cdecl, 
     importc: "aaellipseColor", dynlib: gfxLibName.}
 proc aaellipseRGBA*(dst: PSurface, x: int16, y: int16, rx: int16, ry: int16, 
                     r: byte, g: byte, b: byte, a: byte): cint{.cdecl, 
     importc: "aaellipseRGBA", dynlib: gfxLibName.}
   # Filled Ellipse 
 proc filledEllipseColor*(dst: PSurface, x: int16, y: int16, rx: int16, 
-                         ry: int16, color: Uint32): cint{.cdecl, 
+                         ry: int16, color: uint32): cint{.cdecl, 
     importc: "filledEllipseColor", dynlib: gfxLibName.}
 proc filledEllipseRGBA*(dst: PSurface, x: int16, y: int16, rx: int16, 
                         ry: int16, r: byte, g: byte, b: byte, a: byte): cint{.
     cdecl, importc: "filledEllipseRGBA", dynlib: gfxLibName.}
   # Pie
 proc pieColor*(dst: PSurface, x: int16, y: int16, rad: int16, start: int16, 
-               finish: int16, color: Uint32): cint{.cdecl, importc: "pieColor", 
+               finish: int16, color: uint32): cint{.cdecl, importc: "pieColor", 
     dynlib: gfxLibName.}
 proc pieRGBA*(dst: PSurface, x: int16, y: int16, rad: int16, start: int16, 
               finish: int16, r: byte, g: byte, b: byte, a: byte): cint{.
     cdecl, importc: "pieRGBA", dynlib: gfxLibName.}
   # Filled Pie
 proc filledPieColor*(dst: PSurface, x: int16, y: int16, rad: int16, 
-                     start: int16, finish: int16, color: Uint32): cint{.cdecl, 
+                     start: int16, finish: int16, color: uint32): cint{.cdecl, 
     importc: "filledPieColor", dynlib: gfxLibName.}
 proc filledPieRGBA*(dst: PSurface, x: int16, y: int16, rad: int16, 
                     start: int16, finish: int16, r: byte, g: byte, b: byte, 
@@ -182,14 +182,14 @@ proc filledPieRGBA*(dst: PSurface, x: int16, y: int16, rad: int16,
                                     dynlib: gfxLibName.}
   # Trigon
 proc trigonColor*(dst: PSurface, x1: int16, y1: int16, x2: int16, y2: int16, 
-                  x3: int16, y3: int16, color: Uint32): cint{.cdecl, 
+                  x3: int16, y3: int16, color: uint32): cint{.cdecl, 
     importc: "trigonColor", dynlib: gfxLibName.}
 proc trigonRGBA*(dst: PSurface, x1: int16, y1: int16, x2: int16, y2: int16, 
                  x3: int16, y3: int16, r: byte, g: byte, b: byte, a: byte): cint{.
     cdecl, importc: "trigonRGBA", dynlib: gfxLibName.}
   # AA-Trigon
 proc aatrigonColor*(dst: PSurface, x1: int16, y1: int16, x2: int16, 
-                    y2: int16, x3: int16, y3: int16, color: Uint32): cint{.
+                    y2: int16, x3: int16, y3: int16, color: uint32): cint{.
     cdecl, importc: "aatrigonColor", dynlib: gfxLibName.}
 proc aatrigonRGBA*(dst: PSurface, x1: int16, y1: int16, x2: int16, 
                    y2: int16, x3: int16, y3: int16, r: byte, g: byte, 
@@ -197,7 +197,7 @@ proc aatrigonRGBA*(dst: PSurface, x1: int16, y1: int16, x2: int16,
     dynlib: gfxLibName.}
   # Filled Trigon
 proc filledTrigonColor*(dst: PSurface, x1: int16, y1: int16, x2: int16, 
-                        y2: int16, x3: int16, y3: int16, color: Uint32): cint{.
+                        y2: int16, x3: int16, y3: int16, color: uint32): cint{.
     cdecl, importc: "filledTrigonColor", dynlib: gfxLibName.}
 proc filledTrigonRGBA*(dst: PSurface, x1: int16, y1: int16, x2: int16, 
                        y2: int16, x3: int16, y3: int16, r: byte, g: byte, 
@@ -205,21 +205,21 @@ proc filledTrigonRGBA*(dst: PSurface, x1: int16, y1: int16, x2: int16,
     importc: "filledTrigonRGBA", dynlib: gfxLibName.}
   # Polygon
 proc polygonColor*(dst: PSurface, vx: ptr int16, vy: ptr int16, n: cint, 
-                   color: Uint32): cint{.cdecl, importc: "polygonColor", 
+                   color: uint32): cint{.cdecl, importc: "polygonColor", 
                                         dynlib: gfxLibName.}
 proc polygonRGBA*(dst: PSurface, vx: ptr int16, vy: ptr int16, n: cint, r: byte, 
                   g: byte, b: byte, a: byte): cint{.cdecl, 
     importc: "polygonRGBA", dynlib: gfxLibName.}
   # AA-Polygon
 proc aapolygonColor*(dst: PSurface, vx: ptr int16, vy: ptr int16, n: cint, 
-                     color: Uint32): cint{.cdecl, importc: "aapolygonColor", 
+                     color: uint32): cint{.cdecl, importc: "aapolygonColor", 
     dynlib: gfxLibName.}
 proc aapolygonRGBA*(dst: PSurface, vx: ptr int16, vy: ptr int16, n: cint, r: byte, 
                     g: byte, b: byte, a: byte): cint{.cdecl, 
     importc: "aapolygonRGBA", dynlib: gfxLibName.}
   # Filled Polygon
 proc filledPolygonColor*(dst: PSurface, vx: ptr int16, vy: ptr int16, n: cint, 
-                         color: Uint32): cint{.cdecl, 
+                         color: uint32): cint{.cdecl, 
     importc: "filledPolygonColor", dynlib: gfxLibName.}
 proc filledPolygonRGBA*(dst: PSurface, vx: ptr int16, vy: ptr int16, n: cint, 
                         r: byte, g: byte, b: byte, a: byte): cint{.cdecl, 
@@ -227,23 +227,23 @@ proc filledPolygonRGBA*(dst: PSurface, vx: ptr int16, vy: ptr int16, n: cint,
   # Bezier
   # s = number of steps
 proc bezierColor*(dst: PSurface, vx: ptr int16, vy: ptr int16, n: cint, s: cint, 
-                  color: Uint32): cint{.cdecl, importc: "bezierColor", 
+                  color: uint32): cint{.cdecl, importc: "bezierColor", 
                                        dynlib: gfxLibName.}
 proc bezierRGBA*(dst: PSurface, vx: ptr int16, vy: ptr int16, n: cint, s: cint, 
                  r: byte, g: byte, b: byte, a: byte): cint{.cdecl, 
     importc: "bezierRGBA", dynlib: gfxLibName.}
   # Characters/Strings
-proc characterColor*(dst: PSurface, x: int16, y: int16, c: char, color: Uint32): cint{.
+proc characterColor*(dst: PSurface, x: int16, y: int16, c: char, color: uint32): cint{.
     cdecl, importc: "characterColor", dynlib: gfxLibName.}
 proc characterRGBA*(dst: PSurface, x: int16, y: int16, c: char, r: byte, 
                     g: byte, b: byte, a: byte): cint{.cdecl, 
     importc: "characterRGBA", dynlib: gfxLibName.}
-proc stringColor*(dst: PSurface, x: int16, y: int16, c: cstring, color: Uint32): cint{.
+proc stringColor*(dst: PSurface, x: int16, y: int16, c: cstring, color: uint32): cint{.
     cdecl, importc: "stringColor", dynlib: gfxLibName.}
 proc stringRGBA*(dst: PSurface, x: int16, y: int16, c: cstring, r: byte, 
                  g: byte, b: byte, a: byte): cint{.cdecl, 
     importc: "stringRGBA", dynlib: gfxLibName.}
-proc gfxPrimitivesSetFont*(fontdata: Pointer, cw: cint, ch: cint){.cdecl, 
+proc gfxPrimitivesSetFont*(fontdata: pointer, cw: cint, ch: cint){.cdecl, 
     importc: "gfxPrimitivesSetFont", dynlib: gfxLibName.}
   #
   #
@@ -271,132 +271,132 @@ proc imageFilterMMXon*(){.cdecl, importc: "SDL_imageFilterMMXon",
   #  -1   Error (internal error, parameter error)
   #
   #  SDL_imageFilterAdd: D = saturation255(S1 + S2)
-proc imageFilterAdd*(Src1: cstring, Src2: cstring, Dest: cstring, len: cint): cint{.
+proc imageFilterAdd*(src1: cstring, src2: cstring, dest: cstring, len: cint): cint{.
     cdecl, importc: "SDL_imageFilterAdd", dynlib: gfxLibName.}
   #  SDL_imageFilterMean: D = S1/2 + S2/2
-proc imageFilterMean*(Src1: cstring, Src2: cstring, Dest: cstring, len: cint): cint{.
+proc imageFilterMean*(src1: cstring, src2: cstring, dest: cstring, len: cint): cint{.
     cdecl, importc: "SDL_imageFilterMean", dynlib: gfxLibName.}
   #  SDL_imageFilterSub: D = saturation0(S1 - S2)
-proc imageFilterSub*(Src1: cstring, Src2: cstring, Dest: cstring, len: cint): cint{.
+proc imageFilterSub*(src1: cstring, src2: cstring, dest: cstring, len: cint): cint{.
     cdecl, importc: "SDL_imageFilterSub", dynlib: gfxLibName.}
   #  SDL_imageFilterAbsDiff: D = | S1 - S2 |
-proc imageFilterAbsDiff*(Src1: cstring, Src2: cstring, Dest: cstring, len: cint): cint{.
+proc imageFilterAbsDiff*(src1: cstring, src2: cstring, dest: cstring, len: cint): cint{.
     cdecl, importc: "SDL_imageFilterAbsDiff", dynlib: gfxLibName.}
   #  SDL_imageFilterMult: D = saturation(S1 * S2)
-proc imageFilterMult*(Src1: cstring, Src2: cstring, Dest: cstring, len: cint): cint{.
+proc imageFilterMult*(src1: cstring, src2: cstring, dest: cstring, len: cint): cint{.
     cdecl, importc: "SDL_imageFilterMult", dynlib: gfxLibName.}
   #  SDL_imageFilterMultNor: D = S1 * S2   (non-MMX)
-proc imageFilterMultNor*(Src1: cstring, Src2: cstring, Dest: cstring, len: cint): cint{.
+proc imageFilterMultNor*(src1: cstring, src2: cstring, dest: cstring, len: cint): cint{.
     cdecl, importc: "SDL_imageFilterMultNor", dynlib: gfxLibName.}
   #  SDL_imageFilterMultDivby2: D = saturation255(S1/2 * S2)
-proc imageFilterMultDivby2*(Src1: cstring, Src2: cstring, Dest: cstring, 
+proc imageFilterMultDivby2*(src1: cstring, src2: cstring, dest: cstring, 
                             len: cint): cint{.cdecl, 
     importc: "SDL_imageFilterMultDivby2", dynlib: gfxLibName.}
   #  SDL_imageFilterMultDivby4: D = saturation255(S1/2 * S2/2)
-proc imageFilterMultDivby4*(Src1: cstring, Src2: cstring, Dest: cstring, 
+proc imageFilterMultDivby4*(src1: cstring, src2: cstring, dest: cstring, 
                             len: cint): cint{.cdecl, 
     importc: "SDL_imageFilterMultDivby4", dynlib: gfxLibName.}
   #  SDL_imageFilterBitAnd: D = S1 & S2
-proc imageFilterBitAnd*(Src1: cstring, Src2: cstring, Dest: cstring, len: cint): cint{.
+proc imageFilterBitAnd*(src1: cstring, src2: cstring, dest: cstring, len: cint): cint{.
     cdecl, importc: "SDL_imageFilterBitAnd", dynlib: gfxLibName.}
   #  SDL_imageFilterBitOr: D = S1 | S2
-proc imageFilterBitOr*(Src1: cstring, Src2: cstring, Dest: cstring, len: cint): cint{.
+proc imageFilterBitOr*(src1: cstring, src2: cstring, dest: cstring, len: cint): cint{.
     cdecl, importc: "SDL_imageFilterBitOr", dynlib: gfxLibName.}
   #  SDL_imageFilterDiv: D = S1 / S2   (non-MMX)
-proc imageFilterDiv*(Src1: cstring, Src2: cstring, Dest: cstring, len: cint): cint{.
+proc imageFilterDiv*(src1: cstring, src2: cstring, dest: cstring, len: cint): cint{.
     cdecl, importc: "SDL_imageFilterDiv", dynlib: gfxLibName.}
   #  SDL_imageFilterBitNegation: D = !S
-proc imageFilterBitNegation*(Src1: cstring, Dest: cstring, len: cint): cint{.
+proc imageFilterBitNegation*(src1: cstring, dest: cstring, len: cint): cint{.
     cdecl, importc: "SDL_imageFilterBitNegation", dynlib: gfxLibName.}
   #  SDL_imageFilterAddByte: D = saturation255(S + C)
-proc imageFilterAddByte*(Src1: cstring, Dest: cstring, len: cint, C: char): cint{.
+proc imageFilterAddByte*(src1: cstring, dest: cstring, len: cint, c: char): cint{.
     cdecl, importc: "SDL_imageFilterAddByte", dynlib: gfxLibName.}
   #  SDL_imageFilterAddUint: D = saturation255(S + (uint)C)
-proc imageFilterAddUint*(Src1: cstring, Dest: cstring, len: cint, C: cint): cint{.
+proc imageFilterAddUint*(src1: cstring, dest: cstring, len: cint, c: cint): cint{.
     cdecl, importc: "SDL_imageFilterAddUint", dynlib: gfxLibName.}
   #  SDL_imageFilterAddByteToHalf: D = saturation255(S/2 + C)
-proc imageFilterAddByteToHalf*(Src1: cstring, Dest: cstring, len: cint, C: char): cint{.
+proc imageFilterAddByteToHalf*(src1: cstring, dest: cstring, len: cint, c: char): cint{.
     cdecl, importc: "SDL_imageFilterAddByteToHalf", dynlib: gfxLibName.}
   #  SDL_imageFilterSubByte: D = saturation0(S - C)
-proc imageFilterSubByte*(Src1: cstring, Dest: cstring, len: cint, C: char): cint{.
+proc imageFilterSubByte*(src1: cstring, dest: cstring, len: cint, c: char): cint{.
     cdecl, importc: "SDL_imageFilterSubByte", dynlib: gfxLibName.}
   #  SDL_imageFilterSubUint: D = saturation0(S - (uint)C)
-proc imageFilterSubUint*(Src1: cstring, Dest: cstring, len: cint, C: cint): cint{.
+proc imageFilterSubUint*(src1: cstring, dest: cstring, len: cint, c: cint): cint{.
     cdecl, importc: "SDL_imageFilterSubUint", dynlib: gfxLibName.}
   #  SDL_imageFilterShiftRight: D = saturation0(S >> N)
-proc imageFilterShiftRight*(Src1: cstring, Dest: cstring, len: cint, N: char): cint{.
+proc imageFilterShiftRight*(src1: cstring, dest: cstring, len: cint, n: char): cint{.
     cdecl, importc: "SDL_imageFilterShiftRight", dynlib: gfxLibName.}
   #  SDL_imageFilterShiftRightUint: D = saturation0((uint)S >> N)
-proc imageFilterShiftRightUint*(Src1: cstring, Dest: cstring, len: cint, N: char): cint{.
+proc imageFilterShiftRightUint*(src1: cstring, dest: cstring, len: cint, n: char): cint{.
     cdecl, importc: "SDL_imageFilterShiftRightUint", dynlib: gfxLibName.}
   #  SDL_imageFilterMultByByte: D = saturation255(S * C)
-proc imageFilterMultByByte*(Src1: cstring, Dest: cstring, len: cint, C: char): cint{.
+proc imageFilterMultByByte*(src1: cstring, dest: cstring, len: cint, c: char): cint{.
     cdecl, importc: "SDL_imageFilterMultByByte", dynlib: gfxLibName.}
   #  SDL_imageFilterShiftRightAndMultByByte: D = saturation255((S >> N) * C)
-proc imageFilterShiftRightAndMultByByte*(Src1: cstring, Dest: cstring, len: cint, 
-    N: char, C: char): cint{.cdecl, 
+proc imageFilterShiftRightAndMultByByte*(src1: cstring, dest: cstring, len: cint, 
+    n: char, c: char): cint{.cdecl, 
                             importc: "SDL_imageFilterShiftRightAndMultByByte", 
                             dynlib: gfxLibName.}
   #  SDL_imageFilterShiftLeftByte: D = (S << N)
-proc imageFilterShiftLeftByte*(Src1: cstring, Dest: cstring, len: cint, N: char): cint{.
+proc imageFilterShiftLeftByte*(src1: cstring, dest: cstring, len: cint, n: char): cint{.
     cdecl, importc: "SDL_imageFilterShiftLeftByte", dynlib: gfxLibName.}
   #  SDL_imageFilterShiftLeftUint: D = ((uint)S << N)
-proc imageFilterShiftLeftUint*(Src1: cstring, Dest: cstring, len: cint, N: char): cint{.
+proc imageFilterShiftLeftUint*(src1: cstring, dest: cstring, len: cint, n: char): cint{.
     cdecl, importc: "SDL_imageFilterShiftLeftUint", dynlib: gfxLibName.}
   #  SDL_imageFilterShiftLeft: D = saturation255(S << N)
-proc imageFilterShiftLeft*(Src1: cstring, Dest: cstring, len: cint, N: char): cint{.
+proc imageFilterShiftLeft*(src1: cstring, dest: cstring, len: cint, n: char): cint{.
     cdecl, importc: "SDL_imageFilterShiftLeft", dynlib: gfxLibName.}
   #  SDL_imageFilterBinarizeUsingThreshold: D = S >= T ? 255:0
-proc imageFilterBinarizeUsingThreshold*(Src1: cstring, Dest: cstring, len: cint, 
-                                        T: char): cint{.cdecl, 
+proc imageFilterBinarizeUsingThreshold*(src1: cstring, dest: cstring, len: cint, 
+                                        t: char): cint{.cdecl, 
     importc: "SDL_imageFilterBinarizeUsingThreshold", dynlib: gfxLibName.}
   #  SDL_imageFilterClipToRange: D = (S >= Tmin) & (S <= Tmax) 255:0
-proc imageFilterClipToRange*(Src1: cstring, Dest: cstring, len: cint, Tmin: int8, 
-                             Tmax: int8): cint{.cdecl, 
+proc imageFilterClipToRange*(src1: cstring, dest: cstring, len: cint, tmin: int8, 
+                             tmax: int8): cint{.cdecl, 
     importc: "SDL_imageFilterClipToRange", dynlib: gfxLibName.}
   #  SDL_imageFilterNormalizeLinear: D = saturation255((Nmax - Nmin)/(Cmax - Cmin)*(S - Cmin) + Nmin)
-proc imageFilterNormalizeLinear*(Src1: cstring, Dest: cstring, len: cint, 
-                                 Cmin: cint, Cmax: cint, Nmin: cint, Nmax: cint): cint{.
+proc imageFilterNormalizeLinear*(src1: cstring, dest: cstring, len: cint, 
+                                 cmin: cint, cmax: cint, nmin: cint, nmax: cint): cint{.
     cdecl, importc: "SDL_imageFilterNormalizeLinear", dynlib: gfxLibName.}
   # !!! NO C-ROUTINE FOR THESE FUNCTIONS YET !!! 
   #  SDL_imageFilterConvolveKernel3x3Divide: Dij = saturation0and255( ... )
-proc imageFilterConvolveKernel3x3Divide*(Src: cstring, Dest: cstring, rows: cint, 
-    columns: cint, Kernel: pointer, Divisor: int8): cint{.cdecl, 
+proc imageFilterConvolveKernel3x3Divide*(src: cstring, dest: cstring, rows: cint, 
+    columns: cint, kernel: pointer, divisor: int8): cint{.cdecl, 
     importc: "SDL_imageFilterConvolveKernel3x3Divide", dynlib: gfxLibName.}
   #  SDL_imageFilterConvolveKernel5x5Divide: Dij = saturation0and255( ... )
-proc imageFilterConvolveKernel5x5Divide*(Src: cstring, Dest: cstring, rows: cint, 
-    columns: cint, Kernel: pointer, Divisor: int8): cint{.cdecl, 
+proc imageFilterConvolveKernel5x5Divide*(src: cstring, dest: cstring, rows: cint, 
+    columns: cint, kernel: pointer, divisor: int8): cint{.cdecl, 
     importc: "SDL_imageFilterConvolveKernel5x5Divide", dynlib: gfxLibName.}
   #  SDL_imageFilterConvolveKernel7x7Divide: Dij = saturation0and255( ... )
-proc imageFilterConvolveKernel7x7Divide*(Src: cstring, Dest: cstring, rows: cint, 
-    columns: cint, Kernel: pointer, Divisor: int8): cint{.cdecl, 
+proc imageFilterConvolveKernel7x7Divide*(src: cstring, dest: cstring, rows: cint, 
+    columns: cint, kernel: pointer, divisor: int8): cint{.cdecl, 
     importc: "SDL_imageFilterConvolveKernel7x7Divide", dynlib: gfxLibName.}
   #  SDL_imageFilterConvolveKernel9x9Divide: Dij = saturation0and255( ... )
-proc imageFilterConvolveKernel9x9Divide*(Src: cstring, Dest: cstring, rows: cint, 
-    columns: cint, Kernel: pointer, Divisor: int8): cint{.cdecl, 
+proc imageFilterConvolveKernel9x9Divide*(src: cstring, dest: cstring, rows: cint, 
+    columns: cint, kernel: pointer, divisor: int8): cint{.cdecl, 
     importc: "SDL_imageFilterConvolveKernel9x9Divide", dynlib: gfxLibName.}
   #  SDL_imageFilterConvolveKernel3x3ShiftRight: Dij = saturation0and255( ... )
-proc imageFilterConvolveKernel3x3ShiftRight*(Src: cstring, Dest: cstring, 
-    rows: cint, columns: cint, Kernel: pointer, NRightShift: char): cint{.cdecl, 
+proc imageFilterConvolveKernel3x3ShiftRight*(src: cstring, dest: cstring, 
+    rows: cint, columns: cint, kernel: pointer, nRightShift: char): cint{.cdecl, 
     importc: "SDL_imageFilterConvolveKernel3x3ShiftRight", dynlib: gfxLibName.}
   #  SDL_imageFilterConvolveKernel5x5ShiftRight: Dij = saturation0and255( ... )
-proc imageFilterConvolveKernel5x5ShiftRight*(Src: cstring, Dest: cstring, 
-    rows: cint, columns: cint, Kernel: pointer, NRightShift: char): cint{.cdecl, 
+proc imageFilterConvolveKernel5x5ShiftRight*(src: cstring, dest: cstring, 
+    rows: cint, columns: cint, kernel: pointer, nRightShift: char): cint{.cdecl, 
     importc: "SDL_imageFilterConvolveKernel5x5ShiftRight", dynlib: gfxLibName.}
   #  SDL_imageFilterConvolveKernel7x7ShiftRight: Dij = saturation0and255( ... )
-proc imageFilterConvolveKernel7x7ShiftRight*(Src: cstring, Dest: cstring, 
-    rows: cint, columns: cint, Kernel: pointer, NRightShift: char): cint{.cdecl, 
+proc imageFilterConvolveKernel7x7ShiftRight*(src: cstring, dest: cstring, 
+    rows: cint, columns: cint, kernel: pointer, nRightShift: char): cint{.cdecl, 
     importc: "SDL_imageFilterConvolveKernel7x7ShiftRight", dynlib: gfxLibName.}
   #  SDL_imageFilterConvolveKernel9x9ShiftRight: Dij = saturation0and255( ... )
-proc imageFilterConvolveKernel9x9ShiftRight*(Src: cstring, Dest: cstring, 
-    rows: cint, columns: cint, Kernel: pointer, NRightShift: char): cint{.cdecl, 
+proc imageFilterConvolveKernel9x9ShiftRight*(src: cstring, dest: cstring, 
+    rows: cint, columns: cint, kernel: pointer, nRightShift: char): cint{.cdecl, 
     importc: "SDL_imageFilterConvolveKernel9x9ShiftRight", dynlib: gfxLibName.}
   #  SDL_imageFilterSobelX: Dij = saturation255( ... )
-proc imageFilterSobelX*(Src: cstring, Dest: cstring, rows: cint, columns: cint): cint{.
+proc imageFilterSobelX*(src: cstring, dest: cstring, rows: cint, columns: cint): cint{.
     cdecl, importc: "SDL_imageFilterSobelX", dynlib: gfxLibName.}
   #  SDL_imageFilterSobelXShiftRight: Dij = saturation255( ... )
-proc imageFilterSobelXShiftRight*(Src: cstring, Dest: cstring, rows: cint, 
-                                  columns: cint, NRightShift: char): cint{.cdecl, 
+proc imageFilterSobelXShiftRight*(src: cstring, dest: cstring, rows: cint, 
+                                  columns: cint, nRightShift: char): cint{.cdecl, 
     importc: "SDL_imageFilterSobelXShiftRight", dynlib: gfxLibName.}
   # Align/restore stack to 32 byte boundary -- Functionality untested! --
 proc imageFilterAlignStack*(){.cdecl, importc: "SDL_imageFilterAlignStack", 

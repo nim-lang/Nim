@@ -46,321 +46,321 @@ const
   constIUP_VERSION_DATE* = "2009/07/18"
 
 type
-  Ihandle {.pure.} = object
+  Ihandle = object
   PIhandle* = ptr Ihandle
 
   Icallback* = proc (arg: PIhandle): cint {.cdecl.}
 
-#                      pre-definided dialogs
-proc FileDlg*: PIhandle {.importc: "IupFileDlg", dynlib: dllname, cdecl.}
-proc MessageDlg*: PIhandle {.importc: "IupMessageDlg", dynlib: dllname, cdecl.}
-proc ColorDlg*: PIhandle {.importc: "IupColorDlg", dynlib: dllname, cdecl.}
-proc FontDlg*: PIhandle {.importc: "IupFontDlg", dynlib: dllname, cdecl.}
+#                      pre-defineded dialogs
+proc fileDlg*: PIhandle {.importc: "IupFileDlg", dynlib: dllname, cdecl.}
+proc messageDlg*: PIhandle {.importc: "IupMessageDlg", dynlib: dllname, cdecl.}
+proc colorDlg*: PIhandle {.importc: "IupColorDlg", dynlib: dllname, cdecl.}
+proc fontDlg*: PIhandle {.importc: "IupFontDlg", dynlib: dllname, cdecl.}
 
-proc GetFile*(arq: cstring): cint {.
+proc getFile*(arq: cstring): cint {.
   importc: "IupGetFile", dynlib: dllname, cdecl.}
-proc Message*(title, msg: cstring) {.
+proc message*(title, msg: cstring) {.
   importc: "IupMessage", dynlib: dllname, cdecl.}
-proc Messagef*(title, format: cstring) {.
+proc messagef*(title, format: cstring) {.
   importc: "IupMessagef", dynlib: dllname, cdecl, varargs.}
-proc Alarm*(title, msg, b1, b2, b3: cstring): cint {.
+proc alarm*(title, msg, b1, b2, b3: cstring): cint {.
   importc: "IupAlarm", dynlib: dllname, cdecl.}
-proc Scanf*(format: cstring): cint {.
+proc scanf*(format: cstring): cint {.
   importc: "IupScanf", dynlib: dllname, cdecl, varargs.}
-proc ListDialog*(theType: cint, title: cstring, size: cint, 
-                 list: cstringArray, op, max_col, max_lin: cint, 
+proc listDialog*(theType: cint, title: cstring, size: cint, 
+                 list: cstringArray, op, maxCol, maxLin: cint, 
                  marks: ptr cint): cint {.
                  importc: "IupListDialog", dynlib: dllname, cdecl.}
-proc GetText*(title, text: cstring): cint {.
+proc getText*(title, text: cstring): cint {.
   importc: "IupGetText", dynlib: dllname, cdecl.}
-proc GetColor*(x, y: cint, r, g, b: var byte): cint {.
+proc getColor*(x, y: cint, r, g, b: var byte): cint {.
   importc: "IupGetColor", dynlib: dllname, cdecl.}
 
 type
-  Iparamcb* = proc (dialog: PIhandle, param_index: cint, 
-                    user_data: pointer): cint {.cdecl.}
+  Iparamcb* = proc (dialog: PIhandle, paramIndex: cint, 
+                    userData: pointer): cint {.cdecl.}
 
-proc GetParam*(title: cstring, action: Iparamcb, user_data: pointer, 
+proc getParam*(title: cstring, action: Iparamcb, userData: pointer, 
                format: cstring): cint {.
                importc: "IupGetParam", cdecl, varargs, dynlib: dllname.}
-proc GetParamv*(title: cstring, action: Iparamcb, user_data: pointer, 
-                format: cstring, param_count, param_extra: cint, 
-                param_data: pointer): cint {.
+proc getParamv*(title: cstring, action: Iparamcb, userData: pointer, 
+                format: cstring, paramCount, paramExtra: cint, 
+                paramData: pointer): cint {.
                 importc: "IupGetParamv", cdecl, dynlib: dllname.}
 
 
 #                      Functions
 
-proc Open*(argc: ptr cint, argv: ptr cstringArray): cint {.
+proc open*(argc: ptr cint, argv: ptr cstringArray): cint {.
   importc: "IupOpen", cdecl, dynlib: dllname.}
-proc Close*() {.importc: "IupClose", cdecl, dynlib: dllname.}
-proc ImageLibOpen*() {.importc: "IupImageLibOpen", cdecl, dynlib: dllname.}
+proc close*() {.importc: "IupClose", cdecl, dynlib: dllname.}
+proc imageLibOpen*() {.importc: "IupImageLibOpen", cdecl, dynlib: dllname.}
 
-proc MainLoop*(): cint {.importc: "IupMainLoop", cdecl, dynlib: dllname, 
+proc mainLoop*(): cint {.importc: "IupMainLoop", cdecl, dynlib: dllname, 
                          discardable.}
-proc LoopStep*(): cint {.importc: "IupLoopStep", cdecl, dynlib: dllname,
+proc loopStep*(): cint {.importc: "IupLoopStep", cdecl, dynlib: dllname,
                          discardable.}
-proc MainLoopLevel*(): cint {.importc: "IupMainLoopLevel", cdecl, 
+proc mainLoopLevel*(): cint {.importc: "IupMainLoopLevel", cdecl, 
                               dynlib: dllname, discardable.}
-proc Flush*() {.importc: "IupFlush", cdecl, dynlib: dllname.}
-proc ExitLoop*() {.importc: "IupExitLoop", cdecl, dynlib: dllname.}
+proc flush*() {.importc: "IupFlush", cdecl, dynlib: dllname.}
+proc exitLoop*() {.importc: "IupExitLoop", cdecl, dynlib: dllname.}
 
-proc Update*(ih: PIhandle) {.importc: "IupUpdate", cdecl, dynlib: dllname.}
-proc UpdateChildren*(ih: PIhandle) {.importc: "IupUpdateChildren", cdecl, dynlib: dllname.}
-proc Redraw*(ih: PIhandle, children: cint) {.importc: "IupRedraw", cdecl, dynlib: dllname.}
-proc Refresh*(ih: PIhandle) {.importc: "IupRefresh", cdecl, dynlib: dllname.}
+proc update*(ih: PIhandle) {.importc: "IupUpdate", cdecl, dynlib: dllname.}
+proc updateChildren*(ih: PIhandle) {.importc: "IupUpdateChildren", cdecl, dynlib: dllname.}
+proc redraw*(ih: PIhandle, children: cint) {.importc: "IupRedraw", cdecl, dynlib: dllname.}
+proc refresh*(ih: PIhandle) {.importc: "IupRefresh", cdecl, dynlib: dllname.}
 
-proc MapFont*(iupfont: cstring): cstring {.importc: "IupMapFont", cdecl, dynlib: dllname.}
-proc UnMapFont*(driverfont: cstring): cstring {.importc: "IupUnMapFont", cdecl, dynlib: dllname.}
-proc Help*(url: cstring): cint {.importc: "IupHelp", cdecl, dynlib: dllname.}
-proc Load*(filename: cstring): cstring {.importc: "IupLoad", cdecl, dynlib: dllname.}
+proc mapFont*(iupfont: cstring): cstring {.importc: "IupMapFont", cdecl, dynlib: dllname.}
+proc unMapFont*(driverfont: cstring): cstring {.importc: "IupUnMapFont", cdecl, dynlib: dllname.}
+proc help*(url: cstring): cint {.importc: "IupHelp", cdecl, dynlib: dllname.}
+proc load*(filename: cstring): cstring {.importc: "IupLoad", cdecl, dynlib: dllname.}
 
-proc IupVersion*(): cstring {.importc: "IupVersion", cdecl, dynlib: dllname.}
-proc IupVersionDate*(): cstring {.importc: "IupVersionDate", cdecl, dynlib: dllname.}
-proc IupVersionNumber*(): cint {.importc: "IupVersionNumber", cdecl, dynlib: dllname.}
-proc SetLanguage*(lng: cstring) {.importc: "IupSetLanguage", cdecl, dynlib: dllname.}
-proc GetLanguage*(): cstring {.importc: "IupGetLanguage", cdecl, dynlib: dllname.}
+proc iupVersion*(): cstring {.importc: "IupVersion", cdecl, dynlib: dllname.}
+proc iupVersionDate*(): cstring {.importc: "IupVersionDate", cdecl, dynlib: dllname.}
+proc iupVersionNumber*(): cint {.importc: "IupVersionNumber", cdecl, dynlib: dllname.}
+proc setLanguage*(lng: cstring) {.importc: "IupSetLanguage", cdecl, dynlib: dllname.}
+proc getLanguage*(): cstring {.importc: "IupGetLanguage", cdecl, dynlib: dllname.}
 
-proc Destroy*(ih: PIhandle) {.importc: "IupDestroy", cdecl, dynlib: dllname.}
-proc Detach*(child: PIhandle) {.importc: "IupDetach", cdecl, dynlib: dllname.}
-proc Append*(ih, child: PIhandle): PIhandle {.
+proc destroy*(ih: PIhandle) {.importc: "IupDestroy", cdecl, dynlib: dllname.}
+proc detach*(child: PIhandle) {.importc: "IupDetach", cdecl, dynlib: dllname.}
+proc append*(ih, child: PIhandle): PIhandle {.
   importc: "IupAppend", cdecl, dynlib: dllname, discardable.}
-proc Insert*(ih, ref_child, child: PIhandle): PIhandle {.
+proc insert*(ih, refChild, child: PIhandle): PIhandle {.
   importc: "IupInsert", cdecl, dynlib: dllname, discardable.}
-proc GetChild*(ih: PIhandle, pos: cint): PIhandle {.
+proc getChild*(ih: PIhandle, pos: cint): PIhandle {.
   importc: "IupGetChild", cdecl, dynlib: dllname.}
-proc GetChildPos*(ih, child: PIhandle): cint {.
+proc getChildPos*(ih, child: PIhandle): cint {.
   importc: "IupGetChildPos", cdecl, dynlib: dllname.}
-proc GetChildCount*(ih: PIhandle): cint {.
+proc getChildCount*(ih: PIhandle): cint {.
   importc: "IupGetChildCount", cdecl, dynlib: dllname.}
-proc GetNextChild*(ih, child: PIhandle): PIhandle {.
+proc getNextChild*(ih, child: PIhandle): PIhandle {.
   importc: "IupGetNextChild", cdecl, dynlib: dllname.}
-proc GetBrother*(ih: PIhandle): PIhandle {.
+proc getBrother*(ih: PIhandle): PIhandle {.
   importc: "IupGetBrother", cdecl, dynlib: dllname.}
-proc GetParent*(ih: PIhandle): PIhandle {.
+proc getParent*(ih: PIhandle): PIhandle {.
   importc: "IupGetParent", cdecl, dynlib: dllname.}
-proc GetDialog*(ih: PIhandle): PIhandle {.
+proc getDialog*(ih: PIhandle): PIhandle {.
   importc: "IupGetDialog", cdecl, dynlib: dllname.}
-proc GetDialogChild*(ih: PIhandle, name: cstring): PIhandle {.
+proc getDialogChild*(ih: PIhandle, name: cstring): PIhandle {.
   importc: "IupGetDialogChild", cdecl, dynlib: dllname.}
-proc Reparent*(ih, new_parent: PIhandle): cint {.
+proc reparent*(ih, newParent: PIhandle): cint {.
   importc: "IupReparent", cdecl, dynlib: dllname.}
 
-proc Popup*(ih: PIhandle, x, y: cint): cint {.
+proc popup*(ih: PIhandle, x, y: cint): cint {.
   importc: "IupPopup", cdecl, dynlib: dllname, discardable.}
-proc Show*(ih: PIhandle): cint {.
+proc show*(ih: PIhandle): cint {.
   importc: "IupShow", cdecl, dynlib: dllname, discardable.}
-proc ShowXY*(ih: PIhandle, x, y: cint): cint {.
+proc showXY*(ih: PIhandle, x, y: cint): cint {.
   importc: "IupShowXY", cdecl, dynlib: dllname, discardable.}
-proc Hide*(ih: PIhandle): cint {.
+proc hide*(ih: PIhandle): cint {.
   importc: "IupHide", cdecl, dynlib: dllname, discardable.}
-proc Map*(ih: PIhandle): cint {.
+proc map*(ih: PIhandle): cint {.
   importc: "IupMap", cdecl, dynlib: dllname, discardable.}
-proc Unmap*(ih: PIhandle) {.
+proc unmap*(ih: PIhandle) {.
   importc: "IupUnmap", cdecl, dynlib: dllname, discardable.}
 
-proc SetAttribute*(ih: PIhandle, name, value: cstring) {.
+proc setAttribute*(ih: PIhandle, name, value: cstring) {.
   importc: "IupSetAttribute", cdecl, dynlib: dllname.}
-proc StoreAttribute*(ih: PIhandle, name, value: cstring) {.
+proc storeAttribute*(ih: PIhandle, name, value: cstring) {.
   importc: "IupStoreAttribute", cdecl, dynlib: dllname.}
-proc SetAttributes*(ih: PIhandle, str: cstring): PIhandle {.
+proc setAttributes*(ih: PIhandle, str: cstring): PIhandle {.
   importc: "IupSetAttributes", cdecl, dynlib: dllname.}
-proc GetAttribute*(ih: PIhandle, name: cstring): cstring {.
+proc getAttribute*(ih: PIhandle, name: cstring): cstring {.
   importc: "IupGetAttribute", cdecl, dynlib: dllname.}
-proc GetAttributes*(ih: PIhandle): cstring {.
+proc getAttributes*(ih: PIhandle): cstring {.
   importc: "IupGetAttributes", cdecl, dynlib: dllname.}
-proc GetInt*(ih: PIhandle, name: cstring): cint {.
+proc getInt*(ih: PIhandle, name: cstring): cint {.
   importc: "IupGetInt", cdecl, dynlib: dllname.}
-proc GetInt2*(ih: PIhandle, name: cstring): cint {.
+proc getInt2*(ih: PIhandle, name: cstring): cint {.
   importc: "IupGetInt2", cdecl, dynlib: dllname.}
-proc GetIntInt*(ih: PIhandle, name: cstring, i1, i2: var cint): cint {.
+proc getIntInt*(ih: PIhandle, name: cstring, i1, i2: var cint): cint {.
   importc: "IupGetIntInt", cdecl, dynlib: dllname.}
-proc GetFloat*(ih: PIhandle, name: cstring): cfloat {.
+proc getFloat*(ih: PIhandle, name: cstring): cfloat {.
   importc: "IupGetFloat", cdecl, dynlib: dllname.}
-proc SetfAttribute*(ih: PIhandle, name, format: cstring) {.
+proc setfAttribute*(ih: PIhandle, name, format: cstring) {.
   importc: "IupSetfAttribute", cdecl, dynlib: dllname, varargs.}
-proc GetAllAttributes*(ih: PIhandle, names: cstringArray, n: cint): cint {.
+proc getAllAttributes*(ih: PIhandle, names: cstringArray, n: cint): cint {.
   importc: "IupGetAllAttributes", cdecl, dynlib: dllname.}
-proc SetAtt*(handle_name: cstring, ih: PIhandle, name: cstring): PIhandle {.
+proc setAtt*(handleName: cstring, ih: PIhandle, name: cstring): PIhandle {.
   importc: "IupSetAtt", cdecl, dynlib: dllname, varargs, discardable.}
 
-proc SetGlobal*(name, value: cstring) {.
+proc setGlobal*(name, value: cstring) {.
   importc: "IupSetGlobal", cdecl, dynlib: dllname.}
-proc StoreGlobal*(name, value: cstring) {.
+proc storeGlobal*(name, value: cstring) {.
   importc: "IupStoreGlobal", cdecl, dynlib: dllname.}
-proc GetGlobal*(name: cstring): cstring {.
+proc getGlobal*(name: cstring): cstring {.
   importc: "IupGetGlobal", cdecl, dynlib: dllname.}
 
-proc SetFocus*(ih: PIhandle): PIhandle {.
+proc setFocus*(ih: PIhandle): PIhandle {.
   importc: "IupSetFocus", cdecl, dynlib: dllname.}
-proc GetFocus*(): PIhandle {.
+proc getFocus*(): PIhandle {.
   importc: "IupGetFocus", cdecl, dynlib: dllname.}
-proc PreviousField*(ih: PIhandle): PIhandle {.
+proc previousField*(ih: PIhandle): PIhandle {.
   importc: "IupPreviousField", cdecl, dynlib: dllname.}
-proc NextField*(ih: PIhandle): PIhandle {.
+proc nextField*(ih: PIhandle): PIhandle {.
   importc: "IupNextField", cdecl, dynlib: dllname.}
 
-proc GetCallback*(ih: PIhandle, name: cstring): Icallback {.
+proc getCallback*(ih: PIhandle, name: cstring): Icallback {.
   importc: "IupGetCallback", cdecl, dynlib: dllname.}
-proc SetCallback*(ih: PIhandle, name: cstring, func: Icallback): Icallback {.
+proc setCallback*(ih: PIhandle, name: cstring, fn: Icallback): Icallback {.
   importc: "IupSetCallback", cdecl, dynlib: dllname, discardable.}
   
-proc SetCallbacks*(ih: PIhandle, name: cstring, func: Icallback): PIhandle {.
+proc setCallbacks*(ih: PIhandle, name: cstring, fn: Icallback): PIhandle {.
   importc: "IupSetCallbacks", cdecl, dynlib: dllname, varargs, discardable.}
 
-proc GetFunction*(name: cstring): Icallback {.
+proc getFunction*(name: cstring): Icallback {.
   importc: "IupGetFunction", cdecl, dynlib: dllname.}
-proc SetFunction*(name: cstring, func: Icallback): Icallback {.
+proc setFunction*(name: cstring, fn: Icallback): Icallback {.
   importc: "IupSetFunction", cdecl, dynlib: dllname, discardable.}
-proc GetActionName*(): cstring {.
+proc getActionName*(): cstring {.
   importc: "IupGetActionName", cdecl, dynlib: dllname.}
 
-proc GetHandle*(name: cstring): PIhandle {.
+proc getHandle*(name: cstring): PIhandle {.
   importc: "IupGetHandle", cdecl, dynlib: dllname.}
-proc SetHandle*(name: cstring, ih: PIhandle): PIhandle {.
+proc setHandle*(name: cstring, ih: PIhandle): PIhandle {.
   importc: "IupSetHandle", cdecl, dynlib: dllname.}
-proc GetAllNames*(names: cstringArray, n: cint): cint {.
+proc getAllNames*(names: cstringArray, n: cint): cint {.
   importc: "IupGetAllNames", cdecl, dynlib: dllname.}
-proc GetAllDialogs*(names: cstringArray, n: cint): cint {.
+proc getAllDialogs*(names: cstringArray, n: cint): cint {.
   importc: "IupGetAllDialogs", cdecl, dynlib: dllname.}
-proc GetName*(ih: PIhandle): cstring {.
+proc getName*(ih: PIhandle): cstring {.
   importc: "IupGetName", cdecl, dynlib: dllname.}
 
-proc SetAttributeHandle*(ih: PIhandle, name: cstring, ih_named: PIhandle) {.
+proc setAttributeHandle*(ih: PIhandle, name: cstring, ihNamed: PIhandle) {.
   importc: "IupSetAttributeHandle", cdecl, dynlib: dllname.}
-proc GetAttributeHandle*(ih: PIhandle, name: cstring): PIhandle {.
+proc getAttributeHandle*(ih: PIhandle, name: cstring): PIhandle {.
   importc: "IupGetAttributeHandle", cdecl, dynlib: dllname.}
 
-proc GetClassName*(ih: PIhandle): cstring {.
+proc getClassName*(ih: PIhandle): cstring {.
   importc: "IupGetClassName", cdecl, dynlib: dllname.}
-proc GetClassType*(ih: PIhandle): cstring {.
+proc getClassType*(ih: PIhandle): cstring {.
   importc: "IupGetClassType", cdecl, dynlib: dllname.}
-proc GetClassAttributes*(classname: cstring, names: cstringArray, 
+proc getClassAttributes*(classname: cstring, names: cstringArray, 
                          n: cint): cint {.
   importc: "IupGetClassAttributes", cdecl, dynlib: dllname.}
-proc SaveClassAttributes*(ih: PIhandle) {.
+proc saveClassAttributes*(ih: PIhandle) {.
   importc: "IupSaveClassAttributes", cdecl, dynlib: dllname.}
-proc SetClassDefaultAttribute*(classname, name, value: cstring) {.
+proc setClassDefaultAttribute*(classname, name, value: cstring) {.
   importc: "IupSetClassDefaultAttribute", cdecl, dynlib: dllname.}
 
-proc Create*(classname: cstring): PIhandle {.
+proc create*(classname: cstring): PIhandle {.
   importc: "IupCreate", cdecl, dynlib: dllname.}
-proc Createv*(classname: cstring, params: pointer): PIhandle {.
+proc createv*(classname: cstring, params: pointer): PIhandle {.
   importc: "IupCreatev", cdecl, dynlib: dllname.}
-proc Createp*(classname: cstring, first: pointer): PIhandle {.
+proc createp*(classname: cstring, first: pointer): PIhandle {.
   importc: "IupCreatep", cdecl, dynlib: dllname, varargs.}
 
-proc Fill*(): PIhandle {.importc: "IupFill", cdecl, dynlib: dllname.}
-proc Radio*(child: PIhandle): PIhandle {.
+proc fill*(): PIhandle {.importc: "IupFill", cdecl, dynlib: dllname.}
+proc radio*(child: PIhandle): PIhandle {.
   importc: "IupRadio", cdecl, dynlib: dllname.}
-proc Vbox*(child: PIhandle): PIhandle {.
+proc vbox*(child: PIhandle): PIhandle {.
   importc: "IupVbox", cdecl, dynlib: dllname, varargs.}
-proc Vboxv*(children: ptr PIhandle): PIhandle {.
+proc vboxv*(children: ptr PIhandle): PIhandle {.
   importc: "IupVboxv", cdecl, dynlib: dllname.}
-proc Zbox*(child: PIhandle): PIhandle {.
+proc zbox*(child: PIhandle): PIhandle {.
   importc: "IupZbox", cdecl, dynlib: dllname, varargs.}
-proc Zboxv*(children: ptr PIhandle): PIhandle {.
+proc zboxv*(children: ptr PIhandle): PIhandle {.
   importc: "IupZboxv", cdecl, dynlib: dllname.}
-proc Hbox*(child: PIhandle): PIhandle {.
+proc hbox*(child: PIhandle): PIhandle {.
   importc: "IupHbox", cdecl, dynlib: dllname, varargs.}
-proc Hboxv*(children: ptr PIhandle): PIhandle {.
+proc hboxv*(children: ptr PIhandle): PIhandle {.
   importc: "IupHboxv", cdecl, dynlib: dllname.}
 
-proc Normalizer*(ih_first: PIhandle): PIhandle {.
+proc normalizer*(ihFirst: PIhandle): PIhandle {.
   importc: "IupNormalizer", cdecl, dynlib: dllname, varargs.}
-proc Normalizerv*(ih_list: ptr PIhandle): PIhandle {.
+proc normalizerv*(ihList: ptr PIhandle): PIhandle {.
   importc: "IupNormalizerv", cdecl, dynlib: dllname.}
 
-proc Cbox*(child: PIhandle): PIhandle {.
+proc cbox*(child: PIhandle): PIhandle {.
   importc: "IupCbox", cdecl, dynlib: dllname, varargs.}
-proc Cboxv*(children: ptr PIhandle): PIhandle {.
+proc cboxv*(children: ptr PIhandle): PIhandle {.
   importc: "IupCboxv", cdecl, dynlib: dllname.}
-proc Sbox*(child: PIhandle): PIhandle {.
+proc sbox*(child: PIhandle): PIhandle {.
   importc: "IupSbox", cdecl, dynlib: dllname.}
 
-proc Frame*(child: PIhandle): PIhandle {.
+proc frame*(child: PIhandle): PIhandle {.
   importc: "IupFrame", cdecl, dynlib: dllname.}
 
-proc Image*(width, height: cint, pixmap: pointer): PIhandle {.
+proc image*(width, height: cint, pixmap: pointer): PIhandle {.
   importc: "IupImage", cdecl, dynlib: dllname.}
-proc ImageRGB*(width, height: cint, pixmap: pointer): PIhandle {.
+proc imageRGB*(width, height: cint, pixmap: pointer): PIhandle {.
   importc: "IupImageRGB", cdecl, dynlib: dllname.}
-proc ImageRGBA*(width, height: cint, pixmap: pointer): PIhandle {.
+proc imageRGBA*(width, height: cint, pixmap: pointer): PIhandle {.
   importc: "IupImageRGBA", cdecl, dynlib: dllname.}
 
-proc Item*(title, action: cstring): PIhandle {.
+proc item*(title, action: cstring): PIhandle {.
   importc: "IupItem", cdecl, dynlib: dllname.}
-proc Submenu*(title: cstring, child: PIhandle): PIhandle {.
+proc submenu*(title: cstring, child: PIhandle): PIhandle {.
   importc: "IupSubmenu", cdecl, dynlib: dllname.}
-proc Separator*(): PIhandle {.
+proc separator*(): PIhandle {.
   importc: "IupSeparator", cdecl, dynlib: dllname.}
-proc Menu*(child: PIhandle): PIhandle {.
+proc menu*(child: PIhandle): PIhandle {.
   importc: "IupMenu", cdecl, dynlib: dllname, varargs.}
-proc Menuv*(children: ptr PIhandle): PIhandle {.
+proc menuv*(children: ptr PIhandle): PIhandle {.
   importc: "IupMenuv", cdecl, dynlib: dllname.}
 
-proc Button*(title, action: cstring): PIhandle {.
+proc button*(title, action: cstring): PIhandle {.
   importc: "IupButton", cdecl, dynlib: dllname.}
-proc Canvas*(action: cstring): PIhandle {.
+proc canvas*(action: cstring): PIhandle {.
   importc: "IupCanvas", cdecl, dynlib: dllname.}
-proc Dialog*(child: PIhandle): PIhandle {.
+proc dialog*(child: PIhandle): PIhandle {.
   importc: "IupDialog", cdecl, dynlib: dllname.}
-proc User*(): PIhandle {.
+proc user*(): PIhandle {.
   importc: "IupUser", cdecl, dynlib: dllname.}
-proc Label*(title: cstring): PIhandle {.
+proc label*(title: cstring): PIhandle {.
   importc: "IupLabel", cdecl, dynlib: dllname.}
-proc List*(action: cstring): PIhandle {.
+proc list*(action: cstring): PIhandle {.
   importc: "IupList", cdecl, dynlib: dllname.}
-proc Text*(action: cstring): PIhandle {.
+proc text*(action: cstring): PIhandle {.
   importc: "IupText", cdecl, dynlib: dllname.}
-proc MultiLine*(action: cstring): PIhandle {.
+proc multiLine*(action: cstring): PIhandle {.
   importc: "IupMultiLine", cdecl, dynlib: dllname.}
-proc Toggle*(title, action: cstring): PIhandle {.
+proc toggle*(title, action: cstring): PIhandle {.
   importc: "IupToggle", cdecl, dynlib: dllname.}
-proc Timer*(): PIhandle {.
+proc timer*(): PIhandle {.
   importc: "IupTimer", cdecl, dynlib: dllname.}
-proc ProgressBar*(): PIhandle {.
+proc progressBar*(): PIhandle {.
   importc: "IupProgressBar", cdecl, dynlib: dllname.}
-proc Val*(theType: cstring): PIhandle {.
+proc val*(theType: cstring): PIhandle {.
   importc: "IupVal", cdecl, dynlib: dllname.}
-proc Tabs*(child: PIhandle): PIhandle {.
+proc tabs*(child: PIhandle): PIhandle {.
   importc: "IupTabs", cdecl, dynlib: dllname, varargs.}
-proc Tabsv*(children: ptr PIhandle): PIhandle {.
+proc tabsv*(children: ptr PIhandle): PIhandle {.
   importc: "IupTabsv", cdecl, dynlib: dllname.}
-proc Tree*(): PIhandle {.importc: "IupTree", cdecl, dynlib: dllname.}
+proc tree*(): PIhandle {.importc: "IupTree", cdecl, dynlib: dllname.}
 
-proc Spin*(): PIhandle {.importc: "IupSpin", cdecl, dynlib: dllname.}
-proc Spinbox*(child: PIhandle): PIhandle {.
+proc spin*(): PIhandle {.importc: "IupSpin", cdecl, dynlib: dllname.}
+proc spinbox*(child: PIhandle): PIhandle {.
   importc: "IupSpinbox", cdecl, dynlib: dllname.}
 
 # IupText utilities
-proc TextConvertLinColToPos*(ih: PIhandle, lin, col: cint, pos: var cint) {.
+proc textConvertLinColToPos*(ih: PIhandle, lin, col: cint, pos: var cint) {.
   importc: "IupTextConvertLinColToPos", cdecl, dynlib: dllname.}
-proc TextConvertPosToLinCol*(ih: PIhandle, pos: cint, lin, col: var cint) {.
+proc textConvertPosToLinCol*(ih: PIhandle, pos: cint, lin, col: var cint) {.
   importc: "IupTextConvertPosToLinCol", cdecl, dynlib: dllname.}
 
-proc ConvertXYToPos*(ih: PIhandle, x, y: cint): cint {.
+proc convertXYToPos*(ih: PIhandle, x, y: cint): cint {.
   importc: "IupConvertXYToPos", cdecl, dynlib: dllname.}
 
 # IupTree utilities
-proc TreeSetUserId*(ih: PIhandle, id: cint, userid: pointer): cint {.
+proc treeSetUserId*(ih: PIhandle, id: cint, userid: pointer): cint {.
   importc: "IupTreeSetUserId", cdecl, dynlib: dllname, discardable.}
-proc TreeGetUserId*(ih: PIhandle, id: cint): pointer {.
+proc treeGetUserId*(ih: PIhandle, id: cint): pointer {.
   importc: "IupTreeGetUserId", cdecl, dynlib: dllname.}
-proc TreeGetId*(ih: PIhandle, userid: pointer): cint {.
+proc treeGetId*(ih: PIhandle, userid: pointer): cint {.
   importc: "IupTreeGetId", cdecl, dynlib: dllname.}
 
-proc TreeSetAttribute*(ih: PIhandle, name: cstring, id: cint, value: cstring) {.
+proc treeSetAttribute*(ih: PIhandle, name: cstring, id: cint, value: cstring) {.
   importc: "IupTreeSetAttribute", cdecl, dynlib: dllname.}
-proc TreeStoreAttribute*(ih: PIhandle, name: cstring, id: cint, value: cstring) {.
+proc treeStoreAttribute*(ih: PIhandle, name: cstring, id: cint, value: cstring) {.
   importc: "IupTreeStoreAttribute", cdecl, dynlib: dllname.}
-proc TreeGetAttribute*(ih: PIhandle, name: cstring, id: cint): cstring {.
+proc treeGetAttribute*(ih: PIhandle, name: cstring, id: cint): cstring {.
   importc: "IupTreeGetAttribute", cdecl, dynlib: dllname.}
-proc TreeGetInt*(ih: PIhandle, name: cstring, id: cint): cint {.
+proc treeGetInt*(ih: PIhandle, name: cstring, id: cint): cint {.
   importc: "IupTreeGetInt", cdecl, dynlib: dllname.}
-proc TreeGetFloat*(ih: PIhandle, name: cstring, id: cint): cfloat {.
+proc treeGetFloat*(ih: PIhandle, name: cstring, id: cint): cfloat {.
   importc: "IupTreeGetFloat", cdecl, dynlib: dllname.}
-proc TreeSetfAttribute*(ih: PIhandle, name: cstring, id: cint, format: cstring) {.
+proc treeSetfAttribute*(ih: PIhandle, name: cstring, id: cint, format: cstring) {.
   importc: "IupTreeSetfAttribute", cdecl, dynlib: dllname, varargs.}
 
 
@@ -552,360 +552,360 @@ proc isCtrlXkey*(c: cint): bool = return c > 512 and c < 768
 proc isAltXkey*(c: cint): bool = return c > 768 and c < 1024
 proc isSysXkey*(c: cint): bool = return c > 1024 and c < 1280
 
-proc IUPxCODE*(c: cint): cint = return c + cint(128) # Normal (must be above 128)
-proc IUPsxCODE*(c: cint): cint = 
+proc iUPxCODE*(c: cint): cint = return c + cint(128) # Normal (must be above 128)
+proc iUPsxCODE*(c: cint): cint = 
   return c + cint(256)
   # Shift (must have range to include the standard keys and the normal 
   # extended keys, so must be above 256
 
-proc IUPcxCODE*(c: cint): cint = return c + cint(512) # Ctrl
-proc IUPmxCODE*(c: cint): cint = return c + cint(768) # Alt
-proc IUPyxCODE*(c: cint): cint = return c + cint(1024) # Sys (Win or Apple) 
+proc iUPcxCODE*(c: cint): cint = return c + cint(512) # Ctrl
+proc iUPmxCODE*(c: cint): cint = return c + cint(768) # Alt
+proc iUPyxCODE*(c: cint): cint = return c + cint(1024) # Sys (Win or Apple) 
 
 const
   IUP_NUMMAXCODES* = 1280 ## 5*256=1280  Normal+Shift+Ctrl+Alt+Sys
 
-  K_HOME* = IUPxCODE(1)                
-  K_UP* = IUPxCODE(2)
-  K_PGUP* = IUPxCODE(3)
-  K_LEFT* = IUPxCODE(4)
-  K_MIDDLE* = IUPxCODE(5)
-  K_RIGHT* = IUPxCODE(6)
-  K_END* = IUPxCODE(7)
-  K_DOWN* = IUPxCODE(8)
-  K_PGDN* = IUPxCODE(9)
-  K_INS* = IUPxCODE(10)    
-  K_DEL* = IUPxCODE(11)    
-  K_PAUSE* = IUPxCODE(12)
-  K_ESC* = IUPxCODE(13)
-  K_ccedilla* = IUPxCODE(14)
-  K_F1* = IUPxCODE(15)
-  K_F2* = IUPxCODE(16)
-  K_F3* = IUPxCODE(17)
-  K_F4* = IUPxCODE(18)
-  K_F5* = IUPxCODE(19)
-  K_F6* = IUPxCODE(20)
-  K_F7* = IUPxCODE(21)
-  K_F8* = IUPxCODE(22)
-  K_F9* = IUPxCODE(23)
-  K_F10* = IUPxCODE(24)
-  K_F11* = IUPxCODE(25)
-  K_F12* = IUPxCODE(26)
-  K_Print* = IUPxCODE(27)
-  K_Menu* = IUPxCODE(28)
+  K_HOME* = iUPxCODE(1)                
+  K_UP* = iUPxCODE(2)
+  K_PGUP* = iUPxCODE(3)
+  K_LEFT* = iUPxCODE(4)
+  K_MIDDLE* = iUPxCODE(5)
+  K_RIGHT* = iUPxCODE(6)
+  K_END* = iUPxCODE(7)
+  K_DOWN* = iUPxCODE(8)
+  K_PGDN* = iUPxCODE(9)
+  K_INS* = iUPxCODE(10)    
+  K_DEL* = iUPxCODE(11)    
+  K_PAUSE* = iUPxCODE(12)
+  K_ESC* = iUPxCODE(13)
+  K_ccedilla* = iUPxCODE(14)
+  K_F1* = iUPxCODE(15)
+  K_F2* = iUPxCODE(16)
+  K_F3* = iUPxCODE(17)
+  K_F4* = iUPxCODE(18)
+  K_F5* = iUPxCODE(19)
+  K_F6* = iUPxCODE(20)
+  K_F7* = iUPxCODE(21)
+  K_F8* = iUPxCODE(22)
+  K_F9* = iUPxCODE(23)
+  K_F10* = iUPxCODE(24)
+  K_F11* = iUPxCODE(25)
+  K_F12* = iUPxCODE(26)
+  K_Print* = iUPxCODE(27)
+  K_Menu* = iUPxCODE(28)
 
-  K_acute* = IUPxCODE(29) # no Shift/Ctrl/Alt
+  K_acute* = iUPxCODE(29) # no Shift/Ctrl/Alt
 
-  K_sHOME* = IUPsxCODE(K_HOME)
-  K_sUP* = IUPsxCODE(K_UP)
-  K_sPGUP* = IUPsxCODE(K_PGUP)
-  K_sLEFT* = IUPsxCODE(K_LEFT)
-  K_sMIDDLE* = IUPsxCODE(K_MIDDLE)
-  K_sRIGHT* = IUPsxCODE(K_RIGHT)
-  K_sEND* = IUPsxCODE(K_END)
-  K_sDOWN* = IUPsxCODE(K_DOWN)
-  K_sPGDN* = IUPsxCODE(K_PGDN)
-  K_sINS* = IUPsxCODE(K_INS)
-  K_sDEL* = IUPsxCODE(K_DEL)
-  K_sSP* = IUPsxCODE(K_SP)
-  K_sTAB* = IUPsxCODE(K_TAB)
-  K_sCR* = IUPsxCODE(K_CR)
-  K_sBS* = IUPsxCODE(K_BS)
-  K_sPAUSE* = IUPsxCODE(K_PAUSE)
-  K_sESC* = IUPsxCODE(K_ESC)
-  K_sCcedilla* = IUPsxCODE(K_ccedilla)
-  K_sF1* = IUPsxCODE(K_F1)
-  K_sF2* = IUPsxCODE(K_F2)
-  K_sF3* = IUPsxCODE(K_F3)
-  K_sF4* = IUPsxCODE(K_F4)
-  K_sF5* = IUPsxCODE(K_F5)
-  K_sF6* = IUPsxCODE(K_F6)
-  K_sF7* = IUPsxCODE(K_F7)
-  K_sF8* = IUPsxCODE(K_F8)
-  K_sF9* = IUPsxCODE(K_F9)
-  K_sF10* = IUPsxCODE(K_F10)
-  K_sF11* = IUPsxCODE(K_F11)
-  K_sF12* = IUPsxCODE(K_F12)
-  K_sPrint* = IUPsxCODE(K_Print)
-  K_sMenu* = IUPsxCODE(K_Menu)
+  K_sHOME* = iUPsxCODE(K_HOME)
+  K_sUP* = iUPsxCODE(K_UP)
+  K_sPGUP* = iUPsxCODE(K_PGUP)
+  K_sLEFT* = iUPsxCODE(K_LEFT)
+  K_sMIDDLE* = iUPsxCODE(K_MIDDLE)
+  K_sRIGHT* = iUPsxCODE(K_RIGHT)
+  K_sEND* = iUPsxCODE(K_END)
+  K_sDOWN* = iUPsxCODE(K_DOWN)
+  K_sPGDN* = iUPsxCODE(K_PGDN)
+  K_sINS* = iUPsxCODE(K_INS)
+  K_sDEL* = iUPsxCODE(K_DEL)
+  K_sSP* = iUPsxCODE(K_SP)
+  K_sTAB* = iUPsxCODE(K_TAB)
+  K_sCR* = iUPsxCODE(K_CR)
+  K_sBS* = iUPsxCODE(K_BS)
+  K_sPAUSE* = iUPsxCODE(K_PAUSE)
+  K_sESC* = iUPsxCODE(K_ESC)
+  K_sCcedilla* = iUPsxCODE(K_ccedilla)
+  K_sF1* = iUPsxCODE(K_F1)
+  K_sF2* = iUPsxCODE(K_F2)
+  K_sF3* = iUPsxCODE(K_F3)
+  K_sF4* = iUPsxCODE(K_F4)
+  K_sF5* = iUPsxCODE(K_F5)
+  K_sF6* = iUPsxCODE(K_F6)
+  K_sF7* = iUPsxCODE(K_F7)
+  K_sF8* = iUPsxCODE(K_F8)
+  K_sF9* = iUPsxCODE(K_F9)
+  K_sF10* = iUPsxCODE(K_F10)
+  K_sF11* = iUPsxCODE(K_F11)
+  K_sF12* = iUPsxCODE(K_F12)
+  K_sPrint* = iUPsxCODE(K_Print)
+  K_sMenu* = iUPsxCODE(K_Menu)
 
-  K_cHOME* = IUPcxCODE(K_HOME)
-  K_cUP* = IUPcxCODE(K_UP)
-  K_cPGUP* = IUPcxCODE(K_PGUP)
-  K_cLEFT* = IUPcxCODE(K_LEFT)
-  K_cMIDDLE* = IUPcxCODE(K_MIDDLE)
-  K_cRIGHT* = IUPcxCODE(K_RIGHT)
-  K_cEND* = IUPcxCODE(K_END)
-  K_cDOWN* = IUPcxCODE(K_DOWN)
-  K_cPGDN* = IUPcxCODE(K_PGDN)
-  K_cINS* = IUPcxCODE(K_INS)
-  K_cDEL* = IUPcxCODE(K_DEL)
-  K_cSP* = IUPcxCODE(K_SP)
-  K_cTAB* = IUPcxCODE(K_TAB)
-  K_cCR* = IUPcxCODE(K_CR)
-  K_cBS* = IUPcxCODE(K_BS)
-  K_cPAUSE* = IUPcxCODE(K_PAUSE)
-  K_cESC* = IUPcxCODE(K_ESC)
-  K_cCcedilla* = IUPcxCODE(K_ccedilla)
-  K_cF1* = IUPcxCODE(K_F1)
-  K_cF2* = IUPcxCODE(K_F2)
-  K_cF3* = IUPcxCODE(K_F3)
-  K_cF4* = IUPcxCODE(K_F4)
-  K_cF5* = IUPcxCODE(K_F5)
-  K_cF6* = IUPcxCODE(K_F6)
-  K_cF7* = IUPcxCODE(K_F7)
-  K_cF8* = IUPcxCODE(K_F8)
-  K_cF9* = IUPcxCODE(K_F9)
-  K_cF10* = IUPcxCODE(K_F10)
-  K_cF11* = IUPcxCODE(K_F11)
-  K_cF12* = IUPcxCODE(K_F12)
-  K_cPrint* = IUPcxCODE(K_Print)
-  K_cMenu* = IUPcxCODE(K_Menu)
+  K_cHOME* = iUPcxCODE(K_HOME)
+  K_cUP* = iUPcxCODE(K_UP)
+  K_cPGUP* = iUPcxCODE(K_PGUP)
+  K_cLEFT* = iUPcxCODE(K_LEFT)
+  K_cMIDDLE* = iUPcxCODE(K_MIDDLE)
+  K_cRIGHT* = iUPcxCODE(K_RIGHT)
+  K_cEND* = iUPcxCODE(K_END)
+  K_cDOWN* = iUPcxCODE(K_DOWN)
+  K_cPGDN* = iUPcxCODE(K_PGDN)
+  K_cINS* = iUPcxCODE(K_INS)
+  K_cDEL* = iUPcxCODE(K_DEL)
+  K_cSP* = iUPcxCODE(K_SP)
+  K_cTAB* = iUPcxCODE(K_TAB)
+  K_cCR* = iUPcxCODE(K_CR)
+  K_cBS* = iUPcxCODE(K_BS)
+  K_cPAUSE* = iUPcxCODE(K_PAUSE)
+  K_cESC* = iUPcxCODE(K_ESC)
+  K_cCcedilla* = iUPcxCODE(K_ccedilla)
+  K_cF1* = iUPcxCODE(K_F1)
+  K_cF2* = iUPcxCODE(K_F2)
+  K_cF3* = iUPcxCODE(K_F3)
+  K_cF4* = iUPcxCODE(K_F4)
+  K_cF5* = iUPcxCODE(K_F5)
+  K_cF6* = iUPcxCODE(K_F6)
+  K_cF7* = iUPcxCODE(K_F7)
+  K_cF8* = iUPcxCODE(K_F8)
+  K_cF9* = iUPcxCODE(K_F9)
+  K_cF10* = iUPcxCODE(K_F10)
+  K_cF11* = iUPcxCODE(K_F11)
+  K_cF12* = iUPcxCODE(K_F12)
+  K_cPrint* = iUPcxCODE(K_Print)
+  K_cMenu* = iUPcxCODE(K_Menu)
 
-  K_mHOME* = IUPmxCODE(K_HOME)
-  K_mUP* = IUPmxCODE(K_UP)
-  K_mPGUP* = IUPmxCODE(K_PGUP)
-  K_mLEFT* = IUPmxCODE(K_LEFT)
-  K_mMIDDLE* = IUPmxCODE(K_MIDDLE)
-  K_mRIGHT* = IUPmxCODE(K_RIGHT)
-  K_mEND* = IUPmxCODE(K_END)
-  K_mDOWN* = IUPmxCODE(K_DOWN)
-  K_mPGDN* = IUPmxCODE(K_PGDN)
-  K_mINS* = IUPmxCODE(K_INS)
-  K_mDEL* = IUPmxCODE(K_DEL)
-  K_mSP* = IUPmxCODE(K_SP)
-  K_mTAB* = IUPmxCODE(K_TAB)
-  K_mCR* = IUPmxCODE(K_CR)
-  K_mBS* = IUPmxCODE(K_BS)
-  K_mPAUSE* = IUPmxCODE(K_PAUSE)
-  K_mESC* = IUPmxCODE(K_ESC)
-  K_mCcedilla* = IUPmxCODE(K_ccedilla)
-  K_mF1* = IUPmxCODE(K_F1)
-  K_mF2* = IUPmxCODE(K_F2)
-  K_mF3* = IUPmxCODE(K_F3)
-  K_mF4* = IUPmxCODE(K_F4)
-  K_mF5* = IUPmxCODE(K_F5)
-  K_mF6* = IUPmxCODE(K_F6)
-  K_mF7* = IUPmxCODE(K_F7)
-  K_mF8* = IUPmxCODE(K_F8)
-  K_mF9* = IUPmxCODE(K_F9)
-  K_mF10* = IUPmxCODE(K_F10)
-  K_mF11* = IUPmxCODE(K_F11)
-  K_mF12* = IUPmxCODE(K_F12)
-  K_mPrint* = IUPmxCODE(K_Print)
-  K_mMenu* = IUPmxCODE(K_Menu)
+  K_mHOME* = iUPmxCODE(K_HOME)
+  K_mUP* = iUPmxCODE(K_UP)
+  K_mPGUP* = iUPmxCODE(K_PGUP)
+  K_mLEFT* = iUPmxCODE(K_LEFT)
+  K_mMIDDLE* = iUPmxCODE(K_MIDDLE)
+  K_mRIGHT* = iUPmxCODE(K_RIGHT)
+  K_mEND* = iUPmxCODE(K_END)
+  K_mDOWN* = iUPmxCODE(K_DOWN)
+  K_mPGDN* = iUPmxCODE(K_PGDN)
+  K_mINS* = iUPmxCODE(K_INS)
+  K_mDEL* = iUPmxCODE(K_DEL)
+  K_mSP* = iUPmxCODE(K_SP)
+  K_mTAB* = iUPmxCODE(K_TAB)
+  K_mCR* = iUPmxCODE(K_CR)
+  K_mBS* = iUPmxCODE(K_BS)
+  K_mPAUSE* = iUPmxCODE(K_PAUSE)
+  K_mESC* = iUPmxCODE(K_ESC)
+  K_mCcedilla* = iUPmxCODE(K_ccedilla)
+  K_mF1* = iUPmxCODE(K_F1)
+  K_mF2* = iUPmxCODE(K_F2)
+  K_mF3* = iUPmxCODE(K_F3)
+  K_mF4* = iUPmxCODE(K_F4)
+  K_mF5* = iUPmxCODE(K_F5)
+  K_mF6* = iUPmxCODE(K_F6)
+  K_mF7* = iUPmxCODE(K_F7)
+  K_mF8* = iUPmxCODE(K_F8)
+  K_mF9* = iUPmxCODE(K_F9)
+  K_mF10* = iUPmxCODE(K_F10)
+  K_mF11* = iUPmxCODE(K_F11)
+  K_mF12* = iUPmxCODE(K_F12)
+  K_mPrint* = iUPmxCODE(K_Print)
+  K_mMenu* = iUPmxCODE(K_Menu)
 
-  K_yHOME* = IUPyxCODE(K_HOME)
-  K_yUP* = IUPyxCODE(K_UP)
-  K_yPGUP* = IUPyxCODE(K_PGUP)
-  K_yLEFT* = IUPyxCODE(K_LEFT)
-  K_yMIDDLE* = IUPyxCODE(K_MIDDLE)
-  K_yRIGHT* = IUPyxCODE(K_RIGHT)
-  K_yEND* = IUPyxCODE(K_END)
-  K_yDOWN* = IUPyxCODE(K_DOWN)
-  K_yPGDN* = IUPyxCODE(K_PGDN)
-  K_yINS* = IUPyxCODE(K_INS)
-  K_yDEL* = IUPyxCODE(K_DEL)
-  K_ySP* = IUPyxCODE(K_SP)
-  K_yTAB* = IUPyxCODE(K_TAB)
-  K_yCR* = IUPyxCODE(K_CR)
-  K_yBS* = IUPyxCODE(K_BS)
-  K_yPAUSE* = IUPyxCODE(K_PAUSE)
-  K_yESC* = IUPyxCODE(K_ESC)
-  K_yCcedilla* = IUPyxCODE(K_ccedilla)
-  K_yF1* = IUPyxCODE(K_F1)
-  K_yF2* = IUPyxCODE(K_F2)
-  K_yF3* = IUPyxCODE(K_F3)
-  K_yF4* = IUPyxCODE(K_F4)
-  K_yF5* = IUPyxCODE(K_F5)
-  K_yF6* = IUPyxCODE(K_F6)
-  K_yF7* = IUPyxCODE(K_F7)
-  K_yF8* = IUPyxCODE(K_F8)
-  K_yF9* = IUPyxCODE(K_F9)
-  K_yF10* = IUPyxCODE(K_F10)
-  K_yF11* = IUPyxCODE(K_F11)
-  K_yF12* = IUPyxCODE(K_F12)
-  K_yPrint* = IUPyxCODE(K_Print)
-  K_yMenu* = IUPyxCODE(K_Menu)
+  K_yHOME* = iUPyxCODE(K_HOME)
+  K_yUP* = iUPyxCODE(K_UP)
+  K_yPGUP* = iUPyxCODE(K_PGUP)
+  K_yLEFT* = iUPyxCODE(K_LEFT)
+  K_yMIDDLE* = iUPyxCODE(K_MIDDLE)
+  K_yRIGHT* = iUPyxCODE(K_RIGHT)
+  K_yEND* = iUPyxCODE(K_END)
+  K_yDOWN* = iUPyxCODE(K_DOWN)
+  K_yPGDN* = iUPyxCODE(K_PGDN)
+  K_yINS* = iUPyxCODE(K_INS)
+  K_yDEL* = iUPyxCODE(K_DEL)
+  K_ySP* = iUPyxCODE(K_SP)
+  K_yTAB* = iUPyxCODE(K_TAB)
+  K_yCR* = iUPyxCODE(K_CR)
+  K_yBS* = iUPyxCODE(K_BS)
+  K_yPAUSE* = iUPyxCODE(K_PAUSE)
+  K_yESC* = iUPyxCODE(K_ESC)
+  K_yCcedilla* = iUPyxCODE(K_ccedilla)
+  K_yF1* = iUPyxCODE(K_F1)
+  K_yF2* = iUPyxCODE(K_F2)
+  K_yF3* = iUPyxCODE(K_F3)
+  K_yF4* = iUPyxCODE(K_F4)
+  K_yF5* = iUPyxCODE(K_F5)
+  K_yF6* = iUPyxCODE(K_F6)
+  K_yF7* = iUPyxCODE(K_F7)
+  K_yF8* = iUPyxCODE(K_F8)
+  K_yF9* = iUPyxCODE(K_F9)
+  K_yF10* = iUPyxCODE(K_F10)
+  K_yF11* = iUPyxCODE(K_F11)
+  K_yF12* = iUPyxCODE(K_F12)
+  K_yPrint* = iUPyxCODE(K_Print)
+  K_yMenu* = iUPyxCODE(K_Menu)
 
-  K_sPlus* = IUPsxCODE(K_plus)   
-  K_sComma* = IUPsxCODE(K_comma)   
-  K_sMinus* = IUPsxCODE(K_minus)   
-  K_sPeriod* = IUPsxCODE(K_period)   
-  K_sSlash* = IUPsxCODE(K_slash)   
-  K_sAsterisk* = IUPsxCODE(K_asterisk)
+  K_sPlus* = iUPsxCODE(K_plus)   
+  K_sComma* = iUPsxCODE(K_comma)   
+  K_sMinus* = iUPsxCODE(K_minus)   
+  K_sPeriod* = iUPsxCODE(K_period)   
+  K_sSlash* = iUPsxCODE(K_slash)   
+  K_sAsterisk* = iUPsxCODE(K_asterisk)
                         
-  K_cupperA* = IUPcxCODE(K_upperA)
-  K_cupperB* = IUPcxCODE(K_upperB)
-  K_cupperC* = IUPcxCODE(K_upperC)
-  K_cupperD* = IUPcxCODE(K_upperD)
-  K_cupperE* = IUPcxCODE(K_upperE)
-  K_cupperF* = IUPcxCODE(K_upperF)
-  K_cupperG* = IUPcxCODE(K_upperG)
-  K_cupperH* = IUPcxCODE(K_upperH)
-  K_cupperI* = IUPcxCODE(K_upperI)
-  K_cupperJ* = IUPcxCODE(K_upperJ)
-  K_cupperK* = IUPcxCODE(K_upperK)
-  K_cupperL* = IUPcxCODE(K_upperL)
-  K_cupperM* = IUPcxCODE(K_upperM)
-  K_cupperN* = IUPcxCODE(K_upperN)
-  K_cupperO* = IUPcxCODE(K_upperO)
-  K_cupperP* = IUPcxCODE(K_upperP)
-  K_cupperQ* = IUPcxCODE(K_upperQ)
-  K_cupperR* = IUPcxCODE(K_upperR)
-  K_cupperS* = IUPcxCODE(K_upperS)
-  K_cupperT* = IUPcxCODE(K_upperT)
-  K_cupperU* = IUPcxCODE(K_upperU)
-  K_cupperV* = IUPcxCODE(K_upperV)
-  K_cupperW* = IUPcxCODE(K_upperW)
-  K_cupperX* = IUPcxCODE(K_upperX)
-  K_cupperY* = IUPcxCODE(K_upperY)
-  K_cupperZ* = IUPcxCODE(K_upperZ)
-  K_c1* = IUPcxCODE(K_1)
-  K_c2* = IUPcxCODE(K_2)
-  K_c3* = IUPcxCODE(K_3)
-  K_c4* = IUPcxCODE(K_4)
-  K_c5* = IUPcxCODE(K_5)
-  K_c6* = IUPcxCODE(K_6)
-  K_c7* = IUPcxCODE(K_7)        
-  K_c8* = IUPcxCODE(K_8)         
-  K_c9* = IUPcxCODE(K_9)
-  K_c0* = IUPcxCODE(K_0)
-  K_cPlus* = IUPcxCODE(K_plus)   
-  K_cComma* = IUPcxCODE(K_comma)   
-  K_cMinus* = IUPcxCODE(K_minus)   
-  K_cPeriod* = IUPcxCODE(K_period)   
-  K_cSlash* = IUPcxCODE(K_slash)   
-  K_cSemicolon* = IUPcxCODE(K_semicolon) 
-  K_cEqual* = IUPcxCODE(K_equal)
-  K_cBracketleft* = IUPcxCODE(K_bracketleft)
-  K_cBracketright* = IUPcxCODE(K_bracketright)
-  K_cBackslash* = IUPcxCODE(K_backslash)
-  K_cAsterisk* = IUPcxCODE(K_asterisk)
+  K_cupperA* = iUPcxCODE(K_upperA)
+  K_cupperB* = iUPcxCODE(K_upperB)
+  K_cupperC* = iUPcxCODE(K_upperC)
+  K_cupperD* = iUPcxCODE(K_upperD)
+  K_cupperE* = iUPcxCODE(K_upperE)
+  K_cupperF* = iUPcxCODE(K_upperF)
+  K_cupperG* = iUPcxCODE(K_upperG)
+  K_cupperH* = iUPcxCODE(K_upperH)
+  K_cupperI* = iUPcxCODE(K_upperI)
+  K_cupperJ* = iUPcxCODE(K_upperJ)
+  K_cupperK* = iUPcxCODE(K_upperK)
+  K_cupperL* = iUPcxCODE(K_upperL)
+  K_cupperM* = iUPcxCODE(K_upperM)
+  K_cupperN* = iUPcxCODE(K_upperN)
+  K_cupperO* = iUPcxCODE(K_upperO)
+  K_cupperP* = iUPcxCODE(K_upperP)
+  K_cupperQ* = iUPcxCODE(K_upperQ)
+  K_cupperR* = iUPcxCODE(K_upperR)
+  K_cupperS* = iUPcxCODE(K_upperS)
+  K_cupperT* = iUPcxCODE(K_upperT)
+  K_cupperU* = iUPcxCODE(K_upperU)
+  K_cupperV* = iUPcxCODE(K_upperV)
+  K_cupperW* = iUPcxCODE(K_upperW)
+  K_cupperX* = iUPcxCODE(K_upperX)
+  K_cupperY* = iUPcxCODE(K_upperY)
+  K_cupperZ* = iUPcxCODE(K_upperZ)
+  K_c1* = iUPcxCODE(K_1)
+  K_c2* = iUPcxCODE(K_2)
+  K_c3* = iUPcxCODE(K_3)
+  K_c4* = iUPcxCODE(K_4)
+  K_c5* = iUPcxCODE(K_5)
+  K_c6* = iUPcxCODE(K_6)
+  K_c7* = iUPcxCODE(K_7)        
+  K_c8* = iUPcxCODE(K_8)         
+  K_c9* = iUPcxCODE(K_9)
+  K_c0* = iUPcxCODE(K_0)
+  K_cPlus* = iUPcxCODE(K_plus)   
+  K_cComma* = iUPcxCODE(K_comma)   
+  K_cMinus* = iUPcxCODE(K_minus)   
+  K_cPeriod* = iUPcxCODE(K_period)   
+  K_cSlash* = iUPcxCODE(K_slash)   
+  K_cSemicolon* = iUPcxCODE(K_semicolon) 
+  K_cEqual* = iUPcxCODE(K_equal)
+  K_cBracketleft* = iUPcxCODE(K_bracketleft)
+  K_cBracketright* = iUPcxCODE(K_bracketright)
+  K_cBackslash* = iUPcxCODE(K_backslash)
+  K_cAsterisk* = iUPcxCODE(K_asterisk)
 
-  K_mupperA* = IUPmxCODE(K_upperA)
-  K_mupperB* = IUPmxCODE(K_upperB)
-  K_mupperC* = IUPmxCODE(K_upperC)
-  K_mupperD* = IUPmxCODE(K_upperD)
-  K_mupperE* = IUPmxCODE(K_upperE)
-  K_mupperF* = IUPmxCODE(K_upperF)
-  K_mupperG* = IUPmxCODE(K_upperG)
-  K_mupperH* = IUPmxCODE(K_upperH)
-  K_mupperI* = IUPmxCODE(K_upperI)
-  K_mupperJ* = IUPmxCODE(K_upperJ)
-  K_mupperK* = IUPmxCODE(K_upperK)
-  K_mupperL* = IUPmxCODE(K_upperL)
-  K_mupperM* = IUPmxCODE(K_upperM)
-  K_mupperN* = IUPmxCODE(K_upperN)
-  K_mupperO* = IUPmxCODE(K_upperO)
-  K_mupperP* = IUPmxCODE(K_upperP)
-  K_mupperQ* = IUPmxCODE(K_upperQ)
-  K_mupperR* = IUPmxCODE(K_upperR)
-  K_mupperS* = IUPmxCODE(K_upperS)
-  K_mupperT* = IUPmxCODE(K_upperT)
-  K_mupperU* = IUPmxCODE(K_upperU)
-  K_mupperV* = IUPmxCODE(K_upperV)
-  K_mupperW* = IUPmxCODE(K_upperW)
-  K_mupperX* = IUPmxCODE(K_upperX)
-  K_mupperY* = IUPmxCODE(K_upperY)
-  K_mupperZ* = IUPmxCODE(K_upperZ)
-  K_m1* = IUPmxCODE(K_1)
-  K_m2* = IUPmxCODE(K_2)
-  K_m3* = IUPmxCODE(K_3)
-  K_m4* = IUPmxCODE(K_4)
-  K_m5* = IUPmxCODE(K_5)
-  K_m6* = IUPmxCODE(K_6)
-  K_m7* = IUPmxCODE(K_7)        
-  K_m8* = IUPmxCODE(K_8)         
-  K_m9* = IUPmxCODE(K_9)
-  K_m0* = IUPmxCODE(K_0)
-  K_mPlus* = IUPmxCODE(K_plus)   
-  K_mComma* = IUPmxCODE(K_comma)   
-  K_mMinus* = IUPmxCODE(K_minus)   
-  K_mPeriod* = IUPmxCODE(K_period)   
-  K_mSlash* = IUPmxCODE(K_slash)   
-  K_mSemicolon* = IUPmxCODE(K_semicolon) 
-  K_mEqual* = IUPmxCODE(K_equal)
-  K_mBracketleft* = IUPmxCODE(K_bracketleft)
-  K_mBracketright* = IUPmxCODE(K_bracketright)
-  K_mBackslash* = IUPmxCODE(K_backslash)
-  K_mAsterisk* = IUPmxCODE(K_asterisk)
+  K_mupperA* = iUPmxCODE(K_upperA)
+  K_mupperB* = iUPmxCODE(K_upperB)
+  K_mupperC* = iUPmxCODE(K_upperC)
+  K_mupperD* = iUPmxCODE(K_upperD)
+  K_mupperE* = iUPmxCODE(K_upperE)
+  K_mupperF* = iUPmxCODE(K_upperF)
+  K_mupperG* = iUPmxCODE(K_upperG)
+  K_mupperH* = iUPmxCODE(K_upperH)
+  K_mupperI* = iUPmxCODE(K_upperI)
+  K_mupperJ* = iUPmxCODE(K_upperJ)
+  K_mupperK* = iUPmxCODE(K_upperK)
+  K_mupperL* = iUPmxCODE(K_upperL)
+  K_mupperM* = iUPmxCODE(K_upperM)
+  K_mupperN* = iUPmxCODE(K_upperN)
+  K_mupperO* = iUPmxCODE(K_upperO)
+  K_mupperP* = iUPmxCODE(K_upperP)
+  K_mupperQ* = iUPmxCODE(K_upperQ)
+  K_mupperR* = iUPmxCODE(K_upperR)
+  K_mupperS* = iUPmxCODE(K_upperS)
+  K_mupperT* = iUPmxCODE(K_upperT)
+  K_mupperU* = iUPmxCODE(K_upperU)
+  K_mupperV* = iUPmxCODE(K_upperV)
+  K_mupperW* = iUPmxCODE(K_upperW)
+  K_mupperX* = iUPmxCODE(K_upperX)
+  K_mupperY* = iUPmxCODE(K_upperY)
+  K_mupperZ* = iUPmxCODE(K_upperZ)
+  K_m1* = iUPmxCODE(K_1)
+  K_m2* = iUPmxCODE(K_2)
+  K_m3* = iUPmxCODE(K_3)
+  K_m4* = iUPmxCODE(K_4)
+  K_m5* = iUPmxCODE(K_5)
+  K_m6* = iUPmxCODE(K_6)
+  K_m7* = iUPmxCODE(K_7)        
+  K_m8* = iUPmxCODE(K_8)         
+  K_m9* = iUPmxCODE(K_9)
+  K_m0* = iUPmxCODE(K_0)
+  K_mPlus* = iUPmxCODE(K_plus)   
+  K_mComma* = iUPmxCODE(K_comma)   
+  K_mMinus* = iUPmxCODE(K_minus)   
+  K_mPeriod* = iUPmxCODE(K_period)   
+  K_mSlash* = iUPmxCODE(K_slash)   
+  K_mSemicolon* = iUPmxCODE(K_semicolon) 
+  K_mEqual* = iUPmxCODE(K_equal)
+  K_mBracketleft* = iUPmxCODE(K_bracketleft)
+  K_mBracketright* = iUPmxCODE(K_bracketright)
+  K_mBackslash* = iUPmxCODE(K_backslash)
+  K_mAsterisk* = iUPmxCODE(K_asterisk)
 
-  K_yA* = IUPyxCODE(K_upperA)
-  K_yB* = IUPyxCODE(K_upperB)
-  K_yC* = IUPyxCODE(K_upperC)
-  K_yD* = IUPyxCODE(K_upperD)
-  K_yE* = IUPyxCODE(K_upperE)
-  K_yF* = IUPyxCODE(K_upperF)
-  K_yG* = IUPyxCODE(K_upperG)
-  K_yH* = IUPyxCODE(K_upperH)
-  K_yI* = IUPyxCODE(K_upperI)
-  K_yJ* = IUPyxCODE(K_upperJ)
-  K_yK* = IUPyxCODE(K_upperK)
-  K_yL* = IUPyxCODE(K_upperL)
-  K_yM* = IUPyxCODE(K_upperM)
-  K_yN* = IUPyxCODE(K_upperN)
-  K_yO* = IUPyxCODE(K_upperO)
-  K_yP* = IUPyxCODE(K_upperP)
-  K_yQ* = IUPyxCODE(K_upperQ)
-  K_yR* = IUPyxCODE(K_upperR)
-  K_yS* = IUPyxCODE(K_upperS)
-  K_yT* = IUPyxCODE(K_upperT)
-  K_yU* = IUPyxCODE(K_upperU)
-  K_yV* = IUPyxCODE(K_upperV)
-  K_yW* = IUPyxCODE(K_upperW)
-  K_yX* = IUPyxCODE(K_upperX)
-  K_yY* = IUPyxCODE(K_upperY)
-  K_yZ* = IUPyxCODE(K_upperZ)
-  K_y1* = IUPyxCODE(K_1)
-  K_y2* = IUPyxCODE(K_2)
-  K_y3* = IUPyxCODE(K_3)
-  K_y4* = IUPyxCODE(K_4)
-  K_y5* = IUPyxCODE(K_5)
-  K_y6* = IUPyxCODE(K_6)
-  K_y7* = IUPyxCODE(K_7)        
-  K_y8* = IUPyxCODE(K_8)         
-  K_y9* = IUPyxCODE(K_9)
-  K_y0* = IUPyxCODE(K_0)
-  K_yPlus* = IUPyxCODE(K_plus)
-  K_yComma* = IUPyxCODE(K_comma)
-  K_yMinus* = IUPyxCODE(K_minus)   
-  K_yPeriod* = IUPyxCODE(K_period)   
-  K_ySlash* = IUPyxCODE(K_slash)   
-  K_ySemicolon* = IUPyxCODE(K_semicolon) 
-  K_yEqual* = IUPyxCODE(K_equal)
-  K_yBracketleft* = IUPyxCODE(K_bracketleft)
-  K_yBracketright* = IUPyxCODE(K_bracketright)
-  K_yBackslash* = IUPyxCODE(K_backslash)
-  K_yAsterisk* = IUPyxCODE(K_asterisk)
+  K_yA* = iUPyxCODE(K_upperA)
+  K_yB* = iUPyxCODE(K_upperB)
+  K_yC* = iUPyxCODE(K_upperC)
+  K_yD* = iUPyxCODE(K_upperD)
+  K_yE* = iUPyxCODE(K_upperE)
+  K_yF* = iUPyxCODE(K_upperF)
+  K_yG* = iUPyxCODE(K_upperG)
+  K_yH* = iUPyxCODE(K_upperH)
+  K_yI* = iUPyxCODE(K_upperI)
+  K_yJ* = iUPyxCODE(K_upperJ)
+  K_yK* = iUPyxCODE(K_upperK)
+  K_yL* = iUPyxCODE(K_upperL)
+  K_yM* = iUPyxCODE(K_upperM)
+  K_yN* = iUPyxCODE(K_upperN)
+  K_yO* = iUPyxCODE(K_upperO)
+  K_yP* = iUPyxCODE(K_upperP)
+  K_yQ* = iUPyxCODE(K_upperQ)
+  K_yR* = iUPyxCODE(K_upperR)
+  K_yS* = iUPyxCODE(K_upperS)
+  K_yT* = iUPyxCODE(K_upperT)
+  K_yU* = iUPyxCODE(K_upperU)
+  K_yV* = iUPyxCODE(K_upperV)
+  K_yW* = iUPyxCODE(K_upperW)
+  K_yX* = iUPyxCODE(K_upperX)
+  K_yY* = iUPyxCODE(K_upperY)
+  K_yZ* = iUPyxCODE(K_upperZ)
+  K_y1* = iUPyxCODE(K_1)
+  K_y2* = iUPyxCODE(K_2)
+  K_y3* = iUPyxCODE(K_3)
+  K_y4* = iUPyxCODE(K_4)
+  K_y5* = iUPyxCODE(K_5)
+  K_y6* = iUPyxCODE(K_6)
+  K_y7* = iUPyxCODE(K_7)        
+  K_y8* = iUPyxCODE(K_8)         
+  K_y9* = iUPyxCODE(K_9)
+  K_y0* = iUPyxCODE(K_0)
+  K_yPlus* = iUPyxCODE(K_plus)
+  K_yComma* = iUPyxCODE(K_comma)
+  K_yMinus* = iUPyxCODE(K_minus)   
+  K_yPeriod* = iUPyxCODE(K_period)   
+  K_ySlash* = iUPyxCODE(K_slash)   
+  K_ySemicolon* = iUPyxCODE(K_semicolon) 
+  K_yEqual* = iUPyxCODE(K_equal)
+  K_yBracketleft* = iUPyxCODE(K_bracketleft)
+  K_yBracketright* = iUPyxCODE(K_bracketright)
+  K_yBackslash* = iUPyxCODE(K_backslash)
+  K_yAsterisk* = iUPyxCODE(K_asterisk)
 
-proc ControlsOpen*(): cint {.cdecl, importc: "IupControlsOpen", dynlib: dllname.}
-proc ControlsClose*() {.cdecl, importc: "IupControlsClose", dynlib: dllname.}
+proc controlsOpen*(): cint {.cdecl, importc: "IupControlsOpen", dynlib: dllname.}
+proc controlsClose*() {.cdecl, importc: "IupControlsClose", dynlib: dllname.}
 
-proc OldValOpen*() {.cdecl, importc: "IupOldValOpen", dynlib: dllname.}
-proc OldTabsOpen*() {.cdecl, importc: "IupOldTabsOpen", dynlib: dllname.}
+proc oldValOpen*() {.cdecl, importc: "IupOldValOpen", dynlib: dllname.}
+proc oldTabsOpen*() {.cdecl, importc: "IupOldTabsOpen", dynlib: dllname.}
 
-proc Colorbar*(): PIhandle {.cdecl, importc: "IupColorbar", dynlib: dllname.}
-proc Cells*(): PIhandle {.cdecl, importc: "IupCells", dynlib: dllname.}
-proc ColorBrowser*(): PIhandle {.cdecl, importc: "IupColorBrowser", dynlib: dllname.}
-proc Gauge*(): PIhandle {.cdecl, importc: "IupGauge", dynlib: dllname.}
-proc Dial*(theType: cstring): PIhandle {.cdecl, importc: "IupDial", dynlib: dllname.}
-proc Matrix*(action: cstring): PIhandle {.cdecl, importc: "IupMatrix", dynlib: dllname.}
+proc colorbar*(): PIhandle {.cdecl, importc: "IupColorbar", dynlib: dllname.}
+proc cells*(): PIhandle {.cdecl, importc: "IupCells", dynlib: dllname.}
+proc colorBrowser*(): PIhandle {.cdecl, importc: "IupColorBrowser", dynlib: dllname.}
+proc gauge*(): PIhandle {.cdecl, importc: "IupGauge", dynlib: dllname.}
+proc dial*(theType: cstring): PIhandle {.cdecl, importc: "IupDial", dynlib: dllname.}
+proc matrix*(action: cstring): PIhandle {.cdecl, importc: "IupMatrix", dynlib: dllname.}
 
 # IupMatrix utilities
-proc MatSetAttribute*(ih: PIhandle, name: cstring, lin, col: cint, 
+proc matSetAttribute*(ih: PIhandle, name: cstring, lin, col: cint, 
                       value: cstring) {.
                       cdecl, importc: "IupMatSetAttribute", dynlib: dllname.}
-proc MatStoreAttribute*(ih: PIhandle, name: cstring, lin, col: cint, 
+proc matStoreAttribute*(ih: PIhandle, name: cstring, lin, col: cint, 
                         value: cstring) {.cdecl, 
                         importc: "IupMatStoreAttribute", dynlib: dllname.}
-proc MatGetAttribute*(ih: PIhandle, name: cstring, lin, col: cint): cstring {.
+proc matGetAttribute*(ih: PIhandle, name: cstring, lin, col: cint): cstring {.
   cdecl, importc: "IupMatGetAttribute", dynlib: dllname.}
-proc MatGetInt*(ih: PIhandle, name: cstring, lin, col: cint): cint {.
+proc matGetInt*(ih: PIhandle, name: cstring, lin, col: cint): cint {.
   cdecl, importc: "IupMatGetInt", dynlib: dllname.}
-proc MatGetFloat*(ih: PIhandle, name: cstring, lin, col: cint): cfloat {.
+proc matGetFloat*(ih: PIhandle, name: cstring, lin, col: cint): cfloat {.
   cdecl, importc: "IupMatGetFloat", dynlib: dllname.}
-proc MatSetfAttribute*(ih: PIhandle, name: cstring, lin, col: cint, 
+proc matSetfAttribute*(ih: PIhandle, name: cstring, lin, col: cint, 
                        format: cstring) {.cdecl, 
                        importc: "IupMatSetfAttribute", 
                        dynlib: dllname, varargs.}
@@ -916,34 +916,34 @@ const
   IUP_SECONDARY* = -2
 
 # Initialize PPlot widget class
-proc PPlotOpen*() {.cdecl, importc: "IupPPlotOpen", dynlib: dllname.}
+proc pPlotOpen*() {.cdecl, importc: "IupPPlotOpen", dynlib: dllname.}
 
 # Create an PPlot widget instance
-proc PPlot*: PIhandle {.cdecl, importc: "IupPPlot", dynlib: dllname.}
+proc pPlot*: PIhandle {.cdecl, importc: "IupPPlot", dynlib: dllname.}
 
 # Add dataset to plot
-proc PPlotBegin*(ih: PIhandle, strXdata: cint) {.
+proc pPlotBegin*(ih: PIhandle, strXdata: cint) {.
   cdecl, importc: "IupPPlotBegin", dynlib: dllname.}
-proc PPlotAdd*(ih: PIhandle, x, y: cfloat) {.
+proc pPlotAdd*(ih: PIhandle, x, y: cfloat) {.
   cdecl, importc: "IupPPlotAdd", dynlib: dllname.}
-proc PPlotAddStr*(ih: PIhandle, x: cstring, y: cfloat) {.
+proc pPlotAddStr*(ih: PIhandle, x: cstring, y: cfloat) {.
   cdecl, importc: "IupPPlotAddStr", dynlib: dllname.}
-proc PPlotEnd*(ih: PIhandle): cint {.
+proc pPlotEnd*(ih: PIhandle): cint {.
   cdecl, importc: "IupPPlotEnd", dynlib: dllname.}
 
-proc PPlotInsertStr*(ih: PIhandle, index, sample_index: cint, x: cstring, 
+proc pPlotInsertStr*(ih: PIhandle, index, sampleIndex: cint, x: cstring, 
                      y: cfloat) {.cdecl, importc: "IupPPlotInsertStr", 
                      dynlib: dllname.}
-proc PPlotInsert*(ih: PIhandle, index, sample_index: cint, 
+proc pPlotInsert*(ih: PIhandle, index, sampleIndex: cint, 
                   x, y: cfloat) {.
                   cdecl, importc: "IupPPlotInsert", dynlib: dllname.}
 
 # convert from plot coordinates to pixels
-proc PPlotTransform*(ih: PIhandle, x, y: cfloat, ix, iy: var cint) {.
+proc pPlotTransform*(ih: PIhandle, x, y: cfloat, ix, iy: var cint) {.
   cdecl, importc: "IupPPlotTransform", dynlib: dllname.}
 
 # Plot on the given device. Uses a "cdCanvas*".
-proc PPlotPaintTo*(ih: PIhandle, cnv: pointer) {.
+proc pPlotPaintTo*(ih: PIhandle, cnv: pointer) {.
   cdecl, importc: "IupPPlotPaintTo", dynlib: dllname.}
 
 

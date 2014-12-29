@@ -4,7 +4,7 @@ semicolon = ';' COMMENT?
 colon = ':' COMMENT?
 colcom = ':' COMMENT?
 
-operator =  OP0 | OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9
+operator =  OP0 | OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9 | OP10
          | 'or' | 'xor' | 'and'
          | 'is' | 'isnot' | 'in' | 'notin' | 'of'
          | 'div' | 'mod' | 'shl' | 'shr' | 'not' | 'addr' | 'static' | '..'
@@ -14,16 +14,17 @@ prefixOperator = operator
 optInd = COMMENT?
 optPar = (IND{>} | IND{=})?
 
-simpleExpr = assignExpr (OP0 optInd assignExpr)*
-assignExpr = orExpr (OP1 optInd orExpr)*
-orExpr = andExpr (OP2 optInd andExpr)*
-andExpr = cmpExpr (OP3 optInd cmpExpr)*
-cmpExpr = sliceExpr (OP4 optInd sliceExpr)*
-sliceExpr = ampExpr (OP5 optInd ampExpr)*
-ampExpr = plusExpr (OP6 optInd plusExpr)*
-plusExpr = mulExpr (OP7 optInd mulExpr)*
-mulExpr = dollarExpr (OP8 optInd dollarExpr)*
-dollarExpr = primary (OP9 optInd primary)*
+simpleExpr = arrowExpr (OP0 optInd arrowExpr)*
+arrowExpr = assignExpr (OP1 optInd assignExpr)*
+assignExpr = orExpr (OP2 optInd orExpr)*
+orExpr = andExpr (OP3 optInd andExpr)*
+andExpr = cmpExpr (OP4 optInd cmpExpr)*
+cmpExpr = sliceExpr (OP5 optInd sliceExpr)*
+sliceExpr = ampExpr (OP6 optInd ampExpr)*
+ampExpr = plusExpr (OP7 optInd plusExpr)*
+plusExpr = mulExpr (OP8 optInd mulExpr)*
+mulExpr = dollarExpr (OP9 optInd dollarExpr)*
+dollarExpr = primary (OP10 optInd primary)*
 symbol = '`' (KEYW|IDENT|literal|(operator|'('|')'|'['|']'|'{'|'}'|'=')+)+ '`'
        | IDENT
 indexExpr = expr
@@ -142,6 +143,7 @@ exceptBlock = 'except' colcom stmt
 forStmt = 'for' (identWithPragma ^+ comma) 'in' expr colcom stmt
 blockStmt = 'block' symbol? colcom stmt
 staticStmt = 'static' colcom stmt
+deferStmt = 'defer' colcom stmt
 asmStmt = 'asm' pragma? (STR_LIT | RSTR_LIT | TRIPLE_STR_LIT)
 genericParam = symbol (comma symbol)* (colon expr)? ('=' optInd expr)?
 genericParamList = '[' optInd
@@ -182,7 +184,7 @@ simpleStmt = ((returnStmt | raiseStmt | yieldStmt | discardStmt | breakStmt
            | includeStmt | commentStmt) / exprStmt) COMMENT?
 complexOrSimpleStmt = (ifStmt | whenStmt | whileStmt
                     | tryStmt | finallyStmt | exceptStmt | forStmt
-                    | blockStmt | staticStmt | asmStmt
+                    | blockStmt | staticStmt | deferStmt | asmStmt
                     | 'proc' routine
                     | 'method' routine
                     | 'iterator' routine

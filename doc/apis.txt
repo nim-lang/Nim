@@ -84,5 +84,5 @@ indentation             indent
 Coding Guidelines
 =================
 
-For coding guidelines see the `Internals of the Nimrod Compiler
+For coding guidelines see the `Internals of the Nim Compiler
 <intern.html#coding-guidelines>`_ documentation.

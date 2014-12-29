@@ -1,7 +1,7 @@
 #
 #
-#            Nimrod's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#            Nim's Runtime Library
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -31,8 +31,8 @@ proc validEmailAddress*(s: string): bool {.noSideEffect,
     inc(i)
   if s[i] != '@': return false
   var j = len(s)-1
-  if s[j] notin letters: return false
-  while j >= i and s[j] in letters: dec(j)
+  if s[j] notin Letters: return false
+  while j >= i and s[j] in Letters: dec(j)
   inc(i) # skip '@'
   while s[i] in {'0'..'9', 'a'..'z', '-', '.'}: inc(i) 
   if s[i] != '\0': return false
@@ -44,7 +44,7 @@ proc validEmailAddress*(s: string): bool {.noSideEffect,
      "aero", "jobs", "museum": return true
   return false
 
-proc parseInt*(s: string, value: var int, validRange: TSlice[int]) {.
+proc parseInt*(s: string, value: var int, validRange: Slice[int]) {.
   noSideEffect, rtl, extern: "nmatchParseInt".} =
   ## parses `s` into an integer in the range `validRange`. If successful,
   ## `value` is modified to contain the result. Otherwise no exception is
@@ -53,7 +53,7 @@ proc parseInt*(s: string, value: var int, validRange: TSlice[int]) {.
   var x = value
   try:
     discard parseutils.parseInt(s, x, 0)
-  except EOverflow:
+  except OverflowError:
     discard
   if x in validRange: value = x
 

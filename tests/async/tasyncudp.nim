@@ -42,14 +42,14 @@ proc swarmConnect(s: PAsyncSocket) =
 proc createClient(disp: var PDispatcher, port: TPort,
                   buffered = true) =
   currentClient.inc()
-  var client = AsyncSocket(typ = SOCK_DGRAM, protocol = IPPROTO_UDP,
+  var client = asyncSocket(typ = SOCK_DGRAM, protocol = IPPROTO_UDP,
                            buffered = buffered)
   client.handleConnect = swarmConnect
   disp.register(client)
   client.connect("localhost", port)
 
 proc createServer(port: TPort, buffered = true) =
-  var server = AsyncSocket(typ = SOCK_DGRAM, protocol = IPPROTO_UDP,
+  var server = asyncSocket(typ = SOCK_DGRAM, protocol = IPPROTO_UDP,
                            buffered = buffered)
   server.handleRead = serverRead
   disp.register(server)

@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2014 Dominik Picheta
 #
 #    See the file "copying.txt", included in this
@@ -53,7 +53,7 @@ proc createProcType(p, b: PNimrodNode): PNimrodNode {.compileTime.} =
 macro `=>`*(p, b: expr): expr {.immediate.} =
   ## Syntax sugar for anonymous procedures.
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##
   ##   proc passTwoAndTwo(f: (int, int) -> int): int =
   ##     f(2, 2)
@@ -77,7 +77,17 @@ macro `=>`*(p, b: expr): expr {.immediate.} =
         identDefs.add(c)
         identDefs.add(newEmptyNode())
         identDefs.add(newEmptyNode())
+      of nnkInfix:
+        if c[0].kind == nnkIdent and c[0].ident == !"->":
+          var procTy = createProcType(c[1], c[2])
+          params[0] = procTy[0][0]
+          for i in 1 .. <procTy[0].len:
+            params.add(procTy[0][i])
+        else:
+          error("Expected proc type (->) got (" & $c[0].ident & ").")
+        break
       else:
+        echo treeRepr c
         error("Incorrect procedure parameter list.")
       params.add(identDefs)
   of nnkIdent:
@@ -104,7 +114,7 @@ macro `=>`*(p, b: expr): expr {.immediate.} =
 macro `->`*(p, b: expr): expr {.immediate.} =
   ## Syntax sugar for procedure types.
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##
   ##   proc pass2(f: (float, float) -> float): float =
   ##     f(2, 2)

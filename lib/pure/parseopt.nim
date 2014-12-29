@@ -1,13 +1,13 @@
 #
 #
-#            Nimrod's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#            Nim's Runtime Library
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-## This module provides the standard Nimrod command line parser.
+## This module provides the standard Nim command line parser.
 ## It supports one convenience iterator over all command line options and some
 ## lower-level features.
 ##
@@ -22,26 +22,28 @@ import
   os, strutils
 
 type 
-  TCmdLineKind* = enum        ## the detected command line token
+  CmdLineKind* = enum         ## the detected command line token
     cmdEnd,                   ## end of command line reached
     cmdArgument,              ## argument detected
-    cmdLongoption,            ## a long option ``--option`` detected
+    cmdLongOption,            ## a long option ``--option`` detected
     cmdShortOption            ## a short option ``-c`` detected
-  TOptParser* = 
-      object of TObject ## this object implements the command line parser  
+  OptParser* = 
+      object of RootObj ## this object implements the command line parser  
     cmd: string
     pos: int
     inShortState: bool
-    kind*: TCmdLineKind       ## the dected command line token
+    kind*: CmdLineKind        ## the dected command line token
     key*, val*: TaintedString ## key and value pair; ``key`` is the option
                               ## or the argument, ``value`` is not "" if
                               ## the option was given a value
+
+{.deprecated: [TCmdLineKind: CmdLineKind, TOptParser: OptParser].}
 
 when declared(os.paramCount):
   # we cannot provide this for NimRtl creation on Posix, because we can't 
   # access the command line arguments then!
 
-  proc initOptParser*(cmdline = ""): TOptParser =
+  proc initOptParser*(cmdline = ""): OptParser =
     ## inits the option parser. If ``cmdline == ""``, the real command line
     ## (as provided by the ``OS`` module) is taken.
     result.pos = 0
@@ -57,7 +59,7 @@ when declared(os.paramCount):
     result.val = TaintedString""
 
 proc parseWord(s: string, i: int, w: var string, 
-               delim: TCharSet = {'\x09', ' ', '\0'}): int = 
+               delim: set[char] = {'\x09', ' ', '\0'}): int = 
   result = i
   if s[result] == '\"': 
     inc(result)
@@ -70,7 +72,7 @@ proc parseWord(s: string, i: int, w: var string,
       add(w, s[result])
       inc(result)
 
-proc handleShortOption(p: var TOptParser) = 
+proc handleShortOption(p: var OptParser) = 
   var i = p.pos
   p.kind = cmdShortOption
   add(p.key.string, p.cmd[i])
@@ -87,8 +89,7 @@ proc handleShortOption(p: var TOptParser) =
   if p.cmd[i] == '\0': p.inShortState = false
   p.pos = i
 
-proc next*(p: var TOptParser) {.
-  rtl, extern: "npo$1".} = 
+proc next*(p: var OptParser) {.rtl, extern: "npo$1".} = 
   ## parses the first or next option; ``p.kind`` describes what token has been
   ## parsed. ``p.key`` and ``p.val`` are set accordingly.
   var i = p.pos
@@ -122,18 +123,16 @@ proc next*(p: var TOptParser) {.
     p.kind = cmdArgument
     p.pos = parseWord(p.cmd, i, p.key.string)
 
-proc cmdLineRest*(p: TOptParser): TaintedString {.
-  rtl, extern: "npo$1".} = 
+proc cmdLineRest*(p: OptParser): TaintedString {.rtl, extern: "npo$1".} = 
   ## retrieves the rest of the command line that has not been parsed yet.
   result = strip(substr(p.cmd, p.pos, len(p.cmd) - 1)).TaintedString
 
 when declared(initOptParser):
-
-  iterator getopt*(): tuple[kind: TCmdLineKind, key, val: TaintedString] =
+  iterator getopt*(): tuple[kind: CmdLineKind, key, val: TaintedString] =
     ## This is an convenience iterator for iterating over the command line.
     ## This uses the TOptParser object. Example:
     ##
-    ## .. code-block:: nimrod
+    ## .. code-block:: nim
     ##   var
     ##     filename = ""
     ##   for kind, key, val in getopt():

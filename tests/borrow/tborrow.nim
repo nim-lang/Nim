@@ -18,4 +18,4 @@ proc `++`(x, y: DF): DF {.borrow.}
 proc `$`(x: DI): string {.borrow.}
 proc `$`(x: DF): string {.borrow.}
 
-echo  4544.DI ++ 343.di, " ", (4.5.df ++ 0.5.df).float == 5.0
+echo  4544.DI ++ 343.DI, " ", (4.5.DF ++ 0.5.DF).float == 5.0

@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -729,7 +729,7 @@ type
     len*: int                 # output length pointer
     is_null*: Pmy_bool        # Pointer to null indicator
     buffer*: pointer          # buffer to get/put data
-    error*: pmy_bool          # set this if you want to track data truncations happened during fetch
+    error*: PMy_bool          # set this if you want to track data truncations happened during fetch
     buffer_type*: Tenum_field_types # buffer type
     buffer_length*: int       # buffer length, must be set for str/binary
                               # Following are for internal use. Set by mysql_stmt_bind_param  
@@ -904,7 +904,7 @@ proc shutdown*(MySQL: PMySQL, shutdown_level: Tenum_shutdown_level): cint{.stdca
     dynlib: lib, importc: "mysql_shutdown".}
 proc dump_debug_info*(MySQL: PMySQL): cint{.stdcall, dynlib: lib, 
                                   importc: "mysql_dump_debug_info".}
-proc refresh*(MySQL: PMySQL, refresh_options: cuint): cint{.stdcall, dynlib: lib, 
+proc refresh*(sql: PMySQL, refresh_options: cuint): cint{.stdcall, dynlib: lib, 
     importc: "mysql_refresh".}
 proc kill*(MySQL: PMySQL, pid: int): cint{.stdcall, dynlib: lib, importc: "mysql_kill".}
 proc set_server_option*(MySQL: PMySQL, option: Tenum_mysql_set_option): cint{.stdcall, 
@@ -1040,7 +1040,7 @@ const
   NO_DATA* = 100
   DATA_TRUNCATED* = 101
 
-proc reload*(MySQL: PMySQL): cint
+proc reload*(x: PMySQL): cint
 when defined(USE_OLD_FUNCTIONS): 
   proc connect*(MySQL: PMySQL, host: cstring, user: cstring, passwd: cstring): PMySQL{.stdcall, 
       dynlib: lib, importc: "mysql_connect".}
@@ -1059,7 +1059,7 @@ proc IS_NOT_NULL(n: int32): bool =
 proc IS_BLOB(n: int32): bool = 
   result = (n and BLOB_FLAG) != 0
 
-proc IS_NUM_FIELD(f: pst_mysql_field): bool = 
+proc IS_NUM_FIELD(f: Pst_mysql_field): bool = 
   result = (f.flags and NUM_FLAG) != 0
 
 proc IS_NUM(t: Tenum_field_types): bool = 
@@ -1071,7 +1071,7 @@ proc INTERNAL_NUM_FIELD(f: Pst_mysql_field): bool =
       ((f.ftype != FIELD_TYPE_TIMESTAMP) or (f.len == 14) or (f.len == 8)) or
       (f.ftype == FIELD_TYPE_YEAR)
 
-proc reload(mysql: PMySQL): cint = 
-  result = refresh(mysql, REFRESH_GRANT)
+proc reload(x: PMySQL): cint =
+  result = refresh(x, REFRESH_GRANT)
 
 {.pop.}

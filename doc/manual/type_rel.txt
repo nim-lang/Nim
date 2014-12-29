@@ -1,0 +1,192 @@
+Type relations
+==============
+
+The following section defines several relations on types that are needed to
+describe the type checking done by the compiler.
+
+
+Type equality
+-------------
+Nim uses structural type equivalence for most types. Only for objects,
+enumerations and distinct types name equivalence is used. The following
+algorithm (in pseudo-code) determines type equality:
+
+.. code-block:: nim
+  proc typeEqualsAux(a, b: PType,
+                     s: var set[PType * PType]): bool =
+    if (a,b) in s: return true
+    incl(s, (a,b))
+    if a.kind == b.kind:
+      case a.kind
+      of int, intXX, float, floatXX, char, string, cstring, pointer, 
+          bool, nil, void:
+        # leaf type: kinds identical; nothing more to check
+        result = true
+      of ref, ptr, var, set, seq, openarray:
+        result = typeEqualsAux(a.baseType, b.baseType, s)
+      of range:
+        result = typeEqualsAux(a.baseType, b.baseType, s) and
+          (a.rangeA == b.rangeA) and (a.rangeB == b.rangeB)
+      of array:
+        result = typeEqualsAux(a.baseType, b.baseType, s) and
+                 typeEqualsAux(a.indexType, b.indexType, s)
+      of tuple:
+        # Note: tuple field names are ignored
+        if a.tupleLen == b.tupleLen:
+          for i in 0..a.tupleLen-1:
+            if not typeEqualsAux(a[i], b[i], s): return false
+          result = true
+      of object, enum, distinct:
+        result = a == b
+      of proc:
+        result = typeEqualsAux(a.parameterTuple, b.parameterTuple, s) and
+                 typeEqualsAux(a.resultType, b.resultType, s) and
+                 a.callingConvention == b.callingConvention
+
+  proc typeEquals(a, b: PType): bool =
+    var s: set[PType * PType] = {}
+    result = typeEqualsAux(a, b, s)
+
+Since types are graphs which can have cycles, the above algorithm needs an
+auxiliary set ``s`` to detect this case.
+
+
+Type equality modulo type distinction
+-------------------------------------
+
+The following algorithm (in pseudo-code) determines whether two types
+are equal with no respect to ``distinct`` types. For brevity the cycle check
+with an auxiliary set ``s`` is omitted:
+
+.. code-block:: nim
+  proc typeEqualsOrDistinct(a, b: PType): bool =
+    if a.kind == b.kind:
+      case a.kind
+      of int, intXX, float, floatXX, char, string, cstring, pointer, 
+          bool, nil, void:
+        # leaf type: kinds identical; nothing more to check
+        result = true
+      of ref, ptr, var, set, seq, openarray:
+        result = typeEqualsOrDistinct(a.baseType, b.baseType)
+      of range:
+        result = typeEqualsOrDistinct(a.baseType, b.baseType) and
+          (a.rangeA == b.rangeA) and (a.rangeB == b.rangeB)
+      of array:
+        result = typeEqualsOrDistinct(a.baseType, b.baseType) and
+                 typeEqualsOrDistinct(a.indexType, b.indexType)
+      of tuple:
+        if a.tupleLen == b.tupleLen:
+          for i in 0..a.tupleLen-1:
+            if not typeEqualsOrDistinct(a[i], b[i]): return false
+          result = true
+      of distinct:
+        result = typeEqualsOrDistinct(a.baseType, b.baseType)
+      of object, enum:
+        result = a == b
+      of proc:
+        result = typeEqualsOrDistinct(a.parameterTuple, b.parameterTuple) and
+                 typeEqualsOrDistinct(a.resultType, b.resultType) and
+                 a.callingConvention == b.callingConvention
+    elif a.kind == distinct:
+      result = typeEqualsOrDistinct(a.baseType, b)
+    elif b.kind == distinct:
+      result = typeEqualsOrDistinct(a, b.baseType)
+      
+
+Subtype relation
+----------------
+If object ``a`` inherits from ``b``, ``a`` is a subtype of ``b``. This subtype
+relation is extended to the types ``var``, ``ref``, ``ptr``:
+
+.. code-block:: nim
+  proc isSubtype(a, b: PType): bool =
+    if a.kind == b.kind:
+      case a.kind
+      of object:
+        var aa = a.baseType
+        while aa != nil and aa != b: aa = aa.baseType
+        result = aa == b
+      of var, ref, ptr:
+        result = isSubtype(a.baseType, b.baseType)
+
+.. XXX nil is a special value!
+
+
+Convertible relation
+--------------------
+A type ``a`` is **implicitly** convertible to type ``b`` iff the following
+algorithm returns true:
+
+.. code-block:: nim
+  # XXX range types?
+  proc isImplicitlyConvertible(a, b: PType): bool =
+    case a.kind
+    of int:     result = b in {int8, int16, int32, int64, uint, uint8, uint16,
+                               uint32, uint64, float, float32, float64}
+    of int8:    result = b in {int16, int32, int64, int}
+    of int16:   result = b in {int32, int64, int}
+    of int32:   result = b in {int64, int}
+    of uint:    result = b in {uint32, uint64}
+    of uint8:   result = b in {uint16, uint32, uint64}
+    of uint16:  result = b in {uint32, uint64}
+    of uint32:  result = b in {uint64}
+    of float:   result = b in {float32, float64}
+    of float32: result = b in {float64, float}
+    of float64: result = b in {float32, float}
+    of seq:
+      result = b == openArray and typeEquals(a.baseType, b.baseType)
+    of array:
+      result = b == openArray and typeEquals(a.baseType, b.baseType)
+      if a.baseType == char and a.indexType.rangeA == 0:
+        result = b = cstring
+    of cstring, ptr:
+      result = b == pointer
+    of string:
+      result = b == cstring
+
+A type ``a`` is **explicitly** convertible to type ``b`` iff the following
+algorithm returns true:
+ 
+.. code-block:: nim
+  proc isIntegralType(t: PType): bool =
+    result = isOrdinal(t) or t.kind in {float, float32, float64}
+
+  proc isExplicitlyConvertible(a, b: PType): bool =
+    result = false
+    if isImplicitlyConvertible(a, b): return true
+    if typeEqualsOrDistinct(a, b): return true
+    if isIntegralType(a) and isIntegralType(b): return true
+    if isSubtype(a, b) or isSubtype(b, a): return true
+    
+The convertible relation can be relaxed by a user-defined type 
+`converter`:idx:.
+
+.. code-block:: nim
+  converter toInt(x: char): int = result = ord(x)
+
+  var
+    x: int
+    chr: char = 'a'
+
+  # implicit conversion magic happens here
+  x = chr
+  echo x # => 97
+  # you can use the explicit form too
+  x = chr.toInt
+  echo x # => 97
+
+The type conversion ``T(a)`` is an L-value if ``a`` is an L-value and 
+``typeEqualsOrDistinct(T, type(a))`` holds.
+
+
+Assignment compatibility
+------------------------
+
+An expression ``b`` can be assigned to an expression ``a`` iff ``a`` is an
+`l-value` and ``isImplicitlyConvertible(b.typ, a.typ)`` holds.
+
+
+Overloading resolution
+----------------------
+
+To be written.

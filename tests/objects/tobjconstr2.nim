@@ -32,3 +32,19 @@ type
       size: tuple[w, h: float]
 
 var d = Graphic(kind: 1, size: (12.9, 6.9))
+
+# bug #1274
+type
+  K = enum Koo, Kar
+  Graphic2 = object of RootObj
+    case kind: K
+    of Koo:
+      radius: float
+    of Kar:
+      size: tuple[w, h: float]
+
+type NamedGraphic = object of Graphic2
+  name: string
+
+var ngr = NamedGraphic(kind: Koo, radius: 6.9, name: "Foo")
+echo ngr.name

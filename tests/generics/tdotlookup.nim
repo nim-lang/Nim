@@ -7,4 +7,4 @@ import mdotlookup
 
 foo(7)
 # bug #1444
-func(4)
+fn(4)

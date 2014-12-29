@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -26,7 +26,7 @@ proc close(p: PPassContext, n: PNode): PNode =
     writeOutput(g.doc, g.module.filename, HtmlExt, useWarning)
     try:
       generateIndex(g.doc)
-    except EIO:
+    except IOError:
       discard
 
 proc processNode(c: PPassContext, n: PNode): PNode = 

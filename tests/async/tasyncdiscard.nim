@@ -13,7 +13,7 @@ discard """
 import asyncio, asyncdispatch, asyncnet
 
 proc main {.async.} =
-  proc f: PFuture[int] {.async.} =
+  proc f: Future[int] {.async.} =
     discard
     echo 1
     discard
@@ -24,7 +24,7 @@ proc main {.async.} =
   echo x
   echo 3
 
-  proc g: PFuture[int] {.async.} =
+  proc g: Future[int] {.async.} =
     discard
     echo 4
     discard

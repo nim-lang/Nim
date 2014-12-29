@@ -1,54 +1,32 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-## This module contains Nimrod's support for locks and condition vars.
-## If the symbol ``preventDeadlocks`` is defined
-## (compiled with ``-d:preventDeadlocks``) special logic is added to
-## every ``acquire``, ``tryAcquire`` and ``release`` action that ensures at
-## runtime that no deadlock can occur. This is achieved by forcing a thread
-## to release its locks should it be part of a deadlock. This thread then
-## re-acquires its locks and proceeds.
+## This module contains Nim's support for locks and condition vars.
 
 include "system/syslocks"
 
 type
-  TLock* = TSysLock ## Nimrod lock; whether this is re-entrant
-                    ## or not is unspecified! However, compilation
-                    ## in preventDeadlocks-mode guarantees re-entrancy.
-  TCond* = TSysCond ## Nimrod condition variable
+  TLock* = TSysLock ## Nim lock; whether this is re-entrant
+                    ## or not is unspecified!
+  TCond* = TSysCond ## Nim condition variable
   
-  FLock* = object of TEffect ## effect that denotes that some lock operation
-                             ## is performed
-  FAquireLock* = object of FLock  ## effect that denotes that some lock is
-                                  ## aquired
-  FReleaseLock* = object of FLock ## effect that denotes that some lock is
-                                  ## released
-  
-const
-  noDeadlocks = defined(preventDeadlocks)
-  maxLocksPerThread* = 10 ## max number of locks a thread can hold
-                          ## at the same time; this limit is only relevant
-                          ## when compiled with ``-d:preventDeadlocks``.
-
-var
-  deadlocksPrevented*: int ## counts the number of times a 
-                           ## deadlock has been prevented
-
-when noDeadlocks:
-  var
-    locksLen {.threadvar.}: int
-    locks {.threadvar.}: array [0..MaxLocksPerThread-1, pointer]
-
-  proc orderedLocks(): bool = 
-    for i in 0 .. locksLen-2:
-      if locks[i] >= locks[i+1]: return false
-    result = true
+  LockEffect* {.deprecated.} = object of RootEffect ## \
+    ## effect that denotes that some lock operation
+    ## is performed. Deprecated, do not use anymore!
+  AquireEffect* {.deprecated.} = object of LockEffect  ## \
+    ## effect that denotes that some lock is
+    ## aquired. Deprecated, do not use anymore!
+  ReleaseEffect* {.deprecated.} = object of LockEffect ## \
+    ## effect that denotes that some lock is
+    ## released. Deprecated, do not use anymore!
+{.deprecated: [FLock: LockEffect, FAquireLock: AquireEffect, 
+    FReleaseLock: ReleaseEffect].}
 
 proc initLock*(lock: var TLock) {.inline.} =
   ## Initializes the given lock.
@@ -58,93 +36,16 @@ proc deinitLock*(lock: var TLock) {.inline.} =
   ## Frees the resources associated with the lock.
   deinitSys(lock)
 
-proc tryAcquire*(lock: var TLock): bool {.tags: [FAquireLock].} = 
+proc tryAcquire*(lock: var TLock): bool = 
   ## Tries to acquire the given lock. Returns `true` on success.
   result = tryAcquireSys(lock)
-  when noDeadlocks:
-    if not result: return
-    # we have to add it to the ordered list. Oh, and we might fail if
-    # there is no space in the array left ...
-    if locksLen >= len(locks):
-      releaseSys(lock)
-      raise newException(EResourceExhausted, "cannot acquire additional lock")
-    # find the position to add:
-    var p = addr(lock)
-    var L = locksLen-1
-    var i = 0
-    while i <= L:
-      assert locks[i] != nil
-      if locks[i] < p: inc(i) # in correct order
-      elif locks[i] == p: return # thread already holds lock
-      else:
-        # do the crazy stuff here:
-        while L >= i:
-          locks[L+1] = locks[L]
-          dec L
-        locks[i] = p
-        inc(locksLen)
-        assert orderedLocks()
-        return
-    # simply add to the end:
-    locks[locksLen] = p
-    inc(locksLen)
-    assert orderedLocks()
 
-proc acquire*(lock: var TLock) {.tags: [FAquireLock].} =
+proc acquire*(lock: var TLock) =
   ## Acquires the given lock.
-  when nodeadlocks:
-    var p = addr(lock)
-    var L = locksLen-1
-    var i = 0
-    while i <= L:
-      assert locks[i] != nil
-      if locks[i] < p: inc(i) # in correct order
-      elif locks[i] == p: return # thread already holds lock
-      else:
-        # do the crazy stuff here:
-        if locksLen >= len(locks):
-          raise newException(EResourceExhausted, 
-              "cannot acquire additional lock")
-        while L >= i:
-          releaseSys(cast[ptr TSysLock](locks[L])[])
-          locks[L+1] = locks[L]
-          dec L
-        # acquire the current lock:
-        acquireSys(lock)
-        locks[i] = p
-        inc(locksLen)
-        # acquire old locks in proper order again:
-        L = locksLen-1
-        inc i
-        while i <= L:
-          acquireSys(cast[ptr TSysLock](locks[i])[])
-          inc(i)
-        # DANGER: We can only modify this global var if we gained every lock!
-        # NO! We need an atomic increment. Crap.
-        discard system.atomicInc(deadlocksPrevented, 1)
-        assert orderedLocks()
-        return
-        
-    # simply add to the end:
-    if locksLen >= len(locks):
-      raise newException(EResourceExhausted, "cannot acquire additional lock")
-    acquireSys(lock)
-    locks[locksLen] = p
-    inc(locksLen)
-    assert orderedLocks()
-  else:
-    acquireSys(lock)
+  acquireSys(lock)
   
-proc release*(lock: var TLock) {.tags: [FReleaseLock].} =
+proc release*(lock: var TLock) =
   ## Releases the given lock.
-  when nodeadlocks:
-    var p = addr(lock)
-    var L = locksLen
-    for i in countdown(L-1, 0):
-      if locks[i] == p: 
-        for j in i..L-2: locks[j] = locks[j+1]
-        dec locksLen
-        break
   releaseSys(lock)
 
 

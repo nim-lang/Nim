@@ -1,6 +1,6 @@
 discard """
   file: "tarray.nim"
-  output: "10012"
+  output: "100124"
 """
 # simple check for one dimensional arrays
 
@@ -30,4 +30,11 @@ write(stdout, sum([]))
 write(stdout, getPos( (x: 5, y: 7) ))
 #OUT 10012
 
+# bug #1669
+let filesToCreate = ["tempdir/fl1.a", "tempdir/fl2.b",
+            "tempdir/tempdir2/fl3.e", "tempdir/tempdir2/tempdir3/fl4.f"]
+
+var found: array[0..filesToCreate.high, bool]
+
+echo found.len
 

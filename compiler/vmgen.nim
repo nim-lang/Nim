@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -16,7 +16,7 @@
 #   types that use the 'node' field; the reason is that slots are
 #   re-used in a register based VM. Example:
 # 
-# .. code-block:: nimrod
+# .. code-block:: nim
 #   let s = a & b  # no matter what, create fresh node
 #   s = a & b  # no matter what, keep the node
 #
@@ -28,7 +28,7 @@
 # this copy depends on the involved types.
 
 import
-  unsigned, strutils, ast, astalgo, types, msgs, renderer, vmdef, 
+  unsigned, strutils, ast, astalgo, types, msgs, renderer, vmdef,
   trees, intsets, rodread, magicsys, options, lowerings
 
 from os import splitFile
@@ -46,7 +46,6 @@ proc debugInfo(info: TLineInfo): string =
 proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
   # first iteration: compute all necessary labels:
   var jumpTargets = initIntSet()
-  
   let last = if last < 0: c.code.len-1 else: min(last, c.code.len-1)
   for i in start..last:
     let x = c.code[i]
@@ -59,6 +58,7 @@ proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
     if i in jumpTargets: result.addf("L$1:\n", i)
     let x = c.code[i]
 
+    result.add($i)
     let opc = opcode(x)
     if opc in {opcConv, opcCast}:
       let y = c.code[i+1]
@@ -83,7 +83,7 @@ proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
     result.add("\n")
     inc i
 
-proc echoCode*(c: PCtx, start=0; last = -1) {.deprecated.} =
+proc echoCode*(c: PCtx; start=0; last = -1) {.deprecated.} =
   var buf = ""
   codeListing(c, buf, start, last)
   echo buf
@@ -189,7 +189,7 @@ proc getTemp(c: PCtx; typ: PType): TRegister =
 
 proc freeTemp(c: PCtx; r: TRegister) =
   let c = c.prc
-  if c.slots[r].kind >= slotSomeTemp: c.slots[r].inUse = false
+  if c.slots[r].kind in {slotSomeTemp..slotTempComplex}: c.slots[r].inUse = false
 
 proc getTempRange(c: PCtx; n: int; kind: TSlotKind): TRegister =
   # if register pressure is high, we re-use more aggressively:
@@ -371,8 +371,8 @@ proc sameConstant*(a, b: PNode): bool =
     of nkCharLit..nkInt64Lit: result = a.intVal == b.intVal
     of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
-    of nkType: result = a.typ == b.typ
-    of nkEmpty, nkNilLit: result = true
+    of nkType, nkNilLit: result = a.typ == b.typ
+    of nkEmpty: result = true
     else:
       if sonsLen(a) == sonsLen(b):
         for i in countup(0, sonsLen(a) - 1):
@@ -464,7 +464,7 @@ proc genTry(c: PCtx; n: PNode; dest: var TDest) =
   # from the stack
   c.gABx(fin, opcFinally, 0, 0)
   if fin.kind == nkFinally:
-    c.gen(fin.sons[0], dest)
+    c.gen(fin.sons[0])
     c.clearDest(n, dest)
   c.gABx(fin, opcFinallyEnd, 0, 0)
 
@@ -900,12 +900,14 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     c.freeTemp(tmp)
   of mEcho:
     unused(n, dest)
-    let x = c.getTempRange(n.len-1, slotTempUnknown)
-    for i in 1.. <n.len:
-      var r: TRegister = x+i-1
+    let n = n[1].skipConv
+    let x = c.getTempRange(n.len, slotTempUnknown)
+    internalAssert n.kind == nkBracket
+    for i in 0.. <n.len:
+      var r: TRegister = x+i
       c.gen(n.sons[i], r)
-    c.gABC(n, opcEcho, x, n.len-1)
-    c.freeTempRange(x, n.len-1)
+    c.gABC(n, opcEcho, x, n.len)
+    c.freeTempRange(x, n.len)
   of mAppendStrCh:
     unused(n, dest)
     genBinaryStmtVar(c, n, opcAddStrCh)
@@ -988,8 +990,13 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     unused(n, dest)
     genUnaryStmt(c, n, opcNWarning)
   of mNError:
-    unused(n, dest)
-    genUnaryStmt(c, n, opcNError)
+    if n.len <= 1:
+      # query error condition:
+      c.gABC(n, opcQueryErrorFlag, dest)
+    else:
+      # setter
+      unused(n, dest)
+      genUnaryStmt(c, n, opcNError)
   of mNCallSite:
     if dest < 0: dest = c.getTemp(n.typ)
     c.gABC(n, opcCallSite, dest)
@@ -1068,6 +1075,11 @@ proc genAddrDeref(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
         c.gABC(n, opcNodeToReg, dest, dest)
     elif c.prc.slots[tmp].kind >= slotTempUnknown:
       gABC(c, n, opcAddrNode, dest, tmp)
+      # hack ahead; in order to fix bug #1781 we mark the temporary as
+      # permanent, so that it's not used for anything else:
+      c.prc.slots[tmp].kind = slotTempPerm
+      # XXX this is still a hack
+      #message(n.info, warnUser, "suspicious opcode used")
     else:
       gABC(c, n, opcAddrReg, dest, tmp)
     c.freeTemp(tmp)
@@ -1124,6 +1136,7 @@ proc checkCanEval(c: PCtx; n: PNode) =
   # we need to ensure that we don't evaluate 'x' here:
   # proc foo() = var x ...
   let s = n.sym
+  if {sfCompileTime, sfGlobal} <= s.flags: return
   if s.kind in {skVar, skTemp, skLet, skParam, skResult} and 
       not s.isOwnedBy(c.prc.sym) and s.owner != c.module:
     cannotEval(n)
@@ -1133,6 +1146,9 @@ proc isTemp(c: PCtx; dest: TDest): bool =
 
 template needsAdditionalCopy(n): expr =
   not c.isTemp(dest) and not fitsRegister(n.typ)
+
+proc skipDeref(n: PNode): PNode =
+  result = if n.kind in {nkDerefExpr, nkHiddenDeref}: n.sons[0] else: n
 
 proc preventFalseAlias(c: PCtx; n: PNode; opc: TOpcode;
                        dest, idx, value: TRegister) =
@@ -1337,7 +1353,9 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
     result = newNodeIT(nkUIntLit, info, t)
   of tyFloat..tyFloat128: 
     result = newNodeIT(nkFloatLit, info, t)
-  of tyVar, tyPointer, tyPtr, tyCString, tySequence, tyString, tyExpr,
+  of tyCString, tyString:
+    result = newNodeIT(nkStrLit, info, t)
+  of tyVar, tyPointer, tyPtr, tySequence, tyExpr,
      tyStmt, tyTypeDesc, tyStatic, tyRef:
     result = newNodeIT(nkNilLit, info, t)
   of tyProc:
@@ -1497,6 +1515,26 @@ proc genTupleConstr(c: PCtx, n: PNode, dest: var TDest) =
 
 proc genProc*(c: PCtx; s: PSym): int
 
+proc matches(s: PSym; x: string): bool =
+  let y = x.split('.')
+  var s = s
+  var L = y.len-1
+  while L >= 0:
+    if s == nil or y[L].cmpIgnoreStyle(s.name.s) != 0: return false
+    s = s.owner
+    dec L
+  result = true
+
+proc procIsCallback(c: PCtx; s: PSym): bool =
+  if s.offset < -1: return true
+  var i = -2
+  for key, value in items(c.callbacks):
+    if s.matches(key): 
+      doAssert s.offset == -1
+      s.offset = i
+      return true
+    dec i
+
 proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
   case n.kind
   of nkSym:
@@ -1507,7 +1545,8 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       genRdVar(c, n, dest, flags)
     of skProc, skConverter, skMacro, skTemplate, skMethod, skIterators:
       # 'skTemplate' is only allowed for 'getAst' support:
-      if sfImportc in s.flags: c.importcSym(n.info, s)
+      if procIsCallback(c, s): discard
+      elif sfImportc in s.flags: c.importcSym(n.info, s)
       genLit(c, n, dest)
     of skConst:
       gen(c, s.ast, dest)
@@ -1536,7 +1575,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       genLit(c, n, dest)
   of nkUIntLit..pred(nkNilLit): genLit(c, n, dest)
   of nkNilLit:
-    if not n.typ.isEmptyType: genLit(c, n, dest)
+    if not n.typ.isEmptyType: genLit(c, getNullValue(n.typ, n.info), dest)
     else: unused(n, dest)
   of nkAsgn, nkFastAsgn: 
     unused(n, dest)
@@ -1569,11 +1608,15 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     let L = n.len-1
     for i in 0 .. <L: gen(c, n.sons[i])
     gen(c, n.sons[L], dest, flags)
+  of nkPragmaBlock:
+    gen(c, n.lastSon, dest, flags)
   of nkDiscardStmt:
     unused(n, dest)
     gen(c, n.sons[0])
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     genConv(c, n, n.sons[1], dest)
+  of nkObjDownConv:
+    genConv(c, n, n.sons[0], dest)
   of nkVarSection, nkLetSection:
     unused(n, dest)
     genVarSection(c, n)
@@ -1609,7 +1652,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     if allowCast in c.features:
       genConv(c, n, n.sons[1], dest, opcCast)
     else:
-      localError(n.info, errGenerated, "VM is not allowed to 'cast'")
+      globalError(n.info, errGenerated, "VM is not allowed to 'cast'")
   else:
     internalError n.info, "cannot generate VM code for " & n.renderTree
 

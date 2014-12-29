@@ -1,9 +1,9 @@
 =============================
-Nimrod Documentation Overview
+Nim Documentation Overview
 =============================
 
 :Author: Andreas Rumpf
-:Version: |nimrodversion|
+:Version: |nimversion|
 
 .. include:: ../doc/docs.txt
 

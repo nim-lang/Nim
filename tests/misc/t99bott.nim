@@ -6,7 +6,7 @@ discard """
 """
 ## 99 Bottles of Beer
 ## http://www.99-bottles-of-beer.net/
-## Nimrod version
+## Nim version
 
 ## Author: Philippe Lhoste <PhiLho(a)GMX.net> http://Phi.Lho.free.fr
 # 2012-11-25

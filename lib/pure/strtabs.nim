@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -18,43 +18,46 @@ import
 include "system/inclrtl"
 
 type
-  TStringTableMode* = enum    ## describes the tables operation mode
+  StringTableMode* = enum     ## describes the tables operation mode
     modeCaseSensitive,        ## the table is case sensitive
     modeCaseInsensitive,      ## the table is case insensitive
     modeStyleInsensitive      ## the table is style insensitive
-  TKeyValuePair = tuple[key, val: string]
-  TKeyValuePairSeq = seq[TKeyValuePair]
-  TStringTable* = object of TObject
+  KeyValuePair = tuple[key, val: string]
+  KeyValuePairSeq = seq[KeyValuePair]
+  StringTableObj* = object of RootObj
     counter: int
-    data: TKeyValuePairSeq
-    mode: TStringTableMode
+    data: KeyValuePairSeq
+    mode: StringTableMode
 
-  PStringTable* = ref TStringTable ## use this type to declare string tables
+  StringTableRef* = ref StringTableObj ## use this type to declare string tables
 
-proc len*(t: PStringTable): int {.rtl, extern: "nst$1".} =
+{.deprecated: [TStringTableMode: StringTableMode,
+  TStringTable: StringTableObj, PStringTable: StringTableRef].}
+
+proc len*(t: StringTableRef): int {.rtl, extern: "nst$1".} =
   ## returns the number of keys in `t`.
   result = t.counter
 
-iterator pairs*(t: PStringTable): tuple[key, value: string] =
+iterator pairs*(t: StringTableRef): tuple[key, value: string] =
   ## iterates over every (key, value) pair in the table `t`.
   for h in 0..high(t.data):
     if not isNil(t.data[h].key):
       yield (t.data[h].key, t.data[h].val)
 
-iterator keys*(t: PStringTable): string =
+iterator keys*(t: StringTableRef): string =
   ## iterates over every key in the table `t`.
   for h in 0..high(t.data):
     if not isNil(t.data[h].key):
       yield t.data[h].key
 
-iterator values*(t: PStringTable): string =
+iterator values*(t: StringTableRef): string =
   ## iterates over every value in the table `t`.
   for h in 0..high(t.data):
     if not isNil(t.data[h].key):
       yield t.data[h].val
 
 type
-  TFormatFlag* = enum         ## flags for the `%` operator
+  FormatFlag* = enum          ## flags for the `%` operator
     useEnvironment,           ## use environment variable if the ``$key``
                               ## is not found in the table
     useEmpty,                 ## use the empty string as a default, thus it
@@ -63,19 +66,21 @@ type
     useKey                    ## do not replace ``$key`` if it is not found
                               ## in the table (or in the environment)
 
+{.deprecated: [TFormatFlag: FormatFlag].}
+
 # implementation
 
 const
   growthFactor = 2
   startSize = 64
 
-proc myhash(t: PStringTable, key: string): THash =
+proc myhash(t: StringTableRef, key: string): THash =
   case t.mode
   of modeCaseSensitive: result = hashes.hash(key)
   of modeCaseInsensitive: result = hashes.hashIgnoreCase(key)
   of modeStyleInsensitive: result = hashes.hashIgnoreStyle(key)
 
-proc myCmp(t: PStringTable, a, b: string): bool =
+proc myCmp(t: StringTableRef, a, b: string): bool =
   case t.mode
   of modeCaseSensitive: result = cmp(a, b) == 0
   of modeCaseInsensitive: result = cmpIgnoreCase(a, b) == 0
@@ -88,7 +93,7 @@ proc mustRehash(length, counter: int): bool =
 proc nextTry(h, maxHash: THash): THash {.inline.} =
   result = ((5 * h) + 1) and maxHash
 
-proc rawGet(t: PStringTable, key: string): int =
+proc rawGet(t: StringTableRef, key: string): int =
   var h: THash = myhash(t, key) and high(t.data) # start with real hash value
   while not isNil(t.data[h].key):
     if myCmp(t, t.data[h].key, key):
@@ -96,7 +101,7 @@ proc rawGet(t: PStringTable, key: string): int =
     h = nextTry(h, high(t.data))
   result = - 1
 
-proc `[]`*(t: PStringTable, key: string): string {.rtl, extern: "nstGet".} =
+proc `[]`*(t: StringTableRef, key: string): string {.rtl, extern: "nstGet".} =
   ## retrieves the value at ``t[key]``. If `key` is not in `t`, "" is returned
   ## and no exception is raised. One can check with ``hasKey`` whether the key
   ## exists.
@@ -104,33 +109,33 @@ proc `[]`*(t: PStringTable, key: string): string {.rtl, extern: "nstGet".} =
   if index >= 0: result = t.data[index].val
   else: result = ""
 
-proc mget*(t: PStringTable, key: string): var string {.
+proc mget*(t: StringTableRef, key: string): var string {.
              rtl, extern: "nstTake".} =
   ## retrieves the location at ``t[key]``. If `key` is not in `t`, the
   ## ``EInvalidKey`` exception is raised.
   var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
-  else: raise newException(EInvalidKey, "key does not exist: " & key)
+  else: raise newException(KeyError, "key does not exist: " & key)
 
-proc hasKey*(t: PStringTable, key: string): bool {.rtl, extern: "nst$1".} =
+proc hasKey*(t: StringTableRef, key: string): bool {.rtl, extern: "nst$1".} =
   ## returns true iff `key` is in the table `t`.
   result = rawGet(t, key) >= 0
 
-proc rawInsert(t: PStringTable, data: var TKeyValuePairSeq, key, val: string) =
+proc rawInsert(t: StringTableRef, data: var KeyValuePairSeq, key, val: string) =
   var h: THash = myhash(t, key) and high(data)
   while not isNil(data[h].key):
     h = nextTry(h, high(data))
   data[h].key = key
   data[h].val = val
 
-proc enlarge(t: PStringTable) =
-  var n: TKeyValuePairSeq
+proc enlarge(t: StringTableRef) =
+  var n: KeyValuePairSeq
   newSeq(n, len(t.data) * growthFactor)
   for i in countup(0, high(t.data)):
     if not isNil(t.data[i].key): rawInsert(t, n, t.data[i].key, t.data[i].val)
   swap(t.data, n)
 
-proc `[]=`*(t: PStringTable, key, val: string) {.rtl, extern: "nstPut".} =
+proc `[]=`*(t: StringTableRef, key, val: string) {.rtl, extern: "nstPut".} =
   ## puts a (key, value)-pair into `t`.
   var index = rawGet(t, key)
   if index >= 0:
@@ -141,12 +146,12 @@ proc `[]=`*(t: PStringTable, key, val: string) {.rtl, extern: "nstPut".} =
     inc(t.counter)
 
 proc raiseFormatException(s: string) =
-  var e: ref EInvalidValue
+  var e: ref ValueError
   new(e)
   e.msg = "format string: key not found: " & s
   raise e
 
-proc getValue(t: PStringTable, flags: set[TFormatFlag], key: string): string =
+proc getValue(t: StringTableRef, flags: set[FormatFlag], key: string): string =
   if hasKey(t, key): return t[key]
   # hm difficult: assume safety in taint mode here. XXX This is dangerous!
   if useEnvironment in flags: result = os.getEnv(key).string
@@ -155,7 +160,7 @@ proc getValue(t: PStringTable, flags: set[TFormatFlag], key: string): string =
     if useKey in flags: result = '$' & key
     elif not (useEmpty in flags): raiseFormatException(key)
 
-proc newStringTable*(mode: TStringTableMode): PStringTable {.
+proc newStringTable*(mode: StringTableMode): StringTableRef {.
   rtl, extern: "nst$1".} =
   ## creates a new string table that is empty.
   new(result)
@@ -164,7 +169,7 @@ proc newStringTable*(mode: TStringTableMode): PStringTable {.
   newSeq(result.data, startSize)
 
 proc newStringTable*(keyValuePairs: varargs[string],
-                     mode: TStringTableMode): PStringTable {.
+                     mode: StringTableMode): StringTableRef {.
   rtl, extern: "nst$1WithPairs".} =
   ## creates a new string table with given key value pairs.
   ## Example::
@@ -177,7 +182,7 @@ proc newStringTable*(keyValuePairs: varargs[string],
     inc(i, 2)
 
 proc newStringTable*(keyValuePairs: varargs[tuple[key, val: string]],
-                     mode: TStringTableMode = modeCaseSensitive): PStringTable {.
+                     mode: StringTableMode = modeCaseSensitive): StringTableRef {.
   rtl, extern: "nst$1WithTableConstr".} =
   ## creates a new string table with given key value pairs.
   ## Example::
@@ -186,7 +191,7 @@ proc newStringTable*(keyValuePairs: varargs[tuple[key, val: string]],
   result = newStringTable(mode)
   for key, val in items(keyValuePairs): result[key] = val
 
-proc `%`*(f: string, t: PStringTable, flags: set[TFormatFlag] = {}): string {.
+proc `%`*(f: string, t: StringTableRef, flags: set[FormatFlag] = {}): string {.
   rtl, extern: "nstFormat".} =
   ## The `%` operator for string tables.
   const
@@ -216,7 +221,7 @@ proc `%`*(f: string, t: PStringTable, flags: set[TFormatFlag] = {}): string {.
       add(result, f[i])
       inc(i)
 
-proc `$`*(t: PStringTable): string {.rtl, extern: "nstDollar".} =
+proc `$`*(t: StringTableRef): string {.rtl, extern: "nstDollar".} =
   ## The `$` operator for string tables.
   if t.len == 0:
     result = "{:}"

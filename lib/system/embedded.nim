@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -21,7 +21,7 @@ proc popFrame {.compilerRtl, inl.} = discard
 proc setFrame(s: PFrame) {.compilerRtl, inl.} = discard
 proc pushSafePoint(s: PSafePoint) {.compilerRtl, inl.} = discard
 proc popSafePoint {.compilerRtl, inl.} = discard
-proc pushCurrentException(e: ref E_Base) {.compilerRtl, inl.} = discard
+proc pushCurrentException(e: ref Exception) {.compilerRtl, inl.} = discard
 proc popCurrentException {.compilerRtl, inl.} = discard
 
 # some platforms have native support for stack traces:
@@ -32,7 +32,7 @@ const
 proc quitOrDebug() {.inline.} =
   quit(1)
 
-proc raiseException(e: ref E_Base, ename: CString) {.compilerRtl.} =
+proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
   sysFatal(ENoExceptionToReraise, "exception handling is not available")
 
 proc reraiseException() {.compilerRtl.} =

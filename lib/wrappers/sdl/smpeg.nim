@@ -125,7 +125,7 @@
 #
 #******************************************************************************
 
-import 
+import
   sdl
 
 when defined(windows): 
@@ -143,29 +143,29 @@ const
 
 type 
   TFilterInfo*{.final.} = object 
-    yuv_mb_square_error*: PUint16
-    yuv_pixel_square_error*: PUint16
+    yuvMbSquareError*: PUInt16
+    yuvPixelSquareError*: PUInt16
 
   PFilterInfo* = ptr TFilterInfo # MPEG filter definition 
   PFilter* = ptr TFilter # Callback functions for the filter 
   TFilterCallback* = proc (dest, source: POverlay, region: PRect, 
-                                 filter_info: PFilterInfo, data: Pointer): Pointer{.
+                                 filterInfo: PFilterInfo, data: pointer): pointer{.
       cdecl.}
-  TFilterDestroy* = proc (Filter: PFilter): Pointer{.cdecl.} # The filter definition itself 
+  TFilterDestroy* = proc (filter: PFilter): pointer{.cdecl.} # The filter definition itself 
   TFilter*{.final.} = object  # The null filter (default). It simply copies the source rectangle to the video overlay. 
-    flags*: Uint32
-    data*: Pointer
+    flags*: uint32
+    data*: pointer
     callback*: TFilterCallback
     destroy*: TFilterDestroy
 
 
-proc filter_null*(): PFilter{.cdecl, importc: "SMPEGfilter_null", 
+proc filterNull*(): PFilter{.cdecl, importc: "SMPEGfilter_null", 
     dynlib: SmpegLibName.}
   # The bilinear filter. A basic low-pass filter that will produce a smoother image. 
-proc filter_bilinear*(): PFilter{.cdecl, 
+proc filterBilinear*(): PFilter{.cdecl, 
     importc: "SMPEGfilter_bilinear", dynlib: SmpegLibName.}
   # The deblocking filter. It filters block borders and non-intra coded blocks to reduce blockiness 
-proc filter_deblocking*(): PFilter{.cdecl, 
+proc filterDeblocking*(): PFilter{.cdecl, 
     importc: "SMPEGfilter_deblocking", dynlib: SmpegLibName.}
   #------------------------------------------------------------------------------
   # SMPEG.h
@@ -175,28 +175,28 @@ const
   MINOR_VERSION* = 4
   PATCHLEVEL* = 2
 
-type 
-  TVersion*{.final.} = object 
+type
+  TVersion* = object
     major*: byte
     minor*: byte
     patch*: byte
 
-  Pversion* = ptr Tversion # This is the actual SMPEG object
-  TSMPEG*{.final.} = object 
+  Pversion* = ptr TVersion # This is the actual SMPEG object
+  TSMPEG* = object 
   PSMPEG* = ptr TSMPEG        # Used to get information about the SMPEG object 
-  TInfo*{.final.} = object 
-    has_audio*: int32
-    has_video*: int32
+  TInfo* = object 
+    hasAudio*: int32
+    hasVideo*: int32
     width*: int32
     height*: int32
-    current_frame*: int32
-    current_fps*: float64
-    audio_string*: array[0..79, char]
-    audio_current_frame*: int32
-    current_offset*: UInt32
-    total_size*: UInt32
-    current_time*: float64
-    total_time*: float64
+    currentFrame*: int32
+    currentFps*: float64
+    audioString*: array[0..79, char]
+    audioCurrentFrame*: int32
+    currentOffset*: uint32
+    totalSize*: uint32
+    currentTime*: float64
+    totalTime*: float64
 
   PInfo* = ptr TInfo # Possible MPEG status codes 
 
@@ -208,7 +208,7 @@ const
 type 
   Tstatus* = int32
   Pstatus* = ptr int32     # Matches the declaration of SDL_UpdateRect() 
-  TDisplayCallback* = proc (dst: PSurface, x, y: int, w, h: int): Pointer{.
+  TDisplayCallback* = proc (dst: PSurface, x, y: int, w, h: int): pointer{.
       cdecl.} # Create a new SMPEG object from an MPEG file.
               #  On return, if 'info' is not NULL, it will be filled with information
               #  about the MPEG object.
@@ -218,15 +218,15 @@ type
               #  subsystem. If not, you will have to use the playaudio() function below
               #  to extract the decoded data. 
 
-proc SMPEG_new*(theFile: cstring, info: PInfo, audio: int): PSMPEG{.cdecl, 
+proc new*(theFile: cstring, info: PInfo, audio: int): PSMPEG{.cdecl, 
     importc: "SMPEG_new", dynlib: SmpegLibName.}
   # The same as above for a file descriptor 
-proc new_descr*(theFile: int, info: PInfo, audio: int): PSMPEG{.
+proc newDescr*(theFile: int, info: PInfo, audio: int): PSMPEG{.
     cdecl, importc: "SMPEG_new_descr", dynlib: SmpegLibName.}
   #  The same as above but for a raw chunk of data.  SMPEG makes a copy of the
   #   data, so the application is free to delete after a successful call to this
   #   function. 
-proc new_data*(data: Pointer, size: int, info: PInfo, audio: int): PSMPEG{.
+proc newData*(data: pointer, size: int, info: PInfo, audio: int): PSMPEG{.
     cdecl, importc: "SMPEG_new_data", dynlib: SmpegLibName.}
   # Get current information about an SMPEG object 
 proc getinfo*(mpeg: PSMPEG, info: PInfo){.cdecl, 
@@ -247,13 +247,13 @@ proc status*(mpeg: PSMPEG): Tstatus{.cdecl, importc: "SMPEG_status",
     dynlib: SmpegLibName.}
   # status
   # Set the audio volume of an MPEG stream, in the range 0-100 
-proc setvolume*(mpeg: PSMPEG, volume: int){.cdecl, 
+proc setVolume*(mpeg: PSMPEG, volume: int){.cdecl, 
     importc: "SMPEG_setvolume", dynlib: SmpegLibName.}
   # Set the destination surface for MPEG video playback
   #  'surfLock' is a mutex used to synchronize access to 'dst', and can be NULL.
   #  'callback' is a function called when an area of 'dst' needs to be updated.
   #  If 'callback' is NULL, the default function (SDL_UpdateRect) will be used. 
-proc setdisplay*(mpeg: PSMPEG, dst: PSurface, surfLock: Pmutex, 
+proc setDisplay*(mpeg: PSMPEG, dst: PSurface, surfLock: PMutex, 
                        callback: TDisplayCallback){.cdecl, 
     importc: "SMPEG_setdisplay", dynlib: SmpegLibName.}
   # Set or clear looping play on an SMPEG object 
@@ -264,12 +264,12 @@ proc scaleXY*(mpeg: PSMPEG, width, height: int){.cdecl,
     importc: "SMPEG_scaleXY", dynlib: SmpegLibName.}
 proc scale*(mpeg: PSMPEG, scale: int){.cdecl, importc: "SMPEG_scale", 
     dynlib: SmpegLibName.}
-proc Double*(mpeg: PSMPEG, doubleit: bool)
+proc double*(mpeg: PSMPEG, doubleit: bool)
   # Move the video display area within the destination surface 
 proc move*(mpeg: PSMPEG, x, y: int){.cdecl, importc: "SMPEG_move", 
     dynlib: SmpegLibName.}
   # Set the region of the video to be shown 
-proc setdisplayregion*(mpeg: PSMPEG, x, y, w, h: int){.cdecl, 
+proc setDisplayRegion*(mpeg: PSMPEG, x, y, w, h: int){.cdecl, 
     importc: "SMPEG_setdisplayregion", dynlib: SmpegLibName.}
   # Play an SMPEG object 
 proc play*(mpeg: PSMPEG){.cdecl, importc: "SMPEG_play", 
@@ -312,7 +312,7 @@ proc error*(mpeg: PSMPEG): cstring{.cdecl, importc: "SMPEG_error",
 proc playAudio*(mpeg: PSMPEG, stream: pointer, length: int): int{.cdecl, 
     importc: "SMPEG_playAudio", dynlib: SmpegLibName.}
   # Wrapper for playAudio() that can be passed to SDL and SDL_mixer 
-proc playAudioSDL*(mpeg: Pointer, stream: pointer, length: int){.cdecl, 
+proc playAudioSDL*(mpeg: pointer, stream: pointer, length: int){.cdecl, 
     importc: "SMPEG_playAudioSDL", dynlib: SmpegLibName.}
   # Get the best SDL audio spec for the audio stream 
 proc wantedSpec*(mpeg: PSMPEG, wanted: PAudioSpec): int{.cdecl, 
@@ -322,14 +322,11 @@ proc actualSpec*(mpeg: PSMPEG, spec: PAudioSpec){.cdecl,
     importc: "SMPEG_actualSpec", dynlib: SmpegLibName.}
   # This macro can be used to fill a version structure with the compile-time
   #  version of the SDL library. 
-proc GETVERSION*(X: var Tversion)
-# implementation
+proc getversion*(x: var TVersion) =
+  x.major = MAJOR_VERSION
+  x.minor = MINOR_VERSION
+  x.patch = PATCHLEVEL
 
 proc double(mpeg: PSMPEG, doubleit: bool) = 
   if doubleit: scale(mpeg, 2)
   else: scale(mpeg, 1)
-  
-proc GETVERSION(X: var Tversion) = 
-  X.major = MAJOR_VERSION
-  X.minor = MINOR_VERSION
-  X.patch = PATCHLEVEL

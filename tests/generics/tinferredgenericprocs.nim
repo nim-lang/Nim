@@ -5,7 +5,7 @@ discard """
 3'''
 """
 
-# https://github.com/Araq/Nimrod/issues/797
+# https://github.com/Araq/Nim/issues/797
 proc foo[T](s:T):string = $s
 
 type IntStringProc = proc(x: int): string 

@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -157,8 +157,8 @@ type
     oldValue: THash
 
 var
-  Watchpoints: array [0..99, TWatchpoint]
-  WatchpointsLen: int
+  watchpoints: array [0..99, TWatchpoint]
+  watchpointsLen: int
 
 proc `!&`(h: THash, val: int): THash {.inline.} =
   result = h +% val
@@ -189,7 +189,7 @@ proc genericHashAux(dest: pointer, mt: PNimType, shallow: bool,
                     h: THash): THash
 proc genericHashAux(dest: pointer, n: ptr TNimNode, shallow: bool,
                     h: THash): THash =
-  var d = cast[TAddress](dest)
+  var d = cast[ByteAddress](dest)
   case n.kind
   of nkSlot:
     result = genericHashAux(cast[pointer](d +% n.offset), n.typ, shallow, h)
@@ -206,9 +206,9 @@ proc genericHashAux(dest: pointer, n: ptr TNimNode, shallow: bool,
 proc genericHashAux(dest: pointer, mt: PNimType, shallow: bool, 
                     h: THash): THash =
   sysAssert(mt != nil, "genericHashAux 2")
-  case mt.Kind
+  case mt.kind
   of tyString:
-    var x = cast[ppointer](dest)[]
+    var x = cast[PPointer](dest)[]
     result = h
     if x != nil:
       let s = cast[NimString](x)
@@ -217,29 +217,29 @@ proc genericHashAux(dest: pointer, mt: PNimType, shallow: bool,
       else:
         result = result !& hash(x, s.len)
   of tySequence:
-    var x = cast[ppointer](dest)
-    var dst = cast[taddress](cast[ppointer](dest)[])
+    var x = cast[PPointer](dest)
+    var dst = cast[ByteAddress](cast[PPointer](dest)[])
     result = h
     if dst != 0:
       when defined(trackGcHeaders):
-        result = result !& hashGcHeader(cast[ppointer](dest)[])
+        result = result !& hashGcHeader(cast[PPointer](dest)[])
       else:
-        for i in 0..cast[pgenericseq](dst).len-1:
+        for i in 0..cast[PGenericSeq](dst).len-1:
           result = result !& genericHashAux(
             cast[pointer](dst +% i*% mt.base.size +% GenericSeqSize),
-            mt.Base, shallow, result)
+            mt.base, shallow, result)
   of tyObject, tyTuple:
     # we don't need to copy m_type field for tyObject, as they are equal anyway
     result = genericHashAux(dest, mt.node, shallow, h)
   of tyArray, tyArrayConstr:
-    let d = cast[TAddress](dest)
+    let d = cast[ByteAddress](dest)
     result = h
     for i in 0..(mt.size div mt.base.size)-1:
       result = result !& genericHashAux(cast[pointer](d +% i*% mt.base.size),
                                         mt.base, shallow, result)
   of tyRef:
     when defined(trackGcHeaders):
-      var s = cast[ppointer](dest)[]
+      var s = cast[PPointer](dest)[]
       if s != nil:
         result = result !& hashGcHeader(s)
     else:
@@ -247,7 +247,7 @@ proc genericHashAux(dest: pointer, mt: PNimType, shallow: bool,
         result = h !& hash(dest, mt.size)
       else:
         result = h
-        var s = cast[ppointer](dest)[]
+        var s = cast[PPointer](dest)[]
         if s != nil:
           result = result !& genericHashAux(s, mt.base, shallow, result)
   else:
@@ -258,23 +258,23 @@ proc genericHash(dest: pointer, mt: PNimType): int =
   
 proc dbgRegisterWatchpoint(address: pointer, name: cstring,
                            typ: PNimType) {.compilerproc.} =
-  let L = WatchpointsLen
+  let L = watchPointsLen
   for i in 0.. <L:
-    if Watchpoints[i].name == name:
+    if watchPoints[i].name == name:
       # address may have changed:
-      Watchpoints[i].address = address
+      watchPoints[i].address = address
       return
   if L >= watchPoints.high:
     #debugOut("[Warning] cannot register watchpoint")
     return
-  Watchpoints[L].name = name
-  Watchpoints[L].address = address
-  Watchpoints[L].typ = typ
-  Watchpoints[L].oldValue = genericHash(address, typ)
-  inc WatchpointsLen
+  watchPoints[L].name = name
+  watchPoints[L].address = address
+  watchPoints[L].typ = typ
+  watchPoints[L].oldValue = genericHash(address, typ)
+  inc watchPointsLen
 
 proc dbgUnregisterWatchpoints*() =
-  WatchpointsLen = 0
+  watchPointsLen = 0
 
 var
   dbgLineHook*: proc () {.nimcall.}
@@ -285,15 +285,15 @@ var
   dbgWatchpointHook*: proc (watchpointName: cstring) {.nimcall.}
   
 proc checkWatchpoints =
-  let L = WatchpointsLen
+  let L = watchPointsLen
   for i in 0.. <L:
-    let newHash = genericHash(Watchpoints[i].address, Watchpoints[i].typ)
-    if newHash != Watchpoints[i].oldValue:
-      dbgWatchpointHook(Watchpoints[i].name)
-      Watchpoints[i].oldValue = newHash
+    let newHash = genericHash(watchPoints[i].address, watchPoints[i].typ)
+    if newHash != watchPoints[i].oldValue:
+      dbgWatchpointHook(watchPoints[i].name)
+      watchPoints[i].oldValue = newHash
 
 proc endb(line: int, file: cstring) {.compilerproc, noinline.} =
-  # This proc is called before every Nimrod code line!
+  # This proc is called before every Nim code line!
   if framePtr == nil: return
   if dbgWatchpointHook != nil: checkWatchpoints()
   framePtr.line = line # this is done here for smaller code size!

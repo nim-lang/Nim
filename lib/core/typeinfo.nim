@@ -1,18 +1,23 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2013 Dominik Picheta, Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-## This module implements an interface to Nimrod's runtime type information.
+## This module implements an interface to Nim's `runtime type information`:idx:
+## (`RTTI`:idx:).
 ## Note that even though ``TAny`` and its operations hide the nasty low level
 ## details from its clients, it remains inherently unsafe!
+##
+## See the `marshal <marshal.html>`_ module for what this module allows you
+## to do. 
 
 {.push hints: off.}
 
+include "system/inclrtl.nim"
 include "system/hti.nim"
 
 {.pop.}
@@ -50,7 +55,7 @@ type
     akUInt32 = 43,      ## any represents an unsigned int32
     akUInt64 = 44,      ## any represents an unsigned int64
     
-  TAny* = object {.pure.} ## can represent any nimrod value; NOTE: the wrapped
+  TAny* = object          ## can represent any nim value; NOTE: the wrapped
                           ## value can be modified with its wrapper! This means
                           ## that ``TAny`` keeps a non-traced pointer to its
                           ## wrapped value and **must not** live longer than
@@ -61,27 +66,27 @@ type
   ppointer = ptr pointer
   pbyteArray = ptr array[0.. 0xffff, int8]
 
-  TGenSeq {.pure.} = object
+  TGenSeq = object
     len, space: int
   PGenSeq = ptr TGenSeq
 
 const
   GenericSeqSize = (2 * sizeof(int))
 
-proc genericAssign(dest, src: Pointer, mt: PNimType) {.importCompilerProc.}
-proc genericShallowAssign(dest, src: Pointer, mt: PNimType) {.
+proc genericAssign(dest, src: pointer, mt: PNimType) {.importCompilerProc.}
+proc genericShallowAssign(dest, src: pointer, mt: PNimType) {.
   importCompilerProc.}
 proc incrSeq(seq: PGenSeq, elemSize: int): PGenSeq {.importCompilerProc.}
 proc newObj(typ: PNimType, size: int): pointer {.importCompilerProc.}
 proc newSeq(typ: PNimType, len: int): pointer {.importCompilerProc.}
-proc objectInit(dest: Pointer, typ: PNimType) {.importCompilerProc.}
+proc objectInit(dest: pointer, typ: PNimType) {.importCompilerProc.}
 
-template `+!!`(a, b: expr): expr = cast[pointer](cast[TAddress](a) + b)
+template `+!!`(a, b: expr): expr = cast[pointer](cast[ByteAddress](a) + b)
 
-proc getDiscriminant(aa: Pointer, n: ptr TNimNode): int =
+proc getDiscriminant(aa: pointer, n: ptr TNimNode): int =
   assert(n.kind == nkCase)
   var d: int
-  var a = cast[TAddress](aa)
+  var a = cast[ByteAddress](aa)
   case n.typ.size
   of 1: d = ze(cast[ptr int8](a +% n.offset)[])
   of 2: d = ze(cast[ptr int16](a +% n.offset)[])
@@ -89,7 +94,7 @@ proc getDiscriminant(aa: Pointer, n: ptr TNimNode): int =
   else: assert(false)
   return d
 
-proc selectBranch(aa: Pointer, n: ptr TNimNode): ptr TNimNode =
+proc selectBranch(aa: pointer, n: ptr TNimNode): ptr TNimNode =
   var discr = getDiscriminant(aa, n)
   if discr <% n.len:
     result = n.sons[discr]
@@ -174,14 +179,14 @@ proc `[]`*(x: TAny, i: int): TAny =
   of tyArray:
     var bs = x.rawType.base.size
     if i >=% x.rawType.size div bs: 
-      raise newException(EInvalidIndex, "index out of bounds")
+      raise newException(IndexError, "index out of bounds")
     return newAny(x.value +!! i*bs, x.rawType.base)
   of tySequence:
     var s = cast[ppointer](x.value)[]
-    if s == nil: raise newException(EInvalidValue, "sequence is nil")
+    if s == nil: raise newException(ValueError, "sequence is nil")
     var bs = x.rawType.base.size
     if i >=% cast[PGenSeq](s).len:
-      raise newException(EInvalidIndex, "index out of bounds")
+      raise newException(IndexError, "index out of bounds")
     return newAny(s +!! (GenericSeqSize+i*bs), x.rawType.base)
   else: assert false
 
@@ -191,15 +196,15 @@ proc `[]=`*(x: TAny, i: int, y: TAny) =
   of tyArray:
     var bs = x.rawType.base.size
     if i >=% x.rawType.size div bs: 
-      raise newException(EInvalidIndex, "index out of bounds")
+      raise newException(IndexError, "index out of bounds")
     assert y.rawType == x.rawType.base
     genericAssign(x.value +!! i*bs, y.value, y.rawType)
   of tySequence:
     var s = cast[ppointer](x.value)[]
-    if s == nil: raise newException(EInvalidValue, "sequence is nil")
+    if s == nil: raise newException(ValueError, "sequence is nil")
     var bs = x.rawType.base.size
     if i >=% cast[PGenSeq](s).len:
-      raise newException(EInvalidIndex, "index out of bounds")
+      raise newException(IndexError, "index out of bounds")
     assert y.rawType == x.rawType.base
     genericAssign(s +!! (GenericSeqSize+i*bs), y.value, y.rawType)
   else: assert false
@@ -264,9 +269,14 @@ iterator fields*(x: TAny): tuple[name: string, any: TAny] =
   # XXX BUG: does not work yet, however is questionable anyway
   when false:
     if x.rawType.kind == tyObject: t = cast[ptr PNimType](x.value)[]
-  var n = t.node
   var ret: seq[tuple[name: cstring, any: TAny]] = @[]
-  fieldsAux(p, n, ret)
+  if t.kind == tyObject:
+    while true:
+      fieldsAux(p, t.node, ret)
+      t = t.base
+      if t.isNil: break
+  else:
+    fieldsAux(p, t.node, ret)
   for name, any in items(ret):
     yield ($name, any)
 
@@ -276,7 +286,7 @@ proc cmpIgnoreStyle(a, b: cstring): int {.noSideEffect.} =
     else: result = c
   var i = 0
   var j = 0
-  while True:
+  while true:
     while a[i] == '_': inc(i)
     while b[j] == '_': inc(j) # BUGFIX: typo
     var aa = toLower(a[i])
@@ -311,12 +321,12 @@ proc `[]=`*(x: TAny, fieldName: string, value: TAny) =
   when false:
     if x.rawType.kind == tyObject: t = cast[ptr PNimType](x.value)[]
   assert x.rawType.kind in {tyTuple, tyObject}
-  var n = getFieldNode(x.value, t.node, fieldname)
+  var n = getFieldNode(x.value, t.node, fieldName)
   if n != nil:
     assert n.typ == value.rawType
     genericAssign(x.value +!! n.offset, value.value, value.rawType)
   else:
-    raise newException(EInvalidValue, "invalid field name: " & fieldName)
+    raise newException(ValueError, "invalid field name: " & fieldName)
 
 proc `[]`*(x: TAny, fieldName: string): TAny =
   ## gets a field of `x`; `x` represents an object or a tuple.
@@ -325,80 +335,80 @@ proc `[]`*(x: TAny, fieldName: string): TAny =
   when false:
     if x.rawType.kind == tyObject: t = cast[ptr PNimType](x.value)[]
   assert x.rawType.kind in {tyTuple, tyObject}
-  var n = getFieldNode(x.value, t.node, fieldname)
+  var n = getFieldNode(x.value, t.node, fieldName)
   if n != nil:
     result.value = x.value +!! n.offset
     result.rawType = n.typ
   else:
-    raise newException(EInvalidValue, "invalid field name: " & fieldName)
+    raise newException(ValueError, "invalid field name: " & fieldName)
 
 proc `[]`*(x: TAny): TAny =
   ## dereference operation for the any `x` that represents a ptr or a ref.
-  assert x.rawtype.kind in {tyRef, tyPtr}
+  assert x.rawType.kind in {tyRef, tyPtr}
   result.value = cast[ppointer](x.value)[]
   result.rawType = x.rawType.base
 
 proc `[]=`*(x, y: TAny) =
   ## dereference operation for the any `x` that represents a ptr or a ref.
-  assert x.rawtype.kind in {tyRef, tyPtr}
+  assert x.rawType.kind in {tyRef, tyPtr}
   assert y.rawType == x.rawType.base
   genericAssign(cast[ppointer](x.value)[], y.value, y.rawType)
 
 proc getInt*(x: TAny): int =
   ## retrieve the int value out of `x`. `x` needs to represent an int.
-  assert skipRange(x.rawtype).kind == tyInt
+  assert skipRange(x.rawType).kind == tyInt
   result = cast[ptr int](x.value)[]
 
 proc getInt8*(x: TAny): int8 = 
   ## retrieve the int8 value out of `x`. `x` needs to represent an int8.
-  assert skipRange(x.rawtype).kind == tyInt8
+  assert skipRange(x.rawType).kind == tyInt8
   result = cast[ptr int8](x.value)[]
 
 proc getInt16*(x: TAny): int16 = 
   ## retrieve the int16 value out of `x`. `x` needs to represent an int16.
-  assert skipRange(x.rawtype).kind == tyInt16
+  assert skipRange(x.rawType).kind == tyInt16
   result = cast[ptr int16](x.value)[]
   
 proc getInt32*(x: TAny): int32 = 
   ## retrieve the int32 value out of `x`. `x` needs to represent an int32.
-  assert skipRange(x.rawtype).kind == tyInt32
+  assert skipRange(x.rawType).kind == tyInt32
   result = cast[ptr int32](x.value)[]
 
 proc getInt64*(x: TAny): int64 = 
   ## retrieve the int64 value out of `x`. `x` needs to represent an int64.
-  assert skipRange(x.rawtype).kind == tyInt64
+  assert skipRange(x.rawType).kind == tyInt64
   result = cast[ptr int64](x.value)[]
 
-proc getBiggestInt*(x: TAny): biggestInt =
+proc getBiggestInt*(x: TAny): BiggestInt =
   ## retrieve the integer value out of `x`. `x` needs to represent
   ## some integer, a bool, a char, an enum or a small enough bit set.
-  ## The value might be sign-extended to ``biggestInt``.
-  var t = skipRange(x.rawtype)
+  ## The value might be sign-extended to ``BiggestInt``.
+  var t = skipRange(x.rawType)
   case t.kind
-  of tyInt: result = biggestInt(cast[ptr int](x.value)[])
-  of tyInt8: result = biggestInt(cast[ptr int8](x.value)[])
-  of tyInt16: result = biggestInt(cast[ptr int16](x.value)[])
-  of tyInt32: result = biggestInt(cast[ptr int32](x.value)[])
-  of tyInt64, tyUInt64: result = biggestInt(cast[ptr int64](x.value)[])
-  of tyBool: result = biggestInt(cast[ptr bool](x.value)[])
-  of tyChar: result = biggestInt(cast[ptr char](x.value)[])
+  of tyInt: result = BiggestInt(cast[ptr int](x.value)[])
+  of tyInt8: result = BiggestInt(cast[ptr int8](x.value)[])
+  of tyInt16: result = BiggestInt(cast[ptr int16](x.value)[])
+  of tyInt32: result = BiggestInt(cast[ptr int32](x.value)[])
+  of tyInt64, tyUInt64: result = BiggestInt(cast[ptr int64](x.value)[])
+  of tyBool: result = BiggestInt(cast[ptr bool](x.value)[])
+  of tyChar: result = BiggestInt(cast[ptr char](x.value)[])
   of tyEnum, tySet:
     case t.size
     of 1: result = ze64(cast[ptr int8](x.value)[])
     of 2: result = ze64(cast[ptr int16](x.value)[])
-    of 4: result = biggestInt(cast[ptr int32](x.value)[])
-    of 8: result = biggestInt(cast[ptr int64](x.value)[])
+    of 4: result = BiggestInt(cast[ptr int32](x.value)[])
+    of 8: result = BiggestInt(cast[ptr int64](x.value)[])
     else: assert false
-  of tyUInt: result = biggestInt(cast[ptr uint](x.value)[])
-  of tyUInt8: result = biggestInt(cast[ptr uint8](x.value)[])
-  of tyUInt16: result = biggestInt(cast[ptr uint16](x.value)[])
-  of tyUInt32: result = biggestInt(cast[ptr uint32](x.value)[])
+  of tyUInt: result = BiggestInt(cast[ptr uint](x.value)[])
+  of tyUInt8: result = BiggestInt(cast[ptr uint8](x.value)[])
+  of tyUInt16: result = BiggestInt(cast[ptr uint16](x.value)[])
+  of tyUInt32: result = BiggestInt(cast[ptr uint32](x.value)[])
   else: assert false
 
-proc setBiggestInt*(x: TAny, y: biggestInt) =
+proc setBiggestInt*(x: TAny, y: BiggestInt) =
   ## sets the integer value of `x`. `x` needs to represent
   ## some integer, a bool, a char, an enum or a small enough bit set.
-  var t = skipRange(x.rawtype)
+  var t = skipRange(x.rawType)
   case t.kind
   of tyInt: cast[ptr int](x.value)[] = int(y)
   of tyInt8: cast[ptr int8](x.value)[] = int8(y)
@@ -422,37 +432,37 @@ proc setBiggestInt*(x: TAny, y: biggestInt) =
 
 proc getUInt*(x: TAny): uint =
   ## retrieve the uint value out of `x`, `x` needs to represent an uint.
-  assert skipRange(x.rawtype).kind == tyUInt
+  assert skipRange(x.rawType).kind == tyUInt
   result = cast[ptr uint](x.value)[]
 
 proc getUInt8*(x: TAny): uint8 =
   ## retrieve the uint8 value out of `x`, `x` needs to represent an
   ## uint8.
-  assert skipRange(x.rawtype).kind == tyUInt8
+  assert skipRange(x.rawType).kind == tyUInt8
   result = cast[ptr uint8](x.value)[]
 
 proc getUInt16*(x: TAny): uint16 =
   ## retrieve the uint16 value out of `x`, `x` needs to represent an
   ## uint16.
-  assert skipRange(x.rawtype).kind == tyUInt16
+  assert skipRange(x.rawType).kind == tyUInt16
   result = cast[ptr uint16](x.value)[]
 
 proc getUInt32*(x: TAny): uint32 =
   ## retrieve the uint32 value out of `x`, `x` needs to represent an
   ## uint32.
-  assert skipRange(x.rawtype).kind == tyUInt32
+  assert skipRange(x.rawType).kind == tyUInt32
   result = cast[ptr uint32](x.value)[]
 
 proc getUInt64*(x: TAny): uint64 =
   ## retrieve the uint64 value out of `x`, `x` needs to represent an
   ## uint64.
-  assert skipRange(x.rawtype).kind == tyUInt64
+  assert skipRange(x.rawType).kind == tyUInt64
   result = cast[ptr uint64](x.value)[]
 
 proc getBiggestUint*(x: TAny): uint64 =
   ## retrieve the unsigned integer value out of `x`. `x` needs to
   ## represent an unsigned integer.
-  var t = skipRange(x.rawtype)
+  var t = skipRange(x.rawType)
   case t.kind
   of tyUInt: result = uint64(cast[ptr uint](x.value)[])
   of tyUInt8: result = uint64(cast[ptr uint8](x.value)[])
@@ -464,7 +474,7 @@ proc getBiggestUint*(x: TAny): uint64 =
 proc setBiggestUint*(x: TAny; y: uint64) =
   ## sets the unsigned integer value of `c`. `c` needs to represent an
   ## unsigned integer.
-  var t = skipRange(x.rawtype)
+  var t = skipRange(x.rawType)
   case t.kind:
   of tyUInt: cast[ptr uint](x.value)[] = uint(y)
   of tyUInt8: cast[ptr uint8](x.value)[] = uint8(y)
@@ -475,13 +485,13 @@ proc setBiggestUint*(x: TAny; y: uint64) =
 
 proc getChar*(x: TAny): char =
   ## retrieve the char value out of `x`. `x` needs to represent a char.
-  var t = skipRange(x.rawtype)
+  var t = skipRange(x.rawType)
   assert t.kind == tyChar
   result = cast[ptr char](x.value)[]
 
 proc getBool*(x: TAny): bool =
   ## retrieve the bool value out of `x`. `x` needs to represent a bool.
-  var t = skipRange(x.rawtype)
+  var t = skipRange(x.rawType)
   assert t.kind == tyBool
   result = cast[ptr bool](x.value)[]
 
@@ -495,7 +505,7 @@ proc getEnumOrdinal*(x: TAny, name: string): int =
   ## gets the enum field ordinal from `name`. `x` needs to represent an enum
   ## but is only used to access the type information. In case of an error
   ## ``low(int)`` is returned.
-  var typ = skipRange(x.rawtype)
+  var typ = skipRange(x.rawType)
   assert typ.kind == tyEnum
   var n = typ.node
   var s = n.sons
@@ -511,7 +521,7 @@ proc getEnumField*(x: TAny, ordinalValue: int): string =
   ## gets the enum field name as a string. `x` needs to represent an enum
   ## but is only used to access the type information. The field name of
   ## `ordinalValue` is returned. 
-  var typ = skipRange(x.rawtype)
+  var typ = skipRange(x.rawType)
   assert typ.kind == tyEnum
   var e = ordinalValue
   if ntfEnumHole notin typ.flags:
@@ -531,51 +541,51 @@ proc getEnumField*(x: TAny): string =
 
 proc getFloat*(x: TAny): float = 
   ## retrieve the float value out of `x`. `x` needs to represent an float.  
-  assert skipRange(x.rawtype).kind == tyFloat
+  assert skipRange(x.rawType).kind == tyFloat
   result = cast[ptr float](x.value)[]
 
 proc getFloat32*(x: TAny): float32 = 
   ## retrieve the float32 value out of `x`. `x` needs to represent an float32.
-  assert skipRange(x.rawtype).kind == tyFloat32
+  assert skipRange(x.rawType).kind == tyFloat32
   result = cast[ptr float32](x.value)[]
   
 proc getFloat64*(x: TAny): float64 = 
   ## retrieve the float64 value out of `x`. `x` needs to represent an float64.
-  assert skipRange(x.rawtype).kind == tyFloat64
+  assert skipRange(x.rawType).kind == tyFloat64
   result = cast[ptr float64](x.value)[]
 
-proc getBiggestFloat*(x: TAny): biggestFloat =
+proc getBiggestFloat*(x: TAny): BiggestFloat =
   ## retrieve the float value out of `x`. `x` needs to represent
-  ## some float. The value is extended to ``biggestFloat``.
-  case skipRange(x.rawtype).kind
-  of tyFloat: result = biggestFloat(cast[ptr Float](x.value)[])
-  of tyFloat32: result = biggestFloat(cast[ptr Float32](x.value)[])
-  of tyFloat64: result = biggestFloat(cast[ptr Float64](x.value)[])
+  ## some float. The value is extended to ``BiggestFloat``.
+  case skipRange(x.rawType).kind
+  of tyFloat: result = BiggestFloat(cast[ptr float](x.value)[])
+  of tyFloat32: result = BiggestFloat(cast[ptr float32](x.value)[])
+  of tyFloat64: result = BiggestFloat(cast[ptr float64](x.value)[])
   else: assert false
 
-proc setBiggestFloat*(x: TAny, y: biggestFloat) =
+proc setBiggestFloat*(x: TAny, y: BiggestFloat) =
   ## sets the float value of `x`. `x` needs to represent
   ## some float.
-  case skipRange(x.rawtype).kind
-  of tyFloat: cast[ptr Float](x.value)[] = y
-  of tyFloat32: cast[ptr Float32](x.value)[] = y.float32
-  of tyFloat64: cast[ptr Float64](x.value)[] = y
+  case skipRange(x.rawType).kind
+  of tyFloat: cast[ptr float](x.value)[] = y
+  of tyFloat32: cast[ptr float32](x.value)[] = y.float32
+  of tyFloat64: cast[ptr float64](x.value)[] = y
   else: assert false
 
 proc getString*(x: TAny): string = 
   ## retrieve the string value out of `x`. `x` needs to represent a string.
-  assert x.rawtype.kind == tyString
+  assert x.rawType.kind == tyString
   if not isNil(cast[ptr pointer](x.value)[]):
     result = cast[ptr string](x.value)[]
 
 proc setString*(x: TAny, y: string) = 
   ## sets the string value of `x`. `x` needs to represent a string.
-  assert x.rawtype.kind == tyString
+  assert x.rawType.kind == tyString
   cast[ptr string](x.value)[] = y
 
 proc getCString*(x: TAny): cstring = 
   ## retrieve the cstring value out of `x`. `x` needs to represent a cstring.
-  assert x.rawtype.kind == tyCString
+  assert x.rawType.kind == tyCString
   result = cast[ptr cstring](x.value)[]
 
 proc assign*(x, y: TAny) = 
@@ -585,9 +595,9 @@ proc assign*(x, y: TAny) =
   genericAssign(x.value, y.value, y.rawType)
 
 iterator elements*(x: TAny): int =
-  ## iterates over every element of `x` that represents a Nimrod bitset.
+  ## iterates over every element of `x` that represents a Nim bitset.
   assert x.rawType.kind == tySet
-  var typ = x.rawtype
+  var typ = x.rawType
   var p = x.value
   # "typ.slots.len" field is for sets the "first" field
   var u: int64
@@ -607,9 +617,9 @@ iterator elements*(x: TAny): int =
         yield i+typ.node.len
 
 proc inclSetElement*(x: TAny, elem: int) =
-  ## includes an element `elem` in `x`. `x` needs to represent a Nimrod bitset.
+  ## includes an element `elem` in `x`. `x` needs to represent a Nim bitset.
   assert x.rawType.kind == tySet
-  var typ = x.rawtype
+  var typ = x.rawType
   var p = x.value
   # "typ.slots.len" field is for sets the "first" field
   var e = elem - typ.node.len

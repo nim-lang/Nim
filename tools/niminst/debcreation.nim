@@ -1,6 +1,6 @@
 #
 #
-#        The Nimrod Installation Generator
+#        The Nim Installation Generator
 #        (c) Copyright 2012 Dominik Picheta
 #
 #    See the file "copying.txt", included in this
@@ -104,7 +104,7 @@ proc createChangelog(pkgName, version, maintainer: string): string =
        formatDateTime(getGMTime(getTime()), "+0000"))
 
 proc createRules(): string =
-  ## Creates a nimrod application-agnostic rules file for building deb packages.
+  ## Creates a nim application-agnostic rules file for building deb packages.
   ## Please note: this assumes the c sources have been built and the
   ## ``build.sh`` and ``install.sh`` files are available.
   result = ""
@@ -131,9 +131,9 @@ proc createDotInstall(pkgName: string, binaries, config, docs,
   for c in config:
     addN(pkgName / c & " " & "etc/")
   for d in docs:
-    addN(pkgName / d & " " & "usr/share/doc/nimrod/")
+    addN(pkgName / d & " " & "usr/share/doc/nim/")
   for l1 in lib:
-    addN(pkgName / l1 & " " & "usr/lib/nimrod")
+    addN(pkgName / l1 & " " & "usr/lib/nim")
 
 proc makeMtn(name, email: string): string =
   return name & " <" & email & ">"
@@ -145,7 +145,7 @@ proc prepDeb*(packName, version, mtnName, mtnEmail, shortDesc, desc: string,
               licenses: seq[tuple[files, license: string]], binaries,
               config, docs, lib: seq[string],
               buildDepends, pkgDepends = "") =
-  ## binaries/config/docs/lib: files relative to nimrod's root, that need to
+  ## binaries/config/docs/lib: files relative to nim's root, that need to
   ##   be installed.
   
   let pkgName = packName.toLower()
@@ -212,24 +212,24 @@ proc prepDeb*(packName, version, mtnName, mtnEmail, shortDesc, desc: string,
   echo("And execute `debuild -us -uc` to build the .deb")
 
 when isMainModule:
-  #var controlFile = createControl("nimrod", "Dominik Picheta <morfeusz8@gmail.com>",
-  # "The Nimrod compiler", "Compiler for the Nimrod programming language", "gcc (>= 4:4.3.2)", "gcc (>= 4:4.3.2)")
+  #var controlFile = createControl("nim", "Dominik Picheta <morfeusz8@gmail.com>",
+  # "The Nim compiler", "Compiler for the Nim programming language", "gcc (>= 4:4.3.2)", "gcc (>= 4:4.3.2)")
   
   #echo(controlFile)
   
-  #var copyrightFile = createCopyright("nimrod", "Dominik Picheta", "morfeusz8@a.b", "0.8.14",
-  #    @[("bin/nimrod", "gpl2"), ("lib/*", "lgpl")])
+  #var copyrightFile = createCopyright("nim", "Dominik Picheta", "morfeusz8@a.b", "0.8.14",
+  #    @[("bin/nim", "gpl2"), ("lib/*", "lgpl")])
       
   #echo copyrightFile
   
-  #var changelogFile = createChangelog("nimrod", "0.8.14", "Dom P <m@b.c>")
+  #var changelogFile = createChangelog("nim", "0.8.14", "Dom P <m@b.c>")
   #echo(changelogFile)
   
   #echo(createRules())
 
-  prepDeb("nimrod", "0.9.2", "Dominik Picheta", "morfeusz8@gmail.com", 
-    "The Nimrod compiler", "Compiler for the Nimrod programming language",
-    @[("bin/nimrod", "MIT"), ("lib/*", "MIT")], 
-    @["bin/nimrod"], @["config/*"], @["doc/*"], @["lib/*"],
+  prepDeb("nim", "0.9.2", "Dominik Picheta", "morfeusz8@gmail.com", 
+    "The Nim compiler", "Compiler for the Nim programming language",
+    @[("bin/nim", "MIT"), ("lib/*", "MIT")], 
+    @["bin/nim"], @["config/*"], @["doc/*"], @["lib/*"],
     "gcc (>= 4:4.3.2)", "gcc (>= 4:4.3.2)")
 

@@ -1,15 +1,15 @@
-=======================
-Nimrod Standard Library
-=======================
+====================
+Nim Standard Library
+====================
 
 :Author: Andreas Rumpf
-:Version: |nimrodversion|
+:Version: |nimversion|
 
 .. contents::
 
   "The good thing about reinventing the wheel is that you can get a round one."
 
-Though the Nimrod Standard Library is still evolving, it is already quite
+Though the Nim Standard Library is still evolving, it is already quite
 usable. It is divided into *pure libraries*, *impure libraries* and *wrappers*.
 
 Pure libraries do not depend on any external ``*.dll`` or ``lib*.so`` binary
@@ -18,8 +18,8 @@ low-level interface to a C library.
 
 Read this `document <apis.html>`_ for a quick overview of the API design.
 
-The `bottom <#babel>`_ of this page includes a list of 3rd party packages
-created by the Nimrod community. These packages are a useful addition to the
+The `bottom <#nimble>`_ of this page includes a list of 3rd party packages
+created by the Nim community. These packages are a useful addition to the
 modules in the standard library.
 
 
@@ -41,28 +41,30 @@ Core
   of ``system``, but an extra import.
 
 * `threads <threads.html>`_
-  Nimrod thread support. **Note**: This is part of the system module. Do not
+  Nim thread support. **Note**: This is part of the system module. Do not
   import it explicitly.
 
 * `channels <channels.html>`_
-  Nimrod message passing support for threads. **Note**: This is part of the 
+  Nim message passing support for threads. **Note**: This is part of the 
   system module. Do not import it explicitly.
 
 * `locks <locks.html>`_
-  Locks and condition variables for Nimrod.
+  Locks and condition variables for Nim.
 
 * `macros <macros.html>`_
-  Contains the AST API and documentation of Nimrod for writing macros.
+  Contains the AST API and documentation of Nim for writing macros.
 
 * `typeinfo <typeinfo.html>`_
-  Provides (unsafe) access to Nimrod's run time type information. 
+  Provides (unsafe) access to Nim's run time type information. 
 
 * `typetraits <typetraits.html>`_
   This module defines compile-time reflection procs for working with types.
 
-* `actors <actors.html>`_
-  Actor support for Nimrod; implemented as a layer on top of the threads and
-  channels modules.
+* `threadpool <threadpool.html>`_
+  Implements Nim's `spawn <manual.html#spawn>`_.
+
+* `cpuinfo <cpuinfo.html>`_
+  This module implements procs to determine the number of CPUs / cores.
 
 
 Collections and algorithms
@@ -71,11 +73,11 @@ Collections and algorithms
 * `algorithm <algorithm.html>`_
   Implements some common generic algorithms like sort or binary search.
 * `tables <tables.html>`_
-  Nimrod hash table support. Contains tables, ordered tables and count tables.
+  Nim hash table support. Contains tables, ordered tables and count tables.
 * `sets <sets.html>`_
-  Nimrod hash and bit set support.
+  Nim hash and bit set support.
 * `lists <lists.html>`_
-  Nimrod linked list support. Contains singly and doubly linked lists and
+  Nim linked list support. Contains singly and doubly linked lists and
   circular lists ("rings").
 * `queues <queues.html>`_
   Implementation of a queue. The underlying implementation uses a ``seq``.
@@ -152,12 +154,12 @@ Generic Operating System Services
 
 * `streams <streams.html>`_
   This module provides a stream interface and two implementations thereof:
-  the `PFileStream` and the `PStringStream` which implement the stream
-  interface for Nimrod file objects (`TFile`) and strings. Other modules
+  the `FileStream` and the `StringStream` which implement the stream
+  interface for Nim file objects (`File`) and strings. Other modules
   may provide other implementations for this standard stream interface.
 
 * `marshal <marshal.html>`_
-  Contains procs for serialization and deseralization of arbitrary Nimrod 
+  Contains procs for serialization and deseralization of arbitrary Nim 
   data structures.
 
 * `terminal <terminal.html>`_
@@ -173,6 +175,7 @@ Generic Operating System Services
   This module implements the ability to monitor a directory/file for changes
   using Posix's inotify API.
 
+
 Math libraries
 --------------
 
@@ -182,6 +185,9 @@ Math libraries
 * `complex <complex.html>`_
   This module implements complex numbers and their mathematical operations.
 
+* `fenv <fenv.html>`_
+  Floating-point environment. Handling of floating-point rounding and
+  exceptions (overflow, zero-devide, etc.).
 
 
 Internet Protocols and Support
@@ -273,7 +279,7 @@ Parsers
   parser. The configuration file's syntax is similar to the Windows ``.ini``
   format, but much more powerful, as it is not a line based parser. String
   literals, raw string literals and triple quote string literals are supported
-  as in the Nimrod programming language.
+  as in the Nim programming language.
 
 * `parsexml <parsexml.html>`_
   The ``parsexml`` module implements a simple high performance XML/HTML parser.
@@ -340,7 +346,7 @@ Cryptography and Hashing
 
 * `hashes <hashes.html>`_
   This module implements efficient computations of hash values for diverse
-  Nimrod types.
+  Nim types.
 
 * `md5 <md5.html>`_
   This module implements the MD5 checksum algorithm.
@@ -353,7 +359,7 @@ Multimedia support
 ------------------
 
 * `colors <colors.html>`_
-  This module implements color handling for Nimrod. It is used by
+  This module implements color handling for Nim. It is used by
   the ``graphics`` module.
 
 
@@ -426,12 +432,12 @@ Other
 -----
 
 * `graphics <graphics.html>`_
-  This module implements graphical output for Nimrod; the current
+  This module implements graphical output for Nim; the current
   implementation uses SDL but the interface is meant to support multiple
   backends some day.
 
 * `dialogs <dialogs.html>`_
-  This module implements portable dialogs for Nimrod; the implementation
+  This module implements portable dialogs for Nim; the implementation
   builds on the GTK interface. On Windows, native dialogs are shown if
   appropriate.
 
@@ -444,7 +450,7 @@ Other
 
 * `ssl <ssl.html>`_
   This module provides an easy to use sockets-style 
-  Nimrod interface to the OpenSSL library.
+  Nim interface to the OpenSSL library.
 
 * `rdstdin <rdstdin.html>`_
   This module contains code for reading from `stdin`:idx:. On UNIX the GNU
@@ -532,7 +538,7 @@ Database support
 * `odbcsql <odbcsql.html>`_
   interface to the ODBC driver.
 * `sphinx <sphinx.html>`_
-  Nimrod wrapper for ``sphinx``.
+  Nim wrapper for ``sphinx``.
 
 
 XML Processing
@@ -575,36 +581,36 @@ Scientific computing
 * `libsvm <libsvm.html>`_ 
   Low level wrapper for `lib svm <http://www.csie.ntu.edu.tw/~cjlin/libsvm/>`_.
 
-Babel
+Nimble
 ====================
 
-Babel is a package manager for the Nimrod programming language.
-For instructions on how to install Babel packages see
-`its README <https://github.com/nimrod-code/babel#readme>`_.
+Nimble is a package manager for the Nim programming language.
+For instructions on how to install Nimble packages see
+`its README <https://github.com/nim-lang/babel#readme>`_.
 
 Official packages
 -----------------
 
 These packages are officially supported and will therefore be continually
-maintained to ensure that they work with the latest versions of the Nimrod
+maintained to ensure that they work with the latest versions of the Nim
 compiler.
 
 .. raw:: html
 
   <div id="officialPkgList"><b>If you are reading this you are missing
-  babelpkglist.js or have javascript disabled in your browser.</b></div>
+  nimblepkglist.js or have javascript disabled in your browser.</b></div>
 
 Unofficial packages
 -------------------
 
-These packages have been developed by independent Nimrod developers and as
+These packages have been developed by independent Nim developers and as
 such may not always be up to date with the latest developments in the
-Nimrod programming language.
+Nim programming language.
 
 .. raw:: html
 
   <div id="unofficialPkgList"><b>If you are reading this you are missing
-  babelpkglist.js or have javascript disabled in your browser.</b></div>
+  nimblepkglist.js or have javascript disabled in your browser.</b></div>
 
-  <script type="text/javascript" src="babelpkglist.js"></script>
-  <script type="text/javascript" src="http://build.nimrod-lang.org/packages?callback=gotPackageList"></script>
+  <script type="text/javascript" src="nimblepkglist.js"></script>
+  <script type="text/javascript" src="http://irclogs.nim-lang.org/packages?callback=gotPackageList"></script>

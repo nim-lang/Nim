@@ -1,16 +1,17 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2013 Robert Persson
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
+type OneVarFunction* = proc (x: float): float
 
-type TOneVarFunction* =proc (x:float):float
+{.deprecated: [TOneVarFunction: OneVarFunction].}
 
-proc brent*(xmin,xmax:float ,function:TOneVarFunction, tol:float,maxiter=1000): 
+proc brent*(xmin,xmax:float, function:OneVarFunction, tol:float,maxiter=1000): 
   tuple[rootx, rooty: float, success: bool]=
   ## Searches `function` for a root between `xmin` and `xmax` 
   ## using brents method. If the function value at `xmin`and `xmax` has the

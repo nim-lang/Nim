@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -14,7 +14,7 @@ import
   options, idents, wordrecg
 
 # ---------------- configuration file parser -----------------------------
-# we use Nimrod's scanner here to safe space and work
+# we use Nim's scanner here to safe space and work
 
 proc ppGetTok(L: var TLexer, tok: var TToken) = 
   # simple filter
@@ -113,7 +113,7 @@ proc parseDirective(L: var TLexer, tok: var TToken) =
   case whichKeyword(tok.ident)
   of wIf:
     setLen(condStack, len(condStack) + 1)
-    var res = evalppIf(L, tok)
+    let res = evalppIf(L, tok)
     condStack[high(condStack)] = res
     if not res: jumpToDirective(L, tok, jdElseEndif)
   of wElif: doElif(L, tok)
@@ -224,8 +224,10 @@ proc loadConfigs*(cfg: string) =
   if libpath == "": 
     # choose default libpath:
     var prefix = getPrefixDir()
-    if prefix == "/usr": libpath = "/usr/lib/nimrod"
-    elif prefix == "/usr/local": libpath = "/usr/local/lib/nimrod"
+    when defined(posix):
+      if prefix == "/usr": libpath = "/usr/lib/nim"
+      elif prefix == "/usr/local": libpath = "/usr/local/lib/nim"
+      else: libpath = joinPath(prefix, "lib")
     else: libpath = joinPath(prefix, "lib")
 
   if optSkipConfigFile notin gGlobalOptions:
@@ -244,5 +246,6 @@ proc loadConfigs*(cfg: string) =
     
     if gProjectName.len != 0:
       # new project wide config file:
-      readConfigFile(changeFileExt(gProjectFull, "nimrod.cfg"))
- 
+      let projectConfig = changeFileExt(gProjectFull, "nim.cfg")
+      if fileExists(projectConfig): readConfigFile(projectConfig)
+      else: readConfigFile(changeFileExt(gProjectFull, "nimrod.cfg"))

@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -11,7 +11,7 @@
 ## parser. The configuration file's syntax is similar to the Windows ``.ini`` 
 ## format, but much more powerful, as it is not a line based parser. String 
 ## literals, raw string literals and triple quoted string literals are supported 
-## as in the Nimrod programming language.
+## as in the Nim programming language.
 
 ## This is an example of how a configuration file may look like:
 ##
@@ -20,25 +20,25 @@
 ## The file ``examples/parsecfgex.nim`` demonstrates how to use the 
 ## configuration file parser:
 ##
-## .. code-block:: nimrod
+## .. code-block:: nim
 ##     :file: examples/parsecfgex.nim
 
 
-import 
+import
   hashes, strutils, lexbase, streams
 
 include "system/inclrtl"
 
-type 
-  TCfgEventKind* = enum ## enumeration of all events that may occur when parsing
+type
+  CfgEventKind* = enum ## enumeration of all events that may occur when parsing
     cfgEof,             ## end of file reached
     cfgSectionStart,    ## a ``[section]`` has been parsed
     cfgKeyValuePair,    ## a ``key=value`` pair has been detected
     cfgOption,          ## a ``--key=value`` command line option
     cfgError            ## an error ocurred during parsing
     
-  TCfgEvent* = object of TObject ## describes a parsing event
-    case kind*: TCfgEventKind    ## the kind of the event
+  CfgEvent* = object of RootObj ## describes a parsing event
+    case kind*: CfgEventKind    ## the kind of the event
     of cfgEof: nil
     of cfgSectionStart: 
       section*: string           ## `section` contains the name of the 
@@ -53,28 +53,29 @@ type
       msg*: string               ## contains the error message. No exceptions
                                  ## are thrown if a parse error occurs.
   
-  TTokKind = enum 
+  TokKind = enum 
     tkInvalid, tkEof,        
     tkSymbol, tkEquals, tkColon, tkBracketLe, tkBracketRi, tkDashDash
-  TToken {.final.} = object  # a token
-    kind: TTokKind           # the type of the token
+  Token = object             # a token
+    kind: TokKind            # the type of the token
     literal: string          # the parsed (string) literal
   
-  TCfgParser* = object of TBaseLexer ## the parser object.
-    tok: TToken
+  CfgParser* = object of BaseLexer ## the parser object.
+    tok: Token
     filename: string
+
+{.deprecated: [TCfgEventKind: CfgEventKind, TCfgEvent: CfgEvent,
+    TTokKind: TokKind, TToken: Token, TCfgParser: CfgParser].}
 
 # implementation
 
 const 
-  SymChars: TCharSet = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\x80'..'\xFF', '.',
-                        '/', '\\'} 
+  SymChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\x80'..'\xFF', '.', '/', '\\'} 
   
-proc rawGetTok(c: var TCfgParser, tok: var TToken) {.gcsafe.}
+proc rawGetTok(c: var CfgParser, tok: var Token) {.gcsafe.}
 
-proc open*(c: var TCfgParser, input: PStream, filename: string, 
-           lineOffset = 0) {.
-  rtl, extern: "npc$1".} =
+proc open*(c: var CfgParser, input: Stream, filename: string, 
+           lineOffset = 0) {.rtl, extern: "npc$1".} =
   ## initializes the parser with an input stream. `Filename` is only used
   ## for nice error messages. `lineOffset` can be used to influence the line
   ## number information in the generated error messages.
@@ -85,23 +86,23 @@ proc open*(c: var TCfgParser, input: PStream, filename: string,
   inc(c.lineNumber, lineOffset)
   rawGetTok(c, c.tok)
   
-proc close*(c: var TCfgParser) {.rtl, extern: "npc$1".} =
+proc close*(c: var CfgParser) {.rtl, extern: "npc$1".} =
   ## closes the parser `c` and its associated input stream.
   lexbase.close(c)
 
-proc getColumn*(c: TCfgParser): int {.rtl, extern: "npc$1".} =
+proc getColumn*(c: CfgParser): int {.rtl, extern: "npc$1".} =
   ## get the current column the parser has arrived at.
   result = getColNumber(c, c.bufpos)
 
-proc getLine*(c: TCfgParser): int {.rtl, extern: "npc$1".} =
+proc getLine*(c: CfgParser): int {.rtl, extern: "npc$1".} =
   ## get the current line the parser has arrived at.
   result = c.lineNumber
 
-proc getFilename*(c: TCfgParser): string {.rtl, extern: "npc$1".} =
+proc getFilename*(c: CfgParser): string {.rtl, extern: "npc$1".} =
   ## get the filename of the file that the parser processes.
   result = c.filename
 
-proc handleHexChar(c: var TCfgParser, xi: var int) = 
+proc handleHexChar(c: var CfgParser, xi: var int) = 
   case c.buf[c.bufpos]
   of '0'..'9': 
     xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('0'))
@@ -115,12 +116,12 @@ proc handleHexChar(c: var TCfgParser, xi: var int) =
   else: 
     discard
 
-proc handleDecChars(c: var TCfgParser, xi: var int) = 
+proc handleDecChars(c: var CfgParser, xi: var int) = 
   while c.buf[c.bufpos] in {'0'..'9'}: 
     xi = (xi * 10) + (ord(c.buf[c.bufpos]) - ord('0'))
     inc(c.bufpos)
 
-proc getEscapedChar(c: var TCfgParser, tok: var TToken) = 
+proc getEscapedChar(c: var CfgParser, tok: var Token) = 
   inc(c.bufpos)               # skip '\'
   case c.buf[c.bufpos]
   of 'n', 'N': 
@@ -169,13 +170,13 @@ proc getEscapedChar(c: var TCfgParser, tok: var TToken) =
     else: tok.kind = tkInvalid
   else: tok.kind = tkInvalid
   
-proc handleCRLF(c: var TCfgParser, pos: int): int = 
+proc handleCRLF(c: var CfgParser, pos: int): int = 
   case c.buf[pos]
   of '\c': result = lexbase.handleCR(c, pos)
   of '\L': result = lexbase.handleLF(c, pos)
   else: result = pos
   
-proc getString(c: var TCfgParser, tok: var TToken, rawMode: bool) = 
+proc getString(c: var CfgParser, tok: var Token, rawMode: bool) = 
   var pos = c.bufpos + 1          # skip "
   var buf = c.buf                 # put `buf` in a register
   tok.kind = tkSymbol
@@ -221,7 +222,7 @@ proc getString(c: var TCfgParser, tok: var TToken, rawMode: bool) =
         inc(pos)
     c.bufpos = pos
 
-proc getSymbol(c: var TCfgParser, tok: var TToken) = 
+proc getSymbol(c: var CfgParser, tok: var Token) = 
   var pos = c.bufpos
   var buf = c.buf
   while true: 
@@ -231,7 +232,7 @@ proc getSymbol(c: var TCfgParser, tok: var TToken) =
   c.bufpos = pos
   tok.kind = tkSymbol
 
-proc skip(c: var TCfgParser) = 
+proc skip(c: var CfgParser) = 
   var pos = c.bufpos
   var buf = c.buf
   while true: 
@@ -247,7 +248,7 @@ proc skip(c: var TCfgParser) =
       break                   # EndOfFile also leaves the loop
   c.bufpos = pos
 
-proc rawGetTok(c: var TCfgParser, tok: var TToken) = 
+proc rawGetTok(c: var CfgParser, tok: var Token) = 
   tok.kind = tkInvalid
   setLen(tok.literal, 0)
   skip(c)
@@ -286,19 +287,19 @@ proc rawGetTok(c: var TCfgParser, tok: var TToken) =
     tok.literal = "[EOF]"
   else: getSymbol(c, tok)
   
-proc errorStr*(c: TCfgParser, msg: string): string {.rtl, extern: "npc$1".} =
+proc errorStr*(c: CfgParser, msg: string): string {.rtl, extern: "npc$1".} =
   ## returns a properly formated error message containing current line and
   ## column information.
   result = `%`("$1($2, $3) Error: $4", 
                [c.filename, $getLine(c), $getColumn(c), msg])
   
-proc warningStr*(c: TCfgParser, msg: string): string {.rtl, extern: "npc$1".} =
+proc warningStr*(c: CfgParser, msg: string): string {.rtl, extern: "npc$1".} =
   ## returns a properly formated warning message containing current line and
   ## column information.
   result = `%`("$1($2, $3) Warning: $4", 
                [c.filename, $getLine(c), $getColumn(c), msg])
 
-proc ignoreMsg*(c: TCfgParser, e: TCfgEvent): string {.rtl, extern: "npc$1".} =
+proc ignoreMsg*(c: CfgParser, e: CfgEvent): string {.rtl, extern: "npc$1".} =
   ## returns a properly formated warning message containing that
   ## an entry is ignored.
   case e.kind 
@@ -309,7 +310,7 @@ proc ignoreMsg*(c: TCfgParser, e: TCfgEvent): string {.rtl, extern: "npc$1".} =
   of cfgError: result = e.msg
   of cfgEof: result = ""
 
-proc getKeyValPair(c: var TCfgParser, kind: TCfgEventKind): TCfgEvent = 
+proc getKeyValPair(c: var CfgParser, kind: CfgEventKind): CfgEvent = 
   if c.tok.kind == tkSymbol: 
     result.kind = kind
     result.key = c.tok.literal
@@ -329,7 +330,7 @@ proc getKeyValPair(c: var TCfgParser, kind: TCfgEventKind): TCfgEvent =
     result.msg = errorStr(c, "symbol expected, but found: " & c.tok.literal)
     rawGetTok(c, c.tok)
 
-proc next*(c: var TCfgParser): TCfgEvent {.rtl, extern: "npc$1".} =
+proc next*(c: var CfgParser): CfgEvent {.rtl, extern: "npc$1".} =
   ## retrieves the first/next event. This controls the parser.
   case c.tok.kind  
   of tkEof: 

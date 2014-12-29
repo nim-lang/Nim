@@ -1,11 +1,11 @@
-The AST in Nimrod
+The AST in Nim
 =================
-This section describes how the AST is modelled with Nimrod's type system.
+This section describes how the AST is modelled with Nim's type system.
 The AST consists of nodes (``PNimrodNode``) with a variable number of
 children. Each node has a field named ``kind`` which describes what the node
 contains:
 
-.. code-block:: nimrod
+.. code-block:: nim
 
   type
     TNimrodNodeKind = enum ## kind of a node; only explanatory
@@ -39,7 +39,7 @@ contains:
 For the ``PNimrodNode`` type, the ``[]`` operator has been overloaded:
 ``n[i]`` is ``n``'s ``i``-th child.
 
-To specify the AST for the different Nimrod constructs, the notation
+To specify the AST for the different Nim constructs, the notation
 ``nodekind(son1, son2, ...)`` or ``nodekind(value)`` or 
 ``nodekind(field=value)`` is used.
 
@@ -53,7 +53,7 @@ A leaf of the AST often corresponds to a terminal symbol in the concrete
 syntax.
 
 -----------------                ---------------------------------------------
-Nimrod expression                corresponding AST
+Nim expression                   corresponding AST
 -----------------                ---------------------------------------------
 ``42``                           ``nnkIntLit(intVal = 42)``
 ``42'i8``                        ``nnkInt8Lit(intVal = 42)``
@@ -87,12 +87,12 @@ Command call
 
 Concrete syntax:
 
-.. code-block:: nimrod
+.. code-block:: nim
   echo "abc", "xyz"
 
 AST:
 
-.. code-block:: nimrod
+.. code-block:: nim
   nnkCommand(nnkIdent(!"echo"), nnkStrLit("abc"), nnkStrLit("xyz"))
 
 
@@ -101,12 +101,12 @@ Call with ``()``
 
 Concrete syntax:
 
-.. code-block:: nimrod
+.. code-block:: nim
   echo("abc", "xyz")
 
 AST:
 
-.. code-block:: nimrod
+.. code-block:: nim
   nnkCall(nnkIdent(!"echo"), nnkStrLit("abc"), nnkStrLit("xyz"))
 
 
@@ -115,12 +115,12 @@ Infix operator call
 
 Concrete syntax:
 
-.. code-block:: nimrod
+.. code-block:: nim
   "abc" & "xyz"
 
 AST:
 
-.. code-block:: nimrod
+.. code-block:: nim
   nnkInfix(nnkIdent(!"&"), nnkStrLit("abc"), nnkStrLit("xyz"))
 
 
@@ -129,29 +129,29 @@ Prefix operator call
 
 Concrete syntax:
 
-.. code-block:: nimrod
+.. code-block:: nim
   ? "xyz"
 
 AST:
 
-.. code-block:: nimrod
+.. code-block:: nim
   nnkPrefix(nnkIdent(!"?"), nnkStrLit("abc"))
 
 
 Postfix operator call
 ---------------------
 
-**Note:** There are no postfix operators in Nimrod. However, the 
+**Note:** There are no postfix operators in Nim. However, the 
 ``nnkPostfix`` node is used for the *asterisk export marker* ``*``:
 
 Concrete syntax:
 
-.. code-block:: nimrod
+.. code-block:: nim
   identifier*
 
 AST:
 
-.. code-block:: nimrod
+.. code-block:: nim
   nnkPostfix(nnkIdent(!"*"), nnkIdent(!"identifier"))
 
 
@@ -160,12 +160,12 @@ Call with named arguments
 
 Concrete syntax:
 
-.. code-block:: nimrod
+.. code-block:: nim
   writeln(file=stdout, "hallo")
 
 AST:
 
-.. code-block:: nimrod
+.. code-block:: nim
   nnkCall(nnkIdent(!"writeln"), 
           nnkExprEqExpr(nnkIdent(!"file"), nnkIdent(!"stdout")), 
           nnkStrLit("hallo"))
@@ -176,12 +176,12 @@ Dereference operator ``^``
 
 Concrete syntax:
 
-.. code-block:: nimrod
+.. code-block:: nim
   x^
 
 AST:
 
-.. code-block:: nimrod
+.. code-block:: nim
   nnkDerefExpr(nnkIdent(!"x"))
 
 
@@ -190,12 +190,12 @@ Addr operator
 
 Concrete syntax:
 
-.. code-block:: nimrod
+.. code-block:: nim
   addr(x)
 
 AST:
 
-.. code-block:: nimrod
+.. code-block:: nim
   nnkAddr(nnkIdent(!"x"))
 
 
@@ -204,12 +204,12 @@ Cast operator
 
 Concrete syntax:
 
-.. code-block:: nimrod
+.. code-block:: nim
   cast[T](x)
 
 AST:
 
-.. code-block:: nimrod
+.. code-block:: nim
   nnkCast(nnkIdent(!"T"), nnkIdent(!"x"))
 
 
@@ -218,12 +218,12 @@ Object access operator ``.``
 
 Concrete syntax:
 
-.. code-block:: nimrod
+.. code-block:: nim
   x.y
 
 AST:
 
-.. code-block:: nimrod
+.. code-block:: nim
   nnkDotExpr(nnkIdent(!"x"), nnkIdent(!"y"))
 
 
@@ -232,12 +232,12 @@ Array access operator ``[]``
 
 Concrete syntax:
 
-.. code-block:: nimrod
+.. code-block:: nim
   x[y]
 
 AST:
 
-.. code-block:: nimrod
+.. code-block:: nim
   nnkBracketExpr(nnkIdent(!"x"), nnkIdent(!"y"))
 
 
@@ -249,12 +249,12 @@ are built with the ``nnkPar`` node.
 
 Concrete syntax:
 
-.. code-block:: nimrod
+.. code-block:: nim
   (1, 2, (3))
 
 AST:
 
-.. code-block:: nimrod
+.. code-block:: nim
   nnkPar(nnkIntLit(1), nnkIntLit(2), nnkPar(nnkIntLit(3)))
   
   
@@ -265,12 +265,12 @@ Curly braces are used as the set constructor.
 
 Concrete syntax:
 
-.. code-block:: nimrod
+.. code-block:: nim
   {1, 2, 3}
 
 AST:
 
-.. code-block:: nimrod
+.. code-block:: nim
   nnkCurly(nnkIntLit(1), nnkIntLit(2), nnkIntLit(3))
 
 
@@ -281,12 +281,12 @@ Brackets are used as the array constructor.
 
 Concrete syntax:
 
-.. code-block:: nimrod
+.. code-block:: nim
   [1, 2, 3]
 
 AST:
 
-.. code-block:: nimrod
+.. code-block:: nim
   nnkBracket(nnkIntLit(1), nnkIntLit(2), nnkIntLit(3))
 
 
@@ -297,12 +297,12 @@ Ranges occur in set constructors, case statement branches or array slices.
 
 Concrete syntax:
 
-.. code-block:: nimrod
+.. code-block:: nim
   1..3
 
 AST:
 
-.. code-block:: nimrod
+.. code-block:: nim
   nnkRange(nnkIntLit(1), nnkIntLit(3))
 
 
@@ -313,12 +313,12 @@ The representation of the if expression is subtle, but easy to traverse.
 
 Concrete syntax:
 
-.. code-block:: nimrod
+.. code-block:: nim
   if cond1: expr1 elif cond2: expr2 else: expr3
 
 AST:
 
-.. code-block:: nimrod
+.. code-block:: nim
   nnkIfExpr(
     nnkElifExpr(cond1, expr1),
     nnkElifExpr(cond2, expr2),
@@ -337,7 +337,7 @@ there is no ``else`` branch, no ``nnkElse`` child exists.
 
 Concrete syntax:
 
-.. code-block:: nimrod
+.. code-block:: nim
   if cond1: 
     stmt1
   elif cond2:
@@ -349,7 +349,7 @@ Concrete syntax:
 
 AST:
 
-.. code-block:: nimrod
+.. code-block:: nim
   nnkIfStmt(
     nnkElifBranch(cond1, stmt1),
     nnkElifBranch(cond2, stmt2),
@@ -369,12 +369,12 @@ Assignment
 
 Concrete syntax:
 
-.. code-block:: nimrod
+.. code-block:: nim
   x = 42
 
 AST:
 
-.. code-block:: nimrod
+.. code-block:: nim
   nnkAsgn(nnkIdent(!"x"), nnkIntLit(42))
 
 
@@ -383,14 +383,14 @@ Statement list
 
 Concrete syntax:
 
-.. code-block:: nimrod
+.. code-block:: nim
   stmt1
   stmt2
   stmt3
 
 AST:
 
-.. code-block:: nimrod
+.. code-block:: nim
   nnkStmtList(stmt1, stmt2, stmt3)
 
   
@@ -399,7 +399,7 @@ Case statement
 
 Concrete syntax:
 
-.. code-block:: nimrod
+.. code-block:: nim
   case expr1
   of expr2, expr3..expr4: 
     stmt1
@@ -412,7 +412,7 @@ Concrete syntax:
 
 AST:
 
-.. code-block:: nimrod
+.. code-block:: nim
   nnkCaseStmt(
     expr1,
     nnkOfBranch(expr2, nnkRange(expr3, expr4), stmt1),
@@ -429,13 +429,13 @@ While statement
 
 Concrete syntax:
 
-.. code-block:: nimrod
+.. code-block:: nim
   while expr1:
     stmt1
 
 AST:
 
-.. code-block:: nimrod
+.. code-block:: nim
   nnkWhileStmt(expr1, stmt1)
 
 
@@ -444,13 +444,13 @@ For statement
 
 Concrete syntax:
 
-.. code-block:: nimrod
+.. code-block:: nim
   for ident1, ident2 in expr1:
     stmt1
 
 AST:
 
-.. code-block:: nimrod
+.. code-block:: nim
   nnkForStmt(ident1, ident2, expr1, stmt1)
 
 
@@ -459,7 +459,7 @@ Try statement
 
 Concrete syntax:
 
-.. code-block:: nimrod
+.. code-block:: nim
   try:
     stmt1
   except e1, e2: 
@@ -473,7 +473,7 @@ Concrete syntax:
 
 AST:
 
-.. code-block:: nimrod
+.. code-block:: nim
   nnkTryStmt(
     stmt1, 
     nnkExceptBranch(e1, e2, stmt2), 
@@ -488,12 +488,12 @@ Return statement
 
 Concrete syntax:
 
-.. code-block:: nimrod
+.. code-block:: nim
   return expr1
 
 AST:
 
-.. code-block:: nimrod
+.. code-block:: nim
   nnkReturnStmt(expr1)
 
 
@@ -514,12 +514,12 @@ Continue statement
 
 Concrete syntax:
 
-.. code-block:: nimrod
+.. code-block:: nim
   continue
 
 AST:
 
-.. code-block:: nimrod
+.. code-block:: nim
   nnkContinueStmt()
 
 Var section

@@ -1,6 +1,6 @@
 #
 #
-#         Maintenance program for Nimrod  
+#         Maintenance program for Nim
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -18,6 +18,8 @@ when defined(gcc) and defined(windows):
 import
   os, strutils, parseopt, osproc, streams
 
+import "compiler/nversion.nim"
+
 when defined(withUpdate):
   import httpclient
 when defined(haveZipLib):
@@ -26,7 +28,7 @@ when defined(haveZipLib):
 const
   HelpText = """
 +-----------------------------------------------------------------+
-|         Maintenance program for Nimrod                          |
+|         Maintenance program for Nim                             |
 |             Version $1|
 |             (c) 2014 Andreas Rumpf                              |
 +-----------------------------------------------------------------+
@@ -38,16 +40,19 @@ Options:
   --help, -h               shows this help and quits
 Possible Commands:
   boot [options]           bootstraps with given command line options
-  install [dir]            installs to given directory
+  install [bindir]         installs to given directory
   clean                    cleans Nimrod project; removes generated files
-  web                      generates the website
+  web [options]            generates the website and the full documentation
+  website [options]        generates only the website
   csource [options]        builds the C sources for installation
+  pdf                      builds the PDF documentation
   zip                      builds the installation ZIP package
   nsis [options]           builds the NSIS Setup installer (for Windows)
   tests [options]          run the testsuite
-  update                   updates nimrod to the latest version from github
+  update                   updates nim to the latest version from github
                            (compile koch with -d:withUpdate to enable)
   temp options             creates a temporary compiler for testing
+  winrelease               creates a release (for coredevs only)
 Boot options:
   -d:release               produce a release version of the compiler
   -d:tinyc                 include the Tiny C backend (not supported on Windows)
@@ -61,13 +66,13 @@ Boot options:
 proc exe(f: string): string = return addFileExt(f, ExeExt)
 
 proc findNim(): string =
-  var nimrod = "nimrod".exe
-  result = "bin" / nimrod
+  var nim = "nim".exe
+  result = "bin" / nim
   if existsFile(result): return
   for dir in split(getEnv("PATH"), PathSep):
-    if existsFile(dir / nimrod): return dir / nimrod
+    if existsFile(dir / nim): return dir / nim
   # assume there is a symlink to the exe or something:
-  return nimrod
+  return nim
 
 proc exec(cmd: string) =
   echo(cmd)
@@ -89,14 +94,14 @@ const
   compileNimInst = "-d:useLibzipSrc tools/niminst/niminst"
 
 proc csource(args: string) = 
-  exec("$4 cc $1 -r $3 --var:version=$2 csource compiler/nimrod.ini $1" %
-       [args, NimrodVersion, compileNimInst, findNim()])
+  exec("$4 cc $1 -r $3 --var:version=$2 --var:mingw=mingw32 csource compiler/nim.ini $1" %
+       [args, VersionAsString, compileNimInst, findNim()])
 
 proc zip(args: string) =
-  exec("$3 cc -r $2 --var:version=$1 --var:mingw=mingw32 scripts compiler/nimrod.ini" %
-       [NimrodVersion, compileNimInst, findNim()])
-  exec("$# --var:version=$# --var:mingw=mingw32 zip compiler/nimrod.ini" %
-       ["tools/niminst/niminst".exe, NimrodVersion])
+  exec("$3 cc -r $2 --var:version=$1 --var:mingw=mingw32 scripts compiler/nim.ini" %
+       [VersionAsString, compileNimInst, findNim()])
+  exec("$# --var:version=$# --var:mingw=mingw32 zip compiler/nim.ini" %
+       ["tools/niminst/niminst".exe, VersionAsString])
   
 proc buildTool(toolname, args: string) = 
   exec("$# cc $# $#" % [findNim(), args, toolname])
@@ -107,58 +112,76 @@ proc nsis(args: string) =
   buildTool("tools/niminst/niminst", args)
   buildTool("tools/nimgrep", args)
   # produce 'nimrod_debug.exe':
-  exec "nimrod c compiler" / "nimrod.nim"
-  copyExe("compiler/nimrod".exe, "bin/nimrod_debug".exe)
+  exec "nim c compiler" / "nim.nim"
+  copyExe("compiler/nim".exe, "bin/nim_debug".exe)
   exec(("tools" / "niminst" / "niminst --var:version=$# --var:mingw=mingw32" &
-        " nsis compiler/nimrod") % NimrodVersion)
+        " nsis compiler/nim") % VersionAsString)
 
 proc install(args: string) = 
-  exec("$# cc -r $# --var:version=$# --var:mingw=mingw32 scripts compiler/nimrod.ini" %
-       [findNim(), compileNimInst, NimrodVersion])
+  exec("$# cc -r $# --var:version=$# --var:mingw=mingw32 scripts compiler/nim.ini" %
+       [findNim(), compileNimInst, VersionAsString])
   exec("sh ./install.sh $#" % args)
 
 proc web(args: string) =
-  exec("$# cc -r tools/nimweb.nim web/nimrod --putenv:nimrodversion=$#" % 
-       [findNim(), NimrodVersion])
+  exec("$# cc -r tools/nimweb.nim $# web/nim --putenv:nimversion=$#" %
+       [findNim(), args, VersionAsString])
+
+proc website(args: string) =
+  exec("$# cc -r tools/nimweb.nim $# --website web/nim --putenv:nimversion=$#" %
+       [findNim(), args, VersionAsString])
+
+proc pdf(args="") =
+  exec("$# cc -r tools/nimweb.nim $# --pdf web/nim --putenv:nimversion=$#" %
+       [findNim(), args, VersionAsString])
 
 # -------------- boot ---------------------------------------------------------
 
 const
   bootOptions = "" # options to pass to the bootstrap process
 
-proc findStartNimrod: string = 
+proc findStartNim: string = 
   # we try several things before giving up:
+  # * bin/nim
+  # * $PATH/nim
   # * bin/nimrod
   # * $PATH/nimrod
-  # If these fail, we try to build nimrod with the "build.(sh|bat)" script.
+  # If these fail, we try to build nim with the "build.(sh|bat)" script.
+  var nim = "nim".exe
+  result = "bin" / nim
+  if existsFile(result): return
+  for dir in split(getEnv("PATH"), PathSep):
+    if existsFile(dir / nim): return dir / nim
+
+  # try the old "nimrod.exe":
   var nimrod = "nimrod".exe
   result = "bin" / nimrod
   if existsFile(result): return
   for dir in split(getEnv("PATH"), PathSep):
-    if existsFile(dir / nimrod): return dir / nimrod
+    if existsFile(dir / nim): return dir / nimrod
+
   when defined(Posix):
     const buildScript = "build.sh"
     if existsFile(buildScript): 
-      if tryExec("./" & buildScript): return "bin" / nimrod
+      if tryExec("./" & buildScript): return "bin" / nim
   else:
     const buildScript = "build.bat"
     if existsFile(buildScript): 
-      if tryExec(buildScript): return "bin" / nimrod
-  
-  echo("Found no nimrod compiler and every attempt to build one failed!")
+      if tryExec(buildScript): return "bin" / nim
+
+  echo("Found no nim compiler and every attempt to build one failed!")
   quit("FAILURE")
 
 proc thVersion(i: int): string = 
-  result = ("compiler" / "nimrod" & $i).exe
+  result = ("compiler" / "nim" & $i).exe
   
 proc boot(args: string) =
-  var output = "compiler" / "nimrod".exe
-  var finalDest = "bin" / "nimrod".exe
+  var output = "compiler" / "nim".exe
+  var finalDest = "bin" / "nim".exe
   
-  copyExe(findStartNimrod(), 0.thVersion)
+  copyExe(findStartNim(), 0.thVersion)
   for i in 0..2:
     echo "iteration: ", i+1
-    exec i.thVersion & " c $# $# compiler" / "nimrod.nim" % [bootOptions, args]
+    exec i.thVersion & " c $# $# compiler" / "nim.nim" % [bootOptions, args]
     if sameFileContent(output, i.thVersion):
       copyExe(output, finalDest)
       echo "executables are equal: SUCCESS!"
@@ -176,7 +199,7 @@ const
     ".idx", ".ilk"
   ]
   ignore = [
-    ".bzrignore", "nimrod", "nimrod.exe", "koch", "koch.exe", ".gitignore"
+    ".bzrignore", "nim", "nim.exe", "koch", "koch.exe", ".gitignore"
   ]
 
 proc cleanAux(dir: string) = 
@@ -273,6 +296,33 @@ when defined(withUpdate):
     boot(args)
     echo("Update complete!")
 
+# -------------- builds a release ---------------------------------------------
+
+proc run7z(platform: string, patterns: varargs[string]) =
+  const tmpDir = "nim-" & VersionAsString
+  createDir tmpDir
+  try:
+    for pattern in patterns:
+      for f in walkFiles(pattern):
+        if "nimcache" notin f:
+          copyFile(f, tmpDir / f)
+    exec("7z a -tzip $1-$2.zip $1" % [tmpDir, platform])
+  finally:
+    removeDir tmpDir
+
+proc winRelease() =
+  boot(" -d:release")
+  #buildTool("tools/niminst/niminst", " -d:release")
+  buildTool("tools/nimgrep", " -d:release")
+  buildTool("compiler/nimfix/nimfix", " -d:release")
+
+  run7z("win32", "bin/nim.exe", "bin/c2nim.exe", "bin/nimgrep.exe",
+        "bin/nimfix.exe",
+        "bin/babel.exe", "bin/*.dll",
+        "config", "dist/*.dll", "examples", "lib",
+        "readme.txt", "contributors.txt", "copying.txt")
+  # second step: XXX build 64 bit version
+
 # -------------- tests --------------------------------------------------------
 
 template `|`(a, b): expr = (if a.len > 0: a else: b)
@@ -280,42 +330,44 @@ template `|`(a, b): expr = (if a.len > 0: a else: b)
 proc tests(args: string) =
   # we compile the tester with taintMode:on to have a basic
   # taint mode test :-)
-  exec "nimrod cc --taintMode:on tests/testament/tester"
+  exec "nim cc --taintMode:on tests/testament/tester"
   let tester = quoteShell(getCurrentDir() / "tests/testament/tester".exe)
   exec tester & " " & (args|"all")
   exec tester & " html"
 
 proc temp(args: string) =
-  var output = "compiler" / "nimrod".exe
-  var finalDest = "bin" / "nimrod_temp".exe
-  exec("nimrod c compiler" / "nimrod")
+  var output = "compiler" / "nim".exe
+  var finalDest = "bin" / "nim_temp".exe
+  exec("nim c compiler" / "nim")
   copyExe(output, finalDest)
   if args.len > 0: exec(finalDest & " " & args)
 
 proc showHelp() = 
-  quit(HelpText % [NimrodVersion & repeatChar(44-len(NimrodVersion)), 
-                   CompileDate, CompileTime])
+  quit(HelpText % [VersionAsString & repeatChar(44-len(VersionAsString)), 
+                   CompileDate, CompileTime], QuitSuccess)
 
 var op = initOptParser()
 op.next()
 case op.kind
 of cmdLongOption, cmdShortOption: showHelp()
 of cmdArgument:
-  case normalize(op.key) 
+  case normalize(op.key)
   of "boot": boot(op.cmdLineRest)
   of "clean": clean(op.cmdLineRest)
   of "web": web(op.cmdLineRest)
+  of "website": website(op.cmdLineRest)
+  of "pdf": pdf()
   of "csource", "csources": csource(op.cmdLineRest)
   of "zip": zip(op.cmdLineRest)
   of "nsis": nsis(op.cmdLineRest)
   of "install": install(op.cmdLineRest)
   of "test", "tests": tests(op.cmdLineRest)
-  of "update": 
+  of "update":
     when defined(withUpdate):
       update(op.cmdLineRest)
     else:
       quit "this Koch has not been compiled with -d:withUpdate"
   of "temp": temp(op.cmdLineRest)
+  of "winrelease": winRelease()
   else: showHelp()
 of cmdEnd: showHelp()
-

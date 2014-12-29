@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -14,18 +14,20 @@ import os, parseutils, strutils
 
 when not defined(windows):
   type
-    TConverter = object
-    PConverter* = ptr TConverter ## can convert between two character sets
+    ConverterObj = object
+    EncodingConverter* = ptr ConverterObj ## can convert between two character sets
 
 else:
   type
-    TCodePage = distinct int32
-    PConverter* = object
-      dest, src: TCodePage
+    CodePage = distinct int32
+    EncodingConverter* = object
+      dest, src: CodePage
 
 type
-  EInvalidEncoding* = object of EInvalidValue ## exception that is raised
-                                              ## for encoding errors
+  EncodingError* = object of ValueError ## exception that is raised
+                                        ## for encoding errors
+
+{.deprecated: [EInvalidEncoding: EncodingError, PConverter: EncodingConverter].}
 
 when defined(windows):
   proc eqEncodingNames(a, b: string): bool =
@@ -34,7 +36,7 @@ when defined(windows):
     while i < a.len and j < b.len:
       if a[i] in {'-', '_'}: inc i
       if b[j] in {'-', '_'}: inc j
-      if a[i].tolower != b[j].tolower: return false
+      if a[i].toLower != b[j].toLower: return false
       inc i
       inc j
     result = i == a.len and j == b.len
@@ -214,26 +216,26 @@ when defined(windows):
         defaultChar: array[0..1, char]
         leadByte: array[0..12-1, char]
 
-    proc getCPInfo(codePage: TCodePage, lpCPInfo: var TCpInfo): int32 {.
+    proc getCPInfo(codePage: CodePage, lpCPInfo: var TCpInfo): int32 {.
       stdcall, importc: "GetCPInfo", dynlib: "kernel32".}
   
-  proc nameToCodePage(name: string): TCodePage =
+  proc nameToCodePage(name: string): CodePage =
     var nameAsInt: int
     if parseInt(name, nameAsInt) == 0: nameAsInt = -1
     for no, na in items(winEncodings):
-      if no == nameAsInt or eqEncodingNames(na, name): return TCodePage(no)
-    result = TCodePage(-1)
+      if no == nameAsInt or eqEncodingNames(na, name): return CodePage(no)
+    result = CodePage(-1)
     
-  proc codePageToName(c: TCodePage): string =
+  proc codePageToName(c: CodePage): string =
     for no, na in items(winEncodings):
       if no == int(c):
         return if na.len != 0: na else: $no
     result = ""
   
-  proc getACP(): TCodePage {.stdcall, importc: "GetACP", dynlib: "kernel32".}
+  proc getACP(): CodePage {.stdcall, importc: "GetACP", dynlib: "kernel32".}
   
   proc multiByteToWideChar(
-    codePage: TCodePage,
+    codePage: CodePage,
     dwFlags: int32,
     lpMultiByteStr: cstring,
     cbMultiByte: cint,
@@ -242,7 +244,7 @@ when defined(windows):
       stdcall, importc: "MultiByteToWideChar", dynlib: "kernel32".}
 
   proc wideCharToMultiByte(
-    codePage: TCodePage,
+    codePage: CodePage,
     dwFlags: int32,
     lpWideCharStr: cstring,
     cchWideChar: cint,
@@ -260,7 +262,7 @@ else:
   else:
     const iconvDll = "(libc.so.6|libiconv.so)"
 
-  when defined(macosx) and defined(powerpc32):
+  when defined(macosx) and defined(powerpc):
     const prefix = "lib"
   else:
     const prefix = ""
@@ -279,50 +281,50 @@ else:
 
   var errno {.importc, header: "<errno.h>".}: cint
 
-  proc iconvOpen(tocode, fromcode: cstring): PConverter {.
+  proc iconvOpen(tocode, fromcode: cstring): EncodingConverter {.
     importc: prefix & "iconv_open", cdecl, dynlib: iconvDll.}
-  proc iconvClose(c: PConverter) {.
+  proc iconvClose(c: EncodingConverter) {.
     importc: prefix & "iconv_close", cdecl, dynlib: iconvDll.}
-  proc iconv(c: PConverter, inbuf: var cstring, inbytesLeft: var int,
+  proc iconv(c: EncodingConverter, inbuf: var cstring, inbytesLeft: var int,
              outbuf: var cstring, outbytesLeft: var int): int {.
     importc: prefix & "iconv", cdecl, dynlib: iconvDll.}
-  proc iconv(c: PConverter, inbuf: pointer, inbytesLeft: pointer,
+  proc iconv(c: EncodingConverter, inbuf: pointer, inbytesLeft: pointer,
              outbuf: var cstring, outbytesLeft: var int): int {.
     importc: prefix & "iconv", cdecl, dynlib: iconvDll.}
   
 proc getCurrentEncoding*(): string =
   ## retrieves the current encoding. On Unix, always "UTF-8" is returned.
   when defined(windows):
-    result = codePageToName(GetACP())
+    result = codePageToName(getACP())
   else:
     result = "UTF-8"
   
-proc open*(destEncoding = "UTF-8", srcEncoding = "CP1252"): PConverter =
+proc open*(destEncoding = "UTF-8", srcEncoding = "CP1252"): EncodingConverter =
   ## opens a converter that can convert from `srcEncoding` to `destEncoding`.
   ## Raises `EIO` if it cannot fullfill the request.
   when not defined(windows):
     result = iconvOpen(destEncoding, srcEncoding)
     if result == nil:
-      raise newException(EInvalidEncoding, 
+      raise newException(EncodingError, 
         "cannot create encoding converter from " & 
         srcEncoding & " to " & destEncoding)
   else:
     result.dest = nameToCodePage(destEncoding)
     result.src = nameToCodePage(srcEncoding)
     if int(result.dest) == -1:
-      raise newException(EInvalidEncoding, 
+      raise newException(EncodingError, 
         "cannot find encoding " & destEncoding)
     if int(result.src) == -1:
-      raise newException(EInvalidEncoding, 
+      raise newException(EncodingError, 
         "cannot find encoding " & srcEncoding)
 
-proc close*(c: PConverter) =
+proc close*(c: EncodingConverter) =
   ## frees the resources the converter `c` holds.
   when not defined(windows):
     iconvClose(c)
 
 when defined(windows):
-  proc convert*(c: PConverter, s: string): string =
+  proc convert*(c: EncodingConverter, s: string): string =
     ## converts `s` to `destEncoding` that was given to the converter `c`. It
     ## assumed that `s` is in `srcEncoding`.
     
@@ -352,7 +354,7 @@ when defined(windows):
                               cbMultiByte = cint(s.len),
                               lpWideCharStr = cstring(result),
                               cchWideChar = cint(cap))
-      if m == 0: osError(osLastError())
+      if m == 0: raiseOSError(osLastError())
       setLen(result, m*2)
     elif m <= cap:
       setLen(result, m*2)
@@ -389,7 +391,7 @@ when defined(windows):
         cchWideChar = cint(result.len div 2),
         lpMultiByteStr = cstring(res),
         cbMultiByte = cap.cint)
-      if m == 0: osError(osLastError())
+      if m == 0: raiseOSError(osLastError())
       setLen(res, m)
       result = res
     elif m <= cap:
@@ -399,7 +401,7 @@ when defined(windows):
       assert(false) # cannot happen
 
 else:
-  proc convert*(c: PConverter, s: string): string =
+  proc convert*(c: EncodingConverter, s: string): string =
     result = newString(s.len)
     var inLen = len(s)
     var outLen = len(result)
@@ -412,7 +414,7 @@ else:
         var lerr = errno
         if lerr == EILSEQ or lerr == EINVAL:
           # unknown char, skip
-          Dst[0] = Src[0]
+          dst[0] = src[0]
           src = cast[cstring](cast[int](src) + 1)
           dst = cast[cstring](cast[int](dst) + 1)
           dec(inLen)
@@ -424,19 +426,19 @@ else:
           dst = cast[cstring](cast[int](cstring(result)) + offset)
           outLen = len(result) - offset
         else:
-          osError(lerr.TOSErrorCode)
+          raiseOSError(lerr.OSErrorCode)
     # iconv has a buffer that needs flushing, specially if the last char is 
     # not '\0'
-    discard iconv(c, nil, nil, dst, outlen)
+    discard iconv(c, nil, nil, dst, outLen)
     if iconvres == cint(-1) and errno == E2BIG:
       var offset = cast[int](dst) - cast[int](cstring(result))
       setLen(result, len(result)+inLen*2+5)
       # 5 is minimally one utf-8 char
       dst = cast[cstring](cast[int](cstring(result)) + offset)
       outLen = len(result) - offset
-      discard iconv(c, nil, nil, dst, outlen)
+      discard iconv(c, nil, nil, dst, outLen)
     # trim output buffer
-    setLen(result, len(result) - outlen)
+    setLen(result, len(result) - outLen)
 
 proc convert*(s: string, destEncoding = "UTF-8", 
                          srcEncoding = "CP1252"): string =

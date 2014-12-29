@@ -1,4 +1,4 @@
-# -*- nimrod -*-
+# -*- nim -*-
 
 import os, strutils
 

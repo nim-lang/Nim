@@ -1,9 +1,9 @@
-========================
-Nimrod Tutorial (Part I)
-========================
+=====================
+Nim Tutorial (Part I)
+=====================
 
 :Author: Andreas Rumpf
-:Version: |nimrodversion|
+:Version: |nimversion|
 
 .. contents::
 
@@ -16,7 +16,7 @@ Introduction
   </p></blockquote>
 
 
-This document is a tutorial for the programming language *Nimrod*. 
+This document is a tutorial for the programming language *Nim*. 
 This tutorial assumes that you are familiar with basic programming concepts
 like variables, types or statements but is kept very basic. The `manual
 <manual.html>`_ contains many more examples of the advanced language features.
@@ -28,7 +28,7 @@ The first program
 
 We start the tour with a modified "hello world" program:
 
-.. code-block:: Nimrod
+.. code-block:: Nim
   # This is a comment
   echo("What's your name? ")
   var name: string = readLine(stdin)
@@ -37,47 +37,47 @@ We start the tour with a modified "hello world" program:
 
 Save this code to the file "greetings.nim". Now compile and run it::
 
-  nimrod compile --run greetings.nim
+  nim compile --run greetings.nim
 
-With the ``--run`` `switch <nimrodc.html#command-line-switches>`_ Nimrod
+With the ``--run`` `switch <nimc.html#command-line-switches>`_ Nim
 executes the file automatically after compilation. You can give your program
 command line arguments by appending them after the filename::
 
-  nimrod compile --run greetings.nim arg1 arg2
+  nim compile --run greetings.nim arg1 arg2
 
 Commonly used commands and switches have abbreviations, so you can also use::
 
-  nimrod c -r greetings.nim
+  nim c -r greetings.nim
 
 To compile a release version use::
   
-  nimrod c -d:release greetings.nim
+  nim c -d:release greetings.nim
 
-By default the Nimrod compiler generates a large amount of runtime checks
+By default the Nim compiler generates a large amount of runtime checks
 aiming for your debugging pleasure. With ``-d:release`` these checks are
 `turned off and optimizations are turned on
-<nimrodc.html#compile-time-symbols>`_.
+<nimc.html#compile-time-symbols>`_.
 
 Though it should be pretty obvious what the program does, I will explain the
 syntax: statements which are not indented are executed when the program
-starts. Indentation is Nimrod's way of grouping statements. Indentation is
+starts. Indentation is Nim's way of grouping statements. Indentation is
 done with spaces only, tabulators are not allowed.
 
 String literals are enclosed in double quotes. The ``var`` statement declares
 a new variable named ``name`` of type ``string`` with the value that is
-returned by the `readLine <system.html#readLine,TFile>`_ procedure. Since the
-compiler knows that `readLine <system.html#readLine,TFile>`_ returns a string,
+returned by the `readLine <system.html#readLine,File>`_ procedure. Since the
+compiler knows that `readLine <system.html#readLine,File>`_ returns a string,
 you can leave out the type in the declaration (this is called `local type
 inference`:idx:). So this will work too:
 
-.. code-block:: Nimrod
+.. code-block:: Nim
   var name = readLine(stdin)
 
 Note that this is basically the only form of type inference that exists in
-Nimrod: it is a good compromise between brevity and readability.
+Nim: it is a good compromise between brevity and readability.
 
 The "hello world" program contains several identifiers that are already known
-to the compiler: ``echo``, `readLine <system.html#readLine,TFile>`_, etc.
+to the compiler: ``echo``, `readLine <system.html#readLine,File>`_, etc.
 These built-ins are declared in the system_ module which is implicitly
 imported by any other module.
 
@@ -85,8 +85,8 @@ imported by any other module.
 Lexical elements
 ================
 
-Let us look at Nimrod's lexical elements in more detail: like other
-programming languages Nimrod consists of (string) literals, identifiers,
+Let us look at Nim's lexical elements in more detail: like other
+programming languages Nim consists of (string) literals, identifiers,
 keywords, comments, operators, and other punctuation marks.
 
 
@@ -97,7 +97,7 @@ String literals are enclosed in double quotes; character literals in single
 quotes. Special characters are escaped with ``\``: ``\n`` means newline, ``\t``
 means tabulator, etc. There are also *raw* string literals:
 
-.. code-block:: Nimrod
+.. code-block:: Nim
   r"C:\program files\nim"
 
 In raw literals the backslash is not an escape character.
@@ -112,54 +112,23 @@ Comments
 --------
 
 Comments start anywhere outside a string or character literal with the
-hash character ``#``. Documentation comments start with ``##``. Multiline
-comments need to be aligned at the same column:
+hash character ``#``. Documentation comments start with ``##``:
 
-.. code-block:: nimrod
-
-  i = 0     # This is a single comment over multiple lines belonging to the
-            # assignment statement.
-  # This is a new comment belonging to the current block, but to no particular
-  # statement.
-  i = i + 1 # This a new comment that is NOT
-  echo(i)   # continued here, because this comment refers to the echo statement
+.. code-block:: nim
+  # A comment.
+ 
+  var myVariable: int ## a documentation comment
 
 
-The alignment requirement does not hold if the preceding comment piece ends in
-a backslash:
+Documentation comments are tokens; they are only allowed at certain places in
+the input file as they belong to the syntax tree! This feature enables simpler
+documentation generators.
 
-.. code-block:: nimrod
-  type
-    TMyObject {.final, pure, acyclic.} = object  # comment continues: \
-      # we have lots of space here to comment 'TMyObject'.
-      # This line belongs to the comment as it's properly aligned.
-
-
-Comments are tokens; they are only allowed at certain places in the input file
-as they belong to the syntax tree! This feature enables perfect source-to-source
-transformations (such as pretty-printing) and simpler documentation generators.
-A nice side-effect is that the human reader of the code always knows exactly
-which code snippet the comment refers to. Since comments are a proper part of
-the syntax, watch their indentation:
-
-.. code-block::
-  echo("Hello!")
-  # comment has the same indentation as above statement -> fine
-  echo("Hi!")
-    # comment has not the correct indentation level -> syntax error!
-
-**Note**: To comment out a large piece of code, it is often better to use a
-``when false:`` statement.
-
-.. code-block:: nimrod
-  when false:
-    brokenCode()
-
-Another option is to use the `discard statement`_ together with *long string
+You can also use the `discard statement`_ together with *long string
 literals* to create block comments:
 
-.. code-block:: nimrod
-  discard """ You can have any Nimrod code text commented
+.. code-block:: nim
+  discard """ You can have any Nim code text commented
   out inside this with no indentation restrictions.
         yes("May I ask a pointless question?") """
 
@@ -204,7 +173,7 @@ to a storage location:
 
 ``=`` is the *assignment operator*. The assignment operator cannot be
 overloaded, overwritten or forbidden, but this might change in a future version
-of Nimrod. You can declare multiple variables with a single assignment
+of Nim. You can declare multiple variables with a single assignment
 statement and all the variables will have the same value:
 
 .. code-block::
@@ -229,7 +198,7 @@ Constants are symbols which are bound to a value. The constant's value
 cannot change. The compiler must be able to evaluate the expression in a
 constant declaration at compile time:
 
-.. code-block:: nimrod
+.. code-block:: nim
   const x = "abc" # the constant x contains the string "abc"
   
 Indentation can be used after the ``const`` keyword to list a whole section of
@@ -277,7 +246,7 @@ If statement
 
 The if statement is one way to branch the control flow:
 
-.. code-block:: nimrod
+.. code-block:: nim
   let name = readLine(stdin)
   if name == "":
     echo("Poor soul, you lost your name?")
@@ -298,7 +267,7 @@ Case statement
 Another way to branch is provided by the case statement. A case statement is
 a multi-branch:
 
-.. code-block:: nimrod
+.. code-block:: nim
   let name = readLine(stdin)
   case name
   of "":
@@ -317,7 +286,7 @@ The case statement can deal with integers, other ordinal types and strings.
 (What an ordinal type is will be explained soon.)
 For integers or other ordinal types value ranges are also possible:
 
-.. code-block:: nimrod
+.. code-block:: nim
   # this statement will be explained later:
   from strutils import parseInt
 
@@ -333,7 +302,7 @@ every value that ``n`` may contain, but the code only handles the values
 (though it is possible thanks to the range notation), we fix this by telling
 the compiler that for every other value nothing should be done:
 
-.. code-block:: nimrod
+.. code-block:: nim
   ...
   case n
   of 0..2, 4..7: echo("The number is in the set: {0, 1, 2, 4, 5, 6, 7}")
@@ -343,7 +312,7 @@ the compiler that for every other value nothing should be done:
 The empty `discard statement`_ is a *do nothing* statement. The compiler knows
 that a case statement with an else part cannot fail and thus the error 
 disappears. Note that it is impossible to cover all possible string values: 
-that is why there is no such check for string cases.
+that is why string cases always need an ``else`` branch.
 
 In general the case statement is used for subrange types or enumerations where
 it is of great help that the compiler checks that you covered any possible
@@ -355,7 +324,7 @@ While statement
 
 The while statement is a simple looping construct:
 
-.. code-block:: nimrod
+.. code-block:: nim
 
   echo("What's your name? ")
   var name = readLine(stdin)
@@ -375,7 +344,7 @@ The ``for`` statement is a construct to loop over any element an *iterator*
 provides. The example uses the built-in `countup <system.html#countup>`_
 iterator:
 
-.. code-block:: nimrod
+.. code-block:: nim
   echo("Counting to ten: ")
   for i in countup(1, 10):
     echo($i)
@@ -387,7 +356,7 @@ other types into a string. The variable ``i`` is implicitly declared by the
 <system.html#countup>`_ returns. ``i`` runs through the values 1, 2, .., 10.
 Each value is ``echo``-ed. This code does the same:
 
-.. code-block:: nimrod
+.. code-block:: nim
   echo("Counting to 10: ")
   var i = 1
   while i <= 10:
@@ -397,16 +366,16 @@ Each value is ``echo``-ed. This code does the same:
 
 Counting down can be achieved as easily (but is less often needed):
 
-.. code-block:: nimrod
+.. code-block:: nim
   echo("Counting down from 10 to 1: ")
   for i in countdown(10, 1):
     echo($i)
   # --> Outputs 10 9 8 7 6 5 4 3 2 1 on different lines
 
-Since counting up occurs so often in programs, Nimrod also has a `..
+Since counting up occurs so often in programs, Nim also has a `..
 <system.html#...i,S,T>`_ iterator that does the same:
 
-.. code-block:: nimrod
+.. code-block:: nim
   for i in 1..10:
     ...
 
@@ -417,7 +386,7 @@ Control flow statements have a feature not covered yet: they open a
 new scope. This means that in the following example, ``x`` is not accessible
 outside the loop:
 
-.. code-block:: nimrod
+.. code-block:: nim
   while false:
     var x = "hi"
   echo(x) # does not work
@@ -426,7 +395,7 @@ A while (for) statement introduces an implicit block. Identifiers
 are only visible within the block they have been declared. The ``block``
 statement can be used to open a new block explicitly:
 
-.. code-block:: nimrod
+.. code-block:: nim
   block myblock:
     var x = "hi"
   echo(x) # does not work either
@@ -440,7 +409,7 @@ A block can be left prematurely with a ``break`` statement. The break statement
 can leave a ``while``, ``for``, or a ``block`` statement. It leaves the 
 innermost construct, unless a label of a block is given:
 
-.. code-block:: nimrod
+.. code-block:: nim
   block myblock:
     echo("entering block")
     while true:
@@ -461,7 +430,7 @@ Continue statement
 Like in many other programming languages, a ``continue`` statement starts
 the next iteration immediately:
 
-.. code-block:: nimrod
+.. code-block:: nim
   while true:
     let x = readLine(stdin)
     if x == "": continue
@@ -473,7 +442,7 @@ When statement
 
 Example:
 
-.. code-block:: nimrod
+.. code-block:: nim
 
   when system.hostOS == "windows":
     echo("running on Windows!")
@@ -504,17 +473,17 @@ possible.
 Statements and indentation
 ==========================
 
-Now that we covered the basic control flow statements, let's return to Nimrod
+Now that we covered the basic control flow statements, let's return to Nim
 indentation rules.
 
-In Nimrod there is a distinction between *simple statements* and *complex
+In Nim there is a distinction between *simple statements* and *complex
 statements*. *Simple statements* cannot contain other statements:
 Assignment, procedure calls or the ``return`` statement belong to the simple
 statements. *Complex statements* like ``if``, ``when``, ``for``, ``while`` can
 contain other statements. To avoid ambiguities, complex statements always have
 to be indented, but single simple statements do not:
 
-.. code-block:: nimrod
+.. code-block:: nim
   # no indentation needed for single assignment statement:
   if x: x = false
   
@@ -535,7 +504,7 @@ to be indented, but single simple statements do not:
 condition in an if statement is an example for an expression. Expressions can
 contain indentation at certain places for better readability:
 
-.. code-block:: nimrod
+.. code-block:: nim
 
   if thisIsaLongCondition() and
       thisIsAnotherLongCondition(1,
@@ -548,7 +517,7 @@ an open parenthesis and after commas.
 With parenthesis and semicolons ``(;)`` you can use statements where only 
 an expression is allowed:
 
-.. code-block:: nimrod
+.. code-block:: nim
   # computes fac(4) at compile time:
   const fac4 = (var x = 1; for i in 1..4: x *= i; x)
 
@@ -557,11 +526,11 @@ Procedures
 ==========
 
 To define new commands like `echo <system.html#echo>`_ and `readLine
-<system.html#readLine,TFile>`_ in the examples, the concept of a `procedure`
-is needed. (Some languages call them *methods* or *functions*.) In Nimrod new
+<system.html#readLine,File>`_ in the examples, the concept of a `procedure`
+is needed. (Some languages call them *methods* or *functions*.) In Nim new
 procedures are defined with the ``proc`` keyword:
 
-.. code-block:: nimrod
+.. code-block:: nim
   proc yes(question: string): bool =
     echo(question, " (y/n)")
     while true:
@@ -597,7 +566,7 @@ shorthand for ``return result``. The ``result`` value is always returned
 automatically at the end a procedure if there is no ``return`` statement at
 the exit.
 
-.. code-block:: nimrod
+.. code-block:: nim
   proc sumTillNegative(x: varargs[int]): int = 
     for i in x:
       if i < 0:
@@ -624,7 +593,7 @@ most efficient way. If a mutable variable is needed inside the procedure, it has
 to be declared with ``var`` in the procedure body. Shadowing the parameter name
 is possible, and actually an idiom: 
 
-.. code-block:: nimrod
+.. code-block:: nim
   proc printSeq(s: seq, nprinted: int = -1) =
     var nprinted = if nprinted == -1: s.len else: min(nprinted, s.len)
     for i in 0 .. <nprinted:
@@ -633,7 +602,7 @@ is possible, and actually an idiom:
 If the procedure needs to modify the argument for the
 caller, a ``var`` parameter can be used:
 
-.. code-block:: nimrod
+.. code-block:: nim
   proc divmod(a, b: int; res, remainder: var int) =
     res = a div b        # integer division
     remainder = a mod b  # integer modulo operation
@@ -653,17 +622,17 @@ a tuple as a return value instead of using var parameters.
 Discard statement
 -----------------
 To call a procedure that returns a value just for its side effects and ignoring
-its return value, a ``discard`` statement **has** to be used. Nimrod does not
+its return value, a ``discard`` statement **has** to be used. Nim does not
 allow to silently throw away a return value:
 
-.. code-block:: nimrod
+.. code-block:: nim
   discard yes("May I ask a pointless question?")
 
 
 The return value can be ignored implicitly if the called proc/iterator has
 been declared with the ``discardable`` pragma: 
 
-.. code-block:: nimrod
+.. code-block:: nim
   proc p(x, y: int): int {.discardable.} = 
     return x + y
     
@@ -681,7 +650,7 @@ parameters appear. This is especially true for procedures that construct a
 complex data type. Therefore the arguments to a procedure can be named, so
 that it is clear which argument belongs to which parameter:
 
-.. code-block:: nimrod
+.. code-block:: nim
   proc createWindow(x, y, width, height: int; title: string;
                     show: bool): Window =
      ...
@@ -693,7 +662,7 @@ Now that we use named arguments to call ``createWindow`` the argument order
 does not matter anymore. Mixing named arguments with ordered arguments is
 also possible, but not very readable:
 
-.. code-block:: nimrod
+.. code-block:: nim
   var w = createWindow(0, 0, title = "My Application",
                        height = 600, width = 800, true)
 
@@ -706,7 +675,7 @@ To make the ``createWindow`` proc easier to use it should provide `default
 values`, these are values that are used as arguments if the caller does not
 specify them:
 
-.. code-block:: nimrod
+.. code-block:: nim
   proc createWindow(x = 0, y = 0, width = 500, height = 700,
                     title = "unknown",
                     show = true): Window =
@@ -723,9 +692,9 @@ no need to write ``title: string = "unknown"``, for example.
 
 Overloaded procedures
 ---------------------
-Nimrod provides the ability to overload procedures similar to C++:
+Nim provides the ability to overload procedures similar to C++:
 
-.. code-block:: nimrod
+.. code-block:: nim
   proc toString(x: int): string = ...
   proc toString(x: bool): string =
     if x: result = "true"
@@ -735,7 +704,7 @@ Nimrod provides the ability to overload procedures similar to C++:
   echo(toString(true)) # calls the toString(x: bool) proc
 
 (Note that ``toString`` is usually the `$ <system.html#$>`_ operator in
-Nimrod.) The compiler chooses the most appropriate proc for the ``toString``
+Nim.) The compiler chooses the most appropriate proc for the ``toString``
 calls. How this overloading resolution algorithm works exactly is not
 discussed here (it will be specified in the manual soon).  However, it does
 not lead to nasty surprises and is based on a quite simple unification
@@ -744,13 +713,13 @@ algorithm. Ambiguous calls are reported as errors.
 
 Operators
 ---------
-The Nimrod library makes heavy use of overloading - one reason for this is that
+The Nim library makes heavy use of overloading - one reason for this is that
 each operator like ``+`` is a just an overloaded proc. The parser lets you
 use operators in `infix notation` (``a + b``) or `prefix notation` (``+ a``).
 An infix operator always receives two arguments, a prefix operator always one.
 Postfix operators are not possible, because this would be ambiguous: does
 ``a @ @ b`` mean ``(a) @ (@b)`` or ``(a@) @ (b)``? It always means
-``(a) @ (@b)``, because there are no postfix operators in Nimrod.
+``(a) @ (@b)``, because there are no postfix operators in Nim.
 
 Apart from a few built-in keyword operators such as ``and``, ``or``, ``not``,
 operators always consist of these characters:
@@ -764,7 +733,7 @@ can be found in the manual.
 
 To define a new operator enclose the operator in backticks "``":
 
-.. code-block:: nimrod
+.. code-block:: nim
   proc `$` (x: myDataType): string = ...
   # now the $ operator also works with myDataType, overloading resolution
   # ensures that $ works for built-in types just like before
@@ -772,7 +741,7 @@ To define a new operator enclose the operator in backticks "``":
 The "``" notation can also be used to call an operator just like any other
 procedure:
 
-.. code-block:: nimrod
+.. code-block:: nim
   if `==`( `+`(3, 4), 7): echo("True")
 
 
@@ -783,7 +752,7 @@ Every variable, procedure, etc. needs to be declared before it can be used.
 (The reason for this is compilation efficiency.)
 However, this cannot be done for mutually recursive procedures:
 
-.. code-block:: nimrod
+.. code-block:: nim
   # forward declaration:
   proc even(n: int): bool
 
@@ -810,7 +779,7 @@ Iterators
 
 Let's return to the boring counting example:
 
-.. code-block:: nimrod
+.. code-block:: nim
   echo("Counting to ten: ")
   for i in countup(1, 10):
     echo($i)
@@ -818,7 +787,7 @@ Let's return to the boring counting example:
 Can a `countup <system.html#countup>`_ proc be written that supports this
 loop? Lets try:
 
-.. code-block:: nimrod
+.. code-block:: nim
   proc countup(a, b: int): int =
     var res = a
     while res <= b:
@@ -831,7 +800,7 @@ finished. This *return and continue* is called a `yield` statement. Now
 the only thing left to do is to replace the ``proc`` keyword by ``iterator``
 and there it is - our first iterator:
 
-.. code-block:: nimrod
+.. code-block:: nim
   iterator countup(a, b: int): int =
     var res = a
     while res <= b:
@@ -868,7 +837,7 @@ that are available for them in detail.
 Booleans
 --------
 
-The boolean type is named ``bool`` in Nimrod and consists of the two
+The boolean type is named ``bool`` in Nim and consists of the two
 pre-defined values ``true`` and ``false``. Conditions in while,
 if, elif, when statements need to be of type bool.
 
@@ -876,7 +845,7 @@ The operators ``not, and, or, xor, <, <=, >, >=, !=, ==`` are defined
 for the bool type. The ``and`` and ``or`` operators perform short-cut
 evaluation. Example:
 
-.. code-block:: nimrod
+.. code-block:: nim
 
   while p != nil and p.name != "xyz":
     # p.name is not evaluated if p == nil
@@ -885,7 +854,7 @@ evaluation. Example:
 
 Characters
 ----------
-The `character type` is named ``char`` in Nimrod. Its size is one byte.
+The `character type` is named ``char`` in Nim. Its size is one byte.
 Thus it cannot represent an UTF-8 character, but a part of it.
 The reason for this is efficiency: for the overwhelming majority of use-cases,
 the resulting programs will still handle UTF-8 properly as UTF-8 was specially
@@ -900,13 +869,13 @@ Converting from an integer to a ``char`` is done with the ``chr`` proc.
 
 Strings
 -------
-String variables in Nimrod are **mutable**, so appending to a string
-is quite efficient. Strings in Nimrod are both zero-terminated and have a
+String variables in Nim are **mutable**, so appending to a string
+is quite efficient. Strings in Nim are both zero-terminated and have a
 length field. One can retrieve a string's length with the builtin ``len``
 procedure; the length never counts the terminating zero. Accessing the
 terminating zero is no error and often leads to simpler code:
 
-.. code-block:: nimrod
+.. code-block:: nim
   if s[i] == 'a' and s[i+1] == 'b':
     # no need to check whether ``i < len(s)``!
     ...
@@ -929,14 +898,14 @@ object on the heap, so there is a trade-off to be made here.
 
 Integers
 --------
-Nimrod has these integer types built-in: 
+Nim has these integer types built-in: 
 ``int int8 int16 int32 int64 uint uint8 uint16 uint32 uint64``.
 
 The default integer type is ``int``. Integer literals can have a *type suffix*
 to mark them to be of another integer type:
 
 
-.. code-block:: nimrod
+.. code-block:: nim
   let
     x = 0     # x is of type ``int``
     y = 0'i8  # y is of type ``int8``
@@ -964,7 +933,7 @@ cannot be detected at compile time).
 
 Floats
 ------
-Nimrod has these floating point types built-in: ``float float32 float64``.
+Nim has these floating point types built-in: ``float float32 float64``.
 
 The default float type is ``float``. In the current implementation,
 ``float`` is always 64 bit wide.
@@ -972,7 +941,7 @@ The default float type is ``float``. In the current implementation,
 Float literals can have a *type suffix* to mark them to be of another float
 type:
 
-.. code-block:: nimrod
+.. code-block:: nim
   var
     x = 0.0      # x is of type ``float``
     y = 0.0'f32  # y is of type ``float32``
@@ -988,6 +957,19 @@ versa. The `toInt <system.html#toInt>`_ and `toFloat <system.html#toFloat>`_
 procs can be used for these conversions.
 
 
+Type Conversion
+---------------
+Conversion between basic types in nim is performed by using the
+type as a function:
+
+.. code-block:: nim
+  var
+    x: int32 = 1.int32   # same as calling int32(1)
+    y: int8  = int8('a') # 'a' == 97'i8
+    z: float = 2.5       # int(2.5) rounds down to 2
+    sum: int = int(x) + int(y) + int(z) # sum == 100
+
+
 Internal type representation
 ============================
 
@@ -1001,11 +983,11 @@ having to write its ``$`` operator.  You can use then the `repr
 graphs with cycles. The following example shows that even for basic types
 there is a difference between the ``$`` and ``repr`` outputs:
 
-.. code-block:: nimrod
+.. code-block:: nim
   var
     myBool = true
     myCharacter = 'n'
-    myString = "nimrod"
+    myString = "nim"
     myInteger = 42
     myFloat = 3.14
   echo($myBool, ":", repr(myBool))
@@ -1013,7 +995,7 @@ there is a difference between the ``$`` and ``repr`` outputs:
   echo($myCharacter, ":", repr(myCharacter))
   # --> n:'n'
   echo($myString, ":", repr(myString))
-  # --> nimrod:0x10fa8c050"nimrod"
+  # --> nim:0x10fa8c050"nim"
   echo($myInteger, ":", repr(myInteger))
   # --> 42:42
   echo($myFloat, ":", repr(myFloat))
@@ -1023,9 +1005,9 @@ there is a difference between the ``$`` and ``repr`` outputs:
 Advanced types
 ==============
 
-In Nimrod new types can be defined within a ``type`` statement:
+In Nim new types can be defined within a ``type`` statement:
 
-.. code-block:: nimrod
+.. code-block:: nim
   type
     biggestInt = int64      # biggest integer type that is available
     biggestFloat = float64  # biggest float type that is available
@@ -1041,20 +1023,19 @@ limited set. This set consists of ordered symbols. Each symbol is mapped
 to an integer value internally. The first symbol is represented
 at runtime by 0, the second by 1 and so on. Example:
 
-.. code-block:: nimrod
+.. code-block:: nim
 
   type
-    TDirection = enum
+    Direction = enum
       north, east, south, west
 
-  var x = south      # `x` is of type `TDirection`; its value is `south`
+  var x = south      # `x` is of type `Direction`; its value is `south`
   echo($x)           # writes "south" to `stdout`
 
-(To prefix a new type with the letter ``T`` is a convention in Nimrod.)
 All comparison operators can be used with enumeration types.
 
 An enumeration's symbol can be qualified to avoid ambiguities:
-``TDirection.south``.
+``Direction.south``.
 
 The ``$`` operator can convert any enumeration value to its name, the ``ord``
 proc to its underlying integer value.
@@ -1066,9 +1047,9 @@ explicitly given is assigned the value of the previous symbol + 1.
 
 An explicit ordered enum can have *holes*:
 
-.. code-block:: nimrod
+.. code-block:: nim
   type
-    TMyEnum = enum
+    MyEnum = enum
       a = 2, b = 4, c = 89
 
 
@@ -1104,13 +1085,13 @@ Subranges
 A subrange type is a range of values from an integer or enumeration type
 (the base type). Example:
 
-.. code-block:: nimrod
+.. code-block:: nim
   type
-    TSubrange = range[0..5]
+    Subrange = range[0..5]
 
 
-``TSubrange`` is a subrange of ``int`` which can only hold the values 0
-to 5. Assigning any other value to a variable of type ``TSubrange`` is a
+``Subrange`` is a subrange of ``int`` which can only hold the values 0
+to 5. Assigning any other value to a variable of type ``Subrange`` is a
 compile-time or runtime error. Assignments from the base type to one of its
 subrange types (and vice versa) are allowed.
 
@@ -1119,7 +1100,7 @@ type as ``range[0..high(int)]`` (`high <system.html#high>`_ returns the
 maximal value). Other programming languages mandate the usage of unsigned
 integers for natural numbers. This is often **wrong**: you don't want unsigned
 arithmetic (which wraps around) just because the numbers cannot be negative.
-Nimrod's ``Natural`` type helps to avoid this common programming error.
+Nim's ``Natural`` type helps to avoid this common programming error.
 
 
 Sets
@@ -1134,12 +1115,12 @@ the array has the same type. The array's index type can be any ordinal type.
 
 Arrays can be constructed via ``[]``: 
 
-.. code-block:: nimrod
+.. code-block:: nim
 
   type
-    TIntArray = array[0..5, int] # an array that is indexed with 0..5
+    IntArray = array[0..5, int] # an array that is indexed with 0..5
   var
-    x: TIntArray
+    x: IntArray
   x = [1, 2, 3, 4, 5, 6]
   for i in low(x)..high(x):
     echo(x[i])
@@ -1149,22 +1130,22 @@ Array access is always bounds checked (at compile-time or at runtime). These
 checks can be disabled via pragmas or invoking the compiler with the
 ``--bound_checks:off`` command line switch.
 
-Arrays are value types, like any other Nimrod type. The assignment operator
+Arrays are value types, like any other Nim type. The assignment operator
 copies the whole array contents.
 
 The built-in `len <system.html#len,TOpenArray>`_ proc returns the array's
 length. `low(a) <system.html#low>`_ returns the lowest valid index for the
 array `a` and `high(a) <system.html#high>`_ the highest valid index.
 
-.. code-block:: nimrod
+.. code-block:: nim
   type
-    TDirection = enum
+    Direction = enum
       north, east, south, west
-    TBlinkLights = enum
+    BlinkLights = enum
       off, on, slowBlink, mediumBlink, fastBlink
-    TLevelSetting = array[north..west, TBlinkLights]
+    LevelSetting = array[north..west, BlinkLights]
   var
-    level : TLevelSetting
+    level: LevelSetting
   level[north] = on
   level[south] = slowBlink
   level[east] = fastBlink
@@ -1175,17 +1156,17 @@ array `a` and `high(a) <system.html#high>`_ the highest valid index.
 
 The syntax for nested arrays (multidimensional) in other languages is a matter
 of appending more brackets because usually each dimension is restricted to the
-same index type as the others. In nimrod you can have different dimensions with
+same index type as the others. In Nim you can have different dimensions with
 different index types, so the nesting syntax is slightly different. Building on
 the previous example where a level is defined as an array of enums indexed by
 yet another enum, we can add the following lines to add a light tower type
 subdivided in height levels accessed through their integer index:
 
-.. code-block:: nimrod
+.. code-block:: nim
   type
-    TLightTower = array[1..10, TLevelSetting]
+    LightTower = array[1..10, LevelSetting]
   var
-    tower: TLightTower
+    tower: LightTower
   tower[1][north] = slowBlink
   tower[1][east] = mediumBlink
   echo len(tower)     # --> 10
@@ -1196,24 +1177,24 @@ subdivided in height levels accessed through their integer index:
   #tower[0][1] = on
 
 Note how the built-in ``len`` proc returns only the array's first dimension
-length.  Another way of defining the ``TLightTower`` to show better its
-nested nature would be to omit the previous definition of the ``TLevelSetting``
+length.  Another way of defining the ``LightTower`` to show better its
+nested nature would be to omit the previous definition of the ``LevelSetting``
 type and instead write it embedded directly as the type of the first dimension:
 
-.. code-block:: nimrod
+.. code-block:: nim
   type
-    TLightTower = array[1..10, array[north..west, TBlinkLights]]
+    LightTower = array[1..10, array[north..west, BlinkLights]]
 
 It is quite frequent to have arrays start at zero, so there's a shortcut syntax
 to specify a range from zero to the specified index minus one:
 
-.. code-block:: nimrod
+.. code-block:: nim
   type
-    TIntArray = array[0..5, int] # an array that is indexed with 0..5
-    TQuickArray = array[6, int]  # an array that is indexed with 0..5
+    IntArray = array[0..5, int] # an array that is indexed with 0..5
+    QuickArray = array[6, int]  # an array that is indexed with 0..5
   var
-    x: TIntArray
-    y: TQuickArray
+    x: IntArray
+    y: QuickArray
   x = [1, 2, 3, 4, 5, 6]
   y = x
   for i in low(x)..high(x):
@@ -1239,7 +1220,7 @@ A sequence may be passed to an openarray parameter.
 
 Example:
 
-.. code-block:: nimrod
+.. code-block:: nim
 
   var
     x: seq[int] # a sequence of integers
@@ -1261,7 +1242,7 @@ value. Here the ``for`` statement is looping over the results from the
 `pairs() <system.html#pairs.i,seq[T]>`_ iterator from the `system
 <system.html>`_ module.  Examples:
 
-.. code-block:: nimrod
+.. code-block:: nim
   for i in @[3, 4, 5]:
     echo($i)
   # --> 3
@@ -1299,8 +1280,8 @@ also a means to implement passing a variable number of
 arguments to a procedure. The compiler converts the list of arguments
 to an array automatically:
 
-.. code-block:: nimrod
-  proc myWriteln(f: TFile, a: varargs[string]) =
+.. code-block:: nim
+  proc myWriteln(f: File, a: varargs[string]) =
     for s in items(a):
       write(f, s)
     write(f, "\n")
@@ -1313,8 +1294,8 @@ This transformation is only done if the varargs parameter is the
 last parameter in the procedure header. It is also possible to perform
 type conversions in this context:
 
-.. code-block:: nimrod
-  proc myWriteln(f: TFile, a: varargs[string, `$`]) =
+.. code-block:: nim
+  proc myWriteln(f: File, a: varargs[string, `$`]) =
     for s in items(a):
       write(f, s)
     write(f, "\n")
@@ -1336,10 +1317,10 @@ context. A slice is just an object of type TSlice which contains two bounds,
 `a` and `b`. By itself a slice is not very useful, but other collection types
 define operators which accept TSlice objects to define ranges.
 
-.. code-block:: nimrod
+.. code-block:: nim
 
   var
-    a = "Nimrod is a progamming language"
+    a = "Nim is a progamming language"
     b = "Slices are useless."
 
   echo a[10..15] # --> 'a prog'
@@ -1366,7 +1347,7 @@ The assignment operator for tuples copies each component. The notation
 ``t[i]`` to access the ``i``'th field. Here ``i`` needs to be a constant
 integer.
 
-.. code-block:: nimrod
+.. code-block:: nim
 
   type
     TPerson = tuple[name: string, age: int] # type representing a person:
@@ -1411,19 +1392,19 @@ use parenthesis around the values you want to assign the unpacking to,
 otherwise you will be assigning the same value to all the individual
 variables! Example:
 
-.. code-block:: nimrod
+.. code-block:: nim
 
   import os
 
   let
-    path = "usr/local/nimrodc.html"
+    path = "usr/local/nimc.html"
     (dir, name, ext) = splitFile(path)
     baddir, badname, badext = splitFile(path)
   echo dir      # outputs `usr/local`
-  echo name     # outputs `nimrodc`
+  echo name     # outputs `nimc`
   echo ext      # outputs `.html`
   # All the following output the same line:
-  # `(dir: usr/local, name: nimrodc, ext: .html)`
+  # `(dir: usr/local, name: nimc, ext: .html)`
   echo baddir
   echo badname
   echo badext
@@ -1431,12 +1412,12 @@ variables! Example:
 Tuple unpacking **only** works in ``var`` or ``let`` blocks. The following code
 won't compile:
 
-.. code-block:: nimrod
+.. code-block:: nim
 
   import os
 
   var
-    path = "usr/local/nimrodc.html"
+    path = "usr/local/nimc.html"
     dir, name, ext = ""
 
   (dir, name, ext) = splitFile(path)
@@ -1449,7 +1430,7 @@ References (similar to pointers in other programming languages) are a
 way to introduce many-to-one relationships. This means different references can
 point to and modify the same location in memory.
 
-Nimrod distinguishes between `traced`:idx: and `untraced`:idx: references.
+Nim distinguishes between `traced`:idx: and `untraced`:idx: references.
 Untraced references are also called *pointers*. Traced references point to
 objects of a garbage collected heap, untraced references point to
 manually allocated objects or to objects somewhere else in memory. Thus
@@ -1464,18 +1445,18 @@ meaning to retrieve the item the reference points to. The ``.`` (access a
 tuple/object field operator) and ``[]`` (array/string/sequence index operator)
 operators perform implicit dereferencing operations for reference types:
 
-.. code-block:: nimrod
+.. code-block:: nim
 
   type
-    PNode = ref TNode
-    TNode = tuple[le, ri: PNode, data: int]
+    Node = ref NodeObj
+    NodeObj = object 
+      le, ri: PNode
+      data: int
   var
-    n: PNode
+    n: Node
   new(n)
   n.data = 9 
   # no need to write n[].data; in fact n[].data is highly discouraged!
-
-(As a convention, reference types use a 'P' prefix.)
 
 To allocate a new traced object, the built-in procedure ``new`` has to be used.
 To deal with untraced memory, the procedures ``alloc``, ``dealloc`` and
@@ -1489,12 +1470,12 @@ Procedural type
 ---------------
 A procedural type is a (somewhat abstract) pointer to a procedure.
 ``nil`` is an allowed value for a variable of a procedural type.
-Nimrod uses procedural types to achieve `functional`:idx: programming
+Nim uses procedural types to achieve `functional`:idx: programming
 techniques.
 
 Example:
 
-.. code-block:: nimrod
+.. code-block:: nim
   proc echoItem(x: int) = echo(x)
 
   proc forEach(action: proc (x: int)) =
@@ -1513,13 +1494,13 @@ listed in the `manual <manual.html>`_.
 
 Modules
 =======
-Nimrod supports splitting a program into pieces with a module concept.
+Nim supports splitting a program into pieces with a module concept.
 Each module is in its own file. Modules enable `information hiding`:idx: and
 `separate compilation`:idx:. A module may gain access to symbols of another
 module by the `import`:idx: statement. Only top-level symbols that are marked
 with an asterisk (``*``) are exported:
 
-.. code-block:: nimrod
+.. code-block:: nim
   # Module A
   var
     x*, y: int
@@ -1554,7 +1535,7 @@ The algorithm for compiling modules is:
 
 This is best illustrated by an example:
 
-.. code-block:: nimrod
+.. code-block:: nim
   # Module A
   type
     T1* = int  # Module A exports the type ``T1``
@@ -1565,7 +1546,7 @@ This is best illustrated by an example:
 
   main()
 
-.. code-block:: nimrod
+.. code-block:: nim
   # Module B
   import A  # A is not parsed here! Only the already known symbols
             # of A are imported.
@@ -1581,15 +1562,15 @@ the symbol is ambiguous, it even *has* to be qualified. A symbol is ambiguous
 if it is defined in two (or more) different modules and both modules are 
 imported by a third one: 
 
-.. code-block:: nimrod
+.. code-block:: nim
   # Module A
   var x*: string
 
-.. code-block:: nimrod
+.. code-block:: nim
   # Module B
   var x*: int
 
-.. code-block:: nimrod
+.. code-block:: nim
   # Module C
   import A, B
   write(stdout, x) # error: x is ambiguous
@@ -1602,15 +1583,15 @@ imported by a third one:
 But this rule does not apply to procedures or iterators. Here the overloading
 rules apply:
 
-.. code-block:: nimrod
+.. code-block:: nim
   # Module A
-  proc x*(a: int): string = result = $a
+  proc x*(a: int): string = $a
 
-.. code-block:: nimrod
+.. code-block:: nim
   # Module B
-  proc x*(a: string): string = result = $a
+  proc x*(a: string): string = $a
 
-.. code-block:: nimrod
+.. code-block:: nim
   # Module C
   import A, B
   write(stdout, x(3))   # no error: A.x is called
@@ -1627,7 +1608,7 @@ The normal ``import`` statement will bring in all exported symbols.
 These can be limited by naming symbols which should be excluded with
 the ``except`` qualifier.
 
-.. code-block:: nimrod
+.. code-block:: nim
   import mymodule except y
 
 
@@ -1638,19 +1619,19 @@ We have already seen the simple ``import`` statement that just imports all
 exported symbols. An alternative that only imports listed symbols is the
 ``from import`` statement:
 
-.. code-block:: nimrod
+.. code-block:: nim
   from mymodule import x, y, z
 
 The ``from`` statement can also force namespace qualification on
 symbols, thereby making symbols available, but needing to be qualified
 to be used.
 
-.. code-block:: nimrod
+.. code-block:: nim
   from mymodule import x, y, z
 
   x()           # use x without any qualification
 
-.. code-block:: nimrod
+.. code-block:: nim
   from mymodule import nil
 
   mymodule.x()  # must qualify x with the module name as prefix
@@ -1660,7 +1641,7 @@ to be used.
 Since module names are generally long to be descriptive, you can also
 define a shorter alias to use when qualifying symbols.
 
-.. code-block:: nimrod
+.. code-block:: nim
   from mymodule as m import nil
 
   m.x()         # m is aliasing mymodule
@@ -1672,18 +1653,15 @@ The ``include`` statement does something fundamentally different than
 importing a module: it merely includes the contents of a file. The ``include``
 statement is useful to split up a large module into several files:
 
-.. code-block:: nimrod
+.. code-block:: nim
   include fileA, fileB, fileC
 
-**Note**: The documentation generator currently does not follow ``include``
-statements, so exported symbols in an include file will not show up in the
-generated documentation.
 
 
 Part 2
 ======
 
-So, now that we are done with the basics, let's see what Nimrod offers apart
+So, now that we are done with the basics, let's see what Nim offers apart
 from a nice syntax for procedural programming: `Part II <tut2.html>`_
 
 

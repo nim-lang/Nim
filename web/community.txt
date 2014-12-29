@@ -1,97 +1,114 @@
-Forum
-=====
+Nim's Community
+===============
 
-The `Nimrod forum <http://forum.nimrod-code.org/>`_ is the place where most 
-discussions related to the language happen. It not only includes discussions
-relating to the design of Nimrod but also allows for beginners to ask questions
-relating to Nimrod.
+.. container:: standout
 
-IRC
-====
+  Forum
+  -----
 
-Many Nimrod developers are a part of the
-`#nimrod IRC channel <http://webchat.freenode.net/?channels=nimrod>`_ on
-Freenode. That is the place where the rest of the discussion relating to Nimrod
-occurs. Be sure to join us there if you wish to discuss Nimrod in real-time.
-IRC is the perfect place for people just starting to learn Nimrod and we
-welcome any questions that you may have!
+  The `Nim forum <http://forum.nim-lang.org/>`_ is the place where most 
+  discussions related to the language happen. It not only includes discussions
+  relating to the design of Nim but also allows for beginners to ask questions
+  relating to Nim.
 
-You may also be interested in reading the
-`IRC logs <http://build.nimrod-code.org/irclogs/>`_ which are an archive of all
-of the previous discussions that took place in the IRC channel.
 
-Github
-======
+.. container:: standout
 
-Nimrod's `source code <http://github.com/Araq/Nimrod>`_ is hosted on Github.
-Together with the `wiki <http://github.com/Araq/Nimrod/wiki>`_ and
-`issue tracker <http://github.com/Araq/Nimrod/issues>`_.
+  IRC
+  ----
 
-Github also hosts other projects relating to Nimrod. These projects are a part
-of the `nimrod-code organisation <http://github.com/nimrod-code>`_.
-This includes the `Babel package manager <http://github.com/nimrod-code/babel>`_
-and its `package repository <http://github.com/nimrod-code/packages>`_. 
+  Many Nim developers are a part of the
+  `#nim IRC channel <http://webchat.freenode.net/?channels=nim>`_ on
+  Freenode. That is the place where the rest of the discussion relating to Nim
+  occurs. Be sure to join us there if you wish to discuss Nim in real-time.
+  IRC is the perfect place for people just starting to learn Nim and we
+  welcome any questions that you may have!
 
-Twitter
-=======
+  You may also be interested in reading the
+  `IRC logs <http://irclogs.nim-lang.org/>`_ which are an archive of all
+  of the previous discussions that took place in the IRC channel.
 
-Follow us `@nimrodlang <http://twitter.com/nimrodlang>`_ for latest news about
-Nimrod.
 
-Reddit
-======
+.. container:: standout
 
-Subscribe to `/r/nimrod <http://reddit.com/r/nimrod>`_ for latest news about
-Nimrod.
+  Github
+  ------
 
-StackOverflow
-=============
+  Nim's `source code <http://github.com/Araq/Nim>`_ is hosted on Github.
+  Together with the `wiki <http://github.com/Araq/Nim/wiki>`_ and
+  `issue tracker <http://github.com/Araq/Nim/issues>`_.
 
-When asking a question relating to Nimrod, be sure to use the
-`Nimrod <http://stackoverflow.com/questions/tagged/nimrod>`_ tag in your 
-question.
+  Github also hosts other projects relating to Nim. These projects are a part
+  of the `nim-lang organisation <http://github.com/nim-lang>`_.
+  This includes the `Nimble package manager <https://github.com/nim-lang/nimble>`_
+  and its `package repository <http://github.com/nim-lang/packages>`_. 
 
-How to help
-===========
 
-There are always many things to be done in the main
-`Nimrod repository <https://github.com/Araq/Nimrod>`_, check out the 
-`issues <https://github.com/Araq/Nimrod/issues>`_ for 
-things to do; pull requests are always welcome. You can
-also contribute to the many other projects hosted by the
-`nimrod-code <https://github.com/nimrod-code>`_ organisation on github. If you
-can't find anything you fancy doing, you can always ask for inspiration on IRC
-(irc.freenode.net #nimrod) or on the `Nimrod forums <http://forum.nimrod-code.org>`_.
+.. container:: standout
 
-Donations
----------
+  Twitter
+  -------
 
-If you love what we do and are feeling generous then you can always donate.
-Contributions of any quantity are greatly appreciated and will contribute to
-making Nimrod even better!
+  Follow us `@nimlang <http://twitter.com/nimlang>`_ for latest news about
+  Nim.
 
-Gittip
-``````
+.. container:: standout
 
-  .. raw:: html
+  Reddit
+  ------
 
-    <iframe style="border: 0; margin: 0; padding: 0;"
-             src="https://www.gittip.com/Araq/widget.html"
-             width="48pt" height="22pt"></iframe>
+  Subscribe to `/r/nim <http://reddit.com/r/nim>`_ for latest news about
+  Nim.
 
-Paypal
-``````
+.. container:: standout
 
-  .. raw:: html
+  StackOverflow
+  -------------
 
-    <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
-    <input type="hidden" name="cmd" value="_s-xclick">
-    <input type="hidden" name="hosted_button_id" value="ZQC6CVEEYNTLN">
-    <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" alt="PayPal - The safer, easier way to pay online!">
-    <img alt="" border="0" src="https://www.paypalobjects.com/de_DE/i/scr/pixel.gif" width="1" height="1">
-    </form>
+  When asking a question relating to Nim, be sure to use the
+  `Nim <http://stackoverflow.com/questions/tagged/nim>`_ tag in your 
+  question.
 
-Bitcoin
-```````
+.. container:: standout
 
-  Bitcoin address: 1BXfuKM2uvoD6mbx4g5xM3eQhLzkCK77tJ
+  How to help
+  -----------
+
+  There are always many things to be done in the main
+  `Nim repository <https://github.com/Araq/Nim>`_, check out the 
+  `issues <https://github.com/Araq/Nim/issues>`_ for 
+  things to do; pull requests are always welcome. You can
+  also contribute to the many other projects hosted by the
+  `nim-lang <https://github.com/nim-lang>`_ organisation on github. If you
+  can't find anything you fancy doing, you can always ask for inspiration on IRC
+  (irc.freenode.net #nim) or on the `Nim forums <http://forum.nim-lang.org>`_.
+
+
+.. container:: standout
+
+  Donations
+  ---------
+
+  If you love what we do and are feeling generous then you can always donate.
+  Contributions of any quantity are greatly appreciated and will contribute to
+  making Nim even better!
+
+  Gittip
+    .. raw:: html
+
+      <iframe style="border: 0; margin: 0; padding: 0;"
+               src="https://www.gittip.com/Araq/widget.html"
+               width="64pt" height="22pt"></iframe>
+
+  Paypal
+    .. raw:: html
+
+      <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
+      <input type="hidden" name="cmd" value="_s-xclick">
+      <input type="hidden" name="hosted_button_id" value="ZQC6CVEEYNTLN">
+      <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" alt="PayPal - The safer, easier way to pay online!">
+      <img alt="" border="0" src="https://www.paypalobjects.com/de_DE/i/scr/pixel.gif" width="1" height="1">
+      </form>
+
+  Bitcoin
+    Bitcoin address: 1BXfuKM2uvoD6mbx4g5xM3eQhLzkCK77tJ

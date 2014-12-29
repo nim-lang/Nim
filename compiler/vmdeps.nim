@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -9,7 +9,7 @@
 
 import ast, types, msgs, osproc, streams, options
 
-proc readOutput(p: PProcess): string =
+proc readOutput(p: Process): string =
   result = ""
   var output = p.outputStream
   while not output.atEnd:
@@ -33,6 +33,6 @@ proc opSlurp*(file: string, info: TLineInfo, module: PSym): string =
     # the module dependencies are accurate:
     appendToModule(module, newNode(nkIncludeStmt, info, @[
       newStrNode(nkStrLit, filename)]))
-  except EIO:
+  except IOError:
     localError(info, errCannotOpenFile, file)
     result = ""

@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -15,13 +15,13 @@
 
 when defined(Windows):
   proc readLineFromStdin*(prompt: string): TaintedString {.
-                          tags: [FReadIO, FWriteIO].} = 
+                          tags: [ReadIOEffect, WriteIOEffect].} = 
     ## Reads a line from stdin.
     stdout.write(prompt)
     result = readLine(stdin)
 
   proc readLineFromStdin*(prompt: string, line: var TaintedString): bool {.
-                          tags: [FReadIO, FWriteIO].} =
+                          tags: [ReadIOEffect, WriteIOEffect].} =
     ## Reads a `line` from stdin. `line` must not be
     ## ``nil``! May throw an IO exception.
     ## A line of text may be delimited by ``CR``, ``LF`` or
@@ -35,7 +35,7 @@ else:
   import readline, history
     
   proc readLineFromStdin*(prompt: string): TaintedString {.
-                          tags: [FReadIO, FWriteIO].} =
+                          tags: [ReadIOEffect, WriteIOEffect].} =
     var buffer = readline.readLine(prompt)
     if isNil(buffer): quit(0)
     result = TaintedString($buffer)
@@ -44,7 +44,7 @@ else:
     readline.free(buffer)
 
   proc readLineFromStdin*(prompt: string, line: var TaintedString): bool {.
-                          tags: [FReadIO, FWriteIO].} =
+                          tags: [ReadIOEffect, WriteIOEffect].} =
     var buffer = readline.readLine(prompt)
     if isNil(buffer): quit(0)
     line = TaintedString($buffer)

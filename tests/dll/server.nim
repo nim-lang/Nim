@@ -1,5 +1,5 @@
 discard """
-  cmd: "nimrod $target --debuginfo --hints:on --define:useNimRtl --app:lib $options $file"
+  cmd: "nim $target --debuginfo --hints:on --define:useNimRtl --app:lib $options $file"
 """
 
 type

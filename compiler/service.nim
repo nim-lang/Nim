@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -25,39 +25,17 @@ var
   lastCaasCmd* = ""
     # in caas mode, the list of defines and options will be given at start-up?
     # it's enough to check that the previous compilation command is the same?
-  arguments* = ""
-    # the arguments to be passed to the program that
-    # should be run
 
 proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
   var p = parseopt.initOptParser(cmd)
   var argsCount = 0
-  while true: 
+  while true:
     parseopt.next(p)
     case p.kind
-    of cmdEnd: break 
-    of cmdLongoption, cmdShortOption: 
-      # hint[X]:off is parsed as (p.key = "hint[X]", p.val = "off")
-      # we fix this here
-      var bracketLe = strutils.find(p.key, '[')
-      if bracketLe >= 0: 
-        var key = substr(p.key, 0, bracketLe - 1)
-        var val = substr(p.key, bracketLe + 1) & ':' & p.val
-        processSwitch(key, val, pass, gCmdLineInfo)
-      else: 
-        processSwitch(p.key, p.val, pass, gCmdLineInfo)
+    of cmdEnd: break
+    of cmdLongoption, cmdShortOption: processSwitch(pass, p)
     of cmdArgument:
-      if argsCount == 0:
-        options.command = p.key
-      else:
-        if pass == passCmd1: options.commandArgs.add p.key
-        if argsCount == 1:
-          # support UNIX style filenames anywhere for portable build scripts:
-          options.gProjectName = unixToNativePath(p.key)
-          arguments = cmdLineRest(p)
-          break
-      inc argsCount
-          
+      if processArgument(pass, p, argsCount): break
   if pass == passCmd2:
     if optRun notin gGlobalOptions and arguments != "" and options.command.normalize != "run":
       rawMessage(errArgsNeedRunOption, [])
@@ -84,9 +62,9 @@ proc serve*(action: proc (){.nimcall.}) =
   of "tcp", "":
     when useCaas:
       var server = socket()
-      if server == invalidSocket: osError(osLastError())
+      if server == invalidSocket: raiseOSError(osLastError())
       let p = getConfigVar("server.port")
-      let port = if p.len > 0: parseInt(p).TPort else: 6000.TPort
+      let port = if p.len > 0: parseInt(p).Port else: 6000.Port
       server.bindAddr(port, getConfigVar("server.address"))
       var inp = "".TaintedString
       server.listen()

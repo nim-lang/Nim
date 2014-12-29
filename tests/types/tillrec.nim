@@ -11,6 +11,6 @@ type
     kids: seq[TLegal]
 
   TIllegal {.final.} = object  #ERROR_MSG illegal recursion in type 'TIllegal'
-    y: Int
+    y: int
     x: array[0..3, TIllegal]
 

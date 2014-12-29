@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -149,7 +149,7 @@ proc getUniqueType*(key: PType): PType =
       idTablePut(gTypeTable[k], key, key)
       result = key
       
-proc tableGetType*(tab: TIdTable, key: PType): PObject = 
+proc tableGetType*(tab: TIdTable, key: PType): RootRef = 
   # returns nil if we need to declare this type
   result = idTableGet(tab, key)
   if (result == nil) and (tab.counter > 0): 
@@ -171,7 +171,7 @@ proc mangle*(name: string): string =
   ## Lowercases the given name and manges any non-alphanumeric characters
   ## so they are represented as `HEX____`. If the name starts with a number,
   ## `N` is prepended
-  result = ""
+  result = newStringOfCap(name.len)
   case name[0]
   of Letters:
     result.add(name[0].toLower)

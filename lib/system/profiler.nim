@@ -1,13 +1,13 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-# This file implements the Nimrod profiler. The profiler needs support by the
+# This file implements the Nim profiler. The profiler needs support by the
 # code generator. The idea is to inject the instruction stream
 # with 'nimProfile()' calls. These calls are injected at every loop end
 # (except perhaps loops that have no side-effects). At every Nth call a

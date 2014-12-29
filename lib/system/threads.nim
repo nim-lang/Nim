@@ -79,12 +79,20 @@ when defined(windows):
   type
     TThreadVarSlot = distinct int32
 
-  proc threadVarAlloc(): TThreadVarSlot {.
-    importc: "TlsAlloc", stdcall, dynlib: "kernel32".}
-  proc threadVarSetValue(dwTlsIndex: TThreadVarSlot, lpTlsValue: pointer) {.
-    importc: "TlsSetValue", stdcall, dynlib: "kernel32".}
-  proc threadVarGetValue(dwTlsIndex: TThreadVarSlot): pointer {.
-    importc: "TlsGetValue", stdcall, dynlib: "kernel32".}
+  when true:
+    proc threadVarAlloc(): TThreadVarSlot {.
+      importc: "TlsAlloc", stdcall, header: "<windows.h>".}
+    proc threadVarSetValue(dwTlsIndex: TThreadVarSlot, lpTlsValue: pointer) {.
+      importc: "TlsSetValue", stdcall, header: "<windows.h>".}
+    proc threadVarGetValue(dwTlsIndex: TThreadVarSlot): pointer {.
+      importc: "TlsGetValue", stdcall, header: "<windows.h>".}
+  else:
+    proc threadVarAlloc(): TThreadVarSlot {.
+      importc: "TlsAlloc", stdcall, dynlib: "kernel32".}
+    proc threadVarSetValue(dwTlsIndex: TThreadVarSlot, lpTlsValue: pointer) {.
+      importc: "TlsSetValue", stdcall, dynlib: "kernel32".}
+    proc threadVarGetValue(dwTlsIndex: TThreadVarSlot): pointer {.
+      importc: "TlsGetValue", stdcall, dynlib: "kernel32".}
   
 else:
   {.passL: "-pthread".}
@@ -115,16 +123,6 @@ else:
 
   proc pthread_cancel(a1: TSysThread): cint {.
     importc: "pthread_cancel", header: "<pthread.h>".}
-
-  proc acquireSysTimeoutAux(L: var TSysLock, timeout: var Ttimespec): cint {.
-    importc: "pthread_mutex_timedlock", header: "<time.h>".}
-
-  proc acquireSysTimeout(L: var TSysLock, msTimeout: int) {.inline.} =
-    var a: Ttimespec
-    a.tv_sec = msTimeout div 1000
-    a.tv_nsec = (msTimeout mod 1000) * 1000
-    var res = acquireSysTimeoutAux(L, a)
-    if res != 0'i32: raise newException(EResourceExhausted, $strerror(res))
 
   type
     TThreadVarSlot {.importc: "pthread_key_t", pure, final,
@@ -184,7 +182,18 @@ type
 # XXX it'd be more efficient to not use a global variable for the 
 # thread storage slot, but to rely on the implementation to assign slot X
 # for us... ;-)
-var globalsSlot = threadVarAlloc()
+var globalsSlot: TThreadVarSlot
+
+when not defined(useNimRtl):
+  when not useStackMaskHack:
+    var mainThread: TGcThread
+
+proc initThreadVarsEmulation() {.compilerProc, inline.} =
+  when not defined(useNimRtl):
+    globalsSlot = threadVarAlloc()
+    when declared(mainThread):
+      threadVarSetValue(globalsSlot, addr(mainThread))
+
 #const globalsSlot = TThreadVarSlot(0)
 #sysAssert checkSlot.int == globalsSlot.int
 
@@ -202,11 +211,8 @@ when useStackMaskHack:
 # create for the main thread. Note: do not insert this data into the list
 # of all threads; it's not to be stopped etc.
 when not defined(useNimRtl):
-  
   when not useStackMaskHack:
-    var mainThread: TGcThread
-    threadVarSetValue(globalsSlot, addr(mainThread))
-    when not defined(createNimRtl): initStackBottom()
+    #when not defined(createNimRtl): initStackBottom()
     initGC()
     
   when emulatedThreadVars:
@@ -353,8 +359,7 @@ when hostOS == "windows":
     t.sys = createThread(nil, ThreadStackSize, threadProcWrapper[TArg],
                          addr(t), 0'i32, dummyThreadId)
     if t.sys <= 0:
-      raise newException(EResourceExhausted, "cannot create thread")
-
+      raise newException(ResourceExhaustedError, "cannot create thread")
 else:
   proc createThread*[TArg](t: var TThread[TArg], 
                            tp: proc (arg: TArg) {.thread.}, 
@@ -369,7 +374,7 @@ else:
     pthread_attr_init(a)
     pthread_attr_setstacksize(a, ThreadStackSize)
     if pthread_create(t.sys, a, threadProcWrapper[TArg], addr(t)) != 0:
-      raise newException(EResourceExhausted, "cannot create thread")
+      raise newException(ResourceExhaustedError, "cannot create thread")
 
 proc threadId*[TArg](t: var TThread[TArg]): TThreadId[TArg] {.inline.} =
   ## returns the thread ID of `t`.

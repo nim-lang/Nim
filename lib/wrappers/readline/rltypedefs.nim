@@ -48,7 +48,7 @@ type
 # Input function type 
 
 type 
-  Tgetc_func* = proc (a2: TFile): cint{.cdecl.}
+  Tgetc_func* = proc (a2: File): cint{.cdecl.}
 
 # Generic function that takes a character buffer (which could be the readline
 #   line buffer) and an index into it (which could be rl_point) and returns

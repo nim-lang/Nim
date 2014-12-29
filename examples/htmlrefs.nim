@@ -12,10 +12,10 @@ if paramCount() < 1:
   quit("Usage: htmlrefs filename[.html]")
 
 var links = 0 # count the number of links
-var filename = addFileExt(ParamStr(1), "html")
+var filename = addFileExt(paramStr(1), "html")
 var s = newFileStream(filename, fmRead)
 if s == nil: quit("cannot open the file " & filename)
-var x: TXmlParser
+var x: XmlParser
 open(x, s, filename)
 next(x) # get first event
 block mainLoop:
@@ -43,12 +43,12 @@ block mainLoop:
             while x.kind == xmlCharData: 
               desc.add(x.charData)
               x.next()
-            Echo(desc & ": " & link)
+            echo(desc & ": " & link)
       else:
         x.next()      
     of xmlEof: break # end of file reached
     of xmlError: 
-      Echo(errorMsg(x))
+      echo(errorMsg(x))
       x.next()
     else: x.next() # skip other events
 

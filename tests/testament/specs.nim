@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod Tester
+#            Nim Tester
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -10,7 +10,7 @@
 import parseutils, strutils, os, osproc, streams, parsecfg
 
 const
-  cmdTemplate* = r"nimrod $target --hints:on $options $file"
+  cmdTemplate* = r"nim $target --hints:on $options $file"
 
 type
   TTestAction* = enum
@@ -18,7 +18,7 @@ type
     actionRun = "run"
     actionReject = "reject"
   TResultEnum* = enum
-    reNimrodcCrash,     # nimrod compiler seems to have crashed
+    reNimcCrash,     # nim compiler seems to have crashed
     reMsgsDiffer,       # error messages differ
     reFilesDiffer,      # expected and given filenames differ
     reLinesDiffer,      # expected and given line numbers differ
@@ -59,7 +59,7 @@ when not declared(parseCfgBool):
     case normalize(s)
     of "y", "yes", "true", "1", "on": result = true
     of "n", "no", "false", "0", "off": result = false
-    else: raise newException(EInvalidValue, "cannot interpret as a bool: " & s)
+    else: raise newException(ValueError, "cannot interpret as a bool: " & s)
 
 proc extractSpec(filename: string): string =
   const tripleQuote = "\"\"\""
@@ -78,7 +78,7 @@ when not defined(nimhygiene):
 
 template parseSpecAux(fillResult: stmt) {.immediate.} =
   var ss = newStringStream(extractSpec(filename))
-  var p {.inject.}: TCfgParser
+  var p {.inject.}: CfgParser
   open(p, ss, filename, 1)
   while true:
     var e {.inject.} = next(p)

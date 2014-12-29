@@ -1,3 +1,7 @@
+discard """
+  ouput: '''foo
+true'''
+"""
 
 converter p(i: int): bool = return i != 0
 
@@ -6,3 +10,6 @@ if 1:
 while 0: 
   echo "bar"
 
+var a: array[3, bool]
+a[0] = 3
+echo a[0]

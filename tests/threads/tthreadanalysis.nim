@@ -2,7 +2,7 @@ discard """
   outputsub: "101"
   errormsg: "'threadFunc' is not GC-safe"
   line: 39
-  cmd: "nimrod $target --hints:on --threads:on $options $file"
+  cmd: "nim $target --hints:on --threads:on $options $file"
 """
 
 import os

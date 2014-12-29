@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2013 Andreas Rumpf, Dominik Picheta
 #
 #    See the file "copying.txt", included in this
@@ -9,13 +9,13 @@
 
 ## This module implements helper procs for SCGI applications. Example:
 ## 
-## .. code-block:: Nimrod
+## .. code-block:: Nim
 ##
 ##    import strtabs, sockets, scgi
 ##
 ##    var counter = 0
-##    proc handleRequest(client: TSocket, input: string, 
-##                       headers: PStringTable): bool {.procvar.} =
+##    proc handleRequest(client: Socket, input: string, 
+##                       headers: StringTableRef): bool {.procvar.} =
 ##      inc(counter)
 ##      client.writeStatusOkTextContent()
 ##      client.send("Hello for the $#th time." % $counter & "\c\L")
@@ -25,17 +25,21 @@
 ##
 ## **Warning:** The API of this module is unstable, and therefore is subject
 ## to change.
+##
+## **Warning:** This module only supports the old asynchronous interface.
+## You may wish to use the `asynchttpserver <asynchttpserver.html>`_
+## instead for web applications.
 
 include "system/inclrtl"
 
 import sockets, strutils, os, strtabs, asyncio
 
 type
-  EScgi* = object of EIO ## the exception that is raised, if a SCGI error occurs
+  ScgiError* = object of IOError ## the exception that is raised, if a SCGI error occurs
 
-proc scgiError*(msg: string) {.noreturn.} = 
-  ## raises an EScgi exception with message `msg`.
-  var e: ref EScgi
+proc raiseScgiError*(msg: string) {.noreturn.} = 
+  ## raises an ScgiError exception with message `msg`.
+  var e: ref ScgiError
   new(e)
   e.msg = msg
   raise e
@@ -45,7 +49,7 @@ proc parseWord(inp: string, outp: var string, start: int): int =
   while inp[result] != '\0': inc(result)
   outp = substr(inp, start, result-1)
 
-proc parseHeaders(s: string, L: int): PStringTable = 
+proc parseHeaders(s: string, L: int): StringTableRef = 
   result = newStringTable()
   var i = 0
   while i < L:
@@ -54,73 +58,77 @@ proc parseHeaders(s: string, L: int): PStringTable =
     i = parseWord(s, val, i)+1
     result[key] = val
   if s[i] == ',': inc(i)
-  else: scgiError("',' after netstring expected")
+  else: raiseScgiError("',' after netstring expected")
   
-proc recvChar(s: TSocket): char = 
+proc recvChar(s: Socket): char = 
   var c: char
   if recv(s, addr(c), sizeof(c)) == sizeof(c): 
     result = c
   
 type
-  TScgiState* = object of TObject ## SCGI state object
-    server: TSocket
+  ScgiState* = object of RootObj ## SCGI state object
+    server: Socket
     bufLen: int
-    client*: TSocket ## the client socket to send data to
-    headers*: PStringTable ## the parsed headers
+    client*: Socket ## the client socket to send data to
+    headers*: StringTableRef ## the parsed headers
     input*: string  ## the input buffer
   
   
   # Async
   
-  TClientMode = enum
+  ClientMode = enum
     ClientReadChar, ClientReadHeaders, ClientReadContent
   
-  PAsyncClient = ref object
-    c: PAsyncSocket
-    mode: TClientMode
+  AsyncClient = ref object
+    c: AsyncSocket
+    mode: ClientMode
     dataLen: int
-    headers: PStringTable ## the parsed headers
+    headers: StringTableRef ## the parsed headers
     input: string  ## the input buffer
   
-  TAsyncScgiState = object
-    handleRequest: proc (client: PAsyncSocket, 
-                         input: string, headers: PStringTable) {.closure,gcsafe.}
-    asyncServer: PAsyncSocket
-    disp: PDispatcher
-  PAsyncScgiState* = ref TAsyncScgiState
-    
-proc recvBuffer(s: var TScgiState, L: int) =
+  AsyncScgiStateObj = object
+    handleRequest: proc (client: AsyncSocket, 
+                         input: string,
+                         headers: StringTableRef) {.closure, gcsafe.}
+    asyncServer: AsyncSocket
+    disp: Dispatcher
+  AsyncScgiState* = ref AsyncScgiStateObj
+
+{.deprecated: [EScgi: ScgiError, TScgiState: ScgiState,
+   PAsyncScgiState: AsyncScgiState, scgiError: raiseScgiError].}
+
+proc recvBuffer(s: var ScgiState, L: int) =
   if L > s.bufLen: 
     s.bufLen = L
     s.input = newString(L)
   if L > 0 and recv(s.client, cstring(s.input), L) != L: 
-    scgiError("could not read all data")
+    raiseScgiError("could not read all data")
   setLen(s.input, L)
   
-proc open*(s: var TScgiState, port = TPort(4000), address = "127.0.0.1",
-  reuseAddr = False) = 
+proc open*(s: var ScgiState, port = Port(4000), address = "127.0.0.1",
+           reuseAddr = false) = 
   ## opens a connection.
   s.bufLen = 4000
-  s.input = newString(s.buflen) # will be reused
+  s.input = newString(s.bufLen) # will be reused
   
   s.server = socket()
-  if s.server == InvalidSocket: osError(osLastError())
+  if s.server == invalidSocket: raiseOSError(osLastError())
   new(s.client) # Initialise s.client for `next`
-  if s.server == InvalidSocket: scgiError("could not open socket")
+  if s.server == invalidSocket: raiseScgiError("could not open socket")
   #s.server.connect(connectionName, port)
   if reuseAddr:
-    s.server.setSockOpt(OptReuseAddr, True)
+    s.server.setSockOpt(OptReuseAddr, true)
   bindAddr(s.server, port, address)
   listen(s.server)
   
-proc close*(s: var TScgiState) = 
+proc close*(s: var ScgiState) = 
   ## closes the connection.
   s.server.close()
 
-proc next*(s: var TScgistate, timeout: int = -1): bool = 
+proc next*(s: var ScgiState, timeout: int = -1): bool = 
   ## proceed to the first/next request. Waits ``timeout`` miliseconds for a
   ## request, if ``timeout`` is `-1` then this function will never time out.
-  ## Returns `True` if a new request has been processed.
+  ## Returns `true` if a new request has been processed.
   var rsocks = @[s.server]
   if select(rsocks, timeout) == 1 and rsocks.len == 1:
     new(s.client)
@@ -131,18 +139,18 @@ proc next*(s: var TScgistate, timeout: int = -1): bool =
       if d == '\0':
         s.client.close()
         return false
-      if d notin strutils.digits: 
-        if d != ':': scgiError("':' after length expected")
+      if d notin strutils.Digits: 
+        if d != ':': raiseScgiError("':' after length expected")
         break
       L = L * 10 + ord(d) - ord('0')  
     recvBuffer(s, L+1)
     s.headers = parseHeaders(s.input, L)
-    if s.headers["SCGI"] != "1": scgiError("SCGI Version 1 expected")
+    if s.headers["SCGI"] != "1": raiseScgiError("SCGI Version 1 expected")
     L = parseInt(s.headers["CONTENT_LENGTH"])
     recvBuffer(s, L)
-    return True
+    return true
   
-proc writeStatusOkTextContent*(c: TSocket, contentType = "text/html") = 
+proc writeStatusOkTextContent*(c: Socket, contentType = "text/html") = 
   ## sends the following string to the socket `c`::
   ##
   ##   Status: 200 OK\r\LContent-Type: text/html\r\L\r\L
@@ -151,11 +159,11 @@ proc writeStatusOkTextContent*(c: TSocket, contentType = "text/html") =
   c.send("Status: 200 OK\r\L" &
          "Content-Type: $1\r\L\r\L" % contentType)
 
-proc run*(handleRequest: proc (client: TSocket, input: string, 
-                               headers: PStringTable): bool {.nimcall,gcsafe.},
-          port = TPort(4000)) = 
+proc run*(handleRequest: proc (client: Socket, input: string, 
+                               headers: StringTableRef): bool {.nimcall,gcsafe.},
+          port = Port(4000)) = 
   ## encapsulates the SCGI object and main loop.
-  var s: TScgiState
+  var s: ScgiState
   s.open(port)
   var stop = false
   while not stop:
@@ -166,11 +174,11 @@ proc run*(handleRequest: proc (client: TSocket, input: string,
 
 # -- AsyncIO start
 
-proc recvBufferAsync(client: PAsyncClient, L: int): TReadLineResult =
+proc recvBufferAsync(client: AsyncClient, L: int): ReadLineResult =
   result = ReadPartialLine
   var data = ""
   if L < 1:
-    scgiError("Cannot read negative or zero length: " & $L)
+    raiseScgiError("Cannot read negative or zero length: " & $L)
   let ret = recvAsync(client.c, data, L)
   if ret == 0 and data == "":
     client.c.close()
@@ -181,16 +189,16 @@ proc recvBufferAsync(client: PAsyncClient, L: int): TReadLineResult =
   if ret == L:
     return ReadFullLine
 
-proc checkCloseSocket(client: PAsyncClient) =
+proc checkCloseSocket(client: AsyncClient) =
   if not client.c.isClosed:
     if client.c.isSendDataBuffered:
-      client.c.setHandleWrite do (s: PAsyncSocket):
+      client.c.setHandleWrite do (s: AsyncSocket):
         if not s.isClosed and not s.isSendDataBuffered:
           s.close()
           s.delHandleWrite()
     else: client.c.close()
     
-proc handleClientRead(client: PAsyncClient, s: PAsyncScgiState) =
+proc handleClientRead(client: AsyncClient, s: AsyncScgiState) =
   case client.mode
   of ClientReadChar:
     while true:
@@ -202,8 +210,8 @@ proc handleClientRead(client: PAsyncClient, s: PAsyncScgiState) =
         return
       if ret == -1:
         return # No more data available
-      if d[0] notin strutils.digits:
-        if d[0] != ':': scgiError("':' after length expected")
+      if d[0] notin strutils.Digits:
+        if d[0] != ':': raiseScgiError("':' after length expected")
         break
       client.dataLen = client.dataLen * 10 + ord(d[0]) - ord('0')
     client.mode = ClientReadHeaders
@@ -213,7 +221,7 @@ proc handleClientRead(client: PAsyncClient, s: PAsyncScgiState) =
     case ret
     of ReadFullLine:
       client.headers = parseHeaders(client.input, client.input.len-1)
-      if client.headers["SCGI"] != "1": scgiError("SCGI Version 1 expected")
+      if client.headers["SCGI"] != "1": raiseScgiError("SCGI Version 1 expected")
       client.input = "" # For next part
       
       let contentLen = parseInt(client.headers["CONTENT_LENGTH"])
@@ -236,50 +244,50 @@ proc handleClientRead(client: PAsyncClient, s: PAsyncScgiState) =
       s.handleRequest(client.c, client.input, client.headers)
       checkCloseSocket(client)
 
-proc handleAccept(sock: PAsyncSocket, s: PAsyncScgiState) =
-  var client: PAsyncSocket
+proc handleAccept(sock: AsyncSocket, s: AsyncScgiState) =
+  var client: AsyncSocket
   new(client)
   accept(s.asyncServer, client)
-  var asyncClient = PAsyncClient(c: client, mode: ClientReadChar, dataLen: 0,
+  var asyncClient = AsyncClient(c: client, mode: ClientReadChar, dataLen: 0,
                                  headers: newStringTable(), input: "")
   client.handleRead = 
-    proc (sock: PAsyncSocket) =
+    proc (sock: AsyncSocket) =
       handleClientRead(asyncClient, s)
   s.disp.register(client)
 
-proc open*(handleRequest: proc (client: PAsyncSocket, 
-                                input: string, headers: PStringTable) {.
+proc open*(handleRequest: proc (client: AsyncSocket, 
+                                input: string, headers: StringTableRef) {.
                                 closure, gcsafe.},
-           port = TPort(4000), address = "127.0.0.1",
-           reuseAddr = false): PAsyncScgiState =
-  ## Creates an ``PAsyncScgiState`` object which serves as a SCGI server.
+           port = Port(4000), address = "127.0.0.1",
+           reuseAddr = false): AsyncScgiState =
+  ## Creates an ``AsyncScgiState`` object which serves as a SCGI server.
   ##
   ## After the execution of ``handleRequest`` the client socket will be closed
   ## automatically unless it has already been closed.
-  var cres: PAsyncScgiState
+  var cres: AsyncScgiState
   new(cres)
-  cres.asyncServer = AsyncSocket()
-  cres.asyncServer.handleAccept = proc (s: PAsyncSocket) = handleAccept(s, cres)
+  cres.asyncServer = asyncSocket()
+  cres.asyncServer.handleAccept = proc (s: AsyncSocket) = handleAccept(s, cres)
   if reuseAddr:
-    cres.asyncServer.setSockOpt(OptReuseAddr, True)
+    cres.asyncServer.setSockOpt(OptReuseAddr, true)
   bindAddr(cres.asyncServer, port, address)
   listen(cres.asyncServer)
   cres.handleRequest = handleRequest
   result = cres
 
-proc register*(d: PDispatcher, s: PAsyncScgiState): PDelegate {.discardable.} =
+proc register*(d: Dispatcher, s: AsyncScgiState): Delegate {.discardable.} =
   ## Registers ``s`` with dispatcher ``d``.
   result = d.register(s.asyncServer)
   s.disp = d
 
-proc close*(s: PAsyncScgiState) =
-  ## Closes the ``PAsyncScgiState``.
+proc close*(s: AsyncScgiState) =
+  ## Closes the ``AsyncScgiState``.
   s.asyncServer.close()
 
 when false:
   var counter = 0
-  proc handleRequest(client: TSocket, input: string, 
-                     headers: PStringTable): bool {.procvar.} =
+  proc handleRequest(client: Socket, input: string, 
+                     headers: StringTableRef): bool {.procvar.} =
     inc(counter)
     client.writeStatusOkTextContent()
     client.send("Hello for the $#th time." % $counter & "\c\L")

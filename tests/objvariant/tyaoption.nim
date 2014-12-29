@@ -7,7 +7,7 @@ some(10)'''
 import strutils
 
 type Option[A] = object
-  case isDefined*: Bool
+  case isDefined*: bool
     of true:
       value*: A
     of false:
@@ -19,7 +19,7 @@ proc some[A](value: A): Option[A] =
 proc none[A](): Option[A] =
   Option[A](isDefined: false)
 
-proc `$`[A](o: Option[A]): String =
+proc `$`[A](o: Option[A]): string =
   if o.isDefined:
     "some($1)" % [$o.value]
   else:
@@ -27,14 +27,14 @@ proc `$`[A](o: Option[A]): String =
 
 let x = some("str")
 let y = some(5)
-let z = none[Int]()
+let z = none[int]()
 
 echo x, ", ", y, ", ", z
 
-proc intOrString[A : Int | String](o: Option[A]): Option[A] =
-  when A is Int:
+proc intOrString[A : int | string](o: Option[A]): Option[A] =
+  when A is int:
     some(o.value + 5)
-  elif A is String:
+  elif A is string:
     some(o.value & "!")
   else:
     o

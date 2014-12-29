@@ -2,11 +2,11 @@
 # Macintosh, Unix or Windows text format.
 
 var
-  inp: TFile
+  inp: File
   line: string
 
 if open(inp, "readme.txt"):
-  while not EndOfFile(inp):
+  while not endOfFile(inp):
     line = readLine(inp)
     echo("#" & line & "#")
   close(inp)

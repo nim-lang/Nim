@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -68,7 +68,7 @@ type                          # please make sure we have under 32 options
                               # also: generate header file
    
   TGlobalOptions* = set[TGlobalOption]
-  TCommands* = enum           # Nimrod's commands
+  TCommands* = enum           # Nim's commands
                               # **keep binary compatible**
     cmdNone, cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, 
     cmdCompileToJS, cmdCompileToLLVM, cmdInterpret, cmdPretty, cmdDoc, 
@@ -114,7 +114,8 @@ var
   gDirtyBufferIdx* = 0'i32    # indicates the fileIdx of the dirty version of
                               # the tracked source X, saved by the CAAS client.
   gDirtyOriginalIdx* = 0'i32  # the original source file of the dirtified buffer.
-  gNoBabelPath* = false
+  gNoNimblePath* = false
+  gExperimentalMode*: bool
 
 proc importantComments*(): bool {.inline.} = gCmd in {cmdDoc, cmdIdeTools}
 proc usesNativeGC*(): bool {.inline.} = gSelectedGC >= gcRefc
@@ -139,7 +140,7 @@ const
   JsonExt* = "json"
   TexExt* = "tex"
   IniExt* = "ini"
-  DefaultConfig* = "nimrod.cfg"
+  DefaultConfig* = "nim.cfg"
   DocConfig* = "nimdoc.cfg"
   DocTexConfig* = "nimdoc.tex.cfg"
 
@@ -152,7 +153,6 @@ var
   gProjectPath* = "" # holds a path like /home/alice/projects/nimrod/compiler/
   gProjectFull* = "" # projectPath/projectName
   gProjectMainIdx*: int32 # the canonical path id of the main module
-  optMainModule* = "" # the main module that should be used for idetools commands
   nimcacheDir* = ""
   command* = "" # the main command (e.g. cc, check, scan, etc)
   commandArgs*: seq[string] = @[] # any arguments after the main command
@@ -189,8 +189,8 @@ proc getPrefixDir*(): string =
   result = splitPath(getAppDir()).head
 
 proc canonicalizePath*(path: string): string =
-  result = path.expandFilename
-  when not FileSystemCaseSensitive: result = result.toLower
+  when not FileSystemCaseSensitive: result = path.expandFilename.toLower
+  else: result = path.expandFilename
 
 proc shortenDir*(dir: string): string = 
   ## returns the interesting part of a dir
@@ -238,6 +238,9 @@ proc getPackageName*(path: string): string =
         #echo "from cache ", d, " |", packageCache[d], "|", path.splitFile.name
         return packageCache[d]
       inc parents
+      for file in walkFiles(d / "*.nimble"):
+        result = file.splitFile.name
+        break packageSearch
       for file in walkFiles(d / "*.babel"):
         result = file.splitFile.name
         break packageSearch
@@ -295,7 +298,7 @@ proc completeGeneratedFilePath*(f: string, createSubDir: bool = true): string =
       createDir(subdir)
       when noTimeMachine:
        excludeDirFromTimeMachine(subdir)
-    except EOS: 
+    except OSError: 
       writeln(stdout, "cannot create directory: " & subdir)
       quit(1)
   result = joinPath(subdir, tail)
@@ -335,6 +338,16 @@ proc findFile*(f: string): string {.procvar.} =
 
 proc findModule*(modulename, currentModule: string): string =
   # returns path to module
+  when defined(nimfix):
+    # '.nimfix' modules are preferred over '.nim' modules so that specialized
+    # versions can be kept for 'nimfix'.
+    block:
+      let m = addFileExt(modulename, "nimfix")
+      let currentPath = currentModule.splitFile.dir
+      result = currentPath / m
+      if not existsFile(result):
+        result = findFile(m)
+        if existsFile(result): return result
   let m = addFileExt(modulename, NimExt)
   let currentPath = currentModule.splitFile.dir
   result = currentPath / m

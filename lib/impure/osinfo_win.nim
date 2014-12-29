@@ -375,7 +375,7 @@ proc getFileSize*(file: string): BiggestInt =
     var hFile = findFirstFileA(file, fileData)
   
   if hFile == INVALID_HANDLE_VALUE:
-    raise newException(EIO, $getLastError())
+    raise newException(IOError, $getLastError())
   
   return fileData.nFileSizeLow
 
@@ -386,10 +386,10 @@ proc getDiskFreeSpaceEx*(lpDirectoryName: cstring, lpFreeBytesAvailableToCaller,
 
 proc getPartitionInfo*(partition: string): TPartitionInfo =
   ## Retrieves partition info, for example ``partition`` may be ``"C:\"``
-  var FreeBytes, TotalBytes, TotalFreeBytes: TFiletime 
-  var res = getDiskFreeSpaceEx(r"C:\", FreeBytes, TotalBytes, 
-                               TotalFreeBytes)
-  return (FreeBytes, TotalBytes)
+  var freeBytes, totalBytes, totalFreeBytes: TFiletime 
+  discard getDiskFreeSpaceEx(r"C:\", freeBytes, totalBytes, 
+                               totalFreeBytes)
+  return (freeBytes, totalBytes)
 
 when isMainModule:
   var r = getMemoryInfo()

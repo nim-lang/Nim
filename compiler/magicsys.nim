@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -35,7 +35,7 @@ proc registerSysType(t: PType) =
 proc newSysType(kind: TTypeKind, size: int): PType = 
   result = newType(kind, systemModule)
   result.size = size
-  result.align = size
+  result.align = size.int16
 
 proc getSysSym(name: string): PSym = 
   result = strTableGet(systemModule.tab, getIdent(name))
@@ -44,6 +44,7 @@ proc getSysSym(name: string): PSym =
     result = newSym(skError, getIdent(name), systemModule, systemModule.info)
     result.typ = newType(tyError, systemModule)
   if result.kind == skStub: loadStub(result)
+  if result.kind == skAlias: result = result.owner
   
 proc getSysMagic*(name: string, m: TMagic): PSym =
   var ti: TIdentIter
@@ -165,13 +166,14 @@ proc setIntLitType*(result: PNode) =
 proc getCompilerProc(name: string): PSym = 
   var ident = getIdent(name, hashIgnoreStyle(name))
   result = strTableGet(compilerprocs, ident)
-  if result == nil: 
+  if result == nil:
     result = strTableGet(rodCompilerprocs, ident)
-    if result != nil: 
+    if result != nil:
       strTableAdd(compilerprocs, result)
       if result.kind == skStub: loadStub(result)
-  
-proc registerCompilerProc(s: PSym) = 
+      if result.kind == skAlias: result = result.owner
+
+proc registerCompilerProc(s: PSym) =
   strTableAdd(compilerprocs, s)
 
 proc finishSystem(tab: TStrTable) = discard

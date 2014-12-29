@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -55,7 +55,7 @@ proc annotateType*(n: PNode, t: PType) =
     else:
       globalError(n.info, "() must have an object or tuple type")
   of nkBracket:
-    if x.kind in {tyArrayConstr, tyArray, tySequence, tyOpenarray}:
+    if x.kind in {tyArrayConstr, tyArray, tySequence, tyOpenArray}:
       n.typ = t
       for m in n: annotateType(m, x.elemType)
     else:

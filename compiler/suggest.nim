@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -11,7 +11,7 @@
 
 # included from sigmatch.nim
 
-import algorithm, sequtils, pretty
+import algorithm, sequtils
 
 const
   sep = '\t'
@@ -331,7 +331,6 @@ proc markUsed(info: TLineInfo; s: PSym) =
     if sfDeprecated in s.flags: message(info, warnDeprecated, s.name.s)
     if sfError in s.flags: localError(info, errWrongSymbolX, s.name.s)
   suggestSym(info, s)
-  if gCmd == cmdPretty: checkUse(info, s)
 
 proc useSym*(sym: PSym): PNode =
   result = newSymNode(sym)

@@ -1,0 +1,110 @@
+Syntax
+======
+
+This section lists Nim's standard syntax. How the parser handles
+the indentation is already described in the `Lexical Analysis`_ section.
+
+Nim allows user-definable operators.
+Binary operators have 11 different levels of precedence.
+
+
+
+Associativity
+-------------
+
+Binary operators whose first character is ``^`` or its last character
+is ``>`` are right-associative, all other binary operators are left-associative.
+
+Exception: The single "greater than" ``>`` operator is left-associative too.
+
+Operators ending in ``>`` but longer than a single character are 
+called `arrow like`:idx:.
+
+
+Precedence
+----------
+
+Unary operators always bind stronger than any binary 
+operator: ``$a + b`` is ``($a) + b`` and not ``$(a + b)``.
+
+If an unary operator's first character is ``@`` it is a `sigil-like`:idx: 
+operator which binds stronger than a ``primarySuffix``: ``@x.abc`` is parsed
+as ``(@x).abc`` whereas ``$x.abc`` is parsed as ``$(x.abc)``.
+
+
+For binary operators that are not keywords the precedence is determined by the
+following rules:
+
+If the operator ends with ``=`` and its first character is none of 
+``<``, ``>``, ``!``, ``=``, ``~``, ``?``, it is an *assignment operator* which
+has the lowest precedence.
+
+Otherwise precedence is determined by the first character.
+
+================  ===============================================  ==================  ===============
+Precedence level    Operators                                      First character     Terminal symbol
+================  ===============================================  ==================  ===============
+ 10 (highest)                                                      ``$  ^``            OP10
+  9               ``*    /    div   mod   shl  shr  %``            ``* % \  /``        OP9
+  8               ``+    -``                                       ``+  ~  |``         OP8
+  7               ``&``                                            ``&``               OP7
+  6               ``..``                                           ``.``               OP6
+  5               ``==  <= < >= > !=  in notin is isnot not of``   ``= <  > !``        OP5
+  4               ``and``                                                              OP4
+  3               ``or xor``                                                           OP3
+  2                                                                ``@  : ?``          OP2
+  1               *assignment operator* (like ``+=``, ``*=``)                          OP1
+  0 (lowest)      *arrow like operator* (like ``->``, ``=>``)                          OP0
+================  ===============================================  ==================  ===============
+
+
+Strong spaces
+-------------
+
+The number of spaces preceeding a non-keyword operator affects precedence
+if the experimental parser directive ``#!strongSpaces`` is used. Indentation
+is not used to determine the number of spaces. If 2 or more operators have the
+same number of preceding spaces the precedence table applies, so ``1 + 3 * 4``
+is still parsed as ``1 + (3 * 4)``, but ``1+3 * 4`` is parsed as ``(1+3) * 4``:
+
+.. code-block:: nim
+  #! strongSpaces
+  if foo+4 * 4 == 8 and b&c | 9  ++
+      bar:
+    echo ""
+  # is parsed as
+  if ((foo+4)*4 == 8) and (((b&c) | 9) ++ bar): echo ""
+
+
+Furthermore whether an operator is used a prefix operator is affected by the
+number of spaces: 
+
+.. code-block:: nim
+  #! strongSpaces
+  echo $foo
+  # is parsed as
+  echo($foo)
+
+This also affects whether ``[]``, ``{}``, ``()`` are parsed as constructors
+or as accessors:
+
+.. code-block:: nim
+  #! strongSpaces
+  echo (1,2)
+  # is parsed as
+  echo((1,2))
+
+Only 0, 1, 2, 4 or 8 spaces are allowed to specify precedence and it is
+enforced that infix operators have the same amount of spaces before and after
+them. This rules does not apply when a newline follows after the operator,
+then only the preceding spaces are considered.
+
+
+Grammar
+-------
+
+The grammar's start symbol is ``module``.
+
+.. include:: grammar.txt
+   :literal:
+

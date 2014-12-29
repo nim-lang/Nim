@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod Benchmark tool
+#            Nim Benchmark tool
 #        (c) Copyright 2012 Dominik Picheta
 #
 #    See the file "copying.txt", included in this
@@ -15,7 +15,7 @@ type
 
 proc compileBench(file: string) =
   ## Compiles ``file``.
-  doAssert(execCmdEx("nimrod c -d:release " & file).exitCode == QuitSuccess)
+  doAssert(execCmdEx("nim c -d:release " & file).exitCode == QuitSuccess)
 
 proc runBench(file: string): TBenchResult =
   ## Runs ``file`` and returns info on how long it took to run.

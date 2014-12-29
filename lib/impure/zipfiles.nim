@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -13,18 +13,18 @@ import
   streams, libzip, times, os
 
 type
-  TZipArchive* = object of TObject ## represents a zip archive
-    mode: TFileMode
+  TZipArchive* = object of RootObj ## represents a zip archive
+    mode: FileMode
     w: PZip
 
 
 proc zipError(z: var TZipArchive) = 
-  var e: ref EIO
+  var e: ref IOError
   new(e)
   e.msg = $zip_strerror(z.w)
   raise e
   
-proc open*(z: var TZipArchive, filename: string, mode: TFileMode = fmRead): bool =
+proc open*(z: var TZipArchive, filename: string, mode: FileMode = fmRead): bool =
   ## Opens a zip file for reading, writing or appending. All file modes are 
   ## supported. Returns true iff successful, false otherwise.
   var err, flags: int32
@@ -57,7 +57,7 @@ proc addFile*(z: var TZipArchive, dest, src: string) =
   ## may contain a path that will be created. 
   assert(z.mode != fmRead) 
   if not fileExists(src):
-    raise newException(EIO, "File '" & src & "' does not exist")
+    raise newException(IOError, "File '" & src & "' does not exist")
   var zipsrc = zip_source_file(z.w, src, 0, -1)
   if zipsrc == nil:
     #echo("Dest: " & dest)
@@ -74,7 +74,7 @@ proc addFile*(z: var TZipArchive, file: string) =
   
 proc mySourceCallback(state, data: pointer, len: int, 
                       cmd: TZipSourceCmd): int {.cdecl.} = 
-  var src = cast[PStream](state)
+  var src = cast[Stream](state)
   case cmd
   of ZIP_SOURCE_OPEN: 
     if src.setPositionImpl != nil: setPosition(src, 0) # reset
@@ -95,7 +95,7 @@ proc mySourceCallback(state, data: pointer, len: int,
   of constZIP_SOURCE_FREE: GC_unref(src)
   else: assert(false)
   
-proc addFile*(z: var TZipArchive, dest: string, src: PStream) = 
+proc addFile*(z: var TZipArchive, dest: string, src: Stream) = 
   ## Adds a file named with `dest` to the archive `z`. `dest`
   ## may contain a path. The file's content is read from the `src` stream.
   assert(z.mode != fmRead)
@@ -109,14 +109,14 @@ proc addFile*(z: var TZipArchive, dest: string, src: PStream) =
 # -------------- zip file stream ---------------------------------------------
 
 type
-  TZipFileStream = object of TStream
+  TZipFileStream = object of StreamObj
     f: PZipFile
 
   PZipFileStream* = 
     ref TZipFileStream ## a reader stream of a file within a zip archive 
 
-proc fsClose(s: PStream) = zip_fclose(PZipFileStream(s).f)
-proc fsReadData(s: PStream, buffer: pointer, bufLen: int): int = 
+proc fsClose(s: Stream) = zip_fclose(PZipFileStream(s).f)
+proc fsReadData(s: Stream, buffer: pointer, bufLen: int): int = 
   result = zip_fread(PZipFileStream(s).f, buffer, bufLen)
 
 proc newZipFileStream(f: PZipFile): PZipFileStream = 
@@ -146,7 +146,7 @@ iterator walkFiles*(z: var TZipArchive): string =
     inc(i)
 
 
-proc extractFile*(z: var TZipArchive, srcFile: string, dest: PStream) =
+proc extractFile*(z: var TZipArchive, srcFile: string, dest: Stream) =
   ## extracts a file from the zip archive `z` to the destination stream.
   var strm = getStream(z, srcFile)
   while true:

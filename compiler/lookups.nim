@@ -114,7 +114,7 @@ type
     mode*: TOverloadIterMode
     symChoiceIndex*: int
     scope*: PScope
-    inSymChoice: TIntSet
+    inSymChoice: IntSet
 
 proc getSymRepr*(s: PSym): string = 
   case s.kind

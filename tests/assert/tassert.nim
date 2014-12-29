@@ -5,7 +5,7 @@ discard """
 """
 # test assert and exception handling
 
-proc callB() = assert(False)
+proc callB() = assert(false)
 proc callA() = callB()
 proc callC() = callA()
 

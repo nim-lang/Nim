@@ -1,13 +1,13 @@
 #
 #
-#            Nimrod's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#            Nim's Runtime Library
+#        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-## This module provides the standard Nimrod command line parser.
+## This module provides the standard Nim command line parser.
 ## It supports one convenience iterator over all command line options and some
 ## lower-level features.
 ##
@@ -25,22 +25,24 @@ import
   os, strutils
 
 type
-  TCmdLineKind* = enum        ## the detected command line token
+  CmdLineKind* = enum         ## the detected command line token
     cmdEnd,                   ## end of command line reached
     cmdArgument,              ## argument detected
     cmdLongOption,            ## a long option ``--option`` detected
     cmdShortOption            ## a short option ``-c`` detected
-  TOptParser* =
-      object of TObject ## this object implements the command line parser
+  OptParser* =
+      object of RootObj ## this object implements the command line parser
     cmd: seq[string]
     pos: int
     remainingShortOptions: string
-    kind*: TCmdLineKind       ## the dected command line token
+    kind*: CmdLineKind        ## the dected command line token
     key*, val*: TaintedString ## key and value pair; ``key`` is the option
                               ## or the argument, ``value`` is not "" if
                               ## the option was given a value
 
-proc initOptParser*(cmdline: seq[string]): TOptParser {.rtl.} =
+{.deprecated: [TCmdLineKind: CmdLineKind, TOptParser: OptParser].}
+
+proc initOptParser*(cmdline: seq[string]): OptParser {.rtl.} =
   ## Initalizes option parses with cmdline. cmdline should not contain
   ## argument 0 - program name.
   ## If cmdline == nil default to current command line arguments.
@@ -54,7 +56,7 @@ proc initOptParser*(cmdline: seq[string]): TOptParser {.rtl.} =
 
   result.cmd = @cmdline
 
-proc initOptParser*(cmdline: string): TOptParser {.rtl, deprecated.} =
+proc initOptParser*(cmdline: string): OptParser {.rtl, deprecated.} =
   ## Initalizes option parses with cmdline. Splits cmdline in on spaces
   ## and calls initOptParser(openarray[string])
   ## Do not use.
@@ -64,13 +66,13 @@ proc initOptParser*(cmdline: string): TOptParser {.rtl, deprecated.} =
     return initOptParser(cmdline.split)
 
 when not defined(createNimRtl):
-  proc initOptParser*(): TOptParser =
+  proc initOptParser*(): OptParser =
     ## Initializes option parser from current command line arguments.
     return initOptParser(commandLineParams())
 
-proc next*(p: var TOptParser) {.rtl, extern: "npo$1".}
+proc next*(p: var OptParser) {.rtl, extern: "npo$1".}
 
-proc nextOption(p: var TOptParser, token: string, allowEmpty: bool) =
+proc nextOption(p: var OptParser, token: string, allowEmpty: bool) =
   for splitchar in [':', '=']:
     if splitchar in token:
       let pos = token.find(splitchar)
@@ -85,7 +87,7 @@ proc nextOption(p: var TOptParser, token: string, allowEmpty: bool) =
     p.remainingShortOptions = token[0..token.len-1]
     p.next()
 
-proc next(p: var TOptParser) =
+proc next(p: var OptParser) =
   if p.remainingShortOptions.len != 0:
     p.kind = cmdShortOption
     p.key = TaintedString(p.remainingShortOptions[0..0])
@@ -100,10 +102,10 @@ proc next(p: var TOptParser) =
   let token = p.cmd[p.pos]
   p.pos += 1
 
-  if token.startswith("--"):
+  if token.startsWith("--"):
     p.kind = cmdLongOption
     nextOption(p, token[2..token.len-1], allowEmpty=true)
-  elif token.startswith("-"):
+  elif token.startsWith("-"):
     p.kind = cmdShortOption
     nextOption(p, token[1..token.len-1], allowEmpty=true)
   else:
@@ -111,20 +113,22 @@ proc next(p: var TOptParser) =
     p.key = token
     p.val = ""
 
-proc cmdLineRest*(p: TOptParser): TaintedString {.rtl, extern: "npo$1", deprecated.} =
+proc cmdLineRest*(p: OptParser): TaintedString {.rtl, extern: "npo$1", deprecated.} =
   ## Returns part of command line string that has not been parsed yet.
   ## Do not use - does not correctly handle whitespace.
   return p.cmd[p.pos..p.cmd.len-1].join(" ")
 
 type
-  TGetoptResult* = tuple[kind: TCmdLineKind, key, val: TaintedString]
+  GetoptResult* = tuple[kind: CmdLineKind, key, val: TaintedString]
+
+{.deprecated: [TGetoptResult: GetoptResult].}
 
 when declared(paramCount):
-  iterator getopt*(): TGetoptResult =
+  iterator getopt*(): GetoptResult =
     ## This is an convenience iterator for iterating over the command line.
-    ## This uses the TOptParser object. Example:
+    ## This uses the OptParser object. Example:
     ##
-    ## .. code-block:: nimrod
+    ## .. code-block:: nim
     ##   var
     ##     filename = ""
     ##   for kind, key, val in getopt():

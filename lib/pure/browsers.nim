@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -44,5 +44,5 @@ proc openDefaultBrowser*(url: string) =
         # we use ``startProcess`` here because we don't want to block!
         discard startProcess(command=b, args=[url], options={poUseShell})
         return
-      except EOS:
+      except OSError:
         discard

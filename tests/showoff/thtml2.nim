@@ -1,5 +1,5 @@
 discard """
-  output: "<html><head><title>now look at this</title></head><body><ul><li>Nimrod is quite capable</li></ul></body></html>"
+  output: "<html><head><title>now look at this</title></head><body><ul><li>Nim is quite capable</li></ul></body></html>"
 """
 
 import strutils
@@ -32,6 +32,6 @@ html mainPage:
     title "now look at this"
   body:
     ul:
-      li "Nimrod is quite capable"
+      li "Nim is quite capable"
 
 echo mainPage()

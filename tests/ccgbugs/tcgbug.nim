@@ -35,3 +35,4 @@ type
     cb: proc (future: PFuture[T]) {.closure.}
 
 var k = PFuture[void]()
+

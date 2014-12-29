@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -12,76 +12,79 @@
 import macros, strtabs
 
 type
-  PXmlNode* = ref TXmlNode ## an XML tree consists of ``PXmlNode``'s. 
+  XmlNode* = ref XmlNodeObj ## an XML tree consists of ``PXmlNode``'s. 
   
-  TXmlNodeKind* = enum  ## different kinds of ``PXmlNode``'s
+  XmlNodeKind* = enum  ## different kinds of ``PXmlNode``'s
     xnText,             ## a text element
     xnElement,          ## an element with 0 or more children
     xnCData,            ## a CDATA node
     xnEntity,           ## an entity (like ``&thing;``)
     xnComment           ## an XML comment
   
-  PXmlAttributes* = PStringTable ## an alias for a string to string mapping
+  XmlAttributes* = StringTableRef ## an alias for a string to string mapping
   
-  TXmlNode {.pure, final, acyclic.} = object 
-    case k: TXmlNodeKind # private, use the kind() proc to read this field.
+  XmlNodeObj {.acyclic.} = object 
+    case k: XmlNodeKind # private, use the kind() proc to read this field.
     of xnText, xnComment, xnCData, xnEntity: 
       fText: string
     of xnElement:
       fTag: string
-      s: seq[PXmlNode]
-      fAttr: PXmlAttributes
+      s: seq[XmlNode]
+      fAttr: XmlAttributes
     fClientData: int              ## for other clients
-  
-proc newXmlNode(kind: TXmlNodeKind): PXmlNode = 
-  ## creates a new ``PXmlNode``.
+
+{.deprecated: [PXmlNode: XmlNode, TXmlNodeKind: XmlNodeKind, PXmlAttributes:
+    XmlAttributes, TXmlNode: XmlNodeObj].}
+
+proc newXmlNode(kind: XmlNodeKind): XmlNode =
+  ## creates a new ``XmlNode``.
   new(result)
   result.k = kind
 
-proc newElement*(tag: string): PXmlNode = 
+proc newElement*(tag: string): XmlNode = 
   ## creates a new ``PXmlNode`` of kind ``xnText`` with the given `tag`.
   result = newXmlNode(xnElement)
   result.fTag = tag
   result.s = @[]
   # init attributes lazily to safe memory
 
-proc newText*(text: string): PXmlNode = 
+proc newText*(text: string): XmlNode = 
   ## creates a new ``PXmlNode`` of kind ``xnText`` with the text `text`.
   result = newXmlNode(xnText)
   result.fText = text
 
-proc newComment*(comment: string): PXmlNode = 
+proc newComment*(comment: string): XmlNode = 
   ## creates a new ``PXmlNode`` of kind ``xnComment`` with the text `comment`.
   result = newXmlNode(xnComment)
   result.fText = comment
 
-proc newCData*(cdata: string): PXmlNode = 
+proc newCData*(cdata: string): XmlNode = 
   ## creates a new ``PXmlNode`` of kind ``xnComment`` with the text `cdata`.
   result = newXmlNode(xnCData)
   result.fText = cdata
 
-proc newEntity*(entity: string): PXmlNode = 
+proc newEntity*(entity: string): XmlNode = 
   ## creates a new ``PXmlNode`` of kind ``xnEntity`` with the text `entity`.
   result = newXmlNode(xnCData)
   result.fText = entity
 
-proc text*(n: PXmlNode): string {.inline.} = 
+proc text*(n: XmlNode): string {.inline.} = 
   ## gets the associated text with the node `n`. `n` can be a CDATA, Text,
   ## comment, or entity node.
   assert n.k in {xnText, xnComment, xnCData, xnEntity}
   result = n.fText
 
-proc rawText*(n: PXmlNode): string {.inline.} =
+proc rawText*(n: XmlNode): string {.inline.} =
   ## returns the underlying 'text' string by reference.
   ## This is only used for speed hacks.
   shallowCopy(result, n.fText)
 
-proc rawTag*(n: PXmlNode): string {.inline.} =
+proc rawTag*(n: XmlNode): string {.inline.} =
   ## returns the underlying 'tag' string by reference.
   ## This is only used for speed hacks.
   shallowCopy(result, n.fTag)
 
-proc innerText*(n: PXmlNode): string =
+proc innerText*(n: XmlNode): string =
   ## gets the inner text of `n`. `n` has to be an ``xnElement`` node. Only
   ## ``xnText`` and ``xnEntity`` nodes are considered part of `n`'s inner text,
   ## other child nodes are silently ignored.
@@ -90,55 +93,55 @@ proc innerText*(n: PXmlNode): string =
   for i in 0 .. n.s.len-1:
     if n.s[i].k in {xnText, xnEntity}: result.add(n.s[i].fText)
 
-proc tag*(n: PXmlNode): string {.inline.} = 
+proc tag*(n: XmlNode): string {.inline.} = 
   ## gets the tag name of `n`. `n` has to be an ``xnElement`` node.
   assert n.k == xnElement
   result = n.fTag
     
-proc add*(father, son: PXmlNode) {.inline.} = 
+proc add*(father, son: XmlNode) {.inline.} = 
   ## adds the child `son` to `father`.
   add(father.s, son)
   
-proc len*(n: PXmlNode): int {.inline.} = 
+proc len*(n: XmlNode): int {.inline.} = 
   ## returns the number `n`'s children.
   if n.k == xnElement: result = len(n.s)
 
-proc kind*(n: PXmlNode): TXmlNodeKind {.inline.} =
+proc kind*(n: XmlNode): XmlNodeKind {.inline.} =
   ## returns `n`'s kind.
   result = n.k
 
-proc `[]`* (n: PXmlNode, i: int): PXmlNode {.inline.} = 
+proc `[]`* (n: XmlNode, i: int): XmlNode {.inline.} = 
   ## returns the `i`'th child of `n`.
   assert n.k == xnElement
   result = n.s[i]
 
-iterator items*(n: PXmlNode): PXmlNode {.inline.} = 
+iterator items*(n: XmlNode): XmlNode {.inline.} = 
   ## iterates over any child of `n`.
   assert n.k == xnElement
   for i in 0 .. n.len-1: yield n[i]
 
-proc attrs*(n: PXmlNode): PXmlAttributes {.inline.} = 
+proc attrs*(n: XmlNode): XmlAttributes {.inline.} = 
   ## gets the attributes belonging to `n`.
   ## Returns `nil` if attributes have not been initialised for this node.
   assert n.k == xnElement
   result = n.fAttr
   
-proc `attrs=`*(n: PXmlNode, attr: PXmlAttributes) {.inline.} = 
+proc `attrs=`*(n: XmlNode, attr: XmlAttributes) {.inline.} = 
   ## sets the attributes belonging to `n`.
   assert n.k == xnElement
   n.fAttr = attr
 
-proc attrsLen*(n: PXmlNode): int {.inline.} = 
+proc attrsLen*(n: XmlNode): int {.inline.} = 
   ## returns the number of `n`'s attributes.
   assert n.k == xnElement
   if not isNil(n.fAttr): result = len(n.fAttr)
 
-proc clientData*(n: PXmlNode): int {.inline.} =
+proc clientData*(n: XmlNode): int {.inline.} =
   ## gets the client data of `n`. The client data field is used by the HTML
   ## parser and generator.
   result = n.fClientData
 
-proc `clientData=`*(n: PXmlNode, data: int) {.inline.} = 
+proc `clientData=`*(n: XmlNode, data: int) {.inline.} = 
   ## sets the client data of `n`. The client data field is used by the HTML
   ## parser and generator.
   n.fClientData = data
@@ -176,13 +179,13 @@ proc addIndent(result: var string, indent: int) =
   result.add("\n")
   for i in 1..indent: result.add(' ')
   
-proc noWhitespace(n: PXmlNode): bool =
+proc noWhitespace(n: XmlNode): bool =
   #for i in 1..n.len-1:
   #  if n[i].kind != n[0].kind: return true
   for i in 0..n.len-1:
     if n[i].kind in {xnText, xnEntity}: return true
   
-proc add*(result: var string, n: PXmlNode, indent = 0, indWidth = 2) = 
+proc add*(result: var string, n: XmlNode, indent = 0, indWidth = 2) = 
   ## adds the textual representation of `n` to `result`.
   if n == nil: return
   case n.k
@@ -222,7 +225,7 @@ proc add*(result: var string, n: PXmlNode, indent = 0, indWidth = 2) =
     result.add("<!-- ")
     result.addEscaped(n.fText)
     result.add(" -->")
-  of xnCDATA:
+  of xnCData:
     result.add("<![CDATA[")
     result.add(n.fText)
     result.add("]]>")
@@ -235,14 +238,14 @@ const
   xmlHeader* = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n" 
     ## header to use for complete XML output
 
-proc `$`*(n: PXmlNode): string =
+proc `$`*(n: XmlNode): string =
   ## converts `n` into its string representation. No ``<$xml ...$>`` declaration
   ## is produced, so that the produced XML fragments are composable.
   result = ""
   result.add(n)
 
-proc newXmlTree*(tag: string, children: openArray[PXmlNode],
-                 attributes: PXmlAttributes = nil): PXmlNode = 
+proc newXmlTree*(tag: string, children: openArray[XmlNode],
+                 attributes: XmlAttributes = nil): XmlNode = 
   ## creates a new XML tree with `tag`, `children` and `attributes`
   result = newXmlNode(xnElement)
   result.fTag = tag
@@ -276,17 +279,17 @@ proc xmlConstructor(e: PNimrodNode): PNimrodNode {.compileTime.} =
 macro `<>`*(x: expr): expr {.immediate.} = 
   ## Constructor macro for XML. Example usage:
   ##
-  ## .. code-block:: nimrod
-  ##   <>a(href="http://nimrod-code.org", newText("Nimrod rules."))
+  ## .. code-block:: nim
+  ##   <>a(href="http://nim-code.org", newText("Nim rules."))
   ##
   ## Produces an XML tree for::
   ##
-  ##  <a href="http://nimrod-code.org">Nimrod rules.</a>
+  ##  <a href="http://nim-code.org">Nim rules.</a>
   ##
   let x = callsite()
   result = xmlConstructor(x)
 
-proc child*(n: PXmlNode, name: string): PXmlNode =
+proc child*(n: XmlNode, name: string): XmlNode =
   ## Finds the first child element of `n` with a name of `name`.
   ## Returns `nil` on failure.
   assert n.kind == xnElement
@@ -295,23 +298,23 @@ proc child*(n: PXmlNode, name: string): PXmlNode =
       if i.tag == name:
         return i
 
-proc attr*(n: PXmlNode, name: string): string =
+proc attr*(n: XmlNode, name: string): string =
   ## Finds the first attribute of `n` with a name of `name`.
   ## Returns "" on failure.
   assert n.kind == xnElement
   if n.attrs == nil: return ""
   return n.attrs[name]
 
-proc findAll*(n: PXmlNode, tag: string, result: var seq[PXmlNode]) =
+proc findAll*(n: XmlNode, tag: string, result: var seq[XmlNode]) =
   ## Iterates over all the children of `n` returning those matching `tag`.
   ##
   ## Found nodes satisfying the condition will be appended to the `result`
   ## sequence, which can't be nil or the proc will crash. Usage example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block::
   ##   var
-  ##     html: PXmlNode
-  ##     tags: seq[PXmlNode] = @[]
+  ##     html: XmlNode
+  ##     tags: seq[XmlNode] = @[]
   ##
   ##   html = buildHtml()
   ##   findAll(html, "img", tags)
@@ -327,11 +330,11 @@ proc findAll*(n: PXmlNode, tag: string, result: var seq[PXmlNode]) =
     elif child.k == xnElement:
       child.findAll(tag, result)
 
-proc findAll*(n: PXmlNode, tag: string): seq[PXmlNode] =
+proc findAll*(n: XmlNode, tag: string): seq[XmlNode] =
   ## Shortcut version to assign in let blocks. Example:
   ##
-  ## .. code-block:: nimrod
-  ##   var html: PXmlNode
+  ## .. code-block::
+  ##   var html: XmlNode
   ##
   ##   html = buildHtml(html)
   ##   for imgTag in html.findAll("img"):
@@ -340,5 +343,5 @@ proc findAll*(n: PXmlNode, tag: string): seq[PXmlNode] =
   findAll(n, tag, result)
 
 when isMainModule:
-  assert """<a href="http://nimrod-code.org">Nimrod rules.</a>""" ==
-    $(<>a(href="http://nimrod-code.org", newText("Nimrod rules.")))
+  assert """<a href="http://nim-code.org">Nim rules.</a>""" ==
+    $(<>a(href="http://nim-code.org", newText("Nim rules.")))

@@ -5,9 +5,9 @@ discard """
 
 import xmltree, strtabs
 
-var x = <>a(href="nimrod.de", newText("www.nimrod-test.de"))
+var x = <>a(href="nim.de", newText("www.nim-test.de"))
 
-echo($x == "<a href=\"nimrod.de\">www.nimrod-test.de</a>")
+echo($x == "<a href=\"nim.de\">www.nim-test.de</a>")
 
 
 

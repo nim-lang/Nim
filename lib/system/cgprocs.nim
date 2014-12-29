@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -9,7 +9,7 @@
 
 # Headers for procs that the code generator depends on ("compilerprocs")
 
-proc addChar(s: NimString, c: char): NimString {.compilerProc, gcsafe.}
+proc addChar(s: NimString, c: char): NimString {.compilerProc, benign.}
 
 type
   TLibHandle = pointer       # private type
@@ -21,5 +21,5 @@ proc nimGetProcAddr(lib: TLibHandle, name: cstring): TProcAddr {.compilerproc.}
 
 proc nimLoadLibraryError(path: string) {.compilerproc, noinline.}
 
-proc setStackBottom(theStackBottom: pointer) {.compilerRtl, noinline, gcsafe.}
+proc setStackBottom(theStackBottom: pointer) {.compilerRtl, noinline, benign.}
 

@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -12,7 +12,7 @@
 import os
 type 
   PListEntry* = ref TListEntry
-  TListEntry* = object of TObject
+  TListEntry* = object of RootObj
     prev*, next*: PListEntry
 
   TStrEntry* = object of TListEntry

@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod Tester
+#            Nim Tester
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -20,7 +20,7 @@ const
 proc delNimCache() =
   try:
     removeDir(nimcacheDir)
-  except EOS:
+  except OSError:
     echo "[Warning] could not delete: ", nimcacheDir
     
 proc runRodFiles(r: var TResults, cat: Category, options: string) =
@@ -71,7 +71,7 @@ proc compileRodFiles(r: var TResults, cat: Category, options: string) =
 proc safeCopyFile(src, dest: string) =
   try:
     copyFile(src, dest)
-  except EOS:
+  except OSError:
     echo "[Warning] could not copy: ", src, " to ", dest
 
 proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
@@ -87,7 +87,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
   else:
     # posix relies on crappy LD_LIBRARY_PATH (ugh!):
     var libpath = getenv"LD_LIBRARY_PATH".string
-    if peg"\i '/nimrod' (!'/')* '/lib'" notin libpath:
+    if peg"\i '/nim' (!'/')* '/lib'" notin libpath:
       echo "[Warning] insufficient LD_LIBRARY_PATH"
     var serverDll = DynlibFormat % "server"
     safeCopyFile("tests/dll" / serverDll, "lib" / serverDll)
@@ -192,9 +192,9 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
 #    testSpec(r, t, options)
 
 proc findMainFile(dir: string): string =
-  # finds the file belonging to ".nimrod.cfg"; if there is no such file
+  # finds the file belonging to ".nim.cfg"; if there is no such file
   # it returns the some ".nim" file if there is only one: 
-  const cfgExt = ".nimrod.cfg"
+  const cfgExt = ".nim.cfg"
   result = ""
   var nimFiles = 0
   for kind, file in os.walkDir(dir):
@@ -236,8 +236,8 @@ let
   packageDir = babelDir / "pkgs"
   packageIndex = babelDir / "packages.json"
 
-proc waitForExitEx(p: PProcess): int =
-  var outp: PStream = outputStream(p)
+proc waitForExitEx(p: Process): int =
+  var outp = outputStream(p)
   var line = newStringOfCap(120).TaintedString
   while true:
     if outp.readLine(line):
@@ -250,7 +250,7 @@ proc waitForExitEx(p: PProcess): int =
 proc getPackageDir(package: string): string =
   ## TODO - Replace this with dom's version comparison magic.
   var commandOutput = execCmdEx("babel path $#" % package)
-  if commandOutput.exitCode != quitSuccess:
+  if commandOutput.exitCode != QuitSuccess:
     return ""
   else:
     result = commandOutput[0].string
@@ -278,7 +278,7 @@ proc testBabelPackages(r: var TResults, cat: Category, filter: PackageFilter) =
     echo("[Warning] - Cannot run babel tests: Babel binary not found.")
     return
 
-  if execCmd("$# update" % babelExe) == quitFailure:
+  if execCmd("$# update" % babelExe) == QuitFailure:
     echo("[Warning] - Cannot run babel tests: Babel update failed.")
     return
 
@@ -291,7 +291,7 @@ proc testBabelPackages(r: var TResults, cat: Category, filter: PackageFilter) =
         installProcess = startProcess(babelExe, "", ["install", "-y", name])
         installStatus = waitForExitEx(installProcess)
       installProcess.close
-      if installStatus != quitSuccess:
+      if installStatus != QuitSuccess:
         r.addResult(test, "", "", reInstallFailed)
         continue
 
@@ -301,18 +301,18 @@ proc testBabelPackages(r: var TResults, cat: Category, filter: PackageFilter) =
         buildProcess = startProcess(babelExe, buildPath, ["build"])
         buildStatus = waitForExitEx(buildProcess)
       buildProcess.close
-      if buildStatus != quitSuccess:
+      if buildStatus != QuitSuccess:
         r.addResult(test, "", "", reBuildFailed)
       r.addResult(test, "", "", reSuccess)
     r.addResult(packageFileTest, "", "", reSuccess)
-  except EJsonParsingError:
+  except JsonParsingError:
     echo("[Warning] - Cannot run babel tests: Invalid package file.")
     r.addResult(packageFileTest, "", "", reBuildFailed)
 
 
 # ----------------------------------------------------------------------------
 
-const AdditionalCategories = ["debugger", "examples", "stdlib", "babel-core"]
+const AdditionalCategories = ["debugger", "examples", "lib", "babel-core"]
 
 proc `&.?`(a, b: string): string =
   # candidate for the stdlib?
@@ -342,7 +342,7 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
     threadTests r, cat, options & " --threads:on"
   of "io":
     ioTests r, cat, options
-  of "stdlib":
+  of "lib":
     testStdlib(r, "lib/pure/*.nim", options, cat)
     testStdlib(r, "lib/packages/docutils/highlite", options, cat)
   of "examples":

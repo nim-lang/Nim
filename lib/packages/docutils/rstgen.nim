@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -24,7 +24,7 @@
 ## generate `LaTeX documents <https://en.wikipedia.org/wiki/LaTeX>`_ too.
 
 import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
-  algorithm
+  algorithm, parseutils
 
 const
   HtmlExt = "html"
@@ -35,16 +35,16 @@ type
     outHtml,            # output is HTML
     outLatex            # output is Latex
   
-  TTocEntry{.final.} = object 
+  TTocEntry = object 
     n*: PRstNode
     refname*, header*: string
 
   TMetaEnum* = enum 
     metaNone, metaTitle, metaSubtitle, metaAuthor, metaVersion
     
-  TRstGenerator* = object of TObject
+  TRstGenerator* = object of RootObj
     target*: TOutputTarget
-    config*: PStringTable
+    config*: StringTableRef
     splitAfter*: int          # split too long entries in the TOC
     tocPart*: seq[TTocEntry]
     hasToc*: bool
@@ -57,21 +57,34 @@ type
     currentSection: string ## \
     ## Stores the empty string or the last headline/overline found in the rst
     ## document, so it can be used as a prettier name for term index generation.
-    seenIndexTerms: TTable[string, int] ## \
+    seenIndexTerms: Table[string, int] ## \
     ## Keeps count of same text index terms to generate different identifiers
     ## for hyperlinks. See renderIndexTerm proc for details.
   
   PDoc = var TRstGenerator ## Alias to type less.
 
+  CodeBlockParams = object ## Stores code block params.
+    numberLines: bool ## True if the renderer has to show line numbers.
+    startLine: int ## The starting line of the code block, by default 1.
+    langStr: string ## Input string used to specify the language.
+    lang: TSourceLanguage ## Type of highlighting, by default none.
+
+
+proc init(p: var CodeBlockParams) =
+  ## Default initialisation of CodeBlockParams to sane values.
+  p.startLine = 1
+  p.lang = langNone
+  p.langStr = ""
+
 proc initRstGenerator*(g: var TRstGenerator, target: TOutputTarget,
-                       config: PStringTable, filename: string,
+                       config: StringTableRef, filename: string,
                        options: TRstParseOptions,
-                       findFile: TFindFileHandler,
-                       msgHandler: TMsgHandler) =
+                       findFile: TFindFileHandler=nil,
+                       msgHandler: TMsgHandler=nil) =
   ## Initializes a ``TRstGenerator``.
   ##
   ## You need to call this before using a ``TRstGenerator`` with any other
-  ## procs in this module. Pass a non ``nil`` ``PStringTable`` value as
+  ## procs in this module. Pass a non ``nil`` ``StringTableRef`` value as
   ## `config` with parameters used by the HTML output generator.  If you don't
   ## know what to use, pass the results of the `defaultConfig()
   ## <#defaultConfig>_` proc.
@@ -103,15 +116,12 @@ proc initRstGenerator*(g: var TRstGenerator, target: TOutputTarget,
   ##
   ## Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##
   ##   import packages/docutils/rstgen
   ##
   ##   var gen: TRstGenerator
-  ##
-  ##   gen.initRstGenerator(outHtml, defaultConfig(),
-  ##     "filename", {}, nil, nil)
-
+  ##   gen.initRstGenerator(outHtml, defaultConfig(), "filename", {})
   g.config = config
   g.target = target
   g.tocPart = @[]
@@ -231,7 +241,7 @@ proc renderRstToOut*(d: var TRstGenerator, n: PRstNode, result: var string)
   ## ``initRstGenerator`` and parse a rst file with ``rstParse`` from the
   ## `packages/docutils/rst module <rst.html>`_. Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##
   ##   # ...configure gen and rst vars...
   ##   var generatedHTML = ""
@@ -341,13 +351,13 @@ proc renderIndexTerm*(d: PDoc, n: PRstNode, result: var string) =
         [id, term])
 
 type
-  TIndexEntry {.pure, final.} = object
+  TIndexEntry = object
     keyword: string
     link: string
     linkTitle: string ## If not nil, contains a prettier text for the href
     linkDesc: string ## If not nil, the title attribute of the final href
 
-  TIndexedDocs {.pure, final.} = TTable[TIndexEntry, seq[TIndexEntry]] ## \
+  TIndexedDocs = Table[TIndexEntry, seq[TIndexEntry]] ## \
     ## Contains the index sequences for doc types.
     ##
     ## The key is a *fake* TIndexEntry which will contain the title of the
@@ -597,7 +607,7 @@ proc mergeIndexes*(dir: string): string =
   ## Merges all index files in `dir` and returns the generated index as HTML.
   ##
   ## This proc will first scan `dir` for index files with the ``.idx``
-  ## extension previously created by commands like ``nimrod doc|rst2html``
+  ## extension previously created by commands like ``nim doc|rst2html``
   ## which use the ``--index:on`` switch. These index files are the result of
   ## calls to `setIndexTerm() <#setIndexTerm>`_ and `writeIndexFile()
   ## <#writeIndexFile>`_, so they are simple tab separated files.
@@ -678,7 +688,7 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
     d.tocPart[length].header = tmp
 
     dispA(d.target, result, "\n<h$1><a class=\"toc-backref\" " &
-      "id=\"$2\" href=\"#$2_toc\">$3</a></h$1>", "\\rsth$4{$3}\\label{$2}\n",
+      "id=\"$2\" href=\"#$2\">$3</a></h$1>", "\\rsth$4{$3}\\label{$2}\n",
       [$n.level, d.tocPart[length].refname, tmp, $chr(n.level - 1 + ord('A'))])
   else:
     dispA(d.target, result, "\n<h$1 id=\"$2\">$3</h$1>", 
@@ -715,9 +725,9 @@ proc renderTocEntry(d: PDoc, e: TTocEntry, result: var string) =
     "\\item\\label{$1_toc} $2\\ref{$1}\n", [e.refname, e.header])
 
 proc renderTocEntries*(d: var TRstGenerator, j: var int, lvl: int,
-    result: var string) =
+                       result: var string) =
   var tmp = ""
-  while j <= high(d.tocPart): 
+  while j <= high(d.tocPart):
     var a = abs(d.tocPart[j].n.level)
     if a == lvl:
       renderTocEntry(d, d.tocPart[j], tmp)
@@ -727,60 +737,142 @@ proc renderTocEntries*(d: var TRstGenerator, j: var int, lvl: int,
     else:
       break
   if lvl > 1:
-    dispA(d.target, result, "<ul class=\"simple\">$1</ul>", 
+    dispA(d.target, result, "<ul class=\"simple\">$1</ul>",
                             "\\begin{enumerate}$1\\end{enumerate}", [tmp])
   else:
     result.add(tmp)
-  
-proc renderImage(d: PDoc, n: PRstNode, result: var string) = 
+
+proc renderImage(d: PDoc, n: PRstNode, result: var string) =
+  template valid(s): expr =
+    s.len > 0 and allCharsInSet(s, {'/',':','%','_','\\','\128'..'\xFF'} +
+                                   Digits + Letters + WhiteSpace)
+
   var options = ""
   var s = getFieldValue(n, "scale")
-  if s != "": dispA(d.target, options, " scale=\"$1\"", " scale=$1", [strip(s)])
+  if s.valid: dispA(d.target, options, " scale=\"$1\"", " scale=$1", [strip(s)])
   
   s = getFieldValue(n, "height")
-  if s != "": dispA(d.target, options, " height=\"$1\"", " height=$1", [strip(s)])
+  if s.valid: dispA(d.target, options, " height=\"$1\"", " height=$1", [strip(s)])
   
   s = getFieldValue(n, "width")
-  if s != "": dispA(d.target, options, " width=\"$1\"", " width=$1", [strip(s)])
+  if s.valid: dispA(d.target, options, " width=\"$1\"", " width=$1", [strip(s)])
   
   s = getFieldValue(n, "alt")
-  if s != "": dispA(d.target, options, " alt=\"$1\"", "", [strip(s)])
+  if s.valid: dispA(d.target, options, " alt=\"$1\"", "", [strip(s)])
   
   s = getFieldValue(n, "align")
-  if s != "": dispA(d.target, options, " align=\"$1\"", "", [strip(s)])
+  if s.valid: dispA(d.target, options, " align=\"$1\"", "", [strip(s)])
   
   if options.len > 0: options = dispF(d.target, "$1", "[$1]", [options])
-  
-  dispA(d.target, result, "<img src=\"$1\"$2 />", "\\includegraphics$2{$1}", 
-                 [getArgument(n), options])
+
+  let arg = getArgument(n)
+  if arg.valid:
+    dispA(d.target, result, "<img src=\"$1\"$2 />", "\\includegraphics$2{$1}", 
+          [arg, options])
   if len(n) >= 3: renderRstToOut(d, n.sons[2], result)
   
 proc renderSmiley(d: PDoc, n: PRstNode, result: var string) =
   dispA(d.target, result,
-    """<img src="/images/smilies/$1.gif" width="15" 
-        height="17" hspace="2" vspace="2" />""",
-    "\\includegraphics{$1}", [n.text])
+    """<img src="$1" width="15" 
+        height="17" hspace="2" vspace="2" class="smiley" />""",
+    "\\includegraphics{$1}", [d.config["doc.smiley_format"] % n.text])
   
+proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
+  ## Parses useful fields which can appear before a code block.
+  ##
+  ## This supports the special ``default-language`` internal string generated
+  ## by the ``rst`` module to communicate a specific default language.
+  case n.getArgument.toLower
+  of "number-lines":
+    params.numberLines = true
+    # See if the field has a parameter specifying a different line than 1.
+    var number: int
+    if parseInt(n.getFieldValue, number) > 0:
+      params.startLine = number
+  of "file":
+    # The ``file`` option is a Nimrod extension to the official spec, it acts
+    # like it would for other directives like ``raw`` or ``cvs-table``. This
+    # field is dealt with in ``rst.nim`` which replaces the existing block with
+    # the referenced file, so we only need to ignore it here to avoid incorrect
+    # warning messages.
+    discard
+  of "default-language":
+    params.langStr = n.getFieldValue.strip
+    params.lang = params.langStr.getSourceLanguage
+  else:
+    d.msgHandler(d.filename, 1, 0, mwUnsupportedField, n.getArgument)
+
+proc parseCodeBlockParams(d: PDoc, n: PRstNode): CodeBlockParams =
+  ## Iterates over all code block fields and returns processed params.
+  ##
+  ## Also processes the argument of the directive as the default language. This
+  ## is done last so as to override any internal communication field variables.
+  result.init
+  if n.isNil:
+    return
+  assert n.kind == rnCodeBlock
+  assert(not n.sons[2].isNil)
+
+  # Parse the field list for rendering parameters if there are any.
+  if not n.sons[1].isNil:
+    for son in n.sons[1].sons: d.parseCodeBlockField(son, result)
+
+  # Parse the argument and override the language.
+  result.langStr = strip(getArgument(n))
+  if result.langStr != "":
+    result.lang = getSourceLanguage(result.langStr)
+
+proc buildLinesHTMLTable(params: CodeBlockParams, code: string):
+    tuple[beginTable, endTable: string] =
+  ## Returns the necessary tags to start/end a code block in HTML.
+  ##
+  ## If the numberLines has not been used, the tags will default to a simple
+  ## <pre> pair. Otherwise it will build a table and insert an initial column
+  ## with all the line numbers, which requires you to pass the `code` to detect
+  ## how many lines have to be generated (and starting at which point!).
+  if not params.numberLines:
+    result = ("<pre>", "</pre>")
+    return
+
+  var codeLines = 1 + code.strip.countLines
+  assert codeLines > 0
+  result.beginTable = """<table class="line-nums-table"><tbody><tr><td class="blob-line-nums"><pre>"""
+  var line = params.startLine
+  while codeLines > 0:
+    result.beginTable.add($line & "\n")
+    line.inc
+    codeLines.dec
+  result.beginTable.add("</pre></td><td><pre>")
+  result.endTable = "</pre></td></tr></tbody></table>"
+
 proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
+  ## Renders a code block, appending it to `result`.
+  ##
+  ## If the code block uses the ``number-lines`` option, a table will be
+  ## generated with two columns, the first being a list of numbers and the
+  ## second the code block itself. The code block can use syntax highlighting,
+  ## which depends on the directive argument specified by the rst input, and
+  ## may also come from the parser through the internal ``default-language``
+  ## option to differentiate between a plain code block and nimrod's code block
+  ## extension.
+  assert n.kind == rnCodeBlock
   if n.sons[2] == nil: return
+  var params = d.parseCodeBlockParams(n)
   var m = n.sons[2].sons[0]
   assert m.kind == rnLeaf
-  var langstr = strip(getArgument(n))
-  var lang: TSourceLanguage
-  if langstr == "":
-    lang = langNimrod         # default language
-  else:
-    lang = getSourceLanguage(langstr)
-  
-  dispA(d.target, result, "<pre>", "\\begin{rstpre}\n", [])
-  if lang == langNone:
-    d.msgHandler(d.filename, 1, 0, mwUnsupportedLanguage, langstr)
+
+  let (blockStart, blockEnd) = params.buildLinesHTMLTable(m.text)
+
+  dispA(d.target, result, blockStart, "\\begin{rstpre}\n", [])
+  if params.lang == langNone:
+    if len(params.langStr) > 0:
+      d.msgHandler(d.filename, 1, 0, mwUnsupportedLanguage, params.langStr)
     for letter in m.text: escChar(d.target, result, letter)
   else:
     var g: TGeneralTokenizer
     initGeneralTokenizer(g, m.text)
     while true: 
-      getNextToken(g, lang)
+      getNextToken(g, params.lang)
       case g.kind
       of gtEof: break 
       of gtNone, gtWhitespace: 
@@ -790,8 +882,8 @@ proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
           esc(d.target, substr(m.text, g.start, g.length+g.start-1)),
           tokenClassToStr[g.kind]])
     deinitGeneralTokenizer(g)
-  dispA(d.target, result, "</pre>", "\n\\end{rstpre}\n")
-  
+  dispA(d.target, result, blockEnd, "\n\\end{rstpre}\n")
+
 proc renderContainer(d: PDoc, n: PRstNode, result: var string) = 
   var tmp = ""
   renderRstToOut(d, n.sons[2], tmp)
@@ -1011,7 +1103,7 @@ proc formatNamedVars*(frmt: string, varnames: openArray[string],
           inc(i)
           if i > L-1 or frmt[i] notin {'0'..'9'}: break 
         if j > high(varvalues) + 1:
-          raise newException(EInvalidValue, "invalid index: " & $j)
+          raise newException(ValueError, "invalid index: " & $j)
         num = j
         add(result, varvalues[j - 1])
       of 'A'..'Z', 'a'..'z', '\x80'..'\xFF': 
@@ -1024,13 +1116,13 @@ proc formatNamedVars*(frmt: string, varnames: openArray[string],
         if idx >= 0: 
           add(result, varvalues[idx])
         else:
-          raise newException(EInvalidValue, "unknown substitution var: " & id)
+          raise newException(ValueError, "unknown substitution var: " & id)
       of '{': 
         var id = ""
         inc(i)
         while frmt[i] != '}': 
           if frmt[i] == '\0': 
-            raise newException(EInvalidValue, "'}' expected")
+            raise newException(ValueError, "'}' expected")
           add(id, frmt[i])
           inc(i)
         inc(i)                # skip }
@@ -1038,9 +1130,9 @@ proc formatNamedVars*(frmt: string, varnames: openArray[string],
         var idx = getVarIdx(varnames, id)
         if idx >= 0: add(result, varvalues[idx])
         else: 
-          raise newException(EInvalidValue, "unknown substitution var: " & id)
+          raise newException(ValueError, "unknown substitution var: " & id)
       else:
-        raise newException(EInvalidValue, "unknown substitution: $" & $frmt[i])
+        raise newException(ValueError, "unknown substitution: $" & $frmt[i])
     var start = i
     while i < L: 
       if frmt[i] != '$': inc(i)
@@ -1048,10 +1140,10 @@ proc formatNamedVars*(frmt: string, varnames: openArray[string],
     if i-1 >= start: add(result, substr(frmt, start, i - 1))
 
 
-proc defaultConfig*(): PStringTable =
+proc defaultConfig*(): StringTableRef =
   ## Returns a default configuration for embedded HTML generation.
   ##
-  ## The returned ``PStringTable`` contains the paramters used by the HTML
+  ## The returned ``StringTableRef`` contains the paramters used by the HTML
   ## engine to build the final output. For information on what these parameters
   ## are and their purpose, please look up the file ``config/nimdoc.cfg``
   ## bundled with the compiler.
@@ -1109,11 +1201,12 @@ $content
 """)
   setConfigVar("doc.body_no_toc", "$moduledesc $content")
   setConfigVar("doc.file", "$content")
+  setConfigVar("doc.smiley_format", "/images/smilies/$1.gif")
 
 # ---------- forum ---------------------------------------------------------
 
 proc rstToHtml*(s: string, options: TRstParseOptions, 
-                config: PStringTable): string =
+                config: StringTableRef): string =
   ## Converts an input rst string into embeddable HTML.
   ##
   ## This convenience proc parses any input string using rst markup (it doesn't
@@ -1123,7 +1216,7 @@ proc rstToHtml*(s: string, options: TRstParseOptions,
   ## work. For an explanation of the ``config`` parameter see the
   ## ``initRstGenerator`` proc. Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   import packages/docutils/rstgen, strtabs
   ##
   ##   echo rstToHtml("*Hello* **world**!", {},

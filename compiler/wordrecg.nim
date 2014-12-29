@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -24,9 +24,9 @@ type
     
     wAddr, wAnd, wAs, wAsm, wAtomic, 
     wBind, wBlock, wBreak, wCase, wCast, wConst, 
-    wContinue, wConverter, wDiscard, wDistinct, wDiv, wDo, 
+    wContinue, wConverter, wDefer, wDiscard, wDistinct, wDiv, wDo, 
     wElif, wElse, wEnd, wEnum, wExcept, wExport,
-    wFinally, wFor, wFrom, wGeneric, wIf, wImport, wIn, 
+    wFinally, wFor, wFrom, wFunc, wGeneric, wIf, wImport, wIn, 
     wInclude, wInterface, wIs, wIsnot, wIterator, wLet,
     wMacro, wMethod, wMixin, wMod, wNil, 
     wNot, wNotin, wObject, wOf, wOr, wOut, wProc, wPtr, wRaise, wRef, wReturn, 
@@ -61,7 +61,8 @@ type
     wPassc, wPassl, wBorrow, wDiscardable,
     wFieldChecks, 
     wWatchPoint, wSubsChar, 
-    wAcyclic, wShallow, wUnroll, wLinearScanEnd, wComputedGoto, wInjectStmt,
+    wAcyclic, wShallow, wUnroll, wLinearScanEnd, wComputedGoto, 
+    wInjectStmt, wExperimental,
     wWrite, wGensym, wInject, wDirty, wInheritable, wThreadVar, wEmit, 
     wAsmNoStackFrame,
     wImplicitStatic, wGlobal, wCodegenDecl, wUnchecked, wGuard, wLocks,
@@ -103,9 +104,9 @@ const
     "addr", "and", "as", "asm", "atomic", 
     "bind", "block", "break", "case", "cast", 
     "const", "continue", "converter",
-    "discard", "distinct", "div", "do",
+    "defer", "discard", "distinct", "div", "do",
     "elif", "else", "end", "enum", "except", "export", 
-    "finally", "for", "from", "generic", "if", 
+    "finally", "for", "from", "func", "generic", "if", 
     "import", "in", "include", "interface", "is", "isnot", "iterator",
     "let",
     "macro", "method", "mixin", "mod", "nil", "not", "notin",
@@ -144,7 +145,7 @@ const
     "passc", "passl", "borrow", "discardable", "fieldchecks",
     "watchpoint",
     "subschar", "acyclic", "shallow", "unroll", "linearscanend",
-    "computedgoto", "injectstmt",
+    "computedgoto", "injectstmt", "experimental",
     "write", "gensym", "inject", "dirty", "inheritable", "threadvar", "emit",
     "asmnostackframe", "implicitstatic", "global", "codegendecl", "unchecked",
     "guard", "locks",

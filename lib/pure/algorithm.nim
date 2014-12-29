@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -10,10 +10,13 @@
 ## This module implements some common generic algorithms.
 
 type
-  TSortOrder* = enum   ## sort order
+  SortOrder* = enum   ## sort order
     Descending, Ascending 
 
-proc `*`*(x: int, order: TSortOrder): int {.inline.} = 
+{.deprecated: [TSortOrder: SortOrder].}
+
+
+proc `*`*(x: int, order: SortOrder): int {.inline.} = 
   ## flips `x` if ``order == Descending``;
   ## if ``order == Ascending`` then `x` is returned.
   ## `x` is supposed to be the result of a comparator, ie ``< 0`` for 
@@ -69,7 +72,7 @@ proc smartBinarySearch*[T](a: openArray[T], key: T): int =
 const
   onlySafeCode = true
 
-proc lowerBound*[T](a: openarray[T], key: T, cmp: proc(x,y: T): int {.closure.}): int =
+proc lowerBound*[T](a: openArray[T], key: T, cmp: proc(x,y: T): int {.closure.}): int =
   ## same as binarySearch except that if key is not in `a` then this 
   ## returns the location where `key` would be if it were. In other
   ## words if you have a sorted sequence and you call insert(thing, elm, lowerBound(thing, elm))
@@ -98,9 +101,9 @@ proc lowerBound*[T](a: openarray[T], key: T, cmp: proc(x,y: T): int {.closure.})
     else:
       count = step
 
-proc lowerBound*[T](a: openarray[T], key: T): int = lowerBound(a, key, cmp[T])
+proc lowerBound*[T](a: openArray[T], key: T): int = lowerBound(a, key, cmp[T])
 proc merge[T](a, b: var openArray[T], lo, m, hi: int, 
-              cmp: proc (x, y: T): int {.closure.}, order: TSortOrder) =
+              cmp: proc (x, y: T): int {.closure.}, order: SortOrder) =
   template `<-` (a, b: expr) = 
     when false:
       a = b
@@ -147,16 +150,16 @@ proc merge[T](a, b: var openArray[T], lo, m, hi: int,
 
 proc sort*[T](a: var openArray[T],
               cmp: proc (x, y: T): int {.closure.},
-              order = TSortOrder.Ascending) =
-  ## Default Nimrod sort. The sorting is guaranteed to be stable and 
+              order = SortOrder.Ascending) =
+  ## Default Nim sort. The sorting is guaranteed to be stable and 
   ## the worst case is guaranteed to be O(n log n).
   ## The current implementation uses an iterative
   ## mergesort to achieve this. It uses a temporary sequence of 
-  ## length ``a.len div 2``. Currently Nimrod does not support a
+  ## length ``a.len div 2``. Currently Nim does not support a
   ## sensible default argument for ``cmp``, so you have to provide one
   ## of your own. However, the ``system.cmp`` procs can be used:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##
   ##    sort(myIntArray, system.cmp[int])
   ##
@@ -167,7 +170,7 @@ proc sort*[T](a: var openArray[T],
   ## You can inline adhoc comparison procs with the `do notation
   ## <manual.html#do-notation>`_. Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##
   ##   people.sort do (x, y: Person) -> int:
   ##     result = cmp(x.surname, y.surname)
@@ -184,7 +187,7 @@ proc sort*[T](a: var openArray[T],
       dec(m, s*2)
     s = s*2
 
-proc product*[T](x: openarray[seq[T]]): seq[seq[T]] =
+proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
   ## produces the Cartesian product of the array. Warning: complexity
   ## may explode.
   result = @[]

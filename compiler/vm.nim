@@ -1,13 +1,13 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-## This file implements the new evaluation engine for Nimrod code.
+## This file implements the new evaluation engine for Nim code.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
 const debugEchoCode = false
@@ -133,6 +133,8 @@ proc createStrKeepNode(x: var TFullReg) =
     # cause of bugs like these is that the VM does not properly distinguish
     # between variable defintions (var foo = e) and variable updates (foo = e).
 
+include vmhooks
+
 template createStr(x) =
   x.node = newNode(nkStrLit)
 
@@ -256,8 +258,16 @@ proc cleanUpOnException(c: PCtx; tos: PStackFrame):
         c.currentExceptionB = c.currentExceptionA
         c.currentExceptionA = nil
         # execute the corresponding handler:
+        while c.code[pc2].opcode == opcExcept: inc pc2
         return (pc2, f)
       inc pc2
+      if c.code[pc2].opcode != opcExcept and nextExceptOrFinally >= 0:
+        # we're at the end of the *except list*, but maybe there is another
+        # *except branch*?
+        pc2 = nextExceptOrFinally+1
+        if c.code[pc2].opcode == opcExcept:
+          nextExceptOrFinally = pc2 + c.code[pc2].regBx - wordExcess
+
     if nextExceptOrFinally >= 0:
       pc2 = nextExceptOrFinally
     if c.code[pc2].opcode == opcFinally:
@@ -318,7 +328,7 @@ proc opConv*(dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType): bool =
         myreset(dest); dest.kind = rkInt
       case skipTypes(srctyp, abstractRange).kind
       of tyFloat..tyFloat64:
-        dest.intVal = system.toInt(src.floatVal)
+        dest.intVal = int(src.floatVal)
       else:
         dest.intVal = src.intVal
       if dest.intVal < firstOrd(desttyp) or dest.intVal > lastOrd(desttyp):
@@ -328,7 +338,7 @@ proc opConv*(dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType): bool =
         myreset(dest); dest.kind = rkInt
       case skipTypes(srctyp, abstractRange).kind
       of tyFloat..tyFloat64:
-        dest.intVal = system.toInt(src.floatVal)
+        dest.intVal = int(src.floatVal)
       else:
         dest.intVal = src.intVal and ((1 shl (desttyp.size*8))-1)
     of tyFloat..tyFloat64:
@@ -444,8 +454,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcLdStrIdx:
       decodeBC(rkInt)
       let idx = regs[rc].intVal.int
-      if idx <=% regs[rb].node.strVal.len:
-        regs[ra].intVal = regs[rb].node.strVal[idx].ord
+      let s = regs[rb].node.strVal
+      if s.isNil:
+        stackTrace(c, tos, pc, errNilAccess)
+      elif idx <=% s.len:
+        regs[ra].intVal = s[idx].ord
       else:
         stackTrace(c, tos, pc, errIndexOutOfBounds)
     of opcWrArr:
@@ -801,7 +814,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let bb = regs[rb].node
       let isClosure = bb.kind == nkPar
       let prc = if not isClosure: bb.sym else: bb.sons[0].sym
-      if sfImportc in prc.flags:
+      if prc.offset < -1:
+        # it's a callback:
+        c.callbacks[-prc.offset-2].value(
+          VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[pointer](regs),
+                 currentException: c.currentExceptionB))
+      elif sfImportc in prc.flags:
         if allowFFI notin c.features:
           globalError(c.debug[pc], errGenerated, "VM not allowed to do FFI")
         # we pass 'tos.slots' instead of 'regs' so that the compiler can keep
@@ -832,9 +850,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         if isClosure:
           newFrame.slots[rc].kind = rkNode
           newFrame.slots[rc].node = regs[rb].node.sons[1]
-        # allocate the temporaries:
-        #for i in rc+ord(isClosure) .. <prc.offset:
-        #  newFrame.slots[i] = newNode(nkEmpty)
         tos = newFrame
         move(regs, newFrame.slots)
         # -1 for the following 'inc pc'
@@ -888,10 +903,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcTry:
       let rbx = instr.regBx - wordExcess
       tos.pushSafePoint(pc + rbx)
+      assert c.code[pc+rbx].opcode in {opcExcept, opcFinally}
     of opcExcept:
       # just skip it; it's followed by a jump;
       # we'll execute in the 'raise' handler
-      discard
+      let rbx = instr.regBx - wordExcess - 1 # -1 for the following 'inc pc'
+      inc pc, rbx
+      assert c.code[pc+1].opcode in {opcExcept, opcFinally}
     of opcFinally:
       # just skip it; it's followed by the code we need to execute anyway
       tos.popSafePoint()
@@ -1033,8 +1051,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       internalError(c.debug[pc], "too implement")
     of opcNarrowS:
       decodeB(rkInt)
-      let min = -(1 shl (rb-1))
-      let max = (1 shl (rb-1))-1
+      let min = -(1.BiggestInt shl (rb-1))
+      let max = (1.BiggestInt shl (rb-1))-1
       if regs[ra].intVal < min or regs[ra].intVal > max:
         stackTrace(c, tos, pc, errGenerated,
           msgKindToString(errUnhandledExceptionX) % "value out of range")
@@ -1043,7 +1061,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].intVal = regs[ra].intVal and ((1'i64 shl rb)-1)
     of opcIsNil:
       decodeB(rkInt)
-      regs[ra].intVal = ord(regs[rb].node.kind == nkNilLit)
+      let node = regs[rb].node
+      regs[ra].intVal = ord(node.kind == nkNilLit or
+        (node.kind in {nkStrLit..nkTripleStrLit} and node.strVal.isNil))
     of opcNBindSym:
       decodeBx(rkNode)
       regs[ra].node = copyTree(c.constants.sons[rbx])
@@ -1132,16 +1152,34 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcParseExprToAst:
       decodeB(rkNode)
       # c.debug[pc].line.int - countLines(regs[rb].strVal) ?
-      let ast = parseString(regs[rb].node.strVal, c.debug[pc].toFilename,
-                            c.debug[pc].line.int)
-      if sonsLen(ast) != 1:
-        globalError(c.debug[pc], errExprExpected, "multiple statements")
-      regs[ra].node = ast.sons[0]
+      var error: string
+      let ast = parseString(regs[rb].node.strVal, c.debug[pc].toFullPath,
+                            c.debug[pc].line.int,
+                            proc (info: TLineInfo; msg: TMsgKind; arg: string) =
+                              if error.isNil and msg <= msgs.errMax:
+                                error = formatMsg(info, msg, arg))
+      if not error.isNil:
+        c.errorFlag = error
+      elif sonsLen(ast) != 1:
+        c.errorFlag = formatMsg(c.debug[pc], errExprExpected, "multiple statements")
+      else:
+        regs[ra].node = ast.sons[0]
     of opcParseStmtToAst:
       decodeB(rkNode)
-      let ast = parseString(regs[rb].node.strVal, c.debug[pc].toFilename,
-                            c.debug[pc].line.int)
-      regs[ra].node = ast
+      var error: string
+      let ast = parseString(regs[rb].node.strVal, c.debug[pc].toFullPath,
+                            c.debug[pc].line.int,
+                            proc (info: TLineInfo; msg: TMsgKind; arg: string) =
+                              if error.isNil and msg <= msgs.errMax:
+                                error = formatMsg(info, msg, arg))
+      if not error.isNil:
+        c.errorFlag = error
+      else:
+        regs[ra].node = ast
+    of opcQueryErrorFlag:
+      createStr regs[ra]
+      regs[ra].node.strVal = c.errorFlag
+      c.errorFlag.setLen 0
     of opcCallSite:
       ensureKind(rkNode)
       if c.callsite != nil: regs[ra].node = c.callsite
@@ -1316,6 +1354,8 @@ proc evalExpr*(c: PCtx, n: PNode): PNode =
   assert c.code[start].opcode != opcEof
   result = execute(c, start)
 
+include vmops
+
 # for now we share the 'globals' environment. XXX Coming soon: An API for
 # storing&loading the 'globals' environment to get what a component system
 # requires.
@@ -1325,6 +1365,7 @@ var
 proc setupGlobalCtx(module: PSym) =
   if globalCtx.isNil: globalCtx = newCtx(module)
   else: refresh(globalCtx, module)
+  registerAdditionalOps(globalCtx)
 
 proc myOpen(module: PSym): PPassContext =
   #var c = newEvalContext(module, emRepl)
@@ -1390,6 +1431,12 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
   inc(evalMacroCounter)
   if evalMacroCounter > 100:
     globalError(n.info, errTemplateInstantiationTooNested)
+
+  # immediate macros can bypass any type and arity checking so we check the
+  # arity here too:
+  if sym.typ.len > n.safeLen and sym.typ.len > 1:
+    globalError(n.info, "got $#, but expected $# argument(s)" % [$ <n.safeLen, $ <sym.typ.len])
+
   setupGlobalCtx(module)
   var c = globalCtx
 
@@ -1405,6 +1452,7 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
   # This is wrong for tests/reject/tind1.nim where the passed 'else' part
   # doesn't end up in the parameter:
   #InternalAssert tos.slots.len >= L
+
   # return value:
   tos.slots[0].kind = rkNode
   tos.slots[0].node = newNodeIT(nkEmpty, n.info, sym.typ.sons[0])

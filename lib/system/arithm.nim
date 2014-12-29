@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -12,10 +12,10 @@
 
 proc raiseOverflow {.compilerproc, noinline, noreturn.} =
   # a single proc to reduce code size to a minimum
-  sysFatal(EOverflow, "over- or underflow")
+  sysFatal(OverflowError, "over- or underflow")
 
 proc raiseDivByZero {.compilerproc, noinline, noreturn.} =
-  sysFatal(EDivByZero, "divison by zero")
+  sysFatal(DivByZeroError, "divison by zero")
 
 proc addInt64(a, b: int64): int64 {.compilerProc, inline.} =
   result = a +% b
@@ -328,16 +328,16 @@ when not declared(mulInt):
 # written in other languages.
 
 proc raiseFloatInvalidOp {.noinline, noreturn.} =
-  sysFatal(EFloatInvalidOp, "FPU operation caused a NaN result")
+  sysFatal(FloatInvalidOpError, "FPU operation caused a NaN result")
 
 proc nanCheck(x: float64) {.compilerProc, inline.} =
   if x != x: raiseFloatInvalidOp()
 
 proc raiseFloatOverflow(x: float64) {.noinline, noreturn.} =
   if x > 0.0:
-    sysFatal(EFloatOverflow, "FPU operation caused an overflow")
+    sysFatal(FloatOverflowError, "FPU operation caused an overflow")
   else:
-    sysFatal(EFloatUnderflow, "FPU operations caused an underflow")
+    sysFatal(FloatUnderflowError, "FPU operations caused an underflow")
 
 proc infCheck(x: float64) {.compilerProc, inline.} =
   if x != 0.0 and x*0.5 == x: raiseFloatOverflow(x)

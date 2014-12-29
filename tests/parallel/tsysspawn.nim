@@ -1,7 +1,7 @@
 discard """
   output: '''4
 8'''
-  cmd: "nimrod $target --threads:on $options $file"
+  cmd: "nim $target --threads:on $options $file"
 """
 
 import threadpool

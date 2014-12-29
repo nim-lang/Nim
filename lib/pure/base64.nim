@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -59,8 +59,9 @@ template encodeInternal(s: expr, lineLen: int, newLine: string): stmt {.immediat
       setLen(result, r+4)
   else:
     #assert(r == result.len)
+    discard
 
-proc encode*[T:TInteger|char](s: openarray[T], lineLen = 75, newLine="\13\10"): string = 
+proc encode*[T:SomeInteger|char](s: openarray[T], lineLen = 75, newLine="\13\10"): string = 
   ## encodes `s` into base64 representation. After `lineLen` characters, a 
   ## `newline` is added.
   encodeInternal(s, lineLen, newLine)

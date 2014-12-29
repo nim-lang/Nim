@@ -1,11 +1,15 @@
 ==========================
-Nimrod's Garbage Collector
+Nim's Garbage Collector
 ==========================
 
 :Author: Andreas Rumpf
-:Version: |nimrodversion|
+:Version: |nimversion|
+
+..
+
 
   "The road to hell is paved with good intentions."
+
 
 Introduction
 ============
@@ -19,7 +23,7 @@ code generation). The GC **never** scans the whole heap but it may scan the
 delta-subgraph of the heap that changed since its last run.
 
 
-The GC is only triggered in a memory allocation operation. It it not triggered
+The GC is only triggered in a memory allocation operation. It is not triggered
 by some timer and does not run in a background thread.
 
 To force a full collection call ``GC_fullCollect``. Note that it is generally
@@ -37,7 +41,7 @@ it is necessary to help this analysis with the ``acyclic`` pragma (see
 
 You can also use the ``acyclic`` pragma for data that is cyclic in reality and 
 then break up the cycles explicitly with ``GC_addCycleRoot``. This can be a
-very valuable optimization; the Nimrod compiler itself relies on this 
+very valuable optimization; the Nim compiler itself relies on this 
 optimization trick to improve performance. Note that ``GC_addCycleRoot`` is
 a quick operation; the root is only registered for the next run of the 
 cycle collector.
@@ -47,9 +51,10 @@ Realtime support
 ================
 
 To enable realtime support, the symbol `useRealtimeGC`:idx: needs to be
-defined. With this switch the GC supports the following operations:
+defined via ``--define:useRealtimeGC`` (you can put this into your config 
+file as well). With this switch the GC supports the following operations:
 
-.. code-block:: nimrod
+.. code-block:: nim
   proc GC_setMaxPause*(MaxPauseInUs: int)
   proc GC_step*(us: int, strongAdvice = false)
 
@@ -111,7 +116,7 @@ highly specialized environments or for older hardware.
 Keeping track of memory
 -----------------------
 
-If you need to pass around memory allocated by Nimrod to C, you can use the
+If you need to pass around memory allocated by Nim to C, you can use the
 procs ``GC_ref`` and ``GC_unref`` to mark objects as referenced to avoid them
 being freed by the GC. Other useful procs from `system <system.html>`_ you can
 use to keep track of memory are:

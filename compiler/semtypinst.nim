@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -216,7 +216,7 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
     result.typ = replaceTypeVarsT(cl, s.typ)
     result.ast = replaceTypeVarsN(cl, s.ast)
     
-proc lookupTypeVar(cl: var TReplTypeVars, t: PType): PType = 
+proc lookupTypeVar(cl: var TReplTypeVars, t: PType): PType =
   result = PType(idTableGet(cl.typeMap, t))
   if result == nil:
     if cl.allowMetaTypes or tfRetType in t.flags: return
@@ -291,16 +291,24 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
 
   var newbody = replaceTypeVarsT(cl, lastSon(body))
   newbody.flags = newbody.flags + (t.flags + body.flags - tfInstClearedFlags)
-  result.flags = result.flags + newbody.flags
-  newbody.callConv = body.callConv
+  result.flags = result.flags + newbody.flags - tfInstClearedFlags
+  # This is actually wrong: tgeneric_closure fails with this line:
+  #newbody.callConv = body.callConv
   # This type may be a generic alias and we want to resolve it here.
   # One step is enough, because the recursive nature of
   # handleGenericInvokation will handle the alias-to-alias-to-alias case
   if newbody.isGenericAlias: newbody = newbody.skipGenericAlias
   rawAddSon(result, newbody)
   checkPartialConstructedType(cl.info, newbody)
+  let dc = newbody.deepCopy
+  if dc != nil and sfFromGeneric notin newbody.deepCopy.flags:
+    # 'deepCopy' needs to be instantiated for
+    # generics *when the type is constructed*:
+    newbody.deepCopy = cl.c.instDeepCopy(cl.c, dc, result, cl.info)
 
 proc eraseVoidParams*(t: PType) =
+  # transform '(): void' into '()' because old parts of the compiler really
+  # don't deal with '(): void':
   if t.sons[0] != nil and t.sons[0].kind == tyEmpty:
     t.sons[0] = nil
   

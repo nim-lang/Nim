@@ -1,8 +1,8 @@
 discard """
-  cmd: "nimrod $target --hints:on -d:release $options $file"
+  cmd: "nim $target --hints:on -d:release $options $file"
 """
 
-# -*- nimrod -*-
+# -*- nim -*-
 
 import math
 import os

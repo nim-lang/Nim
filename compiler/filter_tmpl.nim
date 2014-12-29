@@ -1,13 +1,13 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-# This module implements Nimrod's standard template filter.
+# This module implements Nim's standard template filter.
 
 import 
   llstream, os, wordrecg, idents, strutils, ast, astalgo, msgs, options, 
@@ -148,7 +148,7 @@ proc parseLine(p: var TTmplParser) =
         inc(j)
       else: 
         if p.x[j] == p.subsChar: 
-          # parse Nimrod expression:
+          # parse Nim expression:
           inc(j)
           case p.x[j]
           of '{': 

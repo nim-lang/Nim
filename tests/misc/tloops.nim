@@ -31,7 +31,7 @@ proc TestLoops() =
       break
     break
 
-  while True:
+  while true:
     break
 
 

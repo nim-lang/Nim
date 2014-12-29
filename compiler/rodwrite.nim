@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -187,9 +187,6 @@ proc encodeLoc(w: PRodWriter, loc: TLoc, result: var string) =
   if loc.r != nil: 
     add(result, '!')
     encodeStr(ropeToStr(loc.r), result)
-  if loc.a != 0: 
-    add(result, '?')
-    encodeVInt(loc.a, result)
   if oldLen + 1 == result.len:
     # no data was necessary, so remove the '<' again:
     setLen(result, oldLen)
@@ -297,7 +294,7 @@ proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
   # the last entry of a symbol:
   if s.ast != nil:
     # we used to attempt to save space here by only storing a dummy AST if
-    # it is not necessary, but Nimrod's heavy compile-time evaluation features
+    # it is not necessary, but Nim's heavy compile-time evaluation features
     # make that unfeasible nowadays:
     encodeNode(w, s.info, s.ast, result)
     when false:
@@ -422,7 +419,7 @@ proc addStmt(w: PRodWriter, n: PNode) =
 
 proc writeRod(w: PRodWriter) = 
   processStacks(w, true)
-  var f: TFile
+  var f: File
   if not open(f, completeGeneratedFilePath(changeFileExt(
                       w.filename.withPackageName, RodExt)),
               fmWrite):

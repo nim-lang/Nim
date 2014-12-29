@@ -14,7 +14,7 @@ import
 
 # We need to use a PStringTable here as defined symbols are always guaranteed
 # to be style insensitive. Otherwise hell would break lose.
-var gSymbols: PStringTable
+var gSymbols: StringTableRef
 
 proc defineSymbol*(symbol: string) = 
   gSymbols[symbol] = "true"
@@ -41,12 +41,12 @@ proc countDefinedSymbols*(): int =
   for key, val in pairs(gSymbols):
     if val == "true": inc(result)
 
-# For ease of bootstrapping, we keep there here and not in the global config
+# For ease of bootstrapping, we keep them here and not in the global config
 # file for now:
 const
   additionalSymbols = """
     x86 itanium x8664
-    msdos mswindows win32 unix posix sunos bsd macintosh RISCOS doslike hpux
+    msdos mswindows win32 unix posix sunos bsd macintosh RISCOS hpux
     mac
 
     hppa hp9000 hp9000s300 hp9000s700 hp9000s800 hp9000s820 ELATE sparcv9
@@ -88,6 +88,7 @@ proc initDefines*() =
   defineSymbol("nimrequiresnimframe")
   defineSymbol("nimparsebiggestfloatmagic")
   defineSymbol("nimalias")
+  defineSymbol("nimlocks")
   
   # add platform specific symbols:
   for c in low(CPU)..high(CPU):

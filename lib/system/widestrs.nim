@@ -1,13 +1,13 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-# Nimrod support for C/C++'s `wide strings`:idx:. This is part of the system
+# Nim support for C/C++'s `wide strings`:idx:. This is part of the system
 # module! Do not import it directly!
 
 when not declared(NimString):

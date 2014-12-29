@@ -41,11 +41,13 @@
 
 {.deadCodeElim: on.}
 
-when defined(WINDOWS): 
+const useWinVersion = defined(Windows) or defined(nimdoc)
+
+when useWinVersion: 
   const 
     DLLSSLName = "(ssleay32|libssl32).dll"
     DLLUtilName = "libeay32.dll"
-  from winlean import TSocketHandle
+  from winlean import SocketHandle
 else:
   const
     versions = "(|.1.0.0|.0.9.9|.0.9.8|.0.9.7|.0.9.6|.0.9.5|.0.9.4)"
@@ -57,20 +59,19 @@ else:
     const 
       DLLSSLName = "libssl.so" & versions
       DLLUtilName = "libcrypto.so" & versions
-  from posix import TSocketHandle
+  from posix import SocketHandle
 
 type 
   SslStruct {.final, pure.} = object
   SslPtr* = ptr SslStruct
   PSslPtr* = ptr SslPtr
-  PSSL_CTX* = SslPtr
-  PSSL* = SslPtr
+  SslCtx* = SslPtr
   PSSL_METHOD* = SslPtr
   PX509* = SslPtr
   PX509_NAME* = SslPtr
   PEVP_MD* = SslPtr
   PBIO_METHOD* = SslPtr
-  PBIO* = SslPtr
+  BIO* = SslPtr
   EVP_PKEY* = SslPtr
   PRSA* = SslPtr
   PASN1_UTCTIME* = SslPtr
@@ -85,7 +86,11 @@ type
 
   des_key_schedule* = array[1..16, des_ks_struct]
 
+{.deprecated: [PSSL: SslPtr, PSSL_CTX: SslCtx, PBIO: BIO].}
+
 const 
+  SSL_SENT_SHUTDOWN* = 1
+  SSL_RECEIVED_SHUTDOWN* = 2
   EVP_MAX_MD_SIZE* = 16 + 20
   SSL_ERROR_NONE* = 0
   SSL_ERROR_SSL* = 1
@@ -206,58 +211,61 @@ proc SSLv2_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSLv3_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
 proc TLSv1_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
 
-proc SSL_new*(context: PSSL_CTX): PSSL{.cdecl, dynlib: DLLSSLName, importc.}
-proc SSL_free*(ssl: PSSL){.cdecl, dynlib: DLLSSLName, importc.}
-proc SSL_CTX_new*(meth: PSSL_METHOD): PSSL_CTX{.cdecl,
+proc SSL_new*(context: SslCtx): SslPtr{.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_free*(ssl: SslPtr){.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_CTX_new*(meth: PSSL_METHOD): SslCtx{.cdecl,
     dynlib: DLLSSLName, importc.}
-proc SSL_CTX_load_verify_locations*(ctx: PSSL_CTX, CAfile: cstring,
+proc SSL_CTX_load_verify_locations*(ctx: SslCtx, CAfile: cstring,
     CApath: cstring): cInt{.cdecl, dynlib: DLLSSLName, importc.}
-proc SSL_CTX_free*(arg0: PSSL_CTX){.cdecl, dynlib: DLLSSLName, importc.}
-proc SSL_CTX_set_verify*(s: PSSL_CTX, mode: int, cb: proc (a: int, b: pointer): int {.cdecl.}){.cdecl, dynlib: DLLSSLName, importc.}
-proc SSL_get_verify_result*(ssl: PSSL): int{.cdecl,
+proc SSL_CTX_free*(arg0: SslCtx){.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_CTX_set_verify*(s: SslCtx, mode: int, cb: proc (a: int, b: pointer): int {.cdecl.}){.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_get_verify_result*(ssl: SslPtr): int{.cdecl,
     dynlib: DLLSSLName, importc.}
 
-proc SSL_CTX_set_cipher_list*(s: PSSLCTX, ciphers: cstring): cint{.cdecl, dynlib: DLLSSLName, importc.}
-proc SSL_CTX_use_certificate_file*(ctx: PSSL_CTX, filename: cstring, typ: cInt): cInt{.
+proc SSL_CTX_set_cipher_list*(s: SslCtx, ciphers: cstring): cint{.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_CTX_use_certificate_file*(ctx: SslCtx, filename: cstring, typ: cInt): cInt{.
     stdcall, dynlib: DLLSSLName, importc.}
-proc SSL_CTX_use_certificate_chain_file*(ctx: PSSL_CTX, filename: cstring): cInt{.
+proc SSL_CTX_use_certificate_chain_file*(ctx: SslCtx, filename: cstring): cInt{.
     stdcall, dynlib: DLLSSLName, importc.}
-proc SSL_CTX_use_PrivateKey_file*(ctx: PSSL_CTX,
+proc SSL_CTX_use_PrivateKey_file*(ctx: SslCtx,
     filename: cstring, typ: cInt): cInt{.cdecl, dynlib: DLLSSLName, importc.}
-proc SSL_CTX_check_private_key*(ctx: PSSL_CTX): cInt{.cdecl, dynlib: DLLSSLName, 
+proc SSL_CTX_check_private_key*(ctx: SslCtx): cInt{.cdecl, dynlib: DLLSSLName, 
     importc.}
 
-proc SSL_set_fd*(ssl: PSSL, fd: TSocketHandle): cint{.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_set_fd*(ssl: SslPtr, fd: SocketHandle): cint{.cdecl, dynlib: DLLSSLName, importc.}
 
-proc SSL_shutdown*(ssl: PSSL): cInt{.cdecl, dynlib: DLLSSLName, importc.}
-proc SSL_connect*(ssl: PSSL): cint{.cdecl, dynlib: DLLSSLName, importc.}
-proc SSL_read*(ssl: PSSL, buf: pointer, num: int): cint{.cdecl, dynlib: DLLSSLName, importc.}
-proc SSL_write*(ssl: PSSL, buf: cstring, num: int): cint{.cdecl, dynlib: DLLSSLName, importc.}
-proc SSL_get_error*(s: PSSL, ret_code: cInt): cInt{.cdecl, dynlib: DLLSSLName, importc.}
-proc SSL_accept*(ssl: PSSL): cInt{.cdecl, dynlib: DLLSSLName, importc.}
-proc SSL_pending*(ssl: PSSL): cInt{.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_shutdown*(ssl: SslPtr): cInt{.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_set_shutdown*(ssl: SslPtr, mode: cint) {.cdecl, dynlib: DLLSSLName, importc: "SSL_set_shutdown".}
+proc SSL_get_shutdown*(ssl: SslPtr): cint {.cdecl, dynlib: DLLSSLName, importc: "SSL_get_shutdown".}
+proc SSL_connect*(ssl: SslPtr): cint{.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_read*(ssl: SslPtr, buf: pointer, num: int): cint{.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_write*(ssl: SslPtr, buf: cstring, num: int): cint{.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_get_error*(s: SslPtr, ret_code: cInt): cInt{.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_accept*(ssl: SslPtr): cInt{.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_pending*(ssl: SslPtr): cInt{.cdecl, dynlib: DLLSSLName, importc.}
 
-proc BIO_new_ssl_connect*(ctx: PSSL_CTX): PBIO{.cdecl,
+proc BIO_new_ssl_connect*(ctx: SslCtx): BIO{.cdecl,
     dynlib: DLLSSLName, importc.}
-proc BIO_ctrl*(bio: PBIO, cmd: cint, larg: int, arg: cstring): int{.cdecl,
+proc BIO_ctrl*(bio: BIO, cmd: cint, larg: int, arg: cstring): int{.cdecl,
     dynlib: DLLSSLName, importc.}
-proc BIO_get_ssl*(bio: PBIO, ssl: ptr PSSL): int = 
+proc BIO_get_ssl*(bio: BIO, ssl: ptr SslPtr): int = 
   return BIO_ctrl(bio, BIO_C_GET_SSL, 0, cast[cstring](ssl))
-proc BIO_set_conn_hostname*(bio: PBIO, name: cstring): int =
+proc BIO_set_conn_hostname*(bio: BIO, name: cstring): int =
   return BIO_ctrl(bio, BIO_C_SET_CONNECT, 0, name)
-proc BIO_do_handshake*(bio: PBIO): int =
-  return BIO_ctrl(bio, BIO_C_DO_STATE_MACHINE, 0, NIL)
-proc BIO_do_connect*(bio: PBIO): int =
+proc BIO_do_handshake*(bio: BIO): int =
+  return BIO_ctrl(bio, BIO_C_DO_STATE_MACHINE, 0, nil)
+proc BIO_do_connect*(bio: BIO): int =
   return BIO_do_handshake(bio)
 
-proc BIO_read*(b: PBIO, data: cstring, length: cInt): cInt{.cdecl, 
-    dynlib: DLLUtilName, importc.}
-proc BIO_write*(b: PBIO, data: cstring, length: cInt): cInt{.cdecl, 
-    dynlib: DLLUtilName, importc.}
+when not defined(nimfix):
+  proc BIO_read*(b: BIO, data: cstring, length: cInt): cInt{.cdecl, 
+      dynlib: DLLUtilName, importc.}
+  proc BIO_write*(b: BIO, data: cstring, length: cInt): cInt{.cdecl, 
+      dynlib: DLLUtilName, importc.}
 
-proc BIO_free*(b: PBIO): cInt{.cdecl, dynlib: DLLUtilName, importc.}
+proc BIO_free*(b: BIO): cInt{.cdecl, dynlib: DLLUtilName, importc.}
 
-proc ERR_print_errors_fp*(fp: TFile){.cdecl, dynlib: DLLSSLName, importc.}
+proc ERR_print_errors_fp*(fp: File){.cdecl, dynlib: DLLSSLName, importc.}
 
 proc ERR_error_string*(e: cInt, buf: cstring): cstring{.cdecl, 
     dynlib: DLLUtilName, importc.}
@@ -268,19 +276,61 @@ proc OpenSSL_add_all_algorithms*(){.cdecl, dynlib: DLLUtilName, importc: "OPENSS
 
 proc OPENSSL_config*(configName: cstring){.cdecl, dynlib: DLLSSLName, importc.}
 
-when not defined(windows):
+when not useWinVersion:
   proc CRYPTO_set_mem_functions(a,b,c: pointer){.cdecl, 
     dynlib: DLLUtilName, importc.}
 
-proc CRYPTO_malloc_init*() =
-  when not defined(windows):
-    CRYPTO_set_mem_functions(alloc, realloc, dealloc)
+  proc allocWrapper(size: int): pointer {.cdecl.} = alloc(size)
+  proc reallocWrapper(p: pointer; newsize: int): pointer {.cdecl.} =
+    if p == nil:
+      if newSize > 0: result = alloc(newsize)
+    elif newsize == 0: dealloc(p)
+    else: result = realloc(p, newsize)
+  proc deallocWrapper(p: pointer) {.cdecl.} =
+    if p != nil: dealloc(p)
 
-proc SSL_CTX_ctrl*(ctx: PSSL_CTX, cmd: cInt, larg: int, parg: pointer): int{.
+proc CRYPTO_malloc_init*() =
+  when not useWinVersion:
+    CRYPTO_set_mem_functions(allocWrapper, reallocWrapper, deallocWrapper)
+
+proc SSL_CTX_ctrl*(ctx: SslCtx, cmd: cInt, larg: int, parg: pointer): int{.
   cdecl, dynlib: DLLSSLName, importc.}
 
-proc SSLCTXSetMode*(ctx: PSSL_CTX, mode: int): int =
+proc SSLCTXSetMode*(ctx: SslCtx, mode: int): int =
   result = SSL_CTX_ctrl(ctx, SSL_CTRL_MODE, mode, nil)
+
+proc bioNew*(b: PBIO_METHOD): BIO{.cdecl, dynlib: DLLUtilName, importc: "BIO_new".}
+proc bioFreeAll*(b: BIO){.cdecl, dynlib: DLLUtilName, importc: "BIO_free_all".}
+proc bioSMem*(): PBIO_METHOD{.cdecl, dynlib: DLLUtilName, importc: "BIO_s_mem".}
+proc bioCtrlPending*(b: BIO): cInt{.cdecl, dynlib: DLLUtilName, importc: "BIO_ctrl_pending".}
+proc bioRead*(b: BIO, Buf: cstring, length: cInt): cInt{.cdecl,
+    dynlib: DLLUtilName, importc: "BIO_read".}
+proc bioWrite*(b: BIO, Buf: cstring, length: cInt): cInt{.cdecl,
+    dynlib: DLLUtilName, importc: "BIO_write".}
+
+proc sslSetConnectState*(s: SslPtr) {.cdecl,
+    dynlib: DLLSSLName, importc: "SSL_set_connect_state".}
+proc sslSetAcceptState*(s: SslPtr) {.cdecl,
+    dynlib: DLLSSLName, importc: "SSL_set_accept_state".}
+
+proc sslRead*(ssl: SslPtr, buf: cstring, num: cInt): cInt{.cdecl,
+      dynlib: DLLSSLName, importc: "SSL_read".}
+proc sslPeek*(ssl: SslPtr, buf: cstring, num: cInt): cInt{.cdecl,
+    dynlib: DLLSSLName, importc: "SSL_peek".}
+proc sslWrite*(ssl: SslPtr, buf: cstring, num: cInt): cInt{.cdecl,
+    dynlib: DLLSSLName, importc: "SSL_write".}
+
+proc sslSetBio*(ssl: SslPtr, rbio, wbio: BIO) {.cdecl,
+    dynlib: DLLSSLName, importc: "SSL_set_bio".}
+
+proc sslDoHandshake*(ssl: SslPtr): cint {.cdecl,
+    dynlib: DLLSSLName, importc: "SSL_do_handshake".}
+
+
+
+proc ErrClearError*(){.cdecl, dynlib: DLLUtilName, importc: "ERR_clear_error".}
+proc ErrFreeStrings*(){.cdecl, dynlib: DLLUtilName, importc: "ERR_free_strings".}
+proc ErrRemoveState*(pid: cInt){.cdecl, dynlib: DLLUtilName, importc: "ERR_remove_state".}
 
 when true:
   discard
@@ -328,12 +378,7 @@ else:
 
   proc SslConnect*(ssl: PSSL): cInt{.cdecl, dynlib: DLLSSLName, importc.}
 
-  proc SslRead*(ssl: PSSL, buf: SslPtr, num: cInt): cInt{.cdecl, 
-      dynlib: DLLSSLName, importc.}
-  proc SslPeek*(ssl: PSSL, buf: SslPtr, num: cInt): cInt{.cdecl, 
-      dynlib: DLLSSLName, importc.}
-  proc SslWrite*(ssl: PSSL, buf: SslPtr, num: cInt): cInt{.cdecl, 
-      dynlib: DLLSSLName, importc.}
+  
   proc SslGetVersion*(ssl: PSSL): cstring{.cdecl, dynlib: DLLSSLName, importc.}
   proc SslGetPeerCertificate*(ssl: PSSL): PX509{.cdecl, dynlib: DLLSSLName, 
       importc.}
@@ -387,20 +432,11 @@ else:
     #  function ErrErrorString(e: cInt; buf: PChar): PChar;
   proc SSLeayversion*(t: cInt): cstring{.cdecl, dynlib: DLLUtilName, importc.}
 
-  proc ErrClearError*(){.cdecl, dynlib: DLLUtilName, importc.}
-  proc ErrFreeStrings*(){.cdecl, dynlib: DLLUtilName, importc.}
-  proc ErrRemoveState*(pid: cInt){.cdecl, dynlib: DLLUtilName, importc.}
+
   proc OPENSSLaddallalgorithms*(){.cdecl, dynlib: DLLUtilName, importc.}
   proc CRYPTOcleanupAllExData*(){.cdecl, dynlib: DLLUtilName, importc.}
   proc RandScreen*(){.cdecl, dynlib: DLLUtilName, importc.}
-  proc BioNew*(b: PBIO_METHOD): PBIO{.cdecl, dynlib: DLLUtilName, importc.}
-  proc BioFreeAll*(b: PBIO){.cdecl, dynlib: DLLUtilName, importc.}
-  proc BioSMem*(): PBIO_METHOD{.cdecl, dynlib: DLLUtilName, importc.}
-  proc BioCtrlPending*(b: PBIO): cInt{.cdecl, dynlib: DLLUtilName, importc.}
-  proc BioRead*(b: PBIO, Buf: cstring, length: cInt): cInt{.cdecl, 
-      dynlib: DLLUtilName, importc.}
-  proc BioWrite*(b: PBIO, Buf: cstring, length: cInt): cInt{.cdecl, 
-      dynlib: DLLUtilName, importc.}
+
   proc d2iPKCS12bio*(b: PBIO, Pkcs12: SslPtr): SslPtr{.cdecl, dynlib: DLLUtilName, 
       importc.}
   proc PKCS12parse*(p12: SslPtr, pass: cstring, pkey, cert, ca: var SslPtr): cint{.
@@ -448,11 +484,11 @@ type
 
 {.pragma: ic, importc: "$1".}
 {.push callconv:cdecl, dynlib:DLLUtilName.}
-proc MD5_Init*(c: var MD5_CTX): cint{.ic.}
-proc MD5_Update*(c: var MD5_CTX; data: pointer; len: csize): cint{.ic.}
-proc MD5_Final*(md: cstring; c: var MD5_CTX): cint{.ic.}
-proc MD5*(d: ptr cuchar; n: csize; md: ptr cuchar): ptr cuchar{.ic.}
-proc MD5_Transform*(c: var MD5_CTX; b: ptr cuchar){.ic.}
+proc md5_Init*(c: var MD5_CTX): cint{.ic.}
+proc md5_Update*(c: var MD5_CTX; data: pointer; len: csize): cint{.ic.}
+proc md5_Final*(md: cstring; c: var MD5_CTX): cint{.ic.}
+proc md5*(d: ptr cuchar; n: csize; md: ptr cuchar): ptr cuchar{.ic.}
+proc md5_Transform*(c: var MD5_CTX; b: ptr cuchar){.ic.}
 {.pop.}
 
 from strutils import toHex,toLower
@@ -463,7 +499,7 @@ proc hexStr (buf:cstring): string =
   for i in 0 .. <16:
     result.add toHex(buf[i].ord, 2).toLower
 
-proc MD5_File* (file: string): string {.raises:[EIO,Ebase].} =
+proc md5_File* (file: string): string {.raises: [IOError,Exception].} =
   ## Generate MD5 hash for a file. Result is a 32 character
   # hex string with lowercase characters (like the output
   # of `md5sum`
@@ -483,7 +519,7 @@ proc MD5_File* (file: string): string {.raises:[EIO,Ebase].} =
   
   result = hexStr(buf)
 
-proc MD5_Str* (str:string): string {.raises:[EIO].} =
+proc md5_Str* (str:string): string {.raises:[IOError].} =
   ##Generate MD5 hash for a string. Result is a 32 character
   #hex string with lowercase characters
   var 

@@ -1,7 +1,7 @@
 discard """
   line: 11
   errormsg: "'horrible' is not GC-safe"
-  cmd: "nimrod $target --hints:on --threads:on $options $file"
+  cmd: "nim $target --hints:on --threads:on $options $file"
 """
 
 var 

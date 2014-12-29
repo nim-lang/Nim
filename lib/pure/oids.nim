@@ -1,13 +1,13 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-## Nimrod OID support. An OID is a global ID that consists of a timestamp,
+## Nim OID support. An OID is a global ID that consists of a timestamp,
 ## a unique counter and a random value. This combination should suffice to 
 ## produce a globally distributed unique ID. This implementation was extracted
 ## from the Mongodb interface and it thus binary compatible with a Mongo OID.
@@ -18,10 +18,12 @@
 import times, endians
 
 type
-  Toid* {.pure, final.} = object ## an OID
+  Oid* = object ## an OID
     time: int32  ## 
     fuzz: int32  ## 
     count: int32 ## 
+
+{.deprecated: [Toid: Oid].}
 
 proc hexbyte*(hex: char): int = 
   case hex
@@ -30,7 +32,7 @@ proc hexbyte*(hex: char): int =
   of 'A'..'F': result = (ord(hex) - ord('A') + 10)
   else: discard
 
-proc parseOid*(str: cstring): TOid =
+proc parseOid*(str: cstring): Oid =
   ## parses an OID.
   var bytes = cast[cstring](addr(result.time))
   var i = 0
@@ -38,7 +40,7 @@ proc parseOid*(str: cstring): TOid =
     bytes[i] = chr((hexbyte(str[2 * i]) shl 4) or hexbyte(str[2 * i + 1]))
     inc(i)
 
-proc oidToString*(oid: TOid, str: cstring) = 
+proc oidToString*(oid: Oid, str: cstring) = 
   const hex = "0123456789abcdef"
   # work around a compiler bug:
   var str = str
@@ -52,15 +54,15 @@ proc oidToString*(oid: TOid, str: cstring) =
     inc(i)
   str[24] = '\0'
 
-proc `$`*(oid: TOid): string =
-  result = newString(25)
+proc `$`*(oid: Oid): string =
+  result = newString(24)
   oidToString(oid, result)
 
 var
   incr: int 
   fuzz: int32
 
-proc genOid*(): TOid =
+proc genOid*(): Oid =
   ## generates a new OID.
   proc rand(): cint {.importc: "rand", header: "<stdlib.h>", nodecl.}
   proc gettime(dummy: ptr cint): cint {.importc: "time", header: "<time.h>".}
@@ -79,13 +81,13 @@ proc genOid*(): TOid =
   result.fuzz = fuzz
   bigEndian32(addr result.count, addr(i))
 
-proc generatedTime*(oid: TOid): TTime =
+proc generatedTime*(oid: Oid): Time =
   ## returns the generated timestamp of the OID.
   var tmp: int32
   var dummy = oid.time
   bigEndian32(addr(tmp), addr(dummy))
-  result = TTime(tmp)
+  result = Time(tmp)
 
 when isMainModule:
-  let xo = genOID()
+  let xo = genOid()
   echo xo.generatedTime

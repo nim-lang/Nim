@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -46,7 +46,7 @@ type
     nnkForStmt, nnkParForStmt, nnkWhileStmt, nnkCaseStmt,
     nnkTypeSection, nnkVarSection, nnkLetSection, nnkConstSection,
     nnkConstDef, nnkTypeDef,
-    nnkYieldStmt, nnkTryStmt, nnkFinally, nnkRaiseStmt,
+    nnkYieldStmt, nnkDefer, nnkTryStmt, nnkFinally, nnkRaiseStmt,
     nnkReturnStmt, nnkBreakStmt, nnkContinueStmt, nnkBlockStmt, nnkStaticStmt,
     nnkDiscardStmt, nnkStmtList, 
     nnkImportStmt,
@@ -97,7 +97,7 @@ type
   TNimSymKinds* = set[TNimrodSymKind]
 
 type
-  TNimrodIdent* = object of TObject
+  TNimrodIdent* = object of RootObj
     ## represents a Nimrod identifier in the AST
 
   TNimrodSymbol {.final.} = object # hidden
@@ -249,19 +249,35 @@ proc lineinfo*(n: PNimrodNode): string {.magic: "NLineInfo", noSideEffect.}
   ## returns the position the node appears in the original source file
   ## in the form filename(line, col)
 
-proc parseExpr*(s: string): PNimrodNode {.magic: "ParseExprToAst", noSideEffect.}
-  ## Compiles the passed string to its AST representation.
-  ## Expects a single expression.
+proc internalParseExpr(s: string): PNimrodNode {.
+  magic: "ParseExprToAst", noSideEffect.}
 
-proc parseStmt*(s: string): PNimrodNode {.magic: "ParseStmtToAst", noSideEffect.}
+proc internalParseStmt(s: string): PNimrodNode {.
+  magic: "ParseStmtToAst", noSideEffect.}
+
+proc internalErrorFlag*(): string {.magic: "NError", noSideEffect.}
+  ## Some builtins set an error flag. This is then turned into a proper
+  ## exception. **Note**: Ordinary application code should not call this.
+
+proc parseExpr*(s: string): PNimrodNode {.noSideEffect, compileTime.} =
   ## Compiles the passed string to its AST representation.
-  ## Expects one or more statements.
+  ## Expects a single expression. Raises ``ValueError`` for parsing errors.
+  result = internalParseExpr(s)
+  let x = internalErrorFlag()
+  if x.len > 0: raise newException(ValueError, x)
+
+proc parseStmt*(s: string): PNimrodNode {.noSideEffect, compileTime.} =
+  ## Compiles the passed string to its AST representation.
+  ## Expects one or more statements. Raises ``ValueError`` for parsing errors.
+  result = internalParseStmt(s)
+  let x = internalErrorFlag()
+  if x.len > 0: raise newException(ValueError, x)
 
 proc getAst*(macroOrTemplate: expr): PNimrodNode {.magic: "ExpandToAst", noSideEffect.}
   ## Obtains the AST nodes returned from a macro or template invocation.
   ## Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##
   ##   macro FooMacro() =
   ##     var ast = getAst(BarTemplate())
@@ -278,7 +294,7 @@ proc quote*(bl: stmt, op = "``"): PNimrodNode {.magic: "QuoteAst", noSideEffect.
   ##
   ## Example:
   ##   
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##
   ##   macro check(ex: expr): stmt =
   ##     # this is a simplified version of the check macro from the
@@ -422,7 +438,7 @@ proc lispRepr*(n: PNimrodNode): string {.compileTime.} =
   add(result, ")")
 
 macro dumpTree*(s: stmt): stmt {.immediate.} = echo s.treeRepr
-  ## Accepts a block of nimrod code and prints the parsed abstract syntax
+  ## Accepts a block of nim code and prints the parsed abstract syntax
   ## tree using the `toTree` function. Printing is done *at compile time*.
   ##
   ## You can use this as a tool to explore the Nimrod's abstract syntax
@@ -430,7 +446,7 @@ macro dumpTree*(s: stmt): stmt {.immediate.} = echo s.treeRepr
   ## a certain expression/statement.
 
 macro dumpLisp*(s: stmt): stmt {.immediate.} = echo s.lispRepr
-  ## Accepts a block of nimrod code and prints the parsed abstract syntax
+  ## Accepts a block of nim code and prints the parsed abstract syntax
   ## tree using the `toLisp` function. Printing is done *at compile time*.
   ##
   ## See `dumpTree`.
@@ -489,7 +505,7 @@ proc newIdentDefs*(name, kind: PNimrodNode;
   ## ``let`` or ``var`` blocks may have an empty ``kind`` node if the
   ## identifier is being assigned a value. Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##
   ##   var varSection = newNimNode(nnkVarSection).add(
   ##     newIdentDefs(ident("a"), ident("string")),
@@ -501,7 +517,7 @@ proc newIdentDefs*(name, kind: PNimrodNode;
   ## If you need to create multiple identifiers you need to use the lower level
   ## ``newNimNode``:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##
   ##   result = newNimNode(nnkIdentDefs).add(
   ##     ident("a"), ident("b"), ident("c"), ident("string"),
@@ -549,7 +565,7 @@ proc newIfStmt*(branches: varargs[tuple[cond, body: PNimrodNode]]):
                 PNimrodNode {.compiletime.} =
   ## Constructor for ``if`` statements.
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##    
   ##    newIfStmt(
   ##      (Ident, StmtList),
@@ -596,7 +612,7 @@ proc `pragma=`*(someProc: PNimrodNode; val: PNimrodNode){.compileTime.}=
   someProc[4] = val
 
 
-template badnodekind(k; f): stmt{.immediate.} =
+template badNodeKind(k; f): stmt{.immediate.} =
   assert false, "Invalid node kind $# for macros.`$2`".format(k, f)
 
 proc body*(someProc: PNimrodNode): PNimrodNode {.compileTime.} =
@@ -608,7 +624,7 @@ proc body*(someProc: PNimrodNode): PNimrodNode {.compileTime.} =
   of nnkForStmt:
     return someProc.last
   else: 
-    badNodeKind someproc.kind, "body"
+    badNodeKind someProc.kind, "body"
 
 proc `body=`*(someProc: PNimrodNode, val: PNimrodNode) {.compileTime.} =
   case someProc.kind 
@@ -633,6 +649,8 @@ proc `$`*(node: PNimrodNode): string {.compileTime.} =
     result = $node.basename.ident & "*"
   of nnkStrLit..nnkTripleStrLit:
     result = node.strVal
+  of nnkSym:
+    result = $node.symbol
   else: 
     badNodeKind node.kind, "$"
 
@@ -647,7 +665,7 @@ template findChild*(n: PNimrodNode; cond: expr): PNimrodNode {.
   immediate, dirty.} =
   ## Find the first child node matching condition (or nil).
   ## 
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   var res = findChild(n, it.kind == nnkPostfix and
   ##                          it.basename.ident == !"foo")
   block:
@@ -742,11 +760,11 @@ proc addIdentIfAbsent*(dest: PNimrodNode, ident: string) {.compiletime.} =
 
 when not defined(booting):
   template emit*(e: static[string]): stmt =
-    ## accepts a single string argument and treats it as nimrod code
+    ## accepts a single string argument and treats it as nim code
     ## that should be inserted verbatim in the program
     ## Example:
     ##
-    ## .. code-block:: nimrod
+    ## .. code-block:: nim
     ##   emit("echo " & '"' & "hello world".toUpper & '"')
     ##
     macro payload: stmt {.gensym.} =

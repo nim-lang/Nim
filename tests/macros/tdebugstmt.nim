@@ -7,7 +7,7 @@ x: some string'''
 import macros
 
 macro debug(n: varargs[expr]): stmt =
-  # `n` is a Nimrod AST that contains the whole macro invocation
+  # `n` is a Nim AST that contains the whole macro invocation
   # this macro returns a list of statements:
   result = newNimNode(nnkStmtList, n)
   # iterate over any argument that is passed to this macro:

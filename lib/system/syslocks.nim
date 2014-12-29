@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -31,7 +31,7 @@ when defined(Windows):
     ## Tries to acquire the lock `L`.
     
   proc tryAcquireSys(L: var TSysLock): bool {.inline.} = 
-    result = TryAcquireSysAux(L) != 0'i32
+    result = tryAcquireSysAux(L) != 0'i32
 
   proc acquireSys(L: var TSysLock) {.stdcall, noSideEffect,
     dynlib: "kernel32", importc: "EnterCriticalSection".}

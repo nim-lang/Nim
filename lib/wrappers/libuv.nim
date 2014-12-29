@@ -35,7 +35,7 @@ type
   GetAddrInfoProc* = proc (handle: PGetAddrInfo, status: cint, res: ptr TAddrInfo)
 
   ExitProc* = proc (a2: PProcess, exit_status: cint, term_signal: cint)
-  FsProc* = proc (req: pFS)
+  FsProc* = proc (req: PFS)
   WorkProc* = proc (req: PWork)
   AfterWorkProc* = proc (req: PWork)
 
@@ -338,7 +338,7 @@ type
     FS_CHMOD, FS_FCHMOD, FS_FSYNC, FS_FDATASYNC, FS_UNLINK, FS_RMDIR, FS_MKDIR,
     FS_RENAME, FS_READDIR, FS_LINK, FS_SYMLINK, FS_READLINK, FS_CHOWN, FS_FCHOWN
 
-  tFS* {.pure, final, importc: "uv_fs_t", header: "uv.h".} = object
+  TFS* {.pure, final, importc: "uv_fs_t", header: "uv.h".} = object
     typ* {.importc: "type".}: TReqType
     data* {.importc: "data".}: pointer
     loop* {.importc: "loop".}: PLoop
@@ -349,7 +349,7 @@ type
     path* {.importc: "path".}: cstring
     errorno* {.importc: "errorno".}: cint
 
-  pFS* = ptr tFS
+  PFS* = ptr TFS
 
   TReq* {.pure, final, importc: "uv_req_t", header: "uv.h".} = object
     typ* {.importc: "type".}: TReqType
@@ -591,85 +591,85 @@ proc process_kill*(a2: PProcess, signum: cint): cint{.
 proc queue_work*(loop: PLoop, req: PWork, work_cb: WorkProc, after_work_cb: AfterWorkProc): cint{.
     importc: "uv_queue_work", header: "uv.h".}
 
-proc req_cleanup*(req: pFS){.
+proc req_cleanup*(req: PFS){.
     importc: "uv_fs_req_cleanup", header: "uv.h".}
 
-proc close*(loop: PLoop, req: pFS, file: TFile, cb: FsProc): cint{.
+proc close*(loop: PLoop, req: PFS, file: TFile, cb: FsProc): cint{.
     importc: "uv_fs_close", header: "uv.h".}
 
-proc open*(loop: PLoop, req: pFS, path: cstring, flags: cint, mode: cint, cb: FsProc): cint{.
+proc open*(loop: PLoop, req: PFS, path: cstring, flags: cint, mode: cint, cb: FsProc): cint{.
     importc: "uv_fs_open", header: "uv.h".}
 
-proc read*(loop: PLoop, req: pFS, file: TFile, buf: pointer, length: csize, offset: coff, cb: FsProc): cint{.
+proc read*(loop: PLoop, req: PFS, file: TFile, buf: pointer, length: csize, offset: coff, cb: FsProc): cint{.
     importc: "uv_fs_read", header: "uv.h".}
 
-proc unlink*(loop: PLoop, req: pFS, path: cstring, cb: FsProc): cint{.
+proc unlink*(loop: PLoop, req: PFS, path: cstring, cb: FsProc): cint{.
     importc: "uv_fs_unlink", header: "uv.h".}
 
-proc write*(loop: PLoop, req: pFS, file: TFile, buf: pointer, length: csize, offset: coff, cb: FsProc): cint{.
+proc write*(loop: PLoop, req: PFS, file: TFile, buf: pointer, length: csize, offset: coff, cb: FsProc): cint{.
     importc: "uv_fs_write", header: "uv.h".}
 
-proc mkdir*(loop: PLoop, req: pFS, path: cstring, mode: cint, cb: FsProc): cint{.
+proc mkdir*(loop: PLoop, req: PFS, path: cstring, mode: cint, cb: FsProc): cint{.
     importc: "uv_fs_mkdir", header: "uv.h".}
 
-proc rmdir*(loop: PLoop, req: pFS, path: cstring, cb: FsProc): cint{.
+proc rmdir*(loop: PLoop, req: PFS, path: cstring, cb: FsProc): cint{.
     importc: "uv_fs_rmdir", header: "uv.h".}
 
-proc readdir*(loop: PLoop, req: pFS, path: cstring, flags: cint, cb: FsProc): cint{.
+proc readdir*(loop: PLoop, req: PFS, path: cstring, flags: cint, cb: FsProc): cint{.
     importc: "uv_fs_readdir", header: "uv.h".}
 
-proc stat*(loop: PLoop, req: pFS, path: cstring, cb: FsProc): cint{.
+proc stat*(loop: PLoop, req: PFS, path: cstring, cb: FsProc): cint{.
     importc: "uv_fs_stat", header: "uv.h".}
 
-proc fstat*(loop: PLoop, req: pFS, file: TFile, cb: FsProc): cint{.
+proc fstat*(loop: PLoop, req: PFS, file: TFile, cb: FsProc): cint{.
     importc: "uv_fs_fstat", header: "uv.h".}
 
-proc rename*(loop: PLoop, req: pFS, path: cstring, new_path: cstring, cb: FsProc): cint{.
+proc rename*(loop: PLoop, req: PFS, path: cstring, new_path: cstring, cb: FsProc): cint{.
     importc: "uv_fs_rename", header: "uv.h".}
 
-proc fsync*(loop: PLoop, req: pFS, file: TFile, cb: FsProc): cint{.
+proc fsync*(loop: PLoop, req: PFS, file: TFile, cb: FsProc): cint{.
     importc: "uv_fs_fsync", header: "uv.h".}
 
-proc fdatasync*(loop: PLoop, req: pFS, file: TFile, cb: FsProc): cint{.
+proc fdatasync*(loop: PLoop, req: PFS, file: TFile, cb: FsProc): cint{.
     importc: "uv_fs_fdatasync", header: "uv.h".}
 
-proc ftruncate*(loop: PLoop, req: pFS, file: TFile, offset: coff, cb: FsProc): cint{.
+proc ftruncate*(loop: PLoop, req: PFS, file: TFile, offset: coff, cb: FsProc): cint{.
     importc: "uv_fs_ftruncate", header: "uv.h".}
 
-proc sendfile*(loop: PLoop, req: pFS, out_fd: TFile, in_fd: TFile, in_offset: coff, length: csize, cb: FsProc): cint{.
+proc sendfile*(loop: PLoop, req: PFS, out_fd: TFile, in_fd: TFile, in_offset: coff, length: csize, cb: FsProc): cint{.
     importc: "uv_fs_sendfile", header: "uv.h".}
 
-proc chmod*(loop: PLoop, req: pFS, path: cstring, mode: cint, cb: FsProc): cint{.
+proc chmod*(loop: PLoop, req: PFS, path: cstring, mode: cint, cb: FsProc): cint{.
     importc: "uv_fs_chmod", header: "uv.h".}
 
-proc utime*(loop: PLoop, req: pFS, path: cstring, atime: cdouble, mtime: cdouble, cb: FsProc): cint{.
+proc utime*(loop: PLoop, req: PFS, path: cstring, atime: cdouble, mtime: cdouble, cb: FsProc): cint{.
     importc: "uv_fs_utime", header: "uv.h".}
 
-proc futime*(loop: PLoop, req: pFS, file: TFile, atime: cdouble, mtime: cdouble, cb: FsProc): cint{.
+proc futime*(loop: PLoop, req: PFS, file: TFile, atime: cdouble, mtime: cdouble, cb: FsProc): cint{.
     importc: "uv_fs_futime", header: "uv.h".}
 
-proc lstat*(loop: PLoop, req: pFS, path: cstring, cb: FsProc): cint{.
+proc lstat*(loop: PLoop, req: PFS, path: cstring, cb: FsProc): cint{.
     importc: "uv_fs_lstat", header: "uv.h".}
 
-proc link*(loop: PLoop, req: pFS, path: cstring, new_path: cstring, cb: FsProc): cint{.
+proc link*(loop: PLoop, req: PFS, path: cstring, new_path: cstring, cb: FsProc): cint{.
     importc: "uv_fs_link", header: "uv.h".}
 
-proc symlink*(loop: PLoop, req: pFS, path: cstring, new_path: cstring, flags: cint, cb: FsProc): cint{.
+proc symlink*(loop: PLoop, req: PFS, path: cstring, new_path: cstring, flags: cint, cb: FsProc): cint{.
     importc: "uv_fs_symlink", header: "uv.h".}
 
-proc readlink*(loop: PLoop, req: pFS, path: cstring, cb: FsProc): cint{.
+proc readlink*(loop: PLoop, req: PFS, path: cstring, cb: FsProc): cint{.
     importc: "uv_fs_readlink", header: "uv.h".}
 
-proc fchmod*(loop: PLoop, req: pFS, file: TFile, mode: cint, cb: FsProc): cint{.
+proc fchmod*(loop: PLoop, req: PFS, file: TFile, mode: cint, cb: FsProc): cint{.
     importc: "uv_fs_fchmod", header: "uv.h".}
 
-proc chown*(loop: PLoop, req: pFS, path: cstring, uid: cint, gid: cint, cb: FsProc): cint{.
+proc chown*(loop: PLoop, req: PFS, path: cstring, uid: cint, gid: cint, cb: FsProc): cint{.
     importc: "uv_fs_chown", header: "uv.h".}
 
-proc fchown*(loop: PLoop, req: pFS, file: TFile, uid: cint, gid: cint, cb: FsProc): cint{.
+proc fchown*(loop: PLoop, req: PFS, file: TFile, uid: cint, gid: cint, cb: FsProc): cint{.
     importc: "uv_fs_fchown", header: "uv.h".}
 
-proc event_init*(loop: PLoop, handle: PFsEvent, filename: cstring, cb: FsEventProc): cint{.
+proc event_init*(loop: PLoop, handle: PFSEvent, filename: cstring, cb: FsEventProc): cint{.
     importc: "uv_fs_event_init", header: "uv.h".}
 
 proc ip4_addr*(ip: cstring, port: cint): TSockAddrIn{.

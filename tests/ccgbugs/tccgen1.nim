@@ -45,7 +45,7 @@ type
   PText* = ref Text
   Text = object of CharacterData
   
-  PComment* = ref comment
+  PComment* = ref Comment
   Comment = object of CharacterData
   
   PCDataSection* = ref CDataSection

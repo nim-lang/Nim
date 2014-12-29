@@ -34,7 +34,7 @@ proc loadFile*(info: TLineInfo) =
     for line in lines(path):
       gSourceFiles[i].lines.add(line)
     # extract line ending of the file:
-    var lex: TBaseLexer
+    var lex: BaseLexer
     open(lex, newFileStream(path, fmRead))
     var pos = lex.bufpos
     while true:

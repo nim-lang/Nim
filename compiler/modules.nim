@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -117,7 +117,7 @@ proc newModule(fileIdx: int32): PSym =
   result.kind = skModule
   let filename = fileIdx.toFullPath
   result.name = getIdent(splitFile(filename).name)
-  if not isNimrodIdentifier(result.name.s):
+  if not isNimIdentifier(result.name.s):
     rawMessage(errInvalidModuleName, result.name.s)
   
   result.info = newLineInfo(fileIdx, 1, 1)
@@ -177,7 +177,7 @@ proc includeModule*(s: PSym, fileIdx: int32): PNode {.procvar.} =
 proc `==^`(a, b: string): bool =
   try:
     result = sameFile(a, b)
-  except EOS:
+  except OSError:
     result = false
 
 proc compileSystemModule* =
@@ -185,8 +185,18 @@ proc compileSystemModule* =
     systemFileIdx = fileInfoIdx(options.libpath/"system.nim")
     discard compileModule(systemFileIdx, {sfSystemModule})
 
-proc compileProject*(projectFile = gProjectMainIdx) =
+proc wantMainModule* =
+  if gProjectFull.len == 0:
+    fatal(gCmdLineInfo, errCommandExpectsFilename)
+  gProjectMainIdx = addFileExt(gProjectFull, NimExt).fileInfoIdx
+
+passes.gIncludeFile = includeModule
+passes.gImportModule = importModule
+
+proc compileProject*(projectFileIdx = -1'i32) =
+  wantMainModule()
   let systemFileIdx = fileInfoIdx(options.libpath / "system.nim")
+  let projectFile = if projectFileIdx < 0: gProjectMainIdx else: projectFileIdx
   if projectFile == systemFileIdx:
     discard compileModule(projectFile, {sfMainModule, sfSystemModule})
   else:

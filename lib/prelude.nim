@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -10,12 +10,12 @@
 ## This is an include file that simply imports common modules for your
 ## convenience:
 ##
-## .. code-block:: nimrod
+## .. code-block:: nim
 ##   include prelude
 ##
 ## Same as:
 ##
-## .. code-block:: nimrod
+## .. code-block:: nim
 ##   import os, strutils, times, parseutils, parseopt, hashes, tables, sets
 
 import os, strutils, times, parseutils, parseopt, hashes, tables, sets

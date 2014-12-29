@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -117,7 +117,9 @@ proc isDeepConstExpr*(n: PNode): bool =
   of nkCurly, nkBracket, nkPar, nkObjConstr, nkClosure:
     for i in 0 .. <n.len:
       if not isDeepConstExpr(n.sons[i]): return false
-    result = true
+    # XXX once constant objects are supported by the codegen this needs to be
+    # weakened:
+    result = n.typ.isNil or n.typ.skipTypes({tyGenericInst, tyDistinct}).kind != tyObject
   else: discard
 
 proc flattenTreeAux(d, a: PNode, op: TMagic) = 

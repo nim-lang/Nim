@@ -3,6 +3,8 @@ discard """
   errormsg: " usage of a type with a destructor in a non destructible context"
 """
 
+{.experimental.}
+
 type  
   TMyObj = object
     x, y: int

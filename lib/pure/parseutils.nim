@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -35,7 +35,7 @@ proc parseHex*(s: string, number: var int, start = 0): int {.
   ## can use this feature to *chain* calls, though the result int will quickly
   ## overflow. Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   var value = 0
   ##   discard parseHex("0x38", value)
   ##   assert value == 56
@@ -227,100 +227,15 @@ proc parseInt*(s: string, number: var int, start = 0): int {.
   result = parseBiggestInt(s, res, start)
   if (sizeof(int) <= 4) and
       ((res < low(int)) or (res > high(int))):
-    raise newException(EOverflow, "overflow")
+    raise newException(OverflowError, "overflow")
   else:
     number = int(res)
 
-when defined(nimParseBiggestFloatMagic):
-  proc parseBiggestFloat*(s: string, number: var BiggestFloat, start = 0): int {.
-    magic: "ParseBiggestFloat", importc: "nimParseBiggestFloat", noSideEffect.}
-    ## parses a float starting at `start` and stores the value into `number`.
-    ## Result is the number of processed chars or 0 if a parsing error
-    ## occurred.
-else:
-  proc tenToThePowerOf(b: int): BiggestFloat =
-    var b = b
-    var a = 10.0
-    result = 1.0
-    while true:
-      if (b and 1) == 1:
-        result *= a
-      b = b shr 1
-      if b == 0: break
-      a *= a
-
-  proc parseBiggestFloat*(s: string, number: var BiggestFloat, start = 0): int {.
-    rtl, extern: "npuParseBiggestFloat", noSideEffect.} =
-    ## parses a float starting at `start` and stores the value into `number`.
-    ## Result is the number of processed chars or 0 if there occured a parsing
-    ## error.
-    var
-      esign = 1.0
-      sign = 1.0
-      i = start
-      exponent: int
-      flags: int
-    number = 0.0
-    if s[i] == '+': inc(i)
-    elif s[i] == '-':
-      sign = -1.0
-      inc(i)
-    if s[i] == 'N' or s[i] == 'n':
-      if s[i+1] == 'A' or s[i+1] == 'a':
-        if s[i+2] == 'N' or s[i+2] == 'n':
-          if s[i+3] notin IdentChars:
-            number = NaN
-            return i+3 - start
-      return 0
-    if s[i] == 'I' or s[i] == 'i':
-      if s[i+1] == 'N' or s[i+1] == 'n':
-        if s[i+2] == 'F' or s[i+2] == 'f':
-          if s[i+3] notin IdentChars: 
-            number = Inf*sign
-            return i+3 - start
-      return 0
-    while s[i] in {'0'..'9'}:
-      # Read integer part
-      flags = flags or 1
-      number = number * 10.0 + toFloat(ord(s[i]) - ord('0'))
-      inc(i)
-      while s[i] == '_': inc(i)
-    # Decimal?
-    if s[i] == '.':
-      var hd = 1.0
-      inc(i)
-      while s[i] in {'0'..'9'}:
-        # Read fractional part
-        flags = flags or 2
-        number = number * 10.0 + toFloat(ord(s[i]) - ord('0'))
-        hd = hd * 10.0
-        inc(i)
-        while s[i] == '_': inc(i)
-      number = number / hd # this complicated way preserves precision
-    # Again, read integer and fractional part
-    if flags == 0: return 0
-    # Exponent?
-    if s[i] in {'e', 'E'}:
-      inc(i)
-      if s[i] == '+':
-        inc(i)
-      elif s[i] == '-':
-        esign = -1.0
-        inc(i)
-      if s[i] notin {'0'..'9'}:
-        return 0
-      while s[i] in {'0'..'9'}:
-        exponent = exponent * 10 + ord(s[i]) - ord('0')
-        inc(i)
-        while s[i] == '_': inc(i)
-    # Calculate Exponent
-    let hd = tenToThePowerOf(exponent)
-    if esign > 0.0: number = number * hd
-    else:           number = number / hd
-    # evaluate sign
-    number = number * sign
-    result = i - start
-
+proc parseBiggestFloat*(s: string, number: var BiggestFloat, start = 0): int {.
+  magic: "ParseBiggestFloat", importc: "nimParseBiggestFloat", noSideEffect.}
+  ## parses a float starting at `start` and stores the value into `number`.
+  ## Result is the number of processed chars or 0 if a parsing error
+  ## occurred.
 
 proc parseFloat*(s: string, number: var float, start = 0): int {.
   rtl, extern: "npuParseFloat", noSideEffect.} =
@@ -332,7 +247,7 @@ proc parseFloat*(s: string, number: var float, start = 0): int {.
   number = bf
   
 type
-  TInterpolatedKind* = enum  ## describes for `interpolatedFragments`
+  InterpolatedKind* = enum   ## describes for `interpolatedFragments`
                              ## which part of the interpolated string is
                              ## yielded; for example in "str$$$var${expr}"
     ikStr,                   ## ``str`` part of the interpolated string
@@ -340,19 +255,21 @@ type
     ikVar,                   ## ``var`` part of the interpolated string
     ikExpr                   ## ``expr`` part of the interpolated string
 
-iterator interpolatedFragments*(s: string): tuple[kind: TInterpolatedKind,
+{.deprecated: [TInterpolatedKind: InterpolatedKind].}
+
+iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
   value: string] =
   ## Tokenizes the string `s` into substrings for interpolation purposes.
   ##
   ## Example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   for k, v in interpolatedFragments("  $this is ${an  example}  $$"):
   ##     echo "(", k, ", \"", v, "\")"
   ##
   ## Results in:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   (ikString, "  ")
   ##   (ikExpr, "this")
   ##   (ikString, " is ")
@@ -360,7 +277,7 @@ iterator interpolatedFragments*(s: string): tuple[kind: TInterpolatedKind,
   ##   (ikString, "  ")
   ##   (ikDollar, "$")
   var i = 0
-  var kind: TInterpolatedKind
+  var kind: InterpolatedKind
   while true:
     var j = i
     if s[j] == '$':
@@ -376,7 +293,7 @@ iterator interpolatedFragments*(s: string): tuple[kind: TInterpolatedKind,
               break
             dec nesting
           of '\0':
-            raise newException(EInvalidValue, 
+            raise newException(ValueError, 
               "Expected closing '}': " & s[i..s.len])
           else: discard
           inc j
@@ -392,7 +309,7 @@ iterator interpolatedFragments*(s: string): tuple[kind: TInterpolatedKind,
         inc i # skip $
         kind = ikDollar
       else:
-        raise newException(EInvalidValue, 
+        raise newException(ValueError, 
           "Unable to parse a varible name at " & s[i..s.len])
     else:
       while j < s.len and s[j] != '$': inc j

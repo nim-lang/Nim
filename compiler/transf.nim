@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -582,7 +582,7 @@ proc getMergeOp(n: PNode): PSym =
   else: discard
 
 proc flattenTreeAux(d, a: PNode, op: PSym) = 
-  var op2 = getMergeOp(a)
+  let op2 = getMergeOp(a)
   if op2 != nil and
       (op2.id == op.id or op.magic != mNone and op2.magic == op.magic): 
     for i in countup(1, sonsLen(a)-1): flattenTreeAux(d, a.sons[i], op)
@@ -590,7 +590,7 @@ proc flattenTreeAux(d, a: PNode, op: PSym) =
     addSon(d, copyTree(a))
   
 proc flattenTree(root: PNode): PNode = 
-  var op = getMergeOp(root)
+  let op = getMergeOp(root)
   if op != nil: 
     result = copyNode(root)
     addSon(result, copyTree(root.sons[0]))
@@ -600,8 +600,9 @@ proc flattenTree(root: PNode): PNode =
 
 proc transformCall(c: PTransf, n: PNode): PTransNode = 
   var n = flattenTree(n)
-  var op = getMergeOp(n)
-  if (op != nil) and (op.magic != mNone) and (sonsLen(n) >= 3): 
+  let op = getMergeOp(n)
+  let magic = getMagic(n)
+  if op != nil and op.magic != mNone and n.len >= 3: 
     result = newTransNode(nkCall, n, 0)
     add(result, transform(c, n.sons[0]))
     var j = 1
@@ -616,9 +617,12 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
           inc(j)
       add(result, a.PTransNode)
     if len(result) == 2: result = result[1]
-  elif getMagic(n) == mNBindSym:
+  elif magic == mNBindSym:
     # for bindSym(myconst) we MUST NOT perform constant folding:
     result = n.PTransNode
+  elif magic == mProcCall:
+    # but do not change to its dispatcher:
+    result = transformSons(c, n[1])
   else:
     let s = transformSons(c, n).PNode
     # bugfix: check after 'transformSons' if it's still a method call:
@@ -785,8 +789,8 @@ proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
     #  result = lambdalifting.liftIterator(prc, result)
     incl(result.flags, nfTransf)
     when useEffectSystem: trackProc(prc, result)
-    if prc.name.s == "testbody":
-      echo renderTree(result)
+    #if prc.name.s == "testbody":
+    #  echo renderTree(result)
 
 proc transformStmt*(module: PSym, n: PNode): PNode =
   if nfTransf in n.flags:

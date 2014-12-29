@@ -1,6 +1,9 @@
 discard """
-  output: '''true'''
-  cmd: "nimrod $target --gc:none --hints:on --warnings:off $options $file"
+  output: '''true
+3
+4
+5'''
+  cmd: "nim $target --gc:none --hints:on --warnings:off $options $file"
 """
 
 import hashes
@@ -44,8 +47,11 @@ block Test1:
   # a non-generic iterator!
 
   var t = initTable[int, string]()
-  for k, v in t.pairs: nil
-  for k, v in t.pairs: nil
+  for k, v in t.pairs: discard
+  for k, v in t.pairs: discard
 
 echo "true"
 
+# bug #1560
+for i in @[3, 4, 5]:
+  echo($i)

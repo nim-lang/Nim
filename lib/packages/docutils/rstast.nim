@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -286,7 +286,7 @@ proc renderRstToRst*(n: PRstNode, result: var string) =
   var d: TRenderContext
   renderRstToRst(d, n, result)
 
-proc renderRstToJsonNode(node: PRstNode): PJsonNode =
+proc renderRstToJsonNode(node: PRstNode): JsonNode =
   result =
     %[
       (key: "kind", val: %($node.kind)),
@@ -295,7 +295,7 @@ proc renderRstToJsonNode(node: PRstNode): PJsonNode =
   if node.text != nil:
     result.add("text", %node.text)
   if node.sons != nil and len(node.sons) > 0:
-    var accm = newSeq[PJsonNode](len(node.sons))
+    var accm = newSeq[JsonNode](len(node.sons))
     for i, son in node.sons:
       accm[i] = renderRstToJsonNode(son)
     result.add("sons", %accm)

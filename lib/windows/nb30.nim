@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2006 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -13,7 +13,7 @@
 {.deadCodeElim: on.}
 
 import                        # Data structure templates 
-  Windows
+  windows
 
 const 
   NCBNAMSZ* = 16              # absolute length of a net name
@@ -24,20 +24,20 @@ type                          # Network Control Block
   TNCBPostProc* = proc (P: PNCB) {.stdcall.}
   TNCB* {.final.} = object # Structure returned to the NCB command NCBASTAT is ADAPTER_STATUS followed
                            # by an array of NAME_BUFFER structures.
-    ncb_command*: Char        # command code
-    ncb_retcode*: Char        # return code
-    ncb_lsn*: Char            # local session number
-    ncb_num*: Char            # number of our network name
+    ncb_command*: char        # command code
+    ncb_retcode*: char        # return code
+    ncb_lsn*: char            # local session number
+    ncb_num*: char            # number of our network name
     ncb_buffer*: cstring      # address of message buffer
     ncb_length*: int16        # size of message buffer
     ncb_callname*: array[0..NCBNAMSZ - 1, char] # blank-padded name of remote
     ncb_name*: array[0..NCBNAMSZ - 1, char] # our blank-padded netname
-    ncb_rto*: Char            # rcv timeout/retry count
-    ncb_sto*: Char            # send timeout/sys timeout
+    ncb_rto*: char            # rcv timeout/retry count
+    ncb_sto*: char            # send timeout/sys timeout
     ncb_post*: TNCBPostProc   # POST routine address
-    ncb_lana_num*: Char       # lana (adapter) number
-    ncb_cmd_cplt*: Char       # 0xff => commmand pending
-    ncb_reserve*: array[0..9, Char] # reserved, used by BIOS
+    ncb_lana_num*: char       # lana (adapter) number
+    ncb_cmd_cplt*: char       # 0xff => commmand pending
+    ncb_reserve*: array[0..9, char] # reserved, used by BIOS
     ncb_event*: THandle       # HANDLE to Win32 event which
                               # will be set to the signalled
                               # state when an ASYNCH command
@@ -45,11 +45,11 @@ type                          # Network Control Block
   
   PAdapterStatus* = ptr TAdapterStatus
   TAdapterStatus* {.final.} = object 
-    adapter_address*: array[0..5, Char]
-    rev_major*: Char
-    reserved0*: Char
-    adapter_type*: Char
-    rev_minor*: Char
+    adapter_address*: array[0..5, char]
+    rev_major*: char
+    reserved0*: char
+    adapter_type*: char
+    rev_minor*: char
     duration*: int16
     frmr_recv*: int16
     frmr_xmit*: int16
@@ -75,9 +75,9 @@ type                          # Network Control Block
 
   PNameBuffer* = ptr TNameBuffer
   TNameBuffer* {.final.} = object 
-    name*: array[0..NCBNAMSZ - 1, Char]
-    name_num*: Char
-    name_flags*: Char
+    name*: array[0..NCBNAMSZ - 1, char]
+    name_num*: char
+    name_flags*: char
 
 
 const                         # values for name_flags bits.
@@ -96,19 +96,19 @@ type # Structure returned to the NCB command NCBSSTAT is SESSION_HEADER followed
      # status for all names.
   PSessionHeader* = ptr TSessionHeader
   TSessionHeader* {.final.} = object 
-    sess_name*: Char
-    num_sess*: Char
-    rcv_dg_outstanding*: Char
-    rcv_any_outstanding*: Char
+    sess_name*: char
+    num_sess*: char
+    rcv_dg_outstanding*: char
+    rcv_any_outstanding*: char
 
   PSessionBuffer* = ptr TSessionBuffer
   TSessionBuffer* {.final.} = object 
-    lsn*: Char
-    state*: Char
-    local_name*: array[0..NCBNAMSZ - 1, Char]
-    remote_name*: array[0..NCBNAMSZ - 1, Char]
-    rcvs_outstanding*: Char
-    sends_outstanding*: Char
+    lsn*: char
+    state*: char
+    local_name*: array[0..NCBNAMSZ - 1, char]
+    remote_name*: array[0..NCBNAMSZ - 1, char]
+    rcvs_outstanding*: char
+    sends_outstanding*: char
 
 
 const                         # Values for state
@@ -125,24 +125,24 @@ type # Structure returned to the NCB command NCBENUM.
   PLanaEnum* = ptr TLanaEnum
   TLanaEnum* {.final.} = object # Structure returned to the NCB command NCBFINDNAME is FIND_NAME_HEADER followed
                                 # by an array of FIND_NAME_BUFFER structures.
-    len*: Char                #  Number of valid entries in lana[]
-    lana*: array[0..MAX_LANA, Char]
+    len*: char                #  Number of valid entries in lana[]
+    lana*: array[0..MAX_LANA, char]
 
   PFindNameHeader* = ptr TFindNameHeader
   TFindNameHeader* {.final.} = object 
     node_count*: int16
-    reserved*: Char
-    unique_group*: Char
+    reserved*: char
+    unique_group*: char
 
   PFindNameBuffer* = ptr TFindNameBuffer
   TFindNameBuffer* {.final.} = object # Structure provided with NCBACTION. The purpose of NCBACTION is to provide
                                       # transport specific extensions to netbios.
-    len*: Char
-    access_control*: Char
-    frame_control*: Char
-    destination_addr*: array[0..5, Char]
-    source_addr*: array[0..5, Char]
-    routing_info*: array[0..17, Char]
+    len*: char
+    access_control*: char
+    frame_control*: char
+    destination_addr*: array[0..5, char]
+    source_addr*: array[0..5, char]
+    routing_info*: array[0..17, char]
 
   PActionHeader* = ptr TActionHeader
   TActionHeader* {.final.} = object 
@@ -227,6 +227,6 @@ const                         # NCB Command codes
                               # main user entry point for NetBIOS 3.0
                               #   Usage: Result = Netbios( pncb ); 
 
-proc Netbios*(P: PNCB): Char{.stdcall, dynlib: "netapi32.dll", 
+proc Netbios*(P: PNCB): char{.stdcall, dynlib: "netapi32.dll", 
                               importc: "Netbios".}
 # implementation

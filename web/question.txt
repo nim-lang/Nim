@@ -6,135 +6,161 @@
 General
 =======
 
-What is Nimrod?
----------------
 
-Nimrod is a statically typed, imperative programming language that tries to
-give the programmer ultimate power without compromises on runtime efficiency. 
-This means it focuses on compile-time mechanisms in all their
-various forms. Beneath a nice infix/indentation based syntax with a 
-powerful (AST based, hygienic) macro system lies a semantic model that supports 
-a soft realtime GC on thread local heaps. Asynchronous message passing is used 
-between threads, so no "stop the world" mechanism is necessary. An unsafe 
-shared memory heap is also provided for the increased efficiency that results 
-from that model.
+.. container:: standout
 
+  What is Nim?
+  ------------
 
-Why yet another programming language?
--------------------------------------
-
-Nimrod is one of the very few *programmable* statically typed languages, and 
-one of the even fewer that produces native binaries that require no 
-runtime or interpreter.
+  Nim (formerly known as "Nimrod") is a statically typed, imperative programming
+  language that tries to give the programmer ultimate power without compromises
+  on runtime efficiency.
+  This means it focuses on compile-time mechanisms in all their
+  various forms. Beneath a nice infix/indentation based syntax with a 
+  powerful (AST based, hygienic) macro system lies a semantic model that supports 
+  a soft realtime GC on thread local heaps. Asynchronous message passing is used 
+  between threads, so no "stop the world" mechanism is necessary. An unsafe 
+  shared memory heap is also provided for the increased efficiency that results 
+  from that model.
 
 
-What have been the major influences in the language's design?
--------------------------------------------------------------
+.. container:: standout
 
-The language borrows heavily from: Modula 3, Delphi, Ada, C++, Python, Lisp,
-Oberon. As far as possible the list is sorted by the impact of influence.
+  Why yet another programming language?
+  -------------------------------------
 
-
-
-What is Nimrod's take on concurrency?
--------------------------------------
-
-Nimrod primarily focusses on thread local (and garbage collected) heaps and 
-asynchronous message passing between threads. Each thread has its own GC, so no 
-"stop the world" mechanism is necessary. An unsafe shared memory heap is also
-provided. 
-
-Future versions will additionally include a GC "per thread group" 
-and Nimrod's type system will be enhanced to accurately model this shared
-memory heap.
+  Nim is one of the very few *programmable* statically typed languages, and 
+  one of the even fewer that produces native binaries that require no 
+  runtime or interpreter.
 
 
-How is Nimrod licensed?
------------------------
+.. container:: standout
 
-The Nimrod compiler and the library are MIT licensed.
-This means that you can use any license for your own programs developed with
-Nimrod.
+  What have been the major influences in the language's design?
+  -------------------------------------------------------------
 
-
-How stable is Nimrod?
----------------------
-
-The compiler is in development and some important features are still missing.
-However, the compiler is quite stable already: It is able to compile itself 
-and a substantial body of other code. Until version 1.0.0 is released,
-minor incompatibilities with older versions of the compiler will be introduced.
+  The language borrows heavily from (in order of impact): Modula 3, Delphi, Ada,
+  C++, Python, Lisp, Oberon.
 
 
-How fast is Nimrod?
--------------------
-Benchmarks show it to be comparable to C. Some language features (methods, 
-closures, message passing) are not yet as optimized as they could and will be.
-The only overhead Nimrod has over C is the GC which has been tuned 
-for years but still needs some work.
+.. container:: standout
+
+  What is Nim's take on concurrency?
+  ----------------------------------
+
+  Nim primarily focusses on thread local (and garbage collected) heaps and 
+  message passing between threads. Each thread has its own GC, so no 
+  "stop the world" mechanism is necessary. An unsafe shared memory heap is also
+  provided.
+
+  Future versions will additionally include a GC "per thread group" 
+  and Nim's type system will be enhanced to accurately model this shared
+  memory heap.
 
 
-What about JVM/CLR backends?
-----------------------------
+.. container:: standout
 
-A JVM backend is almost impossible. The JVM is not expressive enough. It has
-never been designed as a general purpose VM anyway. A CLR backend is possible
-but would require much work. 
+  How is Nim licensed?
+  --------------------
 
-What about editor support?
---------------------------
-
-- Nimrod IDE: https://github.com/nimrod-code/Aporia
-- Emacs: https://github.com/Tass/nimrod-mode
-- Vim: https://github.com/zah/nimrod.vim/
-- Scite: Included
-- Gedit: The `Aporia .lang file <https://github.com/nimrod-code/Aporia/blob/master/share/gtksourceview-2.0/language-specs/nimrod.lang>`_
-- jEdit: https://github.com/exhu/nimrod-misc/tree/master/jedit
+  The Nim compiler and the library are MIT licensed.
+  This means that you can use any license for your own programs developed with
+  Nim.
 
 
-Why is it named ``proc``?
--------------------------
+.. container:: standout
 
-*Procedure* used to be the common term as opposed to a *function* which is a
-mathematical entity that has no side effects. It was planned to have ``func``
-as syntactic sugar for ``proc {.noSideEffect.}`` but with the more fine-grained
-effect system it is not yet clear what ``func`` should be a shortcut for.
+  How stable is Nim?
+  ------------------
+
+  The compiler is in development and some important features are still missing.
+  However, the compiler is quite stable already: It is able to compile itself 
+  and a substantial body of other code. Until version 1.0.0 is released,
+  minor incompatibilities with older versions of the compiler will be introduced.
+
+
+.. container:: standout
+
+  How fast is Nim?
+  ----------------
+  Benchmarks show it to be comparable to C. Some language features (methods, 
+  closures, message passing) are not yet as optimized as they could and will be.
+  The only overhead Nim has over C is the GC which has been tuned 
+  for years but still needs some work.
+
+
+.. container:: standout
+
+  What about JVM/CLR backends?
+  ----------------------------
+
+  A JVM backend is almost impossible. The JVM is not expressive enough. It has
+  never been designed as a general purpose VM anyway. A CLR backend is possible
+  but would require much work. 
+
+
+.. container:: standout
+
+  What about editor support?
+  --------------------------
+
+  - Nim IDE: https://github.com/nimrod-code/Aporia
+  - Emacs: https://github.com/Tass/nimrod-mode
+  - Vim: https://github.com/zah/nimrod.vim/
+  - Scite: Included
+  - Gedit: The `Aporia .lang file <https://github.com/nimrod-code/Aporia/blob/master/share/gtksourceview-2.0/language-specs/nimrod.lang>`_
+  - jEdit: https://github.com/exhu/nimrod-misc/tree/master/jedit
+
+
+.. container:: standout
+
+  Why is it named ``proc``?
+  -------------------------
+
+  *Procedure* used to be the common term as opposed to a *function* which is a
+  mathematical entity that has no side effects. It is planned to have ``func``
+  as syntactic sugar for ``proc {.noSideEffect.}`` and ``func`` is already a
+  keyword.
 
 
 Compilation
 ===========
 
-Which option to use for the fastest executable?
------------------------------------------------
+.. container:: standout
 
-For the standard configuration file, ``-d:release`` does the trick.
+  Which option to use for the fastest executable?
+  -----------------------------------------------
 
+  For the standard configuration file, ``-d:release`` does the trick.
 
-Which option to use for the smallest executable?
-------------------------------------------------
+.. container:: standout
 
-For the standard configuration file, ``-d:quick --opt:size`` does the trick.
+  Which option to use for the smallest executable?
+  ------------------------------------------------
 
+  For the standard configuration file, ``-d:quick --opt:size`` does the trick.
 
-How do I use a different C compiler than the default one?
----------------------------------------------------------
+.. container:: standout
 
-Edit the ``config/nimrod.cfg`` file.
-Change the value of the ``cc`` variable to one of the following:
+  How do I use a different C compiler than the default one?
+  ---------------------------------------------------------
 
-==============  ============================================
-Abbreviation    C/C++ Compiler
-==============  ============================================
-``vcc``         Microsoft's Visual C++
-``gcc``         Gnu C
-``llvm_gcc``    LLVM-GCC compiler
-``icc``         Intel C++ compiler
-``clang``       Clang compiler
-``ucc``         Generic UNIX C compiler
-==============  ============================================
+  Edit the ``config/nimrod.cfg`` file.
+  Change the value of the ``cc`` variable to one of the following:
 
-Other C compilers are not officially supported, but might work too.
+  ==============  ============================================
+  Abbreviation    C/C++ Compiler
+  ==============  ============================================
+  ``vcc``         Microsoft's Visual C++
+  ``gcc``         Gnu C
+  ``llvm_gcc``    LLVM-GCC compiler
+  ``icc``         Intel C++ compiler
+  ``clang``       Clang compiler
+  ``ucc``         Generic UNIX C compiler
+  ==============  ============================================
 
-If your C compiler is not in the above list, try using the
-*generic UNIX C compiler* (``ucc``). If the C compiler needs
-different command line arguments try the ``--passc`` and ``--passl`` switches.
+  Other C compilers are not officially supported, but might work too.
+
+  If your C compiler is not in the above list, try using the
+  *generic UNIX C compiler* (``ucc``). If the C compiler needs
+  different command line arguments try the ``--passc`` and ``--passl`` switches.

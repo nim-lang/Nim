@@ -29,5 +29,5 @@ for i in 0 .. <10:
   f.func = proc = 
     echo f.id
 
-gc_fullcollect()
+GC_fullcollect()
 echo alive_foos.len <= 3

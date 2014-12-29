@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -12,7 +12,8 @@
 
 import 
   intsets, ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst,
-  magicsys, condsyms, idents, lexer, options, parampatterns, strutils, trees
+  magicsys, condsyms, idents, lexer, options, parampatterns, strutils, trees,
+  nimfix.pretty
 
 when not defined(noDocgen):
   import docgen
@@ -21,7 +22,8 @@ type
   TCandidateState* = enum 
     csEmpty, csMatch, csNoMatch
 
-  TCandidate* {.final.} = object
+  CandidateErrors* = seq[PSym]
+  TCandidate* = object
     c*: PContext
     exactMatches*: int       # also misused to prefer iters over procs
     genericMatches: int      # also misused to prefer constraints
@@ -44,7 +46,7 @@ type
                              # a distrinct type
     typedescMatched: bool
     inheritancePenalty: int  # to prefer closest father object type
-    errors*: seq[string]     # additional clarifications to be displayed to the
+    errors*: CandidateErrors # additional clarifications to be displayed to the
                              # user if overload resolution fails
 
   TTypeRelation* = enum      # order is important!
@@ -201,16 +203,17 @@ proc writeMatches*(c: TCandidate) =
   writeln(stdout, "intconv matches: " & $c.intConvMatches)
   writeln(stdout, "generic matches: " & $c.genericMatches)
 
-proc argTypeToString(arg: PNode): string =
+proc argTypeToString(arg: PNode; prefer: TPreferedDesc): string =
   if arg.kind in nkSymChoices:
-    result = typeToString(arg[0].typ)
+    result = typeToString(arg[0].typ, prefer)
     for i in 1 .. <arg.len:
       result.add(" | ")
-      result.add typeToString(arg[i].typ)
+      result.add typeToString(arg[i].typ, prefer)
   else:
-    result = arg.typ.typeToString
+    result = arg.typ.typeToString(prefer)
 
-proc describeArgs*(c: PContext, n: PNode, startIdx = 1): string =
+proc describeArgs*(c: PContext, n: PNode, startIdx = 1;
+                   prefer: TPreferedDesc = preferName): string =
   result = ""
   for i in countup(startIdx, n.len - 1):
     var arg = n.sons[i]
@@ -226,7 +229,7 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1): string =
         arg = c.semOperand(c, n.sons[i])
         n.sons[i] = arg
     if arg.typ.kind == tyError: return
-    add(result, argTypeToString(arg))
+    add(result, argTypeToString(arg, prefer))
     if i != sonsLen(n) - 1: add(result, ", ")
 
 proc typeRel*(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation
@@ -239,6 +242,9 @@ proc concreteType(c: TCandidate, t: PType): PType =
     addSonSkipIntLit(result, t.sons[1]) # XXX: semantic checking for the type?
   of tyNil:
     result = nil              # what should it be?
+  of tySequence, tySet:
+    if t.sons[0].kind == tyEmpty: result = nil
+    else: result = t
   of tyGenericParam, tyAnything:
     result = t
     while true: 
@@ -343,7 +349,7 @@ proc recordRel(c: var TCandidate, f, a: PType): TTypeRelation =
           var y = a.n.sons[i].sym
           if f.kind == tyObject and typeRel(c, x.typ, y.typ) < isSubtype:
             return isNone
-          if x.name.id != y.name.id: return isNone
+          if x.name.id != y.name.id and f.kind != tyTuple: return isNone
 
 proc allowsNil(f: PType): TTypeRelation {.inline.} =
   result = if tfNotNil notin f.flags: isSubtype else: isNone
@@ -479,8 +485,8 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
     dummyParam.typ = dummyType
     addDecl(c, dummyParam)
 
-  var checkedBody = c.semTryExpr(c, body.n[3].copyTree, bufferErrors = false)
-  m.errors = bufferedMsgs
+  var checkedBody = c.semTryExpr(c, body.n[3].copyTree)
+  #m.errors = bufferedMsgs
   clearBufferedMsgs()
   if checkedBody == nil: return isNone
 
@@ -930,6 +936,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       else:
         if f.sonsLen > 0 and f.sons[0].kind != tyNone:
           result = typeRel(c, f.lastSon, a)
+          if doBind and result notin {isNone, isGeneric}:
+            let concrete = concreteType(c, a)
+            if concrete == nil: return isNone
+            put(c.bindings, f, concrete)
         else:
           result = isGeneric
 
@@ -1073,6 +1083,11 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
                     arg: PNode): PNode = 
   # arg.typ can be nil in 'suggest':
   if isNil(arg.typ): return nil
+
+  # sem'checking for 'echo' needs to be re-entrant:
+  # XXX we will revisit this issue after 0.10.2 is released
+  if f == arg.typ and arg.kind == nkHiddenStdConv: return arg
+
   var call = newNodeI(nkCall, arg.info)
   call.add(f.n.copyTree)
   call.add(arg.copyTree)
@@ -1143,8 +1158,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
     of isEqual: inc(m.exactMatches)
     of isNone: discard
 
-    if f.kind == tyStmt and argOrig.kind == nkDo:
-      return argOrig[bodyPos]
+    if f.kind == tyStmt:
+      return arg
     elif f.kind == tyTypeDesc:
       return arg
     elif f.kind == tyStatic:
@@ -1272,6 +1287,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     else: 
       # only one valid interpretation found:
       markUsed(arg.info, arg.sons[best].sym)
+      styleCheckUse(arg.info, arg.sons[best].sym)
       result = paramTypesMatchAux(m, f, arg.sons[best].typ, arg.sons[best],
                                   argOrig)
 
@@ -1319,7 +1335,7 @@ proc incrIndexType(t: PType) =
   inc t.sons[0].n.sons[1].intVal
 
 proc matchesAux(c: PContext, n, nOrig: PNode,
-                m: var TCandidate, marker: var TIntSet) = 
+                m: var TCandidate, marker: var IntSet) = 
   template checkConstraint(n: expr) {.immediate, dirty.} =
     if not formal.constraint.isNil:
       if matchNodeKinds(formal.constraint, n):
@@ -1480,7 +1496,22 @@ proc argtypeMatches*(c: PContext, f, a: PType): bool =
   # instantiate generic converters for that
   result = res != nil
 
+proc instDeepCopy*(c: PContext; dc: PSym; t: PType; info: TLineInfo): PSym {.
+                    procvar.} =
+  var m: TCandidate
+  initCandidate(c, m, dc.typ)
+  var f = dc.typ.sons[1]
+  if f.kind in {tyRef, tyPtr}: f = f.lastSon
+  if typeRel(m, f, t) == isNone:
+    localError(info, errGenerated, "cannot instantiate 'deepCopy'")
+  else:
+    result = c.semGenerateInstance(c, dc, m.bindings, info)
+    assert sfFromGeneric in result.flags
+
 include suggest
+
+when not declared(tests):
+  template tests(s: stmt) {.immediate.} = discard
 
 tests:
   var dummyOwner = newSym(skModule, getIdent("test_module"), nil, UnknownLineInfo())

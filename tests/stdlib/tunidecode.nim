@@ -1,5 +1,5 @@
 discard """
-  cmd: "nimrod $target --hints:on -d:embedUnidecodeTable $options $file"
+  cmd: "nim $target --hints:on -d:embedUnidecodeTable $options $file"
   output: "Ausserst"
 """
 

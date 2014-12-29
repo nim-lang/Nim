@@ -1,3 +1,8 @@
+discard """
+  errormsg: "illegal recursion in type 'TNode'"
+  line: 8
+  disabled: true
+"""
 
 type
     PNode = ref TNode

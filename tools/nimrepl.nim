@@ -1,6 +1,6 @@
 #
 #
-#              Nimrod REPL
+#              Nim REPL
 #        (c) Copyright 2012 Dominik Picheta
 #
 #    See the file "copying.txt", included in this
@@ -14,8 +14,8 @@ when defined(tinyc):
 else:
   const runCmd = "c -r"
 
-var nimExe = findExe("nimrod")
-if nimExe.len == 0: nimExe = "../bin" / addFileExt("nimrod", os.exeExt)
+var nimExe = findExe("nim")
+if nimExe.len == 0: nimExe = "../bin" / addFileExt("nim", os.exeExt)
 
 proc execCode(code: string): string =
   var f: TFile
@@ -36,7 +36,7 @@ var OutputTextBuffer: PTextBuffer
 proc destroy(widget: PWidget, data: pgpointer){.cdecl.} = 
   main_quit()
 
-proc FileOpenClicked(menuitem: PMenuItem, userdata: pgpointer) {.cdecl.} =
+proc fileOpenClicked(menuitem: PMenuItem, userdata: pgpointer) {.cdecl.} =
   var path = ChooseFileToOpen(w)
   if path != "":
     var file = readFile(path)
@@ -45,7 +45,7 @@ proc FileOpenClicked(menuitem: PMenuItem, userdata: pgpointer) {.cdecl.} =
     else:
       error(w, "Unable to read from file")
 
-proc FileSaveClicked(menuitem: PMenuItem, userdata: pgpointer) {.cdecl.} =
+proc fileSaveClicked(menuitem: PMenuItem, userdata: pgpointer) {.cdecl.} =
   var path = ChooseFileToSave(w)
   
   if path == "": return
@@ -115,12 +115,12 @@ proc initControls() =
   append(FileMenu, OpenMenuItem)
   show(OpenMenuItem)
   discard signal_connect(OpenMenuItem, "activate", 
-                          SIGNAL_FUNC(FileOpenClicked), nil)
+                          SIGNAL_FUNC(fileOpenClicked), nil)
   var SaveMenuItem = menu_item_new("Save...")
   append(FileMenu, SaveMenuItem)
   show(SaveMenuItem)
   discard signal_connect(SaveMenuItem, "activate", 
-                          SIGNAL_FUNC(FileSaveClicked), nil)
+                          SIGNAL_FUNC(fileSaveClicked), nil)
   var FileMenuItem = menu_item_new("File")
 
   

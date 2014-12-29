@@ -40,7 +40,7 @@ Filters can be combined with the ``|`` pipe operator::
 Available filters
 =================
 
-**Hint:** With ``--verbosity:2`` (or higher) Nimrod lists the processed code
+**Hint:** With ``--verbosity:2`` (or higher) Nim lists the processed code
 after each filter application.
 
 Replace filter
@@ -79,19 +79,19 @@ Parameters and their defaults:
 StdTmpl filter
 --------------
 
-The stdtmpl filter provides a simple templating engine for Nimrod. The
+The stdtmpl filter provides a simple templating engine for Nim. The
 filter uses a line based parser: Lines prefixed with a *meta character*
-(default: ``#``) contain Nimrod code, other lines are verbatim. Because
+(default: ``#``) contain Nim code, other lines are verbatim. Because
 indentation-based parsing is not suited for a templating engine, control flow
 statements need ``end X`` delimiters.
 
 Parameters and their defaults:
 
   ``metaChar: char = '#'``
-    prefix for a line that contains Nimrod code
+    prefix for a line that contains Nim code
   
   ``subsChar: char = '$'``
-    prefix for a Nimrod expression within a template line
+    prefix for a Nim expression within a template line
     
   ``conc: string = " & "``
     the operation for concatenation
@@ -130,7 +130,7 @@ Example::
 
 The filter transforms this into:
 
-.. code-block:: nimrod
+.. code-block:: nim
   proc generateHTMLPage(title, currentTab, content: string,
                         tabs: openArray[string]): string = 
     result = ""
@@ -158,7 +158,7 @@ The filter transforms this into:
 Each line that does not start with the meta character (ignoring leading
 whitespace) is converted to a string literal that is added to ``result``. 
 
-The substitution character introduces a Nimrod expression *e* within the
+The substitution character introduces a Nim expression *e* within the
 string literal. *e* is converted to a string with the *toString* operation
 which defaults to ``$``. For strong type checking, set ``toString`` to the
 empty string. *e* must match this PEG pattern::

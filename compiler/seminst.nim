@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -157,8 +157,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   #   
   # The solution would be to move this logic into semtypinst, but
   # at this point semtypinst have to become part of sem, because it
-  # will need to use openScope, addDecl, etc
-  #
+  # will need to use openScope, addDecl, etc.
   addDecl(c, prc)
   
   pushInfoContext(info)
@@ -223,7 +222,11 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   n.sons[genericParamsPos] = ast.emptyNode
   var oldPrc = genericCacheGet(fn, entry[])
   if oldPrc == nil:
-    fn.procInstCache.safeAdd(entry)
+    # we MUST not add potentially wrong instantiations to the caching mechanism.
+    # This means recursive instantiations behave differently when in
+    # a ``compiles`` context but this is the lesser evil. See
+    # bug #1055 (tevilcompiles).
+    if c.inCompilesContext == 0: fn.procInstCache.safeAdd(entry)
     c.generics.add(makeInstPair(fn, entry))
     if n.sons[pragmasPos].kind != nkEmpty:
       pragma(c, result, n.sons[pragmasPos], allRoutinePragmas)

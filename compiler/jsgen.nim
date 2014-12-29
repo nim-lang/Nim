@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2014 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -33,7 +33,7 @@ import
   ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp,
   options, nversion, nimsets, msgs, crc, bitsets, idents, lists, types, os,
   times, ropes, math, passes, ccgutils, wordrecg, renderer, rodread, rodutils,
-  intsets, cgmeth
+  intsets, cgmeth, lowerings
 
 type
   TTarget = enum
@@ -71,8 +71,8 @@ type
   TGlobals = object 
     typeInfo, code: PRope
     forwarded: seq[PSym]
-    generatedSyms: TIntSet
-    typeInfoGenerated: TIntSet
+    generatedSyms: IntSet
+    typeInfoGenerated: IntSet
 
   PGlobals = ref TGlobals
   PProc = ref TProc
@@ -113,7 +113,7 @@ proc rdLoc(a: TCompRes): PRope {.inline.} =
       result = ropef("$1[$2]", a.address, a.res)
 
 proc newProc(globals: PGlobals, module: BModule, procDef: PNode, 
-              options: TOptions): PProc =
+             options: TOptions): PProc =
   result = PProc(
     blocks: @[],
     options: options,
@@ -601,15 +601,13 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   if p.target == targetJS:
     app(p.body, "} finally {" & tnl & "excHandler = excHandler.prev;" & tnl)
   if i < length and n.sons[i].kind == nkFinally:
-    gen(p, n.sons[i].sons[0], a)
-    moveInto(p, a, r)
+    genStmt(p, n.sons[i].sons[0])
   if p.target == targetJS:
     app(p.body, "}" & tnl)
   if p.target == targetLua:
     # we need to repeat the finally block for Lua ...
     if i < length and n.sons[i].kind == nkFinally:
-      gen(p, n.sons[i].sons[0], a)
-      moveInto(p, a, r)
+      genStmt(p, n.sons[i].sons[0])
 
 proc genRaiseStmt(p: PProc, n: PNode) =
   genLineDir(p, n)
@@ -724,7 +722,7 @@ proc genBlock(p: PProc, n: PNode, r: var TCompRes) =
     if (n.sons[0].kind != nkSym): internalError(n.info, "genBlock")
     var sym = n.sons[0].sym
     sym.loc.k = locOther
-    sym.loc.a = idx
+    sym.position = idx+1
   setLen(p.blocks, idx + 1)
   p.blocks[idx].id = - p.unique # negative because it isn't used yet
   let labl = p.unique
@@ -741,7 +739,7 @@ proc genBreakStmt(p: PProc, n: PNode) =
     assert(n.sons[0].kind == nkSym)
     let sym = n.sons[0].sym
     assert(sym.loc.k == locOther)
-    idx = sym.loc.a
+    idx = sym.position-1
   else:
     # an unnamed 'break' can only break a loop after 'transf' pass:
     idx = len(p.blocks) - 1
@@ -942,22 +940,21 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
     case s.kind
     of skVar, skLet, skResult:
       r.kind = resExpr
-      if mapType(n.typ) == etyObject:
+      if mapType(n.sons[0].typ) == etyObject:
         # make addr() a no-op:
         r.typ = etyNone
         r.res = s.loc.r
         r.address = nil
-      elif sfGlobal in s.flags:
-        # globals are always indirect accessible
-        r.typ = etyBaseIndex
-        r.address = toRope("Globals")
-        r.res = makeJSString(ropeToStr(s.loc.r))
-      elif sfAddrTaken in s.flags:
+      elif {sfGlobal, sfAddrTaken} * s.flags != {}:
+        # for ease of code generation, we do not distinguish between
+        # sfAddrTaken and sfGlobal.
         r.typ = etyBaseIndex
         r.address = s.loc.r
         r.res = toRope("0")
       else:
-        internalError(n.info, "genAddr: 4")
+        # 'var openArray' for instance produces an 'addr' but this is harmless:
+        gen(p, n.sons[0], r)
+        #internalError(n.info, "genAddr: 4 " & renderTree(n))
     else: internalError(n.info, "genAddr: 2")
   of nkCheckedFieldExpr:
     genCheckedFieldAddr(p, n, r)
@@ -981,7 +978,7 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
   of skVar, skLet, skParam, skTemp, skResult:
     if s.loc.r == nil:
       internalError(n.info, "symbol has no generated name: " & s.name.s)
-    var k = mapType(s.typ)
+    let k = mapType(s.typ)
     if k == etyBaseIndex:
       r.typ = etyBaseIndex
       if {sfAddrTaken, sfGlobal} * s.flags != {}:
@@ -990,7 +987,7 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
       else:
         r.address = s.loc.r
         r.res = con(s.loc.r, "_Idx")
-    elif k != etyObject and sfAddrTaken in s.flags:
+    elif k != etyObject and {sfAddrTaken, sfGlobal} * s.flags != {}:
       r.res = ropef("$1[0]", [s.loc.r])
     else:
       r.res = s.loc.r
@@ -1078,8 +1075,16 @@ proc genInfixCall(p: PProc, n: PNode, r: var TCompRes) =
 
 proc genEcho(p: PProc, n: PNode, r: var TCompRes) =
   useMagic(p, "rawEcho")
-  app(r.res, "rawEcho")
-  genArgs(p, n, r)
+  app(r.res, "rawEcho(")
+  let n = n[1].skipConv
+  internalAssert n.kind == nkBracket
+  for i in countup(0, sonsLen(n) - 1):
+    let it = n.sons[i]
+    if it.typ.isCompileTimeOnly: continue  
+    if i > 0: app(r.res, ", ")
+    genArg(p, it, r)
+  app(r.res, ")")
+  r.kind = resExpr
 
 proc putToSeq(s: string, indirect: bool): PRope = 
   result = toRope(s)
@@ -1162,8 +1167,9 @@ proc createVar(p: PProc, typ: PType, indirect: bool): PRope =
     internalError("createVar: " & $t.kind)
     result = nil
 
-proc isIndirect(v: PSym): bool = 
-  result = (sfAddrTaken in v.flags) and (mapType(v.typ) != etyObject) and
+proc isIndirect(v: PSym): bool =
+  result = {sfAddrTaken, sfGlobal} * v.flags != {} and
+    (mapType(v.typ) != etyObject) and
     v.kind notin {skProc, skConverter, skMethod, skIterator, skClosureIterator}
 
 proc genVarInit(p: PProc, v: PSym, n: PNode) = 
@@ -1203,13 +1209,17 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
 proc genVarStmt(p: PProc, n: PNode) = 
   for i in countup(0, sonsLen(n) - 1): 
     var a = n.sons[i]
-    if a.kind == nkCommentStmt: continue 
-    assert(a.kind == nkIdentDefs)
-    assert(a.sons[0].kind == nkSym)
-    var v = a.sons[0].sym
-    if lfNoDecl in v.loc.flags: continue 
-    genLineDir(p, a)
-    genVarInit(p, v, a.sons[2])
+    if a.kind != nkCommentStmt:
+      if a.kind == nkVarTuple:
+        let unpacked = lowerTupleUnpacking(a, p.prc)
+        genStmt(p, unpacked)
+      else:
+        assert(a.kind == nkIdentDefs)
+        assert(a.sons[0].kind == nkSym)
+        var v = a.sons[0].sym
+        if lfNoDecl notin v.loc.flags:
+          genLineDir(p, a)
+          genVarInit(p, v, a.sons[2])
 
 proc genConstant(p: PProc, c: PSym) =
   if lfNoDecl notin c.loc.flags and not p.g.generatedSyms.containsOrIncl(c.id):
@@ -1425,7 +1435,7 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
   r.res = toRope("{")
   r.kind = resExpr
   for i in countup(1, sonsLen(n) - 1):
-    if i > 0: app(r.res, ", ")
+    if i > 1: app(r.res, ", ")
     var it = n.sons[i]
     internalAssert it.kind == nkExprColonExpr
     gen(p, it.sons[1], a)
@@ -1654,6 +1664,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       r.res = nil
   of nkGotoState, nkState:
     internalError(n.info, "first class iterators not implemented")
+  of nkPragmaBlock: gen(p, n.lastSon, r)
   else: internalError(n.info, "gen: unknown node type: " & $n.kind)
   
 var globals: PGlobals
@@ -1664,11 +1675,11 @@ proc newModule(module: PSym): BModule =
   if globals == nil: globals = newGlobals()
   
 proc genHeader(): PRope =
-  result = ropef("/* Generated by the Nimrod Compiler v$1 */$n" &
+  result = ropef("/* Generated by the Nim Compiler v$1 */$n" &
                  "/*   (c) 2014 Andreas Rumpf */$n$n" & 
-                 "$nvar Globals = this;$n" &
                  "var framePtr = null;$n" & 
-                 "var excHandler = null;$n", 
+                 "var excHandler = null;$n" &
+                 "var lastJSError = null;$n", 
                  [toRope(VersionAsString)])
 
 proc genModule(p: PProc, n: PNode) = 

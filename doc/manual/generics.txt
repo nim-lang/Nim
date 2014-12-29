@@ -1,0 +1,346 @@
+Generics
+========
+
+Generics are Nim's means to parametrize procs, iterators or types with
+`type parameters`:idx:. Depending on context, the brackets are used either to
+introduce type parameters or to instantiate a generic proc, iterator or type.
+
+The following example shows a generic binary tree can be modelled:
+
+.. code-block:: nim
+  type
+    TBinaryTree[T] = object      # TBinaryTree is a generic type with
+                                 # with generic param ``T``
+      le, ri: ref TBinaryTree[T] # left and right subtrees; may be nil
+      data: T                    # the data stored in a node
+    PBinaryTree[T] = ref TBinaryTree[T] # a shorthand for notational convenience
+
+  proc newNode[T](data: T): PBinaryTree[T] = # constructor for a node
+    new(result)
+    result.data = data
+
+  proc add[T](root: var PBinaryTree[T], n: PBinaryTree[T]) =
+    if root == nil:
+      root = n
+    else:
+      var it = root
+      while it != nil:
+        var c = cmp(it.data, n.data) # compare the data items; uses
+                                     # the generic ``cmp`` proc that works for
+                                     # any type that has a ``==`` and ``<``
+                                     # operator
+        if c < 0:
+          if it.le == nil:
+            it.le = n
+            return
+          it = it.le
+        else:
+          if it.ri == nil:
+            it.ri = n
+            return
+          it = it.ri
+
+  iterator inorder[T](root: PBinaryTree[T]): T =
+    # inorder traversal of a binary tree
+    # recursive iterators are not yet implemented, so this does not work in
+    # the current compiler!
+    if root.le != nil: yield inorder(root.le)
+    yield root.data
+    if root.ri != nil: yield inorder(root.ri)
+
+  var
+    root: PBinaryTree[string] # instantiate a PBinaryTree with the type string
+  add(root, newNode("hallo")) # instantiates generic procs ``newNode`` and
+  add(root, newNode("world")) # ``add``
+  for str in inorder(root):
+    writeln(stdout, str)
+
+
+Is operator
+-----------
+
+The ``is`` operator checks for type equivalence at compile time. It is
+therefore very useful for type specialization within generic code: 
+
+.. code-block:: nim
+  type
+    TTable[TKey, TValue] = object
+      keys: seq[TKey]
+      values: seq[TValue]
+      when not (TKey is string): # nil value for strings used for optimization
+        deletedKeys: seq[bool]
+
+
+Type operator
+-------------
+
+The ``type`` (in many other languages called `typeof`:idx:) operator can
+be used to get the type of an expression: 
+
+.. code-block:: nim
+  var x = 0
+  var y: type(x) # y has type int
+
+If ``type`` is used to determine the result type of a proc/iterator/converter
+call ``c(X)`` (where ``X`` stands for a possibly empty list of arguments), the
+interpretation where ``c`` is an iterator is preferred over the
+other interpretations:
+
+.. code-block:: nim
+  import strutils
+  
+  # strutils contains both a ``split`` proc and iterator, but since an
+  # an iterator is the preferred interpretation, `y` has the type ``string``:
+  var y: type("a b c".split)
+
+
+Type Classes
+------------
+
+A type class is a special pseudo-type that can be used to match against
+types in the context of overload resolution or the ``is`` operator. 
+Nim supports the following built-in type classes:
+
+==================   ===================================================
+type class           matches
+==================   ===================================================
+``object``           any object type
+``tuple``            any tuple type
+
+``enum``             any enumeration
+``proc``             any proc type
+``ref``              any ``ref`` type
+``ptr``              any ``ptr`` type
+``var``              any ``var`` type
+``distinct``         any distinct type
+``array``            any array type
+``set``              any set type
+``seq``              any seq type
+``auto``             any type 
+==================   ===================================================
+
+Furthermore, every generic type automatically creates a type class of the same
+name that will match any instantiation of the generic type.
+
+Type classes can be combined using the standard boolean operators to form
+more complex type classes:
+
+.. code-block:: nim
+  # create a type class that will match all tuple and object types
+  type TRecordType = tuple or object
+
+  proc printFields(rec: TRecordType) =
+    for key, value in fieldPairs(rec):
+      echo key, " = ", value
+
+Procedures utilizing type classes in such manner are considered to be
+`implicitly generic`:idx:. They will be instantiated once for each unique 
+combination of param types used within the program.
+
+Nim also allows for type classes and regular types to be specified
+as `type constraints`:idx: of the generic type parameter:
+
+.. code-block:: nim
+  proc onlyIntOrString[T: int|string](x, y: T) = discard
+  
+  onlyIntOrString(450, 616) # valid
+  onlyIntOrString(5.0, 0.0) # type mismatch
+  onlyIntOrString("xy", 50) # invalid as 'T' cannot be both at the same time
+
+By default, during overload resolution each named type class will bind to
+exactly one concrete type. Here is an example taken directly from the system
+module to illustrate this:
+
+.. code-block:: nim
+  proc `==`*(x, y: tuple): bool = 
+    ## requires `x` and `y` to be of the same tuple type
+    ## generic ``==`` operator for tuples that is lifted from the components
+    ## of `x` and `y`.
+    result = true
+    for a, b in fields(x, y):
+      if a != b: result = false
+
+Alternatively, the ``distinct`` type modifier can be applied to the type class 
+to allow each param matching the type class to bind to a different type. 
+
+If a proc param doesn't have a type specified, Nim will use the
+``distinct auto`` type class (also known as ``any``):
+
+.. code-block:: nim
+  # allow any combination of param types
+  proc concat(a, b): string = $a & $b
+
+Procs written with the implicitly generic style will often need to refer to the
+type parameters of the matched generic type. They can be easily accessed using
+the dot syntax:
+
+.. code-block:: nim
+  type TMatrix[T, Rows, Columns] = object
+    ...
+
+  proc `[]`(m: TMatrix, row, col: int): TMatrix.T = 
+    m.data[col * high(TMatrix.Columns) + row]
+
+Alternatively, the `type` operator can be used over the proc params for similar
+effect when anonymous or distinct type classes are used.
+
+When a generic type is instantiated with a type class instead of a concrete
+type, this results in another more specific type class:
+
+.. code-block:: nim
+  seq[ref object]  # Any sequence storing references to any object type
+  
+  type T1 = auto
+  proc foo(s: seq[T1], e: T1)
+    # seq[T1] is the same as just `seq`, but T1 will be allowed to bind
+    # to a single type, while the signature is being matched
+
+  TMatrix[Ordinal] # Any TMatrix instantiation using integer values
+
+As seen in the previous example, in such instantiations, it's not necessary to
+supply all type parameters of the generic type, because any missing ones will
+be inferred to have the equivalent of the `any` type class and thus they will
+match anything without discrimination.
+
+
+User defined type classes
+-------------------------
+
+**Note**: User defined type classes are still in development.
+
+The user-defined type classes are available in two flavours - declarative and
+imperative. Both are used to specify an arbitrary set of requirements that the
+matched type must satisfy.
+
+Declarative type classes are written in the following form:
+
+.. code-block:: nim
+  type
+    Comparable = generic x, y
+      (x < y) is bool
+
+    Container[T] = generic c
+      c.len is ordinal
+      items(c) is iterator
+      for value in c:
+        type(value) is T
+
+The type class will be matched if:
+
+a) all of the expressions within the body can be compiled for the tested type
+b) all statically evaluatable boolean expressions in the body must be true
+
+The identifiers following the `generic` keyword represent instances of the
+currently matched type. These instances can act both as variables of the type,
+when used in contexts where a value is expected, and as the type itself when
+used in contexts where a type is expected.
+
+Please note that the ``is`` operator allows one to easily verify the precise
+type signatures of the required operations, but since type inference and
+default parameters are still applied in the provided block, it's also possible
+to encode usage protocols that do not reveal implementation details.
+
+As a special rule providing further convenience when writing type classes, any
+type value appearing in a callable expression will be treated as a variable of
+the designated type for overload resolution purposes, unless the type value was
+passed in its explicit ``typedesc[T]`` form:
+
+.. code-block:: nim
+  type
+    OutputStream = generic S
+      write(var S, string)
+
+Much like generics, the user defined type classes will be instantiated exactly
+once for each tested type and any static code included within them will also be
+executed once.
+
+
+Type inference with type classes
+--------------------------------
+
+If a type class is used as the return type of a proc and it won't be bound to
+a concrete type by some of the proc params, Nim will infer the return type
+from the proc body. This is usually used with the ``auto`` type class:
+
+.. code-block:: nim
+  proc makePair(a, b): auto = (first: a, second: b)
+
+The return type will be treated as an additional generic param and can be
+explicitly specified at call sites as any other generic param.
+
+Future versions of Nim may also support overloading based on the return type
+of the overloads. In such settings, the expected result type at call sites may 
+also influence the inferred return type.
+
+..
+  Likewise, if a type class is used in another position where Nim expects a
+  concrete type (e.g. a variable declaration or a type coercion), Nim will try
+  to infer the concrete type by applying the matching algorithm that also used
+  in overload resolution.
+
+
+Symbol lookup in generics
+-------------------------
+
+The symbol binding rules in generics are slightly subtle: There are "open" and
+"closed" symbols. A "closed" symbol cannot be re-bound in the instantiation
+context, an "open" symbol can. Per default overloaded symbols are open
+and every other symbol is closed.
+
+Open symbols are looked up in two different contexts: Both the context
+at definition and the context at instantiation are considered:
+
+.. code-block:: nim
+  type
+    TIndex = distinct int
+  
+  proc `==` (a, b: TIndex): bool {.borrow.}
+  
+  var a = (0, 0.TIndex)
+  var b = (0, 0.TIndex)
+  
+  echo a == b # works!
+
+In the example the generic ``==`` for tuples (as defined in the system module)
+uses the ``==`` operators of the tuple's components. However, the ``==`` for
+the ``TIndex`` type is defined *after* the ``==`` for tuples; yet the example
+compiles as the instantiation takes the currently defined symbols into account
+too.
+
+A symbol can be forced to be open by a `mixin`:idx: declaration: 
+
+.. code-block:: nim
+  proc create*[T](): ref T =
+    # there is no overloaded 'init' here, so we need to state that it's an
+    # open symbol explicitly:
+    mixin init
+    new result
+    init result
+
+
+Bind statement
+--------------
+
+The ``bind`` statement is the counterpart to the ``mixin`` statement. It 
+can be used to explicitly declare identifiers that should be bound early (i.e.
+the identifiers should be looked up in the scope of the template/generic
+definition):
+
+.. code-block:: nim
+  # Module A
+  var 
+    lastId = 0
+  
+  template genId*: expr =
+    bind lastId
+    inc(lastId)
+    lastId
+
+.. code-block:: nim
+  # Module B
+  import A
+  
+  echo genId()
+
+But a ``bind`` is rarely useful because symbol binding from the definition
+scope is the default.

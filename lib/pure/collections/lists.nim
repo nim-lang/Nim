@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -15,52 +15,59 @@ when not defined(nimhygiene):
   {.pragma: dirty.}
 
 type
-  TDoublyLinkedNode* {.pure, 
-      final.}[T] = object ## a node a doubly linked list consists of
-    next*, prev*: ref TDoublyLinkedNode[T]
+  DoublyLinkedNodeObj*[T] = object ## a node a doubly linked list consists of
+    next*, prev*: ref DoublyLinkedNodeObj[T]
     value*: T
-  PDoublyLinkedNode*[T] = ref TDoublyLinkedNode[T]
+  DoublyLinkedNode*[T] = ref DoublyLinkedNodeObj[T]
 
-  TSinglyLinkedNode* {.pure, 
-      final.}[T] = object ## a node a singly linked list consists of
-    next*: ref TSinglyLinkedNode[T]
+  SinglyLinkedNodeObj*[T] = object ## a node a singly linked list consists of
+    next*: ref SinglyLinkedNodeObj[T]
     value*: T
-  PSinglyLinkedNode*[T] = ref TSinglyLinkedNode[T]
+  SinglyLinkedNode*[T] = ref SinglyLinkedNodeObj[T]
 
-  TSinglyLinkedList* {.pure, final.}[T] = object ## a singly linked list
-    head*, tail*: PSinglyLinkedNode[T]
+  SinglyLinkedList*[T] = object ## a singly linked list
+    head*, tail*: SinglyLinkedNode[T]
   
-  TDoublyLinkedList* {.pure, final.}[T] = object ## a doubly linked list
-    head*, tail*: PDoublyLinkedNode[T]
+  DoublyLinkedList*[T] = object ## a doubly linked list
+    head*, tail*: DoublyLinkedNode[T]
 
-  TSinglyLinkedRing* {.pure, final.}[T] = object ## a singly linked ring
-    head*: PSinglyLinkedNode[T]
+  SinglyLinkedRing*[T] = object ## a singly linked ring
+    head*: SinglyLinkedNode[T]
   
-  TDoublyLinkedRing* {.pure, final.}[T] = object ## a doubly linked ring
-    head*: PDoublyLinkedNode[T]
+  DoublyLinkedRing*[T] = object ## a doubly linked ring
+    head*: DoublyLinkedNode[T]
 
-proc initSinglyLinkedList*[T](): TSinglyLinkedList[T] =
+{.deprecated: [TDoublyLinkedNode: DoublyLinkedNodeObj,
+    PDoublyLinkedNode: DoublyLinkedNode, 
+    TSinglyLinkedNode: SinglyLinkedNodeObj,
+    PSinglyLinkedNode: SinglyLinkedNode,
+    TDoublyLinkedList: DoublyLinkedList,
+    TSinglyLinkedRing: SinglyLinkedRing,
+    TDoublyLinkedRing: DoublyLinkedRing,
+    TSinglyLinkedList: SinglyLinkedList].}
+
+proc initSinglyLinkedList*[T](): SinglyLinkedList[T] =
   ## creates a new singly linked list that is empty.
   discard
 
-proc initDoublyLinkedList*[T](): TDoublyLinkedList[T] =
+proc initDoublyLinkedList*[T](): DoublyLinkedList[T] =
   ## creates a new doubly linked list that is empty.
   discard
 
-proc initSinglyLinkedRing*[T](): TSinglyLinkedRing[T] =
+proc initSinglyLinkedRing*[T](): SinglyLinkedRing[T] =
   ## creates a new singly linked ring that is empty.
   discard
 
-proc initDoublyLinkedRing*[T](): TDoublyLinkedRing[T] =
+proc initDoublyLinkedRing*[T](): DoublyLinkedRing[T] =
   ## creates a new doubly linked ring that is empty.
   discard
 
-proc newDoublyLinkedNode*[T](value: T): PDoublyLinkedNode[T] =
+proc newDoublyLinkedNode*[T](value: T): DoublyLinkedNode[T] =
   ## creates a new doubly linked node with the given `value`.
   new(result)
   result.value = value
 
-proc newSinglyLinkedNode*[T](value: T): PSinglyLinkedNode[T] =
+proc newSinglyLinkedNode*[T](value: T): SinglyLinkedNode[T] =
   ## creates a new singly linked node with the given `value`.
   new(result)
   result.value = value
@@ -99,38 +106,38 @@ template findImpl() {.dirty.} =
   for x in nodes(L):
     if x.value == value: return x
 
-iterator items*[T](L: TDoublyLinkedList[T]): T = 
+iterator items*[T](L: DoublyLinkedList[T]): T = 
   ## yields every value of `L`.
   itemsListImpl()
 
-iterator items*[T](L: TSinglyLinkedList[T]): T = 
+iterator items*[T](L: SinglyLinkedList[T]): T = 
   ## yields every value of `L`.
   itemsListImpl()
 
-iterator items*[T](L: TSinglyLinkedRing[T]): T = 
+iterator items*[T](L: SinglyLinkedRing[T]): T = 
   ## yields every value of `L`.
   itemsRingImpl()
 
-iterator items*[T](L: TDoublyLinkedRing[T]): T = 
+iterator items*[T](L: DoublyLinkedRing[T]): T = 
   ## yields every value of `L`.
   itemsRingImpl()
 
-iterator nodes*[T](L: TSinglyLinkedList[T]): PSinglyLinkedNode[T] = 
+iterator nodes*[T](L: SinglyLinkedList[T]): SinglyLinkedNode[T] = 
   ## iterates over every node of `x`. Removing the current node from the
   ## list during traversal is supported.
   nodesListImpl()
 
-iterator nodes*[T](L: TDoublyLinkedList[T]): PDoublyLinkedNode[T] = 
+iterator nodes*[T](L: DoublyLinkedList[T]): DoublyLinkedNode[T] = 
   ## iterates over every node of `x`. Removing the current node from the
   ## list during traversal is supported.
   nodesListImpl()
 
-iterator nodes*[T](L: TSinglyLinkedRing[T]): PSinglyLinkedNode[T] = 
+iterator nodes*[T](L: SinglyLinkedRing[T]): SinglyLinkedNode[T] = 
   ## iterates over every node of `x`. Removing the current node from the
   ## list during traversal is supported.
   nodesRingImpl()
 
-iterator nodes*[T](L: TDoublyLinkedRing[T]): PDoublyLinkedNode[T] = 
+iterator nodes*[T](L: DoublyLinkedRing[T]): DoublyLinkedNode[T] = 
   ## iterates over every node of `x`. Removing the current node from the
   ## list during traversal is supported.
   nodesRingImpl()
@@ -142,73 +149,73 @@ template dollarImpl() {.dirty.} =
     result.add($x.value)
   result.add("]")
 
-proc `$`*[T](L: TSinglyLinkedList[T]): string = 
+proc `$`*[T](L: SinglyLinkedList[T]): string = 
   ## turns a list into its string representation.
   dollarImpl()
 
-proc `$`*[T](L: TDoublyLinkedList[T]): string = 
+proc `$`*[T](L: DoublyLinkedList[T]): string = 
   ## turns a list into its string representation.
   dollarImpl()
 
-proc `$`*[T](L: TSinglyLinkedRing[T]): string = 
+proc `$`*[T](L: SinglyLinkedRing[T]): string = 
   ## turns a list into its string representation.
   dollarImpl()
 
-proc `$`*[T](L: TDoublyLinkedRing[T]): string = 
+proc `$`*[T](L: DoublyLinkedRing[T]): string = 
   ## turns a list into its string representation.
   dollarImpl()
 
-proc find*[T](L: TSinglyLinkedList[T], value: T): PSinglyLinkedNode[T] = 
+proc find*[T](L: SinglyLinkedList[T], value: T): SinglyLinkedNode[T] = 
   ## searches in the list for a value. Returns nil if the value does not
   ## exist.
   findImpl()
 
-proc find*[T](L: TDoublyLinkedList[T], value: T): PDoublyLinkedNode[T] = 
+proc find*[T](L: DoublyLinkedList[T], value: T): DoublyLinkedNode[T] = 
   ## searches in the list for a value. Returns nil if the value does not
   ## exist.
   findImpl()
 
-proc find*[T](L: TSinglyLinkedRing[T], value: T): PSinglyLinkedNode[T] = 
+proc find*[T](L: SinglyLinkedRing[T], value: T): SinglyLinkedNode[T] = 
   ## searches in the list for a value. Returns nil if the value does not
   ## exist.
   findImpl()
 
-proc find*[T](L: TDoublyLinkedRing[T], value: T): PDoublyLinkedNode[T] = 
+proc find*[T](L: DoublyLinkedRing[T], value: T): DoublyLinkedNode[T] = 
   ## searches in the list for a value. Returns nil if the value does not
   ## exist.
   findImpl()
 
-proc contains*[T](L: TSinglyLinkedList[T], value: T): bool {.inline.} = 
+proc contains*[T](L: SinglyLinkedList[T], value: T): bool {.inline.} = 
   ## searches in the list for a value. Returns false if the value does not
   ## exist, true otherwise.
   result = find(L, value) != nil
 
-proc contains*[T](L: TDoublyLinkedList[T], value: T): bool {.inline.} = 
+proc contains*[T](L: DoublyLinkedList[T], value: T): bool {.inline.} = 
   ## searches in the list for a value. Returns false if the value does not
   ## exist, true otherwise.
   result = find(L, value) != nil
 
-proc contains*[T](L: TSinglyLinkedRing[T], value: T): bool {.inline.} = 
+proc contains*[T](L: SinglyLinkedRing[T], value: T): bool {.inline.} = 
   ## searches in the list for a value. Returns false if the value does not
   ## exist, true otherwise.
   result = find(L, value) != nil
 
-proc contains*[T](L: TDoublyLinkedRing[T], value: T): bool {.inline.} = 
+proc contains*[T](L: DoublyLinkedRing[T], value: T): bool {.inline.} = 
   ## searches in the list for a value. Returns false if the value does not
   ## exist, true otherwise.
   result = find(L, value) != nil
 
-proc prepend*[T](L: var TSinglyLinkedList[T], 
-                 n: PSinglyLinkedNode[T]) {.inline.} = 
+proc prepend*[T](L: var SinglyLinkedList[T], 
+                 n: SinglyLinkedNode[T]) {.inline.} = 
   ## prepends a node to `L`. Efficiency: O(1).
   n.next = L.head
   L.head = n
 
-proc prepend*[T](L: var TSinglyLinkedList[T], value: T) {.inline.} = 
+proc prepend*[T](L: var SinglyLinkedList[T], value: T) {.inline.} = 
   ## prepends a node to `L`. Efficiency: O(1).
   prepend(L, newSinglyLinkedNode(value))
   
-proc append*[T](L: var TDoublyLinkedList[T], n: PDoublyLinkedNode[T]) = 
+proc append*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) = 
   ## appends a node `n` to `L`. Efficiency: O(1).
   n.next = nil
   n.prev = L.tail
@@ -218,11 +225,11 @@ proc append*[T](L: var TDoublyLinkedList[T], n: PDoublyLinkedNode[T]) =
   L.tail = n
   if L.head == nil: L.head = n
 
-proc append*[T](L: var TDoublyLinkedList[T], value: T) = 
+proc append*[T](L: var DoublyLinkedList[T], value: T) = 
   ## appends a value to `L`. Efficiency: O(1).
   append(L, newDoublyLinkedNode(value))
 
-proc prepend*[T](L: var TDoublyLinkedList[T], n: PDoublyLinkedNode[T]) = 
+proc prepend*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) = 
   ## prepends a node `n` to `L`. Efficiency: O(1).
   n.prev = nil
   n.next = L.head
@@ -232,11 +239,11 @@ proc prepend*[T](L: var TDoublyLinkedList[T], n: PDoublyLinkedNode[T]) =
   L.head = n
   if L.tail == nil: L.tail = n
 
-proc prepend*[T](L: var TDoublyLinkedList[T], value: T) = 
+proc prepend*[T](L: var DoublyLinkedList[T], value: T) = 
   ## prepends a value to `L`. Efficiency: O(1).
   prepend(L, newDoublyLinkedNode(value))
   
-proc remove*[T](L: var TDoublyLinkedList[T], n: PDoublyLinkedNode[T]) = 
+proc remove*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) = 
   ## removes `n` from `L`. Efficiency: O(1).
   if n == L.tail: L.tail = n.prev
   if n == L.head: L.head = n.next
@@ -244,7 +251,7 @@ proc remove*[T](L: var TDoublyLinkedList[T], n: PDoublyLinkedNode[T]) =
   if n.prev != nil: n.prev.next = n.next
 
 
-proc prepend*[T](L: var TSinglyLinkedRing[T], n: PSinglyLinkedNode[T]) = 
+proc prepend*[T](L: var SinglyLinkedRing[T], n: SinglyLinkedNode[T]) = 
   ## prepends a node `n` to `L`. Efficiency: O(1).
   if L.head != nil: 
     n.next = L.head    
@@ -253,11 +260,11 @@ proc prepend*[T](L: var TSinglyLinkedRing[T], n: PSinglyLinkedNode[T]) =
     n.next = n
   L.head = n
 
-proc prepend*[T](L: var TSinglyLinkedRing[T], value: T) = 
+proc prepend*[T](L: var SinglyLinkedRing[T], value: T) = 
   ## prepends a value to `L`. Efficiency: O(1).
   prepend(L, newSinglyLinkedNode(value))
 
-proc append*[T](L: var TDoublyLinkedRing[T], n: PDoublyLinkedNode[T]) = 
+proc append*[T](L: var DoublyLinkedRing[T], n: DoublyLinkedNode[T]) = 
   ## appends a node `n` to `L`. Efficiency: O(1).
   if L.head != nil:
     n.next = L.head
@@ -269,11 +276,11 @@ proc append*[T](L: var TDoublyLinkedRing[T], n: PDoublyLinkedNode[T]) =
     n.next = n
     L.head = n
 
-proc append*[T](L: var TDoublyLinkedRing[T], value: T) = 
+proc append*[T](L: var DoublyLinkedRing[T], value: T) = 
   ## appends a value to `L`. Efficiency: O(1).
   append(L, newDoublyLinkedNode(value))
 
-proc prepend*[T](L: var TDoublyLinkedRing[T], n: PDoublyLinkedNode[T]) = 
+proc prepend*[T](L: var DoublyLinkedRing[T], n: DoublyLinkedNode[T]) = 
   ## prepends a node `n` to `L`. Efficiency: O(1).
   if L.head != nil: 
     n.next = L.head
@@ -285,11 +292,11 @@ proc prepend*[T](L: var TDoublyLinkedRing[T], n: PDoublyLinkedNode[T]) =
     n.next = n
   L.head = n
 
-proc prepend*[T](L: var TDoublyLinkedRing[T], value: T) = 
+proc prepend*[T](L: var DoublyLinkedRing[T], value: T) = 
   ## prepends a value to `L`. Efficiency: O(1).
   prepend(L, newDoublyLinkedNode(value))
   
-proc remove*[T](L: var TDoublyLinkedRing[T], n: PDoublyLinkedNode[T]) = 
+proc remove*[T](L: var DoublyLinkedRing[T], n: DoublyLinkedNode[T]) = 
   ## removes `n` from `L`. Efficiency: O(1).
   n.next.prev = n.prev
   n.prev.next = n.next
@@ -300,5 +307,3 @@ proc remove*[T](L: var TDoublyLinkedRing[T], n: PDoublyLinkedNode[T]) =
       L.head = nil
     else:
       L.head = L.head.prev
-
-

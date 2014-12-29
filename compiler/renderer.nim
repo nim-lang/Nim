@@ -1,13 +1,13 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-# This module implements the renderer of the standard Nimrod representation.
+# This module implements the renderer of the standard Nim representation.
 
 import 
   lexer, options, idents, strutils, ast, msgs, lists
@@ -34,6 +34,7 @@ type
     comStack*: seq[PNode]  # comment stack
     flags*: TRenderFlags
     checkAnon: bool        # we're in a context that can contain sfAnon
+    inPragma: int
 
 
 proc renderModule*(n: PNode, filename: string, renderFlags: TRenderFlags = {})
@@ -620,7 +621,7 @@ proc gpattern(g: var TSrcGen, n: PNode) =
   if longMode(n) or (lsub(n.sons[0]) + g.lineLen > MaxLineLen):
     incl(c.flags, rfLongMode)
   gcoms(g)                    # a good place for comments
-  gstmts(g, n.sons[0], c)
+  gstmts(g, n, c)
   put(g, tkCurlyRi, "}")
 
 proc gpragmaBlock(g: var TSrcGen, n: PNode) = 
@@ -894,8 +895,15 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkParLe, "(")
     for i in countup(0, sonsLen(n) - 1): 
       if i > 0: put(g, tkOpr, "|")
-      gsub(g, n.sons[i], c)
-    put(g, tkParRi, ")")
+      if n.sons[i].kind == nkSym:
+        let s = n[i].sym
+        if s.owner != nil:
+          put g, tkSymbol, n[i].sym.owner.name.s
+          put g, tkOpr, "."
+        put g, tkSymbol, n[i].sym.name.s
+      else:
+        gsub(g, n.sons[i], c)
+    put(g, tkParRi, if n.kind == nkOpenSymChoice: "|...)" else: ")")
   of nkPar, nkClosure: 
     put(g, tkParLe, "(")
     gcomma(g, n, c)
@@ -940,10 +948,10 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkConstDef, nkIdentDefs:
     gcomma(g, n, 0, -3)
     var L = sonsLen(n)
-    if n.sons[L - 2].kind != nkEmpty: 
+    if L >= 2 and n.sons[L - 2].kind != nkEmpty: 
       putWithSpace(g, tkColon, ":")
       gsub(g, n.sons[L - 2])
-    if n.sons[L - 1].kind != nkEmpty: 
+    if L >= 1 and n.sons[L - 1].kind != nkEmpty: 
       put(g, tkSpaces, Space)
       putWithSpace(g, tkEquals, "=")
       gsub(g, n.sons[L - 1], c)
@@ -1009,9 +1017,9 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkElse, " else")
     putWithSpace(g, tkColon, ":")
     gsub(g, n.sons[0])
-  of nkTypeOfExpr: 
+  of nkTypeOfExpr:
     putWithSpace(g, tkType, "type")
-    gsub(g, n.sons[0])
+    if n.len > 0: gsub(g, n.sons[0])
   of nkRefTy: 
     if sonsLen(n) > 0:
       putWithSpace(g, tkRef, "ref")
@@ -1177,12 +1185,17 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkContinueStmt: 
     putWithSpace(g, tkContinue, "continue")
     gsub(g, n.sons[0])
-  of nkPragma: 
+  of nkPragma:
     if renderNoPragmas notin g.flags:
-      put(g, tkSpaces, Space)
-      put(g, tkCurlyDotLe, "{.")
-      gcomma(g, n, emptyContext)
-      put(g, tkCurlyDotRi, ".}")
+      if g.inPragma <= 0:
+        inc g.inPragma
+        put(g, tkSpaces, Space)
+        put(g, tkCurlyDotLe, "{.")
+        gcomma(g, n, emptyContext)
+        put(g, tkCurlyDotRi, ".}")
+        dec g.inPragma
+      else:
+        gcomma(g, n, emptyContext)
   of nkImportStmt, nkExportStmt:
     if n.kind == nkImportStmt:
       putWithSpace(g, tkImport, "import")
@@ -1306,7 +1319,7 @@ proc renderTree(n: PNode, renderFlags: TRenderFlags = {}): string =
 proc renderModule(n: PNode, filename: string, 
                   renderFlags: TRenderFlags = {}) =
   var
-    f: TFile
+    f: File
     g: TSrcGen
   initSrcGen(g, renderFlags)
   for i in countup(0, sonsLen(n) - 1):

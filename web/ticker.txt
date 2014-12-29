@@ -1,54 +1,21 @@
-<a class="news" href="news.html#Z2014-10-19-version-0-9-6-released">
-  <h3>Oct 19, 2014</h3>
-  <p>Nimrod version 0.9.6 has been released!</p>
+<a class="news" href="news.html#Z2014-12-29-version-0-10-2-released">
+  <h4>Dec 29, 2014</h4>
+  <p>Nim version 0.10.2 has been released!</p>
 </a>
 
-<a class="news" href="news.html#Z2014-04-21-version-0-9-4-released">
-  <h3>Apr 21, 2014</h3>
-  <p>Nimrod version 0.9.4 has been released!</p>
+<a class="news" href="news.html#Z2014-12-09-new-website-design">
+  <h4>Dec 9, 2014</h4>
+  <p>The new website design and forum are now online!</p>
 </a>
 
 <a class="news" href="news.html#Z2014-02-11-nimrod-featured-in-dr-dobb-s-journal">
-  <h3>Feb 11, 2014</h3>
+  <h4>Feb 11, 2014</h4>
   <p>Nimrod featured in Dr. Dobb's Journal</p>
 </a>
 
 <a class="news" href="news.html#Z2014-01-15-andreas-rumpf-s-talk-on-nimrod-at-strange-loop-2013-is-now-online">
-  <h3>Jan 15, 2014</h3>
+  <h4>Jan 15, 2014</h4>
   <p>Andreas Rumpf's talk on Nimrod at Strange Loop 2013 is now online.</p>
 </a>
 
-<a class="news" href="news.html#Z2013-05-20-new-website-design">
-  <h3>May 20, 2013</h3>
-  <p>New website design!</p>
-</a>
-
-<a class="news" href="news.html#Z2013-05-20-version-0-9-2-released">
-  <h3>May 20, 2013</h3>
-  <p>Nimrod version 0.9.2 has been released!</p>
-</a>
-
-<a class="news" href="news.html#Z2012-09-23-version-0-9-0-released">
-  <h3>Sep 23, 2012</h3>
-  <p>Nimrod version 0.9.0 has been released!</p>
-</a>
-
-<a class="news" href="news.html#Z2012-02-09-version-0-8-14-released">
-  <h3>Feb 9, 2012</h3>
-  <p>Nimrod version 0.8.14 has been released!</p>
-</a>
-
-<a class="news" href="news.html#Z2011-07-10-version-0-8-12-released">
-  <h3>Jul 10, 2011</h3>
-  <p>Nimrod version 0.8.12 has been released!</p>
-</a>
-
-<a class="news" href="news.html#Z2010-10-20-version-0-8-10-released">
-  <h3>Oct 20, 2010</h3>
-  <p>Nimrod version 0.8.10 has been released!</p>
-</a>
-
-<a class="news" href="news.html#Z2010-03-14-version-0-8-8-released">
-  <h3>Mar 14, 2010</h3>
-  <p>Nimrod version 0.8.8 has been released!</p>
-</a>
+<a href="news.html" class="blue">See All News...</a>

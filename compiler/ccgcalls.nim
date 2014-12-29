@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -103,9 +103,9 @@ proc openArrayLoc(p: BProc, n: PNode): PRope =
       result = ropef("$1, $1Len0", [rdLoc(a)])
     of tyString, tySequence:
       if skipTypes(n.typ, abstractInst).kind == tyVar:
-        result = ropef("(*$1)->data, (*$1)->$2", [a.rdLoc, lenField()])
+        result = ropef("(*$1)->data, (*$1)->$2", [a.rdLoc, lenField(p)])
       else:
-        result = ropef("$1->data, $1->$2", [a.rdLoc, lenField()])
+        result = ropef("$1->data, $1->$2", [a.rdLoc, lenField(p)])
     of tyArray, tyArrayConstr:
       result = ropef("$1, $2", [rdLoc(a), toRope(lengthOrd(a.t))])
     else: internalError("openArrayLoc: " & typeToString(a.t))

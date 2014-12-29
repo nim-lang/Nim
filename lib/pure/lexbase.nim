@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2009 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -25,34 +25,36 @@ const
 #
 
 type
-  TBaseLexer* = object of TObject ## the base lexer. Inherit your lexer from
-                                  ## this object.
+  BaseLexer* = object of RootObj ## the base lexer. Inherit your lexer from
+                                 ## this object.
     bufpos*: int              ## the current position within the buffer
     buf*: cstring             ## the buffer itself
     bufLen*: int              ## length of buffer in characters
-    input: PStream            ## the input stream
+    input: Stream            ## the input stream
     lineNumber*: int          ## the current line number
     sentinel: int
     lineStart: int            # index of last line start in buffer
     fileOpened: bool
 
-proc open*(L: var TBaseLexer, input: PStream, bufLen: int = 8192)
+{.deprecated: [TBaseLexer: BaseLexer].}
+
+proc open*(L: var BaseLexer, input: Stream, bufLen: int = 8192)
   ## inits the TBaseLexer with a stream to read from
 
-proc close*(L: var TBaseLexer)
+proc close*(L: var BaseLexer)
   ## closes the base lexer. This closes `L`'s associated stream too.
 
-proc getCurrentLine*(L: TBaseLexer, marker: bool = true): string
+proc getCurrentLine*(L: BaseLexer, marker: bool = true): string
   ## retrieves the current line.
 
-proc getColNumber*(L: TBaseLexer, pos: int): int
+proc getColNumber*(L: BaseLexer, pos: int): int
   ## retrieves the current column.
 
-proc handleCR*(L: var TBaseLexer, pos: int): int
+proc handleCR*(L: var BaseLexer, pos: int): int
   ## Call this if you scanned over '\c' in the buffer; it returns the the
   ## position to continue the scanning from. `pos` must be the position
   ## of the '\c'.
-proc handleLF*(L: var TBaseLexer, pos: int): int
+proc handleLF*(L: var BaseLexer, pos: int): int
   ## Call this if you scanned over '\L' in the buffer; it returns the the
   ## position to continue the scanning from. `pos` must be the position
   ## of the '\L'.
@@ -62,11 +64,11 @@ proc handleLF*(L: var TBaseLexer, pos: int): int
 const
   chrSize = sizeof(char)
 
-proc close(L: var TBaseLexer) =
+proc close(L: var BaseLexer) =
   dealloc(L.buf)
   close(L.input)
 
-proc fillBuffer(L: var TBaseLexer) =
+proc fillBuffer(L: var BaseLexer) =
   var
     charsRead, toCopy, s: int # all are in characters,
                               # not bytes (in case this
@@ -111,7 +113,7 @@ proc fillBuffer(L: var TBaseLexer) =
           break
         s = L.bufLen - 1
 
-proc fillBaseLexer(L: var TBaseLexer, pos: int): int =
+proc fillBaseLexer(L: var BaseLexer, pos: int): int =
   assert(pos <= L.sentinel)
   if pos < L.sentinel:
     result = pos + 1          # nothing to do
@@ -121,24 +123,24 @@ proc fillBaseLexer(L: var TBaseLexer, pos: int): int =
     result = 0
   L.lineStart = result
 
-proc handleCR(L: var TBaseLexer, pos: int): int =
+proc handleCR(L: var BaseLexer, pos: int): int =
   assert(L.buf[pos] == '\c')
   inc(L.lineNumber)
   result = fillBaseLexer(L, pos)
   if L.buf[result] == '\L':
     result = fillBaseLexer(L, result)
 
-proc handleLF(L: var TBaseLexer, pos: int): int =
+proc handleLF(L: var BaseLexer, pos: int): int =
   assert(L.buf[pos] == '\L')
   inc(L.lineNumber)
   result = fillBaseLexer(L, pos) #L.lastNL := result-1; // BUGFIX: was: result;
 
-proc skipUtf8Bom(L: var TBaseLexer) =
+proc skipUtf8Bom(L: var BaseLexer) =
   if (L.buf[0] == '\xEF') and (L.buf[1] == '\xBB') and (L.buf[2] == '\xBF'):
     inc(L.bufpos, 3)
     inc(L.lineStart, 3)
 
-proc open(L: var TBaseLexer, input: PStream, bufLen: int = 8192) =
+proc open(L: var BaseLexer, input: Stream, bufLen: int = 8192) =
   assert(bufLen > 0)
   assert(input != nil)
   L.input = input
@@ -151,10 +153,10 @@ proc open(L: var TBaseLexer, input: PStream, bufLen: int = 8192) =
   fillBuffer(L)
   skipUtf8Bom(L)
 
-proc getColNumber(L: TBaseLexer, pos: int): int =
+proc getColNumber(L: BaseLexer, pos: int): int =
   result = abs(pos - L.lineStart)
 
-proc getCurrentLine(L: TBaseLexer, marker: bool = true): string =
+proc getCurrentLine(L: BaseLexer, marker: bool = true): string =
   var i: int
   result = ""
   i = L.lineStart

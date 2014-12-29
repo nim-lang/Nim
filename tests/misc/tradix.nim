@@ -4,7 +4,7 @@
 ## We use a radix tree with node compression. 
 ## There are two node kinds:
 
-const bitsPerUnit = 8*sizeof(int)
+const BitsPerUnit = 8*sizeof(int)
 
 type
   TRadixNodeKind = enum rnLinear, rnFull, rnLeafBits, rnLeafLinear
@@ -42,13 +42,13 @@ proc testBit(w, i: int): bool {.inline.} =
   result = (w and (1 shl (i %% BitsPerUnit))) != 0
 
 proc setBit(w: var int, i: int) {.inline.} = 
-  w = w or (1 shl (i %% bitsPerUnit))
+  w = w or (1 shl (i %% BitsPerUnit))
 
 proc resetBit(w: var int, i: int) {.inline.} = 
-  w = w and not (1 shl (i %% bitsPerUnit))
+  w = w and not (1 shl (i %% BitsPerUnit))
 
 proc testOrSetBit(w: var int, i: int): bool {.inline.} = 
-  var x = (1 shl (i %% bitsPerUnit))
+  var x = (1 shl (i %% BitsPerUnit))
   if (w and x) != 0: return true
   w = w or x
 
@@ -78,7 +78,7 @@ proc exclLeaf(r: PRadixNode, a: int) =
         return
   else: assert(false)
 
-proc contains*(r: PRadixNode, a: TAddress): bool =
+proc contains*(r: PRadixNode, a: ByteAddress): bool =
   if r == nil: return false
   var x = searchInner(r, a shr 24 and 0xff)
   if x == nil: return false
@@ -88,7 +88,7 @@ proc contains*(r: PRadixNode, a: TAddress): bool =
   if x == nil: return false
   return searchLeaf(x, a and 0xff)
 
-proc excl*(r: PRadixNode, a: TAddress): bool =
+proc excl*(r: PRadixNode, a: ByteAddress): bool =
   if r == nil: return false
   var x = searchInner(r, a shr 24 and 0xff)
   if x == nil: return false
@@ -167,10 +167,10 @@ proc addInner(r: var PRadixNode, a: int, d: int): bool =
     return addInner(x.b[k], a, d-8)
   else: assert(false)
 
-proc incl*(r: var PRadixNode, a: TAddress) {.inline.} = 
+proc incl*(r: var PRadixNode, a: ByteAddress) {.inline.} = 
   discard addInner(r, a, 24)
   
-proc testOrIncl*(r: var PRadixNode, a: TAddress): bool {.inline.} = 
+proc testOrIncl*(r: var PRadixNode, a: ByteAddress): bool {.inline.} = 
   return addInner(r, a, 24)
       
 iterator innerElements(r: PRadixNode): tuple[prefix: int, n: PRadixNode] = 
@@ -204,7 +204,7 @@ iterator leafElements(r: PRadixNode): int =
         yield ze(r.keys[i])
     else: assert(false)
     
-iterator elements*(r: PRadixNode): TAddress {.inline.} = 
+iterator elements*(r: PRadixNode): ByteAddress {.inline.} = 
   for p1, n1 in innerElements(r): 
     for p2, n2 in innerElements(n1):
       for p3, n3 in innerElements(n2):
@@ -297,7 +297,7 @@ when false:
         result = ze(r.keys[i.x])
         inc(i.x)
 
-  iterator elements(r: PRadixNode): TAddress {.inline.} = 
+  iterator elements(r: PRadixNode): ByteAddress {.inline.} = 
     var
       a, b, c, d: TRadixIter
     init(a, r)

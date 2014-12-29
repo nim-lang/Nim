@@ -45,7 +45,7 @@ const
     wBreakpoint, wWatchPoint, wPassl, wPassc, wDeadCodeElim, wDeprecated,
     wFloatchecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
     wLinearScanEnd, wPatterns, wEffects, wNoForward, wComputedGoto,
-    wInjectStmt, wDeprecated}
+    wInjectStmt, wDeprecated, wExperimental}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wNosideeffect, wSideeffect, wNoreturn, wDynlib, wHeader, 
     wDeprecated, wExtern, wThread, wImportCpp, wImportObjC, wAsmNoStackFrame,
@@ -71,7 +71,7 @@ const
 proc pragma*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords)
 # implementation
 
-proc invalidPragma(n: PNode) = 
+proc invalidPragma(n: PNode) =
   localError(n.info, errInvalidPragmaX, renderTree(n, {renderNoComments}))
 
 proc pragmaAsm*(c: PContext, n: PNode): char = 
@@ -130,6 +130,7 @@ proc processImportCpp(s: PSym, extname: string) =
   excl(s.flags, sfForward)
   let m = s.getModule()
   incl(m.flags, sfCompileToCpp)
+  extccomp.gMixedMode = true
 
 proc processImportObjC(s: PSym, extname: string) =
   setExternName(s, extname)
@@ -356,11 +357,11 @@ proc processPush(c: PContext, n: PNode, start: int) =
   append(c.optionStack, x)
   for i in countup(start, sonsLen(n) - 1): 
     if processOption(c, n.sons[i]):
-      # simply store it somehwere:
+      # simply store it somewhere:
       if x.otherPragmas.isNil:
         x.otherPragmas = newNodeI(nkPragma, n.info)
       x.otherPragmas.add n.sons[i]
-    #LocalError(n.info, errOptionExpected)
+    #localError(n.info, errOptionExpected)
   
 proc processPop(c: PContext, n: PNode) = 
   if c.optionStack.counter <= 1: 
@@ -447,6 +448,9 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
           addSon(result, newSymNode(e))
         else: 
           addSon(result, newStrNode(nkStrLit, sub))
+      else:
+        # an empty '``' produces a single '`'
+        addSon(result, newStrNode(nkStrLit, $marker))
       if c < 0: break 
       a = c + 1
   else: illFormedAst(n)
@@ -518,6 +522,28 @@ proc pragmaRaisesOrTags(c: PContext, n: PNode) =
   else:
     invalidPragma(n)
 
+proc pragmaLockStmt(c: PContext; it: PNode) =
+  if it.kind != nkExprColonExpr:
+    invalidPragma(it)
+  else:
+    let n = it[1]
+    if n.kind != nkBracket:
+      localError(n.info, errGenerated, "locks pragma takes a list of expressions")
+    else:
+      for i in 0 .. <n.len:
+        n.sons[i] = c.semExpr(c, n.sons[i])
+
+proc pragmaLocks(c: PContext, it: PNode): TLockLevel =
+  if it.kind != nkExprColonExpr:
+    invalidPragma(it)
+  else:
+    if it[1].kind != nkNilLit:
+      let x = expectIntLit(c, it)
+      if x < 0 or x > MaxLockLevel:
+        localError(it[1].info, "integer must be within 0.." & $MaxLockLevel)
+      else:
+        result = TLockLevel(x)
+
 proc typeBorrow(sym: PSym, n: PNode) =
   if n.kind == nkExprColonExpr:
     let it = n.sons[1]
@@ -575,6 +601,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
       if c.instCounter > 100: 
         globalError(it.info, errRecursiveDependencyX, userPragma.name.s)
       pragma(c, sym, userPragma.ast, validPragmas)
+      # ensure the pragma is also remember for generic instantiations in other
+      # modules:
+      n.sons[i] = userPragma.ast
       dec c.instCounter
     else:
       var k = whichKeyword(key.ident)
@@ -807,6 +836,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           if sym == nil: invalidPragma(it)
         of wLine: pragmaLine(c, it)
         of wRaises, wTags: pragmaRaisesOrTags(c, it)
+        of wLocks:
+          if sym == nil: pragmaLockStmt(c, it)
+          elif sym.typ == nil: invalidPragma(it)
+          else: sym.typ.lockLevel = pragmaLocks(c, it)
         of wGuard:
           if sym == nil or sym.kind notin {skVar, skLet, skField}:
             invalidPragma(it)
@@ -817,6 +850,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
             localError(it.info, errExprExpected)
           else: 
             it.sons[1] = c.semExpr(c, it.sons[1])
+        of wExperimental:
+          noVal(it)
+          if isTopLevel(c):
+            c.module.flags.incl sfExperimental
+          else:
+            localError(it.info, "'experimental' pragma only valid as toplevel statement") 
         else: invalidPragma(it)
       else: invalidPragma(it)
   else: processNote(c, it)
@@ -853,8 +892,13 @@ proc hasPragma*(n: PNode, pragma: TSpecialWord): bool =
   
   return false
 
-proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
+proc pragmaRec(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
   if n == nil: return
   for i in countup(0, sonsLen(n) - 1):
-    if singlePragma(c, sym, n, i, validPragmas): break
+    if n.sons[i].kind == nkPragma: pragmaRec(c, sym, n.sons[i], validPragmas)
+    elif singlePragma(c, sym, n, i, validPragmas): break
+
+proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
+  if n == nil: return
+  pragmaRec(c, sym, n, validPragmas)
   implicitPragmas(c, sym, n, validPragmas)

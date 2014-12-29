@@ -1,3 +1,18 @@
+discard """
+  output: '''12
+1xxx
+true0
+12
+testtest
+1010
+11string
+testtest1
+seq
+seq
+seq
+foo seq
+foo of numeric'''"""
+
 type
   TFoo[T] = object
     val: T

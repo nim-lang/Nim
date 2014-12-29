@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -17,7 +17,7 @@ import
 type
   TRstParseOption* = enum     ## options for the RST parser 
     roSkipPounds,             ## skip ``#`` at line beginning (documentation
-                              ## embedded in Nimrod comments)
+                              ## embedded in Nim comments)
     roSupportSmilies,         ## make the RST parser support smilies like ``:)``
     roSupportRawDirective,    ## support the ``raw`` directive (don't support
                               ## it for sandboxing)
@@ -39,7 +39,8 @@ type
     meInvalidDirective,
     mwRedefinitionOfLabel,
     mwUnknownSubstitution,
-    mwUnsupportedLanguage
+    mwUnsupportedLanguage,
+    mwUnsupportedField
   
   TMsgHandler* = proc (filename: string, line, col: int, msgKind: TMsgKind,
                        arg: string) {.nimcall.} ## what to do in case of an error
@@ -55,7 +56,8 @@ const
     meInvalidDirective: "invalid directive: '$1'",
     mwRedefinitionOfLabel: "redefinition of label '$1'", 
     mwUnknownSubstitution: "unknown substitution '$1'",
-    mwUnsupportedLanguage: "language '$1' not supported"
+    mwUnsupportedLanguage: "language '$1' not supported",
+    mwUnsupportedField: "field '$1' not supported"
   ]
 
 proc rstnodeToRefname*(n: PRstNode): string
@@ -66,8 +68,8 @@ proc getArgument*(n: PRstNode): string
 # ----------------------------- scanner part --------------------------------
 
 const 
-  SymChars: TCharSet = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF'}
-  SmileyStartChars: TCharSet = {':', ';', '8'}
+  SymChars: set[char] = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF'}
+  SmileyStartChars: set[char] = {':', ';', '8'}
   Smilies = {
     ":D": "icon_e_biggrin",
     ":-D": "icon_e_biggrin",
@@ -111,21 +113,21 @@ const
 type
   TTokType = enum 
     tkEof, tkIndent, tkWhite, tkWord, tkAdornment, tkPunct, tkOther
-  TToken{.final.} = object    # a RST token
+  TToken = object             # a RST token
     kind*: TTokType           # the type of the token
     ival*: int                # the indentation or parsed integer value
     symbol*: string           # the parsed symbol as string
     line*, col*: int          # line and column of the token
   
   TTokenSeq = seq[TToken]
-  TLexer = object of TObject
+  TLexer = object of RootObj
     buf*: cstring
     bufpos*: int
     line*, col*, baseIndent*: int
     skipPounds*: bool
 
 
-proc getThing(L: var TLexer, tok: var TToken, s: TCharSet) = 
+proc getThing(L: var TLexer, tok: var TToken, s: set[char]) = 
   tok.kind = tkWord
   tok.line = L.line
   tok.col = L.col
@@ -252,11 +254,11 @@ proc getTokens(buffer: string, skipPounds: bool, tokens: var TTokenSeq): int =
 
 type
   TLevelMap = array[char, int]
-  TSubstitution{.final.} = object 
+  TSubstitution = object 
     key*: string
     value*: PRstNode
 
-  TSharedState {.final.} = object 
+  TSharedState = object 
     options: TRstParseOptions   # parsing options
     uLevel, oLevel: int         # counters for the section levels
     subs: seq[TSubstitution]    # substitutions
@@ -271,9 +273,9 @@ type
                                 # This is for over-underline adornments.
     msgHandler: TMsgHandler     # How to handle errors.
     findFile: TFindFileHandler  # How to find files.
-  
+
   PSharedState = ref TSharedState
-  TRstParser = object of TObject
+  TRstParser = object of RootObj
     idx*: int
     tok*: TTokenSeq
     s*: PSharedState
@@ -282,7 +284,7 @@ type
     line*, col*: int
     hasToc*: bool
 
-  EParseError* = object of EInvalidValue
+  EParseError* = object of ValueError
 
 proc whichMsgClass*(k: TMsgKind): TMsgClass =
   ## returns which message class `k` belongs to.
@@ -850,13 +852,13 @@ proc parseComment(p: var TRstParser): PRstNode =
 
 type 
   TDirKind = enum             # must be ordered alphabetically!
-    dkNone, dkAuthor, dkAuthors, dkCodeBlock, dkContainer, dkContents,
+    dkNone, dkAuthor, dkAuthors, dkCode, dkCodeBlock, dkContainer, dkContents,
     dkFigure, dkImage, dkInclude, dkIndex, dkRaw, dkTitle
 
 const 
-  DirIds: array[0..11, string] = ["", "author", "authors", "code-block", 
-    "container", "contents", "figure", "image", "include", "index", "raw", 
-    "title"]
+  DirIds: array[0..12, string] = ["", "author", "authors", "code",
+    "code-block", "container", "contents", "figure", "image", "include",
+    "index", "raw", "title"]
 
 proc getDirKind(s: string): TDirKind = 
   let i = find(DirIds, s)
@@ -876,7 +878,10 @@ proc parseUntilNewline(p: var TRstParser, father: PRstNode) =
     of tkEof, tkIndent: break
   
 proc parseSection(p: var TRstParser, result: PRstNode)
-proc parseField(p: var TRstParser): PRstNode = 
+proc parseField(p: var TRstParser): PRstNode =
+  ## Returns a parsed rnField node.
+  ##
+  ## rnField nodes have two children nodes, a rnFieldName and a rnFieldBody.
   result = newRstNode(rnField)
   var col = p.tok[p.idx].col
   var fieldname = newRstNode(rnFieldName)
@@ -892,7 +897,11 @@ proc parseField(p: var TRstParser): PRstNode =
   add(result, fieldname)
   add(result, fieldbody)
 
-proc parseFields(p: var TRstParser): PRstNode = 
+proc parseFields(p: var TRstParser): PRstNode =
+  ## Parses fields for a section or directive block.
+  ##
+  ## This proc may return nil if the parsing doesn't find anything of value,
+  ## otherwise it will return a node of rnFieldList type with children.
   result = nil
   var atStart = p.idx == 0 and p.tok[0].symbol == ":"
   if (p.tok[p.idx].kind == tkIndent) and (p.tok[p.idx + 1].symbol == ":") or
@@ -908,6 +917,18 @@ proc parseFields(p: var TRstParser): PRstNode =
       else: 
         break 
   
+proc getFieldValue*(n: PRstNode): string =
+  ## Returns the value of a specific ``rnField`` node.
+  ##
+  ## This proc will assert if the node is not of the expected type. The empty
+  ## string will be returned as a minimum. Any value in the rst will be
+  ## stripped form leading/trailing whitespace.
+  assert n.kind == rnField
+  assert n.len == 2
+  assert n.sons[0].kind == rnFieldName
+  assert n.sons[1].kind == rnFieldBody
+  result = addNodes(n.sons[1]).strip
+
 proc getFieldValue(n: PRstNode, fieldname: string): string = 
   result = ""
   if n.sons[1] == nil: return 
@@ -1387,7 +1408,16 @@ type
   TDirFlags = set[TDirFlag]
   TSectionParser = proc (p: var TRstParser): PRstNode {.nimcall.}
 
-proc parseDirective(p: var TRstParser, flags: TDirFlags): PRstNode = 
+proc parseDirective(p: var TRstParser, flags: TDirFlags): PRstNode =
+  ## Parses arguments and options for a directive block.
+  ##
+  ## A directive block will always have three sons: the arguments for the
+  ## directive (rnDirArg), the options (rnFieldList) and the block
+  ## (rnLineBlock). This proc parses the two first nodes, the block is left to
+  ## the outer `parseDirective` call.
+  ##
+  ## Both rnDirArg and rnFieldList children nodes might be nil, so you need to
+  ## check them before accessing.
   result = newRstNode(rnDirective)
   var args: PRstNode = nil
   var options: PRstNode = nil
@@ -1421,6 +1451,9 @@ proc indFollows(p: TRstParser): bool =
   
 proc parseDirective(p: var TRstParser, flags: TDirFlags, 
                     contentParser: TSectionParser): PRstNode = 
+  ## Returns a generic rnDirective tree.
+  ##
+  ## The children are rnDirArg, rnFieldList and rnLineBlock. Any might be nil.
   result = parseDirective(p, flags)
   if not isNil(contentParser) and indFollows(p): 
     pushInd(p, p.tok[p.idx].ival)
@@ -1474,7 +1507,23 @@ proc dirInclude(p: var TRstParser): PRstNode =
       #  InternalError("Too many binary zeros in include file")
       result = parseDoc(q)
 
-proc dirCodeBlock(p: var TRstParser): PRstNode = 
+proc dirCodeBlock(p: var TRstParser, nimrodExtension = false): PRstNode =
+  ## Parses a code block.
+  ##
+  ## Code blocks are rnDirective trees with a `kind` of rnCodeBlock. See the
+  ## description of ``parseDirective`` for further structure information.
+  ##
+  ## Code blocks can come in two forms, the standard `code directive
+  ## <http://docutils.sourceforge.net/docs/ref/rst/directives.html#code>`_ and
+  ## the nimrod extension ``.. code-block::``. If the block is an extension, we
+  ## want the default language syntax highlighting to be Nimrod, so we create a
+  ## fake internal field to comminicate with the generator. The field is named
+  ## ``default-language``, which is unlikely to collide with a field specified
+  ## by any random rst input file.
+  ##
+  ## As an extension this proc will process the ``file`` extension field and if
+  ## present will replace the code block with the contents of the referenced
+  ## file.
   result = parseDirective(p, {hasArg, hasOptions}, parseLiteralBlock)
   var filename = strip(getFieldValue(result, "file"))
   if filename != "": 
@@ -1483,6 +1532,20 @@ proc dirCodeBlock(p: var TRstParser): PRstNode =
     var n = newRstNode(rnLiteralBlock)
     add(n, newRstNode(rnLeaf, readFile(path)))
     result.sons[2] = n
+
+  # Extend the field block if we are using our custom extension.
+  if nimrodExtension:
+    # Create a field block if the input block didn't have any.
+    if result.sons[1].isNil: result.sons[1] = newRstNode(rnFieldList)
+    assert result.sons[1].kind == rnFieldList
+    # Hook the extra field and specify the Nimrod language as value.
+    var extraNode = newRstNode(rnField)
+    extraNode.add(newRstNode(rnFieldName))
+    extraNode.add(newRstNode(rnFieldBody))
+    extraNode.sons[0].add(newRstNode(rnLeaf, "default-language"))
+    extraNode.sons[1].add(newRstNode(rnLeaf, "Nimrod"))
+    result.sons[1].add(extraNode)
+
   result.kind = rnCodeBlock
 
 proc dirContainer(p: var TRstParser): PRstNode = 
@@ -1566,7 +1629,8 @@ proc parseDotDot(p: var TRstParser): PRstNode =
         result = dirRaw(p)
       else:
         rstMessage(p, meInvalidDirective, d)
-    of dkCodeBlock: result = dirCodeBlock(p)
+    of dkCode: result = dirCodeBlock(p)
+    of dkCodeBlock: result = dirCodeBlock(p, nimrodExtension = true)
     of dkIndex: result = dirIndex(p)
     else: rstMessage(p, meInvalidDirective, d)
     popInd(p)

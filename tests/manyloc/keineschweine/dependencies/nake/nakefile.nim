@@ -2,7 +2,7 @@ import nake
 nakeImports
 
 task "install", "compile and install nake binary":
-  if shell("nimrod", "c", "nake") == 0:
+  if shell("nim", "c", "nake") == 0:
     let path = getEnv("PATH").split(PathSep)
     for index, dir in pairs(path):
       echo "  ", index, ". ", dir

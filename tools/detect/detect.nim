@@ -1,8 +1,8 @@
 # Posix detect program
 # (c) 2010 Andreas Rumpf
 
-# This program produces a C program that produces a Nimrod include file.
-# The Nimrod include file lists the values of each POSIX constant.
+# This program produces a C program that produces a Nim include file.
+# The Nim include file lists the values of each POSIX constant.
 # This is needed because POSIX is brain-dead: It only cares for C, any other
 # language is ignored. It would have been easier had they specified the
 # concrete values of the constants. Sigh.

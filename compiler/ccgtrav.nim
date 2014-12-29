@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -49,8 +49,8 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: PRope, n: PNode) =
     genTraverseProc(c, ropef("$1.$2", accessor, field.loc.r), field.loc.t)
   else: internalError(n.info, "genTraverseProc()")
 
-proc parentObj(accessor: PRope): PRope {.inline.} =
-  if gCmd != cmdCompileToCpp:
+proc parentObj(accessor: PRope; m: BModule): PRope {.inline.} =
+  if not m.compileToCpp:
     result = ropef("$1.Sup", accessor)
   else:
     result = accessor
@@ -71,7 +71,7 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: PRope, typ: PType) =
     lineF(p, cpsStmts, "}$n")
   of tyObject:
     for i in countup(0, sonsLen(typ) - 1):
-      genTraverseProc(c, accessor.parentObj, typ.sons[i])
+      genTraverseProc(c, accessor.parentObj(c.p.module), typ.sons[i])
     if typ.n != nil: genTraverseProc(c, accessor, typ.n)
   of tyTuple:
     let typ = getUniqueType(typ)
@@ -91,7 +91,7 @@ proc genTraverseProcSeq(c: var TTraversalClosure, accessor: PRope, typ: PType) =
   var i: TLoc
   getTemp(p, getSysType(tyInt), i)
   lineF(p, cpsStmts, "for ($1 = 0; $1 < $2->$3; $1++) {$n",
-      i.r, accessor, toRope(if gCmd != cmdCompileToCpp: "Sup.len" else: "len"))
+      i.r, accessor, toRope(if c.p.module.compileToCpp: "len" else: "Sup.len"))
   genTraverseProc(c, ropef("$1->data[$2]", accessor, i.r), typ.sons[0])
   lineF(p, cpsStmts, "}$n")
   

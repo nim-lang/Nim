@@ -1,6 +1,6 @@
 #
 #
-#            Nimrod's Runtime Library
+#            Nim's Runtime Library
 #        (c) Copyright 2010 Dominik Picheta
 #
 #    See the file "copying.txt", included in this
@@ -15,13 +15,13 @@ import xmldom, os, streams, parsexml, strutils
 
 type
   # Parsing errors
-  EMismatchedTag* = object of EInvalidValue ## Raised when a tag is not properly closed
-  EParserError* = object of EInvalidValue ## Raised when an unexpected XML Parser event occurs
+  EMismatchedTag* = object of ValueError ## Raised when a tag is not properly closed
+  EParserError* = object of ValueError ## Raised when an unexpected XML Parser event occurs
 
   # For namespaces
-  xmlnsAttr = tuple[name, value: string, ownerElement: PElement]
+  XmlnsAttr = tuple[name, value: string, ownerElement: PElement]
 
-var nsList: seq[xmlnsAttr] = @[] # Used for storing namespaces
+var nsList: seq[XmlnsAttr] = @[] # Used for storing namespaces
 
 proc getNS(prefix: string): string =
   var defaultNS: seq[string] = @[]
@@ -43,13 +43,13 @@ proc getNS(prefix: string): string =
     
   return ""
     
-proc parseText(x: var TXmlParser, doc: var PDocument): PText =
+proc parseText(x: var XmlParser, doc: var PDocument): PText =
   result = doc.createTextNode(x.charData())
 
-proc parseElement(x: var TXmlParser, doc: var PDocument): PElement =
+proc parseElement(x: var XmlParser, doc: var PDocument): PElement =
   var n = doc.createElement("")
 
-  while True:
+  while true:
     case x.kind()
     of xmlEof:
       break
@@ -102,10 +102,10 @@ proc parseElement(x: var TXmlParser, doc: var PDocument): PElement =
     of xmlComment:
       n.appendChild(doc.createComment(x.charData()))
     of xmlPI:
-      n.appendChild(doc.createProcessingInstruction(x.PIName(), x.PIRest()))
+      n.appendChild(doc.createProcessingInstruction(x.piName(), x.piRest()))
       
     of xmlWhitespace, xmlElementClose, xmlEntity, xmlSpecial:
-      # Unused 'events'
+      discard " Unused \'events\'"
 
     else:
       raise newException(EParserError, "Unexpected XML Parser event")
@@ -114,30 +114,30 @@ proc parseElement(x: var TXmlParser, doc: var PDocument): PElement =
   raise newException(EMismatchedTag, 
     "Mismatched tag at line " & $x.getLine() & " column " & $x.getColumn)
 
-proc loadXMLStream*(stream: PStream): PDocument =
+proc loadXMLStream*(stream: Stream): PDocument =
   ## Loads and parses XML from a stream specified by ``stream``, and returns 
   ## a ``PDocument``
 
-  var x: TXmlParser
+  var x: XmlParser
   open(x, stream, nil, {reportComments})
   
-  var XmlDoc: PDocument
-  var DOM: PDOMImplementation = getDOM()
+  var xmlDoc: PDocument
+  var dom: PDOMImplementation = getDOM()
   
-  while True:
+  while true:
     x.next()
     case x.kind()
     of xmlEof:
       break
     of xmlElementStart, xmlElementOpen:
-      var el: PElement = parseElement(x, XmlDoc)
-      XmlDoc = dom.createDocument(el)
+      var el: PElement = parseElement(x, xmlDoc)
+      xmlDoc = dom.createDocument(el)
     of xmlWhitespace, xmlElementClose, xmlEntity, xmlSpecial:
-      # Unused 'events'
+      discard " Unused \'events\'"
     else:
       raise newException(EParserError, "Unexpected XML Parser event")
 
-  return XmlDoc
+  return xmlDoc
 
 proc loadXML*(xml: string): PDocument =
   ## Loads and parses XML from a string specified by ``xml``, and returns 
@@ -151,12 +151,12 @@ proc loadXMLFile*(path: string): PDocument =
   ## a ``PDocument``
   
   var s = newFileStream(path, fmRead)
-  if s == nil: raise newException(EIO, "Unable to read file " & path)
+  if s == nil: raise newException(IOError, "Unable to read file " & path)
   return loadXMLStream(s)
 
 
 when isMainModule:
-  var xml = loadXMLFile(r"C:\Users\Dominik\Desktop\Code\Nimrod\xmldom\test.xml")
+  var xml = loadXMLFile("nim/xmldom/test.xml")
   #echo(xml.getElementsByTagName("m:test2")[0].namespaceURI)
   #echo(xml.getElementsByTagName("bla:test")[0].namespaceURI)
   #echo(xml.getElementsByTagName("test")[0].namespaceURI)

@@ -12,7 +12,7 @@
 # did not, you can find it at http://www.gnu.org/
 #
 
-## Nimrod wrapper for ``sphinx``.
+## Nim wrapper for ``sphinx``.
 
 {.deadCodeElim: on.}
 when defined(windows):

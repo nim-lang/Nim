@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -121,7 +121,7 @@ type
     r*: string                # writers use this
     offset*: int              # readers use this
   
-  TRodReader* = object of TObject
+  TRodReader* = object of RootObj
     pos: int                 # position; used for parsing
     s: cstring               # mmap'ed file contents
     options: TOptions
@@ -137,7 +137,7 @@ type
     line: int            # only used for debugging, but is always in the code
     moduleID: int
     syms: TIdTable       # already processed symbols
-    memfile: TMemFile    # unfortunately there is no point in time where we
+    memfile: MemFile     # unfortunately there is no point in time where we
                          # can close this! XXX
     methods*: TSymSeq
     origFile: string
@@ -280,11 +280,6 @@ proc decodeLoc(r: PRodReader, loc: var TLoc, info: TLineInfo) =
       loc.r = toRope(decodeStr(r.s, r.pos))
     else: 
       loc.r = nil
-    if r.s[r.pos] == '?': 
-      inc(r.pos)
-      loc.a = decodeVInt(r.s, r.pos)
-    else: 
-      loc.a = 0
     if r.s[r.pos] == '>': inc(r.pos)
     else: internalError(info, "decodeLoc " & r.s[r.pos])
   
@@ -326,7 +321,7 @@ proc decodeType(r: PRodReader, info: TLineInfo): PType =
     result.size = - 1
   if r.s[r.pos] == '=': 
     inc(r.pos)
-    result.align = decodeVInt(r.s, r.pos)
+    result.align = decodeVInt(r.s, r.pos).int16
   else: 
     result.align = 2
   decodeLoc(r, result.loc, info)
@@ -503,7 +498,7 @@ proc processCompilerProcs(r: PRodReader, module: PSym) =
       idTablePut(r.syms, s, s)
     strTableAdd(rodCompilerprocs, s)
 
-proc processIndex(r: PRodReader; idx: var TIndex; outf: TFile = nil) = 
+proc processIndex(r: PRodReader; idx: var TIndex; outf: File = nil) = 
   var key, val, tmp: int
   inc(r.pos, 2)               # skip "(\10"
   inc(r.line)
@@ -659,7 +654,7 @@ proc newRodReader(modfilename: string, crc: TCrc32,
   new(result)
   try:
     result.memfile = memfiles.open(modfilename)
-  except EOS:
+  except OSError:
     return nil
   result.files = @[]
   result.modDeps = @[]
@@ -916,7 +911,7 @@ initIdTable(gTypeTable)
 initStrTable(rodCompilerprocs)
 
 # viewer:
-proc writeNode(f: TFile; n: PNode) =
+proc writeNode(f: File; n: PNode) =
   f.write("(")
   if n != nil:
     f.write($n.kind)
@@ -947,7 +942,7 @@ proc writeNode(f: TFile; n: PNode) =
         writeNode(f, n.sons[i])
   f.write(")")
 
-proc writeSym(f: TFile; s: PSym) =
+proc writeSym(f: File; s: PSym) =
   if s == nil:
     f.write("{}\n")
     return
@@ -985,7 +980,7 @@ proc writeSym(f: TFile; s: PSym) =
     f.writeNode(s.ast)
   f.write("}\n")
 
-proc writeType(f: TFile; t: PType) =
+proc writeType(f: File; t: PType) =
   if t == nil:
     f.write("[]\n")
     return

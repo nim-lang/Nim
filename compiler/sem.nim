@@ -1,6 +1,6 @@
 #
 #
-#           The Nimrod Compiler
+#           The Nim Compiler
 #        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -15,8 +15,11 @@ import
   magicsys, parser, nversion, nimsets, semfold, importer,
   procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
-  evaltempl, patterns, parampatterns, sempass2, pretty, semmacrosanity,
+  evaltempl, patterns, parampatterns, sempass2, nimfix.pretty, semmacrosanity,
   semparallel, lowerings
+
+when defined(nimfix):
+  import nimfix.prettybase
 
 # implementation
 
@@ -37,9 +40,7 @@ proc semParamList(c: PContext, n, genericParams: PNode, s: PSym)
 proc addParams(c: PContext, n: PNode, kind: TSymKind)
 proc maybeAddResult(c: PContext, s: PSym, n: PNode)
 proc instGenericContainer(c: PContext, n: PNode, header: PType): PType
-proc tryExpr(c: PContext, n: PNode,
-             flags: TExprFlags = {}, bufferErrors = false): PNode
-proc fixImmediateParams(n: PNode): PNode
+proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc activate(c: PContext, n: PNode)
 proc semQuoteAst(c: PContext, n: PNode): PNode
 proc finishMethod(c: PContext, s: PSym)
@@ -66,11 +67,24 @@ proc fitNode(c: PContext, formal: PType, arg: PNode): PNode =
       # error correction:
       result = copyTree(arg)
       result.typ = formal
+    else:
+      let x = result.skipConv
+      if x.kind == nkPar and formal.kind != tyExpr:
+        changeType(x, formal, check=true)
 
 proc inferWithMetatype(c: PContext, formal: PType,
                        arg: PNode, coerceDistincts = false): PNode
 
 var commonTypeBegin = PType(kind: tyExpr)
+
+proc isEmptyContainer(t: PType): bool =
+  case t.kind
+  of tyExpr, tyNil: result = true
+  of tyArray, tyArrayConstr: result = t.sons[1].kind == tyEmpty
+  of tySet, tySequence, tyOpenArray, tyVarargs:
+    result = t.sons[0].kind == tyEmpty
+  of tyGenericInst: result = isEmptyContainer(t.lastSon)
+  else: result = false
 
 proc commonType*(x, y: PType): PType =
   # new type relation that is used for array constructors,
@@ -95,6 +109,13 @@ proc commonType*(x, y: PType): PType =
     # check for seq[empty] vs. seq[int]
     let idx = ord(b.kind in {tyArray, tyArrayConstr})
     if a.sons[idx].kind == tyEmpty: return y
+  elif a.kind == tyTuple and b.kind == tyTuple and a.len == b.len:
+    var nt: PType
+    for i in 0.. <a.len:
+      if isEmptyContainer(a.sons[i]) and not isEmptyContainer(b.sons[i]):
+        if nt.isNil: nt = copyType(a, a.owner, false)
+        nt.sons[i] = b.sons[i]
+    if not nt.isNil: result = nt
     #elif b.sons[idx].kind == tyEmpty: return x
   elif a.kind == tyRange and b.kind == tyRange:
     # consider:  (range[0..3], range[0..4]) here. We should make that
@@ -131,17 +152,14 @@ proc commonType*(x, y: PType): PType =
         result = newType(k, r.owner)
         result.addSonSkipIntLit(r)
 
-proc isTopLevel(c: PContext): bool {.inline.} = 
-  result = c.currentScope.depthLevel <= 2
-
 proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym = 
   result = newSym(kind, considerQuotedIdent(n), getCurrOwner(), n.info)
 
 proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
   # like newSymS, but considers gensym'ed symbols
   if n.kind == nkSym:
+    # and sfGenSym in n.sym.flags:
     result = n.sym
-    internalAssert sfGenSym in result.flags
     internalAssert result.kind == kind
     # when there is a nested proc inside a template, semtmpl
     # will assign a wrong owner during the first pass over the
@@ -308,6 +326,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   pushInfoContext(nOrig.info)
 
   markUsed(n.info, sym)
+  styleCheckUse(n.info, sym)
   if sym == c.p.owner:
     globalError(n.info, errRecursiveDependencyX, sym.name.s)
 
@@ -340,7 +359,7 @@ type
   TSemGenericFlags = set[TSemGenericFlag]
 
 proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags,
-                    ctx: var TIntSet): PNode
+                    ctx: var IntSet): PNode
 
 include semtypes, semtempl, semgnrc, semstmts, semexprs
 
@@ -367,6 +386,8 @@ proc myOpen(module: PSym): PPassContext =
   c.semInferredLambda = semInferredLambda
   c.semGenerateInstance = generateInstance
   c.semTypeNode = semTypeNode
+  c.instDeepCopy = sigmatch.instDeepCopy
+
   pushProcCon(c, module)
   pushOwner(c.module)
   c.importTable = openScope(c)

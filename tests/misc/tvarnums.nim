@@ -74,7 +74,7 @@ proc toNum(b: TBuffer): int32 =
   while (ze(b[i]) and 128) != 0:
     inc(i)
     result = result or ((int32(ze(b[i])) and 127'i32) shl Shift)
-    Shift = shift + 7'i32
+    Shift = Shift + 7'i32
   if (ze(b[0]) and (1 shl 6)) != 0: # sign bit set?
     result = (not result) +% 1'i32
     # this is the same as ``- result``
