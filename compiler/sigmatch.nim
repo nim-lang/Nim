@@ -1083,6 +1083,11 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
                     arg: PNode): PNode = 
   # arg.typ can be nil in 'suggest':
   if isNil(arg.typ): return nil
+
+  # sem'checking for 'echo' needs to be re-entrant:
+  # XXX we will revisit this issue after 0.10.2 is released
+  if f == arg.typ and arg.kind == nkHiddenStdConv: return arg
+
   var call = newNodeI(nkCall, arg.info)
   call.add(f.n.copyTree)
   call.add(arg.copyTree)

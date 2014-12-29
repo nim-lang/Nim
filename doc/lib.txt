@@ -154,8 +154,8 @@ Generic Operating System Services
 
 * `streams <streams.html>`_
   This module provides a stream interface and two implementations thereof:
-  the `PFileStream` and the `PStringStream` which implement the stream
-  interface for Nim file objects (`TFile`) and strings. Other modules
+  the `FileStream` and the `StringStream` which implement the stream
+  interface for Nim file objects (`File`) and strings. Other modules
   may provide other implementations for this standard stream interface.
 
 * `marshal <marshal.html>`_
