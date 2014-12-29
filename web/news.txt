@@ -28,7 +28,7 @@ for lightweight threading through the use of ``spawn``.
 
 The unpopular "T" and "P" prefixes on types have been deprecated. Nim also
 became more expressive by weakening the distinction between statements and
-epxressions. We also added a new and searchable forum, a new website, and our
+expressions. We also added a new and searchable forum, a new website, and our
 documentation generator ``docgen`` has seen major improvements.
 
 What's left to be done
@@ -193,7 +193,6 @@ Bugfixes
   been instantiated in different modules.
 - Fixed queue exhaustion bug.
 - Many, many more.
-
 
 2014-12-09 New website design!
 ==============================
