@@ -12,7 +12,7 @@ type
     (x < y) is bool
 
   ObjectContainer = generic C
-    C.len is ordinal
+    C.len is Ordinal
     for v in items(C):
       v.type is tuple|object
 
