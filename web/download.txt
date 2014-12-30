@@ -9,12 +9,9 @@ and clang on Mac OS X.
 Binaries
 ========
 
-Unfortunately for now we provide no binary builds.
-
-..
-  Unfortunately for now we only provide builds for Windows.
-  * 32 bit: `nim_0.10.2.exe <download/nim-0.10.2.exe>`_
-  * 64 bit: `nim_0.10.2_x64.exe <download/nim-0.10.2_x64.exe>`_
+Unfortunately for now we only provide builds for Windows.
+* 32 bit: `nim-0.10.2_x32.exe <download/nim-0.10.2_x32.exe>`_
+* 64 bit: `nim-0.10.2_x64.exe <download/nim-0.10.2_x64.exe>`_
 
 
 Installation based on generated C code

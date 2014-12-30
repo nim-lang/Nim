@@ -29,7 +29,10 @@ for lightweight threading through the use of ``spawn``.
 The unpopular "T" and "P" prefixes on types have been deprecated. Nim also
 became more expressive by weakening the distinction between statements and
 expressions. We also added a new and searchable forum, a new website, and our
-documentation generator ``docgen`` has seen major improvements.
+documentation generator ``docgen`` has seen major improvements. Many thanks to
+Nick Greenfield for the much more beautiful documentation!
+
+
 
 What's left to be done
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -120,7 +123,7 @@ Language Additions
 - The builtin ``procCall`` can be used to get ``super``-like functionality
   for multi methods.
 - There is a new pragma ``{.experimental.}`` that enables experimental
-  language features per module, or you can enable this features on a global
+  language features per module, or you can enable these features on a global
   level with the ``--experimental`` command line option.
 
 
