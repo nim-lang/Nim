@@ -35,7 +35,15 @@ proc getSystemVersion*(): string =
   elif $unix_info.sysname == "Darwin":
     # Darwin
     result.add("Mac OS X ")
-    if "10" in $unix_info.release:
+    if "14" in $unix_info.release:
+      result.add("v10.10 Yosemite")
+    elif "13" in $unix_info.release:
+      result.add("v10.9 Mavericks")
+    elif "12" in $unix_info.release:
+      result.add("v10.8 Mountian Lion")
+    elif "11" in $unix_info.release:
+      result.add("v10.7 Lion")
+    elif "10" in $unix_info.release:
       result.add("v10.6 Snow Leopard")
     elif "9" in $unix_info.release:
       result.add("v10.5 Leopard")
