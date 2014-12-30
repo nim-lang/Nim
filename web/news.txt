@@ -137,9 +137,9 @@ Compiler Additions
 - The following procs are now available at compile-time::
 
     math.sqrt, math.ln, math.log10, math.log2, math.exp, math.round,
-    math.arccos, math.arcsin, math.arctan, math.arctan2, math.cos, math.cosh,
-    math.hypot, math.sinh, math.sin, math.tan, math.tanh, math.pow,
-    math.trunc, math.floor, math.ceil, math.fmod,
+    math.arccos, math.arcsin, math.arctan, math.arctan2, math.cos,
+    math.cosh, math.hypot, math.sinh, math.sin, math.tan, math.tanh,
+    math.pow, math.trunc, math.floor, math.ceil, math.fmod,
     os.getEnv, os.existsEnv, os.dirExists, os.fileExists,
     system.writeFile
 
