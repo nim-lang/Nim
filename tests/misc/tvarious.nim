@@ -62,3 +62,7 @@ when false:
   block:
     var a, b: Bar[int, 0..2]
     discard foo(a, b)
+
+# bug #1788
+
+echo "hello" & char(ord(' ')) & "world"

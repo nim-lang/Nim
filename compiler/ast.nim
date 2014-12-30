@@ -1517,8 +1517,8 @@ proc getStr*(a: PNode): string =
 proc getStrOrChar*(a: PNode): string = 
   case a.kind
   of nkStrLit..nkTripleStrLit: result = a.strVal
-  of nkCharLit: result = $chr(int(a.intVal))
-  else: 
+  of nkCharLit..nkUInt64Lit: result = $chr(int(a.intVal))
+  else:
     internalError(a.info, "getStrOrChar")
     result = ""
 
