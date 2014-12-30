@@ -550,58 +550,6 @@ in C/C++).
 **Note**: This pragma will not exist for the LLVM backend.
 
 
-Source code style
-=================
-
-Nim allows you to `mix freely case and underscores as identifier separators
-<manual.html#identifiers-keywords>`_, so variables named ``MyPrecioussInt`` and
-``my_preciouss_int`` are equivalent:
-
-.. code-block:: Nim
-  var MyPrecioussInt = 3
-  # Following line compiles fine!
-  echo my_preciouss_int
-
-Since this can lead to many variants of the same source code (you can use
-`nimgrep <nimgrep.html>`_ instead of your typical ``grep`` to ignore style
-problems) the compiler provides the command ``pretty`` to help unifying the
-style of source code.  Running ``nim pretty ugly_test.nim`` with this
-example will generate a secondary file named ``ugly_test.pretty.nim`` with the
-following content:
-
-.. code-block:: Nim
-  var MyPrecioussInt = 3
-  # Following line compiles fine!
-  echo MyPrecioussInt
-
-During execution the ``pretty`` command will also run on Nim's standard
-library, since it doesn't differentiate the standard library as something
-special, and hence will warn of many *errors* which are out of your hand to
-fix, creating respective ``.pretty.nim`` files all the way. You can ignore
-these errors if they don't belong to your source and simply compare your
-original version to the new pretty one. In fact, running ``pretty`` on our test
-file will show the following::
-
-  Hint: ugly_test [Processing]
-  ugly_test.nim(1, 4) Error: name should be: myPrecioussInt
-  ugly_test.nim(1, 4) Error: name should be: myPrecioussInt
-
-At the moment ``pretty`` will homogenize the style of symbols but will leave
-important changes for you to review. In this case the command is warning that a
-variable name should not start with a capital letter, which is usually reserved
-to `object types <tut2.html#objects>`_. To learn about the accepted `camel case
-style <https://en.wikipedia.org/wiki/Camelcase>`_ read `Coding Guidelines in
-the Internals of Nim Compiler <intern.html#coding-guidelines>`_ or `Coding
-Guidelines <https://github.com/Araq/Nim/wiki/Coding-Guidelines>`_ and `NEP 1
-: Style Guide for Nim Code
-<https://github.com/Araq/Nim/wiki/NEP-1-:-Style-Guide-for-Nim-Code>`_
-from the Nim `GitHub wiki<https://github.com/Araq/Nim/wiki>`_.
-
-This command is safe to run because it will never attempt to overwrite your
-existing sources, but the respective ``.pretty.nim`` files **will** be
-overwritten without notice.
-
-
 DynlibOverride
 ==============
 
