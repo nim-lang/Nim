@@ -979,6 +979,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   of tyStatic:
     if aOrig.kind == tyStatic:
       result = typeRel(c, f.lastSon, a)
+      if result != isNone and f.n != nil:
+        if not exprStructuralEquivalent(f.n, a.n):
+          result = isNone
       if result != isNone: put(c.bindings, f, aOrig)
     else:
       result = isNone
