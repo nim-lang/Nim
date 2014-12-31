@@ -72,7 +72,8 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     result = n
     styleCheckUse(n.info, s)
   of skType: 
-    if (s.typ != nil) and (s.typ.kind != tyGenericParam): 
+    if (s.typ != nil) and
+       (s.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} == {}):
       result = newSymNodeTypeDesc(s, n.info)
     else: 
       result = n

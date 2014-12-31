@@ -926,7 +926,8 @@ const
 proc readTypeParameter(c: PContext, typ: PType,
                        paramName: PIdent, info: TLineInfo): PNode =
   let ty = if typ.kind == tyGenericInst: typ.skipGenericAlias
-           else: (internalAssert(typ.kind == tyCompositeTypeClass); typ.sons[1])
+           else: (internalAssert(typ.kind == tyCompositeTypeClass);
+                  typ.sons[1].skipGenericAlias)
   #debug ty
   let tbody = ty.sons[0]
   for s in countup(0, tbody.len-2):
@@ -965,6 +966,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var ty = n.sons[0].typ
   var f: PSym = nil
   result = nil
+
   if isTypeExpr(n.sons[0]) or (ty.kind == tyTypeDesc and ty.base.kind != tyNone):
     if ty.kind == tyTypeDesc: ty = ty.base
     ty = ty.skipTypes(tyDotOpTransparent)
