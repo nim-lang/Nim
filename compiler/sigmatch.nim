@@ -629,6 +629,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     elif skipTypes(a, {tyRange}).kind == f.kind: result = isSubtype
   of tyRange:
     if a.kind == f.kind:
+      if f.base.kind == tyNone: return isGeneric
       result = typeRel(c, base(f), base(a))
       # bugfix: accept integer conversions here
       #if result < isGeneric: result = isNone
@@ -948,7 +949,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
           else:
             internalAssert a.sons != nil and a.sons.len > 0
             c.typedescMatched = true
-            result = typeRel(c, f.base, a.base)
+            result = typeRel(c, f.base, a.skipTypes({tyGenericParam, tyTypeDesc}))
         else:
           result = isNone
       else:
