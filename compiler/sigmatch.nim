@@ -517,6 +517,16 @@ proc maybeSkipDistinct(t: PType, callee: PSym): PType =
   else:
     result = t
 
+proc tryResolvingStaticExpr(c: var TCandidate, n: PNode): PNode =
+  # Consider this example:
+  #   type Value[N: static[int]] = object
+  #   proc foo[N](a: Value[N], r: range[0..(N-1)])
+  # Here, N-1 will be initially nkStaticExpr that can be evaluated only after
+  # N is bound to a concrete value during the matching of the first param.
+  # This proc is used to evaluate such static expressions.
+  let instantiated = replaceTypesInBody(c.c, c.bindings, n)
+  result = c.c.semExpr(c.c, instantiated)
+
 proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   # typeRel can be used to establish various relationships between types:
   #
@@ -620,6 +630,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       # bugfix: accept integer conversions here
       #if result < isGeneric: result = isNone
       if result notin {isNone, isGeneric}:
+        # resolve any late-bound static expressions
+        # that may appear in the range:
+        for i in 0..1:
+          if f.n[i].kind == nkStaticExpr:
+            f.n.sons[i] = tryResolvingStaticExpr(c, f.n[i])
         result = typeRangeRel(f, a)
     else:
       if skipTypes(f, {tyRange}).kind == a.kind:
@@ -1006,15 +1021,14 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
 
   of tyFromExpr:
     # fix the expression, so it contains the already instantiated types
-    let instantiated = replaceTypesInBody(c.c, c.bindings, f.n)
-    let reevaluted = c.c.semExpr(c.c, instantiated)
-    case reevaluted.typ.kind
+    let reevaluated = tryResolvingStaticExpr(c, f.n)
+    case reevaluated.typ.kind
     of tyTypeDesc:
-      result = typeRel(c, a, reevaluted.typ.base)
+      result = typeRel(c, a, reevaluated.typ.base)
     of tyStatic:
-      result = typeRel(c, a, reevaluted.typ.base)
-      if result != isNone and reevaluted.typ.n != nil:
-        if not exprStructuralEquivalent(aOrig.n, reevaluted.typ.n):
+      result = typeRel(c, a, reevaluated.typ.base)
+      if result != isNone and reevaluated.typ.n != nil:
+        if not exprStructuralEquivalent(aOrig.n, reevaluated.typ.n):
           result = isNone
     else:
       localError(f.n.info, errTypeExpected)

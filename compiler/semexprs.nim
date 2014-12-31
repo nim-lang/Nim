@@ -219,7 +219,7 @@ proc maybeLiftType(t: var PType, c: PContext, info: TLineInfo) =
   # gnrc. params, then it won't be necessary to open a new scope here
   openScope(c)
   var lifted = liftParamType(c, skType, newNodeI(nkArgList, info),
-                         t, ":anon", info)
+                             t, ":anon", info)
   closeScope(c)
   if lifted != nil: t = lifted
 
