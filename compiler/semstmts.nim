@@ -653,7 +653,8 @@ proc checkForMetaFields(n: PNode) =
   template checkMeta(t) =
     if t != nil and t.isMetaType and tfGenericTypeParam notin t.flags:
       localError(n.info, errTIsNotAConcreteType, t.typeToString)
-  
+
+  if n.isNil: return
   case n.kind
   of nkRecList, nkRecCase:
     for s in n: checkForMetaFields(s)

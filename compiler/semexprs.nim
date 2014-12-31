@@ -985,7 +985,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     of tyTypeParamsHolders:
       return readTypeParameter(c, ty, i, n.info)
     of tyObject, tyTuple:
-      if ty.n.kind == nkRecList:
+      if ty.n != nil and ty.n.kind == nkRecList:
         for field in ty.n:
           if field.sym.name == i:
             n.typ = newTypeWithSons(c, tyFieldAccessor, @[ty, field.sym.typ])
