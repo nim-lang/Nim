@@ -169,7 +169,7 @@ Numbers
 Numerical literals are written as in most other languages. As a special twist,
 underscores are allowed for better readability: ``1_000_000`` (one million).
 A number that contains a dot (or 'e' or 'E') is a floating point literal:
-``1.0e9`` (one million). Hexadecimal literals are prefixed with ``0x``,
+``1.0e9`` (one billion). Hexadecimal literals are prefixed with ``0x``,
 binary literals with ``0b`` and octal literals with ``0o``. A leading zero
 alone does not produce an octal.
 
