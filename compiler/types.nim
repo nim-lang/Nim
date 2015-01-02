@@ -17,7 +17,7 @@ proc lastOrd*(t: PType): BiggestInt
 proc lengthOrd*(t: PType): BiggestInt
 type 
   TPreferedDesc* = enum
-    preferName, preferDesc, preferExported, preferModuleInfo
+    preferName, preferDesc, preferExported, preferModuleInfo, preferGenericArg
 
 proc typeToString*(typ: PType; prefer: TPreferedDesc = preferName): string
 proc base*(t: PType): PType
@@ -411,11 +411,13 @@ const
     "UserTypeClassInst", "CompositeTypeClass",
     "and", "or", "not", "any", "static", "TypeFromExpr", "FieldAccessor"]
 
+const preferToResolveSymbols = {preferName, preferModuleInfo, preferGenericArg}
+
 proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   var t = typ
   result = ""
   if t == nil: return 
-  if prefer in {preferName, preferModuleInfo} and t.sym != nil and
+  if prefer in preferToResolveSymbols and t.sym != nil and
        sfAnon notin t.sym.flags:
     if t.kind == tyInt and isIntLit(t):
       return t.sym.name.s & " literal(" & $t.n.intVal & ")"
@@ -428,20 +430,26 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     if not isIntLit(t) or prefer == preferExported:
       result = typeToStr[t.kind]
     else:
-      result = "int literal(" & $t.n.intVal & ")"
+      if prefer == preferGenericArg:
+        result = $t.n.intVal
+      else:
+        result = "int literal(" & $t.n.intVal & ")"
   of tyGenericBody, tyGenericInst, tyGenericInvokation:
     result = typeToString(t.sons[0]) & '['
     for i in countup(1, sonsLen(t) -1 -ord(t.kind != tyGenericInvokation)):
       if i > 1: add(result, ", ")
-      add(result, typeToString(t.sons[i]))
+      add(result, typeToString(t.sons[i], preferGenericArg))
     add(result, ']')
   of tyTypeDesc:
     if t.base.kind == tyNone: result = "typedesc"
     else: result = "typedesc[" & typeToString(t.base) & "]"
   of tyStatic:
     internalAssert t.len > 0
-    result = "static[" & typeToString(t.sons[0]) & "]"
-    if t.n != nil: result.add "(" & renderTree(t.n) & ")"
+    if prefer == preferGenericArg and t.n != nil:
+      result = t.n.renderTree
+    else:
+      result = "static[" & typeToString(t.sons[0]) & "]"
+      if t.n != nil: result.add "(" & renderTree(t.n) & ")"
   of tyUserTypeClass:
     internalAssert t.sym != nil and t.sym.owner != nil
     return t.sym.owner.name.s

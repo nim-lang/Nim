@@ -1570,9 +1570,9 @@ else:
 
 
 when defined(macosx):
+  # We can't use the NOSIGNAL flag in the ``send`` function, it has no effect
   var
-    MSG_HAVEMORE* {.importc, header: "<sys/socket.h>".}: cint
-    MSG_NOSIGNAL* = MSG_HAVEMORE
+    MSG_NOSIGNAL* = 0'i32
 else:
   var
     MSG_NOSIGNAL* {.importc, header: "<sys/socket.h>".}: cint

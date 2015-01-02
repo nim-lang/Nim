@@ -67,11 +67,24 @@ proc fitNode(c: PContext, formal: PType, arg: PNode): PNode =
       # error correction:
       result = copyTree(arg)
       result.typ = formal
+    else:
+      let x = result.skipConv
+      if x.kind == nkPar and formal.kind != tyExpr:
+        changeType(x, formal, check=true)
 
 proc inferWithMetatype(c: PContext, formal: PType,
                        arg: PNode, coerceDistincts = false): PNode
 
 var commonTypeBegin = PType(kind: tyExpr)
+
+proc isEmptyContainer(t: PType): bool =
+  case t.kind
+  of tyExpr, tyNil: result = true
+  of tyArray, tyArrayConstr: result = t.sons[1].kind == tyEmpty
+  of tySet, tySequence, tyOpenArray, tyVarargs:
+    result = t.sons[0].kind == tyEmpty
+  of tyGenericInst: result = isEmptyContainer(t.lastSon)
+  else: result = false
 
 proc commonType*(x, y: PType): PType =
   # new type relation that is used for array constructors,
@@ -96,6 +109,13 @@ proc commonType*(x, y: PType): PType =
     # check for seq[empty] vs. seq[int]
     let idx = ord(b.kind in {tyArray, tyArrayConstr})
     if a.sons[idx].kind == tyEmpty: return y
+  elif a.kind == tyTuple and b.kind == tyTuple and a.len == b.len:
+    var nt: PType
+    for i in 0.. <a.len:
+      if isEmptyContainer(a.sons[i]) and not isEmptyContainer(b.sons[i]):
+        if nt.isNil: nt = copyType(a, a.owner, false)
+        nt.sons[i] = b.sons[i]
+    if not nt.isNil: result = nt
     #elif b.sons[idx].kind == tyEmpty: return x
   elif a.kind == tyRange and b.kind == tyRange:
     # consider:  (range[0..3], range[0..4]) here. We should make that

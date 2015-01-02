@@ -428,6 +428,10 @@ proc selectWrite*(writefds: var seq[SocketHandle],
   
   pruneSocketSet(writefds, (wr))
 
+# We ignore signal SIGPIPE on Darwin
+when defined(macosx):
+  signal(SIGPIPE, SIG_IGN)
+
 when defined(Windows):
   var wsa: WSAData
   if wsaStartup(0x0101'i16, addr wsa) != 0: raiseOSError(osLastError())

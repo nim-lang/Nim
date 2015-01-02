@@ -56,7 +56,7 @@ Objects have access to their type at runtime. There is an
 
 .. code-block:: nim
   type
-    TPerson = object of TObject
+    TPerson = object of RootObj
       name*: string  # the * means that `name` is accessible from other modules
       age: int       # no * means that the field is hidden from other modules
 
@@ -76,10 +76,10 @@ never *equivalent*. New object types can only be defined within a type
 section.
 
 Inheritance is done with the ``object of`` syntax. Multiple inheritance is
-currently not supported. If an object type has no suitable ancestor, ``TObject``
+currently not supported. If an object type has no suitable ancestor, ``RootObj``
 can be used as its ancestor, but this is only a convention. Objects that have 
 no ancestor are implicitly ``final``. You can use the ``inheritable`` pragma 
-to introduce new object roots apart from ``system.TObject``. (This is used
+to introduce new object roots apart from ``system.RootObj``. (This is used
 in the GTK wrapper for instance.)
 
 
@@ -228,7 +228,7 @@ is needed:
 .. code-block:: nim
   
   type
-    TSocket* = object of TObject
+    TSocket* = object of RootObj
       FHost: int # cannot be accessed from the outside of the module
                  # the `F` prefix is a convention to avoid clashes since
                  # the accessors are named `host`
@@ -284,7 +284,7 @@ Procedures always use static dispatch. For dynamic dispatch replace the
 
 .. code-block:: nim
   type
-    PExpr = ref object of TObject ## abstract base class for an expression
+    PExpr = ref object of RootObj ## abstract base class for an expression
     PLiteral = ref object of PExpr
       x: int
     PPlusExpr = ref object of PExpr
@@ -313,7 +313,7 @@ dispatching:
 .. code-block:: nim
 
   type
-    TThing = object of TObject
+    TThing = object of RootObj
     TUnit = object of TThing
       x: int
       

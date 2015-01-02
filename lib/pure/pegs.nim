@@ -1433,7 +1433,7 @@ proc eat(p: var PegParser, kind: TTokKind) =
   if p.tok.kind == kind: getTok(p)
   else: pegError(p, tokKindToStr[kind] & " expected")
 
-proc parseExpr(p: var PegParser): Peg
+proc parseExpr(p: var PegParser): Peg {.gcsafe.}
 
 proc getNonTerminal(p: var PegParser, name: string): NonTerminal =
   for i in 0..high(p.nonterms):

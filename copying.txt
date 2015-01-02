@@ -1,5 +1,5 @@
 =====================================================
-Nimrod -- a Compiler for Nimrod. http://nimrod-lang.org/
+Nim -- a Compiler for Nim. http://nim-lang.org/
 
 Copyright (C) 2006-2014 Andreas Rumpf. All rights reserved.
  

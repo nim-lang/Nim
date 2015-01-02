@@ -280,9 +280,18 @@ when not useWinVersion:
   proc CRYPTO_set_mem_functions(a,b,c: pointer){.cdecl, 
     dynlib: DLLUtilName, importc.}
 
+  proc allocWrapper(size: int): pointer {.cdecl.} = alloc(size)
+  proc reallocWrapper(p: pointer; newsize: int): pointer {.cdecl.} =
+    if p == nil:
+      if newSize > 0: result = alloc(newsize)
+    elif newsize == 0: dealloc(p)
+    else: result = realloc(p, newsize)
+  proc deallocWrapper(p: pointer) {.cdecl.} =
+    if p != nil: dealloc(p)
+
 proc CRYPTO_malloc_init*() =
   when not useWinVersion:
-    CRYPTO_set_mem_functions(alloc, realloc, dealloc)
+    CRYPTO_set_mem_functions(allocWrapper, reallocWrapper, deallocWrapper)
 
 proc SSL_CTX_ctrl*(ctx: SslCtx, cmd: cInt, larg: int, parg: pointer): int{.
   cdecl, dynlib: DLLSSLName, importc.}

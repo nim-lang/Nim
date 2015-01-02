@@ -368,32 +368,32 @@ type
 {.deprecated: [TSocketHandle: SocketHandle].}
 
 type
-  WSAData* {.importc: "WSADATA", header: "Winsock2.h".} = object 
+  WSAData* {.importc: "WSADATA", header: "winsock2.h".} = object 
     wVersion, wHighVersion: int16
     szDescription: array[0..WSADESCRIPTION_LEN, char]
     szSystemStatus: array[0..WSASYS_STATUS_LEN, char]
     iMaxSockets, iMaxUdpDg: int16
     lpVendorInfo: cstring
     
-  SockAddr* {.importc: "SOCKADDR", header: "Winsock2.h".} = object 
+  SockAddr* {.importc: "SOCKADDR", header: "winsock2.h".} = object 
     sa_family*: int16 # unsigned
     sa_data: array[0..13, char]
 
-  InAddr* {.importc: "IN_ADDR", header: "Winsock2.h".} = object
+  InAddr* {.importc: "IN_ADDR", header: "winsock2.h".} = object
     s_addr*: int32  # IP address
   
   Sockaddr_in* {.importc: "SOCKADDR_IN", 
-                  header: "Winsock2.h".} = object
+                  header: "winsock2.h".} = object
     sin_family*: int16
     sin_port*: int16 # unsigned
     sin_addr*: InAddr
     sin_zero*: array[0..7, char]
 
-  In6_addr* {.importc: "IN6_ADDR", header: "Winsock2.h".} = object 
+  In6_addr* {.importc: "IN6_ADDR", header: "winsock2.h".} = object 
     bytes*: array[0..15, char]
 
   Sockaddr_in6* {.importc: "SOCKADDR_IN6", 
-                   header: "Winsock2.h".} = object
+                   header: "winsock2.h".} = object
     sin6_family*: int16
     sin6_port*: int16 # unsigned
     sin6_flowinfo*: int32 # unsigned
@@ -450,22 +450,22 @@ type
 
 
 var
-  SOMAXCONN* {.importc, header: "Winsock2.h".}: cint
-  INVALID_SOCKET* {.importc, header: "Winsock2.h".}: SocketHandle
-  SOL_SOCKET* {.importc, header: "Winsock2.h".}: cint
-  SO_DEBUG* {.importc, header: "Winsock2.h".}: cint ## turn on debugging info recording
-  SO_ACCEPTCONN* {.importc, header: "Winsock2.h".}: cint # socket has had listen()
-  SO_REUSEADDR* {.importc, header: "Winsock2.h".}: cint # allow local address reuse
-  SO_KEEPALIVE* {.importc, header: "Winsock2.h".}: cint # keep connections alive
-  SO_DONTROUTE* {.importc, header: "Winsock2.h".}: cint # just use interface addresses
-  SO_BROADCAST* {.importc, header: "Winsock2.h".}: cint # permit sending of broadcast msgs
-  SO_USELOOPBACK* {.importc, header: "Winsock2.h".}: cint # bypass hardware when possible
-  SO_LINGER* {.importc, header: "Winsock2.h".}: cint # linger on close if data present
-  SO_OOBINLINE* {.importc, header: "Winsock2.h".}: cint # leave received OOB data in line
+  SOMAXCONN* {.importc, header: "winsock2.h".}: cint
+  INVALID_SOCKET* {.importc, header: "winsock2.h".}: SocketHandle
+  SOL_SOCKET* {.importc, header: "winsock2.h".}: cint
+  SO_DEBUG* {.importc, header: "winsock2.h".}: cint ## turn on debugging info recording
+  SO_ACCEPTCONN* {.importc, header: "winsock2.h".}: cint # socket has had listen()
+  SO_REUSEADDR* {.importc, header: "winsock2.h".}: cint # allow local address reuse
+  SO_KEEPALIVE* {.importc, header: "winsock2.h".}: cint # keep connections alive
+  SO_DONTROUTE* {.importc, header: "winsock2.h".}: cint # just use interface addresses
+  SO_BROADCAST* {.importc, header: "winsock2.h".}: cint # permit sending of broadcast msgs
+  SO_USELOOPBACK* {.importc, header: "winsock2.h".}: cint # bypass hardware when possible
+  SO_LINGER* {.importc, header: "winsock2.h".}: cint # linger on close if data present
+  SO_OOBINLINE* {.importc, header: "winsock2.h".}: cint # leave received OOB data in line
 
-  SO_DONTLINGER* {.importc, header: "Winsock2.h".}: cint
-  SO_EXCLUSIVEADDRUSE* {.importc, header: "Winsock2.h".}: cint # disallow local address reuse
-  SO_ERROR* {.importc, header: "Winsock2.h".}: cint
+  SO_DONTLINGER* {.importc, header: "winsock2.h".}: cint
+  SO_EXCLUSIVEADDRUSE* {.importc, header: "winsock2.h".}: cint # disallow local address reuse
+  SO_ERROR* {.importc, header: "winsock2.h".}: cint
 
 proc `==`*(x, y: SocketHandle): bool {.borrow.}
 
