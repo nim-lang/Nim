@@ -1102,6 +1102,13 @@ const
     0x01f1, 501,  #     
     0x01f3, 499]  #     
 
+  combiningRanges = [
+    0x0300, 0x036f,
+    0x1ab0, 0x1aff,
+    0x1dc0, 0x1dff,
+    0x20d0, 0x20ff,
+    0xfe20, 0xfe2f]
+
 proc binarySearch(c: RuneImpl, tab: openArray[RuneImpl], len, stride: int): int = 
   var n = len
   var t = 0
@@ -1194,6 +1201,13 @@ proc isWhiteSpace*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
   if p >= 0 and c >= spaceRanges[p] and c <= spaceRanges[p+1]:
     return true
 
+proc isCombining*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
+  ## returns true iff `c` is a Unicode combining character
+  var c = RuneImpl(c)
+  var p = binarySearch(c, combiningRanges, len(combiningRanges) div 2, 2)
+  if p >= 0 and c >= combiningRanges[p] and c <= combiningRanges[p+1]:
+    return true
+
 iterator runes*(s: string): Rune =
   ## iterates over any unicode character of the string `s`.
   var
@@ -1220,9 +1234,33 @@ proc cmpRunesIgnoreCase*(a, b: string): int {.rtl, extern: "nuc$1", procvar.} =
     if result != 0: return
   result = a.len - b.len
 
+proc reversed*(s: string): string =
+  ## returns the reverse of `s`, interpreting it as unicode characters. Unicode
+  ## combining characters are correctly interpreted as well:
+  ##
+  ## .. code-block:
+  ##   assert reversed("Reverse this!") == "!siht esreveR"
+  ##   assert reversed("先秦兩漢") == "漢兩秦先"
+  ##   assert reversed("as⃝df̅") == "f̅ds⃝a"
+  ## assert reversed("a⃞b⃞c⃞") == "c⃞b⃞a⃞"
+  result = newStringOfCap(len(s))
+  var tmp: seq[Rune] = @[]
+  for r in runes(s):
+    if isCombining(r):
+      tmp.insert(r, high(tmp))
+    else:
+      tmp.add(r)
+  for i in countdown(high(tmp), 0):
+    result.add(toUTF8(tmp[i]))
+
 when isMainModule:
   let
     someString = "öÑ"
     someRunes = @[runeAt(someString, 0), runeAt(someString, 2)]
     compared = (someString == $someRunes)
   assert compared == true
+
+  assert reversed("Reverse this!") == "!siht esreveR"
+  assert reversed("先秦兩漢") == "漢兩秦先"
+  assert reversed("as⃝df̅") == "f̅ds⃝a"
+  assert reversed("a⃞b⃞c⃞") == "c⃞b⃞a⃞"
