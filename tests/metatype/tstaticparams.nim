@@ -65,7 +65,7 @@ proc matrix_3*[M, N: static[int]; T](mat: Matrix[M,N,T], a: array[N, int]) = dis
 proc matrix_4*[M, N: static[int]; T](mat: Matrix[M,N,T], a: array[N+1, int]) = discard
 
 var
-  tmat: TMatrix[4,4,int]
+  tmat: Matrix[4,4,int]
   ar1: array[4, int]
   ar2: array[5, int]
 
@@ -73,4 +73,13 @@ matrix_1(tmat, ar1)
 matrix_2(tmat, ar2)
 matrix_3(tmat, ar1)
 matrix_4(tmat, ar2)
+
+template reject(x): stmt =
+  static: assert(not compiles(x))
+
+# test with arrays of wrong size
+reject matrix_1(tmat, ar2)
+reject matrix_2(tmat, ar1)
+reject matrix_3(tmat, ar2)
+reject matrix_4(tmat, ar1)
 
