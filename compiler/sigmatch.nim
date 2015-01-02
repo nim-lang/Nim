@@ -676,22 +676,27 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         else:
           fRange = prev
       result = typeRel(c, f.sons[1], a.sons[1])
-      if result < isGeneric:
-        result = isNone
-      elif tfUnresolved in fRange.flags and
-           rangeHasStaticIf(fRange):
-        # This is a range from an array instantiated with a generic
-        # static param. We must extract the static param here and bind
-        # it to the size of the currently supplied array.
-        var
-          rangeStaticT = fRange.getStaticTypeFromRange
-          replacementT = newTypeWithSons(c.c, tyStatic, @[tyInt.getSysType])
-          inputUpperBound = a.sons[0].n[1].intVal
-        # we must correct for the off-by-one discrepancy between
-        # ranges and static params:
-        replacementT.n = newIntNode(nkIntLit, inputUpperBound + 1)
-        put(c.bindings, rangeStaticT, replacementT)
-        result = isGeneric
+      if result < isGeneric: return isNone
+      if rangeHasStaticIf(fRange):
+        if tfUnresolved in fRange.flags:
+          # This is a range from an array instantiated with a generic
+          # static param. We must extract the static param here and bind
+          # it to the size of the currently supplied array.
+          var
+            rangeStaticT = fRange.getStaticTypeFromRange
+            replacementT = newTypeWithSons(c.c, tyStatic, @[tyInt.getSysType])
+            inputUpperBound = a.sons[0].n[1].intVal
+          # we must correct for the off-by-one discrepancy between
+          # ranges and static params:
+          replacementT.n = newIntNode(nkIntLit, inputUpperBound + 1)
+          put(c.bindings, rangeStaticT, replacementT)
+          return isGeneric
+
+        let len = tryResolvingStaticExpr(c, fRange.n[1])
+        if len.kind == nkIntLit and len.intVal+1 == lengthOrd(a):
+          return # if we get this far, the result is already good
+        else:
+          return isNone
       elif lengthOrd(fRange) != lengthOrd(a):
         result = isNone
     else: discard
@@ -1049,10 +1054,10 @@ proc cmpTypes*(c: PContext, f, a: PType): TTypeRelation =
   initCandidate(c, m, f)
   result = typeRel(m, f, a)
 
-proc getInstantiatedType(c: PContext, arg: PNode, m: TCandidate, 
-                         f: PType): PType = 
+proc getInstantiatedType(c: PContext, arg: PNode, m: TCandidate,
+                         f: PType): PType =
   result = PType(idTableGet(m.bindings, f))
-  if result == nil: 
+  if result == nil:
     result = generateTypeInstance(c, m.bindings, arg, f)
   if result == nil:
     internalError(arg.info, "getInstantiatedType")
@@ -1134,7 +1139,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
     arg = argSemantized
     argType = argType
     c = m.c
- 
+
   if tfHasStatic in fMaybeStatic.flags:
     # XXX: When implicit statics are the default
     # this will be done earlier - we just have to
@@ -1148,7 +1153,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
       return argSemantized
 
     if argType.kind == tyStatic:
-      if m.callee.kind == tyGenericBody:
+      if m.callee.kind == tyGenericBody and tfGenericTypeParam notin argType.flags:
         result = newNodeI(nkType, argOrig.info)
         result.typ = makeTypeFromExpr(c, arg)
         return

@@ -56,3 +56,21 @@ type TTestSub[N: static[int]] = TTest[1, N]
 
 var z: TTestSub[2]
 echo z.high
+
+# issue 1049
+proc matrix_1*[M, N, T](mat: Matrix[M,N,T], a: array[N, int]) = discard
+proc matrix_2*[M, N, T](mat: Matrix[M,N,T], a: array[N+1, int]) = discard
+
+proc matrix_3*[M, N: static[int]; T](mat: Matrix[M,N,T], a: array[N, int]) = discard
+proc matrix_4*[M, N: static[int]; T](mat: Matrix[M,N,T], a: array[N+1, int]) = discard
+
+var
+  tmat: TMatrix[4,4,int]
+  ar1: array[4, int]
+  ar2: array[5, int]
+
+matrix_1(tmat, ar1)
+matrix_2(tmat, ar2)
+matrix_3(tmat, ar1)
+matrix_4(tmat, ar2)
+
