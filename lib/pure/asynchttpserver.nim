@@ -17,6 +17,8 @@
 ## as the response body.
 ##
 ## .. code-block::nim
+##    import asynchttpserver, asyncdispatch
+##
 ##    var server = newAsyncHttpServer()
 ##    proc cb(req: Request) {.async.} =
 ##      await req.respond(Http200, "Hello World")
