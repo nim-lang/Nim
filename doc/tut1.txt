@@ -1070,7 +1070,7 @@ Operation             Comment
 ``dec(x, n)``         decrements `x` by `n`; `n` is an integer
 ``succ(x)``           returns the successor of `x`
 ``succ(x, n)``        returns the `n`'th successor of `x`
-``prec(x)``           returns the predecessor of `x`
+``pred(x)``           returns the predecessor of `x`
 ``pred(x, n)``        returns the `n`'th predecessor of `x`
 -----------------     --------------------------------------------------------
 
