@@ -294,7 +294,7 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
   var r = if proxy == nil: parseUri(url) else: proxy.url
   var headers = substr($httpMethod, len("http"))
   if proxy == nil:
-    headers.add(" /" & r.path & r.query)
+    headers.add(" " & r.path & r.query)
   else:
     headers.add(" " & url)
 
@@ -346,7 +346,7 @@ proc getNewLocation(lastUrl: string, headers: StringTableRef): string =
   let r = parseUri(result)
   if r.hostname == "" and r.path != "":
     let origParsed = parseUri(lastUrl)
-    result = origParsed.hostname & "/" & r.path
+    result = origParsed.hostname & r.path
 
 proc get*(url: string, extraHeaders = "", maxRedirects = 5,
           sslContext: SSLContext = defaultSSLContext,
@@ -442,7 +442,7 @@ proc generateHeaders(r: Uri, httpMethod: HttpMethod,
                      headers: StringTableRef): string =
   result = substr($httpMethod, len("http"))
   # TODO: Proxies
-  result.add(" /" & r.path & r.query)
+  result.add(" " & r.path & r.query)
   result.add(" HTTP/1.1\c\L")
 
   add(result, "Host: " & r.hostname & "\c\L")
