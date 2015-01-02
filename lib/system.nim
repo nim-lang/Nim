@@ -199,6 +199,17 @@ proc low*[T](x: T): T {.magic: "Low", noSideEffect.}
   ## the lowest possible value of an ordinal value `x`. As a special
   ## semantic rule, `x` may also be a type identifier.
 
+template indices*(x): expr = low(x) .. high(x)
+  ## iterate over any value for which `low` and `high` are defined. Can be used
+  ## for compact loops, similar to `items` and `pairs`, as well as to construct
+  ## ranges:
+  ##
+  ## .. code-block:: Nim
+  ##   var x = @[2,3,5,7,11]
+  ##   for i in indices(x):
+  ##     echo i
+  ##   let r = indices(x)
+
 type
   range*{.magic: "Range".}[T] ## Generic type to construct range types.
   array*{.magic: "Array".}[I, T]  ## Generic type to construct
