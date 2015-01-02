@@ -27,6 +27,11 @@ type
 
 {.deprecated: [TComplex: Complex].}
 
+proc toComplex*(x: SomeInteger): Complex =
+  ## Convert some integer ``x`` to a complex number.
+  result.re = x
+  result.im = 0
+
 proc `==` *(x, y: Complex): bool =
   ## Compare two complex numbers `x` and `y` for equality.
   result = x.re == y.re and x.im == y.im
@@ -291,6 +296,21 @@ proc cosh*(z: Complex): Complex =
   result = 0.5*(exp(z)+exp(-z))
 
 
+proc phase*(z: Complex): float =
+  ## Returns the phase of `z`.
+  arctan2(z.im, z.re)
+
+proc polar*(z: Complex): tuple[r, phi: float] =
+  ## Returns `z` in polar coordinates.
+  result.r = abs(z)
+  result.phi = phase(z)
+
+proc rect*(r: float, phi: float): Complex =
+  ## Returns the complex number with poolar coordinates `r` and `phi`.
+  result.re = r * cos(phi)
+  result.im = sin(phi)
+
+
 proc `$`*(z: Complex): string =
   ## Returns `z`'s string representation as ``"(re, im)"``.
   result = "(" & $z.re & ", " & $z.im & ")"
@@ -344,6 +364,9 @@ when isMainModule:
   assert( arcsin(a) =~ (0.427078586392476, 1.528570919480998) )
   assert( arccos(a) =~ (1.14371774040242, -1.52857091948100) )
 
-  assert( cosh(a) =~ (-0.642148124715520, 1.068607421382778) ) 
+  assert( cosh(a) =~ (-0.642148124715520, 1.068607421382778) )
   assert( sinh(a) =~ (-0.489056259041294, 1.403119250622040) )
-  
+
+  assert( phase(a) == 1.1071487177940904 )
+  assert( polar(a) =~ (2.23606797749979, 1.1071487177940904) )
+  assert( rect(1.0, 2.0) =~ (-0.4161468365471424, 0.9092974268256817) )
