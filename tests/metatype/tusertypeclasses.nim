@@ -1,5 +1,13 @@
 discard """
-  output: "Sortable\nSortable\nContainer"
+  output: '''Sortable
+Sortable
+Container
+true
+true
+false
+false
+false
+'''
 """
 
 import typetraits
@@ -40,4 +48,21 @@ proc y(x: TObj): int = 10
 
 proc testFoo(x: TFoo) = discard
 testFoo(TObj(x: 10))
+
+type
+  Matrix[Rows, Cols: static[int]; T] = generic M
+    M.M == Rows
+    M.N == Cols
+    M.T is T
+
+  MyMatrix[M, N: static[int]; T] = object
+    data: array[M*N, T]
+
+var x: MyMatrix[3, 3, int]
+
+echo x is Matrix
+echo x is Matrix[3, 3, int]
+echo x is Matrix[3, 3, float]
+echo x is Matrix[4, 3, int]
+echo x is Matrix[3, 4, int]
 

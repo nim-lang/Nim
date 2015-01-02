@@ -39,7 +39,9 @@ type
     bindings*: TIdTable      # maps types to types
     baseTypeMatch: bool      # needed for conversions from T to openarray[T]
                              # for example
-    proxyMatch*: bool        # to prevent instantiations
+    fauxMatch*: TTypeKind    # the match was successful only due to the use
+                             # of error or wildcard (unknown) types.
+                             # this is used to prevent instantiations.
     genericConverter*: bool  # true if a generic converter needs to
                              # be instantiated
     coerceDistincts*: bool   # this is an explicit coercion that can strip away
@@ -65,6 +67,8 @@ const
   isNilConversion = isConvertible # maybe 'isIntConv' fits better?
     
 proc markUsed*(info: TLineInfo, s: PSym)
+
+template hasFauxMatch*(c: TCandidate): bool = c.fauxMatch != tyNone
 
 proc initCandidateAux(ctx: PContext,
                       c: var TCandidate, callee: PType) {.inline.} =
@@ -465,9 +469,23 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
       var
         typeParamName = ff.base.sons[i-1].sym.name
         typ = ff.sons[i]
-        param = newSym(skType, typeParamName, body.sym, body.sym.info)
-        
-      param.typ = makeTypeDesc(c, typ)
+        param: PSym
+
+      template paramSym(kind): expr =
+        newSym(kind, typeParamName, body.sym, body.sym.info)
+
+      case typ.kind
+      of tyStatic:
+        param = paramSym skConst
+        param.typ = typ.base
+        param.ast = typ.n
+      of tyUnknown:
+        param = paramSym skVar
+        param.typ = typ
+      else:
+        param = paramSym skType
+        param.typ = makeTypeDesc(c, typ)
+      
       addDecl(c, param)
 
   for param in body.n[0]:
@@ -1067,7 +1085,7 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
                   c: PContext): PNode = 
   result = newNodeI(kind, arg.info)
   if containsGenericType(f):
-    if not m.proxyMatch:
+    if not m.hasFauxMatch:
       result.typ = getInstantiatedType(c, arg, m, f)
     else:
       result.typ = errorType(c)
@@ -1139,7 +1157,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
     arg = argSemantized
     argType = argType
     c = m.c
-
+  
   if tfHasStatic in fMaybeStatic.flags:
     # XXX: When implicit statics are the default
     # this will be done earlier - we just have to
@@ -1246,9 +1264,9 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
       result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
   of isNone:
     # do not do this in ``typeRel`` as it then can't infere T in ``ref T``:
-    if a.kind == tyProxy:
+    if a.kind in {tyProxy, tyUnknown}:
       inc(m.genericMatches)
-      m.proxyMatch = true
+      m.fauxMatch = a.kind
       return copyTree(arg)
     result = userConvMatch(c, m, f, a, arg) 
     # check for a base type match, which supports varargs[T] without []

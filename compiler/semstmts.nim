@@ -1262,10 +1262,14 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
       return
     else:
       n.sons[i] = semExpr(c, n.sons[i])
-      if c.inTypeClass > 0 and n[i].typ != nil and n[i].typ.kind == tyBool:
-        let verdict = semConstExpr(c, n[i])
-        if verdict.intVal == 0:
-          localError(result.info, "type class predicate failed")
+      if c.inTypeClass > 0 and n[i].typ != nil:
+        case n[i].typ.kind
+        of tyBool:
+          let verdict = semConstExpr(c, n[i])
+          if verdict.intVal == 0:
+            localError(result.info, "type class predicate failed")
+        of tyUnknown: continue
+        else: discard
       if n.sons[i].typ == enforceVoidContext or usesResult(n.sons[i]):
         voidContext = true
         n.typ = enforceVoidContext

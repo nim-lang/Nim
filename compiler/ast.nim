@@ -399,6 +399,7 @@ const
   tyPureObject* = tyTuple
   GcTypeKinds* = {tyRef, tySequence, tyString}
   tyError* = tyProxy # as an errornous node should match everything
+  tyUnknown* = tyFromExpr
 
   tyUnknownTypes* = {tyError, tyFromExpr}
 

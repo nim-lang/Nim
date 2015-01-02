@@ -781,10 +781,12 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
   of tyGenericBody:
     result = newTypeS(tyGenericInvokation, c)
     result.rawAddSon(paramType)
+      
     for i in 0 .. paramType.sonsLen - 2:
-      result.rawAddSon newTypeS(tyAnything, c)
-      # result.rawAddSon(copyType(paramType.sons[i], getCurrOwner(), true))
-
+      let dummyType = if paramType.sons[i].kind == tyStatic: tyUnknown
+                      else: tyAnything
+      result.rawAddSon newTypeS(dummyType, c)
+      
     if paramType.lastSon.kind == tyUserTypeClass:
       result.kind = tyUserTypeClassInst
       result.rawAddSon paramType.lastSon
