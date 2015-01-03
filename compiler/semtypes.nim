@@ -225,11 +225,10 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
     elif e.kind == nkSym and e.typ.kind == tyStatic:
       if e.sym.ast != nil:
         return semArrayIndex(c, e.sym.ast)
-      internalAssert c.inGenericContext > 0
       if not isOrdinalType(e.typ.lastSon):
         localError(n[1].info, errOrdinalTypeExpected)
       result = makeRangeWithStaticExpr(c, e)
-      result.flags.incl tfUnresolved
+      if c.inGenericContext >0: result.flags.incl tfUnresolved
     elif e.kind in nkCallKinds and hasGenericArguments(e):
       if not isOrdinalType(e.typ):
         localError(n[1].info, errOrdinalTypeExpected)
@@ -782,10 +781,12 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
   of tyGenericBody:
     result = newTypeS(tyGenericInvokation, c)
     result.rawAddSon(paramType)
+      
     for i in 0 .. paramType.sonsLen - 2:
-      result.rawAddSon newTypeS(tyAnything, c)
-      # result.rawAddSon(copyType(paramType.sons[i], getCurrOwner(), true))
-
+      let dummyType = if paramType.sons[i].kind == tyStatic: tyUnknown
+                      else: tyAnything
+      result.rawAddSon newTypeS(dummyType, c)
+      
     if paramType.lastSon.kind == tyUserTypeClass:
       result.kind = tyUserTypeClassInst
       result.rawAddSon paramType.lastSon
