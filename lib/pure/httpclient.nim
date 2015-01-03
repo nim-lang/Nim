@@ -294,11 +294,9 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
   var r = if proxy == nil: parseUri(url) else: proxy.url
   var headers = substr($httpMethod, len("http"))
   if proxy == nil:
-    echo url
     headers.add(" " & r.path)
     if r.query.len > 0:
       headers.add("?" & r.query)
-    echo headers
   else:
     headers.add(" " & url)
 
