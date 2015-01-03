@@ -68,7 +68,7 @@ proc `+=` *(x: var Rational, y: Rational) =
 
 proc `+=` *(x: var Rational, y: int) =
   ## Add int `y` to rational `x`.
-  x.num += y
+  x.num += y * x.den
 
 proc `-` *(x: Rational): Rational =
   ## Unary minus for rational numbers.
@@ -101,7 +101,7 @@ proc `-=` *(x: var Rational, y: Rational) =
 
 proc `-=` *(x: var Rational, y: int) =
   ## Subtract int `y` from rational `x`.
-  x.num -= y
+  x.num -= y * x.den
 
 proc `*` *(x, y: Rational): Rational =
   ## Multiply two rational numbers.
