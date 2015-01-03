@@ -294,7 +294,11 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
   var r = if proxy == nil: parseUri(url) else: proxy.url
   var headers = substr($httpMethod, len("http"))
   if proxy == nil:
-    headers.add(" /" & r.path & r.query)
+    echo url
+    headers.add(" " & r.path)
+    if r.query.len > 0:
+      headers.add("?" & r.query)
+    echo headers
   else:
     headers.add(" " & url)
 
@@ -442,7 +446,9 @@ proc generateHeaders(r: Uri, httpMethod: HttpMethod,
                      headers: StringTableRef): string =
   result = substr($httpMethod, len("http"))
   # TODO: Proxies
-  result.add(" /" & r.path & r.query)
+  result.add(" " & r.path)
+  if r.query.len > 0:
+    result.add("?" & r.query)
   result.add(" HTTP/1.1\c\L")
 
   add(result, "Host: " & r.hostname & "\c\L")

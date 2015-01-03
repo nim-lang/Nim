@@ -16,6 +16,7 @@ type
   Uri* = object
     scheme*, username*, password*: string 
     hostname*, port*, path*, query*, anchor*: string
+    opaque*: bool
 
 {.deprecated: [TUrl: Url, TUri: Uri].}
 
@@ -115,6 +116,8 @@ proc parseUri*(uri: string): Uri =
     if authority == "":
       raise newException(ValueError, "Expected authority got nothing.")
     parseAuthority(authority, result)
+  else:
+    result.opaque = true
 
   # Path
   parsePath(uri, i, result)
@@ -256,7 +259,10 @@ proc `$`*(u: Uri): string =
   result = ""
   if u.scheme.len > 0:
     result.add(u.scheme)
-    result.add("://")
+    if u.opaque:
+      result.add(":")
+    else:
+      result.add("://")
   if u.username.len > 0:
     result.add(u.username)
     if u.password.len > 0:
@@ -268,22 +274,28 @@ proc `$`*(u: Uri): string =
     result.add(":")
     result.add(u.port)
   if u.path.len > 0:
-    if u.path[0] != '/': result.add("/")
     result.add(u.path)
-  result.add(u.query)
-  result.add(u.anchor)
+  if u.query.len > 0:
+    result.add("?")
+    result.add(u.query)
+  if u.anchor.len > 0:
+    result.add("#")
+    result.add(u.anchor)
 
 when isMainModule:
   block:
-    let test = parseUri("http://localhost:8080/test")
+    let str = "http://localhost:8080/test"
+    let test = parseUri(str)
     doAssert test.scheme == "http"
     doAssert test.port == "8080"
     doAssert test.path == "/test"
     doAssert test.hostname == "localhost"
+    doAssert($test == str)
 
   block:
-    let test = parseUri("foo://username:password@example.com:8042/over/there" &
-                        "/index.dtb?type=animal&name=narwhal#nose")
+    let str = "foo://username:password@example.com:8042/over/there" &
+              "/index.dtb?type=animal&name=narwhal#nose"
+    let test = parseUri(str)
     doAssert test.scheme == "foo"
     doAssert test.username == "username"
     doAssert test.password == "password"
@@ -292,34 +304,45 @@ when isMainModule:
     doAssert test.path == "/over/there/index.dtb"
     doAssert test.query == "type=animal&name=narwhal"
     doAssert test.anchor == "nose"
+    doAssert($test == str)
 
   block:
-    let test = parseUri("urn:example:animal:ferret:nose")
+    let str = "urn:example:animal:ferret:nose"
+    let test = parseUri(str)
     doAssert test.scheme == "urn"
     doAssert test.path == "example:animal:ferret:nose"
+    doAssert($test == str)
 
   block:
-    let test = parseUri("mailto:username@example.com?subject=Topic")
+    let str = "mailto:username@example.com?subject=Topic"
+    let test = parseUri(str)
     doAssert test.scheme == "mailto"
     doAssert test.username == "username"
     doAssert test.hostname == "example.com"
     doAssert test.query == "subject=Topic"
+    doAssert($test == str)
 
   block:
-    let test = parseUri("magnet:?xt=urn:sha1:72hsga62ba515sbd62&dn=foobar")
+    let str = "magnet:?xt=urn:sha1:72hsga62ba515sbd62&dn=foobar"
+    let test = parseUri(str)
     doAssert test.scheme == "magnet"
     doAssert test.query == "xt=urn:sha1:72hsga62ba515sbd62&dn=foobar"
+    doAssert($test == str)
 
   block:
-    let test = parseUri("/test/foo/bar?q=2#asdf")
+    let str = "/test/foo/bar?q=2#asdf"
+    let test = parseUri(str)
     doAssert test.scheme == ""
     doAssert test.path == "/test/foo/bar"
     doAssert test.query == "q=2"
     doAssert test.anchor == "asdf"
+    doAssert($test == str)
 
   block:
-    let test = parseUri("test/no/slash")
+    let str = "test/no/slash"
+    let test = parseUri(str)
     doAssert test.path == "test/no/slash"
+    doAssert($test == str)
 
   # Remove dot segments tests
   block:
@@ -371,5 +394,3 @@ when isMainModule:
   block:
     let test = parseUri("http://example.com/foo/") / "/bar/asd"
     doAssert test.path == "/foo/bar/asd"
-
-  
