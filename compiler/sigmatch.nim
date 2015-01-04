@@ -1004,15 +1004,19 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       result = typeRel(c, x, a) # check if it fits
   
   of tyStatic:
-    if aOrig.kind == tyStatic:
-      result = typeRel(c, f.lastSon, a)
-      if result != isNone and f.n != nil:
-        if not exprStructuralEquivalent(f.n, aOrig.n):
-          result = isNone
-      if result != isNone: put(c.bindings, f, aOrig)
+    let prev = PType(idTableGet(c.bindings, f))
+    if prev == nil:
+      if aOrig.kind == tyStatic:
+        result = typeRel(c, f.lastSon, a)
+        if result != isNone and f.n != nil:
+          if not exprStructuralEquivalent(f.n, aOrig.n):
+            result = isNone
+        if result != isNone: put(c.bindings, f, aOrig)
+      else:
+        result = isNone
     else:
-      result = isNone
-
+      result = typeRel(c, prev, aOrig)
+      
   of tyTypeDesc:
     var prev = PType(idTableGet(c.bindings, f))
     if prev == nil:
@@ -1051,6 +1055,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
 
   of tyFromExpr:
     # fix the expression, so it contains the already instantiated types
+    if f.n == nil: return isGeneric
     let reevaluated = tryResolvingStaticExpr(c, f.n)
     case reevaluated.typ.kind
     of tyTypeDesc:

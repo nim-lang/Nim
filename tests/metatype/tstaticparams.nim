@@ -119,3 +119,24 @@ foo_2.intOrFloat
 foo_2.yinOrYang
 foo_3.yinOrYang
 
+# bug 1859
+
+type 
+  TypeWith2Params[N, M: static[int]] = object
+
+proc bindBothParams[N](x: TypeWith2Params[N, N]) = discard
+proc dontBind1[N,M](x: TypeWith2Params[N, M]) = discard
+proc dontBind2(x: TypeWith2Params) = discard
+
+var bb_1: TypeWith2Params[2, 2]
+var bb_2: TypeWith2Params[2, 3]
+
+bindBothParams(bb_1)
+reject bindBothParams(bb_2)
+
+dontBind1 bb_1
+dontBind1 bb_2
+
+dontBind2 bb_1
+dontBind2 bb_2
+
