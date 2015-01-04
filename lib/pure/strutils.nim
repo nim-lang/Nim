@@ -540,13 +540,13 @@ proc fmt*(s: string; width: int;
   ##   assert fmt("abc", 4, taRight) == " abc"
   ##
   ##   # pad strings
-  ##   assert fmt("abc", 5, taLeft, '.') = "abc.."
-  ##   assert fmt("abc", 5, taRight, '.') = "..abc"
+  ##   assert fmt("abc", 5, taLeft, '.') == "abc.."
+  ##   assert fmt("abc", 5, taRight, '.') == "..abc"
   ##
   ##   # truncate strings
-  ##   assert fmt("hello world!", 10) = "hello worl"
-  ##   assert fmt("hello world!", 10, taLeft, ' ', ttLeft) = "llo world!"
-  ##   assert fmt("hello world!", 10, taLeft, ' ', ttRight) = "hello worl"
+  ##   assert fmt("hello world!", 10) == "hello worl"
+  ##   assert fmt("hello world!", 10, taLeft, ' ', ttLeft) == "llo world!"
+  ##   assert fmt("hello world!", 10, taLeft, ' ', ttRight) == "hello worl"
   if s.len == width:
     result = s
   elif s.len < width:
@@ -602,12 +602,12 @@ proc fmt*(format: string, s: string, padding: char = ' '): string
   ##   assert fmt(">4<", "abc") == " abc"
   ##
   ##   # change padding
-  ##   assert fmt("<5<", "abc", '.') = "abc.."
-  ##   assert fmt(">5<", "abc", '.') = "..abc"
+  ##   assert fmt("<5<", "abc", '.') == "abc.."
+  ##   assert fmt(">5<", "abc", '.') == "..abc"
   ##
   ##   # truncate strings
-  ##   assert fmt("<10<", "hello world!") = "llo world!"
-  ##   assert fmt("<10>", "hello world!") = "hello worl"
+  ##   assert fmt("<10<", "hello world!") == "llo world!"
+  ##   assert fmt("<10>", "hello world!") == "hello worl"
   ##
   if format.len < 3:
       raise newException(ValueError, "format missing required options")
@@ -1504,3 +1504,23 @@ when isMainModule:
   doAssert count("foofoofoo", "foofoo", overlapping = true) == 2
   doAssert count("foofoofoo", 'f') == 3
   doAssert count("foofoofoobar", {'f','b'}) == 4
+
+  # test justification
+  doAssert fmt("<4<", "abc") == "abc "
+  doAssert fmt(">4<", "abc") == " abc"
+  # test padding
+  doAssert fmt("<5<", "abc", '.') == "abc.."
+  doAssert fmt(">5<", "abc", '.') == "..abc"
+  doAssert fmt("<3<", "") == "   "
+  doAssert fmt("<3<", "", '.') == "..."
+  # truncate strings
+  doAssert fmt("<10<", "hello world!") == "llo world!"
+  doAssert fmt("<10>", "hello world!") == "hello worl"
+  # noop
+  doAssert fmt("<3<", "abc") == "abc"
+  doAssert fmt(">3<", "abc") == "abc"
+  doAssert fmt(">3>", "abc") == "abc"
+  doAssert fmt("<3>", "abc") == "abc"
+
+
+
