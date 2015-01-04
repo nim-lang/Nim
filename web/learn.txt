@@ -24,7 +24,7 @@ Learning Nim
   - | `Nim on Rosetta Code <http://rosettacode.org/wiki/Category:Nimrod>`_
     | Many different Nim code examples comparable to other languages for reference.
 
-  - | `Nim for C/C++ Programmers <https://github.com/Araq/Nimrod/wiki/Nimrod-for-C-programmers>`_
+  - | `Nim for C/C++ Programmers <https://github.com/Araq/Nim/wiki/Nim-for-C-programmers>`_
     | A useful cheat-sheet for those most familiar with C/C++ languages.
 
 

@@ -214,44 +214,47 @@ proc semRange(c: PContext, n: PNode, prev: PType): PType =
     localError(n.info, errXExpectsOneTypeParam, "range")
     result = newOrPrevType(tyError, prev, c)
 
-proc semArray(c: PContext, n: PNode, prev: PType): PType = 
-  var indx, base: PType
-  result = newOrPrevType(tyArray, prev, c)
-  if sonsLen(n) == 3: 
-    # 3 = length(array indx base)
-    if isRange(n[1]): indx = semRangeAux(c, n[1], nil)
+proc semArrayIndex(c: PContext, n: PNode): PType =
+  if isRange(n): result = semRangeAux(c, n, nil)
+  else:
+    let e = semExprWithType(c, n, {efDetermineType})
+    if e.typ.kind == tyFromExpr:
+      result = makeRangeWithStaticExpr(c, e.typ.n)
+    elif e.kind in {nkIntLit..nkUInt64Lit}:
+      result = makeRangeType(c, 0, e.intVal-1, n.info, e.typ)
+    elif e.kind == nkSym and e.typ.kind == tyStatic:
+      if e.sym.ast != nil:
+        return semArrayIndex(c, e.sym.ast)
+      if not isOrdinalType(e.typ.lastSon):
+        localError(n[1].info, errOrdinalTypeExpected)
+      result = makeRangeWithStaticExpr(c, e)
+      if c.inGenericContext >0: result.flags.incl tfUnresolved
+    elif e.kind in nkCallKinds and hasGenericArguments(e):
+      if not isOrdinalType(e.typ):
+        localError(n[1].info, errOrdinalTypeExpected)
+      # This is an int returning call, depending on an
+      # yet unknown generic param (see tgenericshardcases).
+      # We are going to construct a range type that will be
+      # properly filled-out in semtypinst (see how tyStaticExpr
+      # is handled there).
+      result = makeRangeWithStaticExpr(c, e)
+    elif e.kind == nkIdent:
+      result = e.typ.skipTypes({tyTypeDesc})
     else:
-      let e = semExprWithType(c, n.sons[1], {efDetermineType})
-      if e.typ.kind == tyFromExpr:
-        indx = makeRangeWithStaticExpr(c, e.typ.n)
-      elif e.kind in {nkIntLit..nkUInt64Lit}:
-        indx = makeRangeType(c, 0, e.intVal-1, n.info, e.typ)
-      elif e.kind == nkSym and e.typ.kind == tyStatic:
-        if e.sym.ast != nil: return semArray(c, e.sym.ast, nil)
-        internalAssert c.inGenericContext > 0
-        if not isOrdinalType(e.typ.lastSon):
-          localError(n[1].info, errOrdinalTypeExpected)
-        indx = makeRangeWithStaticExpr(c, e)
-        indx.flags.incl tfUnresolved
-      elif e.kind in nkCallKinds and hasGenericArguments(e):
-        if not isOrdinalType(e.typ):
-          localError(n[1].info, errOrdinalTypeExpected)
-        # This is an int returning call, depending on an
-        # yet unknown generic param (see tgenericshardcases).
-        # We are going to construct a range type that will be
-        # properly filled-out in semtypinst (see how tyStaticExpr
-        # is handled there).
-        indx = makeRangeWithStaticExpr(c, e)
-      elif e.kind == nkIdent:
-        indx = e.typ.skipTypes({tyTypeDesc})
+      let x = semConstExpr(c, e)
+      if x.kind in {nkIntLit..nkUInt64Lit}:
+        result = makeRangeType(c, 0, x.intVal-1, n.info, 
+                             x.typ.skipTypes({tyTypeDesc}))
       else:
-        let x = semConstExpr(c, e)
-        if x.kind in {nkIntLit..nkUInt64Lit}:
-          indx = makeRangeType(c, 0, x.intVal-1, n.info, 
-                               x.typ.skipTypes({tyTypeDesc}))
-        else:
-          indx = x.typ.skipTypes({tyTypeDesc})
-          #localError(n[1].info, errConstExprExpected)
+        result = x.typ.skipTypes({tyTypeDesc})
+        #localError(n[1].info, errConstExprExpected)
+
+proc semArray(c: PContext, n: PNode, prev: PType): PType = 
+  var base: PType
+  result = newOrPrevType(tyArray, prev, c)
+  if sonsLen(n) == 3:
+    # 3 = length(array indx base)
+    var indx = semArrayIndex(c, n[1])
     addSonSkipIntLit(result, indx)
     if indx.kind == tyGenericInst: indx = lastSon(indx)
     if indx.kind notin {tyGenericParam, tyStatic, tyFromExpr}:
@@ -778,10 +781,12 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
   of tyGenericBody:
     result = newTypeS(tyGenericInvokation, c)
     result.rawAddSon(paramType)
+      
     for i in 0 .. paramType.sonsLen - 2:
-      result.rawAddSon newTypeS(tyAnything, c)
-      # result.rawAddSon(copyType(paramType.sons[i], getCurrOwner(), true))
-
+      let dummyType = if paramType.sons[i].kind == tyStatic: tyUnknown
+                      else: tyAnything
+      result.rawAddSon newTypeS(dummyType, c)
+      
     if paramType.lastSon.kind == tyUserTypeClass:
       result.kind = tyUserTypeClassInst
       result.rawAddSon paramType.lastSon

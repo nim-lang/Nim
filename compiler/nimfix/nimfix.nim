@@ -26,12 +26,13 @@ Options:
   --styleCheck:on|off|auto         performs style checking for identifiers
                                    and suggests an alternative spelling; 
                                    'auto' corrects the spelling.
+  --bestEffort                     try to fix the code even when there
+                                   are errors.
 
 In addition, all command line options of Nim are supported.
 """
 
 proc mainCommand =
-  #msgs.gErrorMax = high(int)  # do not stop after first error
   registerPass verbosePass
   registerPass semPass
   gCmd = cmdPretty
@@ -63,13 +64,14 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
         of "on": gCheckExtern = true
         of "off": gCheckExtern = false
         else: localError(gCmdLineInfo, errOnOrOffExpected)
-      of "stylecheck": 
+      of "stylecheck":
         case p.val.normalize
         of "off": gStyleCheck = StyleCheck.None
         of "on": gStyleCheck = StyleCheck.Warn
         of "auto": gStyleCheck = StyleCheck.Auto
         else: localError(gCmdLineInfo, errOnOrOffExpected)
       of "wholeproject": gOnlyMainfile = false
+      of "besteffort": msgs.gErrorMax = high(int) # dont stop after first error
       else:
         processSwitch(pass, p)
     of cmdArgument:

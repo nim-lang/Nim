@@ -47,36 +47,52 @@ the rest of the procedure - that is not within a ``finally`` clause -
 is not executed (if an exception occurs).
 
 
-Standalone except and finally statements
-----------------------------------------
+Try expression
+--------------
 
-``except`` and ``finally`` can also be used as a stand-alone statements.
-Any statements following them in the current block will be considered to be 
-in an implicit try block:
+Try can also be used as an expression; the type of the ``try`` branch then
+needs to fit the types of ``except`` branches, but the type of the ``finally``
+branch always has to be ``void``:
+
+.. code-block:: nim
+  let x = try: parseInt("133a")
+          except: -1
+          finally: echo "hi"
+
+
+To prevent confusing code there is a parsing limitation; if the ``try``
+follows a ``(`` it has to be written as a one liner:
+
+.. code-block:: nim
+  let x = (try: parseInt("133a") except: -1)
+
+
+
+Defer statement
+---------------
+
+Instead of a ``try finally`` statement a ``defer`` statement can be used.
+
+Any statements following the ``defer`` in the current block will be considered
+to be in an implicit try block:
 
 .. code-block:: nim
   var f = open("numbers.txt")
-  finally: close(f)
-  ...
+  defer: close(f)
+  f.write "abc"
+  f.write "def"
 
-The ``except`` statement has a limitation in this form: one can't specify the
-type of the exception, one has to catch everything. Also, if one wants to use
-both ``finally`` and ``except`` one needs to reverse the usual sequence of the
-statements. Example:
+Is rewritten to:
 
 .. code-block:: nim
-  proc test() =
-    raise newException(Exception, "Hey ho")
-  
-  proc tester() =
-    finally: echo "3. Finally block"
-    except: echo "2. Except block"
-    echo "1. Pre exception"
-    test()
-    echo "4. Post exception"
-  # --> 1, 2, 3 is printed, 4 is never reached
+  var f = open("numbers.txt")
+  try:
+    f.write "abc"
+    f.write "def"
+  finally:
+    close(f)
 
-Top level standalone ``finally`` or ``except`` statements are not supported
+Top level ``defer`` statements are not supported
 since it's unclear what such a statement should refer to.
 
 

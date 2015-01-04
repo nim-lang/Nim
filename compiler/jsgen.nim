@@ -601,15 +601,13 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   if p.target == targetJS:
     app(p.body, "} finally {" & tnl & "excHandler = excHandler.prev;" & tnl)
   if i < length and n.sons[i].kind == nkFinally:
-    gen(p, n.sons[i].sons[0], a)
-    moveInto(p, a, r)
+    genStmt(p, n.sons[i].sons[0])
   if p.target == targetJS:
     app(p.body, "}" & tnl)
   if p.target == targetLua:
     # we need to repeat the finally block for Lua ...
     if i < length and n.sons[i].kind == nkFinally:
-      gen(p, n.sons[i].sons[0], a)
-      moveInto(p, a, r)
+      genStmt(p, n.sons[i].sons[0])
 
 proc genRaiseStmt(p: PProc, n: PNode) =
   genLineDir(p, n)

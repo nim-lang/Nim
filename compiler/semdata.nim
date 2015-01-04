@@ -268,7 +268,7 @@ proc makeRangeWithStaticExpr*(c: PContext, n: PNode): PType =
 
 template rangeHasStaticIf*(t: PType): bool =
   # this accepts the ranges's node
-  t.n[1].kind == nkStaticExpr
+  t.n != nil and t.n.len > 1 and t.n[1].kind == nkStaticExpr
 
 template getStaticTypeFromRange*(t: PType): PType =
   t.n[1][0][1].typ

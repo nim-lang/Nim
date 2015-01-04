@@ -94,16 +94,16 @@ const
   compileNimInst = "-d:useLibzipSrc tools/niminst/niminst"
 
 proc csource(args: string) = 
-  exec("$4 cc $1 -r $3 --var:version=$2 --var:mingw=mingw32 csource compiler/nim.ini $1" %
+  exec("$4 cc $1 -r $3 --var:version=$2 --var:mingw=none csource compiler/nim.ini $1" %
        [args, VersionAsString, compileNimInst, findNim()])
 
 proc zip(args: string) =
-  exec("$3 cc -r $2 --var:version=$1 --var:mingw=mingw32 scripts compiler/nim.ini" %
+  exec("$3 cc -r $2 --var:version=$1 --var:mingw=none scripts compiler/nim.ini" %
        [VersionAsString, compileNimInst, findNim()])
-  exec("$# --var:version=$# --var:mingw=mingw32 zip compiler/nim.ini" %
+  exec("$# --var:version=$# --var:mingw=none zip compiler/nim.ini" %
        ["tools/niminst/niminst".exe, VersionAsString])
-  
-proc buildTool(toolname, args: string) = 
+
+proc buildTool(toolname, args: string) =
   exec("$# cc $# $#" % [findNim(), args, toolname])
   copyFile(dest="bin"/ splitFile(toolname).name.exe, source=toolname.exe)
 
@@ -114,11 +114,11 @@ proc nsis(args: string) =
   # produce 'nimrod_debug.exe':
   exec "nim c compiler" / "nim.nim"
   copyExe("compiler/nim".exe, "bin/nim_debug".exe)
-  exec(("tools" / "niminst" / "niminst --var:version=$# --var:mingw=mingw32" &
-        " nsis compiler/nim") % VersionAsString)
+  exec(("tools" / "niminst" / "niminst --var:version=$# --var:mingw=mingw$#" &
+        " nsis compiler/nim") % [VersionAsString, $(sizeof(pointer)*8)])
 
 proc install(args: string) = 
-  exec("$# cc -r $# --var:version=$# --var:mingw=mingw32 scripts compiler/nim.ini" %
+  exec("$# cc -r $# --var:version=$# --var:mingw=none scripts compiler/nim.ini" %
        [findNim(), compileNimInst, VersionAsString])
   exec("sh ./install.sh $#" % args)
 

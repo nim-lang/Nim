@@ -264,7 +264,7 @@ macro html*(e: expr): expr {.immediate.} =
   let e = callsite()
   result = xmlCheckedTag(e, "html", "xmlns", "")
 
-macro hr*(e: expr): expr {.immediate.} = 
+macro hr*(): expr {.immediate.} = 
   ## generates the HTML ``hr`` element.
   let e = callsite()
   result = xmlCheckedTag(e, "hr", commonAttr, "", true)

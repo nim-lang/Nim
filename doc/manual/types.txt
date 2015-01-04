@@ -40,7 +40,7 @@ These integer types are pre-defined:
 
 ``int``
   the generic signed integer type; its size is platform dependent and has the
-  same size as a pointer. This type should be used in general. An integer 
+  same size as a pointer. This type should be used in general. An integer
   literal that has no type suffix is of this type.
 
 intXX
@@ -51,7 +51,7 @@ intXX
 
 ``uint``
   the generic `unsigned integer`:idx: type; its size is platform dependent and
-  has the same size as a pointer. An integer literal with the type 
+  has the same size as a pointer. An integer literal with the type
   suffix ``'u`` is of this type.
 
 uintXX
@@ -59,15 +59,15 @@ uintXX
   (example: uint16 is a 16 bit wide unsigned integer).
   The current implementation supports ``uint8``, ``uint16``, ``uint32``,
   ``uint64``. Literals of these types have the suffix 'uXX.
-  Unsigned operations all wrap around; they cannot lead to over- or 
+  Unsigned operations all wrap around; they cannot lead to over- or
   underflow errors.
 
 
 In addition to the usual arithmetic operators for signed and unsigned integers
-(``+ - *`` etc.) there are also operators that formally work on *signed* 
-integers but treat their arguments as *unsigned*: They are mostly provided 
-for backwards compatibility with older versions of the language that lacked 
-unsigned integer types. These unsigned operations for signed integers use 
+(``+ - *`` etc.) there are also operators that formally work on *signed*
+integers but treat their arguments as *unsigned*: They are mostly provided
+for backwards compatibility with older versions of the language that lacked
+unsigned integer types. These unsigned operations for signed integers use
 the ``%`` suffix as convention:
 
 
@@ -98,7 +98,7 @@ operation                meaning
 kinds of integer types are used: the smaller type is converted to the larger.
 
 A `narrowing type conversion`:idx: converts a larger to a smaller type (for
-example ``int32 -> int16``. A `widening type conversion`:idx: converts a 
+example ``int32 -> int16``. A `widening type conversion`:idx: converts a
 smaller type to a larger type (for example ``int16 -> int32``). In Nim only
 widening type conversions are *implicit*:
 
@@ -111,7 +111,7 @@ widening type conversions are *implicit*:
 
 However, ``int`` literals are implicitly convertible to a smaller integer type
 if the literal's value fits this smaller type and such a conversion is less
-expensive than other implicit conversions, so ``myInt16 + 34`` produces 
+expensive than other implicit conversions, so ``myInt16 + 34`` produces
 an ``int16`` result.
 
 For further details, see `Convertible relation`_.
@@ -137,12 +137,12 @@ determined). Assignments from the base type to one of its subrange types
 A subrange type has the same size as its base type (``int`` in the example).
 
 Nim requires `interval arithmetic`:idx: for subrange types over a set
-of built-in operators that involve constants: ``x %% 3`` is of 
-type ``range[0..2]``. The following built-in operators for integers are 
+of built-in operators that involve constants: ``x %% 3`` is of
+type ``range[0..2]``. The following built-in operators for integers are
 affected by this rule: ``-``, ``+``, ``*``, ``min``, ``max``, ``succ``,
 ``pred``, ``mod``, ``div``, ``%%``, ``and`` (bitwise ``and``).
 
-Bitwise ``and`` only produces a ``range`` if one of its operands is a 
+Bitwise ``and`` only produces a ``range`` if one of its operands is a
 constant *x* so that (x+1) is a number of two.
 (Bitwise ``and`` is then a ``%%`` operation.)
 
@@ -155,7 +155,7 @@ This means that the following code is accepted:
   of 9: echo "C"
   of 10: echo "D"
   # note: no ``else`` required as (x and 3) + 7 has the type: range[7..10]
-  
+
 
 Pre-defined floating point types
 --------------------------------
@@ -186,17 +186,17 @@ The IEEE standard defines five types of floating-point exceptions:
   for example 0.0/0.0, sqrt(-1.0), and log(-37.8).
 * Division by zero: divisor is zero and dividend is a finite nonzero number,
   for example 1.0/0.0.
-* Overflow: operation produces a result that exceeds the range of the exponent, 
+* Overflow: operation produces a result that exceeds the range of the exponent,
   for example MAXDOUBLE+0.0000000000001e308.
-* Underflow: operation produces a result that is too small to be represented 
+* Underflow: operation produces a result that is too small to be represented
   as a normal number, for example, MINDOUBLE * MINDOUBLE.
-* Inexact: operation produces a result that cannot be represented with infinite 
+* Inexact: operation produces a result that cannot be represented with infinite
   precision, for example, 2.0 / 3.0, log(1.1) and 0.1 in input.
 
-The IEEE exceptions are either ignored at runtime or mapped to the 
+The IEEE exceptions are either ignored at runtime or mapped to the
 Nim exceptions: `FloatInvalidOpError`:idx:, `FloatDivByZeroError`:idx:,
 `FloatOverflowError`:idx:, `FloatUnderflowError`:idx:,
-and `FloatInexactError`:idx:. 
+and `FloatInexactError`:idx:.
 These exceptions inherit from the `FloatingPointError`:idx: base class.
 
 Nim provides the pragmas `NaNChecks`:idx: and `InfChecks`:idx: to control
@@ -212,7 +212,7 @@ whether the IEEE exceptions are ignored or trap a Nim exception:
 In the current implementation ``FloatDivByZeroError`` and ``FloatInexactError``
 are never raised. ``FloatOverflowError`` is raised instead of
 ``FloatDivByZeroError``.
-There is also a `floatChecks`:idx: pragma that is a short-cut for the 
+There is also a `floatChecks`:idx: pragma that is a short-cut for the
 combination of ``NaNChecks`` and ``InfChecks`` pragmas. ``floatChecks`` are
 turned off as default.
 
@@ -303,7 +303,7 @@ and ``pred`` are not available for them either.
 
 
 The compiler supports the built-in stringify operator ``$`` for enumerations.
-The stringify's result can be controlled by explicitly giving the string 
+The stringify's result can be controlled by explicitly giving the string
 values to use:
 
 .. code-block:: nim
@@ -315,12 +315,12 @@ values to use:
       valueC = 2,
       valueD = (3, "abc")
 
-As can be seen from the example, it is possible to both specify a field's 
+As can be seen from the example, it is possible to both specify a field's
 ordinal value and its string value by using a tuple. It is also
 possible to only specify one of them.
 
 An enum can be marked with the ``pure`` pragma so that it's fields are not
-added to the current scope, so they always need to be accessed 
+added to the current scope, so they always need to be accessed
 via ``MyEnum.value``:
 
 .. code-block:: nim
@@ -328,7 +328,7 @@ via ``MyEnum.value``:
   type
     MyEnum {.pure.} = enum
       valueA, valueB, valueC, valueD
-  
+
   echo valueA # error: Unknown identifier
   echo MyEnum.valueA # works
 
@@ -364,22 +364,22 @@ cstring type
 ------------
 The ``cstring`` type represents a pointer to a zero-terminated char array
 compatible to the type ``char*`` in Ansi C. Its primary purpose lies in easy
-interfacing with C. The index operation ``s[i]`` means the i-th *char* of 
+interfacing with C. The index operation ``s[i]`` means the i-th *char* of
 ``s``; however no bounds checking for ``cstring`` is performed making the
 index operation unsafe.
 
-A Nim ``string`` is implicitly convertible 
+A Nim ``string`` is implicitly convertible
 to ``cstring`` for convenience. If a Nim string is passed to a C-style
 variadic proc, it is implicitly converted to ``cstring`` too:
 
 .. code-block:: nim
-  proc printf(formatstr: cstring) {.importc: "printf", varargs, 
+  proc printf(formatstr: cstring) {.importc: "printf", varargs,
                                     header: "<stdio.h>".}
-  
+
   printf("This works %s", "as expected")
 
 Even though the conversion is implicit, it is not *safe*: The garbage collector
-does not consider a ``cstring`` to be a root and may collect the underlying 
+does not consider a ``cstring`` to be a root and may collect the underlying
 memory. However in practice this almost never happens as the GC considers
 stack roots conservatively. One can use the builtin procs ``GC_ref`` and
 ``GC_unref`` to keep the string data alive for the rare cases where it does
@@ -390,7 +390,7 @@ string from a cstring:
 
 .. code-block:: nim
   var str: string = "Hello!"
-  var cstr: cstring = s
+  var cstr: cstring = str
   var newstr: string = $cstr
 
 
@@ -410,9 +410,9 @@ integers from 0 to ``len(A)-1``. An array expression may be constructed by the
 array constructor ``[]``.
 
 Sequences are similar to arrays but of dynamic length which may change
-during runtime (like strings). Sequences are implemented as growable arrays, 
+during runtime (like strings). Sequences are implemented as growable arrays,
 allocating pieces of memory as items are added. A sequence ``S`` is always
-indexed by integers from 0 to ``len(S)-1`` and its bounds are checked. 
+indexed by integers from 0 to ``len(S)-1`` and its bounds are checked.
 Sequences can be constructed by the array constructor ``[]`` in conjunction
 with the array to sequence operator ``@``. Another way to allocate space for a
 sequence is to call the built-in ``newSeq`` procedure.
@@ -452,11 +452,11 @@ Open arrays
 
 Often fixed size arrays turn out to be too inflexible; procedures should
 be able to deal with arrays of different sizes. The `openarray`:idx: type
-allows this; it can only be used for parameters. Openarrays are always 
-indexed with an ``int`` starting at position 0. The ``len``, ``low`` 
-and ``high`` operations are available for open arrays too. Any array with 
-a compatible base type can be passed to an openarray parameter, the index 
-type does not matter. In addition to arrays sequences can also be passed 
+allows this; it can only be used for parameters. Openarrays are always
+indexed with an ``int`` starting at position 0. The ``len``, ``low``
+and ``high`` operations are available for open arrays too. Any array with
+a compatible base type can be passed to an openarray parameter, the index
+type does not matter. In addition to arrays sequences can also be passed
 to an open array parameter.
 
 The openarray type cannot be nested: multidimensional openarrays are not
@@ -467,7 +467,7 @@ Varargs
 -------
 
 A ``varargs`` parameter is an openarray parameter that additionally
-allows to pass a variable number of arguments to a procedure. The compiler 
+allows to pass a variable number of arguments to a procedure. The compiler
 converts the list of arguments to an array implicitly:
 
 .. code-block:: nim
@@ -494,7 +494,7 @@ type conversions in this context:
   # is transformed to:
   myWriteln(stdout, [$123, $"def", $4.0])
 
-In this example ``$`` is applied to any argument that is passed to the 
+In this example ``$`` is applied to any argument that is passed to the
 parameter ``a``. (Note that ``$`` applied to strings is a nop.)
 
 
@@ -508,9 +508,8 @@ defines an *order* of the fields. Tuples are meant for heterogeneous storage
 types with no overhead and few abstraction possibilities. The constructor ``()``
 can be used to construct tuples. The order of the fields in the constructor
 must match the order of the tuple's definition. Different tuple-types are
-*equivalent* if they specify the same fields of the same type in the same
-order. The *names* of the fields also have to be identical but this might
-change in a future version of the language.
+*equivalent* if they specify the same types in the same
+order. The *names* of the fields are ignored.
 
 The assignment operator for tuples copies each component.
 The default assignment operator for objects copies each component. Overloading
@@ -528,9 +527,11 @@ in future versions of the compiler.
   person = (name: "Peter", age: 30)
   # the same, but less readable:
   person = ("Peter", 30)
+  # the same, but with confusing tuple field names:
+  person = (creditCard: "Peter", id: 20)
 
 The implementation aligns the fields for best access performance. The alignment
-is compatible with the way the C compiler does it. 
+is compatible with the way the C compiler does it.
 
 For consistency  with ``object`` declarations, tuples in a ``type`` section
 can also be defined with indentation instead of ``[]``:
@@ -570,7 +571,7 @@ Object construction
 -------------------
 
 Objects can also be created with an `object construction expression`:idx: that
-has the syntax ``T(fieldA: valueA, fieldB: valueB, ...)`` where ``T`` is 
+has the syntax ``T(fieldA: valueA, fieldB: valueB, ...)`` where ``T`` is
 an ``object`` type or a ``ref object`` type:
 
 .. code-block:: nim
@@ -616,10 +617,10 @@ An example:
   # the following statement raises an `EInvalidField` exception, because
   # n.kind's value does not fit and the ``nkString`` branch is not active:
   n.strVal = ""
-  
+
   # invalid: would change the active object branch:
   n.kind = nkInt
-  
+
   var x = PNode(kind: nkAdd, leftOp: PNode(kind: nkInt, intVal: 4),
                              rightOp: PNode(kind: nkInt, intVal: 2))
   # valid: does not change the active object branch:
@@ -659,8 +660,8 @@ untraced references are *unsafe*. However for certain low-level operations
 Traced references are declared with the **ref** keyword, untraced references
 are declared with the **ptr** keyword.
 
-An empty subscript ``[]`` notation can be used to derefer a reference, 
-the ``addr`` procedure returns the address of an item. An address is always 
+An empty subscript ``[]`` notation can be used to derefer a reference,
+the ``addr`` procedure returns the address of an item. An address is always
 an untraced reference.
 Thus the usage of ``addr`` is an *unsafe* feature.
 
@@ -679,7 +680,7 @@ dereferencing operations for reference types:
   var
     n: PNode
   new(n)
-  n.data = 9 
+  n.data = 9
   # no need to write n[].data; in fact n[].data is highly discouraged!
 
 In order to simplify structural type checking, recursive tuples are not valid:
@@ -750,20 +751,20 @@ details like this when mixing garbage collected data with unmanaged memory.
 Not nil annotation
 ------------------
 
-All types for that ``nil`` is a valid value can be annotated to 
+All types for that ``nil`` is a valid value can be annotated to
 exclude ``nil`` as a valid value with the ``not nil`` annotation:
 
 .. code-block:: nim
   type
     PObject = ref TObj not nil
     TProc = (proc (x, y: int)) not nil
-    
+
   proc p(x: PObject) =
     echo "not nil"
-  
+
   # compiler catches this:
   p(nil)
-  
+
   # and also this:
   var x: PObject
   p(x)
@@ -850,22 +851,22 @@ Examples:
 
   forEach(printItem)  # this will NOT compile because calling conventions differ
 
-  
+
 .. code-block:: nim
 
   type
     TOnMouseMove = proc (x, y: int) {.closure.}
-  
+
   proc onMouseMove(mouseX, mouseY: int) =
     # has default calling convention
     echo "x: ", mouseX, " y: ", mouseY
-  
+
   proc setOnMouseMove(mouseMoveEvent: TOnMouseMove) = discard
-  
+
   # ok, 'onMouseMove' has the default calling convention, which is compatible
   # to 'closure':
   setOnMouseMove(onMouseMove)
-  
+
 
 A subtle issue with procedural types is that the calling convention of the
 procedure influences the type compatibility: procedural types are only
@@ -931,7 +932,7 @@ of the following conditions hold:
 3) The procedure has a calling convention that differs from ``nimcall``.
 4) The procedure is anonymous.
 
-The rules' purpose is to prevent the case that extending a non-``procvar`` 
+The rules' purpose is to prevent the case that extending a non-``procvar``
 procedure with default parameters breaks client code.
 
 The default calling convention is ``nimcall``, unless it is an inner proc (a
@@ -963,7 +964,7 @@ types are a perfect tool to model different currencies:
   type
     TDollar = distinct int
     TEuro = distinct int
-  
+
   var
     d: TDollar
     e: TEuro
@@ -988,7 +989,7 @@ number without unit; and the same holds for division:
 
   proc `*` (x: int, y: TDollar): TDollar =
     result = TDollar(x * int(y))
-    
+
   proc `div` ...
 
 This quickly gets tedious. The implementations are trivial and the compiler
@@ -1013,7 +1014,7 @@ currency. This can be solved with templates_.
   template additive(typ: typedesc): stmt =
     proc `+` *(x, y: typ): typ {.borrow.}
     proc `-` *(x, y: typ): typ {.borrow.}
-    
+
     # unary operators:
     proc `+` *(x: typ): typ {.borrow.}
     proc `-` *(x: typ): typ {.borrow.}
@@ -1035,7 +1036,7 @@ currency. This can be solved with templates_.
     additive(typ)
     multiplicative(typ, base)
     comparable(typ)
-    
+
   defineCurrency(TDollar, int)
   defineCurrency(TEuro, int)
 
@@ -1126,21 +1127,21 @@ modules like `db_sqlite <db_sqlite.html>`_.
 Void type
 ---------
 
-The ``void`` type denotes the absense of any type. Parameters of 
+The ``void`` type denotes the absense of any type. Parameters of
 type ``void`` are treated as non-existent, ``void`` as a return type means that
 the procedure does not return a value:
 
 .. code-block:: nim
   proc nothing(x, y: void): void =
     echo "ha"
-  
+
   nothing() # writes "ha" to stdout
 
 The ``void`` type is particularly useful for generic code:
 
 .. code-block:: nim
   proc callProc[T](p: proc (x: T), x: T) =
-    when T is void: 
+    when T is void:
       p()
     else:
       p(x)
@@ -1150,13 +1151,13 @@ The ``void`` type is particularly useful for generic code:
 
   callProc[int](intProc, 12)
   callProc[void](emptyProc)
-  
+
 However, a ``void`` type cannot be inferred in generic code:
 
 .. code-block:: nim
-  callProc(emptyProc) 
+  callProc(emptyProc)
   # Error: type mismatch: got (proc ())
-  # but expected one of: 
+  # but expected one of:
   # callProc(p: proc (T), x: T)
 
 The ``void`` type is only valid for parameters and return types; other symbols

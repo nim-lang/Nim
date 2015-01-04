@@ -399,6 +399,7 @@ const
   tyPureObject* = tyTuple
   GcTypeKinds* = {tyRef, tySequence, tyString}
   tyError* = tyProxy # as an errornous node should match everything
+  tyUnknown* = tyFromExpr
 
   tyUnknownTypes* = {tyError, tyFromExpr}
 
@@ -1517,8 +1518,8 @@ proc getStr*(a: PNode): string =
 proc getStrOrChar*(a: PNode): string = 
   case a.kind
   of nkStrLit..nkTripleStrLit: result = a.strVal
-  of nkCharLit: result = $chr(int(a.intVal))
-  else: 
+  of nkCharLit..nkUInt64Lit: result = $chr(int(a.intVal))
+  else:
     internalError(a.info, "getStrOrChar")
     result = ""
 
@@ -1560,3 +1561,9 @@ proc isEmptyType*(t: PType): bool {.inline.} =
   ## 'void' and 'stmt' types are often equivalent to 'nil' these days:
   result = t == nil or t.kind in {tyEmpty, tyStmt}
 
+proc makeStmtList*(n: PNode): PNode =
+  if n.kind == nkStmtList:
+    result = n
+  else:
+    result = newNodeI(nkStmtList, n.info)
+    result.add n

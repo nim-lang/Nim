@@ -1,3 +1,7 @@
+discard """
+  disabled: true
+"""
+
 import typetraits
 
 type
@@ -35,7 +39,9 @@ proc p(a, b) =
   var f: TFoo[m(a.type), b.type]
   static:
     assert f.x.type.name == "int"
+    echo  f.y.type.name
     assert f.y.type.name == "float"
+    echo  f.z.type.name
     assert f.z.type.name == "float"
 
 p(A, f)

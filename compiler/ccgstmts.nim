@@ -798,7 +798,9 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
     startBlock(p)
     var finallyBlock = t.lastSon
     if finallyBlock.kind == nkFinally:
-      expr(p, finallyBlock.sons[0], d)
+      #expr(p, finallyBlock.sons[0], d)
+      genStmts(p, finallyBlock.sons[0])
+
     line(p, cpsStmts, ~"throw;$n")
     endBlock(p)
   
@@ -807,7 +809,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   
   discard pop(p.nestedTryStmts)
   if (i < length) and (t.sons[i].kind == nkFinally):
-    exprBlock(p, t.sons[i].sons[0], d)
+    genSimpleBlock(p, t.sons[i].sons[0])
   
 proc genTry(p: BProc, t: PNode, d: var TLoc) = 
   # code to generate:
@@ -899,7 +901,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
   endBlock(p) # end of else block
   if i < length and t.sons[i].kind == nkFinally:
     p.finallySafePoints.add(safePoint)
-    exprBlock(p, t.sons[i].sons[0], d)
+    genSimpleBlock(p, t.sons[i].sons[0])
     discard pop(p.finallySafePoints)
   linefmt(p, cpsStmts, "if ($1.status != 0) #reraiseException();$n", safePoint)
 

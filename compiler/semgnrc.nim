@@ -48,7 +48,6 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
   of skTemplate:
     if macroToExpand(s):
       styleCheckUse(n.info, s)
-      let n = fixImmediateParams(n)
       result = semTemplateExpr(c, n, s, {efNoSemCheck})
       result = semGenericStmt(c, result, {}, ctx)
     else:
@@ -61,13 +60,20 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     else:
       result = symChoice(c, n, s, scOpen)
   of skGenericParam: 
-    result = newSymNodeTypeDesc(s, n.info)
+    if s.typ != nil and s.typ.kind == tyStatic:
+      if s.typ.n != nil:
+        result = s.typ.n
+      else:
+        result = n
+    else:
+      result = newSymNodeTypeDesc(s, n.info)
     styleCheckUse(n.info, s)
   of skParam:
     result = n
     styleCheckUse(n.info, s)
   of skType: 
-    if (s.typ != nil) and (s.typ.kind != tyGenericParam): 
+    if (s.typ != nil) and
+       (s.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} == {}):
       result = newSymNodeTypeDesc(s, n.info)
     else: 
       result = n
@@ -185,7 +191,6 @@ proc semGenericStmt(c: PContext, n: PNode,
       of skTemplate:
         if macroToExpand(s):
           styleCheckUse(fn.info, s)
-          let n = fixImmediateParams(n)
           result = semTemplateExpr(c, n, s, {efNoSemCheck})
           result = semGenericStmt(c, result, {}, ctx)
         else:

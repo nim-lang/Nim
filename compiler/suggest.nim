@@ -74,9 +74,6 @@ proc suggestField(c: PContext, s: PSym, outputs: var int) =
     suggestWriteln(symToStr(s, isLocal=true, sectionSuggest))
     inc outputs
 
-when not defined(nimhygiene):
-  {.pragma: inject.}
-
 template wholeSymTab(cond, section: expr) {.immediate.} =
   var isLocal = true
   for scope in walkScopes(c.currentScope):

@@ -17,8 +17,10 @@
 ## as the response body.
 ##
 ## .. code-block::nim
+##    import asynchttpserver, asyncdispatch
+##
 ##    var server = newAsyncHttpServer()
-##    proc cb(req: TRequest) {.async.} =
+##    proc cb(req: Request) {.async.} =
 ##      await req.respond(Http200, "Hello World")
 ##
 ##    asyncCheck server.serve(Port(8080), cb)
@@ -27,25 +29,52 @@
 import strtabs, asyncnet, asyncdispatch, parseutils, uri, strutils
 type
   Request* = object
-    client*: PAsyncSocket # TODO: Separate this into a Response object?
+    client*: AsyncSocket # TODO: Separate this into a Response object?
     reqMethod*: string
-    headers*: PStringTable
+    headers*: StringTableRef
     protocol*: tuple[orig: string, major, minor: int]
-    url*: TUri
+    url*: Uri
     hostname*: string ## The hostname of the client that made the request.
     body*: string
 
   AsyncHttpServer* = ref object
-    socket: PAsyncSocket
+    socket: AsyncSocket
     reuseAddr: bool
 
   HttpCode* = enum
+    Http100 = "100 Continue",
+    Http101 = "101 Switching Protocols",
     Http200 = "200 OK",
-    Http303 = "303 Moved",
+    Http201 = "201 Created",
+    Http202 = "202 Accepted",
+    Http204 = "204 No Content",
+    Http205 = "205 Reset Content",
+    Http206 = "206 Partial Content",
+    Http300 = "300 Multiple Choices",
+    Http301 = "301 Moved Permanently",
+    Http302 = "302 Found",
+    Http303 = "303 See Other",
+    Http304 = "304 Not Modified",
+    Http305 = "305 Use Proxy",
+    Http307 = "307 Temporary Redirect",
     Http400 = "400 Bad Request",
+    Http401 = "401 Unauthorized",
+    Http403 = "403 Forbidden",
     Http404 = "404 Not Found",
+    Http405 = "405 Method Not Allowed",
+    Http406 = "406 Not Acceptable",
+    Http407 = "407 Proxy Authentication Required",
+    Http408 = "408 Request Timeout",
+    Http409 = "409 Conflict",
+    Http410 = "410 Gone",
+    Http411 = "411 Length Required",
+    Http418 = "418 I'm a teapot",
     Http500 = "500 Internal Server Error",
-    Http502 = "502 Bad Gateway"
+    Http501 = "501 Not Implemented",
+    Http502 = "502 Bad Gateway",
+    Http503 = "503 Service Unavailable",
+    Http504 = "504 Gateway Timeout",
+    Http505 = "505 HTTP Version Not Supported"
 
   HttpVersion* = enum
     HttpVer11,
@@ -55,7 +84,7 @@ type
   THttpCode: HttpCode, THttpVersion: HttpVersion].}
 
 proc `==`*(protocol: tuple[orig: string, major, minor: int],
-           ver: THttpVersion): bool =
+           ver: HttpVersion): bool =
   let major =
     case ver
     of HttpVer11, HttpVer10: 1
@@ -65,23 +94,23 @@ proc `==`*(protocol: tuple[orig: string, major, minor: int],
     of HttpVer10: 0
   result = protocol.major == major and protocol.minor == minor
 
-proc newAsyncHttpServer*(reuseAddr = true): PAsyncHttpServer =
+proc newAsyncHttpServer*(reuseAddr = true): AsyncHttpServer =
   ## Creates a new ``AsyncHttpServer`` instance.
   new result
   result.reuseAddr = reuseAddr
 
-proc addHeaders(msg: var string, headers: PStringTable) =
+proc addHeaders(msg: var string, headers: StringTableRef) =
   for k, v in headers:
     msg.add(k & ": " & v & "\c\L")
 
-proc sendHeaders*(req: TRequest, headers: PStringTable): Future[void] =
+proc sendHeaders*(req: Request, headers: StringTableRef): Future[void] =
   ## Sends the specified headers to the requesting client.
   var msg = ""
   addHeaders(msg, headers)
   return req.client.send(msg)
 
-proc respond*(req: TRequest, code: THttpCode,
-        content: string, headers: PStringTable = newStringTable()) {.async.} =
+proc respond*(req: Request, code: HttpCode,
+        content: string, headers = newStringTable()) {.async.} =
   ## Responds to the request with the specified ``HttpCode``, headers and
   ## content.
   ##
@@ -92,7 +121,7 @@ proc respond*(req: TRequest, code: THttpCode,
   msg.addHeaders(customHeaders)
   await req.client.send(msg & "\c\L" & content)
 
-proc newRequest(): TRequest =
+proc newRequest(): Request =
   result.headers = newStringTable(modeCaseInsensitive)
   result.hostname = ""
   result.body = ""
@@ -107,20 +136,20 @@ proc parseHeader(line: string): tuple[key, value: string] =
 proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
   var i = protocol.skipIgnoreCase("HTTP/")
   if i != 5:
-    raise newException(EInvalidValue, "Invalid request protocol. Got: " &
+    raise newException(ValueError, "Invalid request protocol. Got: " &
         protocol)
   result.orig = protocol
   i.inc protocol.parseInt(result.major, i)
   i.inc # Skip .
   i.inc protocol.parseInt(result.minor, i)
 
-proc sendStatus(client: PAsyncSocket, status: string): Future[void] =
+proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L")
 
-proc processClient(client: PAsyncSocket, address: string,
-                   callback: proc (request: TRequest):
+proc processClient(client: AsyncSocket, address: string,
+                   callback: proc (request: Request):
                       Future[void] {.closure, gcsafe.}) {.async.} =
-  while not client.closed:
+  while not client.isClosed:
     # GET /path HTTP/1.1
     # Header: val
     # \n
@@ -160,7 +189,7 @@ proc processClient(client: PAsyncSocket, address: string,
     request.url = parseUri(path)
     try:
       request.protocol = protocol.parseProtocol()
-    except EInvalidValue:
+    except ValueError:
       asyncCheck request.respond(Http400, "Invalid request protocol. Got: " &
           protocol)
       continue
@@ -206,8 +235,8 @@ proc processClient(client: PAsyncSocket, address: string,
       request.client.close()
       break
 
-proc serve*(server: PAsyncHttpServer, port: Port,
-            callback: proc (request: TRequest): Future[void] {.closure,gcsafe.},
+proc serve*(server: AsyncHttpServer, port: Port,
+            callback: proc (request: Request): Future[void] {.closure,gcsafe.},
             address = "") {.async.} =
   ## Starts the process of listening for incoming HTTP connections on the
   ## specified address and port.
@@ -227,14 +256,14 @@ proc serve*(server: PAsyncHttpServer, port: Port,
     #echo(f.isNil)
     #echo(f.repr)
 
-proc close*(server: PAsyncHttpServer) =
+proc close*(server: AsyncHttpServer) =
   ## Terminates the async http server instance.
   server.socket.close()
 
 when isMainModule:
   proc main =
     var server = newAsyncHttpServer()
-    proc cb(req: TRequest) {.async.} =
+    proc cb(req: Request) {.async.} =
       #echo(req.reqMethod, " ", req.url)
       #echo(req.headers)
       let headers = {"Date": "Tue, 29 Apr 2014 23:40:08 GMT",

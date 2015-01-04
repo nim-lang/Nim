@@ -18,7 +18,7 @@ low-level interface to a C library.
 
 Read this `document <apis.html>`_ for a quick overview of the API design.
 
-The `bottom <#babel>`_ of this page includes a list of 3rd party packages
+The `bottom <#nimble>`_ of this page includes a list of 3rd party packages
 created by the Nim community. These packages are a useful addition to the
 modules in the standard library.
 
@@ -154,8 +154,8 @@ Generic Operating System Services
 
 * `streams <streams.html>`_
   This module provides a stream interface and two implementations thereof:
-  the `PFileStream` and the `PStringStream` which implement the stream
-  interface for Nim file objects (`TFile`) and strings. Other modules
+  the `FileStream` and the `StringStream` which implement the stream
+  interface for Nim file objects (`File`) and strings. Other modules
   may provide other implementations for this standard stream interface.
 
 * `marshal <marshal.html>`_
@@ -581,12 +581,12 @@ Scientific computing
 * `libsvm <libsvm.html>`_ 
   Low level wrapper for `lib svm <http://www.csie.ntu.edu.tw/~cjlin/libsvm/>`_.
 
-Babel
+Nimble
 ====================
 
-Babel is a package manager for the Nim programming language.
-For instructions on how to install Babel packages see
-`its README <https://github.com/nim-code/babel#readme>`_.
+Nimble is a package manager for the Nim programming language.
+For instructions on how to install Nimble packages see
+`its README <https://github.com/nim-lang/babel#readme>`_.
 
 Official packages
 -----------------
@@ -598,7 +598,7 @@ compiler.
 .. raw:: html
 
   <div id="officialPkgList"><b>If you are reading this you are missing
-  babelpkglist.js or have javascript disabled in your browser.</b></div>
+  nimblepkglist.js or have javascript disabled in your browser.</b></div>
 
 Unofficial packages
 -------------------
@@ -610,7 +610,7 @@ Nim programming language.
 .. raw:: html
 
   <div id="unofficialPkgList"><b>If you are reading this you are missing
-  babelpkglist.js or have javascript disabled in your browser.</b></div>
+  nimblepkglist.js or have javascript disabled in your browser.</b></div>
 
-  <script type="text/javascript" src="babelpkglist.js"></script>
-  <script type="text/javascript" src="http://build.nim-lang.org/packages?callback=gotPackageList"></script>
+  <script type="text/javascript" src="nimblepkglist.js"></script>
+  <script type="text/javascript" src="http://irclogs.nim-lang.org/packages?callback=gotPackageList"></script>

@@ -245,6 +245,14 @@ proc `$`*(osvi: TVersionInfo): string =
         if osvi.ProductType == VER_NT_WORKSTATION:
           result.add("Windows 7 ")
         else: result.add("Windows Server 2008 R2 ")
+      elif osvi.minorVersion == 2:
+        if osvi.ProductType == VER_NT_WORKSTATION:
+          result.add("Windows 8 ")
+        else: result.add("Windows Server 2012 ")
+      elif osvi.minorVersion == 3:
+        if osvi.ProductType == VER_NT_WORKSTATION:
+          result.add("Windows 8.1 ")
+        else: result.add("Windows Server 2012 R2 ")
     
       var dwType = getProductInfo(osvi.majorVersion, osvi.minorVersion, 0, 0)
       case dwType

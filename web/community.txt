@@ -34,9 +34,9 @@ Nim's Community
   Github
   ------
 
-  Nim's `source code <http://github.com/Araq/Nimrod>`_ is hosted on Github.
-  Together with the `wiki <http://github.com/Araq/Nimrod/wiki>`_ and
-  `issue tracker <http://github.com/Araq/Nimrod/issues>`_.
+  Nim's `source code <http://github.com/Araq/Nim>`_ is hosted on Github.
+  Together with the `wiki <http://github.com/Araq/Nim/wiki>`_ and
+  `issue tracker <http://github.com/Araq/Nim/issues>`_.
 
   Github also hosts other projects relating to Nim. These projects are a part
   of the `nim-lang organisation <http://github.com/nim-lang>`_.

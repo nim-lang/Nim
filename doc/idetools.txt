@@ -145,7 +145,7 @@ The ``--usages`` idetools switch lists all usages of the symbol at
 a position. IDEs can use this to find all the places in the file
 where the symbol is used and offer the user to rename it in all
 places at the same time. Again, a pure string based search and
-replace may catch symbols out of the scope of a funcion/loop.
+replace may catch symbols out of the scope of a function/loop.
 
 For this kind of query the IDE will most likely ignore all the
 type/signature info provided by idetools and concentrate on the

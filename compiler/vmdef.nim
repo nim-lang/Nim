@@ -164,7 +164,8 @@ type
     slotTempInt,      # some temporary int
     slotTempFloat,    # some temporary float
     slotTempStr,      # some temporary string
-    slotTempComplex   # some complex temporary (s.node field is used)
+    slotTempComplex,  # some complex temporary (s.node field is used)
+    slotTempPerm      # slot is temporary but permanent (hack)
 
   PProc* = ref object
     blocks*: seq[TBlock]    # blocks; temp data structure

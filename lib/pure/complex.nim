@@ -19,10 +19,7 @@ import
   math
  
 const
-  EPS = 5.0e-6 ## Epsilon used for float comparisons (should be smaller
-               ## if float is really float64, but w/ the current version
-               ## it seems to be float32?)
-
+  EPS = 1.0e-7 ## Epsilon used for float comparisons.
 
 type
   Complex* = tuple[re, im: float]

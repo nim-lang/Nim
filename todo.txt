@@ -3,9 +3,6 @@ version 0.10
 
 - The bitwise 'not' operator will be renamed to 'bnot' to
   prevent 'not 4 == 5' from compiling. -> requires 'mixin' annotation for procs!
-- A named tuple will be compatible to a tuple with different names.
-- The 'do' notation might be trimmed so that its only purpose is to pass
-  multiple multi line constructs to a macro.
 
 - c2nim depends on the compiler
 - make nimble part of the distribution
@@ -24,6 +21,7 @@ Low priority:
 - support for exception propagation? (hard to implement)
 - the copying of the 'ref Promise' into the thead local storage only
   happens to work due to the write barrier's implementation
+- clean up the C code generator. Full of cruft.
 
 
 Misc
@@ -63,6 +61,8 @@ version 0.9.x
 - we need a magic thisModule symbol
 - ensure (ref T)(a, b) works as a type conversion and type constructor
 - optimize 'genericReset'; 'newException' leads to code bloat
+- The 'do' notation might be trimmed so that its only purpose is to pass
+  multiple multi line constructs to a macro.
 
 
 version 0.9.X

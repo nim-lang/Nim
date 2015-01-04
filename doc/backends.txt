@@ -456,11 +456,7 @@ can then attach a GC to this thread via
 
 .. code-block:: nim
 
-  setStackBottom(addr(someLocal))
-  initGC()
-
-At the moment this support is still experimental so you need to expose these
-functions yourself or submit patches to request a public API. 
+  system.setupForeignThreadGc()
 
 It is **not** safe to disable the garbage collector and enable it after the
 call from your background thread even if the code you are calling is short
