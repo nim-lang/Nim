@@ -139,7 +139,7 @@ Numbers
 Numerical literals are written as in most other languages. As a special twist,
 underscores are allowed for better readability: ``1_000_000`` (one million).
 A number that contains a dot (or 'e' or 'E') is a floating point literal:
-``1.0e9`` (one million). Hexadecimal literals are prefixed with ``0x``,
+``1.0e9`` (one billion). Hexadecimal literals are prefixed with ``0x``,
 binary literals with ``0b`` and octal literals with ``0o``. A leading zero
 alone does not produce an octal.
 
@@ -1070,7 +1070,7 @@ Operation             Comment
 ``dec(x, n)``         decrements `x` by `n`; `n` is an integer
 ``succ(x)``           returns the successor of `x`
 ``succ(x, n)``        returns the `n`'th successor of `x`
-``prec(x)``           returns the predecessor of `x`
+``pred(x)``           returns the predecessor of `x`
 ``pred(x, n)``        returns the `n`'th predecessor of `x`
 -----------------     --------------------------------------------------------
 
@@ -1323,7 +1323,7 @@ define operators which accept TSlice objects to define ranges.
     a = "Nim is a progamming language"
     b = "Slices are useless."
 
-  echo a[10..15] # --> 'a prog'
+  echo a[7..12] # --> 'a prog'
   b[11.. -2] = "useful"
   echo b # --> 'Slices are useful.'
 
