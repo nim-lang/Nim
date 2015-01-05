@@ -107,12 +107,15 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
 # ------------------------------ GC tests -------------------------------------
 
 proc gcTests(r: var TResults, cat: Category, options: string) =
-  template test(filename: expr): stmt =
+  template testWithoutMs(filename: expr): stmt =
     testSpec r, makeTest("tests/gc" / filename, options, cat, actionRun)
     testSpec r, makeTest("tests/gc" / filename, options &
                   " -d:release", cat, actionRun)
     testSpec r, makeTest("tests/gc" / filename, options &
                   " -d:release -d:useRealtimeGC", cat, actionRun)
+
+  template test(filename: expr): stmt =
+    testWithoutMs filename
     testSpec r, makeTest("tests/gc" / filename, options &
                   " --gc:markAndSweep", cat, actionRun)
     testSpec r, makeTest("tests/gc" / filename, options &
@@ -124,13 +127,15 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   test "gctest"
   test "gcleak3"
   test "gcleak4"
-  test "gcleak5"
+  # Disabled because it works and takes too long to run:
+  #test "gcleak5"
   test "weakrefs"
   test "cycleleak"
   test "closureleak"
-  test "refarrayleak"
-  test "stackrefleak"
+  testWithoutMs "refarrayleak"
   
+  test "stackrefleak"
+  test "cyclecollector"
 
 # ------------------------- threading tests -----------------------------------
 

@@ -196,7 +196,8 @@ write(stdout, "starting main...\n")
 main()
 
 GC_fullCollect()
+# the M&S GC fails with this call and it's unclear why. Definitely something
+# we need to fix!
 GC_fullCollect()
 writeln(stdout, GC_getStatistics())
 write(stdout, "finished\n")
-
