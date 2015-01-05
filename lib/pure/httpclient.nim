@@ -281,7 +281,8 @@ proc newData*: MultipartData =
   ## Constructs a new ``MultipartData`` object.
   MultipartData(content: @[])
 
-proc add*(p: var MultipartData, name, content: string, filename: string = nil, contentType: string = nil) =
+proc add*(p: var MultipartData, name, content: string, filename: string = nil,
+          contentType: string = nil) =
   ## Add a value to the multipart data. Raises a `ValueError` exception if
   ## `name`, `filename` or `contentType` contain newline characters.
 
@@ -302,7 +303,8 @@ proc add*(p: var MultipartData, name, content: string, filename: string = nil, c
 
   p.content.add(str)
 
-proc add*(p: var MultipartData, xs: MultipartEntries): MultipartData {.discardable.} =
+proc add*(p: var MultipartData, xs: MultipartEntries): MultipartData
+         {.discardable.} =
   ## Add a list of multipart entries to the multipart data `p`. All values are
   ## added without a filename and without a content type.
   ##
@@ -321,7 +323,8 @@ proc newData*(xs: MultipartEntries): MultipartData =
   result = MultipartData(content: @[])
   result.add(xs)
 
-proc addFiles*(p: var MultipartData, xs: openarray[tuple[name, file: string]]) {.discardable.} =
+proc addFiles*(p: var MultipartData, xs: openarray[tuple[name, file: string]]):
+              MultipartData {.discardable.} =
   ## Add files to a multipart data object. The file will be opened from your
   ## disk, read and sent with the automatically determined MIME type. Raises an
   ## `IOError` if the file cannot be opened or reading fails. To manually
@@ -336,6 +339,7 @@ proc addFiles*(p: var MultipartData, xs: openarray[tuple[name, file: string]]) {
     if ext.len > 0:
       contentType = m.getMimetype(ext[1..ext.high], nil)
     p.add(name, readFile(file), fName & ext, contentType)
+  result = p
 
 proc `[]=`*(p: var MultipartData, name, content: string) =
   ## Add a multipart entry to the multipart data `p`. The value is added
@@ -345,7 +349,8 @@ proc `[]=`*(p: var MultipartData, name, content: string) =
   ##   data["username"] = "NimUser"
   p.add(name, content)
 
-proc `[]=`*(p: var MultipartData, name: string, file: tuple[name, contentType, content: string]) =
+proc `[]=`*(p: var MultipartData, name: string,
+            file: tuple[name, contentType, content: string]) =
   ## Add a file to the multipart data `p`, specifying filename, contentType and
   ## content manually.
   ##
