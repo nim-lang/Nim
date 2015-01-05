@@ -864,7 +864,7 @@ proc pretty*(node: JsonNode, indent = 2): string =
 proc `$`*(node: JsonNode): string =
   ## Converts `node` to its JSON Representation on one line.
   result = ""
-  toPretty(result, node, 1, false)
+  toPretty(result, node, 0, false)
 
 iterator items*(node: JsonNode): JsonNode =
   ## Iterator for the items of `node`. `node` has to be a JArray.
