@@ -494,8 +494,17 @@ proc post*(url: string, extraHeaders = "", body = "",
   ## ``multipart/form-data`` POSTs comfortably.
   let (mpHeaders, mpBody) = format(multipart)
 
-  var xb = mpBody & body
-  var xh = extraHeaders & mpHeaders & "Content-Length: " & $len(xb) & "\c\L"
+  template withNewLine(x): expr =
+    if x.len > 0 and not x.endsWith("\c\L"):
+      x & "\c\L"
+    else:
+      x
+
+  var xb = mpBody.withNewLine() & body.withNewLine()
+
+  var xh = extraHeaders.withNewLine() & mpHeaders.withNewLine() &
+    withNewLine("Content-Length: " & $len(xb))
+
   result = request(url, httpPOST, xh, xb, sslContext, timeout, userAgent,
                    proxy)
   var lastUrl = ""
