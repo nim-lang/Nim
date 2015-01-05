@@ -165,7 +165,7 @@ const
   HighRegisterPressure = 40
 
 proc getTemp(c: PCtx; tt: PType): TRegister =
-  let typ = tt.skipTypes({tyStatic})
+  let typ = tt.safeSkipTypes({tyStatic})
   let c = c.prc
   # we prefer the same slot kind here for efficiency. Unfortunately for
   # discardable return types we may not know the desired type. This can happen
