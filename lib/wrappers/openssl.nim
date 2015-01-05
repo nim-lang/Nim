@@ -50,7 +50,7 @@ when useWinVersion:
   from winlean import SocketHandle
 else:
   const
-    versions = "(|.1.0.0|.0.9.9|.0.9.8|.0.9.7|.0.9.6|.0.9.5|.0.9.4)"
+    versions = "(.10|.1.0.1|.1.0.0|.0.9.9|.0.9.8|.0.9.7|.0.9.6|.0.9.5|.0.9.4)"
   when defined(macosx):
     const
       DLLSSLName = "libssl" & versions & ".dylib"
