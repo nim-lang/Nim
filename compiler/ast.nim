@@ -1341,6 +1341,10 @@ proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   result = t
   while result.kind in kinds: result = lastSon(result)
 
+proc safeSkipTypes*(t: PType, kinds: TTypeKinds): PType =
+  result = if t != nil: t.skipTypes(kinds)
+           else: nil
+
 proc isGCedMem*(t: PType): bool {.inline.} =
   result = t.kind in {tyString, tyRef, tySequence} or
            t.kind == tyProc and t.callConv == ccClosure

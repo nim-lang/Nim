@@ -10,14 +10,10 @@
 # This module implements the instantiation of generic procs.
 # included from sem.nim
 
-proc instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable,
-                                 entry: var TInstantiation) = 
-  if n.kind != nkGenericParams: 
-    internalError(n.info, "instantiateGenericParamList; no generic params")
-  newSeq(entry.concreteTypes, n.len)
+iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym =
+  internalAssert n.kind == nkGenericParams
   for i, a in n.pairs:
-    if a.kind != nkSym: 
-      internalError(a.info, "instantiateGenericParamList; no symbol")
+    internalAssert a.kind == nkSym
     var q = a.sym
     if q.typ.kind notin {tyTypeDesc, tyGenericParam, tyStatic, tyIter}+tyTypeClasses:
       continue
@@ -42,8 +38,7 @@ proc instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable,
       #t = ReplaceTypeVarsT(cl, t)
     s.typ = t
     if t.kind == tyStatic: s.ast = t.n
-    addDecl(c, s)
-    entry.concreteTypes[i] = t
+    yield s
 
 proc sameInstantiation(a, b: TInstantiation): bool =
   if a.concreteTypes.len == b.concreteTypes.len:
@@ -196,7 +191,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   ## The `pt` parameter is a type-unsafe mapping table used to link generic
   ## parameters to their concrete types within the generic instance.
   # no need to instantiate generic templates/macros:
-  if fn.kind in {skTemplate, skMacro}: return fn
+  internalAssert fn.kind notin {skMacro, skTemplate}
   # generates an instantiated proc
   if c.instCounter > 1000: internalError(fn.ast.info, "nesting too deep")
   inc(c.instCounter)
@@ -213,12 +208,18 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   result.ast = n
   pushOwner(result)
   openScope(c)
-  internalAssert n.sons[genericParamsPos].kind != nkEmpty
+  let gp = n.sons[genericParamsPos]
+  internalAssert gp.kind != nkEmpty
   n.sons[namePos] = newSymNode(result)
   pushInfoContext(info)
   var entry = TInstantiation.new
   entry.sym = result
-  instantiateGenericParamList(c, n.sons[genericParamsPos], pt, entry[])
+  newSeq(entry.concreteTypes, gp.len)
+  var i = 0
+  for s in instantiateGenericParamList(c, gp, pt):
+    addDecl(c, s)
+    entry.concreteTypes[i] = s.typ
+    inc i
   pushProcCon(c, result)
   instantiateProcType(c, pt, result, info)
   n.sons[genericParamsPos] = ast.emptyNode
