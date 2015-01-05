@@ -23,7 +23,7 @@ proc `$`*(x: SocketHandle): string {.borrow.}
 
 type
   Event* = enum
-    EvRead, EvWrite
+    EvRead, EvWrite, EvError
 
   SelectorKey* = ref object
     fd*: SocketHandle
@@ -146,12 +146,19 @@ elif defined(linux):
     ## on the ``fd``.
     result = @[]
     let evNum = epoll_wait(s.epollFD, addr s.events[0], 64.cint, timeout.cint)
-    if evNum < 0: raiseOSError(osLastError())
+    if evNum < 0:
+      let err = osLastError()
+      if err.cint == EINTR:
+        return @[]
+      raiseOSError(osLastError())
     if evNum == 0: return @[]
     for i in 0 .. <evNum:
       let fd = s.events[i].data.fd.SocketHandle
     
       var evSet: set[Event] = {}
+      if (s.events[i].events and EPOLLERR) != 0: evSet = evSet + {EvError}
+      if (s.events[i].events and EPOLLHUP) != 0: evSet = evSet + {EvError}
+      if (s.events[i].events and EPOLLRDHUP) != 0: evSet = evSet + {EvError}
       if (s.events[i].events and EPOLLIN) != 0: evSet = evSet + {EvRead}
       if (s.events[i].events and EPOLLOUT) != 0: evSet = evSet + {EvWrite}
       let selectorKey = s.fds[fd]
