@@ -355,7 +355,7 @@ proc `[]=`*(p: var MultipartData, name: string, file: tuple[name, contentType, c
   p.add(name, file.content, file.name, file.contentType)
 
 proc format(p: MultipartData): tuple[header, body: string] =
-  if p.content == nil or p.content.len == 0:
+  if p == nil or p.content == nil or p.content.len == 0:
     return ("", "")
 
   # Create boundary that is not in the data to be formatted
