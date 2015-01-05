@@ -32,7 +32,7 @@
 ## the server.
 ##
 ## .. code-block:: Nim
-##   var data = newData()
+##   var data = newMultipartData()
 ##   data["output"] = "soap12"
 ##   data["uploaded_file"] = ("test.html", "text/html",
 ##     "<html><head></head><body><p>test</p></body></html>")
@@ -277,7 +277,7 @@ proc newProxy*(url: string, auth = ""): Proxy =
   ## Constructs a new ``TProxy`` object.
   result = Proxy(url: parseUri(url), auth: auth)
 
-proc newData*: MultipartData =
+proc newMultipartData*: MultipartData =
   ## Constructs a new ``MultipartData`` object.
   MultipartData(content: @[])
 
@@ -314,12 +314,12 @@ proc add*(p: var MultipartData, xs: MultipartEntries): MultipartData
     p.add(name, content)
   result = p
 
-proc newData*(xs: MultipartEntries): MultipartData =
+proc newMultipartData*(xs: MultipartEntries): MultipartData =
   ## Create a new multipart data object and fill it with the entries `xs`
   ## directly.
   ##
   ## .. code-block:: Nim
-  ##   var data = newData({"action": "login", "format": "json"})
+  ##   var data = newMultipartData({"action": "login", "format": "json"})
   result = MultipartData(content: @[])
   result.add(xs)
 
@@ -826,7 +826,7 @@ when isMainModule:
     #var r = get("http://validator.w3.org/check?uri=http%3A%2F%2Fgoogle.com&
     #  charset=%28detect+automatically%29&doctype=Inline&group=0")
 
-    var data = newData()
+    var data = newMultipartData()
     data["output"] = "soap12"
     data["uploaded_file"] = ("test.html", "text/html",
       "<html><head></head><body><p>test</p></body></html>")
