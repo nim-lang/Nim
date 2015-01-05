@@ -665,9 +665,7 @@ proc toJson(x: expr): expr {.compiletime.} =
 macro `%*`*(x: expr): expr =
   ## Convert an expression to a JsonParser directly, without having to specify
   ## `%` for every element.
-  echo x.treeRepr
   result = toJson(x)
-  echo result.treeRepr
 
 proc `==`* (a,b: JsonNode): bool =
   ## Check two nodes for equality
