@@ -30,9 +30,9 @@ int main(int argc, char* argv[])
     occupiedMem = (pFunc)GetProcessAddress((HMODULE) hndl, (char const*)"occupiedMem");
 #else /* OSX || NIX */
     hndl = (void*) dlopen((char const*)"./libshared.so", RTLD_LAZY);
-    status = (void*) dlsym(hndl, (char const*)"status");
-    count = (void*) dlsym(hndl, (char const*)"count");
-    occupiedMem = (void*) dlsym(hndl, (char const*)"occupiedMem");
+    status = (pFunc) dlsym(hndl, (char const*)"status");
+    count = (pFunc) dlsym(hndl, (char const*)"count");
+    occupiedMem = (pFunc) dlsym(hndl, (char const*)"occupiedMem");
 #endif
 
     assert(hndl);
