@@ -1,6 +1,6 @@
 discard """
-  cmd: " nim c main.nim"
-  final output: "Done!"
+  cmd: "nim $target --debuginfo $options $file"
+  output: "Done"
 """
 
 import times
@@ -26,15 +26,15 @@ proc main() =
   while accumTime < runTime:
     for i in 0..10:
       count()
-    echo("1. sleeping... ")
+    #echo("1. sleeping... ")
     sleep(500)
     for i in 0..10:
       status()
-    echo("2. sleeping... ")
+    #echo("2. sleeping... ")
     sleep(500)
     occupiedMem()
     accumTime = cast[Time]((getTime() - startTime))
-    echo("--- Minutes left to run: ", int(int(runTime-accumTime)/60))
+    #echo("--- Minutes left to run: ", int(int(runTime-accumTime)/60))
   echo("Done")
 
 main()
