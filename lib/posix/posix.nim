@@ -1739,7 +1739,12 @@ when hasSpawnH:
   when defined(linux):
     # better be safe than sorry; Linux has this flag, macosx doesn't, don't
     # know about the other OSes
-    var POSIX_SPAWN_USEVFORK* {.importc, header: "<spawn.h>".}: cint
+    when defined(tcc):
+      # TCC doesn't define __USE_GNU, so we can't get the magic number from
+      # spawn.h
+      const POSIX_SPAWN_USEVFORK* = cint(0x40)
+    else:
+      var POSIX_SPAWN_USEVFORK* {.importc, header: "<spawn.h>".}: cint
   else:
     # macosx lacks this, so we define the constant to be 0 to not affect
     # OR'ing of flags:
