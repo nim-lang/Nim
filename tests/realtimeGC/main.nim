@@ -9,11 +9,11 @@ import os
 const RUNTIME = 35 * 60 # 35 minutes
 
 when defined(windows):
-  const dllname = "./server.dll"
+  const dllname = "./shared.dll"
 elif defined(macosx):
-  const dllname = "./libserver.dylib"
+  const dllname = "./libshared.dylib"
 else:
-  const dllname = "./libserver.so"
+  const dllname = "./libshared.so"
 
 proc status() {.importc: "status", dynlib: dllname.}
 proc count() {.importc: "count", dynlib: dllname.}
