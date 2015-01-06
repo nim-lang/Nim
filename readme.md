@@ -36,7 +36,7 @@ $ git clone --depth 1 git://github.com/nim-lang/csources
 $ cd csources && sh build.sh
 $ cd ..
 $ bin/nim c koch
-$ ./koch boot -d:release
+$ ./koch boot -d:release --stackTrace:on
 ```
 
 ``koch install [dir]`` may then be used to install Nim, or you can simply
