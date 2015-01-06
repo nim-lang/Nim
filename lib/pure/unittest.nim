@@ -209,3 +209,5 @@ if envOutLvl.len > 0:
     if $opt == envOutLvl:
       outputLevel = opt
       break
+
+system.addQuitProc(resetAttributes)
