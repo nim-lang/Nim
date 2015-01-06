@@ -23,6 +23,7 @@ type
     id: int                  # for generating IDs
     toc, section: TSections
     indexValFilename: string
+    analytics: string  # Google Analytics javascript, "" if doesn't exist
     seenSymbols: StringTableRef # avoids duplicate symbol generation for HTML.
 
   PDoc* = ref TDocumentor ## Alias to type less.
@@ -61,6 +62,23 @@ proc newDocumentor*(filename: string, config: StringTableRef): PDoc =
   initRstGenerator(result[], (if gCmd != cmdRst2tex: outHtml else: outLatex),
                    options.gConfigVars, filename, {roSupportRawDirective},
                    docgenFindFile, compilerMsgHandler)
+
+  if config.hasKey("doc.googleAnalytics"):
+    result.analytics = """
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '$1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+    """ % [config["doc.googleAnalytics"]]
+  else:
+    result.analytics = ""
+
   result.seenSymbols = newStringTable(modeCaseInsensitive)
   result.id = 100
 
@@ -562,10 +580,10 @@ proc genOutFile(d: PDoc): PRope =
     # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
     code = ropeFormatNamedVars(getConfigVar("doc.file"), ["title",
         "tableofcontents", "moduledesc", "date", "time",
-        "content", "author", "version"],
+        "content", "author", "version", "analytics"],
         [title.toRope, toc, d.modDesc, toRope(getDateStr()),
                      toRope(getClockStr()), content, d.meta[metaAuthor].toRope,
-                     d.meta[metaVersion].toRope])
+                     d.meta[metaVersion].toRope, d.analytics.toRope])
   else:
     code = content
   result = code
@@ -630,7 +648,8 @@ proc commandBuildIndex*() =
 
   let code = ropeFormatNamedVars(getConfigVar("doc.file"), ["title",
       "tableofcontents", "moduledesc", "date", "time",
-      "content", "author", "version"],
+      "content", "author", "version", "analytics"],
       ["Index".toRope, nil, nil, toRope(getDateStr()),
-                   toRope(getClockStr()), content, nil, nil])
+                   toRope(getClockStr()), content, nil, nil, nil])
+  # no analytics because context is not available
   writeRope(code, getOutFile("theindex", HtmlExt))
