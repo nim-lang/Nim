@@ -1,7 +1,7 @@
 #
 #
 #           Nim Website Generator
-#        (c) Copyright 2014 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -66,7 +66,7 @@ const
   version = "0.7"
   usage = "nimweb - Nim Website Generator Version " & version & """
 
-  (c) 2014 Andreas Rumpf
+  (c) 2015 Andreas Rumpf
 Usage:
   nimweb [options] ini-file[.ini] [compile_options]
 Options:

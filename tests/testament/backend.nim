@@ -1,7 +1,7 @@
 #
 #
 #              The Nim Tester
-#        (c) Copyright 2014 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    Look at license.txt for more info.
 #    All rights reserved.
