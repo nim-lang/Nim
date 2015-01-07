@@ -12,7 +12,7 @@
 
 when defined(Unix): 
   const 
-    lib = "libmysqlclient.so.15"
+    lib = "libmysqlclient.so.(15|16|17|18)"
 when defined(Windows): 
   const 
     lib = "libmysql.dll"
