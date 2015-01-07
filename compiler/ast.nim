@@ -399,6 +399,7 @@ const
   tyPureObject* = tyTuple
   GcTypeKinds* = {tyRef, tySequence, tyString}
   tyError* = tyProxy # as an errornous node should match everything
+  tyUnknown* = tyFromExpr
 
   tyUnknownTypes* = {tyError, tyFromExpr}
 
@@ -1339,6 +1340,10 @@ proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   ## path within the compiler!
   result = t
   while result.kind in kinds: result = lastSon(result)
+
+proc safeSkipTypes*(t: PType, kinds: TTypeKinds): PType =
+  result = if t != nil: t.skipTypes(kinds)
+           else: nil
 
 proc isGCedMem*(t: PType): bool {.inline.} =
   result = t.kind in {tyString, tyRef, tySequence} or

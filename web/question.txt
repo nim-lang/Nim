@@ -110,6 +110,7 @@ General
   - Scite: Included
   - Gedit: The `Aporia .lang file <https://github.com/nimrod-code/Aporia/blob/master/share/gtksourceview-2.0/language-specs/nimrod.lang>`_
   - jEdit: https://github.com/exhu/nimrod-misc/tree/master/jedit
+  - TextMate: Available in bundle installer (`Repository <https://github.com/textmate/nim.tmbundle>`_)
 
 
 .. container:: standout

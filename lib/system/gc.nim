@@ -49,7 +49,7 @@ type
     waMarkGlobal,    # part of the backup/debug mark&sweep
     waMarkPrecise,   # part of the backup/debug mark&sweep
     waZctDecRef, waPush, waCycleDecRef, waMarkGray, waScan, waScanBlack, 
-    waCollectWhite,
+    waCollectWhite #, waDebug
 
   TFinalizer {.compilerproc.} = proc (self: pointer) {.nimcall, benign.}
     # A ref type can have a finalizer that is called before the object's
@@ -595,9 +595,15 @@ proc scan(s: PCell) =
     else:
       s.setColor(rcWhite)
       forAllChildren(s, waScan)
-  
+
 proc collectWhite(s: PCell) =
-  if s.color == rcWhite and s notin gch.cycleRoots:
+  # This is a hacky way to deal with the following problem (bug #1796)
+  # Consider this content in cycleRoots:
+  #   x -> a; y -> a  where 'a' is an acyclic object so not included in
+  # cycleRoots itself. Then 'collectWhite' used to free 'a' twice. The
+  # 'isAllocatedPtr' check prevents this. This also means we do not need
+  # to query 's notin gch.cycleRoots' at all.
+  if isAllocatedPtr(gch.region, s) and s.color == rcWhite:
     s.setColor(rcBlack)
     forAllChildren(s, waCollectWhite)
     freeCyclicCell(gch, s)
@@ -648,6 +654,28 @@ when useMarkForDebug or useBackupGc:
       if objStart != nil:
         markS(gch, objStart)
 
+when logGC:
+  var
+    cycleCheckA: array[100, PCell]
+    cycleCheckALen = 0
+
+  proc alreadySeen(c: PCell): bool =
+    for i in 0 .. <cycleCheckALen:
+      if cycleCheckA[i] == c: return true
+    if cycleCheckALen == len(cycleCheckA):
+      gcAssert(false, "cycle detection overflow")
+      quit 1
+    cycleCheckA[cycleCheckALen] = c
+    inc cycleCheckALen
+
+  proc debugGraph(s: PCell) =
+    if alreadySeen(s):
+      writeCell("child cell (already seen) ", s)
+    else:
+      writeCell("cell {", s)
+      forAllChildren(s, waDebug)
+      c_fprintf(c_stdout, "}\n")
+
 proc doOperation(p: pointer, op: TWalkOp) =
   if p == nil: return
   var c: PCell = usrToCell(p)
@@ -690,6 +718,7 @@ proc doOperation(p: pointer, op: TWalkOp) =
   of waMarkPrecise:
     when useMarkForDebug or useBackupGc:
       add(gch.tempStack, c)
+  #of waDebug: debugGraph(c)
 
 proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} =
   doOperation(d, TWalkOp(op))
@@ -702,7 +731,6 @@ when useMarkForDebug or useBackupGc:
 
 proc collectRoots(gch: var TGcHeap) =
   for s in elements(gch.cycleRoots):
-    excl(gch.cycleRoots, s)
     collectWhite(s)
 
 proc collectCycles(gch: var TGcHeap) =

@@ -25,16 +25,22 @@ proc copyNode(ctx: TemplCtx, a, b: PNode): PNode =
   if ctx.instLines: result.info = b.info
 
 proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
+  template handleParam(param) =
+    let x = param
+    if x.kind == nkArgList:
+      for y in items(x): result.add(y)
+    else:
+      result.add copyTree(x)
+
   case templ.kind
   of nkSym:
     var s = templ.sym
     if s.owner.id == c.owner.id:
-      if s.kind == skParam:
-        let x = actual.sons[s.position]
-        if x.kind == nkArgList:
-          for y in items(x): result.add(y)
-        else:
-          result.add copyTree(x)
+      case s.kind
+      of skParam:
+        handleParam actual.sons[s.position]
+      of skGenericParam:
+        handleParam actual.sons[s.owner.typ.len + s.position - 1]
       else:
         internalAssert sfGenSym in s.flags
         var x = PSym(idTableGet(c.mapping, s))
@@ -56,21 +62,31 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
 proc evalTemplateArgs(n: PNode, s: PSym): PNode =
   # if the template has zero arguments, it can be called without ``()``
   # `n` is then a nkSym or something similar
-  var a: int
-  case n.kind
-  of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit:
-    a = sonsLen(n)
-  else: a = 0
-  var f = s.typ.sonsLen
-  if a > f: globalError(n.info, errWrongNumberOfArguments)
+  var totalParams = case n.kind
+    of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit: <n.len
+    else: 0
+
+  var
+    genericParams = s.ast[genericParamsPos].len
+    expectedRegularParams = <s.typ.len
+    givenRegularParams = totalParams - genericParams
+
+  if totalParams > expectedRegularParams + genericParams:
+    globalError(n.info, errWrongNumberOfArguments)
 
   result = newNodeI(nkArgList, n.info)
-  for i in countup(1, f - 1):
-    var arg = if i < a: n.sons[i] else: copyTree(s.typ.n.sons[i].sym.ast)
-    if arg == nil or arg.kind == nkEmpty:
-      localError(n.info, errWrongNumberOfArguments)
-    addSon(result, arg)
+  for i in 1 .. givenRegularParams:
+    result.addSon n.sons[i]
 
+  for i in givenRegularParams+1 .. expectedRegularParams:
+    let default = s.typ.n.sons[i].sym.ast
+    if default.kind == nkEmpty:
+      localError(n.info, errWrongNumberOfArguments)
+    result.addSon default.copyTree
+
+  for i in 1 .. genericParams:
+    result.addSon n.sons[givenRegularParams + i]
+  
 var evalTemplateCounter* = 0
   # to prevent endless recursion in templates instantiation
 

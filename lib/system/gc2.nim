@@ -1344,7 +1344,7 @@ when not defined(useNimRtl):
       else:
         dec(gch.recGcLock)
 
-  proc GC_setStrategy(strategy: TGC_Strategy) =
+  proc GC_setStrategy(strategy: GC_Strategy) =
     case strategy
     of gcThroughput: nil
     of gcResponsiveness: nil

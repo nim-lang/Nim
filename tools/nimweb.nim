@@ -23,6 +23,7 @@ type
     gitCommit: string
     quotations: Table[string, tuple[quote, author: string]]
     numProcessors: int # Set by parallelBuild:n, only works for values > 0.
+    gaId: string  # google analytics ID, nil means analytics are disabled
   TRssItem = object
     year, month, day, title: string
   TAction = enum
@@ -144,7 +145,12 @@ proc parseCmdLine(c: var TConfigData) =
         c.vars[substr(val, 0, idx-1)] = substr(val, idx+1)
       of "website": action = actOnlyWebsite
       of "pdf": action = actPdf
-      else: quit(usage)
+      of "googleanalytics":
+        c.gaId = val
+        c.nimArgs.add("--doc.googleAnalytics:" & val & " ")
+      else:
+        echo("Invalid argument $1" % [key])
+        quit(usage)
     of cmdEnd: break
   if c.infile.len == 0: quit(usage)
 

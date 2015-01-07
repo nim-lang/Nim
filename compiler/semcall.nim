@@ -277,16 +277,27 @@ proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
   styleCheckUse(n.sons[0].info, finalCallee)
   if finalCallee.ast == nil:
     internalError(n.info, "calleeSym.ast is nil") # XXX: remove this check!
-  if finalCallee.ast.sons[genericParamsPos].kind != nkEmpty:
-    # a generic proc!
-    if not x.proxyMatch:
+  if x.hasFauxMatch:
+    result = x.call
+    result.sons[0] = newSymNode(finalCallee, result.sons[0].info)
+    if containsGenericType(result.typ) or x.fauxMatch == tyUnknown:
+      result.typ = newTypeS(x.fauxMatch, c)
+    return
+  let gp = finalCallee.ast.sons[genericParamsPos]
+  if gp.kind != nkEmpty:
+    if x.calleeSym.kind notin {skMacro, skTemplate}:
       finalCallee = generateInstance(c, x.calleeSym, x.bindings, n.info)
     else:
-      result = x.call
-      result.sons[0] = newSymNode(finalCallee, result.sons[0].info)
-      result.typ = finalCallee.typ.sons[0]
-      if containsGenericType(result.typ): result.typ = errorType(c)
-      return
+      # For macros and templates, the resolved generic params
+      # are added as normal params.
+      for s in instantiateGenericParamList(c, gp, x.bindings):
+        case s.kind
+          of skConst:
+            x.call.add s.ast
+          of skType:
+            x.call.add newSymNode(s, n.info)
+          else:
+            internalAssert false
   result = x.call
   instGenericConvertersSons(c, result, x)
   result.sons[0] = newSymNode(finalCallee, result.sons[0].info)

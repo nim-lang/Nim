@@ -10,6 +10,9 @@ AST a
 AST b 
 (e: [55, 66], f: [77, 88])
 55
+10
+20Test
+20
 '''
 """
 
@@ -49,4 +52,23 @@ macro mB(data: static[Tb]): stmt =
 
 mA(a)
 mB(b)
+
+type
+  Foo[N: static[int], Z: static[string]] = object
+
+macro staticIntMacro(f: static[int]): stmt = echo f
+staticIntMacro 10
+
+var
+  x: Foo[20, "Test"]
+
+macro genericMacro[N; Z: static[string]](f: Foo[N, Z], ll = 3, zz = 12): stmt =
+  echo N, Z
+
+genericMacro x
+
+template genericTemplate[N, Z](f: Foo[N, Z], ll = 3, zz = 12): int = N
+
+static:
+  echo genericTemplate(x) # Error: internal error: (filename: compiler/evaltempl.nim, line: 39)
 

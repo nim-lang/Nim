@@ -37,4 +37,4 @@ Options:
   --advanced                show advanced command line switches
   -h, --help                show this help
 
-Note: Even single letter options require the colon: -p:PATH.
+Note, single letter options that take an argument require a colon. E.g. -p:PATH.
