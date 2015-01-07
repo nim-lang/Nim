@@ -99,6 +99,7 @@ template test*(name: expr, body: stmt): stmt {.immediate, dirty.} =
 
     except:
       checkpoint("Unhandled exception: " & getCurrentExceptionMsg())
+      echo getCurrentException().getStackTrace()
       fail()
 
     finally:
