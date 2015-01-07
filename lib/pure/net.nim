@@ -119,7 +119,7 @@ proc newSocket*(domain, typ, protocol: cint, buffered = true): Socket =
   result = newSocket(fd, buffered)
 
 proc newSocket*(domain: Domain = AF_INET, typ: SockType = SOCK_STREAM,
-             protocol: Protocol = IPPROTO_TCP, buffered = true): Socket =
+                protocol: Protocol = IPPROTO_TCP, buffered = true): Socket =
   ## Creates a new socket.
   ##
   ## If an error occurs EOS will be raised.
