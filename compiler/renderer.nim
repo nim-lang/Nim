@@ -46,11 +46,12 @@ proc getNextTok*(r: var TSrcGen, kind: var TTokType, literal: var string)
 # determines how long the subtree will likely be, the second
 # phase appends to a buffer that will be the output.
 
-proc isKeyword*(s: string): bool =
-  var i = getIdent(s)
+proc isKeyword*(i: PIdent): bool =
   if (i.id >= ord(tokKeywordLow) - ord(tkSymbol)) and
-      (i.id <= ord(tokKeywordHigh) - ord(tkSymbol)): 
+      (i.id <= ord(tokKeywordHigh) - ord(tkSymbol)):
     result = true
+
+proc isKeyword*(s: string): bool = isKeyword(getIdent(s))
 
 proc renderDefinitionName*(s: PSym, noQuotes = false): string =
   ## Returns the definition name of the symbol.
@@ -59,7 +60,7 @@ proc renderDefinitionName*(s: PSym, noQuotes = false): string =
   ## happen if the name happens to be a keyword or the first character is not
   ## part of the SymStartChars set.
   let x = s.name.s
-  if noQuotes or (x[0] in SymStartChars and not renderer.isKeyword(x)):
+  if noQuotes or (x[0] in SymStartChars and not renderer.isKeyword(s.name)):
     result = x
   else:
     result = '`' & x & '`'
