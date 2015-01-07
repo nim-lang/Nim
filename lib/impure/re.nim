@@ -323,15 +323,7 @@ proc replace*(s: string, sub: Regex, by = ""): string =
   ## .. code-block:: nim
   ##
   ##   "; "
-  result = ""
-  var prev = 0
-  while true:
-    var match = findBounds(s, sub, prev)
-    if match.first < 0: break
-    add(result, substr(s, prev, match.first-1))
-    add(result, by)
-    prev = match.last + 1
-  add(result, substr(s, prev))
+  return s.replace(sub, proc (m: openarray[string]): string = return by)
 
 proc replacef*(s: string, sub: Regex, by: string): string =
   ## Replaces `sub` in `s` by the string `by`. Captures can be accessed in `by`
@@ -345,18 +337,7 @@ proc replacef*(s: string, sub: Regex, by: string): string =
   ## .. code-block:: nim
   ##
   ## "var1<-keykey; val2<-key2key2"
-  result = ""
-  var caps: array[0..MaxSubpatterns-1, string]
-  var prev = 0
-  while true:
-    var match = findBounds(s, sub, caps, prev)
-    if match.first < 0: break
-    assert result != nil
-    assert s != nil
-    add(result, substr(s, prev, match.first-1))
-    addf(result, by, caps)
-    prev = match.last + 1
-  add(result, substr(s, prev))
+  return s.replace(sub, proc (caps: openarray[string]): string = return by % caps)
 
 proc parallelReplace*(s: string, subs: openArray[
                       tuple[pattern: Regex, repl: string]]): string =
