@@ -283,21 +283,8 @@ proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
     if containsGenericType(result.typ) or x.fauxMatch == tyUnknown:
       result.typ = newTypeS(x.fauxMatch, c)
     return
-  let gp = finalCallee.ast.sons[genericParamsPos]
-  if gp.kind != nkEmpty:
-    if x.calleeSym.kind notin {skMacro, skTemplate}:
-      finalCallee = generateInstance(c, x.calleeSym, x.bindings, n.info)
-    else:
-      # For macros and templates, the resolved generic params
-      # are added as normal params.
-      for s in instantiateGenericParamList(c, gp, x.bindings):
-        case s.kind
-          of skConst:
-            x.call.add s.ast
-          of skType:
-            x.call.add newSymNode(s, n.info)
-          else:
-            internalAssert false
+  if finalCallee.ast.sons[genericParamsPos].kind != nkEmpty:
+    finalCallee = generateInstance(c, x.calleeSym, x.bindings, n.info)
   result = x.call
   instGenericConvertersSons(c, result, x)
   result.sons[0] = newSymNode(finalCallee, result.sons[0].info)

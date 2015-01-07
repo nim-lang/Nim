@@ -164,8 +164,7 @@ proc getSlotKind(t: PType): TSlotKind =
 const
   HighRegisterPressure = 40
 
-proc getTemp(c: PCtx; tt: PType): TRegister =
-  let typ = tt.safeSkipTypes({tyStatic})
+proc getTemp(c: PCtx; typ: PType): TRegister =
   let c = c.prc
   # we prefer the same slot kind here for efficiency. Unfortunately for
   # discardable return types we may not know the desired type. This can happen
@@ -686,7 +685,7 @@ proc genConv(c: PCtx; n, arg: PNode; dest: var TDest; opc=opcConv) =
   if dest < 0: dest = c.getTemp(n.typ)
   c.gABC(n, opc, dest, tmp)
   c.gABx(n, opc, 0, genType(c, n.typ))
-  c.gABx(n, opc, 0, genType(c, arg.typ.skipTypes({tyStatic})))
+  c.gABx(n, opc, 0, genType(c, arg.typ))
   c.freeTemp(tmp)
 
 proc genCard(c: PCtx; n: PNode; dest: var TDest) =
@@ -1086,8 +1085,7 @@ proc genAddrDeref(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
     c.freeTemp(tmp)
 
 proc whichAsgnOpc(n: PNode): TOpcode =
-  let toSkip = abstractRange-{tyTypeDesc}
-  case n.typ.skipTypes(toSkip).kind
+  case n.typ.skipTypes(abstractRange-{tyTypeDesc}).kind
   of tyBool, tyChar, tyEnum, tyOrdinal, tyInt..tyInt64, tyUInt..tyUInt64:
     opcAsgnInt
   of tyString, tyCString:
@@ -1561,11 +1559,6 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
         c.gABx(n, opcLdConst, dest, lit)
     of skType:
       genTypeLit(c, s.typ, dest)
-    of skGenericParam:
-      if c.prc.sym.kind == skMacro:
-        genRdVar(c, n, dest, flags)
-      else:
-        internalError(n.info, "cannot generate code for: " & s.name.s)
     else:
       internalError(n.info, "cannot generate code for: " & s.name.s)
   of nkCallKinds:
@@ -1697,14 +1690,6 @@ proc genParams(c: PCtx; params: PNode) =
     c.prc.slots[i] = (inUse: true, kind: slotFixedLet)
   c.prc.maxSlots = max(params.len, 1)
 
-proc genGenericParams(c: PCtx; gp: PNode) =
-  var base = c.prc.maxSlots
-  for i in 0.. <gp.len:
-    var param = gp.sons[i].sym
-    param.position = base + i # XXX: fix this earlier; make it consistent with templates
-    c.prc.slots[base + i] = (inUse: true, kind: slotFixedLet)
-  c.prc.maxSlots = base + gp.len
-
 proc finalJumpTarget(c: PCtx; pc, diff: int) =
   internalAssert(-0x7fff < diff and diff < 0x7fff)
   let oldInstr = c.code[pc]
@@ -1776,8 +1761,6 @@ proc genProc(c: PCtx; s: PSym): int =
     c.prc = p
     # iterate over the parameters and allocate space for them:
     genParams(c, s.typ.n)
-    if s.kind == skMacro and s.ast[genericParamsPos].kind != nkEmpty:
-      genGenericParams(c, s.ast[genericParamsPos])
     if tfCapturesEnv in s.typ.flags:
       #let env = s.ast.sons[paramsPos].lastSon.sym
       #assert env.position == 2
