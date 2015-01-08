@@ -133,7 +133,7 @@ let statement
 -------------
 
 A ``let`` statement declares new local and global `single assignment`:idx:
-variables and binds a value to them. The syntax is the of the ``var`` 
+variables and binds a value to them. The syntax is the same as that of the ``var`` 
 statement, except that the keyword ``var`` is replaced by the keyword ``let``.
 Let variables are not l-values and can thus not be passed to ``var`` parameters
 nor can their address be taken. They cannot be assigned new values.
