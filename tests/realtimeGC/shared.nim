@@ -57,4 +57,5 @@ proc count() {.exportc: "count", dynlib.} =
 
 proc occupiedMem() {.exportc: "occupiedMem", dynlib.} =
   #echo("Occupied Memmory: ", getOccupiedMem())
+  discard
 

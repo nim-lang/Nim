@@ -7,4 +7,4 @@ set INC=
 
 nim c shared.nim
 nim c -o:nmain main.nim
-%CXX% %INC) %DEFS% %CFLAGS% -o cmain main.c %LNFLAGS% %LIBS%
+%CXX% %INC% %DEFS% %CFLAGS% -o cmain main.c %LNFLAGS% %LIBS%

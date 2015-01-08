@@ -25,9 +25,9 @@ int main(int argc, char* argv[])
 
 #ifdef WIN
     hndl = (void*) LoadLibrary((char const*)"./shared.dll");
-    status = (pFunc)GetProcessAddress((HMODULE) hndl, (char const*)"status");
-    count = (pFunc)GetProcessAddress((HMODULE) hndl, (char const*)"count");
-    occupiedMem = (pFunc)GetProcessAddress((HMODULE) hndl, (char const*)"occupiedMem");
+    status = (pFunc)GetProcAddress((HMODULE) hndl, (char const*)"status");
+    count = (pFunc)GetProcAddress((HMODULE) hndl, (char const*)"count");
+    occupiedMem = (pFunc)GetProcAddress((HMODULE) hndl, (char const*)"occupiedMem");
 #else /* OSX || NIX */
     hndl = (void*) dlopen((char const*)"./libshared.so", RTLD_LAZY);
     status = (pFunc) dlsym(hndl, (char const*)"status");
