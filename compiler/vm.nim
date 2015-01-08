@@ -1417,20 +1417,12 @@ proc evalStaticStmt*(module: PSym, e: PNode, prc: PSym) =
 proc setupCompileTimeVar*(module: PSym, n: PNode) =
   discard evalConstExprAux(module, nil, n, emStaticStmt)
 
-proc setupMacroParam(x: PNode, typ: PType): TFullReg =
-  case typ.kind
-  of tyStatic:
-    putIntoReg(result, x)
-  of tyTypeDesc:
-    putIntoReg(result, x)
-  else:
-    result.kind = rkNode
-    var n = x
-    if n.kind in {nkHiddenSubConv, nkHiddenStdConv}: n = n.sons[1]
-    n = n.canonValue
-    n.flags.incl nfIsRef
-    n.typ = x.typ
-    result.node = n
+proc setupMacroParam(x: PNode): PNode =
+  result = x
+  if result.kind in {nkHiddenSubConv, nkHiddenStdConv}: result = result.sons[1]
+  result = canonValue(result)
+  result.flags.incl nfIsRef
+  result.typ = x.typ
 
 var evalMacroCounter: int
 
@@ -1450,7 +1442,6 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
 
   c.callsite = nOrig
   let start = genProc(c, sym)
-  # c.echoCode start
 
   var tos = PStackFrame(prc: sym, comesFrom: 0, next: nil)
   let maxSlots = sym.offset
@@ -1466,14 +1457,9 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
   tos.slots[0].kind = rkNode
   tos.slots[0].node = newNodeIT(nkEmpty, n.info, sym.typ.sons[0])
   # setup parameters:
-  for i in 1.. <sym.typ.len:
-    tos.slots[i] = setupMacroParam(n.sons[i], sym.typ.sons[i])
-
-  let gp = sym.ast[genericParamsPos]
-  for i in 0 .. <gp.len:
-    let idx = sym.typ.len + i
-    tos.slots[idx] = setupMacroParam(n.sons[idx], gp[i].sym.typ)
-
+  for i in 1 .. < min(tos.slots.len, L):
+    tos.slots[i].kind = rkNode
+    tos.slots[i].node = setupMacroParam(n.sons[i])
   # temporary storage:
   #for i in L .. <maxSlots: tos.slots[i] = newNode(nkEmpty)
   result = rawExecute(c, start, tos).regToNode
