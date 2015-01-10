@@ -732,7 +732,7 @@ proc semBorrow(c: PContext, n: PNode, s: PSym) =
     localError(n.info, errNoSymbolToBorrowFromFound) 
   
 proc addResult(c: PContext, t: PType, info: TLineInfo, owner: TSymKind) = 
-  if t != nil: 
+  if t != nil:
     var s = newSym(skResult, getIdent"result", getCurrOwner(), info)
     s.typ = t
     incl(s.flags, sfUsed)
@@ -851,6 +851,7 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   
   openScope(c)
   var s = n.sons[namePos].sym
+  pushOwner(s)
   addParams(c, n.typ.n, skProc)
   pushProcCon(c, s)
   addResult(c, n.typ.sons[0], n.info, skProc)
@@ -858,6 +859,7 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   n.sons[bodyPos] = transformBody(c.module, semBody, n.sons[namePos].sym)
   addResultNode(c, n)
   popProcCon(c)
+  popOwner()
   closeScope(c)
   
   s.ast = result
