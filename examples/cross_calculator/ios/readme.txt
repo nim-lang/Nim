@@ -1,10 +1,10 @@
 In this directory you will find the iOS platform cross-calculator sample.
 
 The iOS version of the code builds a view controller in charge of displaying
-the interface to the user. The nimrod backend code is compiled into C code and
+the interface to the user. The Nim backend code is compiled into C code and
 put into build/nimrod as a pre-build phase of the project.
 
-When the calculate button is used the view controller calls the nimrod code to
+When the calculate button is used the view controller calls the Nim code to
 delegate the logic of the operation and puts the result in a label for display.
 All interface error checks are implemented in the view controller.
 
