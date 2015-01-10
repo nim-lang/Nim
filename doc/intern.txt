@@ -50,7 +50,7 @@ Compiling the compiler is a simple matter of running::
 For a release version use::
 
   nim c koch.nim
-  ./koch boot -d:release
+  ./koch boot -d:release --stackTrace:on
 
 And for a debug version compatible with GDB::
 

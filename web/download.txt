@@ -43,7 +43,7 @@ Change the branch to suit your needs::
   cd csources && sh build.sh
   cd ..
   bin/nim c koch
-  ./koch boot -d:release
+  ./koch boot -d:release --stackTrace:on
 
 The ``master`` branch always contains the latest stable version of the compiler.
 If you want bleeding edge then switch to the ``devel`` branch and follow

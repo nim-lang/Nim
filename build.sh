@@ -11,7 +11,7 @@ sh build.sh
 cd ".."
 
 ./bin/nim c koch
-./koch boot -d:release
+./koch boot -d:release --stacktrace:on -d:useGnuReadline
 
 cp -f install.sh.template install.sh
 chmod +x install.sh
