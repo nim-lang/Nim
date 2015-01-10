@@ -96,7 +96,7 @@ proc getinfo[T](self: Regex, opt: cint): T =
     # XXX Error message that doesn't expose implementation details
     raise newException(FieldError, "Invalid getinfo for $1, errno $2" % [$opt, $retcode])
 
-proc captureCount*(self: Regex): int =
+proc captureCount(self: Regex): int =
   ## get the maximum number of captures
   ##
   ## Does not return the number of captured captures
