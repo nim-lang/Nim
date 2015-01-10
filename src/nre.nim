@@ -78,6 +78,7 @@ type
 
   StudyError* = ref object of Exception
 
+# Creation & Destruction {{{
 proc destroyRegex(self: Regex) =
   pcre.free_substring(cast[cstring](self.pcreObj))
   self.pcreObj = nil
@@ -106,11 +107,13 @@ proc initRegex*(pattern: string, options = "Sx"): Regex =
     result.pcreExtra = pcre.study(result.pcreObj, 0x0, addr errorMsg)
     if result.pcreExtra == nil:
       raise StudyError(msg: $errorMsg)
+# }}}
 
 proc getinfo[T](self: Regex, opt: cint): T =
   let retcode = pcre.fullinfo(self.pcreObj, self.pcreExtra, opt, addr result)
 
   if retcode < 0:
+    # XXX Error message that doesn't expose implementation details
     raise newException(FieldError, "Invalid getinfo for $1, errno $2" % [$opt, $retcode])
 
 proc getCaptureCount(self: Regex): int =

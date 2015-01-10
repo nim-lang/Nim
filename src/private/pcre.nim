@@ -309,14 +309,6 @@ type
   jit_stack16* = object
   jit_stack32* = object
 
-
-# When Pcre is compiled as a C++ library, the subject pointer type can be
-#replaced with a custom type. For conventional use, the public interface is a
-#const char *. 
-
-type 
-  SPTR* = cstring
-
 # The structure for passing additional data to pcre_exec(). This is defined in
 #such as way as to be extensible. Always add new fields at the end, in order to
 #remain compatible. 
@@ -344,7 +336,7 @@ type
                                           # ------------------------ Version 0 ------------------------------- 
     callout_number* {.importc: "callout_number".}: cint # Number compiled into pattern 
     offset_vector* {.importc: "offset_vector".}: ptr cint # The offset vector 
-    subject* {.importc: "subject".}: SPTR # The subject being matched 
+    subject* {.importc: "subject".}: cstring # The subject being matched 
     subject_length* {.importc: "subject_length".}: cint # The length of the subject 
     start_match* {.importc: "start_match".}: cint # Offset to start of this match attempt 
     current_position* {.importc: "current_position".}: cint # Where we currently are in the subject 
@@ -398,10 +390,10 @@ proc copy_substring*(a2: cstring; a3: ptr cint; a4: cint; a5: cint; a6: cstring;
 proc dfa_exec*(a2: ptr Pcre; a3: ptr ExtraData; a4: cstring; a5: cint; a6: cint; 
                a7: cint; a8: ptr cint; a9: cint; a10: ptr cint; a11: cint): cint {.
     cdecl, importc: "pcre_dfa_exec", pcreImport.}
-proc exec*(a2: ptr Pcre; a3: ptr ExtraData; a4: SPTR; a5: cint; a6: cint; a7: cint; 
+proc exec*(a2: ptr Pcre; a3: ptr ExtraData; a4: cstring; a5: cint; a6: cint; a7: cint; 
            a8: ptr cint; a9: cint): cint {.cdecl, importc: "pcre_exec", 
     pcreImport.}
-proc jit_exec*(a2: ptr Pcre; a3: ptr ExtraData; a4: SPTR; a5: cint; a6: cint; 
+proc jit_exec*(a2: ptr Pcre; a3: ptr ExtraData; a4: cstring; a5: cint; a6: cint; 
                a7: cint; a8: ptr cint; a9: cint; a10: ptr jit_stack): cint {.
     cdecl, importc: "pcre_jit_exec", pcreImport.}
 proc free_substring*(a2: cstring) {.cdecl, importc: "pcre_free_substring", 
