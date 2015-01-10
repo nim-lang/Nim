@@ -3,6 +3,8 @@ import private.util
 import tables
 import unsigned
 from strutils import toLower, `%`
+from math import ceil
+import optional_t
 
 # PCRE Options {{{
 
@@ -70,7 +72,9 @@ type
 
   RegexMatch* = object
     pattern: Regex
-    matchBounds: Slice[int]
+    matchBounds: seq[Slice[cint]] ## First item is the bounds of the match
+                                  ## Other items are the captures
+                                  ## `a` is inclusive start, `b` is exclusive end
 
   SyntaxError* = ref object of Exception
     pos*: int  ## the location of the syntax error in bytes
@@ -141,5 +145,27 @@ proc getNameToNumberTable(self: Regex): Table[string, int] =
 
     result[name] = num
 
-proc exec*(self: Regex, str: string): RegexMatch =
-  discard
+proc exec*(self: Regex, str: string, start = 0): Option[RegexMatch] =
+  var result: RegexMatch
+  result.pattern = self
+  # See PCRE man pages.
+  # 2x capture count to make room for start-end pairs
+  # 1x capture count as slack space for PCRE
+  let vecsize = (self.getCaptureCount() + 1) * 3
+  # div 2 because each element is 2 cints long
+  result.matchBounds = newSeq[Slice[cint]](ceil(vecsize / 2).int)
+  result.matchBounds.setLen(vecsize div 3)
+
+  let execRet = pcre.exec(self.pcreObj,
+                          self.pcreExtra,
+                          cstring(str),
+                          cint(str.len),
+                          cint(start),
+                          cint(0),
+                          cast[ptr cint](addr result.matchBounds[0]), cint(vecsize))
+  if execRet >= 0:
+    return Some(result)
+  elif execRet == pcre.ERROR_NOMATCH:
+    return None[RegexMatch]()
+  else:
+    raise newException(AssertionError, "Internal error: errno " & $execRet)
