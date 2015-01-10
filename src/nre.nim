@@ -78,8 +78,14 @@ type
 
   StudyError* = ref object of Exception
 
+proc destroyRegex(self: Regex) =
+  pcre.free_substring(cast[cstring](self.pcreObj))
+  self.pcreObj = nil
+  if self.pcreExtra != nil:
+    pcre.free_study(self.pcreExtra)
+
 proc initRegex*(pattern: string, options = "Sx"): Regex =
-  new result
+  new(result, destroyRegex)
   result.pattern = pattern
 
   var errorMsg: cstring
@@ -131,3 +137,6 @@ proc getNameToNumberTable(self: Regex): Table[string, int] =
       idx += 1
 
     result[name] = num
+
+proc exec*(self: Regex, str: string): RegexMatch =
+  discard

@@ -1,4 +1,3 @@
-
 when not defined(pcreDll):
   when hostOS == "windows":
     const pcreDll = "pcre.dll"
@@ -9,7 +8,6 @@ when not defined(pcreDll):
   {.pragma: pcreImport, dynlib: pcreDll.}
 else:
   {.pragma: pcreImport, header: "<pcre.h>".}
-
 
 #************************************************
 #       Perl-Compatible Regular Expressions      *
@@ -368,12 +366,13 @@ type
 #that is triggered by the (?) regex item. For Virtual Pascal, these definitions
 #have to take another form. 
 
-var malloc*: proc (a2: csize): pointer {.cdecl.}
-var free*: proc (a2: pointer) {.cdecl.}
-var stack_malloc*: proc (a2: csize): pointer {.cdecl.}
-var stack_free*: proc (a2: pointer) {.cdecl.}
-var callout*: proc (a2: ptr callout_block): cint {.cdecl.}
-var stack_guard*: proc (): cint {.cdecl.}
+{.emit: "#include <pcre.h>".}
+proc malloc*(a2: csize): pointer {.cdecl, importc: "pcre_malloc", pcreImport.}
+proc free*(a2: pointer) {.cdecl, importc: "pcre_free", pcreImport.}
+proc stack_malloc*(a2: csize): pointer {.cdecl, importc: "pcre_stack_malloc", pcreImport.}
+proc stack_free*(a2: pointer) {.cdecl, importc: "pcre_free", pcreImport.}
+proc callout*(a2: ptr callout_block): cint {.cdecl, importc: "pcre_callout", pcreImport.}
+proc stack_guard*(): cint {.cdecl, importc: "pcre_stack_guard", pcreImport.}
 
 # User defined callback which provides a stack just before the match starts. 
 
