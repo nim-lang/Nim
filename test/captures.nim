@@ -33,3 +33,9 @@ suite "captures":
     let ex1 = initRegex("(?<foo>foo)(?<bar>bar)?").exec("foo").get
     check(ex1.captureBounds["foo"] == Some(0..3))
     check(ex1.captureBounds["bar"] == None[Slice[int]]())
+
+  test "capture count":
+    let ex1 = initRegex("(?<foo>foo)(?<bar>bar)?")
+    check(ex1.captureCount == 2)
+    # Don't have sets, do this :<
+    check(ex1.captureNames == @["foo", "bar"] or ex1.captureNames == @["bar", "foo"])
