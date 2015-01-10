@@ -155,7 +155,6 @@ macro `[]`*(lc: ListComprehension, comp, typ: expr): expr =
 
   for i in countdown(comp[2].len-1, 0):
     let x = comp[2][i]
-    expectKind(x, nnkInfix)
     expectMinLen(x, 1)
     if x[0].kind == nnkIdent and $x[0].ident == "<-":
       expectLen(x, 3)
