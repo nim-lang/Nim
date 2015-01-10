@@ -2,7 +2,7 @@ import private.pcre as pcre
 import private.util
 import tables
 import unsigned
-from strutils import toLower
+from strutils import toLower, `%`
 
 # PCRE Options {{{
 
@@ -100,3 +100,34 @@ proc initRegex*(pattern: string, options = "Sx"): Regex =
     result.pcreExtra = pcre.study(result.pcreObj, 0x0, addr errorMsg)
     if result.pcreExtra == nil:
       raise StudyError(msg: $errorMsg)
+
+proc getinfo[T](self: Regex, opt: cint): T =
+  let retcode = pcre.fullinfo(self.pcreObj, self.pcreExtra, opt, addr result)
+
+  if retcode < 0:
+    raise newException(FieldError, "Invalid getinfo for $1, errno $2" % [$opt, $retcode])
+
+proc getCaptureCount(self: Regex): int =
+  # get the maximum number of captures
+  return getinfo[int](self, pcre.INFO_CAPTURECOUNT)
+
+type UncheckedArray {.unchecked.}[T] = array[0 .. 0, T]
+proc getNameToNumberTable(self: Regex): Table[string, int] =
+  let entryCount = getinfo[cint](self, pcre.INFO_NAMECOUNT)
+  let entrySize = getinfo[cint](self, pcre.INFO_NAMEENTRYSIZE)
+  let table = cast[ptr UncheckedArray[uint8]](
+                getinfo[int](self, pcre.INFO_NAMETABLE))
+
+  result = initTable[string, int]()
+
+  for i in 0 .. <entryCount:
+    let pos = i * entrySize
+    let num = (int(table[pos]) shl 8) or int(table[pos + 1])
+    var name = ""
+
+    var idx = 2
+    while table[pos + idx] != 0:
+      name.add(char(table[pos + idx]))
+      idx += 1
+
+    result[name] = num
