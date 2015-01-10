@@ -215,10 +215,7 @@ proc initRegex*(pattern: string, options = "Sx"): Regex =
   result.captureNameToId = result.getNameToNumberTable()
 # }}}
 
-proc exec*(self: Regex, str: string, start = 0): RegexMatch =
-  ## Tries to match the regex on the string `str` starting at `start`.
-  ## On fail, returns `nil`
-  ## On success, returns RegexMatch
+proc exec*(self: Regex, str: string, start = 0): Option[RegexMatch] =
   var result: RegexMatch
   new(result)
   result.pattern = self
@@ -239,8 +236,8 @@ proc exec*(self: Regex, str: string, start = 0): RegexMatch =
                           cint(0),
                           cast[ptr cint](addr result.pcreMatchBounds[0]), cint(vecsize))
   if execRet >= 0:
-    return result
+    return Some(result)
   elif execRet == pcre.ERROR_NOMATCH:
-    return nil
+    return None[RegexMatch]()
   else:
     raise newException(AssertionError, "Internal error: errno " & $execRet)
