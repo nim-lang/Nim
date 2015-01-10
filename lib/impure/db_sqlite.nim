@@ -48,6 +48,7 @@ proc dbError*(msg: string) {.noreturn.} =
   raise e
 
 proc dbQuote(s: string): string =
+  if s.isNil: return "NULL"
   result = "'"
   for c in items(s):
     if c == '\'': add(result, "''")
@@ -61,7 +62,7 @@ proc dbFormat(formatstr: TSqlQuery, args: varargs[string]): string =
     if c == '?':
       add(result, dbQuote(args[a]))
       inc(a)
-    else: 
+    else:
       add(result, c)
   
 proc tryExec*(db: TDbConn, query: TSqlQuery, 
