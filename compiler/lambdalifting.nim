@@ -187,6 +187,7 @@ proc addHiddenParam(routine: PSym, param: PSym) =
   param.position = params.len-1
   addSon(params, newSymNode(param))
   incl(routine.typ.flags, tfCapturesEnv)
+  assert sfFromGeneric in param.flags
   #echo "produced environment: ", param.id, " for ", routine.name.s
 
 proc getHiddenParam(routine: PSym): PSym =
@@ -194,12 +195,14 @@ proc getHiddenParam(routine: PSym): PSym =
   let hidden = lastSon(params)
   internalAssert hidden.kind == nkSym and hidden.sym.kind == skParam
   result = hidden.sym
+  assert sfFromGeneric in result.flags
 
 proc getEnvParam(routine: PSym): PSym =
   let params = routine.ast.sons[paramsPos]
   let hidden = lastSon(params)
   if hidden.kind == nkSym and hidden.sym.name.s == paramName:
     result = hidden.sym
+    assert sfFromGeneric in result.flags
 
 proc initIter(iter: PSym): TIter =
   result.fn = iter
@@ -716,15 +719,17 @@ proc outerProcSons(o: POuterContext, n: PNode, it: TIter) =
     let x = transformOuterProc(o, n.sons[i], it)
     if x != nil: n.sons[i] = x
 
-proc liftIterSym*(n: PNode): PNode =
-  # transforms  (iter)  to  (let env = newClosure[iter](); (iter, env)) 
+proc liftIterSym(n: PNode): PNode =
+  # transforms  (iter)  to  (let env = newClosure[iter](); (iter, env))
   let iter = n.sym
   assert iter.kind == skClosureIterator
 
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   
-  var env = copySym(getHiddenParam(iter))
-  env.kind = skLet
+  let hp = getHiddenParam(iter)
+  let env = newSym(skLet, iter.name, iter.owner, iter.info)
+  env.typ = hp.typ
+  env.flags = hp.flags
   var v = newNodeI(nkVarSection, n.info)
   addVar(v, newSymNode(env))
   result.add(v)
@@ -853,7 +858,6 @@ proc transformOuterProc(o: POuterContext, n: PNode; it: TIter): PNode =
         addUniqueField(it.obj, local)
         return indirectAccess(newSymNode(it.closureParam), local, n.info)
 
-    var closure = PEnv(idTableGet(o.lambdasToEnv, local))
     if local.kind == skClosureIterator:
       # consider: [i1, i2, i1]  Since we merged the iterator's closure
       # with the captured owning variables, we need to generate the
@@ -861,13 +865,25 @@ proc transformOuterProc(o: POuterContext, n: PNode; it: TIter): PNode =
       if local == o.fn or local == it.fn:
         message(n.info, errRecursiveDependencyX, local.name.s)
       # XXX why doesn't this work?
+      var closure = PEnv(idTableGet(o.lambdasToEnv, local))
       if closure.isNil:
         return liftIterSym(n)
       else:
         let createdVar = generateIterClosureCreation(o, closure,
                                                      closure.attachedNode)
+        let lpt = getHiddenParam(local).typ
+        if lpt != createdVar.typ:
+          assert lpt.kind == tyRef and createdVar.typ.kind == tyRef
+          # fix bug 'tshallowcopy_closures' but report if this gets any weirder:
+          if createdVar.typ.sons[0].len == 1 and lpt.sons[0].len >= 1:
+            createdVar.typ = lpt
+            if createdVar.kind == nkSym: createdVar.sym.typ = lpt
+            closure.obj = lpt.sons[0]
+          else:
+            internalError(n.info, "environment computation failed")
         return makeClosure(local, createdVar, n.info)
 
+    var closure = PEnv(idTableGet(o.lambdasToEnv, local))
     if closure != nil:
       # we need to replace the lambda with '(lambda, env)':
       let a = closure.createdVar
@@ -935,7 +951,7 @@ proc liftLambdas*(fn: PSym, body: PNode): PNode =
     # ignore forward declaration:
     result = body
   else:
-    #if fn.name.s == "cbOuter":
+    #if fn.name.s == "sort":
     #  echo rendertree(fn.ast, {renderIds})
     var o = newOuterContext(fn)
     let ex = closureCreationPoint(body)
