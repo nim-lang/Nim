@@ -1,4 +1,4 @@
-This directory contains the nimrod commandline version of the todo cross
+This directory contains the Nim commandline version of the todo cross
 platform example.
 
 The commandline interface can be used only through switches, running the binary
@@ -14,6 +14,6 @@ generation switch can be used to fill the database with some basic todo entries
 you can play with.
 
 Compilation is fairly easy despite having the source split in different
-directories. Thanks to the nimrod.cfg file, which adds the ../nimrod_backend
+directories. Thanks to the Nim.cfg file, which adds the ../Nim_backend
 directory as a search path, you can compile and run the example just fine from
-the command line with 'nimrod c -r nimtodo.nim'.
+the command line with 'nim c -r nimtodo.nim'.

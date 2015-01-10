@@ -40,7 +40,7 @@
 	// Dismiss all keyboards.
 	[self backgroundTouched];
 
-	// Call nimrod code, store the result and display it.
+	// Call Nim code, store the result and display it.
 	const int a = [self.aText.text intValue];
 	const int b = [self.bText.text intValue];
 	const int c = myAdd(a, b);
@@ -66,7 +66,7 @@
  * was used on the xib file and slightly modified to fit the original property
  * names. Which means here is a lot of garbage you would never write in real
  * life. Please ignore the following "wall of code" for the purposes of
- * learning Nimrod, this is all just because Apple can't be bothered to
+ * learning Nim, this is all just because Apple can't be bothered to
  * maintain backwards compatibility properly.
  */
 - (void)loadView
@@ -102,7 +102,7 @@
 	label4.contentStretch = CGRectFromString(@"{{0, 0}, {1, 1}}");
 	label4.frame = CGRectMake(0.0, 0.0, 320.0, 34.0);
 	label4.tag = 2;
-	label4.text = @"Nimrod Crossplatform Calculator";
+	label4.text = @"Nim Crossplatform Calculator";
 	label4.textAlignment = UITextAlignmentCenter;
 
 	UIButton *background_button = [UIButton buttonWithType:UIButtonTypeCustom];

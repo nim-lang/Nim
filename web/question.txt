@@ -104,11 +104,11 @@ General
   What about editor support?
   --------------------------
 
-  - Nim IDE: https://github.com/nimrod-code/Aporia
+  - Nim IDE: https://github.com/nim-code/Aporia
   - Emacs: https://github.com/Tass/nimrod-mode
   - Vim: https://github.com/zah/nimrod.vim/
   - Scite: Included
-  - Gedit: The `Aporia .lang file <https://github.com/nimrod-code/Aporia/blob/master/share/gtksourceview-2.0/language-specs/nimrod.lang>`_
+  - Gedit: The `Aporia .lang file <https://github.com/nim-code/Aporia/blob/master/share/gtksourceview-2.0/language-specs/nimrod.lang>`_
   - jEdit: https://github.com/exhu/nimrod-misc/tree/master/jedit
   - TextMate: Available in bundle installer (`Repository <https://github.com/textmate/nim.tmbundle>`_)
 
@@ -146,7 +146,7 @@ Compilation
   How do I use a different C compiler than the default one?
   ---------------------------------------------------------
 
-  Edit the ``config/nimrod.cfg`` file.
+  Edit the ``config/nim.cfg`` file.
   Change the value of the ``cc`` variable to one of the following:
 
   ==============  ============================================

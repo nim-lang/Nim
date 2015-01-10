@@ -136,7 +136,7 @@ are also lots of procs that aid in debugging:
   debug(someType)
   echo symbol.name.s
   debug(symbol)
-  # pretty prints the nimrod ast, but annotates symbol IDs:
+  # pretty prints the Nim ast, but annotates symbol IDs:
   echo renderTree(someNode, {renderIds})
   if n.info ?? "temp.nim":
     # only output when it comes from "temp.nim"

@@ -586,7 +586,7 @@ Nimble
 
 Nimble is a package manager for the Nim programming language.
 For instructions on how to install Nimble packages see
-`its README <https://github.com/nim-lang/babel#readme>`_.
+`its README <https://github.com/nim-lang/nimble#readme>`_.
 
 Official packages
 -----------------
