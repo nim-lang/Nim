@@ -15,7 +15,6 @@ let Options: Table[string, int] = {
   "E" : pcre.DOLLAR_ENDONLY,
   "f" : pcre.FIRSTLINE,
   "i" : pcre.CASELESS,
-  "J" : pcre.DUPNAMES,
   "m" : pcre.MULTILINE,
   "N" : pcre.NO_AUTO_CAPTURE,
   "O" : pcre.NO_AUTO_POSSESS,
