@@ -65,8 +65,13 @@ proc tokenizeOptions(opts: string): tuple[flags: int, study: bool] =
 
 type
   Regex* = ref object
-    pcreObj: ptr pcre.Pcre
-    pcreExtra: ptr pcre.ExtraData
+    pattern: string  # not nil
+    pcreObj: ptr pcre.Pcre  # not nil
+    pcreExtra: ptr pcre.ExtraData  ## nil
+
+  RegexMatch* = object
+    pattern: Regex
+    matchBounds: Slice[int]
 
   SyntaxError* = ref object of Exception
     pos*: int  ## the location of the syntax error in bytes
@@ -76,6 +81,7 @@ type
 
 proc initRegex*(pattern: string, options = "Sx"): Regex =
   new result
+  result.pattern = pattern
 
   var errorMsg: cstring
   var errOffset: cint
