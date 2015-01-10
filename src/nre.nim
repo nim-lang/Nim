@@ -6,64 +6,7 @@ from strutils import toLower, `%`
 from math import ceil
 import optional_t
 
-# PCRE Options {{{
-
-let Options: Table[string, int] = {
-  "8" : pcre.UTF8,
-  "9" : pcre.NEVER_UTF,
-  "?" : pcre.NO_UTF8_CHECK,
-  "A" : pcre.ANCHORED,
-  # "C" : pcre.AUTO_CALLOUT, unsuported XXX
-  "E" : pcre.DOLLAR_ENDONLY,
-  "f" : pcre.FIRSTLINE,
-  "i" : pcre.CASELESS,
-  "m" : pcre.MULTILINE,
-  "N" : pcre.NO_AUTO_CAPTURE,
-  "O" : pcre.NO_AUTO_POSSESS,
-  "s" : pcre.DOTALL,
-  "U" : pcre.UNGREEDY,
-  "W" : pcre.UCP,
-  "X" : pcre.EXTRA,
-  "x" : pcre.EXTENDED,
-  "Y" : pcre.NO_START_OPTIMIZE,
-
-  "any"         : pcre.NEWLINE_ANY,
-  "anycrlf"     : pcre.NEWLINE_ANYCRLF,
-  "cr"          : pcre.NEWLINE_CR,
-  "crlf"        : pcre.NEWLINE_CRLF,
-  "lf"          : pcre.NEWLINE_LF,
-  "bsr_anycrlf" : pcre.BSR_ANYCRLF,
-  "bsr_unicode" : pcre.BSR_UNICODE,
-  "js"          : pcre.JAVASCRIPT_COMPAT,
-}.toTable
-
-proc tokenizeOptions(opts: string): tuple[flags: int, study: bool] =
-  result = (0, false)
-
-  var longOpt: string = nil
-  for i, c in opts:
-    # Handle long options {{{
-    if c == '<':
-      longOpt = ""
-      continue
-
-    if longOpt != nil:
-      if c == '>':
-        result.flags = result.flags or Options.fget(longOpt)
-        longOpt = nil
-      else:
-        longOpt.add(c.toLower)
-      continue
-    # }}}
-
-    if c == 'S':  # handle study
-      result.study = true
-      continue
-
-    result.flags = result.flags or Options.fget($c)
-
-# }}}
-
+# Type definitions {{{
 type
   Regex* = ref object
     pattern: string  # not nil
@@ -88,6 +31,7 @@ type
     pattern*: string  ## the pattern that caused the problem
 
   StudyError* = ref object of Exception
+# }}}
 
 proc getinfo[T](self: Regex, opt: cint): T =
   let retcode = pcre.fullinfo(self.pcreObj, self.pcreExtra, opt, addr result)
@@ -161,13 +105,70 @@ proc `[]`*(self: Captures, name: string): string =
 # }}}
 
 # Creation & Destruction {{{
+# PCRE Options {{{
+let Options: Table[string, int] = {
+  "8" : pcre.UTF8,
+  "9" : pcre.NEVER_UTF,
+  "?" : pcre.NO_UTF8_CHECK,
+  "A" : pcre.ANCHORED,
+  # "C" : pcre.AUTO_CALLOUT, unsuported XXX
+  "E" : pcre.DOLLAR_ENDONLY,
+  "f" : pcre.FIRSTLINE,
+  "i" : pcre.CASELESS,
+  "m" : pcre.MULTILINE,
+  "N" : pcre.NO_AUTO_CAPTURE,
+  "O" : pcre.NO_AUTO_POSSESS,
+  "s" : pcre.DOTALL,
+  "U" : pcre.UNGREEDY,
+  "W" : pcre.UCP,
+  "X" : pcre.EXTRA,
+  "x" : pcre.EXTENDED,
+  "Y" : pcre.NO_START_OPTIMIZE,
+
+  "any"         : pcre.NEWLINE_ANY,
+  "anycrlf"     : pcre.NEWLINE_ANYCRLF,
+  "cr"          : pcre.NEWLINE_CR,
+  "crlf"        : pcre.NEWLINE_CRLF,
+  "lf"          : pcre.NEWLINE_LF,
+  "bsr_anycrlf" : pcre.BSR_ANYCRLF,
+  "bsr_unicode" : pcre.BSR_UNICODE,
+  "js"          : pcre.JAVASCRIPT_COMPAT,
+}.toTable
+
+proc tokenizeOptions(opts: string): tuple[flags: int, study: bool] =
+  result = (0, false)
+
+  var longOpt: string = nil
+  for i, c in opts:
+    # Handle long options {{{
+    if c == '<':
+      longOpt = ""
+      continue
+
+    if longOpt != nil:
+      if c == '>':
+        result.flags = result.flags or Options.fget(longOpt)
+        longOpt = nil
+      else:
+        longOpt.add(c.toLower)
+      continue
+    # }}}
+
+    if c == 'S':  # handle study
+      result.study = true
+      continue
+
+    result.flags = result.flags or Options.fget($c)
+# }}}
+
+type UncheckedArray {.unchecked.}[T] = array[0 .. 0, T]
+
 proc destroyRegex(self: Regex) =
   pcre.free_substring(cast[cstring](self.pcreObj))
   self.pcreObj = nil
   if self.pcreExtra != nil:
     pcre.free_study(self.pcreExtra)
 
-type UncheckedArray {.unchecked.}[T] = array[0 .. 0, T]
 proc getNameToNumberTable(self: Regex): Table[string, int] =
   let entryCount = getinfo[cint](self, pcre.INFO_NAMECOUNT)
   let entrySize = getinfo[cint](self, pcre.INFO_NAMEENTRYSIZE)
