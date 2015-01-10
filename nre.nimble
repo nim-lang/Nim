@@ -1,5 +1,5 @@
 [Package]
-name        = "are"
+name        = "nre"
 version     = "0.1.0"
 description = "Yet another PCRE library"
 license     = "MIT"
