@@ -186,13 +186,13 @@ proc incrSeq(seq: PGenericSeq, elemSize: int): PGenericSeq {.compilerProc.} =
   #
   #  add(seq, x)  generates:
   #  seq = incrSeq(seq, sizeof(x));
-  #  seq[seq->len-1] = x;
+  #  seq[seq->len] = x;
+  #  seq->len += 1;
   result = seq
   if result.len >= result.space:
     result.reserved = resize(result.space)
     result = cast[PGenericSeq](growObj(result, elemSize * result.reserved +
                                GenericSeqSize))
-  inc(result.len)
 
 proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
     compilerRtl.} =
