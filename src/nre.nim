@@ -17,11 +17,13 @@ type
     captureNameToId: Table[string, int]
 
   RegexMatch* = ref object
-    pattern: Regex
-    inputStr: string
+    pattern*: Regex  ## The regex doing the matching.
+                     ## Not nil.
+    str*: string  ## The string that was matched against.
+                  ## Not nil.
     pcreMatchBounds: seq[Slice[cint]] ## First item is the bounds of the match
-                                  ## Other items are the captures
-                                  ## `a` is inclusive start, `b` is exclusive end
+                                      ## Other items are the captures
+                                      ## `a` is inclusive start, `b` is exclusive end
     matchCache: seq[string]
 
   Captures* = distinct RegexMatch
@@ -83,7 +85,7 @@ proc `[]`*(self: Captures, i: int): string =
       # capture count, plus the entire string
       self.matchCache = newSeq[string](self.pattern.captureCount + 1)
     if self.matchCache[i + 1] == nil:
-      self.matchCache[i + 1] = self.inputStr[bounds.a .. bounds.b-1]
+      self.matchCache[i + 1] = self.str[bounds.a .. bounds.b-1]
     return self.matchCache[i + 1]
   else:
     return nil
@@ -255,7 +257,7 @@ proc exec*(self: Regex, str: string, start = 0): Option[RegexMatch] =
   var result: RegexMatch
   new(result)
   result.pattern = self
-  result.inputStr = str
+  result.str = str
   # See PCRE man pages.
   # 2x capture count to make room for start-end pairs
   # 1x capture count as slack space for PCRE
