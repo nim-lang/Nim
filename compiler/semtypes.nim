@@ -608,12 +608,6 @@ proc addInheritedFieldsAux(c: PContext, check: var IntSet, pos: var int,
     incl(check, n.sym.name.id)
     inc(pos)
   else: internalError(n.info, "addInheritedFieldsAux()")
-  
-proc addInheritedFields(c: PContext, check: var IntSet, pos: var int, 
-                        obj: PType) = 
-  if (sonsLen(obj) > 0) and (obj.sons[0] != nil): 
-    addInheritedFields(c, check, pos, obj.sons[0])
-  addInheritedFieldsAux(c, check, pos, obj.n)
 
 proc skipGenericInvokation(t: PType): PType {.inline.} = 
   result = t
@@ -621,6 +615,13 @@ proc skipGenericInvokation(t: PType): PType {.inline.} =
     result = result.sons[0]
   if result.kind == tyGenericBody:
     result = lastSon(result)
+
+proc addInheritedFields(c: PContext, check: var IntSet, pos: var int, 
+                        obj: PType) =
+  assert obj.kind == tyObject
+  if (sonsLen(obj) > 0) and (obj.sons[0] != nil): 
+    addInheritedFields(c, check, pos, obj.sons[0].skipGenericInvokation)
+  addInheritedFieldsAux(c, check, pos, obj.n)
 
 proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
   if n.sonsLen == 0: return newConstraint(c, tyObject)
