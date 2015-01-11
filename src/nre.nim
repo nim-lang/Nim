@@ -249,7 +249,7 @@ proc initRegex*(pattern: string, options = "Sx"): Regex =
   if opts.study:
     # XXX investigate JIT
     result.pcreExtra = pcre.study(result.pcreObj, 0x0, addr errorMsg)
-    if result.pcreExtra == nil:
+    if errorMsg != nil:
       raise StudyError(msg: $errorMsg)
 
   result.captureNameToId = result.getNameToNumberTable()
