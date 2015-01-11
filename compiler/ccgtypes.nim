@@ -392,7 +392,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
     uname = toRope(mangle(n.sons[0].sym.name.s) & 'U')
     if accessExpr != nil: ae = ropef("$1.$2", [accessExpr, uname])
     else: ae = uname
-    app(result, "union {" & tnl)
+    var unionBody: PRope = nil
     for i in countup(1, sonsLen(n) - 1): 
       case n.sons[i].kind
       of nkOfBranch, nkElse: 
@@ -402,13 +402,14 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
           a = genRecordFieldsAux(m, k, ropef("$1.$2", [ae, sname]), rectype, 
                                  check)
           if a != nil: 
-            app(result, "struct {")
-            app(result, a)
-            appf(result, "} $1;$n", [sname])
-        else: 
-          app(result, genRecordFieldsAux(m, k, ae, rectype, check))
+            app(unionBody, "struct {")
+            app(unionBody, a)
+            appf(unionBody, "} $1;$n", [sname])
+        else:
+          app(unionBody, genRecordFieldsAux(m, k, ae, rectype, check))
       else: internalError("genRecordFieldsAux(record case branch)")
-    appf(result, "} $1;$n", [uname])
+    if unionBody != nil:
+      appf(result, "union{$n$1} $2;$n", [unionBody, uname])
   of nkSym:
     field = n.sym
     if field.typ.kind == tyEmpty: return
