@@ -10,11 +10,15 @@
 {.deadCodeElim: on.}
 {.push, callconv: cdecl.}
 
-when defined(Unix): 
-  const 
-    lib = "libmysqlclient.so.(15|16|17|18)"
-when defined(Windows): 
-  const 
+when defined(Unix):
+  when defined(macosx):
+    const
+      lib = "libmysqlclient.(15|16|17[18).dylib"
+  else:
+    const
+      lib = "libmysqlclient.so.(15|16|17|18)"
+when defined(Windows):
+  const
     lib = "libmysql.dll"
 type 
   my_bool* = bool
