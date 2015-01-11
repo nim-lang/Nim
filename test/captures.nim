@@ -37,8 +37,7 @@ suite "captures":
   test "capture count":
     let ex1 = initRegex("(?<foo>foo)(?<bar>bar)?")
     check(ex1.captureCount == 2)
-    # Don't have sets, do this :<
-    check(ex1.captureNames == @["foo", "bar"] or ex1.captureNames == @["bar", "foo"])
+    check(ex1.captureNameId == {"foo" : 0, "bar" : 1}.toTable())
 
   test "named capture table":
     let ex1 = initRegex("(?<foo>foo)(?<bar>bar)?").match("foo").get

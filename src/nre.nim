@@ -10,7 +10,7 @@ import optional_t
 # Type definitions {{{
 type
   Regex* = ref object
-    pattern: string  # not nil
+    pattern*: string  # not nil
     pcreObj: ptr pcre.Pcre  # not nil
     pcreExtra: ptr pcre.ExtraData  ## nil
 
@@ -43,18 +43,20 @@ proc getinfo[T](self: Regex, opt: cint): T =
     # XXX Error message that doesn't expose implementation details
     raise newException(FieldError, "Invalid getinfo for $1, errno $2" % [$opt, $retcode])
 
-# Capture accessors {{{
-proc captureCount(self: Regex): int =
-  ## get the maximum number of captures
+# Regex accessors {{{
+proc captureCount*(self: Regex): int =
+  ## Get the maximum number of captures
   ##
   ## Does not return the number of captured captures
   return getinfo[int](self, pcre.INFO_CAPTURECOUNT)
 
-proc captureNames*(self: Regex): seq[string] =
-  result = @[]
-  for key in self.captureNameToId.keys:
-    result.add(key)
+proc captureNameId*(self: Regex): Table[string, int] =
+  ## Returns a map from named capture groups to their numerical
+  ## identifier
+  return self.captureNameToId
+# }}}
 
+# Capture accessors {{{
 proc captureBounds*(self: RegexMatch): CaptureBounds = return CaptureBounds(self)
 
 proc captures*(self: RegexMatch): Captures = return Captures(self)
@@ -107,7 +109,7 @@ proc `[]`*(self: Captures, name: string): string =
   return self.captures[self.pattern.captureNameToId.fget(name)]
 
 template asTableImpl(cond: bool): stmt {.immediate, dirty.} =
-  for key in RegexMatch(self).pattern.captureNames:
+  for key in RegexMatch(self).pattern.captureNameId.keys:
     let nextVal = self[key]
     if cond:
       result[key] = default
