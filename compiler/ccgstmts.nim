@@ -930,8 +930,8 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): PRope =
   if isAsmStmt and hasGnuAsm in CC[cCompiler].props:
     for x in splitLines(res):
       var j = 0
-      while x[j] in {' ', '\t'}: inc(j)
-      if x[j] == ':' and x[j+1] == '"' or x[j] == '"':
+      while x[j] in {' ', '\t', ':'}: inc(j)
+      if x[j] == '"':
         # some clobber register list:
         app(result, x); app(result, tnl)
       elif x[j] != '\0':
