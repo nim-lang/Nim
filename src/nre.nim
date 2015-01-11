@@ -2,6 +2,7 @@ import private.pcre as pcre
 import private.util
 import tables
 import unsigned
+from future import lc, `[]`
 from strutils import toLower, `%`
 from math import ceil
 import optional_t
@@ -102,6 +103,40 @@ proc `[]`*(self: Captures, name: string): string =
   ## Will fail with KeyError if `name` is not a real named capture
   let self = RegexMatch(self)
   return self.captures[self.pattern.captureNameToId.fget(name)]
+
+template asTableImpl(cond: bool): stmt {.immediate, dirty.} =
+  for key in RegexMatch(self).pattern.captureNames:
+    let nextVal = self[key]
+    if cond:
+      result[key] = default
+    else:
+      result[key] = nextVal
+
+proc asTable*(self: Captures, default: string = nil): Table[string, string] =
+  ## Gets all the named captures and returns them
+  result = initTable[string, string]()
+  asTableImpl(nextVal == nil)
+
+proc asTable*(self: CaptureBounds, default = None[Slice[int]]()):
+    Table[string, Option[Slice[int]]] =
+  ## Gets all the named captures and returns them
+  result = initTable[string, Option[Slice[int]]]()
+  asTableImpl(nextVal.isNone)
+
+template asSeqImpl(cond: bool): stmt {.immediate, dirty.} =
+  result = @[]
+  for i in 0 .. <RegexMatch(self).pattern.captureCount:
+    let nextVal = self[i]
+    if cond:
+      result.add(default)
+    else:
+      result.add(nextVal)
+
+proc asSeq*(self: CaptureBounds, default = None[Slice[int]]()): seq[Option[Slice[int]]] =
+  asSeqImpl(nextVal.isNone)
+
+proc asSeq*(self: Captures, default: string = nil): seq[string] =
+  asSeqImpl(nextVal == nil)
 # }}}
 
 # Creation & Destruction {{{

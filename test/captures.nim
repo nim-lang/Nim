@@ -39,3 +39,22 @@ suite "captures":
     check(ex1.captureCount == 2)
     # Don't have sets, do this :<
     check(ex1.captureNames == @["foo", "bar"] or ex1.captureNames == @["bar", "foo"])
+
+  test "named capture table":
+    let ex1 = initRegex("(?<foo>foo)(?<bar>bar)?").exec("foo").get
+    check(ex1.captures.asTable == {"foo" : "foo", "bar" : nil}.toTable())
+    check(ex1.captureBounds.asTable == {"foo" : Some(0..3), "bar" : None[Slice[int]]()}.toTable())
+    check(ex1.captures.asTable("") == {"foo" : "foo", "bar" : ""}.toTable())
+
+    let ex2 = initRegex("(?<foo>foo)(?<bar>bar)?").exec("foobar").get
+    check(ex2.captures.asTable == {"foo" : "foo", "bar" : "bar"}.toTable())
+
+  test "capture sequence":
+    let ex1 = initRegex("(?<foo>foo)(?<bar>bar)?").exec("foo").get
+    check(ex1.captures.asSeq == @["foo", nil])
+    check(ex1.captureBounds.asSeq == @[Some(0..3), None[Slice[int]]()])
+    check(ex1.captures.asSeq("") == @["foo", ""])
+
+    let ex2 = initRegex("(?<foo>foo)(?<bar>bar)?").exec("foobar").get
+    check(ex2.captures.asSeq == @["foo", "bar"])
+
