@@ -640,7 +640,7 @@ Macros
 Macros enable advanced compile-time code transformations, but they cannot
 change Nim's syntax. However, this is no real restriction because Nim's
 syntax is flexible enough anyway. Macros have to be implemented in pure Nim
-code if `foreign function interface (FFI)
+code if the `foreign function interface (FFI)
 <manual.html#foreign-function-interface>`_ is not enabled in the compiler, but
 other than that restriction (which at some point in the future will go away)
 you can write any kind of Nim code and the compiler will run it at compile
