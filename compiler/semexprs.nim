@@ -1317,18 +1317,20 @@ proc semYield(c: PContext, n: PNode): PNode =
   elif n.sons[0].kind != nkEmpty:
     n.sons[0] = semExprWithType(c, n.sons[0]) # check for type compatibility:
     var iterType = c.p.owner.typ
-    var restype = iterType.sons[0]
+    let restype = iterType.sons[0]
     if restype != nil:
-      let adjustedRes = if c.p.owner.kind == skIterator: restype.base
+      let adjustedRes = if restype.kind == tyIter: restype.base
                         else: restype
-      n.sons[0] = fitNode(c, adjustedRes, n.sons[0])
+      if adjustedRes.kind != tyExpr:
+        n.sons[0] = fitNode(c, adjustedRes, n.sons[0])
       if n.sons[0].typ == nil: internalError(n.info, "semYield")
       
       if resultTypeIsInferrable(adjustedRes):
         let inferred = n.sons[0].typ
-        if c.p.owner.kind == skIterator:
-          iterType.sons[0].sons[0] = inferred
+        if restype.kind == tyIter:
+          restype.sons[0] = inferred
         else:
+          debug inferred
           iterType.sons[0] = inferred
       
       semYieldVarResult(c, n, adjustedRes)

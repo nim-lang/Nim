@@ -6,13 +6,16 @@ discard """
 128
 192
 '''
+  disabled: "true"
 """
+
+# This all relies on non-documented and questionable features.
 
 iterator gaz(it: iterator{.inline.}): type(it) =
   for x in it:
     yield x*2
 
-iterator baz(it: iterator{.inline.}) =
+iterator baz(it: iterator{.inline.}): auto =
   for x in gaz(it):
     yield x*2
 

@@ -939,7 +939,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     r = semTypeNode(c, n.sons[0], nil)
   elif kind == skIterator:
     # XXX This is special magic we should likely get rid of
-    r = newTypeS(tyAnything, c)
+    r = newTypeS(tyExpr, c)
   
   if r != nil:
     # turn explicit 'void' return type into 'nil' because the rest of the 
