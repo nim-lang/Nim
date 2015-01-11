@@ -253,7 +253,11 @@ proc initRegex*(pattern: string, options = "Sx"): Regex =
   result.captureNameToId = result.getNameToNumberTable()
 # }}}
 
-proc exec*(self: Regex, str: string, start = 0): Option[RegexMatch] =
+proc match*(self: Regex, str: string, start = 0, endpos = -1): Option[RegexMatch] =
+  ## Returns Some if there is a match between `start` and `endpos`, otherwise
+  ## it returns None.
+  ##
+  ## if `endpos == -1`, then `endpos = str.len`
   var result: RegexMatch
   new(result)
   result.pattern = self
@@ -269,7 +273,7 @@ proc exec*(self: Regex, str: string, start = 0): Option[RegexMatch] =
   let execRet = pcre.exec(self.pcreObj,
                           self.pcreExtra,
                           cstring(str),
-                          cint(str.len),
+                          cint(max(str.len, endpos)),
                           cint(start),
                           cint(0),
                           cast[ptr cint](addr result.pcreMatchBounds[0]), cint(vecsize))
