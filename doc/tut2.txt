@@ -304,8 +304,8 @@ Procedures always use static dispatch. For dynamic dispatch replace the
   echo eval(newPlus(newPlus(newLit(1), newLit(2)), newLit(4)))
 
 Note that in the example the constructors ``newLit`` and ``newPlus`` are procs
-because they should use static binding, but ``eval`` is a method because it
-requires dynamic binding.
+because it makes more sense for them to use static binding, but ``eval`` is a
+method because it requires dynamic binding.
 
 In a multi-method all parameters that have an object type are used for the
 dispatching:
