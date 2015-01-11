@@ -155,6 +155,7 @@ let Options: Table[string, int] = {
   "O" : pcre.NO_AUTO_POSSESS,
   "s" : pcre.DOTALL,
   "U" : pcre.UNGREEDY,
+  "u" : pcre.UTF8,
   "W" : pcre.UCP,
   "X" : pcre.EXTRA,
   "x" : pcre.EXTENDED,
