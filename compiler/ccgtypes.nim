@@ -336,7 +336,7 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): PRope =
   of tyNil: result = typeNameOrLiteral(typ, "0")
   of tyInt..tyUInt64: 
     result = typeNameOrLiteral(typ, NumericalTypeToStr[typ.kind])
-  of tyDistinct, tyRange: result = getSimpleTypeDesc(m, typ.sons[0])
+  of tyDistinct, tyRange, tyOrdinal: result = getSimpleTypeDesc(m, typ.sons[0])
   else: result = nil
   
 proc getTypePre(m: BModule, typ: PType): PRope = 
