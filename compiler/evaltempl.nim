@@ -29,7 +29,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
   of nkSym:
     var s = templ.sym
     if s.owner.id == c.owner.id:
-      if s.kind == skParam:
+      if s.kind == skParam and sfGenSym notin s.flags:
         let x = actual.sons[s.position]
         if x.kind == nkArgList:
           for y in items(x): result.add(y)

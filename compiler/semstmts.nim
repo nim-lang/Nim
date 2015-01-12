@@ -982,7 +982,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   # process parameters:
   if n.sons[paramsPos].kind != nkEmpty:
     semParamList(c, n.sons[paramsPos], gp, s)
-    if sonsLen(gp) > 0: 
+    if sonsLen(gp) > 0:
       if n.sons[genericParamsPos].kind == nkEmpty:
         # we have a list of implicit type parameters:
         n.sons[genericParamsPos] = gp
@@ -1049,6 +1049,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if n.sons[genericParamsPos].kind == nkEmpty or usePseudoGenerics:
       if not usePseudoGenerics: paramsTypeCheck(c, s.typ)
       pushProcCon(c, s)
+      c.p.wasForwarded = proto != nil
       maybeAddResult(c, s, n)
       if sfImportc notin s.flags:
         # no semantic checking for importc:
