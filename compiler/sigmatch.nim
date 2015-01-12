@@ -267,7 +267,7 @@ proc concreteType(c: TCandidate, t: PType): PType =
   else:
     result = t                # Note: empty is valid here
   
-proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation = 
+proc handleRange(f, a: PType, validconv: set[TTypeKind]): TTypeRelation = 
   if a.kind == f.kind: 
     result = isEqual
   else:
@@ -281,9 +281,9 @@ proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation =
       # integer literal in the proper range; we want ``i16 + 4`` to stay an
       # ``int16`` operation so we declare the ``4`` pseudo-equal to int16
       result = isFromIntLit
-    elif f.kind == tyInt and k in {tyInt8..tyInt32}:
+    elif f.kind == tyInt and k in {tyInt8..tyInt32, tyUint8..tyUInt16}:
       result = isIntConv
-    elif k >= min and k <= max: 
+    elif k in validconv: 
       result = isConvertible
     elif a.kind == tyRange and a.sons[0].kind in {tyInt..tyInt64, 
                                                   tyUInt8..tyUInt32} and
@@ -663,16 +663,16 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         result = isIntConv
       elif isConvertibleToRange(skipTypes(f, {tyRange}), a):
         result = isConvertible  # a convertible to f
-  of tyInt:      result = handleRange(f, a, tyInt8, tyInt32)
-  of tyInt8:     result = handleRange(f, a, tyInt8, tyInt8)
-  of tyInt16:    result = handleRange(f, a, tyInt8, tyInt16)
-  of tyInt32:    result = handleRange(f, a, tyInt8, tyInt32)
-  of tyInt64:    result = handleRange(f, a, tyInt, tyInt64)
-  of tyUInt:     result = handleRange(f, a, tyUInt8, tyUInt32)
-  of tyUInt8:    result = handleRange(f, a, tyUInt8, tyUInt8)
-  of tyUInt16:   result = handleRange(f, a, tyUInt8, tyUInt16)
-  of tyUInt32:   result = handleRange(f, a, tyUInt8, tyUInt32)
-  of tyUInt64:   result = handleRange(f, a, tyUInt, tyUInt64)
+  of tyInt:      result = handleRange(f, a, {tyInt8..tyInt32,tyUInt8..tyUInt16})
+  of tyInt8:     result = handleRange(f, a, {tyInt8})
+  of tyInt16:    result = handleRange(f, a, {tyInt8..tyInt16,tyUInt8})
+  of tyInt32:    result = handleRange(f, a, {tyInt8..tyInt32,tyUInt8..tyUInt16})
+  of tyInt64:    result = handleRange(f, a, {tyInt..tyInt64,tyUInt8..tyUInt32})
+  of tyUInt:     result = handleRange(f, a, {tyUInt8..tyUInt32})
+  of tyUInt8:    result = handleRange(f, a, {tyUInt8})
+  of tyUInt16:   result = handleRange(f, a, {tyUInt8..tyUInt16})
+  of tyUInt32:   result = handleRange(f, a, {tyUInt8..tyUInt32})
+  of tyUInt64:   result = handleRange(f, a, {tyUInt..tyUInt64})
   of tyFloat:    result = handleFloatRange(f, a)
   of tyFloat32:  result = handleFloatRange(f, a)
   of tyFloat64:  result = handleFloatRange(f, a)

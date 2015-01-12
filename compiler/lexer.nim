@@ -264,6 +264,19 @@ proc isFloatLiteral(s: string): bool =
       return true
   result = false
 
+{.push overflowChecks: off.}
+# We need to parse the largest uint literal without overflow checks
+proc unsafeParseUInt(s: string, b: var BiggestInt, start = 0): int =
+  var i = start
+  if s[i] in {'0'..'9'}:
+    b = 0
+    while s[i] in {'0'..'9'}:
+      b = b * 10 + (ord(s[i]) - ord('0'))
+      inc(i)
+      while s[i] == '_': inc(i) # underscores are allowed and ignored
+    result = i - start
+{.pop.} # overflowChecks
+
 proc getNumber(L: var TLexer): TToken = 
   var 
     pos, endpos: int
@@ -425,6 +438,12 @@ proc getNumber(L: var TLexer): TToken =
         (result.tokType == tkFloat64Lit): 
       result.fNumber = parseFloat(result.literal)
       if result.tokType == tkIntLit: result.tokType = tkFloatLit
+    elif result.tokType == tkUint64Lit:
+      xi = 0
+      let len = unsafeParseUInt(result.literal, xi)
+      if len != result.literal.len or len == 0:
+        raise newException(ValueError, "invalid integer: " & $xi)
+      result.iNumber = xi
     else:
       result.iNumber = parseBiggestInt(result.literal)
       if (result.iNumber < low(int32)) or (result.iNumber > high(int32)):
