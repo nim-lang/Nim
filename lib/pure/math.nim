@@ -280,11 +280,11 @@ proc random*[T](x: Slice[T]): T =
   ## For a slice `a .. b` returns a value in the range `a .. b-1`.
   result = random(x.b - x.a) + x.a
 
-proc random[T](a: openArray[T]): T =
+proc random*[T](a: openArray[T]): T =
   ## returns a random element from the openarray `a`.
   result = a[random(a.low..a.len)]
 
-proc shuffle[T](a: var openArray[T]) =
+proc shuffle*[T](a: var openArray[T]) =
   ## Shuffles the elements in `a`. Note that ``randomize`` needs to be called
   ## to initialize the random number generator, otherwise ``shuffle`` always
   ## shuffles in the same way.
