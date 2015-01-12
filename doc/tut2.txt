@@ -56,11 +56,11 @@ Objects have access to their type at runtime. There is an
 
 .. code-block:: nim
   type
-    TPerson = object of RootObj
+    TPerson = ref object of RootObj
       name*: string  # the * means that `name` is accessible from other modules
       age: int       # no * means that the field is hidden from other modules
 
-    TStudent = object of TPerson # TStudent inherits from TPerson
+    TStudent = ref object of TPerson # TStudent inherits from TPerson
       id: int                    # with an id field
 
   var
