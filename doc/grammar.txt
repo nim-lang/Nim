@@ -167,7 +167,7 @@ objectCase = 'case' identWithPragma ':' typeDesc ':'? COMMENT?
             (IND{>} objectBranches DED
             | IND{=} objectBranches)
 objectPart = IND{>} objectPart^+IND{=} DED
-           / objectWhen / objectCase / 'nil' / declColonEquals
+           / objectWhen / objectCase / 'nil' / 'discard' / declColonEquals
 object = 'object' pragma? ('of' typeDesc)? COMMENT? objectPart
 typeClassParam = ('var')? symbol
 typeClass = typeClassParam ^* ',' (pragma)? ('of' typeDesc ^* ',')?

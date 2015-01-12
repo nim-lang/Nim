@@ -2,6 +2,26 @@
 News
 ====
 
+..
+  2015-03-01 Version 1.0.0 released
+  =================================
+
+
+  Changes affecting backwards compatibility
+  -----------------------------------------
+
+  - Parameter names are finally properly ``gensym``'ed. This can break
+    templates though that used to rely on the fact that they are not. However
+    we found none such beast in the wild. (Bug #1915.)
+
+  
+  Language Additions
+  ------------------
+
+  - For empty ``case object`` branches ``discard`` can finally be used instead
+    of ``nil``.
+
+
 2014-12-29 Version 0.10.2 released
 ==================================
 

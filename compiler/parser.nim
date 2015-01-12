@@ -1683,14 +1683,14 @@ proc parseObjectCase(p: var TParser): PNode =
   
 proc parseObjectPart(p: var TParser): PNode = 
   #| objectPart = IND{>} objectPart^+IND{=} DED
-  #|            / objectWhen / objectCase / 'nil' / declColonEquals
+  #|            / objectWhen / objectCase / 'nil' / 'discard' / declColonEquals
   if realInd(p):
     result = newNodeP(nkRecList, p)
     withInd(p):
       rawSkipComment(p, result)
       while sameInd(p):
         case p.tok.tokType
-        of tkCase, tkWhen, tkSymbol, tkAccent, tkNil: 
+        of tkCase, tkWhen, tkSymbol, tkAccent, tkNil, tkDiscard: 
           addSon(result, parseObjectPart(p))
         else:
           parMessage(p, errIdentifierExpected, p.tok)
@@ -1704,7 +1704,7 @@ proc parseObjectPart(p: var TParser): PNode =
     of tkSymbol, tkAccent:
       result = parseIdentColonEquals(p, {withPragma})
       skipComment(p, result)
-    of tkNil:
+    of tkNil, tkDiscard:
       result = newNodeP(nkNilLit, p)
       getTok(p)
     else:
