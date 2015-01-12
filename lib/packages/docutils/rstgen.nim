@@ -417,10 +417,12 @@ proc generateSymbolIndex(symbols: seq[TIndexEntry]): string =
   result = ""
   var i = 0
   while i < symbols.len:
-    result.addf("<dt><span>$1:</span></dt><ul class=\"simple\"><dd>\n",
-                [symbols[i].keyword])
+    let keyword= symbols[i].keyword
+    let cleaned_keyword = keyword[1..keyword.high - 1]
+    result.addf("<dt><a name=\"$2\" href=\"#$2\"><span>$1:</span></a></dt><ul class=\"simple\"><dd>\n",
+                [keyword, cleaned_keyword])
     var j = i
-    while j < symbols.len and symbols[i].keyword == symbols[j].keyword:
+    while j < symbols.len and keyword == symbols[j].keyword:
       let
         url = symbols[j].link
         text = if not symbols[j].linkTitle.isNil: symbols[j].linkTitle else: url
