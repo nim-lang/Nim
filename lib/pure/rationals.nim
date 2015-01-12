@@ -23,12 +23,12 @@ proc toRational*(x: SomeInteger): Rational =
 
 proc toFloat*(x: Rational): float =
   ## Convert a rational number `x` to a float.
-  float(x.num) / float(x.den)
+  x.num / x.den
 
 proc toInt*(x: Rational): int =
-  ## Convert a rational number `x` to an int. Conversion rounds if `x` does not
-  ## contain an integer value.
-  round(toFloat(x))
+  ## Convert a rational number `x` to an int. Conversion rounds down if `x`
+  ## does not contain an integer value.
+  x.num div x.den
 
 proc reduce*(x: var Rational) =
   ## Reduce rational `x`.
