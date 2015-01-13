@@ -157,17 +157,17 @@ proc `/`*(x: Rational, y: int): Rational =
 
 proc `/`*(x: int, y: Rational): Rational =
   ## Divide int `x` by Rational `y`.
-  result.num = y.num
-  result.den = x * y.den
+  result.num = x * y.den
+  result.den = y.num
   reduce(result)
 
-proc `/=`*(x: var Rational, y: Rational): Rational =
+proc `/=`*(x: var Rational, y: Rational) =
   ## Divide rationals `x` by `y` in place.
   x.num *= y.den
   x.den *= y.num
   reduce(x)
 
-proc `/=`*(x: var Rational, y: int): Rational =
+proc `/=`*(x: var Rational, y: int) =
   ## Divide rational `x` by int `y` in place.
   x.den *= y
   reduce(x)
@@ -190,18 +190,23 @@ proc abs*(x: Rational): Rational =
   result.den = abs x.den
 
 when isMainModule:
-  var z = (0, 1)
-  var o = (1, 1)
-  var a = (1, 2)
-  var b = (-1, -2)
-  var m1 = (-1, 1)
-  var tt = (10, 2)
+  var
+    z = (0, 1)
+    o = (1, 1)
+    a = (1, 2)
+    b = (-1, -2)
+    m1 = (-1, 1)
+    tt = (10, 2)
 
   assert( a     == a )
   assert( (a-a) == z )
   assert( (a+b) == o )
   assert( (a/b) == o )
   assert( (a*b) == (1, 4) )
+  assert( (3/a) == (6,1) )
+  assert( (a/3) == (1,6) )
+  assert( a*b   == (1,4) )
+  assert( tt*z  == z )
   assert( 10*a  == tt )
   assert( a*10  == tt )
   assert( tt/10 == a  )
@@ -213,16 +218,38 @@ when isMainModule:
   assert( z < o )
   assert( z <= o )
   assert( z == z )
-  assert( cmp(z, o) < 0)
-  assert( cmp(o, z) > 0)
+  assert( cmp(z, o) < 0 )
+  assert( cmp(o, z) > 0 )
 
   assert( o == o )
   assert( o >= o )
   assert( not(o > o) )
-  assert( cmp(o, o) == 0)
-  assert( cmp(z, z) == 0)
+  assert( cmp(o, o) == 0 )
+  assert( cmp(z, z) == 0 )
 
   assert( a == b )
   assert( a >= b )
   assert( not(b > a) )
-  assert( cmp(a, b) == 0)
+  assert( cmp(a, b) == 0 )
+
+  var x = (1,3)
+
+  x *= (5,1)
+  assert( x == (5,3) )
+  x += (2,9)
+  assert( x == (17,9) )
+  x -= (9,18)
+  assert( x == (25,18) )
+  x /= (1,2)
+  assert( x == (50,18) )
+
+  var y = (1,3)
+
+  y *= 4
+  assert( y == (4,3) )
+  y += 5
+  assert( y == (19,3) )
+  y -= 2
+  assert( y == (13,3) )
+  y /= 9
+  assert( y == (13,27) )
