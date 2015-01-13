@@ -49,7 +49,7 @@ Nim's Community
   Twitter
   -------
 
-  Follow us `@nimlang <http://twitter.com/nimlang>`_ for latest news about
+  Follow us `@nim_lang <http://twitter.com/nim_lang>`_ for latest news about
   Nim.
 
 .. container:: standout

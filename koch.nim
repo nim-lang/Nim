@@ -18,7 +18,7 @@ when defined(gcc) and defined(windows):
 import
   os, strutils, parseopt, osproc, streams
 
-import "compiler/nversion.nim"
+const VersionAsString = system.NimVersion #"0.10.2"
 
 when defined(withUpdate):
   import httpclient
