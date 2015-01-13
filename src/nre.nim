@@ -284,8 +284,7 @@ proc initRegex*(pattern: string, options = "Sx"): Regex =
   result.captureNameToId = result.getNameToNumberTable()
 # }}}
 
-proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Option[RegexMatch] =
-  var result: RegexMatch
+proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): RegexMatch =
   new(result)
   result.pattern = pattern
   result.str = str
@@ -306,15 +305,15 @@ proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Opt
                           cast[ptr cint](addr result.pcreMatchBounds[0]),
                           cint(vecsize))
   if execRet >= 0:
-    return Some(result)
+    return result
   elif execRet == pcre.ERROR_NOMATCH:
-    return None[RegexMatch]()
+    return nil
   else:
     raise newException(AssertionError, "Internal error: errno " & $execRet)
 
-proc match*(str: string, pattern: Regex, start = 0, endpos = -1): Option[RegexMatch] =
-  ## Returns Some if there is a match between `start` and `endpos`, otherwise
-  ## it returns None.
+proc match*(str: string, pattern: Regex, start = 0, endpos = -1): RegexMatch =
+  ## Returns a `RegexMatch` if there is a match between `start` and `endpos`, otherwise
+  ## it returns nil.
   ##
   ## if `endpos == -1`, then `endpos = str.len`
   return str.matchImpl(pattern, start, endpos, 0)
@@ -340,9 +339,9 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = -1): RegexMa
       flags = pcre.NOTEMPTY_ATSTART or pcre.ANCHORED
 
     let currentMatch = str.matchImpl(pattern, offset, endpos, flags)
-    previousMatch = currentMatch.get(nil)
+    previousMatch = currentMatch
 
-    if currentMatch.isNone:
+    if currentMatch == nil:
       # either the end of the input or the string
       # cannot be split here
       offset += 1
@@ -355,16 +354,15 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = -1): RegexMa
         # XXX what about invalid unicode?
         offset += str.runeLenAt(offset)
     else:
-      let currentMatch = currentMatch.get
       offset = currentMatch.matchBounds.b
 
       yield currentMatch
 
-proc find*(str: string, pattern: Regex, start = 0, endpos = -1): Option[RegexMatch] =
+proc find*(str: string, pattern: Regex, start = 0, endpos = -1): RegexMatch =
   for match in str.findIter(pattern, start, endpos):
-    return Some(match)
+    return match
 
-  return None[RegexMatch]()
+  return nil
 
 proc findAll*(str: string, pattern: Regex, start = 0, endpos = -1): seq[RegexMatch] =
   accumulateResult(str.findIter(pattern, start, endpos))
