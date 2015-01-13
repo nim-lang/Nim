@@ -1,6 +1,8 @@
 version 0.10
 ============
 
+- document the 'finished' gotcha
+- improve the docs for inheritance
 - The bitwise 'not' operator will be renamed to 'bnot' to
   prevent 'not 4 == 5' from compiling. -> requires 'mixin' annotation for procs!
 - parameter lists without type end up in 'experimental'
@@ -11,7 +13,8 @@ version 0.10
 - make nimble part of the distribution
 - split idetools into separate tool
 - split docgen into separate tool
-
+- special rule for ``[]=``, items, pairs
+- BUG: echo with template `$`*(info: TLineInfo): expr = toFileLineCol(info)
 
 
 Concurrency
@@ -32,7 +35,6 @@ Misc
 
 - make '--implicitStatic:on' the default
 - make tuple unpacking work in a non-var/let context
-- special rule for ``[]=``, items, pairs
 - built-in 'getImpl'
 - prevent 'alloc(TypeWithGCedMemory)'
 - some table related tests are wrong (memory usage checks)

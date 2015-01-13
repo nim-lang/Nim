@@ -1036,7 +1036,7 @@ proc `$`*(address: TIpAddress): string =
     else: # Print address
       var printedLastGroup = false
       for i in 0..7:
-        var word:uint16 = (cast[uint16](address.address_v6[i*2])) shl 8u16
+        var word:uint16 = (cast[uint16](address.address_v6[i*2])) shl 8
         word = word or cast[uint16](address.address_v6[i*2+1])
 
         if biggestZeroCount != 0 and # Check if group is in skip group
@@ -1058,7 +1058,7 @@ proc `$`*(address: TIpAddress): string =
               else: # val >= 0xA
                 result.add(chr(uint16(ord('a'))+val-0xA))
               afterLeadingZeros = true
-            mask = mask shr 4u16
+            mask = mask shr 4
           printedLastGroup = true
 
 proc parseIPv4Address(address_str: string): TIpAddress =
@@ -1073,7 +1073,7 @@ proc parseIPv4Address(address_str: string): TIpAddress =
 
   for i in 0 .. high(address_str):
     if address_str[i] in strutils.Digits: # Character is a number
-      currentByte = currentByte * 10u16 +
+      currentByte = currentByte * 10 +
         cast[uint16](ord(address_str[i]) - ord('0'))
       if currentByte > 255'u16:
         raise newException(ValueError,
