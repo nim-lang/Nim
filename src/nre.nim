@@ -6,6 +6,7 @@ from future import lc, `[]`
 from strutils import toLower, `%`
 from math import ceil
 import optional_t
+from unicode import runeLenAt
 
 # Type definitions {{{
 type
@@ -54,6 +55,27 @@ proc captureNameId*(self: Regex): Table[string, int] =
   ## Returns a map from named capture groups to their numerical
   ## identifier
   return self.captureNameToId
+
+proc matchesCrLf(self: Regex): bool =
+  let flags = getinfo[cint](self, pcre.INFO_OPTIONS)
+  let newlineFlags = flags and (pcre.NEWLINE_CRLF or
+                                pcre.NEWLINE_ANY or
+                                pcre.NEWLINE_ANYCRLF)
+  if newLineFlags > 0:
+    return true
+
+  # get flags from build config
+  var confFlags: cint
+  if pcre.config(pcre.CONFIG_NEWLINE, addr confFlags) != 0:
+    assert(false, "CONFIG_NEWLINE apparently got screwed up")
+
+  case confFlags
+  of 13: return false
+  of 10: return false
+  of (13 shl 8) or 10: return true
+  of -2: return true
+  of -1: return true
+  else: return false
 # }}}
 
 # Capture accessors {{{
@@ -255,11 +277,7 @@ proc initRegex*(pattern: string, options = "Sx"): Regex =
   result.captureNameToId = result.getNameToNumberTable()
 # }}}
 
-proc match*(self: Regex, str: string, start = 0, endpos = -1): Option[RegexMatch] =
-  ## Returns Some if there is a match between `start` and `endpos`, otherwise
-  ## it returns None.
-  ##
-  ## if `endpos == -1`, then `endpos = str.len`
+proc matchImpl*(self: Regex, str: string, start, endpos: int, flags: int): Option[RegexMatch] =
   var result: RegexMatch
   new(result)
   result.pattern = self
@@ -277,11 +295,105 @@ proc match*(self: Regex, str: string, start = 0, endpos = -1): Option[RegexMatch
                           cstring(str),
                           cint(max(str.len, endpos)),
                           cint(start),
-                          cint(0),
-                          cast[ptr cint](addr result.pcreMatchBounds[0]), cint(vecsize))
+                          cint(flags),
+                          cast[ptr cint](addr result.pcreMatchBounds[0]),
+                          cint(vecsize))
   if execRet >= 0:
     return Some(result)
   elif execRet == pcre.ERROR_NOMATCH:
     return None[RegexMatch]()
   else:
     raise newException(AssertionError, "Internal error: errno " & $execRet)
+
+proc match*(self: Regex, str: string, start = 0, endpos = -1): Option[RegexMatch] =
+  ## Returns Some if there is a match between `start` and `endpos`, otherwise
+  ## it returns None.
+  ##
+  ## if `endpos == -1`, then `endpos = str.len`
+  return matchImpl(self, str, start, endpos, 0)
+
+iterator findIter*(self: Regex, str: string, start = 0, endpos = -1): RegexMatch =
+  # see pcredemo for explaination
+  let matchesCrLf = self.matchesCrLf()
+  let unicode = bool(getinfo[cint](self, pcre.INFO_OPTIONS) and pcre.UTF8)
+  let endpos = if endpos == -1: str.len else: endpos
+
+  var offset = start
+  var previousMatch: RegexMatch
+  while offset != endpos:
+    if offset > endpos:
+      # eos occurs in the middle of a unicode char? die.
+      raise newException(AssertionError, "Input string has malformed unicode")
+
+    var flags = 0
+
+    if previousMatch != nil and
+        previousMatch.matchBounds.a == previousMatch.matchBounds.b:
+      # 0-len match
+      flags = pcre.NOTEMPTY_ATSTART or pcre.ANCHORED
+
+    let currentMatch = self.matchImpl(str, offset, endpos, flags)
+    previousMatch = currentMatch.get(nil)
+
+    if currentMatch.isNone:
+      # either the end of the input or the string
+      # cannot be split here
+      offset += 1
+
+      if matchesCrLf and offset < (str.len - 1) and
+         str[offset] == '\r' and str[offset + 1] == '\l':
+        # if PCRE treats CrLf as newline, skip both at the same time
+        offset += 1
+      elif unicode:
+        # XXX what about invalid unicode?
+        offset += str.runeLenAt(offset)
+    else:
+      let currentMatch = currentMatch.get
+      offset = currentMatch.matchBounds.b
+
+      yield currentMatch
+
+proc find*(self: Regex, str: string, start = 0, endpos = -1): Option[RegexMatch] =
+  for match in self.findIter(str, start, endpos):
+    return Some(match)
+
+  return None[RegexMatch]()
+
+proc findAll*(self: Regex, str: string, start = 0, endpos = -1): seq[RegexMatch] =
+  accumulateResult(self.findIter(str, start, endpos))
+
+proc renderBounds(str: string, bounds: Slice[int]): string =
+  result = " " & str & "⫞\n"
+  for i in -1 .. <bounds.a:
+    result.add(" ")
+  for i in bounds.a .. bounds.b:
+    result.add("^")
+
+proc split*(self: Regex, str: string): seq[string] =
+  result = @[]
+  var lastIdx = 0
+
+  for match in self.findIter(str):
+    # upper bound is exclusive, lower is inclusive:
+    #
+    # 0123456
+    #  ^^^
+    # (1, 4)
+    var bounds = match.matchBounds
+
+    if lastIdx == 0 and
+       lastIdx == bounds.a and
+       bounds.a == bounds.b:
+      # "12".split("") would be @["", "1", "2"], but
+      # if we skip an empty first match, it's the correct
+      # @["1", "2"]
+      discard
+    else:
+      result.add(str.substr(lastIdx, bounds.a - 1))
+
+    lastIdx = bounds.b
+
+  # last match: Each match takes the previous substring,
+  # but "1 2".split(/ /) needs to return @["1", "2"].
+  # This handles "2"
+  result.add(str.substr(lastIdx, str.len - 1))

@@ -8,4 +8,4 @@ srcDir      = "src"
 
 [Deps]
 Requires: "nim >= 0.10.0"
-Requires: "optional_t >= 1.0"
+Requires: "optional_t >= 1.1.0"
