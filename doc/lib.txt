@@ -468,12 +468,16 @@ Windows specific
 
 * `windows <windows.html>`_
   Contains a wrapper for the Win32 API.
+* `winlean <winlean.html>`_
+  Contains a wrapper for a small subset of the Win32 API.
 * `shellapi <shellapi.html>`_
   Contains a wrapper for the ``shellapi.h`` header.
 * `shfolder <shfolder.html>`_
   Contains a wrapper for the ``shfolder.h`` header.
 * `mmsystem <mmsystem.html>`_
   Contains a wrapper for the ``mmsystem.h`` header.
+* `psapi <psapi.html>`_
+  Contains a wrapper for the ``psapi.h`` header.
 * `nb30 <nb30.html>`_
   This module contains the definitions for portable NetBIOS 3.0 support.
 
