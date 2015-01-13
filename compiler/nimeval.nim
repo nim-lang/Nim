@@ -24,7 +24,7 @@ proc execute*(program: string) =
   when hasFFI: defineSymbol("nimffi")
   registerPass(verbosePass)
   registerPass(semPass)
-  registerPass(vmPass)
+  registerPass(evalPass)
 
   appendStr(searchPaths, options.libpath)
   compileSystemModule()
