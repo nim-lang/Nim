@@ -277,7 +277,7 @@ proc initRegex*(pattern: string, options = "Sx"): Regex =
   result.captureNameToId = result.getNameToNumberTable()
 # }}}
 
-proc matchImpl*(str: string, pattern: Regex, start, endpos: int, flags: int): Option[RegexMatch] =
+proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Option[RegexMatch] =
   var result: RegexMatch
   new(result)
   result.pattern = pattern
