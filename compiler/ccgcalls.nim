@@ -217,7 +217,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
       genAssignment(p, d, list, {}) # no need for deep copying
   else:
     genCallPattern()
-  
+
 proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var op, a: TLoc
   initLocExpr(p, ri.sons[0], op)
@@ -229,7 +229,10 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   assert(sonsLen(typ) == sonsLen(typ.n))
   
   var param = typ.n.sons[1].sym
-  app(pl, genArg(p, ri.sons[1], param))
+  if typ.sons[1].kind == tyVar and ri.sons[1].kind == nkHiddenAddr:
+    app(pl, genArgNoParam(p, ri.sons[1][0]))
+  else:
+    app(pl, genArg(p, ri.sons[1], param))
   
   if skipTypes(param.typ, {tyGenericInst}).kind == tyPtr: app(pl, ~"->")
   else: app(pl, ~".")
@@ -239,8 +242,13 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
     if params != nil: params.app(~", ")
     assert(sonsLen(typ) == sonsLen(typ.n))
     if i < sonsLen(typ):
+      # 'var T' is 'T&' in C++. This means we ignore the request of
+      # any nkHiddenAddr when it's a 'var T'.
       assert(typ.n.sons[i].kind == nkSym)
-      app(params, genArg(p, ri.sons[i], typ.n.sons[i].sym))
+      if typ.sons[i].kind == tyVar and ri.sons[i].kind == nkHiddenAddr:
+        app(params, genArgNoParam(p, ri.sons[i][0]))
+      else:
+        app(params, genArg(p, ri.sons[i], typ.n.sons[i].sym))
     else:
       app(params, genArgNoParam(p, ri.sons[i]))
   fixupCall(p, le, ri, d, pl, params)
