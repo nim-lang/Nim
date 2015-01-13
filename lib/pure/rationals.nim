@@ -26,8 +26,8 @@ proc toFloat*(x: Rational): float =
   x.num / x.den
 
 proc toInt*(x: Rational): int =
-  ## Convert a rational number `x` to an int. Conversion rounds down if `x`
-  ## does not contain an integer value.
+  ## Convert a rational number `x` to an int. Conversion rounds towards 0 if
+  ## `x` does not contain an integer value.
   x.num div x.den
 
 proc reduce*(x: var Rational) =
