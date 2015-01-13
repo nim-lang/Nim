@@ -8,29 +8,29 @@ suite "captures":
 
   test "capture bounds are correct":
     let ex1 = initRegex("([0-9])")
-    check(ex1.match("1 23").get.matchBounds == 0 .. 1)
-    check(ex1.match("1 23").get.captureBounds[0].get == 0 .. 1)
-    check(ex1.match("1 23", 1).get.matchBounds == 2 .. 3)
-    check(ex1.match("1 23", 3).get.matchBounds == 3 .. 4)
+    check("1 23".match(ex1).get.matchBounds == 0 .. 1)
+    check("1 23".match(ex1).get.captureBounds[0].get == 0 .. 1)
+    check("1 23".match(ex1, 1).get.matchBounds == 2 .. 3)
+    check("1 23".match(ex1, 3).get.matchBounds == 3 .. 4)
 
     let ex2 = initRegex("()()()()()()()()()()([0-9])")
-    check(ex2.match("824").get.captureBounds[0].get == 0 .. 0)
-    check(ex2.match("824").get.captureBounds[10].get == 0 .. 1)
+    check("824".match(ex2).get.captureBounds[0].get == 0 .. 0)
+    check("824".match(ex2).get.captureBounds[10].get == 0 .. 1)
 
     let ex3 = initRegex("([0-9]+)")
-    check(ex3.match("824").get.captureBounds[0].get == 0 .. 3)
+    check("824".match(ex3).get.captureBounds[0].get == 0 .. 3)
 
   test "named captures":
-    let ex1 = initRegex("(?<foo>foo)(?<bar>bar)").match("foobar").get
+    let ex1 = "foobar".match(initRegex("(?<foo>foo)(?<bar>bar)")).get
     check(ex1.captures["foo"] == "foo")
     check(ex1.captures["bar"] == "bar")
 
-    let ex2 = initRegex("(?<foo>foo)(?<bar>bar)?").match("foo").get
+    let ex2 = "foo".match(initRegex("(?<foo>foo)(?<bar>bar)?")).get
     check(ex2.captures["foo"] == "foo")
     check(ex2.captures["bar"] == nil)
 
   test "named capture bounds":
-    let ex1 = initRegex("(?<foo>foo)(?<bar>bar)?").match("foo").get
+    let ex1 = "foo".match(initRegex("(?<foo>foo)(?<bar>bar)?")).get
     check(ex1.captureBounds["foo"] == Some(0..3))
     check(ex1.captureBounds["bar"] == None[Slice[int]]())
 
@@ -40,20 +40,20 @@ suite "captures":
     check(ex1.captureNameId == {"foo" : 0, "bar" : 1}.toTable())
 
   test "named capture table":
-    let ex1 = initRegex("(?<foo>foo)(?<bar>bar)?").match("foo").get
+    let ex1 = "foo".match(initRegex("(?<foo>foo)(?<bar>bar)?")).get
     check(ex1.captures.asTable == {"foo" : "foo", "bar" : nil}.toTable())
     check(ex1.captureBounds.asTable == {"foo" : Some(0..3), "bar" : None[Slice[int]]()}.toTable())
     check(ex1.captures.asTable("") == {"foo" : "foo", "bar" : ""}.toTable())
 
-    let ex2 = initRegex("(?<foo>foo)(?<bar>bar)?").match("foobar").get
+    let ex2 = "foobar".match(initRegex("(?<foo>foo)(?<bar>bar)?")).get
     check(ex2.captures.asTable == {"foo" : "foo", "bar" : "bar"}.toTable())
 
   test "capture sequence":
-    let ex1 = initRegex("(?<foo>foo)(?<bar>bar)?").match("foo").get
+    let ex1 = "foo".match(initRegex("(?<foo>foo)(?<bar>bar)?")).get
     check(ex1.captures.asSeq == @["foo", nil])
     check(ex1.captureBounds.asSeq == @[Some(0..3), None[Slice[int]]()])
     check(ex1.captures.asSeq("") == @["foo", ""])
 
-    let ex2 = initRegex("(?<foo>foo)(?<bar>bar)?").match("foobar").get
+    let ex2 = "foobar".match(initRegex("(?<foo>foo)(?<bar>bar)?")).get
     check(ex2.captures.asSeq == @["foo", "bar"])
 

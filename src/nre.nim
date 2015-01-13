@@ -37,27 +37,27 @@ type
   StudyError* = ref object of Exception
 # }}}
 
-proc getinfo[T](self: Regex, opt: cint): T =
-  let retcode = pcre.fullinfo(self.pcreObj, self.pcreExtra, opt, addr result)
+proc getinfo[T](pattern: Regex, opt: cint): T =
+  let retcode = pcre.fullinfo(pattern.pcreObj, pattern.pcreExtra, opt, addr result)
 
   if retcode < 0:
     # XXX Error message that doesn't expose implementation details
     raise newException(FieldError, "Invalid getinfo for $1, errno $2" % [$opt, $retcode])
 
 # Regex accessors {{{
-proc captureCount*(self: Regex): int =
+proc captureCount*(pattern: Regex): int =
   ## Get the maximum number of captures
   ##
   ## Does not return the number of captured captures
-  return getinfo[int](self, pcre.INFO_CAPTURECOUNT)
+  return getinfo[int](pattern, pcre.INFO_CAPTURECOUNT)
 
-proc captureNameId*(self: Regex): Table[string, int] =
+proc captureNameId*(pattern: Regex): Table[string, int] =
   ## Returns a map from named capture groups to their numerical
   ## identifier
-  return self.captureNameToId
+  return pattern.captureNameToId
 
-proc matchesCrLf(self: Regex): bool =
-  let flags = getinfo[cint](self, pcre.INFO_OPTIONS)
+proc matchesCrLf(pattern: Regex): bool =
+  let flags = getinfo[cint](pattern, pcre.INFO_OPTIONS)
   let newlineFlags = flags and (pcre.NEWLINE_CRLF or
                                 pcre.NEWLINE_ANY or
                                 pcre.NEWLINE_ANYCRLF)
@@ -79,71 +79,71 @@ proc matchesCrLf(self: Regex): bool =
 # }}}
 
 # Capture accessors {{{
-proc captureBounds*(self: RegexMatch): CaptureBounds = return CaptureBounds(self)
+proc captureBounds*(pattern: RegexMatch): CaptureBounds = return CaptureBounds(pattern)
 
-proc captures*(self: RegexMatch): Captures = return Captures(self)
+proc captures*(pattern: RegexMatch): Captures = return Captures(pattern)
 
-proc `[]`*(self: CaptureBounds, i: int): Option[Slice[int]] =
+proc `[]`*(pattern: CaptureBounds, i: int): Option[Slice[int]] =
   ## Gets the bounds of the `i`th capture.
   ## Undefined behavior if `i` is out of bounds
   ## If `i` is a failed optional capture, returns None
   ## If `i == -1`, returns the whole match
-  let self = RegexMatch(self)
-  if self.pcreMatchBounds[i + 1].a != -1:
-    let bounds = self.pcreMatchBounds[i + 1]
+  let pattern = RegexMatch(pattern)
+  if pattern.pcreMatchBounds[i + 1].a != -1:
+    let bounds = pattern.pcreMatchBounds[i + 1]
     return Some(int(bounds.a) .. int(bounds.b))
   else:
     return None[Slice[int]]()
 
-proc `[]`*(self: Captures, i: int): string =
+proc `[]`*(pattern: Captures, i: int): string =
   ## gets the `i`th capture
   ## Undefined behavior if `i` is out of bounds
   ## If `i` is a failed optional capture, returns nil
   ## If `i == -1`, returns the whole match
-  let self = RegexMatch(self)
-  let bounds = self.captureBounds[i]
+  let pattern = RegexMatch(pattern)
+  let bounds = pattern.captureBounds[i]
 
   if bounds:
     let bounds = bounds.get
-    if self.matchCache == nil:
+    if pattern.matchCache == nil:
       # capture count, plus the entire string
-      self.matchCache = newSeq[string](self.pattern.captureCount + 1)
-    if self.matchCache[i + 1] == nil:
-      self.matchCache[i + 1] = self.str[bounds.a .. bounds.b-1]
-    return self.matchCache[i + 1]
+      pattern.matchCache = newSeq[string](pattern.pattern.captureCount + 1)
+    if pattern.matchCache[i + 1] == nil:
+      pattern.matchCache[i + 1] = pattern.str[bounds.a .. bounds.b-1]
+    return pattern.matchCache[i + 1]
   else:
     return nil
 
-proc match*(self: RegexMatch): string =
-  return self.captures[-1]
+proc match*(pattern: RegexMatch): string =
+  return pattern.captures[-1]
 
-proc matchBounds*(self: RegexMatch): Slice[int] =
-  return self.captureBounds[-1].get
+proc matchBounds*(pattern: RegexMatch): Slice[int] =
+  return pattern.captureBounds[-1].get
 
-proc `[]`*(self: CaptureBounds, name: string): Option[Slice[int]] =
+proc `[]`*(pattern: CaptureBounds, name: string): Option[Slice[int]] =
   ## Will fail with KeyError if `name` is not a real named capture
-  let self = RegexMatch(self)
-  return self.captureBounds[self.pattern.captureNameToId.fget(name)]
+  let pattern = RegexMatch(pattern)
+  return pattern.captureBounds[pattern.pattern.captureNameToId.fget(name)]
 
-proc `[]`*(self: Captures, name: string): string =
+proc `[]`*(pattern: Captures, name: string): string =
   ## Will fail with KeyError if `name` is not a real named capture
-  let self = RegexMatch(self)
-  return self.captures[self.pattern.captureNameToId.fget(name)]
+  let pattern = RegexMatch(pattern)
+  return pattern.captures[pattern.pattern.captureNameToId.fget(name)]
 
 template asTableImpl(cond: bool): stmt {.immediate, dirty.} =
-  for key in RegexMatch(self).pattern.captureNameId.keys:
-    let nextVal = self[key]
+  for key in RegexMatch(pattern).pattern.captureNameId.keys:
+    let nextVal = pattern[key]
     if cond:
       result[key] = default
     else:
       result[key] = nextVal
 
-proc asTable*(self: Captures, default: string = nil): Table[string, string] =
+proc asTable*(pattern: Captures, default: string = nil): Table[string, string] =
   ## Gets all the named captures and returns them
   result = initTable[string, string]()
   asTableImpl(nextVal == nil)
 
-proc asTable*(self: CaptureBounds, default = None[Slice[int]]()):
+proc asTable*(pattern: CaptureBounds, default = None[Slice[int]]()):
     Table[string, Option[Slice[int]]] =
   ## Gets all the named captures and returns them
   result = initTable[string, Option[Slice[int]]]()
@@ -151,17 +151,17 @@ proc asTable*(self: CaptureBounds, default = None[Slice[int]]()):
 
 template asSeqImpl(cond: bool): stmt {.immediate, dirty.} =
   result = @[]
-  for i in 0 .. <RegexMatch(self).pattern.captureCount:
-    let nextVal = self[i]
+  for i in 0 .. <RegexMatch(pattern).pattern.captureCount:
+    let nextVal = pattern[i]
     if cond:
       result.add(default)
     else:
       result.add(nextVal)
 
-proc asSeq*(self: CaptureBounds, default = None[Slice[int]]()): seq[Option[Slice[int]]] =
+proc asSeq*(pattern: CaptureBounds, default = None[Slice[int]]()): seq[Option[Slice[int]]] =
   asSeqImpl(nextVal.isNone)
 
-proc asSeq*(self: Captures, default: string = nil): seq[string] =
+proc asSeq*(pattern: Captures, default: string = nil): seq[string] =
   asSeqImpl(nextVal == nil)
 # }}}
 
@@ -225,17 +225,17 @@ proc tokenizeOptions(opts: string): tuple[flags: int, study: bool] =
 
 type UncheckedArray {.unchecked.}[T] = array[0 .. 0, T]
 
-proc destroyRegex(self: Regex) =
-  pcre.free_substring(cast[cstring](self.pcreObj))
-  self.pcreObj = nil
-  if self.pcreExtra != nil:
-    pcre.free_study(self.pcreExtra)
+proc destroyRegex(pattern: Regex) =
+  pcre.free_substring(cast[cstring](pattern.pcreObj))
+  pattern.pcreObj = nil
+  if pattern.pcreExtra != nil:
+    pcre.free_study(pattern.pcreExtra)
 
-proc getNameToNumberTable(self: Regex): Table[string, int] =
-  let entryCount = getinfo[cint](self, pcre.INFO_NAMECOUNT)
-  let entrySize = getinfo[cint](self, pcre.INFO_NAMEENTRYSIZE)
+proc getNameToNumberTable(pattern: Regex): Table[string, int] =
+  let entryCount = getinfo[cint](pattern, pcre.INFO_NAMECOUNT)
+  let entrySize = getinfo[cint](pattern, pcre.INFO_NAMEENTRYSIZE)
   let table = cast[ptr UncheckedArray[uint8]](
-                getinfo[int](self, pcre.INFO_NAMETABLE))
+                getinfo[int](pattern, pcre.INFO_NAMETABLE))
 
   result = initTable[string, int]()
 
@@ -277,21 +277,21 @@ proc initRegex*(pattern: string, options = "Sx"): Regex =
   result.captureNameToId = result.getNameToNumberTable()
 # }}}
 
-proc matchImpl*(self: Regex, str: string, start, endpos: int, flags: int): Option[RegexMatch] =
+proc matchImpl*(str: string, pattern: Regex, start, endpos: int, flags: int): Option[RegexMatch] =
   var result: RegexMatch
   new(result)
-  result.pattern = self
+  result.pattern = pattern
   result.str = str
   # See PCRE man pages.
   # 2x capture count to make room for start-end pairs
   # 1x capture count as slack space for PCRE
-  let vecsize = (self.captureCount() + 1) * 3
+  let vecsize = (pattern.captureCount() + 1) * 3
   # div 2 because each element is 2 cints long
   result.pcreMatchBounds = newSeq[Slice[cint]](ceil(vecsize / 2).int)
   result.pcreMatchBounds.setLen(vecsize div 3)
 
-  let execRet = pcre.exec(self.pcreObj,
-                          self.pcreExtra,
+  let execRet = pcre.exec(pattern.pcreObj,
+                          pattern.pcreExtra,
                           cstring(str),
                           cint(max(str.len, endpos)),
                           cint(start),
@@ -305,17 +305,17 @@ proc matchImpl*(self: Regex, str: string, start, endpos: int, flags: int): Optio
   else:
     raise newException(AssertionError, "Internal error: errno " & $execRet)
 
-proc match*(self: Regex, str: string, start = 0, endpos = -1): Option[RegexMatch] =
+proc match*(str: string, pattern: Regex, start = 0, endpos = -1): Option[RegexMatch] =
   ## Returns Some if there is a match between `start` and `endpos`, otherwise
   ## it returns None.
   ##
   ## if `endpos == -1`, then `endpos = str.len`
-  return matchImpl(self, str, start, endpos, 0)
+  return str.matchImpl(pattern, start, endpos, 0)
 
-iterator findIter*(self: Regex, str: string, start = 0, endpos = -1): RegexMatch =
+iterator findIter*(str: string, pattern: Regex, start = 0, endpos = -1): RegexMatch =
   # see pcredemo for explaination
-  let matchesCrLf = self.matchesCrLf()
-  let unicode = bool(getinfo[cint](self, pcre.INFO_OPTIONS) and pcre.UTF8)
+  let matchesCrLf = pattern.matchesCrLf()
+  let unicode = bool(getinfo[cint](pattern, pcre.INFO_OPTIONS) and pcre.UTF8)
   let endpos = if endpos == -1: str.len else: endpos
 
   var offset = start
@@ -332,7 +332,7 @@ iterator findIter*(self: Regex, str: string, start = 0, endpos = -1): RegexMatch
       # 0-len match
       flags = pcre.NOTEMPTY_ATSTART or pcre.ANCHORED
 
-    let currentMatch = self.matchImpl(str, offset, endpos, flags)
+    let currentMatch = str.matchImpl(pattern, offset, endpos, flags)
     previousMatch = currentMatch.get(nil)
 
     if currentMatch.isNone:
@@ -353,14 +353,14 @@ iterator findIter*(self: Regex, str: string, start = 0, endpos = -1): RegexMatch
 
       yield currentMatch
 
-proc find*(self: Regex, str: string, start = 0, endpos = -1): Option[RegexMatch] =
-  for match in self.findIter(str, start, endpos):
+proc find*(str: string, pattern: Regex, start = 0, endpos = -1): Option[RegexMatch] =
+  for match in str.findIter(pattern, start, endpos):
     return Some(match)
 
   return None[RegexMatch]()
 
-proc findAll*(self: Regex, str: string, start = 0, endpos = -1): seq[RegexMatch] =
-  accumulateResult(self.findIter(str, start, endpos))
+proc findAll*(str: string, pattern: Regex, start = 0, endpos = -1): seq[RegexMatch] =
+  accumulateResult(str.findIter(pattern, start, endpos))
 
 proc renderBounds(str: string, bounds: Slice[int]): string =
   result = " " & str & "⫞\n"
@@ -369,11 +369,11 @@ proc renderBounds(str: string, bounds: Slice[int]): string =
   for i in bounds.a .. bounds.b:
     result.add("^")
 
-proc split*(self: Regex, str: string): seq[string] =
+proc split*(str: string, pattern: Regex): seq[string] =
   result = @[]
   var lastIdx = 0
 
-  for match in self.findIter(str):
+  for match in str.findIter(pattern):
     # upper bound is exclusive, lower is inclusive:
     #
     # 0123456

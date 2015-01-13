@@ -3,12 +3,12 @@ include nre
 
 suite "find":
   test "find text":
-    check(initRegex(r"[a-z]").find("3213a").get.match == "a")
-    check(initRegex(r" ", "S").findAll("1 2 3 4 5 6 7 8 ").map(
+    check("3213a".find(initRegex(r"[a-z]")).get.match == "a")
+    check("1 2 3 4 5 6 7 8 ".findAll(initRegex(r" ", "S")).map(
       proc (a: RegexMatch): string = a.match
     ) == @[" ", " ", " ", " ", " ", " ", " ", " "])
 
   test "find bounds":
-    check(initRegex(r" ", "S").findAll("1 2 3 4 5 ").map(
+    check("1 2 3 4 5 ".findAll(initRegex(r" ", "S")).map(
       proc (a: RegexMatch): Slice[int] = a.matchBounds
     ) == @[1..2, 3..4, 5..6, 7..8, 9..10])
