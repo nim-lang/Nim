@@ -282,6 +282,8 @@ proc initRegex*(pattern: string, options = "Sx"): Regex =
       raise StudyError(msg: $errorMsg)
 
   result.captureNameToId = result.getNameToNumberTable()
+
+proc re*(pattern: string, options = "Sx"): Regex = initRegex(pattern, options)
 # }}}
 
 proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): RegexMatch =
