@@ -11,13 +11,15 @@ from unicode import runeLenAt
 # Type definitions {{{
 type
   Regex* = ref object
-    pattern*: string  # not nil
-    pcreObj: ptr pcre.Pcre  # not nil
+    ## Represents a compiled pattern
+    pattern*: string  ## not nil
+    pcreObj: ptr pcre.Pcre  ## not nil
     pcreExtra: ptr pcre.ExtraData  ## nil
 
     captureNameToId: Table[string, int]
 
   RegexMatch* = ref object
+    ## Is returned upon a match.
     pattern*: Regex  ## The regex doing the matching.
                      ## Not nil.
     str*: string  ## The string that was matched against.
@@ -31,10 +33,15 @@ type
   CaptureBounds* = distinct RegexMatch
 
   SyntaxError* = ref object of Exception
+    ## Thrown when there is a syntax error in the
+    ## regular expression string passed in
     pos*: int  ## the location of the syntax error in bytes
     pattern*: string  ## the pattern that caused the problem
 
   StudyError* = ref object of Exception
+    ## Thrown when studying the regular expression failes
+    ## for whatever reason. The message contains the error
+    ## code.
 # }}}
 
 proc getinfo[T](pattern: Regex, opt: cint): T =
