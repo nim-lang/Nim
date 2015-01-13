@@ -505,7 +505,7 @@ proc post*(url: string, extraHeaders = "", body = "",
     else:
       x
 
-  var xb = mpBody.withNewLine() & body.withNewLine()
+  var xb = mpBody.withNewLine() & body
 
   var xh = extraHeaders.withNewLine() & mpHeaders.withNewLine() &
     withNewLine("Content-Length: " & $len(xb))
@@ -517,7 +517,7 @@ proc post*(url: string, extraHeaders = "", body = "",
     if result.status.redirection():
       let redirectTo = getNewLocation(lastURL, result.headers)
       var meth = if result.status != "307": httpGet else: httpPost
-      result = request(redirectTo, meth, xh, body, sslContext, timeout,
+      result = request(redirectTo, meth, xh, xb, sslContext, timeout,
                        userAgent, proxy)
       lastUrl = redirectTo
 
