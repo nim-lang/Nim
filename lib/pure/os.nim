@@ -1407,15 +1407,16 @@ proc createSymlink*(src, dest: string) =
   ## Some OS's (such as Microsoft Windows) restrict the creation 
   ## of symlinks to root users (administrators).
   when defined(Windows):
-    let flag = dirExists(src).int32
-    when useWinUnicode:
-      var wSrc = newWideCString(src)
-      var wDst = newWideCString(dest)
-      if createSymbolicLinkW(wDst, wSrc, flag) == 0 or getLastError() != 0:
-        raiseOSError(osLastError())
-    else:
-      if createSymbolicLinkA(dest, src, flag) == 0 or getLastError() != 0:
-        raiseOSError(osLastError())
+    when not isWinXPOrLess:
+      let flag = dirExists(src).int32
+      when useWinUnicode:
+        var wSrc = newWideCString(src)
+        var wDst = newWideCString(dest)
+        if createSymbolicLinkW(wDst, wSrc, flag) == 0 or getLastError() != 0:
+          raiseOSError(osLastError())
+      else:
+        if createSymbolicLinkA(dest, src, flag) == 0 or getLastError() != 0:
+          raiseOSError(osLastError())
   else:
     if symlink(src, dest) != 0:
       raiseOSError(osLastError())
@@ -1427,14 +1428,15 @@ proc createHardlink*(src, dest: string) =
   ## **Warning**: Most OS's restrict the creation of hard links to 
   ## root users (administrators) .
   when defined(Windows):
-    when useWinUnicode:
-      var wSrc = newWideCString(src)
-      var wDst = newWideCString(dest)
-      if createHardLinkW(wDst, wSrc, nil) == 0:
-        raiseOSError(osLastError())
-    else:
-      if createHardLinkA(dest, src, nil) == 0:
-        raiseOSError(osLastError())
+    when not isWinXPOrLess:
+      when useWinUnicode:
+        var wSrc = newWideCString(src)
+        var wDst = newWideCString(dest)
+        if createHardLinkW(wDst, wSrc, nil) == 0:
+          raiseOSError(osLastError())
+      else:
+        if createHardLinkA(dest, src, nil) == 0:
+          raiseOSError(osLastError())
   else:
     if link(src, dest) != 0:
       raiseOSError(osLastError())
