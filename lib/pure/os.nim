@@ -1407,7 +1407,7 @@ proc createSymlink*(src, dest: string) =
   ## Some OS's (such as Microsoft Windows) restrict the creation 
   ## of symlinks to root users (administrators).
   when defined(Windows):
-    when not isWinXPOrLess:
+    when not defined(winPreVista):
       let flag = dirExists(src).int32
       when useWinUnicode:
         var wSrc = newWideCString(src)
@@ -1428,7 +1428,7 @@ proc createHardlink*(src, dest: string) =
   ## **Warning**: Most OS's restrict the creation of hard links to 
   ## root users (administrators) .
   when defined(Windows):
-    when not isWinXPOrLess:
+    when not defined(winPreVista):
       when useWinUnicode:
         var wSrc = newWideCString(src)
         var wDst = newWideCString(dest)

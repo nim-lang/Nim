@@ -209,17 +209,7 @@ else:
   proc getModuleFileNameA*(handle: THandle, buf: cstring, size: int32): int32 {.
     importc: "GetModuleFileNameA", dynlib: "kernel32", stdcall.}
 
-proc winXPOrLess: bool {.compiletime.} =
-  let ver = "cmd /c ver".gorge
-  # here we get something like "Microsoft Windows XP [Version 5.1.2600]"
-  var i = ver.len
-  while i > 0:
-    if ver[i] == ' ': break
-    dec i
-  i == 0 or (ver[i+1] > '1' and ver[i+1] < '6')
-const isWinXPOrLess* = winXPOrLess()
-
-when not isWinXPOrLess:
+when not defined(winPreVista):
   when useWinUnicode:
     proc createSymbolicLinkW*(lpSymlinkFileName, lpTargetFileName: WideCString,
                            flags: DWORD): int32 {.
