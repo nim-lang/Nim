@@ -29,17 +29,13 @@ To build from source you will need:
 
 If you are on a fairly modern *nix system, the following steps should work:
 
-```
+```bash
 $ git clone git://github.com/Araq/Nim.git
 $ cd Nim
-$ git clone --depth 1 git://github.com/nim-lang/csources
-$ cd csources && sh build.sh
-$ cd ..
-$ bin/nim c koch
-$ ./koch boot -d:release
+$ ./build.sh
 ```
 
-``koch install [dir]`` may then be used to install Nim, or you can simply
+``./koch install [dir]`` may then be used to install Nim, or you can simply
 add it to your PATH. More ``koch`` related options are documented in
 [doc/koch.txt](doc/koch.txt).
 
