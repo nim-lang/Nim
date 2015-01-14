@@ -1,0 +1,6 @@
+
+if not "%1"=="" (
+	./koch install %1
+) else (
+	./koch install
+)
