@@ -141,7 +141,7 @@ proc elemType*(t: PType): PType =
   case t.kind
   of tyGenericInst, tyDistinct: result = elemType(lastSon(t))
   of tyArray, tyArrayConstr: result = t.sons[1]
-  else: result = t.sons[0]
+  else: result = t.lastSon
   assert(result != nil)
 
 proc skipGeneric(t: PType): PType = 
