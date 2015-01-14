@@ -4,7 +4,9 @@ if not exist "csources"(
 )
 
 cd "csources"
-if exist "C:\Program Files (x86)" (
+
+for /f "skip=1 delims=" %%x in ('wmic cpu get addresswidth') do if not defined AddressWidth set AddressWidth=%%x
+if %AddressWidth%==64 (
 	call build64.bat
 ) else (
 	call build.bat
