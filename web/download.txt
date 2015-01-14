@@ -24,7 +24,7 @@ like systems. Binary packages may be provided later.
 Download `nim-0.10.2.zip <download/nim-0.10.2.zip>`_, extract it and follow
 these instructions:
 
-* sh build.sh
+* ./build.sh
 * Add ``$your_install_dir/bin`` to your PATH.
 
 There are other ways to install Nim (like using the ``install.sh`` script),
@@ -39,11 +39,7 @@ Change the branch to suit your needs::
 
   git clone -b master git://github.com/Araq/Nim.git
   cd Nim
-  git clone -b master --depth 1 git://github.com/nim-lang/csources
-  cd csources && sh build.sh
-  cd ..
-  bin/nim c koch
-  ./koch boot -d:release
+  ./build.sh
 
 The ``master`` branch always contains the latest stable version of the compiler.
 If you want bleeding edge then switch to the ``devel`` branch and follow
