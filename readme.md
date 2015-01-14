@@ -39,9 +39,11 @@ $ ./build.sh
 add it to your PATH. More ``koch`` related options are documented in
 [doc/koch.txt](doc/koch.txt).
 
-The above steps can be performed on Windows in a similar fashion, the
-``build.bat`` and ``build64.bat`` (for x86_64 systems) are provided to be used
-instead of ``build.sh``.
+The above steps can be performed on Windows in a similar fashion, use
+``build.bat`` instead of ``build.sh``. Make sure you have mingw and git in
+your PATH. If you want to use different compiler, run script and then
+manually change `CC` and `LINKER` variables in `csources/build.bat` or
+`csources/build64.bat`.
 
 ## Getting help
 A [forum](http://forum.nim-lang.org/) is available if you have any
