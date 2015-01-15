@@ -338,7 +338,7 @@ in the ``nimcache`` directory. The naming of these files follows the pattern
 ``nimblePackageName_`` + ``nimSource``:
 
 * Filenames for modules imported from `nimble packages
-  <https://github.com/nim-code/nimble>`_ will end up with
+  <https://github.com/nim-lang/nimble>`_ will end up with
   ``nimblePackageName_module.c``. For example, if you import the
   ``argument_parser`` module from the same name nimble package you
   will end up with a ``argument_parser_argument_parser.c`` file

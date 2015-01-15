@@ -280,11 +280,11 @@ macro `<>`*(x: expr): expr {.immediate.} =
   ## Constructor macro for XML. Example usage:
   ##
   ## .. code-block:: nim
-  ##   <>a(href="http://nim-code.org", newText("Nim rules."))
+  ##   <>a(href="http://nim-lang.org", newText("Nim rules."))
   ##
   ## Produces an XML tree for::
   ##
-  ##  <a href="http://nim-code.org">Nim rules.</a>
+  ##  <a href="http://nim-lang.org">Nim rules.</a>
   ##
   let x = callsite()
   result = xmlConstructor(x)
@@ -343,5 +343,5 @@ proc findAll*(n: XmlNode, tag: string): seq[XmlNode] =
   findAll(n, tag, result)
 
 when isMainModule:
-  assert """<a href="http://nim-code.org">Nim rules.</a>""" ==
-    $(<>a(href="http://nim-code.org", newText("Nim rules.")))
+  assert """<a href="http://nim-lang.org">Nim rules.</a>""" ==
+    $(<>a(href="http://nim-lang.org", newText("Nim rules.")))
