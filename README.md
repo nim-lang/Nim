@@ -43,6 +43,8 @@ passed in order to encourage readable expressions, so `[0-9]+` is equivalent to
   the subject string
   - `N` - turn off auto-capture, `(?foo)` is necessary to capture.
   - `s` - `.` matches newline
+  - `S` - study the pattern to hopefully improve performance. JIT is unspported
+  at the moment.
   - `U` - expressions are not greedy by default. `?` can be added to a
   qualifier to make it greedy.
   - `u` - same as `8`
