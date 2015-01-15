@@ -104,11 +104,11 @@ General
   What about editor support?
   --------------------------
 
-  - Nim IDE: https://github.com/nim-code/Aporia
-  - Emacs: https://github.com/Tass/nimrod-mode
+  - Nim IDE: https://github.com/nim-lang/Aporia
+  - Emacs: https://github.com/Tass/nim-mode
   - Vim: https://github.com/zah/nimrod.vim/
   - Scite: Included
-  - Gedit: The `Aporia .lang file <https://github.com/nim-code/Aporia/blob/master/share/gtksourceview-2.0/language-specs/nimrod.lang>`_
+  - Gedit: The `Aporia .lang file <https://github.com/nim-lang/Aporia/blob/master/share/gtksourceview-2.0/language-specs/nimrod.lang>`_
   - jEdit: https://github.com/exhu/nimrod-misc/tree/master/jedit
   - TextMate: Available in bundle installer (`Repository <https://github.com/textmate/nim.tmbundle>`_)
 
