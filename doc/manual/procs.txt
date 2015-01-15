@@ -121,21 +121,21 @@ different; for this a special setter syntax is needed:
 .. code-block:: nim
   
   type
-    TSocket* = object of TObject
+    Socket* = object of RootObj
       FHost: int # cannot be accessed from the outside of the module
                  # the `F` prefix is a convention to avoid clashes since
                  # the accessors are named `host`
 
-  proc `host=`*(s: var TSocket, value: int) {.inline.} =
+  proc `host=`*(s: var Socket, value: int) {.inline.} =
     ## setter of hostAddr
     s.FHost = value
   
-  proc host*(s: TSocket): int {.inline.} =
+  proc host*(s: Socket): int {.inline.} =
     ## getter of hostAddr
     s.FHost
 
   var
-    s: TSocket
+    s: Socket
   s.host = 34  # same as `host=`(s, 34)
 
 

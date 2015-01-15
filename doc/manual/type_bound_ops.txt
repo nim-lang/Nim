@@ -49,17 +49,17 @@ can then only be used in *destructible contexts* and as parameters:
 
 .. code-block:: nim
   type
-    TMyObj = object
+    MyObj = object
       x, y: int
       p: pointer
       
-  proc destroy(o: var TMyObj) {.override.} =
+  proc destroy(o: var MyObj) {.override.} =
     if o.p != nil: dealloc o.p
     
-  proc open: TMyObj =
-    result = TMyObj(x: 1, y: 2, p: alloc(3))
+  proc open: MyObj =
+    result = MyObj(x: 1, y: 2, p: alloc(3))
  
-  proc work(o: TMyObj) =
+  proc work(o: MyObj) =
     echo o.x
     # No destructor invoked here for 'o' as 'o' is a parameter.
 

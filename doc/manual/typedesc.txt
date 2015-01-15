@@ -10,7 +10,7 @@ As their name suggests, static params must be known at compile-time:
 
 .. code-block:: nim
 
-  proc precompiledRegex(pattern: static[string]): TRegEx =
+  proc precompiledRegex(pattern: static[string]): RegEx =
     var res {.global.} = re(pattern)
     return res
 
@@ -35,7 +35,7 @@ predicate:
   # The following proc will be compiled once for each unique static
   # value and also once for the case handling all run-time values:
 
-  proc re(pattern: semistatic[string]): TRegEx =
+  proc re(pattern: semistatic[string]): RegEx =
     when isStatic(pattern):
       result = precompiledRegex(pattern)
     else:
@@ -74,8 +74,8 @@ instantiation type using the param name:
     echo "allocating ", T.name
     new(result)
 
-  var n = TNode.new
-  var tree = new(TBinaryTree[int])
+  var n = Node.new
+  var tree = new(BinaryTree[int])
 
 When multiple typedesc params are present, they act like a distinct type class
 (i.e. they will bind freely to different types). To force a bind-once behavior

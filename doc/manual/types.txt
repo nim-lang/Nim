@@ -257,8 +257,8 @@ the resulting programs will still handle UTF-8 properly as UTF-8 was specially
 designed for this.
 Another reason is that Nim can support ``array[char, int]`` or
 ``set[char]`` efficiently as many algorithms rely on this feature. The
-`TRune` type is used for Unicode characters, it can represent any Unicode
-character. ``TRune`` is declared in the `unicode module <unicode.html>`_.
+`Rune` type is used for Unicode characters, it can represent any Unicode
+character. ``Rune`` is declared in the `unicode module <unicode.html>`_.
 
 
 
@@ -591,38 +591,38 @@ An example:
 
   # This is an example how an abstract syntax tree could be modelled in Nim
   type
-    TNodeKind = enum  # the different node types
+    NodeKind = enum  # the different node types
       nkInt,          # a leaf with an integer value
       nkFloat,        # a leaf with a float value
       nkString,       # a leaf with a string value
       nkAdd,          # an addition
       nkSub,          # a subtraction
       nkIf            # an if statement
-    PNode = ref TNode
-    TNode = object
-      case kind: TNodeKind  # the ``kind`` field is the discriminator
+    Node = ref NodeObj
+    NodeObj = object
+      case kind: NodeKind  # the ``kind`` field is the discriminator
       of nkInt: intVal: int
       of nkFloat: floatVal: float
       of nkString: strVal: string
       of nkAdd, nkSub:
-        leftOp, rightOp: PNode
+        leftOp, rightOp: Node
       of nkIf:
-        condition, thenPart, elsePart: PNode
+        condition, thenPart, elsePart: Node
 
   # create a new case object:
-  var n = PNode(kind: nkIf, condition: nil)
+  var n = Node(kind: nkIf, condition: nil)
   # accessing n.thenPart is valid because the ``nkIf`` branch is active:
-  n.thenPart = PNode(kind: nkFloat, floatVal: 2.0)
+  n.thenPart = Node(kind: nkFloat, floatVal: 2.0)
 
-  # the following statement raises an `EInvalidField` exception, because
+  # the following statement raises an `FieldError` exception, because
   # n.kind's value does not fit and the ``nkString`` branch is not active:
   n.strVal = ""
 
   # invalid: would change the active object branch:
   n.kind = nkInt
 
-  var x = PNode(kind: nkAdd, leftOp: PNode(kind: nkInt, intVal: 4),
-                             rightOp: PNode(kind: nkInt, intVal: 2))
+  var x = Node(kind: nkAdd, leftOp: Node(kind: nkInt, intVal: 4),
+                            rightOp: Node(kind: nkInt, intVal: 2))
   # valid: does not change the active object branch:
   x.kind = nkSub
 
@@ -672,13 +672,13 @@ dereferencing operations for reference types:
 .. code-block:: nim
 
   type
-    PNode = ref TNode
-    TNode = object
-      le, ri: PNode
+    Node = ref NodeObj
+    NodeObj = object
+      le, ri: Node
       data: int
 
   var
-    n: PNode
+    n: Node
   new(n)
   n.data = 9
   # no need to write n[].data; in fact n[].data is highly discouraged!
@@ -717,10 +717,10 @@ memory manually:
 
 .. code-block:: nim
   type
-    TData = tuple[x, y: int, s: string]
+    Data = tuple[x, y: int, s: string]
 
-  # allocate memory for TData on the heap:
-  var d = cast[ptr TData](alloc0(sizeof(TData)))
+  # allocate memory for Data on the heap:
+  var d = cast[ptr Data](alloc0(sizeof(Data)))
 
   # create a new string on the garbage collected heap:
   d.s = "abc"
@@ -736,7 +736,7 @@ never be freed. The example also demonstrates two important features for low
 level programming: the ``sizeof`` proc returns the size of a type or value
 in bytes. The ``cast`` operator can circumvent the type system: the compiler
 is forced to treat the result of the ``alloc0`` call (which returns an untyped
-pointer) as if it would have the type ``ptr TData``. Casting should only be
+pointer) as if it would have the type ``ptr Data``. Casting should only be
 done if it is unavoidable: it breaks type safety and bugs can lead to
 mysterious crashes.
 
@@ -855,13 +855,13 @@ Examples:
 .. code-block:: nim
 
   type
-    TOnMouseMove = proc (x, y: int) {.closure.}
+    OnMouseMove = proc (x, y: int) {.closure.}
 
   proc onMouseMove(mouseX, mouseY: int) =
     # has default calling convention
     echo "x: ", mouseX, " y: ", mouseY
 
-  proc setOnMouseMove(mouseMoveEvent: TOnMouseMove) = discard
+  proc setOnMouseMove(mouseMoveEvent: OnMouseMove) = discard
 
   # ok, 'onMouseMove' has the default calling convention, which is compatible
   # to 'closure':
@@ -962,33 +962,33 @@ types are a perfect tool to model different currencies:
 
 .. code-block:: nim
   type
-    TDollar = distinct int
-    TEuro = distinct int
+    Dollar = distinct int
+    Euro = distinct int
 
   var
-    d: TDollar
-    e: TEuro
+    d: Dollar
+    e: Euro
 
   echo d + 12
-  # Error: cannot add a number with no unit and a ``TDollar``
+  # Error: cannot add a number with no unit and a ``Dollar``
 
-Unfortunately, ``d + 12.TDollar`` is not allowed either,
-because ``+`` is defined for ``int`` (among others), not for ``TDollar``. So
+Unfortunately, ``d + 12.Dollar`` is not allowed either,
+because ``+`` is defined for ``int`` (among others), not for ``Dollar``. So
 a ``+`` for dollars needs to be defined:
 
 .. code-block::
-  proc `+` (x, y: TDollar): TDollar =
-    result = TDollar(int(x) + int(y))
+  proc `+` (x, y: Dollar): Dollar =
+    result = Dollar(int(x) + int(y))
 
 It does not make sense to multiply a dollar with a dollar, but with a
 number without unit; and the same holds for division:
 
 .. code-block::
-  proc `*` (x: TDollar, y: int): TDollar =
-    result = TDollar(int(x) * y)
+  proc `*` (x: Dollar, y: int): Dollar =
+    result = Dollar(int(x) * y)
 
-  proc `*` (x: int, y: TDollar): TDollar =
-    result = TDollar(x * int(y))
+  proc `*` (x: int, y: Dollar): Dollar =
+    result = Dollar(x * int(y))
 
   proc `div` ...
 
@@ -999,15 +999,15 @@ The pragma `borrow`:idx: has been designed to solve this problem; in principle
 it generates the above trivial implementations:
 
 .. code-block:: nim
-  proc `*` (x: TDollar, y: int): TDollar {.borrow.}
-  proc `*` (x: int, y: TDollar): TDollar {.borrow.}
-  proc `div` (x: TDollar, y: int): TDollar {.borrow.}
+  proc `*` (x: Dollar, y: int): Dollar {.borrow.}
+  proc `*` (x: int, y: Dollar): Dollar {.borrow.}
+  proc `div` (x: Dollar, y: int): Dollar {.borrow.}
 
 The ``borrow`` pragma makes the compiler use the same implementation as
 the proc that deals with the distinct type's base type, so no code is
 generated.
 
-But it seems all this boilerplate code needs to be repeated for the ``TEuro``
+But it seems all this boilerplate code needs to be repeated for the ``Euro``
 currency. This can be solved with templates_.
 
 .. code-block:: nim
@@ -1037,8 +1037,8 @@ currency. This can be solved with templates_.
     multiplicative(typ, base)
     comparable(typ)
 
-  defineCurrency(TDollar, int)
-  defineCurrency(TEuro, int)
+  defineCurrency(Dollar, int)
+  defineCurrency(Euro, int)
 
 
 The borrow pragma can also be used to annotate the distinct type to allow
@@ -1071,7 +1071,7 @@ values is vulnerable to the famous `SQL injection attack`:idx:\:
 .. code-block:: nim
   import strutils
 
-  proc query(db: TDbHandle, statement: string) = ...
+  proc query(db: DbHandle, statement: string) = ...
 
   var
     username: string
@@ -1081,13 +1081,13 @@ values is vulnerable to the famous `SQL injection attack`:idx:\:
 
 This can be avoided by distinguishing strings that contain SQL from strings
 that don't. Distinct types provide a means to introduce a new string type
-``TSQL`` that is incompatible with ``string``:
+``SQL`` that is incompatible with ``string``:
 
 .. code-block:: nim
   type
-    TSQL = distinct string
+    SQL = distinct string
 
-  proc query(db: TDbHandle, statement: TSQL) = ...
+  proc query(db: DbHandle, statement: SQL) = ...
 
   var
     username: string
@@ -1098,28 +1098,28 @@ that don't. Distinct types provide a means to introduce a new string type
 
 It is an essential property of abstract types that they **do not** imply a
 subtype relation between the abtract type and its base type. Explict type
-conversions from ``string`` to ``TSQL`` are allowed:
+conversions from ``string`` to ``SQL`` are allowed:
 
 .. code-block:: nim
   import strutils, sequtils
 
-  proc properQuote(s: string): TSQL =
+  proc properQuote(s: string): SQL =
     # quotes a string properly for an SQL statement
-    return TSQL(s)
+    return SQL(s)
 
-  proc `%` (frmt: TSQL, values: openarray[string]): TSQL =
+  proc `%` (frmt: SQL, values: openarray[string]): SQL =
     # quote each argument:
-    let v = values.mapIt(TSQL, properQuote(it))
+    let v = values.mapIt(SQL, properQuote(it))
     # we need a temporary type for the type conversion :-(
-    type TStrSeq = seq[string]
+    type StrSeq = seq[string]
     # call strutils.`%`:
-    result = TSQL(string(frmt) % TStrSeq(v))
+    result = SQL(string(frmt) % StrSeq(v))
 
-  db.query("SELECT FROM users WHERE name = '$1'".TSQL % [username])
+  db.query("SELECT FROM users WHERE name = '$1'".SQL % [username])
 
 Now we have compile-time checking against SQL injection attacks.  Since
-``"".TSQL`` is transformed to ``TSQL("")`` no new syntax is needed for nice
-looking ``TSQL`` string literals. The hypothetical ``TSQL`` type actually
+``"".SQL`` is transformed to ``SQL("")`` no new syntax is needed for nice
+looking ``SQL`` string literals. The hypothetical ``SQL`` type actually
 exists in the library as the `TSqlQuery type <db_sqlite.html#TSqlQuery>`_ of
 modules like `db_sqlite <db_sqlite.html>`_.
 

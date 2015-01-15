@@ -89,12 +89,12 @@ collector to not consider objects of this type as part of a cycle:
 
 .. code-block:: nim
   type
-    PNode = ref TNode
-    TNode {.acyclic, final.} = object
-      left, right: PNode
+    Node = ref NodeObj
+    NodeObj {.acyclic, final.} = object
+      left, right: Node
       data: string
 
-In the example a tree structure is declared with the ``TNode`` type. Note that
+In the example a tree structure is declared with the ``Node`` type. Note that
 the type definition is recursive and the GC has to assume that objects of
 this type may form a cyclic graph. The ``acyclic`` pragma passes the
 information that this cannot happen to the GC. If the programmer uses the
@@ -106,9 +106,9 @@ memory, but nothing worse happens.
 
 .. code-block:: nim
   type
-    PNode = acyclic ref TNode
-    TNode = object
-      left, right: PNode
+    Node = acyclic ref NodeObj
+    NodeObj = object
+      left, right: Node
       data: string
 
 
@@ -129,13 +129,13 @@ structure:
 
 .. code-block:: nim
   type
-    TNodeKind = enum nkLeaf, nkInner
-    TNode {.final, shallow.} = object
-      case kind: TNodeKind
+    NodeKind = enum nkLeaf, nkInner
+    Node {.final, shallow.} = object
+      case kind: NodeKind
       of nkLeaf: 
         strVal: string
       of nkInner: 
-        children: seq[TNode]
+        children: seq[Node]
 
 
 pure pragma

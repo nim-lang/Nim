@@ -9,17 +9,17 @@ The following example shows a generic binary tree can be modelled:
 
 .. code-block:: nim
   type
-    TBinaryTree[T] = object      # TBinaryTree is a generic type with
+    BinaryTreeObj[T] = object    # BinaryTreeObj is a generic type with
                                  # with generic param ``T``
-      le, ri: ref TBinaryTree[T] # left and right subtrees; may be nil
+      le, ri: BinaryTree[T]      # left and right subtrees; may be nil
       data: T                    # the data stored in a node
-    PBinaryTree[T] = ref TBinaryTree[T] # a shorthand for notational convenience
+    BinaryTree[T] = ref BinaryTreeObj[T] # a shorthand for notational convenience
 
-  proc newNode[T](data: T): PBinaryTree[T] = # constructor for a node
+  proc newNode[T](data: T): BinaryTree[T] = # constructor for a node
     new(result)
     result.data = data
 
-  proc add[T](root: var PBinaryTree[T], n: PBinaryTree[T]) =
+  proc add[T](root: var BinaryTree[T], n: BinaryTree[T]) =
     if root == nil:
       root = n
     else:
@@ -40,7 +40,7 @@ The following example shows a generic binary tree can be modelled:
             return
           it = it.ri
 
-  iterator inorder[T](root: PBinaryTree[T]): T =
+  iterator inorder[T](root: BinaryTree[T]): T =
     # inorder traversal of a binary tree
     # recursive iterators are not yet implemented, so this does not work in
     # the current compiler!
@@ -49,7 +49,7 @@ The following example shows a generic binary tree can be modelled:
     if root.ri != nil: yield inorder(root.ri)
 
   var
-    root: PBinaryTree[string] # instantiate a PBinaryTree with the type string
+    root: BinaryTree[string]  # instantiate a BinaryTree with the type string
   add(root, newNode("hallo")) # instantiates generic procs ``newNode`` and
   add(root, newNode("world")) # ``add``
   for str in inorder(root):
@@ -64,10 +64,10 @@ therefore very useful for type specialization within generic code:
 
 .. code-block:: nim
   type
-    TTable[TKey, TValue] = object
-      keys: seq[TKey]
-      values: seq[TValue]
-      when not (TKey is string): # nil value for strings used for optimization
+    Table[Key, Value] = object
+      keys: seq[Key]
+      values: seq[Value]
+      when not (Key is string): # nil value for strings used for optimization
         deletedKeys: seq[bool]
 
 
@@ -127,9 +127,9 @@ more complex type classes:
 
 .. code-block:: nim
   # create a type class that will match all tuple and object types
-  type TRecordType = tuple or object
+  type RecordType = tuple or object
 
-  proc printFields(rec: TRecordType) =
+  proc printFields(rec: RecordType) =
     for key, value in fieldPairs(rec):
       echo key, " = ", value
 
@@ -175,11 +175,11 @@ type parameters of the matched generic type. They can be easily accessed using
 the dot syntax:
 
 .. code-block:: nim
-  type TMatrix[T, Rows, Columns] = object
+  type Matrix[T, Rows, Columns] = object
     ...
 
-  proc `[]`(m: TMatrix, row, col: int): TMatrix.T = 
-    m.data[col * high(TMatrix.Columns) + row]
+  proc `[]`(m: Matrix, row, col: int): Matrix.T = 
+    m.data[col * high(Matrix.Columns) + row]
 
 Alternatively, the `type` operator can be used over the proc params for similar
 effect when anonymous or distinct type classes are used.
@@ -195,7 +195,7 @@ type, this results in another more specific type class:
     # seq[T1] is the same as just `seq`, but T1 will be allowed to bind
     # to a single type, while the signature is being matched
 
-  TMatrix[Ordinal] # Any TMatrix instantiation using integer values
+  Matrix[Ordinal] # Any Matrix instantiation using integer values
 
 As seen in the previous example, in such instantiations, it's not necessary to
 supply all type parameters of the generic type, because any missing ones will
@@ -292,18 +292,18 @@ at definition and the context at instantiation are considered:
 
 .. code-block:: nim
   type
-    TIndex = distinct int
+    Index = distinct int
   
-  proc `==` (a, b: TIndex): bool {.borrow.}
+  proc `==` (a, b: Index): bool {.borrow.}
   
-  var a = (0, 0.TIndex)
-  var b = (0, 0.TIndex)
+  var a = (0, 0.Index)
+  var b = (0, 0.Index)
   
   echo a == b # works!
 
 In the example the generic ``==`` for tuples (as defined in the system module)
 uses the ``==`` operators of the tuple's components. However, the ``==`` for
-the ``TIndex`` type is defined *after* the ``==`` for tuples; yet the example
+the ``Index`` type is defined *after* the ``==`` for tuples; yet the example
 compiles as the instantiation takes the currently defined symbols into account
 too.
 

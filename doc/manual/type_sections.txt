@@ -5,15 +5,15 @@ Example:
 
 .. code-block:: nim
   type # example demonstrating mutually recursive types
-    PNode = ref TNode # a traced pointer to a TNode
-    TNode = object
-      le, ri: PNode   # left and right subtrees
-      sym: ref TSym   # leaves contain a reference to a TSym
+    Node = ref NodeObj # a traced pointer to a NodeObj
+    NodeObj = object
+      le, ri: Node     # left and right subtrees
+      sym: ref Sym     # leaves contain a reference to a Sym
 
-    TSym = object     # a symbol
-      name: string    # the symbol's name
-      line: int       # the line the symbol was declared in
-      code: PNode     # the symbol's abstract syntax tree
+    Sym = object       # a symbol
+      name: string     # the symbol's name
+      line: int        # the line the symbol was declared in
+      code: Node      # the symbol's abstract syntax tree
 
 A type section begins with the ``type`` keyword. It contains multiple
 type definitions. A type definition binds a type to a name. Type definitions
