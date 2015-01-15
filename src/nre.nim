@@ -177,7 +177,6 @@ proc asSeq*(pattern: Captures, default: string = nil): seq[string] =
 let Options: Table[string, int] = {
   "8" : pcre.UTF8,
   "9" : pcre.NEVER_UTF,
-  "?" : pcre.NO_UTF8_CHECK,
   "A" : pcre.ANCHORED,
   # "C" : pcre.AUTO_CALLOUT, unsuported XXX
   "E" : pcre.DOLLAR_ENDONLY,
@@ -185,7 +184,6 @@ let Options: Table[string, int] = {
   "i" : pcre.CASELESS,
   "m" : pcre.MULTILINE,
   "N" : pcre.NO_AUTO_CAPTURE,
-  "O" : pcre.NO_AUTO_POSSESS,
   "s" : pcre.DOTALL,
   "U" : pcre.UNGREEDY,
   "u" : pcre.UTF8,

@@ -9,7 +9,7 @@ suite "Test NRE initialization":
   test "correct options":
     expect(SyntaxError):  # ValueError would be bad
       discard initRegex("[0-9]+",
-        "89?AEfimNOsUWXxY<any><anycrlf><cr><crlf><lf><bsr_anycrlf><bsr_unicode><js>")
+        "89AEfimNsUWXxY<any><anycrlf><cr><crlf><lf><bsr_anycrlf><bsr_unicode><js>")
 
   test "incorrect options":
     expect(KeyError): discard initRegex("[0-9]+", "a")
