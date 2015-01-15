@@ -533,7 +533,7 @@ proc bounds*(c: TCaptures,
 
 when not useUnicode:
   type
-    TRune = char
+    Rune = char
   template fastRuneAt(s, i, ch: expr) =
     ch = s[i]
     inc(i)
@@ -563,7 +563,7 @@ proc rawMatch*(s: string, p: TPeg, start: int, c: var TCaptures): int {.
       result = -1
   of pkLetter: 
     if s[start] != '\0':
-      var a: TRune
+      var a: Rune
       result = start
       fastRuneAt(s, result, a)
       if isAlpha(a): dec(result, start)
@@ -572,7 +572,7 @@ proc rawMatch*(s: string, p: TPeg, start: int, c: var TCaptures): int {.
       result = -1
   of pkLower: 
     if s[start] != '\0':
-      var a: TRune
+      var a: Rune
       result = start
       fastRuneAt(s, result, a)
       if isLower(a): dec(result, start)
@@ -581,7 +581,7 @@ proc rawMatch*(s: string, p: TPeg, start: int, c: var TCaptures): int {.
       result = -1
   of pkUpper: 
     if s[start] != '\0':
-      var a: TRune
+      var a: Rune
       result = start
       fastRuneAt(s, result, a)
       if isUpper(a): dec(result, start)
@@ -590,7 +590,7 @@ proc rawMatch*(s: string, p: TPeg, start: int, c: var TCaptures): int {.
       result = -1
   of pkTitle: 
     if s[start] != '\0':
-      var a: TRune
+      var a: Rune
       result = start
       fastRuneAt(s, result, a)
       if isTitle(a): dec(result, start) 
@@ -599,7 +599,7 @@ proc rawMatch*(s: string, p: TPeg, start: int, c: var TCaptures): int {.
       result = -1
   of pkWhitespace: 
     if s[start] != '\0':
-      var a: TRune
+      var a: Rune
       result = start
       fastRuneAt(s, result, a)
       if isWhitespace(a): dec(result, start)
@@ -623,7 +623,7 @@ proc rawMatch*(s: string, p: TPeg, start: int, c: var TCaptures): int {.
   of pkTerminalIgnoreCase:
     var
       i = 0
-      a, b: TRune
+      a, b: Rune
     result = start
     while i < len(p.term):
       fastRuneAt(p.term, i, a)
@@ -635,15 +635,15 @@ proc rawMatch*(s: string, p: TPeg, start: int, c: var TCaptures): int {.
   of pkTerminalIgnoreStyle:
     var
       i = 0
-      a, b: TRune
+      a, b: Rune
     result = start
     while i < len(p.term):
       while true:
         fastRuneAt(p.term, i, a)
-        if a != TRune('_'): break
+        if a != Rune('_'): break
       while true:
         fastRuneAt(s, result, b)
-        if b != TRune('_'): break
+        if b != Rune('_'): break
       if toLower(a) != toLower(b):
         result = -1
         break
@@ -865,7 +865,7 @@ template `=~`*(s: string, pattern: TPeg): expr =
   ##   else:
   ##     echo("syntax error")
   ##  
-  when not definedInScope(matches):
+  when not declaredInScope(matches):
     var matches {.inject.}: array[0..MaxSubpatterns-1, string]
   match(s, pattern, matches)
 
@@ -964,7 +964,7 @@ proc transformFile*(infile, outfile: string,
   ## error occurs. This is supposed to be used for quick scripting.
   var x = readFile(infile)
   if not isNil(x):
-    var f: TFile
+    var f: File
     if open(f, outfile, fmWrite):
       write(f, x.parallelReplace(subs))
       close(f)
@@ -1404,8 +1404,8 @@ proc arrowIsNextTok(c: TPegLexer): bool =
 # ----------------------------- parser ----------------------------------------
     
 type
-  EInvalidPeg* = object of EInvalidValue ## raised if an invalid
-                                         ## PEG has been detected
+  EInvalidPeg* = object of ValueError ## raised if an invalid
+                                      ## PEG has been detected
   TPegParser = object of TPegLexer ## the PEG parser object
     tok: TToken
     nonterms: seq[PNonTerminal]
