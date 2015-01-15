@@ -209,21 +209,22 @@ else:
   proc getModuleFileNameA*(handle: THandle, buf: cstring, size: int32): int32 {.
     importc: "GetModuleFileNameA", dynlib: "kernel32", stdcall.}
 
-when not defined(winPreVista):
-  when useWinUnicode:
+when useWinUnicode:
+  when not defined(winPreVista):
     proc createSymbolicLinkW*(lpSymlinkFileName, lpTargetFileName: WideCString,
                            flags: DWORD): int32 {.
       importc:"CreateSymbolicLinkW", dynlib: "kernel32", stdcall.}
-    proc createHardLinkW*(lpFileName, lpExistingFileName: WideCString,
-                           security: pointer=nil): int32 {.
-      importc:"CreateHardLinkW", dynlib: "kernel32", stdcall.}
-  else:
+  proc createHardLinkW*(lpFileName, lpExistingFileName: WideCString,
+                         security: pointer=nil): int32 {.
+    importc:"CreateHardLinkW", dynlib: "kernel32", stdcall.}
+else:
+  when not defined(winPreVista):
     proc createSymbolicLinkA*(lpSymlinkFileName, lpTargetFileName: cstring,
                              flags: DWORD): int32 {.
       importc:"CreateSymbolicLinkA", dynlib: "kernel32", stdcall.}
-    proc createHardLinkA*(lpFileName, lpExistingFileName: cstring,
-                             security: pointer=nil): int32 {.
-      importc:"CreateHardLinkA", dynlib: "kernel32", stdcall.}
+  proc createHardLinkA*(lpFileName, lpExistingFileName: cstring,
+                           security: pointer=nil): int32 {.
+    importc:"CreateHardLinkA", dynlib: "kernel32", stdcall.}
 
 const
   FILE_ATTRIBUTE_ARCHIVE* = 32'i32

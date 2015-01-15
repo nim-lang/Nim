@@ -1428,15 +1428,14 @@ proc createHardlink*(src, dest: string) =
   ## **Warning**: Most OS's restrict the creation of hard links to 
   ## root users (administrators) .
   when defined(Windows):
-    when not defined(winPreVista):
-      when useWinUnicode:
-        var wSrc = newWideCString(src)
-        var wDst = newWideCString(dest)
-        if createHardLinkW(wDst, wSrc, nil) == 0:
-          raiseOSError(osLastError())
-      else:
-        if createHardLinkA(dest, src, nil) == 0:
-          raiseOSError(osLastError())
+    when useWinUnicode:
+      var wSrc = newWideCString(src)
+      var wDst = newWideCString(dest)
+      if createHardLinkW(wDst, wSrc, nil) == 0:
+        raiseOSError(osLastError())
+    else:
+      if createHardLinkA(dest, src, nil) == 0:
+        raiseOSError(osLastError())
   else:
     if link(src, dest) != 0:
       raiseOSError(osLastError())
