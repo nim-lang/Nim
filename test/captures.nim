@@ -50,10 +50,10 @@ suite "captures":
 
   test "capture sequence":
     let ex1 = "foo".match(initRegex("(?<foo>foo)(?<bar>bar)?"))
-    check(ex1.captures.asSeq == @["foo", nil])
-    check(ex1.captureBounds.asSeq == @[Some(0..3), None[Slice[int]]()])
-    check(ex1.captures.asSeq("") == @["foo", ""])
+    check(ex1.captures.toSeq == @["foo", nil])
+    check(ex1.captureBounds.toSeq == @[Some(0..3), None[Slice[int]]()])
+    check(ex1.captures.toSeq("") == @["foo", ""])
 
     let ex2 = "foobar".match(initRegex("(?<foo>foo)(?<bar>bar)?"))
-    check(ex2.captures.asSeq == @["foo", "bar"])
+    check(ex2.captures.toSeq == @["foo", "bar"])
 

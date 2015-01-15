@@ -156,7 +156,7 @@ proc asTable*(pattern: CaptureBounds, default = None[Slice[int]]()):
   result = initTable[string, Option[Slice[int]]]()
   asTableImpl(nextVal.isNone)
 
-template asSeqImpl(cond: bool): stmt {.immediate, dirty.} =
+template toSeqImpl(cond: bool): stmt {.immediate, dirty.} =
   result = @[]
   for i in 0 .. <RegexMatch(pattern).pattern.captureCount:
     let nextVal = pattern[i]
@@ -165,11 +165,11 @@ template asSeqImpl(cond: bool): stmt {.immediate, dirty.} =
     else:
       result.add(nextVal)
 
-proc asSeq*(pattern: CaptureBounds, default = None[Slice[int]]()): seq[Option[Slice[int]]] =
-  asSeqImpl(nextVal.isNone)
+proc toSeq*(pattern: CaptureBounds, default = None[Slice[int]]()): seq[Option[Slice[int]]] =
+  toSeqImpl(nextVal.isNone)
 
-proc asSeq*(pattern: Captures, default: string = nil): seq[string] =
-  asSeqImpl(nextVal == nil)
+proc toSeq*(pattern: Captures, default: string = nil): seq[string] =
+  toSeqImpl(nextVal == nil)
 # }}}
 
 # Creation & Destruction {{{
