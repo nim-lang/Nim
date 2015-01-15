@@ -213,7 +213,7 @@ example ``*`` should not be greedy, so ``\[.*?\]`` should be used instead.
 PEG construction
 ----------------
 There are two ways to construct a PEG in Nim code:
-(1) Parsing a string into an AST which consists of `TPeg` nodes with the
+(1) Parsing a string into an AST which consists of `Peg` nodes with the
     `peg` proc.
 (2) Constructing the AST directly with proc calls. This method does not
     support constructing rules, only simple expressions and is not as

@@ -31,13 +31,13 @@ documentation with only their well-documented code.
 Example:
 
 .. code-block:: nim
-  type TPerson* = object
+  type Person* = object
     ## This type contains a description of a person
     name: string
     age: int
 
 Outputs::
-  TPerson* = object
+  Person* = object
     name: string
     age: int
 
@@ -268,8 +268,8 @@ The relationship of type to suffix is made by the proc ``complexName`` in the
 ``compiler/docgen.nim`` file. Here are some examples of complex names for
 symbols in the `system module <system.html>`_.
 
-* ``type TSignedInt = int | int8 | int16 | int32 | int64`` **=>**
-  `#TSignedInt <system.html#TSignedInt>`_
+* ``type SignedInt = int | int8 | int16 | int32 | int64`` **=>**
+  `#SignedInt <system.html#SignedInt>`_
 * ``var globalRaiseHook: proc (e: ref E_Base): bool {.nimcall.}`` **=>**
   `#globalRaiseHook <system.html#globalRaiseHook>`_
 * ``const NimVersion = "0.0.0"`` **=>**
@@ -307,7 +307,7 @@ columns is:
    Nim's rules (eg. \`^\` like in `the actors module
    <actors.html#^,ptr.TChannel[T]>`_).
 2. Base filename plus anchor hyper link (eg.
-   ``algorithm.html#*,int,TSortOrder``).
+   ``algorithm.html#*,int,SortOrder``).
 3. Optional human readable string to display as hyper link. If the value is not
    present or is the empty string, the hyper link will be rendered
    using the term. Prefix whitespace indicates that this entry is

@@ -56,19 +56,19 @@ Objects have access to their type at runtime. There is an
 
 .. code-block:: nim
   type
-    TPerson = object of RootObj
+    Person = object of RootObj
       name*: string  # the * means that `name` is accessible from other modules
       age: int       # no * means that the field is hidden from other modules
 
-    TStudent = object of TPerson # TStudent inherits from TPerson
-      id: int                    # with an id field
+    Student = object of Person # Student inherits from Person
+      id: int                  # with an id field
 
   var
-    student: TStudent
-    person: TPerson
-  assert(student of TStudent) # is true
+    student: Student
+    person: Person
+  assert(student of Student) # is true
   # object construction:
-  student = TStudent(name: "Anton", age: 5, id: 2)
+  student = Student(name: "Anton", age: 5, id: 2)
 
 Object fields that should be visible from outside the defining module have to
 be marked by ``*``. In contrast to tuples, different object types are
@@ -100,15 +100,15 @@ Example:
 
 .. code-block:: nim
   type
-    PNode = ref TNode # a traced reference to a TNode
-    TNode = object
-      le, ri: PNode   # left and right subtrees
-      sym: ref TSym   # leaves contain a reference to a TSym
+    Node = ref NodeObj # a traced reference to a NodeObj
+    NodeObj = object
+      le, ri: Node     # left and right subtrees
+      sym: ref Sym     # leaves contain a reference to a Sym
 
-    TSym = object     # a symbol
-      name: string    # the symbol's name
-      line: int       # the line the symbol was declared in
-      code: PNode     # the symbol's abstract syntax tree
+    Sym = object       # a symbol
+      name: string     # the symbol's name
+      line: int        # the line the symbol was declared in
+      code: PNode      # the symbol's abstract syntax tree
 
 
 Type conversions
@@ -126,11 +126,11 @@ The syntax for type conversions is ``destination_type(expression_to_convert)``
 (like an ordinary call):
 
 .. code-block:: nim
-  proc getID(x: TPerson): int =
-    TStudent(x).id
+  proc getID(x: Person): int =
+    Student(x).id
 
 The ``InvalidObjectConversionError`` exception is raised if ``x`` is not a
-``TStudent``.
+``Student``.
 
 
 Object variants
@@ -144,16 +144,16 @@ An example:
 
   # This is an example how an abstract syntax tree could be modeled in Nim
   type
-    TNodeKind = enum  # the different node types
+    NodeKind = enum  # the different node types
       nkInt,          # a leaf with an integer value
       nkFloat,        # a leaf with a float value
       nkString,       # a leaf with a string value
       nkAdd,          # an addition
       nkSub,          # a subtraction
       nkIf            # an if statement
-    PNode = ref TNode
-    TNode = object
-      case kind: TNodeKind  # the ``kind`` field is the discriminator
+    Node = ref NodeObj
+    NodeObj = object
+      case kind: NodeKind  # the ``kind`` field is the discriminator
       of nkInt: intVal: int
       of nkFloat: floatVal: float
       of nkString: strVal: string
@@ -228,21 +228,21 @@ is needed:
 .. code-block:: nim
 
   type
-    TSocket* = object of RootObj
+    Socket* = object of RootObj
       FHost: int # cannot be accessed from the outside of the module
                  # the `F` prefix is a convention to avoid clashes since
                  # the accessors are named `host`
 
-  proc `host=`*(s: var TSocket, value: int) {.inline.} =
+  proc `host=`*(s: var Socket, value: int) {.inline.} =
     ## setter of hostAddr
     s.FHost = value
 
-  proc host*(s: TSocket): int {.inline.} =
+  proc host*(s: Socket): int {.inline.} =
     ## getter of hostAddr
     s.FHost
 
   var
-    s: TSocket
+    s: Socket
   s.host = 34  # same as `host=`(s, 34)
 
 (The example also shows ``inline`` procedures.)
@@ -253,10 +253,10 @@ The ``[]`` array access operator can be overloaded to provide
 
 .. code-block:: nim
   type
-    TVector* = object
+    Vector* = object
       x, y, z: float
 
-  proc `[]=`* (v: var TVector, i: int, value: float) =
+  proc `[]=`* (v: var Vector, i: int, value: float) =
     # setter
     case i
     of 0: v.x = value
@@ -264,7 +264,7 @@ The ``[]`` array access operator can be overloaded to provide
     of 2: v.z = value
     else: assert(false)
 
-  proc `[]`* (v: TVector, i: int): float =
+  proc `[]`* (v: Vector, i: int): float =
     # getter
     case i
     of 0: result = v.x
@@ -313,27 +313,27 @@ dispatching:
 .. code-block:: nim
 
   type
-    TThing = object of RootObj
-    TUnit = object of TThing
+    Thing = object of RootObj
+    Unit = object of Thing
       x: int
 
-  method collide(a, b: TThing) {.inline.} =
+  method collide(a, b: Thing) {.inline.} =
     quit "to override!"
 
-  method collide(a: TThing, b: TUnit) {.inline.} =
+  method collide(a: Thing, b: Unit) {.inline.} =
     echo "1"
 
-  method collide(a: TUnit, b: TThing) {.inline.} =
+  method collide(a: Unit, b: Thing) {.inline.} =
     echo "2"
 
   var
-    a, b: TUnit
+    a, b: Unit
   collide(a, b) # output: 2
 
 
 As the example demonstrates, invocation of a multi-method cannot be ambiguous:
 Collide 2 is preferred over collide 1 because the resolution works from left to
-right. Thus ``TUnit, TThing`` is preferred over ``TThing, TUnit``.
+right. Thus ``Unit, Thing`` is preferred over ``Thing, Unit``.
 
 **Perfomance note**: Nim does not produce a virtual method table, but
 generates dispatch trees. This avoids the expensive indirect branch for method
@@ -479,18 +479,18 @@ containers:
 
 .. code-block:: nim
   type
-    TBinaryTree[T] = object      # TBinaryTree is a generic type with
-                                 # with generic param ``T``
-      le, ri: ref TBinaryTree[T] # left and right subtrees; may be nil
-      data: T                    # the data stored in a node
-    PBinaryTree*[T] = ref TBinaryTree[T] # type that is exported
+    BinaryTreeObj[T] = object # BinaryTree is a generic type with
+                              # with generic param ``T``
+      le, ri: BinaryTree[T]   # left and right subtrees; may be nil
+      data: T                 # the data stored in a node
+    BinaryTree*[T] = ref BinaryTreeObj[T] # type that is exported
 
-  proc newNode*[T](data: T): PBinaryTree[T] =
+  proc newNode*[T](data: T): BinaryTree[T] =
     # constructor for a node
     new(result)
     result.data = data
 
-  proc add*[T](root: var PBinaryTree[T], n: PBinaryTree[T]) =
+  proc add*[T](root: var BinaryTree[T], n: BinaryTree[T]) =
     # insert a node into the tree
     if root == nil:
       root = n
@@ -511,15 +511,15 @@ containers:
             return
           it = it.ri
 
-  proc add*[T](root: var PBinaryTree[T], data: T) =
+  proc add*[T](root: var BinaryTree[T], data: T) =
     # convenience proc:
     add(root, newNode(data))
 
-  iterator preorder*[T](root: PBinaryTree[T]): T =
+  iterator preorder*[T](root: BinaryTree[T]): T =
     # Preorder traversal of a binary tree.
     # Since recursive iterators are not yet implemented,
     # this uses an explicit stack (which is more efficient anyway):
-    var stack: seq[PBinaryTree[T]] = @[root]
+    var stack: seq[BinaryTree[T]] = @[root]
     while stack.len > 0:
       var n = stack.pop()
       while n != nil:
@@ -528,7 +528,7 @@ containers:
         n = n.le          # and follow the left pointer
 
   var
-    root: PBinaryTree[string] # instantiate a PBinaryTree with ``string``
+    root: BinaryTree[string] # instantiate a BinaryTree with ``string``
   add(root, newNode("hello")) # instantiates ``newNode`` and ``add``
   add(root, "world")          # instantiates the second ``add`` proc
   for str in preorder(root):
@@ -863,7 +863,7 @@ precisely made for compilation time (just like `gorge <system.html#gorge>`_
 which executes an external program and captures its output).
 
 The interesting thing is that our macro does not return a runtime `Table
-<tables.html#TTable>`_ object. Instead, it builds up Nim source code into
+<tables.html#Table>`_ object. Instead, it builds up Nim source code into
 the ``source`` variable.  For each line of the configuration file a ``const``
 variable will be generated (line 15).  To avoid conflicts we prefix these
 variables with ``cfg``. In essence, what the compiler is doing is replacing

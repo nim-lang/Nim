@@ -311,8 +311,8 @@ underlying C ``struct`` in a ``sizeof`` expression:
 
 .. code-block:: Nim
   type
-    TDIR* {.importc: "DIR", header: "<dirent.h>", 
-            final, pure, incompleteStruct.} = object
+    DIR* {.importc: "DIR", header: "<dirent.h>", 
+           final, pure, incompleteStruct.} = object
 
 
 Compile pragma
@@ -418,8 +418,8 @@ interfacing with libraries written in C++:
     irr = "<irrlicht/irrlicht.h>"
 
   type
-    TIrrlichtDevice {.final, header: irr, importc: "IrrlichtDevice".} = object
-    PIrrlichtDevice = ptr TIrrlichtDevice
+    IrrlichtDeviceObj {.final, header: irr, importc: "IrrlichtDevice".} = object
+    IrrlichtDevice = ptr IrrlichtDeviceObj
 
   proc createDevice(): PIrrlichtDevice {.
     header: irr, importc: "createDevice".}
@@ -465,11 +465,11 @@ allows *sloppy* interfacing with libraries written in Objective C:
   """.}
 
   type
-    TId {.importc: "id", header: "<objc/Object.h>", final.} = distinct int
+    Id {.importc: "id", header: "<objc/Object.h>", final.} = distinct int
 
-  proc newGreeter: TId {.importobjc: "Greeter new", nodecl.}
-  proc greet(self: TId, x, y: int) {.importobjc: "greet", nodecl.}
-  proc free(self: TId) {.importobjc: "free", nodecl.}
+  proc newGreeter: Id {.importobjc: "Greeter new", nodecl.}
+  proc greet(self: Id, x, y: int) {.importobjc: "greet", nodecl.}
+  proc free(self: Id) {.importobjc: "free", nodecl.}
 
   var g = newGreeter()
   g.greet(12, 34)
