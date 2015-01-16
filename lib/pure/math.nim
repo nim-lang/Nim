@@ -284,14 +284,6 @@ proc random*[T](a: openArray[T]): T =
   ## returns a random element from the openarray `a`.
   result = a[random(a.low..a.len)]
 
-proc shuffle*[T](a: var openArray[T]) =
-  ## Shuffles the elements in `a`. Note that ``randomize`` needs to be called
-  ## to initialize the random number generator, otherwise ``shuffle`` always
-  ## shuffles in the same way.
-  for i in countdown(a.high, 0):
-    let j = random(i + 1)
-    swap(a[i], a[j])
-
 type
   RunningStat* = object                 ## an accumulator for statistical data
     n*: int                             ## number of pushed data
