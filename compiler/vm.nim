@@ -984,6 +984,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let rb = instr.regBx - wordExcess
       let cnst = c.constants.sons[rb]
       if fitsRegister(cnst.typ):
+        myreset(regs[ra])
         putIntoReg(regs[ra], cnst)
       else:
         ensureKind(rkNode)
