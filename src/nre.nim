@@ -408,6 +408,10 @@ proc split*(str: string, pattern: Regex): seq[string] =
 
     lastIdx = bounds.b
 
+    for cap in match.captures:
+      # if there are captures, include them in the result
+      result.add(cap)
+
   # last match: Each match takes the previous substring,
   # but "1 2".split(/ /) needs to return @["1", "2"].
   # This handles "2"
