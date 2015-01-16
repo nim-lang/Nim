@@ -156,20 +156,25 @@ proc asTable*(pattern: CaptureBounds, default = None[Slice[int]]()):
   result = initTable[string, Option[Slice[int]]]()
   asTableImpl(nextVal.isNone)
 
-template toSeqImpl(cond: bool): stmt {.immediate, dirty.} =
-  result = @[]
+template itemsImpl(cond: bool): stmt {.immediate, dirty.} =
   for i in 0 .. <RegexMatch(pattern).pattern.captureCount:
     let nextVal = pattern[i]
     if cond:
-      result.add(default)
+      yield default
     else:
-      result.add(nextVal)
+      yield nextVal
+
+iterator items*(pattern: CaptureBounds, default = None[Slice[int]]()): Option[Slice[int]] =
+  itemsImpl(nextVal.isNone)
+
+iterator items*(pattern: Captures, default: string = nil): string =
+  itemsImpl(nextVal == nil)
 
 proc toSeq*(pattern: CaptureBounds, default = None[Slice[int]]()): seq[Option[Slice[int]]] =
-  toSeqImpl(nextVal.isNone)
+  accumulateResult(pattern.items(default))
 
 proc toSeq*(pattern: Captures, default: string = nil): seq[string] =
-  toSeqImpl(nextVal == nil)
+  accumulateResult(pattern.items(default))
 # }}}
 
 # Creation & Destruction {{{
