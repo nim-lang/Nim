@@ -12,3 +12,7 @@ suite "find":
     check("1 2 3 4 5 ".findAll(initRegex(r" ", "S")).map(
       proc (a: RegexMatch): Slice[int] = a.matchBounds
     ) == @[1..2, 3..4, 5..6, 7..8, 9..10])
+
+  test "overlapping find":
+    check("222".findAllStr(re"22") == @["22"])
+    check("2222".findAllStr(re"22") == @["22", "22"])

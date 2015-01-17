@@ -8,3 +8,6 @@ suite "string splitting":
     check("1  2  ".split(initRegex(" ", "S")) == @["1", "", "2", "", ""])
     check("1 2".split(initRegex(" ", "S")) == @["1", "2"])
     check("foo".split(initRegex("foo")) == @["", ""])
+
+  test "captured patterns":
+    check("12".split(re"(\d)") == @["", "1", "", "2", ""])
