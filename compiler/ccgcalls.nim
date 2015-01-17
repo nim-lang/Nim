@@ -217,7 +217,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
   else:
     genCallPattern()
 
-proc genCppArg(p: BProc; ri: PNode; i: int; typ: PType): PRope =
+proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType): PRope =
   if i < sonsLen(typ):
     # 'var T' is 'T&' in C++. This means we ignore the request of
     # any nkHiddenAddr when it's a 'var T'.
@@ -225,9 +225,76 @@ proc genCppArg(p: BProc; ri: PNode; i: int; typ: PType): PRope =
     if typ.sons[i].kind == tyVar and ri.sons[i].kind == nkHiddenAddr:
       result = genArgNoParam(p, ri.sons[i][0])
     else:
-      result = genArg(p, ri.sons[i], typ.n.sons[i].sym)
+      result = genArgNoParam(p, ri.sons[i]) #, typ.n.sons[i].sym)
   else:
     result = genArgNoParam(p, ri.sons[i])
+
+discard """
+Dot call syntax in C++
+======================
+
+so c2nim translates 'this' sometimes to 'T' and sometimes to 'var T'
+both of which are wrong, but often more convenient to use.
+For manual wrappers it can also be 'ptr T'
+
+Fortunately we know which parameter is the 'this' parameter and so can fix this
+mess in the codegen.
+now ... if the *argument* is a 'ptr' the codegen shall emit -> and otherwise .
+but this only depends on the argument and not on how the 'this' was declared
+however how the 'this' was declared affects whether we end up with
+wrong 'addr' and '[]' ops...
+
+Since I'm tired I'll enumerate all the cases here:
+
+var
+  x: ptr T
+  y: T
+
+proc t(x: T)
+x[].t()  --> (*x).t()  is correct.
+y.t()    --> y.t()  is correct
+
+proc u(x: ptr T)
+x.u()          --> needs to become  x->u()
+(addr y).u()   --> needs to become  y.u()
+
+proc v(x: var T)
+--> first skip the implicit 'nkAddr' node
+x[].v()        --> (*x).v()  is correct, but might have been eliminated due
+                   to the nkAddr node! So for this case we need to generate '->'
+y.v()          --> y.v() is correct
+
+"""
+
+proc genThisArg(p: BProc; ri: PNode; i: int; typ: PType): PRope =
+  # for better or worse c2nim translates the 'this' argument to a 'var T'.
+  # However manual wrappers may also use 'ptr T'. In any case we support both
+  # for convenience.
+  internalAssert i < sonsLen(typ)
+  assert(typ.n.sons[i].kind == nkSym)
+  # if the parameter is lying (tyVar) and thus we required an additional deref,
+  # skip the deref:
+  if typ.sons[i].kind == tyVar:
+    let x = if ri[i].kind == nkHiddenAddr: ri[i][0] else: ri[i]
+    if x.kind in {nkHiddenDeref, nkDerefExpr}:
+      result = genArgNoParam(p, x[0])
+      result.app("->")
+    elif x.typ.kind in {tyVar, tyPtr}:
+      result = genArgNoParam(p, x)
+      result.app("->")
+    else:
+      result = genArgNoParam(p, x)
+      result.app(".")
+  elif typ.sons[i].kind == tyPtr:
+    if ri.sons[i].kind in {nkAddr, nkHiddenAddr}:
+      result = genArgNoParam(p, ri.sons[i][0])
+      result.app(".")
+    else:
+      result = genArgNoParam(p, ri.sons[i])
+      result.app("->")
+  else:
+    result = genArgNoParam(p, ri.sons[i]) #, typ.n.sons[i].sym)
+    result.app(".")
 
 proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType): PRope =
   var i = 0
@@ -235,10 +302,10 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType): PRope =
   while i < pat.len:
     case pat[i]
     of '@':
-      result.app genCppArg(p, ri, j, typ)
+      result.app genOtherArg(p, ri, j, typ)
       for k in j+1 .. < ri.len:
         result.app(~", ")
-        result.app genCppArg(p, ri, k, typ)
+        result.app genOtherArg(p, ri, k, typ)
       inc i
     of '#':
       if pat[i+1] in {'+', '@'}:
@@ -247,22 +314,21 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType): PRope =
           let typ = skipTypes(ri.sons[0].typ, abstractInst)
           if pat[i+1] == '+': result.app genArgNoParam(p, ri.sons[0])
           result.app(~"(")
-          result.app genCppArg(p, ri, 1, typ)
+          result.app genOtherArg(p, ri, 1, typ)
           for k in j+1 .. < ri.len:
             result.app(~", ")
-            result.app genCppArg(p, ri, k, typ)
+            result.app genOtherArg(p, ri, k, typ)
           result.app(~")")
         else:
           localError(ri.info, "call expression expected for C++ pattern")
         inc i
-      else:
-        result.app genCppArg(p, ri, j, typ)
-      if pat[i+1] == '.':
-        let param = typ.n.sons[j].sym
-        if skipTypes(param.typ, {tyGenericInst}).kind == tyPtr: result.app(~"->")
-        else: result.app(~".")
+      elif pat[i+1] == '.':
+        result.app genThisArg(p, ri, j, typ)
         inc i
+      else:
+        result.app genOtherArg(p, ri, j, typ)
       inc j
+      inc i
     of '\'':
       inc i
       let stars = i
@@ -271,12 +337,18 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType): PRope =
         let j = pat[i].ord - '0'.ord
         var t = typ.sons[j]
         for k in 1..i-stars:
-          if t != nil and t.len > 0: t = t.elemType
+          if t != nil and t.len > 0:
+            t = if t.kind == tyGenericInst: t.sons[1] else: t.elemType
         if t == nil: result.app(~"void")
         else: result.app(getTypeDesc(p.module, t))
+        inc i
     else:
-      result.app(toRope($pat[i]))
-    inc i
+      let start = i
+      while i < pat.len:
+        if pat[i] notin {'@', '#', '\''}: inc(i)
+        else: break
+      if i - 1 >= start:
+        app(result, substr(pat, start, i - 1))
 
 proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var op, a: TLoc
@@ -305,16 +377,14 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
       line(p, cpsStmts, pl)
   else:
     var pl: PRope = nil
-    var param = typ.n.sons[1].sym
-    app(pl, genCppArg(p, ri, 1, typ))
-    if skipTypes(param.typ, {tyGenericInst}).kind == tyPtr: app(pl, ~"->")
-    else: app(pl, ~".")
+    #var param = typ.n.sons[1].sym
+    app(pl, genThisArg(p, ri, 1, typ))
     app(pl, op.r)
     var params: PRope
     for i in countup(2, length - 1):
       if params != nil: params.app(~", ")
       assert(sonsLen(typ) == sonsLen(typ.n))
-      app(params, genCppArg(p, ri, i, typ))
+      app(params, genOtherArg(p, ri, i, typ))
     fixupCall(p, le, ri, d, pl, params)
 
 proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
