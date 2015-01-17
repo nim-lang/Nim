@@ -317,11 +317,7 @@ proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Reg
     raise newException(AssertionError, "Internal error: errno " & $execRet)
 
 proc match*(str: string, pattern: Regex, start = 0, endpos = -1): RegexMatch =
-  ## Returns a `RegexMatch` if there is a match between `start` and `endpos`, otherwise
-  ## it returns nil.
-  ##
-  ## if `endpos == -1`, then `endpos = str.len`
-  return str.matchImpl(pattern, start, endpos, 0)
+  return str.matchImpl(pattern, start, endpos, pcre.ANCHORED)
 
 iterator findIter*(str: string, pattern: Regex, start = 0, endpos = -1): RegexMatch =
   # see pcredemo for explaination
@@ -364,10 +360,11 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = -1): RegexMa
       yield currentMatch
 
 proc find*(str: string, pattern: Regex, start = 0, endpos = -1): RegexMatch =
-  for match in str.findIter(pattern, start, endpos):
-    return match
-
-  return nil
+  ## Returns a `RegexMatch` if there is a match between `start` and `endpos`, otherwise
+  ## it returns nil.
+  ##
+  ## if `endpos == -1`, then `endpos = str.len`
+  return str.matchImpl(pattern, start, endpos, 0)
 
 proc findAll*(str: string, pattern: Regex, start = 0, endpos = -1): seq[RegexMatch] =
   accumulateResult(str.findIter(pattern, start, endpos))
