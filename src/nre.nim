@@ -301,10 +301,12 @@ proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Reg
   result.pcreMatchBounds = newSeq[Slice[cint]](ceil(vecsize / 2).int)
   result.pcreMatchBounds.setLen(vecsize div 3)
 
+  let strlen = if endpos == -1: str.len else: endpos
+
   let execRet = pcre.exec(pattern.pcreObj,
                           pattern.pcreExtra,
                           cstring(str),
-                          cint(max(str.len, endpos)),
+                          cint(strlen),
                           cint(start),
                           cint(flags),
                           cast[ptr cint](addr result.pcreMatchBounds[0]),
