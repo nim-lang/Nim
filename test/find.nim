@@ -16,3 +16,7 @@ suite "find":
   test "overlapping find":
     check("222".findAllStr(re"22") == @["22"])
     check("2222".findAllStr(re"22") == @["22", "22"])
+
+  test "len 0 find":
+    check("".findAllStr(re"\ ") == newSeq[string]())
+    check("".findAllStr(re"") == @[""])

@@ -329,11 +329,7 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = -1): RegexMa
 
   var offset = start
   var previousMatch: RegexMatch
-  while offset != endpos:
-    if offset > endpos:
-      # eos occurs in the middle of a unicode char? die.
-      raise newException(AssertionError, "Input string has malformed unicode")
-
+  while true:
     var flags = 0
 
     if previousMatch != nil and
@@ -356,10 +352,15 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = -1): RegexMa
       elif unicode:
         # XXX what about invalid unicode?
         offset += str.runeLenAt(offset)
+        assert(offset <= endpos)
     else:
       offset = currentMatch.matchBounds.b
 
       yield currentMatch
+
+    if offset >= endpos:
+      # do while
+      break
 
 proc find*(str: string, pattern: Regex, start = 0, endpos = -1): RegexMatch =
   ## Returns a `RegexMatch` if there is a match between `start` and `endpos`, otherwise
@@ -414,4 +415,19 @@ proc split*(str: string, pattern: Regex): seq[string] =
   # last match: Each match takes the previous substring,
   # but "1 2".split(/ /) needs to return @["1", "2"].
   # This handles "2"
+  result.add(str.substr(lastIdx, str.len - 1))
+
+proc replace*(str: string, pattern: Regex,
+              subproc: proc (match: RegexMatch): string): string =
+  # XXX seems very similar to split, maybe I can reduce code duplication
+  # somehow?
+  result = ""
+  var lastIdx = 0
+  for match in str.findIter(pattern):
+    let bounds = match.matchBounds
+    result.add(str.substr(lastIdx, bounds.a - 1))
+    result.add(subproc(match))
+
+    lastIdx = bounds.b
+
   result.add(str.substr(lastIdx, str.len - 1))

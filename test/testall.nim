@@ -4,3 +4,4 @@ import captures
 import find
 import split
 import match
+import replace
