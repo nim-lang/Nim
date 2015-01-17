@@ -67,6 +67,41 @@ follows a ``(`` it has to be written as a one liner:
   let x = (try: parseInt("133a") except: -1)
 
 
+Except clauses
+--------------
+
+Within an ``except`` clause, it is possible to use
+``getCurrentException`` to retrieve the exception that has been
+raised:
+
+.. code-block:: nim
+  try:
+    # ...
+  except IOError:
+    let e = getCurrentException()
+    # Now use "e"
+
+Note that ``getCurrentException`` always returns a ``ref Exception``
+type. If a variable of the proper type is needed (in the example
+above, ``IOError``), one must use an explicit cast:
+
+.. code-block:: nim
+  try:
+    # ...
+  except IOError:
+    let e = (ref IOError)(getCurrentException())
+    # "e" is now of the proper type
+
+However, this is seldom needed. The most common case is to extract an
+error message from ``e``, and for such situations it is enough to use
+``getCurrentExceptionMsg``:
+
+.. code-block:: nim
+  try:
+    # ...
+  except IOError:
+    echo "I/O error: " & getCurrentExceptionMsg()
+
 
 Defer statement
 ---------------
