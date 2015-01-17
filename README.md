@@ -68,3 +68,19 @@ passed in order to encourage readable expressions, so `[0-9]+` is equivalent to
 
 `Sx` is enabled by default in order to encourage use of whitespace for better
 readability.
+
+## Usage
+
+### `proc match(str: string, pattern: Regex, start = 0, endpos = -1): RegexMatch`
+Tries to match the pattern, starting at start. This means that
+`"foo".match(re"f") == true`, but `"foo".match(re"o") == false`.
+
+<dl>
+<dt>`start`</dt>
+<dd>The start point at which to start matching. `|abc` is `0`; `a|bc` is
+`1`</dd>
+
+<dt>`endpos`</dt>
+<dd>The maximum index for a match; `-1` means the end of the string, otherwise
+it's an exclusive upper bound.</dd>
+</dl>
