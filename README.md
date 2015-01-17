@@ -104,3 +104,15 @@ Variants:
  - `findAllStr(...)` returns a `seq[string]`
 
 [iter-find]: #finditerstring-regex-start--0-endpos---1-regexmatch
+
+#### `split(string, Regex): seq[string]`
+
+Splits the string with the given regex. This works according to the rules that
+Perl and Javascript use.
+
+  - If the match is zero-width, then the string is still split:
+    `"123".split(r"") == @["1", "2", "3"]`.
+  - If the pattern has a capture in it, it is added after the string split:
+    `"12".split(re"(\d)") == @["", "1", "", "2", ""]`.
+
+[proc-split]: #splitstring-regex-seqstring
