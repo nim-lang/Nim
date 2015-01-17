@@ -87,20 +87,20 @@ Tries to match the pattern, starting at start. This means that
 #### `find(string, Regex, start = 0, endpos = -1): RegexMatch`
 
 Finds the given pattern in the string. Bounds work the same as for
-[`match()`][proc-match], but instead of being anchored to the start of the string,
-it can match at any point between `start` and `endpos`.
+[`match(...)`][proc-match], but instead of being anchored to the start of the
+string, it can match at any point between `start` and `endpos`.
 
 [proc-find]: #findstring-regex-start--0-endpos---1-regexmatch
 
 #### `findIter(string, Regex, start = 0, endpos = -1): RegexMatch`
 
-Works the same as [find][proc-find], but finds every non-overlapping match.
-`"2222".find(re"22")` is `"22", "22"`, not `"22", "22", "22"`.
+Works the same as [`find(...)`][proc-find], but finds every non-overlapping
+match. `"2222".find(re"22")` is `"22", "22"`, not `"22", "22", "22"`.
 
-Arguments are the same as [`match()`][proc-match]
+Arguments are the same as [`match(...)`][proc-match]
 
 Variants:
- - `findAll` returns a `seq[RegexMatch]`
- - `findAllStr` returns a `seq[string]`
+ - `findAll(...)` returns a `seq[RegexMatch]`
+ - `findAllStr(...)` returns a `seq[string]`
 
 [iter-find]: #finditerstring-regex-start--0-endpos---1-regexmatch
