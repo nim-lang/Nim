@@ -513,7 +513,7 @@ proc bounds*(c: Captures,
 
 when not useUnicode:
   type
-    TRune = char
+    Rune = char
   template fastRuneAt(s, i, ch: expr) =
     ch = s[i]
     inc(i)

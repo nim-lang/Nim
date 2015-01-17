@@ -213,7 +213,7 @@ tab characters (``\t``). The values of each column are:
    ``proj.symbolName``.
 4. Type/signature. For variables and enums this will contain the
    type of the symbol, for procs, methods and templates this will
-   contain the full unique signature (e.g. ``proc (TFile)``).
+   contain the full unique signature (e.g. ``proc (File)``).
 5. Full path to the file containing the symbol.
 6. Line where the symbol is located in the file. Lines start to
    count at **1**.
@@ -258,8 +258,8 @@ skEnumField
 
 .. code-block:: nim
     Open(filename, fmWrite)
-    --> col 2: system.TFileMode.fmWrite
-        col 3: TFileMode
+    --> col 2: system.FileMode.fmWrite
+        col 3: FileMode
         col 7: ""
 
 
@@ -296,7 +296,7 @@ posterior instances of the iterator.
       text = "some text"
       letters = toSeq(runes(text))
     --> col 2: unicode.runes
-        col 3: iterator (string): TRune
+        col 3: iterator (string): Rune
         col 7: "iterates over any unicode character of the string `s`."
 
 
@@ -423,7 +423,7 @@ returned by idetools returns also the pragmas for the proc.
 .. code-block:: nim
     Open(filename, fmWrite)
     --> col 2: system.Open
-        col 3: proc (var TFile, string, TFileMode, int): bool
+        col 3: proc (var File, string, FileMode, int): bool
         col 7:
     "Opens a file named `filename` with given `mode`.
 
@@ -487,9 +487,9 @@ skType
 
 .. code-block:: nim
     proc writeTempFile() =
-      var output: TFile
-    --> col 2: system.TFile
-        col 3: TFile
+      var output: File
+    --> col 2: system.File
+        col 3: File
         col 7: ""
 
 
@@ -502,11 +502,11 @@ skVar
 
 .. code-block:: nim
     proc writeTempFile() =
-      var output: TFile
+      var output: File
       output.open("/tmp/somefile", fmWrite)
       output.write("test")
     --> col 2: $MODULE.writeTempFile.output
-        col 3: TFile
+        col 3: File
         col 7: ""
 
 

@@ -223,21 +223,21 @@ all the arguments, but also the matched operators in reverse polish notation:
   import macros
 
   type
-    TMatrix = object
+    Matrix = object
       dummy: int
 
-  proc `*`(a, b: TMatrix): TMatrix = discard
-  proc `+`(a, b: TMatrix): TMatrix = discard
-  proc `-`(a, b: TMatrix): TMatrix = discard
-  proc `$`(a: TMatrix): string = result = $a.dummy
-  proc mat21(): TMatrix =
+  proc `*`(a, b: Matrix): Matrix = discard
+  proc `+`(a, b: Matrix): Matrix = discard
+  proc `-`(a, b: Matrix): Matrix = discard
+  proc `$`(a: Matrix): string = result = $a.dummy
+  proc mat21(): Matrix =
     result.dummy = 21
 
-  macro optM{ (`+`|`-`|`*`) ** a }(a: TMatrix): expr =
+  macro optM{ (`+`|`-`|`*`) ** a }(a: Matrix): expr =
     echo treeRepr(a)
     result = newCall(bindSym"mat21")
 
-  var x, y, z: TMatrix
+  var x, y, z: Matrix
 
   echo x + y * z - x 
 
@@ -267,7 +267,7 @@ parameter is of the type ``varargs`` it is treated specially and it can match
   template optWrite{
     write(f, x)
     ((write|writeln){w})(f, y)
-  }(x, y: varargs[expr], f: TFile, w: expr) =
+  }(x, y: varargs[expr], f: File, w: expr) =
     w(f, x, y)
   
 
@@ -294,7 +294,7 @@ The following example shows how some form of hoisting can be implemented:
 .. code-block:: nim
   import pegs
 
-  template optPeg{peg(pattern)}(pattern: string{lit}): TPeg =
+  template optPeg{peg(pattern)}(pattern: string{lit}): Peg =
     var gl {.global, gensym.} = peg(pattern)
     gl
 
@@ -341,21 +341,21 @@ The ``call`` constraint is particularly useful to implement a move
 optimization for types that have copying semantics:
 
 .. code-block:: nim
-  proc `[]=`*(t: var TTable, key: string, val: string) =
+  proc `[]=`*(t: var Table, key: string, val: string) =
     ## puts a (key, value)-pair into `t`. The semantics of string require
     ## a copy here:
     let idx = findInsertionPosition(key)
     t[idx] = key
     t[idx] = val
 
-  proc `[]=`*(t: var TTable, key: string{call}, val: string{call}) =
+  proc `[]=`*(t: var Table, key: string{call}, val: string{call}) =
     ## puts a (key, value)-pair into `t`. Optimized version that knows that
     ## the strings are unique and thus don't need to be copied:
     let idx = findInsertionPosition(key)
     shallowCopy t[idx], key
     shallowCopy t[idx], val
 
-  var t: TTable
+  var t: Table
   # overloading resolution ensures that the optimized []= is called here:
   t[f()] = g()
 

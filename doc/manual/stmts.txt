@@ -118,11 +118,11 @@ initialized and does not rely on syntactic properties:
 
 .. code-block:: nim
   type
-    TMyObject = object {.requiresInit.}
+    MyObject = object {.requiresInit.}
     
   proc p() =
     # the following is valid:
-    var x: TMyObject
+    var x: MyObject
     if someCondition():
       x = a()
     else:

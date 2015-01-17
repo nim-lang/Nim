@@ -57,7 +57,7 @@ instructs the compiler to pass the type by value to procs:
 
 .. code-block:: nim
   type
-    TVector {.bycopy, pure.} = object
+    Vector {.bycopy, pure.} = object
       x, y, z: float
 
 

@@ -128,22 +128,22 @@ modules don't need to import a module's dependencies:
 
 .. code-block:: nim
   # module B
-  type TMyObject* = object
+  type MyObject* = object
 
 .. code-block:: nim
   # module A
   import B
-  export B.TMyObject
+  export B.MyObject
   
-  proc `$`*(x: TMyObject): string = "my object"
+  proc `$`*(x: MyObject): string = "my object"
 
 
 .. code-block:: nim
   # module C
   import A
   
-  # B.TMyObject has been imported implicitly here: 
-  var x: TMyObject
+  # B.MyObject has been imported implicitly here: 
+  var x: MyObject
   echo($x)
 
 
