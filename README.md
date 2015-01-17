@@ -71,7 +71,7 @@ readability.
 
 ## Usage
 
-#### `proc match(str: string, pattern: Regex, start = 0, endpos = -1): RegexMatch`
+#### `match(string, Regex, start = 0, endpos = -1): RegexMatch`
 
 Tries to match the pattern, starting at start. This means that
 `"foo".match(re"f") == true`, but `"foo".match(re"o") == false`.
@@ -81,3 +81,26 @@ Tries to match the pattern, starting at start. This means that
  - `endpos`
    - The maximum index for a match; `-1` means the end of the string, otherwise
      it's an exclusive upper bound.
+
+[proc-match]: #match-string-regex-start--0-endpos---1-regexmatch
+
+#### `find(string, Regex, start = 0, endpos = -1): RegexMatch`
+
+Finds the given pattern in the string. Bounds work the same as for
+[`match()`][proc-match], but instead of being anchored to the start of the string,
+it can match at any point between `start` and `endpos`.
+
+[proc-find]: #find-string-regex-start--0-endpos---1-regexmatch
+
+#### `findIter(string, Regex, start = 0, endpos = -1): RegexMatch`
+
+Works the same as [find][proc-find], but finds every non-overlapping match.
+`"2222".find(re"22")` is `"22", "22"`, not `"22", "22", "22"`.
+
+Arguments are the same as [`match()`][proc-match]
+
+Variants:
+ - `findAll` returns a `seq[RegexMatch]`
+ - `findAllStr` returns a `seq[string]`
+
+[iter-find]: #finditer-string-regex-start--0-endpos---1-regexmatch
