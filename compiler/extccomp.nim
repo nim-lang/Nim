@@ -548,7 +548,7 @@ proc getCompileCFileCmd*(cfilename: string, isExternal = false): string =
                   completeCFilePath(toObjFile(cfile))
   objfile = quoteShell(objfile)
   result = quoteShell(compilePattern % [
-    "file", cfile, "objfile", objfile, "options", options,
+    "file", quoteShell(cfile), "objfile", quoteShell(objfile), "options", options,
     "include", includeCmd, "nimrod", getPrefixDir(),
     "nim", getPrefixDir(), "lib", libpath])
   add(result, ' ')
@@ -717,4 +717,3 @@ proc writeMapping*(gSymbolMapping: PRope) =
   
   appf(code, "\n[Symbols]$n$1", [gSymbolMapping])
   writeRope(code, joinPath(gProjectPath, "mapping.txt"))
-  
