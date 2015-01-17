@@ -83,7 +83,7 @@ raised:
 
 Note that ``getCurrentException`` always returns a ``ref Exception``
 type. If a variable of the proper type is needed (in the example
-above, ``IOError``), one must use an explicit cast:
+above, ``IOError``), one must convert it explicitly:
 
 .. code-block:: nim
   try:
