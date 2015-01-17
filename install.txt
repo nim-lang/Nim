@@ -17,7 +17,7 @@ works.
 
 Then run the following command::
 
-  sh build.sh
+  ./build.sh
 
 Unlike other software, Nim does not distribute its files over the whole file
 hierarchy. This has the advantage that you can deinstall it by just deleting
