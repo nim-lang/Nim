@@ -71,16 +71,13 @@ readability.
 
 ## Usage
 
-### `proc match(str: string, pattern: Regex, start = 0, endpos = -1): RegexMatch`
+#### `proc match(str: string, pattern: Regex, start = 0, endpos = -1): RegexMatch`
+
 Tries to match the pattern, starting at start. This means that
 `"foo".match(re"f") == true`, but `"foo".match(re"o") == false`.
 
-<dl>
-<dt>`start`</dt>
-<dd>The start point at which to start matching. `|abc` is `0`; `a|bc` is
-`1`</dd>
-
-<dt>`endpos`</dt>
-<dd>The maximum index for a match; `-1` means the end of the string, otherwise
-it's an exclusive upper bound.</dd>
-</dl>
+ - `start`
+   - The start point at which to start matching. `|abc` is `0`; `a|bc` is `1`
+ - `endpos`
+   - The maximum index for a match; `-1` means the end of the string, otherwise
+     it's an exclusive upper bound.
