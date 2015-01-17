@@ -82,7 +82,7 @@ Tries to match the pattern, starting at start. This means that
    - The maximum index for a match; `-1` means the end of the string, otherwise
      it's an exclusive upper bound.
 
-[proc-match]: #match-string-regex-start--0-endpos---1-regexmatch
+[proc-match]: #matchstring-regex-start--0-endpos---1-regexmatch
 
 #### `find(string, Regex, start = 0, endpos = -1): RegexMatch`
 
@@ -90,7 +90,7 @@ Finds the given pattern in the string. Bounds work the same as for
 [`match()`][proc-match], but instead of being anchored to the start of the string,
 it can match at any point between `start` and `endpos`.
 
-[proc-find]: #find-string-regex-start--0-endpos---1-regexmatch
+[proc-find]: #findstring-regex-start--0-endpos---1-regexmatch
 
 #### `findIter(string, Regex, start = 0, endpos = -1): RegexMatch`
 
@@ -103,4 +103,4 @@ Variants:
  - `findAll` returns a `seq[RegexMatch]`
  - `findAllStr` returns a `seq[string]`
 
-[iter-find]: #finditer-string-regex-start--0-endpos---1-regexmatch
+[iter-find]: #finditerstring-regex-start--0-endpos---1-regexmatch
