@@ -29,21 +29,23 @@ To build from source you will need:
 
 If you are on a fairly modern *nix system, the following steps should work:
 
-```bash
+```
 $ git clone git://github.com/Araq/Nim.git
 $ cd Nim
-$ ./build.sh
+$ git clone --depth 1 git://github.com/nim-lang/csources
+$ cd csources && sh build.sh
+$ cd ..
+$ bin/nim c koch
+$ ./koch boot -d:release
 ```
 
-``./koch install [dir]`` may then be used to install Nim, or you can simply
+``koch install [dir]`` may then be used to install Nim, or you can simply
 add it to your PATH. More ``koch`` related options are documented in
 [doc/koch.txt](doc/koch.txt).
 
-The above steps can be performed on Windows in a similar fashion, use
-``build.bat`` instead of ``build.sh``. Make sure you have mingw and git in
-your PATH. If you want to use different compiler, run script and then
-manually change `CC` and `LINKER` variables in `csources/build.bat` or
-`csources/build64.bat`.
+The above steps can be performed on Windows in a similar fashion, the
+``build.bat`` and ``build64.bat`` (for x86_64 systems) are provided to be used
+instead of ``build.sh``.
 
 ## Getting help
 A [forum](http://forum.nim-lang.org/) is available if you have any
