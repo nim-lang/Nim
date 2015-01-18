@@ -1569,7 +1569,8 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc, magic: string) =
         toRope(magic)]))
 
 proc genConv(p: BProc, e: PNode, d: var TLoc) =
-  if compareTypes(e.typ, e.sons[1].typ, dcEqIgnoreDistinct):
+  let destType = e.typ.skipTypes({tyVar, tyGenericInst})
+  if compareTypes(destType, e.sons[1].typ, dcEqIgnoreDistinct):
     expr(p, e.sons[1], d)
   else:
     genSomeCast(p, e, d)
