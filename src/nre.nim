@@ -261,7 +261,7 @@ proc getNameToNumberTable(pattern: Regex): Table[string, int] =
 
     result[name] = num
 
-proc initRegex*(pattern: string, options = "Sx"): Regex =
+proc initRegex*(pattern: string, options = "S"): Regex =
   new(result, destroyRegex)
   result.pattern = pattern
 
@@ -286,7 +286,7 @@ proc initRegex*(pattern: string, options = "Sx"): Regex =
 
   result.captureNameToId = result.getNameToNumberTable()
 
-proc re*(pattern: string, options = "Sx"): Regex = initRegex(pattern, options)
+proc re*(pattern: string, options = "S"): Regex = initRegex(pattern, options)
 # }}}
 
 proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): RegexMatch =
