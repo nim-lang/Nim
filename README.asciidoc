@@ -64,7 +64,7 @@ Perl and Javascript use.
   - If the pattern has a capture in it, it is added after the string split:
     `"12".split(re"(\d)") == @["", "1", "", "2", ""]`.
   - If `maxsplit != -1`, then the string will only be split `maxsplit` times.
-    `"123".split(re"", maxsplit = 1) == @["1", "23"]`
+    `"1.2.3".split(re"\.", maxsplit = 1) == @["1", "2.3"]`
 
 [[proc-replace]]
 ==== replace(string, Regex, sub): string
