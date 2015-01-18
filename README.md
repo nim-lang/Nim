@@ -116,3 +116,15 @@ Perl and Javascript use.
     `"12".split(re"(\d)") == @["", "1", "", "2", ""]`.
 
 [proc-split]: #splitstring-regex-seqstring
+
+#### `replace(string, Regex, sub): string`
+
+Replaces each match of Regex in the string with `sub`. If `sub` is a `proc
+(RegexMatch): string`, then it is executed with each match and the return value
+is the replacement value.
+
+If `sub` is a string, then each match is replaced with that string, where the
+captures are accessable as `$1`, `$2`, and so on. A literal `$` can be added by
+doubling up like so: `$$`.
+
+[proc-replace]: #replacestring-regex-sub-string
