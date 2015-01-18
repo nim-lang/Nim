@@ -42,7 +42,7 @@ link:#proc-match[`match(...)`], but instead of being anchored to the start of
 the string, it can match at any point between `start` and `endpos`.
 
 [[iter-find]]
-==== findIter(string, Regex, start = 0, endpos = -1): RegexMatch
+==== iterator findIter(string, Regex, start = 0, endpos = -1): RegexMatch
 
 Works the same as link:#proc-find[`find(...)`], but finds every non-overlapping
 match. `"2222".find(re"22")` is `"22", "22"`, not `"22", "22", "22"`.
@@ -51,8 +51,8 @@ Arguments are the same as link:#proc-match[`match(...)`]
 
 Variants:
 
- - `findAll(...)` returns a `seq[RegexMatch]`
- - `findAllStr(...)` returns a `seq[string]`
+ - `proc findAll(...)` returns a `seq[RegexMatch]`
+ - `proc findAllStr(...)` returns a `seq[string]`
 
 [[proc-split]]
 ==== split(string, Regex): seq[string]
