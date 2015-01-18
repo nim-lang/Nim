@@ -175,6 +175,9 @@ proc toSeq*(pattern: CaptureBounds, default = None[Slice[int]]()): seq[Option[Sl
 
 proc toSeq*(pattern: Captures, default: string = nil): seq[string] =
   accumulateResult(pattern.items(default))
+
+proc `$`*(pattern: RegexMatch): string =
+  return pattern.captures[-1]
 # }}}
 
 # Creation & Destruction {{{
