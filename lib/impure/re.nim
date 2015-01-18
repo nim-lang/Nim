@@ -309,6 +309,9 @@ proc replace*(s: string, sub: Regex,
   ## `by` should never return `nil`
   result = ""
   var prev = 0
+  var capCount: int
+  # this should never fail
+  discard fullinfo(sub.h, sub.e, INFO_CAPTURECOUNT, addr capCount)
   while true:
     var matches: array[MaxSubpatterns, string]
     var match = s.findBounds(sub, matches, prev)
@@ -316,7 +319,7 @@ proc replace*(s: string, sub: Regex,
     if match.first < 0: break
 
     result.add(s.substr(prev, match.first - 1))
-    let nextReplacement = by(matches)
+    let nextReplacement = by(matches[0..(capCount - 1)])
     assert(nextReplacement != nil)
     result.add(nextReplacement)
 
