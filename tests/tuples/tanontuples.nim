@@ -1,6 +1,5 @@
 discard """
-  output: '''61, 125
-89'''
+  output: '''61, 125'''
 """
 
 proc `^` (a, b: int): int =
@@ -13,7 +12,3 @@ var n = (56, 3)
 m = (n[0] + m[1], m[1] ^ n[1])
 
 echo m[0], ", ", m[1]
-
-var x = (bar: 38)
-x = (foo: 89)
-echo x[0]

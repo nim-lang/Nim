@@ -13,6 +13,9 @@ News
   - Parameter names are finally properly ``gensym``'ed. This can break
     templates though that used to rely on the fact that they are not. However
     we found none such beast in the wild. (Bug #1915.)
+  - Tuple field names are not ignored anymore, this caused too many problems
+    in practice so now the behaviour as it was for version 0.9.6: If field
+    names exist for the tuple type, they are checked.
 
   
   Language Additions

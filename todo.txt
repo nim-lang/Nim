@@ -7,9 +7,7 @@ version 0.10
   prevent 'not 4 == 5' from compiling. -> requires 'mixin' annotation for procs!
 - parameter lists without type end up in 'experimental'
 - iterators always require a return type
-- revert tuple behaviour
 
-- c2nim depends on the compiler
 - make nimble part of the distribution
 - split idetools into separate tool
 - split docgen into separate tool

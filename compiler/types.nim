@@ -781,6 +781,15 @@ proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool =
       
       result = sameTypeAux(x, y, c)
       if not result: return 
+    if a.n != nil and b.n != nil and IgnoreTupleFields notin c.flags:
+      for i in countup(0, sonsLen(a.n) - 1): 
+        # check field names: 
+        if a.n.sons[i].kind == nkSym and b.n.sons[i].kind == nkSym:
+          var x = a.n.sons[i].sym
+          var y = b.n.sons[i].sym
+          result = x.name.id == y.name.id
+          if not result: break 
+        else: internalError(a.n.info, "sameTuple")
 
 template ifFastObjectTypeCheckFailed(a, b: PType, body: stmt) {.immediate.} =
   if tfFromGeneric notin a.flags + b.flags:
