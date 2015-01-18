@@ -332,7 +332,6 @@ const
     ucc(),
     icl()]
 
-const
   hExt* = ".h"
 
 var
@@ -547,6 +546,7 @@ proc getCompileCFileCmd*(cfilename: string, isExternal = false): string =
                 else:
                   completeCFilePath(toObjFile(cfile))
   objfile = quoteShell(objfile)
+  cfile = quoteShell(cfile)
   result = quoteShell(compilePattern % [
     "file", cfile, "objfile", objfile, "options", options,
     "include", includeCmd, "nimrod", getPrefixDir(),
@@ -717,4 +717,3 @@ proc writeMapping*(gSymbolMapping: PRope) =
   
   appf(code, "\n[Symbols]$n$1", [gSymbolMapping])
   writeRope(code, joinPath(gProjectPath, "mapping.txt"))
-  
