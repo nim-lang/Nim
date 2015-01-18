@@ -291,6 +291,7 @@ proc initRegex(pattern: string, options: string): Regex =
 proc re*(pattern: string, options = ""): Regex = initRegex(pattern, options)
 # }}}
 
+# Operations {{{
 proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): RegexMatch =
   new(result)
   result.pattern = pattern
@@ -442,3 +443,9 @@ proc replace*(str: string, pattern: Regex,
 proc replace*(str: string, pattern: Regex, sub: string): string =
   return str.replace(pattern, proc (match: RegexMatch): string =
     sub % match.captures.toSeq )
+
+# }}}
+
+let SpecialCharMatcher = re"([\\+*?[^\]$(){}=!<>|:-])"
+proc escapeRe*(str: string): string =
+  str.replace(SpecialCharMatcher, "\\$1")

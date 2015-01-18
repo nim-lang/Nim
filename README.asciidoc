@@ -78,6 +78,12 @@ If `sub` is a string, then each match is replaced with that string, where the
 captures are accessable as `$1`, `$2`, and so on. A literal `$` can be added by
 doubling up like so: `$$`.
 
+[[proc-escapere]]
+==== escapeRe(string): string
+
+Escapes the string so it doesn't match any special characters. Incompatible
+with the Extra flag (`X`).
+
 === RegexMatch
 
 Represents the result of an execution. On failure, it is `nil`. The available

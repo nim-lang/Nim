@@ -5,3 +5,4 @@ import find
 import split
 import match
 import replace
+import escape
