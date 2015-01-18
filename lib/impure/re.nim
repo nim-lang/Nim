@@ -299,7 +299,7 @@ proc replace*(s: string, sub: Regex, by: proc(s: string): string): string =
     prev = match.last + 1
   add(result, substr(s, prev))
 
-proc replace*(s: string, sub: Regex,
+proc replacef*(s: string, sub: Regex,
               by: proc(matches: openarray[string]): string): string =
   ## Replaces each occurance of `sub` in `s` by the result of the
   ## `by` expression. The captures are provided, and accessing
