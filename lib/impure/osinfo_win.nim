@@ -195,9 +195,8 @@ proc getVersionInfo*(): TVersionInfo =
 proc getProductInfo*(majorVersion, minorVersion, SPMajorVersion, 
                      SPMinorVersion: int): int =
   ## Retrieves Windows' ProductInfo, this function only works in Vista and 7
-
   var pGPI = cast[proc (dwOSMajorVersion, dwOSMinorVersion, 
-              dwSpMajorVersion, dwSpMinorVersion: int32, outValue: Pint32)](getProcAddress(
+              dwSpMajorVersion, dwSpMinorVersion: int32, outValue: Pint32){.stdcall.}](getProcAddress(
                 getModuleHandleA("kernel32.dll"), "GetProductInfo"))
                 
   if pGPI != nil:
@@ -214,7 +213,7 @@ proc getSystemInfo*(): TSYSTEM_INFO =
   ## Returns the SystemInfo
 
   # Use GetNativeSystemInfo if it's available
-  var pGNSI = cast[proc (lpSystemInfo: LPSYSTEM_INFO)](getProcAddress(
+  var pGNSI = cast[proc (lpSystemInfo: LPSYSTEM_INFO){.stdcall.}](getProcAddress(
                 getModuleHandleA("kernel32.dll"), "GetNativeSystemInfo"))
                 
   var systemi: TSYSTEM_INFO              
@@ -407,6 +406,6 @@ when isMainModule:
   
   echo($osvi)
 
-  echo(getFileSize(r"osinfo_win.nim") div 1024 div 1024)
+  echo(getFileSize(r"lib\impure\osinfo_win.nim") div 1024, " KB")
   
   echo(rdFileTime(getPartitionInfo(r"C:\")[0]))
