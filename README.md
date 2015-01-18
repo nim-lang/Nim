@@ -128,3 +128,34 @@ captures are accessable as `$1`, `$2`, and so on. A literal `$` can be added by
 doubling up like so: `$$`.
 
 [proc-replace]: #replacestring-regex-sub-string
+
+### `RegexMatch`
+
+Represents the result of an execution. On failure, it is `nil`. The available
+fields are as follows:
+
+ - `pattern: Regex` - the pattern that is being matched
+ - `str: string` - the string that was matched against
+ - `captures[int|string]: string` - the string value of whatever was captured
+   at that id. If the value is invalid, then behavior is undefined. If the id
+   is `-1`, then the whole match is returned. If the given capture was not
+   matched, `nil` is returned.
+ - `captureBounds[int|string]: Option[Slice[int]]` - gets the bounds of the
+   given capture according to the same rules as the above. If the capture is
+   not filled, then `None` is returned. The upper bound is exclusive, the lower
+   bound is inclusive.
+ - `match: string` - the full text of the match.
+ - `matchBounds: Slice[int]` - the bounds of the match, as in `captureBounds[]`
+ - `(captureBounds|captures).asTable` - returns a table with each named capture
+   as a key.
+ - `(captureBounds|capture).toSeq` - returns all the captures by their number.
+
+### `Pattern`
+
+Represents the pattern that things are matched against, constructed with
+`initRegex(string)` or `re(string)`.
+
+ - `pattern: string` - the string that was used to create the pattern.
+ - `captureCount: int` - the number of captures that the pattern has.
+ - `captureNameId: Table[string, int]` - a table from the capture names to
+   their numeric id.
