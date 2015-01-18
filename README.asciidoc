@@ -51,13 +51,13 @@ passed in order to encourage readable expressions, so `[0-9]+` is equivalent to
  - `<lf>` - newlines are separated by `\n` (UNIX default)
  - `<anycrlf>` - newlines are separated by any of the above
  - `<any>` - newlines are separated by any of the above and Unicode newlines:
-   [quote, , man pcre]
-   ____
-   single characters VT (vertical tab, U+000B), FF (form feed, U+000C), NEL
-   (next line, U+0085), LS (line separator, U+2028), and PS (paragraph
-   separator, U+2029). For the 8-bit library, the last two are recognized
-   only in UTF-8 mode.
-   ____
+[quote, , man pcre]
+____
+single characters VT (vertical tab, U+000B), FF (form feed, U+000C), NEL
+(next line, U+0085), LS (line separator, U+2028), and PS (paragraph
+separator, U+2029). For the 8-bit library, the last two are recognized
+only in UTF-8 mode.
+____
  - `<bsr_anycrlf>` - `\R` matches CR, LF, or CRLF
  - `<bsr_unicode>` - `\R` matches any unicode newline
  - `<js>` - Javascript compatibility
