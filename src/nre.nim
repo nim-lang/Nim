@@ -431,3 +431,7 @@ proc replace*(str: string, pattern: Regex,
     lastIdx = bounds.b
 
   result.add(str.substr(lastIdx, str.len - 1))
+
+proc replace*(str: string, pattern: Regex, sub: string): string =
+  return str.replace(pattern, proc (match: RegexMatch): string =
+    sub % match.captures.toSeq )
