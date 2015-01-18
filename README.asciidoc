@@ -23,23 +23,22 @@ provides in its standard library is inadequate:
 
 === Operations
 
-[[proc-match]]
-==== match(string, Regex, start = 0, endpos = -1): RegexMatch
+[[proc-find]]
+==== find(string, Regex, start = 0, endpos = -1): RegexMatch
 
-Tries to match the pattern, starting at start. This means that
-`"foo".match(re"f") == true`, but `"foo".match(re"o") == false`.
+Finds the given pattern in the string between the end and start positions.
 
 `start` :: The start point at which to start matching. `|abc` is `0`; `a|bc`
    is `1`
 `endpos` :: The maximum index for a match; `-1` means the end of the string,
    otherwise it's an exclusive upper bound.
 
-[[proc-find]]
-==== find(string, Regex, start = 0, endpos = -1): RegexMatch
+[[proc-match]]
+==== match(string, Regex, start = 0, endpos = -1): RegexMatch
 
-Finds the given pattern in the string. Bounds work the same as for
-link:#proc-match[`match(...)`], but instead of being anchored to the start of
-the string, it can match at any point between `start` and `endpos`.
+Like link:#proc-find[`find(...)`], but anchored to the start of the string.
+This means that `"foo".match(re"f") == true`, but `"foo".match(re"o") ==
+false`.
 
 [[iter-find]]
 ==== iterator findIter(string, Regex, start = 0, endpos = -1): RegexMatch
@@ -47,7 +46,7 @@ the string, it can match at any point between `start` and `endpos`.
 Works the same as link:#proc-find[`find(...)`], but finds every non-overlapping
 match. `"2222".find(re"22")` is `"22", "22"`, not `"22", "22", "22"`.
 
-Arguments are the same as link:#proc-match[`match(...)`]
+Arguments are the same as link:#proc-find[`find(...)`]
 
 Variants:
 
