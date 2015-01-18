@@ -299,6 +299,27 @@ proc replace*(s: string, sub: Regex, by: proc(s: string): string): string =
     prev = match.last + 1
   add(result, substr(s, prev))
 
+template replacefIt(sExpr: expr, subExpr: expr, body: expr): expr =
+  let s = sExpr
+  let sub = subExpr
+  result = ""
+  var prev = 0
+  while true:
+    var it {.inject.} : array[MaxSubpatterns, string]
+    var match = s.findBounds(sub, it, prev)
+
+    if match.first < 0: break
+
+    result.add(s.substr(prev, match.first - 1))
+    let nextReplacement = body
+    assert(nextReplacement != nil)
+    result.add(nextReplacement)
+
+    prev = match.last + 1
+
+  result.add(s.substr(prev))
+  return result
+
 proc replacef*(s: string, sub: Regex,
               by: proc(matches: openarray[string]): string): string =
   ## Replaces each occurance of `sub` in `s` by the result of the
@@ -307,25 +328,10 @@ proc replacef*(s: string, sub: Regex,
   ## behavior.
   ##
   ## `by` should never return `nil`
-  result = ""
-  var prev = 0
   var capCount: int
   # this should never fail
   discard fullinfo(sub.h, sub.e, INFO_CAPTURECOUNT, addr capCount)
-  while true:
-    var matches: array[MaxSubpatterns, string]
-    var match = s.findBounds(sub, matches, prev)
-
-    if match.first < 0: break
-
-    result.add(s.substr(prev, match.first - 1))
-    let nextReplacement = by(matches[0..(capCount - 1)])
-    assert(nextReplacement != nil)
-    result.add(nextReplacement)
-
-    prev = match.last + 1
-
-  result.add(s.substr(prev))
+  replacefIt(s, sub, by(it[0..(capCount - 1)]))
 
 proc replace*(s: string, sub: Regex, by = ""): string =
   ## Replaces `sub` in `s` by the string `by`. Captures cannot be 
@@ -339,7 +345,7 @@ proc replace*(s: string, sub: Regex, by = ""): string =
   ## .. code-block:: nim
   ##
   ##   "; "
-  return s.replace(sub, proc (m: openarray[string]): string = return by)
+  replacefIt(s, sub, by)
 
 proc replacef*(s: string, sub: Regex, by: string): string =
   ## Replaces `sub` in `s` by the string `by`. Captures can be accessed in `by`
@@ -353,7 +359,7 @@ proc replacef*(s: string, sub: Regex, by: string): string =
   ## .. code-block:: nim
   ##
   ## "var1<-keykey; val2<-key2key2"
-  return s.replace(sub, proc (caps: openarray[string]): string = return by % caps)
+  replacefIt(s, sub, by % it)
 
 proc parallelReplace*(s: string, subs: openArray[
                       tuple[pattern: Regex, repl: string]]): string =
