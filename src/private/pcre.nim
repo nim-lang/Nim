@@ -1,13 +1,28 @@
-when not defined(pcreDll):
-  when hostOS == "windows":
-    const pcreDll = "pcre.dll"
-  elif hostOS == "macosx":
-    const pcreDll = "libpcre(.3|.1|).dylib"
-  else:
-    const pcreDll = "libpcre.so(.3|.1|)"
-  {.pragma: pcreImport, dynlib: pcreDll.}
-else:
-  {.pragma: pcreImport, header: "<pcre.h>".}
+{. passC: "-DHAVE_CONFIG_H", passC: "-I private/pcre_src",
+   passL: "-I private/pcre_src" .}
+{. compile: "private/pcre_src/pcre_byte_order.c" .}
+{. compile: "private/pcre_src/pcre_compile.c" .}
+{. compile: "private/pcre_src/pcre_config.c" .}
+{. compile: "private/pcre_src/pcre_dfa_exec.c" .}
+{. compile: "private/pcre_src/pcre_exec.c" .}
+{. compile: "private/pcre_src/pcre_fullinfo.c" .}
+{. compile: "private/pcre_src/pcre_get.c" .}
+{. compile: "private/pcre_src/pcre_globals.c" .}
+{. compile: "private/pcre_src/pcre_jit_compile.c" .}
+{. compile: "private/pcre_src/pcre_maketables.c" .}
+{. compile: "private/pcre_src/pcre_newline.c" .}
+{. compile: "private/pcre_src/pcre_ord2utf8.c" .}
+{. compile: "private/pcre_src/pcre_refcount.c" .}
+{. compile: "private/pcre_src/pcre_string_utils.c" .}
+{. compile: "private/pcre_src/pcre_study.c" .}
+{. compile: "private/pcre_src/pcre_tables.c" .}
+{. compile: "private/pcre_src/pcre_ucd.c" .}
+{. compile: "private/pcre_src/pcre_valid_utf8.c" .}
+{. compile: "private/pcre_src/pcre_version.c" .}
+{. compile: "private/pcre_src/pcre_xclass.c" .}
+{. compile: "private/pcre_src/pcre_chartables.c" .}
+
+{.pragma: pcreImport, header: "<pcre.h>".}
 
 #************************************************
 #       Perl-Compatible Regular Expressions      *
