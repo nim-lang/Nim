@@ -299,22 +299,6 @@ proc replace*(s: string, sub: Regex, by: proc(s: string): string): string =
     prev = match.last + 1
   add(result, substr(s, prev))
 
-proc replacef*(s: string, sub: Regex, 
-               by: proc(m: openArray[string]): string): string =
-  ## Replaces `sub` in `s` by the results of calling the proc `by` with
-  ## each array of captures.
-  result = ""
-  var caps: array[0..MaxSubpatterns-1, string]
-  var prev = 0
-  while true:
-    var match = findBounds(s, sub, caps, prev)
-    if match.first < 0: break
-    add(result, substr(s, prev, match.first-1))
-    let capCount = find(caps, string(nil))
-    add(result, by(caps[0..capCount-1]))
-    prev = match.last + 1
-  add(result, substr(s, prev))
-
 proc replace*(s: string, sub: Regex,
               by: proc(matches: openarray[string]): string): string =
   ## Replaces each occurance of `sub` in `s` by the result of the
