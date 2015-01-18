@@ -103,7 +103,7 @@ is inclusive.
 `matchBounds: Slice[int]` :: the bounds of the match, as in `captureBounds[]`
 `(captureBounds|captures).toTable` :: returns a table with each named capture
 as a key.
-`(captureBounds|capture).toSeq` :: returns all the captures by their number.
+`(captureBounds|captures).toSeq` :: returns all the captures by their number.
 `$: string` :: same as `match`
 
 === Pattern
