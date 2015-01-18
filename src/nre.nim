@@ -137,7 +137,7 @@ proc `[]`*(pattern: Captures, name: string): string =
   let pattern = RegexMatch(pattern)
   return pattern.captures[pattern.pattern.captureNameToId.fget(name)]
 
-template asTableImpl(cond: bool): stmt {.immediate, dirty.} =
+template toTableImpl(cond: bool): stmt {.immediate, dirty.} =
   for key in RegexMatch(pattern).pattern.captureNameId.keys:
     let nextVal = pattern[key]
     if cond:
@@ -145,16 +145,16 @@ template asTableImpl(cond: bool): stmt {.immediate, dirty.} =
     else:
       result[key] = nextVal
 
-proc asTable*(pattern: Captures, default: string = nil): Table[string, string] =
+proc toTable*(pattern: Captures, default: string = nil): Table[string, string] =
   ## Gets all the named captures and returns them
   result = initTable[string, string]()
-  asTableImpl(nextVal == nil)
+  toTableImpl(nextVal == nil)
 
-proc asTable*(pattern: CaptureBounds, default = None[Slice[int]]()):
+proc toTable*(pattern: CaptureBounds, default = None[Slice[int]]()):
     Table[string, Option[Slice[int]]] =
   ## Gets all the named captures and returns them
   result = initTable[string, Option[Slice[int]]]()
-  asTableImpl(nextVal.isNone)
+  toTableImpl(nextVal.isNone)
 
 template itemsImpl(cond: bool): stmt {.immediate, dirty.} =
   for i in 0 .. <RegexMatch(pattern).pattern.captureCount:

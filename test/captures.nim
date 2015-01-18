@@ -41,12 +41,12 @@ suite "captures":
 
   test "named capture table":
     let ex1 = "foo".find(initRegex("(?<foo>foo)(?<bar>bar)?"))
-    check(ex1.captures.asTable == {"foo" : "foo", "bar" : nil}.toTable())
-    check(ex1.captureBounds.asTable == {"foo" : Some(0..3), "bar" : None[Slice[int]]()}.toTable())
-    check(ex1.captures.asTable("") == {"foo" : "foo", "bar" : ""}.toTable())
+    check(ex1.captures.toTable == {"foo" : "foo", "bar" : nil}.toTable())
+    check(ex1.captureBounds.toTable == {"foo" : Some(0..3), "bar" : None[Slice[int]]()}.toTable())
+    check(ex1.captures.toTable("") == {"foo" : "foo", "bar" : ""}.toTable())
 
     let ex2 = "foobar".find(initRegex("(?<foo>foo)(?<bar>bar)?"))
-    check(ex2.captures.asTable == {"foo" : "foo", "bar" : "bar"}.toTable())
+    check(ex2.captures.toTable == {"foo" : "foo", "bar" : "bar"}.toTable())
 
   test "capture sequence":
     let ex1 = "foo".find(initRegex("(?<foo>foo)(?<bar>bar)?"))
