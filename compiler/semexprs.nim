@@ -1355,7 +1355,6 @@ proc semYield(c: PContext, n: PNode): PNode =
         if restype.kind == tyIter:
           restype.sons[0] = inferred
         else:
-          debug inferred
           iterType.sons[0] = inferred
       
       semYieldVarResult(c, n, adjustedRes)
