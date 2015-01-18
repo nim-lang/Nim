@@ -50,6 +50,7 @@ match. `"2222".find(re"22")` is `"22", "22"`, not `"22", "22", "22"`.
 Arguments are the same as link:#proc-match[`match(...)`]
 
 Variants:
+
  - `findAll(...)` returns a `seq[RegexMatch]`
  - `findAllStr(...)` returns a `seq[string]`
 
