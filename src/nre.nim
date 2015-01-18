@@ -208,7 +208,7 @@ let Options: Table[string, int] = {
 }.toTable
 
 proc tokenizeOptions(opts: string): tuple[flags: int, study: bool] =
-  result = (0, false)
+  result = (0, true)
 
   var longOpt: string = nil
   for i, c in opts:
@@ -219,16 +219,15 @@ proc tokenizeOptions(opts: string): tuple[flags: int, study: bool] =
 
     if longOpt != nil:
       if c == '>':
-        result.flags = result.flags or Options.fget(longOpt)
+        if longOpt == "no_study":
+          result.study = false
+        else:
+          result.flags = result.flags or Options.fget(longOpt)
         longOpt = nil
       else:
         longOpt.add(c.toLower)
       continue
     # }}}
-
-    if c == 'S':  # handle study
-      result.study = true
-      continue
 
     result.flags = result.flags or Options.fget($c)
 # }}}
@@ -261,7 +260,7 @@ proc getNameToNumberTable(pattern: Regex): Table[string, int] =
 
     result[name] = num
 
-proc initRegex*(pattern: string, options = "S"): Regex =
+proc initRegex(pattern: string, options: string): Regex =
   new(result, destroyRegex)
   result.pattern = pattern
 
@@ -286,7 +285,7 @@ proc initRegex*(pattern: string, options = "S"): Regex =
 
   result.captureNameToId = result.getNameToNumberTable()
 
-proc re*(pattern: string, options = "S"): Regex = initRegex(pattern, options)
+proc re*(pattern: string, options = ""): Regex = initRegex(pattern, options)
 # }}}
 
 proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): RegexMatch =

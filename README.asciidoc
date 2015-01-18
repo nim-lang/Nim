@@ -108,7 +108,7 @@ as a key.
 === Pattern
 
 Represents the pattern that things are matched against, constructed with
-`initRegex(string)` or `re(string)`. Examples: `re"foo"`, `re(r"foo # comment",
+`re(string, string)`. Examples: `re"foo"`, `re(r"foo # comment",
 "x<anycrlf>")`. 
 
 `pattern: string` :: the string that was used to create the pattern.
