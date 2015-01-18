@@ -11,3 +11,8 @@ suite "string splitting":
 
   test "captured patterns":
     check("12".split(re"(\d)") == @["", "1", "", "2", ""])
+
+  test "maxsplit":
+    check("123".split(re"", maxsplit = 1) == @["1", "23"])
+    check("123".split(re"", maxsplit = 0) == @["123"])
+    check("123".split(re"", maxsplit = -1) == @["1", "2", "3"])

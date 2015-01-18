@@ -384,9 +384,10 @@ proc renderBounds(str: string, bounds: Slice[int]): string =
   for i in bounds.a .. bounds.b:
     result.add("^")
 
-proc split*(str: string, pattern: Regex): seq[string] =
+proc split*(str: string, pattern: Regex, maxSplit = -1): seq[string] =
   result = @[]
   var lastIdx = 0
+  var splits = 0
 
   for match in str.findIter(pattern):
     # upper bound is exclusive, lower is inclusive:
@@ -405,12 +406,16 @@ proc split*(str: string, pattern: Regex): seq[string] =
       discard
     else:
       result.add(str.substr(lastIdx, bounds.a - 1))
+      splits += 1
 
     lastIdx = bounds.b
 
     for cap in match.captures:
       # if there are captures, include them in the result
       result.add(cap)
+
+    if splits == maxSplit:
+      break
 
   # last match: Each match takes the previous substring,
   # but "1 2".split(/ /) needs to return @["1", "2"].
