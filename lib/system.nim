@@ -291,8 +291,9 @@ include "system/inclrtl"
 const NoFakeVars* = defined(NimrodVM) ## true if the backend doesn't support \
   ## "fake variables" like 'var EBADF {.importc.}: cint'.
 
+const ArrayDummySize = when defined(cpu16): 10_000 else: 100_000_000
+
 when not defined(JS):
-  const ArrayDummySize = when defined(cpu16): 10_000 else: 100_000_000
   type
     TGenericSeq {.compilerproc, pure, inheritable.} = object
       len, reserved: int
