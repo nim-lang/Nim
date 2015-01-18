@@ -83,18 +83,24 @@ fields are as follows:
 
 `pattern: Regex` :: the pattern that is being matched
 `str: string` :: the string that was matched against
-`captures[int|string]: string` :: the string value of whatever was captured
-   at that id. If the value is invalid, then behavior is undefined. If the id
-   is `-1`, then the whole match is returned. If the given capture was not
-   matched, `nil` is returned.
-`captureBounds[int|string]: Option[Slice[int]]` :: gets the bounds of the
-   given capture according to the same rules as the above. If the capture is
-   not filled, then `None` is returned. The upper bound is exclusive, the lower
-   bound is inclusive.
+`captures[]: string` :: the string value of whatever was captured
+at that id. If the value is invalid, then behavior is undefined. If the id is
+`-1`, then the whole match is returned. If the given capture was not matched,
+`nil` is returned.
+ - `"abc".match(re"(\w)").captures[0] == "a"`
+ - `"abc".match(re"(?<letter>\w)").captures["letter"] == "a"`
+ - `"abc".match(re"(\w)\w").captures[-1] == "ab"`
+`captureBounds[]: Option[Slice[int]]` :: gets the bounds of the
+given capture according to the same rules as the above. If the capture is not
+filled, then `None` is returned. The upper bound is exclusive, the lower bound
+is inclusive.
+ - `"abc".match(re"(\w)").captureBounds[0] == 0..1`
+ - `"abc".match(re"").captureBounds[-1] == 0..0`
+ - `"abc".match(re"abc").captureBounds[-1] == 0..3`
 `match: string` :: the full text of the match.
 `matchBounds: Slice[int]` :: the bounds of the match, as in `captureBounds[]`
 `(captureBounds|captures).asTable` :: returns a table with each named capture
-   as a key.
+as a key.
 `(captureBounds|capture).toSeq` :: returns all the captures by their number.
 
 === `Pattern`
