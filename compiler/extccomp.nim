@@ -332,7 +332,6 @@ const
     ucc(),
     icl()]
 
-const
   hExt* = ".h"
 
 var
@@ -547,8 +546,9 @@ proc getCompileCFileCmd*(cfilename: string, isExternal = false): string =
                 else:
                   completeCFilePath(toObjFile(cfile))
   objfile = quoteShell(objfile)
+  cfile = quoteShell(cfile)
   result = quoteShell(compilePattern % [
-    "file", quoteShell(cfile), "objfile", quoteShell(objfile), "options", options,
+    "file", cfile, "objfile", objfile, "options", options,
     "include", includeCmd, "nimrod", getPrefixDir(),
     "nim", getPrefixDir(), "lib", libpath])
   add(result, ' ')
