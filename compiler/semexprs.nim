@@ -113,12 +113,18 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       if s.typ.kind == tyStatic and s.typ.n != nil:
         # XXX see the hack in sigmatch.nim ...
         return s.typ.n
-      elif sfGenSym in s.flags and c.p.wasForwarded:
-        # gensym'ed parameters that nevertheless have been forward declared
-        # need a special fixup:
-        let realParam = c.p.owner.typ.n[s.position+1]
-        internalAssert realParam.kind == nkSym and realParam.sym.kind == skParam
-        return newSymNode(c.p.owner.typ.n[s.position+1].sym, n.info)
+      elif sfGenSym in s.flags:
+        if c.p.wasForwarded:
+          # gensym'ed parameters that nevertheless have been forward declared
+          # need a special fixup:
+          let realParam = c.p.owner.typ.n[s.position+1]
+          internalAssert realParam.kind == nkSym and realParam.sym.kind == skParam
+          return newSymNode(c.p.owner.typ.n[s.position+1].sym, n.info)
+        elif c.p.owner.kind == skMacro:
+          # gensym'ed macro parameters need a similar hack (see bug #1944):
+          var u = searchInScopes(c, s.name)
+          internalAssert u != nil and u.kind == skParam and u.owner == s.owner
+          return newSymNode(u, n.info)
     result = newSymNode(s, n.info)
     # We cannot check for access to outer vars for example because it's still
     # not sure the symbol really ends up being used:

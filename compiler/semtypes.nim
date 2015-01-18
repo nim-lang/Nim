@@ -663,25 +663,22 @@ proc findEnforcedStaticType(t: PType): PType =
       if t != nil: return t
 
 proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
-  template addDecl(x) =
-    if sfGenSym notin x.flags: addDecl(c, x)
-
   if kind == skMacro:
     let staticType = findEnforcedStaticType(param.typ)
     if staticType != nil:
       var a = copySym(param)
       a.typ = staticType.base
-      addDecl(a)
+      addDecl(c, a)
     elif param.typ.kind == tyTypeDesc:
-      addDecl(param)
+      addDecl(c, param)
     else:
       # within a macro, every param has the type PNimrodNode!
       let nn = getSysSym"PNimrodNode"
       var a = copySym(param)
       a.typ = nn.typ
-      addDecl(a)
+      addDecl(c, a)
   else:
-    addDecl(param)
+    if sfGenSym notin param.flags: addDecl(c, param)
 
 let typedescId = getIdent"typedesc"
 
