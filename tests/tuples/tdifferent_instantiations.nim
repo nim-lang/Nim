@@ -1,4 +1,4 @@
-# bug #1920
+# bug #1910
 import tables
 
 var p: OrderedTable[tuple[a:int], int]
