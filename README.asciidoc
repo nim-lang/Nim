@@ -75,9 +75,15 @@ Replaces each match of Regex in the string with `sub`.
 If `sub` is a `proc (RegexMatch): string`, then it is executed with each match
 and the return value is the replacement value.
 
-If `sub` is a string, then each match is replaced with that string, where the
-captures are accessable as `$1`, `$2`, and so on. A literal `$` can be added by
-doubling up like so: `$$`.
+If `sub` is a string, the syntax is as follows:
+
+- `$$` - literal `$`
+- `$123` - capture number `123`
+- `$foo` - named capture `foo`
+- `${foo}` - same as above
+- `$1$#` - first and second captures
+- `$#` - first capture
+- `$0` - full match
 
 [[proc-escapere]]
 ==== escapeRe(string): string
