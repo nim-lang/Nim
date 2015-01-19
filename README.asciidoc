@@ -50,8 +50,7 @@ Arguments are the same as link:#proc-find[`find(...)`]
 
 Variants:
 
- - `proc findAll(...)` returns a `seq[RegexMatch]`
- - `proc findAllStr(...)` returns a `seq[string]`
+ - `proc findAll(...)` returns a `seq[string]`
 
 [[proc-split]]
 ==== split(string, Regex, maxsplit = -1): seq[string]

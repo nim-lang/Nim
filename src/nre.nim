@@ -372,10 +372,7 @@ proc find*(str: string, pattern: Regex, start = 0, endpos = -1): RegexMatch =
   ## if `endpos == -1`, then `endpos = str.len`
   return str.matchImpl(pattern, start, endpos, 0)
 
-proc findAll*(str: string, pattern: Regex, start = 0, endpos = -1): seq[RegexMatch] =
-  accumulateResult(str.findIter(pattern, start, endpos))
-
-proc findAllStr*(str: string, pattern: Regex, start = 0, endpos = -1): seq[string] =
+proc findAll*(str: string, pattern: Regex, start = 0, endpos = -1): seq[string] =
   result = @[]
   for match in str.findIter(pattern, start, endpos):
     result.add(match.match)
