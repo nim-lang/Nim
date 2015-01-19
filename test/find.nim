@@ -19,3 +19,4 @@ suite "find":
   test "len 0 find":
     check("".findAll(re"\ ") == newSeq[string]())
     check("".findAll(re"") == @[""])
+    check("word word".findAll(nre.re"\b") == @["", "", "", ""])

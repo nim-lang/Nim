@@ -116,7 +116,7 @@ proc `[]`*(pattern: Captures, i: int): string =
       # capture count, plus the entire string
       pattern.matchCache = newSeq[string](pattern.pattern.captureCount + 1)
     if pattern.matchCache[i + 1] == nil:
-      pattern.matchCache[i + 1] = pattern.str[bounds.a .. bounds.b-1]
+      pattern.matchCache[i + 1] = pattern.str.substr(bounds.a, bounds.b-1)
     return pattern.matchCache[i + 1]
   else:
     return nil
