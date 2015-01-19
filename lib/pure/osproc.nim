@@ -174,7 +174,7 @@ proc terminate*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
 proc kill*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
   ## Kill the process `p`. On Posix OSes the procedure sends ``SIGKILL`` to
   ## the process. On Windows ``kill()`` is simply an alias for ``terminate()``.
-  
+
 proc running*(p: Process): bool {.rtl, extern: "nosp$1", tags: [].}
   ## Returns true iff the process `p` is still running. Returns immediately.
 
@@ -644,14 +644,14 @@ elif not defined(useNimRtl):
     var pid: TPid
 
     var sysArgs = allocCStringArray(sysArgsRaw)
-    finally: deallocCStringArray(sysArgs)
+    defer: deallocCStringArray(sysArgs)
 
     var sysEnv = if env == nil:
         envToCStringArray()
       else:
         envToCStringArray(env)
 
-    finally: deallocCStringArray(sysEnv)
+    defer: deallocCStringArray(sysEnv)
 
     var data: TStartProcessData
     data.sysCommand = sysCommand
@@ -666,7 +666,7 @@ elif not defined(useNimRtl):
     data.workingDir = workingDir
 
 
-    when declared(posix_spawn) and not defined(useFork) and 
+    when declared(posix_spawn) and not defined(useFork) and
         not defined(useClone) and not defined(linux):
       pid = startProcessAuxSpawn(data)
     else:
@@ -748,8 +748,7 @@ elif not defined(useNimRtl):
     if pipe(data.pErrorPipe) != 0:
       raiseOSError(osLastError())
 
-    finally:
-      discard close(data.pErrorPipe[readIdx])
+    defer: discard close(data.pErrorPipe[readIdx])
 
     var pid: TPid
     var dataCopy = data
@@ -823,7 +822,7 @@ elif not defined(useNimRtl):
         discard execvp(data.sysCommand, data.sysArgs)
       else:
         when defined(uClibc):
-          # uClibc environment (OpenWrt included) doesn't have the full execvpe 
+          # uClibc environment (OpenWrt included) doesn't have the full execvpe
           discard execve(data.sysCommand, data.sysArgs, data.sysEnv)
         else:
           discard execvpe(data.sysCommand, data.sysArgs, data.sysEnv)
@@ -857,9 +856,9 @@ elif not defined(useNimRtl):
       raiseOsError(osLastError())
 
   proc kill(p: Process) =
-    if kill(p.id, SIGKILL) != 0'i32: 
+    if kill(p.id, SIGKILL) != 0'i32:
       raiseOsError(osLastError())
-    
+
   proc waitForExit(p: Process, timeout: int = -1): int =
     #if waitPid(p.id, p.exitCode, 0) == int(p.id):
     # ``waitPid`` fails if the process is not running anymore. But then
@@ -900,7 +899,7 @@ elif not defined(useNimRtl):
       createStream(p.errStream, p.errHandle, fmRead)
     return p.errStream
 
-  proc csystem(cmd: cstring): cint {.nodecl, importc: "system", 
+  proc csystem(cmd: cstring): cint {.nodecl, importc: "system",
                                      header: "<stdlib.h>".}
 
   proc execCmd(command: string): int =
