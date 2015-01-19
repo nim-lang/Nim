@@ -69,7 +69,8 @@ Perl and Javascript use.
 [[proc-replace]]
 ==== replace(string, Regex, sub): string
 
-Replaces each match of Regex in the string with `sub`.
+Replaces each match of Regex in the string with `sub`, which should never be
+or return `nil`.
 
 If `sub` is a `proc (RegexMatch): string`, then it is executed with each match
 and the return value is the replacement value.
