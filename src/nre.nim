@@ -443,7 +443,8 @@ proc replace*(str: string, pattern: Regex,
 
 proc replace*(str: string, pattern: Regex, sub: string): string =
   return str.replace(pattern, proc (match: RegexMatch): string =
-    sub % match.captures.toSeq )
+    # - 1 because the string numbers are 0-indexed
+    formatStr(sub, match.captures[name], match.captures[id - 1]) )
 
 # }}}
 
