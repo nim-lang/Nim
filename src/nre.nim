@@ -391,6 +391,7 @@ proc split*(str: string, pattern: Regex, maxSplit = -1): seq[string] =
   result = @[]
   var lastIdx = 0
   var splits = 0
+  var bounds: Slice[int]
 
   for match in str.findIter(pattern):
     # upper bound is exclusive, lower is inclusive:
@@ -398,16 +399,12 @@ proc split*(str: string, pattern: Regex, maxSplit = -1): seq[string] =
     # 0123456
     #  ^^^
     # (1, 4)
-    var bounds = match.matchBounds
+    bounds = match.matchBounds
 
-    if lastIdx == 0 and
-       lastIdx == bounds.a and
-       bounds.a == bounds.b:
-      # "12".split("") would be @["", "1", "2"], but
-      # if we skip an empty first match, it's the correct
-      # @["1", "2"]
-      discard
-    else:
+    # "12".split("") would be @["", "1", "2"], but
+    # if we skip an empty first match, it's the correct
+    # @["1", "2"]
+    if bounds.a < bounds.b or bounds.a > 0:
       result.add(str.substr(lastIdx, bounds.a - 1))
       splits += 1
 
@@ -420,10 +417,14 @@ proc split*(str: string, pattern: Regex, maxSplit = -1): seq[string] =
     if splits == maxSplit - 1:
       break
 
-  # last match: Each match takes the previous substring,
-  # but "1 2".split(/ /) needs to return @["1", "2"].
-  # This handles "2"
-  result.add(str.substr(lastIdx, str.len - 1))
+  # "12".split("\b") would be @["1", "2", ""], but
+  # if we skip an empty last match, it's the correct
+  # @["1", "2"]
+  if bounds.a < bounds.b or bounds.b < str.len:
+    # last match: Each match takes the previous substring,
+    # but "1 2".split(/ /) needs to return @["1", "2"].
+    # This handles "2"
+    result.add(str.substr(bounds.b, str.len - 1))
 
 proc replace*(str: string, pattern: Regex,
               subproc: proc (match: RegexMatch): string): string =
