@@ -74,6 +74,9 @@ Replaces each match of Regex in the string with `sub`.
 If `sub` is a `proc (RegexMatch): string`, then it is executed with each match
 and the return value is the replacement value.
 
+If `sub` is a `proc (string): string`, then it is executed with the full text
+of the match and and the return value is the replacement value.
+
 If `sub` is a string, the syntax is as follows:
 
 - `$$` - literal `$`

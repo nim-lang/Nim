@@ -445,6 +445,10 @@ proc replace*(str: string, pattern: Regex,
               subproc: proc (match: RegexMatch): string): string =
   replaceImpl(str, pattern, subproc(match))
 
+proc replace*(str: string, pattern: Regex,
+              subproc: proc (match: string): string): string =
+  replaceImpl(str, pattern, subproc(match.match))
+
 proc replace*(str: string, pattern: Regex, sub: string): string =
   # - 1 because the string numbers are 0-indexed
   replaceImpl(str, pattern,
