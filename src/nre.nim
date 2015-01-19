@@ -423,25 +423,32 @@ proc split*(str: string, pattern: Regex, maxSplit = -1): seq[string] =
     # This handles "2"
     result.add(str.substr(bounds.b, str.len - 1))
 
-proc replace*(str: string, pattern: Regex,
-              subproc: proc (match: RegexMatch): string): string =
+template replaceImpl(str: string, pattern: Regex,
+                     replacement: expr): stmt {.immediate, dirty.} =
   # XXX seems very similar to split, maybe I can reduce code duplication
   # somehow?
   result = ""
   var lastIdx = 0
-  for match in str.findIter(pattern):
+  for match {.inject.} in str.findIter(pattern):
     let bounds = match.matchBounds
     result.add(str.substr(lastIdx, bounds.a - 1))
-    result.add(subproc(match))
+    let nextVal = replacement
+    assert(nextVal != nil)
+    result.add(nextVal)
 
     lastIdx = bounds.b
 
   result.add(str.substr(lastIdx, str.len - 1))
+  return result
+
+proc replace*(str: string, pattern: Regex,
+              subproc: proc (match: RegexMatch): string): string =
+  replaceImpl(str, pattern, subproc(match))
 
 proc replace*(str: string, pattern: Regex, sub: string): string =
-  return str.replace(pattern, proc (match: RegexMatch): string =
-    # - 1 because the string numbers are 0-indexed
-    formatStr(sub, match.captures[name], match.captures[id - 1]) )
+  # - 1 because the string numbers are 0-indexed
+  replaceImpl(str, pattern,
+    formatStr(sub, match.captures[name], match.captures[id - 1]))
 
 # }}}
 
