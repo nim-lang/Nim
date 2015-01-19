@@ -63,8 +63,9 @@ Perl and Javascript use.
     `"123".split(r"") == @["1", "2", "3"]`.
   - If the pattern has a capture in it, it is added after the string split:
     `"12".split(re"(\d)") == @["", "1", "", "2", ""]`.
-  - If `maxsplit != -1`, then the string will only be split `maxsplit` times.
-    `"1.2.3".split(re"\.", maxsplit = 1) == @["1", "2.3"]`
+  - If `maxsplit != -1`, then the string will only be split `maxsplit - 1`
+    times. This means that there will be `maxsplit` strings in the output seq.
+    `"1.2.3".split(re"\.", maxsplit = 2) == @["1", "2.3"]`
 
 [[proc-replace]]
 ==== replace(string, Regex, sub): string

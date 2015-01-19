@@ -417,7 +417,7 @@ proc split*(str: string, pattern: Regex, maxSplit = -1): seq[string] =
       # if there are captures, include them in the result
       result.add(cap)
 
-    if splits == maxSplit:
+    if splits == maxSplit - 1:
       break
 
   # last match: Each match takes the previous substring,
