@@ -1,7 +1,7 @@
 [Package]
 name        = "nre"
 author      = "Flaviu Tamas"
-version     = "0.2.0"
+version     = "0.3.0"
 description = "Yet another PCRE library"
 license     = "MIT"
 srcDir      = "src"
