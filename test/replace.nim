@@ -11,3 +11,6 @@ suite "replace":
     check("123".replace(re"\d", "foo") == "foofoofoo")
     check("123".replace(re"(\d)", "$1$1") == "112233")
     check("123".replace(re"(\d)(\d)", "$1$2") == "123")
+    check("123".replace(re"(\d)(\d)", "$#$#") == "123")
+    check("123".replace(re"(?<foo>\d)(\d)", "$foo$#$#") == "1123")
+    check("123".replace(re"(?<foo>\d)(\d)", "${foo}$#$#") == "1123")
