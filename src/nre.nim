@@ -327,7 +327,7 @@ proc match*(str: string, pattern: Regex, start = 0, endpos = -1): RegexMatch =
 iterator findIter*(str: string, pattern: Regex, start = 0, endpos = -1): RegexMatch =
   # see pcredemo for explaination
   let matchesCrLf = pattern.matchesCrLf()
-  let unicode = bool(getinfo[cint](pattern, pcre.INFO_OPTIONS) and pcre.UTF8)
+  let unicode = (getinfo[cint](pattern, pcre.INFO_OPTIONS) and pcre.UTF8) > 0
   let endpos = if endpos == -1: str.len else: endpos
 
   var offset = start
