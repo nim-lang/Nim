@@ -35,8 +35,7 @@ else:
   {. compile: "private/pcre_src/pcre_xclass.c" .}
   {. compile: "private/pcre_src/pcre_chartables.c" .}
 
-  const pcreHeader = "pcre.h"
-  {.pragma: pcreImport, header: pcreHeader.}
+  {.pragma: pcreImport.}
 
 #************************************************
 #       Perl-Compatible Regular Expressions      *
@@ -343,16 +342,16 @@ type
 #remain compatible. 
 
 type 
-  ExtraData* {.importc: "pcre_extra", header: "pcre.h".} = object 
-    flags* {.importc: "flags".}: culong # Bits for which fields are set 
-    study_data* {.importc: "study_data".}: pointer # Opaque data from pcre_study() 
-    match_limit* {.importc: "match_limit".}: culong # Maximum number of calls to match() 
-    callout_data* {.importc: "callout_data".}: pointer # Data passed back in callouts 
-    tables* {.importc: "tables".}: ptr cuchar # Pointer to character tables 
-    match_limit_recursion* {.importc: "match_limit_recursion".}: culong # Max 
+  ExtraData* = object 
+    flags*: culong # Bits for which fields are set 
+    study_data*: pointer # Opaque data from pcre_study() 
+    match_limit*: culong # Maximum number of calls to match() 
+    callout_data*: pointer # Data passed back in callouts 
+    tables*: ptr cuchar # Pointer to character tables 
+    match_limit_recursion*: culong # Max 
                                                                         # recursive calls to match() 
-    mark* {.importc: "mark".}: ptr ptr cuchar # For passing back a mark pointer 
-    executable_jit* {.importc: "executable_jit".}: pointer # Contains a pointer to a compiled jit code 
+    mark*: ptr ptr cuchar # For passing back a mark pointer 
+    executable_jit*: pointer # Contains a pointer to a compiled jit code 
 
 # The structure for passing out data via the pcre_callout_function. We use a
 #structure so that new fields can be added on the end in future versions,
@@ -360,25 +359,25 @@ type
 #without modification. 
 
 type 
-  callout_block* {.importc: "pcre_callout_block", header: pcreHeader.} = object 
-    version* {.importc: "version".}: cint # Identifies version of block 
+  callout_block* = object 
+    version*: cint # Identifies version of block 
                                           # ------------------------ Version 0 ------------------------------- 
-    callout_number* {.importc: "callout_number".}: cint # Number compiled into pattern 
-    offset_vector* {.importc: "offset_vector".}: ptr cint # The offset vector 
-    subject* {.importc: "subject".}: cstring # The subject being matched 
-    subject_length* {.importc: "subject_length".}: cint # The length of the subject 
-    start_match* {.importc: "start_match".}: cint # Offset to start of this match attempt 
-    current_position* {.importc: "current_position".}: cint # Where we currently are in the subject 
-    capture_top* {.importc: "capture_top".}: cint # Max current capture 
-    capture_last* {.importc: "capture_last".}: cint # Most recently closed capture 
-    callout_data* {.importc: "callout_data".}: pointer # Data passed in with the call 
+    callout_number*: cint # Number compiled into pattern 
+    offset_vector*: ptr cint # The offset vector 
+    subject*: cstring # The subject being matched 
+    subject_length*: cint # The length of the subject 
+    start_match*: cint # Offset to start of this match attempt 
+    current_position*: cint # Where we currently are in the subject 
+    capture_top*: cint # Max current capture 
+    capture_last*: cint # Most recently closed capture 
+    callout_data*: pointer # Data passed in with the call 
                                                        # ------------------- Added for Version 1 
                                                        # -------------------------- 
-    pattern_position* {.importc: "pattern_position".}: cint # Offset to next item in the pattern 
-    next_item_length* {.importc: "next_item_length".}: cint # Length of next item in the pattern 
+    pattern_position*: cint # Offset to next item in the pattern 
+    next_item_length*: cint # Length of next item in the pattern 
                                                             # ------------------- Added for Version 2 
                                                             # -------------------------- 
-    mark* {.importc: "mark".}: ptr cuchar # Pointer to current mark or NULL    
+    mark*: ptr cuchar # Pointer to current mark or NULL    
                                           # 
                                           # ------------------------------------------------------------------ 
 # Indirection for store get and free functions. These can be set to
