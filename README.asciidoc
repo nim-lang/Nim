@@ -1,4 +1,4 @@
-= NRE
+image::web/logo.png["NRE Logo", width=auto, link="https://github.com/flaviut/nre"]
 
 == What is NRE?
 
