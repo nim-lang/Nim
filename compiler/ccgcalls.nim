@@ -302,10 +302,11 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType): PRope =
   while i < pat.len:
     case pat[i]
     of '@':
-      result.app genOtherArg(p, ri, j, typ)
-      for k in j+1 .. < ri.len:
-        result.app(~", ")
-        result.app genOtherArg(p, ri, k, typ)
+      if j < ri.len:
+        result.app genOtherArg(p, ri, j, typ)
+        for k in j+1 .. < ri.len:
+          result.app(~", ")
+          result.app genOtherArg(p, ri, k, typ)
       inc i
     of '#':
       if pat[i+1] in {'+', '@'}:
@@ -448,8 +449,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
 proc genCall(p: BProc, e: PNode, d: var TLoc) =
   if e.sons[0].typ.callConv == ccClosure:
     genClosureCall(p, nil, e, d)
-  elif e.sons[0].kind == nkSym and sfInfixCall in e.sons[0].sym.flags and
-      e.len >= 2:
+  elif e.sons[0].kind == nkSym and sfInfixCall in e.sons[0].sym.flags:
     genInfixCall(p, nil, e, d)
   elif e.sons[0].kind == nkSym and sfNamedParamCall in e.sons[0].sym.flags:
     genNamedParamCall(p, e, d)
@@ -462,8 +462,7 @@ proc genCall(p: BProc, e: PNode, d: var TLoc) =
 proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
   if ri.sons[0].typ.callConv == ccClosure:
     genClosureCall(p, le, ri, d)
-  elif ri.sons[0].kind == nkSym and sfInfixCall in ri.sons[0].sym.flags and
-      ri.len >= 2:
+  elif ri.sons[0].kind == nkSym and sfInfixCall in ri.sons[0].sym.flags:
     genInfixCall(p, le, ri, d)
   elif ri.sons[0].kind == nkSym and sfNamedParamCall in ri.sons[0].sym.flags:
     genNamedParamCall(p, ri, d)
