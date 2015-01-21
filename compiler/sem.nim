@@ -175,9 +175,15 @@ proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
                         allowed: TSymFlags): PSym
 proc semStmtScope(c: PContext, n: PNode): PNode
 
+proc typeAllowedCheck(info: TLineInfo; typ: PType; kind: TSymKind) =
+  let t = typeAllowed(typ, kind)
+  if t != nil:
+    if t == typ: localError(info, "invalid type: " & typeToString(typ))
+    else: localError(info, "invalid type: " & typeToString(t) & 
+                           " in this context: " & typeToString(typ))
+
 proc paramsTypeCheck(c: PContext, typ: PType) {.inline.} =
-  if not typeAllowed(typ, skConst):
-    localError(typ.n.info, errXisNoType, typeToString(typ))
+  typeAllowedCheck(typ.n.info, typ, skConst)
 
 proc expectMacroOrTemplateCall(c: PContext, n: PNode): PSym
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode

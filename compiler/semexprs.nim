@@ -214,9 +214,9 @@ proc isCastable(dst, src: PType): bool =
     result = false
   elif srcSize < 0:
     result = false
-  elif not typeAllowed(dst, skParam):
+  elif typeAllowed(dst, skParam) != nil:
     result = false
-  else: 
+  else:
     result = (dstSize >= srcSize) or
         (skipTypes(dst, abstractInst).kind in IntegralTypes) or
         (skipTypes(src, abstractInst-{tyTypeDesc}).kind in IntegralTypes)
@@ -692,7 +692,7 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
     if callee.kind notin {skProc, skConverter} or callee.isGenericRoutine:
       return
     
-    if n.typ != nil and not typeAllowed(n.typ, skConst): return
+    if n.typ != nil and typeAllowed(n.typ, skConst) != nil: return
     
     var call = newNodeIT(nkCall, n.info, n.typ)
     call.add(n.sons[0])

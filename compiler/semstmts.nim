@@ -380,8 +380,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       
     # this can only happen for errornous var statements:
     if typ == nil: continue
-    if not typeAllowed(typ, symkind): 
-      localError(a.info, errXisNoType, typeToString(typ))
+    typeAllowedCheck(a.info, typ, symkind)
     var tup = skipTypes(typ, {tyGenericInst})
     if a.kind == nkVarTuple: 
       if tup.kind != tyTuple: 
@@ -456,7 +455,7 @@ proc semConst(c: PContext, n: PNode): PNode =
     if typ == nil:
       localError(a.sons[2].info, errConstExprExpected)
       continue
-    if not typeAllowed(typ, skConst) and def.kind != nkNilLit:
+    if typeAllowed(typ, skConst) != nil and def.kind != nkNilLit:
       localError(a.info, errXisNoType, typeToString(typ))
       continue
     v.typ = typ
@@ -1187,6 +1186,8 @@ proc semPragmaBlock(c: PContext, n: PNode): PNode =
     else: discard
 
 proc semStaticStmt(c: PContext, n: PNode): PNode =
+  #echo "semStaticStmt"
+  #writeStackTrace()
   let a = semStmt(c, n.sons[0])
   n.sons[0] = a
   evalStaticStmt(c.module, a, c.p.owner)
