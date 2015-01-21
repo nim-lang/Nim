@@ -147,7 +147,7 @@ Represents the pattern that things are matched against, constructed with
  - `U` - expressions are not greedy by default. `?` can be added to a qualifier
    to make it greedy.
  - `u` - same as `8`
- - `W` - Unicode character properties
+ - `W` - Unicode character properties; `\w` matches `к`.
  - `X` - "Extra", character escapes without special meaning (`\w` vs. `\a`) are
    errors
  - `x` - extended, comments (`#`) and newlines are ignored (extended)
