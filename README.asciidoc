@@ -168,3 +168,10 @@ ____
  - `<bsr_unicode>` - `\R` matches any unicode newline
  - `<js>` - Javascript compatibility
  - `<no_study>` - turn off studying; study is enabled by deafault
+
+== Other Notes
+
+By default, NRE compiles it's own PCRE. If this is undesirable, pass
+`-d:pcreDynlib` to use whatever dynamic library is available on the system.
+This may have unexpected consequences if the dynamic library doesn't have
+certain features enabled.

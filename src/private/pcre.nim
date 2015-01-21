@@ -1,28 +1,42 @@
-{. passC: "-DHAVE_CONFIG_H", passC: "-I private/pcre_src",
-   passL: "-I private/pcre_src" .}
-{. compile: "private/pcre_src/pcre_byte_order.c" .}
-{. compile: "private/pcre_src/pcre_compile.c" .}
-{. compile: "private/pcre_src/pcre_config.c" .}
-{. compile: "private/pcre_src/pcre_dfa_exec.c" .}
-{. compile: "private/pcre_src/pcre_exec.c" .}
-{. compile: "private/pcre_src/pcre_fullinfo.c" .}
-{. compile: "private/pcre_src/pcre_get.c" .}
-{. compile: "private/pcre_src/pcre_globals.c" .}
-{. compile: "private/pcre_src/pcre_jit_compile.c" .}
-{. compile: "private/pcre_src/pcre_maketables.c" .}
-{. compile: "private/pcre_src/pcre_newline.c" .}
-{. compile: "private/pcre_src/pcre_ord2utf8.c" .}
-{. compile: "private/pcre_src/pcre_refcount.c" .}
-{. compile: "private/pcre_src/pcre_string_utils.c" .}
-{. compile: "private/pcre_src/pcre_study.c" .}
-{. compile: "private/pcre_src/pcre_tables.c" .}
-{. compile: "private/pcre_src/pcre_ucd.c" .}
-{. compile: "private/pcre_src/pcre_valid_utf8.c" .}
-{. compile: "private/pcre_src/pcre_version.c" .}
-{. compile: "private/pcre_src/pcre_xclass.c" .}
-{. compile: "private/pcre_src/pcre_chartables.c" .}
+when defined(pcreDynlib):
+  const pcreHeader = "<pcre.h>"
+  when not defined(pcreDll):
+    when hostOS == "windows":
+      const pcreDll = "pcre.dll"
+    elif hostOS == "macosx":
+      const pcreDll = "libpcre(.3|.1|).dylib"
+    else:
+      const pcreDll = "libpcre.so(.3|.1|)"
+    {.pragma: pcreImport, dynlib: pcreDll.}
+  else:
+    {.pragma: pcreImport, header: pcreHeader.}
+else:
+  {. passC: "-DHAVE_CONFIG_H", passC: "-I private/pcre_src",
+     passL: "-I private/pcre_src" .}
+  {. compile: "private/pcre_src/pcre_byte_order.c" .}
+  {. compile: "private/pcre_src/pcre_compile.c" .}
+  {. compile: "private/pcre_src/pcre_config.c" .}
+  {. compile: "private/pcre_src/pcre_dfa_exec.c" .}
+  {. compile: "private/pcre_src/pcre_exec.c" .}
+  {. compile: "private/pcre_src/pcre_fullinfo.c" .}
+  {. compile: "private/pcre_src/pcre_get.c" .}
+  {. compile: "private/pcre_src/pcre_globals.c" .}
+  {. compile: "private/pcre_src/pcre_jit_compile.c" .}
+  {. compile: "private/pcre_src/pcre_maketables.c" .}
+  {. compile: "private/pcre_src/pcre_newline.c" .}
+  {. compile: "private/pcre_src/pcre_ord2utf8.c" .}
+  {. compile: "private/pcre_src/pcre_refcount.c" .}
+  {. compile: "private/pcre_src/pcre_string_utils.c" .}
+  {. compile: "private/pcre_src/pcre_study.c" .}
+  {. compile: "private/pcre_src/pcre_tables.c" .}
+  {. compile: "private/pcre_src/pcre_ucd.c" .}
+  {. compile: "private/pcre_src/pcre_valid_utf8.c" .}
+  {. compile: "private/pcre_src/pcre_version.c" .}
+  {. compile: "private/pcre_src/pcre_xclass.c" .}
+  {. compile: "private/pcre_src/pcre_chartables.c" .}
 
-{.pragma: pcreImport, header: "<pcre.h>".}
+  const pcreHeader = "pcre.h"
+  {.pragma: pcreImport, header: pcreHeader.}
 
 #************************************************
 #       Perl-Compatible Regular Expressions      *
@@ -329,7 +343,7 @@ type
 #remain compatible. 
 
 type 
-  ExtraData* {.importc: "pcre_extra", header: "<pcre.h>".} = object 
+  ExtraData* {.importc: "pcre_extra", header: "pcre.h".} = object 
     flags* {.importc: "flags".}: culong # Bits for which fields are set 
     study_data* {.importc: "study_data".}: pointer # Opaque data from pcre_study() 
     match_limit* {.importc: "match_limit".}: culong # Maximum number of calls to match() 
@@ -346,7 +360,7 @@ type
 #without modification. 
 
 type 
-  callout_block* {.importc: "pcre_callout_block", header: "<pcre.h>".} = object 
+  callout_block* {.importc: "pcre_callout_block", header: pcreHeader.} = object 
     version* {.importc: "version".}: cint # Identifies version of block 
                                           # ------------------------ Version 0 ------------------------------- 
     callout_number* {.importc: "callout_number".}: cint # Number compiled into pattern 
@@ -373,7 +387,6 @@ type
 #that is triggered by the (?) regex item. For Virtual Pascal, these definitions
 #have to take another form. 
 
-{.emit: "#include <pcre.h>".}
 proc malloc*(a2: csize): pointer {.cdecl, importc: "pcre_malloc", pcreImport.}
 proc free*(a2: pointer) {.cdecl, importc: "pcre_free", pcreImport.}
 proc stack_malloc*(a2: csize): pointer {.cdecl, importc: "pcre_stack_malloc", pcreImport.}
