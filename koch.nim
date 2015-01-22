@@ -61,6 +61,9 @@ Boot options:
   -d:nativeStacktrace      use native stack traces (only for Mac OS X or Linux)
   -d:noCaas                build Nimrod without CAAS support
   -d:avoidTimeMachine      only for Mac OS X, excludes nimcache dir from backups
+Web options:
+  --googleAnalytics:UA-... add the given google analytics code to the docs. To
+                           build the official docs, use UA-48159761-1
 """
 
 proc exe(f: string): string = return addFileExt(f, ExeExt)
