@@ -199,7 +199,7 @@ const
 
 proc cacheGetType(tab: TIdTable, key: PType): PRope = 
   # returns nil if we need to declare this type
-  # since types are now unique via the ``GetUniqueType`` mechanism, this slow
+  # since types are now unique via the ``getUniqueType`` mechanism, this slow
   # linear search is not necessary anymore:
   result = PRope(idTableGet(tab, key))
 
@@ -390,7 +390,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
     for i in countup(0, sonsLen(n) - 1): 
       app(result, genRecordFieldsAux(m, n.sons[i], accessExpr, rectype, check))
   of nkRecCase: 
-    if (n.sons[0].kind != nkSym): internalError(n.info, "genRecordFieldsAux")
+    if n.sons[0].kind != nkSym: internalError(n.info, "genRecordFieldsAux")
     app(result, genRecordFieldsAux(m, n.sons[0], accessExpr, rectype, check))
     uname = toRope(mangle(n.sons[0].sym.name.s) & 'U')
     if accessExpr != nil: ae = ropef("$1.$2", [accessExpr, uname])
@@ -421,12 +421,14 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
     if accessExpr != nil: ae = ropef("$1.$2", [accessExpr, sname])
     else: ae = sname
     fillLoc(field.loc, locField, field.typ, ae, OnUnknown)
-    let fieldType = field.loc.t
+    let fieldType = field.loc.t.skipTypes(abstractInst)
     if fieldType.kind == tyArray and tfUncheckedArray in fieldType.flags:
       appf(result, "$1 $2[SEQ_DECL_SIZE];$n",
           [getTypeDescAux(m, fieldType.elemType, check), sname])
     else:
-      appf(result, "$1 $2;$n", [getTypeDescAux(m, fieldType, check), sname])
+      # don't use fieldType here because we need the
+      # tyGenericInst for C++ template support
+      appf(result, "$1 $2;$n", [getTypeDescAux(m, field.loc.t, check), sname])
   else: internalError(n.info, "genRecordFieldsAux()")
   
 proc getRecordFields(m: BModule, typ: PType, check: var IntSet): PRope = 
@@ -486,11 +488,7 @@ proc pushType(m: BModule, typ: PType) =
 
 proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): PRope = 
   # returns only the type's name
-  var 
-    name, rettype, desc, recdesc: PRope
-    n: BiggestInt
-    t, et: PType
-  t = getUniqueType(typ)
+  var t = getUniqueType(typ)
   if t == nil: internalError("getTypeDescAux: t == nil")
   if t.sym != nil: useHeader(m, t.sym)
   result = getTypePre(m, t)
@@ -502,35 +500,42 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): PRope =
     # C type generation into an analysis and a code generation phase somehow.
   case t.kind
   of tyRef, tyPtr, tyVar: 
-    et = getUniqueType(t.lastSon)
-    if et.kind in {tyArrayConstr, tyArray, tyOpenArray, tyVarargs}: 
+    var et = t.lastSon
+    var etB = et.skipTypes(abstractInst)
+    if etB.kind in {tyArrayConstr, tyArray, tyOpenArray, tyVarargs}: 
       # this is correct! sets have no proper base type, so we treat
       # ``var set[char]`` in `getParamTypeDesc`
-      et = getUniqueType(elemType(et))
-    case et.kind
-    of tyObject, tyTuple: 
+      et = elemType(etB)
+      etB = et.skipTypes(abstractInst)
+    case etB.kind
+    of tyObject, tyTuple:
+      if isImportedCppType(etB) and et.kind == tyGenericInst:
+        result = con(getTypeDescAux(m, et, check), "*")
+      else:
+        # no restriction! We have a forward declaration for structs
+        let x = getUniqueType(etB)
+        let name = getTypeForward(m, x)
+        result = con(name, "*")
+        idTablePut(m.typeCache, t, result)
+        pushType(m, x)
+    of tySequence:
       # no restriction! We have a forward declaration for structs
-      name = getTypeForward(m, et)
-      result = con(name, "*")
-      idTablePut(m.typeCache, t, result)
-      pushType(m, et)
-    of tySequence: 
-      # no restriction! We have a forward declaration for structs
-      name = getTypeForward(m, et)
+      let x = getUniqueType(etB)
+      let name = getTypeForward(m, x)
       result = con(name, "**")
       idTablePut(m.typeCache, t, result)
-      pushType(m, et)
-    else: 
+      pushType(m, x)
+    else:
       # else we have a strong dependency  :-(
       result = con(getTypeDescAux(m, et, check), "*")
       idTablePut(m.typeCache, t, result)
-  of tyOpenArray, tyVarargs: 
-    et = getUniqueType(t.sons[0])
-    result = con(getTypeDescAux(m, et, check), "*")
+  of tyOpenArray, tyVarargs:
+    result = con(getTypeDescAux(m, t.sons[0], check), "*")
     idTablePut(m.typeCache, t, result)
-  of tyProc: 
+  of tyProc:
     result = getTypeName(t)
     idTablePut(m.typeCache, t, result)
+    var rettype, desc: PRope
     genProcParams(m, t, rettype, desc, check)
     if not isImportedType(t): 
       if t.callConv != ccClosure: # procedure vars may need a closure!
@@ -545,7 +550,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): PRope =
     # we cannot use getTypeForward here because then t would be associated
     # with the name of the struct, not with the pointer to the struct:
     result = cacheGetType(m.forwTypeCache, t)
-    if result == nil: 
+    if result == nil:
       result = getTypeName(t)
       if not isImportedType(t): 
         appf(m.s[cfsForwardTypes], getForwardStructFormat(m),
@@ -567,27 +572,39 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): PRope =
         result = toRope("TGenericSeq")
     app(result, "*")
   of tyArrayConstr, tyArray: 
-    n = lengthOrd(t)
-    if n <= 0: 
-      n = 1                   # make an array of at least one element
+    var n: BiggestInt = lengthOrd(t)
+    if n <= 0: n = 1   # make an array of at least one element
     result = getTypeName(t)
     idTablePut(m.typeCache, t, result)
-    if not isImportedType(t): 
+    if not isImportedType(t):
+      let foo = getTypeDescAux(m, t.sons[1], check)
       appf(m.s[cfsTypes], "typedef $1 $2[$3];$n", 
-           [getTypeDescAux(m, t.sons[1], check), result, toRope(n)])
-  of tyObject, tyTuple: 
-    result = cacheGetType(m.forwTypeCache, t)
-    if result == nil: 
-      result = getTypeName(t)
-      if not isImportedType(t): 
-        appf(m.s[cfsForwardTypes], getForwardStructFormat(m),
-           [structOrUnion(t), result])
-      idTablePut(m.forwTypeCache, t, result)
-    idTablePut(m.typeCache, t, result) # always call for sideeffects:
-    if t.kind != tyTuple: recdesc = getRecordDesc(m, t, result, check)
-    else: recdesc = getTupleDesc(m, t, result, check)
-    if not isImportedType(t): app(m.s[cfsTypes], recdesc)
-  of tySet: 
+           [foo, result, toRope(n)])
+  of tyObject, tyTuple:
+    if isImportedCppType(t) and typ.kind == tyGenericInst:
+      # for instantiated templates we do not go through the type cache as the
+      # the type cache is not aware of 'tyGenericInst'.
+      result = getTypeName(t).con("<")
+      for i in 1 .. typ.len-2:
+        if i > 1: result.app(", ")
+        result.app(getTypeDescAux(m, typ.sons[i], check))
+      result.app("> ")
+      # always call for sideeffects:
+      assert t.kind != tyTuple
+      discard getRecordDesc(m, t, result, check)
+    else:
+      result = cacheGetType(m.forwTypeCache, t)
+      if result == nil:
+        result = getTypeName(t)
+        if not isImportedType(t): 
+          appf(m.s[cfsForwardTypes], getForwardStructFormat(m),
+             [structOrUnion(t), result])
+        idTablePut(m.forwTypeCache, t, result)
+      idTablePut(m.typeCache, t, result) # always call for sideeffects:
+      let recdesc = if t.kind != tyTuple: getRecordDesc(m, t, result, check)
+                    else: getTupleDesc(m, t, result, check)
+      if not isImportedType(t): app(m.s[cfsTypes], recdesc)
+  of tySet:
     case int(getSize(t))
     of 1: result = toRope("NU8")
     of 2: result = toRope("NU16")
