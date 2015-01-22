@@ -185,13 +185,15 @@ proc eraseScreen* =
     var numwrote: DWORD
     var origin: TCOORD # is inititalized to 0, 0
     var hStdout = conHandle
+
     if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0:
       raiseOSError(osLastError())
-    if FillConsoleOutputCharacter(hStdout, ' ', scrbuf.dwSize.X*scrbuf.dwSize.Y,
+    let numChars = int32(scrbuf.dwSize.X)*int32(scrbuf.dwSize.Y)
+
+    if FillConsoleOutputCharacter(hStdout, ' ', numChars,
                                   origin, addr(numwrote)) == 0:
       raiseOSError(osLastError())
-    if FillConsoleOutputAttribute(hStdout, scrbuf.wAttributes,
-                                  scrbuf.dwSize.X * scrbuf.dwSize.Y,
+    if FillConsoleOutputAttribute(hStdout, scrbuf.wAttributes, numChars,
                                   origin, addr(numwrote)) == 0:
       raiseOSError(osLastError())
     setCursorXPos(0)
