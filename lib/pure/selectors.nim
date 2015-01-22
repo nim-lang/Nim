@@ -156,7 +156,7 @@ elif defined(linux):
       let fd = s.events[i].data.fd.SocketHandle
     
       var evSet: set[Event] = {}
-      if (s.events[i].events and EPOLLERR) != 0: evSet = evSet + {EvError}
+      if (s.events[i].events and EPOLLERR) != 0 or (s.events[i].events and EPOLLHUP) != 0: evSet = evSet + {EvError}
       if (s.events[i].events and EPOLLIN) != 0: evSet = evSet + {EvRead}
       if (s.events[i].events and EPOLLOUT) != 0: evSet = evSet + {EvWrite}
       let selectorKey = s.fds[fd]
