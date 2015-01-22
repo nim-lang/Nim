@@ -53,7 +53,7 @@ proc emitLazily(s: PSym): bool {.inline.} =
 proc initLoc(result: var TLoc, k: TLocKind, typ: PType, s: TStorageLoc) = 
   result.k = k
   result.s = s
-  result.t = getUniqueType(typ)
+  result.t = typ
   result.r = nil
   result.flags = {}
 
@@ -61,7 +61,7 @@ proc fillLoc(a: var TLoc, k: TLocKind, typ: PType, r: PRope, s: TStorageLoc) =
   # fills the loc if it is not already initialized
   if a.k == locNone: 
     a.k = k
-    a.t = getUniqueType(typ)
+    a.t = typ
     a.s = s
     if a.r == nil: a.r = r
   

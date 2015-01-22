@@ -229,8 +229,9 @@ proc genOptAsgnTuple(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
       flags - {needToCopy}
     else:
       flags
-  for i in 0 .. <dest.t.len:
-    let t = dest.t.sons[i]
+  let t = skipTypes(dest.t, abstractInst)
+  for i in 0 .. <t.len:
+    let t = t.sons[i]
     let field = ropef("Field$1", i.toRope)
     genAssignment(p, optAsgnLoc(dest, t, field), 
                      optAsgnLoc(src, t, field), newflags)
@@ -328,7 +329,9 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
       linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   of tyObject:
     # XXX: check for subtyping?
-    if not isObjLackingTypeField(ty):
+    if ty.isImportedCppType:
+      linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
+    elif not isObjLackingTypeField(ty):
       genGenericAsgn(p, dest, src, flags)
     elif needsComplexAssignment(ty):
       if ty.sons[0].isNil and asgnComplexity(ty.n) <= 4:
@@ -411,7 +414,7 @@ proc putDataIntoDest(p: BProc, d: var TLoc, t: PType, r: PRope) =
   var a: TLoc
   if d.k != locNone:
     # need to generate an assignment here
-    initLoc(a, locData, getUniqueType(t), OnUnknown)
+    initLoc(a, locData, t, OnUnknown)
     a.r = r
     if lfNoDeepCopy in d.flags: genAssignment(p, d, a, {})
     else: genAssignment(p, d, a, {needToCopy})
@@ -419,14 +422,14 @@ proc putDataIntoDest(p: BProc, d: var TLoc, t: PType, r: PRope) =
     # we cannot call initLoc() here as that would overwrite
     # the flags field!
     d.k = locData
-    d.t = getUniqueType(t)
+    d.t = t
     d.r = r
 
 proc putIntoDest(p: BProc, d: var TLoc, t: PType, r: PRope) =
   var a: TLoc
   if d.k != locNone:
     # need to generate an assignment here
-    initLoc(a, locExpr, getUniqueType(t), OnUnknown)
+    initLoc(a, locExpr, t, OnUnknown)
     a.r = r
     if lfNoDeepCopy in d.flags: genAssignment(p, d, a, {})
     else: genAssignment(p, d, a, {needToCopy})
@@ -434,7 +437,7 @@ proc putIntoDest(p: BProc, d: var TLoc, t: PType, r: PRope) =
     # we cannot call initLoc() here as that would overwrite
     # the flags field!
     d.k = locExpr
-    d.t = getUniqueType(t)
+    d.t = t
     d.r = r
 
 proc binaryStmt(p: BProc, e: PNode, d: var TLoc, frmt: string) =
@@ -684,7 +687,7 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
       # so the '&' and '*' cancel out:
       putIntoDest(p, d, a.t.sons[0], rdLoc(a))
     else:
-      putIntoDest(p, d, a.t.sons[0], ropef("(*$1)", [rdLoc(a)]))
+      putIntoDest(p, d, e.typ, ropef("(*$1)", [rdLoc(a)]))
 
 proc genAddr(p: BProc, e: PNode, d: var TLoc) =
   # careful  'addr(myptrToArray)' needs to get the ampersand:
@@ -710,7 +713,7 @@ proc genRecordFieldAux(p: BProc, e: PNode, d, a: var TLoc): PType =
   if e.sons[1].kind != nkSym: internalError(e.info, "genRecordFieldAux")
   d.inheritLocation(a)
   discard getTypeDesc(p.module, a.t) # fill the record's fields.loc
-  result = a.t
+  result = a.t.getUniqueType
 
 proc genTupleElem(p: BProc, e: PNode, d: var TLoc) =
   var
@@ -719,7 +722,7 @@ proc genTupleElem(p: BProc, e: PNode, d: var TLoc) =
   initLocExpr(p, e.sons[0], a)
   d.inheritLocation(a)
   discard getTypeDesc(p.module, a.t) # fill the record's fields.loc
-  var ty = a.t
+  var ty = a.t.getUniqueType
   var r = rdLoc(a)
   case e.sons[1].kind
   of nkIntLit..nkUInt64Lit: i = int(e.sons[1].intVal)

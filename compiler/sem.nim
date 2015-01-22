@@ -178,9 +178,9 @@ proc semStmtScope(c: PContext, n: PNode): PNode
 proc typeAllowedCheck(info: TLineInfo; typ: PType; kind: TSymKind) =
   let t = typeAllowed(typ, kind)
   if t != nil:
-    if t == typ: localError(info, "invalid type: " & typeToString(typ))
-    else: localError(info, "invalid type: " & typeToString(t) & 
-                           " in this context: " & typeToString(typ))
+    if t == typ: localError(info, "invalid type: '" & typeToString(typ) & "'")
+    else: localError(info, "invalid type: '" & typeToString(t) & 
+                           "' in this context: '" & typeToString(typ) & "'")
 
 proc paramsTypeCheck(c: PContext, typ: PType) {.inline.} =
   typeAllowedCheck(typ.n.info, typ, skConst)

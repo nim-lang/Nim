@@ -75,8 +75,7 @@ proc getUniqueType*(key: PType): PType =
   if key == nil: return 
   var k = key.kind
   case k
-  of  tyBool, tyChar, 
-      tyInt..tyUInt64:
+  of tyBool, tyChar, tyInt..tyUInt64:
     # no canonicalization for integral types, so that e.g. ``pid_t`` is
     # produced instead of ``NI``.
     result = key
@@ -86,8 +85,7 @@ proc getUniqueType*(key: PType): PType =
     if result == nil:
       gCanonicalTypes[k] = key
       result = key
-  of tyTypeDesc, tyTypeClasses, tyGenericParam,
-     tyFromExpr, tyFieldAccessor:
+  of tyTypeDesc, tyTypeClasses, tyGenericParam, tyFromExpr, tyFieldAccessor:
     internalError("GetUniqueType")
   of tyDistinct:
     if key.deepCopy != nil: result = key

@@ -298,7 +298,10 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var PRope,
   params = con("(", params)
 
 proc isImportedType(t: PType): bool = 
-  result = (t.sym != nil) and (sfImportc in t.sym.flags)
+  result = t.sym != nil and sfImportc in t.sym.flags
+
+proc isImportedCppType(t: PType): bool = 
+  result = t.sym != nil and sfInfixCall in t.sym.flags
 
 proc typeNameOrLiteral(t: PType, literal: string): PRope = 
   if (t.sym != nil) and (sfImportc in t.sym.flags) and (t.sym.magic == mNone): 
