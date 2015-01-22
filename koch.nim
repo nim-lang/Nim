@@ -359,6 +359,9 @@ of cmdArgument:
   of "clean": clean(op.cmdLineRest)
   of "web": web(op.cmdLineRest)
   of "website": website(op.cmdLineRest)
+  of "web0":
+    # undocumented command for Araq-the-merciful:
+    web(op.cmdLineRest & " --googleAnalytics:UA-48159761-1")
   of "pdf": pdf()
   of "csource", "csources": csource(op.cmdLineRest)
   of "zip": zip(op.cmdLineRest)

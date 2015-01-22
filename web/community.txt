@@ -14,6 +14,16 @@ Nim's Community
 
 .. container:: standout
 
+  Mailing list
+  ------------
+
+  The mailing list can be found here: http://www.freelists.org/list/nim-dev
+  There is no consensus yet about what is discussed via the forum as opposed
+  to the mailing list. Join whatever you like!
+
+
+.. container:: standout
+
   IRC
   ----
 
