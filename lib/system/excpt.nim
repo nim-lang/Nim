@@ -341,7 +341,7 @@ when not defined(noSignalHandler):
 
   registerSignalHandler() # call it in initialization section
 
-proc setControlCHook(hook: proc () {.noconv.}) =
+proc setControlCHook(hook: proc () {.noconv.} not nil) =
   # ugly cast, but should work on all architectures:
   type TSignalHandler = proc (sig: cint) {.noconv, benign.}
   c_signal(SIGINT, cast[TSignalHandler](hook))
