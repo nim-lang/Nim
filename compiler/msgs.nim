@@ -120,7 +120,7 @@ type
     warnDifferentHeaps, warnWriteToForeignHeap, warnUnsafeCode,
     warnEachIdentIsTuple, warnShadowIdent, 
     warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe, warnGcUnsafe2,
-    warnUninit, warnGcMem, warnLockLevel, warnUser,
+    warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnUser,
     hintSuccess, hintSuccessX,
     hintLineTooLong, hintXDeclaredButNotUsed, hintConvToBaseNotNeeded,
     hintConvFromXtoItselfNotNeeded, hintExprAlwaysX, hintQuitCalled,
@@ -392,6 +392,7 @@ const
     warnGcUnsafe2: "cannot prove '$1' is GC-safe. Does not compile with --threads:on.",
     warnUninit: "'$1' might not have been initialized [Uninit]",
     warnGcMem: "'$1' uses GC'ed memory [GcMem]",
+    warnDestructor: "usage of a type with a destructor in a non destructible context. This will become a compile time error in the future. [Destructor]",
     warnLockLevel: "$1 [LockLevel]",
     warnUser: "$1 [User]", 
     hintSuccess: "operation successful [Success]", 
@@ -413,7 +414,7 @@ const
     hintUser: "$1 [User]"]
 
 const
-  WarningsToStr*: array[0..28, string] = ["CannotOpenFile", "OctalEscape", 
+  WarningsToStr*: array[0..29, string] = ["CannotOpenFile", "OctalEscape", 
     "XIsNeverRead", "XmightNotBeenInit",
     "Deprecated", "ConfigDeprecated",
     "SmallLshouldNotBeUsed", "UnknownMagic", 
@@ -423,7 +424,7 @@ const
     "AnalysisLoophole", "DifferentHeaps", "WriteToForeignHeap",
     "UnsafeCode", "EachIdentIsTuple", "ShadowIdent", 
     "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
-    "GcMem", "LockLevel", "User"]
+    "GcMem", "Destructor", "LockLevel", "User"]
 
   HintsToStr*: array[0..16, string] = ["Success", "SuccessX", "LineTooLong", 
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded", 
