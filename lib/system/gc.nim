@@ -33,7 +33,7 @@ const
 when withRealTime and not declared(getTicks):
   include "system/timers"
 when defined(memProfiler):
-  proc nimProfile(requestedSize: int)
+  proc nimProfile(requestedSize: int) {.benign.}
 
 const
   rcIncrement = 0b1000 # so that lowest 3 bits are not touched
