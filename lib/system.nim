@@ -2509,7 +2509,7 @@ when not defined(JS): #and not defined(NimrodVM):
     initGC()
 
   when not defined(NimrodVM):
-    proc setControlCHook*(hook: proc () {.noconv.})
+    proc setControlCHook*(hook: proc () {.noconv.} not nil)
       ## allows you to override the behaviour of your application when CTRL+C
       ## is pressed. Only one such hook is supported.
       
