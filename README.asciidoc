@@ -53,10 +53,10 @@ Variants:
  - `proc findAll(...)` returns a `seq[string]`
 
 [[proc-split]]
-==== split(string, Regex, maxsplit = -1): seq[string]
+==== split(string, Regex, maxsplit = -1, start = 0): seq[string]
 
 Splits the string with the given regex. This works according to the rules that
-Perl and Javascript use.
+Perl and Javascript use:
 
   - If the match is zero-width, then the string is still split:
     `"123".split(r"") == @["1", "2", "3"]`.
@@ -65,6 +65,8 @@ Perl and Javascript use.
   - If `maxsplit != -1`, then the string will only be split `maxsplit - 1`
     times. This means that there will be `maxsplit` strings in the output seq.
     `"1.2.3".split(re"\.", maxsplit = 2) == @["1", "2.3"]`
+
+`start` behaves the same as in link:#proc-find[`find(...)`].
 
 [[proc-replace]]
 ==== replace(string, Regex, sub): string

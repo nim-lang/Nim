@@ -43,3 +43,8 @@ suite "string splitting":
     check("a.b"                          .split(re"\.")    .join(",") == "a,b")
     check(""                             .split(re"")      .len       == 0)
     check(":"                            .split(re"")      .len       == 1)
+
+  test "start position":
+    check("abc".split(re"", start = 1) == @["b", "c"])
+    check("abc".split(re"", start = 2) == @["c"])
+    check("abc".split(re"", start = 3) == newSeq[string]())

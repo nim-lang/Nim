@@ -384,13 +384,13 @@ proc renderBounds(str: string, bounds: Slice[int]): string =
   for i in bounds.a .. bounds.b:
     result.add("^")
 
-proc split*(str: string, pattern: Regex, maxSplit = -1): seq[string] =
+proc split*(str: string, pattern: Regex, maxSplit = -1, start = 0): seq[string] =
   result = @[]
-  var lastIdx = 0
+  var lastIdx = start
   var splits = 0
   var bounds: Slice[int]
 
-  for match in str.findIter(pattern):
+  for match in str.findIter(pattern, start = start):
     # upper bound is exclusive, lower is inclusive:
     #
     # 0123456
@@ -401,7 +401,7 @@ proc split*(str: string, pattern: Regex, maxSplit = -1): seq[string] =
     # "12".split("") would be @["", "1", "2"], but
     # if we skip an empty first match, it's the correct
     # @["1", "2"]
-    if bounds.a < bounds.b or bounds.a > 0:
+    if bounds.a < bounds.b or bounds.a > start:
       result.add(str.substr(lastIdx, bounds.a - 1))
       splits += 1
 
