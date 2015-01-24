@@ -380,17 +380,16 @@ proc format(p: MultipartData): tuple[header, body: string] =
     result.body.add("--" & bound & "\c\L" & s)
   result.body.add("--" & bound & "--\c\L")
 
-proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
-              body = "",
-              sslContext: SSLContext = defaultSSLContext,
-              timeout = -1, userAgent = defUserAgent,
-              proxy: Proxy = nil): Response =
-  ## | Requests ``url`` with the specified ``httpMethod``.
+proc request*(url: string, httpMethod: string, extraHeaders = "",
+              body = "", sslContext = defaultSSLContext, timeout = -1,
+              userAgent = defUserAgent, proxy: Proxy = nil): Response =
+  ## | Requests ``url`` with the custom method string specified by the
+  ## | ``httpMethod`` parameter.
   ## | Extra headers can be specified and must be seperated by ``\c\L``
   ## | An optional timeout can be specified in miliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
   var r = if proxy == nil: parseUri(url) else: proxy.url
-  var headers = substr($httpMethod, len("http"))
+  var headers = substr(httpMethod, len("http"))
   if proxy == nil:
     headers.add(" " & r.path)
     if r.query.len > 0:
@@ -430,8 +429,18 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
   if body != "":
     s.send(body)
 
-  result = parseResponse(s, httpMethod != httpHEAD, timeout)
+  result = parseResponse(s, httpMethod != "httpHEAD", timeout)
   s.close()
+
+proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
+              body = "", sslContext = defaultSSLContext, timeout = -1,
+              userAgent = defUserAgent, proxy: Proxy = nil): Response =
+  ## | Requests ``url`` with the specified ``httpMethod``.
+  ## | Extra headers can be specified and must be seperated by ``\c\L``
+  ## | An optional timeout can be specified in miliseconds, if reading from the
+  ## server takes longer than specified an ETimeout exception will be raised.
+  result = request(url, $httpMethod, extraHeaders, body, sslContext, timeout, 
+                   userAgent, proxy)
 
 proc redirection(status: string): bool =
   const redirectionNRs = ["301", "302", "303", "307"]
@@ -556,9 +565,9 @@ proc downloadFile*(url: string, outputFilename: string,
   else:
     fileError("Unable to open file")
 
-proc generateHeaders(r: Uri, httpMethod: HttpMethod,
+proc generateHeaders(r: Uri, httpMethod: string,
                      headers: StringTableRef): string =
-  result = substr($httpMethod, len("http"))
+  result = substr(httpMethod, len("http"))
   # TODO: Proxies
   result.add(" " & r.path)
   if r.query.len > 0:
@@ -755,10 +764,10 @@ proc newConnection(client: AsyncHttpClient, url: Uri) {.async.} =
     client.currentURL = url
     client.connected = true
 
-proc request*(client: AsyncHttpClient, url: string, httpMethod = httpGET,
+proc request*(client: AsyncHttpClient, url: string, httpMethod: string,
               body = ""): Future[Response] {.async.} =
   ## Connects to the hostname specified by the URL and performs a request
-  ## using the method specified.
+  ## using the custom method string specified by ``httpMethod``.
   ##
   ## Connection will kept alive. Further requests on the same ``client`` to
   ## the same hostname will not require a new connection to be made. The
@@ -771,13 +780,25 @@ proc request*(client: AsyncHttpClient, url: string, httpMethod = httpGET,
   if not client.headers.hasKey("user-agent") and client.userAgent != "":
     client.headers["User-Agent"] = client.userAgent
 
-  var headers = generateHeaders(r, httpMethod, client.headers)
+  var headers = generateHeaders(r, $httpMethod, client.headers)
 
   await client.socket.send(headers)
   if body != "":
     await client.socket.send(body)
 
-  result = await parseResponse(client, httpMethod != httpHEAD)
+  result = await parseResponse(client, httpMethod != "httpHEAD")
+
+proc request*(client: AsyncHttpClient, url: string, httpMethod = httpGET,
+              body = ""): Future[Response] =
+  ## Connects to the hostname specified by the URL and performs a request
+  ## using the method specified.
+  ##
+  ## Connection will kept alive. Further requests on the same ``client`` to
+  ## the same hostname will not require a new connection to be made. The
+  ## connection can be closed by using the ``close`` procedure.
+  ##
+  ## The returned future will complete once the request is completed.
+  result = request(client, url, $httpMethod, body)
 
 proc get*(client: AsyncHttpClient, url: string): Future[Response] {.async.} =
   ## Connects to the hostname specified by the URL and performs a GET request.
