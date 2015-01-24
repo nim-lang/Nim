@@ -383,6 +383,11 @@ proc format(p: MultipartData): tuple[header, body: string] =
 proc request*(url: string, httpMethod: string, extraHeaders = "",
               body = "", sslContext = defaultSSLContext, timeout = -1,
               userAgent = defUserAgent, proxy: Proxy = nil): Response =
+  ## | Requests ``url`` with the custom method string specified by the
+  ## | ``httpMethod`` parameter.
+  ## | Extra headers can be specified and must be seperated by ``\c\L``
+  ## | An optional timeout can be specified in miliseconds, if reading from the
+  ## server takes longer than specified an ETimeout exception will be raised.
   var r = if proxy == nil: parseUri(url) else: proxy.url
   var headers = substr(httpMethod, len("http"))
   if proxy == nil:
@@ -761,6 +766,14 @@ proc newConnection(client: AsyncHttpClient, url: Uri) {.async.} =
 
 proc request*(client: AsyncHttpClient, url: string, httpMethod: string,
               body = ""): Future[Response] {.async.} =
+  ## Connects to the hostname specified by the URL and performs a request
+  ## using the custom method string specified by ``httpMethod``.
+  ##
+  ## Connection will kept alive. Further requests on the same ``client`` to
+  ## the same hostname will not require a new connection to be made. The
+  ## connection can be closed by using the ``close`` procedure.
+  ##
+  ## The returned future will complete once the request is completed.
   let r = parseUri(url)
   await newConnection(client, r)
 
@@ -777,7 +790,6 @@ proc request*(client: AsyncHttpClient, url: string, httpMethod: string,
 
 proc request*(client: AsyncHttpClient, url: string, httpMethod = httpGET,
               body = ""): Future[Response] =
-
   ## Connects to the hostname specified by the URL and performs a request
   ## using the method specified.
   ##
