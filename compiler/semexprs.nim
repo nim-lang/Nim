@@ -750,6 +750,18 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
           incl(c.p.owner.flags, sfSideEffect)
 
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode
+
+proc resolveIndirectCall(c: PContext; n, nOrig: PNode;
+                         t: PType): TCandidate =
+  initCandidate(c, result, t)
+  matches(c, n, nOrig, result)
+  if result.state != csMatch:
+    # try to deref the first argument:
+    if experimentalMode(c) and canDeref(n):
+      n.sons[1] = n.sons[1].tryDeref
+      initCandidate(c, result, t)
+      matches(c, n, nOrig, result)
+
 proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = nil
   checkMinSonsLen(n, 1)
@@ -773,9 +785,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     t = skipTypes(n.sons[0].typ, abstractInst-{tyTypeDesc})
   if t != nil and t.kind == tyProc:
     # This is a proc variable, apply normal overload resolution
-    var m: TCandidate
-    initCandidate(c, m, t)
-    matches(c, n, nOrig, m)
+    let m = resolveIndirectCall(c, n, nOrig, t)
     if m.state != csMatch:
       if c.inCompilesContext > 0:
         # speed up error generation:

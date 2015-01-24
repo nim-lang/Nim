@@ -126,7 +126,8 @@ proc gatherUsedSyms(c: PContext, usedSyms: var seq[PNode]) =
       for s in scope.usingSyms: usedSyms.safeAdd(s)
 
 proc resolveOverloads(c: PContext, n, orig: PNode,
-                      filter: TSymKinds): TCandidate =
+                      filter: TSymKinds;
+                      errors: var CandidateErrors): TCandidate =
   var initialBinding: PNode
   var alt: TCandidate
   var f = n.sons[0]
@@ -137,7 +138,6 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
   else:
     initialBinding = nil
 
-  var errors: CandidateErrors
   var usedSyms: seq[PNode]
 
   template pickBest(headSymbol: expr) =
@@ -207,7 +207,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
         errors = @[]
         pickBest(f)
-        notFoundError(c, n, errors)
+        #notFoundError(c, n, errors)
 
       return
 
@@ -293,12 +293,32 @@ proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
   result.sons[0] = newSymNode(finalCallee, result.sons[0].info)
   result.typ = finalCallee.typ.sons[0]
 
+proc canDeref(n: PNode): bool {.inline.} =
+  result = n.len >= 2 and (let t = n[1].typ;
+    t != nil and t.skipTypes({tyGenericInst}).kind in {tyPtr, tyRef})
+
+proc tryDeref(n: PNode): PNode =
+  result = newNodeI(nkHiddenDeref, n.info)
+  result.typ = n.typ.skipTypes(abstractInst).sons[0]
+  result.addSon(n)
+
 proc semOverloadedCall(c: PContext, n, nOrig: PNode,
                        filter: TSymKinds): PNode =
-  var r = resolveOverloads(c, n, nOrig, filter)
+  var errors: CandidateErrors
+
+  var r = resolveOverloads(c, n, nOrig, filter, errors)
   if r.state == csMatch: result = semResolvedCall(c, n, r)
+  elif experimentalMode(c) and canDeref(n):
+    # try to deref the first argument and then try overloading resolution again:
+    n.sons[1] = n.sons[1].tryDeref
+    var r = resolveOverloads(c, n, nOrig, filter, errors)
+    if r.state == csMatch: result = semResolvedCall(c, n, r)
+    else:
+      notFoundError(c, n, errors)
+  else: 
+    notFoundError(c, n, errors)
   # else: result = errorNode(c, n)
-    
+
 proc explicitGenericInstError(n: PNode): PNode =
   localError(n.info, errCannotInstantiateX, renderTree(n))
   result = n
