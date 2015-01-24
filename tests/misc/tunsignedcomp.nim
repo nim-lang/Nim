@@ -1,5 +1,6 @@
 discard """
   output: ''''''
+  disabled: "true"
 """
 
 # All operations involving uint64 are commented out
@@ -8,6 +9,7 @@ discard """
 # uint64 could be supported but would need special implementation of the operators
 
 # unsigned < signed
+
 assert 10'u8 < 20'i8
 assert 10'u8 < 20'i16
 assert 10'u8 < 20'i32

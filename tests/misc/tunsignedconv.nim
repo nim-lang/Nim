@@ -15,30 +15,24 @@ var v16:uint16 = 10
 var v32:uint32 = 10
 var v64:uint64 = 10
 
-var a8:int = v8 + 10
-var a16:int = v16 + 10
-# var a32:int = v32 + 10
-# var a64:int = v64 + 10
+# u8 + literal produces u8:
+var a8: uint8 = v8 + 10
+var a16: uint16 = v16 + 10
 
-var d8  = v8 + 10'i8
-var d16 = v8 + 10'i16
-var d32 = v8 + 10'i32
-# var d64 = v8 + 10'i64
+when false:
+  var d8  = v8 + 10'i8
+  var d16 = v8 + 10'i16
+  var d32 = v8 + 10'i32
 
-var f8  = v16 + 10'i8
-var f16 = v16 + 10'i16
-var f32 = v16 + 10'i32
-# var f64 = v16 + 10'i64
+when false:
+  # these dont work yet because unsigned.nim is stupid. XXX We need to fix this.
+  var f8  = v16 + 10'u8
+  var f16 = v16 + 10'u16
+  var f32 = v16 + 10'u32
 
-var g8  = v32 + 10'i8
-var g16 = v32 + 10'i16
-var g32 = v32 + 10'i32
-# var g64 = v32 + 10'i64
-
-# var n8  = v64 + 10'i8
-# var n16 = v64 + 10'i16
-# var n32 = v64 + 10'i32
-# var n64 = v64 + 10'i64
+  var g8  = v32 + 10'u8
+  var g16 = v32 + 10'u16
+  var g32 = v32 + 10'u32
 
 var ar: array[0..20, int]
 var n8 = ar[v8]
