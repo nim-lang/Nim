@@ -16,7 +16,9 @@ News
   - Tuple field names are not ignored anymore, this caused too many problems
     in practice so now the behaviour as it was for version 0.9.6: If field
     names exist for the tuple type, they are checked.
-
+  - ``logging.level`` and ``logging.handlers`` are no longer exported.
+    ``addHandler``, ``getHandlers``, ``setLogFilter`` and ``getLogFilter``
+    should be used instead.
   
   Language Additions
   ------------------
