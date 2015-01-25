@@ -1405,14 +1405,6 @@ var
     ## Report status of stopped child process.
   WEXITSTATUS* {.importc, header: "<sys/wait.h>".}: cint
     ## Return exit status.
-  WIFCONTINUED* {.importc, header: "<sys/wait.h>".}: cint
-    ## True if child has been continued.
-  WIFEXITED* {.importc, header: "<sys/wait.h>".}: cint
-    ## True if child exited normally.
-  WIFSIGNALED* {.importc, header: "<sys/wait.h>".}: cint
-    ## True if child exited due to uncaught signal.
-  WIFSTOPPED* {.importc, header: "<sys/wait.h>".}: cint
-    ## True if child is currently stopped.
   WSTOPSIG* {.importc, header: "<sys/wait.h>".}: cint
     ## Return signal number that caused process to stop.
   WTERMSIG* {.importc, header: "<sys/wait.h>".}: cint
@@ -1559,6 +1551,14 @@ var
   MSG_OOB* {.importc, header: "<sys/socket.h>".}: cint
     ## Out-of-band data.
 
+proc WIFCONTINUED*(s:cint) : bool {.importc, header: "<sys/wait.h>".}
+  ## True if child has been continued.
+proc WIFEXITED*(s:cint) : bool {.importc, header: "<sys/wait.h>".}
+  ## True if child exited normally.
+proc WIFSIGNALED*(s:cint) : bool {.importc, header: "<sys/wait.h>".}
+  ## True if child exited due to uncaught signal.
+proc WIFSTOPPED*(s:cint) : bool {.importc, header: "<sys/wait.h>".}
+  ## True if child is currently stopped.
 
 when defined(linux):
   var

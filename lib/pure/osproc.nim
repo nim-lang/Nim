@@ -848,7 +848,10 @@ elif not defined(useNimRtl):
     if kill(p.id, SIGCONT) != 0'i32: raiseOsError(osLastError())
 
   proc running(p: Process): bool =
-    var ret = waitpid(p.id, p.exitCode, WNOHANG)
+    var status : cint
+    var ret = waitpid(p.id, status, WNOHANG)
+    if WIFEXITED(status):
+      p.exitCode = status
     if ret == 0: return true # Can't establish status. Assume running.
     result = ret == int(p.id)
 
