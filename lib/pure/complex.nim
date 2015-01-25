@@ -171,6 +171,12 @@ proc abs*(z: Complex): float =
     result = y * sqrt(1.0 + temp * temp)
 
 
+proc conjugate*(z: Complex): Complex =
+  ## Conjugate of complex number `z`.
+  result.re = z.re
+  result.im = -z.im
+
+
 proc sqrt*(z: Complex): Complex =
   ## Square root for a complex number `z`.
   var x, y, w, r: float
@@ -303,41 +309,41 @@ when isMainModule:
   var tt = (10.0, 20.0)
   var ipi = (0.0, -PI)
  
-  assert( a         == a )
-  assert( (a-a)     == z )
-  assert( (a+b)     == z )
-  assert( (a/b)     == m1 )
-  assert( (1.0/a)   == (0.2, -0.4) )
-  assert( (a*b)     == (3.0, -4.0) )
-  assert( 10.0*a    == tt )
-  assert( a*10.0    == tt )
-  assert( tt/10.0   == a )
+  assert( a == a )
+  assert( (a-a) == z )
+  assert( (a+b) == z )
+  assert( (a/b) == m1 )
+  assert( (1.0/a) == (0.2, -0.4) )
+  assert( (a*b) == (3.0, -4.0) )
+  assert( 10.0*a == tt )
+  assert( a*10.0 == tt )
+  assert( tt/10.0 == a )
   assert( oo+(-1.0) == i )
   assert( (-1.0)+oo == i )
-  assert( abs(oo)   == sqrt(2.0) )
-  assert( sqrt(m1)  == i )
-  assert( exp(ipi)  =~ m1 )
+  assert( abs(oo) == sqrt(2.0) )
+  assert( conjugate(a) == (1.0, -2.0) )
+  assert( sqrt(m1) == i )
+  assert( exp(ipi) =~ m1 )
  
-  assert( pow(a,b)   =~ (-3.72999124927876, -1.68815826725068) )
-  assert( pow(z,a)   =~ (0.0, 0.0) )
-  assert( pow(z,z)   =~ (1.0, 0.0) )
+  assert( pow(a,b) =~ (-3.72999124927876, -1.68815826725068) )
+  assert( pow(z,a) =~ (0.0, 0.0) )
+  assert( pow(z,z) =~ (1.0, 0.0) )
   assert( pow(a,one) =~ a )
-  assert( pow(a,m1)  =~ (0.2, -0.4) )
+  assert( pow(a,m1) =~ (0.2, -0.4) )
 
-  assert( ln(a)    =~ (0.804718956217050, 1.107148717794090) )
+  assert( ln(a) =~ (0.804718956217050, 1.107148717794090) )
   assert( log10(a) =~ (0.349485002168009, 0.480828578784234) )
-  assert( log2(a)  =~ (1.16096404744368, 1.59727796468811) )
+  assert( log2(a) =~ (1.16096404744368, 1.59727796468811) )
 
-  assert( sin(a)    =~ (3.16577851321617, 1.95960104142161) )
-  assert( cos(a)    =~ (2.03272300701967, -3.05189779915180) )
-  assert( tan(a)    =~ (0.0338128260798967, 1.0147936161466335) )
-  assert( cot(a)    =~ 1.0/tan(a) )
-  assert( sec(a)    =~ 1.0/cos(a) )
-  assert( csc(a)    =~ 1.0/sin(a) )
+  assert( sin(a) =~ (3.16577851321617, 1.95960104142161) )
+  assert( cos(a) =~ (2.03272300701967, -3.05189779915180) )
+  assert( tan(a) =~ (0.0338128260798967, 1.0147936161466335) )
+  assert( cot(a) =~ 1.0/tan(a) )
+  assert( sec(a) =~ 1.0/cos(a) )
+  assert( csc(a) =~ 1.0/sin(a) )
   assert( arcsin(a) =~ (0.427078586392476, 1.528570919480998) )
   assert( arccos(a) =~ (1.14371774040242, -1.52857091948100) )
 
   assert( cosh(a) =~ (-0.642148124715520, 1.068607421382778) ) 
   assert( sinh(a) =~ (-0.489056259041294, 1.403119250622040) )
-
-
+  
