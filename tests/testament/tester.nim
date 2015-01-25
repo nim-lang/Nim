@@ -12,7 +12,7 @@
 import
   parseutils, strutils, pegs, os, osproc, streams, parsecfg, json,
   marshal, backend, parseopt, specs, htmlgen, browsers, terminal,
-  algorithm
+  algorithm, nodejs
 
 const
   resultsFile = "testresults.html"
@@ -187,12 +187,13 @@ proc testSpec(r: var TResults, test: TTest) =
         else:
           exeFile = changeFileExt(tname, ExeExt)
         if existsFile(exeFile):
-          if test.target == targetJS and findExe("nodejs") == "":
+          let nodejs = findNodeJs()
+          if test.target == targetJS and nodejs == "":
             r.addResult(test, expected.outp, "nodejs binary not in PATH",
                         reExeNotFound)
             return
           var (buf, exitCode) = execCmdEx(
-            (if test.target == targetJS: "nodejs " else: "") & exeFile)
+            (if test.target == targetJS: nodejs & " " else: "") & exeFile)
           if exitCode != expected.exitCode:
             r.addResult(test, "exitcode: " & $expected.exitCode,
                               "exitcode: " & $exitCode, reExitCodesDiffer)
