@@ -15,7 +15,8 @@ when defined(gcc) and defined(windows):
 
 import
   commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes,
-  extccomp, strutils, os, osproc, platform, main, parseopt, service
+  extccomp, strutils, os, osproc, platform, main, parseopt, service,
+  nodejs
 
 when hasTinyCBackend:
   import tccgen
@@ -67,7 +68,7 @@ proc handleCmdLine() =
           else:
             ex = quoteShell(
               completeCFilePath(changeFileExt(gProjectFull, "js").prependCurDir))
-          execExternalProgram("node " & ex & ' ' & commands.arguments)
+          execExternalProgram(findNodeJs & " " & ex & ' ' & commands.arguments)
         else:
           var binPath: string
           if options.outFile.len > 0:
