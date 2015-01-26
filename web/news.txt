@@ -19,6 +19,8 @@ News
   - ``logging.level`` and ``logging.handlers`` are no longer exported.
     ``addHandler``, ``getHandlers``, ``setLogFilter`` and ``getLogFilter``
     should be used instead.
+  - ``nim idetools`` has been replaced by a separate tool `nimsuggest`_.
+
   
   Language Additions
   ------------------

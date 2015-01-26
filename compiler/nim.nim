@@ -89,4 +89,4 @@ condsyms.initDefines()
 
 when not defined(selftest):
   handleCmdLine()
-  quit(int8(msgs.gErrorCounter > 0))
+  msgQuit(int8(msgs.gErrorCounter > 0))

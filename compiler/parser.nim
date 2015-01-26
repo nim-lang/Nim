@@ -111,7 +111,12 @@ proc rawSkipComment(p: var TParser, node: PNode) =
   if p.tok.tokType == tkComment:
     if node != nil:
       if node.comment == nil: node.comment = ""
-      add(node.comment, p.tok.literal)
+      if p.tok.literal == "[]":
+        node.flags.incl nfIsCursor
+        #echo "parser: "
+        #debug node
+      else:
+        add(node.comment, p.tok.literal)
     else:
       parMessage(p, errInternal, "skipComment")
     getTok(p)
@@ -379,7 +384,8 @@ proc dotExpr(p: var TParser, a: PNode): PNode =
   #| dotExpr = expr '.' optInd ('type' | 'addr' | symbol)
   var info = p.parLineInfo
   getTok(p)
-  optInd(p, a)
+  result = newNodeI(nkDotExpr, info)
+  optInd(p, result)
   case p.tok.tokType
   of tkType:
     result = newNodeP(nkTypeOfExpr, p)
@@ -390,7 +396,6 @@ proc dotExpr(p: var TParser, a: PNode): PNode =
     getTok(p)
     addSon(result, a)
   else:
-    result = newNodeI(nkDotExpr, info)
     addSon(result, a)
     addSon(result, parseSymbol(p))
 
@@ -737,7 +742,7 @@ proc parseOperators(p: var TParser, headNode: PNode,
     var a = newNodeP(nkInfix, p)
     var opNode = newIdentNodeP(p.tok.ident, p) # skip operator:
     getTok(p)
-    optInd(p, opNode)
+    optInd(p, a)
     # read sub-expression with higher priority:
     var b = simpleExprAux(p, opPrec + leftAssoc, modeB)
     addSon(a, opNode)
@@ -1735,8 +1740,8 @@ proc parseObject(p: var TParser): PNode =
 
 proc parseTypeClassParam(p: var TParser): PNode =
   if p.tok.tokType == tkVar:
+    result = newNodeP(nkVarTy, p)
     getTok(p)
-    result = newNode(nkVarTy)
     result.addSon(p.parseSymbol)
   else:
     result = p.parseSymbol
@@ -1747,7 +1752,7 @@ proc parseTypeClass(p: var TParser): PNode =
   #|               &IND{>} stmt
   result = newNodeP(nkTypeClassTy, p)
   getTok(p)
-  var args = newNode(nkArgList)
+  var args = newNodeP(nkArgList, p)
   addSon(result, args)
   addSon(args, p.parseTypeClassParam)
   while p.tok.tokType == tkComma:

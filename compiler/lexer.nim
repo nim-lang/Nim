@@ -693,7 +693,15 @@ proc scanComment(L: var TLexer, tok: var TToken) =
   when not defined(nimfix):
     assert buf[pos+1] == '#'
     if buf[pos+2] == '[':
-      lexMessagePos(L, warnDeprecated, pos, "use '## [' instead; '##['")
+      if buf[pos+3] == ']':
+        #  ##[] is the (rather complex) "cursor token" for idetools
+        tok.tokType = tkComment
+        tok.literal = "[]"
+        inc(L.bufpos, 4)
+        return
+      else:
+        lexMessagePos(L, warnDeprecated, pos, "use '## [' instead; '##['")
+    
   tok.tokType = tkComment
   # iNumber contains the number of '\n' in the token
   tok.iNumber = 0

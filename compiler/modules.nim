@@ -34,9 +34,6 @@ proc getModule(fileIdx: int32): PSym =
   if fileIdx >= 0 and fileIdx < gCompiledModules.len:
     result = gCompiledModules[fileIdx]
 
-template compiledAt(x: PSym): expr =
-  gMemCacheData[x.position].compiledAt
-
 template crc(x: PSym): expr =
   gMemCacheData[x.position].crc
 
@@ -74,10 +71,12 @@ proc addDep(x: PSym, dep: int32) =
 
 proc resetModule*(fileIdx: int32) =
   # echo "HARD RESETTING ", fileIdx.toFilename
-  gMemCacheData[fileIdx].needsRecompile = Yes
-  gCompiledModules[fileIdx] = nil
-  cgendata.gModules[fileIdx] = nil
-  resetSourceMap(fileIdx)
+  if fileIdx <% gMemCacheData.len:
+    gMemCacheData[fileIdx].needsRecompile = Yes
+  if fileIdx <% gCompiledModules.len:
+    gCompiledModules[fileIdx] = nil
+  if fileIdx <% cgendata.gModules.len:
+    cgendata.gModules[fileIdx] = nil
 
 proc resetAllModules* =
   for i in 0..gCompiledModules.high:

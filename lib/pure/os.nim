@@ -599,7 +599,7 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
 
 proc parentDirPos(path: string): int =
   var q = 1
-  if path[len(path)-1] in {DirSep, AltSep}: q = 2
+  if len(path) >= 1 and path[len(path)-1] in {DirSep, AltSep}: q = 2
   for i in countdown(len(path)-q, 0):
     if path[i] in {DirSep, AltSep}: return i
   result = -1

@@ -1012,7 +1012,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcQuit:
       if c.mode in {emRepl, emStaticExpr, emStaticStmt}:
         message(c.debug[pc], hintQuitCalled)
-        quit(int(getOrdValue(regs[ra].regToNode)))
+        msgQuit(int8(getOrdValue(regs[ra].regToNode)))
       else:
         return TFullReg(kind: rkNone)
     of opcSetLenStr:

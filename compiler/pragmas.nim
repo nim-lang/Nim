@@ -411,12 +411,6 @@ proc processCommonLink(c: PContext, n: PNode, feature: TLinkFeature) =
 proc pragmaBreakpoint(c: PContext, n: PNode) = 
   discard getOptionalStr(c, n, "")
 
-proc pragmaCheckpoint(c: PContext, n: PNode) = 
-  # checkpoints can be used to debug the compiler; they are not documented
-  var info = n.info
-  inc(info.line)              # next line is affected!
-  msgs.addCheckpoint(info)
-
 proc pragmaWatchpoint(c: PContext, n: PNode) =
   if n.kind == nkExprColonExpr:
     n.sons[1] = c.semExpr(c, n.sons[1])

@@ -10,9 +10,6 @@
 import
   options, strutils, os, tables, ropes, platform
 
-when useCaas:
-  import sockets
-
 type 
   TMsgKind* = enum 
     errUnknown, errIllFormedAstX, errInternal, errCannotOpenFile, errGenerated, 
@@ -572,9 +569,6 @@ var
   gWarnCounter*: int = 0
   gErrorMax*: int = 1         # stop after gErrorMax errors
 
-when useCaas:
-  var stdoutSocket*: Socket
-
 proc unknownLineInfo*(): TLineInfo =
   result.line = int16(-1)
   result.col = int16(-1)
@@ -586,32 +580,35 @@ var
   bufferedMsgs*: seq[string]
 
   errorOutputs* = {eStdOut, eStdErr}
+  writelnHook*: proc (output: string) {.closure.}
 
 proc clearBufferedMsgs* =
   bufferedMsgs = nil
 
 proc suggestWriteln*(s: string) =
   if eStdOut in errorOutputs:
-    when useCaas:
-      if isNil(stdoutSocket): writeln(stdout, s)
-      else:
-        writeln(stdout, s)
-        stdoutSocket.send(s & "\c\L")
-    else:
-      writeln(stdout, s)
+    if isNil(writelnHook): writeln(stdout, s)
+    else: writelnHook(s)
   
   if eInMemory in errorOutputs:
     bufferedMsgs.safeAdd(s)
 
+proc msgQuit*(x: int8) = quit x
+proc msgQuit*(x: string) = quit x
+
 proc suggestQuit*() =
-  if not isServing:
-    quit(0)
-  elif isWorkingWithDirtyBuffer:
-    # No need to compile the rest if we are working with a
-    # throw-away buffer. Incomplete dot expressions frequently
-    # found in dirty buffers will result in errors few steps
-    # from now anyway.
+  when true:
     raise newException(ESuggestDone, "suggest done")
+  else:
+    if not isServing:
+      assert false
+      quit(0)
+    elif isWorkingWithDirtyBuffer:
+      # No need to compile the rest if we are working with a
+      # throw-away buffer. Incomplete dot expressions frequently
+      # found in dirty buffers will result in errors few steps
+      # from now anyway.
+      raise newException(ESuggestDone, "suggest done")
 
 # this format is understood by many text editors: it is the same that
 # Borland and Freepascal use
@@ -679,14 +676,7 @@ proc `??`* (info: TLineInfo, filename: string): bool =
   # only for debugging purposes
   result = filename in info.toFilename
 
-var checkPoints*: seq[TLineInfo] = @[]
-var optTrackPos*: TLineInfo
-
-proc addCheckpoint*(info: TLineInfo) = 
-  checkPoints.add(info)
-
-proc addCheckpoint*(filename: string, line: int) = 
-  addCheckpoint(newLineInfo(filename, line, - 1))
+var gTrackPos*: TLineInfo
 
 proc outWriteln*(s: string) = 
   ## Writes to stdout. Always.
@@ -694,7 +684,8 @@ proc outWriteln*(s: string) =
  
 proc msgWriteln*(s: string) = 
   ## Writes to stdout. If --stdout option is given, writes to stderr instead.
-  if gCmd == cmdIdeTools and optCDebug notin gGlobalOptions: return
+
+  #if gCmd == cmdIdeTools and optCDebug notin gGlobalOptions: return
 
   if optStdout in gGlobalOptions:
     if eStdErr in errorOutputs: writeln(stderr, s)
@@ -713,19 +704,6 @@ proc msgKindToString*(kind: TMsgKind): string =
 
 proc getMessageStr(msg: TMsgKind, arg: string): string = 
   result = msgKindToString(msg) % [arg]
-
-type
-  TCheckPointResult* = enum 
-    cpNone, cpFuzzy, cpExact
-
-proc inCheckpoint*(current: TLineInfo): TCheckPointResult = 
-  for i in countup(0, high(checkPoints)): 
-    if current.fileIndex == checkPoints[i].fileIndex:
-      if current.line == checkPoints[i].line and
-          abs(current.col-checkPoints[i].col) < 4:
-        return cpExact
-      if current.line >= checkPoints[i].line:
-        return cpFuzzy
 
 type
   TErrorHandling = enum doNothing, doAbort, doRaise
@@ -798,6 +776,9 @@ proc formatMsg*(info: TLineInfo, msg: TMsgKind, arg: string): string =
   result = frmt % [toMsgFilename(info), coordToStr(info.line),
                    coordToStr(info.col), getMessageStr(msg, arg)]
 
+proc ignoreMsgBecauseOfIdeTools(msg: TMsgKind): bool =
+  msg >= errGenerated and gCmd == cmdIdeTools and optIdeDebug notin gGlobalOptions
+
 proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string, 
                eh: TErrorHandling) =
   var frmt: string
@@ -821,7 +802,7 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
     inc(gHintCounter)
   let s = frmt % [toMsgFilename(info), coordToStr(info.line),
                   coordToStr(info.col), getMessageStr(msg, arg)]
-  if not ignoreMsg:
+  if not ignoreMsg and not ignoreMsgBecauseOfIdeTools(msg):
     msgWriteln(s)
     if optPrintSurroundingSrc and msg in errMin..errMax:
       info.writeSurroundingSrc

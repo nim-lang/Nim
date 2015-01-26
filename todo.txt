@@ -9,7 +9,6 @@ version 0.10
 - iterators always require a return type
 
 - make nimble part of the distribution
-- split idetools into separate tool
 - split docgen into separate tool
 - special rule for ``[]=``, items, pairs
 - BUG: echo with template `$`*(info: TLineInfo): expr = toFileLineCol(info)

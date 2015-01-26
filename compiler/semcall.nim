@@ -84,8 +84,9 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   if c.inCompilesContext > 0: 
     # fail fast:
     globalError(n.info, errTypeMismatch, "")
-  if errors.len == 0:
+  if errors.isNil or errors.len == 0:
     localError(n.info, errExprXCannotBeCalled, n[0].renderTree)
+    return
 
   # to avoid confusing errors like: 
   #   got (SslPtr, SocketHandle)

@@ -1,7 +1,7 @@
 #
 #
 #           The Nim Compiler
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -31,35 +31,52 @@ proc origModuleName(m: PSym): string =
 proc symToStr(s: PSym, isLocal: bool, section: string, li: TLineInfo): string = 
   result = section
   result.add(sep)
-  result.add($s.kind)
-  result.add(sep)
-  if not isLocal and s.kind != skModule:
-    let ow = s.owner
-    if ow.kind != skModule and ow.owner != nil:
-      let ow2 = ow.owner
-      result.add(ow2.origModuleName)
+  if optIdeTerse in gGlobalOptions:
+    if s.kind in routineKinds:
+      result.add renderTree(s.ast, {renderNoBody, renderNoComments,
+                                    renderDocComments, renderNoPragmas})
+    else:
+      result.add s.name.s
+    result.add(sep)
+    result.add(toFullPath(li))
+    result.add(sep)
+    result.add($toLinenumber(li))
+    result.add(sep)
+    result.add($toColumn(li))
+  else:
+    result.add($s.kind)
+    result.add(sep)
+    if not isLocal and s.kind != skModule:
+      let ow = s.owner
+      if ow.kind != skModule and ow.owner != nil:
+        let ow2 = ow.owner
+        result.add(ow2.origModuleName)
+        result.add('.')
+      result.add(ow.origModuleName)
       result.add('.')
-    result.add(ow.origModuleName)
-    result.add('.')
-  result.add(s.name.s)
-  result.add(sep)
-  if s.typ != nil: 
-    result.add(typeToString(s.typ))
-  result.add(sep)
-  result.add(toFullPath(li))
-  result.add(sep)
-  result.add($toLinenumber(li))
-  result.add(sep)
-  result.add($toColumn(li))
-  result.add(sep)
-  when not defined(noDocgen):
-    result.add(s.extractDocComment.escape)
+    result.add(s.name.s)
+    result.add(sep)
+    if s.typ != nil: 
+      result.add(typeToString(s.typ))
+    result.add(sep)
+    result.add(toFullPath(li))
+    result.add(sep)
+    result.add($toLinenumber(li))
+    result.add(sep)
+    result.add($toColumn(li))
+    result.add(sep)
+    when not defined(noDocgen):
+      result.add(s.extractDocComment.escape)
 
 proc symToStr(s: PSym, isLocal: bool, section: string): string = 
   result = symToStr(s, isLocal, section, s.info)
 
 proc filterSym(s: PSym): bool {.inline.} =
-  result = s.name.s[0] in lexer.SymChars and s.kind != skModule
+  result = s.kind != skModule
+
+proc filterSymNoOpr(s: PSym): bool {.inline.} =
+  result = s.kind != skModule and s.name.s[0] in lexer.SymChars and
+     not isKeyword(s.name)
 
 proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
   let fmoduleId = getModule(f).id
@@ -131,11 +148,20 @@ proc suggestCall(c: PContext, n, nOrig: PNode, outputs: var int) =
 
 proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} = 
   if s.typ != nil and sonsLen(s.typ) > 1 and s.typ.sons[1] != nil:
+    # special rule: if system and some weird generic match via 'tyExpr'
+    # or 'tyGenericParam' we won't list it either to reduce the noise (nobody
+    # wants 'system.`-|` as suggestion
+    let m = s.getModule()
+    if m != nil and sfSystemModule in m.flags:
+      if s.kind == skType: return
+      var exp = s.typ.sons[1].skipTypes({tyGenericInst, tyVar})
+      if exp.kind == tyVarargs: exp = elemType(exp)
+      if exp.kind in {tyExpr, tyStmt, tyGenericParam, tyAnything}: return
     result = sigmatch.argtypeMatches(c, s.typ.sons[1], firstArg)
 
 proc suggestOperations(c: PContext, n: PNode, typ: PType, outputs: var int) =
   assert typ != nil
-  wholeSymTab(filterSym(it) and typeFits(c, it, typ), sectionSuggest)
+  wholeSymTab(filterSymNoOpr(it) and typeFits(c, it, typ), sectionSuggest)
 
 proc suggestEverything(c: PContext, n: PNode, outputs: var int) =
   # do not produce too many symbols:
@@ -191,19 +217,28 @@ proc suggestFieldAccess(c: PContext, n: PNode, outputs: var int) =
     else:
       suggestOperations(c, n, typ, outputs)
 
+type
+  TCheckPointResult = enum 
+    cpNone, cpFuzzy, cpExact
+
+proc inCheckpoint(current: TLineInfo): TCheckPointResult = 
+  if current.fileIndex == gTrackPos.fileIndex:
+    if current.line == gTrackPos.line and
+        abs(current.col-gTrackPos.col) < 4:
+      return cpExact
+    if current.line >= gTrackPos.line:
+      return cpFuzzy
+
 proc findClosestDot(n: PNode): PNode =
-  if n.kind == nkDotExpr and msgs.inCheckpoint(n.info) == cpExact:
+  if n.kind == nkDotExpr and inCheckpoint(n.info) == cpExact:
     result = n
   else:
     for i in 0.. <safeLen(n):
       result = findClosestDot(n.sons[i])
       if result != nil: return
 
-const
-  CallNodes = {nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit}
-
 proc findClosestCall(n: PNode): PNode = 
-  if n.kind in CallNodes and msgs.inCheckpoint(n.info) == cpExact: 
+  if n.kind in nkCallKinds and inCheckpoint(n.info) == cpExact: 
     result = n
   else:
     for i in 0.. <safeLen(n):
@@ -211,15 +246,14 @@ proc findClosestCall(n: PNode): PNode =
       if result != nil: return
 
 proc isTracked(current: TLineInfo, tokenLen: int): bool =
-  for i in countup(0, high(checkPoints)):
-    if current.fileIndex == checkPoints[i].fileIndex:
-      if current.line == checkPoints[i].line:
-        let col = checkPoints[i].col
-        if col >= current.col and col <= current.col+tokenLen-1:
-          return true
+  if current.fileIndex == gTrackPos.fileIndex:
+    if current.line == gTrackPos.line:
+      let col = gTrackPos.col
+      if col >= current.col and col <= current.col+tokenLen-1:
+        return true
 
 proc findClosestSym(n: PNode): PNode = 
-  if n.kind == nkSym and msgs.inCheckpoint(n.info) == cpExact: 
+  if n.kind == nkSym and inCheckpoint(n.info) == cpExact: 
     result = n
   elif n.kind notin {nkNone..nkNilLit}:
     for i in 0.. <sonsLen(n):
@@ -258,69 +292,18 @@ proc findDefinition(info: TLineInfo; s: PSym) =
     suggestWriteln(symToStr(s, isLocal=false, sectionDef))
     suggestQuit()
 
-type
-  TSourceMap = object
-    lines: seq[TLineMap]
-  
-  TEntry = object
-    pos: int
-    sym: PSym
-
-  TLineMap = object
-    entries: seq[TEntry]
-
-var
-  gSourceMaps: seq[TSourceMap] = @[]
-
 proc ensureIdx[T](x: var T, y: int) =
   if x.len <= y: x.setLen(y+1)
 
 proc ensureSeq[T](x: var seq[T]) =
   if x == nil: newSeq(x, 0)
 
-proc resetSourceMap*(fileIdx: int32) =
-  ensureIdx(gSourceMaps, fileIdx)
-  gSourceMaps[fileIdx].lines = @[]
-
-proc addToSourceMap(sym: PSym, info: TLineInfo) =
-  ensureIdx(gSourceMaps, info.fileIndex)
-  ensureSeq(gSourceMaps[info.fileIndex].lines)
-  ensureIdx(gSourceMaps[info.fileIndex].lines, info.line)
-  ensureSeq(gSourceMaps[info.fileIndex].lines[info.line].entries)
-  gSourceMaps[info.fileIndex].lines[info.line].entries.add(TEntry(pos: info.col, sym: sym))
-
-proc defFromLine(entries: var seq[TEntry], col: int32) =
-  if entries == nil: return
-  # The sorting is done lazily here on purpose.
-  # No need to pay the price for it unless the user requests
-  # "goto definition" on a particular line
-  sort(entries) do (a,b: TEntry) -> int:
-    return cmp(a.pos, b.pos)
-  
-  for e in entries:
-    # currently, the line-infos for most expressions point to
-    # one position past the end of the expression. This means
-    # that the first expr that ends after the cursor column is
-    # the one we are looking for.
-    if e.pos >= col:
-      suggestWriteln(symToStr(e.sym, isLocal=false, sectionDef))
-      return
-
-proc defFromSourceMap*(i: TLineInfo) =
-  if not ((i.fileIndex < gSourceMaps.len) and
-          (gSourceMaps[i.fileIndex].lines != nil) and
-          (i.line < gSourceMaps[i.fileIndex].lines.len)): return
-  
-  defFromLine(gSourceMaps[i.fileIndex].lines[i.line].entries, i.col)
-
 proc suggestSym*(info: TLineInfo; s: PSym) {.inline.} =
   ## misnamed: should be 'symDeclared'
-  if optUsages in gGlobalOptions:
+  if gIdeCmd == ideUse:
     findUsages(info, s)
-  if optDef in gGlobalOptions:
+  elif gIdeCmd == ideDef:
     findDefinition(info, s)
-  if isServing:
-    addToSourceMap(s, info)
 
 proc markUsed(info: TLineInfo; s: PSym) =
   incl(s.flags, sfUsed)
@@ -334,30 +317,28 @@ proc useSym*(sym: PSym): PNode =
   markUsed(result.info, sym)
 
 proc suggestExpr*(c: PContext, node: PNode) = 
-  var cp = msgs.inCheckpoint(node.info)
-  if cp == cpNone: return
+  if nfIsCursor notin node.flags:
+    if gTrackPos.line < 0: return
+    var cp = inCheckpoint(node.info)
+    if cp == cpNone: return
   var outputs = 0
   # This keeps semExpr() from coming here recursively:
   if c.inCompilesContext > 0: return
   inc(c.inCompilesContext)
-  
-  if optSuggest in gGlobalOptions:
-    var n = findClosestDot(node)
+
+  if gIdeCmd == ideSug:
+    var n = if nfIsCursor in node.flags: node else: findClosestDot(node)
     if n == nil: n = node
-    else: cp = cpExact
-    if n.kind == nkDotExpr and cp == cpExact:
+    if n.kind == nkDotExpr:
       var obj = safeSemExpr(c, n.sons[0])
       suggestFieldAccess(c, obj, outputs)
     else:
-      #debug n
       suggestEverything(c, n, outputs)
   
-  if optContext in gGlobalOptions:
-    var n = findClosestCall(node)
+  elif gIdeCmd == ideCon:
+    var n = if nfIsCursor in node.flags: node else: findClosestCall(node)
     if n == nil: n = node
-    else: cp = cpExact
-    
-    if n.kind in CallNodes:
+    if n.kind in nkCallKinds:
       var a = copyNode(n)
       var x = safeSemExpr(c, n.sons[0])
       if x.kind == nkEmpty or x.typ == nil: x = n.sons[0]
@@ -368,15 +349,9 @@ proc suggestExpr*(c: PContext, node: PNode) =
         if x.kind == nkEmpty or x.typ == nil: break
         addSon(a, x)
       suggestCall(c, a, n, outputs)
-  
+          
   dec(c.inCompilesContext)
-  if outputs > 0 and optUsages notin gGlobalOptions: suggestQuit()
+  if outputs > 0 and gIdeCmd != ideUse: suggestQuit()
 
 proc suggestStmt*(c: PContext, n: PNode) = 
   suggestExpr(c, n)
-
-proc findSuggest*(c: PContext, n: PNode) = 
-  if n == nil: return
-  suggestExpr(c, n)
-  for i in 0.. <safeLen(n):
-    findSuggest(c, n.sons[i])

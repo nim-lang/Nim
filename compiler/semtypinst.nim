@@ -101,7 +101,6 @@ template checkMetaInvariants(cl: TReplTypeVars, t: PType) =
       echo "UNEXPECTED META ", t.id, " ", instantiationInfo(-1)
       debug t
       writeStackTrace()
-      quit 1
 
 proc replaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
   result = replaceTypeVarsTAux(cl, t)

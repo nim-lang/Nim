@@ -65,14 +65,14 @@ proc getCommandLineDesc(): string =
 proc helpOnError(pass: TCmdLinePass) = 
   if pass == passCmd1:
     msgWriteln(getCommandLineDesc())
-    quit(0)
+    msgQuit(0)
 
 proc writeAdvancedUsage(pass: TCmdLinePass) = 
   if pass == passCmd1:
     msgWriteln(`%`(HelpMessage, [VersionAsString, 
                                  platform.OS[platform.hostOS].name, 
                                  CPU[platform.hostCPU].name]) & AdvancedUsage)
-    quit(0)
+    msgQuit(0)
 
 proc writeVersionInfo(pass: TCmdLinePass) = 
   if pass == passCmd1:
@@ -87,7 +87,7 @@ proc writeVersionInfo(pass: TCmdLinePass) =
     msgWriteln("active boot switches:" & usedRelease & usedAvoidTimeMachine &
       usedTinyC & usedGnuReadline & usedNativeStacktrace & usedNoCaas &
       usedFFI & usedBoehm & usedMarkAndSweep & usedGenerational & usedNoGC)
-    quit(0)
+    msgQuit(0)
 
 var
   helpWritten: bool
@@ -255,8 +255,7 @@ proc trackDirty(arg: string, info: TLineInfo) =
   gDirtyBufferIdx = a[0].fileInfoIdx
   gDirtyOriginalIdx = a[1].fileInfoIdx
  
-  optTrackPos = newLineInfo(gDirtyBufferIdx, line, column)
-  msgs.addCheckpoint(optTrackPos)
+  gTrackPos = newLineInfo(gDirtyBufferIdx, line, column)
 
 proc track(arg: string, info: TLineInfo) = 
   var a = arg.split(',')
@@ -266,8 +265,7 @@ proc track(arg: string, info: TLineInfo) =
     localError(info, errInvalidNumber, a[1])
   if parseUtils.parseInt(a[2], column) <= 0:
     localError(info, errInvalidNumber, a[2])
-  optTrackPos = newLineInfo(a[0], line, column)
-  msgs.addCheckpoint(optTrackPos)
+  gTrackPos = newLineInfo(a[0], line, column)
 
 proc dynlibOverride(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   if pass in {passCmd2, passPP}:
@@ -541,19 +539,19 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     trackDirty(arg, info)
   of "suggest": 
     expectNoArg(switch, arg, pass, info)
-    incl(gGlobalOptions, optSuggest)
+    gIdeCmd = ideSug
   of "def":
     expectNoArg(switch, arg, pass, info)
-    incl(gGlobalOptions, optDef)
+    gIdeCmd = ideDef
   of "eval":
     expectArg(switch, arg, pass, info)
     gEvalExpr = arg
   of "context":
     expectNoArg(switch, arg, pass, info)
-    incl(gGlobalOptions, optContext)
+    gIdeCmd = ideCon
   of "usages":
     expectNoArg(switch, arg, pass, info)
-    incl(gGlobalOptions, optUsages)
+    gIdeCmd = ideUse
   of "stdout":
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optStdout)

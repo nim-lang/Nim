@@ -174,7 +174,7 @@ proc processModule(module: PSym, stream: PLLStream, rd: PRodReader) =
       if s == nil: 
         rawMessage(errCannotOpenFile, filename)
         return
-    else: 
+    else:
       s = stream
     while true: 
       openParsers(p, fileIdx, s)
