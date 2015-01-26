@@ -1413,10 +1413,6 @@ proc semDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PNode =
       localError(n.info, "obsolete usage of 'defined', use 'declared' instead")
     elif condsyms.isDefined(n.sons[1].ident):
       result.intVal = 1
-    elif not condsyms.isDeclared(n.sons[1].ident):
-      message(n.info, warnUser,
-        "undeclared conditional symbol; use --symbol to declare it: " &
-        n[1].ident.s)
   elif lookUpForDefined(c, n.sons[1], onlyCurrentScope) != nil: 
     result.intVal = 1
   result.info = n.info
