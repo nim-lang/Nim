@@ -31,13 +31,16 @@
 ##    var L = newConsoleLogger()
 ##    var fL = newFileLogger("test.log", fmtStr = verboseFmtStr)
 ##    var rL = newRollingFileLogger("rolling.log", fmtStr = verboseFmtStr)
-##    handlers.add(L)
-##    handlers.add(fL)
-##    handlers.add(rL)
+##    addHandler(L)
+##    addHandler(fL)
+##    addHandler(rL)
 ##    info("920410:52 accepted")
 ##    warn("4 8 15 16 23 4-- Error")
 ##    error("922044:16 SYSTEM FAILURE")
 ##    fatal("SYSTEM FAILURE SYSTEM FAILURE")
+##
+## **Warning:** The global list of handlers is a thread var, this means that
+## the handlers must be re-added in each thread.
 
 import strutils, os, times
 
@@ -219,9 +222,8 @@ method log*(logger: RollingFileLogger, level: Level,
 
 # --------
 
-var
-  level* = lvlAll  ## global log filter
-  handlers*: seq[Logger] = @[] ## handlers with their own log levels
+var level {.threadvar.}: Level   ## global log filter
+var handlers {.threadvar.}: seq[Logger] ## handlers with their own log levels
 
 proc logLoop(level: Level, frmt: string, args: varargs[string, `$`]) =
   for logger in items(handlers): 
@@ -257,6 +259,22 @@ template fatal*(frmt: string, args: varargs[string, `$`]) =
   ## Logs a fatal error message to all registered handlers.
   log(lvlFatal, frmt, args)
 
+proc addHandler*(handler: Logger) =
+  ## Adds ``handler`` to the list of handlers.
+  if handlers.isNil: handlers = @[]
+  handlers.add(handler)
+
+proc getHandlers*(): seq[Logger] =
+  ## Returns a list of all the registered handlers.
+  return handlers
+
+proc setLogFilter*(lvl: Level) =
+  ## Sets the global log filter.
+  level = lvl
+
+proc getLogFilter*(): Level =
+  ## Gets the global log filter.
+  return level
 
 # --------------
 
@@ -264,9 +282,9 @@ when isMainModule:
   var L = newConsoleLogger()
   var fL = newFileLogger("test.log", fmtStr = verboseFmtStr)
   var rL = newRollingFileLogger("rolling.log", fmtStr = verboseFmtStr)
-  handlers.add(L)
-  handlers.add(fL)
-  handlers.add(rL)
+  addHandler(L)
+  addHandler(fL)
+  addHandler(rL)
   for i in 0 .. 25:
     info("hello" & $i, [])
   
