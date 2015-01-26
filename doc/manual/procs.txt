@@ -556,6 +556,40 @@ The builtin ``system.finished`` can be used to determine if an iterator has
 finished its operation; no exception is raised on an attempt to invoke an
 iterator that has already finished its work.
 
+Note that ``system.finished`` is error prone to use because it only returns
+``true`` one iteration after the iterator has finished:
+
+.. code-block:: nim
+  iterator mycount(a, b: int): int {.closure.} =
+    var x = a
+    while x <= b:
+      yield x
+      inc x
+
+  var c = mycount # instantiate the iterator
+  while not finished(c):
+    echo c(1, 3)
+
+  # Produces
+  1
+  2
+  3
+  0
+
+Instead this code has be used:
+
+.. code-block:: nim
+  var c = mycount # instantiate the iterator
+  while true:
+    let value = c(1, 3)
+    if finished(c): break # and discard 'value'!
+    echo value
+
+It helps to think that the iterator actually returns a
+pair ``(value, done)`` and ``finished`` is used to access the hidden ``done``
+field.
+
+
 Closure iterators are *resumable functions* and so one has to provide the
 arguments to every call. To get around this limitation one can capture
 parameters of an outer factory proc:

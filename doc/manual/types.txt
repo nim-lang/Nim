@@ -681,6 +681,23 @@ dereferencing operations for reference types:
   n.data = 9
   # no need to write n[].data; in fact n[].data is highly discouraged!
 
+Automatic dereferencing is also performed for the first argument of a routine
+call. But currently this feature has to be only enabled
+via ``{.experimental.}``:
+
+.. code-block:: nim
+  {.experimental.}
+
+  proc depth(x: NodeObj): int = ...
+
+  var
+    n: Node
+  new(n)
+  echo n.depth
+  # no need to write n[].depth either
+  
+
+
 In order to simplify structural type checking, recursive tuples are not valid:
 
 .. code-block:: nim

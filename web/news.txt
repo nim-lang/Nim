@@ -27,6 +27,9 @@ News
 
   - For empty ``case object`` branches ``discard`` can finally be used instead
     of ``nil``.
+  - Automatic dereferencing is now done for the first argument of a routine
+    call if overloading resolution produces no match otherwise. This feature
+    has to be enabled with the `experimental`_ pragma.
 
 
 2014-12-29 Version 0.10.2 released
