@@ -228,7 +228,7 @@ proc parseInt*(s: string, number: var int, start = 0): int {.
   if (sizeof(int) <= 4) and
       ((res < low(int)) or (res > high(int))):
     raise newException(OverflowError, "overflow")
-  else:
+  elif result != 0:
     number = int(res)
 
 proc parseBiggestFloat*(s: string, number: var BiggestFloat, start = 0): int {.
@@ -244,7 +244,8 @@ proc parseFloat*(s: string, number: var float, start = 0): int {.
   ## error.
   var bf: BiggestFloat
   result = parseBiggestFloat(s, bf, start)
-  number = bf
+  if result != 0:
+    number = bf
   
 type
   InterpolatedKind* = enum   ## describes for `interpolatedFragments`
