@@ -420,14 +420,24 @@ proc getNumber(L: var TLexer): TToken =
           else: break 
       else: internalError(getLineInfo(L), "getNumber")
       case result.tokType
-      of tkIntLit, tkInt64Lit: result.iNumber = xi
-      of tkInt8Lit: result.iNumber = BiggestInt(int8(toU8(int(xi))))
-      of tkInt16Lit: result.iNumber = BiggestInt(toU16(int(xi)))
-      of tkInt32Lit: result.iNumber = BiggestInt(toU32(xi))
-      of tkUIntLit, tkUInt64Lit: result.iNumber = xi
-      of tkUInt8Lit: result.iNumber = BiggestInt(int8(toU8(int(xi))))
-      of tkUInt16Lit: result.iNumber = BiggestInt(toU16(int(xi)))
-      of tkUInt32Lit: result.iNumber = BiggestInt(toU32(xi))
+      # Sign extend int types if it's within permissable range
+      of tkInt8Lit: 
+        if xi <= BiggestInt(high(uint8)):
+          result.iNumber = BiggestInt(toU8(int(xi)))
+        else:
+          result.iNumber = xi
+      of tkInt16Lit: 
+        if xi <= BiggestInt(high(uint16)):
+          result.iNumber = BiggestInt(toU16(int(xi)))
+        else:
+          result.iNumber = xi
+      of tkInt32Lit: 
+        if xi <= BiggestInt(high(uint32)):
+          result.iNumber = BiggestInt(toU32(int(xi)))
+        else:
+          result.iNumber = xi
+      of tkIntLit,tkInt64Lit, tkUIntLit..tkUInt64Lit: 
+        result.iNumber = xi
       of tkFloat32Lit: 
         result.fNumber = (cast[PFloat32](addr(xi)))[] 
         # note: this code is endian neutral!
@@ -439,6 +449,8 @@ proc getNumber(L: var TLexer): TToken =
       result.fNumber = parseFloat(result.literal)
       if result.tokType == tkIntLit: result.tokType = tkFloatLit
     elif result.tokType == tkUint64Lit:
+      # Special treatment because
+      # parseBiggestInt does not handle uint64 (can overflow)
       xi = 0
       let len = unsafeParseUInt(result.literal, xi)
       if len != result.literal.len or len == 0:
@@ -446,17 +458,38 @@ proc getNumber(L: var TLexer): TToken =
       result.iNumber = xi
     else:
       result.iNumber = parseBiggestInt(result.literal)
-      if (result.iNumber < low(int32)) or (result.iNumber > high(int32)):
-        if result.tokType == tkIntLit:
-          result.tokType = tkInt64Lit
-        elif result.tokType in {tkInt8Lit, tkInt16Lit, tkInt32Lit}:
-          lexMessage(L, errNumberOutOfRange, result.literal)
-      elif result.tokType == tkInt8Lit and
-          (result.iNumber < int8.low or result.iNumber > int8.high):
+
+    # Get bounds of integer types
+    var intBounds: Slice[BiggestInt]
+    case result.tokType
+    of tkIntLit:    
+      # (Not real bounds, see below)
+      intBounds = BiggestInt(low(int32))..BiggestInt(high(int32)) 
+    of tkInt8Lit:   
+      intBounds = BiggestInt(low(int8))..BiggestInt(high(int8))
+    of tkInt16Lit:  
+      intBounds = BiggestInt(low(int16))..BiggestInt(high(int16))
+    of tkInt32Lit:  
+      intBounds = BiggestInt(low(int32))..BiggestInt(high(int32))
+    of tkUInt8Lit:  
+      intBounds = BiggestInt(low(uint8))..BiggestInt(high(uint8))
+    of tkUInt16Lit: 
+      intBounds = BiggestInt(low(uint16))..BiggestInt(high(uint16)) 
+    of tkUInt32Lit: 
+      intBounds = BiggestInt(low(uint32))..BiggestInt(high(uint32))
+    else: discard 
+
+    # Check bounds of integer types
+    case result.tokType
+    of tkIntLit:
+      # Large ints get promoted to int64
+      if result.iNumber notin intBounds:
+        result.tokType = tkInt64Lit
+    of tkInt8Lit..tkInt32Lit, tkUInt8Lit..tkUInt32Lit:
+      if result.iNumber notin intBounds:
         lexMessage(L, errNumberOutOfRange, result.literal)
-      elif result.tokType == tkInt16Lit and
-          (result.iNumber < int16.low or result.iNumber > int16.high):
-        lexMessage(L, errNumberOutOfRange, result.literal)
+    else: discard
+
   except ValueError:
     lexMessage(L, errInvalidNumber, result.literal)
   except OverflowError, RangeError:
