@@ -33,10 +33,10 @@ proc quitOrDebug() {.inline.} =
   quit(1)
 
 proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
-  sysFatal(ENoExceptionToReraise, "exception handling is not available")
+  sysFatal(ReraiseError, "exception handling is not available")
 
 proc reraiseException() {.compilerRtl.} =
-  sysFatal(ENoExceptionToReraise, "no exception to reraise")
+  sysFatal(ReraiseError, "no exception to reraise")
 
 proc writeStackTrace() = discard
 
