@@ -51,7 +51,7 @@ proc captureStackTrace(f: PFrame, st: var TStackTrace) =
 
 when defined(memProfiler):
   type
-    TMemProfilerHook* = proc (st: TStackTrace, requestedSize: int) {.nimcall.}
+    TMemProfilerHook* = proc (st: TStackTrace, requestedSize: int) {.nimcall, benign.}
   var
     profilerHook*: TMemProfilerHook
       ## set this variable to provide a procedure that implements a profiler in
