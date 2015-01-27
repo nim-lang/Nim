@@ -344,10 +344,11 @@ proc `^`*[T](x, y: T): T =
 
 proc gcd*[T](x, y: T): T =
   ## Computes the greatest common divisor of ``x`` and ``y``.
-  if y != 0:
-    gcd(y, x mod y)
-  else:
-    x.abs
+  var (x,y) = (x,y)
+  while y != 0:
+    x = x mod y
+    swap x, y
+  abs x
 
 proc lcm*[T](x, y: T): T =
   ## Computes the least common multiple of ``x`` and ``y``.
