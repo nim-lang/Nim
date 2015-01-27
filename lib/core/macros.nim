@@ -23,9 +23,9 @@ type
     nnkFloat32Lit, nnkFloat64Lit, nnkFloat128Lit, nnkStrLit, nnkRStrLit,
     nnkTripleStrLit, nnkNilLit, nnkMetaNode, nnkDotCall,
     nnkCommand, nnkCall, nnkCallStrLit, nnkInfix,
-    nnkPrefix, nnkPostfix, nnkHiddenCallConv, 
+    nnkPrefix, nnkPostfix, nnkHiddenCallConv,
     nnkExprEqExpr,
-    nnkExprColonExpr, nnkIdentDefs, nnkVarTuple, 
+    nnkExprColonExpr, nnkIdentDefs, nnkVarTuple,
     nnkPar, nnkObjConstr, nnkCurly, nnkCurlyExpr,
     nnkBracket, nnkBracketExpr, nnkPragmaExpr, nnkRange,
     nnkDotExpr, nnkCheckedFieldExpr, nnkDerefExpr, nnkIfExpr,
@@ -48,7 +48,7 @@ type
     nnkConstDef, nnkTypeDef,
     nnkYieldStmt, nnkDefer, nnkTryStmt, nnkFinally, nnkRaiseStmt,
     nnkReturnStmt, nnkBreakStmt, nnkContinueStmt, nnkBlockStmt, nnkStaticStmt,
-    nnkDiscardStmt, nnkStmtList, 
+    nnkDiscardStmt, nnkStmtList,
     nnkImportStmt,
     nnkImportExceptStmt,
     nnkExportStmt,
@@ -65,7 +65,7 @@ type
     nnkRefTy, nnkPtrTy, nnkVarTy,
     nnkConstTy, nnkMutableTy,
     nnkDistinctTy,
-    nnkProcTy, 
+    nnkProcTy,
     nnkIteratorTy,         # iterator type
     nnkSharedTy,           # 'shared T'
     nnkEnumTy,
@@ -87,13 +87,13 @@ type
   TNimTypeKinds* = set[TNimrodTypeKind]
   TNimrodSymKind* = enum
     nskUnknown, nskConditional, nskDynLib, nskParam,
-    nskGenericParam, nskTemp, nskModule, nskType, nskVar, nskLet, 
+    nskGenericParam, nskTemp, nskModule, nskType, nskVar, nskLet,
     nskConst, nskResult,
     nskProc, nskMethod, nskIterator, nskClosureIterator,
     nskConverter, nskMacro, nskTemplate, nskField,
     nskEnumField, nskForVar, nskLabel,
     nskStub
-    
+
   TNimSymKinds* = set[TNimrodSymKind]
 
 type
@@ -293,7 +293,7 @@ proc quote*(bl: stmt, op = "``"): PNimrodNode {.magic: "QuoteAst", noSideEffect.
   ## e.g. `@` is escaped as `@@`, `@@` is escaped as `@@@` and so on.
   ##
   ## Example:
-  ##   
+  ##
   ## .. code-block:: nim
   ##
   ##   macro check(ex: expr): stmt =
@@ -312,7 +312,7 @@ proc quote*(bl: stmt, op = "``"): PNimrodNode {.magic: "QuoteAst", noSideEffect.
   ##     result = quote do:
   ##       if not `ex`:
   ##         echo `info` & ": Check failed: " & `expString`
-  
+
 proc expectKind*(n: PNimrodNode, k: TNimrodNodeKind) {.compileTime.} =
   ## checks that `n` is of kind `k`. If this is not the case,
   ## compilation aborts with an error message. This is useful for writing
@@ -459,12 +459,16 @@ macro dumpLispImm*(s: stmt): stmt {.immediate, deprecated.} = echo s.lispRepr
 
 
 proc newEmptyNode*(): PNimrodNode {.compileTime, noSideEffect.} =
-  ## Create a new empty node 
+  ## Create a new empty node
   result = newNimNode(nnkEmpty)
 
 proc newStmtList*(stmts: varargs[PNimrodNode]): PNimrodNode {.compileTime.}=
   ## Create a new statement list
   result = newNimNode(nnkStmtList).add(stmts)
+
+proc newPar*(exprs: varargs[PNimrodNode]): PNimrodNode {.compileTime.}=
+  ## Create a new parentheses-enclosed expression
+  newNimNode(nnkPar).add(exprs)
 
 proc newBlockStmt*(label, body: PNimrodNode): PNimrodNode {.compileTime.} =
   ## Create a new block statement with label
@@ -475,25 +479,35 @@ proc newBlockStmt*(body: PNimrodNode): PNimrodNode {.compiletime.} =
   return newNimNode(nnkBlockStmt).add(newEmptyNode(), body)
 
 proc newVarStmt*(name, value: PNimrodNode): PNimrodNode {.compiletime.} =
-  ## Create a new var stmt 
+  ## Create a new var stmt
   return newNimNode(nnkVarSection).add(
     newNimNode(nnkIdentDefs).add(name, newNimNode(nnkEmpty), value))
 
 proc newLetStmt*(name, value: PNimrodNode): PNimrodNode {.compiletime.} =
-  ## Create a new let stmt 
+  ## Create a new let stmt
   return newNimNode(nnkLetSection).add(
     newNimNode(nnkIdentDefs).add(name, newNimNode(nnkEmpty), value))
+
+proc newConstStmt*(name, value: PNimrodNode): PNimrodNode {.compileTime.} =
+  ## Create a new const stmt
+  newNimNode(nnkConstSection).add(
+    newNimNode(nnkConstDef).add(name, newNimNode(nnkEmpty), value))
 
 proc newAssignment*(lhs, rhs: PNimrodNode): PNimrodNode {.compileTime.} =
   return newNimNode(nnkAsgn).add(lhs, rhs)
 
-proc newDotExpr*(a, b: PNimrodNode): PNimrodNode {.compileTime.} = 
+proc newDotExpr*(a, b: PNimrodNode): PNimrodNode {.compileTime.} =
   ## Create new dot expression
   ## a.dot(b) ->  `a.b`
   return newNimNode(nnkDotExpr).add(a, b)
 
-proc newIdentDefs*(name, kind: PNimrodNode; 
-                   default = newEmptyNode()): PNimrodNode {.compileTime.} = 
+proc newColonExpr*(a, b: PNimrodNode): PNimrodNode {.compileTime.} =
+  ## Create new colon expression
+  ## newColonExpr(a, b) ->  `a: b`
+  newNimNode(nnkExprColonExpr).add(a, b)
+
+proc newIdentDefs*(name, kind: PNimrodNode;
+                   default = newEmptyNode()): PNimrodNode {.compileTime.} =
   ## Creates a new ``nnkIdentDefs`` node of a specific kind and value.
   ##
   ## ``nnkIdentDefs`` need to have at least three children, but they can have
@@ -531,13 +545,13 @@ proc newNilLit*(): PNimrodNode {.compileTime.} =
 proc high*(node: PNimrodNode): int {.compileTime.} = len(node) - 1
   ## Return the highest index available for a node
 proc last*(node: PNimrodNode): PNimrodNode {.compileTime.} = node[node.high]
-  ## Return the last item in nodes children. Same as `node[node.high()]` 
+  ## Return the last item in nodes children. Same as `node[node.high()]`
 
 
 const
   RoutineNodes* = {nnkProcDef, nnkMethodDef, nnkDo, nnkLambda, nnkIteratorDef}
   AtomicNodes* = {nnkNone..nnkNilLit}
-  CallNodes* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand, 
+  CallNodes* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
     nnkCallStrLit, nnkHiddenCallConv}
 
 from strutils import cmpIgnoreStyle, format
@@ -545,11 +559,11 @@ from strutils import cmpIgnoreStyle, format
 proc expectKind*(n: PNimrodNode; k: set[TNimrodNodeKind]) {.compileTime.} =
   assert n.kind in k, "Expected one of $1, got $2".format(k, n.kind)
 
-proc newProc*(name = newEmptyNode(); params: openArray[PNimrodNode] = [newEmptyNode()];  
+proc newProc*(name = newEmptyNode(); params: openArray[PNimrodNode] = [newEmptyNode()];
     body: PNimrodNode = newStmtList(), procType = nnkProcDef): PNimrodNode {.compileTime.} =
   ## shortcut for creating a new proc
   ##
-  ## The ``params`` array must start with the return type of the proc, 
+  ## The ``params`` array must start with the return type of the proc,
   ## followed by a list of IdentDefs which specify the params.
   assert procType in RoutineNodes
   result = newNimNode(procType).add(
@@ -561,12 +575,12 @@ proc newProc*(name = newEmptyNode(); params: openArray[PNimrodNode] = [newEmptyN
     newEmptyNode(),
     body)
 
-proc newIfStmt*(branches: varargs[tuple[cond, body: PNimrodNode]]): 
+proc newIfStmt*(branches: varargs[tuple[cond, body: PNimrodNode]]):
                 PNimrodNode {.compiletime.} =
   ## Constructor for ``if`` statements.
   ##
   ## .. code-block:: nim
-  ##    
+  ##
   ##    newIfStmt(
   ##      (Ident, StmtList),
   ##      ...
@@ -575,7 +589,7 @@ proc newIfStmt*(branches: varargs[tuple[cond, body: PNimrodNode]]):
   result = newNimNode(nnkIfStmt)
   for i in branches:
     result.add(newNimNode(nnkElifBranch).add(i.cond, i.body))
-    
+
 
 proc copyChildrenTo*(src, dest: PNimrodNode) {.compileTime.}=
   ## Copy all children from `src` to `dest`
@@ -584,7 +598,7 @@ proc copyChildrenTo*(src, dest: PNimrodNode) {.compileTime.}=
 
 template expectRoutine(node: PNimrodNode): stmt =
   expectKind(node, RoutineNodes)
-  
+
 proc name*(someProc: PNimrodNode): PNimrodNode {.compileTime.} =
   someProc.expectRoutine
   result = someProc[0]
@@ -623,11 +637,11 @@ proc body*(someProc: PNimrodNode): PNimrodNode {.compileTime.} =
     return someProc[1]
   of nnkForStmt:
     return someProc.last
-  else: 
+  else:
     badNodeKind someProc.kind, "body"
 
 proc `body=`*(someProc: PNimrodNode, val: PNimrodNode) {.compileTime.} =
-  case someProc.kind 
+  case someProc.kind
   of RoutineNodes:
     someProc[6] = val
   of nnkBlockStmt, nnkWhileStmt:
@@ -635,10 +649,10 @@ proc `body=`*(someProc: PNimrodNode, val: PNimrodNode) {.compileTime.} =
   of nnkForStmt:
     someProc[high(someProc)] = val
   else:
-    badNodeKind someProc.kind, "body=" 
+    badNodeKind someProc.kind, "body="
 
 proc basename*(a: PNimrodNode): PNimrodNode {.compiletime.}
-  
+
 
 proc `$`*(node: PNimrodNode): string {.compileTime.} =
   ## Get the string of an identifier node
@@ -651,7 +665,7 @@ proc `$`*(node: PNimrodNode): string {.compileTime.} =
     result = node.strVal
   of nnkSym:
     result = $node.symbol
-  else: 
+  else:
     badNodeKind node.kind, "$"
 
 proc ident*(name: string): PNimrodNode {.compileTime,inline.} = newIdentNode(name)
@@ -664,14 +678,14 @@ iterator children*(n: PNimrodNode): PNimrodNode {.inline.}=
 template findChild*(n: PNimrodNode; cond: expr): PNimrodNode {.
   immediate, dirty.} =
   ## Find the first child node matching condition (or nil).
-  ## 
+  ##
   ## .. code-block:: nim
   ##   var res = findChild(n, it.kind == nnkPostfix and
   ##                          it.basename.ident == !"foo")
   block:
     var result: PNimrodNode
     for it in n.children:
-      if cond: 
+      if cond:
         result = it
         break
     result
@@ -696,9 +710,9 @@ proc basename*(a: PNimrodNode): PNimrodNode =
   case a.kind
   of nnkIdent: return a
   of nnkPostfix, nnkPrefix: return a[1]
-  else: 
+  else:
     quit "Do not know how to get basename of ("& treeRepr(a) &")\n"& repr(a)
-    
+
 proc `basename=`*(a: PNimrodNode; val: string) {.compileTime.}=
   case a.kind
   of nnkIdent: macros.`ident=`(a,  !val)
@@ -706,14 +720,14 @@ proc `basename=`*(a: PNimrodNode; val: string) {.compileTime.}=
   else:
     quit "Do not know how to get basename of ("& treeRepr(a)& ")\n"& repr(a)
 
-proc postfix*(node: PNimrodNode; op: string): PNimrodNode {.compileTime.} = 
+proc postfix*(node: PNimrodNode; op: string): PNimrodNode {.compileTime.} =
   newNimNode(nnkPostfix).add(ident(op), node)
 
-proc prefix*(node: PNimrodNode; op: string): PNimrodNode {.compileTime.} = 
+proc prefix*(node: PNimrodNode; op: string): PNimrodNode {.compileTime.} =
   newNimNode(nnkPrefix).add(ident(op), node)
 
-proc infix*(a: PNimrodNode; op: string; 
-            b: PNimrodNode): PNimrodNode {.compileTime.} = 
+proc infix*(a: PNimrodNode; op: string;
+            b: PNimrodNode): PNimrodNode {.compileTime.} =
   newNimNode(nnkInfix).add(ident(op), a, b)
 
 proc unpackPostfix*(node: PNimrodNode): tuple[node: PNimrodNode; op: string] {.
@@ -726,7 +740,7 @@ proc unpackPrefix*(node: PNimrodNode): tuple[node: PNimrodNode; op: string] {.
   node.expectKind nnkPrefix
   result = (node[0], $node[1])
 
-proc unpackInfix*(node: PNimrodNode): tuple[left: PNimrodNode; op: string; 
+proc unpackInfix*(node: PNimrodNode): tuple[left: PNimrodNode; op: string;
                                         right: PNimrodNode] {.compileTime.} =
   assert node.kind == nnkInfix
   result = (node[0], $node[1], node[2])
@@ -741,7 +755,7 @@ proc eqIdent* (a, b: string): bool = cmpIgnoreStyle(a, b) == 0
 proc hasArgOfName* (params: PNimrodNode; name: string): bool {.compiletime.}=
   ## Search nnkFormalParams for an argument.
   assert params.kind == nnkFormalParams
-  for i in 1 .. <params.len: 
+  for i in 1 .. <params.len:
     template node: expr = params[i]
     if name.eqIdent( $ node[0]):
       return true
