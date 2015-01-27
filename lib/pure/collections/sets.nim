@@ -253,7 +253,7 @@ proc containsOrIncl*[A](s: var HashSet[A], key: A): bool =
 proc init*[A](s: var HashSet[A], initialSize=64) =
   ## Initializes a hash set.
   ##
-  ## The `initialSize` parameter needs to be a power of too. You can use
+  ## The `initialSize` parameter needs to be a power of two. You can use
   ## `math.nextPowerOfTwo() <math.html#nextPowerOfTwo>`_ to guarantee that at
   ## runtime. All set variables have to be initialized before you can use them
   ## with other procs from this module with the exception of `isValid()
