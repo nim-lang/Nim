@@ -40,4 +40,4 @@ proc reraiseException() {.compilerRtl.} =
 
 proc writeStackTrace() = discard
 
-proc setControlCHook(hook: proc () {.noconv.}) = discard
+proc setControlCHook(hook: proc () {.noconv.} not nil) = discard
