@@ -518,6 +518,109 @@ proc repeatStr*(count: int, s: string): string {.noSideEffect,
   result = newStringOfCap(count*s.len)
   for i in 0..count-1: result.add(s)
 
+type
+  TextAlignmentMode* = enum ## modes for aligning text strings
+    taLeft,         ## left align text string
+    taRight         ## right align text string
+
+  TextTruncateMode* = enum ## modes for truncating text strings
+    ttLeft,         ## truncate left side of text string
+    ttRight         ## truncate right side of text string
+
+proc fmt*(s: string; width: int;
+      align: TextAlignmentMode = taLeft; padding = ' ';
+      trunc: TextTruncateMode = ttRight): string {.noSideEffect.} =
+  ## Format a string by aligning, padding or truncating it.
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   # align string left or right
+  ##   assert fmt("abc", 4) == "abc "
+  ##   assert fmt("abc", 4, taLeft) == "abc "
+  ##   assert fmt("abc", 4, taRight) == " abc"
+  ##
+  ##   # pad strings
+  ##   assert fmt("abc", 5, taLeft, '.') == "abc.."
+  ##   assert fmt("abc", 5, taRight, '.') == "..abc"
+  ##
+  ##   # truncate strings
+  ##   assert fmt("hello world!", 10) == "hello worl"
+  ##   assert fmt("hello world!", 10, taLeft, ' ', ttLeft) == "llo world!"
+  ##   assert fmt("hello world!", 10, taLeft, ' ', ttRight) == "hello worl"
+  if s.len == width:
+    result = s
+  elif s.len < width:
+    result = newString(width)
+    if align == taLeft:
+      for i in 0.. <s.len: result[i] = s[i]
+      for i in s.len.. <width: result[i] = padding
+    else:
+      let d = width - s.len
+      for i in 0.. <d: result[i] = padding
+      for i in d.. <width: result[i] = s[i-d]
+  else:
+    result = newString(width)
+    if trunc == ttRight:
+      for i in 0.. <width: result[i] = s[i]
+    else:
+      let d = s.len - width
+      for i in 0.. <width: result[i] = s[i+d]
+
+proc parseAlignment(c: char): TextAlignmentMode =
+  case c:
+    of '<': result = taLeft
+    of '>': result = taRight
+    else:
+      raise newException(ValueError, "alignment mode must be '<' or '>'")
+
+proc parseTruncate(c: char): TextTruncateMode =
+  case c:
+    of '<': result = ttLeft
+    of '>': result = ttRight
+    else:
+      raise newException(ValueError, "alignment mode must be '<' or '>'")
+
+proc fmt*(format: string, s: string, padding: char = ' '): string
+  {.noSideEffect.} =
+  ## Format a string by aligning, padding or truncating it.  The
+  ## format is specified using a mini DSL defined as follows:
+  ##
+  ## .. code-block::
+  ##
+  ##   format : ALIGNMENT WIDTH TRUNCATION
+  ##
+  ##   ALIGNMENT :  '<'   # left align text string
+  ##                '>'   # right align text string
+  ##   WIDTH : int value > 0
+  ##   TRUNCATION : '<'   # truncate left part of text string
+  ##                '>'   # truncate right part of text string
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   # align string left or right
+  ##   assert fmt("<4<", "abc") == "abc "
+  ##   assert fmt(">4<", "abc") == " abc"
+  ##
+  ##   # change padding
+  ##   assert fmt("<5<", "abc", '.') == "abc.."
+  ##   assert fmt(">5<", "abc", '.') == "..abc"
+  ##
+  ##   # truncate strings
+  ##   assert fmt("<10<", "hello world!") == "llo world!"
+  ##   assert fmt("<10>", "hello world!") == "hello worl"
+  ##
+  if format.len < 3:
+      raise newException(ValueError, "format missing required options")
+  let
+    align = parseAlignment(format[0])
+    trunc = parseTruncate(format[format.len-1])
+    swidth = substr(format, 1, format.len-2)
+  var width: int
+  let np = parseInt(swidth, width)
+  if np <= 0 or width < 1:
+    raise newException(ValueError, "width must be int > 0:  " & swidth)
+  result = fmt(s, width, align, padding, trunc)
+
 proc align*(s: string, count: int, padding = ' '): string {.
   noSideEffect, rtl, extern: "nsuAlignString".} =
   ## Aligns a string `s` with `padding`, so that is of length `count`.
@@ -1401,3 +1504,23 @@ when isMainModule:
   doAssert count("foofoofoo", "foofoo", overlapping = true) == 2
   doAssert count("foofoofoo", 'f') == 3
   doAssert count("foofoofoobar", {'f','b'}) == 4
+
+  # test justification
+  doAssert fmt("<4<", "abc") == "abc "
+  doAssert fmt(">4<", "abc") == " abc"
+  # test padding
+  doAssert fmt("<5<", "abc", '.') == "abc.."
+  doAssert fmt(">5<", "abc", '.') == "..abc"
+  doAssert fmt("<3<", "") == "   "
+  doAssert fmt("<3<", "", '.') == "..."
+  # truncate strings
+  doAssert fmt("<10<", "hello world!") == "llo world!"
+  doAssert fmt("<10>", "hello world!") == "hello worl"
+  # noop
+  doAssert fmt("<3<", "abc") == "abc"
+  doAssert fmt(">3<", "abc") == "abc"
+  doAssert fmt(">3>", "abc") == "abc"
+  doAssert fmt("<3>", "abc") == "abc"
+
+
+
