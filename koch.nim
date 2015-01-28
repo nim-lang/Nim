@@ -77,9 +77,9 @@ proc findNim(): string =
   # assume there is a symlink to the exe or something:
   return nim
 
-proc exec(cmd: string) =
+proc exec(cmd: string, errorcode: int = QuitFailure) =
   echo(cmd)
-  if execShellCmd(cmd) != 0: quit("FAILURE")
+  if execShellCmd(cmd) != 0: quit("FAILURE", errorcode)
 
 proc tryExec(cmd: string): bool = 
   echo(cmd)
@@ -341,7 +341,9 @@ proc tests(args: string) =
 proc temp(args: string) =
   var output = "compiler" / "nim".exe
   var finalDest = "bin" / "nim_temp".exe
-  exec("nim c compiler" / "nim")
+  # 125 is the magic number to tell git bisect to skip the current
+  # commit.
+  exec("nim c compiler" / "nim", 125)
   copyExe(output, finalDest)
   if args.len > 0: exec(finalDest & " " & args)
 
