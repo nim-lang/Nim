@@ -382,7 +382,7 @@ template foldr*(sequence, operation: expr): expr =
     result = operation
   result
 
-template mapIt*(seq1, typ, pred: expr): expr =
+template mapIt*(seq1, typ, op: expr): expr =
   ## Convenience template around the ``map`` proc to reduce typing.
   ##
   ## The template injects the ``it`` variable which you can use directly in an
@@ -400,7 +400,7 @@ template mapIt*(seq1, typ, pred: expr): expr =
     result.add(pred)
   result
 
-template mapIt*(varSeq, pred: expr) =
+template mapIt*(varSeq, op: expr) =
   ## Convenience template around the mutable ``map`` proc to reduce typing.
   ##
   ## The template injects the ``it`` variable which you can use directly in an
