@@ -21,8 +21,8 @@ type
                     # conditionals to condsyms (end of module).
     osNone, osDos, osWindows, osOs2, osLinux, osMorphos, osSkyos, osSolaris, 
     osIrix, osNetbsd, osFreebsd, osOpenbsd, osAix, osPalmos, osQnx, osAmiga, 
-    osAtari, osNetware, osMacos, osMacosx, osHaiku, osJS, osNimrodVM, 
-    osStandalone
+    osAtari, osNetware, osMacos, osMacosx, osHaiku, osVxworks,
+    osJS, osNimrodVM, osStandalone
 
 type 
   TInfoOSProp* = enum 
@@ -135,7 +135,11 @@ const
      (name: "Haiku", parDir: "..", dllFrmt: "lib$1.so", altDirSep: ":", 
       objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/", 
       scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".", 
-      props: {ospNeedsPIC, ospPosix, ospLacksThreadVars}), 
+      props: {ospNeedsPIC, ospPosix, ospLacksThreadVars}),
+     (name: "VxWorks", parDir: "..", dllFrmt: "lib$1.so", altDirSep: "/",
+      objExt: ".o", newLine: "\x0A", pathSep: ";", dirSep: "\\",
+      scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".",
+      props: {ospNeedsPIC, ospPosix, ospLacksThreadVars}),
      (name: "JS", parDir: "..", 
       dllFrmt: "lib$1.so", altDirSep: "/", 
       objExt: ".o", newLine: "\x0A", 
