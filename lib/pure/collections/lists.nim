@@ -122,6 +122,22 @@ iterator items*[T](L: DoublyLinkedRing[T]): T =
   ## yields every value of `L`.
   itemsRingImpl()
 
+iterator mitems*[T](L: var DoublyLinkedList[T]): var T =
+  ## yields every value of `L` so that you can modify it.
+  itemsListImpl()
+
+iterator mitems*[T](L: var SinglyLinkedList[T]): var T =
+  ## yields every value of `L` so that you can modify it.
+  itemsListImpl()
+
+iterator mitems*[T](L: var SinglyLinkedRing[T]): var T =
+  ## yields every value of `L` so that you can modify it.
+  itemsRingImpl()
+
+iterator mitems*[T](L: var DoublyLinkedRing[T]): var T =
+  ## yields every value of `L` so that you can modify it.
+  itemsRingImpl()
+
 iterator nodes*[T](L: SinglyLinkedList[T]): SinglyLinkedNode[T] = 
   ## iterates over every node of `x`. Removing the current node from the
   ## list during traversal is supported.

@@ -872,11 +872,25 @@ iterator items*(node: JsonNode): JsonNode =
   for i in items(node.elems):
     yield i
 
+iterator mitems*(node: var JsonNode): var JsonNode =
+  ## Iterator for the items of `node`. `node` has to be a JArray. Items can be
+  ## modified.
+  assert node.kind == JArray
+  for i in mitems(node.elems):
+    yield i
+
 iterator pairs*(node: JsonNode): tuple[key: string, val: JsonNode] =
   ## Iterator for the child elements of `node`. `node` has to be a JObject.
   assert node.kind == JObject
   for key, val in items(node.fields):
     yield (key, val)
+
+iterator mpairs*(node: var JsonNode): var tuple[key: string, val: JsonNode] =
+  ## Iterator for the child elements of `node`. `node` has to be a JObject.
+  ## Items can be modified
+  assert node.kind == JObject
+  for keyVal in mitems(node.fields):
+    yield keyVal
 
 proc eat(p: var JsonParser, tok: TTokKind) = 
   if p.tok == tok: discard getTok(p)

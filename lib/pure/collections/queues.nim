@@ -39,6 +39,15 @@ iterator items*[T](q: Queue[T]): T =
     yield q.data[i]
     i = (i + 1) and q.mask
 
+iterator mitems*[T](q: var Queue[T]): var T =
+  ## yields every element of `q`.
+  var i = q.rd
+  var c = q.count
+  while c > 0:
+    dec c
+    yield q.data[i]
+    i = (i + 1) and q.mask
+
 proc add*[T](q: var Queue[T], item: T) =
   ## adds an `item` to the end of the queue `q`.
   var cap = q.mask+1
