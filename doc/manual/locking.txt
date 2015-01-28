@@ -23,7 +23,7 @@ Protecting global variables
 Object fields and global variables can be annotated via a ``guard`` pragma:
 
 .. code-block:: nim
-  var glock: TLock
+  var glock: Lock
   var gdata {.guard: glock.}: int
 
 The compiler then ensures that every access of ``gdata`` is within a ``locks``
@@ -48,7 +48,7 @@ semantics and should not be used directly! It should only be used in templates
 that also implement some form of locking at runtime:
 
 .. code-block:: nim
-  template lock(a: TLock; body: stmt) =
+  template lock(a: Lock; body: stmt) =
     pthread_mutex_lock(a)
     {.locks: [a].}:
       try:
@@ -91,7 +91,7 @@ expressivity of the language:
   type
     ProtectedCounter = object
       v {.guard: L.}: int
-      L: TLock
+      L: Lock
 
   proc incCounters(counters: var openArray[ProtectedCounter]) =
     for i in 0..counters.high:
@@ -141,18 +141,18 @@ of the same level can only be acquired *at the same time* within a
 single ``locks`` section:
 
 .. code-block:: nim
-  var a, b: TLock[2]
-  var x: TLock[1]
-  # invalid locking order: TLock[1] cannot be acquired before TLock[2]:
+  var a, b: Lock[2]
+  var x: Lock[1]
+  # invalid locking order: Lock[1] cannot be acquired before Lock[2]:
   {.locks: [x].}: 
     {.locks: [a].}:
       ...
-  # valid locking order: TLock[2] acquired before TLock[1]:
+  # valid locking order: Lock[2] acquired before Lock[1]:
   {.locks: [a].}: 
     {.locks: [x].}:
       ...
 
-  # invalid locking order: TLock[2] acquired before TLock[2]:
+  # invalid locking order: Lock[2] acquired before Lock[2]:
   {.locks: [a].}: 
     {.locks: [b].}:
       ...
@@ -167,7 +167,7 @@ the runtime check is required to ensure a global ordering for two locks ``a``
 and ``b`` of the same lock level:
 
 .. code-block:: nim
-  template multilock(a, b: ptr TLock; body: stmt) =
+  template multilock(a, b: ptr Lock; body: stmt) =
     if cast[ByteAddress](a) < cast[ByteAddress](b):
       pthread_mutex_lock(a)
       pthread_mutex_lock(b)
@@ -189,7 +189,7 @@ This is essential so that procs can be called within a ``locks`` section:
 .. code-block:: nim
   proc p() {.locks: 3.} = discard 
 
-  var a: TLock[4]
+  var a: Lock[4]
   {.locks: [a].}:
     # p's locklevel (3) is strictly less than a's (4) so the call is allowed:
     p()

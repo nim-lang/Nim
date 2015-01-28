@@ -24,8 +24,8 @@
 ##  import locks
 ##
 ##  var
-##    thr: array [0..4, TThread[tuple[a,b: int]]]
-##    L: TLock
+##    thr: array [0..4, Thread[tuple[a,b: int]]]
+##    L: Lock
 ##  
 ##  proc threadFunc(interval: tuple[a,b: int]) {.thread.} =
 ##    for i in interval.a..interval.b:
@@ -257,24 +257,25 @@ when not defined(useNimRtl):
 # use ``stdcall`` since it is mapped to ``noconv`` on UNIX anyway.
 
 type
-  TThread* {.pure, final.}[TArg] =
+  Thread* {.pure, final.}[TArg] =
       object of TGcThread ## Nim thread. A thread is a heavy object (~14K)
                           ## that **must not** be part of a message! Use
-                          ## a ``TThreadId`` for that.
+                          ## a ``ThreadId`` for that.
     when TArg is void:
       dataFn: proc () {.nimcall, gcsafe.}
     else:
       dataFn: proc (m: TArg) {.nimcall, gcsafe.}
       data: TArg
-  TThreadId*[TArg] = ptr TThread[TArg] ## the current implementation uses
-                                       ## a pointer as a thread ID.
+  ThreadId*[TArg] = ptr Thread[TArg] ## the current implementation uses
+                                     ## a pointer as a thread ID.
+{.deprecated: [TThread: Thread, TThreadId: ThreadId].}
 
 when not defined(boehmgc) and not hasSharedHeap:
   proc deallocOsPages()
 
 template threadProcWrapperBody(closure: expr) {.immediate.} =
   when declared(globalsSlot): threadVarSetValue(globalsSlot, closure)
-  var t = cast[ptr TThread[TArg]](closure)
+  var t = cast[ptr Thread[TArg]](closure)
   when useStackMaskHack:
     var tls: TThreadLocalStorage
   when not defined(boehmgc) and not defined(nogc) and not hasSharedHeap:
@@ -307,16 +308,16 @@ else:
     threadProcWrapperBody(closure)
 {.pop.}
 
-proc running*[TArg](t: TThread[TArg]): bool {.inline.} = 
+proc running*[TArg](t: Thread[TArg]): bool {.inline.} = 
   ## returns true if `t` is running.
   result = t.dataFn != nil
 
 when hostOS == "windows":
-  proc joinThread*[TArg](t: TThread[TArg]) {.inline.} = 
+  proc joinThread*[TArg](t: Thread[TArg]) {.inline.} = 
     ## waits for the thread `t` to finish.
     discard waitForSingleObject(t.sys, -1'i32)
 
-  proc joinThreads*[TArg](t: varargs[TThread[TArg]]) = 
+  proc joinThreads*[TArg](t: varargs[Thread[TArg]]) = 
     ## waits for every thread in `t` to finish.
     var a: array[0..255, TSysThread]
     sysAssert a.len >= t.len, "a.len >= t.len"
@@ -325,17 +326,17 @@ when hostOS == "windows":
                                    cast[ptr TSysThread](addr(a)), 1, -1)
 
 else:
-  proc joinThread*[TArg](t: TThread[TArg]) {.inline.} =
+  proc joinThread*[TArg](t: Thread[TArg]) {.inline.} =
     ## waits for the thread `t` to finish.
     discard pthread_join(t.sys, nil)
 
-  proc joinThreads*[TArg](t: varargs[TThread[TArg]]) =
+  proc joinThreads*[TArg](t: varargs[Thread[TArg]]) =
     ## waits for every thread in `t` to finish.
     for i in 0..t.high: joinThread(t[i])
 
 when false:
   # XXX a thread should really release its heap here somehow:
-  proc destroyThread*[TArg](t: var TThread[TArg]) =
+  proc destroyThread*[TArg](t: var Thread[TArg]) =
     ## forces the thread `t` to terminate. This is potentially dangerous if
     ## you don't have full control over `t` and its acquired resources.
     when hostOS == "windows":
@@ -346,7 +347,7 @@ when false:
     t.dataFn = nil
 
 when hostOS == "windows":
-  proc createThread*[TArg](t: var TThread[TArg],
+  proc createThread*[TArg](t: var Thread[TArg],
                            tp: proc (arg: TArg) {.thread.}, 
                            param: TArg) =
     ## creates a new thread `t` and starts its execution. Entry point is the
@@ -361,7 +362,7 @@ when hostOS == "windows":
     if t.sys <= 0:
       raise newException(ResourceExhaustedError, "cannot create thread")
 else:
-  proc createThread*[TArg](t: var TThread[TArg], 
+  proc createThread*[TArg](t: var Thread[TArg], 
                            tp: proc (arg: TArg) {.thread.}, 
                            param: TArg) =
     ## creates a new thread `t` and starts its execution. Entry point is the
@@ -376,23 +377,23 @@ else:
     if pthread_create(t.sys, a, threadProcWrapper[TArg], addr(t)) != 0:
       raise newException(ResourceExhaustedError, "cannot create thread")
 
-proc threadId*[TArg](t: var TThread[TArg]): TThreadId[TArg] {.inline.} =
+proc threadId*[TArg](t: var Thread[TArg]): ThreadId[TArg] {.inline.} =
   ## returns the thread ID of `t`.
   result = addr(t)
 
-proc myThreadId*[TArg](): TThreadId[TArg] =
+proc myThreadId*[TArg](): ThreadId[TArg] =
   ## returns the thread ID of the thread that calls this proc. This is unsafe
   ## because the type ``TArg`` is not checked for consistency!
-  result = cast[TThreadId[TArg]](threadVarGetValue(globalsSlot))
+  result = cast[ThreadId[TArg]](threadVarGetValue(globalsSlot))
 
 when false:
-  proc mainThreadId*[TArg](): TThreadId[TArg] =
+  proc mainThreadId*[TArg](): ThreadId[TArg] =
     ## returns the thread ID of the main thread.
-    result = cast[TThreadId[TArg]](addr(mainThread))
+    result = cast[ThreadId[TArg]](addr(mainThread))
 
 when useStackMaskHack:
   proc runMain(tp: proc () {.thread.}) {.compilerproc.} =
-    var mainThread: TThread[pointer]
+    var mainThread: Thread[pointer]
     createThread(mainThread, tp)
     joinThread(mainThread)
 

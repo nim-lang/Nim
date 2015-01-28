@@ -11,7 +11,7 @@ type
     of mLine: data: string
 
 var
-  producer, consumer: TThread[void]
+  producer, consumer: Thread[void]
   chan: TChannel[TMsg]
   printedLines = 0
 

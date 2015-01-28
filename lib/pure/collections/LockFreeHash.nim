@@ -545,7 +545,7 @@ when isMainModule:
     Dict = PConcTable[string,TTestObj]
     
   var 
-    thr: array[0..numThreads-1, TThread[Dict]]
+    thr: array[0..numThreads-1, Thread[Dict]]
     
     table = newLFTable[string,TTestObj](8)        
     rand = newMersenneTwister(2525)

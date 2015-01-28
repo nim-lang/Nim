@@ -62,7 +62,7 @@ when not defined(memProfiler):
 when withThreads:
   import locks
   var
-    profilingLock: TLock
+    profilingLock: Lock
 
   initLock profilingLock
 

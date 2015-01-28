@@ -1,6 +1,6 @@
 
 when false:
-  template lock(a, b: ptr TLock; body: stmt) =
+  template lock(a, b: ptr Lock; body: stmt) =
     if cast[ByteAddress](a) < cast[ByteAddress](b):
       pthread_mutex_lock(a)
       pthread_mutex_lock(b)
