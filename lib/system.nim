@@ -1696,6 +1696,13 @@ iterator items*(a: cstring): char {.inline.} =
     yield a[i]
     inc(i)
 
+iterator mitems*(a: var cstring): var char {.inline.} =
+  ## iterates over each item of `a` so that you can modify the yielded value.
+  var i = 0
+  while a[i] != '\0':
+    yield a[i]
+    inc(i)
+
 iterator items*(E: typedesc[enum]): E =
   ## iterates over the values of the enum ``E``.
   for v in low(E)..high(E):
@@ -1762,6 +1769,21 @@ iterator mpairs*(a: var string): tuple[key: int, val: var char] {.inline.} =
   ## ``a[index]`` can be modified.
   var i = 0
   while i < len(a):
+    yield (i, a[i])
+    inc(i)
+
+iterator pairs*(a: cstring): tuple[key: int, val: char] {.inline.} =
+  ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
+  var i = 0
+  while a[i] != '\0':
+    yield (i, a[i])
+    inc(i)
+
+iterator mpairs*(a: var cstring): tuple[key: int, val: var char] {.inline.} =
+  ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
+  ## ``a[index]`` can be modified.
+  var i = 0
+  while a[i] != '\0':
     yield (i, a[i])
     inc(i)
 
