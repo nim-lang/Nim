@@ -13,7 +13,6 @@ const
   genPrefix* = ":tmp"         # prefix for generated names
 
 import ast, astalgo, types, idents, magicsys, msgs, options
-from guards import createMagic
 from trees import getMagic
 
 proc newTupleAccess*(tup: PNode, i: int): PNode =

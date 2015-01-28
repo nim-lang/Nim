@@ -1568,3 +1568,11 @@ proc makeStmtList*(n: PNode): PNode =
   else:
     result = newNodeI(nkStmtList, n.info)
     result.add n
+
+proc createMagic*(name: string, m: TMagic): PSym =
+  result = newSym(skProc, getIdent(name), nil, unknownLineInfo())
+  result.magic = m
+
+let
+  opNot* = createMagic("not", mNot)
+  opContains* = createMagic("contains", mInSet)

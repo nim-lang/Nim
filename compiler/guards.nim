@@ -81,18 +81,12 @@ proc isLetLocation(m: PNode, isApprox: bool): bool =
 
 proc interestingCaseExpr*(m: PNode): bool = isLetLocation(m, true)
 
-proc createMagic*(name: string, m: TMagic): PSym =
-  result = newSym(skProc, getIdent(name), nil, unknownLineInfo())
-  result.magic = m
-
 let
   opLe = createMagic("<=", mLeI)
   opLt = createMagic("<", mLtI)
   opAnd = createMagic("and", mAnd)
   opOr = createMagic("or", mOr)
-  opNot = createMagic("not", mNot)
   opIsNil = createMagic("isnil", mIsNil)
-  opContains = createMagic("contains", mInSet)
   opEq = createMagic("==", mEqI)
   opAdd = createMagic("+", mAddI)
   opSub = createMagic("-", mSubI)

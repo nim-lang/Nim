@@ -884,7 +884,12 @@ proc isTypeExpr(n: PNode): bool =
   of nkType, nkTypeOfExpr: result = true
   of nkSym: result = n.sym.kind == skType
   else: result = false
-  
+
+proc createSetType(c: PContext; baseType: PType): PType =
+  assert baseType != nil
+  result = newTypeS(tySet, c)
+  rawAddSon(result, baseType)
+
 proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent, 
                                  check: var PNode): PSym = 
   # transform in a node that contains the runtime check for the
@@ -900,41 +905,43 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
     if (r.sons[0].kind != nkSym): illFormedAst(r)
     result = lookupInRecordAndBuildCheck(c, n, r.sons[0], field, check)
     if result != nil: return 
-    var s = newNodeI(nkCurly, r.info)
+    let setType = createSetType(c, r.sons[0].typ)
+    var s = newNodeIT(nkCurly, r.info, setType)
     for i in countup(1, sonsLen(r) - 1): 
       var it = r.sons[i]
       case it.kind
-      of nkOfBranch: 
+      of nkOfBranch:
         result = lookupInRecordAndBuildCheck(c, n, lastSon(it), field, check)
-        if result == nil: 
+        if result == nil:
           for j in 0..sonsLen(it)-2: addSon(s, copyTree(it.sons[j]))
-        else: 
-          if check == nil: 
+        else:
+          if check == nil:
             check = newNodeI(nkCheckedFieldExpr, n.info)
             addSon(check, ast.emptyNode) # make space for access node
-          s = newNodeI(nkCurly, n.info)
+          s = newNodeIT(nkCurly, n.info, setType)
           for j in countup(0, sonsLen(it) - 2): addSon(s, copyTree(it.sons[j]))
-          var inExpr = newNodeI(nkCall, n.info)
-          addSon(inExpr, newIdentNode(getIdent("in"), n.info))
+          var inExpr = newNodeIT(nkCall, n.info, getSysType(tyBool))
+          addSon(inExpr, newSymNode(ast.opContains, n.info))
+          addSon(inExpr, s)
           addSon(inExpr, copyTree(r.sons[0]))
-          addSon(inExpr, s)   #writeln(output, renderTree(inExpr));
-          addSon(check, semExpr(c, inExpr))
-          return 
-      of nkElse: 
+          addSon(check, inExpr)
+          #addSon(check, semExpr(c, inExpr))
+          return
+      of nkElse:
         result = lookupInRecordAndBuildCheck(c, n, lastSon(it), field, check)
-        if result != nil: 
-          if check == nil: 
+        if result != nil:
+          if check == nil:
             check = newNodeI(nkCheckedFieldExpr, n.info)
             addSon(check, ast.emptyNode) # make space for access node
-          var inExpr = newNodeI(nkCall, n.info)
-          addSon(inExpr, newIdentNode(getIdent("in"), n.info))
-          addSon(inExpr, copyTree(r.sons[0]))
+          var inExpr = newNodeIT(nkCall, n.info, getSysType(tyBool))
+          addSon(inExpr, newSymNode(ast.opContains, n.info))
           addSon(inExpr, s)
-          var notExpr = newNodeI(nkCall, n.info)
-          addSon(notExpr, newIdentNode(getIdent("not"), n.info))
+          addSon(inExpr, copyTree(r.sons[0]))
+          var notExpr = newNodeIT(nkCall, n.info, getSysType(tyBool))
+          addSon(notExpr, newSymNode(ast.opNot, n.info))
           addSon(notExpr, inExpr)
-          addSon(check, semExpr(c, notExpr))
-          return 
+          addSon(check, notExpr)
+          return
       else: illFormedAst(it)
   of nkSym: 
     if r.sym.name.id == field.id: result = r.sym
@@ -1715,9 +1722,9 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
 proc semSetConstr(c: PContext, n: PNode): PNode = 
   result = newNodeI(nkCurly, n.info)
   result.typ = newTypeS(tySet, c)
-  if sonsLen(n) == 0: 
+  if sonsLen(n) == 0:
     rawAddSon(result.typ, newTypeS(tyEmpty, c))
-  else: 
+  else:
     # only semantic checking for all elements, later type checking:
     var typ: PType = nil
     for i in countup(0, sonsLen(n) - 1): 
