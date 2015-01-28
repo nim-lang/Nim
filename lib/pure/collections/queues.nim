@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Implementation of a queue. The underlying implementation uses a ``seq``.
+## Implementation of a `queue`:idx:. The underlying implementation uses a ``seq``.
 ## Note: For inter thread communication use
 ## a `TChannel <channels.html>`_ instead.
 

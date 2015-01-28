@@ -7,7 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-## The ``sets`` module implements an efficient hash set and ordered hash set.
+## The ``sets`` module implements an efficient `hash set`:idx: and
+## ordered hash set.
 ##
 ## Hash sets are different from the `built in set type
 ## <manual.html#set-type>`_. Sets allow you to store any value that can be

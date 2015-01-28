@@ -12,7 +12,7 @@
 ## by Adam Langley.
 
 type
-  NodeObj[T] = object {.pure, final, acyclic.}
+  NodeObj[T] = object {.acyclic.}
     byte: int ## byte index of the difference
     otherbits: char
     case isLeaf: bool
@@ -23,11 +23,10 @@ type
         val: T
     
   Node[T] = ref NodeObj[T]
-  CritBitTree*[T] = object {.
-      pure, final.} ## The crit bit tree can either be used
-                    ## as a mapping from strings to
-                    ## some type ``T`` or as a set of
-                    ## strings if ``T`` is void.
+  CritBitTree*[T] = object ## The crit bit tree can either be used
+                           ## as a mapping from strings to
+                           ## some type ``T`` or as a set of
+                           ## strings if ``T`` is void.
     root: Node[T]
     count: int
 

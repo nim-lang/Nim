@@ -421,7 +421,7 @@ returned by idetools returns also the pragmas for the proc.
 | **Docstring**: docstring if available.
 
 .. code-block:: nim
-    Open(filename, fmWrite)
+    open(filename, fmWrite)
     --> col 2: system.Open
         col 3: proc (var File, string, FileMode, int): bool
         col 7:

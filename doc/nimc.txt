@@ -394,11 +394,17 @@ Use two backticks to produce a single verbatim backtick.
 
 ImportCpp pragma
 ----------------
+
+**Note**: `c2nim <c2nim.html>`_ can parse a large subset of C++ and knows
+about the ``importcpp`` pragma pattern language. It is not necessary
+to know all the details described here.
+
+
 Similar to the `importc pragma for C <manual.html#importc-pragma>`_, the
-``importcpp`` pragma can be used to import `C++`:idx: methods. The generated
-code then uses the C++ method calling syntax: ``obj->method(arg)``.  In
-addition with the ``header`` and ``emit`` pragmas this allows *sloppy*
-interfacing with libraries written in C++:
+``importcpp`` pragma can be used to import `C++`:idx: methods or C++ symbols
+in general. The generated code then uses the C++ method calling 
+syntax: ``obj->method(arg)``.  In combination with the ``header`` and ``emit``
+pragmas this allows *sloppy* interfacing with libraries written in C++:
 
 .. code-block:: Nim
   # Horrible example of how to interface with a C++ engine ... ;-)
@@ -418,17 +424,167 @@ interfacing with libraries written in C++:
     irr = "<irrlicht/irrlicht.h>"
 
   type
-    IrrlichtDeviceObj {.final, header: irr, importc: "IrrlichtDevice".} = object
+    IrrlichtDeviceObj {.final, header: irr,
+                        importcpp: "IrrlichtDevice".} = object
     IrrlichtDevice = ptr IrrlichtDeviceObj
 
-  proc createDevice(): PIrrlichtDevice {.
-    header: irr, importc: "createDevice".}
-  proc run(device: PIrrlichtDevice): bool {.
-    header: irr, importcpp: "run".}
-  
+  proc createDevice(): IrrlichtDevice {.
+    header: irr, importcpp: "createDevice(@)".}
+  proc run(device: IrrlichtDevice): bool {.
+    header: irr, importcpp: "#.run(@)".}
+
 The compiler needs to be told to generate C++ (command ``cpp``) for 
 this to work. The conditional symbol ``cpp`` is defined when the compiler
 emits C++ code.
+
+
+Namespaces
+~~~~~~~~~~
+
+The *sloppy interfacing* example uses ``.emit`` to produce ``using namespace``
+declarations. It is usually much better to instead refer to the imported name
+via the ``namespace::identifier`` notation:
+
+.. code-block:: nim
+  type
+    IrrlichtDeviceObj {.final, header: irr,
+                        importcpp: "irr::IrrlichtDevice".} = object
+
+
+Importcpp for enums
+~~~~~~~~~~~~~~~~~~~
+
+When ``importcpp`` is applied to an enum type the numerical enum values are
+annotated with the C++ enum type, like in this example: ``((TheCppEnum)(3))``.
+(This turned out to be the simplest way to implement it.)
+
+
+Importcpp for procs
+~~~~~~~~~~~~~~~~~~~
+
+Note that the ``importcpp`` variant for procs uses a somewhat cryptic pattern
+language for maximum flexibility:
+
+- A hash ``#`` symbol is replaced by the first or next argument.
+- A dot following the hash ``#.`` indicates that the call should use C++'s dot
+  or arrow notation.
+- An at symbol ``@`` is replaced by the remaining arguments, separated by
+  commas.
+
+For example:
+
+.. code-block:: nim
+  proc cppMethod(this: CppObj, a, b, c: cint) {.importcpp: "#.CppMethod(@)".}
+  var x: ptr CppObj
+  cppMethod(x[], 1, 2, 3)
+
+Produces:
+
+.. code-block:: C
+  x->CppMethod(1, 2, 3)
+
+As a special rule to keep backwards compatibility with older versions of the
+``importcpp`` pragma, if there is no special pattern
+character (any of ``# ' @``) at all, C++'s
+dot or arrow notation is assumed, so the above example can also be written as:
+
+.. code-block:: nim
+  proc cppMethod(this: CppObj, a, b, c: cint) {.importcpp: "CppMethod".}
+
+Note that the pattern language naturally also covers C++'s operator overloading
+capabilities:
+
+.. code-block:: nim
+  proc vectorAddition(a, b: Vec3): Vec3 {.importcpp: "# + #".}
+  proc dictLookup(a: Dict, k: Key): Value {.importcpp: "#[#]".}
+
+
+- An apostrophe ``'`` followed by an integer ``i`` in the range 0..9
+  is replaced by the i'th parameter *type*. The 0th position is the result
+  type. This can be used to pass types to C++ function templates. Between
+  the ``'`` and the digit an asterisk can be used to get to the base type
+  of the type. (So it "takes away a star" from the type; ``T*`` becomes ``T``.)
+  Two stars can be used to get to the element type of the element type etc.
+
+For example:
+
+.. code-block:: nim
+
+  type Input {.importcpp: "System::Input".} = object
+  proc getSubsystem*[T](): ptr T {.importcpp: "SystemManager::getSubsystem<'*0>()".}
+
+  let x: ptr Input = getSubsystem[Input]()
+
+Produces:
+
+.. code-block:: C
+  x = SystemManager::getSubsystem<System::Input>()
+
+
+- ``#@`` is a special case to support a ``cnew`` operation. It is required so
+  that the call expression is inlined directly, without going through a
+  temporary location. This is only required to circumvent a limitation of the
+  current code generator.
+
+For example C++'s ``new`` operator can be "imported" like this:
+
+.. code-block:: nim
+  proc cnew*[T](x: T): ptr T {.importcpp: "(new '*0#@)", nodecl.}
+
+  # constructor of 'Foo':
+  proc constructFoo(a, b: cint): Foo {.importcpp: "Foo(@)".}
+
+  let x = cnew constructFoo(3, 4)
+
+Produces:
+
+.. code-block:: C
+  x = new Foo(3, 4)
+
+However, depending on the use case ``new Foo`` can also be wrapped like this
+instead:
+
+.. code-block:: nim
+  proc newFoo(a, b: cint): ptr Foo {.importcpp: "new Foo(@)".}
+
+  let x = newFoo(3, 4)
+
+
+Wrapping destructors
+~~~~~~~~~~~~~~~~~~~~
+
+Since Nim generates C++ directly, any destructor is called implicitly by the
+C++ compiler at the scope exits. This means that often one can get away with
+not wrapping the destructor at all! However when it needs to be invoked
+explicitly, it needs to be wrapped. But the pattern language already provides
+everything that is required for that:
+
+.. code-block:: nim
+  proc destroyFoo(this: var Foo) {.importcpp: "#.~Foo()".}
+
+
+Importcpp for objects
+~~~~~~~~~~~~~~~~~~~~~
+
+Generic ``importcpp``'ed objects are mapped to C++ templates. This means that
+you can import C++'s templates rather easily without the need for a pattern
+language for object types:
+
+.. code-block:: nim
+  type
+    StdMap {.importcpp: "std::map", header: "<map>".} [K, V] = object
+  proc `[]=`[K, V](this: var StdMap[K, V]; key: K; val: V) {.
+    importcpp: "#[#] = #".}
+
+  var x: StdMap[cint, cdouble]
+  x[6] = 91.4
+
+
+Produces:
+
+.. code-block:: C
+  std::map<int, double> x;
+  x[6] = 91.4;
 
 
 ImportObjC pragma
@@ -607,7 +763,7 @@ line is an incomplete statement to be continued these rules are used:
 Nim for embedded systems
 ========================
 
-The standard library can be avoided to a point where C code generation 
+The standard library can be avoided to a point where C code generation
 for 16bit micro controllers is feasible. Use the `standalone`:idx: target
 (``--os:standalone``) for a bare bones standard library that lacks any
 OS features.
@@ -619,9 +775,9 @@ For example, to generate code for an `AVR`:idx: processor use this command::
   
   nim c --cpu:avr --os:standalone --deadCodeElim:on --genScript x.nim
 
-For the ``standalone`` target you need to provide 
-a file ``panicoverride.nim``. 
-See ``tests/manyloc/standalone/panicoverride.nim`` for an example 
+For the ``standalone`` target one needs to provide
+a file ``panicoverride.nim``.
+See ``tests/manyloc/standalone/panicoverride.nim`` for an example
 implementation.
 
 

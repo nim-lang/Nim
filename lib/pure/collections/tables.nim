@@ -7,7 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-## The ``tables`` module implements variants of an efficient hash table that is
+## The ``tables`` module implements variants of an efficient `hash table`:idx:
+## (also often named `dictionary`:idx: in other programming languages) that is
 ## a mapping from keys to values. ``Table`` is the usual hash table,
 ## ``OrderedTable`` is like ``Table`` but remembers insertion order
 ## and ``CountTable`` is a mapping from a key to its number of occurances.
