@@ -739,6 +739,9 @@ proc writeContext(lastinfo: TLineInfo) =
                                      getMessageStr(errInstantiationFrom, "")])
     info = msgContext[i]
 
+proc ignoreMsgBecauseOfIdeTools(msg: TMsgKind): bool =
+  msg >= errGenerated and gCmd == cmdIdeTools and optIdeDebug notin gGlobalOptions
+
 proc rawMessage*(msg: TMsgKind, args: openArray[string]) = 
   var frmt: string
   case msg
@@ -757,7 +760,8 @@ proc rawMessage*(msg: TMsgKind, args: openArray[string]) =
     frmt = RawHintFormat
     inc(gHintCounter)
   let s = `%`(frmt, `%`(msgKindToString(msg), args))
-  msgWriteln(s)
+  if not ignoreMsgBecauseOfIdeTools(msg):
+    msgWriteln(s)
   handleError(msg, doAbort, s)
 
 proc rawMessage*(msg: TMsgKind, arg: string) = 
@@ -775,9 +779,6 @@ proc formatMsg*(info: TLineInfo, msg: TMsgKind, arg: string): string =
              else: PosErrorFormat
   result = frmt % [toMsgFilename(info), coordToStr(info.line),
                    coordToStr(info.col), getMessageStr(msg, arg)]
-
-proc ignoreMsgBecauseOfIdeTools(msg: TMsgKind): bool =
-  msg >= errGenerated and gCmd == cmdIdeTools and optIdeDebug notin gGlobalOptions
 
 proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string, 
                eh: TErrorHandling) =

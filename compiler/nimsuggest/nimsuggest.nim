@@ -46,7 +46,7 @@ proc parseQuoted(cmd: string; outp: var string; start: int): int =
   var i = start
   i += skipWhitespace(cmd, i)
   if cmd[i] == '"':
-    i += parseUntil(cmd, outp, '"', i+1)+1
+    i += parseUntil(cmd, outp, '"', i+1)+2
   else:
     i += parseUntil(cmd, outp, seps, i)
   result = i
