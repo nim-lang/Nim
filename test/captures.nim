@@ -1,4 +1,4 @@
-import unittest
+import unittest, optional_t.nonstrict
 include nre
 
 suite "captures":

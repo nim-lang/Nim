@@ -18,7 +18,7 @@ type
 
     captureNameToId: Table[string, int]
 
-  RegexMatch* = ref object
+  RegexMatch* = object
     ## Is returned upon a match.
     pattern*: Regex  ## The regex doing the matching.
                      ## Not nil.
@@ -286,10 +286,8 @@ proc re*(pattern: string, options = ""): Regex = initRegex(pattern, options)
 # }}}
 
 # Operations {{{
-proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): RegexMatch =
-  new(result)
-  result.pattern = pattern
-  result.str = str
+proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Option[RegexMatch] =
+  var result = RegexMatch(pattern : pattern, str : str)
   # See PCRE man pages.
   # 2x capture count to make room for start-end pairs
   # 1x capture count as slack space for PCRE
@@ -309,13 +307,13 @@ proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Reg
                           cast[ptr cint](addr result.pcreMatchBounds[0]),
                           cint(vecsize))
   if execRet >= 0:
-    return result
+    return Some(result)
   elif execRet == pcre.ERROR_NOMATCH:
-    return nil
+    return None[RegexMatch]()
   else:
     raise newException(AssertionError, "Internal error: errno " & $execRet)
 
-proc match*(str: string, pattern: Regex, start = 0, endpos = -1): RegexMatch =
+proc match*(str: string, pattern: Regex, start = 0, endpos = -1): Option[RegexMatch] =
   return str.matchImpl(pattern, start, endpos, pcre.ANCHORED)
 
 iterator findIter*(str: string, pattern: Regex, start = 0, endpos = -1): RegexMatch =
@@ -325,19 +323,18 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = -1): RegexMa
   let endpos = if endpos == -1: str.len else: endpos
 
   var offset = start
-  var previousMatch: RegexMatch
+  var match: Option[RegexMatch]
   while true:
     var flags = 0
 
-    if previousMatch != nil and
-        previousMatch.matchBounds.a == previousMatch.matchBounds.b:
+    if match and
+       match.get.matchBounds.a == match.get.matchBounds.b:
       # 0-len match
       flags = pcre.NOTEMPTY_ATSTART or pcre.ANCHORED
 
-    let currentMatch = str.matchImpl(pattern, offset, endpos, flags)
-    previousMatch = currentMatch
+    match = str.matchImpl(pattern, offset, endpos, flags)
 
-    if currentMatch == nil:
+    if match.isNone:
       # either the end of the input or the string
       # cannot be split here
       offset += 1
@@ -351,15 +348,15 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = -1): RegexMa
         offset += str.runeLenAt(offset)
         assert(offset <= endpos)
     else:
-      offset = currentMatch.matchBounds.b
+      offset = match.get.matchBounds.b
 
-      yield currentMatch
+      yield match.get
 
     if offset >= endpos:
       # do while
       break
 
-proc find*(str: string, pattern: Regex, start = 0, endpos = -1): RegexMatch =
+proc find*(str: string, pattern: Regex, start = 0, endpos = -1): Option[RegexMatch] =
   ## Returns a `RegexMatch` if there is a match between `start` and `endpos`, otherwise
   ## it returns nil.
   ##
