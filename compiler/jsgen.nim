@@ -1448,9 +1448,18 @@ proc genConv(p: PProc, n: PNode, r: var TCompRes) =
   var dest = skipTypes(n.typ, abstractVarRange)
   var src = skipTypes(n.sons[1].typ, abstractVarRange)
   gen(p, n.sons[1], r)
-  if (dest.kind != src.kind) and (src.kind == tyBool): 
+  if dest.kind == src.kind:
+    # no-op conversion
+    return
+  case dest.kind:
+  of tyBool:
     r.res = ropef("(($1)? 1:0)" | "toBool($#)", [r.res])
     r.kind = resExpr
+  of tyInt:
+    r.res = ropef("($1|0)", [r.res])
+  else:
+    # TODO: What types must we handle here?
+    discard
   
 proc upConv(p: PProc, n: PNode, r: var TCompRes) = 
   gen(p, n.sons[0], r)        # XXX
