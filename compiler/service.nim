@@ -45,8 +45,6 @@ proc serve*(action: proc (){.nimcall.}) =
     curCaasCmd = cmd
     processCmdLine(passCmd2, cmd)
     action()
-    gDirtyBufferIdx = 0
-    gDirtyOriginalIdx = 0
     gErrorCounter = 0
 
   let typ = getConfigVar("server.type")

@@ -37,7 +37,7 @@ var
 
 const
   seps = {':', ';', ' ', '\t'}
-  Help = "usage: sug|con|def|use dirtybuffer.nim[;originalfile.nim]:line:col\n"&
+  Help = "usage: sug|con|def|use file.nim[;dirtyfile.nim]:line:col\n"&
          "type 'quit' to quit\n" &
          "type 'debug' to toggle debug mode on/off\n" &
          "type 'terse' to toggle terse mode on/off"
@@ -59,6 +59,10 @@ proc action(cmd: string) =
       incl(gGlobalOptions, sw)
     return
 
+  template err() =
+    echo Help
+    return
+
   var opc = ""
   var i = parseIdent(cmd, opc, 0)
   case opc.normalize
@@ -71,35 +75,33 @@ proc action(cmd: string) =
   of "quit": quit()
   of "debug": toggle optIdeDebug
   of "terse": toggle optIdeTerse
-  else:
-    echo Help
-    return
+  else: err()
   var dirtyfile = ""
   var orig = ""
-  i = parseQuoted(cmd, dirtyfile, i)
+  i = parseQuoted(cmd, orig, i)
   if cmd[i] == ';':
-    i = parseQuoted(cmd, orig, i+1)
+    i = parseQuoted(cmd, dirtyfile, i+1)
   i += skipWhile(cmd, seps, i)
   var line, col = -1
   i += parseInt(cmd, line, i)
   i += skipWhile(cmd, seps, i)
   i += parseInt(cmd, col, i)
-  if dirtyfile.len != 0:
-    gDirtyBufferIdx = dirtyfile.fileInfoIdx
-    gDirtyOriginalIdx = if orig.len != 0: orig.fileInfoIdx else: gDirtyBufferIdx
-  else:
-    discard "use the same filename as in the last command"
-  resetModule gDirtyBufferIdx
-  if gDirtyBufferIdx != gProjectMainIdx:
+
+  if orig.len == 0: err()
+  let dirtyIdx = orig.fileInfoIdx
+
+  if dirtyfile.len != 0: msgs.setDirtyFile(dirtyIdx, dirtyfile)
+  else: msgs.setDirtyFile(dirtyIdx, nil)
+
+  resetModule dirtyIdx
+  if dirtyIdx != gProjectMainIdx:
     resetModule gProjectMainIdx
-  gTrackPos = newLineInfo(gDirtyBufferIdx, line, col)
+  gTrackPos = newLineInfo(dirtyIdx, line, col)
   #echo dirtyfile, gDirtyBufferIdx, " project ", gProjectMainIdx
   gErrorCounter = 0
   compileProject()
 
 proc serve() =
-  gDirtyBufferIdx = gProjectMainIdx
-  gDirtyOriginalIdx = gProjectMainIdx
   # do not stop after the first error:
   msgs.gErrorMax = high(int)
   if gUseStdin:

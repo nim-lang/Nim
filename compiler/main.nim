@@ -169,9 +169,9 @@ proc commandSuggest =
     # cache in a state where "no recompilation is necessary", but the
     # cgen pass was never executed at all.
     commandCompileToC()
-    if gDirtyBufferIdx != 0:
-      discard compileModule(gDirtyBufferIdx, {sfDirty})
-      resetModule(gDirtyBufferIdx)
+    let gDirtyBufferIdx = gTrackPos.fileIndex
+    discard compileModule(gDirtyBufferIdx, {sfDirty})
+    resetModule(gDirtyBufferIdx)
   else:
     msgs.gErrorMax = high(int)  # do not stop after first error
     semanticPasses()

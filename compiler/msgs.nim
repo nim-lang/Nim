@@ -454,6 +454,9 @@ type
                                #   used for better error messages and
                                #   embedding the original source in the
                                #   generated code
+    dirtyfile: string          # the file that is actually read into memory
+                               # and parsed; usually 'nil' but is used
+                               # for 'nimsuggest'
 
   TLineInfo*{.final.} = object # This is designed to be as small as possible,
                                # because it is used
@@ -597,18 +600,7 @@ proc msgQuit*(x: int8) = quit x
 proc msgQuit*(x: string) = quit x
 
 proc suggestQuit*() =
-  when true:
-    raise newException(ESuggestDone, "suggest done")
-  else:
-    if not isServing:
-      assert false
-      quit(0)
-    elif isWorkingWithDirtyBuffer:
-      # No need to compile the rest if we are working with a
-      # throw-away buffer. Incomplete dot expressions frequently
-      # found in dirty buffers will result in errors few steps
-      # from now anyway.
-      raise newException(ESuggestDone, "suggest done")
+  raise newException(ESuggestDone, "suggest done")
 
 # this format is understood by many text editors: it is the same that
 # Borland and Freepascal use
@@ -644,6 +636,18 @@ proc toFullPath*(fileIdx: int32): string =
   if fileIdx < 0: result = "???"
   else: result = fileInfos[fileIdx].fullPath
 
+proc setDirtyFile*(fileIdx: int32; filename: string) =
+  assert fileIdx >= 0
+  fileInfos[fileIdx].dirtyFile = filename
+
+proc toFullPathConsiderDirty*(fileIdx: int32): string =
+  if fileIdx < 0:
+    result = "???"
+  elif not fileInfos[fileIdx].dirtyFile.isNil:
+    result = fileInfos[fileIdx].dirtyFile
+  else:
+    result = fileInfos[fileIdx].fullPath
+
 template toFilename*(info: TLineInfo): string =
   info.fileIndex.toFilename
 
@@ -651,12 +655,12 @@ template toFullPath*(info: TLineInfo): string =
   info.fileIndex.toFullPath
 
 proc toMsgFilename*(info: TLineInfo): string =
-  if info.fileIndex < 0: result = "???"
+  if info.fileIndex < 0:
+    result = "???"
+  elif gListFullPaths:
+    result = fileInfos[info.fileIndex].fullPath
   else:
-    if gListFullPaths:
-      result = fileInfos[info.fileIndex].fullPath
-    else:
-      result = fileInfos[info.fileIndex].projPath
+    result = fileInfos[info.fileIndex].projPath
 
 proc toLinenumber*(info: TLineInfo): int {.inline.} = 
   result = info.line

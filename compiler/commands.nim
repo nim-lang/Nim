@@ -252,10 +252,11 @@ proc trackDirty(arg: string, info: TLineInfo) =
   if parseUtils.parseInt(a[3], column) <= 0:
     localError(info, errInvalidNumber, a[2])
   
-  gDirtyBufferIdx = a[0].fileInfoIdx
-  gDirtyOriginalIdx = a[1].fileInfoIdx
- 
-  gTrackPos = newLineInfo(gDirtyBufferIdx, line, column)
+  let dirtyOriginalIdx = a[1].fileInfoIdx
+  if dirtyOriginalIdx >= 0:
+    msgs.setDirtyFile(dirtyOriginalIdx, a[0])
+
+  gTrackPos = newLineInfo(dirtyOriginalIdx, line, column)
 
 proc track(arg: string, info: TLineInfo) = 
   var a = arg.split(',')

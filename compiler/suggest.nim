@@ -22,11 +22,7 @@ const
 
 #template sectionSuggest(): expr = "##begin\n" & getStackTrace() & "##end\n"
 
-proc origModuleName(m: PSym): string =
-  result = if m.position == gDirtyBufferIdx:
-             fileInfos[gDirtyOriginalIdx].shortName
-           else:
-             m.name.s
+template origModuleName(m: PSym): string = m.name.s
 
 proc symToStr(s: PSym, isLocal: bool, section: string, li: TLineInfo): string = 
   result = section
