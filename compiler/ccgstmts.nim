@@ -931,7 +931,7 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): PRope =
     for x in splitLines(res):
       var j = 0
       while x[j] in {' ', '\t'}: inc(j)
-      if x[j] == ':':
+      if x[j] in {'"', ':'}:
         # some clobber register list:
         app(result, x); app(result, tnl)
       elif x[j] != '\0':
