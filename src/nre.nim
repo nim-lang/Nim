@@ -27,7 +27,6 @@ type
     pcreMatchBounds: seq[Slice[cint]] ## First item is the bounds of the match
                                       ## Other items are the captures
                                       ## `a` is inclusive start, `b` is exclusive end
-    matchCache: seq[string]
 
   Captures* = distinct RegexMatch
   CaptureBounds* = distinct RegexMatch
@@ -112,12 +111,7 @@ proc `[]`*(pattern: Captures, i: int): string =
 
   if bounds:
     let bounds = bounds.get
-    if pattern.matchCache == nil:
-      # capture count, plus the entire string
-      pattern.matchCache = newSeq[string](pattern.pattern.captureCount + 1)
-    if pattern.matchCache[i + 1] == nil:
-      pattern.matchCache[i + 1] = pattern.str.substr(bounds.a, bounds.b-1)
-    return pattern.matchCache[i + 1]
+    return pattern.str.substr(bounds.a, bounds.b-1)
   else:
     return nil
 
