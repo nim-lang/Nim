@@ -848,10 +848,14 @@ elif not defined(useNimRtl):
     if kill(p.id, SIGCONT) != 0'i32: raiseOsError(osLastError())
 
   proc running(p: Process): bool =
-    var status : cint = 1
-    var ret = waitpid(p.id, status, WNOHANG)
-    if WIFEXITED(status):
-      p.exitCode = status
+    var ret : int
+    when not defined(freebsd):
+      ret = waitpid(p.id, p.exitCode, WNOHANG)
+    else:
+      var status : cint = 1
+      ret = waitpid(p.id, status, WNOHANG)
+      if WIFEXITED(status):
+        p.exitCode = status
     if ret == 0: return true # Can't establish status. Assume running.
     result = ret == int(p.id)
 
