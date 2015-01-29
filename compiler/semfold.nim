@@ -665,8 +665,8 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
       of mLow: 
         result = newIntNodeT(firstOrd(n.sons[1].typ), n)
       of mHigh: 
-        if  skipTypes(n.sons[1].typ, abstractVar).kind notin
-            {tyOpenArray, tyVarargs, tySequence, tyString}:
+        if skipTypes(n.sons[1].typ, abstractVar).kind notin
+            {tySequence, tyString, tyCString, tyOpenArray, tyVarargs}:
           result = newIntNodeT(lastOrd(skipTypes(n[1].typ, abstractVar)), n)
         else:
           var a = getArrayConstr(m, n.sons[1])

@@ -306,7 +306,7 @@ proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
     var typ = skipTypes(n.sons[1].typ, abstractVarRange +
                                        {tyTypeDesc, tyFieldAccessor})
     case typ.kind
-    of tySequence, tyString, tyOpenArray, tyVarargs: 
+    of tySequence, tyString, tyCString, tyOpenArray, tyVarargs: 
       n.typ = getSysType(tyInt)
     of tyArrayConstr, tyArray: 
       n.typ = typ.sons[0] # indextype
