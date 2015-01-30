@@ -306,14 +306,6 @@ proc safeSemExpr*(c: PContext, n: PNode): PNode =
   except ERecoverableError:
     result = ast.emptyNode
 
-proc fuzzySemCheck(c: PContext, n: PNode): PNode =
-  # use only for idetools support!
-  result = safeSemExpr(c, n)
-  if result == nil or result.kind == nkEmpty:
-    result = newNodeIT(n.kind, n.info, errorType(c))
-    if n.kind notin {nkNone..nkNilLit}:
-      for i in 0 .. < sonsLen(n): result.addSon(fuzzySemCheck(c, n.sons[i]))
-
 proc suggestExpr*(c: PContext, node: PNode) = 
   if nfIsCursor notin node.flags:
     if gTrackPos.line < 0: return
@@ -329,9 +321,10 @@ proc suggestExpr*(c: PContext, node: PNode) =
     if n == nil: n = node
     if n.kind == nkDotExpr:
       var obj = safeSemExpr(c, n.sons[0])
+      suggestFieldAccess(c, obj, outputs)
       if optIdeDebug in gGlobalOptions:
         echo "expression ", renderTree(obj), " has type ", typeToString(obj.typ)
-      suggestFieldAccess(c, obj, outputs)
+      #writeStackTrace()
     else:
       suggestEverything(c, n, outputs)
   
