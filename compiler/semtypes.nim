@@ -1178,8 +1178,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       return errorType(c)
     result = typeExpr.typ.base
     if result.isMetaType:
-      var toBind = initIntSet()
-      var preprocessed = semGenericStmt(c, n, {}, toBind)
+      var preprocessed = semGenericStmt(c, n)
       return makeTypeFromExpr(c, preprocessed)
   of nkIdent, nkAccQuoted:
     var s = semTypeIdent(c, n)

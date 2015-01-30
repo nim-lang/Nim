@@ -1060,8 +1060,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     else:
       if s.typ.sons[0] != nil and kind notin skIterators:
         addDecl(c, newSym(skUnknown, getIdent"result", nil, n.info))
-      var toBind = initIntSet()
-      n.sons[bodyPos] = semGenericStmtScope(c, n.sons[bodyPos], {}, toBind)
+      openScope(c)
+      n.sons[bodyPos] = semGenericStmt(c, n.sons[bodyPos])
+      closeScope(c)
       fixupInstantiatedSymbols(c, s)
     if sfImportc in s.flags:
       # so we just ignore the body after semantic checking for importc:

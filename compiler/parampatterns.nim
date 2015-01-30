@@ -41,7 +41,7 @@ type
 const
   MaxStackSize* = 64 ## max required stack size by the VM
 
-proc patternError(n: PNode) = 
+proc patternError(n: PNode) =
   localError(n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
 
 proc add(code: var TPatternCode, op: TOpcode) {.inline.} =

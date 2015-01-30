@@ -324,7 +324,10 @@ proc parseSymbol(p: var TParser, allowNil = false): PNode =
       getTok(p)
     else:
       parMessage(p, errIdentifierExpected, p.tok)
-      getTok(p) # BUGFIX: We must consume a token here to prevent endless loops!
+      # BUGFIX: We must consume a token here to prevent endless loops!
+      # But: this really sucks for idetools and keywords, so we don't do it
+      # if it is a keyword:
+      if not isKeyword(p.tok.tokType): getTok(p)
       result = ast.emptyNode
 
 proc indexExpr(p: var TParser): PNode = 

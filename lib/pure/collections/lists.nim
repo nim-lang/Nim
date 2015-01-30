@@ -254,7 +254,7 @@ proc remove*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
 proc prepend*[T](L: var SinglyLinkedRing[T], n: SinglyLinkedNode[T]) = 
   ## prepends a node `n` to `L`. Efficiency: O(1).
   if L.head != nil: 
-    n.next = L.head    
+    n.next = L.head
     L.head.next = n
   else: 
     n.next = n

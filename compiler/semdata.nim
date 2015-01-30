@@ -307,6 +307,9 @@ proc markIndirect*(c: PContext, s: PSym) {.inline.} =
 proc illFormedAst*(n: PNode) =
   globalError(n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
 
+proc illFormedAstLocal*(n: PNode) =
+  localError(n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
+
 proc checkSonsLen*(n: PNode, length: int) = 
   if sonsLen(n) != length: illFormedAst(n)
   

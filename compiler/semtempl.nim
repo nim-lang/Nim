@@ -105,10 +105,11 @@ proc replaceIdentBySym(n: var PNode, s: PNode) =
   else: illFormedAst(n)
 
 type
-  TemplCtx {.pure, final.} = object
+  TemplCtx = object
     c: PContext
     toBind, toMixin, toInject: IntSet
     owner: PSym
+    cursorInBody: bool # only for nimsuggest
 
 proc getIdentNode(c: var TemplCtx, n: PNode): PNode =
   case n.kind
@@ -259,8 +260,9 @@ proc semTemplSomeDecl(c: var TemplCtx, n: PNode, symKind: TSymKind; start=0) =
       addLocalDecl(c, a.sons[j], symKind)
 
 proc semPattern(c: PContext, n: PNode): PNode
-proc semTemplBody(c: var TemplCtx, n: PNode): PNode = 
+proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   result = n
+  semIdeForTemplateOrGenericCheck(n, c.cursorInBody)
   case n.kind
   of nkIdent:
     if n.ident.id in c.toInject: return n
@@ -416,8 +418,9 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     for i in countup(0, sonsLen(n) - 1):
       result.sons[i] = semTemplBody(c, n.sons[i])
 
-proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode = 
+proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode =
   result = n
+  semIdeForTemplateOrGenericCheck(n, c.cursorInBody)
   case n.kind
   of nkIdent:
     let s = qualifiedLookUp(c.c, n, {})
@@ -524,6 +527,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   if s.typ.sons[0].kind notin {tyStmt, tyTypeDesc}:
     n.sons[bodyPos] = transformToExpr(n.sons[bodyPos]) 
     # only parameters are resolved, no type checking is performed
+  semIdeForTemplateOrGeneric(c, n.sons[bodyPos], ctx.cursorInBody)
   closeScope(c)
   popOwner()
   s.ast = n

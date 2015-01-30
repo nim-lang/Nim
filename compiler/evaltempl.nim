@@ -93,7 +93,7 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym): PNode =
     evalTemplateAux(body, args, ctx, result)
     if result.len == 1: result = result.sons[0]
     else:
-      globalError(result.info, errIllFormedAstX,
+      localError(result.info, errIllFormedAstX,
                   renderTree(result, {renderNoComments}))
   else:
     result = copyNode(body)

@@ -101,7 +101,7 @@ proc liftBodyObj(c: TLiftCtx; typ, x, y: PNode) =
   of nkRecList:
     for t in items(typ): liftBodyObj(c, t, x, y)
   else:
-    illFormedAst(typ)
+    illFormedAstLocal(typ)
 
 proc newAsgnCall(op: PSym; x, y: PNode): PNode =
   result = newNodeI(nkCall, x.info)

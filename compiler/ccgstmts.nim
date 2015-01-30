@@ -932,6 +932,7 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): PRope =
       var j = 0
       while x[j] in {' ', '\t'}: inc(j)
       if x[j] in {'"', ':'}:
+        # don't modify the line if already in quotes or
         # some clobber register list:
         app(result, x); app(result, tnl)
       elif x[j] != '\0':

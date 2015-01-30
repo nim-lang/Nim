@@ -1,7 +1,7 @@
 #
 #
 #           The Nim Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -22,7 +22,9 @@ proc considerQuotedIdent*(n: PNode): PIdent =
   of nkSym: result = n.sym.name
   of nkAccQuoted:
     case n.len
-    of 0: globalError(n.info, errIdentifierExpected, renderTree(n))
+    of 0:
+      localError(n.info, errIdentifierExpected, renderTree(n))
+      result = getIdent"<Error>"
     of 1: result = considerQuotedIdent(n.sons[0])
     else:
       var id = ""
@@ -31,12 +33,15 @@ proc considerQuotedIdent*(n: PNode): PIdent =
         case x.kind
         of nkIdent: id.add(x.ident.s)
         of nkSym: id.add(x.sym.name.s)
-        else: globalError(n.info, errIdentifierExpected, renderTree(n))
+        else:
+          localError(n.info, errIdentifierExpected, renderTree(n))
+          return getIdent"<Error>"
       result = getIdent(id)
   of nkOpenSymChoice, nkClosedSymChoice: result = n.sons[0].sym.name
   else:
-    globalError(n.info, errIdentifierExpected, renderTree(n))
- 
+    localError(n.info, errIdentifierExpected, renderTree(n))
+    result = getIdent"<Error>"
+
 template addSym*(scope: PScope, s: PSym) =
   strTableAdd(scope.symbols, s)
 

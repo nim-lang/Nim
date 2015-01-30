@@ -1,6 +1,7 @@
 version 0.10
 ============
 
+- nimsuggest: auto-completion needs to work in 'class' macros
 - improve the docs for inheritance
 - The bitwise 'not' operator will be renamed to 'bnot' to
   prevent 'not 4 == 5' from compiling. -> requires 'mixin' annotation for procs!

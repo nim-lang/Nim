@@ -447,7 +447,9 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
         addSon(result, newStrNode(nkStrLit, $marker))
       if c < 0: break 
       a = c + 1
-  else: illFormedAst(n)
+  else:
+    illFormedAstLocal(n)
+    result = newNode(nkAsmStmt, n.info)
   
 proc pragmaEmit(c: PContext, n: PNode) = 
   discard getStrLitNode(c, n)

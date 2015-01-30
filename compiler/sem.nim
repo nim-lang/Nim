@@ -47,6 +47,24 @@ proc finishMethod(c: PContext, s: PSym)
 
 proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode
 
+template semIdeForTemplateOrGenericCheck(n, requiresCheck) =
+  # we check quickly if the node is where the cursor is
+  when defined(nimsuggest):
+    if n.info.fileIndex == gTrackPos.fileIndex and n.info.line == gTrackPos.line:
+      requiresCheck = true
+
+template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
+                                    requiresCheck: bool) =
+  # use only for idetools support; this is pretty slow so generics and
+  # templates perform some quick check whether the cursor is actually in
+  # the generic or template.
+  when defined(nimsuggest):
+    assert gCmd == cmdIdeTools
+    if requiresCheck:
+      if optIdeDebug in gGlobalOptions:
+        echo "passing to safeSemExpr: ", renderTree(n)
+      discard safeSemExpr(c, n)
+
 proc typeMismatch(n: PNode, formal, actual: PType) = 
   if formal.kind != tyError and actual.kind != tyError: 
     localError(n.info, errGenerated, msgKindToString(errTypeMismatch) &
@@ -359,13 +377,7 @@ proc semConstBoolExpr(c: PContext, n: PNode): PNode =
     localError(n.info, errConstExprExpected)
     result = nn
 
-type
-  TSemGenericFlag = enum
-    withinBind, withinTypeDesc, withinMixin
-  TSemGenericFlags = set[TSemGenericFlag]
-
-proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags,
-                    ctx: var IntSet): PNode
+proc semGenericStmt(c: PContext, n: PNode): PNode
 
 include semtypes, semtempl, semgnrc, semstmts, semexprs
 

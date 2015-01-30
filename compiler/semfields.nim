@@ -98,7 +98,7 @@ proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
   of nkRecList:
     for t in items(typ): semForObjectFields(c, t, forLoop, father)
   else:
-    illFormedAst(typ)
+    illFormedAstLocal(typ)
 
 proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   # so that 'break' etc. work as expected, we produce

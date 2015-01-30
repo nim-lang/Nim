@@ -256,19 +256,6 @@ proc findClosestSym(n: PNode): PNode =
       result = findClosestSym(n.sons[i])
       if result != nil: return
 
-proc safeSemExpr(c: PContext, n: PNode): PNode = 
-  try:
-    result = c.semExpr(c, n)
-  except ERecoverableError:
-    result = ast.emptyNode
-
-proc fuzzySemCheck(c: PContext, n: PNode): PNode = 
-  result = safeSemExpr(c, n)
-  if result == nil or result.kind == nkEmpty:
-    result = newNodeI(n.kind, n.info)
-    if n.kind notin {nkNone..nkNilLit}:
-      for i in 0 .. < sonsLen(n): result.addSon(fuzzySemCheck(c, n.sons[i]))
-
 var
   usageSym*: PSym
   lastLineInfo: TLineInfo
@@ -312,6 +299,21 @@ proc useSym*(sym: PSym): PNode =
   result = newSymNode(sym)
   markUsed(result.info, sym)
 
+proc safeSemExpr*(c: PContext, n: PNode): PNode =
+  # use only for idetools support!
+  try:
+    result = c.semExpr(c, n)
+  except ERecoverableError:
+    result = ast.emptyNode
+
+proc fuzzySemCheck(c: PContext, n: PNode): PNode =
+  # use only for idetools support!
+  result = safeSemExpr(c, n)
+  if result == nil or result.kind == nkEmpty:
+    result = newNodeIT(n.kind, n.info, errorType(c))
+    if n.kind notin {nkNone..nkNilLit}:
+      for i in 0 .. < sonsLen(n): result.addSon(fuzzySemCheck(c, n.sons[i]))
+
 proc suggestExpr*(c: PContext, node: PNode) = 
   if nfIsCursor notin node.flags:
     if gTrackPos.line < 0: return
@@ -327,6 +329,8 @@ proc suggestExpr*(c: PContext, node: PNode) =
     if n == nil: n = node
     if n.kind == nkDotExpr:
       var obj = safeSemExpr(c, n.sons[0])
+      if optIdeDebug in gGlobalOptions:
+        echo "expression ", renderTree(obj), " has type ", typeToString(obj.typ)
       suggestFieldAccess(c, obj, outputs)
     else:
       suggestEverything(c, n, outputs)
