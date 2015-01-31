@@ -215,6 +215,7 @@ proc asgnComplexity(n: PNode): int =
     else: discard
 
 proc optAsgnLoc(a: TLoc, t: PType, field: PRope): TLoc =
+  assert field != nil
   result.k = locField
   result.s = a.s
   result.t = t
@@ -229,7 +230,7 @@ proc genOptAsgnTuple(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
       flags - {needToCopy}
     else:
       flags
-  let t = skipTypes(dest.t, abstractInst)
+  let t = skipTypes(dest.t, abstractInst).getUniqueType()
   for i in 0 .. <t.len:
     let t = t.sons[i]
     let field = ropef("Field$1", i.toRope)
@@ -336,6 +337,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     elif needsComplexAssignment(ty):
       if ty.sons[0].isNil and asgnComplexity(ty.n) <= 4:
         discard getTypeDesc(p.module, ty)
+        ty = getUniqueType(ty)
         internalAssert ty.n != nil
         genOptAsgnObject(p, dest, src, flags, ty.n)
       else:
@@ -1131,7 +1133,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     var tmp2: TLoc
     tmp2.r = r
     var field: PSym = nil
-    var ty = t
+    var ty = getUniqueType(t)
     while ty != nil:
       field = lookupInRecord(ty.n, it.sons[0].sym.name)
       if field != nil: break

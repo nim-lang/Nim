@@ -1,0 +1,60 @@
+# Bug #2022
+
+## The goal of this snippet is to provide and test a construct for general-
+## purpose, random-access mapping. I use an AST-manipulation-based approach
+## because it's more efficient than using procedure pointers and less
+## verbose than defining a new callable type for every invocation of `map`.
+
+import future
+import macros
+import strutils
+
+#===============================================================================
+# Define a system for storing copies of ASTs as static strings.
+# This serves the same purpose as D's `alias` parameters for types, used heavily
+# in its popular `ranges` and `algorithm` modules.
+
+var exprNodes {.compileTime.} = newSeq[PNimrodNode]()
+
+proc refExpr(exprNode: PNimrodNode): string {.compileTime.} =
+  exprNodes.add exprNode.copy
+  "expr" & $(exprNodes.len - 1)
+
+proc derefExpr(exprRef: string): PNimrodNode {.compileTime.} =
+  exprNodes[parseInt(exprRef[4 .. -1])]
+
+#===============================================================================
+# Define a type that allows a callable expression to be mapped onto elements
+# of an indexable collection.
+
+type Mapped[Input; predicate: static[string]] = object
+  input: Input
+
+macro map(input, predicate: expr): expr =
+  newNimNode(nnkObjConstr).add(
+    newNimNode(nnkBracketExpr).add(
+      ident"Mapped",
+      newNimNode(nnkTypeOfExpr).add(input),
+      newLit(refExpr(predicate))),
+    newNimNode(nnkExprColonExpr).add(
+      ident"input", input))
+
+proc `[]`(m: Mapped, i: int): auto =
+  macro buildResult: expr =
+    newCall(
+      derefExpr(m.predicate),
+      newNimNode(nnkBracketExpr).add(
+        newDotExpr(ident"m", ident"input"),
+        ident"i"))
+  buildResult()
+
+#===============================================================================
+# Test out our generic mapping construct.
+
+let a = "a-string".map(ord)
+let b = @["a", "seq"].map((e: string) => e == "a")
+let c = "another-string".map((e: char) => e == 'o')
+
+echo(@[a[0], a[1]]) # @[97, 45]
+echo(@[b[0], b[1]]) # @[true, false]
+echo(@[c[0], c[1]]) # @[false, false]
