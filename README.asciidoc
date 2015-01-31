@@ -96,10 +96,11 @@ If `sub` is a string, the syntax is as follows:
 Escapes the string so it doesn't match any special characters. Incompatible
 with the Extra flag (`X`).
 
-=== RegexMatch
+=== Option[RegexMatch]
 
-Represents the result of an execution. On failure, it is `nil`. The available
-fields are as follows:
+Represents the result of an execution. On failure, it is `None[RegexMatch]`,
+but if you want automated derefrence, import `optional_t.nonstrict`. The
+available fields are as follows:
 
 `pattern: Regex` :: the pattern that is being matched
 `str: string` :: the string that was matched against
