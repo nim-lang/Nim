@@ -1042,18 +1042,20 @@ proc unescape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
   ## ValueError exception will be raised.
   result = newStringOfCap(s.len)
   var i = 0
-  if s[0 .. prefix.len-1] != prefix:
+  if not s.startsWith(prefix):
     raise newException(ValueError,
                        "String does not start with a prefix of: " & prefix)
-  i.inc()
+  inc(i)
   while true:
     if i == s.len-suffix.len: break
     case s[i]
     of '\\':
       case s[i+1]:
       of 'x':
-        let j = parseHexInt(s[i+2 .. i+3])
-        result.add(chr(j))
+        inc i
+        var c: int
+        i += parseutils.parseHex(s, c, i)
+        result.add(chr(c))
         inc(i, 2)
       of '\\':
         result.add('\\')
@@ -1066,8 +1068,8 @@ proc unescape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
     of '\0': break
     else:
       result.add(s[i])
-    i.inc()
-  if s[i .. -1] != suffix:
+    inc(i)
+  if not s.endsWith(suffix):
     raise newException(ValueError,
                        "String does not end with a suffix of: " & suffix)
 

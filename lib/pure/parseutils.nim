@@ -295,7 +295,7 @@ iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
             dec nesting
           of '\0':
             raise newException(ValueError, 
-              "Expected closing '}': " & s[i..s.len])
+              "Expected closing '}': " & substr(s, i, s.high))
           else: discard
           inc j
         inc i, 2 # skip ${
@@ -311,7 +311,7 @@ iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
         kind = ikDollar
       else:
         raise newException(ValueError, 
-          "Unable to parse a varible name at " & s[i..s.len])
+          "Unable to parse a varible name at " & substr(s, i, s.high))
     else:
       while j < s.len and s[j] != '$': inc j
       kind = ikStr
