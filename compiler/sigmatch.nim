@@ -1300,7 +1300,6 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     # incorrect to simply use the first fitting match. However, to implement
     # this correctly is inefficient. We have to copy `m` here to be able to
     # roll back the side effects of the unification algorithm.
-
     let c = m.c
     var x, y, z: TCandidate
     initCandidate(c, x, m.callee)
@@ -1329,12 +1328,15 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
               y = z           # z is as good as x
     if x.state == csEmpty: 
       result = nil
-    elif (y.state == csMatch) and (cmpCandidates(x, y) == 0): 
+    elif y.state == csMatch and cmpCandidates(x, y) == 0: 
       if x.state != csMatch: 
         internalError(arg.info, "x.state is not csMatch") 
-      # ambiguous: more than one symbol fits
-      result = nil
-    else: 
+      # ambiguous: more than one symbol fits!
+      # See tsymchoice_for_expr as an example. 'f.kind == tyExpr' should match
+      # anyway:
+      if f.kind == tyExpr: result = arg
+      else: result = nil
+    else:
       # only one valid interpretation found:
       markUsed(arg.info, arg.sons[best].sym)
       styleCheckUse(arg.info, arg.sons[best].sym)
