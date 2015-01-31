@@ -1120,7 +1120,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   var r = rdLoc(tmp)
   if isRef:
     rawGenNew(p, tmp, nil)
-    t = t.sons[0].skipTypes(abstractInst)
+    t = t.lastSon.skipTypes(abstractInst)
     r = ropef("(*$1)", r)
     gcUsage(e)
   else:
@@ -1201,9 +1201,9 @@ proc genNewFinalize(p: BProc, e: PNode) =
   appf(p.module.s[cfsTypeInit3], "$1->finalizer = (void*)$2;$n", [ti, rdLoc(f)])
   b.r = ropecg(p.module, "($1) #newObj($2, sizeof($3))", [
       getTypeDesc(p.module, refType),
-      ti, getTypeDesc(p.module, skipTypes(refType.sons[0], abstractRange))])
+      ti, getTypeDesc(p.module, skipTypes(refType.lastSon, abstractRange))])
   genAssignment(p, a, b, {needToKeepAlive})  # set the object type:
-  bt = skipTypes(refType.sons[0], abstractRange)
+  bt = skipTypes(refType.lastSon, abstractRange)
   genObjectInit(p, cpsStmts, bt, a, false)
   gcUsage(e)
 

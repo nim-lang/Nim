@@ -956,9 +956,10 @@ proc makeDeref(n: PNode): PNode =
     t = skipTypes(t.sons[0], {tyGenericInst})
   while t.kind in {tyPtr, tyRef}:
     var a = result
-    result = newNodeIT(nkHiddenDeref, n.info, t.sons[0])
+    let baseTyp = t.lastSon
+    result = newNodeIT(nkHiddenDeref, n.info, baseTyp)
     addSon(result, a)
-    t = skipTypes(t.lastSon, {tyGenericInst})
+    t = skipTypes(baseTyp, {tyGenericInst})
 
 const
   tyTypeParamsHolders = {tyGenericInst, tyCompositeTypeClass}

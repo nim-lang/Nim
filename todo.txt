@@ -7,6 +7,7 @@ version 0.10
   prevent 'not 4 == 5' from compiling. -> requires 'mixin' annotation for procs!
 - parameter lists without type end up in 'experimental'
 - iterators always require a return type
+- overloading of '='
 
 - make nimble part of the distribution
 - split docgen into separate tool
@@ -50,7 +51,6 @@ Bugs
 version 0.9.x
 =============
 
-- overloading of '='
 - allow simple read accesses to global variables --> difficult to ensure that
   no data races happen
 - pragmas need 'bindSym' support
