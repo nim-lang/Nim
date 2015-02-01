@@ -213,6 +213,7 @@ proc newCtx*(module: PSym): PCtx =
 proc refresh*(c: PCtx, module: PSym) =
   c.module = module
   c.prc = PProc(blocks: @[])
+  c.loopIterations = MaxLoopIterations
 
 proc registerCallback*(c: PCtx; name: string; callback: VmCallback) =
   c.callbacks.add((name, callback))

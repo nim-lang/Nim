@@ -1364,9 +1364,11 @@ var
   globalCtx: PCtx
 
 proc setupGlobalCtx(module: PSym) =
-  if globalCtx.isNil: globalCtx = newCtx(module)
-  else: refresh(globalCtx, module)
-  registerAdditionalOps(globalCtx)
+  if globalCtx.isNil:
+    globalCtx = newCtx(module)
+    registerAdditionalOps(globalCtx)
+  else:
+    refresh(globalCtx, module)
 
 proc myOpen(module: PSym): PPassContext =
   #var c = newEvalContext(module, emRepl)
