@@ -9,6 +9,12 @@
 
 ## Regular expression support for Nim. Consider using the pegs module
 ## instead.
+##
+## **Note:** The 're' proc defaults to the **extended regular expression
+## syntax** which lets you use whitespace freely to make your regexes readable.
+## However, this means to match whitespace ``\s`` or something similar has
+## to be used.
+##
 ## This module is implemented by providing a wrapper around the
 ## `PRCE (Perl-Compatible Regular Expressions) <http://www.pcre.org>`_
 ## C library. This means that your application will depend on the PRCE
