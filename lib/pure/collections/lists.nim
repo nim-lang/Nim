@@ -32,7 +32,7 @@ type
     head*, tail*: DoublyLinkedNode[T]
 
   SinglyLinkedRing*[T] = object ## a singly linked ring
-    head*: SinglyLinkedNode[T]
+    head*, tail*: SinglyLinkedNode[T]
   
   DoublyLinkedRing*[T] = object ## a doubly linked ring
     head*: DoublyLinkedNode[T]
@@ -267,13 +267,31 @@ proc remove*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
   if n.prev != nil: n.prev.next = n.next
 
 
+proc append*[T](L: var SinglyLinkedRing[T], n: SinglyLinkedNode[T]) = 
+  ## appends a node `n` to `L`. Efficiency: O(1).
+  if L.head != nil:
+    n.next = L.head
+    assert(L.tail != nil)
+    L.tail.next = n
+    L.tail = n
+  else:
+    n.next = n
+    L.head = n
+    L.tail = n
+
+proc append*[T](L: var SinglyLinkedRing[T], value: T) = 
+  ## appends a value to `L`. Efficiency: O(1).
+  append(L, newSinglyLinkedNode(value))
+
 proc prepend*[T](L: var SinglyLinkedRing[T], n: SinglyLinkedNode[T]) = 
   ## prepends a node `n` to `L`. Efficiency: O(1).
-  if L.head != nil: 
+  if L.head != nil:
     n.next = L.head
-    L.head.next = n
-  else: 
+    assert(L.tail != nil)
+    L.tail.next = n
+  else:
     n.next = n
+    L.tail = n
   L.head = n
 
 proc prepend*[T](L: var SinglyLinkedRing[T], value: T) = 
