@@ -719,7 +719,7 @@ proc outerProcSons(o: POuterContext, n: PNode, it: TIter) =
     let x = transformOuterProc(o, n.sons[i], it)
     if x != nil: n.sons[i] = x
 
-proc liftIterSym(n: PNode): PNode =
+proc liftIterSym(n: PNode; owner: PSym): PNode =
   # transforms  (iter)  to  (let env = newClosure[iter](); (iter, env))
   let iter = n.sym
   assert iter.kind == skClosureIterator
@@ -727,7 +727,7 @@ proc liftIterSym(n: PNode): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   
   let hp = getHiddenParam(iter)
-  let env = newSym(skLet, iter.name, iter.owner, iter.info)
+  let env = newSym(skLet, iter.name, owner, n.info)
   env.typ = hp.typ
   env.flags = hp.flags
   var v = newNodeI(nkVarSection, n.info)
@@ -867,7 +867,7 @@ proc transformOuterProc(o: POuterContext, n: PNode; it: TIter): PNode =
       # XXX why doesn't this work?
       var closure = PEnv(idTableGet(o.lambdasToEnv, local))
       if closure.isNil:
-        return liftIterSym(n)
+        return liftIterSym(n, o.fn)
       else:
         let createdVar = generateIterClosureCreation(o, closure,
                                                      closure.attachedNode)
