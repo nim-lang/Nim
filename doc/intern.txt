@@ -145,6 +145,19 @@ are also lots of procs that aid in debugging:
     # why does it process temp.nim here?
     writeStackTrace()
 
+To create a new compiler for each run, use ``koch temp``::
+
+  ./koch temp c /tmp/test.nim
+
+``koch temp`` creates a debug build of the compiler, which is useful
+to create stacktraces for compiler debugging.
+
+``koch temp`` returns 125 as the exit code in case the compiler
+compilation fails. This exit code tells ``git bisect`` to skip the
+current commit.::
+
+  git bisect start bad-commit good-commit
+  git bisect ./koch -r c test-source.nim
 
 The compiler's architecture
 ===========================
