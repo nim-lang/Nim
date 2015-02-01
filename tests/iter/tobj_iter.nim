@@ -1,3 +1,7 @@
+discard """
+  output: "7"
+"""
+
 # bug #2023
 
 {.deadCodeElim:on.}
