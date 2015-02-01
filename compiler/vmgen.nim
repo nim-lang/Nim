@@ -893,7 +893,8 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
   of mHigh:
     if dest < 0: dest = c.getTemp(n.typ)
     let tmp = c.genx(n.sons[1])
-    if n.sons[1].typ.skipTypes(abstractVar-{tyTypeDesc}).kind == tyString:
+    case n.sons[1].typ.skipTypes(abstractVar-{tyTypeDesc}).kind:
+    of tyString, tyCString:
       c.gABI(n, opcLenStr, dest, tmp, 1)
     else:
       c.gABI(n, opcLenSeq, dest, tmp, 1)
