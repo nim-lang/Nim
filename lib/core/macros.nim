@@ -238,7 +238,7 @@ proc genSym*(kind: TNimrodSymKind = nskLet; ident = ""): PNimrodNode {.
   ## needs to occur in a declaration context.
 
 proc callsite*(): PNimrodNode {.magic: "NCallSite", gcsafe.}
-  ## returns the AST if the invokation expression that invoked this macro.
+  ## returns the AST of the invocation expression that invoked this macro.
 
 proc toStrLit*(n: PNimrodNode): PNimrodNode {.compileTime.} =
   ## converts the AST `n` to the concrete Nimrod code and wraps that
