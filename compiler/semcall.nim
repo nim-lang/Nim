@@ -315,6 +315,8 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
     var r = resolveOverloads(c, n, nOrig, filter, errors)
     if r.state == csMatch: result = semResolvedCall(c, n, r)
     else:
+      # get rid of the deref again for a better error message:
+      n.sons[1] = n.sons[1].sons[0]
       notFoundError(c, n, errors)
   else: 
     notFoundError(c, n, errors)
