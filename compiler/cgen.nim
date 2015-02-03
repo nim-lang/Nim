@@ -402,11 +402,8 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
 
 proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) = 
   inc(p.labels)
-  if gCmd == cmdCompileToLLVM: 
-    result.r = con("%LOC", toRope(p.labels))
-  else: 
-    result.r = con("LOC", toRope(p.labels))
-    linefmt(p, cpsLocals, "$1 $2;$n", getTypeDesc(p.module, t), result.r)
+  result.r = con("LOC", toRope(p.labels))
+  linefmt(p, cpsLocals, "$1 $2;$n", getTypeDesc(p.module, t), result.r)
   result.k = locTemp
   #result.a = - 1
   result.t = getUniqueType(t)
@@ -494,22 +491,26 @@ proc localDebugInfo(p: BProc, s: PSym) =
   inc(p.maxFrameLen)
   inc p.blocks[p.blocks.len-1].frameLen
 
-proc assignLocalVar(p: BProc, s: PSym) = 
-  #assert(s.loc.k == locNone) // not yet assigned
-  # this need not be fullfilled for inline procs; they are regenerated
-  # for each module that uses them!
+proc localVarDecl(p: BProc; s: PSym): PRope =
   if s.loc.k == locNone: 
     fillLoc(s.loc, locLocalVar, s.typ, mangleName(s), OnStack)
     if s.kind == skLet: incl(s.loc.flags, lfNoDeepCopy)
-  var decl = getTypeDesc(p.module, s.loc.t)
+  result = getTypeDesc(p.module, s.loc.t)
   if s.constraint.isNil:
-    if sfRegister in s.flags: app(decl, " register")
+    if sfRegister in s.flags: app(result, " register")
     #elif skipTypes(s.typ, abstractInst).kind in GcTypeKinds:
     #  app(decl, " GC_GUARD")
-    if sfVolatile in s.flags: app(decl, " volatile")
-    appf(decl, " $1;$n", [s.loc.r])
+    if sfVolatile in s.flags: app(result, " volatile")
+    app(result, " ")
+    app(result, s.loc.r)
   else:
-    decl = ropef(s.cgDeclFrmt & ";$n", decl, s.loc.r)
+    result = ropef(s.cgDeclFrmt, result, s.loc.r)
+
+proc assignLocalVar(p: BProc, s: PSym) =
+  #assert(s.loc.k == locNone) // not yet assigned
+  # this need not be fullfilled for inline procs; they are regenerated
+  # for each module that uses them!
+  let decl = localVarDecl(p, s).con(";" & tnl)
   line(p, cpsLocals, decl)
   localDebugInfo(p, s)
 
@@ -584,6 +585,11 @@ proc genLiteral(p: BProc, n: PNode): PRope
 
 proc initLocExpr(p: BProc, e: PNode, result: var TLoc) =
   initLoc(result, locNone, e.typ, OnUnknown)
+  expr(p, e, result)
+
+proc initLocExprSingleUse(p: BProc, e: PNode, result: var TLoc) =
+  initLoc(result, locNone, e.typ, OnUnknown)
+  result.flags.incl lfSingleUse
   expr(p, e, result)
 
 proc lenField(p: BProc): PRope =

@@ -202,8 +202,19 @@ proc genSingleVar(p: BProc, a: PNode) =
       genVarPrototypeAux(generatedHeader, v)
     registerGcRoot(p, v)
   else:
+    let imm = isAssignedImmediately(a.sons[2])
+    if imm and p.module.compileToCpp:
+      # C++ really doesn't like things like 'Foo f; f = x' as that invokes a
+      # parameterless constructor followed by an assignment operator. So we
+      # generate better code here:
+      genLineDir(p, a)
+      let decl = localVarDecl(p, v)
+      var tmp: TLoc
+      initLocExprSingleUse(p, a.sons[2], tmp)
+      lineF(p, cpsStmts, "$# = $#;$n", decl, tmp.rdLoc)
+      return
     assignLocalVar(p, v)
-    initLocalVar(p, v, isAssignedImmediately(a.sons[2]))
+    initLocalVar(p, v, imm)
 
   if a.sons[2].kind != nkEmpty:
     genLineDir(targetProc, a)

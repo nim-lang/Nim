@@ -655,7 +655,6 @@ type
     locGlobalVar,             # location is a global variable
     locParam,                 # location is a parameter
     locField,                 # location is a record field
-    locArrayElem,             # location is an array element
     locExpr,                  # "location" is really an expression
     locProc,                  # location is a proc (an address of a procedure)
     locData,                  # location is a constant
@@ -669,14 +668,15 @@ type
     lfDynamicLib,             # link symbol to dynamic library
     lfExportLib,              # export symbol for dynamic library generation
     lfHeader,                 # include header file for symbol
-    lfImportCompilerProc      # ``importc`` of a compilerproc
+    lfImportCompilerProc,     # ``importc`` of a compilerproc
+    lfSingleUse               # no location yet and will only be used once
   TStorageLoc* = enum 
     OnUnknown,                # location is unknown (stack, heap or static)
     OnStack,                  # location is on hardware stack
     OnHeap                    # location is on heap or global
                               # (reference counting needed)
   TLocFlags* = set[TLocFlag]
-  TLoc*{.final.} = object     
+  TLoc* = object     
     k*: TLocKind              # kind of location
     s*: TStorageLoc
     flags*: TLocFlags         # location's flags

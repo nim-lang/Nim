@@ -662,9 +662,13 @@ proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
               ropef(unArithTab[op], [rdLoc(a), toRope(getSize(t) * 8),
                     getSimpleTypeDesc(p.module, e.typ)]))
 
+proc isCppRef(p: BProc; typ: PType): bool {.inline.} =
+  result = p.module.compileToCpp and
+      skipTypes(typ, abstractInst).kind == tyVar
+
 proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
   let mt = mapType(e.sons[0].typ)
-  if mt in {ctArray, ctPtrToArray} and not enforceDeref:
+  if (mt in {ctArray, ctPtrToArray} and not enforceDeref):
     # XXX the amount of hacks for C's arrays is incredible, maybe we should
     # simply wrap them in a struct? --> Losing auto vectorization then?
     #if e[0].kind != nkBracketExpr:
@@ -672,12 +676,15 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
     expr(p, e.sons[0], d)
   else:
     var a: TLoc
-    initLocExpr(p, e.sons[0], a)
+    initLocExprSingleUse(p, e.sons[0], a)
     case skipTypes(a.t, abstractInst).kind
     of tyRef:
       d.s = OnHeap
     of tyVar:
       d.s = OnUnknown
+      if p.module.compileToCpp:
+        putIntoDest(p, d, e.typ, rdLoc(a))
+        return
     of tyPtr:
       d.s = OnUnknown         # BUGFIX!
     else: internalError(e.info, "genDeref " & $a.t.kind)
@@ -698,7 +705,7 @@ proc genAddr(p: BProc, e: PNode, d: var TLoc) =
     initLocExpr(p, e.sons[0], a)
     putIntoDest(p, d, e.typ, con("&", a.r))
     #Message(e.info, warnUser, "HERE NEW &")
-  elif mapType(e.sons[0].typ) == ctArray:
+  elif mapType(e.sons[0].typ) == ctArray or isCppRef(p, e.sons[0].typ):
     expr(p, e.sons[0], d)
   else:
     var a: TLoc
@@ -1236,7 +1243,8 @@ proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
   var t = skipTypes(a.t, abstractInst)
   while t.kind in {tyVar, tyPtr, tyRef}:
     if t.kind != tyVar: nilCheck = r
-    r = rfmt(nil, "(*$1)", r)
+    if t.kind != tyVar or not p.module.compileToCpp:
+      r = rfmt(nil, "(*$1)", r)
     t = skipTypes(t.lastSon, typedescInst)
   if not p.module.compileToCpp:
     while t.kind == tyObject and t.sons[0] != nil:
@@ -1863,7 +1871,8 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
     var t = skipTypes(a.t, abstractInst)
     while t.kind in {tyVar, tyPtr, tyRef}:
       if t.kind != tyVar: nilCheck = r
-      r = ropef("(*$1)", [r])
+      if t.kind != tyVar or not p.module.compileToCpp:
+        r = ropef("(*$1)", [r])
       t = skipTypes(t.lastSon, abstractInst)
     if not p.module.compileToCpp:
       while t.kind == tyObject and t.sons[0] != nil:
@@ -2073,9 +2082,9 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     genAsgn(p, n, fastAsgn=p.prc != nil)
   of nkDiscardStmt:
     if n.sons[0].kind != nkEmpty:
-      var a: TLoc
       genLineDir(p, n)
-      initLocExpr(p, n.sons[0], a)
+      var a: TLoc
+      initLocExprSingleUse(p, n.sons[0], a)
   of nkAsmStmt: genAsmStmt(p, n)
   of nkTryStmt:
     if p.module.compileToCpp: genTryCpp(p, n, d)
