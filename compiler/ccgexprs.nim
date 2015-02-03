@@ -2084,7 +2084,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     if n.sons[0].kind != nkEmpty:
       genLineDir(p, n)
       var a: TLoc
-      initLocExprSingleUse(p, n.sons[0], a)
+      initLocExpr(p, n.sons[0], a)
   of nkAsmStmt: genAsmStmt(p, n)
   of nkTryStmt:
     if p.module.compileToCpp: genTryCpp(p, n, d)
