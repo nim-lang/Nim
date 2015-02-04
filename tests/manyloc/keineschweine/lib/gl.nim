@@ -38,7 +38,7 @@ type
   PGLclampf* = ptr TGLclampf
   PGLdouble* = ptr TGLdouble
   PGLclampd* = ptr TGLclampd
-  PGLvoid* = Pointer
+  PGLvoid* = pointer
   PPGLvoid* = ptr PGLvoid
   TGLenum* = cint
   TGLboolean* = bool
@@ -983,7 +983,7 @@ const                         # Version
   GL_TEXTURE_COMPONENTS* = GL_TEXTURE_INTERNAL_FORMAT
 
 proc glAccum*(op: TGLenum, value: TGLfloat){.dynlib: dllname, importc: "glAccum".}
-proc glAlphaFunc*(func: TGLenum, theref: TGLclampf){.dynlib: dllname, 
+proc glAlphaFunc*(fun: TGLenum, theref: TGLclampf){.dynlib: dllname, 
     importc: "glAlphaFunc".}
 proc glAreTexturesResident*(n: TGLsizei, textures: PGLuint, 
                             residences: PGLboolean): TGLboolean{.
@@ -998,7 +998,7 @@ proc glBitmap*(width, height: TGLsizei, xorig, yorig: TGLfloat,
 proc glBlendFunc*(sfactor, dfactor: TGLenum){.dynlib: dllname, 
     importc: "glBlendFunc".}
 proc glCallList*(list: TGLuint){.dynlib: dllname, importc: "glCallList".}
-proc glCallLists*(n: TGLsizei, atype: TGLenum, lists: Pointer){.dynlib: dllname, 
+proc glCallLists*(n: TGLsizei, atype: TGLenum, lists: pointer){.dynlib: dllname, 
     importc: "glCallLists".}
 proc glClear*(mask: TGLbitfield){.dynlib: dllname, importc: "glClear".}
 proc glClearAccum*(red, green, blue, alpha: TGLfloat){.dynlib: dllname, 
@@ -1062,7 +1062,7 @@ proc glColorMask*(red, green, blue, alpha: TGLboolean){.dynlib: dllname,
 proc glColorMaterial*(face, mode: TGLenum){.dynlib: dllname, 
     importc: "glColorMaterial".}
 proc glColorPointer*(size: TGLint, atype: TGLenum, stride: TGLsizei, 
-                     pointer: Pointer){.dynlib: dllname, 
+                     p: pointer){.dynlib: dllname, 
                                         importc: "glColorPointer".}
 proc glCopyPixels*(x, y: TGLint, width, height: TGLsizei, atype: TGLenum){.
     dynlib: dllname, importc: "glCopyPixels".}
@@ -1084,7 +1084,7 @@ proc glDeleteLists*(list: TGLuint, range: TGLsizei){.dynlib: dllname,
     importc: "glDeleteLists".}
 proc glDeleteTextures*(n: TGLsizei, textures: PGLuint){.dynlib: dllname, 
     importc: "glDeleteTextures".}
-proc glDepthFunc*(func: TGLenum){.dynlib: dllname, importc: "glDepthFunc".}
+proc glDepthFunc*(fun: TGLenum){.dynlib: dllname, importc: "glDepthFunc".}
 proc glDepthMask*(flag: TGLboolean){.dynlib: dllname, importc: "glDepthMask".}
 proc glDepthRange*(zNear, zFar: TGLclampd){.dynlib: dllname, 
     importc: "glDepthRange".}
@@ -1095,12 +1095,12 @@ proc glDrawArrays*(mode: TGLenum, first: TGLint, count: TGLsizei){.
     dynlib: dllname, importc: "glDrawArrays".}
 proc glDrawBuffer*(mode: TGLenum){.dynlib: dllname, importc: "glDrawBuffer".}
 proc glDrawElements*(mode: TGLenum, count: TGLsizei, atype: TGLenum, 
-                     indices: Pointer){.dynlib: dllname, 
+                     indices: pointer){.dynlib: dllname, 
                                         importc: "glDrawElements".}
 proc glDrawPixels*(width, height: TGLsizei, format, atype: TGLenum, 
-                   pixels: Pointer){.dynlib: dllname, importc: "glDrawPixels".}
+                   pixels: pointer){.dynlib: dllname, importc: "glDrawPixels".}
 proc glEdgeFlag*(flag: TGLboolean){.dynlib: dllname, importc: "glEdgeFlag".}
-proc glEdgeFlagPointer*(stride: TGLsizei, pointer: Pointer){.dynlib: dllname, 
+proc glEdgeFlagPointer*(stride: TGLsizei, p: pointer){.dynlib: dllname, 
     importc: "glEdgeFlagPointer".}
 proc glEdgeFlagv*(flag: PGLboolean){.dynlib: dllname, importc: "glEdgeFlagv".}
 proc glEnable*(cap: TGLenum){.dynlib: dllname, importc: "glEnable".}
@@ -1171,7 +1171,7 @@ proc glGetPixelMapuiv*(map: TGLenum, values: PGLuint){.dynlib: dllname,
     importc: "glGetPixelMapuiv".}
 proc glGetPixelMapusv*(map: TGLenum, values: PGLushort){.dynlib: dllname, 
     importc: "glGetPixelMapusv".}
-proc glGetPointerv*(pname: TGLenum, params: Pointer){.dynlib: dllname, 
+proc glGetPointerv*(pname: TGLenum, params: pointer){.dynlib: dllname, 
     importc: "glGetPointerv".}
 proc glGetPolygonStipple*(mask: PGLubyte){.dynlib: dllname, 
     importc: "glGetPolygonStipple".}
@@ -1188,10 +1188,10 @@ proc glGetTexGenfv*(coord, pname: TGLenum, params: PGLfloat){.dynlib: dllname,
 proc glGetTexGeniv*(coord, pname: TGLenum, params: PGLint){.dynlib: dllname, 
     importc: "glGetTexGeniv".}
 proc glGetTexImage*(target: TGLenum, level: TGLint, format: TGLenum, 
-                    atype: TGLenum, pixels: Pointer){.dynlib: dllname, 
+                    atype: TGLenum, pixels: pointer){.dynlib: dllname, 
     importc: "glGetTexImage".}
 proc glGetTexLevelParameterfv*(target: TGLenum, level: TGLint, pname: TGLenum, 
-                               params: Pointer){.dynlib: dllname, 
+                               params: pointer){.dynlib: dllname, 
     importc: "glGetTexLevelParameterfv".}
 proc glGetTexLevelParameteriv*(target: TGLenum, level: TGLint, pname: TGLenum, 
                                params: PGLint){.dynlib: dllname, 
@@ -1202,7 +1202,7 @@ proc glGetTexParameteriv*(target, pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glGetTexParameteriv".}
 proc glHint*(target, mode: TGLenum){.dynlib: dllname, importc: "glHint".}
 proc glIndexMask*(mask: TGLuint){.dynlib: dllname, importc: "glIndexMask".}
-proc glIndexPointer*(atype: TGLenum, stride: TGLsizei, pointer: Pointer){.
+proc glIndexPointer*(atype: TGLenum, stride: TGLsizei, p: pointer){.
     dynlib: dllname, importc: "glIndexPointer".}
 proc glIndexd*(c: TGLdouble){.dynlib: dllname, importc: "glIndexd".}
 proc glIndexdv*(c: PGLdouble){.dynlib: dllname, importc: "glIndexdv".}
@@ -1215,7 +1215,7 @@ proc glIndexsv*(c: PGLshort){.dynlib: dllname, importc: "glIndexsv".}
 proc glIndexub*(c: TGLubyte){.dynlib: dllname, importc: "glIndexub".}
 proc glIndexubv*(c: PGLubyte){.dynlib: dllname, importc: "glIndexubv".}
 proc glInitNames*(){.dynlib: dllname, importc: "glInitNames".}
-proc glInterleavedArrays*(format: TGLenum, stride: TGLsizei, pointer: Pointer){.
+proc glInterleavedArrays*(format: TGLenum, stride: TGLsizei, p: pointer){.
     dynlib: dllname, importc: "glInterleavedArrays".}
 proc glIsEnabled*(cap: TGLenum): TGLboolean{.dynlib: dllname, 
     importc: "glIsEnabled".}
@@ -1288,7 +1288,7 @@ proc glNormal3i*(nx, ny, nz: TGLint){.dynlib: dllname, importc: "glNormal3i".}
 proc glNormal3iv*(v: PGLint){.dynlib: dllname, importc: "glNormal3iv".}
 proc glNormal3s*(nx, ny, nz: TGLshort){.dynlib: dllname, importc: "glNormal3s".}
 proc glNormal3sv*(v: PGLshort){.dynlib: dllname, importc: "glNormal3sv".}
-proc glNormalPointer*(atype: TGLenum, stride: TGLsizei, pointer: Pointer){.
+proc glNormalPointer*(atype: TGLenum, stride: TGLsizei, p: pointer){.
     dynlib: dllname, importc: "glNormalPointer".}
 proc glOrtho*(left, right, bottom, top, zNear, zFar: TGLdouble){.
     dynlib: dllname, importc: "glOrtho".}
@@ -1360,7 +1360,7 @@ proc glRasterPos4s*(x, y, z, w: TGLshort){.dynlib: dllname,
 proc glRasterPos4sv*(v: PGLshort){.dynlib: dllname, importc: "glRasterPos4sv".}
 proc glReadBuffer*(mode: TGLenum){.dynlib: dllname, importc: "glReadBuffer".}
 proc glReadPixels*(x, y: TGLint, width, height: TGLsizei, 
-                   format, atype: TGLenum, pixels: Pointer){.dynlib: dllname, 
+                   format, atype: TGLenum, pixels: pointer){.dynlib: dllname, 
     importc: "glReadPixels".}
 proc glRectd*(x1, y1, x2, y2: TGLdouble){.dynlib: dllname, importc: "glRectd".}
 proc glRectdv*(v1: PGLdouble, v2: PGLdouble){.dynlib: dllname, 
@@ -1383,7 +1383,7 @@ proc glScissor*(x, y: TGLint, width, height: TGLsizei){.dynlib: dllname,
 proc glSelectBuffer*(size: TGLsizei, buffer: PGLuint){.dynlib: dllname, 
     importc: "glSelectBuffer".}
 proc glShadeModel*(mode: TGLenum){.dynlib: dllname, importc: "glShadeModel".}
-proc glStencilFunc*(func: TGLenum, theref: TGLint, mask: TGLuint){.
+proc glStencilFunc*(fun: TGLenum, theref: TGLint, mask: TGLuint){.
     dynlib: dllname, importc: "glStencilFunc".}
 proc glStencilMask*(mask: TGLuint){.dynlib: dllname, importc: "glStencilMask".}
 proc glStencilOp*(fail, zfail, zpass: TGLenum){.dynlib: dllname, 
@@ -1424,7 +1424,7 @@ proc glTexCoord4s*(s, t, r, q: TGLshort){.dynlib: dllname,
     importc: "glTexCoord4s".}
 proc glTexCoord4sv*(v: PGLshort){.dynlib: dllname, importc: "glTexCoord4sv".}
 proc glTexCoordPointer*(size: TGLint, atype: TGLenum, stride: TGLsizei, 
-                        pointer: Pointer){.dynlib: dllname, 
+                        p: pointer){.dynlib: dllname, 
     importc: "glTexCoordPointer".}
 proc glTexEnvf*(target: TGLenum, pname: TGLenum, param: TGLfloat){.
     dynlib: dllname, importc: "glTexEnvf".}
@@ -1448,10 +1448,10 @@ proc glTexGeniv*(coord: TGLenum, pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glTexGeniv".}
 proc glTexImage1D*(target: TGLenum, level, internalformat: TGLint, 
                    width: TGLsizei, border: TGLint, format, atype: TGLenum, 
-                   pixels: Pointer){.dynlib: dllname, importc: "glTexImage1D".}
+                   pixels: pointer){.dynlib: dllname, importc: "glTexImage1D".}
 proc glTexImage2D*(target: TGLenum, level, internalformat: TGLint, 
                    width, height: TGLsizei, border: TGLint, 
-                   format, atype: TGLenum, pixels: Pointer){.dynlib: dllname, 
+                   format, atype: TGLenum, pixels: pointer){.dynlib: dllname, 
     importc: "glTexImage2D".}
 proc glTexParameterf*(target: TGLenum, pname: TGLenum, param: TGLfloat){.
     dynlib: dllname, importc: "glTexParameterf".}
@@ -1462,11 +1462,11 @@ proc glTexParameteri*(target: TGLenum, pname: TGLenum, param: TGLint){.
 proc glTexParameteriv*(target: TGLenum, pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glTexParameteriv".}
 proc glTexSubImage1D*(target: TGLenum, level, xoffset: TGLint, width: TGLsizei, 
-                      format, atype: TGLenum, pixels: Pointer){.dynlib: dllname, 
+                      format, atype: TGLenum, pixels: pointer){.dynlib: dllname, 
     importc: "glTexSubImage1D".}
 proc glTexSubImage2D*(target: TGLenum, level, xoffset, yoffset: TGLint, 
                       width, height: TGLsizei, format, atype: TGLenum, 
-                      pixels: Pointer){.dynlib: dllname, 
+                      pixels: pointer){.dynlib: dllname, 
                                         importc: "glTexSubImage2D".}
 proc glTranslated*(x, y, z: TGLdouble){.dynlib: dllname, importc: "glTranslated".}
 proc glTranslatef*(x, y, z: TGLfloat){.dynlib: dllname, importc: "glTranslatef".}
@@ -1495,7 +1495,7 @@ proc glVertex4iv*(v: PGLint){.dynlib: dllname, importc: "glVertex4iv".}
 proc glVertex4s*(x, y, z, w: TGLshort){.dynlib: dllname, importc: "glVertex4s".}
 proc glVertex4sv*(v: PGLshort){.dynlib: dllname, importc: "glVertex4sv".}
 proc glVertexPointer*(size: TGLint, atype: TGLenum, stride: TGLsizei, 
-                      pointer: Pointer){.dynlib: dllname, 
+                      p: pointer){.dynlib: dllname, 
     importc: "glVertexPointer".}
 proc glViewport*(x, y: TGLint, width, height: TGLsizei){.dynlib: dllname, 
     importc: "glViewport".}
@@ -1505,28 +1505,28 @@ type
                                      count: TGLsizei)
   PFN_GLVERTEX_POINTER_EXTPROC* = proc (size: TGLint, atype: TGLenum, 
                                         stride, count: TGLsizei, 
-                                        pointer: Pointer)
+                                        p: pointer)
   PFN_GLNORMAL_POINTER_EXTPROC* = proc (atype: TGLenum, stride, count: TGLsizei, 
-                                        pointer: Pointer)
+                                        p: pointer)
   PFN_GLCOLOR_POINTER_EXTPROC* = proc (size: TGLint, atype: TGLenum, 
-                                       stride, count: TGLsizei, pointer: Pointer)
+                                       stride, count: TGLsizei, p: pointer)
   PFN_GLINDEX_POINTER_EXTPROC* = proc (atype: TGLenum, stride, count: TGLsizei, 
-                                       pointer: Pointer)
+                                       p: pointer)
   PFN_GLTEXCOORD_POINTER_EXTPROC* = proc (size: TGLint, atype: TGLenum, 
-      stride, count: TGLsizei, pointer: Pointer)
+      stride, count: TGLsizei, p: pointer)
   PFN_GLEDGEFLAG_POINTER_EXTPROC* = proc (stride, count: TGLsizei, 
       pointer: PGLboolean)
-  PFN_GLGET_POINTER_VEXT_PROC* = proc (pname: TGLenum, params: Pointer)
+  PFN_GLGET_POINTER_VEXT_PROC* = proc (pname: TGLenum, params: pointer)
   PFN_GLARRAY_ELEMENT_ARRAY_EXTPROC* = proc (mode: TGLenum, count: TGLsizei, 
-      pi: Pointer)            # WIN_swap_hint
+      pi: pointer)            # WIN_swap_hint
   PFN_GLADDSWAPHINT_RECT_WINPROC* = proc (x, y: TGLint, width, height: TGLsizei)
   PFN_GLCOLOR_TABLE_EXTPROC* = proc (target, internalFormat: TGLenum, 
                                      width: TGLsizei, format, atype: TGLenum, 
-                                     data: Pointer)
+                                     data: pointer)
   PFN_GLCOLOR_SUBTABLE_EXTPROC* = proc (target: TGLenum, start, count: TGLsizei, 
-                                        format, atype: TGLenum, data: Pointer)
+                                        format, atype: TGLenum, data: pointer)
   PFN_GLGETCOLOR_TABLE_EXTPROC* = proc (target, format, atype: TGLenum, 
-                                        data: Pointer)
+                                        data: pointer)
   PFN_GLGETCOLOR_TABLE_PARAMETER_IVEXTPROC* = proc (target, pname: TGLenum, 
       params: PGLint)
   PFN_GLGETCOLOR_TABLE_PARAMETER_FVEXTPROC* = proc (target, pname: TGLenum, 

@@ -2,7 +2,7 @@ import irc, sockets, asyncio, json, os, strutils, times, redis
 
 type
   TDb* = object
-    r*: TRedis
+    r*: Redis
     lastPing: float
 
   TBuildResult* = enum
@@ -15,20 +15,20 @@ type
   
   TCommit* = object
     commitMsg*, username*, hash*: string
-    date*: TTime
+    date*: Time
 
   TPlatform* = object
     buildResult*: TBuildResult
     testResult*: TTestResult
     failReason*, platform*: string
-    total*, passed*, skipped*, failed*: biggestInt
+    total*, passed*, skipped*, failed*: BiggestInt
     csources*: bool
 
 const
   listName = "commits"
-  failOnExisting = False
+  failOnExisting = false
 
-proc open*(host = "localhost", port: TPort): TDb =
+proc open*(host = "localhost", port: Port): TDb =
   result.r = redis.open(host, port)
   result.lastPing = epochTime()
 
@@ -80,7 +80,7 @@ proc getCommits*(database: TDb,
     for key, value in database.r.hPairs(c):
       case normalize(key)
       of "commitmsg": commit.commitMsg = value
-      of "date": commit.date = TTime(parseInt(value))
+      of "date": commit.date = Time(parseInt(value))
       of "username": commit.username = value
       else:
         echo(key)
@@ -157,21 +157,21 @@ proc `[]`*(p: seq[TPlatform], name: string): TPlatform =
   for platform in items(p):
     if platform.platform == name:
       return platform
-  raise newException(EInvalidValue, name & " platforms not found in commits.")
+  raise newException(ValueError, name & " platforms not found in commits.")
   
 proc contains*(p: seq[TPlatform], s: string): bool =
   for i in items(p):
     if i.platform == s:
-      return True
+      return true
     
 
 type
   PState = ref TState
-  TState = object of TObject
-    dispatcher: PDispatcher
-    sock: PAsyncSocket
+  TState = object of RootObj
+    dispatcher: Dispatcher
+    sock: AsyncSocket
     ircClient: PAsyncIRC
-    hubPort: TPort
+    hubPort: Port
     database: TDb
     dbConnected: bool
 
@@ -181,7 +181,7 @@ type
   TSeen = object
     nick: string
     channel: string
-    timestamp: TTime
+    timestamp: Time
     case kind*: TSeenType
     of PSeenJoin: nil
     of PSeenPart, PSeenQuit, PSeenMsg:
@@ -218,11 +218,12 @@ proc getSeen(d: TDb, nick: string, s: var TSeen): bool =
     for key, value in d.r.hPairs("seen:" & nick):
       case normalize(key)
       of "type":
+        discard
         #s.kind = value.parseInt.TSeenType
       of "channel":
         s.channel = value
       of "timestamp":
-        s.timestamp = TTime(value.parseInt)
+        s.timestamp = Time(value.parseInt)
       of "msg":
         s.msg = value
       of "newnick":
@@ -235,7 +236,7 @@ template createSeen(typ: TSeenType, n, c: string): stmt {.immediate, dirty.} =
   seenNick.channel = c
   seenNick.timestamp = getTime()
 
-proc parseReply(line: string, expect: string): Bool =
+proc parseReply(line: string, expect: string): bool =
   var jsonDoc = parseJson(line)
   return jsonDoc["reply"].str == expect
 
@@ -272,14 +273,14 @@ proc handleWebMessage(state: PState, line: string) =
       message.add(limitCommitMsg(commit["message"].str))
 
       # Send message to #nim.
-      state.ircClient.privmsg(joinChans[0], message)
+      discard state.ircClient.privmsg(joinChans[0], message)
   elif json.hasKey("redisinfo"):
     assert json["redisinfo"].hasKey("port")
     #let redisPort = json["redisinfo"]["port"].num
     state.dbConnected = true
 
 proc hubConnect(state: PState)
-proc handleConnect(s: PAsyncSocket, state: PState) =
+proc handleConnect(s: AsyncSocket, state: PState) =
   try:
     # Send greeting
     var obj = newJObject()
@@ -295,7 +296,7 @@ proc handleConnect(s: PAsyncSocket, state: PState) =
       doAssert parseReply(line, "OK")
       echo("The hub accepted me!")
     else:
-      raise newException(EInvalidValue,
+      raise newException(ValueError,
                          "Hub didn't accept me. Waited 1.5 seconds.")
     
     # ask for the redis info
@@ -303,35 +304,35 @@ proc handleConnect(s: PAsyncSocket, state: PState) =
     riobj["do"] = newJString("redisinfo")
     state.sock.send($riobj & "\c\L")
     
-  except EOS:
+  except OsError:
     echo(getCurrentExceptionMsg())
     s.close()
     echo("Waiting 5 seconds...")
     sleep(5000)
     state.hubConnect()
 
-proc handleRead(s: PAsyncSocket, state: PState) =
+proc handleRead(s: AsyncSocket, state: PState) =
   var line = ""
   if state.sock.recvLine(line):
     if line != "":
       # Handle the message
       state.handleWebMessage(line)
     else:
-      echo("Disconnected from hub: ", OSErrorMsg())
+      echo("Disconnected from hub: ", osErrorMsg())
       s.close()
       echo("Reconnecting...")
       state.hubConnect()
   else:
-    echo(OSErrorMsg())
+    echo(osErrorMsg())
 
 proc hubConnect(state: PState) =
-  state.sock = AsyncSocket()
+  state.sock = asyncSocket()
   state.sock.connect("127.0.0.1", state.hubPort)
   state.sock.handleConnect =
-    proc (s: PAsyncSocket) =
+    proc (s: AsyncSocket) =
       handleConnect(s, state)
   state.sock.handleRead =
-    proc (s: PAsyncSocket) =
+    proc (s: AsyncSocket) =
       handleRead(s, state)
 
   state.dispatcher.register(state.sock)
@@ -426,7 +427,7 @@ proc handleIrc(irc: PAsyncIRC, event: TIRCEvent, state: PState) =
     else:
       discard # TODO: ?
 
-proc open(port: TPort = TPort(5123)): PState =
+proc open(port: Port = Port(5123)): PState =
   var res: PState
   new(res)
   res.dispatcher = newDispatcher()

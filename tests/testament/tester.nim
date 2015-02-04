@@ -134,7 +134,7 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest) =
 proc generatedFile(path, name: string, target: TTarget): string =
   let ext = targetToExt[target]
   result = path / "nimcache" /
-    (if target == targetJS: path.splitPath.tail & "_" else: "") &
+    (if target == targetJS: path.splitPath.tail & "_" else: "compiler_") &
     name.changeFileExt(ext)
 
 proc codegenCheck(test: TTest, check: string, given: var TSpec) =

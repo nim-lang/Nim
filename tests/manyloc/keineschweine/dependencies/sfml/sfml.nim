@@ -221,10 +221,10 @@ type
   TTransform* {.pf.} = object
     matrix*: array[0..8, cfloat]
   TColor* {.pf.} = object 
-    r*: Uint8
-    g*: Uint8
-    b*: Uint8
-    a*: Uint8
+    r*: uint8
+    g*: uint8
+    b*: uint8
+    a*: uint8
   PFloatRect* = ptr TFloatRect
   TFloatRect*{.pf.} = object 
     left*: cfloat
@@ -306,7 +306,7 @@ proc close*(window: PRenderWindow) {.
 proc isOpen*(window: PRenderWindow): bool {.
   cdecl, importc: "sfRenderWindow_isOpen", dynlib: LibG.}
 
-#void sfRenderWindow_setIcon(sfRenderWindow* renderWindow, unsigned int width, unsigned int height, const sfUint8* pixels);
+#void sfRenderWindow_setIcon(sfRenderWindow* renderWindow, unsigned int width, unsigned int height, const sfuint8* pixels);
 #proc setIcon*(window: PRenderWindow, width, height: cint, pixels: seq[uint8]) {.
 #  cdecl, importc: "sfRenderWindow_setIcon", dynlib: LibG.}
 
@@ -395,7 +395,7 @@ proc capture*(window: PRenderWindow): PImage {.
   cdecl, importc: "sfRenderWindow_capture", dynlib: LibG.}
 
 #Construct a new render texture
-proc newRenderTexture*(width, height: cint; depthBuffer: Bool): PRenderTexture {.
+proc newRenderTexture*(width, height: cint; depthBuffer: bool): PRenderTexture {.
   cdecl, importc: "sfRenderTexture_create", dynlib: LibG.}
 #Destroy an existing render texture
 proc destroy*(renderTexture: PRenderTexture){.
@@ -522,9 +522,9 @@ proc copy*(font: PFont): PFont {.
   cdecl, importc: "sfFont_copy", dynlib: LibG.}
 proc destroy*(font: PFont) {.
   cdecl, importc: "sfFont_destroy", dynlib: LibG.}
-proc getGlyph*(font: PFont, codePoint: Uint32, characterSize: cint, bold: bool): TGlyph{.
+proc getGlyph*(font: PFont, codePoint: uint32, characterSize: cint, bold: bool): TGlyph{.
   cdecl, importc: "sfFont_getGlyph", dynlib: LibG.}
-proc getKerning*(font: PFont, first: Uint32, second: Uint32, characterSize: cint): cint {.
+proc getKerning*(font: PFont, first: uint32, second: uint32, characterSize: cint): cint {.
   cdecl, importc: "sfFont_getKerning", dynlib: LibG.}
 proc getLineSpacing*(font: PFont, characterSize: cint): cint {.
   cdecl, importc: "sfFont_getLineSpacing", dynlib: LibG.}
@@ -882,7 +882,7 @@ proc getInverseTransform*(text: PText): TTransform {.
   cdecl, importc: "sfText_getInverseTransform", dynlib: LibG.}
 proc setString*(text: PText, string: cstring) {.
   cdecl, importc: "sfText_setString", dynlib: LibG.}
-proc setUnicodeString*(text: PText, string: ptr Uint32) {.
+proc setUnicodeString*(text: PText, string: ptr uint32) {.
   cdecl, importc: "sfText_setUnicodeString", dynlib: LibG.}
 proc setFont*(text: PText, font: PFont) {.
   cdecl, importc: "sfText_setFont", dynlib: LibG.}
@@ -894,13 +894,13 @@ proc setColor*(text: PText, color: TColor) {.
   cdecl, importc: "sfText_setColor", dynlib: LibG.}
 proc getString*(text: PText): cstring {.
   cdecl, importc: "sfText_getString", dynlib: LibG.}
-proc getUnicodeString*(text: PText): ptr Uint32 {.cdecl, 
+proc getUnicodeString*(text: PText): ptr uint32 {.cdecl, 
   importc: "sfText_getUnicodeString", dynlib: LibG.}
 proc getFont*(text: PText): PFont {.
   cdecl, importc: "sfText_getFont", dynlib: LibG.}
 proc getCharacterSize*(text: PText): cint {.
   cdecl, importc: "sfText_getCharacterSize", dynlib: LibG.}
-proc getStyle*(text: PText): Uint32 {.
+proc getStyle*(text: PText): uint32 {.
   cdecl, importc: "sfText_getStyle", dynlib: LibG.}
 proc getColor*(text: PText): TColor {.
   cdecl, importc: "sfText_getColor", dynlib: LibG.}

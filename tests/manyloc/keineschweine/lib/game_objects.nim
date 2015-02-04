@@ -26,7 +26,7 @@ proc newObject*(record: PObjectRecord): PGameObject =
   when false:
     result.sprite = record.anim.spriteSheet.sprite.copy()
   result.body = newBody(result.record.physics.mass, 10.0)
-  result.shape = chipmunk.newCircleShape(result.body, result.record.physics.radius, vectorZero)
+  result.shape = chipmunk.newCircleShape(result.body, result.record.physics.radius, VectorZero)
   result.body.setPos(vector(100, 100))
 proc newObject*(name: string): PGameObject =
   result = newObject(fetchObj(name))

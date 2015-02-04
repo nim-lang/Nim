@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 const Lib = "libenet.so.1(|.0.3)"
 
-{.deadCodeElim: ON.}
+{.deadCodeElim: on.}
 const 
   ENET_VERSION_MAJOR* = 1
   ENET_VERSION_MINOR* = 3
