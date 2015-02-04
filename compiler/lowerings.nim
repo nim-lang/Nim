@@ -23,7 +23,7 @@ proc newTupleAccess*(tup: PNode, i: int): PNode =
   lit.intVal = i
   addSon(result, lit)
 
-proc addVar*(father, v: PNode) = 
+proc addVar*(father, v: PNode) =
   var vpart = newNodeI(nkIdentDefs, v.info, 3)
   vpart.sons[0] = v
   vpart.sons[1] = ast.emptyNode
@@ -53,7 +53,7 @@ proc lowerTupleUnpacking*(n: PNode; owner: PSym): PNode =
   let tempAsNode = newSymNode(temp)
   v.addVar(tempAsNode)
   result.add(v)
-  
+
   result.add newAsgnStmt(tempAsNode, value)
   for i in 0 .. n.len-3:
     if n.sons[i].kind == nkSym: v.addVar(n.sons[i])
@@ -70,7 +70,7 @@ proc rawAddField*(obj: PType; field: PSym) =
   field.position = sonsLen(obj.n)
   addSon(obj.n, newSymNode(field))
 
-proc rawIndirectAccess*(a: PNode; field: PSym; info: TLineInfo): PNode = 
+proc rawIndirectAccess*(a: PNode; field: PSym; info: TLineInfo): PNode =
   # returns a[].field as a node
   assert field.kind == skField
   var deref = newNodeI(nkHiddenDeref, info)
@@ -109,7 +109,7 @@ proc newDotExpr(obj, b: PSym): PNode =
   addSon(result, newSymNode(field))
   result.typ = field.typ
 
-proc indirectAccess*(a: PNode, b: string, info: TLineInfo): PNode = 
+proc indirectAccess*(a: PNode, b: string, info: TLineInfo): PNode =
   # returns a[].b as a node
   var deref = newNodeI(nkHiddenDeref, info)
   deref.typ = a.typ.skipTypes(abstractInst).sons[0]
@@ -144,7 +144,7 @@ proc getFieldFromObj*(t: PType; v: PSym): PSym =
     if t == nil: break
     t = t.skipTypes(abstractInst)
 
-proc indirectAccess*(a: PNode, b: PSym, info: TLineInfo): PNode = 
+proc indirectAccess*(a: PNode, b: PSym, info: TLineInfo): PNode =
   # returns a[].b as a node
   result = indirectAccess(a, b.name.s & $b.id, info)
 
@@ -158,11 +158,11 @@ proc genAddrOf*(n: PNode): PNode =
   result.typ.rawAddSon(n.typ)
 
 proc genDeref*(n: PNode): PNode =
-  result = newNodeIT(nkHiddenDeref, n.info, 
+  result = newNodeIT(nkHiddenDeref, n.info,
                      n.typ.skipTypes(abstractInst).sons[0])
   result.add n
 
-proc callCodegenProc*(name: string, arg1: PNode; 
+proc callCodegenProc*(name: string, arg1: PNode;
                       arg2, arg3: PNode = nil): PNode =
   result = newNodeI(nkCall, arg1.info)
   let sym = magicsys.getCompilerProc(name)
@@ -236,10 +236,10 @@ proc f_wrapper(thread, args) =
 
   fv.owner = thread # optional
   nimArgsPassingDone() # signal parent that the work is done
-  # 
+  #
   args.fv.blob = f(a, b, ...)
   nimFlowVarSignal(args.fv)
-  
+
   # - or -
   f(a, b, ...)
   barrierLeave(args.barrier)  # for parallel statement
@@ -261,7 +261,7 @@ proc createWrapperProc(f: PNode; threadParam, argsParam: PSym;
   var threadLocalBarrier: PSym
   if barrier != nil:
     var varSection2 = newNodeI(nkVarSection, barrier.info)
-    threadLocalBarrier = addLocalVar(varSection2, nil, argsParam.owner, 
+    threadLocalBarrier = addLocalVar(varSection2, nil, argsParam.owner,
                                      barrier.typ, barrier)
     body.add varSection2
     body.add callCodegenProc("barrierEnter", threadLocalBarrier.newSymNode)
@@ -285,7 +285,7 @@ proc createWrapperProc(f: PNode; threadParam, argsParam: PSym;
   elif fv != nil:
     let fk = fv.typ.sons[1].flowVarKind
     if fk == fvInvalid:
-      localError(f.info, "cannot create a flowVar of type: " & 
+      localError(f.info, "cannot create a flowVar of type: " &
         typeToString(fv.typ.sons[1]))
     body.add newAsgnStmt(indirectAccess(threadLocalProm.newSymNode,
       if fk == fvGC: "data" else: "blob", fv.info), call)
@@ -330,8 +330,8 @@ proc createCastExpr(argsParam: PSym; objType: PType): PNode =
   result.typ = newType(tyPtr, objType.owner)
   result.typ.rawAddSon(objType)
 
-proc setupArgsForConcurrency(n: PNode; objType: PType; scratchObj: PSym, 
-                             castExpr, call, 
+proc setupArgsForConcurrency(n: PNode; objType: PType; scratchObj: PSym,
+                             castExpr, call,
                              varSection, varInit, result: PNode) =
   let formals = n[0].typ.n
   let tmpName = getIdent(genPrefix)
@@ -385,7 +385,7 @@ proc genHigh(n: PNode): PNode =
     result.sons[1] = n
 
 proc setupArgsForParallelism(n: PNode; objType: PType; scratchObj: PSym;
-                             castExpr, call, 
+                             castExpr, call,
                              varSection, varInit, result: PNode) =
   let formals = n[0].typ.n
   let tmpName = getIdent(genPrefix)
@@ -409,7 +409,7 @@ proc setupArgsForParallelism(n: PNode; objType: PType; scratchObj: PSym;
       var fieldB = newSym(skField, tmpName, objType.owner, n.info)
       fieldB.typ = getSysType(tyInt)
       objType.addField(fieldB)
-      
+
       if getMagic(n) == mSlice:
         let a = genAddrOf(n[1])
         field.typ = a.typ
@@ -464,7 +464,7 @@ proc setupArgsForParallelism(n: PNode; objType: PType; scratchObj: PSym;
                                     useShallowCopy=true)
       call.add(threadLocal.newSymNode)
 
-proc wrapProcForSpawn*(owner: PSym; spawnExpr: PNode; retType: PType; 
+proc wrapProcForSpawn*(owner: PSym; spawnExpr: PNode; retType: PType;
                        barrier, dest: PNode = nil): PNode =
   # if 'barrier' != nil, then it is in a 'parallel' section and we
   # generate quite different code
@@ -530,10 +530,10 @@ proc wrapProcForSpawn*(owner: PSym; spawnExpr: PNode; retType: PType;
   var varSection = newNodeI(nkVarSection, n.info)
   var varInit = newNodeI(nkStmtList, n.info)
   if barrier.isNil:
-    setupArgsForConcurrency(n, objType, scratchObj, castExpr, call, 
+    setupArgsForConcurrency(n, objType, scratchObj, castExpr, call,
                             varSection, varInit, result)
   else:
-    setupArgsForParallelism(n, objType, scratchObj, castExpr, call, 
+    setupArgsForParallelism(n, objType, scratchObj, castExpr, call,
                             varSection, varInit, result)
 
   var barrierAsExpr: PNode = nil
@@ -566,7 +566,7 @@ proc wrapProcForSpawn*(owner: PSym; spawnExpr: PNode; retType: PType;
     fvAsExpr = indirectAccess(castExpr, field, n.info)
     result.add newFastAsgnStmt(newDotExpr(scratchObj, field), genAddrOf(dest))
 
-  let wrapper = createWrapperProc(fn, threadParam, argsParam, 
+  let wrapper = createWrapperProc(fn, threadParam, argsParam,
                                   varSection, varInit, call,
                                   barrierAsExpr, fvAsExpr, spawnKind)
   result.add callCodegenProc("nimSpawn", wrapper.newSymNode,

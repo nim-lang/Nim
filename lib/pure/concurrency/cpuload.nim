@@ -34,7 +34,7 @@ proc advice*(s: var ThreadPoolState): ThreadPoolAdvice =
       sysIdle, sysKernel, sysUser,
         procCreation, procExit, procKernel, procUser: TFILETIME
     if getSystemTimes(sysIdle, sysKernel, sysUser) == 0 or
-        getProcessTimes(THandle(-1), procCreation, procExit, 
+        getProcessTimes(THandle(-1), procCreation, procExit,
                         procKernel, procUser) == 0:
       return doNothing
     if s.calls > 0:
@@ -57,7 +57,7 @@ proc advice*(s: var ThreadPoolState): ThreadPoolAdvice =
     s.prevProcKernel = procKernel
     s.prevProcUser = procUser
   elif defined(linux):
-    proc fscanf(c: File, frmt: cstring) {.varargs, importc, 
+    proc fscanf(c: File, frmt: cstring) {.varargs, importc,
       header: "<stdio.h>".}
 
     var f = open("/proc/loadavg")

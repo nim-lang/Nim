@@ -9,7 +9,7 @@
 
 ## Implements Nim's 'spawn'.
 
-when not declared(NimString): 
+when not declared(NimString):
   {.error: "You must not import this module explicitly".}
 
 {.push stackTrace:off.}

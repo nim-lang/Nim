@@ -7,10 +7,10 @@ discard """
 var
   g = 5
 
-proc p(): var int = 
+proc p(): var int =
   var bla: int
   result = bla
-  
+
 p() = 45
 
 echo g

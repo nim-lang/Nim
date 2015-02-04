@@ -40,16 +40,16 @@ For the ``PNimrodNode`` type, the ``[]`` operator has been overloaded:
 ``n[i]`` is ``n``'s ``i``-th child.
 
 To specify the AST for the different Nim constructs, the notation
-``nodekind(son1, son2, ...)`` or ``nodekind(value)`` or 
+``nodekind(son1, son2, ...)`` or ``nodekind(value)`` or
 ``nodekind(field=value)`` is used.
 
-Some child may be missing. A missing child is a node of kind ``nnkEmpty``; 
+Some child may be missing. A missing child is a node of kind ``nnkEmpty``;
 a child can never be nil.
 
 
 Leaf nodes/Atoms
 ================
-A leaf of the AST often corresponds to a terminal symbol in the concrete 
+A leaf of the AST often corresponds to a terminal symbol in the concrete
 syntax.
 
 -----------------                ---------------------------------------------
@@ -141,7 +141,7 @@ AST:
 Postfix operator call
 ---------------------
 
-**Note:** There are no postfix operators in Nim. However, the 
+**Note:** There are no postfix operators in Nim. However, the
 ``nnkPostfix`` node is used for the *asterisk export marker* ``*``:
 
 Concrete syntax:
@@ -166,8 +166,8 @@ Concrete syntax:
 AST:
 
 .. code-block:: nim
-  nnkCall(nnkIdent(!"writeln"), 
-          nnkExprEqExpr(nnkIdent(!"file"), nnkIdent(!"stdout")), 
+  nnkCall(nnkIdent(!"writeln"),
+          nnkExprEqExpr(nnkIdent(!"file"), nnkIdent(!"stdout")),
           nnkStrLit("hallo"))
 
 
@@ -244,7 +244,7 @@ AST:
 Parentheses
 -----------
 
-Parentheses for affecting operator precedence or tuple construction 
+Parentheses for affecting operator precedence or tuple construction
 are built with the ``nnkPar`` node.
 
 Concrete syntax:
@@ -256,12 +256,12 @@ AST:
 
 .. code-block:: nim
   nnkPar(nnkIntLit(1), nnkIntLit(2), nnkPar(nnkIntLit(3)))
-  
-  
+
+
 Curly braces
 ------------
 
-Curly braces are used as the set constructor. 
+Curly braces are used as the set constructor.
 
 Concrete syntax:
 
@@ -277,7 +277,7 @@ AST:
 Brackets
 --------
 
-Brackets are used as the array constructor.  
+Brackets are used as the array constructor.
 
 Concrete syntax:
 
@@ -338,7 +338,7 @@ there is no ``else`` branch, no ``nnkElse`` child exists.
 Concrete syntax:
 
 .. code-block:: nim
-  if cond1: 
+  if cond1:
     stmt1
   elif cond2:
     stmt2
@@ -393,7 +393,7 @@ AST:
 .. code-block:: nim
   nnkStmtList(stmt1, stmt2, stmt3)
 
-  
+
 Case statement
 --------------
 
@@ -401,7 +401,7 @@ Concrete syntax:
 
 .. code-block:: nim
   case expr1
-  of expr2, expr3..expr4: 
+  of expr2, expr3..expr4:
     stmt1
   of expr5:
     stmt2
@@ -462,11 +462,11 @@ Concrete syntax:
 .. code-block:: nim
   try:
     stmt1
-  except e1, e2: 
+  except e1, e2:
     stmt2
   except e3:
     stmt3
-  except: 
+  except:
     stmt4
   finally:
     stmt5
@@ -475,9 +475,9 @@ AST:
 
 .. code-block:: nim
   nnkTryStmt(
-    stmt1, 
-    nnkExceptBranch(e1, e2, stmt2), 
-    nnkExceptBranch(e3, stmt3), 
+    stmt1,
+    nnkExceptBranch(e1, e2, stmt2),
+    nnkExceptBranch(e3, stmt3),
     nnkExceptBranch(stmt4),
     nnkFinally(stmt5)
   )
@@ -567,10 +567,10 @@ To be written.
 Special node kinds
 ==================
 
-There are several node kinds that are used for semantic checking or code 
+There are several node kinds that are used for semantic checking or code
 generation. These are accessible from this module, but should not be used.
 Other node kinds are especially designed to make AST manipulations easier.
-These are explained here. 
+These are explained here.
 
 To be written.
 

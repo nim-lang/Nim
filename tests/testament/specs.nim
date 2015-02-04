@@ -106,7 +106,7 @@ proc parseSpec*(filename: string): TSpec =
       else: echo ignoreMsg(p, e)
     of "file": result.file = e.value
     of "line": discard parseInt(e.value, result.line)
-    of "output": 
+    of "output":
       result.action = actionRun
       result.outp = e.value
     of "outputsub":
@@ -115,7 +115,7 @@ proc parseSpec*(filename: string): TSpec =
       result.substr = true
     of "sortoutput":
       result.sortoutput = parseCfgBool(e.value)
-    of "exitcode": 
+    of "exitcode":
       discard parseInt(e.value, result.exitCode)
     of "msg":
       result.msg = e.value

@@ -15,7 +15,7 @@ type
     case k: TNodeKind
     of nkBinary, nkTernary: a, b: PNode
     of nkStr: s: string
-    
+
   PList = ref object
     data: string
     next: PList
@@ -52,7 +52,7 @@ proc toString3(x: PNode): string =
 
 proc p() =
   var x: PNode = PNode(k: nkStr, s: "abc")
-  
+
   let y = x
   if not y.isNil:
     echo toString(y), " ", toString2(y)

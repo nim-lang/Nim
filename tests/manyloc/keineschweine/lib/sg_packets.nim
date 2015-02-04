@@ -33,7 +33,7 @@ defPacket(Poing, tuple[id: int32, time: float32])
 type ChatType* = enum
   CPub = 0'i8, CPriv, CSystem, CError
 forwardPacketT(ChatType, int8)
-idPacket(Chat, 'C', 
+idPacket(Chat, 'C',
   tuple[kind: ChatType = CPub; fromPlayer: string = ""; text: string = ""],
   tuple[target: string = ""; text: string = ""])
 
@@ -65,8 +65,8 @@ defPacket(ScSpawn, tuple[
 
 
 type TAssetType* = enum
-  FDummy, 
-  FZoneCfg, FGraphics, FSound 
+  FDummy,
+  FZoneCfg, FGraphics, FSound
 
 forwardPacketT(TAssetType, int8)
 forwardPacket(MD5Digest, array[0..15, int8])
@@ -93,7 +93,7 @@ let HVerifyClient* = 'v'
 defPacket(SdVerifyClient, tuple[session: ScLogin])
 
 when isMainModule:
-  
+
   var buf = newBuffer(100)
   var m = toMd5("hello there")
   echo(repr(m))
@@ -101,7 +101,7 @@ when isMainModule:
 
   echo(repr(buf.data))
   echo(len(buf.data))
-  
+
   buf.reset()
 
   var x = buf.readMD5Digest()

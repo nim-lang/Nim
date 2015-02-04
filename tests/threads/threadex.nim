@@ -32,7 +32,7 @@ proc produce() {.thread.} =
   close(input)
   m.k = mEof
   chan.send(m)
-  
+
 open(chan)
 createThread[void](consumer, consume)
 createThread[void](producer, produce)

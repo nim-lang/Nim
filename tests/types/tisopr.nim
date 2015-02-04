@@ -28,7 +28,7 @@ no  s.items is iterator: float
 yes s.items is iterator: TNumber
 no  s.items is iterator: object
 
-type 
+type
   Iter[T] = iterator: T
 
 yes s.items is Iter[TNumber]

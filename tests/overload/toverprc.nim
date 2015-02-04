@@ -19,9 +19,9 @@ var
   q = TParseInt(parseInt)
   p: TParseInt = parseInt
 
-proc takeParseInt(x: proc (y: string): int {.noSideEffect.}): int = 
+proc takeParseInt(x: proc (y: string): int {.noSideEffect.}): int =
   result = x("123")
-  
+
 echo "Give a list of numbers (separated by spaces): "
 var x = stdin.readline.split.map(parseInt).max
 echo x, " is the maximum!"

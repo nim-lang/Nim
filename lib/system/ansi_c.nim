@@ -13,20 +13,20 @@
 
 {.push hints:off}
 
-proc c_strcmp(a, b: cstring): cint {.header: "<string.h>", 
+proc c_strcmp(a, b: cstring): cint {.header: "<string.h>",
   noSideEffect, importc: "strcmp".}
-proc c_memcmp(a, b: cstring, size: int): cint {.header: "<string.h>", 
+proc c_memcmp(a, b: cstring, size: int): cint {.header: "<string.h>",
   noSideEffect, importc: "memcmp".}
 proc c_memcpy(a, b: cstring, size: int) {.header: "<string.h>", importc: "memcpy".}
-proc c_strlen(a: cstring): int {.header: "<string.h>", 
+proc c_strlen(a: cstring): int {.header: "<string.h>",
   noSideEffect, importc: "strlen".}
 proc c_memset(p: pointer, value: cint, size: int) {.
   header: "<string.h>", importc: "memset".}
 
 type
-  C_TextFile {.importc: "FILE", header: "<stdio.h>", 
+  C_TextFile {.importc: "FILE", header: "<stdio.h>",
                final, incompleteStruct.} = object
-  C_BinaryFile {.importc: "FILE", header: "<stdio.h>", 
+  C_BinaryFile {.importc: "FILE", header: "<stdio.h>",
                  final, incompleteStruct.} = object
   C_TextFileStar = ptr C_TextFile
   C_BinaryFileStar = ptr C_BinaryFile
@@ -101,15 +101,15 @@ proc c_signal(sig: cint, handler: proc (a: cint) {.noconv.}) {.
   importc: "signal", header: "<signal.h>".}
 proc c_raise(sig: cint) {.importc: "raise", header: "<signal.h>".}
 
-proc c_fputs(c: cstring, f: C_TextFileStar) {.importc: "fputs", 
+proc c_fputs(c: cstring, f: C_TextFileStar) {.importc: "fputs",
   header: "<stdio.h>".}
 proc c_fgets(c: cstring, n: int, f: C_TextFileStar): cstring  {.
   importc: "fgets", header: "<stdio.h>".}
-proc c_fgetc(stream: C_TextFileStar): int {.importc: "fgetc", 
+proc c_fgetc(stream: C_TextFileStar): int {.importc: "fgetc",
   header: "<stdio.h>".}
-proc c_ungetc(c: int, f: C_TextFileStar) {.importc: "ungetc", 
+proc c_ungetc(c: int, f: C_TextFileStar) {.importc: "ungetc",
   header: "<stdio.h>".}
-proc c_putc(c: char, stream: C_TextFileStar) {.importc: "putc", 
+proc c_putc(c: char, stream: C_TextFileStar) {.importc: "putc",
   header: "<stdio.h>".}
 proc c_fprintf(f: C_TextFileStar, frmt: cstring) {.
   importc: "fprintf", header: "<stdio.h>", varargs.}
@@ -120,7 +120,7 @@ proc c_fopen(filename, mode: cstring): C_TextFileStar {.
   importc: "fopen", header: "<stdio.h>".}
 proc c_fclose(f: C_TextFileStar) {.importc: "fclose", header: "<stdio.h>".}
 
-proc c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>", 
+proc c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>",
   importc: "sprintf", varargs, noSideEffect.}
   # we use it only in a way that cannot lead to security issues
 
@@ -149,7 +149,7 @@ when hostOS != "standalone":
   when not declared(errno):
     when defined(NimrodVM):
       var vmErrnoWrapper {.importc.}: ptr cint
-      template errno: expr = 
+      template errno: expr =
         bind vmErrnoWrapper
         vmErrnoWrapper[]
     else:

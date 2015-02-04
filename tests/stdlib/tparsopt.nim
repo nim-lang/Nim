@@ -3,23 +3,23 @@
 import
   parseopt
 
-proc writeHelp() = 
+proc writeHelp() =
   writeln(stdout, "Usage: tparsopt [options] filename [options]")
 
-proc writeVersion() = 
+proc writeVersion() =
   writeln(stdout, "Version: 1.0.0")
-  
+
 var
   filename = ""
 for kind, key, val in getopt():
   case kind
-  of cmdArgument: 
+  of cmdArgument:
     filename = key
   of cmdLongOption, cmdShortOption:
     case key
     of "help", "h": writeHelp()
     of "version", "v": writeVersion()
-    else: 
+    else:
       writeln(stdout, "Unknown command line option: ", key, ": ", val)
   of cmdEnd: assert(false) # cannot happen
 if filename == "":

@@ -24,7 +24,7 @@
 ##
 ## Chat server
 ## ^^^^^^^^^^^
-## 
+##
 ## The following example demonstrates a simple chat server.
 ##
 ## .. code-block::nim
@@ -310,7 +310,7 @@ proc recvLine*(socket: AsyncSocket,
   ## If a full line is read ``\r\L`` is not
   ## added to ``line``, however if solely ``\r\L`` is read then ``line``
   ## will be set to it.
-  ## 
+  ##
   ## If the socket is disconnected, ``line`` will be set to ``""``.
   ##
   ## If the socket is disconnected in the middle of a line (before ``\r\L``
@@ -318,7 +318,7 @@ proc recvLine*(socket: AsyncSocket,
   ## The partial line **will be lost**.
   ##
   ## **Warning**: The ``Peek`` flag is not yet implemented.
-  ## 
+  ##
   ## **Warning**: ``recvLine`` on unbuffered sockets assumes that the protocol
   ## uses ``\r\L`` to delimit a new line.
   template addNLIfEmpty(): stmt =
@@ -500,11 +500,11 @@ when isMainModule:
         proc (future: Future[void]) =
           echo("Send")
           client.close()
-      
+
       var f = accept(sock)
       f.callback = onAccept
-      
+
     var f = accept(sock)
     f.callback = onAccept
   runForever()
-    
+

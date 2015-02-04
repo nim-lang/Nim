@@ -15,30 +15,30 @@ type
   TAZ = range['a'..'z']
   TAZset = set[TAZ]
 
-  TTokType* = enum 
+  TTokType* = enum
     tkInvalid, tkEof,
     tkSymbol,
-    tkAddr, tkAnd, tkAs, tkAsm, tkBlock, tkBreak, tkCase, tkCast, tkConst, 
-    tkContinue, tkConverter, tkDiscard, tkDiv, tkElif, tkElse, tkEnd, tkEnum, 
-    tkExcept, tkException, tkFinally, tkFor, tkFrom, tkGeneric, tkIf, tkImplies, 
-    tkImport, tkIn, tkInclude, tkIs, tkIsnot, tkIterator, tkLambda, tkMacro, 
-    tkMethod, tkMod, tkNil, tkNot, tkNotin, tkObject, tkOf, tkOr, tkOut, tkProc, 
-    tkPtr, tkRaise, tkRecord, tkRef, tkReturn, tkShl, tkShr, tkTemplate, tkTry, 
+    tkAddr, tkAnd, tkAs, tkAsm, tkBlock, tkBreak, tkCase, tkCast, tkConst,
+    tkContinue, tkConverter, tkDiscard, tkDiv, tkElif, tkElse, tkEnd, tkEnum,
+    tkExcept, tkException, tkFinally, tkFor, tkFrom, tkGeneric, tkIf, tkImplies,
+    tkImport, tkIn, tkInclude, tkIs, tkIsnot, tkIterator, tkLambda, tkMacro,
+    tkMethod, tkMod, tkNil, tkNot, tkNotin, tkObject, tkOf, tkOr, tkOut, tkProc,
+    tkPtr, tkRaise, tkRecord, tkRef, tkReturn, tkShl, tkShr, tkTemplate, tkTry,
     tkType, tkVar, tkWhen, tkWhere, tkWhile, tkWith, tkWithout, tkXor, tkYield,
-    tkIntLit, tkInt8Lit, tkInt16Lit, tkInt32Lit, tkInt64Lit, tkFloatLit, 
-    tkFloat32Lit, tkFloat64Lit, tkStrLit, tkRStrLit, tkTripleStrLit, tkCharLit, 
-    tkRCharLit, tkParLe, tkParRi, tkBracketLe, tkBracketRi, tkCurlyLe, 
-    tkCurlyRi, tkBracketDotLe, tkBracketDotRi, 
-    tkCurlyDotLe, tkCurlyDotRi, 
+    tkIntLit, tkInt8Lit, tkInt16Lit, tkInt32Lit, tkInt64Lit, tkFloatLit,
+    tkFloat32Lit, tkFloat64Lit, tkStrLit, tkRStrLit, tkTripleStrLit, tkCharLit,
+    tkRCharLit, tkParLe, tkParRi, tkBracketLe, tkBracketRi, tkCurlyLe,
+    tkCurlyRi, tkBracketDotLe, tkBracketDotRi,
+    tkCurlyDotLe, tkCurlyDotRi,
     tkParDotLe, tkParDotRi,
-    tkComma, tkSemiColon, tkColon, tkEquals, tkDot, tkDotDot, tkHat, tkOpr, 
+    tkComma, tkSemiColon, tkColon, tkEquals, tkDot, tkDotDot, tkHat, tkOpr,
     tkComment, tkAccent, tkInd, tkSad, tkDed,
     tkSpaces, tkInfixOpr, tkPrefixOpr, tkPostfixOpr
   TTokTypeRange = range[tkSymbol..tkDed]
   TTokTypes* = set[TTokTypeRange]
 
 const
-  toktypes: TTokTypes = {TTokTypeRange(tkSymbol)..pred(tkIntLit), 
+  toktypes: TTokTypes = {TTokTypeRange(tkSymbol)..pred(tkIntLit),
                          tkStrLit..tkTripleStrLit}
 
 var

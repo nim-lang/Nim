@@ -29,34 +29,34 @@ const
 
 # Valid opcodes ( "op" parameter ) to issue to epoll_ctl().
 
-const 
-  EPOLL_CTL_ADD* = 1          # Add a file descriptor to the interface.  
-  EPOLL_CTL_DEL* = 2          # Remove a file descriptor from the interface.  
-  EPOLL_CTL_MOD* = 3          # Change file descriptor epoll_event structure.  
+const
+  EPOLL_CTL_ADD* = 1          # Add a file descriptor to the interface.
+  EPOLL_CTL_DEL* = 2          # Remove a file descriptor from the interface.
+  EPOLL_CTL_MOD* = 3          # Change file descriptor epoll_event structure.
 
-type 
-  epoll_data* {.importc: "union epoll_data", 
+type
+  epoll_data* {.importc: "union epoll_data",
       header: "<sys/epoll.h>", pure, final.} = object # TODO: This is actually a union.
     #thePtr* {.importc: "ptr".}: pointer
     fd* {.importc: "fd".}: cint # \
     #u32*: uint32
     #u64*: uint64
 
-  epoll_event* {.importc: "struct epoll_event", header: "<sys/epoll.h>", pure, final.} = object 
-    events*: uint32 # Epoll events 
-    data*: epoll_data # User data variable 
+  epoll_event* {.importc: "struct epoll_event", header: "<sys/epoll.h>", pure, final.} = object
+    events*: uint32 # Epoll events
+    data*: epoll_data # User data variable
 
-proc epoll_create*(size: cint): cint {.importc: "epoll_create", 
+proc epoll_create*(size: cint): cint {.importc: "epoll_create",
     header: "<sys/epoll.h>".}
   ## Creates an epoll instance.  Returns an fd for the new instance.
   ##   The "size" parameter is a hint specifying the number of file
   ##   descriptors to be associated with the new instance.  The fd
-  ##   returned by epoll_create() should be closed with close().  
+  ##   returned by epoll_create() should be closed with close().
 
-proc epoll_create1*(flags: cint): cint {.importc: "epoll_create1", 
+proc epoll_create1*(flags: cint): cint {.importc: "epoll_create1",
     header: "<sys/epoll.h>".}
   ## Same as epoll_create but with an FLAGS parameter.  The unused SIZE
-  ##   parameter has been dropped.  
+  ##   parameter has been dropped.
 
 proc epoll_ctl*(epfd: cint; op: cint; fd: cint | SocketHandle; event: ptr epoll_event): cint {.
     importc: "epoll_ctl", header: "<sys/epoll.h>".}
@@ -65,10 +65,10 @@ proc epoll_ctl*(epfd: cint; op: cint; fd: cint | SocketHandle; event: ptr epoll_
   ##   specific error code ) The "op" parameter is one of the EPOLL_CTL_*
   ##   constants defined above. The "fd" parameter is the target of the
   ##   operation. The "event" parameter describes which events the caller
-  ##   is interested in and any associated user data.  
+  ##   is interested in and any associated user data.
 
-proc epoll_wait*(epfd: cint; events: ptr epoll_event; maxevents: cint; 
-                 timeout: cint): cint {.importc: "epoll_wait", 
+proc epoll_wait*(epfd: cint; events: ptr epoll_event; maxevents: cint;
+                 timeout: cint): cint {.importc: "epoll_wait",
     header: "<sys/epoll.h>".}
   ## Wait for events on an epoll instance "epfd". Returns the number of
   ##   triggered events returned in "events" buffer. Or -1 in case of
@@ -82,11 +82,11 @@ proc epoll_wait*(epfd: cint; events: ptr epoll_event; maxevents: cint;
   ##   __THROW.
 
 
-#proc epoll_pwait*(epfd: cint; events: ptr epoll_event; maxevents: cint; 
+#proc epoll_pwait*(epfd: cint; events: ptr epoll_event; maxevents: cint;
 #                  timeout: cint; ss: ptr sigset_t): cint {.
 #    importc: "epoll_pwait", header: "<sys/epoll.h>".}
 # Same as epoll_wait, but the thread's signal mask is temporarily
 #   and atomically replaced with the one provided as parameter.
 #
 #   This function is a cancellation point and therefore not marked with
-#   __THROW.  
+#   __THROW.

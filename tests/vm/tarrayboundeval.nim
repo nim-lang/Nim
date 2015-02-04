@@ -15,12 +15,12 @@ type
 
 echo FU.high
 
-type 
+type
   PKeyboard* = ptr object
   TKeyboardState* = object
     display*: pointer
     internal: array[int((KeyMax + 31)/32), cuint]
-    
+
 echo myconst, " ", int((KeyMax + 31) / 32)
 
 #bug 1304 or something:

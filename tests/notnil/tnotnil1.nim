@@ -18,7 +18,7 @@ proc q(s: superstring) =
   echo s
 
 proc p2() =
-  var  a: string = "I am not nil" 
+  var  a: string = "I am not nil"
   q(a) # but this should and does not
 
 p2()
@@ -30,7 +30,7 @@ proc p() =
   var x: pointer
   if not x.isNil:
     q(x)
-  
+
   let y = x
   if not y.isNil:
     q(y)

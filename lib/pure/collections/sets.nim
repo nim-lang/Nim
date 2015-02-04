@@ -588,7 +588,7 @@ proc contains*[A](s: OrderedSet[A], key: A): bool =
   var index = rawGet(s, key)
   result = index >= 0
 
-proc rawInsert[A](s: var OrderedSet[A], 
+proc rawInsert[A](s: var OrderedSet[A],
                   data: var OrderedKeyValuePairSeq[A], key: A) =
   rawInsertImpl()
   data[h].next = -1
@@ -604,7 +604,7 @@ proc enlarge[A](s: var OrderedSet[A]) =
   s.last = -1
   while h >= 0:
     var nxt = s.data[h].next
-    if s.data[h].slot == seFilled: 
+    if s.data[h].slot == seFilled:
       rawInsert(s, n, s.data[h].key)
     h = nxt
   swap(s.data, n)

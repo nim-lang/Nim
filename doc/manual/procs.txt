@@ -4,7 +4,7 @@ Procedures
 What most programming languages call `methods`:idx: or `functions`:idx: are
 called `procedures`:idx: in Nim (which is the correct terminology). A
 procedure declaration defines an identifier and associates it with a block
-of code. 
+of code.
 A procedure may call itself recursively. A parameter may be given a default
 value that is used if the caller does not provide a value for this parameter.
 
@@ -92,7 +92,7 @@ current module:
 Method call syntax
 ------------------
 
-For object oriented programming, the syntax ``obj.method(args)`` can be used 
+For object oriented programming, the syntax ``obj.method(args)`` can be used
 instead of ``method(obj, args)``. The parentheses can be omitted if there are no
 remaining arguments: ``obj.len`` (instead of ``len(obj)``).
 
@@ -100,7 +100,7 @@ This method call syntax is not restricted to objects, it can be used
 to supply any type of first argument for procedures:
 
 .. code-block:: nim
-  
+
   echo("abc".len) # is the same as echo(len("abc"))
   echo("abc".toUpper())
   echo({'a', 'b', 'c'}.card)
@@ -115,11 +115,11 @@ See also: `Limitations of the method call syntax`_.
 Properties
 ----------
 Nim has no need for *get-properties*: Ordinary get-procedures that are called
-with the *method call syntax* achieve the same. But setting a value is 
+with the *method call syntax* achieve the same. But setting a value is
 different; for this a special setter syntax is needed:
 
 .. code-block:: nim
-  
+
   type
     Socket* = object of RootObj
       FHost: int # cannot be accessed from the outside of the module
@@ -129,7 +129,7 @@ different; for this a special setter syntax is needed:
   proc `host=`*(s: var Socket, value: int) {.inline.} =
     ## setter of hostAddr
     s.FHost = value
-  
+
   proc host*(s: Socket): int {.inline.} =
     ## getter of hostAddr
     s.FHost
@@ -152,18 +152,18 @@ more argument in this case:
 .. code-block:: nim
   proc optarg(x: int, y: int = 0): int = x + y
   proc singlearg(x: int): int = 20*x
-  
+
   echo optarg 1, " ", singlearg 2  # prints "1 40"
-  
+
   let fail = optarg 1, optarg 8   # Wrong. Too many arguments for a command call
   let x = optarg(1, optarg 8)  # traditional procedure call with 2 arguments
   let y = 1.optarg optarg 8    # same thing as above, w/o the parenthesis
   assert x == y
 
-The command invocation syntax also can't have complex expressions as arguments. 
-For example: (`anonymous procs`_), ``if``, ``case`` or ``try``. The (`do 
-notation`_) is limited, but usable for a single proc (see the example in the 
-corresponding section). Function calls with no arguments still needs () to 
+The command invocation syntax also can't have complex expressions as arguments.
+For example: (`anonymous procs`_), ``if``, ``case`` or ``try``. The (`do
+notation`_) is limited, but usable for a single proc (see the example in the
+corresponding section). Function calls with no arguments still needs () to
 distinguish between a call and the function itself as a first class value.
 
 
@@ -193,7 +193,7 @@ the proc's name.
       cmp(x.len, y.len))
 
 
-Procs as expressions can appear both as nested procs and inside top level 
+Procs as expressions can appear both as nested procs and inside top level
 executable code.
 
 
@@ -209,10 +209,10 @@ calls can use the ``do`` keyword:
   sort(cities) do (x,y: string) -> int:
     cmp(x.len, y.len)
   # Less parenthesis using the method plus command syntax:
-  cities = cities.map do (x:string) -> string:  
+  cities = cities.map do (x:string) -> string:
     "City of " & x
 
-``do`` is written after the parentheses enclosing the regular proc params. 
+``do`` is written after the parentheses enclosing the regular proc params.
 The proc expression represented by the do block is appended to them.
 
 More than one ``do`` block can appear in a single call:
@@ -233,11 +233,11 @@ Nonoverloadable builtins
 The following builtin procs cannot be overloaded for reasons of implementation
 simplicity (they require specialized semantic checking)::
 
-  declared, defined, definedInScope, compiles, low, high, sizeOf, 
+  declared, defined, definedInScope, compiles, low, high, sizeOf,
   is, of, shallowCopy, getAst, astToStr, spawn, procCall
 
-Thus they act more like keywords than like ordinary identifiers; unlike a 
-keyword however, a redefinition may `shadow`:idx: the definition in 
+Thus they act more like keywords than like ordinary identifiers; unlike a
+keyword however, a redefinition may `shadow`:idx: the definition in
 the ``system`` module. From this list the following should not be written in dot
 notation ``x.f`` since ``x`` cannot be type checked before it gets passed
 to ``f``::
@@ -314,11 +314,11 @@ returned value is an l-value and can be modified by the caller:
 
   proc WriteAccessToG(): var int =
     result = g
-  
+
   WriteAccessToG() = 6
   assert g == 6
 
-It is a compile time error if the implicitly introduced pointer could be 
+It is a compile time error if the implicitly introduced pointer could be
 used to access a location beyond its lifetime:
 
 .. code-block:: nim
@@ -326,7 +326,7 @@ used to access a location beyond its lifetime:
     var g = 0
     result = g # Error!
 
-For iterators, a component of a tuple return type can have a ``var`` type too: 
+For iterators, a component of a tuple return type can have a ``var`` type too:
 
 .. code-block:: nim
   iterator mpairs(a: var seq[string]): tuple[key: int, val: var string] =
@@ -356,28 +356,28 @@ dispatch.
       x: int
     PlusExpr = object of Expression
       a, b: ref Expression
-      
+
   method eval(e: ref Expression): int =
     # override this base method
     quit "to override!"
-  
+
   method eval(e: ref Literal): int = return e.x
 
   method eval(e: ref PlusExpr): int =
     # watch out: relies on dynamic binding
     result = eval(e.a) + eval(e.b)
-  
+
   proc newLit(x: int): ref Literal =
     new(result)
     result.x = x
-    
+
   proc newPlus(a, b: ref Expression): ref PlusExpr =
     new(result)
     result.a = a
     result.b = b
-  
+
   echo eval(newPlus(newPlus(newLit(1), newLit(2)), newLit(4)))
-  
+
 In the example the constructors ``newLit`` and ``newPlus`` are procs
 because they should use static binding, but ``eval`` is a method because it
 requires dynamic binding.
@@ -390,23 +390,23 @@ dispatching:
     Thing = object
     Unit = object of Thing
       x: int
-      
+
   method collide(a, b: Thing) {.inline.} =
     quit "to override!"
-    
+
   method collide(a: Thing, b: Unit) {.inline.} =
     echo "1"
-  
+
   method collide(a: Unit, b: Thing) {.inline.} =
     echo "2"
-  
+
   var
     a, b: Unit
   collide(a, b) # output: 2
 
 
-Invocation of a multi-method cannot be ambiguous: collide 2 is preferred over 
-collide 1 because the resolution works from left to right. 
+Invocation of a multi-method cannot be ambiguous: collide 2 is preferred over
+collide 1 because the resolution works from left to right.
 In the example ``Unit, Thing`` is preferred over ``Thing, Unit``.
 
 **Performance note**: Nim does not produce a virtual method table, but
@@ -421,7 +421,7 @@ Iterators and the for statement
 The `for`:idx: statement is an abstract mechanism to iterate over the elements
 of a container. It relies on an `iterator`:idx: to do so. Like ``while``
 statements, ``for`` statements open an `implicit block`:idx:, so that they
-can be left with a ``break`` statement. 
+can be left with a ``break`` statement.
 
 The ``for`` loop declares iteration variables - their scope reaches until the
 end of the loop body. The iteration variables' types are inferred by the
@@ -457,7 +457,7 @@ The compiler generates code as if the programmer would have written this:
 
 If the iterator yields a tuple, there can be as many iteration variables
 as there are components in the tuple. The i'th iteration variable's type is
-the type of the i'th component. In other words, implicit tuple unpacking in a 
+the type of the i'th component. In other words, implicit tuple unpacking in a
 for loop context is supported.
 
 Implict items/pairs invocations
@@ -469,11 +469,11 @@ ie. an ``items`` iterator is implicitly invoked:
 
 .. code-block:: nim
   for x in [1,2,3]: echo x
-  
+
 If the for loop has exactly 2 variables, a ``pairs`` iterator is implicitly
 invoked.
 
-Symbol lookup of the identifiers ``items``/``pairs`` is performed after 
+Symbol lookup of the identifiers ``items``/``pairs`` is performed after
 the rewriting step, so that all overloadings of ``items``/``pairs`` are taken
 into account.
 
@@ -482,7 +482,7 @@ First class iterators
 ---------------------
 
 There are 2 kinds of iterators in Nim: *inline* and *closure* iterators.
-An `inline iterator`:idx: is an iterator that's always inlined by the compiler 
+An `inline iterator`:idx: is an iterator that's always inlined by the compiler
 leading to zero overhead for the abstraction, but may result in a heavy
 increase in code size. Inline iterators are second class citizens;
 They can be passed as parameters only to other inlining code facilities like
@@ -493,7 +493,7 @@ In contrast to that, a `closure iterator`:idx: can be passed around more freely:
 .. code-block:: nim
   iterator count0(): int {.closure.} =
     yield 0
-   
+
   iterator count2(): int {.closure.} =
     var x = 1
     yield x
@@ -517,7 +517,7 @@ Iterators that are neither marked ``{.closure.}`` nor ``{.inline.}`` explicitly
 default to being inline, but that this may change in future versions of the
 implementation.
 
-The ``iterator`` type is always of the calling convention ``closure`` 
+The ``iterator`` type is always of the calling convention ``closure``
 implicitly; the following example shows how to use iterators to implement
 a `collaborative tasking`:idx: system:
 
@@ -620,7 +620,7 @@ parameters of an outer factory proc:
 Converters
 ==========
 
-A converter is like an ordinary proc except that it enhances 
+A converter is like an ordinary proc except that it enhances
 the "implicitly convertible" type relation (see `Convertible relation`_):
 
 .. code-block:: nim

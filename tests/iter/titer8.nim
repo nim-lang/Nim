@@ -55,7 +55,7 @@ echo ""
 proc inProc() =
   for c in count3():
     echo c
-  
+
   for word, isSep in tokenize2("ta da", WhiteSpace):
     stdout.write(word)
 
@@ -69,7 +69,7 @@ inProc()
 iterator count0(): int {.closure.} =
   # note: doesn't require anything in its closure (except 'state')
   yield 0
- 
+
 iterator count2(): int {.closure.} =
   # note: requires 'x' in its closure
   var x = 1

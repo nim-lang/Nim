@@ -16,11 +16,11 @@ General
   language that tries to give the programmer ultimate power without compromises
   on runtime efficiency.
   This means it focuses on compile-time mechanisms in all their
-  various forms. Beneath a nice infix/indentation based syntax with a 
-  powerful (AST based, hygienic) macro system lies a semantic model that supports 
-  a soft realtime GC on thread local heaps. Asynchronous message passing is used 
-  between threads, so no "stop the world" mechanism is necessary. An unsafe 
-  shared memory heap is also provided for the increased efficiency that results 
+  various forms. Beneath a nice infix/indentation based syntax with a
+  powerful (AST based, hygienic) macro system lies a semantic model that supports
+  a soft realtime GC on thread local heaps. Asynchronous message passing is used
+  between threads, so no "stop the world" mechanism is necessary. An unsafe
+  shared memory heap is also provided for the increased efficiency that results
   from that model.
 
 
@@ -29,8 +29,8 @@ General
   Why yet another programming language?
   -------------------------------------
 
-  Nim is one of the very few *programmable* statically typed languages, and 
-  one of the even fewer that produces native binaries that require no 
+  Nim is one of the very few *programmable* statically typed languages, and
+  one of the even fewer that produces native binaries that require no
   runtime or interpreter.
 
 
@@ -48,12 +48,12 @@ General
   What is Nim's take on concurrency?
   ----------------------------------
 
-  Nim primarily focusses on thread local (and garbage collected) heaps and 
-  message passing between threads. Each thread has its own GC, so no 
+  Nim primarily focusses on thread local (and garbage collected) heaps and
+  message passing between threads. Each thread has its own GC, so no
   "stop the world" mechanism is necessary. An unsafe shared memory heap is also
   provided.
 
-  Future versions will additionally include a GC "per thread group" 
+  Future versions will additionally include a GC "per thread group"
   and Nim's type system will be enhanced to accurately model this shared
   memory heap.
 
@@ -74,7 +74,7 @@ General
   ------------------
 
   The compiler is in development and some important features are still missing.
-  However, the compiler is quite stable already: It is able to compile itself 
+  However, the compiler is quite stable already: It is able to compile itself
   and a substantial body of other code. Until version 1.0.0 is released,
   minor incompatibilities with older versions of the compiler will be introduced.
 
@@ -83,9 +83,9 @@ General
 
   How fast is Nim?
   ----------------
-  Benchmarks show it to be comparable to C. Some language features (methods, 
+  Benchmarks show it to be comparable to C. Some language features (methods,
   closures, message passing) are not yet as optimized as they could and will be.
-  The only overhead Nim has over C is the GC which has been tuned 
+  The only overhead Nim has over C is the GC which has been tuned
   for years but still needs some work.
 
 
@@ -96,7 +96,7 @@ General
 
   A JVM backend is almost impossible. The JVM is not expressive enough. It has
   never been designed as a general purpose VM anyway. A CLR backend is possible
-  but would require much work. 
+  but would require much work.
 
 
 .. container:: standout

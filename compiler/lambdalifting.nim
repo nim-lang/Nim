@@ -9,92 +9,92 @@
 
 # This include file implements lambda lifting for the transformator.
 
-import 
-  intsets, strutils, lists, options, ast, astalgo, trees, treetab, msgs, os, 
+import
+  intsets, strutils, lists, options, ast, astalgo, trees, treetab, msgs, os,
   idents, renderer, types, magicsys, rodread, lowerings
 
 discard """
   The basic approach is that captured vars need to be put on the heap and
   that the calling chain needs to be explicitely modelled. Things to consider:
-  
+
   proc a =
     var v = 0
     proc b =
       var w = 2
-      
+
       for x in 0..3:
         proc c = capture v, w, x
         c()
     b()
-    
+
     for x in 0..4:
       proc d = capture x
       d()
-  
+
   Needs to be translated into:
-    
+
   proc a =
     var cl: *
     new cl
     cl.v = 0
-    
+
     proc b(cl) =
       var bcl: *
       new bcl
       bcl.w = 2
       bcl.up = cl
-      
+
       for x in 0..3:
         var bcl2: *
         new bcl2
         bcl2.up = bcl
         bcl2.up2 = cl
         bcl2.x = x
-      
+
         proc c(cl) = capture cl.up2.v, cl.up.w, cl.x
         c(bcl2)
-      
+
       c(bcl)
-    
+
     b(cl)
-    
+
     for x in 0..4:
       var acl2: *
       new acl2
       acl2.x = x
       proc d(cl) = capture cl.x
       d(acl2)
-    
+
   Closures as interfaces:
-  
+
   proc outer: T =
     var captureMe: TObject # value type required for efficiency
     proc getter(): int = result = captureMe.x
     proc setter(x: int) = captureMe.x = x
-    
+
     result = (getter, setter)
-    
+
   Is translated to:
-  
+
   proc outer: T =
     var cl: *
     new cl
-    
+
     proc getter(cl): int = result = cl.captureMe.x
     proc setter(cl: *, x: int) = cl.captureMe.x = x
-    
+
     result = ((cl, getter), (cl, setter))
-    
-    
+
+
   For 'byref' capture, the outer proc needs to access the captured var through
   the indirection too. For 'bycopy' capture, the outer proc accesses the var
   not through the indirection.
-    
-  Possible optimizations: 
-  
+
+  Possible optimizations:
+
   1) If the closure contains a single 'ref' and this
   reference is not re-assigned (check ``sfAddrTaken`` flag) make this the
-  closure. This is an important optimization if closures are used as 
+  closure. This is an important optimization if closures are used as
   interfaces.
   2) If the closure does not escape, put it onto the stack, not on the heap.
   3) Dataflow analysis would help to eliminate the 'up' indirections.
@@ -126,7 +126,7 @@ type
     fn, closureParam, state, resultSym: PSym # most are only valid if
                                              # fn.kind == skClosureIterator
     obj: PType
-    
+
   PEnv = ref TEnv
   TEnv {.final.} = object of RootObj
     attachedNode, replacementNode: PNode
@@ -141,7 +141,7 @@ type
                             # if up.fn != fn then we cross function boundaries.
                             # This is an important case to consider.
     vars: IntSet           # variables belonging to this environment
-    
+
   TOuterContext = object
     fn: PSym # may also be a module!
     head: PEnv
@@ -284,7 +284,7 @@ proc addClosureParam(fn: PSym; e: PEnv) =
     #assert e.obj.kind == tyObject
 
 proc illegalCapture(s: PSym): bool {.inline.} =
-  result = skipTypes(s.typ, abstractInst).kind in 
+  result = skipTypes(s.typ, abstractInst).kind in
                    {tyVar, tyOpenArray, tyVarargs} or
       s.kind == skResult
 
@@ -344,7 +344,7 @@ proc createUpField(obj, fieldType: PType): PSym =
   #rawAddField(obj, result)
   addField(obj, result)
 
-proc captureVar(o: POuterContext; top: PEnv; local: PSym; 
+proc captureVar(o: POuterContext; top: PEnv; local: PSym;
                 info: TLineInfo): bool =
   # first check if we should be concerned at all:
   var it = top
@@ -408,7 +408,7 @@ proc gatherVars(o: POuterContext; e: PEnv; n: PNode): int =
     var s = n.sym
     if interestingVar(s) and e.fn != s.owner:
       if captureVar(o, e, s, n.info): result = 1
-  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkClosure, nkProcDef, 
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkClosure, nkProcDef,
      nkMethodDef, nkConverterDef, nkMacroDef, nkTemplateDef, nkTypeSection:
     discard
   else:
@@ -418,7 +418,7 @@ proc gatherVars(o: POuterContext; e: PEnv; n: PNode): int =
 proc generateThunk(prc: PNode, dest: PType): PNode =
   ## Converts 'prc' into '(thunk, nil)' so that it's compatible with
   ## a closure.
-  
+
   # we cannot generate a proper thunk here for GC-safety reasons (see internal
   # documentation):
   if gCmd == cmdCompileToJS: return prc
@@ -515,7 +515,7 @@ proc closureCreationPoint(n: PNode): PNode =
 
 proc addParamsToEnv(fn: PSym; env: PEnv) =
   let params = fn.typ.n
-  for i in 1.. <params.len: 
+  for i in 1.. <params.len:
     if params.sons[i].kind != nkSym:
       internalError(params.info, "liftLambdas: strange params")
     let param = params.sons[i].sym
@@ -541,7 +541,7 @@ proc searchForInnerProcs(o: POuterContext, n: PNode, env: PEnv) =
       addParamsToEnv(fn, envB)
       searchForInnerProcs(o, body, envB)
       fn.ast.sons[bodyPos] = ex
-      
+
       let capturedCounter = gatherVars(o, envB, body)
       # dummy closure param needed?
       if capturedCounter == 0 and fn.typ.callConv == ccClosure:
@@ -560,7 +560,7 @@ proc searchForInnerProcs(o: POuterContext, n: PNode, env: PEnv) =
   of nkWhileStmt, nkForStmt, nkParForStmt, nkBlockStmt:
     # some nodes open a new scope, so they are candidates for the insertion
     # of closure creation; however for simplicity we merge closures between
-    # branches, in fact, only loop bodies are of interest here as only they 
+    # branches, in fact, only loop bodies are of interest here as only they
     # yield observable changes in semantics. For Zahary we also
     # include ``nkBlock``. We don't do this for closure iterators because
     # 'yield' can produce wrong code otherwise (XXX show example):
@@ -598,7 +598,7 @@ proc searchForInnerProcs(o: POuterContext, n: PNode, env: PEnv) =
         internalError(it.info, "searchForInnerProcs")
   of nkClosure:
     searchForInnerProcs(o, n.sons[0], env)
-  of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef, nkTemplateDef, 
+  of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef, nkTemplateDef,
      nkTypeSection:
     # don't recurse here:
     discard
@@ -606,7 +606,7 @@ proc searchForInnerProcs(o: POuterContext, n: PNode, env: PEnv) =
     for i in countup(0, sonsLen(n) - 1):
       searchForInnerProcs(o, n.sons[i], env)
 
-proc newAsgnStmt(le, ri: PNode, info: TLineInfo): PNode = 
+proc newAsgnStmt(le, ri: PNode, info: TLineInfo): PNode =
   # Bugfix: unfortunately we cannot use 'nkFastAsgn' here as that would
   # mean to be able to capture string literals which have no GC header.
   # However this can only happen if the capture happens through a parameter,
@@ -624,7 +624,7 @@ proc rawClosureCreation(o: POuterContext, scope: PEnv; env: PNode): PNode =
     result.add(v)
   # add 'new' statement:
   result.add(newCall(getSysSym"internalNew", env))
-  
+
   # add assignment statements:
   for local in scope.capturedVars:
     let fieldAccess = indirectAccess(env, local, env.info)
@@ -696,10 +696,10 @@ proc transformYield(c: POuterContext, n: PNode, it: TIter): PNode =
     retStmt.add(a)
   else:
     retStmt.add(emptyNode)
-  
+
   var stateLabelStmt = newNodeI(nkState, n.info)
   stateLabelStmt.add(newIntTypeNode(nkIntLit, stateNo, getSysType(tyInt)))
-  
+
   result = newNodeI(nkStmtList, n.info)
   result.add(stateAsgnStmt)
   result.add(retStmt)
@@ -725,7 +725,7 @@ proc liftIterSym(n: PNode; owner: PSym): PNode =
   assert iter.kind == skClosureIterator
 
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
-  
+
   let hp = getHiddenParam(iter)
   let env = newSym(skLet, iter.name, owner, n.info)
   env.typ = hp.typ
@@ -800,7 +800,7 @@ proc transformOuterProcBody(o: POuterContext, n: PNode; it: TIter): PNode =
     # with some rather primitive check for now:
     if n.kind == nkStmtList and n.len > 0:
       if n.sons[0].kind == nkGotoState: return nil
-      if n.len > 1 and n[1].kind == nkStmtList and n[1].len > 0 and 
+      if n.len > 1 and n[1].kind == nkStmtList and n[1].len > 0 and
           n[1][0].kind == nkGotoState:
         return nil
     result = newNodeI(nkStmtList, it.fn.info)
@@ -812,7 +812,7 @@ proc transformOuterProcBody(o: POuterContext, n: PNode; it: TIter): PNode =
     var state0 = newNodeI(nkState, it.fn.info)
     state0.add(newIntNode(nkIntLit, 0))
     result.add(state0)
-    
+
     let newBody = transformOuterProc(o, n, it)
     if newBody != nil:
       result.add(newBody)
@@ -899,7 +899,7 @@ proc transformOuterProc(o: POuterContext, n: PNode; it: TIter): PNode =
         let x = closure.createdVar
         assert x != nil
         return makeClosure(local, x, n.info)
-    
+
     if not contains(o.capturedVars, local.id): return
     # change 'local' to 'closure.local', unless it's a 'byCopy' variable:
     # if sfByCopy notin local.flags:
@@ -946,7 +946,7 @@ proc transformOuterProc(o: POuterContext, n: PNode; it: TIter): PNode =
 proc liftLambdas*(fn: PSym, body: PNode): PNode =
   # XXX gCmd == cmdCompileToJS does not suffice! The compiletime stuff needs
   # the transformation even when compiling to JS ...
-  if body.kind == nkEmpty or gCmd == cmdCompileToJS or 
+  if body.kind == nkEmpty or gCmd == cmdCompileToJS or
       fn.skipGenericOwner.kind != skModule:
     # ignore forward declaration:
     result = body
@@ -985,17 +985,17 @@ proc liftLambdasForTopLevel*(module: PSym, body: PNode): PNode =
 
 proc liftForLoop*(body: PNode): PNode =
   # problem ahead: the iterator could be invoked indirectly, but then
-  # we don't know what environment to create here: 
-  # 
+  # we don't know what environment to create here:
+  #
   # iterator count(): int =
   #   yield 0
-  # 
+  #
   # iterator count2(): int =
   #   var x = 3
   #   yield x
   #   inc x
   #   yield x
-  # 
+  #
   # proc invoke(iter: iterator(): int) =
   #   for x in iter(): echo x
   #
@@ -1004,7 +1004,7 @@ proc liftForLoop*(body: PNode): PNode =
       for i in foo(): ...
 
     Is transformed to:
-      
+
       cl = createClosure()
       while true:
         let i = foo(cl)
@@ -1016,7 +1016,7 @@ proc liftForLoop*(body: PNode): PNode =
   var call = body[L-2]
 
   result = newNodeI(nkStmtList, body.info)
-  
+
   # static binding?
   var env: PSym
   if call[0].kind == nkSym and call[0].sym.kind == skClosureIterator:
@@ -1030,18 +1030,18 @@ proc liftForLoop*(body: PNode): PNode =
     result.add(v)
     # add 'new' statement:
     result.add(newCall(getSysSym"internalNew", env.newSymNode))
-  
+
   var loopBody = newNodeI(nkStmtList, body.info, 3)
   var whileLoop = newNodeI(nkWhileStmt, body.info, 2)
   whileLoop.sons[0] = newIntTypeNode(nkIntLit, 1, getSysType(tyBool))
   whileLoop.sons[1] = loopBody
   result.add whileLoop
-  
+
   # setup loopBody:
   # gather vars in a tuple:
   var v2 = newNodeI(nkLetSection, body.info)
   var vpart = newNodeI(if L == 3: nkIdentDefs else: nkVarTuple, body.info)
-  for i in 0 .. L-3: 
+  for i in 0 .. L-3:
     assert body[i].kind == nkSym
     body[i].sym.kind = skLet
     addSon(vpart, body[i])

@@ -7,7 +7,7 @@
 type
   TGen[T] = object of TObject
     x, y: T
-  
+
   TSpef[T] = object of TGen[T]
 
 

@@ -7,7 +7,7 @@ type
 
 {.deprecated: [TMersenneTwister: MersenneTwister].}
 
-proc newMersenneTwister*(seed: int): MersenneTwister =   
+proc newMersenneTwister*(seed: int): MersenneTwister =
   result.index = 0
   result.mt[0]= uint32(seed)
   for i in 1..623'u32:

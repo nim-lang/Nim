@@ -24,7 +24,7 @@ proc foo() =
     echo("ESomething happened")
   except:
     echo("Some other error happened")
-    
+
   # test that raise handler is gone:
   try:
     genErrors("error!")

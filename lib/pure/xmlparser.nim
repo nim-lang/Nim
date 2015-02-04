@@ -18,24 +18,24 @@ type
 
 {.deprecated: [EInvalidXml: XmlError].}
 
-proc raiseInvalidXml(errors: seq[string]) = 
+proc raiseInvalidXml(errors: seq[string]) =
   var e: ref XmlError
   new(e)
   e.msg = errors[0]
   e.errors = errors
   raise e
 
-proc addNode(father, son: XmlNode) = 
+proc addNode(father, son: XmlNode) =
   if son != nil: add(father, son)
 
 proc parse(x: var XmlParser, errors: var seq[string]): XmlNode
 
-proc untilElementEnd(x: var XmlParser, result: XmlNode, 
+proc untilElementEnd(x: var XmlParser, result: XmlNode,
                      errors: var seq[string]) =
   while true:
     case x.kind
-    of xmlElementEnd: 
-      if x.elementName == result.tag: 
+    of xmlElementEnd:
+      if x.elementName == result.tag:
         next(x)
       else:
         errors.add(errorMsg(x, "</" & result.tag & "> expected"))
@@ -49,7 +49,7 @@ proc untilElementEnd(x: var XmlParser, result: XmlNode,
 
 proc parse(x: var XmlParser, errors: var seq[string]): XmlNode =
   case x.kind
-  of xmlComment: 
+  of xmlComment:
     result = newComment(x.charData)
     next(x)
   of xmlCharData, xmlWhitespace:
@@ -67,11 +67,11 @@ proc parse(x: var XmlParser, errors: var seq[string]): XmlNode =
     untilElementEnd(x, result, errors)
   of xmlElementEnd:
     errors.add(errorMsg(x, "unexpected ending tag: " & x.elementName))
-  of xmlElementOpen: 
+  of xmlElementOpen:
     result = newElement(x.elementName)
     next(x)
     result.attrs = newStringTable()
-    while true: 
+    while true:
       case x.kind
       of xmlAttribute:
         result.attrs[x.attrKey] = x.attrValue
@@ -91,7 +91,7 @@ proc parse(x: var XmlParser, errors: var seq[string]): XmlNode =
   of xmlAttribute, xmlElementClose:
     errors.add(errorMsg(x, "<some_tag> expected"))
     next(x)
-  of xmlCData: 
+  of xmlCData:
     result = newCData(x.charData)
     next(x)
   of xmlEntity:
@@ -100,8 +100,8 @@ proc parse(x: var XmlParser, errors: var seq[string]): XmlNode =
     next(x)
   of xmlEof: discard
 
-proc parseXml*(s: Stream, filename: string, 
-               errors: var seq[string]): XmlNode = 
+proc parseXml*(s: Stream, filename: string,
+               errors: var seq[string]): XmlNode =
   ## parses the XML from stream `s` and returns a ``PXmlNode``. Every
   ## occured parsing error is added to the `errors` sequence.
   var x: XmlParser
@@ -109,7 +109,7 @@ proc parseXml*(s: Stream, filename: string,
   while true:
     x.next()
     case x.kind
-    of xmlElementOpen, xmlElementStart: 
+    of xmlElementOpen, xmlElementStart:
       result = parse(x, errors)
       break
     of xmlComment, xmlWhitespace, xmlSpecial, xmlPI: discard # just skip it
@@ -120,7 +120,7 @@ proc parseXml*(s: Stream, filename: string,
       break
   close(x)
 
-proc parseXml*(s: Stream): XmlNode = 
+proc parseXml*(s: Stream): XmlNode =
   ## parses the XTML from stream `s` and returns a ``PXmlNode``. All parsing
   ## errors are turned into an ``EInvalidXML`` exception.
   var errors: seq[string] = @[]
@@ -128,7 +128,7 @@ proc parseXml*(s: Stream): XmlNode =
   if errors.len > 0: raiseInvalidXml(errors)
 
 proc loadXml*(path: string, errors: var seq[string]): XmlNode =
-  ## Loads and parses XML from file specified by ``path``, and returns 
+  ## Loads and parses XML from file specified by ``path``, and returns
   ## a ``PXmlNode``. Every occured parsing error is added to the `errors`
   ## sequence.
   var s = newFileStream(path, fmRead)
@@ -136,9 +136,9 @@ proc loadXml*(path: string, errors: var seq[string]): XmlNode =
   result = parseXml(s, path, errors)
 
 proc loadXml*(path: string): XmlNode =
-  ## Loads and parses XML from file specified by ``path``, and returns 
+  ## Loads and parses XML from file specified by ``path``, and returns
   ## a ``PXmlNode``.  All parsing errors are turned into an ``EInvalidXML``
-  ## exception.  
+  ## exception.
   var errors: seq[string] = @[]
   result = loadXml(path, errors)
   if errors.len > 0: raiseInvalidXml(errors)
@@ -146,14 +146,14 @@ proc loadXml*(path: string): XmlNode =
 when isMainModule:
   import os
 
-  var errors: seq[string] = @[]  
+  var errors: seq[string] = @[]
   var x = loadXml(paramStr(1), errors)
   for e in items(errors): echo e
-  
+
   var f: File
   if open(f, "xmltest.txt", fmWrite):
     f.write($x)
     f.close()
   else:
     quit("cannot write test.txt")
-    
+

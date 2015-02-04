@@ -37,13 +37,13 @@ The cycle collector can be en-/disabled independently from the other parts of
 the GC with ``GC_enableMarkAndSweep`` and ``GC_disableMarkAndSweep``. The
 compiler analyses the types for their possibility to build cycles, but often
 it is necessary to help this analysis with the ``acyclic`` pragma (see
-`acyclic <manual.html#acyclic-pragma>`_ for further information). 
+`acyclic <manual.html#acyclic-pragma>`_ for further information).
 
-You can also use the ``acyclic`` pragma for data that is cyclic in reality and 
+You can also use the ``acyclic`` pragma for data that is cyclic in reality and
 then break up the cycles explicitly with ``GC_addCycleRoot``. This can be a
-very valuable optimization; the Nim compiler itself relies on this 
+very valuable optimization; the Nim compiler itself relies on this
 optimization trick to improve performance. Note that ``GC_addCycleRoot`` is
-a quick operation; the root is only registered for the next run of the 
+a quick operation; the root is only registered for the next run of the
 cycle collector.
 
 
@@ -51,7 +51,7 @@ Realtime support
 ================
 
 To enable realtime support, the symbol `useRealtimeGC`:idx: needs to be
-defined via ``--define:useRealtimeGC`` (you can put this into your config 
+defined via ``--define:useRealtimeGC`` (you can put this into your config
 file as well). With this switch the GC supports the following operations:
 
 .. code-block:: nim
@@ -60,21 +60,21 @@ file as well). With this switch the GC supports the following operations:
 
 The unit of the parameters ``MaxPauseInUs`` and ``us`` is microseconds.
 
-These two procs are the two modus operandi of the realtime GC: 
+These two procs are the two modus operandi of the realtime GC:
 
 (1) GC_SetMaxPause Mode
 
     You can call ``GC_SetMaxPause`` at program startup and then each triggered
-    GC run tries to not take longer than ``MaxPause`` time. However, it is 
-    possible (and common) that the work is nevertheless not evenly distributed 
-    as each call to ``new`` can trigger the GC and thus take  ``MaxPause`` 
+    GC run tries to not take longer than ``MaxPause`` time. However, it is
+    possible (and common) that the work is nevertheless not evenly distributed
+    as each call to ``new`` can trigger the GC and thus take  ``MaxPause``
     time.
 
 (2) GC_step Mode
 
     This allows the GC to perform some work for up to ``us`` time. This is
-    useful to call in a main loop to ensure the GC can do its work. To    
-    bind all GC activity to a ``GC_step`` call, deactivate the GC with 
+    useful to call in a main loop to ensure the GC can do its work. To
+    bind all GC activity to a ``GC_step`` call, deactivate the GC with
     ``GC_disable`` at program startup.
 
 These procs provide a "best effort" realtime guarantee; in particular the
@@ -87,7 +87,7 @@ is triggered.
 Time measurement
 ----------------
 
-The GC's way of measing time uses (see ``lib/system/timers.nim`` for the 
+The GC's way of measing time uses (see ``lib/system/timers.nim`` for the
 implementation):
 
 1) ``QueryPerformanceCounter`` and ``QueryPerformanceFrequency`` on Windows.
@@ -95,7 +95,7 @@ implementation):
 3) ``gettimeofday`` on Posix systems.
 
 As such it supports a resolution of nano seconds internally; however the API
-uses microseconds for convenience. 
+uses microseconds for convenience.
 
 
 Define the symbol ``reportMissedDeadlines`` to make the GC output whenever it
@@ -106,7 +106,7 @@ later versions of the collector.
 Tweaking the GC
 ---------------
 
-The collector checks whether there is still time left for its work after 
+The collector checks whether there is still time left for its work after
 every ``workPackage``'th iteration. This is currently set to 100 which means
 that up to 100 objects are traversed and freed before it checks again. Thus
 ``workPackage`` affects the timing granularity and may need to be tweaked in

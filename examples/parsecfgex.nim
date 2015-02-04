@@ -1,7 +1,7 @@
 
 import
   os, parsecfg, strutils, streams
-  
+
 var f = newFileStream(paramStr(1), fmRead)
 if f != nil:
   var p: CfgParser
@@ -9,7 +9,7 @@ if f != nil:
   while true:
     var e = next(p)
     case e.kind
-    of cfgEof: 
+    of cfgEof:
       echo("EOF!")
       break
     of cfgSectionStart:   ## a ``[section]`` has been parsed

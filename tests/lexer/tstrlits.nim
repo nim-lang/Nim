@@ -6,9 +6,9 @@ discard """
 
 const
   tripleEmpty = """"long string"""""""" # "long string """""
-  
+
   rawQuote = r"a"""
-  
+
   raw = r"abc""def"
 
 stdout.write(rawQuote)

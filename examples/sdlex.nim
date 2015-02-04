@@ -30,7 +30,7 @@ r.y = 0
 
 block game_loop:
   while true:
-    
+
     while pollEvent(addr event) > 0:
       case event.kind
       of QUITEV:
@@ -40,8 +40,8 @@ block game_loop:
           break game_loop
       else:
         discard
-    
-    discard fillRect(screen, nil, bgColor) 
+
+    discard fillRect(screen, nil, bgColor)
     discard blitSurface(greeting, nil, screen, addr r)
     discard flip(screen)
 

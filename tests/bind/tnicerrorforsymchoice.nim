@@ -7,11 +7,11 @@ discard """
 import scgi, sockets, asyncio, strtabs
 proc handleSCGIRequest[TScgi: ScgiState | AsyncScgiState](s: TScgi) =
   discard
-proc handleSCGIRequest(client: AsyncSocket, headers: StringTableRef, 
+proc handleSCGIRequest(client: AsyncSocket, headers: StringTableRef,
                        input: string) =
   discard
 
-proc test(handle: proc (client: AsyncSocket, headers: StringTableRef, 
+proc test(handle: proc (client: AsyncSocket, headers: StringTableRef,
                         input: string), b: int) =
   discard
 

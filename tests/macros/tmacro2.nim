@@ -4,7 +4,7 @@ discard """
 
 import macros, strutils
 
-proc testBlock(): string {.compileTime.} = 
+proc testBlock(): string {.compileTime.} =
   block myBlock:
     while true:
       echo "inner block"
@@ -21,7 +21,7 @@ macro mac(n: expr): expr =
   s = s.replace("l", "!!")
   result = newStrLitNode("Your value sir: '$#'" % [s])
 
-const s = testBlock() 
+const s = testBlock()
 const t = mac("HEllo World")
 echo s, " ", t
 

@@ -7,25 +7,25 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements the SMTP client protocol as specified by RFC 5321, 
+## This module implements the SMTP client protocol as specified by RFC 5321,
 ## this can be used to send mail to any SMTP Server.
-## 
-## This module also implements the protocol used to format messages, 
+##
+## This module also implements the protocol used to format messages,
 ## as specified by RFC 2822.
-## 
+##
 ## Example gmail use:
-## 
-## 
+##
+##
 ## .. code-block:: Nim
-##   var msg = createMessage("Hello from Nim's SMTP", 
-##                           "Hello!.\n Is this awesome or what?", 
+##   var msg = createMessage("Hello from Nim's SMTP",
+##                           "Hello!.\n Is this awesome or what?",
 ##                           @["foo@gmail.com"])
 ##   var smtp = connect("smtp.gmail.com", 465, true, true)
 ##   smtp.auth("username", "password")
 ##   smtp.sendmail("username@gmail.com", @["foo@gmail.com"], $msg)
-##   
-## 
-## For SSL support this module relies on OpenSSL. If you want to 
+##
+##
+## For SSL support this module relies on OpenSSL. If you want to
 ## enable SSL, compile with ``-d:ssl``.
 
 import net, strutils, strtabs, base64, os
@@ -35,14 +35,14 @@ type
   Smtp* = object
     sock: Socket
     debug: bool
-  
+
   Message* = object
     msgTo: seq[string]
     msgCc: seq[string]
     msgSubject: string
     msgOtherHeaders: StringTableRef
     msgBody: string
-  
+
   ReplyError* = object of IOError
 
   AsyncSmtp* = ref object
@@ -84,7 +84,7 @@ when not defined(ssl):
 else:
   let defaultSSLContext = newContext(verifyMode = CVerifyNone)
 
-proc connect*(address: string, port = Port(25), 
+proc connect*(address: string, port = Port(25),
               ssl = false, debug = false,
               sslContext = defaultSSLContext): Smtp =
   ## Establishes a connection with a SMTP server.
@@ -94,17 +94,17 @@ proc connect*(address: string, port = Port(25),
     when compiledWithSsl:
       sslContext.wrapSocket(result.sock)
     else:
-      raise newException(ESystem, 
+      raise newException(ESystem,
                          "SMTP module compiled without SSL support")
   result.sock.connect(address, port)
   result.debug = debug
-  
+
   result.checkReply("220")
   result.debugSend("HELO " & address & "\c\L")
   result.checkReply("250")
 
 proc auth*(smtp: var Smtp, username, password: string) =
-  ## Sends an AUTH command to the server to login as the `username` 
+  ## Sends an AUTH command to the server to login as the `username`
   ## using `password`.
   ## May fail with ReplyError.
 
@@ -113,13 +113,13 @@ proc auth*(smtp: var Smtp, username, password: string) =
                          # i.e "334 VXNlcm5hbWU6"
   smtp.debugSend(encode(username) & "\c\L")
   smtp.checkReply("334") # TODO: Same as above, only "Password:" (I think?)
-  
+
   smtp.debugSend(encode(password) & "\c\L")
   smtp.checkReply("235") # Check whether the authentification was successful.
 
 proc sendmail*(smtp: var Smtp, fromaddr: string,
                toaddrs: seq[string], msg: string) =
-  ## Sends `msg` from `fromaddr` to `toaddr`. 
+  ## Sends `msg` from `fromaddr` to `toaddr`.
   ## Messages may be formed using ``createMessage`` by converting the
   ## Message into a string.
 
@@ -128,7 +128,7 @@ proc sendmail*(smtp: var Smtp, fromaddr: string,
   for address in items(toaddrs):
     smtp.debugSend("RCPT TO:<" & address & ">\c\L")
     smtp.checkReply("250")
-  
+
   # Send the message
   smtp.debugSend("DATA " & "\c\L")
   smtp.checkReply("354")
@@ -175,7 +175,7 @@ proc `$`*(msg: Message): string =
 
   result.add("\c\L")
   result.add(msg.msgBody)
-  
+
 proc newAsyncSmtp*(address: string, port: Port, useSsl = false,
                    sslContext = defaultSslContext): AsyncSmtp =
   ## Creates a new ``AsyncSmtp`` instance.
@@ -189,7 +189,7 @@ proc newAsyncSmtp*(address: string, port: Port, useSsl = false,
     when compiledWithSsl:
       sslContext.wrapSocket(result.sock)
     else:
-      raise newException(ESystem, 
+      raise newException(ESystem,
                          "SMTP module compiled without SSL support")
 
 proc quitExcpt(smtp: AsyncSmtp, msg: string): Future[void] =
@@ -216,7 +216,7 @@ proc connect*(smtp: AsyncSmtp) {.async.} =
   await smtp.checkReply("250")
 
 proc auth*(smtp: AsyncSmtp, username, password: string) {.async.} =
-  ## Sends an AUTH command to the server to login as the `username` 
+  ## Sends an AUTH command to the server to login as the `username`
   ## using `password`.
   ## May fail with ReplyError.
 
@@ -225,7 +225,7 @@ proc auth*(smtp: AsyncSmtp, username, password: string) {.async.} =
                                # i.e "334 VXNlcm5hbWU6"
   await smtp.sock.send(encode(username) & "\c\L")
   await smtp.checkReply("334") # TODO: Same as above, only "Password:" (I think?)
-  
+
   await smtp.sock.send(encode(password) & "\c\L")
   await smtp.checkReply("235") # Check whether the authentification was successful.
 
@@ -240,7 +240,7 @@ proc sendMail*(smtp: AsyncSmtp, fromAddr: string,
   for address in items(toAddrs):
     await smtp.sock.send("RCPT TO:<" & smtp.address & ">\c\L")
     await smtp.checkReply("250")
-  
+
   # Send the message
   await smtp.sock.send("DATA " & "\c\L")
   await smtp.checkReply("354")
@@ -254,24 +254,24 @@ proc close*(smtp: AsyncSmtp) {.async.} =
   smtp.sock.close()
 
 when isMainModule:
-  #var msg = createMessage("Test subject!", 
+  #var msg = createMessage("Test subject!",
   #     "Hello, my name is dom96.\n What\'s yours?", @["dominik@localhost"])
   #echo(msg)
 
   #var smtp = connect("localhost", 25, False, True)
   #smtp.sendmail("root@localhost", @["dominik@localhost"], $msg)
-  
+
   #echo(decode("a17sm3701420wbe.12"))
   proc main() {.async.} =
     var client = newAsyncSmtp("smtp.gmail.com", Port(465), true)
     await client.connect()
     await client.auth("johndoe", "foo")
-    var msg = createMessage("Hello from Nim's SMTP!", 
-                            "Hello!!!!.\n Is this awesome or what?", 
+    var msg = createMessage("Hello from Nim's SMTP!",
+                            "Hello!!!!.\n Is this awesome or what?",
                             @["blah@gmail.com"])
     echo(msg)
     await client.sendMail("blah@gmail.com", @["blah@gmail.com"], $msg)
 
     await client.close()
-  
+
   waitFor main()

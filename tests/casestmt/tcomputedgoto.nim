@@ -43,5 +43,5 @@ proc vm() =
     of enumE:
       break
     inc(pc)
-  
+
 vm()

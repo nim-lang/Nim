@@ -17,7 +17,7 @@ proc genericAssignAux(dest, src: pointer, n: ptr TNimNode,
     s = cast[ByteAddress](src)
   case n.kind
   of nkSlot:
-    genericAssignAux(cast[pointer](d +% n.offset), 
+    genericAssignAux(cast[pointer](d +% n.offset),
                      cast[pointer](s +% n.offset), n.typ, shallow)
   of nkList:
     for i in 0..n.len-1:
@@ -27,7 +27,7 @@ proc genericAssignAux(dest, src: pointer, n: ptr TNimNode,
     var m = selectBranch(src, n)
     # reset if different branches are in use; note different branches also
     # imply that's not self-assignment (``x = x``)!
-    if m != dd and dd != nil: 
+    if m != dd and dd != nil:
       genericResetAux(dest, dd)
     copyMem(cast[pointer](d +% n.offset), cast[pointer](s +% n.offset),
             n.typ.size)
@@ -54,7 +54,7 @@ proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) =
       unsureAsgnRef(x, copyString(cast[NimString](s2)))
   of tySequence:
     var s2 = cast[PPointer](src)[]
-    var seq = cast[PGenericSeq](s2)      
+    var seq = cast[PGenericSeq](s2)
     var x = cast[PPointer](dest)
     if s2 == nil or shallow or (seq.reserved and seqShallowFlag) != 0:
       # this can happen! nil sequences are allowed
@@ -100,7 +100,7 @@ proc genericShallowAssign(dest, src: pointer, mt: PNimType) {.compilerProc.} =
 
 when false:
   proc debugNimType(t: PNimType) =
-    if t.isNil: 
+    if t.isNil:
       cprintf("nil!")
       return
     var k: cstring
@@ -170,7 +170,7 @@ proc objectInit(dest: pointer, typ: PNimType) =
     for i in 0..(typ.size div typ.base.size)-1:
       objectInit(cast[pointer](d +% i * typ.base.size), typ.base)
   else: discard # nothing to do
-  
+
 # ---------------------- assign zero -----------------------------------------
 
 when not defined(nimmixin):
@@ -198,7 +198,7 @@ proc genericResetAux(dest: pointer, n: ptr TNimNode) =
     var m = selectBranch(dest, n)
     if m != nil: genericResetAux(dest, m)
     zeroMem(cast[pointer](d +% n.offset), n.typ.size)
-  
+
 proc genericReset(dest: pointer, mt: PNimType) =
   var d = cast[ByteAddress](dest)
   sysAssert(mt != nil, "genericReset 2")
@@ -214,15 +214,15 @@ proc genericReset(dest: pointer, mt: PNimType) =
   else:
     zeroMem(dest, mt.size) # set raw bits to zero
 
-proc selectBranch(discVal, L: int, 
+proc selectBranch(discVal, L: int,
                   a: ptr array [0..0x7fff, ptr TNimNode]): ptr TNimNode =
   result = a[L] # a[L] contains the ``else`` part (but may be nil)
   if discVal <% L:
     var x = a[discVal]
     if x != nil: result = x
-  
-proc FieldDiscriminantCheck(oldDiscVal, newDiscVal: int, 
-                            a: ptr array [0..0x7fff, ptr TNimNode], 
+
+proc FieldDiscriminantCheck(oldDiscVal, newDiscVal: int,
+                            a: ptr array [0..0x7fff, ptr TNimNode],
                             L: int) {.compilerProc.} =
   var oldBranch = selectBranch(oldDiscVal, L, a)
   var newBranch = selectBranch(newDiscVal, L, a)

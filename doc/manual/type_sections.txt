@@ -18,6 +18,6 @@ Example:
 A type section begins with the ``type`` keyword. It contains multiple
 type definitions. A type definition binds a type to a name. Type definitions
 can be recursive or even mutually recursive. Mutually recursive types are only
-possible within a single ``type`` section. Nominal types like ``objects`` 
+possible within a single ``type`` section. Nominal types like ``objects``
 or ``enums`` can only be defined in a ``type`` section.
 

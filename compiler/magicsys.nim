@@ -9,7 +9,7 @@
 
 # Built-in types and compilerprocs are registered here.
 
-import 
+import
   ast, astalgo, hashes, msgs, platform, nversion, times, idents, rodread
 
 var systemModule*: PSym
@@ -29,23 +29,23 @@ var
 
 proc nilOrSysInt*: PType = gSysTypes[tyInt]
 
-proc registerSysType(t: PType) = 
+proc registerSysType(t: PType) =
   if gSysTypes[t.kind] == nil: gSysTypes[t.kind] = t
-  
-proc newSysType(kind: TTypeKind, size: int): PType = 
+
+proc newSysType(kind: TTypeKind, size: int): PType =
   result = newType(kind, systemModule)
   result.size = size
   result.align = size.int16
 
-proc getSysSym(name: string): PSym = 
+proc getSysSym(name: string): PSym =
   result = strTableGet(systemModule.tab, getIdent(name))
-  if result == nil: 
+  if result == nil:
     rawMessage(errSystemNeeds, name)
     result = newSym(skError, getIdent(name), systemModule, systemModule.info)
     result.typ = newType(tyError, systemModule)
   if result.kind == skStub: loadStub(result)
   if result.kind == skAlias: result = result.owner
-  
+
 proc getSysMagic*(name: string, m: TMagic): PSym =
   var ti: TIdentIter
   let id = getIdent(name)
@@ -57,13 +57,13 @@ proc getSysMagic*(name: string, m: TMagic): PSym =
   rawMessage(errSystemNeeds, name)
   result = newSym(skError, id, systemModule, systemModule.info)
   result.typ = newType(tyError, systemModule)
-  
-proc sysTypeFromName*(name: string): PType = 
+
+proc sysTypeFromName*(name: string): PType =
   result = getSysSym(name).typ
 
-proc getSysType(kind: TTypeKind): PType = 
+proc getSysType(kind: TTypeKind): PType =
   result = gSysTypes[kind]
-  if result == nil: 
+  if result == nil:
     case kind
     of tyInt: result = sysTypeFromName("int")
     of tyInt8: result = sysTypeFromName("int8")
@@ -87,7 +87,7 @@ proc getSysType(kind: TTypeKind): PType =
     of tyNil: result = newSysType(tyNil, ptrSize)
     else: internalError("request for typekind: " & $kind)
     gSysTypes[kind] = result
-  if result.kind != kind: 
+  if result.kind != kind:
     internalError("wanted: " & $kind & " got: " & $result.kind)
   if result == nil: internalError("type not found: " & $kind)
 
@@ -163,7 +163,7 @@ proc setIntLitType*(result: PNode) =
       result.typ = getSysType(tyInt64)
   else: internalError(result.info, "invalid int size")
 
-proc getCompilerProc(name: string): PSym = 
+proc getCompilerProc(name: string): PSym =
   var ident = getIdent(name, hashIgnoreStyle(name))
   result = strTableGet(compilerprocs, ident)
   if result == nil:

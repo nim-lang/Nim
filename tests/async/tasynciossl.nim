@@ -10,12 +10,12 @@ disp = newDispatcher()
 var msgCount = 0
 
 when defined(ssl):
-  var ctx = newContext(verifyMode = CVerifyNone, 
+  var ctx = newContext(verifyMode = CVerifyNone,
       certFile = "tests/testdata/mycert.pem", keyFile = "tests/testdata/mycert.pem")
 
   var ctx1 = newContext(verifyMode = CVerifyNone)
 
-const 
+const
   swarmSize = 50
   messagesToSend = 100
 

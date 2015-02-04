@@ -4,7 +4,7 @@ discard """
 
 import  macros
 
-type 
+type
     TA = tuple[a: int]
     PA = ref TA
 

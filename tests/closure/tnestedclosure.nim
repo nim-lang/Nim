@@ -45,7 +45,7 @@ proc cbOuter() =
         proc fooIter() =
           echo response
         fooIter()
-        
+
     cbIter()
 
 cbOuter()

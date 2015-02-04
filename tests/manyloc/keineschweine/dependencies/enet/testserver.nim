@@ -19,11 +19,11 @@ while server.hostService(addr event, 2500) >= 0:
   case event.kind
   of EvtConnect:
     echo "New client from $1:$2".format(event.peer.address.host, event.peer.address.port)
-    
+
     var
-      msg = "hello" 
+      msg = "hello"
       resp = createPacket(cstring(msg), msg.len + 1, FlagReliable)
-      
+
     if event.peer.send(0.cuchar, resp) < 0:
       echo "FAILED"
     else:
@@ -32,9 +32,9 @@ while server.hostService(addr event, 2500) >= 0:
     echo "Recvd ($1) $2 ".format(
       event.packet.dataLength,
       event.packet.data)
-    
+
     destroy(event.packet)
-    
+
   of EvtDisconnect:
     echo "Disconnected"
     event.peer.data = nil

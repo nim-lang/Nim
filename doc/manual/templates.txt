@@ -16,17 +16,17 @@ Example:
 
   assert(5 != 6) # the compiler rewrites that to: assert(not (5 == 6))
 
-The ``!=``, ``>``, ``>=``, ``in``, ``notin``, ``isnot`` operators are in fact 
+The ``!=``, ``>``, ``>=``, ``in``, ``notin``, ``isnot`` operators are in fact
 templates:
 
 | ``a > b`` is transformed into ``b < a``.
-| ``a in b`` is transformed into ``contains(b, a)``. 
+| ``a in b`` is transformed into ``contains(b, a)``.
 | ``notin`` and ``isnot`` have the obvious meanings.
 
-The "types" of templates can be the symbols ``expr`` (stands for *expression*), 
-``stmt`` (stands for *statement*) or ``typedesc`` (stands for *type 
-description*). These are "meta types", they can only be used in certain 
-contexts. Real types can be used too; this implies that expressions are 
+The "types" of templates can be the symbols ``expr`` (stands for *expression*),
+``stmt`` (stands for *statement*) or ``typedesc`` (stands for *type
+description*). These are "meta types", they can only be used in certain
+contexts. Real types can be used too; this implies that expressions are
 expected.
 
 
@@ -40,7 +40,7 @@ So ordinary templates cannot receive undeclared identifiers:
 
 .. code-block:: nim
 
-  template declareInt(x: expr) = 
+  template declareInt(x: expr) =
     var x: int
 
   declareInt(x) # error: unknown identifier: 'x'
@@ -51,7 +51,7 @@ receive undeclared identifiers:
 
 .. code-block:: nim
 
-  template declareInt(x: expr) {.immediate.} = 
+  template declareInt(x: expr) {.immediate.} =
     var x: int
 
   declareInt(x) # valid
@@ -75,11 +75,11 @@ special ``:`` syntax:
         close(f)
     else:
       quit("cannot open: " & fn)
-      
+
   withFile(txt, "ttempl3.txt", fmWrite):
     txt.writeln("line 1")
     txt.writeln("line 2")
-  
+
 In the example the two ``writeln`` statements are bound to the ``actions``
 parameter.
 
@@ -92,9 +92,9 @@ bound from the definition scope of the template:
 
 .. code-block:: nim
   # Module A
-  var 
+  var
     lastId = 0
-  
+
   template genId*: expr =
     inc(lastId)
     lastId
@@ -102,10 +102,10 @@ bound from the definition scope of the template:
 .. code-block:: nim
   # Module B
   import A
-  
+
   echo genId() # Works as 'lastId' has been bound in 'genId's defining scope
 
-As in generics symbol binding can be influenced via ``mixin`` or ``bind`` 
+As in generics symbol binding can be influenced via ``mixin`` or ``bind``
 statements.
 
 
@@ -117,11 +117,11 @@ In templates identifiers can be constructed with the backticks notation:
 
 .. code-block:: nim
 
-  template typedef(name: expr, typ: typedesc) {.immediate.} = 
+  template typedef(name: expr, typ: typedesc) {.immediate.} =
     type
       `T name`* {.inject.} = typ
       `P name`* {.inject.} = ref `T name`
-      
+
   typedef(myint, int)
   var x: PMyInt
 
@@ -150,7 +150,7 @@ shadowed by the same argument name even when fully qualified:
 
   tstLev(levA)
   # produces: 'levA levA'
-  
+
 But the global symbol can properly be captured by a ``bind`` statement:
 
 .. code-block:: nim
@@ -177,14 +177,14 @@ Per default templates are `hygienic`:idx:\: Local identifiers declared in a
 template cannot be accessed in the instantiation context:
 
 .. code-block:: nim
-  
+
   template newException*(exceptn: typedesc, message: string): expr =
     var
       e: ref exceptn  # e is implicitly gensym'ed here
     new(e)
     e.msg = message
     e
-    
+
   # so this works:
   let e = "message"
   raise newException(EIO, e)
@@ -196,7 +196,7 @@ symbols are not exposed but inject'ed are.
 
 The default for symbols of entity ``type``, ``var``, ``let`` and ``const``
 is ``gensym`` and for ``proc``, ``iterator``, ``converter``, ``template``,
-``macro`` is ``inject``. However, if the name of the entity is passed as a 
+``macro`` is ``inject``. However, if the name of the entity is passed as a
 template parameter, it is an inject'ed symbol:
 
 .. code-block:: nim
@@ -204,7 +204,7 @@ template parameter, it is an inject'ed symbol:
     block:
       var f: File  # since 'f' is a template param, it's injected implicitly
       ...
-      
+
   withFile(txt, "ttempl3.txt", fmWrite):
     txt.writeln("line 1")
     txt.writeln("line 2")
@@ -215,7 +215,7 @@ no semantics outside of a template definition and cannot be abstracted over:
 
 .. code-block:: nim
   {.pragma myInject: inject.}
-  
+
   template t() =
     var x {.myInject.}: int # does NOT work
 
@@ -334,9 +334,9 @@ BindSym
 -------
 
 The above ``debug`` macro relies on the fact that ``write``, ``writeln`` and
-``stdout`` are declared in the system module and thus visible in the 
+``stdout`` are declared in the system module and thus visible in the
 instantiating context. There is a way to use bound identifiers
-(aka `symbols`:idx:) instead of using unbound identifiers. The ``bindSym`` 
+(aka `symbols`:idx:) instead of using unbound identifiers. The ``bindSym``
 builtin can be used for that:
 
 .. code-block:: nim
@@ -418,8 +418,8 @@ powerful programming construct that still suffices. So the "check list" is:
 Macros as pragmas
 -----------------
 
-Whole routines (procs, iterators etc.) can also be passed to a template or 
-a macro via the pragma notation: 
+Whole routines (procs, iterators etc.) can also be passed to a template or
+a macro via the pragma notation:
 
 .. code-block:: nim
   template m(s: stmt) = discard

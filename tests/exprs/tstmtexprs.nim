@@ -26,16 +26,16 @@ when true:
     result.bar = "bar"
 
   echo($newfoo())
-   
 
-  proc retInt(x, y: int): int = 
+
+  proc retInt(x, y: int): int =
     if (var yy = 0; yy != 0):
       echo yy
     else:
       echo(try: parseInt("1244") except EINvalidValue: -1)
     result = case x
              of 23: 3
-             of 64: 
+             of 64:
                     case y
                     of 1: 2
                     of 2: 3
@@ -79,7 +79,7 @@ semiProblem()
 
 # bug #844
 
-import json 
+import json
 proc parseResponse(): PJsonNode =
   result = % { "key1": % { "key2": % "value" } }
   for key, val in result["key1"]:

@@ -1,7 +1,7 @@
-type 
+type
   Bar = object
     x: int
-  
+
   Foo = object
     rheap: ref Bar
     rmaybe: ref Bar
@@ -31,7 +31,7 @@ proc test(maybeFoo: var Foo,
   maybeFoo.list[3] = bb
   maybeFoo.listarr[3] = bb
   acc(maybeFoo) = bb
-  
+
   var localFoo: Foo
   localFoo.rstack = bb
   localFoo.list[3] = bb

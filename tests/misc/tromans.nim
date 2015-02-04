@@ -32,7 +32,7 @@ proc RomanToDecimal(romanVal: string): int =
     of 'C', 'c': val = 100
     of 'D', 'd': val = 500
     of 'M', 'm': val = 1000
-    else: raiseInvalidValue("Incorrect character in roman numeral! (" & 
+    else: raiseInvalidValue("Incorrect character in roman numeral! (" &
                             $romanVal[i] & ")")
     if val >= prevVal:
       inc(result, val)
@@ -49,7 +49,7 @@ proc DecimalToRoman(decValParam: int): string =
     ("M", 1000), ("CM", 900),
     ("D", 500), ("CD", 400), ("C", 100),
     ("XC", 90), ("L", 50), ("XL", 40), ("X", 10), ("IX", 9),
-    ("V", 5), ("IV", 4), ("I", 1)]     
+    ("V", 5), ("IV", 4), ("I", 1)]
   if decValParam < 1 or decValParam > 3999:
     raiseInvalidValue("number not representable")
   result = ""
@@ -64,7 +64,7 @@ for i in 1..100:
 
 for i in items([1238, 1777, 3830, 2401, 379, 33, 940, 3973]):
   if RomanToDecimal(DecimalToRoman(i)) != i: quit "BUG"
- 
+
 echo "success" #OUT success
 
 

@@ -17,7 +17,7 @@ type
   # an untyped table to store the proc pointers
   # it's also possible to use a strongly typed tuple here
   VTable = array[0..1, pointer]
-  
+
   TBase = object {.inheritable.}
     vtbl: ptr VTable
 

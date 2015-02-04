@@ -10,7 +10,7 @@
 type
   TccState {.pure, final.} = object
   PccState* = ptr TccState
-  
+
   TErrorFunc* = proc (opaque: pointer, msg: cstring) {.cdecl.}
 
 proc openCCState*(): PccState {.importc: "tcc_new", cdecl.}
@@ -30,33 +30,33 @@ proc setWarning*(s: PccState, warningName: cstring, value: int) {.cdecl,
   importc: "tcc_set_warning".}
   ## set/reset a warning
 
-# preprocessor 
+# preprocessor
 
-proc addIncludePath*(s: PccState, pathname: cstring) {.cdecl, 
+proc addIncludePath*(s: PccState, pathname: cstring) {.cdecl,
   importc: "tcc_add_include_path".}
   ## add include path
 
-proc addSysincludePath*(s: PccState, pathname: cstring) {.cdecl, 
+proc addSysincludePath*(s: PccState, pathname: cstring) {.cdecl,
   importc: "tcc_add_sysinclude_path".}
   ## add in system include path
 
 
-proc defineSymbol*(s: PccState, sym, value: cstring) {.cdecl, 
+proc defineSymbol*(s: PccState, sym, value: cstring) {.cdecl,
   importc: "tcc_define_symbol".}
   ## define preprocessor symbol 'sym'. Can put optional value
 
-proc undefineSymbol*(s: PccState, sym: cstring) {.cdecl, 
+proc undefineSymbol*(s: PccState, sym: cstring) {.cdecl,
   importc: "tcc_undefine_symbol".}
   ## undefine preprocess symbol 'sym'
 
-# compiling 
+# compiling
 
-proc addFile*(s: PccState, filename: cstring): cint {.cdecl, 
+proc addFile*(s: PccState, filename: cstring): cint {.cdecl,
   importc: "tcc_add_file".}
   ## add a file (either a C file, dll, an object, a library or an ld
   ## script). Return -1 if error.
 
-proc compileString*(s: PccState, buf: cstring): cint {.cdecl, 
+proc compileString*(s: PccState, buf: cstring): cint {.cdecl,
   importc: "tcc_compile_string".}
   ## compile a string containing a C source. Return non zero if error.
 
@@ -70,12 +70,12 @@ const
   OutputDll*: cint = 2 ## dynamic library
   OutputObj*: cint = 3 ## object file
   OutputPreprocess*: cint = 4 ## preprocessed file (used internally)
-  
+
   OutputFormatElf*: cint = 0 ## default output format: ELF
   OutputFormatBinary*: cint = 1 ## binary image output
   OutputFormatCoff*: cint = 2 ## COFF
 
-proc setOutputType*(s: PCCState, outputType: cint): cint {.cdecl, 
+proc setOutputType*(s: PCCState, outputType: cint): cint {.cdecl,
   importc: "tcc_set_output_type".}
   ## set output type. MUST BE CALLED before any compilation
 
@@ -114,5 +114,5 @@ proc getSymbol*(s: PccState, name: cstring): pointer {.cdecl,
 proc setLibPath*(s: PccState, path: cstring) {.cdecl,
   importc: "tcc_set_lib_path".}
   ## set CONFIG_TCCDIR at runtime
-  
+
 

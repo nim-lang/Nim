@@ -9,7 +9,7 @@ TFoo TFoo'''
 
 import typetraits
 
-type 
+type
   TFoo = object
     x, y: int
 
@@ -25,7 +25,7 @@ template reject(e: expr) =
 proc genericParamRepeated[T: typedesc](a: T, b: T) =
   static:
     echo a.name, " ", b.name
-    
+
 accept genericParamRepeated(int, int)
 accept genericParamRepeated(float, float)
 

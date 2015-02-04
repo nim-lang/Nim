@@ -8,13 +8,13 @@
 #
 
 ## This module implements helper procs for SCGI applications. Example:
-## 
+##
 ## .. code-block:: Nim
 ##
 ##    import strtabs, sockets, scgi
 ##
 ##    var counter = 0
-##    proc handleRequest(client: Socket, input: string, 
+##    proc handleRequest(client: Socket, input: string,
 ##                       headers: StringTableRef): bool {.procvar.} =
 ##      inc(counter)
 ##      client.writeStatusOkTextContent()
@@ -37,19 +37,19 @@ import sockets, strutils, os, strtabs, asyncio
 type
   ScgiError* = object of IOError ## the exception that is raised, if a SCGI error occurs
 
-proc raiseScgiError*(msg: string) {.noreturn.} = 
+proc raiseScgiError*(msg: string) {.noreturn.} =
   ## raises an ScgiError exception with message `msg`.
   var e: ref ScgiError
   new(e)
   e.msg = msg
   raise e
 
-proc parseWord(inp: string, outp: var string, start: int): int = 
+proc parseWord(inp: string, outp: var string, start: int): int =
   result = start
   while inp[result] != '\0': inc(result)
   outp = substr(inp, start, result-1)
 
-proc parseHeaders(s: string, L: int): StringTableRef = 
+proc parseHeaders(s: string, L: int): StringTableRef =
   result = newStringTable()
   var i = 0
   while i < L:
@@ -59,12 +59,12 @@ proc parseHeaders(s: string, L: int): StringTableRef =
     result[key] = val
   if s[i] == ',': inc(i)
   else: raiseScgiError("',' after netstring expected")
-  
-proc recvChar(s: Socket): char = 
+
+proc recvChar(s: Socket): char =
   var c: char
-  if recv(s, addr(c), sizeof(c)) == sizeof(c): 
+  if recv(s, addr(c), sizeof(c)) == sizeof(c):
     result = c
-  
+
 type
   ScgiState* = object of RootObj ## SCGI state object
     server: Socket
@@ -72,22 +72,22 @@ type
     client*: Socket ## the client socket to send data to
     headers*: StringTableRef ## the parsed headers
     input*: string  ## the input buffer
-  
-  
+
+
   # Async
-  
+
   ClientMode = enum
     ClientReadChar, ClientReadHeaders, ClientReadContent
-  
+
   AsyncClient = ref object
     c: AsyncSocket
     mode: ClientMode
     dataLen: int
     headers: StringTableRef ## the parsed headers
     input: string  ## the input buffer
-  
+
   AsyncScgiStateObj = object
-    handleRequest: proc (client: AsyncSocket, 
+    handleRequest: proc (client: AsyncSocket,
                          input: string,
                          headers: StringTableRef) {.closure, gcsafe.}
     asyncServer: AsyncSocket
@@ -98,19 +98,19 @@ type
    PAsyncScgiState: AsyncScgiState, scgiError: raiseScgiError].}
 
 proc recvBuffer(s: var ScgiState, L: int) =
-  if L > s.bufLen: 
+  if L > s.bufLen:
     s.bufLen = L
     s.input = newString(L)
-  if L > 0 and recv(s.client, cstring(s.input), L) != L: 
+  if L > 0 and recv(s.client, cstring(s.input), L) != L:
     raiseScgiError("could not read all data")
   setLen(s.input, L)
-  
+
 proc open*(s: var ScgiState, port = Port(4000), address = "127.0.0.1",
-           reuseAddr = false) = 
+           reuseAddr = false) =
   ## opens a connection.
   s.bufLen = 4000
   s.input = newString(s.bufLen) # will be reused
-  
+
   s.server = socket()
   if s.server == invalidSocket: raiseOSError(osLastError())
   new(s.client) # Initialise s.client for `next`
@@ -120,12 +120,12 @@ proc open*(s: var ScgiState, port = Port(4000), address = "127.0.0.1",
     s.server.setSockOpt(OptReuseAddr, true)
   bindAddr(s.server, port, address)
   listen(s.server)
-  
-proc close*(s: var ScgiState) = 
+
+proc close*(s: var ScgiState) =
   ## closes the connection.
   s.server.close()
 
-proc next*(s: var ScgiState, timeout: int = -1): bool = 
+proc next*(s: var ScgiState, timeout: int = -1): bool =
   ## proceed to the first/next request. Waits ``timeout`` miliseconds for a
   ## request, if ``timeout`` is `-1` then this function will never time out.
   ## Returns `true` if a new request has been processed.
@@ -139,18 +139,18 @@ proc next*(s: var ScgiState, timeout: int = -1): bool =
       if d == '\0':
         s.client.close()
         return false
-      if d notin strutils.Digits: 
+      if d notin strutils.Digits:
         if d != ':': raiseScgiError("':' after length expected")
         break
-      L = L * 10 + ord(d) - ord('0')  
+      L = L * 10 + ord(d) - ord('0')
     recvBuffer(s, L+1)
     s.headers = parseHeaders(s.input, L)
     if s.headers["SCGI"] != "1": raiseScgiError("SCGI Version 1 expected")
     L = parseInt(s.headers["CONTENT_LENGTH"])
     recvBuffer(s, L)
     return true
-  
-proc writeStatusOkTextContent*(c: Socket, contentType = "text/html") = 
+
+proc writeStatusOkTextContent*(c: Socket, contentType = "text/html") =
   ## sends the following string to the socket `c`::
   ##
   ##   Status: 200 OK\r\LContent-Type: text/html\r\L\r\L
@@ -159,9 +159,9 @@ proc writeStatusOkTextContent*(c: Socket, contentType = "text/html") =
   c.send("Status: 200 OK\r\L" &
          "Content-Type: $1\r\L\r\L" % contentType)
 
-proc run*(handleRequest: proc (client: Socket, input: string, 
+proc run*(handleRequest: proc (client: Socket, input: string,
                                headers: StringTableRef): bool {.nimcall,gcsafe.},
-          port = Port(4000)) = 
+          port = Port(4000)) =
   ## encapsulates the SCGI object and main loop.
   var s: ScgiState
   s.open(port)
@@ -197,7 +197,7 @@ proc checkCloseSocket(client: AsyncClient) =
           s.close()
           s.delHandleWrite()
     else: client.c.close()
-    
+
 proc handleClientRead(client: AsyncClient, s: AsyncScgiState) =
   case client.mode
   of ClientReadChar:
@@ -223,7 +223,7 @@ proc handleClientRead(client: AsyncClient, s: AsyncScgiState) =
       client.headers = parseHeaders(client.input, client.input.len-1)
       if client.headers["SCGI"] != "1": raiseScgiError("SCGI Version 1 expected")
       client.input = "" # For next part
-      
+
       let contentLen = parseInt(client.headers["CONTENT_LENGTH"])
       if contentLen > 0:
         client.mode = ClientReadContent
@@ -250,12 +250,12 @@ proc handleAccept(sock: AsyncSocket, s: AsyncScgiState) =
   accept(s.asyncServer, client)
   var asyncClient = AsyncClient(c: client, mode: ClientReadChar, dataLen: 0,
                                  headers: newStringTable(), input: "")
-  client.handleRead = 
+  client.handleRead =
     proc (sock: AsyncSocket) =
       handleClientRead(asyncClient, s)
   s.disp.register(client)
 
-proc open*(handleRequest: proc (client: AsyncSocket, 
+proc open*(handleRequest: proc (client: AsyncSocket,
                                 input: string, headers: StringTableRef) {.
                                 closure, gcsafe.},
            port = Port(4000), address = "127.0.0.1",
@@ -286,7 +286,7 @@ proc close*(s: AsyncScgiState) =
 
 when false:
   var counter = 0
-  proc handleRequest(client: Socket, input: string, 
+  proc handleRequest(client: Socket, input: string,
                      headers: StringTableRef): bool {.procvar.} =
     inc(counter)
     client.writeStatusOkTextContent()

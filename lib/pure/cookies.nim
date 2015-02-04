@@ -11,7 +11,7 @@
 
 import strtabs, times
 
-proc parseCookies*(s: string): StringTableRef = 
+proc parseCookies*(s: string): StringTableRef =
   ## parses cookies into a string table.
   result = newStringTable(modeCaseInsensitive)
   var i = 0
@@ -31,7 +31,7 @@ proc parseCookies*(s: string): StringTableRef =
 proc setCookie*(key, value: string, domain = "", path = "",
                 expires = "", noName = false,
                 secure = false, httpOnly = false): string =
-  ## Creates a command in the format of 
+  ## Creates a command in the format of
   ## ``Set-Cookie: key=value; Domain=...; ...``
   result = ""
   if not noName: result.add("Set-Cookie: ")
@@ -45,10 +45,10 @@ proc setCookie*(key, value: string, domain = "", path = "",
 proc setCookie*(key, value: string, expires: TimeInfo,
                 domain = "", path = "", noName = false,
                 secure = false, httpOnly = false): string =
-  ## Creates a command in the format of 
+  ## Creates a command in the format of
   ## ``Set-Cookie: key=value; Domain=...; ...``
   ##
-  ## **Note:** UTC is assumed as the timezone for ``expires``.  
+  ## **Note:** UTC is assumed as the timezone for ``expires``.
   return setCookie(key, value, domain, path,
                    format(expires, "ddd',' dd MMM yyyy HH:mm:ss 'UTC'"),
                    noname, secure, httpOnly)
@@ -57,5 +57,5 @@ when isMainModule:
   var tim = Time(int(getTime()) + 76 * (60 * 60 * 24))
 
   echo(setCookie("test", "value", tim.getGMTime()))
-  
+
   echo parseCookies("uid=1; kp=2")

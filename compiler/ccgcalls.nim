@@ -124,7 +124,7 @@ proc genArgStringToCString(p: BProc, n: PNode): PRope {.inline.} =
   var a: TLoc
   initLocExpr(p, n.sons[0], a)
   result = ropef("$1->data", [a.rdLoc])
-  
+
 proc genArg(p: BProc, n: PNode, param: PSym): PRope =
   var a: TLoc
   if n.kind == nkStringToCString:
@@ -135,7 +135,7 @@ proc genArg(p: BProc, n: PNode, param: PSym): PRope =
   elif ccgIntroducedPtr(param):
     initLocExprSingleUse(p, n, a)
     result = addrLoc(a)
-  elif p.module.compileToCpp and param.typ.kind == tyVar and 
+  elif p.module.compileToCpp and param.typ.kind == tyVar and
       n.kind == nkHiddenAddr:
     initLocExprSingleUse(p, n.sons[0], a)
     result = rdLoc(a)
@@ -184,7 +184,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var op: TLoc
   initLocExpr(p, ri.sons[0], op)
   var pl: PRope
-  
+
   var typ = skipTypes(ri.sons[0].typ, abstractInst)
   assert(typ.kind == tyProc)
   var length = sonsLen(ri)
@@ -196,7 +196,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
     else:
       app(pl, genArgNoParam(p, ri.sons[i]))
     if i < length - 1: app(pl, ~", ")
-  
+
   template genCallPattern {.dirty.} =
     lineF(p, cpsStmts, callPattern & ";$n", op.r, pl, pl.addComma, rawProc)
 
@@ -422,7 +422,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
   assert(typ.kind == tyProc)
   var length = sonsLen(ri)
   assert(sonsLen(typ) == sonsLen(typ.n))
-  
+
   if length > 1:
     app(pl, genArg(p, ri.sons[1], typ.n.sons[1].sym))
     app(pl, ~" ")

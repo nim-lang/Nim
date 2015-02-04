@@ -1,6 +1,6 @@
-# Test the new beforeQuit variable: 
+# Test the new beforeQuit variable:
 
-proc myExit() {.noconv.} = 
+proc myExit() {.noconv.} =
   write(stdout, "just exiting...\n")
 
 addQuitProc(myExit)

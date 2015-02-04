@@ -18,9 +18,9 @@ template any(container, cond: expr): expr {.immediate.} =
         break
     result
 
-if all("mystring", {'a'..'z'}.contains) and any("myohmy", 'y'.`==`): 
+if all("mystring", {'a'..'z'}.contains) and any("myohmy", 'y'.`==`):
   echo "works"
-else: 
+else:
   echo "does not work"
 
 

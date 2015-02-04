@@ -14,7 +14,7 @@ type
   Url* = distinct string
 
   Uri* = object
-    scheme*, username*, password*: string 
+    scheme*, username*, password*: string
     hostname*, port*, path*, query*, anchor*: string
     opaque*: bool
 
@@ -67,7 +67,7 @@ proc parseAuthority(authority: string, result: var Uri) =
     i.inc
 
 proc parsePath(uri: string, i: var int, result: var Uri) =
-  
+
   i.inc parseUntil(uri, result.path, {'?', '#'}, i)
 
   # The 'mailto' scheme's PATH actually contains the hostname/username
@@ -186,7 +186,7 @@ proc combine*(base: Uri, reference: Uri): Uri =
   ##
   ##   let bar = combine(parseUri("http://example.com/foo/bar/"), parseUri("baz"))
   ##   assert foo.path == "/foo/bar/baz"
-  
+
   template setAuthority(dest, src: expr): stmt =
     dest.hostname = src.hostname
     dest.username = src.username

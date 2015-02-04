@@ -17,7 +17,7 @@ mymacro:
   echo "test"
 else:
   echo "else part"
-  
+
 
 if 4 == 3:
   echo "bug"

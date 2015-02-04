@@ -37,7 +37,7 @@ Core
 
 * `unsigned <unsigned.html>`_
   This module implements basic arithmetic operators for unsigned integers.
-  To discourage users from using unsigned integers, it's not part 
+  To discourage users from using unsigned integers, it's not part
   of ``system``, but an extra import.
 
 * `threads <threads.html>`_
@@ -45,7 +45,7 @@ Core
   import it explicitly.
 
 * `channels <channels.html>`_
-  Nim message passing support for threads. **Note**: This is part of the 
+  Nim message passing support for threads. **Note**: This is part of the
   system module. Do not import it explicitly.
 
 * `locks <locks.html>`_
@@ -55,7 +55,7 @@ Core
   Contains the AST API and documentation of Nim for writing macros.
 
 * `typeinfo <typeinfo.html>`_
-  Provides (unsafe) access to Nim's run time type information. 
+  Provides (unsafe) access to Nim's run time type information.
 
 * `typetraits <typetraits.html>`_
   This module defines compile-time reflection procs for working with types.
@@ -110,9 +110,9 @@ String handling
 
 * `unicode <unicode.html>`_
   This module provides support to handle the Unicode UTF-8 encoding.
-  
+
 * `encodings <encodings.html>`_
-  Converts between different character encodings. On UNIX, this uses 
+  Converts between different character encodings. On UNIX, this uses
   the ``iconv`` library, on Windows the Windows API.
 
 * `pegs <pegs.html>`_
@@ -159,7 +159,7 @@ Generic Operating System Services
   may provide other implementations for this standard stream interface.
 
 * `marshal <marshal.html>`_
-  Contains procs for serialization and deseralization of arbitrary Nim 
+  Contains procs for serialization and deseralization of arbitrary Nim
   data structures.
 
 * `terminal <terminal.html>`_
@@ -168,7 +168,7 @@ Generic Operating System Services
   sequences and does not depend on any other module.
 
 * `memfiles <memfiles.html>`_
-  This module provides support for memory mapped files (Posix's ``mmap``) 
+  This module provides support for memory mapped files (Posix's ``mmap``)
   on the different operating systems.
 
 * `fsmonitor <fsmonitor.html>`_
@@ -216,7 +216,7 @@ Internet Protocols and Support
   This module implements a simple HTTP client.
 
 * `smtp <smtp.html>`_
-  This module implement a simple SMTP client. 
+  This module implement a simple SMTP client.
 
 * `irc <irc.html>`_
   This module implements an asynchronous IRC client.
@@ -337,7 +337,7 @@ XML Processing
   This module parses an HTML document and creates its XML tree representation.
 
 * `htmlgen <htmlgen.html>`_
-  This module implements a simple XML and HTML code 
+  This module implements a simple XML and HTML code
   generator. Each commonly used HTML tag has a corresponding macro
   that generates a string with its HTML representation.
 
@@ -372,7 +372,7 @@ Miscellaneous
 
 * `oids <oids.html>`_
   An OID is a global ID that consists of a timestamp,
-  a unique counter and a random value. This combination should suffice to 
+  a unique counter and a random value. This combination should suffice to
   produce a globally distributed unique ID. This implementation was extracted
   from the Mongodb interface and it thus binary compatible with a Mongo OID.
 
@@ -449,7 +449,7 @@ Other
   Web like loading the contents of a Web page from an URL.
 
 * `ssl <ssl.html>`_
-  This module provides an easy to use sockets-style 
+  This module provides an easy to use sockets-style
   Nim interface to the OpenSSL library.
 
 * `rdstdin <rdstdin.html>`_
@@ -582,7 +582,7 @@ Data Compression and Archiving
 Scientific computing
 --------------------
 
-* `libsvm <libsvm.html>`_ 
+* `libsvm <libsvm.html>`_
   Low level wrapper for `lib svm <http://www.csie.ntu.edu.tw/~cjlin/libsvm/>`_.
 
 Nimble

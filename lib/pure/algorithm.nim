@@ -11,15 +11,15 @@
 
 type
   SortOrder* = enum   ## sort order
-    Descending, Ascending 
+    Descending, Ascending
 
 {.deprecated: [TSortOrder: SortOrder].}
 
 
-proc `*`*(x: int, order: SortOrder): int {.inline.} = 
+proc `*`*(x: int, order: SortOrder): int {.inline.} =
   ## flips `x` if ``order == Descending``;
   ## if ``order == Ascending`` then `x` is returned.
-  ## `x` is supposed to be the result of a comparator, ie ``< 0`` for 
+  ## `x` is supposed to be the result of a comparator, ie ``< 0`` for
   ## *less than*, ``== 0`` for *equal*, ``> 0`` for *greater than*.
   var y = order.ord - 1
   result = (x xor y) - y
@@ -73,14 +73,14 @@ const
   onlySafeCode = true
 
 proc lowerBound*[T](a: openArray[T], key: T, cmp: proc(x,y: T): int {.closure.}): int =
-  ## same as binarySearch except that if key is not in `a` then this 
+  ## same as binarySearch except that if key is not in `a` then this
   ## returns the location where `key` would be if it were. In other
   ## words if you have a sorted sequence and you call insert(thing, elm, lowerBound(thing, elm))
   ## the sequence will still be sorted
   ##
   ## `cmp` is the comparator function to use, the expected return values are the same as
   ## that of system.cmp
-  ## 
+  ##
   ## example::
   ##
   ##   var arr = @[1,2,3,5,6,7,8,9]
@@ -102,9 +102,9 @@ proc lowerBound*[T](a: openArray[T], key: T, cmp: proc(x,y: T): int {.closure.})
       count = step
 
 proc lowerBound*[T](a: openArray[T], key: T): int = lowerBound(a, key, cmp[T])
-proc merge[T](a, b: var openArray[T], lo, m, hi: int, 
+proc merge[T](a, b: var openArray[T], lo, m, hi: int,
               cmp: proc (x, y: T): int {.closure.}, order: SortOrder) =
-  template `<-` (a, b: expr) = 
+  template `<-` (a, b: expr) =
     when false:
       a = b
     elif onlySafeCode:
@@ -151,10 +151,10 @@ proc merge[T](a, b: var openArray[T], lo, m, hi: int,
 proc sort*[T](a: var openArray[T],
               cmp: proc (x, y: T): int {.closure.},
               order = SortOrder.Ascending) =
-  ## Default Nim sort. The sorting is guaranteed to be stable and 
+  ## Default Nim sort. The sorting is guaranteed to be stable and
   ## the worst case is guaranteed to be O(n log n).
   ## The current implementation uses an iterative
-  ## mergesort to achieve this. It uses a temporary sequence of 
+  ## mergesort to achieve this. It uses a temporary sequence of
   ## length ``a.len div 2``. Currently Nim does not support a
   ## sensible default argument for ``cmp``, so you have to provide one
   ## of your own. However, the ``system.cmp`` procs can be used:

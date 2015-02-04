@@ -11,12 +11,12 @@
 # included from sem.nim
 
 proc instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable,
-                                 entry: var TInstantiation) = 
-  if n.kind != nkGenericParams: 
+                                 entry: var TInstantiation) =
+  if n.kind != nkGenericParams:
     internalError(n.info, "instantiateGenericParamList; no generic params")
   newSeq(entry.concreteTypes, n.len)
   for i, a in n.pairs:
-    if a.kind != nkSym: 
+    if a.kind != nkSym:
       internalError(a.info, "instantiateGenericParamList; no symbol")
     var q = a.sym
     if q.typ.kind notin {tyTypeDesc, tyGenericParam, tyStatic, tyIter}+tyTypeClasses:
@@ -27,13 +27,13 @@ proc instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable,
     var t = PType(idTableGet(pt, q.typ))
     if t == nil:
       if tfRetType in q.typ.flags:
-        # keep the generic type and allow the return type to be bound 
+        # keep the generic type and allow the return type to be bound
         # later by semAsgn in return type inference scenario
         t = q.typ
       else:
         localError(a.info, errCannotInstantiateX, s.name.s)
         t = errorType(c)
-    elif t.kind == tyGenericParam: 
+    elif t.kind == tyGenericParam:
       localError(a.info, errCannotInstantiateX, q.name.s)
       t = errorType(c)
     elif t.kind == tyGenericInvokation:
@@ -58,17 +58,17 @@ proc genericCacheGet(genericSym: PSym, entry: TInstantiation): PSym =
       if sameInstantiation(entry, inst[]):
         return inst.sym
 
-proc removeDefaultParamValues(n: PNode) = 
+proc removeDefaultParamValues(n: PNode) =
   # we remove default params, because they cannot be instantiated properly
   # and they are not needed anyway for instantiation (each param is already
   # provided).
   when false:
-    for i in countup(1, sonsLen(n)-1): 
+    for i in countup(1, sonsLen(n)-1):
       var a = n.sons[i]
       if a.kind != nkIdentDefs: IllFormedAst(a)
       var L = a.len
       if a.sons[L-1].kind != nkEmpty and a.sons[L-2].kind != nkEmpty:
-        # ``param: typ = defaultVal``. 
+        # ``param: typ = defaultVal``.
         # We don't need defaultVal for semantic checking and it's wrong for
         # ``cmp: proc (a, b: T): int = cmp``. Hm, for ``cmp = cmp`` that is
         # not possible... XXX We don't solve this issue here.
@@ -96,7 +96,7 @@ proc addProcDecls(c: PContext, fn: PSym) =
     var param = fn.typ.n.sons[i].sym
     param.owner = fn
     addParamOrResult(c, param, fn.kind)
-  
+
   maybeAddResult(c, fn, fn.ast)
 
 proc instantiateBody(c: PContext, n: PNode, result: PSym) =
@@ -126,9 +126,9 @@ proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
       closeScope(c)
       popInfoContext()
 
-proc sideEffectsCheck(c: PContext, s: PSym) = 
+proc sideEffectsCheck(c: PContext, s: PSym) =
   if {sfNoSideEffect, sfSideEffect} * s.flags ==
-      {sfNoSideEffect, sfSideEffect}: 
+      {sfNoSideEffect, sfSideEffect}:
     localError(s.info, errXhasSideEffects, s.name.s)
 
 proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
@@ -156,18 +156,18 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   # Alas, doing this here is probably not enough, because another
   # proc signature could appear in the params:
   # proc foo[T](a: proc (x: T, b: type(x.y))
-  #   
+  #
   # The solution would be to move this logic into semtypinst, but
   # at this point semtypinst have to become part of sem, because it
   # will need to use openScope, addDecl, etc.
   addDecl(c, prc)
-  
+
   pushInfoContext(info)
   var cl = initTypeVars(c, pt, info)
   var result = instCopyType(cl, prc.typ)
   let originalParams = result.n
   result.n = originalParams.shallowCopy
-  
+
   for i in 1 .. <result.len:
     result.sons[i] = replaceTypeVarsT(cl, result.sons[i])
     propagateToOwner(result, result.sons[i])
@@ -179,13 +179,13 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
       # the "sort by distance to point" container
       param.sym.owner = prc
       addDecl(c, param.sym)
-    
+
   result.sons[0] = replaceTypeVarsT(cl, result.sons[0])
   result.n.sons[0] = originalParams[0].copyTree
-  
+
   eraseVoidParams(result)
   skipIntLiteralParams(result)
- 
+
   prc.typ = result
   maybeAddResult(c, prc, prc.ast)
   popInfoContext()

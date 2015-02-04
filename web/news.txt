@@ -21,7 +21,7 @@ News
     should be used instead.
   - ``nim idetools`` has been replaced by a separate tool `nimsuggest`_.
 
-  
+
   Language Additions
   ------------------
 
@@ -230,8 +230,8 @@ Bugfixes
 2014-12-09 New website design!
 ==============================
 
-A brand new website including an improved forum is now live. 
-All thanks go to Philip Witte and 
+A brand new website including an improved forum is now live.
+All thanks go to Philip Witte and
 Dominik Picheta, Philip Witte for the design of the website (together with
 the logo) as well as the HTML and CSS code for his template, and Dominik Picheta
 for integrating Philip's design with Nim's forum. We're sure you will
@@ -298,7 +298,7 @@ Library Additions
 - ``sequtils.distnct`` has been renamed to ``sequtils.deduplicate``.
 - Added ``algorithm.reversed``
 - Added ``uri.combine`` and ``uri.parseUri``.
-- Some sockets procedures now support a ``SafeDisconn`` flag which causes 
+- Some sockets procedures now support a ``SafeDisconn`` flag which causes
   them to handle disconnection errors and not raise them.
 
 
@@ -313,7 +313,7 @@ unfortunately some do not fullfill our quality standards yet.**
 Prebuilt binaries and instructions for building from source are available
 on the `download page <download.html>`_.
 
-This release includes about 
+This release includes about
 `1400 changes <https://github.com/Araq/Nimrod/compare/v0.9.2...v0.9.4>`_
 in total including various bug
 fixes, new languages features and standard library additions and improvements.
@@ -372,10 +372,10 @@ Note that this feature has been implemented with Nimrod's macro system and so
 Syntactic sugar for anonymous procedures has also been introduced. It too has
 been implemented as a macro. The following shows some simple usage of the new
 syntax:
- 
+
 .. code-block::nim
   import future
-  
+
   var s = @[1, 2, 3, 4, 5]
   echo(s.map((x: int) => x * 5))
 
@@ -402,14 +402,14 @@ Library Additions
 Changes affecting backwards compatibility
 -----------------------------------------
 
-- The scoping rules for the ``if`` statement changed for better interaction 
+- The scoping rules for the ``if`` statement changed for better interaction
   with the new syntactic construct ``(;)``.
 - ``OSError`` family of procedures has been deprecated. Procedures with the same
   name but which take different parameters have been introduced. These procs now
   require an error code to be passed to them. This error code can be retrieved
   using the new ``OSLastError`` proc.
 - ``os.parentDir`` now returns "" if there is no parent dir.
-- In CGI scripts stacktraces are shown to the user only 
+- In CGI scripts stacktraces are shown to the user only
   if ``cgi.setStackTraceStdout`` is used.
 - The symbol binding rules for clean templates changed: ``bind`` for any
   symbol that's not a parameter is now the default. ``mixin`` can be used
@@ -443,7 +443,7 @@ Compiler Additions
   evaluation.
 - ``--gc:none`` produces warnings when code uses the GC.
 - A ``union`` pragma for better C interoperability is now supported.
-- A ``packed`` pragma to control the memory packing/alignment of fields in 
+- A ``packed`` pragma to control the memory packing/alignment of fields in
   an object.
 - Arrays can be annotated to be ``unchecked`` for easier low level
   manipulations of memory.
@@ -492,13 +492,13 @@ as the cover story in the February 2014 issue of Dr. Dobb's Journal.
 Andreas Rumpf presented *Nimrod: A New Approach to Metaprogramming* at
 `Strange Loop 2013<https://thestrangeloop.com/sessions/nimrod-a-new-approach-to-meta-programming>`_.
 The `video and slides<http://www.infoq.com/presentations/nimrod>`_
-of the talk are now available.      
+of the talk are now available.
 
 
 2013-05-20 New website design!
 ==============================
 
-A brand new website is now live. All thanks go to Philip Witte and 
+A brand new website is now live. All thanks go to Philip Witte and
 Dominik Picheta, Philip Witte for the design of the website (together with
 the logo) as well as the HTML and CSS code for his template, and Dominik Picheta
 for integrating Philip's design with the ``nimweb`` utility. We're sure you will
@@ -514,7 +514,7 @@ to any other release.
 
 This release brings with it many new features and bug fixes, a list of which
 can be seen later. One of the major new features is the effect system together
-with exception tracking which allows for checked exceptions and more, 
+with exception tracking which allows for checked exceptions and more,
 for further details check out the `manual <manual.html#effect-system>`_.
 Another major new feature is the introduction of statement list expressions,
 more details on these can be found `here <manual.html#statement-list-expression>`_.
@@ -527,12 +527,12 @@ Bugfixes
 --------
 
 - The old GC never collected cycles correctly. Fixed but it can cause
-  performance regressions. However you can deactivate the cycle collector 
-  with ``GC_disableMarkAndSweep`` and run it explicitly at an appropriate time 
-  or not at all. There is also a new GC you can activate 
+  performance regressions. However you can deactivate the cycle collector
+  with ``GC_disableMarkAndSweep`` and run it explicitly at an appropriate time
+  or not at all. There is also a new GC you can activate
   with ``--gc:markAndSweep`` which does not have this problem but is slower in
   general and has no realtime guarantees.
-- ``cast`` for floating point types now does the bitcast as specified in the 
+- ``cast`` for floating point types now does the bitcast as specified in the
   manual. This breaks code that erroneously uses ``cast`` to convert different
   floating point values.
 - SCGI module's performance has been improved greatly, it will no longer block
@@ -543,7 +543,7 @@ Bugfixes
 Library Additions
 -----------------
 
-- There is a new experimental mark&sweep GC which can be faster (or much 
+- There is a new experimental mark&sweep GC which can be faster (or much
   slower) than the default GC. Enable with ``--gc:markAndSweep``.
 - Added ``system.onRaise`` to support a condition system.
 - Added ``system.locals`` that provides access to a proc's locals.
@@ -580,41 +580,41 @@ Compiler Additions
   to be turned on explicitly via ``--warning[ShadowIdent]:on``.
 - The compiler now supports almost every pragma in a ``push`` pragma.
 - Generic converters have been implemented.
-- Added a **highly experimental** ``noforward`` pragma enabling a special 
+- Added a **highly experimental** ``noforward`` pragma enabling a special
   compilation mode that largely eliminates the need for forward declarations.
 
 Language Additions
 ------------------
 
 - ``case expressions`` are now supported.
-- Table constructors now mimic more closely the syntax of the ``case`` 
+- Table constructors now mimic more closely the syntax of the ``case``
   statement.
 - Nimrod can now infer the return type of a proc from its body.
 - Added a ``mixin`` declaration to affect symbol binding rules in generics.
 - Exception tracking has been added and the ``doc2`` command annotates possible
   exceptions for you.
-- User defined effects ("tags") tracking has been added and the ``doc2`` 
+- User defined effects ("tags") tracking has been added and the ``doc2``
   command annotates possible tags for you.
 - Types can be annotated with the new syntax ``not nil`` to explicitly state
   that ``nil`` is not allowed. However currently the compiler performs no
   advanced static checking for this; for now it's merely for documentation
   purposes.
 - An ``export`` statement has been added to the language: It can be used for
-  symbol forwarding so client modules don't have to import a module's 
+  symbol forwarding so client modules don't have to import a module's
   dependencies explicitly.
 - Overloading based on ASTs has been implemented.
 - Generics are now supported for multi methods.
 - Objects can be initialized via an *object constructor expression*.
-- There is a new syntactic construct ``(;)`` unifying expressions and 
+- There is a new syntactic construct ``(;)`` unifying expressions and
   statements.
 - You can now use ``from module import nil`` if you want to import the module
   but want to enforce fully qualified access to every symbol in ``module``.
-  
+
 
 Notes for the future
 --------------------
 
-- The scope rules of ``if`` statements will change in 0.9.4. This affects the 
+- The scope rules of ``if`` statements will change in 0.9.4. This affects the
   ``=~`` pegs/re templates.
 - The ``sockets`` module will become a low-level wrapper of OS-specific socket
   functions. All the high-level features of the current ``sockets`` module
@@ -658,14 +658,14 @@ Library Additions
   assignments.
 - Added ``system.eval`` that can execute an anonymous block of code at
   compile time as if was a macro.
-- Added ``system.staticExec`` and ``system.gorge`` for compile-time execution 
+- Added ``system.staticExec`` and ``system.gorge`` for compile-time execution
   of external programs.
 - Added ``system.staticRead`` as a synonym for ``system.slurp``.
 - Added ``macros.emit`` that can emit an arbitrary computed string as nimrod
   code during compilation.
 - Added ``strutils.parseEnum``.
 - Added ``json.%`` constructor operator.
-- The stdlib can now be avoided to a point where C code generation for 16bit 
+- The stdlib can now be avoided to a point where C code generation for 16bit
   micro controllers is feasible.
 - Added module ``oids``.
 - Added module ``endians``.
@@ -681,7 +681,7 @@ Library Additions
 - Added ``strutils.continuesWith``.
 - Added ``system.getStackTrace``.
 - Added ``system.||`` for parallel ``for`` loop support.
-- The GC supports (soft) realtime systems via ``GC_setMaxPause`` 
+- The GC supports (soft) realtime systems via ``GC_setMaxPause``
   and ``GC_step`` procs.
 - The sockets module now supports ssl through the OpenSSL library, ``recvLine``
   is now much more efficient thanks to the newly implemented sockets buffering.
@@ -692,14 +692,14 @@ Library Additions
   only support fixed length arrays).
 - Added ``system.compiles`` which can be used to check whether a type supports
   some operation.
-- Added ``strutils.format``, ``subexes.format`` which use the 
+- Added ``strutils.format``, ``subexes.format`` which use the
   new ``varargs`` type.
 - Added module ``fsmonitor``.
 
 Changes affecting backwards compatibility
 -----------------------------------------
 
-- On Windows filenames and paths are supposed to be in UTF-8. 
+- On Windows filenames and paths are supposed to be in UTF-8.
   The ``system``, ``os``, ``osproc`` and ``memfiles`` modules use the wide
   string versions of the WinAPI. Use the ``-d:useWinAnsi`` switch to revert
   back to the old behaviour which uses the Ansi string versions.
@@ -724,21 +724,21 @@ Changes affecting backwards compatibility
 - Deprecated ``nimrod pretty`` as it never worked good enough and has some
   inherent problems.
 - The integer promotion rules changed; the compiler is now less picky in some
-  situations and more picky in other situations: In particular implicit 
+  situations and more picky in other situations: In particular implicit
   conversions from ``int`` to ``int32`` are now forbidden.
-- ``system.byte`` is now an alias for ``uint8``; it used to be an alias 
+- ``system.byte`` is now an alias for ``uint8``; it used to be an alias
   to ``int8``.
 - ``bind`` expressions in templates are not properly supported anymore. Use
   the declarative ``bind`` statement instead.
 - The default calling convention for a procedural **type** is now ``closure``,
   for procs it remains ``nimcall`` (which is compatible to ``closure``).
-  Activate the warning ``ImplicitClosure`` to make the compiler list the 
+  Activate the warning ``ImplicitClosure`` to make the compiler list the
   occurances of proc types which are affected.
 - The Nimrod type system now distinguishes ``openarray`` from ``varargs``.
 - Templates are now ``hygienic``. Use the ``dirty`` pragma to get the old
   behaviour.
-- Objects that have no ancestor are now implicitly ``final``. Use 
-  the ``inheritable`` pragma to introduce new object roots apart 
+- Objects that have no ancestor are now implicitly ``final``. Use
+  the ``inheritable`` pragma to introduce new object roots apart
   from ``TObject``.
 - Macros now receive parameters like templates do; use the ``callsite`` builtin
   to gain access to the invocation AST.
@@ -749,14 +749,14 @@ Compiler Additions
 ------------------
 
 - Win64 is now an officially supported target.
-- The Nimrod compiler works on BSD again, but has some issues 
+- The Nimrod compiler works on BSD again, but has some issues
   as ``os.getAppFilename`` and ``os.getAppDir`` cannot work reliably on BSD.
 - The compiler can detect and evaluate calls that can be evaluated at compile
   time for optimization purposes with the ``--implicitStatic`` command line
   option or pragma.
 - The compiler now generates marker procs that the GC can use instead of RTTI.
   This speeds up the GC quite a bit.
-- The compiler now includes a new advanced documentation generator 
+- The compiler now includes a new advanced documentation generator
   via the ``doc2`` command. This new generator uses all of the semantic passes
   of the compiler and can thus generate documentation for symbols hiding in
   macros.
@@ -775,7 +775,7 @@ Language Additions
 - Added ``global`` pragma that can be used to introduce new global variables
   from within procs.
 - ``when`` expressions are now allowed just like ``if`` expressions.
-- The precedence for operators starting with ``@`` is different now 
+- The precedence for operators starting with ``@`` is different now
   allowing for *sigil-like* operators.
 - Stand-alone ``finally`` and ``except`` blocks are now supported.
 - Macros and templates can now be invoked as pragmas.
@@ -783,7 +783,7 @@ Language Additions
 - Unsigned integer types have been added.
 - The integer promotion rules changed.
 - Nimrod now tracks proper intervals for ``range`` over some built-in operators.
-- In parameter lists a semicolon instead of a comma can be used to improve 
+- In parameter lists a semicolon instead of a comma can be used to improve
   readability: ``proc divmod(a, b: int; resA, resB: var int)``.
 - A semicolon can now be used to have multiple simple statements on a single
   line: ``inc i; inc j``.
@@ -825,9 +825,9 @@ Bugfixes
 Changes affecting backwards compatibility
 -----------------------------------------
 
-- Removed deprecated ``os.AppendFileExt``, ``os.executeShellCommand``, 
+- Removed deprecated ``os.AppendFileExt``, ``os.executeShellCommand``,
   ``os.iterOverEnvironment``, ``os.pcDirectory``, ``os.pcLinkToDirectory``,
-  ``os.SplitPath``, ``os.extractDir``, ``os.SplitFilename``, 
+  ``os.SplitPath``, ``os.extractDir``, ``os.SplitFilename``,
   ``os.extractFileTrunk``, ``os.extractFileExt``, ``osproc.executeProcess``,
   ``osproc.executeCommand``.
 - Removed deprecated ``parseopt.init``, ``parseopt.getRestOfCommandLine``.
@@ -837,7 +837,7 @@ Changes affecting backwards compatibility
 - ``implies`` is no keyword anymore.
 - The ``is`` operator is now the ``of`` operator.
 - The ``is`` operator is now used to check type equivalence in generic code.
-- The ``pure`` pragma for procs has been renamed to ``noStackFrame``. 
+- The ``pure`` pragma for procs has been renamed to ``noStackFrame``.
 - The threading API has been completely redesigned.
 - The ``unidecode`` module is now thread-safe and its interface has changed.
 - The ``bind`` expression is deprecated, use a ``bind`` declaration instead.
@@ -847,13 +847,13 @@ Changes affecting backwards compatibility
 - Changed exception handling/error reporting for ``os.removeFile`` and
   ``os.removeDir``.
 - The algorithm for searching and loading configuration files has been changed.
-- Operators now have diffent precedence rules: Assignment-like operators 
-  (like ``*=``) are now special-cased. 
-- The fields in ``TStream`` have been renamed to have an ``Impl`` suffix 
-  because they should not be used directly anymore. 
+- Operators now have diffent precedence rules: Assignment-like operators
+  (like ``*=``) are now special-cased.
+- The fields in ``TStream`` have been renamed to have an ``Impl`` suffix
+  because they should not be used directly anymore.
   Wrapper procs have been created that should be used instead.
 - ``export`` is now a keyword.
-- ``assert`` is now implemented in pure Nimrod as a template; it's easy 
+- ``assert`` is now implemented in pure Nimrod as a template; it's easy
   to implement your own assertion templates with ``system.astToStr``.
 
 
@@ -866,7 +866,7 @@ Language Additions
 - Return types may be of the type ``var T`` to return an l-value.
 - The error pragma can now be used to mark symbols whose *usage* should trigger
   a compile-time error.
-- There is a new ``discardable`` pragma that can be used to mark a routine 
+- There is a new ``discardable`` pragma that can be used to mark a routine
   so that its result can be discarded implicitly.
 - Added a new ``noinit`` pragma to prevent automatic initialization to zero
   of variables.
@@ -877,7 +877,7 @@ Language Additions
 - ``bind`` (used for symbol binding in templates and generics) is now a
   declarative statement.
 - Nimrod now supports single assignment variables via the ``let`` statement.
-- Iterators named ``items`` and ``pairs`` are implicitly invoked when 
+- Iterators named ``items`` and ``pairs`` are implicitly invoked when
   an explicit iterator is missing.
 - The slice assignment ``a[i..j] = b`` where ``a`` is a sequence or string
   now supports *splicing*.
@@ -895,9 +895,9 @@ Compiler Additions
   definitions.
 - Added a ``--nimcache:PATH`` configuration option for control over the output
   directory for generated code.
-- The ``--genScript`` option now produces different compilation scripts 
+- The ``--genScript`` option now produces different compilation scripts
   which do not contain absolute paths.
-- Added ``--cincludes:dir``, ``--clibdir:lib`` configuration options for 
+- Added ``--cincludes:dir``, ``--clibdir:lib`` configuration options for
   modifying the C compiler's header/library search path in cross-platform way.
 - Added ``--clib:lib`` configuration option for specifying additional
   C libraries to be linked.
@@ -912,7 +912,7 @@ Compiler Additions
   are declared with the ``TaintedString`` string type. If the taint
   mode is turned on it is a distinct string type which helps to detect input
   validation errors.
-- The compiler now supports the compilation cache via ``--symbolFiles:on``. 
+- The compiler now supports the compilation cache via ``--symbolFiles:on``.
   This potentially speeds up compilations by an order of magnitude, but is
   still highly experimental!
 - Added ``--import:file`` and ``--include:file`` configuration options
@@ -924,7 +924,7 @@ Compiler Additions
   for ``on|off`` switches in pragmas. In order to not break existing code,
   ``on`` and ``off`` are now aliases for ``true`` and ``false`` and declared
   in the system module.
-- The compiler finally supports **closures**. This is a preliminary 
+- The compiler finally supports **closures**. This is a preliminary
   implementation, which does not yet support nestings deeper than 1 level
   and still has many known bugs.
 
@@ -932,7 +932,7 @@ Compiler Additions
 Library Additions
 -----------------
 
-- Added ``system.allocShared``, ``system.allocShared0``, 
+- Added ``system.allocShared``, ``system.allocShared0``,
   ``system.deallocShared``, ``system.reallocShared``.
 - Slicing as implemented by the system module now supports *splicing*.
 - Added explicit channels for thread communication.
@@ -946,8 +946,8 @@ Library Additions
 - Added ``os.isAbsolute``, ``os.dynLibFormat``, ``os.isRootDir``,
   ``os.parentDirs``.
 - Added ``parseutils.interpolatedFragments``.
-- Added ``macros.treeRepr``, ``macros.lispRepr``, ``macros.dumpTree``, 
-  ``macros.dumpLisp``, ``macros.parseExpr``, ``macros.parseStmt``, 
+- Added ``macros.treeRepr``, ``macros.lispRepr``, ``macros.dumpTree``,
+  ``macros.dumpLisp``, ``macros.parseExpr``, ``macros.parseStmt``,
   ``macros.getAst``.
 - Added ``locks`` core module for more flexible locking support.
 - Added ``irc`` module.
@@ -959,7 +959,7 @@ Library Additions
 - Added ``actors`` module.
 - Added ``algorithm`` module for generic ``sort``, ``reverse`` etc. operations.
 - Added ``osproc.startCmd``, ``osproc.execCmdEx``.
-- The ``osproc`` module now uses ``posix_spawn`` instead of ``fork`` 
+- The ``osproc`` module now uses ``posix_spawn`` instead of ``fork``
   and ``exec`` on Posix systems. Define the symbol ``useFork`` to revert to
   the old implementation.
 - Added ``intsets.assign``.
@@ -994,20 +994,20 @@ Bugfixes
 Changes affecting backwards compatibility
 -----------------------------------------
 
-- Operators starting with ``^`` are now right-associative and have the highest 
+- Operators starting with ``^`` are now right-associative and have the highest
   priority.
 - Deprecated ``os.getApplicationFilename``: Use ``os.getAppFilename`` instead.
 - Deprecated ``os.getApplicationDir``: Use ``os.getAppDir`` instead.
 - Deprecated ``system.copy``: Use ``substr`` or string slicing instead.
 - Changed and documented how generalized string literals work: The syntax
   ``module.re"abc"`` is now supported.
-- Changed the behaviour of ``strutils.%``, ``ropes.%`` 
+- Changed the behaviour of ``strutils.%``, ``ropes.%``
   if both notations ``$#`` and ``$i`` are involved.
-- The ``pegs`` and ``re`` modules distinguish between ``replace`` 
+- The ``pegs`` and ``re`` modules distinguish between ``replace``
   and ``replacef`` operations.
 - The pointer dereference operation ``p^`` is deprecated and might become
-  ``^p`` in later versions or be dropped entirely since it is rarely used. 
-  Use the new notation ``p[]`` in the rare cases where you need to 
+  ``^p`` in later versions or be dropped entirely since it is rarely used.
+  Use the new notation ``p[]`` in the rare cases where you need to
   dereference a pointer explicitly.
 - ``system.readFile`` does not return ``nil`` anymore but raises an ``EIO``
   exception instead.
@@ -1023,15 +1023,15 @@ Language Additions
 - Case statement branches support constant sets for programming convenience.
 - Tuple unpacking is not enforced in ``for`` loops anymore.
 - The compiler now supports array, sequence and string slicing.
-- A field in an ``enum`` may be given an explicit string representation. 
-  This yields more maintainable code than using a constant 
+- A field in an ``enum`` may be given an explicit string representation.
+  This yields more maintainable code than using a constant
   ``array[TMyEnum, string]`` mapping.
 - Indices in array literals may be explicitly given, enhancing readability:
   ``[enumValueA: "a", enumValueB: "b"]``.
-- Added thread support via the ``threads`` core module and 
+- Added thread support via the ``threads`` core module and
   the ``--threads:on`` command line switch.
 - The built-in iterators ``system.fields`` and ``system.fieldPairs`` can be
-  used to iterate over any field of a tuple. With this mechanism operations 
+  used to iterate over any field of a tuple. With this mechanism operations
   like ``==`` and ``hash`` are lifted to tuples.
 - The slice ``..`` is now a first-class operator, allowing code like:
   ``x in 1000..100_000``.
@@ -1041,12 +1041,12 @@ Compiler Additions
 ------------------
 
 - The compiler supports IDEs via the new group of ``idetools`` command line
-  options. 
-- The *interactive mode* (REPL) has been improved and documented for the 
+  options.
+- The *interactive mode* (REPL) has been improved and documented for the
   first time.
 - The compiler now might use hashing for string case statements depending
   on the number of string literals in the case statement.
-  
+
 
 Library Additions
 -----------------
@@ -1068,11 +1068,11 @@ Library Additions
   ``\title``, ``\white``.
 - Pegs support the new built-in ``\skip`` operation.
 - Pegs support the ``$`` and ``^`` anchors.
-- Additional operations were added to the ``complex`` module. 
+- Additional operations were added to the ``complex`` module.
 - Added ``strutils.formatFloat``,  ``strutils.formatBiggestFloat``.
 - Added unary ``<`` for nice looking excluding upper bounds in ranges.
 - Added ``math.floor``.
-- Added ``system.reset`` and a version of ``system.open`` that 
+- Added ``system.reset`` and a version of ``system.open`` that
   returns a ``TFile`` and raises an exception in case of an error.
 - Added a wrapper for ``redis``.
 - Added a wrapper for ``0mq`` via the ``zmq`` module.
@@ -1098,12 +1098,12 @@ Bugfixes
 - Bugfix: Passing a ``ref`` pointer to the untyped ``pointer`` type is invalid.
 - Bugfix: Updated ``keyval`` example.
 - Bugfix: ``system.splitChunk`` still contained code for debug output.
-- Bugfix: ``dialogs.ChooseFileToSave`` uses ``STOCK_SAVE`` instead of 
+- Bugfix: ``dialogs.ChooseFileToSave`` uses ``STOCK_SAVE`` instead of
   ``STOCK_OPEN`` for the GTK backend.
 - Bugfix: Various bugs concerning exception handling fixed.
 - Bugfix: ``low(somestring)`` crashed the compiler.
 - Bugfix: ``strutils.endsWith`` lacked range checking.
-- Bugfix: Better detection for AMD64 on Mac OS X. 
+- Bugfix: Better detection for AMD64 on Mac OS X.
 
 
 Changes affecting backwards compatibility
@@ -1112,7 +1112,7 @@ Changes affecting backwards compatibility
 - Reversed parameter order for ``os.copyFile`` and ``os.moveFile``!!!
 - Procs not marked as ``procvar`` cannot only be passed to a procvar anymore,
   unless they are used in the same module.
-- Deprecated ``times.getStartMilsecs``: Use ``epochTime`` or ``cpuTime`` 
+- Deprecated ``times.getStartMilsecs``: Use ``epochTime`` or ``cpuTime``
   instead.
 - Removed ``system.OpenFile``.
 - Removed ``system.CloseFile``.
@@ -1121,7 +1121,7 @@ Changes affecting backwards compatibility
 - Removed ``strutils.splitLinesSeq``.
 - Removed ``strutils.splitSeq``.
 - Removed ``strutils.toString``.
-- If a DLL cannot be loaded (via the ``dynlib`` pragma) ``EInvalidLibrary`` 
+- If a DLL cannot be loaded (via the ``dynlib`` pragma) ``EInvalidLibrary``
   is not raised anymore. Instead ``system.quit()`` is called. This is because
   raising an exception requires heap allocations. However the memory manager
   might be contained in the DLL that failed to load.
@@ -1131,19 +1131,19 @@ Changes affecting backwards compatibility
 Additions
 ---------
 
-- The ``{.compile: "file.c".}`` pragma uses a CRC check to see if the file 
+- The ``{.compile: "file.c".}`` pragma uses a CRC check to see if the file
   needs to be recompiled.
-- Added ``system.reopen``. 
+- Added ``system.reopen``.
 - Added ``system.getCurrentException``.
 - Added ``system.appType``.
-- Added ``system.compileOption``. 
-- Added ``times.epochTime`` and ``times.cpuTime``. 
+- Added ``system.compileOption``.
+- Added ``times.epochTime`` and ``times.cpuTime``.
 - Implemented explicit type arguments for generics.
 - Implemented ``{.size: sizeof(cint).}`` pragma for enum types. This is useful
   for interfacing with C.
 - Implemented ``{.pragma.}`` pragma for user defined pragmas.
 - Implemented ``{.extern.}`` pragma for better control of name mangling.
-- The ``importc`` and ``exportc`` pragmas support format strings: 
+- The ``importc`` and ``exportc`` pragmas support format strings:
   ``proc p{.exportc: "nim_$1".}`` exports ``p`` as ``nim_p``. This is useful
   for user defined pragmas.
 - The standard library can be built as a DLL. Generating DLLs has been
@@ -1151,7 +1151,7 @@ Additions
 - Added ``expat`` module.
 - Added ``json`` module.
 - Added support for a *Tiny C* backend. Currently this only works on Linux.
-  You need to bootstrap with ``-d:tinyc`` to enable Tiny C support. Nimrod 
+  You need to bootstrap with ``-d:tinyc`` to enable Tiny C support. Nimrod
   can then execute code directly via ``nimrod run myfile``.
 
 
@@ -1170,9 +1170,9 @@ Bugfixes
   zeros.
 - Fixed a bug in ``os.setFilePermissions`` for Windows.
 - An overloadable symbol can now have the same name as an imported module.
-- Fixed a serious bug in ``strutils.cmpIgnoreCase``. 
-- Fixed ``unicode.toUTF8``. 
-- The compiler now rejects ``'\n'`` (use ``"\n"`` instead). 
+- Fixed a serious bug in ``strutils.cmpIgnoreCase``.
+- Fixed ``unicode.toUTF8``.
+- The compiler now rejects ``'\n'`` (use ``"\n"`` instead).
 - ``times.getStartMilsecs()`` now works on Mac OS X.
 - Fixed a bug in ``pegs.match`` concerning start offsets.
 - Lots of other little bugfixes.
@@ -1204,14 +1204,14 @@ Additions
 - Added ``graphics`` module.
 - Added ``colors`` module.
 - Many wrappers now do not contain redundant name prefixes (like ``GTK_``,
-  ``lua``). The old wrappers are still available in ``lib/oldwrappers``. 
+  ``lua``). The old wrappers are still available in ``lib/oldwrappers``.
   You can change your configuration file to use these.
 - Triple quoted strings allow for ``"`` in more contexts.
 - ``""`` within raw string literals stands for a single quotation mark.
 - Arguments to ``openArray`` parameters can be left out.
 - More extensive subscript operator overloading. (To be documented.)
 - The documentation generator supports the ``.. raw:: html`` directive.
-- The Pegs module supports back references via the notation ``$capture_index``. 
+- The Pegs module supports back references via the notation ``$capture_index``.
 
 
 Changes affecting backwards compatibility
@@ -1219,9 +1219,9 @@ Changes affecting backwards compatibility
 
 - Overloading of the subscript operator only works if the type does not provide
   a built-in one.
-- The search order for libraries which is affected by the ``path`` option 
-  has been reversed, so that the project's path is searched before 
-  the standard library's path. 
+- The search order for libraries which is affected by the ``path`` option
+  has been reversed, so that the project's path is searched before
+  the standard library's path.
 - The compiler does not include a Pascal parser for bootstrapping purposes any
   more. Instead there is a ``pas2nim`` tool that contains the old functionality.
 - The procs ``os.copyFile`` and ``os.moveFile`` have been deprecated
@@ -1248,7 +1248,7 @@ Bugfixes
 - Method call syntax for iterators works again (``for x in lines.split()``).
 - Fixed a typo in ``removeDir`` for POSIX that lead to an infinite recursion.
 - The compiler now checks that module filenames are valid identifiers.
-- Empty patterns for the ``dynlib`` pragma are now possible. 
+- Empty patterns for the ``dynlib`` pragma are now possible.
 - ``os.parseCmdLine`` returned wrong results for trailing whitespace.
 - Inconsequent tuple usage (using the same tuple with and without named fields)
   does not crash the code generator anymore.
@@ -1277,11 +1277,11 @@ Changes affecting backwards compatibility
   has changed.
 - ``os.splitFile(".xyz")`` now returns ``("", ".xyz", "")`` instead of
   ``("", "", ".xyz")``. So filenames starting with a dot are handled
-  differently. 
+  differently.
 - ``strutils.split(s: string, seps: set[char])`` never yields the empty string
-  anymore. This behaviour is probably more appropriate for whitespace splitting. 
+  anymore. This behaviour is probably more appropriate for whitespace splitting.
 - The compiler now stops after the ``--version`` command line switch.
-- Removed support for enum inheritance in the parser; enum inheritance has 
+- Removed support for enum inheritance in the parser; enum inheritance has
   never been documented anyway.
 - The ``msg`` field of ``system.E_base`` has now the type ``string``, instead
   of ``cstring``. This improves memory safety.

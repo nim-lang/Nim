@@ -1,5 +1,5 @@
 import
-  sfml, chipmunk, 
+  sfml, chipmunk,
   sg_assets, sfml_stuff, keineschweine
 
 

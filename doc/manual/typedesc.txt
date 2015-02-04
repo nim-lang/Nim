@@ -23,7 +23,7 @@ As their name suggests, static params must be known at compile-time:
 
 For the purposes of code generation, all static params are treated as
 generic params - the proc will be compiled separately for each unique
-supplied value (or combination of values). 
+supplied value (or combination of values).
 
 Furthermore, the system module defines a `semistatic[T]` type than can be
 used to declare procs accepting both static and run-time values, which can
@@ -61,7 +61,7 @@ typedesc
 --------
 
 `typedesc` is a special type allowing one to treat types as compile-time values
-(i.e. if types are compile-time values and all values have a type, then 
+(i.e. if types are compile-time values and all values have a type, then
 typedesc must be their type).
 
 When used as a regular proc param, typedesc acts as a type class. The proc
@@ -100,7 +100,7 @@ When used with macros and .compileTime. procs on the other hand, the compiler
 does not need to instantiate the code multiple times, because types then can be
 manipulated using the unified internal symbol representation. In such context
 typedesc acts as any other type. One can create variables, store typedesc
-values inside containers and so on. For example, here is how one can create 
+values inside containers and so on. For example, here is how one can create
 a type-safe wrapper for the unsafe `printf` function from C:
 
 .. code-block:: nim
@@ -114,7 +114,7 @@ a type-safe wrapper for the unsafe `printf` function from C:
         of 's': string
         of 'p': pointer
         else: EOutOfRange
-      
+
       var actualType = args[i].getType
       inc i
 
@@ -123,7 +123,7 @@ a type-safe wrapper for the unsafe `printf` function from C:
       elif expectedType != actualType:
         error "type mismatch for argument ", i, ". expected type: ",
               expectedType.name, ", actual type: ", actualType.name
-    
+
     # keep the original callsite, but use cprintf instead
     result = callsite()
     result[0] = newIdentNode(!"cprintf")

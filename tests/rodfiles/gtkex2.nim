@@ -1,11 +1,11 @@
 
-import 
+import
   glib2, gtk2
 
-proc destroy(widget: pWidget, data: pgpointer){.cdecl.} = 
+proc destroy(widget: pWidget, data: pgpointer){.cdecl.} =
   main_quit()
 
-var 
+var
   window: PWidget
   button: PWidget
 
@@ -14,7 +14,7 @@ window = window_new(WINDOW_TOPLEVEL)
 button = button_new("Click me")
 set_border_width(PContainer(Window), 5)
 add(PContainer(window), button)
-discard signal_connect(window, "destroy", 
+discard signal_connect(window, "destroy",
                            SIGNAL_FUNC(gtkex2.destroy), nil)
 show(button)
 show(window)

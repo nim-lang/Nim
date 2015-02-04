@@ -33,14 +33,14 @@ type
 const
   cb64 = [
     "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N",
-    "O", "P", "Q", "R", "S", "T" "U", "V", "W", "X", "Y", "Z", 
-    "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", 
-    "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", 
+    "O", "P", "Q", "R", "S", "T" "U", "V", "W", "X", "Y", "Z",
+    "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n",
+    "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
     "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
     "_A", "_B"]
 
 proc toBase64a(s: cstring, len: int): string =
-  ## encodes `s` into base64 representation. After `lineLen` characters, a 
+  ## encodes `s` into base64 representation. After `lineLen` characters, a
   ## `newline` is added.
   result = newStringOfCap(((len + 2) div 3) * 4)
   var i = 0
@@ -73,7 +73,7 @@ proc hashSym(c: var MD5Context, s: PSym) =
     c &= ":anon"
   else:
     var it = s.owner
-    while it != nil: 
+    while it != nil:
       hashSym(c, it)
       c &= "."
       it = s.owner
@@ -106,18 +106,18 @@ proc hashTree(c: var MD5Context, n: PNode) =
 
 proc hashType(c: var MD5Context, t: PType) =
   # modelled after 'typeToString'
-  if t == nil: 
+  if t == nil:
     c &= "\254"
     return
 
   var k = t.kind
   md5Update(c, cast[cstring](addr(k)), 1)
-  
+
   if t.sym != nil and sfAnon notin t.sym.flags:
     # t.n for literals, but not for e.g. objects!
     if t.kind in {tyFloat, tyInt}: c.hashNode(t.n)
     c.hashSym(t.sym)
-    
+
   case t.kind
   of tyGenericBody, tyGenericInst, tyGenericInvokation:
     for i in countup(0, sonsLen(t) -1 -ord(t.kind != tyGenericInvokation)):
@@ -135,10 +135,10 @@ proc hashType(c: var MD5Context, t: PType) =
   of tyArrayConstr:
     c.hashTree(t.sons[0].n)
     c.hashType(t.sons[1])
-  of tyTuple: 
+  of tyTuple:
     if t.n != nil:
       assert(sonsLen(t.n) == sonsLen(t))
-      for i in countup(0, sonsLen(t.n) - 1): 
+      for i in countup(0, sonsLen(t.n) - 1):
         assert(t.n.sons[i].kind == nkSym)
         c &= t.n.sons[i].sym.name.s
         c &= ":"
@@ -184,18 +184,18 @@ proc pushSym(w: PRodWriter, s: PSym) =
   if iiTableGet(w.index.tab, s.id) == InvalidKey:
     w.sstack.add(s)
 
-proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode, 
-                result: var string) = 
-  if n == nil: 
+proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode,
+                result: var string) =
+  if n == nil:
     # nil nodes have to be stored too:
     result.add("()")
     return
   result.add('(')
-  encodeVInt(ord(n.kind), result) 
+  encodeVInt(ord(n.kind), result)
   # we do not write comments for now
   # Line information takes easily 20% or more of the filesize! Therefore we
   # omit line information if it is the same as the father's line information:
-  if fInfo.fileIndex != n.info.fileIndex: 
+  if fInfo.fileIndex != n.info.fileIndex:
     result.add('?')
     encodeVInt(n.info.col, result)
     result.add(',')
@@ -211,7 +211,7 @@ proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode,
     result.add('?')
     encodeVInt(n.info.col, result)
   var f = n.flags * PersistentNodeFlags
-  if f != {}: 
+  if f != {}:
     result.add('$')
     encodeVInt(cast[int32](f), result)
   if n.typ != nil:
@@ -219,16 +219,16 @@ proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode,
     encodeVInt(n.typ.id, result)
     pushType(w, n.typ)
   case n.kind
-  of nkCharLit..nkInt64Lit: 
+  of nkCharLit..nkInt64Lit:
     if n.intVal != 0:
       result.add('!')
       encodeVBiggestInt(n.intVal, result)
-  of nkFloatLit..nkFloat64Lit: 
-    if n.floatVal != 0.0: 
+  of nkFloatLit..nkFloat64Lit:
+    if n.floatVal != 0.0:
       result.add('!')
       encodeStr($n.floatVal, result)
   of nkStrLit..nkTripleStrLit:
-    if n.strVal != "": 
+    if n.strVal != "":
       result.add('!')
       encodeStr(n.strVal, result)
   of nkIdent:
@@ -239,28 +239,28 @@ proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode,
     encodeVInt(n.sym.id, result)
     pushSym(w, n.sym)
   else:
-    for i in countup(0, sonsLen(n) - 1): 
+    for i in countup(0, sonsLen(n) - 1):
       encodeNode(w, n.info, n.sons[i], result)
   add(result, ')')
 
-proc encodeLoc(w: PRodWriter, loc: TLoc, result: var string) = 
+proc encodeLoc(w: PRodWriter, loc: TLoc, result: var string) =
   var oldLen = result.len
   result.add('<')
   if loc.k != low(loc.k): encodeVInt(ord(loc.k), result)
-  if loc.s != low(loc.s): 
+  if loc.s != low(loc.s):
     add(result, '*')
     encodeVInt(ord(loc.s), result)
-  if loc.flags != {}: 
+  if loc.flags != {}:
     add(result, '$')
     encodeVInt(cast[int32](loc.flags), result)
   if loc.t != nil:
     add(result, '^')
     encodeVInt(cast[int32](loc.t.id), result)
     pushType(w, loc.t)
-  if loc.r != nil: 
+  if loc.r != nil:
     add(result, '!')
     encodeStr(ropeToStr(loc.r), result)
-  if loc.a != 0: 
+  if loc.a != 0:
     add(result, '?')
     encodeVInt(loc.a, result)
   if oldLen + 1 == result.len:
@@ -268,9 +268,9 @@ proc encodeLoc(w: PRodWriter, loc: TLoc, result: var string) =
     setLen(result, oldLen)
   else:
     add(result, '>')
-  
-proc encodeType(w: PRodWriter, t: PType, result: var string) = 
-  if t == nil: 
+
+proc encodeType(w: PRodWriter, t: PType, result: var string) =
+  if t == nil:
     # nil nodes have to be stored too:
     result.add("[]")
     return
@@ -282,38 +282,38 @@ proc encodeType(w: PRodWriter, t: PType, result: var string) =
   encodeVInt(ord(t.kind), result)
   add(result, '+')
   encodeVInt(t.id, result)
-  if t.n != nil: 
+  if t.n != nil:
     encodeNode(w, unknownLineInfo(), t.n, result)
-  if t.flags != {}: 
+  if t.flags != {}:
     add(result, '$')
     encodeVInt(cast[int32](t.flags), result)
-  if t.callConv != low(t.callConv): 
+  if t.callConv != low(t.callConv):
     add(result, '?')
     encodeVInt(ord(t.callConv), result)
-  if t.owner != nil: 
+  if t.owner != nil:
     add(result, '*')
     encodeVInt(t.owner.id, result)
     pushSym(w, t.owner)
-  if t.sym != nil: 
+  if t.sym != nil:
     add(result, '&')
     encodeVInt(t.sym.id, result)
     pushSym(w, t.sym)
-  if t.size != - 1: 
+  if t.size != - 1:
     add(result, '/')
     encodeVBiggestInt(t.size, result)
-  if t.align != 2: 
+  if t.align != 2:
     add(result, '=')
     encodeVInt(t.align, result)
   encodeLoc(w, t.loc, result)
-  for i in countup(0, sonsLen(t) - 1): 
-    if t.sons[i] == nil: 
+  for i in countup(0, sonsLen(t) - 1):
+    if t.sons[i] == nil:
       add(result, "^()")
-    else: 
-      add(result, '^') 
+    else:
+      add(result, '^')
       encodeVInt(t.sons[i].id, result)
       pushType(w, t.sons[i])
 
-proc encodeLib(w: PRodWriter, lib: PLib, info: TLineInfo, result: var string) = 
+proc encodeLib(w: PRodWriter, lib: PLib, info: TLineInfo, result: var string) =
   add(result, '|')
   encodeVInt(ord(lib.kind), result)
   add(result, '|')
@@ -352,10 +352,10 @@ proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
   if s.magic != mNone:
     result.add('@')
     encodeVInt(ord(s.magic), result)
-  if s.options != w.options: 
+  if s.options != w.options:
     result.add('!')
     encodeVInt(cast[int32](s.options), result)
-  if s.position != 0: 
+  if s.position != 0:
     result.add('%')
     encodeVInt(s.position, result)
   if s.offset != - 1:
@@ -383,7 +383,7 @@ proc createDb() =
       fullpath varchar(256) not null,
       interfHash varchar(256) not null,
       fullHash varchar(256) not null,
-      
+
       created timestamp not null default (DATETIME('now')),
     );""")
 
@@ -397,7 +397,7 @@ proc createDb() =
 
       foreign key (module) references module(id)
     );""")
-    
+
   db.exec(sql"""
     create table if not exists Type(
       id integer primary key,

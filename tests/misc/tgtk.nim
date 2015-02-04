@@ -28,7 +28,7 @@ proc mymain() =
   # GtkWidget is the storage type for widgets
   gtk2.nimrod_init()
   var window = window_new(gtk2.WINDOW_TOPLEVEL)
-  discard g_signal_connect(window, "delete_event", 
+  discard g_signal_connect(window, "delete_event",
                            Gcallback(delete_event), nil)
   discard g_signal_connect(window, "destroy", Gcallback(mydestroy), nil)
   # Sets the border width of the window.

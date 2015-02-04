@@ -16,7 +16,7 @@ proc foo(x, y: int): int = x-y
 let x = optarg foo 7.foo
 let y = singlearg foo(1, foo 8)
 let z = singlearg 1.foo foo 8
-    
+
 echo x, y, z
 
 let a = [2,4,8].map do (d:int) -> int: d + 1

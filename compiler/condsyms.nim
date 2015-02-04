@@ -9,26 +9,26 @@
 
 # This module handles the conditional symbols.
 
-import 
+import
   strtabs, platform, strutils, idents
 
 # We need to use a PStringTable here as defined symbols are always guaranteed
 # to be style insensitive. Otherwise hell would break lose.
 var gSymbols: StringTableRef
 
-proc defineSymbol*(symbol: string) = 
+proc defineSymbol*(symbol: string) =
   gSymbols[symbol] = "true"
 
-proc declareSymbol*(symbol: string) = 
+proc declareSymbol*(symbol: string) =
   gSymbols[symbol] = "unknown"
 
-proc undefSymbol*(symbol: string) = 
+proc undefSymbol*(symbol: string) =
   gSymbols[symbol] = "false"
 
-proc isDefined*(symbol: string): bool = 
+proc isDefined*(symbol: string): bool =
   if gSymbols.hasKey(symbol):
     result = gSymbols[symbol] == "true"
-  
+
 proc isDefined*(symbol: PIdent): bool = isDefined(symbol.s)
 proc isDeclared*(symbol: PIdent): bool = gSymbols.hasKey(symbol.s)
 
@@ -36,7 +36,7 @@ iterator definedSymbolNames*: string =
   for key, val in pairs(gSymbols):
     if val == "true": yield key
 
-proc countDefinedSymbols*(): int = 
+proc countDefinedSymbols*(): int =
   result = 0
   for key, val in pairs(gSymbols):
     if val == "true": inc(result)
@@ -73,7 +73,7 @@ const
     nimStdSetjmp nimRawSetjmp nimSigSetjmp
   """.split
 
-proc initDefines*() = 
+proc initDefines*() =
   gSymbols = newStringTable(modeStyleInsensitive)
   defineSymbol("nimrod") # 'nimrod' is always defined
   # for bootstrapping purposes and old code:
@@ -89,7 +89,7 @@ proc initDefines*() =
   defineSymbol("nimparsebiggestfloatmagic")
   defineSymbol("nimalias")
   defineSymbol("nimlocks")
-  
+
   # add platform specific symbols:
   for c in low(CPU)..high(CPU):
     declareSymbol("cpu" & $CPU[c].bit)
@@ -108,27 +108,27 @@ proc initDefines*() =
   of cpuAmd64: defineSymbol("x8664")
   else: discard
   case targetOS
-  of osDos: 
+  of osDos:
     defineSymbol("msdos")
-  of osWindows: 
+  of osWindows:
     defineSymbol("mswindows")
     defineSymbol("win32")
-  of osLinux, osMorphos, osSkyos, osIrix, osPalmos, osQnx, osAtari, osAix, 
+  of osLinux, osMorphos, osSkyos, osIrix, osPalmos, osQnx, osAtari, osAix,
      osHaiku, osVxWorks:
     # these are all 'unix-like'
     defineSymbol("unix")
     defineSymbol("posix")
-  of osSolaris: 
+  of osSolaris:
     defineSymbol("sunos")
     defineSymbol("unix")
     defineSymbol("posix")
-  of osNetbsd, osFreebsd, osOpenbsd: 
+  of osNetbsd, osFreebsd, osOpenbsd:
     defineSymbol("unix")
     defineSymbol("bsd")
     defineSymbol("posix")
-  of osMacos: 
+  of osMacos:
     defineSymbol("macintosh")
-  of osMacosx: 
+  of osMacosx:
     defineSymbol("macintosh")
     defineSymbol("unix")
     defineSymbol("posix")

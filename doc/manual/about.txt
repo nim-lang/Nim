@@ -14,20 +14,20 @@ which ``(a)*`` means 0 or more ``a``'s, ``a+`` means 1 or more ``a``'s, and
 ``&`` is the lookahead operator; ``&a`` means that an ``a`` is expected but
 not consumed. It will be consumed in the following rule.
 
-The ``|``, ``/`` symbols are used to mark alternatives and have the lowest 
-precedence. ``/`` is the ordered choice that requires the parser to try the 
+The ``|``, ``/`` symbols are used to mark alternatives and have the lowest
+precedence. ``/`` is the ordered choice that requires the parser to try the
 alternatives in the given order. ``/`` is often used to ensure the grammar
-is not ambiguous. 
+is not ambiguous.
 
 Non-terminals start with a lowercase letter, abstract terminal symbols are in
 UPPERCASE. Verbatim terminal symbols (including keywords) are quoted
 with ``'``. An example::
 
   ifStmt = 'if' expr ':' stmts ('elif' expr ':' stmts)* ('else' stmts)?
-  
+
 The binary ``^*`` operator is used as a shorthand for 0 or more occurances
-separated by its second argument; likewise ``^+`` means 1 or more 
-occurances: ``a ^+ b`` is short for ``a (b a)*`` 
+separated by its second argument; likewise ``^+`` means 1 or more
+occurances: ``a ^+ b`` is short for ``a (b a)*``
 and ``a ^* b`` is short for ``(a (b a)*)?``. Example::
 
   arrayConstructor = '[' expr ^* ',' ']'

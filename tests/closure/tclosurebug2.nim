@@ -111,7 +111,7 @@ proc hasKey*[A, B](t: TOrderedTable[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   result = rawGet(t, key) >= 0
 
-proc rawInsert[A, B](t: var TOrderedTable[A, B], 
+proc rawInsert[A, B](t: var TOrderedTable[A, B],
                      data: var TOrderedKeyValuePairSeq[A, B],
                      key: A, val: B) =
   rawInsertImpl()
@@ -128,7 +128,7 @@ proc enlarge[A, B](t: var TOrderedTable[A, B]) =
   t.last = -1
   while h >= 0:
     var nxt = t.data[h].next
-    if t.data[h].slot == seFilled: 
+    if t.data[h].slot == seFilled:
       rawInsert(t, n, t.data[h].key, t.data[h].val)
     h = nxt
   swap(t.data, n)
@@ -150,16 +150,16 @@ proc initOrderedTable*[A, B](initialSize=64): TOrderedTable[A, B] =
   result.last = -1
   newSeq(result.data, initialSize)
 
-proc toOrderedTable*[A, B](pairs: openarray[tuple[key: A, 
+proc toOrderedTable*[A, B](pairs: openarray[tuple[key: A,
                            val: B]]): TOrderedTable[A, B] =
   ## creates a new ordered hash table that contains the given `pairs`.
   result = initOrderedTable[A, B](nextPowerOfTwo(pairs.len+10))
   for key, val in items(pairs): result[key] = val
 
-proc sort*[A, B](t: var TOrderedTable[A,B], 
+proc sort*[A, B](t: var TOrderedTable[A,B],
                  cmp: proc (x, y: tuple[key: A, val: B]): int {.closure.}) =
   ## sorts the ordered table so that the entry with the highest counter comes
-  ## first. This is destructive (with the advantage of being efficient)! 
+  ## first. This is destructive (with the advantage of being efficient)!
   ## You must not modify `t` afterwards!
   ## You can use the iterators `pairs`,  `keys`, and `values` to iterate over
   ## `t` in the sorted order.
@@ -186,7 +186,7 @@ proc sort*[A, B](t: var TOrderedTable[A,B],
           let item1 = (x.key, x.val)
           let item2 = (y.key, y.val)
           return cmp(item1, item2)
-      
+
       while rawCmp(t.data[j-h], t.data[j]) <= 0:
         swap(t.data[j], t.data[j-h])
         j = j-h

@@ -34,7 +34,7 @@ templates and macros), depending on the desired effect:
 The following dot operators are available:
 
 operator `.`
------------- 
+------------
 This operator will be matched against both field accesses and method calls.
 
 operator `.()`

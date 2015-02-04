@@ -7,13 +7,13 @@
 #    distribution, for details about the copyright.
 #
 
-# A simple mark&sweep garbage collector for Nim. Define the 
+# A simple mark&sweep garbage collector for Nim. Define the
 # symbol ``gcUseBitvectors`` to generate a variant of this GC.
 {.push profiler:off.}
 
 const
   InitialThreshold = 4*1024*1024 # X MB because marking&sweeping is slow
-  withBitvectors = defined(gcUseBitvectors) 
+  withBitvectors = defined(gcUseBitvectors)
   # bitvectors are significantly faster for GC-bench, but slower for
   # bootstrapping and use more memory
   rcWhite = 0
@@ -29,21 +29,21 @@ type
   TWalkOp = enum
     waMarkGlobal,  # we need to mark conservatively for global marker procs
                    # as these may refer to a global var and not to a thread
-                   # local 
+                   # local
     waMarkPrecise  # fast precise marking
 
   TFinalizer {.compilerproc.} = proc (self: pointer) {.nimcall, benign.}
     # A ref type can have a finalizer that is called before the object's
     # storage is freed.
-  
+
   TGlobalMarkerProc = proc () {.nimcall, benign.}
 
   TGcStat = object
     collections: int         # number of performed full collections
     maxThreshold: int        # max threshold that has been set
     maxStackSize: int        # max stack size
-    freedObjects: int        # max entries in cycle table  
-  
+    freedObjects: int        # max entries in cycle table
+
   TGcHeap = object           # this contains the zero count and
                              # non-zero count table
     stackBottom: pointer
@@ -64,11 +64,11 @@ var
 when not defined(useNimRtl):
   instantiateForRegion(gch.region)
 
-template acquire(gch: TGcHeap) = 
+template acquire(gch: TGcHeap) =
   when hasThreadSupport and hasSharedHeap:
     acquireSys(HeapLock)
 
-template release(gch: TGcHeap) = 
+template release(gch: TGcHeap) =
   when hasThreadSupport and hasSharedHeap:
     releaseSys(HeapLock)
 
@@ -134,7 +134,7 @@ proc prepareDealloc(cell: PCell) =
     (cast[TFinalizer](cell.typ.finalizer))(cellToUsr(cell))
     dec(gch.recGcLock)
 
-proc nimGCref(p: pointer) {.compilerProc.} = 
+proc nimGCref(p: pointer) {.compilerProc.} =
   # we keep it from being collected by pretending it's not even allocated:
   when false:
     when withBitvectors: excl(gch.allocated, usrToCell(p))
@@ -273,25 +273,25 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   result = rawNewObj(typ, size, gch)
   zeroMem(result, size)
   when defined(memProfiler): nimProfile(size)
-  
+
 proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
   let size = addInt(mulInt(len, typ.base.size), GenericSeqSize)
   result = newObj(typ, size)
   cast[PGenericSeq](result).len = len
   cast[PGenericSeq](result).reserved = len
   when defined(memProfiler): nimProfile(size)
-  
+
 proc growObj(old: pointer, newsize: int, gch: var TGcHeap): pointer =
   acquire(gch)
   collectCT(gch)
   var ol = usrToCell(old)
   sysAssert(ol.typ != nil, "growObj: 1")
   gcAssert(ol.typ.kind in {tyString, tySequence}, "growObj: 2")
-  
+
   var res = cast[PCell](rawAlloc(gch.region, newsize + sizeof(TCell)))
   var elemSize = 1
   if ol.typ.kind != tyString: elemSize = ol.typ.base.size
-  
+
   var oldsize = cast[PGenericSeq](old).len*elemSize + GenericSeqSize
   copyMem(res, ol, oldsize + sizeof(TCell))
   zeroMem(cast[pointer](cast[ByteAddress](res)+% oldsize +% sizeof(TCell)),
@@ -399,7 +399,7 @@ proc gcMark(gch: var TGcHeap, p: pointer) {.inline.} =
     var objStart = cast[PCell](interiorAllocatedPtr(gch.region, cell))
     if objStart != nil:
       mark(gch, objStart)
-  
+
 # ----------------- stack management --------------------------------------
 #  inspired from Smart Eiffel
 
@@ -534,7 +534,7 @@ proc collectCTBody(gch: var TGcHeap) =
   markStackAndRegisters(gch)
   markGlobals(gch)
   sweep(gch)
-  
+
   inc(gch.stat.collections)
   when withBitvectors:
     deinit(gch.marked)
@@ -542,19 +542,19 @@ proc collectCTBody(gch: var TGcHeap) =
   gch.cycleThreshold = max(InitialThreshold, getOccupiedMem().mulThreshold)
   gch.stat.maxThreshold = max(gch.stat.maxThreshold, gch.cycleThreshold)
   sysAssert(allocInv(gch.region), "collectCT: end")
-  
+
 proc collectCT(gch: var TGcHeap) =
   if getOccupiedMem(gch.region) >= gch.cycleThreshold and gch.recGcLock == 0:
     collectCTBody(gch)
 
 when not defined(useNimRtl):
-  proc GC_disable() = 
+  proc GC_disable() =
     when hasThreadSupport and hasSharedHeap:
       atomicInc(gch.recGcLock, 1)
     else:
       inc(gch.recGcLock)
   proc GC_enable() =
-    if gch.recGcLock > 0: 
+    if gch.recGcLock > 0:
       when hasThreadSupport and hasSharedHeap:
         atomicDec(gch.recGcLock, 1)
       else:

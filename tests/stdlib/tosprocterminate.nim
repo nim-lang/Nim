@@ -14,7 +14,7 @@ var TimeToWait = 5000
 while process.running() and TimeToWait > 0:
   sleep(100)
   TimeToWait = TimeToWait - 100
-  
+
 if process.running():
   echo("FAILED")
 else:

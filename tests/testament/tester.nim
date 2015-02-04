@@ -48,7 +48,7 @@ type
 # ----------------------------------------------------------------------------
 
 let
-  pegLineError = 
+  pegLineError =
     peg"{[^(]*} '(' {\d+} ', ' \d+ ') ' ('Error') ':' \s* {.*}"
   pegOtherError = peg"'Error:' \s* {.*}"
   pegSuccess = peg"'Hint: operation successful'.*"
@@ -105,7 +105,7 @@ proc addResult(r: var TResults, test: TTest,
                expected, given: string, success: TResultEnum) =
   let name = test.name.extractFilename & test.options
   backend.writeTestResult(name = name,
-                          category = test.cat.string, 
+                          category = test.cat.string,
                           target = $test.target,
                           action = $test.action,
                           result = $success,

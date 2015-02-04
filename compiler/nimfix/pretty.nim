@@ -10,7 +10,7 @@
 ## This module implements the code "prettifier". This is part of the toolchain
 ## to convert Nim code into a consistent style.
 
-import 
+import
   strutils, os, options, ast, astalgo, msgs, ropes, idents,
   intsets, strtabs, semdata, prettybase
 
@@ -92,7 +92,7 @@ proc beautifyName(s: string, k: TSymKind): string =
 
 proc replaceInFile(info: TLineInfo; newName: string) =
   loadFile(info)
-  
+
   let line = gSourceFiles[info.fileIndex].lines[info.line-1]
   var first = min(info.col.int, line.len)
   if first < 0: return
@@ -100,18 +100,18 @@ proc replaceInFile(info: TLineInfo; newName: string) =
   while first > 0 and line[first-1] in prettybase.Letters: dec first
   if first < 0: return
   if line[first] == '`': inc first
-  
+
   let last = first+identLen(line, first)-1
   if differ(line, first, last, newName):
-    # last-first+1 != newName.len or 
-    var x = line.substr(0, first-1) & newName & line.substr(last+1)    
+    # last-first+1 != newName.len or
+    var x = line.substr(0, first-1) & newName & line.substr(last+1)
     system.shallowCopy(gSourceFiles[info.fileIndex].lines[info.line-1], x)
     gSourceFiles[info.fileIndex].dirty = true
 
 proc checkStyle(info: TLineInfo, s: string, k: TSymKind; sym: PSym) =
   let beau = beautifyName(s, k)
   if s != beau:
-    if gStyleCheck == StyleCheck.Auto: 
+    if gStyleCheck == StyleCheck.Auto:
       sym.name = getIdent(beau)
       replaceInFile(info, beau)
     else:
@@ -137,7 +137,7 @@ proc styleCheckUseImpl(info: TLineInfo; s: PSym) =
   if info.fileIndex < 0: return
   # we simply convert it to what it looks like in the definition
   # for consistency
-  
+
   # operators stay as they are:
   if s.kind in {skResult, skTemp} or s.name.s[0] notin prettybase.Letters:
     return

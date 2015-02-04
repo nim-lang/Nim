@@ -6,12 +6,12 @@ discard """
 
 type
   TRange = range[0..40]
-  
+
 proc p(r: TRange) =
   discard
-  
+
 var
   r: TRange
   y = 50
 p y
-  
+

@@ -26,7 +26,7 @@ proc toLower(c: char): char {.inline.} =
   result = if c in {'A'..'Z'}: chr(ord(c)-ord('A')+ord('a')) else: c
 
 proc parseHex*(s: string, number: var int, start = 0): int {.
-  rtl, extern: "npuParseHex", noSideEffect.}  = 
+  rtl, extern: "npuParseHex", noSideEffect.}  =
   ## Parses a hexadecimal number and stores its value in ``number``.
   ##
   ## Returns the number of the parsed characters or 0 in case of an error. This
@@ -49,7 +49,7 @@ proc parseHex*(s: string, number: var int, start = 0): int {.
   var foundDigit = false
   if s[i] == '0' and (s[i+1] == 'x' or s[i+1] == 'X'): inc(i, 2)
   elif s[i] == '#': inc(i)
-  while true: 
+  while true:
     case s[i]
     of '_': discard
     of '0'..'9':
@@ -66,13 +66,13 @@ proc parseHex*(s: string, number: var int, start = 0): int {.
   if foundDigit: result = i-start
 
 proc parseOct*(s: string, number: var int, start = 0): int  {.
-  rtl, extern: "npuParseOct", noSideEffect.} = 
+  rtl, extern: "npuParseOct", noSideEffect.} =
   ## parses an octal number and stores its value in ``number``. Returns
   ## the number of the parsed characters or 0 in case of an error.
   var i = start
   var foundDigit = false
   if s[i] == '0' and (s[i+1] == 'o' or s[i+1] == 'O'): inc(i, 2)
-  while true: 
+  while true:
     case s[i]
     of '_': discard
     of '0'..'7':
@@ -93,7 +93,7 @@ proc parseIdent*(s: string, ident: var string, start = 0): int =
     result = i-start
 
 proc parseIdent*(s: string, start = 0): string =
-  ## parses an identifier and stores it in ``ident``. 
+  ## parses an identifier and stores it in ``ident``.
   ## Returns the parsed identifier or an empty string in case of an error.
   result = ""
   var i = start
@@ -101,14 +101,14 @@ proc parseIdent*(s: string, start = 0): string =
   if s[i] in IdentStartChars:
     inc(i)
     while s[i] in IdentChars: inc(i)
-    
+
     result = substr(s, start, i-1)
 
 proc parseToken*(s: string, token: var string, validChars: set[char],
                  start = 0): int {.inline, deprecated.} =
   ## parses a token and stores it in ``token``. Returns
   ## the number of the parsed characters or 0 in case of an error. A token
-  ## consists of the characters in `validChars`. 
+  ## consists of the characters in `validChars`.
   ##
   ## **Deprecated since version 0.8.12**: Use ``parseWhile`` instead.
   var i = start
@@ -126,13 +126,13 @@ proc skip*(s, token: string, start = 0): int {.inline.} =
   ## or 0 if there was no `token` at ``s[start]``.
   while result < token.len and s[result+start] == token[result]: inc(result)
   if result != token.len: result = 0
-  
+
 proc skipIgnoreCase*(s, token: string, start = 0): int =
   ## same as `skip` but case is ignored for token matching.
   while result < token.len and
       toLower(s[result+start]) == toLower(token[result]): inc(result)
   if result != token.len: result = 0
-  
+
 proc skipUntil*(s: string, until: set[char], start = 0): int {.inline.} =
   ## Skips all characters until one char from the set `until` is found
   ## or the end is reached.
@@ -154,7 +154,7 @@ proc parseUntil*(s: string, token: var string, until: set[char],
                  start = 0): int {.inline.} =
   ## parses a token and stores it in ``token``. Returns
   ## the number of the parsed characters or 0 in case of an error. A token
-  ## consists of the characters notin `until`. 
+  ## consists of the characters notin `until`.
   var i = start
   while i < s.len and s[i] notin until: inc(i)
   result = i-start
@@ -174,7 +174,7 @@ proc parseWhile*(s: string, token: var string, validChars: set[char],
                  start = 0): int {.inline.} =
   ## parses a token and stores it in ``token``. Returns
   ## the number of the parsed characters or 0 in case of an error. A token
-  ## consists of the characters in `validChars`. 
+  ## consists of the characters in `validChars`.
   var i = start
   while s[i] in validChars: inc(i)
   result = i-start
@@ -246,7 +246,7 @@ proc parseFloat*(s: string, number: var float, start = 0): int {.
   result = parseBiggestFloat(s, bf, start)
   if result != 0:
     number = bf
-  
+
 type
   InterpolatedKind* = enum   ## describes for `interpolatedFragments`
                              ## which part of the interpolated string is
@@ -289,12 +289,12 @@ iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
           case s[j]
           of '{': inc nesting
           of '}':
-            if nesting == 0: 
+            if nesting == 0:
               inc j
               break
             dec nesting
           of '\0':
-            raise newException(ValueError, 
+            raise newException(ValueError,
               "Expected closing '}': " & substr(s, i, s.high))
           else: discard
           inc j
@@ -310,7 +310,7 @@ iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
         inc i # skip $
         kind = ikDollar
       else:
-        raise newException(ValueError, 
+        raise newException(ValueError,
           "Unable to parse a varible name at " & substr(s, i, s.high))
     else:
       while j < s.len and s[j] != '$': inc j

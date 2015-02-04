@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## A higher level `PostgreSQL`:idx: database wrapper. This interface 
+## A higher level `PostgreSQL`:idx: database wrapper. This interface
 ## is implemented for other databases too.
 
 import strutils, postgres
@@ -17,7 +17,7 @@ type
   TRow* = seq[string]  ## a row of a dataset. NULL database values will be
                        ## transformed always to the empty string.
   EDb* = object of IOError ## exception that is raised if a database error occurs
-  
+
   TSqlQuery* = distinct string ## an SQL query string
   TSqlPrepared* = distinct string ## a identifier for the prepared queries
 
@@ -25,15 +25,15 @@ type
   FReadDb* = object of FDb   ## effect that denotes a read operation
   FWriteDb* = object of FDb  ## effect that denotes a write operation
 
-proc sql*(query: string): TSqlQuery {.noSideEffect, inline.} =  
-  ## constructs a TSqlQuery from the string `query`. This is supposed to be 
+proc sql*(query: string): TSqlQuery {.noSideEffect, inline.} =
+  ## constructs a TSqlQuery from the string `query`. This is supposed to be
   ## used as a raw-string-literal modifier:
   ## ``sql"update user set counter = counter + 1"``
   ##
-  ## If assertions are turned off, it does nothing. If assertions are turned 
+  ## If assertions are turned off, it does nothing. If assertions are turned
   ## on, later versions will check the string for valid syntax.
   result = TSqlQuery(query)
- 
+
 proc dbError*(db: TDbConn) {.noreturn.} =
   ## raises an EDb exception.
   var e: ref EDb
@@ -68,7 +68,7 @@ proc dbFormat(formatstr: TSqlQuery, args: varargs[string]): string =
       inc(a)
     else:
       add(result, c)
-  
+
 proc tryExec*(db: TDbConn, query: TSqlQuery,
               args: varargs[string, `$`]): bool {.tags: [FReadDB, FWriteDb].} =
   ## tries to execute the query and returns true if successful, false otherwise.
@@ -101,7 +101,7 @@ proc exec*(db: TDbConn, stmtName: TSqlPrepared,
 proc newRow(L: int): TRow =
   newSeq(result, L)
   for i in 0..L-1: result[i] = ""
-  
+
 proc setupQuery(db: TDbConn, query: TSqlQuery,
                 args: varargs[string]): PPGresult =
   var arr = allocCStringArray(args)
@@ -123,7 +123,7 @@ proc prepare*(db: TDbConn; stmtName: string, query: TSqlQuery;
   var res = pqprepare(db, stmtName, query.string, int32(nParams), nil)
   if pqResultStatus(res) != PGRES_COMMAND_OK: dbError(db)
   return TSqlPrepared(stmtName)
-   
+
 proc setRow(res: PPGresult, r: var TRow, line, cols: int32) =
   for col in 0..cols-1:
     setLen(r[col], 0)
@@ -135,7 +135,7 @@ proc setRow(res: PPGresult, r: var TRow, line, cols: int32) =
 
 iterator fastRows*(db: TDbConn, query: TSqlQuery,
                    args: varargs[string, `$`]): TRow {.tags: [FReadDB].} =
-  ## executes the query and iterates over the result dataset. This is very 
+  ## executes the query and iterates over the result dataset. This is very
   ## fast, but potenially dangerous: If the for-loop-body executes another
   ## query, the results can be undefined. For Postgres it is safe though.
   var res = setupQuery(db, query, args)
@@ -201,14 +201,14 @@ proc getValue*(db: TDbConn, query: TSqlQuery,
   ## value is NULL.
   var x = pqgetvalue(setupQuery(db, query, args), 0, 0)
   result = if isNil(x): "" else: $x
-  
+
 proc tryInsertID*(db: TDbConn, query: TSqlQuery,
                   args: varargs[string, `$`]): int64  {.tags: [FWriteDb].}=
-  ## executes the query (typically "INSERT") and returns the 
+  ## executes the query (typically "INSERT") and returns the
   ## generated ID for the row or -1 in case of an error. For Postgre this adds
   ## ``RETURNING id`` to the query, so it only works if your primary key is
-  ## named ``id``. 
-  var x = pqgetvalue(setupQuery(db, TSqlQuery(string(query) & " RETURNING id"), 
+  ## named ``id``.
+  var x = pqgetvalue(setupQuery(db, TSqlQuery(string(query) & " RETURNING id"),
     args), 0, 0)
   if not isNil(x):
     result = parseBiggestInt($x)
@@ -217,13 +217,13 @@ proc tryInsertID*(db: TDbConn, query: TSqlQuery,
 
 proc insertID*(db: TDbConn, query: TSqlQuery,
                args: varargs[string, `$`]): int64 {.tags: [FWriteDb].} =
-  ## executes the query (typically "INSERT") and returns the 
+  ## executes the query (typically "INSERT") and returns the
   ## generated ID for the row. For Postgre this adds
   ## ``RETURNING id`` to the query, so it only works if your primary key is
-  ## named ``id``. 
+  ## named ``id``.
   result = tryInsertID(db, query, args)
   if result < 0: dbError(db)
-  
+
 proc execAffectedRows*(db: TDbConn, query: TSqlQuery,
                        args: varargs[string, `$`]): int64 {.tags: [
                        FReadDB, FWriteDb].} =

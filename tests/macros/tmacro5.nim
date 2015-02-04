@@ -38,7 +38,7 @@ macro importImpl_forward(name, returns): stmt {.immediate.} =
   decls.add res
   echo(repr(res))
 
-macro importImpl(name, returns: expr, body: stmt): stmt {.immediate.} = 
+macro importImpl(name, returns: expr, body: stmt): stmt {.immediate.} =
   #var res = getAST(importImpl_forward(name, returns))
   discard getAST(importImpl_forward(name, returns))
   var res = copyNimTree(decls[decls.high])

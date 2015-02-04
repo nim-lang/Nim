@@ -28,7 +28,7 @@ proc evalPattern(c: PContext, n, orig: PNode): PNode =
   else:
     result = semDirectOp(c, n, {})
   if optHints in gOptions and hintPattern in gNotes:
-    message(orig.info, hintPattern, rule & " --> '" & 
+    message(orig.info, hintPattern, rule & " --> '" &
       renderTree(result, {renderNoComments}) & "'")
 
 proc applyPatterns(c: PContext, n: PNode): PNode =
@@ -68,7 +68,7 @@ proc hlo(c: PContext, n: PNode): PNode =
     result = n
   else:
     if n.kind in {nkFastAsgn, nkAsgn, nkIdentDefs, nkVarTuple} and
-        n.sons[0].kind == nkSym and 
+        n.sons[0].kind == nkSym and
         {sfGlobal, sfPure} * n.sons[0].sym.flags == {sfGlobal, sfPure}:
       # do not optimize 'var g {.global} = re(...)' again!
       return n

@@ -6,7 +6,7 @@ type
   TAny* = object {.pure.}
     value*: pointer
     rawType: pointer
-    
+
 proc newAny(value, rawType: pointer): TAny =
   result.value = value
   result.rawType = rawType

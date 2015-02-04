@@ -1,7 +1,7 @@
-    
+
 var
   e = "abc"
-    
+
 raise newException(EIO, e & "ha!")
 
 template t() = echo(foo)

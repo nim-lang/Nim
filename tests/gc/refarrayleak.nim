@@ -28,7 +28,7 @@ proc newArrayHolder: ref TArrayHolder =
 proc loop =
   for i in 0..10000:
     discard newArrayHolder()
-    
+
   if getOccupiedMem() > 300_000:
     echo "still a leak! ", getOccupiedMem()
     quit 1

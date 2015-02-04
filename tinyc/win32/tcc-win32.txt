@@ -14,10 +14,10 @@
     	http://www.mingw.org
 
     Untar the TCC archive and type in the MSYS shell:
-    
+
        ./configure
        make
-       make install 
+       make install
 
     The default install location is c:\Program Files\tcc
 
@@ -34,7 +34,7 @@
     Installation from the binary ZIP package:
     -----------------------------------------
     Unzip the package to a directory of your choice.
-    
+
     (Note that the binary package does not include libtcc.  If you
     want TCC as dynamic code generator, please use the source code
     distribution.)
@@ -74,7 +74,7 @@
     To link with Windows system DLLs, TCC uses import definition
     files (.def) instead of libraries.
 
-    The included 'tiny_impdef' program may be used to make additional 
+    The included 'tiny_impdef' program may be used to make additional
     .def files for any DLL. For example:
 
         tiny_impdef.exe opengl32.dll

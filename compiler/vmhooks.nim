@@ -17,7 +17,7 @@ template setX(k, field) {.immediate, dirty.} =
 
 proc setResult*(a: VmArgs; v: BiggestInt) = setX(rkInt, intVal)
 proc setResult*(a: VmArgs; v: BiggestFloat) = setX(rkFloat, floatVal)
-proc setResult*(a: VmArgs; v: bool) = 
+proc setResult*(a: VmArgs; v: bool) =
   let v = v.ord
   setX(rkInt, intVal)
 

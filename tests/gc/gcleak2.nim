@@ -14,7 +14,7 @@ proc MakeObj(): TTestObj =
   result.x = "Hello"
   result.s = @[1,2,3]
 
-proc inProc() = 
+proc inProc() =
   for i in 1 .. 1_000_000:
     when defined(gcMarkAndSweep):
       GC_fullcollect()

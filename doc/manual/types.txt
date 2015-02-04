@@ -695,7 +695,7 @@ via ``{.experimental.}``:
   new(n)
   echo n.depth
   # no need to write n[].depth either
-  
+
 
 
 In order to simplify structural type checking, recursive tuples are not valid:

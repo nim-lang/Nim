@@ -8,7 +8,7 @@ proc und*(a: PNimrodNode; b: varargs[PNimrodNode]): PNimrodNode {.compileTime.} 
   a.add(b)
   result = a
 
-proc `^`*(a: string): PNimrodNode {.compileTime.} = 
+proc `^`*(a: string): PNimrodNode {.compileTime.} =
   ## new ident node
   result = newIdentNode(!a)
 proc `[]`*(a, b: PNimrodNode): PNimrodNode {.compileTime.} =
@@ -36,7 +36,7 @@ proc dot*(left, right: PNimrodNode): PNimrodNode {.compileTime.} =
 proc prefix*(a: string, b: PNimrodNode): PNimrodNode {.compileTime.} =
   result = newNimNode(nnkPrefix).und(newIdentNode(!a), b)
 
-proc quoted2ident*(a: PNimrodNode): PNimrodNode {.compileTime.} = 
+proc quoted2ident*(a: PNimrodNode): PNimrodNode {.compileTime.} =
   if a.kind != nnkAccQuoted:
     return a
   var pname = ""

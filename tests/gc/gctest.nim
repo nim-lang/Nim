@@ -22,7 +22,7 @@ type
     data: string
     sons: seq[TBNode] # directly embedded!
     t: TTable
-    
+
   TCaseKind = enum nkStr, nkWhole, nkList
   PCaseNode = ref TCaseNode
   TCaseNode {.final.} = object
@@ -33,7 +33,7 @@ type
 
   TIdObj* = object of TObject
     id*: int  # unique id; use this for comparisons and not the pointers
-  
+
   PIdObj* = ref TIdObj
   PIdent* = ref TIdent
   TIdent*{.acyclic.} = object of TIdObj
@@ -53,12 +53,12 @@ proc newCaseNode(data: string): PCaseNode =
     result.kind = nkWhole
     result.unused = @["", "abc", "abdc"]
   flip = 1 - flip
-  
+
 proc newCaseNode(a, b: PCaseNode): PCaseNode =
   new(result)
   result.kind = nkList
   result.sons = @[a, b]
-  
+
 proc caseTree(lvl: int = 0): PCaseNode =
   if lvl == 3: result = newCaseNode("data item")
   else: result = newCaseNode(caseTree(lvl+1), caseTree(lvl+1))
@@ -147,7 +147,7 @@ proc buildBTree(father: var TBNode) =
     father.t.data = @["ha", "lets", "stress", "it"]
   setSons(father)
 
-proc getIdent(identifier: cstring, length: int, h: int): PIdent = 
+proc getIdent(identifier: cstring, length: int, h: int): PIdent =
   new(result)
   result.h = h
   result.s = newString(length)
@@ -157,7 +157,7 @@ proc main() =
   discard getIdent("hall", 4, 0)
   discard getIdent("echo", 4, 0)
   discard getIdent("huch", 4, 0)
-  
+
   var
     father: TBNode
   for i in 1..1_00:

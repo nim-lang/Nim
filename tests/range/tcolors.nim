@@ -3,7 +3,7 @@ import strutils
 type
   TColor = distinct int32
 
-proc rgb(r, g, b: range[0..255]): TColor = 
+proc rgb(r, g, b: range[0..255]): TColor =
   result = TColor(r or g shl 8 or b shl 16)
 
 proc `$`(c: TColor): string =
@@ -15,25 +15,25 @@ when false:
   type
     TColor = distinct int32
     TColorComponent = distinct int8
-  
-  proc red(a: TColor): TColorComponent = 
+
+  proc red(a: TColor): TColorComponent =
     result = TColorComponent(int32(a) and 0xff'i32)
-  
-  proc green(a: TColor): TColorComponent = 
+
+  proc green(a: TColor): TColorComponent =
     result = TColorComponent(int32(a) shr 8'i32 and 0xff'i32)
-  
-  proc blue(a: TColor): TColorComponent = 
+
+  proc blue(a: TColor): TColorComponent =
     result = TColorComponent(int32(a) shr 16'i32 and 0xff'i32)
-  
-  proc rgb(r, g, b: range[0..255]): TColor = 
+
+  proc rgb(r, g, b: range[0..255]): TColor =
     result = TColor(r or g shl 8 or b shl 8)
-  
-  proc `+!` (a, b: TColorComponent): TColorComponent =  
+
+  proc `+!` (a, b: TColorComponent): TColorComponent =
     ## saturated arithmetic:
     result = TColorComponent(min(ze(int8(a)) + ze(int8(b)), 255))
-  
-  proc `+` (a, b: TColor): TColor = 
+
+  proc `+` (a, b: TColor): TColor =
     ## saturated arithmetic for colors makes sense, I think:
     return rgb(red(a) +! red(b), green(a) +! green(b), blue(a) +! blue(b))
-  
+
   rgb(34, 55, 255)

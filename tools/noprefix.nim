@@ -13,12 +13,12 @@ const
     ("sdl/sdl_mixer", "sdl"),
     ("sdl/sdl_ttf", "sdl"),
     ("sdl/smpeg", "sdl"),
-    
+
     ("libcurl", "curl"),
     ("mysql", "mysql"),
     ("postgres", ""),
     ("sqlite3", "sqlite3"),
-    
+
     ("pcre/pcre", "pcre")
   ]
 

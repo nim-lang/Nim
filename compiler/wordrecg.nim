@@ -13,44 +13,44 @@
 # does not support strings. Without this the code would
 # be slow and unreadable.
 
-import 
+import
   hashes, strutils, idents
 
 # Keywords must be kept sorted and within a range
 
 type
-  TSpecialWord* = enum 
-    wInvalid, 
-    
-    wAddr, wAnd, wAs, wAsm, wAtomic, 
-    wBind, wBlock, wBreak, wCase, wCast, wConst, 
-    wContinue, wConverter, wDefer, wDiscard, wDistinct, wDiv, wDo, 
+  TSpecialWord* = enum
+    wInvalid,
+
+    wAddr, wAnd, wAs, wAsm, wAtomic,
+    wBind, wBlock, wBreak, wCase, wCast, wConst,
+    wContinue, wConverter, wDefer, wDiscard, wDistinct, wDiv, wDo,
     wElif, wElse, wEnd, wEnum, wExcept, wExport,
-    wFinally, wFor, wFrom, wFunc, wGeneric, wIf, wImport, wIn, 
+    wFinally, wFor, wFrom, wFunc, wGeneric, wIf, wImport, wIn,
     wInclude, wInterface, wIs, wIsnot, wIterator, wLet,
-    wMacro, wMethod, wMixin, wMod, wNil, 
-    wNot, wNotin, wObject, wOf, wOr, wOut, wProc, wPtr, wRaise, wRef, wReturn, 
-    wShl, wShr, wStatic, wTemplate, wTry, wTuple, wType, wUsing, wVar, 
+    wMacro, wMethod, wMixin, wMod, wNil,
+    wNot, wNotin, wObject, wOf, wOr, wOut, wProc, wPtr, wRaise, wRef, wReturn,
+    wShl, wShr, wStatic, wTemplate, wTry, wTuple, wType, wUsing, wVar,
     wWhen, wWhile, wWith, wWithout, wXor, wYield,
-    
+
     wColon, wColonColon, wEquals, wDot, wDotDot,
     wStar, wMinus,
     wMagic, wThread, wFinal, wProfiler, wObjChecks,
 
     wDestroy,
-    
+
     wImmediate, wDestructor, wDelegator, wOverride,
     wImportCpp, wImportObjC,
     wImportCompilerProc,
     wImportc, wExportc, wIncompleteStruct, wRequiresInit,
     wAlign, wNodecl, wPure, wSideeffect, wHeader,
-    wNosideeffect, wGcSafe, wNoreturn, wMerge, wLib, wDynlib, 
-    wCompilerproc, wProcVar, 
-    wFatal, wError, wWarning, wHint, wLine, wPush, wPop, wDefine, wUndef, 
-    wLinedir, wStacktrace, wLinetrace, wLink, wCompile, 
-    wLinksys, wDeprecated, wVarargs, wCallconv, wBreakpoint, wDebugger, 
-    wNimcall, wStdcall, wCdecl, wSafecall, wSyscall, wInline, wNoInline, 
-    wFastcall, wClosure, wNoconv, wOn, wOff, wChecks, wRangechecks, 
+    wNosideeffect, wGcSafe, wNoreturn, wMerge, wLib, wDynlib,
+    wCompilerproc, wProcVar,
+    wFatal, wError, wWarning, wHint, wLine, wPush, wPop, wDefine, wUndef,
+    wLinedir, wStacktrace, wLinetrace, wLink, wCompile,
+    wLinksys, wDeprecated, wVarargs, wCallconv, wBreakpoint, wDebugger,
+    wNimcall, wStdcall, wCdecl, wSafecall, wSyscall, wInline, wNoInline,
+    wFastcall, wClosure, wNoconv, wOn, wOff, wChecks, wRangechecks,
     wBoundchecks, wOverflowchecks, wNilchecks,
     wFloatchecks, wNanChecks, wInfChecks,
     wAssertions, wPatterns, wWarnings,
@@ -59,11 +59,11 @@ type
     wPragma,
     wCompileTime, wNoInit,
     wPassc, wPassl, wBorrow, wDiscardable,
-    wFieldChecks, 
-    wWatchPoint, wSubsChar, 
-    wAcyclic, wShallow, wUnroll, wLinearScanEnd, wComputedGoto, 
+    wFieldChecks,
+    wWatchPoint, wSubsChar,
+    wAcyclic, wShallow, wUnroll, wLinearScanEnd, wComputedGoto,
     wInjectStmt, wExperimental,
-    wWrite, wGensym, wInject, wDirty, wInheritable, wThreadVar, wEmit, 
+    wWrite, wGensym, wInject, wDirty, wInheritable, wThreadVar, wEmit,
     wAsmNoStackFrame,
     wImplicitStatic, wGlobal, wCodegenDecl, wUnchecked, wGuard, wLocks,
 
@@ -82,38 +82,38 @@ type
     wStdIn, wStdOut, wStdErr,
 
     wInOut, wByCopy, wByRef, wOneWay,
-    
+
   TSpecialWords* = set[TSpecialWord]
 
-const 
+const
   oprLow* = ord(wColon)
   oprHigh* = ord(wDotDot)
-  
+
   nimKeywordsLow* = ord(wAsm)
   nimKeywordsHigh* = ord(wYield)
-  
+
   ccgKeywordsLow* = ord(wAuto)
   ccgKeywordsHigh* = ord(wOneWay)
-  
+
   cppNimSharedKeywords* = {
     wAsm, wBreak, wCase, wConst, wContinue, wDo, wElse, wEnum, wExport,
     wFor, wIf, wReturn, wStatic, wTemplate, wTry, wWhile, wUsing}
 
-  specialWords*: array[low(TSpecialWord)..high(TSpecialWord), string] = ["", 
-    
-    "addr", "and", "as", "asm", "atomic", 
-    "bind", "block", "break", "case", "cast", 
+  specialWords*: array[low(TSpecialWord)..high(TSpecialWord), string] = ["",
+
+    "addr", "and", "as", "asm", "atomic",
+    "bind", "block", "break", "case", "cast",
     "const", "continue", "converter",
     "defer", "discard", "distinct", "div", "do",
-    "elif", "else", "end", "enum", "except", "export", 
-    "finally", "for", "from", "func", "generic", "if", 
+    "elif", "else", "end", "enum", "except", "export",
+    "finally", "for", "from", "func", "generic", "if",
     "import", "in", "include", "interface", "is", "isnot", "iterator",
     "let",
     "macro", "method", "mixin", "mod", "nil", "not", "notin",
-    "object", "of", "or", 
+    "object", "of", "or",
     "out", "proc", "ptr", "raise", "ref", "return",
     "shl", "shr", "static",
-    "template", "try", "tuple", "type", "using", "var", 
+    "template", "try", "tuple", "type", "using", "var",
     "when", "while", "with", "without", "xor",
     "yield",
 
@@ -122,22 +122,22 @@ const
     "magic", "thread", "final", "profiler", "objchecks",
 
     "destroy",
-    
+
     "immediate", "destructor", "delegator", "override",
     "importcpp", "importobjc",
     "importcompilerproc", "importc", "exportc", "incompletestruct",
     "requiresinit", "align", "nodecl", "pure", "sideeffect",
-    "header", "nosideeffect", "gcsafe", "noreturn", "merge", "lib", "dynlib", 
-    "compilerproc", "procvar", "fatal", "error", "warning", "hint", "line", 
-    "push", "pop", "define", "undef", "linedir", "stacktrace", "linetrace", 
-    "link", "compile", "linksys", "deprecated", "varargs", 
-    "callconv", "breakpoint", "debugger", "nimcall", "stdcall", 
+    "header", "nosideeffect", "gcsafe", "noreturn", "merge", "lib", "dynlib",
+    "compilerproc", "procvar", "fatal", "error", "warning", "hint", "line",
+    "push", "pop", "define", "undef", "linedir", "stacktrace", "linetrace",
+    "link", "compile", "linksys", "deprecated", "varargs",
+    "callconv", "breakpoint", "debugger", "nimcall", "stdcall",
     "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "closure",
-    "noconv", "on", "off", "checks", "rangechecks", "boundchecks", 
+    "noconv", "on", "off", "checks", "rangechecks", "boundchecks",
     "overflowchecks", "nilchecks",
     "floatchecks", "nanchecks", "infchecks",
 
-    "assertions", "patterns", "warnings", "hints", 
+    "assertions", "patterns", "warnings", "hints",
     "optimization", "raises", "writes", "reads", "size", "effects", "tags",
     "deadcodeelim", "safecode", "noforward",
     "pragma",
@@ -149,7 +149,7 @@ const
     "write", "gensym", "inject", "dirty", "inheritable", "threadvar", "emit",
     "asmnostackframe", "implicitstatic", "global", "codegendecl", "unchecked",
     "guard", "locks",
-    
+
     "auto", "bool", "catch", "char", "class",
     "const_cast", "default", "delete", "double",
     "dynamic_cast", "explicit", "extern", "false",
@@ -169,22 +169,22 @@ const
     "inout", "bycopy", "byref", "oneway",
     ]
 
-proc findStr*(a: openArray[string], s: string): int = 
-  for i in countup(low(a), high(a)): 
-    if cmpIgnoreStyle(a[i], s) == 0: 
+proc findStr*(a: openArray[string], s: string): int =
+  for i in countup(low(a), high(a)):
+    if cmpIgnoreStyle(a[i], s) == 0:
       return i
   result = - 1
 
-proc whichKeyword*(id: PIdent): TSpecialWord = 
+proc whichKeyword*(id: PIdent): TSpecialWord =
   if id.id < 0: result = wInvalid
   else: result = TSpecialWord(id.id)
 
-proc whichKeyword*(id: string): TSpecialWord = 
+proc whichKeyword*(id: string): TSpecialWord =
   result = whichKeyword(getIdent(id))
-  
-proc initSpecials() = 
+
+proc initSpecials() =
   # initialize the keywords:
-  for s in countup(succ(low(specialWords)), high(specialWords)): 
+  for s in countup(succ(low(specialWords)), high(specialWords)):
     getIdent(specialWords[s], hashIgnoreStyle(specialWords[s])).id = ord(s)
-  
+
 initSpecials()

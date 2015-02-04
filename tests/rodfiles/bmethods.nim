@@ -12,7 +12,7 @@ type
 
 proc newDerivedClass: ref TDerivedClass =
   new result
-  
+
 method echoType*(x: ref TDerivedClass) =
   echo "derived class"
 

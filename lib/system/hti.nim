@@ -7,13 +7,13 @@
 #    distribution, for details about the copyright.
 #
 
-when declared(NimString): 
+when declared(NimString):
   # we are in system module:
   {.pragma: codegenType, compilerproc.}
 else:
   {.pragma: codegenType.}
 
-type 
+type
   # This should be he same as ast.TTypeKind
   # many enum fields are not used at runtime
   TNimKind = enum
@@ -73,7 +73,7 @@ type
     len: int
     sons: ptr array [0..0x7fff, ptr TNimNode]
 
-  TNimTypeFlag = enum 
+  TNimTypeFlag = enum
     ntfNoRefs = 0,     # type contains no tyRef, tySequence, tyString
     ntfAcyclic = 1,    # type cannot form a cycle
     ntfEnumHole = 2    # enum has holes and thus `$` for them needs the slow
@@ -88,5 +88,5 @@ type
     marker: proc (p: pointer, op: int) {.nimcall, benign.} # marker proc for GC
     deepcopy: proc (p: pointer): pointer {.nimcall, benign.}
   PNimType = ptr TNimType
-  
+
 # node.len may be the ``first`` element of a set

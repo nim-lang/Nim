@@ -18,7 +18,7 @@ proc echoMatrix(a: TMatrix) =
 
 proc echoMat2(a: TMat2) =
   echo TMat2.M
-  
+
 var m = TMatrix[3,3,int](data: [1,2,3,4,5,6,7,8,9])
 
 echoMatrix m

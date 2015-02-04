@@ -9,13 +9,13 @@ var
   ## I was high.
   clients = initTable[TupAddress, PClient](16)
   alias2client = initTable[string, PClient](32)
-  allClients: seq[PClient] = @[] 
-  zonePlayers: seq[PClient] = @[] 
+  allClients: seq[PClient] = @[]
+  zonePlayers: seq[PClient] = @[]
 const
   PubChatDelay = 100/1000 #100 ms
 
 import hashes
-proc hash*(x: uint16): THash {.inline.} = 
+proc hash*(x: uint16): THash {.inline.} =
   result = int32(x)
 
 proc findClient*(host: string; port: int16): PClient =
@@ -27,7 +27,7 @@ proc findClient*(host: string; port: int16): PClient =
   allClients.add(result)
 
 
-proc sendZoneList(client: PClient) = 
+proc sendZoneList(client: PClient) =
   echo(">> zonelist ", client)
   #client.send(HZonelist, zonelist)
 
@@ -83,7 +83,7 @@ handlers[HZoneQuery] = proc(client: PClient; stream: PStream) =
 
 handlers[HZoneJoinReq] = proc(client: PClient; stream: PStream) =
   var req = readCsZoneJoinReq(stream)
-  echo "Join zone request from (",req.session.id,") ", req.session.alias 
+  echo "Join zone request from (",req.session.id,") ", req.session.alias
   if client.auth and client.kind == CPlayer:
     echo "Client is authenticated, verifying filez"
     client.startVerifyingFiles()
@@ -97,7 +97,7 @@ handlers[HZoneJoinReq] = proc(client: PClient; stream: PStream) =
 
 
 proc handlePkt(s: PClient; stream: PStream) =
-  while not stream.atEnd:  
+  while not stream.atEnd:
     var typ = readChar(stream)
     if not handlers.hasKey(typ):
       break
@@ -114,7 +114,7 @@ var clientIndex = 0
 var incoming = newIncomingBuffer()
 proc poll*(timeout: int = 250) =
   if server.isNil: return
-  var 
+  var
     reads = @[server]
     writes = @[server]
   if select(reads, timeout) > 0:
@@ -148,7 +148,7 @@ when isMainModule:
     case kind
     of cmdShortOption, cmdLongOption:
       case key
-      of "f", "file": 
+      of "f", "file":
         if existsFile(val):
           zoneCfgFile = val
         else:
@@ -158,45 +158,45 @@ when isMainModule:
     else:
       echo("Unknown option: ", key, " ", val)
   var jsonSettings = parseFile(zoneCfgFile)
-  let 
+  let
     host = jsonSettings["host"].str
     port = TPort(jsonSettings["port"].num)
     zoneFile = jsonSettings["settings"].str
     dirServerInfo = jsonSettings["dirserver"]
-  
+
   var path = getAppDir()/../"data"/zoneFile
   if not existsFile(path):
     echo("Zone settings file does not exist: ../data/", zoneFile)
     echo(path)
     quit(1)
-  
+
   ## Test file
   block:
-    var 
+    var
       TestFile: FileChallengePair
       contents = repeatStr(2, "abcdefghijklmnopqrstuvwxyz")
-    testFile.challenge = newScFileChallenge("foobar.test", FZoneCfg, contents.len.int32) 
+    testFile.challenge = newScFileChallenge("foobar.test", FZoneCfg, contents.len.int32)
     testFile.file = checksumStr(contents)
     myAssets.add testFile
-  
+
   setCurrentDir getAppDir().parentDir()
   block:
     let zonesettings = readFile(path)
-    var 
+    var
       errors: seq[string] = @[]
     if not loadSettings(zoneSettings, errors):
       echo("You have errors in your zone settings:")
       for e in errors: echo("**", e)
       quit(1)
     errors.setLen 0
-    
+
     var pair: FileChallengePair
     pair.challenge.file = zoneFile
     pair.challenge.assetType = FZoneCfg
     pair.challenge.fullLen = zoneSettings.len.int32
     pair.file = checksumStr(zoneSettings)
     myAssets.add pair
-    
+
     allAssets:
       if not load(asset):
         echo "Invalid or missing file ", file
@@ -208,10 +208,10 @@ when isMainModule:
           expandPath(assetType, file)).int32
         pair.file = asset.contents
         myAssets.add pair
-        
+
     echo "Zone has ", myAssets.len, " associated assets"
-    
-      
+
+
     dirServer = newServerConnection(dirServerInfo[0].str, dirServerInfo[1].num.TPort)
     dirServer.handlers[HDsMsg] = proc(serv: PServer; stream: PStream) =
       var m = readDsMsg(stream)
@@ -221,18 +221,18 @@ when isMainModule:
       if loggedIn:
         dirServerConnected = true
     dirServer.writePkt HZoneLogin, login
-  
+
   thisZone.name = jsonSettings["name"].str
   thisZone.desc = jsonSettings["desc"].str
   thisZone.ip = "localhost"
   thisZone.port = port
   var login = newSdZoneLogin(
     dirServerInfo[2].str, dirServerInfo[3].str,
-    thisZone)  
+    thisZone)
   #echo "MY LOGIN: ", $login
-  
-  
-  
+
+
+
   createServer(port)
   echo("Listening on port ", port, "...")
   var pubChatTimer = cpuTime()#newClock()
@@ -240,7 +240,7 @@ when isMainModule:
     discard dirServer.pollServer(15)
     poll(15)
     ## TODO sort this type of thing VV into a queue api
-    #let now = cpuTime() 
+    #let now = cpuTime()
     if cpuTime() - pubChatTimer > PubChatDelay:       #.getElapsedTime.asMilliseconds > 100:
       pubChatTimer -= pubChatDelay #.restart()
       if pubChatQueue.getPosition > 0:
@@ -250,5 +250,4 @@ when isMainModule:
           c.outputBuf.writeData(addr pubChatQueue.data[0], sizePubChat)
         pubChatQueue.flush()
 
-  
-  
+

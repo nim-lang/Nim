@@ -70,8 +70,8 @@ the compiler to pass the type by reference (hidden pointer) to procs.
 
 Varargs pragma
 --------------
-The ``varargs`` pragma can be applied to procedures only (and procedure 
-types). It tells Nim that the proc can take a variable number of parameters 
+The ``varargs`` pragma can be applied to procedures only (and procedure
+types). It tells Nim that the proc can take a variable number of parameters
 after the last specified parameter. Nim string values will be converted to C
 strings automatically:
 
@@ -94,13 +94,13 @@ should scan unions conservatively.
 
 Packed pragma
 -------------
-The ``packed`` pragma can be applied to any ``object`` type. It ensures 
-that the fields of an object are packed back-to-back in memory. It is useful 
-to store packets or messages from/to network or hardware drivers, and for 
-interoperability with C. Combining packed pragma with inheritance is not 
-defined, and it should not be used with GC'ed memory (ref's).  
+The ``packed`` pragma can be applied to any ``object`` type. It ensures
+that the fields of an object are packed back-to-back in memory. It is useful
+to store packets or messages from/to network or hardware drivers, and for
+interoperability with C. Combining packed pragma with inheritance is not
+defined, and it should not be used with GC'ed memory (ref's).
 
-**Future directions**: Using GC'ed memory in packed pragma will result in 
+**Future directions**: Using GC'ed memory in packed pragma will result in
 compile-time error. Usage with inheritance should be defined and documented.
 
 Unchecked pragma
@@ -141,7 +141,7 @@ runtime size of the array.
 Dynlib pragma for import
 ------------------------
 With the ``dynlib`` pragma a procedure or a variable can be imported from
-a dynamic library (``.dll`` files for Windows, ``lib*.so`` files for UNIX). 
+a dynamic library (``.dll`` files for Windows, ``lib*.so`` files for UNIX).
 The non-optional argument has to be the name of the dynamic library:
 
 .. code-block:: Nim
@@ -152,17 +152,17 @@ In general, importing a dynamic library does not require any special linker
 options or linking with import libraries. This also implies that no *devel*
 packages need to be installed.
 
-The ``dynlib`` import mechanism supports a versioning scheme: 
+The ``dynlib`` import mechanism supports a versioning scheme:
 
-.. code-block:: nim 
-  proc Tcl_Eval(interp: pTcl_Interp, script: cstring): int {.cdecl, 
+.. code-block:: nim
+  proc Tcl_Eval(interp: pTcl_Interp, script: cstring): int {.cdecl,
     importc, dynlib: "libtcl(|8.5|8.4|8.3).so.(1|0)".}
 
 At runtime the dynamic library is searched for (in this order)::
-  
+
   libtcl.so.1
   libtcl.so.0
-  libtcl8.5.so.1  
+  libtcl8.5.so.1
   libtcl8.5.so.0
   libtcl8.4.so.1
   libtcl8.4.so.0
@@ -175,22 +175,22 @@ string expressions in general:
 .. code-block:: nim
   import os
 
-  proc getDllName: string = 
+  proc getDllName: string =
     result = "mylib.dll"
     if existsFile(result): return
     result = "mylib2.dll"
     if existsFile(result): return
     quit("could not load dynamic library")
-  
+
   proc myImport(s: cstring) {.cdecl, importc, dynlib: getDllName().}
 
 **Note**: Patterns like ``libtcl(|8.5|8.4).so`` are only supported in constant
 strings, because they are precompiled.
 
-**Note**: Passing variables to the ``dynlib`` pragma will fail at runtime 
+**Note**: Passing variables to the ``dynlib`` pragma will fail at runtime
 because of order of initialization problems.
 
-**Note**: A ``dynlib`` import can be overriden with 
+**Note**: A ``dynlib`` import can be overriden with
 the ``--dynlibOverride:name`` command line option. The Compiler User Guide
 contains further information.
 

@@ -2,14 +2,14 @@ discard """
   file: "temit.nim"
   output: "509"
 """
-# Test the new ``emit`` pragma: 
+# Test the new ``emit`` pragma:
 
 {.emit: """
 static int cvariable = 420;
 
 """.}
 
-proc embedsC() = 
+proc embedsC() =
   var nimVar = 89
   {.emit: """printf("%d\n", cvariable + (int)`nimVar`);""".}
 

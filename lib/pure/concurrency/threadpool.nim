@@ -204,7 +204,7 @@ proc nimFlowVarSignal(fv: FlowVarBase) {.compilerProc.} =
     inc fv.ai.cv.counter
     release(fv.ai.cv.L)
     signal(fv.ai.cv.c)
-  if fv.usesSemaphore: 
+  if fv.usesSemaphore:
     signal(fv.cv)
 
 proc awaitAndThen*[T](fv: FlowVar[T]; action: proc (x: T) {.closure.}) =

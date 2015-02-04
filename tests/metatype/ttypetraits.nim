@@ -41,18 +41,18 @@ const TypeList = [int, string, seq[int]]
 
 macro selectType(inType: typedesc): typedesc =
   var typeSeq = @[float, TBar[int]]
-  
+
   for t in TypeList:
     typeSeq.add(t)
 
   typeSeq.add(inType)
   typeSeq.add(type(10))
-  
+
   var typeSeq2: seq[typedesc] = @[]
   typeSeq2 = typeSeq
 
   result = typeSeq2[5]
-  
+
 var xvar: selectType(string)
 xvar = "proba"
 echo xvar.type.name

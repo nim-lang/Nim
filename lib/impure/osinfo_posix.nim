@@ -2,7 +2,7 @@ import posix, strutils, os
 
 when false:
   type
-    Tstatfs {.importc: "struct statfs64", 
+    Tstatfs {.importc: "struct statfs64",
               header: "<sys/statfs.h>", final, pure.} = object
       f_type: int
       f_bsize: int
@@ -20,12 +20,12 @@ when false:
 
 proc getSystemVersion*(): string =
   result = ""
-  
+
   var unix_info: TUtsname
-  
+
   if uname(unix_info) != 0:
     os.raiseOSError(osLastError())
-  
+
   if $unix_info.sysname == "Linux":
     # Linux
     result.add("Linux ")
@@ -61,8 +61,8 @@ proc getSystemVersion*(): string =
       result.add("Server 1.0 Hera")
   else:
     result.add($unix_info.sysname & " " & $unix_info.release)
-    
-    
+
+
 when false:
   var unix_info: TUtsname
   echo(uname(unix_info))
@@ -74,4 +74,4 @@ when false:
   var stfs: TStatfs
   echo(statfs("sysinfo_posix.nim", stfs))
   echo(stfs.f_files)
-  
+

@@ -1,11 +1,11 @@
 Taint mode
 ==========
 
-The Nim compiler and most parts of the standard library support 
-a taint mode. Input strings are declared with the `TaintedString`:idx: 
+The Nim compiler and most parts of the standard library support
+a taint mode. Input strings are declared with the `TaintedString`:idx:
 string type declared in the ``system`` module.
 
-If the taint mode is turned on (via the ``--taintMode:on`` command line 
+If the taint mode is turned on (via the ``--taintMode:on`` command line
 option) it is a distinct string type which helps to detect input
 validation errors:
 
@@ -13,7 +13,7 @@ validation errors:
   echo "your name: "
   var name: TaintedString = stdin.readline
   # it is safe here to output the name without any input validation, so
-  # we simply convert `name` to string to make the compiler happy: 
+  # we simply convert `name` to string to make the compiler happy:
   echo "hi, ", name.string
 
 If the taint mode is turned off, ``TaintedString`` is simply an alias for

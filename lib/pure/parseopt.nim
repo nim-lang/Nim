@@ -18,17 +18,17 @@
 
 include "system/inclrtl"
 
-import 
+import
   os, strutils
 
-type 
+type
   CmdLineKind* = enum         ## the detected command line token
     cmdEnd,                   ## end of command line reached
     cmdArgument,              ## argument detected
     cmdLongOption,            ## a long option ``--option`` detected
     cmdShortOption            ## a short option ``-c`` detected
-  OptParser* = 
-      object of RootObj ## this object implements the command line parser  
+  OptParser* =
+      object of RootObj ## this object implements the command line parser
     cmd: string
     pos: int
     inShortState: bool
@@ -40,7 +40,7 @@ type
 {.deprecated: [TCmdLineKind: CmdLineKind, TOptParser: OptParser].}
 
 when declared(os.paramCount):
-  # we cannot provide this for NimRtl creation on Posix, because we can't 
+  # we cannot provide this for NimRtl creation on Posix, because we can't
   # access the command line arguments then!
 
   proc initOptParser*(cmdline = ""): OptParser =
@@ -48,40 +48,40 @@ when declared(os.paramCount):
     ## (as provided by the ``OS`` module) is taken.
     result.pos = 0
     result.inShortState = false
-    if cmdline != "": 
+    if cmdline != "":
       result.cmd = cmdline
-    else: 
+    else:
       result.cmd = ""
-      for i in countup(1, paramCount()): 
+      for i in countup(1, paramCount()):
         result.cmd = result.cmd & quoteIfContainsWhite(paramStr(i).string) & ' '
     result.kind = cmdEnd
     result.key = TaintedString""
     result.val = TaintedString""
 
-proc parseWord(s: string, i: int, w: var string, 
-               delim: set[char] = {'\x09', ' ', '\0'}): int = 
+proc parseWord(s: string, i: int, w: var string,
+               delim: set[char] = {'\x09', ' ', '\0'}): int =
   result = i
-  if s[result] == '\"': 
+  if s[result] == '\"':
     inc(result)
-    while not (s[result] in {'\0', '\"'}): 
+    while not (s[result] in {'\0', '\"'}):
       add(w, s[result])
       inc(result)
     if s[result] == '\"': inc(result)
-  else: 
-    while not (s[result] in delim): 
+  else:
+    while not (s[result] in delim):
       add(w, s[result])
       inc(result)
 
-proc handleShortOption(p: var OptParser) = 
+proc handleShortOption(p: var OptParser) =
   var i = p.pos
   p.kind = cmdShortOption
   add(p.key.string, p.cmd[i])
   inc(i)
   p.inShortState = true
-  while p.cmd[i] in {'\x09', ' '}: 
+  while p.cmd[i] in {'\x09', ' '}:
     inc(i)
     p.inShortState = false
-  if p.cmd[i] in {':', '='}: 
+  if p.cmd[i] in {':', '='}:
     inc(i)
     p.inShortState = false
     while p.cmd[i] in {'\x09', ' '}: inc(i)
@@ -89,7 +89,7 @@ proc handleShortOption(p: var OptParser) =
   if p.cmd[i] == '\0': p.inShortState = false
   p.pos = i
 
-proc next*(p: var OptParser) {.rtl, extern: "npo$1".} = 
+proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
   ## parses the first or next option; ``p.kind`` describes what token has been
   ## parsed. ``p.key`` and ``p.val`` are set accordingly.
   var i = p.pos
@@ -97,33 +97,33 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
   p.pos = i
   setLen(p.key.string, 0)
   setLen(p.val.string, 0)
-  if p.inShortState: 
+  if p.inShortState:
     handleShortOption(p)
-    return 
+    return
   case p.cmd[i]
-  of '\0': 
+  of '\0':
     p.kind = cmdEnd
-  of '-': 
+  of '-':
     inc(i)
-    if p.cmd[i] == '-': 
+    if p.cmd[i] == '-':
       p.kind = cmdLongoption
       inc(i)
       i = parseWord(p.cmd, i, p.key.string, {'\0', ' ', '\x09', ':', '='})
       while p.cmd[i] in {'\x09', ' '}: inc(i)
-      if p.cmd[i] in {':', '='}: 
+      if p.cmd[i] in {':', '='}:
         inc(i)
         while p.cmd[i] in {'\x09', ' '}: inc(i)
         p.pos = parseWord(p.cmd, i, p.val.string)
-      else: 
+      else:
         p.pos = i
-    else: 
+    else:
       p.pos = i
       handleShortOption(p)
   else:
     p.kind = cmdArgument
     p.pos = parseWord(p.cmd, i, p.key.string)
 
-proc cmdLineRest*(p: OptParser): TaintedString {.rtl, extern: "npo$1".} = 
+proc cmdLineRest*(p: OptParser): TaintedString {.rtl, extern: "npo$1".} =
   ## retrieves the rest of the command line that has not been parsed yet.
   result = strip(substr(p.cmd, p.pos, len(p.cmd) - 1)).TaintedString
 
@@ -137,7 +137,7 @@ when declared(initOptParser):
     ##     filename = ""
     ##   for kind, key, val in getopt():
     ##     case kind
-    ##     of cmdArgument: 
+    ##     of cmdArgument:
     ##       filename = key
     ##     of cmdLongOption, cmdShortOption:
     ##       case key

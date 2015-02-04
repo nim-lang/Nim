@@ -14,7 +14,7 @@ notation           meaning
                    order, to the text ahead, until one of them succeeds and
                    possibly consumes some text. Indicate success if one of
                    expressions succeeded. Otherwise do not consume any text
-                   and indicate failure. 
+                   and indicate failure.
 ``A ... Z``        Sequence: Apply expressions `A`, ..., `Z`, in this order,
                    to consume consecutive portions of the text ahead, as long
                    as they succeed. Indicate success if all succeeded.
@@ -27,11 +27,11 @@ notation           meaning
 ``{E}``            Capture: Apply expression `E` and store the substring
                    that matched `E` into a *capture* that can be accessed
                    after the matching process.
-``$i``             Back reference to the ``i``th capture. ``i`` counts from 1. 
-``$``              Anchor: Matches at the end of the input. No character 
-                   is consumed. Same as ``!.``. 
-``^``              Anchor: Matches at the start of the input. No character 
-                   is consumed. 
+``$i``             Back reference to the ``i``th capture. ``i`` counts from 1.
+``$``              Anchor: Matches at the end of the input. No character
+                   is consumed. Same as ``!.``.
+``^``              Anchor: Matches at the start of the input. No character
+                   is consumed.
 ``&E``             And predicate: Indicate success if expression `E` matches
                    the text ahead; otherwise indicate failure. Do not consume
                    any text.
@@ -41,15 +41,15 @@ notation           meaning
 ``E+``             One or more: Apply expression `E` repeatedly to match
                    the text ahead, as long as it succeeds. Consume the matched
                    text (if any) and indicate success if there was at least
-                   one match. Otherwise indicate failure. 
+                   one match. Otherwise indicate failure.
 ``E*``             Zero or more: Apply expression `E` repeatedly to match
                    the text ahead, as long as it succeeds. Consume the matched
-                   text (if any). Always indicate success. 
+                   text (if any). Always indicate success.
 ``E?``             Zero or one: If expression `E` matches the text ahead,
-                   consume it. Always indicate success. 
+                   consume it. Always indicate success.
 ``[s]``            Character class: If the character ahead appears in the
                    string `s`, consume it and indicate success. Otherwise
-                   indicate failure. 
+                   indicate failure.
 ``[a-b]``          Character range: If the character ahead is one from the
                    range `a` through `b`, consume it and indicate success.
                    Otherwise indicate failure.
@@ -70,7 +70,7 @@ notation           meaning
                    failure.
 ``@E``             Search: Shorthand for ``(!E .)* E``. (Search loop for the
                    pattern `E`.)
-``{@} E``          Captured Search: Shorthand for ``{(!E .)*} E``. (Search 
+``{@} E``          Captured Search: Shorthand for ``{(!E .)*} E``. (Search
                    loop for the pattern `E`.) Everything until and exluding
                    `E` is captured.
 ``@@ E``           Same as ``{@} E``.
@@ -79,7 +79,7 @@ notation           meaning
                    matching engine.**
 ``\identifier``    Built-in macro for a longer expression.
 ``\ddd``           Character with decimal code *ddd*.
-``\"``, etc        Literal ``"``, etc. 
+``\"``, etc        Literal ``"``, etc.
 ===============    ============================================================
 
 
@@ -101,9 +101,9 @@ macro              meaning
 ``\n``             any newline combination: ``\10 / \13\10 / \13``
 ``\i``             ignore case for matching; use this at the start of the PEG
 ``\y``             ignore style for matching; use this at the start of the PEG
-``\skip`` pat      skip pattern *pat* before trying to match other tokens; 
+``\skip`` pat      skip pattern *pat* before trying to match other tokens;
                    this is useful for whitespace skipping, for example:
-                   ``\skip(\s*) {\ident} ':' {\ident}`` matches key value 
+                   ``\skip(\s*) {\ident} ':' {\ident}`` matches key value
                    pairs ignoring whitespace around the ``':'``.
 ``\ident``         a standard ASCII identifier: ``[a-zA-Z_][a-zA-Z_0-9]*``
 ``\letter``        any Unicode letter
@@ -133,42 +133,42 @@ The PEG parser implements this grammar (written in PEG syntax)::
   # Example grammar of PEG in PEG syntax.
   # Comments start with '#'.
   # First symbol is the start symbol.
-  
+
   grammar <- rule* / expr
-  
+
   identifier <- [A-Za-z][A-Za-z0-9_]*
   charsetchar <- "\\" . / [^\]]
   charset <- "[" "^"? (charsetchar ("-" charsetchar)?)+ "]"
   stringlit <- identifier? ("\"" ("\\" . / [^"])* "\"" /
                             "'" ("\\" . / [^'])* "'")
   builtin <- "\\" identifier / [^\13\10]
-  
+
   comment <- '#' @ \n
   ig <- (\s / comment)* # things to ignore
-  
+
   rule <- identifier \s* "<-" expr ig
   identNoArrow <- identifier !(\s* "<-")
   prefixOpr <- ig '&' / ig '!' / ig '@' / ig '{@}' / ig '@@'
   literal <- ig identifier? '$' [0-9]+ / '$' / '^' /
-             ig identNoArrow / 
-             ig charset / 
-             ig stringlit / 
-             ig builtin / 
-             ig '.' / 
-             ig '_' / 
+             ig identNoArrow /
+             ig charset /
+             ig stringlit /
+             ig builtin /
+             ig '.' /
+             ig '_' /
              (ig "(" expr ig ")")
   postfixOpr <- ig '?' / ig '*' / ig '+'
   primary <- prefixOpr* (literal postfixOpr*)
-  
+
   # Concatenation has higher priority than choice:
   # ``a b / c`` means ``(a b) / c``
-  
+
   seqExpr <- primary+
   expr <- seqExpr (ig "/" expr)*
 
 
-**Note**: As a special syntactic extension if the whole PEG is only a single 
-expression, identifiers are not interpreted as non-terminals, but are 
+**Note**: As a special syntactic extension if the whole PEG is only a single
+expression, identifiers are not interpreted as non-terminals, but are
 interpreted as verbatim string:
 
 .. code-block:: nim
@@ -185,7 +185,7 @@ Check if `s` matches Nim's "while" keyword:
 .. code-block:: nim
   s =~ peg" y'while'"
 
-Exchange (key, val)-pairs: 
+Exchange (key, val)-pairs:
 
 .. code-block:: nim
   "key: val; key2: val2".replace(peg"{\ident} \s* ':' \s* {\ident}", "$2: $1")

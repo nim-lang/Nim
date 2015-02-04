@@ -41,7 +41,7 @@ type
 
   OSErrorCode* = distinct int32 ## Specifies an OS Error Code.
 
-{.deprecated: [FReadEnv: ReadEnvEffect, FWriteEnv: WriteEnvEffect, 
+{.deprecated: [FReadEnv: ReadEnvEffect, FWriteEnv: WriteEnvEffect,
     FReadDir: ReadDirEffect,
     FWriteDir: WriteDirEffect,
     TOSErrorCode: OSErrorCode
@@ -801,13 +801,13 @@ when defined(Windows):
 
     when useWinUnicode:
       result = createFileW(
-        newWideCString(path), 0'i32, 
+        newWideCString(path), 0'i32,
         FILE_SHARE_DELETE or FILE_SHARE_READ or FILE_SHARE_WRITE,
         nil, OPEN_EXISTING, flags, 0
         )
     else:
       result = createFileA(
-        path, 0'i32, 
+        path, 0'i32,
         FILE_SHARE_DELETE or FILE_SHARE_READ or FILE_SHARE_WRITE,
         nil, OPEN_EXISTING, flags, 0
         )
@@ -924,11 +924,11 @@ proc getFilePermissions*(filename: string): set[FilePermission] {.
       var res = getFileAttributesA(filename)
     if res == -1'i32: raiseOSError(osLastError())
     if (res and FILE_ATTRIBUTE_READONLY) != 0'i32:
-      result = {fpUserExec, fpUserRead, fpGroupExec, fpGroupRead, 
+      result = {fpUserExec, fpUserRead, fpGroupExec, fpGroupRead,
                 fpOthersExec, fpOthersRead}
     else:
       result = {fpUserExec..fpOthersRead}
-  
+
 proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
   rtl, extern: "nos$1", tags: [WriteDirEffect].} =
   ## sets the file permissions for `filename`. `OSError` is raised in case of
@@ -939,15 +939,15 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
     if fpUserRead in permissions: p = p or S_IRUSR
     if fpUserWrite in permissions: p = p or S_IWUSR
     if fpUserExec in permissions: p = p or S_IXUSR
-    
+
     if fpGroupRead in permissions: p = p or S_IRGRP
     if fpGroupWrite in permissions: p = p or S_IWGRP
     if fpGroupExec in permissions: p = p or S_IXGRP
-    
+
     if fpOthersRead in permissions: p = p or S_IROTH
     if fpOthersWrite in permissions: p = p or S_IWOTH
     if fpOthersExec in permissions: p = p or S_IXOTH
-    
+
     if chmod(filename, p) != 0: raiseOSError(osLastError())
   else:
     when useWinUnicode:
@@ -955,7 +955,7 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
     else:
       var res = getFileAttributesA(filename)
     if res == -1'i32: raiseOSError(osLastError())
-    if fpUserWrite in permissions: 
+    if fpUserWrite in permissions:
       res = res and not FILE_ATTRIBUTE_READONLY
     else:
       res = res or FILE_ATTRIBUTE_READONLY
@@ -1022,11 +1022,11 @@ when not declared(ENOENT) and not defined(Windows):
 when defined(Windows):
   when useWinUnicode:
     template deleteFile(file: expr): expr {.immediate.} = deleteFileW(file)
-    template setFileAttributes(file, attrs: expr): expr {.immediate.} = 
+    template setFileAttributes(file, attrs: expr): expr {.immediate.} =
       setFileAttributesW(file, attrs)
   else:
     template deleteFile(file: expr): expr {.immediate.} = deleteFileA(file)
-    template setFileAttributes(file, attrs: expr): expr {.immediate.} = 
+    template setFileAttributes(file, attrs: expr): expr {.immediate.} =
       setFileAttributesA(file, attrs)
 
 proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect].} =
@@ -1039,7 +1039,7 @@ proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect].} 
     else:
       let f = file
     if deleteFile(f) == 0:
-      if getLastError() == ERROR_ACCESS_DENIED: 
+      if getLastError() == ERROR_ACCESS_DENIED:
         if setFileAttributes(f, FILE_ATTRIBUTE_NORMAL) == 0:
           raiseOSError(osLastError())
         if deleteFile(f) == 0:
@@ -1299,9 +1299,9 @@ iterator walkDirRec*(dir: string, filter={pcFile, pcDir}): string {.
   ## walks over the directory `dir` and yields for each file in `dir`. The
   ## full path for each file is returned.
   ## **Warning**:
-  ## Modifying the directory structure while the iterator 
-  ## is traversing may result in undefined behavior! 
-  ## 
+  ## Modifying the directory structure while the iterator
+  ## is traversing may result in undefined behavior!
+  ##
   ## Walking is recursive. `filter` controls the behaviour of the iterator:
   ##
   ## ---------------------   ---------------------------------------------
@@ -1404,7 +1404,7 @@ proc createSymlink*(src, dest: string) =
   ## by `src`. On most operating systems, will fail if a lonk
   ##
   ## **Warning**:
-  ## Some OS's (such as Microsoft Windows) restrict the creation 
+  ## Some OS's (such as Microsoft Windows) restrict the creation
   ## of symlinks to root users (administrators).
   when defined(Windows):
     let flag = dirExists(src).int32
@@ -1424,7 +1424,7 @@ proc createHardlink*(src, dest: string) =
   ## Create a hard link at `dest` which points to the item specified
   ## by `src`.
   ##
-  ## **Warning**: Most OS's restrict the creation of hard links to 
+  ## **Warning**: Most OS's restrict the creation of hard links to
   ## root users (administrators) .
   when defined(Windows):
     when useWinUnicode:
@@ -1528,7 +1528,7 @@ proc parseCmdLine*(c: string): seq[string] {.
           add(a, c[i])
           inc(i)
     add(result, a)
-  
+
 proc copyFileWithPermissions*(source, dest: string,
                               ignorePermissionErrors = true) =
   ## Copies a file from `source` to `dest` preserving file permissions.
@@ -1911,10 +1911,10 @@ template rawToFormalFileInfo(rawInfo, formalInfo): expr =
     formalInfo.lastAccessTime = toTime(rawInfo.ftLastAccessTime)
     formalInfo.lastWriteTime = toTime(rawInfo.ftLastWriteTime)
     formalInfo.creationTime = toTime(rawInfo.ftCreationTime)
-    
+
     # Retrieve basic permissions
     if (rawInfo.dwFileAttributes and FILE_ATTRIBUTE_READONLY) != 0'i32:
-      formalInfo.permissions = {fpUserExec, fpUserRead, fpGroupExec, 
+      formalInfo.permissions = {fpUserExec, fpUserRead, fpGroupExec,
                                 fpGroupRead, fpOthersExec, fpOthersRead}
     else:
       result.permissions = {fpUserExec..fpOthersRead}
@@ -1928,7 +1928,7 @@ template rawToFormalFileInfo(rawInfo, formalInfo): expr =
 
 
   else:
-    template checkAndIncludeMode(rawMode, formalMode: expr) = 
+    template checkAndIncludeMode(rawMode, formalMode: expr) =
       if (rawInfo.st_mode and rawMode) != 0'i32:
         formalInfo.permissions.incl(formalMode)
     formalInfo.id = (rawInfo.st_dev, rawInfo.st_ino)
@@ -1981,20 +1981,20 @@ proc getFileInfo*(file: File): FileInfo =
 
 proc getFileInfo*(path: string, followSymlink = true): FileInfo =
   ## Retrieves file information for the file object pointed to by `path`.
-  ## 
+  ##
   ## Due to intrinsic differences between operating systems, the information
   ## contained by the returned `FileInfo` structure will be slightly different
   ## across platforms, and in some cases, incomplete or inaccurate.
-  ## 
+  ##
   ## When `followSymlink` is true, symlinks are followed and the information
   ## retrieved is information related to the symlink's target. Otherwise,
   ## information on the symlink itself is retrieved.
-  ## 
+  ##
   ## If the information cannot be retrieved, such as when the path doesn't
   ## exist, or when permission restrictions prevent the program from retrieving
   ## file information, an error will be thrown.
   when defined(Windows):
-    var 
+    var
       handle = openHandle(path, followSymlink)
       rawInfo: TBY_HANDLE_FILE_INFORMATION
     if handle == INVALID_HANDLE_VALUE:
@@ -2017,7 +2017,7 @@ proc isHidden*(path: string): bool =
   ## Determines whether a given path is hidden or not. Returns false if the
   ## file doesn't exist. The given path must be accessible from the current
   ## working directory of the program.
-  ## 
+  ##
   ## On Windows, a file is hidden if the file's 'hidden' attribute is set.
   ## On Unix-like systems, a file is hidden if it starts with a '.' (period)
   ## and is not *just* '.' or '..' ' ."

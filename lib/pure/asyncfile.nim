@@ -195,10 +195,10 @@ proc read*(f: AsyncFile, size: int): Future[string] =
         readBuffer.setLen(res)
         f.offset.inc(res)
         retFuture.complete(readBuffer)
-    
+
     if not cb(f.fd):
       addRead(f.fd, cb)
-  
+
   return retFuture
 
 proc readLine*(f: AsyncFile): Future[string] {.async.} =
@@ -222,7 +222,7 @@ proc getFilePos*(f: AsyncFile): int64 =
 
 proc setFilePos*(f: AsyncFile, pos: int64) =
   ## Sets the position of the file pointer that is used for read/write
-  ## operations. The file's first byte has the index zero. 
+  ## operations. The file's first byte has the index zero.
   f.offset = pos
   when not defined(windows):
     let ret = lseek(f.fd.cint, pos, SEEK_SET)
@@ -291,7 +291,7 @@ proc write*(f: AsyncFile, data: string): Future[void] =
         retFuture.complete()
   else:
     var written = 0
-    
+
     proc cb(fd: TAsyncFD): bool =
       result = true
       let remainderSize = data.len-written
@@ -309,7 +309,7 @@ proc write*(f: AsyncFile, data: string): Future[void] =
           result = false # We still have data to write.
         else:
           retFuture.complete()
-    
+
     if not cb(f.fd):
       addWrite(f.fd, cb)
   return retFuture

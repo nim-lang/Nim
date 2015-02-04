@@ -40,7 +40,7 @@ type
     x: A
     y: B
     z: C
-  
+
   TObjKind = enum A, B, C, D
 
   TCaseObj = object
@@ -83,12 +83,12 @@ proc mygeneric1() =
 
 proc mygeneric2[T](val: T) =
   var a = open()
-  
+
   var b = TMyGeneric2[int, T](x: 10, y: val)
   echo "mygeneric2 constructed"
 
   var c = TMyGeneric3[int, int, string](x: 10, y: 20, z: "test")
-  
+
 proc mygeneric3 =
   var x = TMyGeneric3[int, string, TMyGeneric1[int]](
     x: 10, y: "test", z: TMyGeneric1[int](x: 10))
@@ -111,11 +111,11 @@ proc caseobj =
   block:
     echo "----"
     var o1 = TCaseObj(kind: A, x: TMyGeneric1[int](x: 10))
-  
+
   block:
     echo "----"
     var o2 = TCaseObj(kind: B, y: open())
-  
+
   block:
     echo "----"
     var o3 = TCaseObj(kind: D, innerKind: B, r: "test",

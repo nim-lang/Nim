@@ -910,7 +910,7 @@ proc replaceWord*(s, sub: string, by = ""): string {.noSideEffect,
     var j = findAux(s, sub, i, a)
     if j < 0: break
     # word boundary?
-    if (j == 0 or s[j-1] notin wordChars) and 
+    if (j == 0 or s[j-1] notin wordChars) and
         (j+sub.len >= s.len or s[j+sub.len] notin wordChars):
       add result, substr(s, i, j - 1)
       add result, by
@@ -1198,7 +1198,7 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
   ## of significant digits to be printed.
   ## `precision`'s default value is the maximum number of meaningful digits
   ## after the decimal point for Nim's ``biggestFloat`` type.
-  ## 
+  ##
   ## If ``precision == 0``, it tries to format it nicely.
   const floatFormatToChar: array[FloatFormatMode, char] = ['g', 'f', 'e']
   var
@@ -1263,7 +1263,7 @@ proc findNormalized(x: string, inArray: openArray[string]): int =
   return -1
 
 proc invalidFormatString() {.noinline.} =
-  raise newException(ValueError, "invalid format string")  
+  raise newException(ValueError, "invalid format string")
 
 proc addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.
   noSideEffect, rtl, extern: "nsuAddf".} =
@@ -1393,7 +1393,7 @@ when isMainModule:
 
   doAssert "-ld a-ldz -ld".replaceWord("-ld") == " a-ldz "
   doAssert "-lda-ldz -ld abc".replaceWord("-ld") == "-lda-ldz  abc"
-  
+
   type MyEnum = enum enA, enB, enC, enuD, enE
   doAssert parseEnum[MyEnum]("enu_D") == enuD
 

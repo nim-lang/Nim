@@ -3,7 +3,7 @@ discard """
   output: "abracadabra\ntest\n3\n15\n4\n2\nfloat\n3\nfloat\nyin\nyang"
 """
 
-type 
+type
   TFoo[T; Val: static[string]] = object
     data: array[4, T]
 
@@ -121,7 +121,7 @@ foo_3.yinOrYang
 
 # bug 1859
 
-type 
+type
   TypeWith2Params[N, M: static[int]] = object
 
 proc bindBothParams[N](x: TypeWith2Params[N, N]) = discard

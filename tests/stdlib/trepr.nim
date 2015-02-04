@@ -6,7 +6,7 @@ discard """
 type
   TEnum = enum
     a, b
-    
+
 var val = {a, b}
 stdout.write(repr(val))
 stdout.writeln(repr({'a'..'z', 'A'..'Z'}))

@@ -16,7 +16,7 @@ proc main() =
   createActorPool(actorPool, 1)
 
   var some_data: some_type
-  
+
   var inchannel = spawn(actorPool, some_data, thread_proc)
   var recv_data = ^inchannel
   close(inchannel[])

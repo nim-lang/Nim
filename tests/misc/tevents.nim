@@ -13,11 +13,11 @@ type
 
 proc handleprintevent*(e: TEventArgs) =
     write(stdout, "HandlePrintEvent: Output -> Handled print event\n")
-        
+
 proc handleprintevent2*(e: TEventArgs) =
     var args: TPrintEventArgs = TPrintEventArgs(e)
     write(stdout, "HandlePrintEvent2: Output -> printing for " & args.user)
-    
+
 var ee = initEventEmitter()
 
 var eventargs: TPrintEventArgs

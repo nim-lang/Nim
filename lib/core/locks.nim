@@ -15,7 +15,7 @@ type
   TLock* = TSysLock ## Nim lock; whether this is re-entrant
                     ## or not is unspecified!
   TCond* = TSysCond ## Nim condition variable
-  
+
   LockEffect* {.deprecated.} = object of RootEffect ## \
     ## effect that denotes that some lock operation
     ## is performed. Deprecated, do not use anymore!
@@ -25,7 +25,7 @@ type
   ReleaseEffect* {.deprecated.} = object of LockEffect ## \
     ## effect that denotes that some lock is
     ## released. Deprecated, do not use anymore!
-{.deprecated: [FLock: LockEffect, FAquireLock: AquireEffect, 
+{.deprecated: [FLock: LockEffect, FAquireLock: AquireEffect,
     FReleaseLock: ReleaseEffect].}
 
 proc initLock*(lock: var TLock) {.inline.} =
@@ -36,14 +36,14 @@ proc deinitLock*(lock: var TLock) {.inline.} =
   ## Frees the resources associated with the lock.
   deinitSys(lock)
 
-proc tryAcquire*(lock: var TLock): bool = 
+proc tryAcquire*(lock: var TLock): bool =
   ## Tries to acquire the given lock. Returns `true` on success.
   result = tryAcquireSys(lock)
 
 proc acquire*(lock: var TLock) =
   ## Acquires the given lock.
   acquireSys(lock)
-  
+
 proc release*(lock: var TLock) =
   ## Releases the given lock.
   releaseSys(lock)
@@ -58,10 +58,10 @@ proc deinitCond*(cond: var TCond) {.inline.} =
   deinitSysCond(cond)
 
 proc wait*(cond: var TCond, lock: var TLock) {.inline.} =
-  ## waits on the condition variable `cond`. 
+  ## waits on the condition variable `cond`.
   waitSysCond(cond, lock)
-  
+
 proc signal*(cond: var TCond) {.inline.} =
-  ## sends a signal to the condition variable `cond`. 
+  ## sends a signal to the condition variable `cond`.
   signalSysCond(cond)
 

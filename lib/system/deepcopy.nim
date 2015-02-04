@@ -14,7 +14,7 @@ proc genericDeepCopyAux(dest, src: pointer, n: ptr TNimNode) {.benign.} =
     s = cast[ByteAddress](src)
   case n.kind
   of nkSlot:
-    genericDeepCopyAux(cast[pointer](d +% n.offset), 
+    genericDeepCopyAux(cast[pointer](d +% n.offset),
                        cast[pointer](s +% n.offset), n.typ)
   of nkList:
     for i in 0..n.len-1:
@@ -24,7 +24,7 @@ proc genericDeepCopyAux(dest, src: pointer, n: ptr TNimNode) {.benign.} =
     var m = selectBranch(src, n)
     # reset if different branches are in use; note different branches also
     # imply that's not self-assignment (``x = x``)!
-    if m != dd and dd != nil: 
+    if m != dd and dd != nil:
       genericResetAux(dest, dd)
     copyMem(cast[pointer](d +% n.offset), cast[pointer](s +% n.offset),
             n.typ.size)
@@ -103,16 +103,16 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) =
         else:
           let realType = x.typ
           let z = newObj(realType, realType.base.size)
-          
+
           unsureAsgnRef(cast[PPointer](dest), z)
           x.typ = cast[PNimType](cast[int](z) or 1)
           genericDeepCopyAux(z, s2, realType.base)
           x.typ = realType
       else:
         let realType = mt
-        let z = newObj(realType, realType.base.size)        
+        let z = newObj(realType, realType.base.size)
         unsureAsgnRef(cast[PPointer](dest), z)
-        genericDeepCopyAux(z, s2, realType.base)        
+        genericDeepCopyAux(z, s2, realType.base)
   of tyPtr:
     # no cycle check here, but also not really required
     let s2 = cast[PPointer](src)[]

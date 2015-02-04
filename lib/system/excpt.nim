@@ -58,7 +58,7 @@ proc pushSafePoint(s: PSafePoint) {.compilerRtl, inl.} =
 proc popSafePoint {.compilerRtl, inl.} =
   excHandler = excHandler.prev
 
-proc pushCurrentException(e: ref Exception) {.compilerRtl, inl.} = 
+proc pushCurrentException(e: ref Exception) {.compilerRtl, inl.} =
   e.parent = currException
   currException = e
 
@@ -69,12 +69,12 @@ proc popCurrentException {.compilerRtl, inl.} =
 const
   nativeStackTraceSupported* = (defined(macosx) or defined(linux)) and
                               not NimStackTrace
-  hasSomeStackTrace = NimStackTrace or 
+  hasSomeStackTrace = NimStackTrace or
     defined(nativeStackTrace) and nativeStackTraceSupported
 
 when defined(nativeStacktrace) and nativeStackTraceSupported:
   type
-    TDl_info {.importc: "Dl_info", header: "<dlfcn.h>", 
+    TDl_info {.importc: "Dl_info", header: "<dlfcn.h>",
                final, pure.} = object
       dli_fname: cstring
       dli_fbase: pointer
@@ -98,7 +98,7 @@ when defined(nativeStacktrace) and nativeStackTraceSupported:
         tempDlInfo: TDl_info
     # This is allowed to be expensive since it only happens during crashes
     # (but this way you don't need manual stack tracing)
-    var size = backtrace(cast[ptr pointer](addr(tempAddresses)), 
+    var size = backtrace(cast[ptr pointer](addr(tempAddresses)),
                          len(tempAddresses))
     var enabled = false
     for i in 0..size-1:
@@ -123,7 +123,7 @@ when defined(nativeStacktrace) and nativeStackTraceSupported:
 when not hasThreadSupport:
   var
     tempFrames: array [0..127, PFrame] # should not be alloc'd on stack
-  
+
 proc auxWriteStackTrace(f: PFrame, s: var string) =
   when hasThreadSupport:
     var
@@ -160,7 +160,7 @@ proc auxWriteStackTrace(f: PFrame, s: var string) =
     inc(i)
     b = b.prev
   for j in countdown(i-1, 0):
-    if tempFrames[j] == nil: 
+    if tempFrames[j] == nil:
       add(s, "(")
       add(s, $skipped)
       add(s, " calls omitted) ...")
@@ -295,7 +295,7 @@ when not defined(noSignalHandler):
   proc signalHandler(sig: cint) {.exportc: "signalHandler", noconv.} =
     template processSignal(s, action: expr) {.immediate,  dirty.} =
       if s == SIGINT: action("SIGINT: Interrupted by Ctrl-C.\n")
-      elif s == SIGSEGV: 
+      elif s == SIGSEGV:
         action("SIGSEGV: Illegal storage access. (Attempt to read from nil?)\n")
       elif s == SIGABRT:
         when defined(endb):

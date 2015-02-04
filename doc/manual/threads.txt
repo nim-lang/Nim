@@ -1,16 +1,16 @@
 Threads
 =======
 
-To enable thread support the ``--threads:on`` command line switch needs to 
-be used. The ``system`` module then contains several threading primitives. 
-See the `threads <threads.html>`_ and `channels <channels.html>`_ modules 
+To enable thread support the ``--threads:on`` command line switch needs to
+be used. The ``system`` module then contains several threading primitives.
+See the `threads <threads.html>`_ and `channels <channels.html>`_ modules
 for the low level thread API. There are also high level parallelism constructs
 available. See `spawn`_ for further details.
 
 Nim's memory model for threads is quite different than that of other common
-programming languages (C, Pascal, Java): Each thread has its own (garbage 
-collected) heap and sharing of memory is restricted to global variables. This 
-helps to prevent race conditions. GC efficiency is improved quite a lot, 
+programming languages (C, Pascal, Java): Each thread has its own (garbage
+collected) heap and sharing of memory is restricted to global variables. This
+helps to prevent race conditions. GC efficiency is improved quite a lot,
 because the GC never has to stop other threads and see what they reference.
 Memory allocation requires no lock at all! This design easily scales to massive
 multicore processors that are becoming the norm.
@@ -22,10 +22,10 @@ Thread pragma
 A proc that is executed as a new thread of execution should be marked by the
 ``thread`` pragma for reasons of readability. The compiler checks for
 violations of the `no heap sharing restriction`:idx:\: This restriction implies
-that it is invalid to construct a data structure that consists of memory 
+that it is invalid to construct a data structure that consists of memory
 allocated from different (thread local) heaps.
 
-A thread proc is passed to ``createThread`` or ``spawn`` and invoked 
+A thread proc is passed to ``createThread`` or ``spawn`` and invoked
 indirectly; so the ``thread`` pragma implies ``procvar``.
 
 
@@ -34,7 +34,7 @@ GC safety
 
 We call a proc ``p`` `GC safe`:idx: when it doesn't access any global variable
 that contains GC'ed memory (``string``, ``seq``, ``ref`` or a closure) either
-directly or indirectly through a call to a GC unsafe proc. 
+directly or indirectly through a call to a GC unsafe proc.
 
 The `gcsafe`:idx: annotation can be used to mark a proc to be gcsafe,
 otherwise this property is inferred by the compiler. Note that ``noSideEfect``
@@ -59,13 +59,13 @@ Future directions:
 Threadvar pragma
 ----------------
 
-A global variable can be marked with the ``threadvar`` pragma; it is 
+A global variable can be marked with the ``threadvar`` pragma; it is
 a `thread-local`:idx: variable then:
 
 .. code-block:: nim
   var checkpoints* {.threadvar.}: seq[string]
 
-Due to implementation restrictions thread local variables cannot be 
+Due to implementation restrictions thread local variables cannot be
 initialized within the ``var`` section. (Every thread local variable needs to
 be replicated at thread creation.)
 
@@ -73,7 +73,7 @@ be replicated at thread creation.)
 Threads and exceptions
 ----------------------
 
-The interaction between threads and exceptions is simple: A *handled* exception 
+The interaction between threads and exceptions is simple: A *handled* exception
 in one thread cannot affect any other thread. However, an *unhandled* exception
 in one thread terminates the whole *process*!
 
@@ -82,7 +82,7 @@ in one thread terminates the whole *process*!
 Parallel & Spawn
 ================
 
-Nim has two flavors of parallelism: 
+Nim has two flavors of parallelism:
 1) `Structured`:idx: parallelism via the ``parallel`` statement.
 2) `Unstructured`:idx: parallelism via the standalone ``spawn`` statement.
 
@@ -115,7 +115,7 @@ Spawn statement
 
   proc processLine(line: string) =
     discard "do some heavy lifting here"
-  
+
   for x in lines("myinput.txt"):
     spawn processLine(x)
   sync()
@@ -144,7 +144,7 @@ wait on multiple flow variables at the same time:
 
 .. code-block:: nim
   import threadpool, ...
-  
+
   # wait until 2 out of 3 servers received the update:
   proc main =
     var responses = newSeq[RawFlowVar](3)
@@ -203,7 +203,7 @@ restrictions / changes:
   the ``parallel`` section. This is called the *immutability check*. Currently
   it is not specified what exactly "complex location" means. We need to make
   this an optimization!
-* Every array access has to be provably within bounds. This is called 
+* Every array access has to be provably within bounds. This is called
   the *bounds check*.
 * Slices are optimized so that no copy is performed. This optimization is not
   yet performed for ordinary slices outside of a ``parallel`` section. Slices

@@ -10,7 +10,7 @@
 ## :Author: Alex Mitchell
 ##
 ## This module implements an event system that is not dependant on external
-## graphical toolkits. It was originally called ``NimEE`` because 
+## graphical toolkits. It was originally called ``NimEE`` because
 ## it was inspired by Python's PyEE module. There are two ways you can use
 ## events: one is a python-inspired way; the other is more of a C-style way.
 ##
@@ -23,7 +23,7 @@
 ##    # Python way
 ##    ee.on("EventName", handleevent)
 ##    ee.emit("EventName", genericargs)
-## 
+##
 ##    # C/Java way
 ##    # Declare a type
 ##    type
@@ -45,7 +45,7 @@ type
 
 {.deprecated: [TEventArgs: EventArgs, TEventHandler: EventHandler,
   TEventEmitter: EventEmitter, EInvalidEvent: EventError].}
-    
+
 proc initEventHandler*(name: string): EventHandler =
   ## Initializes an EventHandler with the specified name and returns it.
   result.handlers = @[]
@@ -61,7 +61,7 @@ proc removeHandler*(handler: var EventHandler, fn: proc(e: EventArgs) {.closure.
     if fn == handler.handlers[i]:
       handler.handlers.del(i)
       break
-    
+
 proc containsHandler*(handler: var EventHandler, fn: proc(e: EventArgs) {.closure.}): bool =
   ## Checks if a callback is registered to this event handler.
   return handler.handlers.contains(fn)
@@ -86,8 +86,8 @@ proc on*(emitter: var EventEmitter, event: string, fn: proc(e: EventArgs) {.clos
     emitter.s.add(eh)
   else:
     addHandler(emitter.s[i], fn)
-  
-proc emit*(emitter: var EventEmitter, eventhandler: var EventHandler, 
+
+proc emit*(emitter: var EventEmitter, eventhandler: var EventHandler,
            args: EventArgs) =
   ## Fires an event handler with specified event arguments.
   for fn in items(eventhandler.handlers): fn(args)

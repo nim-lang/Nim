@@ -19,7 +19,7 @@ import strutils
 type
   Url* = tuple[      ## represents a *Uniform Resource Locator* (URL)
                      ## any optional component is "" if it does not exist
-    scheme, username, password, 
+    scheme, username, password,
     hostname, port, path, query, anchor: string]
 
 {.deprecated: [TUrl: Url].}
@@ -31,7 +31,7 @@ proc parseUrl*(url: string): Url {.deprecated.} =
   var hostname, port, path, query, anchor: string = ""
 
   var temp = ""
-  
+
   if url[i] != '/': # url isn't a relative path
     while true:
       # Scheme
@@ -48,7 +48,7 @@ proc parseUrl*(url: string): Url {.deprecated.} =
           password = username.substr(colon+1)
           username = username.substr(0, colon-1)
         temp.setLen(0)
-        inc(i) #Skip the @ 
+        inc(i) #Skip the @
       # hostname(subdomain, domain, port)
       if url[i] == '/' or url[i] == '\0':
         hostname = temp
@@ -56,10 +56,10 @@ proc parseUrl*(url: string): Url {.deprecated.} =
         if colon >= 0:
           port = hostname.substr(colon+1)
           hostname = hostname.substr(0, colon-1)
-        
+
         temp.setLen(0)
         break
-      
+
       temp.add(url[i])
       inc(i)
 
@@ -75,7 +75,7 @@ proc parseUrl*(url: string): Url {.deprecated.} =
       else:
         path = temp
       temp.setLen(0)
-      
+
     if url[i] == '\0':
       if temp[0] == '?':
         query = temp
@@ -84,10 +84,10 @@ proc parseUrl*(url: string): Url {.deprecated.} =
       else:
         path = temp
       break
-      
+
     temp.add(url[i])
     inc(i)
-    
+
   return (scheme, username, password, hostname, port, path, query, anchor)
 
 proc `$`*(u: Url): string {.deprecated.} =
@@ -103,12 +103,12 @@ proc `$`*(u: Url): string {.deprecated.} =
       result.add(u.password)
     result.add("@")
   result.add(u.hostname)
-  if u.port.len > 0: 
+  if u.port.len > 0:
     result.add(":")
     result.add(u.port)
-  if u.path.len > 0: 
+  if u.path.len > 0:
     result.add("/")
     result.add(u.path)
   result.add(u.query)
   result.add(u.anchor)
-  
+

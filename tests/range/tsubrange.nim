@@ -5,10 +5,10 @@ discard """
 
 type
   TRange = range[0..40]
-  
+
 proc p(r: TRange) =
   nil
-  
+
 var
   r: TRange
   y = 50
@@ -18,4 +18,4 @@ p y
 
 const
   myConst: TRange = 60
-  
+

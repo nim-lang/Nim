@@ -18,7 +18,7 @@ proc countBits32(n: int32): int {.compilerproc.} =
   v = (v and 0x33333333'i32) +% ((v shr 2'i32) and 0x33333333'i32)
   result = ((v +% (v shr 4'i32) and 0xF0F0F0F'i32) *% 0x1010101'i32) shr 24'i32
 
-proc countBits64(n: int64): int {.compilerproc.} = 
+proc countBits64(n: int64): int {.compilerproc.} =
   result = countBits32(toU32(n and 0xffff'i64)) +
            countBits32(toU32(n shr 16'i64))
 

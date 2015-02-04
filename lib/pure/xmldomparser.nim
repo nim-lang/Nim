@@ -30,19 +30,19 @@ proc getNS(prefix: string): string =
     if ":" in key:
       if key.split(':')[1] == prefix:
         return value
-        
+
     if key == "xmlns":
       defaultNS.add(value)
-      
+
   # Don't return the default namespaces
   # in the loop, because then they would have a precedence
   # over normal namespaces
   if defaultNS.len() > 0:
     return defaultNS[0] # Return the first found default namespace
                         # if none are specified for this prefix
-    
+
   return ""
-    
+
 proc parseText(x: var XmlParser, doc: var PDocument): PText =
   result = doc.createTextNode(x.charData())
 
@@ -58,19 +58,19 @@ proc parseElement(x: var XmlParser, doc: var PDocument): PElement =
         n.appendChild(parseElement(x, doc))
       else:
         n = doc.createElementNS("", x.elementName)
-        
+
     of xmlElementEnd:
       if x.elementName == n.nodeName:
         # n.normalize() # Remove any whitespace etc.
-        
+
         var ns: string
         if x.elementName.contains(':'):
           ns = getNS(x.elementName.split(':')[0])
         else:
           ns = getNS("")
-        
+
         n.namespaceURI = ns
-        
+
         # Remove any namespaces this element declared
         var count = 0 # Variable which keeps the index
                       # We need to edit it..
@@ -82,15 +82,15 @@ proc parseElement(x: var XmlParser, doc: var PDocument): PElement =
 
         return n
       else: #The wrong element is ended
-        raise newException(EMismatchedTag, "Mismatched tag at line " & 
+        raise newException(EMismatchedTag, "Mismatched tag at line " &
           $x.getLine() & " column " & $x.getColumn)
-      
+
     of xmlCharData:
       n.appendChild(parseText(x, doc))
     of xmlAttribute:
       if x.attrKey == "xmlns" or x.attrKey.startsWith("xmlns:"):
         nsList.add((x.attrKey, x.attrValue, n))
-        
+
       if x.attrKey.contains(':'):
         var ns = getNS(x.attrKey)
         n.setAttributeNS(ns, x.attrKey, x.attrValue)
@@ -103,7 +103,7 @@ proc parseElement(x: var XmlParser, doc: var PDocument): PElement =
       n.appendChild(doc.createComment(x.charData()))
     of xmlPI:
       n.appendChild(doc.createProcessingInstruction(x.piName(), x.piRest()))
-      
+
     of xmlWhitespace, xmlElementClose, xmlEntity, xmlSpecial:
       discard " Unused \'events\'"
 
@@ -111,19 +111,19 @@ proc parseElement(x: var XmlParser, doc: var PDocument): PElement =
       raise newException(EParserError, "Unexpected XML Parser event")
     x.next()
 
-  raise newException(EMismatchedTag, 
+  raise newException(EMismatchedTag,
     "Mismatched tag at line " & $x.getLine() & " column " & $x.getColumn)
 
 proc loadXMLStream*(stream: Stream): PDocument =
-  ## Loads and parses XML from a stream specified by ``stream``, and returns 
+  ## Loads and parses XML from a stream specified by ``stream``, and returns
   ## a ``PDocument``
 
   var x: XmlParser
   open(x, stream, nil, {reportComments})
-  
+
   var xmlDoc: PDocument
   var dom: PDOMImplementation = getDOM()
-  
+
   while true:
     x.next()
     case x.kind()
@@ -140,16 +140,16 @@ proc loadXMLStream*(stream: Stream): PDocument =
   return xmlDoc
 
 proc loadXML*(xml: string): PDocument =
-  ## Loads and parses XML from a string specified by ``xml``, and returns 
+  ## Loads and parses XML from a string specified by ``xml``, and returns
   ## a ``PDocument``
   var s = newStringStream(xml)
   return loadXMLStream(s)
-  
-    
+
+
 proc loadXMLFile*(path: string): PDocument =
-  ## Loads and parses XML from a file specified by ``path``, and returns 
+  ## Loads and parses XML from a file specified by ``path``, and returns
   ## a ``PDocument``
-  
+
   var s = newFileStream(path, fmRead)
   if s == nil: raise newException(IOError, "Unable to read file " & path)
   return loadXMLStream(s)
@@ -164,5 +164,5 @@ when isMainModule:
     if i.namespaceURI != nil:
       echo(i.nodeName, "=", i.namespaceURI)
 
-    
+
   echo($xml)
