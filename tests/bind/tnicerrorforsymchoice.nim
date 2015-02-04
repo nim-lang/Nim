@@ -1,6 +1,6 @@
 discard """
   line: 18
-  errormsg: "type mismatch: got (proc (TScgi) | proc (AsyncSocket, StringTableRef, string){.gcsafe.})"
+  errormsg: "type mismatch: got (proc (TScgi) | proc (AsyncSocket, StringTableRef, string)"
 """
 
 #bug #442
