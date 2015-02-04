@@ -14,8 +14,8 @@ proc handleThreadFunc(arg: TThreadFuncArgs[int]){.thread.} =
   callback(output)
 
 proc `@||->`*[T](fn: proc(): T {.thread.}, 
-                 callback: proc(val: T){.thread.}): TThread[TThreadFuncArgs[T]] =
-  var thr: TThread[TThreadFuncArgs[T]]
+                 callback: proc(val: T){.thread.}): Thread[TThreadFuncArgs[T]] =
+  var thr: Thread[TThreadFuncArgs[T]]
   var args: TThreadFuncArgs[T]
   args.a = fn
   args.b = callback

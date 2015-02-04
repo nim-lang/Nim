@@ -40,7 +40,7 @@ type
 
   TActor[TIn, TOut] = object{.pure, final.}
     i: TChannel[TTask[TIn, TOut]]
-    t: TThread[ptr TActor[TIn, TOut]]
+    t: Thread[ptr TActor[TIn, TOut]]
     
   PActor*[TIn, TOut] = ptr TActor[TIn, TOut] ## an actor
   

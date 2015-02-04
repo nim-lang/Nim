@@ -18,8 +18,8 @@ import cpuinfo, cpuload, locks
 
 type
   Semaphore = object
-    c: TCond
-    L: TLock
+    c: Cond
+    L: Lock
     counter: int
 
 proc createSemaphore(): Semaphore =
@@ -113,7 +113,7 @@ type
 
   ToFreeQueue = object
     len: int
-    lock: TLock
+    lock: Lock
     empty: Semaphore
     data: array[128, pointer]
 
@@ -292,7 +292,7 @@ proc slave(w: ptr Worker) {.thread.} =
       atomicDec currentPoolSize
 
 var
-  workers: array[MaxThreadPoolSize, TThread[ptr Worker]]
+  workers: array[MaxThreadPoolSize, Thread[ptr Worker]]
   workersData: array[MaxThreadPoolSize, Worker]
 
 proc setMinPoolSize*(size: range[1..MaxThreadPoolSize]) =
@@ -349,7 +349,7 @@ proc parallel*(body: stmt) {.magic: "Parallel".}
 
 var
   state: ThreadPoolState
-  stateLock: TLock
+  stateLock: Lock
 
 initLock stateLock
 
