@@ -9,15 +9,6 @@ template defPacketImports*(): stmt {.immediate, dirty.} =
   import macros, macro_dsl, estreams
   from strutils import format
 
-proc `$`*[T](x: seq[T]): string =
-  result = "[seq len="
-  result.add($x.len)
-  result.add ':'
-  for i in 0.. <len(x):
-    result.add "   "
-    result.add($x[i])
-  result.add ']'
-
 macro defPacket*(typeNameN: expr, typeFields: expr): stmt {.immediate.} = 
   result = newNimNode(nnkStmtList)
   let 

@@ -4,14 +4,14 @@ template filterIt2*(seq, pred: expr, body: stmt): stmt {.immediate, dirty.} =
   for it in items(seq):
     if pred: body
 
-proc map*[A, B](x: seq[A], func: proc(y: A): B {.closure.}): seq[B] =
+proc map*[A, B](x: seq[A], fun: proc(y: A): B {.closure.}): seq[B] =
   result = @[]
   for item in x.items:
-    result.add func(item)
+    result.add fun(item)
 
-proc mapInPlace*[A](x: var seq[A], func: proc(y: A): A {.closure.}) =
+proc mapInPlace*[A](x: var seq[A], fun: proc(y: A): A {.closure.}) =
   for i in 0..x.len-1:
-    x[i] = func(x[i])
+    x[i] = fun(x[i])
 
 template unless*(condition: expr; body: stmt): stmt {.dirty.} =
   if not(condition):
