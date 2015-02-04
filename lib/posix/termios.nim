@@ -204,61 +204,61 @@ const
 #   `struct termios'.  If VAL is _POSIX_VDISABLE, no character can match it.  
 
 template CCEQ*(val, c: expr): expr = 
-  ((c) == (val) and (val) != POSIX_VDISABLE)
+  c == val and val != POSIX_VDISABLE
 
 # Return the output baud rate stored in *TERMIOS_P.  
 
-proc cfgetospeed*(termios: ptr Termios): Speed {.importc: "cfgetospeed", 
+proc cfGetOspeed*(termios: ptr Termios): Speed {.importc: "cfgetospeed", 
     header: "<termios.h>".}
 # Return the input baud rate stored in *TERMIOS_P.  
 
-proc cfgetispeed*(termios: ptr Termios): Speed {.importc: "cfgetispeed", 
+proc cfGetIspeed*(termios: ptr Termios): Speed {.importc: "cfgetispeed", 
     header: "<termios.h>".}
 # Set the output baud rate stored in *TERMIOS_P to SPEED.  
 
-proc cfsetospeed*(termios: ptr Termios; speed: Speed): cint {.
+proc cfSetOspeed*(termios: ptr Termios; speed: Speed): cint {.
     importc: "cfsetospeed", header: "<termios.h>".}
 # Set the input baud rate stored in *TERMIOS_P to SPEED.  
 
-proc cfsetispeed*(termios: ptr Termios; speed: Speed): cint {.
+proc cfSetIspeed*(termios: ptr Termios; speed: Speed): cint {.
     importc: "cfsetispeed", header: "<termios.h>".}
 # Set both the input and output baud rates in *TERMIOS_OP to SPEED.  
 
-proc cfsetspeed*(termios: ptr Termios; speed: Speed): cint {.
+proc cfSetSpeed*(termios: ptr Termios; speed: Speed): cint {.
     importc: "cfsetspeed", header: "<termios.h>".}
 # Put the state of FD into *TERMIOS_P.  
 
-proc tcgetattr*(fd: cint; termios: ptr Termios): cint {.
+proc tcGetAttr*(fd: cint; termios: ptr Termios): cint {.
     importc: "tcgetattr", header: "<termios.h>".}
 # Set the state of FD to *TERMIOS_P.
 #   Values for OPTIONAL_ACTIONS (TCSA*) are in <bits/termios.h>.  
 
-proc tcsetattr*(fd: cint; optional_actions: cint; termios: ptr Termios): cint {.
+proc tcSetAttr*(fd: cint; optional_actions: cint; termios: ptr Termios): cint {.
     importc: "tcsetattr", header: "<termios.h>".}
 # Set *TERMIOS_P to indicate raw mode.  
 
-proc cfmakeraw*(termios: ptr Termios) {.importc: "cfmakeraw", 
+proc cfMakeRaw*(termios: ptr Termios) {.importc: "cfmakeraw", 
     header: "<termios.h>".}
 # Send zero bits on FD.  
 
-proc tcsendbreak*(fd: cint; duration: cint): cint {.importc: "tcsendbreak", 
+proc tcSendBreak*(fd: cint; duration: cint): cint {.importc: "tcsendbreak", 
     header: "<termios.h>".}
 # Wait for pending output to be written on FD.
 #
 #   This function is a cancellation point and therefore not marked with
 #  .  
 
-proc tcdrain*(fd: cint): cint {.importc: "tcdrain", header: "<termios.h>".}
+proc tcDrain*(fd: cint): cint {.importc: "tcdrain", header: "<termios.h>".}
 # Flush pending data on FD.
 #   Values for QUEUE_SELECTOR (TC{I,O,IO}FLUSH) are in <bits/termios.h>.  
 
-proc tcflush*(fd: cint; queue_selector: cint): cint {.importc: "tcflush", 
+proc tcFlush*(fd: cint; queue_selector: cint): cint {.importc: "tcflush", 
     header: "<termios.h>".}
 # Suspend or restart transmission on FD.
 #   Values for ACTION (TC[IO]{OFF,ON}) are in <bits/termios.h>.  
 
-proc tcflow*(fd: cint; action: cint): cint {.importc: "tcflow", 
+proc tcFlow*(fd: cint; action: cint): cint {.importc: "tcflow", 
     header: "<termios.h>".}
 # Get process group ID for session leader for controlling terminal FD.  
 
-proc tcgetsid*(fd: cint): TPid {.importc: "tcgetsid", header: "<termios.h>".}
+proc tcGetSid*(fd: cint): TPid {.importc: "tcgetsid", header: "<termios.h>".}
