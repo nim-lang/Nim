@@ -365,6 +365,8 @@ macro styledEcho*(m: varargs[expr]): stmt =
   result.add(newCall(bindSym"resetAttributes"))
 
 proc getch*(): char =
+  ## Read a single character from the terminal, blocking until it is entered.
+  ## The character is not printed to the terminal.
   when defined(windows):
     result = winGetch().char
   else:
