@@ -1,5 +1,5 @@
 discard """
-  output: "111"
+  output: ""
 """
 
 type Matrix[M,N: static[int]] = array[M, array[N, float]]
