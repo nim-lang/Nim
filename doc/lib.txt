@@ -185,7 +185,7 @@ Math libraries
 * `complex <complex.html>`_
   This module implements complex numbers and their mathematical operations.
 
-* `rational <rational.html>`_
+* `rationals <rationals.html>`_
   This module implements rational numbers and their mathematical operations.
 
 * `fenv <fenv.html>`_
