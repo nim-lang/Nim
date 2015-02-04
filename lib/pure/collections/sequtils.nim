@@ -382,7 +382,7 @@ template foldr*(sequence, operation: expr): expr =
     result = operation
   result
 
-template mapIt*(seq1, typ, pred: expr): expr =
+template mapIt*(seq1, typ, op: expr): expr =
   ## Convenience template around the ``map`` proc to reduce typing.
   ##
   ## The template injects the ``it`` variable which you can use directly in an
@@ -397,10 +397,10 @@ template mapIt*(seq1, typ, pred: expr): expr =
   ##   assert strings == @["4", "8", "12", "16"]
   var result {.gensym.}: seq[typ] = @[]
   for it {.inject.} in items(seq1):
-    result.add(pred)
+    result.add(op)
   result
 
-template mapIt*(varSeq, pred: expr) =
+template mapIt*(varSeq, op: expr) =
   ## Convenience template around the mutable ``map`` proc to reduce typing.
   ##
   ## The template injects the ``it`` variable which you can use directly in an
@@ -413,7 +413,7 @@ template mapIt*(varSeq, pred: expr) =
   ##   assert nums[0] + nums[3] == 15
   for i in 0 .. <len(varSeq):
     let it {.inject.} = varSeq[i]
-    varSeq[i] = pred
+    varSeq[i] = op
 
 template newSeqWith*(len: int, init: expr): expr =
   ## creates a new sequence, calling `init` to initialize each value. Example:
