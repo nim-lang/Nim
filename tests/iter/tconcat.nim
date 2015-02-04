@@ -1,5 +1,12 @@
 discard """
-  output: '''DabcD'''
+  output: '''1
+2
+3
+4
+20
+21
+22
+23'''
 """
 
 proc toIter*[T](s: Slice[T]): iterator: T =
