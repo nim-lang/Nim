@@ -18,7 +18,7 @@ const
   NCCS* = 32
 
 type 
-  Termios* = object {.importc: "struct termios", header: "termios.h>", final, pure.}
+  Termios* = object {.importc: "struct termios", header: "<termios.h>", final, pure.}
     iflag*: Tcflag        # input mode flags 
     oflag*: Tcflag        # output mode flags 
     cflag*: Tcflag        # control mode flags 
