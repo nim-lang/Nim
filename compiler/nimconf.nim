@@ -246,6 +246,11 @@ proc loadConfigs*(cfg: string) =
     
     if gProjectName.len != 0:
       # new project wide config file:
-      let projectConfig = changeFileExt(gProjectFull, "nim.cfg")
-      if fileExists(projectConfig): readConfigFile(projectConfig)
-      else: readConfigFile(changeFileExt(gProjectFull, "nimrod.cfg"))
+      var projectConfig = changeFileExt(gProjectFull, "nimcfg")
+      if not fileExists(projectConfig):
+        projectConfig = changeFileExt(gProjectFull, "nim.cfg")
+      if not fileExists(projectConfig):
+        projectConfig = changeFileExt(gProjectFull, "nimrod.cfg")
+        if fileExists(projectConfig):
+          rawMessage(warnDeprecated, projectConfig)
+      readConfigFile(projectConfig)
