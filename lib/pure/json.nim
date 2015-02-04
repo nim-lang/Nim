@@ -644,7 +644,7 @@ proc `%`*(elements: openArray[JsonNode]): JsonNode =
   newSeq(result.elems, elements.len)
   for i, p in pairs(elements): result.elems[i] = p
 
-proc toJson(x: expr): expr {.compiletime.} =
+proc toJson(x: PNimrodNode): PNimrodNode {.compiletime.} =
   case x.kind
   of nnkBracket:
     result = newNimNode(nnkBracket)
@@ -663,7 +663,7 @@ proc toJson(x: expr): expr {.compiletime.} =
   result = prefix(result, "%")
 
 macro `%*`*(x: expr): expr =
-  ## Convert an expression to a JsonParser directly, without having to specify
+  ## Convert an expression to a JsonNode directly, without having to specify
   ## `%` for every element.
   result = toJson(x)
 
