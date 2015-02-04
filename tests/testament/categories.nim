@@ -330,8 +330,9 @@ proc `&?.`(a, b: string): string =
 proc processCategory(r: var TResults, cat: Category, options: string) =
   case cat.string.normalize
   of "rodfiles":
-    compileRodFiles(r, cat, options)
-    runRodFiles(r, cat, options)
+    discard # Disabled for now
+    #compileRodFiles(r, cat, options)
+    #runRodFiles(r, cat, options)
   of "js":
     # XXX JS doesn't need to be special anymore
     jsTests(r, cat, options)
