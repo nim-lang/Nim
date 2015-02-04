@@ -460,7 +460,7 @@ type
 
   TLineInfo*{.final.} = object # This is designed to be as small as possible,
                                # because it is used
-                               # in syntax nodes. We safe space here by using 
+                               # in syntax nodes. We save space here by using 
                                # two int16 and an int32.
                                # On 64 bit and on 32 bit systems this is 
                                # only 8 bytes.

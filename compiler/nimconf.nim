@@ -14,7 +14,7 @@ import
   options, idents, wordrecg
 
 # ---------------- configuration file parser -----------------------------
-# we use Nim's scanner here to safe space and work
+# we use Nim's scanner here to save space and work
 
 proc ppGetTok(L: var TLexer, tok: var TToken) = 
   # simple filter
@@ -157,7 +157,7 @@ proc checkSymbol(L: TLexer, tok: TToken) =
 proc parseAssignment(L: var TLexer, tok: var TToken) = 
   if tok.ident.id == getIdent("-").id or tok.ident.id == getIdent("--").id:
     confTok(L, tok)           # skip unnecessary prefix
-  var info = getLineInfo(L, tok) # safe for later in case of an error
+  var info = getLineInfo(L, tok) # save for later in case of an error
   checkSymbol(L, tok)
   var s = tokToStr(tok)
   confTok(L, tok)             # skip symbol
