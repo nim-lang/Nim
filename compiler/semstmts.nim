@@ -813,8 +813,7 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
       # we have a list of implicit type parameters:
       n.sons[genericParamsPos] = gp
   else:
-    s.typ = newTypeS(tyProc, c)
-    rawAddSon(s.typ, nil)
+    s.typ = newProcType(c, n.info)
   if n.sons[pragmasPos].kind != nkEmpty:
     pragma(c, s, n.sons[pragmasPos], lambdaPragmas)
   s.options = gOptions
@@ -838,6 +837,13 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   closeScope(c)           # close scope for parameters
   popOwner()
   result.typ = s.typ
+
+proc semDo(c: PContext, n: PNode, flags: TExprFlags): PNode =
+  # 'do' without params produces a stmt:
+  if n[genericParamsPos].kind == nkEmpty and n[paramsPos].kind == nkEmpty:
+    result = semStmt(c, n[bodyPos])
+  else:
+    result = semLambda(c, n, flags)
 
 proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   var n = n
@@ -988,8 +994,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         # check for semantics again:
         # semParamList(c, n.sons[ParamsPos], nil, s)
   else:
-    s.typ = newTypeS(tyProc, c)
-    rawAddSon(s.typ, nil)
+    s.typ = newProcType(c, n.info)
   if n.sons[patternPos].kind != nkEmpty:
     n.sons[patternPos] = semPattern(c, n.sons[patternPos])
   if s.kind in skIterators:

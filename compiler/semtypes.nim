@@ -856,25 +856,25 @@ proc semParamType(c: PContext, n: PNode, constraint: var PNode): PType =
   else:
     result = semTypeNode(c, n, nil)
 
-proc semProcTypeNode(c: PContext, n, genericParams: PNode,
-                     prev: PType, kind: TSymKind; isType=false): PType =
-  # for historical reasons (code grows) this is invoked for parameter
-  # lists too and then 'isType' is false.
-  var
-    res: PNode
-    cl: IntSet
-  checkMinSonsLen(n, 1)
+proc newProcType(c: PContext; info: TLineInfo; prev: PType = nil): PType =
   result = newOrPrevType(tyProc, prev, c)
   result.callConv = lastOptionEntry(c).defaultCC
-  result.n = newNodeI(nkFormalParams, n.info)
-  if genericParams != nil and sonsLen(genericParams) == 0:
-    cl = initIntSet()
+  result.n = newNodeI(nkFormalParams, info)
   rawAddSon(result, nil) # return type
   # result.n[0] used to be `nkType`, but now it's `nkEffectList` because 
   # the effects are now stored in there too ... this is a bit hacky, but as
   # usual we desperately try to save memory:
-  res = newNodeI(nkEffectList, n.info)
-  addSon(result.n, res)
+  addSon(result.n, newNodeI(nkEffectList, info))
+
+proc semProcTypeNode(c: PContext, n, genericParams: PNode,
+                     prev: PType, kind: TSymKind; isType=false): PType =
+  # for historical reasons (code grows) this is invoked for parameter
+  # lists too and then 'isType' is false.
+  var cl: IntSet
+  checkMinSonsLen(n, 1)
+  result = newProcType(c, n.info, prev)
+  if genericParams != nil and sonsLen(genericParams) == 0:
+    cl = initIntSet()
   var check = initIntSet()
   var counter = 0
   for i in countup(1, n.len - 1):
@@ -956,7 +956,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           # we don't need to change the return type to iter[T]
           if not r.isInlineIterator: r = newTypeWithSons(c, tyIter, @[r])
       result.sons[0] = r
-      res.typ = r
+      result.n.typ = r
 
   if genericParams != nil:
     for n in genericParams:

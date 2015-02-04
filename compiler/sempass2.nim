@@ -230,7 +230,7 @@ proc getEbase(): PType =
 
 proc excType(n: PNode): PType =
   # reraise is like raising E_Base:
-  let t = if n.kind == nkEmpty: getEbase() else: n.typ
+  let t = if n.kind == nkEmpty or n.typ.isNil: getEbase() else: n.typ
   result = skipTypes(t, skipPtrs)
 
 proc createRaise(n: PNode): PNode =
