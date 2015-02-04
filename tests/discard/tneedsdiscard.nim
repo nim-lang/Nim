@@ -6,7 +6,7 @@ discard """
 proc p =
   var f: TFile
   echo "hi"
-  
+
   open(f, "arg.txt")
-  
+
 p()

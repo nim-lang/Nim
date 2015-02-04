@@ -78,11 +78,11 @@ proc poll(serv: PServer; timeout: cuint = 30) =
       case event.kind
       of EvtReceive:
         var buf = newBuffer(event.packet)
-        
+
         serv.handlePackets(buf)
-        
+
         event.packet.destroy()
-      of EvtDisconnect:        
+      of EvtDisconnect:
         dispMessage "Disconnected"
         serv.connected = false
         event.peer.data = nil
@@ -110,8 +110,8 @@ proc tryConnect*(b: PButton) =
   if not dirServer.connected:
     var error: string
     if not dirServer.connect(
-            clientSettings.dirServer.host, 
-            clientSettings.dirServer.port, 
+            clientSettings.dirServer.host,
+            clientSettings.dirServer.port,
             error):
       dispError(error)
   else:
@@ -142,16 +142,16 @@ proc lobbyInit*() =
   clientSettings.website = s["website"].str
   zonelist.setPosition(vec2f(200.0, 100.0))
   connectionButtons = @[]
-  
+
   var pos = vec2f(10, 10)
   u_alias = gui.newTextEntry(
-    if s.hasKey("alias"): s["alias"].str else: "alias", 
+    if s.hasKey("alias"): s["alias"].str else: "alias",
     pos)
   pos.y += 20
   u_passwd = gui.newTextEntry("buzz", pos)
   pos.y += 20
   connectionButtons.add(gui.newButton(
-    text = "Login", 
+    text = "Login",
     position = pos,
     onClick = tryLogin,
     startEnabled = false))
@@ -170,16 +170,16 @@ proc lobbyInit*() =
   connectionButtons.add(gui.newButton(
     text = "Test Chat",
     position = pos,
-    onClick = (proc(b: PButton) = 
+    onClick = (proc(b: PButton) =
       var pkt = newCsChat(text = "ohai")
       dirServer.send HChat, pkt),
     startEnabled = false))
   pos.y += 20
-  downloadProgress.setPosition(pos) 
+  downloadProgress.setPosition(pos)
   downloadProgress.bg.setFillColor(color(34, 139, 34))
   downloadProgress.bg.setSize(vec2f(0, 0))
   gui.add(downloadProgress)
-  
+
   playBtn = gui.newButton(
     text = "Play",
     position = vec2f(680.0, 8.0),
@@ -192,20 +192,20 @@ proc lobbyInit*() =
   discard """gui.newButton(text = "Scrollback + 1", position = vec2f(185, 10), onClick = proc(b: PButton) =
     messageArea.scrollBack += 1
     update(messageArea))
-  gui.newButton(text = "Scrollback - 1", position = vec2f(185+160, 10), onClick = proc(b: PButton) = 
+  gui.newButton(text = "Scrollback - 1", position = vec2f(185+160, 10), onClick = proc(b: PButton) =
     messageArea.scrollBack -= 1
     update(messageArea))
   gui.newButton(text = "Flood msg area", position = vec2f(185, 30), onClick = proc(b: PButton) =
-    for i in 0.. <30: 
+    for i in 0.. <30:
       dispMessage($i))"""
-  dirServer = newServer() 
+  dirServer = newServer()
   dirServer.addHandler HChat, handleChat
   dirServer.addHandler HLogin, handlePlayerLogin
   dirServer.addHandler HFileTransfer, client_helpers.handleFilePartRecv
   dirServer.addHandler HChallengeResult, client_helpers.handleFileChallengeResult
   dirServer.addHandler HFileChallenge, client_helpers.handleFileChallenge
 
-proc lobbyReady*() = 
+proc lobbyReady*() =
   kc.setActive()
   gui.setActive(u_alias)
 

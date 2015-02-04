@@ -25,7 +25,7 @@ a separate token. This trick allows parsing of Nim with only 1 token of
 lookahead.
 
 The parser uses a stack of indentation levels: the stack consists of integers
-counting the spaces. The indentation information is queried at strategic 
+counting the spaces. The indentation information is queried at strategic
 places in the parser but ignored otherwise: The pseudo terminal ``IND{>}``
 denotes an indentation that consists of more spaces than the entry at the top
 of the stack; IND{=} an indentation that has the same number of spaces. ``DED``
@@ -36,7 +36,7 @@ With this notation we can now easily define the core of the grammar: A block of
 statements (simplified example)::
 
   ifStmt = 'if' expr ':' stmt
-           (IND{=} 'elif' expr ':' stmt)* 
+           (IND{=} 'elif' expr ':' stmt)*
            (IND{=} 'else' ':' stmt)?
 
   simpleStmt = ifStmt / ...
@@ -153,7 +153,7 @@ contain the following `escape sequences`:idx:\ :
 ==================         ===================================================
 
 
-Strings in Nim may contain any 8-bit value, even embedded zeros. However 
+Strings in Nim may contain any 8-bit value, even embedded zeros. However
 some operations may interpret the first binary zero as a terminator.
 
 
@@ -171,7 +171,7 @@ be whitespace between the opening ``"""`` and the newline),
 the newline (and the preceding whitespace) is not included in the string. The
 ending of the string literal is defined by the pattern ``"""[^"]``, so this:
 
-.. code-block:: nim 
+.. code-block:: nim
   """"long string within quotes""""
 
 Produces::
@@ -184,9 +184,9 @@ Raw string literals
 
 Terminal symbol in the grammar: ``RSTR_LIT``.
 
-There are also raw string literals that are preceded with the 
-letter ``r`` (or ``R``) and are delimited by matching double quotes (just 
-like ordinary string literals) and do not interpret the escape sequences. 
+There are also raw string literals that are preceded with the
+letter ``r`` (or ``R``) and are delimited by matching double quotes (just
+like ordinary string literals) and do not interpret the escape sequences.
 This is especially convenient for regular expressions or Windows paths:
 
 .. code-block:: nim
@@ -198,21 +198,21 @@ To produce a single ``"`` within a raw string literal, it has to be doubled:
 .. code-block:: nim
 
   r"a""b"
-  
+
 Produces::
-  
+
   a"b
 
-``r""""`` is not possible with this notation, because the three leading 
-quotes introduce a triple quoted string literal. ``r"""`` is the same 
-as ``"""`` since triple quoted string literals do not interpret escape 
+``r""""`` is not possible with this notation, because the three leading
+quotes introduce a triple quoted string literal. ``r"""`` is the same
+as ``"""`` since triple quoted string literals do not interpret escape
 sequences either.
 
 
 Generalized raw string literals
 -------------------------------
 
-Terminal symbols in the grammar: ``GENERALIZED_STR_LIT``, 
+Terminal symbols in the grammar: ``GENERALIZED_STR_LIT``,
 ``GENERALIZED_TRIPLESTR_LIT``.
 
 The construct ``identifier"string literal"`` (without whitespace between the
@@ -278,7 +278,7 @@ Numerical constants are of a single type and have the form::
   DEC_LIT = digit ( ['_'] digit )*
   OCT_LIT = '0o' octdigit ( ['_'] octdigit )*
   BIN_LIT = '0' ('b' | 'B' ) bindigit ( ['_'] bindigit )*
-  
+
   INT_LIT = HEX_LIT
           | DEC_LIT
           | OCT_LIT
@@ -355,7 +355,7 @@ These keywords are also operators:
 ``and or not xor shl shr div mod in notin is isnot of``.
 
 `=`:tok:, `:`:tok:, `::`:tok: are not available as general operators; they
-are used for other notational purposes. 
+are used for other notational purposes.
 
 ``*:`` is as a special case the two tokens `*`:tok: and `:`:tok:
 (to support ``var v*: T``).
@@ -369,7 +369,7 @@ The following strings denote other tokens::
     `   (     )     {     }     [     ]     ,  ;   [.    .]  {.   .}  (.  .)
 
 
-The `slice`:idx: operator `..`:tok: takes precedence over other tokens that 
-contain a dot: `{..}`:tok: are the three tokens `{`:tok:, `..`:tok:, `}`:tok: 
+The `slice`:idx: operator `..`:tok: takes precedence over other tokens that
+contain a dot: `{..}`:tok: are the three tokens `{`:tok:, `..`:tok:, `}`:tok:
 and not the two tokens `{.`:tok:, `.}`:tok:.
 

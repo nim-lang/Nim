@@ -32,7 +32,7 @@ type
     a, b: char
     x, y: int
     z: string
-    
+
   TEnum = enum enA, enB, enC
   TMyCaseObj = object
     case myDisc: TEnum
@@ -51,7 +51,7 @@ proc myobj(a, b: char, x, y: int, z: string): TMyObj =
 var x = myobj('a', 'b', 5, 6, "abc")
 var y = myobj('A', 'b', 5, 9, "abc")
 
-for f in fields(x): 
+for f in fields(x):
   p f
 
 for a, b in fields(x, y):

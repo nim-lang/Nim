@@ -1,6 +1,6 @@
 type
   csize = int
-  
+
   HttpDataProc* = proc (a2: ptr THttpParser, at: cstring, length: csize): cint {.cdecl.}
   HttpProc* = proc (a2: ptr THttpParser): cint {.cdecl.}
 

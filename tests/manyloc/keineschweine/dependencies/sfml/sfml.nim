@@ -1,4 +1,4 @@
-import 
+import
   strutils, math
 when defined(linux):
   const
@@ -27,7 +27,7 @@ type
     x*, y*, z*: cfloat
 
   PInputStream* = ptr TInputStream
-  TInputStream* {.pf.} = object 
+  TInputStream* {.pf.} = object
     read*: TInputStreamReadFunc
     seek*: TInputStreamSeekFunc
     tell*: TInputStreamTellFunc
@@ -52,14 +52,14 @@ type
     width*: cint
     height*: cint
     bitsPerPixel*: cint
-  TEventType*{.size: sizeof(cint).} = enum 
-    EvtClosed, EvtResized, EvtLostFocus, EvtGainedFocus, 
-    EvtTextEntered, EvtKeyPressed, EvtKeyReleased, EvtMouseWheelMoved, 
-    EvtMouseButtonPressed, EvtMouseButtonReleased, EvtMouseMoved, 
-    EvtMouseEntered, EvtMouseLeft, EvtJoystickButtonPressed, 
-    EvtJoystickButtonReleased, EvtJoystickMoved, EvtJoystickConnected, 
+  TEventType*{.size: sizeof(cint).} = enum
+    EvtClosed, EvtResized, EvtLostFocus, EvtGainedFocus,
+    EvtTextEntered, EvtKeyPressed, EvtKeyReleased, EvtMouseWheelMoved,
+    EvtMouseButtonPressed, EvtMouseButtonReleased, EvtMouseMoved,
+    EvtMouseEntered, EvtMouseLeft, EvtJoystickButtonPressed,
+    EvtJoystickButtonReleased, EvtJoystickMoved, EvtJoystickConnected,
     EvtJoystickDisconnected
-  TKeyEvent*{.pf.} = object 
+  TKeyEvent*{.pf.} = object
     code*: TKeyCode
     alt*    : bool
     control*: bool
@@ -74,7 +74,7 @@ type
     joystickId*: cint
     axis*: TJoystickAxis
     position*: cfloat
-  TMouseWheelEvent*{.pf.} = object 
+  TMouseWheelEvent*{.pf.} = object
     delta*: cint
     x*: cint
     y*: cint
@@ -90,7 +90,7 @@ type
   PEvent* = ptr TEvent
   TEvent*{.pf.} = object
     case kind*: TEventType
-    of EvtKeyPressed, EvtKeyReleased: 
+    of EvtKeyPressed, EvtKeyReleased:
       key*: TKeyEvent
     of EvtMouseButtonPressed, EvtMouseButtonReleased:
       mouseButton*: TMouseButtonEvent
@@ -109,16 +109,16 @@ type
     of EvtMouseWheelMoved:
       mouseWheel*: TMouseWheelEvent
     else: nil
-  TJoystickAxis*{.size: sizeof(cint).} = enum 
-    JoystickX, JoystickY, JoystickZ, JoystickR,      
+  TJoystickAxis*{.size: sizeof(cint).} = enum
+    JoystickX, JoystickY, JoystickZ, JoystickR,
     JoystickU, JoystickV, JoystickPovX, JoystickPovY
   TSizeEvent*{.pf.} = object
     width*: cint
     height*: cint
-  TMouseButton*{.size: sizeof(cint).} = enum 
-    MouseLeft, MouseRight, MouseMiddle,  
+  TMouseButton*{.size: sizeof(cint).} = enum
+    MouseLeft, MouseRight, MouseMiddle,
     MouseXButton1, MouseXButton2, MouseButtonCount
-  TKeyCode*{.size: sizeof(cint).} = enum 
+  TKeyCode*{.size: sizeof(cint).} = enum
     KeyUnknown = - 1, KeyA, KeyB, KeyC, KeyD, KeyE,
     KeyF, KeyG, KeyH, KeyI, KeyJ, KeyK, KeyL, KeyM,                 #/< The M key
     KeyN, KeyO, KeyP, KeyQ, KeyR, KeyS, KeyT, KeyU,                 #/< The U key
@@ -204,11 +204,11 @@ type
   PConvexShape* = ptr TConvexShape
   TConvexShape* {.pf.} = object
 
-  TTextStyle*{.size: sizeof(cint).} = enum 
-    TextRegular = 0, TextBold = 1 shl 0, TextItalic = 1 shl 1, 
+  TTextStyle*{.size: sizeof(cint).} = enum
+    TextRegular = 0, TextBold = 1 shl 0, TextItalic = 1 shl 1,
     TextUnderlined = 1 shl 2
 
-  TBlendMode*{.size: sizeof(cint).} = enum 
+  TBlendMode*{.size: sizeof(cint).} = enum
       BlendAlpha, BlendAdd, BlendMultiply, BlendNone
   PRenderStates* = ptr TRenderStates
   TRenderStates* {.pf.} = object
@@ -220,19 +220,19 @@ type
   PTransform* = ptr TTransform
   TTransform* {.pf.} = object
     matrix*: array[0..8, cfloat]
-  TColor* {.pf.} = object 
+  TColor* {.pf.} = object
     r*: Uint8
     g*: Uint8
     b*: Uint8
     a*: Uint8
   PFloatRect* = ptr TFloatRect
-  TFloatRect*{.pf.} = object 
+  TFloatRect*{.pf.} = object
     left*: cfloat
     top*: cfloat
     width*: cfloat
     height*: cfloat
   PIntRect* = ptr TIntRect
-  TIntRect*{.pf.} = object 
+  TIntRect*{.pf.} = object
     left*: cint
     top*: cint
     width*: cint
@@ -246,7 +246,7 @@ type
     position*: TVector2f
     color*: TColor
     texCoords*: TVector2f
-  TPrimitiveType*{.size: sizeof(cint).} = enum 
+  TPrimitiveType*{.size: sizeof(cint).} = enum
     Points,               #/< List of individual points
     Lines,                #/< List of individual lines
     LinesStrip,           #/< List of connected lines, a point uses the previous point to form a line
@@ -381,7 +381,7 @@ proc draw*(window: PRenderWindow, shape: PConvexShape, states: PRenderStates = n
   cdecl, importc: "sfRenderWindow_drawConvexShape", dynlib: LibG.}
 proc draw*(window: PRenderWindow, shape: PVertexArray, states: PRenderStates = nil) {.
   cdecl, importc: "sfRenderWindow_drawVertexArray", dynlib: LibG.}
-proc draw*(window: PRenderWindow, vertices: PVertex, vertexCount: cint, 
+proc draw*(window: PRenderWindow, vertices: PVertex, vertexCount: cint,
            vertexType: TPrimitiveType, states: PRenderStates = nil) {.
   cdecl, importc: "sfRenderWindow_drawPrimitives", dynlib: LibG.}
 
@@ -434,20 +434,20 @@ proc draw*(renderTexture: PRenderTexture; text: PText; states: PRenderStates){.
   cdecl, importc: "sfRenderTexture_drawText", dynlib: LibG.}
 proc draw*(renderTexture: PRenderTexture; shape: PShape; states: PRenderStates){.
   cdecl, importc: "sfRenderTexture_drawShape", dynlib: LibG.}
-proc draw*(renderTexture: PRenderTexture; shape: PCircleShape; 
+proc draw*(renderTexture: PRenderTexture; shape: PCircleShape;
             states: PRenderStates){.
   cdecl, importc: "sfRenderTexture_drawCircleShape", dynlib: LibG.}
-proc draw*(renderTexture: PRenderTexture; shape: PConvexShape; 
+proc draw*(renderTexture: PRenderTexture; shape: PConvexShape;
             states: PRenderStates){.
   cdecl, importc: "sfRenderTexture_drawConvexShape", dynlib: LibG.}
-proc draw*(renderTexture: PRenderTexture; shape: PRectangleShape; 
+proc draw*(renderTexture: PRenderTexture; shape: PRectangleShape;
             states: PRenderStates){.
   cdecl, importc: "sfRenderTexture_drawRectangleShape", dynlib: LibG.}
-proc draw*(renderTexture: PRenderTexture; va: PVertexArray; 
+proc draw*(renderTexture: PRenderTexture; va: PVertexArray;
             states: PRenderStates){.
   cdecl, importc: "sfRenderTexture_drawVertexArray", dynlib: LibG.}
 #Draw primitives defined by an array of vertices to a render texture
-proc draw*(renderTexture: PRenderTexture; vertices: PVertex; vertexCount: cint; 
+proc draw*(renderTexture: PRenderTexture; vertices: PVertex; vertexCount: cint;
             primitiveType: TPrimitiveType; states: PRenderStates){.
   cdecl, importc: "sfRenderTexture_drawPrimitives", dynlib: LibG.}
 #Save the current OpenGL render states and matrices
@@ -500,12 +500,12 @@ proc intRect*(left, top, width, height: cint): TIntRect =
   result.height = height
 proc floatRect*(left, top, width, height: cfloat): TFloatRect =
   result.left   = left
-  result.top    = top 
+  result.top    = top
   result.width  = width
   result.height = height
 proc contains*(rect: PFloatRect, x, y: cfloat): bool {.
   cdecl, importc: "sfFloatRect_contains", dynlib: LibG.}
-proc contains*(rect: PIntRect, x: cint, y: cint): bool{.cdecl, 
+proc contains*(rect: PIntRect, x: cint, y: cint): bool{.cdecl,
   importc: "sfIntRect_contains", dynlib: LibG.}
 proc intersects*(rect1, rect2, intersection: PFloatRect): bool {.
   cdecl, importc: "sfFloatRect_intersects", dynlib: LibG.}
@@ -894,7 +894,7 @@ proc setColor*(text: PText, color: TColor) {.
   cdecl, importc: "sfText_setColor", dynlib: LibG.}
 proc getString*(text: PText): cstring {.
   cdecl, importc: "sfText_getString", dynlib: LibG.}
-proc getUnicodeString*(text: PText): ptr Uint32 {.cdecl, 
+proc getUnicodeString*(text: PText): ptr Uint32 {.cdecl,
   importc: "sfText_getUnicodeString", dynlib: LibG.}
 proc getFont*(text: PText): PFont {.
   cdecl, importc: "sfText_getFont", dynlib: LibG.}
@@ -985,7 +985,7 @@ proc `*`*(color1, color2: TColor): TColor {.
   cdecl, importc: "sfColor_modulate", dynlib: LibG.}
 proc newColor*(r,g,b: int): TColor {.inline.} =
   return color(r,g,b)
-proc newColor*(r,g,b,a: int): TColor {.inline.} = 
+proc newColor*(r,g,b,a: int): TColor {.inline.} =
   return color(r,g,b,a)
 
 proc newClock*(): PClock {.
@@ -1022,7 +1022,7 @@ proc newContextSettings*(depthBits: cint = 0,
   result.majorVersion = majorVersion
   result.minorVersion = minorVersion
 
-proc newCircleShape*(radius: cfloat; pointCount: cint = 30): PCircleShape = 
+proc newCircleShape*(radius: cfloat; pointCount: cint = 30): PCircleShape =
   result = newCircleShape()
   result.setRadius radius
   result.setPointCount pointCount
@@ -1047,13 +1047,13 @@ proc `[]`*(a: PVertexArray, index: int): PVertex =
 proc `$` *(a: TContextSettings): string =
   return "<TContextSettings stencil=$1 aa=$2 major=$3 minor=$4 depth=$5>" % [
     $a.stencilBits, $a.antialiasingLevel, $a.majorVersion, $a.minorVersion, $a.depthBits]
-proc `$` *(a: TVideoMode): string = 
+proc `$` *(a: TVideoMode): string =
   return "<TVideoMode $1x$2 $3bpp>" % [$a.width, $a.height, $a.bitsPerPixel]
-proc `$` *(a: TFloatRect): string = 
+proc `$` *(a: TFloatRect): string =
   return "<TFloatRect $1,$2 $3x$4>" % [$a.left, $a.top, $a.width, $a.height]
-proc `$` *(a: PView): string = 
+proc `$` *(a: PView): string =
   return $a.getViewport()
-proc `$` *(a: TVector2f): string = 
+proc `$` *(a: TVector2f): string =
   return "<TVector2f $1,$2>" % [$a.x, $a.y]
 
 proc vec2i*(x, y: int): TVector2i =

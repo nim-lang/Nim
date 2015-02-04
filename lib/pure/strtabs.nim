@@ -227,7 +227,7 @@ proc `$`*(t: StringTableRef): string {.rtl, extern: "nstDollar".} =
     result = "{:}"
   else:
     result = "{"
-    for key, val in pairs(t): 
+    for key, val in pairs(t):
       if result.len > 1: result.add(", ")
       result.add(key)
       result.add(": ")

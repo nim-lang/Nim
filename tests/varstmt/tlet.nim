@@ -11,7 +11,7 @@ proc main =
     echo("Very funny, your name is name.")
   else:
     echo("Hi, ", name, "!")
-    
+
   let (x, y) = ("abc", name)
   echo y, x
 

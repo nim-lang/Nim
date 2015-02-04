@@ -11,7 +11,7 @@ suite "my suite":
   setup:
     echo "suite setup"
     var testVar = "from setup"
-    
+
   teardown:
     echo "suite teardown"
 

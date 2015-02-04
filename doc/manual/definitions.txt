@@ -26,9 +26,9 @@ program execution. Unless explicitly classified, an error is a static error.
 
 A `checked runtime error`:idx: is an error that the implementation detects
 and reports at runtime. The method for reporting such errors is via *raising
-exceptions* or *dying with a fatal error*. However, the implementation 
+exceptions* or *dying with a fatal error*. However, the implementation
 provides a means to disable these runtime checks. See the section pragmas_
-for details. 
+for details.
 
 Wether a checked runtime error results in an exception or in a fatal error at
 runtime is implementation specific. Thus the following program is always

@@ -10,8 +10,8 @@ type
 
 proc getInterf(): ITest =
   var shared1, shared2: int
-  
-  return (setter: proc (x: int) = 
+
+  return (setter: proc (x: int) =
             shared1 = x
             shared2 = x + 10,
           getter1: proc (): int = result = shared1,

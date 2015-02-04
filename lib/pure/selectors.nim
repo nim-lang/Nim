@@ -11,11 +11,11 @@
 
 import tables, os, unsigned, hashes
 
-when defined(linux): 
+when defined(linux):
   import posix, epoll
-elif defined(windows): 
+elif defined(windows):
   import winlean
-else: 
+else:
   import posix
 
 proc hash*(x: SocketHandle): THash {.borrow.}
@@ -67,7 +67,7 @@ elif defined(linux):
       epollFD: cint
       events: array[64, epoll_event]
       fds: Table[SocketHandle, SelectorKey]
-  
+
   proc createEventStruct(events: set[Event], fd: SocketHandle): epoll_event =
     if EvRead in events:
       result.events = EPOLLIN
@@ -75,7 +75,7 @@ elif defined(linux):
       result.events = result.events or EPOLLOUT
     result.events = result.events or EPOLLRDHUP
     result.data.fd = fd.cint
-  
+
   proc register*(s: Selector, fd: SocketHandle, events: set[Event],
       data: RootRef): SelectorKey {.discardable.} =
     ## Registers file descriptor ``fd`` to selector ``s`` with a set of TEvent
@@ -86,10 +86,10 @@ elif defined(linux):
         raiseOSError(osLastError())
 
     var key = SelectorKey(fd: fd, events: events, data: data)
-  
+
     s.fds[fd] = key
     result = key
-  
+
   proc update*(s: Selector, fd: SocketHandle,
       events: set[Event]): SelectorKey {.discardable.} =
     ## Updates the events which ``fd`` wants notifications for.
@@ -114,9 +114,9 @@ elif defined(linux):
           if epoll_ctl(s.epollFD, EPOLL_CTL_MOD, fd, addr(event)) != 0:
             raiseOSError(osLastError())
         s.fds[fd].events = events
-      
+
       result = s.fds[fd]
-  
+
   proc unregister*(s: Selector, fd: SocketHandle): SelectorKey {.discardable.} =
     if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fd, nil) != 0:
       let err = osLastError()
@@ -128,7 +128,7 @@ elif defined(linux):
   proc close*(s: Selector) =
     if s.epollFD.close() != 0: raiseOSError(osLastError())
     dealloc(addr s.events) # TODO: Test this
-  
+
   proc epollHasFd(s: Selector, fd: SocketHandle): bool =
     result = true
     var event = createEventStruct(s.fds[fd].events, fd)
@@ -137,7 +137,7 @@ elif defined(linux):
       if err.cint in {ENOENT, EBADF}:
         return false
       raiseOSError(osLastError())
-  
+
   proc select*(s: Selector, timeout: int): seq[ReadyInfo] =
     ##
     ## The ``events`` field of the returned ``key`` contains the original events
@@ -154,7 +154,7 @@ elif defined(linux):
     if evNum == 0: return @[]
     for i in 0 .. <evNum:
       let fd = s.events[i].data.fd.SocketHandle
-    
+
       var evSet: set[Event] = {}
       if (s.events[i].events and EPOLLERR) != 0 or (s.events[i].events and EPOLLHUP) != 0: evSet = evSet + {EvError}
       if (s.events[i].events and EPOLLIN) != 0: evSet = evSet + {EvRead}
@@ -164,7 +164,7 @@ elif defined(linux):
       result.add((selectorKey, evSet))
 
       #echo("Epoll: ", result[i].key.fd, " ", result[i].events, " ", result[i].key.events)
-  
+
   proc newSelector*(): Selector =
     new result
     result.epollFD = epoll_create(64)
@@ -227,13 +227,13 @@ elif not defined(nimdoc):
       m: var int) =
     FD_ZERO(rd); FD_ZERO(wr)
     for k, v in pairs(fds):
-      if EvRead in v.events: 
+      if EvRead in v.events:
         m = max(m, int(k))
         FD_SET(k, rd)
       if EvWrite in v.events:
         m = max(m, int(k))
         FD_SET(k, wr)
-     
+
   proc getReadyFDs(rd, wr: var TFdSet, fds: Table[SocketHandle, SelectorKey]):
       seq[ReadyInfo] =
     result = @[]
@@ -248,17 +248,17 @@ elif not defined(nimdoc):
   proc select(fds: Table[SocketHandle, SelectorKey], timeout = 500):
     seq[ReadyInfo] =
     var tv {.noInit.}: TimeVal = timeValFromMilliseconds(timeout)
-    
+
     var rd, wr: TFdSet
     var m = 0
     createFdSet(rd, wr, fds, m)
-    
+
     var retCode = 0
     if timeout != -1:
       retCode = int(select(cint(m+1), addr(rd), addr(wr), nil, addr(tv)))
     else:
       retCode = int(select(cint(m+1), addr(rd), addr(wr), nil, nil))
-    
+
     if retCode < 0:
       raiseOSError(osLastError())
     elif retCode == 0:
@@ -297,12 +297,12 @@ when isMainModule and not defined(nimdoc):
   type
     SockWrapper = ref object of RootObj
       sock: Socket
-  
+
   var sock = socket()
   if sock == sockets.InvalidSocket: raiseOSError(osLastError())
   #sock.setBlocking(false)
   sock.connect("irc.freenode.net", Port(6667))
-  
+
   var selector = newSelector()
   var data = SockWrapper(sock: sock)
   let key = selector.register(sock.getFD, {EvWrite}, data)

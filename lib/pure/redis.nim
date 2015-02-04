@@ -11,7 +11,7 @@
 ## redis-server instance, send commands and receive replies.
 ##
 ## **Beware**: Most (if not all) functions that return a ``TRedisString`` may
-## return ``redisNil``, and functions which return a ``TRedisList`` 
+## return ``redisNil``, and functions which return a ``TRedisList``
 ## may return ``nil``.
 
 import sockets, os, strutils, parseutils
@@ -19,7 +19,7 @@ import sockets, os, strutils, parseutils
 const
   redisNil* = "\0\0"
 
-type 
+type
   Pipeline = ref object
     enabled: bool
     buffer: string
@@ -34,7 +34,7 @@ type
     socket: Socket
     connected: bool
     pipeline: Pipeline
-  
+
   RedisStatus* = string
   RedisInteger* = BiggestInt
   RedisString* = string ## Bulk reply
@@ -59,10 +59,10 @@ proc open*(host = "localhost", port = 6379.Port): Redis =
   if result.socket == invalidSocket:
     raiseOSError(osLastError())
   result.socket.connect(host, port)
-  result.pipeline = newPipeline()  
+  result.pipeline = newPipeline()
 
 proc raiseInvalidReply(expected, got: char) =
-  raise newException(ReplyError, 
+  raise newException(ReplyError,
           "Expected '$1' at the beginning of a status reply got '$2'" %
           [$expected, $got])
 
@@ -90,16 +90,16 @@ proc parseStatus(r: Redis, line: string = ""): RedisStatus =
     raise newException(RedisError, strip(line))
   if line[0] != '+':
     raiseInvalidReply('+', line[0])
-  
+
   return line.substr(1) # Strip '+'
 
 proc readStatus(r:Redis): RedisStatus =
   r.readSocket("PIPELINED")
   return r.parseStatus(line)
- 
+
 proc parseInteger(r: Redis, line: string = ""): RedisInteger =
   if r.pipeline.enabled: return -1
-  
+
   #if line == "+QUEUED":  # inside of multi
   #  return -1
 
@@ -110,10 +110,10 @@ proc parseInteger(r: Redis, line: string = ""): RedisInteger =
     raise newException(RedisError, strip(line))
   if line[0] != ':':
     raiseInvalidReply(':', line[0])
-  
+
   # Strip ':'
   if parseBiggestInt(line, result, 1) == 0:
-    raise newException(ReplyError, "Unable to parse integer.") 
+    raise newException(ReplyError, "Unable to parse integer.")
 
 proc readInteger(r: Redis): RedisInteger =
   r.readSocket(-1)
@@ -126,19 +126,19 @@ proc recv(sock: Socket, size: int): TaintedString =
 
 proc parseSingleString(r: Redis, line:string, allowMBNil = false): RedisString =
   if r.pipeline.enabled: return ""
-  
+
   # Error.
   if line[0] == '-':
     raise newException(RedisError, strip(line))
-  
+
   # Some commands return a /bulk/ value or a /multi-bulk/ nil. Odd.
   if allowMBNil:
     if line == "*-1":
        return redisNil
-  
+
   if line[0] != '$':
     raiseInvalidReply('$', line[0])
-  
+
   var numBytes = parseInt(line.substr(1))
   if numBytes == -1:
     return redisNil
@@ -168,7 +168,7 @@ proc parseArrayLines(r: Redis, countLine:string): RedisList =
 
 proc readArrayLines(r: Redis): RedisList =
   r.readSocket(nil)
-  return r.parseArrayLines(line)  
+  return r.parseArrayLines(line)
 
 proc parseBulkString(r: Redis, allowMBNil = false, line:string = ""): RedisString =
   if r.pipeline.enabled: return ""
@@ -191,7 +191,7 @@ proc readNext(r: Redis): RedisList =
     of ':': @[$(r.parseInteger(line))]
     of '$': @[r.parseBulkString(true,line)]
     of '*': r.parseArrayLines(line)
-    else: 
+    else:
       raise newException(ReplyError, "readNext failed on line: " & line)
       nil
   r.pipeline.expected -= 1
@@ -202,10 +202,10 @@ proc flushPipeline*(r: Redis, wasMulti = false): RedisList =
   if r.pipeline.buffer.len > 0:
     r.socket.send(r.pipeline.buffer)
   r.pipeline.buffer = ""
-  
+
   r.pipeline.enabled = false
   result = @[]
-  
+
   var tot = r.pipeline.expected
 
   for i in 0..tot-1:
@@ -232,7 +232,7 @@ proc sendCommand(r: Redis, cmd: string, args: varargs[string]) =
   for i in items(args):
     request.add("$" & $i.len() & "\c\L")
     request.add(i & "\c\L")
-  
+
   if r.pipeline.enabled:
     r.pipeline.buffer.add(request)
     r.pipeline.expected += 1
@@ -249,7 +249,7 @@ proc sendCommand(r: Redis, cmd: string, arg1: string,
   for i in items(args):
     request.add("$" & $i.len() & "\c\L")
     request.add(i & "\c\L")
-    
+
   if r.pipeline.enabled:
     r.pipeline.expected += 1
     r.pipeline.buffer.add(request)
@@ -275,7 +275,7 @@ proc expire*(r: Redis, key: string, seconds: int): bool =
   return r.readInteger() == 1
 
 proc expireAt*(r: Redis, key: string, timestamp: int): bool =
-  ## Set the expiration for a key as a UNIX timestamp. Returns `false` 
+  ## Set the expiration for a key as a UNIX timestamp. Returns `false`
   ## if the key could not be found or the timeout could not be set.
   r.sendCommand("EXPIREAT", key, $timestamp)
   return r.readInteger() == 1
@@ -291,11 +291,11 @@ proc move*(r: Redis, key: string, db: int): bool =
   return r.readInteger() == 1
 
 proc persist*(r: Redis, key: string): bool =
-  ## Remove the expiration from a key. 
+  ## Remove the expiration from a key.
   ## Returns `true` when the timeout was removed.
   r.sendCommand("PERSIST", key)
   return r.readInteger() == 1
-  
+
 proc randomKey*(r: Redis): RedisString =
   ## Return a random key from the keyspace
   r.sendCommand("RANDOMKEY")
@@ -303,11 +303,11 @@ proc randomKey*(r: Redis): RedisString =
 
 proc rename*(r: Redis, key, newkey: string): RedisStatus =
   ## Rename a key.
-  ## 
+  ##
   ## **WARNING:** Overwrites `newkey` if it exists!
   r.sendCommand("RENAME", key, newkey)
   raiseNoOK(r.readStatus(), r.pipeline.enabled)
-  
+
 proc renameNX*(r: Redis, key, newkey: string): bool =
   ## Same as ``rename`` but doesn't continue if `newkey` exists.
   ## Returns `true` if key was renamed.
@@ -318,12 +318,12 @@ proc ttl*(r: Redis, key: string): RedisInteger =
   ## Get the time to live for a key
   r.sendCommand("TTL", key)
   return r.readInteger()
-  
+
 proc keyType*(r: Redis, key: string): RedisStatus =
   ## Determine the type stored at key
   r.sendCommand("TYPE", key)
   return r.readStatus()
-  
+
 
 # Strings
 
@@ -336,12 +336,12 @@ proc decr*(r: Redis, key: string): RedisInteger =
   ## Decrement the integer value of a key by one
   r.sendCommand("DECR", key)
   return r.readInteger()
-  
+
 proc decrBy*(r: Redis, key: string, decrement: int): RedisInteger =
   ## Decrement the integer value of a key by the given number
   r.sendCommand("DECRBY", key, $decrement)
   return r.readInteger()
-  
+
 proc get*(r: Redis, key: string): RedisString =
   ## Get the value of a key. Returns `redisNil` when `key` doesn't exist.
   r.sendCommand("GET", key)
@@ -373,7 +373,7 @@ proc incrBy*(r: Redis, key: string, increment: int): RedisInteger =
   r.sendCommand("INCRBY", key, $increment)
   return r.readInteger()
 
-proc setk*(r: Redis, key, value: string) = 
+proc setk*(r: Redis, key, value: string) =
   ## Set the string value of a key.
   ##
   ## NOTE: This function had to be renamed due to a clash with the `set` type.
@@ -386,18 +386,18 @@ proc setNX*(r: Redis, key, value: string): bool =
   r.sendCommand("SETNX", key, value)
   return r.readInteger() == 1
 
-proc setBit*(r: Redis, key: string, offset: int, 
+proc setBit*(r: Redis, key: string, offset: int,
              value: string): RedisInteger =
   ## Sets or clears the bit at offset in the string value stored at key
   r.sendCommand("SETBIT", key, $offset, value)
   return r.readInteger()
-  
+
 proc setEx*(r: Redis, key: string, seconds: int, value: string): RedisStatus =
   ## Set the value and expiration of a key
   r.sendCommand("SETEX", key, $seconds, value)
   raiseNoOK(r.readStatus(), r.pipeline.enabled)
 
-proc setRange*(r: Redis, key: string, offset: int, 
+proc setRange*(r: Redis, key: string, offset: int,
                value: string): RedisInteger =
   ## Overwrite part of a string at key starting at the specified offset
   r.sendCommand("SETRANGE", key, $offset, value)
@@ -450,7 +450,7 @@ proc hMGet*(r: Redis, key: string, fields: varargs[string]): RedisList =
   r.sendCommand("HMGET", key, fields)
   return r.readArray()
 
-proc hMSet*(r: Redis, key: string, 
+proc hMSet*(r: Redis, key: string,
             fieldValues: openArray[tuple[field, value: string]]) =
   ## Set multiple hash fields to multiple values
   var args = @[key]
@@ -464,7 +464,7 @@ proc hSet*(r: Redis, key, field, value: string): RedisInteger =
   ## Set the string value of a hash field
   r.sendCommand("HSET", key, field, value)
   return r.readInteger()
-  
+
 proc hSetNX*(r: Redis, key, field, value: string): RedisInteger =
   ## Set the value of a hash field, only if the field does **not** exist
   r.sendCommand("HSETNX", key, field, value)
@@ -474,11 +474,11 @@ proc hVals*(r: Redis, key: string): RedisList =
   ## Get all the values in a hash
   r.sendCommand("HVALS", key)
   return r.readArray()
-  
+
 # Lists
 
 proc bLPop*(r: Redis, keys: varargs[string], timeout: int): RedisList =
-  ## Remove and get the *first* element in a list, or block until 
+  ## Remove and get the *first* element in a list, or block until
   ## one is available
   var args: seq[string] = @[]
   for i in items(keys): args.add(i)
@@ -487,7 +487,7 @@ proc bLPop*(r: Redis, keys: varargs[string], timeout: int): RedisList =
   return r.readArray()
 
 proc bRPop*(r: Redis, keys: varargs[string], timeout: int): RedisList =
-  ## Remove and get the *last* element in a list, or block until one 
+  ## Remove and get the *last* element in a list, or block until one
   ## is available.
   var args: seq[string] = @[]
   for i in items(keys): args.add(i)
@@ -515,7 +515,7 @@ proc lInsert*(r: Redis, key: string, before: bool, pivot, value: string):
   var pos = if before: "BEFORE" else: "AFTER"
   r.sendCommand("LINSERT", key, pos, pivot, value)
   return r.readInteger()
-  
+
 proc lLen*(r: Redis, key: string): RedisInteger =
   ## Get the length of a list
   r.sendCommand("LLEN", key)
@@ -529,7 +529,7 @@ proc lPop*(r: Redis, key: string): RedisString =
 proc lPush*(r: Redis, key, value: string, create: bool = true): RedisInteger =
   ## Prepend a value to a list. Returns the length of the list after the push.
   ## The ``create`` param specifies whether a list should be created if it
-  ## doesn't exist at ``key``. More specifically if ``create`` is true, `LPUSH` 
+  ## doesn't exist at ``key``. More specifically if ``create`` is true, `LPUSH`
   ## will be used, otherwise `LPUSHX`.
   if create:
     r.sendCommand("LPUSH", key, value)
@@ -538,7 +538,7 @@ proc lPush*(r: Redis, key, value: string, create: bool = true): RedisInteger =
   return r.readInteger()
 
 proc lRange*(r: Redis, key: string, start, stop: int): RedisList =
-  ## Get a range of elements from a list. Returns `nil` when `key` 
+  ## Get a range of elements from a list. Returns `nil` when `key`
   ## doesn't exist.
   r.sendCommand("LRANGE", key, $start, $stop)
   return r.readArray()
@@ -563,16 +563,16 @@ proc rPop*(r: Redis, key: string): RedisString =
   ## Remove and get the last element in a list
   r.sendCommand("RPOP", key)
   return r.readBulkString()
-  
+
 proc rPopLPush*(r: Redis, source, destination: string): RedisString =
   ## Remove the last element in a list, append it to another list and return it
   r.sendCommand("RPOPLPUSH", source, destination)
   return r.readBulkString()
-  
+
 proc rPush*(r: Redis, key, value: string, create: bool = true): RedisInteger =
   ## Append a value to a list. Returns the length of the list after the push.
   ## The ``create`` param specifies whether a list should be created if it
-  ## doesn't exist at ``key``. More specifically if ``create`` is true, `RPUSH` 
+  ## doesn't exist at ``key``. More specifically if ``create`` is true, `RPUSH`
   ## will be used, otherwise `RPUSHX`.
   if create:
     r.sendCommand("RPUSH", key, value)
@@ -652,7 +652,7 @@ proc sunion*(r: Redis, keys: varargs[string]): RedisList =
 
 proc sunionstore*(r: Redis, destination: string,
                  key: varargs[string]): RedisInteger =
-  ## Add multiple sets and store the resulting set in a key 
+  ## Add multiple sets and store the resulting set in a key
   r.sendCommand("SUNIONSTORE", destination, key)
   return r.readInteger()
 
@@ -686,16 +686,16 @@ proc zinterstore*(r: Redis, destination: string, numkeys: string,
   ## a new key
   var args = @[destination, numkeys]
   for i in items(keys): args.add(i)
-  
+
   if weights.len != 0:
     args.add("WITHSCORE")
     for i in items(weights): args.add(i)
   if aggregate.len != 0:
     args.add("AGGREGATE")
     args.add(aggregate)
-    
+
   r.sendCommand("ZINTERSTORE", args)
-  
+
   return r.readInteger()
 
 proc zrange*(r: Redis, key: string, start: string, stop: string,
@@ -707,18 +707,18 @@ proc zrange*(r: Redis, key: string, start: string, stop: string,
     r.sendCommand("ZRANGE", "WITHSCORES", key, start, stop)
   return r.readArray()
 
-proc zrangebyscore*(r: Redis, key: string, min: string, max: string, 
+proc zrangebyscore*(r: Redis, key: string, min: string, max: string,
                    withScore: bool = false, limit: bool = false,
                    limitOffset: int = 0, limitCount: int = 0): RedisList =
   ## Return a range of members in a sorted set, by score
   var args = @[key, min, max]
-  
+
   if withScore: args.add("WITHSCORE")
-  if limit: 
+  if limit:
     args.add("LIMIT")
     args.add($limitOffset)
     args.add($limitCount)
-    
+
   r.sendCommand("ZRANGEBYSCORE", args)
   return r.readArray()
 
@@ -746,26 +746,26 @@ proc zremrangebyscore*(r: Redis, key: string, min: string,
 
 proc zrevrange*(r: Redis, key: string, start: string, stop: string,
                withScore: bool): RedisList =
-  ## Return a range of members in a sorted set, by index, 
+  ## Return a range of members in a sorted set, by index,
   ## with scores ordered from high to low
   if withScore:
     r.sendCommand("ZREVRANGE", "WITHSCORE", key, start, stop)
   else: r.sendCommand("ZREVRANGE", key, start, stop)
   return r.readArray()
 
-proc zrevrangebyscore*(r: Redis, key: string, min: string, max: string, 
+proc zrevrangebyscore*(r: Redis, key: string, min: string, max: string,
                    withScore: bool = false, limit: bool = false,
                    limitOffset: int = 0, limitCount: int = 0): RedisList =
   ## Return a range of members in a sorted set, by score, with
   ## scores ordered from high to low
   var args = @[key, min, max]
-  
+
   if withScore: args.add("WITHSCORE")
-  if limit: 
+  if limit:
     args.add("LIMIT")
     args.add($limitOffset)
     args.add($limitCount)
-  
+
   r.sendCommand("ZREVRANGEBYSCORE", args)
   return r.readArray()
 
@@ -783,19 +783,19 @@ proc zscore*(r: Redis, key: string, member: string): RedisString =
 proc zunionstore*(r: Redis, destination: string, numkeys: string,
                  keys: openArray[string], weights: openArray[string] = [],
                  aggregate: string = ""): RedisInteger =
-  ## Add multiple sorted sets and store the resulting sorted set in a new key 
+  ## Add multiple sorted sets and store the resulting sorted set in a new key
   var args = @[destination, numkeys]
   for i in items(keys): args.add(i)
-  
+
   if weights.len != 0:
     args.add("WEIGHTS")
     for i in items(weights): args.add(i)
   if aggregate.len != 0:
     args.add("AGGREGATE")
     args.add(aggregate)
-    
+
   r.sendCommand("ZUNIONSTORE", args)
-  
+
   return r.readInteger()
 
 
@@ -824,7 +824,7 @@ proc subscribe*(r: TRedis, channel: openarray[string]): ???? =
   return ???
 
 proc unsubscribe*(r: TRedis, [channel: openarray[string], : string): ???? =
-  ## Stop listening for messages posted to the given channels 
+  ## Stop listening for messages posted to the given channels
   r.socket.send("UNSUBSCRIBE $# $#\c\L" % [[channel.join(), ])
   return ???
 
@@ -839,12 +839,12 @@ proc discardMulti*(r: Redis) =
 
 proc exec*(r: Redis): RedisList =
   ## Execute all commands issued after MULTI
-  r.sendCommand("EXEC")  
+  r.sendCommand("EXEC")
   r.pipeline.enabled = false
   # Will reply with +OK for MULTI/EXEC and +QUEUED for every command
   # between, then with the results
   return r.flushPipeline(true)
-  
+
 
 proc multi*(r: Redis) =
   ## Mark the start of a transaction block
@@ -858,7 +858,7 @@ proc unwatch*(r: Redis) =
   raiseNoOK(r.readStatus(), r.pipeline.enabled)
 
 proc watch*(r: Redis, key: varargs[string]) =
-  ## Watch the given keys to determine execution of the MULTI/EXEC block 
+  ## Watch the given keys to determine execution of the MULTI/EXEC block
   r.sendCommand("WATCH", key)
   raiseNoOK(r.readStatus(), r.pipeline.enabled)
 
@@ -885,7 +885,7 @@ proc quit*(r: Redis) =
   raiseNoOK(r.readStatus(), r.pipeline.enabled)
 
 proc select*(r: Redis, index: int): RedisStatus =
-  ## Change the selected database for the current connection 
+  ## Change the selected database for the current connection
   r.sendCommand("SELECT", $index)
   return r.readStatus()
 
@@ -976,7 +976,7 @@ proc slaveof*(r: Redis, host: string, port: string) =
 
 iterator hPairs*(r: Redis, key: string): tuple[key, value: string] =
   ## Iterator for keys and values in a hash.
-  var 
+  var
     contents = r.hGetAll(key)
     k = ""
   for i in items(contents):
@@ -991,9 +991,9 @@ proc someTests(r: Redis, how: SendMode):seq[string] =
 
   if how == pipelined:
     r.startPipelining()
-  elif how ==  multiple: 
+  elif how ==  multiple:
     r.multi()
-    
+
   r.setk("nim:test", "Testing something.")
   r.setk("nim:utf8", "こんにちは")
   r.setk("nim:esc", "\\ths ągt\\")
@@ -1014,7 +1014,7 @@ proc someTests(r: Redis, how: SendMode):seq[string] =
 
   for i in items(p):
     if not isNil(i):
-      list.add(i) 
+      list.add(i)
 
   list.add(r.debugObject("mylist"))
 
@@ -1039,7 +1039,7 @@ proc assertListsIdentical(listA, listB: seq[string]) =
   for item in listA:
     assert(item == listB[i])
     i = i + 1
-  
+
 when isMainModule:
   when false:
     var r = open()

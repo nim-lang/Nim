@@ -2,7 +2,7 @@ Statements and expressions
 ==========================
 
 Nim uses the common statement/expression paradigm: Statements do not
-produce a value in contrast to expressions. However, some expressions are 
+produce a value in contrast to expressions. However, some expressions are
 statements.
 
 Statements are separated into `simple statements`:idx: and
@@ -16,9 +16,9 @@ statements always have to be intended. The details can be found in the grammar.
 Statement list expression
 -------------------------
 
-Statements can also occur in an expression context that looks 
+Statements can also occur in an expression context that looks
 like ``(stmt1; stmt2; ...; ex)``. This is called
-an statement list expression or ``(;)``. The type 
+an statement list expression or ``(;)``. The type
 of ``(stmt1; stmt2; ...; ex)`` is the type of ``ex``. All the other statements
 must be of type ``void``. (One can use ``discard`` to produce a ``void`` type.)
 ``(;)`` does not introduce a new scope.
@@ -30,24 +30,24 @@ Discard statement
 Example:
 
 .. code-block:: nim
-  proc p(x, y: int): int = 
+  proc p(x, y: int): int =
     result = x + y
 
   discard p(3, 4) # discard the return value of `p`
 
 The ``discard`` statement evaluates its expression for side-effects and
-throws the expression's resulting value away. 
+throws the expression's resulting value away.
 
 Ignoring the return value of a procedure without using a discard statement is
 a static error.
 
 The return value can be ignored implicitly if the called proc/iterator has
-been declared with the `discardable`:idx: pragma: 
+been declared with the `discardable`:idx: pragma:
 
 .. code-block:: nim
-  proc p(x, y: int): int {.discardable.} = 
+  proc p(x, y: int): int {.discardable.} =
     result = x + y
-    
+
   p(3, 4) # now valid
 
 An empty ``discard`` statement is often used as a null statement:
@@ -98,11 +98,11 @@ T = enum                        cast[T](0); this may be an invalid value
 
 
 The implicit initialization can be avoided for optimization reasons with the
-`noinit`:idx: pragma: 
+`noinit`:idx: pragma:
 
 .. code-block:: nim
   var
-    a {.noInit.}: array [0..1023, char] 
+    a {.noInit.}: array [0..1023, char]
 
 If a proc is annotated with the ``noinit`` pragma this refers to its implicit
 ``result`` variable:
@@ -113,13 +113,13 @@ If a proc is annotated with the ``noinit`` pragma this refers to its implicit
 
 The implicit initialization can be also prevented by the `requiresInit`:idx:
 type pragma. The compiler requires an explicit initialization then. However
-it does a `control flow analysis`:idx: to prove the variable has been 
+it does a `control flow analysis`:idx: to prove the variable has been
 initialized and does not rely on syntactic properties:
 
 .. code-block:: nim
   type
     MyObject = object {.requiresInit.}
-    
+
   proc p() =
     # the following is valid:
     var x: MyObject
@@ -133,7 +133,7 @@ let statement
 -------------
 
 A ``let`` statement declares new local and global `single assignment`:idx:
-variables and binds a value to them. The syntax is the same as that of the ``var`` 
+variables and binds a value to them. The syntax is the same as that of the ``var``
 statement, except that the keyword ``var`` is replaced by the keyword ``let``.
 Let variables are not l-values and can thus not be passed to ``var`` parameters
 nor can their address be taken. They cannot be assigned new values.
@@ -157,33 +157,33 @@ have no side-effect can be used in constant expressions too:
     constEval = contains("abc", 'b') # computed at compile time!
 
 
-The rules for compile-time computability are: 
+The rules for compile-time computability are:
 
 1. Literals are compile-time computable.
 2. Type conversions are compile-time computable.
 3. Procedure calls of the form ``p(X)`` are compile-time computable if
-   ``p`` is a proc without side-effects (see the `noSideEffect pragma`_ 
-   for details) and if ``X`` is a (possibly empty) list of compile-time 
+   ``p`` is a proc without side-effects (see the `noSideEffect pragma`_
+   for details) and if ``X`` is a (possibly empty) list of compile-time
    computable arguments.
 
 
-Constants cannot be of type ``ptr``, ``ref``, ``var`` or ``object``, nor can 
+Constants cannot be of type ``ptr``, ``ref``, ``var`` or ``object``, nor can
 they contain such a type.
 
 
 Static statement/expression
 ---------------------------
 
-A static statement/expression can be used to enforce compile 
+A static statement/expression can be used to enforce compile
 time evaluation explicitly. Enforced compile time evaluation can even evaluate
-code that has side effects: 
+code that has side effects:
 
 .. code-block::
 
   static:
     echo "echo at compile time"
 
-It's a static error if the compiler cannot perform the evaluation at compile 
+It's a static error if the compiler cannot perform the evaluation at compile
 time.
 
 The current implementation poses some restrictions for compile time
@@ -217,7 +217,7 @@ the ``:`` are executed. This goes on until the last ``elif``. If all
 conditions fail, the ``else`` part is executed. If there is no ``else``
 part, execution continues with the statement after the ``if`` statement.
 
-The scoping for an ``if`` statement is slightly subtle to support an important 
+The scoping for an ``if`` statement is slightly subtle to support an important
 use case. A new scope starts for the ``if``/``elif`` condition and ends after
 the corresponding *then* block:
 
@@ -229,7 +229,7 @@ the corresponding *then* block:
   else:
     # 'm' not declared here
 
-In the example the scopes have been enclosed in ``{|  |}``. 
+In the example the scopes have been enclosed in ``{|  |}``.
 
 
 Case statement
@@ -244,7 +244,7 @@ Example:
     echo("permission denied")
   of "go-for-a-walk":     echo("please yourself")
   else:                   echo("unknown command")
-  
+
   # indentation of the branches is also allowed; and so is an optional colon
   # after the selecting expression:
   case readline(stdin):
@@ -252,15 +252,15 @@ Example:
       echo("permission denied")
     of "go-for-a-walk":     echo("please yourself")
     else:                   echo("unknown command")
-  
+
 
 The ``case`` statement is similar to the if statement, but it represents
 a multi-branch selection. The expression after the keyword ``case`` is
 evaluated and if its value is in a *slicelist* the corresponding statements
 (after the ``of`` keyword) are executed. If the value is not in any
 given *slicelist* the ``else`` part is executed. If there is no ``else``
-part and not all possible values that ``expr`` can hold occur in a 
-``slicelist``, a static error occurs. This holds only for expressions of 
+part and not all possible values that ``expr`` can hold occur in a
+``slicelist``, a static error occurs. This holds only for expressions of
 ordinal types. "All possible values" of ``expr`` are determined by ``expr``'s
 type. To suppress the static error an ``else`` part with an
 empty ``discard`` statement should be used.
@@ -281,7 +281,7 @@ expanded into a list of its elements:
     of SymChars, '_': echo "an identifier"
     of '0'..'9': echo "a number"
     else: echo "other"
-  
+
   # is equivalent to:
   proc classify(s: string) =
     case s[0]
@@ -580,14 +580,14 @@ A table constructor is syntactic sugar for an array constructor:
 
 .. code-block:: nim
   {"key1": "value1", "key2", "key3": "value2"}
-  
+
   # is the same as:
   [("key1", "value1"), ("key2", "value2"), ("key3", "value2")]
 
 
-The empty table can be written ``{:}`` (in contrast to the empty set 
+The empty table can be written ``{:}`` (in contrast to the empty set
 which is ``{}``) which is thus another way to write as the empty array
-constructor ``[]``. This slightly unusal way of supporting tables 
+constructor ``[]``. This slightly unusal way of supporting tables
 has lots of advantages:
 
 * The order of the (key,value)-pairs is preserved, thus it is easy to

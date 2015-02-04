@@ -3,9 +3,9 @@ discard """
 """
 
 type
-  TA = object {.pure, final.} 
+  TA = object {.pure, final.}
     x: string
-    
+
 var
   a: TA
 a.x = "abc"

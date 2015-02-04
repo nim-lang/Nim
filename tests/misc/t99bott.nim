@@ -25,7 +25,7 @@ proc GetBottleNumber(n: int): string =
 for bn in countdown(99, 1):
   const cur = GetBottleNumber(bn)
   echo(cur, " on the wall, ", cur, ".")
-  echo("Take one down and pass it around, ", GetBottleNumber(bn-1), 
+  echo("Take one down and pass it around, ", GetBottleNumber(bn-1),
        " on the wall.\n")
 
 echo "No more bottles of beer on the wall, no more bottles of beer."

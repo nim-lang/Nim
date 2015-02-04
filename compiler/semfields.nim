@@ -75,7 +75,7 @@ proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
     let L = forLoop.len
     let call = forLoop.sons[L-2]
     if call.len > 2:
-      localError(forLoop.info, errGenerated, 
+      localError(forLoop.info, errGenerated,
                  "parallel 'fields' iterator does not work for 'case' objects")
       return
     # iterate over the selector:
@@ -105,7 +105,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   # a 'while true: stmt; break' loop ...
   result = newNodeI(nkWhileStmt, n.info, 2)
   var trueSymbol = strTableGet(magicsys.systemModule.tab, getIdent"true")
-  if trueSymbol == nil: 
+  if trueSymbol == nil:
     localError(n.info, errSystemNeeds, "true")
     trueSymbol = newSym(skUnknown, getIdent"true", getCurrOwner(), n.info)
     trueSymbol.typ = getSysType(tyBool)
@@ -113,13 +113,13 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   result.sons[0] = newSymNode(trueSymbol, n.info)
   var stmts = newNodeI(nkStmtList, n.info)
   result.sons[1] = stmts
-  
+
   var length = sonsLen(n)
   var call = n.sons[length-2]
   if length-2 != sonsLen(call)-1 + ord(m==mFieldPairs):
     localError(n.info, errWrongNumberOfVariables)
     return result
-  
+
   var tupleTypeA = skipTypes(call.sons[1].typ, abstractVar-{tyTypeDesc})
   if tupleTypeA.kind notin {tyTuple, tyObject}:
     localError(n.info, errGenerated, "no object or tuple type")
@@ -128,7 +128,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
     var tupleTypeB = skipTypes(call.sons[i].typ, abstractVar-{tyTypeDesc})
     if not sameType(tupleTypeA, tupleTypeB):
       typeMismatch(call.sons[i], tupleTypeA, tupleTypeB)
-  
+
   inc(c.p.nestedLoopCounter)
   if tupleTypeA.kind == tyTuple:
     var loopBody = n.sons[length-1]

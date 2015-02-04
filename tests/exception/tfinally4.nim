@@ -8,8 +8,8 @@ discard """
 var raiseEx = true
 var returnA = true
 var returnB = false
- 
-proc main: int = 
+
+proc main: int =
   try: #A
     try: #B
       if raiseEx:

@@ -20,7 +20,7 @@ type
   TDummy = ref object
     case k: TKind
     of kindXY: x, y: int
-    of kindA: 
+    of kindA:
       a: TArg
       empty: TEmpty
 

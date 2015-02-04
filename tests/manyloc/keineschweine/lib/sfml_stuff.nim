@@ -1,4 +1,4 @@
-import 
+import
   math, strutils,
   sfml, input_helpers
 when not defined(NoChipmunk):

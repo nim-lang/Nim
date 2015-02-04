@@ -19,7 +19,7 @@ macro async2(prc: stmt): stmt {.immediate.} =
   # -> var retFuture = newFuture[T]()
   var retFutureSym = newIdentNode("retFuture") #genSym(nskVar, "retFuture")
   outerProcBody.add(
-    newVarStmt(retFutureSym, 
+    newVarStmt(retFutureSym,
       newCall(
         newNimNode(nnkBracketExpr).add(
           newIdentNode("newFuture"),

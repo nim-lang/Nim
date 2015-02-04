@@ -5,9 +5,9 @@ bb
 numbers
 11
 22
-AST a 
+AST a
 [(11, 22), (33, 44)]
-AST b 
+AST b
 (e: [55, 66], f: [77, 88])
 55
 10

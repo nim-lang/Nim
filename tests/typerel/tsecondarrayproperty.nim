@@ -14,7 +14,7 @@ proc `[]=` (self: var TFoo, x, y: int) =
 proc second(self: var TFoo): var TSecond =
   return TSecond(self)
 
-proc `[]`(self: var TSecond, x: int): var int =  
+proc `[]`(self: var TSecond, x: int): var int =
   return TFoo(self).data[2*x]
 
 var f: TFoo

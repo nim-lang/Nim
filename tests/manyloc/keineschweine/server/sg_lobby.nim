@@ -1,7 +1,7 @@
 
 import
-  sockets, streams, tables, times, math, strutils, json, os, md5, 
-  sfml, sfml_vector, sfml_colors, 
+  sockets, streams, tables, times, math, strutils, json, os, md5,
+  sfml, sfml_vector, sfml_colors,
   streams_enh, input_helpers, zlib_helpers, client_helpers, sg_packets, sg_assets, sg_gui
 type
   TClientSettings = object
@@ -33,7 +33,7 @@ var
   downloadProgress: PButton
   connectionButtons: seq[PButton] #buttons that depend on connection to function
 
-template dispmessage(m: expr): stmt = 
+template dispmessage(m: expr): stmt =
   messageArea.add(m)
 proc connectZone(host: string; port: TPort)
 proc connectToDirserv()
@@ -63,7 +63,7 @@ proc handleChat(serv: PServer; s: PStream) =
 proc connectToDirserv() =
   if dirServer.isNil:
     dirServer = newServerConnection(clientSettings.dirserver.host, clientSettings.dirserver.port)
-    dirServer.handlers[HHello] = proc(serv: PServer; s: PStream) = 
+    dirServer.handlers[HHello] = proc(serv: PServer; s: PStream) =
       let msg = readScHello(s)
       dispMessage(msg.resp)
       setConnected(true)
@@ -71,7 +71,7 @@ proc connectToDirserv() =
       mySession = readScLogin(s)
       ##do something here
     dirServer.handlers[HZonelist] = proc(serv: PServer; s: PStream) =
-      var 
+      var
         info = readScZonelist(s)
         zones = info.zones
       if zones.len > 0:
@@ -87,11 +87,11 @@ proc connectToDirserv() =
           var z = zones[i]
           zonelist.newButton(
             text = z.name, position = pos,
-            onClick = proc(b: PButton) = 
+            onClick = proc(b: PButton) =
               setActiveZone(i, z))
           pos.y += 20
         showZonelist = true
-    dirServer.handlers[HPoing] = proc(serv: PServer; s: PStream) = 
+    dirServer.handlers[HPoing] = proc(serv: PServer; s: PStream) =
       var ping = readPoing(s)
       dispmessage("Ping: "& $ping.time)
       ping.time = epochTime().float32
@@ -108,19 +108,19 @@ proc zoneListReq() =
   writePkt HZonelist, pkt
 
 ##key handlers
-keyClient.registerHandler(MouseMiddle, down, proc() = 
+keyClient.registerHandler(MouseMiddle, down, proc() =
   gui.setPosition(getMousePos()))
 
-keyClient.registerHandler(KeyO, down, proc() = 
+keyClient.registerHandler(KeyO, down, proc() =
   if keyPressed(KeyRShift): echo(repr(outgoing)))
 keyClient.registerHandler(KeyTab, down, proc() =
   activeInput = (activeInput + 1) mod 2) #does this work?
-keyClient.registerHandler(MouseLeft, down, proc() = 
+keyClient.registerHandler(MouseLeft, down, proc() =
   let p = getMousePos()
   gui.click(p)
   if showZonelist: zonelist.click(p))
 var mptext = newText("", guiFont, 16)
-keyClient.registerHandler(MouseRight, down, proc() = 
+keyClient.registerHandler(MouseRight, down, proc() =
   let p = getMousePos()
   mptext.setPosition(p)
   mptext.setString("($1,$2)"%[$p.x.int,$p.y.int]))
@@ -133,15 +133,15 @@ proc connectZone(host: string, port: TPort) =
     zone.handlers[HFileChallenge] = handleFileChallenge
     zone.handlers[HChallengeResult] = handleFileChallengeResult
     zone.handlers[HFileTransfer] = handleFileTransfer
-    zone.handlers[HChat] = handleChat 
+    zone.handlers[HChat] = handleChat
   else:
     zone.sock.connect(host, port)
   var hello = newCsHello()
   zone.writePkt HHello, hello
-  
 
 
-proc lobbyReady*() = 
+
+proc lobbyReady*() =
   keyClient.setActive()
   gui.setActive(u_alias)
 
@@ -186,27 +186,27 @@ proc lobbyInit*() =
   clientSettings.website = s["website"].str
   zonelist.setPosition(vec2f(200.0, 100.0))
   connectionButtons = @[]
-  
+
   downloadProgress = gui.newButton(
-    text = "", position = vec2f(10, 130), onClick = nil) 
+    text = "", position = vec2f(10, 130), onClick = nil)
   downloadProgress.bg.setFillColor(color(34, 139, 34))
   downloadProgress.bg.setSize(vec2f(0, 0))
-  
+
   var pos = vec2f(10, 10)
   u_alias = gui.newTextEntry(
-    if s.existsKey("alias"): s["alias"].str else: "alias", 
+    if s.existsKey("alias"): s["alias"].str else: "alias",
     pos)
   pos.y += 20
   u_passwd = gui.newTextEntry("buzz", pos)
   pos.y += 20
   connectionButtons.add(gui.newButton(
-    text = "Login", 
+    text = "Login",
     position = pos,
     onClick = tryLogin,
     startEnabled = false))
   pos.y += 20
   fpsText.setPosition(pos)
-  
+
   playBtn = gui.newButton(
     text = "Play",
     position = vec2f(680.0, 8.0),
@@ -227,7 +227,7 @@ proc lobbyInit*() =
   connectionButtons.add(gui.newButton(
     text = "Test Chat",
     position = vec2f(10.0, 110.0),
-    onClick = (proc(b: PButton) = 
+    onClick = (proc(b: PButton) =
       var pkt = newCsChat(text = "ohai")
       writePkt HChat, pkt),
     startEnabled = false))
@@ -239,15 +239,15 @@ proc lobbyInit*() =
   gui.newButton(text = "Scrollback + 1", position = vec2f(185, 10), onClick = proc(b: PButton) =
     messageArea.scrollBack += 1
     update(messageArea))
-  gui.newButton(text = "Scrollback - 1", position = vec2f(185+160, 10), onClick = proc(b: PButton) = 
+  gui.newButton(text = "Scrollback - 1", position = vec2f(185+160, 10), onClick = proc(b: PButton) =
     messageArea.scrollBack -= 1
     update(messageArea))
   gui.newButton(text = "Flood msg area", position = vec2f(185, 30), onClick = proc(b: PButton) =
-    for i in 0.. <30: 
+    for i in 0.. <30:
       dispMessage($i))
 
 var i = 0
-proc lobbyUpdate*(dt: float) = 
+proc lobbyUpdate*(dt: float) =
   #let res = disp.poll()
   gui.update(dt)
   i = (i + 1) mod 60

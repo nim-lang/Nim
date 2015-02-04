@@ -39,7 +39,7 @@ proc loadFile*(info: TLineInfo) =
     var pos = lex.bufpos
     while true:
       case lex.buf[pos]
-      of '\c': 
+      of '\c':
         gSourceFiles[i].newline = "\c\L"
         break
       of '\L', '\0':
@@ -70,7 +70,7 @@ proc replaceDeprecated*(info: TLineInfo; oldSym, newSym: PIdent) =
   while first > 0 and line[first-1] in Letters: dec first
   if first < 0: return
   if line[first] == '`': inc first
-  
+
   let last = first+identLen(line, first)-1
   if cmpIgnoreStyle(line[first..last], oldSym.s) == 0:
     var x = line.substr(0, first-1) & newSym.s & line.substr(last+1)

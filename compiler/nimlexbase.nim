@@ -12,10 +12,10 @@
 # handling that exists! Only at line endings checks are necessary
 # if the buffer needs refilling.
 
-import 
+import
   llstream, strutils
 
-const 
+const
   Lrz* = ' '
   Apo* = '\''
   Tabulator* = '\x09'
@@ -27,7 +27,7 @@ const
   BACKSPACE* = '\x08'
   VT* = '\x0B'
 
-const 
+const
   EndOfFile* = '\0'           # end of file marker
                               # A little picture makes everything clear :-)
                               #  buf:
@@ -36,7 +36,7 @@ const
                               #
   NewLines* = {CR, LF}
 
-type 
+type
   TBaseLexer* = object of RootObj
     bufpos*: int
     buf*: cstring
@@ -46,9 +46,9 @@ type
                               # private data:
     sentinel*: int
     lineStart*: int           # index of last line start in buffer
-  
 
-proc openBaseLexer*(L: var TBaseLexer, inputstream: PLLStream, 
+
+proc openBaseLexer*(L: var TBaseLexer, inputstream: PLLStream,
                     bufLen: int = 8192)
   # 8K is a reasonable buffer size
 proc closeBaseLexer*(L: var TBaseLexer)
@@ -64,15 +64,15 @@ proc handleLF*(L: var TBaseLexer, pos: int): int
   # of the LF.
 # implementation
 
-const 
+const
   chrSize = sizeof(char)
 
-proc closeBaseLexer(L: var TBaseLexer) = 
+proc closeBaseLexer(L: var TBaseLexer) =
   dealloc(L.buf)
   llStreamClose(L.stream)
 
-proc fillBuffer(L: var TBaseLexer) = 
-  var 
+proc fillBuffer(L: var TBaseLexer) =
+  var
     charsRead, toCopy, s: int # all are in characters,
                               # not bytes (in case this
                               # is not the same)
@@ -82,68 +82,68 @@ proc fillBuffer(L: var TBaseLexer) =
   assert(L.sentinel < L.bufLen)
   toCopy = L.bufLen - L.sentinel - 1
   assert(toCopy >= 0)
-  if toCopy > 0: 
-    moveMem(L.buf, addr(L.buf[L.sentinel + 1]), toCopy * chrSize) 
+  if toCopy > 0:
+    moveMem(L.buf, addr(L.buf[L.sentinel + 1]), toCopy * chrSize)
     # "moveMem" handles overlapping regions
-  charsRead = llStreamRead(L.stream, addr(L.buf[toCopy]), 
+  charsRead = llStreamRead(L.stream, addr(L.buf[toCopy]),
                            (L.sentinel + 1) * chrSize) div chrSize
   s = toCopy + charsRead
-  if charsRead < L.sentinel + 1: 
+  if charsRead < L.sentinel + 1:
     L.buf[s] = EndOfFile      # set end marker
     L.sentinel = s
-  else: 
+  else:
     # compute sentinel:
     dec(s)                    # BUGFIX (valgrind)
-    while true: 
+    while true:
       assert(s < L.bufLen)
       while (s >= 0) and not (L.buf[s] in NewLines): dec(s)
-      if s >= 0: 
+      if s >= 0:
         # we found an appropriate character for a sentinel:
         L.sentinel = s
-        break 
-      else: 
+        break
+      else:
         # rather than to give up here because the line is too long,
         # double the buffer's size and try again:
         oldBufLen = L.bufLen
         L.bufLen = L.bufLen * 2
         L.buf = cast[cstring](realloc(L.buf, L.bufLen * chrSize))
         assert(L.bufLen - oldBufLen == oldBufLen)
-        charsRead = llStreamRead(L.stream, addr(L.buf[oldBufLen]), 
+        charsRead = llStreamRead(L.stream, addr(L.buf[oldBufLen]),
                                  oldBufLen * chrSize) div chrSize
-        if charsRead < oldBufLen: 
+        if charsRead < oldBufLen:
           L.buf[oldBufLen + charsRead] = EndOfFile
           L.sentinel = oldBufLen + charsRead
-          break 
+          break
         s = L.bufLen - 1
 
-proc fillBaseLexer(L: var TBaseLexer, pos: int): int = 
+proc fillBaseLexer(L: var TBaseLexer, pos: int): int =
   assert(pos <= L.sentinel)
-  if pos < L.sentinel: 
+  if pos < L.sentinel:
     result = pos + 1          # nothing to do
-  else: 
+  else:
     fillBuffer(L)
     L.bufpos = 0              # XXX: is this really correct?
     result = 0
   L.lineStart = result
 
-proc handleCR(L: var TBaseLexer, pos: int): int = 
+proc handleCR(L: var TBaseLexer, pos: int): int =
   assert(L.buf[pos] == CR)
   inc(L.lineNumber)
   result = fillBaseLexer(L, pos)
-  if L.buf[result] == LF: 
+  if L.buf[result] == LF:
     result = fillBaseLexer(L, result)
 
-proc handleLF(L: var TBaseLexer, pos: int): int = 
+proc handleLF(L: var TBaseLexer, pos: int): int =
   assert(L.buf[pos] == LF)
   inc(L.lineNumber)
   result = fillBaseLexer(L, pos) #L.lastNL := result-1; // BUGFIX: was: result;
-  
-proc skipUTF8BOM(L: var TBaseLexer) = 
+
+proc skipUTF8BOM(L: var TBaseLexer) =
   if L.buf[0] == '\xEF' and L.buf[1] == '\xBB' and L.buf[2] == '\xBF':
     inc(L.bufpos, 3)
     inc(L.lineStart, 3)
 
-proc openBaseLexer(L: var TBaseLexer, inputstream: PLLStream, bufLen = 8192) = 
+proc openBaseLexer(L: var TBaseLexer, inputstream: PLLStream, bufLen = 8192) =
   assert(bufLen > 0)
   L.bufpos = 0
   L.bufLen = bufLen
@@ -155,15 +155,15 @@ proc openBaseLexer(L: var TBaseLexer, inputstream: PLLStream, bufLen = 8192) =
   fillBuffer(L)
   skipUTF8BOM(L)
 
-proc getColNumber(L: TBaseLexer, pos: int): int = 
+proc getColNumber(L: TBaseLexer, pos: int): int =
   result = abs(pos - L.lineStart)
 
-proc getCurrentLine(L: TBaseLexer, marker: bool = true): string = 
+proc getCurrentLine(L: TBaseLexer, marker: bool = true): string =
   result = ""
   var i = L.lineStart
-  while not (L.buf[i] in {CR, LF, EndOfFile}): 
+  while not (L.buf[i] in {CR, LF, EndOfFile}):
     add(result, L.buf[i])
     inc(i)
   result.add("\n")
-  if marker: 
+  if marker:
     result.add(repeatChar(getColNumber(L, L.bufpos)) & '^' & "\n")

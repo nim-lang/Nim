@@ -142,11 +142,11 @@ proc mainCommand =
 
 proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
   var p = parseopt.initOptParser(cmd)
-  while true: 
+  while true:
     parseopt.next(p)
     case p.kind
-    of cmdEnd: break 
-    of cmdLongoption, cmdShortOption: 
+    of cmdEnd: break
+    of cmdLongoption, cmdShortOption:
       case p.key.normalize
       of "port": gPort = parseInt(p.val).Port
       of "address": gAddress = p.val

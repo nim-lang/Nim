@@ -17,11 +17,11 @@ type
     otherbits: char
     case isLeaf: bool
     of false: child: array[0..1, ref NodeObj[T]]
-    of true: 
+    of true:
       key: string
       when T isnot void:
         val: T
-    
+
   Node[T] = ref NodeObj[T]
   CritBitTree*[T] = object ## The crit bit tree can either be used
                            ## as a mapping from strings to
@@ -66,7 +66,7 @@ proc rawInsert[T](c: var CritBitTree[T], key: string): Node[T] =
       let ch = if it.byte < key.len: key[it.byte] else: '\0'
       let dir = (1 + (ch.ord or it.otherBits.ord)) shr 8
       it = it.child[dir]
-    
+
     var newOtherBits = 0
     var newByte = 0
     block blockX:
@@ -84,7 +84,7 @@ proc rawInsert[T](c: var CritBitTree[T], key: string): Node[T] =
     newOtherBits = newOtherBits xor 255
     let ch = it.key[newByte]
     let dir = (1 + (ord(ch) or newOtherBits)) shr 8
-    
+
     var inner: Node[T]
     new inner
     new result
@@ -93,7 +93,7 @@ proc rawInsert[T](c: var CritBitTree[T], key: string): Node[T] =
     inner.otherBits = chr(newOtherBits)
     inner.byte = newByte
     inner.child[1 - dir] = result
-    
+
     var wherep = addr(c.root)
     while true:
       var p = wherep[]
@@ -176,7 +176,7 @@ iterator leaves[T](n: Node[T]): Node[T] =
     # XXX actually we could compute the necessary stack size in advance:
     # it's rougly log2(c.count).
     var stack = @[n]
-    while stack.len > 0: 
+    while stack.len > 0:
       var it = stack.pop
       while not it.isLeaf:
         stack.add(it.child[1])
@@ -205,7 +205,7 @@ iterator items*[T](c: CritBitTree[T]): string =
 iterator pairs*[T](c: CritBitTree[T]): tuple[key: string, val: T] =
   ## yields all (key, value)-pairs of `c`.
   for x in leaves(c.root): yield (x.key, x.val)
-  
+
 iterator mpairs*[T](c: var CritBitTree[T]): tuple[key: string, val: var T] =
   ## yields all (key, value)-pairs of `c`. The yielded values can be modified.
   for x in leaves(c.root): yield (x.key, x.val)
@@ -251,7 +251,7 @@ iterator pairsWithPrefix*[T](c: CritBitTree[T],
   ## yields all (key, value)-pairs of `c` starting with `prefix`.
   let top = allprefixedAux(c, prefix)
   for x in leaves(top): yield (x.key, x.val)
-  
+
 iterator mpairsWithPrefix*[T](c: var CritBitTree[T],
                               prefix: string): tuple[key: string, val: var T] =
   ## yields all (key, value)-pairs of `c` starting with `prefix`.
@@ -297,7 +297,7 @@ when isMainModule:
 
   for w in r.items:
     echo w
-    
+
   for w in r.itemsWithPrefix("de"):
     echo w
 

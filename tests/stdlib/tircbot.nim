@@ -12,7 +12,7 @@ type
     tUnknown, tFail, tSuccess
 
   TEntry* = tuple[c: TCommit, p: seq[TPlatform]]
-  
+
   TCommit* = object
     commitMsg*, username*, hash*: string
     date*: TTime
@@ -69,7 +69,7 @@ proc keepAlive*(database: var TDb) =
     echo("PING -> redis")
     assert(database.r.ping() == "PONG")
     database.lastPing = t
-    
+
 proc getCommits*(database: TDb,
                  plStr: var seq[string]): seq[TEntry] =
   result = @[]
@@ -111,9 +111,9 @@ proc getCommits*(database: TDb,
         else:
           echo(normalize(key))
           assert(false)
-      
+
       platform.platform = p
-      
+
       platforms.add(platform)
       if p notin plStr:
         plStr.add(p)
@@ -158,12 +158,12 @@ proc `[]`*(p: seq[TPlatform], name: string): TPlatform =
     if platform.platform == name:
       return platform
   raise newException(EInvalidValue, name & " platforms not found in commits.")
-  
+
 proc contains*(p: seq[TPlatform], s: string): bool =
   for i in items(p):
     if i.platform == s:
       return True
-    
+
 
 type
   PState = ref TState
@@ -177,7 +177,7 @@ type
 
   TSeenType = enum
     PSeenJoin, PSeenPart, PSeenMsg, PSeenNick, PSeenQuit
-  
+
   TSeen = object
     nick: string
     channel: string
@@ -205,7 +205,7 @@ proc setSeen(d: TDb, s: TSeen) =
     hashToSet.add(("msg", s.msg))
   of PSeenNick:
     hashToSet.add(("newnick", s.newNick))
-  
+
   d.r.hMSet("seen:" & s.nick, hashToSet)
 
 proc getSeen(d: TDb, nick: string, s: var TSeen): bool =
@@ -214,7 +214,7 @@ proc getSeen(d: TDb, nick: string, s: var TSeen): bool =
     s.nick = nick
     # Get the type first
     s.kind = d.r.hGet("seen:" & nick, "type").parseInt.TSeenType
-    
+
     for key, value in d.r.hPairs("seen:" & nick):
       case normalize(key)
       of "type":
@@ -244,7 +244,7 @@ proc limitCommitMsg(m: string): string =
   var m1 = m
   if NewLines in m1:
     m1 = m1.splitLines()[0]
-  
+
   if m1.len >= 300:
     m1 = m1[0..300]
 
@@ -297,12 +297,12 @@ proc handleConnect(s: PAsyncSocket, state: PState) =
     else:
       raise newException(EInvalidValue,
                          "Hub didn't accept me. Waited 1.5 seconds.")
-    
+
     # ask for the redis info
     var riobj = newJObject()
     riobj["do"] = newJString("redisinfo")
     state.sock.send($riobj & "\c\L")
-    
+
   except EOS:
     echo(getCurrentExceptionMsg())
     s.close()
@@ -345,7 +345,7 @@ proc handleIrc(irc: PAsyncIRC, event: TIRCEvent, state: PState) =
         state.ircClient.connect()
       except:
         echo("Error reconnecting: ", getCurrentExceptionMsg())
-      
+
       echo("Waiting 5 seconds...")
       sleep(5000)
     echo("Reconnected successfully!")
@@ -393,7 +393,7 @@ proc handleIrc(irc: PAsyncIRC, event: TIRCEvent, state: PState) =
             of PSeenNick:
               pm("$1 was last seen on $2 changing nick to $3" %
                         [seenInfo.nick, $seenInfo.timestamp, seenInfo.newNick])
-            
+
           else:
             pm("I have not seen " & nick)
         else:
@@ -430,7 +430,7 @@ proc open(port: TPort = TPort(5123)): PState =
   var res: PState
   new(res)
   res.dispatcher = newDispatcher()
-  
+
   res.hubPort = port
   res.hubConnect()
   let hirc =

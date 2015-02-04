@@ -25,7 +25,7 @@ proc opGorge*(cmd, input: string): string =
     p.inputStream.close()
   result = p.readOutput
 
-proc opSlurp*(file: string, info: TLineInfo, module: PSym): string = 
+proc opSlurp*(file: string, info: TLineInfo, module: PSym): string =
   try:
     let filename = file.findFile
     result = readFile(filename)

@@ -24,6 +24,6 @@ macro optOps{ (`+`|`-`|`*`) ** a }(a: TMat): expr =
 
 var x, y, z: TMat
 
-echo x + y * z - x 
+echo x + y * z - x
 
 #echo x + y + z

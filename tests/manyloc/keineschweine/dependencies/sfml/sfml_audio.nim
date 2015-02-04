@@ -294,7 +294,7 @@ proc newSoundBuffer*(stream: PInputStream): PSoundBuffer{.
 #/ \return A new sfSoundBuffer object (NULL if failed)
 #/
 #//////////////////////////////////////////////////////////
-proc createFromSamples*(samples: ptr int16; sampleCount: cuint; 
+proc createFromSamples*(samples: ptr int16; sampleCount: cuint;
                          channelCount: cuint; sampleRate: cuint): PSoundBuffer{.
   cdecl, importc: "sfSoundBuffer_createFromSamples", dynlib: Lib.}
 #//////////////////////////////////////////////////////////
@@ -437,10 +437,10 @@ proc listenerSetDirection*(orientation: TVector3f){.
 proc listenerGetDirection*(): TVector3f{.
   cdecl, importc: "sfListener_getDirection", dynlib: Lib.}
 
-type 
+type
   TSoundRecorderStartCallback* = proc (a2: pointer): bool {.cdecl.}
-  #/< Type of the callback used when starting a capture 
-  TSoundRecorderProcessCallback* = proc(a2: ptr int16; a3: cuint; 
+  #/< Type of the callback used when starting a capture
+  TSoundRecorderProcessCallback* = proc(a2: ptr int16; a3: cuint;
     a4: pointer): bool {.cdecl.}
   #/< Type of the callback used to process audio data
   TSoundRecorderStopCallback* = proc (a2: pointer){.cdecl.}
@@ -456,9 +456,9 @@ type
 #/ \return A new sfSoundRecorder object (NULL if failed)
 #/
 #//////////////////////////////////////////////////////////
-proc newSoundRecorder*(onStart: TSoundRecorderStartCallback; 
-                        onProcess: TSoundRecorderProcessCallback; 
-                        onStop: TSoundRecorderStopCallback; 
+proc newSoundRecorder*(onStart: TSoundRecorderStartCallback;
+                        onProcess: TSoundRecorderProcessCallback;
+                        onStop: TSoundRecorderStopCallback;
                         userData: pointer = nil): PSoundRecorder{.
   cdecl, importc: "sfSoundRecorder_create", dynlib: Lib.}
 #//////////////////////////////////////////////////////////
@@ -595,13 +595,13 @@ proc getBuffer*(soundBufferRecorder: PSoundBufferRecorder): PSoundBuffer{.
 #/ \brief defines the data to fill by the OnGetData callback
 #/
 #//////////////////////////////////////////////////////////
-type 
+type
   PSoundStreamChunk* = ptr TSoundStreamChunk
-  TSoundStreamChunk*{.pure, final.} = object 
+  TSoundStreamChunk*{.pure, final.} = object
     samples*: ptr int16   #/< Pointer to the audio samples
     sampleCount*: cuint     #/< Number of samples pointed by Samples
-  
-  TSoundStreamGetDataCallback* = proc (a2: PSoundStreamChunk; 
+
+  TSoundStreamGetDataCallback* = proc (a2: PSoundStreamChunk;
       a3: pointer): bool{.cdecl.}
   #/< Type of the callback used to get a sound stream data
   TSoundStreamSeekCallback* = proc (a2: TTime; a3: pointer){.cdecl.}
@@ -618,7 +618,7 @@ type
 #/ \return A new sfSoundStream object
 #/
 #//////////////////////////////////////////////////////////
-proc create*(onGetData: TSoundStreamGetDataCallback; onSeek: TSoundStreamSeekCallback; 
+proc create*(onGetData: TSoundStreamGetDataCallback; onSeek: TSoundStreamSeekCallback;
               channelCount: cuint; sampleRate: cuint; userData: pointer): PSoundStream{.
   cdecl, importc: "sfSoundStream_create", dynlib: Lib.}
 #//////////////////////////////////////////////////////////

@@ -21,7 +21,7 @@ helper distinct or object type has to be used for one pointer type.
 operator `=`
 ------------
 
-This operator is the assignment operator. Note that in the contexts 
+This operator is the assignment operator. Note that in the contexts
 like ``let v = expr``, ``var v = expr``, ``parameter = defaultValue`` or for
 parameter passing no assignment is performed. The ``override`` pragma is
 optional for overriding ``=``.
@@ -36,12 +36,12 @@ A destructor must have a single parameter with a concrete type (the name of a
 generic type is allowed too). The name of the destructor has to be ``destroy``
 and it need to be annotated with the ``override`` pragma.
 
-``destroy(v)`` will be automatically invoked for every local stack 
+``destroy(v)`` will be automatically invoked for every local stack
 variable ``v`` that goes out of scope.
 
-If a structured type features a field with destructable type and 
+If a structured type features a field with destructable type and
 the user has not provided an explicit implementation, a destructor for the
-structured type will be automatically generated. Calls to any base class 
+structured type will be automatically generated. Calls to any base class
 destructors in both user-defined and generated destructors will be inserted.
 
 A destructor is attached to the type it destructs; expressions of this type
@@ -52,13 +52,13 @@ can then only be used in *destructible contexts* and as parameters:
     MyObj = object
       x, y: int
       p: pointer
-      
+
   proc destroy(o: var MyObj) {.override.} =
     if o.p != nil: dealloc o.p
-    
+
   proc open: MyObj =
     result = MyObj(x: 1, y: 2, p: alloc(3))
- 
+
   proc work(o: MyObj) =
     echo o.x
     # No destructor invoked here for 'o' as 'o' is a parameter.
@@ -68,7 +68,7 @@ can then only be used in *destructible contexts* and as parameters:
     var x = open()
     # valid: pass 'x' to some other proc:
     work(x)
-    
+
     # Error: usage of a type with a destructor in a non destructible context
     echo open()
 

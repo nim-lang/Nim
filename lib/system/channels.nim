@@ -13,7 +13,7 @@
 ##
 ## **Note:** The current implementation of message passing is slow and does
 ## not work with cyclic data structures.
-  
+
 when not declared(NimString):
   {.error: "You must not import this module explicitly".}
 
@@ -48,7 +48,7 @@ proc deinitRawChannel(p: pointer) =
   deinitSys(c.lock)
   deinitSysCond(c.cond)
 
-proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel, 
+proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
               mode: TLoadStoreMode) {.benign.}
 proc storeAux(dest, src: pointer, n: ptr TNimNode, t: PRawChannel,
               mode: TLoadStoreMode) {.benign.} =
@@ -56,7 +56,7 @@ proc storeAux(dest, src: pointer, n: ptr TNimNode, t: PRawChannel,
     d = cast[ByteAddress](dest)
     s = cast[ByteAddress](src)
   case n.kind
-  of nkSlot: storeAux(cast[pointer](d +% n.offset), 
+  of nkSlot: storeAux(cast[pointer](d +% n.offset),
                       cast[pointer](s +% n.offset), n.typ, t, mode)
   of nkList:
     for i in 0..n.len-1: storeAux(dest, src, n.sons[i], t, mode)
@@ -67,7 +67,7 @@ proc storeAux(dest, src: pointer, n: ptr TNimNode, t: PRawChannel,
     if m != nil: storeAux(dest, src, m, t, mode)
   of nkNone: sysAssert(false, "storeAux")
 
-proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel, 
+proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
               mode: TLoadStoreMode) =
   var
     d = cast[ByteAddress](dest)
@@ -78,7 +78,7 @@ proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
     if mode == mStore:
       var x = cast[PPointer](dest)
       var s2 = cast[PPointer](s)[]
-      if s2 == nil: 
+      if s2 == nil:
         x[] = nil
       else:
         var ss = cast[NimString](s2)
@@ -190,7 +190,7 @@ template lockChannel(q: expr, action: stmt) {.immediate.} =
   action
   releaseSys(q.lock)
 
-template sendImpl(q: expr) {.immediate.} =  
+template sendImpl(q: expr) {.immediate.} =
   if q.mask == ChannelDeadMask:
     sysFatal(DeadThreadError, "cannot send message; thread died")
   acquireSys(q.lock)

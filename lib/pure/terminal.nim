@@ -329,7 +329,7 @@ proc isatty*(f: File): bool =
   else:
     proc isatty(fildes: FileHandle): cint {.
       importc: "_isatty", header: "<io.h>".}
-  
+
   result = isatty(getFileHandle(f)) != 0'i32
 
 proc styledEchoProcessArg(s: string) = write stdout, s
@@ -359,5 +359,5 @@ when isMainModule:
   setForeGroundColor(fgBlue)
   writeln(stdout, "ordinary text")
 
-  styledEcho("styled text ", {styleBright, styleBlink, styleUnderscore}) 
-  
+  styledEcho("styled text ", {styleBright, styleBlink, styleUnderscore})
+

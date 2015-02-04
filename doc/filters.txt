@@ -4,8 +4,8 @@ Source Code Filters
 
 .. contents::
 
-A `Source Code Filter` transforms the input character stream to an in-memory 
-output stream before parsing. A filter can be used to provide templating 
+A `Source Code Filter` transforms the input character stream to an in-memory
+output stream before parsing. A filter can be used to provide templating
 systems or preprocessors.
 
 To use a filter for a source file the *shebang* notation is used::
@@ -52,7 +52,7 @@ Parameters and their defaults:
 
   ``sub: string = ""``
     the substring that is searched for
-  
+
   ``by: string = ""``
     the string the substring is replaced with
 
@@ -71,7 +71,7 @@ Parameters and their defaults:
 
   ``leading: bool = true``
     strip leading whitespace
-  
+
   ``trailing: bool = true``
     strip trailing whitespace
 
@@ -89,16 +89,16 @@ Parameters and their defaults:
 
   ``metaChar: char = '#'``
     prefix for a line that contains Nim code
-  
+
   ``subsChar: char = '$'``
     prefix for a Nim expression within a template line
-    
+
   ``conc: string = " & "``
     the operation for concatenation
-    
+
   ``emit: string = "result.add"``
     the operation to emit a string literal
-    
+
   ``toString: string = "$"``
     the operation that is applied to each expression
 
@@ -106,7 +106,7 @@ Example::
 
   #! stdtmpl | standard
   #proc generateHTMLPage(title, currentTab, content: string,
-  #                      tabs: openArray[string]): string = 
+  #                      tabs: openArray[string]): string =
   #  result = ""
   <head><title>$title</title></head>
   <body>
@@ -114,7 +114,7 @@ Example::
       <ul>
     #for tab in items(tabs):
       #if currentTab == tab:
-      <li><a id="selected" 
+      <li><a id="selected"
       #else:
       <li><a
       #end if
@@ -132,11 +132,11 @@ The filter transforms this into:
 
 .. code-block:: nim
   proc generateHTMLPage(title, currentTab, content: string,
-                        tabs: openArray[string]): string = 
+                        tabs: openArray[string]): string =
     result = ""
-    result.add("<head><title>" & $(title) & "</title></head>\n" & 
-      "<body>\n" & 
-      "  <div id=\"menu\">\n" & 
+    result.add("<head><title>" & $(title) & "</title></head>\n" &
+      "<body>\n" &
+      "  <div id=\"menu\">\n" &
       "    <ul>\n")
     for tab in items(tabs):
       if currentTab == tab:
@@ -146,17 +146,17 @@ The filter transforms this into:
       #end
       result.add("    href=\"" & $(tab) & ".html\">" & $(tab) & "</a></li>\n")
     #end
-    result.add("    </ul>\n" & 
-      "  </div>\n" & 
-      "  <div id=\"content\">\n" & 
-      "    " & $(content) & "\n" & 
-      "    A dollar: $.\n" & 
-      "  </div>\n" & 
+    result.add("    </ul>\n" &
+      "  </div>\n" &
+      "  <div id=\"content\">\n" &
+      "    " & $(content) & "\n" &
+      "    A dollar: $.\n" &
+      "  </div>\n" &
       "</body>\n")
 
-  
+
 Each line that does not start with the meta character (ignoring leading
-whitespace) is converted to a string literal that is added to ``result``. 
+whitespace) is converted to a string literal that is added to ``result``.
 
 The substitution character introduces a Nim expression *e* within the
 string literal. *e* is converted to a string with the *toString* operation
@@ -174,14 +174,14 @@ writes the template code directly to a file::
 
   #! stdtmpl(emit="f.write") | standard
   #proc writeHTMLPage(f: File, title, currentTab, content: string,
-  #                   tabs: openArray[string]) = 
+  #                   tabs: openArray[string]) =
   <head><title>$title</title></head>
   <body>
     <div id="menu">
       <ul>
     #for tab in items(tabs):
       #if currentTab == tab:
-      <li><a id="selected" 
+      <li><a id="selected"
       #else:
       <li><a
       #end if

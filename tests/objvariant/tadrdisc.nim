@@ -12,10 +12,10 @@ type
     of ka: x, y: int
     of kb: a, b: string
     of kc: c, d: float
-    
-proc setKind(k: var TKind) = 
+
+proc setKind(k: var TKind) =
   k = kc
-  
+
 var a: TA
 setKind(a.k) #ERROR_MSG for a 'var' type a variable needs to be passed
 

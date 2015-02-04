@@ -1,7 +1,7 @@
 discard """
   output: '''true'''
 """
-  
+
 import hashes, math
 
 {.pragma: myShallow.}
@@ -112,7 +112,7 @@ proc initTable*[A, B](initialSize=64): TTable[A, B] =
   result.counter = 0
   newSeq(result.data, initialSize)
 
-proc toTable*[A, B](pairs: openarray[tuple[key: A, 
+proc toTable*[A, B](pairs: openarray[tuple[key: A,
                     val: B]]): TTable[A, B] =
   ## creates a new hash table that contains the given `pairs`.
   result = initTable[A, B](nextPowerOfTwo(pairs.len+10))
@@ -214,7 +214,7 @@ proc `$`*[A](t: TCountTable[A]): string =
   ## The `$` operator for count tables.
   dollarImpl()
 
-proc inc*[A](t: var TCountTable[A], key: A, val = 1) = 
+proc inc*[A](t: var TCountTable[A], key: A, val = 1) =
   ## increments `t[key]` by `val`.
   var index = RawGet(t, key)
   if index >= 0:

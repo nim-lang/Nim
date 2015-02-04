@@ -16,7 +16,7 @@ type
       min, max: int
   PMatcher[T] = ref TMatcher[T]
 
-var 
+var
   m: PMatcher[int]
 
 

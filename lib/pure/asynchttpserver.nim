@@ -201,7 +201,7 @@ proc processClient(client: AsyncSocket, address: string,
           await client.sendStatus("100 Continue")
         else:
           await client.sendStatus("417 Expectation Failed")
-    
+
       # Read the body
       # - Check for Content-length header
       if request.headers.hasKey("Content-Length"):
@@ -247,7 +247,7 @@ proc serve*(server: AsyncHttpServer, port: Port,
     server.socket.setSockOpt(OptReuseAddr, true)
   server.socket.bindAddr(port, address)
   server.socket.listen()
-  
+
   while true:
     # TODO: Causes compiler crash.
     #var (address, client) = await server.socket.acceptAddr()

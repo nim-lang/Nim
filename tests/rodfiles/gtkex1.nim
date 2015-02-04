@@ -1,4 +1,4 @@
-import 
+import
   cairo, glib2, gtk2
 
 proc destroy(widget: pWidget, data: pgpointer) {.cdecl.} =

@@ -15,10 +15,10 @@ else:
 
   if "keyA = valueA" =~ re"\s*(\w+)\s*\=\s*(\w+)":
     write(stdout, "key: ", matches[0])
-  elif "# comment!" =~ re.re"\s*(\#.*)": 
+  elif "# comment!" =~ re.re"\s*(\#.*)":
     # test re.re"" syntax
     echo("comment: ", matches[0])
-  else: 
+  else:
     echo("Bug!")
 
   if "Username".match(re"[A-Za-z]+"):

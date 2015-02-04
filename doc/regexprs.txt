@@ -175,17 +175,17 @@ for themselves. For example:
 example            meaning
 ==============     ============================================================
 ``\040``           is another way of writing a space
-``\40``            is the same, provided there are fewer than 40 previous 
+``\40``            is the same, provided there are fewer than 40 previous
                    capturing subpatterns
 ``\7``             is always a back reference
 ``\11``            might be a back reference, or another way of writing a tab
 ``\011``           is always a tab
 ``\0113``          is a tab followed by the character "3"
-``\113``           might be a back reference, otherwise the character with 
+``\113``           might be a back reference, otherwise the character with
                    octal code 113
-``\377``           might be a back reference, otherwise the byte consisting 
+``\377``           might be a back reference, otherwise the byte consisting
                    entirely of 1 bits
-``\81``            is either a back reference, or a binary zero followed by 
+``\81``            is either a back reference, or a binary zero followed by
                    the two characters "8" and "1"
 ==============     ============================================================
 
@@ -240,7 +240,7 @@ even when Unicode character property support is available.
 
 Simple assertions
 -----------------
-The fourth use of backslash is for certain `simple assertions`:idx:. An 
+The fourth use of backslash is for certain `simple assertions`:idx:. An
 assertion specifies a condition that has to be met at a particular point in
 a match, without consuming any characters from the subject string. The use of
 subpatterns for more complicated assertions is described below. The

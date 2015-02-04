@@ -8,11 +8,11 @@ type
   TObj = object {.pure, inheritable.}
   TObjB = object of TObj
     a, b, c: string
-  
+
   IO2Error = ref object of IOError
-  
+
 proc forw: int {. .}
-  
+
 proc lier(): int {.raises: [IO2Error].} =
   writeln stdout, "arg"
 

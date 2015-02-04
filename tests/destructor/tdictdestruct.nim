@@ -13,8 +13,8 @@ proc destroyDict[TK, TV](a: PDict[TK, TV]) =
 proc newDict[TK, TV](a: TK, b: TV): PDict[TK, TV] =
     fakeNew(result, destroyDict[TK, TV])
 
-# Problem: destroyDict is not instantiated when newDict is instantiated!    
+# Problem: destroyDict is not instantiated when newDict is instantiated!
 
-discard newDict("a", "b")    
+discard newDict("a", "b")
 
 

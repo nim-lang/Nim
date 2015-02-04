@@ -3,7 +3,7 @@ discard """
   errormsg: "type mismatch: got (int literal(232))"
 """
 
-proc myGenericProc[T: object|tuple|ptr|ref|distinct](x: T): string = 
+proc myGenericProc[T: object|tuple|ptr|ref|distinct](x: T): string =
   result = $x
 
 type

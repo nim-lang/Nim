@@ -40,7 +40,7 @@ proc buildSuiteContents(suiteName, suiteDesc, suiteBloc: PNimrodNode): tuple[tes
       discard
 
   return (tests: tests)
- 
+
 macro suite(suiteName, suiteDesc: expr, suiteBloc: stmt): stmt {.immediate.} =
   let contents = buildSuiteContents(suiteName, suiteDesc, suiteBloc)
 

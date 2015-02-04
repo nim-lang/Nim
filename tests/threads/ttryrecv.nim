@@ -31,5 +31,5 @@ while true:
 
 echo "Finished listening"
 
-joinThread(thr)                                                       
+joinThread(thr)
 close(chan)

@@ -27,7 +27,7 @@ else:
 #   ftMemo      SQL_BINARY // SQL_VARCHAR
 #
 
-type 
+type
   TSqlChar* = char
   TSqlSmallInt* = int16
   TSqlUSmallInt* = int16
@@ -53,7 +53,7 @@ type
   PSQLFLOAT* = ptr TSqlFloat
   PSQLHANDLE* = ptr TSqlHandle
 
-const                         # SQL data type codes 
+const                         # SQL data type codes
   SQL_UNKNOWN_TYPE* = 0
   SQL_LONGVARCHAR* = (- 1)
   SQL_BINARY* = (- 2)
@@ -84,8 +84,8 @@ const                         # SQL data type codes
   SQL_INTERVAL* = 10
   SQL_GUID* = - 11            # interval codes
 
-when ODBCVER >= 0x0300: 
-  const 
+when ODBCVER >= 0x0300:
+  const
     SQL_CODE_YEAR* = 1
     SQL_CODE_MONTH* = 2
     SQL_CODE_DAY* = 3
@@ -112,8 +112,8 @@ when ODBCVER >= 0x0300:
     SQL_INTERVAL_HOUR_TO_MINUTE* = 100 + SQL_CODE_HOUR_TO_MINUTE
     SQL_INTERVAL_HOUR_TO_SECOND* = 100 + SQL_CODE_HOUR_TO_SECOND
     SQL_INTERVAL_MINUTE_TO_SECOND* = 100 + SQL_CODE_MINUTE_TO_SECOND
-else: 
-  const 
+else:
+  const
     SQL_INTERVAL_YEAR* = - 80
     SQL_INTERVAL_MONTH* = - 81
     SQL_INTERVAL_YEAR_TO_MONTH* = - 82
@@ -129,20 +129,20 @@ else:
     SQL_INTERVAL_MINUTE_TO_SECOND* = - 92
 
 
-when ODBCVER < 0x0300: 
-  const 
+when ODBCVER < 0x0300:
+  const
     SQL_UNICODE* = - 95
     SQL_UNICODE_VARCHAR* = - 96
     SQL_UNICODE_LONGVARCHAR* = - 97
     SQL_UNICODE_CHAR* = SQL_UNICODE
-else: 
-  # The previous definitions for SQL_UNICODE_ are historical and obsolete 
-  const 
+else:
+  # The previous definitions for SQL_UNICODE_ are historical and obsolete
+  const
     SQL_UNICODE* = SQL_WCHAR
     SQL_UNICODE_VARCHAR* = SQL_WVARCHAR
     SQL_UNICODE_LONGVARCHAR* = SQL_WLONGVARCHAR
     SQL_UNICODE_CHAR* = SQL_WCHAR
-const                         # C datatype to SQL datatype mapping 
+const                         # C datatype to SQL datatype mapping
   SQL_C_CHAR* = SQL_CHAR
   SQL_C_LONG* = SQL_INTEGER
   SQL_C_SHORT* = SQL_SMALLINT
@@ -186,30 +186,30 @@ const                         # C datatype to SQL datatype mapping
   SQL_C_GUID* = SQL_GUID
   SQL_TYPE_NULL* = 0
 
-when ODBCVER < 0x0300: 
-  const 
+when ODBCVER < 0x0300:
+  const
     SQL_TYPE_MIN* = SQL_BIT
     SQL_TYPE_MAX* = SQL_VARCHAR
 
-const 
+const
   SQL_C_VARBOOKMARK* = SQL_C_BINARY
   SQL_API_SQLDESCRIBEPARAM* = 58
   SQL_NO_TOTAL* = - 4
 
-type 
-  SQL_DATE_STRUCT* {.final, pure.} = object 
+type
+  SQL_DATE_STRUCT* {.final, pure.} = object
     Year*: TSqlSmallInt
     Month*: TSqlUSmallInt
     Day*: TSqlUSmallInt
 
   PSQL_DATE_STRUCT* = ptr SQL_DATE_STRUCT
-  SQL_TIME_STRUCT* {.final, pure.} = object 
+  SQL_TIME_STRUCT* {.final, pure.} = object
     Hour*: TSqlUSmallInt
     Minute*: TSqlUSmallInt
     Second*: TSqlUSmallInt
 
   PSQL_TIME_STRUCT* = ptr SQL_TIME_STRUCT
-  SQL_TIMESTAMP_STRUCT* {.final, pure.} = object 
+  SQL_TIMESTAMP_STRUCT* {.final, pure.} = object
     Year*: TSqlUSmallInt
     Month*: TSqlUSmallInt
     Day*: TSqlUSmallInt
@@ -220,34 +220,34 @@ type
 
   PSQL_TIMESTAMP_STRUCT* = ptr SQL_TIMESTAMP_STRUCT
 
-const 
+const
   SQL_NAME_LEN* = 128
   SQL_OV_ODBC3* = 3
   SQL_OV_ODBC2* = 2
-  SQL_ATTR_ODBC_VERSION* = 200 # Options for SQLDriverConnect 
+  SQL_ATTR_ODBC_VERSION* = 200 # Options for SQLDriverConnect
   SQL_DRIVER_NOPROMPT* = 0
   SQL_DRIVER_COMPLETE* = 1
   SQL_DRIVER_PROMPT* = 2
-  SQL_DRIVER_COMPLETE_REQUIRED* = 3 
-  SQL_IS_POINTER* = (- 4)  # whether an attribute is a pointer or not 
+  SQL_DRIVER_COMPLETE_REQUIRED* = 3
+  SQL_IS_POINTER* = (- 4)  # whether an attribute is a pointer or not
   SQL_IS_UINTEGER* = (- 5)
   SQL_IS_INTEGER* = (- 6)
   SQL_IS_USMALLINT* = (- 7)
-  SQL_IS_SMALLINT* = (- 8)    # SQLExtendedFetch "fFetchType" values 
+  SQL_IS_SMALLINT* = (- 8)    # SQLExtendedFetch "fFetchType" values
   SQL_FETCH_BOOKMARK* = 8
-  SQL_SCROLL_OPTIONS* = 44    # SQL_USE_BOOKMARKS options 
+  SQL_SCROLL_OPTIONS* = 44    # SQL_USE_BOOKMARKS options
   SQL_UB_OFF* = 0
   SQL_UB_ON* = 1
   SQL_UB_DEFAULT* = SQL_UB_OFF
   SQL_UB_FIXED* = SQL_UB_ON
-  SQL_UB_VARIABLE* = 2        # SQL_SCROLL_OPTIONS masks 
+  SQL_UB_VARIABLE* = 2        # SQL_SCROLL_OPTIONS masks
   SQL_SO_FORWARD_ONLY* = 0x00000001
   SQL_SO_KEYSET_DRIVEN* = 0x00000002
   SQL_SO_DYNAMIC* = 0x00000004
   SQL_SO_MIXED* = 0x00000008
   SQL_SO_STATIC* = 0x00000010
   SQL_BOOKMARK_PERSISTENCE* = 82
-  SQL_STATIC_SENSITIVITY* = 83 # SQL_BOOKMARK_PERSISTENCE values 
+  SQL_STATIC_SENSITIVITY* = 83 # SQL_BOOKMARK_PERSISTENCE values
   SQL_BP_CLOSE* = 0x00000001
   SQL_BP_DELETE* = 0x00000002
   SQL_BP_DROP* = 0x00000004
@@ -264,32 +264,32 @@ const
   SQL_KEYSET_CURSOR_ATTRIBUTES1* = 150
   SQL_KEYSET_CURSOR_ATTRIBUTES2* = 151
   SQL_STATIC_CURSOR_ATTRIBUTES1* = 167
-  SQL_STATIC_CURSOR_ATTRIBUTES2* = 168 # supported SQLFetchScroll FetchOrientation's 
+  SQL_STATIC_CURSOR_ATTRIBUTES2* = 168 # supported SQLFetchScroll FetchOrientation's
   SQL_CA1_NEXT* = 1
   SQL_CA1_ABSOLUTE* = 2
   SQL_CA1_RELATIVE* = 4
-  SQL_CA1_BOOKMARK* = 8       # supported SQLSetPos LockType's 
+  SQL_CA1_BOOKMARK* = 8       # supported SQLSetPos LockType's
   SQL_CA1_LOCK_NO_CHANGE* = 0x00000040
   SQL_CA1_LOCK_EXCLUSIVE* = 0x00000080
-  SQL_CA1_LOCK_UNLOCK* = 0x00000100 # supported SQLSetPos Operations 
+  SQL_CA1_LOCK_UNLOCK* = 0x00000100 # supported SQLSetPos Operations
   SQL_CA1_POS_POSITION* = 0x00000200
   SQL_CA1_POS_UPDATE* = 0x00000400
   SQL_CA1_POS_DELETE* = 0x00000800
-  SQL_CA1_POS_REFRESH* = 0x00001000 # positioned updates and deletes 
+  SQL_CA1_POS_REFRESH* = 0x00001000 # positioned updates and deletes
   SQL_CA1_POSITIONED_UPDATE* = 0x00002000
   SQL_CA1_POSITIONED_DELETE* = 0x00004000
-  SQL_CA1_SELECT_FOR_UPDATE* = 0x00008000 # supported SQLBulkOperations operations 
+  SQL_CA1_SELECT_FOR_UPDATE* = 0x00008000 # supported SQLBulkOperations operations
   SQL_CA1_BULK_ADD* = 0x00010000
   SQL_CA1_BULK_UPDATE_BY_BOOKMARK* = 0x00020000
   SQL_CA1_BULK_DELETE_BY_BOOKMARK* = 0x00040000
-  SQL_CA1_BULK_FETCH_BY_BOOKMARK* = 0x00080000 # supported values for SQL_ATTR_SCROLL_CONCURRENCY 
+  SQL_CA1_BULK_FETCH_BY_BOOKMARK* = 0x00080000 # supported values for SQL_ATTR_SCROLL_CONCURRENCY
   SQL_CA2_READ_ONLY_CONCURRENCY* = 1
   SQL_CA2_LOCK_CONCURRENCY* = 2
   SQL_CA2_OPT_ROWVER_CONCURRENCY* = 4
-  SQL_CA2_OPT_VALUES_CONCURRENCY* = 8 # sensitivity of the cursor to its own inserts, deletes, and updates 
+  SQL_CA2_OPT_VALUES_CONCURRENCY* = 8 # sensitivity of the cursor to its own inserts, deletes, and updates
   SQL_CA2_SENSITIVITY_ADDITIONS* = 0x00000010
   SQL_CA2_SENSITIVITY_DELETIONS* = 0x00000020
-  SQL_CA2_SENSITIVITY_UPDATES* = 0x00000040 #  semantics of SQL_ATTR_MAX_ROWS 
+  SQL_CA2_SENSITIVITY_UPDATES* = 0x00000040 #  semantics of SQL_ATTR_MAX_ROWS
   SQL_CA2_MAX_ROWS_SELECT* = 0x00000080
   SQL_CA2_MAX_ROWS_INSERT* = 0x00000100
   SQL_CA2_MAX_ROWS_DELETE* = 0x00000200
@@ -297,25 +297,25 @@ const
   SQL_CA2_MAX_ROWS_CATALOG* = 0x00000800
   SQL_CA2_MAX_ROWS_AFFECTS_ALL* = (SQL_CA2_MAX_ROWS_SELECT or
       SQL_CA2_MAX_ROWS_INSERT or SQL_CA2_MAX_ROWS_DELETE or
-      SQL_CA2_MAX_ROWS_UPDATE or SQL_CA2_MAX_ROWS_CATALOG) # semantics of 
-                                                           # SQL_DIAG_CURSOR_ROW_COUNT 
+      SQL_CA2_MAX_ROWS_UPDATE or SQL_CA2_MAX_ROWS_CATALOG) # semantics of
+                                                           # SQL_DIAG_CURSOR_ROW_COUNT
   SQL_CA2_CRC_EXACT* = 0x00001000
-  SQL_CA2_CRC_APPROXIMATE* = 0x00002000 #  the kinds of positioned statements that can be simulated 
+  SQL_CA2_CRC_APPROXIMATE* = 0x00002000 #  the kinds of positioned statements that can be simulated
   SQL_CA2_SIMULATE_NON_UNIQUE* = 0x00004000
   SQL_CA2_SIMULATE_TRY_UNIQUE* = 0x00008000
-  SQL_CA2_SIMULATE_UNIQUE* = 0x00010000 #  Operations in SQLBulkOperations 
+  SQL_CA2_SIMULATE_UNIQUE* = 0x00010000 #  Operations in SQLBulkOperations
   SQL_ADD* = 4
   SQL_SETPOS_MAX_OPTION_VALUE* = SQL_ADD
   SQL_UPDATE_BY_BOOKMARK* = 5
   SQL_DELETE_BY_BOOKMARK* = 6
-  SQL_FETCH_BY_BOOKMARK* = 7  # Operations in SQLSetPos 
+  SQL_FETCH_BY_BOOKMARK* = 7  # Operations in SQLSetPos
   SQL_POSITION* = 0
   SQL_REFRESH* = 1
   SQL_UPDATE* = 2
-  SQL_DELETE* = 3             # Lock options in SQLSetPos 
+  SQL_DELETE* = 3             # Lock options in SQLSetPos
   SQL_LOCK_NO_CHANGE* = 0
   SQL_LOCK_EXCLUSIVE* = 1
-  SQL_LOCK_UNLOCK* = 2        # SQLExtendedFetch "rgfRowStatus" element values 
+  SQL_LOCK_UNLOCK* = 2        # SQLExtendedFetch "rgfRowStatus" element values
   SQL_ROW_SUCCESS* = 0
   SQL_ROW_DELETED* = 1
   SQL_ROW_UPDATED* = 2
@@ -325,10 +325,10 @@ const
   SQL_ROW_SUCCESS_WITH_INFO* = 6
   SQL_ROW_PROCEED* = 0
   SQL_ROW_IGNORE* = 1
-  SQL_MAX_DSN_LENGTH* = 32    # maximum data source name size 
+  SQL_MAX_DSN_LENGTH* = 32    # maximum data source name size
   SQL_MAX_OPTION_STRING_LENGTH* = 256
   SQL_ODBC_CURSORS* = 110
-  SQL_ATTR_ODBC_CURSORS* = SQL_ODBC_CURSORS # SQL_ODBC_CURSORS options 
+  SQL_ATTR_ODBC_CURSORS* = SQL_ODBC_CURSORS # SQL_ODBC_CURSORS options
   SQL_CUR_USE_IF_NEEDED* = 0
   SQL_CUR_USE_ODBC* = 1
   SQL_CUR_USE_DRIVER* = 2
@@ -338,7 +338,7 @@ const
   SQL_PARAM_INPUT_OUTPUT* = 2
   SQL_RESULT_COL* = 3
   SQL_PARAM_OUTPUT* = 4
-  SQL_RETURN_VALUE* = 5       # special length/indicator values 
+  SQL_RETURN_VALUE* = 5       # special length/indicator values
   SQL_NULL_DATA* = (- 1)
   SQL_DATA_AT_EXEC* = (- 2)
   SQL_SUCCESS* = 0
@@ -347,20 +347,20 @@ const
   SQL_ERROR* = (- 1)
   SQL_INVALID_HANDLE* = (- 2)
   SQL_STILL_EXECUTING* = 2
-  SQL_NEED_DATA* = 99         # flags for null-terminated string 
-  SQL_NTS* = (- 3)            # maximum message length 
-  SQL_MAX_MESSAGE_LENGTH* = 512 # date/time length constants 
+  SQL_NEED_DATA* = 99         # flags for null-terminated string
+  SQL_NTS* = (- 3)            # maximum message length
+  SQL_MAX_MESSAGE_LENGTH* = 512 # date/time length constants
   SQL_DATE_LEN* = 10
-  SQL_TIME_LEN* = 8           # add P+1 if precision is nonzero 
-  SQL_TIMESTAMP_LEN* = 19     # add P+1 if precision is nonzero 
-                              # handle type identifiers 
+  SQL_TIME_LEN* = 8           # add P+1 if precision is nonzero
+  SQL_TIMESTAMP_LEN* = 19     # add P+1 if precision is nonzero
+                              # handle type identifiers
   SQL_HANDLE_ENV* = 1
   SQL_HANDLE_DBC* = 2
   SQL_HANDLE_STMT* = 3
-  SQL_HANDLE_DESC* = 4        # environment attribute 
-  SQL_ATTR_OUTPUT_NTS* = 10001 # connection attributes 
+  SQL_HANDLE_DESC* = 4        # environment attribute
+  SQL_ATTR_OUTPUT_NTS* = 10001 # connection attributes
   SQL_ATTR_AUTO_IPD* = 10001
-  SQL_ATTR_METADATA_ID* = 10014 # statement attributes 
+  SQL_ATTR_METADATA_ID* = 10014 # statement attributes
   SQL_ATTR_APP_ROW_DESC* = 10010
   SQL_ATTR_APP_PARAM_DESC* = 10011
   SQL_ATTR_IMP_ROW_DESC* = 10012
@@ -423,21 +423,21 @@ const
   SQL_MODE_DEFAULT* = SQL_MODE_READ_WRITE #* SQL_AUTOCOMMIT options */
   SQL_AUTOCOMMIT_OFF* = 0
   SQL_AUTOCOMMIT_ON* = 1
-  SQL_AUTOCOMMIT_DEFAULT* = SQL_AUTOCOMMIT_ON # SQL_ATTR_CURSOR_SCROLLABLE values 
+  SQL_AUTOCOMMIT_DEFAULT* = SQL_AUTOCOMMIT_ON # SQL_ATTR_CURSOR_SCROLLABLE values
   SQL_NONSCROLLABLE* = 0
-  SQL_SCROLLABLE* = 1         # SQL_CURSOR_TYPE options 
+  SQL_SCROLLABLE* = 1         # SQL_CURSOR_TYPE options
   SQL_CURSOR_FORWARD_ONLY* = 0
   SQL_CURSOR_KEYSET_DRIVEN* = 1
   SQL_CURSOR_DYNAMIC* = 2
   SQL_CURSOR_STATIC* = 3
-  SQL_CURSOR_TYPE_DEFAULT* = SQL_CURSOR_FORWARD_ONLY # Default value 
-                                                     # SQL_CONCURRENCY options 
+  SQL_CURSOR_TYPE_DEFAULT* = SQL_CURSOR_FORWARD_ONLY # Default value
+                                                     # SQL_CONCURRENCY options
   SQL_CONCUR_READ_ONLY* = 1
   SQL_CONCUR_LOCK* = 2
   SQL_CONCUR_ROWVER* = 3
   SQL_CONCUR_VALUES* = 4
-  SQL_CONCUR_DEFAULT* = SQL_CONCUR_READ_ONLY # Default value 
-                                             # identifiers of fields in the SQL descriptor 
+  SQL_CONCUR_DEFAULT* = SQL_CONCUR_READ_ONLY # Default value
+                                             # identifiers of fields in the SQL descriptor
   SQL_DESC_COUNT* = 1001
   SQL_DESC_TYPE* = 1002
   SQL_DESC_LENGTH* = 1003
@@ -451,7 +451,7 @@ const
   SQL_DESC_NAME* = 1011
   SQL_DESC_UNNAMED* = 1012
   SQL_DESC_OCTET_LENGTH* = 1013
-  SQL_DESC_ALLOC_TYPE* = 1099 # identifiers of fields in the diagnostics area 
+  SQL_DESC_ALLOC_TYPE* = 1099 # identifiers of fields in the diagnostics area
   SQL_DIAG_RETURNCODE* = 1
   SQL_DIAG_NUMBER* = 2
   SQL_DIAG_ROW_COUNT* = 3
@@ -463,7 +463,7 @@ const
   SQL_DIAG_SUBCLASS_ORIGIN* = 9
   SQL_DIAG_CONNECTION_NAME* = 10
   SQL_DIAG_SERVER_NAME* = 11
-  SQL_DIAG_DYNAMIC_FUNCTION_CODE* = 12 # dynamic function codes 
+  SQL_DIAG_DYNAMIC_FUNCTION_CODE* = 12 # dynamic function codes
   SQL_DIAG_ALTER_TABLE* = 4
   SQL_DIAG_CREATE_INDEX* = (- 1)
   SQL_DIAG_CREATE_TABLE* = 77
@@ -479,36 +479,36 @@ const
   SQL_DIAG_REVOKE* = 59
   SQL_DIAG_SELECT_CURSOR* = 85
   SQL_DIAG_UNKNOWN_STATEMENT* = 0
-  SQL_DIAG_UPDATE_WHERE* = 82 # Statement attribute values for cursor sensitivity 
+  SQL_DIAG_UPDATE_WHERE* = 82 # Statement attribute values for cursor sensitivity
   SQL_UNSPECIFIED* = 0
   SQL_INSENSITIVE* = 1
-  SQL_SENSITIVE* = 2          # GetTypeInfo() request for all data types 
-  SQL_ALL_TYPES* = 0          # Default conversion code for SQLBindCol(), SQLBindParam() and SQLGetData() 
+  SQL_SENSITIVE* = 2          # GetTypeInfo() request for all data types
+  SQL_ALL_TYPES* = 0          # Default conversion code for SQLBindCol(), SQLBindParam() and SQLGetData()
   SQL_DEFAULT* = 99 # SQLGetData() code indicating that the application row descriptor
-                    #    specifies the data type 
-  SQL_ARD_TYPE* = (- 99)      # SQL date/time type subcodes 
+                    #    specifies the data type
+  SQL_ARD_TYPE* = (- 99)      # SQL date/time type subcodes
   SQL_CODE_DATE* = 1
   SQL_CODE_TIME* = 2
-  SQL_CODE_TIMESTAMP* = 3     # CLI option values 
+  SQL_CODE_TIMESTAMP* = 3     # CLI option values
   SQL_FALSE* = 0
-  SQL_TRUE* = 1               # values of NULLABLE field in descriptor 
+  SQL_TRUE* = 1               # values of NULLABLE field in descriptor
   SQL_NO_NULLS* = 0
   SQL_NULLABLE* = 1 # Value returned by SQLGetTypeInfo() to denote that it is
-                    # not known whether or not a data type supports null values. 
-  SQL_NULLABLE_UNKNOWN* = 2 
+                    # not known whether or not a data type supports null values.
+  SQL_NULLABLE_UNKNOWN* = 2
   SQL_CLOSE* = 0
   SQL_DROP* = 1
   SQL_UNBIND* = 2
   SQL_RESET_PARAMS* = 3 # Codes used for FetchOrientation in SQLFetchScroll(),
-                        #   and in SQLDataSources() 
+                        #   and in SQLDataSources()
   SQL_FETCH_NEXT* = 1
   SQL_FETCH_FIRST* = 2
   SQL_FETCH_FIRST_USER* = 31
-  SQL_FETCH_FIRST_SYSTEM* = 32 # Other codes used for FetchOrientation in SQLFetchScroll() 
+  SQL_FETCH_FIRST_SYSTEM* = 32 # Other codes used for FetchOrientation in SQLFetchScroll()
   SQL_FETCH_LAST* = 3
   SQL_FETCH_PRIOR* = 4
   SQL_FETCH_ABSOLUTE* = 5
-  SQL_FETCH_RELATIVE* = 6   
+  SQL_FETCH_RELATIVE* = 6
   SQL_NULL_HENV* = TSqlHEnv(nil)
   SQL_NULL_HDBC* = TSqlHDBC(nil)
   SQL_NULL_HSTMT* = TSqlHStmt(nil)
@@ -518,7 +518,7 @@ const
   SQL_SCOPE_TRANSACTION* = 1
   SQL_SCOPE_SESSION* = 2      #* Column types and scopes in SQLSpecialColumns.  */
   SQL_BEST_ROWID* = 1
-  SQL_ROWVER* = 2             
+  SQL_ROWVER* = 2
   SQL_ROW_IDENTIFIER* = 1     #* Reserved values for UNIQUE argument of SQLStatistics() */
   SQL_INDEX_UNIQUE* = 0
   SQL_INDEX_ALL* = 1          #* Reserved values for RESERVED argument of SQLStatistics() */
@@ -527,13 +527,13 @@ const
   SQL_TABLE_STAT* = 0
   SQL_INDEX_CLUSTERED* = 1
   SQL_INDEX_HASHED* = 2
-  SQL_INDEX_OTHER* = 3 
+  SQL_INDEX_OTHER* = 3
   SQL_SCROLL_CONCURRENCY* = 43
   SQL_TXN_CAPABLE* = 46
   SQL_TRANSACTION_CAPABLE* = SQL_TXN_CAPABLE
   SQL_USER_NAME* = 47
   SQL_TXN_ISOLATION_OPTION* = 72
-  SQL_TRANSACTION_ISOLATION_OPTION* = SQL_TXN_ISOLATION_OPTION 
+  SQL_TRANSACTION_ISOLATION_OPTION* = SQL_TXN_ISOLATION_OPTION
   SQL_OJ_CAPABILITIES* = 115
   SQL_OUTER_JOIN_CAPABILITIES* = SQL_OJ_CAPABILITIES
   SQL_XOPEN_CLI_YEAR* = 10000
@@ -559,10 +559,10 @@ const
   SQL_TXN_REPEATABLE_READ* = 4
   SQL_TRANSACTION_REPEATABLE_READ* = SQL_TXN_REPEATABLE_READ
   SQL_TXN_SERIALIZABLE* = 8
-  SQL_TRANSACTION_SERIALIZABLE* = SQL_TXN_SERIALIZABLE 
+  SQL_TRANSACTION_SERIALIZABLE* = SQL_TXN_SERIALIZABLE
   SQL_SS_ADDITIONS* = 1
   SQL_SS_DELETIONS* = 2
-  SQL_SS_UPDATES* = 4         # SQLColAttributes defines 
+  SQL_SS_UPDATES* = 4         # SQLColAttributes defines
   SQL_COLUMN_COUNT* = 0
   SQL_COLUMN_NAME* = 1
   SQL_COLUMN_TYPE* = 2
@@ -622,166 +622,166 @@ const
   ODBC_CONFIG_SYS_DSN* = 5
   ODBC_REMOVE_SYS_DSN* = 6
 
-proc SQLAllocHandle*(HandleType: TSqlSmallInt, InputHandle: TSqlHandle, 
+proc SQLAllocHandle*(HandleType: TSqlSmallInt, InputHandle: TSqlHandle,
                      OutputHandlePtr: var TSqlHandle): TSqlSmallInt{.
     dynlib: odbclib, importc.}
-proc SQLSetEnvAttr*(EnvironmentHandle: TSqlHEnv, Attribute: TSqlInteger, 
+proc SQLSetEnvAttr*(EnvironmentHandle: TSqlHEnv, Attribute: TSqlInteger,
                     Value: TSqlPointer, StringLength: TSqlInteger): TSqlSmallInt{.
     dynlib: odbclib, importc.}
-proc SQLGetEnvAttr*(EnvironmentHandle: TSqlHEnv, Attribute: TSqlInteger, 
-                    Value: TSqlPointer, BufferLength: TSqlInteger, 
-                    StringLength: PSQLINTEGER): TSqlSmallInt{.dynlib: odbclib, 
+proc SQLGetEnvAttr*(EnvironmentHandle: TSqlHEnv, Attribute: TSqlInteger,
+                    Value: TSqlPointer, BufferLength: TSqlInteger,
+                    StringLength: PSQLINTEGER): TSqlSmallInt{.dynlib: odbclib,
     importc.}
 proc SQLFreeHandle*(HandleType: TSqlSmallInt, Handle: TSqlHandle): TSqlSmallInt{.
     dynlib: odbclib, importc.}
-proc SQLGetDiagRec*(HandleType: TSqlSmallInt, Handle: TSqlHandle, 
-                    RecNumber: TSqlSmallInt, Sqlstate: PSQLCHAR, 
-                    NativeError: var TSqlInteger, MessageText: PSQLCHAR, 
+proc SQLGetDiagRec*(HandleType: TSqlSmallInt, Handle: TSqlHandle,
+                    RecNumber: TSqlSmallInt, Sqlstate: PSQLCHAR,
+                    NativeError: var TSqlInteger, MessageText: PSQLCHAR,
                     BufferLength: TSqlSmallInt, TextLength: var TSqlSmallInt): TSqlSmallInt{.
     dynlib: odbclib, importc.}
-proc SQLGetDiagField*(HandleType: TSqlSmallInt, Handle: TSqlHandle, 
-                      RecNumber: TSqlSmallInt, DiagIdentifier: TSqlSmallInt, 
-                      DiagInfoPtr: TSqlPointer, BufferLength: TSqlSmallInt, 
+proc SQLGetDiagField*(HandleType: TSqlSmallInt, Handle: TSqlHandle,
+                      RecNumber: TSqlSmallInt, DiagIdentifier: TSqlSmallInt,
+                      DiagInfoPtr: TSqlPointer, BufferLength: TSqlSmallInt,
                       StringLengthPtr: var TSqlSmallInt): TSqlSmallInt{.
     dynlib: odbclib, importc.}
-proc SQLConnect*(ConnectionHandle: TSqlHDBC, ServerName: PSQLCHAR, 
-                 NameLength1: TSqlSmallInt, UserName: PSQLCHAR, 
-                 NameLength2: TSqlSmallInt, Authentication: PSQLCHAR, 
+proc SQLConnect*(ConnectionHandle: TSqlHDBC, ServerName: PSQLCHAR,
+                 NameLength1: TSqlSmallInt, UserName: PSQLCHAR,
+                 NameLength2: TSqlSmallInt, Authentication: PSQLCHAR,
                  NameLength3: TSqlSmallInt): TSqlSmallInt{.dynlib: odbclib, importc.}
-proc SQLDisconnect*(ConnectionHandle: TSqlHDBC): TSqlSmallInt{.dynlib: odbclib, 
+proc SQLDisconnect*(ConnectionHandle: TSqlHDBC): TSqlSmallInt{.dynlib: odbclib,
     importc.}
-proc SQLDriverConnect*(hdbc: TSqlHDBC, hwnd: TSqlHWND, szCsin: cstring, 
-                       szCLen: TSqlSmallInt, szCsout: cstring, 
-                       cbCSMax: TSqlSmallInt, cbCsOut: var TSqlSmallInt, 
+proc SQLDriverConnect*(hdbc: TSqlHDBC, hwnd: TSqlHWND, szCsin: cstring,
+                       szCLen: TSqlSmallInt, szCsout: cstring,
+                       cbCSMax: TSqlSmallInt, cbCsOut: var TSqlSmallInt,
                        f: TSqlUSmallInt): TSqlSmallInt{.dynlib: odbclib, importc.}
-proc SQLBrowseConnect*(hdbc: TSqlHDBC, szConnStrIn: PSQLCHAR, 
-                       cbConnStrIn: TSqlSmallInt, szConnStrOut: PSQLCHAR, 
-                       cbConnStrOutMax: TSqlSmallInt, 
+proc SQLBrowseConnect*(hdbc: TSqlHDBC, szConnStrIn: PSQLCHAR,
+                       cbConnStrIn: TSqlSmallInt, szConnStrOut: PSQLCHAR,
+                       cbConnStrOutMax: TSqlSmallInt,
                        cbConnStrOut: var TSqlSmallInt): TSqlSmallInt{.
     dynlib: odbclib, importc.}
-proc SQLExecDirect*(StatementHandle: TSqlHStmt, StatementText: PSQLCHAR, 
+proc SQLExecDirect*(StatementHandle: TSqlHStmt, StatementText: PSQLCHAR,
                     TextLength: TSqlInteger): TSqlSmallInt{.dynlib: odbclib, importc.}
-proc SQLPrepare*(StatementHandle: TSqlHStmt, StatementText: PSQLCHAR, 
+proc SQLPrepare*(StatementHandle: TSqlHStmt, StatementText: PSQLCHAR,
                  TextLength: TSqlInteger): TSqlSmallInt{.dynlib: odbclib, importc.}
-proc SQLCloseCursor*(StatementHandle: TSqlHStmt): TSqlSmallInt{.dynlib: odbclib, 
+proc SQLCloseCursor*(StatementHandle: TSqlHStmt): TSqlSmallInt{.dynlib: odbclib,
     importc.}
 proc SQLExecute*(StatementHandle: TSqlHStmt): TSqlSmallInt{.dynlib: odbclib, importc.}
 proc SQLFetch*(StatementHandle: TSqlHStmt): TSqlSmallInt{.dynlib: odbclib, importc.}
 proc SQLNumResultCols*(StatementHandle: TSqlHStmt, ColumnCount: var TSqlSmallInt): TSqlSmallInt{.
     dynlib: odbclib, importc.}
-proc SQLDescribeCol*(StatementHandle: TSqlHStmt, ColumnNumber: TSqlUSmallInt, 
-                     ColumnName: PSQLCHAR, BufferLength: TSqlSmallInt, 
-                     NameLength: var TSqlSmallInt, DataType: var TSqlSmallInt, 
-                     ColumnSize: var TSqlUInteger, 
+proc SQLDescribeCol*(StatementHandle: TSqlHStmt, ColumnNumber: TSqlUSmallInt,
+                     ColumnName: PSQLCHAR, BufferLength: TSqlSmallInt,
+                     NameLength: var TSqlSmallInt, DataType: var TSqlSmallInt,
+                     ColumnSize: var TSqlUInteger,
                      DecimalDigits: var TSqlSmallInt, Nullable: var TSqlSmallInt): TSqlSmallInt{.
     dynlib: odbclib, importc.}
-proc SQLFetchScroll*(StatementHandle: TSqlHStmt, FetchOrientation: TSqlSmallInt, 
-                     FetchOffset: TSqlInteger): TSqlSmallInt{.dynlib: odbclib, 
+proc SQLFetchScroll*(StatementHandle: TSqlHStmt, FetchOrientation: TSqlSmallInt,
+                     FetchOffset: TSqlInteger): TSqlSmallInt{.dynlib: odbclib,
     importc.}
-proc SQLExtendedFetch*(hstmt: TSqlHStmt, fFetchType: TSqlUSmallInt, 
-                       irow: TSqlInteger, pcrow: PSQLUINTEGER, 
-                       rgfRowStatus: PSQLUSMALLINT): TSqlSmallInt{.dynlib: odbclib, 
+proc SQLExtendedFetch*(hstmt: TSqlHStmt, fFetchType: TSqlUSmallInt,
+                       irow: TSqlInteger, pcrow: PSQLUINTEGER,
+                       rgfRowStatus: PSQLUSMALLINT): TSqlSmallInt{.dynlib: odbclib,
     importc.}
-proc SQLGetData*(StatementHandle: TSqlHStmt, ColumnNumber: TSqlUSmallInt, 
-                 TargetType: TSqlSmallInt, TargetValue: TSqlPointer, 
+proc SQLGetData*(StatementHandle: TSqlHStmt, ColumnNumber: TSqlUSmallInt,
+                 TargetType: TSqlSmallInt, TargetValue: TSqlPointer,
                  BufferLength: TSqlInteger, StrLen_or_Ind: PSQLINTEGER): TSqlSmallInt{.
     dynlib: odbclib, importc.}
-proc SQLSetStmtAttr*(StatementHandle: TSqlHStmt, Attribute: TSqlInteger, 
+proc SQLSetStmtAttr*(StatementHandle: TSqlHStmt, Attribute: TSqlInteger,
                      Value: TSqlPointer, StringLength: TSqlInteger): TSqlSmallInt{.
     dynlib: odbclib, importc.}
-proc SQLGetStmtAttr*(StatementHandle: TSqlHStmt, Attribute: TSqlInteger, 
-                     Value: TSqlPointer, BufferLength: TSqlInteger, 
-                     StringLength: PSQLINTEGER): TSqlSmallInt{.dynlib: odbclib, 
+proc SQLGetStmtAttr*(StatementHandle: TSqlHStmt, Attribute: TSqlInteger,
+                     Value: TSqlPointer, BufferLength: TSqlInteger,
+                     StringLength: PSQLINTEGER): TSqlSmallInt{.dynlib: odbclib,
     importc.}
-proc SQLGetInfo*(ConnectionHandle: TSqlHDBC, InfoType: TSqlUSmallInt, 
-                 InfoValue: TSqlPointer, BufferLength: TSqlSmallInt, 
-                 StringLength: PSQLSMALLINT): TSqlSmallInt{.dynlib: odbclib, 
+proc SQLGetInfo*(ConnectionHandle: TSqlHDBC, InfoType: TSqlUSmallInt,
+                 InfoValue: TSqlPointer, BufferLength: TSqlSmallInt,
+                 StringLength: PSQLSMALLINT): TSqlSmallInt{.dynlib: odbclib,
     importc.}
 proc SQLBulkOperations*(StatementHandle: TSqlHStmt, Operation: TSqlSmallInt): TSqlSmallInt{.
     dynlib: odbclib, importc.}
-proc SQLPutData*(StatementHandle: TSqlHStmt, Data: TSqlPointer, 
+proc SQLPutData*(StatementHandle: TSqlHStmt, Data: TSqlPointer,
                  StrLen_or_Ind: TSqlInteger): TSqlSmallInt{.dynlib: odbclib, importc.}
-proc SQLBindCol*(StatementHandle: TSqlHStmt, ColumnNumber: TSqlUSmallInt, 
-                 TargetType: TSqlSmallInt, TargetValue: TSqlPointer, 
+proc SQLBindCol*(StatementHandle: TSqlHStmt, ColumnNumber: TSqlUSmallInt,
+                 TargetType: TSqlSmallInt, TargetValue: TSqlPointer,
                  BufferLength: TSqlInteger, StrLen_or_Ind: PSQLINTEGER): TSqlSmallInt{.
     dynlib: odbclib, importc.}
-proc SQLSetPos*(hstmt: TSqlHStmt, irow: TSqlUSmallInt, fOption: TSqlUSmallInt, 
+proc SQLSetPos*(hstmt: TSqlHStmt, irow: TSqlUSmallInt, fOption: TSqlUSmallInt,
                 fLock: TSqlUSmallInt): TSqlSmallInt{.dynlib: odbclib, importc.}
-proc SQLDataSources*(EnvironmentHandle: TSqlHEnv, Direction: TSqlUSmallInt, 
-                     ServerName: PSQLCHAR, BufferLength1: TSqlSmallInt, 
-                     NameLength1: PSQLSMALLINT, Description: PSQLCHAR, 
+proc SQLDataSources*(EnvironmentHandle: TSqlHEnv, Direction: TSqlUSmallInt,
+                     ServerName: PSQLCHAR, BufferLength1: TSqlSmallInt,
+                     NameLength1: PSQLSMALLINT, Description: PSQLCHAR,
                      BufferLength2: TSqlSmallInt, NameLength2: PSQLSMALLINT): TSqlSmallInt{.
     dynlib: odbclib, importc.}
-proc SQLDrivers*(EnvironmentHandle: TSqlHEnv, Direction: TSqlUSmallInt, 
-                 DriverDescription: PSQLCHAR, BufferLength1: TSqlSmallInt, 
-                 DescriptionLength1: PSQLSMALLINT, DriverAttributes: PSQLCHAR, 
+proc SQLDrivers*(EnvironmentHandle: TSqlHEnv, Direction: TSqlUSmallInt,
+                 DriverDescription: PSQLCHAR, BufferLength1: TSqlSmallInt,
+                 DescriptionLength1: PSQLSMALLINT, DriverAttributes: PSQLCHAR,
                  BufferLength2: TSqlSmallInt, AttributesLength2: PSQLSMALLINT): TSqlSmallInt{.
     dynlib: odbclib, importc.}
-proc SQLSetConnectAttr*(ConnectionHandle: TSqlHDBC, Attribute: TSqlInteger, 
+proc SQLSetConnectAttr*(ConnectionHandle: TSqlHDBC, Attribute: TSqlInteger,
                         Value: TSqlPointer, StringLength: TSqlInteger): TSqlSmallInt{.
     dynlib: odbclib, importc.}
-proc SQLGetCursorName*(StatementHandle: TSqlHStmt, CursorName: PSQLCHAR, 
+proc SQLGetCursorName*(StatementHandle: TSqlHStmt, CursorName: PSQLCHAR,
                        BufferLength: TSqlSmallInt, NameLength: PSQLSMALLINT): TSqlSmallInt{.
     dynlib: odbclib, importc.}
-proc SQLSetCursorName*(StatementHandle: TSqlHStmt, CursorName: PSQLCHAR, 
-                       NameLength: TSqlSmallInt): TSqlSmallInt{.dynlib: odbclib, 
+proc SQLSetCursorName*(StatementHandle: TSqlHStmt, CursorName: PSQLCHAR,
+                       NameLength: TSqlSmallInt): TSqlSmallInt{.dynlib: odbclib,
     importc.}
 proc SQLRowCount*(StatementHandle: TSqlHStmt, RowCount: var TSqlInteger): TSqlSmallInt{.
     dynlib: odbclib, importc.}
-proc SQLBindParameter*(hstmt: TSqlHStmt, ipar: TSqlUSmallInt, 
-                       fParamType: TSqlSmallInt, fCType: TSqlSmallInt, 
-                       fSqlType: TSqlSmallInt, cbColDef: TSqlUInteger, 
-                       ibScale: TSqlSmallInt, rgbValue: TSqlPointer, 
+proc SQLBindParameter*(hstmt: TSqlHStmt, ipar: TSqlUSmallInt,
+                       fParamType: TSqlSmallInt, fCType: TSqlSmallInt,
+                       fSqlType: TSqlSmallInt, cbColDef: TSqlUInteger,
+                       ibScale: TSqlSmallInt, rgbValue: TSqlPointer,
                        cbValueMax: TSqlInteger, pcbValue: PSQLINTEGER): TSqlSmallInt{.
     dynlib: odbclib, importc.}
 proc SQLFreeStmt*(StatementHandle: TSqlHStmt, Option: TSqlUSmallInt): TSqlSmallInt{.
     dynlib: odbclib, importc.}
-proc SQLColAttribute*(StatementHandle: TSqlHStmt, ColumnNumber: TSqlUSmallInt, 
-                      FieldIdentifier: TSqlUSmallInt, 
-                      CharacterAttribute: PSQLCHAR, BufferLength: TSqlSmallInt, 
-                      StringLength: PSQLSMALLINT, 
+proc SQLColAttribute*(StatementHandle: TSqlHStmt, ColumnNumber: TSqlUSmallInt,
+                      FieldIdentifier: TSqlUSmallInt,
+                      CharacterAttribute: PSQLCHAR, BufferLength: TSqlSmallInt,
+                      StringLength: PSQLSMALLINT,
                       NumericAttribute: TSqlPointer): TSqlSmallInt{.
     dynlib: odbclib, importc.}
-proc SQLEndTran*(HandleType: TSqlSmallInt, Handle: TSqlHandle, 
-                 CompletionType: TSqlSmallInt): TSqlSmallInt{.dynlib: odbclib, 
+proc SQLEndTran*(HandleType: TSqlSmallInt, Handle: TSqlHandle,
+                 CompletionType: TSqlSmallInt): TSqlSmallInt{.dynlib: odbclib,
     importc.}
-proc SQLTables*(hstmt: TSqlHStmt, szTableQualifier: PSQLCHAR, 
-                cbTableQualifier: TSqlSmallInt, szTableOwner: PSQLCHAR, 
-                cbTableOwner: TSqlSmallInt, szTableName: PSQLCHAR, 
-                cbTableName: TSqlSmallInt, szTableType: PSQLCHAR, 
+proc SQLTables*(hstmt: TSqlHStmt, szTableQualifier: PSQLCHAR,
+                cbTableQualifier: TSqlSmallInt, szTableOwner: PSQLCHAR,
+                cbTableOwner: TSqlSmallInt, szTableName: PSQLCHAR,
+                cbTableName: TSqlSmallInt, szTableType: PSQLCHAR,
                 cbTableType: TSqlSmallInt): TSqlSmallInt{.dynlib: odbclib, importc.}
-proc SQLColumns*(hstmt: TSqlHStmt, szTableQualifier: PSQLCHAR, 
-                 cbTableQualifier: TSqlSmallInt, szTableOwner: PSQLCHAR, 
-                 cbTableOwner: TSqlSmallInt, szTableName: PSQLCHAR, 
-                 cbTableName: TSqlSmallInt, szColumnName: PSQLCHAR, 
+proc SQLColumns*(hstmt: TSqlHStmt, szTableQualifier: PSQLCHAR,
+                 cbTableQualifier: TSqlSmallInt, szTableOwner: PSQLCHAR,
+                 cbTableOwner: TSqlSmallInt, szTableName: PSQLCHAR,
+                 cbTableName: TSqlSmallInt, szColumnName: PSQLCHAR,
                  cbColumnName: TSqlSmallInt): TSqlSmallInt{.dynlib: odbclib, importc.}
-proc SQLSpecialColumns*(StatementHandle: TSqlHStmt, IdentifierType: TSqlUSmallInt, 
-                        CatalogName: PSQLCHAR, NameLength1: TSqlSmallInt, 
-                        SchemaName: PSQLCHAR, NameLength2: TSqlSmallInt, 
-                        TableName: PSQLCHAR, NameLength3: TSqlSmallInt, 
-                        Scope: TSqlUSmallInt, 
+proc SQLSpecialColumns*(StatementHandle: TSqlHStmt, IdentifierType: TSqlUSmallInt,
+                        CatalogName: PSQLCHAR, NameLength1: TSqlSmallInt,
+                        SchemaName: PSQLCHAR, NameLength2: TSqlSmallInt,
+                        TableName: PSQLCHAR, NameLength3: TSqlSmallInt,
+                        Scope: TSqlUSmallInt,
                         Nullable: TSqlUSmallInt): TSqlSmallInt{.
     dynlib: odbclib, importc.}
-proc SQLProcedures*(hstmt: TSqlHStmt, szTableQualifier: PSQLCHAR, 
-                    cbTableQualifier: TSqlSmallInt, szTableOwner: PSQLCHAR, 
-                    cbTableOwner: TSqlSmallInt, szTableName: PSQLCHAR, 
-                    cbTableName: TSqlSmallInt): TSqlSmallInt{.dynlib: odbclib, 
+proc SQLProcedures*(hstmt: TSqlHStmt, szTableQualifier: PSQLCHAR,
+                    cbTableQualifier: TSqlSmallInt, szTableOwner: PSQLCHAR,
+                    cbTableOwner: TSqlSmallInt, szTableName: PSQLCHAR,
+                    cbTableName: TSqlSmallInt): TSqlSmallInt{.dynlib: odbclib,
     importc.}
-proc SQLPrimaryKeys*(hstmt: TSqlHStmt, CatalogName: PSQLCHAR, 
-                     NameLength1: TSqlSmallInt, SchemaName: PSQLCHAR, 
-                     NameLength2: TSqlSmallInt, TableName: PSQLCHAR, 
-                     NameLength3: TSqlSmallInt): TSqlSmallInt{.dynlib: odbclib, 
+proc SQLPrimaryKeys*(hstmt: TSqlHStmt, CatalogName: PSQLCHAR,
+                     NameLength1: TSqlSmallInt, SchemaName: PSQLCHAR,
+                     NameLength2: TSqlSmallInt, TableName: PSQLCHAR,
+                     NameLength3: TSqlSmallInt): TSqlSmallInt{.dynlib: odbclib,
     importc.}
-proc SQLProcedureColumns*(hstmt: TSqlHStmt, CatalogName: PSQLCHAR, 
-                          NameLength1: TSqlSmallInt, SchemaName: PSQLCHAR, 
-                          NameLength2: TSqlSmallInt, ProcName: PSQLCHAR, 
-                          NameLength3: TSqlSmallInt, ColumnName: PSQLCHAR, 
-                          NameLength4: TSqlSmallInt): TSqlSmallInt{.dynlib: odbclib, 
+proc SQLProcedureColumns*(hstmt: TSqlHStmt, CatalogName: PSQLCHAR,
+                          NameLength1: TSqlSmallInt, SchemaName: PSQLCHAR,
+                          NameLength2: TSqlSmallInt, ProcName: PSQLCHAR,
+                          NameLength3: TSqlSmallInt, ColumnName: PSQLCHAR,
+                          NameLength4: TSqlSmallInt): TSqlSmallInt{.dynlib: odbclib,
     importc.}
-proc SQLStatistics*(hstmt: TSqlHStmt, CatalogName: PSQLCHAR, 
-                    NameLength1: TSqlSmallInt, SchemaName: PSQLCHAR, 
-                    NameLength2: TSqlSmallInt, TableName: PSQLCHAR, 
-                    NameLength3: TSqlSmallInt, Unique: TSqlUSmallInt, 
+proc SQLStatistics*(hstmt: TSqlHStmt, CatalogName: PSQLCHAR,
+                    NameLength1: TSqlSmallInt, SchemaName: PSQLCHAR,
+                    NameLength2: TSqlSmallInt, TableName: PSQLCHAR,
+                    NameLength3: TSqlSmallInt, Unique: TSqlUSmallInt,
                     Reserved: TSqlUSmallInt): TSqlSmallInt {.
                     dynlib: odbclib, importc.}
 

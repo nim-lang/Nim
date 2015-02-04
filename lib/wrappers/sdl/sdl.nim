@@ -271,16 +271,16 @@
 
 {.deadCodeElim: on.}
 import unsigned
-when defined(windows): 
-  const 
+when defined(windows):
+  const
     LibName = "SDL.dll"
-elif defined(macosx): 
-  const 
+elif defined(macosx):
+  const
     LibName = "libSDL-1.2.0.dylib"
-else: 
-  const 
+else:
+  const
     LibName = "libSDL.so(|.1|.0)"
-const 
+const
   MAJOR_VERSION* = 1
   MINOR_VERSION* = 2
   PATCHLEVEL* = 11         # SDL.h constants
@@ -317,17 +317,17 @@ const
   LIL_ENDIAN* = 1234
   BIG_ENDIAN* = 4321
 
-when cpuEndian == littleEndian: 
-  const 
+when cpuEndian == littleEndian:
+  const
     BYTEORDER* = LIL_ENDIAN   # Native audio byte ordering
     AUDIO_U16SYS* = AUDIO_U16LSB
     AUDIO_S16SYS* = AUDIO_S16LSB
-else: 
-  const 
+else:
+  const
     BYTEORDER* = BIG_ENDIAN   # Native audio byte ordering
     AUDIO_U16SYS* = AUDIO_U16MSB
     AUDIO_S16SYS* = AUDIO_S16MSB
-const 
+const
   MIX_MAXVOLUME* = 128        # SDL_joystick.h constants
   MAX_JOYSTICKS* = 2          # only 2 are supported in the multimedia API
   MAX_AXES* = 6               # each joystick can have up to 6 axes
@@ -345,7 +345,7 @@ const
   HAT_LEFTUP* = HAT_LEFT or HAT_UP
   HAT_LEFTDOWN* = HAT_LEFT or HAT_DOWN # SDL_events.h constants
 
-type 
+type
   TEventKind* = enum          # kind of an SDL event
     NOEVENT = 0,              # Unused (do not remove)
     ACTIVEEVENT = 1,          # Application loses/gains visibility
@@ -375,7 +375,7 @@ type
     USEREVENT = 24 # This last event is only for bounding internal arrays
                    # It is the number of bits in the event mask datatype -- int32
 
-const 
+const
   NUMEVENTS* = 32
   ALLEVENTS* = 0xFFFFFFFF
   ACTIVEEVENTMASK* = 1 shl ord(ACTIVEEVENT)
@@ -711,7 +711,7 @@ const                         # Enumeration of valid key mods (possibly OR'd tog
                          #
                          #   For information on the relationship between color spaces, see:
                          #
-                         #   
+                         #
                          #   http://www.neuro.sfc.keio.ac.jp/~aly/polygon/info/color-space-faq.html
   YV12_OVERLAY* = 0x32315659  # Planar mode: Y + V + U  (3 planes)
   IYUV_OVERLAY* = 0x56555949  # Planar mode: Y + U + V  (3 planes)
@@ -749,7 +749,7 @@ const                         # Enumeration of valid key mods (possibly OR'd tog
   GRAB_OFF* = 0
   GRAB_ON* = 1                #SDL_GRAB_FULLSCREEN // Used internally
 
-type 
+type
   THandle* = int              #SDL_types.h types
                               # Basic data types
   TBool* = enum
@@ -759,20 +759,20 @@ type
   PUInt16* = ptr uint16
   PUInt32* = ptr uint32
   PUInt64* = ptr UInt64
-  UInt64*{.final.} = object 
+  UInt64*{.final.} = object
     hi*: int32
     lo*: int32
 
   PSInt64* = ptr SInt64
-  SInt64*{.final.} = object 
+  SInt64*{.final.} = object
     hi*: int32
     lo*: int32
 
   TGrabMode* = int32         # SDL_error.h types
-  Terrorcode* = enum 
+  Terrorcode* = enum
     ENOMEM, EFREAD, EFWRITE, EFSEEK, LASTERROR
   Errorcode* = Terrorcode
-  TArg*{.final.} = object 
+  TArg*{.final.} = object
     buf*: array[0..ERR_MAX_STRLEN - 1, int8]
 
   Perror* = ptr Terror
@@ -789,11 +789,11 @@ type
     argc*: int
     args*: array[0..ERR_MAX_ARGS - 1, TArg]
 
-  TStdio*{.final.} = object 
+  TStdio*{.final.} = object
     autoclose*: int           # FILE * is only defined in Kylix so we use a simple pointer
     fp*: pointer
 
-  TMem*{.final.} = object 
+  TMem*{.final.} = object
     base*: ptr byte
     here*: ptr byte
     stop*: ptr byte
@@ -805,7 +805,7 @@ type
   TWrite* = proc (context: PRWops, thePtr: pointer, size: int, num: int): int{.
       cdecl.}
   TClose* = proc (context: PRWops): int{.cdecl.} # the variant record itself
-  TRWops*{.final.} = object 
+  TRWops*{.final.} = object
     seek*: TSeek
     read*: TRead
     write*: TWrite
@@ -813,14 +813,14 @@ type
                               # be warned! structure alignment may arise at this point
     theType*: cint
     mem*: TMem
-  
+
   RWops* = TRWops             # SDL_timer.h types
                               # Function prototype for the timer callback function
   TTimerCallback* = proc (interval: int32): int32{.cdecl.}
   TNewTimerCallback* = proc (interval: int32, param: pointer): int32{.cdecl.}
 
   PTimerID* = ptr TTimerID
-  TTimerID*{.final.} = object 
+  TTimerID*{.final.} = object
     interval*: int32
     callback*: TNewTimerCallback
     param*: pointer
@@ -849,13 +849,13 @@ type
 
   PAudioCVT* = ptr TAudioCVT
   PAudioCVTFilter* = ptr TAudioCVTFilter
-  TAudioCVTFilter*{.final.} = object 
+  TAudioCVTFilter*{.final.} = object
     cvt*: PAudioCVT
     format*: uint16
 
   PAudioCVTFilterArray* = ptr TAudioCVTFilterArray
   TAudioCVTFilterArray* = array[0..9, PAudioCVTFilter]
-  TAudioCVT*{.final.} = object 
+  TAudioCVT*{.final.} = object
     needed*: int              # Set to 1 if conversion possible
     srcFormat*: uint16       # Source audio format
     dstFormat*: uint16       # Target audio format
@@ -867,10 +867,10 @@ type
     lenRatio*: float64       # Given len, final size is len*len_ratio
     filters*: TAudioCVTFilterArray
     filterIndex*: int        # Current audio conversion function
-  
+
   TAudiostatus* = enum        # SDL_cdrom.h types
     AUDIO_STOPPED, AUDIO_PLAYING, AUDIO_PAUSED
-  TCDStatus* = enum 
+  TCDStatus* = enum
     CD_ERROR, CD_TRAYEMPTY, CD_STOPPED, CD_PLAYING, CD_PAUSED
   PCDTrack* = ptr TCDTrack
   TCDTrack*{.final.} = object  # This structure is only current as of the last call to SDL_CDStatus()
@@ -879,7 +879,7 @@ type
     unused*: uint16
     len*: int32              # Length, in frames, of this track
     offset*: int32           # Offset, in frames, from start of disk
-  
+
   PCD* = ptr TCD
   TCD*{.final.} = object      #SDL_joystick.h types
     id*: int                  # Private drive identifier
@@ -920,7 +920,7 @@ type
     buttons*: ptr byte          # Current button states
     hwdata*: PJoystickHwdata # Driver dependent information
     refCount*: int           # Reference count for multiple opens
-  
+
   Pversion* = ptr Tversion
   Tversion*{.final.} = object  # SDL_keyboard.h types
     major*: byte
@@ -946,7 +946,7 @@ type
     sym*: TKey                # SDL virtual keysym
     modifier*: TMod           # current key modifiers
     unicode*: uint16          # translated character
-  
+
   TEventAction* = enum        # Application visibility event structure
     ADDEVENT, PEEKEVENT, GETEVENT
 
@@ -956,7 +956,7 @@ type
     kind*: TEventKind
     gain*: byte              # Whether given states were gained or lost (1/0)
     state*: byte             # A mask of the focus states
-  
+
   PKeyboardEvent* = ptr TKeyboardEvent
   TKeyboardEvent*{.final.} = object  # SDL_KEYDOWN or SDL_KEYUP
                                      # Mouse motion event structure
@@ -974,7 +974,7 @@ type
     x*, y*: uint16            # The X/Y coordinates of the mouse
     xrel*: int16             # The relative motion in the X direction
     yrel*: int16             # The relative motion in the Y direction
-  
+
   PMouseButtonEvent* = ptr TMouseButtonEvent
   TMouseButtonEvent*{.final.} = object  # SDL_MOUSEBUTTONDOWN or SDL_MOUSEBUTTONUP
                                         # Joystick axis motion event structure
@@ -984,7 +984,7 @@ type
     state*: byte             # SDL_PRESSED or SDL_RELEASED
     x*: uint16                # The X coordinates of the mouse at press time
     y*: uint16                # The Y coordinates of the mouse at press time
-  
+
   PJoyAxisEvent* = ptr TJoyAxisEvent
   TJoyAxisEvent*{.final.} = object  # SDL_JOYAXISMOTION
                                     # Joystick trackball motion event structure
@@ -992,7 +992,7 @@ type
     which*: byte             # The joystick device index
     axis*: byte              # The joystick axis index
     value*: int16            # The axis value (range: -32768 to 32767)
-  
+
   PJoyBallEvent* = ptr TJoyBallEvent
   TJoyBallEvent*{.final.} = object  # SDL_JOYAVBALLMOTION
                                     # Joystick hat position change event structure
@@ -1001,7 +1001,7 @@ type
     ball*: byte              # The joystick trackball index
     xrel*: int16             # The relative motion in the X direction
     yrel*: int16             # The relative motion in the Y direction
-  
+
   PJoyHatEvent* = ptr TJoyHatEvent
   TJoyHatEvent*{.final.} = object  # SDL_JOYHATMOTION */
                                    # Joystick button event structure
@@ -1013,7 +1013,7 @@ type
                              # 7   0   3
                              # 6   5   4
                              # Note that zero means the POV is centered.
-  
+
   PJoyButtonEvent* = ptr TJoyButtonEvent
   TJoyButtonEvent*{.final.} = object  # SDL_JOYBUTTONDOWN or SDL_JOYBUTTONUP
                                       # The "window resized" event
@@ -1024,66 +1024,66 @@ type
     which*: byte             # The joystick device index
     button*: byte            # The joystick button index
     state*: byte             # SDL_PRESSED or SDL_RELEASED
-  
+
   PResizeEvent* = ptr TResizeEvent
   TResizeEvent*{.final.} = object  # SDL_VIDEORESIZE
                                    # A user-defined event type
     kind*: TEventKind
     w*: cint                   # New width
     h*: cint                   # New height
-  
+
   PUserEvent* = ptr TUserEvent
   TUserEvent*{.final.} = object  # SDL_USEREVENT through SDL_NUMEVENTS-1
     kind*: TEventKind
     code*: cint                # User defined event code
     data1*: pointer           # User defined data pointer
-    data2*: pointer           # User defined data pointer 
-  
+    data2*: pointer           # User defined data pointer
 
-when defined(Unix): 
+
+when defined(Unix):
   type                        #These are the various supported subsystems under UNIX
-    TSysWm* = enum 
+    TSysWm* = enum
       SYSWM_X11
-when defined(WINDOWS): 
-  type 
+when defined(WINDOWS):
+  type
     PSysWMmsg* = ptr TSysWMmsg
-    TSysWMmsg*{.final.} = object 
+    TSysWMmsg*{.final.} = object
       version*: Tversion
       hwnd*: THandle          # The window for the message
       msg*: int               # The type of message
       wParam*: int32         # WORD message parameter
       lParam*: int32          # LONG message parameter
-    
-elif defined(Unix): 
+
+elif defined(Unix):
   type                        # The Linux custom event structure
     PSysWMmsg* = ptr TSysWMmsg
-    TSysWMmsg*{.final.} = object 
+    TSysWMmsg*{.final.} = object
       version*: Tversion
       subsystem*: TSysWm
-      when false: 
+      when false:
           event*: TXEvent
 
-    
-else: 
+
+else:
   type                        # The generic custom event structure
     PSysWMmsg* = ptr TSysWMmsg
-    TSysWMmsg*{.final.} = object 
+    TSysWMmsg*{.final.} = object
       version*: Tversion
       data*: int
 
 # The Windows custom window manager information structure
 
-when defined(WINDOWS): 
-  type 
+when defined(WINDOWS):
+  type
     PSysWMinfo* = ptr TSysWMinfo
-    TSysWMinfo*{.final.} = object 
+    TSysWMinfo*{.final.} = object
       version*: Tversion
       window*: THandle        # The display window
-    
-elif defined(Unix): 
-  type 
-    TX11*{.final.} = object 
-      when false: 
+
+elif defined(Unix):
+  type
+    TX11*{.final.} = object
+      when false:
           display*: PDisplay  # The X11 display
           window*: TWindow    # The X11 display window
                               # These locking functions should be called around
@@ -1094,25 +1094,25 @@ elif defined(Unix):
           unlock_func*: pointer # Introduced in SDL 1.0.2
           fswindow*: TWindow  # The X11 fullscreen window
           wmwindow*: TWindow  # The X11 managed input window
-        
-    
-  type 
+
+
+  type
     PSysWMinfo* = ptr TSysWMinfo
-    TSysWMinfo*{.final.} = object 
+    TSysWMinfo*{.final.} = object
       version*: Tversion
       subsystem*: TSysWm
       X11*: TX11
 
-else: 
+else:
   type # The generic custom window manager information structure
     PSysWMinfo* = ptr TSysWMinfo
-    TSysWMinfo*{.final.} = object 
+    TSysWMinfo*{.final.} = object
       version*: Tversion
       data*: int
 
-type 
+type
   PSysWMEvent* = ptr TSysWMEvent
-  TSysWMEvent*{.final.} = object 
+  TSysWMEvent*{.final.} = object
     kind*: TEventKind
     msg*: PSysWMmsg
 
@@ -1125,21 +1125,21 @@ type
     kind*: TEventKind
 
   PEvent* = ptr TEvent
-  TEvent*{.final.} = object  
+  TEvent*{.final.} = object
     kind*: TEventKind
     pad: array[0..19, byte]
-  
+
   TEventFilter* = proc (event: PEvent): int{.cdecl.} # SDL_video.h types
                                                      # Useful data types
   PPSDL_Rect* = ptr PRect
   PRect* = ptr TRect
-  TRect*{.final.} = object 
+  TRect*{.final.} = object
     x*, y*: int16
     w*, h*: uint16
 
   Rect* = TRect
   PColor* = ptr TColor
-  TColor*{.final.} = object 
+  TColor*{.final.} = object
     r*: byte
     g*: byte
     b*: byte
@@ -1171,7 +1171,7 @@ type
     aMask*: int32
     colorkey*: int32         # RGB color key information
     alpha*: byte             # Alpha value information (per-surface alpha)
-  
+
   PBlitInfo* = ptr TBlitInfo
   TBlitInfo*{.final.} = object  # typedef for private surface blitting functions
     sPixels*: ptr byte
@@ -1188,7 +1188,7 @@ type
     dst*: PPixelFormat
 
   PSurface* = ptr TSurface
-  TBlit* = proc (src: PSurface, srcrect: PRect, 
+  TBlit* = proc (src: PSurface, srcrect: PRect,
                  dst: PSurface, dstrect: PRect): int{.cdecl.}
   TSurface*{.final.} = object  # Useful for determining the video hardware capabilities
     flags*: int32            # Read-only
@@ -1211,14 +1211,14 @@ type
 
   PVideoInfo* = ptr TVideoInfo
   TVideoInfo*{.final.} = object  # The YUV hardware video overlay
-    hwAvailable*: byte 
-    blitHw*: byte 
+    hwAvailable*: byte
+    blitHw*: byte
     unusedBits3*: byte       # Unused at this point
     videoMem*: int32        # The total amount of video memory (in K)
     vfmt*: PPixelFormat       # Value: The format of the video surface
     currentW*: int32        # Value: The current video mode width
     currentH*: int32        # Value: The current video mode height
-  
+
   POverlay* = ptr TOverlay
   TOverlay*{.final.} = object  # Public enumeration for setting the OpenGL window attributes.
     format*: int32           # Overlay format
@@ -1227,12 +1227,12 @@ type
     pitches*: PUInt16         # An array of pitches, one for each plane. Pitch is the length of a row in bytes.
     pixels*: ptr ptr byte # An array of pointers to the data of each plane. The overlay should be locked before these pointers are used.
     hwOverlay*: int32    # This will be set to 1 if the overlay is hardware accelerated.
-  
-  TGLAttr* = enum 
-    GL_RED_SIZE, GL_GREEN_SIZE, GL_BLUE_SIZE, GL_ALPHA_SIZE, GL_BUFFER_SIZE, 
-    GL_DOUBLEBUFFER, GL_DEPTH_SIZE, GL_STENCIL_SIZE, GL_ACCUM_RED_SIZE, 
-    GL_ACCUM_GREEN_SIZE, GL_ACCUM_BLUE_SIZE, GL_ACCUM_ALPHA_SIZE, GL_STEREO, 
-    GL_MULTISAMPLEBUFFERS, GL_MULTISAMPLESAMPLES, GL_ACCELERATED_VISUAL, 
+
+  TGLAttr* = enum
+    GL_RED_SIZE, GL_GREEN_SIZE, GL_BLUE_SIZE, GL_ALPHA_SIZE, GL_BUFFER_SIZE,
+    GL_DOUBLEBUFFER, GL_DEPTH_SIZE, GL_STENCIL_SIZE, GL_ACCUM_RED_SIZE,
+    GL_ACCUM_GREEN_SIZE, GL_ACCUM_BLUE_SIZE, GL_ACCUM_ALPHA_SIZE, GL_STEREO,
+    GL_MULTISAMPLEBUFFERS, GL_MULTISAMPLESAMPLES, GL_ACCELERATED_VISUAL,
     GL_SWAP_CONTROL
   PCursor* = ptr TCursor
   TCursor*{.final.} = object  # SDL_mutex.h types
@@ -1242,23 +1242,23 @@ type
     mask*: ptr byte             # B/W cursor mask
     save*: array[1..2, ptr byte] # Place to save cursor area
     wmCursor*: pointer       # Window-manager cursor
-  
 
-type 
+
+type
   PMutex* = ptr TMutex
-  TMutex*{.final.} = object 
+  TMutex*{.final.} = object
   Psemaphore* = ptr Tsemaphore
-  Tsemaphore*{.final.} = object 
+  Tsemaphore*{.final.} = object
   PSem* = ptr TSem
   TSem* = Tsemaphore
   PCond* = ptr TCond
   TCond*{.final.} = object    # SDL_thread.h types
 
-when defined(WINDOWS): 
-  type 
+when defined(WINDOWS):
+  type
     TSYS_ThreadHandle* = THandle
-when defined(Unix): 
-  type 
+when defined(Unix):
+  type
     TSYS_ThreadHandle* = pointer
 type                          # This is the system-independent thread info structure
   PThread* = ptr TThread
@@ -1311,22 +1311,22 @@ evconv(evSysWM, PSysWMEvent, {SYSWMEVENT})
 
 proc init*(flags: int32): int{.cdecl, importc: "SDL_Init", dynlib: LibName.}
   # This function initializes specific SDL subsystems
-proc initSubSystem*(flags: int32): int{.cdecl, importc: "SDL_InitSubSystem", 
+proc initSubSystem*(flags: int32): int{.cdecl, importc: "SDL_InitSubSystem",
     dynlib: LibName.}
   # This function cleans up specific SDL subsystems
-proc quitSubSystem*(flags: int32){.cdecl, importc: "SDL_QuitSubSystem", 
+proc quitSubSystem*(flags: int32){.cdecl, importc: "SDL_QuitSubSystem",
                                     dynlib: LibName.}
   # This function returns mask of the specified subsystems which have
   #  been initialized.
   #  If 'flags' is 0, it returns a mask of all initialized subsystems.
-proc wasInit*(flags: int32): int32{.cdecl, importc: "SDL_WasInit", 
+proc wasInit*(flags: int32): int32{.cdecl, importc: "SDL_WasInit",
                                       dynlib: LibName.}
   # This function cleans up all initialized subsystems and unloads the
   #  dynamically linked library.  You should call it upon all exit conditions.
 proc quit*(){.cdecl, importc: "SDL_Quit", dynlib: LibName.}
-when defined(WINDOWS): 
+when defined(WINDOWS):
   # This should be called from your WinMain() function, if any
-  proc registerApp*(name: cstring, style: int32, hInst: pointer): int{.cdecl, 
+  proc registerApp*(name: cstring, style: int32, hInst: pointer): int{.cdecl,
       importc: "SDL_RegisterApp", dynlib: LibName.}
 proc tableSize*(table: cstring): int
   #------------------------------------------------------------------------------
@@ -1342,15 +1342,15 @@ when not (defined(WINDOWS)):
   # io handling
   #------------------------------------------------------------------------------
   # Functions to create SDL_RWops structures from various data sources
-proc rwFromFile*(filename, mode: cstring): PRWops{.cdecl, 
+proc rwFromFile*(filename, mode: cstring): PRWops{.cdecl,
     importc: "SDL_RWFromFile", dynlib: LibName.}
 proc freeRW*(area: PRWops){.cdecl, importc: "SDL_FreeRW", dynlib: LibName.}
   #fp is FILE *fp ???
-proc rwFromFP*(fp: pointer, autoclose: int): PRWops{.cdecl, 
+proc rwFromFP*(fp: pointer, autoclose: int): PRWops{.cdecl,
     importc: "SDL_RWFromFP", dynlib: LibName.}
-proc rwFromMem*(mem: pointer, size: int): PRWops{.cdecl, 
+proc rwFromMem*(mem: pointer, size: int): PRWops{.cdecl,
     importc: "SDL_RWFromMem", dynlib: LibName.}
-proc rwFromConstMem*(mem: pointer, size: int): PRWops{.cdecl, 
+proc rwFromConstMem*(mem: pointer, size: int): PRWops{.cdecl,
     importc: "SDL_RWFromConstMem", dynlib: LibName.}
 proc allocRW*(): PRWops{.cdecl, importc: "SDL_AllocRW", dynlib: LibName.}
 proc rwSeek*(context: PRWops, offset: int, whence: int): int
@@ -1372,9 +1372,9 @@ proc addTimer*(interval: int32, callback: TNewTimerCallback, param: pointer): PT
     cdecl, importc: "SDL_AddTimer", dynlib: LibName.}
   # Remove one of the multiple timers knowing its ID.
   # Returns a boolean value indicating success.
-proc removeTimer*(t: PTimerID): TBool{.cdecl, importc: "SDL_RemoveTimer", 
+proc removeTimer*(t: PTimerID): TBool{.cdecl, importc: "SDL_RemoveTimer",
                                        dynlib: LibName.}
-proc setTimer*(interval: int32, callback: TTimerCallback): int{.cdecl, 
+proc setTimer*(interval: int32, callback: TTimerCallback): int{.cdecl,
     importc: "SDL_SetTimer", dynlib: LibName.}
   #------------------------------------------------------------------------------
   # audio-routines
@@ -1382,13 +1382,13 @@ proc setTimer*(interval: int32, callback: TTimerCallback): int{.cdecl,
   # These functions are used internally, and should not be used unless you
   #  have a specific need to specify the audio driver you want to use.
   #  You should normally use SDL_Init() or SDL_InitSubSystem().
-proc audioInit*(driverName: cstring): int{.cdecl, importc: "SDL_AudioInit", 
+proc audioInit*(driverName: cstring): int{.cdecl, importc: "SDL_AudioInit",
     dynlib: LibName.}
 proc audioQuit*(){.cdecl, importc: "SDL_AudioQuit", dynlib: LibName.}
   # This function fills the given character buffer with the name of the
   #  current audio driver, and returns a pointer to it if the audio driver has
   #  been initialized.  It returns NULL if no driver has been initialized.
-proc audioDriverName*(namebuf: cstring, maxlen: int): cstring{.cdecl, 
+proc audioDriverName*(namebuf: cstring, maxlen: int): cstring{.cdecl,
     importc: "SDL_AudioDriverName", dynlib: LibName.}
   # This function opens the audio device with the desired parameters, and
   #  returns 0 if successful, placing the actual hardware parameters in the
@@ -1429,17 +1429,17 @@ proc audioDriverName*(namebuf: cstring, maxlen: int): cstring{.cdecl,
   #  for your audio callback function to be called.  Since the audio driver
   #  may modify the requested size of the audio buffer, you should allocate
   #  any local mixing buffers after you open the audio device.
-proc openAudio*(desired, obtained: PAudioSpec): int{.cdecl, 
+proc openAudio*(desired, obtained: PAudioSpec): int{.cdecl,
     importc: "SDL_OpenAudio", dynlib: LibName.}
   # Get the current audio state:
-proc getAudioStatus*(): TAudiostatus{.cdecl, importc: "SDL_GetAudioStatus", 
+proc getAudioStatus*(): TAudiostatus{.cdecl, importc: "SDL_GetAudioStatus",
                                       dynlib: LibName.}
   # This function pauses and unpauses the audio callback processing.
   #  It should be called with a parameter of 0 after opening the audio
   #  device to start playing sound.  This is so you can safely initialize
   #  data for your callback function after opening the audio device.
   #  Silence will be written to the audio device during the pause.
-proc pauseAudio*(pauseOn: int){.cdecl, importc: "SDL_PauseAudio", 
+proc pauseAudio*(pauseOn: int){.cdecl, importc: "SDL_PauseAudio",
                                  dynlib: LibName.}
   # This function loads a WAVE from the data source, automatically freeing
   #  that source if 'freesrc' is non-zero.  For example, to load a WAVE file,
@@ -1456,11 +1456,11 @@ proc pauseAudio*(pauseOn: int){.cdecl, importc: "SDL_PauseAudio",
   #  This function returns NULL and sets the SDL error message if the
   #  wave file cannot be opened, uses an unknown data format, or is
   #  corrupt.  Currently raw and MS-ADPCM WAVE files are supported.
-proc loadWAV_RW*(src: PRWops, freesrc: int, spec: PAudioSpec, audioBuf: ptr byte, 
-                 audiolen: PUInt32): PAudioSpec{.cdecl, 
+proc loadWAV_RW*(src: PRWops, freesrc: int, spec: PAudioSpec, audioBuf: ptr byte,
+                 audiolen: PUInt32): PAudioSpec{.cdecl,
     importc: "SDL_LoadWAV_RW", dynlib: LibName.}
   # Compatibility convenience function -- loads a WAV from a file
-proc loadWAV*(filename: cstring, spec: PAudioSpec, audioBuf: ptr byte, 
+proc loadWAV*(filename: cstring, spec: PAudioSpec, audioBuf: ptr byte,
               audiolen: PUInt32): PAudioSpec
   # This function frees data previously allocated with SDL_LoadWAV_RW()
 proc freeWAV*(audioBuf: ptr byte){.cdecl, importc: "SDL_FreeWAV", dynlib: LibName.}
@@ -1469,9 +1469,9 @@ proc freeWAV*(audioBuf: ptr byte){.cdecl, importc: "SDL_FreeWAV", dynlib: LibNam
   #  by SDL_ConvertAudio() to convert a buffer of audio data from one format
   #  to the other.
   #  This function returns 0, or -1 if there was an error.
-proc buildAudioCVT*(cvt: PAudioCVT, srcFormat: uint16, srcChannels: byte, 
-                    srcRate: int, dstFormat: uint16, dstChannels: byte, 
-                    dstRate: int): int{.cdecl, importc: "SDL_BuildAudioCVT", 
+proc buildAudioCVT*(cvt: PAudioCVT, srcFormat: uint16, srcChannels: byte,
+                    srcRate: int, dstFormat: uint16, dstChannels: byte,
+                    dstRate: int): int{.cdecl, importc: "SDL_BuildAudioCVT",
     dynlib: LibName.}
   # Once you have initialized the 'cvt' structure using SDL_BuildAudioCVT(),
   #  created an audio buffer cvt->buf, and filled it with cvt->len bytes of
@@ -1480,14 +1480,14 @@ proc buildAudioCVT*(cvt: PAudioCVT, srcFormat: uint16, srcChannels: byte,
   #  The data conversion may expand the size of the audio data, so the buffer
   #  cvt->buf should be allocated after the cvt structure is initialized by
   #  SDL_BuildAudioCVT(), and should be cvt->len*cvt->len_mult bytes long.
-proc convertAudio*(cvt: PAudioCVT): int{.cdecl, importc: "SDL_ConvertAudio", 
+proc convertAudio*(cvt: PAudioCVT): int{.cdecl, importc: "SDL_ConvertAudio",
     dynlib: LibName.}
   # This takes two audio buffers of the playing audio format and mixes
   #  them, performing addition, volume adjustment, and overflow clipping.
   #  The volume ranges from 0 - 128, and should be set to SDL_MIX_MAXVOLUME
   #  for full audio volume.  Note this does not change hardware volume.
   #  This is provided for convenience -- you can mix your own audio data.
-proc mixAudio*(dst, src: ptr byte, length: int32, volume: int){.cdecl, 
+proc mixAudio*(dst, src: ptr byte, length: int32, volume: int){.cdecl,
     importc: "SDL_MixAudio", dynlib: LibName.}
   # The lock manipulated by these functions protects the callback function.
   #  During a LockAudio/UnlockAudio pair, you can be guaranteed that the
@@ -1518,7 +1518,7 @@ proc cdOpen*(drive: int): PCD{.cdecl, importc: "SDL_CDOpen", dynlib: LibName.}
   # This function returns the current status of the given drive.
   #  If the drive has a CD in it, the table of contents of the CD and current
   #  play position of the CD will be stored in the SDL_CD structure.
-proc cdStatus*(cdrom: PCD): TCDStatus{.cdecl, importc: "SDL_CDStatus", 
+proc cdStatus*(cdrom: PCD): TCDStatus{.cdecl, importc: "SDL_CDStatus",
                                        dynlib: LibName.}
   #  Play the given CD starting at 'start_track' and 'start_frame' for 'ntracks'
   #   tracks and 'nframes' frames.  If both 'ntrack' and 'nframe' are 0, play
@@ -1541,12 +1541,12 @@ proc cdStatus*(cdrom: PCD): TCDStatus{.cdecl, importc: "SDL_CDStatus",
   #    SDL_CDPlayTracks(cdrom, 0, 0, 2, 10);
   #
   #   This function returns 0, or -1 if there was an error.
-proc cdPlayTracks*(cdrom: PCD, startTrack: int, startFrame: int, ntracks: int, 
-                   nframes: int): int{.cdecl, importc: "SDL_CDPlayTracks", 
+proc cdPlayTracks*(cdrom: PCD, startTrack: int, startFrame: int, ntracks: int,
+                   nframes: int): int{.cdecl, importc: "SDL_CDPlayTracks",
                                        dynlib: LibName.}
   #  Play the given CD starting at 'start' frame for 'length' frames.
   #   It returns 0, or -1 if there was an error.
-proc cdPlay*(cdrom: PCD, start: int, len: int): int{.cdecl, 
+proc cdPlay*(cdrom: PCD, start: int, len: int): int{.cdecl,
     importc: "SDL_CDPlay", dynlib: LibName.}
   # Pause play -- returns 0, or -1 on error
 proc cdPause*(cdrom: PCD): int{.cdecl, importc: "SDL_CDPause", dynlib: LibName.}
@@ -1565,34 +1565,34 @@ proc numJoysticks*(): int{.cdecl, importc: "SDL_NumJoysticks", dynlib: LibName.}
   # Get the implementation dependent name of a joystick.
   #  This can be called before any joysticks are opened.
   #  If no name can be found, this function returns NULL.
-proc joystickName*(index: int): cstring{.cdecl, importc: "SDL_JoystickName", 
+proc joystickName*(index: int): cstring{.cdecl, importc: "SDL_JoystickName",
     dynlib: LibName.}
   # Open a joystick for use - the index passed as an argument refers to
   #  the N'th joystick on the system.  This index is the value which will
   #  identify this joystick in future joystick events.
   #
   #  This function returns a joystick identifier, or NULL if an error occurred.
-proc joystickOpen*(index: int): PJoystick{.cdecl, importc: "SDL_JoystickOpen", 
+proc joystickOpen*(index: int): PJoystick{.cdecl, importc: "SDL_JoystickOpen",
     dynlib: LibName.}
   # Returns 1 if the joystick has been opened, or 0 if it has not.
-proc joystickOpened*(index: int): int{.cdecl, importc: "SDL_JoystickOpened", 
+proc joystickOpened*(index: int): int{.cdecl, importc: "SDL_JoystickOpened",
                                        dynlib: LibName.}
   # Get the device index of an opened joystick.
-proc joystickIndex*(joystick: PJoystick): int{.cdecl, 
+proc joystickIndex*(joystick: PJoystick): int{.cdecl,
     importc: "SDL_JoystickIndex", dynlib: LibName.}
   # Get the number of general axis controls on a joystick
-proc joystickNumAxes*(joystick: PJoystick): int{.cdecl, 
+proc joystickNumAxes*(joystick: PJoystick): int{.cdecl,
     importc: "SDL_JoystickNumAxes", dynlib: LibName.}
   # Get the number of trackballs on a joystick
   #  Joystick trackballs have only relative motion events associated
   #  with them and their state cannot be polled.
-proc joystickNumBalls*(joystick: PJoystick): int{.cdecl, 
+proc joystickNumBalls*(joystick: PJoystick): int{.cdecl,
     importc: "SDL_JoystickNumBalls", dynlib: LibName.}
   # Get the number of POV hats on a joystick
-proc joystickNumHats*(joystick: PJoystick): int{.cdecl, 
+proc joystickNumHats*(joystick: PJoystick): int{.cdecl,
     importc: "SDL_JoystickNumHats", dynlib: LibName.}
   # Get the number of buttons on a joystick
-proc joystickNumButtons*(joystick: PJoystick): int{.cdecl, 
+proc joystickNumButtons*(joystick: PJoystick): int{.cdecl,
     importc: "SDL_JoystickNumButtons", dynlib: LibName.}
   # Update the current state of the open joysticks.
   #  This is called automatically by the event loop if any joystick
@@ -1603,15 +1603,15 @@ proc joystickUpdate*(){.cdecl, importc: "SDL_JoystickUpdate", dynlib: LibName.}
   #  yourself and check the state of the joystick when you want joystick
   #  information.
   #  The state can be one of SDL_QUERY, SDL_ENABLE or SDL_IGNORE.
-proc joystickEventState*(state: int): int{.cdecl, 
+proc joystickEventState*(state: int): int{.cdecl,
     importc: "SDL_JoystickEventState", dynlib: LibName.}
   # Get the current state of an axis control on a joystick
   #  The state is a value ranging from -32768 to 32767.
   #  The axis indices start at index 0.
-proc joystickGetAxis*(joystick: PJoystick, axis: int): int16{.cdecl, 
+proc joystickGetAxis*(joystick: PJoystick, axis: int): int16{.cdecl,
     importc: "SDL_JoystickGetAxis", dynlib: LibName.}
   # The hat indices start at index 0.
-proc joystickGetHat*(joystick: PJoystick, hat: int): byte{.cdecl, 
+proc joystickGetHat*(joystick: PJoystick, hat: int): byte{.cdecl,
     importc: "SDL_JoystickGetHat", dynlib: LibName.}
   # Get the ball axis change since the last poll
   #  This returns 0, or -1 if you passed it invalid parameters.
@@ -1620,10 +1620,10 @@ proc joystickGetBall*(joystick: PJoystick, ball: int, dx: var int, dy: var int):
     cdecl, importc: "SDL_JoystickGetBall", dynlib: LibName.}
   # Get the current state of a button on a joystick
   #  The button indices start at index 0.
-proc joystickGetButton*(joystick: PJoystick, button: int): byte{.cdecl, 
+proc joystickGetButton*(joystick: PJoystick, button: int): byte{.cdecl,
     importc: "SDL_JoystickGetButton", dynlib: LibName.}
   # Close a joystick previously opened with SDL_JoystickOpen()
-proc joystickClose*(joystick: PJoystick){.cdecl, importc: "SDL_JoystickClose", 
+proc joystickClose*(joystick: PJoystick){.cdecl, importc: "SDL_JoystickClose",
     dynlib: LibName.}
   #------------------------------------------------------------------------------
   # event-handling
@@ -1643,20 +1643,20 @@ proc pumpEvents*(){.cdecl, importc: "SDL_PumpEvents", dynlib: LibName.}
   #  removed from the queue.
   #  This function returns the number of events actually stored, or -1
   #  if there was an error.  This function is thread-safe.
-proc peepEvents*(events: PEvent, numevents: int, action: TEventAction, 
-                 mask: int32): int{.cdecl, importc: "SDL_PeepEvents", 
+proc peepEvents*(events: PEvent, numevents: int, action: TEventAction,
+                 mask: int32): int{.cdecl, importc: "SDL_PeepEvents",
                                      dynlib: LibName.}
   # Polls for currently pending events, and returns 1 if there are any pending
   #   events, or 0 if there are none available.  If 'event' is not NULL, the next
   #   event is removed from the queue and stored in that area.
-proc pollEvent*(event: PEvent): int{.cdecl, importc: "SDL_PollEvent", 
+proc pollEvent*(event: PEvent): int{.cdecl, importc: "SDL_PollEvent",
                                      dynlib: LibName.}
   #  Waits indefinitely for the next available event, returning 1, or 0 if there
   #   was an error while waiting for events.  If 'event' is not NULL, the next
   #   event is removed from the queue and stored in that area.
-proc waitEvent*(event: PEvent): int{.cdecl, importc: "SDL_WaitEvent", 
+proc waitEvent*(event: PEvent): int{.cdecl, importc: "SDL_WaitEvent",
                                      dynlib: LibName.}
-proc pushEvent*(event: PEvent): int{.cdecl, importc: "SDL_PushEvent", 
+proc pushEvent*(event: PEvent): int{.cdecl, importc: "SDL_PushEvent",
                                      dynlib: LibName.}
   # If the filter returns 1, then the event will be added to the internal queue.
   #  If it returns 0, then the event will be dropped from the queue, but the
@@ -1672,11 +1672,11 @@ proc pushEvent*(event: PEvent): int{.cdecl, importc: "SDL_PushEvent",
   #  be closed, otherwise the window will remain open if possible.
   #  If the quit event is generated by an interrupt signal, it will bypass the
   #  internal queue and be delivered to the application at the next event poll.
-proc setEventFilter*(filter: TEventFilter){.cdecl, 
+proc setEventFilter*(filter: TEventFilter){.cdecl,
     importc: "SDL_SetEventFilter", dynlib: LibName.}
   # Return the current event filter - can be used to "chain" filters.
   #  If there is no event filter set, this function returns NULL.
-proc getEventFilter*(): TEventFilter{.cdecl, importc: "SDL_GetEventFilter", 
+proc getEventFilter*(): TEventFilter{.cdecl, importc: "SDL_GetEventFilter",
                                       dynlib: LibName.}
   # This function allows you to set the state of processing certain events.
   #  If 'state' is set to SDL_IGNORE, that event will be automatically dropped
@@ -1684,7 +1684,7 @@ proc getEventFilter*(): TEventFilter{.cdecl, importc: "SDL_GetEventFilter",
   #  If 'state' is set to SDL_ENABLE, that event will be processed normally.
   #  If 'state' is set to SDL_QUERY, SDL_EventState() will return the
   #  current processing state of the specified event.
-proc eventState*(theType: byte, state: int): byte{.cdecl, 
+proc eventState*(theType: byte, state: int): byte{.cdecl,
     importc: "SDL_EventState", dynlib: LibName.}
   #------------------------------------------------------------------------------
   # Version Routines
@@ -1703,7 +1703,7 @@ proc versionAtleast*(x, y, z: int): bool
   # This function gets the version of the dynamically linked SDL library.
   #  it should NOT be used to fill a version structure, instead you should
   #  use the SDL_Version() macro.
-proc linkedVersion*(): PVersion{.cdecl, importc: "SDL_Linked_Version", 
+proc linkedVersion*(): PVersion{.cdecl, importc: "SDL_Linked_Version",
                                   dynlib: LibName.}
   #------------------------------------------------------------------------------
   # video
@@ -1720,25 +1720,25 @@ proc linkedVersion*(): PVersion{.cdecl, importc: "SDL_Linked_Version",
   #  If you use both sound and video in your application, you need to call
   #  SDL_Init() before opening the sound device, otherwise under Win32 DirectX,
   #  you won't be able to set full-screen display modes.
-proc videoInit*(driverName: cstring, flags: int32): int{.cdecl, 
+proc videoInit*(driverName: cstring, flags: int32): int{.cdecl,
     importc: "SDL_VideoInit", dynlib: LibName.}
 proc videoQuit*(){.cdecl, importc: "SDL_VideoQuit", dynlib: LibName.}
   # This function fills the given character buffer with the name of the
   #  video driver, and returns a pointer to it if the video driver has
   #  been initialized.  It returns NULL if no driver has been initialized.
-proc videoDriverName*(namebuf: cstring, maxlen: int): cstring{.cdecl, 
+proc videoDriverName*(namebuf: cstring, maxlen: int): cstring{.cdecl,
     importc: "SDL_VideoDriverName", dynlib: LibName.}
   # This function returns a pointer to the current display surface.
   #  If SDL is doing format conversion on the display surface, this
   #  function returns the publicly visible surface, not the real video
   #  surface.
-proc getVideoSurface*(): PSurface{.cdecl, importc: "SDL_GetVideoSurface", 
+proc getVideoSurface*(): PSurface{.cdecl, importc: "SDL_GetVideoSurface",
                                    dynlib: LibName.}
   # This function returns a read-only pointer to information about the
   #  video hardware.  If this is called before SDL_SetVideoMode(), the 'vfmt'
   #  member of the returned structure will contain the pixel format of the
   #  "best" video mode.
-proc getVideoInfo*(): PVideoInfo{.cdecl, importc: "SDL_GetVideoInfo", 
+proc getVideoInfo*(): PVideoInfo{.cdecl, importc: "SDL_GetVideoInfo",
                                   dynlib: LibName.}
   # Check to see if a particular video mode is supported.
   #  It returns 0 if the requested mode is not supported under any bit depth,
@@ -1749,7 +1749,7 @@ proc getVideoInfo*(): PVideoInfo{.cdecl, importc: "SDL_GetVideoInfo",
   #
   #  The arguments to SDL_VideoModeOK() are the same ones you would pass to
   #  SDL_SetVideoMode()
-proc videoModeOK*(width, height, bpp: int, flags: int32): int{.cdecl, 
+proc videoModeOK*(width, height, bpp: int, flags: int32): int{.cdecl,
     importc: "SDL_VideoModeOK", importc: "SDL_VideoModeOK", dynlib: LibName.}
   # Return a pointer to an array of available screen dimensions for the
   #  given format and video flags, sorted largest to smallest.  Returns
@@ -1758,7 +1758,7 @@ proc videoModeOK*(width, height, bpp: int, flags: int32): int{.cdecl,
   #
   #  if 'format' is NULL, the mode list will be for the format given
   #  by SDL_GetVideoInfo( ) - > vfmt
-proc listModes*(format: PPixelFormat, flags: int32): PPSDL_Rect{.cdecl, 
+proc listModes*(format: PPixelFormat, flags: int32): PPSDL_Rect{.cdecl,
     importc: "SDL_ListModes", dynlib: LibName.}
   # Set up a video mode with the specified width, height and bits-per-pixel.
   #
@@ -1801,15 +1801,15 @@ proc listModes*(format: PPixelFormat, flags: int32): PPSDL_Rect{.cdecl,
   #  applications that redraw the entire screen on every update.
   #
   #  This function returns the video framebuffer surface, or NULL if it fails.
-proc setVideoMode*(width, height, bpp: int, flags: uint32): PSurface{.cdecl, 
+proc setVideoMode*(width, height, bpp: int, flags: uint32): PSurface{.cdecl,
     importc: "SDL_SetVideoMode", dynlib: LibName.}
   # Makes sure the given list of rectangles is updated on the given screen.
   #  If 'x', 'y', 'w' and 'h' are all 0, SDL_UpdateRect will update the entire
   #  screen.
   #  These functions should not be called while 'screen' is locked.
-proc updateRects*(screen: PSurface, numrects: int, rects: PRect){.cdecl, 
+proc updateRects*(screen: PSurface, numrects: int, rects: PRect){.cdecl,
     importc: "SDL_UpdateRects", dynlib: LibName.}
-proc updateRect*(screen: PSurface, x, y: int32, w, h: int32){.cdecl, 
+proc updateRect*(screen: PSurface, x, y: int32, w, h: int32){.cdecl,
     importc: "SDL_UpdateRect", dynlib: LibName.}
   # On hardware that supports double-buffering, this function sets up a flip
   #  and returns.  The hardware will wait for vertical retrace, and then swap
@@ -1878,11 +1878,11 @@ proc setColors*(surface: PSurface, colors: PColor, firstcolor: int, ncolors: int
   #
   #  SDL_SetColors() is equivalent to calling this function with
   #  flags = (SDL_LOGPAL or SDL_PHYSPAL).
-proc setPalette*(surface: PSurface, flags: int, colors: PColor, firstcolor: int, 
-                 ncolors: int): int{.cdecl, importc: "SDL_SetPalette", 
+proc setPalette*(surface: PSurface, flags: int, colors: PColor, firstcolor: int,
+                 ncolors: int): int{.cdecl, importc: "SDL_SetPalette",
                                      dynlib: LibName.}
   # Maps an RGB triple to an opaque pixel value for a given pixel format
-proc mapRGB*(format: PPixelFormat, r: byte, g: byte, b: byte): int32{.cdecl, 
+proc mapRGB*(format: PPixelFormat, r: byte, g: byte, b: byte): int32{.cdecl,
     importc: "SDL_MapRGB", dynlib: LibName.}
   # Maps an RGBA quadruple to a pixel value for a given pixel format
 proc mapRGBA*(format: PPixelFormat, r: byte, g: byte, b: byte, a: byte): int32{.
@@ -1891,7 +1891,7 @@ proc mapRGBA*(format: PPixelFormat, r: byte, g: byte, b: byte, a: byte): int32{.
 proc getRGB*(pixel: int32, fmt: PPixelFormat, r: ptr byte, g: ptr byte, b: ptr byte){.
     cdecl, importc: "SDL_GetRGB", dynlib: LibName.}
   # Maps a pixel value into the RGBA components for a given pixel format
-proc getRGBA*(pixel: int32, fmt: PPixelFormat, r: ptr byte, g: ptr byte, b: ptr byte, 
+proc getRGBA*(pixel: int32, fmt: PPixelFormat, r: ptr byte, g: ptr byte, b: ptr byte,
               a: ptr byte){.cdecl, importc: "SDL_GetRGBA", dynlib: LibName.}
   # Allocate and free an RGB surface (must be called after SDL_SetVideoMode)
   #  If the depth is 4 or 8 bits, an empty palette is allocated for the surface.
@@ -1925,15 +1925,15 @@ proc getRGBA*(pixel: int32, fmt: PPixelFormat, r: ptr byte, g: ptr byte, b: ptr 
   #  will be set in the flags member of the returned surface.  If for some
   #  reason the surface could not be placed in video memory, it will not have
   #  the SDL_HWSURFACE flag set, and will be created in system memory instead.
-proc allocSurface*(flags: int32, width, height, depth: int, 
+proc allocSurface*(flags: int32, width, height, depth: int,
                    rMask, gMask, bMask, aMask: int32): PSurface
-proc createRGBSurface*(flags: int32, width, height, depth: int, 
-                       rMask, gMask, bMask, aMask: int32): PSurface{.cdecl, 
+proc createRGBSurface*(flags: int32, width, height, depth: int,
+                       rMask, gMask, bMask, aMask: int32): PSurface{.cdecl,
     importc: "SDL_CreateRGBSurface", dynlib: LibName.}
-proc createRGBSurfaceFrom*(pixels: pointer, width, height, depth, pitch: int, 
-                           rMask, gMask, bMask, aMask: int32): PSurface{.cdecl, 
+proc createRGBSurfaceFrom*(pixels: pointer, width, height, depth, pitch: int,
+                           rMask, gMask, bMask, aMask: int32): PSurface{.cdecl,
     importc: "SDL_CreateRGBSurfaceFrom", dynlib: LibName.}
-proc freeSurface*(surface: PSurface){.cdecl, importc: "SDL_FreeSurface", 
+proc freeSurface*(surface: PSurface){.cdecl, importc: "SDL_FreeSurface",
                                       dynlib: LibName.}
 proc mustLock*(surface: PSurface): bool
   # SDL_LockSurface() sets up a surface for directly accessing the pixels.
@@ -1952,22 +1952,22 @@ proc mustLock*(surface: PSurface): bool
   #  pairs, as critical system locks may be held during this time.
   #
   #  SDL_LockSurface() returns 0, or -1 if the surface couldn't be locked.
-proc lockSurface*(surface: PSurface): int{.cdecl, importc: "SDL_LockSurface", 
+proc lockSurface*(surface: PSurface): int{.cdecl, importc: "SDL_LockSurface",
     dynlib: LibName.}
-proc unlockSurface*(surface: PSurface){.cdecl, importc: "SDL_UnlockSurface", 
+proc unlockSurface*(surface: PSurface){.cdecl, importc: "SDL_UnlockSurface",
                                         dynlib: LibName.}
   # Load a surface from a seekable SDL data source (memory or file.)
   #  If 'freesrc' is non-zero, the source will be closed after being read.
   #  Returns the new surface, or NULL if there was an error.
   #  The new surface should be freed with SDL_FreeSurface().
-proc loadBMP_RW*(src: PRWops, freesrc: int): PSurface{.cdecl, 
+proc loadBMP_RW*(src: PRWops, freesrc: int): PSurface{.cdecl,
     importc: "SDL_LoadBMP_RW", dynlib: LibName.}
   # Convenience macro -- load a surface from a file
 proc loadBMP*(filename: cstring): PSurface
   # Save a surface to a seekable SDL data source (memory or file.)
   #  If 'freedst' is non-zero, the source will be closed after being written.
   #  Returns 0 if successful or -1 if there was an error.
-proc saveBMP_RW*(surface: PSurface, dst: PRWops, freedst: int): int{.cdecl, 
+proc saveBMP_RW*(surface: PSurface, dst: PRWops, freedst: int): int{.cdecl,
     importc: "SDL_SaveBMP_RW", dynlib: LibName.}
   # Convenience macro -- save a surface to a file
 proc saveBMP*(surface: PSurface, filename: cstring): int
@@ -1978,7 +1978,7 @@ proc saveBMP*(surface: PSurface, filename: cstring): int
   #  and removes RLE acceleration if absent.
   #  If 'flag' is 0, this function clears any current color key.
   #  This function returns 0, or -1 if there was an error.
-proc setColorKey*(surface: PSurface, flag, key: int32): int{.cdecl, 
+proc setColorKey*(surface: PSurface, flag, key: int32): int{.cdecl,
     importc: "SDL_SetColorKey", dynlib: LibName.}
   # This function sets the alpha value for the entire surface, as opposed to
   #  using the alpha component of each pixel. This value measures the range
@@ -1991,7 +1991,7 @@ proc setColorKey*(surface: PSurface, flag, key: int32): int{.cdecl,
   #  If 'flag' is SDL_SRCALPHA, alpha blending is enabled for the surface.
   #  OR:ing the flag with SDL_RLEACCEL requests RLE acceleration for the
   #  surface; if SDL_RLEACCEL is not specified, the RLE accel will be removed.
-proc setAlpha*(surface: PSurface, flag: int32, alpha: byte): int{.cdecl, 
+proc setAlpha*(surface: PSurface, flag: int32, alpha: byte): int{.cdecl,
     importc: "SDL_SetAlpha", dynlib: LibName.}
   # Sets the clipping rectangle for the destination surface in a blit.
   #
@@ -2003,12 +2003,12 @@ proc setAlpha*(surface: PSurface, flag: int32, alpha: byte): int{.cdecl,
   #
   #  Note that blits are automatically clipped to the edges of the source
   #  and destination surfaces.
-proc setClipRect*(surface: PSurface, rect: PRect){.cdecl, 
+proc setClipRect*(surface: PSurface, rect: PRect){.cdecl,
     importc: "SDL_SetClipRect", dynlib: LibName.}
   # Gets the clipping rectangle for the destination surface in a blit.
   #  'rect' must be a pointer to a valid rectangle which will be filled
   #  with the correct values.
-proc getClipRect*(surface: PSurface, rect: PRect){.cdecl, 
+proc getClipRect*(surface: PSurface, rect: PRect){.cdecl,
     importc: "SDL_GetClipRect", dynlib: LibName.}
   # Creates a new surface of the specified format, and then copies and maps
   #  the given surface to it so the blit of the converted surface will be as
@@ -2107,7 +2107,7 @@ proc lowerBlit*(src: PSurface, srcrect: PRect, dst: PSurface, dstrect: PRect): i
   #  The color should be a pixel of the format used by the surface, and
   #  can be generated by the SDL_MapRGB() function.
   #  This function returns 0 on success, or -1 on error.
-proc fillRect*(dst: PSurface, dstrect: PRect, color: int32): int{.cdecl, 
+proc fillRect*(dst: PSurface, dstrect: PRect, color: int32): int{.cdecl,
     importc: "SDL_FillRect", dynlib: LibName.}
   # This function takes a surface and copies it to a new surface of the
   #  pixel format and colors of the video framebuffer, suitable for fast
@@ -2118,7 +2118,7 @@ proc fillRect*(dst: PSurface, dstrect: PRect, color: int32): int{.cdecl,
   #  calling this function.
   #
   #  If the conversion fails or runs out of memory, it returns NULL
-proc displayFormat*(surface: PSurface): PSurface{.cdecl, 
+proc displayFormat*(surface: PSurface): PSurface{.cdecl,
     importc: "SDL_DisplayFormat", dynlib: LibName.}
   # This function takes a surface and copies it to a new surface of the
   #  pixel format and colors of the video framebuffer (if possible),
@@ -2130,7 +2130,7 @@ proc displayFormat*(surface: PSurface): PSurface{.cdecl,
   #  calling this function.
   #
   #  If the conversion fails or runs out of memory, it returns NULL
-proc displayFormatAlpha*(surface: PSurface): PSurface{.cdecl, 
+proc displayFormatAlpha*(surface: PSurface): PSurface{.cdecl,
     importc: "SDL_DisplayFormatAlpha", dynlib: LibName.}
   #* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
   #* YUV video surface overlay functions                                       */
@@ -2139,23 +2139,23 @@ proc displayFormatAlpha*(surface: PSurface): PSurface{.cdecl,
   #  Calling the returned surface an overlay is something of a misnomer because
   #  the contents of the display surface underneath the area where the overlay
   #  is shown is undefined - it may be overwritten with the converted YUV data.
-proc createYUVOverlay*(width: int, height: int, format: int32, 
-                       display: PSurface): POverlay{.cdecl, 
+proc createYUVOverlay*(width: int, height: int, format: int32,
+                       display: PSurface): POverlay{.cdecl,
     importc: "SDL_CreateYUVOverlay", dynlib: LibName.}
   # Lock an overlay for direct access, and unlock it when you are done
-proc lockYUVOverlay*(overlay: POverlay): int{.cdecl, 
+proc lockYUVOverlay*(overlay: POverlay): int{.cdecl,
     importc: "SDL_LockYUVOverlay", dynlib: LibName.}
-proc unlockYUVOverlay*(overlay: POverlay){.cdecl, 
+proc unlockYUVOverlay*(overlay: POverlay){.cdecl,
     importc: "SDL_UnlockYUVOverlay", dynlib: LibName.}
   # Blit a video overlay to the display surface.
   #  The contents of the video surface underneath the blit destination are
   #  not defined.
   #  The width and height of the destination rectangle may be different from
   #  that of the overlay, but currently only 2x scaling is supported.
-proc displayYUVOverlay*(overlay: POverlay, dstrect: PRect): int{.cdecl, 
+proc displayYUVOverlay*(overlay: POverlay, dstrect: PRect): int{.cdecl,
     importc: "SDL_DisplayYUVOverlay", dynlib: LibName.}
   # Free a video overlay
-proc freeYUVOverlay*(overlay: POverlay){.cdecl, importc: "SDL_FreeYUVOverlay", 
+proc freeYUVOverlay*(overlay: POverlay){.cdecl, importc: "SDL_FreeYUVOverlay",
     dynlib: LibName.}
   #------------------------------------------------------------------------------
   # OpenGL Routines
@@ -2168,13 +2168,13 @@ proc freeYUVOverlay*(overlay: POverlay){.cdecl, importc: "SDL_FreeYUVOverlay",
   #  your program from the dynamic library using SDL_GL_GetProcAddress().
   #
   #  This is disabled in default builds of SDL.
-proc glLoadLibrary*(filename: cstring): int{.cdecl, 
+proc glLoadLibrary*(filename: cstring): int{.cdecl,
     importc: "SDL_GL_LoadLibrary", dynlib: LibName.}
   # Get the address of a GL function (for extension functions)
-proc glGetProcAddress*(procname: cstring): pointer{.cdecl, 
+proc glGetProcAddress*(procname: cstring): pointer{.cdecl,
     importc: "SDL_GL_GetProcAddress", dynlib: LibName.}
   # Set an attribute of the OpenGL subsystem before intialization.
-proc glSetAttribute*(attr: TGLAttr, value: int): int{.cdecl, 
+proc glSetAttribute*(attr: TGLAttr, value: int): int{.cdecl,
     importc: "SDL_GL_SetAttribute", dynlib: LibName.}
   # Get an attribute of the OpenGL subsystem from the windowing
   #  interface, such as glX. This is of course different from getting
@@ -2183,13 +2183,13 @@ proc glSetAttribute*(attr: TGLAttr, value: int): int{.cdecl,
   #
   #  Developers should track the values they pass into SDL_GL_SetAttribute
   #  themselves if they want to retrieve these values.
-proc glGetAttribute*(attr: TGLAttr, value: var int): int{.cdecl, 
+proc glGetAttribute*(attr: TGLAttr, value: var int): int{.cdecl,
     importc: "SDL_GL_GetAttribute", dynlib: LibName.}
   # Swap the OpenGL buffers, if double-buffering is supported.
 proc glSwapBuffers*(){.cdecl, importc: "SDL_GL_SwapBuffers", dynlib: LibName.}
   # Internal functions that should not be called unless you have read
   #  and understood the source code for these functions.
-proc glUpdateRects*(numrects: int, rects: PRect){.cdecl, 
+proc glUpdateRects*(numrects: int, rects: PRect){.cdecl,
     importc: "SDL_GL_UpdateRects", dynlib: LibName.}
 proc glLock*(){.cdecl, importc: "SDL_GL_Lock", dynlib: LibName.}
 proc glUnlock*(){.cdecl, importc: "SDL_GL_Unlock", dynlib: LibName.}
@@ -2197,20 +2197,20 @@ proc glUnlock*(){.cdecl, importc: "SDL_GL_Unlock", dynlib: LibName.}
   #* These functions allow interaction with the window manager, if any.        *
   #* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
   # Sets/Gets the title and icon text of the display window
-proc wmGetCaption*(title: var cstring, icon: var cstring){.cdecl, 
+proc wmGetCaption*(title: var cstring, icon: var cstring){.cdecl,
     importc: "SDL_WM_GetCaption", dynlib: LibName.}
-proc wmSetCaption*(title: cstring, icon: cstring){.cdecl, 
+proc wmSetCaption*(title: cstring, icon: cstring){.cdecl,
     importc: "SDL_WM_SetCaption", dynlib: LibName.}
   # Sets the icon for the display window.
   #  This function must be called before the first call to SDL_SetVideoMode().
   #  It takes an icon surface, and a mask in MSB format.
   #  If 'mask' is NULL, the entire icon surface will be used as the icon.
-proc wmSetIcon*(icon: PSurface, mask: byte){.cdecl, importc: "SDL_WM_SetIcon", 
+proc wmSetIcon*(icon: PSurface, mask: byte){.cdecl, importc: "SDL_WM_SetIcon",
     dynlib: LibName.}
   # This function iconifies the window, and returns 1 if it succeeded.
   #  If the function succeeds, it generates an SDL_APPACTIVE loss event.
   #  This function is a noop and returns 0 in non-windowed environments.
-proc wmIconifyWindow*(): int{.cdecl, importc: "SDL_WM_IconifyWindow", 
+proc wmIconifyWindow*(): int{.cdecl, importc: "SDL_WM_IconifyWindow",
                                dynlib: LibName.}
   # Toggle fullscreen mode without changing the contents of the screen.
   #  If the display surface does not require locking before accessing
@@ -2225,12 +2225,12 @@ proc wmIconifyWindow*(): int{.cdecl, importc: "SDL_WM_IconifyWindow",
   #  set, then the display will be windowed by default where supported.
   #
   #  This is currently only implemented in the X11 video driver.
-proc wmToggleFullScreen*(surface: PSurface): int{.cdecl, 
+proc wmToggleFullScreen*(surface: PSurface): int{.cdecl,
     importc: "SDL_WM_ToggleFullScreen", dynlib: LibName.}
   # Grabbing means that the mouse is confined to the application window,
   #  and nearly all keyboard input is passed directly to the application,
   #  and not interpreted by a window manager, if any.
-proc wmGrabInput*(mode: TGrabMode): TGrabMode{.cdecl, 
+proc wmGrabInput*(mode: TGrabMode): TGrabMode{.cdecl,
     importc: "SDL_WM_GrabInput", dynlib: LibName.}
   #------------------------------------------------------------------------------
   # mouse-routines
@@ -2239,13 +2239,13 @@ proc wmGrabInput*(mode: TGrabMode): TGrabMode{.cdecl,
   #  The current button state is returned as a button bitmask, which can
   #  be tested using the SDL_BUTTON(X) macros, and x and y are set to the
   #  current mouse cursor position.  You can pass NULL for either x or y.
-proc getMouseState*(x: var int, y: var int): byte{.cdecl, 
+proc getMouseState*(x: var int, y: var int): byte{.cdecl,
     importc: "SDL_GetMouseState", dynlib: LibName.}
   # Retrieve the current state of the mouse.
   #  The current button state is returned as a button bitmask, which can
   #  be tested using the SDL_BUTTON(X) macros, and x and y are set to the
   #  mouse deltas since the last call to SDL_GetRelativeMouseState().
-proc getRelativeMouseState*(x: var int, y: var int): byte{.cdecl, 
+proc getRelativeMouseState*(x: var int, y: var int): byte{.cdecl,
     importc: "SDL_GetRelativeMouseState", dynlib: LibName.}
   # Set the position of the mouse cursor (generates a mouse motion event)
 proc warpMouse*(x, y: uint16){.cdecl, importc: "SDL_WarpMouse", dynlib: LibName.}
@@ -2260,24 +2260,24 @@ proc warpMouse*(x, y: uint16){.cdecl, importc: "SDL_WarpMouse", dynlib: LibName.
   #   1     0       Inverted color if possible, black if not.
   #
   #  Cursors created with this function must be freed with SDL_FreeCursor().
-proc createCursor*(data, mask: ptr byte, w, h, hotX, hotY: int): PCursor{.cdecl, 
+proc createCursor*(data, mask: ptr byte, w, h, hotX, hotY: int): PCursor{.cdecl,
     importc: "SDL_CreateCursor", dynlib: LibName.}
   # Set the currently active cursor to the specified one.
   #  If the cursor is currently visible, the change will be immediately
   #  represented on the display.
-proc setCursor*(cursor: PCursor){.cdecl, importc: "SDL_SetCursor", 
+proc setCursor*(cursor: PCursor){.cdecl, importc: "SDL_SetCursor",
                                   dynlib: LibName.}
   # Returns the currently active cursor.
 proc getCursor*(): PCursor{.cdecl, importc: "SDL_GetCursor", dynlib: LibName.}
   # Deallocates a cursor created with SDL_CreateCursor().
-proc freeCursor*(cursor: PCursor){.cdecl, importc: "SDL_FreeCursor", 
+proc freeCursor*(cursor: PCursor){.cdecl, importc: "SDL_FreeCursor",
                                    dynlib: LibName.}
   # Toggle whether or not the cursor is shown on the screen.
   #  The cursor start off displayed, but can be turned off.
   #  SDL_ShowCursor() returns 1 if the cursor was being displayed
   #  before the call, or 0 if it was not.  You can query the current
   #  state by passing a 'toggle' value of -1.
-proc showCursor*(toggle: int): int{.cdecl, importc: "SDL_ShowCursor", 
+proc showCursor*(toggle: int): int{.cdecl, importc: "SDL_ShowCursor",
                                     dynlib: LibName.}
 proc button*(b: int): int
   #------------------------------------------------------------------------------
@@ -2289,12 +2289,12 @@ proc button*(b: int): int
   #  If 'enable' is 0, translation is disabled.
   #  If 'enable' is -1, the translation state is not changed.
   #  It returns the previous state of keyboard translation.
-proc enableUNICODE*(enable: int): int{.cdecl, importc: "SDL_EnableUNICODE", 
+proc enableUNICODE*(enable: int): int{.cdecl, importc: "SDL_EnableUNICODE",
                                        dynlib: LibName.}
   # If 'delay' is set to 0, keyboard repeat is disabled.
-proc enableKeyRepeat*(delay: int, interval: int): int{.cdecl, 
+proc enableKeyRepeat*(delay: int, interval: int): int{.cdecl,
     importc: "SDL_EnableKeyRepeat", dynlib: LibName.}
-proc getKeyRepeat*(delay: PInteger, interval: PInteger){.cdecl, 
+proc getKeyRepeat*(delay: PInteger, interval: PInteger){.cdecl,
     importc: "SDL_GetKeyRepeat", dynlib: LibName.}
   # Get a snapshot of the current state of the keyboard.
   #  Returns an array of keystates, indexed by the SDLK_* syms.
@@ -2302,16 +2302,16 @@ proc getKeyRepeat*(delay: PInteger, interval: PInteger){.cdecl,
   #
   #  byte *keystate = SDL_GetKeyState(NULL);
   #  if ( keystate[SDLK_RETURN] ) ... <RETURN> is pressed
-proc getKeyState*(numkeys: pointer): ptr byte{.cdecl, importc: "SDL_GetKeyState", 
+proc getKeyState*(numkeys: pointer): ptr byte{.cdecl, importc: "SDL_GetKeyState",
     dynlib: LibName.}
   # Get the current key modifier state
 proc getModState*(): TMod{.cdecl, importc: "SDL_GetModState", dynlib: LibName.}
   # Set the current key modifier state
   #  This does not change the keyboard state, only the key modifier flags.
-proc setModState*(modstate: TMod){.cdecl, importc: "SDL_SetModState", 
+proc setModState*(modstate: TMod){.cdecl, importc: "SDL_SetModState",
                                    dynlib: LibName.}
   # Get the name of an SDL virtual keysym
-proc getKeyName*(key: TKey): cstring{.cdecl, importc: "SDL_GetKeyName", 
+proc getKeyName*(key: TKey): cstring{.cdecl, importc: "SDL_GetKeyName",
                                       dynlib: LibName.}
   #------------------------------------------------------------------------------
   # Active Routines
@@ -2331,16 +2331,16 @@ proc lockMutex*(mutex: PMutex): int
 proc mutexV*(mutex: PMutex): int{.cdecl, importc: "SDL_mutexV", dynlib: LibName.}
 proc unlockMutex*(mutex: PMutex): int
   # Destroy a mutex
-proc destroyMutex*(mutex: PMutex){.cdecl, importc: "SDL_DestroyMutex", 
+proc destroyMutex*(mutex: PMutex){.cdecl, importc: "SDL_DestroyMutex",
                                    dynlib: LibName.}
   # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
   # Semaphore functions
   # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
   # Create a semaphore, initialized with value, returns NULL on failure.
-proc createSemaphore*(initialValue: int32): PSem{.cdecl, 
+proc createSemaphore*(initialValue: int32): PSem{.cdecl,
     importc: "SDL_CreateSemaphore", dynlib: LibName.}
   # Destroy a semaphore
-proc destroySemaphore*(sem: PSem){.cdecl, importc: "SDL_DestroySemaphore", 
+proc destroySemaphore*(sem: PSem){.cdecl, importc: "SDL_DestroySemaphore",
                                    dynlib: LibName.}
   # This function suspends the calling thread until the semaphore pointed
   #  to by sem has a positive count. It then atomically decreases the semaphore
@@ -2348,20 +2348,20 @@ proc destroySemaphore*(sem: PSem){.cdecl, importc: "SDL_DestroySemaphore",
 proc semWait*(sem: PSem): int{.cdecl, importc: "SDL_SemWait", dynlib: LibName.}
   # Non-blocking variant of SDL_SemWait(), returns 0 if the wait succeeds,
   #   SDL_MUTEX_TIMEDOUT if the wait would block, and -1 on error.
-proc semTryWait*(sem: PSem): int{.cdecl, importc: "SDL_SemTryWait", 
+proc semTryWait*(sem: PSem): int{.cdecl, importc: "SDL_SemTryWait",
                                   dynlib: LibName.}
   # Variant of SDL_SemWait() with a timeout in milliseconds, returns 0 if
   #   the wait succeeds, SDL_MUTEX_TIMEDOUT if the wait does not succeed in
   #   the allotted time, and -1 on error.
   #   On some platforms this function is implemented by looping with a delay
   #   of 1 ms, and so should be avoided if possible.
-proc semWaitTimeout*(sem: PSem, ms: int32): int{.cdecl, 
+proc semWaitTimeout*(sem: PSem, ms: int32): int{.cdecl,
     importc: "SDL_SemWaitTimeout", dynlib: LibName.}
   # Atomically increases the semaphore's count (not blocking), returns 0,
   #   or -1 on error.
 proc semPost*(sem: PSem): int{.cdecl, importc: "SDL_SemPost", dynlib: LibName.}
   # Returns the current count of the semaphore
-proc semValue*(sem: PSem): int32{.cdecl, importc: "SDL_SemValue", 
+proc semValue*(sem: PSem): int32{.cdecl, importc: "SDL_SemValue",
                                    dynlib: LibName.}
   # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
   # Condition variable functions
@@ -2369,47 +2369,47 @@ proc semValue*(sem: PSem): int32{.cdecl, importc: "SDL_SemValue",
   # Create a condition variable
 proc createCond*(): PCond{.cdecl, importc: "SDL_CreateCond", dynlib: LibName.}
   # Destroy a condition variable
-proc destroyCond*(cond: PCond){.cdecl, importc: "SDL_DestroyCond", 
+proc destroyCond*(cond: PCond){.cdecl, importc: "SDL_DestroyCond",
                                 dynlib: LibName.}
   # Restart one of the threads that are waiting on the condition variable,
   #   returns 0 or -1 on error.
-proc condSignal*(cond: PCond): int{.cdecl, importc: "SDL_CondSignal", 
+proc condSignal*(cond: PCond): int{.cdecl, importc: "SDL_CondSignal",
                                     dynlib: LibName.}
   # Restart all threads that are waiting on the condition variable,
   #  returns 0 or -1 on error.
-proc condBroadcast*(cond: PCond): int{.cdecl, importc: "SDL_CondBroadcast", 
+proc condBroadcast*(cond: PCond): int{.cdecl, importc: "SDL_CondBroadcast",
                                        dynlib: LibName.}
   # Wait on the condition variable, unlocking the provided mutex.
   #  The mutex must be locked before entering this function!
   #  Returns 0 when it is signaled, or -1 on error.
-proc condWait*(cond: PCond, mut: PMutex): int{.cdecl, importc: "SDL_CondWait", 
+proc condWait*(cond: PCond, mut: PMutex): int{.cdecl, importc: "SDL_CondWait",
     dynlib: LibName.}
   # Waits for at most 'ms' milliseconds, and returns 0 if the condition
   #  variable is signaled, SDL_MUTEX_TIMEDOUT if the condition is not
   #  signaled in the allotted time, and -1 on error.
   #  On some platforms this function is implemented by looping with a delay
   #  of 1 ms, and so should be avoided if possible.
-proc condWaitTimeout*(cond: PCond, mut: PMutex, ms: int32): int{.cdecl, 
+proc condWaitTimeout*(cond: PCond, mut: PMutex, ms: int32): int{.cdecl,
     importc: "SDL_CondWaitTimeout", dynlib: LibName.}
   # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
   # Condition variable functions
   # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
   # Create a thread
-proc createThread*(fn, data: pointer): PThread{.cdecl, 
+proc createThread*(fn, data: pointer): PThread{.cdecl,
     importc: "SDL_CreateThread", dynlib: LibName.}
   # Get the 32-bit thread identifier for the current thread
 proc threadID*(): int32{.cdecl, importc: "SDL_ThreadID", dynlib: LibName.}
   # Get the 32-bit thread identifier for the specified thread,
   #  equivalent to SDL_ThreadID() if the specified thread is NULL.
-proc getThreadID*(thread: PThread): int32{.cdecl, importc: "SDL_GetThreadID", 
+proc getThreadID*(thread: PThread): int32{.cdecl, importc: "SDL_GetThreadID",
     dynlib: LibName.}
   # Wait for a thread to finish.
   #  The return code for the thread function is placed in the area
   #  pointed to by 'status', if 'status' is not NULL.
-proc waitThread*(thread: PThread, status: var int){.cdecl, 
+proc waitThread*(thread: PThread, status: var int){.cdecl,
     importc: "SDL_WaitThread", dynlib: LibName.}
   # Forcefully kill a thread without worrying about its state
-proc killThread*(thread: PThread){.cdecl, importc: "SDL_KillThread", 
+proc killThread*(thread: PThread){.cdecl, importc: "SDL_KillThread",
                                    dynlib: LibName.}
   #------------------------------------------------------------------------------
   # Get Environment Routines
@@ -2420,7 +2420,7 @@ proc killThread*(thread: PThread){.cdecl, importc: "SDL_KillThread",
   # * returns 1 if the function is implemented.  If it's not implemented, or
   # * the version member of the 'info' structure is invalid, it returns 0.
   # *
-proc getWMInfo*(info: PSysWMinfo): int{.cdecl, importc: "SDL_GetWMInfo", 
+proc getWMInfo*(info: PSysWMinfo): int{.cdecl, importc: "SDL_GetWMInfo",
                                         dynlib: LibName.}
   #------------------------------------------------------------------------------
   #SDL_loadso.h
@@ -2428,16 +2428,16 @@ proc getWMInfo*(info: PSysWMinfo): int{.cdecl, importc: "SDL_GetWMInfo",
   # * to the object handle (or NULL if there was an error).
   # * The 'sofile' parameter is a system dependent name of the object file.
   # *
-proc loadObject*(sofile: cstring): pointer{.cdecl, importc: "SDL_LoadObject", 
+proc loadObject*(sofile: cstring): pointer{.cdecl, importc: "SDL_LoadObject",
     dynlib: LibName.}
   #* Given an object handle, this function looks up the address of the
   # * named function in the shared object and returns it.  This address
   # * is no longer valid after calling SDL_UnloadObject().
   # *
-proc loadFunction*(handle: pointer, name: cstring): pointer{.cdecl, 
+proc loadFunction*(handle: pointer, name: cstring): pointer{.cdecl,
     importc: "SDL_LoadFunction", dynlib: LibName.}
   #* Unload a shared object from memory *
-proc unloadObject*(handle: pointer){.cdecl, importc: "SDL_UnloadObject", 
+proc unloadObject*(handle: pointer){.cdecl, importc: "SDL_UnloadObject",
                                      dynlib: LibName.}
   #------------------------------------------------------------------------------
 proc swap32*(d: int32): int32
@@ -2447,29 +2447,29 @@ proc turnBitOn*(value: int, bit: int8): int
 proc turnBitOff*(value: int, bit: int8): int
 # implementation
 
-proc tablesize(table: cstring): int = 
+proc tablesize(table: cstring): int =
   result = sizeOf(table) div sizeOf(table[0])
 
-proc rwSeek(context: PRWops, offset: int, whence: int): int = 
+proc rwSeek(context: PRWops, offset: int, whence: int): int =
   result = context.seek(context, offset, whence)
 
-proc rwTell(context: PRWops): int = 
+proc rwTell(context: PRWops): int =
   result = context.seek(context, 0, 1)
 
-proc rwRead(context: PRWops, theptr: pointer, size: int, n: int): int = 
+proc rwRead(context: PRWops, theptr: pointer, size: int, n: int): int =
   result = context.read(context, theptr, size, n)
 
-proc rwWrite(context: PRWops, theptr: pointer, size: int, n: int): int = 
+proc rwWrite(context: PRWops, theptr: pointer, size: int, n: int): int =
   result = context.write(context, theptr, size, n)
 
-proc rwClose(context: PRWops): int = 
+proc rwClose(context: PRWops): int =
   result = context.closeFile(context)
 
-proc loadWAV(filename: cstring, spec: PAudioSpec, audioBuf: ptr byte, 
-             audiolen: PUInt32): PAudioSpec = 
+proc loadWAV(filename: cstring, spec: PAudioSpec, audioBuf: ptr byte,
+             audiolen: PUInt32): PAudioSpec =
   result = loadWAV_RW(rWFromFile(filename, "rb"), 1, spec, audioBuf, audiolen)
 
-proc cdInDrive(status: TCDStatus): bool = 
+proc cdInDrive(status: TCDStatus): bool =
   result = ord(status) > ord(CD_ERROR)
 
 proc framesToMsf*(frames: int; m, s, f: var int) =
@@ -2480,59 +2480,59 @@ proc framesToMsf*(frames: int; m, s, f: var int) =
   value = value div 60
   m = value
 
-proc msfToFrames*(m, s, f: int): int = 
+proc msfToFrames*(m, s, f: int): int =
   result = m * 60 * CD_FPS + s * CD_FPS + f
 
-proc version(x: var Tversion) = 
+proc version(x: var Tversion) =
   x.major = MAJOR_VERSION
   x.minor = MINOR_VERSION
   x.patch = PATCHLEVEL
 
-proc versionnum(x, y, z: int): int = 
+proc versionnum(x, y, z: int): int =
   result = x * 1000 + y * 100 + z
 
-proc compiledversion(): int = 
+proc compiledversion(): int =
   result = versionnum(MAJOR_VERSION, MINOR_VERSION, PATCHLEVEL)
 
-proc versionAtleast(x, y, z: int): bool = 
+proc versionAtleast(x, y, z: int): bool =
   result = (compiledversion() >= versionnum(x, y, z))
 
-proc loadBMP(filename: cstring): PSurface = 
+proc loadBMP(filename: cstring): PSurface =
   result = loadBMP_RW(rWFromFile(filename, "rb"), 1)
 
-proc saveBMP(surface: PSurface, filename: cstring): int = 
+proc saveBMP(surface: PSurface, filename: cstring): int =
   result = saveBMP_RW(surface, rWFromFile(filename, "wb"), 1)
 
-proc blitSurface(src: PSurface, srcrect: PRect, dst: PSurface, dstrect: PRect): int = 
+proc blitSurface(src: PSurface, srcrect: PRect, dst: PSurface, dstrect: PRect): int =
   result = upperBlit(src, srcrect, dst, dstrect)
 
-proc allocSurface(flags: int32, width, height, depth: int, 
-                  rMask, gMask, bMask, aMask: int32): PSurface = 
-  result = createRGBSurface(flags, width, height, depth, rMask, gMask, bMask, 
+proc allocSurface(flags: int32, width, height, depth: int,
+                  rMask, gMask, bMask, aMask: int32): PSurface =
+  result = createRGBSurface(flags, width, height, depth, rMask, gMask, bMask,
                             aMask)
 
-proc mustLock(surface: PSurface): bool = 
+proc mustLock(surface: PSurface): bool =
   result = ((surface.offset != 0) or
       ((surface.flags and (HWSURFACE or ASYNCBLIT or RLEACCEL)) != 0))
 
-proc lockMutex(mutex: PMutex): int = 
+proc lockMutex(mutex: PMutex): int =
   result = mutexP(mutex)
 
-proc unlockMutex(mutex: PMutex): int = 
+proc unlockMutex(mutex: PMutex): int =
   result = mutexV(mutex)
 
-proc button(b: int): int = 
+proc button(b: int): int =
   result = PRESSED shl (b - 1)
 
-proc swap32(d: int32): int32 = 
+proc swap32(d: int32): int32 =
   result = ((d shl 24) or ((d shl 8) and 0x00FF0000) or
       ((d shr 8) and 0x0000FF00) or (d shr 24))
 
-proc isBitOn(value: int, bit: int8): bool = 
+proc isBitOn(value: int, bit: int8): bool =
   result = ((value and (1 shl ze(bit))) != 0)
 
-proc turnBitOn(value: int, bit: int8): int = 
+proc turnBitOn(value: int, bit: int8): int =
   result = (value or (1 shl ze(bit)))
 
-proc turnBitOff(value: int, bit: int8): int = 
+proc turnBitOff(value: int, bit: int8): int =
   result = (value and not (1 shl ze(bit)))

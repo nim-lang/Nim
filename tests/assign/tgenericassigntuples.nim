@@ -4,7 +4,7 @@ discard """
 
 var t, s: tuple[x: string, c: int]
 
-proc ugh: seq[tuple[x: string, c: int]] = 
+proc ugh: seq[tuple[x: string, c: int]] =
   result = @[("abc", 232)]
 
 t = ugh()[0]

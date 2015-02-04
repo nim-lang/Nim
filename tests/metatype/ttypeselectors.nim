@@ -10,7 +10,7 @@ template simpleTypeTempl: typeDesc =
   string
 
 macro typeFromMacro: typedesc = string
-  
+
 proc t1*(x: int): simpleTypeTempl() =
   result = "test"
 

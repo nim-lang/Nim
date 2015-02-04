@@ -50,7 +50,7 @@ proc createServer(port: TPort) {.async.} =
     if bindAddr(server.SocketHandle, cast[ptr SockAddr](addr(name)),
                 sizeof(name).Socklen) < 0'i32:
       raiseOSError(osLastError())
-  
+
   discard server.SocketHandle.listen()
   while true:
     asyncCheck readMessages(await accept(server))

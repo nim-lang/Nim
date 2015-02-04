@@ -4,7 +4,7 @@
 
 type
   TFoo = ref object of RootObj
-    Data: int  
+    Data: int
   TBar = ref object of TFoo
     nil
   TBar2 = ref object of TBar

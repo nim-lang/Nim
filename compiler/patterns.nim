@@ -68,7 +68,7 @@ proc inSymChoice(sc, x: PNode): bool =
   elif sc.kind == nkOpenSymChoice:
     # same name suffices for open sym choices!
     result = sc.sons[0].sym.name.id == x.sym.name.id
-  
+
 proc checkTypes(c: PPatternContext, p: PSym, n: PNode): bool =
   # check param constraints first here as this is quite optimized:
   if p.constraint != nil:
@@ -115,13 +115,13 @@ proc matchNested(c: PPatternContext, p, n: PNode, rpn: bool): bool =
       if rpn: arglist.add(n.sons[0])
     elif n.kind == nkHiddenStdConv and n.sons[1].kind == nkBracket:
       let n = n.sons[1]
-      for i in 0.. <n.len: 
+      for i in 0.. <n.len:
         if not matchStarAux(c, op, n[i], arglist, rpn): return false
     elif checkTypes(c, p.sons[2].sym, n):
       add(arglist, n)
     else:
       result = false
-    
+
   if n.kind notin nkCallKinds: return false
   if matches(c, p.sons[1], n.sons[0]):
     var arglist = newNodeI(nkArgList, n.info)
@@ -149,7 +149,7 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
     of "**": result = matchNested(c, p, n, rpn=true)
     of "~": result = not matches(c, p.sons[1], n)
     else: internalError(p.info, "invalid pattern")
-    # template {add(a, `&` * b)}(a: string{noalias}, b: varargs[string]) = 
+    # template {add(a, `&` * b)}(a: string{noalias}, b: varargs[string]) =
     #   add(a, b)
   elif p.kind == nkCurlyExpr:
     if p.sons[1].kind == nkPrefix:
@@ -210,7 +210,7 @@ proc matchStmtList(c: PPatternContext, p, n: PNode): PNode =
         if not isNil(c.mapping): c.mapping = nil
         return false
     result = true
-  
+
   if p.kind == nkStmtList and n.kind == p.kind and p.len < n.len:
     let n = flattenStmts(n)
     # no need to flatten 'p' here as that has already been done

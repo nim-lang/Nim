@@ -5,14 +5,14 @@ discard """
 
 {.experimental.}
 
-type  
+type
   TMyObj = object
     x, y: int
     p: pointer
-    
+
 proc destroy(o: var TMyObj) {.override.} =
   if o.p != nil: dealloc o.p
-  
+
 proc open: TMyObj =
   result = TMyObj(x: 1, y: 2, p: alloc(3))
 

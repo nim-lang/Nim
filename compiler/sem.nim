@@ -65,8 +65,8 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
         echo "passing to safeSemExpr: ", renderTree(n)
       discard safeSemExpr(c, n)
 
-proc typeMismatch(n: PNode, formal, actual: PType) = 
-  if formal.kind != tyError and actual.kind != tyError: 
+proc typeMismatch(n: PNode, formal, actual: PType) =
+  if formal.kind != tyError and actual.kind != tyError:
     localError(n.info, errGenerated, msgKindToString(errTypeMismatch) &
         typeToString(actual) & ") " &
         `%`(msgKindToString(errButExpectedX), [typeToString(formal)]))
@@ -122,7 +122,7 @@ proc commonType*(x, y: PType): PType =
     else:
       result = newType(tyTypeDesc, a.owner)
       rawAddSon(result, newType(tyNone, a.owner))
-  elif b.kind in {tyArray, tyArrayConstr, tySet, tySequence} and 
+  elif b.kind in {tyArray, tyArrayConstr, tySet, tySequence} and
       a.kind == b.kind:
     # check for seq[empty] vs. seq[int]
     let idx = ord(b.kind in {tyArray, tyArrayConstr})
@@ -170,7 +170,7 @@ proc commonType*(x, y: PType): PType =
         result = newType(k, r.owner)
         result.addSonSkipIntLit(r)
 
-proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym = 
+proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym =
   result = newSym(kind, considerQuotedIdent(n), getCurrOwner(), n.info)
 
 proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
@@ -189,7 +189,7 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
                  allowed: TSymFlags): PSym
   # identifier with visability
-proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode, 
+proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
                         allowed: TSymFlags): PSym
 proc semStmtScope(c: PContext, n: PNode): PNode
 
@@ -197,7 +197,7 @@ proc typeAllowedCheck(info: TLineInfo; typ: PType; kind: TSymKind) =
   let t = typeAllowed(typ, kind)
   if t != nil:
     if t == typ: localError(info, "invalid type: '" & typeToString(typ) & "'")
-    else: localError(info, "invalid type: '" & typeToString(t) & 
+    else: localError(info, "invalid type: '" & typeToString(t) &
                            "' in this context: '" & typeToString(typ) & "'")
 
 proc paramsTypeCheck(c: PContext, typ: PType) {.inline.} =
@@ -233,7 +233,7 @@ when false:
         result = newSymNode(getSysSym"void")
       else:
         result.typ = makeTypeDesc(c, result.typ)
-    
+
     result.handleIsOperator = proc (n: PNode): PNode =
       result = isOpImpl(c, n)
 
@@ -255,7 +255,7 @@ proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
     if result == nil:
       result = arg
       # for 'tcnstseq' we support [] to become 'seq'
-      if eOrig.typ.skipTypes(abstractInst).kind == tySequence and 
+      if eOrig.typ.skipTypes(abstractInst).kind == tySequence and
          arg.typ.skipTypes(abstractInst).kind == tyArrayConstr:
         arg.typ = eOrig.typ
 
@@ -327,7 +327,7 @@ proc semAfterMacroCall(c: PContext, n: PNode, s: PSym,
   else:
     case s.typ.sons[0].kind
     of tyExpr:
-      # BUGFIX: we cannot expect a type here, because module aliases would not 
+      # BUGFIX: we cannot expect a type here, because module aliases would not
       # work then (see the ``tmodulealias`` test)
       # semExprWithType(c, result)
       result = semExpr(c, result, flags)
@@ -362,18 +362,18 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
     result = semAfterMacroCall(c, result, sym, flags)
   popInfoContext()
 
-proc forceBool(c: PContext, n: PNode): PNode = 
+proc forceBool(c: PContext, n: PNode): PNode =
   result = fitNode(c, getSysType(tyBool), n)
   if result == nil: result = n
 
-proc semConstBoolExpr(c: PContext, n: PNode): PNode = 
+proc semConstBoolExpr(c: PContext, n: PNode): PNode =
   let nn = semExprWithType(c, n)
   result = fitNode(c, getSysType(tyBool), nn)
   if result == nil:
     localError(n.info, errConstExprExpected)
     return nn
   result = getConstExpr(c.module, result)
-  if result == nil: 
+  if result == nil:
     localError(n.info, errConstExprExpected)
     result = nn
 
@@ -410,9 +410,9 @@ proc myOpen(module: PSym): PPassContext =
   pushOwner(c.module)
   c.importTable = openScope(c)
   c.importTable.addSym(module) # a module knows itself
-  if sfSystemModule in module.flags: 
+  if sfSystemModule in module.flags:
     magicsys.systemModule = module # set global variable!
-  else: 
+  else:
     c.importTable.addSym magicsys.systemModule # import the "System" identifier
     importAllSymbols(c, magicsys.systemModule)
   c.topLevelScope = openScope(c)
@@ -422,13 +422,13 @@ proc myOpenCached(module: PSym, rd: PRodReader): PPassContext =
   result = myOpen(module)
   for m in items(rd.methods): methodDef(m, true)
 
-proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode = 
+proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   result = semStmt(c, n)
   # BUGFIX: process newly generated generics here, not at the end!
   if c.lastGenericIdx < c.generics.len:
     var a = newNodeI(nkStmtList, n.info)
     addCodeForGenerics(c, a)
-    if sonsLen(a) > 0: 
+    if sonsLen(a) > 0:
       # a generic has been added to `a`:
       if result.kind != nkEmpty: addSon(a, result)
       result = a
@@ -436,17 +436,17 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   if gCmd == cmdInteractive and not isEmptyType(result.typ):
     result = buildEchoStmt(c, result)
   result = transformStmt(c.module, result)
-    
-proc recoverContext(c: PContext) = 
+
+proc recoverContext(c: PContext) =
   # clean up in case of a semantic error: We clean up the stacks, etc. This is
-  # faster than wrapping every stack operation in a 'try finally' block and 
+  # faster than wrapping every stack operation in a 'try finally' block and
   # requires far less code.
   c.currentScope = c.topLevelScope
   while getCurrOwner().kind != skModule: popOwner()
   while c.p != nil and c.p.owner.kind != skModule: c.p = c.p.next
 
-proc myProcess(context: PPassContext, n: PNode): PNode = 
-  var c = PContext(context)    
+proc myProcess(context: PPassContext, n: PNode): PNode =
+  var c = PContext(context)
   # no need for an expensive 'try' if we stop after the first error anyway:
   if msgs.gErrorMax <= 1:
     result = semStmtAndGenerateGenerics(c, n)
@@ -462,8 +462,8 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
       if getCurrentException() of ESuggestDone: result = nil
       else: result = ast.emptyNode
       #if gCmd == cmdIdeTools: findSuggest(c, n)
-    
-proc myClose(context: PPassContext, n: PNode): PNode = 
+
+proc myClose(context: PPassContext, n: PNode): PNode =
   var c = PContext(context)
   closeScope(c)         # close module's scope
   rawCloseScope(c)      # imported symbols; don't check for unused ones!

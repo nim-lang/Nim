@@ -41,7 +41,7 @@ export
 
 type
   Port* = distinct uint16  ## port type
-  
+
   Domain* = enum    ## domain, which specifies the protocol family of the
                     ## created socket. Other domains than those that are listed
                     ## here are unsupported.
@@ -56,7 +56,7 @@ type
     SOCK_SEQPACKET = 5 ## reliable sequenced packet service
 
   Protocol* = enum      ## third argument to `socket` proc
-    IPPROTO_TCP = 6,    ## Transmission control protocol. 
+    IPPROTO_TCP = 6,    ## Transmission control protocol.
     IPPROTO_UDP = 17,   ## User datagram protocol.
     IPPROTO_IP,         ## Internet protocol. Unsupported on Windows.
     IPPROTO_IPV6,       ## Internet Protocol Version 6. Unsupported on Windows.
@@ -86,10 +86,10 @@ when useWinVersion:
   const
     IOCPARM_MASK* = 127
     IOC_IN* = int(-2147483648)
-    FIONBIO* = IOC_IN.int32 or ((sizeof(int32) and IOCPARM_MASK) shl 16) or 
+    FIONBIO* = IOC_IN.int32 or ((sizeof(int32) and IOCPARM_MASK) shl 16) or
                              (102 shl 8) or 126
 
-  proc ioctlsocket*(s: SocketHandle, cmd: clong, 
+  proc ioctlsocket*(s: SocketHandle, cmd: clong,
                    argptr: ptr clong): cint {.
                    stdcall, importc: "ioctlsocket", dynlib: "ws2_32.dll".}
 else:
@@ -138,12 +138,12 @@ when not useWinVersion:
     else: discard
 
 else:
-  proc toInt(domain: Domain): cint = 
+  proc toInt(domain: Domain): cint =
     result = toU16(ord(domain))
 
   proc toInt(typ: SockType): cint =
     result = cint(ord(typ))
-  
+
   proc toInt(p: Protocol): cint =
     result = cint(ord(p))
 
@@ -173,8 +173,8 @@ proc bindAddr*(socket: SocketHandle, name: ptr SockAddr, namelen: SockLen): cint
   result = bindSocket(socket, name, namelen)
 
 proc listen*(socket: SocketHandle, backlog = SOMAXCONN): cint {.tags: [ReadIOEffect].} =
-  ## Marks ``socket`` as accepting connections. 
-  ## ``Backlog`` specifies the maximum length of the 
+  ## Marks ``socket`` as accepting connections.
+  ## ``Backlog`` specifies the maximum length of the
   ## queue of pending connections.
   when useWinVersion:
     result = winlean.listen(socket, cint(backlog))
@@ -201,7 +201,7 @@ proc getAddrInfo*(address: string, port: Port, af: Domain = AF_INET, typ: SockTy
 proc dealloc*(ai: ptr AddrInfo) =
   freeaddrinfo(ai)
 
-proc ntohl*(x: int32): int32 = 
+proc ntohl*(x: int32): int32 =
   ## Converts 32-bit integers from network to host byte order.
   ## On machines where the host byte order is the same as network byte order,
   ## this is a no-op; otherwise, it performs a 4-byte swap operation.
@@ -231,7 +231,7 @@ proc htons*(x: int16): int16 =
   result = rawsockets.ntohs(x)
 
 proc getServByName*(name, proto: string): Servent {.tags: [ReadIOEffect].} =
-  ## Searches the database from the beginning and finds the first entry for 
+  ## Searches the database from the beginning and finds the first entry for
   ## which the service name specified by ``name`` matches the s_name member
   ## and the protocol name specified by ``proto`` matches the s_proto member.
   ##
@@ -245,10 +245,10 @@ proc getServByName*(name, proto: string): Servent {.tags: [ReadIOEffect].} =
   result.aliases = cstringArrayToSeq(s.s_aliases)
   result.port = Port(s.s_port)
   result.proto = $s.s_proto
-  
-proc getServByPort*(port: Port, proto: string): Servent {.tags: [ReadIOEffect].} = 
-  ## Searches the database from the beginning and finds the first entry for 
-  ## which the port specified by ``port`` matches the s_port member and the 
+
+proc getServByPort*(port: Port, proto: string): Servent {.tags: [ReadIOEffect].} =
+  ## Searches the database from the beginning and finds the first entry for
+  ## which the port specified by ``port`` matches the s_port member and the
   ## protocol name specified by ``proto`` matches the s_proto member.
   ##
   ## On posix this will search through the ``/etc/services`` file.
@@ -266,17 +266,17 @@ proc getHostByAddr*(ip: string): Hostent {.tags: [ReadIOEffect].} =
   ## This function will lookup the hostname of an IP Address.
   var myaddr: InAddr
   myaddr.s_addr = inet_addr(ip)
-  
+
   when useWinVersion:
     var s = winlean.gethostbyaddr(addr(myaddr), sizeof(myaddr).cuint,
                                   cint(rawsockets.AF_INET))
     if s == nil: raiseOSError(osLastError())
   else:
-    var s = posix.gethostbyaddr(addr(myaddr), sizeof(myaddr).Socklen, 
+    var s = posix.gethostbyaddr(addr(myaddr), sizeof(myaddr).Socklen,
                                 cint(posix.AF_INET))
     if s == nil:
       raise newException(OSError, $hstrerror(h_errno))
-  
+
   result.name = $s.h_name
   result.aliases = cstringArrayToSeq(s.h_aliases)
   when useWinVersion:
@@ -291,7 +291,7 @@ proc getHostByAddr*(ip: string): Hostent {.tags: [ReadIOEffect].} =
   result.addrList = cstringArrayToSeq(s.h_addr_list)
   result.length = int(s.h_length)
 
-proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} = 
+proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} =
   ## This function will lookup the IP address of a hostname.
   when useWinVersion:
     var s = winlean.gethostbyname(name)
@@ -312,7 +312,7 @@ proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} =
   result.addrList = cstringArrayToSeq(s.h_addr_list)
   result.length = int(s.h_length)
 
-proc getSockName*(socket: SocketHandle): Port = 
+proc getSockName*(socket: SocketHandle): Port =
   ## returns the socket's associated port number.
   var name: Sockaddr_in
   when useWinVersion:
@@ -328,11 +328,11 @@ proc getSockName*(socket: SocketHandle): Port =
   result = Port(rawsockets.ntohs(name.sin_port))
 
 proc getSockOptInt*(socket: SocketHandle, level, optname: int): int {.
-  tags: [ReadIOEffect].} = 
+  tags: [ReadIOEffect].} =
   ## getsockopt for integer options.
   var res: cint
   var size = sizeof(res).SockLen
-  if getsockopt(socket, cint(level), cint(optname), 
+  if getsockopt(socket, cint(level), cint(optname),
                 addr(res), addr(size)) < 0'i32:
     raiseOSError(osLastError())
   result = int(res)
@@ -341,7 +341,7 @@ proc setSockOptInt*(socket: SocketHandle, level, optname, optval: int) {.
   tags: [WriteIOEffect].} =
   ## setsockopt for integer options.
   var value = cint(optval)
-  if setsockopt(socket, cint(level), cint(optname), addr(value),  
+  if setsockopt(socket, cint(level), cint(optname), addr(value),
                 sizeof(value).SockLen) < 0'i32:
     raiseOSError(osLastError())
 
@@ -368,13 +368,13 @@ proc timeValFromMilliseconds(timeout = 500): Timeval =
     result.tv_sec = seconds.int32
     result.tv_usec = ((timeout - seconds * 1000) * 1000).int32
 
-proc createFdSet(fd: var TFdSet, s: seq[SocketHandle], m: var int) = 
+proc createFdSet(fd: var TFdSet, s: seq[SocketHandle], m: var int) =
   FD_ZERO(fd)
-  for i in items(s): 
+  for i in items(s):
     m = max(m, int(i))
     FD_SET(i, fd)
-   
-proc pruneSocketSet(s: var seq[SocketHandle], fd: var TFdSet) = 
+
+proc pruneSocketSet(s: var seq[SocketHandle], fd: var TFdSet) =
   var i = 0
   var L = s.len
   while i < L:
@@ -388,22 +388,22 @@ proc pruneSocketSet(s: var seq[SocketHandle], fd: var TFdSet) =
 proc select*(readfds: var seq[SocketHandle], timeout = 500): int =
   ## Traditional select function. This function will return the number of
   ## sockets that are ready to be read from, written to, or which have errors.
-  ## If there are none; 0 is returned. 
+  ## If there are none; 0 is returned.
   ## ``Timeout`` is in miliseconds and -1 can be specified for no timeout.
-  ## 
+  ##
   ## A socket is removed from the specific ``seq`` when it has data waiting to
   ## be read/written to or has errors (``exceptfds``).
   var tv {.noInit.}: Timeval = timeValFromMilliseconds(timeout)
-  
+
   var rd: TFdSet
   var m = 0
   createFdSet((rd), readfds, m)
-  
+
   if timeout != -1:
     result = int(select(cint(m+1), addr(rd), nil, nil, addr(tv)))
   else:
     result = int(select(cint(m+1), addr(rd), nil, nil, nil))
-  
+
   pruneSocketSet(readfds, (rd))
 
 proc selectWrite*(writefds: var seq[SocketHandle],
@@ -416,16 +416,16 @@ proc selectWrite*(writefds: var seq[SocketHandle],
   ## ``timeout`` is specified in miliseconds and ``-1`` can be specified for
   ## an unlimited time.
   var tv {.noInit.}: Timeval = timeValFromMilliseconds(timeout)
-  
+
   var wr: TFdSet
   var m = 0
   createFdSet((wr), writefds, m)
-  
+
   if timeout != -1:
     result = int(select(cint(m+1), nil, addr(wr), nil, addr(tv)))
   else:
     result = int(select(cint(m+1), nil, addr(wr), nil, nil))
-  
+
   pruneSocketSet(writefds, (wr))
 
 # We ignore signal SIGPIPE on Darwin

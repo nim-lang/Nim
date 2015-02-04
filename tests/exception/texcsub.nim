@@ -8,9 +8,9 @@ try:
   raise newException(EOS, "dummy message")
 except E_Base:
   echo "caught!"
-except: 
+except:
   echo "wtf!?"
-  
+
 #OUT caught!
 
 

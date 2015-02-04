@@ -18,6 +18,6 @@ when true:
     genErrors("errssor!")
   except ESomething:
     echo("Error happened")
-  
+
 
 

@@ -12,7 +12,7 @@ test "previous definitions can be further overloaded or hidden in local scopes":
 
   check t(true) == "bool"
   check t(10) == "int"
-  
+
   template t(a: int): expr = "inner int"
   check t(10) == "inner int"
   check t("test") == "string"
@@ -27,6 +27,6 @@ test "templates can be redefined multiple times":
   assertion_failed: check msg == "first fail path"
   customAssert false, "first fail path"
 
-  assertion_failed: check msg == "second fail path"  
+  assertion_failed: check msg == "second fail path"
   customAssert false, "second fail path"
 

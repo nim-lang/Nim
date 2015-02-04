@@ -65,7 +65,7 @@ type
     confirm*: proc (msg: cstring): bool {.nimcall.}
     disableExternalCapture*: proc () {.nimcall.}
     enableExternalCapture*: proc () {.nimcall.}
-    find*: proc (text: cstring, caseSensitive = false, 
+    find*: proc (text: cstring, caseSensitive = false,
                  backwards = false) {.nimcall.}
     focus*: proc () {.nimcall.}
     forward*: proc () {.nimcall.}

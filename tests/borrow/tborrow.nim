@@ -6,12 +6,12 @@ discard """
 
 proc `++`*[T: int | float](a, b: T): T =
   result = a + b
-  
+
 type
   DI = distinct int
   DF = distinct float
   DS = distinct string
-  
+
 proc `++`(x, y: DI): DI {.borrow.}
 proc `++`(x, y: DF): DF {.borrow.}
 

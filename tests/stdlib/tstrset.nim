@@ -8,7 +8,7 @@ type
   TRadixNodeLinear = object of TRadixNode
     len: int8
     keys: array [0..31, char]
-    vals: array [0..31, PRadixNode]  
+    vals: array [0..31, PRadixNode]
   TRadixNodeFull = object of TRadixNode
     b: array [char, PRadixNode]
   TRadixNodeLeaf = object of TRadixNode
@@ -16,7 +16,7 @@ type
   PRadixNodeLinear = ref TRadixNodeLinear
   PRadixNodeFull = ref TRadixNodeFull
   PRadixNodeLeaf = ref TRadixNodeLeaf
-    
+
 proc search(r: PRadixNode, s: string): PRadixNode =
   var r = r
   var i = 0
@@ -52,7 +52,7 @@ proc contains*(r: PRadixNode, s: string): bool =
 
 proc testOrincl*(r: var PRadixNode, s: string): bool =
   nil
-    
+
 proc incl*(r: var PRadixNode, s: string) = discard testOrIncl(r, s)
 
 proc excl*(r: var PRadixNode, s: string) =

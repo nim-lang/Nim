@@ -11,11 +11,11 @@ type
   TElem = object
     foo: int
     bar: string
-    
+
 let
   elem1 = TElem(foo: 1, bar: "bar")
   elem2 = TElem(foo: 2, bar: "baz")
-  
+
 var tbl2 = initTable[string, TElem]()
 tbl2.add("bar", elem1)
 tbl2.add("baz", elem2)

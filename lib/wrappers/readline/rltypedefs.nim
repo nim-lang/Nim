@@ -1,8 +1,8 @@
-# rltypedefs.h -- Type declarations for readline functions. 
+# rltypedefs.h -- Type declarations for readline functions.
 # Copyright (C) 2000-2009 Free Software Foundation, Inc.
 #
 #   This file is part of the GNU Readline Library (Readline), a library
-#   for reading lines of text with interactive input and history editing.      
+#   for reading lines of text with interactive input and history editing.
 #
 #   Readline is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -18,20 +18,20 @@
 #   along with Readline.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-type 
+type
   TFunction* = proc (): cint{.cdecl.}
   TVFunction* = proc (){.cdecl.}
   TCPFunction* = proc (): cstring{.cdecl.}
   TCPPFunction* = proc (): cstringArray{.cdecl.}
 
-# Bindable functions 
+# Bindable functions
 
-type 
+type
   Tcommand_func* = proc (a2: cint, a3: cint): cint{.cdecl.}
 
-# Typedefs for the completion system 
+# Typedefs for the completion system
 
-type 
+type
   Tcompentry_func* = proc (a2: cstring, a3: cint): cstring{.cdecl.}
   Tcompletion_func* = proc (a2: cstring, a3: cint, a4: cint): cstringArray{.
       cdecl.}
@@ -40,26 +40,26 @@ type
   Tcompignore_func* = proc (a2: cstringArray): cint{.cdecl.}
   Tcompdisp_func* = proc (a2: cstringArray, a3: cint, a4: cint){.cdecl.}
 
-# Type for input and pre-read hook functions like rl_event_hook 
+# Type for input and pre-read hook functions like rl_event_hook
 
-type 
+type
   Thook_func* = proc (): cint{.cdecl.}
 
-# Input function type 
+# Input function type
 
-type 
+type
   Tgetc_func* = proc (a2: File): cint{.cdecl.}
 
 # Generic function that takes a character buffer (which could be the readline
 #   line buffer) and an index into it (which could be rl_point) and returns
-#   an int. 
+#   an int.
 
-type 
+type
   Tlinebuf_func* = proc (a2: cstring, a3: cint): cint{.cdecl.}
 
-# `Generic' function pointer typedefs 
+# `Generic' function pointer typedefs
 
-type 
+type
   Tintfunc* = proc (a2: cint): cint{.cdecl.}
   Tivoidfunc* = proc (): cint{.cdecl.}
   Ticpfunc* = proc (a2: cstring): cint{.cdecl.}

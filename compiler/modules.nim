@@ -10,7 +10,7 @@
 ## implements the module handling
 
 import
-  ast, astalgo, magicsys, crc, rodread, msgs, cgendata, sigmatch, options, 
+  ast, astalgo, magicsys, crc, rodread, msgs, cgendata, sigmatch, options,
   idents, os, lexer, idgen, passes, syntaxes
 
 type
@@ -39,12 +39,12 @@ template crc(x: PSym): expr =
 
 proc crcChanged(fileIdx: int32): bool =
   internalAssert fileIdx >= 0 and fileIdx < gMemCacheData.len
-  
+
   template updateStatus =
     gMemCacheData[fileIdx].crcStatus = if result: crcHasChanged
                                        else: crcNotChanged
     # echo "TESTING CRC: ", fileIdx.toFilename, " ", result
-  
+
   case gMemCacheData[fileIdx].crcStatus:
   of crcHasChanged:
     result = true
@@ -96,7 +96,7 @@ proc checkDepMem(fileIdx: int32): TNeedRecompile =
   if optForceFullMake in gGlobalOptions or
      crcChanged(fileIdx):
        markDirty
-  
+
   if gMemCacheData[fileIdx].deps != nil:
     gMemCacheData[fileIdx].needsRecompile = Probing
     for dep in gMemCacheData[fileIdx].deps:
@@ -104,13 +104,13 @@ proc checkDepMem(fileIdx: int32): TNeedRecompile =
       if d in {Yes, Recompiled}:
         # echo fileIdx.toFilename, " depends on ", dep.toFilename, " ", d
         markDirty
-  
+
   gMemCacheData[fileIdx].needsRecompile = No
   return No
 
 proc newModule(fileIdx: int32): PSym =
   # We cannot call ``newSym`` here, because we have to circumvent the ID
-  # mechanism, which we do in order to assign each module a persistent ID. 
+  # mechanism, which we do in order to assign each module a persistent ID.
   new(result)
   result.id = - 1             # for better error checking
   result.kind = skModule
@@ -118,16 +118,16 @@ proc newModule(fileIdx: int32): PSym =
   result.name = getIdent(splitFile(filename).name)
   if not isNimIdentifier(result.name.s):
     rawMessage(errInvalidModuleName, result.name.s)
-  
+
   result.info = newLineInfo(fileIdx, 1, 1)
   result.owner = newSym(skPackage, getIdent(getPackageName(filename)), nil,
                         result.info)
   result.position = fileIdx
-  
+
   growCache gMemCacheData, fileIdx
   growCache gCompiledModules, fileIdx
   gCompiledModules[result.position] = result
-  
+
   incl(result.flags, sfUsed)
   initStrTable(result.tab)
   strTableAdd(result.tab, result) # a module knows itself
@@ -143,7 +143,7 @@ proc compileModule*(fileIdx: int32, flags: TSymFlags): PSym =
     result.flags = result.flags + flags
     if gCmd in {cmdCompileToC, cmdCompileToCpp, cmdCheck, cmdIdeTools}:
       rd = handleSymbolFile(result)
-      if result.id < 0: 
+      if result.id < 0:
         internalError("handleSymbolFile should have set the module\'s ID")
         return
     else:

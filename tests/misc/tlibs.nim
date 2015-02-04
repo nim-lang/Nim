@@ -5,7 +5,7 @@ discard """
 # Test wether the bindings at least compile...
 
 import
-  unicode, cgi, terminal, libcurl, 
+  unicode, cgi, terminal, libcurl,
   parsexml, parseopt, parsecfg,
   osproc, complex,
   sdl, smpeg, sdl_gfx, sdl_net, sdl_mixer, sdl_ttf,
@@ -20,7 +20,7 @@ import
   db_postgres, db_mysql, db_sqlite, ropes, sockets, browsers, httpserver,
   httpclient, parseutils, unidecode, xmldom, xmldomparser, xmltree, xmlparser,
   htmlparser, re, graphics, colors, pegs, subexes, dialogs
-  
+
 when defined(linux):
   import
     zlib, zipfiles

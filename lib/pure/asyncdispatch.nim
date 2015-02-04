@@ -121,7 +121,7 @@ export Port, SocketFlag
 ##
 ## Limitations/Bugs
 ## ----------------
-## 
+##
 ## * ``except`` statement (without `try`) does not work inside async procedures.
 ## * The effect system (``raises: []``) does not work with async procedures.
 ## * Can't await in a ``except`` body
@@ -379,7 +379,7 @@ when defined(windows) or defined(nimdoc):
     if p.handles.len == 0 and p.timers.len == 0:
       raise newException(ValueError,
         "No handles or timers registered in dispatcher.")
-    
+
     let llTimeout =
       if timeout ==  -1: winlean.INFINITE
       else: timeout.int32
@@ -436,12 +436,12 @@ when defined(windows) or defined(nimdoc):
     if not initPointer(dummySock, getAcceptExSockAddrsPtr, WSAID_GETACCEPTEXSOCKADDRS):
       raiseOSError(osLastError())
 
-  proc connectEx(s: SocketHandle, name: ptr SockAddr, namelen: cint, 
+  proc connectEx(s: SocketHandle, name: ptr SockAddr, namelen: cint,
                   lpSendBuffer: pointer, dwSendDataLength: Dword,
                   lpdwBytesSent: PDword, lpOverlapped: POVERLAPPED): bool =
     if connectExPtr.isNil: raise newException(ValueError, "Need to initialise ConnectEx().")
     let fun =
-      cast[proc (s: SocketHandle, name: ptr SockAddr, namelen: cint, 
+      cast[proc (s: SocketHandle, name: ptr SockAddr, namelen: cint,
          lpSendBuffer: pointer, dwSendDataLength: Dword,
          lpdwBytesSent: PDword, lpOverlapped: POVERLAPPED): bool {.stdcall,gcsafe.}](connectExPtr)
 
@@ -475,7 +475,7 @@ when defined(windows) or defined(nimdoc):
                  dwRemoteAddressLength: Dword, LocalSockaddr: ptr ptr SockAddr,
                  LocalSockaddrLength: LPInt, RemoteSockaddr: ptr ptr SockAddr,
                 RemoteSockaddrLength: LPInt) {.stdcall,gcsafe.}](getAcceptExSockAddrsPtr)
-    
+
     fun(lpOutputBuffer, dwReceiveDataLength, dwLocalAddressLength,
                   dwRemoteAddressLength, LocalSockaddr, LocalSockaddrLength,
                   RemoteSockaddr, RemoteSockaddrLength)
@@ -514,7 +514,7 @@ when defined(windows) or defined(nimdoc):
             else:
               retFuture.fail(newException(OSError, osErrorMsg(errcode)))
       )
-      
+
       var ret = connectEx(socket.SocketHandle, it.ai_addr,
                           sizeof(Sockaddr_in).cint, nil, 0, nil,
                           cast[POVERLAPPED](ol))
@@ -565,7 +565,7 @@ when defined(windows) or defined(nimdoc):
     var dataBuf: TWSABuf
     dataBuf.buf = cast[cstring](alloc0(size))
     dataBuf.len = size
-    
+
     var bytesReceived: Dword
     var flagsio = flags.toOSFlags().Dword
     var ol = PCustomOverlapped()
@@ -612,9 +612,9 @@ when defined(windows) or defined(nimdoc):
       # the empty string (which signals a disconnection) when there is
       # nothing left to read.
       retFuture.complete("")
-      # TODO: "For message-oriented sockets, where a zero byte message is often 
-      # allowable, a failure with an error code of WSAEDISCON is used to 
-      # indicate graceful closure." 
+      # TODO: "For message-oriented sockets, where a zero byte message is often
+      # allowable, a failure with an error code of WSAEDISCON is used to
+      # indicate graceful closure."
       # ~ http://msdn.microsoft.com/en-us/library/ms741688%28v=vs.85%29.aspx
     else:
       # Request to read completed immediately.
@@ -748,7 +748,7 @@ when defined(windows) or defined(nimdoc):
 
     # http://msdn.microsoft.com/en-us/library/windows/desktop/ms737524%28v=vs.85%29.aspx
     let ret = acceptEx(socket.SocketHandle, clientSock, addr lpOutputBuf[0],
-                       dwReceiveDataLength, 
+                       dwReceiveDataLength,
                        dwLocalAddressLength,
                        dwRemoteAddressLength,
                        addr dwBytesReceived, cast[POVERLAPPED](ol))
@@ -803,7 +803,7 @@ else:
   else:
     from posix import EINTR, EAGAIN, EINPROGRESS, EWOULDBLOCK, MSG_PEEK,
                       MSG_NOSIGNAL
-  
+
   type
     TAsyncFD* = distinct cint
     TCallback = proc (fd: TAsyncFD): bool {.closure,gcsafe.}
@@ -849,7 +849,7 @@ else:
     result = newRawSocket(domain, typ, protocol).TAsyncFD
     result.SocketHandle.setBlocking(false)
     register(result)
-  
+
   proc closeSocket*(sock: TAsyncFD) =
     let disp = getGlobalDispatcher()
     sock.SocketHandle.close()
@@ -864,14 +864,14 @@ else:
       raise newException(ValueError, "File descriptor not registered.")
     p.selector[fd.SocketHandle].data.PData.readCBs.add(cb)
     update(fd, p.selector[fd.SocketHandle].events + {EvRead})
-  
+
   proc addWrite*(fd: TAsyncFD, cb: TCallback) =
     let p = getGlobalDispatcher()
     if fd.SocketHandle notin p.selector:
       raise newException(ValueError, "File descriptor not registered.")
     p.selector[fd.SocketHandle].data.PData.writeCBs.add(cb)
     update(fd, p.selector[fd.SocketHandle].events + {EvWrite})
-  
+
   proc poll*(timeout = 500) =
     let p = getGlobalDispatcher()
     for info in p.selector.select(timeout):
@@ -892,7 +892,7 @@ else:
           if not cb(data.fd):
             # Callback wants to be called again.
             data.readCBs.add(cb)
-      
+
       if EvWrite in info.events:
         let currentCBs = data.writeCBs
         data.writeCBs = @[]
@@ -900,7 +900,7 @@ else:
           if not cb(data.fd):
             # Callback wants to be called again.
             data.writeCBs.add(cb)
-      
+
       if info.key in p.selector:
         var newEvents: set[Event]
         if data.readCBs.len != 0: newEvents = {EvRead}
@@ -913,16 +913,16 @@ else:
         discard
 
     processTimers(p)
-  
+
   proc connect*(socket: TAsyncFD, address: string, port: Port,
     af = AF_INET): Future[void] =
     var retFuture = newFuture[void]("connect")
-    
+
     proc cb(fd: TAsyncFD): bool =
       # We have connected.
       retFuture.complete()
       return true
-    
+
     var aiList = getAddrInfo(address, port, af)
     var success = false
     var lastError: OSErrorCode
@@ -952,7 +952,7 @@ else:
   proc recv*(socket: TAsyncFD, size: int,
              flags = {SocketFlag.SafeDisconn}): Future[string] =
     var retFuture = newFuture[string]("recv")
-    
+
     var readBuffer = newString(size)
 
     proc cb(sock: TAsyncFD): bool =
@@ -983,9 +983,9 @@ else:
   proc send*(socket: TAsyncFD, data: string,
              flags = {SocketFlag.SafeDisconn}): Future[void] =
     var retFuture = newFuture[void]("send")
-    
+
     var written = 0
-    
+
     proc cb(sock: TAsyncFD): bool =
       result = true
       let netSize = data.len-written
@@ -1277,14 +1277,14 @@ macro async*(prc: stmt): stmt {.immediate.} =
     if returnType.kind == nnkEmpty: newIdentNode("void")
     else: returnType[1]
   outerProcBody.add(
-    newVarStmt(retFutureSym, 
+    newVarStmt(retFutureSym,
       newCall(
         newNimNode(nnkBracketExpr, prc[6]).add(
           newIdentNode(!"newFuture"), # TODO: Strange bug here? Remove the `!`.
           subRetType),
       newLit(prc[0].getName)))) # Get type from return type of this proc
-  
-  # -> iterator nameIter(): FutureBase {.closure.} = 
+
+  # -> iterator nameIter(): FutureBase {.closure.} =
   # ->   var result: T
   # ->   <proc_body>
   # ->   complete(retFuture, result)
@@ -1299,7 +1299,7 @@ macro async*(prc: stmt): stmt {.immediate.} =
   else:
     # -> complete(retFuture)
     procBody.add(newCall(newIdentNode("complete"), retFutureSym))
-  
+
   var closureIterator = newProc(iteratorNameSym, [newIdentNode("FutureBase")],
                                 procBody, nnkIteratorDef)
   closureIterator[4] = newNimNode(nnkPragma, prc[6]).add(newIdentNode("closure"))
@@ -1313,7 +1313,7 @@ macro async*(prc: stmt): stmt {.immediate.} =
 
   # -> return retFuture
   outerProcBody.add newNimNode(nnkReturnStmt, prc[6][prc[6].len-1]).add(retFutureSym)
-  
+
   result = prc
 
   # Remove the 'async' pragma.
@@ -1339,7 +1339,7 @@ proc recvLine*(socket: TAsyncFD): Future[string] {.async.} =
   ## If a full line is read ``\r\L`` is not
   ## added to ``line``, however if solely ``\r\L`` is read then ``line``
   ## will be set to it.
-  ## 
+  ##
   ## If the socket is disconnected, ``line`` will be set to ``""``.
   ##
   ## If the socket is disconnected in the middle of a line (before ``\r\L``
@@ -1350,7 +1350,7 @@ proc recvLine*(socket: TAsyncFD): Future[string] {.async.} =
   ##
   ## **Note**: This procedure is mostly used for testing. You likely want to
   ## use ``asyncnet.recvLine`` instead.
-  
+
   template addNLIfEmpty(): stmt =
     if result.len == 0:
       result.add("\c\L")

@@ -46,7 +46,7 @@ type
 
 {.deprecated: [TTestStatus: TestStatus, TOutputLevel: OutputLevel]}
 
-var 
+var
   abortOnError* {.threadvar.}: bool
   outputLevel* {.threadvar.}: OutputLevel
   colorOutput* {.threadvar.}: bool

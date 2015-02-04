@@ -39,7 +39,7 @@ castExpr = 'cast' '[' optInd typeDesc optPar ']' '(' optInd expr optPar ')'
 parKeyw = 'discard' | 'include' | 'if' | 'while' | 'case' | 'try'
         | 'finally' | 'except' | 'for' | 'block' | 'const' | 'let'
         | 'when' | 'var' | 'mixin'
-par = '(' optInd (&parKeyw complexOrSimpleStmt ^+ ';' 
+par = '(' optInd (&parKeyw complexOrSimpleStmt ^+ ';'
                  | simpleExpr ('=' expr (';' complexOrSimpleStmt ^+ ';' )? )?
                             | (':' expr)? (',' (exprColonEqExpr comma?)*)?  )?
         optPar ')'
@@ -99,7 +99,7 @@ primary = typeKeyw typeDescK
 typeDesc = simpleExpr
 typeDefAux = simpleExpr
            | 'generic' typeClass
-macroColon = ':' stmt? ( IND{=} 'of' exprList ':' stmt 
+macroColon = ':' stmt? ( IND{=} 'of' exprList ':' stmt
                        | IND{=} 'elif' expr ':' stmt
                        | IND{=} 'except' exprList ':' stmt
                        | IND{=} 'else' ':' stmt )*

@@ -81,7 +81,7 @@ proc exec(cmd: string, errorcode: int = QuitFailure) =
   echo(cmd)
   if execShellCmd(cmd) != 0: quit("FAILURE", errorcode)
 
-proc tryExec(cmd: string): bool = 
+proc tryExec(cmd: string): bool =
   echo(cmd)
   result = execShellCmd(cmd) == 0
 
@@ -96,7 +96,7 @@ proc copyExe(source, dest: string) =
 const
   compileNimInst = "-d:useLibzipSrc tools/niminst/niminst"
 
-proc csource(args: string) = 
+proc csource(args: string) =
   exec("$4 cc $1 -r $3 --var:version=$2 --var:mingw=none csource compiler/nim.ini $1" %
        [args, VersionAsString, compileNimInst, findNim()])
 
@@ -120,7 +120,7 @@ proc nsis(args: string) =
   exec(("tools" / "niminst" / "niminst --var:version=$# --var:mingw=mingw$#" &
         " nsis compiler/nim") % [VersionAsString, $(sizeof(pointer)*8)])
 
-proc install(args: string) = 
+proc install(args: string) =
   exec("$# cc -r $# --var:version=$# --var:mingw=none scripts compiler/nim.ini" %
        [findNim(), compileNimInst, VersionAsString])
   exec("sh ./install.sh $#" % args)
@@ -142,7 +142,7 @@ proc pdf(args="") =
 const
   bootOptions = "" # options to pass to the bootstrap process
 
-proc findStartNim: string = 
+proc findStartNim: string =
   # we try several things before giving up:
   # * bin/nim
   # * $PATH/nim
@@ -164,23 +164,23 @@ proc findStartNim: string =
 
   when defined(Posix):
     const buildScript = "build.sh"
-    if existsFile(buildScript): 
+    if existsFile(buildScript):
       if tryExec("./" & buildScript): return "bin" / nim
   else:
     const buildScript = "build.bat"
-    if existsFile(buildScript): 
+    if existsFile(buildScript):
       if tryExec(buildScript): return "bin" / nim
 
   echo("Found no nim compiler and every attempt to build one failed!")
   quit("FAILURE")
 
-proc thVersion(i: int): string = 
+proc thVersion(i: int): string =
   result = ("compiler" / "nim" & $i).exe
-  
+
 proc boot(args: string) =
   var output = "compiler" / "nim".exe
   var finalDest = "bin" / "nim".exe
-  
+
   copyExe(findStartNim(), 0.thVersion)
   for i in 0..2:
     echo "iteration: ", i+1
@@ -205,7 +205,7 @@ const
     ".bzrignore", "nim", "nim.exe", "koch", "koch.exe", ".gitignore"
   ]
 
-proc cleanAux(dir: string) = 
+proc cleanAux(dir: string) =
   for kind, path in walkDir(dir):
     case kind
     of pcFile:
@@ -216,25 +216,25 @@ proc cleanAux(dir: string) =
           removeFile(path)
     of pcDir:
       case splitPath(path).tail
-      of "nimcache": 
+      of "nimcache":
         echo "removing dir: ", path
         removeDir(path)
       of "dist", ".git", "icons": discard
       else: cleanAux(path)
     else: discard
 
-proc removePattern(pattern: string) = 
-  for f in walkFiles(pattern): 
+proc removePattern(pattern: string) =
+  for f in walkFiles(pattern):
     echo "removing: ", f
     removeFile(f)
 
-proc clean(args: string) = 
+proc clean(args: string) =
   if existsFile("koch.dat"): removeFile("koch.dat")
   removePattern("web/*.html")
   removePattern("doc/*.html")
   cleanAux(getCurrentDir())
   for kind, path in walkDir(getCurrentDir() / "build"):
-    if kind == pcDir: 
+    if kind == pcDir:
       echo "removing dir: ", path
       removeDir(path)
 
@@ -277,7 +277,7 @@ when defined(withUpdate):
                    "Local branch must be ahead of it. Exiting...")
       else:
         quit("An error has occured.")
-      
+
     else:
       echo("No repo or executable found!")
       when defined(haveZipLib):
@@ -294,7 +294,7 @@ when defined(withUpdate):
           quit("Error reading archive.")
       else:
         quit("No failback available. Exiting...")
-    
+
     echo("Starting update...")
     boot(args)
     echo("Update complete!")
@@ -347,8 +347,8 @@ proc temp(args: string) =
   copyExe(output, finalDest)
   if args.len > 0: exec(finalDest & " " & args)
 
-proc showHelp() = 
-  quit(HelpText % [VersionAsString & repeatChar(44-len(VersionAsString)), 
+proc showHelp() =
+  quit(HelpText % [VersionAsString & repeatChar(44-len(VersionAsString)),
                    CompileDate, CompileTime], QuitSuccess)
 
 var op = initOptParser()

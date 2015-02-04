@@ -41,7 +41,7 @@ type
 
 proc getInterf(): ITest =
   var shared: int
-  
+
   return (setter: proc (x: int) = shared = x,
           getter: proc (): int = return shared)
 

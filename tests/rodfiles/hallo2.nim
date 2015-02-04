@@ -12,6 +12,6 @@ type
 proc newNode(data: string): ref TNode =
   new(result)
   result.data = data
-  
+
 echo newNode("Hello World").data
 

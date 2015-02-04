@@ -24,7 +24,7 @@ Options:
   --wholeProject                   overwrite every processed file.
   --checkExtern:on|off             style check also extern names
   --styleCheck:on|off|auto         performs style checking for identifiers
-                                   and suggests an alternative spelling; 
+                                   and suggests an alternative spelling;
                                    'auto' corrects the spelling.
   --bestEffort                     try to fix the code even when there
                                    are errors.
@@ -48,11 +48,11 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
   var p = parseopt.initOptParser(cmd)
   var argsCount = 0
   gOnlyMainfile = true
-  while true: 
+  while true:
     parseopt.next(p)
     case p.kind
-    of cmdEnd: break 
-    of cmdLongoption, cmdShortOption: 
+    of cmdEnd: break
+    of cmdLongoption, cmdShortOption:
       case p.key.normalize
       of "overwritefiles":
         case p.val.normalize

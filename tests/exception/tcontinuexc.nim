@@ -21,7 +21,7 @@ try:
       stdout.write("E")
     stdout.write("C")
     raise newException(EsomeotherErr, "bla")
-finally:  
+finally:
   echo "caught"
 
 #OUT ECcaught

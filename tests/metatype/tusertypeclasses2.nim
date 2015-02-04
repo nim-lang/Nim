@@ -7,7 +7,7 @@ type
 
   ref_obj_x = ref object
     x: int
-  
+
   ref_to_obj_x = ref obj_x
 
   p_o_x = ptr obj_x

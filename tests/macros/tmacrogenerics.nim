@@ -16,7 +16,7 @@ macro makeBar(A, B: typedesc): typedesc =
   echo "instantiation ", counter, " with ", A.name, " and ", B.name
   result = A
 
-type 
+type
   Bar[T, U] = makeBar(T, U)
 
 var bb1: Bar[int, float]

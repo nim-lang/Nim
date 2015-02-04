@@ -22,35 +22,35 @@ proc delNimCache() =
     removeDir(nimcacheDir)
   except OSError:
     echo "[Warning] could not delete: ", nimcacheDir
-    
+
 proc runRodFiles(r: var TResults, cat: Category, options: string) =
   template test(filename: expr): stmt =
     testSpec r, makeTest(rodfilesDir / filename, options, cat, actionRun)
-  
+
   delNimCache()
-  
+
   # test basic recompilation scheme:
   test "hallo"
   test "hallo"
   # test incremental type information:
   test "hallo2"
   delNimCache()
-  
+
   # test type converters:
   test "aconv"
   test "bconv"
   delNimCache()
-  
+
   # test G, A, B example from the documentation; test init sections:
   test "deada"
   test "deada2"
   delNimCache()
-  
+
   # test method generation:
   test "bmethods"
   test "bmethods2"
   delNimCache()
-  
+
   # test generics:
   test "tgeneric1"
   test "tgeneric2"
@@ -79,8 +79,8 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     options & " --app:lib -d:createNimRtl", cat)
   testSpec c, makeTest("tests/dll/server.nim",
     options & " --app:lib -d:useNimRtl", cat)
-  
-  when defined(Windows): 
+
+  when defined(Windows):
     # windows looks in the dir of the exe (yay!):
     var nimrtlDll = DynlibFormat % "nimrtl"
     safeCopyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
@@ -91,14 +91,14 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
       echo "[Warning] insufficient LD_LIBRARY_PATH"
     var serverDll = DynlibFormat % "server"
     safeCopyFile("tests/dll" / serverDll, "lib" / serverDll)
-  
-  testSpec r, makeTest("tests/dll/client.nim", options & " -d:useNimRtl", 
+
+  testSpec r, makeTest("tests/dll/client.nim", options & " -d:useNimRtl",
                        cat, actionRun)
 
 proc dllTests(r: var TResults, cat: Category, options: string) =
   # dummy compile result:
   var c = initResults()
-  
+
   runBasicDLLTest c, r, cat, options
   runBasicDLLTest c, r, cat, options & " -d:release"
   runBasicDLLTest c, r, cat, options & " --gc:boehm"
@@ -120,7 +120,7 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
                   " --gc:markAndSweep", cat, actionRun)
     testSpec r, makeTest("tests/gc" / filename, options &
                   " -d:release --gc:markAndSweep", cat, actionRun)
-  
+
   test "gcbench"
   test "gcleak"
   test "gcleak2"
@@ -133,7 +133,7 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   test "cycleleak"
   test "closureleak"
   testWithoutMs "refarrayleak"
-  
+
   test "stackrefleak"
   test "cyclecollector"
 
@@ -146,7 +146,7 @@ proc threadTests(r: var TResults, cat: Category, options: string) =
       " -d:release", cat, actionRun)
     testSpec r, makeTest("tests/threads" / filename, options &
       " --tlsEmulation:on", cat, actionRun)
-  
+
   test "tactors"
   test "tactors2"
   test "threadex"
@@ -181,7 +181,7 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
                          actionRun, targetJS)
     testSpec r, makeTest(filename, options & " -d:nodejs -d:release", cat,
                          actionRun, targetJS)
-    
+
   for t in os.walkFiles("tests/js/t*.nim"):
     test(t)
   for testfile in ["exception/texceptions", "exception/texcpt1",
@@ -198,7 +198,7 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
 
 proc findMainFile(dir: string): string =
   # finds the file belonging to ".nim.cfg"; if there is no such file
-  # it returns the some ".nim" file if there is only one: 
+  # it returns the some ".nim" file if there is only one:
   const cfgExt = ".nim.cfg"
   result = ""
   var nimFiles = 0
@@ -235,7 +235,7 @@ type PackageFilter = enum
   pfExtraOnly
   pfAll
 
-let 
+let
   babelExe = findExe("babel")
   babelDir = getHomeDir() / ".babel"
   packageDir = babelDir / "pkgs"

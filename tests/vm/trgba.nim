@@ -8,19 +8,19 @@ discard """
 type
   TAggRgba8* = array[4, byte]
 
-template R*(self: TAggRgba8): byte = self[0]   
-template G*(self: TAggRgba8): byte = self[1]   
-template B*(self: TAggRgba8): byte = self[2]   
-template A*(self: TAggRgba8): byte = self[3]   
+template R*(self: TAggRgba8): byte = self[0]
+template G*(self: TAggRgba8): byte = self[1]
+template B*(self: TAggRgba8): byte = self[2]
+template A*(self: TAggRgba8): byte = self[3]
 
-template `R=`*(self: TAggRgba8, val: byte) = 
-  self[0] = val   
-template `G=`*(self: TAggRgba8, val: byte) =   
-  self[1] = val   
-template `B=`*(self: TAggRgba8, val: byte) =   
-  self[2] = val   
-template `A=`*(self: TAggRgba8, val: byte) =   
-  self[3] = val   
+template `R=`*(self: TAggRgba8, val: byte) =
+  self[0] = val
+template `G=`*(self: TAggRgba8, val: byte) =
+  self[1] = val
+template `B=`*(self: TAggRgba8, val: byte) =
+  self[2] = val
+template `A=`*(self: TAggRgba8, val: byte) =
+  self[3] = val
 
 proc ABGR* (val: int| int64): TAggRgba8 =
   var V = val
@@ -32,5 +32,5 @@ proc ABGR* (val: int| int64): TAggRgba8 =
   result.A = (V shr 8) and 0xFF
 
 const
-  c1 = ABGR(0xFF007F7F) 
+  c1 = ABGR(0xFF007F7F)
 echo ABGR(0xFF007F7F).repr, c1.repr

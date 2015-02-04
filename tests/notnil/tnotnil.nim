@@ -7,7 +7,7 @@ type
   PObj = ref TObj not nil
   TObj = object
     x: int
-  
+
   MyString = string not nil
 
 #var x: PObj = nil

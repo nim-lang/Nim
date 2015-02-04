@@ -24,7 +24,7 @@ const
 
 template origModuleName(m: PSym): string = m.name.s
 
-proc symToStr(s: PSym, isLocal: bool, section: string, li: TLineInfo): string = 
+proc symToStr(s: PSym, isLocal: bool, section: string, li: TLineInfo): string =
   result = section
   result.add(sep)
   if optIdeTerse in gGlobalOptions:
@@ -52,7 +52,7 @@ proc symToStr(s: PSym, isLocal: bool, section: string, li: TLineInfo): string =
       result.add('.')
     result.add(s.name.s)
     result.add(sep)
-    if s.typ != nil: 
+    if s.typ != nil:
       result.add(typeToString(s.typ))
     result.add(sep)
     result.add(toFullPath(li))
@@ -64,7 +64,7 @@ proc symToStr(s: PSym, isLocal: bool, section: string, li: TLineInfo): string =
     when not defined(noDocgen):
       result.add(s.extractDocComment.escape)
 
-proc symToStr(s: PSym, isLocal: bool, section: string): string = 
+proc symToStr(s: PSym, isLocal: bool, section: string): string =
   result = symToStr(s, isLocal, section, s.info)
 
 proc filterSym(s: PSym): bool {.inline.} =
@@ -82,7 +82,7 @@ proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
       result = true
       break
 
-proc suggestField(c: PContext, s: PSym, outputs: var int) = 
+proc suggestField(c: PContext, s: PSym, outputs: var int) =
   if filterSym(s) and fieldVisible(c, s):
     suggestWriteln(symToStr(s, isLocal=true, sectionSuggest))
     inc outputs
@@ -100,17 +100,17 @@ template wholeSymTab(cond, section: expr) {.immediate.} =
         suggestWriteln(symToStr(it, isLocal = isLocal, section))
         inc outputs
 
-proc suggestSymList(c: PContext, list: PNode, outputs: var int) = 
-  for i in countup(0, sonsLen(list) - 1): 
+proc suggestSymList(c: PContext, list: PNode, outputs: var int) =
+  for i in countup(0, sonsLen(list) - 1):
     if list.sons[i].kind == nkSym:
       suggestField(c, list.sons[i].sym, outputs)
     #else: InternalError(list.info, "getSymFromList")
 
-proc suggestObject(c: PContext, n: PNode, outputs: var int) = 
+proc suggestObject(c: PContext, n: PNode, outputs: var int) =
   case n.kind
-  of nkRecList: 
+  of nkRecList:
     for i in countup(0, sonsLen(n)-1): suggestObject(c, n.sons[i], outputs)
-  of nkRecCase: 
+  of nkRecCase:
     var L = sonsLen(n)
     if L > 0:
       suggestObject(c, n.sons[0], outputs)
@@ -118,7 +118,7 @@ proc suggestObject(c: PContext, n: PNode, outputs: var int) =
   of nkSym: suggestField(c, n.sym, outputs)
   else: discard
 
-proc nameFits(c: PContext, s: PSym, n: PNode): bool = 
+proc nameFits(c: PContext, s: PSym, n: PNode): bool =
   var op = n.sons[0]
   if op.kind in {nkOpenSymChoice, nkClosedSymChoice}: op = op.sons[0]
   var opr: PIdent
@@ -128,8 +128,8 @@ proc nameFits(c: PContext, s: PSym, n: PNode): bool =
   else: return false
   result = opr.id == s.name.id
 
-proc argsFit(c: PContext, candidate: PSym, n, nOrig: PNode): bool = 
-  case candidate.kind 
+proc argsFit(c: PContext, candidate: PSym, n, nOrig: PNode): bool =
+  case candidate.kind
   of OverloadableSyms:
     var m: TCandidate
     initCandidate(c, m, candidate, nil)
@@ -138,11 +138,11 @@ proc argsFit(c: PContext, candidate: PSym, n, nOrig: PNode): bool =
   else:
     result = false
 
-proc suggestCall(c: PContext, n, nOrig: PNode, outputs: var int) = 
+proc suggestCall(c: PContext, n, nOrig: PNode, outputs: var int) =
   wholeSymTab(filterSym(it) and nameFits(c, it, n) and argsFit(c, it, n, nOrig),
               sectionContext)
 
-proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} = 
+proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} =
   if s.typ != nil and sonsLen(s.typ) > 1 and s.typ.sons[1] != nil:
     # special rule: if system and some weird generic match via 'tyExpr'
     # or 'tyGenericParam' we won't list it either to reduce the noise (nobody
@@ -176,48 +176,48 @@ proc suggestFieldAccess(c: PContext, n: PNode, outputs: var int) =
   var typ = n.typ
   if typ == nil:
     # a module symbol has no type for example:
-    if n.kind == nkSym and n.sym.kind == skModule: 
-      if n.sym == c.module: 
+    if n.kind == nkSym and n.sym.kind == skModule:
+      if n.sym == c.module:
         # all symbols accessible, because we are in the current module:
         for it in items(c.topLevelScope.symbols):
-          if filterSym(it): 
+          if filterSym(it):
             suggestWriteln(symToStr(it, isLocal=false, sectionSuggest))
             inc outputs
-      else: 
-        for it in items(n.sym.tab): 
-          if filterSym(it): 
+      else:
+        for it in items(n.sym.tab):
+          if filterSym(it):
             suggestWriteln(symToStr(it, isLocal=false, sectionSuggest))
             inc outputs
     else:
       # fallback:
       suggestEverything(c, n, outputs)
-  elif typ.kind == tyEnum and n.kind == nkSym and n.sym.kind == skType: 
+  elif typ.kind == tyEnum and n.kind == nkSym and n.sym.kind == skType:
     # look up if the identifier belongs to the enum:
     var t = typ
-    while t != nil: 
+    while t != nil:
       suggestSymList(c, t.n, outputs)
       t = t.sons[0]
     suggestOperations(c, n, typ, outputs)
   else:
     typ = skipTypes(typ, {tyGenericInst, tyVar, tyPtr, tyRef})
-    if typ.kind == tyObject: 
+    if typ.kind == tyObject:
       var t = typ
-      while true: 
+      while true:
         suggestObject(c, t.n, outputs)
-        if t.sons[0] == nil: break 
+        if t.sons[0] == nil: break
         t = skipTypes(t.sons[0], {tyGenericInst})
       suggestOperations(c, n, typ, outputs)
-    elif typ.kind == tyTuple and typ.n != nil: 
+    elif typ.kind == tyTuple and typ.n != nil:
       suggestSymList(c, typ.n, outputs)
       suggestOperations(c, n, typ, outputs)
     else:
       suggestOperations(c, n, typ, outputs)
 
 type
-  TCheckPointResult = enum 
+  TCheckPointResult = enum
     cpNone, cpFuzzy, cpExact
 
-proc inCheckpoint(current: TLineInfo): TCheckPointResult = 
+proc inCheckpoint(current: TLineInfo): TCheckPointResult =
   if current.fileIndex == gTrackPos.fileIndex:
     if current.line == gTrackPos.line and
         abs(current.col-gTrackPos.col) < 4:
@@ -233,8 +233,8 @@ proc findClosestDot(n: PNode): PNode =
       result = findClosestDot(n.sons[i])
       if result != nil: return
 
-proc findClosestCall(n: PNode): PNode = 
-  if n.kind in nkCallKinds and inCheckpoint(n.info) == cpExact: 
+proc findClosestCall(n: PNode): PNode =
+  if n.kind in nkCallKinds and inCheckpoint(n.info) == cpExact:
     result = n
   else:
     for i in 0.. <safeLen(n):
@@ -248,8 +248,8 @@ proc isTracked(current: TLineInfo, tokenLen: int): bool =
       if col >= current.col and col <= current.col+tokenLen-1:
         return true
 
-proc findClosestSym(n: PNode): PNode = 
-  if n.kind == nkSym and inCheckpoint(n.info) == cpExact: 
+proc findClosestSym(n: PNode): PNode =
+  if n.kind == nkSym and inCheckpoint(n.info) == cpExact:
     result = n
   elif n.kind notin {nkNone..nkNilLit}:
     for i in 0.. <sonsLen(n):
@@ -306,7 +306,7 @@ proc safeSemExpr*(c: PContext, n: PNode): PNode =
   except ERecoverableError:
     result = ast.emptyNode
 
-proc suggestExpr*(c: PContext, node: PNode) = 
+proc suggestExpr*(c: PContext, node: PNode) =
   if nfIsCursor notin node.flags:
     if gTrackPos.line < 0: return
     var cp = inCheckpoint(node.info)
@@ -327,7 +327,7 @@ proc suggestExpr*(c: PContext, node: PNode) =
       #writeStackTrace()
     else:
       suggestEverything(c, n, outputs)
-  
+
   elif gIdeCmd == ideCon:
     var n = if nfIsCursor in node.flags: node else: findClosestCall(node)
     if n == nil: n = node
@@ -342,9 +342,9 @@ proc suggestExpr*(c: PContext, node: PNode) =
         if x.kind == nkEmpty or x.typ == nil: break
         addSon(a, x)
       suggestCall(c, a, n, outputs)
-          
+
   dec(c.inCompilesContext)
   if outputs > 0 and gIdeCmd != ideUse: suggestQuit()
 
-proc suggestStmt*(c: PContext, n: PNode) = 
+proc suggestStmt*(c: PContext, n: PNode) =
   suggestExpr(c, n)

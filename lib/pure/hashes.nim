@@ -37,29 +37,29 @@
 ##    h = h &! hash(x.bar)
 ##    result = !$h
 
-import 
+import
   strutils
 
-type 
-  THash* = int ## a hash value; hash tables using these values should 
+type
+  THash* = int ## a hash value; hash tables using these values should
                ## always have a size of a power of two and can use the ``and``
                ## operator instead of ``mod`` for truncation of the hash value.
 
-proc `!&`*(h: THash, val: int): THash {.inline.} = 
+proc `!&`*(h: THash, val: int): THash {.inline.} =
   ## mixes a hash value `h` with `val` to produce a new hash value. This is
   ## only needed if you need to implement a hash proc for a new datatype.
   result = h +% val
   result = result +% result shl 10
   result = result xor (result shr 6)
 
-proc `!$`*(h: THash): THash {.inline.} = 
+proc `!$`*(h: THash): THash {.inline.} =
   ## finishes the computation of the hash value. This is
   ## only needed if you need to implement a hash proc for a new datatype.
   result = h +% h shl 3
   result = result xor (result shr 11)
   result = result +% result shl 15
 
-proc hashData*(data: pointer, size: int): THash = 
+proc hashData*(data: pointer, size: int): THash =
   ## hashes an array of bytes of size `size`
   var h: THash = 0
   when defined(js):
@@ -69,7 +69,7 @@ proc hashData*(data: pointer, size: int): THash =
     var p = cast[cstring](data)
   var i = 0
   var s = size
-  while s > 0: 
+  while s > 0:
     h = h !& ord(p[i])
     inc(i)
     dec(s)
@@ -78,7 +78,7 @@ proc hashData*(data: pointer, size: int): THash =
 when defined(js):
   var objectID = 0
 
-proc hash*(x: pointer): THash {.inline.} = 
+proc hash*(x: pointer): THash {.inline.} =
   ## efficient hashing of pointers
   when defined(js):
     asm """
@@ -93,7 +93,7 @@ proc hash*(x: pointer): THash {.inline.} =
     """
   else:
     result = (cast[THash](x)) shr 3 # skip the alignment
-  
+
 when not defined(booting):
   proc hash*[T: proc](x: T): THash {.inline.} =
     ## efficient hashing of proc vars; closures are supported too.
@@ -101,49 +101,49 @@ when not defined(booting):
       result = hash(rawProc(x)) !& hash(rawEnv(x))
     else:
       result = hash(pointer(x))
-  
-proc hash*(x: int): THash {.inline.} = 
+
+proc hash*(x: int): THash {.inline.} =
   ## efficient hashing of integers
   result = x
 
-proc hash*(x: int64): THash {.inline.} = 
+proc hash*(x: int64): THash {.inline.} =
   ## efficient hashing of integers
   result = toU32(x)
 
-proc hash*(x: char): THash {.inline.} = 
+proc hash*(x: char): THash {.inline.} =
   ## efficient hashing of characters
   result = ord(x)
 
-proc hash*(x: string): THash = 
+proc hash*(x: string): THash =
   ## efficient hashing of strings
   var h: THash = 0
-  for i in 0..x.len-1: 
+  for i in 0..x.len-1:
     h = h !& ord(x[i])
   result = !$h
-  
-proc hashIgnoreStyle*(x: string): THash = 
+
+proc hashIgnoreStyle*(x: string): THash =
   ## efficient hashing of strings; style is ignored
   var h: THash = 0
-  for i in 0..x.len-1: 
+  for i in 0..x.len-1:
     var c = x[i]
-    if c == '_': 
+    if c == '_':
       continue                # skip _
-    if c in {'A'..'Z'}: 
+    if c in {'A'..'Z'}:
       c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
     h = h !& ord(c)
   result = !$h
 
-proc hashIgnoreCase*(x: string): THash = 
+proc hashIgnoreCase*(x: string): THash =
   ## efficient hashing of strings; case is ignored
   var h: THash = 0
-  for i in 0..x.len-1: 
+  for i in 0..x.len-1:
     var c = x[i]
-    if c in {'A'..'Z'}: 
+    if c in {'A'..'Z'}:
       c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
     h = h !& ord(c)
   result = !$h
-  
-proc hash*[T: tuple](x: T): THash = 
+
+proc hash*[T: tuple](x: T): THash =
   ## efficient hashing of tuples.
   for f in fields(x):
     result = result !& hash(f)

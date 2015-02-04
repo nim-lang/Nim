@@ -58,7 +58,7 @@ proc commandCompileToC =
   registerPass(cgenPass)
   rodPass()
   #registerPass(cleanupPass())
-  
+
   compileProject()
   cgenWriteModules()
   if gCmd != cmdRun:

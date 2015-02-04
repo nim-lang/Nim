@@ -3,9 +3,9 @@ discard """
   line: 7
   errormsg: "identifier expected, but found 'keyword atomic'"
 """
-var 
+var
   atomic: int
-  
+
 echo atomic
 
 

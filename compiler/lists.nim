@@ -10,7 +10,7 @@
 # This module implements a generic doubled linked list.
 # TODO Remove this and replace it with something sensible
 import os
-type 
+type
   PListEntry* = ref TListEntry
   TListEntry* = object of RootObj
     prev*, next*: PListEntry
@@ -25,68 +25,68 @@ type
 
   TCompareProc* = proc (entry: PListEntry, closure: pointer): bool {.nimcall.}
 
-proc initLinkedList*(list: var TLinkedList) = 
+proc initLinkedList*(list: var TLinkedList) =
   list.counter = 0
   list.head = nil
   list.tail = nil
 
-proc append*(list: var TLinkedList, entry: PListEntry) = 
+proc append*(list: var TLinkedList, entry: PListEntry) =
   inc(list.counter)
   entry.next = nil
   entry.prev = list.tail
-  if list.tail != nil: 
+  if list.tail != nil:
     assert(list.tail.next == nil)
     list.tail.next = entry
   list.tail = entry
   if list.head == nil: list.head = entry
-  
-proc contains*(list: TLinkedList, data: string): bool = 
+
+proc contains*(list: TLinkedList, data: string): bool =
   var it = list.head
-  while it != nil: 
-    if PStrEntry(it).data == data: 
+  while it != nil:
+    if PStrEntry(it).data == data:
       return true
     it = it.next
-  
-proc newStrEntry(data: string): PStrEntry = 
+
+proc newStrEntry(data: string): PStrEntry =
   new(result)
   result.data = data
 
-proc appendStr*(list: var TLinkedList, data: string) = 
+proc appendStr*(list: var TLinkedList, data: string) =
   append(list, newStrEntry(data))
 
-proc includeStr*(list: var TLinkedList, data: string): bool = 
+proc includeStr*(list: var TLinkedList, data: string): bool =
   if contains(list, data): return true
   appendStr(list, data)       # else: add to list
 
-proc prepend*(list: var TLinkedList, entry: PListEntry) = 
+proc prepend*(list: var TLinkedList, entry: PListEntry) =
   inc(list.counter)
   entry.prev = nil
   entry.next = list.head
-  if list.head != nil: 
+  if list.head != nil:
     assert(list.head.prev == nil)
     list.head.prev = entry
   list.head = entry
   if list.tail == nil: list.tail = entry
 
-proc prependStr*(list: var TLinkedList, data: string) = 
+proc prependStr*(list: var TLinkedList, data: string) =
   prepend(list, newStrEntry(data))
 
-proc insertBefore*(list: var TLinkedList, pos, entry: PListEntry) = 
+proc insertBefore*(list: var TLinkedList, pos, entry: PListEntry) =
   assert(pos != nil)
-  if pos == list.head: 
+  if pos == list.head:
     prepend(list, entry)
-  else: 
+  else:
     inc(list.counter)
     entry.next = pos
     entry.prev = pos.prev
     if pos.prev != nil: pos.prev.next = entry
     pos.prev = entry
- 
-proc remove*(list: var TLinkedList, entry: PListEntry) = 
+
+proc remove*(list: var TLinkedList, entry: PListEntry) =
   dec(list.counter)
-  if entry == list.tail: 
+  if entry == list.tail:
     list.tail = entry.prev
-  if entry == list.head: 
+  if entry == list.head:
     list.head = entry.next
   if entry.next != nil: entry.next.prev = entry.prev
   if entry.prev != nil: entry.prev.next = entry.next
@@ -112,8 +112,8 @@ proc excludePath*(list: var TLinkedList, data: string) =
       remove(list, it)
     it = nxt
 
-proc find*(list: TLinkedList, fn: TCompareProc, closure: pointer): PListEntry = 
+proc find*(list: TLinkedList, fn: TCompareProc, closure: pointer): PListEntry =
   result = list.head
   while result != nil:
-    if fn(result, closure): return 
+    if fn(result, closure): return
     result = result.next

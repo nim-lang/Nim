@@ -18,7 +18,7 @@ when not defined(windows):
 
 when defined(linux):
   import linux
-  
+
 when defined(freebsd) or defined(macosx):
   {.emit:"#include <sys/types.h>".}
 

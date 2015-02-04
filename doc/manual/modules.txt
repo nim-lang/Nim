@@ -81,8 +81,8 @@ A module alias can be introduced via the ``as`` keyword:
 
   echo su.format("$1", "lalelu")
 
-The original module name is then not accessible. The 
-notations ``path/to/module`` or ``path.to.module`` or ``"path/to/module"`` 
+The original module name is then not accessible. The
+notations ``path/to/module`` or ``path.to.module`` or ``"path/to/module"``
 can be used to refer to a module in subdirectories:
 
 .. code-block:: nim
@@ -104,7 +104,7 @@ Likewise the following does not make sense as the name is ``strutils`` already:
 From import statement
 ~~~~~~~~~~~~~~~~~~~~~
 
-After the ``from`` statement a module name follows followed by 
+After the ``from`` statement a module name follows followed by
 an ``import`` to list the symbols one likes to use without explict
 full qualification:
 
@@ -115,8 +115,8 @@ full qualification:
   # always possible: full qualification:
   echo strutils.replace("abc", "a", "z")
 
-It's also possible to use ``from module import nil`` if one wants to import 
-the module but wants to enforce fully qualified access to every symbol 
+It's also possible to use ``from module import nil`` if one wants to import
+the module but wants to enforce fully qualified access to every symbol
 in ``module``.
 
 
@@ -134,15 +134,15 @@ modules don't need to import a module's dependencies:
   # module A
   import B
   export B.MyObject
-  
+
   proc `$`*(x: MyObject): string = "my object"
 
 
 .. code-block:: nim
   # module C
   import A
-  
-  # B.MyObject has been imported implicitly here: 
+
+  # B.MyObject has been imported implicitly here:
   var x: MyObject
   echo($x)
 
@@ -177,8 +177,8 @@ following places:
 Module scope
 ~~~~~~~~~~~~
 All identifiers of a module are valid from the point of declaration until
-the end of the module. Identifiers from indirectly dependent modules are *not* 
-available. The `system`:idx: module is automatically imported in every other 
+the end of the module. Identifiers from indirectly dependent modules are *not*
+available. The `system`:idx: module is automatically imported in every other
 module.
 
 If a module imports an identifier by two different modules, each occurrence of

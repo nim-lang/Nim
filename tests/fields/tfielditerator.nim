@@ -28,7 +28,7 @@ proc p(x: string) = echo "a string: ", x
 var x: TMyTuple = ('a', 'b', 5, 6, "abc")
 var y: TMyTuple = ('A', 'b', 5, 9, "abc")
 
-for f in fields(x): 
+for f in fields(x):
   p f
 
 for a, b in fields(x, y):

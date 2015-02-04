@@ -4,7 +4,7 @@ nakeImports
 
 randomize()
 
-const 
+const
   GameAssets = "http://dl.dropbox.com/u/37533467/data-08-01-2012.7z"
   BinLibs = "http://dl.dropbox.com/u/37533467/libs-2012-09-12.zip"
   ExeName = "keineschweine"
@@ -60,7 +60,7 @@ task "release", "release build":
     quit 1
   else:
     runTask "clean"
-    ## zip up all the files and such or something useful here 
+    ## zip up all the files and such or something useful here
 
 task "testskel", "create skeleton test dir for testing":
   let dirname = "test-"& $random(5000)
@@ -103,7 +103,7 @@ task "download", "download game assets":
     echo "Downloading to ", path
     downloadFile GameAssets, path
     echo "Download finished"
-  
+
     let targetDir = parentDir(parentDir(path))
     when defined(linux):
       let z7 = findExe("7z")
@@ -117,7 +117,7 @@ task "download", "download game assets":
     else:
       echo "I do not know how to unpack the data on this system. Perhaps you could ",
         "fill this part in?"
-  
+
   echo "Download binary libs? Only libs for linux are available currently, enjoy the irony.\n",
     "[Y]es [N]o   Source: ", BinLibs
   case stdin.readline.toLower
@@ -126,11 +126,11 @@ task "download", "download game assets":
   else:
     return
   path = extractFilename(BinLibs)
-  downloadFile BinLibs, path 
+  downloadFile BinLibs, path
   echo "Downloaded dem libs ", path
   when true: echo "Unpack it yourself, sorry."
   else:  ## this crashes, dunno why
-    var 
+    var
       z: TZipArchive
       destDir = getCurrentDir()/("unzip"& $random(5000))
     if not z.open(path, fmRead):

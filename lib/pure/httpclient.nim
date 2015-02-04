@@ -439,7 +439,7 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
   ## | Extra headers can be specified and must be seperated by ``\c\L``
   ## | An optional timeout can be specified in miliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
-  result = request(url, $httpMethod, extraHeaders, body, sslContext, timeout, 
+  result = request(url, $httpMethod, extraHeaders, body, sslContext, timeout,
                    userAgent, proxy)
 
 proc redirection(status: string): bool =

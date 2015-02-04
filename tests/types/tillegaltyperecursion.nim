@@ -18,7 +18,7 @@ type
         MessageReceivedHandler*: TEventHandler
         Socket: TSocket
         Thread: TThread[TIRC]
-        
+
 proc initIRC*(): TIRC =
     result.Socket = socket()
     result.EventEmitter = initEventEmitter()
@@ -26,8 +26,8 @@ proc initIRC*(): TIRC =
 
 proc IsConnected*(irc: var TIRC): bool =
     return running(irc.Thread)
-  
-   
+
+
 proc sendRaw*(irc: var TIRC, message: string) =
     irc.Socket.send(message & "\r\L")
 proc handleData(irc: TIRC) {.thread.} =
@@ -40,14 +40,14 @@ proc handleData(irc: TIRC) {.thread.} =
         if len(tup) == 1:
             #Connected
             connected = True
-            
+
             #Parse data here
-            
+
         else:
             #Disconnected
             connected = False
             return
-   
+
 proc Connect*(irc: var TIRC, nick: string, host: string, port: int = 6667) =
     connect(irc.Socket ,host ,TPort(port),TDomain.AF_INET)
     send(irc.Socket,"USER " & nick & " " & nick & " " & nick & " " & nick &"\r\L")
@@ -57,8 +57,8 @@ proc Connect*(irc: var TIRC, nick: string, host: string, port: int = 6667) =
     irc.Thread = thread
 
 
-        
-        
+
+
 when isMainModule:
     var irc = initIRC()
     irc.Connect("AmryBot[Nim]","irc.freenode.net",6667)

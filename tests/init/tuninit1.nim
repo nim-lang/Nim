@@ -11,15 +11,15 @@ proc p =
   var x, y, z: int
   if stdin.readLine == "true":
     x = 34
-    
+
     while false:
       y = 999
       break
-      
+
     while true:
       if x == 12: break
       y = 9999
-      
+
     try:
       z = parseInt("1233")
     except E_Base:
@@ -32,5 +32,5 @@ proc p =
     x = 3111
     z = 0
   echo x, y, z
-  
+
 p()

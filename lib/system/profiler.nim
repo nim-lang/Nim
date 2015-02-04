@@ -39,7 +39,7 @@ proc captureStackTrace(f: PFrame, st: var TStackTrace) =
   while it != nil:
     inc(total)
     it = it.prev
-  for j in 1..total-i-(firstCalls-1): 
+  for j in 1..total-i-(firstCalls-1):
     if b != nil: b = b.prev
   if total != i:
     st[i] = "..."

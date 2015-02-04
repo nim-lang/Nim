@@ -35,7 +35,7 @@ for j in interval(45, 45):
 
 for x in items(["hi", "what's", "your", "name"]):
   echo(x)
-  
+
 const
   stringArray = ["hi", "what's", "your", "name"]
 

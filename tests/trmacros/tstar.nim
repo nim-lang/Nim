@@ -4,7 +4,7 @@ discard """
 
 var
   calls = 0
-  
+
 proc `&&`(s: varargs[string]): string =
   result = s[0]
   for i in 1..len(s)-1: result.add s[i]

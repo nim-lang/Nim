@@ -11,18 +11,18 @@ template withOpenFile(f: expr, filename: string, mode: TFileMode,
         close(f)
     else:
       quit("cannot open for writing: " & filename)
-    
+
 withOpenFile(txt, "ttempl3.txt", fmWrite):
   writeln(txt, "line 1")
   txt.writeln("line 2")
-  
+
 var
   myVar: array[0..1, int]
 
-# Test zero argument template: 
+# Test zero argument template:
 template ha: expr = myVar[0]
-  
-ha = 1  
+
+ha = 1
 echo(ha)
 
 
@@ -37,7 +37,7 @@ template typedef(name: expr, typ: typeDesc) {.immediate, dirty.} =
   type
     `T name`* = typ
     `P name`* = ref `T name`
-    
+
 typedef(myint, int)
 var x: PMyInt
 

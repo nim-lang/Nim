@@ -79,23 +79,23 @@ proc asmx64 () {.compileTime} =
 
     case state:
     of leading:
-      
+
       echo "b100 ", start
       start += code.skipWhile (leadingWhiteSpace, start)
       echo "b200 ", start
       let ch = code [start]
       if ch in endOfLine:
         inc (line)
-        #echo "c100 ", start, ' ', code 
+        #echo "c100 ", start, ' ', code
         start += code.skipWhile (endOfline, start)
-        #echo "c200 ", start, ' ', code 
+        #echo "c200 ", start, ' ', code
         continue
       elif ch in symbolStart:
         state = mnemonic
       elif ch in eolComment:
         state = skipToEndOfLine
       elif ch in passthrough_start:
-        get_passthrough ()        
+        get_passthrough ()
         echo "d100 ", start
         start += code.parseUntil (token, end_or_symbol_or_comment_or_passthrough, start)
         echo "d200 ", start
@@ -124,7 +124,7 @@ proc asmx64 () {.compileTime} =
       if codeLen <= start:
         state = endCmd
         continue
-        
+
       let ch = code [start]
       if ch in passthrough_start:
         get_passthrough ()
@@ -148,7 +148,7 @@ proc asmx64 () {.compileTime} =
     of endCmd:
       cpp.add ");\n"
       state = skipToEndOfLine
-    
+
     of skipToEndOfLine:
       echo "a100 ", start
       start += code.skipUntil (endOfLine, start)

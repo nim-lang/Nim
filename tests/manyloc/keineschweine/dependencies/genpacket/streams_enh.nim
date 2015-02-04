@@ -1,7 +1,7 @@
 import streams
 from strutils import repeatChar
 
-proc readPaddedStr*(s: PStream, length: int, padChar = '\0'): TaintedString = 
+proc readPaddedStr*(s: PStream, length: int, padChar = '\0'): TaintedString =
   var lastChr = length
   result = s.readStr(length)
   while lastChr >= 0 and result[lastChr - 1] == padChar: dec(lastChr)
@@ -26,22 +26,22 @@ proc writeLEStr*(s: PStream, str: string) =
 
 when isMainModule:
   var testStream = newStringStream()
-  
+
   testStream.writeLEStr("Hello")
   doAssert testStream.data == "\5\0Hello"
-  
+
   testStream.setPosition 0
   var res = testStream.readLEStr()
   doAssert res == "Hello"
-  
+
   testStream.setPosition 0
   testStream.writePaddedStr("Sup", 10)
   echo(repr(testStream), testStream.data.len)
   doAssert testStream.data == "Sup"&repeatChar(7, '\0')
-  
+
   testStream.setPosition 0
   res = testStream.readPaddedStr(10)
   doAssert res == "Sup"
-  
+
   testStream.close()
 

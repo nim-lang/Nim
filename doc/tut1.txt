@@ -16,7 +16,7 @@ Introduction
   </p></blockquote>
 
 
-This document is a tutorial for the programming language *Nim*. 
+This document is a tutorial for the programming language *Nim*.
 This tutorial assumes that you are familiar with basic programming concepts
 like variables, types or statements but is kept very basic. The `manual
 <manual.html>`_ contains many more examples of the advanced language features.
@@ -50,7 +50,7 @@ Commonly used commands and switches have abbreviations, so you can also use::
   nim c -r greetings.nim
 
 To compile a release version use::
-  
+
   nim c -d:release greetings.nim
 
 By default the Nim compiler generates a large amount of runtime checks
@@ -116,7 +116,7 @@ hash character ``#``. Documentation comments start with ``##``:
 
 .. code-block:: nim
   # A comment.
- 
+
   var myVariable: int ## a documentation comment
 
 
@@ -200,7 +200,7 @@ constant declaration at compile time:
 
 .. code-block:: nim
   const x = "abc" # the constant x contains the string "abc"
-  
+
 Indentation can be used after the ``const`` keyword to list a whole section of
 constants:
 
@@ -214,7 +214,7 @@ constants:
 
 The let statement
 =================
-The ``let`` statement works like the ``var`` statement but the declared 
+The ``let`` statement works like the ``var`` statement but the declared
 symbols are *single assignment* variables: After the initialization their
 value cannot change:
 
@@ -228,7 +228,7 @@ and put it into a data section":
 
 .. code-block::
   const input = readLine(stdin) # Error: constant expression expected
-  
+
 .. code-block::
   let input = readLine(stdin)   # works
 
@@ -310,8 +310,8 @@ the compiler that for every other value nothing should be done:
   else: discard
 
 The empty `discard statement`_ is a *do nothing* statement. The compiler knows
-that a case statement with an else part cannot fail and thus the error 
-disappears. Note that it is impossible to cover all possible string values: 
+that a case statement with an else part cannot fail and thus the error
+disappears. Note that it is impossible to cover all possible string values:
 that is why string cases always need an ``else`` branch.
 
 In general the case statement is used for subrange types or enumerations where
@@ -406,7 +406,7 @@ The block's *label* (``myblock`` in the example) is optional.
 Break statement
 ---------------
 A block can be left prematurely with a ``break`` statement. The break statement
-can leave a ``while``, ``for``, or a ``block`` statement. It leaves the 
+can leave a ``while``, ``for``, or a ``block`` statement. It leaves the
 innermost construct, unless a label of a block is given:
 
 .. code-block:: nim
@@ -461,7 +461,7 @@ differences:
 * The statements within a branch do not open a new scope.
 * The compiler checks the semantics and produces code *only* for the statements
   that belong to the first condition that evaluates to ``true``.
-  
+
 The ``when`` statement is useful for writing platform specific code, similar to
 the ``#ifdef`` construct in the C programming language.
 
@@ -486,14 +486,14 @@ to be indented, but single simple statements do not:
 .. code-block:: nim
   # no indentation needed for single assignment statement:
   if x: x = false
-  
+
   # indentation needed for nested if statement:
   if x:
     if y:
       y = false
     else:
       y = true
-  
+
   # indentation needed, because two statements follow the condition:
   if x:
     x = false
@@ -514,7 +514,7 @@ contain indentation at certain places for better readability:
 As a rule of thumb, indentation within expressions is allowed after operators,
 an open parenthesis and after commas.
 
-With parenthesis and semicolons ``(;)`` you can use statements where only 
+With parenthesis and semicolons ``(;)`` you can use statements where only
 an expression is allowed:
 
 .. code-block:: nim
@@ -560,45 +560,45 @@ Some terminology: in the example ``question`` is called a (formal) *parameter*,
 
 Result variable
 ---------------
-A procedure that returns a value has an implicit ``result`` variable declared 
+A procedure that returns a value has an implicit ``result`` variable declared
 that represents the return value. A ``return`` statement with no expression is a
-shorthand for ``return result``. The ``result`` value is always returned 
+shorthand for ``return result``. The ``result`` value is always returned
 automatically at the end a procedure if there is no ``return`` statement at
 the exit.
 
 .. code-block:: nim
-  proc sumTillNegative(x: varargs[int]): int = 
+  proc sumTillNegative(x: varargs[int]): int =
     for i in x:
       if i < 0:
         return
-      result = result + i  
-      
+      result = result + i
+
   echo sumTillNegative() # echos 0
   echo sumTillNegative(3, 4, 5) # echos 12
   echo sumTillNegative(3, 4 , -1 , 6) # echos 7
 
-The ``result`` variable is already implicitly declared at the start of the 
+The ``result`` variable is already implicitly declared at the start of the
 function, so declaring it again with 'var result', for example, would shadow it
 with a normal variable of the same name. The result variable is also already
 initialised with the type's default value. Note that referential data types will
 be ``nil`` at the start of the procedure, and thus may require manual
 initialisation.
 
-      
+
 Parameters
 ----------
 Parameters are constant in the procedure body. By default, their value cannot be
-changed because this allows the compiler to implement parameter passing in the 
+changed because this allows the compiler to implement parameter passing in the
 most efficient way. If a mutable variable is needed inside the procedure, it has
 to be declared with ``var`` in the procedure body. Shadowing the parameter name
-is possible, and actually an idiom: 
+is possible, and actually an idiom:
 
 .. code-block:: nim
   proc printSeq(s: seq, nprinted: int = -1) =
     var nprinted = if nprinted == -1: s.len else: min(nprinted, s.len)
     for i in 0 .. <nprinted:
       echo s[i]
-    
+
 If the procedure needs to modify the argument for the
 caller, a ``var`` parameter can be used:
 
@@ -630,12 +630,12 @@ allow to silently throw away a return value:
 
 
 The return value can be ignored implicitly if the called proc/iterator has
-been declared with the ``discardable`` pragma: 
+been declared with the ``discardable`` pragma:
 
 .. code-block:: nim
-  proc p(x, y: int): int {.discardable.} = 
+  proc p(x, y: int): int {.discardable.} =
     return x + y
-    
+
   p(3, 4) # now valid
 
 The ``discard`` statement can also be used to create block comments as
@@ -898,7 +898,7 @@ object on the heap, so there is a trade-off to be made here.
 
 Integers
 --------
-Nim has these integer types built-in: 
+Nim has these integer types built-in:
 ``int int8 int16 int32 int64 uint uint8 uint16 uint32 uint64``.
 
 The default integer type is ``int``. Integer literals can have a *type suffix*
@@ -1113,7 +1113,7 @@ Arrays
 An array is a simple fixed length container. Each element in
 the array has the same type. The array's index type can be any ordinal type.
 
-Arrays can be constructed via ``[]``: 
+Arrays can be constructed via ``[]``:
 
 .. code-block:: nim
 
@@ -1369,12 +1369,12 @@ integer.
   var building: tuple[street: string, number: int]
   building = ("Rue del Percebe", 13)
   echo(building.street)
-  
+
   # The following line does not compile, they are different tuples!
   #person = building
   # --> Error: type mismatch: got (tuple[street: string, number: int])
   #     but expected 'Person'
-  
+
   # The following works because the field names and types are the same.
   var teacher: tuple[name: string, age: int] = ("Mark", 42)
   person = teacher
@@ -1449,13 +1449,13 @@ operators perform implicit dereferencing operations for reference types:
 
   type
     Node = ref NodeObj
-    NodeObj = object 
+    NodeObj = object
       le, ri: PNode
       data: int
   var
     n: Node
   new(n)
-  n.data = 9 
+  n.data = 9
   # no need to write n[].data; in fact n[].data is highly discouraged!
 
 To allocate a new traced object, the built-in procedure ``new`` has to be used.
@@ -1558,9 +1558,9 @@ This is best illustrated by an example:
 
 
 A symbol of a module *can* be *qualified* with the ``module.symbol`` syntax. If
-the symbol is ambiguous, it even *has* to be qualified. A symbol is ambiguous 
-if it is defined in two (or more) different modules and both modules are 
-imported by a third one: 
+the symbol is ambiguous, it even *has* to be qualified. A symbol is ambiguous
+if it is defined in two (or more) different modules and both modules are
+imported by a third one:
 
 .. code-block:: nim
   # Module A

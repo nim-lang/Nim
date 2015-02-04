@@ -9,7 +9,7 @@ type
   TMyObj = object
     x, y: int
 
-proc `$`*(a: TMyObj): string = 
+proc `$`*(a: TMyObj): string =
   result = "x: " & $a.x & " y: " & $a.y
 
 var a: TMyObj

@@ -6,7 +6,7 @@ discard """
 
 import macros
 
-macro thirteen(args: varargs[expr]): expr = 
+macro thirteen(args: varargs[expr]): expr =
   result = newIntLitNode(13)
 
 doAssert(13==thirteen([1,2])) # works

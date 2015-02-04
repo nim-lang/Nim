@@ -5,10 +5,10 @@ discard """
 """
 template declareInScope(x: expr, t: typeDesc): stmt {.immediate.} =
   var x: t
-  
+
 template declareInNewScope(x: expr, t: typeDesc): stmt {.immediate.} =
   # open a new scope:
-  block: 
+  block:
     var x: t
 
 declareInScope(a, int)
