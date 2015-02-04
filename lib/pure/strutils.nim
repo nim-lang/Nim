@@ -243,7 +243,7 @@ iterator split*(s: string, seps: set[char] = Whitespace): string =
   ##
   var start = 0
   assert(not ('\0' in seps))
-  for i in 0..len(s):
+  for i in 0..len(s)-1:
     if s[i] in seps:
       yield s.substr(start, i-1)
       start = i+1
@@ -276,7 +276,7 @@ iterator split*(s: string, sep: char): string =
   ##
   var start = 0
   assert('\0' != sep)
-  for i in 0..len(s):
+  for i in 0..len(s)-1:
     if s[i] == sep:
       yield s.substr(start, i-1)
       start = i+1
