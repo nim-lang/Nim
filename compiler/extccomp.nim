@@ -428,13 +428,17 @@ proc addFileToLink*(filename: string) =
   prependStr(toLink, filename)
   # BUGFIX: was ``appendStr``
 
-proc execExternalProgram*(cmd: string, prettyCmd = "") =
+proc execWithEcho(cmd: string, prettyCmd = ""): int =
   if optListCmd in gGlobalOptions or gVerbosity > 0:
     if prettyCmd != "":
       msgWriteln(prettyCmd)
     else:
       msgWriteln(cmd)
-  if execCmd(cmd) != 0: rawMessage(errExecutionOfProgramFailed, "")
+  result = execCmd(cmd)
+
+proc execExternalProgram*(cmd: string, prettyCmd = "") =
+  if execWithEcho(cmd, prettyCmd) != 0:
+    rawMessage(errExecutionOfProgramFailed, "")
 
 proc generateScript(projectFile: string, script: PRope) = 
   let (dir, name, ext) = splitFile(projectFile)
@@ -622,7 +626,7 @@ proc callCCompiler*(projectfile: string) =
     if gNumberOfProcessors == 0: gNumberOfProcessors = countProcessors()
     var res = 0
     if gNumberOfProcessors <= 1: 
-      for i in countup(0, high(cmds)): res = max(execCmd(cmds[i]), res)
+      for i in countup(0, high(cmds)): res = max(execWithEcho(cmds[i]), res)
     elif optListCmd in gGlobalOptions or gVerbosity > 1:
       res = execProcesses(cmds, {poEchoCmd, poUseShell, poParentStreams},
                           gNumberOfProcessors)
