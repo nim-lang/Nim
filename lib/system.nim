@@ -2194,7 +2194,8 @@ elif hostOS != "standalone":
       inc(i)
   {.pop.}
 
-proc echo*(x: varargs[expr, `$`]) {.magic: "Echo", tags: [WriteIOEffect], benign.}
+proc echo*(x: varargs[expr, `$`]) {.magic: "Echo", tags: [WriteIOEffect],
+  benign, sideEffect.}
   ## Writes and flushes the parameters to the standard output.
   ##
   ## Special built-in that takes a variable number of arguments. Each argument
