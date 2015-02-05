@@ -79,6 +79,7 @@ proc advice*(s: var ThreadPoolState): ThreadPoolAdvice =
   inc s.calls
 
 when isMainModule:
+  import math, os, threadpool
   proc busyLoop() =
     while true:
       discard random(80)
