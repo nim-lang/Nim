@@ -251,7 +251,6 @@ proc mainCommand* =
     commandCompileToC()
   of "cpp", "compiletocpp":
     gCmd = cmdCompileToCpp
-    if cCompiler == ccGcc: setCC("gcc")
     defineSymbol("cpp")
     commandCompileToC()
   of "objc", "compiletooc":
