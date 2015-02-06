@@ -682,7 +682,7 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
       d.s = OnHeap
     of tyVar:
       d.s = OnUnknown
-      if p.module.compileToCpp:
+      if p.module.compileToCpp and e.kind == nkHiddenDeref:
         putIntoDest(p, d, e.typ, rdLoc(a))
         return
     of tyPtr:
@@ -923,6 +923,7 @@ proc genAndOr(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
     L: TLabel
     tmp: TLoc
   getTemp(p, e.typ, tmp)      # force it into a temp!
+  inc p.splitDecls
   expr(p, e.sons[1], tmp)
   L = getLabel(p)
   if m == mOr:
@@ -935,6 +936,7 @@ proc genAndOr(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
     d = tmp
   else:
     genAssignment(p, d, tmp, {}) # no need for deep copying
+  dec p.splitDecls
 
 proc genEcho(p: BProc, n: PNode) =
   # this unusal way of implementing it ensures that e.g. ``echo("hallo", 45)``

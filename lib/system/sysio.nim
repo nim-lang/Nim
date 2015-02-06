@@ -183,11 +183,17 @@ proc rawEchoNL() {.inline, compilerproc.} = write(stdout, "\n")
 when (defined(windows) and not defined(useWinAnsi)) or defined(nimdoc):
   include "system/widestrs"
 
-when defined(windows) and not defined(useWinAnsi):  
-  proc wfopen(filename, mode: WideCString): pointer {.
-    importc: "_wfopen", nodecl.}
-  proc wfreopen(filename, mode: WideCString, stream: File): File {.
-    importc: "_wfreopen", nodecl.}
+when defined(windows) and not defined(useWinAnsi):
+  when defined(cpp):
+    proc wfopen(filename, mode: WideCString): pointer {.
+      importcpp: "_wfopen((const wchar_t*)#, (const wchar_t*)#)", nodecl.}
+    proc wfreopen(filename, mode: WideCString, stream: File): File {.
+      importc: "_wfreopen((const wchar_t*)#, (const wchar_t*)#)", nodecl.}
+  else:
+    proc wfopen(filename, mode: WideCString): pointer {.
+      importc: "_wfopen", nodecl.}
+    proc wfreopen(filename, mode: WideCString, stream: File): File {.
+      importc: "_wfreopen", nodecl.}
 
   proc fopen(filename, mode: cstring): pointer =
     var f = newWideCString(filename)

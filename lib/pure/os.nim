@@ -1074,8 +1074,12 @@ when defined(windows):
   # because we support Windows GUI applications, things get really
   # messy here...
   when useWinUnicode:
-    proc strEnd(cstr: WideCString, c = 0'i32): WideCString {.
-      importc: "wcschr", header: "<string.h>".}
+    when defined(cpp):
+      proc strEnd(cstr: WideCString, c = 0'i32): WideCString {.
+        importcpp: "(NI16*)wcschr((const wchar_t *)#, #)", header: "<string.h>".}
+    else:
+      proc strEnd(cstr: WideCString, c = 0'i32): WideCString {.
+        importc: "wcschr", header: "<string.h>".}
   else:
     proc strEnd(cstr: cstring, c = 0'i32): cstring {.
       importc: "strchr", header: "<string.h>".}

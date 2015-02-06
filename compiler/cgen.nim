@@ -137,79 +137,8 @@ proc ropecg(m: BModule, frmt: TFormatStr, args: varargs[PRope]): PRope =
     if i - 1 >= start: 
       app(result, substr(frmt, start, i - 1))
 
-const compileTimeRopeFmt = false
-
-when compileTimeRopeFmt:
-  import macros
-
-  type TFmtFragmentKind = enum
-    ffSym,
-    ffLit,
-    ffParam
-
-  type TFragment = object
-    case kind: TFmtFragmentKind
-    of ffSym, ffLit:
-      value: string
-    of ffParam:
-      intValue: int
-
-  iterator fmtStringFragments(s: string): tuple[kind: TFmtFragmentKind,
-                                                value: string,
-                                                intValue: int] =
-    # This is a bit less featured version of the ropecg's algorithm
-    # (be careful when replacing ropecg calls)
-    var
-      i = 0
-      length = s.len
-
-    while i < length:
-      var start = i
-      case s[i]
-      of '$':
-        let n = s[i+1]
-        case n
-        of '$':
-          inc i, 2
-        of '0'..'9':
-          # XXX: use the new case object construction syntax when it's ready
-          yield (kind: ffParam, value: "", intValue: n.ord - ord('1'))
-          inc i, 2
-          start = i
-        else:
-          inc i
-      of '#':
-        inc i
-        var j = i
-        while s[i] in IdentChars: inc i
-        yield (kind: ffSym, value: substr(s, j, i-1), intValue: 0)
-        start = i
-      else: discard
-
-      while i < length:
-        if s[i] != '$' and s[i] != '#': inc i
-        else: break
-
-      if i - 1 >= start:
-        yield (kind: ffLit, value: substr(s, start, i-1), intValue: 0)
-
-  macro rfmt(m: BModule, fmt: static[string], args: varargs[PRope]): expr =
-    ## Experimental optimized rope-formatting operator
-    ## The run-time code it produces will be very fast, but will it speed up
-    ## the compilation of nimrod itself or will the macro execution time
-    ## offset the gains?
-    result = newCall(bindSym"ropeConcat")
-    for frag in fmtStringFragments(fmt):
-      case frag.kind
-      of ffSym:
-        result.add(newCall(bindSym"cgsym", m, newStrLitNode(frag.value)))
-      of ffLit:
-        result.add(newCall(bindSym"~", newStrLitNode(frag.value)))
-      of ffParam:
-        result.add(args[frag.intValue])
-else:
-  template rfmt(m: BModule, fmt: string, args: varargs[PRope]): expr =
-    ropecg(m, fmt, args)
+template rfmt(m: BModule, fmt: string, args: varargs[PRope]): expr =
+  ropecg(m, fmt, args)
 
 proc appcg(m: BModule, c: var PRope, frmt: TFormatStr, 
            args: varargs[PRope]) = 
@@ -242,23 +171,13 @@ proc lineCg(p: BProc, s: TCProcSection, frmt: TFormatStr,
                args: varargs[PRope]) =
   app(p.s(s), indentLine(p, ropecg(p.module, frmt, args)))
 
-when compileTimeRopeFmt:
-  template linefmt(p: BProc, s: TCProcSection, frmt: TFormatStr,
-                   args: varargs[PRope]) =
-    line(p, s, rfmt(p.module, frmt, args))
-else:
-  proc linefmt(p: BProc, s: TCProcSection, frmt: TFormatStr,
-               args: varargs[PRope]) =
-    app(p.s(s), indentLine(p, ropecg(p.module, frmt, args)))
+proc linefmt(p: BProc, s: TCProcSection, frmt: TFormatStr,
+             args: varargs[PRope]) =
+  app(p.s(s), indentLine(p, ropecg(p.module, frmt, args)))
 
 proc appLineCg(p: BProc, r: var PRope, frmt: TFormatStr,
                args: varargs[PRope]) =
   app(r, indentLine(p, ropecg(p.module, frmt, args)))
-
-proc lineFF(p: BProc, s: TCProcSection, cformat, llvmformat: string,
-               args: varargs[PRope]) =
-  if gCmd == cmdCompileToLLVM: lineF(p, s, llvmformat, args)
-  else: lineF(p, s, cformat, args)
 
 proc safeLineNm(info: TLineInfo): int =
   result = toLinenumber(info)
@@ -723,13 +642,13 @@ proc cgsym(m: BModule, name: string): PRope =
     rawMessage(errSystemNeeds, name)
   result = sym.loc.r
   
-proc generateHeaders(m: BModule) = 
+proc generateHeaders(m: BModule) =
   app(m.s[cfsHeaders], tnl & "#include \"nimbase.h\"" & tnl)
   var it = PStrEntry(m.headerFiles.head)
-  while it != nil: 
+  while it != nil:
     if it.data[0] notin {'\"', '<'}: 
       appf(m.s[cfsHeaders], "$N#include \"$1\"$N", [toRope(it.data)])
-    else: 
+    else:
       appf(m.s[cfsHeaders], "$N#include $1$N", [toRope(it.data)])
     it = PStrEntry(it.next)
 
@@ -809,9 +728,10 @@ proc genProcAux(m: BModule, prc: PSym) =
     if (optProfiler in prc.options) and (gCmd != cmdCompileToLLVM):
       # invoke at proc entry for recursion:
       appcg(p, cpsInit, "\t#nimProfile();$n", [])
+    if p.beforeRetNeeded: app(generatedProc, "{")
     app(generatedProc, p.s(cpsInit))
     app(generatedProc, p.s(cpsStmts))
-    if p.beforeRetNeeded: app(generatedProc, ~"\tBeforeRet: ;$n")
+    if p.beforeRetNeeded: app(generatedProc, ~"\t}BeforeRet: ;$n")
     app(generatedProc, deinitGCFrame(p))
     if optStackTrace in prc.options: app(generatedProc, deinitFrame(p))
     app(generatedProc, returnStmt)

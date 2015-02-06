@@ -506,7 +506,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): PRope =
     # C type generation into an analysis and a code generation phase somehow.
   case t.kind
   of tyRef, tyPtr, tyVar: 
-    let star = if t.kind == tyVar and compileToCpp(m): "&" else: "*"
+    var star = if t.kind == tyVar and compileToCpp(m): "&" else: "*"
     var et = t.lastSon
     var etB = et.skipTypes(abstractInst)
     if etB.kind in {tyArrayConstr, tyArray, tyOpenArray, tyVarargs}: 
@@ -514,6 +514,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): PRope =
       # ``var set[char]`` in `getParamTypeDesc`
       et = elemType(etB)
       etB = et.skipTypes(abstractInst)
+      star[0] = '*'
     case etB.kind
     of tyObject, tyTuple:
       if isImportedCppType(etB) and et.kind == tyGenericInst:
@@ -529,7 +530,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): PRope =
       # no restriction! We have a forward declaration for structs
       let x = getUniqueType(etB)
       let name = getTypeForward(m, x)
-      result = con(name, "**")
+      result = con(name, "*" & star)
       idTablePut(m.typeCache, t, result)
       pushType(m, x)
     else:

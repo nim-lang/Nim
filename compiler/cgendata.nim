@@ -82,6 +82,9 @@ type
     maxFrameLen*: int         # max length of frame descriptor
     module*: BModule          # used to prevent excessive parameter passing
     withinLoop*: int          # > 0 if we are within a loop
+    splitDecls*: int          # > 0 if we are in some context for C++ that
+                              # requires 'T x = T()' to become 'T x; x = T()'
+                              # (yes, C++ is weird like that)
     gcFrameId*: Natural       # for the GC stack marking
     gcFrameType*: PRope       # the struct {} we put the GC markers into
   

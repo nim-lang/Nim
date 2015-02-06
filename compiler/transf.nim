@@ -321,6 +321,7 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
 
 proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode =
   result = transformSons(c, n)
+  if gCmd == cmdCompileToCpp or sfCompileToCpp in c.module.flags: return
   var n = result.PNode
   case n.sons[0].kind
   of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
