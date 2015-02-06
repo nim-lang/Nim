@@ -183,7 +183,7 @@ proc newRollingFileLogger*(filename = defaultFilename(),
   ## a new log file will be started and the old will be renamed.
   new(result)
   result.levelThreshold = levelThreshold
-  result.fmtStr = defaultFmtStr
+  result.fmtStr = fmtStr
   result.maxLines = maxLines
   result.f = open(filename, mode)
   result.curLine = 0
