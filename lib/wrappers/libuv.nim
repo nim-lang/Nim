@@ -68,6 +68,11 @@ type
     rGETADDRINFO,
     rREQ_TYPE_PRIVATE
 
+  RunMode* {.size: sizeof(cint).} = enum
+    RUN_DEFAULT = 0,
+    RUN_ONCE,
+    RUN_NOWAIT
+    
   Err* {.pure, final, importc: "uv_err_t", header: "uv.h".} = object
     code* {.importc: "code".}: ErrorCode
     sys_errno* {.importc: "sys_errno_".}: cint
@@ -428,7 +433,7 @@ proc loop_delete*(a2: PLoop){.
 proc default_loop*(): PLoop{.
     importc: "uv_default_loop", header: "uv.h".}
 
-proc run*(a2: PLoop): cint{.
+proc run*(a2: PLoop, mode: RunMode): cint{.
     importc: "uv_run", header: "uv.h".}
 
 proc addref*(a2: PLoop){.
