@@ -31,9 +31,27 @@ when defined(Windows):
     stdout.write(prompt)
     result = readLine(stdin, line)
 
+  proc getch(): cint {.header: "<conio.h>", importc: "_getch".}
+
+  proc readPasswordFromStdin*(prompt: string, password: var TaintedString) =
+    ## Reads a `password` from stdin without printing it. `password` must not
+    ## be ``nil``!
+    password.setLen(0)
+    var c: char
+    echo prompt
+    while true:
+       c = getch().char
+       case c
+       of '\r', chr(0xA):
+          break
+       of '\b':
+          password.setLen(result.len - 1)
+       else:
+          password.add(c)
+
 else:
-  import readline, history
-    
+  import readline, history, termios, unsigned
+
   proc readLineFromStdin*(prompt: string): TaintedString {.
                           tags: [ReadIOEffect, WriteIOEffect].} =
     var buffer = readline.readLine(prompt)
@@ -55,8 +73,24 @@ else:
     result = true
 
   # initialization:
-  # disable auto-complete: 
+  # disable auto-complete:
   proc doNothing(a, b: cint): cint {.cdecl, procvar.} = discard
-  
+
   discard readline.bind_key('\t'.ord, doNothing)
 
+  proc readPasswordFromStdin*(prompt: string, password: var TaintedString) =
+    password.setLen(0)
+    let fd = stdin.getFileHandle()
+    var cur, old: Termios
+    discard fd.tcgetattr(cur.addr)
+    old = cur
+    cur.lflag = cur.lflag and not Tcflag(ECHO)
+    discard fd.tcsetattr(TCSADRAIN, cur.addr)
+    stdout.write prompt
+    discard stdin.readLine(password)
+    discard fd.tcsetattr(TCSADRAIN, old.addr)
+
+proc readPasswordFromStdin*(prompt: string): TaintedString =
+  ## Reads a password from stdin without printing it.
+  result = TaintedString("")
+  readPasswordFromStdin(prompt, result)
