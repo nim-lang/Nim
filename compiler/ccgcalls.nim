@@ -303,7 +303,7 @@ proc genThisArg(p: BProc; ri: PNode; i: int; typ: PType): PRope =
     if x.typ.kind == tyPtr:
       result = genArgNoParam(p, x)
       result.app("->")
-    elif x.kind in {nkHiddenDeref, nkDerefExpr}:
+    elif x.kind in {nkHiddenDeref, nkDerefExpr} and x[0].typ.kind == tyPtr:
       result = genArgNoParam(p, x[0])
       result.app("->")
     else:
