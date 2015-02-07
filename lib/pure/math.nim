@@ -114,8 +114,19 @@ proc sum*[T](x: openArray[T]): T {.noSideEffect.} =
   ## If `x` is empty, 0 is returned.
   for i in items(x): result = result + i
 
-proc mean*(x: openArray[float]): float {.noSideEffect.} = 
-  ## computes the mean of the elements in `x`. 
+proc sumOfSquares*[T](x: openArray[T]): T {.noSideEffect.} =
+  ## computes the sum of the squares of the elements in `x`.
+  ## If `x` is empty, 0 is returned.
+  for i in items(x): result = result + i*i
+
+proc product*[T](x: openArray[T]): T {.noSideEffect.} =
+  ## computes the product of the elements in `x`.
+  ## If `x` is empty, 0 is returned.
+  result = 1
+  for i in items(x): result = result * i
+
+proc mean*(x: openArray[float]): float {.noSideEffect.} =
+  ## computes the mean of the elements in `x`.
   ## If `x` is empty, NaN is returned.
   result = sum(x) / toFloat(len(x))
 
@@ -272,6 +283,20 @@ else:
   proc tanh*(x: float): float =
     var y = exp(2.0*x)
     return (y-1.0)/(y+1.0)
+
+proc geometricMean*(x: openArray[float]): float =
+  ## computes the geometric mean of the elements in `x`.
+  result = pow(product(x), 1.0 / toFloat(len(x)))
+
+proc harmonicMean*(x: openArray[float]): float =
+  ## computes the harmonic mean of the elements in `x`.
+  for i in items(x): result = result + 1.0 / i
+  result = toFloat(len(x)) / result
+
+proc quadraticMean*(x: openArray[float]): float =
+  ## computes the quadratic mean of the elements in `x`.
+  ## a.k.a. root mean square (rms)
+  result = sqrt((1.0 / toFloat(len(x))) * sumOfSquares(x) )
 
 proc `mod`*(x, y: float): float =
   result = if y == 0.0: x else: x - y * (x/y).floor
