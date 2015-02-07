@@ -14,7 +14,7 @@ import
   options, idents, wordrecg, strtabs
 
 # ---------------- configuration file parser -----------------------------
-# we use Nim's scanner here to safe space and work
+# we use Nim's scanner here to save space and work
 
 proc ppGetTok(L: var TLexer, tok: var TToken) = 
   # simple filter
@@ -158,7 +158,7 @@ proc checkSymbol(L: TLexer, tok: TToken) =
 proc parseAssignment(L: var TLexer, tok: var TToken) = 
   if tok.ident.id == getIdent("-").id or tok.ident.id == getIdent("--").id:
     confTok(L, tok)           # skip unnecessary prefix
-  var info = getLineInfo(L, tok) # safe for later in case of an error
+  var info = getLineInfo(L, tok) # save for later in case of an error
   checkSymbol(L, tok)
   var s = tokToStr(tok)
   confTok(L, tok)             # skip symbol
@@ -252,6 +252,11 @@ proc loadConfigs*(cfg: string) =
     
     if gProjectName.len != 0:
       # new project wide config file:
-      let projectConfig = changeFileExt(gProjectFull, "nim.cfg")
-      if fileExists(projectConfig): readConfigFile(projectConfig)
-      else: readConfigFile(changeFileExt(gProjectFull, "nimrod.cfg"))
+      var projectConfig = changeFileExt(gProjectFull, "nimcfg")
+      if not fileExists(projectConfig):
+        projectConfig = changeFileExt(gProjectFull, "nim.cfg")
+      if not fileExists(projectConfig):
+        projectConfig = changeFileExt(gProjectFull, "nimrod.cfg")
+        if fileExists(projectConfig):
+          rawMessage(warnDeprecated, projectConfig)
+      readConfigFile(projectConfig)
