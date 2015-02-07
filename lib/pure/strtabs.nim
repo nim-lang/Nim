@@ -158,7 +158,7 @@ proc getValue(t: StringTableRef, flags: set[FormatFlag], key: string): string =
   else: result = ""
   if result.len == 0:
     if useKey in flags: result = '$' & key
-    elif not (useEmpty in flags): raiseFormatException(key)
+    elif useEmpty notin flags: raiseFormatException(key)
 
 proc newStringTable*(mode: StringTableMode): StringTableRef {.
   rtl, extern: "nst$1".} =
