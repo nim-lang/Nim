@@ -522,7 +522,7 @@ proc newFileInfo(fullPath, projPath: string): TFileInfo =
   if optEmbedOrigSrc in gGlobalOptions or true:
     result.lines = @[]
 
-proc fileInfoIdx*(filename: string): int32 =
+proc fileInfoIdx*(filename: string; isKnownFile: var bool): int32 =
   var
     canon: string
     pseudoPath = false
@@ -539,10 +539,15 @@ proc fileInfoIdx*(filename: string): int32 =
   if filenameToIndexTbl.hasKey(canon):
     result = filenameToIndexTbl[canon]
   else:
+    isKnownFile = false
     result = fileInfos.len.int32
     fileInfos.add(newFileInfo(canon, if pseudoPath: filename
                                      else: canon.shortenDir))
     filenameToIndexTbl[canon] = result
+
+proc fileInfoIdx*(filename: string): int32 =
+  var dummy: bool
+  result = fileInfoIdx(filename, dummy)
 
 proc newLineInfo*(fileInfoIdx: int32, line, col: int): TLineInfo =
   result.fileIndex = fileInfoIdx
