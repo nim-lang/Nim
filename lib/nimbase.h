@@ -390,3 +390,12 @@ typedef int assert_numbits[sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(
 #else
 #  define NIM_EXTERNC
 #endif
+
+/* ---------------- platform specific includes ----------------------- */
+
+/* VxWorks related includes */
+#if defined(__VXWORKS__)
+#  include <sys/types.h>
+#  include <types/vxWind.h>
+#  include <tool/gnu/toolMacros.h>
+#endif
