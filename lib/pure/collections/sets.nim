@@ -114,6 +114,15 @@ proc mustRehash(length, counter: int): bool {.inline.} =
   assert(length > counter)
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
+proc rightSize*(count: int): int {.inline.} =
+  ## Return the value of `initialSize` to support `count` items.
+  ##
+  ## If more items are expected to be added, simply add that
+  ## expected extra amount to the parameter before calling this.
+  ##
+  ## Internally, we want mustRehash(rightSize(x), x) == false.
+  result = nextPowerOfTwo(count * 3 div 2  +  4)
+
 proc nextTry(h, maxHash: THash): THash {.inline.} =
   result = (h + 1) and maxHash
 
@@ -343,7 +352,7 @@ proc toSet*[A](keys: openArray[A]): HashSet[A] =
   ##   var numbers = toSet([1, 2, 3, 4, 5])
   ##   assert numbers.contains(2)
   ##   assert numbers.contains(4)
-  result = initSet[A](nextPowerOfTwo(keys.len+10))
+  result = initSet[A](rightSize(keys.len))
   for key in items(keys): result.incl(key)
 
 template dollarImpl(): stmt {.dirty.} =
@@ -708,7 +717,7 @@ proc containsOrIncl*[A](s: var OrderedSet[A], key: A): bool =
 proc init*[A](s: var OrderedSet[A], initialSize=64) =
   ## Initializes an ordered hash set.
   ##
-  ## The `initialSize` parameter needs to be a power of too. You can use
+  ## The `initialSize` parameter needs to be a power of two. You can use
   ## `math.nextPowerOfTwo() <math.html#nextPowerOfTwo>`_ to guarantee that at
   ## runtime. All set variables have to be initialized before you can use them
   ## with other procs from this module with the exception of `isValid()
@@ -751,7 +760,7 @@ proc toOrderedSet*[A](keys: openArray[A]): OrderedSet[A] =
   ##   var numbers = toOrderedSet([1, 2, 3, 4, 5])
   ##   assert numbers.contains(2)
   ##   assert numbers.contains(4)
-  result = initOrderedSet[A](nextPowerOfTwo(keys.len+10))
+  result = initOrderedSet[A](rightSize(keys.len))
   for key in items(keys): result.incl(key)
 
 proc `$`*[A](s: OrderedSet[A]): string =
@@ -953,6 +962,11 @@ proc testModule() =
     b = initSet[int](4)
     b.incl(2)
     assert b.len == 1
+
+  for i in 0 .. 32:
+    var s = rightSize(i)
+    if s <= i or mustRehash(s, i):
+      echo "performance issue: rightSize() will not elide enlarge() at ", i
 
   echo "Micro tests run successfully."
 
