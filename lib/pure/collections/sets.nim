@@ -246,8 +246,9 @@ proc incl*[A](s: var HashSet[A], other: HashSet[A]) =
   for item in other: incl(s, item)
 
 template doWhile(a: expr, b: stmt): stmt =
-  b
-  while a: b
+  while true:
+    b
+    if not a: break
 
 proc excl*[A](s: var HashSet[A], key: A) =
   ## Excludes `key` from the set `s`.
