@@ -311,7 +311,7 @@ const
     errXOnlyAtModuleScope: "\'$1\' is only allowed at top level", 
     errXNeedsParamObjectType: "'$1' needs a parameter that has an object type",
     errTemplateInstantiationTooNested: "template/macro instantiation too nested",
-    errInstantiationFrom: "instantiation from here", 
+    errInstantiationFrom: "template/generic instantiation from here", 
     errInvalidIndexValueForTuple: "invalid index value for tuple subscript", 
     errCommandExpectsFilename: "command expects a filename argument",
     errMainModuleMustBeSpecified: "please, specify a main module in the project configuration file",
