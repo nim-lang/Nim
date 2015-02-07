@@ -1209,6 +1209,7 @@ proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
     if x.typ.kind == tyVar and x.kind == nkSym and x.sym.kind == skResult:
       n.sons[0] = x # 'result[]' --> 'result'
       n.sons[1] = takeImplicitAddr(c, ri)
+      x.typ.flags.incl tfVarIsPtr
 
 template resultTypeIsInferrable(typ: PType): expr =
   typ.isMetaType and typ.kind != tyTypeDesc

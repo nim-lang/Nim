@@ -112,7 +112,7 @@ proc `[]`*(t: StringTableRef, key: string): string {.rtl, extern: "nstGet".} =
 proc mget*(t: StringTableRef, key: string): var string {.
              rtl, extern: "nstTake".} =
   ## retrieves the location at ``t[key]``. If `key` is not in `t`, the
-  ## ``EInvalidKey`` exception is raised.
+  ## ``KeyError`` exception is raised.
   var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
   else: raise newException(KeyError, "key does not exist: " & key)

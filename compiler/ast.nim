@@ -459,7 +459,7 @@ type
     
     tfNeedsInit,      # type constains a "not nil" constraint somewhere or some
                       # other type so that it requires inititalization
-    tfHasShared,      # type constains a "shared" constraint modifier somewhere
+    tfVarIsPtr,       # 'var' type is translated like 'ptr' even in C++ mode
     tfHasMeta,        # type contains "wildcard" sub-types such as generic params
                       # or other type classes
     tfHasGCedMem,     # type contains GC'ed memory
@@ -522,7 +522,7 @@ const
   skError* = skUnknown
   
   # type flags that are essential for type equality:
-  eqTypeFlags* = {tfIterator, tfShared, tfNotNil}
+  eqTypeFlags* = {tfIterator, tfShared, tfNotNil, tfVarIsPtr}
 
 type
   TMagic* = enum # symbols that require compiler magic:
@@ -1348,7 +1348,7 @@ proc isGCedMem*(t: PType): bool {.inline.} =
 
 proc propagateToOwner*(owner, elem: PType) =
   const HaveTheirOwnEmpty = {tySequence, tySet}
-  owner.flags = owner.flags + (elem.flags * {tfHasShared, tfHasMeta})
+  owner.flags = owner.flags + (elem.flags * {tfHasMeta})
   if tfNotNil in elem.flags:
     if owner.kind in {tyGenericInst, tyGenericBody, tyGenericInvokation}:
       owner.flags.incl tfNotNil
@@ -1359,9 +1359,6 @@ proc propagateToOwner*(owner, elem: PType) =
     if owner.kind in HaveTheirOwnEmpty: discard
     else: owner.flags.incl tfNeedsInit
     
-  if tfShared in elem.flags:
-    owner.flags.incl tfHasShared
-
   if elem.isMetaType:
     owner.flags.incl tfHasMeta
 

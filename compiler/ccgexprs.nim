@@ -664,7 +664,8 @@ proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
 
 proc isCppRef(p: BProc; typ: PType): bool {.inline.} =
   result = p.module.compileToCpp and
-      skipTypes(typ, abstractInst).kind == tyVar
+      skipTypes(typ, abstractInst).kind == tyVar and
+      tfVarIsPtr notin skipTypes(typ, abstractInst).flags
 
 proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
   let mt = mapType(e.sons[0].typ)
@@ -677,12 +678,14 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
   else:
     var a: TLoc
     initLocExprSingleUse(p, e.sons[0], a)
-    case skipTypes(a.t, abstractInst).kind
+    let typ = skipTypes(a.t, abstractInst)
+    case typ.kind
     of tyRef:
       d.s = OnHeap
     of tyVar:
       d.s = OnUnknown
-      if p.module.compileToCpp and e.kind == nkHiddenDeref:
+      if tfVarIsPtr notin typ.flags and p.module.compileToCpp and
+          e.kind == nkHiddenDeref:
         putIntoDest(p, d, e.typ, rdLoc(a))
         return
     of tyPtr:
