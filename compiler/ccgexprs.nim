@@ -664,7 +664,8 @@ proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
 
 proc isCppRef(p: BProc; typ: PType): bool {.inline.} =
   result = p.module.compileToCpp and
-      skipTypes(typ, abstractInst).kind == tyVar
+      skipTypes(typ, abstractInst).kind == tyVar and
+      tfVarIsPtr notin skipTypes(typ, abstractInst).flags
 
 proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
   let mt = mapType(e.sons[0].typ)
@@ -677,12 +678,14 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
   else:
     var a: TLoc
     initLocExprSingleUse(p, e.sons[0], a)
-    case skipTypes(a.t, abstractInst).kind
+    let typ = skipTypes(a.t, abstractInst)
+    case typ.kind
     of tyRef:
       d.s = OnHeap
     of tyVar:
       d.s = OnUnknown
-      if p.module.compileToCpp:
+      if tfVarIsPtr notin typ.flags and p.module.compileToCpp and
+          e.kind == nkHiddenDeref:
         putIntoDest(p, d, e.typ, rdLoc(a))
         return
     of tyPtr:
@@ -923,6 +926,7 @@ proc genAndOr(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
     L: TLabel
     tmp: TLoc
   getTemp(p, e.typ, tmp)      # force it into a temp!
+  inc p.splitDecls
   expr(p, e.sons[1], tmp)
   L = getLabel(p)
   if m == mOr:
@@ -935,6 +939,7 @@ proc genAndOr(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
     d = tmp
   else:
     genAssignment(p, d, tmp, {}) # no need for deep copying
+  dec p.splitDecls
 
 proc genEcho(p: BProc, n: PNode) =
   # this unusal way of implementing it ensures that e.g. ``echo("hallo", 45)``

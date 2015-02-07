@@ -87,8 +87,9 @@ proc action(cmd: string) =
   i += skipWhile(cmd, seps, i)
   i += parseInt(cmd, col, i)
 
+  var isKnownFile = true
   if orig.len == 0: err()
-  let dirtyIdx = orig.fileInfoIdx
+  let dirtyIdx = orig.fileInfoIdx(isKnownFile)
 
   if dirtyfile.len != 0: msgs.setDirtyFile(dirtyIdx, dirtyfile)
   else: msgs.setDirtyFile(dirtyIdx, nil)
@@ -99,7 +100,10 @@ proc action(cmd: string) =
   gTrackPos = newLineInfo(dirtyIdx, line, col)
   #echo dirtyfile, gDirtyBufferIdx, " project ", gProjectMainIdx
   gErrorCounter = 0
-  compileProject()
+  if not isKnownFile:
+    compileProject(dirtyIdx)
+  else:
+    compileProject()
 
 proc serve() =
   # do not stop after the first error:

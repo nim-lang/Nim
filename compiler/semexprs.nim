@@ -578,11 +578,12 @@ proc skipObjConv(n: PNode): PNode =
 proc isAssignable(c: PContext, n: PNode): TAssignableResult = 
   result = parampatterns.isAssignable(c.p.owner, n)
 
-proc newHiddenAddrTaken(c: PContext, n: PNode): PNode = 
-  if n.kind == nkHiddenDeref: 
+proc newHiddenAddrTaken(c: PContext, n: PNode): PNode =
+  if n.kind == nkHiddenDeref and not (gCmd == cmdCompileToCpp or
+                                      sfCompileToCpp in c.module.flags):
     checkSonsLen(n, 1)
     result = n.sons[0]
-  else: 
+  else:
     result = newNodeIT(nkHiddenAddr, n.info, makeVarType(c, n.typ))
     addSon(result, n)
     if isAssignable(c, n) notin {arLValue, arLocalLValue}:
@@ -1209,6 +1210,7 @@ proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
     if x.typ.kind == tyVar and x.kind == nkSym and x.sym.kind == skResult:
       n.sons[0] = x # 'result[]' --> 'result'
       n.sons[1] = takeImplicitAddr(c, ri)
+      x.typ.flags.incl tfVarIsPtr
 
 template resultTypeIsInferrable(typ: PType): expr =
   typ.isMetaType and typ.kind != tyTypeDesc
