@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -12,6 +12,8 @@
 ## (e.g. you can navigate with the arrow keys). On Windows ``system.readLine``
 ## is used. This suffices because Windows' console already provides the 
 ## wanted functionality.
+
+{.deadCodeElim: on.}
 
 when defined(Windows):
   proc readLineFromStdin*(prompt: string): TaintedString {.
@@ -31,23 +33,23 @@ when defined(Windows):
     stdout.write(prompt)
     result = readLine(stdin, line)
 
-  proc getch(): cint {.header: "<conio.h>", importc: "_getch".}
-
   proc readPasswordFromStdin*(prompt: string, password: var TaintedString) =
     ## Reads a `password` from stdin without printing it. `password` must not
     ## be ``nil``!
+    proc getch(): cint {.header: "<conio.h>", importc: "_getch".}
+
     password.setLen(0)
     var c: char
     echo prompt
     while true:
-       c = getch().char
-       case c
-       of '\r', chr(0xA):
-          break
-       of '\b':
-          password.setLen(result.len - 1)
-       else:
-          password.add(c)
+      c = getch().char
+      case c
+      of '\r', chr(0xA):
+        break
+      of '\b':
+        password.setLen(password.len - 1)
+      else:
+        password.add(c)
 
 else:
   import readline, history, termios, unsigned
