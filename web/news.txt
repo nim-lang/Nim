@@ -21,7 +21,8 @@ News
     should be used instead.
   - ``nim idetools`` has been replaced by a separate tool `nimsuggest`_.
   - *arrow like* operators are not right associative anymore.
-
+  - Typeless parameters are now only allowed in templates and macros. The old
+    way turned out to be too error-prone.
   
   Language Additions
   ------------------
