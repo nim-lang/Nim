@@ -12,7 +12,7 @@ fpqeew
 [11, 12, 13]
 [11, 12, 13]
 { "key1": 11,  "key2": 12,  "key3": 13}
-[ 11,  12,  13]
+[11, 12, 13]
 <Students>
   <Student Name="Aprilfoo" />
   <Student Name="bar" />
