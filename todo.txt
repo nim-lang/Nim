@@ -1,11 +1,20 @@
-version 0.10
-============
+version 0.10.4
+==============
+
+- make 'nil' work for 'add' and 'len'
+- improve GC-unsafety warnings
+- get rid of 'mget'; aka priority of 'var' needs to be 'var{lvalue}'
+- improve documentation (theindex!)
+- fix the getUniqueType() bug
+
+
+version 1.0
+===========
 
 - nimsuggest: auto-completion needs to work in 'class' macros
 - improve the docs for inheritance
 - The bitwise 'not' operator will be renamed to 'bnot' to
   prevent 'not 4 == 5' from compiling. -> requires 'mixin' annotation for procs!
-- parameter lists without type end up in 'experimental'
 - iterators always require a return type
 - overloading of '='
 

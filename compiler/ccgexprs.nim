@@ -83,7 +83,9 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): PRope =
     else:
       result = toRope("NIM_NIL")
   of nkStrLit..nkTripleStrLit:
-    if skipTypes(ty, abstractVarRange).kind == tyString:
+    if n.strVal.isNil:
+      result = ropecg(p.module, "((#NimStringDesc*) NIM_NIL)", [])
+    elif skipTypes(ty, abstractVarRange).kind == tyString:
       var id = nodeTableTestOrSet(p.module.dataCache, n, gBackendId)
       if id == gBackendId:
         # string literal not found in the cache:
@@ -950,7 +952,7 @@ proc genEcho(p: BProc, n: PNode) =
   var a: TLoc
   for i in countup(0, n.len-1):
     initLocExpr(p, n.sons[i], a)
-    appf(args, ", ($1)->data", [rdLoc(a)])
+    appf(args, ", $1? ($1)->data:\"nil\"", [rdLoc(a)])
   linefmt(p, cpsStmts, "printf($1$2);$n",
           makeCString(repeatStr(n.len, "%s") & tnl), args)
 
@@ -2173,7 +2175,7 @@ proc genConstExpr(p: BProc, n: PNode): PRope =
     var cs: TBitSet
     toBitSet(n, cs)
     result = genRawSetData(cs, int(getSize(n.typ)))
-  of nkBracket, nkPar, nkClosure:
+  of nkBracket, nkPar, nkClosure, nkObjConstr:
     var t = skipTypes(n.typ, abstractInst)
     if t.kind == tySequence:
       result = genConstSeq(p, n, t)
