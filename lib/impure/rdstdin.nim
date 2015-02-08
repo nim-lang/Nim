@@ -40,7 +40,7 @@ when defined(Windows):
 
     password.setLen(0)
     var c: char
-    echo prompt
+    stdout.write(prompt)
     while true:
       c = getch().char
       case c
