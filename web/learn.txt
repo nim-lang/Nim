@@ -6,11 +6,18 @@ Learning Nim
   Tutorials
   ---------
 
-  - | `Tutorial (part I) <tut1.html>`_
-    | Learn the basics of Nim's types, variables, procedures, control flow, etc...
+  .. raw:: html
 
-  - | `Tutorial (part II) <tut2.html>`_
-    | Learn Nim's more advanced features such as OOP, generics, macros, etc...
+    <ul class="tutorials">
+      <li>
+        <a href="tut1.html">Tutorial (part I)</a><br>
+        <p>Learn the basics of Nim's types, variables, procedures, control flow, etc...</p>
+      </li>
+      <li>
+        <a href="tut2.html">Tutorial (part II)</a><br>
+        <p>Learn Nim's more advanced features such as OOP, generics, macros, etc...</p>
+      </li>
+    </ul>
 
 
 .. container:: standout
@@ -18,14 +25,22 @@ Learning Nim
   Examples
   --------
 
-  - | `Nim by Example <http://nim-by-example.github.io/>`_
-    | Nim by Example is an excellent starting place for beginners.
+  .. raw:: html
 
-  - | `Nim on Rosetta Code <http://rosettacode.org/wiki/Category:Nimrod>`_
-    | Many different Nim code examples comparable to other languages for reference.
-
-  - | `Nim for C/C++ Programmers <https://github.com/Araq/Nim/wiki/Nim-for-C-programmers>`_
-    | A useful cheat-sheet for those most familiar with C/C++ languages.
+    <ul class="examples">
+      <li>
+        <a href="http://nim-by-example.github.io">Nim by Example</a><br>
+        <p>Nim by Example is an excellent starting place for beginners.</p>
+      </li>
+      <li>
+        <a href="http://rosettacode.org/wiki/Category:Nimrod">Nim on Rosetta Code</a><br>
+        <p>Many different Nim code examples comparable to other languages for reference.</p>
+      </li>
+      <li>
+        <a href="https://github.com/Araq/Nim/wiki/Nim-for-C-programmers">Nim for C/C++ Programmers</a><br>
+        <p>A useful cheat-sheet for those most familiar with C/C++ languages.</p>
+      </li>
+    </ul>
 
 
 .. container:: standout
@@ -33,8 +48,21 @@ Learning Nim
   Articles
   --------
 
-  - `Dr Dobbs Nimrod Publication <http://www.drdobbs.com/open-source/nimrod-a-new-systems-programming-languag/240165321>`_
-  - `Bootstrapping Nim <http://goran.krampe.se/2014/10/15/bootstrapping-nim/>`_
+  .. raw:: html
+
+    <ul class="articles">
+      <li>
+        <a href="http://www.drdobbs.com/open-source/nimrod-a-new-systems-programming-languag/240165321">Dr Dobbs Nimrod Publication</a><br>
+        <p> </p> <!-- TODO: fix CSS so these empty paragraphs aren't needed --!>
+      </li>
+      <li><a href="http://goran.krampe.se/nim/">Göran Krampe's Nim Articles</a><br><p> </p></li>
+      <li><a href="http://hookrace.net/blog/what-is-special-about-nim/">What is special about Nim?</a><br><p> </p></li>
+      <li><a href="http://hookrace.net/blog/what-makes-nim-practical/">What makes Nim practical?</a><br><p> </p></li>
+      <li><a href="https://akehrer.github.io/nim/2015/01/05/getting-started-with-nim.html">Getting Started With Nim</a><br><p> </p></li>
+      <li><a href="https://akehrer.github.io/nim/2015/01/14/getting-started-with-nim-pt2.html">Getting Started With Nim - Part 2</a><br><p> </p></li>
+      <li><a href="https://akehrer.github.io/nim/2015/01/24/connecting-nim-to-python.html">Connecting Nim to Python</a><br><p> </p></li>
+      <li><a href="http://programmingthomas.com/blog/2015/1/27/nim-on-ios">Nim on iOS</a><br></li>
+    </ul>
 
 
 Documentation
