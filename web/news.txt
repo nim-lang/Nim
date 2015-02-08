@@ -20,6 +20,7 @@ News
     ``addHandler``, ``getHandlers``, ``setLogFilter`` and ``getLogFilter``
     should be used instead.
   - ``nim idetools`` has been replaced by a separate tool `nimsuggest`_.
+  - *arrow like* operators are not right associative anymore.
 
   
   Language Additions
