@@ -626,7 +626,9 @@ proc callCCompiler*(projectfile: string) =
     if gNumberOfProcessors == 0: gNumberOfProcessors = countProcessors()
     var res = 0
     if gNumberOfProcessors <= 1: 
-      for i in countup(0, high(cmds)): res = max(execWithEcho(cmds[i]), res)
+      for i in countup(0, high(cmds)): 
+        res = execWithEcho(cmds[i])
+        if res != 0: rawMessage(errExecutionOfProgramFailed, [])
     elif optListCmd in gGlobalOptions or gVerbosity > 1:
       res = execProcesses(cmds, {poEchoCmd, poUseShell, poParentStreams},
                           gNumberOfProcessors)
