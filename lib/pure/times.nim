@@ -26,9 +26,6 @@ type
   WeekDay* = enum ## represents a weekday
     dMon, dTue, dWed, dThu, dFri, dSat, dSun
 
-const
-    digits = {'0','1','2','3','4','5','6','7','8','9'}
-
 var
   timezone {.importc, header: "<time.h>".}: int
   tzname {.importc, header: "<time.h>" .}: array[0..1, cstring]
@@ -780,15 +777,15 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
     ## Helper of the parse proc to parse individual tokens.
     case token
     of "d":
-        if value[j+1] in digits:
-            #two digit format
+        if value[j+1] in Digits:
+            # two digit format
             info.monthday = value[j..j+1].parseInt()
             j += 2
         else:
             info.monthday = parseInt($value[j])
             j += 1
     of "dd":
-        #two digit format
+        # two digit format
         info.monthday = value[j..j+1].parseInt()
         j += 2
     of "ddd":
@@ -835,33 +832,33 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
         else:
             raise newException(ValueError, "invalid day of week ")    
     of "h", "H":
-        if value[j+1] in digits:
-            #two digit format
+        if value[j+1] in Digits:
+            # two digit format
             info.hour = value[j..j+1].parseInt()
             j += 2
         else:
             info.hour = parseInt($value[j])
             j += 1
     of "hh", "HH":
-        #two digit format
+        # two digit format
         info.hour = value[j..j+1].parseInt()
         j += 2
     of "m":
-        if value[j+1] in digits:
-            #two digit format
+        if value[j+1] in Digits:
+            # two digit format
             info.minute = value[j..j+1].parseInt()
             j += 2
         else:
             info.minute = parseInt($value[j])
             j += 1
     of "mm":
-        #two digit format
+        # two digit format
         info.minute = value[j..j+1].parseInt()
         j += 2
     of "M":
         var month: int
-        if value[j+1] in digits:
-            #two digit format
+        if value[j+1] in Digits:
+            # two digit format
             month = value[j..j+1].parseInt()
             j += 2
         else:
@@ -941,15 +938,15 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
         else:
             raise newException(ValueError, "invalid month") 
     of "s":
-        if value[j+1] in digits:
-            #two digit format
+        if value[j+1] in Digits:
+            # two digit format
             info.second = value[j..j+1].parseInt()
             j += 2
         else:
             info.second = parseInt($value[j])
             j += 1
     of "ss":
-        #two digit format
+        # two digit format
         info.second = value[j..j+1].parseInt()
         j += 2
     of "t":
@@ -961,7 +958,7 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
             info.hour += 12
         j += 2
     of "yy":
-        #Assumes current century
+        # Assumes current century
         var year = value[j..j+1].parseInt()
         var thisCen = getLocalTime(getTime()).year div 100
         info.year = thisCen*100 + year
@@ -997,7 +994,7 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
         info.tzname = value[j..j+2].toUpper()
         j += 3
     else:
-        #Ignore the token and move forward in the value string by the same length
+        # Ignore the token and move forward in the value string by the same length
         j += token.len
     
 proc parse*(value, layout: string): TimeInfo =
@@ -1038,10 +1035,10 @@ proc parse*(value, layout: string): TimeInfo =
     ## inserted without quoting them: ``:`` ``-`` ``(`` ``)`` ``/`` ``[`` ``]``
     ## ``,``. However you don't need to necessarily separate format specifiers, a
     ## unambiguous format string like ``yyyyMMddhhmmss`` is valid too.    
-    var i = 0 #pointer for format string
-    var j = 0 #pointer for value string
+    var i = 0 # pointer for format string
+    var j = 0 # pointer for value string
     var token = ""
-    #Assumes current day of week, month and year, but time is reset to 00:00:00
+    # Assumes current day of week, month and year, but time is reset to 00:00:00
     var info = getLocalTime(getTime())
     info.hour = 0
     info.minute = 0
@@ -1051,12 +1048,12 @@ proc parse*(value, layout: string): TimeInfo =
         of ' ', '-', '/', ':', '\'', '\0', '(', ')', '[', ']', ',':
             if token.len > 0:
                 parseToken(info, token, value, j)
-            #Reset token
+            # Reset token
             token = ""
-            #Break if at end of line
+            # Break if at end of line
             if layout[i] == '\0': break
-            #Skip separator and everything between single quotes
-            #These are literals in both the layout and the value string
+            # Skip separator and everything between single quotes
+            # These are literals in both the layout and the value string
             if layout[i] == '\'':
                 inc(i)
                 inc(j)
@@ -1098,12 +1095,12 @@ when isMainModule:
     " ss t tt y yy yyy yyyy yyyyy z zz zzz ZZZ") ==
     "27 27 Mon Monday 4 04 16 16 6 06 1 01 Jan January 29 29 P PM 5 75 975 1975 01975 0 00 00:00 UTC"
   
-  # when not defined(JS) and sizeof(Time) == 8:
-  #   var t3 = getGMTime(fromSeconds(889067643645)) # Fri  7 Jun 19:20:45 BST 30143
-  #   assert t3.format("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
-  #     " ss t tt y yy yyy yyyy yyyyy z zz zzz ZZZ") == 
-  #     "7 07 Fri Friday 6 06 18 18 20 20 6 06 Jun June 45 45 P PM 3 43 143 0143 30143 0 00 00:00 UTC"
-  #   assert t3.format(":,[]()-/") == ":,[]()-/" 
+  when not defined(JS) and sizeof(Time) == 8:
+    var t3 = getGMTime(fromSeconds(889067643645)) # Fri  7 Jun 19:20:45 BST 30143
+    assert t3.format("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
+      " ss t tt y yy yyy yyyy yyyyy z zz zzz ZZZ") == 
+      "7 07 Fri Friday 6 06 18 18 20 20 6 06 Jun June 45 45 P PM 3 43 143 0143 30143 0 00 00:00 UTC"
+    assert t3.format(":,[]()-/") == ":,[]()-/" 
   
   var t4 = getGMTime(fromSeconds(876124714)) # Mon  6 Oct 08:58:34 BST 1997
   assert t4.format("M MM MMM MMMM") == "10 10 Oct October"
