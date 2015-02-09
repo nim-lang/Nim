@@ -5,7 +5,6 @@ version 0.10.4
 - improve GC-unsafety warnings
 - get rid of 'mget'; aka priority of 'var' needs to be 'var{lvalue}'
 - improve documentation (theindex!)
-- fix the getUniqueType() bug
 
 
 version 1.0

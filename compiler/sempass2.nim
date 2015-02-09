@@ -688,9 +688,6 @@ proc track(tracked: PEffects, n: PNode) =
           initVar(tracked, child.sons[i], volatileCheck=false)
           addAsgnFact(tracked.guards, child.sons[i], last)
           notNilCheck(tracked, last, child.sons[i].typ)
-      #if last.kind != nkEmpty:
-        # prevent the all too common 'var x = int' bug: XXX
-      
       # since 'var (a, b): T = ()' is not even allowed, there is always type
       # inference for (a, b) and thus no nil checking is necessary.
   of nkCaseStmt: trackCase(tracked, n)
