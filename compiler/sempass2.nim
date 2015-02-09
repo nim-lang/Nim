@@ -683,6 +683,7 @@ proc track(tracked: PEffects, n: PNode) =
     for child in n:
       let last = lastSon(child)
       if child.kind == nkIdentDefs and last.kind != nkEmpty:
+        # prevent the all too common 'var x = int' bug: XXX
         track(tracked, last)
         for i in 0 .. child.len-3:
           initVar(tracked, child.sons[i], volatileCheck=false)
