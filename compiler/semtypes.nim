@@ -911,6 +911,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     if not hasType and not hasDefault:
       if isType: localError(a.info, "':' expected")
       let tdef = if kind in {skTemplate, skMacro}: tyExpr else: tyAnything
+      if tdef == tyAnything:
+        message(a.info, warnTypelessParam, renderTree(n))
       typ = newTypeS(tdef, c)
 
     if skipTypes(typ, {tyGenericInst}).kind == tyEmpty: continue

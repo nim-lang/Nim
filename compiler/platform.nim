@@ -138,7 +138,7 @@ const
       props: {ospNeedsPIC, ospPosix, ospLacksThreadVars}),
      (name: "VxWorks", parDir: "..", dllFrmt: "lib$1.so", altDirSep: "/",
       objExt: ".o", newLine: "\x0A", pathSep: ";", dirSep: "\\",
-      scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".",
+      scriptExt: ".sh", curDir: ".", exeExt: ".vxe", extSep: ".",
       props: {ospNeedsPIC, ospPosix, ospLacksThreadVars}),
      (name: "JS", parDir: "..", 
       dllFrmt: "lib$1.so", altDirSep: "/", 

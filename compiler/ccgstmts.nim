@@ -253,15 +253,6 @@ proc genConstStmt(p: BProc, t: PNode) =
     elif c.typ.kind in ConstantDataTypes and lfNoDecl notin c.loc.flags and
         c.ast.len != 0:
       if not emitLazily(c): requestConstImpl(p, c)
-      when false:
-        # generate the data:
-        fillLoc(c.loc, locData, c.typ, mangleName(c), OnUnknown)
-        if sfImportc in c.flags: 
-          appf(p.module.s[cfsData], "extern NIM_CONST $1 $2;$n", 
-               [getTypeDesc(p.module, c.typ), c.loc.r])
-        else: 
-          appf(p.module.s[cfsData], "NIM_CONST $1 $2 = $3;$n", 
-               [getTypeDesc(p.module, c.typ), c.loc.r, genConstExpr(p, c.ast)])
 
 proc genIf(p: BProc, n: PNode, d: var TLoc) =
   #

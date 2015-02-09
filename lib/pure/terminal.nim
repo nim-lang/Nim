@@ -45,6 +45,21 @@ when defined(windows):
   var
     oldAttr = getAttributes()
 
+  proc winGetch(): cint {.header: "<conio.h>", importc: "_getch".}
+else:
+  import termios, unsigned
+
+  proc setRaw(fd: FileHandle, time: cint = TCSAFLUSH) =
+    var mode: Termios
+    discard fd.tcgetattr(addr mode)
+    mode.iflag = mode.iflag and not Tcflag(BRKINT or ICRNL or INPCK or ISTRIP or IXON)
+    mode.oflag = mode.oflag and not Tcflag(OPOST)
+    mode.cflag = (mode.cflag and not Tcflag(CSIZE or PARENB)) or CS8
+    mode.lflag = mode.lflag and not Tcflag(ECHO or ICANON or IEXTEN or ISIG)
+    mode.cc[VMIN] = 1.cuchar
+    mode.cc[VTIME] = 0.cuchar
+    discard fd.tcsetattr(time, addr mode)
+
 proc setCursorPos*(x, y: int) =
   ## sets the terminal's cursor to the (x,y) position. (0,0) is the
   ## upper left of the screen.
@@ -348,6 +363,19 @@ macro styledEcho*(m: varargs[expr]): stmt =
 
   result.add(newCall(bindSym"write", bindSym"stdout", newStrLitNode("\n")))
   result.add(newCall(bindSym"resetAttributes"))
+
+proc getch*(): char =
+  ## Read a single character from the terminal, blocking until it is entered.
+  ## The character is not printed to the terminal.
+  when defined(windows):
+    result = winGetch().char
+  else:
+    let fd = getFileHandle(stdin)
+    var oldMode: Termios
+    discard fd.tcgetattr(addr oldMode)
+    fd.setRaw()
+    result = stdin.readChar()
+    discard fd.tcsetattr(TCSADRAIN, addr oldMode)
 
 when isMainModule:
   system.addQuitProc(resetAttributes)
