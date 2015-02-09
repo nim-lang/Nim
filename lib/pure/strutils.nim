@@ -245,8 +245,11 @@ iterator split*(s: string, seps: set[char] = Whitespace): string =
   assert(not ('\0' in seps))
   for i in 0.. <len(s):
     if s[i] in seps:
-      yield s.substr(start, i-1)
+      if i != start:
+        yield s.substr(start, i-1)
       start = i+1
+  if start != len(s):
+    yield s.substr(start, len(s))
 
 iterator split*(s: string, sep: char): string =
   ## Splits the string `s` into substrings using a single separator.
@@ -278,8 +281,11 @@ iterator split*(s: string, sep: char): string =
   assert('\0' != sep)
   for i in 0.. <len(s):
     if s[i] == sep:
-      yield s.substr(start, i-1)
+      if i != start:
+        yield s.substr(start, i-1)
       start = i+1
+  if start != len(s):
+    yield s.substr(start, len(s))
 
 iterator split*(s: string, sep: string): string =
   ## Splits the string `s` into substrings using a string separator.
