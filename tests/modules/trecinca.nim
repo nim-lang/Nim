@@ -1,7 +1,7 @@
 discard """
   file: "tests/reject/trecincb.nim"
   line: 9
-  errormsg: "recursive dependency: 'tests/module/trecincb.nim'"
+  errormsg: "recursive dependency: 'trecincb.nim'"
 """
 # Test recursive includes
 

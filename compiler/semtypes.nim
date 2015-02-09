@@ -781,9 +781,10 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     result.rawAddSon(paramType)
       
     for i in 0 .. paramType.sonsLen - 2:
-      let dummyType = if paramType.sons[i].kind == tyStatic: tyUnknown
-                      else: tyAnything
-      result.rawAddSon newTypeS(dummyType, c)
+      if paramType.sons[i].kind == tyStatic:
+        result.rawAddSon makeTypeFromExpr(c, ast.emptyNode) # aka 'tyUnkown'
+      else:
+        result.rawAddSon newTypeS(tyAnything, c)
       
     if paramType.lastSon.kind == tyUserTypeClass:
       result.kind = tyUserTypeClassInst

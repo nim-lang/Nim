@@ -1056,7 +1056,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
 
   of tyFromExpr:
     # fix the expression, so it contains the already instantiated types
-    if f.n == nil: return isGeneric
+    if f.n == nil or f.n.kind == nkEmpty: return isGeneric
     let reevaluated = tryResolvingStaticExpr(c, f.n)
     case reevaluated.typ.kind
     of tyTypeDesc:
