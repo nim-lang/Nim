@@ -19,7 +19,6 @@ proc processClient(fd: int) {.async.} =
   var foo = line[0]
   if foo == 'g':
     raise newException(EBase, "foobar")
-  
 
 proc serve() {.async.} =
 
