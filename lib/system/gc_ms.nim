@@ -297,10 +297,12 @@ proc growObj(old: pointer, newsize: int, gch: var TGcHeap): pointer =
   zeroMem(cast[pointer](cast[ByteAddress](res)+% oldsize +% sizeof(TCell)),
           newsize-oldsize)
   sysAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "growObj: 3")
-  when withBitvectors: excl(gch.allocated, ol)
-  when reallyDealloc: rawDealloc(gch.region, ol)
-  else:
-    zeroMem(ol, sizeof(TCell))
+  when false:
+    # this is wrong since seqs can be shared via 'shallow':
+    when withBitvectors: excl(gch.allocated, ol)
+    when reallyDealloc: rawDealloc(gch.region, ol)
+    else:
+      zeroMem(ol, sizeof(TCell))
   when withBitvectors: incl(gch.allocated, res)
   when useCellIds:
     inc gch.idGenerator

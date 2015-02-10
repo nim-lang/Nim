@@ -130,8 +130,8 @@ proc skipConvAndClosure*(n: PNode): PNode =
 proc sameValue*(a, b: PNode): bool = 
   result = false
   case a.kind
-  of nkCharLit..nkInt64Lit: 
-    if b.kind in {nkCharLit..nkInt64Lit}: result = a.intVal == b.intVal
+  of nkCharLit..nkUInt64Lit: 
+    if b.kind in {nkCharLit..nkUInt64Lit}: result = a.intVal == b.intVal
   of nkFloatLit..nkFloat64Lit: 
     if b.kind in {nkFloatLit..nkFloat64Lit}: result = a.floatVal == b.floatVal
   of nkStrLit..nkTripleStrLit: 
@@ -145,13 +145,13 @@ proc leValue*(a, b: PNode): bool =
   # a <= b?
   result = false
   case a.kind
-  of nkCharLit..nkInt64Lit: 
-    if b.kind in {nkCharLit..nkInt64Lit}: result = a.intVal <= b.intVal
-  of nkFloatLit..nkFloat64Lit: 
+  of nkCharLit..nkUInt32Lit:
+    if b.kind in {nkCharLit..nkUInt32Lit}: result = a.intVal <= b.intVal
+  of nkFloatLit..nkFloat64Lit:
     if b.kind in {nkFloatLit..nkFloat64Lit}: result = a.floatVal <= b.floatVal
-  of nkStrLit..nkTripleStrLit: 
+  of nkStrLit..nkTripleStrLit:
     if b.kind in {nkStrLit..nkTripleStrLit}: result = a.strVal <= b.strVal
-  else: 
+  else:
     # don't raise an internal error for 'nimrod check':
     #InternalError(a.info, "leValue")
     discard

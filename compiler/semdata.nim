@@ -221,6 +221,7 @@ proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
 
 proc makeTypeFromExpr*(c: PContext, n: PNode): PType =
   result = newTypeS(tyFromExpr, c)
+  assert n != nil
   result.n = n
 
 proc newTypeWithSons*(c: PContext, kind: TTypeKind,

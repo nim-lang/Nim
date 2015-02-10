@@ -4,8 +4,6 @@ version 0.10.4
 - make 'nil' work for 'add' and 'len'
 - improve GC-unsafety warnings
 - get rid of 'mget'; aka priority of 'var' needs to be 'var{lvalue}'
-- improve documentation (theindex!)
-- fix the getUniqueType() bug
 
 
 version 1.0
@@ -67,7 +65,6 @@ version 0.9.x
 - memory manager: add a measure of fragmentation
 - implement 'bits' pragmas
 - we need a magic thisModule symbol
-- ensure (ref T)(a, b) works as a type conversion and type constructor
 - optimize 'genericReset'; 'newException' leads to code bloat
 - The 'do' notation might be trimmed so that its only purpose is to pass
   multiple multi line constructs to a macro.
@@ -96,4 +93,3 @@ CGEN
 ====
 - codegen should use "NIM_CAST" macro and respect aliasing rules for GCC
 - ``restrict`` pragma + backend support
-- 'const' objects including case objects

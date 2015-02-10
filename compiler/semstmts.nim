@@ -359,6 +359,10 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     var def: PNode
     if a.sons[length-1].kind != nkEmpty:
       def = semExprWithType(c, a.sons[length-1], {efAllowDestructor})
+      if def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
+        # prevent the all too common 'var x = int' bug:
+        localError(def.info, "'typedesc' metatype is not valid here; typed '=' instead of ':'?")
+        def.typ = errorType(c)
       if typ != nil:
         if typ.isMetaType:
           def = inferWithMetatype(c, typ, def)

@@ -448,25 +448,30 @@ proc changeType(n: PNode, newType: PType, check: bool) =
     let tup = newType.skipTypes({tyGenericInst})
     if tup.kind != tyTuple:
       internalError(n.info, "changeType: no tuple type for constructor")
-    elif newType.n == nil: discard
-    elif sonsLen(n) > 0 and n.sons[0].kind == nkExprColonExpr: 
-      for i in countup(0, sonsLen(n) - 1): 
+    elif sonsLen(n) > 0 and n.sons[0].kind == nkExprColonExpr:
+      # named tuple?
+      for i in countup(0, sonsLen(n) - 1):
         var m = n.sons[i].sons[0]
-        if m.kind != nkSym: 
+        if m.kind != nkSym:
           internalError(m.info, "changeType(): invalid tuple constr")
           return
-        var f = getSymFromList(newType.n, m.sym.name)
-        if f == nil: 
-          internalError(m.info, "changeType(): invalid identifier")
-          return
-        changeType(n.sons[i].sons[1], f.typ, check)
+        if tup.n != nil:
+          var f = getSymFromList(newType.n, m.sym.name)
+          if f == nil: 
+            internalError(m.info, "changeType(): invalid identifier")
+            return
+          changeType(n.sons[i].sons[1], f.typ, check)
+        else:
+          changeType(n.sons[i].sons[1], tup.sons[i], check)
     else:
       for i in countup(0, sonsLen(n) - 1):
-        var m = n.sons[i]
-        var a = newNodeIT(nkExprColonExpr, m.info, newType.sons[i])
-        addSon(a, newSymNode(newType.n.sons[i].sym))
-        addSon(a, m)
-        changeType(m, tup.sons[i], check)
+        changeType(n.sons[i], tup.sons[i], check)
+        when false:
+          var m = n.sons[i]
+          var a = newNodeIT(nkExprColonExpr, m.info, newType.sons[i])
+          addSon(a, newSymNode(newType.n.sons[i].sym))
+          addSon(a, m)
+          changeType(m, tup.sons[i], check)
   of nkCharLit..nkUInt64Lit:
     if check:
       let value = n.intVal
