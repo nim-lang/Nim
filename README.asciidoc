@@ -129,7 +129,13 @@ as a key.
 
 Represents the pattern that things are matched against, constructed with
 `re(string, string)`. Examples: `re"foo"`, `re(r"foo # comment",
-"x<anycrlf>")`. 
+"x<anycrlf>")`, `re"(?x)(*ANYCRLF)foo # comment"`.
+For more details on the leading option groups, see the
+link:http://man7.org/linux/man-pages/man3/pcresyntax.3.html#OPTION_SETTING[Option Setting]
+and the
+link:http://man7.org/linux/man-pages/man3/pcresyntax.3.html#NEWLINE_CONVENTION[Newline Convention]
+sections of the
+link:http://man7.org/linux/man-pages/man3/pcresyntax.3.html[PCRE syntax manual].
 
 `pattern: string` :: the string that was used to create the pattern.
 `captureCount: int` :: the number of captures that the pattern has.
