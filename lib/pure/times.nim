@@ -63,44 +63,44 @@ elif defined(windows):
 elif defined(JS):
   type
     Time* {.importc.} = object
-      getDay: proc (): int {.tags: [], raises: [], gcsafe.}
-      getFullYear: proc (): int {.tags: [], raises: [], gcsafe.}
-      getHours: proc (): int {.tags: [], raises: [], gcsafe.}
-      getMilliseconds: proc (): int {.tags: [], raises: [], gcsafe.}
-      getMinutes: proc (): int {.tags: [], raises: [], gcsafe.}
-      getMonth: proc (): int {.tags: [], raises: [], gcsafe.}
-      getSeconds: proc (): int {.tags: [], raises: [], gcsafe.}
-      getTime: proc (): int {.tags: [], raises: [], gcsafe.}
-      getTimezoneOffset: proc (): int {.tags: [], raises: [], gcsafe.}
-      getDate: proc (): int {.tags: [], raises: [], gcsafe.}
-      getUTCDate: proc (): int {.tags: [], raises: [], gcsafe.}
-      getUTCFullYear: proc (): int {.tags: [], raises: [], gcsafe.}
-      getUTCHours: proc (): int {.tags: [], raises: [], gcsafe.}
-      getUTCMilliseconds: proc (): int {.tags: [], raises: [], gcsafe.}
-      getUTCMinutes: proc (): int {.tags: [], raises: [], gcsafe.}
-      getUTCMonth: proc (): int {.tags: [], raises: [], gcsafe.}
-      getUTCSeconds: proc (): int {.tags: [], raises: [], gcsafe.}
-      getUTCDay: proc (): int {.tags: [], raises: [], gcsafe.}
-      getYear: proc (): int {.tags: [], raises: [], gcsafe.}
-      parse: proc (s: cstring): Time {.tags: [], raises: [], gcsafe.}
-      setDate: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setFullYear: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setHours: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setMilliseconds: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setMinutes: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setMonth: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setSeconds: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setTime: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setUTCDate: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setUTCFullYear: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setUTCHours: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setUTCMilliseconds: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setUTCMinutes: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setUTCMonth: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setUTCSeconds: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setYear: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      toGMTString: proc (): cstring {.tags: [], raises: [], gcsafe.}
-      toLocaleString: proc (): cstring {.tags: [], raises: [], gcsafe.}
+      getDay: proc (): int {.tags: [], raises: [], benign.}
+      getFullYear: proc (): int {.tags: [], raises: [], benign.}
+      getHours: proc (): int {.tags: [], raises: [], benign.}
+      getMilliseconds: proc (): int {.tags: [], raises: [], benign.}
+      getMinutes: proc (): int {.tags: [], raises: [], benign.}
+      getMonth: proc (): int {.tags: [], raises: [], benign.}
+      getSeconds: proc (): int {.tags: [], raises: [], benign.}
+      getTime: proc (): int {.tags: [], raises: [], benign.}
+      getTimezoneOffset: proc (): int {.tags: [], raises: [], benign.}
+      getDate: proc (): int {.tags: [], raises: [], benign.}
+      getUTCDate: proc (): int {.tags: [], raises: [], benign.}
+      getUTCFullYear: proc (): int {.tags: [], raises: [], benign.}
+      getUTCHours: proc (): int {.tags: [], raises: [], benign.}
+      getUTCMilliseconds: proc (): int {.tags: [], raises: [], benign.}
+      getUTCMinutes: proc (): int {.tags: [], raises: [], benign.}
+      getUTCMonth: proc (): int {.tags: [], raises: [], benign.}
+      getUTCSeconds: proc (): int {.tags: [], raises: [], benign.}
+      getUTCDay: proc (): int {.tags: [], raises: [], benign.}
+      getYear: proc (): int {.tags: [], raises: [], benign.}
+      parse: proc (s: cstring): Time {.tags: [], raises: [], benign.}
+      setDate: proc (x: int) {.tags: [], raises: [], benign.}
+      setFullYear: proc (x: int) {.tags: [], raises: [], benign.}
+      setHours: proc (x: int) {.tags: [], raises: [], benign.}
+      setMilliseconds: proc (x: int) {.tags: [], raises: [], benign.}
+      setMinutes: proc (x: int) {.tags: [], raises: [], benign.}
+      setMonth: proc (x: int) {.tags: [], raises: [], benign.}
+      setSeconds: proc (x: int) {.tags: [], raises: [], benign.}
+      setTime: proc (x: int) {.tags: [], raises: [], benign.}
+      setUTCDate: proc (x: int) {.tags: [], raises: [], benign.}
+      setUTCFullYear: proc (x: int) {.tags: [], raises: [], benign.}
+      setUTCHours: proc (x: int) {.tags: [], raises: [], benign.}
+      setUTCMilliseconds: proc (x: int) {.tags: [], raises: [], benign.}
+      setUTCMinutes: proc (x: int) {.tags: [], raises: [], benign.}
+      setUTCMonth: proc (x: int) {.tags: [], raises: [], benign.}
+      setUTCSeconds: proc (x: int) {.tags: [], raises: [], benign.}
+      setYear: proc (x: int) {.tags: [], raises: [], benign.}
+      toGMTString: proc (): cstring {.tags: [], raises: [], benign.}
+      toLocaleString: proc (): cstring {.tags: [], raises: [], benign.}
 
 type
   TimeInfo* = object of RootObj ## represents a time in different parts
@@ -139,42 +139,42 @@ type
 {.deprecated: [TMonth: Month, TWeekDay: WeekDay, TTime: Time,
     TTimeInterval: TimeInterval, TTimeInfo: TimeInfo].}
 
-proc getTime*(): Time {.tags: [TimeEffect], gcsafe.}
+proc getTime*(): Time {.tags: [TimeEffect], benign.}
   ## gets the current calendar time as a UNIX epoch value (number of seconds
   ## elapsed since 1970) with integer precission. Use epochTime for higher
   ## resolution.
-proc getLocalTime*(t: Time): TimeInfo {.tags: [TimeEffect], raises: [], gcsafe.}
+proc getLocalTime*(t: Time): TimeInfo {.tags: [TimeEffect], raises: [], benign.}
   ## converts the calendar time `t` to broken-time representation,
   ## expressed relative to the user's specified time zone.
-proc getGMTime*(t: Time): TimeInfo {.tags: [TimeEffect], raises: [], gcsafe.}
+proc getGMTime*(t: Time): TimeInfo {.tags: [TimeEffect], raises: [], benign.}
   ## converts the calendar time `t` to broken-down time representation,
   ## expressed in Coordinated Universal Time (UTC).
 
-proc timeInfoToTime*(timeInfo: TimeInfo): Time {.tags: [], gcsafe.}
+proc timeInfoToTime*(timeInfo: TimeInfo): Time {.tags: [], benign.}
   ## converts a broken-down time structure to
   ## calendar time representation. The function ignores the specified
   ## contents of the structure members `weekday` and `yearday` and recomputes
   ## them from the other information in the broken-down time structure.
 
-proc fromSeconds*(since1970: float): Time {.tags: [], raises: [], gcsafe.}
+proc fromSeconds*(since1970: float): Time {.tags: [], raises: [], benign.}
   ## Takes a float which contains the number of seconds since the unix epoch and
   ## returns a time object.
 
-proc fromSeconds*(since1970: int64): Time {.tags: [], raises: [], gcsafe.} = 
+proc fromSeconds*(since1970: int64): Time {.tags: [], raises: [], benign.} = 
   ## Takes an int which contains the number of seconds since the unix epoch and
   ## returns a time object.
   fromSeconds(float(since1970))
 
-proc toSeconds*(time: Time): float {.tags: [], raises: [], gcsafe.}
+proc toSeconds*(time: Time): float {.tags: [], raises: [], benign.}
   ## Returns the time in seconds since the unix epoch.
 
-proc `$` *(timeInfo: TimeInfo): string {.tags: [], raises: [], gcsafe.}
+proc `$` *(timeInfo: TimeInfo): string {.tags: [], raises: [], benign.}
   ## converts a `TimeInfo` object to a string representation.
-proc `$` *(time: Time): string {.tags: [], raises: [], gcsafe.}
+proc `$` *(time: Time): string {.tags: [], raises: [], benign.}
   ## converts a calendar time to a string representation.
 
 proc `-`*(a, b: Time): int64 {.
-  rtl, extern: "ntDiffTime", tags: [], raises: [].}
+  rtl, extern: "ntDiffTime", tags: [], raises: [], benign.}
   ## computes the difference of two calendar times. Result is in seconds.
 
 proc `<`*(a, b: Time): bool {.
@@ -194,14 +194,14 @@ proc `==`*(a, b: Time): bool {.
 
 when not defined(JS):
   proc getTzname*(): tuple[nonDST, DST: string] {.tags: [TimeEffect], raises: [],
-    gcsafe.}
+    benign.}
     ## returns the local timezone; ``nonDST`` is the name of the local non-DST
     ## timezone, ``DST`` is the name of the local DST timezone.
 
-proc getTimezone*(): int {.tags: [TimeEffect], raises: [], gcsafe.}
+proc getTimezone*(): int {.tags: [TimeEffect], raises: [], benign.}
   ## returns the offset of the local (non-DST) timezone in seconds west of UTC.
 
-proc getStartMilsecs*(): int {.deprecated, tags: [TimeEffect], gcsafe.}
+proc getStartMilsecs*(): int {.deprecated, tags: [TimeEffect], benign.}
   ## get the miliseconds from the start of the program. **Deprecated since
   ## version 0.8.10.** Use ``epochTime`` or ``cpuTime`` instead.
 

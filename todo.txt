@@ -41,7 +41,6 @@ Misc
 - make tuple unpacking work in a non-var/let context
 - built-in 'getImpl'
 - prevent 'alloc(TypeWithGCedMemory)'
-- some table related tests are wrong (memory usage checks)
 
 
 Bugs

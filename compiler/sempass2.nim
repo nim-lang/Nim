@@ -859,7 +859,8 @@ proc trackProc*(s: PSym, body: PNode) =
     if s.typ.lockLevel == UnspecifiedLockLevel:
       s.typ.lockLevel = t.maxLockLevel
     elif t.maxLockLevel > s.typ.lockLevel:
-      localError(s.info,
+      #localError(s.info,
+      message(s.info, warnLockLevel,
         "declared lock level is $1, but real lock level is $2" %
           [$s.typ.lockLevel, $t.maxLockLevel])
 

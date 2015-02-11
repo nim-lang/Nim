@@ -321,7 +321,8 @@ proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
     dealloc(aiList)
 
 proc acceptAddr*(server: Socket, client: var Socket, address: var string,
-                 flags = {SocketFlag.SafeDisconn}) {.tags: [ReadIOEffect].} =
+                 flags = {SocketFlag.SafeDisconn}) {.
+                 tags: [ReadIOEffect], gcsafe, locks: 0.} =
   ## Blocks until a connection is being made from a client. When a connection
   ## is made sets ``client`` to the client socket and ``address`` to the address
   ## of the connecting client.
@@ -938,8 +939,12 @@ proc connect*(socket: Socket, address: string, port = Port(0), timeout: int,
         doAssert socket.handshake()
   socket.fd.setBlocking(true)
 
-proc isSsl*(socket: Socket): bool = return socket.isSSL
+proc isSsl*(socket: Socket): bool = 
   ## Determines whether ``socket`` is a SSL socket.
+  when defined(ssl):
+    result = socket.isSSL
+  else:
+    result = false
 
 proc getFd*(socket: Socket): SocketHandle = return socket.fd
   ## Returns the socket's file descriptor
