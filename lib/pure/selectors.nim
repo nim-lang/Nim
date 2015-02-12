@@ -299,7 +299,7 @@ when isMainModule and not defined(nimdoc):
       sock: Socket
   
   var sock = socket()
-  if sock == sockets.InvalidSocket: raiseOSError(osLastError())
+  if sock == sockets.invalidSocket: raiseOSError(osLastError())
   #sock.setBlocking(false)
   sock.connect("irc.freenode.net", Port(6667))
   
