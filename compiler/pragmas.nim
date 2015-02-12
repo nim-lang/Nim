@@ -735,11 +735,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           incl(sym.flags, sfProcvar)
           if sym.typ != nil: incl(sym.typ.flags, tfThread)
         of wGcSafe:
-          if optThreadAnalysis in gGlobalOptions:
-            noVal(it)
-            if sym.kind != skType: incl(sym.flags, sfThread)
-            if sym.typ != nil: incl(sym.typ.flags, tfGcSafe)
-            else: invalidPragma(it)
+          noVal(it)
+          if sym.kind != skType: incl(sym.flags, sfThread)
+          if sym.typ != nil: incl(sym.typ.flags, tfGcSafe)
+          else: invalidPragma(it)
         of wPacked:
           noVal(it)
           if sym.typ == nil: invalidPragma(it)
