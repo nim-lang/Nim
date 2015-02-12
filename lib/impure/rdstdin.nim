@@ -33,14 +33,16 @@ when defined(Windows):
     stdout.write(prompt)
     result = readLine(stdin, line)
 
-  proc readPasswordFromStdin*(prompt: string, password: var TaintedString) =
+  proc readPasswordFromStdin*(prompt: string, password: var TaintedString):
+                              bool {.tags: [ReadIOEffect, WriteIOEffect].} =
     ## Reads a `password` from stdin without printing it. `password` must not
-    ## be ``nil``!
+    ## be ``nil``! Returns ``false`` if the end of the file has been reached,
+    ## ``true`` otherwise.
     proc getch(): cint {.header: "<conio.h>", importc: "_getch".}
 
     password.setLen(0)
     var c: char
-    echo prompt
+    stdout.write(prompt)
     while true:
       c = getch().char
       case c
@@ -50,6 +52,8 @@ when defined(Windows):
         password.setLen(password.len - 1)
       else:
         password.add(c)
+    stdout.write "\n"
+    # TODO: How to detect EOF on Windows?
 
 else:
   import readline, history, termios, unsigned
@@ -80,7 +84,8 @@ else:
 
   discard readline.bind_key('\t'.ord, doNothing)
 
-  proc readPasswordFromStdin*(prompt: string, password: var TaintedString) =
+  proc readPasswordFromStdin*(prompt: string, password: var TaintedString):
+                              bool {.tags: [ReadIOEffect, WriteIOEffect].} =
     password.setLen(0)
     let fd = stdin.getFileHandle()
     var cur, old: Termios
@@ -89,10 +94,11 @@ else:
     cur.lflag = cur.lflag and not Tcflag(ECHO)
     discard fd.tcsetattr(TCSADRAIN, cur.addr)
     stdout.write prompt
-    discard stdin.readLine(password)
+    result = stdin.readLine(password)
+    stdout.write "\n"
     discard fd.tcsetattr(TCSADRAIN, old.addr)
 
 proc readPasswordFromStdin*(prompt: string): TaintedString =
   ## Reads a password from stdin without printing it.
   result = TaintedString("")
-  readPasswordFromStdin(prompt, result)
+  discard readPasswordFromStdin(prompt, result)
