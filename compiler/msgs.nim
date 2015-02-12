@@ -720,7 +720,10 @@ type
 proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
   template quit =
     if defined(debug) or gVerbosity >= 3 or msg == errInternal:
-      writeStackTrace()
+      if stackTraceAvailable():
+        writeStackTrace()
+      else:
+        msgWriteln("No stack traceback available\nTo create a stacktrace, rerun compilation with ./koch temp c <file>")
     quit 1
 
   if msg >= fatalMin and msg <= fatalMax:

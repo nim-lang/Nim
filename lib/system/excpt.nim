@@ -175,6 +175,8 @@ proc auxWriteStackTrace(f: PFrame, s: var string) =
       add(s, tempFrames[j].procname)
     add(s, "\n")
 
+proc stackTraceAvailable*(): bool
+
 when hasSomeStackTrace:
   proc rawWriteStackTrace(s: var string) =
     when NimStackTrace:
@@ -188,6 +190,18 @@ when hasSomeStackTrace:
       auxWriteStackTraceWithBacktrace(s)
     else:
       add(s, "No stack traceback available\n")
+  proc stackTraceAvailable(): bool =
+    when NimStackTrace:
+      if framePtr == nil:
+        result = false
+      else:
+        result = true
+    elif defined(nativeStackTrace) and nativeStackTraceSupported:
+      result = true
+    else:
+      result = false
+else:
+  proc stackTraceAvailable*(): bool = result = false
 
 proc quitOrDebug() {.inline.} =
   when not defined(endb):
