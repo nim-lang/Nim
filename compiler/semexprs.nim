@@ -1337,7 +1337,12 @@ proc semProcBody(c: PContext, n: PNode): PNode =
   
   if c.p.owner.kind notin {skMacro, skTemplate} and
      c.p.resultSym != nil and c.p.resultSym.typ.isMetaType:
-    localError(c.p.resultSym.info, errCannotInferReturnType)
+    if isEmptyType(result.typ):
+      # we inferred a 'void' return type:
+      c.p.resultSym.typ = nil
+      c.p.owner.typ.sons[0] = nil
+    else:
+      localError(c.p.resultSym.info, errCannotInferReturnType)
 
   closeScope(c)
 
