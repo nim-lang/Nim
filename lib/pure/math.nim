@@ -93,9 +93,9 @@ proc nextPowerOfTwo*(x: int): int {.noSideEffect.} =
   result = x - 1 
   when defined(cpu64):
     result = result or (result shr 32)
-  when sizeof(int) > 16:
+  when sizeof(int) > 2:
     result = result or (result shr 16)
-  when sizeof(int) > 8:
+  when sizeof(int) > 1:
     result = result or (result shr 8)
   result = result or (result shr 4)
   result = result or (result shr 2)
