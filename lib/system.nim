@@ -2576,7 +2576,6 @@ when not defined(JS): #and not defined(NimrodVM):
     initAllocator()
   when hasThreadSupport:
     include "system/syslocks"
-    include "system/threads"
   elif not defined(nogc) and not defined(NimrodVM) and hostOS != "standalone":
     when not defined(useNimRtl) and not defined(createNimRtl): initStackBottom()
     initGC()
