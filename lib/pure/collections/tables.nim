@@ -246,7 +246,8 @@ template putImpl() {.dirty.} =
 when false:
   # not yet used:
   template hasKeyOrPutImpl() {.dirty.} =
-    var index = rawGet(t, key)
+    var hc: THash
+    var index = rawGet(t, key, hc)
     if index >= 0:
       t.data[index].val = val
       result = true
@@ -490,19 +491,22 @@ proc `[]`*[A, B](t: OrderedTable[A, B], key: A): B =
   ## default empty value for the type `B` is returned
   ## and no exception is raised. One can check with ``hasKey`` whether the key
   ## exists.
-  var index = rawGet(t, key)
+  var hc: THash
+  var index = rawGet(t, key, hc)
   if index >= 0: result = t.data[index].val
 
 proc mget*[A, B](t: var OrderedTable[A, B], key: A): var B =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``EInvalidKey`` exception is raised.
-  var index = rawGet(t, key)
+  var hc: THash
+  var index = rawGet(t, key, hc)
   if index >= 0: result = t.data[index].val
   else: raise newException(KeyError, "key not found: " & $key)
 
 proc hasKey*[A, B](t: OrderedTable[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
-  result = rawGet(t, key) >= 0
+  var hc: THash
+  result = rawGet(t, key, hc) >= 0
 
 proc rawInsert[A, B](t: var OrderedTable[A, B], 
                      data: var OrderedKeyValuePairSeq[A, B],
