@@ -95,8 +95,9 @@ when defined(windows):
       importc: "TlsGetValue", stdcall, dynlib: "kernel32".}
   
 else:
-  {.passL: "-pthread".}
-  {.passC: "-pthread".}
+  when not defined(macosx):
+    {.passL: "-pthread".}
+    {.passC: "-pthread".}
 
   type
     TSysThread {.importc: "pthread_t", header: "<sys/types.h>",
