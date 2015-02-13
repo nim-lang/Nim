@@ -70,17 +70,10 @@ const
   STDIN_FILENO* = 0  ## File number of stdin;
   STDOUT_FILENO* = 1 ## File number of stdout;
 
-when defined(endb):
-  # to not break bootstrapping again ...
-  type
-    TDIR* {.importc: "DIR", header: "<dirent.h>",
-            final, pure, incompleteStruct.} = object
-      ## A type representing a directory stream.
-else:
-  type
-    TDIR* {.importc: "DIR", header: "<dirent.h>",
-            final, pure.} = object
-      ## A type representing a directory stream.
+type
+  TDIR* {.importc: "DIR", header: "<dirent.h>",
+          incompleteStruct.} = object
+    ## A type representing a directory stream.
 
 type
   SocketHandle* = distinct cint # The type used to represent socket descriptors
