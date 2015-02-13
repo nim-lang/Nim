@@ -1010,8 +1010,16 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
 proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [ReadIOEffect, WriteIOEffect].} =
   ## Moves a file from `source` to `dest`. If this fails, `OSError` is raised.
-  if c_rename(source, dest) != 0'i32:
-    raise newException(OSError, $strerror(errno))
+  when defined(Windows):
+    when useWinUnicode:
+      let s = newWideCString(source)
+      let d = newWideCString(dest)
+      if moveFileW(s, d, 0'i32) == 0'i32: raiseOSError(osLastError())
+    else:
+      if moveFileA(source, dest, 0'i32) == 0'i32: raiseOSError(osLastError())
+  else:
+    if c_rename(source, dest) != 0'i32:
+      raise newException(OSError, $strerror(errno))
 
 when not declared(ENOENT) and not defined(Windows):
   when NoFakeVars:
