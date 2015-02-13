@@ -136,12 +136,12 @@ proc len*(n: PNimrodNode): int {.magic: "NLen", noSideEffect.}
   ## returns the number of children of `n`.
 
 proc add*(father, child: PNimrodNode): PNimrodNode {.magic: "NAdd", discardable,
-  noSideEffect.}
+  noSideEffect, locks: 0.}
   ## Adds the `child` to the `father` node. Returns the
   ## father node so that calls can be nested.
 
 proc add*(father: PNimrodNode, children: varargs[PNimrodNode]): PNimrodNode {.
-  magic: "NAddMultiple", discardable, noSideEffect.}
+  magic: "NAddMultiple", discardable, noSideEffect, locks: 0.}
   ## Adds each child of `children` to the `father` node.
   ## Returns the `father` node so that calls can be nested.
 
@@ -177,13 +177,13 @@ proc newNimNode*(kind: TNimrodNodeKind,
 proc copyNimNode*(n: PNimrodNode): PNimrodNode {.magic: "NCopyNimNode", noSideEffect.}
 proc copyNimTree*(n: PNimrodNode): PNimrodNode {.magic: "NCopyNimTree", noSideEffect.}
 
-proc error*(msg: string) {.magic: "NError", gcsafe.}
+proc error*(msg: string) {.magic: "NError", benign.}
   ## writes an error message at compile time
 
-proc warning*(msg: string) {.magic: "NWarning", gcsafe.}
+proc warning*(msg: string) {.magic: "NWarning", benign.}
   ## writes a warning message at compile time
 
-proc hint*(msg: string) {.magic: "NHint", gcsafe.}
+proc hint*(msg: string) {.magic: "NHint", benign.}
   ## writes a hint message at compile time
 
 proc newStrLitNode*(s: string): PNimrodNode {.compileTime, noSideEffect.} =
@@ -237,7 +237,7 @@ proc genSym*(kind: TNimrodSymKind = nskLet; ident = ""): PNimrodNode {.
   ## generates a fresh symbol that is guaranteed to be unique. The symbol
   ## needs to occur in a declaration context.
 
-proc callsite*(): PNimrodNode {.magic: "NCallSite", gcsafe.}
+proc callsite*(): PNimrodNode {.magic: "NCallSite", benign.}
   ## returns the AST of the invocation expression that invoked this macro.
 
 proc toStrLit*(n: PNimrodNode): PNimrodNode {.compileTime.} =
@@ -387,11 +387,11 @@ proc nestList*(theProc: TNimrodIdent,
     # This could easily user code and so should be fixed in evals.nim somehow.
     result = newCall(theProc, x[i], copyNimTree(result))
 
-proc treeRepr*(n: PNimrodNode): string {.compileTime.} =
+proc treeRepr*(n: PNimrodNode): string {.compileTime, benign.} =
   ## Convert the AST `n` to a human-readable tree-like string.
   ##
   ## See also `repr` and `lispRepr`.
-  proc traverse(res: var string, level: int, n: PNimrodNode) =
+  proc traverse(res: var string, level: int, n: PNimrodNode) {.benign.} =
     for i in 0..level-1: res.add "  "
     res.add(($n.kind).substr(3))
 
@@ -412,7 +412,7 @@ proc treeRepr*(n: PNimrodNode): string {.compileTime.} =
   result = ""
   traverse(result, 0, n)
 
-proc lispRepr*(n: PNimrodNode): string {.compileTime.} =
+proc lispRepr*(n: PNimrodNode): string {.compileTime, benign.} =
   ## Convert the AST `n` to a human-readable lisp-like string,
   ##
   ## See also `repr` and `treeRepr`.
@@ -651,7 +651,7 @@ proc `body=`*(someProc: PNimrodNode, val: PNimrodNode) {.compileTime.} =
   else:
     badNodeKind someProc.kind, "body="
 
-proc basename*(a: PNimrodNode): PNimrodNode {.compiletime.}
+proc basename*(a: PNimrodNode): PNimrodNode {.compiletime, benign.}
 
 
 proc `$`*(node: PNimrodNode): string {.compileTime.} =

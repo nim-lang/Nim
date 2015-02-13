@@ -78,7 +78,7 @@ proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
 type
   PByteArray = ptr array[0.. 0xffff, int8]
 
-proc addSetElem(result: var string, elem: int, typ: PNimType) {.gcsafe.} =
+proc addSetElem(result: var string, elem: int, typ: PNimType) {.benign.} =
   case typ.kind
   of tyEnum: add result, reprEnum(elem, typ)
   of tyBool: add result, reprBool(bool(elem))
@@ -147,7 +147,7 @@ when not defined(useNimRtl):
     for i in 0..cl.indent-1: add result, ' '
 
   proc reprAux(result: var string, p: pointer, typ: PNimType,
-               cl: var TReprClosure) {.gcsafe.}
+               cl: var TReprClosure) {.benign.}
 
   proc reprArray(result: var string, p: pointer, typ: PNimType,
                  cl: var TReprClosure) =
@@ -172,7 +172,7 @@ when not defined(useNimRtl):
     add result, "]"
 
   proc reprRecordAux(result: var string, p: pointer, n: ptr TNimNode,
-                     cl: var TReprClosure) {.gcsafe.} =
+                     cl: var TReprClosure) {.benign.} =
     case n.kind
     of nkNone: sysAssert(false, "reprRecordAux")
     of nkSlot:

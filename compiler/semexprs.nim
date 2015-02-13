@@ -686,7 +686,9 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
     # implicit statics.
     if n.len > 1:
       for i in 1 .. <n.len:
-        if n[i].typ.kind != tyStatic or tfUnresolved notin n[i].typ.flags:
+        # see bug #2113, it's possible that n[i].typ for errornous code:
+        if n[i].typ.isNil or n[i].typ.kind != tyStatic or
+            tfUnresolved notin n[i].typ.flags:
           break maybeLabelAsStatic
       n.typ = newTypeWithSons(c, tyStatic, @[n.typ])
       n.typ.flags.incl tfUnresolved
@@ -1337,7 +1339,12 @@ proc semProcBody(c: PContext, n: PNode): PNode =
   
   if c.p.owner.kind notin {skMacro, skTemplate} and
      c.p.resultSym != nil and c.p.resultSym.typ.isMetaType:
-    localError(c.p.resultSym.info, errCannotInferReturnType)
+    if isEmptyType(result.typ):
+      # we inferred a 'void' return type:
+      c.p.resultSym.typ = nil
+      c.p.owner.typ.sons[0] = nil
+    else:
+      localError(c.p.resultSym.info, errCannotInferReturnType)
 
   closeScope(c)
 

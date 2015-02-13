@@ -2107,17 +2107,13 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     discard
   of nkPragma: genPragma(p, n)
   of nkPragmaBlock: expr(p, n.lastSon, d)
-  of nkProcDef, nkMethodDef, nkConverterDef: 
-    if (n.sons[genericParamsPos].kind == nkEmpty):
+  of nkProcDef, nkMethodDef, nkConverterDef:
+    if n.sons[genericParamsPos].kind == nkEmpty:
       var prc = n.sons[namePos].sym
       # due to a bug/limitation in the lambda lifting, unused inner procs
       # are not transformed correctly. We work around this issue (#411) here
       # by ensuring it's no inner proc (owner is a module):
-      #
-      # We also check whether the proc captures its environment here to
-      # prevent issue #1642.
-      if prc.skipGenericOwner.kind == skModule and
-         tfCapturesEnv in prc.typ.flags:
+      if prc.skipGenericOwner.kind == skModule:
         if (optDeadCodeElim notin gGlobalOptions and
             sfDeadCodeElim notin getModule(prc).flags) or
             ({sfExportc, sfCompilerProc} * prc.flags == {sfExportc}) or

@@ -1,9 +1,10 @@
 version 0.10.4
 ==============
 
-- make 'nil' work for 'add' and 'len'
 - improve GC-unsafety warnings
+- make 'nil' work for 'add' and 'len'
 - get rid of 'mget'; aka priority of 'var' needs to be 'var{lvalue}'
+- 'result' shadowing warning
 
 
 version 1.0
@@ -41,7 +42,6 @@ Misc
 - make tuple unpacking work in a non-var/let context
 - built-in 'getImpl'
 - prevent 'alloc(TypeWithGCedMemory)'
-- some table related tests are wrong (memory usage checks)
 
 
 Bugs

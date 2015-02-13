@@ -43,6 +43,18 @@ News
       foo = {"ah": "finally", "this": "is", "possible.": "nice!"}.toTable()
 
 
+  - Ordinary parameters can follow after a varargs parameter. This means the
+    following is finally accepted by the compiler:
+
+  .. code-block:: nim  
+    template takesBlock(a, b: int, x: varargs[expr]; blck: stmt) =
+      blck
+      echo a, b
+
+    takesBlock 1, 2, "some", 0.90, "random stuff":
+      echo "yay"
+  
+
 2014-12-29 Version 0.10.2 released
 ==================================
 

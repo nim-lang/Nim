@@ -2098,17 +2098,16 @@ when not defined(nimrodVM) and hostOS != "standalone":
     ## returns an informative string about the GC's activity. This may be useful
     ## for tweaking.
     
-  # XXX mark these as 'locks: 0' once 0.10.0 has been released
-  proc GC_ref*[T](x: ref T) {.magic: "GCref", gcsafe.}
-  proc GC_ref*[T](x: seq[T]) {.magic: "GCref", gcsafe.}
-  proc GC_ref*(x: string) {.magic: "GCref", gcsafe.}
+  proc GC_ref*[T](x: ref T) {.magic: "GCref", benign.}
+  proc GC_ref*[T](x: seq[T]) {.magic: "GCref", benign.}
+  proc GC_ref*(x: string) {.magic: "GCref", benign.}
     ## marks the object `x` as referenced, so that it will not be freed until
     ## it is unmarked via `GC_unref`. If called n-times for the same object `x`,
     ## n calls to `GC_unref` are needed to unmark `x`. 
     
-  proc GC_unref*[T](x: ref T) {.magic: "GCunref", gcsafe.}
-  proc GC_unref*[T](x: seq[T]) {.magic: "GCunref", gcsafe.}
-  proc GC_unref*(x: string) {.magic: "GCunref", gcsafe.}
+  proc GC_unref*[T](x: ref T) {.magic: "GCunref", benign.}
+  proc GC_unref*[T](x: seq[T]) {.magic: "GCunref", benign.}
+  proc GC_unref*(x: string) {.magic: "GCunref", benign.}
     ## see the documentation of `GC_ref`.
 
 template accumulateResult*(iter: expr) =
@@ -2248,14 +2247,9 @@ when not declared(sysFatal):
       e.msg = message & arg
       raise e
 
-when defined(nimlocks):
-  proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo", gcsafe, locks: 0.}
-    ## get type information for `x`. Ordinary code should not use this, but
-    ## the `typeinfo` module instead.
-else:
-  proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo", gcsafe.}
-    ## get type information for `x`. Ordinary code should not use this, but
-    ## the `typeinfo` module instead.
+proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo", benign.}
+  ## get type information for `x`. Ordinary code should not use this, but
+  ## the `typeinfo` module instead.
 
 {.push stackTrace: off.}
 proc abs*(x: int): int {.magic: "AbsI", noSideEffect.} =
@@ -2455,14 +2449,10 @@ when not defined(JS): #and not defined(NimrodVM):
       ## Returns ``false`` if the end of the file has been reached, ``true``
       ## otherwise. If ``false`` is returned `line` contains no new data.
 
-    when not defined(booting):
-      proc writeln*[Ty](f: File, x: varargs[Ty, `$`]) {.inline, 
-                               tags: [WriteIOEffect], gcsafe, locks: 0.}
-        ## writes the values `x` to `f` and then writes "\n".
-        ## May throw an IO exception.
-    else:
-      proc writeln*[Ty](f: File, x: varargs[Ty, `$`]) {.inline, 
-                               tags: [WriteIOEffect].}
+    proc writeln*[Ty](f: File, x: varargs[Ty, `$`]) {.inline, 
+                             tags: [WriteIOEffect], benign.}
+      ## writes the values `x` to `f` and then writes "\n".
+      ## May throw an IO exception.
 
     proc getFileSize*(f: File): int64 {.tags: [ReadIOEffect], benign.}
       ## retrieves the file size (in bytes) of `f`.
@@ -2576,7 +2566,7 @@ when not defined(JS): #and not defined(NimrodVM):
     initAllocator()
   when hasThreadSupport:
     include "system/syslocks"
-    include "system/threads"
+    when hostOS != "standalone": include "system/threads"
   elif not defined(nogc) and not defined(NimrodVM) and hostOS != "standalone":
     when not defined(useNimRtl) and not defined(createNimRtl): initStackBottom()
     initGC()
