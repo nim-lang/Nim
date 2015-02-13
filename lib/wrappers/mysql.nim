@@ -13,7 +13,7 @@
 when defined(Unix):
   when defined(macosx):
     const
-      lib = "libmysqlclient.(15|16|17[18).dylib"
+      lib = "libmysqlclient.(15|16|17|18).dylib"
   else:
     const
       lib = "libmysqlclient.so.(15|16|17|18)"

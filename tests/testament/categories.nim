@@ -120,7 +120,8 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
                   " --gc:markAndSweep", cat, actionRun)
     testSpec r, makeTest("tests/gc" / filename, options &
                   " -d:release --gc:markAndSweep", cat, actionRun)
-  
+
+  test "growobjcrash"
   test "gcbench"
   test "gcleak"
   test "gcleak2"

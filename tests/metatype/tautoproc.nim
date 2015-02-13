@@ -1,3 +1,7 @@
+discard """
+  errormsg: "expression 'generate(builder)' has no type (or is ambiguous)"
+"""
+
 # bug #898
 
 proc measureTime(e: auto) =

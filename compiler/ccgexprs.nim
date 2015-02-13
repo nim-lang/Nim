@@ -83,7 +83,9 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): PRope =
     else:
       result = toRope("NIM_NIL")
   of nkStrLit..nkTripleStrLit:
-    if skipTypes(ty, abstractVarRange).kind == tyString:
+    if n.strVal.isNil:
+      result = ropecg(p.module, "((#NimStringDesc*) NIM_NIL)", [])
+    elif skipTypes(ty, abstractVarRange).kind == tyString:
       var id = nodeTableTestOrSet(p.module.dataCache, n, gBackendId)
       if id == gBackendId:
         # string literal not found in the cache:
@@ -950,7 +952,7 @@ proc genEcho(p: BProc, n: PNode) =
   var a: TLoc
   for i in countup(0, n.len-1):
     initLocExpr(p, n.sons[i], a)
-    appf(args, ", ($1)->data", [rdLoc(a)])
+    appf(args, ", $1? ($1)->data:\"nil\"", [rdLoc(a)])
   linefmt(p, cpsStmts, "printf($1$2);$n",
           makeCString(repeatStr(n.len, "%s") & tnl), args)
 
@@ -2105,17 +2107,13 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     discard
   of nkPragma: genPragma(p, n)
   of nkPragmaBlock: expr(p, n.lastSon, d)
-  of nkProcDef, nkMethodDef, nkConverterDef: 
-    if (n.sons[genericParamsPos].kind == nkEmpty):
+  of nkProcDef, nkMethodDef, nkConverterDef:
+    if n.sons[genericParamsPos].kind == nkEmpty:
       var prc = n.sons[namePos].sym
       # due to a bug/limitation in the lambda lifting, unused inner procs
       # are not transformed correctly. We work around this issue (#411) here
       # by ensuring it's no inner proc (owner is a module):
-      #
-      # We also check whether the proc captures its environment here to
-      # prevent issue #1642.
-      if prc.skipGenericOwner.kind == skModule and
-         tfCapturesEnv in prc.typ.flags:
+      if prc.skipGenericOwner.kind == skModule:
         if (optDeadCodeElim notin gGlobalOptions and
             sfDeadCodeElim notin getModule(prc).flags) or
             ({sfExportc, sfCompilerProc} * prc.flags == {sfExportc}) or
@@ -2173,7 +2171,7 @@ proc genConstExpr(p: BProc, n: PNode): PRope =
     var cs: TBitSet
     toBitSet(n, cs)
     result = genRawSetData(cs, int(getSize(n.typ)))
-  of nkBracket, nkPar, nkClosure:
+  of nkBracket, nkPar, nkClosure, nkObjConstr:
     var t = skipTypes(n.typ, abstractInst)
     if t.kind == tySequence:
       result = genConstSeq(p, n, t)

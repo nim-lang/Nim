@@ -284,6 +284,10 @@ when useWinUnicode:
                  bFailIfExists: cint): cint {.
     importc: "CopyFileW", stdcall, dynlib: "kernel32".}
 
+  proc moveFileW*(lpExistingFileName, lpNewFileName: WideCString,
+                 bFailIfExists: cint): cint {.
+    importc: "MoveFileW", stdcall, dynlib: "kernel32".}
+
   proc getEnvironmentStringsW*(): WideCString {.
     stdcall, dynlib: "kernel32", importc: "GetEnvironmentStringsW".}
   proc freeEnvironmentStringsW*(para1: WideCString): int32 {.
@@ -307,6 +311,10 @@ else:
   proc copyFileA*(lpExistingFileName, lpNewFileName: cstring,
                  bFailIfExists: cint): cint {.
     importc: "CopyFileA", stdcall, dynlib: "kernel32".}
+
+  proc moveFileA*(lpExistingFileName, lpNewFileName: cstring,
+                 bFailIfExists: cint): cint {.
+    importc: "MoveFileA", stdcall, dynlib: "kernel32".}
 
   proc getEnvironmentStringsA*(): cstring {.
     stdcall, dynlib: "kernel32", importc: "GetEnvironmentStringsA".}

@@ -1010,8 +1010,16 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
 proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [ReadIOEffect, WriteIOEffect].} =
   ## Moves a file from `source` to `dest`. If this fails, `OSError` is raised.
-  if c_rename(source, dest) != 0'i32:
-    raise newException(OSError, $strerror(errno))
+  when defined(Windows):
+    when useWinUnicode:
+      let s = newWideCString(source)
+      let d = newWideCString(dest)
+      if moveFileW(s, d, 0'i32) == 0'i32: raiseOSError(osLastError())
+    else:
+      if moveFileA(source, dest, 0'i32) == 0'i32: raiseOSError(osLastError())
+  else:
+    if c_rename(source, dest) != 0'i32:
+      raise newException(OSError, $strerror(errno))
 
 when not declared(ENOENT) and not defined(Windows):
   when NoFakeVars:
@@ -1339,7 +1347,7 @@ proc rawRemoveDir(dir: string) =
     if rmdir(dir) != 0'i32 and errno != ENOENT: raiseOSError(osLastError())
 
 proc removeDir*(dir: string) {.rtl, extern: "nos$1", tags: [
-  WriteDirEffect, ReadDirEffect].} =
+  WriteDirEffect, ReadDirEffect], benign.} =
   ## Removes the directory `dir` including all subdirectories and files
   ## in `dir` (recursively).
   ##
@@ -1385,7 +1393,7 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect].} =
   rawCreateDir(dir)
 
 proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
-  tags: [WriteIOEffect, ReadIOEffect].} =
+  tags: [WriteIOEffect, ReadIOEffect], benign.} =
   ## Copies a directory from `source` to `dest`.
   ##
   ## If this fails, `OSError` is raised. On the Windows platform this proc will
@@ -1558,7 +1566,7 @@ proc copyFileWithPermissions*(source, dest: string,
 
 proc copyDirWithPermissions*(source, dest: string,
     ignorePermissionErrors = true) {.rtl, extern: "nos$1",
-    tags: [WriteIOEffect, ReadIOEffect].} =
+    tags: [WriteIOEffect, ReadIOEffect], benign.} =
   ## Copies a directory from `source` to `dest` preserving file permissions.
   ##
   ## If this fails, `OSError` is raised. This is a wrapper proc around `copyDir()

@@ -347,7 +347,7 @@ proc `$`*[A, B](t: TableRef[A, B]): string =
 proc `==`*[A, B](s, t: TableRef[A, B]): bool =
   if isNil(s): result = isNil(t)
   elif isNil(t): result = false
-  else: result = equalsImpl()
+  else: equalsImpl()
 
 proc newTableFrom*[A, B, C](collection: A, index: proc(x: B): C): TableRef[C, B] =
   ## Index the collection with the proc provided.

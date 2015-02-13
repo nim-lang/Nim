@@ -1438,7 +1438,9 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
   # immediate macros can bypass any type and arity checking so we check the
   # arity here too:
   if sym.typ.len > n.safeLen and sym.typ.len > 1:
-    globalError(n.info, "got $#, but expected $# argument(s)" % [$ <n.safeLen, $ <sym.typ.len])
+    globalError(n.info, "in call '$#' got $#, but expected $# argument(s)" % [
+        n.renderTree,
+        $ <n.safeLen, $ <sym.typ.len])
 
   setupGlobalCtx(module)
   var c = globalCtx

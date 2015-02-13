@@ -194,6 +194,9 @@ proc warnAboutGcUnsafe(n: PNode) =
   #assert false
   message(n.info, warnGcUnsafe, renderTree(n))
 
+template markGcUnsafe(a: PEffects) =
+  a.gcUnsafe = true
+
 proc useVar(a: PEffects, n: PNode) =
   let s = n.sym
   if isLocalVar(a, s):
@@ -209,7 +212,7 @@ proc useVar(a: PEffects, n: PNode) =
     if (tfHasGCedMem in s.typ.flags or s.typ.isGCedMem) and 
         tfGcSafe notin s.typ.flags:
       if warnGcUnsafe in gNotes: warnAboutGcUnsafe(n)
-      a.gcUnsafe = true
+      markGcUnsafe(a)
 
 type
   TIntersection = seq[tuple[id, count: int]] # a simple count table
@@ -448,7 +451,7 @@ proc propagateEffects(tracked: PEffects, n: PNode, s: PSym) =
 
   if notGcSafe(s.typ) and sfImportc notin s.flags:
     if warnGcUnsafe in gNotes: warnAboutGcUnsafe(n)
-    tracked.gcUnsafe = true
+    markGcUnsafe(tracked)
   mergeLockLevels(tracked, n, s.getLockLevel)
 
 proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
@@ -502,13 +505,13 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
       # assume GcUnsafe unless in its type; 'forward' does not matter:
       if notGcSafe(op) and not isOwnedProcVar(a, tracked.owner):
         if warnGcUnsafe in gNotes: warnAboutGcUnsafe(n)
-        tracked.gcUnsafe = true
+        markGcUnsafe(tracked)
     else:
       mergeEffects(tracked, effectList.sons[exceptionEffects], n)
       mergeTags(tracked, effectList.sons[tagEffects], n)
       if notGcSafe(op):
         if warnGcUnsafe in gNotes: warnAboutGcUnsafe(n)
-        tracked.gcUnsafe = true
+        markGcUnsafe(tracked)
   notNilCheck(tracked, n, paramType)
 
 proc breaksBlock(n: PNode): bool =
@@ -656,7 +659,7 @@ proc track(tracked: PEffects, n: PNode) =
           # and it's not a recursive call:
           if not (a.kind == nkSym and a.sym == tracked.owner):
             warnAboutGcUnsafe(n)
-            tracked.gcUnsafe = true
+            markGcUnsafe(tracked)
     for i in 1 .. <len(n): trackOperand(tracked, n.sons[i], paramType(op, i))
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
       # may not look like an assignment, but it is:
@@ -825,7 +828,7 @@ proc trackProc*(s: PSym, body: PNode) =
   # effects already computed?
   if sfForward in s.flags: return
   if effects.len == effectListLen: return
-  
+
   var t: TEffects
   initEffects(effects, s, t)
   track(t, body)
@@ -849,19 +852,20 @@ proc trackProc*(s: PSym, body: PNode) =
     # after the check, use the formal spec:
     effects.sons[tagEffects] = tagsSpec
 
-  if optThreadAnalysis in gGlobalOptions:
-    if sfThread in s.flags and t.gcUnsafe:
-      if optThreads in gGlobalOptions:
-        localError(s.info, "'$1' is not GC-safe" % s.name.s)
-      else:
-        localError(s.info, warnGcUnsafe2, s.name.s)
-    if not t.gcUnsafe: s.typ.flags.incl tfGcSafe
-    if s.typ.lockLevel == UnspecifiedLockLevel:
-      s.typ.lockLevel = t.maxLockLevel
-    elif t.maxLockLevel > s.typ.lockLevel:
-      localError(s.info,
-        "declared lock level is $1, but real lock level is $2" %
-          [$s.typ.lockLevel, $t.maxLockLevel])
+  if sfThread in s.flags and t.gcUnsafe:
+    if optThreads in gGlobalOptions and optThreadAnalysis in gGlobalOptions:
+      localError(s.info, "'$1' is not GC-safe" % s.name.s)
+    else:
+      localError(s.info, warnGcUnsafe2, s.name.s)
+  if not t.gcUnsafe:
+    s.typ.flags.incl tfGcSafe
+  if s.typ.lockLevel == UnspecifiedLockLevel:
+    s.typ.lockLevel = t.maxLockLevel
+  elif t.maxLockLevel > s.typ.lockLevel:
+    #localError(s.info,
+    message(s.info, warnLockLevel,
+      "declared lock level is $1, but real lock level is $2" %
+        [$s.typ.lockLevel, $t.maxLockLevel])
 
 proc trackTopLevelStmt*(module: PSym; n: PNode) =
   if n.kind in {nkPragma, nkMacroDef, nkTemplateDef, nkProcDef,

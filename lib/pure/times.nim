@@ -16,7 +16,7 @@
                       # of the standard library!
 
 import
-  strutils
+  strutils, parseutils
 
 include "system/inclrtl"
 
@@ -63,44 +63,44 @@ elif defined(windows):
 elif defined(JS):
   type
     Time* {.importc.} = object
-      getDay: proc (): int {.tags: [], raises: [], gcsafe.}
-      getFullYear: proc (): int {.tags: [], raises: [], gcsafe.}
-      getHours: proc (): int {.tags: [], raises: [], gcsafe.}
-      getMilliseconds: proc (): int {.tags: [], raises: [], gcsafe.}
-      getMinutes: proc (): int {.tags: [], raises: [], gcsafe.}
-      getMonth: proc (): int {.tags: [], raises: [], gcsafe.}
-      getSeconds: proc (): int {.tags: [], raises: [], gcsafe.}
-      getTime: proc (): int {.tags: [], raises: [], gcsafe.}
-      getTimezoneOffset: proc (): int {.tags: [], raises: [], gcsafe.}
-      getDate: proc (): int {.tags: [], raises: [], gcsafe.}
-      getUTCDate: proc (): int {.tags: [], raises: [], gcsafe.}
-      getUTCFullYear: proc (): int {.tags: [], raises: [], gcsafe.}
-      getUTCHours: proc (): int {.tags: [], raises: [], gcsafe.}
-      getUTCMilliseconds: proc (): int {.tags: [], raises: [], gcsafe.}
-      getUTCMinutes: proc (): int {.tags: [], raises: [], gcsafe.}
-      getUTCMonth: proc (): int {.tags: [], raises: [], gcsafe.}
-      getUTCSeconds: proc (): int {.tags: [], raises: [], gcsafe.}
-      getUTCDay: proc (): int {.tags: [], raises: [], gcsafe.}
-      getYear: proc (): int {.tags: [], raises: [], gcsafe.}
-      parse: proc (s: cstring): Time {.tags: [], raises: [], gcsafe.}
-      setDate: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setFullYear: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setHours: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setMilliseconds: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setMinutes: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setMonth: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setSeconds: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setTime: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setUTCDate: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setUTCFullYear: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setUTCHours: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setUTCMilliseconds: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setUTCMinutes: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setUTCMonth: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setUTCSeconds: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      setYear: proc (x: int) {.tags: [], raises: [], gcsafe.}
-      toGMTString: proc (): cstring {.tags: [], raises: [], gcsafe.}
-      toLocaleString: proc (): cstring {.tags: [], raises: [], gcsafe.}
+      getDay: proc (): int {.tags: [], raises: [], benign.}
+      getFullYear: proc (): int {.tags: [], raises: [], benign.}
+      getHours: proc (): int {.tags: [], raises: [], benign.}
+      getMilliseconds: proc (): int {.tags: [], raises: [], benign.}
+      getMinutes: proc (): int {.tags: [], raises: [], benign.}
+      getMonth: proc (): int {.tags: [], raises: [], benign.}
+      getSeconds: proc (): int {.tags: [], raises: [], benign.}
+      getTime: proc (): int {.tags: [], raises: [], benign.}
+      getTimezoneOffset: proc (): int {.tags: [], raises: [], benign.}
+      getDate: proc (): int {.tags: [], raises: [], benign.}
+      getUTCDate: proc (): int {.tags: [], raises: [], benign.}
+      getUTCFullYear: proc (): int {.tags: [], raises: [], benign.}
+      getUTCHours: proc (): int {.tags: [], raises: [], benign.}
+      getUTCMilliseconds: proc (): int {.tags: [], raises: [], benign.}
+      getUTCMinutes: proc (): int {.tags: [], raises: [], benign.}
+      getUTCMonth: proc (): int {.tags: [], raises: [], benign.}
+      getUTCSeconds: proc (): int {.tags: [], raises: [], benign.}
+      getUTCDay: proc (): int {.tags: [], raises: [], benign.}
+      getYear: proc (): int {.tags: [], raises: [], benign.}
+      parse: proc (s: cstring): Time {.tags: [], raises: [], benign.}
+      setDate: proc (x: int) {.tags: [], raises: [], benign.}
+      setFullYear: proc (x: int) {.tags: [], raises: [], benign.}
+      setHours: proc (x: int) {.tags: [], raises: [], benign.}
+      setMilliseconds: proc (x: int) {.tags: [], raises: [], benign.}
+      setMinutes: proc (x: int) {.tags: [], raises: [], benign.}
+      setMonth: proc (x: int) {.tags: [], raises: [], benign.}
+      setSeconds: proc (x: int) {.tags: [], raises: [], benign.}
+      setTime: proc (x: int) {.tags: [], raises: [], benign.}
+      setUTCDate: proc (x: int) {.tags: [], raises: [], benign.}
+      setUTCFullYear: proc (x: int) {.tags: [], raises: [], benign.}
+      setUTCHours: proc (x: int) {.tags: [], raises: [], benign.}
+      setUTCMilliseconds: proc (x: int) {.tags: [], raises: [], benign.}
+      setUTCMinutes: proc (x: int) {.tags: [], raises: [], benign.}
+      setUTCMonth: proc (x: int) {.tags: [], raises: [], benign.}
+      setUTCSeconds: proc (x: int) {.tags: [], raises: [], benign.}
+      setYear: proc (x: int) {.tags: [], raises: [], benign.}
+      toGMTString: proc (): cstring {.tags: [], raises: [], benign.}
+      toLocaleString: proc (): cstring {.tags: [], raises: [], benign.}
 
 type
   TimeInfo* = object of RootObj ## represents a time in different parts
@@ -139,42 +139,42 @@ type
 {.deprecated: [TMonth: Month, TWeekDay: WeekDay, TTime: Time,
     TTimeInterval: TimeInterval, TTimeInfo: TimeInfo].}
 
-proc getTime*(): Time {.tags: [TimeEffect], gcsafe.}
+proc getTime*(): Time {.tags: [TimeEffect], benign.}
   ## gets the current calendar time as a UNIX epoch value (number of seconds
   ## elapsed since 1970) with integer precission. Use epochTime for higher
   ## resolution.
-proc getLocalTime*(t: Time): TimeInfo {.tags: [TimeEffect], raises: [], gcsafe.}
+proc getLocalTime*(t: Time): TimeInfo {.tags: [TimeEffect], raises: [], benign.}
   ## converts the calendar time `t` to broken-time representation,
   ## expressed relative to the user's specified time zone.
-proc getGMTime*(t: Time): TimeInfo {.tags: [TimeEffect], raises: [], gcsafe.}
+proc getGMTime*(t: Time): TimeInfo {.tags: [TimeEffect], raises: [], benign.}
   ## converts the calendar time `t` to broken-down time representation,
   ## expressed in Coordinated Universal Time (UTC).
 
-proc timeInfoToTime*(timeInfo: TimeInfo): Time {.tags: [], gcsafe.}
+proc timeInfoToTime*(timeInfo: TimeInfo): Time {.tags: [], benign.}
   ## converts a broken-down time structure to
   ## calendar time representation. The function ignores the specified
   ## contents of the structure members `weekday` and `yearday` and recomputes
   ## them from the other information in the broken-down time structure.
 
-proc fromSeconds*(since1970: float): Time {.tags: [], raises: [], gcsafe.}
+proc fromSeconds*(since1970: float): Time {.tags: [], raises: [], benign.}
   ## Takes a float which contains the number of seconds since the unix epoch and
   ## returns a time object.
 
-proc fromSeconds*(since1970: int64): Time {.tags: [], raises: [], gcsafe.} = 
+proc fromSeconds*(since1970: int64): Time {.tags: [], raises: [], benign.} = 
   ## Takes an int which contains the number of seconds since the unix epoch and
   ## returns a time object.
   fromSeconds(float(since1970))
 
-proc toSeconds*(time: Time): float {.tags: [], raises: [], gcsafe.}
+proc toSeconds*(time: Time): float {.tags: [], raises: [], benign.}
   ## Returns the time in seconds since the unix epoch.
 
-proc `$` *(timeInfo: TimeInfo): string {.tags: [], raises: [], gcsafe.}
+proc `$` *(timeInfo: TimeInfo): string {.tags: [], raises: [], benign.}
   ## converts a `TimeInfo` object to a string representation.
-proc `$` *(time: Time): string {.tags: [], raises: [], gcsafe.}
+proc `$` *(time: Time): string {.tags: [], raises: [], benign.}
   ## converts a calendar time to a string representation.
 
 proc `-`*(a, b: Time): int64 {.
-  rtl, extern: "ntDiffTime", tags: [], raises: [].}
+  rtl, extern: "ntDiffTime", tags: [], raises: [], benign.}
   ## computes the difference of two calendar times. Result is in seconds.
 
 proc `<`*(a, b: Time): bool {.
@@ -194,14 +194,14 @@ proc `==`*(a, b: Time): bool {.
 
 when not defined(JS):
   proc getTzname*(): tuple[nonDST, DST: string] {.tags: [TimeEffect], raises: [],
-    gcsafe.}
+    benign.}
     ## returns the local timezone; ``nonDST`` is the name of the local non-DST
     ## timezone, ``DST`` is the name of the local DST timezone.
 
-proc getTimezone*(): int {.tags: [TimeEffect], raises: [], gcsafe.}
+proc getTimezone*(): int {.tags: [TimeEffect], raises: [], benign.}
   ## returns the offset of the local (non-DST) timezone in seconds west of UTC.
 
-proc getStartMilsecs*(): int {.deprecated, tags: [TimeEffect], gcsafe.}
+proc getStartMilsecs*(): int {.deprecated, tags: [TimeEffect], benign.}
   ## get the miliseconds from the start of the program. **Deprecated since
   ## version 0.8.10.** Use ``epochTime`` or ``cpuTime`` instead.
 
@@ -744,6 +744,285 @@ proc format*(info: TimeInfo, f: string): string =
 
 {.pop.}
 
+proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
+  ## Helper of the parse proc to parse individual tokens.
+  var sv: int
+  case token
+  of "d":
+    var pd = parseInt(value[j..j+1], sv)
+    info.monthday = sv
+    j += pd
+  of "dd":
+    info.monthday = value[j..j+1].parseInt()
+    j += 2
+  of "ddd":
+    case value[j..j+2].toLower():
+    of "sun":
+      info.weekday = dSun
+    of "mon":
+      info.weekday = dMon
+    of "tue":
+      info.weekday = dTue
+    of "wed":
+      info.weekday = dWed
+    of "thu":
+      info.weekday = dThu
+    of "fri":
+      info.weekday = dFri
+    of "sat":
+      info.weekday = dSat
+    else:
+      raise newException(ValueError, "invalid day of week ")
+    j += 3
+  of "dddd":
+    if value.len >= j+6 and value[j..j+5].cmpIgnoreCase("sunday") == 0:
+      info.weekday = dSun
+      j += 6
+    elif value.len >= j+6 and value[j..j+5].cmpIgnoreCase("monday") == 0:
+      info.weekday = dMon
+      j += 6
+    elif value.len >= j+7 and value[j..j+6].cmpIgnoreCase("tuesday") == 0:
+      info.weekday = dTue
+      j += 7
+    elif value.len >= j+9 and value[j..j+8].cmpIgnoreCase("wednesday") == 0:
+      info.weekday = dWed
+      j += 9
+    elif value.len >= j+8 and value[j..j+7].cmpIgnoreCase("thursday") == 0:
+      info.weekday = dThu
+      j += 8
+    elif value.len >= j+6 and value[j..j+5].cmpIgnoreCase("friday") == 0:
+      info.weekday = dFri
+      j += 6
+    elif value.len >= j+8 and value[j..j+7].cmpIgnoreCase("saturday") == 0:
+      info.weekday = dSat
+      j += 8
+    else:
+      raise newException(ValueError, "invalid day of week ")    
+  of "h", "H":
+    var pd = parseInt(value[j..j+1], sv)
+    info.hour = sv
+    j += pd
+  of "hh", "HH":
+    info.hour = value[j..j+1].parseInt()
+    j += 2
+  of "m":
+    var pd = parseInt(value[j..j+1], sv)
+    info.minute = sv
+    j += pd
+  of "mm":
+    info.minute = value[j..j+1].parseInt()
+    j += 2
+  of "M":
+    var pd = parseInt(value[j..j+1], sv)
+    info.month = Month(sv-1)
+    info.monthday = sv
+    j += pd
+  of "MM":
+    var month = value[j..j+1].parseInt()
+    j += 2
+    info.month = Month(month-1)
+  of "MMM":
+    case value[j..j+2].toLower():
+    of "jan":
+      info.month =  mJan
+    of "feb":
+      info.month =  mFeb
+    of "mar":
+      info.month =  mMar
+    of "apr":
+      info.month =  mApr
+    of "may":
+      info.month =  mMay
+    of "jun":
+      info.month =  mJun
+    of "jul":
+      info.month =  mJul
+    of "aug":
+      info.month =  mAug
+    of "sep":
+      info.month =  mSep
+    of "oct":
+      info.month =  mOct
+    of "nov":
+      info.month =  mNov
+    of "dec":
+      info.month =  mDec
+    else:
+      raise newException(ValueError, "invalid month") 
+    j += 3
+  of "MMMM":
+    if value.len >= j+7 and value[j..j+6].cmpIgnoreCase("january") == 0:
+      info.month =  mJan
+      j += 7
+    elif value.len >= j+8 and value[j..j+7].cmpIgnoreCase("february") == 0:
+      info.month =  mFeb
+      j += 8
+    elif value.len >= j+5 and value[j..j+4].cmpIgnoreCase("march") == 0:
+      info.month =  mMar
+      j += 5
+    elif value.len >= j+5 and value[j..j+4].cmpIgnoreCase("april") == 0:
+      info.month =  mApr
+      j += 5
+    elif value.len >= j+3 and value[j..j+2].cmpIgnoreCase("may") == 0:
+      info.month =  mMay
+      j += 3
+    elif value.len >= j+4 and value[j..j+3].cmpIgnoreCase("june") == 0:
+      info.month =  mJun
+      j += 4
+    elif value.len >= j+4 and value[j..j+3].cmpIgnoreCase("july") == 0:
+      info.month =  mJul
+      j += 4
+    elif value.len >= j+6 and value[j..j+5].cmpIgnoreCase("august") == 0:
+      info.month =  mAug
+      j += 6
+    elif value.len >= j+9 and value[j..j+8].cmpIgnoreCase("september") == 0:
+      info.month =  mSep
+      j += 9
+    elif value.len >= j+7 and value[j..j+6].cmpIgnoreCase("october") == 0:
+      info.month =  mOct
+      j += 7
+    elif value.len >= j+8 and value[j..j+7].cmpIgnoreCase("november") == 0:
+      info.month =  mNov
+      j += 8
+    elif value.len >= j+8 and value[j..j+7].cmpIgnoreCase("december") == 0:
+      info.month =  mDec
+      j += 8
+    else:
+      raise newException(ValueError, "invalid month") 
+  of "s":
+    var pd = parseInt(value[j..j+1], sv)
+    info.second = sv
+    j += pd
+  of "ss":
+    info.second = value[j..j+1].parseInt()
+    j += 2
+  of "t":
+    if value[j] == 'P' and info.hour > 0 and info.hour < 12:
+      info.hour += 12
+    j += 1
+  of "tt":
+    if value[j..j+1] == "PM" and info.hour > 0 and info.hour < 12:
+      info.hour += 12
+    j += 2
+  of "yy":
+    # Assumes current century
+    var year = value[j..j+1].parseInt()
+    var thisCen = getLocalTime(getTime()).year div 100
+    info.year = thisCen*100 + year
+    j += 2
+  of "yyyy":
+    info.year = value[j..j+3].parseInt()
+    j += 4
+  of "z":
+    if value[j] == '+':
+      info.timezone = parseInt($value[j+1])
+    elif value[j] == '-':
+      info.timezone = 0-parseInt($value[j+1])
+    else:
+      raise newException(ValueError, "Sign for timezone " & value[j])
+    j += 2
+  of "zz":
+    if value[j] == '+':
+      info.timezone = value[j+1..j+2].parseInt()
+    elif value[j] == '-':
+      info.timezone = 0-value[j+1..j+2].parseInt()
+    else:
+      raise newException(ValueError, "Sign for timezone " & value[j])
+    j += 3
+  of "zzz":
+    if value[j] == '+':
+      info.timezone = value[j+1..j+2].parseInt()
+    elif value[j] == '-':
+      info.timezone = 0-value[j+1..j+2].parseInt()
+    else:
+      raise newException(ValueError, "Sign for timezone " & value[j])
+    j += 6
+  of "ZZZ":
+    info.tzname = value[j..j+2].toUpper()
+    j += 3
+  else:
+    # Ignore the token and move forward in the value string by the same length
+    j += token.len
+    
+proc parse*(value, layout: string): TimeInfo =
+  ## This function parses a date/time string using the standard format identifiers (below)
+  ## The function defaults information not provided in the format string from the running program (timezone, month, year, etc)
+  ##
+  ## ==========  =================================================================================  ================================================
+  ## Specifier   Description                                                                        Example
+  ## ==========  =================================================================================  ================================================
+  ##    d        Numeric value of the day of the month, it will be one or two digits long.          ``1/04/2012 -> 1``, ``21/04/2012 -> 21``
+  ##    dd       Same as above, but always two digits.                                              ``1/04/2012 -> 01``, ``21/04/2012 -> 21``
+  ##    ddd      Three letter string which indicates the day of the week.                           ``Saturday -> Sat``, ``Monday -> Mon``
+  ##    dddd     Full string for the day of the week.                                               ``Saturday -> Saturday``, ``Monday -> Monday``
+  ##    h        The hours in one digit if possible. Ranging from 0-12.                             ``5pm -> 5``, ``2am -> 2``
+  ##    hh       The hours in two digits always. If the hour is one digit 0 is prepended.           ``5pm -> 05``, ``11am -> 11``
+  ##    H        The hours in one digit if possible, randing from 0-24.                             ``5pm -> 17``, ``2am -> 2``
+  ##    HH       The hours in two digits always. 0 is prepended if the hour is one digit.           ``5pm -> 17``, ``2am -> 02``
+  ##    m        The minutes in 1 digit if possible.                                                ``5:30 -> 30``, ``2:01 -> 1``
+  ##    mm       Same as above but always 2 digits, 0 is prepended if the minute is one digit.      ``5:30 -> 30``, ``2:01 -> 01``
+  ##    M        The month in one digit if possible.                                                ``September -> 9``, ``December -> 12``
+  ##    MM       The month in two digits always. 0 is prepended.                                    ``September -> 09``, ``December -> 12``
+  ##    MMM      Abbreviated three-letter form of the month.                                        ``September -> Sep``, ``December -> Dec``
+  ##    MMMM     Full month string, properly capitalized.                                           ``September -> September``
+  ##    s        Seconds as one digit if possible.                                                  ``00:00:06 -> 6``
+  ##    ss       Same as above but always two digits. 0 is prepended.                               ``00:00:06 -> 06``
+  ##    t        ``A`` when time is in the AM. ``P`` when time is in the PM.
+  ##    tt       Same as above, but ``AM`` and ``PM`` instead of ``A`` and ``P`` respectively.
+  ##    yy       Displays the year to two digits.                                                   ``2012 -> 12``
+  ##    yyyy     Displays the year to four digits.                                                  ``2012 -> 2012``
+  ##    z        Displays the timezone offset from UTC.                                             ``GMT+7 -> +7``, ``GMT-5 -> -5``
+  ##    zz       Same as above but with leading 0.                                                  ``GMT+7 -> +07``, ``GMT-5 -> -05``
+  ##    zzz      Same as above but with ``:00``.                                                    ``GMT+7 -> +07:00``, ``GMT-5 -> -05:00``
+  ##    ZZZ      Displays the name of the timezone.                                                 ``GMT -> GMT``, ``EST -> EST``
+  ## ==========  =================================================================================  ================================================
+  ##
+  ## Other strings can be inserted by putting them in ``''``. For example
+  ## ``hh'->'mm`` will give ``01->56``.  The following characters can be
+  ## inserted without quoting them: ``:`` ``-`` ``(`` ``)`` ``/`` ``[`` ``]``
+  ## ``,``. However you don't need to necessarily separate format specifiers, a
+  ## unambiguous format string like ``yyyyMMddhhmmss`` is valid too.    
+  var i = 0 # pointer for format string
+  var j = 0 # pointer for value string
+  var token = ""
+  # Assumes current day of month, month and year, but time is reset to 00:00:00. Weekday will be reset after parsing.
+  var info = getLocalTime(getTime())
+  info.hour = 0
+  info.minute = 0
+  info.second = 0
+  while true:
+    case layout[i]
+    of ' ', '-', '/', ':', '\'', '\0', '(', ')', '[', ']', ',':
+      if token.len > 0:
+        parseToken(info, token, value, j)
+      # Reset token
+      token = ""
+      # Break if at end of line
+      if layout[i] == '\0': break
+      # Skip separator and everything between single quotes
+      # These are literals in both the layout and the value string
+      if layout[i] == '\'':
+        inc(i)
+        inc(j)
+        while layout[i] != '\'' and layout.len-1 > i:
+          inc(i)
+          inc(j)
+      else:
+        inc(i)
+        inc(j)
+    else:
+      # Check if the letter being added matches previous accumulated buffer.
+      if token.len < 1 or token[high(token)] == layout[i]:
+        token.add(layout[i])
+        inc(i)
+      else:
+        parseToken(info, token, value, j)
+        token = ""
+  # Reset weekday as it might not have been provided and the default may be wrong
+  info.weekday = getLocalTime(timeInfoToTime(info)).weekday
+  return info
+
+
 when isMainModule:
   # $ date --date='@2147483647'
   # Tue 19 Jan 03:14:07 GMT 2038
@@ -778,3 +1057,51 @@ when isMainModule:
   # Interval tests
   assert((t4 - initInterval(years = 2)).format("yyyy") == "1995")
   assert((t4 - initInterval(years = 7, minutes = 34, seconds = 24)).format("yyyy mm ss") == "1990 24 10")
+
+  var s = "Tuesday at 09:04am on Dec 15, 2015"
+  var f = "dddd at hh:mmtt on MMM d, yyyy"
+  assert($s.parse(f) == "Tue Dec 15 09:04:00 2015")
+  # ANSIC       = "Mon Jan _2 15:04:05 2006"
+  s = "Mon Jan 2 15:04:05 2006"
+  f = "ddd MMM d HH:mm:ss yyyy"
+  assert($s.parse(f) == "Mon Jan  2 15:04:05 2006")
+  # UnixDate    = "Mon Jan _2 15:04:05 MST 2006"
+  s = "Mon Jan 2 15:04:05 MST 2006"
+  f = "ddd MMM d HH:mm:ss ZZZ yyyy"
+  assert($s.parse(f) == "Mon Jan  2 15:04:05 2006")
+  # RubyDate    = "Mon Jan 02 15:04:05 -0700 2006"
+  s = "Mon Jan 02 15:04:05 -07:00 2006"
+  f = "ddd MMM dd HH:mm:ss zzz yyyy"
+  assert($s.parse(f) == "Mon Jan  2 15:04:05 2006")
+  # RFC822      = "02 Jan 06 15:04 MST"
+  s = "02 Jan 06 15:04 MST"
+  f = "dd MMM yy HH:mm ZZZ"
+  assert($s.parse(f) == "Mon Jan  2 15:04:00 2006")
+  # RFC822Z     = "02 Jan 06 15:04 -0700" # RFC822 with numeric zone
+  s = "02 Jan 06 15:04 -07:00"
+  f = "dd MMM yy HH:mm zzz"
+  assert($s.parse(f) == "Mon Jan  2 15:04:00 2006")
+  # RFC850      = "Monday, 02-Jan-06 15:04:05 MST"
+  s = "Monday, 02-Jan-06 15:04:05 MST"
+  f = "dddd, dd-MMM-yy HH:mm:ss ZZZ"
+  assert($s.parse(f) == "Mon Jan  2 15:04:05 2006")
+  # RFC1123     = "Mon, 02 Jan 2006 15:04:05 MST"
+  s = "Mon, 02 Jan 2006 15:04:05 MST"
+  f = "ddd, dd MMM yyyy HH:mm:ss ZZZ"
+  assert($s.parse(f) == "Mon Jan  2 15:04:05 2006")
+  # RFC1123Z    = "Mon, 02 Jan 2006 15:04:05 -0700" # RFC1123 with numeric zone
+  s = "Mon, 02 Jan 2006 15:04:05 -07:00"
+  f = "ddd, dd MMM yyyy HH:mm:ss zzz"
+  assert($s.parse(f) == "Mon Jan  2 15:04:05 2006")
+  # RFC3339     = "2006-01-02T15:04:05Z07:00"
+  s = "2006-01-02T15:04:05Z-07:00"
+  f = "yyyy-MM-ddTHH:mm:ssZzzz"
+  assert($s.parse(f) == "Mon Jan  2 15:04:05 2006")
+  # RFC3339Nano = "2006-01-02T15:04:05.999999999Z07:00"
+  s = "2006-01-02T15:04:05.999999999Z-07:00"
+  f = "yyyy-MM-ddTHH:mm:ss.999999999Zzzz"
+  assert($s.parse(f) == "Mon Jan  2 15:04:05 2006")
+  # Kitchen     = "3:04PM"
+  s = "3:04PM"
+  f = "h:mmtt"
+  echo "Kitchen: " & $s.parse(f)

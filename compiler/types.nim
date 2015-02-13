@@ -1029,16 +1029,18 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
 
 proc typeAllowedNode(marker: var IntSet, n: PNode, kind: TSymKind,
                      flags: TTypeAllowedFlags = {}): PType =
-  if n != nil: 
+  if n != nil:
     result = typeAllowedAux(marker, n.typ, kind, flags)
     #if not result: debug(n.typ)
     if result == nil:
       case n.kind
-      of nkNone..nkNilLit: 
+      of nkNone..nkNilLit:
         discard
       else:
         for i in countup(0, sonsLen(n) - 1):
-          result = typeAllowedNode(marker, n.sons[i], kind, flags)
+          let it = n.sons[i]
+          if it.kind == nkRecCase and kind == skConst: return n.typ
+          result = typeAllowedNode(marker, it, kind, flags)
           if result != nil: break
 
 proc matchType*(a: PType, pattern: openArray[tuple[k:TTypeKind, i:int]],
@@ -1118,7 +1120,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       result = typeAllowedAux(marker, t.sons[i], kind, flags)
       if result != nil: break
   of tyObject, tyTuple:
-    if kind == skConst and t.kind == tyObject: return t
+    if kind == skConst and t.kind == tyObject and t.sons[0] != nil: return t
     let flags = flags+{taField}
     for i in countup(0, sonsLen(t) - 1):
       result = typeAllowedAux(marker, t.sons[i], kind, flags)

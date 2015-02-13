@@ -418,7 +418,8 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
 
     if tfNoSideEffect in f.flags and tfNoSideEffect notin a.flags:
       return isNone
-    elif tfThread in f.flags and a.flags * {tfThread, tfNoSideEffect} == {}:
+    elif tfThread in f.flags and a.flags * {tfThread, tfNoSideEffect} == {} and
+        optThreadAnalysis in gGlobalOptions:
       # noSideEffect implies ``tfThread``!
       return isNone
     elif f.flags * {tfIterator} != a.flags * {tfIterator}:
@@ -1056,7 +1057,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
 
   of tyFromExpr:
     # fix the expression, so it contains the already instantiated types
-    if f.n == nil: return isGeneric
+    if f.n == nil or f.n.kind == nkEmpty: return isGeneric
     let reevaluated = tryResolvingStaticExpr(c, f.n)
     case reevaluated.typ.kind
     of tyTypeDesc:
@@ -1441,13 +1442,14 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         return
       checkConstraint(n.sons[a].sons[1])
       if m.baseTypeMatch: 
-        assert(container == nil)
+        #assert(container == nil)
         container = newNodeIT(nkBracket, n.sons[a].info, arrayConstr(c, arg))
         addSon(container, arg)
         setSon(m.call, formal.position + 1, container)
         if f != formalLen - 1: container = nil
-      else: 
+      else:
         setSon(m.call, formal.position + 1, arg)
+      inc f
     else:
       # unnamed param
       if f >= formalLen:
@@ -1466,7 +1468,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           n.sons[a] = prepareOperand(c, formal.typ, n.sons[a])
           var arg = paramTypesMatch(m, formal.typ, n.sons[a].typ,
                                     n.sons[a], nOrig.sons[a])
-          if (arg != nil) and m.baseTypeMatch and (container != nil):
+          if arg != nil and m.baseTypeMatch and container != nil:
             addSon(container, arg)
             incrIndexType(container.typ)
           else:
@@ -1480,7 +1482,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           internalError(n.sons[a].info, "matches")
           return
         formal = m.callee.n.sons[f].sym
-        if containsOrIncl(marker, formal.position): 
+        if containsOrIncl(marker, formal.position) and container.isNil:
           # already in namedParams:
           localError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
           m.state = csNoMatch
@@ -1493,17 +1495,22 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           m.state = csNoMatch
           return
         if m.baseTypeMatch:
-          assert(container == nil)
-          container = newNodeIT(nkBracket, n.sons[a].info, arrayConstr(c, arg))
+          #assert(container == nil)
+          if container.isNil:
+            container = newNodeIT(nkBracket, n.sons[a].info, arrayConstr(c, arg))
           addSon(container, arg)
           setSon(m.call, formal.position + 1, 
                  implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
-          if f != formalLen - 1: container = nil
+          #if f != formalLen - 1: container = nil
+
+          # pick the formal from the end, so that 'x, y, varargs, z' works:
+          f = max(f, formalLen - n.len + a + 1)
         else:
           setSon(m.call, formal.position + 1, arg)
+          inc(f)
+          container = nil
       checkConstraint(n.sons[a])
     inc(a)
-    inc(f)
 
 proc semFinishOperands*(c: PContext, n: PNode) =
   # this needs to be called to ensure that after overloading resolution every

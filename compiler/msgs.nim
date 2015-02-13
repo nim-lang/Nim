@@ -113,7 +113,7 @@ type
     warnSmallLshouldNotBeUsed, warnUnknownMagic, warnRedefinitionOfLabel, 
     warnUnknownSubstitutionX, warnLanguageXNotSupported,
     warnFieldXNotSupported, warnCommentXIgnored, 
-    warnNilStatement, warnAnalysisLoophole,
+    warnNilStatement, warnTypelessParam,
     warnDifferentHeaps, warnWriteToForeignHeap, warnUnsafeCode,
     warnEachIdentIsTuple, warnShadowIdent, 
     warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe, warnGcUnsafe2,
@@ -376,7 +376,7 @@ const
     warnFieldXNotSupported: "field \'$1\' not supported [FieldXNotSupported]", 
     warnCommentXIgnored: "comment \'$1\' ignored [CommentXIgnored]", 
     warnNilStatement: "'nil' statement is deprecated; use an empty 'discard' statement instead [NilStmt]", 
-    warnAnalysisLoophole: "thread analysis incomplete due to unknown call '$1' [AnalysisLoophole]",
+    warnTypelessParam: "'$1' has no type. Typeless parameters are deprecated; only allowed for 'template' [TypelessParam]",
     warnDifferentHeaps: "possible inconsistency of thread local heaps [DifferentHeaps]",
     warnWriteToForeignHeap: "write to foreign heap [WriteToForeignHeap]",
     warnUnsafeCode: "unsafe code: '$1' [UnsafeCode]",
@@ -418,7 +418,7 @@ const
     "RedefinitionOfLabel", "UnknownSubstitutionX",
     "LanguageXNotSupported", "FieldXNotSupported",
     "CommentXIgnored", "NilStmt",
-    "AnalysisLoophole", "DifferentHeaps", "WriteToForeignHeap",
+    "TypelessParam", "DifferentHeaps", "WriteToForeignHeap",
     "UnsafeCode", "EachIdentIsTuple", "ShadowIdent", 
     "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
     "GcMem", "Destructor", "LockLevel", "User"]
@@ -720,7 +720,10 @@ type
 proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
   template quit =
     if defined(debug) or gVerbosity >= 3 or msg == errInternal:
-      writeStackTrace()
+      if stackTraceAvailable():
+        writeStackTrace()
+      else:
+        msgWriteln("No stack traceback available\nTo create a stacktrace, rerun compilation with ./koch temp c <file>")
     quit 1
 
   if msg >= fatalMin and msg <= fatalMax:

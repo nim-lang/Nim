@@ -141,7 +141,7 @@ proc expectNoArg(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   if arg != "": localError(info, errCmdLineNoArgExpected, addPrefix(switch))
   
 proc processSpecificNote(arg: string, state: TSpecialWord, pass: TCmdLinePass, 
-                         info: TLineInfo) = 
+                         info: TLineInfo; orig: string) = 
   var id = ""  # arg = "X]:on|off"
   var i = 0
   var n = hintMin
@@ -149,17 +149,17 @@ proc processSpecificNote(arg: string, state: TSpecialWord, pass: TCmdLinePass,
     add(id, arg[i])
     inc(i)
   if i < len(arg) and (arg[i] == ']'): inc(i)
-  else: invalidCmdLineOption(pass, arg, info)
+  else: invalidCmdLineOption(pass, orig, info)
   if i < len(arg) and (arg[i] in {':', '='}): inc(i)
-  else: invalidCmdLineOption(pass, arg, info)
-  if state == wHint: 
+  else: invalidCmdLineOption(pass, orig, info)
+  if state == wHint:
     var x = findStr(msgs.HintsToStr, id)
     if x >= 0: n = TNoteKind(x + ord(hintMin))
-    else: invalidCmdLineOption(pass, arg, info)
-  else: 
+    else: localError(info, "unknown hint: " & id)
+  else:
     var x = findStr(msgs.WarningsToStr, id)
     if x >= 0: n = TNoteKind(x + ord(warnMin))
-    else: invalidCmdLineOption(pass, arg, info)
+    else: localError(info, "unknown warning: " & id)
   case whichKeyword(substr(arg, i))
   of wOn: incl(gNotes, n)
   of wOff: excl(gNotes, n)
@@ -368,8 +368,8 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
       defineSymbol("nogc")
     else: localError(info, errNoneBoehmRefcExpectedButXFound, arg)
   of "warnings", "w": processOnOffSwitch({optWarns}, arg, pass, info)
-  of "warning": processSpecificNote(arg, wWarning, pass, info)
-  of "hint": processSpecificNote(arg, wHint, pass, info)
+  of "warning": processSpecificNote(arg, wWarning, pass, info, switch)
+  of "hint": processSpecificNote(arg, wHint, pass, info, switch)
   of "hints": processOnOffSwitch({optHints}, arg, pass, info)
   of "threadanalysis": processOnOffSwitchG({optThreadAnalysis}, arg, pass, info)
   of "stacktrace": processOnOffSwitch({optStackTrace}, arg, pass, info)

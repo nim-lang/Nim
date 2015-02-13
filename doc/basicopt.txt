@@ -14,7 +14,6 @@ Options:
   -p, --path:PATH           add path to search paths
   -d, --define:SYMBOL       define a conditional symbol
   -u, --undef:SYMBOL        undefine a conditional symbol
-  --symbol:SYMBOL           declare a conditional symbol
   -f, --forceBuild          force rebuilding of all modules
   --stackTrace:on|off       turn stack tracing on|off
   --lineTrace:on|off        turn line tracing on|off

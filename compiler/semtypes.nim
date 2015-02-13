@@ -781,9 +781,10 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     result.rawAddSon(paramType)
       
     for i in 0 .. paramType.sonsLen - 2:
-      let dummyType = if paramType.sons[i].kind == tyStatic: tyUnknown
-                      else: tyAnything
-      result.rawAddSon newTypeS(dummyType, c)
+      if paramType.sons[i].kind == tyStatic:
+        result.rawAddSon makeTypeFromExpr(c, ast.emptyNode) # aka 'tyUnkown'
+      else:
+        result.rawAddSon newTypeS(tyAnything, c)
       
     if paramType.lastSon.kind == tyUserTypeClass:
       result.kind = tyUserTypeClassInst
@@ -911,6 +912,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     if not hasType and not hasDefault:
       if isType: localError(a.info, "':' expected")
       let tdef = if kind in {skTemplate, skMacro}: tyExpr else: tyAnything
+      if tdef == tyAnything:
+        message(a.info, warnTypelessParam, renderTree(n))
       typ = newTypeS(tdef, c)
 
     if skipTypes(typ, {tyGenericInst}).kind == tyEmpty: continue

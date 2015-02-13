@@ -1,11 +1,19 @@
-version 0.10
-============
+version 0.10.4
+==============
+
+- improve GC-unsafety warnings
+- make 'nil' work for 'add' and 'len'
+- get rid of 'mget'; aka priority of 'var' needs to be 'var{lvalue}'
+- 'result' shadowing warning
+
+
+version 1.0
+===========
 
 - nimsuggest: auto-completion needs to work in 'class' macros
 - improve the docs for inheritance
 - The bitwise 'not' operator will be renamed to 'bnot' to
   prevent 'not 4 == 5' from compiling. -> requires 'mixin' annotation for procs!
-- parameter lists without type end up in 'experimental'
 - iterators always require a return type
 - overloading of '='
 
@@ -34,7 +42,6 @@ Misc
 - make tuple unpacking work in a non-var/let context
 - built-in 'getImpl'
 - prevent 'alloc(TypeWithGCedMemory)'
-- some table related tests are wrong (memory usage checks)
 
 
 Bugs
@@ -58,7 +65,6 @@ version 0.9.x
 - memory manager: add a measure of fragmentation
 - implement 'bits' pragmas
 - we need a magic thisModule symbol
-- ensure (ref T)(a, b) works as a type conversion and type constructor
 - optimize 'genericReset'; 'newException' leads to code bloat
 - The 'do' notation might be trimmed so that its only purpose is to pass
   multiple multi line constructs to a macro.
@@ -87,4 +93,3 @@ CGEN
 ====
 - codegen should use "NIM_CAST" macro and respect aliasing rules for GCC
 - ``restrict`` pragma + backend support
-- 'const' objects including case objects

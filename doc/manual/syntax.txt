@@ -12,10 +12,8 @@ Binary operators have 11 different levels of precedence.
 Associativity
 -------------
 
-Binary operators whose first character is ``^`` or its last character
-is ``>`` are right-associative, all other binary operators are left-associative.
-
-Exception: The single "greater than" ``>`` operator is left-associative too.
+Binary operators whose first character is ``^`` are right-associative, all
+other binary operators are left-associative.
 
 Operators ending in ``>`` but longer than a single character are 
 called `arrow like`:idx:.

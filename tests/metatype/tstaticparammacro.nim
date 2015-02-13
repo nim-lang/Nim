@@ -14,6 +14,7 @@ AST b
 20Test
 20
 '''
+  disabled: true
 """
 
 import macros

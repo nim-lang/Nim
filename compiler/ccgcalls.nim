@@ -430,15 +430,27 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
   assert(typ.kind == tyProc)
   var length = sonsLen(ri)
   assert(sonsLen(typ) == sonsLen(typ.n))
-  
-  if length > 1:
-    app(pl, genArg(p, ri.sons[1], typ.n.sons[1].sym, ri))
-    app(pl, ~" ")
-  app(pl, op.r)
-  if length > 2:
-    app(pl, ~": ")
-    app(pl, genArg(p, ri.sons[2], typ.n.sons[2].sym, ri))
-  for i in countup(3, length-1):
+
+  # don't call 'ropeToStr' here for efficiency:
+  let pat = ri.sons[0].sym.loc.r.data
+  internalAssert pat != nil
+  var start = 3
+  if ' ' in pat:
+    start = 1
+    app(pl, op.r)
+    if length > 1:
+      app(pl, ~": ")
+      app(pl, genArg(p, ri.sons[1], typ.n.sons[1].sym, ri))
+      start = 2
+  else:
+    if length > 1:
+      app(pl, genArg(p, ri.sons[1], typ.n.sons[1].sym, ri))
+      app(pl, ~" ")
+    app(pl, op.r)
+    if length > 2:
+      app(pl, ~": ")
+      app(pl, genArg(p, ri.sons[2], typ.n.sons[2].sym, ri))
+  for i in countup(start, length-1):
     assert(sonsLen(typ) == sonsLen(typ.n))
     if i >= sonsLen(typ):
       internalError(ri.info, "varargs for objective C method?")

@@ -359,6 +359,10 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     var def: PNode
     if a.sons[length-1].kind != nkEmpty:
       def = semExprWithType(c, a.sons[length-1], {efAllowDestructor})
+      if def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
+        # prevent the all too common 'var x = int' bug:
+        localError(def.info, "'typedesc' metatype is not valid here; typed '=' instead of ':'?")
+        def.typ = errorType(c)
       if typ != nil:
         if typ.isMetaType:
           def = inferWithMetatype(c, typ, def)
@@ -825,9 +829,9 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if gp.len == 0 or (gp.len == 1 and tfRetType in gp[0].typ.flags):
       pushProcCon(c, s)
       addResult(c, s.typ.sons[0], n.info, skProc)
+      addResultNode(c, n)
       let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
       n.sons[bodyPos] = transformBody(c.module, semBody, s)
-      addResultNode(c, n)
       popProcCon(c)
     elif efOperand notin flags:
       localError(n.info, errGenericLambdaNotAllowed)
@@ -860,9 +864,9 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   addParams(c, n.typ.n, skProc)
   pushProcCon(c, s)
   addResult(c, n.typ.sons[0], n.info, skProc)
+  addResultNode(c, n)
   let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
   n.sons[bodyPos] = transformBody(c.module, semBody, n.sons[namePos].sym)
-  addResultNode(c, n)
   popProcCon(c)
   popOwner()
   closeScope(c)

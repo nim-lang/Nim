@@ -77,11 +77,16 @@ proc removeDefaultParamValues(n: PNode) =
 proc freshGenSyms(n: PNode, owner: PSym, symMap: var TIdTable) =
   # we need to create a fresh set of gensym'ed symbols:
   if n.kind == nkSym and sfGenSym in n.sym.flags:
-    var x = PSym(idTableGet(symMap, n.sym))
+    let s = n.sym
+    var x = PSym(idTableGet(symMap, s))
     if x == nil:
-      x = copySym(n.sym, false)
-      x.owner = owner
-      idTablePut(symMap, n.sym, x)
+      if s.kind == skParam:
+        x = owner.typ.n[s.position+1].sym
+        internalAssert x.kind == skParam
+      else:
+        x = copySym(s, false)
+        x.owner = owner
+        idTablePut(symMap, s, x)
     n.sym = x
   else:
     for i in 0 .. <safeLen(n): freshGenSyms(n.sons[i], owner, symMap)
