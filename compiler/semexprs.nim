@@ -686,7 +686,9 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
     # implicit statics.
     if n.len > 1:
       for i in 1 .. <n.len:
-        if n[i].typ.kind != tyStatic or tfUnresolved notin n[i].typ.flags:
+        # see bug #2113, it's possible that n[i].typ for errornous code:
+        if n[i].typ.isNil or n[i].typ.kind != tyStatic or
+            tfUnresolved notin n[i].typ.flags:
           break maybeLabelAsStatic
       n.typ = newTypeWithSons(c, tyStatic, @[n.typ])
       n.typ.flags.incl tfUnresolved
