@@ -287,7 +287,7 @@ proc del*[A, B](t: var Table[A, B], key: A) =
         if isEmpty(t.data[i].hcode):   # end of collision cluster; So all done
           return
         r = t.data[i].hcode and msk    # "home" location of key@i
-      t.data[j] = t.data[i]            # data[j] will be marked EMPTY next loop
+      shallowCopy(t.data[j], t.data[i]) # data[j] will be marked EMPTY next loop
 
 proc initTable*[A, B](initialSize=64): Table[A, B] =
   ## creates a new hash table that is empty.

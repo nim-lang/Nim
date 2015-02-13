@@ -276,7 +276,7 @@ proc excl*[A](s: var HashSet[A], key: A) =
         if isEmpty(s.data[i].hcode):   # end of collision cluster; So all done
           return
         r = s.data[i].hcode and msk    # "home" location of key@i
-      s.data[j] = s.data[i]            # data[j] will be marked EMPTY next loop
+      shallowCopy(s.data[j], s.data[i]) # data[j] will be marked EMPTY next loop
 
 proc excl*[A](s: var HashSet[A], other: HashSet[A]) =
   ## Excludes everything in `other` from `s`.
