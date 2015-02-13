@@ -294,7 +294,7 @@ proc initTable*[A, B](initialSize=64): Table[A, B] =
   ##
   ## `initialSize` needs to be a power of two. If you need to accept runtime
   ## values for this you could use the ``nextPowerOfTwo`` proc from the
-  ## `math <math.html>`_ module.
+  ## `math <math.html>`_ module or the ``rightSize`` proc from this module.
   assert isPowerOfTwo(initialSize)
   result.counter = 0
   newSeq(result.data, initialSize)
@@ -544,7 +544,7 @@ proc initOrderedTable*[A, B](initialSize=64): OrderedTable[A, B] =
   ##
   ## `initialSize` needs to be a power of two. If you need to accept runtime
   ## values for this you could use the ``nextPowerOfTwo`` proc from the
-  ## `math <math.html>`_ module.
+  ## `math <math.html>`_ module or the ``rightSize`` proc from this module.
   assert isPowerOfTwo(initialSize)
   result.counter = 0
   result.first = -1
@@ -675,7 +675,7 @@ proc newOrderedTable*[A, B](initialSize=64): OrderedTableRef[A, B] =
   ##
   ## `initialSize` needs to be a power of two. If you need to accept runtime
   ## values for this you could use the ``nextPowerOfTwo`` proc from the
-  ## `math <math.html>`_ module.
+  ## `math <math.html>`_ module or the ``rightSize`` proc from this module.
   new(result)
   result[] = initOrderedTable[A, B]()
 
@@ -793,7 +793,7 @@ proc initCountTable*[A](initialSize=64): CountTable[A] =
   ##
   ## `initialSize` needs to be a power of two. If you need to accept runtime
   ## values for this you could use the ``nextPowerOfTwo`` proc from the
-  ## `math <math.html>`_ module or the ``rightSize`` method in this module.
+  ## `math <math.html>`_ module or the ``rightSize`` proc in this module.
   assert isPowerOfTwo(initialSize)
   result.counter = 0
   newSeq(result.data, initialSize)

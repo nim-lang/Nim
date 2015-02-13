@@ -313,9 +313,9 @@ proc init*[A](s: var HashSet[A], initialSize=64) =
   ## Initializes a hash set.
   ##
   ## The `initialSize` parameter needs to be a power of two. You can use
-  ## `math.nextPowerOfTwo() <math.html#nextPowerOfTwo>`_ to guarantee that at
-  ## runtime. All set variables have to be initialized before you can use them
-  ## with other procs from this module with the exception of `isValid()
+  ## `math.nextPowerOfTwo() <math.html#nextPowerOfTwo>`_ or `rightSize` to
+  ## guarantee that at runtime. All set variables must be initialized before
+  ## use with other procs from this module with the exception of `isValid()
   ## <#isValid,TSet[A]>`_ and `len() <#len,TSet[A]>`_.
   ##
   ## You can call this proc on a previously initialized hash set, which will
@@ -719,9 +719,9 @@ proc init*[A](s: var OrderedSet[A], initialSize=64) =
   ## Initializes an ordered hash set.
   ##
   ## The `initialSize` parameter needs to be a power of two. You can use
-  ## `math.nextPowerOfTwo() <math.html#nextPowerOfTwo>`_ to guarantee that at
-  ## runtime. All set variables have to be initialized before you can use them
-  ## with other procs from this module with the exception of `isValid()
+  ## `math.nextPowerOfTwo() <math.html#nextPowerOfTwo>`_ or `rightSize` to
+  ## guarantee that at runtime. All set variables must be initialized before
+  ## use with other procs from this module with the exception of `isValid()
   ## <#isValid,TOrderedSet[A]>`_ and `len() <#len,TOrderedSet[A]>`_.
   ##
   ## You can call this proc on a previously initialized ordered hash set to
