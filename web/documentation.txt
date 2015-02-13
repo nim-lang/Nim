@@ -6,22 +6,17 @@ Nim's Documentation
   Standards & Guides
   ------------------
 
-  .. raw:: html
+  .. container:: libraries
 
-    <ul class="libraries">
-      <li>
-        <a href="lib.html">Standard Library</a><br>
-        <p>This document describes Nim's standard library.</p>
-      </li>
-      <li>
-        <a href="manual.html">Language Manual</a><br>
-        <p>The Nim manual is a draft that will evolve into a proper specification.</p>
-       </li>
-      <li>
-        <a href="nimc.html">Compiler User-Guide</a><br>
-        <p>The user guide lists command line arguments, special features of the compiler, etc.</p>
-       </li>
-    </ul>
+    - | `Standard Library <lib.html>`_
+      | This document describes Nim's standard library.
+
+    - | `Language Manual <manual.html>`_
+      | The Nim manual is a draft that will evolve into a proper specification.
+
+    - | `Compiler User Guide <nimc.html>`_
+      | The user guide lists command line arguments, special features of the
+        compiler, etc.
 
 
 .. container:: standout
@@ -29,18 +24,14 @@ Nim's Documentation
   Tools & Features
   ----------------
 
-  .. raw:: html
+  .. container:: tools
 
-    <ul class="tools">
-      <li>
-        <a href="filters.html">Source-Code Filters</a><br>
-        <p>The Nim compiler supports source code filters as a simple yet powerful builtin templating system.</p>
-      </li>
-      <li>
-        <a href="tools.html">Tools Documentation</a><br>
-        <p>Description of some tools that come with the standard distribution.</p>
-      </li>
-    </ul>
+    - | `Source Code Filters <filters.html>`_
+      | The Nim compiler supports source code filters as a simple yet powerful
+        builtin templating system.
+
+    - | `Tools Documentation <tools.html>`_
+      | Description of some tools that come with the standard distribution.
 
 
 .. container:: standout
@@ -48,18 +39,15 @@ Nim's Documentation
   Internal Details
   ----------------
 
-  .. raw:: html
+  .. container:: internals
 
-    <ul class="internals">
-      <li>
-        <a href="gc.html">Garbage Collector</a><br>
-        <p>Additional documentation about Nim's GC and how to operate it in a realtime setting.</p>
-      </li>
-      <li>
-        <a href="intern.html">Internal Documentation</a><br>
-        <p>The internal documentation describes how the compiler is implemented. Read this if you want to hack the compiler.</p>
-      </li>
-    </ul>
+    - | `Garbage Collector <gc.html>`_
+      | Additional documentation about Nim's GC and how to operate it in a
+        realtime setting.
+
+    - | `Internal Documentation <intern.html>`_
+      | The internal documentation describes how the compiler is implemented. Read
+        this if you want to hack the compiler.
 
 
 Search Options

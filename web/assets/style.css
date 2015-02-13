@@ -518,15 +518,15 @@ pre .end { background:url("images/tabEnd.png") no-repeat left bottom; }
     .standout h2 { margin-bottom:10px; padding-bottom:10px; border-bottom:1px dashed rgba(0,0,0,.8); }
     .standout li { margin:0 !important; padding-top:10px; border-top:1px dashed rgba(0,0,0,.2); }
     .standout ul { padding-bottom:5px; }
-    .standout ul.tools     { list-style:url("images/docs-tools.png"); }
-    .standout ul.libraries { list-style:url("images/docs-libraries.png"); }
-    .standout ul.internals { list-style:url("images/docs-internals.png"); }
-    .standout ul.tutorials { list-style:url("images/docs-tutorials.png"); }
-    .standout ul.examples  { list-style:url("images/docs-examples.png"); }
-    .standout ul.articles  { list-style:url("images/docs-articles.png"); }
+    .standout .tools     ul { list-style:url("images/docs-tools.png"); }
+    .standout .libraries ul { list-style:url("images/docs-libraries.png"); }
+    .standout .internals ul { list-style:url("images/docs-internals.png"); }
+    .standout .tutorials ul { list-style:url("images/docs-tutorials.png"); }
+    .standout .examples  ul { list-style:url("images/docs-examples.png"); }
+    .standout .articles  ul { list-style:url("images/docs-articles.png"); }
     .standout li:first-child { padding-top:0; border-top:none; }
     .standout li p { margin:0 0 10px 0 !important; line-height:130%; }
-    .standout li > a { font-weight:bold; }
+    .standout li p > a { font-weight:bold; }
     
     .forum-user-info,
     .forum-user-info * { cursor:help }
