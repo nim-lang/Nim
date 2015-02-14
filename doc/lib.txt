@@ -52,7 +52,7 @@ Core
   Locks and condition variables for Nim.
 
 * `macros <macros.html>`_
-  Contains the AST API and documentation of Nim for writing macros.i
+  Contains the AST API and documentation of Nim for writing macros.
 
 * `typeinfo <typeinfo.html>`_
   Provides (unsafe) access to Nim's run time type information. 
