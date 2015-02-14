@@ -52,7 +52,7 @@ Core
   Locks and condition variables for Nim.
 
 * `macros <macros.html>`_
-  Contains the AST API and documentation of Nim for writing macros.
+  Contains the AST API and documentation of Nim for writing macros.i
 
 * `typeinfo <typeinfo.html>`_
   Provides (unsafe) access to Nim's run time type information. 
@@ -223,9 +223,6 @@ Internet Protocols and Support
 
 * `smtp <smtp.html>`_
   This module implement a simple SMTP client. 
-
-* `irc <irc.html>`_
-  This module implements an asynchronous IRC client.
 
 * `ftpclient <ftpclient.html>`_
   This module implements an FTP client.
