@@ -1016,9 +1016,17 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         if result != isNone: put(c.bindings, f, aOrig)
       else:
         result = isNone
+    elif prev.kind == tyStatic:
+      if aOrig.kind == tyStatic:
+        result = typeRel(c, prev.lastSon, a)
+        if result != isNone and prev.n != nil:
+          if not exprStructuralEquivalent(prev.n, aOrig.n):
+            result = isNone
+      else: result = isNone
     else:
-      result = typeRel(c, prev, aOrig)
-      
+      # XXX endless recursion?
+      #result = typeRel(c, prev, aOrig)
+      result = isNone
   of tyTypeDesc:
     var prev = PType(idTableGet(c.bindings, f))
     if prev == nil:
