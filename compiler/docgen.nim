@@ -126,7 +126,7 @@ proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openArray[string],
           if not (frmt[i] in {'A'..'Z', '_', 'a'..'z', '\x80'..'\xFF'}): break
         var idx = getVarIdx(varnames, id)
         if idx >= 0: app(result, varvalues[idx])
-        else: rawMessage(errUnkownSubstitionVar, id)
+        else: rawMessage(errUnknownSubstitionVar, id)
       of '{':
         var id = ""
         inc(i)
@@ -138,7 +138,7 @@ proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openArray[string],
                               # search for the variable:
         var idx = getVarIdx(varnames, id)
         if idx >= 0: app(result, varvalues[idx])
-        else: rawMessage(errUnkownSubstitionVar, id)
+        else: rawMessage(errUnknownSubstitionVar, id)
       else: internalError("ropeFormatNamedVars")
     var start = i
     while i < L:

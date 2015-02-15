@@ -27,7 +27,7 @@ integrations <https://github.com/Araq/Nim/wiki/Editor-Support>`_
 already available.
 
 
-Idetools invokation
+Idetools invocation
 ===================
 
 Specifying the location of the query
@@ -35,7 +35,7 @@ Specifying the location of the query
 
 All of the available idetools commands require you to specify a
 query location through the ``--track`` or ``--trackDirty`` switches.
-The general idetools invokations are::
+The general idetools invocations are::
 
     nim idetools --track:FILE,LINE,COL <switches> proj.nim
 
@@ -129,7 +129,7 @@ the suggestions sorted first by scope (from innermost to outermost)
 and then by item name.
 
 
-Invokation context
+Invocation context
 ------------------
 
 The ``--context`` idetools switch is very similar to the suggestions

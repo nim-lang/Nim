@@ -8,7 +8,7 @@ proc compress*(source: string): string =
   result.setLen destLen
   var res = zlib.compress(cstring(result), addr destLen, cstring(source), sourceLen)
   if res != Z_OK:
-    echo "Error occured: ", res
+    echo "Error occurred: ", res
   elif destLen < result.len:
     result.setLen(destLen)
 
@@ -17,7 +17,7 @@ proc uncompress*(source: string, destLen: var int): string =
   result.setLen destLen
   var res = zlib.uncompress(cstring(result), addr destLen, cstring(source), source.len)
   if res != Z_OK:
-    echo "Error occured: ", res
+    echo "Error occurred: ", res
     
 
 when isMainModule:

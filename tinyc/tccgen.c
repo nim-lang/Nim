@@ -1203,7 +1203,7 @@ static inline int is_integer_btype(int bt)
             bt == VT_INT || bt == VT_LLONG);
 }
 
-/* check types for comparison or substraction of pointers */
+/* check types for comparison or subtraction of pointers */
 static void check_comparison_pointer_types(SValue *p1, SValue *p2, int op)
 {
     CType *type1, *type2, tmp_type1, tmp_type2;

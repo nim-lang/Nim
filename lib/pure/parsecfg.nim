@@ -35,7 +35,7 @@ type
     cfgSectionStart,    ## a ``[section]`` has been parsed
     cfgKeyValuePair,    ## a ``key=value`` pair has been detected
     cfgOption,          ## a ``--key=value`` command line option
-    cfgError            ## an error ocurred during parsing
+    cfgError            ## an error occurred during parsing
     
   CfgEvent* = object of RootObj ## describes a parsing event
     case kind*: CfgEventKind    ## the kind of the event

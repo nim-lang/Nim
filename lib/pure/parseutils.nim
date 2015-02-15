@@ -240,7 +240,7 @@ proc parseBiggestFloat*(s: string, number: var BiggestFloat, start = 0): int {.
 proc parseFloat*(s: string, number: var float, start = 0): int {.
   rtl, extern: "npuParseFloat", noSideEffect.} =
   ## parses a float starting at `start` and stores the value into `number`.
-  ## Result is the number of processed chars or 0 if there occured a parsing
+  ## Result is the number of processed chars or 0 if there occurred a parsing
   ## error.
   var bf: BiggestFloat
   result = parseBiggestFloat(s, bf, start)

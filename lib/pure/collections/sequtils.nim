@@ -320,7 +320,7 @@ template foldl*(sequence, operation: expr): expr =
   ##
   ## The ``operation`` parameter should be an expression which uses the
   ## variables ``a`` and ``b`` for each step of the fold. Since this is a left
-  ## fold, for non associative binary operations like substraction think that
+  ## fold, for non associative binary operations like subtraction think that
   ## the sequence of numbers 1, 2 and 3 will be parenthesized as (((1) - 2) -
   ## 3).  Example:
   ##
@@ -328,12 +328,12 @@ template foldl*(sequence, operation: expr): expr =
   ##   let
   ##     numbers = @[5, 9, 11]
   ##     addition = foldl(numbers, a + b)
-  ##     substraction = foldl(numbers, a - b)
+  ##     subtraction = foldl(numbers, a - b)
   ##     multiplication = foldl(numbers, a * b)
   ##     words = @["nim", "is", "cool"]
   ##     concatenation = foldl(words, a & b)
   ##   assert addition == 25, "Addition is (((5)+9)+11)"
-  ##   assert substraction == -15, "Substraction is (((5)-9)-11)"
+  ##   assert subtraction == -15, "Substraction is (((5)-9)-11)"
   ##   assert multiplication == 495, "Multiplication is (((5)*9)*11)"
   ##   assert concatenation == "nimiscool"
   assert sequence.len > 0, "Can't fold empty sequences"
@@ -356,7 +356,7 @@ template foldr*(sequence, operation: expr): expr =
   ##
   ## The ``operation`` parameter should be an expression which uses the
   ## variables ``a`` and ``b`` for each step of the fold. Since this is a right
-  ## fold, for non associative binary operations like substraction think that
+  ## fold, for non associative binary operations like subtraction think that
   ## the sequence of numbers 1, 2 and 3 will be parenthesized as (1 - (2 -
   ## (3))). Example:
   ##
@@ -364,12 +364,12 @@ template foldr*(sequence, operation: expr): expr =
   ##   let
   ##     numbers = @[5, 9, 11]
   ##     addition = foldr(numbers, a + b)
-  ##     substraction = foldr(numbers, a - b)
+  ##     subtraction = foldr(numbers, a - b)
   ##     multiplication = foldr(numbers, a * b)
   ##     words = @["nim", "is", "cool"]
   ##     concatenation = foldr(words, a & b)
   ##   assert addition == 25, "Addition is (5+(9+(11)))"
-  ##   assert substraction == 7, "Substraction is (5-(9-(11)))"
+  ##   assert subtraction == 7, "Substraction is (5-(9-(11)))"
   ##   assert multiplication == 495, "Multiplication is (5*(9*(11)))"
   ##   assert concatenation == "nimiscool"
   assert sequence.len > 0, "Can't fold empty sequences"
@@ -507,12 +507,12 @@ when isMainModule:
     let
       numbers = @[5, 9, 11]
       addition = foldl(numbers, a + b)
-      substraction = foldl(numbers, a - b)
+      subtraction = foldl(numbers, a - b)
       multiplication = foldl(numbers, a * b)
       words = @["nim", "is", "cool"]
       concatenation = foldl(words, a & b)
     assert addition == 25, "Addition is (((5)+9)+11)"
-    assert substraction == -15, "Substraction is (((5)-9)-11)"
+    assert subtraction == -15, "Substraction is (((5)-9)-11)"
     assert multiplication == 495, "Multiplication is (((5)*9)*11)"
     assert concatenation == "nimiscool"
 
@@ -520,12 +520,12 @@ when isMainModule:
     let
       numbers = @[5, 9, 11]
       addition = foldr(numbers, a + b)
-      substraction = foldr(numbers, a - b)
+      subtraction = foldr(numbers, a - b)
       multiplication = foldr(numbers, a * b)
       words = @["nim", "is", "cool"]
       concatenation = foldr(words, a & b)
     assert addition == 25, "Addition is (5+(9+(11)))"
-    assert substraction == 7, "Substraction is (5-(9-(11)))"
+    assert subtraction == 7, "Substraction is (5-(9-(11)))"
     assert multiplication == 495, "Multiplication is (5*(9*(11)))"
     assert concatenation == "nimiscool"
 

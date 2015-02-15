@@ -30,7 +30,7 @@ proc instantiateDestructor(c: PContext, typ: PType): PType
 
 proc doDestructorStuff(c: PContext, s: PSym, n: PNode) =
   var t = s.typ.sons[1].skipTypes({tyVar})
-  if t.kind == tyGenericInvokation:
+  if t.kind == tyGenericInvocation:
     for i in 1 .. <t.sonsLen:
       if t.sons[i].kind != tyGenericParam:
         localError(n.info, errDestructorNotGenericEnough)

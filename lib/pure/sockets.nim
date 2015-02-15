@@ -1467,7 +1467,7 @@ proc recvAsync*(socket: Socket, s: var TaintedString): bool {.
           of SSL_ERROR_ZERO_RETURN:
             raiseSslError("TLS/SSL connection failed to initiate, socket closed prematurely.")
           of SSL_ERROR_WANT_CONNECT, SSL_ERROR_WANT_ACCEPT:
-            raiseSslError("Unexpected error occured.") # This should just not happen.
+            raiseSslError("Unexpected error occurred.") # This should just not happen.
           of SSL_ERROR_WANT_WRITE, SSL_ERROR_WANT_READ:
             return false
           of SSL_ERROR_WANT_X509_LOOKUP:
@@ -1610,7 +1610,7 @@ proc sendAsync*(socket: Socket, data: string): int {.tags: [WriteIOEffect].} =
           of SSL_ERROR_ZERO_RETURN:
             raiseSslError("TLS/SSL connection failed to initiate, socket closed prematurely.")
           of SSL_ERROR_WANT_CONNECT, SSL_ERROR_WANT_ACCEPT:
-            raiseSslError("Unexpected error occured.") # This should just not happen.
+            raiseSslError("Unexpected error occurred.") # This should just not happen.
           of SSL_ERROR_WANT_WRITE, SSL_ERROR_WANT_READ:
             return 0
           of SSL_ERROR_WANT_X509_LOOKUP:

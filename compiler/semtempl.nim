@@ -436,7 +436,7 @@ proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode =
   of nkEmpty, nkSym..nkNilLit:
     discard
   else:
-    # dotExpr is ambiguous: note that we explicitely allow 'x.TemplateParam',
+    # dotExpr is ambiguous: note that we explicitly allow 'x.TemplateParam',
     # so we use the generic code for nkDotExpr too
     if n.kind == nkDotExpr or n.kind == nkAccQuoted:
       let s = qualifiedLookUp(c.c, n, {})
@@ -640,7 +640,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
     for i in countup(0, sonsLen(n) - 1):
       result.sons[i] = semPatternBody(c, n.sons[i])
   else:
-    # dotExpr is ambiguous: note that we explicitely allow 'x.TemplateParam',
+    # dotExpr is ambiguous: note that we explicitly allow 'x.TemplateParam',
     # so we use the generic code for nkDotExpr too
     case n.kind 
     of nkDotExpr, nkAccQuoted:

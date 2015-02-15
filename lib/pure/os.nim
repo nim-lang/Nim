@@ -185,7 +185,7 @@ const
 proc osErrorMsg*(): string {.rtl, extern: "nos$1", deprecated.} =
   ## Retrieves the operating system's error flag, ``errno``.
   ## On Windows ``GetLastError`` is checked before ``errno``.
-  ## Returns "" if no error occured.
+  ## Returns "" if no error occurred.
   ##
   ## **Deprecated since version 0.9.4**: use the other ``osErrorMsg`` proc.
 
@@ -1099,7 +1099,7 @@ when defined(windows):
         var
           env = getEnvironmentStringsW()
           e = env
-        if e == nil: return # an error occured
+        if e == nil: return # an error occurred
         while true:
           var eend = strEnd(e)
           add(environment, $e)
@@ -1110,7 +1110,7 @@ when defined(windows):
         var
           env = getEnvironmentStringsA()
           e = env
-        if e == nil: return # an error occured
+        if e == nil: return # an error occurred
         while true:
           var eend = strEnd(e)
           add(environment, $e)

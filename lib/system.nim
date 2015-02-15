@@ -357,7 +357,7 @@ type
     ##
     ## See the full `exception hierarchy`_.
   IOError* = object of SystemError ## \
-    ## Raised if an IO error occured.
+    ## Raised if an IO error occurred.
     ##
     ## See the full `exception hierarchy`_.
   OSError* = object of SystemError ## \
@@ -374,7 +374,7 @@ type
     ##
     ## See the full `exception hierarchy`_.
   ArithmeticError* = object of Exception ## \
-    ## Raised if any kind of arithmetic error occured.
+    ## Raised if any kind of arithmetic error occurred.
     ##
     ## See the full `exception hierarchy`_.
   DivByZeroError* = object of ArithmeticError ## \

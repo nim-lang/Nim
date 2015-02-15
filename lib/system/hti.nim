@@ -26,7 +26,7 @@ type
     tyExpr,
     tyStmt,
     tyTypeDesc,
-    tyGenericInvokation, # ``T[a, b]`` for types to invoke
+    tyGenericInvocation, # ``T[a, b]`` for types to invoke
     tyGenericBody,       # ``T[a, b, body]`` last parameter is the body
     tyGenericInst,       # ``T[a, b, realInstance]`` instantiated generic type
     tyGenericParam,      # ``a`` in the example

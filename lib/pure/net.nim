@@ -258,7 +258,7 @@ proc socketError*(socket: Socket, err: int = -1, async = false,
         of SSL_ERROR_WANT_X509_LOOKUP:
           raiseSSLError("Function for x509 lookup has been called.")
         of SSL_ERROR_SYSCALL:
-          var errStr = "IO error has occured "
+          var errStr = "IO error has occurred "
           let sslErr = ErrPeekLastError()
           if sslErr == 0 and err == 0:
             errStr.add "because an EOF was observed that violates the protocol"

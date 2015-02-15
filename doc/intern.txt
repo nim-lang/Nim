@@ -236,7 +236,7 @@ too. Type converters fall into this category:
 
 If in the above example module ``B`` is re-compiled, but ``A`` is not then
 ``B`` needs to be aware of ``toBool`` even though  ``toBool`` is not referenced
-in ``B`` *explicitely*. 
+in ``B`` *explicitly*. 
 
 Both the multi method and the type converter problems are solved by storing 
 them in special sections in the ROD file that are loaded *unconditionally*

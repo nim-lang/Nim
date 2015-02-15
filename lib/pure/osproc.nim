@@ -146,7 +146,7 @@ proc startProcess*(command: string,
   ## of `args` to `command` carefully escaping/quoting any special characters,
   ## since it will be passed *as is* to the system shell. Each system/shell may
   ## feature different escaping rules, so try to avoid this kind of shell
-  ## invokation if possible as it leads to non portable software.
+  ## invocation if possible as it leads to non portable software.
   ##
   ## Return value: The newly created process object. Nil is never returned,
   ## but ``EOS`` is raised in case of an error.
