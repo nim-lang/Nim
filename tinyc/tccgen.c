@@ -4686,7 +4686,7 @@ static void decl_initializer_alloc(CType *type, AttributeDef *ad, int r,
                 if (sym->type.t & VT_EXTERN) {
                     /* if the variable is extern, it was not allocated */
                     sym->type.t &= ~VT_EXTERN;
-                    /* set array size if it was ommited in extern
+                    /* set array size if it was omitted in extern
                        declaration */
                     if ((sym->type.t & VT_ARRAY) && 
                         sym->type.ref->c < 0 &&

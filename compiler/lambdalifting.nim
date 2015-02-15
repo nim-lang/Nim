@@ -999,7 +999,7 @@ proc liftForLoop*(body: PNode): PNode =
   # proc invoke(iter: iterator(): int) =
   #   for x in iter(): echo x
   #
-  # --> When to create the closure? --> for the (count) occurence!
+  # --> When to create the closure? --> for the (count) occurrence!
   discard """
       for i in foo(): ...
 

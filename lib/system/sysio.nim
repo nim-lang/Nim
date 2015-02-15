@@ -132,7 +132,7 @@ proc rawFileSize(file: File): int =
   discard fseek(file, clong(oldPos), 0)
 
 proc readAllFile(file: File, len: int): string =
-  # We aquire the filesize beforehand and hope it doesn't change.
+  # We acquire the filesize beforehand and hope it doesn't change.
   # Speeds things up.
   result = newString(int(len))
   if readBuffer(file, addr(result[0]), int(len)) != len:

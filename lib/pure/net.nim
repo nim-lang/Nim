@@ -887,7 +887,7 @@ proc connectAsync(socket: Socket, name: string, port = Port(0),
                   af: Domain = AF_INET) {.tags: [ReadIOEffect].} =
   ## A variant of ``connect`` for non-blocking sockets.
   ##
-  ## This procedure will immediatelly return, it will not block until a connection
+  ## This procedure will immediately return, it will not block until a connection
   ## is made. It is up to the caller to make sure the connection has been established
   ## by checking (using ``select``) whether the socket is writeable.
   ##

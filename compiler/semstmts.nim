@@ -369,7 +369,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           typ = def.typ
         else:
           # BUGFIX: ``fitNode`` is needed here!
-          # check type compability between def.typ and typ        
+          # check type compatibility between def.typ and typ        
           def = fitNode(c, typ, def)
           #changeType(def.skipConv, typ, check=true)
       else:

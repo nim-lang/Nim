@@ -8,7 +8,7 @@
 #
 
 # This file implements the ability to call native procs from libraries.
-# It is not possible to do this in a platform independant way, unfortunately.
+# It is not possible to do this in a platform independent way, unfortunately.
 # However, the interface has been designed to take platform differences into
 # account and been ported to all major platforms.
 

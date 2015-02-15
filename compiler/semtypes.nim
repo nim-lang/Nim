@@ -900,7 +900,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
 
     if hasDefault:
       def = semExprWithType(c, a.sons[length-1]) 
-      # check type compability between def.typ and typ:
+      # check type compatibility between def.typ and typ:
       if typ == nil:
         typ = def.typ
       elif def != nil:

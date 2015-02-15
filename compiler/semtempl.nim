@@ -494,7 +494,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     semParamList(c, n.sons[paramsPos], gp, s)
     # a template's parameters are not gensym'ed even if that was originally the
     # case as we determine whether it's a template parameter in the template
-    # body by the absense of the skGenSym flag:
+    # body by the absence of the skGenSym flag:
     for i in 1 .. s.typ.n.len-1:
       s.typ.n.sons[i].sym.flags.excl sfGenSym
     if sonsLen(gp) > 0:

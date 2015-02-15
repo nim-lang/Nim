@@ -1067,7 +1067,7 @@ proc stackSize(): int {.noinline.} =
 var
   jmpbufSize {.importc: "sizeof(jmp_buf)", nodecl.}: int
     # a little hack to get the size of a TJmpBuf in the generated C code
-    # in a platform independant way
+    # in a platform independent way
 
 when defined(sparc): # For SPARC architecture.
   proc isOnStack(p: pointer): bool =
@@ -1263,7 +1263,7 @@ proc unmarkStackAndRegisters(gch: var TGcHeap) =
     # XXX no need for an atomic dec here:
     if c.refcount--(LocalHeap):
       # the object survived only because of a stack reference
-      # it still doesn't have heap refernces
+      # it still doesn't have heap references
       addZCT(gch.zct, c)
     
     if canbeCycleRoot(c):

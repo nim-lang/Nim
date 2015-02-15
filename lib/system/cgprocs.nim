@@ -13,7 +13,7 @@ proc addChar(s: NimString, c: char): NimString {.compilerProc, benign.}
 
 type
   TLibHandle = pointer       # private type
-  TProcAddr = pointer        # libary loading and loading of procs:
+  TProcAddr = pointer        # library loading and loading of procs:
 
 proc nimLoadLibrary(path: string): TLibHandle {.compilerproc.}
 proc nimUnloadLibrary(lib: TLibHandle) {.compilerproc.}

@@ -181,7 +181,7 @@ proc parseWhile*(s: string, token: var string, validChars: set[char],
   token = substr(s, start, i-1)
 
 proc captureBetween*(s: string, first: char, second = '\0', start = 0): string =
-  ## Finds the first occurence of ``first``, then returns everything from there
+  ## Finds the first occurrence of ``first``, then returns everything from there
   ## up to ``second``(if ``second`` is '\0', then ``first`` is used).
   var i = skipUntil(s, first, start)+1+start
   result = ""

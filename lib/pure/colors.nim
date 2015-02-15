@@ -46,7 +46,7 @@ proc `+`*(a, b: Color): Color =
   colorOp(satPlus)
   
 proc `-`*(a, b: Color): Color =
-  ## substracts two colors: This uses saturated artithmetic, so that each color
+  ## subtracts two colors: This uses saturated artithmetic, so that each color
   ## component cannot overflow (255 is used as a maximum).
   colorOp(satMinus)
   

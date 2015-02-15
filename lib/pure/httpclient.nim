@@ -385,7 +385,7 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
               userAgent = defUserAgent, proxy: Proxy = nil): Response =
   ## | Requests ``url`` with the custom method string specified by the
   ## | ``httpMethod`` parameter.
-  ## | Extra headers can be specified and must be seperated by ``\c\L``
+  ## | Extra headers can be specified and must be separated by ``\c\L``
   ## | An optional timeout can be specified in miliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
   var r = if proxy == nil: parseUri(url) else: proxy.url
@@ -436,7 +436,7 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
               body = "", sslContext = defaultSSLContext, timeout = -1,
               userAgent = defUserAgent, proxy: Proxy = nil): Response =
   ## | Requests ``url`` with the specified ``httpMethod``.
-  ## | Extra headers can be specified and must be seperated by ``\c\L``
+  ## | Extra headers can be specified and must be separated by ``\c\L``
   ## | An optional timeout can be specified in miliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
   result = request(url, $httpMethod, extraHeaders, body, sslContext, timeout, 

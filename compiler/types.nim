@@ -649,7 +649,7 @@ proc lengthOrd(t: PType): BiggestInt =
 type
   TDistinctCompare* = enum ## how distinct types are to be compared
     dcEq,                  ## a and b should be the same type
-    dcEqIgnoreDistinct,    ## compare symetrically: (distinct a) == b, a == b
+    dcEqIgnoreDistinct,    ## compare symmetrically: (distinct a) == b, a == b
                            ## or a == (distinct b)
     dcEqOrDistinctOf       ## a equals b or a is distinct of b
 

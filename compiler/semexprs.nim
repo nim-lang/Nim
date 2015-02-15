@@ -1917,7 +1917,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       it.sons[0] = newSymNode(f)
       e = fitNode(c, f.typ, e)
       # small hack here in a nkObjConstr the ``nkExprColonExpr`` node can have
-      # 3 childen the last being the field check
+      # 3 children the last being the field check
       if check != nil:
         check.sons[0] = it.sons[0]
         it.add(check)

@@ -63,9 +63,9 @@ type
 const 
   SCRAMBLE_LENGTH* = 20 # Length of random string sent by server on handshake; 
                         # this is also length of obfuscated password, 
-                        # recieved from client
+                        # received from client
   SCRAMBLE_LENGTH_323* = 8    # length of password stored in the db: 
-                              # new passwords are preceeded with '*'  
+                              # new passwords are preceded with '*'  
   SCRAMBLED_PASSWORD_CHAR_LENGTH* = SCRAMBLE_LENGTH * 2 + 1
   SCRAMBLED_PASSWORD_CHAR_LENGTH_323* = SCRAMBLE_LENGTH_323 * 2
   NOT_NULL_FLAG* = 1          #  Field can't be NULL
@@ -146,7 +146,7 @@ const
   MAX_MEDIUMINT_WIDTH* = 8    # Max width for a INT24 w.o. sign
   MAX_INT_WIDTH* = 10         # Max width for a LONG w.o. sign
   MAX_BIGINT_WIDTH* = 20      # Max width for a LONGLONG
-  MAX_CHAR_WIDTH* = 255       # Max length for a CHAR colum
+  MAX_CHAR_WIDTH* = 255       # Max length for a CHAR column
   MAX_BLOB_WIDTH* = 8192      # Default width for blob
 
 type 
@@ -558,7 +558,7 @@ type
   Tstatus* = enum 
     STATUS_READY, STATUS_GET_RESULT, STATUS_USE_RESULT
   Tprotocol_type* = enum  # There are three types of queries - the ones that have to go to
-                          # the master, the ones that go to a slave, and the adminstrative
+                          # the master, the ones that go to a slave, and the administrative
                           # type which must happen on the pivot connectioin 
     PROTOCOL_DEFAULT, PROTOCOL_TCP, PROTOCOL_SOCKET, PROTOCOL_PIPE, 
     PROTOCOL_MEMORY

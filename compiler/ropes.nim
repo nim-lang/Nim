@@ -52,7 +52,7 @@
 #  Note that the left and right pointers are not needed for leaves.
 #  Leaves have relatively high memory overhead (~30 bytes on a 32
 #  bit machines) and we produce many of them. This is why we cache and
-#  share leaves accross different rope trees.
+#  share leaves across different rope trees.
 #  To cache them they are inserted in a `cache` array.
 
 import 

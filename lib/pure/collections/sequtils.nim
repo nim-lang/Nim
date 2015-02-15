@@ -333,7 +333,7 @@ template foldl*(sequence, operation: expr): expr =
   ##     words = @["nim", "is", "cool"]
   ##     concatenation = foldl(words, a & b)
   ##   assert addition == 25, "Addition is (((5)+9)+11)"
-  ##   assert subtraction == -15, "Substraction is (((5)-9)-11)"
+  ##   assert subtraction == -15, "Subtraction is (((5)-9)-11)"
   ##   assert multiplication == 495, "Multiplication is (((5)*9)*11)"
   ##   assert concatenation == "nimiscool"
   assert sequence.len > 0, "Can't fold empty sequences"
@@ -369,7 +369,7 @@ template foldr*(sequence, operation: expr): expr =
   ##     words = @["nim", "is", "cool"]
   ##     concatenation = foldr(words, a & b)
   ##   assert addition == 25, "Addition is (5+(9+(11)))"
-  ##   assert subtraction == 7, "Substraction is (5-(9-(11)))"
+  ##   assert subtraction == 7, "Subtraction is (5-(9-(11)))"
   ##   assert multiplication == 495, "Multiplication is (5*(9*(11)))"
   ##   assert concatenation == "nimiscool"
   assert sequence.len > 0, "Can't fold empty sequences"
@@ -512,7 +512,7 @@ when isMainModule:
       words = @["nim", "is", "cool"]
       concatenation = foldl(words, a & b)
     assert addition == 25, "Addition is (((5)+9)+11)"
-    assert subtraction == -15, "Substraction is (((5)-9)-11)"
+    assert subtraction == -15, "Subtraction is (((5)-9)-11)"
     assert multiplication == 495, "Multiplication is (((5)*9)*11)"
     assert concatenation == "nimiscool"
 
@@ -525,7 +525,7 @@ when isMainModule:
       words = @["nim", "is", "cool"]
       concatenation = foldr(words, a & b)
     assert addition == 25, "Addition is (5+(9+(11)))"
-    assert subtraction == 7, "Substraction is (5-(9-(11)))"
+    assert subtraction == 7, "Subtraction is (5-(9-(11)))"
     assert multiplication == 495, "Multiplication is (5*(9*(11)))"
     assert concatenation == "nimiscool"
 

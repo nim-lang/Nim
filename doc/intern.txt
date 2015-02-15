@@ -370,7 +370,7 @@ needed as the data structures needs to be rebuilt periodically anyway.
 
 Complete traversal is done in this way::
 
-  for each page decriptor d:
+  for each page descriptor d:
     for each bit in d:
       if bit == 1:
         traverse the pointer belonging to this bit
@@ -406,7 +406,7 @@ The generated code looks roughly like this:
     setRef(&r->left)
   }
 
-Note that for systems with a continous stack (which most systems have)
+Note that for systems with a continuous stack (which most systems have)
 the check whether the ref is on the stack is very cheap (only two
 comparisons).
 

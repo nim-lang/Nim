@@ -1182,7 +1182,7 @@ proc putEnv*(key, val: string) {.tags: [WriteEnvEffect].} =
   ## If an error occurs, `EInvalidEnvVar` is raised.
 
   # Note: by storing the string in the environment sequence,
-  # we gurantee that we don't free the memory before the program
+  # we guarantee that we don't free the memory before the program
   # ends (this is needed for POSIX compliance). It is also needed so that
   # the process itself may access its modified environment variables!
   var indx = findEnvVar(key)
@@ -1454,7 +1454,7 @@ proc createHardlink*(src, dest: string) =
 proc parseCmdLine*(c: string): seq[string] {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Splits a command line into several components;
-  ## This proc is only occassionally useful, better use the `parseopt` module.
+  ## This proc is only occasionally useful, better use the `parseopt` module.
   ##
   ## On Windows, it uses the following parsing rules
   ## (see http://msdn.microsoft.com/en-us/library/17w5ykft.aspx ):
