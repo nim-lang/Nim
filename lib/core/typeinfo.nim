@@ -161,6 +161,7 @@ proc extendSeq*(x: TAny) =
   var z = incrSeq(y, x.rawType.base.size)
   # 'incrSeq' already freed the memory for us and copied over the RC!
   # So we simply copy the raw pointer into 'x.value':
+  inc(z.len)
   cast[ppointer](x.value)[] = z
   #genericShallowAssign(x.value, addr(z), x.rawType)
 

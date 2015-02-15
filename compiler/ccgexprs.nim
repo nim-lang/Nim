@@ -1043,11 +1043,16 @@ proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
 proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
   # seq &= x  -->
   #    seq = (typeof seq) incrSeq(&seq->Sup, sizeof(x));
-  #    seq->data[seq->len-1] = x;
+  #    seq->data[seq->len] = x;
+  #    seq->len += 1;
   let seqAppendPattern = if not p.module.compileToCpp:
                            "$1 = ($2) #incrSeq(&($1)->Sup, sizeof($3));$n"
                          else:
                            "$1 = ($2) #incrSeq($1, sizeof($3));$n"
+  let seqIncLenPattern = if optOverflowCheck notin p.options:
+                           "$1->$2 += 1;$n"
+                         else:
+                           "$1->$2 = #addInt($1->$2, 1);$n"
   var a, b, dest: TLoc
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], b)
@@ -1057,8 +1062,9 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
       getTypeDesc(p.module, skipTypes(e.sons[2].typ, abstractVar))])
   keepAlive(p, a)
   initLoc(dest, locExpr, b.t, OnHeap)
-  dest.r = rfmt(nil, "$1->data[$1->$2-1]", rdLoc(a), lenField(p))
+  dest.r = rfmt(nil, "$1->data[$1->$2]", rdLoc(a), lenField(p))
   genAssignment(p, dest, b, {needToCopy, afDestIsNil})
+  lineCg(p, cpsStmts, seqIncLenPattern, rdLoc(a), lenField(p))
   gcUsage(e)
 
 proc genReset(p: BProc, n: PNode) = 
