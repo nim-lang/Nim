@@ -257,6 +257,20 @@ when false:
       inc(t.counter)
       result = false
 
+proc mgetOrPut*[A, B](t: var Table[A, B], key: A, value: B): var B =
+  ## retrieves value at ``t[key]`` or puts ``value`` if not present, either way
+  ## returning a value which can be modified.
+  var hc: THash     # If also desired in OrderedTable, lift this into a template
+  var index = rawGet(t, key, hc)
+  if index < 0:                             # not present: insert
+    if mustRehash(len(t.data), t.counter):
+      enlarge(t)
+      index = rawGet(t, key, hc)
+    index = -1 - index
+    rawInsert(t, t.data, key, value, hc, index)
+    inc(t.counter)
+  result = t.data[index].val                # either way return modifiable val
+
 proc `[]=`*[A, B](t: var Table[A, B], key: A, val: B) =
   ## puts a (key, value)-pair into `t`.
   putImpl()
