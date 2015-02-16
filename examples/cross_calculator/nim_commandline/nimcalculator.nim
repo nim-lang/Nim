@@ -21,7 +21,7 @@ type
     cmdParams,          # Two valid parameters were provided
     cmdInteractive      # No parameters were provided, run interactive mode
 
-  TParamConfig = object of TObject
+  TParamConfig = object of RootObj
     action: TCommand      # store the type of operation
     paramA, paramB: int   # possibly store the valid parameters
 
@@ -63,7 +63,7 @@ proc parseCmdLine(): TParamConfig =
           stdout.write USAGE
           quit "Unexpected option: " & key, 2
       of cmdEnd: break
-  except EInvalidValue:
+  except ValueError:
     stdout.write USAGE
     quit "Invalid value " & val &  " for parameter " & key, 3
 
@@ -85,7 +85,7 @@ proc parseUserInput(question: string): int =
     try:
       result = input.parseInt
       break
-    except EInvalidValue:
+    except ValueError:
       if input.len < 1: quit "Blank line detected, quitting.", 0
       echo "Sorry, `$1' doesn't seem to be a valid integer" % input
 

@@ -812,7 +812,7 @@ proc bisect*(v1,v2:TVector3d):TVector3d {.noInit.}=
   ## Computes the bisector between v1 and v2 as a normalized vector.
   ## If one of the input vectors has zero length, a normalized version
   ## of the other is returned. If both input vectors has zero length, 
-  ## an arbitrary normalized vector `v1`is returned.
+  ## an arbitrary normalized vector `v1` is returned.
   var
     vmag1=v1.len
     vmag2=v2.len

@@ -1597,6 +1597,7 @@ proc parseEnum(p: var TParser): PNode =
   optInd(p, result)
   while true:
     var a = parseSymbol(p)
+    if a.kind == nkEmpty: return
     if p.tok.indent >= 0 and p.tok.indent <= p.currInd:
       add(result, a)
       break

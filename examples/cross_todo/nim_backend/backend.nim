@@ -13,7 +13,7 @@ type
     text*: string             ## Description of the task to do.
     priority*: int            ## The priority can be any user defined integer.
     isDone*: bool             ## Done todos are still kept marked.
-    modificationDate: TTime   ## The modification time can't be modified from
+    modificationDate: Time    ## The modification time can't be modified from
                               ## outside of this module, use the
                               ## getModificationDate accessor.
 
@@ -64,7 +64,7 @@ proc openDatabase*(path: string): TDbConn =
 # - Procs related to TTodo objects
 #
 proc initFromDB(id: int64; text: string; priority: int, isDone: bool;
-               modificationDate: TTime): TTodo =
+               modificationDate: Time): TTodo =
   ## Returns an initialized TTodo object created from database parameters.
   ##
   ## The proc assumes all values are right. Note this proc is NOT exported.
@@ -81,7 +81,7 @@ proc getId*(todo: TTodo): int64 =
   return todo.id
 
 
-proc getModificationDate*(todo: TTodo): TTime =
+proc getModificationDate*(todo: TTodo): Time =
   ## Returns the last modification date of a TTodo entry.
   return todo.modificationDate
 
@@ -99,14 +99,14 @@ proc update*(todo: var TTodo; conn: TDbConn): bool =
     FROM Todos WHERE id = ?"""
 
   try:
-    let rows = conn.GetAllRows(query, $todo.id)
+    let rows = conn.getAllRows(query, $todo.id)
     if len(rows) < 1:
       return
     assert(1 == len(rows), "Woah, didn't expect so many rows")
     todo.text = rows[0][0]
     todo.priority = rows[0][1].parseInt
     todo.isDone = rows[0][2].parseBool
-    todo.modificationDate = TTime(rows[0][3].parseInt)
+    todo.modificationDate = Time(rows[0][3].parseInt)
     result = true
   except:
     echo("Something went wrong selecting for id " & $todo.id)
@@ -202,12 +202,12 @@ proc getPagedTodos*(conn: TDbConn; params: TPagedParams;
   #echo("Query " & string(query))
   #echo("args: " & args.join(", "))
 
-  var newId: biggestInt
+  var newId: BiggestInt
   for row in conn.fastRows(query, args):
     let numChars = row[0].parseBiggestInt(newId)
     assert(numChars > 0, "Huh, couldn't parse identifier from database?")
     result.add(initFromDB(int64(newId), row[1], row[2].parseInt,
-        row[3].parseBool, TTime(row[4].parseInt)))
+        row[3].parseBool, Time(row[4].parseInt)))
 
 
 proc getTodo*(conn: TDbConn; todoId: int64): ref TTodo =

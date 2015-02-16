@@ -69,11 +69,11 @@ template parseTodoIdAndSetCommand(newCommand: TCommand): stmt =
   ## Helper to parse a big todo identifier into todoId and set command.
   try:
     let numChars = val.parseBiggestInt(newId)
-    if numChars < 1: raise newException(EInvalidValue, "Empty string?")
+    if numChars < 1: raise newException(ValueError, "Empty string?")
     result.command = newCommand
     result.todoId = newId
-  except EOverflow:
-    raise newException(EInvalidValue, "Value $1 too big" % val)
+  except OverflowError:
+    raise newException(ValueError, "Value $1 too big" % val)
 
 
 template verifySingleCommand(actions: stmt): stmt =
@@ -111,7 +111,7 @@ proc parseCmdLine(): TParamConfig =
     usesListParams = false
     p = initOptParser()
     key, val: TaintedString
-    newId: biggestInt
+    newId: BiggestInt
 
   result.initDefaults
 
@@ -178,7 +178,7 @@ proc parseCmdLine(): TParamConfig =
           abort("Unexpected option '$1'." % [key], 6)
       of cmdEnd:
         break
-  except EInvalidValue:
+  except ValueError:
     abort("Invalid integer value '$1' for parameter '$2'." % [val, key], 7)
 
   if not specifiedCommand:
