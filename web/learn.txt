@@ -6,11 +6,13 @@ Learning Nim
   Tutorials
   ---------
 
-  - | `Tutorial (part I) <tut1.html>`_
-    | Learn the basics of Nim's types, variables, procedures, control flow, etc...
+  .. container:: tutorials
 
-  - | `Tutorial (part II) <tut2.html>`_
-    | Learn Nim's more advanced features such as OOP, generics, macros, etc...
+    - | `Tutorial (part I) <tut1.html>`_
+      | Learn the basics of Nim's types, variables, procedures, control flow, etc...
+
+    - | `Tutorial (part II) <tut2.html>`_
+      | Learn Nim's more advanced features such as OOP, generics, macros, etc...
 
 
 .. container:: standout
@@ -18,14 +20,16 @@ Learning Nim
   Examples
   --------
 
-  - | `Nim by Example <http://nim-by-example.github.io/>`_
-    | Nim by Example is an excellent starting place for beginners.
+  .. container:: examples
 
-  - | `Nim on Rosetta Code <http://rosettacode.org/wiki/Category:Nimrod>`_
-    | Many different Nim code examples comparable to other languages for reference.
+    - | `Nim by Example <http://nim-by-example.github.io/>`_
+      | Nim by Example is an excellent starting place for beginners.
 
-  - | `Nim for C/C++ Programmers <https://github.com/Araq/Nim/wiki/Nim-for-C-programmers>`_
-    | A useful cheat-sheet for those most familiar with C/C++ languages.
+    - | `Nim on Rosetta Code <http://rosettacode.org/wiki/Category:Nimrod>`_
+      | Many different Nim code examples comparable to other languages for reference.
+
+    - | `Nim for C/C++ Programmers <https://github.com/Araq/Nim/wiki/Nim-for-C-programmers>`_
+      | A useful cheat-sheet for those most familiar with C/C++ languages.
 
 
 .. container:: standout
@@ -33,8 +37,16 @@ Learning Nim
   Articles
   --------
 
-  - `Dr Dobbs Nimrod Publication <http://www.drdobbs.com/open-source/nimrod-a-new-systems-programming-languag/240165321>`_
-  - `Bootstrapping Nim <http://goran.krampe.se/2014/10/15/bootstrapping-nim/>`_
+  .. container:: articles
+
+    - `How I Start: Nim <http://howistart.org/posts/nim/1>`_
+    - `Getting Started With Nim <https://akehrer.github.io/nim/2015/01/05/getting-started-with-nim.html>`_
+    - `Getting Started With Nim - Part 2 <https://akehrer.github.io/nim/2015/01/14/getting-started-with-nim-pt2.html>`_
+    - `What is special about Nim? <http://hookrace.net/blog/what-is-special-about-nim>`_
+    - `What makes Nim practical? <http://hookrace.net/blog/what-makes-nim-practical>`_
+    - `Learn Nim in minutes <http://learnxinyminutes.com/docs/nim>`_
+    - `Dr Dobbs Nimrod Publication <http://www.drdobbs.com/open-source/nimrod-a-new-systems-programming-languag/240165321>`_
+    - `Nim articles by Göran Krampe <http://goran.krampe.se/category/nim>`_
 
 
 Documentation
