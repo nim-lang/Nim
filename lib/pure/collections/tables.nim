@@ -231,45 +231,42 @@ template addImpl() {.dirty.} =
   rawInsert(t, t.data, key, val, hc, j)
   inc(t.counter)
 
+template maybeRehashPutImpl() {.dirty.} =
+  if mustRehash(len(t.data), t.counter):
+    enlarge(t)
+    index = rawGetKnownHC(t, key, hc)
+  index = -1 - index
+  rawInsert(t, t.data, key, val, hc, index)
+  inc(t.counter)
+
 template putImpl() {.dirty.} =
   var hc: THash
   var index = rawGet(t, key, hc)
-  if index >= 0:
-    t.data[index].val = val
-  else:
-    if mustRehash(len(t.data), t.counter):
-        enlarge(t)
-        index = rawGetKnownHC(t, key, hc)
-    rawInsert(t, t.data, key, val, hc, -1 - index)
-    inc(t.counter)
+  if index >= 0: t.data[index].val = val
+  else: maybeRehashPutImpl()
 
-when false:
-  # not yet used:
-  template hasKeyOrPutImpl() {.dirty.} =
-    var hc: THash
-    var index = rawGet(t, key, hc)
-    if index >= 0:
-      t.data[index].val = val
-      result = true
-    else:
-      if mustRehash(len(t.data), t.counter): enlarge(t)
-      rawInsert(t, t.data, key, val)
-      inc(t.counter)
-      result = false
-
-proc mgetOrPut*[A, B](t: var Table[A, B], key: A, value: B): var B =
-  ## retrieves value at ``t[key]`` or puts ``value`` if not present, either way
-  ## returning a value which can be modified.
-  var hc: THash     # If also desired in OrderedTable, lift this into a template
+template mgetOrPutImpl() {.dirty.} =
+  var hc: THash
   var index = rawGet(t, key, hc)
-  if index < 0:                             # not present: insert
-    if mustRehash(len(t.data), t.counter):
-      enlarge(t)
-      index = rawGet(t, key, hc)
-    index = -1 - index
-    rawInsert(t, t.data, key, value, hc, index)
-    inc(t.counter)
+  if index < 0: maybeRehashPutImpl()        # not present: insert
   result = t.data[index].val                # either way return modifiable val
+
+template hasKeyOrPutImpl() {.dirty.} =
+  var hc: THash
+  var index = rawGet(t, key, hc)
+  if index < 0:
+    result = false
+    maybeRehashPutImpl()
+  else: result = true
+
+proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
+  ## retrieves value at ``t[key]`` or puts ``val`` if not present, either way
+  ## returning a value which can be modified.
+  mgetOrPutImpl()
+
+proc hasKeyOrPut*[A, B](t: var Table[A, B], key: A, val: B): bool =
+  ## returns true iff `key` is in the table, otherwise inserts `value`.
+  hasKeyOrPutImpl()
 
 proc `[]=`*[A, B](t: var Table[A, B], key: A, val: B) =
   ## puts a (key, value)-pair into `t`.
@@ -397,10 +394,14 @@ proc mget*[A, B](t: TableRef[A, B], key: A): var B =
   ## If `key` is not in `t`, the ``EInvalidKey`` exception is raised.
   t[].mget(key)
 
-proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, value: B): var B =
-  ## retrieves value at ``t[key]`` or puts ``value`` if not present, either way
+proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, val: B): var B =
+  ## retrieves value at ``t[key]`` or puts ``val`` if not present, either way
   ## returning a value which can be modified.
-  t[].mgetOrPut(key, value)
+  t[].mgetOrPut(key, val)
+
+proc hasKeyOrPut*[A, B](t: var TableRef[A, B], key: A, val: B): bool =
+  ## returns true iff `key` is in the table, otherwise inserts `value`.
+  t[].hasKeyOrPut(key, val)
 
 proc hasKey*[A, B](t: TableRef[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
@@ -558,6 +559,15 @@ proc add*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
   addImpl()
 
+proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): var B =
+  ## retrieves value at ``t[key]`` or puts ``value`` if not present, either way
+  ## returning a value which can be modified.
+  mgetOrPutImpl()
+
+proc hasKeyOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): bool =
+  ## returns true iff `key` is in the table, otherwise inserts `value`.
+  hasKeyOrPutImpl()
+
 proc initOrderedTable*[A, B](initialSize=64): OrderedTable[A, B] =
   ## creates a new ordered hash table that is empty.
   ##
@@ -676,6 +686,15 @@ proc mget*[A, B](t: OrderedTableRef[A, B], key: A): var B =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``EInvalidKey`` exception is raised.
   result = t[].mget(key)
+
+proc mgetOrPut*[A, B](t: OrderedTableRef[A, B], key: A, val: B): var B =
+  ## retrieves value at ``t[key]`` or puts ``val`` if not present, either way
+  ## returning a value which can be modified.
+  result = t[].mgetOrPut(key, val)
+
+proc hasKeyOrPut*[A, B](t: var OrderedTableRef[A, B], key: A, val: B): bool =
+  ## returns true iff `key` is in the table, otherwise inserts `val`.
+  result = t[].hasKeyOrPut(key, val)
 
 proc hasKey*[A, B](t: OrderedTableRef[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
