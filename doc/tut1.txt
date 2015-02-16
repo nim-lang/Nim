@@ -749,7 +749,8 @@ Forward declarations
 --------------------
 
 Every variable, procedure, etc. needs to be declared before it can be used.
-(The reason for this is compilation efficiency.)
+(The reason for this is that it is non-trivial to do better than that in a
+language that supports meta programming as extensively as Nim does.)
 However, this cannot be done for mutually recursive procedures:
 
 .. code-block:: nim
@@ -767,7 +768,7 @@ introduced to the compiler before it is completely defined. The syntax for
 such a forward declaration is simple: just omit the ``=`` and the
 procedure's body.
 
-Later versions of the language may get rid of the need for forward
+Later versions of the language will weaken the requirements for forward
 declarations.
 
 The example also shows that a proc's body can consist of a single expression
