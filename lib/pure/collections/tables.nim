@@ -397,6 +397,11 @@ proc mget*[A, B](t: TableRef[A, B], key: A): var B =
   ## If `key` is not in `t`, the ``EInvalidKey`` exception is raised.
   t[].mget(key)
 
+proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, value: B): var B =
+  ## retrieves value at ``t[key]`` or puts ``value`` if not present, either way
+  ## returning a value which can be modified.
+  t[].mgetOrPut(key, value)
+
 proc hasKey*[A, B](t: TableRef[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   result = t[].hasKey(key)
