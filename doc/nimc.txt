@@ -569,7 +569,7 @@ language for object types:
   type
     StdMap {.importcpp: "std::map", header: "<map>".} [K, V] = object
   proc `[]=`[K, V](this: var StdMap[K, V]; key: K; val: V) {.
-    importcpp: "#[#] = #".}
+    importcpp: "#[#] = #", header: "<map>".}
 
   var x: StdMap[cint, cdouble]
   x[6] = 91.4
