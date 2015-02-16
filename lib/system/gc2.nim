@@ -526,7 +526,7 @@ proc forAllChildrenAux(dest: pointer, mt: PNimType, op: TWalkOp) =
     of tyArray, tyArrayConstr, tyOpenArray:
       for i in 0..(mt.size div mt.base.size)-1:
         forAllChildrenAux(cast[pointer](d +% i *% mt.base.size), mt.base, op)
-    else: nil
+    else: discard
 
 proc forAllChildren(cell: PCell, op: TWalkOp) =
   sysAssert(cell != nil, "forAllChildren: 1")
@@ -547,7 +547,7 @@ proc forAllChildren(cell: PCell, op: TWalkOp) =
         for i in 0..s.len-1:
           forAllChildrenAux(cast[pointer](baseAddr +% i *% cell.typ.base.size),
                             cell.typ.base, op)
-    else: nil
+    else: discard
 
 proc addNewObjToZCT(res: PCell, gch: var TGcHeap) {.inline.} =
   # we check the last 8 entries (cache line) for a slot that could be reused.
@@ -1348,10 +1348,10 @@ when not defined(useNimRtl):
 
   proc GC_setStrategy(strategy: GC_Strategy) =
     case strategy
-    of gcThroughput: nil
-    of gcResponsiveness: nil
-    of gcOptimizeSpace: nil
-    of gcOptimizeTime: nil
+    of gcThroughput: discard
+    of gcResponsiveness: discard
+    of gcOptimizeSpace: discard
+    of gcOptimizeTime: discard
 
   proc GC_enableMarkAndSweep() =
     gch.cycleThreshold = InitialCycleThreshold

@@ -208,7 +208,7 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
       when compileOption("gc", "v2"):
         for i in newLen..result.len-1:
           let len0 = gch.tempStack.len
-          forAllChildrenAux(cast[pointer](cast[TAddress](result) +%
+          forAllChildrenAux(cast[pointer](cast[ByteAddress](result) +%
                             GenericSeqSize +% (i*%elemSize)),
                             extGetCellType(result).base, waPush)
           let len1 = gch.tempStack.len
