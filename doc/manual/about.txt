@@ -25,9 +25,9 @@ with ``'``. An example::
 
   ifStmt = 'if' expr ':' stmts ('elif' expr ':' stmts)* ('else' stmts)?
   
-The binary ``^*`` operator is used as a shorthand for 0 or more occurances
+The binary ``^*`` operator is used as a shorthand for 0 or more occurrences
 separated by its second argument; likewise ``^+`` means 1 or more 
-occurances: ``a ^+ b`` is short for ``a (b a)*`` 
+occurrences: ``a ^+ b`` is short for ``a (b a)*`` 
 and ``a ^* b`` is short for ``(a (b a)*)?``. Example::
 
   arrayConstructor = '[' expr ^* ',' ']'

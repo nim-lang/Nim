@@ -55,7 +55,7 @@
 	[self.bText resignFirstResponder];
 }
 
-/** Custom loadView method for backwards compatiblity.
+/** Custom loadView method for backwards compatibility.
  * Unfortunately I've been unable to coerce Xcode 4.4 to generate nib files
  * which are compatible with my trusty iOS 3.0 ipod touch so in order to be
  * fully compatible for all devices we have to build the interface manually in

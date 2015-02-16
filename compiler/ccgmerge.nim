@@ -223,7 +223,7 @@ proc processMergeInfo(L: var TBaseLexer, m: BModule) =
     of "typeInfo":  readIntSet(L, m.typeInfoMarker)
     of "labels":    m.labels = decodeVInt(L.buf, L.bufpos)
     of "hasframe":  m.frameDeclared = decodeVInt(L.buf, L.bufpos) != 0
-    else: internalError("ccgmerge: unkown key: " & k)
+    else: internalError("ccgmerge: unknown key: " & k)
 
 when not defined(nimhygiene):
   {.pragma: inject.}

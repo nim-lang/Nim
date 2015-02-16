@@ -89,7 +89,7 @@
 #                           As most games will need it.
 #
 #   April    02 2001 - DL : Added SDL_getenv.h definitions and tested version
-#                           1.2.0 compatability.
+#                           1.2.0 compatibility.
 #
 #   March    13 2001 - MT : Added Linux compatibility.
 #
@@ -118,7 +118,7 @@
 #
 #  November  30 2001 - DL : SDL_NOFRAME added as pointed out by Simon Rushton.
 #
-#  December  11 2001 - DL : Added $WEAKPACKAGEUNIT ON to facilitate useage in
+#  December  11 2001 - DL : Added $WEAKPACKAGEUNIT ON to facilitate usage in
 #                           Components
 #
 #  January   05 2002 - DL : Added SDL_Swap32 function as suggested by Matthias
@@ -209,7 +209,7 @@
 #  forgot to apply Michalis Kamburelis' patch to the implementation section. now fixed
 #
 #  Revision 1.14  2004/12/23 23:42:18  savage
-#  Applied Patches supplied by Michalis Kamburelis ( THANKS! ), for greater FreePascal compatability.
+#  Applied Patches supplied by Michalis Kamburelis ( THANKS! ), for greater FreePascal compatibility.
 #
 #  Revision 1.13  2004/09/30 22:31:59  savage
 #  Updated with slightly different header comments
@@ -221,7 +221,7 @@
 #  Updated so that Library name defines are correctly defined for MacOS X.
 #
 #  Revision 1.10  2004/07/20 23:57:33  savage
-#  Thanks to Paul Toth for spotting an error in the SDL Audio Convertion structures.
+#  Thanks to Paul Toth for spotting an error in the SDL Audio Conversion structures.
 #  In TSDL_AudioCVT the filters variable should point to and array of pointers and not what I had there previously.
 #
 #  Revision 1.9  2004/07/03 22:07:22  savage
@@ -243,7 +243,7 @@
 #  SDL_GetEnv Fix so that it is not define twice for FPC. Thanks to Rene Hugentobler for pointing out this bug,
 #
 #  Revision 1.3  2004/02/18 22:35:51  savage
-#  Brought sdl.pas up to 1.2.7 compatability
+#  Brought sdl.pas up to 1.2.7 compatibility
 #  Thus...
 #  Added SDL_GL_STEREO,
 #      SDL_GL_MULTISAMPLEBUFFERS,

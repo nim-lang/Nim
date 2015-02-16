@@ -628,7 +628,7 @@ int __bound_delete_region(void *p)
 }
 
 /* return the size of the region starting at p, or EMPTY_SIZE if non
-   existant region. */
+   existent region. */
 static unsigned long get_region_size(void *p)
 {
     unsigned long addr = (unsigned long)p;

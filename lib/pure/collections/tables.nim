@@ -11,7 +11,7 @@
 ## (also often named `dictionary`:idx: in other programming languages) that is
 ## a mapping from keys to values. ``Table`` is the usual hash table,
 ## ``OrderedTable`` is like ``Table`` but remembers insertion order
-## and ``CountTable`` is a mapping from a key to its number of occurances.
+## and ``CountTable`` is a mapping from a key to its number of occurrences.
 ## For consistency with every other data type in Nim these have **value**
 ## semantics, this means that ``=`` performs a copy of the hash table.
 ## For **reference** semantics use the ``Ref`` variant: ``TableRef``,

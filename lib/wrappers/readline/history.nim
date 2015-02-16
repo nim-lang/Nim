@@ -231,7 +231,7 @@ proc history_truncate_file*(a2: cstring, a3: cint): cint{.cdecl,
 #  -1) If there was an error in expansion.
 #   2) If the returned line should just be printed.
 #
-#  If an error ocurred in expansion, then OUTPUT contains a descriptive
+#  If an error occurred in expansion, then OUTPUT contains a descriptive
 #  error message. 
 
 proc history_expand*(a2: cstring, a3: cstringArray): cint{.cdecl, 

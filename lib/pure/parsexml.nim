@@ -57,7 +57,7 @@ import
 
 type 
   XmlEventKind* = enum ## enumation of all events that may occur when parsing
-    xmlError,           ## an error ocurred during parsing
+    xmlError,           ## an error occurred during parsing
     xmlEof,             ## end of file reached
     xmlCharData,        ## character data
     xmlWhitespace,      ## whitespace has been parsed

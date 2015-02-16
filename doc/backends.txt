@@ -225,7 +225,7 @@ The JavaScript target doesn't have any further interfacing considerations
 since it also has garbage collection, but the C targets require you to
 initialize Nim's internals, which is done calling a ``NimMain`` function.
 Also, C code requires you to specify a forward declaration for functions or
-the compiler will asume certain types for the return value and parameters
+the compiler will assume certain types for the return value and parameters
 which will likely make your program crash at runtime.
 
 The Nim compiler can generate a C interface header through the ``--header``
@@ -427,7 +427,7 @@ Custom data types
 -----------------
 
 Just like strings, custom data types that are to be shared between Nim and
-the backend will need careful consideration of who controlls who. If you want
+the backend will need careful consideration of who controls who. If you want
 to hand a Nim reference to C code, you will need to use `GC_ref
 <system.html#GC_ref>`_ to mark the reference as used, so it does not get
 freed. And for the C backend you will need to expose the `GC_unref

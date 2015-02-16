@@ -107,7 +107,7 @@ type
   TToken* = object            # a Nim token
     tokType*: TTokType        # the type of the token
     indent*: int              # the indentation; != -1 if the token has been
-                              # preceeded with indentation
+                              # preceded with indentation
     ident*: PIdent            # the parsed identifier
     iNumber*: BiggestInt      # the parsed integer literal
     fNumber*: BiggestFloat    # the parsed floating point literal
@@ -679,7 +679,7 @@ proc getOperator(L: var TLexer, tok: var TToken) =
     inc(pos)
   endOperator(L, tok, pos, h)
   # advance pos but don't store it in L.bufpos so the next token (which might
-  # be an operator too) gets the preceeding spaces:
+  # be an operator too) gets the preceding spaces:
   tok.strongSpaceB = 0
   while buf[pos] == ' ':
     inc pos

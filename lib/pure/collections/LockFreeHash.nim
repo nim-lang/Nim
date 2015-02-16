@@ -404,7 +404,7 @@ proc setVal[K,V](table: var PConcTable[K,V], key: int, val: int,
     #echo("tomb old slot then set in new table") 
     nextTable = copySlotAndCheck(table,idx)
     return setVal(nextTable, key, val, expVal, match)
-  # Finaly ready to add new val to table
+  # Finally ready to add new val to table
   while true:
     if match and oldVal != expVal:
       #echo("set failed, no match  oldVal= " & $oldVal & " expVal= " & $expVal)

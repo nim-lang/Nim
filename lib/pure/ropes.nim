@@ -43,7 +43,7 @@ proc isConc(r: Rope): bool {.inline.} = return isNil(r.data)
 # Note that the left and right pointers are not needed for leafs.
 # Leaves have relatively high memory overhead (~30 bytes on a 32
 # bit machine) and we produce many of them. This is why we cache and
-# share leafs accross different rope trees.
+# share leafs across different rope trees.
 # To cache them they are inserted in another tree, a splay tree for best
 # performance. But for the caching tree we use the leaf's left and right
 # pointers.
