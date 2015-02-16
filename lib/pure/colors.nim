@@ -46,7 +46,7 @@ proc `+`*(a, b: Color): Color =
   colorOp(satPlus)
   
 proc `-`*(a, b: Color): Color =
-  ## substracts two colors: This uses saturated artithmetic, so that each color
+  ## subtracts two colors: This uses saturated artithmetic, so that each color
   ## component cannot overflow (255 is used as a maximum).
   colorOp(satMinus)
   
@@ -392,7 +392,7 @@ proc parseColor*(name: string): Color =
     result = Color(parseHexInt(name))
   else:
     var idx = binaryStrSearch(colorNames, name)
-    if idx < 0: raise newException(ValueError, "unkown color: " & name)
+    if idx < 0: raise newException(ValueError, "unknown color: " & name)
     result = colorNames[idx][1]
 
 proc isColor*(name: string): bool =

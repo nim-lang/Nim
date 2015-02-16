@@ -279,7 +279,7 @@ type
   PSegmentQueryInfo* = ptr TSegmentQueryInfo
   #/ Segment query info struct.
   TSegmentQueryInfo*{.pf.} = object 
-    shape*: PShape         #/ The shape that was hit, NULL if no collision occured.
+    shape*: PShape         #/ The shape that was hit, NULL if no collision occurred.
     t*: CpFloat            #/ The normalized distance along the query segment in the range [0, 1].
     n*: TVector            #/ The normal of the surface hit.
   TShapeType*{.size: sizeof(cint).} = enum 

@@ -270,13 +270,13 @@ when defined(withUpdate):
           echo("Fetching updates from repo...")
           var pullout = execCmdEx(git & " pull origin master")
           if pullout[1] != 0:
-            quit("An error has occured.")
+            quit("An error has occurred.")
           else:
             if pullout[0].startsWith("Already up-to-date."):
               quit("No new changes fetched from the repo. " &
                    "Local branch must be ahead of it. Exiting...")
       else:
-        quit("An error has occured.")
+        quit("An error has occurred.")
       
     else:
       echo("No repo or executable found!")

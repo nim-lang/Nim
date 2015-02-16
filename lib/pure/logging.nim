@@ -8,7 +8,7 @@
 #
 
 ## This module implements a simple logger. It has been designed to be as simple
-## as possible to avoid bloat, if this library does not fullfill your needs,
+## as possible to avoid bloat, if this library does not fulfill your needs,
 ## write your own.
 ## 
 ## Format strings support the following variables which must be prefixed with

@@ -153,8 +153,8 @@ proc sumGeneric(t: PType): int =
     of tyVar:
       # but do not make 'var T' more specific than 'T'!
       t = t.sons[0]
-    of tyGenericInvokation, tyTuple:
-      result = ord(t.kind == tyGenericInvokation)
+    of tyGenericInvocation, tyTuple:
+      result = ord(t.kind == tyGenericInvocation)
       for i in 0 .. <t.len: result += t.sons[i].sumGeneric
       break
     of tyProc:
@@ -262,7 +262,7 @@ proc concreteType(c: TCandidate, t: PType): PType =
         # example code that triggers it:
         # proc sort[T](cmp: proc(a, b: T): int = cmp)
       if result.kind != tyGenericParam: break
-  of tyGenericInvokation:
+  of tyGenericInvocation:
     internalError("cannot resolve type: " & typeToString(t))
     result = t
   else:
@@ -585,7 +585,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   
   if a.kind == tyGenericInst and
       skipTypes(f, {tyVar}).kind notin {
-        tyGenericBody, tyGenericInvokation,
+        tyGenericBody, tyGenericInvocation,
         tyGenericInst, tyGenericParam} + tyTypeClasses:
     return typeRel(c, f, lastSon(a))
 
@@ -877,10 +877,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       let ff = lastSon(f)
       if ff != nil: result = typeRel(c, ff, a)
 
-  of tyGenericInvokation:
+  of tyGenericInvocation:
     var x = a.skipGenericAlias
-    if x.kind == tyGenericInvokation or f.sons[0].kind != tyGenericBody:
-      #InternalError("typeRel: tyGenericInvokation -> tyGenericInvokation")
+    if x.kind == tyGenericInvocation or f.sons[0].kind != tyGenericBody:
+      #InternalError("typeRel: tyGenericInvocation -> tyGenericInvocation")
       # simply no match for now:
       discard
     elif x.kind == tyGenericInst and 
@@ -897,7 +897,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         # we steal the generic parameters from the tyGenericBody:
         for i in countup(1, sonsLen(f) - 1):
           var x = PType(idTableGet(c.bindings, f.sons[0].sons[i - 1]))
-          if x == nil or x.kind in {tyGenericInvokation, tyGenericParam}:
+          if x == nil or x.kind in {tyGenericInvocation, tyGenericParam}:
             internalError("wrong instantiated type!")
           put(c.bindings, f.sons[i], x)
   

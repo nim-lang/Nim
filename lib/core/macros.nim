@@ -76,7 +76,7 @@ type
   TNimrodTypeKind* = enum
     ntyNone, ntyBool, ntyChar, ntyEmpty,
     ntyArrayConstr, ntyNil, ntyExpr, ntyStmt,
-    ntyTypeDesc, ntyGenericInvokation, ntyGenericBody, ntyGenericInst,
+    ntyTypeDesc, ntyGenericInvocation, ntyGenericBody, ntyGenericInst,
     ntyGenericParam, ntyDistinct, ntyEnum, ntyOrdinal,
     ntyArray, ntyObject, ntyTuple, ntySet,
     ntyRange, ntyPtr, ntyRef, ntyVar,

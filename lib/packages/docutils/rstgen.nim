@@ -1145,7 +1145,7 @@ proc formatNamedVars*(frmt: string, varnames: openArray[string],
 proc defaultConfig*(): StringTableRef =
   ## Returns a default configuration for embedded HTML generation.
   ##
-  ## The returned ``StringTableRef`` contains the paramters used by the HTML
+  ## The returned ``StringTableRef`` contains the parameters used by the HTML
   ## engine to build the final output. For information on what these parameters
   ## are and their purpose, please look up the file ``config/nimdoc.cfg``
   ## bundled with the compiler.

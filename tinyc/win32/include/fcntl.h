@@ -50,7 +50,7 @@
 
 #define	_O_RANDOM	0x0010
 #define	_O_SEQUENTIAL	0x0020
-#define	_O_TEMPORARY	0x0040	/* Make the file dissappear after closing.
+#define	_O_TEMPORARY	0x0040	/* Make the file disappear after closing.
 				 * WARNING: Even if not created by _open! */
 #define	_O_NOINHERIT	0x0080
 

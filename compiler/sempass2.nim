@@ -23,7 +23,7 @@ import
 # Predefined effects:
 #   io, time (time dependent), gc (performs GC'ed allocation), exceptions,
 #   side effect (accesses global), store (stores into *type*),
-#   store_unkown (performs some store) --> store(any)|store(x) 
+#   store_unknown (performs some store) --> store(any)|store(x) 
 #   load (loads from *type*), recursive (recursive call), unsafe,
 #   endless (has endless loops), --> user effects are defined over *patterns*
 #   --> a TR macro can annotate the proc with user defined annotations

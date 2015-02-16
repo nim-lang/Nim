@@ -60,7 +60,7 @@ proc initOptParser*(cmdline: string): OptParser {.rtl, deprecated.} =
   ## Initalizes option parses with cmdline. Splits cmdline in on spaces
   ## and calls initOptParser(openarray[string])
   ## Do not use.
-  if cmdline == "": # backward compatibilty
+  if cmdline == "": # backward compatibility
     return initOptParser(seq[string](nil))
   else:
     return initOptParser(cmdline.split)

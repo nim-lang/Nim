@@ -69,7 +69,7 @@ type
     errInvalidOrderInArrayConstructor,
     errInvalidOrderInEnumX, errEnumXHasHoles, errExceptExpected, errInvalidTry, 
     errOptionExpected, errXisNoLabel, errNotAllCasesCovered, 
-    errUnkownSubstitionVar, errComplexStmtRequiresInd, errXisNotCallable, 
+    errUnknownSubstitionVar, errComplexStmtRequiresInd, errXisNotCallable, 
     errNoPragmasAllowedForX, errNoGenericParamsAllowedForX, 
     errInvalidParamKindX, errDefaultArgumentInvalid, errNamedParamHasToBeIdent, 
     errNoReturnTypeForX, errConvNeedsOneArg, errInvalidPragmaX, 
@@ -89,7 +89,7 @@ type
     errTIsNotAConcreteType,
     errInvalidSectionStart, errGridTableNotImplemented, errGeneralParseError, 
     errNewSectionExpected, errWhitespaceExpected, errXisNoValidIndexFile, 
-    errCannotRenderX, errVarVarTypeNotAllowed, errInstantiateXExplicitely,
+    errCannotRenderX, errVarVarTypeNotAllowed, errInstantiateXExplicitly,
     errOnlyACallOpCanBeDelegator, errUsingNoSymbol,
     errMacroBodyDependsOnGenericTypes,
     errDestructorNotGenericEnough,
@@ -279,7 +279,7 @@ const
     errOptionExpected: "option expected, but found \'$1\'",
     errXisNoLabel: "\'$1\' is not a label", 
     errNotAllCasesCovered: "not all cases are covered", 
-    errUnkownSubstitionVar: "unknown substitution variable: \'$1\'", 
+    errUnknownSubstitionVar: "unknown substitution variable: \'$1\'", 
     errComplexStmtRequiresInd: "complex statement requires indentation",
     errXisNotCallable: "\'$1\' is not callable", 
     errNoPragmasAllowedForX: "no pragmas allowed for $1", 
@@ -325,7 +325,7 @@ const
     errXisNoValidIndexFile: "\'$1\' is no valid index file", 
     errCannotRenderX: "cannot render reStructuredText element \'$1\'", 
     errVarVarTypeNotAllowed: "type \'var var\' is not allowed",
-    errInstantiateXExplicitely: "instantiate '$1' explicitely",
+    errInstantiateXExplicitly: "instantiate '$1' explicitly",
     errOnlyACallOpCanBeDelegator: "only a call operator can be a delegator",
     errUsingNoSymbol: "'$1' is not a variable, constant or a proc name",
     errMacroBodyDependsOnGenericTypes: "the macro body cannot be compiled, " &
@@ -359,7 +359,7 @@ const
     errCannotInferReturnType: "cannot infer the return type of the proc",
     errGenericLambdaNotAllowed: "A nested proc can have generic parameters only when " &
                                 "it is used as an operand to another routine and the types " &
-                                "of the generic paramers can be infered from the expected signature.",
+                                "of the generic paramers can be inferred from the expected signature.",
     errCompilerDoesntSupportTarget: "The current compiler \'$1\' doesn't support the requested compilation target",
     errUser: "$1", 
     warnCannotOpenFile: "cannot open \'$1\' [CannotOpenFile]",
@@ -723,7 +723,7 @@ proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
       if stackTraceAvailable():
         writeStackTrace()
       else:
-        msgWriteln("No stack traceback available\nTo create a stacktrace, rerun compilation with ./koch temp c <file>")
+        msgWriteln("No stack traceback available\nTo create a stacktrace, rerun compilation with ./koch temp " & options.command & " <file>")
     quit 1
 
   if msg >= fatalMin and msg <= fatalMax:

@@ -1390,7 +1390,7 @@ proc genSwap(p: BProc, e: PNode, d: var TLoc) =
   genAssignment(p, b, tmp, {})
 
 proc rdSetElemLoc(a: TLoc, setType: PType): PRope =
-  # read a location of an set element; it may need a substraction operation
+  # read a location of an set element; it may need a subtraction operation
   # before the set operation
   result = rdCharLoc(a)
   assert(setType.kind == tySet)

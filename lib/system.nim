@@ -73,7 +73,7 @@ type
   expr* {.magic: Expr.} ## meta type to denote an expression (for templates)
   stmt* {.magic: Stmt.} ## meta type to denote a statement (for templates)
   typedesc* {.magic: TypeDesc.} ## meta type to denote a type description
-  void* {.magic: "VoidType".}   ## meta type to denote the absense of any type
+  void* {.magic: "VoidType".}   ## meta type to denote the absence of any type
   auto* = expr
   any* = distinct auto
 
@@ -357,7 +357,7 @@ type
     ##
     ## See the full `exception hierarchy`_.
   IOError* = object of SystemError ## \
-    ## Raised if an IO error occured.
+    ## Raised if an IO error occurred.
     ##
     ## See the full `exception hierarchy`_.
   OSError* = object of SystemError ## \
@@ -370,11 +370,11 @@ type
     ##
     ## See the full `exception hierarchy`_.
   ResourceExhaustedError* = object of SystemError ## \
-    ## Raised if a resource request could not be fullfilled.
+    ## Raised if a resource request could not be fulfilled.
     ##
     ## See the full `exception hierarchy`_.
   ArithmeticError* = object of Exception ## \
-    ## Raised if any kind of arithmetic error occured.
+    ## Raised if any kind of arithmetic error occurred.
     ##
     ## See the full `exception hierarchy`_.
   DivByZeroError* = object of ArithmeticError ## \
@@ -578,7 +578,7 @@ proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.}
 proc len*[I, T](x: array[I, T]): int {.magic: "LengthArray", noSideEffect.}
 proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
   ## returns the length of an array, an openarray, a sequence or a string.
-  ## This is rougly the same as ``high(T)-low(T)+1``, but its resulting type is
+  ## This is roughly the same as ``high(T)-low(T)+1``, but its resulting type is
   ## always an int.
 
 # set routines:
@@ -865,7 +865,7 @@ proc contains*[T](x: set[T], y: T): bool {.magic: "InSet", noSideEffect.}
   ## passes its arguments in reverse order.
 
 proc contains*[T](s: Slice[T], value: T): bool {.noSideEffect, inline.} =
-  ## Checks if `value` is withing the range of `s`; returns true iff
+  ## Checks if `value` is within the range of `s`; returns true iff
   ## `value >= s.a and value <= s.b`
   ##
   ## .. code-block:: Nim

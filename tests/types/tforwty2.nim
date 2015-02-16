@@ -1,5 +1,5 @@
 # Test for a hard to fix internal error
-# occured in the SDL library
+# occurred in the SDL library
 
 {.push dynlib: "SDL.dll", callconv: cdecl.}
 

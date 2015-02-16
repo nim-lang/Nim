@@ -35,7 +35,7 @@ type
 when defined(nimdoc):
   type
     Selector* = ref object
-      ## An object which holds file descripters to be checked for read/write
+      ## An object which holds file descriptors to be checked for read/write
       ## status.
       fds: Table[SocketHandle, SelectorKey]
 

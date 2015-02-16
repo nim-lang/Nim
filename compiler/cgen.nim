@@ -395,7 +395,7 @@ proc localVarDecl(p: BProc; s: PSym): PRope =
 
 proc assignLocalVar(p: BProc, s: PSym) =
   #assert(s.loc.k == locNone) # not yet assigned
-  # this need not be fullfilled for inline procs; they are regenerated
+  # this need not be fulfilled for inline procs; they are regenerated
   # for each module that uses them!
   let decl = localVarDecl(p, s).con(";" & tnl)
   line(p, cpsLocals, decl)

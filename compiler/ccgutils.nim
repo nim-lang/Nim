@@ -96,7 +96,7 @@ proc getUniqueType*(key: PType): PType =
     #if obj.sym != nil and obj.sym.name.s == "TOption":
     #  echo "for ", typeToString(key), " I returned "
     #  debug result
-  of tyArrayConstr, tyGenericInvokation, tyGenericBody,
+  of tyArrayConstr, tyGenericInvocation, tyGenericBody,
      tyOpenArray, tyArray, tySet, tyRange, tyTuple,
      tyPtr, tyRef, tySequence, tyForward, tyVarargs, tyProxy, tyVar:
     # tuples are quite horrible as C does not support them directly and

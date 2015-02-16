@@ -134,7 +134,7 @@ found an ambiguity error is produced.
 ``nim dump`` shows the contents of the PATH.
 
 However before the PATH is used the current directory is checked for the
-file's existance. So if PATH contains ``$lib`` and ``$lib/bar`` and the
+file's existence. So if PATH contains ``$lib`` and ``$lib/bar`` and the
 directory structure looks like this::
 
   $lib/x.nim

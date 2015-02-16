@@ -1637,7 +1637,7 @@ proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode =
     result = semDirectOp(c, n, flags)
 
 proc createFlowVar(c: PContext; t: PType; info: TLineInfo): PType =
-  result = newType(tyGenericInvokation, c.module)
+  result = newType(tyGenericInvocation, c.module)
   addSonSkipIntLit(result, magicsys.getCompilerProc("FlowVar").typ)
   addSonSkipIntLit(result, t)
   result = instGenericContainer(c, info, result, allowMetaTypes = false)
@@ -1917,7 +1917,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       it.sons[0] = newSymNode(f)
       e = fitNode(c, f.typ, e)
       # small hack here in a nkObjConstr the ``nkExprColonExpr`` node can have
-      # 3 childen the last being the field check
+      # 3 children the last being the field check
       if check != nil:
         check.sons[0] = it.sons[0]
         it.add(check)
@@ -2001,7 +2001,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       if result.kind == nkSym:
         markIndirect(c, result.sym)
         # if isGenericRoutine(result.sym):
-        #   localError(n.info, errInstantiateXExplicitely, s.name.s)
+        #   localError(n.info, errInstantiateXExplicitly, s.name.s)
   of nkSym:
     # because of the changed symbol binding, this does not mean that we
     # don't have to check the symbol for semantics here again!

@@ -609,9 +609,9 @@ proc addInheritedFieldsAux(c: PContext, check: var IntSet, pos: var int,
     inc(pos)
   else: internalError(n.info, "addInheritedFieldsAux()")
 
-proc skipGenericInvokation(t: PType): PType {.inline.} = 
+proc skipGenericInvocation(t: PType): PType {.inline.} = 
   result = t
-  if result.kind == tyGenericInvokation:
+  if result.kind == tyGenericInvocation:
     result = result.sons[0]
   if result.kind == tyGenericBody:
     result = lastSon(result)
@@ -620,7 +620,7 @@ proc addInheritedFields(c: PContext, check: var IntSet, pos: var int,
                         obj: PType) =
   assert obj.kind == tyObject
   if (sonsLen(obj) > 0) and (obj.sons[0] != nil): 
-    addInheritedFields(c, check, pos, obj.sons[0].skipGenericInvokation)
+    addInheritedFields(c, check, pos, obj.sons[0].skipGenericInvocation)
   addInheritedFieldsAux(c, check, pos, obj.n)
 
 proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
@@ -632,7 +632,7 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
   checkSonsLen(n, 3)
   if n.sons[1].kind != nkEmpty: 
     base = skipTypes(semTypeNode(c, n.sons[1].sons[0], nil), skipPtrs)
-    var concreteBase = skipGenericInvokation(base).skipTypes(skipPtrs)
+    var concreteBase = skipGenericInvocation(base).skipTypes(skipPtrs)
     if concreteBase.kind == tyObject and tfFinal notin concreteBase.flags: 
       addInheritedFields(c, check, pos, concreteBase)
     else:
@@ -777,12 +777,12 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
           result = paramType
   
   of tyGenericBody:
-    result = newTypeS(tyGenericInvokation, c)
+    result = newTypeS(tyGenericInvocation, c)
     result.rawAddSon(paramType)
       
     for i in 0 .. paramType.sonsLen - 2:
       if paramType.sons[i].kind == tyStatic:
-        result.rawAddSon makeTypeFromExpr(c, ast.emptyNode) # aka 'tyUnkown'
+        result.rawAddSon makeTypeFromExpr(c, ast.emptyNode) # aka 'tyUnknown'
       else:
         result.rawAddSon newTypeS(tyAnything, c)
       
@@ -823,7 +823,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       result = liftBody
       result.shouldHaveMeta
  
-  of tyGenericInvokation:
+  of tyGenericInvocation:
     for i in 1 .. <paramType.sonsLen:
       let lifted = liftingWalk(paramType.sons[i])
       if lifted != nil: paramType.sons[i] = lifted
@@ -900,7 +900,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
 
     if hasDefault:
       def = semExprWithType(c, a.sons[length-1]) 
-      # check type compability between def.typ and typ:
+      # check type compatibility between def.typ and typ:
       if typ == nil:
         typ = def.typ
       elif def != nil:
@@ -991,7 +991,7 @@ proc semBlockType(c: PContext, n: PNode, prev: PType): PType =
   closeScope(c)
   dec(c.p.nestedBlockCounter)
 
-proc semGenericParamInInvokation(c: PContext, n: PNode): PType =
+proc semGenericParamInInvocation(c: PContext, n: PNode): PType =
   result = semTypeNode(c, n, nil)
 
 proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
@@ -1004,7 +1004,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   if t.kind == tyCompositeTypeClass and t.base.kind == tyGenericBody:
     t = t.base
 
-  result = newOrPrevType(tyGenericInvokation, prev, c)
+  result = newOrPrevType(tyGenericInvocation, prev, c)
   addSonSkipIntLit(result, t)
 
   template addToResult(typ) =
@@ -1015,7 +1015,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
 
   if t.kind == tyForward:
     for i in countup(1, sonsLen(n)-1):
-      var elem = semGenericParamInInvokation(c, n.sons[i])
+      var elem = semGenericParamInInvocation(c, n.sons[i])
       addToResult(elem)
     return
   elif t.kind != tyGenericBody:

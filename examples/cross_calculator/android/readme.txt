@@ -10,7 +10,7 @@ just declared as a native method which will be resolved at runtime. The scripts
 nimbuild.sh and jnibuild.sh are in charge of building the Nim code and
 generating the jni bridge from the java code respectively. Finally, the
 ndk-build command from the android ndk tools has to be run to build the binary
-libary which will be installed along the final apk.
+library which will be installed along the final apk.
 
 All these steps are wrapped in the ant build script through the customization
 of the -post-compile rule. If you have the android ndk tools installed and you
