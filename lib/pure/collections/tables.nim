@@ -235,7 +235,7 @@ template maybeRehashPutImpl() {.dirty.} =
   if mustRehash(len(t.data), t.counter):
     enlarge(t)
     index = rawGetKnownHC(t, key, hc)
-  index = -1 - index
+  index = -1 - index                  # important to transform for mgetOrPutImpl
   rawInsert(t, t.data, key, val, hc, index)
   inc(t.counter)
 
@@ -248,8 +248,8 @@ template putImpl() {.dirty.} =
 template mgetOrPutImpl() {.dirty.} =
   var hc: THash
   var index = rawGet(t, key, hc)
-  if index < 0: maybeRehashPutImpl()        # not present: insert
-  result = t.data[index].val                # either way return modifiable val
+  if index < 0: maybeRehashPutImpl()    # not present: insert (flipping index)
+  result = t.data[index].val            # either way return modifiable val
 
 template hasKeyOrPutImpl() {.dirty.} =
   var hc: THash
