@@ -85,7 +85,7 @@ Advanced options:
                             that --dynlibOverride:lua matches 
                             dynlib: "liblua.so.3"
   --listCmd                 list the commands used to execute external programs
-  --parallelBuild=0|1|...   perform a parallel build
+  --parallelBuild:0|1|...   perform a parallel build
                             value = number of processors (0 for auto-detect)
   --verbosity:0|1|2|3       set Nim's verbosity level (1 is default)
   --cs:none|partial         set case sensitivity level (default: none);
