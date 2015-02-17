@@ -146,12 +146,12 @@ runForever()
 #         end for
           </div>
 #  end if
+#  if len(c.ticker) > 0 and currentTab != "support":
 					<h3 class="blue">Latest News</h3>
 					<div id="sidebar-news">
-#  if len(c.ticker) > 0:
           $c.ticker
-#  end if
 					</div>
+#  end if
 				</aside>
 			</div>
 		</section>

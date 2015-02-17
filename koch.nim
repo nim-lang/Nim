@@ -360,7 +360,7 @@ of cmdArgument:
   of "boot": boot(op.cmdLineRest)
   of "clean": clean(op.cmdLineRest)
   of "web": web(op.cmdLineRest)
-  of "website": website(op.cmdLineRest)
+  of "website": website(op.cmdLineRest & " --googleAnalytics:UA-48159761-1")
   of "web0":
     # undocumented command for Araq-the-merciful:
     web(op.cmdLineRest & " --googleAnalytics:UA-48159761-1")
