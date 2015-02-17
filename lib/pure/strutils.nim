@@ -241,15 +241,14 @@ iterator split*(s: string, seps: set[char] = Whitespace): string =
   ##   "08"
   ##   "08.398990"
   ##
-  var start = 0
+  var last = 0
   assert(not ('\0' in seps))
-  for i in 0.. <len(s):
-    if s[i] in seps:
-      if i != start:
-        yield s.substr(start, i-1)
-      start = i+1
-  if start != len(s):
-    yield s.substr(start, len(s))
+  while last < len(s):
+    while s[last] in seps: inc(last)
+    var first = last
+    while last < len(s) and s[last] notin seps: inc(last) # BUGFIX!
+    if first <= last-1:
+      yield substr(s, first, last-1)
 
 iterator split*(s: string, sep: char): string =
   ## Splits the string `s` into substrings using a single separator.
@@ -277,25 +276,27 @@ iterator split*(s: string, sep: char): string =
   ##   ""
   ##   ""
   ##
-  var start = 0
+  var last = 0
   assert('\0' != sep)
-  for i in 0.. <len(s):
-    if s[i] == sep:
-      if i != start:
-        yield s.substr(start, i-1)
-      start = i+1
-  if start != len(s):
-    yield s.substr(start, len(s))
+  let length = len(s)
+  if length > 0:
+    # `<=` is correct here for the edge cases!
+    while last <= length:
+      var first = last
+      while last < length and s[last] != sep: inc(last)
+      yield substr(s, first, last-1)
+      inc(last)
 
 iterator split*(s: string, sep: string): string =
   ## Splits the string `s` into substrings using a string separator.
   ##
   ## Substrings are separated by the string `sep`.
   var last = 0
-  if len(s) > 0:
-    while last <= len(s):
+  let length = len(s)
+  if length > 0:
+    while last <= length:
       var first = last
-      while last < len(s) and s.substr(last, last + <sep.len) != sep:
+      while last < length and s.substr(last, last + <sep.len) != sep:
         inc(last)
       yield substr(s, first, last-1)
       inc(last, sep.len)
