@@ -232,7 +232,7 @@ proc uncompress*(sourceBuf: cstring, sourceLen: int): string =
     return
 
   # Make sure memory allocated by inflateInit2() is freed eventually.
-  finally: discard inflateEnd(z)
+  defer: discard inflateEnd(z)
 
   # Decompress all of self.
   while true:

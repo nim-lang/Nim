@@ -20,6 +20,7 @@ type
 
 {.deprecated: [TUrl: Url, TUri: Uri].}
 
+{.push warning[deprecated]: off.}
 proc `$`*(url: Url): string {.deprecated.} =
   ## **Deprecated since 0.9.6**: Use ``Uri`` instead.
   return string(url)
@@ -44,6 +45,7 @@ proc add*(url: var Url, a: Url) {.deprecated.} =
   ##
   ## **Deprecated since 0.9.6**: Use ``Uri`` instead.
   url = url / a
+{.pop.}
 
 proc parseAuthority(authority: string, result: var Uri) =
   var i = 0

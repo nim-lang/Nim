@@ -462,7 +462,7 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
   openScope(c)
   inc c.inTypeClass
 
-  finally:
+  defer:
     dec c.inTypeClass
     closeScope(c)
 

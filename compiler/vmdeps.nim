@@ -19,7 +19,7 @@ proc readOutput(p: Process): string =
   discard p.waitForExit
 
 proc opGorge*(cmd, input: string): string =
-  var p = startCmd(cmd)
+  var p = startProcess(cmd, options={poEvalCommand})
   if input.len != 0:
     p.inputStream.write(input)
     p.inputStream.close()
