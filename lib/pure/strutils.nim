@@ -278,11 +278,12 @@ iterator split*(s: string, sep: char): string =
   ##
   var last = 0
   assert('\0' != sep)
-  if len(s) > 0:
+  let length = len(s)
+  if length > 0:
     # `<=` is correct here for the edge cases!
-    while last <= len(s):
+    while last <= length:
       var first = last
-      while last < len(s) and s[last] != sep: inc(last)
+      while last < length and s[last] != sep: inc(last)
       yield substr(s, first, last-1)
       inc(last)
 
@@ -291,10 +292,11 @@ iterator split*(s: string, sep: string): string =
   ##
   ## Substrings are separated by the string `sep`.
   var last = 0
-  if len(s) > 0:
-    while last <= len(s):
+  let length = len(s)
+  if length > 0:
+    while last <= length:
       var first = last
-      while last < len(s) and s.substr(last, last + <sep.len) != sep:
+      while last < length and s.substr(last, last + <sep.len) != sep:
         inc(last)
       yield substr(s, first, last-1)
       inc(last, sep.len)
