@@ -260,7 +260,7 @@ proc execProcesses*(cmds: openArray[string],
     for i in 0..m-1:
       if beforeRunEvent != nil:
         beforeRunEvent(i)
-      q[i] = startCmd(cmds[i], options=options)
+      q[i] = startProcess(cmds[i], options=options + {poEvalCommand})
     when defined(noBusyWaiting):
       var r = 0
       for i in m..high(cmds):
@@ -275,7 +275,7 @@ proc execProcesses*(cmds: openArray[string],
         if q[r] != nil: close(q[r])
         if beforeRunEvent != nil:
           beforeRunEvent(i)
-        q[r] = startCmd(cmds[i], options=options)
+        q[r] = startProcess(cmds[i], options=options + {poEvalCommand})
         r = (r + 1) mod n
     else:
       var i = m
@@ -288,7 +288,7 @@ proc execProcesses*(cmds: openArray[string],
             if q[r] != nil: close(q[r])
             if beforeRunEvent != nil:
               beforeRunEvent(i)
-            q[r] = startCmd(cmds[i], options=options)
+            q[r] = startProcess(cmds[i], options=options + {poEvalCommand})
             inc(i)
             if i > high(cmds): break
     for j in 0..m-1:
@@ -298,7 +298,7 @@ proc execProcesses*(cmds: openArray[string],
     for i in 0..high(cmds):
       if beforeRunEvent != nil:
         beforeRunEvent(i)
-      var p = startCmd(cmds[i], options=options)
+      var p = startProcess(cmds[i], options=options + {poEvalCommand})
       result = max(waitForExit(p), result)
       close(p)
 
@@ -644,14 +644,14 @@ elif not defined(useNimRtl):
     var pid: TPid
 
     var sysArgs = allocCStringArray(sysArgsRaw)
-    finally: deallocCStringArray(sysArgs)
+    defer: deallocCStringArray(sysArgs)
 
     var sysEnv = if env == nil:
         envToCStringArray()
       else:
         envToCStringArray(env)
 
-    finally: deallocCStringArray(sysEnv)
+    defer: deallocCStringArray(sysEnv)
 
     var data: TStartProcessData
     data.sysCommand = sysCommand
@@ -748,7 +748,7 @@ elif not defined(useNimRtl):
     if pipe(data.pErrorPipe) != 0:
       raiseOSError(osLastError())
 
-    finally:
+    defer:
       discard close(data.pErrorPipe[readIdx])
 
     var pid: TPid
@@ -956,7 +956,7 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
                 exitCode: int] {.tags: [ExecIOEffect, ReadIOEffect], gcsafe.} =
   ## a convenience proc that runs the `command`, grabs all its output and
   ## exit code and returns both.
-  var p = startCmd(command, options)
+  var p = startProcess(command, options=options + {poEvalCommand})
   var outp = outputStream(p)
   result = (TaintedString"", -1)
   var line = newStringOfCap(120).TaintedString

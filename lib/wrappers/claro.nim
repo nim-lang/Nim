@@ -64,7 +64,7 @@ proc node_move*(n: ptr TNode, oldlist: ptr TList, newlist: ptr TList){.
     cdecl, importc: "node_move", dynlib: clarodll.}
 
 type 
-  TClaroObj*{.pure.} = object 
+  TClaroObj*{.pure, inheritable.} = object 
     typ*: array[0..64 - 1, char]
     destroy_pending*: cint
     event_handlers*: TList
@@ -86,7 +86,7 @@ type
   TEventHandler*{.pure.} = object 
     typ*: array[0..32 - 1, char]
     data*: pointer
-    func*: TEventFunc   # the function that handles this event 
+    fun*: TEventFunc   # the function that handles this event 
   
 
 # #define event_handler(n) void n ( TClaroObj *object, event_t *event )
@@ -121,10 +121,10 @@ proc object_set_parent*(obj: ptr TClaroObj, parent: ptr TClaroObj){.cdecl,
 # event functions 
 
 proc object_addhandler*(obj: ptr TClaroObj, event: cstring, 
-                        func: TEventFunc){.cdecl, 
+                        fun: TEventFunc){.cdecl, 
     importc: "object_addhandler", dynlib: clarodll.}
 proc object_addhandler_interface*(obj: ptr TClaroObj, event: cstring, 
-                                  func: TEventFunc, data: pointer){.cdecl, 
+                                  fun: TEventFunc, data: pointer){.cdecl, 
     importc: "object_addhandler_interface", dynlib: clarodll.}
 proc event_send*(obj: ptr TClaroObj, event: cstring, fmt: cstring): cint{.
     varargs, cdecl, importc: "event_send", dynlib: clarodll.}
@@ -258,7 +258,7 @@ proc image_load_inline_png*(parent: ptr TClaroObj, data: cstring,
   ##  len size of data
 
 when true:
-  nil
+  discard
 else:
   # status icons are not supported on all platforms yet:
   type 
@@ -682,7 +682,7 @@ const
 type 
   TCanvas*{.pure.} = object of TWidget
     surface*: cairo.PSurface
-    cr*: Cairo.PContext
+    cr*: cairo.PContext
     surfdata*: pointer
     fontdata*: pointer
     font_height*: cint
@@ -854,7 +854,7 @@ proc canvas_cairo_buffered_text_display_count*(widget: ptr TCanvas,
     text: cstring, width: cint): cint{.cdecl, 
     importc: "canvas_cairo_buffered_text_display_count", 
     dynlib: clarodll.}
-proc canvas_get_cairo_context*(widget: ptr TCanvas): Cairo.PContext {.cdecl, 
+proc canvas_get_cairo_context*(widget: ptr TCanvas): cairo.PContext {.cdecl, 
     importc: "canvas_get_cairo_context", dynlib: clarodll.}
 
 type 

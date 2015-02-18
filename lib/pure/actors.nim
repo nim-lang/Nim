@@ -200,7 +200,7 @@ template schedule =
   if minIdx >= 0:
     p.actors[minIdx].i.send(t)
   else:
-    raise newException(EDeadThread, "cannot send message; thread died")
+    raise newException(DeadThreadError, "cannot send message; thread died")
 
 proc spawn*[TIn, TOut](p: var TActorPool[TIn, TOut], input: TIn,
                        action: proc (input: TIn): TOut {.thread.}
