@@ -124,7 +124,7 @@ proc declared*(x: expr): bool {.magic: "Defined", noSideEffect.}
   ## feature or not:
   ##
   ## .. code-block:: Nim
-  ##   when not defined(strutils.toUpper):
+  ##   when not declared(strutils.toUpper):
   ##     # provide our own toUpper proc here, because strutils is
   ##     # missing it.
 
