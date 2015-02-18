@@ -2457,7 +2457,7 @@ when not defined(JS): #and not defined(NimrodVM):
     proc getFileSize*(f: File): int64 {.tags: [ReadIOEffect], benign.}
       ## retrieves the file size (in bytes) of `f`.
 
-    proc readBytes*(f: File, a: var openArray[int8], start, len: int): int {.
+    proc readBytes*(f: File, a: var openArray[int8|uint8], start, len: int): int {.
       tags: [ReadIOEffect], benign.}
       ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
       ## the actual number of bytes that have been read which may be less than
@@ -2475,7 +2475,7 @@ when not defined(JS): #and not defined(NimrodVM):
       ## the actual number of bytes that have been read which may be less than
       ## `len` (if not as many bytes are remaining), but not greater.
 
-    proc writeBytes*(f: File, a: openArray[int8], start, len: int): int {.
+    proc writeBytes*(f: File, a: openArray[int8|uint8], start, len: int): int {.
       tags: [WriteIOEffect], benign.}
       ## writes the bytes of ``a[start..start+len-1]`` to the file `f`. Returns
       ## the number of actual written bytes, which may be less than `len` in case
