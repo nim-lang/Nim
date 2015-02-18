@@ -174,17 +174,27 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   result.n = originalParams.shallowCopy
   
   for i in 1 .. <result.len:
+    # twrong_field_caching requires these 'resetIdTable' calls:
+    if i > 1: resetIdTable(cl.symMap)
     result.sons[i] = replaceTypeVarsT(cl, result.sons[i])
     propagateToOwner(result, result.sons[i])
-    let param = replaceTypeVarsN(cl, originalParams[i])
-    result.n.sons[i] = param
-    if param.kind == nkSym:
-      # XXX: this won't be true for void params
-      # implement pass-through of void params and
-      # the "sort by distance to point" container
+    internalAssert originalParams[i].kind == nkSym
+    when true:
+      let oldParam = originalParams[i].sym
+      let param = copySym(oldParam)
+      param.owner = prc
+      param.typ = result.sons[i]
+      param.ast = oldParam.ast.copyTree
+      # don't be lazy here and call replaceTypeVarsN(cl, originalParams[i])!
+      result.n.sons[i] = newSymNode(param)
+      addDecl(c, param)
+    else:
+      let param = replaceTypeVarsN(cl, originalParams[i])
+      result.n.sons[i] = param
       param.sym.owner = prc
-      addDecl(c, param.sym)
-    
+      addDecl(c, result.n.sons[i].sym)
+
+  resetIdTable(cl.symMap)
   result.sons[0] = replaceTypeVarsT(cl, result.sons[0])
   result.n.sons[0] = originalParams[0].copyTree
   

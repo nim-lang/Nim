@@ -1261,12 +1261,20 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
       result = implicitConv(nkHiddenStdConv, f, result, m, c)
   of isGeneric:
     inc(m.genericMatches)
-    result = copyTree(arg)
-    result.typ = getInstantiatedType(c, arg, m, f)
-    # BUG: f may not be the right key!
-    if skipTypes(result.typ, abstractVar-{tyTypeDesc}).kind in {tyTuple}:
-      result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
-      # BUGFIX: use ``result.typ`` and not `f` here
+    when false:
+      if skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple:
+        result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
+      else:
+        result = arg.copyTree
+    else:
+      # XXX Why is this ever necessary? arg's type should not be retrofitted
+      # to match formal's type in this way!
+      result = copyTree(arg)
+      result.typ = getInstantiatedType(c, arg, m, f)
+      # BUG: f may not be the right key!
+      if skipTypes(result.typ, abstractVar-{tyTypeDesc}).kind in {tyTuple}:
+        result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
+        # BUGFIX: use ``result.typ`` and not `f` here
   of isFromIntLit:
     # too lazy to introduce another ``*matches`` field, so we conflate
     # ``isIntConv`` and ``isIntLit`` here:

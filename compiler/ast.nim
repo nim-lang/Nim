@@ -1298,6 +1298,12 @@ proc initIdTable(x: var TIdTable) =
   x.counter = 0
   newSeq(x.data, StartSize)
 
+proc resetIdTable*(x: var TIdTable) =
+  x.counter = 0
+  # clear and set to old initial size:
+  setLen(x.data, 0)
+  setLen(x.data, StartSize)
+
 proc initObjectSet(x: var TObjectSet) = 
   x.counter = 0
   newSeq(x.data, StartSize)

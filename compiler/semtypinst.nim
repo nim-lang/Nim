@@ -223,7 +223,7 @@ proc lookupTypeVar(cl: var TReplTypeVars, t: PType): PType =
     result = errorType(cl.c)
     # In order to prevent endless recursions, we must remember
     # this bad lookup and replace it with errorType everywhere.
-    # These code paths are only active in nimrod check
+    # These code paths are only active in "nim check"
     idTablePut(cl.typeMap, t, result)
   elif result.kind == tyGenericParam and not cl.allowMetaTypes:
     internalError(cl.info, "substitution with generic parameter")
