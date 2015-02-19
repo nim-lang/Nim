@@ -13,24 +13,24 @@
 
 import math
 
-type Rational* = tuple[num, den: int]
+type Rational*[T] = tuple[num, den: T]
   ## a rational number, consisting of a numerator and denominator
 
-proc toRational*(x: SomeInteger): Rational =
+proc toRational*[T](x: SomeInteger): Rational[T] =
   ## Convert some integer `x` to a rational number.
   result.num = x
   result.den = 1
 
-proc toFloat*(x: Rational): float =
+proc toFloat*[T](x: Rational[T]): float =
   ## Convert a rational number `x` to a float.
   x.num / x.den
 
-proc toInt*(x: Rational): int =
+proc toInt*[T](x: Rational[T]): int =
   ## Convert a rational number `x` to an int. Conversion rounds towards 0 if
   ## `x` does not contain an integer value.
   x.num div x.den
 
-proc reduce*(x: var Rational) =
+proc reduce*[T](x: var Rational[T]) =
   ## Reduce rational `x`.
   let common = gcd(x.num, x.den)
   if x.den > 0:
@@ -42,97 +42,97 @@ proc reduce*(x: var Rational) =
   else:
     raise newException(DivByZeroError, "division by zero")
 
-proc `+` *(x, y: Rational): Rational =
+proc `+` *[T](x, y: Rational[T]): Rational[T] =
   ## Add two rational numbers.
   let common = lcm(x.den, y.den)
   result.num = common div x.den * x.num + common div y.den * y.num
   result.den = common
   reduce(result)
 
-proc `+` *(x: Rational, y: int): Rational =
+proc `+` *[T](x: Rational[T], y: T): Rational[T] =
   ## Add rational `x` to int `y`.
   result.num = x.num + y * x.den
   result.den = x.den
 
-proc `+` *(x: int, y: Rational): Rational =
+proc `+` *[T](x: T, y: Rational[T]): Rational[T] =
   ## Add int `x` to rational `y`.
   result.num = x * y.den + y.num
   result.den = y.den
 
-proc `+=` *(x: var Rational, y: Rational) =
+proc `+=` *[T](x: var Rational[T], y: Rational[T]) =
   ## Add rational `y` to rational `x`.
   let common = lcm(x.den, y.den)
   x.num = common div x.den * x.num + common div y.den * y.num
   x.den = common
   reduce(x)
 
-proc `+=` *(x: var Rational, y: int) =
+proc `+=` *[T](x: var Rational[T], y: T) =
   ## Add int `y` to rational `x`.
   x.num += y * x.den
 
-proc `-` *(x: Rational): Rational =
+proc `-` *[T](x: Rational[T]): Rational[T] =
   ## Unary minus for rational numbers.
   result.num = -x.num
   result.den = x.den
 
-proc `-` *(x, y: Rational): Rational =
+proc `-` *[T](x, y: Rational[T]): Rational[T] =
   ## Subtract two rational numbers.
   let common = lcm(x.den, y.den)
   result.num = common div x.den * x.num - common div y.den * y.num
   result.den = common
   reduce(result)
 
-proc `-` *(x: Rational, y: int): Rational =
+proc `-` *[T](x: Rational[T], y: T): Rational[T] =
   ## Subtract int `y` from rational `x`.
   result.num = x.num - y * x.den
   result.den = x.den
 
-proc `-` *(x: int, y: Rational): Rational =
+proc `-` *[T](x: T, y: Rational[T]): Rational[T] =
   ## Subtract rational `y` from int `x`.
   result.num = - x * y.den + y.num
   result.den = y.den
 
-proc `-=` *(x: var Rational, y: Rational) =
+proc `-=` *[T](x: var Rational[T], y: Rational[T]) =
   ## Subtract rational `y` from rational `x`.
   let common = lcm(x.den, y.den)
   x.num = common div x.den * x.num - common div y.den * y.num
   x.den = common
   reduce(x)
 
-proc `-=` *(x: var Rational, y: int) =
+proc `-=` *[T](x: var Rational[T], y: T) =
   ## Subtract int `y` from rational `x`.
   x.num -= y * x.den
 
-proc `*` *(x, y: Rational): Rational =
+proc `*` *[T](x, y: Rational[T]): Rational[T] =
   ## Multiply two rational numbers.
   result.num = x.num * y.num
   result.den = x.den * y.den
   reduce(result)
 
-proc `*` *(x: Rational, y: int): Rational =
+proc `*` *[T](x: Rational[T], y: T): Rational[T] =
   ## Multiply rational `x` with int `y`.
   result.num = x.num * y
   result.den = x.den
   reduce(result)
 
-proc `*` *(x: int, y: Rational): Rational =
+proc `*` *[T](x: T, y: Rational[T]): Rational[T] =
   ## Multiply int `x` with rational `y`.
   result.num = x * y.num
   result.den = y.den
   reduce(result)
 
-proc `*=` *(x: var Rational, y: Rational) =
+proc `*=` *[T](x: var Rational[T], y: Rational[T]) =
   ## Multiply rationals `y` to `x`.
   x.num *= y.num
   x.den *= y.den
   reduce(x)
 
-proc `*=` *(x: var Rational, y: int) =
+proc `*=` *[T](x: var Rational[T], y: T) =
   ## Multiply int `y` to rational `x`.
   x.num *= y
   reduce(x)
 
-proc reciprocal*(x: Rational): Rational =
+proc reciprocal*[T](x: Rational[T]): Rational[T] =
   ## Calculate the reciprocal of `x`. (1/x)
   if x.num > 0:
     result.num = x.den
@@ -143,31 +143,31 @@ proc reciprocal*(x: Rational): Rational =
   else:
     raise newException(DivByZeroError, "division by zero")
 
-proc `/`*(x, y: Rational): Rational =
+proc `/`*[T](x, y: Rational[T]): Rational[T] =
   ## Divide rationals `x` by `y`.
   result.num = x.num * y.den
   result.den = x.den * y.num
   reduce(result)
 
-proc `/`*(x: Rational, y: int): Rational =
+proc `/`*[T](x: Rational[T], y: T): Rational[T] =
   ## Divide rational `x` by int `y`.
   result.num = x.num
   result.den = x.den * y
   reduce(result)
 
-proc `/`*(x: int, y: Rational): Rational =
+proc `/`*[T](x: T, y: Rational[T]): Rational[T] =
   ## Divide int `x` by Rational `y`.
   result.num = x * y.den
   result.den = y.num
   reduce(result)
 
-proc `/=`*(x: var Rational, y: Rational) =
+proc `/=`*[T](x: var Rational[T], y: Rational[T]) =
   ## Divide rationals `x` by `y` in place.
   x.num *= y.den
   x.den *= y.num
   reduce(x)
 
-proc `/=`*(x: var Rational, y: int) =
+proc `/=`*[T](x: var Rational[T], y: T) =
   ## Divide rational `x` by int `y` in place.
   x.den *= y
   reduce(x)
@@ -185,7 +185,7 @@ proc `<=` *(x, y: Rational): bool =
 proc `==` *(x, y: Rational): bool =
   (x - y).num == 0
 
-proc abs*(x: Rational): Rational =
+proc abs*[T](x: Rational[T]): Rational[T] =
   result.num = abs x.num
   result.den = abs x.den
 
@@ -253,3 +253,8 @@ when isMainModule:
   assert( y == (13,3) )
   y /= 9
   assert( y == (13,27) )
+
+  assert toRational[int, int](5) == (5,1)
+  assert abs(toFloat(y) - 0.4814814814814815) < 1.0e-7
+  assert toInt(z) == 0
+  echo 2 + (4,3)
