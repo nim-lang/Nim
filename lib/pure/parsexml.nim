@@ -128,6 +128,7 @@ proc open*(my: var XmlParser, input: Stream, filename: string,
   my.kind = xmlError
   my.a = ""
   my.b = ""
+  my.c = ""
   my.options = options
   
 proc close*(my: var XmlParser) {.inline.} = 
@@ -138,40 +139,40 @@ proc kind*(my: XmlParser): XmlEventKind {.inline.} =
   ## returns the current event type for the XML parser
   return my.kind
 
-proc charData*(my: XmlParser): string {.inline.} = 
+proc charData*(my: var XmlParser): var string {.inline.} = 
   ## returns the character data for the events: ``xmlCharData``, 
   ## ``xmlWhitespace``, ``xmlComment``, ``xmlCData``, ``xmlSpecial``
   assert(my.kind in {xmlCharData, xmlWhitespace, xmlComment, xmlCData, 
                      xmlSpecial})
   return my.a
 
-proc elementName*(my: XmlParser): string {.inline.} = 
+proc elementName*(my: var XmlParser): var string {.inline.} = 
   ## returns the element name for the events: ``xmlElementStart``, 
   ## ``xmlElementEnd``, ``xmlElementOpen``
   assert(my.kind in {xmlElementStart, xmlElementEnd, xmlElementOpen})
   return my.a
 
-proc entityName*(my: XmlParser): string {.inline.} = 
+proc entityName*(my: var XmlParser): var string {.inline.} = 
   ## returns the entity name for the event: ``xmlEntity``
   assert(my.kind == xmlEntity)
   return my.a
   
-proc attrKey*(my: XmlParser): string {.inline.} = 
+proc attrKey*(my: var XmlParser): var string {.inline.} = 
   ## returns the attribute key for the event ``xmlAttribute``
   assert(my.kind == xmlAttribute)
   return my.a
   
-proc attrValue*(my: XmlParser): string {.inline.} = 
+proc attrValue*(my: var XmlParser): var string {.inline.} = 
   ## returns the attribute value for the event ``xmlAttribute``
   assert(my.kind == xmlAttribute)
   return my.b
 
-proc piName*(my: XmlParser): string {.inline.} = 
+proc piName*(my: var XmlParser): var string {.inline.} = 
   ## returns the processing instruction name for the event ``xmlPI``
   assert(my.kind == xmlPI)
   return my.a
 
-proc piRest*(my: XmlParser): string {.inline.} = 
+proc piRest*(my: var XmlParser): var string {.inline.} = 
   ## returns the rest of the processing instruction for the event ``xmlPI``
   assert(my.kind == xmlPI)
   return my.b
@@ -446,13 +447,15 @@ proc parseTag(my: var XmlParser) =
     # an attribute follows:
     my.kind = xmlElementOpen
     my.state = stateAttr
-    my.c = my.a # save for later
+    # save for later:
+    my.c.setLen(my.a.len)
+    copyMem(addr my.c[0], addr my.a[0], my.a.len+1)
   else:
     my.kind = xmlElementStart
     if my.buf[my.bufpos] == '/' and my.buf[my.bufpos+1] == '>':
       inc(my.bufpos, 2)
       my.state = stateEmptyElementTag
-      my.c = nil
+      my.c.setLen(0)
     elif my.buf[my.bufpos] == '>':
       inc(my.bufpos)  
     else:
@@ -621,8 +624,9 @@ proc next*(my: var XmlParser) =
   of stateEmptyElementTag:
     my.state = stateNormal
     my.kind = xmlElementEnd
-    if not isNil(my.c):
-      my.a = my.c
+    if my.c.len > 0:
+      my.a.setLen(my.c.len)
+      copyMem(addr my.a[0], addr my.c[0], my.c.len+1)
   of stateError: 
     my.kind = xmlError
     my.state = stateNormal
