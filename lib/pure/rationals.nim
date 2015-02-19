@@ -55,7 +55,7 @@ proc `+` *(x: Rational, y: int): Rational =
   result.den = x.den
 
 proc `+` *(x: int, y: Rational): Rational =
-  ## Add int `x` to tational `y`.
+  ## Add int `x` to rational `y`.
   result.num = x * y.den + y.num
   result.den = y.den
 
