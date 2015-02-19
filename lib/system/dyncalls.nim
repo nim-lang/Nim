@@ -107,7 +107,7 @@ elif defined(windows) or defined(dos):
     result = getProcAddress(cast[THINSTANCE](lib), name)
     if result == nil: procAddrError(name)
 
-elif defined(mac):
+elif defined(macosx):
   #
   # =======================================================================
   # Native Mac OS X / Darwin Implementation
