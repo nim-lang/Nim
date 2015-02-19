@@ -449,7 +449,7 @@ proc parseTag(my: var XmlParser) =
     my.state = stateAttr
     # save for later:
     my.c.setLen(my.a.len)
-    copyMem(addr my.c[0], addr my.a[0], my.a.len+1)
+    my.c[0..my.c.high] = my.a[0..my.a.high]
   else:
     my.kind = xmlElementStart
     if my.buf[my.bufpos] == '/' and my.buf[my.bufpos+1] == '>':
@@ -626,7 +626,7 @@ proc next*(my: var XmlParser) =
     my.kind = xmlElementEnd
     if my.c.len > 0:
       my.a.setLen(my.c.len)
-      copyMem(addr my.a[0], addr my.c[0], my.c.len+1)
+      my.a[0..my.a.high] = my.c[0..my.c.high]
   of stateError: 
     my.kind = xmlError
     my.state = stateNormal
