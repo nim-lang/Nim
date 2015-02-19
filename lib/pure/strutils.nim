@@ -395,11 +395,13 @@ proc toHex*(x: BiggestInt, len: int): string {.noSideEffect,
   const
     HexChars = "0123456789ABCDEF"
   var
-    shift: BiggestInt
+    n = x
   result = newString(len)
   for j in countdown(len-1, 0):
-    result[j] = HexChars[toU32(x shr shift) and 0xF'i32]
-    shift = shift + 4
+    result[j] = HexChars[n and 0xF]
+    n = n shr 4
+    # handle negative overflow
+    if n == 0 and x < 0: n = -1
 
 proc intToStr*(x: int, minchars: int = 1): string {.noSideEffect,
   rtl, extern: "nsuIntToStr".} =
