@@ -1365,18 +1365,11 @@ proc parseEnum*[T: enum](s: string): T =
   macro m: stmt =
     result = newStmtList()
 
-    for e in T:
-      # if cmpIgnoreStyle(s, $e) == 0: return e
-      result.add(newIfStmt((newNimNode(nnkInfix).add(newIdentNode("=="),
-        newCall(newIdentNode("cmpIgnoreStyle"), newIdentNode("s"),
-          newStrLitNode($e)), newIntLitNode(0)),
-        newNimNode(nnkReturnStmt).add(newIdentNode($e)))))
+    for e in T: result.add parseStmt(
+      "if cmpIgnoreStyle(s, \"$1\") == 0: return $1".format(e))
 
-    # raise newException(ValueError, "invalid enum value: " & s)
-    result.add(newNimNode(nnkRaiseStmt).add(newCall(
-      newIdentNode("newException"), newIdentNode("ValueError"),
-      newNimNode(nnkInfix).add(newIdentNode("&"),
-        newStrLitNode("invalid enum value: "), newIdentNode("s")))))
+    result.add parseStmt(
+      "raise newException(ValueError, \"invalid enum value: \" & s)")
 
   m()
 
@@ -1388,15 +1381,10 @@ proc parseEnum*[T: enum](s: string, default: T): T =
   macro m: stmt =
     result = newStmtList()
 
-    for e in T:
-      # if cmpIgnoreStyle(s, $e) == 0: return e
-      result.add(newIfStmt((newNimNode(nnkInfix).add(newIdentNode("=="),
-        newCall(newIdentNode("cmpIgnoreStyle"), newIdentNode("s"),
-          newStrLitNode($e)), newIntLitNode(0)),
-        newNimNode(nnkReturnStmt).add(newIdentNode($e)))))
+    for e in T: result.add parseStmt(
+      "if cmpIgnoreStyle(s, \"$1\") == 0: return $1".format(e))
 
-    # result = default
-    result.add(newAssignment(newIdentNode("result"), newIdentNode("default")))
+    result.add parseStmt("result = default")
 
   m()
 
