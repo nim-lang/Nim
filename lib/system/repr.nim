@@ -30,14 +30,16 @@ proc reprStrAux(result: var string, s: string) =
     add result, "nil"
     return
   add result, reprPointer(cast[pointer](s)) & "\""
-  for c in items(s):
+  for i in 0.. <s.len:
+    let c = s[i]
     case c
     of '"': add result, "\\\""
     of '\\': add result, "\\\\" # BUGFIX: forgotten
     of '\10': add result, "\\10\"\n\"" # " \n " # better readability
     of '\128' .. '\255', '\0'..'\9', '\11'..'\31':
       add result, "\\" & reprInt(ord(c))
-    else: result.add(c)
+    else:
+      result.add(c)
   add result, "\""
 
 proc reprStr(s: string): string {.compilerRtl.} =

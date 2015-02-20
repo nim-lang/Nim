@@ -1455,7 +1455,8 @@ template `>%` *(x, y: expr): expr {.immediate.} = y <% x
 
 proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
   ## The stringify operator for an integer argument. Returns `x`
-  ## converted to a decimal string.
+  ## converted to a decimal string. ``$`` is Nim's general way of
+  ## spelling `toString`:idx:.
 
 proc `$`*(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
   ## The stringify operator for an integer argument. Returns `x`
