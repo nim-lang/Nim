@@ -187,6 +187,13 @@ proc sort*[T](a: var openArray[T],
       dec(m, s*2)
     s = s*2
 
+proc sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.}, order = SortOrder.Ascending): seq[T] =
+  ## returns `a` sorted by `cmp` in the specified `order`.
+  result = newSeq[T](a.len)
+  for i in 0 .. a.high:
+    result[i] = a[i]
+  sort(result, cmp, order)
+
 proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
   ## produces the Cartesian product of the array. Warning: complexity
   ## may explode.
