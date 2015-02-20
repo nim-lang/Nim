@@ -452,6 +452,7 @@ proc semCaseBranchSetElem(c: PContext, t, b: PNode,
 
 proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int, 
                    covered: var BiggestInt) = 
+  
   for i in countup(0, sonsLen(branch) - 2): 
     var b = branch.sons[i]
     if b.kind == nkRange:
@@ -461,8 +462,11 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
     else:
       # constant sets and arrays are allowed:
       var r = semConstExpr(c, b)
-      # for ``{}`` we want to trigger the type mismatch in ``fitNode``:
-      if r.kind notin {nkCurly, nkBracket} or len(r) == 0:
+      if r.kind in {nkCurly, nkBracket} and len(r) == 0  and sonsLen(branch)==2:
+        # discarding ``{}`` and ``[]`` branches silently
+        delSon(branch, 0)
+        return
+      elif r.kind notin {nkCurly, nkBracket} or len(r) == 0:
         checkMinSonsLen(t, 1)
         branch.sons[i] = skipConv(fitNode(c, t.sons[0].typ, r))
         inc(covered)
