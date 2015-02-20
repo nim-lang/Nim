@@ -3,8 +3,8 @@
 ===========================================
 
 
-General
-=======
+General FAQ
+===========
 
 
 .. container:: standout
@@ -124,8 +124,8 @@ General
   keyword.
 
 
-Compilation
-===========
+Compilation FAQ
+===============
 
 .. container:: standout
 
@@ -149,16 +149,16 @@ Compilation
   Edit the ``config/nim.cfg`` file.
   Change the value of the ``cc`` variable to one of the following:
 
-  ==============  ============================================
-  Abbreviation    C/C++ Compiler
-  ==============  ============================================
-  ``vcc``         Microsoft's Visual C++
-  ``gcc``         Gnu C
-  ``llvm_gcc``    LLVM-GCC compiler
-  ``icc``         Intel C++ compiler
-  ``clang``       Clang compiler
-  ``ucc``         Generic UNIX C compiler
-  ==============  ============================================
+  ================  ============================================
+  **Abbreviation**  **C/C++ Compiler**
+  ================  ============================================
+  ``vcc``           Microsoft's Visual C++
+  ``gcc``           Gnu C
+  ``llvm_gcc``      LLVM-GCC compiler
+  ``icc``           Intel C++ compiler
+  ``clang``         Clang compiler
+  ``ucc``           Generic UNIX C compiler
+  ================  ============================================
 
   Other C compilers are not officially supported, but might work too.
 
