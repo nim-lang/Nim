@@ -156,7 +156,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   dec(c.p.nestedLoopCounter)
   # for TR macros this 'while true: ...; break' loop is pretty bad, so
   # we avoid it now if we can:
-  if hasSonWith(stmts, nkBreakStmt):
+  if containsNode(stmts, {nkBreakStmt}):
     var b = newNodeI(nkBreakStmt, n.info)
     b.add(ast.emptyNode)
     stmts.add(b)
