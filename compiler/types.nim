@@ -796,7 +796,7 @@ template ifFastObjectTypeCheckFailed(a, b: PType, body: stmt) {.immediate.} =
   else:
     # expensive structural equality test; however due to the way generic and
     # objects work, if one of the types does **not** contain tfFromGeneric,
-    # they cannot be equal. The check ``a.sym.Id == b.sym.Id`` checks
+    # they cannot be equal. The check ``a.sym.id == b.sym.id`` checks
     # for the same origin and is essential because we don't want "pure" 
     # structural type equivalence:
     #

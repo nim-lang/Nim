@@ -72,8 +72,9 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
           if cmp < 0: best = z   # x is better than the best so far
           elif cmp == 0: alt = z # x is as good as the best so far
           else: discard
-        #if sym.name.s == "shl" and (n.info ?? "net.nim"):
+        #if sym.name.s == "*" and (n.info ?? "temp5.nim"):
         #  echo "Matches ", n.info, " ", typeToString(sym.typ)
+        #  debug sym
         #  writeMatches(z)
     sym = nextOverloadIter(o, c, headSymbol)
 

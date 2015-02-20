@@ -1087,14 +1087,20 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNAdd:
       decodeBC(rkNode)
       var u = regs[rb].node
-      u.add(regs[rc].node)
+      if u.kind notin {nkEmpty..nkNilLit}:
+        u.add(regs[rc].node)
+      else:
+        stackTrace(c, tos, pc, errGenerated, "cannot add to node kind: " & $u.kind)
       regs[ra].node = u
     of opcNAddMultiple:
       decodeBC(rkNode)
       let x = regs[rc].node
       var u = regs[rb].node
-      # XXX can be optimized:
-      for i in 0.. <x.len: u.add(x.sons[i])
+      if u.kind notin {nkEmpty..nkNilLit}:
+        # XXX can be optimized:
+        for i in 0.. <x.len: u.add(x.sons[i])
+      else:
+        stackTrace(c, tos, pc, errGenerated, "cannot add to node kind: " & $u.kind)
       regs[ra].node = u
     of opcNKind:
       decodeB(rkInt)
