@@ -65,7 +65,7 @@
           </div>
           <div id="slide1">
             <div>
-              <h2>Nim looks like this..</h2>
+              <h2>Nim is simple..</h2>
 <pre>
 <span class="cmt"># compute average line length</span>
 <span class="kwd">var</span>
@@ -81,7 +81,7 @@ echo(<span class="val">"Average line length: "</span>,
 </pre>
             </div>
             <div>
-               <h2>..and this...</h2>
+               <h2>..and type safe...</h2>
 <pre>
 <span class="cmt"># create and greet someone</span>
 <span class="kwd">type</span> <span class="def">Person</span> = <span class="kwd">object</span>
@@ -92,7 +92,7 @@ echo(<span class="val">"Average line length: "</span>,
 <span class="tab">  </span>echo <span class="val">"Hi, I'm "</span>, p.name, <span class="val">"."</span>
 <span class="tab end">  </span>echo <span class="val">"I am "</span>, p.age, <span class="val">" years old."</span>
 
-<span class="kwd">var</span> p = <span class="typ">Person</span>(name:<span class="val">"Jon"</span>, age:<span class="val">18</span>)
+<span class="kwd">let</span> p = <span class="typ">Person</span>(name:<span class="val">"Jon"</span>, age:<span class="val">18</span>)
 p.greet() <span class="cmt"># or greet(p)</span>
 </pre>
              </div>
@@ -108,7 +108,7 @@ p.greet() <span class="cmt"># or greet(p)</span>
 <span class="tab end">    </span>header: <span class="val">"&lt;stdio.h&gt;"</span>.}
 
 <span class="cmt"># ..and use it...</span>
-<span class="kwd">var</span> x: cint
+<span class="kwd">var</span> x: <span class="typ">cint</span>
 stdin.unsafeScanf(<span class="val">"%d"</span>, <span class="kwd">addr</span> x)
 </pre>
               <p><span class="desc"><b>Compile and run with:</b><br>&nbsp;&nbsp;&nbsp;&nbsp;&#36; nim c -r example.nim</span></p>
@@ -116,10 +116,10 @@ stdin.unsafeScanf(<span class="val">"%d"</span>, <span class="kwd">addr</span> x
             <div>
               <h2>..and DSLs are too...</h2>
 <pre>
-<span class="cmt"># a simple web server</span>
-<span class="kwd">import</span> jester, asyncdispatch, htmlgen
+<span class="cmt"># a simple html server</span>
+<span class="kwd">import</span>
+  jester, asyncdispatch, htmlgen
 
-<span class="cmt"># using jester commands</span>
 <span class="kwd">routes</span>:
 <span class="tab">  </span><span class="kwd">get</span> <span class="val">"/"</span>:
 <span class="tab end">  <span class="tab end">  </span></span><span class="kwd">resp</span> h1(<span class="val">"Hello world"</span>)
@@ -146,7 +146,7 @@ runForever()
 #         end for
           </div>
 #  end if
-#  if len(c.ticker) > 0 and currentTab != "support":
+#  if len(c.ticker) > 0:
 					<h3 class="blue">Latest News</h3>
 					<div id="sidebar-news">
           $c.ticker
@@ -173,6 +173,7 @@ runForever()
 					<div>
 						<h4>Documentation</h4>
 						<a href="documentation.html">Stable Documentation</a>
+						<a href="learn.html">Learning Resources</a>
 					<!--	<a href="">Development Documentation</a> -->
 						<a href="https://github.com/Araq/Nimrod">Issues &amp; Requests</a>
 					</div>
