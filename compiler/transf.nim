@@ -492,7 +492,8 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   var newC = newTransCon(getCurrOwner(c))
   newC.forStmt = n
   newC.forLoopBody = loopBody
-  internalAssert iter.kind == skIterator
+  # this can fail for 'nimsuggest' and 'check':
+  if iter.kind != skIterator: return result
   # generate access statements for the parameters (unless they are constant)
   pushTransCon(c, newC)
   for i in countup(1, sonsLen(call) - 1): 
