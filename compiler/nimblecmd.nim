@@ -33,7 +33,7 @@ proc `<.`(a, b: string): bool =
   while true:
     let ii = parseInt(a, verA, i)
     let jj = parseInt(b, verB, j)
-    # if A has no number left, but B has, B is prefered:  0.8 vs 0.8.3
+    # if A has no number left, but B has, B is preferred:  0.8 vs 0.8.3
     if ii <= 0 or jj <= 0: return jj > 0
     if verA < verB: return true
     elif verA > verB: return false

@@ -331,7 +331,7 @@ Library Additions
 The Nimrod development community is proud to announce the release of version
 0.9.4 of the Nimrod compiler and tools. **Note: This release has to be
 considered beta quality! Lots of new features have been implemented but
-unfortunately some do not fullfill our quality standards yet.**
+unfortunately some do not fulfill our quality standards yet.**
 
 Prebuilt binaries and instructions for building from source are available
 on the `download page <download.html>`_.
@@ -756,7 +756,7 @@ Changes affecting backwards compatibility
 - The default calling convention for a procedural **type** is now ``closure``,
   for procs it remains ``nimcall`` (which is compatible to ``closure``).
   Activate the warning ``ImplicitClosure`` to make the compiler list the 
-  occurances of proc types which are affected.
+  occurrences of proc types which are affected.
 - The Nimrod type system now distinguishes ``openarray`` from ``varargs``.
 - Templates are now ``hygienic``. Use the ``dirty`` pragma to get the old
   behaviour.
@@ -884,7 +884,7 @@ Language Additions
 ------------------
 
 - Added new ``is`` and ``of`` operators.
-- The built-in type ``void`` can be used to denote the absense of any type.
+- The built-in type ``void`` can be used to denote the absence of any type.
   This is useful in generic code.
 - Return types may be of the type ``var T`` to return an l-value.
 - The error pragma can now be used to mark symbols whose *usage* should trigger

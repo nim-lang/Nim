@@ -29,7 +29,7 @@ type
   FSMonitorObj = object of RootObj
     fd: cint
     handleEvent: proc (m: FSMonitor, ev: MonitorEvent) {.closure.}
-    targets: TTable[cint, string]
+    targets: Table[cint, string]
   
   MonitorEventType* = enum ## Monitor event type
     MonitorAccess,       ## File was accessed.
@@ -64,7 +64,7 @@ type
 const
   MaxEvents = 100
 
-proc newMonitor*(): PFSMonitor =
+proc newMonitor*(): FSMonitor =
   ## Creates a new file system monitor.
   new(result)
   result.targets = initTable[cint, string]()
@@ -72,7 +72,7 @@ proc newMonitor*(): PFSMonitor =
   if result.fd < 0:
     raiseOSError(osLastError())
 
-proc add*(monitor: PFSMonitor, target: string,
+proc add*(monitor: FSMonitor, target: string,
                filters = {MonitorAll}): cint {.discardable.} =
   ## Adds ``target`` which may be a directory or a file to the list of
   ## watched paths of ``monitor``.
@@ -99,14 +99,14 @@ proc add*(monitor: PFSMonitor, target: string,
     raiseOSError(osLastError())
   monitor.targets.add(result, target)
 
-proc del*(monitor: PFSMonitor, wd: cint) =
+proc del*(monitor: FSMonitor, wd: cint) =
   ## Removes watched directory or file as specified by ``wd`` from ``monitor``.
   ##
   ## If ``wd`` is not a part of ``monitor`` an EOS error is raised.
   if inotifyRmWatch(monitor.fd, wd) < 0:
     raiseOSError(osLastError())
 
-proc getEvent(m: PFSMonitor, fd: cint): seq[TMonitorEvent] =
+proc getEvent(m: FSMonitor, fd: cint): seq[MonitorEvent] =
   result = @[]
   let size = (sizeof(TINotifyEvent)+2000)*MaxEvents
   var buffer = newString(size)
@@ -118,7 +118,7 @@ proc getEvent(m: PFSMonitor, fd: cint): seq[TMonitorEvent] =
   var i = 0
   while i < le:
     var event = cast[ptr TINotifyEvent](addr(buffer[i]))
-    var mev: TMonitorEvent
+    var mev: MonitorEvent
     mev.wd = event.wd
     if event.len.int != 0:
       let cstr = event.name.addr.cstring
@@ -137,7 +137,7 @@ proc getEvent(m: PFSMonitor, fd: cint): seq[TMonitorEvent] =
       # Find the MovedFrom event.
       mev.oldPath = movedFrom[event.cookie.cint].old
       mev.newPath = "" # Set later
-      # Delete it from the TTable
+      # Delete it from the Table
       movedFrom.del(event.cookie.cint)
     elif (event.mask.int and IN_ACCESS) != 0: mev.kind = MonitorAccess
     elif (event.mask.int and IN_ATTRIB) != 0: mev.kind = MonitorAttrib
@@ -164,26 +164,26 @@ proc getEvent(m: PFSMonitor, fd: cint): seq[TMonitorEvent] =
   # If movedFrom events have not been matched with a moveTo. File has
   # been moved to an unwatched location, emit a MonitorDelete.
   for cookie, t in pairs(movedFrom):
-    var mev: TMonitorEvent
+    var mev: MonitorEvent
     mev.kind = MonitorDelete
     mev.wd = t.wd
     mev.name = t.old
     result.add(mev)
 
-proc FSMonitorRead(h: PObject) =
-  var events = PFSMonitor(h).getEvent(PFSMonitor(h).fd)
-  #var newEv: TMonitorEvent
+proc FSMonitorRead(h: RootRef) =
+  var events = FSMonitor(h).getEvent(FSMonitor(h).fd)
+  #var newEv: MonitorEvent
   for ev in events:
-    var target = PFSMonitor(h).targets[ev.wd]
+    var target = FSMonitor(h).targets[ev.wd]
     var newEv = ev
     if newEv.kind == MonitorMoved:
       newEv.oldPath = target / newEv.oldPath
       newEv.newPath = target / newEv.name
     else:
       newEv.fullName = target / newEv.name
-    PFSMonitor(h).handleEvent(PFSMonitor(h), newEv)
+    FSMonitor(h).handleEvent(FSMonitor(h), newEv)
 
-proc toDelegate(m: PFSMonitor): PDelegate =
+proc toDelegate(m: FSMonitor): Delegate =
   result = newDelegate()
   result.deleVal = m
   result.fd = (type(result.fd))(m.fd)
@@ -191,8 +191,8 @@ proc toDelegate(m: PFSMonitor): PDelegate =
   result.handleRead = FSMonitorRead
   result.open = true
 
-proc register*(d: PDispatcher, monitor: PFSMonitor,
-               handleEvent: proc (m: PFSMonitor, ev: TMonitorEvent) {.closure.}) =
+proc register*(d: Dispatcher, monitor: FSMonitor,
+               handleEvent: proc (m: FSMonitor, ev: MonitorEvent) {.closure.}) =
   ## Registers ``monitor`` with dispatcher ``d``.
   monitor.handleEvent = handleEvent
   var deleg = toDelegate(monitor)
@@ -204,7 +204,7 @@ when isMainModule:
     var monitor = newMonitor()
     echo monitor.add("/home/dom/inotifytests/")
     disp.register(monitor,
-      proc (m: PFSMonitor, ev: TMonitorEvent) =
+      proc (m: FSMonitor, ev: MonitorEvent) =
         echo("Got event: ", ev.kind)
         if ev.kind == MonitorMoved:
           echo("From ", ev.oldPath, " to ", ev.newPath)

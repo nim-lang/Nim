@@ -128,7 +128,7 @@ proc raiseOverflow {.exportc: "raiseOverflow", noreturn.} =
   raise newException(OverflowError, "over- or underflow")
 
 proc raiseDivByZero {.exportc: "raiseDivByZero", noreturn.} =
-  raise newException(DivByZeroError, "divison by zero")
+  raise newException(DivByZeroError, "division by zero")
 
 proc raiseRangeError() {.compilerproc, noreturn.} =
   raise newException(RangeError, "value out of range")

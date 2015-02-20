@@ -395,11 +395,13 @@ proc toHex*(x: BiggestInt, len: int): string {.noSideEffect,
   const
     HexChars = "0123456789ABCDEF"
   var
-    shift: BiggestInt
+    n = x
   result = newString(len)
   for j in countdown(len-1, 0):
-    result[j] = HexChars[toU32(x shr shift) and 0xF'i32]
-    shift = shift + 4
+    result[j] = HexChars[n and 0xF]
+    n = n shr 4
+    # handle negative overflow
+    if n == 0 and x < 0: n = -1
 
 proc intToStr*(x: int, minchars: int = 1): string {.noSideEffect,
   rtl, extern: "nsuIntToStr".} =
@@ -815,8 +817,8 @@ proc rfind*(s: string, sub: char, start: int = -1): int {.noSideEffect,
 
 proc count*(s: string, sub: string, overlapping: bool = false): int {.noSideEffect,
   rtl, extern: "nsuCountString".} =
-  ## Count the occurences of a substring `sub` in the string `s`.
-  ## Overlapping occurences of `sub` only count when `overlapping`
+  ## Count the occurrences of a substring `sub` in the string `s`.
+  ## Overlapping occurrences of `sub` only count when `overlapping`
   ## is set to true.
   var i = 0
   while true:
@@ -831,14 +833,14 @@ proc count*(s: string, sub: string, overlapping: bool = false): int {.noSideEffe
 
 proc count*(s: string, sub: char): int {.noSideEffect,
   rtl, extern: "nsuCountChar".} =
-  ## Count the occurences of the character `sub` in the string `s`.
+  ## Count the occurrences of the character `sub` in the string `s`.
   for c in s:
     if c == sub:
       inc result
 
 proc count*(s: string, subs: set[char]): int {.noSideEffect,
   rtl, extern: "nsuCountCharSet".} =
-  ## Count the occurences of the group of character `subs` in the string `s`.
+  ## Count the occurrences of the group of character `subs` in the string `s`.
   for c in s:
     if c in subs:
       inc result
@@ -898,7 +900,7 @@ proc replaceWord*(s, sub: string, by = ""): string {.noSideEffect,
   rtl, extern: "nsuReplaceWord".} =
   ## Replaces `sub` in `s` by the string `by`.
   ##
-  ## Each occurance of `sub` has to be surrounded by word boundaries
+  ## Each occurrence of `sub` has to be surrounded by word boundaries
   ## (comparable to ``\\w`` in regular expressions), otherwise it is not
   ## replaced.
   const wordChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\128'..'\255'}

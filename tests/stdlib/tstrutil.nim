@@ -43,6 +43,9 @@ assert "/1/2/3".rfind('/') == 4
 assert "/1/2/3".rfind('/', 1) == 0
 assert "/1/2/3".rfind('0') == -1
 
+assert(toHex(100i16, 32) == "00000000000000000000000000000064")
+assert(toHex(-100i16, 32) == "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF9C")
+
 main()
 #OUT ha/home/a1xyz/usr/bin
 

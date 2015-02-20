@@ -369,7 +369,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           typ = def.typ
         else:
           # BUGFIX: ``fitNode`` is needed here!
-          # check type compability between def.typ and typ        
+          # check type compatibility between def.typ and typ        
           def = fitNode(c, typ, def)
           #changeType(def.skipConv, typ, check=true)
       else:
@@ -667,8 +667,8 @@ proc checkForMetaFields(n: PNode) =
     let t = n.sym.typ
     case t.kind
     of tySequence, tySet, tyArray, tyOpenArray, tyVar, tyPtr, tyRef,
-       tyProc, tyGenericInvokation, tyGenericInst:
-      let start = ord(t.kind in {tyGenericInvokation, tyGenericInst})
+       tyProc, tyGenericInvocation, tyGenericInst:
+      let start = ord(t.kind in {tyGenericInvocation, tyGenericInst})
       for i in start .. <t.sons.len:
         checkMeta(t.sons[i])
     else:
@@ -912,7 +912,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       var t = s.typ.sons[1].skipTypes(abstractInst).lastSon.skipTypes(abstractInst)
       while true:
         if t.kind == tyGenericBody: t = t.lastSon
-        elif t.kind == tyGenericInvokation: t = t.sons[0]
+        elif t.kind == tyGenericInvocation: t = t.sons[0]
         else: break
       if t.kind in {tyObject, tyDistinct, tyEnum}:
         if t.deepCopy.isNil: t.deepCopy = s

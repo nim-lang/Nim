@@ -55,7 +55,7 @@ import
 
 type 
   JsonEventKind* = enum  ## enumeration of all events that may occur when parsing
-    jsonError,           ## an error ocurred during parsing
+    jsonError,           ## an error occurred during parsing
     jsonEof,             ## end of file reached
     jsonString,          ## a string literal
     jsonInt,             ## an integer literal

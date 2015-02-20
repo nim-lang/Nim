@@ -132,7 +132,7 @@ proc rawFileSize(file: File): int =
   discard fseek(file, clong(oldPos), 0)
 
 proc readAllFile(file: File, len: int): string =
-  # We aquire the filesize beforehand and hope it doesn't change.
+  # We acquire the filesize beforehand and hope it doesn't change.
   # Speeds things up.
   result = newString(int(len))
   if readBuffer(file, addr(result[0]), int(len)) != len:
@@ -246,14 +246,14 @@ proc fwrite(buf: pointer, size, n: int, f: File): int {.
 proc readBuffer(f: File, buffer: pointer, len: int): int =
   result = fread(buffer, 1, len, f)
 
-proc readBytes(f: File, a: var openArray[int8], start, len: int): int =
+proc readBytes(f: File, a: var openArray[int8|uint8], start, len: int): int =
   result = readBuffer(f, addr(a[start]), len)
 
 proc readChars(f: File, a: var openArray[char], start, len: int): int =
   result = readBuffer(f, addr(a[start]), len)
 
 {.push stackTrace:off, profiler:off.}
-proc writeBytes(f: File, a: openArray[int8], start, len: int): int =
+proc writeBytes(f: File, a: openArray[int8|uint8], start, len: int): int =
   var x = cast[ptr array[0..1000_000_000, int8]](a)
   result = writeBuffer(f, addr(x[start]), len)
 proc writeChars(f: File, a: openArray[char], start, len: int): int =

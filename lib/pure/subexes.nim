@@ -353,11 +353,11 @@ when isMainModule:
 
   proc `%`(formatstr: string, a: openarray[string]): string =
     result = newStringOfCap(formatstr.len + a.len shl 4)
-    addf(result, formatstr.TSubex, a)
+    addf(result, formatstr.Subex, a)
 
   proc `%`(formatstr: string, a: string): string =
     result = newStringOfCap(formatstr.len + a.len)
-    addf(result, formatstr.TSubex, [a])
+    addf(result, formatstr.Subex, [a])
 
 
   doAssert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"

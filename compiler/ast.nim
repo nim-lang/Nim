@@ -314,7 +314,7 @@ type
                      # XXX put this into an include file to avoid this issue!
     tyNone, tyBool, tyChar,
     tyEmpty, tyArrayConstr, tyNil, tyExpr, tyStmt, tyTypeDesc,
-    tyGenericInvokation, # ``T[a, b]`` for types to invoke
+    tyGenericInvocation, # ``T[a, b]`` for types to invoke
     tyGenericBody,       # ``T[a, b, body]`` last parameter is the body
     tyGenericInst,       # ``T[a, b, realInstance]`` instantiated generic type
                          # realInstance will be a concrete type like tyObject
@@ -859,7 +859,7 @@ const
   OverloadableSyms* = {skProc, skMethod, skIterator, skClosureIterator,
     skConverter, skModule, skTemplate, skMacro}
 
-  GenericTypes*: TTypeKinds = {tyGenericInvokation, tyGenericBody, 
+  GenericTypes*: TTypeKinds = {tyGenericInvocation, tyGenericBody, 
     tyGenericParam}
   
   StructuralEquivTypes*: TTypeKinds = {tyArrayConstr, tyNil, tyTuple, tyArray, 
@@ -1298,6 +1298,12 @@ proc initIdTable(x: var TIdTable) =
   x.counter = 0
   newSeq(x.data, StartSize)
 
+proc resetIdTable*(x: var TIdTable) =
+  x.counter = 0
+  # clear and set to old initial size:
+  setLen(x.data, 0)
+  setLen(x.data, StartSize)
+
 proc initObjectSet(x: var TObjectSet) = 
   x.counter = 0
   newSeq(x.data, StartSize)
@@ -1350,7 +1356,7 @@ proc propagateToOwner*(owner, elem: PType) =
   const HaveTheirOwnEmpty = {tySequence, tySet}
   owner.flags = owner.flags + (elem.flags * {tfHasMeta})
   if tfNotNil in elem.flags:
-    if owner.kind in {tyGenericInst, tyGenericBody, tyGenericInvokation}:
+    if owner.kind in {tyGenericInst, tyGenericBody, tyGenericInvocation}:
       owner.flags.incl tfNotNil
     elif owner.kind notin HaveTheirOwnEmpty:
       owner.flags.incl tfNeedsInit

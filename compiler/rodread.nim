@@ -666,7 +666,7 @@ proc newRodReader(modfilename: string, crc: TCrc32,
   r.readerIndex = readerIndex
   r.filename = modfilename
   initIdTable(r.syms)
-  # we terminate the file explicitely with ``\0``, so the cast to `cstring`
+  # we terminate the file explicitly with ``\0``, so the cast to `cstring`
   # is safe:
   r.s = cast[cstring](r.memfile.mem)
   if startsWith(r.s, "NIM:"): 

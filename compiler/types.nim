@@ -250,7 +250,7 @@ proc containsObject(t: PType): bool =
 
 proc isObjectWithTypeFieldPredicate(t: PType): bool = 
   result = t.kind == tyObject and t.sons[0] == nil and
-      not (t.sym != nil and sfPure in t.sym.flags) and
+      not (t.sym != nil and {sfPure, sfInfixCall} * t.sym.flags != {}) and
       tfFinal notin t.flags
 
 proc analyseObjectWithTypeFieldAux(t: PType, 
@@ -396,7 +396,7 @@ proc rangeToStr(n: PNode): string =
 const 
   typeToStr: array[TTypeKind, string] = ["None", "bool", "Char", "empty",
     "Array Constructor [$1]", "nil", "expr", "stmt", "typeDesc",
-    "GenericInvokation", "GenericBody", "GenericInst", "GenericParam",
+    "GenericInvocation", "GenericBody", "GenericInst", "GenericParam",
     "distinct $1", "enum", "ordinal[$1]", "array[$1, $2]", "object", "tuple",
     "set[$1]", "range[$1]", "ptr ", "ref ", "var ", "seq[$1]", "proc",
     "pointer", "OpenArray[$1]", "string", "CString", "Forward",
@@ -432,9 +432,9 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         result = $t.n.intVal
       else:
         result = "int literal(" & $t.n.intVal & ")"
-  of tyGenericBody, tyGenericInst, tyGenericInvokation:
+  of tyGenericBody, tyGenericInst, tyGenericInvocation:
     result = typeToString(t.sons[0]) & '['
-    for i in countup(1, sonsLen(t) -1 -ord(t.kind != tyGenericInvokation)):
+    for i in countup(1, sonsLen(t) -1 -ord(t.kind != tyGenericInvocation)):
       if i > 1: add(result, ", ")
       add(result, typeToString(t.sons[i], preferGenericArg))
     add(result, ']')
@@ -649,7 +649,7 @@ proc lengthOrd(t: PType): BiggestInt =
 type
   TDistinctCompare* = enum ## how distinct types are to be compared
     dcEq,                  ## a and b should be the same type
-    dcEqIgnoreDistinct,    ## compare symetrically: (distinct a) == b, a == b
+    dcEqIgnoreDistinct,    ## compare symmetrically: (distinct a) == b, a == b
                            ## or a == (distinct b)
     dcEqOrDistinctOf       ## a equals b or a is distinct of b
 
@@ -941,7 +941,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     result = sameChildrenAux(a, b, c) and sameFlags(a, b)
     if result and ExactGenericParams in c.flags:
       result = a.sym.position == b.sym.position
-  of tyGenericInvokation, tyGenericBody, tySequence,
+  of tyGenericInvocation, tyGenericBody, tySequence,
      tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyArrayConstr,
      tyArray, tyProc, tyConst, tyMutable, tyVarargs, tyIter,
      tyOrdinal, tyTypeClasses, tyFieldAccessor:
@@ -1087,7 +1087,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     if taField notin flags: result = t
   of tyTypeClasses:
     if not (tfGenericTypeParam in t.flags or taField notin flags): result = t
-  of tyGenericBody, tyGenericParam, tyGenericInvokation,
+  of tyGenericBody, tyGenericParam, tyGenericInvocation,
      tyNone, tyForward, tyFromExpr, tyFieldAccessor:
     result = t
   of tyNil:

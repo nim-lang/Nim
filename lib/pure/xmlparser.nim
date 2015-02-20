@@ -103,7 +103,7 @@ proc parse(x: var XmlParser, errors: var seq[string]): XmlNode =
 proc parseXml*(s: Stream, filename: string, 
                errors: var seq[string]): XmlNode = 
   ## parses the XML from stream `s` and returns a ``PXmlNode``. Every
-  ## occured parsing error is added to the `errors` sequence.
+  ## occurred parsing error is added to the `errors` sequence.
   var x: XmlParser
   open(x, s, filename, {reportComments})
   while true:
@@ -129,7 +129,7 @@ proc parseXml*(s: Stream): XmlNode =
 
 proc loadXml*(path: string, errors: var seq[string]): XmlNode =
   ## Loads and parses XML from file specified by ``path``, and returns 
-  ## a ``PXmlNode``. Every occured parsing error is added to the `errors`
+  ## a ``PXmlNode``. Every occurred parsing error is added to the `errors`
   ## sequence.
   var s = newFileStream(path, fmRead)
   if s == nil: raise newException(IOError, "Unable to read file: " & path)

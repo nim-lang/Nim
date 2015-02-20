@@ -229,7 +229,7 @@ static inline void asm_expr_sum(TCCState *s1, ExprValue *pe)
                 } else {
                     goto cannot_relocate;
                 }
-                pe->sym = NULL; /* same symbols can be substracted to NULL */
+                pe->sym = NULL; /* same symbols can be subtracted to NULL */
             } else {
             cannot_relocate:
                 error("invalid operation with label");

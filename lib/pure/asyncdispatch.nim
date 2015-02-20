@@ -606,7 +606,7 @@ when defined(windows) or defined(nimdoc):
           retFuture.fail(newException(OSError, osErrorMsg(err)))
     elif ret == 0 and bytesReceived == 0 and dataBuf.buf[0] == '\0':
       # We have to ensure that the buffer is empty because WSARecv will tell
-      # us immediatelly when it was disconnected, even when there is still
+      # us immediately when it was disconnected, even when there is still
       # data in the buffer.
       # We want to give the user as much data as we can. So we only return
       # the empty string (which signals a disconnection) when there is

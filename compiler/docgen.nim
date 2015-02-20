@@ -126,7 +126,7 @@ proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openArray[string],
           if not (frmt[i] in {'A'..'Z', '_', 'a'..'z', '\x80'..'\xFF'}): break
         var idx = getVarIdx(varnames, id)
         if idx >= 0: app(result, varvalues[idx])
-        else: rawMessage(errUnkownSubstitionVar, id)
+        else: rawMessage(errUnknownSubstitionVar, id)
       of '{':
         var id = ""
         inc(i)
@@ -138,7 +138,7 @@ proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openArray[string],
                               # search for the variable:
         var idx = getVarIdx(varnames, id)
         if idx >= 0: app(result, varvalues[idx])
-        else: rawMessage(errUnkownSubstitionVar, id)
+        else: rawMessage(errUnknownSubstitionVar, id)
       else: internalError("ropeFormatNamedVars")
     var start = i
     while i < L:
@@ -272,7 +272,7 @@ proc complexName(k: TSymKind, n: PNode, baseName: string): string =
   ## type)?(,param type)*``. The callable type part will be added only if the
   ## node is not a proc, as those are the common ones. The suffix will be a dot
   ## and a single letter representing the type of the callable. The parameter
-  ## types will be added with a preceeding dash. Return types won't be added.
+  ## types will be added with a preceding dash. Return types won't be added.
   ##
   ## If you modify the output of this proc, please update the anchor generation
   ## section of ``doc/docgen.txt``.

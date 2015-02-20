@@ -436,7 +436,7 @@ proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode =
   of nkEmpty, nkSym..nkNilLit:
     discard
   else:
-    # dotExpr is ambiguous: note that we explicitely allow 'x.TemplateParam',
+    # dotExpr is ambiguous: note that we explicitly allow 'x.TemplateParam',
     # so we use the generic code for nkDotExpr too
     if n.kind == nkDotExpr or n.kind == nkAccQuoted:
       let s = qualifiedLookUp(c.c, n, {})
@@ -494,7 +494,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     semParamList(c, n.sons[paramsPos], gp, s)
     # a template's parameters are not gensym'ed even if that was originally the
     # case as we determine whether it's a template parameter in the template
-    # body by the absense of the skGenSym flag:
+    # body by the absence of the skGenSym flag:
     for i in 1 .. s.typ.n.len-1:
       s.typ.n.sons[i].sym.flags.excl sfGenSym
     if sonsLen(gp) > 0:
@@ -640,7 +640,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
     for i in countup(0, sonsLen(n) - 1):
       result.sons[i] = semPatternBody(c, n.sons[i])
   else:
-    # dotExpr is ambiguous: note that we explicitely allow 'x.TemplateParam',
+    # dotExpr is ambiguous: note that we explicitly allow 'x.TemplateParam',
     # so we use the generic code for nkDotExpr too
     case n.kind 
     of nkDotExpr, nkAccQuoted:

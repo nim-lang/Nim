@@ -270,13 +270,13 @@ when defined(withUpdate):
           echo("Fetching updates from repo...")
           var pullout = execCmdEx(git & " pull origin master")
           if pullout[1] != 0:
-            quit("An error has occured.")
+            quit("An error has occurred.")
           else:
             if pullout[0].startsWith("Already up-to-date."):
               quit("No new changes fetched from the repo. " &
                    "Local branch must be ahead of it. Exiting...")
       else:
-        quit("An error has occured.")
+        quit("An error has occurred.")
       
     else:
       echo("No repo or executable found!")
@@ -360,7 +360,7 @@ of cmdArgument:
   of "boot": boot(op.cmdLineRest)
   of "clean": clean(op.cmdLineRest)
   of "web": web(op.cmdLineRest)
-  of "website": website(op.cmdLineRest)
+  of "website": website(op.cmdLineRest & " --googleAnalytics:UA-48159761-1")
   of "web0":
     # undocumented command for Araq-the-merciful:
     web(op.cmdLineRest & " --googleAnalytics:UA-48159761-1")

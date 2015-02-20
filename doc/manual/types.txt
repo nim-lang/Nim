@@ -1142,7 +1142,7 @@ modules like `db_sqlite <db_sqlite.html>`_.
 Void type
 ---------
 
-The ``void`` type denotes the absense of any type. Parameters of
+The ``void`` type denotes the absence of any type. Parameters of
 type ``void`` are treated as non-existent, ``void`` as a return type means that
 the procedure does not return a value:
 

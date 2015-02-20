@@ -65,7 +65,15 @@ block tableTest2:
   
   for key, val in items(data): t[key] = val.toFloat
   for key, val in items(data): assert t[key] == val.toFloat
-  
+
+  assert(not t.hasKeyOrPut("456", 4.0))     # test absent key
+  assert t.hasKeyOrPut("012", 3.0)          # test present key
+  var x = t.mgetOrPut("111", 1.5)           # test absent key
+  x = x * 2
+  assert x == 3.0
+  x = t.mgetOrPut("test", 1.5)              # test present key
+  x = x * 2
+  assert x == 2 * 1.2345
 
 block orderedTableTest1:
   var t = initOrderedTable[string, int](2)

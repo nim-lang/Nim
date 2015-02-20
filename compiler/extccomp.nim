@@ -630,13 +630,13 @@ proc callCCompiler*(projectfile: string) =
         res = execWithEcho(cmds[i])
         if res != 0: rawMessage(errExecutionOfProgramFailed, [])
     elif optListCmd in gGlobalOptions or gVerbosity > 1:
-      res = execProcesses(cmds, {poEchoCmd, poUseShell, poParentStreams},
+      res = execProcesses(cmds, {poEchoCmd, poUsePath, poParentStreams},
                           gNumberOfProcessors)
     elif gVerbosity == 1:
-      res = execProcesses(cmds, {poUseShell, poParentStreams},
+      res = execProcesses(cmds, {poUsePath, poParentStreams},
                           gNumberOfProcessors, prettyCb)
     else:
-      res = execProcesses(cmds, {poUseShell, poParentStreams},
+      res = execProcesses(cmds, {poUsePath, poParentStreams},
                           gNumberOfProcessors)
     if res != 0:
       if gNumberOfProcessors <= 1:

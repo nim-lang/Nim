@@ -884,7 +884,7 @@ elif stackIncreases:
   var
     jmpbufSize {.importc: "sizeof(jmp_buf)", nodecl.}: int
       # a little hack to get the size of a TJmpBuf in the generated C code
-      # in a platform independant way
+      # in a platform independent way
 
   template forEachStackSlot(gch, gcMark: expr) {.immediate, dirty.} =
     var registers: C_JmpBuf

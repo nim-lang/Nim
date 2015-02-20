@@ -91,7 +91,7 @@ proc update*(todo: var TTodo; conn: TDbConn): bool =
   ##
   ## Use this method if you (or another entity) have modified the database and
   ## want to update the object you have with whatever the database has stored.
-  ## Returns true if the update suceeded, or false if the object was not found
+  ## Returns true if the update succeeded, or false if the object was not found
   ## in the database any more, in which case you should probably get rid of the
   ## TTodo object.
   assert(todo.id >= 0, "The identifier of the todo entry can't be negative")

@@ -243,7 +243,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     elif fn.kind == nkDotExpr:
       result.sons[0] = fuzzyLookup(c, fn, flags, ctx, mixinContext)
       first = 1
-    # Consider 'when defined(globalsSlot): ThreadVarSetValue(globalsSlot, ...)'
+    # Consider 'when declared(globalsSlot): ThreadVarSetValue(globalsSlot, ...)'
     # in threads.nim: the subtle preprocessing here binds 'globalsSlot' which 
     # is not exported and yet the generic 'threadProcWrapper' works correctly.
     let flags = if mixinContext: flags+{withinMixin} else: flags
