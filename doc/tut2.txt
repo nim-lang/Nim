@@ -735,14 +735,6 @@ regular expressions:
     return tkUnknown
 
 
-Term rewriting macros
----------------------
-
-Term rewriting macros can be used to enhance the compilation process
-with user defined optimizations; see this `document <trmacros.html>`_ for
-further information.
-
-
 Building your first macro
 -------------------------
 

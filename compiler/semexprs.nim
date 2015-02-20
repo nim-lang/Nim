@@ -756,6 +756,9 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
     else:
       if callee.kind in skIterators and callee.id == c.p.owner.id:
         localError(n.info, errRecursiveDependencyX, callee.name.s)
+        # error correction, prevents endless for loop elimination in transf.
+        # See bug #2051:
+        result.sons[0] = newSymNode(errorSym(c, n))
       if sfNoSideEffect notin callee.flags: 
         if {sfImportc, sfSideEffect} * callee.flags != {}:
           incl(c.p.owner.flags, sfSideEffect)
