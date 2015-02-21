@@ -417,7 +417,7 @@ template mapIt*(varSeq, op: expr) =
     let it {.inject.} = varSeq[i]
     varSeq[i] = op
 
-template sortedBy*(seq1, op: expr): expr =
+template sortByIt*(seq1, op: expr): expr =
   ## Convenience template around the ``sorted`` proc to reduce typing.
   ##
   ## The template injects the ``it`` variable which you can use directly in an
