@@ -15,6 +15,9 @@ export Port, `$`, `==`
 
 const useWinVersion = defined(Windows) or defined(nimdoc)
 
+when useWinVersion:
+  import winlean
+
 when defined(ssl):
   import openssl
 
@@ -304,7 +307,8 @@ proc listen*(socket: Socket, backlog = SOMAXCONN) {.tags: [ReadIOEffect].} =
   ## queue of pending connections.
   ##
   ## Raises an EOS error upon failure.
-  if listen(socket.fd, backlog) < 0'i32: raiseOSError(osLastError())
+  if rawsockets.listen(socket.fd, backlog) < 0'i32:
+    raiseOSError(osLastError())
 
 proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
   tags: [ReadIOEffect].} =
@@ -738,7 +742,6 @@ proc peekChar(socket: Socket, c: var char): int {.tags: [ReadIOEffect].} =
         return
     result = recv(socket.fd, addr(c), 1, MSG_PEEK)
 
-import winlean
 proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
                flags = {SocketFlag.SafeDisconn}) {.
   tags: [ReadIOEffect, TimeEffect].} =
