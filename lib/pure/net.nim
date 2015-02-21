@@ -15,9 +15,6 @@ export Port, `$`, `==`
 
 const useWinVersion = defined(Windows) or defined(nimdoc)
 
-when useWinVersion:
-  import winlean
-
 when defined(ssl):
   import openssl
 
