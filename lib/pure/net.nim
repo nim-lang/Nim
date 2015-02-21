@@ -738,7 +738,9 @@ proc peekChar(socket: Socket, c: var char): int {.tags: [ReadIOEffect].} =
         return
     result = recv(socket.fd, addr(c), 1, MSG_PEEK)
 
-import winlean
+when not defined(macosx):
+  import winlean
+
 proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
                flags = {SocketFlag.SafeDisconn}) {.
   tags: [ReadIOEffect, TimeEffect].} =
