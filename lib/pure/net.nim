@@ -60,7 +60,8 @@ type
         sslHasPeekChar: bool
         sslPeekChar: char
       of false: nil
-  
+    lastError: OSErrorCode ## stores the last error on this socket
+
   Socket* = ref SocketImpl
 
   SOBool* = enum ## Boolean socket options.
@@ -231,6 +232,15 @@ when defined(ssl):
     if SSLSetFd(socket.sslHandle, socket.fd) != 1:
       raiseSSLError()
 
+proc getSocketError*(socket: Socket): OSErrorCode =
+  ## Checks ``osLastError`` for a valid error. If it has been reset it uses
+  ## the last error stored in the socket object.
+  result = osLastError()
+  if result == 0.OSErrorCode:
+    result = socket.lastError
+  if result == 0.OSErrorCode:
+    raise newException(OSError, "No valid socket error code available")
+
 proc socketError*(socket: Socket, err: int = -1, async = false,
                   lastError = (-1).OSErrorCode) =
   ## Raises an OSError based on the error code returned by ``SSLGetError``
@@ -276,7 +286,7 @@ proc socketError*(socket: Socket, err: int = -1, async = false,
         else: raiseSSLError("Unknown Error")
   
   if err == -1 and not (when defined(ssl): socket.isSSL else: false):
-    let lastE = if lastError.int == -1: osLastError() else: lastError
+    var lastE = if lastError.int == -1: getSocketError(socket) else: lastError
     if async:
       when useWinVersion:
         if lastE.int32 == WSAEWOULDBLOCK:
@@ -569,6 +579,10 @@ proc readIntoBuf(socket: Socket, flags: int32): int =
       result = recv(socket.fd, addr(socket.buffer), cint(socket.buffer.high), flags)
   else:
     result = recv(socket.fd, addr(socket.buffer), cint(socket.buffer.high), flags)
+  if result < 0:
+    # Save it in case it gets reset (the Nim codegen occassionally may call
+    # Win API functions which reset it).
+    socket.lastError = osLastError()
   if result <= 0:
     socket.bufLen = 0
     socket.currPos = 0
@@ -624,6 +638,9 @@ proc recv*(socket: Socket, data: pointer, size: int): int {.tags: [ReadIOEffect]
         result = recv(socket.fd, data, size.cint, 0'i32)
     else:
       result = recv(socket.fd, data, size.cint, 0'i32)
+    if result < 0:
+      # Save the error in case it gets reset.
+      socket.lastError = osLastError()
 
 proc waitFor(socket: Socket, waited: var float, timeout, size: int,
              funcName: string): int {.tags: [TimeEffect].} =
@@ -696,7 +713,7 @@ proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
   result = recv(socket, cstring(data), size, timeout)
   if result < 0:
     data.setLen(0)
-    let lastError = osLastError()
+    let lastError = getSocketError(socket)
     if flags.isDisconnectionError(lastError): return
     socket.socketError(result, lastError = lastError)
   data.setLen(result)
@@ -721,6 +738,7 @@ proc peekChar(socket: Socket, c: var char): int {.tags: [ReadIOEffect].} =
         return
     result = recv(socket.fd, addr(c), 1, MSG_PEEK)
 
+import winlean
 proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
                flags = {SocketFlag.SafeDisconn}) {.
   tags: [ReadIOEffect, TimeEffect].} =
@@ -744,7 +762,7 @@ proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
       line.add("\c\L")
 
   template raiseSockError(): stmt {.dirty, immediate.} =
-    let lastError = osLastError()
+    let lastError = getSocketError(socket)
     if flags.isDisconnectionError(lastError): setLen(line.string, 0); return
     socket.socketError(n, lastError = lastError)
 
