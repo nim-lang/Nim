@@ -109,6 +109,22 @@ block countTableTest1:
     else: break
     inc i
 
+block mpairsTableTest1:
+  var t = initTable[string, int]()
+  t["a"] = 1
+  t["b"] = 2
+  t["c"] = 3
+  t["d"] = 4
+  for k, v in t.mpairs:
+    if k == "a" or k == "c":
+      v = 9
+
+  for k, v in t.pairs:
+    if k == "a" or k == "c":
+      assert v == 9
+    else:
+      assert v != 1 and v != 3
+
 block SyntaxTest:
   var x = toTable[int, string]({:})
 
