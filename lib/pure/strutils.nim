@@ -1363,13 +1363,17 @@ proc parseEnum*[T: enum](s: string): T =
   ## Raises ``ValueError`` for an invalid value in `s`. The comparison is
   ## done in a style insensitive way.
   macro m: stmt =
-    result = newStmtList()
+    result = newNimNode(nnkCaseStmt).add(newDotExpr(newIdentNode("s"),
+      newIdentNode("normalize")))
 
-    for e in T: result.add parseStmt(
-      "if cmpIgnoreStyle(s, \"$1\") == 0: return $1".format(e))
+    for e in T:
+      result.add(newNimNode(nnkOfBranch).add(newStrLitNode(($e).normalize),
+        newNimNode(nnkReturnStmt).add(newIdentNode($e))))
 
-    result.add parseStmt(
-      "raise newException(ValueError, \"invalid enum value: \" & s)")
+    result.add(newNimNode(nnkElse).add(newNimNode(nnkRaiseStmt).add(newCall(
+      newIdentNode("newException"), newIdentNode("ValueError"),
+      newNimNode(nnkInfix).add(newIdentNode("&"),
+        newStrLitNode("invalid enum value: "), newIdentNode("s"))))))
 
   m()
 
@@ -1379,12 +1383,15 @@ proc parseEnum*[T: enum](s: string, default: T): T =
   ## Uses `default` for an invalid value in `s`. The comparison is done in a
   ## style insensitive way.
   macro m: stmt =
-    result = newStmtList()
+    result = newNimNode(nnkCaseStmt).add(newDotExpr(newIdentNode("s"),
+      newIdentNode("normalize")))
 
-    for e in T: result.add parseStmt(
-      "if cmpIgnoreStyle(s, \"$1\") == 0: return $1".format(e))
+    for e in T:
+      result.add(newNimNode(nnkOfBranch).add(newStrLitNode(($e).normalize),
+        newNimNode(nnkReturnStmt).add(newIdentNode($e))))
 
-    result.add parseStmt("result = default")
+    result.add(newNimNode(nnkElse).add(newAssignment(newIdentNode("result"),
+      newIdentNode("default"))))
 
   m()
 
