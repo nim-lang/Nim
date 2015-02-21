@@ -9,9 +9,12 @@
 
 ## Nimsuggest is a tool that helps to give editors IDE like capabilities.
 
-import strutils, os, parseopt, parseUtils
-import options, commands, modules, sem, passes, passaux, msgs, nimconf,
-  extccomp, condsyms, lists, net, rdstdin
+import strutils, os, parseopt, parseUtils, net, rdstdin
+
+# These are all part of the compiler sources
+import compiler.options, compiler.commands, compiler.modules, compiler.sem,
+  compiler.passes, compiler.passaux, compiler.msgs, compiler.nimconf,
+  compiler.extccomp, compiler.condsyms, compiler.lists
 
 const Usage = """
 Nimsuggest - Tool to give every editor IDE like capabilities for Nim
