@@ -104,7 +104,7 @@ iterator mpairs*[A, B](t: var Table[A, B]): tuple[key: A, val: var B] =
   ## iterates over any (key, value) pair in the table `t`. The values
   ## can be modified.
   for h in 0..high(t.data):
-    if isFilled(t.data[h].slot): yield (t.data[h].key, t.data[h].val)
+    if isFilled(t.data[h].hcode): yield (t.data[h].key, t.data[h].val)
 
 iterator keys*[A, B](t: Table[A, B]): A =
   ## iterates over any key in the table `t`.
