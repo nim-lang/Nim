@@ -213,6 +213,7 @@ type
                           # we use 'nkPostFix' for the 'not nil' addition
     nkEnumTy,             # enum body
     nkEnumFieldDef,       # `ident = expr` in an enumeration
+    nkEnumFieldWhen,      # when section in enum list
     nkArgList,            # argument list
     nkPattern,            # a special pattern; used for matching
     nkReturnToken,        # token used for interpretation

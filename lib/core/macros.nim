@@ -69,7 +69,7 @@ type
     nnkIteratorTy,         # iterator type
     nnkSharedTy,           # 'shared T'
     nnkEnumTy,
-    nnkEnumFieldDef,
+    nnkEnumFieldDef, nnkEnumFieldWhen,
     nnkArglist, nnkPattern
     nnkReturnToken
   NimNodeKinds* = set[NimNodeKind]
