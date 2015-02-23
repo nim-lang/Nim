@@ -200,7 +200,7 @@ type
     nkStaticTy,           # ``static[T]``
     nkRecList,            # list of object parts
     nkRecCase,            # case section of object
-    nkRecWhen,            # when section of object
+    nkTypeWhen,           # when section of object / enum
     nkRefTy,              # ``ref T``
     nkPtrTy,              # ``ptr T``
     nkVarTy,              # ``var T``
@@ -213,7 +213,6 @@ type
                           # we use 'nkPostFix' for the 'not nil' addition
     nkEnumTy,             # enum body
     nkEnumFieldDef,       # `ident = expr` in an enumeration
-    nkEnumFieldWhen,      # when section in enum list
     nkArgList,            # argument list
     nkPattern,            # a special pattern; used for matching
     nkReturnToken,        # token used for interpretation

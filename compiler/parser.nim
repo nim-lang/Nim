@@ -1625,7 +1625,7 @@ proc parseEnum(p: var TParser): PNode =
   while true:
     if p.tok.tokType == tkWhen:
       getTok(p) # skip `when`
-      w = newNodeP(nkEnumFieldWhen, p)
+      w = newNodeP(nkTypeWhen, p)
       addSon(result, w)
       var branch = newNodeP(nkElifBranch, p)
       addSon(w, branch)
@@ -1654,7 +1654,7 @@ proc parseObjectWhen(p: var TParser): PNode =
   #| objectWhen = 'when' expr colcom objectPart COMMENT?
   #|             ('elif' expr colcom objectPart COMMENT?)*
   #|             ('else' colcom objectPart COMMENT?)?
-  result = newNodeP(nkRecWhen, p)
+  result = newNodeP(nkTypeWhen, p)
   while sameInd(p): 
     getTok(p)                 # skip `when`, `elif`
     var branch = newNodeP(nkElifBranch, p)

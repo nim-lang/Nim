@@ -43,7 +43,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
   var hasNull = false
   for i in countup(1, sonsLen(n) - 1):
     # handling when in enums by filtering them here
-    if n.sons[i].kind == nkEnumFieldWhen:
+    if n.sons[i].kind == nkTypeWhen:
       var b = n.sons[i]
       var branch: PNode = nil   # the branch to take
       for i in countup(0, sonsLen(b) - 1):
@@ -554,7 +554,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
                       father: PNode, rectype: PType) =
   if n == nil: return
   case n.kind
-  of nkRecWhen:
+  of nkTypeWhen:
     var branch: PNode = nil   # the branch to take
     for i in countup(0, sonsLen(n) - 1):
       var it = n.sons[i]

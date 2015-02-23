@@ -61,7 +61,7 @@ type
     nnkWith, nnkWithout,
     nnkTypeOfExpr, nnkObjectTy,
     nnkTupleTy, nnkTypeClassTy, nnkStaticTy,
-    nnkRecList, nnkRecCase, nnkRecWhen,
+    nnkRecList, nnkRecCase, nnkTypeWhen,
     nnkRefTy, nnkPtrTy, nnkVarTy,
     nnkConstTy, nnkMutableTy,
     nnkDistinctTy,
@@ -69,7 +69,7 @@ type
     nnkIteratorTy,         # iterator type
     nnkSharedTy,           # 'shared T'
     nnkEnumTy,
-    nnkEnumFieldDef, nnkEnumFieldWhen,
+    nnkEnumFieldDef,
     nnkArglist, nnkPattern
     nnkReturnToken
   NimNodeKinds* = set[NimNodeKind]
