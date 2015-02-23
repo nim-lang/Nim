@@ -1,14 +1,14 @@
 The AST in Nim
 =================
 This section describes how the AST is modelled with Nim's type system.
-The AST consists of nodes (``PNimrodNode``) with a variable number of
+The AST consists of nodes (``NimNode``) with a variable number of
 children. Each node has a field named ``kind`` which describes what the node
 contains:
 
 .. code-block:: nim
 
   type
-    TNimrodNodeKind = enum ## kind of a node; only explanatory
+    NimNodeKind = enum     ## kind of a node; only explanatory
       nnkNone,             ## invalid node kind
       nnkEmpty,            ## empty node
       nnkIdent,            ## node contains an identifier
@@ -18,11 +18,11 @@ contains:
       nnkCaseStmt,         ## node represents a case statement
       ...                  ## many more
 
-    PNimrodNode = ref TNimrodNode
-    TNimrodNode {.final.} = object
-      case kind: TNimrodNodeKind       ## the node's kind
+    NimNode = ref NimNodeObj
+    NimNodeObj = object
+      case kind: NimNodeKind           ## the node's kind
       of nnkNone, nnkEmpty, nnkNilLit:
-        nil                            ## node contains no additional fields
+        discard                        ## node contains no additional fields
       of nnkCharLit..nnkInt64Lit:
         intVal: biggestInt             ## the int literal
       of nnkFloatLit..nnkFloat64Lit:
@@ -30,13 +30,13 @@ contains:
       of nnkStrLit..nnkTripleStrLit:
         strVal: string                 ## the string literal
       of nnkIdent:
-        ident: TNimrodIdent            ## the identifier
+        ident: NimIdent                ## the identifier
       of nnkSym:
-        symbol: PNimrodSymbol          ## the symbol (after symbol lookup phase)
+        symbol: NimSymbol              ## the symbol (after symbol lookup phase)
       else:
-        sons: seq[PNimrodNode]         ## the node's sons (or children)
+        sons: seq[NimNode]             ## the node's sons (or children)
 
-For the ``PNimrodNode`` type, the ``[]`` operator has been overloaded:
+For the ``NimNode`` type, the ``[]`` operator has been overloaded:
 ``n[i]`` is ``n``'s ``i``-th child.
 
 To specify the AST for the different Nim constructs, the notation
@@ -73,10 +73,7 @@ Nim expression                   corresponding AST
 -----------------                ---------------------------------------------
 
 Identifiers are ``nnkIdent`` nodes. After the name lookup pass these nodes
-get transferred into ``nnkSym`` nodes. However, a macro receives an AST that
-has not been checked for semantics and thus the identifiers have not been
-looked up. Macros should deal with ``nnkIdent`` nodes and do not need to deal
-with ``nnkSym`` nodes.
+get transferred into ``nnkSym`` nodes.
 
 
 Calls/expressions
@@ -171,13 +168,13 @@ AST:
           nnkStrLit("hallo"))
 
 
-Dereference operator ``^``
---------------------------
+Dereference operator ``[]``
+---------------------------
 
 Concrete syntax:
 
 .. code-block:: nim
-  x^
+  x[]
 
 AST:
 
@@ -573,4 +570,3 @@ Other node kinds are especially designed to make AST manipulations easier.
 These are explained here. 
 
 To be written.
-

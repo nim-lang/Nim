@@ -18,8 +18,8 @@ Commercial support includes:
 
 .. container:: standout
 
-  Features Requests
-  -----------------
+  Feature Requests
+  ----------------
 
   Suggest to us any feature that you might need, we will examine your request with
   care and provide a proper answer about its potential for inclusion.

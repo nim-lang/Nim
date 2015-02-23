@@ -1247,7 +1247,7 @@ proc genGlobalInit(c: PCtx; n: PNode; s: PSym) =
   s.position = c.globals.len
   # This is rather hard to support, due to the laziness of the VM code
   # generator. See tests/compile/tmacro2 for why this is necessary:
-  #   var decls{.compileTime.}: seq[PNimrodNode] = @[]
+  #   var decls{.compileTime.}: seq[NimNode] = @[]
   let dest = c.getTemp(s.typ)
   c.gABx(n, opcLdGlobal, dest, s.position)
   let tmp = c.genx(s.ast)

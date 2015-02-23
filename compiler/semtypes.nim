@@ -672,8 +672,9 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
     elif param.typ.kind == tyTypeDesc:
       addDecl(c, param)
     else:
-      # within a macro, every param has the type PNimrodNode!
-      let nn = getSysSym"PNimrodNode"
+      # within a macro, every param has the type NimNode!
+      let nn = if getCompilerProc("NimNode") != nil: getSysSym"NimNode"
+               else: getSysSym"PNimrodNode"
       var a = copySym(param)
       a.typ = nn.typ
       addDecl(c, a)

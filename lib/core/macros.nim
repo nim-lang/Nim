@@ -15,7 +15,7 @@ include "system/inclrtl"
 ## .. include:: ../doc/astspec.txt
 
 type
-  TNimrodNodeKind* = enum
+  NimNodeKind* = enum
     nnkNone, nnkEmpty, nnkIdent, nnkSym,
     nnkType, nnkCharLit, nnkIntLit, nnkInt8Lit,
     nnkInt16Lit, nnkInt32Lit, nnkInt64Lit, nnkUIntLit, nnkUInt8Lit,
@@ -72,8 +72,8 @@ type
     nnkEnumFieldDef,
     nnkArglist, nnkPattern
     nnkReturnToken
-  TNimNodeKinds* = set[TNimrodNodeKind]
-  TNimrodTypeKind* = enum
+  NimNodeKinds* = set[NimNodeKind]
+  NimTypeKind* = enum
     ntyNone, ntyBool, ntyChar, ntyEmpty,
     ntyArrayConstr, ntyNil, ntyExpr, ntyStmt,
     ntyTypeDesc, ntyGenericInvocation, ntyGenericBody, ntyGenericInst,
@@ -84,8 +84,8 @@ type
     ntyString, ntyCString, ntyForward, ntyInt,
     ntyInt8, ntyInt16, ntyInt32, ntyInt64,
     ntyFloat, ntyFloat32, ntyFloat64, ntyFloat128
-  TNimTypeKinds* = set[TNimrodTypeKind]
-  TNimrodSymKind* = enum
+  TNimTypeKinds* {.deprecated.} = set[NimTypeKind]
+  NimSymKind* = enum
     nskUnknown, nskConditional, nskDynLib, nskParam,
     nskGenericParam, nskTemp, nskModule, nskType, nskVar, nskLet,
     nskConst, nskResult,
@@ -94,16 +94,20 @@ type
     nskEnumField, nskForVar, nskLabel,
     nskStub
 
-  TNimSymKinds* = set[TNimrodSymKind]
+  TNimSymKinds* {.deprecated.} = set[NimSymKind]
 
 type
-  TNimrodIdent* = object of RootObj
-    ## represents a Nimrod identifier in the AST
+  NimIdent* = object of RootObj
+    ## represents a Nim identifier in the AST
 
-  TNimrodSymbol {.final.} = object # hidden
-  PNimrodSymbol* {.compilerproc.} = ref TNimrodSymbol
-    ## represents a Nimrod *symbol* in the compiler; a *symbol* is a looked-up
+  NimSymObj {.final.} = object # hidden
+  NimSym* = ref NimSymObj
+    ## represents a Nim *symbol* in the compiler; a *symbol* is a looked-up
     ## *ident*.
+
+{.deprecated: [TNimrodNodeKind: NimNodeKind, TNimNodeKinds: NimNodeKinds,
+    TNimrodTypeKind: NimTypeKind, TNimrodSymKind: NimSymKind,
+    TNimrodIdent: NimIdent, PNimrodSymbol: NimSym].}
 
 const
   nnkLiterals* = {nnkCharLit..nnkNilLit}
@@ -117,16 +121,16 @@ proc `[]=`*(n: PNimrodNode, i: int, child: PNimrodNode) {.magic: "NSetChild",
   noSideEffect.}
   ## set `n`'s `i`'th child to `child`.
 
-proc `!`*(s: string): TNimrodIdent {.magic: "StrToIdent", noSideEffect.}
+proc `!`*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect.}
   ## constructs an identifier from the string `s`
 
-proc `$`*(i: TNimrodIdent): string {.magic: "IdentToStr", noSideEffect.}
+proc `$`*(i: NimIdent): string {.magic: "IdentToStr", noSideEffect.}
   ## converts a Nimrod identifier to a string
 
-proc `$`*(s: PNimrodSymbol): string {.magic: "IdentToStr", noSideEffect.}
+proc `$`*(s: NimSym): string {.magic: "IdentToStr", noSideEffect.}
   ## converts a Nimrod symbol to a string
 
-proc `==`*(a, b: TNimrodIdent): bool {.magic: "EqIdent", noSideEffect.}
+proc `==`*(a, b: NimIdent): bool {.magic: "EqIdent", noSideEffect.}
   ## compares two Nimrod identifiers
 
 proc `==`*(a, b: PNimrodNode): bool {.magic: "EqNimrodNode", noSideEffect.}
@@ -153,15 +157,15 @@ proc kind*(n: PNimrodNode): TNimrodNodeKind {.magic: "NKind", noSideEffect.}
 
 proc intVal*(n: PNimrodNode): BiggestInt {.magic: "NIntVal", noSideEffect.}
 proc floatVal*(n: PNimrodNode): BiggestFloat {.magic: "NFloatVal", noSideEffect.}
-proc symbol*(n: PNimrodNode): PNimrodSymbol {.magic: "NSymbol", noSideEffect.}
-proc ident*(n: PNimrodNode): TNimrodIdent {.magic: "NIdent", noSideEffect.}
+proc symbol*(n: PNimrodNode): NimSym {.magic: "NSymbol", noSideEffect.}
+proc ident*(n: PNimrodNode): NimIdent {.magic: "NIdent", noSideEffect.}
 proc typ*(n: PNimrodNode): typedesc {.magic: "NGetType", noSideEffect.}
 proc strVal*(n: PNimrodNode): string  {.magic: "NStrVal", noSideEffect.}
 
 proc `intVal=`*(n: PNimrodNode, val: BiggestInt) {.magic: "NSetIntVal", noSideEffect.}
 proc `floatVal=`*(n: PNimrodNode, val: BiggestFloat) {.magic: "NSetFloatVal", noSideEffect.}
-proc `symbol=`*(n: PNimrodNode, val: PNimrodSymbol) {.magic: "NSetSymbol", noSideEffect.}
-proc `ident=`*(n: PNimrodNode, val: TNimrodIdent) {.magic: "NSetIdent", noSideEffect.}
+proc `symbol=`*(n: PNimrodNode, val: NimSym) {.magic: "NSetSymbol", noSideEffect.}
+proc `ident=`*(n: PNimrodNode, val: NimIdent) {.magic: "NSetIdent", noSideEffect.}
 #proc `typ=`*(n: PNimrodNode, typ: typedesc) {.magic: "NSetType".}
 # this is not sound! Unfortunately forbidding 'typ=' is not enough, as you
 # can easily do:
@@ -201,7 +205,7 @@ proc newFloatLitNode*(f: BiggestFloat): PNimrodNode {.compileTime.} =
   result = newNimNode(nnkFloatLit)
   result.floatVal = f
 
-proc newIdentNode*(i: TNimrodIdent): PNimrodNode {.compileTime.} =
+proc newIdentNode*(i: NimIdent): PNimrodNode {.compileTime.} =
   ## creates an identifier node from `i`
   result = newNimNode(nnkIdent)
   result.ident = i
@@ -339,7 +343,7 @@ proc newCall*(theProc: PNimrodNode,
   result.add(theProc)
   result.add(args)
 
-proc newCall*(theProc: TNimrodIdent,
+proc newCall*(theProc: NimIdent,
               args: varargs[PNimrodNode]): PNimrodNode {.compileTime.} =
   ## produces a new call node. `theProc` is the proc that is called with
   ## the arguments ``args[0..]``.
@@ -375,7 +379,7 @@ proc newLit*(s: string): PNimrodNode {.compileTime.} =
   result = newNimNode(nnkStrLit)
   result.strVal = s
 
-proc nestList*(theProc: TNimrodIdent,
+proc nestList*(theProc: NimIdent,
                x: PNimrodNode): PNimrodNode {.compileTime.} =
   ## nests the list `x` into a tree of call expressions:
   ## ``[a, b, c]`` is transformed into ``theProc(a, theProc(c, d))``.

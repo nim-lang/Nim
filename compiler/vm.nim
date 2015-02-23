@@ -154,7 +154,7 @@ proc moveConst(x: var TFullReg, y: TFullReg) =
   of rkNodeAddr: x.nodeAddr = y.nodeAddr
 
 # this seems to be the best way to model the reference semantics
-# of PNimrodNode:
+# of system.NimNode:
 template asgnRef(x, y: expr) = moveConst(x, y)
 
 proc copyValue(src: PNode): PNode =
