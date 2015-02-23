@@ -945,6 +945,13 @@ template `{}`*(n: PNode, i: int): expr = n[i -| n]
 template `{}=`*(n: PNode, i: int, s: PNode): stmt =
   n.sons[i -| n] = s
 
+when defined(useNodeIds):
+  const nodeIdToDebug* = -1 # 884953 # 612794
+  #612840 # 612905 # 614635 # 614637 # 614641
+  # 423408
+  #429107 # 430443 # 441048 # 441090 # 441153
+  var gNodeId: int
+
 proc newNode*(kind: TNodeKind): PNode = 
   new(result)
   result.kind = kind
@@ -1060,13 +1067,6 @@ proc copyObjectSet*(dest: var TObjectSet, src: TObjectSet) =
   
 proc discardSons*(father: PNode) = 
   father.sons = nil
-
-when defined(useNodeIds):
-  const nodeIdToDebug* = -1 # 884953 # 612794
-  #612840 # 612905 # 614635 # 614637 # 614641
-  # 423408
-  #429107 # 430443 # 441048 # 441090 # 441153
-  var gNodeId: int
 
 proc withInfo*(n: PNode, info: TLineInfo): PNode =
   n.info = info

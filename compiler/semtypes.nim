@@ -332,10 +332,15 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
       if result.typ.kind != tyGenericParam:
         # XXX get rid of this hack!
         var oldInfo = n.info
+        when defined(useNodeIds):
+          let oldId = n.id
         reset(n[])
+        when defined(useNodeIds):
+          n.id = oldId
         n.kind = nkSym
         n.sym = result
         n.info = oldInfo
+        n.typ = result.typ
     else:
       localError(n.info, errIdentifierExpected)
       result = errorSym(c, n)
@@ -1179,11 +1184,12 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     var typeExpr = semExpr(c, n)
     if typeExpr.typ.kind != tyTypeDesc:
       localError(n.info, errTypeExpected)
-      return errorType(c)
-    result = typeExpr.typ.base
-    if result.isMetaType:
-      var preprocessed = semGenericStmt(c, n)
-      return makeTypeFromExpr(c, preprocessed)
+      result = errorType(c)
+    else:
+      result = typeExpr.typ.base
+      if result.isMetaType:
+        var preprocessed = semGenericStmt(c, n)
+        result = makeTypeFromExpr(c, preprocessed)
   of nkIdent, nkAccQuoted:
     var s = semTypeIdent(c, n)
     if s.typ == nil: 
@@ -1254,7 +1260,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   else:
     localError(n.info, errTypeExpected)
     result = newOrPrevType(tyError, prev, c)
-  
+  n.typ = result
+
 proc setMagicType(m: PSym, kind: TTypeKind, size: int) = 
   m.typ.kind = kind
   m.typ.align = size.int16

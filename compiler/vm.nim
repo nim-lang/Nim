@@ -123,8 +123,12 @@ proc createStrKeepNode(x: var TFullReg) =
   if x.node.isNil:
     x.node = newNode(nkStrLit)
   elif x.node.kind == nkNilLit:
+    when defined(useNodeIds):
+      let id = x.node.id
     system.reset(x.node[])
     x.node.kind = nkStrLit
+    when defined(useNodeIds):
+      x.node.id = id
   elif x.node.kind notin {nkStrLit..nkTripleStrLit} or
       nfAllConst in x.node.flags:
     # XXX this is hacky; tests/txmlgen triggers it:
@@ -1133,7 +1137,21 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       else:
         stackTrace(c, tos, pc, errFieldXNotFound, "ident")
     of opcNGetType:
-      internalError(c.debug[pc], "unknown opcode " & $instr.opcode)
+      let rb = instr.regB
+      let rc = instr.regC
+      if rc == 0:
+        ensureKind(rkNode)
+        if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
+          regs[ra].node = opMapTypeToAst(regs[rb].node.typ, c.debug[pc])
+        else:
+          stackTrace(c, tos, pc, errGenerated, "node has no type")
+      else:
+        # typeKind opcode:
+        ensureKind(rkInt)
+        if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
+          regs[ra].intVal = ord(regs[rb].node.typ.kind)
+        #else:
+        #  stackTrace(c, tos, pc, errGenerated, "node has no type")
     of opcNStrVal:
       decodeB(rkNode)
       createStr regs[ra]

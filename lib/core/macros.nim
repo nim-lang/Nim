@@ -83,7 +83,13 @@ type
     ntySequence, ntyProc, ntyPointer, ntyOpenArray,
     ntyString, ntyCString, ntyForward, ntyInt,
     ntyInt8, ntyInt16, ntyInt32, ntyInt64,
-    ntyFloat, ntyFloat32, ntyFloat64, ntyFloat128
+    ntyFloat, ntyFloat32, ntyFloat64, ntyFloat128,
+    ntyUInt, ntyUInt8, ntyUInt16, ntyUInt32, ntyUInt64,
+    ntyBigNum, 
+    ntyConst, ntyMutable, ntyVarargs, 
+    ntyIter,
+    ntyError
+    
   TNimTypeKinds* {.deprecated.} = set[NimTypeKind]
   NimSymKind* = enum
     nskUnknown, nskConditional, nskDynLib, nskParam,
@@ -100,7 +106,7 @@ type
   NimIdent* = object of RootObj
     ## represents a Nim identifier in the AST
 
-  NimSymObj {.final.} = object # hidden
+  NimSymObj = object # hidden
   NimSym* = ref NimSymObj
     ## represents a Nim *symbol* in the compiler; a *symbol* is a looked-up
     ## *ident*.
@@ -125,16 +131,16 @@ proc `!`*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect.}
   ## constructs an identifier from the string `s`
 
 proc `$`*(i: NimIdent): string {.magic: "IdentToStr", noSideEffect.}
-  ## converts a Nimrod identifier to a string
+  ## converts a Nim identifier to a string
 
 proc `$`*(s: NimSym): string {.magic: "IdentToStr", noSideEffect.}
-  ## converts a Nimrod symbol to a string
+  ## converts a Nim symbol to a string
 
 proc `==`*(a, b: NimIdent): bool {.magic: "EqIdent", noSideEffect.}
-  ## compares two Nimrod identifiers
+  ## compares two Nim identifiers
 
 proc `==`*(a, b: PNimrodNode): bool {.magic: "EqNimrodNode", noSideEffect.}
-  ## compares two Nimrod nodes
+  ## compares two Nim nodes
 
 proc len*(n: PNimrodNode): int {.magic: "NLen", noSideEffect.}
   ## returns the number of children of `n`.
@@ -159,7 +165,19 @@ proc intVal*(n: PNimrodNode): BiggestInt {.magic: "NIntVal", noSideEffect.}
 proc floatVal*(n: PNimrodNode): BiggestFloat {.magic: "NFloatVal", noSideEffect.}
 proc symbol*(n: PNimrodNode): NimSym {.magic: "NSymbol", noSideEffect.}
 proc ident*(n: PNimrodNode): NimIdent {.magic: "NIdent", noSideEffect.}
-proc typ*(n: PNimrodNode): typedesc {.magic: "NGetType", noSideEffect.}
+
+proc getType*(n: PNimrodNode): PNimrodNode {.magic: "NGetType", noSideEffect.}
+  ## with 'getType' you can access the node's `type`:idx:. A Nim type is
+  ## mapped to a Nim AST too, so it's slightly confusing but it means the same
+  ## API can be used to traverse types. Recursive types are flattened for you
+  ## so there is no danger of infinite recursions during traversal. To
+  ## resolve recursive types, you have to call 'getType' again. To see what
+  ## kind of type it is, call `typeKind` on getType's result.
+
+proc typeKind*(n: PNimrodNode): NimTypeKind {.magic: "NGetType", noSideEffect.}
+  ## Returns the type kind of the node 'n' that should represent a type, that
+  ## means the node should have been obtained via `getType`.
+
 proc strVal*(n: PNimrodNode): string  {.magic: "NStrVal", noSideEffect.}
 
 proc `intVal=`*(n: PNimrodNode, val: BiggestInt) {.magic: "NSetIntVal", noSideEffect.}
@@ -216,7 +234,7 @@ proc newIdentNode*(i: string): PNimrodNode {.compileTime.} =
   result.ident = !i
 
 type
-  TBindSymRule* = enum   ## specifies how ``bindSym`` behaves
+  BindSymRule* = enum    ## specifies how ``bindSym`` behaves
     brClosed,            ## only the symbols in current scope are bound
     brOpen,              ## open wrt overloaded symbols, but may be a single
                          ## symbol if not ambiguous (the rules match that of
@@ -225,7 +243,9 @@ type
                          ## if not ambiguous (this cannot be achieved with
                          ## any other means in the language currently)
 
-proc bindSym*(ident: string, rule: TBindSymRule = brClosed): PNimrodNode {.
+{.deprecated: [TBindSymRule: BindSymRule].}
+
+proc bindSym*(ident: string, rule: BindSymRule = brClosed): PNimrodNode {.
               magic: "NBindSym", noSideEffect.}
   ## creates a node that binds `ident` to a symbol node. The bound symbol
   ## may be an overloaded symbol.
@@ -236,7 +256,7 @@ proc bindSym*(ident: string, rule: TBindSymRule = brClosed): PNimrodNode {.
   ## If ``rule == brForceOpen`` always an ``nkOpenSymChoice`` tree is
   ## returned even if the symbol is not ambiguous.
 
-proc genSym*(kind: TNimrodSymKind = nskLet; ident = ""): PNimrodNode {.
+proc genSym*(kind: NimSymKind = nskLet; ident = ""): PNimrodNode {.
   magic: "NGenSym", noSideEffect.}
   ## generates a fresh symbol that is guaranteed to be unique. The symbol
   ## needs to occur in a declaration context.
@@ -245,7 +265,7 @@ proc callsite*(): PNimrodNode {.magic: "NCallSite", benign.}
   ## returns the AST of the invocation expression that invoked this macro.
 
 proc toStrLit*(n: PNimrodNode): PNimrodNode {.compileTime.} =
-  ## converts the AST `n` to the concrete Nimrod code and wraps that
+  ## converts the AST `n` to the concrete Nim code and wraps that
   ## in a string literal node
   return newStrLitNode(repr(n))
 
