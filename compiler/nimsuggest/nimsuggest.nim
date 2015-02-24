@@ -120,13 +120,17 @@ proc serve() =
     server.bindAddr(gPort, gAddress)
     var inp = "".TaintedString
     server.listen()
-    var stdoutSocket = newSocket()
-    msgs.writelnHook = proc (line: string) =
-      stdoutSocket.send(line & "\c\L")
+
     while true:
+      var stdoutSocket = newSocket()
+      msgs.writelnHook = proc (line: string) =
+        stdoutSocket.send(line & "\c\L")
+
       accept(server, stdoutSocket)
+
       stdoutSocket.readLine(inp)
       action inp.string
+
       stdoutSocket.send("\c\L")
       stdoutSocket.close()
 
