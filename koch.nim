@@ -139,9 +139,6 @@ proc pdf(args="") =
 
 # -------------- boot ---------------------------------------------------------
 
-const
-  bootOptions = "" # options to pass to the bootstrap process
-
 proc findStartNim: string = 
   # we try several things before giving up:
   # * bin/nim
@@ -180,11 +177,13 @@ proc thVersion(i: int): string =
 proc boot(args: string) =
   var output = "compiler" / "nim".exe
   var finalDest = "bin" / "nim".exe
+  # default to use the 'c' command:
+  let bootOptions = if args.len == 0 or args.startsWith("-"): "c" else: ""
   
   copyExe(findStartNim(), 0.thVersion)
   for i in 0..2:
     echo "iteration: ", i+1
-    exec i.thVersion & " c $# $# compiler" / "nim.nim" % [bootOptions, args]
+    exec i.thVersion & " $# $# compiler" / "nim.nim" % [bootOptions, args]
     if sameFileContent(output, i.thVersion):
       copyExe(output, finalDest)
       echo "executables are equal: SUCCESS!"
