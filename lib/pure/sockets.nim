@@ -657,6 +657,8 @@ proc close*(socket: Socket) =
   when defined(ssl):
     if socket.isSSL:
       discard SSLShutdown(socket.sslHandle)
+      SSLFree(socket.sslHandle)
+      socket.sslHandle = nil
 
 proc getServByName*(name, proto: string): Servent {.tags: [ReadIOEffect].} =
   ## Searches the database from the beginning and finds the first entry for 
