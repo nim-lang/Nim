@@ -133,7 +133,7 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode): PRope =
     var n = if n.kind != nkHiddenAddr: n else: n.sons[0]
     result = openArrayLoc(p, n)
   elif ccgIntroducedPtr(param):
-    initLocExprSingleUse(p, n, a)
+    initLocExpr(p, n, a)
     result = addrLoc(a)
   elif p.module.compileToCpp and param.typ.kind == tyVar and 
       n.kind == nkHiddenAddr:

@@ -203,7 +203,8 @@ proc genSingleVar(p: BProc, a: PNode) =
     registerGcRoot(p, v)
   else:
     let imm = isAssignedImmediately(a.sons[2])
-    if imm and p.module.compileToCpp and p.splitDecls == 0:
+    if imm and p.module.compileToCpp and p.splitDecls == 0 and
+        not containsHiddenPointer(v.typ):
       # C++ really doesn't like things like 'Foo f; f = x' as that invokes a
       # parameterless constructor followed by an assignment operator. So we
       # generate better code here:

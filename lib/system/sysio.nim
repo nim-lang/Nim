@@ -188,7 +188,7 @@ when defined(windows) and not defined(useWinAnsi):
     proc wfopen(filename, mode: WideCString): pointer {.
       importcpp: "_wfopen((const wchar_t*)#, (const wchar_t*)#)", nodecl.}
     proc wfreopen(filename, mode: WideCString, stream: File): File {.
-      importc: "_wfreopen((const wchar_t*)#, (const wchar_t*)#)", nodecl.}
+      importcpp: "_wfreopen((const wchar_t*)#, (const wchar_t*)#, #)", nodecl.}
   else:
     proc wfopen(filename, mode: WideCString): pointer {.
       importc: "_wfopen", nodecl.}
