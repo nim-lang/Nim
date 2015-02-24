@@ -51,7 +51,11 @@ proc mapTypeToBracket(name: string; t: PType; info: TLineInfo): PNode =
   result = newNodeIT(nkBracketExpr, info, t)
   result.add atomicTypeX(name, t, info)
   for i in 0 .. < t.len:
-    result.add mapTypeToAst(t.sons[i], info)
+    if t.sons[i] == nil:
+      let void = atomicTypeX("void", t, info)
+      void.typ = newType(tyEmpty, t.owner)
+    else:
+      result.add mapTypeToAst(t.sons[i], info)
 
 proc mapTypeToAst(t: PType, info: TLineInfo; allowRecursion=false): PNode =
   template atomicType(name): expr = atomicTypeX(name, t, info)
