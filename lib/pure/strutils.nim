@@ -479,26 +479,6 @@ proc parseBool*(s: string): bool =
   of "n", "no", "false", "0", "off": result = false
   else: raise newException(ValueError, "cannot interpret as a bool: " & s)
 
-proc parseEnum*[T: enum](s: string): T =
-  ## Parses an enum ``T``.
-  ##
-  ## Raises ``ValueError`` for an invalid value in `s`. The comparison is
-  ## done in a style insensitive way.
-  for e in low(T)..high(T):
-    if cmpIgnoreStyle(s, $e) == 0:
-      return e
-  raise newException(ValueError, "invalid enum value: " & s)
-
-proc parseEnum*[T: enum](s: string, default: T): T =
-  ## Parses an enum ``T``.
-  ##
-  ## Uses `default` for an invalid value in `s`. The comparison is done in a
-  ## style insensitive way.
-  for e in low(T)..high(T):
-    if cmpIgnoreStyle(s, $e) == 0:
-      return e
-  result = default
-
 proc repeatChar*(count: int, c: char = ' '): string {.noSideEffect,
   rtl, extern: "nsuRepeatChar".} =
   ## Returns a string of length `count` consisting only of
@@ -1373,6 +1353,47 @@ proc format*(formatstr: string, a: varargs[string, `$`]): string {.noSideEffect,
   ## auto stringification.
   result = newStringOfCap(formatstr.len + a.len)
   addf(result, formatstr, a)
+
+# Moved down here because the macros module requires cmpIgnoreStyle and format
+import macros
+
+proc parseEnum*[T: enum](s: string): T =
+  ## Parses an enum ``T``.
+  ##
+  ## Raises ``ValueError`` for an invalid value in `s`. The comparison is
+  ## done in a style insensitive way.
+  macro m: stmt =
+    result = newNimNode(nnkCaseStmt).add(newDotExpr(newIdentNode("s"),
+      newIdentNode("normalize")))
+
+    for e in T:
+      result.add(newNimNode(nnkOfBranch).add(newStrLitNode(($e).normalize),
+        newNimNode(nnkReturnStmt).add(newIdentNode($e))))
+
+    result.add(newNimNode(nnkElse).add(newNimNode(nnkRaiseStmt).add(newCall(
+      newIdentNode("newException"), newIdentNode("ValueError"),
+      newNimNode(nnkInfix).add(newIdentNode("&"),
+        newStrLitNode("invalid enum value: "), newIdentNode("s"))))))
+
+  m()
+
+proc parseEnum*[T: enum](s: string, default: T): T =
+  ## Parses an enum ``T``.
+  ##
+  ## Uses `default` for an invalid value in `s`. The comparison is done in a
+  ## style insensitive way.
+  macro m: stmt =
+    result = newNimNode(nnkCaseStmt).add(newDotExpr(newIdentNode("s"),
+      newIdentNode("normalize")))
+
+    for e in T:
+      result.add(newNimNode(nnkOfBranch).add(newStrLitNode(($e).normalize),
+        newNimNode(nnkReturnStmt).add(newIdentNode($e))))
+
+    result.add(newNimNode(nnkElse).add(newAssignment(newIdentNode("result"),
+      newIdentNode("default"))))
+
+  m()
 
 {.pop.}
 
