@@ -80,13 +80,9 @@ proc freshGenSyms(n: PNode, owner: PSym, symMap: var TIdTable) =
     let s = n.sym
     var x = PSym(idTableGet(symMap, s))
     if x == nil:
-      if s.kind == skParam:
-        x = owner.typ.n[s.position+1].sym
-        internalAssert x.kind == skParam
-      else:
-        x = copySym(s, false)
-        x.owner = owner
-        idTablePut(symMap, s, x)
+      x = copySym(s, false)
+      x.owner = owner
+      idTablePut(symMap, s, x)
     n.sym = x
   else:
     for i in 0 .. <safeLen(n): freshGenSyms(n.sons[i], owner, symMap)
@@ -104,13 +100,18 @@ proc addProcDecls(c: PContext, fn: PSym) =
   
   maybeAddResult(c, fn, fn.ast)
 
-proc instantiateBody(c: PContext, n: PNode, result: PSym) =
+proc instantiateBody(c: PContext, n, params: PNode, result: PSym) =
   if n.sons[bodyPos].kind != nkEmpty:
     inc c.inGenericInst
     # add it here, so that recursive generic procs are possible:
     var b = n.sons[bodyPos]
     var symMap: TIdTable
     initIdTable symMap
+    if params != nil:
+      for i in 1 .. <params.len:
+        let param = params[i].sym
+        if sfGenSym in param.flags:
+          idTablePut(symMap, params[i].sym, result.typ.n[param.position+1].sym)
     freshGenSyms(b, result, symMap)
     b = semProcBody(c, b)
     b = hloBody(c, b)
@@ -127,7 +128,7 @@ proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
       openScope(c)
       var n = oldPrc.ast
       n.sons[bodyPos] = copyTree(s.getBody)
-      instantiateBody(c, n, oldPrc)
+      instantiateBody(c, n, nil, oldPrc)
       closeScope(c)
       popInfoContext()
 
@@ -249,7 +250,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
       pragma(c, result, n.sons[pragmasPos], allRoutinePragmas)
     if isNil(n.sons[bodyPos]):
       n.sons[bodyPos] = copyTree(fn.getBody)
-    instantiateBody(c, n, result)
+    instantiateBody(c, n, fn.typ.n, result)
     sideEffectsCheck(c, result)
     paramsTypeCheck(c, result.typ)
   else:
