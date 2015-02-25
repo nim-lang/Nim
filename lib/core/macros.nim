@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -119,6 +119,8 @@ const
   nnkLiterals* = {nnkCharLit..nnkNilLit}
   nnkCallKinds* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
                    nnkCallStrLit}
+
+{.push warning[deprecated]: off.}
 
 proc `[]`*(n: PNimrodNode, i: int): PNimrodNode {.magic: "NChild", noSideEffect.}
   ## get `n`'s `i`'th child.
@@ -808,3 +810,5 @@ when not defined(booting):
     macro payload: stmt {.gensym.} =
       result = parseStmt(e)
     payload()
+
+{.pop.}
