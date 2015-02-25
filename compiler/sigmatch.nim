@@ -1187,8 +1187,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
 
     if argType.kind == tyStatic:
       if m.callee.kind == tyGenericBody and tfGenericTypeParam notin argType.flags:
-        result = newNodeI(nkType, argOrig.info)
-        result.typ = makeTypeFromExpr(c, arg)
+        result = newNodeIT(nkType, argOrig.info, makeTypeFromExpr(c, arg))
         return
     else:
       var evaluated = c.semTryConstExpr(c, arg)

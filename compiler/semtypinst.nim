@@ -369,6 +369,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
 
   of tyFromExpr:
     if cl.allowMetaTypes: return
+    assert t.n.typ != t
     var n = prepareNode(cl, t.n)
     n = cl.c.semConstExpr(cl.c, n)
     if n.typ.kind == tyTypeDesc:

@@ -1193,7 +1193,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       result = typeExpr.typ.base
       if result.isMetaType:
         var preprocessed = semGenericStmt(c, n)
-        result = makeTypeFromExpr(c, preprocessed)
+        result = makeTypeFromExpr(c, preprocessed.copyTree)
   of nkIdent, nkAccQuoted:
     var s = semTypeIdent(c, n)
     if s.typ == nil: 
