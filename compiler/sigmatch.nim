@@ -1165,6 +1165,15 @@ proc isInlineIterator*(t: PType): bool =
   result = t.kind == tyIter or
           (t.kind == tyBuiltInTypeClass and t.base.kind == tyIter)
 
+proc isEmptyContainer*(t: PType): bool =
+  case t.kind
+  of tyExpr, tyNil: result = true
+  of tyArray, tyArrayConstr: result = t.sons[1].kind == tyEmpty
+  of tySet, tySequence, tyOpenArray, tyVarargs:
+    result = t.sons[0].kind == tyEmpty
+  of tyGenericInst: result = isEmptyContainer(t.lastSon)
+  else: result = false
+
 proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
                         argSemantized, argOrig: PNode): PNode =
   var
@@ -1260,11 +1269,14 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
       result = implicitConv(nkHiddenStdConv, f, result, m, c)
   of isGeneric:
     inc(m.genericMatches)
-    when false:
+    when true:
       if skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple:
         result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
-      else:
+      elif arg.typ != nil and arg.typ.isEmptyContainer:
         result = arg.copyTree
+        result.typ = getInstantiatedType(c, arg, m, f)
+      else:
+        result = arg
     else:
       # XXX Why is this ever necessary? arg's type should not be retrofitted
       # to match formal's type in this way!

@@ -95,15 +95,6 @@ proc inferWithMetatype(c: PContext, formal: PType,
 
 var commonTypeBegin = PType(kind: tyExpr)
 
-proc isEmptyContainer(t: PType): bool =
-  case t.kind
-  of tyExpr, tyNil: result = true
-  of tyArray, tyArrayConstr: result = t.sons[1].kind == tyEmpty
-  of tySet, tySequence, tyOpenArray, tyVarargs:
-    result = t.sons[0].kind == tyEmpty
-  of tyGenericInst: result = isEmptyContainer(t.lastSon)
-  else: result = false
-
 proc commonType*(x, y: PType): PType =
   # new type relation that is used for array constructors,
   # if expressions, etc.:

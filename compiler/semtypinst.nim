@@ -236,7 +236,7 @@ proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
 
 proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType = 
   # tyGenericInvocation[A, tyGenericInvocation[A, B]]
-  # is difficult to handle: 
+  # is difficult to handle:
   var body = t.sons[0]
   if body.kind != tyGenericBody: internalError(cl.info, "no generic body")
   var header: PType = t
@@ -245,7 +245,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     result = PType(idTableGet(cl.localCache, t))
   else:
     result = searchInstTypes(t)
-  if result != nil: return
+  if result != nil and eqTypeFlags*result.flags == eqTypeFlags*t.flags: return
   for i in countup(1, sonsLen(t) - 1):
     var x = t.sons[i]
     if x.kind == tyGenericParam:
@@ -260,10 +260,10 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   if header != t:
     # search again after first pass:
     result = searchInstTypes(header)
-    if result != nil: return
+    if result != nil and eqTypeFlags*result.flags == eqTypeFlags*t.flags: return
   else:
     header = instCopyType(cl, t)
-  
+
   result = newType(tyGenericInst, t.sons[0].owner)
   result.flags = header.flags
   # be careful not to propagate unnecessary flags here (don't use rawAddSon)
