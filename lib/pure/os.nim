@@ -1299,8 +1299,16 @@ iterator walkDir*(dir: string): tuple[kind: PathComponent, path: string] {.
         if y != "." and y != "..":
           var s: TStat
           y = dir / y
-          if lstat(y, s) < 0'i32: break
           var k = pcFile
+
+          when defined(linux) or defined(macosx) or defined(bsd):
+            if x.d_type != DT_UNKNOWN:
+              if x.d_type == DT_DIR: k = pcDir
+              if x.d_type == DT_LNK: k = succ(k)
+              yield (k, y)
+              continue
+
+          if lstat(y, s) < 0'i32: break
           if S_ISDIR(s.st_mode): k = pcDir
           if S_ISLNK(s.st_mode): k = succ(k)
           yield (k, y)

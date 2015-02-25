@@ -70,6 +70,16 @@ const
   STDIN_FILENO* = 0  ## File number of stdin;
   STDOUT_FILENO* = 1 ## File number of stdout;
 
+  DT_UNKNOWN* = 0 ## Unknown file type.
+  DT_FIFO* = 1    ## Named pipe, or FIFO.
+  DT_CHR* = 2     ## Character device.
+  DT_DIR* = 4     ## Directory.
+  DT_BLK* = 6     ## Block device.
+  DT_REG* = 8     ## Regular file.
+  DT_LNK* = 10    ## Symbolic link.
+  DT_SOCK* = 12   ## UNIX domain socket.
+  DT_WHT* = 14
+
 type
   TDIR* {.importc: "DIR", header: "<dirent.h>",
           incompleteStruct.} = object
@@ -84,6 +94,10 @@ type
   Tdirent* {.importc: "struct dirent",
              header: "<dirent.h>", final, pure.} = object ## dirent_t struct
     d_ino*: Tino  ## File serial number.
+    d_off*: TOff  ## Not an offset. Value that ``telldir()`` would return.
+    d_reclen*: cshort ## Length of this record. (not POSIX)
+    d_type*: int8 ## Type of file; not supported by all filesystem types.
+                  ## (not POSIX)
     d_name*: array [0..255, char] ## Name of entry.
 
   Tflock* {.importc: "struct flock", final, pure,
