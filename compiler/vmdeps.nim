@@ -54,6 +54,7 @@ proc mapTypeToBracket(name: string; t: PType; info: TLineInfo): PNode =
     if t.sons[i] == nil:
       let void = atomicTypeX("void", t, info)
       void.typ = newType(tyEmpty, t.owner)
+      result.add void
     else:
       result.add mapTypeToAst(t.sons[i], info)
 
@@ -105,7 +106,7 @@ proc mapTypeToAst(t: PType, info: TLineInfo; allowRecursion=false): PNode =
   of tyPtr: result = mapTypeToBracket("ptr", t, info)
   of tyRef: result = mapTypeToBracket("ref", t, info)
   of tyVar: result = mapTypeToBracket("var", t, info)
-  of tySequence: result = mapTypeToBracket("sequence", t, info)
+  of tySequence: result = mapTypeToBracket("seq", t, info)
   of tyProc: result = mapTypeToBracket("proc", t, info)
   of tyOpenArray: result = mapTypeToBracket("openArray", t, info)
   of tyRange:

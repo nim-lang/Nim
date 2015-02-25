@@ -64,7 +64,9 @@ proc callCompiler(cmdTemplate, filename, options: string,
   var suc = ""
   var err = ""
   var x = newStringOfCap(120)
+  result.nimout = ""
   while outp.readLine(x.TaintedString) or running(p):
+    result.nimout.add(x & "\n")
     if x =~ pegOfInterest:
       # `err` should contain the last error/warning message
       err = x
@@ -112,7 +114,9 @@ proc addResult(r: var TResults, test: TTest,
                           expected = expected,
                           given = given)
   r.data.addf("$#\t$#\t$#\t$#", name, expected, given, $success)
-  if success notin {reSuccess, reIgnored}:
+  if success == reIgnored:
+    styledEcho styleBright, name, fgYellow, " [", $success, "]"
+  elif success != reSuccess:
     styledEcho styleBright, name, fgRed, " [", $success, "]"
     echo"Expected:"
     styledEcho styleBright, expected
@@ -151,6 +155,13 @@ proc codegenCheck(test: TTest, check: string, given: var TSpec) =
     except IOError:
       given.err = reCodeNotFound
 
+proc nimoutCheck(test: TTest; expectedNimout: string; given: var TSpec) =
+  if expectedNimout.len > 0:
+    let exp = expectedNimout.strip.replace("\C\L", "\L")
+    let giv = given.nimout.strip.replace("\C\L", "\L")
+    if exp notin giv:
+      given.err = reMsgsDiffer
+
 proc makeDeterministic(s: string): string =
   var x = splitLines(s)
   sort(x, system.cmp)
@@ -172,6 +183,7 @@ proc testSpec(r: var TResults, test: TTest) =
                                test.target)
       if given.err == reSuccess:
         codegenCheck(test, expected.ccodeCheck, given)
+        nimoutCheck(test, expected.nimout, given)
       r.addResult(test, "", given.msg, given.err)
       if given.err == reSuccess: inc(r.passed)
     of actionRun:
@@ -205,6 +217,7 @@ proc testSpec(r: var TResults, test: TTest) =
                 given.err = reOutputsDiffer
             if given.err == reSuccess:
               codeGenCheck(test, expected.ccodeCheck, given)
+              nimoutCheck(test, expected.nimout, given)
             if given.err == reSuccess: inc(r.passed)
             r.addResult(test, expected.outp, buf.string, given.err)
         else:

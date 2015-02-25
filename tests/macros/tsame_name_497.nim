@@ -1,3 +1,7 @@
+discard """
+  disabled: true
+"""
+
 import macro_bug
 
 type TObj = object

@@ -48,6 +48,7 @@ type
     err*: TResultEnum
     substr*, sortoutput*: bool
     targets*: set[TTarget]
+    nimout*: string
 
 const
   targetToExt*: array[TTarget, string] = ["c", "cpp", "m", "js"]
@@ -94,6 +95,7 @@ proc parseSpec*(filename: string): TSpec =
   result.file = filename
   result.msg = ""
   result.outp = ""
+  result.nimout = ""
   result.ccodeCheck = ""
   result.cmd = cmdTemplate
   parseSpecAux:
@@ -124,6 +126,8 @@ proc parseSpec*(filename: string): TSpec =
     of "errormsg":
       result.msg = e.value
       result.action = actionReject
+    of "nimout":
+      result.nimout = e.value
     of "disabled":
       if parseCfgBool(e.value): result.err = reIgnored
     of "cmd": result.cmd = e.value

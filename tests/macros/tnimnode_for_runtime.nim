@@ -1,6 +1,5 @@
 discard """
   output: "bla"
-  disabled: true
 """
 
 import macros
