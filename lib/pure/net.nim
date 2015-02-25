@@ -454,6 +454,8 @@ proc close*(socket: Socket) =
         # shutdown i.e not wait for the peers "close notify" alert with a second
         # call to SSLShutdown
         let res = SSLShutdown(socket.sslHandle)
+        SSLFree(socket.sslHandle)
+        socket.sslHandle = nil
         if res == 0:
           discard
         elif res != 1:
