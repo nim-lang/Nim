@@ -158,7 +158,7 @@ proc sumGeneric(t: PType): int =
       for i in 0 .. <t.len: result += t.sons[i].sumGeneric
       break
     of tyProc:
-      # proc matche proc better than 'stmt' to disambiguate 'spawn'
+      # proc matches proc better than 'stmt' to disambiguate 'spawn'
       return 1
     of tyGenericParam, tyExpr, tyStatic, tyStmt, tyTypeDesc: break
     else: return 0
@@ -865,8 +865,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         result = typeRel(c, ff, aa)
         if result == isNone: return        
         if ff.kind == tyRange and result != isEqual: return isNone
-
       result = isGeneric
+      # XXX See bug #2220. A[int] should match A[int] better than some generic X
     else:
       result = typeRel(c, lastSon(f), a)
 
