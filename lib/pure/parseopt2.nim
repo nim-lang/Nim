@@ -108,20 +108,19 @@ proc next(p: var OptParser) =
     p.kind = cmdArgument
     p.key = token
     p.val = ""
-  elif token != "--":
-    if token.startsWith("--"):
-      p.kind = cmdLongOption
-      nextOption(p, token[2..token.len-1], allowEmpty=true)
-    elif token.startsWith("-"):
-      p.kind = cmdShortOption
-      nextOption(p, token[1..token.len-1], allowEmpty=true)
-    else:
-      p.kind = cmdArgument
-      p.key = token
-      p.val = ""
-  else:
+  elif token == "--":
     p.skipParser = true
     p.next()
+  elif token.startsWith("--"):
+    p.kind = cmdLongOption
+    nextOption(p, token[2..token.len-1], allowEmpty=true)
+  elif token.startsWith("-"):
+    p.kind = cmdShortOption
+    nextOption(p, token[1..token.len-1], allowEmpty=true)
+  else:
+    p.kind = cmdArgument
+    p.key = token
+    p.val = ""
 
 proc cmdLineRest*(p: OptParser): TaintedString {.rtl, extern: "npo$1", deprecated.} =
   ## Returns part of command line string that has not been parsed yet.
