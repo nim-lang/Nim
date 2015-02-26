@@ -5,6 +5,8 @@ version 0.10.4
 - make 'nil' work for 'add' and 'len'
 - get rid of 'mget'; aka priority of 'var' needs to be 'var{lvalue}'
 - 'result' shadowing warning
+- disallow negative indexing
+- improve the parser; deal with  echo $foo  gotcha
 
 
 version 1.0
@@ -75,8 +77,7 @@ version 0.9.X
 =============
 
 - macros as type pragmas
-- lazy overloading resolution:
-  * special case ``tyStmt``
+- document how lazy overloading resolution works
 - document NimMain and check whether it works for threading
 
 GC

@@ -326,7 +326,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   of "link": 
     expectArg(switch, arg, pass, info)
     if pass in {passCmd2, passPP}: addFileToLink(arg)
-  of "debuginfo": 
+  of "debuginfo":
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optCDebug)
   of "embedsrc":
@@ -374,10 +374,20 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   of "threadanalysis": processOnOffSwitchG({optThreadAnalysis}, arg, pass, info)
   of "stacktrace": processOnOffSwitch({optStackTrace}, arg, pass, info)
   of "linetrace": processOnOffSwitch({optLineTrace}, arg, pass, info)
-  of "debugger": 
-    processOnOffSwitch({optEndb}, arg, pass, info)
-    if optEndb in gOptions: defineSymbol("endb")
-    else: undefSymbol("endb")
+  of "debugger":
+    case arg.normalize
+    of "on", "endb":
+      gOptions.incl optEndb
+      defineSymbol("endb")
+    of "off":
+      gOptions.excl optEndb
+      undefSymbol("endb")
+    of "native":
+      incl(gGlobalOptions, optCDebug)
+      gOptions = gOptions + {optLineDir} - {optEndb}
+      undefSymbol("endb")
+    else:
+      localError(info, "expected endb|gdb but found " & arg)
   of "profiler": 
     processOnOffSwitch({optProfiler}, arg, pass, info)
     if optProfiler in gOptions: defineSymbol("profiler")
