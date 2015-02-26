@@ -185,6 +185,9 @@ Math libraries
 * `complex <complex.html>`_
   This module implements complex numbers and their mathematical operations.
 
+* `rationals <rationals.html>`_
+  This module implements rational numbers and their mathematical operations.
+
 * `fenv <fenv.html>`_
   Floating-point environment. Handling of floating-point rounding and
   exceptions (overflow, zero-devide, etc.).

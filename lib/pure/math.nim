@@ -280,7 +280,7 @@ proc random*[T](x: Slice[T]): T =
   ## For a slice `a .. b` returns a value in the range `a .. b-1`.
   result = random(x.b - x.a) + x.a
 
-proc random[T](a: openArray[T]): T =
+proc random*[T](a: openArray[T]): T =
   ## returns a random element from the openarray `a`.
   result = a[random(a.low..a.len)]
 
@@ -328,6 +328,31 @@ proc standardDeviation*(s: RunningStat): float =
 
 {.pop.}
 {.pop.}
+
+proc `^`*[T](x, y: T): T =
+  ## Computes ``x`` to the power ``y`. ``x`` must be non-negative, use
+  ## `pow <#pow,float,float>` for negative exponents.
+  assert y >= 0
+  var (x, y) = (x, y)
+  result = 1
+
+  while y != 0:
+    if (y and 1) != 0:
+      result *= x
+    y = y shr 1
+    x *= x
+
+proc gcd*[T](x, y: T): T =
+  ## Computes the greatest common divisor of ``x`` and ``y``.
+  var (x,y) = (x,y)
+  while y != 0:
+    x = x mod y
+    swap x, y
+  abs x
+
+proc lcm*[T](x, y: T): T =
+  ## Computes the least common multiple of ``x`` and ``y``.
+  x div gcd(x, y) * y
 
 when isMainModule and not defined(JS):
   proc gettime(dummy: ptr cint): cint {.importc: "time", header: "<time.h>".}
