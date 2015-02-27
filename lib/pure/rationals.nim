@@ -28,6 +28,10 @@ proc `//`*[T](num, den: T): Rational[T] = initRational[T](num, den)
   ## .. code-block:: nim
   ##   var x = 1//3 + 1//5
 
+proc `$`*[T](x: Rational[T]): string =
+  ## Turn a rational number into a string.
+  result = $x.num & "/" & $x.den
+
 proc toRational*[T](x: SomeInteger): Rational[T] =
   ## Convert some integer `x` to a rational number.
   result.num = x
