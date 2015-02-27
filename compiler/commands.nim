@@ -382,7 +382,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     of "off":
       gOptions.excl optEndb
       undefSymbol("endb")
-    of "native":
+    of "native", "gdb":
       incl(gGlobalOptions, optCDebug)
       gOptions = gOptions + {optLineDir} - {optEndb}
       undefSymbol("endb")

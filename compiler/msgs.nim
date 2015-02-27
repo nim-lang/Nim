@@ -330,7 +330,7 @@ const
     errUsingNoSymbol: "'$1' is not a variable, constant or a proc name",
     errMacroBodyDependsOnGenericTypes: "the macro body cannot be compiled, " &
                                        "because the parameter '$1' has a generic type",
-    errDestructorNotGenericEnough: "Destructor signarue is too specific. " &
+    errDestructorNotGenericEnough: "Destructor signature is too specific. " &
                                    "A destructor must be associated will all instantiations of a generic type",
     errInlineIteratorsAsProcParams: "inline iterators can be used as parameters only for " &
                                     "templates, macros and other inline iterators",
@@ -443,7 +443,7 @@ type
   TNoteKind* = range[warnMin..hintMax] # "notes" are warnings or hints
   TNoteKinds* = set[TNoteKind]
 
-  TFileInfo*{.final.} = object 
+  TFileInfo* = object 
     fullPath: string           # This is a canonical full filesystem path
     projPath*: string          # This is relative to the project's root
     shortName*: string         # short name of the module
@@ -458,7 +458,7 @@ type
                                # and parsed; usually 'nil' but is used
                                # for 'nimsuggest'
 
-  TLineInfo*{.final.} = object # This is designed to be as small as possible,
+  TLineInfo* = object          # This is designed to be as small as possible,
                                # because it is used
                                # in syntax nodes. We save space here by using 
                                # two int16 and an int32.
@@ -493,7 +493,7 @@ proc toCChar*(c: char): string =
 
 proc makeCString*(s: string): PRope =
   # BUGFIX: We have to split long strings into many ropes. Otherwise
-  # this could trigger an InternalError(). See the ropes module for
+  # this could trigger an internalError(). See the ropes module for
   # further information.
   const 
     MaxLineLength = 64
@@ -696,7 +696,9 @@ proc msgWriteln*(s: string) =
 
   #if gCmd == cmdIdeTools and optCDebug notin gGlobalOptions: return
 
-  if optStdout in gGlobalOptions:
+  if not isNil(writelnHook):
+    writelnHook(s)
+  elif optStdout in gGlobalOptions:
     if eStdErr in errorOutputs: writeln(stderr, s)
   else:
     if eStdOut in errorOutputs: writeln(stdout, s)
@@ -720,7 +722,7 @@ type
 proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
   template quit =
     if defined(debug) or gVerbosity >= 3 or msg == errInternal:
-      if stackTraceAvailable():
+      if stackTraceAvailable() and isNil(writelnHook):
         writeStackTrace()
       else:
         msgWriteln("No stack traceback available\nTo create a stacktrace, rerun compilation with ./koch temp " & options.command & " <file>")

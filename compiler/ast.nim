@@ -1413,7 +1413,7 @@ proc copyTree*(src: PNode): PNode =
     for i in countup(0, sonsLen(src) - 1): 
       result.sons[i] = copyTree(src.sons[i])
 
-proc hasSonWith(n: PNode, kind: TNodeKind): bool = 
+proc hasSonWith*(n: PNode, kind: TNodeKind): bool = 
   for i in countup(0, sonsLen(n) - 1): 
     if n.sons[i].kind == kind: 
       return true

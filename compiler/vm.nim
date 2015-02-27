@@ -776,10 +776,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         stackTrace(c, tos, pc, errNilAccess)
     of opcEcho:
       let rb = instr.regB
-      for i in ra..ra+rb-1:
-        #if regs[i].kind != rkNode: debug regs[i]
-        write(stdout, regs[i].node.strVal)
-      writeln(stdout, "")
+      if rb == 1:
+        msgWriteln(regs[ra].node.strVal)
+      else:
+        var outp = ""
+        for i in ra..ra+rb-1:
+          #if regs[i].kind != rkNode: debug regs[i]
+          outp.add(regs[i].node.strVal)
+        msgWriteln(outp)
     of opcContainsSet:
       decodeBC(rkInt)
       regs[ra].intVal = ord(inSet(regs[rb].node, regs[rc].regToNode))

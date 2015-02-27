@@ -181,10 +181,8 @@ proc prettyTok*(tok: TToken): string =
   else: result = tokToStr(tok)
   
 proc printTok*(tok: TToken) = 
-  write(stdout, tok.line, ":", tok.col, "\t")
-  write(stdout, TokTypeToStr[tok.tokType])
-  write(stdout, " ")
-  writeln(stdout, tokToStr(tok))
+  msgWriteln($tok.line & ":" & $tok.col & "\t" &
+      TokTypeToStr[tok.tokType] & " " & tokToStr(tok))
 
 var dummyIdent: PIdent
 

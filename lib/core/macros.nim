@@ -456,10 +456,11 @@ proc lispRepr*(n: PNimrodNode): string {.compileTime, benign.} =
   of nnkSym: add(result, $n.symbol)
   of nnkNone: assert false
   else:
-    add(result, lispRepr(n[0]))
-    for j in 1..n.len-1:
-      add(result, ", ")
-      add(result, lispRepr(n[j]))
+    if n.len > 0:
+      add(result, lispRepr(n[0]))
+      for j in 1..n.len-1:
+        add(result, ", ")
+        add(result, lispRepr(n[j]))
 
   add(result, ")")
 

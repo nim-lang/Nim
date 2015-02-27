@@ -445,21 +445,21 @@ proc debugTree(n: PNode, indent: int, maxRecDepth: int;
 
 proc debug(n: PSym) =
   if n == nil:
-    writeln(stdout, "null")
+    msgWriteln("null")
   elif n.kind == skUnknown:
-    writeln(stdout, "skUnknown")
+    msgWriteln("skUnknown")
   else:
     #writeln(stdout, ropeToStr(symToYaml(n, 0, 1)))
-    writeln(stdout, "$1_$2: $3, $4, $5, $6" % [
+    msgWriteln("$1_$2: $3, $4, $5, $6" % [
       n.name.s, $n.id, flagsToStr(n.flags).ropeToStr, 
       flagsToStr(n.loc.flags).ropeToStr, lineInfoToStr(n.info).ropeToStr,
       $n.kind])
 
 proc debug(n: PType) = 
-  writeln(stdout, ropeToStr(debugType(n)))
+  msgWriteln(ropeToStr(debugType(n)))
 
 proc debug(n: PNode) = 
-  writeln(stdout, ropeToStr(debugTree(n, 0, 100)))
+  msgWriteln(ropeToStr(debugTree(n, 0, 100)))
 
 const 
   EmptySeq = @[]
