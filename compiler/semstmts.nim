@@ -757,7 +757,8 @@ proc lookupMacro(c: PContext, n: PNode): PSym =
   else:
     result = searchInScopes(c, considerQuotedIdent(n), {skMacro, skTemplate})
 
-proc semProcAnnotation(c: PContext, prc: PNode): PNode =
+proc semProcAnnotation(c: PContext, prc: PNode;
+                       validPragmas: TSpecialWords): PNode =
   var n = prc.sons[pragmasPos]
   if n == nil or n.kind == nkEmpty: return
   for i in countup(0, <n.len):
@@ -782,12 +783,17 @@ proc semProcAnnotation(c: PContext, prc: PNode): PNode =
       x.add(it.sons[1])
     x.add(prc)
     # recursion assures that this works for multiple macro annotations too:
-    return semStmt(c, x)
+    result = semStmt(c, x)
+    # since a proc annotation can set pragmas, we process these here again.
+    # This is required for SqueakNim-like export pragmas.
+    if result[namePos].kind == nkSym and result[pragmasPos].kind != nkEmpty:
+      pragma(c, result[namePos].sym, result[pragmasPos], validPragmas)
+    return
 
 proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # XXX semProcAux should be good enough for this now, we will eventually
   # remove semLambda
-  result = semProcAnnotation(c, n)
+  result = semProcAnnotation(c, n, lambdaPragmas)
   if result != nil: return result
   result = n
   checkSonsLen(n, bodyPos + 1)
@@ -943,7 +949,7 @@ proc isForwardDecl(s: PSym): bool =
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
                 validPragmas: TSpecialWords,
                 phase = stepRegisterSymbol): PNode =
-  result = semProcAnnotation(c, n)
+  result = semProcAnnotation(c, n, validPragmas)
   if result != nil: return result
   result = n
   checkSonsLen(n, bodyPos + 1)
