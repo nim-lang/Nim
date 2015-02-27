@@ -22,6 +22,16 @@ proc initRational*[T](num, den: T): Rational[T] =
   result.num = num
   result.den = den
 
+proc `//`*[T](num, den: T): Rational[T] = initRational[T](num, den)
+  ## A friendlier version of `initRational`. Example usage:
+  ##
+  ## .. code-block:: nim
+  ##   var x = 1//3 + 1//5
+
+proc `$`*[T](x: Rational[T]): string =
+  ## Turn a rational number into a string.
+  result = $x.num & "/" & $x.den
+
 proc toRational*[T](x: SomeInteger): Rational[T] =
   ## Convert some integer `x` to a rational number.
   result.num = x
@@ -200,26 +210,26 @@ when isMainModule:
     z = Rational[int](num: 0, den: 1)
     o = initRational(num=1, den=1)
     a = initRational(1, 2)
-    b = initRational(-1, -2)
-    m1 = initRational(-1, 1)
-    tt = initRational(10, 2)
+    b = -1 // -2
+    m1 = -1 // 1
+    tt = 10 // 2
 
   assert( a     == a )
   assert( (a-a) == z )
   assert( (a+b) == o )
   assert( (a/b) == o )
-  assert( (a*b) == initRational(1, 4) )
-  assert( (3/a) == initRational(6,1) )
-  assert( (a/3) == initRational(1,6) )
-  assert( a*b   == initRational(1,4) )
+  assert( (a*b) == 1 // 4 )
+  assert( (3/a) == 6 // 1 )
+  assert( (a/3) == 1 // 6 )
+  assert( a*b   == 1 // 4 )
   assert( tt*z  == z )
   assert( 10*a  == tt )
   assert( a*10  == tt )
   assert( tt/10 == a  )
-  assert( a-m1  == initRational(3, 2) )
-  assert( a+m1  == initRational(-1, 2) )
-  assert( m1+tt == initRational(16, 4) )
-  assert( m1-tt == initRational(6, -1) )
+  assert( a-m1  == 3 // 2 )
+  assert( a+m1  == -1 // 2 )
+  assert( m1+tt == 16 // 4 )
+  assert( m1-tt == 6 // -1 )
 
   assert( z < o )
   assert( z <= o )
@@ -238,28 +248,28 @@ when isMainModule:
   assert( not(b > a) )
   assert( cmp(a, b) == 0 )
 
-  var x = initRational(1,3)
+  var x = 1//3
 
-  x *= initRational(5,1)
-  assert( x == initRational(5,3) )
-  x += initRational(2,9)
-  assert( x == initRational(17,9) )
-  x -= initRational(9,18)
-  assert( x == initRational(25,18) )
-  x /= initRational(1,2)
-  assert( x == initRational(50,18) )
+  x *= 5//1
+  assert( x == 5//3 )
+  x += 2 // 9
+  assert( x == 17//9 )
+  x -= 9//18
+  assert( x == 25//18 )
+  x /= 1//2
+  assert( x == 50//18 )
 
-  var y = initRational(1,3)
+  var y = 1//3
 
   y *= 4
-  assert( y == initRational(4,3) )
+  assert( y == 4//3 )
   y += 5
-  assert( y == initRational(19,3) )
+  assert( y == 19//3 )
   y -= 2
-  assert( y == initRational(13,3) )
+  assert( y == 13//3 )
   y /= 9
-  assert( y == initRational(13,27) )
+  assert( y == 13//27 )
 
-  assert toRational[int, int](5) == initRational(5,1)
+  assert toRational[int, int](5) == 5//1
   assert abs(toFloat(y) - 0.4814814814814815) < 1.0e-7
   assert toInt(z) == 0
