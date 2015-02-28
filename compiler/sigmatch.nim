@@ -91,7 +91,7 @@ proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PType) =
   initIdTable(c.bindings)
 
 proc put(t: var TIdTable, key, val: PType) {.inline.} =
-  idTablePut(t, key, val)
+  idTablePut(t, key, val.skipIntLit)
 
 proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
                     binding: PNode, calleeScope = -1) =
@@ -571,7 +571,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   assert(f != nil)
   
   if f.kind == tyExpr:
-    put(c.bindings, f, aOrig)
+    if aOrig != nil: put(c.bindings, f, aOrig)
     return isGeneric
 
   assert(aOrig != nil)

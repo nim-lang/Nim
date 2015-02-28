@@ -387,6 +387,9 @@ proc debugType(n: PType, maxRecDepth=100): PRope =
     if n.sym != nil: 
       app(result, " ")
       app(result, n.sym.name.s)
+    if n.kind in IntegralTypes and n.n != nil:
+      app(result, ", node: ")
+      app(result, debugTree(n.n, 2, maxRecDepth-1, renderType=true))
     if (n.kind != tyString) and (sonsLen(n) > 0) and maxRecDepth != 0:
       app(result, "(")
       for i in countup(0, sonsLen(n) - 1):

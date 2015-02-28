@@ -56,6 +56,9 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
       determineType(c, sym)
       initCandidate(c, z, sym, initialBinding, o.lastOverloadScope)
       z.calleeSym = sym
+
+      #if sym.name.s == "*" and (n.info ?? "temp5.nim") and n.info.line == 140:
+      #  gDebug = true
       matches(c, n, orig, z)
       if errors != nil:
         errors.safeAdd(sym)
@@ -72,10 +75,13 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
           if cmp < 0: best = z   # x is better than the best so far
           elif cmp == 0: alt = z # x is as good as the best so far
           else: discard
-        #if sym.name.s == "*" and (n.info ?? "temp5.nim"):
+        #if sym.name.s == "*" and (n.info ?? "temp5.nim") and n.info.line == 140:
         #  echo "Matches ", n.info, " ", typeToString(sym.typ)
         #  debug sym
         #  writeMatches(z)
+        #  for i in 1 .. <len(z.call):
+        #    z.call[i].typ.debug
+        #  quit 1
     sym = nextOverloadIter(o, c, headSymbol)
 
 proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =

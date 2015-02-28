@@ -390,9 +390,8 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       else:
         result = n.typ
 
-  of tyInt:
+  of tyInt, tyFloat:
     result = skipIntLit(t)
-    # XXX now there are also float literals
   
   of tyTypeDesc:
     let lookup = PType(idTableGet(cl.typeMap, t)) # lookupTypeVar(cl, t)
