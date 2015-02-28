@@ -224,10 +224,12 @@ proc ssReadData(s: Stream, buffer: pointer, bufLen: int): int =
 
 proc ssWriteData(s: Stream, buffer: pointer, bufLen: int) = 
   var s = StringStream(s)
-  if bufLen > 0: 
+  if bufLen <= 0:
+    return
+  if s.pos + bufLen > s.data.len():
     setLen(s.data, s.data.len + bufLen)
-    copyMem(addr(s.data[s.pos]), buffer, bufLen)
-    inc(s.pos, bufLen)
+  copyMem(addr(s.data[s.pos]), buffer, bufLen)
+  inc(s.pos, bufLen)
 
 proc ssClose(s: Stream) =
   var s = StringStream(s)
