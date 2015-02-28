@@ -274,27 +274,86 @@ proc tan*(z: Complex): Complex =
   ## Returns the tangent of `z`.
   result = sin(z)/cos(z)
 
+proc arctan*(z: Complex): Complex =
+  ## Returns the inverse tangent of `z`.
+  var i: Complex = (0.0,1.0)
+  result = 0.5*i*(ln(1-i*z)-ln(1+i*z))
+
 proc cot*(z: Complex): Complex =
   ## Returns the cotangent of `z`.
   result = cos(z)/sin(z)
+
+proc arccot*(z: Complex): Complex =
+  ## Returns the inverse cotangent of `z`.
+  var i: Complex = (0.0,1.0)
+  result = 0.5*i*(ln(1-i/z)-ln(1+i/z))
 
 proc sec*(z: Complex): Complex =
   ## Returns the secant of `z`.
   result = 1.0/cos(z)
 
+proc arcsec*(z: Complex): Complex =
+  ## Returns the inverse secant of `z`.
+  var i: Complex = (0.0,1.0)
+  result = -i*ln(i*sqrt(1-1/(z*z))+1/z)
+
 proc csc*(z: Complex): Complex =
   ## Returns the cosecant of `z`.
   result = 1.0/sin(z)
+
+proc arccsc*(z: Complex): Complex =
+  ## Returns the inverse cosecant of `z`.
+  var i: Complex = (0.0,1.0)
+  result = -i*ln(sqrt(1-1/(z*z))+i/z)
 
 
 proc sinh*(z: Complex): Complex =
   ## Returns the hyperbolic sine of `z`.
   result = 0.5*(exp(z)-exp(-z))
 
+proc arcsinh*(z: Complex): Complex =
+  ## Returns the inverse hyperbolic sine of `z`.
+  result = ln(z+sqrt(z*z+1))
+
 proc cosh*(z: Complex): Complex =
   ## Returns the hyperbolic cosine of `z`.
   result = 0.5*(exp(z)+exp(-z))
 
+proc arccosh*(z: Complex): Complex =
+  ## Returns the inverse hyperbolic cosine of `z`.
+  result = ln(z+sqrt(z*z-1))
+
+proc tanh*(z: Complex): Complex =
+  ## Returns the hyperbolic tangent of `z`.
+  result = sinh(z)/cosh(z)
+
+proc arctanh*(z: Complex): Complex =
+  ## Returns the inverse hyperbolic tangent of `z`.
+  result = 0.5*(ln((1+z)/(1-z)))
+
+proc sech*(z: Complex): Complex =
+  ## Returns the hyperbolic secant of `z`.
+  result = 2/(exp(z)+exp(-z))
+
+proc arcsech*(z: Complex): Complex =
+  ## Returns the inverse hyperbolic secant of `z`.
+  result = ln(1/z+sqrt(1/z+1)*sqrt(1/z-1))
+
+proc csch*(z: Complex): Complex =
+  ## Returns the hyperbolic cosecant of `z`.
+  result = 2/(exp(z)-exp(-z))
+
+proc arccsch*(z: Complex): Complex =
+  ## Returns the inverse hyperbolic cosecant of `z`.
+  result = ln(1/z+sqrt(1/(z*z)+1))
+
+proc coth*(z: Complex): Complex =
+  ## Returns the hyperbolic cotangent of `z`.
+  result = cosh(z)/sinh(z)
+
+proc arccoth*(z: Complex): Complex =
+  ## Returns the inverse hyperbolic cotangent of `z`.
+  result = 0.5*(ln(1+1/z)-ln(1-1/z))
 
 proc phase*(z: Complex): float =
   ## Returns the phase of `z`.
@@ -363,9 +422,20 @@ when isMainModule:
   assert( csc(a) =~ 1.0/sin(a) )
   assert( arcsin(a) =~ (0.427078586392476, 1.528570919480998) )
   assert( arccos(a) =~ (1.14371774040242, -1.52857091948100) )
+  assert( arctan(a) =~ (1.338972522294494, 0.402359478108525) )
 
   assert( cosh(a) =~ (-0.642148124715520, 1.068607421382778) )
   assert( sinh(a) =~ (-0.489056259041294, 1.403119250622040) )
+  assert( tanh(a) =~ (1.1667362572409199,-0.243458201185725) )
+  assert( sech(a) =~ 1/cosh(a) )
+  assert( csch(a) =~ 1/sinh(a) )
+  assert( coth(a) =~ 1/tanh(a) )
+  assert( arccosh(a) =~ (1.528570919480998, 1.14371774040242) )
+  assert( arcsinh(a) =~ (1.469351744368185, 1.06344002357775) )
+  assert( arctanh(a) =~ (0.173286795139986, 1.17809724509617) )
+  assert( arcsech(a) =~ arccosh(1/a) )
+  assert( arccsch(a) =~ arcsinh(1/a) )
+  assert( arccoth(a) =~ arctanh(1/a) )
 
   assert( phase(a) == 1.1071487177940904 )
   assert( polar(a) =~ (2.23606797749979, 1.1071487177940904) )
