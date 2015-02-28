@@ -61,6 +61,8 @@ proc handleCmdLine() =
         if gCmd == cmdRun:
           tccgen.run(commands.arguments)
       if optRun in gGlobalOptions:
+        if gProjectName == "-":
+          gProjectFull = "stdinfile"
         if gCmd == cmdCompileToJS:
           var ex: string
           if options.outFile.len > 0:

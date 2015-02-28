@@ -170,7 +170,11 @@ proc processModule(module: PSym, stream: PLLStream, rd: PRodReader) =
     openPasses(a, module)
     if stream == nil: 
       let filename = fileIdx.toFullPathConsiderDirty
-      s = llStreamOpen(filename, fmRead)
+      if module.name.s == "-":
+        module.name.s = "stdinfile"
+        s = llStreamOpen(stdin)
+      else:
+        s = llStreamOpen(filename, fmRead)
       if s == nil: 
         rawMessage(errCannotOpenFile, filename)
         return
