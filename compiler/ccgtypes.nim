@@ -226,71 +226,8 @@ proc fillResult(param: PSym) =
     incl(param.loc.flags, lfIndirect)
     param.loc.s = OnUnknown
 
-proc getParamTypeDesc(m: BModule, t: PType, check: var IntSet): PRope =
-  when false:
-    if t.Kind in {tyRef, tyPtr, tyVar}:
-      var b = skipTypes(t.lastson, typedescInst)
-      if b.kind == tySet and mapSetType(b) == ctArray:
-        return getTypeDescAux(m, b, check)
-  result = getTypeDescAux(m, t, check)
-
-proc paramStorageLoc(param: PSym): TStorageLoc =
-  if param.typ.skipTypes({tyVar, tyTypeDesc}).kind notin {tyArray, tyOpenArray}:
-    result = OnStack
-  else:
-    result = OnUnknown
-
-proc genProcParams(m: BModule, t: PType, rettype, params: var PRope, 
-                   check: var IntSet, declareEnvironment=true) = 
-  params = nil
-  if (t.sons[0] == nil) or isInvalidReturnType(t.sons[0]): 
-    rettype = ~"void"
-  else: 
-    rettype = getTypeDescAux(m, t.sons[0], check)
-  for i in countup(1, sonsLen(t.n) - 1): 
-    if t.n.sons[i].kind != nkSym: internalError(t.n.info, "genProcParams")
-    var param = t.n.sons[i].sym
-    if isCompileTimeOnly(param.typ): continue
-    if params != nil: app(params, ~", ")
-    fillLoc(param.loc, locParam, param.typ, mangleName(param),
-            param.paramStorageLoc)
-    app(params, getParamTypeDesc(m, param.typ, check))
-    if ccgIntroducedPtr(param): 
-      app(params, ~"*")
-      incl(param.loc.flags, lfIndirect)
-      param.loc.s = OnUnknown
-    app(params, ~" ")
-    app(params, param.loc.r)
-    # declare the len field for open arrays:
-    var arr = param.typ
-    if arr.kind == tyVar: arr = arr.sons[0]
-    var j = 0
-    while arr.kind in {tyOpenArray, tyVarargs}:
-      # this fixes the 'sort' bug:
-      if param.typ.kind == tyVar: param.loc.s = OnUnknown
-      # need to pass hidden parameter:
-      appf(params, ", NI $1Len$2", [param.loc.r, j.toRope])
-      inc(j)
-      arr = arr.sons[0]
-  if (t.sons[0] != nil) and isInvalidReturnType(t.sons[0]):
-    var arr = t.sons[0]
-    if params != nil: app(params, ", ")
-    app(params, getTypeDescAux(m, arr, check))
-    if (mapReturnType(t.sons[0]) != ctArray):
-      app(params, "*")
-    appf(params, " Result", [])
-  if t.callConv == ccClosure and declareEnvironment: 
-    if params != nil: app(params, ", ")
-    app(params, "void* ClEnv")
-  if tfVarargs in t.flags: 
-    if params != nil: app(params, ", ")
-    app(params, "...")
-  if params == nil: app(params, "void)")
-  else: app(params, ")")
-  params = con("(", params)
-
 proc typeNameOrLiteral(t: PType, literal: string): PRope = 
-  if (t.sym != nil) and (sfImportc in t.sym.flags) and (t.sym.magic == mNone): 
+  if t.sym != nil and sfImportc in t.sym.flags and t.sym.magic == mNone: 
     result = getTypeName(t)
   else: 
     result = toRope(literal)
@@ -327,7 +264,10 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): PRope =
     result = typeNameOrLiteral(typ, NumericalTypeToStr[typ.kind])
   of tyDistinct, tyRange, tyOrdinal: result = getSimpleTypeDesc(m, typ.sons[0])
   else: result = nil
-  
+
+proc pushType(m: BModule, typ: PType) = 
+  add(m.typeStack, typ)
+
 proc getTypePre(m: BModule, typ: PType): PRope = 
   if typ == nil: result = toRope("void")
   else: 
@@ -354,6 +294,81 @@ proc getTypeForward(m: BModule, typ: PType): PRope =
           [structOrUnion(typ), result])
     idTablePut(m.forwTypeCache, typ, result)
   else: internalError("getTypeForward(" & $typ.kind & ')')
+
+proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet): PRope =
+  ## like getTypeDescAux but creates only a *weak* dependency. In other words
+  ## we know we only need a pointer to it so we only generate a struct forward
+  ## declaration:
+  var etB = t.skipTypes(abstractInst)
+  case etB.kind
+  of tyObject, tyTuple:
+    if isImportedCppType(etB) and t.kind == tyGenericInst:
+      result = getTypeDescAux(m, t, check)
+    else:
+      let x = getUniqueType(etB)
+      result = getTypeForward(m, x)
+      pushType(m, x)
+  else:
+    result = getTypeDescAux(m, t, check)
+
+proc paramStorageLoc(param: PSym): TStorageLoc =
+  if param.typ.skipTypes({tyVar, tyTypeDesc}).kind notin {tyArray, tyOpenArray}:
+    result = OnStack
+  else:
+    result = OnUnknown
+
+proc genProcParams(m: BModule, t: PType, rettype, params: var PRope, 
+                   check: var IntSet, declareEnvironment=true) = 
+  params = nil
+  if (t.sons[0] == nil) or isInvalidReturnType(t.sons[0]): 
+    rettype = ~"void"
+  else: 
+    rettype = getTypeDescAux(m, t.sons[0], check)
+  for i in countup(1, sonsLen(t.n) - 1): 
+    if t.n.sons[i].kind != nkSym: internalError(t.n.info, "genProcParams")
+    var param = t.n.sons[i].sym
+    if isCompileTimeOnly(param.typ): continue
+    if params != nil: app(params, ~", ")
+    fillLoc(param.loc, locParam, param.typ, mangleName(param),
+            param.paramStorageLoc)
+    if ccgIntroducedPtr(param): 
+      app(params, getTypeDescWeak(m, param.typ, check))
+      app(params, ~"*")
+      incl(param.loc.flags, lfIndirect)
+      param.loc.s = OnUnknown
+    else:
+      app(params, getTypeDescAux(m, param.typ, check))
+    app(params, ~" ")
+    app(params, param.loc.r)
+    # declare the len field for open arrays:
+    var arr = param.typ
+    if arr.kind == tyVar: arr = arr.sons[0]
+    var j = 0
+    while arr.kind in {tyOpenArray, tyVarargs}:
+      # this fixes the 'sort' bug:
+      if param.typ.kind == tyVar: param.loc.s = OnUnknown
+      # need to pass hidden parameter:
+      appf(params, ", NI $1Len$2", [param.loc.r, j.toRope])
+      inc(j)
+      arr = arr.sons[0]
+  if (t.sons[0] != nil) and isInvalidReturnType(t.sons[0]):
+    var arr = t.sons[0]
+    if params != nil: app(params, ", ")
+    if (mapReturnType(t.sons[0]) != ctArray):
+      app(params, getTypeDescWeak(m, arr, check))
+      app(params, "*")
+    else:
+      app(params, getTypeDescAux(m, arr, check))
+    appf(params, " Result", [])
+  if t.callConv == ccClosure and declareEnvironment: 
+    if params != nil: app(params, ", ")
+    app(params, "void* ClEnv")
+  if tfVarargs in t.flags:
+    if params != nil: app(params, ", ")
+    app(params, "...")
+  if params == nil: app(params, "void)")
+  else: app(params, ")")
+  params = con("(", params)
   
 proc mangleRecFieldName(field: PSym, rectype: PType): PRope = 
   if (rectype.sym != nil) and
@@ -472,9 +487,6 @@ proc getTupleDesc(m: BModule, typ: PType, name: PRope,
   if (desc == nil): app(result, "char dummy;" & tnl)
   else: app(result, desc)
   app(result, "};" & tnl)
-
-proc pushType(m: BModule, typ: PType) = 
-  add(m.typeStack, typ)
 
 proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): PRope = 
   # returns only the type's name
