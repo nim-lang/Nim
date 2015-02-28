@@ -47,6 +47,24 @@ proc concat*[T](seqs: varargs[seq[T]]): seq[T] =
       result[i] = itm
       inc(i)
 
+proc repeat*[T](s: seq[T], n: Natural): seq[T] =
+  ## Returns a new sequence with the items of `s` repeated `n` times.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:
+  ##
+  ##   let
+  ##     s = @[1, 2, 3]
+  ##     total = s.repeat(3)
+  ##   assert total == @[1, 2, 3, 1, 2, 3, 1, 2, 3]
+  result = newSeq[T](n * s.len)
+  var o = 0
+  for x in 1..n:
+    for e in s:
+      result[o] = e
+      inc o
+
 proc deduplicate*[T](seq1: seq[T]): seq[T] =
   ## Returns a new sequence without duplicates.
   ##
@@ -586,5 +604,15 @@ when isMainModule:
     seq2D[1][0] = true
     seq2D[0][1] = true
     doAssert seq2D == @[@[true, true], @[true, false], @[false, false], @[false, false]]
+
+  block: # repeat tests
+    let
+      a = @[1, 2, 3]
+      b: seq[int] = @[]
+    
+    doAssert a.repeat(3) == @[1, 2, 3, 1, 2, 3, 1, 2, 3]
+    doAssert a.repeat(0) == @[]
+    #doAssert a.repeat(-1) == @[] # will not compile!
+    doAssert b.repeat(3) == @[]
 
   echo "Finished doc tests"
