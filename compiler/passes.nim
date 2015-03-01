@@ -172,7 +172,7 @@ proc processModule(module: PSym, stream: PLLStream, rd: PRodReader) =
       let filename = fileIdx.toFullPathConsiderDirty
       if module.name.s == "-":
         module.name.s = "stdinfile"
-        s = llStreamOpenStdIn()
+        s = llStreamOpen(stdin)
       else:
         s = llStreamOpen(filename, fmRead)
       if s == nil: 

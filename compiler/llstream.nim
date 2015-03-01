@@ -35,7 +35,7 @@ proc llStreamOpen*(data: string): PLLStream =
   result.s = data
   result.kind = llsString
 
-proc llStreamOpen*(f: var File): PLLStream = 
+proc llStreamOpen*(f: File): PLLStream = 
   new(result)
   result.f = f
   result.kind = llsFile
