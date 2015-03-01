@@ -681,9 +681,8 @@ proc initIdentIter(ti: var TIdentIter, tab: TStrTable, s: PIdent): PSym =
   else: result = nextIdentIter(ti, tab)
   
 proc nextIdentIter(ti: var TIdentIter, tab: TStrTable): PSym = 
-  var h, start: THash
-  h = ti.h and high(tab.data)
-  start = h
+  var h = ti.h and high(tab.data)
+  var start = h
   result = tab.data[h]
   while result != nil: 
     if result.name.id == ti.name.id: break 

@@ -42,7 +42,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
                        errors: var CandidateErrors) =
   var o: TOverloadIter
   var sym = initOverloadIter(o, c, headSymbol)
-  var symScope = o.lastOverloadScope
+  let symScope = o.lastOverloadScope
 
   var z: TCandidate
   
