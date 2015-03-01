@@ -365,9 +365,9 @@ proc polar*(z: Complex): tuple[r, phi: float] =
   result.phi = phase(z)
 
 proc rect*(r: float, phi: float): Complex =
-  ## Returns the complex number with poolar coordinates `r` and `phi`.
+  ## Returns the complex number with polar coordinates `r` and `phi`.
   result.re = r * cos(phi)
-  result.im = sin(phi)
+  result.im = r * sin(phi)
 
 
 proc `$`*(z: Complex): string =
@@ -438,5 +438,6 @@ when isMainModule:
   assert( arccoth(a) =~ arctanh(1/a) )
 
   assert( phase(a) == 1.1071487177940904 )
-  assert( polar(a) =~ (2.23606797749979, 1.1071487177940904) )
+  var t = polar(a)
+  assert( rect(t.r, t.phi) =~ a )
   assert( rect(1.0, 2.0) =~ (-0.4161468365471424, 0.9092974268256817) )
