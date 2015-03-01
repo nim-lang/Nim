@@ -99,7 +99,7 @@ proc getUniqueType*(key: PType): PType =
       gCanonicalTypes[k] = key
       result = key
   of tyTypeDesc, tyTypeClasses, tyGenericParam, tyFromExpr, tyFieldAccessor:
-    internalError("GetUniqueType")
+    internalError("getUniqueType")
   of tyDistinct:
     if key.deepCopy != nil: result = key
     else: result = getUniqueType(lastSon(key))
@@ -133,9 +133,9 @@ proc getUniqueType*(key: PType): PType =
     else:
       # ugly slow case: need to compare by structure
       if idTableHasObjectAsKey(gTypeTable[k], key): return key
-      for h in countup(0, high(gTypeTable[k].data)): 
+      for h in countup(0, high(gTypeTable[k].data)):
         var t = PType(gTypeTable[k].data[h].key)
-        if t != nil and sameType(t, key): 
+        if t != nil and sameBackendType(t, key):
           return t
       idTablePut(gTypeTable[k], key, key)
       result = key    
