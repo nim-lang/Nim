@@ -11,7 +11,7 @@ when declared(NimString):
   # we are in system module:
   {.pragma: codegenType, compilerproc.}
 else:
-  {.pragma: codegenType.}
+  {.pragma: codegenType, importc.}
 
 type 
   # This should be he same as ast.TTypeKind
@@ -65,7 +65,7 @@ type
     tyBigNum,
 
   TNimNodeKind = enum nkNone, nkSlot, nkList, nkCase
-  TNimNode {.codegenType, final.} = object
+  TNimNode {.codegenType.} = object
     kind: TNimNodeKind
     offset: int
     typ: ptr TNimType
@@ -78,7 +78,7 @@ type
     ntfAcyclic = 1,    # type cannot form a cycle
     ntfEnumHole = 2    # enum has holes and thus `$` for them needs the slow
                        # version
-  TNimType {.codegenType, final.} = object
+  TNimType {.codegenType.} = object
     size: int
     kind: TNimKind
     flags: set[TNimTypeFlag]

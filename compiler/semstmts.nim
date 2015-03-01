@@ -786,7 +786,8 @@ proc semProcAnnotation(c: PContext, prc: PNode;
     result = semStmt(c, x)
     # since a proc annotation can set pragmas, we process these here again.
     # This is required for SqueakNim-like export pragmas.
-    if result[namePos].kind == nkSym and result[pragmasPos].kind != nkEmpty:
+    if result.kind in procDefs and result[namePos].kind == nkSym and 
+        result[pragmasPos].kind != nkEmpty:
       pragma(c, result[namePos].sym, result[pragmasPos], validPragmas)
     return
 

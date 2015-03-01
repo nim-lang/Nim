@@ -264,7 +264,17 @@ proc nimFloatToStr(f: float): string {.compilerproc.} =
     buf[n] = '.'
     buf[n+1] = '0'
     buf[n+2] = '\0'
-  result = $buf
+  # On Windows nice numbers like '1.#INF', '-1.#INF' or '1.#NAN' are produced.
+  # We want to get rid of these here:
+  if buf[n-1] == 'N':
+    result = "nan"
+  elif buf[n-1] == 'F':
+    if buf[0] == '-':
+      result = "-inf"
+    else:
+      result = "inf"
+  else:
+    result = $buf
 
 proc strtod(buf: cstring, endptr: ptr cstring): float64 {.importc,
   header: "<stdlib.h>", noSideEffect.}

@@ -3,14 +3,14 @@ discard """
 WARNING: false first assertion from bar
 ERROR: false second assertion from bar
 -1
-tests/assert/tfailedassert.nim:27 false assertion from foo
+tfailedassert.nim:27 false assertion from foo
 '''
 """
 
 type
   TLineInfo = tuple[filename: string, line: int]
 
-  TMyError = object of E_Base
+  TMyError = object of Exception
     lineinfo: TLineInfo
 
   EMyError = ref TMyError

@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim cpp $target"
+  cmd: "nim cpp $file"
 """
 
 import typeinfo

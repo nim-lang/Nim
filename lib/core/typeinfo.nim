@@ -66,9 +66,9 @@ type
   ppointer = ptr pointer
   pbyteArray = ptr array[0.. 0xffff, int8]
 
-  TGenSeq = object
+  TGenericSeq {.importc.} = object
     len, space: int
-  PGenSeq = ptr TGenSeq
+  PGenSeq = ptr TGenericSeq
 
 const
   GenericSeqSize = (2 * sizeof(int))

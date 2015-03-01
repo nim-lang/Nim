@@ -1270,9 +1270,11 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
   of isGeneric:
     inc(m.genericMatches)
     when true:
-      if skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple:
+      if arg.typ == nil:
+        result = arg
+      elif skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple:
         result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
-      elif arg.typ != nil and arg.typ.isEmptyContainer:
+      elif arg.typ.isEmptyContainer:
         result = arg.copyTree
         result.typ = getInstantiatedType(c, arg, m, f)
       else:
