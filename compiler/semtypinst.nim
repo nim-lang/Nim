@@ -171,7 +171,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode): PNode =
     if result.sym.typ.kind == tyEmpty:
       # don't add the 'void' field
       result = newNode(nkRecList, n.info)
-  of nkRecWhen:
+  of nkTypeWhen:
     var branch: PNode = nil              # the branch to take
     for i in countup(0, sonsLen(n) - 1):
       var it = n.sons[i]
@@ -341,7 +341,7 @@ proc skipIntLiteralParams*(t: PType) =
 proc propagateFieldFlags(t: PType, n: PNode) =
   # This is meant for objects and tuples
   # The type must be fully instantiated!
-  internalAssert n.kind != nkRecWhen
+  internalAssert n.kind != nkTypeWhen
   case n.kind
   of nkSym:
     propagateToOwner(t, n.sym.typ)

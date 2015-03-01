@@ -1118,7 +1118,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkIfStmt: 
     putWithSpace(g, tkIf, "if")
     gif(g, n)
-  of nkWhen, nkRecWhen: 
+  of nkWhen, nkTypeWhen: 
     putWithSpace(g, tkWhen, "when")
     gif(g, n)
   of nkWhileStmt: gwhile(g, n)

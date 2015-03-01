@@ -27,6 +27,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     counter, x: BiggestInt
     e: PSym
     base: PType
+    nn: PNode # used to change into a when branch if needed
   counter = 0
   base = nil
   result = newOrPrevType(tyEnum, prev, c)
@@ -40,11 +41,42 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
   rawAddSon(result, base)
   let isPure = result.sym != nil and sfPure in result.sym.flags
   var hasNull = false
-  for i in countup(1, sonsLen(n) - 1): 
-    case n.sons[i].kind
+  for i in countup(1, sonsLen(n) - 1):
+    # handling when in enums by filtering them here
+    if n.sons[i].kind == nkTypeWhen:
+      var b = n.sons[i]
+      var branch: PNode = nil   # the branch to take
+      for i in countup(0, sonsLen(b) - 1):
+        var it = b.sons[i]
+        if it == nil: illFormedAst(b)
+        var idx = 1
+        case it.kind
+        of nkElifBranch:
+          checkSonsLen(it, 2)
+          if c.inGenericContext == 0:
+            var e = semConstBoolExpr(c, it.sons[0])
+            if e.kind != nkIntLit: internalError(e.info, "semEnum")
+            elif e.intVal != 0 and branch == nil: branch = it.sons[1]
+          else:
+            it.sons[0] = forceBool(c, semExprWithType(c, it.sons[0]))
+        of nkElse:
+          checkSonsLen(it, 1)
+          if branch == nil: branch = it.sons[0]
+          idx = 0
+        else: 
+          illFormedAst(b)
+      if branch == nil: continue
+      # debug branch
+      nn = branch
+    else:
+      # use this instead of the original node
+      nn = n.sons[i]
+
+    # handle enum nodes as before
+    case nn.kind
     of nkEnumFieldDef: 
-      e = newSymS(skEnumField, n.sons[i].sons[0], c)
-      var v = semConstExpr(c, n.sons[i].sons[1])
+      e = newSymS(skEnumField, nn.sons[0], c)
+      var v = semConstExpr(c, nn.sons[1])
       var strVal: PNode = nil
       case skipTypes(v.typ, abstractInst-{tyTypeDesc}).kind 
       of tyTuple: 
@@ -64,14 +96,14 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       if i != 1:
         if x != counter: incl(result.flags, tfEnumHasHoles)
         if x < counter: 
-          localError(n.sons[i].info, errInvalidOrderInEnumX, e.name.s)
+          localError(nn.info, errInvalidOrderInEnumX, e.name.s)
           x = counter
       e.ast = strVal # might be nil
       counter = x
     of nkSym: 
-      e = n.sons[i].sym
+      e = nn.sym
     of nkIdent, nkAccQuoted: 
-      e = newSymS(skEnumField, n.sons[i], c)
+      e = newSymS(skEnumField, nn, c)
     else:
       illFormedAst(n[i])
     e.typ = result
@@ -522,7 +554,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
                       father: PNode, rectype: PType) =
   if n == nil: return
   case n.kind
-  of nkRecWhen:
+  of nkTypeWhen:
     var branch: PNode = nil   # the branch to take
     for i in countup(0, sonsLen(n) - 1):
       var it = n.sons[i]

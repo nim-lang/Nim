@@ -200,7 +200,7 @@ type
     nkStaticTy,           # ``static[T]``
     nkRecList,            # list of object parts
     nkRecCase,            # case section of object
-    nkRecWhen,            # when section of object
+    nkTypeWhen,           # when section of object / enum
     nkRefTy,              # ``ref T``
     nkPtrTy,              # ``ptr T``
     nkVarTy,              # ``var T``

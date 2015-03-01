@@ -61,7 +61,7 @@ type
     nnkWith, nnkWithout,
     nnkTypeOfExpr, nnkObjectTy,
     nnkTupleTy, nnkTypeClassTy, nnkStaticTy,
-    nnkRecList, nnkRecCase, nnkRecWhen,
+    nnkRecList, nnkRecCase, nnkTypeWhen,
     nnkRefTy, nnkPtrTy, nnkVarTy,
     nnkConstTy, nnkMutableTy,
     nnkDistinctTy,

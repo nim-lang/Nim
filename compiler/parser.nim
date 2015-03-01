@@ -1589,35 +1589,63 @@ proc parseConstant(p: var TParser): PNode =
   addSon(result, parseExpr(p))
   indAndComment(p, result)
   
+proc parseEnumPart(p: var TParser, r: var PNode): bool = 
+  var a = parseSymbol(p)
+  if a.kind == nkEmpty:
+    parMessage(p, errIdentifierExpected, p.tok)
+  if p.tok.indent >= 0 and p.tok.indent <= p.currInd:
+    add(r, a)
+    return true
+  if p.tok.tokType == tkEquals and p.tok.indent < 0: 
+    getTok(p)
+    optInd(p, a)
+    var b = a
+    a = newNodeP(nkEnumFieldDef, p)
+    addSon(a, b)
+    addSon(a, parseExpr(p))
+    skipComment(p, a)
+  if p.tok.tokType == tkComma and p.tok.indent < 0:
+    getTok(p)
+    rawSkipComment(p, a)
+  else:
+    skipComment(p, a)
+  addSon(r, a)
+  if p.tok.indent >= 0 and p.tok.indent <= p.currInd or
+      p.tok.tokType == tkEof:
+    return true
+
 proc parseEnum(p: var TParser): PNode = 
   #| enum = 'enum' optInd (symbol optInd ('=' optInd expr COMMENT?)? comma?)+
   result = newNodeP(nkEnumTy, p)
   getTok(p)
   addSon(result, ast.emptyNode)
   optInd(p, result)
+  var w: PNode # if set we are in a when part and could get an else
+  var c: PNode # current part (result or when branch)
   while true:
-    var a = parseSymbol(p)
-    if a.kind == nkEmpty: return
-    if p.tok.indent >= 0 and p.tok.indent <= p.currInd:
-      add(result, a)
-      break
-    if p.tok.tokType == tkEquals and p.tok.indent < 0: 
-      getTok(p)
-      optInd(p, a)
-      var b = a
-      a = newNodeP(nkEnumFieldDef, p)
-      addSon(a, b)
-      addSon(a, parseExpr(p))
-      skipComment(p, a)
-    if p.tok.tokType == tkComma and p.tok.indent < 0:
-      getTok(p)
-      rawSkipComment(p, a)
+    if p.tok.tokType == tkWhen:
+      getTok(p) # skip `when`
+      w = newNodeP(nkTypeWhen, p)
+      addSon(result, w)
+      var branch = newNodeP(nkElifBranch, p)
+      addSon(w, branch)
+      addSon(branch, parseExpr(p))
+      colcom(p, branch)
+      c = branch
+    elif p.tok.tokType == tkElse:
+      if w == nil: # no when part?
+        parMessage(p, errIdentifierExpected, p.tok)
+      getTok(p) # skip `else`
+      var branch = newNodeP(nkElse, p)
+      addSon(w, branch) # add to existing when
+      w = nil # done with this when
+      colcom(p, branch)
+      c = branch
     else:
-      skipComment(p, a)
-    addSon(result, a)
-    if p.tok.indent >= 0 and p.tok.indent <= p.currInd or
-        p.tok.tokType == tkEof:
+      c = result
+    if parseEnumPart(p, c):
       break
+
   if result.len <= 1:
     lexMessage(p.lex, errIdentifierExpected, prettyTok(p.tok))
 
@@ -1626,7 +1654,7 @@ proc parseObjectWhen(p: var TParser): PNode =
   #| objectWhen = 'when' expr colcom objectPart COMMENT?
   #|             ('elif' expr colcom objectPart COMMENT?)*
   #|             ('else' colcom objectPart COMMENT?)?
-  result = newNodeP(nkRecWhen, p)
+  result = newNodeP(nkTypeWhen, p)
   while sameInd(p): 
     getTok(p)                 # skip `when`, `elif`
     var branch = newNodeP(nkElifBranch, p)
