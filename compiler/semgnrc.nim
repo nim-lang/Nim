@@ -356,7 +356,7 @@ proc semGenericStmt(c: PContext, n: PNode,
         of nkIdent: a = n.sons[i]
         else: illFormedAst(n)
         addDecl(c, newSymS(skUnknown, getIdentNode(a.sons[i]), c))
-  of nkObjectTy, nkTupleTy:
+  of nkObjectTy, nkTupleTy, nkTupleClassTy:
     discard
   of nkFormalParams:
     checkMinSonsLen(n, 1)

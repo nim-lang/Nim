@@ -196,6 +196,7 @@ type
     nkTypeOfExpr,         # type(1+2)
     nkObjectTy,           # object body
     nkTupleTy,            # tuple body
+    nkTupleClassTy,       # tuple type class
     nkTypeClassTy,        # user-defined type class
     nkStaticTy,           # ``static[T]``
     nkRecList,            # list of object parts
