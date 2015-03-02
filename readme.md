@@ -39,8 +39,7 @@ $ bin/nim c koch
 $ ./koch boot -d:release
 ```
 
-``koch install [dir]`` may then be used to install Nim, or you can simply
-add it to your PATH. More ``koch`` related options are documented in
+``koch install [dir]`` may then be used to install Nim, but lots of things don't work then so don't do that. Add it to your PATH instead. More ``koch`` related options are documented in
 [doc/koch.txt](doc/koch.txt).
 
 The above steps can be performed on Windows in a similar fashion, the
