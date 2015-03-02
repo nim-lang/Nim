@@ -123,9 +123,6 @@ template respond*(req: Request, code: HttpCode,
   msg.add(content)
   result = req.client.send(msg)
 
-proc newRequest(): Request =
-  result.headers = newStringTable(modeCaseInsensitive)
-
 proc parseHeader(line: string): tuple[key, value: string] =
   var i = 0
   i = line.parseUntil(result.key, ':')
