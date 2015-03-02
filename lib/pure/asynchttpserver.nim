@@ -112,7 +112,7 @@ proc sendHeaders*(req: Request, headers: StringTableRef): Future[void] =
 template respond*(req: Request, code: HttpCode,
                   content: string, headers: StringTableRef = nil) =
   ## Responds to the request with the specified ``HttpCode``, headers and
-  ## content.
+  ## content. This template returns a Future[void].
   ##
   ## This template will **not** close the client socket.
   var msg = "HTTP/1.1 " & $code & "\c\L"
