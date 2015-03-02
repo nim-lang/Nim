@@ -168,6 +168,12 @@ proc newStringTable*(mode: StringTableMode): StringTableRef {.
   result.counter = 0
   newSeq(result.data, startSize)
 
+proc resetStringTable*(s: var StringTableRef, mode: StringTableMode) =
+  ## resets a string table to be empty again.
+  s.mode = mode
+  s.counter = 0
+  s.data.setLen(startSize)
+
 proc newStringTable*(keyValuePairs: varargs[string],
                      mode: StringTableMode): StringTableRef {.
   rtl, extern: "nst$1WithPairs".} =
