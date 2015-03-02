@@ -610,9 +610,9 @@ when defined(windows) or defined(nimdoc):
       # the empty string (which signals a disconnection) when there is
       # nothing left to read.
       retFuture.complete(0)
-      # TODO: "For message-oriented sockets, where a zero byte message is often 
-      # allowable, a failure with an error code of WSAEDISCON is used to 
-      # indicate graceful closure." 
+      # TODO: "For message-oriented sockets, where a zero byte message is often
+      # allowable, a failure with an error code of WSAEDISCON is used to
+      # indicate graceful closure."
       # ~ http://msdn.microsoft.com/en-us/library/ms741688%28v=vs.85%29.aspx
     else:
       # Request to read completed immediately.
