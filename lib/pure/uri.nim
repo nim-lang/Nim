@@ -53,10 +53,10 @@ proc parseAuthority(authority: string, result: var Uri) =
   while true:
     case authority[i]
     of '@':
-      result.password = result.port
-      result.port = ""
-      result.username = result.hostname
-      result.hostname = ""
+      swap result.password, result.port
+      result.port.setLen(0)
+      swap result.username, result.hostname
+      result.hostname.setLen(0)
       inPort = false
     of ':':
       inPort = true
@@ -75,7 +75,7 @@ proc parsePath(uri: string, i: var int, result: var Uri) =
   # The 'mailto' scheme's PATH actually contains the hostname/username
   if result.scheme.toLower == "mailto":
     parseAuthority(result.path, result)
-    result.path = ""
+    result.path.setLen(0)
 
   if uri[i] == '?':
     i.inc # Skip '?'
@@ -85,13 +85,21 @@ proc parsePath(uri: string, i: var int, result: var Uri) =
     i.inc # Skip '#'
     i.inc parseUntil(uri, result.anchor, {}, i)
 
-proc initUri(): Uri =
+proc initUri*(): Uri =
+  ## Initializes a URI.
   result = Uri(scheme: "", username: "", password: "", hostname: "", port: "",
                 path: "", query: "", anchor: "")
 
-proc parseUri*(uri: string): Uri =
-  ## Parses a URI.
-  result = initUri()
+proc resetUri(uri: var Uri) =
+  for f in uri.fields:
+    when f is string:
+      f.setLen(0)
+    else:
+      f = false
+
+proc parseUri*(uri: string, result: var Uri) =
+  ## Parses a URI. The `result` variable will be cleared before.
+  resetUri(result)
 
   var i = 0
 
@@ -105,7 +113,7 @@ proc parseUri*(uri: string): Uri =
   if uri[i] != ':':
     # Assume this is a reference URI (relative URI)
     i = 0
-    result.scheme = ""
+    result.scheme.setLen(0)
     parsePath(uri, i, result)
     return
   i.inc # Skip ':'
@@ -123,6 +131,11 @@ proc parseUri*(uri: string): Uri =
 
   # Path
   parsePath(uri, i, result)
+
+proc parseUri*(uri: string): Uri =
+  ## Parses a URI and returns it.
+  result = initUri()
+  parseUri(uri, result)
 
 proc removeDotSegments(path: string): string =
   var collection: seq[string] = @[]
