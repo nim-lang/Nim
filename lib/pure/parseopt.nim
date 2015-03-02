@@ -11,9 +11,12 @@
 ## It supports one convenience iterator over all command line options and some
 ## lower-level features.
 ##
-## **Deprecated since version 0.9.3:** Use the `parseopt2 <parseopt2.html>`_
-## module instead as this version has issues with spaces in arguments.
-{.deprecated.}
+## Supported syntax:
+##
+## 1. short options - ``-abcd``, where a, b, c, d are names
+## 2. long option - ``--foo:bar``, ``--foo=bar`` or ``--foo``
+## 3. argument - everything else
+
 {.push debugger: off.}
 
 include "system/inclrtl"
