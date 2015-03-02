@@ -200,7 +200,7 @@ template readInto*(buf: cstring, size: int, socket: AsyncSocket,
     res = recvIntoFut.read()
   res
 
-template readIntoBuf(socket: AsyncSocket,
+template readIntoBuf*(socket: AsyncSocket,
     flags: set[SocketFlag]): int =
   var size = readInto(addr socket.buffer[0], BufferSize, socket, flags)
   socket.currPos = 0
