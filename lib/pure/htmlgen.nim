@@ -36,7 +36,7 @@ const
     "onmouseover onmousemove onmouseout onkeypress onkeydown onkeyup "
   commonAttr* = coreAttr & eventAttr
 
-proc getIdent(e: PNimrodNode): string {.compileTime.} = 
+proc getIdent(e: NimNode): string {.compileTime.} = 
   case e.kind
   of nnkIdent: result = normalize($e.ident)
   of nnkAccQuoted: 
@@ -53,8 +53,8 @@ proc delete[T](s: var seq[T], attr: T): bool =
     setLen(s, L-1)
     result = true
 
-proc xmlCheckedTag*(e: PNimrodNode, tag: string, optAttr = "", reqAttr = "",
-    isLeaf = false): PNimrodNode {.compileTime.} =
+proc xmlCheckedTag*(e: NimNode, tag: string, optAttr = "", reqAttr = "",
+    isLeaf = false): NimNode {.compileTime.} =
   ## use this procedure to define a new XML tag
   
   # copy the attributes; when iterating over them these lists

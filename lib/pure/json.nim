@@ -644,7 +644,7 @@ proc `%`*(elements: openArray[JsonNode]): JsonNode =
   newSeq(result.elems, elements.len)
   for i, p in pairs(elements): result.elems[i] = p
 
-proc toJson(x: PNimrodNode): PNimrodNode {.compiletime.} =
+proc toJson(x: NimNode): NimNode {.compiletime.} =
   case x.kind
   of nnkBracket:
     result = newNimNode(nnkBracket)

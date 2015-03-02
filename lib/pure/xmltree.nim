@@ -263,7 +263,7 @@ proc newXmlTree*(tag: string, children: openArray[XmlNode],
   for i in 0..children.len-1: result.s[i] = children[i]
   result.fAttr = attributes
   
-proc xmlConstructor(e: PNimrodNode): PNimrodNode {.compileTime.} =
+proc xmlConstructor(e: NimNode): NimNode {.compileTime.} =
   expectLen(e, 2)
   var a = e[1]
   if a.kind == nnkCall:
