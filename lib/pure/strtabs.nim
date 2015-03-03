@@ -168,7 +168,7 @@ proc newStringTable*(mode: StringTableMode): StringTableRef {.
   result.counter = 0
   newSeq(result.data, startSize)
 
-proc resetStringTable*(s: var StringTableRef, mode: StringTableMode) =
+proc clearStringTable*(s: StringTableRef, mode: StringTableMode) =
   ## resets a string table to be empty again.
   s.mode = mode
   s.counter = 0
