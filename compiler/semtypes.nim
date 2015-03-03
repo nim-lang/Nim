@@ -344,7 +344,14 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
     else:
       localError(n.info, errIdentifierExpected)
       result = errorSym(c, n)
-  
+
+proc semAnonTuple(c: PContext, n: PNode, prev: PType): PType =
+  if sonsLen(n) == 0:
+    localError(n.info, errTypeExpected)
+  result = newOrPrevType(tyTuple, prev, c)
+  for i in countup(0, sonsLen(n) - 1):
+    addSonSkipIntLit(result, semTypeNode(c, n.sons[i], nil))
+
 proc semTuple(c: PContext, n: PNode, prev: PType): PType = 
   var typ: PType
   result = newOrPrevType(tyTuple, prev, c)
@@ -1116,9 +1123,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkPar:
     if sonsLen(n) == 1: result = semTypeNode(c, n.sons[0], prev)
     else:
-      # XXX support anon tuple here
-      localError(n.info, errTypeExpected)
-      result = newOrPrevType(tyError, prev, c)
+      result = semAnonTuple(c, n, prev)
   of nkCallKinds:
     if isRange(n):
       result = semRangeAux(c, n, prev)

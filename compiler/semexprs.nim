@@ -1866,6 +1866,14 @@ proc semTuplePositionsConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
     addSonSkipIntLit(typ, n.sons[i].typ)
   result.typ = typ
 
+proc isTupleType(n: PNode): bool =
+  if n.len == 0:
+    return false # don't interpret () as type
+  for i in countup(0, n.len - 1):
+    if n[i].typ == nil or n[i].typ.kind != tyTypeDesc:
+      return false
+  return true
+
 proc checkInitialized(n: PNode, ids: IntSet, info: TLineInfo) =
   case n.kind
   of nkRecList:
@@ -2129,7 +2137,14 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkPar: 
     case checkPar(n)
     of paNone: result = errorNode(c, n)
-    of paTuplePositions: result = semTuplePositionsConstr(c, n, flags)
+    of paTuplePositions:
+      var tupexp = semTuplePositionsConstr(c, n, flags)
+      if isTupleType(tupexp):
+        # reinterpret as type
+        var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc, tyIter})
+        result.typ = makeTypeDesc(c, typ)
+      else:
+        result = tupexp
     of paTupleFields: result = semTupleFieldsConstr(c, n, flags)
     of paSingle: result = semExpr(c, n.sons[0], flags)
   of nkCurly: result = semSetConstr(c, n)
