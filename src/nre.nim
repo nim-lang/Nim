@@ -172,6 +172,18 @@ proc toSeq*(pattern: Captures, default: string = nil): seq[string] =
 
 proc `$`*(pattern: RegexMatch): string =
   return pattern.captures[-1]
+
+proc `==`*(a, b: Regex): bool =
+  # name-to-number table is generated at init time, doesn't need to be checked
+  return a.pattern   == b.pattern and
+         a.pcreObj   == b.pcreObj and
+         a.pcreExtra == b.pcreExtra
+
+proc `==`*(a, b: RegexMatch): bool =
+  # don't need to compare matchbounds, if pattern and str equal, everything
+  # else will equal (unless callbacks, maybe? TODO)
+  return a.pattern == b.pattern and
+         a.str     == b.str
 # }}}
 
 # Creation & Destruction {{{
