@@ -77,13 +77,13 @@ proc copyString(src: NimString): NimString {.compilerRtl.} =
     if (src.reserved and seqShallowFlag) != 0:
       result = src
     else:
-      result = rawNewString(src.space)
+      result = rawNewString(src.len)
       result.len = src.len
       c_memcpy(result.data, src.data, (src.len + 1) * sizeof(char))
 
 proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
   if src != nil:
-    var s = src.space
+    var s = src.len
     if s < 8: s = 7
     when declared(newObjRC1):
       result = cast[NimString](newObjRC1(addr(strDesc), sizeof(TGenericSeq) +
