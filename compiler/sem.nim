@@ -251,6 +251,8 @@ proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
       if eOrig.typ.skipTypes(abstractInst).kind == tySequence and 
          arg.typ.skipTypes(abstractInst).kind == tyArrayConstr:
         arg.typ = eOrig.typ
+  if result.info.line == -1:
+    result.info = eOrig.info
 
 proc tryConstExpr(c: PContext, n: PNode): PNode =
   var e = semExprWithType(c, n)
