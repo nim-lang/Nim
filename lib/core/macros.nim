@@ -339,13 +339,13 @@ proc quote*(bl: stmt, op = "``"): PNimrodNode {.magic: "QuoteAst", noSideEffect.
   ##       if not `ex`:
   ##         echo `info` & ": Check failed: " & `expString`
 
-from strutils import cmpIgnoreStyle, format
+from strutils import cmpIgnoreStyle
 
 proc expectKind*(n: PNimrodNode, k: TNimrodNodeKind) {.compileTime.} =
   ## checks that `n` is of kind `k`. If this is not the case,
   ## compilation aborts with an error message. This is useful for writing
   ## macros that check the AST that is passed to them.
-  if n.kind != k: error("Expected a node of kind $1, got $2".format(k, n.kind))
+  if n.kind != k: error("Expected a node of kind " & $k & ", got " & $n.kind)
 
 proc expectMinLen*(n: PNimrodNode, min: int) {.compileTime.} =
   ## checks that `n` has at least `min` children. If this is not the case,
@@ -584,7 +584,7 @@ const
     nnkCallStrLit, nnkHiddenCallConv}
 
 proc expectKind*(n: PNimrodNode; k: set[TNimrodNodeKind]) {.compileTime.} =
-  assert n.kind in k, "Expected one of $1, got $2".format(k, n.kind)
+  assert n.kind in k, "Expected one of " & $k & ", got " & $n.kind
 
 proc newProc*(name = newEmptyNode(); params: openArray[PNimrodNode] = [newEmptyNode()];
     body: PNimrodNode = newStmtList(), procType = nnkProcDef): PNimrodNode {.compileTime.} =
@@ -654,7 +654,7 @@ proc `pragma=`*(someProc: PNimrodNode; val: PNimrodNode){.compileTime.}=
 
 
 template badNodeKind(k; f): stmt{.immediate.} =
-  assert false, "Invalid node kind $# for macros.`$2`".format(k, f)
+  assert false, "Invalid node kind " & $k & " for macros.`" & $f & "`"
 
 proc body*(someProc: PNimrodNode): PNimrodNode {.compileTime.} =
   case someProc.kind:
