@@ -12,7 +12,7 @@
 
 import macros
 
-proc createProcType(p, b: PNimrodNode): PNimrodNode {.compileTime.} =
+proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
   #echo treeRepr(p)
   #echo treeRepr(b)
   result = newNimNode(nnkProcTy)
@@ -62,7 +62,7 @@ macro `=>`*(p, b: expr): expr {.immediate.} =
   
   #echo treeRepr(p)
   #echo(treeRepr(b))
-  var params: seq[PNimrodNode] = @[newIdentNode("auto")]
+  var params: seq[NimNode] = @[newIdentNode("auto")]
 
   case p.kind
   of nnkPar:
