@@ -26,8 +26,6 @@
 when not defined(nimhygiene):
   {.pragma: dirty.}
 
-import algorithm
-
 proc concat*[T](seqs: varargs[seq[T]]): seq[T] =
   ## Takes several sequences' items and returns them inside a new sequence.
   ##
@@ -416,19 +414,6 @@ template mapIt*(varSeq, op: expr) =
   for i in 0 .. <len(varSeq):
     let it {.inject.} = varSeq[i]
     varSeq[i] = op
-
-template sortByIt*(seq1, op: expr): expr =
-  ## Convenience template around the ``sorted`` proc to reduce typing.
-  ##
-  ## The template injects the ``it`` variable which you can use directly in an
-  ## expression.
-  var result {.gensym.} = sorted(seq1, proc(x, y: type(seq1[0])): int =
-    var it {.inject.} = x
-    let a = op
-    it = y
-    let b = op
-    result = cmp(a, b))
-  result
 
 template newSeqWith*(len: int, init: expr): expr =
   ## creates a new sequence, calling `init` to initialize each value. Example:

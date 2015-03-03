@@ -194,6 +194,27 @@ proc sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.}, order = So
     result[i] = a[i]
   sort(result, cmp, order)
 
+template sortByIt*(seq1, op: expr): expr =
+  ## Convenience template around the ``sorted`` proc to reduce typing.
+  ##
+  ## The template injects the ``it`` variable which you can use directly in an
+  ## expression. Example:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##     var users: seq[tuple[id: int, name: string]] =
+  ##       @[(0, "Smith"), (1, "Pratt"), (2, "Sparrow")]
+  ##
+  ##     echo users.sortByIt(it.name)
+  ##
+  var result {.gensym.} = sorted(seq1, proc(x, y: type(seq1[0])): int =
+    var it {.inject.} = x
+    let a = op
+    it = y
+    let b = op
+    result = cmp(a, b))
+  result
+
 proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
   ## produces the Cartesian product of the array. Warning: complexity
   ## may explode.
