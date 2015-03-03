@@ -339,11 +339,13 @@ proc quote*(bl: stmt, op = "``"): PNimrodNode {.magic: "QuoteAst", noSideEffect.
   ##       if not `ex`:
   ##         echo `info` & ": Check failed: " & `expString`
 
+from strutils import cmpIgnoreStyle, format
+
 proc expectKind*(n: PNimrodNode, k: TNimrodNodeKind) {.compileTime.} =
   ## checks that `n` is of kind `k`. If this is not the case,
   ## compilation aborts with an error message. This is useful for writing
   ## macros that check the AST that is passed to them.
-  if n.kind != k: error("macro expects a node of kind: " & $k)
+  if n.kind != k: error("Expected a node of kind $1, got $2".format(k, n.kind))
 
 proc expectMinLen*(n: PNimrodNode, min: int) {.compileTime.} =
   ## checks that `n` has at least `min` children. If this is not the case,
@@ -580,8 +582,6 @@ const
   AtomicNodes* = {nnkNone..nnkNilLit}
   CallNodes* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
     nnkCallStrLit, nnkHiddenCallConv}
-
-from strutils import cmpIgnoreStyle, format
 
 proc expectKind*(n: PNimrodNode; k: set[TNimrodNodeKind]) {.compileTime.} =
   assert n.kind in k, "Expected one of $1, got $2".format(k, n.kind)
