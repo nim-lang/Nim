@@ -339,8 +339,6 @@ proc quote*(bl: stmt, op = "``"): PNimrodNode {.magic: "QuoteAst", noSideEffect.
   ##       if not `ex`:
   ##         echo `info` & ": Check failed: " & `expString`
 
-from strutils import cmpIgnoreStyle
-
 proc expectKind*(n: PNimrodNode, k: TNimrodNodeKind) {.compileTime.} =
   ## checks that `n` is of kind `k`. If this is not the case,
   ## compilation aborts with an error message. This is useful for writing
@@ -775,6 +773,22 @@ proc unpackInfix*(node: PNimrodNode): tuple[left: PNimrodNode; op: string;
 proc copy*(node: PNimrodNode): PNimrodNode {.compileTime.} =
   ## An alias for copyNimTree().
   return node.copyNimTree()
+
+proc cmpIgnoreStyle(a, b: cstring): int {.noSideEffect.} =
+  proc toLower(c: char): char {.inline.} =
+    if c in {'A'..'Z'}: result = chr(ord(c) + (ord('a') - ord('A')))
+    else: result = c
+  var i = 0
+  var j = 0
+  while true:
+    while a[i] == '_': inc(i)
+    while b[j] == '_': inc(j) # BUGFIX: typo
+    var aa = toLower(a[i])
+    var bb = toLower(b[j])
+    result = ord(aa) - ord(bb)
+    if result != 0 or aa == '\0': break
+    inc(i)
+    inc(j)
 
 proc eqIdent* (a, b: string): bool = cmpIgnoreStyle(a, b) == 0
   ## Check if two idents are identical.
