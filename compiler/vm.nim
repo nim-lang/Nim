@@ -1435,6 +1435,7 @@ proc evalConstExprAux(module, prc: PSym, n: PNode, mode: TEvalMode): PNode =
   newSeq(tos.slots, c.prc.maxSlots)
   #for i in 0 .. <c.prc.maxSlots: tos.slots[i] = newNode(nkEmpty)
   result = rawExecute(c, start, tos).regToNode
+  if result.info.line < 0: result.info = n.info
 
 proc evalConstExpr*(module: PSym, e: PNode): PNode =
   result = evalConstExprAux(module, nil, e, emConst)
@@ -1496,6 +1497,7 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
   # temporary storage:
   #for i in L .. <maxSlots: tos.slots[i] = newNode(nkEmpty)
   result = rawExecute(c, start, tos).regToNode
+  if result.info.line < 0: result.info = n.info
   if cyclicTree(result): globalError(n.info, errCyclicTree)
   dec(evalMacroCounter)
   c.callsite = nil
