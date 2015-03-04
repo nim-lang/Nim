@@ -461,9 +461,9 @@ proc indentToLevel(level: var int, newLevel: int): string =
   if level == newLevel:
     return
   if newLevel > level:
-    result = repeatStr(newLevel - level, "<ul>")
+    result = repeat("<ul>", newLevel - level)
   else:
-    result = repeatStr(level - newLevel, "</ul>")
+    result = repeat("</ul>", level - newLevel)
   level = newLevel
 
 proc generateDocumentationTOC(entries: seq[TIndexEntry]): string =

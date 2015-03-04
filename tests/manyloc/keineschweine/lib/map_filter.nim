@@ -27,9 +27,9 @@ when isMainModule:
   var res = t.map(proc(z: int): int = result = z * 10)
   dumpSeq res
 
-  from strutils import toHex, repeatStr
+  from strutils import toHex
   var foocakes = t.map(proc(z: int): string = 
-    result = toHex((z * 23).biggestInt, 4))
+    result = toHex((z * 23).BiggestInt, 4))
   dumpSeq foocakes
 
   t.mapInPlace(proc(z: int): int = result = z * 30)
