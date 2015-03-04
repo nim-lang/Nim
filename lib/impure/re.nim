@@ -291,7 +291,7 @@ proc replace*(s: string, sub: Regex, by = ""): string =
   ## accessed in `by`. Examples:
   ##
   ## .. code-block:: nim
-  ##   "var1=key; var2=key2".replace(re"(\w+)'='(\w+)")
+  ##   "var1=key; var2=key2".replace(re"(\w+)=(\w+)")
   ##
   ## Results in:
   ##
@@ -313,7 +313,7 @@ proc replacef*(s: string, sub: Regex, by: string): string =
   ## with the notation ``$i`` and ``$#`` (see strutils.`%`). Examples:
   ##
   ## .. code-block:: nim
-  ## "var1=key; var2=key2".replacef(re"(\w+)'='(\w+)", "$1<-$2$2")
+  ##   "var1=key; var2=key2".replacef(re"(\w+)=(\w+)", "$1<-$2$2")
   ##
   ## Results in:
   ##
