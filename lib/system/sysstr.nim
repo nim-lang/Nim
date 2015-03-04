@@ -67,7 +67,8 @@ proc copyStrLast(s: NimString, start, last: int): NimString {.compilerProc.} =
   if len > 0:
     result = rawNewStringNoInit(len)
     result.len = len
-    c_memcpy(result.data, addr(s.data[start]), len + 1)
+    c_memcpy(result.data, addr(s.data[start]), len)
+    result.data[len] = '\0'
   else:
     result = rawNewString(len)
 
