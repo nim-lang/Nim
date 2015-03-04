@@ -35,13 +35,25 @@ proc eqStrings(a, b: NimString): bool {.inline, compilerProc.} =
 when declared(allocAtomic):
   template allocStr(size: expr): expr =
     cast[NimString](allocAtomic(size))
+
+  template allocStrNoInit(size: expr): expr =
+    cast[NimString](boehmAllocAtomic(size))
 else:
   template allocStr(size: expr): expr =
     cast[NimString](newObj(addr(strDesc), size))
 
+  template allocStrNoInit(size: expr): expr =
+    cast[NimString](rawNewObj(addr(strDesc), size, gch))
+
+proc rawNewStringNoInit(space: int): NimString {.compilerProc.} =
+  var s = space
+  if s < 7: s = 7
+  result = allocStrNoInit(sizeof(TGenericSeq) + s + 1)
+  result.reserved = s
+
 proc rawNewString(space: int): NimString {.compilerProc.} =
   var s = space
-  if s < 8: s = 7
+  if s < 7: s = 7
   result = allocStr(sizeof(TGenericSeq) + s + 1)
   result.reserved = s
 
@@ -53,10 +65,9 @@ proc copyStrLast(s: NimString, start, last: int): NimString {.compilerProc.} =
   var start = max(start, 0)
   var len = min(last, s.len-1) - start + 1
   if len > 0:
-    result = rawNewString(len)
+    result = rawNewStringNoInit(len)
     result.len = len
-    c_memcpy(result.data, addr(s.data[start]), len * sizeof(char))
-    #result.data[len] = '\0'
+    c_memcpy(result.data, addr(s.data[start]), (len + 1) * sizeof(char))
   else:
     result = rawNewString(len)
 
@@ -64,10 +75,9 @@ proc copyStr(s: NimString, start: int): NimString {.compilerProc.} =
   result = copyStrLast(s, start, s.len-1)
 
 proc toNimStr(str: cstring, len: int): NimString {.compilerProc.} =
-  result = rawNewString(len)
+  result = rawNewStringNoInit(len)
   result.len = len
   c_memcpy(result.data, str, (len+1) * sizeof(char))
-  #result.data[len] = '\0' # readline relies on this!
 
 proc cstrToNimstr(str: cstring): NimString {.compilerRtl.} =
   result = toNimStr(str, c_strlen(str))
@@ -77,22 +87,23 @@ proc copyString(src: NimString): NimString {.compilerRtl.} =
     if (src.reserved and seqShallowFlag) != 0:
       result = src
     else:
-      result = rawNewString(src.len)
+      result = rawNewStringNoInit(src.len)
       result.len = src.len
       c_memcpy(result.data, src.data, (src.len + 1) * sizeof(char))
 
 proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
   if src != nil:
-    var s = src.len
-    if s < 8: s = 7
     when declared(newObjRC1):
+      var s = src.len
+      if s < 7: s = 7
       result = cast[NimString](newObjRC1(addr(strDesc), sizeof(TGenericSeq) +
                                s+1))
+      result.reserved = s
     else:
-      result = allocStr(sizeof(TGenericSeq) + s + 1)
-    result.reserved = s
+      result = rawNewStringNoInit(src.len)
     result.len = src.len
-    c_memcpy(result.data, src.data, src.len + 1)
+    c_memcpy(result.data, src.data, (src.len + 1) * sizeof(char))
+
 
 proc hashString(s: string): int {.compilerproc.} =
   # the compiler needs exactly the same hash function!
@@ -161,7 +172,7 @@ proc resizeString(dest: NimString, addlen: int): NimString {.compilerRtl.} =
     # DO NOT UPDATE LEN YET: dest.len = newLen
 
 proc appendString(dest, src: NimString) {.compilerproc, inline.} =
-  c_memcpy(addr(dest.data[dest.len]), src.data, src.len + 1)
+  c_memcpy(addr(dest.data[dest.len]), src.data, (src.len + 1) * sizeof(char))
   inc(dest.len, src.len)
 
 proc appendChar(dest: NimString, c: char) {.compilerproc, inline.} =

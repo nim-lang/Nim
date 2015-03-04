@@ -593,7 +593,7 @@ proc addNewObjToZCT(res: PCell, gch: var TGcHeap) {.inline.} =
         return
     add(gch.zct, res)
 
-proc rawNewObj(typ: PNimType, size: int, gch: var TGcHeap, rc1: bool): pointer =
+proc rawNewObj(typ: PNimType, size: int, gch: var TGcHeap, rc1 = false): pointer =
   # generates a new object and sets its reference counter to 0
   acquire(gch)
   sysAssert(allocInv(gch.region), "rawNewObj begin")
