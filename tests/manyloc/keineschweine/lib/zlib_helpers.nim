@@ -24,17 +24,17 @@ when isMainModule:
   import strutils
   var r = compress("Hello")
   echo repr(r)
-  var l = "Hello".len
-  var rr = uncompress(r, l)
+  var ln = "Hello".len
+  var rr = uncompress(r, ln)
   echo repr(rr)
   assert rr == "Hello"
 
-  proc `*`(a: string; b: int): string {.inline.} = result = repeatStr(b, a)
+  proc `*`(a: string; b: int): string {.inline.} = result = repeat(a, b)
   var s = "yo dude sup bruh homie" * 50
   r = compress(s)
   echo s.len, " -> ", r.len
 
-  l = s.len
-  rr = uncompress(r, l)
+  ln = s.len
+  rr = uncompress(r, ln)
   echo r.len, " -> ", rr.len
   assert rr == s

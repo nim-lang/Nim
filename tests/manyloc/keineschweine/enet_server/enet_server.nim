@@ -144,7 +144,7 @@ when isMainModule:
     discard """block:
       var 
         TestFile: FileChallengePair
-        contents = repeatStr(2, "abcdefghijklmnopqrstuvwxyz")
+        contents = repeat("abcdefghijklmnopqrstuvwxyz", 2)
       testFile.challenge = newScFileChallenge("foobar.test", FZoneCfg, contents.len.int32) 
       testFile.file = checksumStr(contents)
       myAssets.add testFile"""

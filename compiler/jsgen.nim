@@ -780,7 +780,7 @@ proc genIf(p: PProc, n: PNode, r: var TCompRes) =
     moveInto(p, stmt, r)
     appf(p.body, "}$n" | "end$n")
   if p.target == targetJS:
-    app(p.body, repeatChar(toClose, '}') & tnl)
+    app(p.body, repeat('}', toClose) & tnl)
   else:
     for i in 1..toClose: appf(p.body, "end$n")
 

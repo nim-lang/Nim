@@ -949,7 +949,7 @@ proc genEcho(p: BProc, n: PNode) =
     initLocExpr(p, n.sons[i], a)
     appf(args, ", $1? ($1)->data:\"nil\"", [rdLoc(a)])
   linefmt(p, cpsStmts, "printf($1$2);$n",
-          makeCString(repeatStr(n.len, "%s") & tnl), args)
+          makeCString(repeat("%s", n.len) & tnl), args)
 
 proc gcUsage(n: PNode) =
   if gSelectedGC == gcNone: message(n.info, warnGcMem, n.renderTree)

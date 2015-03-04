@@ -166,4 +166,4 @@ proc getCurrentLine(L: TBaseLexer, marker: bool = true): string =
     inc(i)
   result.add("\n")
   if marker: 
-    result.add(repeatChar(getColNumber(L, L.bufpos)) & '^' & "\n")
+    result.add(spaces(getColNumber(L, L.bufpos)) & '^' & "\n")

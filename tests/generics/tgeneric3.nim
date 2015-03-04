@@ -188,7 +188,7 @@ proc traceTree[T,D](root: PNode[T,D]) =
     write stdout, space
 
   proc doTrace(n: PNode[T,D], level: int) =
-    var space = repeatChar(2 * level)
+    var space = spaces(2 * level)
     traceln(space)
     write stdout, "node: "
     if n == nil:

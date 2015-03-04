@@ -37,11 +37,11 @@ const
   PatternChars = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF', '.', '_'}
 
 proc newLine(p: var TTmplParser) = 
-  llStreamWrite(p.outp, repeatChar(p.emitPar, ')'))
+  llStreamWrite(p.outp, repeat(')', p.emitPar))
   p.emitPar = 0
   if p.info.line > int16(1): llStreamWrite(p.outp, "\n")
   if p.pendingExprLine:
-    llStreamWrite(p.outp, repeatChar(2))
+    llStreamWrite(p.outp, spaces(2))
     p.pendingExprLine = false
   
 proc scanPar(p: var TTmplParser, d: int) = 
@@ -88,24 +88,24 @@ proc parseLine(p: var TTmplParser) =
       else: 
         p.info.col = int16(j)
         localError(p.info, errXNotAllowedHere, "end")
-      llStreamWrite(p.outp, repeatChar(p.indent))
+      llStreamWrite(p.outp, spaces(p.indent))
       llStreamWrite(p.outp, "#end")
     of wIf, wWhen, wTry, wWhile, wFor, wBlock, wCase, wProc, wIterator, 
        wConverter, wMacro, wTemplate, wMethod: 
-      llStreamWrite(p.outp, repeatChar(p.indent))
+      llStreamWrite(p.outp, spaces(p.indent))
       llStreamWrite(p.outp, substr(p.x, d))
       inc(p.indent, 2)
     of wElif, wOf, wElse, wExcept, wFinally: 
-      llStreamWrite(p.outp, repeatChar(p.indent - 2))
+      llStreamWrite(p.outp, spaces(p.indent - 2))
       llStreamWrite(p.outp, substr(p.x, d))
     of wLet, wVar, wConst, wType:
-      llStreamWrite(p.outp, repeatChar(p.indent))
+      llStreamWrite(p.outp, spaces(p.indent))
       llStreamWrite(p.outp, substr(p.x, d))
       if not p.x.contains({':', '='}):
         # no inline element --> treat as block:
         inc(p.indent, 2)
     else:
-      llStreamWrite(p.outp, repeatChar(p.indent))
+      llStreamWrite(p.outp, spaces(p.indent))
       llStreamWrite(p.outp, substr(p.x, d))
     p.state = psDirective
   else: 
@@ -120,11 +120,11 @@ proc parseLine(p: var TTmplParser) =
       # next line of string literal:
       llStreamWrite(p.outp, p.conc)
       llStreamWrite(p.outp, "\n")
-      llStreamWrite(p.outp, repeatChar(p.indent + 2))
+      llStreamWrite(p.outp, spaces(p.indent + 2))
       llStreamWrite(p.outp, "\"")
     of psDirective: 
       newLine(p)
-      llStreamWrite(p.outp, repeatChar(p.indent))
+      llStreamWrite(p.outp, spaces(p.indent))
       llStreamWrite(p.outp, p.emit)
       llStreamWrite(p.outp, "(\"")
       inc(p.emitPar)

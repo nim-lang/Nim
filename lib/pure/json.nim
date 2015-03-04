@@ -816,7 +816,7 @@ proc copy*(p: JsonNode): JsonNode =
 # ------------- pretty printing ----------------------------------------------
 
 proc indent(s: var string, i: int) = 
-  s.add(repeatChar(i))
+  s.add(spaces(i))
 
 proc newIndent(curr, indent: int, ml: bool): int =
   if ml: return curr + indent

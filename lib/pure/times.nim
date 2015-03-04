@@ -628,25 +628,25 @@ proc formatToken(info: TimeInfo, token: string, buf: var string) =
     var fr = ($info.year).len()-2
     if fr < 0: fr = 0
     var fyear = ($info.year)[fr .. ($info.year).len()-1]
-    if fyear.len != 2: fyear = repeatChar(2-fyear.len(), '0') & fyear
+    if fyear.len != 2: fyear = repeat('0', 2-fyear.len()) & fyear
     buf.add(fyear)
   of "yyy":
     var fr = ($info.year).len()-3
     if fr < 0: fr = 0
     var fyear = ($info.year)[fr .. ($info.year).len()-1]
-    if fyear.len != 3: fyear = repeatChar(3-fyear.len(), '0') & fyear
+    if fyear.len != 3: fyear = repeat('0', 3-fyear.len()) & fyear
     buf.add(fyear)
   of "yyyy":
     var fr = ($info.year).len()-4
     if fr < 0: fr = 0
     var fyear = ($info.year)[fr .. ($info.year).len()-1]
-    if fyear.len != 4: fyear = repeatChar(4-fyear.len(), '0') & fyear
+    if fyear.len != 4: fyear = repeat('0', 4-fyear.len()) & fyear
     buf.add(fyear)
   of "yyyyy":
     var fr = ($info.year).len()-5
     if fr < 0: fr = 0
     var fyear = ($info.year)[fr .. ($info.year).len()-1]
-    if fyear.len != 5: fyear = repeatChar(5-fyear.len(), '0') & fyear
+    if fyear.len != 5: fyear = repeat('0', 5-fyear.len()) & fyear
     buf.add(fyear)
   of "z":
     let hrs = (info.timezone div 60) div 60
