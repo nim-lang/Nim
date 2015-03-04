@@ -784,7 +784,7 @@ proc rawMessage*(msg: TMsgKind, arg: string) =
 proc writeSurroundingSrc(info: TLineInfo) =
   const indent = "  "
   msgWriteln(indent & info.sourceLine.ropeToStr)
-  msgWriteln(indent & repeatChar(info.col, ' ') & '^')
+  msgWriteln(indent & spaces(info.col) & '^')
 
 proc formatMsg*(info: TLineInfo, msg: TMsgKind, arg: string): string =
   let frmt = case msg

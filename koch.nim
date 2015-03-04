@@ -347,7 +347,7 @@ proc temp(args: string) =
   if args.len > 0: exec(finalDest & " " & args)
 
 proc showHelp() = 
-  quit(HelpText % [VersionAsString & repeatChar(44-len(VersionAsString)), 
+  quit(HelpText % [VersionAsString & spaces(44-len(VersionAsString)), 
                    CompileDate, CompileTime], QuitSuccess)
 
 var op = initOptParser()

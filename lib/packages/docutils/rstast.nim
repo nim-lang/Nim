@@ -110,7 +110,7 @@ proc renderRstToRst(d: var TRenderContext, n: PRstNode, result: var string) =
   const 
     lvlToChar: array[0..8, char] = ['!', '=', '-', '~', '`', '<', '*', '|', '+']
   if n == nil: return
-  var ind = repeatChar(d.indent)
+  var ind = spaces(d.indent)
   case n.kind
   of rnInner: 
     renderRstSons(d, n, result)
@@ -124,7 +124,7 @@ proc renderRstToRst(d: var TRenderContext, n: PRstNode, result: var string) =
 
     result.add("\n")
     result.add(ind)
-    result.add repeatChar(headlineLen, lvlToChar[n.level])
+    result.add repeat(lvlToChar[n.level], headlineLen)
   of rnOverline:
     result.add("\n")
     result.add(ind)
@@ -132,7 +132,7 @@ proc renderRstToRst(d: var TRenderContext, n: PRstNode, result: var string) =
     var headline = ""
     renderRstSons(d, n, headline)
     
-    let lvl = repeatChar(headline.len - d.indent, lvlToChar[n.level])
+    let lvl = repeat(lvlToChar[n.level], headline.len - d.indent)
     result.add(lvl)
     result.add("\n")
     result.add(headline)
@@ -143,7 +143,7 @@ proc renderRstToRst(d: var TRenderContext, n: PRstNode, result: var string) =
   of rnTransition: 
     result.add("\n\n")
     result.add(ind)
-    result.add repeatChar(78-d.indent, '-')
+    result.add repeat('-', 78-d.indent)
     result.add("\n\n")
   of rnParagraph:
     result.add("\n\n")
@@ -196,7 +196,7 @@ proc renderRstToRst(d: var TRenderContext, n: PRstNode, result: var string) =
     result.add ':'
     result.add tmp
     result.add ':'
-    result.add repeatChar(L - tmp.len - 2)
+    result.add spaces(L - tmp.len - 2)
     renderRstToRst(d, n.sons[1], result)
     
     dec(d.indent, L)

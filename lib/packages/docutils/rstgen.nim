@@ -701,7 +701,7 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
   # Generate index entry using spaces to indicate TOC level for the output HTML.
   assert n.level >= 0
   setIndexTerm(d, refname, tmp.stripTOCHTML,
-    repeatChar(max(0, n.level), ' ') & tmp)
+    spaces(max(0, n.level)) & tmp)
 
 proc renderOverline(d: PDoc, n: PRstNode, result: var string) = 
   if d.meta[metaTitle].len == 0:
