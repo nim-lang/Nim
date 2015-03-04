@@ -30,7 +30,7 @@ proc eqStrings(a, b: NimString): bool {.inline, compilerProc.} =
   if a == b: return true
   if a == nil or b == nil: return false
   return a.len == b.len and
-    c_memcmp(a.data, b.data, a.len * sizeof(char)) == 0'i32
+    c_memcmp(a.data, b.data, a.len) == 0'i32
 
 when declared(allocAtomic):
   template allocStr(size: expr): expr =
@@ -67,7 +67,7 @@ proc copyStrLast(s: NimString, start, last: int): NimString {.compilerProc.} =
   if len > 0:
     result = rawNewStringNoInit(len)
     result.len = len
-    c_memcpy(result.data, addr(s.data[start]), (len + 1) * sizeof(char))
+    c_memcpy(result.data, addr(s.data[start]), len + 1)
   else:
     result = rawNewString(len)
 
@@ -77,7 +77,7 @@ proc copyStr(s: NimString, start: int): NimString {.compilerProc.} =
 proc toNimStr(str: cstring, len: int): NimString {.compilerProc.} =
   result = rawNewStringNoInit(len)
   result.len = len
-  c_memcpy(result.data, str, (len+1) * sizeof(char))
+  c_memcpy(result.data, str, len + 1)
 
 proc cstrToNimstr(str: cstring): NimString {.compilerRtl.} =
   result = toNimStr(str, c_strlen(str))
@@ -89,7 +89,7 @@ proc copyString(src: NimString): NimString {.compilerRtl.} =
     else:
       result = rawNewStringNoInit(src.len)
       result.len = src.len
-      c_memcpy(result.data, src.data, (src.len + 1) * sizeof(char))
+      c_memcpy(result.data, src.data, src.len + 1)
 
 proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
   if src != nil:
@@ -102,7 +102,7 @@ proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
     else:
       result = rawNewStringNoInit(src.len)
     result.len = src.len
-    c_memcpy(result.data, src.data, (src.len + 1) * sizeof(char))
+    c_memcpy(result.data, src.data, src.len + 1)
 
 
 proc hashString(s: string): int {.compilerproc.} =
@@ -124,7 +124,7 @@ proc addChar(s: NimString, c: char): NimString =
   if result.len >= result.space:
     result.reserved = resize(result.space)
     result = cast[NimString](growObj(result,
-      sizeof(TGenericSeq) + (result.reserved+1) * sizeof(char)))
+      sizeof(TGenericSeq) + result.reserved + 1))
   result.data[result.len] = c
   result.data[result.len+1] = '\0'
   inc(result.len)
@@ -168,11 +168,11 @@ proc resizeString(dest: NimString, addlen: int): NimString {.compilerRtl.} =
     result = cast[NimString](growObj(dest, sizeof(TGenericSeq) + sp + 1))
     result.reserved = sp
     #result = rawNewString(sp)
-    #copyMem(result, dest, dest.len * sizeof(char) + sizeof(TGenericSeq))
+    #copyMem(result, dest, dest.len + sizeof(TGenericSeq))
     # DO NOT UPDATE LEN YET: dest.len = newLen
 
 proc appendString(dest, src: NimString) {.compilerproc, inline.} =
-  c_memcpy(addr(dest.data[dest.len]), src.data, (src.len + 1) * sizeof(char))
+  c_memcpy(addr(dest.data[dest.len]), src.data, src.len + 1)
   inc(dest.len, src.len)
 
 proc appendChar(dest: NimString, c: char) {.compilerproc, inline.} =

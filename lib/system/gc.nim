@@ -117,7 +117,7 @@ proc usrToCell(usr: pointer): PCell {.inline.} =
   # convert pointer to userdata to object (=pointer to refcount)
   result = cast[PCell](cast[ByteAddress](usr)-%ByteAddress(sizeof(TCell)))
 
-proc canbeCycleRoot(c: PCell): bool {.inline.} =
+proc canBeCycleRoot(c: PCell): bool {.inline.} =
   result = ntfAcyclic notin c.typ.flags
 
 proc extGetCellType(c: pointer): PNimType {.compilerproc.} =
