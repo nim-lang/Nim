@@ -41,48 +41,55 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
                        best, alt: var TCandidate,
                        errors: var CandidateErrors) =
   var o: TOverloadIter
-  var sym = initOverloadIter(o, c, headSymbol)
+  # thanks to the lazy semchecking for operands, we need to iterate over the
+  # symbol table *before* any call to 'initCandidate' which might invoke
+  # semExpr which might modify the symbol table in cases like
+  # 'init(a, 1, (var b = new(Type2); b))'.
+  var symx = initOverloadIter(o, c, headSymbol)
   let symScope = o.lastOverloadScope
 
-  var z: TCandidate
+  var syms: seq[tuple[a: PSym, b: int]] = @[]
+  while symx != nil:
+    if symx.kind in filter: syms.add((symx, o.lastOverloadScope))
+    symx = nextOverloadIter(o, c, headSymbol)
+  if syms.len == 0: return
 
-  if sym == nil: return
-  initCandidate(c, best, sym, initialBinding, symScope)
-  initCandidate(c, alt, sym, initialBinding, symScope)
+  var z: TCandidate
+  initCandidate(c, best, syms[0][0], initialBinding, symScope)
+  initCandidate(c, alt, syms[0][0], initialBinding, symScope)
   best.state = csNoMatch
 
-  while sym != nil:
-    if sym.kind in filter:
-      determineType(c, sym)
-      initCandidate(c, z, sym, initialBinding, o.lastOverloadScope)
-      z.calleeSym = sym
+  for i in 0 .. <syms.len:
+    let sym = syms[i][0]
+    determineType(c, sym)
+    initCandidate(c, z, sym, initialBinding, syms[i][1])
+    z.calleeSym = sym
 
+    #if sym.name.s == "*" and (n.info ?? "temp5.nim") and n.info.line == 140:
+    #  gDebug = true
+    matches(c, n, orig, z)
+    if errors != nil:
+      errors.safeAdd(sym)
+      if z.errors != nil:
+        for err in z.errors:
+          errors.add(err)
+    if z.state == csMatch:
+      # little hack so that iterators are preferred over everything else:
+      if sym.kind in skIterators: inc(z.exactMatches, 200)
+      case best.state
+      of csEmpty, csNoMatch: best = z
+      of csMatch:
+        var cmp = cmpCandidates(best, z)
+        if cmp < 0: best = z   # x is better than the best so far
+        elif cmp == 0: alt = z # x is as good as the best so far
+        else: discard
       #if sym.name.s == "*" and (n.info ?? "temp5.nim") and n.info.line == 140:
-      #  gDebug = true
-      matches(c, n, orig, z)
-      if errors != nil:
-        errors.safeAdd(sym)
-        if z.errors != nil:
-          for err in z.errors:
-            errors.add(err)
-      if z.state == csMatch:
-        # little hack so that iterators are preferred over everything else:
-        if sym.kind in skIterators: inc(z.exactMatches, 200)
-        case best.state
-        of csEmpty, csNoMatch: best = z
-        of csMatch:
-          var cmp = cmpCandidates(best, z)
-          if cmp < 0: best = z   # x is better than the best so far
-          elif cmp == 0: alt = z # x is as good as the best so far
-          else: discard
-        #if sym.name.s == "*" and (n.info ?? "temp5.nim") and n.info.line == 140:
-        #  echo "Matches ", n.info, " ", typeToString(sym.typ)
-        #  debug sym
-        #  writeMatches(z)
-        #  for i in 1 .. <len(z.call):
-        #    z.call[i].typ.debug
-        #  quit 1
-    sym = nextOverloadIter(o, c, headSymbol)
+      #  echo "Matches ", n.info, " ", typeToString(sym.typ)
+      #  debug sym
+      #  writeMatches(z)
+      #  for i in 1 .. <len(z.call):
+      #    z.call[i].typ.debug
+      #  quit 1
 
 proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   # Gives a detailed error message; this is separated from semOverloadedCall,

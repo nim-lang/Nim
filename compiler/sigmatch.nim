@@ -10,7 +10,7 @@
 ## This module implements the signature matching for resolving
 ## the call to overloaded procs, generic procs and operators.
 
-import 
+import
   intsets, ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst,
   magicsys, condsyms, idents, lexer, options, parampatterns, strutils, trees,
   nimfix.pretty
@@ -19,7 +19,7 @@ when not defined(noDocgen):
   import docgen
 
 type
-  TCandidateState* = enum 
+  TCandidateState* = enum
     csEmpty, csMatch, csNoMatch
 
   CandidateErrors* = seq[PSym]
@@ -62,10 +62,10 @@ type
     isGeneric,
     isFromIntLit,            # conversion *from* int literal; proven safe
     isEqual
-  
+
 const
   isNilConversion = isConvertible # maybe 'isIntConv' fits better?
-    
+
 proc markUsed*(info: TLineInfo, s: PSym)
 
 template hasFauxMatch*(c: TCandidate): bool = c.fauxMatch != tyNone
@@ -128,7 +128,7 @@ proc newCandidate*(ctx: PContext, callee: PSym,
 proc newCandidate*(ctx: PContext, callee: PType): TCandidate =
   initCandidate(ctx, result, callee)
 
-proc copyCandidate(a: var TCandidate, b: TCandidate) = 
+proc copyCandidate(a: var TCandidate, b: TCandidate) =
   a.c = b.c
   a.exactMatches = b.exactMatches
   a.subtypeMatches = b.subtypeMatches
@@ -176,7 +176,7 @@ proc complexDisambiguation(a, b: PType): int =
       let bb = b.sons[1].sumGeneric
       var a = a
       var b = b
-      
+
       if aa < bb: swap(a, b)
       # all must be better
       for i in 2 .. <min(a.len, b.len):
@@ -203,7 +203,7 @@ proc cmpCandidates*(a, b: TCandidate): int =
   # prefer more specialized generic over more general generic:
   result = complexDisambiguation(a.callee, b.callee)
 
-proc writeMatches*(c: TCandidate) = 
+proc writeMatches*(c: TCandidate) =
   writeln(stdout, "exact matches: " & $c.exactMatches)
   writeln(stdout, "generic matches: " & $c.genericMatches)
   writeln(stdout, "subtype matches: " & $c.subtypeMatches)
@@ -225,7 +225,7 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1;
   result = ""
   for i in countup(startIdx, n.len - 1):
     var arg = n.sons[i]
-    if n.sons[i].kind == nkExprEqExpr: 
+    if n.sons[i].kind == nkExprEqExpr:
       add(result, renderTree(n.sons[i].sons[0]))
       add(result, ": ")
       if arg.typ.isNil:
@@ -241,9 +241,9 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1;
     if i != sonsLen(n) - 1: add(result, ", ")
 
 proc typeRel*(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation
-proc concreteType(c: TCandidate, t: PType): PType = 
+proc concreteType(c: TCandidate, t: PType): PType =
   case t.kind
-  of tyArrayConstr: 
+  of tyArrayConstr:
     # make it an array
     result = newType(tyArray, t.owner)
     addSonSkipIntLit(result, t.sons[0]) # XXX: t.owner is wrong for ID!
@@ -255,7 +255,7 @@ proc concreteType(c: TCandidate, t: PType): PType =
     else: result = t
   of tyGenericParam, tyAnything:
     result = t
-    while true: 
+    while true:
       result = PType(idTableGet(c.bindings, t))
       if result == nil:
         break # it's ok, no match
@@ -267,15 +267,15 @@ proc concreteType(c: TCandidate, t: PType): PType =
     result = t
   else:
     result = t                # Note: empty is valid here
-  
-proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation = 
-  if a.kind == f.kind: 
+
+proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation =
+  if a.kind == f.kind:
     result = isEqual
   else:
     let ab = skipTypes(a, {tyRange})
     let k = ab.kind
     if k == f.kind: result = isSubrange
-    elif k == tyInt and f.kind in {tyRange, tyInt8..tyInt64, 
+    elif k == tyInt and f.kind in {tyRange, tyInt8..tyInt64,
                                    tyUInt..tyUInt64} and
         isIntLit(ab) and ab.n.intVal >= firstOrd(f) and
                          ab.n.intVal <= lastOrd(f):
@@ -286,7 +286,7 @@ proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation =
       result = isIntConv
     elif k >= min and k <= max:
       result = isConvertible
-    elif a.kind == tyRange and a.sons[0].kind in {tyInt..tyInt64, 
+    elif a.kind == tyRange and a.sons[0].kind in {tyInt..tyInt64,
                                                   tyUInt8..tyUInt32} and
                          a.n[0].intVal >= firstOrd(f) and
                          a.n[1].intVal <= lastOrd(f):
@@ -318,12 +318,12 @@ proc handleFloatRange(f, a: PType): TTypeRelation =
       if f.kind == tyFloat32: result = isConvertible
       else: result = isIntConv
     else: result = isNone
-  
+
 proc isObjectSubtype(a, f: PType): int =
   var t = a
   assert t.kind == tyObject
   var depth = 0
-  while t != nil and not sameObjectTypes(f, t): 
+  while t != nil and not sameObjectTypes(f, t):
     assert t.kind == tyObject
     t = t.sons[0]
     if t == nil: break
@@ -332,17 +332,17 @@ proc isObjectSubtype(a, f: PType): int =
   if t != nil:
     result = depth
 
-proc minRel(a, b: TTypeRelation): TTypeRelation = 
+proc minRel(a, b: TTypeRelation): TTypeRelation =
   if a <= b: result = a
   else: result = b
-  
+
 proc recordRel(c: var TCandidate, f, a: PType): TTypeRelation =
   result = isNone
   if sameType(f, a): result = isEqual
   elif sonsLen(a) == sonsLen(f):
     result = isEqual
     let firstField = if f.kind == tyTuple: 0
-                     else: 1 
+                     else: 1
     for i in countup(firstField, sonsLen(f) - 1):
       var m = typeRel(c, f.sons[i], a.sons[i])
       if m < isSubtype: return isNone
@@ -373,7 +373,7 @@ proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
       # We are matching a generic proc (as proc param)
       # to another generic type appearing in the proc
       # signature. There is a change that the target
-      # type is already fully-determined, so we are 
+      # type is already fully-determined, so we are
       # going to try resolve it
       f = generateTypeInstance(c.c, c.bindings, c.call.info, f)
       if f == nil or f.isMetaType:
@@ -388,17 +388,17 @@ proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
 
   if result <= isSubtype or inconsistentVarTypes(f, a):
     result = isNone
- 
+
   if result == isEqual:
     inc c.exactMatches
-    
+
 proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   case a.kind
   of tyProc:
     if sonsLen(f) != sonsLen(a): return
     result = isEqual      # start with maximum; also correct for no
                           # params at all
-    
+
     template checkParam(f, a) =
       result = minRel(result, procParamTypeRel(c, f, a))
       if result == isNone: return
@@ -407,7 +407,7 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     # return type!
     for i in 1 .. <f.sonsLen:
       checkParam(f.sons[i], a.sons[i])
-    
+
     if f.sons[0] != nil:
       if a.sons[0] != nil:
         checkParam(f.sons[0], a.sons[0])
@@ -487,14 +487,14 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
       else:
         param = paramSym skType
         param.typ = makeTypeDesc(c, typ)
-      
+
       addDecl(c, param)
 
   for param in body.n[0]:
     var
       dummyName: PNode
       dummyType: PType
-    
+
     if param.kind == nkVarTy:
       dummyName = param[0]
       dummyType = if a.kind != tyVar: makeVarType(c, a)
@@ -520,7 +520,7 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
       of nkTypeSection: discard
       of nkConstDef: discard
       else: discard
-    
+
   return isGeneric
 
 proc shouldSkipDistinct(rules: PNode, callIdent: PIdent): bool =
@@ -554,7 +554,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   # typeRel can be used to establish various relationships between types:
   #
   # 1) When used with concrete types, it will check for type equivalence
-  # or a subtype relationship. 
+  # or a subtype relationship.
   #
   # 2) When used with a concrete type against a type class (such as generic
   # signature of a proc), it will check whether the concrete type is a member
@@ -569,7 +569,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
 
   result = isNone
   assert(f != nil)
-  
+
   if f.kind == tyExpr:
     if aOrig != nil: put(c.bindings, f, aOrig)
     return isGeneric
@@ -582,7 +582,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   # start the param matching process. This could be done in `prepareOperand`
   # for example, but unfortunately `prepareOperand` is not called in certain
   # situation when nkDotExpr are rotated to nkDotCalls
-  
+
   if a.kind == tyGenericInst and
       skipTypes(f, {tyVar}).kind notin {
         tyGenericBody, tyGenericInvocation,
@@ -626,9 +626,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       # seq[!int] vs seq[!number]
       # seq[float] matches the first, but not the second
       # we must turn the problem around:
-      # is number a subset of int? 
+      # is number a subset of int?
       return typeRel(c, a.lastSon, f.lastSon)
- 
+
     else:
       # negative type classes are essentially infinite,
       # so only the `any` type class is their superset
@@ -727,20 +727,20 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     of tyOpenArray, tyVarargs:
       result = typeRel(c, base(f), base(a))
       if result < isGeneric: result = isNone
-    of tyArrayConstr: 
-      if (f.sons[0].kind != tyGenericParam) and (a.sons[1].kind == tyEmpty): 
+    of tyArrayConstr:
+      if (f.sons[0].kind != tyGenericParam) and (a.sons[1].kind == tyEmpty):
         result = isSubtype    # [] is allowed here
-      elif typeRel(c, base(f), a.sons[1]) >= isGeneric: 
+      elif typeRel(c, base(f), a.sons[1]) >= isGeneric:
         result = isSubtype
-    of tyArray: 
-      if (f.sons[0].kind != tyGenericParam) and (a.sons[1].kind == tyEmpty): 
+    of tyArray:
+      if (f.sons[0].kind != tyGenericParam) and (a.sons[1].kind == tyEmpty):
         result = isSubtype
-      elif typeRel(c, base(f), a.sons[1]) >= isGeneric: 
+      elif typeRel(c, base(f), a.sons[1]) >= isGeneric:
         result = isConvertible
-    of tySequence: 
-      if (f.sons[0].kind != tyGenericParam) and (a.sons[0].kind == tyEmpty): 
+    of tySequence:
+      if (f.sons[0].kind != tyGenericParam) and (a.sons[0].kind == tyEmpty):
         result = isConvertible
-      elif typeRel(c, base(f), a.sons[0]) >= isGeneric: 
+      elif typeRel(c, base(f), a.sons[0]) >= isGeneric:
         result = isConvertible
     else: discard
   of tySequence:
@@ -768,7 +768,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   of tyForward: internalError("forward type in typeRel()")
   of tyNil:
     if a.kind == f.kind: result = isEqual
-  of tyTuple: 
+  of tyTuple:
     if a.kind == tyTuple: result = recordRel(c, f, a)
   of tyObject:
     if a.kind == tyObject:
@@ -783,13 +783,13 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   of tyDistinct:
     if (a.kind == tyDistinct) and sameDistinctTypes(f, a): result = isEqual
     elif c.coerceDistincts: result = typeRel(c, f.base, a)
-  of tySet: 
-    if a.kind == tySet: 
-      if (f.sons[0].kind != tyGenericParam) and (a.sons[0].kind == tyEmpty): 
+  of tySet:
+    if a.kind == tySet:
+      if (f.sons[0].kind != tyGenericParam) and (a.sons[0].kind == tyEmpty):
         result = isSubtype
-      else: 
+      else:
         result = typeRel(c, f.sons[0], a.sons[0])
-        if result <= isConvertible: 
+        if result <= isConvertible:
           result = isNone     # BUGFIX!
   of tyPtr, tyRef:
     if a.kind == f.kind:
@@ -823,9 +823,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       if a.len == 1: result = isConvertible
     of tyCString: result = isConvertible
     else: discard
-  of tyString: 
+  of tyString:
     case a.kind
-    of tyString: 
+    of tyString:
       if tfNotNil in f.flags and tfNotNil notin a.flags:
         result = isNilConversion
       else:
@@ -848,7 +848,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     of tyArray:
       if (firstOrd(a.sons[0]) == 0) and
           (skipTypes(a.sons[0], {tyRange}).kind in {tyInt..tyInt64}) and
-          (a.sons[1].kind == tyChar): 
+          (a.sons[1].kind == tyChar):
         result = isConvertible
     else: discard
 
@@ -863,7 +863,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         let ff = rootf.sons[i]
         let aa = roota.sons[i]
         result = typeRel(c, ff, aa)
-        if result == isNone: return        
+        if result == isNone: return
         if ff.kind == tyRange and result != isEqual: return isNone
       result = isGeneric
       # XXX See bug #2220. A[int] should match A[int] better than some generic X
@@ -883,13 +883,13 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       #InternalError("typeRel: tyGenericInvocation -> tyGenericInvocation")
       # simply no match for now:
       discard
-    elif x.kind == tyGenericInst and 
+    elif x.kind == tyGenericInst and
           (f.sons[0] == x.sons[0]) and
           (sonsLen(x) - 1 == sonsLen(f)):
       for i in countup(1, sonsLen(f) - 1):
         if x.sons[i].kind == tyGenericParam:
           internalError("wrong instantiated type!")
-        elif typeRel(c, f.sons[i], x.sons[i]) <= isSubtype: return 
+        elif typeRel(c, f.sons[i], x.sons[i]) <= isSubtype: return
       result = isGeneric
     else:
       result = typeRel(c, f.sons[0], x)
@@ -900,7 +900,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
           if x == nil or x.kind in {tyGenericInvocation, tyGenericParam}:
             internalError("wrong instantiated type!")
           put(c.bindings, f.sons[i], x)
-  
+
   of tyAnd:
     considerPreviousT:
       for branch in f.sons:
@@ -914,7 +914,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       for branch in f.sons:
         if typeRel(c, branch, aOrig) >= isSubtype:
           bindingRet isGeneric
-       
+
       return isNone
 
   of tyNot:
@@ -922,7 +922,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       for branch in f.sons:
         if typeRel(c, branch, aOrig) != isNone:
           return isNone
-      
+
       bindingRet isGeneric
 
   of tyAnything:
@@ -961,7 +961,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     if x == nil:
       if c.callee.kind == tyGenericBody and
          f.kind == tyGenericParam and not c.typedescMatched:
-        # XXX: The fact that generic types currently use tyGenericParam for 
+        # XXX: The fact that generic types currently use tyGenericParam for
         # their parameters is really a misnomer. tyGenericParam means "match
         # any value" and what we need is "match any type", which can be encoded
         # by a tyTypeDesc params. Unfortunately, this requires more substantial
@@ -1004,7 +1004,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       result = isGeneric
     else:
       result = typeRel(c, x, a) # check if it fits
-  
+
   of tyStatic:
     let prev = PType(idTableGet(c.bindings, f))
     if prev == nil:
@@ -1034,12 +1034,12 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       # when `f` is an unresolved typedesc, `a` could be any
       # type, so we should not perform this check earlier
       if a.kind != tyTypeDesc: return isNone
-    
+
       if f.base.kind == tyNone:
         result = isGeneric
       else:
         result = typeRel(c, f.base, a.base)
-      
+
       if result != isNone:
         put(c.bindings, f, a)
     else:
@@ -1049,9 +1049,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         result = typeRel(c, prev.base, a.base)
       else:
         result = isNone
- 
+
   of tyIter:
-    if a.kind == tyIter or 
+    if a.kind == tyIter or
       (a.kind == tyProc and tfIterator in a.flags):
       result = typeRel(c, f.base, a.base)
     else:
@@ -1059,7 +1059,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
 
   of tyStmt:
     result = isGeneric
-  
+
   of tyProxy:
     result = isEqual
 
@@ -1078,11 +1078,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     else:
       localError(f.n.info, errTypeExpected)
       result = isNone
-  
+
   else:
     internalAssert false
-  
-proc cmpTypes*(c: PContext, f, a: PType): TTypeRelation = 
+
+proc cmpTypes*(c: PContext, f, a: PType): TTypeRelation =
   var m: TCandidate
   initCandidate(c, m, f)
   result = typeRel(m, f, a)
@@ -1095,9 +1095,9 @@ proc getInstantiatedType(c: PContext, arg: PNode, m: TCandidate,
   if result == nil:
     internalError(arg.info, "getInstantiatedType")
     result = errorType(c)
-  
-proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate, 
-                  c: PContext): PNode = 
+
+proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
+                  c: PContext): PNode =
   result = newNodeI(kind, arg.info)
   if containsGenericType(f):
     if not m.hasFauxMatch:
@@ -1110,10 +1110,10 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
   addSon(result, ast.emptyNode)
   addSon(result, arg)
 
-proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType, 
-                   arg: PNode): PNode = 
+proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
+                   arg: PNode): PNode =
   result = nil
-  for i in countup(0, len(c.converters) - 1): 
+  for i in countup(0, len(c.converters) - 1):
     var src = c.converters[i].typ.sons[1]
     var dest = c.converters[i].typ.sons[0]
     # for generic type converters we need to check 'src <- a' before
@@ -1121,12 +1121,12 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
     # see tests/tgenericconverter:
     let srca = typeRel(m, src, a)
     if srca notin {isEqual, isGeneric}: continue
-    
+
     let destIsGeneric = containsGenericType(dest)
     if destIsGeneric:
       dest = generateTypeInstance(c, m.bindings, arg, dest)
     let fdest = typeRel(m, f, dest)
-    if fdest in {isEqual, isGeneric}: 
+    if fdest in {isEqual, isGeneric}:
       markUsed(arg.info, c.converters[i])
       var s = newSymNode(c.converters[i])
       s.typ = c.converters[i].typ
@@ -1138,8 +1138,8 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       m.genericConverter = srca == isGeneric or destIsGeneric
       return result
 
-proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType, 
-                    arg: PNode): PNode = 
+proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
+                    arg: PNode): PNode =
   # arg.typ can be nil in 'suggest':
   if isNil(arg.typ): return nil
 
@@ -1181,12 +1181,12 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
     arg = argSemantized
     argType = argType
     c = m.c
-  
+
   if tfHasStatic in fMaybeStatic.flags:
     # XXX: When implicit statics are the default
     # this will be done earlier - we just have to
     # make sure that static types enter here
-     
+
     # XXX: weaken tyGenericParam and call it tyGenericPlaceholder
     # and finally start using tyTypedesc for generic types properly.
     if argType.kind == tyGenericParam and tfWildcard in argType.flags:
@@ -1205,11 +1205,11 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
         arg.typ.sons = @[evaluated.typ]
         arg.typ.n = evaluated
         argType = arg.typ
- 
+
   var
     a = if c.inTypeClass > 0: argType.skipTypes({tyTypeDesc, tyFieldAccessor})
         else: argType
- 
+
     r = typeRel(m, f, a)
 
   if r != isNone and m.calleeSym != nil and
@@ -1244,19 +1244,18 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
   case r
   of isConvertible:
     inc(m.convMatches)
-    result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
+    result = implicitConv(nkHiddenStdConv, f, arg, m, c)
   of isIntConv:
     # I'm too lazy to introduce another ``*matches`` field, so we conflate
     # ``isIntConv`` and ``isIntLit`` here:
     inc(m.intConvMatches)
-    result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
-  of isSubtype: 
+    result = implicitConv(nkHiddenStdConv, f, arg, m, c)
+  of isSubtype:
     inc(m.subtypeMatches)
-    result = implicitConv(nkHiddenSubConv, f, copyTree(arg), m, c)
+    result = implicitConv(nkHiddenSubConv, f, arg, m, c)
   of isSubrange:
     inc(m.subtypeMatches)
-    #result = copyTree(arg)
-    result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
+    result = implicitConv(nkHiddenStdConv, f, arg, m, c)
   of isInferred, isInferredConvertible:
     inc(m.genericMatches)
     if arg.kind in {nkProcDef, nkIteratorDef} + nkLambdaKinds:
@@ -1269,42 +1268,32 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
       result = implicitConv(nkHiddenStdConv, f, result, m, c)
   of isGeneric:
     inc(m.genericMatches)
-    when true:
-      if arg.typ == nil:
-        result = arg
-      elif skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple:
-        result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
-      elif arg.typ.isEmptyContainer:
-        result = arg.copyTree
-        result.typ = getInstantiatedType(c, arg, m, f)
-      else:
-        result = arg
-    else:
-      # XXX Why is this ever necessary? arg's type should not be retrofitted
-      # to match formal's type in this way!
-      result = copyTree(arg)
+    if arg.typ == nil:
+      result = arg
+    elif skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple:
+      result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
+    elif arg.typ.isEmptyContainer:
+      result = arg.copyTree
       result.typ = getInstantiatedType(c, arg, m, f)
-      # BUG: f may not be the right key!
-      if skipTypes(result.typ, abstractVar-{tyTypeDesc}).kind in {tyTuple}:
-        result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
-        # BUGFIX: use ``result.typ`` and not `f` here
+    else:
+      result = arg
   of isFromIntLit:
     # too lazy to introduce another ``*matches`` field, so we conflate
     # ``isIntConv`` and ``isIntLit`` here:
     inc(m.intConvMatches, 256)
-    result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
-  of isEqual: 
+    result = implicitConv(nkHiddenStdConv, f, arg, m, c)
+  of isEqual:
     inc(m.exactMatches)
-    result = copyTree(arg)
+    result = arg
     if skipTypes(f, abstractVar-{tyTypeDesc}).kind in {tyTuple}:
-      result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
+      result = implicitConv(nkHiddenStdConv, f, arg, m, c)
   of isNone:
     # do not do this in ``typeRel`` as it then can't infere T in ``ref T``:
     if a.kind in {tyProxy, tyUnknown}:
       inc(m.genericMatches)
       m.fauxMatch = a.kind
-      return copyTree(arg)
-    result = userConvMatch(c, m, f, a, arg) 
+      return arg
+    result = userConvMatch(c, m, f, a, arg)
     # check for a base type match, which supports varargs[T] without []
     # constructor in a call:
     if result == nil and f.kind == tyVarargs:
@@ -1325,7 +1314,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
                       arg, argOrig: PNode): PNode =
   if arg == nil or arg.kind notin nkSymChoices:
     result = paramTypesMatchAux(m, f, a, arg, argOrig)
-  else: 
+  else:
     # CAUTION: The order depends on the used hashing scheme. Thus it is
     # incorrect to simply use the first fitting match. However, to implement
     # this correctly is inefficient. We have to copy `m` here to be able to
@@ -1339,28 +1328,28 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     y.calleeSym = m.calleeSym
     z.calleeSym = m.calleeSym
     var best = -1
-    for i in countup(0, sonsLen(arg) - 1): 
+    for i in countup(0, sonsLen(arg) - 1):
       if arg.sons[i].sym.kind in {skProc, skMethod, skConverter}+skIterators:
         copyCandidate(z, m)
         var r = typeRel(z, f, arg.sons[i].typ)
-        if r != isNone: 
+        if r != isNone:
           case x.state
-          of csEmpty, csNoMatch: 
+          of csEmpty, csNoMatch:
             x = z
             best = i
             x.state = csMatch
-          of csMatch: 
+          of csMatch:
             var cmp = cmpCandidates(x, z)
             if cmp < 0:
               best = i
               x = z
             elif cmp == 0:
               y = z           # z is as good as x
-    if x.state == csEmpty: 
+    if x.state == csEmpty:
       result = nil
-    elif y.state == csMatch and cmpCandidates(x, y) == 0: 
-      if x.state != csMatch: 
-        internalError(arg.info, "x.state is not csMatch") 
+    elif y.state == csMatch and cmpCandidates(x, y) == 0:
+      if x.state != csMatch:
+        internalError(arg.info, "x.state is not csMatch")
       # ambiguous: more than one symbol fits!
       # See tsymchoice_for_expr as an example. 'f.kind == tyExpr' should match
       # anyway:
@@ -1373,7 +1362,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
       result = paramTypesMatchAux(m, f, arg.sons[best].typ, arg.sons[best],
                                   argOrig)
 
-proc setSon(father: PNode, at: int, son: PNode) = 
+proc setSon(father: PNode, at: int, son: PNode) =
   if sonsLen(father) <= at: setLen(father.sons, at + 1)
   father.sons[at] = son
 
@@ -1417,7 +1406,7 @@ proc incrIndexType(t: PType) =
   inc t.sons[0].n.sons[1].intVal
 
 proc matchesAux(c: PContext, n, nOrig: PNode,
-                m: var TCandidate, marker: var IntSet) = 
+                m: var TCandidate, marker: var IntSet) =
   template checkConstraint(n: expr) {.immediate, dirty.} =
     if not formal.constraint.isNil:
       if matchNodeKinds(formal.constraint, n):
@@ -1447,20 +1436,20 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
       # named param
       # check if m.callee has such a param:
       prepareNamedParam(n.sons[a])
-      if n.sons[a].sons[0].kind != nkIdent: 
+      if n.sons[a].sons[0].kind != nkIdent:
         localError(n.sons[a].info, errNamedParamHasToBeIdent)
         m.state = csNoMatch
-        return 
+        return
       formal = getSymFromList(m.callee.n, n.sons[a].sons[0].ident, 1)
-      if formal == nil: 
+      if formal == nil:
         # no error message!
         m.state = csNoMatch
-        return 
-      if containsOrIncl(marker, formal.position): 
+        return
+      if containsOrIncl(marker, formal.position):
         # already in namedParams:
         localError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
         m.state = csNoMatch
-        return 
+        return
       m.baseTypeMatch = false
       n.sons[a].sons[1] = prepareOperand(c, formal.typ, n.sons[a].sons[1])
       n.sons[a].typ = n.sons[a].sons[1].typ
@@ -1470,7 +1459,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         m.state = csNoMatch
         return
       checkConstraint(n.sons[a].sons[1])
-      if m.baseTypeMatch: 
+      if m.baseTypeMatch:
         #assert(container == nil)
         container = newNodeIT(nkBracket, n.sons[a].info, arrayConstr(c, arg))
         addSon(container, arg)
@@ -1507,7 +1496,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           m.state = csNoMatch
           return
       else:
-        if m.callee.n.sons[f].kind != nkSym: 
+        if m.callee.n.sons[f].kind != nkSym:
           internalError(n.sons[a].info, "matches")
           return
         formal = m.callee.n.sons[f].sym
@@ -1515,7 +1504,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           # already in namedParams:
           localError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
           m.state = csNoMatch
-          return 
+          return
         m.baseTypeMatch = false
         n.sons[a] = prepareOperand(c, formal.typ, n.sons[a])
         var arg = paramTypesMatch(m, formal.typ, n.sons[a].typ,
@@ -1528,7 +1517,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           if container.isNil:
             container = newNodeIT(nkBracket, n.sons[a].info, arrayConstr(c, arg))
           addSon(container, arg)
-          setSon(m.call, formal.position + 1, 
+          setSon(m.call, formal.position + 1,
                  implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
           #if f != formalLen - 1: container = nil
 
@@ -1603,7 +1592,7 @@ when not declared(tests):
 
 tests:
   var dummyOwner = newSym(skModule, getIdent("test_module"), nil, UnknownLineInfo())
-  
+
   proc `|` (t1, t2: PType): PType =
     result = newType(tyOr, dummyOwner)
     result.rawAddSon(t1)
@@ -1624,12 +1613,12 @@ tests:
 
   proc array(x: int, t: PType): PType =
     result = newType(tyArray, dummyOwner)
-    
+
     var n = newNodeI(nkRange, UnknownLineInfo())
     addSon(n, newIntNode(nkIntLit, 0))
     addSon(n, newIntNode(nkIntLit, x))
     let range = newType(tyRange, dummyOwner)
-    
+
     result.rawAddSon(range)
     result.rawAddSon(t)
 
@@ -1664,7 +1653,7 @@ tests:
     template no(x, y) =
       test astToStr(x) & " is not " & astToStr(y):
         check typeRel(c, y, x) == isNone
-    
+
     yes seq(any), array(10, int) | seq(any)
     # Sure, seq[any] is directly included
 
@@ -1672,16 +1661,16 @@ tests:
     yes seq(int), seq(number)
     # Sure, the int sequence is certainly
     # part of the number sequences (and all sequences)
-    
+
     no seq(any), seq(float)
     # Nope, seq[any] includes types that are not seq[float] (e.g. seq[int])
 
     yes seq(int|string), seq(any)
     # Sure
- 
+
     yes seq(int&string), seq(any)
     # Again
-    
+
     yes seq(int&string), seq(int)
     # A bit more complicated
     # seq[int&string] is not a real type, but it's analogous to
@@ -1690,23 +1679,23 @@ tests:
     no seq(int|string), seq(int|float)
     # Nope, seq[string] is not included in not included in
     # the seq[int|float] set
-    
+
     no seq(!(int|string)), seq(string)
     # A sequence that is neither seq[int] or seq[string]
     # is obviously not seq[string]
-     
+
     no seq(!int), seq(number)
     # Now your head should start to hurt a bit
     # A sequence that is not seq[int] is not necessarily a number sequence
     # it could well be seq[string] for example
-    
+
     yes seq(!(int|string)), seq(!string)
     # all sequnece types besides seq[int] and seq[string]
     # are subset of all sequence types that are not seq[string]
 
     no seq(!(int|string)), seq(!(string|TFoo))
     # Nope, seq[TFoo] is included in the first set, but not in the second
-    
+
     no seq(!string), seq(!number)
     # Nope, seq[int] in included in the first set, but not in the second
 
@@ -1714,7 +1703,7 @@ tests:
     yes seq(!int), seq(any)
     no seq(any), seq(!any)
     no seq(!int), seq(!any)
-    
+
     yes int, ordinal
     no  string, ordinal
 
