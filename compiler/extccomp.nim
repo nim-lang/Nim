@@ -572,6 +572,9 @@ proc footprint(filename: string): TCrc32 =
       getCompileCFileCmd(filename, true)
 
 proc externalFileChanged(filename: string): bool = 
+  if gCmd notin {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToLLVM}:
+    return false
+
   var crcFile = toGeneratedFile(filename.withPackageName, "crc")
   var currentCrc = int(footprint(filename))
   var f: File
