@@ -1570,16 +1570,20 @@ iterator countup*[S, T](a: S, b: T, step = 1): T {.inline.} =
   ## step count. `S`, `T` may be any ordinal type, `step` may only
   ## be positive.
   var res: T = T(a)
-  while res <= b:
+  while res < b:
     yield res
     inc(res, step)
+  if T(a) <= b:
+    yield res
 
 iterator `..`*[S, T](a: S, b: T): T {.inline.} =
   ## An alias for `countup`.
   var res: T = T(a)
-  while res <= b:
+  while res < b:
     yield res
     inc res
+  if T(a) <= b:
+    yield res
 
 iterator `||`*[S, T](a: S, b: T, annotation=""): T {.
   inline, magic: "OmpParFor", sideEffect.} =
