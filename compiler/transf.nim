@@ -321,6 +321,7 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
 
 proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode =
   result = transformSons(c, n)
+  if gCmd == cmdCompileToCpp or sfCompileToCpp in c.module.flags: return
   var n = result.PNode
   case n.sons[0].kind
   of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
@@ -491,7 +492,8 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   var newC = newTransCon(getCurrOwner(c))
   newC.forStmt = n
   newC.forLoopBody = loopBody
-  internalAssert iter.kind == skIterator
+  # this can fail for 'nimsuggest' and 'check':
+  if iter.kind != skIterator: return result
   # generate access statements for the parameters (unless they are constant)
   pushTransCon(c, newC)
   for i in countup(1, sonsLen(call) - 1): 

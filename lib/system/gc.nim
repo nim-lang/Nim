@@ -528,20 +528,9 @@ proc growObj(old: pointer, newsize: int, gch: var TGcHeap): pointer =
   zeroMem(cast[pointer](cast[ByteAddress](res)+% oldsize +% sizeof(TCell)),
           newsize-oldsize)
   sysAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "growObj: 3")
-  sysAssert(res.refcount shr rcShift <=% 1, "growObj: 4")
-  #if res.refcount <% rcIncrement:
-  #  add(gch.zct, res)
-  #else: # XXX: what to do here?
-  #  decRef(ol)
-  if (ol.refcount and ZctFlag) != 0:
-    var j = gch.zct.len-1
-    var d = gch.zct.d
-    while j >= 0: 
-      if d[j] == ol:
-        d[j] = res
-        break
-      dec(j)
-  if canbeCycleRoot(ol): excl(gch.cycleRoots, ol)
+  # This can be wrong for intermediate temps that are nevertheless on the
+  # heap because of lambda lifting:
+  #gcAssert(res.refcount shr rcShift <=% 1, "growObj: 4")
   when logGC:
     writeCell("growObj old cell", ol)
     writeCell("growObj new cell", res)
@@ -549,7 +538,26 @@ proc growObj(old: pointer, newsize: int, gch: var TGcHeap): pointer =
   gcTrace(res, csAllocated)
   when reallyDealloc: 
     sysAssert(allocInv(gch.region), "growObj before dealloc")
-    rawDealloc(gch.region, ol)
+    if ol.refcount shr rcShift <=% 1:
+      # free immediately to save space:
+      if (ol.refcount and ZctFlag) != 0:
+        var j = gch.zct.len-1
+        var d = gch.zct.d
+        while j >= 0:
+          if d[j] == ol:
+            d[j] = res
+            break
+          dec(j)
+      if canbeCycleRoot(ol): excl(gch.cycleRoots, ol)
+      rawDealloc(gch.region, ol)
+    else:
+      # we split the old refcount in 2 parts. XXX This is still not entirely
+      # correct if the pointer that receives growObj's result is on the stack.
+      # A better fix would be to emit the location specific write barrier for
+      # 'growObj', but this is lost of more work and who knows what new problems
+      # this would create.
+      res.refcount = rcIncrement
+      decRef(ol)
   else:
     sysAssert(ol.typ != nil, "growObj: 5")
     zeroMem(ol, sizeof(TCell))
@@ -876,7 +884,7 @@ elif stackIncreases:
   var
     jmpbufSize {.importc: "sizeof(jmp_buf)", nodecl.}: int
       # a little hack to get the size of a TJmpBuf in the generated C code
-      # in a platform independant way
+      # in a platform independent way
 
   template forEachStackSlot(gch, gcMark: expr) {.immediate, dirty.} =
     var registers: C_JmpBuf

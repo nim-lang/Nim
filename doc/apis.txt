@@ -79,10 +79,3 @@ string                  str
 identifier              ident
 indentation             indent
 -------------------     ------------   --------------------------------------
-
-
-Coding Guidelines
-=================
-
-For coding guidelines see the `Internals of the Nim Compiler
-<intern.html#coding-guidelines>`_ documentation.

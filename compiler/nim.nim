@@ -9,9 +9,9 @@
 
 when defined(gcc) and defined(windows):
   when defined(x86):
-    {.link: "icons/nimrod.res".}
+    {.link: "icons/nim.res".}
   else:
-    {.link: "icons/nimrod_icon.o".}
+    {.link: "icons/nim_icon.o".}
 
 import
   commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes,
@@ -61,6 +61,8 @@ proc handleCmdLine() =
         if gCmd == cmdRun:
           tccgen.run(commands.arguments)
       if optRun in gGlobalOptions:
+        if gProjectName == "-":
+          gProjectFull = "stdinfile"
         if gCmd == cmdCompileToJS:
           var ex: string
           if options.outFile.len > 0:

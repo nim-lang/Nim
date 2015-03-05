@@ -6,7 +6,6 @@ Command:
   //compile, c                compile project with default code generator (C)
   //doc                       generate the documentation for inputfile
   //doc2                      generate the documentation for the whole project
-  //i                         start Nim in interactive mode (limited)
 
 Arguments:
   arguments are passed to the program being run (if --run option is selected)
@@ -14,7 +13,6 @@ Options:
   -p, --path:PATH           add path to search paths
   -d, --define:SYMBOL       define a conditional symbol
   -u, --undef:SYMBOL        undefine a conditional symbol
-  --symbol:SYMBOL           declare a conditional symbol
   -f, --forceBuild          force rebuilding of all modules
   --stackTrace:on|off       turn stack tracing on|off
   --lineTrace:on|off        turn line tracing on|off
@@ -31,6 +29,7 @@ Options:
   --infChecks:on|off        turn Inf checks on|off
   --deadCodeElim:on|off     whole program dead code elimination on|off
   --opt:none|speed|size     optimize not at all or for speed|size
+  --debugger:native|endb    use native debugger (gdb) | ENDB (experimental)
   --app:console|gui|lib|staticlib
                             generate a console app|GUI app|DLL|static library
   -r, --run                 run the compiled program with given arguments

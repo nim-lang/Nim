@@ -69,7 +69,20 @@ when false:
   proc echoStats*() =
     for i in countup(low(TTypeKind), high(TTypeKind)): 
       echo i, " ", gTypeTable[i].counter
-  
+
+proc slowSearch(key: PType; k: TTypeKind): PType =
+  # tuples are quite horrible as C does not support them directly and
+  # tuple[string, string] is a (strange) subtype of
+  # tuple[nameA, nameB: string]. This bites us here, so we
+  # use 'sameBackendType' instead of 'sameType'.
+  if idTableHasObjectAsKey(gTypeTable[k], key): return key
+  for h in countup(0, high(gTypeTable[k].data)):
+    var t = PType(gTypeTable[k].data[h].key)
+    if t != nil and sameBackendType(t, key): 
+      return t
+  idTablePut(gTypeTable[k], key, key)
+  result = key
+
 proc getUniqueType*(key: PType): PType = 
   # this is a hotspot in the compiler!
   if key == nil: return 
@@ -86,7 +99,7 @@ proc getUniqueType*(key: PType): PType =
       gCanonicalTypes[k] = key
       result = key
   of tyTypeDesc, tyTypeClasses, tyGenericParam, tyFromExpr, tyFieldAccessor:
-    internalError("GetUniqueType")
+    internalError("getUniqueType")
   of tyDistinct:
     if key.deepCopy != nil: result = key
     else: result = getUniqueType(lastSon(key))
@@ -96,23 +109,20 @@ proc getUniqueType*(key: PType): PType =
     #if obj.sym != nil and obj.sym.name.s == "TOption":
     #  echo "for ", typeToString(key), " I returned "
     #  debug result
-  of tyArrayConstr, tyGenericInvokation, tyGenericBody,
+  of tyPtr, tyRef, tyVar:
+    let elemType = lastSon(key)
+    if elemType.kind in {tyBool, tyChar, tyInt..tyUInt64}:
+      # no canonicalization for integral types, so that e.g. ``ptr pid_t`` is
+      # produced instead of ``ptr NI``.
+      result = key
+    else:
+      result = slowSearch(key, k)
+  of tyArrayConstr, tyGenericInvocation, tyGenericBody,
      tyOpenArray, tyArray, tySet, tyRange, tyTuple,
-     tyPtr, tyRef, tySequence, tyForward, tyVarargs, tyProxy, tyVar:
-    # tuples are quite horrible as C does not support them directly and
-    # tuple[string, string] is a (strange) subtype of
-    # tuple[nameA, nameB: string]. This bites us here, so we 
-    # use 'sameBackendType' instead of 'sameType'.
-
+     tySequence, tyForward, tyVarargs, tyProxy:
     # we have to do a slow linear search because types may need
     # to be compared by their structure:
-    if idTableHasObjectAsKey(gTypeTable[k], key): return key 
-    for h in countup(0, high(gTypeTable[k].data)): 
-      var t = PType(gTypeTable[k].data[h].key)
-      if t != nil and sameBackendType(t, key): 
-        return t
-    idTablePut(gTypeTable[k], key, key)
-    result = key
+    result = slowSearch(key, k)
   of tyObject:
     if tfFromGeneric notin key.flags:
       # fast case; lookup per id suffices:
@@ -123,9 +133,9 @@ proc getUniqueType*(key: PType): PType =
     else:
       # ugly slow case: need to compare by structure
       if idTableHasObjectAsKey(gTypeTable[k], key): return key
-      for h in countup(0, high(gTypeTable[k].data)): 
+      for h in countup(0, high(gTypeTable[k].data)):
         var t = PType(gTypeTable[k].data[h].key)
-        if t != nil and sameType(t, key): 
+        if t != nil and sameBackendType(t, key):
           return t
       idTablePut(gTypeTable[k], key, key)
       result = key    
@@ -139,14 +149,8 @@ proc getUniqueType*(key: PType): PType =
       result = key
     else:
       # ugh, we need the canon here:
-      if idTableHasObjectAsKey(gTypeTable[k], key): return key 
-      for h in countup(0, high(gTypeTable[k].data)): 
-        var t = PType(gTypeTable[k].data[h].key)
-        if t != nil and sameBackendType(t, key): 
-          return t
-      idTablePut(gTypeTable[k], key, key)
-      result = key
-      
+      result = slowSearch(key, k)
+
 proc tableGetType*(tab: TIdTable, key: PType): RootRef = 
   # returns nil if we need to declare this type
   result = idTableGet(tab, key)

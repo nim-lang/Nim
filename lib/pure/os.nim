@@ -185,7 +185,7 @@ const
 proc osErrorMsg*(): string {.rtl, extern: "nos$1", deprecated.} =
   ## Retrieves the operating system's error flag, ``errno``.
   ## On Windows ``GetLastError`` is checked before ``errno``.
-  ## Returns "" if no error occured.
+  ## Returns "" if no error occurred.
   ##
   ## **Deprecated since version 0.9.4**: use the other ``osErrorMsg`` proc.
 
@@ -1010,8 +1010,16 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
 proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [ReadIOEffect, WriteIOEffect].} =
   ## Moves a file from `source` to `dest`. If this fails, `OSError` is raised.
-  if c_rename(source, dest) != 0'i32:
-    raise newException(OSError, $strerror(errno))
+  when defined(Windows):
+    when useWinUnicode:
+      let s = newWideCString(source)
+      let d = newWideCString(dest)
+      if moveFileW(s, d, 0'i32) == 0'i32: raiseOSError(osLastError())
+    else:
+      if moveFileA(source, dest, 0'i32) == 0'i32: raiseOSError(osLastError())
+  else:
+    if c_rename(source, dest) != 0'i32:
+      raise newException(OSError, $strerror(errno))
 
 when not declared(ENOENT) and not defined(Windows):
   when NoFakeVars:
@@ -1074,8 +1082,12 @@ when defined(windows):
   # because we support Windows GUI applications, things get really
   # messy here...
   when useWinUnicode:
-    proc strEnd(cstr: WideCString, c = 0'i32): WideCString {.
-      importc: "wcschr", header: "<string.h>".}
+    when defined(cpp):
+      proc strEnd(cstr: WideCString, c = 0'i32): WideCString {.
+        importcpp: "(NI16*)wcschr((const wchar_t *)#, #)", header: "<string.h>".}
+    else:
+      proc strEnd(cstr: WideCString, c = 0'i32): WideCString {.
+        importc: "wcschr", header: "<string.h>".}
   else:
     proc strEnd(cstr: cstring, c = 0'i32): cstring {.
       importc: "strchr", header: "<string.h>".}
@@ -1087,7 +1099,7 @@ when defined(windows):
         var
           env = getEnvironmentStringsW()
           e = env
-        if e == nil: return # an error occured
+        if e == nil: return # an error occurred
         while true:
           var eend = strEnd(e)
           add(environment, $e)
@@ -1098,7 +1110,7 @@ when defined(windows):
         var
           env = getEnvironmentStringsA()
           e = env
-        if e == nil: return # an error occured
+        if e == nil: return # an error occurred
         while true:
           var eend = strEnd(e)
           add(environment, $e)
@@ -1170,7 +1182,7 @@ proc putEnv*(key, val: string) {.tags: [WriteEnvEffect].} =
   ## If an error occurs, `EInvalidEnvVar` is raised.
 
   # Note: by storing the string in the environment sequence,
-  # we gurantee that we don't free the memory before the program
+  # we guarantee that we don't free the memory before the program
   # ends (this is needed for POSIX compliance). It is also needed so that
   # the process itself may access its modified environment variables!
   var indx = findEnvVar(key)
@@ -1287,8 +1299,16 @@ iterator walkDir*(dir: string): tuple[kind: PathComponent, path: string] {.
         if y != "." and y != "..":
           var s: TStat
           y = dir / y
-          if lstat(y, s) < 0'i32: break
           var k = pcFile
+
+          when defined(linux) or defined(macosx) or defined(bsd):
+            if x.d_type != DT_UNKNOWN:
+              if x.d_type == DT_DIR: k = pcDir
+              if x.d_type == DT_LNK: k = succ(k)
+              yield (k, y)
+              continue
+
+          if lstat(y, s) < 0'i32: break
           if S_ISDIR(s.st_mode): k = pcDir
           if S_ISLNK(s.st_mode): k = succ(k)
           yield (k, y)
@@ -1335,7 +1355,7 @@ proc rawRemoveDir(dir: string) =
     if rmdir(dir) != 0'i32 and errno != ENOENT: raiseOSError(osLastError())
 
 proc removeDir*(dir: string) {.rtl, extern: "nos$1", tags: [
-  WriteDirEffect, ReadDirEffect].} =
+  WriteDirEffect, ReadDirEffect], benign.} =
   ## Removes the directory `dir` including all subdirectories and files
   ## in `dir` (recursively).
   ##
@@ -1381,7 +1401,7 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect].} =
   rawCreateDir(dir)
 
 proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
-  tags: [WriteIOEffect, ReadIOEffect].} =
+  tags: [WriteIOEffect, ReadIOEffect], benign.} =
   ## Copies a directory from `source` to `dest`.
   ##
   ## If this fails, `OSError` is raised. On the Windows platform this proc will
@@ -1442,7 +1462,7 @@ proc createHardlink*(src, dest: string) =
 proc parseCmdLine*(c: string): seq[string] {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Splits a command line into several components;
-  ## This proc is only occassionally useful, better use the `parseopt` module.
+  ## This proc is only occasionally useful, better use the `parseopt` module.
   ##
   ## On Windows, it uses the following parsing rules
   ## (see http://msdn.microsoft.com/en-us/library/17w5ykft.aspx ):
@@ -1554,7 +1574,7 @@ proc copyFileWithPermissions*(source, dest: string,
 
 proc copyDirWithPermissions*(source, dest: string,
     ignorePermissionErrors = true) {.rtl, extern: "nos$1",
-    tags: [WriteIOEffect, ReadIOEffect].} =
+    tags: [WriteIOEffect, ReadIOEffect], benign.} =
   ## Copies a directory from `source` to `dest` preserving file permissions.
   ##
   ## If this fails, `OSError` is raised. This is a wrapper proc around `copyDir()

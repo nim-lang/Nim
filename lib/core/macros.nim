@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -15,7 +15,7 @@ include "system/inclrtl"
 ## .. include:: ../doc/astspec.txt
 
 type
-  TNimrodNodeKind* = enum
+  NimNodeKind* = enum
     nnkNone, nnkEmpty, nnkIdent, nnkSym,
     nnkType, nnkCharLit, nnkIntLit, nnkInt8Lit,
     nnkInt16Lit, nnkInt32Lit, nnkInt64Lit, nnkUIntLit, nnkUInt8Lit,
@@ -72,20 +72,26 @@ type
     nnkEnumFieldDef,
     nnkArglist, nnkPattern
     nnkReturnToken
-  TNimNodeKinds* = set[TNimrodNodeKind]
-  TNimrodTypeKind* = enum
+  NimNodeKinds* = set[NimNodeKind]
+  NimTypeKind* = enum
     ntyNone, ntyBool, ntyChar, ntyEmpty,
     ntyArrayConstr, ntyNil, ntyExpr, ntyStmt,
-    ntyTypeDesc, ntyGenericInvokation, ntyGenericBody, ntyGenericInst,
+    ntyTypeDesc, ntyGenericInvocation, ntyGenericBody, ntyGenericInst,
     ntyGenericParam, ntyDistinct, ntyEnum, ntyOrdinal,
     ntyArray, ntyObject, ntyTuple, ntySet,
     ntyRange, ntyPtr, ntyRef, ntyVar,
     ntySequence, ntyProc, ntyPointer, ntyOpenArray,
     ntyString, ntyCString, ntyForward, ntyInt,
     ntyInt8, ntyInt16, ntyInt32, ntyInt64,
-    ntyFloat, ntyFloat32, ntyFloat64, ntyFloat128
-  TNimTypeKinds* = set[TNimrodTypeKind]
-  TNimrodSymKind* = enum
+    ntyFloat, ntyFloat32, ntyFloat64, ntyFloat128,
+    ntyUInt, ntyUInt8, ntyUInt16, ntyUInt32, ntyUInt64,
+    ntyBigNum, 
+    ntyConst, ntyMutable, ntyVarargs, 
+    ntyIter,
+    ntyError
+    
+  TNimTypeKinds* {.deprecated.} = set[NimTypeKind]
+  NimSymKind* = enum
     nskUnknown, nskConditional, nskDynLib, nskParam,
     nskGenericParam, nskTemp, nskModule, nskType, nskVar, nskLet,
     nskConst, nskResult,
@@ -94,21 +100,27 @@ type
     nskEnumField, nskForVar, nskLabel,
     nskStub
 
-  TNimSymKinds* = set[TNimrodSymKind]
+  TNimSymKinds* {.deprecated.} = set[NimSymKind]
 
 type
-  TNimrodIdent* = object of RootObj
-    ## represents a Nimrod identifier in the AST
+  NimIdent* = object of RootObj
+    ## represents a Nim identifier in the AST
 
-  TNimrodSymbol {.final.} = object # hidden
-  PNimrodSymbol* {.compilerproc.} = ref TNimrodSymbol
-    ## represents a Nimrod *symbol* in the compiler; a *symbol* is a looked-up
+  NimSymObj = object # hidden
+  NimSym* = ref NimSymObj
+    ## represents a Nim *symbol* in the compiler; a *symbol* is a looked-up
     ## *ident*.
+
+{.deprecated: [TNimrodNodeKind: NimNodeKind, TNimNodeKinds: NimNodeKinds,
+    TNimrodTypeKind: NimTypeKind, TNimrodSymKind: NimSymKind,
+    TNimrodIdent: NimIdent, PNimrodSymbol: NimSym].}
 
 const
   nnkLiterals* = {nnkCharLit..nnkNilLit}
   nnkCallKinds* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
                    nnkCallStrLit}
+
+{.push warning[deprecated]: off.}
 
 proc `[]`*(n: PNimrodNode, i: int): PNimrodNode {.magic: "NChild", noSideEffect.}
   ## get `n`'s `i`'th child.
@@ -117,31 +129,31 @@ proc `[]=`*(n: PNimrodNode, i: int, child: PNimrodNode) {.magic: "NSetChild",
   noSideEffect.}
   ## set `n`'s `i`'th child to `child`.
 
-proc `!`*(s: string): TNimrodIdent {.magic: "StrToIdent", noSideEffect.}
+proc `!`*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect.}
   ## constructs an identifier from the string `s`
 
-proc `$`*(i: TNimrodIdent): string {.magic: "IdentToStr", noSideEffect.}
-  ## converts a Nimrod identifier to a string
+proc `$`*(i: NimIdent): string {.magic: "IdentToStr", noSideEffect.}
+  ## converts a Nim identifier to a string
 
-proc `$`*(s: PNimrodSymbol): string {.magic: "IdentToStr", noSideEffect.}
-  ## converts a Nimrod symbol to a string
+proc `$`*(s: NimSym): string {.magic: "IdentToStr", noSideEffect.}
+  ## converts a Nim symbol to a string
 
-proc `==`*(a, b: TNimrodIdent): bool {.magic: "EqIdent", noSideEffect.}
-  ## compares two Nimrod identifiers
+proc `==`*(a, b: NimIdent): bool {.magic: "EqIdent", noSideEffect.}
+  ## compares two Nim identifiers
 
 proc `==`*(a, b: PNimrodNode): bool {.magic: "EqNimrodNode", noSideEffect.}
-  ## compares two Nimrod nodes
+  ## compares two Nim nodes
 
 proc len*(n: PNimrodNode): int {.magic: "NLen", noSideEffect.}
   ## returns the number of children of `n`.
 
 proc add*(father, child: PNimrodNode): PNimrodNode {.magic: "NAdd", discardable,
-  noSideEffect.}
+  noSideEffect, locks: 0.}
   ## Adds the `child` to the `father` node. Returns the
   ## father node so that calls can be nested.
 
 proc add*(father: PNimrodNode, children: varargs[PNimrodNode]): PNimrodNode {.
-  magic: "NAddMultiple", discardable, noSideEffect.}
+  magic: "NAddMultiple", discardable, noSideEffect, locks: 0.}
   ## Adds each child of `children` to the `father` node.
   ## Returns the `father` node so that calls can be nested.
 
@@ -153,15 +165,27 @@ proc kind*(n: PNimrodNode): TNimrodNodeKind {.magic: "NKind", noSideEffect.}
 
 proc intVal*(n: PNimrodNode): BiggestInt {.magic: "NIntVal", noSideEffect.}
 proc floatVal*(n: PNimrodNode): BiggestFloat {.magic: "NFloatVal", noSideEffect.}
-proc symbol*(n: PNimrodNode): PNimrodSymbol {.magic: "NSymbol", noSideEffect.}
-proc ident*(n: PNimrodNode): TNimrodIdent {.magic: "NIdent", noSideEffect.}
-proc typ*(n: PNimrodNode): typedesc {.magic: "NGetType", noSideEffect.}
+proc symbol*(n: PNimrodNode): NimSym {.magic: "NSymbol", noSideEffect.}
+proc ident*(n: PNimrodNode): NimIdent {.magic: "NIdent", noSideEffect.}
+
+proc getType*(n: PNimrodNode): PNimrodNode {.magic: "NGetType", noSideEffect.}
+  ## with 'getType' you can access the node's `type`:idx:. A Nim type is
+  ## mapped to a Nim AST too, so it's slightly confusing but it means the same
+  ## API can be used to traverse types. Recursive types are flattened for you
+  ## so there is no danger of infinite recursions during traversal. To
+  ## resolve recursive types, you have to call 'getType' again. To see what
+  ## kind of type it is, call `typeKind` on getType's result.
+
+proc typeKind*(n: PNimrodNode): NimTypeKind {.magic: "NGetType", noSideEffect.}
+  ## Returns the type kind of the node 'n' that should represent a type, that
+  ## means the node should have been obtained via `getType`.
+
 proc strVal*(n: PNimrodNode): string  {.magic: "NStrVal", noSideEffect.}
 
 proc `intVal=`*(n: PNimrodNode, val: BiggestInt) {.magic: "NSetIntVal", noSideEffect.}
 proc `floatVal=`*(n: PNimrodNode, val: BiggestFloat) {.magic: "NSetFloatVal", noSideEffect.}
-proc `symbol=`*(n: PNimrodNode, val: PNimrodSymbol) {.magic: "NSetSymbol", noSideEffect.}
-proc `ident=`*(n: PNimrodNode, val: TNimrodIdent) {.magic: "NSetIdent", noSideEffect.}
+proc `symbol=`*(n: PNimrodNode, val: NimSym) {.magic: "NSetSymbol", noSideEffect.}
+proc `ident=`*(n: PNimrodNode, val: NimIdent) {.magic: "NSetIdent", noSideEffect.}
 #proc `typ=`*(n: PNimrodNode, typ: typedesc) {.magic: "NSetType".}
 # this is not sound! Unfortunately forbidding 'typ=' is not enough, as you
 # can easily do:
@@ -177,13 +201,13 @@ proc newNimNode*(kind: TNimrodNodeKind,
 proc copyNimNode*(n: PNimrodNode): PNimrodNode {.magic: "NCopyNimNode", noSideEffect.}
 proc copyNimTree*(n: PNimrodNode): PNimrodNode {.magic: "NCopyNimTree", noSideEffect.}
 
-proc error*(msg: string) {.magic: "NError", gcsafe.}
+proc error*(msg: string) {.magic: "NError", benign.}
   ## writes an error message at compile time
 
-proc warning*(msg: string) {.magic: "NWarning", gcsafe.}
+proc warning*(msg: string) {.magic: "NWarning", benign.}
   ## writes a warning message at compile time
 
-proc hint*(msg: string) {.magic: "NHint", gcsafe.}
+proc hint*(msg: string) {.magic: "NHint", benign.}
   ## writes a hint message at compile time
 
 proc newStrLitNode*(s: string): PNimrodNode {.compileTime, noSideEffect.} =
@@ -201,7 +225,7 @@ proc newFloatLitNode*(f: BiggestFloat): PNimrodNode {.compileTime.} =
   result = newNimNode(nnkFloatLit)
   result.floatVal = f
 
-proc newIdentNode*(i: TNimrodIdent): PNimrodNode {.compileTime.} =
+proc newIdentNode*(i: NimIdent): PNimrodNode {.compileTime.} =
   ## creates an identifier node from `i`
   result = newNimNode(nnkIdent)
   result.ident = i
@@ -212,7 +236,7 @@ proc newIdentNode*(i: string): PNimrodNode {.compileTime.} =
   result.ident = !i
 
 type
-  TBindSymRule* = enum   ## specifies how ``bindSym`` behaves
+  BindSymRule* = enum    ## specifies how ``bindSym`` behaves
     brClosed,            ## only the symbols in current scope are bound
     brOpen,              ## open wrt overloaded symbols, but may be a single
                          ## symbol if not ambiguous (the rules match that of
@@ -221,7 +245,9 @@ type
                          ## if not ambiguous (this cannot be achieved with
                          ## any other means in the language currently)
 
-proc bindSym*(ident: string, rule: TBindSymRule = brClosed): PNimrodNode {.
+{.deprecated: [TBindSymRule: BindSymRule].}
+
+proc bindSym*(ident: string, rule: BindSymRule = brClosed): PNimrodNode {.
               magic: "NBindSym", noSideEffect.}
   ## creates a node that binds `ident` to a symbol node. The bound symbol
   ## may be an overloaded symbol.
@@ -232,16 +258,16 @@ proc bindSym*(ident: string, rule: TBindSymRule = brClosed): PNimrodNode {.
   ## If ``rule == brForceOpen`` always an ``nkOpenSymChoice`` tree is
   ## returned even if the symbol is not ambiguous.
 
-proc genSym*(kind: TNimrodSymKind = nskLet; ident = ""): PNimrodNode {.
+proc genSym*(kind: NimSymKind = nskLet; ident = ""): PNimrodNode {.
   magic: "NGenSym", noSideEffect.}
   ## generates a fresh symbol that is guaranteed to be unique. The symbol
   ## needs to occur in a declaration context.
 
-proc callsite*(): PNimrodNode {.magic: "NCallSite", gcsafe.}
-  ## returns the AST if the invokation expression that invoked this macro.
+proc callsite*(): PNimrodNode {.magic: "NCallSite", benign.}
+  ## returns the AST of the invocation expression that invoked this macro.
 
 proc toStrLit*(n: PNimrodNode): PNimrodNode {.compileTime.} =
-  ## converts the AST `n` to the concrete Nimrod code and wraps that
+  ## converts the AST `n` to the concrete Nim code and wraps that
   ## in a string literal node
   return newStrLitNode(repr(n))
 
@@ -317,7 +343,7 @@ proc expectKind*(n: PNimrodNode, k: TNimrodNodeKind) {.compileTime.} =
   ## checks that `n` is of kind `k`. If this is not the case,
   ## compilation aborts with an error message. This is useful for writing
   ## macros that check the AST that is passed to them.
-  if n.kind != k: error("macro expects a node of kind: " & $k)
+  if n.kind != k: error("Expected a node of kind " & $k & ", got " & $n.kind)
 
 proc expectMinLen*(n: PNimrodNode, min: int) {.compileTime.} =
   ## checks that `n` has at least `min` children. If this is not the case,
@@ -339,7 +365,7 @@ proc newCall*(theProc: PNimrodNode,
   result.add(theProc)
   result.add(args)
 
-proc newCall*(theProc: TNimrodIdent,
+proc newCall*(theProc: NimIdent,
               args: varargs[PNimrodNode]): PNimrodNode {.compileTime.} =
   ## produces a new call node. `theProc` is the proc that is called with
   ## the arguments ``args[0..]``.
@@ -375,7 +401,7 @@ proc newLit*(s: string): PNimrodNode {.compileTime.} =
   result = newNimNode(nnkStrLit)
   result.strVal = s
 
-proc nestList*(theProc: TNimrodIdent,
+proc nestList*(theProc: NimIdent,
                x: PNimrodNode): PNimrodNode {.compileTime.} =
   ## nests the list `x` into a tree of call expressions:
   ## ``[a, b, c]`` is transformed into ``theProc(a, theProc(c, d))``.
@@ -387,11 +413,11 @@ proc nestList*(theProc: TNimrodIdent,
     # This could easily user code and so should be fixed in evals.nim somehow.
     result = newCall(theProc, x[i], copyNimTree(result))
 
-proc treeRepr*(n: PNimrodNode): string {.compileTime.} =
+proc treeRepr*(n: PNimrodNode): string {.compileTime, benign.} =
   ## Convert the AST `n` to a human-readable tree-like string.
   ##
   ## See also `repr` and `lispRepr`.
-  proc traverse(res: var string, level: int, n: PNimrodNode) =
+  proc traverse(res: var string, level: int, n: PNimrodNode) {.benign.} =
     for i in 0..level-1: res.add "  "
     res.add(($n.kind).substr(3))
 
@@ -412,7 +438,7 @@ proc treeRepr*(n: PNimrodNode): string {.compileTime.} =
   result = ""
   traverse(result, 0, n)
 
-proc lispRepr*(n: PNimrodNode): string {.compileTime.} =
+proc lispRepr*(n: PNimrodNode): string {.compileTime, benign.} =
   ## Convert the AST `n` to a human-readable lisp-like string,
   ##
   ## See also `repr` and `treeRepr`.
@@ -430,10 +456,11 @@ proc lispRepr*(n: PNimrodNode): string {.compileTime.} =
   of nnkSym: add(result, $n.symbol)
   of nnkNone: assert false
   else:
-    add(result, lispRepr(n[0]))
-    for j in 1..n.len-1:
-      add(result, ", ")
-      add(result, lispRepr(n[j]))
+    if n.len > 0:
+      add(result, lispRepr(n[0]))
+      for j in 1..n.len-1:
+        add(result, ", ")
+        add(result, lispRepr(n[j]))
 
   add(result, ")")
 
@@ -554,10 +581,8 @@ const
   CallNodes* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
     nnkCallStrLit, nnkHiddenCallConv}
 
-from strutils import cmpIgnoreStyle, format
-
 proc expectKind*(n: PNimrodNode; k: set[TNimrodNodeKind]) {.compileTime.} =
-  assert n.kind in k, "Expected one of $1, got $2".format(k, n.kind)
+  assert n.kind in k, "Expected one of " & $k & ", got " & $n.kind
 
 proc newProc*(name = newEmptyNode(); params: openArray[PNimrodNode] = [newEmptyNode()];
     body: PNimrodNode = newStmtList(), procType = nnkProcDef): PNimrodNode {.compileTime.} =
@@ -627,7 +652,7 @@ proc `pragma=`*(someProc: PNimrodNode; val: PNimrodNode){.compileTime.}=
 
 
 template badNodeKind(k; f): stmt{.immediate.} =
-  assert false, "Invalid node kind $# for macros.`$2`".format(k, f)
+  assert false, "Invalid node kind " & $k & " for macros.`" & $f & "`"
 
 proc body*(someProc: PNimrodNode): PNimrodNode {.compileTime.} =
   case someProc.kind:
@@ -651,7 +676,7 @@ proc `body=`*(someProc: PNimrodNode, val: PNimrodNode) {.compileTime.} =
   else:
     badNodeKind someProc.kind, "body="
 
-proc basename*(a: PNimrodNode): PNimrodNode {.compiletime.}
+proc basename*(a: PNimrodNode): PNimrodNode {.compiletime, benign.}
 
 
 proc `$`*(node: PNimrodNode): string {.compileTime.} =
@@ -749,6 +774,22 @@ proc copy*(node: PNimrodNode): PNimrodNode {.compileTime.} =
   ## An alias for copyNimTree().
   return node.copyNimTree()
 
+proc cmpIgnoreStyle(a, b: cstring): int {.noSideEffect.} =
+  proc toLower(c: char): char {.inline.} =
+    if c in {'A'..'Z'}: result = chr(ord(c) + (ord('a') - ord('A')))
+    else: result = c
+  var i = 0
+  var j = 0
+  while true:
+    while a[i] == '_': inc(i)
+    while b[j] == '_': inc(j) # BUGFIX: typo
+    var aa = toLower(a[i])
+    var bb = toLower(b[j])
+    result = ord(aa) - ord(bb)
+    if result != 0 or aa == '\0': break
+    inc(i)
+    inc(j)
+
 proc eqIdent* (a, b: string): bool = cmpIgnoreStyle(a, b) == 0
   ## Check if two idents are identical.
 
@@ -784,3 +825,5 @@ when not defined(booting):
     macro payload: stmt {.gensym.} =
       result = parseStmt(e)
     payload()
+
+{.pop.}

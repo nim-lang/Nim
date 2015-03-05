@@ -675,7 +675,7 @@ when isMainModule:
     echo(data)
     echo("Finished reading! " & $no)
 
-  proc testAccept(s: AsyncSocket, disp: PDispatcher, no: int) =
+  proc testAccept(s: AsyncSocket, disp: Dispatcher, no: int) =
     echo("Accepting client! " & $no)
     var client: AsyncSocket
     new(client)
@@ -691,7 +691,7 @@ when isMainModule:
     var d = newDispatcher()
     
     var s = asyncSocket()
-    s.connect("amber.tenthbit.net", TPort(6667))
+    s.connect("amber.tenthbit.net", Port(6667))
     s.handleConnect = 
       proc (s: AsyncSocket) =
         testConnect(s, 1)
@@ -704,7 +704,7 @@ when isMainModule:
     server.handleAccept =
       proc (s: AsyncSocket) = 
         testAccept(s, d, 78)
-    server.bindAddr(TPort(5555))
+    server.bindAddr(Port(5555))
     server.listen()
     d.register(server)
     

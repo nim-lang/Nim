@@ -1,6 +1,6 @@
 discard """
-  file: "toop1.nim"
   output: "in globalaux2: 10\ntotal globals: 2\nint value: 100\nstring value: second"
+  disabled: "true"
 """
 
 import globalaux, globalaux2

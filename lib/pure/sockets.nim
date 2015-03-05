@@ -657,6 +657,8 @@ proc close*(socket: Socket) =
   when defined(ssl):
     if socket.isSSL:
       discard SSLShutdown(socket.sslHandle)
+      SSLFree(socket.sslHandle)
+      socket.sslHandle = nil
 
 proc getServByName*(name, proto: string): Servent {.tags: [ReadIOEffect].} =
   ## Searches the database from the beginning and finds the first entry for 
@@ -851,7 +853,7 @@ proc connectAsync*(socket: Socket, name: string, port = Port(0),
                      af: Domain = AF_INET) {.tags: [ReadIOEffect].} =
   ## A variant of ``connect`` for non-blocking sockets.
   ##
-  ## This procedure will immediatelly return, it will not block until a connection
+  ## This procedure will immediately return, it will not block until a connection
   ## is made. It is up to the caller to make sure the connection has been established
   ## by checking (using ``select``) whether the socket is writeable.
   ##
@@ -1467,7 +1469,7 @@ proc recvAsync*(socket: Socket, s: var TaintedString): bool {.
           of SSL_ERROR_ZERO_RETURN:
             raiseSslError("TLS/SSL connection failed to initiate, socket closed prematurely.")
           of SSL_ERROR_WANT_CONNECT, SSL_ERROR_WANT_ACCEPT:
-            raiseSslError("Unexpected error occured.") # This should just not happen.
+            raiseSslError("Unexpected error occurred.") # This should just not happen.
           of SSL_ERROR_WANT_WRITE, SSL_ERROR_WANT_READ:
             return false
           of SSL_ERROR_WANT_X509_LOOKUP:
@@ -1610,7 +1612,7 @@ proc sendAsync*(socket: Socket, data: string): int {.tags: [WriteIOEffect].} =
           of SSL_ERROR_ZERO_RETURN:
             raiseSslError("TLS/SSL connection failed to initiate, socket closed prematurely.")
           of SSL_ERROR_WANT_CONNECT, SSL_ERROR_WANT_ACCEPT:
-            raiseSslError("Unexpected error occured.") # This should just not happen.
+            raiseSslError("Unexpected error occurred.") # This should just not happen.
           of SSL_ERROR_WANT_WRITE, SSL_ERROR_WANT_READ:
             return 0
           of SSL_ERROR_WANT_X509_LOOKUP:

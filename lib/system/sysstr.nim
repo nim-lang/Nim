@@ -208,7 +208,7 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
       when compileOption("gc", "v2"):
         for i in newLen..result.len-1:
           let len0 = gch.tempStack.len
-          forAllChildrenAux(cast[pointer](cast[TAddress](result) +%
+          forAllChildrenAux(cast[pointer](cast[ByteAddress](result) +%
                             GenericSeqSize +% (i*%elemSize)),
                             extGetCellType(result).base, waPush)
           let len1 = gch.tempStack.len
@@ -222,9 +222,9 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
                             extGetCellType(result).base, waZctDecRef)
       
     # XXX: zeroing out the memory can still result in crashes if a wiped-out
-    # cell is aliased by another pointer (ie proc paramter or a let variable).
+    # cell is aliased by another pointer (ie proc parameter or a let variable).
     # This is a tought problem, because even if we don't zeroMem here, in the
-    # presense of user defined destructors, the user will expect the cell to be
+    # presence of user defined destructors, the user will expect the cell to be
     # "destroyed" thus creating the same problem. We can destoy the cell in the
     # finalizer of the sequence, but this makes destruction non-deterministic.
     zeroMem(cast[pointer](cast[ByteAddress](result) +% GenericSeqSize +%
@@ -264,7 +264,17 @@ proc nimFloatToStr(f: float): string {.compilerproc.} =
     buf[n] = '.'
     buf[n+1] = '0'
     buf[n+2] = '\0'
-  result = $buf
+  # On Windows nice numbers like '1.#INF', '-1.#INF' or '1.#NAN' are produced.
+  # We want to get rid of these here:
+  if buf[n-1] == 'N':
+    result = "nan"
+  elif buf[n-1] == 'F':
+    if buf[0] == '-':
+      result = "-inf"
+    else:
+      result = "inf"
+  else:
+    result = $buf
 
 proc strtod(buf: cstring, endptr: ptr cstring): float64 {.importc,
   header: "<stdlib.h>", noSideEffect.}

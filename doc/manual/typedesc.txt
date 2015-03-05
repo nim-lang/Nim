@@ -25,7 +25,7 @@ For the purposes of code generation, all static params are treated as
 generic params - the proc will be compiled separately for each unique
 supplied value (or combination of values). 
 
-Furthermore, the system module defines a `semistatic[T]` type than can be
+Furthermore, the system module defines a `semistatic[T]` type that can be
 used to declare procs accepting both static and run-time values, which can
 optimize their body according to the supplied param using the `isStatic(p)`
 predicate:

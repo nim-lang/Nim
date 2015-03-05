@@ -23,7 +23,7 @@ import times
 ##
 ## Quick start example:
 ##   
-##   # Create a matrix wich first rotates, then scales and at last translates
+##   # Create a matrix which first rotates, then scales and at last translates
 ##   
 ##   var m:TMatrix3d=rotate(PI,vector3d(1,1,2.5)) & scale(2.0) & move(100.0,200.0,300.0)
 ##   
@@ -320,7 +320,7 @@ proc rotateZ*(angle:float):TMatrix3d {.noInit.}=
     
 proc isUniform*(m:TMatrix3d,tol=1.0e-6):bool=
   ## Checks if the transform is uniform, that is 
-  ## perpendicular axes of equal lenght, which means (for example)
+  ## perpendicular axes of equal length, which means (for example)
   ## it cannot transform a sphere into an ellipsoid.
   ## `tol` is used as tolerance for both equal length comparison 
   ## and perpendicular comparison.
@@ -483,7 +483,7 @@ proc equals*(m1:TMatrix3d,m2:TMatrix3d,tol=1.0e-6):bool=
     abs(m1.tw-m2.tw)<=tol
 
 proc `=~`*(m1,m2:TMatrix3d):bool=
-  ## Checks if `m1` and `m2` is aproximately equal, using a
+  ## Checks if `m1` and `m2` is approximately equal, using a
   ## tolerance of 1e-6.
   equals(m1,m2)
   
@@ -788,7 +788,7 @@ proc angleTo*(v1,v2:TVector3d):float=
 proc arbitraryAxis*(norm:TVector3d):TMatrix3d {.noInit.}=
   ## Computes the rotation matrix that would transform
   ## world z vector into `norm`. The inverse of this matrix
-  ## is useful to tranform a planar 3d object to 2d space.
+  ## is useful to transform a planar 3d object to 2d space.
   ## This is the same algorithm used to interpret DXF and DWG files.
   const lim=1.0/64.0
   var ax,ay,az:TVector3d
@@ -812,7 +812,7 @@ proc bisect*(v1,v2:TVector3d):TVector3d {.noInit.}=
   ## Computes the bisector between v1 and v2 as a normalized vector.
   ## If one of the input vectors has zero length, a normalized version
   ## of the other is returned. If both input vectors has zero length, 
-  ## an arbitrary normalized vector `v1`is returned.
+  ## an arbitrary normalized vector `v1` is returned.
   var
     vmag1=v1.len
     vmag2=v2.len

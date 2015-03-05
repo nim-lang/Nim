@@ -1203,7 +1203,7 @@ static inline int is_integer_btype(int bt)
             bt == VT_INT || bt == VT_LLONG);
 }
 
-/* check types for comparison or substraction of pointers */
+/* check types for comparison or subtraction of pointers */
 static void check_comparison_pointer_types(SValue *p1, SValue *p2, int op)
 {
     CType *type1, *type2, tmp_type1, tmp_type2;
@@ -4686,7 +4686,7 @@ static void decl_initializer_alloc(CType *type, AttributeDef *ad, int r,
                 if (sym->type.t & VT_EXTERN) {
                     /* if the variable is extern, it was not allocated */
                     sym->type.t &= ~VT_EXTERN;
-                    /* set array size if it was ommited in extern
+                    /* set array size if it was omitted in extern
                        declaration */
                     if ((sym->type.t & VT_ARRAY) && 
                         sym->type.ref->c < 0 &&

@@ -55,6 +55,7 @@ type
     status*: cstring
     toolbar*: ref TToolBar
 
+    addEventListener*: proc(ev: cstring, cb: proc(ev: ref TEvent) ) {.nimcall.}
     alert*: proc (msg: cstring) {.nimcall.}
     back*: proc () {.nimcall.}
     blur*: proc () {.nimcall.}
@@ -91,6 +92,7 @@ type
   TFrame* {.importc.} = object of TWindow
 
   TDocument* {.importc.} = object of TEventHandlers
+    addEventListener*: proc(ev: cstring, cb: proc(ev: ref TEvent) ) {.nimcall.}
     alinkColor*: cstring
     bgColor*: cstring
     charset*: cstring
@@ -110,6 +112,7 @@ type
     getElementById*: proc (id: cstring): ref TNode {.nimcall.}
     getElementsByName*: proc (name: cstring): seq[ref TNode] {.nimcall.}
     getElementsByTagName*: proc (name: cstring): seq[ref TNode] {.nimcall.}
+    getElementsByClassName*: proc (name: cstring): seq[ref TNode] {.nimcall.}
     getSelection*: proc (): cstring {.nimcall.}
     handleEvent*: proc (event: ref TEvent) {.nimcall.}
     open*: proc () {.nimcall.}
@@ -196,6 +199,12 @@ type
     width*: int
     handleEvent*: proc (event: ref TEvent) {.nimcall.}
 
+  ClassList* {.importc.} = object of RootObj
+    add*: proc (class: cstring) {.nimcall.}
+    remove*: proc (class: cstring) {.nimcall.}
+    contains*: proc (class: cstring):bool {.nimcall.}
+    toggle*: proc (class: cstring) {.nimcall.}
+
   TNodeType* = enum
     ElementNode = 1,
     AttributeNode,
@@ -212,6 +221,8 @@ type
   TNode* {.importc.} = object of RootObj
     attributes*: seq[ref TNode]
     childNodes*: seq[ref TNode]
+    children*: seq[ref TNode]
+    classList*: ref Classlist
     data*: cstring
     firstChild*: ref TNode
     lastChild*: ref TNode
@@ -223,20 +234,23 @@ type
     previousSibling*: ref TNode
     appendChild*: proc (child: ref TNode) {.nimcall.}
     appendData*: proc (data: cstring) {.nimcall.}
-    cloneNode*: proc (copyContent: bool) {.nimcall.}
+    cloneNode*: proc (copyContent: bool): ref TNode {.nimcall.}
     deleteData*: proc (start, len: int) {.nimcall.}
     getAttribute*: proc (attr: cstring): cstring {.nimcall.}
     getAttributeNode*: proc (attr: cstring): ref TNode {.nimcall.}
-    getElementsByTagName*: proc (): seq[ref TNode] {.nimcall.}
+    getElementsByTagName*: proc (name: cstring): seq[ref TNode] {.nimcall.}
+    getElementsByClassName*: proc (name: cstring): seq[ref TNode] {.nimcall.}
     hasChildNodes*: proc (): bool {.nimcall.}
     innerHTML*: cstring
     insertBefore*: proc (newNode, before: ref TNode) {.nimcall.}
     insertData*: proc (position: int, data: cstring) {.nimcall.}
+    addEventListener*: proc(ev: cstring, cb: proc(ev: ref TEvent)) {.nimcall.}
     removeAttribute*: proc (attr: cstring) {.nimcall.}
     removeAttributeNode*: proc (attr: ref TNode) {.nimcall.}
     removeChild*: proc (child: ref TNode) {.nimcall.}
     replaceChild*: proc (newNode, oldNode: ref TNode) {.nimcall.}
     replaceData*: proc (start, len: int, text: cstring) {.nimcall.}
+    scrollIntoView*: proc () {.nimcall.}
     setAttribute*: proc (name, value: cstring) {.nimcall.}
     setAttributeNode*: proc (attr: ref TNode) {.nimcall.}
     style*: ref TStyle
@@ -336,6 +350,7 @@ type
     setAttribute*: proc (attr, value: cstring, caseSensitive=false) {.nimcall.}
 
   TEvent* {.importc.} = object of RootObj
+    target*: ref TNode
     altKey*, ctrlKey*, shiftKey*: bool
     button*: int
     clientX*, clientY*: int
@@ -450,3 +465,4 @@ proc isFinite*(x: BiggestFloat): bool {.importc, nodecl.}
 proc isNaN*(x: BiggestFloat): bool {.importc, nodecl.}
 proc parseFloat*(s: cstring): BiggestFloat {.importc, nodecl.}
 proc parseInt*(s: cstring): int {.importc, nodecl.}
+proc parseInt*(s: cstring, radix: int):int {.importc, nodecl.}

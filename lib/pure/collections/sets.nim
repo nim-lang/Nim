@@ -24,9 +24,12 @@ import
 when not defined(nimhygiene):
   {.pragma: dirty.}
 
+# For "integer-like A" that are too big for intsets/bit-vectors to be practical,
+# it would be best to shrink hcode to the same size as the integer.  Larger
+# codes should never be needed, and this can pack more entries per cache-line.
+# Losing hcode entirely is also possible - if some element value is forbidden.
 type
-  SlotEnum = enum seEmpty, seFilled, seDeleted
-  KeyValuePair[A] = tuple[slot: SlotEnum, key: A]
+  KeyValuePair[A] = tuple[hcode: THash, key: A]
   KeyValuePairSeq[A] = seq[KeyValuePair[A]]
   HashSet* {.myShallow.}[A] = object ## \
     ## A generic hash set.
@@ -37,6 +40,14 @@ type
     counter: int
 
 {.deprecated: [TSet: HashSet].}
+
+# hcode for real keys cannot be zero.  hcode==0 signifies an empty slot.  These
+# two procs retain clarity of that encoding without the space cost of an enum.
+proc isEmpty(hcode: THash): bool {.inline.} =
+  result = hcode == 0
+
+proc isFilled(hcode: THash): bool {.inline.} =
+  result = hcode != 0
 
 proc isValid*[A](s: HashSet[A]): bool =
   ## Returns `true` if the set has been initialized with `initSet <#initSet>`_.
@@ -94,7 +105,7 @@ iterator items*[A](s: HashSet[A]): A =
   ##   # --> {(a: 1, b: 3), (a: 0, b: 4)}
   assert s.isValid, "The set needs to be initialized."
   for h in 0..high(s.data):
-    if s.data[h].slot == seFilled: yield s.data[h].key
+    if isFilled(s.data[h].hcode): yield s.data[h].key
 
 const
   growthFactor = 2
@@ -103,25 +114,44 @@ proc mustRehash(length, counter: int): bool {.inline.} =
   assert(length > counter)
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
-proc nextTry(h, maxHash: THash): THash {.inline.} =
-  result = ((5 * h) + 1) and maxHash
+proc rightSize*(count: int): int {.inline.} =
+  ## Return the value of `initialSize` to support `count` items.
+  ##
+  ## If more items are expected to be added, simply add that
+  ## expected extra amount to the parameter before calling this.
+  ##
+  ## Internally, we want mustRehash(rightSize(x), x) == false.
+  result = nextPowerOfTwo(count * 3 div 2  +  4)
 
-template rawGetImpl() {.dirty.} =
-  var h: THash = hash(key) and high(s.data) # start with real hash value
-  while s.data[h].slot != seEmpty:
-    if s.data[h].key == key and s.data[h].slot == seFilled:
+proc nextTry(h, maxHash: THash): THash {.inline.} =
+  result = (h + 1) and maxHash
+
+template rawGetKnownHCImpl() {.dirty.} =
+  var h: THash = hc and high(s.data)  # start with real hash value
+  while isFilled(s.data[h].hcode):
+    # Compare hc THEN key with boolean short circuit. This makes the common case
+    # zero ==key's for missing (e.g.inserts) and exactly one ==key for present.
+    # It does slow down succeeding lookups by one extra THash cmp&and..usually
+    # just a few clock cycles, generally worth it for any non-integer-like A.
+    if s.data[h].hcode == hc and s.data[h].key == key:  # compare hc THEN key
       return h
     h = nextTry(h, high(s.data))
-  result = -1
+  result = -1 - h                   # < 0 => MISSING; insert idx = -1 - result
+
+template rawGetImpl() {.dirty.} =
+  hc = hash(key)
+  if hc == 0:       # This almost never taken branch should be very predictable.
+    hc = 314159265  # Value doesn't matter; Any non-zero favorite is fine.
+  rawGetKnownHCImpl()
 
 template rawInsertImpl() {.dirty.} =
-  var h: THash = hash(key) and high(data)
-  while data[h].slot == seFilled:
-    h = nextTry(h, high(data))
   data[h].key = key
-  data[h].slot = seFilled
+  data[h].hcode = hc
 
-proc rawGet[A](s: HashSet[A], key: A): int =
+proc rawGetKnownHC[A](s: HashSet[A], key: A, hc: THash): int {.inline.} =
+  rawGetKnownHCImpl()
+
+proc rawGet[A](s: HashSet[A], key: A, hc: var THash): int {.inline.} =
   rawGetImpl()
 
 proc mget*[A](s: var HashSet[A], key: A): var A =
@@ -130,7 +160,8 @@ proc mget*[A](s: var HashSet[A], key: A): var A =
   ## when one overloaded 'hash' and '==' but still needs reference semantics
   ## for sharing.
   assert s.isValid, "The set needs to be initialized."
-  var index = rawGet(s, key)
+  var hc: THash
+  var index = rawGet(s, key, hc)
   if index >= 0: result = s.data[index].key
   else: raise newException(KeyError, "key not found: " & $key)
 
@@ -147,33 +178,43 @@ proc contains*[A](s: HashSet[A], key: A): bool =
   ##   values.excl(2)
   ##   assert(not values.contains(2))
   assert s.isValid, "The set needs to be initialized."
-  var index = rawGet(s, key)
+  var hc: THash
+  var index = rawGet(s, key, hc)
   result = index >= 0
 
-proc rawInsert[A](s: var HashSet[A], data: var KeyValuePairSeq[A], key: A) =
+proc rawInsert[A](s: var HashSet[A], data: var KeyValuePairSeq[A], key: A,
+                  hc: THash, h: THash) =
   rawInsertImpl()
 
 proc enlarge[A](s: var HashSet[A]) =
   var n: KeyValuePairSeq[A]
   newSeq(n, len(s.data) * growthFactor)
-  for i in countup(0, high(s.data)):
-    if s.data[i].slot == seFilled: rawInsert(s, n, s.data[i].key)
-  swap(s.data, n)
+  swap(s.data, n)                   # n is now old seq
+  for i in countup(0, high(n)):
+    if isFilled(n[i].hcode):
+      var j = -1 - rawGetKnownHC(s, n[i].key, n[i].hcode)
+      rawInsert(s, s.data, n[i].key, n[i].hcode, j)
 
 template inclImpl() {.dirty.} =
-  var index = rawGet(s, key)
+  var hc: THash
+  var index = rawGet(s, key, hc)
   if index < 0:
-    if mustRehash(len(s.data), s.counter): enlarge(s)
-    rawInsert(s, s.data, key)
+    if mustRehash(len(s.data), s.counter):
+      enlarge(s)
+      index = rawGetKnownHC(s, key, hc)
+    rawInsert(s, s.data, key, hc, -1 - index)
     inc(s.counter)
 
 template containsOrInclImpl() {.dirty.} =
-  var index = rawGet(s, key)
+  var hc: THash
+  var index = rawGet(s, key, hc)
   if index >= 0:
     result = true
   else:
-    if mustRehash(len(s.data), s.counter): enlarge(s)
-    rawInsert(s, s.data, key)
+    if mustRehash(len(s.data), s.counter):
+      enlarge(s)
+      index = rawGetKnownHC(s, key, hc)
+    rawInsert(s, s.data, key, hc, -1 - index)
     inc(s.counter)
 
 proc incl*[A](s: var HashSet[A], key: A) =
@@ -204,6 +245,11 @@ proc incl*[A](s: var HashSet[A], other: HashSet[A]) =
   assert other.isValid, "The set `other` needs to be initialized."
   for item in other: incl(s, item)
 
+template doWhile(a: expr, b: stmt): stmt =
+  while true:
+    b
+    if not a: break
+
 proc excl*[A](s: var HashSet[A], key: A) =
   ## Excludes `key` from the set `s`.
   ##
@@ -215,10 +261,22 @@ proc excl*[A](s: var HashSet[A], key: A) =
   ##   s.excl(2)
   ##   assert s.len == 3
   assert s.isValid, "The set needs to be initialized."
-  var index = rawGet(s, key)
-  if index >= 0:
-    s.data[index].slot = seDeleted
+  var hc: THash
+  var i = rawGet(s, key, hc)
+  var msk = high(s.data)
+  if i >= 0:
+    s.data[i].hcode = 0
     dec(s.counter)
+    while true:         # KnuthV3 Algo6.4R adapted for i=i+1 instead of i=i-1
+      var j = i         # The correctness of this depends on (h+1) in nextTry,
+      var r = j         # though may be adaptable to other simple sequences.
+      s.data[i].hcode = 0              # mark current EMPTY
+      doWhile ((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
+        i = (i + 1) and msk            # increment mod table size
+        if isEmpty(s.data[i].hcode):   # end of collision cluster; So all done
+          return
+        r = s.data[i].hcode and msk    # "home" location of key@i
+      shallowCopy(s.data[j], s.data[i]) # data[j] will be marked EMPTY next loop
 
 proc excl*[A](s: var HashSet[A], other: HashSet[A]) =
   ## Excludes everything in `other` from `s`.
@@ -255,9 +313,9 @@ proc init*[A](s: var HashSet[A], initialSize=64) =
   ## Initializes a hash set.
   ##
   ## The `initialSize` parameter needs to be a power of two. You can use
-  ## `math.nextPowerOfTwo() <math.html#nextPowerOfTwo>`_ to guarantee that at
-  ## runtime. All set variables have to be initialized before you can use them
-  ## with other procs from this module with the exception of `isValid()
+  ## `math.nextPowerOfTwo() <math.html#nextPowerOfTwo>`_ or `rightSize` to
+  ## guarantee that at runtime. All set variables must be initialized before
+  ## use with other procs from this module with the exception of `isValid()
   ## <#isValid,TSet[A]>`_ and `len() <#len,TSet[A]>`_.
   ##
   ## You can call this proc on a previously initialized hash set, which will
@@ -295,7 +353,7 @@ proc toSet*[A](keys: openArray[A]): HashSet[A] =
   ##   var numbers = toSet([1, 2, 3, 4, 5])
   ##   assert numbers.contains(2)
   ##   assert numbers.contains(4)
-  result = initSet[A](nextPowerOfTwo(keys.len+10))
+  result = initSet[A](rightSize(keys.len))
   for key in items(keys): result.incl(key)
 
 template dollarImpl(): stmt {.dirty.} =
@@ -494,7 +552,7 @@ proc map*[A, B](data: HashSet[A], op: proc (x: A): B {.closure.}): HashSet[B] =
 
 type
   OrderedKeyValuePair[A] = tuple[
-    slot: SlotEnum, next: int, key: A]
+    hcode: THash, next: int, key: A]
   OrderedKeyValuePairSeq[A] = seq[OrderedKeyValuePair[A]]
   OrderedSet* {.myShallow.}[A] = object ## \
     ## A generic hash set that remembers insertion order.
@@ -546,7 +604,7 @@ template forAllOrderedPairs(yieldStmt: stmt) {.dirty, immediate.} =
   var h = s.first
   while h >= 0:
     var nxt = s.data[h].next
-    if s.data[h].slot == seFilled: yieldStmt
+    if isFilled(s.data[h].hcode): yieldStmt
     h = nxt
 
 iterator items*[A](s: OrderedSet[A]): A =
@@ -571,7 +629,10 @@ iterator items*[A](s: OrderedSet[A]): A =
   forAllOrderedPairs:
     yield s.data[h].key
 
-proc rawGet[A](s: OrderedSet[A], key: A): int =
+proc rawGetKnownHC[A](s: OrderedSet[A], key: A, hc: THash): int {.inline.} =
+  rawGetKnownHCImpl()
+
+proc rawGet[A](s: OrderedSet[A], key: A, hc: var THash): int {.inline.} =
   rawGetImpl()
 
 proc contains*[A](s: OrderedSet[A], key: A): bool =
@@ -585,11 +646,12 @@ proc contains*[A](s: OrderedSet[A], key: A): bool =
   ##   values.incl(2)
   ##   assert values.contains(2)
   assert s.isValid, "The set needs to be initialized."
-  var index = rawGet(s, key)
+  var hc: THash
+  var index = rawGet(s, key, hc)
   result = index >= 0
 
-proc rawInsert[A](s: var OrderedSet[A], 
-                  data: var OrderedKeyValuePairSeq[A], key: A) =
+proc rawInsert[A](s: var OrderedSet[A], data: var OrderedKeyValuePairSeq[A],
+                  key: A, hc: THash, h: THash) =
   rawInsertImpl()
   data[h].next = -1
   if s.first < 0: s.first = h
@@ -602,12 +664,13 @@ proc enlarge[A](s: var OrderedSet[A]) =
   var h = s.first
   s.first = -1
   s.last = -1
-  while h >= 0:
-    var nxt = s.data[h].next
-    if s.data[h].slot == seFilled: 
-      rawInsert(s, n, s.data[h].key)
-    h = nxt
   swap(s.data, n)
+  while h >= 0:
+    var nxt = n[h].next
+    if isFilled(n[h].hcode):
+      var j = -1 - rawGetKnownHC(s, n[h].key, n[h].hcode)
+      rawInsert(s, s.data, n[h].key, n[h].hcode, j)
+    h = nxt
 
 proc incl*[A](s: var OrderedSet[A], key: A) =
   ## Includes an element `key` in `s`.
@@ -655,10 +718,10 @@ proc containsOrIncl*[A](s: var OrderedSet[A], key: A): bool =
 proc init*[A](s: var OrderedSet[A], initialSize=64) =
   ## Initializes an ordered hash set.
   ##
-  ## The `initialSize` parameter needs to be a power of too. You can use
-  ## `math.nextPowerOfTwo() <math.html#nextPowerOfTwo>`_ to guarantee that at
-  ## runtime. All set variables have to be initialized before you can use them
-  ## with other procs from this module with the exception of `isValid()
+  ## The `initialSize` parameter needs to be a power of two. You can use
+  ## `math.nextPowerOfTwo() <math.html#nextPowerOfTwo>`_ or `rightSize` to
+  ## guarantee that at runtime. All set variables must be initialized before
+  ## use with other procs from this module with the exception of `isValid()
   ## <#isValid,TOrderedSet[A]>`_ and `len() <#len,TOrderedSet[A]>`_.
   ##
   ## You can call this proc on a previously initialized ordered hash set to
@@ -698,7 +761,7 @@ proc toOrderedSet*[A](keys: openArray[A]): OrderedSet[A] =
   ##   var numbers = toOrderedSet([1, 2, 3, 4, 5])
   ##   assert numbers.contains(2)
   ##   assert numbers.contains(4)
-  result = initOrderedSet[A](nextPowerOfTwo(keys.len+10))
+  result = initOrderedSet[A](rightSize(keys.len))
   for key in items(keys): result.incl(key)
 
 proc `$`*[A](s: OrderedSet[A]): string =
@@ -726,7 +789,7 @@ proc `==`*[A](s, t: OrderedSet[A]): bool =
   while h >= 0 and g >= 0:
     var nxh = s.data[h].next
     var nxg = t.data[g].next
-    if s.data[h].slot == seFilled and s.data[g].slot == seFilled:
+    if isFilled(s.data[h].hcode) and isFilled(s.data[g].hcode):
       if s.data[h].key == s.data[g].key:
         inc compared
       else:
@@ -900,6 +963,11 @@ proc testModule() =
     b = initSet[int](4)
     b.incl(2)
     assert b.len == 1
+
+  for i in 0 .. 32:
+    var s = rightSize(i)
+    if s <= i or mustRehash(s, i):
+      echo "performance issue: rightSize() will not elide enlarge() at ", i
 
   echo "Micro tests run successfully."
 

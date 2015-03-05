@@ -1235,11 +1235,12 @@ proc reversed*(s: string): string =
   ## returns the reverse of `s`, interpreting it as unicode characters. Unicode
   ## combining characters are correctly interpreted as well:
   ##
-  ## .. code-block:
+  ## .. code-block:: nim
+  ##
   ##   assert reversed("Reverse this!") == "!siht esreveR"
   ##   assert reversed("先秦兩漢") == "漢兩秦先"
   ##   assert reversed("as⃝df̅") == "f̅ds⃝a"
-  ## assert reversed("a⃞b⃞c⃞") == "c⃞b⃞a⃞"
+  ##   assert reversed("a⃞b⃞c⃞") == "c⃞b⃞a⃞"
   var
     i = 0
     lastI = 0

@@ -37,7 +37,7 @@ Object Oriented Programming
 While Nim's support for object oriented programming (OOP) is minimalistic,
 powerful OOP techniques can be used. OOP is seen as *one* way to design a
 program, not *the only* way. Often a procedural approach leads to simpler
-and more efficient code. In particular, prefering composition over inheritance
+and more efficient code. In particular, preferring composition over inheritance
 is often the better design.
 
 
@@ -142,7 +142,7 @@ An example:
 
 .. code-block:: nim
 
-  # This is an example how an abstract syntax tree could be modeled in Nim
+  # This is an example how an abstract syntax tree could be modelled in Nim
   type
     NodeKind = enum  # the different node types
       nkInt,          # a leaf with an integer value
@@ -335,7 +335,7 @@ As the example demonstrates, invocation of a multi-method cannot be ambiguous:
 Collide 2 is preferred over collide 1 because the resolution works from left to
 right. Thus ``Unit, Thing`` is preferred over ``Thing, Unit``.
 
-**Perfomance note**: Nim does not produce a virtual method table, but
+**Performance note**: Nim does not produce a virtual method table, but
 generates dispatch trees. This avoids the expensive indirect branch for method
 calls and enables inlining. However, other optimizations like compile time
 evaluation or dead code elimination do not work with methods.
@@ -733,14 +733,6 @@ regular expressions:
     return tkOperator
   else:
     return tkUnknown
-
-
-Term rewriting macros
----------------------
-
-Term rewriting macros can be used to enhance the compilation process
-with user defined optimizations; see this `document <trmacros.html>`_ for
-further information.
 
 
 Building your first macro

@@ -284,7 +284,7 @@ proc newSoundBuffer*(stream: PInputStream): PSoundBuffer{.
 #/ \brief Create a new sound buffer and load it from an array of samples in memory
 #/
 #/ The assumed format of the audio samples is 16 bits signed integer
-#/ (sfInt16).
+#/ (sfint16).
 #/
 #/ \param samples      Pointer to the array of samples in memory
 #/ \param sampleCount  Number of samples in the array
@@ -334,7 +334,7 @@ proc saveToFile*(soundBuffer: PSoundBuffer; filename: cstring): bool {.
 #/ \brief Get the array of audio samples stored in a sound buffer
 #/
 #/ The format of the returned samples is 16 bits signed integer
-#/ (sfInt16). The total number of samples in this array
+#/ (sfint16). The total number of samples in this array
 #/ is given by the sfSoundBuffer_getSampleCount function.
 #/
 #/ \param soundBuffer Sound buffer object
@@ -342,7 +342,7 @@ proc saveToFile*(soundBuffer: PSoundBuffer; filename: cstring): bool {.
 #/ \return Read-only pointer to the array of sound samples
 #/
 #//////////////////////////////////////////////////////////
-proc sfSoundBuffer_getSamples*(soundBuffer: PSoundBuffer): ptr Int16{.
+proc sfSoundBuffer_getSamples*(soundBuffer: PSoundBuffer): ptr int16{.
   cdecl, importc: "sfSoundBuffer_getSamples", dynlib: Lib.}
 #//////////////////////////////////////////////////////////
 #/ \brief Get the number of samples stored in a sound buffer

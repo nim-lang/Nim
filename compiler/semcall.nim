@@ -42,7 +42,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
                        errors: var CandidateErrors) =
   var o: TOverloadIter
   var sym = initOverloadIter(o, c, headSymbol)
-  var symScope = o.lastOverloadScope
+  let symScope = o.lastOverloadScope
 
   var z: TCandidate
   
@@ -56,6 +56,9 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
       determineType(c, sym)
       initCandidate(c, z, sym, initialBinding, o.lastOverloadScope)
       z.calleeSym = sym
+
+      #if sym.name.s == "*" and (n.info ?? "temp5.nim") and n.info.line == 140:
+      #  gDebug = true
       matches(c, n, orig, z)
       if errors != nil:
         errors.safeAdd(sym)
@@ -72,9 +75,13 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
           if cmp < 0: best = z   # x is better than the best so far
           elif cmp == 0: alt = z # x is as good as the best so far
           else: discard
-        #if sym.name.s == "shl" and (n.info ?? "net.nim"):
+        #if sym.name.s == "*" and (n.info ?? "temp5.nim") and n.info.line == 140:
         #  echo "Matches ", n.info, " ", typeToString(sym.typ)
+        #  debug sym
         #  writeMatches(z)
+        #  for i in 1 .. <len(z.call):
+        #    z.call[i].typ.debug
+        #  quit 1
     sym = nextOverloadIter(o, c, headSymbol)
 
 proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
@@ -264,7 +271,7 @@ proc inferWithMetatype(c: PContext, formal: PType,
     instGenericConvertersArg(c, result, m)
   if result != nil:
     # This almost exactly replicates the steps taken by the compiler during
-    # param matching. It performs an embarassing ammount of back-and-forth
+    # param matching. It performs an embarrassing amount of back-and-forth
     # type jugling, but it's the price to pay for consistency and correctness
     result.typ = generateTypeInstance(c, m.bindings, arg.info,
                                       formal.skipTypes({tyCompositeTypeClass}))
@@ -315,6 +322,8 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
     var r = resolveOverloads(c, n, nOrig, filter, errors)
     if r.state == csMatch: result = semResolvedCall(c, n, r)
     else:
+      # get rid of the deref again for a better error message:
+      n.sons[1] = n.sons[1].sons[0]
       notFoundError(c, n, errors)
   else: 
     notFoundError(c, n, errors)

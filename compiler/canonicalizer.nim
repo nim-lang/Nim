@@ -119,8 +119,8 @@ proc hashType(c: var MD5Context, t: PType) =
     c.hashSym(t.sym)
     
   case t.kind
-  of tyGenericBody, tyGenericInst, tyGenericInvokation:
-    for i in countup(0, sonsLen(t) -1 -ord(t.kind != tyGenericInvokation)):
+  of tyGenericBody, tyGenericInst, tyGenericInvocation:
+    for i in countup(0, sonsLen(t) -1 -ord(t.kind != tyGenericInvocation)):
       c.hashType t.sons[i]
   of tyUserTypeClass:
     internalAssert t.sym != nil and t.sym.owner != nil

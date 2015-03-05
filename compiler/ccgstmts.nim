@@ -48,7 +48,7 @@ proc genVarTuple(p: BProc, n: PNode) =
     return
   genLineDir(p, n)
   initLocExpr(p, n.sons[L-1], tup)
-  var t = tup.t
+  var t = tup.t.getUniqueType
   for i in countup(0, L-3): 
     var v = n.sons[i].sym
     if sfCompileTime in v.flags: continue
@@ -202,8 +202,20 @@ proc genSingleVar(p: BProc, a: PNode) =
       genVarPrototypeAux(generatedHeader, v)
     registerGcRoot(p, v)
   else:
+    let imm = isAssignedImmediately(a.sons[2])
+    if imm and p.module.compileToCpp and p.splitDecls == 0 and
+        not containsHiddenPointer(v.typ):
+      # C++ really doesn't like things like 'Foo f; f = x' as that invokes a
+      # parameterless constructor followed by an assignment operator. So we
+      # generate better code here:
+      genLineDir(p, a)
+      let decl = localVarDecl(p, v)
+      var tmp: TLoc
+      initLocExprSingleUse(p, a.sons[2], tmp)
+      lineF(p, cpsStmts, "$# = $#;$n", decl, tmp.rdLoc)
+      return
     assignLocalVar(p, v)
-    initLocalVar(p, v, isAssignedImmediately(a.sons[2]))
+    initLocalVar(p, v, imm)
 
   if a.sons[2].kind != nkEmpty:
     genLineDir(targetProc, a)
@@ -242,16 +254,7 @@ proc genConstStmt(p: BProc, t: PNode) =
     elif c.typ.kind in ConstantDataTypes and lfNoDecl notin c.loc.flags and
         c.ast.len != 0:
       if not emitLazily(c): requestConstImpl(p, c)
-      when false:
-        # generate the data:
-        fillLoc(c.loc, locData, c.typ, mangleName(c), OnUnknown)
-        if sfImportc in c.flags: 
-          appf(p.module.s[cfsData], "extern NIM_CONST $1 $2;$n", 
-               [getTypeDesc(p.module, c.typ), c.loc.r])
-        else: 
-          appf(p.module.s[cfsData], "NIM_CONST $1 $2 = $3;$n", 
-               [getTypeDesc(p.module, c.typ), c.loc.r, genConstExpr(p, c.ast)])
-    
+
 proc genIf(p: BProc, n: PNode, d: var TLoc) =
   #
   #  { if (!expr1) goto L1;
@@ -275,17 +278,22 @@ proc genIf(p: BProc, n: PNode, d: var TLoc) =
     let it = n.sons[i]
     if it.len == 2: 
       when newScopeForIf: startBlock(p)
-      initLocExpr(p, it.sons[0], a)
+      initLocExprSingleUse(p, it.sons[0], a)
       lelse = getLabel(p)
       inc(p.labels)
-      lineFF(p, cpsStmts, "if (!$1) goto $2;$n",
-            "br i1 $1, label %LOC$3, label %$2$nLOC$3: $n",
-            [rdLoc(a), lelse, toRope(p.labels)])
+      lineF(p, cpsStmts, "if (!$1) goto $2;$n",
+            [rdLoc(a), lelse])
       when not newScopeForIf: startBlock(p)
-      expr(p, it.sons[1], d)
+      if p.module.compileToCpp:
+        # avoid "jump to label crosses initialization" error:
+        app(p.s(cpsStmts), "{")
+        expr(p, it.sons[1], d)
+        app(p.s(cpsStmts), "}")
+      else:
+        expr(p, it.sons[1], d)
       endBlock(p)
       if sonsLen(n) > 1:
-        lineFF(p, cpsStmts, "goto $1;$n", "br label %$1$n", [lend])
+        lineF(p, cpsStmts, "goto $1;$n", [lend])
       fixLabel(p, lelse)
     elif it.len == 1:
       startBlock(p)
@@ -344,7 +352,7 @@ proc genReturnStmt(p: BProc, t: PNode) =
     # consume it before we return.
     var safePoint = p.finallySafePoints[p.finallySafePoints.len-1]
     linefmt(p, cpsStmts, "if ($1.status != 0) #popCurrentException();$n", safePoint)    
-  lineFF(p, cpsStmts, "goto BeforeRet;$n", "br label %BeforeRet$n", [])
+  lineF(p, cpsStmts, "goto BeforeRet;$n", [])
 
 proc genComputedGoto(p: BProc; n: PNode) =
   # first pass: Generate array of computed labels:

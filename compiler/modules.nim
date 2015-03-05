@@ -116,7 +116,7 @@ proc newModule(fileIdx: int32): PSym =
   result.kind = skModule
   let filename = fileIdx.toFullPath
   result.name = getIdent(splitFile(filename).name)
-  if not isNimIdentifier(result.name.s):
+  if result.name.s != "-" and not isNimIdentifier(result.name.s):
     rawMessage(errInvalidModuleName, result.name.s)
   
   result.info = newLineInfo(fileIdx, 1, 1)

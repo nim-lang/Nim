@@ -8,7 +8,7 @@
 #
 
 # This file implements the ability to call native procs from libraries.
-# It is not possible to do this in a platform independant way, unfortunately.
+# It is not possible to do this in a platform independent way, unfortunately.
 # However, the interface has been designed to take platform differences into
 # account and been ported to all major platforms.
 
@@ -80,15 +80,22 @@ elif defined(windows) or defined(dos):
   # Native Windows Implementation
   # =======================================================================
   #
-  type
-    THINSTANCE {.importc: "HINSTANCE".} = pointer
+  when defined(cpp):
+    type
+      THINSTANCE {.importc: "HINSTANCE".} = object
+        x: pointer
+    proc getProcAddress(lib: THINSTANCE, name: cstring): TProcAddr {.
+        importcpp: "(void*)GetProcAddress(@)", header: "<windows.h>", stdcall.}
+  else:
+    type
+      THINSTANCE {.importc: "HINSTANCE".} = pointer
+    proc getProcAddress(lib: THINSTANCE, name: cstring): TProcAddr {.
+        importc: "GetProcAddress", header: "<windows.h>", stdcall.}
 
   proc freeLibrary(lib: THINSTANCE) {.
       importc: "FreeLibrary", header: "<windows.h>", stdcall.}
   proc winLoadLibrary(path: cstring): THINSTANCE {.
       importc: "LoadLibraryA", header: "<windows.h>", stdcall.}
-  proc getProcAddress(lib: THINSTANCE, name: cstring): TProcAddr {.
-      importc: "GetProcAddress", header: "<windows.h>", stdcall.}
 
   proc nimUnloadLibrary(lib: TLibHandle) =
     freeLibrary(cast[THINSTANCE](lib))

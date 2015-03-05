@@ -39,6 +39,7 @@ when declared(stdout):
 
 when not defined(ECMAScript):
   import terminal
+  system.addQuitProc(resetAttributes)
 
 type
   TestStatus* = enum OK, FAILED
@@ -234,5 +235,3 @@ if envOutLvl.len > 0:
     if $opt == envOutLvl:
       outputLevel = opt
       break
-
-system.addQuitProc(resetAttributes)

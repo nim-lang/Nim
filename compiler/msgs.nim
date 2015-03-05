@@ -69,7 +69,7 @@ type
     errInvalidOrderInArrayConstructor,
     errInvalidOrderInEnumX, errEnumXHasHoles, errExceptExpected, errInvalidTry, 
     errOptionExpected, errXisNoLabel, errNotAllCasesCovered, 
-    errUnkownSubstitionVar, errComplexStmtRequiresInd, errXisNotCallable, 
+    errUnknownSubstitionVar, errComplexStmtRequiresInd, errXisNotCallable, 
     errNoPragmasAllowedForX, errNoGenericParamsAllowedForX, 
     errInvalidParamKindX, errDefaultArgumentInvalid, errNamedParamHasToBeIdent, 
     errNoReturnTypeForX, errConvNeedsOneArg, errInvalidPragmaX, 
@@ -89,7 +89,7 @@ type
     errTIsNotAConcreteType,
     errInvalidSectionStart, errGridTableNotImplemented, errGeneralParseError, 
     errNewSectionExpected, errWhitespaceExpected, errXisNoValidIndexFile, 
-    errCannotRenderX, errVarVarTypeNotAllowed, errInstantiateXExplicitely,
+    errCannotRenderX, errVarVarTypeNotAllowed, errInstantiateXExplicitly,
     errOnlyACallOpCanBeDelegator, errUsingNoSymbol,
     errMacroBodyDependsOnGenericTypes,
     errDestructorNotGenericEnough,
@@ -113,7 +113,7 @@ type
     warnSmallLshouldNotBeUsed, warnUnknownMagic, warnRedefinitionOfLabel, 
     warnUnknownSubstitutionX, warnLanguageXNotSupported,
     warnFieldXNotSupported, warnCommentXIgnored, 
-    warnNilStatement, warnAnalysisLoophole,
+    warnNilStatement, warnTypelessParam,
     warnDifferentHeaps, warnWriteToForeignHeap, warnUnsafeCode,
     warnEachIdentIsTuple, warnShadowIdent, 
     warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe, warnGcUnsafe2,
@@ -280,7 +280,7 @@ const
     errOptionExpected: "option expected, but found \'$1\'",
     errXisNoLabel: "\'$1\' is not a label", 
     errNotAllCasesCovered: "not all cases are covered", 
-    errUnkownSubstitionVar: "unknown substitution variable: \'$1\'", 
+    errUnknownSubstitionVar: "unknown substitution variable: \'$1\'", 
     errComplexStmtRequiresInd: "complex statement requires indentation",
     errXisNotCallable: "\'$1\' is not callable", 
     errNoPragmasAllowedForX: "no pragmas allowed for $1", 
@@ -312,7 +312,7 @@ const
     errXOnlyAtModuleScope: "\'$1\' is only allowed at top level", 
     errXNeedsParamObjectType: "'$1' needs a parameter that has an object type",
     errTemplateInstantiationTooNested: "template/macro instantiation too nested",
-    errInstantiationFrom: "instantiation from here", 
+    errInstantiationFrom: "template/generic instantiation from here", 
     errInvalidIndexValueForTuple: "invalid index value for tuple subscript", 
     errCommandExpectsFilename: "command expects a filename argument",
     errMainModuleMustBeSpecified: "please, specify a main module in the project configuration file",
@@ -326,12 +326,12 @@ const
     errXisNoValidIndexFile: "\'$1\' is no valid index file", 
     errCannotRenderX: "cannot render reStructuredText element \'$1\'", 
     errVarVarTypeNotAllowed: "type \'var var\' is not allowed",
-    errInstantiateXExplicitely: "instantiate '$1' explicitely",
+    errInstantiateXExplicitly: "instantiate '$1' explicitly",
     errOnlyACallOpCanBeDelegator: "only a call operator can be a delegator",
     errUsingNoSymbol: "'$1' is not a variable, constant or a proc name",
     errMacroBodyDependsOnGenericTypes: "the macro body cannot be compiled, " &
                                        "because the parameter '$1' has a generic type",
-    errDestructorNotGenericEnough: "Destructor signarue is too specific. " &
+    errDestructorNotGenericEnough: "Destructor signature is too specific. " &
                                    "A destructor must be associated will all instantiations of a generic type",
     errInlineIteratorsAsProcParams: "inline iterators can be used as parameters only for " &
                                     "templates, macros and other inline iterators",
@@ -360,7 +360,7 @@ const
     errCannotInferReturnType: "cannot infer the return type of the proc",
     errGenericLambdaNotAllowed: "A nested proc can have generic parameters only when " &
                                 "it is used as an operand to another routine and the types " &
-                                "of the generic paramers can be infered from the expected signature.",
+                                "of the generic paramers can be inferred from the expected signature.",
     errCompilerDoesntSupportTarget: "The current compiler \'$1\' doesn't support the requested compilation target",
     errUser: "$1", 
     warnCannotOpenFile: "cannot open \'$1\' [CannotOpenFile]",
@@ -377,7 +377,7 @@ const
     warnFieldXNotSupported: "field \'$1\' not supported [FieldXNotSupported]", 
     warnCommentXIgnored: "comment \'$1\' ignored [CommentXIgnored]", 
     warnNilStatement: "'nil' statement is deprecated; use an empty 'discard' statement instead [NilStmt]", 
-    warnAnalysisLoophole: "thread analysis incomplete due to unknown call '$1' [AnalysisLoophole]",
+    warnTypelessParam: "'$1' has no type. Typeless parameters are deprecated; only allowed for 'template' [TypelessParam]",
     warnDifferentHeaps: "possible inconsistency of thread local heaps [DifferentHeaps]",
     warnWriteToForeignHeap: "write to foreign heap [WriteToForeignHeap]",
     warnUnsafeCode: "unsafe code: '$1' [UnsafeCode]",
@@ -420,7 +420,7 @@ const
     "RedefinitionOfLabel", "UnknownSubstitutionX",
     "LanguageXNotSupported", "FieldXNotSupported",
     "CommentXIgnored", "NilStmt",
-    "AnalysisLoophole", "DifferentHeaps", "WriteToForeignHeap",
+    "TypelessParam", "DifferentHeaps", "WriteToForeignHeap",
     "UnsafeCode", "EachIdentIsTuple", "ShadowIdent", 
     "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
     "GcMem", "Destructor", "LockLevel", "User"]
@@ -445,7 +445,7 @@ type
   TNoteKind* = range[warnMin..hintMax] # "notes" are warnings or hints
   TNoteKinds* = set[TNoteKind]
 
-  TFileInfo*{.final.} = object 
+  TFileInfo* = object 
     fullPath: string           # This is a canonical full filesystem path
     projPath*: string          # This is relative to the project's root
     shortName*: string         # short name of the module
@@ -460,9 +460,9 @@ type
                                # and parsed; usually 'nil' but is used
                                # for 'nimsuggest'
 
-  TLineInfo*{.final.} = object # This is designed to be as small as possible,
+  TLineInfo* = object          # This is designed to be as small as possible,
                                # because it is used
-                               # in syntax nodes. We safe space here by using 
+                               # in syntax nodes. We save space here by using 
                                # two int16 and an int32.
                                # On 64 bit and on 32 bit systems this is 
                                # only 8 bytes.
@@ -495,7 +495,7 @@ proc toCChar*(c: char): string =
 
 proc makeCString*(s: string): PRope =
   # BUGFIX: We have to split long strings into many ropes. Otherwise
-  # this could trigger an InternalError(). See the ropes module for
+  # this could trigger an internalError(). See the ropes module for
   # further information.
   const 
     MaxLineLength = 64
@@ -524,7 +524,7 @@ proc newFileInfo(fullPath, projPath: string): TFileInfo =
   if optEmbedOrigSrc in gGlobalOptions or true:
     result.lines = @[]
 
-proc fileInfoIdx*(filename: string): int32 =
+proc fileInfoIdx*(filename: string; isKnownFile: var bool): int32 =
   var
     canon: string
     pseudoPath = false
@@ -541,10 +541,15 @@ proc fileInfoIdx*(filename: string): int32 =
   if filenameToIndexTbl.hasKey(canon):
     result = filenameToIndexTbl[canon]
   else:
+    isKnownFile = false
     result = fileInfos.len.int32
     fileInfos.add(newFileInfo(canon, if pseudoPath: filename
                                      else: canon.shortenDir))
     filenameToIndexTbl[canon] = result
+
+proc fileInfoIdx*(filename: string): int32 =
+  var dummy: bool
+  result = fileInfoIdx(filename, dummy)
 
 proc newLineInfo*(fileInfoIdx: int32, line, col: int): TLineInfo =
   result.fileIndex = fileInfoIdx
@@ -693,7 +698,9 @@ proc msgWriteln*(s: string) =
 
   #if gCmd == cmdIdeTools and optCDebug notin gGlobalOptions: return
 
-  if optStdout in gGlobalOptions:
+  if not isNil(writelnHook):
+    writelnHook(s)
+  elif optStdout in gGlobalOptions:
     if eStdErr in errorOutputs: writeln(stderr, s)
   else:
     if eStdOut in errorOutputs: writeln(stdout, s)
@@ -717,7 +724,10 @@ type
 proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
   template quit =
     if defined(debug) or gVerbosity >= 3 or msg == errInternal:
-      writeStackTrace()
+      if stackTraceAvailable() and isNil(writelnHook):
+        writeStackTrace()
+      else:
+        msgWriteln("No stack traceback available\nTo create a stacktrace, rerun compilation with ./koch temp " & options.command & " <file>")
     quit 1
 
   if msg >= fatalMin and msg <= fatalMax:

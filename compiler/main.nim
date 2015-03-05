@@ -62,7 +62,7 @@ proc commandCompileToC =
   compileProject()
   cgenWriteModules()
   if gCmd != cmdRun:
-    extccomp.callCCompiler(changeFileExt(gProjectFull, ""))
+    extccomp.callCCompiler(if gProjectName == "-": "stdinfile" else: changeFileExt(gProjectFull, ""))
 
   if isServing:
     # caas will keep track only of the compilation commands
@@ -251,7 +251,6 @@ proc mainCommand* =
     commandCompileToC()
   of "cpp", "compiletocpp":
     gCmd = cmdCompileToCpp
-    if cCompiler == ccGcc: setCC("gcc")
     defineSymbol("cpp")
     commandCompileToC()
   of "objc", "compiletooc":

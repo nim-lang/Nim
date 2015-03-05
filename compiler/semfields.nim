@@ -19,12 +19,13 @@ type
 
 proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
   case n.kind
-  of nkEmpty..pred(nkIdent), succ(nkIdent)..nkNilLit: result = n
-  of nkIdent:
+  of nkEmpty..pred(nkIdent), succ(nkSym)..nkNilLit: result = n
+  of nkIdent, nkSym:
     result = n
+    let ident = considerQuotedIdent(n)
     var L = sonsLen(forLoop)
     if c.replaceByFieldName:
-      if n.ident.id == forLoop[0].ident.id:
+      if ident.id == considerQuotedIdent(forLoop[0]).id:
         let fieldName = if c.tupleType.isNil: c.field.name.s
                         elif c.tupleType.n.isNil: "Field" & $c.tupleIndex
                         else: c.tupleType.n.sons[c.tupleIndex].sym.name.s
@@ -32,7 +33,7 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
         return
     # other fields:
     for i in ord(c.replaceByFieldName)..L-3:
-      if n.ident.id == forLoop[i].ident.id:
+      if ident.id == considerQuotedIdent(forLoop[i]).id:
         var call = forLoop.sons[L-2]
         var tupl = call.sons[i+1-ord(c.replaceByFieldName)]
         if c.field.isNil:
@@ -155,7 +156,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   dec(c.p.nestedLoopCounter)
   # for TR macros this 'while true: ...; break' loop is pretty bad, so
   # we avoid it now if we can:
-  if hasSonWith(stmts, nkBreakStmt):
+  if containsNode(stmts, {nkBreakStmt}):
     var b = newNodeI(nkBreakStmt, n.info)
     b.add(ast.emptyNode)
     stmts.add(b)

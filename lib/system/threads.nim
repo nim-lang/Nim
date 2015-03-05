@@ -84,8 +84,18 @@ when defined(windows):
       importc: "TlsAlloc", stdcall, header: "<windows.h>".}
     proc threadVarSetValue(dwTlsIndex: TThreadVarSlot, lpTlsValue: pointer) {.
       importc: "TlsSetValue", stdcall, header: "<windows.h>".}
-    proc threadVarGetValue(dwTlsIndex: TThreadVarSlot): pointer {.
+    proc tlsGetValue(dwTlsIndex: TThreadVarSlot): pointer {.
       importc: "TlsGetValue", stdcall, header: "<windows.h>".}
+
+    proc getLastError(): uint32 {.
+      importc: "GetLastError", stdcall, header: "<windows.h>".}
+    proc setLastError(x: uint32) {.
+      importc: "SetLastError", stdcall, header: "<windows.h>".}
+
+    proc threadVarGetValue(dwTlsIndex: TThreadVarSlot): pointer =
+      let realLastError = getLastError()
+      result = tlsGetValue(dwTlsIndex)
+      setLastError(realLastError)
   else:
     proc threadVarAlloc(): TThreadVarSlot {.
       importc: "TlsAlloc", stdcall, dynlib: "kernel32".}
@@ -95,7 +105,9 @@ when defined(windows):
       importc: "TlsGetValue", stdcall, dynlib: "kernel32".}
   
 else:
-  {.passL: "-pthread".}
+  when not defined(macosx):
+    {.passL: "-pthread".}
+
   {.passC: "-pthread".}
 
   type

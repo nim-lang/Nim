@@ -18,7 +18,7 @@ import strutils
 ##
 ## Quick start example:
 ##   
-##   # Create a matrix wich first rotates, then scales and at last translates
+##   # Create a matrix which first rotates, then scales and at last translates
 ##   
 ##   var m:TMatrix2d=rotate(DEG90) & scale(2.0) & move(100.0,200.0)
 ##   
@@ -256,7 +256,7 @@ proc `$`* (t:TMatrix2d):string {.noInit.} =
 
 proc isUniform*(t:TMatrix2d,tol=1.0e-6):bool=
   ## Checks if the transform is uniform, that is 
-  ## perpendicular axes of equal lenght, which means (for example)
+  ## perpendicular axes of equal length, which means (for example)
   ## it cannot transform a circle into an ellipse.
   ## `tol` is used as tolerance for both equal length comparison 
   ## and perp. comparison.
@@ -305,7 +305,7 @@ proc equals*(m1:TMatrix2d,m2:TMatrix2d,tol=1.0e-6):bool=
     abs(m1.ty-m2.ty)<=tol
     
 proc `=~`*(m1,m2:TMatrix2d):bool=
-  ## Checks if `m1`and `m2` is aproximately equal, using a
+  ## Checks if `m1`and `m2` is approximately equal, using a
   ## tolerance of 1e-6.
   equals(m1,m2)
 

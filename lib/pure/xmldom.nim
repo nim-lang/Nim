@@ -642,7 +642,7 @@ proc isEmpty(s: string): bool =
   return true
 
 proc normalize*(n: PNode) =
-  ## Merges all seperated TextNodes together, and removes any empty TextNodes
+  ## Merges all separated TextNodes together, and removes any empty TextNodes
   var curTextNode: PNode = nil
   var i: int = 0
 

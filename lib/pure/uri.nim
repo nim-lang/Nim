@@ -20,6 +20,7 @@ type
 
 {.deprecated: [TUrl: Url, TUri: Uri].}
 
+{.push warning[deprecated]: off.}
 proc `$`*(url: Url): string {.deprecated.} =
   ## **Deprecated since 0.9.6**: Use ``Uri`` instead.
   return string(url)
@@ -44,6 +45,7 @@ proc add*(url: var Url, a: Url) {.deprecated.} =
   ##
   ## **Deprecated since 0.9.6**: Use ``Uri`` instead.
   url = url / a
+{.pop.}
 
 proc parseAuthority(authority: string, result: var Uri) =
   var i = 0
@@ -182,10 +184,10 @@ proc combine*(base: Uri, reference: Uri): Uri =
   ##   assert foo.path == "/baz"
   ##
   ##   let bar = combine(parseUri("http://example.com/foo/bar"), parseUri("baz"))
-  ##   assert foo.path == "/foo/baz"
+  ##   assert bar.path == "/foo/baz"
   ##
   ##   let bar = combine(parseUri("http://example.com/foo/bar/"), parseUri("baz"))
-  ##   assert foo.path == "/foo/bar/baz"
+  ##   assert bar.path == "/foo/bar/baz"
   
   template setAuthority(dest, src: expr): stmt =
     dest.hostname = src.hostname
@@ -239,10 +241,10 @@ proc `/`*(x: Uri, path: string): Uri =
   ##   assert foo.path == "/foo/bar/baz"
   ##
   ##   let bar = parseUri("http://example.com/foo/bar") / parseUri("baz")
-  ##   assert foo.path == "/foo/bar/baz"
+  ##   assert bar.path == "/foo/bar/baz"
   ##
   ##   let bar = parseUri("http://example.com/foo/bar/") / parseUri("baz")
-  ##   assert foo.path == "/foo/bar/baz"
+  ##   assert bar.path == "/foo/bar/baz"
   result = x
   if result.path[result.path.len-1] == '/':
     if path[0] == '/':

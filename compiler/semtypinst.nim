@@ -61,7 +61,7 @@ proc searchInstTypes*(key: PType): PType =
     if inst.sons.len < key.sons.len:
       # XXX: This happens for prematurely cached
       # types such as TChannel[empty]. Why?
-      # See the notes for PActor in handleGenericInvokation
+      # See the notes for PActor in handleGenericInvocation
       return
     block matchType:
       for j in 1 .. high(key.sons):
@@ -223,7 +223,7 @@ proc lookupTypeVar(cl: var TReplTypeVars, t: PType): PType =
     result = errorType(cl.c)
     # In order to prevent endless recursions, we must remember
     # this bad lookup and replace it with errorType everywhere.
-    # These code paths are only active in nimrod check
+    # These code paths are only active in "nim check"
     idTablePut(cl.typeMap, t, result)
   elif result.kind == tyGenericParam and not cl.allowMetaTypes:
     internalError(cl.info, "substitution with generic parameter")
@@ -234,9 +234,9 @@ proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
   result.flags.incl tfFromGeneric
   result.flags.excl tfInstClearedFlags
 
-proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType = 
-  # tyGenericInvokation[A, tyGenericInvokation[A, B]]
-  # is difficult to handle: 
+proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType = 
+  # tyGenericInvocation[A, tyGenericInvocation[A, B]]
+  # is difficult to handle:
   var body = t.sons[0]
   if body.kind != tyGenericBody: internalError(cl.info, "no generic body")
   var header: PType = t
@@ -245,7 +245,7 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
     result = PType(idTableGet(cl.localCache, t))
   else:
     result = searchInstTypes(t)
-  if result != nil: return
+  if result != nil and eqTypeFlags*result.flags == eqTypeFlags*t.flags: return
   for i in countup(1, sonsLen(t) - 1):
     var x = t.sons[i]
     if x.kind == tyGenericParam:
@@ -260,10 +260,10 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
   if header != t:
     # search again after first pass:
     result = searchInstTypes(header)
-    if result != nil: return
+    if result != nil and eqTypeFlags*result.flags == eqTypeFlags*t.flags: return
   else:
     header = instCopyType(cl, t)
-  
+
   result = newType(tyGenericInst, t.sons[0].owner)
   result.flags = header.flags
   # be careful not to propagate unnecessary flags here (don't use rawAddSon)
@@ -278,7 +278,7 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
 
   for i in countup(1, sonsLen(t) - 1):
     var x = replaceTypeVarsT(cl, t.sons[i])
-    assert x.kind != tyGenericInvokation
+    assert x.kind != tyGenericInvocation
     header.sons[i] = x
     propagateToOwner(header, x)
     idTablePut(cl.typeMap, body.sons[i-1], x)
@@ -295,7 +295,7 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
   #newbody.callConv = body.callConv
   # This type may be a generic alias and we want to resolve it here.
   # One step is enough, because the recursive nature of
-  # handleGenericInvokation will handle the alias-to-alias-to-alias case
+  # handleGenericInvocation will handle the alias-to-alias-to-alias case
   if newbody.isGenericAlias: newbody = newbody.skipGenericAlias
   rawAddSon(result, newbody)
   checkPartialConstructedType(cl.info, newbody)
@@ -359,8 +359,8 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     if lookup != nil: return lookup
   
   case t.kind
-  of tyGenericInvokation:
-    result = handleGenericInvokation(cl, t)
+  of tyGenericInvocation:
+    result = handleGenericInvocation(cl, t)
 
   of tyGenericBody:
     localError(cl.info, errCannotInstantiateX, typeToString(t))
@@ -369,6 +369,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
 
   of tyFromExpr:
     if cl.allowMetaTypes: return
+    assert t.n.typ != t
     var n = prepareNode(cl, t.n)
     n = cl.c.semConstExpr(cl.c, n)
     if n.typ.kind == tyTypeDesc:
@@ -389,9 +390,8 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       else:
         result = n.typ
 
-  of tyInt:
+  of tyInt, tyFloat:
     result = skipIntLit(t)
-    # XXX now there are also float literals
   
   of tyTypeDesc:
     let lookup = PType(idTableGet(cl.typeMap, t)) # lookupTypeVar(cl, t)

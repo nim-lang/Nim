@@ -91,7 +91,7 @@ proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PType) =
   initIdTable(c.bindings)
 
 proc put(t: var TIdTable, key, val: PType) {.inline.} =
-  idTablePut(t, key, val)
+  idTablePut(t, key, val.skipIntLit)
 
 proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
                     binding: PNode, calleeScope = -1) =
@@ -153,12 +153,12 @@ proc sumGeneric(t: PType): int =
     of tyVar:
       # but do not make 'var T' more specific than 'T'!
       t = t.sons[0]
-    of tyGenericInvokation, tyTuple:
-      result = ord(t.kind == tyGenericInvokation)
+    of tyGenericInvocation, tyTuple:
+      result = ord(t.kind == tyGenericInvocation)
       for i in 0 .. <t.len: result += t.sons[i].sumGeneric
       break
     of tyProc:
-      # proc matche proc better than 'stmt' to disambiguate 'spawn'
+      # proc matches proc better than 'stmt' to disambiguate 'spawn'
       return 1
     of tyGenericParam, tyExpr, tyStatic, tyStmt, tyTypeDesc: break
     else: return 0
@@ -262,7 +262,7 @@ proc concreteType(c: TCandidate, t: PType): PType =
         # example code that triggers it:
         # proc sort[T](cmp: proc(a, b: T): int = cmp)
       if result.kind != tyGenericParam: break
-  of tyGenericInvokation:
+  of tyGenericInvocation:
     internalError("cannot resolve type: " & typeToString(t))
     result = t
   else:
@@ -418,7 +418,8 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
 
     if tfNoSideEffect in f.flags and tfNoSideEffect notin a.flags:
       return isNone
-    elif tfThread in f.flags and a.flags * {tfThread, tfNoSideEffect} == {}:
+    elif tfThread in f.flags and a.flags * {tfThread, tfNoSideEffect} == {} and
+        optThreadAnalysis in gGlobalOptions:
       # noSideEffect implies ``tfThread``!
       return isNone
     elif f.flags * {tfIterator} != a.flags * {tfIterator}:
@@ -461,7 +462,7 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
   openScope(c)
   inc c.inTypeClass
 
-  finally:
+  defer:
     dec c.inTypeClass
     closeScope(c)
 
@@ -570,7 +571,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   assert(f != nil)
   
   if f.kind == tyExpr:
-    put(c.bindings, f, aOrig)
+    if aOrig != nil: put(c.bindings, f, aOrig)
     return isGeneric
 
   assert(aOrig != nil)
@@ -584,7 +585,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   
   if a.kind == tyGenericInst and
       skipTypes(f, {tyVar}).kind notin {
-        tyGenericBody, tyGenericInvokation,
+        tyGenericBody, tyGenericInvocation,
         tyGenericInst, tyGenericParam} + tyTypeClasses:
     return typeRel(c, f, lastSon(a))
 
@@ -864,8 +865,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         result = typeRel(c, ff, aa)
         if result == isNone: return        
         if ff.kind == tyRange and result != isEqual: return isNone
-
       result = isGeneric
+      # XXX See bug #2220. A[int] should match A[int] better than some generic X
     else:
       result = typeRel(c, lastSon(f), a)
 
@@ -876,10 +877,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       let ff = lastSon(f)
       if ff != nil: result = typeRel(c, ff, a)
 
-  of tyGenericInvokation:
+  of tyGenericInvocation:
     var x = a.skipGenericAlias
-    if x.kind == tyGenericInvokation or f.sons[0].kind != tyGenericBody:
-      #InternalError("typeRel: tyGenericInvokation -> tyGenericInvokation")
+    if x.kind == tyGenericInvocation or f.sons[0].kind != tyGenericBody:
+      #InternalError("typeRel: tyGenericInvocation -> tyGenericInvocation")
       # simply no match for now:
       discard
     elif x.kind == tyGenericInst and 
@@ -896,7 +897,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         # we steal the generic parameters from the tyGenericBody:
         for i in countup(1, sonsLen(f) - 1):
           var x = PType(idTableGet(c.bindings, f.sons[0].sons[i - 1]))
-          if x == nil or x.kind in {tyGenericInvokation, tyGenericParam}:
+          if x == nil or x.kind in {tyGenericInvocation, tyGenericParam}:
             internalError("wrong instantiated type!")
           put(c.bindings, f.sons[i], x)
   
@@ -1015,9 +1016,17 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         if result != isNone: put(c.bindings, f, aOrig)
       else:
         result = isNone
+    elif prev.kind == tyStatic:
+      if aOrig.kind == tyStatic:
+        result = typeRel(c, prev.lastSon, a)
+        if result != isNone and prev.n != nil:
+          if not exprStructuralEquivalent(prev.n, aOrig.n):
+            result = isNone
+      else: result = isNone
     else:
-      result = typeRel(c, prev, aOrig)
-      
+      # XXX endless recursion?
+      #result = typeRel(c, prev, aOrig)
+      result = isNone
   of tyTypeDesc:
     var prev = PType(idTableGet(c.bindings, f))
     if prev == nil:
@@ -1056,7 +1065,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
 
   of tyFromExpr:
     # fix the expression, so it contains the already instantiated types
-    if f.n == nil: return isGeneric
+    if f.n == nil or f.n.kind == nkEmpty: return isGeneric
     let reevaluated = tryResolvingStaticExpr(c, f.n)
     case reevaluated.typ.kind
     of tyTypeDesc:
@@ -1156,6 +1165,15 @@ proc isInlineIterator*(t: PType): bool =
   result = t.kind == tyIter or
           (t.kind == tyBuiltInTypeClass and t.base.kind == tyIter)
 
+proc isEmptyContainer*(t: PType): bool =
+  case t.kind
+  of tyExpr, tyNil: result = true
+  of tyArray, tyArrayConstr: result = t.sons[1].kind == tyEmpty
+  of tySet, tySequence, tyOpenArray, tyVarargs:
+    result = t.sons[0].kind == tyEmpty
+  of tyGenericInst: result = isEmptyContainer(t.lastSon)
+  else: result = false
+
 proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
                         argSemantized, argOrig: PNode): PNode =
   var
@@ -1178,8 +1196,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
 
     if argType.kind == tyStatic:
       if m.callee.kind == tyGenericBody and tfGenericTypeParam notin argType.flags:
-        result = newNodeI(nkType, argOrig.info)
-        result.typ = makeTypeFromExpr(c, arg)
+        result = newNodeIT(nkType, argOrig.info, makeTypeFromExpr(c, arg))
         return
     else:
       var evaluated = c.semTryConstExpr(c, arg)
@@ -1252,12 +1269,25 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
       result = implicitConv(nkHiddenStdConv, f, result, m, c)
   of isGeneric:
     inc(m.genericMatches)
-    result = copyTree(arg)
-    result.typ = getInstantiatedType(c, arg, m, f)
-    # BUG: f may not be the right key!
-    if skipTypes(result.typ, abstractVar-{tyTypeDesc}).kind in {tyTuple}:
-      result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
-      # BUGFIX: use ``result.typ`` and not `f` here
+    when true:
+      if arg.typ == nil:
+        result = arg
+      elif skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple:
+        result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
+      elif arg.typ.isEmptyContainer:
+        result = arg.copyTree
+        result.typ = getInstantiatedType(c, arg, m, f)
+      else:
+        result = arg
+    else:
+      # XXX Why is this ever necessary? arg's type should not be retrofitted
+      # to match formal's type in this way!
+      result = copyTree(arg)
+      result.typ = getInstantiatedType(c, arg, m, f)
+      # BUG: f may not be the right key!
+      if skipTypes(result.typ, abstractVar-{tyTypeDesc}).kind in {tyTuple}:
+        result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
+        # BUGFIX: use ``result.typ`` and not `f` here
   of isFromIntLit:
     # too lazy to introduce another ``*matches`` field, so we conflate
     # ``isIntConv`` and ``isIntLit`` here:
@@ -1441,13 +1471,14 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         return
       checkConstraint(n.sons[a].sons[1])
       if m.baseTypeMatch: 
-        assert(container == nil)
+        #assert(container == nil)
         container = newNodeIT(nkBracket, n.sons[a].info, arrayConstr(c, arg))
         addSon(container, arg)
         setSon(m.call, formal.position + 1, container)
         if f != formalLen - 1: container = nil
-      else: 
+      else:
         setSon(m.call, formal.position + 1, arg)
+      inc f
     else:
       # unnamed param
       if f >= formalLen:
@@ -1466,7 +1497,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           n.sons[a] = prepareOperand(c, formal.typ, n.sons[a])
           var arg = paramTypesMatch(m, formal.typ, n.sons[a].typ,
                                     n.sons[a], nOrig.sons[a])
-          if (arg != nil) and m.baseTypeMatch and (container != nil):
+          if arg != nil and m.baseTypeMatch and container != nil:
             addSon(container, arg)
             incrIndexType(container.typ)
           else:
@@ -1480,7 +1511,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           internalError(n.sons[a].info, "matches")
           return
         formal = m.callee.n.sons[f].sym
-        if containsOrIncl(marker, formal.position): 
+        if containsOrIncl(marker, formal.position) and container.isNil:
           # already in namedParams:
           localError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
           m.state = csNoMatch
@@ -1493,17 +1524,22 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           m.state = csNoMatch
           return
         if m.baseTypeMatch:
-          assert(container == nil)
-          container = newNodeIT(nkBracket, n.sons[a].info, arrayConstr(c, arg))
+          #assert(container == nil)
+          if container.isNil:
+            container = newNodeIT(nkBracket, n.sons[a].info, arrayConstr(c, arg))
           addSon(container, arg)
           setSon(m.call, formal.position + 1, 
                  implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
-          if f != formalLen - 1: container = nil
+          #if f != formalLen - 1: container = nil
+
+          # pick the formal from the end, so that 'x, y, varargs, z' works:
+          f = max(f, formalLen - n.len + a + 1)
         else:
           setSon(m.call, formal.position + 1, arg)
+          inc(f)
+          container = nil
       checkConstraint(n.sons[a])
     inc(a)
-    inc(f)
 
 proc semFinishOperands*(c: PContext, n: PNode) =
   # this needs to be called to ensure that after overloading resolution every

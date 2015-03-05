@@ -8,10 +8,18 @@ body {
 	min-width:1030px;
 	margin:0;
 	font:13pt "arial";
-	background:#152534 url("images/bg.jpg") no-repeat fixed center top; 
+	background:#152534 url("images/bg.png") no-repeat center top; 
 	color:rgba(0,0,0,.8); }
 
-pre { color:#fff;}
+pre {
+  color:#fff;
+  margin:0;
+  padding:15px 10px;
+  font:10pt monospace;
+  line-height:14pt;
+  background:rgba(0,0,0,.4);
+  border-left:8px solid rgba(0,0,0,.3);
+  box-shadow:1px 2px 16px rgba(28,180,236,.4); }
 pre, pre * { cursor:text; }
 pre .cmt { color:rgb(255,229,106); }
 pre .kwd { color:#43A8CF; font-weight:bold; }
@@ -23,8 +31,14 @@ pre .val { color:#8AB647; }
 pre .tab { border-left:1px dotted rgba(67,168,207,0.4); }
 pre .end { background:url("images/tabEnd.png") no-repeat left bottom; }
 
+.page pre { background:rgba(0,0,0,.8); }
+.page pre > .Comment { color:rgb(255,229,106); }
+.page pre > .Keyword { color:#43A8CF; font-weight:bold; }
+.page pre > .StringLit,
+.page pre > .DecNumber { color:#8AB647; }
+
 .tall { height:100%; }
-.pre { padding:0 5px; font:11pt monospace; background:rgba(255,255,255,.15); border-radius:3px; }
+.pre { padding:1px 5px; font:11pt monospace; background:#96A9B7; border-radius:3px; }
 
 .page-layout { margin:0 auto; width:1000px; }
 .docs-layout { margin:0 40px; }
@@ -90,7 +104,7 @@ pre .end { background:url("images/tabEnd.png") no-repeat left bottom; }
 		right:-16px;
 		height:48px;
 		background:url("images/glow-arrow.png") no-repeat right; }
-  glow-arrow.docs { left:280px; }
+  #glow-arrow.docs { left:280px; }
 	
 	#glow-line-vert {
 		position:fixed;
@@ -102,55 +116,35 @@ pre .end { background:url("images/tabEnd.png") no-repeat left bottom; }
 	
 	#slideshow { position:absolute; top:10px; left:10px; width:700px; height: 1000px; }
 	#slideshow > div {
-	  visibility:hidden; opacity:0; position:absolute; transition:visibility 0s linear 1s, opacity 1s ease-in-out; }
+    position:absolute;
+    margin:30px 0 0 10px;
+    visibility:hidden;
+    opacity:0;
+    transition:
+      visibility 0s linear 1s,
+      opacity 1s ease-in-out; }
 	#slideshow > div.active { visibility:visible; opacity:1; transition-delay:0s; }
 	#slideshow > div.init { transition-delay:0s; }
 	#slideshow-nav { z-index:3; position:absolute; top:110px;; right:-12px; }
 	#slideshow-nav > div { margin:5px 0; width:23px; height:23px; background:url("images/slideshow-nav.png") no-repeat; }
 	#slideshow-nav > div:hover { background-image:url("images/slideshow-nav_active.png"); opacity:0.5; }
 	#slideshow-nav > div.active { background-image:url("images/slideshow-nav_active.png"); opacity:1; }
-		
-		#slide0 { margin:30px 0 0 10px; }
-		#slide0 > div { float:left; width:320px; font:10pt monospace; }
+    
+		#slide0 { float:left; width:680px; font:10pt monospace; }
 		#slide0 > div:first-child { margin:0 40px 0 0; }
 		#slide0 h2 { margin:0 0 5px 0; color:rgba(162,198,223,.78); }
-		#slide0 > div > pre {
-			margin:0;
-			padding:15px 10px;
-			line-height:14pt;
-			background:rgba(0,0,0,.4);
-			border-left:8px solid rgba(0,0,0,.3);
-			box-shadow:1px 2px 16px rgba(28,180,236,.4); }
-
-		#slide1 { margin:30px 0 0 10px; }
-		#slide1 { float:left; width:680px; font:10pt monospace; }
+		#slide0 .desc { margin:0 0 5px 0; color:rgba(162,198,223,.78); font:13pt "arial"; }
+		
+		#slide1 > div { float:left; width:320px; font:10pt monospace; }
 		#slide1 > div:first-child { margin:0 40px 0 0; }
 		#slide1 h2 { margin:0 0 5px 0; color:rgba(162,198,223,.78); }
-		#slide1 .desc { margin:0 0 5px 0; color:rgba(162,198,223,.78);
-		                font:13pt "arial"; }
-		#slide1 pre {
-			padding:7px 10px;
-			line-height:14pt;
-			background:rgba(0,0,0,.4);
-			border-left:8px solid rgba(0,0,0,.3);
-			box-shadow:1px 2px 16px rgba(28,180,236,.4); }
-
-
-		#slide2 { margin:30px 0 0 10px; }
+    
 		#slide2 > div { float:left; width:320px; font:10pt monospace; }
 		#slide2 > div:first-child { margin:0 40px 0 0; }
 		#slide2 h2 { margin:0 0 5px 0; color:rgba(162,198,223,.78); }
-		#slide2 > div > pre {
-			margin:0;
-			padding:15px 10px;
-			line-height:14pt;
-			background:rgba(0,0,0,.4);
-			border-left:8px solid rgba(0,0,0,.3);
-			box-shadow:1px 2px 16px rgba(28,180,236,.4); }
-
-		#slide2 .desc { margin:0 0 5px 0; color:rgba(162,198,223,.78);
-		                font:13pt "arial"; }
-
+    
+		#slide2 .desc { margin:0 0 5px 0; color:rgba(162,198,223,.78); font:13pt "arial"; }
+    
 		/* back when slide1 was the quote:
 		#slide1 { margin-top:50px; }
 		#slide1 > p {
@@ -166,7 +160,7 @@ pre .end { background:url("images/tabEnd.png") no-repeat left bottom; }
 			font-style:italic;
 			font-weight:bold;
 			color:rgba(93,155,199,.44); }
-	       */
+    */
 	#sidebar {
 		z-index:2;
 		position:absolute;
@@ -524,14 +518,15 @@ pre .end { background:url("images/tabEnd.png") no-repeat left bottom; }
     .standout h2 { margin-bottom:10px; padding-bottom:10px; border-bottom:1px dashed rgba(0,0,0,.8); }
     .standout li { margin:0 !important; padding-top:10px; border-top:1px dashed rgba(0,0,0,.2); }
     .standout ul { padding-bottom:5px; }
-    .standout ul.tools { list-style:url("images/docs-tools.png"); }
-    .standout ul.library { list-style:url("images/docs-library.png"); }
-    .standout ul.internal { list-style:url("images/docs-internal.png"); }
-    .standout ul.tutorial { list-style:url("images/docs-tutorial.png"); }
-    .standout ul.example { list-style:url("images/docs-example.png"); }
+    .standout .tools     ul { list-style:url("images/docs-tools.png"); }
+    .standout .libraries ul { list-style:url("images/docs-libraries.png"); }
+    .standout .internals ul { list-style:url("images/docs-internals.png"); }
+    .standout .tutorials ul { list-style:url("images/docs-tutorials.png"); }
+    .standout .examples  ul { list-style:url("images/docs-examples.png"); }
+    .standout .articles  ul { list-style:url("images/docs-articles.png"); }
     .standout li:first-child { padding-top:0; border-top:none; }
     .standout li p { margin:0 0 10px 0 !important; line-height:130%; }
-    .standout li > a { font-weight:bold; }
+    .standout li p > a { font-weight:bold; }
     
     .forum-user-info,
     .forum-user-info * { cursor:help }
@@ -551,48 +546,13 @@ pre .end { background:url("images/tabEnd.png") no-repeat left bottom; }
 	#foot-legal { float:right; font-size:10pt; color:rgba(255,255,255,.3); line-height:150%; text-align:right; }
 	#foot-legal a { color:inherit; text-decoration:none; }
 	#foot-legal > h4 > a { color:inherit; }
-	
-	#mascot {
-    z-index:2;
-		position:absolute;
-		top:-340px;
-		right:25px;
-		width:202px;
-		height:319px;
-		background:url("images/mascot.png") no-repeat; }
 
-
-#body pre {
-  padding:20px;
-  border-left:10px solid #8f9698;
-  background:#f3f6f8;
-  font-size:15px;
-  font-family:courier, monospace;
-  letter-spacing:0;
-  line-height:17px;
-  color: #343739;
-}
-
-#body span.pre {
-  background-color: #96A9B7;
-  padding: 1pt 3pt;
-  border-radius: 2pt;
-  -moz-border-radius: 2pt;
-  -webkit-border-radius: 2pt;
-}
-
-#body pre > .Comment { color:#858686; font-style:italic; }
-#body pre > .Keyword { color:#1cb4ec; font-weight:bold; }
-#body pre > .Operator { color:#777; }
-#body pre > .StringLit, #page pre > .DecNumber { color:#ff7302; }
 
 #body .docutils th {
     border-bottom: 2px solid #1A1A1A;
     font-weight: normal;
-    padding: 8px;
-}
+    padding: 8px; }
 #body table.docutils {
     border-collapse: collapse;
     text-align: left;
-    border-spacing: 0px;
-}
+    border-spacing: 0px; }

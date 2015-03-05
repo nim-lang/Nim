@@ -35,7 +35,7 @@ type
     offset: int64
 
 when defined(windows):
-  proc getDesiredAccess(mode: TFileMode): int32 =
+  proc getDesiredAccess(mode: FileMode): int32 =
     case mode
     of fmRead:
       result = GENERIC_READ
@@ -44,7 +44,7 @@ when defined(windows):
     of fmReadWrite, fmReadWriteExisting:
       result = GENERIC_READ or GENERIC_WRITE
 
-  proc getCreationDisposition(mode: TFileMode, filename: string): int32 =
+  proc getCreationDisposition(mode: FileMode, filename: string): int32 =
     case mode
     of fmRead, fmReadWriteExisting:
       OPEN_EXISTING
@@ -54,7 +54,7 @@ when defined(windows):
       else:
         CREATE_NEW
 else:
-  proc getPosixFlags(mode: TFileMode): cint =
+  proc getPosixFlags(mode: FileMode): cint =
     case mode
     of fmRead:
       result = O_RDONLY
@@ -74,7 +74,7 @@ proc getFileSize(f: AsyncFile): int64 =
     var high: DWord
     let low = getFileSize(f.fd.THandle, addr high)
     if low == INVALID_FILE_SIZE:
-      raiseOSError()
+      raiseOSError(osLastError())
     return (high shl 32) or low
 
 proc openAsync*(filename: string, mode = fmRead): AsyncFile =
@@ -95,7 +95,7 @@ proc openAsync*(filename: string, mode = fmRead): AsyncFile =
           nil, creationDisposition, flags, 0).TAsyncFd
 
     if result.fd.THandle == INVALID_HANDLE_VALUE:
-      raiseOSError()
+      raiseOSError(osLastError())
 
     register(result.fd)
 
@@ -108,7 +108,7 @@ proc openAsync*(filename: string, mode = fmRead): AsyncFile =
     let perm = S_IRUSR or S_IWUSR or S_IRGRP or S_IWGRP or S_IROTH
     result.fd = open(filename, flags, perm).TAsyncFD
     if result.fd.cint == -1:
-      raiseOSError()
+      raiseOSError(osLastError())
 
     register(result.fd)
 
@@ -185,7 +185,7 @@ proc read*(f: AsyncFile, size: int): Future[string] =
       if res < 0:
         let lastError = osLastError()
         if lastError.int32 != EAGAIN:
-          retFuture.fail(newException(EOS, osErrorMsg(lastError)))
+          retFuture.fail(newException(OSError, osErrorMsg(lastError)))
         else:
           result = false # We still want this callback to be called.
       elif res == 0:
@@ -227,7 +227,7 @@ proc setFilePos*(f: AsyncFile, pos: int64) =
   when not defined(windows):
     let ret = lseek(f.fd.cint, pos, SEEK_SET)
     if ret == -1:
-      raiseOSError()
+      raiseOSError(osLastError())
 
 proc readAll*(f: AsyncFile): Future[string] {.async.} =
   ## Reads all data from the specified file.
@@ -299,7 +299,7 @@ proc write*(f: AsyncFile, data: string): Future[void] =
       if res < 0:
         let lastError = osLastError()
         if lastError.int32 != EAGAIN:
-          retFuture.fail(newException(EOS, osErrorMsg(lastError)))
+          retFuture.fail(newException(OSError, osErrorMsg(lastError)))
         else:
           result = false # We still want this callback to be called.
       else:
@@ -318,8 +318,8 @@ proc close*(f: AsyncFile) =
   ## Closes the file specified.
   when defined(windows):
     if not closeHandle(f.fd.THandle).bool:
-      raiseOSError()
+      raiseOSError(osLastError())
   else:
     if close(f.fd.cint) == -1:
-      raiseOSError()
+      raiseOSError(osLastError())
 

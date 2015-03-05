@@ -42,7 +42,7 @@ proc validEmailAddress*(s: string): bool {.noSideEffect,
   case toLower(x)
   of "com", "org", "net", "gov", "mil", "biz", "info", "mobi", "name",
      "aero", "jobs", "museum": return true
-  return false
+  else: return false
 
 proc parseInt*(s: string, value: var int, validRange: Slice[int]) {.
   noSideEffect, rtl, extern: "nmatchParseInt".} =

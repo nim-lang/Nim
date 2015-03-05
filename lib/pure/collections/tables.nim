@@ -11,7 +11,7 @@
 ## (also often named `dictionary`:idx: in other programming languages) that is
 ## a mapping from keys to values. ``Table`` is the usual hash table,
 ## ``OrderedTable`` is like ``Table`` but remembers insertion order
-## and ``CountTable`` is a mapping from a key to its number of occurances.
+## and ``CountTable`` is a mapping from a key to its number of occurrences.
 ## For consistency with every other data type in Nim these have **value**
 ## semantics, this means that ``=`` performs a copy of the hash table.
 ## For **reference** semantics use the ``Ref`` variant: ``TableRef``,
@@ -71,8 +71,7 @@ import
 {.pragma: myShallow.}
 
 type
-  SlotEnum = enum seEmpty, seFilled, seDeleted
-  KeyValuePair[A, B] = tuple[slot: SlotEnum, key: A, val: B]
+  KeyValuePair[A, B] = tuple[hcode: THash, key: A, val: B]
   KeyValuePairSeq[A, B] = seq[KeyValuePair[A, B]]
   Table* {.myShallow.}[A, B] = object ## generic hash table
     data: KeyValuePairSeq[A, B]
@@ -84,6 +83,14 @@ type
 when not defined(nimhygiene):
   {.pragma: dirty.}
 
+# hcode for real keys cannot be zero.  hcode==0 signifies an empty slot.  These
+# two procs retain clarity of that encoding without the space cost of an enum.
+proc isEmpty(hcode: THash): bool {.inline.} =
+  result = hcode == 0
+
+proc isFilled(hcode: THash): bool {.inline.} =
+  result = hcode != 0
+
 proc len*[A, B](t: Table[A, B]): int =
   ## returns the number of keys in `t`.
   result = t.counter
@@ -91,28 +98,28 @@ proc len*[A, B](t: Table[A, B]): int =
 iterator pairs*[A, B](t: Table[A, B]): tuple[key: A, val: B] =
   ## iterates over any (key, value) pair in the table `t`.
   for h in 0..high(t.data):
-    if t.data[h].slot == seFilled: yield (t.data[h].key, t.data[h].val)
+    if isFilled(t.data[h].hcode): yield (t.data[h].key, t.data[h].val)
 
 iterator mpairs*[A, B](t: var Table[A, B]): tuple[key: A, val: var B] =
   ## iterates over any (key, value) pair in the table `t`. The values
   ## can be modified.
   for h in 0..high(t.data):
-    if t.data[h].slot == seFilled: yield (t.data[h].key, t.data[h].val)
+    if isFilled(t.data[h].hcode): yield (t.data[h].key, t.data[h].val)
 
 iterator keys*[A, B](t: Table[A, B]): A =
   ## iterates over any key in the table `t`.
   for h in 0..high(t.data):
-    if t.data[h].slot == seFilled: yield t.data[h].key
+    if isFilled(t.data[h].hcode): yield t.data[h].key
 
 iterator values*[A, B](t: Table[A, B]): B =
   ## iterates over any value in the table `t`.
   for h in 0..high(t.data):
-    if t.data[h].slot == seFilled: yield t.data[h].val
+    if isFilled(t.data[h].hcode): yield t.data[h].val
 
 iterator mvalues*[A, B](t: var Table[A, B]): var B =
   ## iterates over any value in the table `t`. The values can be modified.
   for h in 0..high(t.data):
-    if t.data[h].slot == seFilled: yield t.data[h].val
+    if isFilled(t.data[h].hcode): yield t.data[h].val
 
 const
   growthFactor = 2
@@ -121,26 +128,57 @@ proc mustRehash(length, counter: int): bool {.inline.} =
   assert(length > counter)
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
-proc nextTry(h, maxHash: THash): THash {.inline.} =
-  result = ((5 * h) + 1) and maxHash
+proc rightSize*(count: int): int {.inline.} =
+  ## Return the value of `initialSize` to support `count` items.
+  ##
+  ## If more items are expected to be added, simply add that
+  ## expected extra amount to the parameter before calling this.
+  ##
+  ## Internally, we want mustRehash(rightSize(x), x) == false.
+  result = nextPowerOfTwo(count * 3 div 2  +  4)
 
-template rawGetImpl() {.dirty.} =
-  var h: THash = hash(key) and high(t.data) # start with real hash value
-  while t.data[h].slot != seEmpty:
-    if t.data[h].key == key and t.data[h].slot == seFilled:
+proc nextTry(h, maxHash: THash): THash {.inline.} =
+  result = (h + 1) and maxHash
+
+template rawGetKnownHCImpl() {.dirty.} =
+  var h: THash = hc and high(t.data)   # start with real hash value
+  while isFilled(t.data[h].hcode):
+    # Compare hc THEN key with boolean short circuit. This makes the common case
+    # zero ==key's for missing (e.g.inserts) and exactly one ==key for present.
+    # It does slow down succeeding lookups by one extra THash cmp&and..usually
+    # just a few clock cycles, generally worth it for any non-integer-like A.
+    if t.data[h].hcode == hc and t.data[h].key == key:
       return h
     h = nextTry(h, high(t.data))
-  result = -1
+  result = -1 - h                   # < 0 => MISSING; insert idx = -1 - result
+
+template rawGetImpl() {.dirty.} =
+  hc = hash(key)
+  if hc == 0:       # This almost never taken branch should be very predictable.
+    hc = 314159265  # Value doesn't matter; Any non-zero favorite is fine.
+  rawGetKnownHCImpl()
+
+template rawGetDeepImpl() {.dirty.} =   # Search algo for unconditional add
+  hc = hash(key)
+  if hc == 0:
+    hc = 314159265
+  var h: THash = hc and high(t.data)
+  while isFilled(t.data[h].hcode):
+    h = nextTry(h, high(t.data))
+  result = h
 
 template rawInsertImpl() {.dirty.} =
-  var h: THash = hash(key) and high(data)
-  while data[h].slot == seFilled:
-    h = nextTry(h, high(data))
   data[h].key = key
   data[h].val = val
-  data[h].slot = seFilled
+  data[h].hcode = hc
 
-proc rawGet[A, B](t: Table[A, B], key: A): int =
+proc rawGetKnownHC[A, B](t: Table[A, B], key: A, hc: THash): int {.inline.} =
+  rawGetKnownHCImpl()
+
+proc rawGetDeep[A, B](t: Table[A, B], key: A, hc: var THash): int {.inline.} =
+  rawGetDeepImpl()
+
+proc rawGet[A, B](t: Table[A, B], key: A, hc: var THash): int {.inline.} =
   rawGetImpl()
 
 proc `[]`*[A, B](t: Table[A, B], key: A): B =
@@ -148,63 +186,87 @@ proc `[]`*[A, B](t: Table[A, B], key: A): B =
   ## default empty value for the type `B` is returned
   ## and no exception is raised. One can check with ``hasKey`` whether the key
   ## exists.
-  var index = rawGet(t, key)
+  var hc: THash
+  var index = rawGet(t, key, hc)
   if index >= 0: result = t.data[index].val
 
 proc mget*[A, B](t: var Table[A, B], key: A): var B =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``EInvalidKey`` exception is raised.
-  var index = rawGet(t, key)
+  var hc: THash
+  var index = rawGet(t, key, hc)
   if index >= 0: result = t.data[index].val
   else: raise newException(KeyError, "key not found: " & $key)
 
 iterator allValues*[A, B](t: Table[A, B]; key: A): B =
   ## iterates over any value in the table `t` that belongs to the given `key`.
   var h: THash = hash(key) and high(t.data)
-  while t.data[h].slot != seEmpty:
-    if t.data[h].key == key and t.data[h].slot == seFilled:
+  while isFilled(t.data[h].hcode):
+    if t.data[h].key == key:
       yield t.data[h].val
     h = nextTry(h, high(t.data))
 
 proc hasKey*[A, B](t: Table[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
-  result = rawGet(t, key) >= 0
+  var hc: THash
+  result = rawGet(t, key, hc) >= 0
 
 proc rawInsert[A, B](t: var Table[A, B], data: var KeyValuePairSeq[A, B],
-                     key: A, val: B) =
+                     key: A, val: B, hc: THash, h: THash) =
   rawInsertImpl()
 
 proc enlarge[A, B](t: var Table[A, B]) =
   var n: KeyValuePairSeq[A, B]
   newSeq(n, len(t.data) * growthFactor)
-  for i in countup(0, high(t.data)):
-    if t.data[i].slot == seFilled: rawInsert(t, n, t.data[i].key, t.data[i].val)
   swap(t.data, n)
+  for i in countup(0, high(n)):
+    if isFilled(n[i].hcode):
+      var j = -1 - rawGetKnownHC(t, n[i].key, n[i].hcode)
+      rawInsert(t, t.data, n[i].key, n[i].val, n[i].hcode, j)
 
 template addImpl() {.dirty.} =
   if mustRehash(len(t.data), t.counter): enlarge(t)
-  rawInsert(t, t.data, key, val)
+  var hc: THash
+  var j = rawGetDeep(t, key, hc)
+  rawInsert(t, t.data, key, val, hc, j)
+  inc(t.counter)
+
+template maybeRehashPutImpl() {.dirty.} =
+  if mustRehash(len(t.data), t.counter):
+    enlarge(t)
+    index = rawGetKnownHC(t, key, hc)
+  index = -1 - index                  # important to transform for mgetOrPutImpl
+  rawInsert(t, t.data, key, val, hc, index)
   inc(t.counter)
 
 template putImpl() {.dirty.} =
-  var index = rawGet(t, key)
-  if index >= 0:
-    t.data[index].val = val
-  else:
-    addImpl()
+  var hc: THash
+  var index = rawGet(t, key, hc)
+  if index >= 0: t.data[index].val = val
+  else: maybeRehashPutImpl()
 
-when false:
-  # not yet used:
-  template hasKeyOrPutImpl() {.dirty.} =
-    var index = rawGet(t, key)
-    if index >= 0:
-      t.data[index].val = val
-      result = true
-    else:
-      if mustRehash(len(t.data), t.counter): enlarge(t)
-      rawInsert(t, t.data, key, val)
-      inc(t.counter)
-      result = false
+template mgetOrPutImpl() {.dirty.} =
+  var hc: THash
+  var index = rawGet(t, key, hc)
+  if index < 0: maybeRehashPutImpl()    # not present: insert (flipping index)
+  result = t.data[index].val            # either way return modifiable val
+
+template hasKeyOrPutImpl() {.dirty.} =
+  var hc: THash
+  var index = rawGet(t, key, hc)
+  if index < 0:
+    result = false
+    maybeRehashPutImpl()
+  else: result = true
+
+proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
+  ## retrieves value at ``t[key]`` or puts ``val`` if not present, either way
+  ## returning a value which can be modified.
+  mgetOrPutImpl()
+
+proc hasKeyOrPut*[A, B](t: var Table[A, B], key: A, val: B): bool =
+  ## returns true iff `key` is in the table, otherwise inserts `value`.
+  hasKeyOrPutImpl()
 
 proc `[]=`*[A, B](t: var Table[A, B], key: A, val: B) =
   ## puts a (key, value)-pair into `t`.
@@ -213,20 +275,37 @@ proc `[]=`*[A, B](t: var Table[A, B], key: A, val: B) =
 proc add*[A, B](t: var Table[A, B], key: A, val: B) =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
   addImpl()
-  
+
+template doWhile(a: expr, b: stmt): stmt =
+  while true:
+    b
+    if not a: break
+
 proc del*[A, B](t: var Table[A, B], key: A) =
   ## deletes `key` from hash table `t`.
-  let index = rawGet(t, key)
-  if index >= 0:
-    t.data[index].slot = seDeleted
+  var hc: THash
+  var i = rawGet(t, key, hc)
+  let msk = high(t.data)
+  if i >= 0:
+    t.data[i].hcode = 0
     dec(t.counter)
+    while true:         # KnuthV3 Algo6.4R adapted for i=i+1 instead of i=i-1
+      var j = i         # The correctness of this depends on (h+1) in nextTry,
+      var r = j         # though may be adaptable to other simple sequences.
+      t.data[i].hcode = 0              # mark current EMPTY
+      doWhile ((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
+        i = (i + 1) and msk            # increment mod table size
+        if isEmpty(t.data[i].hcode):   # end of collision cluster; So all done
+          return
+        r = t.data[i].hcode and msk    # "home" location of key@i
+      shallowCopy(t.data[j], t.data[i]) # data[j] will be marked EMPTY next loop
 
 proc initTable*[A, B](initialSize=64): Table[A, B] =
   ## creates a new hash table that is empty.
   ##
   ## `initialSize` needs to be a power of two. If you need to accept runtime
   ## values for this you could use the ``nextPowerOfTwo`` proc from the
-  ## `math <math.html>`_ module.
+  ## `math <math.html>`_ module or the ``rightSize`` proc from this module.
   assert isPowerOfTwo(initialSize)
   result.counter = 0
   newSeq(result.data, initialSize)
@@ -234,7 +313,7 @@ proc initTable*[A, B](initialSize=64): Table[A, B] =
 proc toTable*[A, B](pairs: openArray[tuple[key: A, 
                     val: B]]): Table[A, B] =
   ## creates a new hash table that contains the given `pairs`.
-  result = initTable[A, B](nextPowerOfTwo(pairs.len+10))
+  result = initTable[A, B](rightSize(pairs.len))
   for key, val in items(pairs): result[key] = val
 
 template dollarImpl(): stmt {.dirty.} =
@@ -252,7 +331,7 @@ template dollarImpl(): stmt {.dirty.} =
 proc `$`*[A, B](t: Table[A, B]): string =
   ## The `$` operator for hash tables.
   dollarImpl()
-  
+
 template equalsImpl() =
   if s.counter == t.counter:
     # different insertion orders mean different 'data' seqs, so we have
@@ -262,10 +341,10 @@ template equalsImpl() =
       if not t.hasKey(key): return false
       if t[key] != val: return false
     return true
-  
+
 proc `==`*[A, B](s, t: Table[A, B]): bool =
   equalsImpl()
-  
+
 proc indexBy*[A, B, C](collection: A, index: proc(x: B): C): Table[C, B] =
   ## Index the collection with the proc provided.
   # TODO: As soon as supported, change collection: A to collection: A[B]
@@ -280,28 +359,28 @@ proc len*[A, B](t: TableRef[A, B]): int =
 iterator pairs*[A, B](t: TableRef[A, B]): tuple[key: A, val: B] =
   ## iterates over any (key, value) pair in the table `t`.
   for h in 0..high(t.data):
-    if t.data[h].slot == seFilled: yield (t.data[h].key, t.data[h].val)
+    if isFilled(t.data[h].hcode): yield (t.data[h].key, t.data[h].val)
 
 iterator mpairs*[A, B](t: TableRef[A, B]): tuple[key: A, val: var B] =
   ## iterates over any (key, value) pair in the table `t`. The values
   ## can be modified.
   for h in 0..high(t.data):
-    if t.data[h].slot == seFilled: yield (t.data[h].key, t.data[h].val)
+    if isFilled(t.data[h].hcode): yield (t.data[h].key, t.data[h].val)
 
 iterator keys*[A, B](t: TableRef[A, B]): A =
   ## iterates over any key in the table `t`.
   for h in 0..high(t.data):
-    if t.data[h].slot == seFilled: yield t.data[h].key
+    if isFilled(t.data[h].hcode): yield t.data[h].key
 
 iterator values*[A, B](t: TableRef[A, B]): B =
   ## iterates over any value in the table `t`.
   for h in 0..high(t.data):
-    if t.data[h].slot == seFilled: yield t.data[h].val
+    if isFilled(t.data[h].hcode): yield t.data[h].val
 
 iterator mvalues*[A, B](t: TableRef[A, B]): var B =
   ## iterates over any value in the table `t`. The values can be modified.
   for h in 0..high(t.data):
-    if t.data[h].slot == seFilled: yield t.data[h].val
+    if isFilled(t.data[h].hcode): yield t.data[h].val
 
 proc `[]`*[A, B](t: TableRef[A, B], key: A): B =
   ## retrieves the value at ``t[key]``. If `key` is not in `t`,
@@ -315,6 +394,15 @@ proc mget*[A, B](t: TableRef[A, B], key: A): var B =
   ## If `key` is not in `t`, the ``EInvalidKey`` exception is raised.
   t[].mget(key)
 
+proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, val: B): var B =
+  ## retrieves value at ``t[key]`` or puts ``val`` if not present, either way
+  ## returning a value which can be modified.
+  t[].mgetOrPut(key, val)
+
+proc hasKeyOrPut*[A, B](t: var TableRef[A, B], key: A, val: B): bool =
+  ## returns true iff `key` is in the table, otherwise inserts `value`.
+  t[].hasKeyOrPut(key, val)
+
 proc hasKey*[A, B](t: TableRef[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   result = t[].hasKey(key)
@@ -326,7 +414,7 @@ proc `[]=`*[A, B](t: TableRef[A, B], key: A, val: B) =
 proc add*[A, B](t: TableRef[A, B], key: A, val: B) =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
   t[].add(key, val)
-  
+
 proc del*[A, B](t: TableRef[A, B], key: A) =
   ## deletes `key` from hash table `t`.
   t[].del(key)
@@ -347,7 +435,7 @@ proc `$`*[A, B](t: TableRef[A, B]): string =
 proc `==`*[A, B](s, t: TableRef[A, B]): bool =
   if isNil(s): result = isNil(t)
   elif isNil(t): result = false
-  else: result = equalsImpl()
+  else: equalsImpl()
 
 proc newTableFrom*[A, B, C](collection: A, index: proc(x: B): C): TableRef[C, B] =
   ## Index the collection with the proc provided.
@@ -360,7 +448,7 @@ proc newTableFrom*[A, B, C](collection: A, index: proc(x: B): C): TableRef[C, B]
 
 type
   OrderedKeyValuePair[A, B] = tuple[
-    slot: SlotEnum, next: int, key: A, val: B]
+    hcode: THash, next: int, key: A, val: B]
   OrderedKeyValuePairSeq[A, B] = seq[OrderedKeyValuePair[A, B]]
   OrderedTable* {.
       myShallow.}[A, B] = object ## table that remembers insertion order
@@ -378,7 +466,7 @@ template forAllOrderedPairs(yieldStmt: stmt) {.dirty, immediate.} =
   var h = t.first
   while h >= 0:
     var nxt = t.data[h].next
-    if t.data[h].slot == seFilled: yieldStmt
+    if isFilled(t.data[h].hcode): yieldStmt
     h = nxt
 
 iterator pairs*[A, B](t: OrderedTable[A, B]): tuple[key: A, val: B] =
@@ -409,7 +497,13 @@ iterator mvalues*[A, B](t: var OrderedTable[A, B]): var B =
   forAllOrderedPairs:
     yield t.data[h].val
 
-proc rawGet[A, B](t: OrderedTable[A, B], key: A): int =
+proc rawGetKnownHC[A, B](t: OrderedTable[A, B], key: A, hc: THash): int =
+  rawGetKnownHCImpl()
+
+proc rawGetDeep[A, B](t: OrderedTable[A, B], key: A, hc: var THash): int {.inline.} =
+  rawGetDeepImpl()
+
+proc rawGet[A, B](t: OrderedTable[A, B], key: A, hc: var THash): int =
   rawGetImpl()
 
 proc `[]`*[A, B](t: OrderedTable[A, B], key: A): B =
@@ -417,23 +511,26 @@ proc `[]`*[A, B](t: OrderedTable[A, B], key: A): B =
   ## default empty value for the type `B` is returned
   ## and no exception is raised. One can check with ``hasKey`` whether the key
   ## exists.
-  var index = rawGet(t, key)
+  var hc: THash
+  var index = rawGet(t, key, hc)
   if index >= 0: result = t.data[index].val
 
 proc mget*[A, B](t: var OrderedTable[A, B], key: A): var B =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``EInvalidKey`` exception is raised.
-  var index = rawGet(t, key)
+  var hc: THash
+  var index = rawGet(t, key, hc)
   if index >= 0: result = t.data[index].val
   else: raise newException(KeyError, "key not found: " & $key)
 
 proc hasKey*[A, B](t: OrderedTable[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
-  result = rawGet(t, key) >= 0
+  var hc: THash
+  result = rawGet(t, key, hc) >= 0
 
 proc rawInsert[A, B](t: var OrderedTable[A, B], 
                      data: var OrderedKeyValuePairSeq[A, B],
-                     key: A, val: B) =
+                     key: A, val: B, hc: THash, h: THash) =
   rawInsertImpl()
   data[h].next = -1
   if t.first < 0: t.first = h
@@ -446,12 +543,13 @@ proc enlarge[A, B](t: var OrderedTable[A, B]) =
   var h = t.first
   t.first = -1
   t.last = -1
-  while h >= 0:
-    var nxt = t.data[h].next
-    if t.data[h].slot == seFilled: 
-      rawInsert(t, n, t.data[h].key, t.data[h].val)
-    h = nxt
   swap(t.data, n)
+  while h >= 0:
+    var nxt = n[h].next
+    if isFilled(n[h].hcode):
+      var j = -1 - rawGetKnownHC(t, n[h].key, n[h].hcode)
+      rawInsert(t, t.data, n[h].key, n[h].val, n[h].hcode, j)
+    h = nxt
 
 proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
   ## puts a (key, value)-pair into `t`.
@@ -461,12 +559,21 @@ proc add*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
   addImpl()
 
+proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): var B =
+  ## retrieves value at ``t[key]`` or puts ``value`` if not present, either way
+  ## returning a value which can be modified.
+  mgetOrPutImpl()
+
+proc hasKeyOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): bool =
+  ## returns true iff `key` is in the table, otherwise inserts `value`.
+  hasKeyOrPutImpl()
+
 proc initOrderedTable*[A, B](initialSize=64): OrderedTable[A, B] =
   ## creates a new ordered hash table that is empty.
   ##
   ## `initialSize` needs to be a power of two. If you need to accept runtime
   ## values for this you could use the ``nextPowerOfTwo`` proc from the
-  ## `math <math.html>`_ module.
+  ## `math <math.html>`_ module or the ``rightSize`` proc from this module.
   assert isPowerOfTwo(initialSize)
   result.counter = 0
   result.first = -1
@@ -476,7 +583,7 @@ proc initOrderedTable*[A, B](initialSize=64): OrderedTable[A, B] =
 proc toOrderedTable*[A, B](pairs: openArray[tuple[key: A, 
                            val: B]]): OrderedTable[A, B] =
   ## creates a new ordered hash table that contains the given `pairs`.
-  result = initOrderedTable[A, B](nextPowerOfTwo(pairs.len+10))
+  result = initOrderedTable[A, B](rightSize(pairs.len))
   for key, val in items(pairs): result[key] = val
 
 proc `$`*[A, B](t: OrderedTable[A, B]): string =
@@ -537,7 +644,7 @@ template forAllOrderedPairs(yieldStmt: stmt) {.dirty, immediate.} =
   var h = t.first
   while h >= 0:
     var nxt = t.data[h].next
-    if t.data[h].slot == seFilled: yieldStmt
+    if isFilled(t.data[h].hcode): yieldStmt
     h = nxt
 
 iterator pairs*[A, B](t: OrderedTableRef[A, B]): tuple[key: A, val: B] =
@@ -580,6 +687,15 @@ proc mget*[A, B](t: OrderedTableRef[A, B], key: A): var B =
   ## If `key` is not in `t`, the ``EInvalidKey`` exception is raised.
   result = t[].mget(key)
 
+proc mgetOrPut*[A, B](t: OrderedTableRef[A, B], key: A, val: B): var B =
+  ## retrieves value at ``t[key]`` or puts ``val`` if not present, either way
+  ## returning a value which can be modified.
+  result = t[].mgetOrPut(key, val)
+
+proc hasKeyOrPut*[A, B](t: var OrderedTableRef[A, B], key: A, val: B): bool =
+  ## returns true iff `key` is in the table, otherwise inserts `val`.
+  result = t[].hasKeyOrPut(key, val)
+
 proc hasKey*[A, B](t: OrderedTableRef[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   result = t[].hasKey(key)
@@ -597,14 +713,14 @@ proc newOrderedTable*[A, B](initialSize=64): OrderedTableRef[A, B] =
   ##
   ## `initialSize` needs to be a power of two. If you need to accept runtime
   ## values for this you could use the ``nextPowerOfTwo`` proc from the
-  ## `math <math.html>`_ module.
+  ## `math <math.html>`_ module or the ``rightSize`` proc from this module.
   new(result)
   result[] = initOrderedTable[A, B]()
 
 proc newOrderedTable*[A, B](pairs: openArray[tuple[key: A, 
                            val: B]]): OrderedTableRef[A, B] =
   ## creates a new ordered hash table that contains the given `pairs`.
-  result = newOrderedTable[A, B](nextPowerOfTwo(pairs.len+10))
+  result = newOrderedTable[A, B](rightSize(pairs.len))
   for key, val in items(pairs): result[key] = val
 
 proc `$`*[A, B](t: OrderedTableRef[A, B]): string =
@@ -665,7 +781,7 @@ proc rawGet[A](t: CountTable[A], key: A): int =
   while t.data[h].val != 0:
     if t.data[h].key == key: return h
     h = nextTry(h, high(t.data))
-  result = -1
+  result = -1 - h                   # < 0 => MISSING; insert idx = -1 - result
 
 proc `[]`*[A](t: CountTable[A], key: A): int =
   ## retrieves the value at ``t[key]``. If `key` is not in `t`,
@@ -702,21 +818,27 @@ proc enlarge[A](t: var CountTable[A]) =
 proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   ## puts a (key, value)-pair into `t`. `val` has to be positive.
   assert val > 0
-  putImpl()
+  var h = rawGet(t, key)
+  if h >= 0:
+    t.data[h].val = val
+  else:
+    h = -1 - h
+    t.data[h].key = key
+    t.data[h].val = val
 
 proc initCountTable*[A](initialSize=64): CountTable[A] =
   ## creates a new count table that is empty.
   ##
   ## `initialSize` needs to be a power of two. If you need to accept runtime
   ## values for this you could use the ``nextPowerOfTwo`` proc from the
-  ## `math <math.html>`_ module.
+  ## `math <math.html>`_ module or the ``rightSize`` proc in this module.
   assert isPowerOfTwo(initialSize)
   result.counter = 0
   newSeq(result.data, initialSize)
 
 proc toCountTable*[A](keys: openArray[A]): CountTable[A] =
   ## creates a new count table with every key in `keys` having a count of 1.
-  result = initCountTable[A](nextPowerOfTwo(keys.len+10))
+  result = initCountTable[A](rightSize(keys.len))
   for key in items(keys): result[key] = 1
 
 proc `$`*[A](t: CountTable[A]): string =
@@ -827,13 +949,13 @@ proc newCountTable*[A](initialSize=64): CountTableRef[A] =
   ##
   ## `initialSize` needs to be a power of two. If you need to accept runtime
   ## values for this you could use the ``nextPowerOfTwo`` proc from the
-  ## `math <math.html>`_ module.
+  ## `math <math.html>`_ module or the ``rightSize`` method in this module.
   new(result)
   result[] = initCountTable[A](initialSize)
 
 proc newCountTable*[A](keys: openArray[A]): CountTableRef[A] =
   ## creates a new count table with every key in `keys` having a count of 1.
-  result = newCountTable[A](nextPowerOfTwo(keys.len+10))
+  result = newCountTable[A](rightSize(keys.len))
   for key in items(keys): result[key] = 1
 
 proc `$`*[A](t: CountTableRef[A]): string =

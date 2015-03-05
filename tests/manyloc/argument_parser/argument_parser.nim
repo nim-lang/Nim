@@ -302,7 +302,7 @@ template build_specification_lookup():
   ## Returns the table used to keep pointers to all of the specifications.
   var result {.gensym.}: OrderedTable[string, ptr Tparameter_specification]
   result = initOrderedTable[string, ptr Tparameter_specification](
-    nextPowerOfTwo(expected.len))
+    tables.rightSize(expected.len))
   for i in 0..expected.len-1:
     for param_to_detect in expected[i].names:
       if result.hasKey(param_to_detect):

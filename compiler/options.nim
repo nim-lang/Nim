@@ -283,19 +283,19 @@ when noTimeMachine:
       var p = startProcess("/usr/bin/tmutil", args = ["addexclusion", dir])
       discard p.waitForExit
       p.close
-    except E_Base, EOS:
+    except Exception:
       discard
 
-proc completeGeneratedFilePath*(f: string, createSubDir: bool = true): string = 
+proc completeGeneratedFilePath*(f: string, createSubDir: bool = true): string =
   var (head, tail) = splitPath(f)
   #if len(head) > 0: head = removeTrailingDirSep(shortenDir(head & dirSep))
   var subdir = getGeneratedPath() # / head
   if createSubDir:
-    try: 
+    try:
       createDir(subdir)
       when noTimeMachine:
        excludeDirFromTimeMachine(subdir)
-    except OSError: 
+    except OSError:
       writeln(stdout, "cannot create directory: " & subdir)
       quit(1)
   result = joinPath(subdir, tail)

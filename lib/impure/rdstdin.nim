@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -12,6 +12,8 @@
 ## (e.g. you can navigate with the arrow keys). On Windows ``system.readLine``
 ## is used. This suffices because Windows' console already provides the 
 ## wanted functionality.
+
+{.deadCodeElim: on.}
 
 when defined(Windows):
   proc readLineFromStdin*(prompt: string): TaintedString {.
@@ -31,9 +33,31 @@ when defined(Windows):
     stdout.write(prompt)
     result = readLine(stdin, line)
 
+  proc readPasswordFromStdin*(prompt: string, password: var TaintedString):
+                              bool {.tags: [ReadIOEffect, WriteIOEffect].} =
+    ## Reads a `password` from stdin without printing it. `password` must not
+    ## be ``nil``! Returns ``false`` if the end of the file has been reached,
+    ## ``true`` otherwise.
+    proc getch(): cint {.header: "<conio.h>", importc: "_getch".}
+
+    password.setLen(0)
+    var c: char
+    stdout.write(prompt)
+    while true:
+      c = getch().char
+      case c
+      of '\r', chr(0xA):
+        break
+      of '\b':
+        password.setLen(password.len - 1)
+      else:
+        password.add(c)
+    stdout.write "\n"
+    # TODO: How to detect EOF on Windows?
+
 else:
-  import readline, history
-    
+  import readline, history, termios, unsigned
+
   proc readLineFromStdin*(prompt: string): TaintedString {.
                           tags: [ReadIOEffect, WriteIOEffect].} =
     var buffer = readline.readLine(prompt)
@@ -55,8 +79,26 @@ else:
     result = true
 
   # initialization:
-  # disable auto-complete: 
+  # disable auto-complete:
   proc doNothing(a, b: cint): cint {.cdecl, procvar.} = discard
-  
+
   discard readline.bind_key('\t'.ord, doNothing)
 
+  proc readPasswordFromStdin*(prompt: string, password: var TaintedString):
+                              bool {.tags: [ReadIOEffect, WriteIOEffect].} =
+    password.setLen(0)
+    let fd = stdin.getFileHandle()
+    var cur, old: Termios
+    discard fd.tcgetattr(cur.addr)
+    old = cur
+    cur.lflag = cur.lflag and not Tcflag(ECHO)
+    discard fd.tcsetattr(TCSADRAIN, cur.addr)
+    stdout.write prompt
+    result = stdin.readLine(password)
+    stdout.write "\n"
+    discard fd.tcsetattr(TCSADRAIN, old.addr)
+
+proc readPasswordFromStdin*(prompt: string): TaintedString =
+  ## Reads a password from stdin without printing it.
+  result = TaintedString("")
+  discard readPasswordFromStdin(prompt, result)

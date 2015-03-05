@@ -28,7 +28,7 @@ Compiler Usage
 
 Command line switches
 ---------------------
-Basic command line switches are: 
+Basic command line switches are:
 
 Usage:
 
@@ -53,21 +53,16 @@ Name                             Description
 ==========================       ============================================
 CannotOpenFile                   Some file not essential for the compiler's
                                  working could not be opened.
-OctalEscape                      The code contains an unsupported octal 
+OctalEscape                      The code contains an unsupported octal
                                  sequence.
 Deprecated                       The code uses a deprecated symbol.
 ConfigDeprecated                 The project makes use of a deprecated config
                                  file.
-SmallLshouldNotBeUsed            The letter 'l' should not be used as an 
+SmallLshouldNotBeUsed            The letter 'l' should not be used as an
                                  identifier.
-AnalysisLoophole                 The thread analysis was incomplete due to
-                                 an indirect call.
-DifferentHeaps                   The code mixes different local heaps in a
-                                 very dangerous way.
-WriteToForeignHeap               The code contains a threading error. 
-EachIdentIsTuple                 The code contains a confusing ``var`` 
+EachIdentIsTuple                 The code contains a confusing ``var``
                                  declaration.
-ShadowIdent                      A local variable shadows another local 
+ShadowIdent                      A local variable shadows another local
                                  variable of an outer scope.
 User                             Some user defined warning.
 ==========================       ============================================
@@ -107,7 +102,7 @@ activate `SSL sockets <sockets.html>`_.
 Configuration files
 -------------------
 
-**Note:** The *project file name* is the name of the ``.nim`` file that is 
+**Note:** The *project file name* is the name of the ``.nim`` file that is
 passed as a command line argument to the compiler.
 
 
@@ -123,9 +118,9 @@ directories (in this order; later files overwrite previous settings):
 
 Command line settings have priority over configuration file settings.
 
-The default build of a project is a `debug build`:idx:. To compile a 
+The default build of a project is a `debug build`:idx:. To compile a
 `release build`:idx: define the ``release`` symbol::
-  
+
   nim c -d:release myproject.nim
 
 
@@ -138,8 +133,8 @@ found an ambiguity error is produced.
 
 ``nim dump`` shows the contents of the PATH.
 
-However before the PATH is used the current directory is checked for the 
-file's existance. So if PATH contains ``$lib`` and ``$lib/bar`` and the 
+However before the PATH is used the current directory is checked for the
+file's existence. So if PATH contains ``$lib`` and ``$lib/bar`` and the
 directory structure looks like this::
 
   $lib/x.nim
@@ -172,14 +167,14 @@ Compilation cache
 
 **Warning**: The compilation cache is still highly experimental!
 
-The ``nimcache`` directory may also contain so called `rod`:idx: 
+The ``nimcache`` directory may also contain so called `rod`:idx:
 or `symbol files`:idx:. These files are pre-compiled modules that are used by
 the compiler to perform `incremental compilation`:idx:. This means that only
 modules that have changed since the last compilation (or the modules depending
-on them etc.) are re-compiled. However, per default no symbol files are 
+on them etc.) are re-compiled. However, per default no symbol files are
 generated; use the ``--symbolFiles:on`` command line switch to activate them.
 
-Unfortunately due to technical reasons the ``--symbolFiles:on`` needs 
+Unfortunately due to technical reasons the ``--symbolFiles:on`` needs
 to *aggregate* some generated C code. This means that the resulting executable
 might contain some cruft even when dead code elimination is turned on. So
 the final release build should be done with ``--symbolFiles:off``.
@@ -196,15 +191,15 @@ To cross compile, use for example::
 
   nim c --cpu:i386 --os:linux --compile_only --gen_script myproject.nim
 
-Then move the C code and the compile script ``compile_myproject.sh`` to your 
+Then move the C code and the compile script ``compile_myproject.sh`` to your
 Linux i386 machine and run the script.
 
 Another way is to make Nim invoke a cross compiler toolchain::
-  
+
   nim c --cpu:arm --os:linux myproject.nim
-  
-For cross compilation, the compiler invokes a C compiler named 
-like ``$cpu.$os.$cc`` (for example arm.linux.gcc) and the configuration 
+
+For cross compilation, the compiler invokes a C compiler named
+like ``$cpu.$os.$cc`` (for example arm.linux.gcc) and the configuration
 system is used to provide meaningful defaults. For example for ``ARM`` your
 configuration file should contain something like::
 
@@ -216,18 +211,18 @@ configuration file should contain something like::
 DLL generation
 ==============
 
-Nim supports the generation of DLLs. However, there must be only one 
+Nim supports the generation of DLLs. However, there must be only one
 instance of the GC per process/address space. This instance is contained in
 ``nimrtl.dll``. This means that every generated Nim DLL depends
 on ``nimrtl.dll``. To generate the "nimrtl.dll" file, use the command::
-  
+
   nim c -d:release lib/nimrtl.nim
 
 To link against ``nimrtl.dll`` use the command::
 
   nim c -d:useNimRtl myprog.nim
 
-**Note**: Currently the creation of ``nimrtl.dll`` with thread support has 
+**Note**: Currently the creation of ``nimrtl.dll`` with thread support has
 never been tested and is unlikely to work!
 
 
@@ -247,10 +242,10 @@ Define               Effect
                      version.
 ``useFork``          Makes ``osproc`` use ``fork`` instead of ``posix_spawn``.
 ``useNimRtl``        Compile and link against ``nimrtl.dll``.
-``useMalloc``        Makes Nim use C's `malloc`:idx: instead of Nim's 
+``useMalloc``        Makes Nim use C's `malloc`:idx: instead of Nim's
                      own memory manager. This only works with ``gc:none``.
-``useRealtimeGC``    Enables support of Nim's GC for *soft* realtime 
-                     systems. See the documentation of the `gc <gc.html>`_ 
+``useRealtimeGC``    Enables support of Nim's GC for *soft* realtime
+                     systems. See the documentation of the `gc <gc.html>`_
                      for further information.
 ``nodejs``           The JS target is actually ``node.js``.
 ``ssl``              Enables OpenSSL support for the sockets module.
@@ -306,31 +301,31 @@ encloses the header file in ``""`` in the generated C code.
 
 IncompleteStruct pragma
 -----------------------
-The ``incompleteStruct`` pragma tells the compiler to not use the 
+The ``incompleteStruct`` pragma tells the compiler to not use the
 underlying C ``struct`` in a ``sizeof`` expression:
 
 .. code-block:: Nim
   type
-    DIR* {.importc: "DIR", header: "<dirent.h>", 
+    DIR* {.importc: "DIR", header: "<dirent.h>",
            final, pure, incompleteStruct.} = object
 
 
 Compile pragma
 --------------
-The ``compile`` pragma can be used to compile and link a C/C++ source file 
-with the project: 
+The ``compile`` pragma can be used to compile and link a C/C++ source file
+with the project:
 
 .. code-block:: Nim
   {.compile: "myfile.cpp".}
 
-**Note**: Nim computes a CRC checksum and only recompiles the file if it 
+**Note**: Nim computes a CRC checksum and only recompiles the file if it
 has changed. You can use the ``-f`` command line option to force recompilation
 of the file.
 
 
 Link pragma
 -----------
-The ``link`` pragma can be used to link an additional file with the project: 
+The ``link`` pragma can be used to link an additional file with the project:
 
 .. code-block:: Nim
   {.link: "myfile.o".}
@@ -367,7 +362,7 @@ embed parameters from an external command at compile time:
 
 Emit pragma
 -----------
-The ``emit`` pragma can be used to directly affect the output of the 
+The ``emit`` pragma can be used to directly affect the output of the
 compiler's code generator. So it makes your code unportable to other code
 generators/backends. Its usage is highly discouraged! However, it can be
 extremely useful for interfacing with `C++`:idx: or `Objective C`:idx: code.
@@ -402,7 +397,7 @@ to know all the details described here.
 
 Similar to the `importc pragma for C <manual.html#importc-pragma>`_, the
 ``importcpp`` pragma can be used to import `C++`:idx: methods or C++ symbols
-in general. The generated code then uses the C++ method calling 
+in general. The generated code then uses the C++ method calling
 syntax: ``obj->method(arg)``.  In combination with the ``header`` and ``emit``
 pragmas this allows *sloppy* interfacing with libraries written in C++:
 
@@ -433,7 +428,7 @@ pragmas this allows *sloppy* interfacing with libraries written in C++:
   proc run(device: IrrlichtDevice): bool {.
     header: irr, importcpp: "#.run(@)".}
 
-The compiler needs to be told to generate C++ (command ``cpp``) for 
+The compiler needs to be told to generate C++ (command ``cpp``) for
 this to work. The conditional symbol ``cpp`` is defined when the compiler
 emits C++ code.
 
@@ -574,7 +569,7 @@ language for object types:
   type
     StdMap {.importcpp: "std::map", header: "<map>".} [K, V] = object
   proc `[]=`[K, V](this: var StdMap[K, V]; key: K; val: V) {.
-    importcpp: "#[#] = #".}
+    importcpp: "#[#] = #", header: "<map>".}
 
   var x: StdMap[cint, cdouble]
   x[6] = 91.4
@@ -631,7 +626,7 @@ allows *sloppy* interfacing with libraries written in Objective C:
   g.greet(12, 34)
   g.free()
 
-The compiler needs to be told to generate Objective C (command ``objc``) for 
+The compiler needs to be told to generate Objective C (command ``objc``) for
 this to work. The conditional symbol ``objc`` is defined when the compiler
 emits Objective C code.
 
@@ -640,7 +635,7 @@ CodegenDecl pragma
 ------------------
 
 The ``codegenDecl`` pragma can be used to directly influence Nim's code
-generator. It receives a format string that determines how the variable or 
+generator. It receives a format string that determines how the variable or
 proc is declared in the generated code:
 
 .. code-block:: nim
@@ -660,7 +655,7 @@ debugging:
 
 .. code-block:: nim
   {.injectStmt: gcInvariants().}
-  
+
   # ... complex code here that produces crashes ...
 
 
@@ -709,7 +704,7 @@ in C/C++).
 DynlibOverride
 ==============
 
-By default Nim's ``dynlib`` pragma causes the compiler to generate 
+By default Nim's ``dynlib`` pragma causes the compiler to generate
 ``GetProcAddress`` (or their Unix counterparts)
 calls to bind to a DLL. With the ``dynlibOverride`` command line switch this
 can be prevented and then via ``--passL`` the static library can be linked
@@ -748,15 +743,15 @@ Nim interactive mode
 ====================
 
 The Nim compiler supports an interactive mode. This is also known as
-a `REPL`:idx: (*read eval print loop*). If Nim has been built with the 
+a `REPL`:idx: (*read eval print loop*). If Nim has been built with the
 ``-d:useGnuReadline`` switch, it uses the GNU readline library for terminal
-input management. To start Nim in interactive mode use the command 
+input management. To start Nim in interactive mode use the command
 ``nim i``. To quit use the ``quit()`` command. To determine whether an input
 line is an incomplete statement to be continued these rules are used:
 
 1. The line ends with ``[-+*/\\<>!\?\|%&$@~,;:=#^]\s*$`` (operator symbol followed by optional whitespace).
 2. The line starts with a space (indentation).
-3. The line is within a triple quoted string literal. However, the detection 
+3. The line is within a triple quoted string literal. However, the detection
    does not work if the line contains more than one ``"""``.
 
 
@@ -768,11 +763,11 @@ for 16bit micro controllers is feasible. Use the `standalone`:idx: target
 (``--os:standalone``) for a bare bones standard library that lacks any
 OS features.
 
-To make the compiler output code for a 16bit target use the ``--cpu:avr`` 
+To make the compiler output code for a 16bit target use the ``--cpu:avr``
 target.
 
 For example, to generate code for an `AVR`:idx: processor use this command::
-  
+
   nim c --cpu:avr --os:standalone --deadCodeElim:on --genScript x.nim
 
 For the ``standalone`` target one needs to provide
@@ -784,7 +779,7 @@ implementation.
 Nim for realtime systems
 ========================
 
-See the documentation of Nim's soft realtime `GC <gc.html>`_ for further 
+See the documentation of Nim's soft realtime `GC <gc.html>`_ for further
 information.
 
 
@@ -847,7 +842,7 @@ objects as `shallow`:idx:\:
   var s = "abc"
   shallow(s) # mark 's' as shallow string
   var x = s  # now might not copy the string!
-  
+
 Usage of ``shallow`` is always safe once you know the string won't be modified
 anymore, similar to Ruby's `freeze`:idx:.
 

@@ -132,7 +132,7 @@ proc rawFileSize(file: File): int =
   discard fseek(file, clong(oldPos), 0)
 
 proc readAllFile(file: File, len: int): string =
-  # We aquire the filesize beforehand and hope it doesn't change.
+  # We acquire the filesize beforehand and hope it doesn't change.
   # Speeds things up.
   result = newString(int(len))
   if readBuffer(file, addr(result[0]), int(len)) != len:
@@ -145,8 +145,8 @@ proc readAllFile(file: File): string =
 proc readAll(file: File): TaintedString = 
   # Separate handling needed because we need to buffer when we
   # don't know the overall length of the File.
-  var len = rawFileSize(file)
-  if len >= 0:
+  let len = if file != stdin: rawFileSize(file) else: -1
+  if len > 0:
     result = readAllFile(file, len).TaintedString
   else:
     result = readAllBuffer(file).TaintedString
@@ -183,11 +183,17 @@ proc rawEchoNL() {.inline, compilerproc.} = write(stdout, "\n")
 when (defined(windows) and not defined(useWinAnsi)) or defined(nimdoc):
   include "system/widestrs"
 
-when defined(windows) and not defined(useWinAnsi):  
-  proc wfopen(filename, mode: WideCString): pointer {.
-    importc: "_wfopen", nodecl.}
-  proc wfreopen(filename, mode: WideCString, stream: File): File {.
-    importc: "_wfreopen", nodecl.}
+when defined(windows) and not defined(useWinAnsi):
+  when defined(cpp):
+    proc wfopen(filename, mode: WideCString): pointer {.
+      importcpp: "_wfopen((const wchar_t*)#, (const wchar_t*)#)", nodecl.}
+    proc wfreopen(filename, mode: WideCString, stream: File): File {.
+      importcpp: "_wfreopen((const wchar_t*)#, (const wchar_t*)#, #)", nodecl.}
+  else:
+    proc wfopen(filename, mode: WideCString): pointer {.
+      importc: "_wfopen", nodecl.}
+    proc wfreopen(filename, mode: WideCString, stream: File): File {.
+      importc: "_wfreopen", nodecl.}
 
   proc fopen(filename, mode: cstring): pointer =
     var f = newWideCString(filename)
@@ -240,14 +246,14 @@ proc fwrite(buf: pointer, size, n: int, f: File): int {.
 proc readBuffer(f: File, buffer: pointer, len: int): int =
   result = fread(buffer, 1, len, f)
 
-proc readBytes(f: File, a: var openArray[int8], start, len: int): int =
+proc readBytes(f: File, a: var openArray[int8|uint8], start, len: int): int =
   result = readBuffer(f, addr(a[start]), len)
 
 proc readChars(f: File, a: var openArray[char], start, len: int): int =
   result = readBuffer(f, addr(a[start]), len)
 
 {.push stackTrace:off, profiler:off.}
-proc writeBytes(f: File, a: openArray[int8], start, len: int): int =
+proc writeBytes(f: File, a: openArray[int8|uint8], start, len: int): int =
   var x = cast[ptr array[0..1000_000_000, int8]](a)
   result = writeBuffer(f, addr(x[start]), len)
 proc writeChars(f: File, a: openArray[char], start, len: int): int =

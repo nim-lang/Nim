@@ -13,9 +13,4 @@
   <p>Nimrod featured in Dr. Dobb's Journal</p>
 </a>
 
-<a class="news" href="news.html#Z2014-01-15-andreas-rumpf-s-talk-on-nimrod-at-strange-loop-2013-is-now-online">
-  <h4>Jan 15, 2014</h4>
-  <p>Andreas Rumpf's talk on Nimrod at Strange Loop 2013 is now online.</p>
-</a>
-
 <a href="news.html" class="blue">See All News...</a>

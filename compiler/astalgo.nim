@@ -130,8 +130,8 @@ proc skipConvAndClosure*(n: PNode): PNode =
 proc sameValue*(a, b: PNode): bool = 
   result = false
   case a.kind
-  of nkCharLit..nkInt64Lit: 
-    if b.kind in {nkCharLit..nkInt64Lit}: result = a.intVal == b.intVal
+  of nkCharLit..nkUInt64Lit: 
+    if b.kind in {nkCharLit..nkUInt64Lit}: result = a.intVal == b.intVal
   of nkFloatLit..nkFloat64Lit: 
     if b.kind in {nkFloatLit..nkFloat64Lit}: result = a.floatVal == b.floatVal
   of nkStrLit..nkTripleStrLit: 
@@ -145,13 +145,13 @@ proc leValue*(a, b: PNode): bool =
   # a <= b?
   result = false
   case a.kind
-  of nkCharLit..nkInt64Lit: 
-    if b.kind in {nkCharLit..nkInt64Lit}: result = a.intVal <= b.intVal
-  of nkFloatLit..nkFloat64Lit: 
+  of nkCharLit..nkUInt32Lit:
+    if b.kind in {nkCharLit..nkUInt32Lit}: result = a.intVal <= b.intVal
+  of nkFloatLit..nkFloat64Lit:
     if b.kind in {nkFloatLit..nkFloat64Lit}: result = a.floatVal <= b.floatVal
-  of nkStrLit..nkTripleStrLit: 
+  of nkStrLit..nkTripleStrLit:
     if b.kind in {nkStrLit..nkTripleStrLit}: result = a.strVal <= b.strVal
-  else: 
+  else:
     # don't raise an internal error for 'nimrod check':
     #InternalError(a.info, "leValue")
     discard
@@ -387,6 +387,9 @@ proc debugType(n: PType, maxRecDepth=100): PRope =
     if n.sym != nil: 
       app(result, " ")
       app(result, n.sym.name.s)
+    if n.kind in IntegralTypes and n.n != nil:
+      app(result, ", node: ")
+      app(result, debugTree(n.n, 2, maxRecDepth-1, renderType=true))
     if (n.kind != tyString) and (sonsLen(n) > 0) and maxRecDepth != 0:
       app(result, "(")
       for i in countup(0, sonsLen(n) - 1):
@@ -445,21 +448,21 @@ proc debugTree(n: PNode, indent: int, maxRecDepth: int;
 
 proc debug(n: PSym) =
   if n == nil:
-    writeln(stdout, "null")
+    msgWriteln("null")
   elif n.kind == skUnknown:
-    writeln(stdout, "skUnknown")
+    msgWriteln("skUnknown")
   else:
     #writeln(stdout, ropeToStr(symToYaml(n, 0, 1)))
-    writeln(stdout, "$1_$2: $3, $4, $5, $6" % [
+    msgWriteln("$1_$2: $3, $4, $5, $6" % [
       n.name.s, $n.id, flagsToStr(n.flags).ropeToStr, 
       flagsToStr(n.loc.flags).ropeToStr, lineInfoToStr(n.info).ropeToStr,
       $n.kind])
 
 proc debug(n: PType) = 
-  writeln(stdout, ropeToStr(debugType(n)))
+  msgWriteln(ropeToStr(debugType(n)))
 
 proc debug(n: PNode) = 
-  writeln(stdout, ropeToStr(debugTree(n, 0, 100)))
+  msgWriteln(ropeToStr(debugTree(n, 0, 100)))
 
 const 
   EmptySeq = @[]
@@ -678,9 +681,8 @@ proc initIdentIter(ti: var TIdentIter, tab: TStrTable, s: PIdent): PSym =
   else: result = nextIdentIter(ti, tab)
   
 proc nextIdentIter(ti: var TIdentIter, tab: TStrTable): PSym = 
-  var h, start: THash
-  h = ti.h and high(tab.data)
-  start = h
+  var h = ti.h and high(tab.data)
+  var start = h
   result = tab.data[h]
   while result != nil: 
     if result.name.id == ti.name.id: break 

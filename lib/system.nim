@@ -73,7 +73,7 @@ type
   expr* {.magic: Expr.} ## meta type to denote an expression (for templates)
   stmt* {.magic: Stmt.} ## meta type to denote a statement (for templates)
   typedesc* {.magic: TypeDesc.} ## meta type to denote a type description
-  void* {.magic: "VoidType".}   ## meta type to denote the absense of any type
+  void* {.magic: "VoidType".}   ## meta type to denote the absence of any type
   auto* = expr
   any* = distinct auto
 
@@ -124,7 +124,7 @@ proc declared*(x: expr): bool {.magic: "Defined", noSideEffect.}
   ## feature or not:
   ##
   ## .. code-block:: Nim
-  ##   when not defined(strutils.toUpper):
+  ##   when not declared(strutils.toUpper):
   ##     # provide our own toUpper proc here, because strutils is
   ##     # missing it.
 
@@ -343,10 +343,10 @@ type
     ##
     ## Each exception has to inherit from `Exception`. See the full `exception
     ## hierarchy`_.
-    parent: ref Exception     ## parent exception (can be used as a stack)
-    name: cstring             ## The exception's name is its Nim identifier.
-                              ## This field is filled automatically in the
-                              ## ``raise`` statement.
+    parent*: ref Exception ## parent exception (can be used as a stack)
+    name: cstring ## The exception's name is its Nim identifier.
+                  ## This field is filled automatically in the
+                  ## ``raise`` statement.
     msg* {.exportc: "message".}: string ## the exception's message. Not
                                         ## providing an exception message 
                                         ## is bad style.
@@ -357,7 +357,7 @@ type
     ##
     ## See the full `exception hierarchy`_.
   IOError* = object of SystemError ## \
-    ## Raised if an IO error occured.
+    ## Raised if an IO error occurred.
     ##
     ## See the full `exception hierarchy`_.
   OSError* = object of SystemError ## \
@@ -370,11 +370,11 @@ type
     ##
     ## See the full `exception hierarchy`_.
   ResourceExhaustedError* = object of SystemError ## \
-    ## Raised if a resource request could not be fullfilled.
+    ## Raised if a resource request could not be fulfilled.
     ##
     ## See the full `exception hierarchy`_.
   ArithmeticError* = object of Exception ## \
-    ## Raised if any kind of arithmetic error occured.
+    ## Raised if any kind of arithmetic error occurred.
     ##
     ## See the full `exception hierarchy`_.
   DivByZeroError* = object of ArithmeticError ## \
@@ -578,7 +578,7 @@ proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.}
 proc len*[I, T](x: array[I, T]): int {.magic: "LengthArray", noSideEffect.}
 proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
   ## returns the length of an array, an openarray, a sequence or a string.
-  ## This is rougly the same as ``high(T)-low(T)+1``, but its resulting type is
+  ## This is roughly the same as ``high(T)-low(T)+1``, but its resulting type is
   ## always an int.
 
 # set routines:
@@ -865,7 +865,7 @@ proc contains*[T](x: set[T], y: T): bool {.magic: "InSet", noSideEffect.}
   ## passes its arguments in reverse order.
 
 proc contains*[T](s: Slice[T], value: T): bool {.noSideEffect, inline.} =
-  ## Checks if `value` is withing the range of `s`; returns true iff
+  ## Checks if `value` is within the range of `s`; returns true iff
   ## `value >= s.a and value <= s.b`
   ##
   ## .. code-block:: Nim
@@ -1455,7 +1455,8 @@ template `>%` *(x, y: expr): expr {.immediate.} = y <% x
 
 proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
   ## The stringify operator for an integer argument. Returns `x`
-  ## converted to a decimal string.
+  ## converted to a decimal string. ``$`` is Nim's general way of
+  ## spelling `toString`:idx:.
 
 proc `$`*(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
   ## The stringify operator for an integer argument. Returns `x`
@@ -2098,17 +2099,16 @@ when not defined(nimrodVM) and hostOS != "standalone":
     ## returns an informative string about the GC's activity. This may be useful
     ## for tweaking.
     
-  # XXX mark these as 'locks: 0' once 0.10.0 has been released
-  proc GC_ref*[T](x: ref T) {.magic: "GCref", gcsafe.}
-  proc GC_ref*[T](x: seq[T]) {.magic: "GCref", gcsafe.}
-  proc GC_ref*(x: string) {.magic: "GCref", gcsafe.}
+  proc GC_ref*[T](x: ref T) {.magic: "GCref", benign.}
+  proc GC_ref*[T](x: seq[T]) {.magic: "GCref", benign.}
+  proc GC_ref*(x: string) {.magic: "GCref", benign.}
     ## marks the object `x` as referenced, so that it will not be freed until
     ## it is unmarked via `GC_unref`. If called n-times for the same object `x`,
     ## n calls to `GC_unref` are needed to unmark `x`. 
     
-  proc GC_unref*[T](x: ref T) {.magic: "GCunref", gcsafe.}
-  proc GC_unref*[T](x: seq[T]) {.magic: "GCunref", gcsafe.}
-  proc GC_unref*(x: string) {.magic: "GCunref", gcsafe.}
+  proc GC_unref*[T](x: ref T) {.magic: "GCunref", benign.}
+  proc GC_unref*[T](x: seq[T]) {.magic: "GCunref", benign.}
+  proc GC_unref*(x: string) {.magic: "GCunref", benign.}
     ## see the documentation of `GC_ref`.
 
 template accumulateResult*(iter: expr) =
@@ -2194,7 +2194,8 @@ elif hostOS != "standalone":
       inc(i)
   {.pop.}
 
-proc echo*(x: varargs[expr, `$`]) {.magic: "Echo", tags: [WriteIOEffect], benign.}
+proc echo*(x: varargs[expr, `$`]) {.magic: "Echo", tags: [WriteIOEffect],
+  benign, sideEffect.}
   ## Writes and flushes the parameters to the standard output.
   ##
   ## Special built-in that takes a variable number of arguments. Each argument
@@ -2247,14 +2248,9 @@ when not declared(sysFatal):
       e.msg = message & arg
       raise e
 
-when defined(nimlocks):
-  proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo", gcsafe, locks: 0.}
-    ## get type information for `x`. Ordinary code should not use this, but
-    ## the `typeinfo` module instead.
-else:
-  proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo", gcsafe.}
-    ## get type information for `x`. Ordinary code should not use this, but
-    ## the `typeinfo` module instead.
+proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo", benign.}
+  ## get type information for `x`. Ordinary code should not use this, but
+  ## the `typeinfo` module instead.
 
 {.push stackTrace: off.}
 proc abs*(x: int): int {.magic: "AbsI", noSideEffect.} =
@@ -2454,19 +2450,15 @@ when not defined(JS): #and not defined(NimrodVM):
       ## Returns ``false`` if the end of the file has been reached, ``true``
       ## otherwise. If ``false`` is returned `line` contains no new data.
 
-    when not defined(booting):
-      proc writeln*[Ty](f: File, x: varargs[Ty, `$`]) {.inline, 
-                               tags: [WriteIOEffect], gcsafe, locks: 0.}
-        ## writes the values `x` to `f` and then writes "\n".
-        ## May throw an IO exception.
-    else:
-      proc writeln*[Ty](f: File, x: varargs[Ty, `$`]) {.inline, 
-                               tags: [WriteIOEffect].}
+    proc writeln*[Ty](f: File, x: varargs[Ty, `$`]) {.inline, 
+                             tags: [WriteIOEffect], benign.}
+      ## writes the values `x` to `f` and then writes "\n".
+      ## May throw an IO exception.
 
     proc getFileSize*(f: File): int64 {.tags: [ReadIOEffect], benign.}
       ## retrieves the file size (in bytes) of `f`.
 
-    proc readBytes*(f: File, a: var openArray[int8], start, len: int): int {.
+    proc readBytes*(f: File, a: var openArray[int8|uint8], start, len: int): int {.
       tags: [ReadIOEffect], benign.}
       ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
       ## the actual number of bytes that have been read which may be less than
@@ -2484,7 +2476,7 @@ when not defined(JS): #and not defined(NimrodVM):
       ## the actual number of bytes that have been read which may be less than
       ## `len` (if not as many bytes are remaining), but not greater.
 
-    proc writeBytes*(f: File, a: openArray[int8], start, len: int): int {.
+    proc writeBytes*(f: File, a: openArray[int8|uint8], start, len: int): int {.
       tags: [WriteIOEffect], benign.}
       ## writes the bytes of ``a[start..start+len-1]`` to the file `f`. Returns
       ## the number of actual written bytes, which may be less than `len` in case
@@ -2575,7 +2567,7 @@ when not defined(JS): #and not defined(NimrodVM):
     initAllocator()
   when hasThreadSupport:
     include "system/syslocks"
-    include "system/threads"
+    when hostOS != "standalone": include "system/threads"
   elif not defined(nogc) and not defined(NimrodVM) and hostOS != "standalone":
     when not defined(useNimRtl) and not defined(createNimRtl): initStackBottom()
     initGC()
@@ -3134,9 +3126,17 @@ proc shallow*(s: var string) {.noSideEffect, inline.} =
     s.reserved = s.reserved or seqShallowFlag
 
 type
-  TNimrodNode {.final.} = object
-  PNimrodNode* {.magic: "PNimrodNode".} = ref TNimrodNode
-    ## represents a Nim AST node. Macros operate on this type.
+  NimNodeObj = object
+
+when defined(nimnode):
+  type
+    NimNode* {.magic: "PNimrodNode".} = ref NimNodeObj
+      ## represents a Nim AST node. Macros operate on this type.
+  {.deprecated: [PNimrodNode: NimNode].}
+else:
+  type
+    PNimrodNode* {.magic: "PNimrodNode".} = ref NimNodeObj
+      ## represents a Nim AST node. Macros operate on this type.
 
 when false:
   template eval*(blk: stmt): stmt =
@@ -3160,7 +3160,7 @@ when hostOS != "standalone":
       x[j+i] = item[j]
       inc(j)
 
-proc compiles*(x): bool {.magic: "Compiles", noSideEffect.} =
+proc compiles*(x: expr): bool {.magic: "Compiles", noSideEffect.} =
   ## Special compile-time procedure that checks whether `x` can be compiled
   ## without any semantic error.
   ## This can be used to check whether a type supports some operation:

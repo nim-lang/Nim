@@ -130,7 +130,7 @@ proc initControls() =
   
   pack_start(MainBox, TopMenu, False, False, 0)
 
-  # VPaned - Seperates the InputTextView and the OutputTextView
+  # VPaned - Separates the InputTextView and the OutputTextView
   var paned = vpaned_new()
   set_position(paned, 450)
   pack_start(MainBox, paned, True, True, 0)

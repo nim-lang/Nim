@@ -70,17 +70,20 @@ const
   STDIN_FILENO* = 0  ## File number of stdin;
   STDOUT_FILENO* = 1 ## File number of stdout;
 
-when defined(endb):
-  # to not break bootstrapping again ...
-  type
-    TDIR* {.importc: "DIR", header: "<dirent.h>",
-            final, pure, incompleteStruct.} = object
-      ## A type representing a directory stream.
-else:
-  type
-    TDIR* {.importc: "DIR", header: "<dirent.h>",
-            final, pure.} = object
-      ## A type representing a directory stream.
+  DT_UNKNOWN* = 0 ## Unknown file type.
+  DT_FIFO* = 1    ## Named pipe, or FIFO.
+  DT_CHR* = 2     ## Character device.
+  DT_DIR* = 4     ## Directory.
+  DT_BLK* = 6     ## Block device.
+  DT_REG* = 8     ## Regular file.
+  DT_LNK* = 10    ## Symbolic link.
+  DT_SOCK* = 12   ## UNIX domain socket.
+  DT_WHT* = 14
+
+type
+  TDIR* {.importc: "DIR", header: "<dirent.h>",
+          incompleteStruct.} = object
+    ## A type representing a directory stream.
 
 type
   SocketHandle* = distinct cint # The type used to represent socket descriptors
@@ -91,6 +94,10 @@ type
   Tdirent* {.importc: "struct dirent",
              header: "<dirent.h>", final, pure.} = object ## dirent_t struct
     d_ino*: Tino  ## File serial number.
+    d_off*: TOff  ## Not an offset. Value that ``telldir()`` would return.
+    d_reclen*: cshort ## Length of this record. (not POSIX)
+    d_type*: int8 ## Type of file; not supported by all filesystem types.
+                  ## (not POSIX)
     d_name*: array [0..255, char] ## Name of entry.
 
   Tflock* {.importc: "struct flock", final, pure,
@@ -1739,12 +1746,10 @@ when hasSpawnH:
   when defined(linux):
     # better be safe than sorry; Linux has this flag, macosx doesn't, don't
     # know about the other OSes
-    when defined(tcc):
-      # TCC doesn't define __USE_GNU, so we can't get the magic number from
-      # spawn.h
-      const POSIX_SPAWN_USEVFORK* = cint(0x40)
-    else:
-      var POSIX_SPAWN_USEVFORK* {.importc, header: "<spawn.h>".}: cint
+
+    # Non-GNU systems like TCC and musl-libc  don't define __USE_GNU, so we
+    # can't get the magic number from spawn.h
+    const POSIX_SPAWN_USEVFORK* = cint(0x40)
   else:
     # macosx lacks this, so we define the constant to be 0 to not affect
     # OR'ing of flags:

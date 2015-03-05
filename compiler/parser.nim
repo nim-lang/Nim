@@ -198,8 +198,8 @@ proc isSigilLike(tok: TToken): bool {.inline.} =
 
 proc isRightAssociative(tok: TToken): bool {.inline.} =
   ## Determines whether the token is right assocative.
-  result = tok.tokType == tkOpr and (tok.ident.s[0] == '^' or
-    (let L = tok.ident.s.len; L > 1 and tok.ident.s[L-1] == '>'))
+  result = tok.tokType == tkOpr and tok.ident.s[0] == '^'
+  # or (let L = tok.ident.s.len; L > 1 and tok.ident.s[L-1] == '>'))
 
 proc getPrecedence(tok: TToken, strongSpaces: bool): int =
   ## Calculates the precedence of the given token.
@@ -1597,6 +1597,7 @@ proc parseEnum(p: var TParser): PNode =
   optInd(p, result)
   while true:
     var a = parseSymbol(p)
+    if a.kind == nkEmpty: return
     if p.tok.indent >= 0 and p.tok.indent <= p.currInd:
       add(result, a)
       break

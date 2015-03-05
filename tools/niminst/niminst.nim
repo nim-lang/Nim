@@ -26,8 +26,8 @@ const
   deinstallShFile = "deinstall.sh"
 
 type
-  TAppType = enum appConsole, appGUI
-  TAction = enum
+  AppType = enum appConsole, appGUI
+  Action = enum
     actionNone,   # action not yet known
     actionCSource # action: create C sources
     actionInno,   # action: create Inno Setup installer
@@ -36,7 +36,7 @@ type
     actionZip,    # action: create zip file
     actionDeb     # action: prepare deb package
 
-  TFileCategory = enum
+  FileCategory = enum
     fcWinBin,     # binaries for Windows
     fcConfig,     # configuration files
     fcData,       # data files
@@ -48,9 +48,9 @@ type
     fcUnixBin,    # binaries for Unix
     fcDocStart    # links to documentation for Windows installer
 
-  TConfigData = object of TObject
-    actions: set[TAction]
-    cat: array[TFileCategory, seq[string]]
+  ConfigData = object of RootObj
+    actions: set[Action]
+    cat: array[FileCategory, seq[string]]
     binPaths, authors, oses, cpus, downloads: seq[string]
     cfiles: array[1..maxOS, array[1..maxCPU, seq[string]]]
     platforms: array[1..maxOS, array[1..maxCPU, bool]]
@@ -59,8 +59,8 @@ type
     libpath: string
     innoSetupFlag, installScript, uninstallScript: bool
     explicitPlatforms: bool
-    vars: PStringTable
-    app: TAppType
+    vars: StringTableRef
+    app: AppType
     nimArgs: string
     debOpts: TDebOptions
 
@@ -69,9 +69,9 @@ const
     "$configdir", "$datadir", "$docdir", "$libdir"
   ]
 
-proc initConfigData(c: var TConfigData) =
+proc iniConfigData(c: var ConfigData) =
   c.actions = {}
-  for i in low(TFileCategory)..high(TFileCategory): c.cat[i] = @[]
+  for i in low(FileCategory)..high(FileCategory): c.cat[i] = @[]
   c.binPaths = @[]
   c.authors = @[]
   c.oses = @[]
@@ -100,7 +100,7 @@ proc initConfigData(c: var TConfigData) =
   c.debOpts.shortDesc = ""
   c.debOpts.licenses = @[]
 
-proc firstBinPath(c: TConfigData): string =
+proc firstBinPath(c: ConfigData): string =
   if c.binPaths.len > 0: result = c.binPaths[0]
   else: result = ""
 
@@ -151,7 +151,7 @@ Compile_options:
   will be passed to the Nim compiler
 """
 
-proc parseCmdLine(c: var TConfigData) =
+proc parseCmdLine(c: var ConfigData) =
   var p = initOptParser()
   while true:
     next(p)
@@ -209,19 +209,19 @@ proc addFiles(s: var seq[string], patterns: seq[string]) =
         inc(i)
       if i == 0: echo("[Warning] No file found that matches: " & p)
 
-proc pathFlags(p: var TCfgParser, k, v: string,
+proc pathFlags(p: var CfgParser, k, v: string,
                t: var tuple[path, flags: string]) =
   case normalize(k)
   of "path": t.path = v
   of "flags": t.flags = v
   else: quit(errorStr(p, "unknown variable: " & k))
 
-proc filesOnly(p: var TCfgParser, k, v: string, dest: var seq[string]) =
+proc filesOnly(p: var CfgParser, k, v: string, dest: var seq[string]) =
   case normalize(k)
   of "files": addFiles(dest, split(v, {';'}))
   else: quit(errorStr(p, "unknown variable: " & k))
 
-proc yesno(p: var TCfgParser, v: string): bool =
+proc yesno(p: var CfgParser, v: string): bool =
   case normalize(v)
   of "yes", "y", "on", "true":
     result = true
@@ -235,7 +235,7 @@ proc incl(s: var seq[string], x: string): int =
   s.add(x)
   result = s.len-1 
 
-proc platforms(c: var TConfigData, v: string) =
+proc platforms(c: var ConfigData, v: string) =
   for line in splitLines(v):
     let p = line.find(": ")
     if p <= 1: continue
@@ -246,9 +246,9 @@ proc platforms(c: var TConfigData, v: string) =
       let cpuIdx = c.cpus.incl(cpu)
       c.platforms[c.oses.len][cpuIdx+1] = true
 
-proc parseIniFile(c: var TConfigData) =
+proc parseIniFile(c: var ConfigData) =
   var
-    p: TCfgParser
+    p: CfgParser
     section = ""
     hasCpuOs = false
   var input = newFileStream(c.infile, fmRead)
@@ -365,8 +365,8 @@ proc parseIniFile(c: var TConfigData) =
 
 # ------------------------- generate source based installation ---------------
 
-proc readCFiles(c: var TConfigData, osA, cpuA: int) =
-  var p: TCfgParser
+proc readCFiles(c: var ConfigData, osA, cpuA: int) =
+  var p: CfgParser
   var f = splitFile(c.infile).dir / "mapping.txt"
   c.cfiles[osA][cpuA] = @[]
   var input = newFileStream(f, fmRead)
@@ -402,11 +402,11 @@ proc readCFiles(c: var TConfigData, osA, cpuA: int) =
 proc buildDir(os, cpu: int): string =
   return "c_code" / ($os & "_" & $cpu)
 
-proc getOutputDir(c: var TConfigData): string =
+proc getOutputDir(c: var ConfigData): string =
   if c.outdir.len > 0: c.outdir else: "build"
 
 proc writeFile(filename, content, newline: string) =
-  var f: TFile
+  var f: File
   if open(f, filename, fmWrite):
     for x in splitLines(content):
       write(f, x)
@@ -415,7 +415,7 @@ proc writeFile(filename, content, newline: string) =
   else:
     quit("Cannot open for writing: " & filename)
 
-proc removeDuplicateFiles(c: var TConfigData) =
+proc removeDuplicateFiles(c: var ConfigData) =
   for osA in countdown(c.oses.len, 1):
     for cpuA in countdown(c.cpus.len, 1):
       if c.cfiles[osA][cpuA].isNil: c.cfiles[osA][cpuA] = @[]
@@ -433,13 +433,13 @@ proc removeDuplicateFiles(c: var TConfigData) =
                 removeFile(dup)
                 c.cfiles[osA][cpuA][i] = orig
 
-proc writeInstallScripts(c: var TConfigData) =
+proc writeInstallScripts(c: var ConfigData) =
   if c.installScript:
     writeFile(installShFile, generateInstallScript(c), "\10")
   if c.uninstallScript:
     writeFile(deinstallShFile, generateDeinstallScript(c), "\10")
 
-proc srcdist(c: var TConfigData) =
+proc srcdist(c: var ConfigData) =
   if not existsDir(getOutputDir(c) / "c_code"):
     createDir(getOutputDir(c) / "c_code")
   for x in walkFiles(c.libpath / "lib/*.h"):
@@ -486,7 +486,7 @@ proc srcdist(c: var TConfigData) =
   writeInstallScripts(c)
 
 # --------------------- generate inno setup -----------------------------------
-proc setupDist(c: var TConfigData) =
+proc setupDist(c: var ConfigData) =
   let scrpt = generateInnoSetup(c)
   let n = "build" / "install_$#_$#.iss" % [toLower(c.name), c.version]
   writeFile(n, scrpt, "\13\10")
@@ -503,7 +503,7 @@ proc setupDist(c: var TConfigData) =
       quit("External program failed")
 
 # --------------------- generate NSIS setup -----------------------------------
-proc setupDist2(c: var TConfigData) =
+proc setupDist2(c: var ConfigData) =
   let scrpt = generateNsisSetup(c)
   let n = "build" / "install_$#_$#.nsi" % [toLower(c.name), c.version]
   writeFile(n, scrpt, "\13\10")
@@ -521,7 +521,7 @@ proc setupDist2(c: var TConfigData) =
 
 # ------------------ generate ZIP file ---------------------------------------
 when haveZipLib:
-  proc zipDist(c: var TConfigData) =
+  proc zipDist(c: var ConfigData) =
     var proj = toLower(c.name) & "-" & c.version
     var n = "$#.zip" % proj
     if c.outdir.len == 0: n = "build" / n
@@ -549,7 +549,7 @@ when haveZipLib:
 
 # -- prepare build files for .deb creation
 
-proc debDist(c: var TConfigData) =
+proc debDist(c: var ConfigData) =
   if not existsFile(getOutputDir(c) / "build.sh"): quit("No build.sh found.")
   if not existsFile(getOutputDir(c) / "install.sh"): quit("No install.sh found.")
   
@@ -595,8 +595,8 @@ proc debDist(c: var TConfigData) =
 
 # ------------------- main ----------------------------------------------------
 
-var c: TConfigData
-initConfigData(c)
+var c: ConfigData
+iniConfigData(c)
 parseCmdLine(c)
 parseIniFile(c)
 if actionInno in c.actions:

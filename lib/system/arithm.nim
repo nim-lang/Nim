@@ -15,7 +15,7 @@ proc raiseOverflow {.compilerproc, noinline, noreturn.} =
   sysFatal(OverflowError, "over- or underflow")
 
 proc raiseDivByZero {.compilerproc, noinline, noreturn.} =
-  sysFatal(DivByZeroError, "divison by zero")
+  sysFatal(DivByZeroError, "division by zero")
 
 proc addInt64(a, b: int64): int64 {.compilerProc, inline.} =
   result = a +% b

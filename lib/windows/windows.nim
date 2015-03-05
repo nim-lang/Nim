@@ -11616,7 +11616,7 @@ type
     dwPageSize*: DWORD
     lpMinimumApplicationAddress*: LPVOID
     lpMaximumApplicationAddress*: LPVOID
-    dwActiveProcessorMask*: DWORD
+    dwActiveProcessorMask*: DWORD_PTR
     dwNumberOfProcessors*: DWORD
     dwProcessorType*: DWORD
     dwAllocationGranularity*: DWORD

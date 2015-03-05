@@ -95,15 +95,6 @@ proc inferWithMetatype(c: PContext, formal: PType,
 
 var commonTypeBegin = PType(kind: tyExpr)
 
-proc isEmptyContainer(t: PType): bool =
-  case t.kind
-  of tyExpr, tyNil: result = true
-  of tyArray, tyArrayConstr: result = t.sons[1].kind == tyEmpty
-  of tySet, tySequence, tyOpenArray, tyVarargs:
-    result = t.sons[0].kind == tyEmpty
-  of tyGenericInst: result = isEmptyContainer(t.lastSon)
-  else: result = false
-
 proc commonType*(x, y: PType): PType =
   # new type relation that is used for array constructors,
   # if expressions, etc.:
@@ -130,9 +121,11 @@ proc commonType*(x, y: PType): PType =
   elif a.kind == tyTuple and b.kind == tyTuple and a.len == b.len:
     var nt: PType
     for i in 0.. <a.len:
-      if isEmptyContainer(a.sons[i]) and not isEmptyContainer(b.sons[i]):
+      let aEmpty = isEmptyContainer(a.sons[i])
+      let bEmpty = isEmptyContainer(b.sons[i])
+      if aEmpty != bEmpty:
         if nt.isNil: nt = copyType(a, a.owner, false)
-        nt.sons[i] = b.sons[i]
+        nt.sons[i] = if aEmpty: b.sons[i] else: a.sons[i]
     if not nt.isNil: result = nt
     #elif b.sons[idx].kind == tyEmpty: return x
   elif a.kind == tyRange and b.kind == tyRange:

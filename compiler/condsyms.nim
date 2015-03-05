@@ -89,6 +89,7 @@ proc initDefines*() =
   defineSymbol("nimparsebiggestfloatmagic")
   defineSymbol("nimalias")
   defineSymbol("nimlocks")
+  defineSymbol("nimnode")
   
   # add platform specific symbols:
   for c in low(CPU)..high(CPU):

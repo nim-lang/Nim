@@ -27,7 +27,7 @@ integrations <https://github.com/Araq/Nim/wiki/Editor-Support>`_
 already available.
 
 
-Idetools invokation
+Idetools invocation
 ===================
 
 Specifying the location of the query
@@ -35,7 +35,7 @@ Specifying the location of the query
 
 All of the available idetools commands require you to specify a
 query location through the ``--track`` or ``--trackDirty`` switches.
-The general idetools invokations are::
+The general idetools invocations are::
 
     nim idetools --track:FILE,LINE,COL <switches> proj.nim
 
@@ -129,7 +129,7 @@ the suggestions sorted first by scope (from innermost to outermost)
 and then by item name.
 
 
-Invokation context
+Invocation context
 ------------------
 
 The ``--context`` idetools switch is very similar to the suggestions
@@ -163,7 +163,7 @@ running/debugged user project.
 Compiler as a service (CAAS)
 ============================
 
-The ocasional use of idetools is acceptable for things like
+The occasional use of idetools is acceptable for things like
 definitions, where the user puts the cursor on a symbol or double
 clicks it and after a second or two the IDE displays where that
 symbol is defined. Such latencies would be terrible for features
@@ -533,10 +533,10 @@ run it manually. First you have to compile the tester::
 Running the ``caasdriver`` without parameters will attempt to process
 all the test cases in all three operation modes. If a test succeeds
 nothing will be printed and the process will exit with zero. If any
-test fails, the specific line of the test preceeding the failure
+test fails, the specific line of the test preceding the failure
 and the failure itself will be dumped to stdout, along with a final
 indicator of the success state and operation mode. You can pass the
-parameter ``verbose`` to force all output even on successfull tests.
+parameter ``verbose`` to force all output even on successful tests.
 
 The normal operation mode is called ``ProcRun`` and it involves
 starting a process for each command or query, similar to running

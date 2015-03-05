@@ -250,7 +250,7 @@ proc containsObject(t: PType): bool =
 
 proc isObjectWithTypeFieldPredicate(t: PType): bool = 
   result = t.kind == tyObject and t.sons[0] == nil and
-      not (t.sym != nil and sfPure in t.sym.flags) and
+      not (t.sym != nil and {sfPure, sfInfixCall} * t.sym.flags != {}) and
       tfFinal notin t.flags
 
 proc analyseObjectWithTypeFieldAux(t: PType, 
@@ -396,7 +396,7 @@ proc rangeToStr(n: PNode): string =
 const 
   typeToStr: array[TTypeKind, string] = ["None", "bool", "Char", "empty",
     "Array Constructor [$1]", "nil", "expr", "stmt", "typeDesc",
-    "GenericInvokation", "GenericBody", "GenericInst", "GenericParam",
+    "GenericInvocation", "GenericBody", "GenericInst", "GenericParam",
     "distinct $1", "enum", "ordinal[$1]", "array[$1, $2]", "object", "tuple",
     "set[$1]", "range[$1]", "ptr ", "ref ", "var ", "seq[$1]", "proc",
     "pointer", "OpenArray[$1]", "string", "CString", "Forward",
@@ -432,9 +432,9 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         result = $t.n.intVal
       else:
         result = "int literal(" & $t.n.intVal & ")"
-  of tyGenericBody, tyGenericInst, tyGenericInvokation:
+  of tyGenericBody, tyGenericInst, tyGenericInvocation:
     result = typeToString(t.sons[0]) & '['
-    for i in countup(1, sonsLen(t) -1 -ord(t.kind != tyGenericInvokation)):
+    for i in countup(1, sonsLen(t) -1 -ord(t.kind != tyGenericInvocation)):
       if i > 1: add(result, ", ")
       add(result, typeToString(t.sons[i], preferGenericArg))
     add(result, ']')
@@ -649,7 +649,7 @@ proc lengthOrd(t: PType): BiggestInt =
 type
   TDistinctCompare* = enum ## how distinct types are to be compared
     dcEq,                  ## a and b should be the same type
-    dcEqIgnoreDistinct,    ## compare symetrically: (distinct a) == b, a == b
+    dcEqIgnoreDistinct,    ## compare symmetrically: (distinct a) == b, a == b
                            ## or a == (distinct b)
     dcEqOrDistinctOf       ## a equals b or a is distinct of b
 
@@ -796,7 +796,7 @@ template ifFastObjectTypeCheckFailed(a, b: PType, body: stmt) {.immediate.} =
   else:
     # expensive structural equality test; however due to the way generic and
     # objects work, if one of the types does **not** contain tfFromGeneric,
-    # they cannot be equal. The check ``a.sym.Id == b.sym.Id`` checks
+    # they cannot be equal. The check ``a.sym.id == b.sym.id`` checks
     # for the same origin and is essential because we don't want "pure" 
     # structural type equivalence:
     #
@@ -941,7 +941,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     result = sameChildrenAux(a, b, c) and sameFlags(a, b)
     if result and ExactGenericParams in c.flags:
       result = a.sym.position == b.sym.position
-  of tyGenericInvokation, tyGenericBody, tySequence,
+  of tyGenericInvocation, tyGenericBody, tySequence,
      tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyArrayConstr,
      tyArray, tyProc, tyConst, tyMutable, tyVarargs, tyIter,
      tyOrdinal, tyTypeClasses, tyFieldAccessor:
@@ -1029,16 +1029,18 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
 
 proc typeAllowedNode(marker: var IntSet, n: PNode, kind: TSymKind,
                      flags: TTypeAllowedFlags = {}): PType =
-  if n != nil: 
+  if n != nil:
     result = typeAllowedAux(marker, n.typ, kind, flags)
     #if not result: debug(n.typ)
     if result == nil:
       case n.kind
-      of nkNone..nkNilLit: 
+      of nkNone..nkNilLit:
         discard
       else:
         for i in countup(0, sonsLen(n) - 1):
-          result = typeAllowedNode(marker, n.sons[i], kind, flags)
+          let it = n.sons[i]
+          if it.kind == nkRecCase and kind == skConst: return n.typ
+          result = typeAllowedNode(marker, it, kind, flags)
           if result != nil: break
 
 proc matchType*(a: PType, pattern: openArray[tuple[k:TTypeKind, i:int]],
@@ -1085,7 +1087,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     if taField notin flags: result = t
   of tyTypeClasses:
     if not (tfGenericTypeParam in t.flags or taField notin flags): result = t
-  of tyGenericBody, tyGenericParam, tyGenericInvokation,
+  of tyGenericBody, tyGenericParam, tyGenericInvocation,
      tyNone, tyForward, tyFromExpr, tyFieldAccessor:
     result = t
   of tyNil:
@@ -1098,7 +1100,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     result = typeAllowedAux(marker, lastSon(t), kind, flags)
   of tyRange:
     if skipTypes(t.sons[0], abstractInst-{tyTypeDesc}).kind notin
-        {tyChar, tyEnum, tyInt..tyFloat128}: result = t
+        {tyChar, tyEnum, tyInt..tyFloat128, tyUInt8..tyUInt32}: result = t
   of tyOpenArray, tyVarargs:
     if kind != skParam: result = t
     else: result = typeAllowedAux(marker, t.sons[0], skVar, flags)
@@ -1118,7 +1120,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       result = typeAllowedAux(marker, t.sons[i], kind, flags)
       if result != nil: break
   of tyObject, tyTuple:
-    if kind == skConst and t.kind == tyObject: return t
+    if kind == skConst and t.kind == tyObject and t.sons[0] != nil: return t
     let flags = flags+{taField}
     for i in countup(0, sonsLen(t) - 1):
       result = typeAllowedAux(marker, t.sons[i], kind, flags)

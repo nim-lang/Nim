@@ -30,13 +30,32 @@
 ##
 ##   1.3000000000000000e+00
 ##   true
+##
+## This module can also be used to comfortably create JSON using the `%*`
+## operator:
+##
+## .. code-block:: nim
+##
+##   var hisName = "John"
+##   let herAge = 31
+##   var j = %*
+##     [
+##       {
+##         "name": hisName,
+##         "age": 30
+##       },
+##       {
+##         "name": "Susan",
+##         "age": herAge
+##       }
+##     ]
 
 import 
-  hashes, strutils, lexbase, streams, unicode
+  hashes, strutils, lexbase, streams, unicode, macros
 
 type 
   JsonEventKind* = enum  ## enumeration of all events that may occur when parsing
-    jsonError,           ## an error ocurred during parsing
+    jsonError,           ## an error occurred during parsing
     jsonEof,             ## end of file reached
     jsonString,          ## a string literal
     jsonInt,             ## an integer literal
@@ -625,6 +644,29 @@ proc `%`*(elements: openArray[JsonNode]): JsonNode =
   newSeq(result.elems, elements.len)
   for i, p in pairs(elements): result.elems[i] = p
 
+proc toJson(x: PNimrodNode): PNimrodNode {.compiletime.} =
+  case x.kind
+  of nnkBracket:
+    result = newNimNode(nnkBracket)
+    for i in 0 .. <x.len:
+      result.add(toJson(x[i]))
+
+  of nnkTableConstr:
+    result = newNimNode(nnkTableConstr)
+    for i in 0 .. <x.len:
+      assert x[i].kind == nnkExprColonExpr
+      result.add(newNimNode(nnkExprColonExpr).add(x[i][0]).add(toJson(x[i][1])))
+
+  else:
+    result = x
+
+  result = prefix(result, "%")
+
+macro `%*`*(x: expr): expr =
+  ## Convert an expression to a JsonNode directly, without having to specify
+  ## `%` for every element.
+  result = toJson(x)
+
 proc `==`* (a,b: JsonNode): bool =
   ## Check two nodes for equality
   if a.isNil:
@@ -864,7 +906,7 @@ proc pretty*(node: JsonNode, indent = 2): string =
 proc `$`*(node: JsonNode): string =
   ## Converts `node` to its JSON Representation on one line.
   result = ""
-  toPretty(result, node, 1, false)
+  toPretty(result, node, 0, false)
 
 iterator items*(node: JsonNode): JsonNode =
   ## Iterator for the items of `node`. `node` has to be a JArray.
@@ -1100,6 +1142,37 @@ when isMainModule:
     assert(testJson["a"][0].num == 1, "Index doesn't correspond to its value")
   except:
     assert(false, "EInvalidIndex thrown for valid index")
+
+  # Generator:
+  var j = %* [{"name": "John", "age": 30}, {"name": "Susan", "age": 31}]
+  assert j == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
+
+  var j2 = %*
+    [
+      {
+        "name": "John",
+        "age": 30
+      },
+      {
+        "name": "Susan",
+        "age": 31
+      }
+    ]
+  assert j2 == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
+
+  var name = "John"
+  let herAge = 30
+  const hisAge = 31
+
+  var j3 = %*
+    [ { "name": "John"
+      , "age": herAge
+      }
+    , { "name": "Susan"
+      , "age": hisAge
+      }
+    ]
+  assert j3 == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
 
   discard """
   while true:

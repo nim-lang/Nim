@@ -149,7 +149,7 @@ proc createDir*(ftp: AsyncFtpClient, dir: string, recursive = false){.async.} =
     assertReply reply, "257"
 
 proc chmod*(ftp: AsyncFtpClient, path: string,
-            permissions: set[TFilePermission]) {.async.} =
+            permissions: set[FilePermission]) {.async.} =
   ## Changes permission of ``path`` to ``permissions``.
   var userOctal = 0
   var groupOctal = 0
@@ -188,7 +188,7 @@ proc retrText*(ftp: AsyncFtpClient, file: string): Future[string] {.async.} =
 
   result = await ftp.getLines()
 
-proc getFile(ftp: AsyncFtpClient, file: TFile, total: BiggestInt,
+proc getFile(ftp: AsyncFtpClient, file: File, total: BiggestInt,
              onProgressChanged: ProgressChangedProc) {.async.} =
   assert ftp.dsockConnected
   var progress = 0
@@ -240,7 +240,7 @@ proc retrFile*(ftp: AsyncFtpClient, file, dest: string,
 
   await getFile(ftp, destFile, fileSize, onProgressChanged)
 
-proc doUpload(ftp: AsyncFtpClient, file: TFile,
+proc doUpload(ftp: AsyncFtpClient, file: File,
               onProgressChanged: ProgressChangedProc) {.async.} =
   assert ftp.dsockConnected
 

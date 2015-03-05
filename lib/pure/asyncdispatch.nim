@@ -606,7 +606,7 @@ when defined(windows) or defined(nimdoc):
           retFuture.fail(newException(OSError, osErrorMsg(err)))
     elif ret == 0 and bytesReceived == 0 and dataBuf.buf[0] == '\0':
       # We have to ensure that the buffer is empty because WSARecv will tell
-      # us immediatelly when it was disconnected, even when there is still
+      # us immediately when it was disconnected, even when there is still
       # data in the buffer.
       # We want to give the user as much data as we can. So we only return
       # the empty string (which signals a disconnection) when there is
@@ -1064,6 +1064,17 @@ proc accept*(socket: TAsyncFD,
 
 # -- Await Macro
 
+proc skipUntilStmtList(node: PNimrodNode): PNimrodNode {.compileTime.} =
+  # Skips a nest of StmtList's.
+  result = node
+  if node[0].kind == nnkStmtList:
+    result = skipUntilStmtList(node[0])
+
+proc skipStmtList(node: PNimrodNode): PNimrodNode {.compileTime.} =
+  result = node
+  if node[0].kind == nnkStmtList:
+    result = node[0]
+
 template createCb(retFutureSym, iteratorNameSym,
                    name: expr): stmt {.immediate.} =
   var nameIterVar = iteratorNameSym
@@ -1211,26 +1222,53 @@ proc processBody(node, retFutureSym: PNimrodNode,
   of nnkTryStmt:
     # try: await x; except: ...
     result = newNimNode(nnkStmtList, node)
+    template wrapInTry(n, tryBody: PNimrodNode) =
+      var temp = n
+      n[0] = tryBody
+      tryBody = temp
+
+      # Transform ``except`` body.
+      # TODO: Could we perform some ``await`` transformation here to get it
+      # working in ``except``?
+      tryBody[1] = processBody(n[1], retFutureSym, subTypeIsVoid, nil)
+
     proc processForTry(n: PNimrodNode, i: var int,
                        res: PNimrodNode): bool {.compileTime.} =
+      ## Transforms the body of the tryStmt. Does not transform the
+      ## body in ``except``.
+      ## Returns true if the tryStmt node was transformed into an ifStmt.
       result = false
-      while i < n[0].len:
-        var processed = processBody(n[0][i], retFutureSym, subTypeIsVoid, n)
-        if processed.kind != n[0][i].kind or processed.len != n[0][i].len:
+      var skipped = n.skipStmtList()
+      while i < skipped.len:
+        var processed = processBody(skipped[i], retFutureSym,
+                                    subTypeIsVoid, n)
+
+        # Check if we transformed the node into an exception check.
+        # This suggests skipped[i] contains ``await``.
+        if processed.kind != skipped[i].kind or processed.len != skipped[i].len:
+          processed = processed.skipUntilStmtList()
           expectKind(processed, nnkStmtList)
           expectKind(processed[2][1], nnkElse)
           i.inc
-          discard processForTry(n, i, processed[2][1][0])
+
+          if not processForTry(n, i, processed[2][1][0]):
+            # We need to wrap the nnkElse nodes back into a tryStmt.
+            # As they are executed if an exception does not happen
+            # inside the awaited future.
+            # The following code will wrap the nodes inside the
+            # original tryStmt.
+            wrapInTry(n, processed[2][1][0])
+
           res.add processed
           result = true
         else:
-          res.add n[0][i]
+          res.add skipped[i]
           i.inc
     var i = 0
     if not processForTry(node, i, result):
-      var temp = node
-      temp[0] = result
-      result = temp
+      # If the tryStmt hasn't been transformed we can just put the body
+      # back into it.
+      wrapInTry(node, result)
     return
   else: discard
 
@@ -1329,8 +1367,8 @@ macro async*(prc: stmt): stmt {.immediate.} =
   result[6] = outerProcBody
 
   #echo(treeRepr(result))
-  #if prc[0].getName == "catch":
-  #  echo(toStrLit(result))
+  if prc[0].getName == "test3":
+    echo(toStrLit(result))
 
 proc recvLine*(socket: TAsyncFD): Future[string] {.async.} =
   ## Reads a line of data from ``socket``. Returned future will complete once

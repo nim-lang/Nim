@@ -123,8 +123,12 @@ proc createStrKeepNode(x: var TFullReg) =
   if x.node.isNil:
     x.node = newNode(nkStrLit)
   elif x.node.kind == nkNilLit:
+    when defined(useNodeIds):
+      let id = x.node.id
     system.reset(x.node[])
     x.node.kind = nkStrLit
+    when defined(useNodeIds):
+      x.node.id = id
   elif x.node.kind notin {nkStrLit..nkTripleStrLit} or
       nfAllConst in x.node.flags:
     # XXX this is hacky; tests/txmlgen triggers it:
@@ -154,7 +158,7 @@ proc moveConst(x: var TFullReg, y: TFullReg) =
   of rkNodeAddr: x.nodeAddr = y.nodeAddr
 
 # this seems to be the best way to model the reference semantics
-# of PNimrodNode:
+# of system.NimNode:
 template asgnRef(x, y: expr) = moveConst(x, y)
 
 proc copyValue(src: PNode): PNode =
@@ -772,10 +776,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         stackTrace(c, tos, pc, errNilAccess)
     of opcEcho:
       let rb = instr.regB
-      for i in ra..ra+rb-1:
-        #if regs[i].kind != rkNode: debug regs[i]
-        write(stdout, regs[i].node.strVal)
-      writeln(stdout, "")
+      if rb == 1:
+        msgWriteln(regs[ra].node.strVal)
+      else:
+        var outp = ""
+        for i in ra..ra+rb-1:
+          #if regs[i].kind != rkNode: debug regs[i]
+          outp.add(regs[i].node.strVal)
+        msgWriteln(outp)
     of opcContainsSet:
       decodeBC(rkInt)
       regs[ra].intVal = ord(inSet(regs[rb].node, regs[rc].regToNode))
@@ -1087,14 +1095,20 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNAdd:
       decodeBC(rkNode)
       var u = regs[rb].node
-      u.add(regs[rc].node)
+      if u.kind notin {nkEmpty..nkNilLit}:
+        u.add(regs[rc].node)
+      else:
+        stackTrace(c, tos, pc, errGenerated, "cannot add to node kind: " & $u.kind)
       regs[ra].node = u
     of opcNAddMultiple:
       decodeBC(rkNode)
       let x = regs[rc].node
       var u = regs[rb].node
-      # XXX can be optimized:
-      for i in 0.. <x.len: u.add(x.sons[i])
+      if u.kind notin {nkEmpty..nkNilLit}:
+        # XXX can be optimized:
+        for i in 0.. <x.len: u.add(x.sons[i])
+      else:
+        stackTrace(c, tos, pc, errGenerated, "cannot add to node kind: " & $u.kind)
       regs[ra].node = u
     of opcNKind:
       decodeB(rkInt)
@@ -1127,7 +1141,21 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       else:
         stackTrace(c, tos, pc, errFieldXNotFound, "ident")
     of opcNGetType:
-      internalError(c.debug[pc], "unknown opcode " & $instr.opcode)
+      let rb = instr.regB
+      let rc = instr.regC
+      if rc == 0:
+        ensureKind(rkNode)
+        if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
+          regs[ra].node = opMapTypeToAst(regs[rb].node.typ, c.debug[pc])
+        else:
+          stackTrace(c, tos, pc, errGenerated, "node has no type")
+      else:
+        # typeKind opcode:
+        ensureKind(rkInt)
+        if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
+          regs[ra].intVal = ord(regs[rb].node.typ.kind)
+        #else:
+        #  stackTrace(c, tos, pc, errGenerated, "node has no type")
     of opcNStrVal:
       decodeB(rkNode)
       createStr regs[ra]
@@ -1364,9 +1392,11 @@ var
   globalCtx: PCtx
 
 proc setupGlobalCtx(module: PSym) =
-  if globalCtx.isNil: globalCtx = newCtx(module)
-  else: refresh(globalCtx, module)
-  registerAdditionalOps(globalCtx)
+  if globalCtx.isNil:
+    globalCtx = newCtx(module)
+    registerAdditionalOps(globalCtx)
+  else:
+    refresh(globalCtx, module)
 
 proc myOpen(module: PSym): PPassContext =
   #var c = newEvalContext(module, emRepl)
@@ -1436,7 +1466,9 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
   # immediate macros can bypass any type and arity checking so we check the
   # arity here too:
   if sym.typ.len > n.safeLen and sym.typ.len > 1:
-    globalError(n.info, "got $#, but expected $# argument(s)" % [$ <n.safeLen, $ <sym.typ.len])
+    globalError(n.info, "in call '$#' got $#, but expected $# argument(s)" % [
+        n.renderTree,
+        $ <n.safeLen, $ <sym.typ.len])
 
   setupGlobalCtx(module)
   var c = globalCtx

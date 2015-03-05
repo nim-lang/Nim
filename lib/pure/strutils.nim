@@ -395,11 +395,13 @@ proc toHex*(x: BiggestInt, len: int): string {.noSideEffect,
   const
     HexChars = "0123456789ABCDEF"
   var
-    shift: BiggestInt
+    n = x
   result = newString(len)
   for j in countdown(len-1, 0):
-    result[j] = HexChars[toU32(x shr shift) and 0xF'i32]
-    shift = shift + 4
+    result[j] = HexChars[n and 0xF]
+    n = n shr 4
+    # handle negative overflow
+    if n == 0 and x < 0: n = -1
 
 proc intToStr*(x: int, minchars: int = 1): string {.noSideEffect,
   rtl, extern: "nsuIntToStr".} =
@@ -497,26 +499,47 @@ proc parseEnum*[T: enum](s: string, default: T): T =
       return e
   result = default
 
-proc repeatChar*(count: int, c: char = ' '): string {.noSideEffect,
+proc repeat*(c: char, count: int): string {.noSideEffect,
   rtl, extern: "nsuRepeatChar".} =
   ## Returns a string of length `count` consisting only of
   ## the character `c`. You can use this proc to left align strings. Example:
+  ##
+  ## .. code-block:: nim
+  ##   proc tabexpand(indent: int, text: string, tabsize: int = 4) =
+  ##     echo '\t'.repeat(indent div tabsize), ' '.repeat(indent mod tabsize), text
+  ##
+  ##   tabexpand(4, "At four")
+  ##   tabexpand(5, "At five")
+  ##   tabexpand(6, "At six")
+  result = newString(count)
+  for i in 0..count-1: result[i] = c
+
+proc repeat*(s: string, n: int): string {.noSideEffect,
+  rtl, extern: "nsuRepeatStr".} =
+  ## Returns String `s` concatenated `n` times.  Example:
+  ##
+  ## .. code-block:: nim
+  ##   echo "+++ STOP ".repeat(4), "+++"
+  result = newStringOfCap(n * s.len)
+  for i in 1..n: result.add(s)
+
+template spaces*(n: int): string =  repeat(' ',n)
+  ## Returns a String with `n` space characters. You can use this proc
+  ## to left align strings. Example:
   ##
   ## .. code-block:: nim
   ##   let
   ##     width = 15
   ##     text1 = "Hello user!"
   ##     text2 = "This is a very long string"
-  ##   echo text1 & repeatChar(max(0, width - text1.len)) & "|"
-  ##   echo text2 & repeatChar(max(0, width - text2.len)) & "|"
-  result = newString(count)
-  for i in 0..count-1: result[i] = c
+  ##   echo text1 & spaces(max(0, width - text1.len)) & "|"
+  ##   echo text2 & spaces(max(0, width - text2.len)) & "|"
 
-proc repeatStr*(count: int, s: string): string {.noSideEffect,
-  rtl, extern: "nsuRepeatStr".} =
-  ## Returns `s` concatenated `count` times.
-  result = newStringOfCap(count*s.len)
-  for i in 0..count-1: result.add(s)
+proc repeatChar*(count: int, c: char = ' '): string {.deprecated.} = repeat(c, count)
+  ## deprecated: use repeat() or spaces()
+
+proc repeatStr*(count: int, s: string): string {.deprecated.} = repeat(s, count)
+  ## deprecated: use repeat(string, count) or string.repeat(count)
 
 proc align*(s: string, count: int, padding = ' '): string {.
   noSideEffect, rtl, extern: "nsuAlignString".} =
@@ -815,8 +838,8 @@ proc rfind*(s: string, sub: char, start: int = -1): int {.noSideEffect,
 
 proc count*(s: string, sub: string, overlapping: bool = false): int {.noSideEffect,
   rtl, extern: "nsuCountString".} =
-  ## Count the occurences of a substring `sub` in the string `s`.
-  ## Overlapping occurences of `sub` only count when `overlapping`
+  ## Count the occurrences of a substring `sub` in the string `s`.
+  ## Overlapping occurrences of `sub` only count when `overlapping`
   ## is set to true.
   var i = 0
   while true:
@@ -831,14 +854,14 @@ proc count*(s: string, sub: string, overlapping: bool = false): int {.noSideEffe
 
 proc count*(s: string, sub: char): int {.noSideEffect,
   rtl, extern: "nsuCountChar".} =
-  ## Count the occurences of the character `sub` in the string `s`.
+  ## Count the occurrences of the character `sub` in the string `s`.
   for c in s:
     if c == sub:
       inc result
 
 proc count*(s: string, subs: set[char]): int {.noSideEffect,
   rtl, extern: "nsuCountCharSet".} =
-  ## Count the occurences of the group of character `subs` in the string `s`.
+  ## Count the occurrences of the group of character `subs` in the string `s`.
   for c in s:
     if c in subs:
       inc result
@@ -898,7 +921,7 @@ proc replaceWord*(s, sub: string, by = ""): string {.noSideEffect,
   rtl, extern: "nsuReplaceWord".} =
   ## Replaces `sub` in `s` by the string `by`.
   ##
-  ## Each occurance of `sub` has to be surrounded by word boundaries
+  ## Each occurrence of `sub` has to be surrounded by word boundaries
   ## (comparable to ``\\w`` in regular expressions), otherwise it is not
   ## replaced.
   const wordChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\128'..'\255'}

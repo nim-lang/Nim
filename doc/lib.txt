@@ -185,9 +185,18 @@ Math libraries
 * `complex <complex.html>`_
   This module implements complex numbers and their mathematical operations.
 
+* `rationals <rationals.html>`_
+  This module implements rational numbers and their mathematical operations.
+
 * `fenv <fenv.html>`_
   Floating-point environment. Handling of floating-point rounding and
   exceptions (overflow, zero-devide, etc.).
+
+* `basic2d <basic2d.html>`_
+  Basic 2d support with vectors, points, matrices and some basic utilities.
+
+* `basic3d <basic3d.html>`_
+  Basic 3d support with vectors, points, matrices and some basic utilities.
 
 
 Internet Protocols and Support
@@ -217,9 +226,6 @@ Internet Protocols and Support
 
 * `smtp <smtp.html>`_
   This module implement a simple SMTP client. 
-
-* `irc <irc.html>`_
-  This module implements an asynchronous IRC client.
 
 * `ftpclient <ftpclient.html>`_
   This module implements an FTP client.
@@ -367,7 +373,7 @@ Miscellaneous
 -------------
 
 * `events <events.html>`_
-  This module implements an event system that is not dependant on external
+  This module implements an event system that is not dependent on external
   graphical toolkits.
 
 * `oids <oids.html>`_

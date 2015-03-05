@@ -122,9 +122,9 @@ var
   nameToBulletID*: TTable[string, int]
   activeState = Lobby
 
-proc newSprite(filename: string; errors: var seq[string]): PSpriteSheet
+proc newSprite*(filename: string; errors: var seq[string]): PSpriteSheet
 proc load*(ss: PSpriteSheet): bool {.discardable.}
-proc newSound(filename: string; errors: var seq[string]): PSoundRecord
+proc newSound*(filename: string; errors: var seq[string]): PSoundRecord
 proc load*(s: PSoundRecord): bool {.discardable.}
 
 proc validateSettings*(settings: PJsonNode; errors: var seq[string]): bool
@@ -146,7 +146,7 @@ proc importHandling(data: PJsonNode): THandlingRecord
 proc importBullet(data: PJsonNode; errors: var seq[string]): PBulletRecord
 proc importSoul(data: PJsonNode): TSoulRecord
 proc importExplosion(data: PJsonNode; errors: var seq[string]): TExplosionRecord
-proc importSound(data: PJsonNode; errors: var seq[string]; fieldName: string = nil): PSoundRecord
+proc importSound*(data: PJsonNode; errors: var seq[string]; fieldName: string = nil): PSoundRecord
 
 ## this is the only pipe between lobby and main.nim
 proc getActiveState*(): TGameState =
@@ -466,7 +466,7 @@ proc importPhys(data: PJsonNode): TPhysicsRecord =
     phys.getField("radius", result.radius)
     phys.getField("mass", result.mass)
   when not defined(NoChipmunk):
-    result.moment = momentForCircle(result.mass, 0.0, result.radius, vectorZero) * MomentMult
+    result.moment = momentForCircle(result.mass, 0.0, result.radius, VectorZero) * MomentMult
 proc importHandling(data: PJsonNode): THandlingRecord =
   result.thrust = 45.0
   result.topSpeed = 100.0 #unused

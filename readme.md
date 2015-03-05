@@ -39,8 +39,7 @@ $ bin/nim c koch
 $ ./koch boot -d:release
 ```
 
-``koch install [dir]`` may then be used to install Nim, or you can simply
-add it to your PATH. More ``koch`` related options are documented in
+``koch install [dir]`` may then be used to install Nim, but lots of things don't work then so don't do that. Add it to your PATH instead. More ``koch`` related options are documented in
 [doc/koch.txt](doc/koch.txt).
 
 The above steps can be performed on Windows in a similar fashion, the
@@ -62,12 +61,28 @@ allowing you to create commercial applications.
 
 Read copying.txt for more details.
 
-Copyright (c) 2006-2014 Andreas Rumpf.
+Copyright (c) 2006-2015 Andreas Rumpf.
 All rights reserved.
 
 # Build Status
-| |Linux|Windows|Mac|
-|---|---|---|---|
-| x86 | ![](http://178.62.143.63:8010/buildstatusimage?builder=linux-x32-builder) | ![](http://178.62.143.63:8010/buildstatusimage?builder=windows-x32-builder) | ![](http://178.62.143.63:8010/buildstatusimage?builder=mac-x32-builder)
-| x86_64 | ![](http://178.62.143.63:8010/buildstatusimage?builder=linux-x64-builder) | ![](http://178.62.143.63:8010/buildstatusimage?builder=windows-x64-builder) | ![](http://178.62.143.63:8010/buildstatusimage?builder=mac-x64-builder)
-| arm | ![](http://178.62.143.63:8010/buildstatusimage?builder=linux-arm5-builder) |
+[**Build Waterfall**][waterfall]
+
+|        | Linux                                                                                                  | Windows                               | Mac                           |
+| ------ | -----                                                                                                  | -------                               | ---                           |
+| x86    | ![linux-x86][linux-x86-img]                                                                            | ![windows-x86][windows-x86-img]       | ![mac-x86][mac-x86-img]       |
+| x86_64 | ![linux-x86_64][linux-x86_64-img]                                                                      | ![windows-x86_64][windows-x86_64-img] | ![mac-x86_64][mac-x86_64-img] |
+| arm    | ![linux-armv5][linux-arm5-img]<br/> ![linux-armv6][linux-arm6-img]<br/> ![linux-armv7][linux-arm7-img] |                                       |                               |
+
+[linux-x86-img]:      http://buildbot.nim-lang.org/buildstatusimage?builder=linux-x32-builder
+[linux-x86_64-img]:   http://buildbot.nim-lang.org/buildstatusimage?builder=linux-x64-builder
+[linux-arm5-img]:     http://buildbot.nim-lang.org/buildstatusimage?builder=linux-arm5-builder
+[linux-arm6-img]:     http://buildbot.nim-lang.org/buildstatusimage?builder=linux-arm6-builder
+[linux-arm7-img]:     http://buildbot.nim-lang.org/buildstatusimage?builder=linux-arm7-builder
+
+[windows-x86-img]:    http://buildbot.nim-lang.org/buildstatusimage?builder=windows-x32-builder
+[windows-x86_64-img]: http://buildbot.nim-lang.org/buildstatusimage?builder=windows-x64-builder
+
+[mac-x86-img]:        http://buildbot.nim-lang.org/buildstatusimage?builder=mac-x32-builder
+[mac-x86_64-img]:     http://buildbot.nim-lang.org/buildstatusimage?builder=mac-x64-builder
+
+[waterfall]: http://buildbot.nim-lang.org/waterfall

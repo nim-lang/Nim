@@ -11,10 +11,10 @@
 
 import 
   llstream, nversion, commands, os, strutils, msgs, platform, condsyms, lexer, 
-  options, idents, wordrecg
+  options, idents, wordrecg, strtabs
 
 # ---------------- configuration file parser -----------------------------
-# we use Nim's scanner here to safe space and work
+# we use Nim's scanner here to save space and work
 
 proc ppGetTok(L: var TLexer, tok: var TToken) = 
   # simple filter
@@ -82,17 +82,17 @@ proc doElif(L: var TLexer, tok: var TToken) =
 proc jumpToDirective(L: var TLexer, tok: var TToken, dest: TJumpDest) = 
   var nestedIfs = 0
   while true: 
-    if (tok.ident != nil) and (tok.ident.s == "@"): 
+    if tok.ident != nil and tok.ident.s == "@":
       ppGetTok(L, tok)
       case whichKeyword(tok.ident)
       of wIf: 
         inc(nestedIfs)
       of wElse: 
-        if (dest == jdElseEndif) and (nestedIfs == 0): 
+        if dest == jdElseEndif and nestedIfs == 0:
           doElse(L, tok)
           break 
       of wElif: 
-        if (dest == jdElseEndif) and (nestedIfs == 0): 
+        if dest == jdElseEndif and nestedIfs == 0:
           doElif(L, tok)
           break 
       of wEnd: 
@@ -119,9 +119,10 @@ proc parseDirective(L: var TLexer, tok: var TToken) =
   of wElif: doElif(L, tok)
   of wElse: doElse(L, tok)
   of wEnd: doEnd(L, tok)
-  of wWrite: 
+  of wWrite:
     ppGetTok(L, tok)
-    msgs.msgWriteln(tokToStr(tok))
+    msgs.msgWriteln(strtabs.`%`(tokToStr(tok), options.gConfigVars,
+                                {useEnvironment, useKey}))
     ppGetTok(L, tok)
   else:
     case tok.ident.s.normalize
@@ -157,7 +158,7 @@ proc checkSymbol(L: TLexer, tok: TToken) =
 proc parseAssignment(L: var TLexer, tok: var TToken) = 
   if tok.ident.id == getIdent("-").id or tok.ident.id == getIdent("--").id:
     confTok(L, tok)           # skip unnecessary prefix
-  var info = getLineInfo(L, tok) # safe for later in case of an error
+  var info = getLineInfo(L, tok) # save for later in case of an error
   checkSymbol(L, tok)
   var s = tokToStr(tok)
   confTok(L, tok)             # skip symbol
@@ -178,9 +179,10 @@ proc parseAssignment(L: var TLexer, tok: var TToken) =
     if tok.tokType == tkBracketRi: confTok(L, tok)
     else: lexMessage(L, errTokenExpected, "']'")
     add(val, ']')
-  if tok.tokType in {tkColon, tkEquals}: 
+  let percent = tok.ident.id == getIdent("%=").id
+  if tok.tokType in {tkColon, tkEquals} or percent: 
     if len(val) > 0: add(val, ':')
-    confTok(L, tok)           # skip ':' or '='
+    confTok(L, tok)           # skip ':' or '=' or '%'
     checkSymbol(L, tok)
     add(val, tokToStr(tok))
     confTok(L, tok)           # skip symbol
@@ -189,7 +191,11 @@ proc parseAssignment(L: var TLexer, tok: var TToken) =
       checkSymbol(L, tok)
       add(val, tokToStr(tok))
       confTok(L, tok)
-  processSwitch(s, val, passPP, info)
+  if percent:
+    processSwitch(s, strtabs.`%`(val, options.gConfigVars,
+                                {useEnvironment, useEmpty}), passPP, info)
+  else:
+    processSwitch(s, val, passPP, info)
 
 proc readConfigFile(filename: string) =
   var
@@ -246,6 +252,11 @@ proc loadConfigs*(cfg: string) =
     
     if gProjectName.len != 0:
       # new project wide config file:
-      let projectConfig = changeFileExt(gProjectFull, "nim.cfg")
-      if fileExists(projectConfig): readConfigFile(projectConfig)
-      else: readConfigFile(changeFileExt(gProjectFull, "nimrod.cfg"))
+      var projectConfig = changeFileExt(gProjectFull, "nimcfg")
+      if not fileExists(projectConfig):
+        projectConfig = changeFileExt(gProjectFull, "nim.cfg")
+      if not fileExists(projectConfig):
+        projectConfig = changeFileExt(gProjectFull, "nimrod.cfg")
+        if fileExists(projectConfig):
+          rawMessage(warnDeprecated, projectConfig)
+      readConfigFile(projectConfig)

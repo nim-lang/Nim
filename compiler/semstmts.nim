@@ -359,13 +359,17 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     var def: PNode
     if a.sons[length-1].kind != nkEmpty:
       def = semExprWithType(c, a.sons[length-1], {efAllowDestructor})
+      if def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
+        # prevent the all too common 'var x = int' bug:
+        localError(def.info, "'typedesc' metatype is not valid here; typed '=' instead of ':'?")
+        def.typ = errorType(c)
       if typ != nil:
         if typ.isMetaType:
           def = inferWithMetatype(c, typ, def)
           typ = def.typ
         else:
           # BUGFIX: ``fitNode`` is needed here!
-          # check type compability between def.typ and typ        
+          # check type compatibility between def.typ and typ        
           def = fitNode(c, typ, def)
           #changeType(def.skipConv, typ, check=true)
       else:
@@ -666,8 +670,8 @@ proc checkForMetaFields(n: PNode) =
     let t = n.sym.typ
     case t.kind
     of tySequence, tySet, tyArray, tyOpenArray, tyVar, tyPtr, tyRef,
-       tyProc, tyGenericInvokation, tyGenericInst:
-      let start = ord(t.kind in {tyGenericInvokation, tyGenericInst})
+       tyProc, tyGenericInvocation, tyGenericInst:
+      let start = ord(t.kind in {tyGenericInvocation, tyGenericInst})
       for i in start .. <t.sons.len:
         checkMeta(t.sons[i])
     else:
@@ -756,7 +760,8 @@ proc lookupMacro(c: PContext, n: PNode): PSym =
   else:
     result = searchInScopes(c, considerQuotedIdent(n), {skMacro, skTemplate})
 
-proc semProcAnnotation(c: PContext, prc: PNode): PNode =
+proc semProcAnnotation(c: PContext, prc: PNode;
+                       validPragmas: TSpecialWords): PNode =
   var n = prc.sons[pragmasPos]
   if n == nil or n.kind == nkEmpty: return
   for i in countup(0, <n.len):
@@ -781,12 +786,18 @@ proc semProcAnnotation(c: PContext, prc: PNode): PNode =
       x.add(it.sons[1])
     x.add(prc)
     # recursion assures that this works for multiple macro annotations too:
-    return semStmt(c, x)
+    result = semStmt(c, x)
+    # since a proc annotation can set pragmas, we process these here again.
+    # This is required for SqueakNim-like export pragmas.
+    if result.kind in procDefs and result[namePos].kind == nkSym and 
+        result[pragmasPos].kind != nkEmpty:
+      pragma(c, result[namePos].sym, result[pragmasPos], validPragmas)
+    return
 
 proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # XXX semProcAux should be good enough for this now, we will eventually
   # remove semLambda
-  result = semProcAnnotation(c, n)
+  result = semProcAnnotation(c, n, lambdaPragmas)
   if result != nil: return result
   result = n
   checkSonsLen(n, bodyPos + 1)
@@ -816,8 +827,7 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
       # we have a list of implicit type parameters:
       n.sons[genericParamsPos] = gp
   else:
-    s.typ = newTypeS(tyProc, c)
-    rawAddSon(s.typ, nil)
+    s.typ = newProcType(c, n.info)
   if n.sons[pragmasPos].kind != nkEmpty:
     pragma(c, s, n.sons[pragmasPos], lambdaPragmas)
   s.options = gOptions
@@ -829,9 +839,9 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if gp.len == 0 or (gp.len == 1 and tfRetType in gp[0].typ.flags):
       pushProcCon(c, s)
       addResult(c, s.typ.sons[0], n.info, skProc)
+      addResultNode(c, n)
       let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
       n.sons[bodyPos] = transformBody(c.module, semBody, s)
-      addResultNode(c, n)
       popProcCon(c)
     elif efOperand notin flags:
       localError(n.info, errGenericLambdaNotAllowed)
@@ -841,6 +851,13 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   closeScope(c)           # close scope for parameters
   popOwner()
   result.typ = s.typ
+
+proc semDo(c: PContext, n: PNode, flags: TExprFlags): PNode =
+  # 'do' without params produces a stmt:
+  if n[genericParamsPos].kind == nkEmpty and n[paramsPos].kind == nkEmpty:
+    result = semStmt(c, n[bodyPos])
+  else:
+    result = semLambda(c, n, flags)
 
 proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   var n = n
@@ -857,9 +874,9 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   addParams(c, n.typ.n, skProc)
   pushProcCon(c, s)
   addResult(c, n.typ.sons[0], n.info, skProc)
+  addResultNode(c, n)
   let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
   n.sons[bodyPos] = transformBody(c.module, semBody, n.sons[namePos].sym)
-  addResultNode(c, n)
   popProcCon(c)
   popOwner()
   closeScope(c)
@@ -905,7 +922,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       var t = s.typ.sons[1].skipTypes(abstractInst).lastSon.skipTypes(abstractInst)
       while true:
         if t.kind == tyGenericBody: t = t.lastSon
-        elif t.kind == tyGenericInvokation: t = t.sons[0]
+        elif t.kind == tyGenericInvocation: t = t.sons[0]
         else: break
       if t.kind in {tyObject, tyDistinct, tyEnum}:
         if t.deepCopy.isNil: t.deepCopy = s
@@ -936,7 +953,7 @@ proc isForwardDecl(s: PSym): bool =
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
                 validPragmas: TSpecialWords,
                 phase = stepRegisterSymbol): PNode =
-  result = semProcAnnotation(c, n)
+  result = semProcAnnotation(c, n, validPragmas)
   if result != nil: return result
   result = n
   checkSonsLen(n, bodyPos + 1)
@@ -991,8 +1008,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         # check for semantics again:
         # semParamList(c, n.sons[ParamsPos], nil, s)
   else:
-    s.typ = newTypeS(tyProc, c)
-    rawAddSon(s.typ, nil)
+    s.typ = newProcType(c, n.info)
   if n.sons[patternPos].kind != nkEmpty:
     n.sons[patternPos] = semPattern(c, n.sons[patternPos])
   if s.kind in skIterators:

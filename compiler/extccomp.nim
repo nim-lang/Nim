@@ -380,7 +380,7 @@ proc setCC*(ccname: string) =
   cCompiler = nameToCC(ccname)
   if cCompiler == ccNone: rawMessage(errUnknownCcompiler, ccname)
   compileOptions = getConfigVar(cCompiler, ".options.always")
-  linkOptions = getConfigVar(cCompiler, ".options.linker")
+  linkOptions = ""
   ccompilerpath = getConfigVar(cCompiler, ".path")
   for i in countup(low(CC), high(CC)): undefSymbol(CC[i].name)
   defineSymbol(CC[cCompiler].name)
@@ -389,8 +389,8 @@ proc addOpt(dest: var string, src: string) =
   if len(dest) == 0 or dest[len(dest)-1] != ' ': add(dest, " ")
   add(dest, src)
 
-proc addLinkOption*(option: string) = 
-  if find(linkOptions, option, 0) < 0: addOpt(linkOptions, option)
+proc addLinkOption*(option: string) =
+  addOpt(linkOptions, option)
 
 proc addCompileOption*(option: string) = 
   if strutils.find(compileOptions, option, 0) < 0: 
@@ -401,7 +401,7 @@ proc initVars*() =
   for i in countup(low(CC), high(CC)): undefSymbol(CC[i].name)
   defineSymbol(CC[cCompiler].name)
   addCompileOption(getConfigVar(cCompiler, ".options.always"))
-  addLinkOption(getConfigVar(cCompiler, ".options.linker"))
+  #addLinkOption(getConfigVar(cCompiler, ".options.linker"))
   if len(ccompilerpath) == 0:
     ccompilerpath = getConfigVar(cCompiler, ".path")
 
@@ -428,13 +428,17 @@ proc addFileToLink*(filename: string) =
   prependStr(toLink, filename)
   # BUGFIX: was ``appendStr``
 
-proc execExternalProgram*(cmd: string, prettyCmd = "") =
+proc execWithEcho(cmd: string, prettyCmd = ""): int =
   if optListCmd in gGlobalOptions or gVerbosity > 0:
     if prettyCmd != "":
       msgWriteln(prettyCmd)
     else:
       msgWriteln(cmd)
-  if execCmd(cmd) != 0: rawMessage(errExecutionOfProgramFailed, "")
+  result = execCmd(cmd)
+
+proc execExternalProgram*(cmd: string, prettyCmd = "") =
+  if execWithEcho(cmd, prettyCmd) != 0:
+    rawMessage(errExecutionOfProgramFailed, "")
 
 proc generateScript(projectFile: string, script: PRope) = 
   let (dir, name, ext) = splitFile(projectFile)
@@ -549,13 +553,13 @@ proc getCompileCFileCmd*(cfilename: string, isExternal = false): string =
   cfile = quoteShell(cfile)
   result = quoteShell(compilePattern % [
     "file", cfile, "objfile", objfile, "options", options,
-    "include", includeCmd, "nimrod", getPrefixDir(),
+    "include", includeCmd, "nim", getPrefixDir(),
     "nim", getPrefixDir(), "lib", libpath])
   add(result, ' ')
   addf(result, CC[c].compileTmpl, [
     "file", cfile, "objfile", objfile,
     "options", options, "include", includeCmd,
-    "nimrod", quoteShell(getPrefixDir()),
+    "nim", quoteShell(getPrefixDir()),
     "nim", quoteShell(getPrefixDir()),
     "lib", quoteShell(libpath)])
 
@@ -622,15 +626,17 @@ proc callCCompiler*(projectfile: string) =
     if gNumberOfProcessors == 0: gNumberOfProcessors = countProcessors()
     var res = 0
     if gNumberOfProcessors <= 1: 
-      for i in countup(0, high(cmds)): res = max(execCmd(cmds[i]), res)
+      for i in countup(0, high(cmds)): 
+        res = execWithEcho(cmds[i])
+        if res != 0: rawMessage(errExecutionOfProgramFailed, [])
     elif optListCmd in gGlobalOptions or gVerbosity > 1:
-      res = execProcesses(cmds, {poEchoCmd, poUseShell, poParentStreams},
+      res = execProcesses(cmds, {poEchoCmd, poUsePath, poParentStreams},
                           gNumberOfProcessors)
     elif gVerbosity == 1:
-      res = execProcesses(cmds, {poUseShell, poParentStreams},
+      res = execProcesses(cmds, {poUsePath, poParentStreams},
                           gNumberOfProcessors, prettyCb)
     else:
-      res = execProcesses(cmds, {poUseShell, poParentStreams},
+      res = execProcesses(cmds, {poUsePath, poParentStreams},
                           gNumberOfProcessors)
     if res != 0:
       if gNumberOfProcessors <= 1:
@@ -673,15 +679,16 @@ proc callCCompiler*(projectfile: string) =
         if not exefile.isAbsolute():
           exefile = joinPath(splitFile(projectfile).dir, exefile)
       exefile = quoteShell(exefile)
-      let linkOptions = getLinkOptions()
+      let linkOptions = getLinkOptions() & " " & 
+                        getConfigVar(cCompiler, ".options.linker")
       linkCmd = quoteShell(linkCmd % ["builddll", builddll,
           "buildgui", buildgui, "options", linkOptions, "objfiles", objfiles,
-          "exefile", exefile, "nimrod", getPrefixDir(), "lib", libpath])
+          "exefile", exefile, "nim", getPrefixDir(), "lib", libpath])
       linkCmd.add ' '
       addf(linkCmd, CC[c].linkTmpl, ["builddll", builddll,
           "buildgui", buildgui, "options", linkOptions,
           "objfiles", objfiles, "exefile", exefile,
-          "nimrod", quoteShell(getPrefixDir()),
+          "nim", quoteShell(getPrefixDir()),
           "lib", quoteShell(libpath)])
     if optCompileOnly notin gGlobalOptions:
       if gVerbosity == 1:
@@ -710,7 +717,8 @@ proc writeMapping*(gSymbolMapping: PRope) =
   app(code, strutils.escape(getCompileOptions()))
   
   app(code, "\n[Linker]\nFlags=")
-  app(code, strutils.escape(getLinkOptions()))
+  app(code, strutils.escape(getLinkOptions() & " " & 
+                            getConfigVar(cCompiler, ".options.linker")))
 
   app(code, "\n[Environment]\nlibpath=")
   app(code, strutils.escape(libpath))
