@@ -10,6 +10,7 @@ when defined(pcreDynlib):
     {.pragma: pcreImport, dynlib: pcreDll.}
   else:
     {.pragma: pcreImport, header: pcreHeader.}
+  {.deadCodeElim: on.}  # Don't error unless unsupported features are used
 else:
   {. passC: "-DHAVE_CONFIG_H", passC: "-I private/pcre_src",
      passL: "-I private/pcre_src" .}
