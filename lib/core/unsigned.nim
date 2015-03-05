@@ -13,3 +13,6 @@
 ## These operators are now available in the ``system`` module directly.
 
 {.deprecated.}
+
+export `shr`, `shl`, `and`, `or`, `xor`, `==`, `+`, `-`, `*`, `div`, `mod`,
+  `<=`, `<`
