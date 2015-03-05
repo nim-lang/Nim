@@ -383,13 +383,6 @@ proc findAll*(str: string, pattern: Regex, start = 0, endpos = -1): seq[string] 
   for match in str.findIter(pattern, start, endpos):
     result.add(match.match)
 
-proc renderBounds(str: string, bounds: Slice[int]): string =
-  result = " " & str & "⫞\n"
-  for i in -1 .. <bounds.a:
-    result.add(" ")
-  for i in bounds.a .. bounds.b:
-    result.add("^")
-
 proc split*(str: string, pattern: Regex, maxSplit = -1, start = 0): seq[string] =
   result = @[]
   var lastIdx = start
