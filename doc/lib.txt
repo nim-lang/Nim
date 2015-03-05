@@ -35,11 +35,6 @@ Core
   implicitly by the compiler. Do not import it directly. It relies on compiler
   magic to work.
 
-* `unsigned <unsigned.html>`_
-  This module implements basic arithmetic operators for unsigned integers.
-  To discourage users from using unsigned integers, it's not part
-  of ``system``, but an extra import.
-
 * `threads <threads.html>`_
   Nim thread support. **Note**: This is part of the system module. Do not
   import it explicitly.
