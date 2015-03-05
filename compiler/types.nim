@@ -823,8 +823,13 @@ proc sameEnumTypes*(a, b: PType): bool {.inline.} =
 proc sameObjectTree(a, b: PNode, c: var TSameTypeClosure): bool =
   if a == b:
     result = true
-  elif (a != nil) and (b != nil) and (a.kind == b.kind):
-    if sameTypeOrNilAux(a.typ, b.typ, c):
+  elif a != nil and b != nil and a.kind == b.kind:
+    var x = a.typ
+    var y = b.typ
+    if IgnoreTupleFields in c.flags:
+      if x != nil: x = skipTypes(x, {tyRange, tyGenericInst})
+      if y != nil: y = skipTypes(y, {tyRange, tyGenericInst})
+    if sameTypeOrNilAux(x, y, c):
       case a.kind
       of nkSym:
         # same symbol as string is enough:
