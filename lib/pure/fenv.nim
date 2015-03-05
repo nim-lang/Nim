@@ -130,7 +130,7 @@ template mantissaDigits*(T : typedesc[float32]) : int = FLT_MANT_DIG
   ## Number of digits (in base ``floatingPointRadix``) in the mantissa
   ## of 32-bit floating-point numbers.
 template digits*(T : typedesc[float32]) : int = FLT_DIG
-  ## Number of decimal digits that can be represented for the
+  ## Number of decimal digits that can be represented in a
   ## 32-bit floating-point type without losing precision.
 template minExponent*(T : typedesc[float32]) : int = FLT_MIN_EXP
   ## Minimum (negative) exponent for 32-bit floating-point numbers.
@@ -143,20 +143,20 @@ template max10Exponent*(T : typedesc[float32]) : int = FLT_MAX_10_EXP
   ## Maximum (positive) exponent in base 10 for 32-bit floating-point
   ## numbers.
 template minimumPositiveValue*(T : typedesc[float32]) : float32 = FLT_MIN
-  ## The smallest positive (nonzero) number that can be hold by a
+  ## The smallest positive (nonzero) number that can be represented in a
   ## 32-bit floating-point type.
 template maximumPositiveValue*(T : typedesc[float32]) : float32 = FLT_MAX
-  ## The largest positive number that can be hold by a 32-bit
+  ## The largest positive number that can be represented in a 32-bit
   ## floating-point type.
 template epsilon*(T : typedesc[float32]): float32 = FLT_EPSILON
   ## The difference between 1.0 and the smallest number greater than
-  ## 1.0 that can be represented using a 32-bit floating-point type.
+  ## 1.0 that can be represented in a 32-bit floating-point type.
 
 template mantissaDigits*(T : typedesc[float64]) : int = DBL_MANT_DIG
   ## Number of digits (in base ``floatingPointRadix``) in the mantissa
   ## of 64-bit floating-point numbers.
 template digits*(T : typedesc[float64]) : int = DBL_DIG
-  ## Number of decimal digits that can be represented for the
+  ## Number of decimal digits that can be represented in a
   ## 64-bit floating-point type without losing precision.
 template minExponent*(T : typedesc[float64]) : int = DBL_MIN_EXP
   ## Minimum (negative) exponent for 64-bit floating-point numbers.
@@ -169,11 +169,11 @@ template max10Exponent*(T : typedesc[float64]) : int = DBL_MAX_10_EXP
   ## Maximum (positive) exponent in base 10 for 64-bit floating-point
   ## numbers.
 template minimumPositiveValue*(T : typedesc[float64]) : float64 = DBL_MIN
-  ## The smallest positive (nonzero) number that can be hold by a
+  ## The smallest positive (nonzero) number that can be represented in a
   ## 64-bit floating-point type.
 template maximumPositiveValue*(T : typedesc[float64]) : float64 = DBL_MAX
-  ## The largest positive number that can be hold by a 64-bit
+  ## The largest positive number that can be represented in a 64-bit
   ## floating-point type.
 template epsilon*(T : typedesc[float64]): float64 = DBL_EPSILON
   ## The difference between 1.0 and the smallest number greater than
-  ## 1.0 that can be represented using a 64-bit floating-point type.
+  ## 1.0 that can be represented in a 64-bit floating-point type.
