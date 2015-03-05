@@ -175,7 +175,8 @@ proc `$`*(pattern: RegexMatch): string =
 
 proc `==`*(a, b: Regex): bool =
   # name-to-number table is generated at init time, doesn't need to be checked
-  return a.pattern   == b.pattern and
+  return not a.isNil and not b.isNil and
+         a.pattern   == b.pattern and
          a.pcreObj   == b.pcreObj and
          a.pcreExtra == b.pcreExtra
 
