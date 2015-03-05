@@ -1,6 +1,5 @@
 discard """
-  msg: "Special variable 'result' is shadowed. [ResultShadowed]"
-  line: 7
+  nimout: "Special variable 'result' is shadowed. [ResultShadowed]"
 """
 
 proc test(): string =
