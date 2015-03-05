@@ -33,8 +33,8 @@
 ##  proc hash(x: Something): THash =
 ##    ## Computes a THash from `x`.
 ##    var h: THash = 0
-##    h = h &! hash(x.foo)
-##    h = h &! hash(x.bar)
+##    h = h !& hash(x.foo)
+##    h = h !& hash(x.bar)
 ##    result = !$h
 
 import 
