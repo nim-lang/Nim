@@ -175,10 +175,12 @@ proc `$`*(pattern: RegexMatch): string =
 
 proc `==`*(a, b: Regex): bool =
   # name-to-number table is generated at init time, doesn't need to be checked
-  return not a.isNil and not b.isNil and
-         a.pattern   == b.pattern and
-         a.pcreObj   == b.pcreObj and
-         a.pcreExtra == b.pcreExtra
+  if not a.isNil and not b.isNil:
+    return a.pattern   == b.pattern and
+           a.pcreObj   == b.pcreObj and
+           a.pcreExtra == b.pcreExtra
+  else:
+    return system.`==`(a, b)
 
 proc `==`*(a, b: RegexMatch): bool =
   # don't need to compare matchbounds, if pattern and str equal, everything
