@@ -101,3 +101,79 @@ proc feupdateenv*(envp: ptr Tfenv): cint {.importc, header: "<fenv.h>".}
   ## Save current exceptions in temporary storage, install environment
   ## represented by object pointed to by `envp` and raise exceptions
   ## according to saved exceptions.
+
+var FP_RADIX* {. importc: "FLT_RADIX" header: "<float.h>" .} : int
+  ## The (integer) value of the radix used to represent any floating
+  ## point type on the architecture used to build the program.
+
+var FLT_MANT_DIG {. importc: "FLT_MANT_DIG" header: "<float.h>" .} : int
+var FLT_DIG {. importc: "FLT_DIG" header: "<float.h>" .} : int
+var FLT_MIN_EXP {. importc: "FLT_MIN_EXP" header: "<float.h>" .} : int
+var FLT_MAX_EXP {. importc: "FLT_MAX_EXP" header: "<float.h>" .} : int
+var FLT_MIN_10_EXP {. importc: "FLT_MIN_10_EXP" header: "<float.h>" .} : int
+var FLT_MAX_10_EXP {. importc: "FLT_MAX_10_EXP" header: "<float.h>" .} : int
+var FLT_MIN {. importc: "FLT_MIN" header: "<float.h>" .} : cfloat
+var FLT_MAX {. importc: "FLT_MAX" header: "<float.h>" .} : cfloat
+var FLT_EPSILON {. importc: "FLT_EPSILON" header: "<float.h>" .} : cfloat
+
+var DBL_MANT_DIG {. importc: "DBL_MANT_DIG" header: "<float.h>" .} : int
+var DBL_DIG {. importc: "DBL_DIG" header: "<float.h>" .} : int
+var DBL_MIN_EXP {. importc: "DBL_MIN_EXP" header: "<float.h>" .} : int
+var DBL_MAX_EXP {. importc: "DBL_MAX_EXP" header: "<float.h>" .} : int
+var DBL_MIN_10_EXP {. importc: "DBL_MIN_10_EXP" header: "<float.h>" .} : int
+var DBL_MAX_10_EXP {. importc: "DBL_MAX_10_EXP" header: "<float.h>" .} : int
+var DBL_MIN {. importc: "DBL_MIN" header: "<float.h>" .} : cdouble
+var DBL_MAX {. importc: "DBL_MAX" header: "<float.h>" .} : cdouble
+var DBL_EPSILON {. importc: "DBL_EPSILON" header: "<float.h>" .} : cdouble
+
+template mantissaDigits*(T : typedesc[float32]) : int = FLT_MANT_DIG
+  ## Number of digits (in base ``floatingPointRadix``) in the mantissa
+  ## of 32-bit floating-point numbers.
+template digits*(T : typedesc[float32]) : int = FLT_DIG
+  ## Number of decimal digits that can be represented for the
+  ## 32-bit floating-point type without losing precision.
+template minExponent*(T : typedesc[float32]) : int = FLT_MIN_EXP
+  ## Minimum (negative) exponent for 32-bit floating-point numbers.
+template maxExponent*(T : typedesc[float32]) : int = FLT_MAX_EXP
+  ## Maximum (positive) exponent for 32-bit floating-point numbers.
+template min10Exponent*(T : typedesc[float32]) : int = FLT_MIN_10_EXP
+  ## Minimum (negative) exponent in base 10 for 32-bit floating-point
+  ## numbers.
+template max10Exponent*(T : typedesc[float32]) : int = FLT_MAX_10_EXP
+  ## Maximum (positive) exponent in base 10 for 32-bit floating-point
+  ## numbers.
+template minimumPositiveValue*(T : typedesc[float32]) : float32 = FLT_MIN
+  ## The smallest positive (nonzero) number that can be hold by a
+  ## 32-bit floating-point type.
+template maximumPositiveValue*(T : typedesc[float32]) : float32 = FLT_MAX
+  ## The largest positive number that can be hold by a 32-bit
+  ## floating-point type.
+template epsilon*(T : typedesc[float32]): float32 = FLT_EPSILON
+  ## The difference between 1.0 and the smallest number greater than
+  ## 1.0 that can be represented using a 32-bit floating-point type.
+
+template mantissaDigits*(T : typedesc[float64]) : int = DBL_MANT_DIG
+  ## Number of digits (in base ``floatingPointRadix``) in the mantissa
+  ## of 64-bit floating-point numbers.
+template digits*(T : typedesc[float64]) : int = DBL_DIG
+  ## Number of decimal digits that can be represented for the
+  ## 64-bit floating-point type without losing precision.
+template minExponent*(T : typedesc[float64]) : int = DBL_MIN_EXP
+  ## Minimum (negative) exponent for 64-bit floating-point numbers.
+template maxExponent*(T : typedesc[float64]) : int = DBL_MAX_EXP
+  ## Maximum (positive) exponent for 64-bit floating-point numbers.
+template min10Exponent*(T : typedesc[float64]) : int = DBL_MIN_10_EXP
+  ## Minimum (negative) exponent in base 10 for 64-bit floating-point
+  ## numbers.
+template max10Exponent*(T : typedesc[float64]) : int = DBL_MAX_10_EXP
+  ## Maximum (positive) exponent in base 10 for 64-bit floating-point
+  ## numbers.
+template minimumPositiveValue*(T : typedesc[float64]) : float64 = DBL_MIN
+  ## The smallest positive (nonzero) number that can be hold by a
+  ## 64-bit floating-point type.
+template maximumPositiveValue*(T : typedesc[float64]) : float64 = DBL_MAX
+  ## The largest positive number that can be hold by a 64-bit
+  ## floating-point type.
+template epsilon*(T : typedesc[float64]): float64 = DBL_EPSILON
+  ## The difference between 1.0 and the smallest number greater than
+  ## 1.0 that can be represented using a 64-bit floating-point type.
