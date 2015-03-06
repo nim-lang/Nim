@@ -341,6 +341,8 @@ proc skipIntLiteralParams*(t: PType) =
 proc propagateFieldFlags(t: PType, n: PNode) =
   # This is meant for objects and tuples
   # The type must be fully instantiated!
+  if n.isNil:
+    return
   internalAssert n.kind != nkRecWhen
   case n.kind
   of nkSym:

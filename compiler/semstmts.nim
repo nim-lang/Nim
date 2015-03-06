@@ -692,7 +692,7 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
           assignType(s.typ, t)
           s.typ.id = t.id     # same id
       checkConstructedType(s.info, s.typ)
-      if s.typ.kind in {tyObject, tyTuple}:
+      if s.typ.kind in {tyObject, tyTuple} and not s.typ.n.isNil:
         checkForMetaFields(s.typ.n)
     let aa = a.sons[2]
     if aa.kind in {nkRefTy, nkPtrTy} and aa.len == 1 and

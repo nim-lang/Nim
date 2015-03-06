@@ -138,7 +138,7 @@ proc guardDotAccess(a: PEffects; n: PNode) =
   if g.kind == skUnknown:
     var field: PSym = nil
     var ty = n.sons[0].typ.skipTypes(abstractPtrs)
-    if ty.kind == tyTuple:
+    if ty.kind == tyTuple and not ty.n.isNil:
       field = lookupInRecord(ty.n, g.name)
     else:
       while ty != nil and ty.kind == tyObject:
