@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements asynchronous file handling.
+## This module implements asynchronous file reading and writing.
 ##
 ## .. code-block:: Nim
 ##    import asyncfile, asyncdispatch, os
@@ -30,7 +30,7 @@ else:
   import posix
 
 type
-  AsyncFile = ref object
+  AsyncFile* = ref object
     fd: TAsyncFd
     offset: int64
 

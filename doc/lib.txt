@@ -175,6 +175,9 @@ Generic Operating System Services
   This module implements the ability to monitor a directory/file for changes
   using Posix's inotify API.
 
+* `asyncfile <asyncfile.html>`_
+  This module implements asynchronous file reading and writing using
+  ``asyncdispatch``.
 
 Math libraries
 --------------
