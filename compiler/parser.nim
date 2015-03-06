@@ -410,8 +410,8 @@ proc qualifiedIdent(p: var TParser): PNode =
 proc genSelfDotExpr(p: var TParser, snd: string, result: PNode) =
     let a = newNodeP(nkDotExpr, p)
     addSon(result, a)
-    let b = newIdentNodeP(result.sons[0].ident, p)
-    addSon(a, b)
+    var s = result.sons[0]
+    addSon(a, result.sons[0]) # is that legal?
     let c = newIdentNodeP(getIdent(snd), p)
     addSon(a, c)
     getTok(p)
