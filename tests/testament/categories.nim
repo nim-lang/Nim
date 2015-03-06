@@ -302,8 +302,7 @@ proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
         continue
 
       let
-        buildPath = getPackageDir(name)[0.. -3]
-      let
+        buildPath = getPackageDir(name).strip
         buildProcess = startProcess(nimbleExe, buildPath, ["build"])
         buildStatus = waitForExitEx(buildProcess)
       buildProcess.close
@@ -318,7 +317,7 @@ proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
 
 # ----------------------------------------------------------------------------
 
-const AdditionalCategories = ["debugger", "examples", "lib", "nimble-core"]
+const AdditionalCategories = ["debugger", "examples", "lib"]
 
 proc `&.?`(a, b: string): string =
   # candidate for the stdlib?
