@@ -407,10 +407,31 @@ proc qualifiedIdent(p: var TParser): PNode =
   result = parseSymbol(p)
   if p.tok.tokType == tkDot: result = dotExpr(p, result)
 
+proc genSelfDotExpr(p: var TParser, snd: string, result: PNode) =
+    let a = newNodeP(nkDotExpr, p)
+    addSon(result, a)
+    let b = newIdentNodeP(result.sons[0].ident, p)
+    addSon(a, b)
+    let c = newIdentNodeP(getIdent(snd), p)
+    addSon(a, c)
+    getTok(p)
+    optPar(p)
+    eat(p, tkBracketRi)
+
 proc exprColonEqExprListAux(p: var TParser, endTok: TTokType, result: PNode) =
   assert(endTok in {tkCurlyRi, tkCurlyDotRi, tkBracketRi, tkParRi})
   getTok(p)
   optInd(p, result)
+
+  # we allow [<-] or [->] once and rewrite that to [x.low] and [x.high]
+  if endTok == tkBracketRi and p.tok.tokType == tkOpr:
+    if identEq(p.tok.ident, "->"):
+      genSelfDotExpr(p, "high", result)
+      return
+    elif identEq(p.tok.ident, "<-"):
+      genSelfDotExpr(p, "low", result)
+      return
+
   while p.tok.tokType != endTok and p.tok.tokType != tkEof:
     var a = exprColonEqExpr(p)
     addSon(result, a)
