@@ -141,6 +141,14 @@ const
   SSL_CTRL_GET_MAX_CERT_LIST* = 50
   SSL_CTRL_SET_MAX_CERT_LIST* = 51 #* Allow SSL_write(..., n) to return r with 0 < r < n (i.e. report success
                                    # * when just a single record has been written): *
+  SSL_CTRL_SET_TLSEXT_SERVERNAME_CB = 53
+  SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG = 54
+  SSL_CTRL_SET_TLSEXT_HOSTNAME = 55
+  TLSEXT_NAMETYPE_host_name* = 0
+  SSL_TLSEXT_ERR_OK* = 0
+  SSL_TLSEXT_ERR_ALERT_WARNING* = 1
+  SSL_TLSEXT_ERR_ALERT_FATAL* = 2
+  SSL_TLSEXT_ERR_NOACK* = 3
   SSL_MODE_ENABLE_PARTIAL_WRITE* = 1 #* Make it possible to retry SSL_write() with changed buffer location
                                      # * (buffer contents must stay the same!); this is not the default to avoid
                                      # * the misconception that non-blocking SSL_write() behaves like
@@ -296,8 +304,26 @@ proc CRYPTO_malloc_init*() =
 proc SSL_CTX_ctrl*(ctx: SslCtx, cmd: cInt, larg: int, parg: pointer): int{.
   cdecl, dynlib: DLLSSLName, importc.}
 
+proc SSL_CTX_callback_ctrl(ctx: SslCtx, typ: cInt, fp: PFunction): int{.
+  cdecl, dynlib: DLLSSLName, importc.}
+
 proc SSLCTXSetMode*(ctx: SslCtx, mode: int): int =
   result = SSL_CTX_ctrl(ctx, SSL_CTRL_MODE, mode, nil)
+
+proc SSL_ctrl*(ssl: SslPtr, cmd: cInt, larg: int, parg: pointer): int{.
+  cdecl, dynlib: DLLSSLName, importc.}
+
+proc SSL_set_tlsext_host_name*(ssl: SslPtr, name: cstring): int =
+  result = SSL_ctrl(ssl, SSL_CTRL_SET_TLSEXT_HOSTNAME, TLSEXT_NAMETYPE_host_name, name)
+
+proc SSL_get_servername*(ssl: SslPtr, typ: cInt = TLSEXT_NAMETYPE_host_name): cstring {.cdecl, dynlib: DLLSSLName, importc.}
+
+proc SSL_CTX_set_tlsext_servername_callback*(ctx: SslCtx, cb: PFunction): int =
+  result = SSL_CTX_callback_ctrl(ctx, SSL_CTRL_SET_TLSEXT_SERVERNAME_CB, cb)
+
+proc SSL_CTX_set_tlsext_servername_arg*(ctx: SslCtx, arg: pointer): int =
+  result = SSL_CTX_ctrl(ctx, SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG, 0, arg)
+
 
 proc bioNew*(b: PBIO_METHOD): BIO{.cdecl, dynlib: DLLUtilName, importc: "BIO_new".}
 proc bioFreeAll*(b: BIO){.cdecl, dynlib: DLLUtilName, importc: "BIO_free_all".}
@@ -341,8 +367,6 @@ else:
       dynlib: DLLSSLName, importc.}
 
   proc SslSetFd*(s: PSSL, fd: cInt): cInt{.cdecl, dynlib: DLLSSLName, importc.}
-  proc SslCtrl*(ssl: PSSL, cmd: cInt, larg: int, parg: Pointer): int{.cdecl, 
-      dynlib: DLLSSLName, importc.}
   proc SslCTXCtrl*(ctx: PSSL_CTX, cmd: cInt, larg: int, parg: Pointer): int{.
       cdecl, dynlib: DLLSSLName, importc.}
 

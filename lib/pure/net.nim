@@ -81,6 +81,22 @@ type
     TReadLineResult: ReadLineResult, TSOBool: SOBool, PSocket: Socket,
     TSocketImpl: SocketImpl].}
 
+type
+  IpAddressFamily* {.pure.} = enum ## Describes the type of an IP address
+    IPv6, ## IPv6 address
+    IPv4  ## IPv4 address
+
+  TIpAddress* = object ## stores an arbitrary IP address    
+    case family*: IpAddressFamily ## the type of the IP address (IPv4 or IPv6)
+    of IpAddressFamily.IPv6:
+      address_v6*: array[0..15, uint8] ## Contains the IP address in bytes in
+                                       ## case of IPv6
+    of IpAddressFamily.IPv4:
+      address_v4*: array[0..3, uint8] ## Contains the IP address in bytes in
+                                      ## case of IPv4
+
+proc parseIpAddress*(address_str: string): TIpAddress
+
 proc isDisconnectionError*(flags: set[SocketFlag],
     lastError: OSErrorCode): bool =
   ## Determines whether ``lastError`` is a disconnection error. Only does this
@@ -487,7 +503,7 @@ proc setSockOpt*(socket: Socket, opt: SOBool, value: bool, level = SOL_SOCKET) {
   setSockOptInt(socket.fd, cint(level), toCInt(opt), valuei)
 
 proc connect*(socket: Socket, address: string, port = Port(0), 
-              af: Domain = AF_INET) {.tags: [ReadIOEffect].} =
+              af: Domain = AF_INET) {.tags: [ReadIOEffect, RootEffect].} =
   ## Connects socket to ``address``:``port``. ``Address`` can be an IP address or a
   ## host name. If ``address`` is a host name, this function will try each IP
   ## of that host name. ``htons`` is already performed on ``port`` so you must
@@ -511,6 +527,13 @@ proc connect*(socket: Socket, address: string, port = Port(0),
   
   when defined(ssl):
     if socket.isSSL:
+      try:
+        discard parseIpAddress(address)
+      except ValueError:
+        # Discard result in case OpenSSL version doesn't support SNI, or we're
+        # not using TLSv1+
+        discard SSL_set_tlsext_host_name(socket.sslHandle, address)
+
       let ret = SSLConnect(socket.sslHandle)
       socketError(socket, ret)
 
@@ -968,20 +991,6 @@ proc isSsl*(socket: Socket): bool =
 
 proc getFd*(socket: Socket): SocketHandle = return socket.fd
   ## Returns the socket's file descriptor
-
-type
-  IpAddressFamily* {.pure.} = enum ## Describes the type of an IP address
-    IPv6, ## IPv6 address
-    IPv4  ## IPv4 address
-
-  TIpAddress* = object ## stores an arbitrary IP address    
-    case family*: IpAddressFamily ## the type of the IP address (IPv4 or IPv6)
-    of IpAddressFamily.IPv6:
-      address_v6*: array[0..15, uint8] ## Contains the IP address in bytes in
-                                       ## case of IPv6
-    of IpAddressFamily.IPv4:
-      address_v4*: array[0..3, uint8] ## Contains the IP address in bytes in
-                                      ## case of IPv4
 
 proc IPv4_any*(): TIpAddress =
   ## Returns the IPv4 any address, which can be used to listen on all available
