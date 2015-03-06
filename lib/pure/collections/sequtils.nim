@@ -104,7 +104,7 @@ proc zip*[S, T](seq1: seq[S], seq2: seq[T]): seq[tuple[a: S, b: T]] =
   newSeq(result, m)
   for i in 0 .. m-1: result[i] = (seq1[i], seq2[i])
 
-proc distribute*[T](s: seq[T], num: int, spread = true): seq[seq[T]] =
+proc distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
   ## Splits and distributes a sequence `s` into `num` sub sequences.
   ##
   ## Returns a sequence of `num` sequences. For some input values this is the
@@ -131,10 +131,11 @@ proc distribute*[T](s: seq[T], num: int, spread = true): seq[seq[T]] =
   ##   assert numbers.distribute(6)[0] == @[1, 2]
   ##   assert numbers.distribute(6)[5] == @[7]
   assert(not s.isNil, "`s` can't be nil")
-  assert(num > 0, "`num` has to be greater than zero")
   if num < 2:
     result = @[s]
     return
+
+  let num = cast[int](num)
 
   # Create the result and calculate the stride size and the remainder if any.
   result = newSeq[seq[T]](num)
