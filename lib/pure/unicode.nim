@@ -118,21 +118,35 @@ proc toUTF8*(c: Rune): string {.rtl, extern: "nuc$1".} =
   elif i <=% 0x07FF:
     result = newString(2)
     result[0] = chr((i shr 6) or 0b110_00000)
-    result[1] = chr((i and ones(6)) or 0b10_000000)
+    result[1] = chr((i and ones(6)) or 0b10_0000_00)
   elif i <=% 0xFFFF:
     result = newString(3)
     result[0] = chr(i shr 12 or 0b1110_0000)
     result[1] = chr(i shr 6 and ones(6) or 0b10_0000_00)
     result[2] = chr(i and ones(6) or 0b10_0000_00)
-  elif i <=% 0x0010FFFF:
+  elif i <=% 0x001FFFFF:
     result = newString(4)
     result[0] = chr(i shr 18 or 0b1111_0000)
     result[1] = chr(i shr 12 and ones(6) or 0b10_0000_00)
     result[2] = chr(i shr 6 and ones(6) or 0b10_0000_00)
     result[3] = chr(i and ones(6) or 0b10_0000_00)
+  elif i <=% 0x03FFFFFF:
+    result = newString(5)
+    result[0] = chr(i shr 24 or 0b111110_00)
+    result[1] = chr(i shr 18 and ones(6) or 0b10_0000_00)
+    result[2] = chr(i shr 12 and ones(6) or 0b10_0000_00)
+    result[3] = chr(i shr 6 and ones(6) or 0b10_0000_00)
+    result[4] = chr(i and ones(6) or 0b10_0000_00)
+  elif i <=% 0x7FFFFFFF:
+    result = newString(6)
+    result[0] = chr(i shr 30 or 0b1111110_0)
+    result[1] = chr(i shr 24 and ones(6) or 0b10_0000_00)
+    result[2] = chr(i shr 18 and ones(6) or 0b10_0000_00)
+    result[3] = chr(i shr 12 and ones(6) or 0b10_0000_00)
+    result[4] = chr(i shr 6 and ones(6) or 0b10_0000_00)
+    result[5] = chr(i and ones(6) or 0b10_0000_00)
   else:
-    result = newString(1)
-    result[0] = chr(i)
+    discard # error, exception?
 
 proc `$`*(rune: Rune): string =
   ## converts a rune to a string
