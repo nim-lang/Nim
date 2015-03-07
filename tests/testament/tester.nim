@@ -141,7 +141,7 @@ proc generatedFile(path, name: string, target: TTarget): string =
     (if target == targetJS: path.splitPath.tail & "_" else: "compiler_") &
     name.changeFileExt(ext)
 
-proc codegenCheck(test: TTest, check: string, given: var TSpec) =
+proc codegenCheck(test: TTest, check: string, given: var TSpec, r: var TResults) =
   if check.len > 0:
     try:
       let (path, name, ext2) = test.name.splitFile
@@ -154,18 +154,28 @@ proc codegenCheck(test: TTest, check: string, given: var TSpec) =
       given.err = reInvalidPeg
     except IOError:
       given.err = reCodeNotFound
+    r.addResult(test, "", given.msg, given.err)
 
-proc nimoutCheck(test: TTest; expectedNimout: string; given: var TSpec) =
+proc nimoutCheck(test: TTest; expectedNimout: string; given: var TSpec, r: var TResults) =
   if expectedNimout.len > 0:
     let exp = expectedNimout.strip.replace("\C\L", "\L")
     let giv = given.nimout.strip.replace("\C\L", "\L")
     if exp notin giv:
       given.err = reMsgsDiffer
+    r.addResult(test, exp, giv, given.err)
+
 
 proc makeDeterministic(s: string): string =
   var x = splitLines(s)
   sort(x, system.cmp)
   result = join(x, "\n")
+
+proc compilerOutputTests(test: TTest, given: var TSpec, expected: TSpec, r: var TResults) =
+  if given.err == reSuccess:
+    codegenCheck(test, expected.ccodeCheck, given, r)
+    nimoutCheck(test, expected.nimout, given, r)
+  if given.err == reSuccess: inc(r.passed)
+
 
 proc testSpec(r: var TResults, test: TTest) =
   # major entry point for a single test
@@ -179,13 +189,9 @@ proc testSpec(r: var TResults, test: TTest) =
   else:
     case expected.action
     of actionCompile:
-      var given = callCompiler(expected.cmd, test.name, test.options,
-                               test.target)
-      if given.err == reSuccess:
-        codegenCheck(test, expected.ccodeCheck, given)
-        nimoutCheck(test, expected.nimout, given)
-      r.addResult(test, "", given.msg, given.err)
-      if given.err == reSuccess: inc(r.passed)
+      var given = callCompiler(expected.cmd, test.name,
+        test.options & " --hint[Path]:off --hint[Processing]:off", test.target)
+      compilerOutputTests(test, given, expected, r)
     of actionRun:
       var given = callCompiler(expected.cmd, test.name, test.options,
                                test.target)
@@ -215,11 +221,7 @@ proc testSpec(r: var TResults, test: TTest) =
             if bufB != strip(expected.outp):
               if not (expected.substr and expected.outp in bufB):
                 given.err = reOutputsDiffer
-            if given.err == reSuccess:
-              codeGenCheck(test, expected.ccodeCheck, given)
-              nimoutCheck(test, expected.nimout, given)
-            if given.err == reSuccess: inc(r.passed)
-            r.addResult(test, expected.outp, buf.string, given.err)
+            compilerOutputTests(test, given, expected, r)
         else:
           r.addResult(test, expected.outp, "executable not found", reExeNotFound)
     of actionReject:
