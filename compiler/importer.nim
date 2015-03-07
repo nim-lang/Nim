@@ -27,7 +27,7 @@ proc getModuleName*(n: PNode): string =
     result = n.ident.s
   of nkSym:
     result = n.sym.name.s
-  of nkInfix:
+  of nkInfix, nkPrefix:
     if n.sons[0].kind == nkIdent and n.sons[0].ident.id == getIdent("as").id:
       # XXX hack ahead:
       n.kind = nkImportAs
