@@ -345,8 +345,14 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
       localError(n.info, errIdentifierExpected)
       result = errorSym(c, n)
 
-proc semTuple(c: PContext, n: PNode, prev: PType): PType =
-  if n.sonsLen == 0: return newConstraint(c, tyTuple)
+proc semAnonTuple(c: PContext, n: PNode, prev: PType): PType =
+  if sonsLen(n) == 0:
+    localError(n.info, errTypeExpected)
+  result = newOrPrevType(tyTuple, prev, c)
+  for i in countup(0, sonsLen(n) - 1):
+    addSonSkipIntLit(result, semTypeNode(c, n.sons[i], nil))
+
+proc semTuple(c: PContext, n: PNode, prev: PType): PType = 
   var typ: PType
   result = newOrPrevType(tyTuple, prev, c)
   result.n = newNodeI(nkRecList, n.info)
@@ -1117,9 +1123,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkPar:
     if sonsLen(n) == 1: result = semTypeNode(c, n.sons[0], prev)
     else:
-      # XXX support anon tuple here
-      localError(n.info, errTypeExpected)
-      result = newOrPrevType(tyError, prev, c)
+      result = semAnonTuple(c, n, prev)
   of nkCallKinds:
     if isRange(n):
       result = semRangeAux(c, n, prev)
@@ -1227,6 +1231,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       result = newOrPrevType(tyError, prev, c)
   of nkObjectTy: result = semObjectNode(c, n, prev)
   of nkTupleTy: result = semTuple(c, n, prev)
+  of nkTupleClassTy: result = newConstraint(c, tyTuple)
   of nkTypeClassTy: result = semTypeClass(c, n, prev)
   of nkRefTy: result = semAnyRef(c, n, tyRef, prev)
   of nkPtrTy: result = semAnyRef(c, n, tyPtr, prev)

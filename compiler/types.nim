@@ -507,18 +507,22 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       if prefer == preferModuleInfo: preferModuleInfo else: preferName)
   of tyTuple:
     # we iterate over t.sons here, because t.n may be nil
-    result = "tuple["
     if t.n != nil:
+      result = "tuple["
       assert(sonsLen(t.n) == sonsLen(t))
       for i in countup(0, sonsLen(t.n) - 1):
         assert(t.n.sons[i].kind == nkSym)
         add(result, t.n.sons[i].sym.name.s & ": " & typeToString(t.sons[i]))
         if i < sonsLen(t.n) - 1: add(result, ", ")
+      add(result, ']')
+    elif sonsLen(t) == 0:
+      result = "tuple[]"
     else:
+      result = "("
       for i in countup(0, sonsLen(t) - 1):
         add(result, typeToString(t.sons[i]))
         if i < sonsLen(t) - 1: add(result, ", ")
-    add(result, ']')
+      add(result, ')')
   of tyPtr, tyRef, tyVar, tyMutable, tyConst:
     result = typeToStr[t.kind]
     if t.len >= 2:

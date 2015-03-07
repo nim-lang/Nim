@@ -60,7 +60,7 @@ type
     nnkStmtListType, nnkBlockType,
     nnkWith, nnkWithout,
     nnkTypeOfExpr, nnkObjectTy,
-    nnkTupleTy, nnkTypeClassTy, nnkStaticTy,
+    nnkTupleTy, nnkTupleClassTy, nnkTypeClassTy, nnkStaticTy,
     nnkRecList, nnkRecCase, nnkRecWhen,
     nnkRefTy, nnkPtrTy, nnkVarTy,
     nnkConstTy, nnkMutableTy,
