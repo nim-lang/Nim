@@ -135,7 +135,7 @@ proc distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
     result = @[s]
     return
 
-  let num = cast[int](num)
+  let num = int(num) # XXX probably only needed because of .. bug
 
   # Create the result and calculate the stride size and the remainder if any.
   result = newSeq[seq[T]](num)
