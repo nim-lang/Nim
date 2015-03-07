@@ -1232,7 +1232,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
     elif f.kind == tyStatic:
       return arg.typ.n
     else:
-      return argOrig
+      return argSemantized # argOrig
 
   if r != isNone and f.isInlineIterator:
     var inlined = newTypeS(tyStatic, c)
