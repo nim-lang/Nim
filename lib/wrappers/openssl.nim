@@ -319,9 +319,12 @@ proc SSL_set_tlsext_host_name*(ssl: SslPtr, name: cstring): int =
 proc SSL_get_servername*(ssl: SslPtr, typ: cInt = TLSEXT_NAMETYPE_host_name): cstring {.cdecl, dynlib: DLLSSLName, importc.}
 
 proc SSL_CTX_set_tlsext_servername_callback*(ctx: SslCtx, cb: PFunction): int =
+  ## Set the callback to be used on listening SSL connections when the client hello is received.
+  ## Callback proc ``cb`` should be of the form `proc (ssl: SslPtr, cb_id: int, arg: pointer): int`
   result = SSL_CTX_callback_ctrl(ctx, SSL_CTRL_SET_TLSEXT_SERVERNAME_CB, cb)
 
 proc SSL_CTX_set_tlsext_servername_arg*(ctx: SslCtx, arg: pointer): int =
+  ## Set the pointer to be used in the callback registered to ``SSL_CTX_set_tlsext_servername_callback``.
   result = SSL_CTX_ctrl(ctx, SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG, 0, arg)
 
 
