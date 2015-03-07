@@ -413,7 +413,7 @@ const
     hintUser: "$1 [User]"]
 
 const
-  WarningsToStr*: array[0..29, string] = ["CannotOpenFile", "OctalEscape", 
+  WarningsToStr*: array[0..30, string] = ["CannotOpenFile", "OctalEscape", 
     "XIsNeverRead", "XmightNotBeenInit",
     "Deprecated", "ConfigDeprecated",
     "SmallLshouldNotBeUsed", "UnknownMagic", 
