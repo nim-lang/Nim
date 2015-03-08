@@ -406,4 +406,6 @@ typedef int assert_numbits[sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(
 #  include <sys/types.h>
 #  include <types/vxWind.h>
 #  include <tool/gnu/toolMacros.h>
+#elif defined(__FreeBSD__)
+#  include <sys/types.h>
 #endif
