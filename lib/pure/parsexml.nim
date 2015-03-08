@@ -128,7 +128,7 @@ proc open*(my: var XmlParser, input: Stream, filename: string,
   my.kind = xmlError
   my.a = ""
   my.b = ""
-  my.c = ""
+  my.c = nil
   my.options = options
   
 proc close*(my: var XmlParser) {.inline.} = 
@@ -139,40 +139,40 @@ proc kind*(my: XmlParser): XmlEventKind {.inline.} =
   ## returns the current event type for the XML parser
   return my.kind
 
-template charData*(my: XmlParser): string =
+proc charData*(my: XmlParser): string =
   ## returns the character data for the events: ``xmlCharData``, 
   ## ``xmlWhitespace``, ``xmlComment``, ``xmlCData``, ``xmlSpecial``
   assert(my.kind in {xmlCharData, xmlWhitespace, xmlComment, xmlCData, 
                      xmlSpecial})
   my.a
 
-template elementName*(my: XmlParser): string =
+proc elementName*(my: XmlParser): string =
   ## returns the element name for the events: ``xmlElementStart``, 
   ## ``xmlElementEnd``, ``xmlElementOpen``
   assert(my.kind in {xmlElementStart, xmlElementEnd, xmlElementOpen})
   my.a
 
-template entityName*(my: XmlParser): string =
+proc entityName*(my: XmlParser): string =
   ## returns the entity name for the event: ``xmlEntity``
   assert(my.kind == xmlEntity)
   my.a
   
-template attrKey*(my: XmlParser): string =
+proc attrKey*(my: XmlParser): string =
   ## returns the attribute key for the event ``xmlAttribute``
   assert(my.kind == xmlAttribute)
   my.a
   
-template attrValue*(my: XmlParser): string =
+proc attrValue*(my: XmlParser): string =
   ## returns the attribute value for the event ``xmlAttribute``
   assert(my.kind == xmlAttribute)
   my.b
 
-template piName*(my: XmlParser): string =
+proc piName*(my: XmlParser): string =
   ## returns the processing instruction name for the event ``xmlPI``
   assert(my.kind == xmlPI)
   my.a
 
-template piRest*(my: XmlParser): string =
+proc piRest*(my: XmlParser): string =
   ## returns the rest of the processing instruction for the event ``xmlPI``
   assert(my.kind == xmlPI)
   my.b
@@ -448,14 +448,13 @@ proc parseTag(my: var XmlParser) =
     my.kind = xmlElementOpen
     my.state = stateAttr
     # save for later:
-    my.c.setLen(my.a.len)
-    my.c[0..my.c.high] = my.a[0..my.a.high]
+    my.c = my.a
   else:
     my.kind = xmlElementStart
     if my.buf[my.bufpos] == '/' and my.buf[my.bufpos+1] == '>':
       inc(my.bufpos, 2)
       my.state = stateEmptyElementTag
-      my.c.setLen(0)
+      my.c = nil
     elif my.buf[my.bufpos] == '>':
       inc(my.bufpos)  
     else:
@@ -624,9 +623,8 @@ proc next*(my: var XmlParser) =
   of stateEmptyElementTag:
     my.state = stateNormal
     my.kind = xmlElementEnd
-    if my.c.len > 0:
-      my.a.setLen(my.c.len)
-      my.a[0..my.a.high] = my.c[0..my.c.high]
+    if not my.c.isNil:
+      my.a = my.c
   of stateError: 
     my.kind = xmlError
     my.state = stateNormal
