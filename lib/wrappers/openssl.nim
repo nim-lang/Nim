@@ -315,12 +315,24 @@ proc SSL_ctrl*(ssl: SslPtr, cmd: cInt, larg: int, parg: pointer): int{.
 
 proc SSL_set_tlsext_host_name*(ssl: SslPtr, name: cstring): int =
   result = SSL_ctrl(ssl, SSL_CTRL_SET_TLSEXT_HOSTNAME, TLSEXT_NAMETYPE_host_name, name)
+  ## Set the SNI server name extension to be used in a client hello.
+  ## Returns 1 if SNI was set, 0 if current SSL configuration doesn't support SNI.
+
 
 proc SSL_get_servername*(ssl: SslPtr, typ: cInt = TLSEXT_NAMETYPE_host_name): cstring {.cdecl, dynlib: DLLSSLName, importc.}
+  ## Retrieve the server name requested in the client hello. This can be used
+  ## in the callback set in `SSL_CTX_set_tlsext_servername_callback` to
+  ## implement virtual hosting. May return `nil`.
 
 proc SSL_CTX_set_tlsext_servername_callback*(ctx: SslCtx, cb: PFunction): int =
   ## Set the callback to be used on listening SSL connections when the client hello is received.
   ## Callback proc ``cb`` should be of the form `proc (ssl: SslPtr, cb_id: int, arg: pointer): int`
+  ##
+  ## The callback should return one of:
+  ## * SSL_TLSEXT_ERR_OK
+  ## * SSL_TLSEXT_ERR_ALERT_WARNING
+  ## * SSL_TLSEXT_ERR_ALERT_FATAL
+  ## * SSL_TLSEXT_ERR_NOACK
   result = SSL_CTX_callback_ctrl(ctx, SSL_CTRL_SET_TLSEXT_SERVERNAME_CB, cb)
 
 proc SSL_CTX_set_tlsext_servername_arg*(ctx: SslCtx, arg: pointer): int =
