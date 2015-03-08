@@ -128,7 +128,7 @@ proc open*(my: var XmlParser, input: Stream, filename: string,
   my.kind = xmlError
   my.a = ""
   my.b = ""
-  my.c = ""
+  my.c = nil
   my.options = options
   
 proc close*(my: var XmlParser) {.inline.} = 
@@ -447,15 +447,13 @@ proc parseTag(my: var XmlParser) =
     # an attribute follows:
     my.kind = xmlElementOpen
     my.state = stateAttr
-    # save for later:
-    my.c.setLen(my.a.len)
-    my.c[0..my.c.high] = my.a[0..my.a.high]
+    my.c = my.a # save for later
   else:
     my.kind = xmlElementStart
     if my.buf[my.bufpos] == '/' and my.buf[my.bufpos+1] == '>':
       inc(my.bufpos, 2)
       my.state = stateEmptyElementTag
-      my.c.setLen(0)
+      my.c = nil
     elif my.buf[my.bufpos] == '>':
       inc(my.bufpos)  
     else:
@@ -624,9 +622,8 @@ proc next*(my: var XmlParser) =
   of stateEmptyElementTag:
     my.state = stateNormal
     my.kind = xmlElementEnd
-    if my.c.len > 0:
-      my.a.setLen(my.c.len)
-      my.a[0..my.a.high] = my.c[0..my.c.high]
+    if not my.c.isNil:
+      my.a = my.c
   of stateError: 
     my.kind = xmlError
     my.state = stateNormal
