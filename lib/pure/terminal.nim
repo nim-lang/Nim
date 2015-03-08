@@ -45,7 +45,7 @@ when defined(windows):
   var
     oldAttr = getAttributes()
 
-  proc winGetch(): cint {.header: "<conio.h>", importc: "_getch".}
+  proc winGetch(): cint {.header: "<stdio.h>", importc: "getchar".}
 else:
   import termios, unsigned
 
