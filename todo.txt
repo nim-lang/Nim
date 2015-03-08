@@ -53,7 +53,6 @@ Bugs
 - VM: Pegs do not work at compile-time
 - VM: ptr/ref T cannot work in general
 - scopes are still broken for generic instantiation!
-- compilation of niminst takes way too long. looks like a regression
 - blocks can "export" an identifier but the CCG generates {} for them ...
 
 
