@@ -1250,7 +1250,7 @@ proc parseIPv6Address(address_str: string): TIpAddress =
     raise newException(ValueError,
       "Invalid IP Address. The address consists of too many groups")
 
-proc parseIpAddress*(address_str: string): TIpAddress =
+proc parseIpAddress(address_str: string): TIpAddress =
   ## Parses an IP address
   ## Raises EInvalidValue on error
   if address_str == nil:
@@ -1261,7 +1261,7 @@ proc parseIpAddress*(address_str: string): TIpAddress =
     return parseIPv4Address(address_str)
 
 
-proc isIpAddress*(address_str: string): bool =
+proc isIpAddress(address_str: string): bool =
   ## Checks if a string is an IP address
   ## Returns true if it is, false otherwise
   try:
