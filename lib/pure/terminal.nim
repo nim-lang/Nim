@@ -45,7 +45,6 @@ when defined(windows):
   var
     oldAttr = getAttributes()
 
-  proc winGetch(): cint {.header: "<conio.h>", importc: "_getch".}
 else:
   import termios, unsigned
 
@@ -344,7 +343,7 @@ proc isatty*(f: File): bool =
   else:
     proc isatty(fildes: FileHandle): cint {.
       importc: "_isatty", header: "<io.h>".}
-  
+
   result = isatty(getFileHandle(f)) != 0'i32
 
 proc styledEchoProcessArg(s: string) = write stdout, s
@@ -364,12 +363,11 @@ macro styledEcho*(m: varargs[expr]): stmt =
   result.add(newCall(bindSym"write", bindSym"stdout", newStrLitNode("\n")))
   result.add(newCall(bindSym"resetAttributes"))
 
-proc getch*(): char =
-  ## Read a single character from the terminal, blocking until it is entered.
-  ## The character is not printed to the terminal.
-  when defined(windows):
-    result = winGetch().char
-  else:
+when not defined(windows):
+  proc getch*(): char =
+    ## Read a single character from the terminal, blocking until it is entered.
+    ## The character is not printed to the terminal. This is not available for
+    ## Windows.
     let fd = getFileHandle(stdin)
     var oldMode: Termios
     discard fd.tcgetattr(addr oldMode)
@@ -387,5 +385,5 @@ when isMainModule:
   setForeGroundColor(fgBlue)
   writeln(stdout, "ordinary text")
 
-  styledEcho("styled text ", {styleBright, styleBlink, styleUnderscore}) 
-  
+  styledEcho("styled text ", {styleBright, styleBlink, styleUnderscore})
+
