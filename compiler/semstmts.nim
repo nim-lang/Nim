@@ -400,6 +400,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     elif tup.kind == tyTuple and def.kind == nkPar and 
         a.kind == nkIdentDefs and a.len > 3:
       message(a.info, warnEachIdentIsTuple)
+
     for j in countup(0, length-3):
       var v = semIdentDef(c, a.sons[j], symkind)
       if sfGenSym notin v.flags: addInterfaceDecl(c, v)
@@ -409,6 +410,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           let shadowed = findShadowedVar(c, v)
           if shadowed != nil:
             shadowed.flags.incl(sfShadowed)
+            if shadowed.kind == skResult:
+              message(a.info, warnResultShadowed)
             # a shadowed variable is an error unless it appears on the right
             # side of the '=':
             if warnShadowIdent in gNotes and not identWithin(def, v.name):
