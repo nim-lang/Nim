@@ -95,7 +95,7 @@ type
       address_v4*: array[0..3, uint8] ## Contains the IP address in bytes in
                                       ## case of IPv4
 
-proc isIpAddress*(address_str: string): bool
+proc isIpAddress*(address_str: string): bool {.tags: [].}
 proc parseIpAddress*(address_str: string): TIpAddress
 
 proc isDisconnectionError*(flags: set[SocketFlag],
@@ -504,7 +504,7 @@ proc setSockOpt*(socket: Socket, opt: SOBool, value: bool, level = SOL_SOCKET) {
   setSockOptInt(socket.fd, cint(level), toCInt(opt), valuei)
 
 proc connect*(socket: Socket, address: string, port = Port(0), 
-              af: Domain = AF_INET) {.tags: [ReadIOEffect, RootEffect].} =
+              af: Domain = AF_INET) {.tags: [ReadIOEffect].} =
   ## Connects socket to ``address``:``port``. ``Address`` can be an IP address or a
   ## host name. If ``address`` is a host name, this function will try each IP
   ## of that host name. ``htons`` is already performed on ``port`` so you must
