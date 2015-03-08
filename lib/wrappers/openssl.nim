@@ -324,16 +324,15 @@ proc SSL_get_servername*(ssl: SslPtr, typ: cInt = TLSEXT_NAMETYPE_host_name): cs
   ## in the callback set in `SSL_CTX_set_tlsext_servername_callback` to
   ## implement virtual hosting. May return `nil`.
 
-proc SSL_CTX_set_tlsext_servername_callback*(ctx: SslCtx, cb: PFunction): int =
+proc SSL_CTX_set_tlsext_servername_callback*(ctx: SslCtx, cb: proc(ssl: SslPtr, cb_id: int, arg: pointer): int {.cdecl.}): int =
   ## Set the callback to be used on listening SSL connections when the client hello is received.
-  ## Callback proc ``cb`` should be of the form `proc (ssl: SslPtr, cb_id: int, arg: pointer): int`
   ##
   ## The callback should return one of:
   ## * SSL_TLSEXT_ERR_OK
   ## * SSL_TLSEXT_ERR_ALERT_WARNING
   ## * SSL_TLSEXT_ERR_ALERT_FATAL
   ## * SSL_TLSEXT_ERR_NOACK
-  result = SSL_CTX_callback_ctrl(ctx, SSL_CTRL_SET_TLSEXT_SERVERNAME_CB, cb)
+  result = SSL_CTX_callback_ctrl(ctx, SSL_CTRL_SET_TLSEXT_SERVERNAME_CB, cast[PFunction](cb))
 
 proc SSL_CTX_set_tlsext_servername_arg*(ctx: SslCtx, arg: pointer): int =
   ## Set the pointer to be used in the callback registered to ``SSL_CTX_set_tlsext_servername_callback``.
