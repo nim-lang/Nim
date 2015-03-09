@@ -142,28 +142,23 @@ proc generatedFile(path, name: string, target: TTarget): string =
     name.changeFileExt(ext)
 
 proc codegenCheck(test: TTest, check: string, given: var TSpec, r: var TResults) =
-  if check.len > 0:
-    try:
-      let (path, name, ext2) = test.name.splitFile
-      let genFile = generatedFile(path, name, test.target)
-      echo genFile
-      let contents = readFile(genFile).string
-      if contents.find(check.peg) < 0:
-        given.err = reCodegenFailure
-    except ValueError:
-      given.err = reInvalidPeg
-    except IOError:
-      given.err = reCodeNotFound
-    r.addResult(test, "", given.msg, given.err)
+  try:
+    let (path, name, ext2) = test.name.splitFile
+    let genFile = generatedFile(path, name, test.target)
+    echo genFile
+    let contents = readFile(genFile).string
+    if contents.find(check.peg) < 0:
+      given.err = reCodegenFailure
+  except ValueError:
+    given.err = reInvalidPeg
+  except IOError:
+    given.err = reCodeNotFound
 
 proc nimoutCheck(test: TTest; expectedNimout: string; given: var TSpec, r: var TResults) =
-  if expectedNimout.len > 0:
-    let exp = expectedNimout.strip.replace("\C\L", "\L")
-    let giv = given.nimout.strip.replace("\C\L", "\L")
-    if exp notin giv:
-      given.err = reMsgsDiffer
-    r.addResult(test, exp, giv, given.err)
-
+  let exp = expectedNimout.strip.replace("\C\L", "\L")
+  let giv = given.nimout.strip.replace("\C\L", "\L")
+  if exp notin giv:
+    given.err = reMsgsDiffer
 
 proc makeDeterministic(s: string): string =
   var x = splitLines(s)
@@ -171,11 +166,19 @@ proc makeDeterministic(s: string): string =
   result = join(x, "\n")
 
 proc compilerOutputTests(test: TTest, given: var TSpec, expected: TSpec, r: var TResults) =
+  var expectedmsg: string = ""
+  var givenmsg: string = ""
   if given.err == reSuccess:
-    codegenCheck(test, expected.ccodeCheck, given, r)
-    nimoutCheck(test, expected.nimout, given, r)
+    if expected.ccodeCheck.len > 0:
+      codegenCheck(test, expectedmsg, given, r)
+      expectedmsg = expected.ccodeCheck
+      givenmsg = given.msg
+    if expected.nimout.len > 0:
+      expectedmsg = expected.nimout
+      givenmsg = given.nimout.strip
+      nimoutCheck(test, expectedmsg, given, r)
   if given.err == reSuccess: inc(r.passed)
-
+  r.addResult(test, expectedmsg, givenmsg, given.err)
 
 proc testSpec(r: var TResults, test: TTest) =
   # major entry point for a single test
