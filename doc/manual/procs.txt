@@ -351,7 +351,7 @@ dispatch.
 
 .. code-block:: nim
   type
-    Expression = object ## abstract base class for an expression
+    Expression = object of RootObj ## abstract base class for an expression
     Literal = object of Expression
       x: int
     PlusExpr = object of Expression
@@ -387,7 +387,7 @@ dispatching:
 
 .. code-block:: nim
   type
-    Thing = object
+    Thing = object of RootObj
     Unit = object of Thing
       x: int
       
