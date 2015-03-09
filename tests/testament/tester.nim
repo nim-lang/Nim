@@ -153,14 +153,12 @@ proc codegenCheck(test: TTest, check: string, given: var TSpec, r: var TResults)
     given.err = reInvalidPeg
   except IOError:
     given.err = reCodeNotFound
-  r.addResult(test, "", given.msg, given.err)
 
 proc nimoutCheck(test: TTest; expectedNimout: string; given: var TSpec, r: var TResults) =
   let exp = expectedNimout.strip.replace("\C\L", "\L")
   let giv = given.nimout.strip.replace("\C\L", "\L")
   if exp notin giv:
     given.err = reMsgsDiffer
-
 
 proc makeDeterministic(s: string): string =
   var x = splitLines(s)
@@ -181,7 +179,6 @@ proc compilerOutputTests(test: TTest, given: var TSpec, expected: TSpec, r: var 
       nimoutCheck(test, expectedmsg, given, r)
   if given.err == reSuccess: inc(r.passed)
   r.addResult(test, expectedmsg, givenmsg, given.err)
-
 
 proc testSpec(r: var TResults, test: TTest) =
   # major entry point for a single test
