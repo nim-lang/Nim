@@ -8,10 +8,6 @@ the Nim compiler itself is written in the Nim programming language
 the C source of an older version of the compiler are needed to bootstrap the
 latest version. The C sources are available in a separate repo [here](http://github.com/nim-lang/csources).
 
-Pre-compiled snapshots of the compiler are also available on
-[Nimbuild](http://buildbot.nim-lang.org/). Your platform however may not
-currently be built for.
-
 The compiler currently supports the following platform and architecture
 combinations:
 
