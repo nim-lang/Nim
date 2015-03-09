@@ -459,7 +459,7 @@ type
     tfNotNil,         # type cannot be 'nil'
 
     tfNeedsInit,      # type constains a "not nil" constraint somewhere or some
-                      # other type so that it requires inititalization
+                      # other type so that it requires initalization
     tfVarIsPtr,       # 'var' type is translated like 'ptr' even in C++ mode
     tfHasMeta,        # type contains "wildcard" sub-types such as generic params
                       # or other type classes

@@ -157,17 +157,40 @@ proc sumGeneric(t: PType): int =
       result = ord(t.kind == tyGenericInvocation)
       for i in 0 .. <t.len: result += t.sons[i].sumGeneric
       break
-    of tyProc:
-      # proc matches proc better than 'stmt' to disambiguate 'spawn'
-      return 1
     of tyGenericParam, tyExpr, tyStatic, tyStmt, tyTypeDesc: break
+    of tyBool, tyChar, tyEnum, tyObject, tyProc, tyPointer,
+        tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128,
+        tyUInt..tyUInt64:
+      return 1
     else: return 0
 
+#var ggDebug: bool
+
 proc complexDisambiguation(a, b: PType): int =
-  var x, y: int
-  for i in 1 .. <a.len: x += a.sons[i].sumGeneric
-  for i in 1 .. <b.len: y += b.sons[i].sumGeneric
-  result = x - y
+  # 'a' matches better if *every* argument matches better or equal than 'b'.
+  var winner = 0
+  for i in 1 .. <min(a.len, b.len):
+    let x = a.sons[i].sumGeneric
+    let y = b.sons[i].sumGeneric
+    #if ggDebug:
+    #  echo "came her ", typeToString(a.sons[i]), " ", typeToString(b.sons[i])
+    if x != y:
+      if winner == 0:
+        if x > y: winner = 1
+        else: winner = -1
+      elif x > y:
+        if winner != 1:
+          # contradiction
+          return 0
+      else:
+        if winner != -1:
+          return 0
+  result = winner
+  when false:
+    var x, y: int
+    for i in 1 .. <a.len: x += a.sons[i].sumGeneric
+    for i in 1 .. <b.len: y += b.sons[i].sumGeneric
+    result = x - y
   when false:
     proc betterThan(a, b: PType): bool {.inline.} = a.sumGeneric > b.sumGeneric
 
@@ -338,7 +361,8 @@ proc minRel(a, b: TTypeRelation): TTypeRelation =
 
 proc recordRel(c: var TCandidate, f, a: PType): TTypeRelation =
   result = isNone
-  if sameType(f, a): result = isEqual
+  if sameType(f, a):
+    result = isEqual
   elif sonsLen(a) == sonsLen(f):
     result = isEqual
     let firstField = if f.kind == tyTuple: 0
@@ -380,17 +404,17 @@ proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
         # no luck resolving the type, so the inference fails
         return isNone
     let reverseRel = typeRel(c, a, f)
-    if reverseRel == isGeneric:
+    if reverseRel >= isGeneric:
       result = isInferred
-      inc c.genericMatches
+      #inc c.genericMatches
   else:
     result = typeRel(c, f, a)
 
   if result <= isSubtype or inconsistentVarTypes(f, a):
     result = isNone
 
-  if result == isEqual:
-    inc c.exactMatches
+  #if result == isEqual:
+  #  inc c.exactMatches
 
 proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   case a.kind
@@ -433,6 +457,7 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
         return isNone
     when useEffectSystem:
       if not compatibleEffects(f, a): return isNone
+
   of tyNil:
     result = f.allowsNil
   of tyIter:
@@ -590,10 +615,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     return typeRel(c, f, lastSon(a))
 
   template bindingRet(res) =
-    when res == isGeneric:
-      if doBind:
-        let bound = aOrig.skipTypes({tyRange}).skipIntLit
-        if doBind: put(c.bindings, f, bound)
+    if doBind:
+      let bound = aOrig.skipTypes({tyRange}).skipIntLit
+      if doBind: put(c.bindings, f, bound)
     return res
 
   template considerPreviousT(body: stmt) {.immediate.} =
@@ -605,20 +629,21 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   of tyOr:
     # seq[int|string] vs seq[number]
     # both int and string must match against number
+    # but ensure that '[T: A|A]' matches as good as '[T: A]' (bug #2219):
+    result = isGeneric
     for branch in a.sons:
-      if typeRel(c, f, branch, false) == isNone:
-        return isNone
-
-    return isGeneric
+      let x = typeRel(c, f, branch, false)
+      if x == isNone: return isNone
+      if x < result: result = x
 
   of tyAnd:
     # seq[Sortable and Iterable] vs seq[Sortable]
     # only one match is enough
     for branch in a.sons:
-      if typeRel(c, f, branch, false) != isNone:
-        return isGeneric
-
-    return isNone
+      let x = typeRel(c, f, branch, false)
+      if x != isNone:
+        return if x >= isGeneric: isGeneric else: x
+    result = isNone
 
   of tyNot:
     case f.kind
@@ -781,11 +806,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
           inc(c.inheritancePenalty, depth)
           result = isSubtype
   of tyDistinct:
-    if (a.kind == tyDistinct) and sameDistinctTypes(f, a): result = isEqual
+    if a.kind == tyDistinct and sameDistinctTypes(f, a): result = isEqual
     elif c.coerceDistincts: result = typeRel(c, f.base, a)
   of tySet:
     if a.kind == tySet:
-      if (f.sons[0].kind != tyGenericParam) and (a.sons[0].kind == tyEmpty):
+      if f.sons[0].kind != tyGenericParam and a.sons[0].kind == tyEmpty:
         result = isSubtype
       else:
         result = typeRel(c, f.sons[0], a.sons[0])
@@ -865,7 +890,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         result = typeRel(c, ff, aa)
         if result == isNone: return
         if ff.kind == tyRange and result != isEqual: return isNone
-      result = isGeneric
+      #result = isGeneric
       # XXX See bug #2220. A[int] should match A[int] better than some generic X
     else:
       result = typeRel(c, lastSon(f), a)
@@ -904,18 +929,23 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   of tyAnd:
     considerPreviousT:
       for branch in f.sons:
-        if typeRel(c, branch, aOrig) < isSubtype:
-          return isNone
-
-      bindingRet isGeneric
+        let x = typeRel(c, branch, aOrig)
+        if x < isSubtype: return isNone
+        # 'and' implies minimum matching result:
+        if x < result: result = x
+      bindingRet result
 
   of tyOr:
     considerPreviousT:
+      result = isNone
       for branch in f.sons:
-        if typeRel(c, branch, aOrig) >= isSubtype:
-          bindingRet isGeneric
-
-      return isNone
+        let x = typeRel(c, branch, aOrig)
+        # 'or' implies maximum matching result:
+        if x > result: result = x
+      if result >= isSubtype:
+        bindingRet result
+      else:
+        result = isNone
 
   of tyNot:
     considerPreviousT:
@@ -975,6 +1005,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
             internalAssert a.sons != nil and a.sons.len > 0
             c.typedescMatched = true
             result = typeRel(c, f.base, a.skipTypes({tyGenericParam, tyTypeDesc}))
+            if result > isGeneric: result = isGeneric
         else:
           result = isNone
       else:
@@ -998,12 +1029,15 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
             return isNone
         if doBind:
           put(c.bindings, f, concrete)
+      elif result > isGeneric:
+        result = isGeneric
     elif a.kind == tyEmpty:
       result = isGeneric
     elif x.kind == tyGenericParam:
       result = isGeneric
     else:
       result = typeRel(c, x, a) # check if it fits
+      if result > isGeneric: result = isGeneric
 
   of tyStatic:
     let prev = PType(idTableGet(c.bindings, f))
@@ -1220,8 +1254,9 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
     of isConvertible, isIntConv: inc(m.convMatches)
     of isSubtype, isSubrange: inc(m.subtypeMatches)
     of isGeneric, isInferred: inc(m.genericMatches)
-    of isInferredConvertible: inc(m.genericMatches); inc(m.convMatches)
     of isFromIntLit: inc(m.intConvMatches, 256)
+    of isInferredConvertible:
+      inc(m.convMatches)
     of isEqual: inc(m.exactMatches)
     of isNone: discard
 
@@ -1255,9 +1290,11 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
     result = implicitConv(nkHiddenSubConv, f, arg, m, c)
   of isSubrange:
     inc(m.subtypeMatches)
-    result = implicitConv(nkHiddenStdConv, f, arg, m, c)
+    if f.kind == tyVar:
+      result = arg
+    else:
+      result = implicitConv(nkHiddenStdConv, f, arg, m, c)
   of isInferred, isInferredConvertible:
-    inc(m.genericMatches)
     if arg.kind in {nkProcDef, nkIteratorDef} + nkLambdaKinds:
       result = c.semInferredLambda(c, m.bindings, arg)
     else:
@@ -1266,6 +1303,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
     if r == isInferredConvertible:
       inc(m.convMatches)
       result = implicitConv(nkHiddenStdConv, f, result, m, c)
+    else:
+      inc(m.genericMatches)
   of isGeneric:
     inc(m.genericMatches)
     if arg.typ == nil:
@@ -1331,7 +1370,16 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     for i in countup(0, sonsLen(arg) - 1):
       if arg.sons[i].sym.kind in {skProc, skMethod, skConverter}+skIterators:
         copyCandidate(z, m)
+        z.callee = arg.sons[i].typ
+        z.calleeSym = arg.sons[i].sym
+        #if arg.sons[i].sym.name.s == "cmp":
+        #  ggDebug = true
+        #  echo "CALLLEEEEEEEE ", typeToString(z.callee)
         var r = typeRel(z, f, arg.sons[i].typ)
+        #if arg.sons[i].sym.name.s == "cmp": # and arg.info.line == 606:
+        #  echo "M ", r, " ", arg.info, " ", typeToString(arg.sons[i].sym.typ)
+        #  debug arg.sons[i].sym
+        #  writeMatches(z)
         if r != isNone:
           case x.state
           of csEmpty, csNoMatch:
@@ -1644,7 +1692,7 @@ tests:
 
     setup:
       var c: TCandidate
-      InitCandidate(nil, c, nil)
+      initCandidate(nil, c, nil)
 
     template yes(x, y) =
       test astToStr(x) & " is " & astToStr(y):

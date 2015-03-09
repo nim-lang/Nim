@@ -94,7 +94,7 @@ when defined(Windows):
         while i < password.len:
           x = runeLenAt(password, i)
           inc i, x
-        password.setLen(password.len -  x)
+        password.setLen(password.len - x)
       else:
         password.add(toUTF8(c.Rune))
     stdout.write "\n"
