@@ -48,6 +48,11 @@ when defined(posix) and not defined(JS):
   proc posix_gettimeofday(tp: var Timeval, unused: pointer = nil) {.
     importc: "gettimeofday", header: "<sys/time.h>".}
 
+  # we also need tzset() to make sure that tzname is initialized
+  proc tzset() {.importc, header: "<sys/time.h>".}
+  # calling tzset() implicitly to initialize tzname data.
+  tzset()
+
 elif defined(windows):
   import winlean
   
