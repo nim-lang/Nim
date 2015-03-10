@@ -170,9 +170,9 @@ proc compilerOutputTests(test: TTest, given: var TSpec, expected: TSpec, r: var 
   var givenmsg: string = ""
   if given.err == reSuccess:
     if expected.ccodeCheck.len > 0:
-      codegenCheck(test, expectedmsg, given, r)
       expectedmsg = expected.ccodeCheck
       givenmsg = given.msg
+      codegenCheck(test, expectedmsg, given, r)
     if expected.nimout.len > 0:
       expectedmsg = expected.nimout
       givenmsg = given.nimout.strip
