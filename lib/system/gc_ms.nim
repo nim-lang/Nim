@@ -261,6 +261,10 @@ proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
   zeroMem(result, size)
   when defined(memProfiler): nimProfile(size)
 
+proc newObjNoInit(typ: PNimType, size: int): pointer {.compilerRtl.} =
+  result = rawNewObj(typ, size, gch)
+  when defined(memProfiler): nimProfile(size)
+
 proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
   # `newObj` already uses locks, so no need for them here.
   let size = addInt(mulInt(len, typ.base.size), GenericSeqSize)

@@ -287,6 +287,8 @@ elif defined(nogc):
   proc GC_getStatistics(): string = return ""
   
   
+  proc newObjNoInit(typ: PNimType, size: int): pointer {.compilerproc.} =
+    result = alloc(size)
   proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
     result = alloc0(size)
   proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =

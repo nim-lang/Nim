@@ -43,7 +43,7 @@ else:
     cast[NimString](newObj(addr(strDesc), size))
 
   template allocStrNoInit(size: expr): expr =
-    cast[NimString](rawNewObj(addr(strDesc), size, gch))
+    cast[NimString](newObjNoInit(addr(strDesc), size))
 
 proc rawNewStringNoInit(space: int): NimString {.compilerProc.} =
   var s = space
