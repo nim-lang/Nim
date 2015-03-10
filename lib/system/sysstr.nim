@@ -43,7 +43,7 @@ else:
     cast[NimString](newObj(addr(strDesc), size))
 
   template allocStrNoInit(size: expr): expr =
-    cast[NimString](rawNewObj(addr(strDesc), size, gch))
+    cast[NimString](newObjNoInit(addr(strDesc), size))
 
 proc rawNewStringNoInit(space: int): NimString {.compilerProc.} =
   var s = space
@@ -215,7 +215,7 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
                                GenericSeqSize))
   elif newLen < result.len:
     # we need to decref here, otherwise the GC leaks!
-    when not defined(boehmGC) and not defined(nogc) and 
+    when not defined(boehmGC) and not defined(nogc) and
          not defined(gcMarkAndSweep):
       when compileOption("gc", "v2"):
         for i in newLen..result.len-1:
@@ -232,7 +232,7 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
           forAllChildrenAux(cast[pointer](cast[ByteAddress](result) +%
                             GenericSeqSize +% (i*%elemSize)),
                             extGetCellType(result).base, waZctDecRef)
-      
+
     # XXX: zeroing out the memory can still result in crashes if a wiped-out
     # cell is aliased by another pointer (ie proc parameter or a let variable).
     # This is a tought problem, because even if we don't zeroMem here, in the
@@ -270,7 +270,7 @@ proc nimFloatToStr(f: float): string {.compilerproc.} =
     if buf[i] == ',':
       buf[i] = '.'
       hasDot = true
-    elif buf[i] in {'a'..'z', 'A'..'Z', '.'}: 
+    elif buf[i] in {'a'..'z', 'A'..'Z', '.'}:
       hasDot = true
   if not hasDot:
     buf[n] = '.'
@@ -321,7 +321,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   template addToBuf(c) =
     if ti < t.high:
       t[ti] = c; inc(ti)
-  
+
   # Sign?
   if s[i] == '+' or s[i] == '-':
     if s[i] == '-':
@@ -342,7 +342,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   if s[i] == 'I' or s[i] == 'i':
     if s[i+1] == 'N' or s[i+1] == 'n':
       if s[i+2] == 'F' or s[i+2] == 'f':
-        if s[i+3] notin IdentChars: 
+        if s[i+3] notin IdentChars:
           number = Inf*sign
           return i+3 - start
     return 0

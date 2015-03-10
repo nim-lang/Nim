@@ -461,6 +461,9 @@ proc rawNewObj(typ: PNimType, size: int, gch: var TGcHeap): pointer =
 
 {.pop.}
 
+proc newObjNoInit(typ: PNimType, size: int): pointer {.compilerRtl.} =
+  result = rawNewObj(typ, size, gch)
+
 proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
   result = rawNewObj(typ, size, gch)
   zeroMem(result, size)

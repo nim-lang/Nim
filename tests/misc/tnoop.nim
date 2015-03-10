@@ -1,12 +1,11 @@
 discard """
   file: "tnoop.nim"
   line: 11
-  errormsg: "expression \'a()\' cannot be called"
+  errormsg: "undeclared identifier: 'a'"
 """
-# Tests the new check in the semantic pass
+
 
 var
   a: int
 
-a()  #ERROR_MSG expression 'a()' cannot be called
-
+a()
