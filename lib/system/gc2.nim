@@ -634,8 +634,6 @@ proc rawNewObj(typ: PNimType, size: int, gch: var TGcHeap, rc1 = false): pointer
   gcTrace(res, csAllocated)
   release(gch)
   result = cellToUsr(res)
-  zeroMem(result, size)
-  when defined(memProfiler): nimProfile(size)
   sysAssert(allocInv(gch.region), "rawNewObj end")
 
 {.pop.}
@@ -670,23 +668,31 @@ template trimAt(roots: var TCellSeq, at: int): stmt =
 proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
   setStackTop(gch)
   result = rawNewObj(typ, size, gch, false)
-  
+  zeroMem(result, size)
+  when defined(memProfiler): nimProfile(size)
+
+proc newObjNoInit(typ: PNimType, size: int): pointer {.compilerRtl.} =
+  setStackTop(gch)
+  result = rawNewObj(typ, size, gch, false)
+  when defined(memProfiler): nimProfile(size)
+
 proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
   setStackTop(gch)
-  # `rawNewObj` already uses locks, so no need for them here.
+  # `newObj` already uses locks, so no need for them here.
   let size = addInt(mulInt(len, typ.base.size), GenericSeqSize)
-  result = rawNewObj(typ, size, gch, false)
+  result = newObj(typ, size)
   cast[PGenericSeq](result).len = len
   cast[PGenericSeq](result).reserved = len
 
 proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   setStackTop(gch)
   result = rawNewObj(typ, size, gch, true)
+  when defined(memProfiler): nimProfile(size)
 
 proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
   setStackTop(gch)
   let size = addInt(mulInt(len, typ.base.size), GenericSeqSize)
-  result = rawNewObj(typ, size, gch, true)
+  result = newObjRC1(typ, size)
   cast[PGenericSeq](result).len = len
   cast[PGenericSeq](result).reserved = len
 
