@@ -20,7 +20,7 @@ const
                           <td>Success</td></tr>"""
   TableFooter = "</table>"
   HtmlBegin = """<html>
-    <head> 
+    <head>
       <title>Test results</title>
       <style type="text/css">
       <!--""" & slurp("css/boilerplate.css") & "\n" &
@@ -28,13 +28,13 @@ const
       """
 ul#tabs { list-style-type: none; margin: 30px 0 0 0; padding: 0 0 0.3em 0; }
 ul#tabs li { display: inline; }
-ul#tabs li a { color: #42454a; background-color: #dedbde; 
-               border: 1px solid #c9c3ba; border-bottom: none; 
+ul#tabs li a { color: #42454a; background-color: #dedbde;
+               border: 1px solid #c9c3ba; border-bottom: none;
                padding: 0.3em; text-decoration: none; }
 ul#tabs li a:hover { background-color: #f1f0ee; }
-ul#tabs li a.selected { color: #000; background-color: #f1f0ee; 
+ul#tabs li a.selected { color: #000; background-color: #f1f0ee;
                         font-weight: bold; padding: 0.7em 0.3em 0.38em 0.3em; }
-div.tabContent { border: 1px solid #c9c3ba; 
+div.tabContent { border: 1px solid #c9c3ba;
                  padding: 0.5em; background-color: #f1f0ee; }
 div.tabContent.hide { display: none; }
       -->
@@ -43,7 +43,7 @@ div.tabContent.hide { display: none; }
 
     var tabLinks = new Array();
     var contentDivs = new Array();
-    
+
     function init() {
       // Grab the tab links and content divs from the page
       var tabListItems = document.getElementById('tabs').childNodes;
@@ -103,7 +103,7 @@ div.tabContent.hide { display: none; }
 
     </head>
     <body onload="init()">"""
-  
+
   HtmlEnd = "</body></html>"
 
 proc td(s: string): string =
@@ -115,8 +115,8 @@ proc getCommit(db: TDbConn, c: int): string =
     if commit == 0: result = thisCommit[0]
     inc commit
 
-proc generateHtml*(filename: string, commit: int) =
-  const selRow = """select name, category, target, action, 
+proc generateHtml*(filename: string, commit: int; onlyFailing: bool) =
+  const selRow = """select name, category, target, action,
                            expected, given, result
                     from TestResult
                     where [commit] = ? and machine = ?
@@ -140,17 +140,20 @@ proc generateHtml*(filename: string, commit: int) =
   for m in db.rows(sql"select id, name, os, cpu from Machine order by id"):
     outfile.writeln """<li><a href="#$#">$#: $#, $#</a></li>""" % m
   outfile.write("</ul>")
-  
+
   for currentMachine in db.rows(sql"select id from Machine order by id"):
     let m = currentMachine[0]
     outfile.write("""<div class="tabContent" id="$#">""" % m)
 
     outfile.write(TableHeader)
     for row in db.rows(sql(selRow), lastCommit, m):
-      outfile.write("<tr>")
-      for x in row:
-        outfile.write(x.td)
-      outfile.write("</tr>")
+      if onlyFailing and row.len > 0 and row[row.high] == "reSuccess":
+        discard
+      else:
+        outfile.write("<tr>")
+        for x in row:
+          outfile.write(x.td)
+        outfile.write("</tr>")
 
     outfile.write(TableFooter)
     outfile.write("</div>")
@@ -161,7 +164,7 @@ proc generateHtml*(filename: string, commit: int) =
 proc generateJson*(filename: string, commit: int) =
   const
     selRow = """select count(*),
-                           sum(result = 'reSuccess'), 
+                           sum(result = 'reSuccess'),
                            sum(result = 'reIgnored')
                 from TestResult
                 where [commit] = ? and machine = ?
@@ -174,9 +177,9 @@ proc generateJson*(filename: string, commit: int) =
                 on A.name = B.name and A.category = B.category
                 where A.[commit] = ? and B.[commit] = ? and A.machine = ?
                    and A.result != B.result"""
-    selResults = """select 
-                      category || '/' || target || '/' || name, 
-                      category, target, action, result, expected, given 
+    selResults = """select
+                      category || '/' || target || '/' || name,
+                      category, target, action, result, expected, given
                     from TestResult
                     where [commit] = ?"""
   var db = open(connection="testament.db", user="testament", password="",

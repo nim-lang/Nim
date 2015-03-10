@@ -30,6 +30,7 @@ Arguments:
   arguments are passed to the compiler
 Options:
   --print                   also print results to the console
+  --failing                 only show failing/ignored tests
 """ % resultsFile
 
 type
@@ -48,7 +49,7 @@ type
 # ----------------------------------------------------------------------------
 
 let
-  pegLineError = 
+  pegLineError =
     peg"{[^(]*} '(' {\d+} ', ' \d+ ') ' ('Error') ':' \s* {.*}"
   pegOtherError = peg"'Error:' \s* {.*}"
   pegSuccess = peg"'Hint: operation successful'.*"
@@ -107,7 +108,7 @@ proc addResult(r: var TResults, test: TTest,
                expected, given: string, success: TResultEnum) =
   let name = test.name.extractFilename & test.options
   backend.writeTestResult(name = name,
-                          category = test.cat.string, 
+                          category = test.cat.string,
                           target = $test.target,
                           action = $test.action,
                           result = $success,
@@ -141,7 +142,7 @@ proc generatedFile(path, name: string, target: TTarget): string =
     (if target == targetJS: path.splitPath.tail & "_" else: "compiler_") &
     name.changeFileExt(ext)
 
-proc codegenCheck(test: TTest, check: string, given: var TSpec, r: var TResults) =
+proc codegenCheck(test: TTest, check: string, given: var TSpec) =
   try:
     let (path, name, ext2) = test.name.splitFile
     let genFile = generatedFile(path, name, test.target)
@@ -151,10 +152,11 @@ proc codegenCheck(test: TTest, check: string, given: var TSpec, r: var TResults)
       given.err = reCodegenFailure
   except ValueError:
     given.err = reInvalidPeg
+    echo getCurrentExceptionMsg()
   except IOError:
     given.err = reCodeNotFound
 
-proc nimoutCheck(test: TTest; expectedNimout: string; given: var TSpec, r: var TResults) =
+proc nimoutCheck(test: TTest; expectedNimout: string; given: var TSpec) =
   let exp = expectedNimout.strip.replace("\C\L", "\L")
   let giv = given.nimout.strip.replace("\C\L", "\L")
   if exp notin giv:
@@ -165,18 +167,19 @@ proc makeDeterministic(s: string): string =
   sort(x, system.cmp)
   result = join(x, "\n")
 
-proc compilerOutputTests(test: TTest, given: var TSpec, expected: TSpec, r: var TResults) =
+proc compilerOutputTests(test: TTest, given: var TSpec, expected: TSpec;
+                         r: var TResults) =
   var expectedmsg: string = ""
   var givenmsg: string = ""
   if given.err == reSuccess:
     if expected.ccodeCheck.len > 0:
-      codegenCheck(test, expectedmsg, given, r)
+      codegenCheck(test, expected.ccodeCheck, given)
       expectedmsg = expected.ccodeCheck
       givenmsg = given.msg
     if expected.nimout.len > 0:
       expectedmsg = expected.nimout
       givenmsg = given.nimout.strip
-      nimoutCheck(test, expectedmsg, given, r)
+      nimoutCheck(test, expectedmsg, given)
   if given.err == reSuccess: inc(r.passed)
   r.addResult(test, expectedmsg, givenmsg, given.err)
 
@@ -260,11 +263,13 @@ proc main() =
 
   backend.open()
   var optPrintResults = false
+  var optFailing = false
   var p = initOptParser()
   p.next()
-  if p.kind == cmdLongoption:
+  while p.kind == cmdLongoption:
     case p.key.string.normalize
     of "print", "verbose": optPrintResults = true
+    of "failing": optFailing = true
     else: quit Usage
     p.next()
   if p.kind != cmdArgument: quit Usage
@@ -288,7 +293,7 @@ proc main() =
   of "html":
     var commit = 0
     discard parseInt(p.cmdLineRest.string, commit)
-    generateHtml(resultsFile, commit)
+    generateHtml(resultsFile, commit, optFailing)
     generateJson(jsonFile, commit)
   else:
     quit Usage

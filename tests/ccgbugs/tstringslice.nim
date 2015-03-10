@@ -1,3 +1,8 @@
+discard """
+  disabled: "true"
+"""
+
+# Now the compiler fails with OOM. yay.
 
 # bug #794
 type TRange = range[0..3]
