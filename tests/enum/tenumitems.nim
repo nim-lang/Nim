@@ -1,6 +1,6 @@
 discard """
   line: 7
-  errormsg: "expression 'items' cannot be called"
+  errormsg: "undeclared identifier: 'items'"
 """
 
 type a = enum b,c,d
