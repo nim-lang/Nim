@@ -65,13 +65,13 @@ proc testGetFileInfo =
     try:
       discard getFileInfo(testFile)
       #echo("Handle : Valid File : Success")
-    except EIO:
+    except IOError:
       echo("Handle : Valid File : Failure")
 
     try:
       discard getFileInfo(testHandle)
       #echo("Handle : Valid File : Success")
-    except EIO:
+    except IOError:
       echo("Handle : Valid File : Failure")
 
   # Case 6 and 8
@@ -82,14 +82,14 @@ proc testGetFileInfo =
     try:
       discard getFileInfo(testFile)
       echo("Handle : Invalid File : Failure")
-    except EIO, EOS:
+    except IOError, OSError:
       discard
       #echo("Handle : Invalid File : Success")
 
     try:
       discard getFileInfo(testHandle)
       echo("Handle : Invalid File : Failure")
-    except EIO, EOS:
+    except IOError, OSError:
       discard
       #echo("Handle : Invalid File : Success")
 
