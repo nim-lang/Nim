@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, types, msgs, osproc, streams, options, idents
+import os, ast, types, msgs, osproc, streams, options, idents
 
 proc readOutput(p: Process): string =
   result = ""
@@ -30,7 +30,7 @@ proc opGorge*(cmd, input: string): string =
 
 proc opSlurp*(file: string, info: TLineInfo, module: PSym): string = 
   try:
-    let filename = file.findFile
+    let filename = if file.existsFile: file else: file.findFile
     result = readFile(filename)
     # we produce a fake include statement for every slurped filename, so that
     # the module dependencies are accurate:
