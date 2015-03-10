@@ -1,5 +1,5 @@
 discard """
-  nimout: "'a' is deprecated [Deprecated]"
+  nimout: "a is deprecated [Deprecated]"
 """
 
 var
