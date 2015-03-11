@@ -111,6 +111,7 @@ General FAQ
   - Gedit: The `Aporia .lang file <https://github.com/nim-lang/Aporia/blob/master/share/gtksourceview-2.0/language-specs/nim.lang>`_
   - jEdit: https://github.com/exhu/nimrod-misc/tree/master/jedit
   - TextMate: Available in bundle installer (`Repository <https://github.com/textmate/nim.tmbundle>`_)
+  - Sublime Text: Available via Package Control (`Repository <https://github.com/Varriount/NimLime>`_)
 
 
 .. container:: standout
