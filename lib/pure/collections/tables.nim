@@ -196,7 +196,11 @@ proc mget*[A, B](t: var Table[A, B], key: A): var B =
   var hc: THash
   var index = rawGet(t, key, hc)
   if index >= 0: result = t.data[index].val
-  else: raise newException(KeyError, "key not found: " & $key)
+  else:
+    when compiles($key):
+      raise newException(KeyError, "key not found: " & $key)
+    else:
+      raise newException(KeyError, "key not found")
 
 iterator allValues*[A, B](t: Table[A, B]; key: A): B =
   ## iterates over any value in the table `t` that belongs to the given `key`.

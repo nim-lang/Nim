@@ -68,7 +68,6 @@ proc renderType(n: PNode): string =
       assert n[i].kind == nkIdent
       result.add(',' & typeStr)
   of nkTupleTy:
-    assert len(n) > 0
     result = "tuple["
     for i in 0 .. <len(n): result.add(renderType(n[i]) & ',')
     result[<len(result)] = ']'

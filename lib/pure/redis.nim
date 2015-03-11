@@ -798,6 +798,22 @@ proc zunionstore*(r: Redis, destination: string, numkeys: string,
   
   return r.readInteger()
 
+# HyperLogLog
+
+proc pfadd*(r: Redis, key: string, elements: varargs[string]): RedisInteger = 
+  ## Add variable number of elements into special 'HyperLogLog' set type
+  r.sendCommand("PFADD", key, elements)
+  return r.readInteger()
+
+proc pfcount*(r: Redis, key: string): RedisInteger =
+  ## Count approximate number of elements in 'HyperLogLog'
+  r.sendCommand("PFCOUNT", key)
+  return r.readInteger()
+
+proc pfmerge*(r: Redis, destination: string, sources: varargs[string]) =
+  ## Merge several source HyperLogLog's into one specified by destKey
+  r.sendCommand("PFMERGE", destination, sources)
+  raiseNoOK(r.readStatus(), r.pipeline.enabled)
 
 # Pub/Sub
 

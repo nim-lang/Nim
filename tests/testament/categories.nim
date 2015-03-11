@@ -230,17 +230,17 @@ proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
     else:
       testNoSpec r, makeTest(test, options, cat, actionCompile)
 
-# ----------------------------- babel ----------------------------------------
+# ----------------------------- nimble ----------------------------------------
 type PackageFilter = enum
   pfCoreOnly
   pfExtraOnly
   pfAll
 
 let 
-  babelExe = findExe("babel")
-  babelDir = getHomeDir() / ".babel"
-  packageDir = babelDir / "pkgs"
-  packageIndex = babelDir / "packages.json"
+  nimbleExe = findExe("nimble")
+  nimbleDir = getHomeDir() / ".nimble"
+  packageDir = nimbleDir / "pkgs"
+  packageIndex = nimbleDir / "packages.json"
 
 proc waitForExitEx(p: Process): int =
   var outp = outputStream(p)
@@ -255,7 +255,7 @@ proc waitForExitEx(p: Process): int =
 
 proc getPackageDir(package: string): string =
   ## TODO - Replace this with dom's version comparison magic.
-  var commandOutput = execCmdEx("babel path $#" % package)
+  var commandOutput = execCmdEx("nimble path $#" % package)
   if commandOutput.exitCode != QuitSuccess:
     return ""
   else:
@@ -268,7 +268,7 @@ iterator listPackages(filter: PackageFilter): tuple[name, url: string] =
     let
       name = package["name"].str
       url = package["url"].str
-      isCorePackage = "nimrod-code" in normalize(url)
+      isCorePackage = "nim-lang" in normalize(url)
     case filter:
     of pfCoreOnly:
       if isCorePackage:
@@ -279,13 +279,13 @@ iterator listPackages(filter: PackageFilter): tuple[name, url: string] =
     of pfAll:
       yield (name, url)
 
-proc testBabelPackages(r: var TResults, cat: Category, filter: PackageFilter) =
-  if babelExe == "":
-    echo("[Warning] - Cannot run babel tests: Babel binary not found.")
+proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
+  if nimbleExe == "":
+    echo("[Warning] - Cannot run nimble tests: Nimble binary not found.")
     return
 
-  if execCmd("$# update" % babelExe) == QuitFailure:
-    echo("[Warning] - Cannot run babel tests: Babel update failed.")
+  if execCmd("$# update" % nimbleExe) == QuitFailure:
+    echo("[Warning] - Cannot run nimble tests: Nimble update failed.")
     return
 
   let packageFileTest = makeTest("PackageFileParsed", "", cat)
@@ -294,7 +294,7 @@ proc testBabelPackages(r: var TResults, cat: Category, filter: PackageFilter) =
       var test = makeTest(name, "", cat)
       echo(url)
       let
-        installProcess = startProcess(babelExe, "", ["install", "-y", name])
+        installProcess = startProcess(nimbleExe, "", ["install", "-y", name])
         installStatus = waitForExitEx(installProcess)
       installProcess.close
       if installStatus != QuitSuccess:
@@ -302,9 +302,8 @@ proc testBabelPackages(r: var TResults, cat: Category, filter: PackageFilter) =
         continue
 
       let
-        buildPath = getPackageDir(name)[0.. -3]
-      let
-        buildProcess = startProcess(babelExe, buildPath, ["build"])
+        buildPath = getPackageDir(name).strip
+        buildProcess = startProcess(nimbleExe, buildPath, ["build"])
         buildStatus = waitForExitEx(buildProcess)
       buildProcess.close
       if buildStatus != QuitSuccess:
@@ -312,13 +311,13 @@ proc testBabelPackages(r: var TResults, cat: Category, filter: PackageFilter) =
       r.addResult(test, "", "", reSuccess)
     r.addResult(packageFileTest, "", "", reSuccess)
   except JsonParsingError:
-    echo("[Warning] - Cannot run babel tests: Invalid package file.")
+    echo("[Warning] - Cannot run nimble tests: Invalid package file.")
     r.addResult(packageFileTest, "", "", reBuildFailed)
 
 
 # ----------------------------------------------------------------------------
 
-const AdditionalCategories = ["debugger", "examples", "lib", "babel-core"]
+const AdditionalCategories = ["debugger", "examples", "lib"]
 
 proc `&.?`(a, b: string): string =
   # candidate for the stdlib?
@@ -356,12 +355,12 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
     compileExample(r, "examples/*.nim", options, cat)
     compileExample(r, "examples/gtk/*.nim", options, cat)
     compileExample(r, "examples/talk/*.nim", options, cat)
-  of "babel-core":
-    testBabelPackages(r, cat, pfCoreOnly)
-  of "babel-extra":
-    testBabelPackages(r, cat, pfExtraOnly)
-  of "babel-all":
-    testBabelPackages(r, cat, pfAll)
+  of "nimble-core":
+    testNimblePackages(r, cat, pfCoreOnly)
+  of "nimble-extra":
+    testNimblePackages(r, cat, pfExtraOnly)
+  of "nimble-all":
+    testNimblePackages(r, cat, pfAll)
   else:
     for name in os.walkFiles("tests" & DirSep &.? cat.string / "t*.nim"):
       testSpec r, makeTest(name, options, cat)

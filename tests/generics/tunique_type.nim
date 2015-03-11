@@ -1,5 +1,11 @@
 # Bug #2022
 
+discard """
+  output: '''@[97, 45]
+@[true, false]
+@[false, false]'''
+"""
+
 ## The goal of this snippet is to provide and test a construct for general-
 ## purpose, random-access mapping. I use an AST-manipulation-based approach
 ## because it's more efficient than using procedure pointers and less
@@ -31,6 +37,7 @@ type Mapped[Input; predicate: static[string]] = object
   input: Input
 
 macro map(input, predicate: expr): expr =
+  let predicate = callsite()[2]
   newNimNode(nnkObjConstr).add(
     newNimNode(nnkBracketExpr).add(
       ident"Mapped",

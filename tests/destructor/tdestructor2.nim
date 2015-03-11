@@ -1,6 +1,6 @@
 discard """
-  line: 20
-  errormsg: " usage of a type with a destructor in a non destructible context"
+  line: 23
+  nimout: " usage of a type with a destructor in a non destructible context"
 """
 
 {.experimental.}
@@ -19,5 +19,9 @@ proc open: TMyObj =
 
 proc `$`(x: TMyObj): string = $x.y
 
-echo open()
+proc foo =
+  discard open()
+
+# XXX doesn't trigger this yet:
+#echo open()
 

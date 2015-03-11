@@ -66,7 +66,7 @@ proc rawCompile(pattern: string, flags: cint): PPcre =
     offset: cint
   result = pcre.compile(pattern, flags, addr(msg), addr(offset), nil)
   if result == nil:
-    raiseInvalidRegex($msg & "\n" & pattern & "\n" & repeatChar(offset) & "^\n")
+    raiseInvalidRegex($msg & "\n" & pattern & "\n" & spaces(offset) & "^\n")
 
 proc finalizeRegEx(x: Regex) = 
   # XXX This is a hack, but PCRE does not export its "free" function properly.
@@ -291,7 +291,7 @@ proc replace*(s: string, sub: Regex, by = ""): string =
   ## accessed in `by`. Examples:
   ##
   ## .. code-block:: nim
-  ##   "var1=key; var2=key2".replace(re"(\w+)'='(\w+)")
+  ##   "var1=key; var2=key2".replace(re"(\w+)=(\w+)")
   ##
   ## Results in:
   ##
@@ -313,7 +313,7 @@ proc replacef*(s: string, sub: Regex, by: string): string =
   ## with the notation ``$i`` and ``$#`` (see strutils.`%`). Examples:
   ##
   ## .. code-block:: nim
-  ## "var1=key; var2=key2".replacef(re"(\w+)'='(\w+)", "$1<-$2$2")
+  ##   "var1=key; var2=key2".replacef(re"(\w+)=(\w+)", "$1<-$2$2")
   ##
   ## Results in:
   ##

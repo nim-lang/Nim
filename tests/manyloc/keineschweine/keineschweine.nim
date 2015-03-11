@@ -113,7 +113,7 @@ when defined(recordMode):
     isRecording = false
   proc zeroPad*(s: string; minLen: int): string =
     if s.len < minLen:
-      result = repeatChar(minLen - s.len, '0')
+      result = repeat(0, minLen - s.len)
       result.add s
     else:
       result = s

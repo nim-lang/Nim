@@ -203,9 +203,9 @@ proc mustRehash(length, counter: int): bool =
   assert(length > counter)
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
-proc spaces(x: int): PRope = 
+proc rspaces(x: int): PRope = 
   # returns x spaces
-  result = toRope(repeatChar(x))
+  result = toRope(spaces(x))
 
 proc toYamlChar(c: char): string = 
   case c
@@ -253,7 +253,7 @@ proc typeToYamlAux(n: PType, marker: var IntSet,
                    indent, maxRecDepth: int): PRope
 proc strTableToYaml(n: TStrTable, marker: var IntSet, indent: int, 
                     maxRecDepth: int): PRope = 
-  var istr = spaces(indent + 2)
+  var istr = rspaces(indent + 2)
   result = toRope("[")
   var mycount = 0
   for i in countup(0, high(n.data)): 
@@ -262,20 +262,20 @@ proc strTableToYaml(n: TStrTable, marker: var IntSet, indent: int,
       appf(result, "$N$1$2", 
            [istr, symToYamlAux(n.data[i], marker, indent + 2, maxRecDepth - 1)])
       inc(mycount)
-  if mycount > 0: appf(result, "$N$1", [spaces(indent)])
+  if mycount > 0: appf(result, "$N$1", [rspaces(indent)])
   app(result, "]")
   assert(mycount == n.counter)
 
 proc ropeConstr(indent: int, c: openArray[PRope]): PRope = 
   # array of (name, value) pairs
-  var istr = spaces(indent + 2)
+  var istr = rspaces(indent + 2)
   result = toRope("{")
   var i = 0
   while i <= high(c): 
     if i > 0: app(result, ",")
     appf(result, "$N$1\"$2\": $3", [istr, c[i], c[i + 1]])
     inc(i, 2)
-  appf(result, "$N$1}", [spaces(indent)])
+  appf(result, "$N$1}", [rspaces(indent)])
 
 proc symToYamlAux(n: PSym, marker: var IntSet, indent: int, 
                   maxRecDepth: int): PRope = 
@@ -310,9 +310,9 @@ proc typeToYamlAux(n: PType, marker: var IntSet, indent: int,
       result = toRope("[")
       for i in countup(0, sonsLen(n) - 1): 
         if i > 0: app(result, ",")
-        appf(result, "$N$1$2", [spaces(indent + 4), typeToYamlAux(n.sons[i], 
+        appf(result, "$N$1$2", [rspaces(indent + 4), typeToYamlAux(n.sons[i], 
             marker, indent + 4, maxRecDepth - 1)])
-      appf(result, "$N$1]", [spaces(indent + 2)])
+      appf(result, "$N$1]", [rspaces(indent + 2)])
     else: 
       result = toRope("null")
     result = ropeConstr(indent, [toRope("kind"), 
@@ -331,7 +331,7 @@ proc treeToYamlAux(n: PNode, marker: var IntSet, indent: int,
   if n == nil: 
     result = toRope("null")
   else: 
-    var istr = spaces(indent + 2)
+    var istr = rspaces(indent + 2)
     result = ropef("{$N$1\"kind\": $2", [istr, makeYamlString($n.kind)])
     if maxRecDepth != 0: 
       appf(result, ",$N$1\"info\": $2", [istr, lineInfoToStr(n.info)])
@@ -359,12 +359,12 @@ proc treeToYamlAux(n: PNode, marker: var IntSet, indent: int,
           appf(result, ",$N$1\"sons\": [", [istr])
           for i in countup(0, sonsLen(n) - 1): 
             if i > 0: app(result, ",")
-            appf(result, "$N$1$2", [spaces(indent + 4), treeToYamlAux(n.sons[i], 
+            appf(result, "$N$1$2", [rspaces(indent + 4), treeToYamlAux(n.sons[i], 
                 marker, indent + 4, maxRecDepth - 1)])
           appf(result, "$N$1]", [istr])
       appf(result, ",$N$1\"typ\": $2", 
            [istr, typeToYamlAux(n.typ, marker, indent + 2, maxRecDepth)])
-    appf(result, "$N$1}", [spaces(indent)])
+    appf(result, "$N$1}", [rspaces(indent)])
 
 proc treeToYaml(n: PNode, indent: int = 0, maxRecDepth: int = - 1): PRope = 
   var marker = initIntSet()
@@ -408,7 +408,7 @@ proc debugTree(n: PNode, indent: int, maxRecDepth: int;
   if n == nil: 
     result = toRope("null")
   else: 
-    var istr = spaces(indent + 2)
+    var istr = rspaces(indent + 2)
     result = ropef("{$N$1\"kind\": $2", 
                    [istr, makeYamlString($n.kind)])
     if maxRecDepth != 0: 
@@ -440,11 +440,11 @@ proc debugTree(n: PNode, indent: int, maxRecDepth: int;
           appf(result, ",$N$1\"sons\": [", [istr])
           for i in countup(0, sonsLen(n) - 1): 
             if i > 0: app(result, ",")
-            appf(result, "$N$1$2", [spaces(indent + 4), debugTree(n.sons[i], 
+            appf(result, "$N$1$2", [rspaces(indent + 4), debugTree(n.sons[i], 
                 indent + 4, maxRecDepth - 1, renderType)])
           appf(result, "$N$1]", [istr])
     appf(result, ",$N$1\"info\": $2", [istr, lineInfoToStr(n.info)])
-    appf(result, "$N$1}", [spaces(indent)])
+    appf(result, "$N$1}", [rspaces(indent)])
 
 proc debug(n: PSym) =
   if n == nil:
@@ -681,9 +681,8 @@ proc initIdentIter(ti: var TIdentIter, tab: TStrTable, s: PIdent): PSym =
   else: result = nextIdentIter(ti, tab)
   
 proc nextIdentIter(ti: var TIdentIter, tab: TStrTable): PSym = 
-  var h, start: THash
-  h = ti.h and high(tab.data)
-  start = h
+  var h = ti.h and high(tab.data)
+  var start = h
   result = tab.data[h]
   while result != nil: 
     if result.name.id == ti.name.id: break 

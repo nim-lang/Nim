@@ -7,16 +7,16 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements semantic checking for calls. 
+## This module implements semantic checking for calls.
 # included from sem.nim
 
 proc sameMethodDispatcher(a, b: PSym): bool =
   result = false
-  if a.kind == skMethod and b.kind == skMethod: 
+  if a.kind == skMethod and b.kind == skMethod:
     var aa = lastSon(a.ast)
     var bb = lastSon(b.ast)
     if aa.kind == nkSym and bb.kind == nkSym:
-      if aa.sym == bb.sym: 
+      if aa.sym == bb.sym:
         result = true
     else:
       discard
@@ -31,7 +31,7 @@ proc sameMethodDispatcher(a, b: PSym): bool =
       # to avoid subtle problems, the call remains ambiguous and needs to
       # be disambiguated by the programmer; this way the right generic is
       # instantiated.
-  
+
 proc determineType(c: PContext, s: PSym)
 
 proc pickBestCandidate(c: PContext, headSymbol: PNode,
@@ -41,73 +41,80 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
                        best, alt: var TCandidate,
                        errors: var CandidateErrors) =
   var o: TOverloadIter
-  var sym = initOverloadIter(o, c, headSymbol)
-  var symScope = o.lastOverloadScope
+  # thanks to the lazy semchecking for operands, we need to iterate over the
+  # symbol table *before* any call to 'initCandidate' which might invoke
+  # semExpr which might modify the symbol table in cases like
+  # 'init(a, 1, (var b = new(Type2); b))'.
+  var symx = initOverloadIter(o, c, headSymbol)
+  let symScope = o.lastOverloadScope
+
+  var syms: seq[tuple[a: PSym, b: int]] = @[]
+  while symx != nil:
+    if symx.kind in filter: syms.add((symx, o.lastOverloadScope))
+    symx = nextOverloadIter(o, c, headSymbol)
+  if syms.len == 0: return
 
   var z: TCandidate
-  
-  if sym == nil: return
-  initCandidate(c, best, sym, initialBinding, symScope)
-  initCandidate(c, alt, sym, initialBinding, symScope)
+  initCandidate(c, best, syms[0][0], initialBinding, symScope)
+  initCandidate(c, alt, syms[0][0], initialBinding, symScope)
   best.state = csNoMatch
-  
-  while sym != nil:
-    if sym.kind in filter:
-      determineType(c, sym)
-      initCandidate(c, z, sym, initialBinding, o.lastOverloadScope)
-      z.calleeSym = sym
 
-      #if sym.name.s == "*" and (n.info ?? "temp5.nim") and n.info.line == 140:
-      #  gDebug = true
-      matches(c, n, orig, z)
-      if errors != nil:
-        errors.safeAdd(sym)
-        if z.errors != nil:
-          for err in z.errors:
-            errors.add(err)
-      if z.state == csMatch:
-        # little hack so that iterators are preferred over everything else:
-        if sym.kind in skIterators: inc(z.exactMatches, 200)
-        case best.state
-        of csEmpty, csNoMatch: best = z
-        of csMatch:
-          var cmp = cmpCandidates(best, z)
-          if cmp < 0: best = z   # x is better than the best so far
-          elif cmp == 0: alt = z # x is as good as the best so far
-          else: discard
-        #if sym.name.s == "*" and (n.info ?? "temp5.nim") and n.info.line == 140:
-        #  echo "Matches ", n.info, " ", typeToString(sym.typ)
-        #  debug sym
-        #  writeMatches(z)
-        #  for i in 1 .. <len(z.call):
-        #    z.call[i].typ.debug
-        #  quit 1
-    sym = nextOverloadIter(o, c, headSymbol)
+  for i in 0 .. <syms.len:
+    let sym = syms[i][0]
+    determineType(c, sym)
+    initCandidate(c, z, sym, initialBinding, syms[i][1])
+    z.calleeSym = sym
+
+    #if sym.name.s == "*" and (n.info ?? "temp5.nim") and n.info.line == 140:
+    #  gDebug = true
+    matches(c, n, orig, z)
+    if errors != nil:
+      errors.safeAdd(sym)
+      if z.errors != nil:
+        for err in z.errors:
+          errors.add(err)
+    if z.state == csMatch:
+      # little hack so that iterators are preferred over everything else:
+      if sym.kind in skIterators: inc(z.exactMatches, 200)
+      case best.state
+      of csEmpty, csNoMatch: best = z
+      of csMatch:
+        var cmp = cmpCandidates(best, z)
+        if cmp < 0: best = z   # x is better than the best so far
+        elif cmp == 0: alt = z # x is as good as the best so far
+        else: discard
+      #if sym.name.s == "cmp" and (n.info ?? "rstgen.nim") and n.info.line == 516:
+      #  echo "Matches ", n.info, " ", typeToString(sym.typ)
+      #  debug sym
+      #  writeMatches(z)
+      #  for i in 1 .. <len(z.call):
+      #    z.call[i].typ.debug
+      #  quit 1
 
 proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   # Gives a detailed error message; this is separated from semOverloadedCall,
   # as semOverlodedCall is already pretty slow (and we need this information
   # only in case of an error).
-  if c.inCompilesContext > 0: 
+  if c.inCompilesContext > 0:
     # fail fast:
     globalError(n.info, errTypeMismatch, "")
   if errors.isNil or errors.len == 0:
     localError(n.info, errExprXCannotBeCalled, n[0].renderTree)
     return
 
-  # to avoid confusing errors like: 
+  # to avoid confusing errors like:
   #   got (SslPtr, SocketHandle)
-  #   but expected one of: 
+  #   but expected one of:
   #   openssl.SSL_set_fd(ssl: SslPtr, fd: SocketHandle): cint
   # we do a pre-analysis. If all types produce the same string, we will add
   # module information.
   let proto = describeArgs(c, n, 1, preferName)
-  
+
   var prefer = preferName
   for err in errors:
     var errProto = ""
     let n = err.typ.n
-    for i in countup(1, n.len - 1): 
+    for i in countup(1, n.len - 1):
       var p = n.sons[i]
       if p.kind == nkSym:
         add(errProto, typeToString(p.sym.typ, preferName))
@@ -159,9 +166,9 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
     n.sons.insert(hiddenArg, 1)
     orig.sons.insert(hiddenArg, 1)
-    
+
     pickBest(f)
- 
+
     if result.state != csMatch:
       n.sons.delete(1)
       orig.sons.delete(1)
@@ -179,7 +186,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       # we are going to try multiple variants
       n.sons[0..1] = [nil, n[1], calleeName]
       orig.sons[0..1] = [nil, orig[1], calleeName]
-      
+
       template tryOp(x) =
         let op = newIdentNode(getIdent(x), n.info)
         n.sons[0] = op
@@ -188,7 +195,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
       if nfExplicitCall in n.flags:
         tryOp ".()"
-   
+
       if result.state in {csEmpty, csNoMatch}:
         tryOp "."
 
@@ -199,7 +206,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       n.sons[0..1] = [callOp, n[1], calleeName]
       orig.sons[0..1] = [callOp, orig[1], calleeName]
       pickBest(callOp)
-   
+
     if overloadsState == csEmpty and result.state == csEmpty:
       localError(n.info, errUndeclaredIdentifier, considerQuotedIdent(f).s)
       return
@@ -224,7 +231,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
     internalAssert result.state == csMatch
     #writeMatches(result)
     #writeMatches(alt)
-    if c.inCompilesContext > 0: 
+    if c.inCompilesContext > 0:
       # quick error message for performance of 'compiles' built-in:
       globalError(n.info, errGenerated, "ambiguous call")
     elif gErrorCounter == 0:
@@ -254,7 +261,7 @@ proc instGenericConvertersSons*(c: PContext, n: PNode, x: TCandidate) =
     for i in 1 .. <n.len:
       instGenericConvertersArg(c, n.sons[i], x)
 
-proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode = 
+proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode =
   var m: TCandidate
   initCandidate(c, m, f)
   result = paramTypesMatch(m, f, a, arg, nil)
@@ -325,7 +332,7 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
       # get rid of the deref again for a better error message:
       n.sons[1] = n.sons[1].sons[0]
       notFoundError(c, n, errors)
-  else: 
+  else:
     notFoundError(c, n, errors)
   # else: result = errorNode(c, n)
 
@@ -341,7 +348,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
   styleCheckUse(n.info, s)
   result = newSymNode(newInst, n.info)
 
-proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode = 
+proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   assert n.kind == nkBracketExpr
   for i in 1..sonsLen(n)-1:
     n.sons[i].typ = semTypeNode(c, n.sons[i], nil)
@@ -361,11 +368,11 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
     # XXX I think this could be improved by reusing sigmatch.paramTypesMatch.
     # It's good enough for now.
     result = newNodeI(a.kind, n.info)
-    for i in countup(0, len(a)-1): 
+    for i in countup(0, len(a)-1):
       var candidate = a.sons[i].sym
       if candidate.kind in {skProc, skMethod, skConverter,
                             skIterator, skClosureIterator}:
-        # it suffices that the candidate has the proper number of generic 
+        # it suffices that the candidate has the proper number of generic
         # type parameters:
         if safeLen(candidate.ast.sons[genericParamsPos]) == n.len-1:
           result.add(explicitGenericSym(c, n, candidate))

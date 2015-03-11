@@ -1083,7 +1083,7 @@ proc addEscaped(s: string): string =
     else: result.add(c)
 
 proc nodeToXml(n: PNode, indent: int = 0): string =
-  result = repeatChar(indent, ' ') & "<" & n.nodeName
+  result = spaces(indent) & "<" & n.nodeName
   if not isNil(n.attributes):
     for i in items(n.attributes):
       result.add(" " & i.name & "=\"" & addEscaped(i.value) & "\"")
@@ -1098,23 +1098,23 @@ proc nodeToXml(n: PNode, indent: int = 0): string =
       of ElementNode:
         result.add(nodeToXml(i, indent + 2))
       of TextNode:
-        result.add(repeatChar(indent * 2, ' '))
+        result.add(spaces(indent * 2))
         result.add(addEscaped(i.nodeValue))
       of CDataSectionNode:
-        result.add(repeatChar(indent * 2, ' '))
+        result.add(spaces(indent * 2))
         result.add("<![CDATA[" & i.nodeValue & "]]>")
       of ProcessingInstructionNode:
-        result.add(repeatChar(indent * 2, ' '))
+        result.add(spaces(indent * 2))
         result.add("<?" & PProcessingInstruction(i).target & " " &
                           PProcessingInstruction(i).data & " ?>")
       of CommentNode:
-        result.add(repeatChar(indent * 2, ' '))
+        result.add(spaces(indent * 2))
         result.add("<!-- " & i.nodeValue & " -->")
       else:
         continue
       result.add("\n")
     # Add the ending tag - </tag>
-    result.add(repeatChar(indent, ' ') & "</" & n.nodeName & ">")
+    result.add(spaces(indent) & "</" & n.nodeName & ">")
 
 proc `$`*(doc: PDocument): string =
   ## Converts a PDocument object into a string representation of it's XML

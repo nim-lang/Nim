@@ -286,6 +286,16 @@ proc `$`*(u: Uri): string =
 
 when isMainModule:
   block:
+    let str = "http://localhost"
+    let test = parseUri(str)
+    doAssert test.path == ""
+
+  block:
+    let str = "http://localhost/"
+    let test = parseUri(str)
+    doAssert test.path == "/"
+
+  block:
     let str = "http://localhost:8080/test"
     let test = parseUri(str)
     doAssert test.scheme == "http"

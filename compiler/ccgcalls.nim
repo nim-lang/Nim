@@ -135,14 +135,14 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode): PRope =
   elif ccgIntroducedPtr(param):
     initLocExpr(p, n, a)
     result = addrLoc(a)
-  elif p.module.compileToCpp and param.typ.kind == tyVar and 
+  elif p.module.compileToCpp and param.typ.kind == tyVar and
       n.kind == nkHiddenAddr:
     initLocExprSingleUse(p, n.sons[0], a)
     # if the proc is 'importc'ed but not 'importcpp'ed then 'var T' still
     # means '*T'. See posix.nim for lots of examples that do that in the wild.
     let callee = call.sons[0]
     if callee.kind == nkSym and
-        {sfImportC, sfInfixCall, sfCompilerProc} * callee.sym.flags == {sfImportC} and 
+        {sfImportC, sfInfixCall, sfCompilerProc} * callee.sym.flags == {sfImportC} and
         {lfHeader, lfNoDecl} * callee.sym.loc.flags != {}:
       result = addrLoc(a)
     else:
@@ -192,7 +192,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var op: TLoc
   initLocExpr(p, ri.sons[0], op)
   var pl: PRope
-  
+
   var typ = skipTypes(ri.sons[0].typ, abstractInst)
   assert(typ.kind == tyProc)
   var length = sonsLen(ri)
@@ -204,7 +204,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
     else:
       app(pl, genArgNoParam(p, ri.sons[i]))
     if i < length - 1: app(pl, ~", ")
-  
+
   template genCallPattern {.dirty.} =
     lineF(p, cpsStmts, callPattern & ";$n", op.r, pl, pl.addComma, rawProc)
 
@@ -339,7 +339,8 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType): PRope =
           let typ = skipTypes(ri.sons[0].typ, abstractInst)
           if pat[i+1] == '+': result.app genArgNoParam(p, ri.sons[0])
           result.app(~"(")
-          result.app genOtherArg(p, ri, 1, typ)
+          if 1 < ri.len:
+            result.app genOtherArg(p, ri, 1, typ)
           for k in j+1 .. < ri.len:
             result.app(~", ")
             result.app genOtherArg(p, ri, k, typ)

@@ -189,7 +189,7 @@ proc getIndent(L: var TLexer, tok: var TToken) =
   tok.line = L.line
   L.col = tok.ival
   tok.ival = max(tok.ival - L.baseIndent, 0)
-  tok.symbol = "\n" & repeatChar(tok.ival)
+  tok.symbol = "\n" & spaces(tok.ival)
 
 proc rawGetTok(L: var TLexer, tok: var TToken) = 
   tok.symbol = ""
@@ -963,7 +963,7 @@ proc parseLiteralBlock(p: var TRstParser): PRstNode =
           break 
         else: 
           add(n.text, "\n")
-          add(n.text, repeatChar(p.tok[p.idx].ival - indent))
+          add(n.text, spaces(p.tok[p.idx].ival - indent))
           inc(p.idx)
       else: 
         add(n.text, p.tok[p.idx].symbol)

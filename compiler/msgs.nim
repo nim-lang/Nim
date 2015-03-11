@@ -117,7 +117,8 @@ type
     warnDifferentHeaps, warnWriteToForeignHeap, warnUnsafeCode,
     warnEachIdentIsTuple, warnShadowIdent, 
     warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe, warnGcUnsafe2,
-    warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnUser,
+    warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
+    warnUser,
     hintSuccess, hintSuccessX,
     hintLineTooLong, hintXDeclaredButNotUsed, hintConvToBaseNotNeeded,
     hintConvFromXtoItselfNotNeeded, hintExprAlwaysX, hintQuitCalled,
@@ -391,6 +392,7 @@ const
     warnGcMem: "'$1' uses GC'ed memory [GcMem]",
     warnDestructor: "usage of a type with a destructor in a non destructible context. This will become a compile time error in the future. [Destructor]",
     warnLockLevel: "$1 [LockLevel]",
+    warnResultShadowed: "Special variable 'result' is shadowed. [ResultShadowed]",
     warnUser: "$1 [User]", 
     hintSuccess: "operation successful [Success]", 
     hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#) [SuccessX]", 
@@ -411,7 +413,7 @@ const
     hintUser: "$1 [User]"]
 
 const
-  WarningsToStr*: array[0..29, string] = ["CannotOpenFile", "OctalEscape", 
+  WarningsToStr*: array[0..30, string] = ["CannotOpenFile", "OctalEscape", 
     "XIsNeverRead", "XmightNotBeenInit",
     "Deprecated", "ConfigDeprecated",
     "SmallLshouldNotBeUsed", "UnknownMagic", 
@@ -421,7 +423,7 @@ const
     "TypelessParam", "DifferentHeaps", "WriteToForeignHeap",
     "UnsafeCode", "EachIdentIsTuple", "ShadowIdent", 
     "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
-    "GcMem", "Destructor", "LockLevel", "User"]
+    "GcMem", "Destructor", "LockLevel", "ResultShadowed", "User"]
 
   HintsToStr*: array[0..16, string] = ["Success", "SuccessX", "LineTooLong", 
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded", 
@@ -784,7 +786,7 @@ proc rawMessage*(msg: TMsgKind, arg: string) =
 proc writeSurroundingSrc(info: TLineInfo) =
   const indent = "  "
   msgWriteln(indent & info.sourceLine.ropeToStr)
-  msgWriteln(indent & repeatChar(info.col, ' ') & '^')
+  msgWriteln(indent & spaces(info.col) & '^')
 
 proc formatMsg*(info: TLineInfo, msg: TMsgKind, arg: string): string =
   let frmt = case msg

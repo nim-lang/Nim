@@ -47,6 +47,24 @@ proc concat*[T](seqs: varargs[seq[T]]): seq[T] =
       result[i] = itm
       inc(i)
 
+proc repeat*[T](s: seq[T], n: Natural): seq[T] =
+  ## Returns a new sequence with the items of `s` repeated `n` times.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:
+  ##
+  ##   let
+  ##     s = @[1, 2, 3]
+  ##     total = s.repeat(3)
+  ##   assert total == @[1, 2, 3, 1, 2, 3, 1, 2, 3]
+  result = newSeq[T](n * s.len)
+  var o = 0
+  for x in 1..n:
+    for e in s:
+      result[o] = e
+      inc o
+
 proc deduplicate*[T](seq1: seq[T]): seq[T] =
   ## Returns a new sequence without duplicates.
   ##
@@ -86,7 +104,7 @@ proc zip*[S, T](seq1: seq[S], seq2: seq[T]): seq[tuple[a: S, b: T]] =
   newSeq(result, m)
   for i in 0 .. m-1: result[i] = (seq1[i], seq2[i])
 
-proc distribute*[T](s: seq[T], num: int, spread = true): seq[seq[T]] =
+proc distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
   ## Splits and distributes a sequence `s` into `num` sub sequences.
   ##
   ## Returns a sequence of `num` sequences. For some input values this is the
@@ -113,10 +131,11 @@ proc distribute*[T](s: seq[T], num: int, spread = true): seq[seq[T]] =
   ##   assert numbers.distribute(6)[0] == @[1, 2]
   ##   assert numbers.distribute(6)[5] == @[7]
   assert(not s.isNil, "`s` can't be nil")
-  assert(num > 0, "`num` has to be greater than zero")
   if num < 2:
     result = @[s]
     return
+
+  let num = int(num) # XXX probably only needed because of .. bug
 
   # Create the result and calculate the stride size and the remainder if any.
   result = newSeq[seq[T]](num)
@@ -586,5 +605,15 @@ when isMainModule:
     seq2D[1][0] = true
     seq2D[0][1] = true
     doAssert seq2D == @[@[true, true], @[true, false], @[false, false], @[false, false]]
+
+  block: # repeat tests
+    let
+      a = @[1, 2, 3]
+      b: seq[int] = @[]
+    
+    doAssert a.repeat(3) == @[1, 2, 3, 1, 2, 3, 1, 2, 3]
+    doAssert a.repeat(0) == @[]
+    #doAssert a.repeat(-1) == @[] # will not compile!
+    doAssert b.repeat(3) == @[]
 
   echo "Finished doc tests"

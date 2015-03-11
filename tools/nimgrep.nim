@@ -109,7 +109,7 @@ proc highlight(s, match, repl: string, t: tuple[first, last: int],
   for i in t.last+1 .. y: stdout.write(s[i])
   stdout.write("\n")
   if showRepl:
-    stdout.write(repeatChar(alignment-1), "-> ")
+    stdout.write(spaces(alignment-1), "-> ")
     for i in x .. t.first-1: stdout.write(s[i])
     writeColored(repl)
     for i in t.last+1 .. y: stdout.write(s[i])

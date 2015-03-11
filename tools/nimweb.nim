@@ -99,8 +99,8 @@ macro updated(e: expr): expr {.immediate.} =
 proc updatedDate(year, month, day: string): string =
   ## wrapper around the update macro with easy input.
   result = updated("$1-$2-$3T00:00:00Z" % [year,
-    repeatStr(2 - len(month), "0") & month,
-    repeatStr(2 - len(day), "0") & day])
+    repeat("0", 2 - len(month)) & month,
+    repeat("0", 2 - len(day)) & day])
 
 macro entry(e: expr): expr {.immediate.} =
   ## generates the rss xml ``entry`` element.

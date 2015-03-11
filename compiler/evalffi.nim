@@ -164,6 +164,7 @@ proc packObject(x: PNode, typ: PType, res: pointer) =
       let field = getField(typ.n, i)
       pack(it, field.typ, res +! field.offset)
     else:
+      # XXX: todo
       globalError(x.info, "cannot pack unnamed tuple")
 
 const maxPackDepth = 20

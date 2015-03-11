@@ -865,6 +865,7 @@ proc parseTuple(p: var TParser, indentAllowed = false): PNode =
   #|     [' optInd  (identColonEquals (comma/semicolon)?)*  optPar ']'
   #| extTupleDecl = 'tuple'
   #|     COMMENT? (IND{>} identColonEquals (IND{=} identColonEquals)*)?
+  #| tupleClass = 'tuple'
   result = newNodeP(nkTupleTy, p)
   getTok(p)
   if p.tok.tokType == tkBracketLe:
@@ -894,6 +895,8 @@ proc parseTuple(p: var TParser, indentAllowed = false): PNode =
             parMessage(p, errIdentifierExpected, p.tok)
             break
           if not sameInd(p): break
+  else:
+    result = newNodeP(nkTupleClassTy, p)
 
 proc parseParamList(p: var TParser, retColon = true): PNode =
   #| paramList = '(' declColonEquals ^* (comma/semicolon) ')'

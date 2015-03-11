@@ -8,16 +8,16 @@
 #
 
 ## This module contains code for reading from `stdin`:idx:. On UNIX the GNU
-## readline library is wrapped and set up to provide default key bindings 
+## readline library is wrapped and set up to provide default key bindings
 ## (e.g. you can navigate with the arrow keys). On Windows ``system.readLine``
-## is used. This suffices because Windows' console already provides the 
+## is used. This suffices because Windows' console already provides the
 ## wanted functionality.
 
 {.deadCodeElim: on.}
 
 when defined(Windows):
   proc readLineFromStdin*(prompt: string): TaintedString {.
-                          tags: [ReadIOEffect, WriteIOEffect].} = 
+                          tags: [ReadIOEffect, WriteIOEffect].} =
     ## Reads a line from stdin.
     stdout.write(prompt)
     result = readLine(stdin)
@@ -33,27 +33,71 @@ when defined(Windows):
     stdout.write(prompt)
     result = readLine(stdin, line)
 
+  import winlean
+
+  const
+    VK_SHIFT* = 16
+    VK_CONTROL* = 17
+    VK_MENU* = 18
+    KEY_EVENT* = 1
+
+  type
+    KEY_EVENT_RECORD = object
+      bKeyDown: WinBool
+      wRepeatCount: uint16
+      wVirtualKeyCode: uint16
+      wVirtualScanCode: uint16
+      unicodeChar: uint16
+      dwControlKeyState: uint32
+    INPUT_RECORD = object
+      eventType*: int16
+      reserved*: int16
+      event*: KEY_EVENT_RECORD
+      safetyBuffer: array[0..5, DWORD]
+
+  proc readConsoleInputW*(hConsoleInput: THANDLE, lpBuffer: var INPUTRECORD,
+                          nLength: uint32,
+                          lpNumberOfEventsRead: var uint32): WINBOOL{.
+      stdcall, dynlib: "kernel32", importc: "ReadConsoleInputW".}
+
+  proc getch(): uint16 =
+    let hStdin = getStdHandle(STD_INPUT_HANDLE)
+    var
+      irInputRecord: INPUT_RECORD
+      dwEventsRead: uint32
+
+    while readConsoleInputW(hStdin, irInputRecord, 1, dwEventsRead) != 0:
+      if irInputRecord.eventType == KEY_EVENT and
+          irInputRecord.event.wVirtualKeyCode notin {VK_SHIFT, VK_MENU, VK_CONTROL}:
+         result = irInputRecord.event.unicodeChar
+         discard readConsoleInputW(hStdin, irInputRecord, 1, dwEventsRead)
+         return result
+
+  from unicode import toUTF8, Rune, runeLenAt
+
   proc readPasswordFromStdin*(prompt: string, password: var TaintedString):
                               bool {.tags: [ReadIOEffect, WriteIOEffect].} =
     ## Reads a `password` from stdin without printing it. `password` must not
     ## be ``nil``! Returns ``false`` if the end of the file has been reached,
     ## ``true`` otherwise.
-    proc getch(): cint {.header: "<conio.h>", importc: "_getch".}
-
     password.setLen(0)
-    var c: char
     stdout.write(prompt)
     while true:
-      c = getch().char
-      case c
+      let c = getch()
+      case c.char
       of '\r', chr(0xA):
         break
       of '\b':
-        password.setLen(password.len - 1)
+        # ensure we delete the whole UTF-8 character:
+        var i = 0
+        var x = 1
+        while i < password.len:
+          x = runeLenAt(password, i)
+          inc i, x
+        password.setLen(password.len - x)
       else:
-        password.add(c)
+        password.add(toUTF8(c.Rune))
     stdout.write "\n"
-    # TODO: How to detect EOF on Windows?
 
 else:
   import readline, history, termios, unsigned

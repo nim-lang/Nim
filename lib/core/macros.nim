@@ -60,7 +60,7 @@ type
     nnkStmtListType, nnkBlockType,
     nnkWith, nnkWithout,
     nnkTypeOfExpr, nnkObjectTy,
-    nnkTupleTy, nnkTypeClassTy, nnkStaticTy,
+    nnkTupleTy, nnkTupleClassTy, nnkTypeClassTy, nnkStaticTy,
     nnkRecList, nnkRecCase, nnkRecWhen,
     nnkRefTy, nnkPtrTy, nnkVarTy,
     nnkConstTy, nnkMutableTy,
@@ -343,7 +343,7 @@ proc expectKind*(n: PNimrodNode, k: TNimrodNodeKind) {.compileTime.} =
   ## checks that `n` is of kind `k`. If this is not the case,
   ## compilation aborts with an error message. This is useful for writing
   ## macros that check the AST that is passed to them.
-  if n.kind != k: error("macro expects a node of kind: " & $k)
+  if n.kind != k: error("Expected a node of kind " & $k & ", got " & $n.kind)
 
 proc expectMinLen*(n: PNimrodNode, min: int) {.compileTime.} =
   ## checks that `n` has at least `min` children. If this is not the case,
@@ -581,10 +581,8 @@ const
   CallNodes* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
     nnkCallStrLit, nnkHiddenCallConv}
 
-from strutils import cmpIgnoreStyle, format
-
 proc expectKind*(n: PNimrodNode; k: set[TNimrodNodeKind]) {.compileTime.} =
-  assert n.kind in k, "Expected one of $1, got $2".format(k, n.kind)
+  assert n.kind in k, "Expected one of " & $k & ", got " & $n.kind
 
 proc newProc*(name = newEmptyNode(); params: openArray[PNimrodNode] = [newEmptyNode()];
     body: PNimrodNode = newStmtList(), procType = nnkProcDef): PNimrodNode {.compileTime.} =
@@ -654,7 +652,7 @@ proc `pragma=`*(someProc: PNimrodNode; val: PNimrodNode){.compileTime.}=
 
 
 template badNodeKind(k; f): stmt{.immediate.} =
-  assert false, "Invalid node kind $# for macros.`$2`".format(k, f)
+  assert false, "Invalid node kind " & $k & " for macros.`" & $f & "`"
 
 proc body*(someProc: PNimrodNode): PNimrodNode {.compileTime.} =
   case someProc.kind:
@@ -775,6 +773,22 @@ proc unpackInfix*(node: PNimrodNode): tuple[left: PNimrodNode; op: string;
 proc copy*(node: PNimrodNode): PNimrodNode {.compileTime.} =
   ## An alias for copyNimTree().
   return node.copyNimTree()
+
+proc cmpIgnoreStyle(a, b: cstring): int {.noSideEffect.} =
+  proc toLower(c: char): char {.inline.} =
+    if c in {'A'..'Z'}: result = chr(ord(c) + (ord('a') - ord('A')))
+    else: result = c
+  var i = 0
+  var j = 0
+  while true:
+    while a[i] == '_': inc(i)
+    while b[j] == '_': inc(j) # BUGFIX: typo
+    var aa = toLower(a[i])
+    var bb = toLower(b[j])
+    result = ord(aa) - ord(bb)
+    if result != 0 or aa == '\0': break
+    inc(i)
+    inc(j)
 
 proc eqIdent* (a, b: string): bool = cmpIgnoreStyle(a, b) == 0
   ## Check if two idents are identical.

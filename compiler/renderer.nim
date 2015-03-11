@@ -92,7 +92,7 @@ proc addTok(g: var TSrcGen, kind: TTokType, s: string) =
 
 proc addPendingNL(g: var TSrcGen) = 
   if g.pendingNL >= 0: 
-    addTok(g, tkSpaces, "\n" & repeatChar(g.pendingNL))
+    addTok(g, tkSpaces, "\n" & spaces(g.pendingNL))
     g.lineLen = g.pendingNL
     g.pendingNL = - 1
 
@@ -190,7 +190,7 @@ proc putComment(g: var TSrcGen, s: string) =
       if not isCode and (g.lineLen + (j - i) > MaxLineLen): 
         put(g, tkComment, com)
         optNL(g, ind)
-        com = '#' & repeatChar(comIndent)
+        com = '#' & spaces(comIndent)
       while s[i] > ' ': 
         add(com, s[i])
         inc(i)
@@ -280,7 +280,7 @@ proc gcom(g: var TSrcGen, n: PNode) =
         (g.lineLen < LineCommentColumn): 
       var ml = maxLineLength(n.comment)
       if ml + LineCommentColumn <= MaxLineLen: 
-        put(g, tkSpaces, repeatChar(LineCommentColumn - g.lineLen))
+        put(g, tkSpaces, spaces(LineCommentColumn - g.lineLen))
     putComment(g, n.comment)  #assert(g.comStack[high(g.comStack)] = n);
   
 proc gcoms(g: var TSrcGen) = 
@@ -395,6 +395,7 @@ proc lsub(n: PNode): int =
   of nkClosedSymChoice, nkOpenSymChoice: 
     result = lsons(n) + len("()") + sonsLen(n) - 1
   of nkTupleTy: result = lcomma(n) + len("tuple[]")
+  of nkTupleClassTy: result = len("tuple")
   of nkDotExpr: result = lsons(n) + 1
   of nkBind: result = lsons(n) + len("bind_")
   of nkBindStmt: result = lcomma(n) + len("bind_")
@@ -1292,10 +1293,11 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       gsub(g, n.sons[0])
   of nkTupleTy: 
     put(g, tkTuple, "tuple")
-    if sonsLen(n) > 0:
-      put(g, tkBracketLe, "[")
-      gcomma(g, n)
-      put(g, tkBracketRi, "]")
+    put(g, tkBracketLe, "[")
+    gcomma(g, n)
+    put(g, tkBracketRi, "]")
+  of nkTupleClassTy:
+    put(g, tkTuple, "tuple")
   of nkMetaNode_Obsolete:
     put(g, tkParLe, "(META|")
     gsub(g, n.sons[0])

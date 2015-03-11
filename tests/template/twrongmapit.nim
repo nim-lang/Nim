@@ -1,7 +1,7 @@
 discard """
   errormsg: "'"
   file: "sequtils.nim"
-  line: 416
+  line: 435
 """
 # unfortunately our tester doesn't support multiple lines of compiler
 # error messages yet...
