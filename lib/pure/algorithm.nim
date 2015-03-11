@@ -196,7 +196,7 @@ proc sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
     result[i] = a[i]
   sort(result, cmp, order)
 
-template sortByIt*(seq1, op: expr): expr =
+template sortedByIt*(seq1, op: expr): expr =
   ## Convenience template around the ``sorted`` proc to reduce typing.
   ##
   ## The template injects the ``it`` variable which you can use directly in an
@@ -204,10 +204,23 @@ template sortByIt*(seq1, op: expr): expr =
   ##
   ## .. code-block:: nim
   ##
-  ##     var users: seq[tuple[id: int, name: string]] =
-  ##       @[(0, "Smith"), (1, "Pratt"), (2, "Sparrow")]
+  ##   type Person = tuple[name: string, age: int]
+  ##   var
+  ##     p1: Person = (name: "p1", age: 60)
+  ##     p2: Person = (name: "p2", age: 20)
+  ##     p3: Person = (name: "p3", age: 30)
+  ##     p4: Person = (name: "p4", age: 30)
   ##
-  ##     echo users.sortByIt(it.name)
+  ##   people = @[p1,p2,p4,p3]
+  ##
+  ##   echo people.sortedByIt(it.name)
+  ##
+  ## Because the underlying ``cmp()`` is defined for tuples you can do
+  ## a nested sort like in the following example:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   echo people.sortedByIt((it.age, it.name))
   ##
   var result {.gensym.} = sorted(seq1, proc(x, y: type(seq1[0])): int =
     var it {.inject.} = x
