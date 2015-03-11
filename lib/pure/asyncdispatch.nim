@@ -1323,14 +1323,25 @@ macro async*(prc: stmt): stmt {.immediate.} =
       newLit(prc[0].getName)))) # Get type from return type of this proc
 
   # -> iterator nameIter(): FutureBase {.closure.} =
+  # ->   {.push warning[resultshadowed]: off.}
   # ->   var result: T
+  # ->   {.pop.}
   # ->   <proc_body>
   # ->   complete(retFuture, result)
   var iteratorNameSym = genSym(nskIterator, $prc[0].getName & "Iter")
   var procBody = prc[6].processBody(retFutureSym, subtypeIsVoid, nil)
   if not subtypeIsVoid:
-    procBody.insert(0, newNimNode(nnkVarSection, prc[6]).add(
+    procBody.insert(0, newNimNode(nnkPragma).add(newIdentNode("push"),
+      newNimNode(nnkExprColonExpr).add(newNimNode(nnkBracketExpr).add(
+        newIdentNode("warning"), newIdentNode("resultshadowed")),
+      newIdentNode("off")))) # -> {.push warning[resultshadowed]: off.}
+
+    procBody.insert(1, newNimNode(nnkVarSection, prc[6]).add(
       newIdentDefs(newIdentNode("result"), returnType[1]))) # -> var result: T
+
+    procBody.insert(2, newNimNode(nnkPragma).add(
+      newIdentNode("pop"))) # -> {.pop.})
+
     procBody.add(
       newCall(newIdentNode("complete"),
         retFutureSym, newIdentNode("result"))) # -> complete(retFuture, result)
