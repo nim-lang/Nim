@@ -24,7 +24,7 @@
 
 import asyncdispatch, os
 
-when defined(windows):
+when defined(windows) or defined(nimdoc):
   import winlean
 else:
   import posix
@@ -34,7 +34,7 @@ type
     fd: TAsyncFd
     offset: int64
 
-when defined(windows):
+when defined(windows) or defined(nimdoc):
   proc getDesiredAccess(mode: FileMode): int32 =
     case mode
     of fmRead:
@@ -70,7 +70,7 @@ else:
 
 proc getFileSize(f: AsyncFile): int64 =
   ## Retrieves the specified file's size.
-  when defined(windows):
+  when defined(windows) or defined(nimdoc):
     var high: DWord
     let low = getFileSize(f.fd.THandle, addr high)
     if low == INVALID_FILE_SIZE:
@@ -81,7 +81,7 @@ proc openAsync*(filename: string, mode = fmRead): AsyncFile =
   ## Opens a file specified by the path in ``filename`` using
   ## the specified ``mode`` asynchronously.
   new result
-  when defined(windows):
+  when defined(windows) or defined(nimdoc):
     let flags = FILE_FLAG_OVERLAPPED or FILE_ATTRIBUTE_NORMAL
     let desiredAccess = getDesiredAccess(mode)
     let creationDisposition = getCreationDisposition(mode, filename)
@@ -120,7 +120,7 @@ proc read*(f: AsyncFile, size: int): Future[string] =
   ## returned.
   var retFuture = newFuture[string]("asyncfile.read")
 
-  when defined(windows):
+  when defined(windows) or defined(nimdoc):
     var buffer = alloc0(size)
 
     var ol = PCustomOverlapped()
@@ -224,7 +224,7 @@ proc setFilePos*(f: AsyncFile, pos: int64) =
   ## Sets the position of the file pointer that is used for read/write
   ## operations. The file's first byte has the index zero. 
   f.offset = pos
-  when not defined(windows):
+  when not defined(windows) and not defined(nimdoc):
     let ret = lseek(f.fd.cint, pos, SEEK_SET)
     if ret == -1:
       raiseOSError(osLastError())
@@ -245,7 +245,7 @@ proc write*(f: AsyncFile, data: string): Future[void] =
   ## specified file.
   var retFuture = newFuture[void]("asyncfile.write")
   var copy = data
-  when defined(windows):
+  when defined(windows) or defined(nimdoc):
     var buffer = alloc0(data.len)
     copyMem(buffer, addr copy[0], data.len)
 
@@ -316,7 +316,7 @@ proc write*(f: AsyncFile, data: string): Future[void] =
 
 proc close*(f: AsyncFile) =
   ## Closes the file specified.
-  when defined(windows):
+  when defined(windows) or defined(nimdoc):
     if not closeHandle(f.fd.THandle).bool:
       raiseOSError(osLastError())
   else:
