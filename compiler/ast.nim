@@ -807,45 +807,45 @@ type
     lockLevel*: TLockLevel    # lock level as required for deadlock checking
     loc*: TLoc
 
-  TPair*{.final.} = object
+  TPair* = object
     key*, val*: RootRef
 
   TPairSeq* = seq[TPair]
-  TTable*{.final.} = object   # the same as table[PObject] of PObject
+  TTable* = object   # the same as table[PObject] of PObject
     counter*: int
     data*: TPairSeq
 
-  TIdPair*{.final.} = object
+  TIdPair* = object
     key*: PIdObj
     val*: RootRef
 
   TIdPairSeq* = seq[TIdPair]
-  TIdTable*{.final.} = object # the same as table[PIdent] of PObject
+  TIdTable* = object # the same as table[PIdent] of PObject
     counter*: int
     data*: TIdPairSeq
 
-  TIdNodePair*{.final.} = object
+  TIdNodePair* = object
     key*: PIdObj
     val*: PNode
 
   TIdNodePairSeq* = seq[TIdNodePair]
-  TIdNodeTable*{.final.} = object # the same as table[PIdObj] of PNode
+  TIdNodeTable* = object # the same as table[PIdObj] of PNode
     counter*: int
     data*: TIdNodePairSeq
 
-  TNodePair*{.final.} = object
+  TNodePair* = object
     h*: THash                 # because it is expensive to compute!
     key*: PNode
     val*: int
 
   TNodePairSeq* = seq[TNodePair]
-  TNodeTable*{.final.} = object # the same as table[PNode] of int;
+  TNodeTable* = object # the same as table[PNode] of int;
                                 # nodes are compared by structure!
     counter*: int
     data*: TNodePairSeq
 
   TObjectSeq* = seq[RootRef]
-  TObjectSet*{.final.} = object
+  TObjectSet* = object
     counter*: int
     data*: TObjectSeq
 
