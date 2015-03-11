@@ -37,7 +37,7 @@ is valid, but
   spawn f(a[i])
   spawn f(a[i])
   inc i
-is not! However, 
+is not! However,
   spawn f(a[i])
   if guard: inc i
   spawn f(a[i])
@@ -460,7 +460,7 @@ proc liftParallel*(owner: PSym; n: PNode): PNode =
   # - detect used slices
   # - detect used arguments
   #echo "PAR ", renderTree(n)
-  
+
   var a = initAnalysisCtx()
   let body = n.lastSon
   analyse(a, body)

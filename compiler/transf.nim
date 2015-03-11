@@ -152,6 +152,7 @@ proc transformVarSection(c: PTransf, v: PNode): PTransNode =
       defs[0] = newSymNode(newVar).PTransNode
       defs[1] = it.sons[1].PTransNode
       defs[2] = transform(c, it.sons[2])
+      newVar.ast = defs[2].PNode
       result[i] = defs
     else:
       if it.kind != nkVarTuple:

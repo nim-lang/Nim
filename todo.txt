@@ -54,6 +54,7 @@ Bugs
 - VM: ptr/ref T cannot work in general
 - scopes are still broken for generic instantiation!
 - blocks can "export" an identifier but the CCG generates {} for them ...
+- ConcreteTypes in a 'case' means we don't check for duplicated case branches
 
 
 version 0.9.x
