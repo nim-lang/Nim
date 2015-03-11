@@ -217,6 +217,50 @@ template sortByIt*(seq1, op: expr): expr =
     result = cmp(a, b))
   result
 
+template sortByIt*(seq1, op1: expr, op2: expr): expr =
+  ## Convenience template around the ``sorted`` proc to reduce typing.
+  ##
+  ## The template injects the ``it`` variable which you can use directly in an
+  ## expression. It works for a nesting deep of two comparisons.
+  ##
+  var result {.gensym.} = sorted(seq1, proc(x, y: type(seq1[0])): int =
+    var it {.inject.} = x
+    let a1 = op1
+    let a2 = op2
+    it = y
+    let b1 = op1
+    result = cmp(a1, b1)
+    if result == 0:
+      let b2 = op2
+      result = cmp(a2, b2)
+    )
+
+  result
+
+template sortByIt*(seq1, op1: expr, op2: expr, op3: expr): expr =
+  ## Convenience template around the ``sorted`` proc to reduce typing.
+  ##
+  ## The template injects the ``it`` variable which you can use directly in an
+  ## expression. It works for a nesting deep of three comparisons.
+  ##
+  var result {.gensym.} = sorted(seq1, proc(x, y: type(seq1[0])): int =
+    var it {.inject.} = x
+    let a1 = op1
+    let a2 = op2
+    let a3 = op3
+    it = y
+    let b1 = op1
+    result = cmp(a1, b1)
+    if result == 0:
+      let b2 = op2
+      result = cmp(a2, b2)
+      if result == 0:
+        let b3 = op3
+        result = cmp(a3, b3)
+    )
+
+  result
+
 proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
   ## produces the Cartesian product of the array. Warning: complexity
   ## may explode.
