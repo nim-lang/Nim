@@ -102,7 +102,9 @@ proc feupdateenv*(envp: ptr Tfenv): cint {.importc, header: "<fenv.h>".}
   ## represented by object pointed to by `envp` and raise exceptions
   ## according to saved exceptions.
 
-var FP_RADIX* {. importc: "FLT_RADIX" header: "<float.h>" .} : int
+var FP_RADIX_INTERNAL {. importc: "FLT_RADIX" header: "<float.h>" .} : int
+
+template fpRadix* : int = FLT_RADIX_INTERNAL
   ## The (integer) value of the radix used to represent any floating
   ## point type on the architecture used to build the program.
 
