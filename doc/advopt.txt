@@ -12,19 +12,6 @@ Advanced commands:
                             module dependency graph
   //dump                    dump all defined conditionals and search paths
   //check                   checks the project for syntax and semantic
-  //idetools                compiler support for IDEs: possible options:
-    --track:FILE,LINE,COL   track a file/cursor position
-    --trackDirty:DIRTY_FILE,ORIG_FILE,LINE,COL
-                            track a file, currently not saved to disk
-    --suggest               suggest all possible symbols at position
-    --def                   list all possible definitions at position
-    --context               list possible invocation context
-    --usages                list all usages of the symbol at position
-    --eval                  evaluates an expression
-  //serve                   start the compiler as a service mode (CAAS)
-    --server.type:TYPE      either stdin or tcp
-    --server.port:PORT      port for tcp mode, by default 6000
-    --server.address:HOST   binds to that address, by default ""
 
 Advanced options:
   -o, --out:FILE            set the output filename
@@ -81,7 +68,7 @@ Advanced options:
   --dynlibOverride:SYMBOL   marks SYMBOL so that dynlib:SYMBOL
                             has no effect and can be statically linked instead;
                             symbol matching is fuzzy so
-                            that --dynlibOverride:lua matches 
+                            that --dynlibOverride:lua matches
                             dynlib: "liblua.so.3"
   --listCmd                 list the commands used to execute external programs
   --parallelBuild:0|1|...   perform a parallel build
