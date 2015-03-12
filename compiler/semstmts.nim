@@ -410,7 +410,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           let shadowed = findShadowedVar(c, v)
           if shadowed != nil:
             shadowed.flags.incl(sfShadowed)
-            if shadowed.kind == skResult:
+            if shadowed.kind == skResult and sfGenSym notin v.flags:
               message(a.info, warnResultShadowed)
             # a shadowed variable is an error unless it appears on the right
             # side of the '=':
