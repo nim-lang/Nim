@@ -1556,30 +1556,51 @@ when not defined(nimrodVM) and hostOS != "standalone":
       ## returns the number of bytes on the shared heap that are owned by the
       ## process. This is only available when threads are enabled.
 
+when sizeof(int) <= 2:
+  type IntLikeForCount = int|int8|int16|char|bool|uint8
+else:
+  type IntLikeForCount = int|int8|int16|int32|char|bool|uint8|uint16
+
 iterator countdown*[T](a, b: T, step = 1): T {.inline.} =
   ## Counts from ordinal value `a` down to `b` with the given
   ## step count. `T` may be any ordinal type, `step` may only
-  ## be positive.
-  var res = a
-  while res >= b:
-    yield res
-    dec(res, step)
+  ## be positive. **Note**: This fails to count to ``low(int)`` if T = int for
+  ## efficiency reasons.
+  when T is IntLikeForCount:
+    var res = int(a)
+    while res >= int(b):
+      yield T(res)
+      dec(res, step)
+  else:
+    var res = a
+    while res >= b:
+      yield res
+      dec(res, step)
+
+template countupImpl(incr: stmt) {.immediate, dirty.} =
+  when T is IntLikeForCount:
+    var res = int(a)
+    while res <= int(b):
+      yield T(res)
+      incr
+  else:
+    var res: T = T(a)
+    while res <= b:
+      yield res
+      incr
 
 iterator countup*[S, T](a: S, b: T, step = 1): T {.inline.} =
   ## Counts from ordinal value `a` up to `b` with the given
   ## step count. `S`, `T` may be any ordinal type, `step` may only
-  ## be positive.
-  var res: T = T(a)
-  while res <= b:
-    yield res
+  ## be positive. **Note**: This fails to count to ``high(int)`` if T = int for
+  ## efficiency reasons.
+  countupImpl:
     inc(res, step)
 
 iterator `..`*[S, T](a: S, b: T): T {.inline.} =
   ## An alias for `countup`.
-  var res: T = T(a)
-  while res <= b:
-    yield res
-    inc res
+  countupImpl:
+    inc(res)
 
 iterator `||`*[S, T](a: S, b: T, annotation=""): T {.
   inline, magic: "OmpParFor", sideEffect.} =
