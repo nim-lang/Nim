@@ -1907,12 +1907,11 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var ids = initIntSet()
   for i in 1.. <n.len:
     let it = n.sons[i]
-    if it.kind != nkExprColonExpr or it.sons[0].kind notin {nkSym, nkIdent}:
+    if it.kind != nkExprColonExpr:
       localError(n.info, errNamedExprExpected)
       break
-    var id: PIdent
-    if it.sons[0].kind == nkIdent: id = it.sons[0].ident
-    else: id = it.sons[0].sym.name
+    let id = considerQuotedIdent(it.sons[0])
+
     if containsOrIncl(ids, id.id):
       localError(it.info, errFieldInitTwice, id.s)
     var e = semExprWithType(c, it.sons[1], flags*{efAllowDestructor})
