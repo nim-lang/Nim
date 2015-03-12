@@ -95,12 +95,12 @@ proc len*[A, B](t: Table[A, B]): int =
   ## returns the number of keys in `t`.
   result = t.counter
 
-iterator pairs*[A, B](t: Table[A, B]): tuple[key: A, val: B] =
+iterator pairs*[A, B](t: Table[A, B]): (A, B) =
   ## iterates over any (key, value) pair in the table `t`.
   for h in 0..high(t.data):
     if isFilled(t.data[h].hcode): yield (t.data[h].key, t.data[h].val)
 
-iterator mpairs*[A, B](t: var Table[A, B]): tuple[key: A, val: var B] =
+iterator mpairs*[A, B](t: var Table[A, B]): (A, var B) =
   ## iterates over any (key, value) pair in the table `t`. The values
   ## can be modified.
   for h in 0..high(t.data):
@@ -314,8 +314,8 @@ proc initTable*[A, B](initialSize=64): Table[A, B] =
   result.counter = 0
   newSeq(result.data, initialSize)
 
-proc toTable*[A, B](pairs: openArray[tuple[key: A, 
-                    val: B]]): Table[A, B] =
+proc toTable*[A, B](pairs: openArray[(A, 
+                    B)]): Table[A, B] =
   ## creates a new hash table that contains the given `pairs`.
   result = initTable[A, B](rightSize(pairs.len))
   for key, val in items(pairs): result[key] = val
@@ -360,12 +360,12 @@ proc len*[A, B](t: TableRef[A, B]): int =
   ## returns the number of keys in `t`.
   result = t.counter
 
-iterator pairs*[A, B](t: TableRef[A, B]): tuple[key: A, val: B] =
+iterator pairs*[A, B](t: TableRef[A, B]): (A, B) =
   ## iterates over any (key, value) pair in the table `t`.
   for h in 0..high(t.data):
     if isFilled(t.data[h].hcode): yield (t.data[h].key, t.data[h].val)
 
-iterator mpairs*[A, B](t: TableRef[A, B]): tuple[key: A, val: var B] =
+iterator mpairs*[A, B](t: TableRef[A, B]): (A, var B) =
   ## iterates over any (key, value) pair in the table `t`. The values
   ## can be modified.
   for h in 0..high(t.data):
@@ -427,7 +427,7 @@ proc newTable*[A, B](initialSize=64): TableRef[A, B] =
   new(result)
   result[] = initTable[A, B](initialSize)
 
-proc newTable*[A, B](pairs: openArray[tuple[key: A, val: B]]): TableRef[A, B] =
+proc newTable*[A, B](pairs: openArray[(A, B)]): TableRef[A, B] =
   ## creates a new hash table that contains the given `pairs`.
   new(result)
   result[] = toTable[A, B](pairs)
@@ -473,13 +473,13 @@ template forAllOrderedPairs(yieldStmt: stmt) {.dirty, immediate.} =
     if isFilled(t.data[h].hcode): yieldStmt
     h = nxt
 
-iterator pairs*[A, B](t: OrderedTable[A, B]): tuple[key: A, val: B] =
+iterator pairs*[A, B](t: OrderedTable[A, B]): (A, B) =
   ## iterates over any (key, value) pair in the table `t` in insertion
   ## order.
   forAllOrderedPairs:
     yield (t.data[h].key, t.data[h].val)
 
-iterator mpairs*[A, B](t: var OrderedTable[A, B]): tuple[key: A, val: var B] =
+iterator mpairs*[A, B](t: var OrderedTable[A, B]): (A, var B) =
   ## iterates over any (key, value) pair in the table `t` in insertion
   ## order. The values can be modified.
   forAllOrderedPairs:
@@ -584,8 +584,8 @@ proc initOrderedTable*[A, B](initialSize=64): OrderedTable[A, B] =
   result.last = -1
   newSeq(result.data, initialSize)
 
-proc toOrderedTable*[A, B](pairs: openArray[tuple[key: A, 
-                           val: B]]): OrderedTable[A, B] =
+proc toOrderedTable*[A, B](pairs: openArray[(A, 
+                           B)]): OrderedTable[A, B] =
   ## creates a new ordered hash table that contains the given `pairs`.
   result = initOrderedTable[A, B](rightSize(pairs.len))
   for key, val in items(pairs): result[key] = val
@@ -595,7 +595,7 @@ proc `$`*[A, B](t: OrderedTable[A, B]): string =
   dollarImpl()
 
 proc sort*[A, B](t: var OrderedTable[A, B], 
-                 cmp: proc (x,y: tuple[key: A, val: B]): int) =
+                 cmp: proc (x,y: (A, B)): int) =
   ## sorts `t` according to `cmp`. This modifies the internal list
   ## that kept the insertion order, so insertion order is lost after this
   ## call but key lookup and insertions remain possible after `sort` (in
@@ -651,13 +651,13 @@ template forAllOrderedPairs(yieldStmt: stmt) {.dirty, immediate.} =
     if isFilled(t.data[h].hcode): yieldStmt
     h = nxt
 
-iterator pairs*[A, B](t: OrderedTableRef[A, B]): tuple[key: A, val: B] =
+iterator pairs*[A, B](t: OrderedTableRef[A, B]): (A, B) =
   ## iterates over any (key, value) pair in the table `t` in insertion
   ## order.
   forAllOrderedPairs:
     yield (t.data[h].key, t.data[h].val)
 
-iterator mpairs*[A, B](t: OrderedTableRef[A, B]): tuple[key: A, val: var B] =
+iterator mpairs*[A, B](t: OrderedTableRef[A, B]): (A, var B) =
   ## iterates over any (key, value) pair in the table `t` in insertion
   ## order. The values can be modified.
   forAllOrderedPairs:
@@ -721,8 +721,7 @@ proc newOrderedTable*[A, B](initialSize=64): OrderedTableRef[A, B] =
   new(result)
   result[] = initOrderedTable[A, B]()
 
-proc newOrderedTable*[A, B](pairs: openArray[tuple[key: A, 
-                           val: B]]): OrderedTableRef[A, B] =
+proc newOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTableRef[A, B] =
   ## creates a new ordered hash table that contains the given `pairs`.
   result = newOrderedTable[A, B](rightSize(pairs.len))
   for key, val in items(pairs): result[key] = val
@@ -732,7 +731,7 @@ proc `$`*[A, B](t: OrderedTableRef[A, B]): string =
   dollarImpl()
 
 proc sort*[A, B](t: OrderedTableRef[A, B], 
-                 cmp: proc (x,y: tuple[key: A, val: B]): int) =
+                 cmp: proc (x,y: (A, B)): int) =
   ## sorts `t` according to `cmp`. This modifies the internal list
   ## that kept the insertion order, so insertion order is lost after this
   ## call but key lookup and insertions remain possible after `sort` (in
@@ -754,12 +753,12 @@ proc len*[A](t: CountTable[A]): int =
   ## returns the number of keys in `t`.
   result = t.counter
 
-iterator pairs*[A](t: CountTable[A]): tuple[key: A, val: int] =
+iterator pairs*[A](t: CountTable[A]): (A, int) =
   ## iterates over any (key, value) pair in the table `t`.
   for h in 0..high(t.data):
     if t.data[h].val != 0: yield (t.data[h].key, t.data[h].val)
 
-iterator mpairs*[A](t: var CountTable[A]): tuple[key: A, val: var int] =
+iterator mpairs*[A](t: var CountTable[A]): (A, var int) =
   ## iterates over any (key, value) pair in the table `t`. The values can
   ## be modified.
   for h in 0..high(t.data):
@@ -902,12 +901,12 @@ proc len*[A](t: CountTableRef[A]): int =
   ## returns the number of keys in `t`.
   result = t.counter
 
-iterator pairs*[A](t: CountTableRef[A]): tuple[key: A, val: int] =
+iterator pairs*[A](t: CountTableRef[A]): (A, int) =
   ## iterates over any (key, value) pair in the table `t`.
   for h in 0..high(t.data):
     if t.data[h].val != 0: yield (t.data[h].key, t.data[h].val)
 
-iterator mpairs*[A](t: CountTableRef[A]): tuple[key: A, val: var int] =
+iterator mpairs*[A](t: CountTableRef[A]): (A, var int) =
   ## iterates over any (key, value) pair in the table `t`. The values can
   ## be modified.
   for h in 0..high(t.data):
@@ -970,11 +969,11 @@ proc inc*[A](t: CountTableRef[A], key: A, val = 1) =
   ## increments `t[key]` by `val`.
   t[].inc(key, val)
 
-proc smallest*[A](t: CountTableRef[A]): tuple[key: A, val: int] =
+proc smallest*[A](t: CountTableRef[A]): (A, int) =
   ## returns the largest (key,val)-pair. Efficiency: O(n)
   t[].smallest
 
-proc largest*[A](t: CountTableRef[A]): tuple[key: A, val: int] =
+proc largest*[A](t: CountTableRef[A]): (A, int) =
   ## returns the (key,val)-pair with the largest `val`. Efficiency: O(n)
   t[].largest
 
