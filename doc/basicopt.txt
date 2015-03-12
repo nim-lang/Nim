@@ -29,6 +29,7 @@ Options:
   --infChecks:on|off        turn Inf checks on|off
   --deadCodeElim:on|off     whole program dead code elimination on|off
   --opt:none|speed|size     optimize not at all or for speed|size
+                            Note: use -d:release for a release build!
   --debugger:native|endb    use native debugger (gdb) | ENDB (experimental)
   --app:console|gui|lib|staticlib
                             generate a console app|GUI app|DLL|static library

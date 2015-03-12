@@ -58,7 +58,7 @@ proc commandCompileToC =
   registerPass(cgenPass)
   rodPass()
   #registerPass(cleanupPass())
-  
+
   compileProject()
   cgenWriteModules()
   if gCmd != cmdRun:
@@ -363,7 +363,9 @@ proc mainCommand* =
       gVerbosity > 0):
     rawMessage(hintSuccessX, [$gLinesCompiled,
                formatFloat(epochTime() - gLastCmdTime, ffDecimal, 3),
-               formatSize(getTotalMem())])
+               formatSize(getTotalMem()),
+               if condSyms.isDefined("release"): "Release Build"
+               else: "Debug Build"])
 
   when PrintRopeCacheStats:
     echo "rope cache stats: "
