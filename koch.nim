@@ -320,7 +320,7 @@ proc winRelease() =
 
   run7z("win32", "bin/nim.exe", "bin/c2nim.exe", "bin/nimgrep.exe",
         "bin/nimfix.exe",
-        "bin/babel.exe", "bin/*.dll",
+        "bin/nimble.exe", "bin/*.dll",
         "config", "dist/*.dll", "examples", "lib",
         "readme.txt", "contributors.txt", "copying.txt")
   # second step: XXX build 64 bit version

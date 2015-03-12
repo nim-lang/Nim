@@ -22,6 +22,7 @@ const
   buildShFile = "build.sh"
   buildBatFile32 = "build.bat"
   buildBatFile64 = "build64.bat"
+  makeFile = "makefile"
   installShFile = "install.sh"
   deinstallShFile = "deinstall.sh"
 
@@ -122,6 +123,7 @@ proc skipRoot(f: string): string =
 include "inno.tmpl"
 include "nsis.tmpl"
 include "buildsh.tmpl"
+include "makefile.tmpl"
 include "buildbat.tmpl"
 include "install.tmpl"
 include "deinstall.tmpl"
@@ -479,6 +481,7 @@ proc srcdist(c: var ConfigData) =
   removeDuplicateFiles(c)
   writeFile(getOutputDir(c) / buildShFile, generateBuildShellScript(c), "\10")
   inclFilePermissions(getOutputDir(c) / buildShFile, {fpUserExec, fpGroupExec, fpOthersExec})
+  writeFile(getOutputDir(c) / makeFile, generateMakefile(c), "\10")
   if winIndex >= 0:
     if intel32Index >= 0:
       writeFile(getOutputDir(c) / buildBatFile32,
@@ -534,6 +537,7 @@ when haveZipLib:
       addFile(z, proj / buildBatFile32, "build" / buildBatFile32)
       addFile(z, proj / buildBatFile64, "build" / buildBatFile64)
       addFile(z, proj / buildShFile, "build" / buildShFile)
+      addFile(z, proj / makeFile, "build" / makeFile)
       addFile(z, proj / installShFile, installShFile)
       addFile(z, proj / deinstallShFile, deinstallShFile)
       for f in walkFiles(c.libpath / "lib/*.h"):
@@ -574,6 +578,7 @@ proc debDist(c: var ConfigData) =
   
   # Don't copy all files, only the ones specified in the config:
   copyNimDist(buildShFile, buildShFile)
+  copyNimDist(makeFile, makeFile)
   copyNimDist(installShFile, installShFile)
   createDir(workingDir / upstreamSource / "build")
   for f in walkFiles(c.libpath / "lib/*.h"):
