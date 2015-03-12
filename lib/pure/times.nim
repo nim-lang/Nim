@@ -26,9 +26,10 @@ type
   WeekDay* = enum ## represents a weekday
     dMon, dTue, dWed, dThu, dFri, dSat, dSun
 
-var
-  timezone {.importc, header: "<time.h>".}: int
-  tzname {.importc, header: "<time.h>" .}: array[0..1, cstring]
+when not defined(JS):
+  var
+    timezone {.importc, header: "<time.h>".}: int
+    tzname {.importc, header: "<time.h>" .}: array[0..1, cstring]
 
 when defined(posix) and not defined(JS):
   type
@@ -482,7 +483,7 @@ elif defined(JS):
     return newDate()
 
   const
-    weekDays: array [0..6, TWeekDay] = [
+    weekDays: array [0..6, WeekDay] = [
       dSun, dMon, dTue, dWed, dThu, dFri, dSat]
   
   proc getLocalTime(t: Time): TimeInfo =
@@ -490,7 +491,7 @@ elif defined(JS):
     result.minute = t.getMinutes()
     result.hour = t.getHours()
     result.monthday = t.getDate()
-    result.month = TMonth(t.getMonth())
+    result.month = Month(t.getMonth())
     result.year = t.getFullYear()
     result.weekday = weekDays[t.getDay()]
     result.yearday = 0
@@ -500,7 +501,7 @@ elif defined(JS):
     result.minute = t.getUTCMinutes()
     result.hour = t.getUTCHours()
     result.monthday = t.getUTCDate()
-    result.month = TMonth(t.getUTCMonth())
+    result.month = Month(t.getUTCMonth())
     result.year = t.getUTCFullYear()
     result.weekday = weekDays[t.getUTCDay()]
     result.yearday = 0
@@ -554,7 +555,7 @@ proc `$`*(day: WeekDay): string =
   return lookup[day]
 
 proc `$`*(m: Month): string =
-  ## stingify operator for ``TMonth``.
+  ## stingify operator for ``Month``.
   const lookup: array[Month, string] = ["January", "February", "March", 
       "April", "May", "June", "July", "August", "September", "October",
       "November", "December"]
