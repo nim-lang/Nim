@@ -213,13 +213,13 @@ proc toMD5*(s: string): MD5Digest =
   md5Update(c, cstring(s), len(s))
   md5Final(c, result)
 
-proc `$`*(D: MD5Digest): string =
+proc `$`*(d: MD5Digest): string =
   ## converts a MD5Digest value into its string representation
   const digits = "0123456789abcdef"
   result = ""
   for i in 0..15:
-    add(result, digits[(D[i] shr 4) and 0xF])
-    add(result, digits[D[i] and 0xF])
+    add(result, digits[(d[i] shr 4) and 0xF])
+    add(result, digits[d[i] and 0xF])
 
 proc getMD5*(s: string): string =
   ## computes an MD5 value of `s` and returns its string representation
