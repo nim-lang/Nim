@@ -399,7 +399,7 @@ proc transformConv(c: PTransf, n: PNode): PTransNode =
       if diff < 0:
         result = newTransNode(nkObjUpConv, n, 1)
         result[0] = transform(c, n.sons[1])
-      elif diff > 0:
+      elif diff > 0 and diff != high(int):
         result = newTransNode(nkObjDownConv, n, 1)
         result[0] = transform(c, n.sons[1])
       else:
@@ -411,7 +411,7 @@ proc transformConv(c: PTransf, n: PNode): PTransNode =
     if diff < 0:
       result = newTransNode(nkObjUpConv, n, 1)
       result[0] = transform(c, n.sons[1])
-    elif diff > 0:
+    elif diff > 0 and diff != high(int):
       result = newTransNode(nkObjDownConv, n, 1)
       result[0] = transform(c, n.sons[1])
     else:

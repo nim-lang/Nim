@@ -1,8 +1,17 @@
 discard """
-  disabled: "true"
+  output: '''1
+1234
+1234
+2
+234
+234
+3
+34
+34
+4
+4
+4'''
 """
-
-# Now the compiler fails with OOM. yay.
 
 # bug #794
 type TRange = range[0..3]
