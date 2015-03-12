@@ -41,7 +41,7 @@ Options:
 Possible Commands:
   boot [options]           bootstraps with given command line options
   install [bindir]         installs to given directory; Unix only!
-  clean                    cleans Nimrod project; removes generated files
+  clean                    cleans Nim project; removes generated files
   web [options]            generates the website and the full documentation
   website [options]        generates only the website
   csource [options]        builds the C sources for installation
@@ -59,7 +59,7 @@ Boot options:
   -d:useGnuReadline        use the GNU readline library for interactive mode
                            (not needed on Windows)
   -d:nativeStacktrace      use native stack traces (only for Mac OS X or Linux)
-  -d:noCaas                build Nimrod without CAAS support
+  -d:noCaas                build Nim without CAAS support
   -d:avoidTimeMachine      only for Mac OS X, excludes nimcache dir from backups
 Web options:
   --googleAnalytics:UA-... add the given google analytics code to the docs. To
@@ -282,7 +282,7 @@ when defined(withUpdate):
       when defined(haveZipLib):
         echo("Falling back.. Downloading source code from repo...")
         # use dom96's httpclient to download zip
-        downloadFile("https://github.com/Araq/Nimrod/zipball/master",
+        downloadFile("https://github.com/Araq/Nim/zipball/master",
                      thisDir / "update.zip")
         try:
           echo("Extracting source code from archive...")
