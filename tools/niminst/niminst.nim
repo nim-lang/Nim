@@ -436,8 +436,10 @@ proc removeDuplicateFiles(c: var ConfigData) =
 proc writeInstallScripts(c: var ConfigData) =
   if c.installScript:
     writeFile(installShFile, generateInstallScript(c), "\10")
+    inclFilePermissions(installShFile, {fpUserExec, fpGroupExec, fpOthersExec})
   if c.uninstallScript:
     writeFile(deinstallShFile, generateDeinstallScript(c), "\10")
+    inclFilePermissions(deinstallShFile, {fpUserExec, fpGroupExec, fpOthersExec})
 
 proc srcdist(c: var ConfigData) =
   if not existsDir(getOutputDir(c) / "c_code"):
@@ -476,6 +478,7 @@ proc srcdist(c: var ConfigData) =
   # second pass: remove duplicate files
   removeDuplicateFiles(c)
   writeFile(getOutputDir(c) / buildShFile, generateBuildShellScript(c), "\10")
+  inclFilePermissions(getOutputDir(c) / buildShFile, {fpUserExec, fpGroupExec, fpOthersExec})
   if winIndex >= 0:
     if intel32Index >= 0:
       writeFile(getOutputDir(c) / buildBatFile32,
