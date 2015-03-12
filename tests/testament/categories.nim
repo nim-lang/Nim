@@ -86,9 +86,9 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     safeCopyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
   else:
     # posix relies on crappy LD_LIBRARY_PATH (ugh!):
-    var libpath = getenv"LD_LIBRARY_PATH".string
-    if peg"\i '/nim' (!'/')* '/lib'" notin libpath:
-      echo "[Warning] insufficient LD_LIBRARY_PATH"
+    var libpath = getEnv"LD_LIBRARY_PATH".string
+    # Temporarily add the lib directory to LD_LIBRARY_PATH:
+    putEnv("LD_LIBRARY_PATH", "lib:" & libpath)
     var serverDll = DynlibFormat % "server"
     safeCopyFile("tests/dll" / serverDll, "lib" / serverDll)
   

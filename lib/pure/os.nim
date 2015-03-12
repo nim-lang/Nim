@@ -1997,6 +1997,8 @@ proc getFileInfo*(handle: FileHandle): FileInfo =
     rawToFormalFileInfo(rawInfo, result)
 
 proc getFileInfo*(file: File): FileInfo =
+  if file.isNil:
+    raise newException(IOError, "File is nil")
   result = getFileInfo(file.getFileHandle())
 
 proc getFileInfo*(path: string, followSymlink = true): FileInfo =

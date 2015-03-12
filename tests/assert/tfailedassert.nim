@@ -3,7 +3,7 @@ discard """
 WARNING: false first assertion from bar
 ERROR: false second assertion from bar
 -1
-tfailedassert.nim:27 false assertion from foo
+tests/assert/tfailedassert.nim:27 false assertion from foo
 '''
 """
 

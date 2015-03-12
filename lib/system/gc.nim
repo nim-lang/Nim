@@ -463,6 +463,7 @@ proc rawNewObj(typ: PNimType, size: int, gch: var TGcHeap): pointer =
 
 proc newObjNoInit(typ: PNimType, size: int): pointer {.compilerRtl.} =
   result = rawNewObj(typ, size, gch)
+  when defined(memProfiler): nimProfile(size)
 
 proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
   result = rawNewObj(typ, size, gch)
