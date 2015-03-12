@@ -154,7 +154,7 @@ proc readAll(file: File): TaintedString =
 proc readFile(filename: string): TaintedString =
   var f = open(filename)
   try:
-    result = readAllFile(f).TaintedString
+    result = readAll(f).TaintedString
   finally:
     close(f)
 
