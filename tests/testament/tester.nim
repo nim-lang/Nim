@@ -148,7 +148,11 @@ proc codegenCheck(test: TTest, check: string, given: var TSpec) =
     let genFile = generatedFile(path, name, test.target)
     echo genFile
     let contents = readFile(genFile).string
-    if contents.find(check.peg) < 0:
+    if check[0] == '\\':
+      # little hack to get 'match' support:
+      if not contents.match(check.peg):
+        given.err = reCodegenFailure
+    elif contents.find(check.peg) < 0:
       given.err = reCodegenFailure
   except ValueError:
     given.err = reInvalidPeg
