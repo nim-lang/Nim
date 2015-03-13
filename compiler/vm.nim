@@ -814,7 +814,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
               leValueConv(regs[ra].regToNode, regs[rc].regToNode)):
         stackTrace(c, tos, pc, errGenerated,
           msgKindToString(errIllegalConvFromXtoY) % [
-          "unknown type" , "unknown type"])
+          $regs[ra].regToNode, "[" & $regs[rb].regToNode & ".." & $regs[rc].regToNode & "]"])
     of opcIndCall, opcIndCallAsgn:
       # dest = call regStart, n; where regStart = fn, arg1, ...
       let rb = instr.regB
