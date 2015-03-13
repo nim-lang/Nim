@@ -681,7 +681,14 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
   var tmp = ""
   for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], tmp)
   d.currentSection = tmp
-  var refname = rstnodeToRefname(n)
+  # Find the last higher level section for unique reference name
+  var sectionPrefix = ""
+  for i in countdown(d.tocPart.high, 0):
+    let n2 = d.tocPart[i].n
+    if n2.level < n.level:
+      sectionPrefix = rstnodeToRefname(n2) & "-"
+      break
+  var refname = sectionPrefix & rstnodeToRefname(n)
   if d.hasToc:
     var length = len(d.tocPart)
     setLen(d.tocPart, length + 1)
