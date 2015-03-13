@@ -57,7 +57,7 @@ type
     platforms: array[1..maxOS, array[1..maxCPU, bool]]
     ccompiler, linker, innosetup, nsisSetup: tuple[path, flags: string]
     name, displayName, version, description, license, infile, outdir: string
-    libpath: string
+    mainfile, libpath: string
     innoSetupFlag, installScript, uninstallScript: bool
     explicitPlatforms: bool
     vars: StringTableRef
@@ -88,6 +88,7 @@ proc iniConfigData(c: var ConfigData) =
   c.description = ""
   c.license = ""
   c.infile = ""
+  c.mainfile = ""
   c.outdir = ""
   c.nimArgs = ""
   c.libpath = ""
@@ -146,6 +147,8 @@ Command:
   deb                 create files for debhelper
 Options:
   -o, --output:dir    set the output directory
+  -m, --main:file     set the main nim file, by default ini-file with .nim
+                      extension
   --var:name=value    set the value of a variable
   -h, --help          shows this help
   -v, --version       shows the version
@@ -185,6 +188,7 @@ proc parseCmdLine(c: var ConfigData) =
         stdout.write(Version & "\n")
         quit(0)
       of "o", "output": c.outdir = val
+      of "m", "main": c.mainfile = changeFileExt(val, "nim")
       of "var":
         var idx = val.find('=')
         if idx < 0: quit("invalid command line")
@@ -192,6 +196,7 @@ proc parseCmdLine(c: var ConfigData) =
       else: quit(Usage)
     of cmdEnd: break
   if c.infile.len == 0: quit(Usage)
+  if c.mainfile.len == 0: c.mainfile = changeFileExt(c.infile, "nim")
 
 proc walkDirRecursively(s: var seq[string], root: string) =
   for k, f in walkDir(root):
@@ -360,7 +365,7 @@ proc parseIniFile(c: var ConfigData) =
       of cfgOption: quit(errorStr(p, "syntax error"))
       of cfgError: quit(errorStr(p, k.msg))
     close(p)
-    if c.name.len == 0: c.name = changeFileExt(extractFilename(c.infile), "")
+    if c.name.len == 0: c.name = changeFileExt(extractFilename(c.mainfile), "")
     if c.displayName.len == 0: c.displayName = c.name
   else:
     quit("cannot open: " & c.infile)
@@ -466,8 +471,7 @@ proc srcdist(c: var ConfigData) =
       var cmd = ("nim compile -f --symbolfiles:off --compileonly " &
                  "--gen_mapping --cc:gcc --skipUserCfg" &
                  " --os:$# --cpu:$# $# $#") %
-                 [osname, cpuname, c.nimArgs,
-                 changeFileExt(c.infile, "nim")]
+                 [osname, cpuname, c.nimArgs, c.mainfile]
       echo(cmd)
       if execShellCmd(cmd) != 0:
         quit("Error: call to nim compiler failed")
