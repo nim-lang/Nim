@@ -788,7 +788,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     else:
       for i in 0 .. <paramType.sons.len:
         if paramType.sons[i] == paramType:
-          localError(info, errIllegalRecursionInTypeX, typeToString(paramType))
+          globalError(info, errIllegalRecursionInTypeX, typeToString(paramType))
         var lifted = liftingWalk(paramType.sons[i])
         if lifted != nil:
           paramType.sons[i] = lifted
