@@ -373,13 +373,28 @@ proc addFactNeg*(m: var TModel, n: PNode) =
   let n = n.neg
   if n != nil: addFact(m, n)
 
+proc canonOpr(opr: PSym): PSym =
+  case opr.magic
+  of someEq: result = opEq
+  of someLe: result = opLe
+  of someLt: result = opLt
+  of someLen: result = opLen
+  of someAdd: result = opAdd
+  of someSub: result = opSub
+  of someMul: result = opMul
+  of someDiv: result = opDiv
+  else: result = opr
+
 proc sameTree*(a, b: PNode): bool =
   result = false
   if a == b:
     result = true
-  elif (a != nil) and (b != nil) and (a.kind == b.kind):
+  elif a != nil and b != nil and a.kind == b.kind:
     case a.kind
-    of nkSym: result = a.sym == b.sym
+    of nkSym:
+      result = a.sym == b.sym
+      if not result and a.sym.magic != mNone:
+        result = a.sym.magic == b.sym.magic or canonOpr(a.sym) == canonOpr(b.sym)
     of nkIdent: result = a.ident.id == b.ident.id
     of nkCharLit..nkInt64Lit: result = a.intVal == b.intVal
     of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
