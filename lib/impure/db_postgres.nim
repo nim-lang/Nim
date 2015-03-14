@@ -239,8 +239,8 @@ proc close*(db: TDbConn) {.tags: [FDb].} =
   ## closes the database connection.
   if db != nil: pqfinish(db)
 
-proc open*(connection, user, password, database: string): TDbConn {.
-  tags: [FDb].} =
+proc open*(connection, user, password, database: string, 
+           charset: string = "UTF-8"): TDbConn {.tags: [FDb].} =
   ## opens a database connection. Raises `EDb` if the connection could not
   ## be established.
   ##
@@ -260,3 +260,4 @@ proc open*(connection, user, password, database: string): TDbConn {.
   ## the nim db api.
   result = pqsetdbLogin(nil, nil, nil, nil, database, user, password)
   if pqStatus(result) != CONNECTION_OK: dbError(result) # result = nil
+  if pqsetClientEncoding(result, charset) != 0: dbError(result)
