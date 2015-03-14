@@ -41,7 +41,7 @@ Options:
 Possible Commands:
   boot [options]           bootstraps with given command line options
   install [bindir]         installs to given directory; Unix only!
-  clean                    cleans Nimrod project; removes generated files
+  clean                    cleans Nim project; removes generated files
   web [options]            generates the website and the full documentation
   website [options]        generates only the website
   csource [options]        builds the C sources for installation
@@ -59,7 +59,7 @@ Boot options:
   -d:useGnuReadline        use the GNU readline library for interactive mode
                            (not needed on Windows)
   -d:nativeStacktrace      use native stack traces (only for Mac OS X or Linux)
-  -d:noCaas                build Nimrod without CAAS support
+  -d:noCaas                build Nim without CAAS support
   -d:avoidTimeMachine      only for Mac OS X, excludes nimcache dir from backups
 Web options:
   --googleAnalytics:UA-... add the given google analytics code to the docs. To
@@ -97,13 +97,13 @@ const
   compileNimInst = "-d:useLibzipSrc tools/niminst/niminst"
 
 proc csource(args: string) = 
-  exec("$4 cc $1 -r $3 --var:version=$2 --var:mingw=none csource compiler/installer.ini $1" %
+  exec("$4 cc $1 -r $3 --var:version=$2 --var:mingw=none csource --main:compiler/nim.nim compiler/installer.ini $1" %
        [args, VersionAsString, compileNimInst, findNim()])
 
 proc zip(args: string) =
-  exec("$3 cc -r $2 --var:version=$1 --var:mingw=none scripts compiler/installer.ini" %
+  exec("$3 cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
        [VersionAsString, compileNimInst, findNim()])
-  exec("$# --var:version=$# --var:mingw=none zip compiler/installer.ini" %
+  exec("$# --var:version=$# --var:mingw=none --main:compiler/nim.nim zip compiler/installer.ini" %
        ["tools/niminst/niminst".exe, VersionAsString])
 
 proc buildTool(toolname, args: string) =
@@ -121,7 +121,7 @@ proc nsis(args: string) =
         " nsis compiler/nim") % [VersionAsString, $(sizeof(pointer)*8)])
 
 proc install(args: string) = 
-  exec("$# cc -r $# --var:version=$# --var:mingw=none scripts compiler/installer.ini" %
+  exec("$# cc -r $# --var:version=$# --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
        [findNim(), compileNimInst, VersionAsString])
   exec("sh ./install.sh $#" % args)
 
@@ -282,7 +282,7 @@ when defined(withUpdate):
       when defined(haveZipLib):
         echo("Falling back.. Downloading source code from repo...")
         # use dom96's httpclient to download zip
-        downloadFile("https://github.com/Araq/Nimrod/zipball/master",
+        downloadFile("https://github.com/Araq/Nim/zipball/master",
                      thisDir / "update.zip")
         try:
           echo("Extracting source code from archive...")
@@ -320,7 +320,7 @@ proc winRelease() =
 
   run7z("win32", "bin/nim.exe", "bin/c2nim.exe", "bin/nimgrep.exe",
         "bin/nimfix.exe",
-        "bin/babel.exe", "bin/*.dll",
+        "bin/nimble.exe", "bin/*.dll",
         "config", "dist/*.dll", "examples", "lib",
         "readme.txt", "contributors.txt", "copying.txt")
   # second step: XXX build 64 bit version

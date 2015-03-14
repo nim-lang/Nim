@@ -1,7 +1,7 @@
 #! stdtmpl(subsChar='?') | standard
 #proc generateBuildShellScript(c: ConfigData): string = 
 #  result = "#! /bin/sh\n# Generated from niminst\n" &
-#           "# Template is in tools/buildsh.tmpl\n" &
+#           "# Template is in tools/niminst/buildsh.tmpl\n" &
 #           "# To regenerate run ``niminst csource`` or ``koch csource``\n"
 
 set -e
@@ -111,7 +111,7 @@ case $ucpu in
       LINK_FLAGS="$LINK_FLAGS -m64"
     fi
     mycpu="powerpc64" ;;
-  *power*|*Power*|*ppc* ) 
+  *power*|*ppc* ) 
     mycpu="powerpc" ;;
   *mips* ) 
     mycpu="mips" ;;

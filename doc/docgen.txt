@@ -195,7 +195,7 @@ In the case of Nim's own documentation, the ``txt`` value is just a commit
 hash to append to a formatted URL to https://github.com/Araq/Nim. The
 ``tools/nimweb.nim`` helper queries the current git commit hash during doc
 generation, but since you might be working on an unpublished repository, it
-also allows specifying a ``githash`` value in ``web/nim.ini`` to force a
+also allows specifying a ``githash`` value in ``web/website.ini`` to force a
 specific commit in the output.
 
 

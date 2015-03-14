@@ -22,6 +22,7 @@ const
   buildShFile = "build.sh"
   buildBatFile32 = "build.bat"
   buildBatFile64 = "build64.bat"
+  makeFile = "makefile"
   installShFile = "install.sh"
   deinstallShFile = "deinstall.sh"
 
@@ -56,7 +57,7 @@ type
     platforms: array[1..maxOS, array[1..maxCPU, bool]]
     ccompiler, linker, innosetup, nsisSetup: tuple[path, flags: string]
     name, displayName, version, description, license, infile, outdir: string
-    libpath: string
+    mainfile, libpath: string
     innoSetupFlag, installScript, uninstallScript: bool
     explicitPlatforms: bool
     vars: StringTableRef
@@ -87,6 +88,7 @@ proc iniConfigData(c: var ConfigData) =
   c.description = ""
   c.license = ""
   c.infile = ""
+  c.mainfile = ""
   c.outdir = ""
   c.nimArgs = ""
   c.libpath = ""
@@ -122,6 +124,7 @@ proc skipRoot(f: string): string =
 include "inno.tmpl"
 include "nsis.tmpl"
 include "buildsh.tmpl"
+include "makefile.tmpl"
 include "buildbat.tmpl"
 include "install.tmpl"
 include "deinstall.tmpl"
@@ -144,6 +147,8 @@ Command:
   deb                 create files for debhelper
 Options:
   -o, --output:dir    set the output directory
+  -m, --main:file     set the main nim file, by default ini-file with .nim
+                      extension
   --var:name=value    set the value of a variable
   -h, --help          shows this help
   -v, --version       shows the version
@@ -183,6 +188,7 @@ proc parseCmdLine(c: var ConfigData) =
         stdout.write(Version & "\n")
         quit(0)
       of "o", "output": c.outdir = val
+      of "m", "main": c.mainfile = changeFileExt(val, "nim")
       of "var":
         var idx = val.find('=')
         if idx < 0: quit("invalid command line")
@@ -190,6 +196,7 @@ proc parseCmdLine(c: var ConfigData) =
       else: quit(Usage)
     of cmdEnd: break
   if c.infile.len == 0: quit(Usage)
+  if c.mainfile.len == 0: c.mainfile = changeFileExt(c.infile, "nim")
 
 proc walkDirRecursively(s: var seq[string], root: string) =
   for k, f in walkDir(root):
@@ -358,7 +365,7 @@ proc parseIniFile(c: var ConfigData) =
       of cfgOption: quit(errorStr(p, "syntax error"))
       of cfgError: quit(errorStr(p, k.msg))
     close(p)
-    if c.name.len == 0: c.name = changeFileExt(extractFilename(c.infile), "")
+    if c.name.len == 0: c.name = changeFileExt(extractFilename(c.mainfile), "")
     if c.displayName.len == 0: c.displayName = c.name
   else:
     quit("cannot open: " & c.infile)
@@ -436,8 +443,10 @@ proc removeDuplicateFiles(c: var ConfigData) =
 proc writeInstallScripts(c: var ConfigData) =
   if c.installScript:
     writeFile(installShFile, generateInstallScript(c), "\10")
+    inclFilePermissions(installShFile, {fpUserExec, fpGroupExec, fpOthersExec})
   if c.uninstallScript:
     writeFile(deinstallShFile, generateDeinstallScript(c), "\10")
+    inclFilePermissions(deinstallShFile, {fpUserExec, fpGroupExec, fpOthersExec})
 
 proc srcdist(c: var ConfigData) =
   if not existsDir(getOutputDir(c) / "c_code"):
@@ -462,8 +471,7 @@ proc srcdist(c: var ConfigData) =
       var cmd = ("nim compile -f --symbolfiles:off --compileonly " &
                  "--gen_mapping --cc:gcc --skipUserCfg" &
                  " --os:$# --cpu:$# $# $#") %
-                 [osname, cpuname, c.nimArgs,
-                 changeFileExt(c.infile, "nim")]
+                 [osname, cpuname, c.nimArgs, c.mainfile]
       echo(cmd)
       if execShellCmd(cmd) != 0:
         quit("Error: call to nim compiler failed")
@@ -476,6 +484,8 @@ proc srcdist(c: var ConfigData) =
   # second pass: remove duplicate files
   removeDuplicateFiles(c)
   writeFile(getOutputDir(c) / buildShFile, generateBuildShellScript(c), "\10")
+  inclFilePermissions(getOutputDir(c) / buildShFile, {fpUserExec, fpGroupExec, fpOthersExec})
+  writeFile(getOutputDir(c) / makeFile, generateMakefile(c), "\10")
   if winIndex >= 0:
     if intel32Index >= 0:
       writeFile(getOutputDir(c) / buildBatFile32,
@@ -531,6 +541,7 @@ when haveZipLib:
       addFile(z, proj / buildBatFile32, "build" / buildBatFile32)
       addFile(z, proj / buildBatFile64, "build" / buildBatFile64)
       addFile(z, proj / buildShFile, "build" / buildShFile)
+      addFile(z, proj / makeFile, "build" / makeFile)
       addFile(z, proj / installShFile, installShFile)
       addFile(z, proj / deinstallShFile, deinstallShFile)
       for f in walkFiles(c.libpath / "lib/*.h"):
@@ -571,6 +582,7 @@ proc debDist(c: var ConfigData) =
   
   # Don't copy all files, only the ones specified in the config:
   copyNimDist(buildShFile, buildShFile)
+  copyNimDist(makeFile, makeFile)
   copyNimDist(installShFile, installShFile)
   createDir(workingDir / upstreamSource / "build")
   for f in walkFiles(c.libpath / "lib/*.h"):
