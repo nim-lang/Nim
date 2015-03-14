@@ -191,21 +191,6 @@ proc complexDisambiguation(a, b: PType): int =
     for i in 1 .. <a.len: x += a.sons[i].sumGeneric
     for i in 1 .. <b.len: y += b.sons[i].sumGeneric
     result = x - y
-  when false:
-    proc betterThan(a, b: PType): bool {.inline.} = a.sumGeneric > b.sumGeneric
-
-    if a.len > 1 and b.len > 1:
-      let aa = a.sons[1].sumGeneric
-      let bb = b.sons[1].sumGeneric
-      var a = a
-      var b = b
-
-      if aa < bb: swap(a, b)
-      # all must be better
-      for i in 2 .. <min(a.len, b.len):
-        if not a.sons[i].betterThan(b.sons[i]): return 0
-      # a must be longer or of the same length as b:
-      result = a.len - b.len
 
 proc cmpCandidates*(a, b: TCandidate): int =
   result = a.exactMatches - b.exactMatches
@@ -1459,6 +1444,12 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
     if not formal.constraint.isNil:
       if matchNodeKinds(formal.constraint, n):
         # better match over other routines with no such restriction:
+        inc(m.genericMatches, 100)
+      else:
+        m.state = csNoMatch
+        return
+    if formal.typ.kind == tyVar:
+      if n.isLValue:
         inc(m.genericMatches, 100)
       else:
         m.state = csNoMatch

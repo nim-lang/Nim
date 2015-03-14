@@ -3,7 +3,6 @@ version 0.10.4
 
 - improve GC-unsafety warnings
 - make 'nil' work for 'add' and 'len'
-- get rid of 'mget'; aka priority of 'var' needs to be 'var{lvalue}'
 - disallow negative indexing
 - improve the parser; deal with  echo $foo  gotcha
 
@@ -59,9 +58,9 @@ Bugs
 version 0.9.x
 =============
 
+- pragmas need 'bindSym' support
 - allow simple read accesses to global variables --> difficult to ensure that
   no data races happen
-- pragmas need 'bindSym' support
 - pragmas need re-work: 'push' is dangerous, 'hasPragma' does not work
   reliably with user-defined pragmas
 - memory manager: add a measure of fragmentation
@@ -76,7 +75,6 @@ version 0.9.X
 =============
 
 - macros as type pragmas
-- document how lazy overloading resolution works
 - document NimMain and check whether it works for threading
 
 GC
