@@ -497,6 +497,24 @@ type conversions in this context:
 In this example ``$`` is applied to any argument that is passed to the
 parameter ``a``. (Note that ``$`` applied to strings is a nop.)
 
+Note that an explicit array constructor passed to a ``varargs`` parameter is
+not wrapped in another implicit array construction:
+
+.. code-block:: nim
+  proc takeV[T](a: varargs[T]) = discard
+
+  takeV([123, 2, 1]) # takeV's T is "int", not "array of int"
+
+
+``varargs[expr]`` is treated specially: It matches a variable list of arguments
+of arbitrary type but *always* constructs an implicit array. This is required
+so that the builtin ``echo`` proc does what is expected:
+
+.. code-block:: nim
+  proc echo*(x: varargs[expr, `$`]) {...}
+
+  echo(@[1, 2, 3])
+  # prints "@[1, 2, 3]" and not "123"
 
 
 Tuples and object types
@@ -695,7 +713,7 @@ via ``{.experimental.}``:
   new(n)
   echo n.depth
   # no need to write n[].depth either
-  
+
 
 
 In order to simplify structural type checking, recursive tuples are not valid:
