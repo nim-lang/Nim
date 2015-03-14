@@ -317,8 +317,9 @@ proc analyseIf(c: var AnalysisCtx; n: PNode) =
 proc analyse(c: var AnalysisCtx; n: PNode) =
   case n.kind
   of nkAsgn, nkFastAsgn:
-    if n[0].isSingleAssignable and n[1].isLocal:
-      let slot = c.getSlot(n[1].sym)
+    let y = n[1].skipConv
+    if n[0].isSingleAssignable and y.isLocal:
+      let slot = c.getSlot(y.sym)
       slot.alias = n[0].sym
     elif n[0].isLocal:
       # since we already ensure sfAddrTaken is not in s.flags, we only need to
@@ -334,7 +335,7 @@ proc analyse(c: var AnalysisCtx; n: PNode) =
         analyse(c, n[0])
     else:
       analyseSons(c, n)
-    addAsgnFact(c.guards, n[0], n[1])
+    addAsgnFact(c.guards, n[0], y)
   of nkCallKinds:
     # direct call:
     if n[0].kind == nkSym: analyseCall(c, n, n[0].sym)
