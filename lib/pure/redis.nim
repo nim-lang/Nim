@@ -285,6 +285,30 @@ proc keys*(r: Redis, pattern: string): RedisList =
   r.sendCommand("KEYS", pattern)
   return r.readArray()
 
+proc scan*(r: Redis, cursor: var BiggestInt): RedisList =
+  ## Find all keys matching the given pattern and yield it to client in portions
+  ## using default Redis values for MATCH and COUNT parameters
+  r.sendCommand("SCAN", $cursor)
+  let reply = r.readArray()
+  cursor = strutils.parseBiggestInt(reply[0])
+  return reply[1..high(reply)]
+
+proc scan*(r: Redis, cursor: var BiggestInt, pattern: string): RedisList =
+  ## Find all keys matching the given pattern and yield it to client in portions
+  ## using cursor as a client query identifier. Using default Redis value for COUNT argument
+  r.sendCommand("SCAN", $cursor, ["MATCH", pattern])
+  let reply = r.readArray()
+  cursor = strutils.parseBiggestInt(reply[0])
+  return reply[1..high(reply)]
+
+proc scan*(r: Redis, cursor: var BiggestInt, pattern: string, count: int): RedisList = 
+  ## Find all keys matching the given pattern and yield it to client in portions
+  ## using cursor as a client query identifier.
+  r.sendCommand("SCAN", $cursor, ["MATCH", pattern, "COUNT", $count])
+  let reply = r.readArray()
+  cursor = strutils.parseBiggestInt(reply[0])
+  return reply[1..high(reply)]
+
 proc move*(r: Redis, key: string, db: int): bool =
   ## Move a key to another database. Returns `true` on a successful move.
   r.sendCommand("MOVE", key, $db)

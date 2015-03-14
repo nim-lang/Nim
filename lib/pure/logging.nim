@@ -217,7 +217,7 @@ method log*(logger: RollingFileLogger, level: Level,
       logger.curLine = 0
       logger.f = open(logger.baseName, logger.baseMode)
     
-    writeln(logger.f, LevelNames[level], " ", frmt % args)
+    writeln(logger.f, LevelNames[level], " ",substituteLog(logger.fmtStr), frmt % args)
     logger.curLine.inc
 
 # --------
