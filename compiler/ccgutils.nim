@@ -176,7 +176,7 @@ proc mangle*(name: string): string =
   result = newStringOfCap(name.len)
   case name[0]
   of Letters:
-    result.add(name[0].toLower)
+    result.add(name[0])
   of Digits:
     result.add("N" & name[0])
   else:
@@ -184,14 +184,12 @@ proc mangle*(name: string): string =
   for i in 1..(name.len-1):
     let c = name[i]
     case c
-    of 'A'..'Z':
-      add(result, c.toLower)
+    of Letters, Digits:
+      result.add(c)
     of '_':
       discard
-    of 'a'..'z', '0'..'9':
-      add(result, c)
     else:
-      add(result, "HEX" & toHex(ord(c), 2))
+      result.add("HEX" & toHex(ord(c), 2))
 
 proc makeLLVMString*(s: string): PRope =
   const MaxLineLength = 64
