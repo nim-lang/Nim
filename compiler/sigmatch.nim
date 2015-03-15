@@ -46,7 +46,7 @@ type
                              # be instantiated
     coerceDistincts*: bool   # this is an explicit coercion that can strip away
                              # a distrinct type
-    typedescMatched: bool
+    typedescMatched*: bool
     inheritancePenalty: int  # to prefer closest father object type
     errors*: CandidateErrors # additional clarifications to be displayed to the
                              # user if overload resolution fails
@@ -989,7 +989,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
           else:
             internalAssert a.sons != nil and a.sons.len > 0
             c.typedescMatched = true
-            result = typeRel(c, f.base, a.skipTypes({tyGenericParam, tyTypeDesc}))
+            var aa = a
+            while aa.kind in {tyTypeDesc, tyGenericParam} and
+                aa.len > 0:
+              aa = lastSon(aa)
+            result = typeRel(c, f.base, aa)
             if result > isGeneric: result = isGeneric
         else:
           result = isNone

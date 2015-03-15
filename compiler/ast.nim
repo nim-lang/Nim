@@ -919,6 +919,8 @@ const
     # only used when 'gCmd == cmdPretty': Indicates that the symbol has been
     # imported via 'importc: "fullname"' and no format string.
 
+var ggDebug* {.deprecated.}: bool ## convenience switch for trying out things
+
 proc isCallExpr*(n: PNode): bool =
   result = n.kind in nkCallKinds
 

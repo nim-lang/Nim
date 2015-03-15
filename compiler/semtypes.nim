@@ -352,7 +352,7 @@ proc semAnonTuple(c: PContext, n: PNode, prev: PType): PType =
   for i in countup(0, sonsLen(n) - 1):
     addSonSkipIntLit(result, semTypeNode(c, n.sons[i], nil))
 
-proc semTuple(c: PContext, n: PNode, prev: PType): PType = 
+proc semTuple(c: PContext, n: PNode, prev: PType): PType =
   var typ: PType
   result = newOrPrevType(tyTuple, prev, c)
   result.n = newNodeI(nkRecList, n.info)
@@ -1045,8 +1045,8 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     var m = newCandidate(c, t)
     matches(c, n, copyTree(n), m)
 
-    if m.state != csMatch:
-      var err = "cannot instantiate " & typeToString(t) & "\n" &
+    if m.state != csMatch and not m.typedescMatched:
+      let err = "cannot instantiate " & typeToString(t) & "\n" &
                 "got: (" & describeArgs(c, n) & ")\n" &
                 "but expected: (" & describeArgs(c, t.n, 0) & ")"
       localError(n.info, errGenerated, err)
