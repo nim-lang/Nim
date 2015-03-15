@@ -363,7 +363,16 @@ proc nameToCC*(name: string): TSystemCC =
 proc getConfigVar(c: TSystemCC, suffix: string): string =
   # use ``cpu.os.cc`` for cross compilation, unless ``--compileOnly`` is given
   # for niminst support
-  let fullSuffix = (if gCmd == cmdCompileToCpp: ".cpp" & suffix else: suffix)
+  let fullSuffix =
+    if gCmd == cmdCompileToCpp:
+      ".cpp" & suffix
+    elif gCmd == cmdCompileToOC:
+      ".objc" & suffix
+    elif gCmd == cmdCompileToJS:
+      ".js" & suffix
+    else:
+      suffix
+
   if (platform.hostOS != targetOS or platform.hostCPU != targetCPU) and
       optCompileOnly notin gGlobalOptions:
     let fullCCname = platform.CPU[targetCPU].name & '.' & 
