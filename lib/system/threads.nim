@@ -127,7 +127,7 @@ else:
     importc, header: "<pthread.h>".}
 
   proc pthread_create(a1: var TSysThread, a2: var TPthread_attr,
-            a3: proc (x: pointer) {.noconv.}, 
+            a3: proc (x: pointer): pointer {.noconv.}, 
             a4: pointer): cint {.importc: "pthread_create", 
             header: "<pthread.h>".}
   proc pthread_join(a1: TSysThread, a2: ptr pointer): cint {.
@@ -315,7 +315,7 @@ when defined(windows):
     threadProcWrapperBody(closure)
     # implicitly return 0
 else:
-  proc threadProcWrapper[TArg](closure: pointer) {.noconv.} = 
+  proc threadProcWrapper[TArg](closure: pointer): pointer {.noconv.} = 
     threadProcWrapperBody(closure)
 {.pop.}
 
