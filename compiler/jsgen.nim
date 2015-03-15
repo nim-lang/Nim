@@ -961,18 +961,18 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
   of nkCheckedFieldExpr:
     genCheckedFieldAddr(p, n, r)
   of nkDotExpr:
-    genFieldAddr(p, n, r)
+    genFieldAddr(p, n.sons[0], r)
   of nkBracketExpr:
     var ty = skipTypes(n.sons[0].typ, abstractVarRange)
     if ty.kind in {tyRef, tyPtr}: ty = skipTypes(ty.lastSon, abstractVarRange)
     case ty.kind
     of tyArray, tyArrayConstr, tyOpenArray, tySequence, tyString, tyCString,
-       tyVarargs:
-      genArrayAddr(p, n, r)
+       tyVarargs, tyChar:
+      genArrayAddr(p, n.sons[0], r)
     of tyTuple:
-      genFieldAddr(p, n, r)
-    else: internalError(n.info, "expr(nkBracketExpr, " & $ty.kind & ')')
-  else: internalError(n.info, "genAddr")
+      genFieldAddr(p, n.sons[0], r)
+    else: internalError(n.sons[0].info, "expr(nkBracketExpr, " & $ty.kind & ')')
+  else: internalError(n.sons[0].info, "genAddr")
 
 proc genSym(p: PProc, n: PNode, r: var TCompRes) =
   var s = n.sym
