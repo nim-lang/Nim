@@ -658,7 +658,7 @@ proc factImplies(fact, prop: PNode): TImplication =
       if a == b: return ~a
       return impUnknown
     else:
-      internalError(fact.info, "invalid fact")
+      return impUnknown
   of mAnd:
     result = factImplies(fact.sons[1], prop)
     if result != impUnknown: return result
@@ -672,7 +672,7 @@ proc factImplies(fact, prop: PNode): TImplication =
   of someLe: result = impliesLe(fact, prop.sons[1], prop.sons[2])
   of someLt: result = impliesLt(fact, prop.sons[1], prop.sons[2])
   of mInSet: result = impliesIn(fact, prop.sons[2], prop.sons[1])
-  else: internalError(prop.info, "invalid proposition")
+  else: result = impUnknown
 
 proc doesImply*(facts: TModel, prop: PNode): TImplication =
   assert prop.kind in nkCallKinds
