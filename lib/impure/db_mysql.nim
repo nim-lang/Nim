@@ -212,8 +212,8 @@ proc close*(db: TDbConn) {.tags: [FDb].} =
   ## closes the database connection.
   if db != nil: mysql.close(db)
 
-proc open*(connection, user, password, database: string, 
-           charset: string = "utf8"): TDbConn {.tags: [FDb].} =
+proc open*(connection, user, password, database: string): TDbConn {.
+  tags: [FDb].} =
   ## opens a database connection. Raises `EDb` if the connection could not
   ## be established.
   result = mysql.init(nil)
@@ -229,7 +229,9 @@ proc open*(connection, user, password, database: string,
     var errmsg = $mysql.error(result)
     db_mysql.close(result)
     dbError(errmsg)
-  if mysql.set_character_set(result, charset) == 0:
-    var errmsg = $mysql.error(result)
-    db_mysql.close(result)
-    dbError(errmsg)
+
+proc setEncoding*(connection: TDbConn, encoding: string): bool {.
+  tags: [FDb].} =
+  ## sets the encoding of a database connection, returns true for 
+  ## success, false for failure.
+  result = mysql.set_character_set(connection, encoding) == 0

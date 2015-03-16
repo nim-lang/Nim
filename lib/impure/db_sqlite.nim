@@ -183,17 +183,28 @@ proc close*(db: TDbConn) {.tags: [FDb].} =
   ## closes the database connection.
   if sqlite3.close(db) != SQLITE_OK: dbError(db)
     
-proc open*(connection, user, password, database: string, 
-           charset: string = "UTF-8"): TDbConn {.tags: [FDb].} =
+proc open*(connection, user, password, database: string): TDbConn {.
+  tags: [FDb].} =
   ## opens a database connection. Raises `EDb` if the connection could not
   ## be established. Only the ``connection`` parameter is used for ``sqlite``.
   var db: TDbConn
   if sqlite3.open(connection, db) == SQLITE_OK:
     result = db
-    exec(result, sql"PRAGMA encoding = ?", [charset])
   else:
     dbError(db)
-   
+
+proc setEncoding*(connection: TDbConn, encoding: string): bool {.
+  tags: [FDb].} =
+  ## sets the encoding of a database connection, returns true for 
+  ## success, false for failure.
+  ##
+  ## Note that the encoding cannot be changed once it's been set.
+  ## According to SQLite3 documentation, any attempt to change 
+  ## the encoding after the database is created will be silently 
+  ## ignored.
+  exec(connection, sql"PRAGMA encoding = ?", [encoding])
+  result = connection.getValue(sql"PRAGMA encoding") == encoding
+
 when isMainModule:
   var db = open("db.sql", "", "", "")
   exec(db, sql"create table tbl1(one varchar(10), two smallint)", [])
