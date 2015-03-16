@@ -146,7 +146,6 @@ proc codegenCheck(test: TTest, check: string, given: var TSpec) =
   try:
     let (path, name, ext2) = test.name.splitFile
     let genFile = generatedFile(path, name, test.target)
-    echo genFile
     let contents = readFile(genFile).string
     if check[0] == '\\':
       # little hack to get 'match' support:

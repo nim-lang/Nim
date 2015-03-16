@@ -215,7 +215,7 @@ proc manyLoc(r: var TResults, cat: Category, options: string) =
   for kind, dir in os.walkDir("tests/manyloc"):
     if kind == pcDir:
       let mainfile = findMainFile(dir)
-      if mainfile != ".nim":
+      if mainfile != "":
         testNoSpec r, makeTest(mainfile, options, cat)
 
 proc compileExample(r: var TResults, pattern, options: string, cat: Category) =
