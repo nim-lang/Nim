@@ -1,7 +1,7 @@
 discard """
   file: "tinc.nim"
   line: 8
-  errormsg: "for a \'var\' type a variable needs to be passed"
+  errormsg: "type mismatch: got (int)"
 """
 var x = 0
 
