@@ -1335,8 +1335,12 @@ proc propagateToOwner*(owner, elem: PType) =
   if elem.isMetaType:
     owner.flags.incl tfHasMeta
 
-  if owner.kind != tyProc:
-    if elem.isGCedMem or tfHasGCedMem in elem.flags:
+  if owner.kind notin {tyProc, tyGenericInst, tyGenericBody,
+                       tyGenericInvocation}:
+    let elemB = elem.skipTypes({tyGenericInst})
+    if elemB.isGCedMem or tfHasGCedMem in elemB.flags:
+      # for simplicity, we propagate this flag even to generics. We then
+      # ensure this doesn't bite us in sempass2.
       owner.flags.incl tfHasGCedMem
 
 proc rawAddSon*(father, son: PType) =
