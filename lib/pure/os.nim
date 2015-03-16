@@ -1121,8 +1121,8 @@ when defined(windows):
 
 else:
   const
-    useNSGetEnviron = defined(macosx) and
-      (defined(createNimRtl) or defined(useNimRtl))
+    useNSGetEnviron = defined(macosx)
+
   when useNSGetEnviron:
     # From the manual:
     # Shared libraries and bundles don't have direct access to environ,
