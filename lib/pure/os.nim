@@ -1863,16 +1863,18 @@ proc getFileSize*(file: string): BiggestInt {.rtl, extern: "nos$1",
       close(f)
     else: raiseOSError(osLastError())
 
+proc expandTilde*(path: string): string {.tags: [ReadEnvEffect].}
+
 proc findExe*(exe: string): string {.tags: [ReadDirEffect, ReadEnvEffect].} =
   ## Searches for `exe` in the current working directory and then
   ## in directories listed in the ``PATH`` environment variable.
   ## Returns "" if the `exe` cannot be found. On DOS-like platforms, `exe`
-  ## is added an ``.exe`` file extension if it has no extension.
+  ## is added the `ExeExt <#ExeExt>`_ file extension if it has none.
   result = addFileExt(exe, os.ExeExt)
   if existsFile(result): return
   var path = string(os.getEnv("PATH"))
   for candidate in split(path, PathSep):
-    var x = candidate / result
+    var x = expandTilde(candidate) / result
     if existsFile(x): return x
   result = ""
 
