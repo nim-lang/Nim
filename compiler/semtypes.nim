@@ -800,7 +800,9 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
 
     for i in 0 .. paramType.sonsLen - 2:
       if paramType.sons[i].kind == tyStatic:
-        result.rawAddSon makeTypeFromExpr(c, ast.emptyNode) # aka 'tyUnknown'
+        var x = copyNode(ast.emptyNode)
+        x.typ = paramType.sons[i]
+        result.rawAddSon makeTypeFromExpr(c, x) # aka 'tyUnknown'
       else:
         result.rawAddSon newTypeS(tyAnything, c)
 

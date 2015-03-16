@@ -174,7 +174,8 @@ type
     arLValue,                 # is an l-value
     arLocalLValue,            # is an l-value, but local var; must not escape
                               # its stack frame!
-    arDiscriminant            # is a discriminant
+    arDiscriminant,           # is a discriminant
+    arStrange                 # it is a strange beast like 'typedesc[var T]'
 
 proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
   ## 'owner' can be nil!
@@ -188,6 +189,9 @@ proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
         result = arLocalLValue
       else:
         result = arLValue
+    elif n.sym.kind == skType:
+      let t = n.sym.typ.skipTypes({tyTypeDesc})
+      if t.kind == tyVar: result = arStrange
   of nkDotExpr:
     if skipTypes(n.sons[0].typ, abstractInst-{tyTypeDesc}).kind in
         {tyVar, tyPtr, tyRef}:
@@ -222,7 +226,7 @@ proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
     discard
 
 proc isLValue*(n: PNode): bool =
-  isAssignable(nil, n) in {arLValue, arLocalLValue}
+  isAssignable(nil, n) in {arLValue, arLocalLValue, arStrange}
 
 proc matchNodeKinds*(p, n: PNode): bool =
   # matches the parameter constraint 'p' against the concrete AST 'n'.

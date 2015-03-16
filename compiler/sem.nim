@@ -287,6 +287,7 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
     return n
   result = getConstExpr(c.module, e)
   if result == nil:
+    #if e.kind == nkEmpty: globalError(n.info, errConstExprExpected)
     result = evalConstExpr(c.module, e)
     if result == nil or result.kind == nkEmpty:
       if e.info != n.info:

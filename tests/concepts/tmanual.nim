@@ -12,6 +12,7 @@ e
 s
 t
 '''
+  disabled: "true"
 """
 
 template accept(e: expr) =
