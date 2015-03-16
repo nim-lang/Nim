@@ -460,7 +460,7 @@ proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
     if n.kind == nkAddr:
       # addr(x[]) can't be proven, but addr(x) can:
       if not containsNode(n, {nkDerefExpr, nkHiddenDeref}): return
-    elif n.kind == nkSym and n.sym.kind in routineKinds:
+    elif (n.kind == nkSym and n.sym.kind in routineKinds) or n.kind in procDefs:
       # 'p' is not nil obviously:
       return
     case impliesNotNil(tracked.guards, n)

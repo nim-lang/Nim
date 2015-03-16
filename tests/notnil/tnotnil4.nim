@@ -12,3 +12,9 @@ proc doit() =
       check(x[0])
 
 doit()
+
+# bug #2352
+
+proc p(x: proc() {.noconv.} not nil) = discard
+p(proc() {.noconv.} = discard)
+# Error: cannot prove 'proc () {.noconv.} = discard ' is not nil
