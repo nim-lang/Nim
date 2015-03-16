@@ -412,7 +412,8 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   else:
     var pl: PRope = nil
     #var param = typ.n.sons[1].sym
-    app(pl, genThisArg(p, ri, 1, typ))
+    if 1 < ri.len:
+      app(pl, genThisArg(p, ri, 1, typ))
     app(pl, op.r)
     var params: PRope
     for i in countup(2, length - 1):
