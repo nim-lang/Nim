@@ -28,7 +28,7 @@ proc opGorge*(cmd, input: string): string =
   except IOError, OSError:
     result = ""
 
-proc opSlurp*(file: string, info: TLineInfo, module: PSym): string = 
+proc opSlurp*(file: string, info: TLineInfo, module: PSym): string =
   try:
     let filename = file.findFile
     result = readFile(filename)
@@ -87,7 +87,12 @@ proc mapTypeToAst(t: PType, info: TLineInfo; allowRecursion=false): PNode =
       result.add mapTypeToAst(t.sons[i], info)
   of tyGenericInst, tyGenericBody, tyOrdinal, tyUserTypeClassInst:
     result = mapTypeToAst(t.lastSon, info)
-  of tyGenericParam, tyDistinct, tyForward: result = atomicType(t.sym.name.s)
+  of tyDistinct:
+    if allowRecursion:
+      result = mapTypeToBracket("distinct", t, info)
+    else:
+      result = atomicType(t.sym.name.s)
+  of tyGenericParam, tyForward: result = atomicType(t.sym.name.s)
   of tyObject:
     if allowRecursion:
       result = newNodeIT(nkObjectTy, info, t)
