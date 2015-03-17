@@ -1874,7 +1874,10 @@ proc findExe*(exe: string): string {.tags: [ReadDirEffect, ReadEnvEffect].} =
   if existsFile(result): return
   var path = string(os.getEnv("PATH"))
   for candidate in split(path, PathSep):
-    var x = expandTilde(candidate) / result
+    when defined(windows):
+      var x = candidate / result
+    else:
+      var x = expandTilde(candidate) / result
     if existsFile(x): return x
   result = ""
 
