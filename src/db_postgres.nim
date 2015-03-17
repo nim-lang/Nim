@@ -260,3 +260,9 @@ proc open*(connection, user, password, database: string): TDbConn {.
   ## the nim db api.
   result = pqsetdbLogin(nil, nil, nil, nil, database, user, password)
   if pqStatus(result) != CONNECTION_OK: dbError(result) # result = nil
+
+proc setEncoding*(connection: TDbConn, encoding: string): bool {.
+  tags: [FDb].} =
+  ## sets the encoding of a database connection, returns true for 
+  ## success, false for failure.
+  return pqsetClientEncoding(connection, encoding) == 0
