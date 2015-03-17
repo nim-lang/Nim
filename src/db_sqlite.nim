@@ -192,7 +192,19 @@ proc open*(connection, user, password, database: string): TDbConn {.
     result = db
   else:
     dbError(db)
-   
+
+proc setEncoding*(connection: TDbConn, encoding: string): bool {.
+  tags: [FDb].} =
+  ## sets the encoding of a database connection, returns true for 
+  ## success, false for failure.
+  ##
+  ## Note that the encoding cannot be changed once it's been set.
+  ## According to SQLite3 documentation, any attempt to change 
+  ## the encoding after the database is created will be silently 
+  ## ignored.
+  exec(connection, sql"PRAGMA encoding = ?", [encoding])
+  result = connection.getValue(sql"PRAGMA encoding") == encoding
+
 when isMainModule:
   var db = open("db.sql", "", "", "")
   exec(db, sql"create table tbl1(one varchar(10), two smallint)", [])
