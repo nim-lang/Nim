@@ -2,7 +2,7 @@ discard """
   output: '''true'''
 """
 
-import hashes, tables
+import hashes, tables, sequtils
 
 const
   data = {
@@ -103,9 +103,10 @@ block countTableTest1:
 
 block SyntaxTest:
   var x = newTable[int, string]({:})
+  discard x
 
 block nilTest:
-  var i, j: PTable[int, int] = nil
+  var i, j: TableRef[int, int] = nil
   assert i == j
   j = newTable[int, int]()
   assert i != j
@@ -131,6 +132,10 @@ proc orderedTableSortTest() =
   # check that insert still works:
   t["newKeyHere"] = 80
 
+block anonZipTest:
+  let keys = @['a','b','c']
+  let values = @[1, 2, 3]
+  doAssert "{a: 1, b: 2, c: 3}" == $ toTable zip(keys, values)
 
 orderedTableSortTest()
 echo "true"
