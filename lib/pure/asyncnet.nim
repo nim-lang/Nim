@@ -182,7 +182,7 @@ proc connect*(socket: AsyncSocket, address: string, port: Port,
       sslSetConnectState(socket.sslHandle)
       sslLoop(socket, flags, sslDoHandshake(socket.sslHandle))
 
-template readInto*(buf: cstring, size: int, socket: AsyncSocket,
+template readInto(buf: cstring, size: int, socket: AsyncSocket,
                    flags: set[SocketFlag]): int =
   ## Reads **up to** ``size`` bytes from ``socket`` into ``buf``. Note that
   ## this is a template and not a proc.
@@ -200,7 +200,7 @@ template readInto*(buf: cstring, size: int, socket: AsyncSocket,
     res = recvIntoFut.read()
   res
 
-template readIntoBuf*(socket: AsyncSocket,
+template readIntoBuf(socket: AsyncSocket,
     flags: set[SocketFlag]): int =
   var size = readInto(addr socket.buffer[0], BufferSize, socket, flags)
   socket.currPos = 0
