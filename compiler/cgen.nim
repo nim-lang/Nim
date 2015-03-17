@@ -358,17 +358,6 @@ proc deinitGCFrame(p: BProc): PRope =
     result = ropecg(p.module,
                     "if (((NU)&GCFRAME) < 4096) #nimGCFrame(&GCFRAME);$n")
 
-proc allocParam(p: BProc, s: PSym) =
-  assert(s.kind == skParam)
-  if lfParamCopy notin s.loc.flags:
-    inc(p.labels)
-    var tmp = con("%LOC", toRope(p.labels))
-    incl(s.loc.flags, lfParamCopy)
-    incl(s.loc.flags, lfIndirect)
-    lineF(p, cpsInit, "$1 = alloca $3$n" & "store $3 $2, $3* $1$n",
-         [tmp, s.loc.r, getTypeDesc(p.module, s.loc.t)])
-    s.loc.r = tmp
-
 proc localDebugInfo(p: BProc, s: PSym) =
   if {optStackTrace, optEndb} * p.options != {optStackTrace, optEndb}: return
   # XXX work around a bug: No type information for open arrays possible:
@@ -471,6 +460,7 @@ proc putLocIntoDest(p: BProc, d: var TLoc, s: TLoc)
 proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags)
 proc intLiteral(i: BiggestInt): PRope
 proc genLiteral(p: BProc, n: PNode): PRope
+proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType): PRope
 
 proc initLocExpr(p: BProc, e: PNode, result: var TLoc) =
   initLoc(result, locNone, e.typ, OnUnknown)

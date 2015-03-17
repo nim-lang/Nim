@@ -257,7 +257,7 @@ type
     sfThread,         # proc will run as a thread
                       # variable is a thread variable
     sfCompileTime,    # proc can be evaluated at compile time
-    sfMerge,          # proc can be merged with itself
+    sfConstructor,    # proc is a C++ constructor
     sfDeadCodeElim,   # dead code elimination for the module is turned on
     sfBorrow,         # proc is borrowed
     sfInfixCall,      # symbol needs infix call syntax in target language;
@@ -663,7 +663,9 @@ type
     locOther                  # location is something other
   TLocFlag* = enum
     lfIndirect,               # backend introduced a pointer
-    lfParamCopy,              # backend introduced a parameter copy (LLVM)
+    lfFullExternalName, # only used when 'gCmd == cmdPretty': Indicates
+      # that the symbol has been imported via 'importc: "fullname"' and
+      # no format string.
     lfNoDeepCopy,             # no need for a deep copy
     lfNoDecl,                 # do not declare it in C
     lfDynamicLib,             # link symbol to dynamic library
@@ -914,10 +916,6 @@ const
                   skMethod, skConverter}
 
   skIterators* = {skIterator, skClosureIterator}
-
-  lfFullExternalName* = lfParamCopy # \
-    # only used when 'gCmd == cmdPretty': Indicates that the symbol has been
-    # imported via 'importc: "fullname"' and no format string.
 
 var ggDebug* {.deprecated.}: bool ## convenience switch for trying out things
 

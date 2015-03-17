@@ -545,6 +545,20 @@ instead:
   let x = newFoo(3, 4)
 
 
+Wrapping constructors
+~~~~~~~~~~~~~~~~~~~~~
+
+Sometimes a C++ class has a private copy constructor and so code like
+``Class c = Class(1,2);`` must not be generated but instead ``Class c(1,2);``.
+For this purpose the Nim proc that wraps a C++ constructor needs to be
+annotated with the `constructor`:idx: pragma. This pragma also helps to generate
+faster C++ code since construction then doesn't invoke the copy constructor:
+
+.. code-block:: nim
+  # a better constructor of 'Foo':
+  proc constructFoo(a, b: cint): Foo {.importcpp: "Foo(@)", constructor.}
+
+
 Wrapping destructors
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -608,7 +622,7 @@ allows *sloppy* interfacing with libraries written in Objective C:
 
   - (void)greet:(long)x y:(long)dummy
   {
-	  printf("Hello, World!\n");
+    printf("Hello, World!\n");
   }
   @end
 

@@ -579,8 +579,7 @@ proc getMergeOp(n: PNode): PSym =
   case n.kind
   of nkCall, nkHiddenCallConv, nkCommand, nkInfix, nkPrefix, nkPostfix,
      nkCallStrLit:
-    if (n.sons[0].kind == nkSym) and (n.sons[0].sym.kind == skProc) and
-        (sfMerge in n.sons[0].sym.flags):
+    if n.sons[0].kind == nkSym and n.sons[0].sym.magic == mConStrStr:
       result = n.sons[0].sym
   else: discard
 

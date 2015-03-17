@@ -25,7 +25,7 @@ const
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
     wAsmNoStackFrame, wError, wDiscardable, wNoInit, wDestructor, wCodegenDecl,
     wGensym, wInject, wRaises, wTags, wLocks, wDelegator, wGcSafe,
-    wOverride}
+    wOverride, wConstructor}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas
   templatePragmas* = {wImmediate, wDeprecated, wError, wGensym, wInject, wDirty,
@@ -665,8 +665,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           incl(sym.flags, sfGlobal)
           incl(sym.flags, sfPure)
         of wMerge:
+          # only supported for backwards compat, doesn't do anything anymore
           noVal(it)
-          incl(sym.flags, sfMerge)
+        of wConstructor:
+          noVal(it)
+          incl(sym.flags, sfConstructor)
         of wHeader:
           var lib = getLib(c, libHeader, getStrLitNode(c, it))
           addToLib(lib, sym)

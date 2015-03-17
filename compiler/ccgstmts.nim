@@ -202,7 +202,8 @@ proc genSingleVar(p: BProc, a: PNode) =
       genVarPrototypeAux(generatedHeader, v)
     registerGcRoot(p, v)
   else:
-    let imm = isAssignedImmediately(a.sons[2])
+    let value = a.sons[2]
+    let imm = isAssignedImmediately(value)
     if imm and p.module.compileToCpp and p.splitDecls == 0 and
         not containsHiddenPointer(v.typ):
       # C++ really doesn't like things like 'Foo f; f = x' as that invokes a
@@ -211,8 +212,19 @@ proc genSingleVar(p: BProc, a: PNode) =
       genLineDir(p, a)
       let decl = localVarDecl(p, v)
       var tmp: TLoc
-      initLocExprSingleUse(p, a.sons[2], tmp)
-      lineF(p, cpsStmts, "$# = $#;$n", decl, tmp.rdLoc)
+      if value.kind in nkCallKinds and value[0].kind == nkSym and
+           sfConstructor in value[0].sym.flags:
+        var params: PRope
+        let typ = skipTypes(value.sons[0].typ, abstractInst)
+        assert(typ.kind == tyProc)
+        for i in 1.. <value.len:
+          if params != nil: params.app(~", ")
+          assert(sonsLen(typ) == sonsLen(typ.n))
+          app(params, genOtherArg(p, value, i, typ))
+        lineF(p, cpsStmts, "$#($#);$n", decl, params)
+      else:
+        initLocExprSingleUse(p, value, tmp)
+        lineF(p, cpsStmts, "$# = $#;$n", decl, tmp.rdLoc)
       return
     assignLocalVar(p, v)
     initLocalVar(p, v, imm)
