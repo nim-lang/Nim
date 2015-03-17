@@ -307,8 +307,8 @@ proc accept*(socket: AsyncSocket,
         retFut.complete(future.read.client)
   return retFut
 
-template recvLineInto*(socket: AsyncSocket, resString: var string,
-    flags = {SocketFlag.SafeDisconn}) =
+proc recvLineInto*(socket: AsyncSocket, resString: ptr string,
+    flags = {SocketFlag.SafeDisconn}): Future[void] {.async.} =
   ## Reads a line of data from ``socket`` into ``resString``.
   ##
   ## If a full line is read ``\r\L`` is not
@@ -326,61 +326,59 @@ template recvLineInto*(socket: AsyncSocket, resString: var string,
   ## **Warning**: ``recvLineInto`` on unbuffered sockets assumes that the
   ## protocol uses ``\r\L`` to delimit a new line.
   assert SocketFlag.Peek notin flags ## TODO:
+  result = newFuture[void]("asyncnet.recvLineInto")
 
   template addNLIfEmpty(): stmt =
-    if resString.len == 0:
-      resString.add("\c\L")
+    if resString[].len == 0:
+      resString[].add("\c\L")
 
-  block recvLineInto:
-    if socket.isBuffered:
-      if socket.bufLen == 0:
+  if socket.isBuffered:
+    if socket.bufLen == 0:
+      let res = socket.readIntoBuf(flags)
+      if res == 0:
+        return
+
+    var lastR = false
+    while true:
+      if socket.currPos >= socket.bufLen:
         let res = socket.readIntoBuf(flags)
         if res == 0:
-          break recvLineInto
+          resString[].setLen(0)
+          return
 
-      var lastR = false
-      while true:
-        if socket.currPos >= socket.bufLen:
-          let res = socket.readIntoBuf(flags)
-          if res == 0:
-            resString.setLen(0)
-            break recvLineInto
-
-        case socket.buffer[socket.currPos]
-        of '\r':
-          lastR = true
-          addNLIfEmpty()
-        of '\L':
-          addNLIfEmpty()
-          socket.currPos.inc()
-          break recvLineInto
-        else:
-          if lastR:
-            socket.currPos.inc()
-            break recvLineInto
-          else:
-            resString.add socket.buffer[socket.currPos]
+      case socket.buffer[socket.currPos]
+      of '\r':
+        lastR = true
+        addNLIfEmpty()
+      of '\L':
+        addNLIfEmpty()
         socket.currPos.inc()
-    else:
-      var c = ""
-      while true:
-        let recvFut = recv(socket, 1, flags)
-        yield recvFut
+        return
+      else:
+        if lastR:
+          socket.currPos.inc()
+          return
+        else:
+          resString[].add socket.buffer[socket.currPos]
+      socket.currPos.inc()
+  else:
+    var c = ""
+    while true:
+      let recvFut = recv(socket, 1, flags)
+      c = recvFut.read()
+      if c.len == 0:
+        resString[].setLen(0)
+        return
+      if c == "\r":
+        let recvFut = recv(socket, 1, flags) # Skip \L
         c = recvFut.read()
-        if c.len == 0:
-          resString.setLen(0)
-          break recvLineInto
-        if c == "\r":
-          let recvFut = recv(socket, 1, flags) # Skip \L
-          yield recvFut
-          c = recvFut.read()
-          assert c == "\L"
-          addNLIfEmpty()
-          break recvLineInto
-        elif c == "\L":
-          addNLIfEmpty()
-          break recvLineInto
-        add(resString, c)
+        assert c == "\L"
+        addNLIfEmpty()
+        return
+      elif c == "\L":
+        addNLIfEmpty()
+        return
+      add(resString[], c)
 
 proc recvLine*(socket: AsyncSocket,
     flags = {SocketFlag.SafeDisconn}): Future[string] {.async.} =
@@ -407,7 +405,7 @@ proc recvLine*(socket: AsyncSocket,
   assert SocketFlag.Peek notin flags ## TODO:
 
   result = ""
-  socket.recvLineInto(result, flags)
+  await socket.recvLineInto(addr result, flags)
 
 proc listen*(socket: AsyncSocket, backlog = SOMAXCONN) {.tags: [ReadIOEffect].} =
   ## Marks ``socket`` as accepting connections.

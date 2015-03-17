@@ -163,7 +163,7 @@ proc processClient(client: AsyncSocket, address: string,
 
     # First line - GET /path HTTP/1.1
     line.setLen(0)
-    client.recvLineInto(line) # TODO: Timeouts.
+    await client.recvLineInto(addr line) # TODO: Timeouts.
     if line == "":
       client.close()
       return
@@ -189,7 +189,7 @@ proc processClient(client: AsyncSocket, address: string,
     while true:
       i = 0
       line.setLen(0)
-      client.recvLineInto(line)
+      await client.recvLineInto(addr line)
 
       if line == "":
         client.close(); return
