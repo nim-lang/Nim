@@ -1,4 +1,4 @@
-# Dump the contents of a PNimrodNode
+# Dump the contents of a NimNode
 
 import macros
 
@@ -7,7 +7,7 @@ template plus(a, b: expr): expr {.dirty} =
 
 macro call(e: expr): expr =
   result = newCall("foo", newStrLitNode("bar"))
-  
+
 macro dumpAST(n: stmt): stmt {.immediate.} =
   # dump AST as a side-effect and return the inner node
   let n = callsite()
@@ -24,10 +24,10 @@ macro dumpAST(n: stmt): stmt {.immediate.} =
   echo e.lispRepr
 
   result = n[1]
-  
+
 dumpAST:
   proc add(x, y: int): int =
     return x + y
-  
+
   proc sub(x, y: int): int = return x - y
 

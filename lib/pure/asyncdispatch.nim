@@ -1064,13 +1064,13 @@ proc accept*(socket: TAsyncFD,
 
 # -- Await Macro
 
-proc skipUntilStmtList(node: PNimrodNode): PNimrodNode {.compileTime.} =
+proc skipUntilStmtList(node: NimNode): NimNode {.compileTime.} =
   # Skips a nest of StmtList's.
   result = node
   if node[0].kind == nnkStmtList:
     result = skipUntilStmtList(node[0])
 
-proc skipStmtList(node: PNimrodNode): PNimrodNode {.compileTime.} =
+proc skipStmtList(node: NimNode): NimNode {.compileTime.} =
   result = node
   if node[0].kind == nnkStmtList:
     result = node[0]
@@ -1098,11 +1098,11 @@ template createCb(retFutureSym, iteratorNameSym,
   cb()
   #{.pop.}
 proc generateExceptionCheck(futSym,
-    tryStmt, rootReceiver, fromNode: PNimrodNode): PNimrodNode {.compileTime.} =
+    tryStmt, rootReceiver, fromNode: NimNode): NimNode {.compileTime.} =
   if tryStmt.kind == nnkNilLit:
     result = rootReceiver
   else:
-    var exceptionChecks: seq[tuple[cond, body: PNimrodNode]] = @[]
+    var exceptionChecks: seq[tuple[cond, body: NimNode]] = @[]
     let errorNode = newDotExpr(futSym, newIdentNode("error"))
     for i in 1 .. <tryStmt.len:
       let exceptBranch = tryStmt[i]
@@ -1110,7 +1110,7 @@ proc generateExceptionCheck(futSym,
         exceptionChecks.add((newIdentNode("true"), exceptBranch[0]))
       else:
         var exceptIdentCount = 0
-        var ifCond: PNimrodNode
+        var ifCond: NimNode
         for i in 0 .. <exceptBranch.len:
           let child = exceptBranch[i]
           if child.kind == nnkIdent:
@@ -1144,10 +1144,10 @@ proc generateExceptionCheck(futSym,
     )
     result.add elseNode
 
-template createVar(result: var PNimrodNode, futSymName: string,
-                   asyncProc: PNimrodNode,
+template createVar(result: var NimNode, futSymName: string,
+                   asyncProc: NimNode,
                    valueReceiver, rootReceiver: expr,
-                   fromNode: PNimrodNode) =
+                   fromNode: NimNode) =
   result = newNimNode(nnkStmtList, fromNode)
   var futSym = genSym(nskVar, "future")
   result.add newVarStmt(futSym, asyncProc) # -> var future<x> = y
@@ -1155,9 +1155,9 @@ template createVar(result: var PNimrodNode, futSymName: string,
   valueReceiver = newDotExpr(futSym, newIdentNode("read")) # -> future<x>.read
   result.add generateExceptionCheck(futSym, tryStmt, rootReceiver, fromNode)
 
-proc processBody(node, retFutureSym: PNimrodNode,
+proc processBody(node, retFutureSym: NimNode,
                  subTypeIsVoid: bool,
-                 tryStmt: PNimrodNode): PNimrodNode {.compileTime.} =
+                 tryStmt: NimNode): NimNode {.compileTime.} =
   #echo(node.treeRepr)
   result = node
   case node.kind
@@ -1183,7 +1183,7 @@ proc processBody(node, retFutureSym: PNimrodNode,
         result = newNimNode(nnkYieldStmt, node).add(node[1]) # -> yield x
       of nnkCall, nnkCommand:
         # await foo(p, x)
-        var futureValue: PNimrodNode
+        var futureValue: NimNode
         result.createVar("future" & $node[1][0].toStrLit, node[1], futureValue,
                   futureValue, node)
       else:
@@ -1232,8 +1232,8 @@ proc processBody(node, retFutureSym: PNimrodNode,
       # working in ``except``?
       tryBody[1] = processBody(n[1], retFutureSym, subTypeIsVoid, nil)
 
-    proc processForTry(n: PNimrodNode, i: var int,
-                       res: PNimrodNode): bool {.compileTime.} =
+    proc processForTry(n: NimNode, i: var int,
+                       res: NimNode): bool {.compileTime.} =
       ## Transforms the body of the tryStmt. Does not transform the
       ## body in ``except``.
       ## Returns true if the tryStmt node was transformed into an ifStmt.
@@ -1275,7 +1275,7 @@ proc processBody(node, retFutureSym: PNimrodNode,
   for i in 0 .. <result.len:
     result[i] = processBody(result[i], retFutureSym, subTypeIsVoid, tryStmt)
 
-proc getName(node: PNimrodNode): string {.compileTime.} =
+proc getName(node: NimNode): string {.compileTime.} =
   case node.kind
   of nnkPostfix:
     return $node[1].ident

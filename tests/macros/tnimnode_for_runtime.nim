@@ -3,7 +3,7 @@ discard """
 """
 
 import macros
-proc makeMacro: PNimrodNode =
+proc makeMacro: NimNode =
   result = nil
 
 var p = makeMacro()

@@ -1,42 +1,42 @@
 import macros
 {.deadCodeElim: on.}
 #Inline macro.add() to allow for easier nesting
-proc und*(a: PNimrodNode; b: PNimrodNode): PNimrodNode {.compileTime.} =
+proc und*(a: NimNode; b: NimNode): NimNode {.compileTime.} =
   a.add(b)
   result = a
-proc und*(a: PNimrodNode; b: varargs[PNimrodNode]): PNimrodNode {.compileTime.} =
+proc und*(a: NimNode; b: varargs[NimNode]): NimNode {.compileTime.} =
   a.add(b)
   result = a
 
-proc `^`*(a: string): PNimrodNode {.compileTime.} = 
+proc `^`*(a: string): NimNode {.compileTime.} =
   ## new ident node
   result = newIdentNode(!a)
-proc `[]`*(a, b: PNimrodNode): PNimrodNode {.compileTime.} =
+proc `[]`*(a, b: NimNode): NimNode {.compileTime.} =
   ## new bracket expression: node[node] not to be confused with node[indx]
   result = newNimNode(nnkBracketExpr).und(a, b)
-proc `:=`*(left, right: PNimrodNode): PNimrodNode {.compileTime.} =
+proc `:=`*(left, right: NimNode): NimNode {.compileTime.} =
   ## new Asgn node:  left = right
   result = newNimNode(nnkAsgn).und(left, right)
 
-proc lit*(a: string): PNimrodNode {.compileTime.} =
+proc lit*(a: string): NimNode {.compileTime.} =
   result = newStrLitNode(a)
-proc lit*(a: int): PNimrodNode {.compileTime.} =
+proc lit*(a: int): NimNode {.compileTime.} =
   result = newIntLitNode(a)
-proc lit*(a: float): PNimrodNode {.compileTime.} =
+proc lit*(a: float): NimNode {.compileTime.} =
   result = newFloatLitNode(a)
-proc lit*(a: char): PNimrodNode {.compileTime.} =
+proc lit*(a: char): NimNode {.compileTime.} =
   result = newNimNode(nnkCharLit)
   result.intval = a.ord
 
-proc emptyNode*(): PNimrodNode {.compileTime.} =
+proc emptyNode*(): NimNode {.compileTime.} =
   result = newNimNode(nnkEmpty)
 
-proc dot*(left, right: PNimrodNode): PNimrodNode {.compileTime.} =
+proc dot*(left, right: NimNode): NimNode {.compileTime.} =
   result = newNimNode(nnkDotExpr).und(left, right)
-proc prefix*(a: string, b: PNimrodNode): PNimrodNode {.compileTime.} =
+proc prefix*(a: string, b: NimNode): NimNode {.compileTime.} =
   result = newNimNode(nnkPrefix).und(newIdentNode(!a), b)
 
-proc quoted2ident*(a: PNimrodNode): PNimrodNode {.compileTime.} = 
+proc quoted2ident*(a: NimNode): NimNode {.compileTime.} =
   if a.kind != nnkAccQuoted:
     return a
   var pname = ""

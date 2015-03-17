@@ -3,13 +3,13 @@ discard """
   output: "Using test.Closing test."
 """
 
-import 
+import
   macros
 
 # This macro mimics the using statement from C#
 #
 # It's kept only as a test for the macro system
-# Nim's destructors offer a mechanism for automatic 
+# Nim's destructors offer a mechanism for automatic
 # disposal of resources.
 #
 macro autoClose(e: expr): stmt {.immediate.} =
@@ -20,19 +20,19 @@ macro autoClose(e: expr): stmt {.immediate.} =
 
   var args = e
   var body = e[2]
-  
-  var 
-    variables : seq[PNimrodNode]
-    closingCalls : seq[PNimrodNode]
+
+  var
+    variables : seq[NimNode]
+    closingCalls : seq[NimNode]
 
   newSeq(variables, 0)
   newSeq(closingCalls, 0)
-  
+
   for i in countup(1, args.len-2):
     if args[i].kind == nnkExprEqExpr:
       var varName = args[i][0]
       var varValue = args[i][1]
- 
+
       var varAssignment = newNimNode(nnkIdentDefs)
       varAssignment.add(varName)
       varAssignment.add(newNimNode(nnkEmpty)) # empty means no type
@@ -43,7 +43,7 @@ macro autoClose(e: expr): stmt {.immediate.} =
     else:
       error "Using statement: Unexpected expression. Got " &
         $args[i].kind & " instead of assignment."
-  
+
   var varSection = newNimNode(nnkVarSection)
   varSection.add(variables)
 
@@ -67,10 +67,10 @@ macro autoClose(e: expr): stmt {.immediate.} =
   targetAst[0][1][0] = varSection
   targetAst[0][1][1][0] = body
   targetAst[0][1][1][1][0] = finallyBlock
-  
+
   result = targetAst
 
-type 
+type
   TResource* = object
     field*: string
 
