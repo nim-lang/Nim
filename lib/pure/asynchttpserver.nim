@@ -99,7 +99,7 @@ proc newAsyncHttpServer*(reuseAddr = true): AsyncHttpServer =
   new result
   result.reuseAddr = reuseAddr
 
-proc addHeaders*(msg: var string, headers: StringTableRef) =
+proc addHeaders(msg: var string, headers: StringTableRef) =
   for k, v in headers:
     msg.add(k & ": " & v & "\c\L")
 
@@ -109,8 +109,8 @@ proc sendHeaders*(req: Request, headers: StringTableRef): Future[void] =
   addHeaders(msg, headers)
   return req.client.send(msg)
 
-template respond*(req: Request, code: HttpCode,
-                  content: string, headers: StringTableRef = nil) =
+proc respond*(req: Request, code: HttpCode, content: string,
+              headers: StringTableRef = nil): Future[void] =
   ## Responds to the request with the specified ``HttpCode``, headers and
   ## content. This template returns a Future[void].
   ##
@@ -177,11 +177,11 @@ proc processClient(client: AsyncSocket, address: string,
         try:
           request.protocol = parseProtocol(linePart)
         except ValueError:
-          request.respond(Http400, "Invalid request protocol. Got: " &
-              linePart)
+          asyncCheck request.respond(Http400,
+            "Invalid request protocol. Got: " & linePart)
           continue
       else:
-        request.respond(Http400, "Invalid request. Got: " & line)
+        await request.respond(Http400, "Invalid request. Got: " & line)
         continue
       inc i
 
@@ -210,19 +210,19 @@ proc processClient(client: AsyncSocket, address: string,
       if request.headers.hasKey("Content-Length"):
         var contentLength = 0
         if parseInt(request.headers["Content-Length"], contentLength) == 0:
-          request.respond(Http400, "Bad Request. Invalid Content-Length.")
+          await request.respond(Http400, "Bad Request. Invalid Content-Length.")
         else:
           request.body = await client.recv(contentLength)
           assert request.body.len == contentLength
       else:
-        request.respond(Http400, "Bad Request. No Content-Length.")
+        await request.respond(Http400, "Bad Request. No Content-Length.")
         continue
 
     case request.reqMethod
     of "get", "post", "head", "put", "delete", "trace", "options", "connect", "patch":
       await callback(request)
     else:
-      request.respond(Http400, "Invalid request method. Got: " & request.reqMethod)
+      await request.respond(Http400, "Invalid request method. Got: " & request.reqMethod)
 
     # Persistent connections
     if (request.protocol == HttpVer11 and
@@ -250,7 +250,7 @@ proc serve*(server: AsyncHttpServer, port: Port,
     server.socket.setSockOpt(OptReuseAddr, true)
   server.socket.bindAddr(port, address)
   server.socket.listen()
-  
+
   while true:
     # TODO: Causes compiler crash.
     #var (address, client) = await server.socket.acceptAddr()
@@ -271,7 +271,7 @@ when isMainModule:
       #echo(req.headers)
       let headers = {"Date": "Tue, 29 Apr 2014 23:40:08 GMT",
           "Content-type": "text/plain; charset=utf-8"}
-      req.respond(Http200, "Hello World", headers.newStringTable())
+      await req.respond(Http200, "Hello World", headers.newStringTable())
 
     asyncCheck server.serve(Port(5555), cb)
     runForever()
