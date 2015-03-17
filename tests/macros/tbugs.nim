@@ -46,13 +46,13 @@ echotest()
 
 # bug #1103
 
-type 
+type
     Td = tuple
         a:string
         b:int
 
 proc get_data(d: Td) : string {.compileTime.} =
-    result = d.a # Works if a literal string is used here. 
+    result = d.a # Works if a literal string is used here.
     # Bugs if line A or B is active. Works with C
     result &= "aa"          # A
     #result.add("aa")       # B
@@ -69,7 +69,7 @@ m(s)
 
 # bug #933
 
-proc nilcheck(): PNimrodNode {.compileTime.} =
+proc nilcheck(): NimNode {.compileTime.} =
   echo(result == nil) # true
   echo(result.isNil) # true
   echo(repr(result)) # nil

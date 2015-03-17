@@ -4,7 +4,7 @@ discard """
 
 import  macros
 
-type 
+type
     TA = tuple[a: int]
     PA = ref TA
 
@@ -19,7 +19,7 @@ test:
 macro test2*(a: stmt): stmt {.immediate.} =
   proc testproc(recurse: int) =
     echo "Thats weird"
-    var o : PNimrodNode = nil
+    var o : NimNode = nil
     echo "  no its not!"
     o = newNimNode(nnkNone)
     if recurse > 0:

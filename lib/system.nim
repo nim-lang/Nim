@@ -3149,15 +3149,9 @@ proc shallow*(s: var string) {.noSideEffect, inline.} =
 type
   NimNodeObj = object
 
-when defined(nimnode):
-  type
-    NimNode* {.magic: "PNimrodNode".} = ref NimNodeObj
-      ## represents a Nim AST node. Macros operate on this type.
-  {.deprecated: [PNimrodNode: NimNode].}
-else:
-  type
-    PNimrodNode* {.magic: "PNimrodNode".} = ref NimNodeObj
-      ## represents a Nim AST node. Macros operate on this type.
+  NimNode* {.magic: "PNimrodNode".} = ref NimNodeObj
+    ## represents a Nim AST node. Macros operate on this type.
+{.deprecated: [PNimrodNode: NimNode].}
 
 when false:
   template eval*(blk: stmt): stmt =
