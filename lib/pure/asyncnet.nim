@@ -295,7 +295,7 @@ else:
     return retFuture
 
 template readInto(buf: cstring, size: int, socket: AsyncSocket,
-                   flags: set[SocketFlag]): int =
+                  flags: set[SocketFlag]): int =
   ## Reads **up to** ``size`` bytes from ``socket`` into ``buf``. Note that
   ## this is a template and not a proc.
   var res = 0
@@ -420,7 +420,7 @@ proc accept*(socket: AsyncSocket,
   return retFut
 
 proc recvLineInto*(socket: AsyncSocket, resString: ptr string,
-    flags = {SocketFlag.SafeDisconn}): Future[void] {.async.} =
+    flags = {SocketFlag.SafeDisconn}) {.async.} =
   ## Reads a line of data from ``socket`` into ``resString``.
   ##
   ## If a full line is read ``\r\L`` is not
@@ -490,7 +490,7 @@ proc recvLineInto*(socket: AsyncSocket, resString: ptr string,
       elif c == "\L":
         addNLIfEmpty()
         return
-      add(resString[], c)
+      resString[].add c
 
 proc recvLine*(socket: AsyncSocket,
     flags = {SocketFlag.SafeDisconn}): Future[string] {.async.} =
