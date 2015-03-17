@@ -229,3 +229,9 @@ proc open*(connection, user, password, database: string): TDbConn {.
     var errmsg = $mysql.error(result)
     db_mysql.close(result)
     dbError(errmsg)
+
+proc setEncoding*(connection: TDbConn, encoding: string): bool {.
+  tags: [FDb].} =
+  ## sets the encoding of a database connection, returns true for 
+  ## success, false for failure.
+  result = mysql.set_character_set(connection, encoding) == 0
