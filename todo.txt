@@ -5,6 +5,7 @@ version 0.10.4
 - make 'nil' work for 'add' and 'len'
 - disallow negative indexing
 - improve the parser; deal with  echo $foo  gotcha
+- add "all threads are blocked" detection to 'spawn'
 
 
 version 1.0
