@@ -1224,7 +1224,7 @@ type # these work for most platforms:
     ## This is the same as the type ``unsigned char`` in *C*.
   cushort* {.importc: "unsigned short", nodecl.} = uint16
     ## This is the same as the type ``unsigned short`` in *C*.
-  cuint* {.importc: "int", nodecl.} = uint32
+  cuint* {.importc: "unsigned int", nodecl.} = uint32
     ## This is the same as the type ``unsigned int`` in *C*.
   culonglong* {.importc: "unsigned long long", nodecl.} = uint64
     ## This is the same as the type ``unsigned long long`` in *C*.
