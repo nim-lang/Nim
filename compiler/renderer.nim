@@ -1269,9 +1269,12 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     putWithSpace(g, tkColon, ":")
     gcoms(g)
     gstmts(g, n.sons[0], c)
-  of nkFinally:
+  of nkFinally, nkDefer:
     optNL(g)
-    put(g, tkFinally, "finally")
+    if n.kind == nkFinally:
+      put(g, tkFinally, "finally")
+    else:
+      put(g, tkDefer, "defer")
     putWithSpace(g, tkColon, ":")
     gcoms(g)
     gstmts(g, n.sons[0], c)

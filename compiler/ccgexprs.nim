@@ -762,6 +762,7 @@ proc genRecordField(p: BProc, e: PNode, d: var TLoc) =
     if field.loc.r == nil: internalError(e.info, "genRecordField 3")
     appf(r, ".$1", [field.loc.r])
     putIntoDest(p, d, field.typ, r)
+  #d.s = a.s
 
 proc genInExprAux(p: BProc, e: PNode, a, b, d: var TLoc)
 

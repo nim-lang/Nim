@@ -2224,6 +2224,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     result = semPragmaBlock(c, n)
   of nkStaticStmt:
     result = semStaticStmt(c, n)
+  of nkDefer:
+    localError(n.info, errGenerated, "'defer' not allowed in this context")
   else:
     localError(n.info, errInvalidExpressionX,
                renderTree(n, {renderNoComments}))
