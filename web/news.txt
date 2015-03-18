@@ -11,8 +11,21 @@ News
   -----------------------------------------
 
   - Parameter names are finally properly ``gensym``'ed. This can break
-    templates though that used to rely on the fact that they are not. However
-    we found none such beast in the wild. (Bug #1915.)
+    templates though that used to rely on the fact that they are not.
+    (Bug #1915.) This means this doesn't compile anymore:
+
+  .. code-block:: nim
+
+    template doIt(body: stmt) {.immediate.} =
+      # this used to inject the 'str' parameter:
+      proc res(str: string) =
+        body
+
+    doIt:
+      echo str # Error: undeclared identifier: 'str'
+
+    Declare the ``doIt`` template as ``immediate, dirty`` to get the old
+    behaviour.
   - Tuple field names are not ignored anymore, this caused too many problems
     in practice so now the behaviour as it was for version 0.9.6: If field
     names exist for the tuple type, they are checked.
