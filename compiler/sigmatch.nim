@@ -902,14 +902,27 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         elif typeRel(c, f.sons[i], x.sons[i]) <= isSubtype: return
       result = isGeneric
     else:
-      result = typeRel(c, f.sons[0], x)
+      let genericBody = f.sons[0]
+      result = typeRel(c, genericBody, x)
       if result != isNone:
+        # see tests/generics/tgeneric3.nim for an example that triggers this
+        # piece of code:
+        #
+        # proc internalFind[T,D](n: PNode[T,D], key: T): ref TItem[T,D]
+        # proc internalPut[T,D](ANode: ref TNode[T,D], Akey: T, Avalue: D,
+        #                       Oldvalue: var D): ref TNode[T,D]
+        # var root = internalPut[int, int](nil, 312, 312, oldvalue)
+        # var it1 = internalFind(root, 312) # cannot instantiate: 'D'
+        #
         # we steal the generic parameters from the tyGenericBody:
         for i in countup(1, sonsLen(f) - 1):
-          var x = PType(idTableGet(c.bindings, f.sons[0].sons[i - 1]))
-          if x == nil or x.kind in {tyGenericInvocation, tyGenericParam}:
+          var x = PType(idTableGet(c.bindings, genericBody.sons[i-1]))
+          if x == nil:
+            discard "maybe fine (for eg. a==tyNil)"
+          elif x.kind in {tyGenericInvocation, tyGenericParam}:
             internalError("wrong instantiated type!")
-          put(c.bindings, f.sons[i], x)
+          else:
+            put(c.bindings, f.sons[i], x)
 
   of tyAnd:
     considerPreviousT:
