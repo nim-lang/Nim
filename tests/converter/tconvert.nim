@@ -12,7 +12,7 @@ ImageSurfaceCreate(width, height)
 
 type TFoo = object
 
-converter toPtr*(some: var TFoo): ptr TFoo = (addr some)
+converter toPtr*(some: var TFoo): ptr TFoo = (addr(some))
 
 
 proc zoot(x: ptr TFoo) = nil

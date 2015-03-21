@@ -33,7 +33,7 @@ proc newShader*(id: GL_handle): TShader =
 proc shaderInfoLog*(o: TShader): string =
   var log {.global.}: array[0..1024, char]
   var logLen: GLsizei
-  ?glGetShaderInfoLog(o.id.GLuint, log.len.GLsizei, addr logLen, cast[cstring](log.addr))
+  ?glGetShaderInfoLog(o.id.GLuint, log.len.GLsizei, addr(logLen), cast[cstring](log.addr))
   cast[string](log.addr).substr(0, logLen)
 
 proc compile*(shader: TShader, path="") =
@@ -67,7 +67,7 @@ proc attach*(o: TProgram, shader: TShader) =
 proc infoLog*(o: TProgram): string =
   var log {.global.}: array[0..1024, char]
   var logLen: GLsizei
-  ?glGetProgramInfoLog(o.id.GLuint, log.len.GLsizei, addr logLen, cast[cstring](log.addr))
+  ?glGetProgramInfoLog(o.id.GLuint, log.len.GLsizei, addr(logLen), cast[cstring](log.addr))
   cast[string](log.addr).substr(0, logLen)
 
 proc link*(o: TProgram) =

@@ -12,11 +12,11 @@ client = createHost(nil, 1, 2, 0, 0)
 if client == nil:
   quit "Could not create client!"
 
-if setHost(addr address, "localhost") != 0:
+if setHost(addr(address), "localhost") != 0:
   quit "Could not set host"
 address.port = 8024
 
-peer = client.connect(addr address, 2, 0)
+peer = client.connect(addr(address), 2, 0)
 if peer == nil:
   quit "No available peers"
 

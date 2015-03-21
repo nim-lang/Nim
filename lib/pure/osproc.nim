@@ -174,7 +174,7 @@ proc terminate*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
 proc kill*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
   ## Kill the process `p`. On Posix OSes the procedure sends ``SIGKILL`` to
   ## the process. On Windows ``kill()`` is simply an alias for ``terminate()``.
-  
+
 proc running*(p: Process): bool {.rtl, extern: "nosp$1", tags: [].}
   ## Returns true iff the process `p` is still running. Returns immediately.
 
@@ -346,7 +346,7 @@ when defined(Windows) and not defined(useNimRtl):
     var s = PFileHandleStream(s)
     if s.atTheEnd: return 0
     var br: int32
-    var a = winlean.readFile(s.handle, buffer, bufLen.cint, addr br, nil)
+    var a = winlean.readFile(s.handle, buffer, bufLen.cint, addr(br), nil)
     # TRUE and zero bytes returned (EOF).
     # TRUE and n (>0) bytes returned (good data).
     # FALSE and bytes returned undefined (system error).
@@ -358,7 +358,7 @@ when defined(Windows) and not defined(useNimRtl):
     var s = PFileHandleStream(s)
     var bytesWritten: int32
     var a = winlean.writeFile(s.handle, buffer, bufLen.cint,
-                              addr bytesWritten, nil)
+                              addr(bytesWritten), nil)
     if a == 0: raiseOSError(osLastError())
 
   proc newFileHandleStream(handle: THandle): PFileHandleStream =
@@ -666,7 +666,7 @@ elif not defined(useNimRtl):
     data.workingDir = workingDir
 
 
-    when declared(posix_spawn) and not defined(useFork) and 
+    when declared(posix_spawn) and not defined(useFork) and
         not defined(useClone) and not defined(linux):
       pid = startProcessAuxSpawn(data)
     else:
@@ -761,7 +761,7 @@ elif not defined(useNimRtl):
       let fn: pointer = startProcessAfterFork
       pid = clone(fn, stack,
                   cint(CLONE_VM or CLONE_VFORK or SIGCHLD),
-                  pointer(addr dataCopy), nil, nil, nil)
+                  pointer(addr(dataCopy)), nil, nil, nil)
       discard close(data.pErrorPipe[writeIdx])
       dealloc(stack)
     else:
@@ -774,7 +774,7 @@ elif not defined(useNimRtl):
     if pid < 0: raiseOSError(osLastError())
 
     var error: cint
-    let sizeRead = read(data.pErrorPipe[readIdx], addr error, sizeof(error))
+    let sizeRead = read(data.pErrorPipe[readIdx], addr(error), sizeof(error))
     if sizeRead == sizeof(error):
       raiseOSError($strerror(error))
 
@@ -783,7 +783,7 @@ elif not defined(useNimRtl):
   {.push stacktrace: off, profiler: off.}
   proc startProcessFail(data: ptr TStartProcessData) =
     var error: cint = errno
-    discard write(data.pErrorPipe[writeIdx], addr error, sizeof(error))
+    discard write(data.pErrorPipe[writeIdx], addr(error), sizeof(error))
     exitnow(1)
 
   when defined(macosx) or defined(freebsd):
@@ -823,7 +823,7 @@ elif not defined(useNimRtl):
         discard execvp(data.sysCommand, data.sysArgs)
       else:
         when defined(uClibc):
-          # uClibc environment (OpenWrt included) doesn't have the full execvpe 
+          # uClibc environment (OpenWrt included) doesn't have the full execvpe
           discard execve(data.sysCommand, data.sysArgs, data.sysEnv)
         else:
           discard execvpe(data.sysCommand, data.sysArgs, data.sysEnv)
@@ -864,9 +864,9 @@ elif not defined(useNimRtl):
       raiseOsError(osLastError())
 
   proc kill(p: Process) =
-    if kill(p.id, SIGKILL) != 0'i32: 
+    if kill(p.id, SIGKILL) != 0'i32:
       raiseOsError(osLastError())
-    
+
   proc waitForExit(p: Process, timeout: int = -1): int =
     #if waitPid(p.id, p.exitCode, 0) == int(p.id):
     # ``waitPid`` fails if the process is not running anymore. But then
@@ -907,7 +907,7 @@ elif not defined(useNimRtl):
       createStream(p.errStream, p.errHandle, fmRead)
     return p.errStream
 
-  proc csystem(cmd: cstring): cint {.nodecl, importc: "system", 
+  proc csystem(cmd: cstring): cint {.nodecl, importc: "system",
                                      header: "<stdlib.h>".}
 
   proc execCmd(command: string): int =

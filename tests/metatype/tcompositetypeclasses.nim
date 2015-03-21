@@ -55,5 +55,5 @@ proc f(src: ptr TUnion, dst: ptr TUnion) =
 var tx: TTest
 var ty: TTest2
 
-accept f(addr tx, addr tx)
-reject f(addr tx, addr ty)
+accept f(addr(tx), addr(tx))
+reject f(addr(tx), addr(ty))

@@ -30,19 +30,19 @@ r.y = 0
 
 block game_loop:
   while true:
-    
-    while pollEvent(addr event) > 0:
+
+    while pollEvent(addr(event)) > 0:
       case event.kind
       of QUITEV:
         break game_loop
       of KEYDOWN:
-        if evKeyboard(addr event).keysym.sym == K_ESCAPE:
+        if evKeyboard(addr(event)).keysym.sym == K_ESCAPE:
           break game_loop
       else:
         discard
-    
-    discard fillRect(screen, nil, bgColor) 
-    discard blitSurface(greeting, nil, screen, addr r)
+
+    discard fillRect(screen, nil, bgColor)
+    discard blitSurface(greeting, nil, screen, addr(r))
     discard flip(screen)
 
 greeting.freeSurface()

@@ -1,4 +1,4 @@
-import enet, strutils, idgen, tables, math_helpers, 
+import enet, strutils, idgen, tables, math_helpers,
   estreams, sg_packets, server_utils, sg_assets, client_helpers
 when appType == "gui":
   import sfml, sfml_colors, sg_gui,
@@ -14,7 +14,7 @@ var
   event: enet.TEvent
   clientID = newIDGen[int32]()
   clients = initTable[int32, PClient](64)
-  handlers = initTable[char, TCallback](32) 
+  handlers = initTable[char, TCallback](32)
 
 when appType == "gui":
   var
@@ -67,7 +67,7 @@ proc flushPubChat() =
 
 handlers[HChat] = proc(client: PClient; buffer: PBuffer) =
   var chat = readCsChat(buffer)
-  
+
   if not client.auth:
     client.sendError("You are not logged in.")
     return
@@ -75,7 +75,7 @@ handlers[HChat] = proc(client: PClient; buffer: PBuffer) =
   #  if alias2client.hasKey(chat.target):
   #    alias2client[chat.target].forwardPrivate(client, chat.text)
   #else:
-  
+
   dispmessage("<", client.alias, "> ", chat.text)
   queuePub(client, chat)
 
@@ -104,20 +104,20 @@ handlers[HZoneJoinReq] = proc(client: PClient; buffer: PBuffer) =
 
 when isMainModule:
   import parseopt, matchers, os, json
-  
-  
+
+
   if enetInit() != 0:
     quit "Could not initialize ENet"
-  
+
   var address: enet.TAddress
-  
+
   block:
     var zoneCfgFile = "./server_settings.json"
     for kind, key, val in getOpt():
       case kind
       of cmdShortOption, cmdLongOption:
         case key
-        of "f", "file": 
+        of "f", "file":
           if existsFile(val):
             zoneCfgFile = val
           else:
@@ -127,45 +127,45 @@ when isMainModule:
       else:
         echo("Unknown option: ", key, " ", val)
     var jsonSettings = parseFile(zoneCfgFile)
-    let 
+    let
       port = uint16(jsonSettings["port"].num)
       zoneFile = jsonSettings["settings"].str
       dirServerInfo = jsonSettings["dirserver"]
-    
+
     address.host = EnetHostAny
     address.port = port
-    
+
     var path = getAppDir()/../"data"/zoneFile
     if not existsFile(path):
       echo("Zone settings file does not exist: ../data/", zoneFile)
       echo(path)
       quit(1)
-    
+
     discard """block:
-      var 
+      var
         TestFile: FileChallengePair
         contents = repeat("abcdefghijklmnopqrstuvwxyz", 2)
-      testFile.challenge = newScFileChallenge("foobar.test", FZoneCfg, contents.len.int32) 
+      testFile.challenge = newScFileChallenge("foobar.test", FZoneCfg, contents.len.int32)
       testFile.file = checksumStr(contents)
       myAssets.add testFile"""
-    
+
     setCurrentDir getAppDir().parentDir()
     let zonesettings = readFile(path)
-    var 
+    var
       errors: seq[string] = @[]
     if not loadSettings(zoneSettings, errors):
       echo("You have errors in your zone settings:")
       for e in errors: echo("**", e)
       quit(1)
     errors.setLen 0
-    
+
     var pair: FileChallengePair
     pair.challenge.file = zoneFile
     pair.challenge.assetType = FZoneCfg
     pair.challenge.fullLen = zoneSettings.len.int32
     pair.file = checksumStr(zoneSettings)
     myAssets.add pair
-    
+
     allAssets:
       if not load(asset):
         echo "Invalid or missing file ", file
@@ -177,11 +177,11 @@ when isMainModule:
           expandPath(assetType, file)).int32
         pair.file = asset.contents
         myAssets.add pair
-    
+
     echo "Zone has ", myAssets.len, " associated assets"
-    
+
     dirServer = newServer()
-    
+
     dirServer.addHandler HDsMsg, proc(serv: PServer; buffer: PBuffer) =
       var m = readDsMsg(buffer)
       dispMessage("<DirServer> ", m.msg)
@@ -189,20 +189,20 @@ when isMainModule:
       let loggedIn = readDsZoneLogin(buffer).status
       if loggedIn:
         #dirServerConnected = true
-    
+
     if dirServerInfo.kind == JArray:
       var error: string
       if not dirServer.connect(dirServerInfo[0].str, dirServerInfo[1].num.int16, error):
         dispError("<DirServer> "&error)
-    
-  
+
+
   server = enet.createHost(address, 32, 2,  0,  0)
   if server == nil:
     quit "Could not create the server!"
-  
+
   dispMessage("Listening on port ", address.port)
-  
-  var 
+
+  var
     serverRunning = true
   when appType == "gui":
     var frameRate = newClock()
@@ -210,11 +210,11 @@ when isMainModule:
   else:
     var frameRate = epochTime()
     var pubChatDelay = frameRate
-  
+
   while serverRunning:
     when appType == "gui":
       let dt = frameRate.restart.asMilliseconds().float / 1000.0
-      
+
       for event in window.filterEvents():
         case event.kind
         of sfml.EvtClosed:
@@ -225,36 +225,36 @@ when isMainModule:
     else:
       let dt = epochTime() - frameRate ##is this right? probably not
       frameRate = epochTime()
-    
+
     while server.hostService(event, 10) > 0:
       case event.kind
       of EvtConnect:
         var client = newClient()
         clients[client.id] = client
 
-        event.peer.data = addr client.id
+        event.peer.data = addr(client.id)
         client.peer = event.peer
-        
+
         dispMessage("New client connected ", client)
-        
+
         var
-          msg = "hello" 
+          msg = "hello"
           resp = createPacket(cstring(msg), msg.len + 1, FlagReliable)
-          
+
         if event.peer.send(0.cuchar, resp) < 0:
           echo "FAILED"
         else:
           echo "Replied"
       of EvtReceive:
-        let client = clients[cast[ptr int32](event.peer.data)[]] 
-        
+        let client = clients[cast[ptr int32](event.peer.data)[]]
+
         var buf = newBuffer(event.packet)
         let k = buf.readChar()
         if handlers.hasKey(k):
           handlers[k](client, buf)
         else:
           dispError("Unknown packet from ", client)
-        
+
         destroy(event.packet)
       of EvtDisconnect:
         var
@@ -267,11 +267,11 @@ when isMainModule:
           dispMessage(clients[id], " disconnected")
           GCUnref(clients[id])
           clients.del id
-        
+
         event.peer.data = nil
       else:
         discard
-    
+
     when appType == "gui":
       fpsText.setString(ff(1.0/dt))
       if pubChatDelay.getElapsedTime.asSeconds > 0.25:
@@ -281,14 +281,14 @@ when isMainModule:
       pubChatDelay -= dt
       if frameRate - pubChatDelay > 0.25:
         flushPubChat()
-    
+
     when appType == "gui":
       window.clear(Black)
       window.draw(GUI)
       window.draw chatbox
       window.draw mousePos
       window.draw fpstext
-      window.display()  
+      window.display()
 
   server.destroy()
   enetDeinit()

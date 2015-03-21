@@ -24,7 +24,7 @@
 ##
 ## Chat server
 ## ^^^^^^^^^^^
-## 
+##
 ## The following example demonstrates a simple chat server.
 ##
 ## .. code-block::nim
@@ -137,7 +137,7 @@ when defined(ssl):
     let len = bioCtrlPending(socket.bioOut)
     if len > 0:
       var data = newStringOfCap(len)
-      let read = bioRead(socket.bioOut, addr data[0], len)
+      let read = bioRead(socket.bioOut, addr(data[0]), len)
       assert read != 0
       if read < 0:
         raiseSslError()
@@ -151,7 +151,7 @@ when defined(ssl):
       await sendPendingSslData(socket, flags)
     of SSL_ERROR_WANT_READ:
       var data = await recv(socket.fd.TAsyncFD, BufferSize, flags)
-      let ret = bioWrite(socket.bioIn, addr data[0], data.len.cint)
+      let ret = bioWrite(socket.bioIn, addr(data[0]), data.len.cint)
       if ret < 0:
         raiseSSLError()
     else:
@@ -193,13 +193,13 @@ proc readInto(buf: cstring, size: int, socket: AsyncSocket,
   else:
     var data = await recv(socket.fd.TAsyncFD, size, flags)
     if data.len != 0:
-      copyMem(buf, addr data[0], data.len)
+      copyMem(buf, addr(data[0]), data.len)
     # Not in SSL mode.
     result = data.len
 
 proc readIntoBuf(socket: AsyncSocket,
     flags: set[SocketFlag]): Future[int] {.async.} =
-  result = await readInto(addr socket.buffer[0], BufferSize, socket, flags)
+  result = await readInto(addr(socket.buffer[0]), BufferSize, socket, flags)
   socket.currPos = 0
   socket.bufLen = result
 
@@ -251,7 +251,7 @@ proc recv*(socket: AsyncSocket, size: int,
     result.setLen(read)
   else:
     result = newString(size)
-    let read = await readInto(addr result[0], size, socket, flags)
+    let read = await readInto(addr(result[0]), size, socket, flags)
     result.setLen(read)
 
 proc send*(socket: AsyncSocket, data: string,
@@ -263,7 +263,7 @@ proc send*(socket: AsyncSocket, data: string,
     when defined(ssl):
       var copy = data
       sslLoop(socket, flags,
-        sslWrite(socket.sslHandle, addr copy[0], copy.len.cint))
+        sslWrite(socket.sslHandle, addr(copy[0]), copy.len.cint))
       await sendPendingSslData(socket, flags)
   else:
     await send(socket.fd.TAsyncFD, data, flags)
@@ -310,7 +310,7 @@ proc recvLine*(socket: AsyncSocket,
   ## If a full line is read ``\r\L`` is not
   ## added to ``line``, however if solely ``\r\L`` is read then ``line``
   ## will be set to it.
-  ## 
+  ##
   ## If the socket is disconnected, ``line`` will be set to ``""``.
   ##
   ## If the socket is disconnected in the middle of a line (before ``\r\L``
@@ -318,7 +318,7 @@ proc recvLine*(socket: AsyncSocket,
   ## The partial line **will be lost**.
   ##
   ## **Warning**: The ``Peek`` flag is not yet implemented.
-  ## 
+  ##
   ## **Warning**: ``recvLine`` on unbuffered sockets assumes that the protocol
   ## uses ``\r\L`` to delimit a new line.
   template addNLIfEmpty(): stmt =
@@ -500,11 +500,11 @@ when isMainModule:
         proc (future: Future[void]) =
           echo("Send")
           client.close()
-      
+
       var f = accept(sock)
       f.callback = onAccept
-      
+
     var f = accept(sock)
     f.callback = onAccept
   runForever()
-    
+

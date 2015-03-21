@@ -12,7 +12,7 @@ type
 
 var x: PValue
 new x
-var sp: PPValue = addr x
+var sp: PPValue = addr(x)
 
 sp.a = 2
 if sp.a == 2: echo 2  # with sp[].a the error is gone

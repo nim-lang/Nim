@@ -236,12 +236,12 @@ macro forwardPacket*(typeName: expr, underlyingType: expr): stmt {.immediate.} =
 
 template forwardPacketT*(typeName: expr; underlyingType: expr): stmt {.dirty, immediate.} =
   proc `read typeName`*(buffer: PBuffer): typeName =
-    #discard readData(s, addr result, sizeof(result))
+    #discard readData(s, addr(result), sizeof(result))
     var res: underlyingType
     buffer.read(res)
     result = typeName(res)
   proc `pack`*(buffer: PBuffer; ord: var typeName) =
-    #writeData(s, addr p, sizeof(p))
+    #writeData(s, addr(p), sizeof(p))
     buffer.write(underlyingType(ord))
 
 when isMainModule:

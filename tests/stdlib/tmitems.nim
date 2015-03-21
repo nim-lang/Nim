@@ -51,7 +51,7 @@ block:
 
 block:
   var x = "foobar"
-  var y = cast[cstring](addr x[0])
+  var y = cast[cstring](addr(x[0]))
   for c in y.mitems:
     inc c
   echo x
@@ -64,7 +64,7 @@ block:
 
 block:
   var x = "foobar"
-  var y = cast[cstring](addr x[0])
+  var y = cast[cstring](addr(x[0]))
   for i, c in y.mpairs:
     inc c, i
   echo x

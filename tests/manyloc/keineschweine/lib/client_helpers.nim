@@ -1,4 +1,4 @@
-import  
+import
   tables, sg_packets, enet, estreams, sg_gui, sfml,
   zlib_helpers, md5, sg_assets, os
 type
@@ -17,7 +17,7 @@ type
     pos: int32
     data: string
     readyToSave: bool
-var 
+var
   currentFileTransfer: TFileTransfer
   downloadProgress* = newButton(nil, "", vec2f(0,0), nil)
 currentFileTransfer.data = ""
@@ -73,7 +73,7 @@ proc handleFilePartRecv*(serv: PServer; buffer: PBuffer) {.procvar.} =
   var
     f = readScFileTransfer(buffer)
   updateFileProgress()
-  if not(f.pos == currentFileTransfer.pos): 
+  if not(f.pos == currentFileTransfer.pos):
     echo "returning early from filepartrecv"
     return ##issues, probably
   if currentFileTransfer.data.len == 0:
@@ -81,8 +81,8 @@ proc handleFilePartRecv*(serv: PServer; buffer: PBuffer) {.procvar.} =
     currentFileTransfer.data.setLen f.fileSize
   let len = f.data.len
   copymem(
-    addr currentFileTransfer.data[f.pos],
-    addr f.data[0],
+    addr(currentFileTransfer.data[f.pos]),
+    addr(f.data[0]),
     len)
   currentFileTransfer.pos = f.pos + len.int32
   if currentFileTransfer.pos == f.fileSize: #file should be done, rizzight
@@ -100,7 +100,7 @@ proc handleFilePartRecv*(serv: PServer; buffer: PBuffer) {.procvar.} =
 
 proc saveCurrentFile() =
   if not currentFileTransfer.readyToSave: return
-  let 
+  let
     path = expandPath(currentFileTransfer.assetType, currentFileTransfer.fileName)
     parent = parentDir(path)
   if not existsDir(parent):
@@ -123,7 +123,7 @@ proc handleFileChallengeResult*(serv: PServer; buffer: PBuffer) {.procvar.} =
 
 ## HFileCHallenge
 proc handleFileChallenge*(serv: PServer; buffer: PBuffer) {.procvar.} =
-  var 
+  var
     challenge = readScFileChallenge(buffer)
     path = expandPath(challenge)
     resp: CsFileChallenge

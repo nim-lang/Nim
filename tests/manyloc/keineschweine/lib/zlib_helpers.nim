@@ -6,7 +6,7 @@ proc compress*(source: string): string =
     destlen = sourcelen + (sourcelen.float * 0.1).int + 16
   result = ""
   result.setLen destLen
-  var res = zlib.compress(cstring(result), addr destLen, cstring(source), sourceLen)
+  var res = zlib.compress(cstring(result), addr(destLen), cstring(source), sourceLen)
   if res != Z_OK:
     echo "Error occurred: ", res
   elif destLen < result.len:
@@ -15,10 +15,10 @@ proc compress*(source: string): string =
 proc uncompress*(source: string, destLen: var int): string =
   result = ""
   result.setLen destLen
-  var res = zlib.uncompress(cstring(result), addr destLen, cstring(source), source.len)
+  var res = zlib.uncompress(cstring(result), addr(destLen), cstring(source), source.len)
   if res != Z_OK:
     echo "Error occurred: ", res
-    
+
 
 when isMainModule:
   import strutils
