@@ -529,7 +529,7 @@ type
   TMagic* = enum # symbols that require compiler magic:
     mNone,
     mDefined, mDefinedInScope, mCompiles,
-    mLow, mHigh, mSizeOf, mTypeTrait, mIs, mOf,
+    mLow, mHigh, mSizeOf, mTypeTrait, mIs, mOf, mAddr, mTypeOf,
     mEcho, mShallowCopy, mSlurp, mStaticExec,
     mParseExprToAst, mParseStmtToAst, mExpandToAst, mQuoteAst,
     mUnaryLt, mInc, mDec, mOrd, mNew, mNewFinalize, mNewSeq, mLengthOpenArray,
@@ -556,8 +556,7 @@ type
     mToFloat, mToBiggestFloat, mToInt, mToBiggestInt, mCharToStr, mBoolToStr,
     mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr, mStrToStr, mEnumToStr,
     mAnd, mOr, mEqStr, mLeStr, mLtStr, mEqSet, mLeSet, mLtSet, mMulSet,
-    mPlusSet, mMinusSet, mSymDiffSet, mConStrStr, mConArrArr, mConArrT,
-    mConTArr, mConTT, mSlice,
+    mPlusSet, mMinusSet, mSymDiffSet, mConStrStr, mSlice,
     mFields, mFieldPairs, mOmpParFor,
     mAppendStrCh, mAppendStrStr, mAppendSeqElem,
     mInRange, mInSet, mRepr, mExit, mSetLengthStr, mSetLengthSeq,
@@ -608,8 +607,7 @@ const
     mToFloat, mToBiggestFloat, mToInt, mToBiggestInt, mCharToStr, mBoolToStr,
     mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr, mStrToStr, mEnumToStr,
     mAnd, mOr, mEqStr, mLeStr, mLtStr, mEqSet, mLeSet, mLtSet, mMulSet,
-    mPlusSet, mMinusSet, mSymDiffSet, mConStrStr, mConArrArr, mConArrT,
-    mConTArr, mConTT,
+    mPlusSet, mMinusSet, mSymDiffSet, mConStrStr,
     mAppendStrCh, mAppendStrStr, mAppendSeqElem,
     mInRange, mInSet, mRepr,
     mCopyStr, mCopyStrLast}

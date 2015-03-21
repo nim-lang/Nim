@@ -10,10 +10,24 @@
 # This include file implements the semantic checking for magics.
 # included from sem.nim
 
+proc semAddr(c: PContext; n: PNode): PNode =
+  result = newNodeI(nkAddr, n.info)
+  let x = semExprWithType(c, n)
+  if isAssignable(c, x) notin {arLValue, arLocalLValue}:
+    localError(n.info, errExprHasNoAddress)
+  result.add x
+  result.typ = makePtrType(c, x.typ)
+
+proc semTypeOf(c: PContext; n: PNode): PNode =
+  result = newNodeI(nkTypeOfExpr, n.info)
+  let typExpr = semExprWithType(c, n, {efInTypeof})
+  result.add typExpr
+  result.typ = makeTypeDesc(c, typExpr.typ.skipTypes({tyTypeDesc, tyIter}))
+
 proc semIsPartOf(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var r = isPartOf(n[1], n[2])
   result = newIntNodeT(ord(r), n)
-  
+
 proc expectIntLit(c: PContext, n: PNode): int =
   let x = c.semConstExpr(c, n)
   case x.kind
@@ -31,7 +45,7 @@ proc semInstantiationInfo(c: PContext, n: PNode): PNode =
   line.intVal = toLinenumber(info)
   result.add(filename)
   result.add(line)
- 
+
 proc evalTypeTrait(trait: PNode, operand: PType, context: PSym): PNode =
   let typ = operand.skipTypes({tyTypeDesc})
   case trait.sym.name.s.normalize
@@ -66,18 +80,18 @@ proc semOrd(c: PContext, n: PNode): PNode =
 proc semBindSym(c: PContext, n: PNode): PNode =
   result = copyNode(n)
   result.add(n.sons[0])
-  
+
   let sl = semConstExpr(c, n.sons[1])
-  if sl.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}: 
+  if sl.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}:
     localError(n.sons[1].info, errStringLiteralExpected)
     return errorNode(c, n)
-  
+
   let isMixin = semConstExpr(c, n.sons[2])
   if isMixin.kind != nkIntLit or isMixin.intVal < 0 or
       isMixin.intVal > high(TSymChoiceRule).int:
     localError(n.sons[2].info, errConstExprExpected)
     return errorNode(c, n)
-  
+
   let id = newIdentNode(getIdent(sl.strVal), n.info)
   let s = qualifiedLookUp(c, id)
   if s != nil:
@@ -110,15 +124,21 @@ proc semLocals(c: PContext, n: PNode): PNode =
 
         addSon(tupleType.n, newSymNode(field))
         addSonSkipIntLit(tupleType, field.typ)
-        
+
         var a = newSymNode(it, result.info)
         if it.typ.skipTypes({tyGenericInst}).kind == tyVar: a = newDeref(a)
         result.add(a)
 
 proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode
-proc magicsAfterOverloadResolution(c: PContext, n: PNode, 
+proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
   case n[0].sym.magic
+  of mAddr:
+    checkSonsLen(n, 2)
+    result = semAddr(c, n.sons[1])
+  of mTypeOf:
+    checkSonsLen(n, 2)
+    result = semTypeOf(c, n.sons[1])
   of mIsPartOf: result = semIsPartOf(c, n, flags)
   of mTypeTrait: result = semTypeTraits(c, n)
   of mAstToStr:

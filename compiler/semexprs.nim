@@ -1672,6 +1672,12 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   # DON'T forget to update ast.SpecialSemMagics if you add a magic here!
   result = n
   case s.magic # magics that need special treatment
+  of mAddr:
+    checkSonsLen(n, 2)
+    result = semAddr(c, n.sons[1])
+  of mTypeOf:
+    checkSonsLen(n, 2)
+    result = semTypeOf(c, n.sons[1])
   of mDefined: result = semDefined(c, setMs(n, s), false)
   of mDefinedInScope: result = semDefined(c, setMs(n, s), true)
   of mCompiles: result = semCompiles(c, setMs(n, s), flags)
@@ -2155,10 +2161,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkAddr:
     result = n
     checkSonsLen(n, 1)
-    n.sons[0] = semExprWithType(c, n.sons[0])
-    if isAssignable(c, n.sons[0]) notin {arLValue, arLocalLValue}:
-      localError(n.info, errExprHasNoAddress)
-    n.typ = makePtrType(c, n.sons[0].typ)
+    result = semAddr(c, n.sons[0])
   of nkHiddenAddr, nkHiddenDeref:
     checkSonsLen(n, 1)
     n.sons[0] = semExpr(c, n.sons[0], flags)

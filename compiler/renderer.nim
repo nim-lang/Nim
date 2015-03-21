@@ -385,7 +385,7 @@ proc lsub(n: PNode): int =
     result = lsub(n.sons[0]) + lcomma(n, 1) + 2
   of nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv: result = lsub(n[1])
   of nkCast: result = lsub(n.sons[0]) + lsub(n.sons[1]) + len("cast[]()")
-  of nkAddr: result = lsub(n.sons[0]) + len("addr()")
+  of nkAddr: result = (if n.len>0: lsub(n.sons[0]) + len("addr()") else: 4)
   of nkStaticExpr: result = lsub(n.sons[0]) + len("static_")
   of nkHiddenAddr, nkHiddenDeref: result = lsub(n.sons[0])
   of nkCommand: result = lsub(n.sons[0]) + lcomma(n, 1) + 1
@@ -433,7 +433,7 @@ proc lsub(n: PNode): int =
         len("if_:_")
   of nkElifExpr: result = lsons(n) + len("_elif_:_")
   of nkElseExpr: result = lsub(n.sons[0]) + len("_else:_") # type descriptions
-  of nkTypeOfExpr: result = lsub(n.sons[0]) + len("type_")
+  of nkTypeOfExpr: result = (if n.len > 0: lsub(n.sons[0]) else: 0)+len("type_")
   of nkRefTy: result = (if n.len > 0: lsub(n.sons[0])+1 else: 0) + len("ref")
   of nkPtrTy: result = (if n.len > 0: lsub(n.sons[0])+1 else: 0) + len("ptr")
   of nkVarTy: result = (if n.len > 0: lsub(n.sons[0])+1 else: 0) + len("var")
@@ -846,9 +846,10 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkParRi, ")")
   of nkAddr:
     put(g, tkAddr, "addr")
-    put(g, tkParLe, "(")
-    gsub(g, n.sons[0])
-    put(g, tkParRi, ")")
+    if n.len > 0:
+      put(g, tkParLe, "(")
+      gsub(g, n.sons[0])
+      put(g, tkParRi, ")")
   of nkStaticExpr:
     put(g, tkStatic, "static")
     put(g, tkSpaces, Space)

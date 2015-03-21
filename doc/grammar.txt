@@ -3,17 +3,13 @@ comma = ',' COMMENT?
 semicolon = ';' COMMENT?
 colon = ':' COMMENT?
 colcom = ':' COMMENT?
-
-operator =  OP0 | OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9 | OP10
+operator =  OP0 | OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9
          | 'or' | 'xor' | 'and'
          | 'is' | 'isnot' | 'in' | 'notin' | 'of'
-         | 'div' | 'mod' | 'shl' | 'shr' | 'not' | 'addr' | 'static' | '..'
-
+         | 'div' | 'mod' | 'shl' | 'shr' | 'not' | 'static' | '..'
 prefixOperator = operator
-
 optInd = COMMENT?
 optPar = (IND{>} | IND{=})?
-
 simpleExpr = arrowExpr (OP0 optInd arrowExpr)*
 arrowExpr = assignExpr (OP1 optInd assignExpr)*
 assignExpr = orExpr (OP2 optInd orExpr)*
@@ -26,20 +22,20 @@ plusExpr = mulExpr (OP8 optInd mulExpr)*
 mulExpr = dollarExpr (OP9 optInd dollarExpr)*
 dollarExpr = primary (OP10 optInd primary)*
 symbol = '`' (KEYW|IDENT|literal|(operator|'('|')'|'['|']'|'{'|'}'|'=')+)+ '`'
-       | IDENT
+       | IDENT | 'addr' | 'type'
 indexExpr = expr
 indexExprList = indexExpr ^+ comma
 exprColonEqExpr = expr (':'|'=' expr)?
 exprList = expr ^+ comma
-dotExpr = expr '.' optInd ('type' | 'addr' | symbol)
-qualifiedIdent = symbol ('.' optInd ('type' | 'addr' | symbol))?
+dotExpr = expr '.' optInd symbol
+qualifiedIdent = symbol ('.' optInd symbol)?
 exprColonEqExprList = exprColonEqExpr (comma exprColonEqExpr)* (comma)?
 setOrTableConstr = '{' ((exprColonEqExpr comma)* | ':' ) '}'
 castExpr = 'cast' '[' optInd typeDesc optPar ']' '(' optInd expr optPar ')'
 parKeyw = 'discard' | 'include' | 'if' | 'while' | 'case' | 'try'
         | 'finally' | 'except' | 'for' | 'block' | 'const' | 'let'
         | 'when' | 'var' | 'mixin'
-par = '(' optInd (&parKeyw complexOrSimpleStmt ^+ ';' 
+par = '(' optInd (&parKeyw complexOrSimpleStmt ^+ ';'
                  | simpleExpr ('=' expr (';' complexOrSimpleStmt ^+ ';' )? )?
                             | (':' expr)? (',' (exprColonEqExpr comma?)*)?  )?
         optPar ')'
@@ -57,7 +53,7 @@ tupleConstr = '(' optInd (exprColonEqExpr comma?)* optPar ')'
 arrayConstr = '[' optInd (exprColonEqExpr comma?)* optPar ']'
 primarySuffix = '(' (exprColonEqExpr comma?)* ')' doBlocks?
               | doBlocks
-              | '.' optInd ('type' | 'addr' | symbol) generalizedLit?
+              | '.' optInd symbol generalizedLit?
               | '[' optInd indexExprList optPar ']'
               | '{' optInd indexExprList optPar '}'
               | &( '`'|IDENT|literal|'cast') expr # command syntax
@@ -77,6 +73,7 @@ inlTupleDecl = 'tuple'
     [' optInd  (identColonEquals (comma/semicolon)?)*  optPar ']'
 extTupleDecl = 'tuple'
     COMMENT? (IND{>} identColonEquals (IND{=} identColonEquals)*)?
+tupleClass = 'tuple'
 paramList = '(' declColonEquals ^* (comma/semicolon) ')'
 paramListArrow = paramList? ('->' optInd typeDesc)?
 paramListColon = paramList? (':' optInd typeDesc)?
@@ -89,17 +86,16 @@ expr = (ifExpr
       | caseExpr
       | tryExpr)
       / simpleExpr
-typeKeyw = 'var' | 'ref' | 'ptr' | 'shared' | 'type' | 'tuple'
+typeKeyw = 'var' | 'ref' | 'ptr' | 'shared' | 'tuple'
          | 'proc' | 'iterator' | 'distinct' | 'object' | 'enum'
 primary = typeKeyw typeDescK
         /  prefixOperator* identOrLiteral primarySuffix*
-        / 'addr' primary
         / 'static' primary
         / 'bind' primary
 typeDesc = simpleExpr
 typeDefAux = simpleExpr
            | 'generic' typeClass
-macroColon = ':' stmt? ( IND{=} 'of' exprList ':' stmt 
+macroColon = ':' stmt? ( IND{=} 'of' exprList ':' stmt
                        | IND{=} 'elif' expr ':' stmt
                        | IND{=} 'except' exprList ':' stmt
                        | IND{=} 'else' ':' stmt )*

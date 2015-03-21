@@ -140,6 +140,16 @@ proc declaredInScope*(x: expr): bool {.
   ## Special compile-time procedure that checks whether `x` is
   ## declared in the current scope. `x` has to be an identifier.
 
+proc `addr`*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
+  ## Builtin 'addr' operator for taking the address of a memory location.
+  ## Cannot be overloaded.
+  discard
+
+proc `type`*(x: expr): typeDesc {.magic: "TypeOf", noSideEffect.} =
+  ## Builtin 'type' operator for accessing the type of an expression.
+  ## Cannot be overloaded.
+  discard
+
 proc `not` *(x: bool): bool {.magic: "Not", noSideEffect.}
   ## Boolean not; returns true iff ``x == false``.
 
