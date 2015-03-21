@@ -978,12 +978,13 @@ proc genAsmStmt(p: BProc, t: PNode) =
     lineF(p, cpsStmts, CC[cCompiler].asmStmtFrmt, [s])
 
 proc genEmit(p: BProc, t: PNode) =
-  genLineDir(p, t)
   var s = genAsmOrEmitStmt(p, t.sons[1])
   if p.prc == nil:
     # top level emit pragma?
+    genCLineDir(p.module.s[cfsProcHeaders], t.info)
     app(p.module.s[cfsProcHeaders], s)
   else:
+    genLineDir(p, t)
     line(p, cpsStmts, s)
 
 var

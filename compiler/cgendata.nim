@@ -9,8 +9,10 @@
 
 ## This module contains the data structures for the C code generation phase.
 
-import 
+import
   ast, astalgo, ropes, passes, options, intsets, lists, platform
+
+from msgs import TLineInfo
 
 type
   TLabel* = PRope             # for the C generator a label is just a rope
@@ -51,7 +53,7 @@ type
   TCProcSections* = array[TCProcSection, PRope] # represents a generated C proc
   BModule* = ref TCGen
   BProc* = ref TCProc
-  TBlock*{.final.} = object 
+  TBlock*{.final.} = object
     id*: int                  # the ID of the label; positive means that it
     label*: PRope             # generated text for the label
                               # nil if label is not used
@@ -60,11 +62,12 @@ type
     nestedTryStmts*: int16    # how many try statements is it nested into
     nestedExceptStmts*: int16 # how many except statements is it nested into
     frameLen*: int16
-  
+
   TCProc{.final.} = object    # represents C proc that is currently generated
     prc*: PSym                # the Nim proc that this C proc belongs to
     beforeRetNeeded*: bool    # true iff 'BeforeRet' label for proc is needed
     threadVarAccessed*: bool  # true if the proc already accessed some threadvar
+    lastLineInfo*: TLineInfo  # to avoid generating excessive 'nimln' statements
     nestedTryStmts*: seq[PNode]   # in how many nested try statements we are
                                   # (the vars must be volatile then)
     inExceptBlock*: int       # are we currently inside an except block?
@@ -87,7 +90,7 @@ type
                               # (yes, C++ is weird like that)
     gcFrameId*: Natural       # for the GC stack marking
     gcFrameType*: PRope       # the struct {} we put the GC markers into
-  
+
   TTypeSeq* = seq[PType]
   TCGen = object of TPassContext # represents a C source file
     module*: PSym
@@ -140,7 +143,7 @@ proc bmod*(module: PSym): BModule =
   # obtains the BModule for a given module PSym
   result = gModules[module.position]
 
-proc newProc*(prc: PSym, module: BModule): BProc = 
+proc newProc*(prc: PSym, module: BModule): BProc =
   new(result)
   result.prc = prc
   result.module = module

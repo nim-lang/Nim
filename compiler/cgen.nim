@@ -13,7 +13,7 @@ import
   ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp,
   options, intsets,
   nversion, nimsets, msgs, crc, bitsets, idents, lists, types, ccgutils, os,
-  times, ropes, math, passes, rodread, wordrecg, treetab, cgmeth, condsyms,
+  ropes, math, passes, rodread, wordrecg, treetab, cgmeth, condsyms,
   rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases, lowerings,
   semparallel
 
@@ -183,6 +183,13 @@ proc genCLineDir(r: var PRope, filename: string, line: int) =
 proc genCLineDir(r: var PRope, info: TLineInfo) =
   genCLineDir(r, info.toFullPath, info.safeLineNm)
 
+proc freshLineInfo(p: BProc; info: TLineInfo): bool =
+  if p.lastLineInfo.line != info.line or
+     p.lastLineInfo.fileIndex != info.fileIndex:
+    p.lastLineInfo.line = info.line
+    p.lastLineInfo.fileIndex = info.fileIndex
+    result = true
+
 proc genLineDir(p: BProc, t: PNode) =
   var line = t.info.safeLineNm
   if optEmbedOrigSrc in gGlobalOptions:
@@ -190,13 +197,15 @@ proc genLineDir(p: BProc, t: PNode) =
   genCLineDir(p.s(cpsStmts), t.info.toFullPath, line)
   if ({optStackTrace, optEndb} * p.options == {optStackTrace, optEndb}) and
       (p.prc == nil or sfPure notin p.prc.flags):
-    linefmt(p, cpsStmts, "#endb($1, $2);$n",
-            line.toRope, makeCString(toFilename(t.info)))
+    if freshLineInfo(p, t.info):
+      linefmt(p, cpsStmts, "#endb($1, $2);$n",
+              line.toRope, makeCString(toFilename(t.info)))
   elif ({optLineTrace, optStackTrace} * p.options ==
       {optLineTrace, optStackTrace}) and
       (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex >= 0:
-    linefmt(p, cpsStmts, "nimln($1, $2);$n",
-            line.toRope, t.info.quotedFilename)
+    if freshLineInfo(p, t.info):
+      linefmt(p, cpsStmts, "nimln($1, $2);$n",
+              line.toRope, t.info.quotedFilename)
 
 proc postStmtActions(p: BProc) {.inline.} =
   app(p.s(cpsStmts), p.module.injectStmt)

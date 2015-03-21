@@ -485,37 +485,48 @@ proc unaryExprChar(p: BProc, e: PNode, d: var TLoc, frmt: string) =
   initLocExpr(p, e.sons[1], a)
   putIntoDest(p, d, e.typ, ropecg(p.module, frmt, [rdCharLoc(a)]))
 
+proc binaryArithOverflowRaw(p: BProc, t: PType, a, b: TLoc;
+                            frmt: string): PRope =
+  var size = getSize(t)
+  let storage = if size < platform.intSize: toRope("NI")
+                else: getTypeDesc(p.module, t)
+  result = getTempName()
+  linefmt(p, cpsLocals, "$1 $2;$n", storage, result)
+  lineCg(p, cpsStmts, frmt, result, rdLoc(a), rdLoc(b))
+  if size < platform.intSize or t.kind in {tyRange, tyEnum}:
+    linefmt(p, cpsStmts, "if ($1 < $2 || $1 > $3) #raiseOverflow();$n",
+            result, intLiteral(firstOrd(t)), intLiteral(lastOrd(t)))
+
 proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   const
-    prc: array[mAddI..mModI64, string] = ["addInt", "subInt", "mulInt",
-      "divInt", "modInt", "addInt64", "subInt64", "mulInt64", "divInt64",
-      "modInt64"]
-    opr: array[mAddI..mModI64, string] = ["+", "-", "*", "/", "%", "+", "-",
-      "*", "/", "%"]
+    prc: array[mAddI..mPred, string] = [
+      "$# = #addInt($#, $#);$n", "$# = #subInt($#, $#);$n",
+      "$# = #mulInt($#, $#);$n", "$# = #divInt($#, $#);$n",
+      "$# = #modInt($#, $#);$n",
+      "$# = #addInt64($#, $#);$n", "$# = #subInt64($#, $#);$n",
+      "$# = #mulInt64($#, $#);$n", "$# = #divInt64($#, $#);$n",
+      "$# = #modInt64($#, $#);$n",
+      "$# = #addInt($#, $#);$n", "$# = #subInt($#, $#);$n"]
+    opr: array[mAddI..mPred, string] = [
+      "($#)($# + $#)", "($#)($# - $#)", "($#)($# * $#)",
+      "($#)($# / $#)", "($#)($# % $#)",
+      "($#)($# + $#)", "($#)($# - $#)", "($#)($# * $#)",
+      "($#)($# / $#)", "($#)($# % $#)",
+      "($#)($# + $#)", "($#)($# - $#)"]
   var a, b: TLoc
   assert(e.sons[1].typ != nil)
   assert(e.sons[2].typ != nil)
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], b)
-  var t = skipTypes(e.typ, abstractRange)
+  # skipping 'range' is correct here as we'll generate a proper range check
+  # later via 'chckRange'
+  let t = e.typ.skipTypes(abstractRange)
   if optOverflowCheck notin p.options:
-    putIntoDest(p, d, e.typ, ropef("(NI$4)($2 $1 $3)", [toRope(opr[m]),
-        rdLoc(a), rdLoc(b), toRope(getSize(t) * 8)]))
+    let res = ropef(opr[m], [getTypeDesc(p.module, t), rdLoc(a), rdLoc(b)])
+    putIntoDest(p, d, e.typ, res)
   else:
-    var storage: PRope
-    var size = getSize(t)
-    if size < platform.intSize:
-      storage = toRope("NI")
-    else:
-      storage = getTypeDesc(p.module, t)
-    var tmp = getTempName()
-    linefmt(p, cpsLocals, "$1 $2;$n", storage, tmp)
-    lineCg(p, cpsStmts, "$1 = #$2($3, $4);$n",
-                         tmp, toRope(prc[m]), rdLoc(a), rdLoc(b))
-    if size < platform.intSize or t.kind in {tyRange, tyEnum, tySet}:
-      linefmt(p, cpsStmts, "if ($1 < $2 || $1 > $3) #raiseOverflow();$n",
-              tmp, intLiteral(firstOrd(t)), intLiteral(lastOrd(t)))
-    putIntoDest(p, d, e.typ, ropef("(NI$1)($2)", [toRope(getSize(t)*8), tmp]))
+    let res = binaryArithOverflowRaw(p, t, a, b, prc[m])
+    putIntoDest(p, d, e.typ, ropef("($#)($#)", [getTypeDesc(p.module, t), res]))
 
 proc unaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   const
@@ -1648,35 +1659,35 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mAddF64..mDivF64: binaryFloatArith(p, e, d, op)
   of mShrI..mXor: binaryArith(p, e, d, op)
   of mEqProc: genEqProc(p, e, d)
-  of mAddI..mModI64: binaryArithOverflow(p, e, d, op)
+  of mAddI..mPred: binaryArithOverflow(p, e, d, op)
   of mRepr: genRepr(p, e, d)
   of mGetTypeInfo: genGetTypeInfo(p, e, d)
   of mSwap: genSwap(p, e, d)
   of mUnaryLt:
     if optOverflowCheck notin p.options: unaryExpr(p, e, d, "($1 - 1)")
     else: unaryExpr(p, e, d, "#subInt($1, 1)")
-  of mPred:
-    # XXX: range checking?
-    if optOverflowCheck notin p.options: binaryExpr(p, e, d, "($1 - $2)")
-    else: binaryExpr(p, e, d, "#subInt($1, $2)")
-  of mSucc:
-    # XXX: range checking?
-    if optOverflowCheck notin p.options: binaryExpr(p, e, d, "($1 + $2)")
-    else: binaryExpr(p, e, d, "#addInt($1, $2)")
-  of mInc:
+  of mInc, mDec:
+    const opr: array [mInc..mDec, string] = ["$1 += $2;$n", "$1 -= $2;$n"]
+    const fun64: array [mInc..mDec, string] = ["$# = #addInt64($#, $#);$n",
+                                               "$# = #subInt64($#, $#);$n"]
+    const fun: array [mInc..mDec, string] = ["$# = #addInt($#, $#);$n",
+                                             "$# = #subInt($#, $#);$n"]
     if optOverflowCheck notin p.options:
-      binaryStmt(p, e, d, "$1 += $2;$n")
-    elif skipTypes(e.sons[1].typ, abstractVar).kind == tyInt64:
-      binaryStmt(p, e, d, "$1 = #addInt64($1, $2);$n")
+      binaryStmt(p, e, d, opr[op])
     else:
-      binaryStmt(p, e, d, "$1 = #addInt($1, $2);$n")
-  of ast.mDec:
-    if optOverflowCheck notin p.options:
-      binaryStmt(p, e, d, "$1 -= $2;$n")
-    elif skipTypes(e.sons[1].typ, abstractVar).kind == tyInt64:
-      binaryStmt(p, e, d, "$1 = #subInt64($1, $2);$n")
-    else:
-      binaryStmt(p, e, d, "$1 = #subInt($1, $2);$n")
+      var a, b: TLoc
+      assert(e.sons[1].typ != nil)
+      assert(e.sons[2].typ != nil)
+      initLocExpr(p, e.sons[1], a)
+      initLocExpr(p, e.sons[2], b)
+
+      let underlying = skipTypes(e.sons[1].typ, {tyGenericInst, tyVar, tyRange})
+      let ranged = skipTypes(e.sons[1].typ, {tyGenericInst, tyVar})
+      let res = binaryArithOverflowRaw(p, ranged, a, b,
+        if underlying.kind == tyInt64: fun64[op] else: fun[op])
+      putIntoDest(p, a, ranged, ropef("($#)($#)", [
+        getTypeDesc(p.module, ranged), res]))
+
   of mConStrStr: genStrConcat(p, e, d)
   of mAppendStrCh:
     binaryStmt(p, e, d, "$1 = #addChar($1, $2);$n")

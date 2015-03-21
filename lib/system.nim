@@ -1557,9 +1557,9 @@ when not defined(nimrodVM) and hostOS != "standalone":
       ## process. This is only available when threads are enabled.
 
 when sizeof(int) <= 2:
-  type IntLikeForCount = int|int8|int16|char|bool|uint8
+  type IntLikeForCount = int|int8|int16|char|bool|uint8|enum
 else:
-  type IntLikeForCount = int|int8|int16|int32|char|bool|uint8|uint16
+  type IntLikeForCount = int|int8|int16|int32|char|bool|uint8|uint16|enum
 
 iterator countdown*[T](a, b: T, step = 1): T {.inline.} =
   ## Counts from ordinal value `a` down to `b` with the given
@@ -2900,20 +2900,16 @@ proc `[]`*[Idx, T](a: array[Idx, T], x: Slice[Idx]): seq[T] =
   ## because the array might have negative bounds.
   var L = ord(x.b) - ord(x.a) + 1
   newSeq(result, L)
-  var j = x.a
   for i in 0.. <L:
-    result[i] = a[j]
-    inc(j)
+    result[i] = a[Idx(ord(x.a) + i)]
 
 proc `[]=`*[Idx, T](a: var array[Idx, T], x: Slice[Idx], b: openArray[T]) =
   ## slice assignment for arrays. Negative indexes are **not** supported
   ## because the array might have negative bounds.
   var L = ord(x.b) - ord(x.a) + 1
   if L == b.len:
-    var j = x.a
     for i in 0 .. <L:
-      a[j] = b[i]
-      inc(j)
+      a[Idx(ord(x.a) + i)] = b[i]
   else:
     sysFatal(RangeError, "different lengths for slice assignment")
 

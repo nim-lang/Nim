@@ -262,6 +262,8 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["mulInt64", "", "mulInt64($1, $2)", "($1 * $2)"], # MulI64
     ["divInt64", "", "divInt64($1, $2)", "Math.floor($1 / $2)"], # DivI64
     ["modInt64", "", "modInt64($1, $2)", "Math.floor($1 % $2)"], # ModI64
+    ["addInt", "", "addInt($1, $2)", "($1 + $2)"], # Succ
+    ["subInt", "", "subInt($1, $2)", "($1 - $2)"], # Pred
     ["", "", "($1 + $2)", "($1 + $2)"], # AddF64
     ["", "", "($1 - $2)", "($1 - $2)"], # SubF64
     ["", "", "($1 * $2)", "($1 * $2)"], # MulF64
@@ -362,6 +364,8 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["mulInt64", "", "mulInt64($1, $2)", "($1 * $2)"], # MulI64
     ["divInt64", "", "divInt64($1, $2)", "Math.floor($1 / $2)"], # DivI64
     ["modInt64", "", "modInt64($1, $2)", "Math.floor($1 % $2)"], # ModI64
+    ["addInt", "", "addInt($1, $2)", "($1 + $2)"], # Succ
+    ["subInt", "", "subInt($1, $2)", "($1 - $2)"], # Pred
     ["", "", "($1 + $2)", "($1 + $2)"], # AddF64
     ["", "", "($1 - $2)", "($1 - $2)"], # SubF64
     ["", "", "($1 * $2)", "($1 * $2)"], # MulF64
@@ -1323,14 +1327,6 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     # XXX: range checking?
     if not (optOverflowCheck in p.options): unaryExpr(p, n, r, "", "$1 - 1")
     else: unaryExpr(p, n, r, "subInt", "subInt($1, 1)")
-  of mPred:
-    # XXX: range checking?
-    if not (optOverflowCheck in p.options): binaryExpr(p, n, r, "", "$1 - $2")
-    else: binaryExpr(p, n, r, "subInt", "subInt($1, $2)")
-  of mSucc:
-    # XXX: range checking?
-    if not (optOverflowCheck in p.options): binaryExpr(p, n, r, "", "$1 - $2")
-    else: binaryExpr(p, n, r, "addInt", "addInt($1, $2)")
   of mAppendStrCh: binaryExpr(p, n, r, "addChar", "addChar($1, $2)")
   of mAppendStrStr:
     if skipTypes(n.sons[1].typ, abstractVarRange).kind == tyCString:
