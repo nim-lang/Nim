@@ -94,10 +94,11 @@ type
   Tdirent* {.importc: "struct dirent",
              header: "<dirent.h>", final, pure.} = object ## dirent_t struct
     d_ino*: Tino  ## File serial number.
-    d_off*: TOff  ## Not an offset. Value that ``telldir()`` would return.
-    d_reclen*: cshort ## Length of this record. (not POSIX)
-    d_type*: int8 ## Type of file; not supported by all filesystem types.
-                  ## (not POSIX)
+    when defined(linux):
+      d_off*: TOff  ## Not an offset. Value that ``telldir()`` would return.
+      d_reclen*: cshort ## Length of this record. (not POSIX)
+      d_type*: int8 ## Type of file; not supported by all filesystem types.
+                    ## (not POSIX)
     d_name*: array [0..255, char] ## Name of entry.
 
   Tflock* {.importc: "struct flock", final, pure,
