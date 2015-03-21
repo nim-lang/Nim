@@ -456,7 +456,7 @@ proc changeType(n: PNode, newType: PType, check: bool) =
           internalError(m.info, "changeType(): invalid tuple constr")
           return
         if tup.n != nil:
-          var f = getSymFromList(newType.n, m.sym.name)
+          var f = getSymFromList(tup.n, m.sym.name)
           if f == nil:
             internalError(m.info, "changeType(): invalid identifier")
             return
