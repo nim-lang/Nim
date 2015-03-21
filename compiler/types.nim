@@ -919,6 +919,9 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     result = sameFlags(a, b)
   of tyStatic, tyFromExpr:
     result = exprStructuralEquivalent(a.n, b.n) and sameFlags(a, b)
+    if result and a.len == b.len and a.len == 1:
+      cycleCheck()
+      result = sameTypeAux(a.sons[0], b.sons[0], c)
   of tyObject:
     ifFastObjectTypeCheckFailed(a, b):
       cycleCheck()

@@ -1537,7 +1537,9 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
                                         copyTree(n.sons[a]), m, c))
           else:
             addSon(m.call, copyTree(n.sons[a]))
-        elif formal != nil:
+        elif formal != nil and formal.typ.kind == tyVarargs:
+          # beware of the side-effects in 'prepareOperand'! So only do it for
+          # varags matching. See tests/metatype/tstatic_overloading.
           m.baseTypeMatch = false
           n.sons[a] = prepareOperand(c, formal.typ, n.sons[a])
           var arg = paramTypesMatch(m, formal.typ, n.sons[a].typ,
