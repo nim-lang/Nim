@@ -17,7 +17,7 @@ var
   ## I was high.
   clients = initTable[TupAddress, PClient](16)
   alias2client = initTable[string, PClient](32)
-  allClients: seq[PClient] = @[] 
+  allClients: seq[PClient] = @[]
 
 proc findClient*(host: string; port: int16): PClient =
   let addy: TupAddress = (host, port)
@@ -37,7 +37,7 @@ proc loginZone(client: PClient; login: SdZoneLogin): bool =
         result = true
         break
 
-proc sendZoneList(client: PClient) = 
+proc sendZoneList(client: PClient) =
   echo(">> zonelist ", client, ' ', HZoneList)
   client.send(HZonelist, zonelist)
 proc forwardPrivate(rcv: PClient; sender: PClient; txt: string) =
@@ -93,7 +93,7 @@ proc sendServMsg(client: PClient; msg: string) =
   var m = newDsMsg(msg)
   client.send HDsMsg, m
 handlers[HZoneLogin] = proc(client: PClient; stream: PStream) =
-  var 
+  var
     login = readSdZoneLogin(stream)
   if not client.loginZone(login):
     client.sendServMsg "Invalid login"
@@ -110,7 +110,7 @@ handlers[HFileChallenge] = proc(client: PClient; stream: PStream) =
       var chg = readScFileChallenge(stream)
 
 proc handlePkt(s: PClient; stream: PStream) =
-  while not stream.atEnd:  
+  while not stream.atEnd:
     var typ = readChar(stream)
     if not handlers.hasKey(typ):
       break
@@ -128,7 +128,7 @@ var clientIndex = 0
 var incoming = newIncomingBuffer()
 proc poll*(timeout: int = 250) =
   if server.isNil: return
-  var 
+  var
     reads = @[server]
     writes = @[server]
   if select(reads, timeout) > 0:
@@ -163,7 +163,7 @@ when isMainModule:
     case kind
     of cmdShortOption, cmdLongOption:
       case key
-      of "f", "file": 
+      of "f", "file":
         if existsFile(val):
           cfgFile = val
         else:
@@ -177,14 +177,14 @@ when isMainModule:
   zonelist.network = jsonSettings["network"].str
   for slot in jsonSettings["zones"].items:
     zoneSlots.add((slot["name"].str, slot["key"].str))
-  
+
   createServer(port)
   echo("Listening on port ", port, "...")
   var pubChatTimer = cpuTime() #newClock()
   const PubChatDelay = 1000/1000
   while true:
     poll(15)
-    ## TODO sort this type of thing VV into a queue api 
+    ## TODO sort this type of thing VV into a queue api
     if cpuTime() - pubChatTimer > PubChatDelay:       #.getElapsedTime.asMilliseconds > 100:
       pubChatTimer -= pubChatDelay
       if pubChatQueue.getPosition > 0:
@@ -192,10 +192,10 @@ when isMainModule:
         let sizePubChat = pubChatQueue.data.len
         var sent = 0
         filterIt2(allClients, it.auth == true and it.kind == CPlayer):
-          it.outputBuf.writeData(addr pubChatQueue.data[0], sizePubChat)
+          it.outputBuf.writeData(addr(pubChatQueue.data[0]), sizePubChat)
           sent += 1
         #for c in allClients:
-        #  c.outputBuf.writeData(addr pubChatQueue.data[0], sizePubChat)
+        #  c.outputBuf.writeData(addr(pubChatQueue.data[0]), sizePubChat)
         pubChatQueue.flush()
         echo "pubChatQueue flushed to ", sent, "clients"
 

@@ -50,14 +50,14 @@ else:
 
   proc setRaw(fd: FileHandle, time: cint = TCSAFLUSH) =
     var mode: Termios
-    discard fd.tcgetattr(addr mode)
+    discard fd.tcgetattr(addr(mode))
     mode.iflag = mode.iflag and not Tcflag(BRKINT or ICRNL or INPCK or ISTRIP or IXON)
     mode.oflag = mode.oflag and not Tcflag(OPOST)
     mode.cflag = (mode.cflag and not Tcflag(CSIZE or PARENB)) or CS8
     mode.lflag = mode.lflag and not Tcflag(ECHO or ICANON or IEXTEN or ISIG)
     mode.cc[VMIN] = 1.cuchar
     mode.cc[VTIME] = 0.cuchar
-    discard fd.tcsetattr(time, addr mode)
+    discard fd.tcsetattr(time, addr(mode))
 
 proc setCursorPos*(x, y: int) =
   ## sets the terminal's cursor to the (x,y) position. (0,0) is the
@@ -370,10 +370,10 @@ when not defined(windows):
     ## Windows.
     let fd = getFileHandle(stdin)
     var oldMode: Termios
-    discard fd.tcgetattr(addr oldMode)
+    discard fd.tcgetattr(addr(oldMode))
     fd.setRaw()
     result = stdin.readChar()
-    discard fd.tcsetattr(TCSADRAIN, addr oldMode)
+    discard fd.tcsetattr(TCSADRAIN, addr(oldMode))
 
 when isMainModule:
   system.addQuitProc(resetAttributes)

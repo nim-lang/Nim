@@ -138,7 +138,7 @@ proc await*(fv: FlowVarBase) =
     destroySemaphore(fv.cv)
 
 proc selectWorker(w: ptr Worker; fn: WorkerProc; data: pointer): bool =
-  if cas(addr w.ready, true, false):
+  if cas(addr(w.ready), true, false):
     w.data = data
     w.f = fn
     signal(w.taskArrived)
@@ -157,7 +157,7 @@ proc cleanFlowVars(w: ptr Worker) =
 proc wakeupWorkerToProcessQueue(w: ptr Worker) =
   # we have to ensure it's us who wakes up the owning thread.
   # This is quite horrible code, but it runs so rarely that it doesn't matter:
-  while not cas(addr w.ready, true, false):
+  while not cas(addr(w.ready), true, false):
     cpuRelax()
     discard
   w.data = nil
@@ -204,7 +204,7 @@ proc nimFlowVarSignal(fv: FlowVarBase) {.compilerProc.} =
     inc fv.ai.cv.counter
     release(fv.ai.cv.L)
     signal(fv.ai.cv.c)
-  if fv.usesSemaphore: 
+  if fv.usesSemaphore:
     signal(fv.cv)
 
 proc awaitAndThen*[T](fv: FlowVar[T]; action: proc (x: T) {.closure.}) =
@@ -247,7 +247,7 @@ proc awaitAny*(flowVars: openArray[FlowVarBase]): int =
   ai.cv = createSemaphore()
   var conflicts = 0
   for i in 0 .. flowVars.high:
-    if cas(addr flowVars[i].ai, nil, addr ai):
+    if cas(addr(flowVars[i].ai), nil, addr(ai)):
       flowVars[i].idx = i
     else:
       inc conflicts
@@ -255,7 +255,7 @@ proc awaitAny*(flowVars: openArray[FlowVarBase]): int =
     await(ai.cv)
     result = ai.idx
     for i in 0 .. flowVars.high:
-      discard cas(addr flowVars[i].ai, addr ai, nil)
+      discard cas(addr(flowVars[i].ai), addr(ai), nil)
   else:
     result = -1
   destroySemaphore(ai.cv)

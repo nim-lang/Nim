@@ -1,5 +1,5 @@
 import
-  sfml, sfml_colors, 
+  sfml, sfml_colors,
   input_helpers, sg_packets
 from strutils import countlines
 {.deadCodeElim: on.}
@@ -63,7 +63,7 @@ proc click*(b: PButton; p: TVector2f)
 proc setPosition*(b: PButton; p: TVector2f)
 proc setString*(b: PButton; s: string) {.inline.}
 
-proc newButton*(container: PGuiContainer; text: string; position: TVector2f; 
+proc newButton*(container: PGuiContainer; text: string; position: TVector2f;
   onClick: TButtonClicked; startEnabled: bool = true): PButton {.discardable.}
 proc init(b: PButton; text: string; position: TVector2f; onClick: TButtonClicked)
 proc setEnabled*(b: PButton; enabled: bool)
@@ -91,7 +91,7 @@ proc newGuiContainer*(): PGuiContainer =
 proc newGuiContainer*(pos: TVector2f): PGuiContainer =
   result = newGuiContainer()
   result.setPosition pos
-proc free*(container: PGuiContainer) = 
+proc free*(container: PGuiContainer) =
   container.widgets = nil
   container.buttons = nil
 proc add*(container: PGuiContainer; widget: PGuiObject) =
@@ -128,9 +128,9 @@ proc newButton*(container: PGuiContainer; text: string;
                  position: TVector2f; onClick: TButtonClicked;
                  startEnabled: bool = true): PButton =
   new(result, free)
-  init(result, 
-       text, 
-       if not container.isNil: position + container.position else: position, 
+  init(result,
+       text,
+       if not container.isNil: position + container.position else: position,
        onClick)
   container.add result
   if not startEnabled: disable(result)
@@ -168,13 +168,13 @@ proc setPosition*(b: PButton, p: TVector2f) =
   b.bounds = b.text.getGlobalBounds()
 proc setString*(b: PButton; s: string) =
   b.text.setString(s)
-proc click*(b: PButton, p: TVector2f) = 
-  if b.enabled and (addr b.bounds).contains(p.x, p.y): 
+proc click*(b: PButton, p: TVector2f) =
+  if b.enabled and (addr(b.bounds)).contains(p.x, p.y):
     b.onClick(b)
 
 proc free(obj: PTextEntry) =
   free(PButton(obj))
-proc newTextEntry*(container: PGuiContainer; text: string; 
+proc newTextEntry*(container: PGuiContainer; text: string;
                     position: TVector2F; onEnter: TInputFinishedProc = nil): PTextEntry =
   new(result, free)
   init(PButton(result), text, position + container.position, proc(b: PButton) =
@@ -210,7 +210,7 @@ proc add*(m: PMessageArea, text: string): PText =
     pos.y -= 16.0
 
 proc draw*(window: PRenderWindow; m: PMessageArea) =
-  let nmsgs = len(m.messages) 
+  let nmsgs = len(m.messages)
   if nmsgs == 0: return
   for i in countdown(nmsgs - 1, max(nmsgs - 30, 0)):
     window.draw(m.messages[i])
@@ -224,11 +224,11 @@ proc newMessageArea*(container: PGuiContainer; position: TVector2f): PMessageAre
   result.scrollBack = 0
   result.direction = -1 ## to push old messages up
   container.add(result)
-  
+
 proc add*(m: PMessageArea, msg: ScChat) =
   const prependName = {CPub, CPriv}
   var mmm: TMessage
-  if msg.kind in prependName: 
+  if msg.kind in prependName:
     mmm.text = "<"
     mmm.text.add msg.fromPlayer
     mmm.text.add "> "
@@ -239,9 +239,9 @@ proc add*(m: PMessageArea, msg: ScChat) =
   of CPub:  mmm.color = RoyalBlue
   of CPriv, CSystem: mmm.color = Green
   of CError: mmm.color = Red
-  
+
   mmm.lines = countLines(mmm.text)+1
-  
+
   m.messages.add mmm
   update m
 proc add*(m: PMessageArea, msg: string) {.inline.} =
@@ -249,7 +249,7 @@ proc add*(m: PMessageArea, msg: string) {.inline.} =
   add(m, chat)
 
 proc proctor*(m: PText; msg: ptr TMessage; pos: ptr TVector2f) =
-  m.setString msg.text 
+  m.setString msg.text
   m.setColor msg.color
   m.setPosition pos[]
 proc update*(m: PMessageArea) =
@@ -263,15 +263,15 @@ proc update*(m: PMessageArea) =
     for i in m.sizeVisible.. < m.texts.len:
       m.texts.pop().destroy()
   let nmsgs = m.messages.len()
-  if m.sizeVisible == 0 or nmsgs == 0: 
+  if m.sizeVisible == 0 or nmsgs == 0:
     echo "no messages? ", m.sizeVisible, ", ", nmsgs
     return
   var pos = vec2f(m.pos.x, m.pos.y)
   for i in 0.. min(m.sizeVisible, nmsgs)-1:
     ##echo nmsgs - i - 1 - m.scrollBack
-    let msg = addr m.messages[nmsgs - i - 1 - m.scrollBack]
-    proctor(m.texts[i], msg, addr pos)
-    pos.y += (16 * m.direction * msg.lines).cfloat  
+    let msg = addr(m.messages[nmsgs - i - 1 - m.scrollBack])
+    proctor(m.texts[i], msg, addr(pos))
+    pos.y += (16 * m.direction * msg.lines).cfloat
 
 proc draw*(window: PRenderWindow; m: PMessageArea) =
   let nmsgs = len(m.texts)

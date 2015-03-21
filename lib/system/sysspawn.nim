@@ -9,7 +9,7 @@
 
 ## Implements Nim's 'spawn'.
 
-when not declared(NimString): 
+when not declared(NimString):
   {.error: "You must not import this module explicitly".}
 
 {.push stackTrace:off.}
@@ -65,7 +65,7 @@ proc createFastCondVar(): FastCondVar =
 
 proc await(cv: var FastCondVar) =
   #for i in 0 .. 50:
-  #  if cas(addr cv.event, true, false):
+  #  if cas(addr(cv.event), true, false):
   #    # this is a HIT: Triggers > 95% in my tests.
   #    return
   #  cpuRelax()
@@ -76,7 +76,7 @@ proc await(cv: var FastCondVar) =
 
 proc signal(cv: var FastCondVar) =
   cv.event = true
-  #if cas(addr cv.slowPath, true, false):
+  #if cas(addr(cv.slowPath), true, false):
   signal(cv.slow)
 
 type
@@ -172,7 +172,7 @@ proc nimSpawn(fn: WorkerProc; data: pointer) {.compilerProc.} =
   while true:
     for i in 0.. high(workers):
       let w = addr(workersData[i])
-      if cas(addr w.ready, true, false):
+      if cas(addr(w.ready), true, false):
         w.data = data
         w.f = fn
         signal(w.taskArrived)

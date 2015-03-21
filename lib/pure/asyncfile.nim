@@ -72,7 +72,7 @@ proc getFileSize(f: AsyncFile): int64 =
   ## Retrieves the specified file's size.
   when defined(windows) or defined(nimdoc):
     var high: DWord
-    let low = getFileSize(f.fd.THandle, addr high)
+    let low = getFileSize(f.fd.THandle, addr(high))
     if low == INVALID_FILE_SIZE:
       raiseOSError(osLastError())
     return (high shl 32) or low
@@ -132,7 +132,7 @@ proc read*(f: AsyncFile, size: int): Future[string] =
             assert bytesCount > 0
             assert bytesCount <= size
             var data = newString(bytesCount)
-            copyMem(addr data[0], buffer, bytesCount)
+            copyMem(addr(data[0]), buffer, bytesCount)
             f.offset.inc bytesCount
             retFuture.complete($data)
           else:
@@ -173,7 +173,7 @@ proc read*(f: AsyncFile, size: int): Future[string] =
         assert bytesRead > 0
         assert bytesRead <= size
         var data = newString(bytesRead)
-        copyMem(addr data[0], buffer, bytesRead)
+        copyMem(addr(data[0]), buffer, bytesRead)
         f.offset.inc bytesRead
         retFuture.complete($data)
   else:
@@ -181,7 +181,7 @@ proc read*(f: AsyncFile, size: int): Future[string] =
 
     proc cb(fd: TAsyncFD): bool =
       result = true
-      let res = read(fd.cint, addr readBuffer[0], size.cint)
+      let res = read(fd.cint, addr(readBuffer[0]), size.cint)
       if res < 0:
         let lastError = osLastError()
         if lastError.int32 != EAGAIN:
@@ -195,10 +195,10 @@ proc read*(f: AsyncFile, size: int): Future[string] =
         readBuffer.setLen(res)
         f.offset.inc(res)
         retFuture.complete(readBuffer)
-    
+
     if not cb(f.fd):
       addRead(f.fd, cb)
-  
+
   return retFuture
 
 proc readLine*(f: AsyncFile): Future[string] {.async.} =
@@ -222,7 +222,7 @@ proc getFilePos*(f: AsyncFile): int64 =
 
 proc setFilePos*(f: AsyncFile, pos: int64) =
   ## Sets the position of the file pointer that is used for read/write
-  ## operations. The file's first byte has the index zero. 
+  ## operations. The file's first byte has the index zero.
   f.offset = pos
   when not defined(windows) and not defined(nimdoc):
     let ret = lseek(f.fd.cint, pos, SEEK_SET)
@@ -247,7 +247,7 @@ proc write*(f: AsyncFile, data: string): Future[void] =
   var copy = data
   when defined(windows) or defined(nimdoc):
     var buffer = alloc0(data.len)
-    copyMem(buffer, addr copy[0], data.len)
+    copyMem(buffer, addr(copy[0]), data.len)
 
     var ol = PCustomOverlapped()
     GC_ref(ol)
@@ -291,11 +291,11 @@ proc write*(f: AsyncFile, data: string): Future[void] =
         retFuture.complete()
   else:
     var written = 0
-    
+
     proc cb(fd: TAsyncFD): bool =
       result = true
       let remainderSize = data.len-written
-      let res = write(fd.cint, addr copy[written], remainderSize.cint)
+      let res = write(fd.cint, addr(copy[written]), remainderSize.cint)
       if res < 0:
         let lastError = osLastError()
         if lastError.int32 != EAGAIN:
@@ -309,7 +309,7 @@ proc write*(f: AsyncFile, data: string): Future[void] =
           result = false # We still have data to write.
         else:
           retFuture.complete()
-    
+
     if not cb(f.fd):
       addWrite(f.fd, cb)
   return retFuture

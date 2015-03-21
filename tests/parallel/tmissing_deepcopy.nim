@@ -21,8 +21,8 @@ proc newPerson(name:string): Person =
 proc greet(p:Person) =
   p.friend.name &= "-MUT" # this line crashes the program
   echo "Person {",
-    " name:", p.name, "(", cast[int](addr p.name),"),",
-    " friend:", p.friend.name, "(", cast[int](addr p.friend.name),") }"
+    " name:", p.name, "(", cast[int](addr(p.name)),"),",
+    " friend:", p.friend.name, "(", cast[int](addr(p.friend.name)),") }"
 
 proc setup =
   for i in 0 .. <20:

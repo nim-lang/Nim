@@ -5,7 +5,7 @@ proc fakeTimeDep() = echo(times.getDateStr())
 proc fakedeps() =
   var x = 0.4
   {.emit: "#if 0\n".}
-  fakeCppDep(addr x)
+  fakeCppDep(addr(x))
   {.emit: "#endif\n".}
 
   # this is not true:

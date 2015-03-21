@@ -387,8 +387,8 @@ when defined(windows) or defined(nimdoc):
     var lpCompletionKey: ULONG
     var customOverlapped: PCustomOverlapped
     let res = getQueuedCompletionStatus(p.ioPort,
-        addr lpNumberOfBytesTransferred, addr lpCompletionKey,
-        cast[ptr POVERLAPPED](addr customOverlapped), llTimeout).bool
+        addr(lpNumberOfBytesTransferred), addr(lpCompletionKey),
+        cast[ptr POVERLAPPED](addr(customOverlapped)), llTimeout).bool
 
     # http://stackoverflow.com/a/12277264/492186
     # TODO: http://www.serverframework.com/handling-multiple-pending-socket-read-and-write-operations.html
@@ -423,9 +423,9 @@ when defined(windows) or defined(nimdoc):
     # Ref: https://github.com/powdahound/twisted/blob/master/twisted/internet/iocpreactor/iocpsupport/winsock_pointers.c
     var bytesRet: Dword
     fun = nil
-    result = WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER, addr guid,
-                      sizeof(TGUID).Dword, addr fun, sizeof(pointer).Dword,
-                      addr bytesRet, nil, nil) == 0
+    result = WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER, addr(guid),
+                      sizeof(TGUID).Dword, addr(fun), sizeof(pointer).Dword,
+                      addr(bytesRet), nil, nil) == 0
 
   proc initAll() =
     let dummySock = newRawSocket()
@@ -579,7 +579,7 @@ when defined(windows) or defined(nimdoc):
             else:
               var data = newString(bytesCount)
               assert bytesCount <= size
-              copyMem(addr data[0], addr dataBuf.buf[0], bytesCount)
+              copyMem(addr(data[0]), addr(dataBuf.buf[0]), bytesCount)
               retFuture.complete($data)
           else:
             if flags.isDisconnectionError(errcode):
@@ -591,8 +591,8 @@ when defined(windows) or defined(nimdoc):
           dataBuf.buf = nil
     )
 
-    let ret = WSARecv(socket.SocketHandle, addr dataBuf, 1, addr bytesReceived,
-                      addr flagsio, cast[POVERLAPPED](ol), nil)
+    let ret = WSARecv(socket.SocketHandle, addr(dataBuf), 1, addr(bytesReceived),
+                      addr(flagsio), cast[POVERLAPPED](ol), nil)
     if ret == -1:
       let err = osLastError()
       if err.int32 != ERROR_IO_PENDING:
@@ -626,7 +626,7 @@ when defined(windows) or defined(nimdoc):
           bytesReceived
       var data = newString(realSize)
       assert realSize <= size
-      copyMem(addr data[0], addr dataBuf.buf[0], realSize)
+      copyMem(addr(data[0]), addr(dataBuf.buf[0]), realSize)
       #dealloc dataBuf.buf
       retFuture.complete($data)
       # We don't deallocate ``ol`` here because even though this completed
@@ -660,7 +660,7 @@ when defined(windows) or defined(nimdoc):
               retFuture.fail(newException(OSError, osErrorMsg(errcode)))
     )
 
-    let ret = WSASend(socket.SocketHandle, addr dataBuf, 1, addr bytesReceived,
+    let ret = WSASend(socket.SocketHandle, addr(dataBuf), 1, addr(bytesReceived),
                       lowFlags, cast[POVERLAPPED](ol), nil)
     if ret == -1:
       let err = osLastError()
@@ -706,16 +706,16 @@ when defined(windows) or defined(nimdoc):
     template completeAccept(): stmt {.immediate, dirty.} =
       var listenSock = socket
       let setoptRet = setsockopt(clientSock, SOL_SOCKET,
-          SO_UPDATE_ACCEPT_CONTEXT, addr listenSock,
+          SO_UPDATE_ACCEPT_CONTEXT, addr(listenSock),
           sizeof(listenSock).SockLen)
       if setoptRet != 0: raiseOSError(osLastError())
 
       var localSockaddr, remoteSockaddr: ptr SockAddr
       var localLen, remoteLen: int32
-      getAcceptExSockaddrs(addr lpOutputBuf[0], dwReceiveDataLength,
+      getAcceptExSockaddrs(addr(lpOutputBuf[0]), dwReceiveDataLength,
                            dwLocalAddressLength, dwRemoteAddressLength,
-                           addr localSockaddr, addr localLen,
-                           addr remoteSockaddr, addr remoteLen)
+                           addr(localSockaddr), addr(localLen),
+                           addr(remoteSockaddr), addr(remoteLen))
       register(clientSock.TAsyncFD)
       # TODO: IPv6. Check ``sa_family``. http://stackoverflow.com/a/9212542/492186
       retFuture.complete(
@@ -747,11 +747,11 @@ when defined(windows) or defined(nimdoc):
     )
 
     # http://msdn.microsoft.com/en-us/library/windows/desktop/ms737524%28v=vs.85%29.aspx
-    let ret = acceptEx(socket.SocketHandle, clientSock, addr lpOutputBuf[0],
+    let ret = acceptEx(socket.SocketHandle, clientSock, addr(lpOutputBuf[0]),
                        dwReceiveDataLength,
                        dwLocalAddressLength,
                        dwRemoteAddressLength,
-                       addr dwBytesReceived, cast[POVERLAPPED](ol))
+                       addr(dwBytesReceived), cast[POVERLAPPED](ol))
 
     if not ret:
       let err = osLastError()
@@ -957,7 +957,7 @@ else:
 
     proc cb(sock: TAsyncFD): bool =
       result = true
-      let res = recv(sock.SocketHandle, addr readBuffer[0], size.cint,
+      let res = recv(sock.SocketHandle, addr(readBuffer[0]), size.cint,
                      flags.toOSFlags())
       #echo("recv cb res: ", res)
       if res < 0:
@@ -990,7 +990,7 @@ else:
       result = true
       let netSize = data.len-written
       var d = data.cstring
-      let res = send(sock.SocketHandle, addr d[written], netSize.cint,
+      let res = send(sock.SocketHandle, addr(d[written]), netSize.cint,
                      MSG_NOSIGNAL)
       if res < 0:
         let lastError = osLastError()

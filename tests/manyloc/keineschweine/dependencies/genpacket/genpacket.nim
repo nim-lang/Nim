@@ -248,9 +248,9 @@ macro forwardPacket*(typeName: expr, underlyingType: typedesc): stmt {.immediate
 
 template forwardPacketT*(typeName: expr): stmt {.dirty, immediate.} =
   proc `read typeName`*(s: PStream): typeName =
-    discard readData(s, addr result, sizeof(result))
+    discard readData(s, addr(result), sizeof(result))
   proc `pack typeName`*(p: var typeName; s: PStream) =
-    writeData(s, addr p, sizeof(p))
+    writeData(s, addr(p), sizeof(p))
 
 when isMainModule:
   type
