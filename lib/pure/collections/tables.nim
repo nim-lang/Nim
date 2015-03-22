@@ -192,7 +192,7 @@ proc `[]`*[A, B](t: Table[A, B], key: A): B =
 
 proc mget*[A, B](t: var Table[A, B], key: A): var B =
   ## retrieves the value at ``t[key]``. The value can be modified.
-  ## If `key` is not in `t`, the ``EInvalidKey`` exception is raised.
+  ## If `key` is not in `t`, the ``KeyError`` exception is raised.
   var hc: THash
   var index = rawGet(t, key, hc)
   if index >= 0: result = t.data[index].val
@@ -314,7 +314,7 @@ proc initTable*[A, B](initialSize=64): Table[A, B] =
   result.counter = 0
   newSeq(result.data, initialSize)
 
-proc toTable*[A, B](pairs: openArray[(A, 
+proc toTable*[A, B](pairs: openArray[(A,
                     B)]): Table[A, B] =
   ## creates a new hash table that contains the given `pairs`.
   result = initTable[A, B](rightSize(pairs.len))
@@ -532,7 +532,7 @@ proc hasKey*[A, B](t: OrderedTable[A, B], key: A): bool =
   var hc: THash
   result = rawGet(t, key, hc) >= 0
 
-proc rawInsert[A, B](t: var OrderedTable[A, B], 
+proc rawInsert[A, B](t: var OrderedTable[A, B],
                      data: var OrderedKeyValuePairSeq[A, B],
                      key: A, val: B, hc: THash, h: THash) =
   rawInsertImpl()
@@ -584,7 +584,7 @@ proc initOrderedTable*[A, B](initialSize=64): OrderedTable[A, B] =
   result.last = -1
   newSeq(result.data, initialSize)
 
-proc toOrderedTable*[A, B](pairs: openArray[(A, 
+proc toOrderedTable*[A, B](pairs: openArray[(A,
                            B)]): OrderedTable[A, B] =
   ## creates a new ordered hash table that contains the given `pairs`.
   result = initOrderedTable[A, B](rightSize(pairs.len))
@@ -594,7 +594,7 @@ proc `$`*[A, B](t: OrderedTable[A, B]): string =
   ## The `$` operator for ordered hash tables.
   dollarImpl()
 
-proc sort*[A, B](t: var OrderedTable[A, B], 
+proc sort*[A, B](t: var OrderedTable[A, B],
                  cmp: proc (x,y: (A, B)): int) =
   ## sorts `t` according to `cmp`. This modifies the internal list
   ## that kept the insertion order, so insertion order is lost after this
@@ -617,7 +617,7 @@ proc sort*[A, B](t: var OrderedTable[A, B],
       while i < insize:
         inc(psize)
         q = t.data[q].next
-        if q < 0: break 
+        if q < 0: break
         inc(i)
       qsize = insize
       while psize > 0 or (qsize > 0 and q >= 0):
@@ -625,7 +625,7 @@ proc sort*[A, B](t: var OrderedTable[A, B],
           e = q; q = t.data[q].next; dec(qsize)
         elif qsize == 0 or q < 0:
           e = p; p = t.data[p].next; dec(psize)
-        elif cmp((t.data[p].key, t.data[p].val), 
+        elif cmp((t.data[p].key, t.data[p].val),
                  (t.data[q].key, t.data[q].val)) <= 0:
           e = p; p = t.data[p].next; dec(psize)
         else:
@@ -730,7 +730,7 @@ proc `$`*[A, B](t: OrderedTableRef[A, B]): string =
   ## The `$` operator for ordered hash tables.
   dollarImpl()
 
-proc sort*[A, B](t: OrderedTableRef[A, B], 
+proc sort*[A, B](t: OrderedTableRef[A, B],
                  cmp: proc (x,y: (A, B)): int) =
   ## sorts `t` according to `cmp`. This modifies the internal list
   ## that kept the insertion order, so insertion order is lost after this
@@ -848,7 +848,7 @@ proc `$`*[A](t: CountTable[A]): string =
   ## The `$` operator for count tables.
   dollarImpl()
 
-proc inc*[A](t: var CountTable[A], key: A, val = 1) = 
+proc inc*[A](t: var CountTable[A], key: A, val = 1) =
   ## increments `t[key]` by `val`.
   var index = rawGet(t, key)
   if index >= 0:
@@ -965,7 +965,7 @@ proc `$`*[A](t: CountTableRef[A]): string =
   ## The `$` operator for count tables.
   dollarImpl()
 
-proc inc*[A](t: CountTableRef[A], key: A, val = 1) = 
+proc inc*[A](t: CountTableRef[A], key: A, val = 1) =
   ## increments `t[key]` by `val`.
   t[].inc(key, val)
 

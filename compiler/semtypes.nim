@@ -228,7 +228,7 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
       if not isOrdinalType(e.typ.lastSon):
         localError(n[1].info, errOrdinalTypeExpected)
       result = makeRangeWithStaticExpr(c, e)
-      if c.inGenericContext >0: result.flags.incl tfUnresolved
+      if c.inGenericContext > 0: result.flags.incl tfUnresolved
     elif e.kind in nkCallKinds and hasGenericArguments(e):
       if not isOrdinalType(e.typ):
         localError(n[1].info, errOrdinalTypeExpected)

@@ -1,16 +1,16 @@
 version 0.10.4
 ==============
 
+- improve the parser; deal with  echo $foo  gotcha
 - improve GC-unsafety warnings
 - make 'nil' work for 'add' and 'len'
-- disallow negative indexing
-- improve the parser; deal with  echo $foo  gotcha
 - add "all threads are blocked" detection to 'spawn'
 
 
 version 1.0
 ===========
 
+- disallow negative indexing
 - figure out why C++ bootstrapping is so much slower
 - nimsuggest: auto-completion needs to work in 'class' macros
 - improve the docs for inheritance

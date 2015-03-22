@@ -434,7 +434,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         result = "int literal(" & $t.n.intVal & ")"
   of tyGenericBody, tyGenericInst, tyGenericInvocation:
     result = typeToString(t.sons[0]) & '['
-    for i in countup(1, sonsLen(t) -1 -ord(t.kind != tyGenericInvocation)):
+    for i in countup(1, sonsLen(t)-1-ord(t.kind != tyGenericInvocation)):
       if i > 1: add(result, ", ")
       add(result, typeToString(t.sons[i], preferGenericArg))
     add(result, ']')

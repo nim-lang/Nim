@@ -734,14 +734,14 @@ proc basename*(a: NimNode): NimNode =
   of nnkIdent: return a
   of nnkPostfix, nnkPrefix: return a[1]
   else:
-    quit "Do not know how to get basename of ("& treeRepr(a) &")\n"& repr(a)
+    quit "Do not know how to get basename of (" & treeRepr(a) & ")\n" & repr(a)
 
 proc `basename=`*(a: NimNode; val: string) {.compileTime.}=
   case a.kind
   of nnkIdent: macros.`ident=`(a,  !val)
   of nnkPostfix, nnkPrefix: a[1] = ident(val)
   else:
-    quit "Do not know how to get basename of ("& treeRepr(a)& ")\n"& repr(a)
+    quit "Do not know how to get basename of (" & treeRepr(a) & ")\n" & repr(a)
 
 proc postfix*(node: NimNode; op: string): NimNode {.compileTime.} =
   newNimNode(nnkPostfix).add(ident(op), node)
