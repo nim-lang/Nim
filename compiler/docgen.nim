@@ -521,13 +521,13 @@ proc generateJson(d: PDoc, n: PNode, jArray: JsonNode = nil): JsonNode =
         result = genJSONItem(d, n.sons[i], n.sons[i].sons[0],
                 succ(skType, ord(n.kind)-ord(nkTypeSection)))
   of nkStmtList:
-    var elem = jArray
-    if elem == nil: elem = newJArray()
+    result = if jArray != nil: jArray else: newJArray()
+
     for i in countup(0, sonsLen(n) - 1):
-      var r = generateJson(d, n.sons[i], elem)
+      var r = generateJson(d, n.sons[i], result)
       if r != nil:
-        elem.add(r)
-        if result == nil: result = elem
+        result.add(r)
+
   of nkWhenStmt:
     # generate documentation for the first branch only:
     if not checkForFalse(n.sons[0].sons[0]) and jArray != nil:
