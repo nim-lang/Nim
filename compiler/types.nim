@@ -1092,9 +1092,11 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       if result != nil: break
     if result.isNil and t.sons[0] != nil:
       result = typeAllowedAux(marker, t.sons[0], skResult, flags)
-  of tyExpr, tyStmt, tyTypeDesc, tyStatic:
+  of tyTypeDesc:
+    # XXX: This is still a horrible idea...
     result = nil
-    # XXX er ... no? these should not be allowed!
+  of tyExpr, tyStmt, tyStatic:
+    if kind notin {skParam, skResult}: result = t
   of tyEmpty:
     if taField notin flags: result = t
   of tyTypeClasses:
