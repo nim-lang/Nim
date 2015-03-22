@@ -17,3 +17,10 @@ echo(type(10).name()) # doesn't work
 
 echo(name(type(10))) # works
 echo((type(10)).name()) # works
+
+
+# test that 'addr' still works
+proc poo(x, y: ptr int) = discard
+
+var someInt: int
+poo(addr someInt, addr someInt)

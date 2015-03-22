@@ -666,11 +666,11 @@ proc namedParams(p: var TParser, callee: PNode,
 proc parseMacroColon(p: var TParser, x: PNode): PNode
 proc primarySuffix(p: var TParser, r: PNode, baseIndent: int): PNode =
   #| primarySuffix = '(' (exprColonEqExpr comma?)* ')' doBlocks?
-  #|               | doBlocks
-  #|               | '.' optInd symbol generalizedLit?
-  #|               | '[' optInd indexExprList optPar ']'
-  #|               | '{' optInd indexExprList optPar '}'
-  #|               | &( '`'|IDENT|literal|'cast') expr # command syntax
+  #|       | doBlocks
+  #|       | '.' optInd symbol generalizedLit?
+  #|       | '[' optInd indexExprList optPar ']'
+  #|       | '{' optInd indexExprList optPar '}'
+  #|       | &( '`'|IDENT|literal|'cast'|'addr'|'type') expr # command syntax
   result = r
   while p.tok.indent < 0 or
        (p.tok.tokType == tkDot and p.tok.indent >= baseIndent):
@@ -696,21 +696,22 @@ proc primarySuffix(p: var TParser, r: PNode, baseIndent: int): PNode =
     of tkCurlyLe:
       if p.strongSpaces and p.tok.strongSpaceA > 0: break
       result = namedParams(p, result, nkCurlyExpr, tkCurlyRi)
-    of tkSymbol, tkAccent, tkIntLit..tkCharLit, tkNil, tkCast:
+    of tkSymbol, tkAccent, tkIntLit..tkCharLit, tkNil, tkCast, tkAddr, tkType:
       if p.inPragma == 0:
         # actually parsing {.push hints:off.} as {.push(hints:off).} is a sweet
         # solution, but pragmas.nim can't handle that
         let a = result
         result = newNodeP(nkCommand, p)
         addSon(result, a)
-        addSon result, parseExpr(p)
-        when false:
+        when true:
+          addSon result, parseExpr(p)
+        else:
           while p.tok.tokType != tkEof:
-            let a = parseExpr(p)
-            addSon(result, a)
+            let x = parseExpr(p)
+            addSon(result, x)
             if p.tok.tokType != tkComma: break
             getTok(p)
-            optInd(p, a)
+            optInd(p, x)
           if p.tok.tokType == tkDo:
             parseDoBlocks(p, result)
           else:
@@ -1162,9 +1163,7 @@ proc parseExprStmt(p: var TParser): PNode =
   #|              doBlocks
   #|               / macroColon
   #|            ))?
-  inc p.inPragma
   var a = simpleExpr(p)
-  dec p.inPragma
   if p.tok.tokType == tkEquals:
     getTok(p)
     optInd(p, result)
@@ -1173,8 +1172,20 @@ proc parseExprStmt(p: var TParser): PNode =
     addSon(result, a)
     addSon(result, b)
   else:
-    if p.tok.indent < 0 and isExprStart(p):
-      result = newNode(nkCommand, a.info, @[a])
+    # simpleExpr parsed 'p a' from 'p a, b'?
+    if p.tok.indent < 0 and p.tok.tokType == tkComma and a.kind == nkCommand:
+      result = a
+      while true:
+        getTok(p)
+        optInd(p, result)
+        var e = parseExpr(p)
+        addSon(result, e)
+        if p.tok.tokType != tkComma: break
+    elif p.tok.indent < 0 and isExprStart(p):
+      if a.kind == nkCommand:
+        result = a
+      else:
+        result = newNode(nkCommand, a.info, @[a])
       while true:
         var e = parseExpr(p)
         addSon(result, e)
