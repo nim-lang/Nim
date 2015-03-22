@@ -60,7 +60,7 @@ Is operator
 -----------
 
 The ``is`` operator checks for type equivalence at compile time. It is
-therefore very useful for type specialization within generic code: 
+therefore very useful for type specialization within generic code:
 
 .. code-block:: nim
   type
@@ -75,7 +75,7 @@ Type operator
 -------------
 
 The ``type`` (in many other languages called `typeof`:idx:) operator can
-be used to get the type of an expression: 
+be used to get the type of an expression:
 
 .. code-block:: nim
   var x = 0
@@ -88,7 +88,7 @@ other interpretations:
 
 .. code-block:: nim
   import strutils
-  
+
   # strutils contains both a ``split`` proc and iterator, but since an
   # an iterator is the preferred interpretation, `y` has the type ``string``:
   var y: type("a b c".split)
@@ -98,7 +98,7 @@ Type Classes
 ------------
 
 A type class is a special pseudo-type that can be used to match against
-types in the context of overload resolution or the ``is`` operator. 
+types in the context of overload resolution or the ``is`` operator.
 Nim supports the following built-in type classes:
 
 ==================   ===================================================
@@ -116,7 +116,7 @@ type class           matches
 ``array``            any array type
 ``set``              any set type
 ``seq``              any seq type
-``auto``             any type 
+``auto``             any type
 ==================   ===================================================
 
 Furthermore, every generic type automatically creates a type class of the same
@@ -134,7 +134,7 @@ more complex type classes:
       echo key, " = ", value
 
 Procedures utilizing type classes in such manner are considered to be
-`implicitly generic`:idx:. They will be instantiated once for each unique 
+`implicitly generic`:idx:. They will be instantiated once for each unique
 combination of param types used within the program.
 
 Nim also allows for type classes and regular types to be specified
@@ -142,7 +142,7 @@ as `type constraints`:idx: of the generic type parameter:
 
 .. code-block:: nim
   proc onlyIntOrString[T: int|string](x, y: T) = discard
-  
+
   onlyIntOrString(450, 616) # valid
   onlyIntOrString(5.0, 0.0) # type mismatch
   onlyIntOrString("xy", 50) # invalid as 'T' cannot be both at the same time
@@ -152,7 +152,7 @@ exactly one concrete type. Here is an example taken directly from the system
 module to illustrate this:
 
 .. code-block:: nim
-  proc `==`*(x, y: tuple): bool = 
+  proc `==`*(x, y: tuple): bool =
     ## requires `x` and `y` to be of the same tuple type
     ## generic ``==`` operator for tuples that is lifted from the components
     ## of `x` and `y`.
@@ -160,8 +160,8 @@ module to illustrate this:
     for a, b in fields(x, y):
       if a != b: result = false
 
-Alternatively, the ``distinct`` type modifier can be applied to the type class 
-to allow each param matching the type class to bind to a different type. 
+Alternatively, the ``distinct`` type modifier can be applied to the type class
+to allow each param matching the type class to bind to a different type.
 
 If a proc param doesn't have a type specified, Nim will use the
 ``distinct auto`` type class (also known as ``any``):
@@ -178,7 +178,7 @@ the dot syntax:
   type Matrix[T, Rows, Columns] = object
     ...
 
-  proc `[]`(m: Matrix, row, col: int): Matrix.T = 
+  proc `[]`(m: Matrix, row, col: int): Matrix.T =
     m.data[col * high(Matrix.Columns) + row]
 
 Alternatively, the `type` operator can be used over the proc params for similar
@@ -189,7 +189,7 @@ type, this results in another more specific type class:
 
 .. code-block:: nim
   seq[ref object]  # Any sequence storing references to any object type
-  
+
   type T1 = auto
   proc foo(s: seq[T1], e: T1)
     # seq[T1] is the same as just `seq`, but T1 will be allowed to bind
@@ -203,34 +203,34 @@ be inferred to have the equivalent of the `any` type class and thus they will
 match anything without discrimination.
 
 
-User defined type classes
--------------------------
+Concepts
+--------
 
-**Note**: User defined type classes are still in development.
+**Note**: Concepts are still in development.
 
-The user-defined type classes are available in two flavours - declarative and
-imperative. Both are used to specify an arbitrary set of requirements that the
-matched type must satisfy.
+Concepts, also known as "user-defined type classes", are available in two
+flavours - declarative and imperative. Both are used to specify an arbitrary
+set of requirements that the matched type must satisfy.
 
 Declarative type classes are written in the following form:
 
 .. code-block:: nim
   type
-    Comparable = generic x, y
+    Comparable = concept x, y
       (x < y) is bool
 
-    Container[T] = generic c
+    Container[T] = concept c
       c.len is ordinal
       items(c) is iterator
       for value in c:
         type(value) is T
 
-The type class will be matched if:
+The concept will be matched if:
 
 a) all of the expressions within the body can be compiled for the tested type
 b) all statically evaluatable boolean expressions in the body must be true
 
-The identifiers following the `generic` keyword represent instances of the
+The identifiers following the ``concept`` keyword represent instances of the
 currently matched type. These instances can act both as variables of the type,
 when used in contexts where a value is expected, and as the type itself when
 used in contexts where a type is expected.
@@ -240,18 +240,18 @@ type signatures of the required operations, but since type inference and
 default parameters are still applied in the provided block, it's also possible
 to encode usage protocols that do not reveal implementation details.
 
-As a special rule providing further convenience when writing type classes, any
+As a special rule providing further convenience when writing concepts, any
 type value appearing in a callable expression will be treated as a variable of
 the designated type for overload resolution purposes, unless the type value was
 passed in its explicit ``typedesc[T]`` form:
 
 .. code-block:: nim
   type
-    OutputStream = generic S
+    OutputStream = concept S
       write(var S, string)
 
-Much like generics, the user defined type classes will be instantiated exactly
-once for each tested type and any static code included within them will also be
+Much like generics, concepts are instantiated exactly
+once for each tested type and any static code included within them is also
 executed once.
 
 
@@ -269,7 +269,7 @@ The return type will be treated as an additional generic param and can be
 explicitly specified at call sites as any other generic param.
 
 Future versions of Nim may also support overloading based on the return type
-of the overloads. In such settings, the expected result type at call sites may 
+of the overloads. In such settings, the expected result type at call sites may
 also influence the inferred return type.
 
 ..
@@ -293,12 +293,12 @@ at definition and the context at instantiation are considered:
 .. code-block:: nim
   type
     Index = distinct int
-  
+
   proc `==` (a, b: Index): bool {.borrow.}
-  
+
   var a = (0, 0.Index)
   var b = (0, 0.Index)
-  
+
   echo a == b # works!
 
 In the example the generic ``==`` for tuples (as defined in the system module)
@@ -307,7 +307,7 @@ the ``Index`` type is defined *after* the ``==`` for tuples; yet the example
 compiles as the instantiation takes the currently defined symbols into account
 too.
 
-A symbol can be forced to be open by a `mixin`:idx: declaration: 
+A symbol can be forced to be open by a `mixin`:idx: declaration:
 
 .. code-block:: nim
   proc create*[T](): ref T =
@@ -321,16 +321,16 @@ A symbol can be forced to be open by a `mixin`:idx: declaration:
 Bind statement
 --------------
 
-The ``bind`` statement is the counterpart to the ``mixin`` statement. It 
+The ``bind`` statement is the counterpart to the ``mixin`` statement. It
 can be used to explicitly declare identifiers that should be bound early (i.e.
 the identifiers should be looked up in the scope of the template/generic
 definition):
 
 .. code-block:: nim
   # Module A
-  var 
+  var
     lastId = 0
-  
+
   template genId*: expr =
     bind lastId
     inc(lastId)
@@ -339,7 +339,7 @@ definition):
 .. code-block:: nim
   # Module B
   import A
-  
+
   echo genId()
 
 But a ``bind`` is rarely useful because symbol binding from the definition

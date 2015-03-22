@@ -725,7 +725,7 @@ proc gproc(g: var TSrcGen, n: PNode) =
 proc gTypeClassTy(g: var TSrcGen, n: PNode) =
   var c: TContext
   initContext(c)
-  putWithSpace(g, tkGeneric, "generic")
+  putWithSpace(g, tkConcept, "concept")
   gsons(g, n[0], c) # arglist
   gsub(g, n[1]) # pragmas
   gsub(g, n[2]) # of

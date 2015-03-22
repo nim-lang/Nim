@@ -1073,8 +1073,10 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
     else:
       result = newNodeP(nkObjectTy, p)
       getTok(p)
-  of tkGeneric:
+  of tkGeneric, tkConcept:
     if mode == pmTypeDef:
+      if p.tok.tokType == tkGeneric:
+        parMessage(p, warnDeprecated, "use 'concept' instead; 'generic'")
       result = parseTypeClass(p)
     else:
       parMessage(p, errInvalidToken, p.tok)
@@ -1107,7 +1109,7 @@ proc parseTypeDesc(p: var TParser): PNode =
 
 proc parseTypeDefAux(p: var TParser): PNode =
   #| typeDefAux = simpleExpr
-  #|            | 'generic' typeClass
+  #|            | 'concept' typeClass
   result = simpleExpr(p, pmTypeDef)
 
 proc makeCall(n: PNode): PNode =

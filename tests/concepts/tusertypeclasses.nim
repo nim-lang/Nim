@@ -16,10 +16,10 @@ type
   TObj = object
     x: int
 
-  Sortable = generic x, y
+  Sortable = concept x, y
     (x < y) is bool
 
-  ObjectContainer = generic C
+  ObjectContainer = concept C
     C.len is Ordinal
     for v in items(C):
       v.type is tuple|object
@@ -38,7 +38,7 @@ proc intval(x: int): int = 10
 
 # check real and virtual fields
 type
-  TFoo = generic T
+  TFoo = concept T
     T.x
     y(T)
     intval T.y
@@ -50,7 +50,7 @@ proc testFoo(x: TFoo) = discard
 testFoo(TObj(x: 10))
 
 type
-  Matrix[Rows, Cols: static[int]; T] = generic M
+  Matrix[Rows, Cols: static[int]; T] = concept M
     M.M == Rows
     M.N == Cols
     M.T is T

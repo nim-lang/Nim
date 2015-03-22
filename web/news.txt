@@ -41,7 +41,7 @@ News
     and not as ``type((x).name)``. Note that this also affects the AST
     structure; for immediate macro parameters ``nkCall('addr', 'x')`` is
     produced instead of ``nkAddr('x')``.
-
+  - ``concept`` is now a keyword and is used instead of ``generic``.
 
 
   Language Additions

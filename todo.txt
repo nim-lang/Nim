@@ -5,6 +5,7 @@ version 0.10.4
 - improve GC-unsafety warnings
 - make 'nil' work for 'add' and 'len'
 - add "all threads are blocked" detection to 'spawn'
+- overloading of '='
 
 
 version 1.0
@@ -17,8 +18,6 @@ version 1.0
 - The bitwise 'not' operator will be renamed to 'bnot' to
   prevent 'not 4 == 5' from compiling. -> requires 'mixin' annotation for procs!
 - iterators always require a return type
-- overloading of '='
-
 - make nimble part of the distribution
 - split docgen into separate tool
 - special rule for ``[]=``, items, pairs

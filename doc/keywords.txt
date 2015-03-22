@@ -1,6 +1,6 @@
 addr and as asm atomic
 bind block break
-case cast const continue converter
+case cast concept const continue converter
 defer discard distinct div do
 elif else end enum except export
 finally for from func

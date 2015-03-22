@@ -52,11 +52,11 @@ identOrLiteral = generalizedLit | symbol | literal
 tupleConstr = '(' optInd (exprColonEqExpr comma?)* optPar ')'
 arrayConstr = '[' optInd (exprColonEqExpr comma?)* optPar ']'
 primarySuffix = '(' (exprColonEqExpr comma?)* ')' doBlocks?
-              | doBlocks
-              | '.' optInd symbol generalizedLit?
-              | '[' optInd indexExprList optPar ']'
-              | '{' optInd indexExprList optPar '}'
-              | &( '`'|IDENT|literal|'cast') expr # command syntax
+      | doBlocks
+      | '.' optInd symbol generalizedLit?
+      | '[' optInd indexExprList optPar ']'
+      | '{' optInd indexExprList optPar '}'
+      | &( '`'|IDENT|literal|'cast'|'addr'|'type') expr # command syntax
 condExpr = expr colcom expr optInd
         ('elif' expr colcom expr optInd)*
          'else' colcom expr
@@ -94,7 +94,7 @@ primary = typeKeyw typeDescK
         / 'bind' primary
 typeDesc = simpleExpr
 typeDefAux = simpleExpr
-           | 'generic' typeClass
+           | 'concept' typeClass
 macroColon = ':' stmt? ( IND{=} 'of' exprList ':' stmt
                        | IND{=} 'elif' expr ':' stmt
                        | IND{=} 'except' exprList ':' stmt

@@ -40,7 +40,7 @@ proc isSwizzle(s: string): bool {.compileTime.} =
   return false
 
 type
-  StringIsSwizzle = generic value
+  StringIsSwizzle = concept value
     value.isSwizzle
 
   SwizzleStr = static[string] and StringIsSwizzle

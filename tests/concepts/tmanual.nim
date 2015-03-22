@@ -22,7 +22,7 @@ template reject(e: expr) =
   static: assert(not compiles(e))
 
 type
-  Container[T] = generic C
+  Container[T] = concept C
     C.len is Ordinal
     items(c) is iterator
     for value in C:

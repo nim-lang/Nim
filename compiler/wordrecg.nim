@@ -23,7 +23,7 @@ type
     wInvalid,
 
     wAddr, wAnd, wAs, wAsm, wAtomic,
-    wBind, wBlock, wBreak, wCase, wCast, wConst,
+    wBind, wBlock, wBreak, wCase, wCast, wConcept, wConst,
     wContinue, wConverter, wDefer, wDiscard, wDistinct, wDiv, wDo,
     wElif, wElse, wEnd, wEnum, wExcept, wExport,
     wFinally, wFor, wFrom, wFunc, wGeneric, wIf, wImport, wIn,
@@ -103,7 +103,7 @@ const
 
     "addr", "and", "as", "asm", "atomic",
     "bind", "block", "break", "case", "cast",
-    "const", "continue", "converter",
+    "concept", "const", "continue", "converter",
     "defer", "discard", "distinct", "div", "do",
     "elif", "else", "end", "enum", "except", "export",
     "finally", "for", "from", "func", "generic", "if",
